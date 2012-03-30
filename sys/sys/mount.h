@@ -622,7 +622,7 @@ struct vfsops {
 #define VFS_EXTATTRCTL(MP, C, FVP, NS, N, CRED)	\
 	vfs_extattrctl(MP, C, FVP, NS, N, CRED)
 #define VFS_ACCOUNT(MP, U, G, D) \
-	if (MP->mnt_op->vfs_account != NULL) \
+	if ((MP->mnt_op->vfs_account != NULL) && (D != 0)) \
 		MP->mnt_op->vfs_account(MP, U, G, D);
 #define VFS_NCPGEN_SET(MP, NCP) \
 	MP->mnt_op->vfs_ncpgen_set(MP, NCP)

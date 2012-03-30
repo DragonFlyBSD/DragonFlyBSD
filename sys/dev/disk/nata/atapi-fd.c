@@ -113,7 +113,7 @@ afd_attach(device_t dev)
     if (ch->dma)
 	cdev->si_iosize_max = ch->dma->max_iosize;
     else
-	cdev->si_iosize_max = DFLTPHYS;
+	cdev->si_iosize_max = min(MAXPHYS,64*1024);
     fdp->cdev = cdev;
 
     /* announce we are here */

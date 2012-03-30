@@ -335,7 +335,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		       "mfs%d", minnum);
 	/* It is not clear that these will get initialized otherwise */
 	dev->si_bsize_phys = DEV_BSIZE;
-	dev->si_iosize_max = DFLTPHYS;
+	dev->si_iosize_max = MAXPHYS;
 	dev->si_drv1 = mfsp;
 	mfsp->mfs_baseoff = args.base;
 	mfsp->mfs_size = args.size;

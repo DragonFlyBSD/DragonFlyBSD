@@ -907,7 +907,7 @@ devfs_spec_open(struct vop_open_args *ap)
 	 * Make this field valid before any I/O in ->d_open
 	 */
 	if (!dev->si_iosize_max)
-		dev->si_iosize_max = DFLTPHYS;
+		dev->si_iosize_max = MAXPHYS;
 
 	if (dev_dflags(dev) & D_TTY)
 		vsetflags(vp, VISTTY);

@@ -72,6 +72,7 @@
 #include <sys/buf2.h>
 #include <sys/mplock2.h>
 #include <sys/thread2.h>
+#include <sys/lock.h>
 
 /*
  * These definitions need to be adapted to the system to which
@@ -221,132 +222,44 @@ static struct bio_ops softdep_bioops = {
 
 /*
  * Locking primitives.
- *
- * For a uniprocessor, all we need to do is protect against disk
- * interrupts. For a multiprocessor, this lock would have to be
- * a mutex. A single mutex is used throughout this file, though
- * finer grain locking could be used if contention warranted it.
- *
- * For a multiprocessor, the sleep call would accept a lock and
- * release it after the sleep processing was complete. In a uniprocessor
- * implementation there is no such interlock, so we simple mark
- * the places where it needs to be done with the `interlocked' form
- * of the lock calls. Since the uniprocessor sleep already interlocks
- * the spl, there is nothing that really needs to be done.
  */
-#ifndef /* NOT */ DEBUG
-static struct lockit {
-} lk = { 0 };
-#define ACQUIRE_LOCK(lk)		crit_enter_id("softupdates");
-#define FREE_LOCK(lk)			crit_exit_id("softupdates");
-
-#else /* DEBUG */
-#define NOHOLDER	((struct thread *)-1)
-#define SPECIAL_FLAG	((struct thread *)-2)
-static struct lockit {
-	int	lkt_spl;
-	struct thread *lkt_held;
-} lk = { 0, NOHOLDER };
-static int lockcnt;
-
-static	void acquire_lock(struct lockit *);
-static	void free_lock(struct lockit *);
-void	softdep_panic(char *);
-
-#define ACQUIRE_LOCK(lk)		acquire_lock(lk)
-#define FREE_LOCK(lk)			free_lock(lk)
-
-static void
-acquire_lock(struct lockit *lk)
-{
-	thread_t holder;
-
-	if (lk->lkt_held != NOHOLDER) {
-		holder = lk->lkt_held;
-		FREE_LOCK(lk);
-		if (holder == curthread)
-			panic("softdep_lock: locking against myself");
-		else
-			panic("softdep_lock: lock held by %p", holder);
-	}
-	crit_enter_id("softupdates");
-	lk->lkt_held = curthread;
-	lockcnt++;
-}
-
-static void
-free_lock(struct lockit *lk)
-{
-
-	if (lk->lkt_held == NOHOLDER)
-		panic("softdep_unlock: lock not held");
-	lk->lkt_held = NOHOLDER;
-	crit_exit_id("softupdates");
-}
-
-/*
- * Function to release soft updates lock and panic.
- */
-void
-softdep_panic(char *msg)
-{
-
-	if (lk.lkt_held != NOHOLDER)
-		FREE_LOCK(&lk);
-	panic(msg);
-}
-#endif /* DEBUG */
-
-static	int interlocked_sleep(struct lockit *, int, void *, int,
+static	void acquire_lock(struct lock *);
+static	void free_lock(struct lock *);
+static	int lock_held(struct lock *);
+static	int interlocked_sleep(struct lock *, void *, int,
 	    const char *, int);
 
-/*
- * When going to sleep, we must save our SPL so that it does
- * not get lost if some other process uses the lock while we
- * are sleeping. We restore it after we have slept. This routine
- * wraps the interlocking with functions that sleep. The list
- * below enumerates the available set of operations.
- */
-#define	UNKNOWN		0
-#define	SLEEP		1
-#define	LOCKBUF		2
+static struct lock lk;
+
+#define ACQUIRE_LOCK(lkp)		acquire_lock(lkp)
+#define FREE_LOCK(lkp)			free_lock(lkp)
+
+static void
+acquire_lock(struct lock *lkp)
+{
+	lockmgr(lkp, LK_EXCLUSIVE);
+}
+
+static void
+free_lock(struct lock *lkp)
+{
+	lockmgr(lkp, LK_RELEASE);
+}
 
 static int
-interlocked_sleep(struct lockit *lk, int op, void *ident, int flags,
+lock_held(struct lock *lkp) 
+{
+	return lockcountnb(lkp);
+}
+
+static int
+interlocked_sleep(struct lock *lkp, void *ident, int flags,
 		  const char *wmesg, int timo)
 {
-	thread_t holder;
-	int s, retval;
+	int retval;
 
-	s = lk->lkt_spl;
-#	ifdef DEBUG
-	if (lk->lkt_held == NOHOLDER)
-		panic("interlocked_sleep: lock not held");
-	lk->lkt_held = NOHOLDER;
-#	endif /* DEBUG */
-	switch (op) {
-	case SLEEP:
-		retval = tsleep(ident, flags, wmesg, timo);
-		break;
-	case LOCKBUF:
-		retval = BUF_LOCK((struct buf *)ident, flags);
-		break;
-	default:
-		panic("interlocked_sleep: unknown operation");
-	}
-#	ifdef DEBUG
-	if (lk->lkt_held != NOHOLDER) {
-		holder = lk->lkt_held;
-		FREE_LOCK(lk);
-		if (holder == curthread)
-			panic("interlocked_sleep: locking against self");
-		else
-			panic("interlocked_sleep: lock held by %p", holder);
-	}
-	lk->lkt_held = curthread;
-	lockcnt++;
-#	endif /* DEBUG */
-	lk->lkt_spl = s;
+	KKASSERT(lock_held(lkp) > 0);
+	retval = lksleep(ident, lkp, flags, wmesg, timo);
 	return (retval);
 }
 
@@ -361,8 +274,10 @@ struct sema {
 	int	timo;
 };
 static	void sema_init(struct sema *, char *, int, int);
-static	int sema_get(struct sema *, struct lockit *);
+static	int sema_get(struct sema *, struct lock *);
 static	void sema_release(struct sema *);
+
+#define NOHOLDER	((struct thread *) -1)
 
 static void
 sema_init(struct sema *semap, char *name, int prio, int timo)
@@ -376,12 +291,12 @@ sema_init(struct sema *semap, char *name, int prio, int timo)
 }
 
 static int
-sema_get(struct sema *semap, struct lockit *interlock)
+sema_get(struct sema *semap, struct lock *interlock)
 {
 
 	if (semap->value++ > 0) {
 		if (interlock != NULL) {
-			interlocked_sleep(interlock, SLEEP, (caddr_t)semap,
+			interlocked_sleep(interlock, (caddr_t)semap,
 			    semap->prio, semap->name, semap->timo);
 			FREE_LOCK(interlock);
 		} else {
@@ -401,8 +316,6 @@ sema_release(struct sema *semap)
 {
 
 	if (semap->value <= 0 || semap->holder != curthread) {
-		if (lk.lkt_held != NOHOLDER)
-			FREE_LOCK(&lk);
 		panic("sema_release: not held");
 	}
 	if (--semap->value > 0) {
@@ -416,26 +329,6 @@ sema_release(struct sema *semap)
  * Worklist queue management.
  * These routines require that the lock be held.
  */
-#ifndef /* NOT */ DEBUG
-#define WORKLIST_INSERT(head, item) do {	\
-	(item)->wk_state |= ONWORKLIST;		\
-	LIST_INSERT_HEAD(head, item, wk_list);	\
-} while (0)
-
-#define WORKLIST_INSERT_BP(bp, item) do {	\
-	(item)->wk_state |= ONWORKLIST;		\
-	(bp)->b_ops = &softdep_bioops;		\
-	LIST_INSERT_HEAD(&(bp)->b_dep, item, wk_list);	\
-} while (0)
-
-#define WORKLIST_REMOVE(item) do {		\
-	(item)->wk_state &= ~ONWORKLIST;	\
-	LIST_REMOVE(item, wk_list);		\
-} while (0)
-
-#define WORKITEM_FREE(item, type) kfree(item, DtoM(type))
-
-#else /* DEBUG */
 static	void worklist_insert(struct workhead *, struct worklist *);
 static	void worklist_remove(struct worklist *);
 static	void workitem_free(struct worklist *, int);
@@ -453,10 +346,9 @@ static void
 worklist_insert(struct workhead *head, struct worklist *item)
 {
 
-	if (lk.lkt_held == NOHOLDER)
-		panic("worklist_insert: lock not held");
+	KKASSERT(lock_held(&lk) > 0);
+
 	if (item->wk_state & ONWORKLIST) {
-		FREE_LOCK(&lk);
 		panic("worklist_insert: already on list");
 	}
 	item->wk_state |= ONWORKLIST;
@@ -467,12 +359,10 @@ static void
 worklist_remove(struct worklist *item)
 {
 
-	if (lk.lkt_held == NOHOLDER)
-		panic("worklist_remove: lock not held");
-	if ((item->wk_state & ONWORKLIST) == 0) {
-		FREE_LOCK(&lk);
+	KKASSERT(lock_held(&lk));
+	if ((item->wk_state & ONWORKLIST) == 0) 
 		panic("worklist_remove: not on list");
-	}
+	
 	item->wk_state &= ~ONWORKLIST;
 	LIST_REMOVE(item, wk_list);
 }
@@ -481,19 +371,13 @@ static void
 workitem_free(struct worklist *item, int type)
 {
 
-	if (item->wk_state & ONWORKLIST) {
-		if (lk.lkt_held != NOHOLDER)
-			FREE_LOCK(&lk);
+	if (item->wk_state & ONWORKLIST) 
 		panic("workitem_free: still on list");
-	}
-	if (item->wk_type != type) {
-		if (lk.lkt_held != NOHOLDER)
-			FREE_LOCK(&lk);
+	if (item->wk_type != type) 
 		panic("workitem_free: type mismatch");
-	}
+
 	kfree(item, DtoM(type));
 }
-#endif /* DEBUG */
 
 /*
  * Workitem queue management
@@ -567,8 +451,6 @@ add_to_worklist(struct worklist *wk)
 	static struct worklist *worklist_tail;
 
 	if (wk->wk_state & ONWORKLIST) {
-		if (lk.lkt_held != NOHOLDER)
-			FREE_LOCK(&lk);
 		panic("add_to_worklist: already on list");
 	}
 	wk->wk_state |= ONWORKLIST;
@@ -803,12 +685,14 @@ softdep_flushfiles(struct mount *oldmnt, int flags)
 	/*
 	 * Await our turn to clear out the queue, then serialize access.
 	 */
+	ACQUIRE_LOCK(&lk);
 	while (softdep_worklist_busy != 0) {
 		softdep_worklist_req += 1;
-		tsleep(&softdep_worklist_req, 0, "softflush", 0);
+		lksleep(&softdep_worklist_req, &lk, 0, "softflush", 0);
 		softdep_worklist_req -= 1;
 	}
 	softdep_worklist_busy = -1;
+	FREE_LOCK(&lk);
 
 	if ((error = ffs_flushfiles(oldmnt, flags)) != 0) {
 		softdep_worklist_busy = 0;
@@ -844,9 +728,11 @@ softdep_flushfiles(struct mount *oldmnt, int flags)
 		if (error)
 			break;
 	}
+	ACQUIRE_LOCK(&lk);
 	softdep_worklist_busy = 0;
-	if (softdep_worklist_req)
+	if (softdep_worklist_req) 
 		wakeup(&softdep_worklist_req);
+	FREE_LOCK(&lk);
 
 	/*
 	 * If we are unmounting then it is an error to fail. If we
@@ -931,10 +817,8 @@ pagedep_lookup(struct inode *ip, ufs_lbn_t lbn, int flags,
 	struct mount *mp;
 	int i;
 
-#ifdef DEBUG
-	if (lk.lkt_held == NOHOLDER)
-		panic("pagedep_lookup: lock not held");
-#endif
+	KKASSERT(lock_held(&lk) > 0);
+	
 	mp = ITOV(ip)->v_mount;
 	pagedephd = PAGEDEP_HASH(mp, ip->i_number, lbn);
 top:
@@ -1013,10 +897,8 @@ inodedep_lookup(struct fs *fs, ino_t inum, int flags,
 	struct inodedep_hashhead *inodedephd;
 	int firsttry;
 
-#ifdef DEBUG
-	if (lk.lkt_held == NOHOLDER)
-		panic("inodedep_lookup: lock not held");
-#endif
+	KKASSERT(lock_held(&lk) > 0);
+
 	firsttry = 1;
 	inodedephd = INODEDEP_HASH(fs, inum);
 top:
@@ -1148,6 +1030,7 @@ softdep_initialize(void)
 		M_INODEDEP->ks_limit / (2 * sizeof(struct inodedep)));
 	pagedep_hashtbl = hashinit(desiredvnodes / 5, M_PAGEDEP,
 	    &pagedep_hash);
+	lockinit(&lk, "ffs_softdep", 0, 0);
 	sema_init(&pagedep_in_progress, "pagedep", 0, 0);
 	inodedep_hashtbl = hashinit(desiredvnodes, M_INODEDEP, &inodedep_hash);
 	sema_init(&inodedep_in_progress, "inodedep", 0, 0);
@@ -1306,10 +1189,8 @@ bmsafemap_lookup(struct buf *bp)
 	struct bmsafemap *bmsafemap;
 	struct worklist *wk;
 
-#ifdef DEBUG
-	if (lk.lkt_held == NOHOLDER)
-		panic("bmsafemap_lookup: lock not held");
-#endif
+	KKASSERT(lock_held(&lk) > 0);
+
 	LIST_FOREACH(wk, &bp->b_dep, wk_list) {
 		if (wk->wk_type == D_BMSAFEMAP)
 			return (WK_BMSAFEMAP(wk));
@@ -1485,10 +1366,8 @@ allocdirect_merge(struct allocdirectlst *adphead,
 {
 	struct freefrag *freefrag;
 
-#ifdef DEBUG
-	if (lk.lkt_held == NOHOLDER)
-		panic("allocdirect_merge: lock not held");
-#endif
+	KKASSERT(lock_held(&lk) > 0);
+
 	if (newadp->ad_oldblkno != oldadp->ad_newblkno ||
 	    newadp->ad_oldsize != oldadp->ad_newsize ||
 	    newadp->ad_lbn >= NDADDR) {
@@ -2101,11 +1980,8 @@ static void
 free_allocdirect(struct allocdirectlst *adphead,
 		 struct allocdirect *adp, int delay)
 {
+	KKASSERT(lock_held(&lk) > 0);
 
-#ifdef DEBUG
-	if (lk.lkt_held == NOHOLDER)
-		panic("free_allocdirect: lock not held");
-#endif
 	if ((adp->ad_state & DEPCOMPLETE) == 0)
 		LIST_REMOVE(adp, ad_deps);
 	TAILQ_REMOVE(adphead, adp, ad_next);
@@ -2391,10 +2267,8 @@ free_allocindir(struct allocindir *aip, struct inodedep *inodedep)
 {
 	struct freefrag *freefrag;
 
-#ifdef DEBUG
-	if (lk.lkt_held == NOHOLDER)
-		panic("free_allocindir: lock not held");
-#endif
+	KKASSERT(lock_held(&lk) > 0);
+
 	if ((aip->ai_state & DEPCOMPLETE) == 0)
 		LIST_REMOVE(aip, ai_deps);
 	if (aip->ai_state & ONWORKLIST)
@@ -2597,10 +2471,8 @@ free_diradd(struct diradd *dap)
 	struct inodedep *inodedep;
 	struct mkdir *mkdir, *nextmd;
 
-#ifdef DEBUG
-	if (lk.lkt_held == NOHOLDER)
-		panic("free_diradd: lock not held");
-#endif
+	KKASSERT(lock_held(&lk) > 0);
+
 	WORKLIST_REMOVE(&dap->da_list);
 	LIST_REMOVE(dap, da_pdlist);
 	if ((dap->da_state & DIRCHG) == 0) {
@@ -3435,12 +3307,8 @@ softdep_disk_write_complete(struct buf *bp)
 	struct inodedep *inodedep;
 	struct bmsafemap *bmsafemap;
 
-	get_mplock();
-#ifdef DEBUG
-	if (lk.lkt_held != NOHOLDER)
-		panic("softdep_disk_write_complete: lock is held");
-	lk.lkt_held = SPECIAL_FLAG;
-#endif
+	ACQUIRE_LOCK(&lk);
+
 	LIST_INIT(&reattach);
 	while ((wk = LIST_FIRST(&bp->b_dep)) != NULL) {
 		WORKLIST_REMOVE(wk);
@@ -3505,7 +3373,6 @@ softdep_disk_write_complete(struct buf *bp)
 		case D_INDIRDEP:
 			indirdep = WK_INDIRDEP(wk);
 			if (indirdep->ir_state & GOINGAWAY) {
-				lk.lkt_held = NOHOLDER;
 				panic("disk_write_complete: indirdep gone");
 			}
 			bcopy(indirdep->ir_saveddata, bp->b_data, bp->b_bcount);
@@ -3516,7 +3383,6 @@ softdep_disk_write_complete(struct buf *bp)
 			while ((aip = LIST_FIRST(&indirdep->ir_donehd)) != NULL) {
 				handle_allocindir_partdone(aip);
 				if (aip == LIST_FIRST(&indirdep->ir_donehd)) {
-					lk.lkt_held = NOHOLDER;
 					panic("disk_write_complete: not gone");
 				}
 			}
@@ -3527,7 +3393,6 @@ softdep_disk_write_complete(struct buf *bp)
 			continue;
 
 		default:
-			lk.lkt_held = NOHOLDER;
 			panic("handle_disk_write_complete: Unknown type %s",
 			    TYPENAME(wk->wk_type));
 			/* NOTREACHED */
@@ -3540,12 +3405,8 @@ softdep_disk_write_complete(struct buf *bp)
 		WORKLIST_REMOVE(wk);
 		WORKLIST_INSERT_BP(bp, wk);
 	}
-#ifdef DEBUG
-	if (lk.lkt_held != SPECIAL_FLAG)
-		panic("softdep_disk_write_complete: lock lost");
-	lk.lkt_held = NOHOLDER;
-#endif
-	rel_mplock();
+
+	FREE_LOCK(&lk);
 }
 
 /*
@@ -3565,10 +3426,9 @@ handle_allocdirect_partdone(struct allocdirect *adp)
 
 	if ((adp->ad_state & ALLCOMPLETE) != ALLCOMPLETE)
 		return;
-	if (adp->ad_buf != NULL) {
-		lk.lkt_held = NOHOLDER;
+	if (adp->ad_buf != NULL) 
 		panic("handle_allocdirect_partdone: dangling dep");
-	}
+	
 	/*
 	 * The on-disk inode cannot claim to be any larger than the last
 	 * fragment that has been written. Otherwise, the on-disk inode
@@ -3603,10 +3463,8 @@ handle_allocdirect_partdone(struct allocdirect *adp)
 			/* found our block */
 			if (listadp == adp)
 				break;
-		if (listadp == NULL) {
-			lk.lkt_held = NOHOLDER;
+		if (listadp == NULL) 
 			panic("handle_allocdirect_partdone: lost dep");
-		}
 #endif /* DEBUG */
 		return;
 	}
@@ -3637,10 +3495,9 @@ handle_allocindir_partdone(struct allocindir *aip)
 
 	if ((aip->ai_state & ALLCOMPLETE) != ALLCOMPLETE)
 		return;
-	if (aip->ai_buf != NULL) {
-		lk.lkt_held = NOHOLDER;
+	if (aip->ai_buf != NULL) 
 		panic("handle_allocindir_partdone: dangling dependency");
-	}
+	
 	indirdep = aip->ai_indirdep;
 	if (indirdep->ir_state & UNDONE) {
 		LIST_REMOVE(aip, ai_next);
@@ -3672,10 +3529,9 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 	struct ufs1_dinode *dp;
 	int hadchanges;
 
-	if ((inodedep->id_state & IOSTARTED) == 0) {
-		lk.lkt_held = NOHOLDER;
+	if ((inodedep->id_state & IOSTARTED) == 0) 
 		panic("handle_written_inodeblock: not started");
-	}
+	
 	inodedep->id_state &= ~IOSTARTED;
 	dp = (struct ufs1_dinode *)bp->b_data +
 	    ino_to_fsbo(inodedep->id_fs, inodedep->id_ino);
@@ -3703,13 +3559,11 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 	hadchanges = 0;
 	for (adp = TAILQ_FIRST(&inodedep->id_inoupdt); adp; adp = nextadp) {
 		nextadp = TAILQ_NEXT(adp, ad_next);
-		if (adp->ad_state & ATTACHED) {
-			lk.lkt_held = NOHOLDER;
+		if (adp->ad_state & ATTACHED) 
 			panic("handle_written_inodeblock: new entry");
-		}
+		
 		if (adp->ad_lbn < NDADDR) {
 			if (dp->di_db[adp->ad_lbn] != adp->ad_oldblkno) {
-				lk.lkt_held = NOHOLDER;
 				panic("%s: %s #%ld mismatch %d != %d",
 				    "handle_written_inodeblock",
 				    "direct pointer", adp->ad_lbn,
@@ -3718,7 +3572,6 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 			dp->di_db[adp->ad_lbn] = adp->ad_newblkno;
 		} else {
 			if (dp->di_ib[adp->ad_lbn - NDADDR] != 0) {
-				lk.lkt_held = NOHOLDER;
 				panic("%s: %s #%ld allocated as %d",
 				    "handle_written_inodeblock",
 				    "indirect pointer", adp->ad_lbn - NDADDR,
@@ -3736,7 +3589,6 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 	 * Reset the file size to its most up-to-date value.
 	 */
 	if (inodedep->id_savedsize == -1) {
-		lk.lkt_held = NOHOLDER;
 		panic("handle_written_inodeblock: bad size");
 	}
 	if (dp->di_size != inodedep->id_savedsize) {
@@ -3776,7 +3628,6 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 			 * have been freed.
 			 */
 			if (filefree != NULL) {
-				lk.lkt_held = NOHOLDER;
 				panic("handle_written_inodeblock: filefree");
 			}
 			filefree = wk;
@@ -3801,7 +3652,6 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 			continue;
 
 		default:
-			lk.lkt_held = NOHOLDER;
 			panic("handle_written_inodeblock: Unknown type %s",
 			    TYPENAME(wk->wk_type));
 			/* NOTREACHED */
@@ -3809,7 +3659,6 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 	}
 	if (filefree != NULL) {
 		if (free_inodedep(inodedep) == 0) {
-			lk.lkt_held = NOHOLDER;
 			panic("handle_written_inodeblock: live inodedep");
 		}
 		add_to_worklist(filefree);
@@ -3855,7 +3704,6 @@ handle_written_mkdir(struct mkdir *mkdir, int type)
 	struct pagedep *pagedep;
 
 	if (mkdir->md_state != type) {
-		lk.lkt_held = NOHOLDER;
 		panic("handle_written_mkdir: bad type");
 	}
 	dap = mkdir->md_diradd;
@@ -3893,7 +3741,6 @@ handle_written_filepage(struct pagedep *pagedep, struct buf *bp)
 	int i, chgs;
 
 	if ((pagedep->pd_state & IOSTARTED) == 0) {
-		lk.lkt_held = NOHOLDER;
 		panic("handle_written_filepage: not started");
 	}
 	pagedep->pd_state &= ~IOSTARTED;
@@ -3918,7 +3765,6 @@ handle_written_filepage(struct pagedep *pagedep, struct buf *bp)
 		     dap = nextdap) {
 			nextdap = LIST_NEXT(dap, da_pdlist);
 			if (dap->da_state & ATTACHED) {
-				lk.lkt_held = NOHOLDER;
 				panic("handle_written_filepage: attached");
 			}
 			ep = (struct direct *)
@@ -4079,14 +3925,24 @@ softdep_update_inodeblock(struct inode *ip, struct buf *bp,
 	 * forced sync (e.g., an fsync on a file), we force the bitmap
 	 * to be written so that the update can be done.
 	 */
-	if ((inodedep->id_state & DEPCOMPLETE) != 0 || waitfor == 0) {
+	if (waitfor == 0) {
+		FREE_LOCK(&lk);
+		return;
+	}
+retry:
+	if ((inodedep->id_state & DEPCOMPLETE) != 0) {
 		FREE_LOCK(&lk);
 		return;
 	}
 	gotit = getdirtybuf(&inodedep->id_buf, MNT_WAIT);
+	if (gotit == 0) {
+		if (inodedep_lookup(ip->i_fs, ip->i_number, 0, &inodedep) != 0)
+			goto retry;
+		FREE_LOCK(&lk);
+		return;
+	}
 	FREE_LOCK(&lk);
-	if (gotit &&
-	    (error = bwrite(inodedep->id_buf)) != 0)
+	if ((error = bwrite(inodedep->id_buf)) != 0)
 		softdep_error("softdep_update_inodeblock: bwrite", error);
 }
 
@@ -4899,7 +4755,7 @@ request_cleanup(int resource, int islocked)
 	if (!callout_active(&handle))
 		callout_reset(&handle, tickdelay > 2 ? tickdelay : 2,
 			      pause_timer, NULL);
-	interlocked_sleep(&lk, SLEEP, (caddr_t)&proc_waiting, 0,
+	interlocked_sleep(&lk, (caddr_t)&proc_waiting, 0,
 	    "softupdate", 0);
 	proc_waiting -= 1;
 	if (islocked == 0)
@@ -5143,9 +4999,13 @@ out:
 }
 
 /*
- * Acquire exclusive access to a buffer.
- * Must be called with splbio blocked.
- * Return 1 if buffer was acquired.
+ * getdirtybuf:
+ *
+ *	Acquire exclusive access to a buffer. Requires softdep lock
+ *	to be held on entry. If waitfor is MNT_WAIT, may release/reacquire
+ *	softdep lock.
+ *
+ *	Returns 1 if the buffer was locked, 0 otherwise.
  */
 static int
 getdirtybuf(struct buf **bpp, int waitfor)
@@ -5153,20 +5013,38 @@ getdirtybuf(struct buf **bpp, int waitfor)
 	struct buf *bp;
 	int error;
 
+	bp = *bpp;
+	if (bp == NULL)
+		return (0);
+
 	for (;;) {
-		if ((bp = *bpp) == NULL)
-			return (0);
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) == 0)
+		/* Must acquire buffer lock with ffs_softdep lock held */
+		KKASSERT(lock_held(&lk) > 0);
+		error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
+		if (error == 0)
 			break;
+
 		if (waitfor != MNT_WAIT)
 			return (0);
-		error = interlocked_sleep(&lk, LOCKBUF, bp,
-		    LK_EXCLUSIVE | LK_SLEEPFAIL, 0, 0);
-		if (error != ENOLCK) {
-			FREE_LOCK(&lk);
-			panic("getdirtybuf: inconsistent lock");
-		}
+
+		/* 
+		 * Release ffs_softdep lock around sleep/wait for buffer lock.
+		 *
+		 * We must acquire buffer lock with softdep lock held, so
+		 * we must retry locking the buffer after we wake.
+		 */
+		FREE_LOCK(&lk);
+		error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL);
+		ACQUIRE_LOCK(&lk);
+		if (error == 0)
+			BUF_UNLOCK(bp);
+		else if (error == ENOLCK)
+			;
+		else
+			panic("getdirtybuf: Inconsistent lock");
 	}
+
+	/* Buffer wasn't dirty */
 	if ((bp->b_flags & B_DELWRI) == 0) {
 		BUF_UNLOCK(bp);
 		return (0);

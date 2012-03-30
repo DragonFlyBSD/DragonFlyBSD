@@ -429,10 +429,12 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 
 	/* is this a regular vnode ? */
 	if ((vp->v_type == VREG) && vfs_accounting_enabled) {
-		do_accounting = 1;
 		if ((error = VOP_GETATTR(vp, &va)) != 0)
 			return (error);
 		size_before = va.va_size;
+		/* this file may already have been removed */
+		if (va.va_nlink > 0)
+			do_accounting = 1;
 	}
 
 	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_WR_MPSAFE);

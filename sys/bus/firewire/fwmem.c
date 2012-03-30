@@ -283,7 +283,7 @@ fwmem_open (struct dev_open_args *ap)
 							M_FWMEM, M_WAITOK);
 		bcopy(&fwmem_eui64, &fms->eui, sizeof(struct fw_eui64));
 		dev->si_drv1 = (void *)fms;
-		dev->si_iosize_max = DFLTPHYS;
+		dev->si_iosize_max = min(MAXPHYS,64*1024);
 		fms->refcount = 1;
 	}
 	if (fwmem_debug)

@@ -404,7 +404,7 @@ mdcreate(unsigned length)
 		DEVSTAT_PRIORITY_OTHER);
 	sc->dev = disk_create(sc->unit, &sc->disk, &md_ops);
 	sc->dev->si_drv1 = sc;
-	sc->dev->si_iosize_max = DFLTPHYS;
+	sc->dev->si_iosize_max = MAXPHYS;
 	disk_setdisktype(&sc->disk, "memory");
 
 	bzero(&info, sizeof(info));

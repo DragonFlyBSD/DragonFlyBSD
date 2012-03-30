@@ -29,6 +29,7 @@
  * official policies,either expressed or implied, of the FreeBSD Project.
  *
  * $FreeBSD: src/sys/dev/mfi/mfi_pddisk.c,v 1.2.2.6 2007/08/24 17:29:18 jhb Exp $
+ * FreeBSD projects/head_mfi/ r232888
  */
 
 #include "opt_mfi.h"
@@ -212,7 +213,8 @@ mfi_syspd_disable(struct mfi_system_pd *sc)
 	if (sc->pd_flags & MFI_DISK_FLAGS_OPEN) {
 		if (sc->pd_controller->mfi_delete_busy_volumes)
 			return (0);
-		device_printf(sc->pd_dev, "Unable to delete busy syspd device\n");
+		device_printf(sc->pd_dev,
+		    "Unable to delete busy syspd device\n");
 		return (EBUSY);
 	}
 	sc->pd_flags |= MFI_DISK_FLAGS_DISABLED;
@@ -233,13 +235,23 @@ mfi_syspd_strategy(struct dev_strategy_args *ap)
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct mfi_system_pd *sc = ap->a_head.a_dev->si_drv1;
-	struct mfi_softc *controller;
+	struct mfi_softc *controller = sc->pd_controller;
 
 	if (sc == NULL) {
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
+		return (0);
+	}
+
+	if (controller->hw_crit_error) {
+		bp->b_error = EBUSY;
+		return (0);
+	}
+
+	if (controller->issuepend_done == 0) {
+		bp->b_error = EBUSY;
 		return (0);
 	}
 
@@ -262,7 +274,6 @@ mfi_syspd_strategy(struct dev_strategy_args *ap)
 		return (0);
 	}
 
-	controller = sc->pd_controller;
 	bio->bio_driver_info = sc;
 	lockmgr(&controller->mfi_io_lock, LK_EXCLUSIVE);
 	mfi_enqueue_bio(controller, bio);
@@ -271,26 +282,6 @@ mfi_syspd_strategy(struct dev_strategy_args *ap)
 	lockmgr(&controller->mfi_io_lock, LK_RELEASE);
 	return (0);
 }
-
-#if 0
-void
-mfi_disk_complete(struct bio *bio)
-{
-	struct mfi_system_pd *sc = bio->bio_driver_info;
-	struct buf *bp = bio->bio_buf;
-
-	devstat_end_transaction_buf(&sc->pd_devstat, bp);
-	if (bio->b_flags & B_ERROR) {
-		if (bp->b_error == 0)
-			bp->b_error = EIO;
-		diskerr(bio, sc->pd_disk.d_cdev, "hard error", -1, 1);
-		kprintf("\n");
-	} else {
-		bp->b_resid = 0;
-	}
-	biodone(bio);
-}
-#endif
 
 static int
 mfi_syspd_dump(struct dev_dump_args *ap)
@@ -307,8 +298,8 @@ mfi_syspd_dump(struct dev_dump_args *ap)
 	parent_sc = sc->pd_controller;
 
 	if (len > 0) {
-		if ((error = mfi_dump_syspd_blocks(parent_sc, sc->pd_id, offset /
-		    MFI_SECTOR_LEN, virt, len)) != 0)
+		if ((error = mfi_dump_syspd_blocks(parent_sc,
+		    sc->pd_id, offset / MFI_SECTOR_LEN, virt, len)) != 0)
 			return (error);
 	} else {
 		/* mfi_sync_cache(parent_sc, sc->ld_id); */

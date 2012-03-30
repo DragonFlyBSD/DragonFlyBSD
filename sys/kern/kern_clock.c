@@ -85,6 +85,7 @@
 #include <sys/kinfo.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
+#include <sys/resource.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
 #include <sys/timex.h>
@@ -164,11 +165,11 @@ sysctl_cp_time(SYSCTL_HANDLER_ARGS)
 	size_t size = sizeof(cpu_states);
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
-		cpu_states[0] += cputime_percpu[cpu].cp_user;
-		cpu_states[1] += cputime_percpu[cpu].cp_nice;
-		cpu_states[2] += cputime_percpu[cpu].cp_sys;
-		cpu_states[3] += cputime_percpu[cpu].cp_intr;
-		cpu_states[4] += cputime_percpu[cpu].cp_idle;
+		cpu_states[CP_USER] += cputime_percpu[cpu].cp_user;
+		cpu_states[CP_NICE] += cputime_percpu[cpu].cp_nice;
+		cpu_states[CP_SYS] += cputime_percpu[cpu].cp_sys;
+		cpu_states[CP_INTR] += cputime_percpu[cpu].cp_intr;
+		cpu_states[CP_IDLE] += cputime_percpu[cpu].cp_idle;
 	}
 
 	error = SYSCTL_OUT(req, cpu_states, size);
