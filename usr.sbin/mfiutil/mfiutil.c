@@ -92,7 +92,7 @@ usage(void)
 }
 
 static int
-version(int ac, char **av)
+version(__unused int ac, __unused char **av)
 {
 
 	printf("mfiutil version 1.0.13");
