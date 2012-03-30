@@ -1031,7 +1031,7 @@ ffs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 	/* Restart out whole search if this guy is locked
 	 * or is being reclaimed.
 	 */
-	if (vp->v_type == VNON || ((ip->i_flag &
+	if (vp->v_type == VNON || (ip == NULL) || ((ip->i_flag &
 	     (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(-1);
