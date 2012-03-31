@@ -379,12 +379,14 @@ lgue_intreof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status
 	ifp = &sc->lgue_arpcom.ac_if;
 	lwkt_serialize_enter(ifp->if_serializer);
 	if (status != USBD_NORMAL_COMPLETION) {
-		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
+		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
 			lwkt_serialize_exit(ifp->if_serializer);
 			return;
+		}
+		if_printf(ifp, "usb error on intr: %s\n", usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall(sc->lgue_ep[LGUE_ENDPT_INTR]);
-			lwkt_serialize_exit(ifp->if_serializer);
+		lwkt_serialize_exit(ifp->if_serializer);
 		return;
 	}
 	lgue_intrstart(ifp);
