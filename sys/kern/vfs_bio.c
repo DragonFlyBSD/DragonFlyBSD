@@ -4304,14 +4304,14 @@ vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 		if ((bp->b_flags & B_NEEDCOMMIT) &&
 		    (m->dirty & vm_page_bits(soff & PAGE_MASK, eoff - soff))) {
 			if (debug_commit)
-			kprintf("Warning: vfs_clean_one_page: bp %p "
-				"loff=%jx,%d flgs=%08x clr B_NEEDCOMMIT"
-				" cmd %d vd %02x/%02x x/s/e %d %d %d "
-				"doff/end %d %d\n",
-				bp, (uintmax_t)bp->b_loffset, bp->b_bcount,
-				bp->b_flags, bp->b_cmd,
-				m->valid, m->dirty, xoff, soff, eoff,
-				bp->b_dirtyoff, bp->b_dirtyend);
+				kprintf("Warning: vfs_clean_one_page: bp %p "
+				    "loff=%jx,%d flgs=%08x clr B_NEEDCOMMIT"
+				    " cmd %d vd %02x/%02x x/s/e %d %d %d "
+				    "doff/end %d %d\n",
+				    bp, (uintmax_t)bp->b_loffset, bp->b_bcount,
+				    bp->b_flags, bp->b_cmd,
+				    m->valid, m->dirty, xoff, soff, eoff,
+				    bp->b_dirtyoff, bp->b_dirtyend);
 			bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 			if (debug_commit)
 				print_backtrace(-1);
