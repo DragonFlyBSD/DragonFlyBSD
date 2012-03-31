@@ -1984,6 +1984,8 @@ TO_REMOVE+=/usr/lib/profile/libtinfo.aa
 TO_REMOVE+=/usr/bin/kzip
 TO_REMOVE+=/usr/share/man/cat8/kzip.8.gz
 TO_REMOVE+=/usr/share/man/man8/kzip.8.gz
+TO_REMOVE+=/usr/share/man/cat4/i386/aic.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/aic.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys

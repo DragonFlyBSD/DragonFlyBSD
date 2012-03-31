@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/aic/aic_pccard.c,v 1.1 2000/01/14 23:42:36 imp Exp $
+ * $FreeBSD: src/sys/dev/aic/aic_pccard.c,v 1.20 2007/06/17 05:55:46 scottl Exp $
  */
 
 #include <sys/param.h>
@@ -46,10 +46,10 @@ struct aic_pccard_softc {
 	void	*sc_ih;
 };
 
-static int aic_pccard_alloc_resources (device_t);
-static void aic_pccard_release_resources (device_t);
-static int aic_pccard_probe (device_t);
-static int aic_pccard_attach (device_t);
+static int aic_pccard_alloc_resources(device_t);
+static void aic_pccard_release_resources(device_t);
+static int aic_pccard_probe(device_t);
+static int aic_pccard_attach(device_t);
 
 static const struct pccard_product aic_pccard_products[] = {
 	PCMCIA_CARD(ADAPTEC, APA1460, 0),
@@ -83,6 +83,7 @@ aic_pccard_alloc_resources(device_t dev)
 		return (ENOMEM);
 	}
 
+	sc->sc_aic.dev = dev;
 	sc->sc_aic.unit = device_get_unit(dev);
 	sc->sc_aic.tag = rman_get_bustag(sc->sc_port);
 	sc->sc_aic.bsh = rman_get_bushandle(sc->sc_port);
@@ -112,7 +113,7 @@ aic_pccard_probe(device_t dev)
 			device_set_desc(dev, pp->pp_name);
 		return 0;
 	}
-	return ENXIO;
+	return EIO;
 }
 
 static int
@@ -188,3 +189,4 @@ extern devclass_t aic_devclass;
 
 MODULE_DEPEND(aic, cam, 1,1,1);
 DRIVER_MODULE(aic, pccard, aic_pccard_driver, aic_devclass, NULL, NULL);
+MODULE_VERSION(aic, 1);

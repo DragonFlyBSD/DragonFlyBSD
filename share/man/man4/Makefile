@@ -23,6 +23,7 @@ MAN=	aac.4 \
 	ahci.4 \
 	ahd.4 \
 	aibs.4 \
+	aic.4 \
 	alc.4 \
 	ale.4 \
 	alpm.4 \
