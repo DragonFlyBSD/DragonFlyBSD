@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/keyserv/crypt_server.c,v 1.6.2.1 2001/07/19 04:21:20 kris Exp $
- * $DragonFly: src/usr.sbin/keyserv/crypt_server.c,v 1.6 2005/12/05 01:04:01 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -90,7 +89,7 @@ prepare_key(unsigned char *key_data_ptr, int key_data_len, arcfour_key *key)
 
    state = &key->state[0];         
    for(counter = 0; counter < 256; counter++)              
-   state[counter] = counter;               
+       state[counter] = counter;
    key->x = 0;     
    key->y = 0;     
    index1 = 0;     

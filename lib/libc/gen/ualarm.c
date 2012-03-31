@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * @(#)ualarm.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/ualarm.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/time.h>
@@ -57,6 +56,6 @@ ualarm(unsigned usecs, unsigned reload)
 
 	if (setitimer(ITIMER_REAL, &new, &old) == 0)
 		return (old.it_value.tv_sec * USPS + old.it_value.tv_usec);
-	/* else */
-		return (-1);
+
+	return (-1);
 }
