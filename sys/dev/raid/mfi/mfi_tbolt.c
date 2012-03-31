@@ -868,13 +868,11 @@ mfi_tbolt_build_ldio(struct mfi_softc *sc, struct mfi_command *mfi_cmd,
 	    MFI_FRAME_DIR_READ)
 		io_info.isRead = 1;
 
-		io_request->RaidContext.timeoutValue
-		     = MFI_FUSION_FP_DEFAULT_TIMEOUT;
-		io_request->Function = MPI2_FUNCTION_LD_IO_REQUEST;
-		io_request->DevHandle = device_id;
-		cmd->request_desc->header.RequestFlags
-		    = (MFI_REQ_DESCRIPT_FLAGS_LD_IO
-		    << MFI_REQ_DESCRIPT_FLAGS_TYPE_SHIFT);
+	io_request->RaidContext.timeoutValue = MFI_FUSION_FP_DEFAULT_TIMEOUT;
+	io_request->Function = MPI2_FUNCTION_LD_IO_REQUEST;
+	io_request->DevHandle = device_id;
+	cmd->request_desc->header.RequestFlags =
+	    (MFI_REQ_DESCRIPT_FLAGS_LD_IO << MFI_REQ_DESCRIPT_FLAGS_TYPE_SHIFT);
 	if ((io_request->IoFlags == 6) && (io_info.numBlocks == 0))
 		io_request->RaidContext.RegLockLength = 0x100;
 	io_request->DataLength = mfi_cmd->cm_frame->io.header.data_len
