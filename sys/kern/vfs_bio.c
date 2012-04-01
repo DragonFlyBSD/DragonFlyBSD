@@ -2626,7 +2626,6 @@ flushbufqueues(struct buf *marker, bufq_type_t q)
 		 *
 		 * NOTE: buf_checkwrite is MPSAFE.
 		 */
-		bremfree(bp);
 		if (LIST_FIRST(&bp->b_dep) != NULL && buf_checkwrite(bp)) {
 			brelse(bp);
 		} else if (bp->b_flags & B_ERROR) {
