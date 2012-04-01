@@ -29,8 +29,7 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/aic/aic6360reg.h,v 1.1 1999/10/21 08:56:52 luoqi Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic6360reg.h,v 1.3 2008/01/05 07:27:09 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic/aic6360reg.h,v 1.4 2005/01/06 01:42:25 imp Exp $
  */
 
 #define SCSISEQ		0x00	/* SCSI sequence control */

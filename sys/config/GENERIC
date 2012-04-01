@@ -126,7 +126,7 @@ options 	SYM_SETUP_LP_PROBE_MAP=0x40
 device		adv0	at isa?
 device		adw
 device		bt0	at isa?
-device		aic0	at isa?
+device		aic
 
 device		ncv		# NCR 53C500
 device		nsp		# Workbit Ninja SCSI-3

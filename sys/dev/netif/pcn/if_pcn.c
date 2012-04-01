@@ -888,10 +888,11 @@ pcn_tick(void *xsc)
 	if (!sc->pcn_link) {
 		mii_pollstat(mii);
 		if (mii->mii_media_status & IFM_ACTIVE &&
-		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE)
+		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 			sc->pcn_link++;
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
+		}
 	}
 	callout_reset(&sc->pcn_stat_timer, hz, pcn_tick, sc);
 

@@ -332,7 +332,6 @@ static DEV_INFO device_info[] = {
 /*---Name-----   ---Description---------------------------------------------- */
 {"adv",         "AdvanSys SCSI narrow controller",	0,		CLS_STORAGE},
 {"bt",          "Buslogic SCSI controller",		0,		CLS_STORAGE},
-{"aic",         "Adaptec 152x SCSI and compatible sound cards",	0,      CLS_STORAGE},
 {"nca",         "ProAudio Spectrum SCSI and compatibles",	0,	CLS_STORAGE},
 {"sea",         "Seagate ST01/ST02 SCSI and compatibles",	0,	CLS_STORAGE},
 {"stg",         "TMC 18C30/18C50 based SCSI cards",	0,		CLS_STORAGE},

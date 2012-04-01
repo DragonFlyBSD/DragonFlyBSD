@@ -21,48 +21,24 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/man4.i386/aic.4,v 1.6.2.3 2001/07/21 09:16:51 schweikh Exp $
+.\" $FreeBSD: src/share/man/man4/man4.i386/aic.4,v 1.16 2005/01/21 08:36:38 ru Exp $
 .\"
-.Dd November 8, 2003
-.Dt AIC 4 i386
+.Dd March 31, 2012
+.Dt AIC 4
 .Os
 .Sh NAME
 .Nm aic
 .Nd Adaptec AIC-6260 and AIC-6360 SCSI driver
 .Sh SYNOPSIS
-.Cd "device aic0 at isa? port 0x340 irq 11"
+.Cd "device aic"
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for the Adaptec AIC-6260 and AIC-6360 SCSI
+driver provides support for the Adaptec AHA-1460, AHA-1460B, AHA-1460C, and
+AHA-1460D PC Card adapters based on the Adaptec AIC-6260 and AIC-6360 SCSI
 controller chips.
 Many systems that use these controller chips do not have a boot ROM
 and therefore cannot be booted from.
-.Sh HARDWARE
-The adapters supported by the
-.Nm
-driver include:
-.Pp
-.Bl -bullet -compact
-.It
-Adaptec AHA-1505 (ISA)
-.It
-Adaptec AHA-1510A, AHA-1510B (ISA)
-.It
-Adaptec AHA-1520A, AHA-1520B (ISA)
-.It
-Adaptec AHA-1522A, AHA-1522B (ISA)
-.It
-Adaptec AHA-1535 (ISA)
-.It
-Creative Labs SoundBlaster SCSI host adapter (ISA)
-.It
-Adaptec AHA-1460, AHA-1460B, AHA-1460C, AHA-1460D (PC Card)
-.It
-Adaptec AHA-1030B, AHA-1030P (PC98)
-.It
-NEC PC-9801-100 (PC98)
-.El
 .Sh SEE ALSO
 .Xr ahc 4 ,
 .Xr cd 4 ,
@@ -74,5 +50,3 @@ NEC PC-9801-100 (PC98)
 The driver does not work well with multiple devices on the SCSI bus.
 The driver works well with devices like CDROMs and Tape drives.
 The driver works not so well with disk drives.
-The PC Card version appears to work better than the ISA version, but
-that may be due to differing levels of testing of the devices.

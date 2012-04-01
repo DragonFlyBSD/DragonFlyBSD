@@ -3052,7 +3052,7 @@ loop:
 		if ((bp->b_flags & (B_CACHE|B_DELWRI)) == B_DELWRI) {
 			kprintf("getblk: Warning, bp %p loff=%jx DELWRI set "
 				"and CACHE clear, b_flags %08x\n",
-				bp, (intmax_t)bp->b_loffset, bp->b_flags);
+				bp, (uintmax_t)bp->b_loffset, bp->b_flags);
 			bp->b_flags |= B_NOCACHE;
 			bwrite(bp);
 			goto loop;
@@ -4182,7 +4182,7 @@ retry:
 				kprintf("Warning: vfs_busy_pages - page not "
 					"fully valid! loff=%jx bpf=%08x "
 					"idx=%d val=%02x dir=%02x\n",
-					(intmax_t)bp->b_loffset, bp->b_flags,
+					(uintmax_t)bp->b_loffset, bp->b_flags,
 					i, m->valid, m->dirty);
 				vm_page_protect(m, VM_PROT_NONE);
 			} else {
@@ -4304,14 +4304,14 @@ vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 		if ((bp->b_flags & B_NEEDCOMMIT) &&
 		    (m->dirty & vm_page_bits(soff & PAGE_MASK, eoff - soff))) {
 			if (debug_commit)
-			kprintf("Warning: vfs_clean_one_page: bp %p "
-				"loff=%jx,%d flgs=%08x clr B_NEEDCOMMIT"
-				" cmd %d vd %02x/%02x x/s/e %d %d %d "
-				"doff/end %d %d\n",
-				bp, (intmax_t)bp->b_loffset, bp->b_bcount,
-				bp->b_flags, bp->b_cmd,
-				m->valid, m->dirty, xoff, soff, eoff,
-				bp->b_dirtyoff, bp->b_dirtyend);
+				kprintf("Warning: vfs_clean_one_page: bp %p "
+				    "loff=%jx,%d flgs=%08x clr B_NEEDCOMMIT"
+				    " cmd %d vd %02x/%02x x/s/e %d %d %d "
+				    "doff/end %d %d\n",
+				    bp, (uintmax_t)bp->b_loffset, bp->b_bcount,
+				    bp->b_flags, bp->b_cmd,
+				    m->valid, m->dirty, xoff, soff, eoff,
+				    bp->b_dirtyoff, bp->b_dirtyend);
 			bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 			if (debug_commit)
 				print_backtrace(-1);

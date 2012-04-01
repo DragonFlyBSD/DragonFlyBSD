@@ -40,7 +40,6 @@
  * @(#) Copyright (c) 1983, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rlogin.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/rlogin/rlogin.c,v 1.30 2002/04/28 11:16:43 markm Exp $
- * $DragonFly: src/usr.bin/rlogin/rlogin.c,v 1.7 2005/02/15 01:24:49 cpressey Exp $
  */
 
 /*
@@ -317,7 +316,7 @@ main(int argc, char *argv[])
 			newargv[0] = argv[0];
 			newargv[1] = "-K";
 			for(i = 1; i < argc; ++i)
-			newargv[i + 1] = argv[i];
+				newargv[i + 1] = argv[i];
 			newargv[argc + 1] = NULL;
 			execv(_PATH_RLOGIN, newargv);
 		}

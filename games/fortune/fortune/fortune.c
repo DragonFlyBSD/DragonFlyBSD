@@ -33,8 +33,6 @@
  * @(#)fortune.c   8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/fortune/fortune/fortune.c,v 1.18.2.1 2001/07/02 00:35:27 dd Exp $
  */
-/* $FreeBSD: src/games/fortune/fortune/fortune.c,v 1.18.2.1 2001/07/02 00:35:27 dd Exp $ */
-/* $DragonFly: src/games/fortune/fortune/fortune.c,v 1.6 2006/08/08 16:58:59 pavalos Exp $ */
 
 #include <sys/param.h>
 #include <sys/stat.h>
@@ -951,9 +949,8 @@ get_fort(void)
 					    "    skip \"%s\", %d%% (choice = %d)\n",
 					    fp->name, fp->percent, choice));
 			}
-			DPRINTF(1, (stderr,
-				    "using \"%s\", %d%% (choice = %d)\n",
-				    fp->name, fp->percent, choice));
+		DPRINTF(1, (stderr, "using \"%s\", %d%% (choice = %d)\n",
+			    fp->name, fp->percent, choice));
 	}
 	if (fp->percent != NO_PROB)
 		get_tbl(fp);

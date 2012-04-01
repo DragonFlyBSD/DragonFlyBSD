@@ -164,7 +164,7 @@ scanopts(int argc, char **argv)
 		default:
 			usage();
 		}
-  breakout:
+breakout:
 	if (optind == argc)
 		usage();
 	query = argv + optind;
@@ -634,7 +634,7 @@ main(int argc, char **argv)
 			pclose(p);
 			free(cp);
 		}
-	  done_sources:
+done_sources:
 
 		if (opt_u && !unusual)
 			continue;
