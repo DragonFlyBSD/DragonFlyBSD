@@ -73,9 +73,9 @@ hammer_mod_rb_compare(hammer_io_t io1, hammer_io_t io2)
 	hammer_off_t io2_offset;
 
 	io1_offset = ((io1->offset & HAMMER_OFF_SHORT_MASK) << 8) |
-		     HAMMER_VOL_DECODE(io1->offset);
+		     io1->volume->vol_no;
 	io2_offset = ((io2->offset & HAMMER_OFF_SHORT_MASK) << 8) |
-		     HAMMER_VOL_DECODE(io2->offset);
+		     io2->volume->vol_no;
 
 	if (io1_offset < io2_offset)
 		return(-1);
