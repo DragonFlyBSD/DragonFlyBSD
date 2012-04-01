@@ -322,10 +322,16 @@ recheck:
 	}
 
 	/*
-	 * Make sure postsig() handled request to restore old signal mask after
-	 * running signal handler.
+	 * In a multi-threaded program it is possible for a thread to change
+	 * signal state during a system call which temporarily changes the
+	 * signal mask.  In this case postsig() might not be run and we
+	 * have to restore the mask ourselves.
 	 */
-	KKASSERT((lp->lwp_flags & LWP_OLDMASK) == 0);
+	if (lp->lwp_flags & LWP_OLDMASK) {
+		lp->lwp_flags &= ~LWP_OLDMASK;
+		lp->lwp_sigmask = lp->lwp_oldsigmask;
+		goto recheck;
+	}
 }
 
 /*
