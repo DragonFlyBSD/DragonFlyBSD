@@ -238,6 +238,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						UID_ROOT, GID_OPERATOR, 0640,
 						"%s%c", dev->si_name, 'a'+ i);
 					ndev->si_parent = dev;
+					ndev->si_iosize_max = dev->si_iosize_max;
 					ndev->si_disk = dp;
 					udev_dict_set_cstr(ndev, "subsystem", "disk");
 					/* Inherit parent's disk type */
@@ -401,6 +402,7 @@ disk_probe(struct disk *dp, int reprobe)
 					(info->d_dsflags & DSO_DEVICEMAPPER)?
 					"%s.s%d" : "%ss%d", dev->si_name, sno);
 			ndev->si_parent = dev;
+			ndev->si_iosize_max = dev->si_iosize_max;
 			udev_dict_set_cstr(ndev, "subsystem", "disk");
 			/* Inherit parent's disk type */
 			if (dp->d_disktype) {
