@@ -120,7 +120,7 @@ vkdinit(void *dummy __unused)
 				  DEVSTAT_PRIORITY_DISK);
 		sc->dev = disk_create(sc->unit, &sc->disk, &vkd_ops);
 		sc->dev->si_drv1 = sc;
-		sc->dev->si_iosize_max = 256 * 1024;
+		sc->dev->si_iosize_max = min(MAXPHYS,256*1024);
 
 		TAILQ_INIT(&sc->cotd_queue);
 		TAILQ_INIT(&sc->cotd_done);
