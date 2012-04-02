@@ -1366,15 +1366,23 @@ vrecycle(struct vnode *vp)
  *
  * If vp is VCHR or VBLK we dive the device, otherwise we use
  * the vp's mount info.
+ *
+ * The returned value is clamped at MAXPHYS as most callers cannot use
+ * buffers larger than that size.
  */
 int
 vmaxiosize(struct vnode *vp)
 {
-	if (vp->v_type == VBLK || vp->v_type == VCHR) {
-		return(vp->v_rdev->si_iosize_max);
-	} else {
-		return(vp->v_mount->mnt_iosize_max);
-	}
+	int maxiosize;
+
+	if (vp->v_type == VBLK || vp->v_type == VCHR)
+		maxiosize = vp->v_rdev->si_iosize_max;
+	else
+		maxiosize = vp->v_mount->mnt_iosize_max;
+
+	if (maxiosize > MAXPHYS)
+		maxiosize = MAXPHYS;
+	return (maxiosize);
 }
 
 /*
