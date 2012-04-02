@@ -1030,7 +1030,7 @@ softdep_initialize(void)
 		M_INODEDEP->ks_limit / (2 * sizeof(struct inodedep)));
 	pagedep_hashtbl = hashinit(desiredvnodes / 5, M_PAGEDEP,
 	    &pagedep_hash);
-	lockinit(&lk, "ffs_softdep", 0, 0);
+	lockinit(&lk, "ffs_softdep", 0, LK_CANRECURSE);
 	sema_init(&pagedep_in_progress, "pagedep", 0, 0);
 	inodedep_hashtbl = hashinit(desiredvnodes, M_INODEDEP, &inodedep_hash);
 	sema_init(&inodedep_in_progress, "inodedep", 0, 0);
@@ -3024,6 +3024,7 @@ softdep_disk_io_initiation(struct buf *bp)
 		panic("softdep_disk_io_initiation: read");
 
 	get_mplock();
+	ACQUIRE_LOCK(&lk);
 	marker.wk_type = D_LAST + 1;	/* Not a normal workitem */
 	
 	/*
@@ -3086,6 +3087,7 @@ softdep_disk_io_initiation(struct buf *bp)
 			/* NOTREACHED */
 		}
 	}
+	FREE_LOCK(&lk);
 	rel_mplock();
 }
 
