@@ -144,8 +144,6 @@ struct carp_if {
 	TAILQ_HEAD(, carp_softc) vhif_vrs;
 };
 
-enum	{ CARP_COUNT_MASTER, CARP_COUNT_RUNNING };
-
 SYSCTL_DECL(_net_inet_carp);
 
 static int carp_opts[CARPCTL_MAXID] = { 0, 1, 0, 1, 0, 0 }; /* XXX for now */
