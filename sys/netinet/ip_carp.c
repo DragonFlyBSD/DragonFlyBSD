@@ -2448,6 +2448,9 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 	if (ifa->ifa_addr->sa_family != AF_INET)
 		goto back;
 
+	KASSERT(&curthread->td_msgport == cpu_portfn(0),
+	    ("not in netisr0"));
+
 	if (ifp->if_type == IFT_CARP) {
 		/*
 		 * Address is changed on carp(4) interface
