@@ -431,13 +431,49 @@ int
 vq_write_ok(struct mount *mp, uid_t uid, gid_t gid, uint64_t delta)
 {
 	int rv = 1;
+	struct ac_unode ufind, *unp;
+	struct ac_gnode gfind, *gnp;
+	uint64_t space, limit;
 
 	spin_lock(&mp->mnt_acct.ac_spin);
 
 	if (mp->mnt_acct.ac_limit == 0)
-		goto done;
-	if ((mp->mnt_acct.ac_bytes + delta) > mp->mnt_acct.ac_limit)
+		goto check_uid;
+	if ((mp->mnt_acct.ac_bytes + delta) > mp->mnt_acct.ac_limit) {
 		rv = 0;
+		goto done;
+	}
+
+check_uid:
+	ufind.left_bits = (uid >> ACCT_CHUNK_BITS);
+	if ((unp = RB_FIND(ac_utree, &mp->mnt_acct.ac_uroot, &ufind)) == NULL) {
+		space = 0;
+		limit = 0;
+	} else {
+		space = unp->uid_chunk[(uid & ACCT_CHUNK_MASK)].space;
+		limit = unp->uid_chunk[(uid & ACCT_CHUNK_MASK)].limit;
+	}
+	if (limit == 0)
+		goto check_gid;
+	if ((space + delta) > limit) {
+		rv = 0;
+		goto done;
+	}
+
+check_gid:
+	gfind.left_bits = (gid >> ACCT_CHUNK_BITS);
+	if ((gnp = RB_FIND(ac_gtree, &mp->mnt_acct.ac_groot, &gfind)) == NULL) {
+		space = 0;
+		limit = 0;
+	} else {
+		space = gnp->gid_chunk[(gid & ACCT_CHUNK_MASK)].space;
+		limit = gnp->gid_chunk[(gid & ACCT_CHUNK_MASK)].limit;
+	}
+	if (limit == 0)
+		goto done;
+	if ((space + delta) > limit)
+		rv = 0;
+
 done:
 	spin_unlock(&mp->mnt_acct.ac_spin);
 	return rv;
