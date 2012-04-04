@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSchedule.c,v 1.28 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.10 2008/06/05 18:06:31 swildner Exp $
  */
 
 /*
@@ -83,8 +82,7 @@ int
 acpi_task_thread_init(void)
 {
     lwkt_initport_replyonly(&acpi_afree_rport, acpi_autofree_reply);
-    kthread_create(acpi_task_thread, NULL, &acpi_task_td,
-			0, 0, "acpi_task");
+    kthread_create(acpi_task_thread, NULL, &acpi_task_td, "acpi_task");
     return (0);
 }
 
