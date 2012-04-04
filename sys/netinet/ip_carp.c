@@ -60,6 +60,7 @@
 #include <net/if_clone.h>
 #include <net/if_var.h>
 #include <net/ifq_var.h>
+#include <net/netmsg2.h>
 
 #ifdef INET
 #include <netinet/in.h>
@@ -142,6 +143,11 @@ struct carp_softc {
 
 struct carp_if {
 	TAILQ_HEAD(, carp_softc) vhif_vrs;
+};
+
+struct netmsg_carp {
+	struct netmsg_base	base;
+	struct ifnet		*nc_carpdev;
 };
 
 SYSCTL_DECL(_net_inet_carp);
@@ -248,6 +254,8 @@ static void	carp_suspend(struct carp_softc *, int);
 static void	carp_ifaddr(void *, struct ifnet *, enum ifaddr_event,
 			    struct ifaddr *);
 static void	carp_ifdetach(void *, struct ifnet *);
+
+static void	carp_ifdetach_dispatch(netmsg_t);
 
 static MALLOC_DEFINE(M_CARP, "CARP", "CARP interfaces");
 
@@ -519,10 +527,11 @@ carp_detach(struct carp_softc *sc, int detach, boolean_t del_iaback)
 	}
 }
 
-/* Detach an interface from the carp. */
 static void
-carp_ifdetach(void *arg __unused, struct ifnet *ifp)
+carp_ifdetach_dispatch(netmsg_t msg)
 {
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct ifnet *ifp = cmsg->nc_carpdev;
 	struct carp_if *cif = ifp->if_carp;
 	struct carp_softc *sc;
 
@@ -533,6 +542,24 @@ carp_ifdetach(void *arg __unused, struct ifnet *ifp)
 		carp_detach(sc, 1, TRUE);
 
 	carp_reltok();
+
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
+}
+
+/* Detach an interface from the carp. */
+static void
+carp_ifdetach(void *arg __unused, struct ifnet *ifp)
+{
+	struct netmsg_carp cmsg;
+
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
+
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_ifdetach_dispatch);
+	cmsg.nc_carpdev = ifp;
+
+	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
 }
 
 /*
