@@ -255,6 +255,7 @@ static void	carp_stop(struct carp_softc *, int);
 static void	carp_suspend(struct carp_softc *, int);
 static void	carp_ioctl_stop(struct carp_softc *);
 static int	carp_ioctl_setvh(struct carp_softc *, struct carpreq *);
+static void	carp_ioctl_getvh(struct carp_softc *, struct carpreq *);
 
 static void	carp_ifaddr(void *, struct ifnet *, enum ifaddr_event,
 			    struct ifaddr *);
@@ -265,6 +266,7 @@ static void	carp_clone_destroy_dispatch(netmsg_t);
 static void	carp_init_dispatch(netmsg_t);
 static void	carp_ioctl_stop_dispatch(netmsg_t);
 static void	carp_ioctl_setvh_dispatch(netmsg_t);
+static void	carp_ioctl_getvh_dispatch(netmsg_t);
 
 static MALLOC_DEFINE(M_CARP, "CARP", "CARP interfaces");
 
@@ -1933,16 +1935,10 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 		break;
 
 	case SIOCGVH:
-		bzero(&carpr, sizeof(carpr));
-		carpr.carpr_state = sc->sc_state;
-		carpr.carpr_vhid = sc->sc_vhid;
-		carpr.carpr_advbase = sc->sc_advbase;
-		carpr.carpr_advskew = sc->sc_advskew;
+		carp_ioctl_getvh(sc, &carpr);
 		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
-		if (error == 0) {
-			bcopy(sc->sc_key, carpr.carpr_key,
-			      sizeof(carpr.carpr_key));
-		}
+		if (error)
+			bzero(carpr.carpr_key, sizeof(carpr.carpr_key));
 
 		error = copyout(&carpr, ifr->ifr_data, sizeof(carpr));
 		break;
@@ -2126,6 +2122,47 @@ carp_ioctl_setvh(struct carp_softc *sc, struct carpreq *carpr)
 	ifnet_serialize_all(ifp);
 
 	return error;
+}
+
+static void
+carp_ioctl_getvh_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
+	struct carpreq *carpr = cmsg->nc_data;
+
+	carp_gettok();
+
+	carpr->carpr_state = sc->sc_state;
+	carpr->carpr_vhid = sc->sc_vhid;
+	carpr->carpr_advbase = sc->sc_advbase;
+	carpr->carpr_advskew = sc->sc_advskew;
+	bcopy(sc->sc_key, carpr->carpr_key, sizeof(carpr->carpr_key));
+
+	carp_reltok();
+
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
+}
+
+static void
+carp_ioctl_getvh(struct carp_softc *sc, struct carpreq *carpr)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct netmsg_carp cmsg;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	ifnet_deserialize_all(ifp);
+
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_ioctl_getvh_dispatch);
+	cmsg.nc_softc = sc;
+	cmsg.nc_data = carpr;
+
+	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+	ifnet_serialize_all(ifp);
 }
 
 static void
