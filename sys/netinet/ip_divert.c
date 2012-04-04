@@ -222,7 +222,7 @@ div_packet(struct mbuf *m, int incoming, int port)
 		 * this iface name will come along for the ride.
 		 * (see div_output for the other half of this.)
 		 */
-		ksnprintf(divsrc.sin_zero, sizeof divsrc.sin_zero,
+		ksnprintf(divsrc.sin_zero, sizeof divsrc.sin_zero, "%s",
 			  m->m_pkthdr.rcvif->if_xname);
 	}
 

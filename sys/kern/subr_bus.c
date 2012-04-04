@@ -1682,7 +1682,7 @@ device_attach_async(device_t dev)
 
 	atomic_add_int(&numasyncthreads, 1);
 	lwkt_create(device_attach_thread, dev, &td, NULL,
-		    0, 0, (dev->desc ? dev->desc : "devattach"));
+		    0, 0, "%s", (dev->desc ? dev->desc : "devattach"));
 }
 
 static void

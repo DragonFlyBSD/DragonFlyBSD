@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.13 2006/12/18 20:41:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -164,7 +163,7 @@ kproc_start(const void *udata)
 	int error;
 
 	error = kthread_create((void (*)(void *))kp->func, NULL,
-				kp->global_threadpp, kp->arg0);
+				kp->global_threadpp, "%s", kp->arg0);
 	lwkt_setpri(*kp->global_threadpp, TDPRI_KERN_DAEMON);
 	if (error)
 		panic("kproc_start: %s: error %d", kp->arg0, error);
