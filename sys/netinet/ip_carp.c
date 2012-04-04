@@ -148,6 +148,7 @@ struct carp_if {
 struct netmsg_carp {
 	struct netmsg_base	base;
 	struct ifnet		*nc_carpdev;
+	struct carp_softc	*nc_softc;
 };
 
 SYSCTL_DECL(_net_inet_carp);
@@ -256,6 +257,7 @@ static void	carp_ifaddr(void *, struct ifnet *, enum ifaddr_event,
 static void	carp_ifdetach(void *, struct ifnet *);
 
 static void	carp_ifdetach_dispatch(netmsg_t);
+static void	carp_clone_destroy_dispatch(netmsg_t);
 
 static MALLOC_DEFINE(M_CARP, "CARP", "CARP interfaces");
 
@@ -472,17 +474,37 @@ carp_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	return (0);
 }
 
-static int
-carp_clone_destroy(struct ifnet *ifp)
+static void
+carp_clone_destroy_dispatch(netmsg_t msg)
 {
-	struct carp_softc *sc = ifp->if_softc;
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
 
 	carp_gettok();
 
 	sc->sc_dead = 1;
 	carp_detach(sc, 1, FALSE);
-	LIST_REMOVE(sc, sc_next);
 
+	carp_reltok();
+
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
+}
+
+static int
+carp_clone_destroy(struct ifnet *ifp)
+{
+	struct carp_softc *sc = ifp->if_softc;
+	struct netmsg_carp cmsg;
+
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_clone_destroy_dispatch);
+	cmsg.nc_softc = sc;
+
+	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+	carp_gettok();
+	LIST_REMOVE(sc, sc_next);
 	carp_reltok();
 
 	bpfdetach(ifp);
