@@ -225,7 +225,9 @@ static struct bio_ops softdep_bioops = {
  */
 static	void acquire_lock(struct lock *);
 static	void free_lock(struct lock *);
+#ifdef INVARIANTS
 static	int lock_held(struct lock *);
+#endif
 static	int interlocked_sleep(struct lock *, void *, int,
 	    const char *, int);
 
@@ -246,11 +248,13 @@ free_lock(struct lock *lkp)
 	lockmgr(lkp, LK_RELEASE);
 }
 
+#ifdef INVARIANTS
 static int
 lock_held(struct lock *lkp) 
 {
 	return lockcountnb(lkp);
 }
+#endif
 
 static int
 interlocked_sleep(struct lock *lkp, void *ident, int flags,
