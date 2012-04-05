@@ -326,6 +326,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	/* hmp->vchain.u.xxx is left NULL */
 	lockinit(&hmp->vchain.lk, "volume", 0, LK_CANRECURSE);
 	lockinit(&hmp->alloclk, "h2alloc", 0, 0);
+	lockinit(&hmp->voldatalk, "voldata", 0, LK_CANRECURSE);
 
 	/*
 	 * Install the volume header
@@ -344,6 +345,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	mp->mnt_vstat.f_frsize = HAMMER2_PBUFSIZE;
 	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
+
+	/*
+	 * Optional fields
+	 */
+	mp->mnt_iosize_max = MAXPHYS;
 
 	/*
 	 * First locate the super-root inode, which is key 0 relative to the
@@ -450,13 +456,20 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		return error;
 
 	/*
-	 * Flush any left over chains
+	 * Flush any left over chains.  The voldata lock is only used
+	 * to synchronize against HAMMER2_CHAIN_MODIFIED_AUX.
 	 */
-	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED1 |
+	hammer2_voldata_lock(hmp);
+	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
+				 HAMMER2_CHAIN_MODIFIED_AUX |
 				 HAMMER2_CHAIN_SUBMODIFIED)) {
+		hammer2_voldata_unlock(hmp);
 		hammer2_vfs_sync(mp, MNT_WAIT);
+	} else {
+		hammer2_voldata_unlock(hmp);
 	}
-	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED1 |
+	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
+				 HAMMER2_CHAIN_MODIFIED_AUX |
 				 HAMMER2_CHAIN_SUBMODIFIED)) {
 		kprintf("hammer2_unmount: chains left over after final sync\n");
 		if (hammer2_debug & 0x0010)
@@ -619,8 +632,9 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	}
 #endif
 	hammer2_chain_lock(hmp, &hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
-	if (hmp->vchain.flags &
-	    (HAMMER2_CHAIN_MODIFIED1 | HAMMER2_CHAIN_SUBMODIFIED)) {
+	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
+				 HAMMER2_CHAIN_MODIFIED_AUX |
+				 HAMMER2_CHAIN_SUBMODIFIED)) {
 		hammer2_chain_flush(hmp, &hmp->vchain);
 		haswork = 1;
 	} else {
@@ -640,8 +654,10 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	if (error == 0 && haswork) {
 		struct buf *bp;
 
-		kprintf("synchronize disk\n");
-
+		/*
+		 * Synchronize the disk before flushing the volume
+		 * header.
+		 */
 		bp = getpbuf(NULL);
 		bp->b_bio1.bio_offset = 0;
 		bp->b_bufsize = 0;
@@ -653,10 +669,15 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		biowait(&bp->b_bio1, "h2vol");
 		relpbuf(bp, NULL);
 
-		kprintf("flush volume header\n");
-
+		/*
+		 * Then we can safely flush the volume header.  Volume
+		 * data is locked separately to prevent ioctl functions
+		 * from deadlocking due to a configuration issue.
+		 */
 		bp = getblk(hmp->devvp, 0, HAMMER2_PBUFSIZE, 0, 0);
+		hammer2_voldata_lock(hmp);
 		bcopy(&hmp->voldata, bp->b_data, HAMMER2_PBUFSIZE);
+		hammer2_voldata_unlock(hmp);
 		bawrite(bp);
 	}
 	return (error);
@@ -676,7 +697,7 @@ hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 
 	ip = VTOI(vp);
 	if (vp->v_type == VNON || ip == NULL ||
-	    ((ip->chain.flags & (HAMMER2_CHAIN_MODIFIED1 |
+	    ((ip->chain.flags & (HAMMER2_CHAIN_MODIFIED |
 				 HAMMER2_CHAIN_DIRTYEMBED)) == 0 &&
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(-1);
@@ -693,7 +714,7 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 
 	ip = VTOI(vp);
 	if (vp->v_type == VNON || vp->v_type == VBAD ||
-	    ((ip->chain.flags & (HAMMER2_CHAIN_MODIFIED1 |
+	    ((ip->chain.flags & (HAMMER2_CHAIN_MODIFIED |
 				 HAMMER2_CHAIN_DIRTYEMBED)) == 0 &&
 	    RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(0);

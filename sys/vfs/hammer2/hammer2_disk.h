@@ -35,6 +35,10 @@
 #ifndef VFS_HAMMER2_DISK_H_
 #define VFS_HAMMER2_DISK_H_
 
+#ifndef _SYS_UUID_H_
+#include <sys/uuid.h>
+#endif
+
 /*
  * The structures below represent the on-disk media structures for the HAMMER2
  * filesystem.  Note that all fields for on-disk structures are naturally
@@ -387,6 +391,17 @@ typedef struct hammer2_indblock_data hammer2_indblock_data_t;
  * inode number key via bit 63.  Access to the hardlink silently looks up
  * the real file and forwards all operations to that file.  Removal of the
  * last hardlink also removes the real file.
+ *
+ * (attr_tid) is only updated when the inode's specific attributes or regular
+ * file size has changed, and affects path lookups and stat.  (attr_tid)
+ * represents a special cache coherency lock under the inode.  The inode
+ * blockref's modify_tid will always cover it.
+ *
+ * (dirent_tid) is only updated when an entry under a directory inode has
+ * been created, deleted, renamed, or had its attributes change, and affects
+ * directory lookups and scans.  (dirent_tid) represents another special cache
+ * coherency lock under the inode.  The inode blockref's modify_tid will
+ * always cover it.
  */
 #define HAMMER2_INODE_BYTES		1024	/* (asserted by code) */
 #define HAMMER2_INODE_MAXNAME		256	/* maximum name in bytes */
@@ -414,8 +429,7 @@ struct hammer2_inode_data {
 	hammer2_off_t	size;		/* 0060 size of file */
 	uint64_t	nlinks;		/* 0068 hard links (typ only dirs) */
 	hammer2_tid_t	iparent;	/* 0070 parent inum (recovery only) */
-	uint64_t	reserved78;	/* 0078 */
-
+	uint8_t		copies[8];	/* 0078 request copies to (up to 8) */
 	hammer2_off_t	data_quota;	/* 0080 subtree quota in bytes */
 	hammer2_off_t	data_count;	/* 0088 subtree byte count */
 	hammer2_off_t	inode_quota;	/* 0090 subtree quota inode count */
@@ -425,11 +439,12 @@ struct hammer2_inode_data {
 	uint8_t		reservedA3;	/* 00A3 */
 	uint32_t	reservedA4;	/* 00A4 */
 	hammer2_key_t	name_key;	/* 00A8 full filename key */
-	uint8_t		copyids[8];	/* 00B0 request copies to (up to 8) */
-	uuid_t		pfsid;		/* 00B8 pfs uuid if PFSROOT */
-	uint64_t	pfsinum;	/* 00C8 pfs inum allocator */
-	uint64_t	reservedD0;	/* 00D0 */
-	uint64_t	reservedD8;	/* 00D8 */
+	uint8_t		reservedB0[7];	/* 00B0 */
+	uint8_t		pfs_type;	/* 00B7 (if PFSROOT) node type */
+	uuid_t		pfs_id;		/* 00B8 (if PFSROOT) pfs uuid */
+	uint64_t	pfs_inum;	/* 00C8 (if PFSROOT) inum allocator */
+	hammer2_tid_t	attr_tid;	/* 00D0 attributes changed */
+	hammer2_tid_t	dirent_tid;	/* 00D8 directory/attr changed */
 	uint64_t	reservedE0;	/* 00E0 */
 	uint64_t	reservedE8;	/* 00E8 */
 	uint64_t	reservedF0;	/* 00F0 */
@@ -447,6 +462,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 
 #define HAMMER2_OPFLAG_DIRECTDATA	0x01
 #define HAMMER2_OPFLAG_PFSROOT		0x02
+#define HAMMER2_OPFLAG_COPYIDS		0x04	/* copyids override parent */
 
 #define HAMMER2_OBJTYPE_UNKNOWN		0
 #define HAMMER2_OBJTYPE_DIRECTORY	1
@@ -467,6 +483,15 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 
 #define HAMMER2_CHECK_NONE		0
 #define HAMMER2_CHECK_ICRC		1
+
+#define HAMMER2_PFSTYPE_NONE		0
+#define HAMMER2_PFSTYPE_ADMIN		1
+#define HAMMER2_PFSTYPE_CACHE		2
+#define HAMMER2_PFSTYPE_COPY		3
+#define HAMMER2_PFSTYPE_SLAVE		4
+#define HAMMER2_PFSTYPE_SOFT_SLAVE	5
+#define HAMMER2_PFSTYPE_SOFT_MASTER	6
+#define HAMMER2_PFSTYPE_MASTER		7
 
 /*
  * The allocref structure represents the allocation table.  One 64K block
@@ -540,30 +565,52 @@ typedef struct hammer2_allocref hammer2_allocref_t;
 #define HAMMER2_ALLOCREF_LEAF		0x0004
 
 /*
- * Copies information stored in the volume header.  Typically formatted
- * e.g. like 'serno/A21343249.s1d'
+ * All HAMMER2 directories directly under the super-root on your local
+ * media can be mounted separately, even if they share the same physical
+ * device.
  *
- * There are 8 copy_data[]'s in the volume header but up to 256 copyid's.
- * When a copy is removed its copyid remains reserved in the copyid bitmap
- * (copyexists[] bitmap in volume_data) until the copy references have
- * been removed from the entire filesystem and cannot be reused until the
- * removal is complete.  However, new copy entries with other ids can be
- * instantly added, replacing the original copy_data[]... which is fine as
- * long as the copyid does not conflict.
+ * When you do a HAMMER2 mount you are effectively tying into a HAMMER2
+ * cluster via local media.  The local media does not have to participate
+ * in the cluster, other than to provide the hammer2_copy_data[] array and
+ * root inode for the mount.
  *
- * This structure must be exactly 64 bytes long.
+ * This is important: The mount device path you specify serves to bootstrap
+ * your entry into the cluster, but your mount will make active connections
+ * to ALL copy elements in the hammer2_copy_data[] array which match the
+ * PFSID of the directory in the super-root that you specified.  The local
+ * media path does not have to be mentioned in this array but becomes part
+ * of the cluster based on its type and access rights.  ALL ELEMENTS ARE
+ * TREATED ACCORDING TO TYPE NO MATTER WHICH ONE YOU MOUNT FROM.
+ *
+ * The actual cluster may be far larger than the elements you list in the
+ * hammer2_copy_data[] array.  You list only the elements you wish to
+ * directly connect to and you are able to access the rest of the cluster
+ * indirectly through those connections.
+ *
+ * This structure must be exactly 128 bytes long.
  */
 struct hammer2_copy_data {
-	uint8_t	copyid;		/* 0-255 */
-	uint8_t flags;
-	uint8_t reserved02;
-	uint8_t reserved03;
-	uint8_t path[60];	/* up to 59-char string, nul-terminated */
+	uint8_t	copyid;		/* 00	 copyid 0-255 (must match slot) */
+	uint8_t inprog;		/* 01	 operation in progress, or 0 */
+	uint8_t chain_to;	/* 02	 operation chaining to, or 0 */
+	uint8_t chain_from;	/* 03	 operation chaining from, or 0 */
+	uint16_t flags;		/* 04-05 flags field */
+	uint8_t error;		/* 06	 last operational error */
+	uint8_t priority;	/* 07	 priority and round-robin flag */
+	uint8_t remote_pfs_type;/* 08	 probed direct remote PFS type */
+	uint8_t reserved08[23];	/* 09-1F */
+	uuid_t	pfsid;		/* 20-2F copy target must match this uuid */
+	uint8_t label[16];	/* 30-3F import/export label */
+	uint8_t path[64];	/* 40-7F target specification string or key */
 };
 
 typedef struct hammer2_copy_data hammer2_copy_data_t;
 
-#define COPYDATAF_OUTOFSYNC	0x0001
+#define COPYDATAF_ENABLED	0x0001
+#define COPYDATAF_INPROG	0x0002
+#define COPYDATAF_CONN_RR	0x80	/* round-robin at same priority */
+#define COPYDATAF_CONN_EF	0x40	/* media errors flagged */
+#define COPYDATAF_CONN_PRI	0x0F	/* select priority 0-15 (15=best) */
 
 /*
  * The volume header eats a 64K block.  There is currently an issue where
@@ -611,9 +658,11 @@ typedef struct hammer2_copy_data hammer2_copy_data_t;
 #define HAMMER2_VOLUME_ID_HBO	0x48414d3205172011LLU
 #define HAMMER2_VOLUME_ID_ABO	0x11201705324d4148LLU
 
+#define HAMMER2_COPYID_COUNT	256
+
 struct hammer2_volume_data {
 	/*
-	 * 512-byte sector #0
+	 * sector #0 - 512 bytes
 	 */
 	uint64_t	magic;			/* 0000 Signature */
 	hammer2_off_t	boot_beg;		/* 0008 Boot area (future) */
@@ -671,28 +720,45 @@ struct hammer2_volume_data {
 	hammer2_crc32_t	icrc_sects[8];		/* 01E0-01FF */
 
 	/*
-	 * 512-byte sector #1
+	 * sector #1 - 512 bytes
 	 *
 	 * The entire sector is used by a blockset.
 	 */
-	hammer2_blockset_t sroot_blockset;	/* 0200 Superroot directory */
+	hammer2_blockset_t sroot_blockset;	/* 0200-03FF Superroot dir */
 
 	/*
-	 * 512-byte sector #2-33
-	 *
-	 * Up to 256 copyinfo specifications can be configured.  Note that
-	 * any given subdirectory tree can only use 8 of the 256.  Having
-	 * up to 256 configurable in the volume header allows
-	 *
-	 * A specification takes 64 bytes.  Each specification typically
-	 * configures a device path such as 'serno/<serial>.s1d'.
+	 * sector #2-7
 	 */
-	struct hammer2_copy_data copyinfo[256];	/* 0400-43FF copyinfo config */
+	char	sector2[512];			/* 0400-05FF reserved */
+	char	sector3[512];			/* 0600-07FF reserved */
+	char	sector4[512];			/* 0800-09FF reserved */
+	char	sector5[512];			/* 0A00-0BFF reserved */
+	char	sector6[512];			/* 0C00-0DFF reserved */
+	char	sector7[512];			/* 0E00-0FFF reserved */
+
+	/*
+	 * sector #8-71	- 32768 bytes
+	 *
+	 * Contains the configuration for up to 256 copyinfo targets.  These
+	 * specify local and remote copies operating as masters or slaves.
+	 * copyid's 0 and 255 are reserved (0 indicates an empty slot and 255
+	 * indicates the local media).
+	 *
+	 * Each inode contains a set of up to 8 copyids, either inherited
+	 * from its parent or explicitly specified in the inode, which
+	 * indexes into this array.
+	 */
+						/* 1000-8FFF copyinfo config */
+	struct hammer2_copy_data copyinfo[HAMMER2_COPYID_COUNT];
+
+	/*
+	 *
+	 */
 
 	/*
 	 * Remaining sections are reserved for future use.
 	 */
-	char		reserved0400[0xBBFC];	/* 4400-FFFB reserved */
+	char		reserved0400[0x6FFC];	/* 9000-FFFB reserved */
 
 	/*
 	 * icrc on entire volume header

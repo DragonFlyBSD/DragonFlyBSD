@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  */
 #include <sys/cdefs.h>
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
@@ -256,7 +255,9 @@ hammer2_inode_create(hammer2_mount_t *hmp,
 	*nipp = nip;
 
 	nip->ip_data.type = hammer2_get_obj_type(vap->va_type);
+	hammer2_voldata_lock(hmp);
 	nip->ip_data.inum = hmp->voldata.alloc_tid++;	/* XXX modify/lock */
+	hammer2_voldata_unlock(hmp);
 	nip->ip_data.version = HAMMER2_INODE_VERSION_ONE;
 	nip->ip_data.ctime = 0;
 	nip->ip_data.mtime = 0;

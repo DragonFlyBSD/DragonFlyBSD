@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  */
 #include <sys/cdefs.h>
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
@@ -127,6 +126,18 @@ void
 hammer2_mount_unlock(hammer2_mount_t *hmp)
 {
 	lockmgr(&hmp->vchain.lk, LK_RELEASE);
+}
+
+void
+hammer2_voldata_lock(hammer2_mount_t *hmp)
+{
+	lockmgr(&hmp->voldatalk, LK_EXCLUSIVE);
+}
+
+void
+hammer2_voldata_unlock(hammer2_mount_t *hmp)
+{
+	lockmgr(&hmp->voldatalk, LK_RELEASE);
 }
 
 /*

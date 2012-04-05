@@ -2082,7 +2082,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 		biodone(nbio);
 
 		/*
-		 * This special flag does not follow the normal MODIFY1 rules
+		 * This special flag does not follow the normal MODIFY rules
 		 * because we might deadlock on ip.  Instead we depend on
 		 * VOP_FSYNC() to detect the case.
 		 */
@@ -2094,6 +2094,25 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 		vn_strategy(hmp->devvp, nbio);
 	}
 	return (0);
+}
+
+/*
+ * hammer2_vop_ioctl { vp, command, data, fflag, cred }
+ */
+static
+int
+hammer2_vop_ioctl(struct vop_ioctl_args *ap)
+{
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *ip;
+	int error;
+
+	ip = VTOI(ap->a_vp);
+	hmp = ip->hmp;
+
+	error = hammer2_ioctl(ip, ap->a_command, (void *)ap->a_data,
+			      ap->a_fflag, ap->a_cred);
+	return (error);
 }
 
 static
@@ -2150,6 +2169,7 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_nresolve	= hammer2_vop_nresolve,
 	.vop_nlookupdotdot = hammer2_vop_nlookupdotdot,
 	.vop_nmkdir 	= hammer2_vop_nmkdir,
+	.vop_ioctl	= hammer2_vop_ioctl,
 	.vop_mountctl	= hammer2_vop_mountctl,
 	.vop_bmap	= hammer2_vop_bmap,
 	.vop_strategy	= hammer2_vop_strategy,

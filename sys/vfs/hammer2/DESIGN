@@ -87,10 +87,9 @@
   missing copies (or remove excessive copies in the case where the copies
   value is reduced on a live filesystem).
 
-* Intended to be clusterable, with a multi-master protocol under design
-  but not expected to be fully operational until mid-2013.  The media
-  format for HAMMER1 was less condusive to logical clustering than I had
-  hoped so I was never able to get that aspect of my personal goals
+* Clusterable with MESI cache coherency and dynamic granularity.
+  The media format for HAMMER1 was less condusive to logical clustering
+  than I had hoped so I was never able to get that aspect of my personal goals
   working with HAMMER1.  HAMMER2 effectively solves the issues that cropped
   up with HAMMER1 (mainly that HAMMER1's B-Tree did not reflect the logical
   file/directory hierarchy, making cache coherency very difficult).
@@ -230,43 +229,107 @@ structures generally follow the kernel's filesystem hiearchy.  Second,
 HAMMER2's writable snapshots make it possible to implement several forms
 of multi-master clustering.
 
-The general mechanics for most of the multi-master clustering implementations
-will be as follows:
+This is important: The mount device path you specify serves to bootstrap
+your entry into the cluster, but your mount will make active connections
+to ALL copy elements in the hammer2_copy_data[] array (stored in the volume
+header) which match the PFSID of the directory in the super-root that you
+specified.  The local media path does not have to be mentioned in this
+array but becomes part of the cluster based on its type and access
+rights.  ALL ELEMENTS ARE TREATED ACCORDING TO TYPE NO MATTER WHICH ONE
+YOU MOUNT FROM.
 
-    (a) Use the copies mechanism to specify all elements of the cluster,
-	both local and remote (networked).
+The actual cluster may be far larger than the elements you list in the
+hammer2_copy_data[] array.  You list only the elements you wish to
+directly connect to and you are able to access the rest of the cluster
+indirectly through those connections.
 
-    (b) The core synchronization state operates just as it does for copies,
-	simply requiring a fully-flushed ack from the remote in order to
-	mark the blocks as having been fully synchronized.
+All nodes in the cluster may act as administrative proxies.  All nodes
+in the cluster, including your mount point, are classified as one of the
+following as specified in the inode's structure:
 
-	The mirror_tid may be used to locate these blocks, allowing the
-	synchronization state to be updated on the fly at a much later
-	time without requiring the state to be maintained in-memory.
-	(also for crash recovery resynchronization purposes).
+    ADMIN	- Media does not participate, administrative proxy only
+    CACHE	- Media only acts as a persistent cache
+    COPY	- Media only acts as a local copy
+    SLAVE	- Media is a RO slave that can be mounted RW
 
-    (c) Data/meta-data can be retrieved from those copies which are marked
-	as being synchronized, with priority given to the local storage
-	relative to any given physical machine.
+    SOFT_SLAVE	- This is a SLAVE which can become writable when
+		  the quorum is not available, but is not guaranteed
+		  to be able to be merged back when the quorum becomes
+		  available again.  Elements which cannot be merged
+		  back remain localized and writable until manual
+		  or scripted intervention recombines them.
 
-	This means that e.g. even in a master-slave orientation the slave
-	may be able to satisfy a request from a program when the slave
-	happens to be the local storage.
+    SOFT_MASTER	- Similar to the above but can form a sub-cluster
+		  and run the quorum protocol within the sub-cluster
+		  to serve machines that connect to the sub-cluster
+		  when the master cluster is not available.
 
-    (d) Transaction id synchronization between all elements of the cluster,
-	typically through masking (assigning a cluster number using the low
-	3 bits of the transaction id).
+		  The SOFT_MASTER nodes in a sub-cluster must be
+		  fully interconnected with each other.
 
-    (e) General access (synchronized or otherwise) may require cache
-	coherency mechanisms to run over the network.
+    MASTER	- This is a MASTER node in the quorum protocol.
 
-	Implementing cache coherency is a major complexity issue.
+		  The MASTER nodes in a cluster must be fully
+		  interconnected with each other.
 
-    (f) General access (synchronized or otherwise) may require quorum
-	agreement, using the synchronization flags in the blockrefs
-	to determine whether agreement has been reached.
+There are four major protocols:
 
-	Implementing quorum voting is a major complexity issue.
+    Quorum protocol
+
+	This protocol is used between MASTER nodes to vote on operations
+	and resolve deadlocks.
+
+	This protocol is used between SOFT_MASTER nodes in a sub-cluster
+	to vote on operations, resolve deadlocks, determine what the latest
+	transaction id for an element is, and to perform commits.
+
+    Cache sub-protocol
+
+	This is the MESI sub-protocol which runs under the Quorum
+	protocol.  This protocol is used to maintain cache state for
+	sub-trees to ensure that operations remain cache coherent.
+
+	Depending on administrative rights this protocol may or may
+	not allow a leaf node in the cluster to hold a cache element
+	indefinitely.  The administrative controller may preemptively
+	downgrade a leaf with insufficient administrative rights
+	without giving it a chance to synchronize any modified state
+	back to the cluster.
+
+    Proxy protocol
+
+	The Quorum and Cache protocols only operate between MASTER
+	and SOFT_MASTER nodes.  All other node types must use the
+	Proxy protocol to perform similar actions.  This protocol
+	differs in that proxy requests are typically sent to just
+	one adjacent node and that node then maintains state and
+	forwards the request or performs the required operation.
+	When the link is lost to the proxy, the proxy automatically
+	forwards a deletion of the state to the other nodes based on
+	what it has recorded.
+
+	If a leaf has insufficient administrative rights it may not
+	be allowed to actually initiate a quorum operation and may only
+	be allowed to maintain partial MESI cache state or perhaps none
+	at all (since cache state can block other machines in the
+	cluster).  Instead a leaf with insufficient rights will have to
+	make due with a preemptive loss of cache state and any allowed
+	modifying operations will have to be forwarded to the proxy which
+	continues forwarding it until a node with sufficient administrative
+	rights is encountered.
+
+	To reduce issues and give the cluster more breath, sub-clusters
+	made up of SOFT_MASTERs can be formed in order to provide full
+	cache coherent within a subset of machines and yet still tie them
+	into a greater cluster that they normally would not have such
+	access to.  This effectively makes it possible to create a two
+	or three-tier fan-out of groups of machines which are cache-coherent
+	within the group, but perhaps not between groups, and use other
+	means to synchronize between the groups.
+
+    Media protocol
+
+	This is basically the physical media protocol.
 
 There are lots of ways to implement multi-master environments using the
 above core features but the implementation is going to be fairly complex
@@ -283,145 +346,5 @@ state of flux DOES NOT invalidate the cache state for these higher levels
 of directories.  Instead, the (modify_tid) is used on a node-by-node basis
 to determine cache state at any given level, and (mirror_tid) is used to
 determine whether any recursively underlying state is desynchronized.
-
-* Simple semi-synchronized multi-master environment.
-
-    In this environment all nodes are considered masters and modifications
-    can be made on any of them, and then propagate to the others
-    asynchronously via HAMMER2 mirror streams.  One difference here is
-    that kernel can activate these userland-managed streams automatically
-    when the copies configuration is used to specify the cluster.
-
-    The only type of conflict which isn't readily resolvable by comparing
-    the (modify_tid) is when file data is updated.  In this case user
-    intervention might be required but, theoretically, it should be
-    possible to automate most merges using a multi-way patch and, if not,
-    choosing one and creating backup copies if the others to allow the
-    user or sysop to resolve the conflict later.
-
-* Simple fully synchronized fail-over environment.
-
-    In this environment there is one designated master and the remaining
-    nodes are slaves.  If the master fails all remaining nodes agree on a
-    new master, possibly with the requirement that a quorum be achieved
-    (if you don't want to allow the cluster to split).
-
-    If network splits are allowed the each sub-cluster operates in this
-    mode but recombining the clusters reverts to the first algorithm.
-    If not allowed whomever no longer has a quorum will be forced to stall.
-
-    In this environment the current designated master is responsible for
-    managing locks for modifying operations.  The designated master will
-    proactively tell the other nodes to mark the blocks related to the
-    modifying operation as no longer being synchronized while any local
-    data at the node that acquired the lock (master or slave) remains
-    marked as being synchronized.
-
-    The node that succesfully gets the lock then issues the modifying
-    operation to both its local copy and to the master, marking the
-    master as being desynchronized until the master acknowledges receipt.
-
-    In this environment any node can access data from local storage if
-    the designated master copy is marked synchronized AND its (modify_tid)
-    matches the slave copy's (modify_tid).
-
-    However, if a slave disconnects from the master then reconnects the
-    slave will have lost the master's desynchronization stream and must
-    mark its root blockref for the master copy HAMMER2_BREF_DESYNCHLD as
-    well as clear the SYNC1/SYNC2 bits.  Setting DESYNCCHLD forces on-demand
-    recursive reverification that the master and slave are (or are not) in
-    sync in order to reestablish on the slave the synchronization state of
-    the master.
-
-    That might be a bit confusing but the whole point here is to allow
-    read accesses to the filesystem to be satisfied by any node in a
-    multi-master cluster, not just by the current designated master.
-
-* Fully cache coherent and synchronized multi-master environment.
-
-    In this environment a quorum is required to perform any modifying
-    action.  All nodes are masters (there is no 'designated' master)
-    and all nodes connect to all other nodes in a cross-bar.
-
-    The quorum is specified by copies setup in the root volume configuration.
-    A quorum of nodes in the cluster must agree on the copies configuration.
-    If they do not the cluster cannot proceed to mount.  Any other nodes
-    not in the quorum which are in the cluster which disagree with the
-    configuration will inherit the copies configuration from the quorum.
-
-    Any modifying action will initiate a lock request locally to all nodes
-    in the cluster.  The modifying action is allowed to proceed the instant
-    a quorum of nodes respond in the affirmative (even if some have not
-    yet responded or are down).  The modifying action is considered complete
-    once the two-phase commit protocol succeeds.  The modifying action
-    typically creates and commits a temporary snapshot on at least a quorum
-    of masters as phase-1 and then ties the snapshot back into the main
-    mount as phase-2.
-
-    These locks are cache-coherency locks and may be passively maintained
-    in order to aggregate multiple operations under the same lock and thus
-    under the same transaction from the point of view of the rest of the
-    quorum.
-
-    A lock request which interferes with a passively maintained lock will
-    force the two-phase commit protocol to complete and then transfer
-    ownership to the requesting entity, thus avoiding having to deal with
-    deadlock protocols at this point in the state machine.
-
-    Since any node can initiate concurrent lock requests to many other nodes
-    it is possible to deadlock.  When two nodes initiate conflicting lock
-    requests to the cluster the one achieving the quorum basically wins and
-    the other is forced to retry (go back one paragraph).  In this situation
-    no deadlock will occur.
-
-    If three are more nodes initiate conflicting lock requests to the
-    cluster a deadlock can occur whereby none of the nodes achieve a quorum.
-    In this case every node will know which of the other nodes was granted
-    the lock(s).  Deadlock resolution then proceeds simultaniously on the
-    three nodes (since they have the same information), whereby the lock
-    holders on the losing end of the algorithm transfer their locks to one
-    of the other nodes.  The lock state and knowledge of the lock state is
-    updated in real time on all nodes until a quorum is achieved.
-
-* Fully cache coherent and synchronized multi-master environment with
-  passive read locking.
-
-    This is a more complex form of clustering than the previous form.
-    Take the previous form and add the ability to passively hold SHARED
-    locks in addition to the EXCLUSIVE locks the previous form is able
-    to hold.
-
-    The advantage of being able to passively hold a shared lock on a sub-tree
-    (locks can be held on single nodes or entire sub-trees) is that it is
-    then possible for all nodes to validate a node (modify_tid) or entire
-    sub-tree (mirror_tid) with a very short network transaction and then
-    satisfy a large number of requests from local storage.
-
-* Fully cache coherent and synchronized multi-master environment with
-  passive read locking and slave-only nodes.
-
-    This is the MOST complex form of clustering we intend to support.
-    In a multi-master environment requiring a quorum of masters to operate
-    we implement all of the above plus ALSO allow additional nodes to be
-    added to the cluster as slave-only nodes.
-
-    The difference between a slave-only node and setting up a manual
-    mirror-stream from the cluster to a read-only snapshot on another
-    HAMMER2 filesystem is that the slave-only node will be fully
-    cache coherent with either the cluster proper (if connected to a quorum
-    of masters), or to one or more other nodes in the cluster (if not
-    connected to a quorum of masters), EVEN if the slave itself is not
-    completely caught up.
-
-    So if the slave-only cluster node is connected to the rest of the cluster
-    over a slow connection you basically get a combination of local disk
-    speeds for any data that is locally in sync and network-limited speeds
-    for any data that is not locally in sync.
-
-    slave-only cluster nodes run a standard mirror-stream in the background
-    to pull in the data as quickly as possible.
-
-    This is in constrast to a manual mirror-stream to a read-only
-    snapshot (basically a simple slave), which has no ability to bypass
-    the local storage to handle out-of-date requests (in fact has no ability
-    to detect that the local storage is out-of-date anyway).
+The inode structure also has two additional transaction ids used to optimize
+path lookups, stat, and directory lookup/scan operations.

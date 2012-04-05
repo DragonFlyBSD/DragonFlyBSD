@@ -40,7 +40,6 @@
  */
 
 #include <sys/cdefs.h>
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
@@ -582,11 +581,11 @@ hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		return;
 
 	/*
-	 * Set MODIFIED1 and add a chain ref to prevent destruction.  Both
+	 * Set MODIFIED and add a chain ref to prevent destruction.  Both
 	 * modified flags share the same ref.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_MODIFIED1) == 0) {
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED1);
+	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_chain_ref(hmp, chain);
 	}
 
@@ -674,9 +673,9 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain, int flags)
 	void *bdata;
 
 	/*
-	 * If the chain is already marked MODIFIED1 we can just return.
+	 * If the chain is already marked MODIFIED we can just return.
 	 */
-	if (chain->flags & HAMMER2_CHAIN_MODIFIED1) {
+	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 		if ((flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
 		    chain->bp == NULL) {
 			goto skip1;
@@ -685,10 +684,10 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain, int flags)
 	}
 
 	/*
-	 * Set MODIFIED1 and add a chain ref to prevent destruction.  Both
+	 * Set MODIFIED and add a chain ref to prevent destruction.  Both
 	 * modified flags share the same ref.
 	 */
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED1);
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 	hammer2_chain_ref(hmp, chain);
 
 	/*
@@ -726,9 +725,9 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain, int flags)
 skip1:
 	/*
 	 * Setting the DIRTYBP flag will cause the buffer to be dirtied or
-	 * written-out on unlock.  This bit is independent of the MODIFIED1
+	 * written-out on unlock.  This bit is independent of the MODIFIED
 	 * bit because the chain may still need meta-data adjustments done
-	 * by virtue of MODIFIED1 for its parent, and the buffer can be
+	 * by virtue of MODIFIED for its parent, and the buffer can be
 	 * flushed out (possibly multiple times) by the OS before that.
 	 *
 	 * Clearing the INITIAL flag (for indirect blocks) indicates that
@@ -808,6 +807,19 @@ skip1:
 skip2:
 	if ((flags & HAMMER2_MODIFY_NOSUB) == 0)
 		hammer2_chain_parent_setsubmod(hmp, chain);
+}
+
+/*
+ * Mark the volume as having been modified.  This short-cut version
+ * does not have to lock the volume's chain, which allows the ioctl
+ * code to make adjustments to connections without deadlocking.
+ */
+void
+hammer2_modify_volume(hammer2_mount_t *hmp)
+{
+	hammer2_voldata_lock(hmp);
+	atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED_AUX);
+	hammer2_voldata_unlock(hmp);
 }
 
 /*
@@ -1499,7 +1511,7 @@ again:
 	/*
 	 * (allocated) indicates that this is a newly-created chain element
 	 * rather than a renamed chain element.  In this situation we want
-	 * to place the chain element in the MODIFIED1 state.
+	 * to place the chain element in the MODIFIED state.
 	 *
 	 * The data area will be set up as follows:
 	 *
@@ -1532,7 +1544,7 @@ again:
 		 * to ensure that its state propagates up the newly
 		 * connected parent.
 		 *
-		 * We cannot depend on the chain being in a MODIFIED1
+		 * We cannot depend on the chain being in a MODIFIED
 		 * state, or it might already be in that state, so
 		 * even if the parent calls hammer2_chain_modify()
 		 * MOVED might not get set.  Thus we have to set it
@@ -2039,7 +2051,8 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	    (parent->flags & HAMMER2_CHAIN_SUBMODIFIED)) {
 		if ((parent->flags & HAMMER2_CHAIN_DEFERRED) == 0 &&
 		    ((parent->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-				       HAMMER2_CHAIN_MODIFIED1 |
+				       HAMMER2_CHAIN_MODIFIED |
+				       HAMMER2_CHAIN_MODIFIED_AUX |
 				       HAMMER2_CHAIN_MOVED)) != 0)) {
 			hammer2_chain_ref(hmp, parent);
 			TAILQ_INSERT_TAIL(&info->flush_list,
@@ -2095,7 +2108,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 					  &parent->shead, chain);
 			/*
 			 * We only recurse if SUBMODIFIED (internal node)
-			 * or MODIFIED1 (internal node or leaf) is set.
+			 * or MODIFIED (internal node or leaf) is set.
 			 * However, we must still track whether any MOVED
 			 * entries are present to determine if the parent's
 			 * blockref's need updating or not.
@@ -2103,7 +2116,8 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			if (chain->flags & HAMMER2_CHAIN_MOVED)
 				submoved = 1;
 			if ((chain->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-					     HAMMER2_CHAIN_MODIFIED1)) == 0) {
+					     HAMMER2_CHAIN_MODIFIED |
+					    HAMMER2_CHAIN_MODIFIED_AUX)) == 0) {
 				continue;
 			}
 
@@ -2127,7 +2141,8 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			 * child (recursively) is still dirty.
 			 */
 			if (chain->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-					   HAMMER2_CHAIN_MODIFIED1)) {
+					   HAMMER2_CHAIN_MODIFIED |
+					   HAMMER2_CHAIN_MODIFIED_AUX)) {
 				submodified = 1;
 				if (hammer2_debug & 0x0008)
 					kprintf("s");
@@ -2218,7 +2233,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * If destroying the object we unconditonally clear the MODIFIED1
+	 * If destroying the object we unconditonally clear the MODIFIED
 	 * and MOVED bits, and we destroy the buffer without writing it
 	 * out.
 	 *
@@ -2228,13 +2243,17 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 *     free pool.
 	 */
 	if (parent->flags & HAMMER2_CHAIN_DESTROYED) {
-		if (parent->flags & HAMMER2_CHAIN_MODIFIED1) {
+		if (parent->flags & HAMMER2_CHAIN_MODIFIED) {
 			if (parent->bp) {
 				parent->bp->b_flags |= B_INVAL|B_RELBUF;
 			}
 			atomic_clear_int(&parent->flags,
-					 HAMMER2_CHAIN_MODIFIED1);
+					 HAMMER2_CHAIN_MODIFIED);
 			hammer2_chain_drop(hmp, parent);
+		}
+		if (parent->flags & HAMMER2_CHAIN_MODIFIED_AUX) {
+			atomic_clear_int(&parent->flags,
+					 HAMMER2_CHAIN_MODIFIED_AUX);
 		}
 		if (parent->flags & HAMMER2_CHAIN_MOVED) {
 			atomic_clear_int(&parent->flags,
@@ -2247,24 +2266,28 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	/*
 	 * Flush this chain entry only if it is marked modified.
 	 */
-	if ((parent->flags & HAMMER2_CHAIN_MODIFIED1) == 0) {
+	if ((parent->flags & (HAMMER2_CHAIN_MODIFIED |
+			      HAMMER2_CHAIN_MODIFIED_AUX)) == 0) {
 		goto done;
 	}
 
 	/*
-	 * Clear MODIFIED1 and set HAMMER2_CHAIN_MOVED.  The caller
+	 * Clear MODIFIED and set HAMMER2_CHAIN_MOVED.  The caller
 	 * will re-test the MOVED bit.
 	 *
 	 * bits own a single parent ref and the MOVED bit owns its own
 	 * parent ref.
 	 */
-	atomic_clear_int(&parent->flags, HAMMER2_CHAIN_MODIFIED1);
-	if (parent->flags & HAMMER2_CHAIN_MOVED) {
-		hammer2_chain_drop(hmp, parent);
-	} else {
-		/* inherit ref from the MODIFIED1 we cleared */
-		atomic_set_int(&parent->flags, HAMMER2_CHAIN_MOVED);
+	if (parent->flags & HAMMER2_CHAIN_MODIFIED) {
+		atomic_clear_int(&parent->flags, HAMMER2_CHAIN_MODIFIED);
+		if (parent->flags & HAMMER2_CHAIN_MOVED) {
+			hammer2_chain_drop(hmp, parent);
+		} else {
+			/* inherit ref from the MODIFIED we cleared */
+			atomic_set_int(&parent->flags, HAMMER2_CHAIN_MOVED);
+		}
 	}
+	atomic_clear_int(&parent->flags, HAMMER2_CHAIN_MODIFIED_AUX);
 
 	/*
 	 * If this is part of a recursive flush we can go ahead and write
@@ -2471,8 +2494,10 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 			 * wind up on our flush_list again.
 			 */
 			if ((scan->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-					    HAMMER2_CHAIN_MODIFIED1)) == 0)
+					    HAMMER2_CHAIN_MODIFIED |
+					    HAMMER2_CHAIN_MODIFIED_AUX)) == 0) {
 				reflush = 1;
+			}
 			hammer2_chain_drop(hmp, scan);
 		}
 		if ((hammer2_debug & 0x0040) && reflush)
@@ -2484,7 +2509,8 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	 * be completely flushed.
 	 */
 	if (chain->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-			    HAMMER2_CHAIN_MODIFIED1 |
+			    HAMMER2_CHAIN_MODIFIED |
+			    HAMMER2_CHAIN_MODIFIED_AUX |
 			    HAMMER2_CHAIN_MOVED)) {
 		hammer2_chain_parent_setsubmod(hmp, chain);
 	}
@@ -2497,7 +2523,8 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	if (parent == NULL ||
 	    chain->bref.type != HAMMER2_BREF_TYPE_INODE ||
 	    (chain->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-			     HAMMER2_CHAIN_MODIFIED1 |
+			     HAMMER2_CHAIN_MODIFIED |
+			     HAMMER2_CHAIN_MODIFIED_AUX |
 			     HAMMER2_CHAIN_MOVED)) != HAMMER2_CHAIN_MOVED) {
 		return;
 	}

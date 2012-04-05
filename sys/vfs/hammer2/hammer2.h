@@ -65,6 +65,7 @@
 
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
+#include "hammer2_ioctl.h"
 
 struct hammer2_chain;
 struct hammer2_inode;
@@ -123,7 +124,7 @@ typedef struct hammer2_chain hammer2_chain_t;
 int hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2);
 SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 
-#define HAMMER2_CHAIN_MODIFIED1		0x00000001	/* active mods */
+#define HAMMER2_CHAIN_MODIFIED		0x00000001	/* active mods */
 #define HAMMER2_CHAIN_DIRTYEMBED	0x00000002	/* inode embedded */
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
 #define HAMMER2_CHAIN_SUBMODIFIED	0x00000008	/* 1+ subs modified */
@@ -134,6 +135,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list*/
 #define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying */
+#define HAMMER2_CHAIN_MODIFIED_AUX	0x00000800	/* hmp->vchain only */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -251,6 +253,7 @@ struct hammer2_mount {
 	hammer2_chain_t *rchain;	/* label-root */
 	struct hammer2_inode *iroot;
 	struct lock	alloclk;	/* lockmgr lock */
+	struct lock	voldatalk;	/* lockmgr lock */
 
 	hammer2_volume_data_t voldata;
 	hammer2_off_t	freecache[HAMMER2_FREECACHE_TYPES][HAMMER2_MAX_RADIX+1];
@@ -309,6 +312,8 @@ void hammer2_inode_lock_sh(hammer2_inode_t *ip);
 void hammer2_inode_unlock_sh(hammer2_inode_t *ip);
 void hammer2_inode_busy(hammer2_inode_t *ip);
 void hammer2_inode_unbusy(hammer2_inode_t *ip);
+void hammer2_voldata_lock(hammer2_mount_t *hmp);
+void hammer2_voldata_unlock(hammer2_mount_t *hmp);
 
 void hammer2_mount_exlock(hammer2_mount_t *hmp);
 void hammer2_mount_shlock(hammer2_mount_t *hmp);
@@ -351,6 +356,7 @@ int hammer2_hardlink_create(hammer2_inode_t *ip, hammer2_inode_t *dip,
 /*
  * hammer2_chain.c
  */
+void hammer2_modify_volume(hammer2_mount_t *hmp);
 hammer2_chain_t *hammer2_chain_alloc(hammer2_mount_t *hmp,
 				hammer2_blockref_t *bref);
 void hammer2_chain_free(hammer2_mount_t *hmp, hammer2_chain_t *chain);
@@ -386,6 +392,12 @@ void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 				hammer2_chain_t *chain);
 void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+
+/*
+ * hammer2_ioctl.c
+ */
+int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
+				int fflag, struct ucred *cred);
 
 /*
  * hammer2_freemap.c
