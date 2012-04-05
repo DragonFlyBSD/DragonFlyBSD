@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/mppe.c,v 1.4.2.6 2002/09/01 02:12:29 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/mppe.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -518,7 +517,8 @@ MPPEInitOptsOutput(struct bundle *bundle, struct fsm_opt *o,
   if (!MPPE_MasterKeyValid) {
     log_Printf(LogCCP, "MPPE: MasterKey is invalid,"
                " MPPE is available only with CHAP81 authentication\n");
-    ua_htonl(0x0, o->data);
+    mval = 0;
+    ua_htonl(&mval, o->data);
     return;
   }
 
