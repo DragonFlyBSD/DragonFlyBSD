@@ -1381,7 +1381,7 @@ diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, int donecnt)
 cdev_t
 disk_locate(const char *devname)
 {
-	return devfs_find_device_by_name(devname);
+	return devfs_find_device_by_name("%s", devname);
 }
 
 void

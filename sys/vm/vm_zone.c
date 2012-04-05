@@ -702,7 +702,7 @@ zerror(int error)
 		msg = "zone: invalid error";
 		break;
 	}
-	panic(msg);
+	panic("%s", msg);
 }
 #endif
 

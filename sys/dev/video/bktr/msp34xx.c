@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/msp34xx.c,v 1.5 2004/12/16 23:19:57 julian Exp
- * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.8 2007/10/03 19:27:08 swildner Exp $
  */
 
 /*
@@ -131,7 +130,6 @@ struct msp3400c {
 
 	/* thread */
 	struct thread	    *kthread;
-	char                *threaddesc;
 
 	int                  active,restart,rmmod;
 
@@ -1146,12 +1144,6 @@ int msp_attach(bktr_ptr_t bktr)
 	msp->bass   = 32768;
 	msp->treble = 32768;
 	msp->input  = -1;
-	msp->threaddesc = kmalloc(15 * sizeof(char), M_DEVBUF, M_NOWAIT);
-	if (msp->threaddesc == NULL) {
-		kfree(msp, M_DEVBUF);
-                return ENOMEM;
-	}
-	ksnprintf(msp->threaddesc, 14, "%s_msp34xx_thread", bktr->bktr_xname);
 
 	for (i = 0; i < DFP_COUNT; i++)
 		msp->dfp_regs[i] = -1;
@@ -1162,7 +1154,6 @@ int msp_attach(bktr_ptr_t bktr)
 	if (-1 != rev1)
 		rev2 = msp3400c_read(bktr, I2C_MSP3400C_DFP, 0x1f);
 	if ((-1 == rev1) || (0 == rev1 && 0 == rev2)) {
-		kfree(msp->threaddesc, M_DEVBUF);
 		kfree(msp, M_DEVBUF);
 		bktr->msp3400c_info = NULL;
 		kprintf("%s: msp3400: error while reading chip version\n", bktr_name(bktr));
@@ -1197,10 +1188,9 @@ int msp_attach(bktr_ptr_t bktr)
 
 	/* startup control thread */
 	err = kthread_create(msp->simple ? msp3410d_thread : msp3400c_thread,
-			     bktr, &msp->kthread, msp->threaddesc);
+	    bktr, &msp->kthread, "%s_msp34xx_thread", bktr->bktr_xname);
 	if (err) {
 		kprintf("%s: Error returned by kthread_create: %d", bktr_name(bktr), err);
-		kfree(msp->threaddesc, M_DEVBUF);
 		kfree(msp, M_DEVBUF);
 		bktr->msp3400c_info = NULL;
 		return ENXIO;

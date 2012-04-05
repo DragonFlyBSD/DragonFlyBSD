@@ -280,12 +280,7 @@ struct ifnet {
 	int	if_cpuid;
 	struct netmsg_base *if_start_nmsg; /* percpu msgs to sched if_start */
 	void	*if_pf_kif; /* pf interface abstraction */
- 	union {
- 		void *carp_s;		/* carp structure (used by !carp ifs) */
- 		struct ifnet *carp_d;	/* ptr to carpdev (used by carp ifs) */
- 	} if_carp_ptr;
-	#define if_carp		if_carp_ptr.carp_s
-	#define if_carpdev	if_carp_ptr.carp_d
+	void	*if_unused;
 };
 typedef void if_init_f_t (void *);
 

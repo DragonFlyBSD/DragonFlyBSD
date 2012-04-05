@@ -358,7 +358,7 @@ usb_create_event_thread(device_t self)
 			taskq->name = taskq_names[i];
 			TAILQ_INIT(&taskq->tasks);
 			if (kthread_create(usb_task_thread, taskq,
-			    &taskq->task_thread_proc, taskq->name)) {
+			    &taskq->task_thread_proc, "%s", taskq->name)) {
 				kprintf("unable to create task thread\n");
 				panic("usb_create_event_thread task");
 			}

@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ip.c,v 1.78.2.11 2002/09/01 02:12:27 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/ip.c,v 1.3 2004/08/09 19:54:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -202,7 +201,6 @@ FilterCheck(const unsigned char *packet, u_int32_t family,
   int mindata;			/* minimum data size or zero */
   const struct filterent *fp = filter->rule;
   char dbuff[100], dstip[16];
-  struct protoent *pe;
   struct ncpaddr srcaddr, dstaddr;
   const char *payload;		/* IP payload */
   int datalen;			/* IP datagram length */
