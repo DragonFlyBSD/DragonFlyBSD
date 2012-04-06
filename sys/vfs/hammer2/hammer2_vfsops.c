@@ -52,6 +52,10 @@ struct hammer2_sync_info {
 	int waitfor;
 };
 
+TAILQ_HEAD(hammer2_mntlist, hammer2_mount);
+static struct hammer2_mntlist hammer2_mntlist;
+static struct lock hammer2_mntlk;
+
 int hammer2_debug;
 int hammer2_cluster_enable = 1;
 long hammer2_iod_file_read;
@@ -170,6 +174,9 @@ hammer2_vfs_init(struct vfsconf *conf)
 	if (error)
 		kprintf("HAMMER2 structure size mismatch; cannot continue.\n");
 
+	lockinit(&hammer2_mntlk, "mntlk", 0, 0);
+	TAILQ_INIT(&hammer2_mntlist);
+
 	return (error);
 }
 
@@ -199,6 +206,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	      struct ucred *cred)
 {
 	struct hammer2_mount_info info;
+	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
 	hammer2_key_t lhc;
 	struct vnode *devvp;
@@ -212,9 +220,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	char *dev;
 	char *label;
 	int ronly = 1;
+	int create_hmp;
 	int error;
 
 	hmp = NULL;
+	pmp = NULL;
 	dev = NULL;
 	label = NULL;
 	devvp = NULL;
@@ -253,7 +263,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		if (mp->mnt_flag & MNT_UPDATE) {
 			/* Update mount */
 			/* HAMMER2 implements NFS export via mountctl */
-			hmp = MPTOH2(mp);
+			hmp = MPTOHMP(mp);
 			devvp = hmp->devvp;
 			error = hammer2_remount(mp, path, devvp, cred);
 			return error;
@@ -275,28 +285,51 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		if (vn_isdisk(devvp, &error))
 			error = vfs_mountedon(devvp);
 	}
-	if (error == 0 && vcount(devvp) > 0)
-		error = EBUSY;
 
 	/*
-	 * Now open the device
+	 * Determine if the device has already been mounted.  After this
+	 * check hmp will be non-NULL if we are doing the second or more
+	 * hammer2 mounts from the same device.
 	 */
-	if (error == 0) {
-		ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		error = vinvalbuf(devvp, V_SAVE, 0, 0);
+	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
+	TAILQ_FOREACH(hmp, &hammer2_mntlist, mntentry) {
+		if (hmp->devvp == devvp)
+			break;
+	}
+
+	/*
+	 * Open the device if this isn't a secondary mount
+	 */
+	if (hmp) {
+		create_hmp = 0;
+	} else {
+		create_hmp = 1;
+		if (error == 0 && vcount(devvp) > 0)
+			error = EBUSY;
+
+		/*
+		 * Now open the device
+		 */
 		if (error == 0) {
-			error = VOP_OPEN(devvp, ronly ? FREAD : FREAD | FWRITE,
-					 FSCRED, NULL);
+			ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
+			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
+			error = vinvalbuf(devvp, V_SAVE, 0, 0);
+			if (error == 0) {
+				error = VOP_OPEN(devvp,
+						 ronly ? FREAD : FREAD | FWRITE,
+						 FSCRED, NULL);
+			}
+			vn_unlock(devvp);
 		}
-		vn_unlock(devvp);
+		if (error && devvp) {
+			vrele(devvp);
+			devvp = NULL;
+		}
+		if (error) {
+			lockmgr(&hammer2_mntlk, LK_RELEASE);
+			return error;
+		}
 	}
-	if (error && devvp) {
-		vrele(devvp);
-		devvp = NULL;
-	}
-	if (error)
-		return error;
 
 	/*
 	 * Block device opened successfully, finish initializing the
@@ -304,37 +337,48 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 *
 	 * From this point on we have to call hammer2_unmount() on failure.
 	 */
-	hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
-	mp->mnt_data = (qaddr_t)hmp;
-	hmp->mp = mp;
-	hmp->ronly = ronly;
-	hmp->devvp = devvp;
-	kmalloc_create(&hmp->minode, "HAMMER2-inodes");
-	kmalloc_create(&hmp->mchain, "HAMMER2-chains");
+	pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
+	mp->mnt_data = (qaddr_t)pmp;
+	pmp->mp = mp;
+
+	if (create_hmp) {
+		hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
+		hmp->ronly = ronly;
+		hmp->devvp = devvp;
+		kmalloc_create(&hmp->minode, "HAMMER2-inodes");
+		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
+		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
+	}
+	pmp->hmp = hmp;
+	++hmp->pmp_count;
+	lockmgr(&hammer2_mntlk, LK_RELEASE);
+	kprintf("hammer2_mount hmp=%p pmpcnt=%d\n", hmp, hmp->pmp_count);
 	
 	mp->mnt_flag = MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
 
-	/*
-	 * vchain setup. vchain.data is special cased to NULL.  vchain.refs
-	 * is initialized and will never drop to 0.
-	 */
-	hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
-	hmp->vchain.refs = 1;
-	hmp->vchain.data = (void *)&hmp->voldata;
-	hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
-	/* hmp->vchain.u.xxx is left NULL */
-	lockinit(&hmp->vchain.lk, "volume", 0, LK_CANRECURSE);
-	lockinit(&hmp->alloclk, "h2alloc", 0, 0);
-	lockinit(&hmp->voldatalk, "voldata", 0, LK_CANRECURSE);
+	if (create_hmp) {
+		/*
+		 * vchain setup. vchain.data is special cased to NULL.
+		 * vchain.refs is initialized and will never drop to 0.
+		 */
+		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
+		hmp->vchain.refs = 1;
+		hmp->vchain.data = (void *)&hmp->voldata;
+		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
+		/* hmp->vchain.u.xxx is left NULL */
+		lockinit(&hmp->vchain.lk, "volume", 0, LK_CANRECURSE);
+		lockinit(&hmp->alloclk, "h2alloc", 0, 0);
+		lockinit(&hmp->voldatalk, "voldata", 0, LK_CANRECURSE);
 
-	/*
-	 * Install the volume header
-	 */
-	error = hammer2_install_volume_header(hmp);
-	if (error) {
-		hammer2_vfs_unmount(mp, MNT_FORCE);
-		return error;
+		/*
+		 * Install the volume header
+		 */
+		error = hammer2_install_volume_header(hmp);
+		if (error) {
+			hammer2_vfs_unmount(mp, MNT_FORCE);
+			return error;
+		}
 	}
 
 	/*
@@ -358,20 +402,26 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * Then locate the root inode by scanning the directory keyspace
 	 * represented by the label.
 	 */
-	lhc = hammer2_dirhash(label, strlen(label));
-	parent = &hmp->vchain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
-	schain = hammer2_chain_lookup(hmp, &parent,
+	if (create_hmp) {
+		parent = &hmp->vchain;
+		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+		schain = hammer2_chain_lookup(hmp, &parent,
 				      HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY, 0);
-	hammer2_chain_unlock(hmp, parent);
-	if (schain == NULL) {
-		kprintf("hammer2_mount: invalid super-root\n");
-		hammer2_vfs_unmount(mp, MNT_FORCE);
-		return EINVAL;
+		hammer2_chain_unlock(hmp, parent);
+		if (schain == NULL) {
+			kprintf("hammer2_mount: invalid super-root\n");
+			hammer2_vfs_unmount(mp, MNT_FORCE);
+			return EINVAL;
+		}
+		hammer2_chain_ref(hmp, schain);	/* for hmp->schain */
+		hmp->schain = schain;		/* left locked */
+	} else {
+		schain = hmp->schain;
+		hammer2_chain_lock(hmp, schain, HAMMER2_RESOLVE_ALWAYS);
 	}
 
-	hammer2_chain_ref(hmp, schain);	/* for hmp->schain */
 	parent = schain;
+	lhc = hammer2_dirhash(label, strlen(label));
 	rchain = hammer2_chain_lookup(hmp, &parent,
 				      lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 				      0);
@@ -387,18 +437,24 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 	hammer2_chain_unlock(hmp, parent);
 	if (rchain == NULL) {
-		kprintf("hammer2_mount: root label not found\n");
-		hammer2_chain_drop(hmp, schain);
+		kprintf("hammer2_mount: PFS label not found\n");
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
-	hammer2_chain_ref(hmp, rchain);	/* for hmp->rchain */
-	hammer2_chain_unlock(hmp, rchain);
+	if (rchain->flags & HAMMER2_CHAIN_MOUNTED) {
+		hammer2_chain_unlock(hmp, rchain);
+		kprintf("hammer2_mount: PFS label already mounted!\n");
+		hammer2_vfs_unmount(mp, MNT_FORCE);
+		return EINVAL;
+	}
+	atomic_set_int(&rchain->flags, HAMMER2_CHAIN_MOUNTED);
 
-	hmp->schain = schain;		/* left held & unlocked */
-	hmp->rchain = rchain;		/* left held & unlocked */
-	hmp->iroot = rchain->u.ip;	/* implied hold from rchain */
-	kprintf("iroot %p\n", rchain->u.ip);
+	hammer2_chain_ref(hmp, rchain);	/* for pmp->rchain */
+	hammer2_chain_unlock(hmp, rchain);
+	pmp->rchain = rchain;		/* left held & unlocked */
+	pmp->iroot = rchain->u.ip;	/* implied hold from rchain */
+	pmp->iroot->pmp = pmp;
+	kprintf("iroot %p\n", pmp->iroot);
 
 	vfs_getnewfsid(mp);
 	vfs_add_vnodeops(mp, &hammer2_vnode_vops, &mp->mnt_vn_norm_ops);
@@ -429,15 +485,15 @@ static
 int
 hammer2_vfs_unmount(struct mount *mp, int mntflags)
 {
+	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
 	int flags;
 	int error = 0;
 	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 	struct vnode *devvp;
 
-	kprintf("hammer2_unmount\n");
-
-	hmp = MPTOH2(mp);
+	pmp = MPTOPMP(mp);
+	hmp = pmp->hmp;
 	flags = 0;
 
 	if (mntflags & MNT_FORCE)
@@ -449,11 +505,15 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	 * If mount initialization proceeded far enough we must flush
 	 * its vnodes.
 	 */
-	if (hmp->iroot)
+	if (pmp->iroot)
 		error = vflush(mp, 0, flags);
 
 	if (error)
 		return error;
+
+	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
+	--hmp->pmp_count;
+	kprintf("hammer2_unmount hmp=%p pmpcnt=%d\n", hmp, hmp->pmp_count);
 
 	/*
 	 * Flush any left over chains.  The voldata lock is only used
@@ -468,50 +528,60 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	} else {
 		hammer2_voldata_unlock(hmp);
 	}
-	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
-				 HAMMER2_CHAIN_MODIFIED_AUX |
-				 HAMMER2_CHAIN_SUBMODIFIED)) {
-		kprintf("hammer2_unmount: chains left over after final sync\n");
-		if (hammer2_debug & 0x0010)
-			Debugger("entered debugger");
+	if (hmp->pmp_count == 0) {
+		if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
+					 HAMMER2_CHAIN_MODIFIED_AUX |
+					 HAMMER2_CHAIN_SUBMODIFIED)) {
+			kprintf("hammer2_unmount: chains left over after "
+				"final sync\n");
+			if (hammer2_debug & 0x0010)
+				Debugger("entered debugger");
+		}
 	}
 
 	/*
 	 * Cleanup the root and super-root chain elements (which should be
 	 * clean).
 	 */
-	hmp->iroot = NULL;
-	if (hmp->rchain) {
-		KKASSERT(hmp->rchain->refs == 1);
-		hammer2_chain_drop(hmp, hmp->rchain);
-		hmp->rchain = NULL;
+	pmp->iroot = NULL;
+	if (pmp->rchain) {
+		atomic_clear_int(&pmp->rchain->flags, HAMMER2_CHAIN_MOUNTED);
+		KKASSERT(pmp->rchain->refs == 1);
+		hammer2_chain_drop(hmp, pmp->rchain);
+		pmp->rchain = NULL;
 	}
-	if (hmp->schain) {
-		KKASSERT(hmp->schain->refs == 1);
-		hammer2_chain_drop(hmp, hmp->schain);
-		hmp->schain = NULL;
+	if (hmp->pmp_count == 0) {
+		if (hmp->schain) {
+			KKASSERT(hmp->schain->refs == 1);
+			hammer2_chain_drop(hmp, hmp->schain);
+			hmp->schain = NULL;
+		}
+
+		/*
+		 * Finish up with the device vnode
+		 */
+		if ((devvp = hmp->devvp) != NULL) {
+			vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
+			hmp->devvp = NULL;
+			VOP_CLOSE(devvp, (ronly ? FREAD : FREAD|FWRITE));
+			vrele(devvp);
+			devvp = NULL;
+		}
+		kmalloc_destroy(&hmp->minode);
+		kmalloc_destroy(&hmp->mchain);
 	}
-
-	/*
-	 * Finish up with the device vnode
-	 */
-	if ((devvp = hmp->devvp) != NULL) {
-		vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
-		hmp->devvp = NULL;
-		VOP_CLOSE(devvp, (ronly ? FREAD : FREAD|FWRITE));
-		vrele(devvp);
-		devvp = NULL;
-	}
-
-	kmalloc_destroy(&hmp->minode);
-	kmalloc_destroy(&hmp->mchain);
-
 	hammer2_mount_unlock(hmp);
 
+	pmp->mp = NULL;
+	pmp->hmp = NULL;
 	mp->mnt_data = NULL;
-	hmp->mp = NULL;
-	kfree(hmp, M_HAMMER2);
 
+	kfree(pmp, M_HAMMER2);
+	if (hmp->pmp_count == 0) {
+		TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
+		kfree(hmp, M_HAMMER2);
+	}
+	lockmgr(&hammer2_mntlk, LK_RELEASE);
 	return (error);
 }
 
@@ -528,22 +598,22 @@ static
 int
 hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 {
-	hammer2_mount_t *hmp;
+	hammer2_pfsmount_t *pmp;
 	int error;
 	struct vnode *vp;
 
-	hmp = MPTOH2(mp);
-	hammer2_mount_exlock(hmp);
-	if (hmp->iroot == NULL) {
+	pmp = MPTOPMP(mp);
+	hammer2_mount_exlock(pmp->hmp);
+	if (pmp->iroot == NULL) {
 		*vpp = NULL;
 		error = EINVAL;
 	} else {
-		vp = hammer2_igetv(hmp->iroot, &error);
+		vp = hammer2_igetv(pmp->iroot, &error);
 		*vpp = vp;
 		if (vp == NULL)
 			kprintf("vnodefail\n");
 	}
-	hammer2_mount_unlock(hmp);
+	hammer2_mount_unlock(pmp->hmp);
 
 	return (error);
 }
@@ -554,7 +624,7 @@ hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	hammer2_mount_t *hmp;
 
-	hmp = MPTOH2(mp);
+	hmp = MPTOHMP(mp);
 
 	mp->mnt_stat.f_files = 10;
 	mp->mnt_stat.f_bfree = 10;
@@ -570,7 +640,7 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 {
 	hammer2_mount_t *hmp;
 
-	hmp = MPTOH2(mp);
+	hmp = MPTOHMP(mp);
 
 	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
 	mp->mnt_vstat.f_files = 0;
@@ -606,7 +676,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	int error;
 	int haswork;
 
-	hmp = MPTOH2(mp);
+	hmp = MPTOHMP(mp);
 
 	flags = VMSC_GETVP;
 	if (waitfor & MNT_LAZY)

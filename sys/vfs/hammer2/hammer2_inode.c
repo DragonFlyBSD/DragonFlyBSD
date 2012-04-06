@@ -78,9 +78,10 @@ struct vnode *
 hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 {
 	struct vnode *vp;
-	hammer2_mount_t *hmp;
+	hammer2_pfsmount_t *pmp;
 
-	hmp = ip->hmp;
+	pmp = ip->pmp;
+	KKASSERT(pmp != NULL);
 	*errorp = 0;
 
 	for (;;) {
@@ -124,7 +125,7 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 		 * allocation races.  This function will return an
 		 * exclusively locked and referenced vnode.
 		 */
-		*errorp = getnewvnode(VT_HAMMER2, H2TOMP(hmp), &vp, 0, 0);
+		*errorp = getnewvnode(VT_HAMMER2, pmp->mp, &vp, 0, 0);
 		if (*errorp) {
 			vp = NULL;
 			break;
@@ -169,12 +170,12 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			break;
 		}
 
-		if (ip == hmp->iroot)
+		if (ip == pmp->iroot)
 			vsetflags(vp, VROOT);
 
 		vp->v_data = ip;
 		ip->vp = vp;
-		hammer2_chain_ref(hmp, &ip->chain);	/* vp association */
+		hammer2_chain_ref(ip->hmp, &ip->chain);	/* vp association */
 		hammer2_inode_unlock_ex(ip);
 		break;
 	}
@@ -201,12 +202,12 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
  * under the super-root, so the inode number is set to 1 in this case.
  */
 int
-hammer2_inode_create(hammer2_mount_t *hmp,
+hammer2_inode_create(hammer2_inode_t *dip,
 		     struct vattr *vap, struct ucred *cred,
-		     hammer2_inode_t *dip,
 		     const uint8_t *name, size_t name_len,
 		     hammer2_inode_t **nipp)
 {
+	hammer2_mount_t *hmp = dip->hmp;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
 	hammer2_inode_t *nip;

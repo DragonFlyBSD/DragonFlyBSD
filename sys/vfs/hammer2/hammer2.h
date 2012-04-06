@@ -70,6 +70,7 @@
 struct hammer2_chain;
 struct hammer2_inode;
 struct hammer2_mount;
+struct hammer2_pfsmount;
 
 /*
  * The chain structure tracks blockref recursions all the way to
@@ -136,6 +137,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list*/
 #define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying */
 #define HAMMER2_CHAIN_MODIFIED_AUX	0x00000800	/* hmp->vchain only */
+#define HAMMER2_CHAIN_MOUNTED		0x00001000	/* PFS is mounted */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -204,7 +206,8 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
  * A hammer2 inode.
  */
 struct hammer2_inode {
-	struct hammer2_mount	*hmp;
+	struct hammer2_mount	*hmp;		/* Global mount */
+	struct hammer2_pfsmount	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
 	hammer2_chain_t		chain;
@@ -233,13 +236,13 @@ struct hammer2_data {
 typedef struct hammer2_data hammer2_data_t;
 
 /*
- * Governing mount structure for filesystem (aka vp->v_mount)
+ * Global (per device) mount structure for device (aka vp->v_mount->hmp)
  */
 struct hammer2_mount {
-	struct mount	*mp;		/* kernel mount */
 	struct vnode	*devvp;		/* device vnode */
-	struct netexport export;	/* nfs export */
 	int		ronly;		/* read-only mount */
+	int		pmp_count;	/* PFS mounts backed by us */
+	TAILQ_ENTRY(hammer2_mount) mntentry; /* hammer2_mntlist */
 
 	struct malloc_type *minode;
 	int 		ninodes;
@@ -250,8 +253,6 @@ struct hammer2_mount {
 	int		maxipstacks;
 	hammer2_chain_t vchain;		/* anchor chain */
 	hammer2_chain_t *schain;	/* super-root */
-	hammer2_chain_t *rchain;	/* label-root */
-	struct hammer2_inode *iroot;
 	struct lock	alloclk;	/* lockmgr lock */
 	struct lock	voldatalk;	/* lockmgr lock */
 
@@ -261,25 +262,39 @@ struct hammer2_mount {
 
 typedef struct hammer2_mount hammer2_mount_t;
 
+/*
+ * Per-PFS mount structure for device (aka vp->v_mount)
+ */
+struct hammer2_pfsmount {
+	struct mount		*mp;		/* kernel mount */
+	struct hammer2_mount	*hmp;		/* device global mount */
+	hammer2_chain_t 	*rchain;	/* PFS root chain */
+	hammer2_inode_t		*iroot;		/* PFS root inode */
+	struct netexport	export;		/* nfs export */
+	int			ronly;		/* read-only mount */
+};
+
+typedef struct hammer2_pfsmount hammer2_pfsmount_t;
+
 #if defined(_KERNEL)
 
 MALLOC_DECLARE(M_HAMMER2);
-
-static __inline
-struct mount *
-H2TOMP(struct hammer2_mount *hmp)
-{
-	return (struct mount *) hmp->mp;
-}
 
 #define VTOI(vp)	((hammer2_inode_t *)(vp)->v_data)
 #define ITOV(ip)	((ip)->vp)
 
 static __inline
-struct hammer2_mount *
-MPTOH2(struct mount *mp)
+hammer2_pfsmount_t *
+MPTOPMP(struct mount *mp)
 {
-	return (hammer2_mount_t *) mp->mnt_data;
+	return ((hammer2_pfsmount_t *)mp->mnt_data);
+}
+
+static __inline
+hammer2_mount_t *
+MPTOHMP(struct mount *mp)
+{
+	return (((hammer2_pfsmount_t *)mp->mnt_data)->hmp);
 }
 
 extern struct vop_ops hammer2_vnode_vops;
@@ -336,17 +351,16 @@ int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
  */
 struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
 
-hammer2_inode_t *hammer2_inode_alloc(hammer2_mount_t *hmp, void *data);
+hammer2_inode_t *hammer2_inode_alloc(hammer2_pfsmount_t *pmp, void *data);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
 int hammer2_inode_calc_alloc(hammer2_key_t filesize);
 
-int hammer2_inode_create(hammer2_mount_t *hmp,
-			struct vattr *vap, struct ucred *cred,
-			hammer2_inode_t *dip,
-			const uint8_t *name, size_t name_len,
-			hammer2_inode_t **nipp);
+int hammer2_inode_create(hammer2_inode_t *dip,
+			 struct vattr *vap, struct ucred *cred,
+			 const uint8_t *name, size_t name_len,
+			 hammer2_inode_t **nipp);
 
 int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *nip,
 			const uint8_t *name, size_t name_len);

@@ -942,8 +942,10 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
 		while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
 			parent = parent->parent;
-		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
+		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			chain->u.ip->pip = parent->u.ip;
+			chain->u.ip->pmp = parent->u.ip->pmp;
+		}
 	}
 
 	/*
@@ -1504,8 +1506,10 @@ again:
 		hammer2_chain_t *scan = parent;
 		while (scan->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
 			scan = scan->parent;
-		if (scan->bref.type == HAMMER2_BREF_TYPE_INODE)
+		if (scan->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			chain->u.ip->pip = scan->u.ip;
+			chain->u.ip->pmp = scan->u.ip->pmp;
+		}
 	}
 
 	/*

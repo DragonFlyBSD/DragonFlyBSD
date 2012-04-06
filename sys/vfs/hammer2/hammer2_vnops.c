@@ -205,7 +205,7 @@ static
 int
 hammer2_vop_getattr(struct vop_getattr_args *ap)
 {
-	hammer2_mount_t *hmp;
+	hammer2_pfsmount_t *pmp;
 	hammer2_inode_t *ip;
 	struct vnode *vp;
 	struct vattr *vap;
@@ -214,11 +214,11 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	vap = ap->a_vap;
 
 	ip = VTOI(vp);
-	hmp = ip->hmp;
+	pmp = ip->pmp;
 
 	hammer2_inode_lock_sh(ip);
 
-	vap->va_fsid = hmp->mp->mnt_stat.f_fsid.val[0];
+	vap->va_fsid = pmp->mp->mnt_stat.f_fsid.val[0];
 	vap->va_fileid = ip->ip_data.inum;
 	vap->va_mode = ip->ip_data.mode;
 	vap->va_nlink = ip->ip_data.nlinks;
@@ -388,7 +388,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			goto done;
 	}
 	if (saveoff == 1) {
-		if (ip->pip == NULL || ip == hmp->iroot)
+		if (ip->pip == NULL || ip == ip->pmp->iroot)
 			xip = ip;
 		else
 			xip = ip->pip;
@@ -1313,8 +1313,8 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
-	error = hammer2_inode_create(hmp, ap->a_vap, ap->a_cred,
-				     dip, name, name_len, &nip);
+	error = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
+				     name, name_len, &nip);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1521,8 +1521,8 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
-	error = hammer2_inode_create(hmp, ap->a_vap, ap->a_cred,
-				     dip, name, name_len, &nip);
+	error = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
+				     name, name_len, &nip);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1564,8 +1564,8 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 	ap->a_vap->va_type = VLNK;	/* enforce type */
 
-	error = hammer2_inode_create(hmp, ap->a_vap, ap->a_cred,
-				     dip, name, name_len, &nip);
+	error = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
+				     name, name_len, &nip);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1970,18 +1970,18 @@ int
 hammer2_vop_mountctl(struct vop_mountctl_args *ap)
 {
 	struct mount *mp;
-	struct hammer2_mount *hmp;
+	hammer2_pfsmount_t *pmp;
 	int rc;
 
 	switch (ap->a_op) {
 	case (MOUNTCTL_SET_EXPORT):
 		mp = ap->a_head.a_ops->head.vv_mount;
-		hmp = MPTOH2(mp);
+		pmp = MPTOPMP(mp);
 
 		if (ap->a_ctllen != sizeof(struct export_args))
 			rc = (EINVAL);
 		else
-			rc = vfs_export(mp, &hmp->export,
+			rc = vfs_export(mp, &pmp->export,
 					(const struct export_args *)ap->a_ctl);
 		break;
 	default:

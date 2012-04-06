@@ -355,14 +355,14 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	int error;
 
 	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure 0-termination */
-	error = hammer2_inode_create(hmp, NULL, NULL, hmp->schain->u.ip,
+	error = hammer2_inode_create(hmp->schain->u.ip, NULL, NULL,
 				     pfs->name, strlen(pfs->name),
 				     &nip);
 	if (error == 0) {
 		hammer2_chain_modify(hmp, &nip->chain, 0);
 		nip->ip_data.pfs_type = pfs->pfs_type;
 		nip->ip_data.pfs_id = pfs->pfs_id;
-		/* nip->ip_data.pfsfsid = XXX */
+		nip->ip_data.pfs_fsid = pfs->pfs_fsid;
 		hammer2_chain_unlock(hmp, &nip->chain);
 	}
 	return (error);
