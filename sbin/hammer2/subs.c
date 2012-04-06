@@ -44,6 +44,9 @@ hammer2_ioctl_handle(const char *sel_path)
 	struct hammer2_ioc_version info;
 	int fd;
 
+	if (sel_path == NULL)
+		sel_path = ".";
+
 	fd = open(sel_path, O_RDONLY, 0);
 	if (fd < 0) {
 		fprintf(stderr, "hammer2: Unable to open %s: %s\n",
@@ -57,4 +60,76 @@ hammer2_ioctl_handle(const char *sel_path)
 		return(-1);
 	}
 	return (fd);
+}
+
+void
+hammer2_disconnect(void *(*func)(void *), void *arg)
+{
+	pthread_t thread = NULL;
+	pid_t pid;
+	int ttyfd;
+
+	/*
+	 * Do not disconnect in debug mode
+	 */
+	if (DebugOpt) {
+                pthread_create(&thread, NULL, func, arg);
+		NormalExit = 0;
+		return;
+	}
+
+	/*
+	 * Otherwise disconnect us.  Double-fork to get rid of the ppid
+	 * association and disconnect the TTY.
+	 */
+	if ((pid = fork()) < 0) {
+		fprintf(stderr, "hammer2: fork(): %s\n", strerror(errno));
+		exit(1);
+	}
+	if (pid > 0) {
+		while (waitpid(pid, NULL, 0) != pid)
+			;
+		return;		/* parent returns */
+	}
+
+	/*
+	 * Get rid of the TTY/session before double-forking to finish off
+	 * the ppid.
+	 */
+	ttyfd = open("/dev/null", O_RDWR);
+	if (ttyfd >= 0) {
+		if (ttyfd != 0)
+			dup2(ttyfd, 0);
+		if (ttyfd != 1)
+			dup2(ttyfd, 1);
+		if (ttyfd != 2)
+			dup2(ttyfd, 2);
+		if (ttyfd > 2)
+			close(ttyfd);
+	}
+
+	ttyfd = open("/dev/tty", O_RDWR);
+	if (ttyfd >= 0) {
+		ioctl(ttyfd, TIOCNOTTY, 0);
+		close(ttyfd);
+	}
+	setsid();
+
+	/*
+	 * Second fork to disconnect ppid (the original parent waits for
+	 * us to exit).
+	 */
+	if ((pid = fork()) < 0) {
+		_exit(2);
+	}
+	if (pid > 0)
+		_exit(0);
+
+	/*
+	 * The double child
+	 */
+	setsid();
+	pthread_create(&thread, NULL, func, arg);
+	pthread_exit(NULL);
+	_exit(2);	/* NOT REACHED */
 }

@@ -1,10 +1,11 @@
 PROG=	hammer2
 SRCS=	main.c subs.c
-SRCS+=	cmd_remote.c cmd_snapshot.c
+SRCS+=	cmd_remote.c cmd_snapshot.c cmd_helper.c
 #MAN=	hammer2.8
 NOMAN=	TRUE
 
 CFLAGS+= -I${.CURDIR}/../../sys
+CFLAGS+= -pthread
 LDADD=	-lm -lutil -lmd
 DPADD=	${LIBM} ${LIBUTIL} ${LIBMD}
 

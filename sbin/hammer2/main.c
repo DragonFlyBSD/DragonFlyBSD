@@ -37,10 +37,13 @@
 
 static void usage(int code);
 
+int DebugOpt;
+int NormalExit = 1;	/* if set to 0 main() has to pthread_exit() */
+
 int
 main(int ac, char **av)
 {
-	const char *sel_path = ".";
+	const char *sel_path = NULL;
 	const char *uuid_str = NULL;
 	int pfs_type = HAMMER2_PFSTYPE_NONE;
 	int quick_opt = 0;
@@ -95,6 +98,9 @@ main(int ac, char **av)
 			 * (required for all except the MASTER node_type)
 			 */
 			uuid_str = optarg;
+			break;
+		case 'd':
+			DebugOpt = 1;
 			break;
 		default:
 			fprintf(stderr, "Unknown option: %c\n", ch);
@@ -153,11 +159,23 @@ main(int ac, char **av)
 		 * subsystem manages socket communications for the
 		 * filesystem.
 		 */
+		ecode = cmd_helper(sel_path);
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", av[0]);
 		usage(1);
 	}
-	return (ecode);
+
+	/*
+	 * In DebugMode we may wind up starting several pthreads in the
+	 * original process, in which case we have to let them run and
+	 * not actually exit.
+	 */
+	if (NormalExit) {
+		return (ecode);
+	} else {
+		pthread_exit(NULL);
+		_exit(2);	/* NOT REACHED */
+	}
 }
 
 static

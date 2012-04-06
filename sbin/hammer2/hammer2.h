@@ -39,6 +39,16 @@
 #include <sys/types.h>
 #include <sys/mount.h>
 #include <sys/file.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/wait.h>
+#include <sys/tty.h>
+
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
 #include <vfs/hammer2/hammer2_disk.h>
 #include <vfs/hammer2/hammer2_mount.h>
 #include <vfs/hammer2/hammer2_ioctl.h>
@@ -47,14 +57,22 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stddef.h>
-#include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
+
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <string.h>
+#include <unistd.h>
+#include <pthread.h>
+
+extern int DebugOpt;
+extern int NormalExit;
 
 int hammer2_ioctl_handle(const char *sel_path);
+void hammer2_disconnect(void *(*func)(void *), void *arg);
 
 int cmd_remote_connect(const char *sel_path, const char *url);
 int cmd_remote_disconnect(const char *sel_path, const char *url);
 int cmd_remote_status(const char *sel_path, int all_opt);
+int cmd_helper(const char *sel_path);

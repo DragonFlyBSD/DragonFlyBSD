@@ -53,4 +53,6 @@ struct hammer2_mount_info {
 
 #define HMNT2_USERFLAGS		(HMNT2_NOAUTOSNAP)
 
+#define HAMMER2_LISTEN_PORT	987
+
 #endif
