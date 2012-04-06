@@ -636,12 +636,6 @@ igb_detach(device_t dev)
 
 	INIT_DEBUGOUT("igb_detach: begin");
 
-	/* Make sure VLANS are not using driver */
-	if (adapter->ifp->if_vlantrunks != NULL) {
-		device_printf(dev,"Vlan in use, detach first\n");
-		return (EBUSY);
-	}
-
 	IGB_CORE_LOCK(adapter);
 	adapter->in_detach = 1;
 	igb_stop(adapter);
