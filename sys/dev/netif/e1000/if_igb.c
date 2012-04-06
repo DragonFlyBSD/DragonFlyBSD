@@ -3912,9 +3912,9 @@ igb_initialize_receive_units(struct adapter *adapter)
 
 		/* Set maximum packet len */
 		psize = adapter->max_frame_size;
-		/* are we on a vlan? */
-		if (adapter->ifp->if_vlantrunks != NULL)
-			psize += VLAN_TAG_SIZE;
+
+		/* Prepare for VLAN */
+		psize += VLAN_TAG_SIZE;
 		E1000_WRITE_REG(&adapter->hw, E1000_RLPML, psize);
 	} else {
 		rctl &= ~E1000_RCTL_LPE;
