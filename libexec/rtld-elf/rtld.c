@@ -798,9 +798,10 @@ _rtld_bind(Obj_Entry *obj, Elf_Size reloff, void *stack)
 	if (rtld_functrace(obj->path,
 			   defobj->path,
 			   defobj->strtab + def->st_name,
-			   stack))
-	lock_release(rtld_bind_lock, &lockstate);
-	return target;
+			   stack)) {
+	    lock_release(rtld_bind_lock, &lockstate);
+	    return target;
+	}
     }
 
     /*
