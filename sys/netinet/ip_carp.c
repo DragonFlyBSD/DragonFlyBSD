@@ -254,9 +254,9 @@ static void	carp_multicast6_cleanup(struct carp_softc *);
 static void	carp_stop(struct carp_softc *, int);
 static void	carp_suspend(struct carp_softc *, int);
 static void	carp_ioctl_stop(struct carp_softc *);
-static int	carp_ioctl_setvh(struct carp_softc *, struct carpreq *);
-static void	carp_ioctl_getvh(struct carp_softc *, struct carpreq *);
-static void	carp_ioctl_getdevname(struct carp_softc *, char *);
+static int	carp_ioctl_setvh(struct carp_softc *, void *, struct ucred *);
+static int	carp_ioctl_getvh(struct carp_softc *, void *, struct ucred *);
+static int	carp_ioctl_getdevname(struct carp_softc *, struct ifdrv *);
 
 static void	carp_ifaddr(void *, struct ifnet *, enum ifaddr_event,
 			    struct ifaddr *);
@@ -1898,22 +1898,13 @@ static int
 carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 {
 	struct carp_softc *sc = ifp->if_softc;
-	struct carpreq carpr;
-	struct ifaddr *ifa;
-	struct ifreq *ifr;
-	struct ifaliasreq *ifra;
-	struct ifdrv *ifd;
-	char devname[IFNAMSIZ];
+	struct ifreq *ifr = (struct ifreq *)addr;
+	struct ifdrv *ifd = (struct ifdrv *)addr;
 	int error = 0;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	carp_gettok();
-
-	ifa = (struct ifaddr *)addr;
-	ifra = (struct ifaliasreq *)addr;
-	ifr = (struct ifreq *)addr;
-	ifd = (struct ifdrv *)addr;
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -1926,51 +1917,25 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 		break;
 
 	case SIOCSVH:
-		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
-		if (error)
-			break;
-		error = copyin(ifr->ifr_data, &carpr, sizeof(carpr));
-		if (error)
-			break;
-
-		error = carp_ioctl_setvh(sc, &carpr);
+		error = carp_ioctl_setvh(sc, ifr->ifr_data, cr);
 		break;
 
 	case SIOCGVH:
-		carp_ioctl_getvh(sc, &carpr);
-		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
-		if (error)
-			bzero(carpr.carpr_key, sizeof(carpr.carpr_key));
-
-		error = copyout(&carpr, ifr->ifr_data, sizeof(carpr));
+		error = carp_ioctl_getvh(sc, ifr->ifr_data, cr);
 		break;
 
 	case SIOCGDRVSPEC:
 		switch (ifd->ifd_cmd) {
 		case CARPGDEVNAME:
-			if (ifd->ifd_len != sizeof(devname))
-				error = EINVAL;
+			error = carp_ioctl_getdevname(sc, ifd);
 			break;
 
-		case CARPGVHADDR:
-			break;
-
-		default:
-			error = EINVAL;
-			break;
-		}
-		if (error)
-			break;
-
-		switch (ifd->ifd_cmd) {
 		case CARPGVHADDR:
 			error = carp_get_vhaddr(sc, ifd);
 			break;
 
-		case CARPGDEVNAME:
-			carp_ioctl_getdevname(sc, devname);
-			error = copyout(devname, ifd->ifd_data,
-					sizeof(devname));
+		default:
+			error = EINVAL;
 			break;
 		}
 		break;
@@ -2099,26 +2064,34 @@ back:
 }
 
 static int
-carp_ioctl_setvh(struct carp_softc *sc, struct carpreq *carpr)
+carp_ioctl_setvh(struct carp_softc *sc, void *udata, struct ucred *cr)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct netmsg_carp cmsg;
+	struct carpreq carpr;
 	int error;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
-
 	ifnet_deserialize_all(ifp);
+
+	error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
+	if (error)
+		goto back;
+
+	error = copyin(udata, &carpr, sizeof(carpr));
+	if (error)
+		goto back;
 
 	bzero(&cmsg, sizeof(cmsg));
 	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
 	    carp_ioctl_setvh_dispatch);
 	cmsg.nc_softc = sc;
-	cmsg.nc_data = carpr;
+	cmsg.nc_data = &carpr;
 
 	error = lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
 
+back:
 	ifnet_serialize_all(ifp);
-
 	return error;
 }
 
@@ -2142,25 +2115,33 @@ carp_ioctl_getvh_dispatch(netmsg_t msg)
 	lwkt_replymsg(&cmsg->base.lmsg, 0);
 }
 
-static void
-carp_ioctl_getvh(struct carp_softc *sc, struct carpreq *carpr)
+static int
+carp_ioctl_getvh(struct carp_softc *sc, void *udata, struct ucred *cr)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct netmsg_carp cmsg;
+	struct carpreq carpr;
+	int error;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
-
 	ifnet_deserialize_all(ifp);
 
 	bzero(&cmsg, sizeof(cmsg));
 	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
 	    carp_ioctl_getvh_dispatch);
 	cmsg.nc_softc = sc;
-	cmsg.nc_data = carpr;
+	cmsg.nc_data = &carpr;
 
 	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
 
+	error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
+	if (error)
+		bzero(carpr.carpr_key, sizeof(carpr.carpr_key));
+
+	error = copyout(&carpr, udata, sizeof(carpr));
+
 	ifnet_serialize_all(ifp);
+	return error;
 }
 
 static void
@@ -2180,13 +2161,18 @@ carp_ioctl_getdevname_dispatch(netmsg_t msg)
 	lwkt_replymsg(&cmsg->base.lmsg, 0);
 }
 
-static void
-carp_ioctl_getdevname(struct carp_softc *sc, char *devname)
+static int
+carp_ioctl_getdevname(struct carp_softc *sc, struct ifdrv *ifd)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct netmsg_carp cmsg;
+	char devname[IFNAMSIZ];
+	int error;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	if (ifd->ifd_len != sizeof(devname))
+		return EINVAL;
 
 	ifnet_deserialize_all(ifp);
 
@@ -2198,7 +2184,10 @@ carp_ioctl_getdevname(struct carp_softc *sc, char *devname)
 
 	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
 
+	error = copyout(devname, ifd->ifd_data, sizeof(devname));
+
 	ifnet_serialize_all(ifp);
+	return error;
 }
 
 static void
