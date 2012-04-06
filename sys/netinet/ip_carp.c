@@ -231,7 +231,6 @@ static void	carp_unlink_addrs(struct carp_softc *, struct ifnet *,
 		    struct ifaddr *);
 static void	carp_update_addrs(struct carp_softc *, struct ifaddr *);
 
-static int	carp_get_vhaddr(struct carp_softc *, struct ifdrv *);
 static int	carp_config_vhaddr(struct carp_softc *, struct carp_vhaddr *,
 		    struct in_ifaddr *);
 static int	carp_activate_vhaddr(struct carp_softc *, struct carp_vhaddr *,
@@ -257,6 +256,7 @@ static void	carp_ioctl_stop(struct carp_softc *);
 static int	carp_ioctl_setvh(struct carp_softc *, void *, struct ucred *);
 static int	carp_ioctl_getvh(struct carp_softc *, void *, struct ucred *);
 static int	carp_ioctl_getdevname(struct carp_softc *, struct ifdrv *);
+static int	carp_ioctl_getvhaddr(struct carp_softc *, struct ifdrv *);
 
 static void	carp_ifaddr(void *, struct ifnet *, enum ifaddr_event,
 			    struct ifaddr *);
@@ -269,6 +269,7 @@ static void	carp_ioctl_stop_dispatch(netmsg_t);
 static void	carp_ioctl_setvh_dispatch(netmsg_t);
 static void	carp_ioctl_getvh_dispatch(netmsg_t);
 static void	carp_ioctl_getdevname_dispatch(netmsg_t);
+static void	carp_ioctl_getvhaddr_dispatch(netmsg_t);
 
 static MALLOC_DEFINE(M_CARP, "CARP", "CARP interfaces");
 
@@ -1513,30 +1514,36 @@ carp_multicast6_cleanup(struct carp_softc *sc)
 }
 #endif
 
-static int
-carp_get_vhaddr(struct carp_softc *sc, struct ifdrv *ifd)
+static void
+carp_ioctl_getvhaddr_dispatch(netmsg_t msg)
 {
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
 	const struct carp_vhaddr *vha;
 	struct ifcarpvhaddr *carpa, *carpa0;
-	int count, len, error;
+	int count, len, error = 0;
+
+	carp_gettok();
 
 	count = 0;
 	TAILQ_FOREACH(vha, &sc->sc_vha_list, vha_link)
 		++count;
 
-	if (ifd->ifd_len == 0) {
-		ifd->ifd_len = count * sizeof(*carpa);
-		return 0;
-	} else if (count == 0 || ifd->ifd_len < sizeof(*carpa)) {
-		ifd->ifd_len = 0;
-		return 0;
+	if (cmsg->nc_datalen == 0) {
+		cmsg->nc_datalen = count * sizeof(*carpa);
+		goto back;
+	} else if (count == 0 || cmsg->nc_datalen < sizeof(*carpa)) {
+		cmsg->nc_datalen = 0;
+		goto back;
 	}
-	len = min(ifd->ifd_len, sizeof(*carpa) * count);
+	len = min(cmsg->nc_datalen, sizeof(*carpa) * count);
 	KKASSERT(len >= sizeof(*carpa));
 
 	carpa0 = carpa = kmalloc(len, M_TEMP, M_WAITOK | M_NULLOK | M_ZERO);
-	if (carpa == NULL)
-		return ENOMEM;
+	if (carpa == NULL) {
+		error = ENOMEM; 
+		goto back;
+	}
 
 	count = 0;
 	TAILQ_FOREACH(vha, &sc->sc_vha_list, vha_link) {
@@ -1559,11 +1566,47 @@ carp_get_vhaddr(struct carp_softc *sc, struct ifdrv *ifd)
 		++count;
 		len -= sizeof(*carpa);
 	}
-	ifd->ifd_len = sizeof(*carpa) * count;
-	KKASSERT(ifd->ifd_len > 0);
+	cmsg->nc_datalen = sizeof(*carpa) * count;
+	KKASSERT(cmsg->nc_datalen > 0);
 
-	error = copyout(carpa0, ifd->ifd_data, ifd->ifd_len);
-	kfree(carpa0, M_TEMP);
+	cmsg->nc_data = carpa0;
+
+back:
+	carp_reltok();
+	lwkt_replymsg(&cmsg->base.lmsg, error);
+}
+
+static int
+carp_ioctl_getvhaddr(struct carp_softc *sc, struct ifdrv *ifd)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct netmsg_carp cmsg;
+	int error;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ifnet_deserialize_all(ifp);
+
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_ioctl_getvhaddr_dispatch);
+	cmsg.nc_softc = sc;
+	cmsg.nc_datalen = ifd->ifd_len;
+
+	error = lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+	if (!error) {
+		if (cmsg.nc_data != NULL) {
+			error = copyout(cmsg.nc_data, ifd->ifd_data,
+			    cmsg.nc_datalen);
+			kfree(cmsg.nc_data, M_TEMP);
+		}
+		ifd->ifd_len = cmsg.nc_datalen;
+	} else {
+		KASSERT(cmsg.nc_data == NULL,
+		    ("%s temp vhaddr is alloc upon error\n", __func__));
+	}
+
+	ifnet_serialize_all(ifp);
 	return error;
 }
 
@@ -1931,7 +1974,7 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 			break;
 
 		case CARPGVHADDR:
-			error = carp_get_vhaddr(sc, ifd);
+			error = carp_ioctl_getvhaddr(sc, ifd);
 			break;
 
 		default:
