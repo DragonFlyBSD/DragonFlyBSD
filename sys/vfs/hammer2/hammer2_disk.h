@@ -410,6 +410,10 @@ typedef struct hammer2_indblock_data hammer2_indblock_data_t;
 struct hammer2_inode_data {
 	uint16_t	version;	/* 0000 inode data version */
 	uint16_t	reserved02;	/* 0002 */
+
+	/*
+	 * core inode attributes, inode type, misc flags
+	 */
 	uint32_t	uflags;		/* 0004 chflags */
 	uint32_t	rmajor;		/* 0008 available for device nodes */
 	uint32_t	rminor;		/* 000C available for device nodes */
@@ -425,24 +429,43 @@ struct hammer2_inode_data {
 	uint16_t	cap_flags;	/* 0052 capability flags */
 	uint32_t	mode;		/* 0054 unix modes (typ low 16 bits) */
 
+	/*
+	 * inode size, identification, localized recursive configuration
+	 * for compression and backup copies.
+	 */
 	hammer2_tid_t	inum;		/* 0058 inode number */
 	hammer2_off_t	size;		/* 0060 size of file */
 	uint64_t	nlinks;		/* 0068 hard links (typ only dirs) */
 	hammer2_tid_t	iparent;	/* 0070 parent inum (recovery only) */
-	uint8_t		copies[8];	/* 0078 request copies to (up to 8) */
-	hammer2_off_t	data_quota;	/* 0080 subtree quota in bytes */
-	hammer2_off_t	data_count;	/* 0088 subtree byte count */
-	hammer2_off_t	inode_quota;	/* 0090 subtree quota inode count */
-	hammer2_off_t	inode_count;	/* 0098 subtree inode count */
-	uint16_t	name_len;	/* 00A0 filename length */
-	uint8_t		comp_algo;	/* 00A2 compression request & algo */
-	uint8_t		reservedA3;	/* 00A3 */
-	uint32_t	reservedA4;	/* 00A4 */
-	hammer2_key_t	name_key;	/* 00A8 full filename key */
-	uint8_t		reservedB0[7];	/* 00B0 */
-	uint8_t		pfs_type;	/* 00B7 (if PFSROOT) node type */
-	uuid_t		pfs_id;		/* 00B8 (if PFSROOT) pfs uuid */
-	uint64_t	pfs_inum;	/* 00C8 (if PFSROOT) inum allocator */
+	hammer2_key_t	name_key;	/* 0078 full filename key */
+	uint16_t	name_len;	/* 0080 filename length */
+	uint8_t		ncopies;	/* 0082 ncopies to local media */
+	uint8_t		comp_algo;	/* 0083 compression request & algo */
+
+	/*
+	 * These fields are currently only applicable to PFSROOTs.
+	 *
+	 * NOTE: We can't use {volume_data->fsid, pfs_id} to uniquely
+	 *	 identify an instance of a PFS in the cluster because
+	 *	 a mount may contain more than one copy of the PFS as
+	 *	 a separate node.  {pfs_fsid, pfs_id} must be used for
+	 *	 registration in the cluster.
+	 */
+	uint8_t		reserved84;	/* 0084 */
+	uint8_t		reserved85;	/* 0085 */
+	uint8_t		reserved86;	/* 0086 */
+	uint8_t		pfs_type;	/* 0087 (if PFSROOT) node type */
+	uint64_t	pfs_inum;	/* 0088 (if PFSROOT) inum allocator */
+	uuid_t		pfs_id;		/* 0090 (if PFSROOT) pfs uuid */
+	uuid_t		pfs_fsid;	/* 00A0 (if PFSROOT) unique pfs uuid */
+
+	/*
+	 * Quotas and cumulative sub-tree counters.
+	 */
+	hammer2_off_t	data_quota;	/* 00B0 subtree quota in bytes */
+	hammer2_off_t	data_count;	/* 00B8 subtree byte count */
+	hammer2_off_t	inode_quota;	/* 00C0 subtree quota inode count */
+	hammer2_off_t	inode_count;	/* 00C8 subtree inode count */
 	hammer2_tid_t	attr_tid;	/* 00D0 attributes changed */
 	hammer2_tid_t	dirent_tid;	/* 00D8 directory/attr changed */
 	uint64_t	reservedE0;	/* 00E0 */
@@ -597,9 +620,9 @@ struct hammer2_copy_data {
 	uint16_t flags;		/* 04-05 flags field */
 	uint8_t error;		/* 06	 last operational error */
 	uint8_t priority;	/* 07	 priority and round-robin flag */
-	uint8_t remote_pfs_type;/* 08	 probed direct remote PFS type */
+	uint8_t remote_pfstype;	/* 08	 probed direct remote PFS type */
 	uint8_t reserved08[23];	/* 09-1F */
-	uuid_t	pfsid;		/* 20-2F copy target must match this uuid */
+	uuid_t	pfs_id;		/* 20-2F copy target must match this uuid */
 	uint8_t label[16];	/* 30-3F import/export label */
 	uint8_t path[64];	/* 40-7F target specification string or key */
 };

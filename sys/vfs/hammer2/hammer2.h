@@ -335,6 +335,7 @@ int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
  * hammer2_inode.c
  */
 struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
+
 hammer2_inode_t *hammer2_inode_alloc(hammer2_mount_t *hmp, void *data);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
@@ -352,6 +353,10 @@ int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *nip,
 
 int hammer2_hardlink_create(hammer2_inode_t *ip, hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len);
+
+int hammer2_unlink_file(hammer2_inode_t *dip,
+			const uint8_t *name, size_t name_len,
+			int isdir, int adjlinks);
 
 /*
  * hammer2_chain.c

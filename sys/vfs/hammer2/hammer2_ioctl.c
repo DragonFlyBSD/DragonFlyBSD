@@ -42,13 +42,16 @@
 
 #include "hammer2.h"
 
-static int hammer2_ioctl_get_version(hammer2_inode_t *ip, void *data);
-static int hammer2_ioctl_get_remote(hammer2_inode_t *ip, void *data);
-static int hammer2_ioctl_add_remote(hammer2_inode_t *ip, void *data);
-static int hammer2_ioctl_del_remote(hammer2_inode_t *ip, void *data);
-static int hammer2_ioctl_rep_remote(hammer2_inode_t *ip, void *data);
-static int hammer2_ioctl_get_socket(hammer2_inode_t *ip, void *data);
-static int hammer2_ioctl_set_socket(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_remote_get(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_remote_add(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_remote_del(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_remote_rep(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_socket_get(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data);
 
 int
 hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
@@ -63,53 +66,44 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	error = priv_check_cred(cred, PRIV_HAMMER_IOCTL, 0);
 
 	switch(com) {
-	case HAMMER2IOC_GET_VERSION:
-		/*
-		 * Retrieve version and basic status
-		 */
-		error = hammer2_ioctl_get_version(ip, data);
+	case HAMMER2IOC_VERSION_GET:
+		error = hammer2_ioctl_version_get(ip, data);
 		break;
-	case HAMMER2IOC_GET_REMOTE:
-		/*
-		 * Retrieve information about a remote
-		 */
+	case HAMMER2IOC_REMOTE_GET:
 		if (error == 0)
-			error = hammer2_ioctl_get_remote(ip, data);
+			error = hammer2_ioctl_remote_get(ip, data);
 		break;
-	case HAMMER2IOC_ADD_REMOTE:
-		/*
-		 * Add new remote entry.
-		 */
+	case HAMMER2IOC_REMOTE_ADD:
 		if (error == 0)
-			error = hammer2_ioctl_add_remote(ip, data);
+			error = hammer2_ioctl_remote_add(ip, data);
 		break;
-	case HAMMER2IOC_DEL_REMOTE:
-		/*
-		 * Delete existing remote entry
-		 */
+	case HAMMER2IOC_REMOTE_DEL:
 		if (error == 0)
-			error = hammer2_ioctl_del_remote(ip, data);
+			error = hammer2_ioctl_remote_del(ip, data);
 		break;
-	case HAMMER2IOC_REP_REMOTE:
-		/*
-		 * Replace existing remote entry
-		 */
+	case HAMMER2IOC_REMOTE_REP:
 		if (error == 0)
-			error = hammer2_ioctl_rep_remote(ip, data);
+			error = hammer2_ioctl_remote_rep(ip, data);
 		break;
-	case HAMMER2IOC_GET_SOCKET:
-		/*
-		 * Retrieve communications socket
-		 */
+	case HAMMER2IOC_SOCKET_GET:
 		if (error == 0)
-			error = hammer2_ioctl_get_socket(ip, data);
+			error = hammer2_ioctl_socket_get(ip, data);
 		break;
-	case HAMMER2IOC_SET_SOCKET:
-		/*
-		 * Set communications socket for connection
-		 */
+	case HAMMER2IOC_SOCKET_SET:
 		if (error == 0)
-			error = hammer2_ioctl_set_socket(ip, data);
+			error = hammer2_ioctl_socket_set(ip, data);
+		break;
+	case HAMMER2IOC_PFS_GET:
+		if (error == 0)
+			error = hammer2_ioctl_pfs_get(ip, data);
+		break;
+	case HAMMER2IOC_PFS_CREATE:
+		if (error == 0)
+			error = hammer2_ioctl_pfs_create(ip, data);
+		break;
+	case HAMMER2IOC_PFS_DELETE:
+		if (error == 0)
+			error = hammer2_ioctl_pfs_delete(ip, data);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -122,7 +116,7 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
  * Retrieve version and basic info
  */
 static int
-hammer2_ioctl_get_version(hammer2_inode_t *ip, void *data)
+hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data)
 {
 	hammer2_mount_t *hmp = ip->hmp;
 	hammer2_ioc_version_t *version = data;
@@ -135,7 +129,7 @@ hammer2_ioctl_get_version(hammer2_inode_t *ip, void *data)
  * Retrieve information about a remote
  */
 static int
-hammer2_ioctl_get_remote(hammer2_inode_t *ip, void *data)
+hammer2_ioctl_remote_get(hammer2_inode_t *ip, void *data)
 {
 	hammer2_mount_t *hmp = ip->hmp;
 	hammer2_ioc_remote_t *remote = data;
@@ -167,7 +161,7 @@ hammer2_ioctl_get_remote(hammer2_inode_t *ip, void *data)
  * Add new remote entry
  */
 static int
-hammer2_ioctl_add_remote(hammer2_inode_t *ip, void *data)
+hammer2_ioctl_remote_add(hammer2_inode_t *ip, void *data)
 {
 	hammer2_mount_t *hmp = ip->hmp;
 	hammer2_ioc_remote_t *remote = data;
@@ -201,7 +195,7 @@ failed:
  * Delete existing remote entry
  */
 static int
-hammer2_ioctl_del_remote(hammer2_inode_t *ip, void *data)
+hammer2_ioctl_remote_del(hammer2_inode_t *ip, void *data)
 {
 	hammer2_mount_t *hmp = ip->hmp;
 	hammer2_ioc_remote_t *remote = data;
@@ -237,7 +231,7 @@ failed:
  * Replace existing remote entry
  */
 static int
-hammer2_ioctl_rep_remote(hammer2_inode_t *ip, void *data)
+hammer2_ioctl_remote_rep(hammer2_inode_t *ip, void *data)
 {
 	hammer2_mount_t *hmp = ip->hmp;
 	hammer2_ioc_remote_t *remote = data;
@@ -256,7 +250,7 @@ hammer2_ioctl_rep_remote(hammer2_inode_t *ip, void *data)
  * Retrieve communications socket
  */
 static int
-hammer2_ioctl_get_socket(hammer2_inode_t *ip, void *data)
+hammer2_ioctl_socket_get(hammer2_inode_t *ip, void *data)
 {
 	return (EOPNOTSUPP);
 }
@@ -265,7 +259,7 @@ hammer2_ioctl_get_socket(hammer2_inode_t *ip, void *data)
  * Set communications socket for connection
  */
 static int
-hammer2_ioctl_set_socket(hammer2_inode_t *ip, void *data)
+hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data)
 {
 	hammer2_mount_t *hmp = ip->hmp;
 	hammer2_ioc_remote_t *remote = data;
@@ -278,4 +272,114 @@ hammer2_ioctl_set_socket(hammer2_inode_t *ip, void *data)
 	hammer2_voldata_unlock(hmp);
 
 	return(0);
+}
+
+/*
+ * Used to scan PFSs, which are directories under the super-root.
+ */
+static int
+hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
+{
+	hammer2_mount_t *hmp = ip->hmp;
+	hammer2_ioc_pfs_t *pfs = data;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_inode_t *xip;
+	int error = 0;
+
+	parent = hmp->schain;
+	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+	if (error)
+		goto done;
+
+	/*
+	 * Search for the first key or specific key.  Remember that keys
+	 * can be returned in any order.
+	 */
+	if (pfs->name_key == 0) {
+		chain = hammer2_chain_lookup(hmp, &parent,
+					     0, (hammer2_key_t)-1, 0);
+	} else {
+		chain = hammer2_chain_lookup(hmp, &parent,
+					     pfs->name_key, pfs->name_key, 0);
+	}
+	while (chain && chain->bref.type != HAMMER2_BREF_TYPE_INODE) {
+		chain = hammer2_chain_next(hmp, &parent, chain,
+				     0, (hammer2_key_t)-1, 0);
+	}
+	if (chain) {
+		/*
+		 * Load the data being returned by the ioctl.
+		 */
+		xip = chain->u.ip;
+		pfs->name_key = xip->ip_data.name_key;
+		pfs->pfs_type = xip->ip_data.pfs_type;
+		pfs->pfs_id = xip->ip_data.pfs_id;
+		pfs->pfs_fsid = xip->ip_data.pfs_fsid;
+		KKASSERT(xip->ip_data.name_len < sizeof(pfs->name));
+		bcopy(xip->ip_data.filename, pfs->name,
+		      xip->ip_data.name_len);
+		pfs->name[xip->ip_data.name_len] = 0;
+
+		/*
+		 * Calculate the next field
+		 */
+		do {
+			chain = hammer2_chain_next(hmp, &parent, chain,
+					     0, (hammer2_key_t)-1, 0);
+		} while (chain && chain->bref.type != HAMMER2_BREF_TYPE_INODE);
+		if (chain) {
+			pfs->name_next = chain->u.ip->ip_data.name_key;
+			hammer2_chain_unlock(hmp, chain);
+		} else {
+			pfs->name_next = (hammer2_key_t)-1;
+		}
+	} else {
+		pfs->name_next = (hammer2_key_t)-1;
+		error = ENOENT;
+	}
+done:
+	hammer2_chain_unlock(hmp, parent);
+	return (error);
+}
+
+/*
+ * Create a new PFS under the super-root
+ */
+static int
+hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
+{
+	hammer2_mount_t *hmp = ip->hmp;
+	hammer2_ioc_pfs_t *pfs = data;
+	hammer2_inode_t *nip = NULL;
+	int error;
+
+	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure 0-termination */
+	error = hammer2_inode_create(hmp, NULL, NULL, hmp->schain->u.ip,
+				     pfs->name, strlen(pfs->name),
+				     &nip);
+	if (error == 0) {
+		hammer2_chain_modify(hmp, &nip->chain, 0);
+		nip->ip_data.pfs_type = pfs->pfs_type;
+		nip->ip_data.pfs_id = pfs->pfs_id;
+		/* nip->ip_data.pfsfsid = XXX */
+		hammer2_chain_unlock(hmp, &nip->chain);
+	}
+	return (error);
+}
+
+/*
+ * Destroy an existing PFS under the super-root
+ */
+static int
+hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
+{
+	hammer2_mount_t *hmp = ip->hmp;
+	hammer2_ioc_pfs_t *pfs = data;
+	int error;
+
+	error = hammer2_unlink_file(hmp->schain->u.ip,
+				    pfs->name, strlen(pfs->name),
+				    0, 1);
+	return (error);
 }

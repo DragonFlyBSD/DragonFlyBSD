@@ -144,10 +144,29 @@ main(int ac, char **av)
 		 * Get status of PFS and its connections (-a for all PFSs)
 		 */
 		ecode = cmd_remote_status(sel_path, all_opt);
-	} else if (strcmp(av[0], "mkpfs") == 0) {
+	} else if (strcmp(av[0], "pfs_list") == 0) {
+		/*
+		 * List all PFSs
+		 */
+		ecode = cmd_pfs_list(sel_path);
+	} else if (strcmp(av[0], "pfs_create") == 0) {
 		/*
 		 * Create new PFS using pfs_type
 		 */
+		if (ac < 2) {
+			fprintf(stderr, "pfs_create: requires name\n");
+			usage(1);
+		}
+		ecode = cmd_pfs_create(sel_path, av[1], pfs_type, uuid_str);
+	} else if (strcmp(av[0], "pfs_delete") == 0) {
+		/*
+		 * Delete a PFS by name
+		 */
+		if (ac < 2) {
+			fprintf(stderr, "pfs_delete: requires name\n");
+			usage(1);
+		}
+		ecode = cmd_pfs_delete(sel_path, av[1]);
 	} else if (strcmp(av[0], "snapshot") == 0) {
 		/*
 		 * Create snapshot with optional pfs_type and optional

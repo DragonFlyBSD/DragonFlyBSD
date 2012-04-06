@@ -53,7 +53,7 @@ hammer2_ioctl_handle(const char *sel_path)
 			sel_path, strerror(errno));
 		return(-1);
 	}
-	if (ioctl(fd, HAMMER2IOC_GET_VERSION, &info) < 0) {
+	if (ioctl(fd, HAMMER2IOC_VERSION_GET, &info) < 0) {
 		fprintf(stderr, "hammer2: '%s' is not a hammer2 filesystem\n",
 			sel_path);
 		close(fd);

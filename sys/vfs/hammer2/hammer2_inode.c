@@ -195,6 +195,10 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
  *
  * If no error occurs the new inode with its chain locked is returned in
  * *nipp, otherwise an error is returned and *nipp is set to NULL.
+ *
+ * If vap and/or cred are NULL the related fields are not set and the
+ * inode type defaults to a directory.  This is used when creating PFSs
+ * under the super-root, so the inode number is set to 1 in this case.
  */
 int
 hammer2_inode_create(hammer2_mount_t *hmp,
@@ -254,14 +258,21 @@ hammer2_inode_create(hammer2_mount_t *hmp,
 	nip = chain->u.ip;
 	*nipp = nip;
 
-	nip->ip_data.type = hammer2_get_obj_type(vap->va_type);
 	hammer2_voldata_lock(hmp);
-	nip->ip_data.inum = hmp->voldata.alloc_tid++;	/* XXX modify/lock */
+	if (vap) {
+		nip->ip_data.type = hammer2_get_obj_type(vap->va_type);
+		nip->ip_data.inum = hmp->voldata.alloc_tid++;
+		/* XXX modify/lock */
+	} else {
+		nip->ip_data.type = HAMMER2_OBJTYPE_DIRECTORY;
+		nip->ip_data.inum = 1;
+	}
 	hammer2_voldata_unlock(hmp);
 	nip->ip_data.version = HAMMER2_INODE_VERSION_ONE;
 	nip->ip_data.ctime = 0;
 	nip->ip_data.mtime = 0;
-	nip->ip_data.mode = vap->va_mode;
+	if (vap)
+		nip->ip_data.mode = vap->va_mode;
 	nip->ip_data.nlinks = 1;
 	/* uid, gid, etc */
 
@@ -414,6 +425,151 @@ hammer2_hardlink_create(hammer2_inode_t *ip, hammer2_inode_t *dip,
 	hammer2_chain_unlock(hmp, &nip->chain);
 	/
 #endif
+}
+
+/*
+ * Unlink the file from the specified directory inode.  The directory inode
+ * does not need to be locked.
+ *
+ * isdir determines whether a directory/non-directory check should be made.
+ * No check is made if isdir is set to -1.
+ *
+ * adjlinks tells unlink that we want to adjust the nlinks count of the
+ * inode.  When removing the last link for a NON forwarding entry we can
+ * just ignore the link count... no point updating the inode that we are
+ * about to dereference, it would just result in a lot of wasted I/O.
+ *
+ * However, if the entry is a forwarding entry (aka a hardlink), and adjlinks
+ * is non-zero, we have to locate the hardlink and adjust its nlinks field.
+ */
+int
+hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
+		    int isdir, int adjlinks)
+{
+	hammer2_mount_t *hmp;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_chain_t *dparent;
+	hammer2_chain_t *dchain;
+	hammer2_key_t lhc;
+	int error;
+
+	error = 0;
+
+	hmp = dip->hmp;
+	lhc = hammer2_dirhash(name, name_len);
+
+	/*
+	 * Search for the filename in the directory
+	 */
+	parent = &dip->chain;
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+	chain = hammer2_chain_lookup(hmp, &parent,
+				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+				     0);
+	while (chain) {
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		    chain->u.ip &&
+		    name_len == chain->data->ipdata.name_len &&
+		    bcmp(name, chain->data->ipdata.filename, name_len) == 0) {
+			break;
+		}
+		chain = hammer2_chain_next(hmp, &parent, chain,
+					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+					   0);
+	}
+
+	/*
+	 * Not found or wrong type (isdir < 0 disables the type check).
+	 */
+	if (chain == NULL) {
+		hammer2_chain_unlock(hmp, parent);
+		return ENOENT;
+	}
+	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_DIRECTORY &&
+	    isdir == 0) {
+		error = ENOTDIR;
+		goto done;
+	}
+	if (chain->data->ipdata.type != HAMMER2_OBJTYPE_DIRECTORY &&
+	    isdir == 1) {
+		error = EISDIR;
+		goto done;
+	}
+
+	/*
+	 * If this is a directory the directory must be empty.  However, if
+	 * isdir < 0 we are doing a rename and the directory does not have
+	 * to be empty.
+	 */
+	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_DIRECTORY &&
+	    isdir >= 0) {
+		dparent = chain;
+		hammer2_chain_lock(hmp, dparent, HAMMER2_RESOLVE_ALWAYS);
+		dchain = hammer2_chain_lookup(hmp, &dparent,
+					      0, (hammer2_key_t)-1,
+					      HAMMER2_LOOKUP_NODATA);
+		if (dchain) {
+			hammer2_chain_unlock(hmp, dchain);
+			hammer2_chain_unlock(hmp, dparent);
+			error = ENOTEMPTY;
+			goto done;
+		}
+		hammer2_chain_unlock(hmp, dparent);
+		dparent = NULL;
+		/* dchain NULL */
+	}
+
+#if 0
+	/*
+	 * If adjlinks is non-zero this is a real deletion (otherwise it is
+	 * probably a rename).  XXX
+	 */
+	if (adjlinks) {
+		if (chain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK) {
+			/*hammer2_adjust_hardlink(chain->u.ip, -1);*/
+			/* error handling */
+		} else {
+			waslastlink = 1;
+		}
+	} else {
+		waslastlink = 0;
+	}
+#endif
+
+	/*
+	 * Found, the chain represents the inode.  Remove the parent reference
+	 * to the chain.  The chain itself is no longer referenced and will
+	 * be marked unmodified by hammer2_chain_delete(), avoiding unnecessary
+	 * I/O.
+	 */
+	hammer2_chain_delete(hmp, parent, chain);
+	/* XXX nlinks (hardlink special case) */
+	/* XXX nlinks (parent directory) */
+
+#if 0
+	/*
+	 * Destroy any associated vnode, but only if this was the last
+	 * link.  XXX this might not be needed.
+	 */
+	if (chain->u.ip->vp) {
+		struct vnode *vp;
+		vp = hammer2_igetv(chain->u.ip, &error);
+		if (error == 0) {
+			vn_unlock(vp);
+			/* hammer2_knote(vp, NOTE_DELETE); */
+			cache_inval_vp(vp, CINV_DESTROY);
+			vrele(vp);
+		}
+	}
+#endif
+	error = 0;
+
+done:
+	hammer2_chain_unlock(hmp, chain);
+	hammer2_chain_unlock(hmp, parent);
+
+	return error;
 }
 
 /*

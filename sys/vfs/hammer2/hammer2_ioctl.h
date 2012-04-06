@@ -71,14 +71,41 @@ struct hammer2_ioc_remote {
 
 typedef struct hammer2_ioc_remote hammer2_ioc_remote_t;
 
-#define HAMMER2IOC_GET_VERSION	_IOWR('h', 64, struct hammer2_ioc_version)
+/*
+ * Ioctls to manage PFSs
+ *
+ * PFSs can be clustered by matching their pfs_id, and the PFSs making up
+ * a cluster can be uniquely identified by combining the vol_id with
+ * the pfs_id.
+ */
+struct hammer2_ioc_pfs {
+	hammer2_key_t		name_key;	/* super-root directory scan */
+	hammer2_key_t		name_next;	/* (GET only) */
+	uint8_t			pfs_type;	/* e.g. MASTER, SLAVE, ... */
+	uint8_t			reserved0011;
+	uint8_t			reserved0012;
+	uint8_t			reserved0013;
+	uint32_t		reserved0014;
+	uint64_t		reserved0018;
+	uuid_t			pfs_fsid;	/* identifies PFS instance */
+	uuid_t			pfs_id;		/* identifies PFS cluster */
+	char			name[NAME_MAX+1]; /* device@name mtpt */
+};
 
-#define HAMMER2IOC_GET_REMOTE	_IOWR('h', 68, struct hammer2_ioc_remote)
-#define HAMMER2IOC_ADD_REMOTE	_IOWR('h', 69, struct hammer2_ioc_remote)
-#define HAMMER2IOC_DEL_REMOTE	_IOWR('h', 70, struct hammer2_ioc_remote)
-#define HAMMER2IOC_REP_REMOTE	_IOWR('h', 71, struct hammer2_ioc_remote)
+typedef struct hammer2_ioc_pfs hammer2_ioc_pfs_t;
 
-#define HAMMER2IOC_GET_SOCKET	_IOWR('h', 76, struct hammer2_ioc_remote)
-#define HAMMER2IOC_SET_SOCKET	_IOWR('h', 77, struct hammer2_ioc_remote)
+#define HAMMER2IOC_VERSION_GET	_IOWR('h', 64, struct hammer2_ioc_version)
+
+#define HAMMER2IOC_REMOTE_GET	_IOWR('h', 68, struct hammer2_ioc_remote)
+#define HAMMER2IOC_REMOTE_ADD	_IOWR('h', 69, struct hammer2_ioc_remote)
+#define HAMMER2IOC_REMOTE_DEL	_IOWR('h', 70, struct hammer2_ioc_remote)
+#define HAMMER2IOC_REMOTE_REP	_IOWR('h', 71, struct hammer2_ioc_remote)
+
+#define HAMMER2IOC_SOCKET_GET	_IOWR('h', 76, struct hammer2_ioc_remote)
+#define HAMMER2IOC_SOCKET_SET	_IOWR('h', 77, struct hammer2_ioc_remote)
+
+#define HAMMER2IOC_PFS_GET	_IOWR('h', 80, struct hammer2_ioc_pfs)
+#define HAMMER2IOC_PFS_CREATE	_IOWR('h', 81, struct hammer2_ioc_pfs)
+#define HAMMER2IOC_PFS_DELETE	_IOWR('h', 82, struct hammer2_ioc_pfs)
 
 #endif

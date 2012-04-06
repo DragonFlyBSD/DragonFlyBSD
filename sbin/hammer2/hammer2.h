@@ -65,6 +65,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <uuid.h>
 
 extern int DebugOpt;
 extern int NormalExit;
@@ -75,4 +76,10 @@ void hammer2_disconnect(void *(*func)(void *), void *arg);
 int cmd_remote_connect(const char *sel_path, const char *url);
 int cmd_remote_disconnect(const char *sel_path, const char *url);
 int cmd_remote_status(const char *sel_path, int all_opt);
+
+int cmd_pfs_list(const char *sel_path);
+int cmd_pfs_create(const char *sel_path, const char *name,
+			uint8_t pfs_type, const char *uuid_str);
+int cmd_pfs_delete(const char *sel_path, const char *name);
+
 int cmd_helper(const char *sel_path);

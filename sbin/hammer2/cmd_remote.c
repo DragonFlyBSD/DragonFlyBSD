@@ -53,7 +53,7 @@ cmd_remote_connect(const char *sel_path, const char *url)
 		return(1);
 	}
 	snprintf(remote.copy1.path, sizeof(remote.copy1.path), "%s", url);
-	if (ioctl(fd, HAMMER2IOC_ADD_REMOTE, &remote) < 0) {
+	if (ioctl(fd, HAMMER2IOC_REMOTE_ADD, &remote) < 0) {
 		perror("ioctl");
 		ecode = 1;
 	}
@@ -79,7 +79,7 @@ cmd_remote_disconnect(const char *sel_path, const char *url)
 		return(1);
 	}
 	snprintf(remote.copy1.path, sizeof(remote.copy1.path), "%s", url);
-	if (ioctl(fd, HAMMER2IOC_DEL_REMOTE, &remote) < 0) {
+	if (ioctl(fd, HAMMER2IOC_REMOTE_DEL, &remote) < 0) {
 		perror("ioctl");
 		ecode = 1;
 	}
@@ -100,7 +100,7 @@ cmd_remote_status(const char *sel_path, int all_opt __unused)
 	bzero(&remote, sizeof(remote));
 
 	while ((remote.copyid = remote.nextid) >= 0) {
-		if (ioctl(fd, HAMMER2IOC_GET_REMOTE, &remote) < 0) {
+		if (ioctl(fd, HAMMER2IOC_REMOTE_GET, &remote) < 0) {
 			perror("ioctl");
 			ecode = 1;
 			break;
