@@ -125,6 +125,7 @@
 #ifndef BLKDEV_IOSIZE
 #define BLKDEV_IOSIZE	PAGE_SIZE	/* default block device I/O size */
 #endif
+#define DFLTPHYS	(64 * 1024)	/* default max raw I/O transfer size */
 #define MAXPHYS		(128 * 1024)	/* max raw I/O transfer size */
 #define MAXDUMPPGS	(MAXPHYS/PAGE_SIZE)
 
