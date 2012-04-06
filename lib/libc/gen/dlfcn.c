@@ -174,7 +174,7 @@ dl_iterate_phdr(int (*callback)(struct dl_phdr_info *, size_t, void *),
 	return callback(&phdr_info, sizeof(phdr_info), data);
 }
 
-#pragma week fdlopen
+#pragma weak fdlopen
 void *
 fdlopen(int fd, int mode)
 {
