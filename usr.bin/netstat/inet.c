@@ -532,9 +532,9 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 	p1a(tcps_sc_recvcookie, "\t\t%lu cookies received\n"); 
 
 	p(tcps_sacksbupdate, "\t%lu SACK scoreboard update%s\n");
-	p(tcps_sacksboverflow, "\t\t%lu SACK scoreboard overflow%s\n");
-	p(tcps_sacksbfailed, "\t\t%lu SACK scoreboard updating failure%s\n");
-	p(tcps_sacksbreused, "\t\t%lu SACK scoreboard record%s reused\n");
+	p(tcps_sacksboverflow, "\t\t%lu overflow%s\n");
+	p(tcps_sacksbfailed, "\t\t%lu failure%s\n");
+	p(tcps_sacksbreused, "\t\t%lu record%s reused\n");
 
 	free(stattmp);
 #undef p
