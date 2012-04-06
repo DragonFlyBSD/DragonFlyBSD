@@ -256,6 +256,7 @@ static void	carp_suspend(struct carp_softc *, int);
 static void	carp_ioctl_stop(struct carp_softc *);
 static int	carp_ioctl_setvh(struct carp_softc *, struct carpreq *);
 static void	carp_ioctl_getvh(struct carp_softc *, struct carpreq *);
+static void	carp_ioctl_getdevname(struct carp_softc *, char *);
 
 static void	carp_ifaddr(void *, struct ifnet *, enum ifaddr_event,
 			    struct ifaddr *);
@@ -267,6 +268,7 @@ static void	carp_init_dispatch(netmsg_t);
 static void	carp_ioctl_stop_dispatch(netmsg_t);
 static void	carp_ioctl_setvh_dispatch(netmsg_t);
 static void	carp_ioctl_getvh_dispatch(netmsg_t);
+static void	carp_ioctl_getdevname_dispatch(netmsg_t);
 
 static MALLOC_DEFINE(M_CARP, "CARP", "CARP interfaces");
 
@@ -1966,11 +1968,7 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 			break;
 
 		case CARPGDEVNAME:
-			bzero(devname, sizeof(devname));
-			if (sc->sc_carpdev != NULL) {
-				strlcpy(devname, sc->sc_carpdev->if_xname,
-					sizeof(devname));
-			}
+			carp_ioctl_getdevname(sc, devname);
 			error = copyout(devname, ifd->ifd_data,
 					sizeof(devname));
 			break;
@@ -2159,6 +2157,44 @@ carp_ioctl_getvh(struct carp_softc *sc, struct carpreq *carpr)
 	    carp_ioctl_getvh_dispatch);
 	cmsg.nc_softc = sc;
 	cmsg.nc_data = carpr;
+
+	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+	ifnet_serialize_all(ifp);
+}
+
+static void
+carp_ioctl_getdevname_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
+	char *devname = cmsg->nc_data;
+
+	bzero(devname, sizeof(devname));
+
+	carp_gettok();
+	if (sc->sc_carpdev != NULL)
+		strlcpy(devname, sc->sc_carpdev->if_xname, sizeof(devname));
+	carp_reltok();
+
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
+}
+
+static void
+carp_ioctl_getdevname(struct carp_softc *sc, char *devname)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct netmsg_carp cmsg;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	ifnet_deserialize_all(ifp);
+
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_ioctl_getdevname_dispatch);
+	cmsg.nc_softc = sc;
+	cmsg.nc_data = devname;
 
 	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
 
