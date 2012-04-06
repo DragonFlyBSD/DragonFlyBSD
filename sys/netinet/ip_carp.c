@@ -1981,7 +1981,6 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 		error = ether_ioctl(ifp, cmd, addr);
 		break;
 	}
-	carp_hmac_prepare(sc);
 
 	carp_reltok();
 	return error;
@@ -2095,6 +2094,7 @@ carp_ioctl_setvh_dispatch(netmsg_t msg)
 		carp_setrun(sc, 0);
 	}
 back:
+	carp_hmac_prepare(sc);
 	carp_gettok();
 
 	lwkt_replymsg(&cmsg->base.lmsg, error);
@@ -2174,6 +2174,7 @@ carp_init_dispatch(netmsg_t msg)
 	carp_gettok();
 
 	sc->sc_if.if_flags |= IFF_RUNNING;
+	carp_hmac_prepare(sc);
 	carp_set_state(sc, INIT);
 	carp_setrun(sc, 0);
 
