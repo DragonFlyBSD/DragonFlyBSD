@@ -204,6 +204,16 @@ tcp_sack_cleanup(struct scoreboard *scb)
 }
 
 /*
+ * Cleanup the reported SACK block information
+ */
+void
+tcp_sack_report_cleanup(struct tcpcb *tp)
+{
+	tp->t_flags &= ~(TF_DUPSEG | TF_ENCLOSESEG | TF_SACKLEFT);
+	tp->reportblk.rblk_start = tp->reportblk.rblk_end;
+}
+
+/*
  * Returns	0 if not D-SACK block,
  *		1 if D-SACK,
  *		2 if duplicate of out-of-order D-SACK block.

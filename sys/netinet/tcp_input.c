@@ -2524,6 +2524,7 @@ dodata:							/* XXX */
 	 */
 	if (needoutput || (tp->t_flags & TF_ACKNOW))
 		tcp_output(tp);
+	tcp_sack_report_cleanup(tp);
 	return(IPPROTO_DONE);
 
 dropafterack:
@@ -2555,6 +2556,7 @@ dropafterack:
 	m_freem(m);
 	tp->t_flags |= TF_ACKNOW;
 	tcp_output(tp);
+	tcp_sack_report_cleanup(tp);
 	return(IPPROTO_DONE);
 
 dropwithreset:
@@ -2601,6 +2603,8 @@ dropwithreset:
 		tcp_respond(tp, mtod(m, void *), th, m, th->th_seq + tlen,
 			    (tcp_seq)0, TH_RST | TH_ACK);
 	}
+	if (tp != NULL)
+		tcp_sack_report_cleanup(tp);
 	return(IPPROTO_DONE);
 
 drop:
@@ -2612,6 +2616,8 @@ drop:
 		tcp_trace(TA_DROP, ostate, tp, tcp_saveipgen, &tcp_savetcp, 0);
 #endif
 	m_freem(m);
+	if (tp != NULL)
+		tcp_sack_report_cleanup(tp);
 	return(IPPROTO_DONE);
 }
 
