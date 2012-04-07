@@ -781,6 +781,7 @@ struct AdapterControlBlock {
 	struct resource *				sys_res_arcmsr[2];
 	struct resource *				irqres;
 	void *						ih;                                    /* interrupt handle */
+	int						irq_type;
 
 	/* Hooks into the CAM XPT */
 	struct						cam_sim *psim;
