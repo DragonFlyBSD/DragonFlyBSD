@@ -3554,7 +3554,7 @@ static int arcmsr_attach(device_t dev)
 	    arcmsr_free_resource(acb);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
 		if (acb->irq_type == PCI_INTR_TYPE_MSI)
-			pci_release_msi(acb->pci_dev);
+			pci_release_msi(dev);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
 		kprintf("arcmsr%d: cam_simq_alloc failure!\n", unit);
 		return ENXIO;
@@ -3564,7 +3564,7 @@ static int arcmsr_attach(device_t dev)
 		arcmsr_free_resource(acb);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
 		if (acb->irq_type == PCI_INTR_TYPE_MSI)
-			pci_release_msi(acb->pci_dev);
+			pci_release_msi(dev);
 		cam_simq_release(devq);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
 		kprintf("arcmsr%d: cam_sim_alloc failure!\n", unit);
@@ -3575,7 +3575,7 @@ static int arcmsr_attach(device_t dev)
 		arcmsr_free_resource(acb);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
 		if (acb->irq_type == PCI_INTR_TYPE_MSI)
-			pci_release_msi(acb->pci_dev);
+			pci_release_msi(dev);
 		cam_sim_free(acb->psim);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
 		kprintf("arcmsr%d: xpt_bus_register failure!\n", unit);
@@ -3585,7 +3585,7 @@ static int arcmsr_attach(device_t dev)
 		arcmsr_free_resource(acb);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
 		if (acb->irq_type == PCI_INTR_TYPE_MSI)
-			pci_release_msi(acb->pci_dev);
+			pci_release_msi(dev);
 		xpt_bus_deregister(cam_sim_path(acb->psim));
 		cam_sim_free(acb->psim);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
@@ -3725,7 +3725,7 @@ static int arcmsr_detach(device_t dev)
 	}
 	bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
 	if (acb->irq_type == PCI_INTR_TYPE_MSI)
-		pci_release_msi(acb->pci_dev);
+		pci_release_msi(dev);
 	ARCMSR_LOCK_ACQUIRE(&acb->qbuffer_lock);
 	xpt_async(AC_LOST_DEVICE, acb->ppath, NULL);
 	xpt_free_path(acb->ppath);
