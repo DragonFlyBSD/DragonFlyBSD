@@ -23,9 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/jme.4,v 1.1 2008/05/27 01:59:17 yongari Exp $
-.\" $DragonFly: src/share/man/man4/jme.4,v 1.3 2008/07/27 19:38:58 swildner Exp $
 .\"
-.Dd July 26, 2008
+.Dd April 7, 2012
 .Dt JME 4
 .Os
 .Sh NAME
@@ -101,6 +100,12 @@ The
 .Nm
 driver supports
 .Xr polling 4 .
+.Ss Loader Tunables
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting the following tunable:
+.Bd -literal -offset indent
+hw.jme.msi.enable=0
+.Ed
 .Ss MIB Variables
 A number of per-interface variables are implemented in the
 .Va hw.jme Ns Em X
