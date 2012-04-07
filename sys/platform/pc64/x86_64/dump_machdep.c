@@ -158,19 +158,21 @@ cb_dumpdata(struct md_pa *mdp, int seqnr, void *arg)
 	uint64_t pgs;
 	size_t counter, sz, chunk;
 	int i, c, error;
+	int max_iosize;
 
 	error = 0;	/* catch case in which chunk size is 0 */
 	counter = 0;	/* Update twiddle every 16MB */
 	va = NULL;
 	pgs = mdp->md_size / PAGE_SIZE;
 	pa = mdp->md_start;
+	max_iosize = min(MAXPHYS, di->maxiosize);
 
 	kprintf("  chunk %d: %ldMB (%ld pages)", seqnr, PG2MB(pgs), pgs);
 
 	while (pgs) {
 		chunk = pgs;
-		if (chunk > MAXDUMPPGS)
-			chunk = MAXDUMPPGS;
+		if (chunk > (max_iosize/PAGE_SIZE))
+			chunk = max_iosize/PAGE_SIZE;
 		sz = chunk << PAGE_SHIFT;
 		counter += sz;
 		if (counter >> 24) {

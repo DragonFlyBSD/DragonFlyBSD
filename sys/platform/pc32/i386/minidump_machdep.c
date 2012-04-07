@@ -102,6 +102,7 @@ blk_write(struct dumperinfo *di, char *ptr, vm_paddr_t pa, size_t sz)
 {
 	size_t len;
 	int error, i, c;
+	int max_iosize;
 
 	error = 0;
 	if ((sz % PAGE_SIZE) != 0) {
@@ -122,8 +123,9 @@ blk_write(struct dumperinfo *di, char *ptr, vm_paddr_t pa, size_t sz)
 		if (error)
 			return (error);
 	}
+	max_iosize = min(MAXPHYS, di->maxiosize);
 	while (sz) {
-		len = (MAXDUMPPGS * PAGE_SIZE) - fragsz;
+		len = max_iosize - fragsz;
 		if (len > sz)
 			len = sz;
 		counter += len;
@@ -148,7 +150,7 @@ blk_write(struct dumperinfo *di, char *ptr, vm_paddr_t pa, size_t sz)
 			fragsz += len;
 			pa += len;
 			sz -= len;
-			if (fragsz == (MAXDUMPPGS * PAGE_SIZE)) {
+			if (fragsz == max_iosize) {
 				error = blk_flush(di);
 				if (error)
 					return (error);

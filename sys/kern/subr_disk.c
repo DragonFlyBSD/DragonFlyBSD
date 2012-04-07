@@ -850,6 +850,7 @@ disk_dumpconf(cdev_t dev, u_int onoff)
 	di.dumper = diskdump;
 	di.priv = dev;
 	di.blocksize = secsize;
+	di.maxiosize = dev->si_iosize_max;
 	di.mediaoffset = blkno * DEV_BSIZE;
 	di.mediasize = size * DEV_BSIZE;
 
