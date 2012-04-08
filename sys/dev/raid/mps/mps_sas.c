@@ -3003,15 +3003,6 @@ mpssas_check_eedp(struct mpssas_softc *sassc)
 				if (!found_lun) {
 					lun = kmalloc(sizeof(struct mpssas_lun),
 					    M_MPT2, M_WAITOK | M_ZERO);
-					if (lun == NULL) {
-						mps_dprint(sc, MPS_FAULT,
-						    "Unable to alloc LUN for "
-						    "EEDP support.\n");
-						kfree(rcap_buf, M_MPT2);
-						xpt_free_path(ccb->ccb_h.path);
-						xpt_free_ccb(ccb);
-						return;
-					}
 					lun->lun_id = lunid;
 					SLIST_INSERT_HEAD(&target->luns, lun,
 					    lun_link);

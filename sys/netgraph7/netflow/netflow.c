@@ -26,7 +26,6 @@
  *
  * $SourceForge: netflow.c,v 1.41 2004/09/05 11:41:10 glebius Exp $
  * $FreeBSD: src/sys/netgraph/netflow/netflow.c,v 1.29 2008/05/09 23:02:57 julian Exp $
- * $DragonFly: src/sys/netgraph7/netflow/netflow.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -332,11 +331,6 @@ ng_netflow_cache_init(priv_p priv)
 	/* Allocate hash. */
 	priv->hash = kmalloc(NBUCKETS * sizeof(struct flow_hash_entry),
 			     M_NETFLOW_HASH, M_WAITOK | M_ZERO);
-
-	if (priv->hash == NULL) {
-		uma_zdestroy(priv->zone);
-		return (ENOMEM);
-	}
 
 	/* Initialize hash. */
 	for (i = 0, hsh = priv->hash; i < NBUCKETS; i++, hsh++) {

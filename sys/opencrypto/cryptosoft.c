@@ -936,17 +936,9 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		authcommon:
 			(*swd)->sw_ictx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
 						  M_WAITOK);
-			if ((*swd)->sw_ictx == NULL) {
-				swcr_freesession_slot(&swd_base, 0);
-				return ENOBUFS;
-			}
 	
 			(*swd)->sw_octx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
 						  M_WAITOK);
-			if ((*swd)->sw_octx == NULL) {
-				swcr_freesession_slot(&swd_base, 0);
-				return ENOBUFS;
-			}
 	
 			if (cri->cri_key != NULL) {
 				swcr_authprepare(axf, *swd, cri->cri_key,
@@ -966,17 +958,9 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		auth2common:
 			(*swd)->sw_ictx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
 						  M_WAITOK);
-			if ((*swd)->sw_ictx == NULL) {
-				swcr_freesession_slot(&swd_base, 0);
-				return ENOBUFS;
-			}
 	
 			(*swd)->sw_octx = kmalloc(cri->cri_klen / 8,
 						  M_CRYPTO_DATA, M_WAITOK);
-			if ((*swd)->sw_octx == NULL) {
-				swcr_freesession_slot(&swd_base, 0);
-				return ENOBUFS;
-			}
 	
 			/* Store the key so we can "append" it to the payload */
 			if (cri->cri_key != NULL) {
@@ -997,10 +981,6 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		auth3common:
 			(*swd)->sw_ictx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
 						  M_WAITOK);
-			if ((*swd)->sw_ictx == NULL) {
-				swcr_freesession_slot(&swd_base, 0);
-				return ENOBUFS;
-			}
 
 			axf->Init((*swd)->sw_ictx);
 			(*swd)->sw_mlen = cri->cri_mlen;

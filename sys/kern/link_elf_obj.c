@@ -573,10 +573,6 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	/* Allocate space for and load the symbol table */
 	ef->ddbsymcnt = shdr[symtabindex].sh_size / sizeof(Elf_Sym);
 	ef->ddbsymtab = kmalloc(shdr[symtabindex].sh_size, M_LINKER, M_WAITOK);
-	if (ef->ddbsymtab == NULL) {
-		error = ENOMEM;
-		goto out;
-	}
 	error = vn_rdwr(UIO_READ, vp, (void *)ef->ddbsymtab,
 			shdr[symtabindex].sh_size, shdr[symtabindex].sh_offset,
 			UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
@@ -591,10 +587,6 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	/* Allocate space for and load the symbol strings */
 	ef->ddbstrcnt = shdr[symstrindex].sh_size;
 	ef->ddbstrtab = kmalloc(shdr[symstrindex].sh_size, M_LINKER, M_WAITOK);
-	if (ef->ddbstrtab == NULL) {
-		error = ENOMEM;
-		goto out;
-	}
 	error = vn_rdwr(UIO_READ, vp, ef->ddbstrtab,
 			shdr[symstrindex].sh_size, shdr[symstrindex].sh_offset,
 			UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
@@ -612,10 +604,6 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 		ef->shstrcnt = shdr[shstrindex].sh_size;
 		ef->shstrtab = kmalloc(shdr[shstrindex].sh_size, M_LINKER,
 				       M_WAITOK);
-		if (ef->shstrtab == NULL) {
-			error = ENOMEM;
-			goto out;
-		}
 		error = vn_rdwr(UIO_READ, vp, ef->shstrtab,
 				shdr[shstrindex].sh_size, shdr[shstrindex].sh_offset,
 				UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
