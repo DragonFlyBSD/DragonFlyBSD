@@ -821,7 +821,7 @@ acpi_hp_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 	ACPI_OBJECT *obj;
 	ACPI_WMI_GET_EVENT_DATA(sc->wmi_dev, notify, &response);
 	obj = (ACPI_OBJECT*) response.Pointer;
-	if (!obj || obj->Type != ACPI_TYPE_PACKAGE) {
+	if (obj && obj->Type == ACPI_TYPE_BUFFER && obj->Buffer.Length == 8) {
 		if (*((UINT8 *) obj->Buffer.Pointer) == 0x5) {
 			acpi_hp_evaluate_auto_on_off(sc);
 		}
@@ -920,7 +920,7 @@ acpi_hp_get_cmi_block(device_t wmi_dev, const char* guid, UINT8 instance,
 		return (-EINVAL);
 	}
 	obj = out.Pointer;
-	if (!obj && obj->Type != ACPI_TYPE_PACKAGE) {
+	if (!obj || obj->Type != ACPI_TYPE_PACKAGE) {
 		acpi_hp_free_buffer(&out);
 		return (-EINVAL);
 	}
