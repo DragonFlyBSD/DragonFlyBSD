@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-iop.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.11 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -326,7 +325,10 @@ iop_get_util_params(struct iop_softc *sc, int target, int operation, int group)
 
     if (!(reply = contigmalloc(PAGE_SIZE, M_PSTIOP, M_NOWAIT | M_ZERO,
 			       0x00010000, 0xFFFFFFFF, sizeof(u_int32_t), 0)))
+    {
+	contigfree(param, PAGE_SIZE, M_PSTIOP);
 	return NULL;
+    }
 
     mfa = iop_get_mfa(sc);
     msg = (struct i2o_util_get_param_message *)(sc->ibase + mfa);
