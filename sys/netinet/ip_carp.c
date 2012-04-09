@@ -115,7 +115,6 @@ struct carp_softc {
 	struct in6_ifaddr 	*sc_ia6;	/* primary iface address v6 */
 	struct ip6_moptions 	 sc_im6o;
 #endif /* INET6 */
-	TAILQ_ENTRY(carp_softc)	 sc_list;
 
 	enum { INIT = 0, BACKUP, MASTER }
 				 sc_state;
@@ -153,9 +152,11 @@ struct carp_softc {
 
 #define sc_if	arpcom.ac_if
 
-struct carp_if {
-	TAILQ_HEAD(, carp_softc) vhif_vrs;
+struct carp_softc_container {
+	TAILQ_ENTRY(carp_softc_container) scc_link;
+	struct carp_softc	*scc_softc;
 };
+TAILQ_HEAD(carp_if, carp_softc_container);
 
 SYSCTL_DECL(_net_inet_carp);
 
@@ -245,7 +246,9 @@ static int	carp_addroute_vhaddr(struct carp_softc *, struct carp_vhaddr *);
 static void	carp_delroute_vhaddr(struct carp_softc *, struct carp_vhaddr *,
 		    boolean_t);
 
+#ifdef foo
 static void	carp_sc_state(struct carp_softc *);
+#endif
 #ifdef INET6
 static void	carp_send_na(struct carp_softc *);
 #ifdef notyet
@@ -261,6 +264,10 @@ static int	carp_ioctl_setvh(struct carp_softc *, void *, struct ucred *);
 static int	carp_ioctl_getvh(struct carp_softc *, void *, struct ucred *);
 static int	carp_ioctl_getdevname(struct carp_softc *, struct ifdrv *);
 static int	carp_ioctl_getvhaddr(struct carp_softc *, struct ifdrv *);
+
+static struct carp_if *carp_if_remove(struct carp_if *, struct carp_softc *);
+static struct carp_if *carp_if_insert(struct carp_if *, struct carp_softc *);
+static void	carp_if_free(struct carp_if *);
 
 static void	carp_ifaddr(void *, struct ifnet *, enum ifaddr_event,
 			    struct ifaddr *);
@@ -552,11 +559,119 @@ carp_clone_destroy(struct ifnet *ifp)
 	return 0;
 }
 
+static struct carp_if *
+carp_if_remove(struct carp_if *ocif, struct carp_softc *sc)
+{
+	struct carp_softc_container *oscc, *scc;
+	struct carp_if *cif;
+	int count = 0;
+#ifdef INVARIANTS
+	int found = 0;
+#endif
+
+	TAILQ_FOREACH(oscc, ocif, scc_link) {
+		++count;
+#ifdef INVARIANTS
+		if (oscc->scc_softc == sc)
+			found = 1;
+#endif
+	}
+	KASSERT(found, ("%s carp_softc is not on carp_if\n", __func__));
+
+	if (count == 1) {
+		/* Last one is going to be unlinked */
+		return NULL;
+	}
+
+	cif = kmalloc(sizeof(*cif), M_CARP, M_WAITOK | M_ZERO);
+	TAILQ_INIT(cif);
+
+	TAILQ_FOREACH(oscc, ocif, scc_link) {
+		if (oscc->scc_softc == sc)
+			continue;
+
+		scc = kmalloc(sizeof(*scc), M_CARP, M_WAITOK | M_ZERO);
+		scc->scc_softc = oscc->scc_softc;
+		TAILQ_INSERT_TAIL(cif, scc, scc_link);
+	}
+
+	return cif;
+}
+
+static struct carp_if *
+carp_if_insert(struct carp_if *ocif, struct carp_softc *sc)
+{
+	struct carp_softc_container *oscc;
+	int onlist;
+
+	onlist = 0;
+	if (ocif != NULL) {
+		TAILQ_FOREACH(oscc, ocif, scc_link) {
+			if (oscc->scc_softc == sc)
+				onlist = 1;
+		}
+	}
+
+#ifdef INVARIANTS
+	if (sc->sc_carpdev != NULL) {
+		KASSERT(onlist, ("%s is not on %s carp list\n",
+		    sc->sc_if.if_xname, sc->sc_carpdev->if_xname));
+	} else {
+		KASSERT(!onlist, ("%s is already on carp list\n",
+		    sc->sc_if.if_xname));
+	}
+#endif
+
+	if (!onlist) {
+		struct carp_if *cif;
+		struct carp_softc_container *new_scc, *scc;
+		int inserted = 0;
+
+		cif = kmalloc(sizeof(*cif), M_CARP, M_WAITOK | M_ZERO);
+		TAILQ_INIT(cif);
+
+		new_scc = kmalloc(sizeof(*new_scc), M_CARP, M_WAITOK | M_ZERO);
+		new_scc->scc_softc = sc;
+
+		if (ocif != NULL) {
+			TAILQ_FOREACH(oscc, ocif, scc_link) {
+				if (!inserted &&
+				    oscc->scc_softc->sc_vhid > sc->sc_vhid) {
+					TAILQ_INSERT_TAIL(cif, new_scc,
+					    scc_link);
+					inserted = 1;
+				}
+
+				scc = kmalloc(sizeof(*scc), M_CARP,
+				    M_WAITOK | M_ZERO);
+				scc->scc_softc = oscc->scc_softc;
+				TAILQ_INSERT_TAIL(cif, scc, scc_link);
+			}
+		}
+		if (!inserted)
+			TAILQ_INSERT_TAIL(cif, new_scc, scc_link);
+
+		return cif;
+	} else {
+		return ocif;
+	}
+}
+
+static void
+carp_if_free(struct carp_if *cif)
+{
+	struct carp_softc_container *scc;
+
+	while ((scc = TAILQ_FIRST(cif)) != NULL) {
+		TAILQ_REMOVE(cif, scc, scc_link);
+		kfree(scc, M_CARP);
+	}
+	kfree(cif, M_CARP);
+}
+
 static void
 carp_detach(struct carp_softc *sc, int detach, boolean_t del_iaback)
 {
-	struct carp_if *cif;
-
 	carp_suspend(sc, detach);
 
 	carp_multicast_cleanup(sc);
@@ -573,15 +688,36 @@ carp_detach(struct carp_softc *sc, int detach, boolean_t del_iaback)
 	}
 
 	if (sc->sc_carpdev != NULL) {
-		cif = sc->sc_carpdev->if_carp;
-		TAILQ_REMOVE(&cif->vhif_vrs, sc, sc_list);
-		if (TAILQ_EMPTY(&cif->vhif_vrs)) {
-			ifpromisc(sc->sc_carpdev, 0);
-			sc->sc_carpdev->if_carp = NULL;
-			kfree(cif, M_CARP);
-		}
+		struct ifnet *ifp = sc->sc_carpdev;
+		struct carp_if *ocif = ifp->if_carp;
+
+		ifp->if_carp = carp_if_remove(ocif, sc);
+		KASSERT(ifp->if_carp != ocif,
+		    ("%s carp_if_remove failed\n", __func__));
+
 		sc->sc_carpdev = NULL;
 		sc->sc_ia = NULL;
+
+		/*
+		 * Make sure that all protocol threads see the
+		 * sc_carpdev and if_carp changes
+		 */
+		netmsg_service_sync();
+
+		if (ifp->if_carp == NULL) {
+			/*
+			 * No more carp interfaces using
+			 * ifp as the backing interface,
+			 * move it out of promiscous mode.
+			 */
+			ifpromisc(ifp, 0);
+		}
+
+		/*
+		 * The old carp list could be safely free now,
+		 * since no one can access it.
+		 */
+		carp_if_free(ocif);
 	}
 }
 
@@ -590,14 +726,15 @@ carp_ifdetach_dispatch(netmsg_t msg)
 {
 	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
 	struct ifnet *ifp = cmsg->nc_carpdev;
-	struct carp_if *cif = ifp->if_carp;
-	struct carp_softc *sc;
 
 	carp_gettok();
 
-	while (ifp->if_carp &&
-	       (sc = TAILQ_FIRST(&cif->vhif_vrs)) != NULL)
-		carp_detach(sc, 1, TRUE);
+	while (ifp->if_carp) {
+		struct carp_softc_container *scc;
+
+		scc = TAILQ_FIRST((struct carp_if *)(ifp->if_carp));
+		carp_detach(scc->scc_softc, 1, TRUE);
+	}
 
 	carp_reltok();
 
@@ -927,7 +1064,7 @@ carp_input(void *v, struct mbuf *m)
 {
 	struct carp_if *cif = v;
 	struct ether_header *eh;
-	struct carp_softc *sc;
+	struct carp_softc_container *scc;
 	struct ifnet *ifp;
 
 	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
@@ -947,7 +1084,8 @@ carp_input(void *v, struct mbuf *m)
 	 * XXX Should really check the list of multicast addresses
 	 * for each CARP interface _before_ copying.
 	 */
-	TAILQ_FOREACH(sc, &cif->vhif_vrs, sc_list) {
+	TAILQ_FOREACH(scc, cif, scc_link) {
+		struct carp_softc *sc = scc->scc_softc;
 		struct mbuf *m0;
 
 		if ((sc->sc_if.if_flags & IFF_UP) == 0)
@@ -1315,6 +1453,9 @@ carp_iamatch(const struct in_ifaddr *ia)
 
 	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
 
+	KASSERT(&curthread->td_msgport == cpu_portfn(0),
+	    ("not in netisr0"));
+
 #ifdef notyet
 	if (carp_opts[CARPCTL_ARPBALANCE])
 		return carp_iamatch_balance(cif, itaddr, isaddr, enaddr);
@@ -1330,6 +1471,7 @@ carp_iamatch(const struct in_ifaddr *ia)
 struct ifaddr *
 carp_iamatch6(void *v, struct in6_addr *taddr)
 {
+#ifdef foo
 	struct carp_if *cif = v;
 	struct carp_softc *vh;
 
@@ -1350,12 +1492,14 @@ carp_iamatch6(void *v, struct in6_addr *taddr)
 			}
 		}
 	}
+#endif
 	return (NULL);
 }
 
 void *
 carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 {
+#ifdef foo
 	struct m_tag *mtag;
 	struct carp_if *cif = v;
 	struct carp_softc *sc;
@@ -1388,6 +1532,7 @@ carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 			}
 		}
 	}
+#endif
 	return (NULL);
 }
 #endif
@@ -1395,14 +1540,15 @@ carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 static struct ifnet *
 carp_forus(struct carp_if *cif, const uint8_t *dhost)
 {
-	struct carp_softc *sc;
+	struct carp_softc_container *scc;
 
 	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
 
 	if (memcmp(dhost, carp_etheraddr, ETHER_ADDR_LEN - 1) != 0)
 		return NULL;
 
-	TAILQ_FOREACH(sc, &cif->vhif_vrs, sc_list) {
+	TAILQ_FOREACH(scc, cif, scc_link) {
+		struct carp_softc *sc = scc->scc_softc;
 		struct ifnet *ifp = &sc->sc_if;
 
 		if (CARP_IS_RUNNING(ifp) && sc->sc_state == MASTER &&
@@ -1909,6 +2055,7 @@ carp_set_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 		LIST_INSERT_HEAD(&im6o->im6o_memberships, imm, i6mm_chain);
 	}
 
+#ifdef foo
 	if (!ifp->if_carp) {
 		cif = kmalloc(sizeof(*cif), M_CARP, M_WAITOK | M_ZERO);
 
@@ -1930,9 +2077,11 @@ carp_set_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 			}
 		}
 	}
+#endif
 	sc->sc_ia6 = ia;
 	sc->sc_carpdev = ifp;
 
+#ifdef foo
 	{ /* XXX prevent endless loop if already in queue */
 	struct carp_softc *vr, *after = NULL;
 	int myself = 0;
@@ -1953,6 +2102,7 @@ carp_set_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 			TAILQ_INSERT_AFTER(&cif->vhif_vrs, after, sc, sc_list);
 	}
 	}
+#endif
 
 	sc->sc_naddrs6++;
 	if (own)
@@ -1993,11 +2143,13 @@ carp_del_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 			in6_leavegroup(imm);
 		}
 		im6o->im6o_multicast_ifp = NULL;
+#ifdef foo
 		TAILQ_REMOVE(&cif->vhif_vrs, sc, sc_list);
 		if (TAILQ_EMPTY(&cif->vhif_vrs)) {
 			sc->sc_carpdev->if_carp = NULL;
 			kfree(cif, M_IFADDR);
 		}
+#endif
 	}
 	return (error);
 }
@@ -2097,7 +2249,7 @@ static void
 carp_ioctl_setvh_dispatch(netmsg_t msg)
 {
 	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
-	struct carp_softc *sc = cmsg->nc_softc, *vr;
+	struct carp_softc *sc = cmsg->nc_softc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	const struct carpreq *carpr = cmsg->nc_data;
 	int error;
@@ -2130,8 +2282,11 @@ carp_ioctl_setvh_dispatch(netmsg_t msg)
 		}
 		if (sc->sc_carpdev) {
 			struct carp_if *cif = sc->sc_carpdev->if_carp;
+			struct carp_softc_container *scc;
 
-			TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list) {
+			TAILQ_FOREACH(scc, cif, scc_link) {
+				struct carp_softc *vr = scc->scc_softc;
+
 				if (vr != sc &&
 				    vr->sc_vhid == carpr->carpr_vhid) {
 					error = EEXIST;
@@ -2345,16 +2500,18 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
     struct rtentry *rt)
 {
 	struct carp_softc *sc = ifp->if_softc;
+	struct ifnet *carpdev;
 	int error = 0;
 
 	carp_gettok();
-	if (sc->sc_carpdev) {
+	carpdev = sc->sc_carpdev;
+	if (carpdev != NULL) {
 		/*
 		 * NOTE:
 		 * CARP's ifp is passed to backing device's
 		 * if_output method.
 		 */
-		sc->sc_carpdev->if_output(ifp, m, dst, rt);
+		carpdev->if_output(ifp, m, dst, rt);
 	} else {
 		m_freem(m);
 		error = ENETUNREACH;
@@ -2454,6 +2611,7 @@ carp_group_demote_adj(struct ifnet *ifp, int adj)
 	carp_reltok();
 }
 
+#ifdef foo
 void
 carp_carpdev_state(void *v)
 {
@@ -2491,6 +2649,7 @@ carp_sc_state(struct carp_softc *sc)
 		sc->sc_suppress = 0;
 	}
 }
+#endif
 
 static void
 carp_stop(struct carp_softc *sc, int detach)
@@ -2534,12 +2693,8 @@ carp_activate_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
     struct ifnet *ifp, struct in_ifaddr *ia_if, int own)
 {
 	struct ip_moptions *imo = &sc->sc_imo;
-	struct carp_if *cif;
-	struct carp_softc *vr, *after = NULL;
-	int onlist, error;
-#ifdef INVARIANTS
-	int assert_onlist;
-#endif
+	struct carp_if *ocif = ifp->if_carp;
+	int error;
 
 	KKASSERT(vha->vha_ia != NULL);
 
@@ -2552,63 +2707,43 @@ carp_activate_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 		("%s is already on %s\n", sc->sc_if.if_xname,
 		 sc->sc_carpdev->if_xname));
 
-	if (!ifp->if_carp) {
+	if (ocif == NULL) {
 		KASSERT(sc->sc_carpdev == NULL,
 			("%s is already on %s\n", sc->sc_if.if_xname,
 			 sc->sc_carpdev->if_xname));
 
-		cif = kmalloc(sizeof(*cif), M_CARP, M_WAITOK | M_ZERO);
-
 		error = ifpromisc(ifp, 1);
-		if (error) {
-			kfree(cif, M_CARP);
+		if (error)
 			return error;
-		}
-
-		TAILQ_INIT(&cif->vhif_vrs);
-		ifp->if_carp = cif;
 	} else {
-		cif = ifp->if_carp;
-		TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list) {
+		struct carp_softc_container *scc;
+
+		TAILQ_FOREACH(scc, ocif, scc_link) {
+			struct carp_softc *vr = scc->scc_softc;
+
 			if (vr != sc && vr->sc_vhid == sc->sc_vhid)
 				return EINVAL;
 		}
 	}
 
-#ifdef INVARIANTS
-	if (sc->sc_carpdev != NULL)
-		assert_onlist = 1;
-	else
-		assert_onlist = 0;
-#endif
+	ifp->if_carp = carp_if_insert(ocif, sc);
+	KASSERT(ifp->if_carp != NULL, ("%s carp_if_insert failed\n", __func__));
+
 	sc->sc_ia = ia_if;
 	sc->sc_carpdev = ifp;
 
-	cif = ifp->if_carp;
-	onlist = 0;
-	TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list) {
-		if (vr == sc)
-			onlist = 1;
-		if (vr->sc_vhid < sc->sc_vhid)
-			after = vr;
-	}
+	/*
+	 * Make sure that all protocol threads see the sc_carpdev and
+	 * if_carp changes
+	 */
+	netmsg_service_sync();
 
-#ifdef INVARIANTS
-	if (assert_onlist) {
-		KASSERT(onlist, ("%s is not on %s carp list\n",
-			sc->sc_if.if_xname, ifp->if_xname));
-	} else {
-		KASSERT(!onlist, ("%s is already on %s carp list\n",
-			sc->sc_if.if_xname, ifp->if_xname));
-	}
-#endif
-
-	if (!onlist) {
-		/* We're trying to keep things in order */
-		if (after == NULL)
-			TAILQ_INSERT_TAIL(&cif->vhif_vrs, sc, sc_list);
-		else
-			TAILQ_INSERT_AFTER(&cif->vhif_vrs, after, sc, sc_list);
+	if (ocif != NULL && ifp->if_carp != ocif) {
+		/*
+		 * The old carp list could be safely free now,
+		 * since no one can access it.
+		 */
+		carp_if_free(ocif);
 	}
 
 	vha->vha_iaback = ia_if;

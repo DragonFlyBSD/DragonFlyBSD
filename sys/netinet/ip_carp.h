@@ -169,7 +169,6 @@ struct ifcarpvhaddr {
 }
 
 #ifdef _KERNEL
-void		 carp_carpdev_state(void *);
 void		 carp_group_demote_adj(struct ifnet *, int);
 int		 carp_proto_input(struct mbuf **, int *, int);
 int		 carp6_proto_input(struct mbuf **, int *, int);
