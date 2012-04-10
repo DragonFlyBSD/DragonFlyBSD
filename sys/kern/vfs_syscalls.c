@@ -3404,9 +3404,9 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 	struct vnode *vp;
 	struct vattr vattr;
 	int error;
-	uid_t uid;
-	gid_t gid;
-	uint64_t old_size;
+	uid_t uid = 0;
+	gid_t gid = 0;
+	uint64_t old_size = 0;
 
 	if (length < 0)
 		return(EINVAL);
@@ -3425,11 +3425,13 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 		error = EISDIR;
 		goto done;
 	}
-	error = VOP_GETATTR(vp, &vattr);
-	KASSERT(error == 0, ("kern_truncate(): VOP_GETATTR didn't return 0"));
-	uid = vattr.va_uid;
-	gid = vattr.va_gid;
-	old_size = vattr.va_size;
+	if (vfs_accounting_enabled) {
+		error = VOP_GETATTR(vp, &vattr);
+		KASSERT(error == 0, ("kern_truncate(): VOP_GETATTR didn't return 0"));
+		uid = vattr.va_uid;
+		gid = vattr.va_gid;
+		old_size = vattr.va_size;
+	}
 
 	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
 		VATTR_NULL(&vattr);
@@ -3469,9 +3471,10 @@ kern_ftruncate(int fd, off_t length)
 	struct vnode *vp;
 	struct file *fp;
 	int error;
-	uid_t uid;
-	gid_t gid;
-	uint64_t old_size;
+	uid_t uid = 0;
+	gid_t gid = 0;
+	uint64_t old_size = 0;
+	struct mount *mp;
 
 	if (length < 0)
 		return(EINVAL);
@@ -3497,17 +3500,20 @@ kern_ftruncate(int fd, off_t length)
 		goto done;
 	}
 
-	error = VOP_GETATTR(vp, &vattr);
-	KASSERT(error == 0, ("kern_ftruncate(): VOP_GETATTR didn't return 0"));
-	uid = vattr.va_uid;
-	gid = vattr.va_gid;
-	old_size = vattr.va_size;
+	if (vfs_accounting_enabled) {
+		error = VOP_GETATTR(vp, &vattr);
+		KASSERT(error == 0, ("kern_ftruncate(): VOP_GETATTR didn't return 0"));
+		uid = vattr.va_uid;
+		gid = vattr.va_gid;
+		old_size = vattr.va_size;
+	}
 
 	if ((error = vn_writechk(vp, NULL)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
 		error = VOP_SETATTR(vp, &vattr, fp->f_cred);
-		VFS_ACCOUNT(p->p_fd->fd_ncdir.mount, uid, gid, length - old_size);
+		mp = vq_vptomp(vp);
+		VFS_ACCOUNT(mp, uid, gid, length - old_size);
 	}
 	vn_unlock(vp);
 done:

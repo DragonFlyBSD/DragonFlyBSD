@@ -60,6 +60,7 @@
 #include <net/if_clone.h>
 #include <net/if_var.h>
 #include <net/ifq_var.h>
+#include <net/netmsg2.h>
 
 #ifdef INET
 #include <netinet/in.h>
@@ -84,6 +85,8 @@
 #define CARP_IS_RUNNING(ifp)	\
 	(((ifp)->if_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
 
+struct carp_softc;
+
 struct carp_vhaddr {
 	uint32_t		vha_flags;	/* CARP_VHAF_ */
 	struct in_ifaddr	*vha_ia;	/* carp address */
@@ -91,6 +94,14 @@ struct carp_vhaddr {
 	TAILQ_ENTRY(carp_vhaddr) vha_link;
 };
 TAILQ_HEAD(carp_vhaddr_list, carp_vhaddr);
+
+struct netmsg_carp {
+	struct netmsg_base	base;
+	struct ifnet		*nc_carpdev;
+	struct carp_softc	*nc_softc;
+	void			*nc_data;
+	size_t			nc_datalen;
+};
 
 struct carp_softc {
 	struct arpcom		 arpcom;
@@ -104,7 +115,6 @@ struct carp_softc {
 	struct in6_ifaddr 	*sc_ia6;	/* primary iface address v6 */
 	struct ip6_moptions 	 sc_im6o;
 #endif /* INET6 */
-	TAILQ_ENTRY(carp_softc)	 sc_list;
 
 	enum { INIT = 0, BACKUP, MASTER }
 				 sc_state;
@@ -132,19 +142,21 @@ struct carp_softc {
 	SHA1_CTX		 sc_sha1;
 
 	struct callout		 sc_ad_tmo;	/* advertisement timeout */
-	struct callout		 sc_md_tmo;	/* master down timeout */
-	struct callout 		 sc_md6_tmo;	/* master down timeout */
+	struct netmsg_carp	 sc_ad_msg;	/* adv timeout netmsg */
+	struct callout		 sc_md_tmo;	/* ip4 master down timeout */
+	struct callout 		 sc_md6_tmo;	/* ip6 master down timeout */
+	struct netmsg_carp	 sc_md_msg;	/* master down timeout netmsg */
 
 	LIST_ENTRY(carp_softc)	 sc_next;	/* Interface clue */
 };
 
 #define sc_if	arpcom.ac_if
 
-struct carp_if {
-	TAILQ_HEAD(, carp_softc) vhif_vrs;
+struct carp_softc_container {
+	TAILQ_ENTRY(carp_softc_container) scc_link;
+	struct carp_softc	*scc_softc;
 };
-
-enum	{ CARP_COUNT_MASTER, CARP_COUNT_RUNNING };
+TAILQ_HEAD(carp_if, carp_softc_container);
 
 SYSCTL_DECL(_net_inet_carp);
 
@@ -177,7 +189,7 @@ SYSCTL_STRUCT(_net_inet_carp, CARPCTL_STATS, stats, CTLFLAG_RW,
 		log(LOG_DEBUG, __VA_ARGS__);		\
 } while (0)
 
-static struct lwkt_token carp_tok = LWKT_TOKEN_INITIALIZER(carp_token);
+static struct lwkt_token carp_listtok = LWKT_TOKEN_INITIALIZER(carp_list_token);
 
 static void	carp_hmac_prepare(struct carp_softc *);
 static void	carp_hmac_generate(struct carp_softc *, uint32_t *,
@@ -224,7 +236,6 @@ static void	carp_unlink_addrs(struct carp_softc *, struct ifnet *,
 		    struct ifaddr *);
 static void	carp_update_addrs(struct carp_softc *, struct ifaddr *);
 
-static int	carp_get_vhaddr(struct carp_softc *, struct ifdrv *);
 static int	carp_config_vhaddr(struct carp_softc *, struct carp_vhaddr *,
 		    struct in_ifaddr *);
 static int	carp_activate_vhaddr(struct carp_softc *, struct carp_vhaddr *,
@@ -235,7 +246,9 @@ static int	carp_addroute_vhaddr(struct carp_softc *, struct carp_vhaddr *);
 static void	carp_delroute_vhaddr(struct carp_softc *, struct carp_vhaddr *,
 		    boolean_t);
 
+#ifdef foo
 static void	carp_sc_state(struct carp_softc *);
+#endif
 #ifdef INET6
 static void	carp_send_na(struct carp_softc *);
 #ifdef notyet
@@ -246,10 +259,30 @@ static void	carp_multicast6_cleanup(struct carp_softc *);
 #endif
 static void	carp_stop(struct carp_softc *, int);
 static void	carp_suspend(struct carp_softc *, int);
+static void	carp_ioctl_stop(struct carp_softc *);
+static int	carp_ioctl_setvh(struct carp_softc *, void *, struct ucred *);
+static int	carp_ioctl_getvh(struct carp_softc *, void *, struct ucred *);
+static int	carp_ioctl_getdevname(struct carp_softc *, struct ifdrv *);
+static int	carp_ioctl_getvhaddr(struct carp_softc *, struct ifdrv *);
+
+static struct carp_if *carp_if_remove(struct carp_if *, struct carp_softc *);
+static struct carp_if *carp_if_insert(struct carp_if *, struct carp_softc *);
+static void	carp_if_free(struct carp_if *);
 
 static void	carp_ifaddr(void *, struct ifnet *, enum ifaddr_event,
 			    struct ifaddr *);
 static void	carp_ifdetach(void *, struct ifnet *);
+
+static void	carp_ifdetach_dispatch(netmsg_t);
+static void	carp_clone_destroy_dispatch(netmsg_t);
+static void	carp_init_dispatch(netmsg_t);
+static void	carp_ioctl_stop_dispatch(netmsg_t);
+static void	carp_ioctl_setvh_dispatch(netmsg_t);
+static void	carp_ioctl_getvh_dispatch(netmsg_t);
+static void	carp_ioctl_getdevname_dispatch(netmsg_t);
+static void	carp_ioctl_getvhaddr_dispatch(netmsg_t);
+static void	carp_send_ad_timeout_dispatch(netmsg_t);
+static void	carp_master_down_timeout_dispatch(netmsg_t);
 
 static MALLOC_DEFINE(M_CARP, "CARP", "CARP interfaces");
 
@@ -436,8 +469,15 @@ carp_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 #endif
 
 	callout_init_mp(&sc->sc_ad_tmo);
+	netmsg_init(&sc->sc_ad_msg.base, NULL, &netisr_adone_rport,
+	    MSGF_DROPABLE | MSGF_PRIORITY, carp_send_ad_timeout_dispatch);
+	sc->sc_ad_msg.nc_softc = sc;
+
 	callout_init_mp(&sc->sc_md_tmo);
 	callout_init_mp(&sc->sc_md6_tmo);
+	netmsg_init(&sc->sc_md_msg.base, NULL, &netisr_adone_rport,
+	    MSGF_DROPABLE | MSGF_PRIORITY, carp_master_down_timeout_dispatch);
+	sc->sc_md_msg.nc_softc = sc;
 
 	if_initname(ifp, CARP_IFNAME, unit);
 	ifp->if_softc = sc;
@@ -459,25 +499,52 @@ carp_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	ifp->if_type = IFT_CARP;
 	ifp->if_output = carp_output;
 
-	carp_gettok();
+	lwkt_gettoken(&carp_listtok);
 	LIST_INSERT_HEAD(&carpif_list, sc, sc_next);
-	carp_reltok();
+	lwkt_reltoken(&carp_listtok);
 
 	return (0);
+}
+
+static void
+carp_clone_destroy_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
+
+	sc->sc_dead = 1;
+	carp_detach(sc, 1, FALSE);
+
+	callout_stop_sync(&sc->sc_ad_tmo);
+	callout_stop_sync(&sc->sc_md_tmo);
+	callout_stop_sync(&sc->sc_md6_tmo);
+
+	crit_enter();
+	if ((sc->sc_ad_msg.base.lmsg.ms_flags & MSGF_DONE) == 0)
+		lwkt_dropmsg(&sc->sc_ad_msg.base.lmsg);
+	if ((sc->sc_md_msg.base.lmsg.ms_flags & MSGF_DONE) == 0)
+		lwkt_dropmsg(&sc->sc_md_msg.base.lmsg);
+	crit_exit();
+
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
 }
 
 static int
 carp_clone_destroy(struct ifnet *ifp)
 {
 	struct carp_softc *sc = ifp->if_softc;
+	struct netmsg_carp cmsg;
 
-	carp_gettok();
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_clone_destroy_dispatch);
+	cmsg.nc_softc = sc;
 
-	sc->sc_dead = 1;
-	carp_detach(sc, 1, FALSE);
+	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+	lwkt_gettoken(&carp_listtok);
 	LIST_REMOVE(sc, sc_next);
-
-	carp_reltok();
+	lwkt_reltoken(&carp_listtok);
 
 	bpfdetach(ifp);
 	if_detach(ifp);
@@ -488,11 +555,119 @@ carp_clone_destroy(struct ifnet *ifp)
 	return 0;
 }
 
+static struct carp_if *
+carp_if_remove(struct carp_if *ocif, struct carp_softc *sc)
+{
+	struct carp_softc_container *oscc, *scc;
+	struct carp_if *cif;
+	int count = 0;
+#ifdef INVARIANTS
+	int found = 0;
+#endif
+
+	TAILQ_FOREACH(oscc, ocif, scc_link) {
+		++count;
+#ifdef INVARIANTS
+		if (oscc->scc_softc == sc)
+			found = 1;
+#endif
+	}
+	KASSERT(found, ("%s carp_softc is not on carp_if\n", __func__));
+
+	if (count == 1) {
+		/* Last one is going to be unlinked */
+		return NULL;
+	}
+
+	cif = kmalloc(sizeof(*cif), M_CARP, M_WAITOK | M_ZERO);
+	TAILQ_INIT(cif);
+
+	TAILQ_FOREACH(oscc, ocif, scc_link) {
+		if (oscc->scc_softc == sc)
+			continue;
+
+		scc = kmalloc(sizeof(*scc), M_CARP, M_WAITOK | M_ZERO);
+		scc->scc_softc = oscc->scc_softc;
+		TAILQ_INSERT_TAIL(cif, scc, scc_link);
+	}
+
+	return cif;
+}
+
+static struct carp_if *
+carp_if_insert(struct carp_if *ocif, struct carp_softc *sc)
+{
+	struct carp_softc_container *oscc;
+	int onlist;
+
+	onlist = 0;
+	if (ocif != NULL) {
+		TAILQ_FOREACH(oscc, ocif, scc_link) {
+			if (oscc->scc_softc == sc)
+				onlist = 1;
+		}
+	}
+
+#ifdef INVARIANTS
+	if (sc->sc_carpdev != NULL) {
+		KASSERT(onlist, ("%s is not on %s carp list\n",
+		    sc->sc_if.if_xname, sc->sc_carpdev->if_xname));
+	} else {
+		KASSERT(!onlist, ("%s is already on carp list\n",
+		    sc->sc_if.if_xname));
+	}
+#endif
+
+	if (!onlist) {
+		struct carp_if *cif;
+		struct carp_softc_container *new_scc, *scc;
+		int inserted = 0;
+
+		cif = kmalloc(sizeof(*cif), M_CARP, M_WAITOK | M_ZERO);
+		TAILQ_INIT(cif);
+
+		new_scc = kmalloc(sizeof(*new_scc), M_CARP, M_WAITOK | M_ZERO);
+		new_scc->scc_softc = sc;
+
+		if (ocif != NULL) {
+			TAILQ_FOREACH(oscc, ocif, scc_link) {
+				if (!inserted &&
+				    oscc->scc_softc->sc_vhid > sc->sc_vhid) {
+					TAILQ_INSERT_TAIL(cif, new_scc,
+					    scc_link);
+					inserted = 1;
+				}
+
+				scc = kmalloc(sizeof(*scc), M_CARP,
+				    M_WAITOK | M_ZERO);
+				scc->scc_softc = oscc->scc_softc;
+				TAILQ_INSERT_TAIL(cif, scc, scc_link);
+			}
+		}
+		if (!inserted)
+			TAILQ_INSERT_TAIL(cif, new_scc, scc_link);
+
+		return cif;
+	} else {
+		return ocif;
+	}
+}
+
+static void
+carp_if_free(struct carp_if *cif)
+{
+	struct carp_softc_container *scc;
+
+	while ((scc = TAILQ_FIRST(cif)) != NULL) {
+		TAILQ_REMOVE(cif, scc, scc_link);
+		kfree(scc, M_CARP);
+	}
+	kfree(cif, M_CARP);
+}
+
 static void
 carp_detach(struct carp_softc *sc, int detach, boolean_t del_iaback)
 {
-	struct carp_if *cif;
-
 	carp_suspend(sc, detach);
 
 	carp_multicast_cleanup(sc);
@@ -509,32 +684,68 @@ carp_detach(struct carp_softc *sc, int detach, boolean_t del_iaback)
 	}
 
 	if (sc->sc_carpdev != NULL) {
-		cif = sc->sc_carpdev->if_carp;
-		TAILQ_REMOVE(&cif->vhif_vrs, sc, sc_list);
-		if (TAILQ_EMPTY(&cif->vhif_vrs)) {
-			ifpromisc(sc->sc_carpdev, 0);
-			sc->sc_carpdev->if_carp = NULL;
-			kfree(cif, M_CARP);
-		}
+		struct ifnet *ifp = sc->sc_carpdev;
+		struct carp_if *ocif = ifp->if_carp;
+
+		ifp->if_carp = carp_if_remove(ocif, sc);
+		KASSERT(ifp->if_carp != ocif,
+		    ("%s carp_if_remove failed\n", __func__));
+
 		sc->sc_carpdev = NULL;
 		sc->sc_ia = NULL;
+
+		/*
+		 * Make sure that all protocol threads see the
+		 * sc_carpdev and if_carp changes
+		 */
+		netmsg_service_sync();
+
+		if (ifp->if_carp == NULL) {
+			/*
+			 * No more carp interfaces using
+			 * ifp as the backing interface,
+			 * move it out of promiscous mode.
+			 */
+			ifpromisc(ifp, 0);
+		}
+
+		/*
+		 * The old carp list could be safely free now,
+		 * since no one can access it.
+		 */
+		carp_if_free(ocif);
 	}
+}
+
+static void
+carp_ifdetach_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct ifnet *ifp = cmsg->nc_carpdev;
+
+	while (ifp->if_carp) {
+		struct carp_softc_container *scc;
+
+		scc = TAILQ_FIRST((struct carp_if *)(ifp->if_carp));
+		carp_detach(scc->scc_softc, 1, TRUE);
+	}
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
 }
 
 /* Detach an interface from the carp. */
 static void
 carp_ifdetach(void *arg __unused, struct ifnet *ifp)
 {
-	struct carp_if *cif = ifp->if_carp;
-	struct carp_softc *sc;
+	struct netmsg_carp cmsg;
 
-	carp_gettok();
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
-	while (ifp->if_carp &&
-	       (sc = TAILQ_FIRST(&cif->vhif_vrs)) != NULL)
-		carp_detach(sc, 1, TRUE);
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_ifdetach_dispatch);
+	cmsg.nc_carpdev = ifp;
 
-	carp_reltok();
+	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
 }
 
 /*
@@ -551,8 +762,6 @@ carp_proto_input(struct mbuf **mp, int *offp, int proto)
 	struct carp_header *ch;
 	struct carp_softc *sc;
 	int len, iphlen;
-
-	carp_gettok();
 
 	iphlen = *offp;
 	*mp = NULL;
@@ -644,7 +853,6 @@ carp_proto_input(struct mbuf **mp, int *offp, int proto)
 	}
 	carp_proto_input_c(sc, m, ch, AF_INET);
 back:
-	carp_reltok();
 	return(IPPROTO_DONE);
 }
 
@@ -658,8 +866,6 @@ carp6_proto_input(struct mbuf **mp, int *offp, int proto)
 	struct carp_header *ch;
 	struct carp_softc *sc;
 	u_int len;
-
-	carp_gettok();
 
 	carpstats.carps_ipackets6++;
 
@@ -723,7 +929,6 @@ carp6_proto_input(struct mbuf **mp, int *offp, int proto)
 
 	carp_proto_input_c(sc, m, ch, AF_INET6);
 back:
-	carp_reltok();
 	return (IPPROTO_DONE);
 }
 #endif /* INET6 */
@@ -844,10 +1049,8 @@ carp_input(void *v, struct mbuf *m)
 {
 	struct carp_if *cif = v;
 	struct ether_header *eh;
-	struct carp_softc *sc;
+	struct carp_softc_container *scc;
 	struct ifnet *ifp;
-
-	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
 
 	eh = mtod(m, struct ether_header *);
 
@@ -864,7 +1067,8 @@ carp_input(void *v, struct mbuf *m)
 	 * XXX Should really check the list of multicast addresses
 	 * for each CARP interface _before_ copying.
 	 */
-	TAILQ_FOREACH(sc, &cif->vhif_vrs, sc_list) {
+	TAILQ_FOREACH(scc, cif, scc_link) {
+		struct carp_softc *sc = scc->scc_softc;
 		struct mbuf *m0;
 
 		if ((sc->sc_if.if_flags & IFF_UP) == 0)
@@ -914,9 +1118,30 @@ carp_send_ad_all(void)
 static void
 carp_send_ad_timeout(void *xsc)
 {
-	carp_gettok();
-	carp_send_ad(xsc);
-	carp_reltok();
+	struct carp_softc *sc = xsc;
+	struct netmsg_carp *cmsg = &sc->sc_ad_msg;
+
+	KASSERT(mycpuid == 0, ("%s not on cpu0 but on cpu%d\n",
+	    __func__, mycpuid));
+
+	crit_enter();
+	if (cmsg->base.lmsg.ms_flags & MSGF_DONE)
+		lwkt_sendmsg(cpu_portfn(0), &cmsg->base.lmsg);
+	crit_exit();
+}
+
+static void
+carp_send_ad_timeout_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
+
+	/* Reply ASAP */
+	crit_enter();
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
+	crit_exit();
+
+	carp_send_ad(sc);
 }
 
 static void
@@ -1207,7 +1432,8 @@ carp_iamatch(const struct in_ifaddr *ia)
 {
 	const struct carp_softc *sc = ia->ia_ifp->if_softc;
 
-	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
+	KASSERT(&curthread->td_msgport == cpu_portfn(0),
+	    ("not in netisr0"));
 
 #ifdef notyet
 	if (carp_opts[CARPCTL_ARPBALANCE])
@@ -1224,10 +1450,9 @@ carp_iamatch(const struct in_ifaddr *ia)
 struct ifaddr *
 carp_iamatch6(void *v, struct in6_addr *taddr)
 {
+#ifdef foo
 	struct carp_if *cif = v;
 	struct carp_softc *vh;
-
-	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
 
 	TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
 		struct ifaddr_container *ifac;
@@ -1244,17 +1469,17 @@ carp_iamatch6(void *v, struct in6_addr *taddr)
 			}
 		}
 	}
+#endif
 	return (NULL);
 }
 
 void *
 carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 {
+#ifdef foo
 	struct m_tag *mtag;
 	struct carp_if *cif = v;
 	struct carp_softc *sc;
-
-	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
 
 	TAILQ_FOREACH(sc, &cif->vhif_vrs, sc_list) {
 		struct ifaddr_container *ifac;
@@ -1282,6 +1507,7 @@ carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 			}
 		}
 	}
+#endif
 	return (NULL);
 }
 #endif
@@ -1289,14 +1515,13 @@ carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 static struct ifnet *
 carp_forus(struct carp_if *cif, const uint8_t *dhost)
 {
-	struct carp_softc *sc;
-
-	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
+	struct carp_softc_container *scc;
 
 	if (memcmp(dhost, carp_etheraddr, ETHER_ADDR_LEN - 1) != 0)
 		return NULL;
 
-	TAILQ_FOREACH(sc, &cif->vhif_vrs, sc_list) {
+	TAILQ_FOREACH(scc, cif, scc_link) {
+		struct carp_softc *sc = scc->scc_softc;
 		struct ifnet *ifp = &sc->sc_if;
 
 		if (CARP_IS_RUNNING(ifp) && sc->sc_state == MASTER &&
@@ -1310,12 +1535,31 @@ static void
 carp_master_down_timeout(void *xsc)
 {
 	struct carp_softc *sc = xsc;
+	struct netmsg_carp *cmsg = &sc->sc_md_msg;
+
+	KASSERT(mycpuid == 0, ("%s not on cpu0 but on cpu%d\n",
+	    __func__, mycpuid));
+
+	crit_enter();
+	if (cmsg->base.lmsg.ms_flags & MSGF_DONE)
+		lwkt_sendmsg(cpu_portfn(0), &cmsg->base.lmsg);
+	crit_exit();
+}
+
+static void
+carp_master_down_timeout_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
+
+	/* Reply ASAP */
+	crit_enter();
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
+	crit_exit();
 
 	CARP_DEBUG("%s: BACKUP -> MASTER (master timed out)\n",
 		   sc->sc_if.if_xname);
-	carp_gettok();
 	carp_master_down(sc);
-	carp_reltok();
 }
 
 static void
@@ -1455,30 +1699,34 @@ carp_multicast6_cleanup(struct carp_softc *sc)
 }
 #endif
 
-static int
-carp_get_vhaddr(struct carp_softc *sc, struct ifdrv *ifd)
+static void
+carp_ioctl_getvhaddr_dispatch(netmsg_t msg)
 {
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
 	const struct carp_vhaddr *vha;
 	struct ifcarpvhaddr *carpa, *carpa0;
-	int count, len, error;
+	int count, len, error = 0;
 
 	count = 0;
 	TAILQ_FOREACH(vha, &sc->sc_vha_list, vha_link)
 		++count;
 
-	if (ifd->ifd_len == 0) {
-		ifd->ifd_len = count * sizeof(*carpa);
-		return 0;
-	} else if (count == 0 || ifd->ifd_len < sizeof(*carpa)) {
-		ifd->ifd_len = 0;
-		return 0;
+	if (cmsg->nc_datalen == 0) {
+		cmsg->nc_datalen = count * sizeof(*carpa);
+		goto back;
+	} else if (count == 0 || cmsg->nc_datalen < sizeof(*carpa)) {
+		cmsg->nc_datalen = 0;
+		goto back;
 	}
-	len = min(ifd->ifd_len, sizeof(*carpa) * count);
+	len = min(cmsg->nc_datalen, sizeof(*carpa) * count);
 	KKASSERT(len >= sizeof(*carpa));
 
 	carpa0 = carpa = kmalloc(len, M_TEMP, M_WAITOK | M_NULLOK | M_ZERO);
-	if (carpa == NULL)
-		return ENOMEM;
+	if (carpa == NULL) {
+		error = ENOMEM; 
+		goto back;
+	}
 
 	count = 0;
 	TAILQ_FOREACH(vha, &sc->sc_vha_list, vha_link) {
@@ -1501,11 +1749,46 @@ carp_get_vhaddr(struct carp_softc *sc, struct ifdrv *ifd)
 		++count;
 		len -= sizeof(*carpa);
 	}
-	ifd->ifd_len = sizeof(*carpa) * count;
-	KKASSERT(ifd->ifd_len > 0);
+	cmsg->nc_datalen = sizeof(*carpa) * count;
+	KKASSERT(cmsg->nc_datalen > 0);
 
-	error = copyout(carpa0, ifd->ifd_data, ifd->ifd_len);
-	kfree(carpa0, M_TEMP);
+	cmsg->nc_data = carpa0;
+
+back:
+	lwkt_replymsg(&cmsg->base.lmsg, error);
+}
+
+static int
+carp_ioctl_getvhaddr(struct carp_softc *sc, struct ifdrv *ifd)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct netmsg_carp cmsg;
+	int error;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ifnet_deserialize_all(ifp);
+
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_ioctl_getvhaddr_dispatch);
+	cmsg.nc_softc = sc;
+	cmsg.nc_datalen = ifd->ifd_len;
+
+	error = lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+	if (!error) {
+		if (cmsg.nc_data != NULL) {
+			error = copyout(cmsg.nc_data, ifd->ifd_data,
+			    cmsg.nc_datalen);
+			kfree(cmsg.nc_data, M_TEMP);
+		}
+		ifd->ifd_len = cmsg.nc_datalen;
+	} else {
+		KASSERT(cmsg.nc_data == NULL,
+		    ("%s temp vhaddr is alloc upon error\n", __func__));
+	}
+
+	ifnet_serialize_all(ifp);
 	return error;
 }
 
@@ -1740,6 +2023,7 @@ carp_set_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 		LIST_INSERT_HEAD(&im6o->im6o_memberships, imm, i6mm_chain);
 	}
 
+#ifdef foo
 	if (!ifp->if_carp) {
 		cif = kmalloc(sizeof(*cif), M_CARP, M_WAITOK | M_ZERO);
 
@@ -1761,9 +2045,11 @@ carp_set_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 			}
 		}
 	}
+#endif
 	sc->sc_ia6 = ia;
 	sc->sc_carpdev = ifp;
 
+#ifdef foo
 	{ /* XXX prevent endless loop if already in queue */
 	struct carp_softc *vr, *after = NULL;
 	int myself = 0;
@@ -1784,6 +2070,7 @@ carp_set_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 			TAILQ_INSERT_AFTER(&cif->vhif_vrs, after, sc, sc_list);
 	}
 	}
+#endif
 
 	sc->sc_naddrs6++;
 	if (own)
@@ -1824,11 +2111,13 @@ carp_del_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 			in6_leavegroup(imm);
 		}
 		im6o->im6o_multicast_ifp = NULL;
+#ifdef foo
 		TAILQ_REMOVE(&cif->vhif_vrs, sc, sc_list);
 		if (TAILQ_EMPTY(&cif->vhif_vrs)) {
 			sc->sc_carpdev->if_carp = NULL;
 			kfree(cif, M_IFADDR);
 		}
+#endif
 	}
 	return (error);
 }
@@ -1839,21 +2128,12 @@ carp_del_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 static int
 carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 {
-	struct carp_softc *sc = ifp->if_softc, *vr;
-	struct carpreq carpr;
-	struct ifaddr *ifa;
-	struct ifreq *ifr;
-	struct ifaliasreq *ifra;
-	struct ifdrv *ifd;
-	char devname[IFNAMSIZ];
+	struct carp_softc *sc = ifp->if_softc;
+	struct ifreq *ifr = (struct ifreq *)addr;
+	struct ifdrv *ifd = (struct ifdrv *)addr;
 	int error = 0;
 
-	carp_gettok();
-
-	ifa = (struct ifaddr *)addr;
-	ifra = (struct ifaliasreq *)addr;
-	ifr = (struct ifreq *)addr;
-	ifd = (struct ifdrv *)addr;
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -1861,128 +2141,30 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 			if ((ifp->if_flags & IFF_RUNNING) == 0)
 				carp_init(sc);
 		} else if (ifp->if_flags & IFF_RUNNING) {
-			carp_stop(sc, 0);
+			carp_ioctl_stop(sc);
 		}
 		break;
 
 	case SIOCSVH:
-		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
-		if (error)
-			break;
-		error = copyin(ifr->ifr_data, &carpr, sizeof(carpr));
-		if (error)
-			break;
-
-		error = 1;
-		if ((ifp->if_flags & IFF_RUNNING) &&
-		    sc->sc_state != INIT && carpr.carpr_state != sc->sc_state) {
-			switch (carpr.carpr_state) {
-			case BACKUP:
-				callout_stop(&sc->sc_ad_tmo);
-				carp_set_state(sc, BACKUP);
-				carp_setrun(sc, 0);
-				carp_setroute(sc, RTM_DELETE);
-				break;
-
-			case MASTER:
-				carp_master_down(sc);
-				break;
-
-			default:
-				break;
-			}
-		}
-		if (carpr.carpr_vhid > 0) {
-			if (carpr.carpr_vhid > 255) {
-				error = EINVAL;
-				break;
-			}
-			if (sc->sc_carpdev) {
-				struct carp_if *cif = sc->sc_carpdev->if_carp;
-
-				TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list) {
-					if (vr != sc &&
-					    vr->sc_vhid == carpr.carpr_vhid) {
-						carp_reltok();
-						return EEXIST;
-					}
-				}
-			}
-			sc->sc_vhid = carpr.carpr_vhid;
-
-			IF_LLADDR(ifp)[5] = sc->sc_vhid;
-			bcopy(IF_LLADDR(ifp), sc->arpcom.ac_enaddr,
-			    ETHER_ADDR_LEN);
-
-			error--;
-		}
-		if (carpr.carpr_advbase > 0 || carpr.carpr_advskew > 0) {
-			if (carpr.carpr_advskew >= 255) {
-				error = EINVAL;
-				break;
-			}
-			if (carpr.carpr_advbase > 255) {
-				error = EINVAL;
-				break;
-			}
-			sc->sc_advbase = carpr.carpr_advbase;
-			sc->sc_advskew = carpr.carpr_advskew;
-			error--;
-		}
-		bcopy(carpr.carpr_key, sc->sc_key, sizeof(sc->sc_key));
-		if (error > 0) {
-			error = EINVAL;
-		} else {
-			error = 0;
-			carp_setrun(sc, 0);
-		}
+		error = carp_ioctl_setvh(sc, ifr->ifr_data, cr);
 		break;
 
 	case SIOCGVH:
-		bzero(&carpr, sizeof(carpr));
-		carpr.carpr_state = sc->sc_state;
-		carpr.carpr_vhid = sc->sc_vhid;
-		carpr.carpr_advbase = sc->sc_advbase;
-		carpr.carpr_advskew = sc->sc_advskew;
-		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
-		if (error == 0) {
-			bcopy(sc->sc_key, carpr.carpr_key,
-			      sizeof(carpr.carpr_key));
-		}
-
-		error = copyout(&carpr, ifr->ifr_data, sizeof(carpr));
+		error = carp_ioctl_getvh(sc, ifr->ifr_data, cr);
 		break;
 
 	case SIOCGDRVSPEC:
 		switch (ifd->ifd_cmd) {
 		case CARPGDEVNAME:
-			if (ifd->ifd_len != sizeof(devname))
-				error = EINVAL;
+			error = carp_ioctl_getdevname(sc, ifd);
 			break;
 
 		case CARPGVHADDR:
+			error = carp_ioctl_getvhaddr(sc, ifd);
 			break;
 
 		default:
 			error = EINVAL;
-			break;
-		}
-		if (error)
-			break;
-
-		switch (ifd->ifd_cmd) {
-		case CARPGVHADDR:
-			error = carp_get_vhaddr(sc, ifd);
-			break;
-
-		case CARPGDEVNAME:
-			bzero(devname, sizeof(devname));
-			if (sc->sc_carpdev != NULL) {
-				strlcpy(devname, sc->sc_carpdev->if_xname,
-					sizeof(devname));
-			}
-			error = copyout(devname, ifd->ifd_data,
-					sizeof(devname));
 			break;
 		}
 		break;
@@ -1991,24 +2173,274 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 		error = ether_ioctl(ifp, cmd, addr);
 		break;
 	}
+
+	return error;
+}
+
+static void
+carp_ioctl_stop_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
+
+	carp_stop(sc, 0);
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
+}
+
+static void
+carp_ioctl_stop(struct carp_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct netmsg_carp cmsg;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	ifnet_deserialize_all(ifp);
+
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_ioctl_stop_dispatch);
+	cmsg.nc_softc = sc;
+
+	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+	ifnet_serialize_all(ifp);
+}
+
+static void
+carp_ioctl_setvh_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	const struct carpreq *carpr = cmsg->nc_data;
+	int error;
+
+	error = 1;
+	if ((ifp->if_flags & IFF_RUNNING) &&
+	    sc->sc_state != INIT && carpr->carpr_state != sc->sc_state) {
+		switch (carpr->carpr_state) {
+		case BACKUP:
+			callout_stop(&sc->sc_ad_tmo);
+			carp_set_state(sc, BACKUP);
+			carp_setrun(sc, 0);
+			carp_setroute(sc, RTM_DELETE);
+			break;
+
+		case MASTER:
+			carp_master_down(sc);
+			break;
+
+		default:
+			break;
+		}
+	}
+	if (carpr->carpr_vhid > 0) {
+		if (carpr->carpr_vhid > 255) {
+			error = EINVAL;
+			goto back;
+		}
+		if (sc->sc_carpdev) {
+			struct carp_if *cif = sc->sc_carpdev->if_carp;
+			struct carp_softc_container *scc;
+
+			TAILQ_FOREACH(scc, cif, scc_link) {
+				struct carp_softc *vr = scc->scc_softc;
+
+				if (vr != sc &&
+				    vr->sc_vhid == carpr->carpr_vhid) {
+					error = EEXIST;
+					goto back;
+				}
+			}
+		}
+		sc->sc_vhid = carpr->carpr_vhid;
+
+		IF_LLADDR(ifp)[5] = sc->sc_vhid;
+		bcopy(IF_LLADDR(ifp), sc->arpcom.ac_enaddr,
+		    ETHER_ADDR_LEN);
+
+		error--;
+	}
+	if (carpr->carpr_advbase > 0 || carpr->carpr_advskew > 0) {
+		if (carpr->carpr_advskew >= 255) {
+			error = EINVAL;
+			goto back;
+		}
+		if (carpr->carpr_advbase > 255) {
+			error = EINVAL;
+			goto back;
+		}
+		sc->sc_advbase = carpr->carpr_advbase;
+		sc->sc_advskew = carpr->carpr_advskew;
+		error--;
+	}
+	bcopy(carpr->carpr_key, sc->sc_key, sizeof(sc->sc_key));
+	if (error > 0) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		carp_setrun(sc, 0);
+	}
+back:
 	carp_hmac_prepare(sc);
 
-	carp_reltok();
+	lwkt_replymsg(&cmsg->base.lmsg, error);
+}
+
+static int
+carp_ioctl_setvh(struct carp_softc *sc, void *udata, struct ucred *cr)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct netmsg_carp cmsg;
+	struct carpreq carpr;
+	int error;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ifnet_deserialize_all(ifp);
+
+	error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
+	if (error)
+		goto back;
+
+	error = copyin(udata, &carpr, sizeof(carpr));
+	if (error)
+		goto back;
+
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_ioctl_setvh_dispatch);
+	cmsg.nc_softc = sc;
+	cmsg.nc_data = &carpr;
+
+	error = lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+back:
+	ifnet_serialize_all(ifp);
 	return error;
+}
+
+static void
+carp_ioctl_getvh_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
+	struct carpreq *carpr = cmsg->nc_data;
+
+	carpr->carpr_state = sc->sc_state;
+	carpr->carpr_vhid = sc->sc_vhid;
+	carpr->carpr_advbase = sc->sc_advbase;
+	carpr->carpr_advskew = sc->sc_advskew;
+	bcopy(sc->sc_key, carpr->carpr_key, sizeof(carpr->carpr_key));
+
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
+}
+
+static int
+carp_ioctl_getvh(struct carp_softc *sc, void *udata, struct ucred *cr)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct netmsg_carp cmsg;
+	struct carpreq carpr;
+	int error;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ifnet_deserialize_all(ifp);
+
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_ioctl_getvh_dispatch);
+	cmsg.nc_softc = sc;
+	cmsg.nc_data = &carpr;
+
+	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+	error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
+	if (error)
+		bzero(carpr.carpr_key, sizeof(carpr.carpr_key));
+
+	error = copyout(&carpr, udata, sizeof(carpr));
+
+	ifnet_serialize_all(ifp);
+	return error;
+}
+
+static void
+carp_ioctl_getdevname_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
+	char *devname = cmsg->nc_data;
+
+	bzero(devname, sizeof(devname));
+	if (sc->sc_carpdev != NULL)
+		strlcpy(devname, sc->sc_carpdev->if_xname, sizeof(devname));
+
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
+}
+
+static int
+carp_ioctl_getdevname(struct carp_softc *sc, struct ifdrv *ifd)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct netmsg_carp cmsg;
+	char devname[IFNAMSIZ];
+	int error;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	if (ifd->ifd_len != sizeof(devname))
+		return EINVAL;
+
+	ifnet_deserialize_all(ifp);
+
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_ioctl_getdevname_dispatch);
+	cmsg.nc_softc = sc;
+	cmsg.nc_data = devname;
+
+	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+	error = copyout(devname, ifd->ifd_data, sizeof(devname));
+
+	ifnet_serialize_all(ifp);
+	return error;
+}
+
+static void
+carp_init_dispatch(netmsg_t msg)
+{
+	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
+	struct carp_softc *sc = cmsg->nc_softc;
+
+	sc->sc_if.if_flags |= IFF_RUNNING;
+	carp_hmac_prepare(sc);
+	carp_set_state(sc, INIT);
+	carp_setrun(sc, 0);
+
+	lwkt_replymsg(&cmsg->base.lmsg, 0);
 }
 
 static void
 carp_init(void *xsc)
 {
 	struct carp_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct netmsg_carp cmsg;
 
-	carp_gettok();
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
-	sc->sc_if.if_flags |= IFF_RUNNING;
-	carp_set_state(sc, INIT);
-	carp_setrun(sc, 0);
+	ifnet_deserialize_all(ifp);
 
-	carp_reltok();
+	bzero(&cmsg, sizeof(cmsg));
+	netmsg_init(&cmsg.base, NULL, &curthread->td_msgport, 0,
+	    carp_init_dispatch);
+	cmsg.nc_softc = sc;
+
+	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+
+	ifnet_serialize_all(ifp);
 }
 
 static int
@@ -2016,22 +2448,21 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
     struct rtentry *rt)
 {
 	struct carp_softc *sc = ifp->if_softc;
+	struct ifnet *carpdev;
 	int error = 0;
 
-	carp_gettok();
-	if (sc->sc_carpdev) {
+	carpdev = sc->sc_carpdev;
+	if (carpdev != NULL) {
 		/*
 		 * NOTE:
 		 * CARP's ifp is passed to backing device's
 		 * if_output method.
 		 */
-		sc->sc_carpdev->if_output(ifp, m, dst, rt);
+		carpdev->if_output(ifp, m, dst, rt);
 	} else {
 		m_freem(m);
 		error = ENETUNREACH;
 	}
-	carp_reltok();
-
 	return error;
 }
 
@@ -2104,8 +2535,6 @@ carp_group_demote_adj(struct ifnet *ifp, int adj)
 	struct ifg_list	*ifgl;
 	int *dm;
 
-	carp_gettok();
-
 	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next) {
 		if (!strcmp(ifgl->ifgl_group->ifg_group, IFG_ALL))
 			continue;
@@ -2121,22 +2550,17 @@ carp_group_demote_adj(struct ifnet *ifp, int adj)
 		CARP_LOG("%s demoted group %s to %d", ifp->if_xname,
                     ifgl->ifgl_group->ifg_group, *dm);
 	}
-
-	carp_reltok();
 }
 
+#ifdef foo
 void
 carp_carpdev_state(void *v)
 {
 	struct carp_if *cif = v;
 	struct carp_softc *sc;
 
-	carp_gettok();
-
 	TAILQ_FOREACH(sc, &cif->vhif_vrs, sc_list)
 		carp_sc_state(sc);
-
-	carp_reltok();
 }
 
 static void
@@ -2162,6 +2586,7 @@ carp_sc_state(struct carp_softc *sc)
 		sc->sc_suppress = 0;
 	}
 }
+#endif
 
 static void
 carp_stop(struct carp_softc *sc, int detach)
@@ -2205,12 +2630,8 @@ carp_activate_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
     struct ifnet *ifp, struct in_ifaddr *ia_if, int own)
 {
 	struct ip_moptions *imo = &sc->sc_imo;
-	struct carp_if *cif;
-	struct carp_softc *vr, *after = NULL;
-	int onlist, error;
-#ifdef INVARIANTS
-	int assert_onlist;
-#endif
+	struct carp_if *ocif = ifp->if_carp;
+	int error;
 
 	KKASSERT(vha->vha_ia != NULL);
 
@@ -2223,63 +2644,43 @@ carp_activate_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 		("%s is already on %s\n", sc->sc_if.if_xname,
 		 sc->sc_carpdev->if_xname));
 
-	if (!ifp->if_carp) {
+	if (ocif == NULL) {
 		KASSERT(sc->sc_carpdev == NULL,
 			("%s is already on %s\n", sc->sc_if.if_xname,
 			 sc->sc_carpdev->if_xname));
 
-		cif = kmalloc(sizeof(*cif), M_CARP, M_WAITOK | M_ZERO);
-
 		error = ifpromisc(ifp, 1);
-		if (error) {
-			kfree(cif, M_CARP);
+		if (error)
 			return error;
-		}
-
-		TAILQ_INIT(&cif->vhif_vrs);
-		ifp->if_carp = cif;
 	} else {
-		cif = ifp->if_carp;
-		TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list) {
+		struct carp_softc_container *scc;
+
+		TAILQ_FOREACH(scc, ocif, scc_link) {
+			struct carp_softc *vr = scc->scc_softc;
+
 			if (vr != sc && vr->sc_vhid == sc->sc_vhid)
 				return EINVAL;
 		}
 	}
 
-#ifdef INVARIANTS
-	if (sc->sc_carpdev != NULL)
-		assert_onlist = 1;
-	else
-		assert_onlist = 0;
-#endif
+	ifp->if_carp = carp_if_insert(ocif, sc);
+	KASSERT(ifp->if_carp != NULL, ("%s carp_if_insert failed\n", __func__));
+
 	sc->sc_ia = ia_if;
 	sc->sc_carpdev = ifp;
 
-	cif = ifp->if_carp;
-	onlist = 0;
-	TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list) {
-		if (vr == sc)
-			onlist = 1;
-		if (vr->sc_vhid < sc->sc_vhid)
-			after = vr;
-	}
+	/*
+	 * Make sure that all protocol threads see the sc_carpdev and
+	 * if_carp changes
+	 */
+	netmsg_service_sync();
 
-#ifdef INVARIANTS
-	if (assert_onlist) {
-		KASSERT(onlist, ("%s is not on %s carp list\n",
-			sc->sc_if.if_xname, ifp->if_xname));
-	} else {
-		KASSERT(!onlist, ("%s is already on %s carp list\n",
-			sc->sc_if.if_xname, ifp->if_xname));
-	}
-#endif
-
-	if (!onlist) {
-		/* We're trying to keep things in order */
-		if (after == NULL)
-			TAILQ_INSERT_TAIL(&cif->vhif_vrs, sc, sc_list);
-		else
-			TAILQ_INSERT_AFTER(&cif->vhif_vrs, after, sc, sc_list);
+	if (ocif != NULL && ifp->if_carp != ocif) {
+		/*
+		 * The old carp list could be safely free now,
+		 * since no one can access it.
+		 */
+		carp_if_free(ocif);
 	}
 
 	vha->vha_iaback = ia_if;
@@ -2443,10 +2844,11 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 {
 	struct carp_softc *sc;
 
-	carp_gettok();
-
 	if (ifa->ifa_addr->sa_family != AF_INET)
-		goto back;
+		return;
+
+	KASSERT(&curthread->td_msgport == cpu_portfn(0),
+	    ("not in netisr0"));
 
 	if (ifp->if_type == IFT_CARP) {
 		/*
@@ -2465,14 +2867,14 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 			carp_del_addr(ifp->if_softc, ifa);
 			break;
 		}
-		goto back;
+		return;
 	}
 
 	/*
 	 * Address is changed on non-carp(4) interface
 	 */
 	if ((ifp->if_flags & IFF_MULTICAST) == 0)
-		goto back;
+		return;
 
 	LIST_FOREACH(sc, &carpif_list, sc_next) {
 		if (sc->sc_carpdev != NULL && sc->sc_carpdev != ifp) {
@@ -2543,9 +2945,6 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 			break;
 		}
 	}
-
-back:
-	carp_reltok();
 }
 
 void
@@ -2554,8 +2953,6 @@ carp_proto_ctlinput(netmsg_t msg)
 	int cmd = msg->ctlinput.nm_cmd;
 	struct sockaddr *sa = msg->ctlinput.nm_arg;
 	struct in_ifaddr_container *iac;
-
-	carp_gettok();
 
 	TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
 		struct in_ifaddr *ia = iac->ia;
@@ -2576,28 +2973,13 @@ carp_proto_ctlinput(netmsg_t msg)
 		}
 	}
 
-	carp_reltok();
 	lwkt_replymsg(&msg->lmsg, 0);
-}
-
-void
-carp_gettok(void)
-{
-	lwkt_gettoken(&carp_tok);
-}
-
-void
-carp_reltok(void)
-{
-	lwkt_reltoken(&carp_tok);
 }
 
 struct ifnet *
 carp_parent(struct ifnet *cifp)
 {
 	struct carp_softc *sc;
-
-	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
 
 	KKASSERT(cifp->if_type == IFT_CARP);
 	sc = cifp->if_softc;

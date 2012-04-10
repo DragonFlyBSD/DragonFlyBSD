@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mfi/mfi_debug.c,v 1.3 2006/10/16 04:18:38 scottl Exp $
+ * FreeBSD projects/head_mfi/ r228320
  */
 
 #include "opt_mfi.h"
@@ -58,7 +59,8 @@ mfi_print_frame_flags(device_t dev, uint32_t flags)
 	    "\2SGL64"
 	    "\3SENSE64"
 	    "\4WRITE"
-	    "\5READ");
+	    "\5READ"
+	    "\6IEEESGL");
 }
 
 static void
@@ -68,7 +70,15 @@ mfi_print_sgl(struct mfi_frame_header *hdr, union mfi_sgl *sgl, int count)
 
 	kprintf("SG List:\n");
 	for (i = 0; i < count; i++) {
-		if (hdr->flags & MFI_FRAME_SGL64) {
+		if (hdr->flags & MFI_FRAME_IEEE_SGL) {
+			kprintf("0x%lx:%06d ", (u_long)sgl->sg_skinny[i].addr,
+			    sgl->sg_skinny[i].len);
+			columns += 26;
+			if (columns > 77) {
+				kprintf("\n");
+				columns = 0;
+			}
+		} else if (hdr->flags & MFI_FRAME_SGL64) {
 			kprintf("0x%lx:%06d ", (u_long)sgl->sg64[i].addr,
 			    sgl->sg64[i].len);
 			columns += 26;
@@ -235,7 +245,12 @@ mfi_validate_sg(struct mfi_softc *sc, struct mfi_command *cm,
 	hdr = &cm->cm_frame->header;
 	count = 0;
 	for (i = 0; i < hdr->sg_count; i++) {
-		count += cm->cm_sg->sg32[i].len;
+		if (hdr->flags & MFI_FRAME_IEEE_SGL)
+			count += cm->cm_sg->sg_skinny[i].len;
+		else if (hdr->flags & MFI_FRAME_SGL64)
+			count += cm->cm_sg->sg64[i].len;
+		else
+			count += cm->cm_sg->sg32[i].len;
 	}
 	/*
 	count++;

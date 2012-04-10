@@ -38,7 +38,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.37 2006/11/06 13:42:03 rwatson Exp $
- * $DragonFly: src/sys/netgraph7/ng_tty.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -196,8 +195,6 @@ ngt_open(struct cdev *dev, struct tty *tp)
 
 	/* Initialize private struct */
 	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_WAITOK | M_ZERO);
-	if (sc == NULL)
-		return (ENOMEM);
 
 	lwkt_gettoken(&tty_token);
 	sc->tp = tp;

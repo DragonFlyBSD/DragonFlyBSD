@@ -82,6 +82,9 @@ static int cluster_wbuild(struct vnode *vp, struct buf **bpp, int blksize,
 static int write_behind = 1;
 SYSCTL_INT(_vfs, OID_AUTO, write_behind, CTLFLAG_RW, &write_behind, 0,
     "Cluster write-behind setting");
+static quad_t write_behind_minfilesize = 10 * 1024 * 1024;
+SYSCTL_QUAD(_vfs, OID_AUTO, write_behind_minfilesize, CTLFLAG_RW,
+    &write_behind_minfilesize, 0, "Cluster write-behind setting");
 static int max_readahead = 2 * 1024 * 1024;
 SYSCTL_INT(_vfs, OID_AUTO, max_readahead, CTLFLAG_RW, &max_readahead, 0,
     "Limit in bytes for desired cluster read-ahead");
@@ -665,15 +668,16 @@ cluster_callback(struct bio *bio)
 }
 
 /*
- *	cluster_wbuild_wb:
+ * Implement modified write build for cluster.
  *
- *	Implement modified write build for cluster.
+ * 	write_behind = 0	write behind disabled
+ *	write_behind = 1	write behind normal (default)
+ *	write_behind = 2	write behind backed-off
  *
- *		write_behind = 0	write behind disabled
- *		write_behind = 1	write behind normal (default)
- *		write_behind = 2	write behind backed-off
+ * In addition, write_behind is only activated for files that have
+ * grown past a certain size (default 10MB).  Otherwise temporary files
+ * wind up generating a lot of unnecessary disk I/O.
  */
-
 static __inline int
 cluster_wbuild_wb(struct vnode *vp, int blksize, off_t start_loffset, int len)
 {
@@ -686,7 +690,10 @@ cluster_wbuild_wb(struct vnode *vp, int blksize, off_t start_loffset, int len)
 		start_loffset -= len;
 		/* fall through */
 	case 1:
-		r = cluster_wbuild(vp, NULL, blksize, start_loffset, len);
+		if (vp->v_filesize >= write_behind_minfilesize) {
+			r = cluster_wbuild(vp, NULL, blksize,
+					   start_loffset, len);
+		}
 		/* fall through */
 	default:
 		/* fall through */

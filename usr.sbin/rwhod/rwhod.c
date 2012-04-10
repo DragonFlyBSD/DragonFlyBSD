@@ -382,7 +382,7 @@ handleread(int sock)
 		}
 	}
 #endif
-	time((time_t *)&wd.wd_recvtime);
+	wd.wd_recvtime = time(NULL);
 	write(whod, (char *)&wd, cc);
 	if (fstat(whod, &st) < 0 || st.st_size > cc)
 		ftruncate(whod, cc);

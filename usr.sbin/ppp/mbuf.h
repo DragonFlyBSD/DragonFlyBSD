@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/mbuf.h,v 1.24.2.3 2002/09/01 02:12:28 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/mbuf.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 struct mbuf {
@@ -46,10 +45,10 @@ struct mqueue {
 };
 
 #define MBUF_CTOP(bp) \
-	((bp) ? (u_char *)((bp)+1) + (bp)->m_offset : NULL)
+	((bp) ? (u_char *)((bp)+1) + (bp)->m_offset : (u_char *)bp)
 
 #define CONST_MBUF_CTOP(bp) \
-	((bp) ? (const u_char *)((bp)+1) + (bp)->m_offset : NULL)
+	((bp) ? (const u_char *)((bp)+1) + (bp)->m_offset : (const u_char *)bp)
 
 #define MB_IPIN		0
 #define MB_IPOUT	1

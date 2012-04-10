@@ -142,7 +142,7 @@ ast_attach(device_t dev)
     if (ch->dma)
 	cdev->si_iosize_max = ch->dma->max_iosize;
     else
-	cdev->si_iosize_max = DFLTPHYS;
+	cdev->si_iosize_max = min(MAXPHYS,64*1024);
     stp->cdev1 = cdev;
     cdev = make_dev(&ast_ops, 2 * device_get_unit(dev) + 1, UID_ROOT,
 		    GID_OPERATOR, 0640, "nast%d", device_get_unit(dev));
@@ -151,7 +151,7 @@ ast_attach(device_t dev)
     if (ch->dma)
 	cdev->si_iosize_max = ch->dma->max_iosize;
     else
-	cdev->si_iosize_max = DFLTPHYS;
+	cdev->si_iosize_max = min(MAXPHYS,64*1024);
     stp->cdev2 = cdev;
 
     /* announce we are here and ready */

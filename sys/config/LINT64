@@ -995,16 +995,12 @@ options 	SC_TWOBUTTON_MOUSE
 #options 	SC_NO_SYSMOUSE
 
 #
-# Optional ISA devices:
-#
-
-#
-# SCSI host adapters: `aic' and `bt'
+# SCSI host adapters: `bt'
 #
 # adv: All Narrow SCSI bus AdvanSys controllers.
 # adw: Second Generation AdvanSys controllers including the ADV940UW.
 # ahc: Adaptec 274x/284x/294x
-# aic: Adaptec 152x
+# aic: Adaptec 1460
 # bt: Most Buslogic controllers
 # ncv: NCR 53C500 based SCSI host adapters.
 # nsp: Workbit Ninja SCSI-3 based PC Card SCSI host adapters.
@@ -1017,7 +1013,7 @@ options 	SC_TWOBUTTON_MOUSE
 device		bt0	at isa? port IO_BT0
 device		adv0	at isa?
 device		adw
-device		aic0	at isa?
+device		aic
 device		ncv
 device		nsp
 device		stg0	at isa? port 0x140 irq 11

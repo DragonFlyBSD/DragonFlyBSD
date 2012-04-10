@@ -22,38 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- */
-/*-
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *            Copyright 1994-2009 The FreeBSD Project.
- *            All rights reserved.
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- *    THIS SOFTWARE IS PROVIDED BY THE FREEBSD PROJECT``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FREEBSD PROJECT OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY,OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION)HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * The views and conclusions contained in the software and documentation
- * are those of the authors and should not be interpreted as representing
- * official policies,either expressed or implied, of the FreeBSD Project.
  *
  * $FreeBSD: src/sys/dev/mfi/mfi_disk.c,v 1.8 2008/11/17 23:30:19 jhb Exp $
+ * FreeBSD projects/head_mfi/ r232888
  */
 
 #include "opt_mfi.h"
@@ -281,13 +252,23 @@ mfi_disk_strategy(struct dev_strategy_args *ap)
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct mfi_disk *sc = ap->a_head.a_dev->si_drv1;
-	struct mfi_softc *controller;
+	struct mfi_softc *controller = sc->ld_controller;
 
 	if (sc == NULL) {
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
+		return (0);
+	}
+
+	if (controller->hw_crit_error) {
+		bp->b_error = EBUSY;
+		return (0);
+	}
+
+	if (controller->issuepend_done == 0) {
+		bp->b_error = EBUSY;
 		return (0);
 	}
 
@@ -310,7 +291,6 @@ mfi_disk_strategy(struct dev_strategy_args *ap)
 		return (0);
 	}
 
-	controller = sc->ld_controller;
 	bio->bio_driver_info = sc;
 	lockmgr(&controller->mfi_io_lock, LK_EXCLUSIVE);
 	mfi_enqueue_bio(controller, bio);

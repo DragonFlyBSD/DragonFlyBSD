@@ -105,7 +105,7 @@ print_addr(struct sockaddr_in addr)
 
 	printf("addr = %lx, port = %o, family = %o zero = ",
 		(u_long)addr.sin_addr.s_addr, addr.sin_port, addr.sin_family);
-	for (i = 0; i<8;i++)
-	printf("%o ", (int)addr.sin_zero[i]);
+	for (i = 0; i < 8; i++)
+		printf("%o ", (int)addr.sin_zero[i]);
 	putchar('\n');
 }

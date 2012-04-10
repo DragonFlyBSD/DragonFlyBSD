@@ -338,8 +338,8 @@ the
 .Fa done
 routine can also calculate the time passed from dispatch to completion
 by getting the current time again (via
-.Fn getmicrotime ) and
-calculating the timeval difference to the value stored in
+.Fn getmicrotime )
+and calculating the timeval difference to the value stored in
 .Fa bio->bio_caller_info3.tv .
 At the end of the
 .Fa done

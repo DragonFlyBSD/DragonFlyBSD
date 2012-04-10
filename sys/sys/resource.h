@@ -136,11 +136,20 @@ struct rlimit {
 	rlim_t	rlim_max;		/* maximum value for rlim_cur */
 };
 
-/* Load average structure. */
 struct loadavg {
 	fixpt_t	ldavg[3];
 	long	fscale;
 };
+
+/*
+ * CPU state fields as reported by the sysctl kern.cp_time
+ */
+#define CP_USER         0
+#define CP_NICE         1
+#define CP_SYS          2
+#define CP_INTR         3
+#define CP_IDLE         4
+#define CPUSTATES       5
 
 #ifdef _KERNEL
 extern struct loadavg averunnable;

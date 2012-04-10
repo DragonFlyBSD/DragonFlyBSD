@@ -346,7 +346,6 @@ void		acpi_UserNotify(const char *subsystem, ACPI_HANDLE h,
 int		acpi_bus_alloc_gas(device_t dev, int *type, int *rid,
 		    ACPI_GENERIC_ADDRESS *gas, struct resource **res,
 		    u_int flags);
-# define kthread_create(a, b, c, d, e, f) kthread_create(a, b, c, f)
 
 struct acpi_parse_resource_set {
     void	(*set_init)(device_t dev, void *arg, void **context);

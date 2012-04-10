@@ -190,8 +190,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 
 #ifdef DEBUG_LOCKS
 	if (mycpu->gd_spinlocks_wr &&
-	    ((flags & LK_NOWAIT) == 0 &&
-	    ((flags & LK_RELEASE) == 0)
+	    ((flags & LK_NOWAIT) == 0)
 	) {
 		panic("lockmgr %s from %s:%d: called with %d spinlocks held",
 		      lkp->lk_wmesg, file, line, mycpu->gd_spinlocks_wr);

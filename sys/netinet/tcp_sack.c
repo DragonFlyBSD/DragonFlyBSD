@@ -249,12 +249,17 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 		struct raw_sackblock *newsackblock = &blocks[i];
 
 		/* don't accept bad SACK blocks */
-		if (SEQ_GT(newsackblock->rblk_end, tp->snd_max))
+		if (SEQ_GT(newsackblock->rblk_end, tp->snd_max)) {
+			tcpstat.tcps_rcvbadsackopt++;
 			break;		/* skip all other blocks */
+		}
+		tcpstat.tcps_sacksbupdate++;
 
 		sb = alloc_sackblock();
-		if (sb == NULL)		/* do some sort of cleanup? XXX */
+		if (sb == NULL) {	/* do some sort of cleanup? XXX */
+			tcpstat.tcps_sacksbfailed++;
 			break;		/* just skip rest of blocks */
+		}
 		sb->sblk_start = newsackblock->rblk_start;
 		sb->sblk_end = newsackblock->rblk_end;
 		if (TAILQ_EMPTY(&scb->sackblocks)) {
@@ -297,6 +302,7 @@ insert_block(struct scoreboard *scb, struct sackblock *newblock)
 		 * Or, go other way and free all blocks if we hit this limit.
 		 */
 		free_sackblock(newblock);
+		tcpstat.tcps_sacksboverflow++;
 		return;
 	}
 	KASSERT(scb->nblocks < MAXSAVEDBLOCKS,
@@ -315,6 +321,7 @@ insert_block(struct scoreboard *scb, struct sackblock *newblock)
 			if (SEQ_GT(newblock->sblk_end, sb->sblk_end))
 				sb->sblk_end = newblock->sblk_end;
 			free_sackblock(newblock);
+			tcpstat.tcps_sacksbreused++;
 		} else {
 			workingblock = newblock;
 			TAILQ_INSERT_AFTER(&scb->sackblocks, sb, newblock,
@@ -691,6 +698,11 @@ tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen)
 	KASSERT(TCP_MAXOLEN - optlen >=
 	    TCPOLEN_SACK_ALIGNED + TCPOLEN_SACK_BLOCK,
 	    ("no room for SACK header and one block: optlen %d", optlen));
+
+	if (tp->t_flags & TF_DUPSEG)
+		tcpstat.tcps_snddsackopt++;
+	else
+		tcpstat.tcps_sndsackopt++;
 
 	olp = lp++;
 	optlen += TCPOLEN_SACK_ALIGNED;

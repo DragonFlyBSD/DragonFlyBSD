@@ -278,7 +278,7 @@ idad_attach(device_t dev)
 	dsk = disk_create(drv->unit, &drv->disk, &id_ops);
 
 	dsk->si_drv1 = drv;
-	dsk->si_iosize_max = DFLTPHYS;		/* XXX guess? */
+	dsk->si_iosize_max = min(MAXPHYS,64*1024);		/* XXX guess? */
 
 	/*
 	 * Set disk info, as it appears that all needed data is available already.

@@ -23,9 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/snd_hda.4,v 1.10.2.1 2007/05/15 18:40:22 joel Exp $
-.\" $DragonFly: src/share/man/man4/snd_hda.4,v 1.2 2007/06/16 17:44:33 hasso Exp $
 .\"
-.Dd May 5, 2007
+.Dd April 7, 2012
 .Dt SND_HDA 4
 .Os
 .Sh NAME
@@ -88,6 +87,12 @@ state on each tick using
 Polling is disabled by default.
 Do not enable it unless you are facing weird interrupt problems or if the
 device cannot generate interrupts at all.
+.El
+.Sh LOADER TUNABLES
+.Bl -tag -width indent
+.It Va hw.snd.hdac.msi.enable
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting this tunable to 0.
 .El
 .Sh HARDWARE
 The

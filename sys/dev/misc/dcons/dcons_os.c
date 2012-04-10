@@ -570,8 +570,8 @@ dcons_attach_port(int port, char *name, int flags)
 	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	dc = &sc[port];
 	dc->flags = flags;
-	dev = make_dev(&dcons_ops, port,
-			UID_ROOT, GID_WHEEL, 0600, name);
+	dev = make_dev(&dcons_ops, port, UID_ROOT, GID_WHEEL, 0600, "%s",
+	    name);
 	dc->dev = (void *)dev;
 	tp = ttymalloc(NULL);
 

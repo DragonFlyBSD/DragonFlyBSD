@@ -50,9 +50,9 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 
 	/* XXX: sanity check */
 	if (dev->si_iosize_max < PAGE_SIZE) {
-		kprintf("WARNING: %s si_iosize_max=%d, using DFLTPHYS.\n",
+		kprintf("WARNING: %s si_iosize_max=%d, using MAXPHYS.\n",
 		    devtoname(dev), dev->si_iosize_max);
-		dev->si_iosize_max = DFLTPHYS;
+		dev->si_iosize_max = MAXPHYS;
 	}
 
 	/* Must be a real uio */

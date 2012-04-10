@@ -29,7 +29,6 @@
  *
  * $Id: ng_l2cap_evnt.c,v 1.5 2003/09/08 19:11:45 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_evnt.c,v 1.8 2005/01/07 01:45:43 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_evnt.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1179,7 +1178,7 @@ send_l2cap_reject(ng_l2cap_con_p con, u_int8_t ident, u_int16_t reason,
 	if (cmd == NULL)
 		return (ENOMEM);
 
-	 _ng_l2cap_cmd_rej(cmd->aux, cmd->ident, reason, mtu, scid, dcid);
+	_ng_l2cap_cmd_rej(cmd->aux, cmd->ident, reason, mtu, scid, dcid);
 	if (cmd->aux == NULL) {
 		ng_l2cap_free_cmd(cmd);
 

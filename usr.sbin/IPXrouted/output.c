@@ -36,7 +36,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/output.c,v 1.8 1999/08/28 01:15:03 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/output.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)output.c	8.1 (Berkeley) 6/5/93
  */
@@ -134,89 +133,100 @@ supply(struct sockaddr *dst, int flags, struct interface *ifp,
 		sipx->sipx_port = htons(IPXPORT_RIP);
 
 	msg->rip_cmd = ntohs(RIPCMD_RESPONSE);
-	for (rh = nethash; rh < &nethash[ROUTEHASHSIZ]; rh++)
-	for (rt = rh->rt_forw; rt != (struct rt_entry *)rh; rt = rt->rt_forw) {
-		size = (char *)n - (char *)msg;
-		if (size >= ((MAXRIPNETS * sizeof (struct netinfo)) +
+	for (rh = nethash; rh < &nethash[ROUTEHASHSIZ]; rh++) {
+		for (rt = rh->rt_forw; rt != (struct rt_entry *)rh;
+		     rt = rt->rt_forw) {
+			size = (char *)n - (char *)msg;
+			if (size >= ((MAXRIPNETS * sizeof (struct netinfo)) +
 				sizeof (msg->rip_cmd))) {
+				(*output)(ripsock, flags, dst, size);
+				TRACE_OUTPUT(ifp, dst, size);
+				n = msg->rip_nets;
+				delay++;
+				if(delay == 2) {
+					usleep(50000);
+					delay = 0;
+				}
+			}
+
+			if (changesonly && !(rt->rt_state & RTS_CHANGED))
+				continue;
+
+			/*
+			 * This should do rule one and two of the split horizon
+			 * algorithm.
+			 */
+			if (rt->rt_ifp == ifp)
+				continue;
+
+			/*
+			 * Rule 3.
+			 * Look if we have clones (different routes to the same
+			 * place with exactly the same cost).
+			 *
+			 * We should not publish on any of the clone
+			 * interfaces.
+			 */
+			crt = rt->rt_clone;
+			while (crt) {
+				if (crt->rt_ifp == ifp)
+					goto next;
+				crt = crt->rt_clone;
+			}
+
+			sipx = (struct sockaddr_ipx *)&rt->rt_dst;
+			if ((rt->rt_flags & (RTF_HOST|RTF_GATEWAY)) ==
+			    RTF_HOST)
+				sipx = (struct sockaddr_ipx *)&rt->rt_router;
+			if (rt->rt_metric == HOPCNT_INFINITY)
+				metric = HOPCNT_INFINITY;
+			else {
+				metric = rt->rt_metric + 1;
+				/*
+				 * We don't advertize routes with more than
+				 * 15 hops.
+				 */
+				if (metric >= HOPCNT_INFINITY)
+					continue;
+			}
+			/*
+			 * XXX One day we should cater for slow interfaces
+			 * also.
+			 */
+			ticks = rt->rt_ticks + 1;
+			net = sipx->sipx_addr.x_net;
+
+			/*
+			 * Make sure that we don't put out a two net entries
+			 * for a pt to pt link (one for the G route, one for
+			 * the if)
+			 * This is a kludge, and won't work if there are lots
+			 * of nets.
+			 */
+			for (nn = msg->rip_nets; nn < n; nn++) {
+				if (ipx_neteqnn(net, nn->rip_dst)) {
+					if (ticks < ntohs(nn->rip_ticks)) {
+						nn->rip_metric = htons(metric);
+						nn->rip_ticks = htons(ticks);
+					} else if ((ticks == ntohs(nn->rip_ticks)) &&
+					    (metric < ntohs(nn->rip_metric))) {
+						nn->rip_metric = htons(metric);
+						nn->rip_ticks = htons(ticks);
+					}
+					goto next;
+				}
+			}
+			n->rip_dst = net;
+			n->rip_metric = htons(metric);
+			n->rip_ticks = htons(ticks);
+			n++;
+next:
+			;
+		}
+		if (n != msg->rip_nets) {
+			size = (char *)n - (char *)msg;
 			(*output)(ripsock, flags, dst, size);
 			TRACE_OUTPUT(ifp, dst, size);
-			n = msg->rip_nets;
-			delay++; 
-			if(delay == 2) {
-				usleep(50000);
-				delay = 0;
-			}
 		}
-
-		if (changesonly && !(rt->rt_state & RTS_CHANGED))
-			continue;
-
-		/*
-		 * This should do rule one and two of the split horizon
-		 * algorithm.
-		 */
-		if (rt->rt_ifp == ifp)
-			continue;
-
-		/*
-		 * Rule 3.
-		 * Look if we have clones (different routes to the same
-		 * place with exactly the same cost).
-		 *
-		 * We should not publish on any of the clone interfaces.
-		 */
-		crt = rt->rt_clone;
-		while (crt) {
-			if (crt->rt_ifp == ifp)
-				goto next;
-			crt = crt->rt_clone;
-		}
-
-		sipx = (struct sockaddr_ipx *)&rt->rt_dst;
-	        if ((rt->rt_flags & (RTF_HOST|RTF_GATEWAY)) == RTF_HOST)
-			sipx = (struct sockaddr_ipx *)&rt->rt_router;
-		if (rt->rt_metric == HOPCNT_INFINITY)
-			metric = HOPCNT_INFINITY;
-		else {
-			metric = rt->rt_metric + 1;
-			/*
-			 * We don't advertize routes with more than 15 hops.
-			 */
-			if (metric >= HOPCNT_INFINITY)
-				continue;
-		}
-		/* XXX One day we should cater for slow interfaces also. */
-		ticks = rt->rt_ticks + 1;
-		net = sipx->sipx_addr.x_net;
-
-		/*
-		 * Make sure that we don't put out a two net entries
-		 * for a pt to pt link (one for the G route, one for the if)
-		 * This is a kludge, and won't work if there are lots of nets.
-		 */
-		for (nn = msg->rip_nets; nn < n; nn++) {
-			if (ipx_neteqnn(net, nn->rip_dst)) {
-				if (ticks < ntohs(nn->rip_ticks)) {
-					nn->rip_metric = htons(metric);
-					nn->rip_ticks = htons(ticks);
-				} else if ((ticks == ntohs(nn->rip_ticks)) &&
-					   (metric < ntohs(nn->rip_metric))) {
-					nn->rip_metric = htons(metric);
-					nn->rip_ticks = htons(ticks);
-				}
-				goto next;
-			}
-		}
-		n->rip_dst = net;
-		n->rip_metric = htons(metric);
-		n->rip_ticks = htons(ticks);
-		n++;
-	next:;
-	}
-	if (n != msg->rip_nets) {
-		size = (char *)n - (char *)msg;
-		(*output)(ripsock, flags, dst, size);
-		TRACE_OUTPUT(ifp, dst, size);
 	}
 }

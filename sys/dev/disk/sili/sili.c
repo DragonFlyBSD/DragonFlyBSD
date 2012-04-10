@@ -210,12 +210,6 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 	 */
 	ap->ap_ccbs = kmalloc(sizeof(struct sili_ccb) * sc->sc_ncmds, M_DEVBUF,
 			      M_WAITOK | M_ZERO);
-	if (ap->ap_ccbs == NULL) {
-		device_printf(sc->sc_dev,
-			      "unable to allocate command list for port %d\n",
-			      port);
-		goto freeport;
-	}
 
 	/*
 	 * Most structures are in the port BAR.  Assign convenient

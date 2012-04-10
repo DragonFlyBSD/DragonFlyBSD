@@ -87,6 +87,7 @@ MLINKS+=directory.3 closedir.3 directory.3 dirfd.3 directory.3 opendir.3 \
 	directory.3 readdir.3 directory.3 readdir_r.3 directory.3 rewinddir.3 \
 	directory.3 seekdir.3 directory.3 telldir.3 directory.3 fdopendir.3
 MLINKS+=dlsym.3 dlfunc.3
+MLINKS+=dlopen.3 fdlopen.3
 MLINKS+=devname.3 devname_r.3 devname.3 fdevname.3 devname.3 fdevname_r.3
 MLINKS+=endutxent.3 getutxent.3 endutxent.3 getutxid.3 \
 	endutxent.3 getutxline.3 endutxent.3 pututxline.3 \

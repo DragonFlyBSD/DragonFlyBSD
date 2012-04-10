@@ -1415,7 +1415,7 @@ rpioctl(struct dev_ioctl_args *ap)
 			flags |= SET_RTS;
 		if(arg & TIOCM_DTR)
 			flags |= SET_DTR;
-			rp->rp_channel.TxControl[3] |= flags;
+		rp->rp_channel.TxControl[3] |= flags;
 		rp_writech4(&rp->rp_channel,_INDX_ADDR,
 			*(DWord_t *) &(rp->rp_channel.TxControl[0]));
 		break;

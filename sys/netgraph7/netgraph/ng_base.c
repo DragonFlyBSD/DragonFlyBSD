@@ -39,7 +39,6 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.159 2008/04/19 05:30:49 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_base.c,v 1.4 2008/09/24 14:26:39 sephe Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -2400,7 +2399,7 @@ ng_apply_item(node_p node, item_p item, int rw)
 	if (hook)
 		NG_HOOK_UNREF(hook);
 
- 	if (rw == NGQRW_R)
+	if (rw == NGQRW_R)
 		ng_leave_read(node);
 	else
 		ng_leave_write(node);

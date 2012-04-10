@@ -28,7 +28,6 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.22 2006/11/02 17:37:21 andre Exp $
- * $DragonFly: src/sys/netgraph7/ng_device.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  *
  */
 
@@ -164,8 +163,6 @@ ng_device_constructor(node_p node)
 	DBG;
 
 	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_WAITOK | M_ZERO);
-	if (priv == NULL)
-		return (ENOMEM);
 
 	/* Allocate unit number */
 	priv->unit = alloc_unr(ngd_unit);

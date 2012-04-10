@@ -3518,24 +3518,12 @@ isp_target_thread(ispsoftc_t *isp, int chan)
 			disk_size = 50 << 20;
 		}
 		disk_data = kmalloc(disk_size, M_ISPTARG, M_WAITOK | M_ZERO);
-		if (disk_data == NULL) {
-			isp_prt(isp, ISP_LOGERR, "%s: could not allocate disk data", __func__);
-			goto out;
-		}
 		isp_prt(isp, ISP_LOGINFO, "allocated a %ju MiB disk", (uintmax_t) (disk_size >> 20));
 	}
 	junk_data = kmalloc(JUNK_SIZE, M_ISPTARG, M_WAITOK | M_ZERO);
-	if (junk_data == NULL) {
-		isp_prt(isp, ISP_LOGERR, "%s: could not allocate junk", __func__);
-		goto out;
-	}
 
 
 	softc = kmalloc(sizeof (*softc), M_ISPTARG, M_WAITOK | M_ZERO);
-	if (softc == NULL) {
-		isp_prt(isp, ISP_LOGERR, "%s: could not allocate softc", __func__);
-		goto out;
-	}
 	TAILQ_INIT(&softc->work_queue);
 	TAILQ_INIT(&softc->rework_queue);
 	TAILQ_INIT(&softc->running_queue);

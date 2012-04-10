@@ -894,12 +894,10 @@ in_arpinput(struct mbuf *m)
 		if (ia->ia_ifp->if_type != IFT_CARP)
 			continue;
 
-		carp_gettok();
 		if (carp_parent(ia->ia_ifp) == ifp)
 			is_parent = 1;
 		if (is_parent || ia->ia_ifp == ifp)
 			is_match = carp_iamatch(ia);
-		carp_reltok();
 
 		if (is_match) {
 			if (is_parent) {

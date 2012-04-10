@@ -1919,8 +1919,8 @@ pci_alloc_msi_method(device_t dev, device_t child, int *rid, int count,
 
 	if (bootverbose) {
 		device_printf(child,
-		    "attempting to allocate %d MSI vectors (%d supported)\n",
-		    count, cfg->msi.msi_msgnum);
+		    "attempting to allocate %d MSI vector%s (%d supported)\n",
+		    count, count > 1 ? "s" : "", cfg->msi.msi_msgnum);
 	}
 
 	if (start_cpuid < 0)

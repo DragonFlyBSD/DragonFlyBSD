@@ -29,7 +29,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/isp.4,v 1.29 2010/10/08 12:40:16 uqs Exp $
 .\"
-.Dd January 3, 2012
+.Dd April 7, 2012
 .Dt ISP 4
 .Os
 .Sh NAME
@@ -198,6 +198,12 @@ A hint value for a driver debug level (see the file
 .Pa /usr/src/sys/dev/isp/ispvar.h
 for the values.
 .El
+.Pp
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting the following tunable:
+.Bd -literal -offset indent
+hw.isp.msi.enable=0
+.Ed
 .Sh SYSCTL OPTIONS
 .Bl -tag -width indent
 .It Va dev.isp.N.loop_down_limit

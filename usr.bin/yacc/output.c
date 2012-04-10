@@ -296,7 +296,7 @@ token_actions(void)
 	if (parser[i])
 	{
 	    for (j = 0; j < 2*ntokens; ++j)
-	    actionrow[j] = 0;
+		actionrow[j] = 0;
 
 	    shiftcount = 0;
 	    reducecount = 0;

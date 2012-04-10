@@ -3620,9 +3620,10 @@ asr_ioctl(struct dev_ioctl_args *ap)
 	int		j;
 #endif /* ASR_IOCTL_COMPAT */
 
-	if (sc != NULL)
-	switch(cmd) {
+	if (sc == NULL)
+		return (EINVAL);
 
+	switch(cmd) {
 	case DPT_SIGNATURE:
 #ifdef ASR_IOCTL_COMPAT
 #if (dsDescription_size != 50)

@@ -1176,7 +1176,7 @@ ip6fw_main(int ac, char **av)
 	do_force = !isatty(STDIN_FILENO);
 
 	while ((ch = getopt(ac, av ,"afqtN")) != -1)
-	switch(ch) {
+		switch(ch) {
 		case 'a':
 			do_acct=1;
 			break;
@@ -1194,7 +1194,7 @@ ip6fw_main(int ac, char **av)
 			break;
 		default:
 			show_usage(NULL);
-	}
+		}
 
 	ac -= optind;
 	if (*(av+=optind)==NULL) {

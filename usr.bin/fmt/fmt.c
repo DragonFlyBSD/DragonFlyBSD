@@ -256,7 +256,7 @@ main(int argc, char *argv[]) {
   /* 1. Grok parameters. */
 
   while ((ch = getopt(argc, argv, "0123456789cd:hl:mnpst:w:")) != -1)
-  switch(ch) {
+    switch(ch) {
     case 'c':
       centerP = 1;
       format_troff = 1;
@@ -316,7 +316,7 @@ main(int argc, char *argv[]) {
 "         -w <n> set maximum width to <n>\n"
 "         goal   set target width to goal\n");
       exit(ch=='h' ? 0 : EX_USAGE);
-  }
+    }
   argc -= optind; argv += optind;
 
   /* [ goal [ maximum ] ] */

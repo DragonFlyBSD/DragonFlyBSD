@@ -3186,24 +3186,16 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	/* allocate the rx shadow rings */
 	bytes = rx_ring_entries * sizeof (*ss->rx_small.shadow);
 	ss->rx_small.shadow = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
-	if (ss->rx_small.shadow == NULL)
-		return err;;
 
 	bytes = rx_ring_entries * sizeof (*ss->rx_big.shadow);
 	ss->rx_big.shadow = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
-	if (ss->rx_big.shadow == NULL)
-		return err;;
 
 	/* allocate the rx host info rings */
 	bytes = rx_ring_entries * sizeof (*ss->rx_small.info);
 	ss->rx_small.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
-	if (ss->rx_small.info == NULL)
-		return err;;
 
 	bytes = rx_ring_entries * sizeof (*ss->rx_big.info);
 	ss->rx_big.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
-	if (ss->rx_big.info == NULL)
-		return err;;
 
 	/* allocate the rx busdma resources */
 	err = bus_dma_tag_create(sc->parent_dmat,	/* parent */
@@ -3298,8 +3290,6 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	bytes = 8 + 
 		sizeof (*ss->tx.req_list) * (ss->tx.max_desc + 4);
 	ss->tx.req_bytes = kmalloc(bytes, M_DEVBUF, M_WAITOK);
-	if (ss->tx.req_bytes == NULL)
-		return err;;
 	/* ensure req_list entries are aligned to 8 bytes */
 	ss->tx.req_list = (mcp_kreq_ether_send_t *)
 		((unsigned long)(ss->tx.req_bytes + 7) & ~7UL);
@@ -3314,8 +3304,6 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	/* allocate the tx host info ring */
 	bytes = tx_ring_entries * sizeof (*ss->tx.info);
 	ss->tx.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
-	if (ss->tx.info == NULL)
-		return err;;
 	
 	/* allocate the tx busdma resources */
 	err = bus_dma_tag_create(sc->parent_dmat,	/* parent */

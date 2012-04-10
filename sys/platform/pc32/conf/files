@@ -83,7 +83,6 @@ crypto/des/arch/i386/des_enc.S		optional	crypto
 crypto/des/des_ecb.c			optional	crypto
 crypto/des/des_setkey.c			optional	crypto
 dev/disk/advansys/adv_isa.c		optional	adv isa
-dev/disk/aic/aic_isa.c			optional	aic isa
 dev/netif/ar/if_ar_isa.c		optional	ar isa
 
 ${OSACPI_MD_DIR}/OsdEnvironment.c	optional        acpi

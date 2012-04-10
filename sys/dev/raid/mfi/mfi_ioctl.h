@@ -24,18 +24,25 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mfi/mfi_ioctl.h,v 1.9 2009/08/13 23:18:45 scottl Exp $
+ * FreeBSD projects/head_mfi/ r227612
  */
 
 #include <sys/conf.h>
 
+#include <sys/bus_dma.h>
+
 #include <dev/raid/mfi/mfireg.h>
 
-#if defined(__x86_64__) /* Assume amd64 wants 32 bit Linux */
 struct iovec32 {
 	u_int32_t	iov_base;
 	int		iov_len;
 };
-#endif
+
+struct megasas_sge
+{
+	bus_addr_t phys_addr;
+	uint32_t length;
+};
 
 #define MFIQ_FREE	0
 #define MFIQ_BIO	1
@@ -80,23 +87,6 @@ struct mfi_ioc_packet {
 	struct iovec mfi_sgl[MAX_IOCTL_SGE];
 } __packed;
 
-#ifdef __x86_64__
-struct mfi_ioc_packet32 {
-	uint16_t	mfi_adapter_no;
-	uint16_t	mfi_pad1;
-	uint32_t	mfi_sgl_off;
-	uint32_t	mfi_sge_count;
-	uint32_t	mfi_sense_off;
-	uint32_t	mfi_sense_len;
-	union {
-		uint8_t raw[128];
-		struct mfi_frame_header hdr;
-	} mfi_frame;
-
-	struct iovec32 mfi_sgl[MAX_IOCTL_SGE];
-} __packed;
-#endif
-
 struct mfi_ioc_aen {
 	uint16_t	aen_adapter_no;
 	uint16_t	aen_pad1;
@@ -105,9 +95,6 @@ struct mfi_ioc_aen {
 } __packed;
 
 #define MFI_CMD		_IOWR('M', 1, struct mfi_ioc_packet)
-#ifdef __x86_64__
-#define MFI_CMD32	_IOWR('M', 1, struct mfi_ioc_packet32)
-#endif
 #define MFI_SET_AEN	_IOW('M', 3, struct mfi_ioc_aen)
 
 #define MAX_LINUX_IOCTL_SGE	16
@@ -137,19 +124,8 @@ struct mfi_ioc_passthru {
 	uint8_t			*buf;
 } __packed;
 
-#ifdef __x86_64__
-struct mfi_ioc_passthru32 {
-	struct mfi_dcmd_frame	ioc_frame;
-	uint32_t		buf_size;
-	uint32_t		buf;
-} __packed;
-#endif
-
 #define MFIIO_STATS	_IOWR('Q', 101, union mfi_statrequest)
 #define MFIIO_PASSTHRU	_IOWR('C', 102, struct mfi_ioc_passthru)
-#ifdef __x86_64__
-#define MFIIO_PASSTHRU32	_IOWR('C', 102, struct mfi_ioc_passthru32)
-#endif
 
 struct mfi_linux_ioc_aen {
 	uint16_t	laen_adapter_no;

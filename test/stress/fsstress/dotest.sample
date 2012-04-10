@@ -1,6 +1,4 @@
-#!/bin/tcsh
-#
-# $DragonFly: src/test/stress/fsstress/dotest.sample,v 1.1 2004/05/07 17:51:02 dillon Exp $
+#!/bin/sh
 
-./fsstress -n 1000000 -p 10 -d test
+/tmp/fsstress -n 1000000 -p 10 -d test
 

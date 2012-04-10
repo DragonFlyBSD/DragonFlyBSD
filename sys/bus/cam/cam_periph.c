@@ -664,12 +664,12 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		 * boundary.
 		 */
 		if ((lengths[i] +
-		    (((vm_offset_t)(*data_ptrs[i])) & PAGE_MASK)) > DFLTPHYS){
+		    (((vm_offset_t)(*data_ptrs[i])) & PAGE_MASK)) > MAXPHYS){
 			kprintf("cam_periph_mapmem: attempt to map %lu bytes, "
-			       "which is greater than DFLTPHYS(%d)\n",
+			       "which is greater than MAXPHYS(%d)\n",
 			       (long)(lengths[i] +
 			       (((vm_offset_t)(*data_ptrs[i])) & PAGE_MASK)),
-			       DFLTPHYS);
+			       MAXPHYS);
 			return(E2BIG);
 		}
 
