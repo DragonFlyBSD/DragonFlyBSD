@@ -178,9 +178,6 @@ struct ifaddr	*carp_iamatch6(void *, struct in6_addr *);
 void		*carp_macmatch6(void *, struct mbuf *, const struct in6_addr *);
 struct mbuf	*carp_input(void *, struct mbuf *);
 struct ifnet	*carp_parent(struct ifnet *);
-
-void		 carp_gettok(void);
-void		 carp_reltok(void);
 #endif /* _KERNEL */
 
 #endif /* _IP_CARP_H */

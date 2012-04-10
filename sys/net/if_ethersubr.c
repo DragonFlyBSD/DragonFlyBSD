@@ -1271,15 +1271,11 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 #ifdef CARP
 	carp = ifp->if_carp;
 	if (carp) {
-		carp_gettok();
 		m = carp_input(carp, m);
-		if (m == NULL) {
-			carp_reltok();
+		if (m == NULL)
 			return;
-		}
 		KASSERT(ifp == m->m_pkthdr.rcvif,
 		    ("carp_input changed rcvif\n"));
-		carp_reltok();
 	}
 #endif
 
