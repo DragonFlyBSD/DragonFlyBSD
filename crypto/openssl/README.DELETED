@@ -215,7 +215,7 @@ crypto/idea/idea_spd.c
 crypto/idea/ideatest.c
 crypto/install-crypto.com
 crypto/jpake/
-crypto/krb5/
+crypto/krb5/Makefile
 crypto/lhash/Makefile
 crypto/lhash/lh_test.c
 crypto/lhash/num.pl
