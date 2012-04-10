@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi_hp.4,v 1.7 2010/10/08 12:40:16 uqs Exp $
 .\"
-.Dd March 16, 2012
+.Dd April 10, 2012
 .Dt ACPI_HP 4
 .Os
 .Sh NAME
@@ -279,8 +279,11 @@ http://www.microsoft.com/whdc/system/pnppwr/wmi/wmi-acpi.mspx
 This manual page was written by
 .An Michael Gmelin Aq freebsd@grem.de
 .Sh BUGS
-This driver is experimental and has only been tested on i386 on an
-HP Compaq 8510p which featured all supported wireless devices (WWAN/BT/WLAN).
+This driver is experimental and has only been tested on an
+.Tn HP Compaq 8510p
+(i386) and an
+.Tn HP Compaq nc6320
+(x86_64) which featured all supported wireless devices (WWAN/BT/WLAN).
 Expect undefined results when operating on different hardware.
 .Pp
 Loading the driver is slow. Reading from /dev/hpcmi is even slower.
