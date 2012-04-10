@@ -21,7 +21,7 @@ SRCS+=	s2_meth.c s2_srvr.c s2_clnt.c s2_lib.c s2_enc.c s2_pkt.c \
 	ssl_lib.c ssl_err2.c ssl_cert.c ssl_sess.c \
 	ssl_ciph.c ssl_stat.c ssl_rsa.c \
 	ssl_asn1.c ssl_txt.c ssl_algs.c \
-	bio_ssl.c ssl_err.c tls_srp.c t1_reneg.c
+	bio_ssl.c ssl_err.c kssl.c tls_srp.c t1_reneg.c
 
 INCS=	ssl.h ssl2.h ssl3.h ssl23.h tls1.h dtls1.h kssl.h srtp.h
 INCSDIR=${INCLUDEDIR}/openssl

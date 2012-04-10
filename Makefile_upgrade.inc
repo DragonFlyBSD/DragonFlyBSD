@@ -1532,7 +1532,6 @@ TO_REMOVE+=/usr/share/man/cat9/mtx_owner.9.gz
 TO_REMOVE+=/usr/share/man/man9/mtx_notowner.9.gz
 TO_REMOVE+=/usr/share/man/man9/mtx_owner.9.gz
 TO_REMOVE+=/usr/include/openssl/fips_err.h
-TO_REMOVE+=/usr/include/openssl/krb5_asn.h
 TO_REMOVE+=/usr/include/openssl/md2.h
 TO_REMOVE+=/usr/include/openssl/pq_compat.h
 TO_REMOVE+=/usr/include/openssl/rc5.h

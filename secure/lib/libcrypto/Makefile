@@ -227,6 +227,10 @@ INCS+=	idea.h
 _ideapath=	${LCRYPTO_SRC}/crypto/idea
 .endif
 
+# krb5
+SRCS+=	krb5_asn.c
+INCS+=	krb5_asn.h
+
 # lhash
 SRCS+=	lhash.c lh_stats.c
 INCS+=	lhash.h
@@ -446,6 +450,7 @@ INCS+=	x509v3.h
 	${LCRYPTO_SRC}/crypto/comp \
 	${LCRYPTO_SRC}/crypto/ocsp \
 	${LCRYPTO_SRC}/crypto/ui \
+	${LCRYPTO_SRC}/crypto/krb5 \
 	${LCRYPTO_SRC}/crypto/cms \
 	${LCRYPTO_SRC}/crypto/pqueue \
 	${LCRYPTO_SRC}/crypto/ts \
