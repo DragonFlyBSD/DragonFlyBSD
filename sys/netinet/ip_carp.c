@@ -81,6 +81,172 @@
 
 #include <netinet/ip_carp.h>
 
+/*
+ * Note about carp's MP safe approach:
+ *
+ * Brief: carp_softc (softc), carp_softc_container (scc)
+ *
+ * - All configuration operation, e.g. ioctl, add/delete inet addresses
+ *   is serialized by netisr0; not by carp's serializer
+ *
+ * - Backing interface's if_carp and carp_softc's relationship:
+ *
+ *                +---------+
+ *     if_carp -->| carp_if |
+ *                +---------+
+ *                     |
+ *                     |
+ *                     V      +---------+
+ *                  +-----+   |         |
+ *                  | scc |-->|  softc  |
+ *                  +-----+   |         |
+ *                     |      +---------+
+ *                     |
+ *                     V      +---------+
+ *                  +-----+   |         |
+ *                  | scc |-->|  softc  |
+ *                  +-----+   |         |
+ *                            +---------+
+ *
+ * - if_carp creation, modification and deletion all happen in netisr0,
+ *   as stated previously.  Since if_carp is accessed by multiple netisrs,
+ *   the modification to if_carp is conducted in the following way:
+ *
+ *   Adding carp_softc:
+ *
+ *   1) Duplicate the old carp_if to new carp_if (ncif), and insert the
+ *      to-be-added carp_softc to the new carp_if (ncif):
+ *
+ *        if_carp                     ncif
+ *           |                         |
+ *           V                         V
+ *      +---------+               +---------+
+ *      | carp_if |               | carp_if |
+ *      +---------+               +---------+
+ *           |                         |
+ *           |                         |
+ *           V        +-------+        V
+ *        +-----+     |       |     +-----+
+ *        | scc |---->| softc |<----| scc |
+ *        +-----+     |       |     +-----+
+ *           |        +-------+        |
+ *           |                         |
+ *           V        +-------+        V
+ *        +-----+     |       |     +-----+
+ *        | scc |---->| softc |<----| scc |
+ *        +-----+     |       |     +-----+
+ *                    +-------+        |
+ *                                     |
+ *                    +-------+        V
+ *                    |       |     +-----+
+ *                    | softc |<----| scc |
+ *                    |       |     +-----+
+ *                    +-------+
+ *
+ *   2) Switch save if_carp into ocif and switch if_carp to ncif:
+ *      
+ *          ocif                    if_carp
+ *           |                         |
+ *           V                         V
+ *      +---------+               +---------+
+ *      | carp_if |               | carp_if |
+ *      +---------+               +---------+
+ *           |                         |
+ *           |                         |
+ *           V        +-------+        V
+ *        +-----+     |       |     +-----+
+ *        | scc |---->| softc |<----| scc |
+ *        +-----+     |       |     +-----+
+ *           |        +-------+        |
+ *           |                         |
+ *           V        +-------+        V
+ *        +-----+     |       |     +-----+
+ *        | scc |---->| softc |<----| scc |
+ *        +-----+     |       |     +-----+
+ *                    +-------+        |
+ *                                     |
+ *                    +-------+        V
+ *                    |       |     +-----+
+ *                    | softc |<----| scc |
+ *                    |       |     +-----+
+ *                    +-------+
+ *
+ *   3) Run netmsg_service_sync(), which will make sure that
+ *      ocif is no longer accessed (all network operations
+ *      are happened only in network threads).
+ *   4) Free ocif -- only carp_if and scc are freed.
+ *
+ *
+ *   Removing carp_softc:
+ *
+ *   1) Duplicate the old carp_if to new carp_if (ncif); the to-be-deleted
+ *      carp_softc will not be duplicated.
+ *
+ *        if_carp                     ncif
+ *           |                         |
+ *           V                         V
+ *      +---------+               +---------+
+ *      | carp_if |               | carp_if |
+ *      +---------+               +---------+
+ *           |                         |
+ *           |                         |
+ *           V        +-------+        V
+ *        +-----+     |       |     +-----+
+ *        | scc |---->| softc |<----| scc |
+ *        +-----+     |       |     +-----+
+ *           |        +-------+        |
+ *           |                         |
+ *           V        +-------+        |
+ *        +-----+     |       |        |
+ *        | scc |---->| softc |        |
+ *        +-----+     |       |        |
+ *           |        +-------+        |
+ *           |                         |
+ *           V        +-------+        V
+ *        +-----+     |       |     +-----+
+ *        | scc |---->| softc |<----| scc |
+ *        +-----+     |       |     +-----+
+ *                    +-------+
+ *
+ *   2) Switch save if_carp into ocif and switch if_carp to ncif:
+ *      
+ *          ocif                    if_carp
+ *           |                         |
+ *           V                         V
+ *      +---------+               +---------+
+ *      | carp_if |               | carp_if |
+ *      +---------+               +---------+
+ *           |                         |
+ *           |                         |
+ *           V        +-------+        V
+ *        +-----+     |       |     +-----+
+ *        | scc |---->| softc |<----| scc |
+ *        +-----+     |       |     +-----+
+ *           |        +-------+        |
+ *           |                         |
+ *           V        +-------+        |
+ *        +-----+     |       |        |
+ *        | scc |---->| softc |        |
+ *        +-----+     |       |        |
+ *           |        +-------+        |
+ *           |                         |
+ *           V        +-------+        V
+ *        +-----+     |       |     +-----+
+ *        | scc |---->| softc |<----| scc |
+ *        +-----+     |       |     +-----+
+ *                    +-------+
+ *
+ *   3) Run netmsg_service_sync(), which will make sure that
+ *      ocif is no longer accessed (all network operations
+ *      are happened only in network threads).
+ *   4) Free ocif -- only carp_if and scc are freed.
+ *
+ * - if_carp accessing:
+ *   The accessing code should cache the if_carp in a local temporary
+ *   variable and accessing the temporary variable along the code path
+ *   instead of accessing if_carp later on.
+ */
+
 #define	CARP_IFNAME		"carp"
 #define CARP_IS_RUNNING(ifp)	\
 	(((ifp)->if_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
