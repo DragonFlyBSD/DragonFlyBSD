@@ -263,10 +263,8 @@ syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 
 	TAILQ_INSERT_TAIL(&syncache_percpu->timerq[slot], sc, sc_timerq);
 	if (!callout_active(&syncache_percpu->tt_timerq[slot])) {
-		callout_reset(&syncache_percpu->tt_timerq[slot],
-			      TCPTV_RTOBASE * tcp_backoff[slot],
-			      syncache_timer,
-			      &syncache_percpu->mrec[slot]);
+		callout_reset(&syncache_percpu->tt_timerq[slot], rto,
+		    syncache_timer, &syncache_percpu->mrec[slot]);
 	}
 }
 
