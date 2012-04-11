@@ -31,9 +31,12 @@
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
  */
+
+#ifndef KLD_MODULE
 #include "opt_netsmb.h"
 #ifndef NETSMB
 #error "SMBFS requires option NETSMB"
+#endif
 #endif
 
 #include <sys/param.h>
