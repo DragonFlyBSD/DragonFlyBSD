@@ -36,12 +36,7 @@ SMB_IPX?=	0
 # Build with INET support (1|0)
 SMB_INET?=	1
 
-CFLAGS+= ${KDEBUG}
-
-.if defined(VNPRINT)
-CFLAGS+= -DVNPRINT
-.endif
-
+.if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:
 	touch ${.TARGET}
 .if ${SMB_INET} > 0
@@ -59,8 +54,6 @@ opt_netsmb.h:
 .if defined(NETSMBCRYPTO)
 	echo "#define NETSMBCRYPTO 1" >> ${.TARGET}
 .endif
-
-unload:
-	@-kldunload ${KMOD}
+.endif
 
 .include <bsd.kmod.mk>

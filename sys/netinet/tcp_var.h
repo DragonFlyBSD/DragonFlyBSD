@@ -574,6 +574,8 @@ SYSCTL_DECL(_net_inet_tcp);
 #endif
 
 #define TCP_DO_SACK(tp)		((tp)->t_flags & TF_SACK_PERMITTED)
+#define TCP_SACK_BLKEND(len, thflags) \
+	((len) + (((thflags) & TH_FIN) != 0))
 
 TAILQ_HEAD(tcpcbackqhead,tcpcb);
 
@@ -619,6 +621,7 @@ struct rtentry *
 	 tcp_rtlookup (struct in_conninfo *);
 int	 tcp_sack_bytes_below(struct scoreboard *scb, tcp_seq seq);
 void	 tcp_sack_cleanup(struct scoreboard *scb);
+void	 tcp_sack_report_cleanup(struct tcpcb *tp);
 int	 tcp_sack_ndsack_blocks(struct raw_sackblock *blocks,
 	    const int numblocks, tcp_seq snd_una);
 void	 tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen);
@@ -651,6 +654,7 @@ struct tcpcb *
 void	 tcp_trace (short, short, struct tcpcb *, void *, struct tcphdr *,
 			int);
 void	 tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq);
+u_long	 tcp_initial_window(const struct tcpcb *tp);
 void	 tcp_timer_keep_activity(struct tcpcb *tp, int thflags);
 void	 syncache_init(void);
 void	 syncache_unreach(struct in_conninfo *, struct tcphdr *);

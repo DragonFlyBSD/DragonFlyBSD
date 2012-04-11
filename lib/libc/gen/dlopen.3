@@ -32,11 +32,12 @@
 .\" @(#) dlopen.3 1.6 90/01/31 SMI
 .\" $FreeBSD: head/lib/libc/gen/dlopen.3 211397 2010-08-16 15:18:30Z joel $
 .\"
-.Dd April 28, 2011
+.Dd April 6, 2012
 .Dt DLOPEN 3
 .Os
 .Sh NAME
-.Nm dlopen
+.Nm dlopen ,
+.Nm fdlopen
 .Nd returns handle to dynamically loaded shared object
 .Sh LIBRARY
 This function is not in a library.
@@ -45,12 +46,14 @@ It is included in every dynamically linked program automatically.
 .In dlfcn.h
 .Ft void *
 .Fn dlopen "const char *name" "int mode"
+.Ft void *
+.Fn fdlopen "int fd" "int mode"
 .Sh DESCRIPTION
 The
 .Fn dlopen
 function
 provides access to the shared object in
-.Fa path ,
+.Fa name ,
 returning a descriptor that can be used for later
 references to the object in calls to other dl functions.
 If
@@ -128,19 +131,52 @@ The same behaviour may be requested by
 option of the static linker
 .Xr ld 1 .
 .It Dv RTLD_NOLOAD
-Ony return valid handle for the object if it is already loaded in
+Only return valid handle for the object if it is already loaded in
 the process address space, otherwise
 .Dv NULL
 is returned.
 Other mode flags may be specified, which will be applied for promotion
 for the found object.
 .El
-.Sh RETURN VALUE
-The
+.Pp
+If
 .Fn dlopen
-function
-returns a null pointer in the event of an error.
+fails, it returns a null pointer, and sets an error condition which may
+be interrogated with
+.Fn dlerror .
+.Pp
 The
+.Fn fdlopen
+function is similar to
+.Fn dlopen ,
+but it takes the file descriptor argument
+.Fa fd ,
+which is used for the file operations needed to load an object
+into the address space.
+The file descriptor
+.Fa fd
+is not closed by the function regardless a result of execution,
+but a duplicate of the file descriptor is.
+This may be important if a
+.Xr lockf 3
+lock is held on the passed descriptor.
+The
+.Fa fd
+argument -1 is interpreted as a reference to the main
+executable of the process, similar to
+.Va NULL
+value for the
+.Fa name
+argument to
+.Fn dlopen .
+The
+.Fn fdlopen
+function can be used by the code that needs to perform
+additional checks on the loaded objects, to prevent races with
+symlinking or renames.
+.El
+.Sh RETURN VALUE
+The functions return a null pointer in the event of an error.
 Whenever an error has been detected, a message detailing it can be
 retrieved via a call to
 .Fn dlerror .

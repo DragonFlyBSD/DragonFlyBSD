@@ -660,11 +660,6 @@ iwi_alloc_tx_ring(struct iwi_softc *sc, struct iwi_tx_ring *ring, int count,
 
 	ring->data = kmalloc(count * sizeof (struct iwi_tx_data), M_DEVBUF,
 	    M_WAITOK | M_ZERO);
-	if (ring->data == NULL) {
-		device_printf(sc->sc_dev, "could not allocate soft data\n");
-		error = ENOMEM;
-		goto fail;
-	}
 
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
 	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, IWI_MAX_NSEG,
@@ -768,11 +763,6 @@ iwi_alloc_rx_ring(struct iwi_softc *sc, struct iwi_rx_ring *ring, int count)
 
 	ring->data = kmalloc(count * sizeof (struct iwi_rx_data), M_DEVBUF,
 	    M_WAITOK | M_ZERO);
-	if (ring->data == NULL) {
-		device_printf(sc->sc_dev, "could not allocate soft data\n");
-		error = ENOMEM;
-		goto fail;
-	}
 
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
 	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, 1, MCLBYTES,

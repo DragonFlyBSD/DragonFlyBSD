@@ -450,15 +450,11 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 	}
 	if (fsc != NULL && (fsc->m1 != 0 || fsc->m2 != 0)) {
 		cl->cl_fsc = kmalloc(sizeof(*cl->cl_fsc), M_ALTQ, M_WAITOK);
-		if (cl->cl_fsc == NULL)
-			goto err_ret;
 		sc2isc(fsc, cl->cl_fsc);
 		rtsc_init(&cl->cl_virtual, cl->cl_fsc, 0, 0);
 	}
 	if (usc != NULL && (usc->m1 != 0 || usc->m2 != 0)) {
 		cl->cl_usc = kmalloc(sizeof(*cl->cl_usc), M_ALTQ, M_WAITOK);
-		if (cl->cl_usc == NULL)
-			goto err_ret;
 		sc2isc(usc, cl->cl_usc);
 		rtsc_init(&cl->cl_ulimit, cl->cl_usc, 0, 0);
 	}

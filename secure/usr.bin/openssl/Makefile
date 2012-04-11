@@ -14,14 +14,14 @@ LDADD=	-lssl -lcrypto
 
 CFLAGS+= -DMONOLITH -I${.CURDIR}
 
-SRCS+=	app_rand.c apps.c asn1pars.c ca.c ciphers.c cms.c crl.c crl2p7.c \
-	dgst.c dh.c dhparam.c dsa.c dsaparam.c ec.c ecparam.c enc.c \
-	engine.c errstr.c gendh.c gendsa.c genpkey.c \
-	genrsa.c nseq.c ocsp.c openssl.c \
-	passwd.c pkcs12.c pkcs7.c pkcs8.c pkey.c pkeyparam.c pkeyutl.c \
-	prime.c rand.c req.c rsa.c \
-	rsautl.c s_cb.c s_client.c s_server.c s_socket.c s_time.c sess_id.c \
-	smime.c speed.c spkac.c ts.c verify.c version.c x509.c
+SRCS=	openssl.c
+SRCS+=	verify.c asn1pars.c req.c dgst.c dh.c dhparam.c enc.c passwd.c gendh.c errstr.c \
+	ca.c pkcs7.c crl2p7.c crl.c \
+	rsa.c rsautl.c dsa.c dsaparam.c ec.c ecparam.c \
+	x509.c genrsa.c gendsa.c genpkey.c s_server.c s_client.c speed.c \
+	s_time.c apps.c s_cb.c s_socket.c app_rand.c version.c sess_id.c \
+	ciphers.c nseq.c pkcs12.c pkcs8.c pkey.c pkeyparam.c pkeyutl.c \
+	spkac.c smime.c cms.c rand.c engine.c ocsp.c prime.c ts.c srp.c
 
 .include <bsd.prog.mk>
 

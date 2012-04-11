@@ -335,6 +335,9 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 #ifdef CARP
 	if (ifp->if_type == IFT_CARP) {
 		ifp = carp_parent(ifp);
+		if (ifp == NULL)
+			gotoerr(ENETUNREACH);
+
 		ac = IFP2AC(ifp);
 
 		/*
@@ -1229,6 +1232,10 @@ post_stats:
 static void
 ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 {
+#ifdef CARP
+	void *carp;
+#endif
+
 	if ((ifp->if_flags & (IFF_UP | IFF_MONITOR)) != IFF_UP) {
 		/*
 		 * Receiving interface's flags are changed, when this
@@ -1262,21 +1269,13 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 	}
 
 #ifdef CARP
-	if (ifp->if_carp) {
-		/*
-		 * Hold CARP token and recheck ifp->if_carp
-		 */
-		carp_gettok();
-		if (ifp->if_carp) {
-			m = carp_input(ifp->if_carp, m);
-			if (m == NULL) {
-				carp_reltok();
-				return;
-			}
-			KASSERT(ifp == m->m_pkthdr.rcvif,
-				("carp_input changed rcvif\n"));
-		}
-		carp_reltok();
+	carp = ifp->if_carp;
+	if (carp) {
+		m = carp_input(carp, m);
+		if (m == NULL)
+			return;
+		KASSERT(ifp == m->m_pkthdr.rcvif,
+		    ("carp_input changed rcvif\n"));
 	}
 #endif
 

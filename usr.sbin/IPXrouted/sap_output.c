@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/sap_output.c,v 1.9 1999/08/28 01:15:04 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/sap_output.c,v 1.4 2004/06/19 20:38:22 joerg Exp $
  */
 
 /*
@@ -121,71 +120,76 @@ sap_supply(struct sockaddr *dst, int flags, struct interface *ifp,
 
 	sap_msg->sap_cmd = ntohs(SAP_RESP);
 
-	for (sh = base; sh < &base[SAPHASHSIZ]; sh++)
-	for (sap = sh->forw; sap != (struct sap_entry *)sh; sap = sap->forw) {
-		size = (char *)n - (char *)sap_msg;
-		if (size >= ((MAXSAPENTRIES * sizeof (struct sap_info)) +
-				sizeof (sap_msg->sap_cmd))) {
+	for (sh = base; sh < &base[SAPHASHSIZ]; sh++) {
+		for (sap = sh->forw; sap != (struct sap_entry *)sh;
+		     sap = sap->forw) {
+			size = (char *)n - (char *)sap_msg;
+			if (size >=
+			    ((MAXSAPENTRIES * sizeof (struct sap_info)) +
+			     sizeof (sap_msg->sap_cmd))) {
+				(*output)(sapsock, flags, dst, size);
+				TRACE_SAP_OUTPUT(ifp, dst, size);
+				n = sap_msg->sap;
+				delay++;
+				if(delay == 2) {
+					usleep(50000);
+					delay = 0;
+				}
+			}
+
+			if (changesonly && !(sap->state & RTS_CHANGED))
+				continue;
+
+			/*
+			 * Check for the servicetype except if the ServType is
+			 * a wildcard (0xFFFF).
+			 */
+			if ((ServType != SAP_WILDCARD) &&
+			    (ServType != sap->sap.ServType))
+				continue;
+
+			/*
+			 * This should do rule one and two of the split horizon
+			 * algorithm.
+			 */
+			if (sap->ifp == ifp)
+				continue;
+
+			/*
+			 * Rule 2.
+			 * Look if we have clones (different routes to the same
+			 * place with exactly the same cost).
+			 *
+			 * We should not publish on any of the clone
+			 * interfaces.
+			 */
+			csap = sap->clone;
+			while (csap) {
+				if (csap->ifp == ifp)
+					goto next;
+				csap = csap->clone;
+			}
+
+			/*
+			 * Don't advertise services with more than 15 hops. It
+			 * will be confused with a service that has gone down.
+			 */
+			if (ntohs(sap->sap.hops) == (HOPCNT_INFINITY - 1))
+				continue;
+			metric = min(ntohs(sap->sap.hops) + 1,
+			    HOPCNT_INFINITY);
+
+			*n = sap->sap;
+			n->hops = htons(metric);
+			n++;
+next:
+			;
+		}
+		if (n != sap_msg->sap) {
+			size = (char *)n - (char *)sap_msg;
 			(*output)(sapsock, flags, dst, size);
 			TRACE_SAP_OUTPUT(ifp, dst, size);
-			n = sap_msg->sap;
-			delay++;
-			if(delay == 2) {
-				usleep(50000);
-				delay = 0;
-			}
 		}
-
-		if (changesonly && !(sap->state & RTS_CHANGED))
-			continue;
-
-		/*
-		 * Check for the servicetype except if the ServType is
-		 * a wildcard (0xFFFF).
-		 */
-		if ((ServType != SAP_WILDCARD) &&
-		    (ServType != sap->sap.ServType))
-			continue;
-
-		/*
-		 * This should do rule one and two of the split horizon
-		 * algorithm.
-		 */
-		if (sap->ifp == ifp)
-			continue;
-
-		/*
-		 * Rule 2.
-		 * Look if we have clones (different routes to the same
-		 * place with exactly the same cost).
-		 *
-		 * We should not publish on any of the clone interfaces.
-		 */
-		csap = sap->clone;
-		while (csap) {
-			if (csap->ifp == ifp)
-				goto next;
-			csap = csap->clone;
-		}
-
-		/*
-		 * Don't advertise services with more than 15 hops. It
-		 * will be confused with a service that has gone down.
-		 */
-		if (ntohs(sap->sap.hops) == (HOPCNT_INFINITY - 1))
-			continue;
-		metric = min(ntohs(sap->sap.hops) + 1, HOPCNT_INFINITY);
-
-		*n = sap->sap;
-		n->hops = htons(metric);
-		n++;
-next:
-		;
-	}
-	if (n != sap_msg->sap) {
-		size = (char *)n - (char *)sap_msg;
-		(*output)(sapsock, flags, dst, size);
-		TRACE_SAP_OUTPUT(ifp, dst, size);
 	}
 }
 

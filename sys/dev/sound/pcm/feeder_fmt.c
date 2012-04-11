@@ -325,8 +325,6 @@ static int
 feed_common_init(struct pcm_feeder *f)
 {
 	f->data = kmalloc(FEEDBUFSZ, M_FMTFEEDER, M_WAITOK|M_ZERO);
-	if (f->data == NULL)
-		return ENOMEM;
 	return 0;
 }
 

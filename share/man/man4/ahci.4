@@ -14,7 +14,7 @@
 .\" TORTIOUS ACTION, ARISING OUT OF
 .\" PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd August 3, 2009
+.Dd April 7, 2012
 .Dt AHCI 4
 .Os
 .Sh NAME
@@ -90,6 +90,12 @@ some devices might not properly implement.
 .Bd -literal -offset indent
 hint.ahci.force150=1
 hint.ahci.nofeatures=1
+.Ed
+.Pp
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting the following tunable:
+.Bd -literal -offset indent
+hw.ahci.msi.enable=0
 .Ed
 .Sh SYSCTL VARIABLES
 Link power management can be set with the sysctl

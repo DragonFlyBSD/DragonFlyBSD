@@ -174,6 +174,14 @@ dl_iterate_phdr(int (*callback)(struct dl_phdr_info *, size_t, void *),
 	return callback(&phdr_info, sizeof(phdr_info), data);
 }
 
+#pragma weak fdlopen
+void *
+fdlopen(int fd, int mode)
+{
+        _rtld_error(sorry);
+        return NULL;
+}
+
 #pragma weak _rtld_addr_phdr
 int
 _rtld_addr_phdr(const void *addr, struct dl_phdr_info *phdr_info)

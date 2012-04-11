@@ -1532,7 +1532,6 @@ TO_REMOVE+=/usr/share/man/cat9/mtx_owner.9.gz
 TO_REMOVE+=/usr/share/man/man9/mtx_notowner.9.gz
 TO_REMOVE+=/usr/share/man/man9/mtx_owner.9.gz
 TO_REMOVE+=/usr/include/openssl/fips_err.h
-TO_REMOVE+=/usr/include/openssl/krb5_asn.h
 TO_REMOVE+=/usr/include/openssl/md2.h
 TO_REMOVE+=/usr/include/openssl/pq_compat.h
 TO_REMOVE+=/usr/include/openssl/rc5.h
@@ -1988,6 +1987,10 @@ TO_REMOVE+=/usr/share/man/cat4/i386/aic.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/aic.4.gz
 TO_REMOVE+=/usr/share/man/cat3/lintf.3.gz
 TO_REMOVE+=/usr/share/man/man3/lintf.3.gz
+TO_REMOVE+=/usr/include/openssl/aes_locl.h
+TO_REMOVE+=/usr/include/openssl/e_os.h
+TO_REMOVE+=/usr/include/openssl/eng_int.h
+TO_REMOVE+=/usr/include/openssl/ui_locl.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys

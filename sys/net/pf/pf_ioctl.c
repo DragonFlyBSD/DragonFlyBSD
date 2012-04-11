@@ -908,9 +908,6 @@ pf_setup_pfsync_matching(struct pf_ruleset *rs)
 			    kmalloc(sizeof(caddr_t) *
 				    rs->rules[rs_cnt].inactive.rcount,
 				    M_TEMP, M_WAITOK);
-
-			if (!rs->rules[rs_cnt].inactive.ptr_array)
-				return (ENOMEM);
 		}
 
 		TAILQ_FOREACH(rule, rs->rules[rs_cnt].inactive.ptr,

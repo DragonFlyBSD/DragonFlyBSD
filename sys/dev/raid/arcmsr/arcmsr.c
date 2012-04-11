@@ -196,6 +196,7 @@ static driver_t arcmsr_driver={
 
 static devclass_t arcmsr_devclass;
 DRIVER_MODULE(arcmsr, pci, arcmsr_driver, arcmsr_devclass, NULL, NULL);
+MODULE_VERSION(arcmsr, 1);
 MODULE_DEPEND(arcmsr, pci, 1, 1, 1);
 MODULE_DEPEND(arcmsr, cam, 1, 1, 1);
 #ifndef BUS_DMA_COHERENT
@@ -208,6 +209,10 @@ static struct dev_ops arcmsr_ops = {
 	.d_close =	arcmsr_close,		        /* close    */
 	.d_ioctl =	arcmsr_ioctl,		        /* ioctl    */
 };
+
+static int	arcmsr_msi_enable = 1;
+TUNABLE_INT("hw.arcmsr.msi.enable", &arcmsr_msi_enable);
+
 
 /*
 **************************************************************************
@@ -3510,6 +3515,7 @@ static int arcmsr_attach(device_t dev)
 	struct cam_devq	*devq;	/* Device Queue to use for this SIM */
 	struct resource	*irqres;
 	int	rid;
+	u_int irq_flags;
 
 	if(acb == NULL) {
 		kprintf("arcmsr%d: cannot allocate softc\n", unit);
@@ -3523,7 +3529,10 @@ static int arcmsr_attach(device_t dev)
 	}
 	/* After setting up the adapter, map our interrupt */
 	rid=0;
-	irqres=bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0ul, ~0ul, 1, RF_SHAREABLE | RF_ACTIVE);
+	acb->irq_type = pci_alloc_1intr(dev, arcmsr_msi_enable, &rid,
+	    &irq_flags);
+	irqres=bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0ul, ~0ul, 1,
+	    irq_flags);
 	if(irqres == NULL ||
 		bus_setup_intr(dev, irqres, INTR_MPSAFE, arcmsr_intr_handler, acb, &acb->ih, NULL)) {
 		arcmsr_free_resource(acb);
@@ -3544,6 +3553,8 @@ static int arcmsr_attach(device_t dev)
 	if(devq == NULL) {
 	    arcmsr_free_resource(acb);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
+		if (acb->irq_type == PCI_INTR_TYPE_MSI)
+			pci_release_msi(dev);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
 		kprintf("arcmsr%d: cam_simq_alloc failure!\n", unit);
 		return ENXIO;
@@ -3552,6 +3563,8 @@ static int arcmsr_attach(device_t dev)
 	if(acb->psim == NULL) {
 		arcmsr_free_resource(acb);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
+		if (acb->irq_type == PCI_INTR_TYPE_MSI)
+			pci_release_msi(dev);
 		cam_simq_release(devq);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
 		kprintf("arcmsr%d: cam_sim_alloc failure!\n", unit);
@@ -3561,6 +3574,8 @@ static int arcmsr_attach(device_t dev)
 	if(xpt_bus_register(acb->psim, 0) != CAM_SUCCESS) {
 		arcmsr_free_resource(acb);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
+		if (acb->irq_type == PCI_INTR_TYPE_MSI)
+			pci_release_msi(dev);
 		cam_sim_free(acb->psim);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
 		kprintf("arcmsr%d: xpt_bus_register failure!\n", unit);
@@ -3569,6 +3584,8 @@ static int arcmsr_attach(device_t dev)
 	if(xpt_create_path(&acb->ppath, /* periph */ NULL, cam_sim_path(acb->psim), CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		arcmsr_free_resource(acb);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
+		if (acb->irq_type == PCI_INTR_TYPE_MSI)
+			pci_release_msi(dev);
 		xpt_bus_deregister(cam_sim_path(acb->psim));
 		cam_sim_free(acb->psim);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
@@ -3707,6 +3724,8 @@ static int arcmsr_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BAR(i), acb->sys_res_arcmsr[i]);
 	}
 	bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
+	if (acb->irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(dev);
 	ARCMSR_LOCK_ACQUIRE(&acb->qbuffer_lock);
 	xpt_async(AC_LOST_DEVICE, acb->ppath, NULL);
 	xpt_free_path(acb->ppath);

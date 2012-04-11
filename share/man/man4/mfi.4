@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/mfi.4,v 1.13 2010/05/12 17:12:38 brueffer Exp $
 .\"
-.Dd March 24, 2012
+.Dd April 7, 2012
 .Dt MFI 4
 .Os
 .Sh NAME
@@ -86,6 +86,12 @@ If the sysctl
 .Va dev.mfi.%d.delete_busy_volumes
 is set to 1,
 then the driver will allow mounted volumes to be removed.
+.Sh LOADER TUNABLES
+.Bl -tag -width indent
+.It Va hw.mfi.msi.enable
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting this tunable to 0.
+.El
 .Sh HARDWARE
 The
 .Nm

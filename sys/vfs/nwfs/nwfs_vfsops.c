@@ -31,9 +31,12 @@
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
  */
+
+#ifndef KLD_MODULE
 #include "opt_ncp.h"
 #ifndef NCP
 #error "NWFS requires NCP protocol"
+#endif
 #endif
 
 #include <sys/param.h>
@@ -89,6 +92,7 @@ static struct vfsops nwfs_vfsops = {
 
 VFS_SET(nwfs_vfsops, nwfs, VFCF_NETWORK);
 MODULE_VERSION(nwfs, 1);
+MODULE_DEPEND(nwfs, ncp, 1, 1, 1);
 
 int nwfs_pbuf_freecnt = -1;	/* start out unlimited */
 static int nwfsid = 1;

@@ -74,8 +74,6 @@ deflate_global(u_int8_t *data, u_int32_t size, int decomp, u_int8_t **out)
 
 	if (!decomp) {
 		buf[i].out = kmalloc((u_long) size, M_CRYPTO_DATA, M_WAITOK);
-		if (buf[i].out == NULL)
-			goto bad;
 		buf[i].size = size;
 		buf[i].flag = 1;
 		i++;
@@ -89,8 +87,6 @@ deflate_global(u_int8_t *data, u_int32_t size, int decomp, u_int8_t **out)
 
 		buf[i].out = kmalloc((u_long) (size * 4),
 				     M_CRYPTO_DATA, M_WAITOK);
-		if (buf[i].out == NULL)
-			goto bad;
 		buf[i].size = size * 4;
 		buf[i].flag = 1;
 		i++;
@@ -116,8 +112,6 @@ deflate_global(u_int8_t *data, u_int32_t size, int decomp, u_int8_t **out)
 			/* we need more output space, allocate size */
 			buf[i].out = kmalloc((u_long) size,
 					     M_CRYPTO_DATA, M_WAITOK);
-			if (buf[i].out == NULL)
-				goto bad;
 			zbuf.next_out = buf[i].out;
 			buf[i].size = size;
 			buf[i].flag = 1;
@@ -131,8 +125,6 @@ end:
 	result = count = zbuf.total_out;
 
 	*out = kmalloc((u_long) result, M_CRYPTO_DATA, M_WAITOK);
-	if (*out == NULL)
-		goto bad;
 	if (decomp)
 		inflateEnd(&zbuf);
 	else

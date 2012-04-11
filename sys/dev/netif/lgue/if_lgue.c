@@ -677,10 +677,6 @@ lgue_init(void *xsc)
 		}
 	}
 	sc->lgue_tx_buf = kmalloc(LGUE_BUFSZ, M_USBDEV, M_WAITOK);
-	if (sc->lgue_tx_buf == NULL) {
-		if_printf(ifp, "tx internal buffer allocate failed\n");
-		return;
-	}
 
 	if (sc->lgue_rx_xfer == NULL) {
 		sc->lgue_rx_xfer = usbd_alloc_xfer(sc->lgue_udev);
@@ -690,10 +686,6 @@ lgue_init(void *xsc)
 		}
 	}
 	sc->lgue_rx_buf = kmalloc(LGUE_BUFSZ, M_USBDEV, M_WAITOK);
-	if (sc->lgue_rx_buf == NULL) {
-		if_printf(ifp, "rx internal buffer allocate failed\n");
-		return;
-	}
 
 	/* Create INTR buf */
 	if (sc->lgue_intr_xfer == NULL) {

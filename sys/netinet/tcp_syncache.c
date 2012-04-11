@@ -151,10 +151,11 @@ static struct syncache *syncookie_lookup(struct in_conninfo *,
 
 /*
  * Transmit the SYN,ACK fewer times than TCP_MAXRXTSHIFT specifies.
- * 3 retransmits corresponds to a timeout of (1 + 2 + 4 + 8 == 15) seconds,
- * the odds are that the user has given up attempting to connect by then.
+ * 4 retransmits corresponds to a timeout of (3 + 3 + 3 + 3 + 3 == 15) seconds
+ * or (1 + 1 + 2 + 4 + 8 == 16) seconds if RFC6298 is used, the odds are that
+ * the user has given up attempting to connect by then.
  */
-#define SYNCACHE_MAXREXMTS		3
+#define SYNCACHE_MAXREXMTS		4
 
 /* Arbitrary values */
 #define TCP_SYNCACHE_HASHSIZE		512
@@ -243,6 +244,8 @@ static __inline void
 syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 		 struct syncache *sc, int slot)
 {
+	int rto;
+
 	if (slot > 0) {
 		/*
 		 * Record that SYN|ACK was lost.
@@ -251,13 +254,17 @@ syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 		sc->sc_flags |= SCF_SYN_WASLOST;
 	}
 	sc->sc_rxtslot = slot;
-	sc->sc_rxttime = ticks + TCPTV_RTOBASE * tcp_backoff[slot];
+
+	if (tcp_low_rtobase)
+		rto = TCPTV_RTOBASE * tcp_syn_backoff_low[slot];
+	else
+		rto = TCPTV_RTOBASE * tcp_syn_backoff[slot];
+	sc->sc_rxttime = ticks + rto;
+
 	TAILQ_INSERT_TAIL(&syncache_percpu->timerq[slot], sc, sc_timerq);
 	if (!callout_active(&syncache_percpu->tt_timerq[slot])) {
-		callout_reset(&syncache_percpu->tt_timerq[slot],
-			      TCPTV_RTOBASE * tcp_backoff[slot],
-			      syncache_timer,
-			      &syncache_percpu->mrec[slot]);
+		callout_reset(&syncache_percpu->tt_timerq[slot], rto,
+		    syncache_timer, &syncache_percpu->mrec[slot]);
 	}
 }
 

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/arcmsr.4,v 1.6 2008/03/28 23:25:58 brueffer Exp $
 .\"
-.Dd September 6, 2010
+.Dd April 7, 2012
 .Dt ARCMSR 4
 .Os
 .Sh NAME
@@ -65,6 +65,12 @@ A management interface is also present via the
 .Pa /dev/arcmsr?
 device node.
 Management tools for i386 and amd64 are available from Areca.
+.Sh LOADER TUNABLES
+.Bl -tag -width indent
+.It Va hw.arcmsr.msi.enable
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting this tunable to 0.
+.El
 .Sh HARDWARE
 The
 .Nm

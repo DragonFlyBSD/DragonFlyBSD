@@ -3050,7 +3050,9 @@ introfunc(CmdParm *parms)
 	    }
 	}
     }
-#endif
+#else	/* !VISUAL_USERCONFIG */
+    return 0;
+#endif	/* VISUAL_USERCONFIG */
 }
 
 #if NPNP > 0

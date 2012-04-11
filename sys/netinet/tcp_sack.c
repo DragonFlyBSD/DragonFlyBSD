@@ -204,6 +204,16 @@ tcp_sack_cleanup(struct scoreboard *scb)
 }
 
 /*
+ * Cleanup the reported SACK block information
+ */
+void
+tcp_sack_report_cleanup(struct tcpcb *tp)
+{
+	tp->t_flags &= ~(TF_DUPSEG | TF_ENCLOSESEG | TF_SACKLEFT);
+	tp->reportblk.rblk_start = tp->reportblk.rblk_end;
+}
+
+/*
  * Returns	0 if not D-SACK block,
  *		1 if D-SACK,
  *		2 if duplicate of out-of-order D-SACK block.
@@ -735,7 +745,9 @@ tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen)
 		while (q != NULL &&
 		    TCP_MAXOLEN - optlen >= TCPOLEN_SACK_BLOCK) {
 			*lp++ = htonl(q->tqe_th->th_seq);
-			*lp++ = htonl(q->tqe_th->th_seq + q->tqe_len);
+			*lp++ = htonl(TCP_SACK_BLKEND(
+			    q->tqe_th->th_seq + q->tqe_len,
+			    q->tqe_th->th_flags));
 			optlen += TCPOLEN_SACK_BLOCK;
 			q = LIST_NEXT(q, tqe_q);
 		}
