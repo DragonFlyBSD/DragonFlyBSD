@@ -118,7 +118,7 @@ struct carp_softc {
 
 	enum { INIT = 0, BACKUP, MASTER }
 				 sc_state;
-	int			 sc_dead;
+	boolean_t		 sc_dead;
 
 	int			 sc_suppress;
 
@@ -201,7 +201,7 @@ static void	carp_proto_input_c(struct carp_softc *, struct mbuf *,
 		    struct carp_header *, sa_family_t);
 static int 	carp_clone_create(struct if_clone *, int, caddr_t);
 static int 	carp_clone_destroy(struct ifnet *);
-static void	carp_detach(struct carp_softc *, int, boolean_t);
+static void	carp_detach(struct carp_softc *, boolean_t, boolean_t);
 static void	carp_prepare_ad(struct carp_softc *, struct carp_header *);
 static void	carp_send_ad_all(void);
 static void	carp_send_ad_timeout(void *);
@@ -257,8 +257,8 @@ static int	carp_del_addr6(struct carp_softc *, struct sockaddr_in6 *);
 #endif
 static void	carp_multicast6_cleanup(struct carp_softc *);
 #endif
-static void	carp_stop(struct carp_softc *, int);
-static void	carp_suspend(struct carp_softc *, int);
+static void	carp_stop(struct carp_softc *, boolean_t);
+static void	carp_suspend(struct carp_softc *, boolean_t);
 static void	carp_ioctl_stop(struct carp_softc *);
 static int	carp_ioctl_setvh(struct carp_softc *, void *, struct ucred *);
 static int	carp_ioctl_getvh(struct carp_softc *, void *, struct ucred *);
@@ -512,8 +512,8 @@ carp_clone_destroy_dispatch(netmsg_t msg)
 	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
 	struct carp_softc *sc = cmsg->nc_softc;
 
-	sc->sc_dead = 1;
-	carp_detach(sc, 1, FALSE);
+	sc->sc_dead = TRUE;
+	carp_detach(sc, TRUE, FALSE);
 
 	callout_stop_sync(&sc->sc_ad_tmo);
 	callout_stop_sync(&sc->sc_md_tmo);
@@ -666,7 +666,7 @@ carp_if_free(struct carp_if *cif)
 }
 
 static void
-carp_detach(struct carp_softc *sc, int detach, boolean_t del_iaback)
+carp_detach(struct carp_softc *sc, boolean_t detach, boolean_t del_iaback)
 {
 	carp_suspend(sc, detach);
 
@@ -727,7 +727,7 @@ carp_ifdetach_dispatch(netmsg_t msg)
 		struct carp_softc_container *scc;
 
 		scc = TAILQ_FIRST((struct carp_if *)(ifp->if_carp));
-		carp_detach(scc->scc_softc, 1, TRUE);
+		carp_detach(scc->scc_softc, TRUE, TRUE);
 	}
 	lwkt_replymsg(&cmsg->base.lmsg, 0);
 }
@@ -2183,7 +2183,7 @@ carp_ioctl_stop_dispatch(netmsg_t msg)
 	struct netmsg_carp *cmsg = (struct netmsg_carp *)msg;
 	struct carp_softc *sc = cmsg->nc_softc;
 
-	carp_stop(sc, 0);
+	carp_stop(sc, FALSE);
 	lwkt_replymsg(&cmsg->base.lmsg, 0);
 }
 
@@ -2589,7 +2589,7 @@ carp_sc_state(struct carp_softc *sc)
 #endif
 
 static void
-carp_stop(struct carp_softc *sc, int detach)
+carp_stop(struct carp_softc *sc, boolean_t detach)
 {
 	sc->sc_if.if_flags &= ~IFF_RUNNING;
 
@@ -2614,7 +2614,7 @@ carp_stop(struct carp_softc *sc, int detach)
 }
 
 static void
-carp_suspend(struct carp_softc *sc, int detach)
+carp_suspend(struct carp_softc *sc, boolean_t detach)
 {
 	struct ifnet *cifp = &sc->sc_if;
 
@@ -2751,7 +2751,7 @@ carp_deactivate_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 			carp_multicast_cleanup(sc);
 			sc->sc_ia = NULL;
 		} else {
-			carp_detach(sc, 0, del_iaback);
+			carp_detach(sc, FALSE, del_iaback);
 		}
 	}
 }
