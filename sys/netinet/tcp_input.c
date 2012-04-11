@@ -2135,13 +2135,8 @@ process_ACK:
 
 		/*
 		 * Update window information.
-		 * Don't look at window if no ACK:
-		 * TAC's send garbage on first SYN.
 		 */
-		if (SEQ_LT(tp->snd_wl1, th->th_seq) ||
-		    (tp->snd_wl1 == th->th_seq &&
-		     (SEQ_LT(tp->snd_wl2, th->th_ack) ||
-		      (tp->snd_wl2 == th->th_ack && tiwin > tp->snd_wnd)))) {
+		if (acceptable_window_update(tp, th, tiwin)) {
 			/* keep track of pure window updates */
 			if (tlen == 0 && tp->snd_wl2 == th->th_ack &&
 			    tiwin > tp->snd_wnd)
