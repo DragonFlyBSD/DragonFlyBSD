@@ -187,14 +187,13 @@ tcp_output(struct tcpcb *tp)
 	 */
 	if (tp->snd_max == tp->snd_una &&
 	    (ticks - tp->t_rcvtime) >= tp->t_rxtcur) {
-		if (tcp_do_rfc3390 && !(tp->t_flags & TF_SYN_WASLOST)) {
-			int initial_cwnd =
-			    min(4 * tp->t_maxseg, max(2 * tp->t_maxseg, 4380));
+		u_long initial_cwnd = tcp_initial_window(tp);
 
-			tp->snd_cwnd = min(tp->snd_cwnd, initial_cwnd);
-		} else {
-			tp->snd_cwnd = tp->t_maxseg;
-		}
+		/*
+		 * According to RFC5681:
+		 * RW=min(IW,cwnd)
+		 */
+		tp->snd_cwnd = min(tp->snd_cwnd, initial_cwnd);
 		tp->snd_wacked = 0;
 	}
 
