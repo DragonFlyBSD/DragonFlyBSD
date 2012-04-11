@@ -1985,16 +1985,10 @@ fastretransmit:
 				    tp->t_maxseg;
 				tcp_output(tp);
 
-				/*
-				 * Other acks may have been processed,
-				 * snd_nxt cannot be reset to a value less
-				 * then snd_una.
-				 */
 				if (SEQ_LT(oldsndnxt, oldsndmax)) {
-				    if (SEQ_GT(oldsndnxt, tp->snd_una))
+					KASSERT(SEQ_GEQ(oldsndnxt, tp->snd_una),
+					    ("snd_una moved in other threads"));
 					tp->snd_nxt = oldsndnxt;
-				    else
-					tp->snd_nxt = tp->snd_una;
 				}
 				tp->snd_cwnd = oldcwnd;
 				sent = tp->snd_max - oldsndmax;
