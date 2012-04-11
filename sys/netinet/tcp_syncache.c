@@ -151,10 +151,11 @@ static struct syncache *syncookie_lookup(struct in_conninfo *,
 
 /*
  * Transmit the SYN,ACK fewer times than TCP_MAXRXTSHIFT specifies.
- * 3 retransmits corresponds to a timeout of (1 + 2 + 4 + 8 == 15) seconds,
- * the odds are that the user has given up attempting to connect by then.
+ * 4 retransmits corresponds to a timeout of (3 + 3 + 3 + 3 + 3 == 15) seconds
+ * or (1 + 1 + 2 + 4 + 8 == 16) seconds if RFC6298 is used, the odds are that
+ * the user has given up attempting to connect by then.
  */
-#define SYNCACHE_MAXREXMTS		3
+#define SYNCACHE_MAXREXMTS		4
 
 /* Arbitrary values */
 #define TCP_SYNCACHE_HASHSIZE		512
