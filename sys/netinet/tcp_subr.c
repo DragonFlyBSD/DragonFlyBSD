@@ -1962,10 +1962,17 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 u_long
 tcp_initial_window(const struct tcpcb *tp)
 {
-	if (tcp_do_rfc3390)
+	if (tcp_do_rfc3390) {
 		return min(4 * tp->t_maxseg, max(2 * tp->t_maxseg, 4380));
-	else
-		return tp->t_maxseg;
+	} else {
+		/*
+		 * Even RFC2581 (back to 1999) allows 2*SMSS IW.
+		 *
+		 * Mainly to avoid sender and receiver deadlock
+		 * until delayed ACK timer expires.
+		 */
+		return (2 * tp->t_maxseg);
+	}
 }
 
 #ifdef TCP_SIGNATURE
