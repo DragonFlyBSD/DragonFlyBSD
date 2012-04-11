@@ -384,13 +384,6 @@ static int	carp_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	carp_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 		    struct rtentry *);
 static void	carp_start(struct ifnet *);
-static void	carp_serialize(struct ifnet *, enum ifnet_serialize);
-static void	carp_deserialize(struct ifnet *, enum ifnet_serialize);
-static int	carp_tryserialize(struct ifnet *, enum ifnet_serialize);
-#ifdef INVARIANTS
-static void	carp_serialize_assert(struct ifnet *, enum ifnet_serialize,
-		    boolean_t);
-#endif
 
 static void	carp_multicast_cleanup(struct carp_softc *);
 static void	carp_add_addr(struct carp_softc *, struct ifaddr *);
@@ -651,12 +644,6 @@ carp_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	ifp->if_init = carp_init;
 	ifp->if_ioctl = carp_ioctl;
 	ifp->if_start = carp_start;
-	ifp->if_serialize = carp_serialize;
-	ifp->if_deserialize = carp_deserialize;
-	ifp->if_tryserialize = carp_tryserialize;
-#ifdef INVARIANTS
-	ifp->if_serialize_assert = carp_serialize_assert;
-#endif
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
 
@@ -2640,35 +2627,6 @@ carp_start(struct ifnet *ifp)
 {
 	panic("%s: start called\n", ifp->if_xname);
 }
-
-static void
-carp_serialize(struct ifnet *ifp __unused,
-    enum ifnet_serialize slz __unused)
-{
-}
-
-static void
-carp_deserialize(struct ifnet *ifp __unused,
-    enum ifnet_serialize slz __unused)
-{
-}
-
-static int
-carp_tryserialize(struct ifnet *ifp __unused,
-    enum ifnet_serialize slz __unused)
-{
-	return 1;
-}
-
-#ifdef INVARIANTS
-
-static void
-carp_serialize_assert(struct ifnet *ifp __unused,
-    enum ifnet_serialize slz __unused, boolean_t serialized __unused)
-{
-}
-
-#endif	/* INVARIANTS */
 
 static void
 carp_set_state(struct carp_softc *sc, int state)
