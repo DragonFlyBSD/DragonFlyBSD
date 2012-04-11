@@ -160,7 +160,9 @@ extern int tcp_rexmit_min;
 extern int tcp_rexmit_slop;
 extern int tcp_msl;
 extern int tcp_ttl;			/* time to live for TCP segs */
-extern int tcp_backoff[];
+extern int tcp_backoff[];		/* rxt backoff for data */
+extern int tcp_syn_backoff[];		/* rxt backoff for SYN */
+extern int tcp_syn_backoff_low[];	/* rxt backoff for SYN w/ RFC6298 */
 
 void	tcp_timer_2msl(void *xtp);
 void	tcp_timer_keep(void *xtp);

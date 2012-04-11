@@ -243,6 +243,8 @@ static __inline void
 syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 		 struct syncache *sc, int slot)
 {
+	int rto;
+
 	if (slot > 0) {
 		/*
 		 * Record that SYN|ACK was lost.
@@ -251,7 +253,13 @@ syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 		sc->sc_flags |= SCF_SYN_WASLOST;
 	}
 	sc->sc_rxtslot = slot;
-	sc->sc_rxttime = ticks + TCPTV_RTOBASE * tcp_backoff[slot];
+
+	if (tcp_low_rtobase)
+		rto = TCPTV_RTOBASE * tcp_syn_backoff_low[slot];
+	else
+		rto = TCPTV_RTOBASE * tcp_syn_backoff[slot];
+	sc->sc_rxttime = ticks + rto;
+
 	TAILQ_INSERT_TAIL(&syncache_percpu->timerq[slot], sc, sc_timerq);
 	if (!callout_active(&syncache_percpu->tt_timerq[slot])) {
 		callout_reset(&syncache_percpu->tt_timerq[slot],
