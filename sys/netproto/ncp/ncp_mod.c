@@ -541,3 +541,4 @@ static moduledata_t ncp_mod = {
 	NULL
 };
 DECLARE_MODULE(ncp, ncp_mod, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY);
+MODULE_VERSION(ncp, 1);

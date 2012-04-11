@@ -1,7 +1,4 @@
 #	$FreeBSD: src/sys/modules/ncp/Makefile,v 1.3 1999/12/12 21:15:51 peter Exp $
-#	$DragonFly: src/sys/netproto/ncp/Makefile,v 1.4 2005/09/11 10:52:56 swildner Exp $
-
-.PATH:	${.CURDIR}/../../netncp
 
 KMOD=	ncp
 
