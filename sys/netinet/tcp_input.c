@@ -3020,13 +3020,11 @@ tcp_mss(struct tcpcb *tp, int offer)
 	}
 
 	/*
-	 * Set the slow-start flight size depending on whether this
-	 * is a local network or not.
+	 * Set the slow-start flight size
+	 *
+	 * NOTE: t_maxseg must have been configured!
 	 */
-	if (tcp_do_rfc3390)
-		tp->snd_cwnd = min(4 * mss, max(2 * mss, 4380));
-	else
-		tp->snd_cwnd = mss;
+	tp->snd_cwnd = tcp_initial_window(tp);
 
 	if (rt->rt_rmx.rmx_ssthresh) {
 		/*

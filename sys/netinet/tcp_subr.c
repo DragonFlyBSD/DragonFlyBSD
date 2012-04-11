@@ -1959,6 +1959,15 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	tp->snd_bwnd = bwnd;
 }
 
+u_long
+tcp_initial_window(const struct tcpcb *tp)
+{
+	if (tcp_do_rfc3390)
+		return min(4 * tp->t_maxseg, max(2 * tp->t_maxseg, 4380));
+	else
+		return tp->t_maxseg;
+}
+
 #ifdef TCP_SIGNATURE
 /*
  * Compute TCP-MD5 hash of a TCP segment. (RFC2385)
