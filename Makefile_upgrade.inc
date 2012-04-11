@@ -1987,6 +1987,7 @@ TO_REMOVE+=/usr/share/man/cat4/i386/aic.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/aic.4.gz
 TO_REMOVE+=/usr/share/man/cat3/lintf.3.gz
 TO_REMOVE+=/usr/share/man/man3/lintf.3.gz
+TO_REMOVE+=/usr/include/openssl/aes_locl.h
 TO_REMOVE+=/usr/include/openssl/e_os.h
 TO_REMOVE+=/usr/include/openssl/eng_int.h
 TO_REMOVE+=/usr/include/openssl/ui_locl.h
