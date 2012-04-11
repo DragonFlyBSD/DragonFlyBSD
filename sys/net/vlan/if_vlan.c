@@ -372,7 +372,7 @@ vlan_modevent(module_t mod, int type, void *data)
 
 		vlan_input_p = NULL;
 		/*
-		 * Make that all protocol threads see vlan_input_p change.
+		 * Make sure that all protocol threads see vlan_input_p change.
 		 */
 		netmsg_service_sync();
 
@@ -815,7 +815,7 @@ vlan_unlink(struct ifvlan *ifv, struct ifnet *ifp_p)
 		ifp_p->if_vlantrunks = NULL;
 
 		/*
-		 * Make that all protocol threads see if_vlantrunks change.
+		 * Make sure that all protocol threads see if_vlantrunks change.
 		 */
 		netmsg_service_sync();
 		kfree(vlantrunks, M_VLAN);
