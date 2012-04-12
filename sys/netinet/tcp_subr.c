@@ -158,6 +158,9 @@ KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
 #define logtcp(name)	KTR_LOG(tcp_ ## name)
 */
 
+#define TCP_IW_MAXSEGS_DFLT	4
+#define TCP_IW_CAPSEGS_DFLT	3
+
 struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
 
@@ -245,6 +248,19 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_max, CTLFLAG_RW,
 static int tcp_inflight_stab = 50;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
     &tcp_inflight_stab, 0, "Slop in maximal packets / 10 (20 = 3 packets)");
+
+static int tcp_do_rfc3390 = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
+    &tcp_do_rfc3390, 0,
+    "Enable RFC 3390 (Increasing TCP's Initial Congestion Window)");
+
+static u_long tcp_iw_maxsegs = TCP_IW_MAXSEGS_DFLT;
+SYSCTL_ULONG(_net_inet_tcp, OID_AUTO, iwmaxsegs, CTLFLAG_RW,
+    &tcp_iw_maxsegs, 0, "TCP IW segments max");
+
+static u_long tcp_iw_capsegs = TCP_IW_CAPSEGS_DFLT;
+SYSCTL_ULONG(_net_inet_tcp, OID_AUTO, iwcapsegs, CTLFLAG_RW,
+    &tcp_iw_capsegs, 0, "TCP IW segments");
 
 int tcp_low_rtobase = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, low_rtobase, CTLFLAG_RW,
@@ -1959,11 +1975,75 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	tp->snd_bwnd = bwnd;
 }
 
+static void
+tcp_rmx_iwsegs(struct tcpcb *tp, u_long *maxsegs, u_long *capsegs)
+{
+	struct rtentry *rt;
+	struct inpcb *inp = tp->t_inpcb;
+#ifdef INET6
+	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) ? TRUE : FALSE);
+#else
+	const boolean_t isipv6 = FALSE;
+#endif
+
+	/* XXX */
+	if (tcp_iw_maxsegs < TCP_IW_MAXSEGS_DFLT)
+		tcp_iw_maxsegs = TCP_IW_MAXSEGS_DFLT;
+	if (tcp_iw_capsegs < TCP_IW_CAPSEGS_DFLT)
+		tcp_iw_capsegs = TCP_IW_CAPSEGS_DFLT;
+
+	if (isipv6)
+		rt = tcp_rtlookup6(&inp->inp_inc);
+	else
+		rt = tcp_rtlookup(&inp->inp_inc);
+	if (rt == NULL ||
+	    rt->rt_rmx.rmx_iwmaxsegs < TCP_IW_MAXSEGS_DFLT ||
+	    rt->rt_rmx.rmx_iwcapsegs < TCP_IW_CAPSEGS_DFLT) {
+		*maxsegs = tcp_iw_maxsegs;
+		*capsegs = tcp_iw_capsegs;
+		return;
+	}
+	*maxsegs = rt->rt_rmx.rmx_iwmaxsegs;
+	*capsegs = rt->rt_rmx.rmx_iwcapsegs;
+}
+
 u_long
-tcp_initial_window(const struct tcpcb *tp)
+tcp_initial_window(struct tcpcb *tp)
 {
 	if (tcp_do_rfc3390) {
-		return min(4 * tp->t_maxseg, max(2 * tp->t_maxseg, 4380));
+		/*
+		 * RFC3390:
+		 * "If the SYN or SYN/ACK is lost, the initial window
+		 *  used by a sender after a correctly transmitted SYN
+		 *  MUST be one segment consisting of MSS bytes."
+		 *
+		 * However, we do something a little bit more aggressive
+		 * then RFC3390 here:
+		 * - Only if time spent in the SYN or SYN|ACK retransmition
+		 *   >= 3 seconds, the IW is reduced.  We do this mainly
+		 *   because when RFC3390 is published, the initial RTO is
+		 *   still 3 seconds (the threshold we test here), while
+		 *   after RFC6298, the initial RTO is 1 second.  This
+		 *   behaviour probably still falls within the spirit of
+		 *   RFC3390.
+		 * - When IW is reduced, 2*MSS is used instead of 1*MSS.
+		 *   Mainly to avoid sender and receiver deadlock until
+		 *   delayed ACK timer expires.  And even RFC2581 does not
+		 *   try to reduce IW upon SYN or SYN|ACK retransmition
+		 *   timeout.
+		 *
+		 * See also:
+		 * http://tools.ietf.org/html/draft-ietf-tcpm-initcwnd-03
+		 */
+		if (tp->t_rxtsyn >= TCPTV_RTOBASE3) {
+			return (2 * tp->t_maxseg);
+		} else {
+			u_long maxsegs, capsegs;
+
+			tcp_rmx_iwsegs(tp, &maxsegs, &capsegs);
+			return min(maxsegs * tp->t_maxseg,
+				   max(2 * tp->t_maxseg, capsegs * 1460));
+		}
 	} else {
 		/*
 		 * Even RFC2581 (back to 1999) allows 2*SMSS IW.

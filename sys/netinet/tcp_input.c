@@ -167,11 +167,6 @@ int tcp_aggregate_acks = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, aggregate_acks, CTLFLAG_RW,
     &tcp_aggregate_acks, 0, "Aggregate built-up acks into one ack");
 
-int tcp_do_rfc3390 = 1;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
-    &tcp_do_rfc3390, 0,
-    "Enable RFC 3390 (Increasing TCP's Initial Congestion Window)");
-
 static int tcp_do_eifel_detect = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, eifel, CTLFLAG_RW,
     &tcp_do_eifel_detect, 0, "Eifel detection algorithm (RFC 3522)");
@@ -3210,15 +3205,7 @@ tcp_established(struct tcpcb *tp)
 	tp->t_state = TCPS_ESTABLISHED;
 	tcp_callout_reset(tp, tp->tt_keep, tcp_getkeepidle(tp), tcp_timer_keep);
 
-	if (tp->t_flags & TF_SYN_WASLOST) {
-		/*
-		 * RFC3390:
-		 * "If the SYN or SYN/ACK is lost, the initial window used by
-		 *  a sender after a correctly transmitted SYN MUST be one
-		 *  segment consisting of MSS bytes."
-		 */
-		tp->snd_cwnd = tp->t_maxseg;
-
+	if (tp->t_rxtsyn > 0) {
 		/*
 		 * RFC6298:
 		 * "If the timer expires awaiting the ACK of a SYN segment

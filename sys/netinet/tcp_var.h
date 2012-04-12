@@ -82,7 +82,6 @@
  * Kernel variables for tcp.
  */
 extern int tcp_do_rfc1323;
-extern int tcp_do_rfc3390;
 extern int tcp_low_rtobase;
 extern int tcp_do_sack;
 extern int tcp_do_smartsack;
@@ -164,7 +163,7 @@ struct tcpcb {
 #define TF_SIGNATURE	0x00004000	/* require MD5 digests (RFC2385) */
 #define TF_FASTKEEP	0x00008000	/* use a faster tcp_keepidle */
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
-#define	TF_SYN_WASLOST	0x00020000	/* SYN or SYN|ACK was lost */
+#define	TF_UNUSED00	0x00020000	/* unused */
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
 #define	TF_RXWIN0SENT	0x00080000	/* sent a receiver win 0 in response */
 #define	TF_FASTRECOVERY	0x00100000	/* in NewReno Fast Recovery */
@@ -277,6 +276,8 @@ struct tcpcb {
 	int	t_keepintvl;		/* time between keepalive probes */
 	int	t_keepcnt;		/* maximum number of keepalive probes */
 	int	t_maxidle;		/* time to drop after starting probes */
+
+	int	t_rxtsyn;		/* time spent in SYN or SYN|ACK rexmt */
 };
 
 #define	IN_FASTRECOVERY(tp)	(tp->t_flags & TF_FASTRECOVERY)
@@ -466,11 +467,12 @@ struct syncache {
 #define SCF_NOOPT		0x01		/* no TCP options */
 #define SCF_WINSCALE		0x02		/* negotiated window scaling */
 #define SCF_TIMESTAMP		0x04		/* negotiated timestamps */
-#define SCF_SYN_WASLOST		0x08		/* SYN|ACK was lost */
+#define SCF_UNUSED		0x08		/* unused */
 #define SCF_UNREACH		0x10		/* icmp unreachable received */
 #define	SCF_SACK_PERMITTED	0x20		/* saw SACK permitted option */
 #define SCF_SIGNATURE		0x40		/* send MD5 digests */
 #define SCF_MARKER		0x80		/* not a real entry */
+	int		sc_rxtused;		/* time spent in SYN|ACK rxt */
 	TAILQ_ENTRY(syncache) sc_hash;
 	TAILQ_ENTRY(syncache) sc_timerq;
 };
@@ -654,7 +656,7 @@ struct tcpcb *
 void	 tcp_trace (short, short, struct tcpcb *, void *, struct tcphdr *,
 			int);
 void	 tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq);
-u_long	 tcp_initial_window(const struct tcpcb *tp);
+u_long	 tcp_initial_window(struct tcpcb *tp);
 void	 tcp_timer_keep_activity(struct tcpcb *tp, int thflags);
 void	 syncache_init(void);
 void	 syncache_unreach(struct in_conninfo *, struct tcphdr *);
