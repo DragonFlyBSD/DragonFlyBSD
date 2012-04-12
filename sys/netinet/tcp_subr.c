@@ -246,6 +246,11 @@ static int tcp_inflight_stab = 50;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
     &tcp_inflight_stab, 0, "Slop in maximal packets / 10 (20 = 3 packets)");
 
+static int tcp_do_rfc3390 = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
+    &tcp_do_rfc3390, 0,
+    "Enable RFC 3390 (Increasing TCP's Initial Congestion Window)");
+
 int tcp_low_rtobase = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, low_rtobase, CTLFLAG_RW,
     &tcp_low_rtobase, 0, "Lowering the Initial RTO (RFC 6298)");

@@ -167,11 +167,6 @@ int tcp_aggregate_acks = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, aggregate_acks, CTLFLAG_RW,
     &tcp_aggregate_acks, 0, "Aggregate built-up acks into one ack");
 
-int tcp_do_rfc3390 = 1;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
-    &tcp_do_rfc3390, 0,
-    "Enable RFC 3390 (Increasing TCP's Initial Congestion Window)");
-
 static int tcp_do_eifel_detect = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, eifel, CTLFLAG_RW,
     &tcp_do_eifel_detect, 0, "Eifel detection algorithm (RFC 3522)");
