@@ -158,6 +158,9 @@ KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
 #define logtcp(name)	KTR_LOG(tcp_ ## name)
 */
 
+#define TCP_IW_MAXSEGS_DFLT	4
+#define TCP_IW_CAPSEGS_DFLT	3
+
 struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
 
@@ -251,11 +254,11 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
     &tcp_do_rfc3390, 0,
     "Enable RFC 3390 (Increasing TCP's Initial Congestion Window)");
 
-static u_long tcp_iw_maxsegs = 4;
+static u_long tcp_iw_maxsegs = TCP_IW_MAXSEGS_DFLT;
 SYSCTL_ULONG(_net_inet_tcp, OID_AUTO, iwmaxsegs, CTLFLAG_RW,
     &tcp_iw_maxsegs, 0, "TCP IW segments max");
 
-static u_long tcp_iw_capsegs = 3;
+static u_long tcp_iw_capsegs = TCP_IW_CAPSEGS_DFLT;
 SYSCTL_ULONG(_net_inet_tcp, OID_AUTO, iwcapsegs, CTLFLAG_RW,
     &tcp_iw_capsegs, 0, "TCP IW segments");
 
@@ -1972,8 +1975,40 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	tp->snd_bwnd = bwnd;
 }
 
+static void
+tcp_rmx_iwsegs(struct tcpcb *tp, u_long *maxsegs, u_long *capsegs)
+{
+	struct rtentry *rt;
+	struct inpcb *inp = tp->t_inpcb;
+#ifdef INET6
+	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) ? TRUE : FALSE);
+#else
+	const boolean_t isipv6 = FALSE;
+#endif
+
+	/* XXX */
+	if (tcp_iw_maxsegs < TCP_IW_MAXSEGS_DFLT)
+		tcp_iw_maxsegs = TCP_IW_MAXSEGS_DFLT;
+	if (tcp_iw_capsegs < TCP_IW_CAPSEGS_DFLT)
+		tcp_iw_capsegs = TCP_IW_CAPSEGS_DFLT;
+
+	if (isipv6)
+		rt = tcp_rtlookup6(&inp->inp_inc);
+	else
+		rt = tcp_rtlookup(&inp->inp_inc);
+	if (rt == NULL ||
+	    rt->rt_rmx.rmx_iwmaxsegs < TCP_IW_MAXSEGS_DFLT ||
+	    rt->rt_rmx.rmx_iwcapsegs < TCP_IW_CAPSEGS_DFLT) {
+		*maxsegs = tcp_iw_maxsegs;
+		*capsegs = tcp_iw_capsegs;
+		return;
+	}
+	*maxsegs = rt->rt_rmx.rmx_iwmaxsegs;
+	*capsegs = rt->rt_rmx.rmx_iwcapsegs;
+}
+
 u_long
-tcp_initial_window(const struct tcpcb *tp)
+tcp_initial_window(struct tcpcb *tp)
 {
 	if (tcp_do_rfc3390) {
 		/*
@@ -2003,9 +2038,11 @@ tcp_initial_window(const struct tcpcb *tp)
 		if (tp->t_rxtsyn >= TCPTV_RTOBASE3) {
 			return (2 * tp->t_maxseg);
 		} else {
-			return min(tcp_iw_maxsegs * tp->t_maxseg,
-				   max(2 * tp->t_maxseg,
-				       tcp_iw_capsegs * 1460));
+			u_long maxsegs, capsegs;
+
+			tcp_rmx_iwsegs(tp, &maxsegs, &capsegs);
+			return min(maxsegs * tp->t_maxseg,
+				   max(2 * tp->t_maxseg, capsegs * 1460));
 		}
 	} else {
 		/*
