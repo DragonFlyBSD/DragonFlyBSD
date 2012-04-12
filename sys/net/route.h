@@ -117,7 +117,8 @@ struct rt_metrics {	/* grouped for locality of reference */
 	u_short rmx_mssopt;	/* peer's cached MSS */
 	u_short	rmx_pad;	/* explicit pad */
 	u_long	rmx_msl;	/* maximum segment lifetime, unit: ms */
-	u_long	rmx_filler[2];	/* for future expansion */
+	u_long	rmx_iwmaxsegs;	/* IW segments max */
+	u_long	rmx_iwcapsegs;	/* IW segments */
 };
 
 /*
@@ -273,6 +274,8 @@ struct rt_msghdr {
 #define RTV_RTT		0x40	/* init or lock _rtt */
 #define RTV_RTTVAR	0x80	/* init or lock _rttvar */
 #define RTV_MSL		0x100	/* init or lock _msl */
+#define RTV_IWMAXSEGS	0x200	/* init or lock _iwmaxsegs */
+#define RTV_IWCAPSEGS	0x400	/* init or lock _iwcapsegs */
 
 /*
  * Bitmask values for rtm_addrs.

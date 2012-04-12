@@ -247,6 +247,8 @@ static int wid_if;
 static int wid_expire;
 static int wid_mplslops;
 static int wid_msl;
+static int wid_iwmax;
+static int wid_iw;
 
 static void
 size_cols(int ef, struct radix_node *rn)
@@ -261,6 +263,8 @@ size_cols(int ef, struct radix_node *rn)
 	wid_expire = 6;
 	wid_mplslops = 7;
 	wid_msl = 7;
+	wid_iwmax = 5;
+	wid_iw = 2;
 
 	if (Wflag)
 		size_cols_tree(rn);
@@ -363,6 +367,16 @@ size_cols_rtentry(struct rtentry *rt)
 				       "%lu", rt->rt_rmx.rmx_msl);
 			wid_msl = MAX(len, wid_msl);
 		}
+		if (rt->rt_rmx.rmx_iwmaxsegs) {
+			len = snprintf(buffer, sizeof(buffer),
+				       "%lu", rt->rt_rmx.rmx_iwmaxsegs);
+			wid_iwmax = MAX(len, wid_iwmax);
+		}
+		if (rt->rt_rmx.rmx_iwcapsegs) {
+			len = snprintf(buffer, sizeof(buffer),
+				       "%lu", rt->rt_rmx.rmx_iwcapsegs);
+			wid_iw = MAX(len, wid_iw);
+		}
 	}
 }
 
@@ -378,7 +392,8 @@ pr_rthdr(int af1)
 		printf("%-8.8s ","Address");
 	if (af1 == AF_INET || Wflag) {
 		if (Wflag) {
-			printf("%-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*.*s %*s %-*s %*s\n",
+			printf("%-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*.*s "
+			       "%*s %-*s%*s %*s %*s\n",
 				wid_dst,	wid_dst,	"Destination",
 				wid_gw,		wid_gw,		"Gateway",
 				wid_flags,	wid_flags,	"Flags",
@@ -388,7 +403,9 @@ pr_rthdr(int af1)
 				wid_if,		wid_if,		"Netif",
 				wid_expire,			"Expire",
 				wid_mplslops,			"Labelops",
-				wid_msl,			"Msl");
+				wid_msl,			"Msl",
+				wid_iwmax,			"IWmax",
+				wid_iw,				"IW");
 		} else {
 			printf("%-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*s\n",
 				wid_dst,	wid_dst,	"Destination",
@@ -801,7 +818,15 @@ p_rtentry(struct rtentry *rt)
 		if (rt->rt_rmx.rmx_msl != 0)
 			printf(" %*lu", wid_msl, rt->rt_rmx.rmx_msl);
 		else
-			printf(" %*s", wid_msl, "");
+			printf("%*s ", wid_msl, "");
+		if (rt->rt_rmx.rmx_iwmaxsegs != 0)
+			printf(" %*lu", wid_iwmax, rt->rt_rmx.rmx_iwmaxsegs);
+		else
+			printf("%*s ", wid_iwmax, "");
+		if (rt->rt_rmx.rmx_iwcapsegs != 0)
+			printf(" %*lu", wid_iw, rt->rt_rmx.rmx_iwcapsegs);
+		else
+			printf("%*s ", wid_iw, "");
 	}
 	putchar('\n');
 }
