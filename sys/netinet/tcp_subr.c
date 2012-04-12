@@ -251,6 +251,14 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
     &tcp_do_rfc3390, 0,
     "Enable RFC 3390 (Increasing TCP's Initial Congestion Window)");
 
+static u_long tcp_iw_maxsegs = 4;
+SYSCTL_ULONG(_net_inet_tcp, OID_AUTO, iwmaxsegs, CTLFLAG_RW,
+    &tcp_iw_maxsegs, 0, "TCP IW segments max");
+
+static u_long tcp_iw_capsegs = 3;
+SYSCTL_ULONG(_net_inet_tcp, OID_AUTO, iwcapsegs, CTLFLAG_RW,
+    &tcp_iw_capsegs, 0, "TCP IW segments");
+
 int tcp_low_rtobase = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, low_rtobase, CTLFLAG_RW,
     &tcp_low_rtobase, 0, "Lowering the Initial RTO (RFC 6298)");
@@ -1995,8 +2003,9 @@ tcp_initial_window(const struct tcpcb *tp)
 		if (tp->t_rxtsyn >= TCPTV_RTOBASE3) {
 			return (2 * tp->t_maxseg);
 		} else {
-			return min(4 * tp->t_maxseg,
-				   max(2 * tp->t_maxseg, 4380));
+			return min(tcp_iw_maxsegs * tp->t_maxseg,
+				   max(2 * tp->t_maxseg,
+				       tcp_iw_capsegs * 1460));
 		}
 	} else {
 		/*
