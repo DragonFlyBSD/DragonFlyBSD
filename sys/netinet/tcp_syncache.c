@@ -240,6 +240,15 @@ static MALLOC_DEFINE(M_SYNCACHE, "syncache", "TCP syncache");
 
 #define ENDPTS6_EQ(a, b) (memcmp(a, b, sizeof(*a)) == 0)
 
+static __inline int
+syncache_rto(int slot)
+{
+	if (tcp_low_rtobase)
+		return (TCPTV_RTOBASE * tcp_syn_backoff_low[slot]);
+	else
+		return (TCPTV_RTOBASE * tcp_syn_backoff[slot]);
+}
+
 static __inline void
 syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 		 struct syncache *sc, int slot)
@@ -248,17 +257,16 @@ syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 
 	if (slot > 0) {
 		/*
-		 * Record that SYN|ACK was lost.
+		 * Record the time that we spent in SYN|ACK
+		 * retransmition.
+		 *
 		 * Needed by RFC3390 and RFC6298.
 		 */
-		sc->sc_flags |= SCF_SYN_WASLOST;
+		sc->sc_rxtused += syncache_rto(slot - 1);
 	}
 	sc->sc_rxtslot = slot;
 
-	if (tcp_low_rtobase)
-		rto = TCPTV_RTOBASE * tcp_syn_backoff_low[slot];
-	else
-		rto = TCPTV_RTOBASE * tcp_syn_backoff[slot];
+	rto = syncache_rto(slot);
 	sc->sc_rxttime = ticks + rto;
 
 	TAILQ_INSERT_TAIL(&syncache_percpu->timerq[slot], sc, sc_timerq);
@@ -863,14 +871,13 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	}
 	if (sc->sc_flags & SCF_SACK_PERMITTED)
 		tp->t_flags |= TF_SACK_PERMITTED;
-	if (sc->sc_flags & SCF_SYN_WASLOST)
-		tp->t_flags |= TF_SYN_WASLOST;
 
 #ifdef TCP_SIGNATURE
 	if (sc->sc_flags & SCF_SIGNATURE)
 		tp->t_flags |= TF_SIGNATURE;
 #endif /* TCP_SIGNATURE */
 
+	tp->t_rxtsyn = sc->sc_rxtused;
 	tcp_mss(tp, sc->sc_peer_mss);
 
 	/*

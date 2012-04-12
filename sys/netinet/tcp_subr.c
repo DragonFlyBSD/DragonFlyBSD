@@ -1963,7 +1963,36 @@ u_long
 tcp_initial_window(const struct tcpcb *tp)
 {
 	if (tcp_do_rfc3390) {
-		return min(4 * tp->t_maxseg, max(2 * tp->t_maxseg, 4380));
+		/*
+		 * RFC3390:
+		 * "If the SYN or SYN/ACK is lost, the initial window
+		 *  used by a sender after a correctly transmitted SYN
+		 *  MUST be one segment consisting of MSS bytes."
+		 *
+		 * However, we do something a little bit more aggressive
+		 * then RFC3390 here:
+		 * - Only if time spent in the SYN or SYN|ACK retransmition
+		 *   >= 3 seconds, the IW is reduced.  We do this mainly
+		 *   because when RFC3390 is published, the initial RTO is
+		 *   still 3 seconds (the threshold we test here), while
+		 *   after RFC6298, the initial RTO is 1 second.  This
+		 *   behaviour probably still falls within the spirit of
+		 *   RFC3390.
+		 * - When IW is reduced, 2*MSS is used instead of 1*MSS.
+		 *   Mainly to avoid sender and receiver deadlock until
+		 *   delayed ACK timer expires.  And even RFC2581 does not
+		 *   try to reduce IW upon SYN or SYN|ACK retransmition
+		 *   timeout.
+		 *
+		 * See also:
+		 * http://tools.ietf.org/html/draft-ietf-tcpm-initcwnd-03
+		 */
+		if (tp->t_rxtsyn >= TCPTV_RTOBASE3) {
+			return (2 * tp->t_maxseg);
+		} else {
+			return min(4 * tp->t_maxseg,
+				   max(2 * tp->t_maxseg, 4380));
+		}
 	} else {
 		/*
 		 * Even RFC2581 (back to 1999) allows 2*SMSS IW.
