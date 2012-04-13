@@ -135,7 +135,7 @@
 #include <dev/netif/em/if_em.h>
 
 #define EM_NAME	"Intel(R) PRO/1000 Network Connection "
-#define EM_VER	" 7.1.7"
+#define EM_VER	" 7.2.4"
 
 #define _EM_DEVICE(id, ret)	\
 	{ EM_VENDOR_ID, E1000_DEV_ID_##id, ret, EM_NAME #id EM_VER }
@@ -315,6 +315,7 @@ static void	em_set_multi(struct adapter *);
 static void	em_update_link_status(struct adapter *);
 static void	em_smartspeed(struct adapter *);
 static void	em_set_itr(struct adapter *, uint32_t);
+static void	em_disable_aspm(struct adapter *);
 
 /* Hardware workarounds */
 static int	em_82547_fifo_workaround(struct adapter *, int);
@@ -1005,6 +1006,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case e1000_ich10lan:
 		case e1000_pch2lan:
 		case e1000_82574:
+		case e1000_82583:
 		case e1000_80003es2lan:
 			max_frame_size = 9234;
 			break;
@@ -1015,7 +1017,6 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 		/* Adapters that do not support jumbo frames */
 		case e1000_82542:
-		case e1000_82583:
 		case e1000_ich8lan:
 			max_frame_size = ETHER_MAX_LEN;
 			break;
@@ -2291,6 +2292,7 @@ em_reset(struct adapter *adapter)
 	e1000_reset_hw(&adapter->hw);
 	if (adapter->hw.mac.type >= e1000_82544)
 		E1000_WRITE_REG(&adapter->hw, E1000_WUC, 0);
+	em_disable_aspm(adapter);
 
 	if (e1000_init_hw(&adapter->hw) < 0) {
 		device_printf(dev, "Hardware Initialization Failed\n");
@@ -3481,7 +3483,7 @@ em_disable_intr(struct adapter *adapter)
 	 */
 	if (adapter->hw.mac.type == e1000_82542 &&
 	    adapter->hw.revision_id == E1000_REVISION_2)
-		clear &= ~E1000_IMC_RXSEQ;
+		clear &= ~E1000_ICR_RXSEQ;
 	else if (adapter->hw.mac.type == e1000_82574)
 		E1000_WRITE_REG(&adapter->hw, EM_EIAC, 0);
 
@@ -4110,4 +4112,41 @@ em_set_itr(struct adapter *adapter, uint32_t itr)
 			    E1000_EITR_82574(i), itr);
 		}
 	}
+}
+
+/*
+ * Disable the L0s, Errata #20
+ */
+static void
+em_disable_aspm(struct adapter *adapter)
+{
+	uint16_t link_cap, link_ctrl;
+	uint8_t pcie_ptr, reg;
+	device_t dev = adapter->dev;
+
+	switch (adapter->hw.mac.type) {
+	case e1000_82573:
+	case e1000_82574:
+	case e1000_82583:
+		break;
+
+	default:
+		return;
+	}
+
+	pcie_ptr = pci_get_pciecap_ptr(dev);
+	if (pcie_ptr == 0)
+		return;
+
+	link_cap = pci_read_config(dev, pcie_ptr + PCIER_LINKCAP, 2);
+	if ((link_cap & PCIEM_LNKCAP_ASPM_MASK) == 0)
+		return;
+
+	if (bootverbose)
+		if_printf(&adapter->arpcom.ac_if, "disable L0s\n");
+
+	reg = pcie_ptr + PCIER_LINKCTRL;
+	link_ctrl = pci_read_config(dev, reg, 2);
+	link_ctrl &= ~PCIEM_LNKCTL_ASPM_L0S;
+	pci_write_config(dev, reg, link_ctrl, 2);
 }
