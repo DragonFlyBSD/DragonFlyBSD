@@ -71,7 +71,8 @@ struct sackblock {
 
 #define	MAXSAVEDBLOCKS	8			/* per connection limit */
 
-static void insert_block(struct scoreboard *scb, struct sackblock *newblock);
+static int insert_block(struct scoreboard *scb,
+			const struct raw_sackblock *raw_sb);
 static void update_lostseq(struct scoreboard *scb, tcp_seq snd_una,
 			   u_int maxseg);
 
@@ -155,8 +156,27 @@ alloc_sackblock(const struct raw_sackblock *raw_sb)
 	if (sb != NULL) {
 		sb->sblk_start = raw_sb->rblk_start;
 		sb->sblk_end = raw_sb->rblk_end;
+	} else {
+		tcpstat.tcps_sacksbfailed++;
 	}
 	return sb;
+}
+
+static __inline struct sackblock *
+alloc_sackblock_limit(struct scoreboard *scb,
+    const struct raw_sackblock *raw_sb)
+{
+	if (scb->nblocks == MAXSAVEDBLOCKS) {
+		/*
+		 * Should try to kick out older blocks XXX JH
+		 * May be able to coalesce with existing block.
+		 * Or, go other way and free all blocks if we hit
+		 * this limit.
+		 */
+		tcpstat.tcps_sacksboverflow++;
+		return NULL;
+	}
+	return alloc_sackblock(raw_sb);
 }
 
 /*
@@ -253,7 +273,6 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 	const int numblocks = to->to_nsackblocks;
 	struct raw_sackblock *blocks = to->to_sackblocks;
 	struct scoreboard *scb = &tp->scb;
-	struct sackblock *sb;
 	int startblock;
 	int i;
 
@@ -272,12 +291,8 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 		}
 		tcpstat.tcps_sacksbupdate++;
 
-		sb = alloc_sackblock(newsackblock);
-		if (sb == NULL) {	/* do some sort of cleanup? XXX */
-			tcpstat.tcps_sacksbfailed++;
-			break;		/* just skip rest of blocks */
-		}
-		insert_block(scb, sb);
+		if (insert_block(scb, newsackblock))
+			break;
 	}
 }
 
@@ -296,51 +311,50 @@ tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to)
 /*
  * Insert SACK block into sender's scoreboard.
  */
-static void
-insert_block(struct scoreboard *scb, struct sackblock *newblock)
+static int
+insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb)
 {
 	struct sackblock *sb, *workingblock;
 	boolean_t overlap_front;
 
 	if (TAILQ_EMPTY(&scb->sackblocks)) {
-		KASSERT(scb->nblocks == 0, ("emply scb w/ blocks"));
-		scb->nblocks = 1;
-		TAILQ_INSERT_HEAD(&scb->sackblocks, newblock, sblk_list);
-		return;
-	}
-	KASSERT(scb->nblocks > 0, ("insert_block() called w/ no blocks"));
+		struct sackblock *newblock;
 
-	if (scb->nblocks == MAXSAVEDBLOCKS) {
-		/*
-		 * Should try to kick out older blocks XXX JH
-		 * May be able to coalesce with existing block.
-		 * Or, go other way and free all blocks if we hit this limit.
-		 */
-		free_sackblock(newblock);
-		tcpstat.tcps_sacksboverflow++;
-		return;
+		KASSERT(scb->nblocks == 0, ("emply scb w/ blocks"));
+
+		newblock = alloc_sackblock(raw_sb);
+		if (newblock == NULL)
+			return ENOMEM;
+		TAILQ_INSERT_HEAD(&scb->sackblocks, newblock, sblk_list);
+		scb->nblocks = 1;
+		return 0;
 	}
-	KASSERT(scb->nblocks < MAXSAVEDBLOCKS,
+
+	KASSERT(scb->nblocks > 0, ("insert_block() called w/ no blocks"));
+	KASSERT(scb->nblocks <= MAXSAVEDBLOCKS,
 	    ("too many SACK blocks %d", scb->nblocks));
 
-	overlap_front = sack_block_lookup(scb, newblock->sblk_start,  &sb);
+	overlap_front = sack_block_lookup(scb, raw_sb->rblk_start, &sb);
 
 	if (sb == NULL) {
-		workingblock = newblock;
-		TAILQ_INSERT_HEAD(&scb->sackblocks, newblock, sblk_list);
+		workingblock = alloc_sackblock_limit(scb, raw_sb);
+		if (workingblock == NULL)
+			return ENOMEM;
+		TAILQ_INSERT_HEAD(&scb->sackblocks, workingblock, sblk_list);
 		++scb->nblocks;
 	} else {
-		if (overlap_front || sb->sblk_end == newblock->sblk_start) {
-			/* extend old block and discard new one */
+		if (overlap_front || sb->sblk_end == raw_sb->rblk_start) {
+			/* Extend old block */
 			workingblock = sb;
-			if (SEQ_GT(newblock->sblk_end, sb->sblk_end))
-				sb->sblk_end = newblock->sblk_end;
-			free_sackblock(newblock);
+			if (SEQ_GT(raw_sb->rblk_end, sb->sblk_end))
+				sb->sblk_end = raw_sb->rblk_end;
 			tcpstat.tcps_sacksbreused++;
 		} else {
-			workingblock = newblock;
-			TAILQ_INSERT_AFTER(&scb->sackblocks, sb, newblock,
-					   sblk_list);
+			workingblock = alloc_sackblock_limit(scb, raw_sb);
+			if (workingblock == NULL)
+				return ENOMEM;
+			TAILQ_INSERT_AFTER(&scb->sackblocks, sb, workingblock,
+			    sblk_list);
 			++scb->nblocks;
 		}
 	}
@@ -374,6 +388,7 @@ insert_block(struct scoreboard *scb, struct sackblock *newblock)
 		KASSERT(scb->nblocks > 0,
 		    ("removed partial right: %d blocks left", scb->nblocks));
 	}
+	return 0;
 }
 
 #ifdef DEBUG_SACK_BLOCKS
