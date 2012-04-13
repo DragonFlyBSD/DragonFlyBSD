@@ -64,6 +64,13 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * NOTE:
+ *
+ * MSI-X MUST NOT be enabled on 82574:
+ *   <<82574 specification update>> errata #15
+ */
+
 #include "opt_ifpoll.h"
 #include "opt_rss.h"
 #include "opt_emx.h"

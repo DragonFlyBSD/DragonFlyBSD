@@ -93,6 +93,13 @@
  *   if_input even if it is not serializer-aware.
  */
 
+/*
+ * NOTE:
+ *
+ * MSI-X MUST NOT be enabled on 82574:
+ *   <<82574 specification update>> errata #15
+ */
+
 #include "opt_polling.h"
 
 #include <sys/param.h>
