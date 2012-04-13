@@ -147,9 +147,16 @@ sack_block_lookup(struct scoreboard *scb, tcp_seq seq, struct sackblock **sb)
  * Allocate a SACK block.
  */
 static __inline struct sackblock *
-alloc_sackblock(void)
+alloc_sackblock(const struct raw_sackblock *raw_sb)
 {
-	return (kmalloc(sizeof(struct sackblock), M_SACKBLOCK, M_NOWAIT));
+	struct sackblock *sb;
+
+	sb = kmalloc(sizeof(struct sackblock), M_SACKBLOCK, M_NOWAIT);
+	if (sb != NULL) {
+		sb->sblk_start = raw_sb->rblk_start;
+		sb->sblk_end = raw_sb->rblk_end;
+	}
+	return sb;
 }
 
 /*
@@ -265,13 +272,11 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 		}
 		tcpstat.tcps_sacksbupdate++;
 
-		sb = alloc_sackblock();
+		sb = alloc_sackblock(newsackblock);
 		if (sb == NULL) {	/* do some sort of cleanup? XXX */
 			tcpstat.tcps_sacksbfailed++;
 			break;		/* just skip rest of blocks */
 		}
-		sb->sblk_start = newsackblock->rblk_start;
-		sb->sblk_end = newsackblock->rblk_end;
 		insert_block(scb, sb);
 	}
 }
