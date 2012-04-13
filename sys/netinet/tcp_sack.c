@@ -272,13 +272,7 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 		}
 		sb->sblk_start = newsackblock->rblk_start;
 		sb->sblk_end = newsackblock->rblk_end;
-		if (TAILQ_EMPTY(&scb->sackblocks)) {
-			KASSERT(scb->nblocks == 0, ("emply scb w/ blocks"));
-			scb->nblocks = 1;
-			TAILQ_INSERT_HEAD(&scb->sackblocks, sb, sblk_list);
-		} else {
-			insert_block(scb, sb);
-		}
+		insert_block(scb, sb);
 	}
 }
 
@@ -303,6 +297,12 @@ insert_block(struct scoreboard *scb, struct sackblock *newblock)
 	struct sackblock *sb, *workingblock;
 	boolean_t overlap_front;
 
+	if (TAILQ_EMPTY(&scb->sackblocks)) {
+		KASSERT(scb->nblocks == 0, ("emply scb w/ blocks"));
+		scb->nblocks = 1;
+		TAILQ_INSERT_HEAD(&scb->sackblocks, newblock, sblk_list);
+		return;
+	}
 	KASSERT(scb->nblocks > 0, ("insert_block() called w/ no blocks"));
 
 	if (scb->nblocks == MAXSAVEDBLOCKS) {
