@@ -1052,11 +1052,8 @@ nfe_rxeof(struct nfe_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct nfe_rx_ring *ring = &sc->rxq;
 	int reap;
-	struct mbuf_chain chain[MAXCPU];
 
 	reap = 0;
-	ether_input_chain_init(chain);
-
 	for (;;) {
 		struct nfe_rx_data *data = &ring->data[ring->cur];
 		struct mbuf *m;
@@ -1135,14 +1132,11 @@ nfe_rxeof(struct nfe_softc *sc)
 		}
 
 		ifp->if_ipackets++;
-		ether_input_chain(ifp, m, NULL, chain);
+		ifp->if_input(ifp, m);
 skip:
 		nfe_set_ready_rxdesc(sc, ring, ring->cur);
 		sc->rxq.cur = (sc->rxq.cur + 1) % sc->sc_rx_ring_count;
 	}
-
-	if (reap)
-		ether_input_dispatch(chain);
 	return reap;
 }
 

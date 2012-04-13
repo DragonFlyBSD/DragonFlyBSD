@@ -1865,9 +1865,6 @@ re_rxeof(struct re_softc *sc)
 	struct re_desc 	*cur_rx;
 	uint32_t rxstat, rxctrl;
 	int i, total_len, rx = 0;
-	struct mbuf_chain chain[MAXCPU];
-
-	ether_input_chain_init(chain);
 
 	for (i = sc->re_ldata.re_rx_prodidx;
 	     RE_OWN(&sc->re_ldata.re_rx_list[i]) == 0; RE_RXDESC_INC(sc, i)) {
@@ -2015,10 +2012,8 @@ re_rxeof(struct re_softc *sc)
 			m->m_pkthdr.ether_vlantag =
 				be16toh((rxctrl & RE_RDESC_CTL_TAGDATA));
 		}
-		ether_input_chain(ifp, m, NULL, chain);
+		ifp->if_input(ifp, m);
 	}
-
-	ether_input_dispatch(chain);
 
 	sc->re_ldata.re_rx_prodidx = i;
 

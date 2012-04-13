@@ -2535,8 +2535,7 @@ mxge_vlan_tag_remove(struct mbuf *m, uint32_t *csum)
 
 
 static inline void
-mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum,
-		   struct mbuf_chain *chain)
+mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 {
 	mxge_softc_t *sc;
 	struct ifnet *ifp;
@@ -2598,12 +2597,11 @@ mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum,
 		m->m_flags |= M_FLOWID;
 	}
 #endif
-	ether_input_chain(ifp, m, NULL, chain);
+	ifp->if_input(ifp, m);
 }
 
 static inline void
-mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum,
-		   struct mbuf_chain *chain)
+mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 {
 	mxge_softc_t *sc;
 	struct ifnet *ifp;
@@ -2665,7 +2663,7 @@ mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum,
 		m->m_flags |= M_FLOWID;
 	}
 #endif
-	ether_input_chain(ifp, m, NULL, chain);
+	ifp->if_input(ifp, m);
 }
 
 /*
@@ -2683,17 +2681,15 @@ mxge_clean_rx_done(struct mxge_slice_state *ss)
 	int limit = 0;
 	uint16_t length;
 	uint16_t checksum;
-	struct mbuf_chain chain[MAXCPU];
 
-	ether_input_chain_init(chain);
 	while (rx_done->entry[rx_done->idx].length != 0) {
 		length = ntohs(rx_done->entry[rx_done->idx].length);
 		rx_done->entry[rx_done->idx].length = 0;
 		checksum = rx_done->entry[rx_done->idx].checksum;
 		if (length <= (MHLEN - MXGEFW_PAD))
-			mxge_rx_done_small(ss, length, checksum, chain);
+			mxge_rx_done_small(ss, length, checksum);
 		else
-			mxge_rx_done_big(ss, length, checksum, chain);
+			mxge_rx_done_big(ss, length, checksum);
 		rx_done->cnt++;
 		rx_done->idx = rx_done->cnt & rx_done->mask;
 
@@ -2701,7 +2697,6 @@ mxge_clean_rx_done(struct mxge_slice_state *ss)
 		if (__predict_false(++limit > rx_done->mask / 2))
 			break;
 	}
-	ether_input_dispatch(chain);
 #ifdef INET
 	while (!SLIST_EMPTY(&ss->lro_active)) {
 		struct lro_entry *lro = SLIST_FIRST(&ss->lro_active);

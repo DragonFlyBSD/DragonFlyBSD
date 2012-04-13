@@ -1976,11 +1976,8 @@ xl_rxeof(struct xl_softc *sc, int count)
 	struct xl_chain_onefrag	*cur_rx;
 	int			total_len = 0;
 	u_int32_t		rxstat;
-	struct mbuf_chain chain[MAXCPU];
 
 	ifp = &sc->arpcom.ac_if;
-
-	ether_input_chain_init(chain);
 again:
 	while((rxstat = le32toh(sc->xl_cdata.xl_rx_head->xl_ptr->xl_status))) {
 #ifdef DEVICE_POLLING
@@ -2062,7 +2059,7 @@ again:
 			}
 		}
 
-		ether_input_chain(ifp, m, NULL, chain);
+		ifp->if_input(ifp, m);
 	}
 
 	if (sc->xl_type != XL_TYPE_905B) {
@@ -2089,8 +2086,6 @@ again:
 			goto again;
 		}
 	}
-
-	ether_input_dispatch(chain);
 }
 
 /*

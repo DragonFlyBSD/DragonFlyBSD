@@ -267,8 +267,7 @@ static void	msk_intr_gmac(struct msk_if_softc *);
 static __inline void
 		msk_rxput(struct msk_if_softc *);
 static void	msk_handle_hwerr(struct msk_if_softc *, uint32_t);
-static void	msk_rxeof(struct msk_if_softc *, uint32_t, int,
-			  struct mbuf_chain *);
+static void	msk_rxeof(struct msk_if_softc *, uint32_t, int);
 static void	msk_txeof(struct msk_if_softc *, int);
 static void	msk_set_prefetch(struct msk_softc *, int, bus_addr_t, uint32_t);
 static void	msk_set_rambuffer(struct msk_if_softc *);
@@ -2782,8 +2781,7 @@ mskc_resume(device_t dev)
 }
 
 static void
-msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len,
-	  struct mbuf_chain *chain)
+msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len)
 {
 	struct mbuf *m;
 	struct ifnet *ifp;
@@ -2838,7 +2836,7 @@ msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len,
 		}
 #endif
 
-		ether_input_chain(ifp, m, NULL, chain);
+		ifp->if_input(ifp, m);
 	} while (0);
 
 	MSK_INC(sc_if->msk_cdata.msk_rx_cons, MSK_RX_RING_CNT);
@@ -3162,13 +3160,10 @@ mskc_handle_events(struct msk_softc *sc)
 	struct msk_stat_desc *sd;
 	uint32_t control, status;
 	int cons, idx, len, port, rxprog;
-	struct mbuf_chain chain[MAXCPU];
 
 	idx = CSR_READ_2(sc, STAT_PUT_IDX);
 	if (idx == sc->msk_stat_cons)
 		return (0);
-
-	ether_input_chain_init(chain);
 
 	rxput[MSK_PORT_A] = rxput[MSK_PORT_B] = 0;
 
@@ -3212,7 +3207,7 @@ mskc_handle_events(struct msk_softc *sc)
 				msk_jumbo_rxeof(sc_if, status, len);
 			else
 #endif
-				msk_rxeof(sc_if, status, len, chain);
+				msk_rxeof(sc_if, status, len);
 			rxprog++;
 			/*
 			 * Because there is no way to sync single Rx LE
@@ -3248,9 +3243,6 @@ mskc_handle_events(struct msk_softc *sc)
 		if (rxprog > sc->msk_process_limit)
 			break;
 	}
-
-	if (rxprog > 0)
-		ether_input_dispatch(chain);
 
 	sc->msk_stat_cons = cons;
 	/* XXX We should sync status LEs here. See above notes. */

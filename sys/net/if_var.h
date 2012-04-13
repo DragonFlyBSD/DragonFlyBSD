@@ -79,7 +79,6 @@
  * Forward structure declarations for function prototypes [sic].
  */
 struct	mbuf;
-struct	mbuf_chain;
 struct	proc;
 struct	rtentry;
 struct	rt_addrinfo;
@@ -738,10 +737,7 @@ void	ether_ifdetach(struct ifnet *);
 void	ether_demux(struct mbuf *);
 void	ether_demux_oncpu(struct ifnet *, struct mbuf *);
 void	ether_reinput_oncpu(struct ifnet *, struct mbuf *, int);
-void	ether_input_chain(struct ifnet *, struct mbuf *,
-			  const struct pktinfo *, struct mbuf_chain *);
-void	ether_input_chain_init(struct mbuf_chain *);
-void	ether_input_dispatch(struct mbuf_chain *);
+void	ether_input_pkt(struct ifnet *, struct mbuf *, const struct pktinfo *);
 int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, u_long, caddr_t);
 struct ifnet *ether_bridge_interface(struct ifnet *ifp);

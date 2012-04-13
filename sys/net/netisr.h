@@ -132,7 +132,7 @@ void netmsg_so_notify_doabort(lwkt_msg_t);
 
 /*
  * Temporary pktinfo structure passed directly from the driver to
- * ether_input_chain(), allows us to bypass numerous checks.
+ * ether_input_pkt(), allows us to bypass numerous checks.
  */
 struct pktinfo {
 	int		pi_netisr;	/* netisr index, e.g. NETISR_IP */
