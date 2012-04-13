@@ -1639,11 +1639,10 @@ vfs/puffs/puffs_node.c		optional puffs
 vfs/puffs/puffs_subr.c		optional puffs
 vfs/puffs/puffs_vfsops.c	optional puffs
 vfs/puffs/puffs_vnops.c		optional puffs
-#tmpfs static filesystem for debugging should be marked as optional tmpfs
-vfs/tmpfs/tmpfs_fifoops.c	standard
-vfs/tmpfs/tmpfs_subr.c		standard
-vfs/tmpfs/tmpfs_vfsops.c	standard
-vfs/tmpfs/tmpfs_vnops.c		standard
+vfs/tmpfs/tmpfs_fifoops.c	optional tmpfs
+vfs/tmpfs/tmpfs_subr.c		optional tmpfs
+vfs/tmpfs/tmpfs_vfsops.c	optional tmpfs
+vfs/tmpfs/tmpfs_vnops.c		optional tmpfs
 #
 vm/default_pager.c		standard
 vm/device_pager.c		standard
