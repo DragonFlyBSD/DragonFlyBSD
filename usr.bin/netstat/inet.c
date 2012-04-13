@@ -535,6 +535,7 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 	p(tcps_sacksboverflow, "\t\t%lu overflow%s\n");
 	p(tcps_sacksbfailed, "\t\t%lu failure%s\n");
 	p(tcps_sacksbreused, "\t\t%lu record%s reused\n");
+	p(tcps_sacksbfast, "\t\t%lu record%s fast allocated\n");
 
 	free(stattmp);
 #undef p

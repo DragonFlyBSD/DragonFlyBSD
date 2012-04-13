@@ -148,17 +148,23 @@ sack_block_lookup(struct scoreboard *scb, tcp_seq seq, struct sackblock **sb)
  * Allocate a SACK block.
  */
 static __inline struct sackblock *
-alloc_sackblock(const struct raw_sackblock *raw_sb)
+alloc_sackblock(struct scoreboard *scb, const struct raw_sackblock *raw_sb)
 {
 	struct sackblock *sb;
 
-	sb = kmalloc(sizeof(struct sackblock), M_SACKBLOCK, M_NOWAIT);
-	if (sb != NULL) {
-		sb->sblk_start = raw_sb->rblk_start;
-		sb->sblk_end = raw_sb->rblk_end;
+	if (scb->freecache != NULL) {
+		sb = scb->freecache;
+		scb->freecache = NULL;
+		tcpstat.tcps_sacksbfast++;
 	} else {
-		tcpstat.tcps_sacksbfailed++;
+		sb = kmalloc(sizeof(struct sackblock), M_SACKBLOCK, M_NOWAIT);
+		if (sb == NULL) {
+			tcpstat.tcps_sacksbfailed++;
+			return NULL;
+		}
 	}
+	sb->sblk_start = raw_sb->rblk_start;
+	sb->sblk_end = raw_sb->rblk_end;
 	return sb;
 }
 
@@ -176,15 +182,20 @@ alloc_sackblock_limit(struct scoreboard *scb,
 		tcpstat.tcps_sacksboverflow++;
 		return NULL;
 	}
-	return alloc_sackblock(raw_sb);
+	return alloc_sackblock(scb, raw_sb);
 }
 
 /*
  * Free a SACK block.
  */
 static __inline void
-free_sackblock(struct sackblock *s)
+free_sackblock(struct scoreboard *scb, struct sackblock *s)
 {
+	if (scb->freecache == NULL) {
+		/* YYY Maybe use the latest freed block? */
+		scb->freecache = s;
+		return;
+	}
 	kfree(s, M_SACKBLOCK);
 }
 
@@ -202,7 +213,7 @@ tcp_sack_ack_blocks(struct scoreboard *scb, tcp_seq th_ack)
 		if (scb->lastfound == sb)
 			scb->lastfound = NULL;
 		TAILQ_REMOVE(&scb->sackblocks, sb, sblk_list);
-		free_sackblock(sb);
+		free_sackblock(scb, sb);
 		--scb->nblocks;
 		KASSERT(scb->nblocks >= 0,
 		    ("SACK block count underflow: %d < 0", scb->nblocks));
@@ -221,13 +232,27 @@ tcp_sack_cleanup(struct scoreboard *scb)
 	struct sackblock *sb, *nb;
 
 	TAILQ_FOREACH_MUTABLE(sb, &scb->sackblocks, sblk_list, nb) {
-		free_sackblock(sb);
+		free_sackblock(scb, sb);
 		--scb->nblocks;
 	}
 	KASSERT(scb->nblocks == 0,
 	    ("SACK block %d count not zero", scb->nblocks));
 	TAILQ_INIT(&scb->sackblocks);
 	scb->lastfound = NULL;
+}
+
+/*
+ * Delete and free SACK blocks saved in scoreboard.
+ * Delete the one slot block cache.
+ */
+void
+tcp_sack_destroy(struct scoreboard *scb)
+{
+	tcp_sack_cleanup(scb);
+	if (scb->freecache != NULL) {
+		kfree(scb->freecache, M_SACKBLOCK);
+		scb->freecache = NULL;
+	}
 }
 
 /*
@@ -322,7 +347,7 @@ insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb)
 
 		KASSERT(scb->nblocks == 0, ("emply scb w/ blocks"));
 
-		newblock = alloc_sackblock(raw_sb);
+		newblock = alloc_sackblock(scb, raw_sb);
 		if (newblock == NULL)
 			return ENOMEM;
 		TAILQ_INSERT_HEAD(&scb->sackblocks, newblock, sblk_list);
@@ -370,7 +395,7 @@ insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb)
 			scb->lastfound = NULL;
 		/* Remove completely overlapped block */
 		TAILQ_REMOVE(&scb->sackblocks, sb, sblk_list);
-		free_sackblock(sb);
+		free_sackblock(scb, sb);
 		--scb->nblocks;
 		KASSERT(scb->nblocks > 0,
 		    ("removed overlapped block: %d blocks left", scb->nblocks));
@@ -383,7 +408,7 @@ insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb)
 		if (scb->lastfound == sb)
 			scb->lastfound = NULL;
 		TAILQ_REMOVE(&scb->sackblocks, sb, sblk_list);
-		free_sackblock(sb);
+		free_sackblock(scb, sb);
 		--scb->nblocks;
 		KASSERT(scb->nblocks > 0,
 		    ("removed partial right: %d blocks left", scb->nblocks));

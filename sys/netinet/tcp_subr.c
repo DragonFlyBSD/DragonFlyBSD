@@ -982,7 +982,7 @@ no_valid_rt:
 	}
 	/* throw away SACK blocks in scoreboard*/
 	if (TCP_DO_SACK(tp))
-		tcp_sack_cleanup(&tp->scb);
+		tcp_sack_destroy(&tp->scb);
 
 	inp->inp_ppcb = NULL;
 	soisdisconnected(so);

@@ -123,6 +123,7 @@ struct scoreboard {
 	struct sackblock_list sackblocks;
 	tcp_seq lostseq;			/* passed SACK lost test */
 	struct sackblock *lastfound;		/* search hint */
+	struct sackblock *freecache;		/* one slot free block cache */
 };
 
 struct netmsg_tcp_timer;
@@ -391,6 +392,7 @@ struct tcp_stats {
 	u_long	tcps_sacksboverflow;	/* times SACK scoreboard overflowed */
 	u_long	tcps_sacksbreused;	/* times SACK sb-block reused */
 	u_long	tcps_sacksbfailed;	/* times SACK sb update failed */
+	u_long	tcps_sacksbfast;	/* timee SACK sb-block uses cache */
 
 	u_long	tcps_sc_added;		/* entry added to syncache */
 	u_long	tcps_sc_retransmitted;	/* syncache entry was retransmitted */
@@ -622,6 +624,7 @@ void	 tcp_respond (struct tcpcb *, void *,
 struct rtentry *
 	 tcp_rtlookup (struct in_conninfo *);
 int	 tcp_sack_bytes_below(struct scoreboard *scb, tcp_seq seq);
+void	 tcp_sack_destroy(struct scoreboard *scb);
 void	 tcp_sack_cleanup(struct scoreboard *scb);
 void	 tcp_sack_report_cleanup(struct tcpcb *tp);
 int	 tcp_sack_ndsack_blocks(struct raw_sackblock *blocks,
