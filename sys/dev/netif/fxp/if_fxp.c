@@ -1270,7 +1270,6 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 	struct mbuf *m;
 	struct fxp_rfa *rfa;
 	int rnr = (statack & FXP_SCB_STATACK_RNR) ? 1 : 0;
-	struct mbuf_chain chain[MAXCPU];
 
 	if (rnr)
 		fxp_rnr++;
@@ -1332,8 +1331,6 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 	 */
 	if (!rnr && (statack & FXP_SCB_STATACK_FR) == 0)
 		return;
-
-	ether_input_chain_init(chain);
 
 	/*
 	 * Process receiver interrupts. If a no-resource (RNR)
@@ -1397,11 +1394,9 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 				continue;
 			}
 			m->m_pkthdr.len = m->m_len = total_len;
-			ether_input_chain(ifp, m, NULL, chain);
+			ifp->if_input(ifp, m);
 		}
 	}
-
-	ether_input_dispatch(chain);
 
 	if (rnr) {
 		fxp_scb_wait(sc);

@@ -184,8 +184,8 @@ SYSCTL_ULONG(_net_link_ether, OID_AUTO, input_requeue, CTLFLAG_RW,
 #define KTR_ETHERNET		KTR_ALL
 #endif
 KTR_INFO_MASTER(ether);
-KTR_INFO(KTR_ETHERNET, ether, chain_beg, 0, ETHER_KTR_STR, ETHER_KTR_ARGS);
-KTR_INFO(KTR_ETHERNET, ether, chain_end, 1, ETHER_KTR_STR, ETHER_KTR_ARGS);
+KTR_INFO(KTR_ETHERNET, ether, pkt_beg, 0, ETHER_KTR_STR, ETHER_KTR_ARGS);
+KTR_INFO(KTR_ETHERNET, ether, pkt_end, 1, ETHER_KTR_STR, ETHER_KTR_ARGS);
 KTR_INFO(KTR_ETHERNET, ether, disp_beg, 2, ETHER_KTR_STR, ETHER_KTR_ARGS);
 KTR_INFO(KTR_ETHERNET, ether, disp_end, 3, ETHER_KTR_STR, ETHER_KTR_ARGS);
 #define logether(name, arg)	KTR_LOG(ether_ ## name, arg)
@@ -545,7 +545,7 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 static void
 ether_input(struct ifnet *ifp, struct mbuf *m)
 {
-	ether_input_chain(ifp, m, NULL, NULL);
+	ether_input_pkt(ifp, m, NULL);
 }
 
 /*
@@ -931,55 +931,6 @@ ether_restore_header(struct mbuf **m0, const struct ether_header *eh,
 	*m0 = m;
 }
 
-static void
-ether_input_ipifunc(void *arg)
-{
-	struct mbuf *m, *next;
-	lwkt_port_t port = cpu_portfn(mycpu->gd_cpuid);
-
-	m = arg;
-	do {
-		next = m->m_nextpkt;
-		m->m_nextpkt = NULL;
-		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.base.lmsg);
-		m = next;
-	} while (m != NULL);
-}
-
-void
-ether_input_dispatch(struct mbuf_chain *chain)
-{
-#ifdef SMP
-	int i;
-
-	logether(disp_beg, NULL);
-	for (i = 0; i < ncpus; ++i) {
-		if (chain[i].mc_head != NULL) {
-			lwkt_send_ipiq(globaldata_find(i),
-				       ether_input_ipifunc, chain[i].mc_head);
-		}
-	}
-#else
-	logether(disp_beg, NULL);
-	if (chain->mc_head != NULL)
-		ether_input_ipifunc(chain->mc_head);
-#endif
-	logether(disp_end, NULL);
-}
-
-void
-ether_input_chain_init(struct mbuf_chain *chain)
-{
-#ifdef SMP
-	int i;
-
-	for (i = 0; i < ncpus; ++i)
-		chain[i].mc_head = chain[i].mc_tail = NULL;
-#else
-	chain->mc_head = chain->mc_tail = NULL;
-#endif
-}
-
 /*
  * Upper layer processing for a received Ethernet packet.
  */
@@ -1154,7 +1105,7 @@ post_stats:
 #ifdef MPLS
 	case ETHERTYPE_MPLS:
 	case ETHERTYPE_MPLS_MCAST:
-		/* Should have been set by ether_input_chain(). */
+		/* Should have been set by ether_input_pkt(). */
 		KKASSERT(m->m_flags & M_MPLSLABELED);
 		isr = NETISR_MPLS;
 		break;
@@ -1298,7 +1249,7 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 }
 
 /*
- * Perform certain functions of ether_input_chain():
+ * Perform certain functions of ether_input_pkt():
  * - Test IFF_UP
  * - Update statistics
  * - Run bpf(4) tap if requested
@@ -1416,13 +1367,13 @@ ether_input_handler(netmsg_t nmsg)
 }
 
 /*
- * Send the packet to the target msgport or queue it into 'chain'.
+ * Send the packet to the target msgport
  *
  * At this point the packet had better be characterized (M_HASH set),
  * so we know which cpu to send it to.
  */
 static void
-ether_dispatch(int isr, struct mbuf *m, struct mbuf_chain *chain)
+ether_dispatch(int isr, struct mbuf *m)
 {
 	struct netmsg_packet *pmsg;
 
@@ -1433,21 +1384,9 @@ ether_dispatch(int isr, struct mbuf *m, struct mbuf_chain *chain)
 	pmsg->nm_packet = m;
 	pmsg->base.lmsg.u.ms_result = isr;
 
-	if (chain != NULL) {
-		int cpuid = m->m_pkthdr.hash;
-		struct mbuf_chain *c;
-
-		c = &chain[cpuid];
-		if (c->mc_head == NULL) {
-			c->mc_head = c->mc_tail = m;
-		} else {
-			c->mc_tail->m_nextpkt = m;
-			c->mc_tail = m;
-		}
-		m->m_nextpkt = NULL;
-	} else {
-		lwkt_sendmsg(cpu_portfn(m->m_pkthdr.hash), &pmsg->base.lmsg);
-	}
+	logether(disp_beg, NULL);
+	lwkt_sendmsg(cpu_portfn(m->m_pkthdr.hash), &pmsg->base.lmsg);
+	logether(disp_end, NULL);
 }
 
 /*
@@ -1456,21 +1395,9 @@ ether_dispatch(int isr, struct mbuf *m, struct mbuf_chain *chain)
  * The ethernet header is assumed to be in the mbuf so the caller
  * MUST MAKE SURE that there are at least sizeof(struct ether_header)
  * bytes in the first mbuf.
- *
- * - If 'chain' is NULL, this ether frame is sent to the target msgport
- *   immediately.  This situation happens when ether_input_chain is
- *   accessed through ifnet.if_input.
- *
- * - If 'chain' is not NULL, this ether frame is queued to the 'chain'
- *   bucket indexed by the target msgport's cpuid and the target msgport
- *   is saved in mbuf's m_pkthdr.m_head.  Caller of ether_input_chain
- *   must initialize 'chain' by calling ether_input_chain_init().
- *   ether_input_dispatch must be called later to send ether frames
- *   queued on 'chain' to their target msgport.
  */
 void
-ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
-		  struct mbuf_chain *chain)
+ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi)
 {
 	int isr;
 
@@ -1490,7 +1417,7 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 
 	m->m_pkthdr.rcvif = ifp;
 
-	logether(chain_beg, ifp);
+	logether(pkt_beg, ifp);
 
 	ETHER_BPF_MTAP(ifp, m);
 
@@ -1508,7 +1435,7 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 		 */
 		m_freem(m);
 
-		logether(chain_end, ifp);
+		logether(pkt_end, ifp);
 		return;
 	}
 
@@ -1522,11 +1449,11 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 #endif
 		netisr_hashcheck(pi->pi_netisr, m, pi);
 		if (m->m_flags & M_HASH) {
-			ether_dispatch(pi->pi_netisr, m, chain);
+			ether_dispatch(pi->pi_netisr, m);
 #ifdef RSS_DEBUG
 			ether_pktinfo_hit++;
 #endif
-			logether(chain_end, ifp);
+			logether(pkt_end, ifp);
 			return;
 		}
 	}
@@ -1549,22 +1476,22 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 
 	if (!ether_vlancheck(&m)) {
 		KKASSERT(m == NULL);
-		logether(chain_end, ifp);
+		logether(pkt_end, ifp);
 		return;
 	}
 
 	isr = ether_characterize(&m);
 	if (m == NULL) {
-		logether(chain_end, ifp);
+		logether(pkt_end, ifp);
 		return;
 	}
 
 	/*
 	 * Finally dispatch it
 	 */
-	ether_dispatch(isr, m, chain);
+	ether_dispatch(isr, m);
 
-	logether(chain_end, ifp);
+	logether(pkt_end, ifp);
 }
 
 static int

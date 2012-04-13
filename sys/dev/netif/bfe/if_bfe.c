@@ -1106,13 +1106,10 @@ bfe_rxeof(struct bfe_softc *sc)
 	struct bfe_rxheader *rxheader;
 	struct bfe_data *r;
 	uint32_t cons, status, current, len, flags;
-	struct mbuf_chain chain[MAXCPU];
 
 	cons = sc->bfe_rx_cons;
 	status = CSR_READ_4(sc, BFE_DMARX_STAT);
 	current = (status & BFE_STAT_CDMASK) / sizeof(struct bfe_desc);
-
-	ether_input_chain_init(chain);
 
 	while (current != cons) {
 		r = &sc->bfe_rx_ring[cons];
@@ -1150,11 +1147,9 @@ bfe_rxeof(struct bfe_softc *sc)
 		ifp->if_ipackets++;
 		m->m_pkthdr.rcvif = ifp;
 
-		ether_input_chain(ifp, m, NULL, chain);
+		ifp->if_input(ifp, m);
 		BFE_INC(cons, BFE_RX_LIST_CNT);
 	}
-
-	ether_input_dispatch(chain);
 
 	sc->bfe_rx_cons = cons;
 }

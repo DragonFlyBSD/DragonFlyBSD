@@ -3272,15 +3272,12 @@ em_rxeof(struct adapter *adapter, int count)
 	struct e1000_rx_desc *current_desc;
 	struct mbuf *mp;
 	int i;
-	struct mbuf_chain chain[MAXCPU];
 
 	i = adapter->next_rx_desc_to_check;
 	current_desc = &adapter->rx_desc_base[i];
 
 	if (!(current_desc->status & E1000_RXD_STAT_DD))
 		return;
-
-	ether_input_chain_init(chain);
 
 	while ((current_desc->status & E1000_RXD_STAT_DD) && count != 0) {
 		struct mbuf *m = NULL;
@@ -3412,7 +3409,7 @@ discard:
 		current_desc->status = 0;
 
 		if (m != NULL)
-			ether_input_chain(ifp, m, NULL, chain);
+			ifp->if_input(ifp, m);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == adapter->num_rx_desc)
@@ -3420,8 +3417,6 @@ discard:
 		current_desc = &adapter->rx_desc_base[i];
 	}
 	adapter->next_rx_desc_to_check = i;
-
-	ether_input_dispatch(chain);
 
 	/* Advance the E1000's Receive Queue #0  "Tail Pointer". */
 	if (--i < 0)

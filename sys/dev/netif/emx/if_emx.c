@@ -2828,7 +2828,6 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 	emx_rxdesc_t *current_desc;
 	struct mbuf *mp;
 	int i;
-	struct mbuf_chain chain[MAXCPU];
 
 	i = rdata->next_rx_desc_to_check;
 	current_desc = &rdata->rx_desc[i];
@@ -2836,8 +2835,6 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 
 	if (!(staterr & E1000_RXD_STAT_DD))
 		return;
-
-	ether_input_chain_init(chain);
 
 	while ((staterr & E1000_RXD_STAT_DD) && count != 0) {
 		struct pktinfo *pi = NULL, pi0;
@@ -2940,7 +2937,7 @@ discard:
 		}
 
 		if (m != NULL)
-			ether_input_chain(ifp, m, pi, chain);
+			ether_input_pkt(ifp, m, pi);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == rdata->num_rx_desc)
@@ -2950,8 +2947,6 @@ discard:
 		staterr = le32toh(current_desc->rxd_staterr);
 	}
 	rdata->next_rx_desc_to_check = i;
-
-	ether_input_dispatch(chain);
 
 	/* Advance the E1000's Receive Queue "Tail Pointer". */
 	if (--i < 0)

@@ -1844,7 +1844,6 @@ et_rxeof(struct et_softc *sc)
 	struct et_rxstat_ring *rxst_ring = &sc->sc_rxstat_ring;
 	uint32_t rxs_stat_ring;
 	int rxst_wrap, rxst_index;
-	struct mbuf_chain chain[MAXCPU];
 
 	if ((sc->sc_flags & ET_FLAG_TXRX_ENABLED) == 0)
 		return;
@@ -1852,8 +1851,6 @@ et_rxeof(struct et_softc *sc)
 	rxs_stat_ring = rxsd->rxsd_status->rxs_stat_ring;
 	rxst_wrap = (rxs_stat_ring & ET_RXS_STATRING_WRAP) ? 1 : 0;
 	rxst_index = __SHIFTOUT(rxs_stat_ring, ET_RXS_STATRING_INDEX);
-
-	ether_input_chain_init(chain);
 
 	while (rxst_index != rxst_ring->rsr_index ||
 	       rxst_wrap != rxst_ring->rsr_wrap) {
@@ -1906,7 +1903,7 @@ et_rxeof(struct et_softc *sc)
 				m_adj(m, -ETHER_CRC_LEN);
 
 				ifp->if_ipackets++;
-				ether_input_chain(ifp, m, NULL, chain);
+				ifp->if_input(ifp, m);
 			}
 		} else {
 			ifp->if_ierrors++;
@@ -1931,8 +1928,6 @@ et_rxeof(struct et_softc *sc)
 			rxring_pos |= ET_RX_RING_POS_WRAP;
 		CSR_WRITE_4(sc, rx_ring->rr_posreg, rxring_pos);
 	}
-
-	ether_input_dispatch(chain);
 }
 
 static int

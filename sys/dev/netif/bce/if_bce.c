@@ -4297,11 +4297,8 @@ bce_rx_intr(struct bce_softc *sc, int count)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t hw_cons, sw_cons, sw_chain_cons, sw_prod, sw_chain_prod;
 	uint32_t sw_prod_bseq;
-	struct mbuf_chain chain[MAXCPU];
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	ether_input_chain_init(chain);
 
 	DBRUNIF(1, sc->rx_interrupts++);
 
@@ -4542,7 +4539,7 @@ bce_rx_int_next_rx:
 				m->m_pkthdr.ether_vlantag =
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
-			ether_input_chain(ifp, m, NULL, chain);
+			ifp->if_input(ifp, m);
 
 			DBRUNIF(1, sc->rx_mbuf_alloc--);
 		}
@@ -4565,8 +4562,6 @@ bce_rx_int_next_rx:
 		bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
 				  BUS_SPACE_BARRIER_READ);
 	}
-
-	ether_input_dispatch(chain);
 
 	sc->rx_cons = sw_cons;
 	sc->rx_prod = sw_prod;

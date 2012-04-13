@@ -309,11 +309,6 @@ struct mbuf {
 #define	MT_OOBDATA	6	/* expedited data  */
 #define	MT_NTYPES	7	/* number of mbuf types for mbtypes[] */
 
-struct mbuf_chain {
-	struct mbuf	*mc_head;
-	struct mbuf	*mc_tail;
-};
-
 /*
  * General mbuf allocator statistics structure.
  */

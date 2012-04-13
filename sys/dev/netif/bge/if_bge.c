@@ -2374,13 +2374,10 @@ bge_rxeof(struct bge_softc *sc)
 {
 	struct ifnet *ifp;
 	int stdcnt = 0, jumbocnt = 0;
-	struct mbuf_chain chain[MAXCPU];
 
 	if (sc->bge_rx_saved_considx ==
 	    sc->bge_ldata.bge_status_block->bge_idx[0].bge_rx_prod_idx)
 		return;
-
-	ether_input_chain_init(chain);
 
 	ifp = &sc->arpcom.ac_if;
 
@@ -2493,10 +2490,8 @@ bge_rxeof(struct bge_softc *sc)
 			m->m_pkthdr.ether_vlantag = vlan_tag;
 			have_tag = vlan_tag = 0;
 		}
-		ether_input_chain(ifp, m, NULL, chain);
+		ifp->if_input(ifp, m);
 	}
-
-	ether_input_dispatch(chain);
 
 	bge_writembx(sc, BGE_MBX_RX_CONS0_LO, sc->bge_rx_saved_considx);
 	if (stdcnt)
