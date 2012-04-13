@@ -187,11 +187,10 @@ node_master_recv(hammer2_iocom_t *iocom)
 			break;
 		case HAMMER2_DBG_SHELL:
 		case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
-			hammer2_debug_remote(iocom, msg);
+			hammer2_debug_remote(msg);
 			break;
 		default:
-			hammer2_ioq_reply_term(iocom, msg,
-					       HAMMER2_MSG_ERR_UNKNOWN);
+			hammer2_replymsg(msg, HAMMER2_MSG_ERR_UNKNOWN);
 			break;
 		}
 	}
@@ -210,5 +209,5 @@ static
 void
 node_master_send(hammer2_iocom_t *iocom)
 {
-	hammer2_ioq_write(iocom, NULL);
+	hammer2_iocom_flush(iocom);
 }

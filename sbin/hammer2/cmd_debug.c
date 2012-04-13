@@ -38,8 +38,7 @@
 static void debug_recv(hammer2_iocom_t *iocom);
 static void debug_send(hammer2_iocom_t *iocom);
 static void debug_tty(hammer2_iocom_t *iocom);
-static void hammer2_debug_parse(hammer2_iocom_t *iocom,
-				hammer2_msg_t *msg, char *cmdbuf);
+static void hammer2_debug_parse(hammer2_msg_t *msg, char *cmdbuf);
 
 int
 cmd_debug(void)
@@ -78,8 +77,8 @@ cmd_debug(void)
 	hammer2_iocom_init(&iocom, fd, 0);
 	printf("debug: connected\n");
 
-	msg = hammer2_iocom_allocmsg(&iocom, HAMMER2_DBG_SHELL, 0);
-	hammer2_ioq_write(&iocom, msg);
+	msg = hammer2_allocmsg(&iocom, HAMMER2_DBG_SHELL, 0);
+	hammer2_ioq_write(msg);
 
 	hammer2_iocom_core(&iocom, debug_recv, debug_send, debug_tty);
 	fprintf(stderr, "debug: disconnected\n");
@@ -99,6 +98,7 @@ debug_recv(hammer2_iocom_t *iocom)
 
 	while ((iocom->flags & HAMMER2_IOCOMF_EOF) == 0 &&
 	       (msg = hammer2_ioq_read(iocom)) != NULL) {
+
 		switch(msg->any.head.cmd & HAMMER2_MSGF_CMDSWMASK) {
 		case HAMMER2_LNK_ERROR:
 			fprintf(stderr, "Link Error: %d\n",
@@ -108,7 +108,8 @@ debug_recv(hammer2_iocom_t *iocom)
 			/*
 			 * We send the commands, not accept them.
 			 */
-			hammer2_iocom_freemsg(iocom, msg);
+			hammer2_replymsg(msg, HAMMER2_MSG_ERR_UNKNOWN);
+			hammer2_freemsg(msg);
 			break;
 		case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
 			/*
@@ -117,15 +118,16 @@ debug_recv(hammer2_iocom_t *iocom)
 			if (msg->aux_size) {
 				msg->aux_data[msg->aux_size - 1] = 0;
 				write(1, msg->aux_data, strlen(msg->aux_data));
+			} else {
+				write(1, "debug> ", 7);
 			}
-			hammer2_iocom_freemsg(iocom, msg);
+			hammer2_freemsg(msg);
 			break;
 		default:
 			assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
 			fprintf(stderr, "Unknown message: %08x\n",
 				msg->any.head.cmd);
-			hammer2_ioq_reply_term(iocom, msg,
-					       HAMMER2_MSG_ERR_UNKNOWN);
+			hammer2_replymsg(msg, HAMMER2_MSG_ERR_UNKNOWN);
 			break;
 		}
 	}
@@ -143,7 +145,7 @@ static
 void
 debug_send(hammer2_iocom_t *iocom)
 {
-	hammer2_ioq_write(iocom, NULL);
+	hammer2_iocom_flush(iocom);
 }
 
 static
@@ -159,9 +161,9 @@ debug_tty(hammer2_iocom_t *iocom)
 		if (len && buf[len - 1] == '\n')
 			buf[--len] = 0;
 		++len;
-		msg = hammer2_iocom_allocmsg(iocom, HAMMER2_DBG_SHELL, len);
+		msg = hammer2_allocmsg(iocom, HAMMER2_DBG_SHELL, len);
 		bcopy(buf, msg->aux_data, len);
-		hammer2_ioq_write(iocom, msg);
+		hammer2_ioq_write(msg);
 	} else {
 		/*
 		 * Set EOF flag without setting any error code for normal
@@ -177,8 +179,10 @@ debug_tty(hammer2_iocom_t *iocom)
  * then finish up by outputting another prompt.
  */
 void
-hammer2_debug_remote(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+hammer2_debug_remote(hammer2_msg_t *msg)
 {
+	/* hammer2_iocom_t *iocom = msg->iocom; */
+
 	if (msg->aux_data)
 		msg->aux_data[msg->aux_size - 1] = 0;
 	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
@@ -188,37 +192,40 @@ hammer2_debug_remote(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		 */
 		if (msg->aux_data)
 			write(2, msg->aux_data, strlen(msg->aux_data));
-		hammer2_iocom_freemsg(iocom, msg);
+		hammer2_freemsg(msg);
 	} else {
 		/*
 		 * Otherwise this is a command which we must process.
 		 * When we are finished we generate a final reply.
 		 */
-		hammer2_debug_parse(iocom, msg, msg->aux_data);
-		iocom_printf(iocom, msg, "debug> ");
-		hammer2_iocom_freemsg(iocom, msg);
+		hammer2_debug_parse(msg, msg->aux_data);
+		hammer2_replymsg(msg, 0);
 	}
 }
 
 static void
-hammer2_debug_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg, char *cmdbuf)
+hammer2_debug_parse(hammer2_msg_t *msg, char *cmdbuf)
 {
+	/* hammer2_iocom_t *iocom = msg->iocom; */
 	char *cmd = strsep(&cmdbuf, " \t");
 
 	if (cmd == NULL || *cmd == 0) {
 		;
 	} else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
-		iocom_printf(iocom, msg,
-			     "help        Command help\n"
-		);
+		msg_printf(msg, "help        Command help\n");
 	} else {
-		iocom_printf(iocom, msg, "Unrecognized command: %s\n", cmd);
+		msg_printf(msg, "Unrecognized command: %s\n", cmd);
 	}
 }
 
+/*
+ * Returns text debug output to the original defined by (msg).  (msg) is
+ * not modified and stays intact.
+ */
 void
-iocom_printf(hammer2_iocom_t *iocom, hammer2_msg_t *msg, const char *ctl, ...)
+msg_printf(hammer2_msg_t *msg, const char *ctl, ...)
 {
+	/* hammer2_iocom_t *iocom = msg->iocom; */
 	hammer2_msg_t *rmsg;
 	va_list va;
 	char buf[1024];
@@ -229,10 +236,8 @@ iocom_printf(hammer2_iocom_t *iocom, hammer2_msg_t *msg, const char *ctl, ...)
 	va_end(va);
 	len = strlen(buf) + 1;
 
-	rmsg = hammer2_iocom_allocmsg(iocom, HAMMER2_DBG_SHELL, len);
+	rmsg = hammer2_allocreply(msg, HAMMER2_DBG_SHELL, len);
 	bcopy(buf, rmsg->aux_data, len);
-	rmsg->any.head = msg->any.head;
-	rmsg->any.head.aux_icrc = 0;
 
-	hammer2_ioq_reply(iocom, rmsg);
+	hammer2_ioq_write(rmsg);
 }

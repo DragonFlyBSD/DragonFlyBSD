@@ -47,9 +47,14 @@
  * by a connection.
  *
  * This structure is typically not used for storing persistent message
- * state (see hammer2_pmsg for that).
+ * state (see hammer2_persist for that).
  */
+struct hammer2_iocom;
+struct hammer2_persist;
+
 struct hammer2_msg {
+	struct hammer2_iocom *iocom;
+	struct hammer2_persist  *persist;
 	TAILQ_ENTRY(hammer2_msg) entry;	/* queue */
 	char		*aux_data;	/* aux-data if any */
 	int		aux_size;
@@ -127,7 +132,14 @@ typedef struct hammer2_iocom hammer2_iocom_t;
  *				HIGH LEVEL MESSAGING			   *
  ***************************************************************************
  *
+ * Persistent state is stored via the hammer2_persist structure.
  */
+struct hammer2_persist {
+	uint32_t	lcmd;		/* recent command direction */
+	uint32_t	lrep;		/* recent reply direction */
+};
+
+typedef struct hammer2_persist hammer2_persist_t;
 
 #if 0
 
@@ -227,8 +239,6 @@ struct hammer2_pmsg {
 	hammer2_span_t	*source;
 	hammer2_span_t	*target;
 	uint16_t	msgid;
-	void		*aux_data;		/* allocated aux data */
-	hammer2_msg_any_t any;			/* dynamically allocated */
 };
 
 #endif
