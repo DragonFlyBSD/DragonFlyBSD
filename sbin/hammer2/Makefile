@@ -1,6 +1,7 @@
 PROG=	hammer2
-SRCS=	main.c subs.c
-SRCS+=	cmd_remote.c cmd_snapshot.c cmd_pfs.c cmd_helper.c
+SRCS=	main.c subs.c icrc.c msg.c
+SRCS+=	cmd_remote.c cmd_snapshot.c cmd_pfs.c
+SRCS+=	cmd_node.c cmd_leaf.c cmd_debug.c
 #MAN=	hammer2.8
 NOMAN=	TRUE
 

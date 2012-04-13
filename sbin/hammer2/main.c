@@ -54,7 +54,7 @@ main(int ac, char **av)
 	/*
 	 * Core options
 	 */
-	while ((ch = getopt(ac, av, "aqs:t:u:")) != -1) {
+	while ((ch = getopt(ac, av, "adqs:t:u:")) != -1) {
 		switch(ch) {
 		case 'a':
 			all_opt = 1;
@@ -172,13 +172,44 @@ main(int ac, char **av)
 		 * Create snapshot with optional pfs_type and optional
 		 * label override.
 		 */
-	} else if (strcmp(av[0], "helper") == 0) {
+	} else if (strcmp(av[0], "node") == 0) {
 		/*
-		 * Typically run as a daemon, this multi-threaded helper
-		 * subsystem manages socket communications for the
-		 * filesystem.
+		 * Start the master node daemon.  This daemon accepts
+		 * connections from local and remote clients, implements
+		 * and maintains the spanning tree protocol, and manages
+		 * the core messaging protocol.
 		 */
-		ecode = cmd_helper(sel_path);
+		ecode = cmd_node();
+	} else if (strcmp(av[0], "leaf") == 0) {
+		/*
+		 * Start the management daemon for a specific PFS.
+		 *
+		 * This will typically connect to the local master node
+		 * daemon, register the PFS, and then pass its side of
+		 * the socket descriptor to the kernel HAMMER2 VFS via an
+		 * ioctl().  The process and/or thread context remains in the
+		 * kernel until the PFS is unmounted or the connection is
+		 * lost, then returns from the ioctl.
+		 *
+		 * It is possible to connect directly to a remote master node
+		 * instead of the local master node in situations where
+		 * encryption is not desired or no local master node is
+		 * desired.  This is not recommended because it represents
+		 * a single point of failure for the PFS's communications.
+		 *
+		 * Direct kernel<->kernel communication between HAMMER2 VFSs
+		 * is theoretically possible for directly-connected
+		 * registrations (i.e. where the spanning tree is degenerate),
+		 * but not recommended.  We specifically try to reduce the
+		 * complexity of the HAMMER2 VFS kernel code.
+		 */
+		ecode = cmd_leaf(sel_path);
+	} else if (strcmp(av[0], "debug") == 0) {
+		/*
+		 * Connect to the command line monitor in the hammer2 master
+		 * node for the machine using HAMMER2_DBG_SHELL messages.
+		 */
+		ecode = cmd_debug();
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", av[0]);
 		usage(1);

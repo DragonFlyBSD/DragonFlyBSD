@@ -62,8 +62,13 @@ hammer2_ioctl_handle(const char *sel_path)
 	return (fd);
 }
 
+/*
+ * Execute the specified function as a detached independent process/daemon,
+ * unless we are in debug mode.  If we are in debug mode the function is
+ * executed as a pthread in the current process.
+ */
 void
-hammer2_disconnect(void *(*func)(void *), void *arg)
+hammer2_demon(void *(*func)(void *), void *arg)
 {
 	pthread_t thread = NULL;
 	pid_t pid;
@@ -132,4 +137,25 @@ hammer2_disconnect(void *(*func)(void *), void *arg)
 	pthread_create(&thread, NULL, func, arg);
 	pthread_exit(NULL);
 	_exit(2);	/* NOT REACHED */
+}
+
+/*
+ * This swaps endian for a hammer2_msg_hdr.  Note that the extended
+ * header is not adjusted, just the core header.
+ */
+void
+hammer2_bswap_head(hammer2_msg_hdr_t *head)
+{
+	head->magic	= bswap16(head->magic);
+	head->icrc1	= bswap16(head->icrc1);
+	head->salt	= bswap32(head->salt);
+	head->source	= bswap16(head->source);
+	head->target	= bswap16(head->target);
+	head->msgid	= bswap32(head->msgid);
+	head->cmd	= bswap32(head->cmd);
+	head->error	= bswap16(head->error);
+	head->resv05	= bswap16(head->resv05);
+	head->icrc2	= bswap16(head->icrc2);
+	head->aux_bytes	= bswap16(head->aux_bytes);
+	head->aux_icrc	= bswap32(head->aux_icrc);
 }

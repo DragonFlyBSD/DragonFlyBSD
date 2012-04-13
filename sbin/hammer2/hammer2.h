@@ -37,12 +37,14 @@
  * Rollup headers for hammer2 utility
  */
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <sys/mount.h>
 #include <sys/file.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <sys/tty.h>
+#include <sys/endian.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -52,26 +54,32 @@
 #include <vfs/hammer2/hammer2_disk.h>
 #include <vfs/hammer2/hammer2_mount.h>
 #include <vfs/hammer2/hammer2_ioctl.h>
+#include <vfs/hammer2/hammer2_network.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stddef.h>
 
-#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
+#include <ctype.h>
 #include <uuid.h>
+#include <assert.h>
+#include <pthread.h>
+#include <poll.h>
+
+#include "network.h"
 
 extern int DebugOpt;
 extern int NormalExit;
 
 int hammer2_ioctl_handle(const char *sel_path);
-void hammer2_disconnect(void *(*func)(void *), void *arg);
+void hammer2_demon(void *(*func)(void *), void *arg);
+void hammer2_bswap_head(hammer2_msg_hdr_t *head);
 
 int cmd_remote_connect(const char *sel_path, const char *url);
 int cmd_remote_disconnect(const char *sel_path, const char *url);
@@ -82,4 +90,31 @@ int cmd_pfs_create(const char *sel_path, const char *name,
 			uint8_t pfs_type, const char *uuid_str);
 int cmd_pfs_delete(const char *sel_path, const char *name);
 
-int cmd_helper(const char *sel_path);
+int cmd_node(void);
+int cmd_leaf(const char *sel_path);
+int cmd_debug(void);
+
+void hammer2_ioq_init(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
+void hammer2_ioq_done(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
+void hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd);
+void hammer2_iocom_done(hammer2_iocom_t *iocom);
+hammer2_msg_t *hammer2_iocom_allocmsg(hammer2_iocom_t *iocom,
+			uint32_t cmd, int aux_size);
+void hammer2_iocom_reallocmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
+			int aux_size);
+void hammer2_iocom_freemsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+
+void hammer2_iocom_core(hammer2_iocom_t *iocom,
+			void (*iocom_recvmsg)(hammer2_iocom_t *),
+			void (*iocom_sendmsg)(hammer2_iocom_t *),
+			void (*iocom_altmsg)(hammer2_iocom_t *));
+hammer2_msg_t *hammer2_ioq_read(hammer2_iocom_t *iocon);
+void hammer2_ioq_write(hammer2_iocom_t *iocon, hammer2_msg_t *msg);
+void hammer2_ioq_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+void hammer2_ioq_reply_term(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
+			uint16_t error);
+void hammer2_ioq_write_drain(hammer2_iocom_t *iocon);
+
+void hammer2_debug_remote(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+void iocom_printf(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
+			const char *ctl, ...);
