@@ -314,8 +314,6 @@ syncer_thread(void *_ctx)
 	int sc_flags;
 	int vnodes_synced = 0;
 
-	atomic_clear_int(&curthread->td_flags, TDF_VERBOSE);
-
 	/*
 	 * syncer0 runs till system shutdown; per-filesystem syncers are
 	 * terminated on filesystem unmount
