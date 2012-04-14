@@ -31,13 +31,11 @@
  *
  * @(#)gets.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/gets.c,v 1.17 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/gets.c,v 1.6 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
 #include <unistd.h>
 #include <stdio.h>
-#include <sys/cdefs.h>
 #include "un-namespace.h"
 #include "libc_private.h"
 #include "local.h"

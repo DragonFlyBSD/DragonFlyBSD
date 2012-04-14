@@ -3,12 +3,10 @@
  * David Leonard <d@openbsd.org>, 1999. Public domain.
  *
  * $OpenBSD: display.c,v 1.4 2002/02/19 19:39:36 millert Exp $
- * $DragonFly: src/games/hunt/hunt/display.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #define USE_CURSES
 
-#include <sys/cdefs.h>
 #include "display.h"
 
 #if !defined(USE_CURSES)

@@ -31,12 +31,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getttyent.c,v 1.13 2005/07/25 17:57:15 mdodd Exp $
- * $DragonFly: src/lib/libc/gen/getttyent.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)getttyent.c	8.1 (Berkeley) 6/4/93
  */
-
-#include <sys/cdefs.h>
 
 #include <ttyent.h>
 #include <stdio.h>

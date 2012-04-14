@@ -26,7 +26,6 @@
  * $FreeBSD: src/lib/msun/i387/fenv.c,v 1.4 2010/02/03 20:23:47 kib Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <machine/npx.h>
 #include "fenv.h"

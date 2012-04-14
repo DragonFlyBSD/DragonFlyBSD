@@ -34,8 +34,6 @@
  * $NetBSD: isnanl.c,v 1.5 2004/03/04 23:42:39 kleink Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include <machine/ieee.h>
 #include <math.h>
 

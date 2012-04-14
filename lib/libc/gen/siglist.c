@@ -31,10 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)siglist.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/siglist.c,v 1.3 2003/10/14 23:04:10 dillon Exp $
  */
 
-#include <sys/cdefs.h>
 #include <signal.h>
 
 const char *const sys_signame[NSIG] = {
