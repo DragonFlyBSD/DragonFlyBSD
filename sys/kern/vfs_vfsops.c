@@ -130,13 +130,19 @@ vfs_unmount(struct mount *mp, int mntflags)
 {
 	VFS_MPLOCK_DECLARE;
 	int error;
+	int flags;
+	void *ctx;
 
 	VFS_MPLOCK1(mp);
-	if (mp->mnt_kern_flag & MNTK_THR_SYNC)
-		vn_syncer_thr_stop(mp);
 	error = (mp->mnt_op->vfs_acdone)(mp); 
-	if (error == 0)
+	if (error == 0) {
+		flags = mp->mnt_kern_flag;
+		ctx = vn_syncer_thr_getctx(mp);
 		error = (mp->mnt_op->vfs_unmount)(mp, mntflags);
+	}
+	if (error == 0 &&
+	    flags & MNTK_THR_SYNC)
+		vn_syncer_thr_stop(ctx);
 	VFS_MPUNLOCK(mp);
 	return (error);
 }
