@@ -286,19 +286,6 @@ and install the kernel specified by the config file
 .Pa MINE .
 It defaults to
 .Pa GENERIC .
-.It Va LOADER_TFTP_SUPPORT
-.Pq Vt bool
-While not a buildkernel-affected option, there is no better place for this.
-By default the
-.Xr pxeboot 8
-loader retrieves the kernel via NFS.
-Defining this and recompiling
-.Pa /usr/src/sys/boot
-will cause it to retrieve the kernel via TFTP.
-This allows pxeboot to load a custom BOOTP diskless kernel yet
-still mount the server's
-.Pa /
-rather than load the server's kernel.
 .It Va NO_CPU_COPTFLAGS
 .Pq Vt str
 Setting this variable will prevent CPU specific compiler flags
