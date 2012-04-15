@@ -549,7 +549,7 @@ typedef int vfs_extattrctl_t(struct mount *mp, int cmd, struct vnode *vp,
 		    int attrnamespace, const char *attrname,
 		    struct ucred *cred);
 typedef int vfs_acinit_t(struct mount *mp);
-typedef int vfs_acdone_t(struct mount *mp);
+typedef void vfs_acdone_t(struct mount *mp);
 typedef void vfs_account_t(struct mount *mp,
 			uid_t uid, gid_t gid, int64_t delta);
 typedef void vfs_ncpgen_set_t(struct mount *mp, struct namecache *ncp);
@@ -630,6 +630,12 @@ struct vfsops {
 #define VFS_ACCOUNT(MP, U, G, D) \
 	if ((MP->mnt_op->vfs_account != NULL) && (D != 0)) \
 		MP->mnt_op->vfs_account(MP, U, G, D);
+#define VFS_ACINIT(MP, ERROR) \
+	if (vfs_accounting_enabled && MP->mnt_op->vfs_acinit != NULL) \
+		ERROR = MP->mnt_op->vfs_acinit(MP);
+#define VFS_ACDONE(MP) \
+	if (vfs_accounting_enabled && MP->mnt_op->vfs_acdone != NULL) \
+		MP->mnt_op->vfs_acdone(MP);
 #define VFS_NCPGEN_SET(MP, NCP) \
 	MP->mnt_op->vfs_ncpgen_set(MP, NCP)
 #define VFS_NCPGEN_TEST(MP, NCP) \

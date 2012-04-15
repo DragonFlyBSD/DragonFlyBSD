@@ -1485,7 +1485,7 @@ vfs_stdac_init(struct mount *mp)
 	return (0);
 }
 
-int
+void
 vfs_stdac_done(struct mount *mp)
 {
 	const char* fs_type;
@@ -1501,10 +1501,9 @@ vfs_stdac_done(struct mount *mp)
 		}
 	}
 	if (fstype_ok == 0)
-		return (0);
+		return;
 
 	vq_done(mp);
-	return (0);
 }
 
 void
