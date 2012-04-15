@@ -36,7 +36,7 @@ CLEANFILES= ${GENSRCS} aic7xxx_reg_print.c
 
 .if !defined(BUILDING_WITH_KERNEL)
 use_pci.h:
-	echo "#define NPCI 1" > use_pci.h
+	echo "#define NPCI 1" > ${.TARGET}
 .endif
 
 .include <bsd.kmod.mk>

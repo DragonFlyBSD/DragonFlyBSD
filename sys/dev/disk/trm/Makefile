@@ -6,7 +6,7 @@ SRCS=	trm.c trm.h opt_cam.h device_if.h bus_if.h \
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_scsi.h:
-	echo "#define SCSI_DELAY 15000" > opt_scsi.h
+	echo "#define SCSI_DELAY 15000" > ${.TARGET}
 .endif
 
 .include <bsd.kmod.mk>

@@ -1,7 +1,6 @@
 # Makefile for the bktr Brooktree Bt848/Bt878 PCI video capture device
 
 # $FreeBSD: src/sys/modules/bktr/bktr/Makefile,v 1.1.2.3 2001/07/24 09:51:06 dd Exp $
-# $DragonFly: src/sys/dev/video/bktr/bktr/Makefile,v 1.5 2004/08/13 17:51:08 dillon Exp $
 
 .PATH:  ${.CURDIR}/..
 KMOD=	bktr 
@@ -17,6 +16,6 @@ use_bktr.h:
 # Does not use SMBUS/IICBUS. Uses the old i2c code self contained in
 # the bt848 driver.
 use_smbus.h:
-	echo "#define NSMBUS 0" > use_smbus.h
+	echo "#define NSMBUS 0" > ${.TARGET}
 
 .include <bsd.kmod.mk>

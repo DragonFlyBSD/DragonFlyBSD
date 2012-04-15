@@ -7,7 +7,7 @@ SRCS   += cryptodev_if.h
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_ubsec.h:
-	echo "#define UBSEC_DEBUG 1" > opt_ubsec.h
+	echo "#define UBSEC_DEBUG 1" > ${.TARGET}
 .endif
 
 .include <bsd.kmod.mk>

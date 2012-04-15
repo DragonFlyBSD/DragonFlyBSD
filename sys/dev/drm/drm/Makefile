@@ -35,8 +35,8 @@ DRM_LINUX_OPT= "\#define DRM_LINUX 1"
 .endif
 
 opt_drm.h:
-	touch opt_drm.h
-	echo $(DRM_DEBUG_OPT) >> opt_drm.h
-	echo $(DRM_LINUX_OPT) >> opt_drm.h
+	touch ${.TARGET}
+	echo $(DRM_DEBUG_OPT) >> ${.TARGET}
+	echo $(DRM_LINUX_OPT) >> ${.TARGET}
 
 .include <bsd.kmod.mk>
