@@ -432,10 +432,10 @@ vfs_register(struct vfsconf *vfc)
 	}
 
 	/* file system uid and gid accounting */
-	if (vfsops->vfs_acinit == NULL) {
+	if (vfs_accounting_enabled && vfsops->vfs_acinit == NULL) {
 		vfsops->vfs_acinit = vfs_stdac_init;
 	}
-	if (vfsops->vfs_acdone == NULL) {
+	if (vfs_accounting_enabled && vfsops->vfs_acdone == NULL) {
 		vfsops->vfs_acdone = vfs_stdac_done;
 	}
 
