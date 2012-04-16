@@ -4098,22 +4098,16 @@ pci_alloc_1intr(device_t dev, int msi_enable, int *rid0, u_int *flags0)
 {
 	int rid, type;
 	u_int flags;
-	char env[64];
 
 	rid = 0;
 	type = PCI_INTR_TYPE_LEGACY;
 	flags = RF_SHAREABLE | RF_ACTIVE;
 
-	ksnprintf(env, sizeof(env), "hw.%s.msi.enable",
-	    device_get_nameunit(dev));
-	kgetenv_int(env, &msi_enable);
-
+	device_getenv_int(dev, "msi.enable", &msi_enable);
 	if (msi_enable) {
 		int cpu = -1;
 
-		ksnprintf(env, sizeof(env), "hw.%s.msi.cpu",
-		    device_get_nameunit(dev));
-		kgetenv_int(env, &cpu);
+		device_getenv_int(dev, "msi.cpu", &cpu);
 		if (cpu >= ncpus)
 			cpu = ncpus - 1;
 
