@@ -130,7 +130,7 @@ SYSCTL_INT(_net_route, OID_AUTO, route_debug, CTLFLAG_RW,
            &route_debug, 0, "");
 #endif
 
-int route_assert_owner_access = 0;
+int route_assert_owner_access = 1;
 SYSCTL_INT(_net_route, OID_AUTO, assert_owner_access, CTLFLAG_RW,
            &route_assert_owner_access, 0, "");
 
@@ -336,7 +336,7 @@ rtfree(struct rtentry *rt)
 	if (rt->rt_cpuid == mycpuid)
 		rtfree_oncpu(rt);
 	else
-		rtfree_remote(rt, 1);
+		rtfree_remote(rt);
 }
 
 void
@@ -375,14 +375,14 @@ rtfree_remote_dispatch(netmsg_t msg)
 }
 
 void
-rtfree_remote(struct rtentry *rt, int allow_panic)
+rtfree_remote(struct rtentry *rt)
 {
 	struct netmsg_base msg;
 	struct lwkt_msg *lmsg;
 
 	KKASSERT(rt->rt_cpuid != mycpuid);
 
-	if (route_assert_owner_access && allow_panic) {
+	if (route_assert_owner_access) {
 		panic("rt remote free rt_cpuid %d, mycpuid %d\n",
 		      rt->rt_cpuid, mycpuid);
 	} else {

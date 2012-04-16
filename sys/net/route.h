@@ -421,7 +421,7 @@ rtmask_purelookup(struct sockaddr *_mask)
 }
 
 void	rtfree_oncpu(struct rtentry *);
-void	rtfree_remote(struct rtentry *, int);
+void	rtfree_remote(struct rtentry *);
 void	rt_print(struct rt_addrinfo *, struct rtentry *);
 void	rt_addrinfo_print(int cmd, struct rt_addrinfo *);
 void	sockaddr_print(struct sockaddr *);
@@ -439,7 +439,7 @@ RTFREE(struct rtentry *rt)
 		else
 			--rt->rt_refcnt;
 	} else {
-		rtfree_remote(rt, 1);
+		rtfree_remote(rt);
 	}
 }
 
