@@ -533,13 +533,13 @@ emx_attach(device_t dev)
 
 	/* Calculate # of RX rings */
 	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", emx_rxr);
-	if (sc->rx_ring_cnt <= 0 || sc->rx_ring_cnt > EMX_NRX_RING) {
+	if (sc->rx_ring_cnt <= 0 || sc->rx_ring_cnt > EMX_NRX_RING ||
+	    sc->rx_ring_cnt > ncpus) {
 		if (ncpus > 1)
 			sc->rx_ring_cnt = EMX_NRX_RING;
 		else
 			sc->rx_ring_cnt = 1;
 	}
-	sc->rx_ring_inuse = sc->rx_ring_cnt;
 
 	/* Allocate RX/TX rings' busdma(9) stuffs */
 	error = emx_dma_alloc(sc);
@@ -966,10 +966,8 @@ emx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
 			reinit = 1;
 		}
-		if (mask & IFCAP_RSS) {
+		if (mask & IFCAP_RSS)
 			ifp->if_capenable ^= IFCAP_RSS;
-			reinit = 1;
-		}
 		if (reinit && (ifp->if_flags & IFF_RUNNING))
 			emx_init(sc);
 		break;
@@ -1125,16 +1123,8 @@ emx_init(void *xsc)
 	/* Setup Multicast table */
 	emx_set_multi(sc);
 
-	/*
-	 * Adjust # of RX ring to be used based on IFCAP_RSS
-	 */
-	if (ifp->if_capenable & IFCAP_RSS)
-		sc->rx_ring_inuse = sc->rx_ring_cnt;
-	else
-		sc->rx_ring_inuse = 1;
-
 	/* Prepare receive descriptors and buffers */
-	for (i = 0; i < sc->rx_ring_inuse; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		if (emx_init_rx_ring(sc, &sc->rx_data[i])) {
 			device_printf(dev,
 			    "Could not setup receive structures\n");
@@ -1223,7 +1213,7 @@ emx_intr(void *xsc)
 		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO)) {
 			int i;
 
-			for (i = 0; i < sc->rx_ring_inuse; ++i) {
+			for (i = 0; i < sc->rx_ring_cnt; ++i) {
 				lwkt_serialize_enter(
 				&sc->rx_data[i].rx_serialize);
 				emx_rxeof(sc, i, -1);
@@ -1705,7 +1695,7 @@ emx_stop(struct emx_softc *sc)
 		}
 	}
 
-	for (i = 0; i < sc->rx_ring_inuse; ++i)
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		emx_free_rx_ring(sc, &sc->rx_data[i]);
 
 	sc->csum_flags = 0;
@@ -2672,7 +2662,8 @@ emx_init_rx_unit(struct emx_softc *sc)
 	 * queue is to be supported, since we need it to figure out
 	 * packet type.
 	 */
-	if (ifp->if_capenable & (IFCAP_RSS | IFCAP_RXCSUM)) {
+	if ((ifp->if_capenable & IFCAP_RXCSUM) ||
+	    sc->rx_ring_cnt > 1) {
 		uint32_t rxcsum;
 
 		rxcsum = E1000_READ_REG(&sc->hw, E1000_RXCSUM);
@@ -2690,13 +2681,12 @@ emx_init_rx_unit(struct emx_softc *sc)
 	/*
 	 * Configure multiple receive queue (RSS)
 	 */
-	if (ifp->if_capenable & IFCAP_RSS) {
+	if (sc->rx_ring_cnt > 1) {
 		uint8_t key[EMX_NRSSRK * EMX_RSSRK_SIZE];
 		uint32_t reta;
 
-		KASSERT(sc->rx_ring_inuse == EMX_NRX_RING,
-			("invalid number of RX ring (%d)",
-			 sc->rx_ring_inuse));
+		KASSERT(sc->rx_ring_cnt == EMX_NRX_RING,
+		    ("invalid number of RX ring (%d)", sc->rx_ring_cnt));
 
 		/*
 		 * NOTE:
@@ -2726,7 +2716,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 		for (i = 0; i < EMX_RETA_SIZE; ++i) {
 			uint32_t q;
 
-			q = (i % sc->rx_ring_inuse) << EMX_RETA_RINGIDX_SHIFT;
+			q = (i % sc->rx_ring_cnt) << EMX_RETA_RINGIDX_SHIFT;
 			reta |= q << (8 * i);
 		}
 		EMX_RSS_DPRINTF(sc, 1, "reta 0x%08x\n", reta);
@@ -2757,7 +2747,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 		E1000_WRITE_REG(&sc->hw, E1000_RDTR, EMX_RDTR_82573);
 	}
 
-	for (i = 0; i < sc->rx_ring_inuse; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		struct emx_rxdata *rdata = &sc->rx_data[i];
 
 		/*
@@ -3438,8 +3428,8 @@ emx_add_sysctl(struct emx_softc *sc)
 			"# segments per TX interrupt");
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-		       OID_AUTO, "rx_ring_inuse", CTLFLAG_RD,
-		       &sc->rx_ring_inuse, 0, "RX ring in use");
+		       OID_AUTO, "rx_ring_cnt", CTLFLAG_RD,
+		       &sc->rx_ring_cnt, 0, "RX ring count");
 
 #ifdef EMX_RSS_DEBUG
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
