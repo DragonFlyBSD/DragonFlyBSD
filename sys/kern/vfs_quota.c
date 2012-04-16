@@ -285,6 +285,8 @@ sys_vquotactl(struct vquotactl_args *vqa)
 	struct mount *mp;
 	int error;
 
+	if (!vfs_accounting_enabled)
+		return EOPNOTSUPP;
 	path = vqa->path;
 	error = copyin(vqa->pref, &pref, sizeof(pref));
 	error = prop_dictionary_copyin(&pref, &dict);
