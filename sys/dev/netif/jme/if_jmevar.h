@@ -49,7 +49,6 @@
 #define JME_NRXRING_2		2
 #define JME_NRXRING_4		4
 
-#define JME_NRXRING_DEF		JME_NRXRING_1
 #define JME_NRXRING_MIN		JME_NRXRING_1
 #define JME_NRXRING_MAX		JME_NRXRING_4
 
@@ -283,7 +282,6 @@ struct jme_softc {
 	int			jme_rx_desc_cnt;
 	int			jme_tx_desc_cnt;
 	int			jme_rx_ring_cnt;
-	int			jme_rx_ring_inuse;
 	int			jme_rss_debug;
 	u_int			jme_rx_ring_pkt[JME_NRXRING_MAX];
 };
