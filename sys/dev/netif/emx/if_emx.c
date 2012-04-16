@@ -287,7 +287,7 @@ static int	emx_txd = EMX_DEFAULT_TXD;
 static int	emx_smart_pwr_down = 0;
 
 /* Controls whether promiscuous also shows bad packets */
-static int	emx_debug_sbp = FALSE;
+static int	emx_debug_sbp = 0;
 
 static int	emx_82573_workaround = 1;
 static int	emx_msi_enable = 1;
@@ -408,7 +408,7 @@ emx_attach(device_t dev)
 {
 	struct emx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error = 0, i;
+	int error = 0, i, throttle;
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
 
@@ -494,11 +494,11 @@ emx_attach(device_t dev)
 	/*
 	 * Interrupt throttle rate
 	 */
-	if (emx_int_throttle_ceil == 0) {
+	throttle = device_getenv_int(dev, "int_throttle_ceil",
+	    emx_int_throttle_ceil);
+	if (throttle == 0) {
 		sc->int_throttle_ceil = 0;
 	} else {
-		int throttle = emx_int_throttle_ceil;
-
 		if (throttle < 0)
 			throttle = EMX_DEFAULT_ITR;
 
@@ -1910,19 +1910,20 @@ emx_create_tx_ring(struct emx_softc *sc)
 {
 	device_t dev = sc->dev;
 	struct emx_txbuf *tx_buffer;
-	int error, i, tsize;
+	int error, i, tsize, ntxd;
 
 	/*
 	 * Validate number of transmit descriptors.  It must not exceed
 	 * hardware maximum, and must be multiple of E1000_DBA_ALIGN.
 	 */
-	if ((emx_txd * sizeof(struct e1000_tx_desc)) % EMX_DBA_ALIGN != 0 ||
-	    emx_txd > EMX_MAX_TXD || emx_txd < EMX_MIN_TXD) {
+	ntxd = device_getenv_int(dev, "txd", emx_txd);
+	if ((ntxd * sizeof(struct e1000_tx_desc)) % EMX_DBA_ALIGN != 0 ||
+	    ntxd > EMX_MAX_TXD || ntxd < EMX_MIN_TXD) {
 		device_printf(dev, "Using %d TX descriptors instead of %d!\n",
-		    EMX_DEFAULT_TXD, emx_txd);
+		    EMX_DEFAULT_TXD, ntxd);
 		sc->num_tx_desc = EMX_DEFAULT_TXD;
 	} else {
-		sc->num_tx_desc = emx_txd;
+		sc->num_tx_desc = ntxd;
 	}
 
 	/*
@@ -2500,19 +2501,20 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 {
 	device_t dev = sc->dev;
 	struct emx_rxbuf *rx_buffer;
-	int i, error, rsize;
+	int i, error, rsize, nrxd;
 
 	/*
 	 * Validate number of receive descriptors.  It must not exceed
 	 * hardware maximum, and must be multiple of E1000_DBA_ALIGN.
 	 */
-	if ((emx_rxd * sizeof(emx_rxdesc_t)) % EMX_DBA_ALIGN != 0 ||
-	    emx_rxd > EMX_MAX_RXD || emx_rxd < EMX_MIN_RXD) {
+	nrxd = device_getenv_int(dev, "rxd", emx_rxd);
+	if ((nrxd * sizeof(emx_rxdesc_t)) % EMX_DBA_ALIGN != 0 ||
+	    nrxd > EMX_MAX_RXD || nrxd < EMX_MIN_RXD) {
 		device_printf(dev, "Using %d RX descriptors instead of %d!\n",
-		    EMX_DEFAULT_RXD, emx_rxd);
+		    EMX_DEFAULT_RXD, nrxd);
 		rdata->num_rx_desc = EMX_DEFAULT_RXD;
 	} else {
-		rdata->num_rx_desc = emx_rxd;
+		rdata->num_rx_desc = nrxd;
 	}
 
 	/*
