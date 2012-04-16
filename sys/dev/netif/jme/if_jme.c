@@ -236,7 +236,7 @@ static const struct {
 
 static int	jme_rx_desc_count = JME_RX_DESC_CNT_DEF;
 static int	jme_tx_desc_count = JME_TX_DESC_CNT_DEF;
-static int	jme_rx_ring_count = JME_NRXRING_DEF;
+static int	jme_rx_ring_count = 0;
 static int	jme_msi_enable = 1;
 static int	jme_msix_enable = 1;
 
@@ -644,18 +644,24 @@ jme_attach(device_t dev)
 		    &sc->jme_cdata.jme_rx_data[i].jme_rx_serialize);
 	}
 
-	sc->jme_rx_desc_cnt = roundup(jme_rx_desc_count, JME_NDESC_ALIGN);
+	sc->jme_rx_desc_cnt = device_getenv_int(dev, "rx_desc_count",
+	    jme_rx_desc_count);
+	sc->jme_rx_desc_cnt = roundup(sc->jme_rx_desc_cnt, JME_NDESC_ALIGN);
 	if (sc->jme_rx_desc_cnt > JME_NDESC_MAX)
 		sc->jme_rx_desc_cnt = JME_NDESC_MAX;
 
-	sc->jme_tx_desc_cnt = roundup(jme_tx_desc_count, JME_NDESC_ALIGN);
+	sc->jme_tx_desc_cnt = device_getenv_int(dev, "tx_desc_count",
+	    jme_tx_desc_count);
+	sc->jme_tx_desc_cnt = roundup(sc->jme_tx_desc_cnt, JME_NDESC_ALIGN);
 	if (sc->jme_tx_desc_cnt > JME_NDESC_MAX)
 		sc->jme_tx_desc_cnt = JME_NDESC_MAX;
 
 	/*
 	 * Calculate rx rings
 	 */
-	sc->jme_rx_ring_cnt = if_ring_count2(jme_rx_ring_count,
+	sc->jme_rx_ring_cnt = device_getenv_int(dev, "rx_ring_count",
+	    jme_rx_ring_count);
+	sc->jme_rx_ring_cnt = if_ring_count2(sc->jme_rx_ring_cnt,
 	    JME_NRXRING_MAX);
 	sc->jme_rx_ring_inuse = sc->jme_rx_ring_cnt;
 
@@ -3454,15 +3460,11 @@ jme_msix_try_alloc(device_t dev)
 	struct jme_softc *sc = device_get_softc(dev);
 	struct jme_msix_data *msix;
 	int error, i, r, msix_enable, msix_count;
-	char env[64];
 
 	msix_count = 1 + sc->jme_rx_ring_cnt;
 	KKASSERT(msix_count <= JME_NMSIX);
 
-	msix_enable = jme_msix_enable;
-	ksnprintf(env, sizeof(env), "hw.%s.msix.enable",
-	    device_get_nameunit(dev));
-	kgetenv_int(env, &msix_enable);
+	msix_enable = device_getenv_int(dev, "msix.enable", jme_msix_enable);
 
 	/*
 	 * We leave the 1st MSI-X vector unused, so we
