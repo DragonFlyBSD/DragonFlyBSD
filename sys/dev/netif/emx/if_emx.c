@@ -285,6 +285,7 @@ static int	emx_int_throttle_ceil = EMX_DEFAULT_ITR;
 static int	emx_rxd = EMX_DEFAULT_RXD;
 static int	emx_txd = EMX_DEFAULT_TXD;
 static int	emx_smart_pwr_down = 0;
+static int	emx_rxr = 0;
 
 /* Controls whether promiscuous also shows bad packets */
 static int	emx_debug_sbp = 0;
@@ -294,6 +295,7 @@ static int	emx_msi_enable = 1;
 
 TUNABLE_INT("hw.emx.int_throttle_ceil", &emx_int_throttle_ceil);
 TUNABLE_INT("hw.emx.rxd", &emx_rxd);
+TUNABLE_INT("hw.emx.rxr", &emx_rxr);
 TUNABLE_INT("hw.emx.txd", &emx_txd);
 TUNABLE_INT("hw.emx.smart_pwr_down", &emx_smart_pwr_down);
 TUNABLE_INT("hw.emx.sbp", &emx_debug_sbp);
@@ -530,10 +532,13 @@ emx_attach(device_t dev)
 	sc->hw.mac.report_tx_early = 1;
 
 	/* Calculate # of RX rings */
-	if (ncpus > 1)
-		sc->rx_ring_cnt = EMX_NRX_RING;
-	else
-		sc->rx_ring_cnt = 1;
+	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", emx_rxr);
+	if (sc->rx_ring_cnt <= 0 || sc->rx_ring_cnt > EMX_NRX_RING) {
+		if (ncpus > 1)
+			sc->rx_ring_cnt = EMX_NRX_RING;
+		else
+			sc->rx_ring_cnt = 1;
+	}
 	sc->rx_ring_inuse = sc->rx_ring_cnt;
 
 	/* Allocate RX/TX rings' busdma(9) stuffs */
