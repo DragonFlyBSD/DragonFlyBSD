@@ -2751,3 +2751,28 @@ if_deregister_com_alloc(u_char type)
         if_com_alloc[type] = NULL;
         if_com_free[type] = NULL;
 }
+
+int
+if_ring_count2(int cnt, int cnt_max)
+{
+	int shift = 0;
+
+	KASSERT(cnt_max >= 1 && powerof2(cnt_max),
+	    ("invalid ring count max %d\n", cnt_max));
+
+	if (cnt <= 0)
+		cnt = cnt_max;
+	if (cnt > ncpus2)
+		cnt = ncpus2;
+	if (cnt > cnt_max)
+		cnt = cnt_max;
+
+	while ((1 << (shift + 1)) <= cnt)
+		++shift;
+	cnt = 1 << shift;
+
+	KASSERT(cnt >= 1 && cnt <= ncpus2 && cnt <= cnt_max,
+	    ("calculate cnt %d, ncpus2 %d, cnt max %d\n",
+	     cnt, ncpus2, cnt_max));
+	return cnt;
+}

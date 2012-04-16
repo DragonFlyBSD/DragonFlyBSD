@@ -533,13 +533,7 @@ emx_attach(device_t dev)
 
 	/* Calculate # of RX rings */
 	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", emx_rxr);
-	if (sc->rx_ring_cnt <= 0 || sc->rx_ring_cnt > EMX_NRX_RING ||
-	    sc->rx_ring_cnt > ncpus) {
-		if (ncpus > 1)
-			sc->rx_ring_cnt = EMX_NRX_RING;
-		else
-			sc->rx_ring_cnt = 1;
-	}
+	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, EMX_NRX_RING);
 
 	/* Allocate RX/TX rings' busdma(9) stuffs */
 	error = emx_dma_alloc(sc);
