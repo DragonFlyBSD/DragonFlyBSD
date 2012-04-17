@@ -1,4 +1,4 @@
-/* $FreeBSD: src/sys/dev/mpt/mpt_raid.h,v 1.7 2006/07/16 03:31:01 mjacob Exp $ */
+/* $FreeBSD: src/sys/dev/mpt/mpt_raid.h,v 1.9 2011/07/29 18:38:31 marius Exp $ */
 /*-
  * Definitions for the integrated RAID features LSI MPT Fusion adapters.
  *
@@ -53,31 +53,14 @@ typedef enum {
 	MPT_RAID_MWCE_NC
 } mpt_raid_mwce_t;
 
-const char *mpt_vol_type(struct mpt_raid_volume *);
-const char *mpt_vol_state(struct mpt_raid_volume *);
-const char *mpt_disk_state(struct mpt_raid_disk *);
-void
-mpt_vol_prt(struct mpt_softc *, struct mpt_raid_volume *, const char *fmt, ...)
-__printflike(3, 4);
-void
-mpt_disk_prt(struct mpt_softc *, struct mpt_raid_disk *, const char *, ...)
-__printflike(3, 4);
-
-int
-mpt_issue_raid_req(struct mpt_softc *, struct mpt_raid_volume *,
-    struct mpt_raid_disk *, request_t *, u_int, uint32_t, bus_addr_t,
-    bus_size_t, int, int);
-
-cam_status
-mpt_map_physdisk(struct mpt_softc *, union ccb *, target_id_t *);
-int mpt_is_raid_volume(struct mpt_softc *, int);
+cam_status mpt_map_physdisk(struct mpt_softc *, union ccb *, target_id_t *);
+int mpt_is_raid_member(struct mpt_softc *, target_id_t);
+int mpt_is_raid_volume(struct mpt_softc *, target_id_t);
 #if	0
 cam_status
 mpt_raid_quiesce_disk(struct mpt_softc *, struct mpt_raid_disk *, request_t *);
 #endif
 
-int	mpt_refresh_raid_data(struct mpt_softc *);
-void	mpt_schedule_raid_refresh(struct mpt_softc *);
 void	mpt_raid_free_mem(struct mpt_softc *);
 
 static __inline void

@@ -62,7 +62,7 @@
  * Support from LSI-Logic has also gone a great deal toward making this a
  * workable subsystem and is gratefully acknowledged.
  *
- * $FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.19 2011/04/22 09:59:16 marius Exp $
+ * $FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.20 2011/07/29 18:35:10 marius Exp $
  */
 
 #include <dev/disk/mpt/mpt.h>
@@ -284,6 +284,7 @@ mpt_scsi_state(int code)
 	}
 	return buf;
 }
+
 static char *
 mpt_scsi_status(int code)
 {
@@ -297,10 +298,11 @@ mpt_scsi_status(int code)
 	ksnprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
 	return buf;
 }
-static char *
+
+static const char *
 mpt_who(int who_init)
 {
-	char *who;
+	const char *who;
 
 	switch (who_init) {
 	case MPT_DB_INIT_NOONE:       who = "No One";        break;
@@ -314,10 +316,10 @@ mpt_who(int who_init)
 	return who;
 }
 
-static char *
+static const char *
 mpt_state(u_int32_t mb)
 {
-	char *text;
+	const char *text;
 
 	switch (MPT_STATE(mb)) {
 		case MPT_DB_STATE_RESET:  text = "Reset";   break;
@@ -346,6 +348,7 @@ mpt_scsi_tm_type(int code)
 void
 mpt_print_db(u_int32_t mb)
 {
+
 	kprintf("mpt mailbox: (0x%x) State %s  WhoInit %s\n",
 	    mb, mpt_state(mb), mpt_who(MPT_WHO(mb)));
 }
@@ -356,6 +359,7 @@ mpt_print_db(u_int32_t mb)
 static void
 mpt_print_reply_hdr(MSG_DEFAULT_REPLY *msg)
 {
+
 	kprintf("%s Reply @ %p\n", mpt_ioc_function(msg->Function), msg);
 	kprintf("\tIOC Status    %s\n", mpt_ioc_status(msg->IOCStatus));
 	kprintf("\tIOCLogInfo    0x%08x\n", msg->IOCLogInfo);
@@ -367,6 +371,7 @@ mpt_print_reply_hdr(MSG_DEFAULT_REPLY *msg)
 static void
 mpt_print_init_reply(MSG_IOC_INIT_REPLY *msg)
 {
+
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
 	kprintf("\tWhoInit       %s\n", mpt_who(msg->WhoInit));
 	kprintf("\tMaxDevices    0x%02x\n", msg->MaxDevices);
@@ -376,6 +381,7 @@ mpt_print_init_reply(MSG_IOC_INIT_REPLY *msg)
 static void
 mpt_print_ioc_facts(MSG_IOC_FACTS_REPLY *msg)
 {
+
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
 	kprintf("\tIOCNumber     %d\n",		msg->IOCNumber);
 	kprintf("\tMaxChainDepth %d\n",		msg->MaxChainDepth);
@@ -401,6 +407,7 @@ mpt_print_ioc_facts(MSG_IOC_FACTS_REPLY *msg)
 static void
 mpt_print_enable_reply(MSG_PORT_ENABLE_REPLY *msg)
 {
+
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
 	kprintf("\tPort:         %d\n", msg->PortNumber);
 }
@@ -408,6 +415,7 @@ mpt_print_enable_reply(MSG_PORT_ENABLE_REPLY *msg)
 static void
 mpt_print_scsi_io_reply(MSG_SCSI_IO_REPLY *msg)
 {
+
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
 	kprintf("\tBus:          %d\n", msg->Bus);
 	kprintf("\tTargetID      %d\n", msg->TargetID);
@@ -419,11 +427,10 @@ mpt_print_scsi_io_reply(MSG_SCSI_IO_REPLY *msg)
 	kprintf("\tResponseInfo  0x%08x\n", msg->ResponseInfo);
 }
 
-
-
 static void
 mpt_print_event_notice(MSG_EVENT_NOTIFY_REPLY *msg)
 {
+
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
 	kprintf("\tEvent:        %s\n", mpt_ioc_event(msg->Event));
 	kprintf("\tEventContext  0x%04x\n", msg->EventContext);
@@ -516,7 +523,7 @@ mpt_print_request_hdr(MSG_REQUEST_HEADER *req)
 	kprintf("\tMsgContext    0x%08x\n", req->MsgContext);
 }
 
-void
+static void
 mpt_print_scsi_io_request(MSG_SCSI_IO_REQUEST *orig_msg)
 {
 	MSG_SCSI_IO_REQUEST local, *msg = &local;
@@ -574,6 +581,7 @@ mpt_print_scsi_io_request(MSG_SCSI_IO_REQUEST *orig_msg)
 static void
 mpt_print_scsi_tmf_request(MSG_SCSI_TASK_MGMT *msg)
 {
+
 	mpt_print_request_hdr((MSG_REQUEST_HEADER *)msg);
 	kprintf("\tLun             0x%02x\n", msg->LUN[1]);
 	kprintf("\tTaskType        %s\n", mpt_scsi_tm_type(msg->TaskType));
@@ -584,6 +592,7 @@ mpt_print_scsi_tmf_request(MSG_SCSI_TASK_MGMT *msg)
 static void
 mpt_print_scsi_target_assist_request(PTR_MSG_TARGET_ASSIST_REQUEST msg)
 {
+
 	mpt_print_request_hdr((MSG_REQUEST_HEADER *)msg);
 	kprintf("\tStatusCode    0x%02x\n", msg->StatusCode);
 	kprintf("\tTargetAssist  0x%02x\n", msg->TargetAssistFlags);
@@ -599,6 +608,7 @@ static void
 mpt_print_scsi_target_status_send_request(MSG_TARGET_STATUS_SEND_REQUEST *msg)
 {
 	SGE_IO_UNION x;
+
 	mpt_print_request_hdr((MSG_REQUEST_HEADER *)msg);
 	kprintf("\tStatusCode    0x%02x\n", msg->StatusCode);
 	kprintf("\tStatusFlags   0x%02x\n", msg->StatusFlags);
@@ -636,7 +646,14 @@ mpt_print_request(void *vreq)
 	}
 }
 
-int
+#if 0
+typedef struct mpt_decode_entry {
+	char    *name;
+	u_int	 value;
+	u_int	 mask;
+} mpt_decode_entry_t;
+
+static int
 mpt_decode_value(mpt_decode_entry_t *table, u_int num_entries,
 		 const char *name, u_int value, u_int *cur_column,
 		 u_int wrap_point)
@@ -688,7 +705,7 @@ mpt_decode_value(mpt_decode_entry_t *table, u_int num_entries,
 	return (printed);
 }
 
-static mpt_decode_entry_t req_state_parse_table[] = {
+static const mpt_decode_entry_t req_state_parse_table[] = {
 	{ "REQ_FREE",		0x00, 0xff },
 	{ "REQ_ALLOCATED",	0x01, 0x01 },
 	{ "REQ_QUEUED",		0x02, 0x02 },
@@ -697,13 +714,15 @@ static mpt_decode_entry_t req_state_parse_table[] = {
 	{ "REQ_NEED_WAKEUP",	0x10, 0x10 }
 };
 
-void
+static void
 mpt_req_state(mpt_req_state_t state)
 {
+
 	mpt_decode_value(req_state_parse_table,
 			 NUM_ELEMENTS(req_state_parse_table),
 			 "REQ_STATE", state, NULL, 80);
 }
+#endif
 
 #define	LAST_SGE	(		\
 	MPI_SGE_FLAGS_END_OF_LIST |	\
@@ -804,6 +823,7 @@ mpt_dump_data(struct mpt_softc *mpt, const char *msg, void *addr, int len)
 {
 	int offset;
 	uint8_t *cp = addr;
+
 	mpt_prt(mpt, "%s:", msg);
 	for (offset = 0; offset < len; offset++) {
 		if ((offset & 0xf) == 0) {
@@ -819,6 +839,7 @@ mpt_dump_request(struct mpt_softc *mpt, request_t *req)
 {
         uint32_t *pReq = req->req_vbuf;
 	int o;
+
 	mpt_prt(mpt, "Send Request %d (%jx):",
 	    req->index, (uintmax_t) req->req_pbuf);
 	for (o = 0; o < mpt->ioc_facts.RequestFrameSize; o++) {

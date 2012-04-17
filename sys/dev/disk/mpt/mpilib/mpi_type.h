@@ -1,6 +1,6 @@
-/* $FreeBSD: src/sys/dev/mpt/mpilib/mpi_type.h,v 1.10 2006/02/26 22:50:14 mjacob Exp $ */
+/* $FreeBSD: src/sys/dev/mpt/mpilib/mpi_type.h,v 1.12 2012/03/24 16:23:21 marius Exp $ */
 /*
- * Copyright (c) 2000-2005, LSI Logic Corporation and its contributors.
+ * Copyright (c) 2000-2010, LSI Logic Corporation and its contributors.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -84,7 +84,7 @@ typedef uint32_t U32;
 
 #else
 
-#if defined(unix) || defined(__arm) || defined(ALPHA) || defined(__PPC__) || defined(__ppc)
+#if defined(__unix__) || defined(__arm) || defined(ALPHA) || defined(__PPC__) || defined(__ppc)
 
     typedef signed   int   S32;
     typedef unsigned int   U32;

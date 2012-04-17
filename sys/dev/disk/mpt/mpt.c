@@ -94,7 +94,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF THE COPYRIGHT
  * OWNER OR CONTRIBUTOR IS ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/mpt/mpt.c,v 1.57 2011/04/22 09:59:16 marius Exp $
+ * $FreeBSD: src/sys/dev/mpt/mpt.c,v 1.61 2012/02/11 12:03:44 marius Exp $
  */
 
 #include <dev/disk/mpt/mpt.h>
@@ -147,7 +147,7 @@ static __inline struct mpt_personality *
 mpt_pers_find(struct mpt_softc *mpt, u_int start_at)
 {
 	KASSERT(start_at <= MPT_MAX_PERSONALITIES,
-		("mpt_pers_find: starting position out of range\n"));
+		("mpt_pers_find: starting position out of range"));
 
 	while (start_at < MPT_MAX_PERSONALITIES
 	    && (mpt->mpt_pers_mask & (0x1 << start_at)) == 0) {
@@ -300,66 +300,75 @@ mpt_modevent(module_t mod, int type, void *data)
 	return (error);
 }
 
-int
+static int
 mpt_stdload(struct mpt_personality *pers)
 {
+
 	/* Load is always successful. */
 	return (0);
 }
 
-int
+static int
 mpt_stdprobe(struct mpt_softc *mpt)
 {
+
 	/* Probe is always successful. */
 	return (0);
 }
 
-int
+static int
 mpt_stdattach(struct mpt_softc *mpt)
 {
+
 	/* Attach is always successful. */
 	return (0);
 }
 
-int
+static int
 mpt_stdenable(struct mpt_softc *mpt)
 {
+
 	/* Enable is always successful. */
 	return (0);
 }
 
-void
+static void
 mpt_stdready(struct mpt_softc *mpt)
 {
+
 }
 
-
-int
+static int
 mpt_stdevent(struct mpt_softc *mpt, request_t *req, MSG_EVENT_NOTIFY_REPLY *msg)
 {
+
 	mpt_lprt(mpt, MPT_PRT_DEBUG, "mpt_stdevent: 0x%x\n", msg->Event & 0xFF);
 	/* Event was not for us. */
 	return (0);
 }
 
-void
+static void
 mpt_stdreset(struct mpt_softc *mpt, int type)
 {
+
 }
 
-void
+static void
 mpt_stdshutdown(struct mpt_softc *mpt)
 {
+
 }
 
-void
+static void
 mpt_stddetach(struct mpt_softc *mpt)
 {
+
 }
 
-int
+static int
 mpt_stdunload(struct mpt_personality *pers)
 {
+
 	/* Unload is always successful. */
 	return (0);
 }
@@ -381,7 +390,6 @@ mpt_postattach(void *unused)
 	}
 }
 SYSINIT(mptdev, SI_SUB_CONFIGURE, SI_ORDER_MIDDLE, mpt_postattach, NULL);
-
 
 /******************************* Bus DMA Support ******************************/
 void
@@ -477,6 +485,7 @@ static int
 mpt_default_reply_handler(struct mpt_softc *mpt, request_t *req,
 	uint32_t reply_desc, MSG_DEFAULT_REPLY *reply_frame)
 {
+
 	mpt_prt(mpt,
 	    "Default Handler Called: req=%p:%u reply_descriptor=%x frame=%p\n",
 	    req, req->serno, reply_desc, reply_frame);
@@ -493,8 +502,8 @@ static int
 mpt_config_reply_handler(struct mpt_softc *mpt, request_t *req,
  uint32_t reply_desc, MSG_DEFAULT_REPLY *reply_frame)
 {
-	if (req != NULL) {
 
+	if (req != NULL) {
 		if (reply_frame != NULL) {
 			MSG_CONFIG *cfgp;
 			MSG_CONFIG_REPLY *reply;
@@ -527,6 +536,7 @@ static int
 mpt_handshake_reply_handler(struct mpt_softc *mpt, request_t *req,
  uint32_t reply_desc, MSG_DEFAULT_REPLY *reply_frame)
 {
+
 	/* Nothing to be done. */
 	return (TRUE);
 }
@@ -649,6 +659,7 @@ static int
 mpt_core_event(struct mpt_softc *mpt, request_t *req,
 	       MSG_EVENT_NOTIFY_REPLY *msg)
 {
+
 	mpt_lprt(mpt, MPT_PRT_DEBUG, "mpt_core_event: 0x%x\n",
                  msg->Event & 0xFF);
 	switch(msg->Event & 0xFF) {
@@ -869,6 +880,7 @@ mpt_complete_request_chain(struct mpt_softc *mpt, struct req_queue *chain,
 void
 mpt_dump_reply_frame(struct mpt_softc *mpt, MSG_DEFAULT_REPLY *reply_frame)
 {
+
 	mpt_prt(mpt, "Address Reply:\n");
 	mpt_print_reply(reply_frame);
 }
@@ -880,12 +892,14 @@ static __inline  uint32_t mpt_rd_intr(struct mpt_softc *mpt);
 static __inline uint32_t
 mpt_rd_db(struct mpt_softc *mpt)
 {
+
 	return mpt_read(mpt, MPT_OFFSET_DOORBELL);
 }
 
 static __inline uint32_t
 mpt_rd_intr(struct mpt_softc *mpt)
 {
+
 	return mpt_read(mpt, MPT_OFFSET_INTR_STATUS);
 }
 
@@ -894,6 +908,7 @@ static int
 mpt_wait_db_ack(struct mpt_softc *mpt)
 {
 	int i;
+
 	for (i=0; i < MPT_MAX_WAIT; i++) {
 		if (!MPT_DB_IS_BUSY(mpt_rd_intr(mpt))) {
 			maxwait_ack = i > maxwait_ack ? i : maxwait_ack;
@@ -909,6 +924,7 @@ static int
 mpt_wait_db_int(struct mpt_softc *mpt)
 {
 	int i;
+
 	for (i = 0; i < MPT_MAX_WAIT; i++) {
 		if (MPT_DB_INTR(mpt_rd_intr(mpt))) {
 			maxwait_int = i > maxwait_int ? i : maxwait_int;
@@ -924,6 +940,7 @@ void
 mpt_check_doorbell(struct mpt_softc *mpt)
 {
 	uint32_t db = mpt_rd_db(mpt);
+
 	if (MPT_STATE(db) != MPT_DB_STATE_RUNNING) {
 		mpt_prt(mpt, "Device not running\n");
 		mpt_print_db(db);
@@ -955,6 +972,7 @@ static int mpt_download_fw(struct mpt_softc *mpt);
 static int
 mpt_soft_reset(struct mpt_softc *mpt)
 {
+
 	mpt_lprt(mpt, MPT_PRT_DEBUG, "soft reset\n");
 
 	/* Have to use hard reset if we are not in Running state */
@@ -1018,6 +1036,7 @@ mpt_enable_diag_mode(struct mpt_softc *mpt)
 static void
 mpt_disable_diag_mode(struct mpt_softc *mpt)
 {
+
 	mpt_write(mpt, MPT_OFFSET_SEQUENCE, 0xFFFFFFFF);
 }
 
@@ -1032,6 +1051,12 @@ mpt_hard_reset(struct mpt_softc *mpt)
 	uint32_t diagreg;
 
 	mpt_lprt(mpt, MPT_PRT_DEBUG, "hard reset\n");
+
+	if (mpt->is_1078) {
+		mpt_write(mpt, MPT_OFFSET_RESET_1078, 0x07);
+		DELAY(1000);
+		return;
+	}
 
 	error = mpt_enable_diag_mode(mpt);
 	if (error) {
@@ -1093,6 +1118,7 @@ mpt_hard_reset(struct mpt_softc *mpt)
 static void
 mpt_core_ioc_reset(struct mpt_softc *mpt, int type)
 {
+
 	/*
 	 * Complete all pending requests with a status
 	 * appropriate for an IOC reset.
@@ -1100,7 +1126,6 @@ mpt_core_ioc_reset(struct mpt_softc *mpt, int type)
 	mpt_complete_request_chain(mpt, &mpt->request_pending_list,
 				   MPI_IOCSTATUS_INVALID_STATE);
 }
-
 
 /*
  * Reset the IOC when needed. Try software command first then if needed
@@ -1177,8 +1202,7 @@ mpt_free_request(struct mpt_softc *mpt, request_t *req)
 	uint32_t offset, reply_baddr;
 
 	if (req == NULL || req != &mpt->request_pool[req->index]) {
-		panic("mpt_free_request bad req ptr\n");
-		return;
+		panic("mpt_free_request: bad req ptr");
 	}
 	if ((nxt = req->chain) != NULL) {
 		req->chain = NULL;
@@ -1241,7 +1265,7 @@ retry:
 	req = TAILQ_FIRST(&mpt->request_free_list);
 	if (req != NULL) {
 		KASSERT(req == &mpt->request_pool[req->index],
-		    ("mpt_get_request: corrupted request free list\n"));
+		    ("mpt_get_request: corrupted request free list"));
 		KASSERT(req->state == REQ_STATE_FREE,
 		    ("req %p:%u not free on free list %x index %d function %x",
 		    req, req->serno, req->state, req->index,
@@ -1262,6 +1286,7 @@ retry:
 void
 mpt_send_cmd(struct mpt_softc *mpt, request_t *req)
 {
+
 	if (mpt->verbose > MPT_PRT_DEBUG2) {
 		mpt_dump_request(mpt, req);
 	}
@@ -2057,7 +2082,7 @@ mpt_send_port_enable(struct mpt_softc *mpt, int port)
 
 	mpt_send_cmd(mpt, req);
 	error = mpt_wait_req(mpt, req, REQ_STATE_DONE, REQ_STATE_DONE,
-	    FALSE, (mpt->is_sas || mpt->is_fc)? 30000 : 3000);
+	    FALSE, (mpt->is_sas || mpt->is_fc)? 300000 : 30000);
 	if (error != 0) {
 		mpt_prt(mpt, "port %d enable timed out\n", port);
 		return (-1);
@@ -2103,6 +2128,7 @@ mpt_send_event_request(struct mpt_softc *mpt, int onoff)
 void
 mpt_enable_ints(struct mpt_softc *mpt)
 {
+
 	/* Unmask every thing except door bell int */
 	mpt_write(mpt, MPT_OFFSET_INTR_MASK, MPT_INTR_DB_MASK);
 }
@@ -2113,6 +2139,7 @@ mpt_enable_ints(struct mpt_softc *mpt)
 void
 mpt_disable_ints(struct mpt_softc *mpt)
 {
+
 	/* Mask all interrupts */
 	mpt_write(mpt, MPT_OFFSET_INTR_MASK,
 	    MPT_INTR_REPLY_MASK | MPT_INTR_DB_MASK);
@@ -2210,7 +2237,7 @@ mpt_detach(struct mpt_softc *mpt)
 	return (0);
 }
 
-int
+static int
 mpt_core_load(struct mpt_personality *pers)
 {
 	int i;
@@ -2236,7 +2263,7 @@ mpt_core_load(struct mpt_personality *pers)
  * Initialize per-instance driver data and perform
  * initial controller configuration.
  */
-int
+static int
 mpt_core_attach(struct mpt_softc *mpt)
 {
         int val, error;
@@ -2275,9 +2302,10 @@ mpt_core_attach(struct mpt_softc *mpt)
 	return (error);
 }
 
-int
+static int
 mpt_core_enable(struct mpt_softc *mpt)
 {
+
 	/*
 	 * We enter with the IOC enabled, but async events
 	 * not enabled, ports not enabled and interrupts
@@ -2325,13 +2353,14 @@ mpt_core_enable(struct mpt_softc *mpt)
 	return (0);
 }
 
-void
+static void
 mpt_core_shutdown(struct mpt_softc *mpt)
 {
+
 	mpt_disable_ints(mpt);
 }
 
-void
+static void
 mpt_core_detach(struct mpt_softc *mpt)
 {
 	int val;
@@ -2353,9 +2382,10 @@ mpt_core_detach(struct mpt_softc *mpt)
 		sysctl_ctx_free(&mpt->mpt_sysctl_ctx);
 }
 
-int
+static int
 mpt_core_unload(struct mpt_personality *pers)
 {
+
 	/* Unload is always successful. */
 	return (0);
 }
@@ -2427,6 +2457,11 @@ mpt_download_fw(struct mpt_softc *mpt)
 	int error;
 	uint32_t ext_offset;
 	uint32_t data;
+
+	if (mpt->pci_pio_reg == NULL) {
+		mpt_prt(mpt, "No PIO resource!\n");
+		return (ENXIO);
+	}
 
 	mpt_prt(mpt, "Downloading Firmware - Image Size %d\n",
 		mpt->fw_image_size);
@@ -2577,6 +2612,7 @@ static void
 mpt_dma_buf_free(struct mpt_softc *mpt)
 {
 	int i;
+
 	if (mpt->request_dmat == 0) {
 		mpt_lprt(mpt, MPT_PRT_DEBUG, "already released dma memory\n");
 		return;

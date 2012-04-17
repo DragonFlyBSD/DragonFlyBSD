@@ -1,4 +1,4 @@
-/* $FreeBSD: src/sys/dev/mpt/mpt_reg.h,v 1.4 2006/05/29 20:34:28 mjacob Exp $ */
+/* $FreeBSD: src/sys/dev/mpt/mpt_reg.h,v 1.5 2012/02/11 12:03:44 marius Exp $ */
 /*-
  * Generic defines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -77,6 +77,7 @@
 #define	MPT_OFFSET_REPLY_Q	0x44
 #define	MPT_OFFSET_HOST_INDEX	0x50
 #define	MPT_OFFSET_FUBAR	0x90
+#define	MPT_OFFSET_RESET_1078	0x10fc
 
 /* Bit Maps for DOORBELL register */
 enum DB_STATE_BITS {
