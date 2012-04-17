@@ -88,6 +88,9 @@
  * 201306 - Sync libm with FreeBSD-current libm (~50 new functions)
  * 300000 - 3.0 release
  * 300100 - 3.1 master
+ * 300101 - i4b (ISDN) removal
+ * 300102 - <sys/ata.h> is now just a link of <sys/nata.h>
+ * 300103 - if SIG_IGN is set on SIGCHLD, do not keep zombie children
  */
 #undef __DragonFly_version
 #define __DragonFly_version 300000	/* propagated to newvers */
