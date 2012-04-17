@@ -220,13 +220,13 @@ int tcp_autorcvbuf_max = 2*1024*1024;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, recvbuf_max, CTLFLAG_RW,
     &tcp_autorcvbuf_max, 0, "Max size of automatic receive buffer");
 
-int tcp_sosnd_agglim = 2;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosnd_agglim, CTLFLAG_RW,
-    &tcp_sosnd_agglim, 0, "TCP sosend mbuf aggregation limit");
+int tcp_sosend_agglim = 2;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosend_agglim, CTLFLAG_RW,
+    &tcp_sosend_agglim, 0, "TCP sosend mbuf aggregation limit");
 
-int tcp_sosnd_async = 1;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosnd_async, CTLFLAG_RW,
-    &tcp_sosnd_async, 0, "TCP asynchronized pru_send");
+int tcp_sosend_async = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosend_async, CTLFLAG_RW,
+    &tcp_sosend_async, 0, "TCP asynchronized pru_send");
 
 static void	 tcp_dooptions(struct tcpopt *, u_char *, int, boolean_t);
 static void	 tcp_pulloutofband(struct socket *,
