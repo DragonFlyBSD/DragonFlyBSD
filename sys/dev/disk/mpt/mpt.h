@@ -765,6 +765,7 @@ mpt_assign_serno(struct mpt_softc *mpt, request_t *req)
 }
 
 /***************************** Locking Primitives *****************************/
+#define	MPT_IFLAGS		INTR_MPSAFE
 #define	MPT_LOCK_SETUP(mpt)						\
 		lockinit(&mpt->mpt_lock, "mpt", 0, LK_CANRECURSE);	\
 		mpt->mpt_locksetup = 1
