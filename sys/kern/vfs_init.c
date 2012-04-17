@@ -431,11 +431,11 @@ vfs_register(struct vfsconf *vfc)
 		vfsops->vfs_ncpgen_test = vfs_stdncpgen_test;
 	}
 
-	/* file system uid and gid accounting */
-	if (vfs_accounting_enabled && vfsops->vfs_acinit == NULL) {
+	/* VFS quota uid and gid accounting */
+	if (vfs_quota_enabled && vfsops->vfs_acinit == NULL) {
 		vfsops->vfs_acinit = vfs_stdac_init;
 	}
-	if (vfs_accounting_enabled && vfsops->vfs_acdone == NULL) {
+	if (vfs_quota_enabled && vfsops->vfs_acdone == NULL) {
 		vfsops->vfs_acdone = vfs_stdac_done;
 	}
 

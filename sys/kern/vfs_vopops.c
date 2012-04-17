@@ -430,7 +430,7 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 
 	/* is this a regular vnode ? */
 	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_WR_MPSAFE);
-	if (vfs_accounting_enabled && (vp->v_type == VREG)) {
+	if (vfs_quota_enabled && (vp->v_type == VREG)) {
 		if ((error = VOP_GETATTR(vp, &va)) != 0)
 			goto done;
 		size_before = va.va_size;

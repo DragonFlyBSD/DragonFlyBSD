@@ -146,7 +146,7 @@ struct bio_ops {
 #endif
 
 /*
- * storage accounting
+ * vfs quota accounting
  *
  * uids and gids often come in contiguous blocks; use a small linear
  * array as the basic in-memory accounting allocation unit
@@ -631,10 +631,10 @@ struct vfsops {
 	if ((MP->mnt_op->vfs_account != NULL) && (D != 0)) \
 		MP->mnt_op->vfs_account(MP, U, G, D);
 #define VFS_ACINIT(MP, ERROR) \
-	if (vfs_accounting_enabled && MP->mnt_op->vfs_acinit != NULL) \
+	if (vfs_quota_enabled && MP->mnt_op->vfs_acinit != NULL) \
 		ERROR = MP->mnt_op->vfs_acinit(MP);
 #define VFS_ACDONE(MP) \
-	if (vfs_accounting_enabled && MP->mnt_op->vfs_acdone != NULL) \
+	if (vfs_quota_enabled && MP->mnt_op->vfs_acdone != NULL) \
 		MP->mnt_op->vfs_acdone(MP);
 #define VFS_NCPGEN_SET(MP, NCP) \
 	MP->mnt_op->vfs_ncpgen_set(MP, NCP)

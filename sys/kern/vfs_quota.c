@@ -109,17 +109,17 @@ gnode_insert(struct mount *mp, gid_t gid)
 	return gnp;
 }
 
-int vfs_accounting_enabled = 0;	/* global vfs accounting enable */
-TUNABLE_INT("vfs.accounting_enabled", &vfs_accounting_enabled);
-SYSCTL_INT(_vfs, OID_AUTO, accounting_enabled, CTLFLAG_RD,
-                 &vfs_accounting_enabled, 0, "Enable VFS accounting");
+int vfs_quota_enabled = 0;
+TUNABLE_INT("vfs.quota_enabled", &vfs_quota_enabled);
+SYSCTL_INT(_vfs, OID_AUTO, quota_enabled, CTLFLAG_RD,
+                 &vfs_quota_enabled, 0, "Enable VFS quota");
 
-/* initializes global accounting data */
+/* initializes per mount-point data structures */
 void
 vq_init(struct mount *mp)
 {
 
-	if (!vfs_accounting_enabled)
+	if (!vfs_quota_enabled)
 		return;
 
 	/* initialize the rb trees */
@@ -341,7 +341,7 @@ sys_vquotactl(struct vquotactl_args *vqa)
 	struct mount *mp;
 	int error;
 
-	if (!vfs_accounting_enabled)
+	if (!vfs_quota_enabled)
 		return EOPNOTSUPP;
 	path = vqa->path;
 	error = copyin(vqa->pref, &pref, sizeof(pref));
