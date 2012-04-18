@@ -1991,6 +1991,7 @@ TO_REMOVE+=/usr/include/openssl/aes_locl.h
 TO_REMOVE+=/usr/include/openssl/e_os.h
 TO_REMOVE+=/usr/include/openssl/eng_int.h
 TO_REMOVE+=/usr/include/openssl/ui_locl.h
+TO_REMOVE+=/usr/include/dev/disk/mpt/mpilib/mpi_inb.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
