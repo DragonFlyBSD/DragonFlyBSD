@@ -236,7 +236,7 @@ static const struct {
 
 static int	jme_rx_desc_count = JME_RX_DESC_CNT_DEF;
 static int	jme_tx_desc_count = JME_TX_DESC_CNT_DEF;
-static int	jme_rx_ring_count = 0;
+static int	jme_rx_ring_count = 1;
 static int	jme_msi_enable = 1;
 static int	jme_msix_enable = 1;
 
