@@ -3623,6 +3623,8 @@ jme_msix_tx(void *xcd)
 
 	ASSERT_SERIALIZED(&cd->jme_tx_serialize);
 
+	CSR_WRITE_4(sc, JME_INTR_MASK_CLR, INTR_TXQ_COAL | INTR_TXQ_COAL_TO);
+
 	CSR_WRITE_4(sc, JME_INTR_STATUS,
 	    INTR_TXQ_COAL | INTR_TXQ_COAL_TO | INTR_TXQ_COMP);
 
@@ -3631,6 +3633,8 @@ jme_msix_tx(void *xcd)
 		if (!ifq_is_empty(&ifp->if_snd))
 			if_devstart(ifp);
 	}
+
+	CSR_WRITE_4(sc, JME_INTR_MASK_SET, INTR_TXQ_COAL | INTR_TXQ_COAL_TO);
 }
 
 static void
@@ -3643,13 +3647,15 @@ jme_msix_rx(void *xrdata)
 
 	ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
 
+	CSR_WRITE_4(sc, JME_INTR_MASK_CLR,
+	    (rdata->jme_rx_coal | rdata->jme_rx_empty));
+
 	status = CSR_READ_4(sc, JME_INTR_STATUS);
 	status &= (rdata->jme_rx_coal | rdata->jme_rx_empty);
 
-	if (status & rdata->jme_rx_coal) {
+	if (status & rdata->jme_rx_coal)
 		status |= (rdata->jme_rx_coal | rdata->jme_rx_comp);
-		CSR_WRITE_4(sc, JME_INTR_STATUS, status);
-	}
+	CSR_WRITE_4(sc, JME_INTR_STATUS, status);
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (status & rdata->jme_rx_coal)
@@ -3660,6 +3666,9 @@ jme_msix_rx(void *xrdata)
 			    RXCSR_RX_ENB | RXCSR_RXQ_START);
 		}
 	}
+
+	CSR_WRITE_4(sc, JME_INTR_MASK_SET,
+	    (rdata->jme_rx_coal | rdata->jme_rx_empty));
 }
 
 static void
