@@ -514,6 +514,7 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 	p(tcps_keepdrops, "\t\t%lu connection%s dropped by keepalive\n");
 	p(tcps_predack, "\t%lu correct ACK header prediction%s\n");
 	p(tcps_preddat, "\t%lu correct data packet header prediction%s\n");
+	p(tcps_sndidle, "\t%lu send idle%s\n");
 
 	p1a(tcps_sc_added, "\t%lu syncache entries added\n"); 
 	p1a(tcps_sc_retransmitted, "\t\t%lu retransmitted\n"); 

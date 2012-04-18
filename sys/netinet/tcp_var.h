@@ -180,6 +180,7 @@ struct tcpcb {
 #define TF_KEEPALIVE	0x40000000	/* temporary keepalive */
 #define TF_RXRESIZED	0x80000000	/* rcvbuf was resized */
 	tcp_seq	snd_up;			/* send urgent pointer */
+	u_long	snd_last;		/* time last data were sent */
 
 	tcp_seq	snd_una;		/* send unacknowledged */
 	tcp_seq	snd_recover;		/* for use with NewReno Fast Recovery */
@@ -211,7 +212,7 @@ struct tcpcb {
 
 	u_int	t_maxopd;		/* mss plus options */
 
-	u_long	t_rcvtime;		/* inactivity time */
+	u_long	t_rcvtime;		/* reception inactivity time */
 	u_long	t_starttime;		/* time connection was established */
 	int	t_rtttime;		/* round trip time */
 	tcp_seq	t_rtseq;		/* sequence number being timed */
@@ -349,6 +350,7 @@ struct tcp_stats {
 	u_long	tcps_snduna1;		/* re-retransmit snd_una on 1 new seg */
 	u_long	tcps_sndsackopt;	/* SACK options sent */
 	u_long	tcps_snddsackopt;	/* D-SACK options sent */
+	u_long	tcps_sndidle;		/* sending idle detected */
 
 	u_long	tcps_rcvtotal;		/* total packets received */
 	u_long	tcps_rcvpack;		/* packets received in sequence */
