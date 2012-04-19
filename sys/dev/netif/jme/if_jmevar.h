@@ -83,7 +83,8 @@
 
 /* Water mark to kick reclaiming Tx buffers. */
 #define	JME_TX_DESC_HIWAT(sc)	\
-	((sc)->jme_tx_desc_cnt - (((sc)->jme_tx_desc_cnt * 3) / 10))
+	((sc)->jme_cdata.jme_tx_desc_cnt - \
+	 (((sc)->jme_cdata.jme_tx_desc_cnt * 3) / 10))
 
 /*
  * JMC250 can send 9K jumbo frame on Tx path and can receive
@@ -192,6 +193,7 @@ struct jme_chain_data {
 	int			jme_tx_prod;
 	int			jme_tx_cons;
 	int			jme_tx_cnt;
+	int			jme_tx_desc_cnt;
 
 	int			jme_rx_ring_cnt;
 	struct jme_rxdata	jme_rx_data[JME_NRXRING_MAX];
@@ -212,7 +214,7 @@ struct jme_msix_data {
 };
 
 #define JME_TX_RING_SIZE(sc)	\
-    (sizeof(struct jme_desc) * (sc)->jme_tx_desc_cnt)
+    (sizeof(struct jme_desc) * (sc)->jme_cdata.jme_tx_desc_cnt)
 #define JME_RX_RING_SIZE(rdata)	\
     (sizeof(struct jme_desc) * (rdata)->jme_rx_desc_cnt)
 #define	JME_SSB_SIZE		sizeof(struct jme_ssb)
@@ -285,7 +287,6 @@ struct jme_softc {
 	int			jme_tx_coal_pkt;
 	int			jme_rx_coal_to;
 	int			jme_rx_coal_pkt;
-	int			jme_tx_desc_cnt;
 	int			jme_rss_debug;
 };
 
