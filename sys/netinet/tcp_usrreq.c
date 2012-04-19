@@ -1428,10 +1428,12 @@ tcp_ctloutput(netmsg_t msg)
 
 		case TCP_KEEPIDLE:
 			opthz = ((int64_t)optval * hz) / 1000;
-			if (opthz >= 1)
+			if (opthz >= 1) {
 				tp->t_keepidle = opthz;
-			else
+				tcp_timer_keep_activity(tp, 0);
+			} else {
 				error = EINVAL;
+			}
 			break;
 
 		case TCP_KEEPINTVL:
