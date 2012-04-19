@@ -294,11 +294,11 @@ struct jme_softc {
 
 #define	JME_MAXERR	5
 
-#define	JME_RXCHAIN_RESET(sc, ring)				\
-do {								\
-	(sc)->jme_cdata.jme_rx_data[(ring)].jme_rxhead = NULL;	\
-	(sc)->jme_cdata.jme_rx_data[(ring)].jme_rxtail = NULL;	\
-	(sc)->jme_cdata.jme_rx_data[(ring)].jme_rxlen = 0;	\
+#define	JME_RXCHAIN_RESET(rdata)	\
+do {					\
+	(rdata)->jme_rxhead = NULL;	\
+	(rdata)->jme_rxtail = NULL;	\
+	(rdata)->jme_rxlen = 0;		\
 } while (0)
 
 #define	JME_TX_TIMEOUT		5
