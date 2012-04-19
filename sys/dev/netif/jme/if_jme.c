@@ -1582,7 +1582,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	}
 	sc->jme_cdata.jme_tx_cnt++;
 	KKASSERT(sc->jme_cdata.jme_tx_cnt - i <
-		 sc->jme_tx_desc_cnt - JME_TXD_RSVD);
+		 sc->jme_cdata.jme_tx_desc_cnt - JME_TXD_RSVD);
 	JME_DESC_INC(prod, sc->jme_cdata.jme_tx_desc_cnt);
 
 	txd->tx_ndesc = 1 - i;
@@ -1595,7 +1595,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 
 		sc->jme_cdata.jme_tx_cnt++;
 		KKASSERT(sc->jme_cdata.jme_tx_cnt <=
-			 sc->jme_tx_desc_cnt - JME_TXD_RSVD);
+			 sc->jme_cdata.jme_tx_desc_cnt - JME_TXD_RSVD);
 		JME_DESC_INC(prod, sc->jme_cdata.jme_tx_desc_cnt);
 	}
 
@@ -3201,10 +3201,10 @@ jme_enable_rss(struct jme_softc *sc)
 	uint8_t key[RSSKEY_NREGS * RSSKEY_REGSIZE];
 	int i;
 
-	KASSERT(sc->jme_rx_ring_cnt == JME_NRXRING_2 ||
-		sc->jme_rx_ring_cnt == JME_NRXRING_4,
+	KASSERT(sc->jme_cdata.jme_rx_ring_cnt == JME_NRXRING_2 ||
+		sc->jme_cdata.jme_rx_ring_cnt == JME_NRXRING_4,
 		("%s: invalid # of RX rings (%d)\n",
-		 sc->arpcom.ac_if.if_xname, sc->jme_rx_ring_cnt));
+		 sc->arpcom.ac_if.if_xname, sc->jme_cdata.jme_rx_ring_cnt));
 
 	rssc = RSSC_HASH_64_ENTRY;
 	rssc |= RSSC_HASH_IPV4 | RSSC_HASH_IPV4_TCP;
