@@ -3175,10 +3175,9 @@ jme_rx_intr(struct jme_softc *sc, uint32_t status)
 	int r;
 
 	for (r = 0; r < sc->jme_rx_ring_cnt; ++r) {
-		if (status & jme_rx_status[r].jme_coal) {
-			struct jme_rxdata *rdata =
-			    &sc->jme_cdata.jme_rx_data[r];
+		struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[r];
 
+		if (status & rdata->jme_rx_coal) {
 			lwkt_serialize_enter(&rdata->jme_rx_serialize);
 			jme_rxeof(rdata, -1);
 			lwkt_serialize_exit(&rdata->jme_rx_serialize);
