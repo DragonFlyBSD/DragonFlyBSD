@@ -47,7 +47,6 @@
 To compile this driver into the kernel, place the following line in your
 kernel configuration file:
 .Bd -ragged -offset indent
-.Cd "options NDGBPORTS=8"
 .Cd "device digi0 at isa? port 0x220 iomem 0xfc0000 iosiz ? flags 0x0"
 .Ed
 All values are just examples.
@@ -57,25 +56,6 @@ To load this driver as a module at boot time, place the following line in
 .Bd -literal -offset indent
 digi_load="YES"
 .Ed
-.Pp
-The
-.Dv NDGBPORTS
-option defines the total number of ports on all cards
-installed in the system.
-When not defined the number is computed:
-.Bd -ragged -offset 4n
-default
-.Dv NDGBPORTS
-= number_of_described_DigiBoard_cards * 16
-.Ed
-.Pp
-If it is less than the actual number of ports
-the system will be able to use only the
-first
-.Dv NDGBPORTS
-ports.
-If it is greater than all ports will be usable
-but some memory will be wasted.
 .Pp
 Meaning of
 .Cm flags :
@@ -330,13 +310,6 @@ This DigiBoard reports that it has more than 32 ports.
 Perhaps a hardware problem or
 the memory addresses of the
 DigiBoard overlap with some other device or with RAM.
-.It digi\fIX\fP: only \fIN\fP ports are usable
-The
-.Dv NDGBPORTS
-parameter is too small and there is only enough space allocated
-for
-.Ar N
-ports on this card.
 .It digi\fIX\fP: port \fIY\fP is broken
 The on-board diagnostic has reported that the specified port has hardware
 problems.
