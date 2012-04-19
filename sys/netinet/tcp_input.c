@@ -3167,7 +3167,7 @@ tcp_timer_keep_activity(struct tcpcb *tp, int thflags)
 			tp->t_rcvtime = ticks;
 			tp->t_flags &= ~TF_KEEPALIVE;
 			tcp_callout_reset(tp, tp->tt_keep,
-					  tcp_getkeepidle(tp),
+					  tp->t_keepidle,
 					  tcp_timer_keep);
 		}
 	}
@@ -3203,7 +3203,7 @@ static void
 tcp_established(struct tcpcb *tp)
 {
 	tp->t_state = TCPS_ESTABLISHED;
-	tcp_callout_reset(tp, tp->tt_keep, tcp_getkeepidle(tp), tcp_timer_keep);
+	tcp_callout_reset(tp, tp->tt_keep, tp->t_keepidle, tcp_timer_keep);
 
 	if (tp->t_rxtsyn > 0) {
 		/*

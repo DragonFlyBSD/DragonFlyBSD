@@ -162,7 +162,7 @@ struct tcpcb {
 #define	TF_NOPUSH	0x00001000	/* don't push */
 #define TF_LISTEN	0x00002000	/* listen(2) has been called */
 #define TF_SIGNATURE	0x00004000	/* require MD5 digests (RFC2385) */
-#define TF_FASTKEEP	0x00008000	/* use a faster tcp_keepidle */
+#define TF_UNUSED01	0x00008000	/* unused */
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
 #define	TF_UNUSED00	0x00020000	/* unused */
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
