@@ -331,6 +331,9 @@ tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to)
 	update_lostseq(scb, tp->snd_una, tp->t_maxseg);
 	if (SEQ_LT(tp->rexmt_high, tp->snd_una))
 		tp->rexmt_high = tp->snd_una;
+	if ((tp->t_flags & TF_SACKRESCUED) &&
+	    SEQ_LT(tp->rexmt_rescue, tp->snd_una))
+		tp->t_flags &= ~TF_SACKRESCUED;
 }
 
 /*
@@ -533,7 +536,7 @@ tcp_sack_compute_pipe(struct tcpcb *tp)
  */
 boolean_t
 tcp_sack_nextseg(struct tcpcb *tp, tcp_seq *nextrexmt, uint32_t *plen,
-		 boolean_t *lostdup)
+    boolean_t *rescue)
 {
 	struct scoreboard *scb = &tp->scb;
 	struct socket *so = tp->t_inpcb->inp_socket;
@@ -548,7 +551,7 @@ tcp_sack_nextseg(struct tcpcb *tp, tcp_seq *nextrexmt, uint32_t *plen,
 
 	/* Look for lost data. */
 	torexmt = tp->rexmt_high;
-	*lostdup = FALSE;
+	*rescue = FALSE;
 	if (lastblock != NULL) {
 		if (SEQ_LT(torexmt, lastblock->sblk_end) &&
 		    scb_islost(scb, torexmt)) {
@@ -573,8 +576,22 @@ sendunsacked:
 	}
 
 	/* We're less certain this data has been lost. */
-	if (lastblock == NULL || SEQ_LT(torexmt, lastblock->sblk_end))
+	if (lastblock != NULL && SEQ_LT(torexmt, lastblock->sblk_end))
 		goto sendunsacked;
+
+	if (tcp_do_rescuesack) {
+		tcpstat.tcps_sackrescue_try++;
+		if (lastblock == NULL)
+			tcpstat.tcps_sackrescue_smart++;
+
+		if (tp->t_flags & TF_SACKRESCUED)
+			return FALSE;
+		*rescue = TRUE;
+		tcpstat.tcps_sackrescue++;
+		goto sendunsacked;
+	} else if (tcp_do_smartsack && lastblock == NULL) {
+		goto sendunsacked;
+	}
 
 	return FALSE;
 }

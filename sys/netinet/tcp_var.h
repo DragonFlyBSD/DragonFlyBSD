@@ -85,6 +85,7 @@ extern int tcp_do_rfc1323;
 extern int tcp_low_rtobase;
 extern int tcp_do_sack;
 extern int tcp_do_smartsack;
+extern int tcp_do_rescuesack;
 extern int tcp_aggregate_acks;
 
 /* TCP segment queue entry */
@@ -162,7 +163,7 @@ struct tcpcb {
 #define	TF_NOPUSH	0x00001000	/* don't push */
 #define TF_LISTEN	0x00002000	/* listen(2) has been called */
 #define TF_SIGNATURE	0x00004000	/* require MD5 digests (RFC2385) */
-#define TF_UNUSED01	0x00008000	/* unused */
+#define TF_SACKRESCUED	0x00008000	/* sent rescue SACK recovery data */
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
 #define	TF_UNUSED00	0x00020000	/* unused */
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
@@ -250,6 +251,7 @@ struct tcpcb {
 	u_char	snd_limited;		/* segments limited transmitted */
 
 	tcp_seq	rexmt_high;		/* highest seq # retransmitted + 1 */
+	tcp_seq	rexmt_rescue;		/* rescue SACKED sequence number */
 	tcp_seq	snd_max_rexmt;		/* snd_max when rexmting snd_una */
 	struct scoreboard scb;		/* sack scoreboard */
 	struct raw_sackblock reportblk; /* incoming segment or D-SACK block */
@@ -351,6 +353,9 @@ struct tcp_stats {
 	u_long	tcps_sndsackopt;	/* SACK options sent */
 	u_long	tcps_snddsackopt;	/* D-SACK options sent */
 	u_long	tcps_sndidle;		/* sending idle detected */
+	u_long	tcps_sackrescue;	/* SACK rescue data packets sent */
+	u_long	tcps_sackrescue_try;	/* SACK rescues attempted */
+	u_long	tcps_sackrescue_smart;	/* Smart SACK can send rescue data */
 
 	u_long	tcps_rcvtotal;		/* total packets received */
 	u_long	tcps_rcvpack;		/* packets received in sequence */
@@ -638,7 +643,7 @@ void	 tcp_sack_tcpcb_init(struct tcpcb *tp);
 uint32_t tcp_sack_compute_pipe(struct tcpcb *tp);
 boolean_t
 	 tcp_sack_nextseg(struct tcpcb *tp, tcp_seq *nextrexmt, uint32_t *len,
-			  boolean_t *losdup);
+			  boolean_t *rescue);
 #ifdef later
 void	 tcp_sack_revert_scoreboard(struct scoreboard *scb, tcp_seq snd_una,
 				    u_int maxseg);

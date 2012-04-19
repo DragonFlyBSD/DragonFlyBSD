@@ -538,6 +538,10 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 	p(tcps_sacksbreused, "\t\t%lu record%s reused\n");
 	p(tcps_sacksbfast, "\t\t%lu record%s fast allocated\n");
 
+	p2(tcps_sackrescue, tcps_sackrescue_try,
+	    "\t%lu SACK rescue%s (of %lu attempt%s)\n");
+	p(tcps_sackrescue_smart, "\t\t%lu Smart SACK capable rescue%s\n");
+
 	free(stattmp);
 #undef p
 #undef p1a
