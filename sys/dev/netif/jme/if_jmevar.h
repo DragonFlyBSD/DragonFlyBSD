@@ -136,10 +136,12 @@ struct jme_softc;
 struct jme_rxdata {
 	struct lwkt_serialize	jme_rx_serialize;
 	struct jme_softc	*jme_sc;
+
 	uint32_t		jme_rx_coal;
 	uint32_t		jme_rx_comp;
 	uint32_t		jme_rx_empty;
 	int			jme_rx_idx;
+
 	bus_dma_tag_t		jme_rx_tag;	/* RX mbuf tag */
 	bus_dmamap_t		jme_rx_sparemap;
 	struct jme_rxdesc	*jme_rxdesc;
@@ -150,10 +152,13 @@ struct jme_rxdata {
 	bus_dmamap_t		jme_rx_ring_map;
 
 	int			jme_rx_cons;
+	int			jme_rx_desc_cnt;
 
 	int			jme_rxlen;
 	struct mbuf		*jme_rxhead;
 	struct mbuf		*jme_rxtail;
+
+	u_long			jme_rx_pkt;
 };
 
 struct jme_chain_data {
@@ -188,6 +193,7 @@ struct jme_chain_data {
 	int			jme_tx_cons;
 	int			jme_tx_cnt;
 
+	int			jme_rx_ring_cnt;
 	struct jme_rxdata	jme_rx_data[JME_NRXRING_MAX];
 };
 
@@ -207,8 +213,8 @@ struct jme_msix_data {
 
 #define JME_TX_RING_SIZE(sc)	\
     (sizeof(struct jme_desc) * (sc)->jme_tx_desc_cnt)
-#define JME_RX_RING_SIZE(sc)	\
-    (sizeof(struct jme_desc) * (sc)->jme_rx_desc_cnt)
+#define JME_RX_RING_SIZE(rdata)	\
+    (sizeof(struct jme_desc) * (rdata)->jme_rx_desc_cnt)
 #define	JME_SSB_SIZE		sizeof(struct jme_ssb)
 
 /*
@@ -279,11 +285,8 @@ struct jme_softc {
 	int			jme_tx_coal_pkt;
 	int			jme_rx_coal_to;
 	int			jme_rx_coal_pkt;
-	int			jme_rx_desc_cnt;
 	int			jme_tx_desc_cnt;
-	int			jme_rx_ring_cnt;
 	int			jme_rss_debug;
-	u_int			jme_rx_ring_pkt[JME_NRXRING_MAX];
 };
 
 /* Register access macros. */
