@@ -28,7 +28,6 @@
  */
 
 #include "opt_polling.h"
-#include "opt_rss.h"
 #include "opt_jme.h"
 
 #include <sys/param.h>
