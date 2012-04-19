@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2009, Intel Corporation 
+  Copyright (c) 2001-2011, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD: $*/
+/*$FreeBSD$*/
 
 #include "e1000_api.h"
 
@@ -2129,6 +2129,46 @@ static s32 e1000_validate_mdi_setting_generic(struct e1000_hw *hw)
 		DEBUGOUT("Invalid MDI setting detected\n");
 		hw->phy.mdix = 1;
 		ret_val = -E1000_ERR_CONFIG;
+		goto out;
+	}
+
+out:
+	return ret_val;
+}
+
+/**
+ *  e1000_write_8bit_ctrl_reg_generic - Write a 8bit CTRL register
+ *  @hw: pointer to the HW structure
+ *  @reg: 32bit register offset such as E1000_SCTL
+ *  @offset: register offset to write to
+ *  @data: data to write at register offset
+ *
+ *  Writes an address/data control type register.  There are several of these
+ *  and they all have the format address << 8 | data and bit 31 is polled for
+ *  completion.
+ **/
+s32 e1000_write_8bit_ctrl_reg_generic(struct e1000_hw *hw, u32 reg,
+                                      u32 offset, u8 data)
+{
+	u32 i, regvalue = 0;
+	s32 ret_val = E1000_SUCCESS;
+
+	DEBUGFUNC("e1000_write_8bit_ctrl_reg_generic");
+
+	/* Set up the address and data */
+	regvalue = ((u32)data) | (offset << E1000_GEN_CTL_ADDRESS_SHIFT);
+	E1000_WRITE_REG(hw, reg, regvalue);
+
+	/* Poll the ready bit to see if the MDI read completed */
+	for (i = 0; i < E1000_GEN_POLL_TIMEOUT; i++) {
+		usec_delay(5);
+		regvalue = E1000_READ_REG(hw, reg);
+		if (regvalue & E1000_GEN_CTL_READY)
+			break;
+	}
+	if (!(regvalue & E1000_GEN_CTL_READY)) {
+		DEBUGOUT1("Reg %08x did not indicate ready\n", reg);
+		ret_val = -E1000_ERR_PHY;
 		goto out;
 	}
 

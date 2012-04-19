@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2009, Intel Corporation 
+  Copyright (c) 2001-2011, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD: $*/
+/*$FreeBSD$*/
 
 #ifndef _E1000_MAC_H_
 #define _E1000_MAC_H_
@@ -79,6 +79,8 @@ s32  e1000_set_fc_watermarks_generic(struct e1000_hw *hw);
 s32  e1000_setup_fiber_serdes_link_generic(struct e1000_hw *hw);
 s32  e1000_setup_led_generic(struct e1000_hw *hw);
 s32  e1000_setup_link_generic(struct e1000_hw *hw);
+s32  e1000_write_8bit_ctrl_reg_generic(struct e1000_hw *hw, u32 reg,
+                                       u32 offset, u8 data);
 
 u32  e1000_hash_mc_addr_generic(struct e1000_hw *hw, u8 *mc_addr);
 

@@ -306,13 +306,16 @@ dev/netif/ig_hal/e1000_82541.c	optional ig_hal
 dev/netif/ig_hal/e1000_82542.c	optional ig_hal
 dev/netif/ig_hal/e1000_82543.c	optional ig_hal
 dev/netif/ig_hal/e1000_82571.c	optional ig_hal
+dev/netif/ig_hal/e1000_82575.c	optional ig_hal
 dev/netif/ig_hal/e1000_api.c	optional ig_hal
 dev/netif/ig_hal/e1000_ich8lan.c	optional ig_hal
 dev/netif/ig_hal/e1000_mac.c	optional ig_hal
 dev/netif/ig_hal/e1000_manage.c	optional ig_hal
+dev/netif/ig_hal/e1000_mbx.c	optional ig_hal
 dev/netif/ig_hal/e1000_nvm.c	optional ig_hal
 dev/netif/ig_hal/e1000_osdep.c	optional ig_hal
 dev/netif/ig_hal/e1000_phy.c	optional ig_hal
+dev/netif/ig_hal/e1000_vf.c	optional ig_hal
 dev/atm/en/midway.c		optional en
 dev/netif/et/if_et.c		optional et
 dev/netif/ex/if_ex.c		optional ex

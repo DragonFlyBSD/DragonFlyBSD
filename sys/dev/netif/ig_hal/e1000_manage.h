@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2009, Intel Corporation 
+  Copyright (c) 2001-2011, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD: $*/
+/*$FreeBSD$*/
 
 #ifndef _E1000_MANAGE_H_
 #define _E1000_MANAGE_H_
@@ -45,6 +45,8 @@ s32  e1000_mng_write_cmd_header_generic(struct e1000_hw *hw,
 s32  e1000_mng_write_dhcp_info_generic(struct e1000_hw *hw,
                                        u8 *buffer, u16 length);
 bool e1000_enable_mng_pass_thru(struct e1000_hw *hw);
+u8 e1000_calculate_checksum(u8 *buffer, u32 length);
+s32 e1000_host_interface_command(struct e1000_hw *hw, u8 *buffer, u32 length);
 
 enum e1000_mng_mode {
 	e1000_mng_mode_none = 0,

@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2009, Intel Corporation 
+  Copyright (c) 2001-2011, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD: $*/
+/*$FreeBSD$*/
 
 #include "e1000_api.h"
 
@@ -105,6 +105,32 @@ s32 e1000_init_phy_params(struct e1000_hw *hw)
 		}
 	} else {
 		DEBUGOUT("phy.init_phy_params was NULL\n");
+		ret_val =  -E1000_ERR_CONFIG;
+	}
+
+out:
+	return ret_val;
+}
+
+/**
+ *  e1000_init_mbx_params - Initialize mailbox function pointers
+ *  @hw: pointer to the HW structure
+ *
+ *  This function initializes the function pointers for the PHY
+ *  set of functions.  Called by drivers or by e1000_setup_init_funcs.
+ **/
+s32 e1000_init_mbx_params(struct e1000_hw *hw)
+{
+	s32 ret_val = E1000_SUCCESS;
+
+	if (hw->mbx.ops.init_params) {
+		ret_val = hw->mbx.ops.init_params(hw);
+		if (ret_val) {
+			DEBUGOUT("Mailbox Initialization Error\n");
+			goto out;
+		}
+	} else {
+		DEBUGOUT("mbx.init_mbx_params was NULL\n");
 		ret_val =  -E1000_ERR_CONFIG;
 	}
 
@@ -265,6 +291,46 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_PCH2_LV_V:
 		mac->type = e1000_pch2lan;
 		break;
+	case E1000_DEV_ID_82575EB_COPPER:
+	case E1000_DEV_ID_82575EB_FIBER_SERDES:
+	case E1000_DEV_ID_82575GB_QUAD_COPPER:
+		mac->type = e1000_82575;
+		break;
+	case E1000_DEV_ID_82576:
+	case E1000_DEV_ID_82576_FIBER:
+	case E1000_DEV_ID_82576_SERDES:
+	case E1000_DEV_ID_82576_QUAD_COPPER:
+	case E1000_DEV_ID_82576_QUAD_COPPER_ET2:
+	case E1000_DEV_ID_82576_NS:
+	case E1000_DEV_ID_82576_NS_SERDES:
+	case E1000_DEV_ID_82576_SERDES_QUAD:
+		mac->type = e1000_82576;
+		break;
+	case E1000_DEV_ID_82580_COPPER:
+	case E1000_DEV_ID_82580_FIBER:
+	case E1000_DEV_ID_82580_SERDES:
+	case E1000_DEV_ID_82580_SGMII:
+	case E1000_DEV_ID_82580_COPPER_DUAL:
+	case E1000_DEV_ID_82580_QUAD_FIBER:
+	case E1000_DEV_ID_DH89XXCC_SGMII:
+	case E1000_DEV_ID_DH89XXCC_SERDES:
+	case E1000_DEV_ID_DH89XXCC_BACKPLANE:
+	case E1000_DEV_ID_DH89XXCC_SFP:
+		mac->type = e1000_82580;
+		break;
+	case E1000_DEV_ID_I350_COPPER:
+	case E1000_DEV_ID_I350_FIBER:
+	case E1000_DEV_ID_I350_SERDES:
+	case E1000_DEV_ID_I350_SGMII:
+	case E1000_DEV_ID_I350_DA4:
+		mac->type = e1000_i350;
+		break;
+	case E1000_DEV_ID_82576_VF:
+		mac->type = e1000_vfadapt;
+		break;
+	case E1000_DEV_ID_I350_VF:
+		mac->type = e1000_vfadapt_i350;
+		break;
 	default:
 		/* Should never have loaded on this device */
 		ret_val = -E1000_ERR_MAC_INIT;
@@ -310,6 +376,7 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	e1000_init_mac_ops_generic(hw);
 	e1000_init_phy_ops_generic(hw);
 	e1000_init_nvm_ops_generic(hw);
+	e1000_init_mbx_ops_generic(hw);
 
 	/*
 	 * Set up the init function pointers. These are functions within the
@@ -356,6 +423,18 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	case e1000_pch2lan:
 		e1000_init_function_pointers_ich8lan(hw);
 		break;
+	case e1000_82575:
+	case e1000_82576:
+	case e1000_82580:
+	case e1000_i350:
+		e1000_init_function_pointers_82575(hw);
+		break;
+	case e1000_vfadapt:
+		e1000_init_function_pointers_vf(hw);
+		break;
+	case e1000_vfadapt_i350:
+		e1000_init_function_pointers_vf(hw);
+		break;
 	default:
 		DEBUGOUT("Hardware not supported\n");
 		ret_val = -E1000_ERR_CONFIG;
@@ -376,6 +455,10 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 			goto out;
 
 		ret_val = e1000_init_phy_params(hw);
+		if (ret_val)
+			goto out;
+
+		ret_val = e1000_init_mbx_params(hw);
 		if (ret_val)
 			goto out;
 	}
@@ -1202,6 +1285,22 @@ s32 e1000_write_nvm(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 }
 
 /**
+ *  e1000_write_8bit_ctrl_reg - Writes 8bit Control register
+ *  @hw: pointer to the HW structure
+ *  @reg: 32bit register offset
+ *  @offset: the register to write
+ *  @data: the value to write.
+ *
+ *  Writes the PHY register at offset with the value in data.
+ *  This is a function pointer entry point called by drivers.
+ **/
+s32 e1000_write_8bit_ctrl_reg(struct e1000_hw *hw, u32 reg, u32 offset,
+                              u8 data)
+{
+	return e1000_write_8bit_ctrl_reg_generic(hw, reg, offset, data);
+}
+
+/**
  * e1000_power_up_phy - Restores link in case of PHY power down
  * @hw: pointer to the HW structure
  *
@@ -1227,5 +1326,29 @@ void e1000_power_down_phy(struct e1000_hw *hw)
 {
 	if (hw->phy.ops.power_down)
 		hw->phy.ops.power_down(hw);
+}
+
+/**
+ *  e1000_power_up_fiber_serdes_link - Power up serdes link
+ *  @hw: pointer to the HW structure
+ *
+ *  Power on the optics and PCS.
+ **/
+void e1000_power_up_fiber_serdes_link(struct e1000_hw *hw)
+{
+	if (hw->mac.ops.power_up_serdes)
+		hw->mac.ops.power_up_serdes(hw);
+}
+
+/**
+ *  e1000_shutdown_fiber_serdes_link - Remove link during power down
+ *  @hw: pointer to the HW structure
+ *
+ *  Shutdown the optics and PCS on driver unload.
+ **/
+void e1000_shutdown_fiber_serdes_link(struct e1000_hw *hw)
+{
+	if (hw->mac.ops.shutdown_serdes)
+		hw->mac.ops.shutdown_serdes(hw);
 }
 
