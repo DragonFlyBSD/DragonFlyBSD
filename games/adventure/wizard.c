@@ -33,7 +33,6 @@
  *
  * @(#)wizard.c	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/games/adventure/wizard.c,v 1.10.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/wizard.c,v 1.3 2007/04/18 18:32:12 swildner Exp $
  */
 
 /* Re-coding of advent in C: privileged operations */
@@ -43,7 +42,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <sys/cdefs.h>
 #include "hdr.h"
 
 static int wizard(void);

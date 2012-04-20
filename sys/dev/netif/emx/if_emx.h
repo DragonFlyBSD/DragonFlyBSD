@@ -344,7 +344,8 @@ struct emx_softc {
 #define EMX_TXDD_SAFE	48 /* 48 <= val < EMX_TXDD_MAX */
 	int			tx_dd[EMX_TXDD_MAX];
 
-	int			rx_ring_inuse;
+	int			rss_debug;
+	int			rx_ring_cnt;
 	struct emx_rxdata	rx_data[EMX_NRX_RING];
 
 	/* Misc stats maintained by the driver */
@@ -370,9 +371,6 @@ struct emx_softc {
 	/* sysctl tree glue */
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
-
-	int			rx_ring_cnt;
-	int			rss_debug;
 
 	struct e1000_hw_stats	stats;
 };

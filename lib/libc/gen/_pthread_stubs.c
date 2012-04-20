@@ -24,10 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/_pthread_stubs.c,v 1.5 2001/06/11 23:18:22 iedowse Exp $
- * $DragonFly: src/lib/libc/gen/_pthread_stubs.c,v 1.4 2005/05/09 12:43:40 davidxu Exp $
  */
 
-#include <sys/cdefs.h>
 #include <stdlib.h>
 #include <pthread.h>
 

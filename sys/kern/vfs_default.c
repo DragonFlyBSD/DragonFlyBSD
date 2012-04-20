@@ -1485,26 +1485,10 @@ vfs_stdac_init(struct mount *mp)
 	return (0);
 }
 
-int
+void
 vfs_stdac_done(struct mount *mp)
 {
-	const char* fs_type;
-	int i, fstype_ok = 0;
-
-	/* is mounted fs type one we want to do some accounting for ? */
-	for (i=0; i<ACCOUNTING_NB_FSTYPES; i++) {
-		fs_type = accounting_fstypes[i];
-		if (strncmp(mp->mnt_stat.f_fstypename, fs_type,
-					sizeof(mp->mnt_stat)) == 0) {
-			fstype_ok = 1;
-			break;
-		}
-	}
-	if (fstype_ok == 0)
-		return (0);
-
 	vq_done(mp);
-	return (0);
 }
 
 void

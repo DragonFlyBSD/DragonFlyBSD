@@ -32,7 +32,6 @@
  * runtime from ld-elf.so.1.
  */
 
-#include <sys/cdefs.h>
 #include <sys/tls.h>
 
 #include <machine/tls.h>

@@ -653,6 +653,30 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define PCIEM_DEVCTL_MAX_READRQ_2048	0x4000
 #define PCIEM_DEVCTL_MAX_READRQ_4096	0x5000
 
+/* PCI Express link capabilities, 32bits */
+#define PCIER_LINKCAP			0x0c
+#define PCIEM_LNKCAP_SPEED_MASK		0x000f	/* Supported link speeds */
+#define PCIEM_LNKCAP_SPEED_2_5		0x1	/* 2.5GT/s */
+#define PCIEM_LNKCAP_SPEED_5		0x2	/* 5.0GT/s and 2.5GT/s */
+#define PCIEM_LNKCAP_MAXW_MASK		0x03f0	/* Maximum link width */
+#define PCIEM_LNKCAP_MAXW_X1		0x0010
+#define PCIEM_LNKCAP_MAXW_X2		0x0020
+#define PCIEM_LNKCAP_MAXW_X4		0x0040
+#define PCIEM_LNKCAP_MAXW_X8		0x0080
+#define PCIEM_LNKCAP_MAXW_X12		0x00c0
+#define PCIEM_LNKCAP_MAXW_X16		0x0100
+#define PCIEM_LNKCAP_MAXW_X32		0x0200
+#define PCIEM_LNKCAP_ASPM_MASK		0x0c00	/* ASPM */
+#define PCIEM_LNKCAP_ASPM_L0S		0x0400
+#define PCIEM_LNKCAP_ASPM_L1		0x0c00
+
+/* PCI Express link control, 32bits */
+#define PCIER_LINKCTRL			0x10
+#define PCIEM_LNKCTL_ASPM_MASK		0x3	/* ASPM */
+#define PCIEM_LNKCTL_ASPM_DISABLE	0x0
+#define PCIEM_LNKCTL_ASPM_L0S		0x1
+#define PCIEM_LNKCTL_ASPM_L1		0x2
+
 /* PCI Express slot capabilities, 32bits */
 #define PCIER_SLOTCAP		0x14
 #define PCIEM_SLTCAP_ATTEN_BTN	0x00000001 /* Attention button present */

@@ -55,8 +55,6 @@ s32  e1000_read_nvm_eerd(struct e1000_hw *hw, u16 offset, u16 words,
                          u16 *data);
 s32  e1000_valid_led_default_generic(struct e1000_hw *hw, u16 *data);
 s32  e1000_validate_nvm_checksum_generic(struct e1000_hw *hw);
-s32  e1000_write_nvm_eewr(struct e1000_hw *hw, u16 offset,
-                          u16 words, u16 *data);
 s32  e1000_write_nvm_microwire(struct e1000_hw *hw, u16 offset,
                                u16 words, u16 *data);
 s32  e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words,

@@ -551,7 +551,8 @@ void	mount_init(struct mount *mp);
 void	vn_syncer_add(struct vnode *, int);
 void	vn_syncer_remove(struct vnode *);
 void	vn_syncer_thr_create(struct mount *);
-void	vn_syncer_thr_stop(struct mount *);
+void	*vn_syncer_thr_getctx(struct mount *);
+void	vn_syncer_thr_stop(void *);
 
 void	vnlru_proc_wait(void);
 

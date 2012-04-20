@@ -3482,3 +3482,13 @@ intr_str_trigger(enum intr_trigger trig)
 	}
 	return "unknown";
 }
+
+int
+device_getenv_int(device_t dev, const char *knob, int def)
+{
+	char env[128];
+
+	ksnprintf(env, sizeof(env), "hw.%s.%s", device_get_nameunit(dev), knob);
+	kgetenv_int(env, &def);
+	return def;
+}

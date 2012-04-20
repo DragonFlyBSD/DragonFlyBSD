@@ -98,9 +98,9 @@
 
 #include <machine/limits.h>
 
-extern int tcp_sosnd_agglim;
-extern int tcp_sosnd_async;
-extern int udp_sosnd_async;
+extern int tcp_sosend_agglim;
+extern int tcp_sosend_async;
+extern int udp_sosend_async;
 
 #ifdef INET
 static int	 do_setopt_accept_filter(struct socket *so, struct sockopt *sopt);
@@ -944,7 +944,7 @@ restart:
 	if (flags & MSG_DONTROUTE)
 		pru_flags |= PRUS_DONTROUTE;
 
-	if (udp_sosnd_async && (flags & MSG_SYNC) == 0) {
+	if (udp_sosend_async && (flags & MSG_SYNC) == 0) {
 		so_pru_send_async(so, pru_flags, top, addr, NULL, td);
 		error = 0;
 	} else {
@@ -1077,9 +1077,9 @@ restart:
 			if (resid == 0)
 				break;
 			++cnt;
-		    } while (space > 0 && cnt < tcp_sosnd_agglim);
+		    } while (space > 0 && cnt < tcp_sosend_agglim);
 
-		    if (tcp_sosnd_async)
+		    if (tcp_sosend_async)
 			    async = 1;
 
 		    if (flags & MSG_OOB) {

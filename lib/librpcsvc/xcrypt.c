@@ -28,7 +28,6 @@
  *
  * @(#)xcrypt.c	2.2 88/08/10 4.0 RPCSRC
  * $FreeBSD: src/lib/librpcsvc/xcrypt.c,v 1.6 2008/02/04 07:56:36 matteo Exp $
- * $DragonFly: src/lib/librpcsvc/xcrypt.c,v 1.4 2007/11/25 14:33:02 swildner Exp $
  */
 /*
  * Hex encryption/decryption and utility routines
@@ -39,7 +38,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/cdefs.h>
 #include <rpc/des_crypt.h>
 
 static char hex[16] = {

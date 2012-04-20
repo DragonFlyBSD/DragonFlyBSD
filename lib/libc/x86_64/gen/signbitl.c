@@ -36,8 +36,6 @@
  * $NetBSD: signbitl.c,v 1.1 2004/01/15 19:43:45 kleink Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include <machine/ieee.h>
 #include <math.h>
 

@@ -795,6 +795,7 @@ struct ifaddr *ifaddr_byindex(unsigned short);
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
 void	if_devstart(struct ifnet *ifp);
+int	if_ring_count2(int cnt, int cnt_max);
 
 #define IF_LLSOCKADDR(ifp)						\
     ((struct sockaddr_dl *)(ifp)->if_lladdr->ifa_addr)

@@ -141,6 +141,17 @@ int tcp_autosndbuf_max = 2*1024*1024;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sendbuf_max, CTLFLAG_RW,
     &tcp_autosndbuf_max, 0, "Max size of automatic send buffer");
 
+static int tcp_idle_cwv = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, idle_cwv, CTLFLAG_RW,
+    &tcp_idle_cwv, 0,
+    "Congestion window validation after idle period (part of RFC2861)");
+
+static int tcp_idle_restart = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, idle_restart, CTLFLAG_RW,
+    &tcp_idle_restart, 0, "Reset congestion window after idle period");
+
+static void	tcp_idle_cwnd_validate(struct tcpcb *);
+
 /*
  * Tcp output routine: figure out what should be sent and send it.
  */
@@ -161,7 +172,7 @@ tcp_output(struct tcpcb *tp)
 	struct tcphdr *th;
 	u_char opt[TCP_MAXOLEN];
 	unsigned int ipoptlen, optlen, hdrlen;
-	int idle;
+	int idle, idle_cwv = 0;
 	boolean_t sendalot;
 	struct ip6_hdr *ip6;
 #ifdef INET6
@@ -181,21 +192,14 @@ tcp_output(struct tcpcb *tp)
 
 	/*
 	 * If we have been idle for a while, the send congestion window
-	 * could be no longer representative of the current state of the link.
-	 * So unless we are expecting more acks to come in, slow-start from
-	 * scratch to re-determine the send congestion window.
+	 * could be no longer representative of the current state of the
+	 * link; need to validate congestion window.  However, we should
+	 * not perform congestion window validation here, since we could
+	 * be asked to send pure ACK.
 	 */
 	if (tp->snd_max == tp->snd_una &&
-	    (ticks - tp->t_rcvtime) >= tp->t_rxtcur) {
-		u_long initial_cwnd = tcp_initial_window(tp);
-
-		/*
-		 * According to RFC5681:
-		 * RW=min(IW,cwnd)
-		 */
-		tp->snd_cwnd = min(tp->snd_cwnd, initial_cwnd);
-		tp->snd_wacked = 0;
-	}
+	    (ticks - tp->snd_last) >= tp->t_rxtcur && tcp_idle_restart)
+		idle_cwv = 1;
 
 	/*
 	 * Calculate whether the transmit stream was previously idle 
@@ -720,6 +724,12 @@ send:
 			tcpstat.tcps_sndpack++;
 			tcpstat.tcps_sndbyte += len;
 		}
+		if (idle_cwv) {
+			idle_cwv = 0;
+			tcp_idle_cwnd_validate(tp);
+		}
+		/* Update last send time after CWV */
+		tp->snd_last = ticks;
 #ifdef notyet
 		if ((m = m_copypack(so->so_snd.ssb_mb, off, (int)len,
 		    max_linkhdr + hdrlen)) == NULL) {
@@ -1154,4 +1164,61 @@ tcp_setpersist(struct tcpcb *tp)
 	tcp_callout_reset(tp, tp->tt_persist, tt, tcp_timer_persist);
 	if (tp->t_rxtshift < TCP_MAXRXTSHIFT)
 		tp->t_rxtshift++;
+}
+
+static void
+tcp_idle_cwnd_validate(struct tcpcb *tp)
+{
+	u_long initial_cwnd = tcp_initial_window(tp);
+	u_long min_cwnd;
+
+	tcpstat.tcps_sndidle++;
+
+	/* According to RFC5681: RW=min(IW,cwnd) */
+	min_cwnd = min(tp->snd_cwnd, initial_cwnd);
+
+	if (tcp_idle_cwv) {
+		u_long idle_time, decay_cwnd;
+
+		/*
+		 * RFC2861, but only after idle period.
+		 */
+
+		/*
+		 * Before the congestion window is reduced, ssthresh
+		 * is set to the maximum of its current value and 3/4
+		 * cwnd.  If the sender then has more data to send
+		 * than the decayed cwnd allows, the TCP will slow-
+		 * start (perform exponential increase) at least
+		 * half-way back up to the old value of cwnd.
+		 */
+		tp->snd_ssthresh = max(tp->snd_ssthresh,
+		    (3 * tp->snd_cwnd) / 4);
+
+		/*
+		 * Decay the congestion window by half for every RTT
+		 * that the flow remains inactive.
+		 *
+		 * The difference between our implementation and
+		 * RFC2861 is that we don't allow cwnd to go below
+		 * the value allowed by RFC5681 (min_cwnd).
+		 */
+		idle_time = ticks - tp->snd_last;
+		decay_cwnd = tp->snd_cwnd;
+		while (idle_time >= tp->t_rxtcur &&
+		    decay_cwnd > min_cwnd) {
+			decay_cwnd >>= 1;
+			idle_time -= tp->t_rxtcur;
+		}
+		tp->snd_cwnd = max(decay_cwnd, min_cwnd);
+	} else {
+		/*
+		 * Slow-start from scratch to re-determine the send
+		 * congestion window.
+		 */
+		tp->snd_cwnd = min_cwnd;
+	}
+
+	/* Restart ABC counting during congestion avoidance */
+	tp->snd_wacked = 0;
 }

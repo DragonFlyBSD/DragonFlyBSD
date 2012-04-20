@@ -26,10 +26,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/i386_get_ldt.c,v 1.7 1999/09/02 21:03:31 luoqi Exp $
- * $DragonFly: src/lib/libc/i386/sys/i386_get_ldt.c,v 1.3 2003/12/06 03:11:36 drhodus Exp $
  */
 
-#include <sys/cdefs.h>
 #include <machine/segments.h>
 #include <machine/sysarch.h>
 

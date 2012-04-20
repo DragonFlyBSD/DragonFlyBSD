@@ -26,10 +26,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/makecontext.c,v 1.5 2004/12/05 21:22:08 deischen Exp $
- * $DragonFly: src/lib/libc/i386/gen/makecontext.c,v 1.1 2007/01/16 07:16:23 dillon Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/signal.h>
 #include <sys/ucontext.h>

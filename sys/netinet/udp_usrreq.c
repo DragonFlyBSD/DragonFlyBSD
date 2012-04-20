@@ -145,9 +145,9 @@ static int	strict_mcast_mship = 1;
 SYSCTL_INT(_net_inet_udp, OID_AUTO, strict_mcast_mship, CTLFLAG_RW,
 	&strict_mcast_mship, 0, "Only send multicast to member sockets");
 
-int	udp_sosnd_async = 1;
-SYSCTL_INT(_net_inet_udp, OID_AUTO, sosnd_async, CTLFLAG_RW,
-	&udp_sosnd_async, 0, "UDP asynchronized pru_send");
+int	udp_sosend_async = 1;
+SYSCTL_INT(_net_inet_udp, OID_AUTO, sosend_async, CTLFLAG_RW,
+	&udp_sosend_async, 0, "UDP asynchronized pru_send");
 
 struct	inpcbinfo udbinfo;
 

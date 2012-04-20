@@ -1,6 +1,6 @@
-/* $FreeBSD: src/sys/dev/mpt/mpilib/mpi_tool.h,v 1.1 2006/01/21 00:29:51 mjacob Exp $ */
+/* $FreeBSD: src/sys/dev/mpt/mpilib/mpi_tool.h,v 1.2 2012/03/24 16:23:21 marius Exp $ */
 /*-
- * Copyright (c) 2000-2005, LSI Logic Corporation and its contributors.
+ * Copyright (c) 2000-2010, LSI Logic Corporation and its contributors.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

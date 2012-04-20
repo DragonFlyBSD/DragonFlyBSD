@@ -7,7 +7,7 @@ SRCS   += cryptodev_if.h
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_hifn.h:
-	echo "#define HIFN_DEBUG 1" > opt_hifn.h
+	echo "#define HIFN_DEBUG 1" > ${.TARGET}
 .endif
 
 .include <bsd.kmod.mk>

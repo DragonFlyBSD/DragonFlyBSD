@@ -62,6 +62,9 @@ usage(int retcode)
 {
 	fprintf(stderr, "usage: vquota [-Dhn] check directory\n");
 	fprintf(stderr, "       vquota [-Dhn] lsfs\n");
+	fprintf(stderr, "       vquota [-Dhn] limit mount_point size\n");
+	fprintf(stderr, "       vquota [-Dhn] ulim  mount_point user  size\n");
+	fprintf(stderr, "       vquota [-Dhn] glim  mount_point group size\n");
 	fprintf(stderr, "       vquota [-Dhn] show mount_point\n");
 	fprintf(stderr, "       vquota [-Dhn] sync mount_point\n");
 	exit(retcode);
@@ -312,8 +315,8 @@ get_dirsize(char* dirname)
 				unp = unode_insert(file_uid);
 			if ((gnp = RB_FIND(ac_gtree, &ac_groot, &gfind)) == NULL)
 				gnp = gnode_insert(file_gid);
-			unp->uid_chunk[(file_uid & ACCT_CHUNK_MASK)] += file_size;
-			gnp->gid_chunk[(file_gid & ACCT_CHUNK_MASK)] += file_size;
+			unp->uid_chunk[(file_uid & ACCT_CHUNK_MASK)].space += file_size;
+			gnp->gid_chunk[(file_gid & ACCT_CHUNK_MASK)].space += file_size;
 		}
 	}
 	fts_close(fts);
@@ -365,30 +368,30 @@ cmd_check(char* dirname)
 	}
 	RB_FOREACH(unp, ac_utree, &ac_uroot) {
 	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-		if (unp->uid_chunk[i] != 0) {
+		if (unp->uid_chunk[i].space != 0) {
 		    uid = (unp->left_bits << ACCT_CHUNK_BITS) + i;
 		    print_user(uid);
 		    if (flag_humanize) {
 			humanize_number(hbuf, sizeof(hbuf),
-			unp->uid_chunk[i], "", HN_AUTOSCALE, HN_NOSPACE);
+			unp->uid_chunk[i].space, "", HN_AUTOSCALE, HN_NOSPACE);
 			printf(" %s\n", hbuf);
 		    } else {
-			printf(" %" PRIu64 "\n", unp->uid_chunk[i]);
+			printf(" %" PRIu64 "\n", unp->uid_chunk[i].space);
 		    }
 		}
 	    }
 	}
 	RB_FOREACH(gnp, ac_gtree, &ac_groot) {
 	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-		if (gnp->gid_chunk[i] != 0) {
+		if (gnp->gid_chunk[i].space != 0) {
 		    gid = (gnp->left_bits << ACCT_CHUNK_BITS) + i;
 		    print_group(gid);
 		    if (flag_humanize) {
 			humanize_number(hbuf, sizeof(hbuf),
-			gnp->gid_chunk[i], "", HN_AUTOSCALE, HN_NOSPACE);
+			gnp->gid_chunk[i].space, "", HN_AUTOSCALE, HN_NOSPACE);
 			printf(" %s\n", hbuf);
 		    } else {
-			printf(" %" PRIu64 "\n", gnp->gid_chunk[i]);
+			printf(" %" PRIu64 "\n", gnp->gid_chunk[i].space);
 		    }
 		}
 	    }
@@ -490,7 +493,7 @@ show_mp(char *path)
 	prop_object_iterator_t	iter;
 	prop_dictionary_t item;
 	uint32_t id;
-	uint64_t space;
+	uint64_t space, limit=0;
 	char hbuf[5];
 
 	args = prop_dictionary_create();
@@ -523,6 +526,7 @@ show_mp(char *path)
 
 	while ((item = prop_object_iterator_next(iter)) != NULL) {
 		rv = prop_dictionary_get_uint64(item, "space used", &space);
+		rv = prop_dictionary_get_uint64(item, "limit", &limit);
 		if (prop_dictionary_get_uint32(item, "uid", &id))
 			print_user(id);
 		else if (prop_dictionary_get_uint32(item, "gid", &id))
@@ -531,9 +535,19 @@ show_mp(char *path)
 			printf("total:");
 		if (flag_humanize) {
 			humanize_number(hbuf, sizeof(hbuf), space, "", HN_AUTOSCALE, HN_NOSPACE);
-			printf(" %s\n", hbuf);
+			printf(" %s", hbuf);
 		} else {
-			printf(" %" PRIu64 "\n", space);
+			printf(" %"PRIu64, space);
+		}
+		if (limit == 0) {
+			printf("\n");
+			continue;
+		}
+		if (flag_humanize) {
+			humanize_number(hbuf, sizeof(hbuf), limit, "", HN_AUTOSCALE, HN_NOSPACE);
+			printf(", limit = %s\n", hbuf);
+		} else {
+			printf(", limit = %"PRIu64"\n", limit);
 		}
 	}
 	prop_object_iterator_release(iter);
@@ -570,24 +584,24 @@ static int cmd_sync(char *dirname)
 
 	RB_FOREACH(unp, ac_utree, &ac_uroot) {
 	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-		if (unp->uid_chunk[i] != 0) {
+		if (unp->uid_chunk[i].space != 0) {
 		    item = prop_dictionary_create();
 		    (void) prop_dictionary_set_uint32(item, "uid",
 				(unp->left_bits << ACCT_CHUNK_BITS) + i);
 		    (void) prop_dictionary_set_uint64(item, "space used",
-				unp->uid_chunk[i]);
+				unp->uid_chunk[i].space);
 		    prop_array_add_and_rel(args, item);
 		}
 	    }
 	}
 	RB_FOREACH(gnp, ac_gtree, &ac_groot) {
 	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-		if (gnp->gid_chunk[i] != 0) {
+		if (gnp->gid_chunk[i].space != 0) {
 		    item = prop_dictionary_create();
 		    (void) prop_dictionary_set_uint32(item, "gid",
 				(gnp->left_bits << ACCT_CHUNK_BITS) + i);
 		    (void) prop_dictionary_set_uint64(item, "space used",
-				gnp->gid_chunk[i]);
+				gnp->gid_chunk[i].space);
 		    prop_array_add_and_rel(args, item);
 		}
 	    }
@@ -604,10 +618,91 @@ static int cmd_sync(char *dirname)
 	return rv;
 }
 
+static int
+cmd_limit(char *dirname, uint64_t limit)
+{
+	prop_dictionary_t res, args;
+	int rv = 0;
+
+	args = prop_dictionary_create();
+	if (args == NULL)
+		printf("cmd_limit(): couldn't create args dictionary\n");
+	res  = prop_dictionary_create();
+	if (res == NULL)
+		printf("cmd_limit(): couldn't create res dictionary\n");
+
+	(void) prop_dictionary_set_uint64(args, "limit", limit);
+
+	if (send_command(dirname, "set limit", args, &res) == false) {
+		printf("Failed to send message to kernel\n");
+		rv = 1;
+	}
+
+	prop_object_release(args);
+	prop_object_release(res);
+
+	return rv;
+}
+
+static int
+cmd_limit_uid(char *dirname, uid_t uid, uint64_t limit)
+{
+	prop_dictionary_t res, args;
+	int rv = 0;
+
+	args = prop_dictionary_create();
+	if (args == NULL)
+		printf("cmd_limit_uid(): couldn't create args dictionary\n");
+	res  = prop_dictionary_create();
+	if (res == NULL)
+		printf("cmd_limit_uid(): couldn't create res dictionary\n");
+
+	(void) prop_dictionary_set_uint32(args, "uid", uid);
+	(void) prop_dictionary_set_uint64(args, "limit", limit);
+
+	if (send_command(dirname, "set limit uid", args, &res) == false) {
+		printf("Failed to send message to kernel\n");
+		rv = 1;
+	}
+
+	prop_object_release(args);
+	prop_object_release(res);
+
+	return rv;
+}
+
+static int
+cmd_limit_gid(char *dirname, gid_t gid, uint64_t limit)
+{
+	prop_dictionary_t res, args;
+	int rv = 0;
+
+	args = prop_dictionary_create();
+	if (args == NULL)
+		printf("cmd_limit_gid(): couldn't create args dictionary\n");
+	res  = prop_dictionary_create();
+	if (res == NULL)
+		printf("cmd_limit_gid(): couldn't create res dictionary\n");
+
+	(void) prop_dictionary_set_uint32(args, "gid", gid);
+	(void) prop_dictionary_set_uint64(args, "limit", limit);
+
+	if (send_command(dirname, "set limit gid", args, &res) == false) {
+		printf("Failed to send message to kernel\n");
+		rv = 1;
+	}
+
+	prop_object_release(args);
+	prop_object_release(res);
+
+	return rv;
+}
+
 int
 main(int argc, char **argv)
 {
 	int ch;
+	uint64_t limit;
 
 	while ((ch = getopt(argc, argv, "Dhn")) != -1) {
 		switch(ch) {
@@ -635,6 +730,14 @@ main(int argc, char **argv)
 	if (strcmp(argv[0], "lsfs") == 0) {
 		return get_fslist();
 	}
+	if (strcmp(argv[0], "limit") == 0) {
+		if (argc != 3)
+			usage(1);
+		if (dehumanize_number(argv[2], &limit) < 0)
+			err(1, "bad number for option: %s", argv[2]);
+
+		return cmd_limit(argv[1], limit);
+	}
 	if (strcmp(argv[0], "show") == 0) {
 		if (argc != 2)
 			usage(1);
@@ -644,6 +747,28 @@ main(int argc, char **argv)
 		if (argc != 2)
 			usage(1);
 		return cmd_sync(argv[1]);
+	}
+	if (strcmp(argv[0], "ulim") == 0) {
+		struct passwd *pwd;
+		if (argc != 4)
+			usage(1);
+		if ((pwd = getpwnam(argv[2])) == NULL)
+			errx(1, "%s: no such user", argv[2]);
+		if (dehumanize_number(argv[3], &limit) < 0)
+			err(1, "bad number for option: %s", argv[2]);
+
+		return cmd_limit_uid(argv[1], pwd->pw_uid, limit);
+	}
+	if (strcmp(argv[0], "glim") == 0) {
+		struct group *grp;
+		if (argc != 4)
+			usage(1);
+		if ((grp = getgrnam(argv[2])) == NULL)
+			errx(1, "%s: no such group", argv[2]);
+		if (dehumanize_number(argv[3], &limit) < 0)
+			err(1, "bad number for option: %s", argv[2]);
+
+		return cmd_limit_gid(argv[1], grp->gr_gid, limit);
 	}
 
 	usage(0);

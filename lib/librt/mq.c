@@ -26,7 +26,6 @@
  * $FreeBSD$
  */
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <sys/sysproto.h>

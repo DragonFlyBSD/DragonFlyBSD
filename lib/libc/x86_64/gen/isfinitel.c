@@ -36,8 +36,6 @@
  * $NetBSD: isfinitel.c,v 1.1 2003/10/29 20:03:51 kleink Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include <machine/ieee.h>
 #include <assert.h>
 #include <math.h>

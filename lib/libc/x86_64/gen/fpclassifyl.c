@@ -36,8 +36,6 @@
  * $NetBSD: fpclassifyl.c,v 1.2 2004/01/18 19:33:01 matt Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include <machine/ieee.h>
 #include <assert.h>
 #include <math.h>

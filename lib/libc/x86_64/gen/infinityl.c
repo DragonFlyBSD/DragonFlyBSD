@@ -5,8 +5,6 @@
  * $NetBSD: infinityl.c,v 1.2 2005/06/12 05:21:27 lukem Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include <math.h>
 
 const union __long_double_u __infinityl =

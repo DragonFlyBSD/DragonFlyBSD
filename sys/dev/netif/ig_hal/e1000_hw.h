@@ -123,7 +123,6 @@ struct e1000_hw;
 #define E1000_DEV_ID_ICH10_R_BM_LM            0x10CC
 #define E1000_DEV_ID_ICH10_R_BM_LF            0x10CD
 #define E1000_DEV_ID_ICH10_R_BM_V             0x10CE
-#define E1000_DEV_ID_ICH10_HANKSVILLE         0xF0FE
 #define E1000_DEV_ID_ICH10_D_BM_LM            0x10DE
 #define E1000_DEV_ID_ICH10_D_BM_LF            0x10DF
 #define E1000_DEV_ID_ICH10_D_BM_V             0x1525
@@ -615,6 +614,21 @@ struct e1000_mac_operations {
 	s32  (*wait_autoneg)(struct e1000_hw *);
 };
 
+/*
+ * When to use various PHY register access functions:
+ *
+ *                 Func   Caller
+ *   Function      Does   Does    When to use
+ *   ~~~~~~~~~~~~  ~~~~~  ~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *   X_reg         L,P,A  n/a     for simple PHY reg accesses
+ *   X_reg_locked  P,A    L       for multiple accesses of different regs
+ *                                on different pages
+ *   X_reg_page    A      L,P     for multiple accesses of different regs
+ *                                on the same page
+ *
+ * Where X=[read|write], L=locking, P=sets page, A=register access
+ *
+ */
 struct e1000_phy_operations {
 	s32  (*init_params)(struct e1000_hw *);
 	s32  (*acquire)(struct e1000_hw *);
@@ -626,14 +640,17 @@ struct e1000_phy_operations {
 	s32  (*get_cfg_done)(struct e1000_hw *hw);
 	s32  (*get_cable_length)(struct e1000_hw *);
 	s32  (*get_info)(struct e1000_hw *);
+	s32  (*set_page)(struct e1000_hw *, u16);
 	s32  (*read_reg)(struct e1000_hw *, u32, u16 *);
 	s32  (*read_reg_locked)(struct e1000_hw *, u32, u16 *);
+	s32  (*read_reg_page)(struct e1000_hw *, u32, u16 *);
 	void (*release)(struct e1000_hw *);
 	s32  (*reset)(struct e1000_hw *);
 	s32  (*set_d0_lplu_state)(struct e1000_hw *, bool);
 	s32  (*set_d3_lplu_state)(struct e1000_hw *, bool);
 	s32  (*write_reg)(struct e1000_hw *, u32, u16);
 	s32  (*write_reg_locked)(struct e1000_hw *, u32, u16);
+	s32  (*write_reg_page)(struct e1000_hw *, u32, u16);
 	void (*power_up)(struct e1000_hw *);
 	void (*power_down)(struct e1000_hw *);
 };
@@ -652,8 +669,8 @@ struct e1000_nvm_operations {
 
 struct e1000_mac_info {
 	struct e1000_mac_operations ops;
-	u8 addr[6];
-	u8 perm_addr[6];
+	u8 addr[ETH_ADDR_LEN];
+	u8 perm_addr[ETH_ADDR_LEN];
 
 	enum e1000_mac_type type;
 
@@ -797,7 +814,7 @@ struct e1000_shadow_ram {
 	bool modified;
 };
 
-#define E1000_SHADOW_RAM_WORDS		2048
+#define E1000_SHADOW_RAM_WORDS  2048
 
 struct e1000_dev_spec_ich8lan {
 	bool kmrn_lock_loss_workaround_enabled;
@@ -821,14 +838,14 @@ struct e1000_hw {
 	struct e1000_host_mng_dhcp_cookie mng_cookie;
 
 	union {
-		struct e1000_dev_spec_82541	_82541;
+		struct e1000_dev_spec_82541 _82541;
 #ifndef NO_82542_SUPPORT
-		struct e1000_dev_spec_82542	_82542;
+		struct e1000_dev_spec_82542 _82542;
 #endif
-		struct e1000_dev_spec_82543	_82543;
-		struct e1000_dev_spec_82571	_82571;
+		struct e1000_dev_spec_82543 _82543;
+		struct e1000_dev_spec_82571 _82571;
 		struct e1000_dev_spec_80003es2lan _80003es2lan;
-		struct e1000_dev_spec_ich8lan	ich8lan;
+		struct e1000_dev_spec_ich8lan ich8lan;
 	} dev_spec;
 
 	u16 device_id;
@@ -851,6 +868,7 @@ void e1000_pci_clear_mwi(struct e1000_hw *hw);
 void e1000_pci_set_mwi(struct e1000_hw *hw);
 #endif
 s32  e1000_read_pcie_cap_reg(struct e1000_hw *hw, u32 reg, u16 *value);
+s32  e1000_write_pcie_cap_reg(struct e1000_hw *hw, u32 reg, u16 *value);
 void e1000_read_pci_cfg(struct e1000_hw *hw, u32 reg, u16 *value);
 void e1000_write_pci_cfg(struct e1000_hw *hw, u32 reg, u16 *value);
 

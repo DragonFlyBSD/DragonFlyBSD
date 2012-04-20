@@ -850,7 +850,7 @@ mountlist_remove(struct mount *mp)
  * mountlist_exists (MP SAFE)
  *
  * Checks if a node exists in the mountlist.
- * This function is mainly used by VFS accounting code to check if a
+ * This function is mainly used by VFS quota code to check if a
  * cached nullfs struct mount pointer is still valid at use time
  *
  * FIXME: there is no warranty the mp passed to that function

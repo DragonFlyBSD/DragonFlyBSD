@@ -112,7 +112,6 @@ out:
 	return ret_val;
 }
 
-
 /**
  *  e1000_set_mac_type - Sets MAC type
  *  @hw: pointer to the HW structure
@@ -254,7 +253,6 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_ICH10_D_BM_LM:
 	case E1000_DEV_ID_ICH10_D_BM_LF:
 	case E1000_DEV_ID_ICH10_D_BM_V:
-	case E1000_DEV_ID_ICH10_HANKSVILLE:
 		mac->type = e1000_ich10lan;
 		break;
 	case E1000_DEV_ID_PCH_D_HV_DM:

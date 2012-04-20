@@ -64,19 +64,6 @@
 #include <netinet/tcp_timer.h>
 #endif
 
-/*
- * The TCP_FASTKEEP option uses keepintvl for the initial keepidle timeout
- * instead of keepidle.
- */
-static __inline int
-tcp_getkeepidle(struct tcpcb *_tp)
-{
-	if (_tp->t_flags & TF_FASTKEEP)
-		return (_tp->t_keepintvl);
-	else
-		return (_tp->t_keepidle);
-}
-
 static __inline void
 tcp_callout_stop(struct tcpcb *_tp, struct tcp_callout *_tc)
 {

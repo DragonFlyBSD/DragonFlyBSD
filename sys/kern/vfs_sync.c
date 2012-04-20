@@ -265,15 +265,21 @@ vn_syncer_thr_create(struct mount *mp)
 			    "syncer%d", ++syncalloc);
 }
 
+void *
+vn_syncer_thr_getctx(struct mount *mp)
+{
+	return (mp->mnt_syncer_ctx);
+}
+
 /*
  * Stop per-filesystem syncer process
  */
 void
-vn_syncer_thr_stop(struct mount *mp)
+vn_syncer_thr_stop(void *ctxp)
 {
 	struct syncer_ctx *ctx;
 
-	ctx = mp->mnt_syncer_ctx;
+	ctx = ctxp;
 
 	lwkt_gettoken(&ctx->sc_token);
 
@@ -285,7 +291,6 @@ vn_syncer_thr_stop(struct mount *mp)
 	while ((ctx->sc_flags & SC_FLAG_DONE) == 0) 
 		tsleep(&ctx->sc_flags, 0, "syncexit", hz);
 
-	mp->mnt_syncer_ctx = NULL;
 	lwkt_reltoken(&ctx->sc_token);
 	
 	kfree(ctx->syncer_workitem_pending, M_DEVBUF);

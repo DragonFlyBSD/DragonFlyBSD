@@ -25,7 +25,6 @@
  */
 
 #include "namespace.h"
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/signal.h>
 #include <sys/ucontext.h>

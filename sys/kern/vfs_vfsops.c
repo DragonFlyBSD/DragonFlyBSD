@@ -115,7 +115,7 @@ vfs_start(struct mount *mp, int flags)
 	if (error == 0)
 		/* do not call vfs_acinit on mount updates */
 		if ((mp->mnt_flag & MNT_UPDATE) == 0)
-			error = (mp->mnt_op->vfs_acinit)(mp);
+			VFS_ACINIT(mp,error);
 	VFS_MPUNLOCK(mp);
 	if (error == EMOUNTEXIT)
 		error = 0;
@@ -130,13 +130,17 @@ vfs_unmount(struct mount *mp, int mntflags)
 {
 	VFS_MPLOCK_DECLARE;
 	int error;
+	int flags;
+	void *ctx;
 
 	VFS_MPLOCK1(mp);
-	if (mp->mnt_kern_flag & MNTK_THR_SYNC)
-		vn_syncer_thr_stop(mp);
-	error = (mp->mnt_op->vfs_acdone)(mp); 
-	if (error == 0)
-		error = (mp->mnt_op->vfs_unmount)(mp, mntflags);
+	VFS_ACDONE(mp);
+	flags = mp->mnt_kern_flag;
+	ctx = vn_syncer_thr_getctx(mp);
+	error = (mp->mnt_op->vfs_unmount)(mp, mntflags);
+	if (error == 0 &&
+	    flags & MNTK_THR_SYNC)
+		vn_syncer_thr_stop(ctx);
 	VFS_MPUNLOCK(mp);
 	return (error);
 }

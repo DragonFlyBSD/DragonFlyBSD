@@ -141,33 +141,6 @@ MALLOC_DEFINE(M_IFNET, "ifnet", "interface structure");
 int			ifqmaxlen = IFQ_MAXLEN;
 struct ifnethead	ifnet = TAILQ_HEAD_INITIALIZER(ifnet);
 
-/* In ifq_dispatch(), try to do direct ifnet.if_start first */
-static int		ifq_dispatch_schedonly = 0;
-SYSCTL_INT(_net_link_generic, OID_AUTO, ifq_dispatch_schedonly, CTLFLAG_RW,
-           &ifq_dispatch_schedonly, 0, "");
-
-/* In ifq_dispatch(), schedule ifnet.if_start without checking ifnet.if_snd */
-static int		ifq_dispatch_schednochk = 0;
-SYSCTL_INT(_net_link_generic, OID_AUTO, ifq_dispatch_schednochk, CTLFLAG_RW,
-           &ifq_dispatch_schednochk, 0, "");
-
-/* In if_devstart(), try to do direct ifnet.if_start first */
-static int		if_devstart_schedonly = 0;
-SYSCTL_INT(_net_link_generic, OID_AUTO, if_devstart_schedonly, CTLFLAG_RW,
-           &if_devstart_schedonly, 0, "");
-
-/* In if_devstart(), schedule ifnet.if_start without checking ifnet.if_snd */
-static int		if_devstart_schednochk = 0;
-SYSCTL_INT(_net_link_generic, OID_AUTO, if_devstart_schednochk, CTLFLAG_RW,
-           &if_devstart_schednochk, 0, "");
-
-#ifdef SMP
-/* Schedule ifnet.if_start on the current CPU */
-static int		if_start_oncpu_sched = 0;
-SYSCTL_INT(_net_link_generic, OID_AUTO, if_start_oncpu_sched, CTLFLAG_RW,
-           &if_start_oncpu_sched, 0, "");
-#endif
-
 struct callout		if_slowtimo_timer;
 
 int			if_index = 0;
@@ -272,11 +245,7 @@ if_start_schedule(struct ifnet *ifp)
 #ifdef SMP
 	int cpu;
 
-	if (if_start_oncpu_sched)
-		cpu = mycpuid;
-	else
-		cpu = ifp->if_start_cpuid(ifp);
-
+	cpu = ifp->if_start_cpuid(ifp);
 	if (cpu != mycpuid)
 		lwkt_send_ipiq(globaldata_find(cpu), if_start_ipifunc, ifp);
 	else
@@ -336,7 +305,7 @@ if_start_dispatch(netmsg_t msg)
 	crit_exit();
 
 #ifdef SMP
-	if (!if_start_oncpu_sched && mycpuid != ifp->if_start_cpuid(ifp)) {
+	if (mycpuid != ifp->if_start_cpuid(ifp)) {
 		/*
 		 * If the ifnet is still up, we need to
 		 * chase its CPU change.
@@ -393,23 +362,13 @@ if_devstart(struct ifnet *ifp)
 	ifq->altq_started = 1;
 	ALTQ_UNLOCK(ifq);
 
-	if (if_devstart_schedonly) {
-		/*
-		 * Always schedule ifnet.if_start on ifnet's CPU,
-		 * short circuit the rest of this function.
-		 */
-		logifstart(sched, ifp);
-		if_start_schedule(ifp);
-		return;
-	}
-
 	logifstart(run, ifp);
 	ifp->if_start(ifp);
 
 	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
 		running = 1;
 
-	if (if_devstart_schednochk || if_start_need_schedule(ifq, running)) {
+	if (if_start_need_schedule(ifq, running)) {
 		/*
 		 * More data need to be transmitted, ifnet.if_start is
 		 * scheduled on ifnet's CPU, and we keep going.
@@ -2494,16 +2453,6 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		return 0;
 	}
 
-	if (ifq_dispatch_schedonly) {
-		/*
-		 * Always schedule ifnet.if_start on ifnet's CPU,
-		 * short circuit the rest of this function.
-		 */
-		logifstart(sched, ifp);
-		if_start_schedule(ifp);
-		return 0;
-	}
-
 	/*
 	 * Try to do direct ifnet.if_start first, if there is
 	 * contention on ifnet's serializer, ifnet.if_start will
@@ -2530,7 +2479,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 
 	ifnet_deserialize_tx(ifp);
 
-	if (ifq_dispatch_schednochk || if_start_need_schedule(ifq, running)) {
+	if (if_start_need_schedule(ifq, running)) {
 		/*
 		 * More data need to be transmitted, ifnet.if_start is
 		 * scheduled on ifnet's CPU, and we keep going.
@@ -2801,4 +2750,29 @@ if_deregister_com_alloc(u_char type)
             ("if_deregister_com_alloc: %d free not registered", type));
         if_com_alloc[type] = NULL;
         if_com_free[type] = NULL;
+}
+
+int
+if_ring_count2(int cnt, int cnt_max)
+{
+	int shift = 0;
+
+	KASSERT(cnt_max >= 1 && powerof2(cnt_max),
+	    ("invalid ring count max %d\n", cnt_max));
+
+	if (cnt <= 0)
+		cnt = cnt_max;
+	if (cnt > ncpus2)
+		cnt = ncpus2;
+	if (cnt > cnt_max)
+		cnt = cnt_max;
+
+	while ((1 << (shift + 1)) <= cnt)
+		++shift;
+	cnt = 1 << shift;
+
+	KASSERT(cnt >= 1 && cnt <= ncpus2 && cnt <= cnt_max,
+	    ("calculate cnt %d, ncpus2 %d, cnt max %d\n",
+	     cnt, ncpus2, cnt_max));
+	return cnt;
 }

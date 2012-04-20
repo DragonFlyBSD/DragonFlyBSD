@@ -1,4 +1,4 @@
-.\" Copyright (c) 2011 François Tigeot
+.\" Copyright (c) 2011,2012 François Tigeot
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,7 @@
 .
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd January 19, 2012
+.Dd March 23, 2012
 .Dt VQUOTA 8
 .Os
 .Sh NAME
@@ -73,7 +73,7 @@ List mounted file systems having space accounting enabled
 .
 .\" ==== show ====
 .It Cm show Ar mount_point
-Show file size usage for the file system mounted under
+Show file size usage and quota limits for the file system mounted under
 .Ar mount_point .
 The information is broken down by uid and gid
 .
@@ -84,6 +84,31 @@ mounted under
 .Ar mount_point
 with real usage data. This command scans an entire filesystem
 directory hierarchy and may be slow to run
+.\" ==== limit ====
+.It Cm limit Ar mount_point size
+Set a global quota of
+.Ar size
+bytes for the filesystem mounted under
+.Ar mount_point .
+.\" ==== ulim ====
+.It Cm ulim Ar mount_point user size
+Set a quota of
+.Ar size
+bytes for the filesystem mounted under
+.Ar mount_point
+and the specified
+.Ar user .
+.\" ==== glim ====
+.It Cm glim Ar mount_point group size
+Set a quota of
+.Ar size
+bytes for the filesystem mounted under
+.Ar mount_point
+and the specified
+.Ar group .
+.El
+.Pp
+A limit of 0 effectively means checks are disabled.
 .El
 .
 .Sh EXAMPLES

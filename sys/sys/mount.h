@@ -146,7 +146,7 @@ struct bio_ops {
 #endif
 
 /*
- * storage accounting
+ * vfs quota accounting
  *
  * uids and gids often come in contiguous blocks; use a small linear
  * array as the basic in-memory accounting allocation unit
@@ -155,16 +155,21 @@ struct bio_ops {
 #define ACCT_CHUNK_NIDS	(1<<ACCT_CHUNK_BITS)
 #define ACCT_CHUNK_MASK	(ACCT_CHUNK_NIDS - 1)
 
+struct ac_counters {
+	uint64_t space;
+	uint64_t limit;
+};
+
 struct ac_unode {
 	RB_ENTRY(ac_unode)	rb_entry;
 	uid_t			left_bits;
-	uint64_t		uid_chunk[ACCT_CHUNK_NIDS];
+	struct ac_counters	uid_chunk[ACCT_CHUNK_NIDS];
 };
 
 struct ac_gnode {
 	RB_ENTRY(ac_gnode)	rb_entry;
 	gid_t			left_bits;
-	uint64_t		gid_chunk[ACCT_CHUNK_NIDS];
+	struct ac_counters	gid_chunk[ACCT_CHUNK_NIDS];
 };
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
@@ -173,6 +178,7 @@ struct vfs_acct {
 	RB_HEAD(ac_utree,ac_unode)	ac_uroot;
 	RB_HEAD(ac_gtree,ac_gnode)	ac_groot;
 	uint64_t			ac_bytes;	/* total bytes used */
+	uint64_t			ac_limit;
 	struct spinlock			ac_spin;	/* protective spinlock */
 };
 
@@ -543,7 +549,7 @@ typedef int vfs_extattrctl_t(struct mount *mp, int cmd, struct vnode *vp,
 		    int attrnamespace, const char *attrname,
 		    struct ucred *cred);
 typedef int vfs_acinit_t(struct mount *mp);
-typedef int vfs_acdone_t(struct mount *mp);
+typedef void vfs_acdone_t(struct mount *mp);
 typedef void vfs_account_t(struct mount *mp,
 			uid_t uid, gid_t gid, int64_t delta);
 typedef void vfs_ncpgen_set_t(struct mount *mp, struct namecache *ncp);
@@ -624,6 +630,12 @@ struct vfsops {
 #define VFS_ACCOUNT(MP, U, G, D) \
 	if ((MP->mnt_op->vfs_account != NULL) && (D != 0)) \
 		MP->mnt_op->vfs_account(MP, U, G, D);
+#define VFS_ACINIT(MP, ERROR) \
+	if (vfs_quota_enabled && MP->mnt_op->vfs_acinit != NULL) \
+		ERROR = MP->mnt_op->vfs_acinit(MP);
+#define VFS_ACDONE(MP) \
+	if (vfs_quota_enabled && MP->mnt_op->vfs_acdone != NULL) \
+		MP->mnt_op->vfs_acdone(MP);
 #define VFS_NCPGEN_SET(MP, NCP) \
 	MP->mnt_op->vfs_ncpgen_set(MP, NCP)
 #define VFS_NCPGEN_TEST(MP, NCP) \

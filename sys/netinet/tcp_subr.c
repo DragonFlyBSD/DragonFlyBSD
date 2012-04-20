@@ -737,6 +737,7 @@ tcp_newtcpcb(struct inpcb *inp)
 	tp->snd_cwnd = TCP_MAXWIN << TCP_MAX_WINSHIFT;
 	tp->snd_bwnd = TCP_MAXWIN << TCP_MAX_WINSHIFT;
 	tp->snd_ssthresh = TCP_MAXWIN << TCP_MAX_WINSHIFT;
+	tp->snd_last = ticks;
 	tp->t_rcvtime = ticks;
 	/*
 	 * IPv4 TTL initialization is necessary for an IPv6 socket as well,
@@ -982,7 +983,7 @@ no_valid_rt:
 	}
 	/* throw away SACK blocks in scoreboard*/
 	if (TCP_DO_SACK(tp))
-		tcp_sack_cleanup(&tp->scb);
+		tcp_sack_destroy(&tp->scb);
 
 	inp->inp_ppcb = NULL;
 	soisdisconnected(so);

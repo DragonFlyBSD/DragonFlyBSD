@@ -123,6 +123,7 @@ struct scoreboard {
 	struct sackblock_list sackblocks;
 	tcp_seq lostseq;			/* passed SACK lost test */
 	struct sackblock *lastfound;		/* search hint */
+	struct sackblock *freecache;		/* one slot free block cache */
 };
 
 struct netmsg_tcp_timer;
@@ -161,7 +162,7 @@ struct tcpcb {
 #define	TF_NOPUSH	0x00001000	/* don't push */
 #define TF_LISTEN	0x00002000	/* listen(2) has been called */
 #define TF_SIGNATURE	0x00004000	/* require MD5 digests (RFC2385) */
-#define TF_FASTKEEP	0x00008000	/* use a faster tcp_keepidle */
+#define TF_UNUSED01	0x00008000	/* unused */
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
 #define	TF_UNUSED00	0x00020000	/* unused */
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
@@ -179,6 +180,7 @@ struct tcpcb {
 #define TF_KEEPALIVE	0x40000000	/* temporary keepalive */
 #define TF_RXRESIZED	0x80000000	/* rcvbuf was resized */
 	tcp_seq	snd_up;			/* send urgent pointer */
+	u_long	snd_last;		/* time last data were sent */
 
 	tcp_seq	snd_una;		/* send unacknowledged */
 	tcp_seq	snd_recover;		/* for use with NewReno Fast Recovery */
@@ -210,7 +212,7 @@ struct tcpcb {
 
 	u_int	t_maxopd;		/* mss plus options */
 
-	u_long	t_rcvtime;		/* inactivity time */
+	u_long	t_rcvtime;		/* reception inactivity time */
 	u_long	t_starttime;		/* time connection was established */
 	int	t_rtttime;		/* round trip time */
 	tcp_seq	t_rtseq;		/* sequence number being timed */
@@ -348,6 +350,7 @@ struct tcp_stats {
 	u_long	tcps_snduna1;		/* re-retransmit snd_una on 1 new seg */
 	u_long	tcps_sndsackopt;	/* SACK options sent */
 	u_long	tcps_snddsackopt;	/* D-SACK options sent */
+	u_long	tcps_sndidle;		/* sending idle detected */
 
 	u_long	tcps_rcvtotal;		/* total packets received */
 	u_long	tcps_rcvpack;		/* packets received in sequence */
@@ -391,6 +394,7 @@ struct tcp_stats {
 	u_long	tcps_sacksboverflow;	/* times SACK scoreboard overflowed */
 	u_long	tcps_sacksbreused;	/* times SACK sb-block reused */
 	u_long	tcps_sacksbfailed;	/* times SACK sb update failed */
+	u_long	tcps_sacksbfast;	/* timee SACK sb-block uses cache */
 
 	u_long	tcps_sc_added;		/* entry added to syncache */
 	u_long	tcps_sc_retransmitted;	/* syncache entry was retransmitted */
@@ -622,6 +626,7 @@ void	 tcp_respond (struct tcpcb *, void *,
 struct rtentry *
 	 tcp_rtlookup (struct in_conninfo *);
 int	 tcp_sack_bytes_below(struct scoreboard *scb, tcp_seq seq);
+void	 tcp_sack_destroy(struct scoreboard *scb);
 void	 tcp_sack_cleanup(struct scoreboard *scb);
 void	 tcp_sack_report_cleanup(struct tcpcb *tp);
 int	 tcp_sack_ndsack_blocks(struct raw_sackblock *blocks,

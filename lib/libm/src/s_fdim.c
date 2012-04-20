@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-
 #include <math.h>
 
 #define	DECL(type, fn)			\

@@ -34,8 +34,6 @@
 
 #include "e1000_api.h"
 
-static u8 e1000_calculate_checksum(u8 *buffer, u32 length);
-
 /**
  *  e1000_calculate_checksum - Calculate checksum for buffer
  *  @buffer: pointer to EEPROM
@@ -47,7 +45,7 @@ static u8 e1000_calculate_checksum(u8 *buffer, u32 length);
 static u8 e1000_calculate_checksum(u8 *buffer, u32 length)
 {
 	u32 i;
-	u8  sum = 0;
+	u8 sum = 0;
 
 	DEBUGFUNC("e1000_calculate_checksum");
 

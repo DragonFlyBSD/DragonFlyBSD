@@ -24,11 +24,8 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/lib/libatm/ip_checksum.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- *	@(#) $DragonFly: src/lib/libatm/ip_checksum.c,v 1.4 2008/09/30 16:57:04 swildner Exp $
  *
  */
-
-#include <sys/cdefs.h>
 
 /*
  * User Space Library Functions

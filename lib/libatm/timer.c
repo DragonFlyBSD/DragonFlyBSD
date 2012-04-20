@@ -24,11 +24,8 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/lib/libatm/timer.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- *	@(#) $DragonFly: src/lib/libatm/timer.c,v 1.4 2008/11/10 15:58:20 swildner Exp $
  *
  */
-
-#include <sys/cdefs.h>
 
 /*
  * User Space Library Functions

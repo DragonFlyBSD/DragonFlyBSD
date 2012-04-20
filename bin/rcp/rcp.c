@@ -42,7 +42,6 @@
  * $FreeBSD: src/bin/rcp/rcp.c,v 1.26.2.6 2004/09/16 12:16:10 delphij Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/time.h>

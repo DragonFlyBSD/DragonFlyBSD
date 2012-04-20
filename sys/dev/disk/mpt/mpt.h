@@ -1,4 +1,4 @@
-/* $FreeBSD: src/sys/dev/mpt/mpt.h,v 1.55 2011/04/22 09:59:16 marius Exp $ */
+/* $FreeBSD: src/sys/dev/mpt/mpt.h,v 1.60 2012/03/24 00:30:17 marius Exp $ */
 /*-
  * Generic defines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -543,7 +543,7 @@ struct mpt_softc {
 	int			mpt_locksetup;
 	uint32_t		mpt_pers_mask;
 	uint32_t
-				: 8,
+				: 7,
 		unit		: 8,
 		ready		: 1,
 		fw_uploaded	: 1,
@@ -560,7 +560,8 @@ struct mpt_softc {
 		disabled	: 1,
 		is_spi		: 1,
 		is_sas		: 1,
-		is_fc		: 1;
+		is_fc		: 1,
+		is_1078		: 1;
 
 	u_int			cfg_role;
 	u_int			role;	/* role: none, ini, target, both */
@@ -648,17 +649,17 @@ struct mpt_softc {
 	int			pci_msi_count;
 	struct resource *	pci_irq;	/* Interrupt map for chip */
 	void *			ih;		/* Interrupt handle */
+#if 0
 	struct mpt_pci_cfg	pci_cfg;	/* saved PCI conf registers */
+#endif
 
 	/*
 	 * DMA Mapping Stuff
 	 */
 	struct resource *	pci_reg;	/* Register map for chip */
-	int			pci_mem_rid;	/* Resource ID */
 	bus_space_tag_t		pci_st;		/* Bus tag for registers */
 	bus_space_handle_t	pci_sh;		/* Bus handle for registers */
 	/* PIO versions of above. */
-	int			pci_pio_rid;
 	struct resource *	pci_pio_reg;
 	bus_space_tag_t		pci_pio_st;
 	bus_space_handle_t	pci_pio_sh;
@@ -765,6 +766,7 @@ mpt_assign_serno(struct mpt_softc *mpt, request_t *req)
 }
 
 /***************************** Locking Primitives *****************************/
+#define	MPT_IFLAGS		INTR_MPSAFE
 #define	MPT_LOCK_SETUP(mpt)						\
 		lockinit(&mpt->mpt_lock, "mpt", 0, LK_CANRECURSE);	\
 		mpt->mpt_locksetup = 1
@@ -815,12 +817,14 @@ mpt_read(struct mpt_softc *mpt, int offset)
 static __inline void
 mpt_pio_write(struct mpt_softc *mpt, size_t offset, uint32_t val)
 {
+	KASSERT(mpt->pci_pio_reg != NULL, ("no PIO resource"));
 	bus_space_write_4(mpt->pci_pio_st, mpt->pci_pio_sh, offset, val);
 }
 
 static __inline uint32_t
 mpt_pio_read(struct mpt_softc *mpt, int offset)
 {
+	KASSERT(mpt->pci_pio_reg != NULL, ("no PIO resource"));
 	return (bus_space_read_4(mpt->pci_pio_st, mpt->pci_pio_sh, offset));
 }
 /*********************** Reply Frame/Request Management ***********************/
@@ -908,16 +912,6 @@ mpt_complete_request_chain(struct mpt_softc *, struct req_queue *, u_int);
 int mpt_reset(struct mpt_softc *, int /*reinit*/);
 
 /****************************** Debugging ************************************/
-typedef struct mpt_decode_entry {
-	char    *name;
-	u_int	 value;
-	u_int	 mask;
-} mpt_decode_entry_t;
-
-int mpt_decode_value(mpt_decode_entry_t *table, u_int num_entries,
-		     const char *name, u_int value, u_int *cur_column,
-		     u_int wrap_point);
-
 void mpt_dump_data(struct mpt_softc *, const char *, void *, int);
 void mpt_dump_request(struct mpt_softc *, request_t *);
 
@@ -942,11 +936,13 @@ do {						\
 		mpt_prt(mpt, __VA_ARGS__);	\
 } while (0)
 
+#if 0
 #define mpt_lprtc(mpt, level, ...)		\
 do {						\
 	if (level <= (mpt)->verbose)		\
 		mpt_prtc(mpt, __VA_ARGS__);	\
 } while (0)
+#endif
 void mpt_prt(struct mpt_softc *, const char *, ...)
 	__printflike(2, 3);
 void mpt_prtc(struct mpt_softc *, const char *, ...)
@@ -976,7 +972,7 @@ static __inline request_t *
 mpt_tag_2_req(struct mpt_softc *mpt, uint32_t tag)
 {
 	uint16_t rtg = (tag >> 18);
-	KASSERT(rtg < mpt->tgt_cmds_allocated, ("bad tag %d\n", tag));
+	KASSERT(rtg < mpt->tgt_cmds_allocated, ("bad tag %d", tag));
 	KASSERT(mpt->tgt_cmd_ptrs, ("no cmd backpointer array"));
 	KASSERT(mpt->tgt_cmd_ptrs[rtg], ("no cmd backpointer"));
 	return (mpt->tgt_cmd_ptrs[rtg]);
@@ -1043,7 +1039,7 @@ mpt_req_spcl(struct mpt_softc *mpt, request_t *req, const char *s, int line)
 			return;
 		}
 	}
-	panic("%s(%d): req %p:%u function %x not in els or tgt ptrs\n",
+	panic("%s(%d): req %p:%u function %x not in els or tgt ptrs",
 	    s, line, req, req->serno,
 	    ((PTR_MSG_REQUEST_HEADER)req->req_vbuf)->Function);
 }
@@ -1057,13 +1053,13 @@ mpt_req_not_spcl(struct mpt_softc *mpt, request_t *req, const char *s, int line)
 	int i;
 	for (i = 0; i < mpt->els_cmds_allocated; i++) {
 		KASSERT(req != mpt->els_cmd_ptrs[i],
-		    ("%s(%d): req %p:%u func %x in els ptrs at ioindex %d\n",
+		    ("%s(%d): req %p:%u func %x in els ptrs at ioindex %d",
 		    s, line, req, req->serno,
 		    ((PTR_MSG_REQUEST_HEADER)req->req_vbuf)->Function, i));
 	}
 	for (i = 0; i < mpt->tgt_cmds_allocated; i++) {
 		KASSERT(req != mpt->tgt_cmd_ptrs[i],
-		    ("%s(%d): req %p:%u func %x in tgt ptrs at ioindex %d\n",
+		    ("%s(%d): req %p:%u func %x in tgt ptrs at ioindex %d",
 		    s, line, req, req->serno,
 		    ((PTR_MSG_REQUEST_HEADER)req->req_vbuf)->Function, i));
 	}
@@ -1103,7 +1099,6 @@ void		mpt_check_doorbell(struct mpt_softc *mpt);
 void		mpt_dump_reply_frame(struct mpt_softc *mpt,
 				     MSG_DEFAULT_REPLY *reply_frame);
 
-void		mpt_set_config_regs(struct mpt_softc *);
 int		mpt_issue_cfg_req(struct mpt_softc */*mpt*/, request_t */*req*/,
 				  cfgparms_t *params,
 				  bus_addr_t /*addr*/, bus_size_t/*len*/,
@@ -1157,6 +1152,5 @@ char *mpt_ioc_diag(uint32_t diag);
 void mpt_req_state(mpt_req_state_t state);
 void mpt_print_config_request(void *vmsg);
 void mpt_print_request(void *vmsg);
-void mpt_print_scsi_io_request(MSG_SCSI_IO_REQUEST *msg);
 void mpt_dump_sgl(SGE_IO_UNION *se, int offset);
 #endif /* _MPT_H_ */

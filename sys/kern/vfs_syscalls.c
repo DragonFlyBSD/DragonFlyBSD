@@ -3425,7 +3425,7 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 		error = EISDIR;
 		goto done;
 	}
-	if (vfs_accounting_enabled) {
+	if (vfs_quota_enabled) {
 		error = VOP_GETATTR(vp, &vattr);
 		KASSERT(error == 0, ("kern_truncate(): VOP_GETATTR didn't return 0"));
 		uid = vattr.va_uid;
@@ -3500,7 +3500,7 @@ kern_ftruncate(int fd, off_t length)
 		goto done;
 	}
 
-	if (vfs_accounting_enabled) {
+	if (vfs_quota_enabled) {
 		error = VOP_GETATTR(vp, &vattr);
 		KASSERT(error == 0, ("kern_ftruncate(): VOP_GETATTR didn't return 0"));
 		uid = vattr.va_uid;

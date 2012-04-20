@@ -81,6 +81,7 @@
 #define E1000_EXTCNF_CTRL  0x00F00  /* Extended Configuration Control */
 #define E1000_EXTCNF_SIZE  0x00F08  /* Extended Configuration Size */
 #define E1000_PHY_CTRL     0x00F10  /* PHY Control Register in CSR */
+#define E1000_POEMB        E1000_PHY_CTRL /* PHY OEM Bits */
 #define E1000_PBA      0x01000  /* Packet Buffer Allocation - RW */
 #define E1000_PBS      0x01008  /* Packet Buffer Size */
 #define E1000_EEMNGCTL 0x01010  /* MNG EEprom Control */
@@ -374,7 +375,7 @@
 #define E1000_DMCTXTH           0x03550 /* Transmit Threshold */
 #define E1000_DMCTLX            0x02514 /* Time to Lx Request */
 #define E1000_DMCRTRH           0x05DD0 /* Receive Packet Rate Threshold */
-#define E1000_DMCCNT            0x05DD4 /* Current RX Count */
+#define E1000_DMCCNT            0x05DD4 /* Current Rx Count */
 #define E1000_FCRTC             0x02170 /* Flow Control Rx high watermark */
 #define E1000_PCIEMISC          0x05BB8 /* PCIE misc config register */
 

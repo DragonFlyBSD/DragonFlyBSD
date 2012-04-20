@@ -7,6 +7,6 @@ NCCD?=          4
 CLEANFILES=	use_ccd.h
 
 use_ccd.h:
-	echo "#define NCCD ${NCCD}" > use_ccd.h
+	echo "#define NCCD ${NCCD}" > ${.TARGET}
 
 .include <bsd.kmod.mk>

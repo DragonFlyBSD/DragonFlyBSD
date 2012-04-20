@@ -24,10 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libmd/sha256c.c,v 1.2 2006/01/17 15:35:56 phk Exp $
- * $DragonFly: src/lib/libmd/sha256c.c,v 1.2 2008/09/11 20:25:34 swildner Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/endian.h>
 #include <sys/types.h>
 
