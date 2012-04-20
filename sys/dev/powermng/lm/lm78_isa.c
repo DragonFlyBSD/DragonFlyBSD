@@ -38,8 +38,6 @@
 #define LMC_ADDR	0x05
 #define LMC_DATA	0x06
 
-extern struct cfdriver lm_cd;
-
 #if defined(LMDEBUG)
 #define DPRINTF(x)		do { kprintf x; } while (0)
 #else

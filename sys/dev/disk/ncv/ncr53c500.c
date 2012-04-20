@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500.c,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.13 2007/01/06 08:28:53 dillon Exp $	*/
 /*	$NecBSD: ncr53c500.c,v 1.30.12.3 2001/06/26 07:31:41 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -92,11 +91,6 @@ struct ncv_statics {
 	int reselect;
 } ncv_statics;
 #endif	/* NCV_STATICS */
-
-/***************************************************
- * DEVICE STRUCTURE
- ***************************************************/
-extern struct cfdriver ncv_cd;
 
 /**************************************************************
  * DECLARE

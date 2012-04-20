@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.13 2008/06/05 18:06:31 swildner Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -116,11 +115,6 @@ int nsp_read_suspend_bytes = DEV_BSIZE;
 int nsp_write_suspend_bytes = DEV_BSIZE;
 int nsp_read_interrupt_bytes = 4096;
 int nsp_write_interrupt_bytes = 4096;
-
-/***************************************************
- * DEVICE STRUCTURE
- ***************************************************/
-extern struct cfdriver nsp_cd;
 
 /**************************************************************
  * DECLARE

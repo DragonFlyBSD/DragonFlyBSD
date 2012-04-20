@@ -70,8 +70,6 @@ void it_generic_fanrpm(struct it_softc *, struct ksensor *);
 void it_refresh_sensor_data(struct it_softc *);
 void it_refresh(void *);
 
-extern struct cfdriver it_cd;
-
 static device_method_t it_methods[] = {
 	/* Methods from the device interface */
 	DEVMETHOD(device_probe,         it_probe),
