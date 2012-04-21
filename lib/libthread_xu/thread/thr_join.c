@@ -28,8 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libthread_xu/thread/thr_join.c,v 1.7 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -94,7 +92,7 @@ join_common(pthread_t pthread, void **thread_return,
 	if ((ret = _thr_find_thread(curthread, pthread, 1)) != 0) {
 		ret = ESRCH;
 	} else if ((pthread->tlflags & TLFLAGS_DETACHED) != 0) {
-		ret = ESRCH;
+		ret = EINVAL;
 	} else if (pthread->joiner != NULL) {
 		/* Multiple joiners are not supported. */
 		ret = ENOTSUP;
