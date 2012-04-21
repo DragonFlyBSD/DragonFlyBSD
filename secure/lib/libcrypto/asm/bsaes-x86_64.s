@@ -10,7 +10,7 @@ _bsaes_encrypt8:
 
 	movdqa	(%rax),%xmm8
 	leaq	16(%rax),%rax
-	movdqa	96(%r11),%xmm7
+	movdqa	80(%r11),%xmm7
 	pxor	%xmm8,%xmm15
 	pxor	%xmm8,%xmm0
 .byte	102,68,15,56,0,255
@@ -1046,100 +1046,82 @@ _bsaes_decrypt8:
 .type	_bsaes_key_convert,@function
 .align	16
 _bsaes_key_convert:
-	leaq	.LBS1(%rip),%r11
+	leaq	.Lmasks(%rip),%r11
 	movdqu	(%rcx),%xmm7
-	movdqa	-16(%r11),%xmm8
-	movdqa	0(%r11),%xmm9
-	movdqa	16(%r11),%xmm10
-	movdqa	64(%r11),%xmm13
-	movdqa	96(%r11),%xmm14
-
-	movdqu	16(%rcx),%xmm6
 	leaq	16(%rcx),%rcx
+	movdqa	0(%r11),%xmm0
+	movdqa	16(%r11),%xmm1
+	movdqa	32(%r11),%xmm2
+	movdqa	48(%r11),%xmm3
+	movdqa	64(%r11),%xmm4
+	pcmpeqd	%xmm5,%xmm5
+
+	movdqu	(%rcx),%xmm6
 	movdqa	%xmm7,(%rax)
 	leaq	16(%rax),%rax
 	decl	%r10d
 	jmp	.Lkey_loop
 .align	16
 .Lkey_loop:
-.byte	102,65,15,56,0,245
-	movdqa	%xmm6,%xmm7
-	movdqa	%xmm6,%xmm11
-	psrlq	$1,%xmm6
-	pxor	%xmm7,%xmm6
-	pand	%xmm8,%xmm6
-	pxor	%xmm6,%xmm7
-	psllq	$1,%xmm6
-	pxor	%xmm11,%xmm6
+.byte	102,15,56,0,244
 
-	movdqa	%xmm7,%xmm5
-	movdqa	%xmm6,%xmm4
-	movdqa	%xmm5,%xmm11
-	psrlq	$2,%xmm5
-	movdqa	%xmm4,%xmm12
-	psrlq	$2,%xmm4
-	pxor	%xmm7,%xmm5
-	pxor	%xmm6,%xmm4
-	pand	%xmm9,%xmm5
-	pand	%xmm9,%xmm4
-	pxor	%xmm5,%xmm7
-	psllq	$2,%xmm5
-	pxor	%xmm4,%xmm6
-	psllq	$2,%xmm4
-	pxor	%xmm11,%xmm5
-	pxor	%xmm12,%xmm4
+	movdqa	%xmm0,%xmm8
+	movdqa	%xmm1,%xmm9
 
-	movdqa	%xmm7,%xmm3
-	movdqa	%xmm5,%xmm1
-	movdqa	%xmm6,%xmm2
-	movdqa	%xmm4,%xmm0
-	movdqa	%xmm3,%xmm11
-	psrlq	$4,%xmm3
-	movdqa	%xmm2,%xmm12
-	psrlq	$4,%xmm2
-	pxor	%xmm7,%xmm3
-	pxor	%xmm6,%xmm2
-	pand	%xmm10,%xmm3
-	pand	%xmm10,%xmm2
-	pxor	%xmm3,%xmm7
-	psllq	$4,%xmm3
-	pxor	%xmm2,%xmm6
-	psllq	$4,%xmm2
-	pxor	%xmm11,%xmm3
-	pxor	%xmm12,%xmm2
-	movdqa	%xmm1,%xmm11
-	psrlq	$4,%xmm1
-	movdqa	%xmm0,%xmm12
-	psrlq	$4,%xmm0
-	pxor	%xmm5,%xmm1
-	pxor	%xmm4,%xmm0
-	pand	%xmm10,%xmm1
-	pand	%xmm10,%xmm0
-	pxor	%xmm1,%xmm5
-	psllq	$4,%xmm1
-	pxor	%xmm0,%xmm4
+	pand	%xmm6,%xmm8
+	pand	%xmm6,%xmm9
+	movdqa	%xmm2,%xmm10
+	pcmpeqb	%xmm0,%xmm8
 	psllq	$4,%xmm0
-	pxor	%xmm11,%xmm1
-	pxor	%xmm12,%xmm0
-	pxor	%xmm14,%xmm5
-	pxor	%xmm14,%xmm6
-	pxor	%xmm14,%xmm0
-	pxor	%xmm14,%xmm1
+	movdqa	%xmm3,%xmm11
+	pcmpeqb	%xmm1,%xmm9
+	psllq	$4,%xmm1
+
+	pand	%xmm6,%xmm10
+	pand	%xmm6,%xmm11
+	movdqa	%xmm0,%xmm12
+	pcmpeqb	%xmm2,%xmm10
+	psllq	$4,%xmm2
+	movdqa	%xmm1,%xmm13
+	pcmpeqb	%xmm3,%xmm11
+	psllq	$4,%xmm3
+
+	movdqa	%xmm2,%xmm14
+	movdqa	%xmm3,%xmm15
+	pxor	%xmm5,%xmm8
+	pxor	%xmm5,%xmm9
+
+	pand	%xmm6,%xmm12
+	pand	%xmm6,%xmm13
+	movdqa	%xmm8,0(%rax)
+	pcmpeqb	%xmm0,%xmm12
+	psrlq	$4,%xmm0
+	movdqa	%xmm9,16(%rax)
+	pcmpeqb	%xmm1,%xmm13
+	psrlq	$4,%xmm1
 	leaq	16(%rcx),%rcx
-	movdqa	%xmm0,0(%rax)
-	movdqa	%xmm1,16(%rax)
-	movdqa	%xmm2,32(%rax)
-	movdqa	%xmm3,48(%rax)
-	movdqa	%xmm4,64(%rax)
-	movdqa	%xmm5,80(%rax)
-	movdqa	%xmm6,96(%rax)
-	movdqa	%xmm7,112(%rax)
-	leaq	128(%rax),%rax
+
+	pand	%xmm6,%xmm14
+	pand	%xmm6,%xmm15
+	movdqa	%xmm10,32(%rax)
+	pcmpeqb	%xmm2,%xmm14
+	psrlq	$4,%xmm2
+	movdqa	%xmm11,48(%rax)
+	pcmpeqb	%xmm3,%xmm15
+	psrlq	$4,%xmm3
 	movdqu	(%rcx),%xmm6
+
+	pxor	%xmm5,%xmm13
+	pxor	%xmm5,%xmm14
+	movdqa	%xmm12,64(%rax)
+	movdqa	%xmm13,80(%rax)
+	movdqa	%xmm14,96(%rax)
+	movdqa	%xmm15,112(%rax)
+	leaq	128(%rax),%rax
 	decl	%r10d
 	jnz	.Lkey_loop
 
-	movdqa	112(%r11),%xmm7
+	movdqa	80(%r11),%xmm7
 
 	.byte	0xf3,0xc3
 .size	_bsaes_key_convert,.-_bsaes_key_convert
@@ -2541,14 +2523,8 @@ _bsaes_const:
 .quad	0x0504070600030201, 0x0f0e0d0c0a09080b
 .LSRM0:
 .quad	0x0304090e00050a0f, 0x01060b0c0207080d
-.LM0:
-.quad	0x02060a0e03070b0f, 0x0004080c0105090d
 .LM0SR:
 .quad	0x0a0e02060f03070b, 0x0004080c05090d01
-.LNOT:
-.quad	0xffffffffffffffff, 0xffffffffffffffff
-.L63:
-.quad	0x6363636363636363, 0x6363636363636363
 .LSWPUP:
 .quad	0x0706050403020100, 0x0c0d0e0f0b0a0908
 .LSWPUPM0SR:
@@ -2571,6 +2547,15 @@ _bsaes_const:
 .quad	0x0000000000000000, 0x0000000800000000
 .Lxts_magic:
 .long	0x87,0,1,0
+.Lmasks:
+.quad	0x0101010101010101, 0x0101010101010101
+.quad	0x0202020202020202, 0x0202020202020202
+.quad	0x0404040404040404, 0x0404040404040404
+.quad	0x0808080808080808, 0x0808080808080808
+.LM0:
+.quad	0x02060a0e03070b0f, 0x0004080c0105090d
+.L63:
+.quad	0x6363636363636363, 0x6363636363636363
 .byte	66,105,116,45,115,108,105,99,101,100,32,65,69,83,32,102,111,114,32,120,56,54,95,54,52,47,83,83,83,69,51,44,32,69,109,105,108,105,97,32,75,195,164,115,112,101,114,44,32,80,101,116,101,114,32,83,99,104,119,97,98,101,44,32,65,110,100,121,32,80,111,108,121,97,107,111,118,0
 .align	64
 .size	_bsaes_const,.-_bsaes_const
