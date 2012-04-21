@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_join.c,v 1.12.2.8 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_join.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <pthread.h>
@@ -100,13 +99,19 @@ _pthread_join(pthread_t pthread, void **thread_return)
 	}
 
 	/* Check if the thread was not found or has been detached: */
-	if (thread == NULL ||
-	    ((pthread->attr.flags & PTHREAD_DETACHED) != 0)) {
+	if (thread == NULL) {
 		/* Undefer and handle pending signals, yielding if necessary: */
 		_thread_kern_sig_undefer();
 
-		/* Return an error: */
+		/* Thread not found. */
 		ret = ESRCH;
+
+	} else if ((pthread->attr.flags & PTHREAD_DETACHED) != 0) {
+		/* Undefer and handle pending signals, yielding if necessary: */
+		_thread_kern_sig_undefer();
+
+		/* Thread is in detached state. */
+		ret = EINVAL;
 
 	} else if (pthread->joiner != NULL) {
 		/* Undefer and handle pending signals, yielding if necessary: */
