@@ -1264,7 +1264,7 @@ dc_setfilt_xircom(struct dc_softc *sc)
 
 	ifp = &sc->arpcom.ac_if;
 	KASSERT(ifp->if_flags & IFF_RUNNING,
-		("%s is not running yet\n", ifp->if_xname));
+		("%s is not running yet", ifp->if_xname));
 
 	DC_CLRBIT(sc, DC_NETCFG, (DC_NETCFG_TX_ON|DC_NETCFG_RX_ON));
 

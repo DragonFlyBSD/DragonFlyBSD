@@ -1819,7 +1819,7 @@ dpt_reset_hba(dpt_softc_t *dpt)
 		if ((result = dpt_send_eata_command(dpt, &dccb.eata_ccb,
 						    EATA_COLD_BOOT, 0, 0,
 						    0, 0)) != 0) {
-			panic("dpt%d:  Faild to cold boot the HBA\n",
+			panic("dpt%d:  Faild to cold boot the HBA",
 			      dpt->unit);
 		}
 #ifdef DPT_MEASURE_PERFORMANCE
@@ -2012,7 +2012,7 @@ valid_unit:
 		/* Now grab the newest CCB */
 		if ((ccb = dpt_Qpop_free(dpt)) == NULL) {
 			crit_exit();
-			panic("dpt%d: Got a NULL CCB from pop_free()\n", dpt->unit);
+			panic("dpt%d: Got a NULL CCB from pop_free()", dpt->unit);
 		}
 		crit_exit();
 
@@ -2150,7 +2150,7 @@ valid_unit:
 			/* Now grab the newest CCB */
 			if ((ccb = dpt_Qpop_free(dpt)) == NULL) {
 				crit_exit();
-				panic("dpt%d: Got a NULL CCB from pop_free()\n",
+				panic("dpt%d: Got a NULL CCB from pop_free()",
 				      dpt->unit);
 			}
 			crit_exit();
@@ -2264,7 +2264,7 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 	/* Now grab the newest CCB */
 	if ((ccb = dpt_Qpop_free(dpt)) == NULL) {
 		crit_exit();
-		panic("dpt%d: Got a NULL CCB from pop_free()\n", dpt->unit);
+		panic("dpt%d: Got a NULL CCB from pop_free()", dpt->unit);
 	} else {
 		crit_exit();
 		/* Clean up the leftover of the previous tenant */

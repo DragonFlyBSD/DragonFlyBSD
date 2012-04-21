@@ -2265,7 +2265,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	uint32_t cmd_csum, ctl_csum, vlantag;
 
 	KASSERT(sc->re_ldata.re_tx_free > RE_TXDESC_SPARE,
-		("not enough free TX desc\n"));
+		("not enough free TX desc"));
 
 	map = sc->re_ldata.re_tx_dmamap[*idx0];
 
@@ -3169,7 +3169,7 @@ re_config_imtype(struct re_softc *sc, int imtype)
 		break;
 
 	default:
-		panic("%s: unknown imtype %d\n",
+		panic("%s: unknown imtype %d",
 		      sc->arpcom.ac_if.if_xname, imtype);
 	}
 }
@@ -3202,7 +3202,7 @@ re_setup_intr(struct re_softc *sc, int enable_intrs, int imtype)
 		break;
 
 	default:
-		panic("%s: unknown imtype %d\n",
+		panic("%s: unknown imtype %d",
 		      sc->arpcom.ac_if.if_xname, imtype);
 	}
 }
@@ -3346,10 +3346,10 @@ re_jbuf_free(void *arg)
 	struct re_list_data *ldata = &sc->re_ldata;
 
 	if (&ldata->re_jbuf[jbuf->re_slot] != jbuf) {
-		panic("%s: free wrong jumbo buffer\n",
+		panic("%s: free wrong jumbo buffer",
 		      sc->arpcom.ac_if.if_xname);
 	} else if (jbuf->re_inuse == 0) {
-		panic("%s: jumbo buffer already freed\n",
+		panic("%s: jumbo buffer already freed",
 		      sc->arpcom.ac_if.if_xname);
 	}
 
@@ -3368,10 +3368,10 @@ re_jbuf_ref(void *arg)
 	struct re_list_data *ldata = &sc->re_ldata;
 
 	if (&ldata->re_jbuf[jbuf->re_slot] != jbuf) {
-		panic("%s: ref wrong jumbo buffer\n",
+		panic("%s: ref wrong jumbo buffer",
 		      sc->arpcom.ac_if.if_xname);
 	} else if (jbuf->re_inuse == 0) {
-		panic("%s: jumbo buffer already freed\n",
+		panic("%s: jumbo buffer already freed",
 		      sc->arpcom.ac_if.if_xname);
 	}
 	atomic_add_int(&jbuf->re_inuse, 1);

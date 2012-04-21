@@ -305,7 +305,7 @@ madt_lapic_pass1(void)
 	error = madt_iterate_entries(madt, madt_lapic_pass1_callback,
 				     &lapic_addr64);
 	if (error)
-		panic("madt_iterate_entries(pass1) failed\n");
+		panic("madt_iterate_entries(pass1) failed");
 
 	if (lapic_addr64 != 0) {
 		kprintf("ACPI MADT: 64bits lapic address 0x%lx\n",
@@ -368,7 +368,7 @@ madt_lapic_pass2(int bsp_apic_id)
 
 	error = madt_iterate_entries(madt, madt_lapic_pass2_callback, &arg);
 	if (error)
-		panic("madt_iterate_entries(pass2) failed\n");
+		panic("madt_iterate_entries(pass2) failed");
 
 	KKASSERT(arg.bsp_found);
 	naps = arg.cpu - 1; /* exclude BSP */
@@ -452,13 +452,13 @@ madt_lapic_enumerate(struct lapic_enumerator *e)
 
 	lapic_addr = madt_lapic_pass1();
 	if (lapic_addr == 0)
-		panic("madt_lapic_enumerate: no local apic\n");
+		panic("madt_lapic_enumerate: no local apic");
 
 	lapic_map(lapic_addr);
 
 	bsp_apic_id = APIC_ID(lapic->id);
 	if (madt_lapic_pass2(bsp_apic_id))
-		panic("madt_lapic_enumerate: madt_lapic_pass2 failed\n");
+		panic("madt_lapic_enumerate: madt_lapic_pass2 failed");
 }
 
 static struct lapic_enumerator	madt_lapic_enumerator = {
@@ -661,7 +661,7 @@ madt_ioapic_enumerate(struct ioapic_enumerator *e)
 
 	error = madt_iterate_entries(madt, madt_ioapic_enum_callback, NULL);
 	if (error)
-		panic("madt_ioapic_enumerate failed\n");
+		panic("madt_ioapic_enumerate failed");
 
 	sdt_sdth_unmap(&madt->madt_hdr);
 }

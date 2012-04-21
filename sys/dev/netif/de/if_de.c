@@ -404,7 +404,7 @@ tulip_media_link_monitor(tulip_softc_t *sc)
 
     if (mi == NULL) {
 #if defined(DIAGNOSTIC)
-	panic("tulip_media_link_monitor: %s: botch at line %d\n",
+	panic("tulip_media_link_monitor: %s: botch at line %d",
 	      tulip_mediums[sc->tulip_media],__LINE__);
 #endif
 	return TULIP_LINK_UNKNOWN;
@@ -658,7 +658,7 @@ tulip_media_poll(tulip_softc_t *sc, tulip_mediapoll_event_t event)
 	    }
 	    default: {
 #if defined(DIAGNOSTIC)
-		panic("tulip_media_poll: botch at line %d\n", __LINE__);
+		panic("tulip_media_poll: botch at line %d", __LINE__);
 #endif
 		break;
 	    }
@@ -1235,7 +1235,7 @@ tulip_mii_autonegotiate(tulip_softc_t *sc, u_int phyaddr)
 	}
 	default: {
 #if defined(DIAGNOSTIC)
-	    panic("tulip_media_poll: botch at line %d\n", __LINE__);
+	    panic("tulip_media_poll: botch at line %d", __LINE__);
 #endif
 	    break;
 	}

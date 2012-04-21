@@ -33,8 +33,6 @@
  * 
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
- *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.54 2008/11/26 15:05:42 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -554,7 +552,7 @@ lwkt_thread_dropmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
     KASSERT(port->mpu_td == curthread,
     	    ("message could only be dropped in the same thread "
-	     "as the message target port thread\n"));
+	     "as the message target port thread"));
     crit_enter_quick(port->mpu_td);
     _lwkt_pullmsg(port, msg);
     msg->ms_flags |= MSGF_DONE;
@@ -662,7 +660,7 @@ int
 lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
 {
     KASSERT((msg->ms_flags & MSGF_DROPABLE) == 0,
-    	    ("can't wait dropable message\n"));
+	    ("can't wait dropable message"));
 
     if ((msg->ms_flags & MSGF_DONE) == 0) {
 	/*
@@ -792,7 +790,7 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
     int error;
 
     KASSERT((msg->ms_flags & MSGF_DROPABLE) == 0,
-    	    ("can't wait dropable message\n"));
+	    ("can't wait dropable message"));
 
     if ((msg->ms_flags & MSGF_DONE) == 0) {
 	port = msg->ms_reply_port;
@@ -981,7 +979,7 @@ lwkt_serialize_waitmsg(lwkt_msg_t msg, int flags)
     int error;
 
     KASSERT((msg->ms_flags & MSGF_DROPABLE) == 0,
-    	    ("can't wait dropable message\n"));
+	    ("can't wait dropable message"));
 
     if ((msg->ms_flags & MSGF_DONE) == 0) {
 	port = msg->ms_reply_port;

@@ -746,7 +746,7 @@ bce_attach(device_t dev)
 			sc->bce_flags |= BCE_ONESHOT_MSI_FLAG;
 		}
 	} else {
-		panic("%s: unsupported intr type %d\n",
+		panic("%s: unsupported intr type %d",
 		    device_get_nameunit(dev), sc->bce_irq_type);
 	}
 
@@ -2142,7 +2142,7 @@ bce_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 	if (error)
 		return;
 
-	KASSERT(nseg == 1, ("only one segment is allowed\n"));
+	KASSERT(nseg == 1, ("only one segment is allowed"));
 	*busaddr = segs->ds_addr;
 }
 
@@ -4817,7 +4817,7 @@ bce_init(void *xsc)
 		       BCE_EMAC_RX_MTU_SIZE_JUMBO_ENA);
 		sc->mbuf_alloc_size = MJUM9BYTES;
 #else
-		panic("jumbo buffer is not supported yet\n");
+		panic("jumbo buffer is not supported yet");
 #endif
 	} else {
 		REG_WR(sc, BCE_EMAC_RX_MTU_SIZE, ether_mtu);
@@ -4943,7 +4943,7 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 
 	maxsegs = sc->max_tx_bd - sc->used_tx_bd;
 	KASSERT(maxsegs >= BCE_TX_SPARE_SPACE,
-		("not enough segements %d\n", maxsegs));
+		("not enough segments %d", maxsegs));
 	if (maxsegs > BCE_MAX_SEGMENTS)
 		maxsegs = BCE_MAX_SEGMENTS;
 

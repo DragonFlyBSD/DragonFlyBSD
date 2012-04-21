@@ -1189,7 +1189,7 @@ rtw_rxbuf_dma_map(void *arg, bus_dma_segment_t *seg, int nseg,
 	if (error)
 		return;
 
-	KASSERT(nseg == 1, ("too many rx mbuf seg\n"));
+	KASSERT(nseg == 1, ("too many rx mbuf seg"));
 
 	*((bus_addr_t *)arg) = seg->ds_addr;
 }
@@ -2353,7 +2353,7 @@ rtw_tune(struct rtw_softc *sc)
 
 	chan = ieee80211_chan2ieee(ic, ic->ic_curchan);
 	if (chan == IEEE80211_CHAN_ANY)
-		panic("%s: chan == IEEE80211_CHAN_ANY\n", ic->ic_if.if_xname);
+		panic("%s: chan == IEEE80211_CHAN_ANY", ic->ic_if.if_xname);
 
 	rt->rt_chan_freq = htole16(ic->ic_curchan->ic_freq);
 	rt->rt_chan_flags = htole16(ic->ic_curchan->ic_flags);
@@ -3038,7 +3038,7 @@ rtw_txbuf_dma_map(void *arg, bus_dma_segment_t *seg, int nseg,
 	if (error)
 		return;
 
-	KASSERT(nseg <= RTW_MAXPKTSEGS, ("too many tx mbuf seg\n"));
+	KASSERT(nseg <= RTW_MAXPKTSEGS, ("too many tx mbuf seg"));
 
 	s->nseg = nseg;
 	bcopy(seg, s->segs, sizeof(*seg) * nseg);
@@ -3509,7 +3509,7 @@ rtw_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	switch (nstate) {
 	case IEEE80211_S_INIT:
-		panic("%s: unexpected state IEEE80211_S_INIT\n", __func__);
+		panic("%s: unexpected state IEEE80211_S_INIT", __func__);
 		break;
 	case IEEE80211_S_SCAN:
 		if (ostate != IEEE80211_S_SCAN) {
@@ -3957,7 +3957,7 @@ rtw_desc_dma_addr(void *arg, bus_dma_segment_t *seg, int nseg, int error)
 	if (error)
 		return;
 
-	KASSERT(nseg == 1, ("too many desc segments\n"));
+	KASSERT(nseg == 1, ("too many desc segments"));
 	*((uint32_t *)arg) = seg->ds_addr;	/* XXX bus_addr_t */
 }
 
@@ -4533,7 +4533,7 @@ rtw_ratectl_attach(struct ieee80211com *ic, u_int rc)
 		/* This could only happen during detaching */
 		return NULL;
 	default:
-		panic("unknown rate control algo %u\n", rc);
+		panic("unknown rate control algo %u", rc);
 		return NULL;
 	}
 }

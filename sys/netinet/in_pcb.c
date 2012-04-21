@@ -1370,9 +1370,9 @@ in_pcbinsconnhash(struct inpcb *inp)
 #endif
 
 	KASSERT(!(inp->inp_flags & INP_WILDCARD),
-		("already on wildcardhash\n"));
+		("already on wildcardhash"));
 	KASSERT(!(inp->inp_flags & INP_CONNECTED),
-		("already on connhash\n"));
+		("already on connhash"));
 	inp->inp_flags |= INP_CONNECTED;
 
 	/*
@@ -1468,9 +1468,9 @@ in_pcbinswildcardhash(struct inpcb *inp)
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 
 	KASSERT(!(inp->inp_flags & INP_CONNECTED),
-		("already on connhash\n"));
+		("already on connhash"));
 	KASSERT(!(inp->inp_flags & INP_WILDCARD),
-		("already on wildcardhash\n"));
+		("already on wildcardhash"));
 	inp->inp_flags |= INP_WILDCARD;
 
 	in_pcbinswildcardhash_oncpu(inp, pcbinfo);
@@ -1688,7 +1688,7 @@ in_savefaddr(struct socket *so, const struct sockaddr *faddr)
 	struct sockaddr_in *sin;
 
 	KASSERT(faddr->sa_family == AF_INET,
-	    ("not AF_INET faddr %d\n", faddr->sa_family));
+	    ("not AF_INET faddr %d", faddr->sa_family));
 
 	sin = kmalloc(sizeof(*sin), M_SONAME, M_WAITOK | M_ZERO);
 	sin->sin_family = AF_INET;

@@ -178,7 +178,7 @@ aesni_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 			;
 		ses = kmalloc(size, M_AESNI, M_WAITOK | M_ZERO);
 		if ((uintptr_t)ses & (AESNI_ALIGN - 1)) {
-			panic("aesni: ses %p is not %d aligned\n",
+			panic("aesni: ses %p is not %d aligned",
 			    ses, AESNI_ALIGN);
 		}
 

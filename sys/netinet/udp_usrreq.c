@@ -65,7 +65,6 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.47 2008/11/11 10:46:58 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1065,7 +1064,7 @@ udp_connect(netmsg_t msg)
 	}
 
 	if (msg->connect.nm_reconnect & NMSG_RECONNECT_RECONNECT) {
-		panic("UDP does not support RECONNECT\n");
+		panic("UDP does not support RECONNECT");
 #ifdef notyet
 		msg->connect.nm_reconnect &= ~NMSG_RECONNECT_RECONNECT;
 		in_pcblink(inp, &udbinfo);

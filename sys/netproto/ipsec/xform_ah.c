@@ -1134,7 +1134,7 @@ ah_output_cb(struct cryptop *crp)
 		error = ENOBUFS;		/*XXX*/
 		goto bad;
 	}
-	KASSERT(isr->sav == sav, ("ah_output_cb: SA changed\n"));
+	KASSERT(isr->sav == sav, ("ah_output_cb: SA changed"));
 
 	/* Check for crypto errors. */
 	if (crp->crp_etype) {

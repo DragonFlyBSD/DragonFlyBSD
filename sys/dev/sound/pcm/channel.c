@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.99.2.5 2007/05/13 20:53:39 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.15 2008/01/05 13:34:22 corecode Exp $
  */
 
 #include "use_isa.h"
@@ -1085,8 +1084,8 @@ round_bufsz(int bufsz, int min, int max)
 {
 	int tmp = min * 2;
 
-	KASSERT((min & (min-1)) == 0, ("min %d must be power of 2\n", min));
-	KASSERT((max & (max-1)) == 0, ("max %d must be power of 2\n", max));
+	KASSERT((min & (min-1)) == 0, ("min %d must be power of 2", min));
+	KASSERT((max & (max-1)) == 0, ("max %d must be power of 2", max));
 	while (tmp <= bufsz)
 		tmp <<= 1;
 	tmp >>= 1;

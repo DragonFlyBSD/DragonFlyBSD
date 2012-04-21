@@ -1254,7 +1254,7 @@ again:
 			prod = 0;
 
 		++cnt;
-		KASSERT(cnt < (TX_ENTRIES - 4), ("too many frag\n"));
+		KASSERT(cnt < (TX_ENTRIES - 4), ("too many frag"));
 
 		if (m->m_flags & M_VLANTAG) {
 			txd->tx_pflags = TX_PFLAGS_VLAN |
@@ -1278,7 +1278,7 @@ again:
 				continue;
 
 			++cnt;
-			KASSERT(cnt < (TX_ENTRIES - 4), ("too many frag\n"));
+			KASSERT(cnt < (TX_ENTRIES - 4), ("too many frag"));
 
 			txd->tx_numdesc++;
 

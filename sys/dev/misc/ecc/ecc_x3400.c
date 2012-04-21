@@ -222,7 +222,7 @@ ecc_x3400_status_ch(struct ecc_x3400_softc *sc, int ofs, int idx)
 			break;
 
 		default:
-			panic("unsupported index %d\n", idx);
+			panic("unsupported index %d", idx);
 		}
 	} else {
 		switch (idx) {
@@ -247,7 +247,7 @@ ecc_x3400_status_ch(struct ecc_x3400_softc *sc, int ofs, int idx)
 			break;
 
 		default:
-			panic("unsupported index %d\n", idx);
+			panic("unsupported index %d", idx);
 		}
 	}
 

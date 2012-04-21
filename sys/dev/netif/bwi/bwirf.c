@@ -706,7 +706,7 @@ bwi_phy812_value(struct bwi_mac *mac, uint16_t lpd)
 		case 0x100:
 			return (0x2093 | ext_lna);
 		default:
-			panic("unsupported lpd\n");
+			panic("unsupported lpd");
 		}
 	} else {
 		ext_lna |= (loop << 8);
@@ -719,11 +719,11 @@ bwi_phy812_value(struct bwi_mac *mac, uint16_t lpd)
 		case 0x100:
 			return (0x93 | ext_lna);
 		default:
-			panic("unsupported lpd\n");
+			panic("unsupported lpd");
 		}
 	}
 
-	panic("never reached\n");
+	panic("never reached");
 	return 0;
 }
 

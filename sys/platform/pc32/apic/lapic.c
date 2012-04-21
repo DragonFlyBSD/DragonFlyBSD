@@ -316,7 +316,7 @@ lapic_timer_calibrate(void)
 			break;
 	}
 	if (lapic_timer_divisor_idx >= APIC_TIMER_NDIVISORS)
-		panic("lapic: no proper timer divisor?!\n");
+		panic("lapic: no proper timer divisor?!");
 	lapic_cputimer_intr.freq = value / 2;
 
 	kprintf("lapic: divisor index %d, frequency %u Hz\n",

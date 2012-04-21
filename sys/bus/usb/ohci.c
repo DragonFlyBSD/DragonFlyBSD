@@ -1,6 +1,5 @@
 /*	$NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohci.c,v 1.154.2.4 2006/06/26 00:31:25 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.28 2008/08/14 20:55:53 hasso Exp $	*/
 
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -1906,7 +1905,7 @@ ohci_hash_find_td(ohci_softc_t *sc, ohci_physaddr_t a)
 	/* if these are present they should be masked out at an earlier
 	 * stage.
 	 */
-	KASSERT((a&~OHCI_HEADMASK) == 0, ("%s: 0x%b has lower bits set\n",
+	KASSERT((a&~OHCI_HEADMASK) == 0, ("%s: 0x%b has lower bits set",
 				      device_get_nameunit(sc->sc_bus.bdev),
 				      (int) a, "\20\1HALT\2TOGGLE"));
 

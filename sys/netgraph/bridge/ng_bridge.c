@@ -954,7 +954,7 @@ ng_bridge_timeout(void *arg)
 
 			/* Make sure host's link really exists */
 			KASSERT(priv->links[hent->host.linkNum] != NULL,
-			    ("%s: host %6D on nonexistent link %d\n",
+			    ("%s: host %6D on nonexistent link %d",
 			    __func__, hent->host.addr, ":",
 			    hent->host.linkNum));
 

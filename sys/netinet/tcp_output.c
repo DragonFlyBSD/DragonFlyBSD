@@ -65,7 +65,6 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.34 2007/04/22 01:13:14 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -987,7 +986,7 @@ after_th:
 		 */
 		int xlen = len;
 		if (flags & TH_SYN)
-			panic("tcp_output: persist timer to send SYN\n");
+			panic("tcp_output: persist timer to send SYN");
 		if (flags & TH_FIN) {
 			++xlen;
 			tp->t_flags |= TF_SENTFIN;
@@ -1061,7 +1060,7 @@ after_th:
 					  IP_DEBUGROUTE, NULL, inp);
 		}
 	} else {
-		KASSERT(error != 0, ("no error, but th not set\n"));
+		KASSERT(error != 0, ("no error, but th not set"));
 	}
 	if (error) {
 
@@ -1149,7 +1148,7 @@ tcp_setpersist(struct tcpcb *tp)
 
 	if (tp->t_state == TCPS_SYN_SENT ||
 	    tp->t_state == TCPS_SYN_RECEIVED) {
-		panic("tcp_setpersist: not established yet, current %s\n",
+		panic("tcp_setpersist: not established yet, current %s",
 		      tp->t_state == TCPS_SYN_SENT ?
 		      "SYN_SENT" : "SYN_RECEIVED");
 	}

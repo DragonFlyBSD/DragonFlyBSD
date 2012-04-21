@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.11 2008/09/20 04:36:51 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +85,7 @@ ip_dn_queue(struct mbuf *m)
 
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
-		("mbuf is not tagged for dummynet!\n"));
+		("mbuf is not tagged for dummynet!"));
 
 	nmp = &m->m_hdr.mh_netmsg;
 	netmsg_init(&nmp->base, NULL, &netisr_apanic_rport,
@@ -106,7 +104,7 @@ ip_dn_packet_free(struct dn_pkt *pkt)
 
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
-		("mbuf is not tagged for dummynet!\n"));
+		("mbuf is not tagged for dummynet!"));
 
 	nmp = &m->m_hdr.mh_netmsg;
 	netmsg_init(&nmp->base, NULL, &netisr_apanic_rport,
@@ -133,16 +131,16 @@ ip_dn_packet_redispatch(struct dn_pkt *pkt)
 
 	dir = (pkt->dn_flags & DN_FLAGS_DIR_MASK);
 	KASSERT(dir < DN_TO_MAX,
-		("unknown dummynet redispatch dir %d\n", dir));
+		("unknown dummynet redispatch dir %d", dir));
 
 	dispatch = dispatches[dir];
 	KASSERT(dispatch != NULL,
-		("unsupported dummynet redispatch dir %d\n", dir));
+		("unsupported dummynet redispatch dir %d", dir));
 
 	m = pkt->dn_m;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
-		("mbuf is not tagged for dummynet!\n"));
+		("mbuf is not tagged for dummynet!"));
 
 	nmp = &m->m_hdr.mh_netmsg;
 	netmsg_init(&nmp->base, NULL, &netisr_apanic_rport, 0, dispatch);
@@ -218,7 +216,7 @@ ip_dn_freepkt_dispatch(netmsg_t nmsg)
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
-		("mbuf is not tagged for dummynet!\n"));
+		("mbuf is not tagged for dummynet!"));
 
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	KKASSERT(mtag != NULL);
@@ -226,7 +224,7 @@ ip_dn_freepkt_dispatch(netmsg_t nmsg)
 	pkt = m_tag_data(mtag);
 	KASSERT(pkt->cpuid == mycpuid,
 		("%s: dummynet packet was delivered to wrong cpu! "
-		 "target cpuid %d, mycpuid %d\n", __func__,
+		 "target cpuid %d, mycpuid %d", __func__,
 		 pkt->cpuid, mycpuid));
 
 	ip_dn_freepkt(pkt);
@@ -242,14 +240,14 @@ ip_dn_dispatch(netmsg_t nmsg)
 
 	KASSERT(ip_dn_cpu == mycpuid,
 		("%s: dummynet packet was delivered to wrong cpu! "
-		 "dummynet cpuid %d, mycpuid %d\n", __func__,
+		 "dummynet cpuid %d, mycpuid %d", __func__,
 		 ip_dn_cpu, mycpuid));
 
 	nmp = &nmsg->packet;
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
-		("mbuf is not tagged for dummynet!\n"));
+		("mbuf is not tagged for dummynet!"));
 
 	if (DUMMYNET_LOADED) {
 		if (ip_dn_io_ptr(m) == 0)
@@ -281,7 +279,7 @@ ip_dn_ip_output(netmsg_t nmsg)
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
-		("mbuf is not tagged for dummynet!\n"));
+		("mbuf is not tagged for dummynet!"));
 
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	KKASSERT(mtag != NULL);
@@ -289,10 +287,10 @@ ip_dn_ip_output(netmsg_t nmsg)
 	pkt = m_tag_data(mtag);
 	KASSERT(pkt->cpuid == mycpuid,
 		("%s: dummynet packet was delivered to wrong cpu! "
-		 "target cpuid %d, mycpuid %d\n", __func__,
+		 "target cpuid %d, mycpuid %d", __func__,
 		 pkt->cpuid, mycpuid));
 	KASSERT((pkt->dn_flags & DN_FLAGS_DIR_MASK) == DN_TO_IP_OUT,
-		("wrong direction %d, should be %d\n",
+		("wrong direction %d, should be %d",
 		 (pkt->dn_flags & DN_FLAGS_DIR_MASK), DN_TO_IP_OUT));
 
 	priv = pkt->dn_priv;
@@ -329,7 +327,7 @@ ip_dn_ip_input(netmsg_t nmsg)
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
-		("mbuf is not tagged for dummynet!\n"));
+		("mbuf is not tagged for dummynet!"));
 
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	KKASSERT(mtag != NULL);
@@ -337,12 +335,12 @@ ip_dn_ip_input(netmsg_t nmsg)
 	pkt = m_tag_data(mtag);
 	KASSERT(pkt->cpuid == mycpuid,
 		("%s: dummynet packet was delivered to wrong cpu! "
-		 "target cpuid %d, mycpuid %d\n", __func__,
+		 "target cpuid %d, mycpuid %d", __func__,
 		 pkt->cpuid, mycpuid));
 	KASSERT(pkt->ro.ro_rt == NULL,
-		("route entry is not NULL for ip_input\n"));
+		("route entry is not NULL for ip_input"));
 	KASSERT((pkt->dn_flags & DN_FLAGS_DIR_MASK) == DN_TO_IP_IN,
-		("wrong direction %d, should be %d\n",
+		("wrong direction %d, should be %d",
 		 (pkt->dn_flags & DN_FLAGS_DIR_MASK), DN_TO_IP_IN));
 
 	priv = pkt->dn_priv;
@@ -368,7 +366,7 @@ ip_dn_ether_demux(netmsg_t nmsg)
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
-		("mbuf is not tagged for dummynet!\n"));
+		("mbuf is not tagged for dummynet!"));
 
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	KKASSERT(mtag != NULL);
@@ -376,12 +374,12 @@ ip_dn_ether_demux(netmsg_t nmsg)
 	pkt = m_tag_data(mtag);
 	KASSERT(pkt->cpuid == mycpuid,
 		("%s: dummynet packet was delivered to wrong cpu! "
-		 "target cpuid %d, mycpuid %d\n", __func__,
+		 "target cpuid %d, mycpuid %d", __func__,
 		 pkt->cpuid, mycpuid));
 	KASSERT(pkt->ro.ro_rt == NULL,
-		("route entry is not NULL for ether_demux\n"));
+		("route entry is not NULL for ether_demux"));
 	KASSERT((pkt->dn_flags & DN_FLAGS_DIR_MASK) == DN_TO_ETH_DEMUX,
-		("wrong direction %d, should be %d\n",
+		("wrong direction %d, should be %d",
 		 (pkt->dn_flags & DN_FLAGS_DIR_MASK), DN_TO_ETH_DEMUX));
 
 	priv = pkt->dn_priv;
@@ -415,7 +413,7 @@ ip_dn_ether_output(netmsg_t nmsg)
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
-		("mbuf is not tagged for dummynet!\n"));
+		("mbuf is not tagged for dummynet!"));
 
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	KKASSERT(mtag != NULL);
@@ -423,12 +421,12 @@ ip_dn_ether_output(netmsg_t nmsg)
 	pkt = m_tag_data(mtag);
 	KASSERT(pkt->cpuid == mycpuid,
 		("%s: dummynet packet was delivered to wrong cpu! "
-		 "target cpuid %d, mycpuid %d\n", __func__,
+		 "target cpuid %d, mycpuid %d", __func__,
 		 pkt->cpuid, mycpuid));
 	KASSERT(pkt->ro.ro_rt == NULL,
-		("route entry is not NULL for ether_output_frame\n"));
+		("route entry is not NULL for ether_output_frame"));
 	KASSERT((pkt->dn_flags & DN_FLAGS_DIR_MASK) == DN_TO_ETH_OUT,
-		("wrong direction %d, should be %d\n",
+		("wrong direction %d, should be %d",
 		 (pkt->dn_flags & DN_FLAGS_DIR_MASK), DN_TO_ETH_OUT));
 
 	priv = pkt->dn_priv;
@@ -449,7 +447,7 @@ ip_dn_sockopt_dispatch(netmsg_t nmsg)
 
 	KASSERT(ip_dn_cpu == mycpuid,
 		("%s: dummynet sockopt is done on wrong cpu! "
-		 "dummynet cpuid %d, mycpuid %d\n", __func__,
+		 "dummynet cpuid %d, mycpuid %d", __func__,
 		 ip_dn_cpu, mycpuid));
 
 	if (DUMMYNET_LOADED)

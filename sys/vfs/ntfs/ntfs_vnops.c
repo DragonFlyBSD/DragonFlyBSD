@@ -373,7 +373,7 @@ ntfs_strategy(struct vop_strategy_args *ap)
 		}
 		break;
 	default:
-		panic("ntfs: bad b_cmd %d\n", bp->b_cmd);
+		panic("ntfs: bad b_cmd %d", bp->b_cmd);
 	}
 	biodone(bio);
 	return (error);

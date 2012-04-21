@@ -379,7 +379,7 @@ iwl_read_eeprom(struct iwlcom *iwl, uint8_t ofs)
 static void
 iwl_dma_ring_addr(void *arg, bus_dma_segment_t *seg, int nseg, int error)
 {
-	KASSERT(nseg == 1, ("too many segments\n"));
+	KASSERT(nseg == 1, ("too many segments"));
 	*((bus_addr_t *)arg) = seg->ds_addr;
 }
 

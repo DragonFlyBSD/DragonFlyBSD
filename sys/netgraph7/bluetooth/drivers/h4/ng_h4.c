@@ -29,8 +29,6 @@
  *
  * $Id: ng_h4.c,v 1.10 2005/10/31 17:57:43 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/drivers/h4/ng_h4.c,v 1.17 2007/08/13 17:19:28 emax Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/drivers/h4/ng_h4.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/drivers/h4/ng_h4.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  * 
  * Based on:
  * ---------
@@ -478,7 +476,7 @@ ng_h4_input(int c, struct tty *tp)
 			break;
 
 		default:
-			KASSERT((0), ("Invalid packet type=%#x\n",
+			KASSERT((0), ("Invalid packet type=%#x",
 				sc->ibuf[0]));
 			break;
 		}
@@ -711,7 +709,7 @@ ng_h4_connect(hook_p hook)
 	ng_h4_info_p	sc = (ng_h4_info_p) NG_NODE_PRIVATE(NG_HOOK_NODE(hook));
 
 	if (hook != sc->hook)
-		panic("%s: hook != sc->hook\n", __func__);
+		panic("%s: hook != sc->hook", __func__);
 
 	NG_HOOK_FORCE_QUEUE(NG_HOOK_PEER(hook));
 	NG_HOOK_FORCE_QUEUE(hook);
@@ -735,7 +733,7 @@ ng_h4_disconnect(hook_p hook)
 
 	if (sc != NULL) {
 		if (hook != sc->hook)
-			panic("%s: hook != sc->hook\n", __func__);
+			panic("%s: hook != sc->hook", __func__);
 
 		NG_H4_LOCK(sc);
 
@@ -807,7 +805,7 @@ ng_h4_rcvdata(hook_p hook, item_p item)
 		return (EHOSTDOWN);
 
 	if (hook != sc->hook)
-		panic("%s: hook != sc->hook\n", __func__);
+		panic("%s: hook != sc->hook", __func__);
 
 	NGI_GET_M(item, m);
 	NG_FREE_ITEM(item);

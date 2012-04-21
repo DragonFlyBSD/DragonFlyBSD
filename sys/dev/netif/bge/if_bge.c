@@ -2751,7 +2751,7 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 
 	maxsegs = (BGE_TX_RING_CNT - sc->bge_txcnt) - BGE_NSEG_RSVD;
 	KASSERT(maxsegs >= BGE_NSEG_SPARE,
-		("not enough segments %d\n", maxsegs));
+		("not enough segments %d", maxsegs));
 
 	if (maxsegs > BGE_NSEG_NEW)
 		maxsegs = BGE_NSEG_NEW;

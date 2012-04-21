@@ -287,7 +287,7 @@ netmsg_service_loop(void *arg)
 		limit = 512;
 		do {
 			KASSERT(msg->nm_dispatch != NULL,
-				("netmsg_service isr %d badmsg\n",
+				("netmsg_service isr %d badmsg",
 				msg->lmsg.u.ms_result));
 			if (msg->nm_so &&
 			    msg->nm_so->so_port != &td->td_msgport) {
@@ -393,9 +393,9 @@ netisr_handle(int num, struct mbuf *m)
 	/*
 	 * Get the protocol port based on the packet hash
 	 */
-	KASSERT((m->m_flags & M_HASH), ("packet not characterized\n"));
+	KASSERT((m->m_flags & M_HASH), ("packet not characterized"));
 	port = cpu_portfn(m->m_pkthdr.hash);
-	KASSERT(&curthread->td_msgport == port, ("wrong msgport\n"));
+	KASSERT(&curthread->td_msgport == port, ("wrong msgport"));
 
 	KASSERT((num > 0 && num <= NELEM(netisrs)), ("bad isr %d", num));
 	ni = &netisrs[num];
@@ -736,7 +736,7 @@ netisr_hashcheck(int num, struct mbuf *m, const struct pktinfo *pi)
 	 */
 	ni = &netisrs[num];
 	if (ni->ni_handler == NULL)
-		panic("Unregistered isr %d\n", num);
+		panic("Unregistered isr %d", num);
 
 	ni->ni_hashck(m, pi);
 }

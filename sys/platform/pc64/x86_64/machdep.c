@@ -1299,7 +1299,7 @@ setidt(int idx, inthand_t *func, int typ, int dpl, int ist, int cpu)
 {
 	struct gate_descriptor *ip;
 
-	KASSERT(cpu >= 0 && cpu < ncpus, ("invalid cpu %d\n", cpu));
+	KASSERT(cpu >= 0 && cpu < ncpus, ("invalid cpu %d", cpu));
 
 	ip = &idt_arr[cpu][idx];
 	ip->gd_looffset = (uintptr_t)func;

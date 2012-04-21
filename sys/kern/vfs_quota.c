@@ -90,7 +90,7 @@ unode_insert(struct mount *mp, uid_t uid)
 
 	unp->left_bits = (uid >> ACCT_CHUNK_BITS);
 	res = RB_INSERT(ac_utree, &mp->mnt_acct.ac_uroot, unp);
-	KASSERT(res == NULL, ("unode_insert(): RB_INSERT didn't return NULL\n"));
+	KASSERT(res == NULL, ("unode_insert(): RB_INSERT didn't return NULL"));
 
 	return unp;
 }
@@ -104,7 +104,7 @@ gnode_insert(struct mount *mp, gid_t gid)
 
 	gnp->left_bits = (gid >> ACCT_CHUNK_BITS);
 	res = RB_INSERT(ac_gtree, &mp->mnt_acct.ac_groot, gnp);
-	KASSERT(res == NULL, ("gnode_insert(): RB_INSERT didn't return NULL\n"));
+	KASSERT(res == NULL, ("gnode_insert(): RB_INSERT didn't return NULL"));
 
 	return gnp;
 }

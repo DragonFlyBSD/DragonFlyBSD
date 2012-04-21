@@ -289,7 +289,7 @@ ieee80211_get_ratetable(struct ieee80211_channel *c)
 		rt = &ieee80211_11b_table;
 	else {
 		/* NB: should not get here */
-		panic("%s: no rate table for channel; freq %u flags 0x%x\n",
+		panic("%s: no rate table for channel; freq %u flags 0x%x",
 		      __func__, c->ic_freq, c->ic_flags);
 	}
 	return rt;
@@ -453,7 +453,7 @@ ieee80211_compute_duration(const struct ieee80211_rate_table *rt,
 			      + (numSymbols * TURBO_SYMBOL_TIME);
 		break;
 	default:
-		panic("%s: unknown phy %u (rate %u)\n", __func__,
+		panic("%s: unknown phy %u (rate %u)", __func__,
 		      rt->info[rix].phy, rate);
 		break;
 	}

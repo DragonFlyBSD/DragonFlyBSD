@@ -1383,7 +1383,7 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	map = tx_buffer->map;
 
 	maxsegs = sc->num_tx_desc_avail - EMX_TX_RESERVED;
-	KASSERT(maxsegs >= sc->spare_tx_desc, ("not enough spare TX desc\n"));
+	KASSERT(maxsegs >= sc->spare_tx_desc, ("not enough spare TX desc"));
 	if (maxsegs > EMX_MAX_SCATTER)
 		maxsegs = EMX_MAX_SCATTER;
 
@@ -2114,11 +2114,11 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 	 * helpful for QinQ too.
 	 */
 	KASSERT(mp->m_len >= ETHER_HDR_LEN,
-		("emx_txcsum_pullup is not called (eh)?\n"));
+		("emx_txcsum_pullup is not called (eh)?"));
 	eh = mtod(mp, struct ether_vlan_header *);
 	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
 		KASSERT(mp->m_len >= ETHER_HDR_LEN + EVL_ENCAPLEN,
-			("emx_txcsum_pullup is not called (evh)?\n"));
+			("emx_txcsum_pullup is not called (evh)?"));
 		etype = ntohs(eh->evl_proto);
 		ehdrlen = ETHER_HDR_LEN + EVL_ENCAPLEN;
 	} else {
@@ -2134,7 +2134,7 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 		return 0;
 
 	KASSERT(mp->m_len >= ehdrlen + EMX_IPVHL_SIZE,
-		("emx_txcsum_pullup is not called (eh+ip_vhl)?\n"));
+		("emx_txcsum_pullup is not called (eh+ip_vhl)?"));
 
 	/* NOTE: We could only safely access ip.ip_vhl part */
 	ip = (struct ip *)(mp->m_data + ehdrlen);
@@ -3606,7 +3606,7 @@ emx_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		break;
 
 	default:
-		panic("%s unsupported serialize type\n", ifp->if_xname);
+		panic("%s unsupported serialize type", ifp->if_xname);
 	}
 }
 
@@ -3637,7 +3637,7 @@ emx_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		break;
 
 	default:
-		panic("%s unsupported serialize type\n", ifp->if_xname);
+		panic("%s unsupported serialize type", ifp->if_xname);
 	}
 }
 
@@ -3664,7 +3664,7 @@ emx_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		return lwkt_serialize_try(&sc->rx_data[1].rx_serialize);
 
 	default:
-		panic("%s unsupported serialize type\n", ifp->if_xname);
+		panic("%s unsupported serialize type", ifp->if_xname);
 	}
 }
 
@@ -3729,7 +3729,7 @@ emx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 		break;
 
 	default:
-		panic("%s unsupported serialize type\n", ifp->if_xname);
+		panic("%s unsupported serialize type", ifp->if_xname);
 	}
 }
 

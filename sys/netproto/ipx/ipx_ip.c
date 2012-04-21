@@ -304,7 +304,7 @@ ipxipoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 static void
 ipxipstart(struct ifnet *ifp)
 {
-	panic("ipxip_start called\n");
+	panic("ipxip_start called");
 }
 
 static struct ifreq ifr_ipxip = {"ipxip0"};

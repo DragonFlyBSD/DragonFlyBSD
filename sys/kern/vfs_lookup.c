@@ -37,7 +37,6 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.23 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -135,7 +134,7 @@ relookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 	 * Check for symbolic link
 	 */
 	KASSERT((*vpp)->v_type != VLNK || !(cnp->cn_flags & CNP_FOLLOW),
-	    ("relookup: symlink found.\n"));
+	    ("relookup: symlink found."));
 
 	/*
 	 * Disallow directory write attempts on read-only file systems.

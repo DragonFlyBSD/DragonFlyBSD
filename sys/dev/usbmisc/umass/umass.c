@@ -1816,7 +1816,7 @@ umass_bbb_reset(struct umass_softc *sc, int status)
 	usbd_device_handle udev;
 
 	KASSERT(sc->proto & UMASS_PROTO_BBB,
-		("%s: umass_bbb_reset: wrong sc->proto 0x%02x\n",
+		("%s: umass_bbb_reset: wrong sc->proto 0x%02x",
 			device_get_nameunit(sc->sc_dev), sc->proto));
 
 	/*
@@ -1859,7 +1859,7 @@ umass_bbb_transfer(struct umass_softc *sc, int lun, void *cmd, int cmdlen,
 		    transfer_cb_f cb, void *priv)
 {
 	KASSERT(sc->proto & UMASS_PROTO_BBB,
-		("%s: umass_bbb_transfer: wrong sc->proto 0x%02x\n",
+		("%s: umass_bbb_transfer: wrong sc->proto 0x%02x",
 			device_get_nameunit(sc->sc_dev), sc->proto));
 	/* Be a little generous. */
 	sc->timeout = timeout + UMASS_TIMEOUT;
@@ -1891,17 +1891,17 @@ umass_bbb_transfer(struct umass_softc *sc, int lun, void *cmd, int cmdlen,
 		("%s: cmdlen exceeds CDB length in CBW (%d > %d)",
 			device_get_nameunit(sc->sc_dev), cmdlen, CBWCDBLENGTH));
 	KASSERT(dir == DIR_NONE || datalen > 0,
-		("%s: datalen == 0 while direction is not NONE\n",
+		("%s: datalen == 0 while direction is not NONE",
 			device_get_nameunit(sc->sc_dev)));
 	KASSERT(datalen == 0 || dir != DIR_NONE,
-		("%s: direction is NONE while datalen is not zero\n",
+		("%s: direction is NONE while datalen is not zero",
 			device_get_nameunit(sc->sc_dev)));
 	KASSERT(sizeof(umass_bbb_cbw_t) == UMASS_BBB_CBW_SIZE,
-		("%s: CBW struct does not have the right size (%ld vs. %d)\n",
+		("%s: CBW struct does not have the right size (%ld vs. %d)",
 			device_get_nameunit(sc->sc_dev),
 			(long)sizeof(umass_bbb_cbw_t), UMASS_BBB_CBW_SIZE));
 	KASSERT(sizeof(umass_bbb_csw_t) == UMASS_BBB_CSW_SIZE,
-		("%s: CSW struct does not have the right size (%ld vs. %d)\n",
+		("%s: CSW struct does not have the right size (%ld vs. %d)",
 			device_get_nameunit(sc->sc_dev),
 			(long)sizeof(umass_bbb_csw_t), UMASS_BBB_CSW_SIZE));
 
@@ -1969,7 +1969,7 @@ umass_bbb_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 	usbd_xfer_handle next_xfer;
 
 	KASSERT(sc->proto & UMASS_PROTO_BBB,
-		("%s: umass_bbb_state: wrong sc->proto 0x%02x\n",
+		("%s: umass_bbb_state: wrong sc->proto 0x%02x",
 			device_get_nameunit(sc->sc_dev), sc->proto));
 
 	/*
@@ -2305,7 +2305,7 @@ umass_cbi_adsc(struct umass_softc *sc, char *buffer, int buflen,
 	usbd_device_handle udev;
 
 	KASSERT(sc->proto & (UMASS_PROTO_CBI|UMASS_PROTO_CBI_I),
-		("%s: umass_cbi_adsc: wrong sc->proto 0x%02x\n",
+		("%s: umass_cbi_adsc: wrong sc->proto 0x%02x",
 			device_get_nameunit(sc->sc_dev), sc->proto));
 
 	usbd_interface2device_handle(sc->iface, &udev);
@@ -2327,7 +2327,7 @@ umass_cbi_reset(struct umass_softc *sc, int status)
 #	define SEND_DIAGNOSTIC_CMDLEN	12
 
 	KASSERT(sc->proto & (UMASS_PROTO_CBI|UMASS_PROTO_CBI_I),
-		("%s: umass_cbi_reset: wrong sc->proto 0x%02x\n",
+		("%s: umass_cbi_reset: wrong sc->proto 0x%02x",
 			device_get_nameunit(sc->sc_dev), sc->proto));
 
 	/*
@@ -2348,7 +2348,7 @@ umass_cbi_reset(struct umass_softc *sc, int status)
 		device_get_nameunit(sc->sc_dev)));
 
 	KASSERT(sizeof(sc->cbl) >= SEND_DIAGNOSTIC_CMDLEN,
-		("%s: CBL struct is too small (%ld < %d)\n",
+		("%s: CBL struct is too small (%ld < %d)",
 			device_get_nameunit(sc->sc_dev),
 			(long)sizeof(sc->cbl), SEND_DIAGNOSTIC_CMDLEN));
 
@@ -2375,7 +2375,7 @@ umass_cbi_transfer(struct umass_softc *sc, int lun,
 		u_int timeout, transfer_cb_f cb, void *priv)
 {
 	KASSERT(sc->proto & (UMASS_PROTO_CBI|UMASS_PROTO_CBI_I),
-		("%s: umass_cbi_transfer: wrong sc->proto 0x%02x\n",
+		("%s: umass_cbi_transfer: wrong sc->proto 0x%02x",
 			device_get_nameunit(sc->sc_dev), sc->proto));
 	/* Be a little generous. */
 	sc->timeout = timeout + UMASS_TIMEOUT;
@@ -2401,7 +2401,7 @@ umass_cbi_transfer(struct umass_softc *sc, int lun,
 	KASSERT(datalen == 0 || data != NULL,
 		("%s: datalen > 0, but no buffer",device_get_nameunit(sc->sc_dev)));
 	KASSERT(datalen == 0 || dir != DIR_NONE,
-		("%s: direction is NONE while datalen is not zero\n",
+		("%s: direction is NONE while datalen is not zero",
 			device_get_nameunit(sc->sc_dev)));
 
 	/* store the details for the data transfer phase */
@@ -2430,7 +2430,7 @@ umass_cbi_state(usbd_xfer_handle xfer, usbd_private_handle priv,
 	struct umass_softc *sc = (struct umass_softc *) priv;
 
 	KASSERT(sc->proto & (UMASS_PROTO_CBI|UMASS_PROTO_CBI_I),
-		("%s: umass_cbi_state: wrong sc->proto 0x%02x\n",
+		("%s: umass_cbi_state: wrong sc->proto 0x%02x",
 			device_get_nameunit(sc->sc_dev), sc->proto));
 
 	/*

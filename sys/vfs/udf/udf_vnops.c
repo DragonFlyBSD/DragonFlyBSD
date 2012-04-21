@@ -159,7 +159,7 @@ udf_hashrem(struct udf_node *node)
 	lwkt_gettoken(&udfmp->hash_token);
 	lh = &udfmp->hashtbl[node->hash_id % udfmp->hashsz];
 	if (lh == NULL)
-		panic("hash entry is NULL, node->hash_id= %"PRId64"\n", node->hash_id);
+		panic("hash entry is NULL, node->hash_id= %"PRId64, node->hash_id);
 	LIST_REMOVE(node, le);
 	lwkt_reltoken(&udfmp->hash_token);
 

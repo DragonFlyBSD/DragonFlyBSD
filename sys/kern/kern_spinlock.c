@@ -268,7 +268,7 @@ spin_indefinite_check(struct spinlock *spin, struct indefinite_info *info)
 			print_backtrace(-1);
 #endif
 		if (info->secs == 60)
-			panic("spin_lock: %p, indefinite wait!\n", spin);
+			panic("spin_lock: %p, indefinite wait!", spin);
 	}
 	return (FALSE);
 }

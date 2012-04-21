@@ -1236,7 +1236,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	if (maxsegs > NFE_MAX_SCATTER)
 		maxsegs = NFE_MAX_SCATTER;
 	KASSERT(maxsegs >= sc->sc_tx_spare,
-		("no enough segments %d,%d\n", maxsegs, sc->sc_tx_spare));
+		("not enough segments %d,%d", maxsegs, sc->sc_tx_spare));
 
 	error = bus_dmamap_load_mbuf_defrag(ring->data_tag, map, &m0,
 			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
@@ -1830,9 +1830,9 @@ nfe_jfree(void *arg)
 	struct nfe_rx_ring *ring = jbuf->ring;
 
 	if (&ring->jbuf[jbuf->slot] != jbuf)
-		panic("%s: free wrong jumbo buffer\n", __func__);
+		panic("%s: free wrong jumbo buffer", __func__);
 	else if (jbuf->inuse == 0)
-		panic("%s: jumbo buffer already freed\n", __func__);
+		panic("%s: jumbo buffer already freed", __func__);
 
 	lwkt_serialize_enter(&sc->sc_jbuf_serializer);
 	atomic_subtract_int(&jbuf->inuse, 1);
@@ -1848,9 +1848,9 @@ nfe_jref(void *arg)
 	struct nfe_rx_ring *ring = jbuf->ring;
 
 	if (&ring->jbuf[jbuf->slot] != jbuf)
-		panic("%s: ref wrong jumbo buffer\n", __func__);
+		panic("%s: ref wrong jumbo buffer", __func__);
 	else if (jbuf->inuse == 0)
-		panic("%s: jumbo buffer already freed\n", __func__);
+		panic("%s: jumbo buffer already freed", __func__);
 
 	atomic_add_int(&jbuf->inuse, 1);
 }

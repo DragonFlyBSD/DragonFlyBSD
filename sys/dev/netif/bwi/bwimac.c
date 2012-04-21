@@ -1323,7 +1323,7 @@ bwi_mac_hostflags_init(struct bwi_mac *mac)
 		if (phy->phy_rev >= 2 && rf->rf_type == BWI_RF_T_BCM2050)
 			host_flags &= ~BWI_HFLAG_GDC_WA;
 	} else {
-		panic("unknown PHY mode %u\n", phy->phy_mode);
+		panic("unknown PHY mode %u", phy->phy_mode);
 	}
 
 	HFLAGS_WRITE(mac, host_flags);
@@ -1414,7 +1414,7 @@ bwi_mac_set_ackrates(struct bwi_mac *mac, const struct ieee80211_rateset *rs)
 			ofs = 0x480;
 			break;
 		default:
-			panic("unsupported modtype %u\n", modtype);
+			panic("unsupported modtype %u", modtype);
 		}
 		ofs += (bwi_rate2plcp(rs->rs_rates[i]) & 0xf) * 2;
 

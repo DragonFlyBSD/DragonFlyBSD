@@ -1597,7 +1597,7 @@ amr_freeslot(struct amr_command *ac)
 
     slot = ac->ac_slot;
     if (sc->amr_busycmd[slot] == NULL)
-	panic("amr: slot %d not busy?\n", slot);
+	panic("amr: slot %d not busy?", slot);
 
     sc->amr_busycmd[slot] = NULL;
     atomic_subtract_int(&sc->amr_busyslots, 1);
@@ -1830,7 +1830,7 @@ amr_start(struct amr_command *ac)
     /* get a command slot (freed in amr_done) */
     slot = ac->ac_slot;
     if (sc->amr_busycmd[slot] != NULL)
-	panic("amr: slot %d busy?\n", slot);
+	panic("amr: slot %d busy?", slot);
     sc->amr_busycmd[slot] = ac;
     atomic_add_int(&sc->amr_busyslots, 1);
 

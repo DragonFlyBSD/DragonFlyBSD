@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/dev/netif/iwl/iwl2100.c,v 1.4 2008/05/14 11:59:20 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -703,7 +701,7 @@ iwl2100_dma_mbuf_destroy(device_t dev, int tx_done, int rx_done)
 	for (i = 0; i < rx_done; ++i) {
 		struct iwl2100_rxbuf *rb = &rr->rr_buf[i];
 
-		KASSERT(rb->rb_mbuf == NULL, ("RX mbuf is not freed yet\n"));
+		KASSERT(rb->rb_mbuf == NULL, ("RX mbuf is not freed yet"));
 		bus_dmamap_destroy(sc->sc_mbuf_dtag, rb->rb_dmap);
 	}
 
@@ -713,7 +711,7 @@ iwl2100_dma_mbuf_destroy(device_t dev, int tx_done, int rx_done)
 	for (i = 0; i < tx_done; ++i) {
 		struct iwl2100_txbuf *tb = &tr->tr_buf[i];
 
-		KASSERT(tb->tb_mbuf == NULL, ("TX mbuf is not freed yet\n"));
+		KASSERT(tb->tb_mbuf == NULL, ("TX mbuf is not freed yet"));
 		bus_dmamap_destroy(sc->sc_mbuf_dtag, tb->tb_dmap);
 	}
 
@@ -1249,7 +1247,7 @@ iwl2100_alloc_firmware(struct iwl2100_softc *sc, enum ieee80211_opmode opmode)
 				break;
 		}
 	}
-	KASSERT(fw_arr[i].fw != NULL, ("unsupported opmode %u\n", opmode));
+	KASSERT(fw_arr[i].fw != NULL, ("unsupported opmode %u", opmode));
 
 	ksnprintf(filename, sizeof(filename), IWL2100_FW_PATH,
 		  fw_arr[i].suffix);
@@ -1354,7 +1352,7 @@ iwl2100_load_firmware(struct iwl2100_softc *sc, enum ieee80211_opmode opmode)
 		fw = &sc->sc_fw_monitor;
 		break;
 	default:
-		panic("unsupported opmode %d\n", opmode);
+		panic("unsupported opmode %d", opmode);
 		break;
 	}
 	KASSERT(fw->fw_image != NULL,
@@ -1966,7 +1964,7 @@ iwl2100_set_opmode(struct iwl2100_softc *sc, enum ieee80211_opmode opmode)
 		cmd->c_param[0] = IWL2100_OPMODE_MONITOR;
 		break;
 	default:
-		panic("unsupported opmode %d\n", opmode);
+		panic("unsupported opmode %d", opmode);
 		break;
 	}
 
@@ -2385,7 +2383,7 @@ iwl2100_wait_cmd(struct iwl2100_softc *sc)
 	CSR_WRITE_4(sc, IWL2100_TXQ_WRITE_IDX, tr->tr_index);
 
 	if (sc->sc_flags & IWL2100_F_IN_INTR)
-		panic("sleep in interrupt thread\n");
+		panic("sleep in interrupt thread");
 
 	sc->sc_flags |= IWL2100_F_WAITCMD;
 	error = zsleep(sc, ifp->if_serializer, 0, "iwlcmd", 2 * hz);

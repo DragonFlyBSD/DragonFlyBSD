@@ -407,11 +407,11 @@ tcp_usr_listen(netmsg_t msg)
 		 * messing with our inp's flags.
 		 */
 		KASSERT(!(inp->inp_flags & INP_CONNECTED),
-			("already on connhash\n"));
+			("already on connhash"));
 		KASSERT(!(inp->inp_flags & INP_WILDCARD),
-			("already on wildcardhash\n"));
+			("already on wildcardhash"));
 		KASSERT(!(inp->inp_flags & INP_WILDCARD_MP),
-			("already on MP wildcardhash\n"));
+			("already on MP wildcardhash"));
 		inp->inp_flags |= INP_WILDCARD_MP;
 
 		KKASSERT(so->so_port == cpu_portfn(0));
@@ -468,11 +468,11 @@ tcp6_usr_listen(netmsg_t msg)
 		 * messing with our inp's flags.
 		 */
 		KASSERT(!(inp->inp_flags & INP_CONNECTED),
-			("already on connhash\n"));
+			("already on connhash"));
 		KASSERT(!(inp->inp_flags & INP_WILDCARD),
-			("already on wildcardhash\n"));
+			("already on wildcardhash"));
 		KASSERT(!(inp->inp_flags & INP_WILDCARD_MP),
-			("already on MP wildcardhash\n"));
+			("already on MP wildcardhash"));
 		inp->inp_flags |= INP_WILDCARD_MP;
 
 		KKASSERT(so->so_port == cpu_portfn(0));

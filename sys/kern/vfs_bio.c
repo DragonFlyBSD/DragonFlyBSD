@@ -556,7 +556,7 @@ bio_track_rel(struct bio_track *track)
 			desired |= active & 0x80000000;
 		if (atomic_cmpset_int(&track->bk_active, active, desired)) {
 			if (desired & 0x40000000)
-				panic("bio_track_rel: bad count: %p\n", track);
+				panic("bio_track_rel: bad count: %p", track);
 			if (active & 0x80000000)
 				wakeup(track);
 			break;
@@ -764,7 +764,7 @@ push_bio(struct bio *bio)
 	if ((nbio = bio->bio_next) == NULL) {
 		int index = bio - &bio->bio_buf->b_bio_array[0];
 		if (index >= NBUF_BIO - 1) {
-			panic("push_bio: too many layers bp %p\n",
+			panic("push_bio: too many layers bp %p",
 				bio->bio_buf);
 		}
 		nbio = &bio->bio_buf->b_bio_array[index + 1];

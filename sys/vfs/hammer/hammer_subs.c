@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.35 2008/10/15 22:38:37 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -504,7 +502,7 @@ hammer_ref_interlock_true(struct hammer_lock *lock)
 		lv = lock->refs;
 
 		if (lv) {
-			panic("hammer_ref_interlock_true: bad lock %p %08x\n",
+			panic("hammer_ref_interlock_true: bad lock %p %08x",
 			      lock, lock->refs);
 		}
 		nlv = 1 | HAMMER_REFS_LOCKED | HAMMER_REFS_CHECK;
@@ -1033,7 +1031,7 @@ hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
 	default:
 		key = 0;			/* compiler warning */
 		*max_iterationsp = 1;		/* sanity */
-		panic("hammer_directory_namekey: bad algorithm %p\n", dip);
+		panic("hammer_directory_namekey: bad algorithm %p", dip);
 		break;
 	}
 	return(key);
@@ -1230,7 +1228,7 @@ hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2)
 			return(file_offset2);
 		return(HAMMER_XDEMARC);
 	}
-	panic("hammer_blockdemarc: illegal range %lld %lld\n",
+	panic("hammer_blockdemarc: illegal range %lld %lld",
 	      (long long)file_offset1, (long long)file_offset2);
 }
 

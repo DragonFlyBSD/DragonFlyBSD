@@ -411,7 +411,7 @@ bwi_rate2plcp(uint8_t rate)
 	case 108:	return 0xc;
 
 	default:
-		panic("unsupported rate %u\n", rate);
+		panic("unsupported rate %u", rate);
 	}
 }
 
@@ -486,7 +486,7 @@ bwi_plcp_header(void *plcp, int pkt_len, uint8_t rate)
 	else if (modtype == IEEE80211_MODTYPE_DS)
 		bwi_ds_plcp_header(plcp, pkt_len, rate);
 	else
-		panic("unsupport modulation type %u\n", modtype);
+		panic("unsupport modulation type %u", modtype);
 }
 
 static __inline uint8_t
@@ -762,7 +762,7 @@ bwi_attach(device_t dev)
 		error = ENXIO;
 		goto fail;
 	} else {
-		panic("unknown phymode %d\n", phy->phy_mode);
+		panic("unknown phymode %d", phy->phy_mode);
 	}
 
 	ic->ic_caps = IEEE80211_C_SHSLOT |
@@ -2300,7 +2300,7 @@ bwi_dma_txstats_free(struct bwi_softc *sc)
 static void
 bwi_dma_ring_addr(void *arg, bus_dma_segment_t *seg, int nseg, int error)
 {
-	KASSERT(nseg == 1, ("too many segments\n"));
+	KASSERT(nseg == 1, ("too many segments"));
 	*((bus_addr_t *)arg) = seg->ds_addr;
 }
 
@@ -2606,7 +2606,7 @@ bwi_dma_buf_addr(void *arg, bus_dma_segment_t *seg, int nseg,
 		 bus_size_t mapsz __unused, int error)
 {
         if (!error) {
-		KASSERT(nseg == 1, ("too many segments(%d)\n", nseg));
+		KASSERT(nseg == 1, ("too many segments(%d)", nseg));
 		*((bus_addr_t *)arg) = seg->ds_addr;
 	}
 }
@@ -3464,7 +3464,7 @@ bwi_regwin_name(const struct bwi_regwin *rw)
 	case BWI_REGWIN_T_BUSPCIE:
 		return "PCIE";
 	}
-	panic("unknown regwin type 0x%04x\n", rw->rw_type);
+	panic("unknown regwin type 0x%04x", rw->rw_type);
 	return NULL;
 }
 
@@ -3904,7 +3904,7 @@ bwi_led_event(struct bwi_softc *sc, int event)
 		rate = 0;
 		break;
 	default:
-		panic("unknown LED event %d\n", event);
+		panic("unknown LED event %d", event);
 		break;
 	}
 	bwi_led_blink_start(sc, bwi_led_duration[rate].on_dur,
@@ -3966,7 +3966,7 @@ bwi_ratectl_attach(struct ieee80211com *ic, u_int rc)
 		/* This could only happen during detaching */
 		return NULL;
 	default:
-		panic("unknown rate control algo %u\n", rc);
+		panic("unknown rate control algo %u", rc);
 		return NULL;
 	}
 }

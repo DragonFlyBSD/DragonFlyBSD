@@ -630,7 +630,7 @@ test_m_maps_pv(vm_page_t m, pv_entry_t pv)
 		}
 	}
 	crit_exit();
-	panic("test_m_maps_pv: failed m %p pv %p\n", m, pv);
+	panic("test_m_maps_pv: failed m %p pv %p", m, pv);
 }
 
 static void
@@ -2203,7 +2203,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * Page Directory table entry not valid, we need a new PT page
 	 */
 	if (pte == NULL) {
-		panic("pmap_enter: invalid page directory pdir=0x%lx, va=%p\n",
+		panic("pmap_enter: invalid page directory pdir=0x%lx, va=%p",
 		     (long)pmap->pm_pdir[PTDPTDI], (void *)va);
 	}
 
@@ -2724,7 +2724,7 @@ pmap_page_assertzero(vm_paddr_t phys)
 	cpu_invlpg(gd->gd_CADDR3);
 	for (i = 0; i < PAGE_SIZE; i += 4) {
 	    if (*(int *)((char *)gd->gd_CADDR3 + i) != 0) {
-		panic("pmap_page_assertzero() @ %p not zero!\n",
+		panic("pmap_page_assertzero() @ %p not zero!",
 		    (void *)gd->gd_CADDR3);
 	    }
 	}

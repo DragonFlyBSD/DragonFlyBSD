@@ -1263,7 +1263,7 @@ nfs_request_try(struct nfsreq *rep)
 	 */
 	if (rep->r_flags == 0xdeadc0de) {
 		print_backtrace(-1);
-		panic("flags nbad\n");
+		panic("flags nbad");
 	}
 	KKASSERT((rep->r_flags & (R_LOCKED | R_ONREQQ)) == 0);
 	if (nmp->nm_flag & NFSMNT_SOFT)
@@ -2816,7 +2816,7 @@ nfs_checkpkt(struct mbuf *m, int len)
 		m = m->m_next;
 	}
 	if (xlen != len) {
-		panic("nfs_checkpkt: len mismatch %d/%d mbuf %p\n",
+		panic("nfs_checkpkt: len mismatch %d/%d mbuf %p",
 			xlen, len, m);
 	}
 }

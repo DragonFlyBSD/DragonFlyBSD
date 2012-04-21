@@ -136,7 +136,7 @@ acpi_pcib_attach(device_t dev, ACPI_BUFFER *prt, int busno)
 
     if (!acpi_DeviceIsPresent(dev)) {
     	/* Caller should already have checked it */
-	panic("%s device is not present\n", __func__);
+	panic("%s device is not present", __func__);
     }
 
     ACPI_SERIAL_INIT(pcib);

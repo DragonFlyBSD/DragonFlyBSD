@@ -541,7 +541,7 @@ mps_alloc_command(struct mps_softc *sc)
 		return (NULL);
 
 	TAILQ_REMOVE(&sc->req_list, cm, cm_link);
-	KASSERT(cm->cm_state == MPS_CM_STATE_FREE, ("mps: Allocating busy command\n"));
+	KASSERT(cm->cm_state == MPS_CM_STATE_FREE, ("mps: Allocating busy command"));
 	cm->cm_state = MPS_CM_STATE_BUSY;
 	return (cm);
 }
@@ -578,7 +578,7 @@ mps_alloc_high_priority_command(struct mps_softc *sc)
 		return (NULL);
 
 	TAILQ_REMOVE(&sc->high_priority_req_list, cm, cm_link);
-	KASSERT(cm->cm_state == MPS_CM_STATE_FREE, ("mps: Allocating busy command\n"));
+	KASSERT(cm->cm_state == MPS_CM_STATE_FREE, ("mps: Allocating busy command"));
 	cm->cm_state = MPS_CM_STATE_BUSY;
 	return (cm);
 }

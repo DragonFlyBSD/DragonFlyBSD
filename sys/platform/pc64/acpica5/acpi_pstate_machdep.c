@@ -633,7 +633,7 @@ acpi_pst_md_res_read(const struct acpi_pst_res *res)
 	case 4:
 		return bus_space_read_4(res->pr_bt, res->pr_bh, reg);
 	}
-	panic("unsupported access width %d\n", asz);
+	panic("unsupported access width %d", asz);
 
 	/* NEVER REACHED */
 	return 0;
@@ -659,6 +659,6 @@ acpi_pst_md_res_write(const struct acpi_pst_res *res, uint32_t val)
 		bus_space_write_4(res->pr_bt, res->pr_bh, reg, val);
 		break;
 	default:
-		panic("unsupported access width %d\n", asz);
+		panic("unsupported access width %d", asz);
 	}
 }

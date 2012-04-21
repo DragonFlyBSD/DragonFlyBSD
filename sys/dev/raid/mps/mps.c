@@ -306,7 +306,7 @@ mps_reinit(struct mps_softc *sc)
 
 	error = mps_diag_reset(sc);
 	if (error != 0) {
-		panic("%s hard reset failed with error %d\n",
+		panic("%s hard reset failed with error %d",
 		    __func__, error);
 	}
 
@@ -323,7 +323,7 @@ mps_reinit(struct mps_softc *sc)
 	/* get the chip out of the reset state */
 	error = mps_transition_operational(sc);
 	if (error != 0)
-		panic("%s transition operational failed with error %d\n",
+		panic("%s transition operational failed with error %d",
 		    __func__, error);
 
 	/* Reinitialize the reply queue. This is delicate because this
@@ -871,7 +871,7 @@ mps_alloc_requests(struct mps_softc *sc)
 			else
 				mps_free_command(sc, cm);
 		else {
-			panic("failed to allocate command %d\n", i);
+			panic("failed to allocate command %d", i);
 			sc->num_reqs = i;
 			break;
 		}
@@ -1799,7 +1799,7 @@ mps_add_chain(struct mps_command *cm)
 	int space;
 
 	if (cm->cm_sglsize < MPS_SGC_SIZE)
-		panic("MPS: Need SGE Error Code\n");
+		panic("MPS: Need SGE Error Code");
 
 	chain = mps_alloc_chain(cm->cm_sc);
 	if (chain == NULL)
@@ -1884,7 +1884,7 @@ mps_push_sge(struct mps_command *cm, void *sgep, size_t len, int segsleft)
 	 * code is buggy.  Case (5).
 	 */
 	if (cm->cm_sglsize < MPS_SGC_SIZE)
-		panic("MPS: Need SGE Error Code\n");
+		panic("MPS: Need SGE Error Code");
 
 	if (segsleft >= 2 &&
 	    cm->cm_sglsize >= len + MPS_SGC_SIZE &&

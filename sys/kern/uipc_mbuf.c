@@ -150,7 +150,7 @@ mbuftrack(struct mbuf *m)
 	mbt->m = m;
 	if (mbuf_rb_tree_RB_INSERT(&mbuf_track_root, mbt)) {
 		spin_unlock(&mbuf_track_spin);
-		panic("mbuftrack: mbuf %p already being tracked\n", m);
+		panic("mbuftrack: mbuf %p already being tracked", m);
 	}
 	spin_unlock(&mbuf_track_spin);
 }
@@ -164,7 +164,7 @@ mbufuntrack(struct mbuf *m)
 	mbt = mbuf_rb_tree_RB_LOOKUP(&mbuf_track_root, m);
 	if (mbt == NULL) {
 		spin_unlock(&mbuf_track_spin);
-		panic("mbufuntrack: mbuf %p was not tracked\n", m);
+		panic("mbufuntrack: mbuf %p was not tracked", m);
 	} else {
 		mbuf_rb_tree_RB_REMOVE(&mbuf_track_root, mbt);
 		spin_unlock(&mbuf_track_spin);
@@ -1198,7 +1198,7 @@ m_free(struct mbuf *m)
 		break;
 	default:
 		if (!panicstr)
-			panic("bad mbuf flags %p %08x\n", m, m->m_flags);
+			panic("bad mbuf flags %p %08x", m, m->m_flags);
 		break;
 	}
 	return (n);

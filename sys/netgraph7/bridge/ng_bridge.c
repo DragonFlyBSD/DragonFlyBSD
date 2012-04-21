@@ -38,7 +38,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bridge.c,v 1.31 2005/02/09 15:14:44 ru Exp $
- * $DragonFly: src/sys/netgraph7/ng_bridge.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -980,7 +979,7 @@ ng_bridge_timeout(node_p node, hook_p hook, void *arg1, int arg2)
 
 			/* Make sure host's link really exists */
 			KASSERT(priv->links[hent->host.linkNum] != NULL,
-			    ("%s: host %6D on nonexistent link %d\n",
+			    ("%s: host %6D on nonexistent link %d",
 			    __func__, hent->host.addr, ":",
 			    hent->host.linkNum));
 

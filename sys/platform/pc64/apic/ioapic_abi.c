@@ -36,8 +36,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/pc64/apic/apic_abi.c,v 1.1 2008/08/29 17:07:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -554,11 +552,11 @@ ioapic_abi_intr_enable(int irq)
 	const struct ioapic_irqmap *map;
 
 	KASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS,
-	    ("ioapic enable, invalid irq %d\n", irq));
+	    ("ioapic enable, invalid irq %d", irq));
 
 	map = &ioapic_irqmaps[mycpuid][irq];
 	KASSERT(IOAPIC_IMT_ISHWI(map),
-	    ("ioapic enable, not hwi irq %d, type %d, cpu%d\n",
+	    ("ioapic enable, not hwi irq %d, type %d, cpu%d",
 	     irq, map->im_type, mycpuid));
 	if (map->im_type != IOAPIC_IMT_LEGACY)
 		return;
@@ -572,11 +570,11 @@ ioapic_abi_intr_disable(int irq)
 	const struct ioapic_irqmap *map;
 
 	KASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS,
-	    ("ioapic disable, invalid irq %d\n", irq));
+	    ("ioapic disable, invalid irq %d", irq));
 
 	map = &ioapic_irqmaps[mycpuid][irq];
 	KASSERT(IOAPIC_IMT_ISHWI(map),
-	    ("ioapic disable, not hwi irq %d, type %d, cpu%d\n",
+	    ("ioapic disable, not hwi irq %d, type %d, cpu%d",
 	     irq, map->im_type, mycpuid));
 	if (map->im_type != IOAPIC_IMT_LEGACY)
 		return;
@@ -615,7 +613,7 @@ ioapic_abi_cleanup(void)
 static void
 ioapic_abi_stabilize(void)
 {
-	panic("ioapic_stabilize is called\n");
+	panic("ioapic_stabilize is called");
 }
 
 static void
@@ -627,7 +625,7 @@ ioapic_abi_intr_setup(int intr, int flags)
 	register_t ef;
 
 	KASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS,
-	    ("ioapic setup, invalid irq %d\n", intr));
+	    ("ioapic setup, invalid irq %d", intr));
 
 	map = &ioapic_irqmaps[mycpuid][intr];
 	KASSERT(IOAPIC_IMT_ISHWI(map),
@@ -637,7 +635,7 @@ ioapic_abi_intr_setup(int intr, int flags)
 		return;
 
 	KASSERT(ioapic_irqs[intr].io_addr != NULL,
-	    ("ioapic setup, no GSI information, irq %d\n", intr));
+	    ("ioapic setup, no GSI information, irq %d", intr));
 
 	ef = read_rflags();
 	cpu_disable_intr();
@@ -678,7 +676,7 @@ ioapic_abi_intr_teardown(int intr)
 	register_t ef;
 
 	KASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS,
-	    ("ioapic teardown, invalid irq %d\n", intr));
+	    ("ioapic teardown, invalid irq %d", intr));
 
 	map = &ioapic_irqmaps[mycpuid][intr];
 	KASSERT(IOAPIC_IMT_ISHWI(map),
@@ -688,7 +686,7 @@ ioapic_abi_intr_teardown(int intr)
 		return;
 
 	KASSERT(ioapic_irqs[intr].io_addr != NULL,
-	    ("ioapic teardown, no GSI information, irq %d\n", intr));
+	    ("ioapic teardown, no GSI information, irq %d", intr));
 
 	ef = read_rflags();
 	cpu_disable_intr();
@@ -922,12 +920,12 @@ ioapic_abi_legacy_intr_config(int irq, enum intr_trigger trig,
 #ifdef notyet
 	if (map->im_flags & IOAPIC_IMF_CONF) {
 		if (trig != map->im_trig) {
-			panic("ioapic_intr_config: trig %s -> %s\n",
+			panic("ioapic_intr_config: trig %s -> %s",
 			      intr_str_trigger(map->im_trig),
 			      intr_str_trigger(trig));
 		}
 		if (pola != map->im_pola) {
-			panic("ioapic_intr_config: pola %s -> %s\n",
+			panic("ioapic_intr_config: pola %s -> %s",
 			      intr_str_polarity(map->im_pola),
 			      intr_str_polarity(pola));
 		}
@@ -1167,9 +1165,9 @@ ioapic_abi_msi_alloc_intern(int type, const char *desc,
 	KASSERT(cpuid >= 0 && cpuid < ncpus,
 	    ("invalid cpuid %d", cpuid));
 
-	KASSERT(count > 0 && count <= 32, ("invalid count %d\n", count));
+	KASSERT(count > 0 && count <= 32, ("invalid count %d", count));
 	KASSERT((count & (count - 1)) == 0,
-	    ("count %d is not power of 2\n", count));
+	    ("count %d is not power of 2", count));
 
 	lwkt_gettoken(&ioapic_irqmap_tok);
 
@@ -1201,7 +1199,7 @@ ioapic_abi_msi_alloc_intern(int type, const char *desc,
 
 			map = &ioapic_irqmaps[cpuid][intr];
 			KASSERT(map->im_msi_base < 0,
-			    ("intr %d, stale %s-base %d\n",
+			    ("intr %d, stale %s-base %d",
 			     intr, desc, map->im_msi_base));
 
 			map->im_type = type;
@@ -1233,10 +1231,10 @@ ioapic_abi_msi_release_intern(int type, const char *desc,
 	KASSERT(cpuid >= 0 && cpuid < ncpus,
 	    ("invalid cpuid %d", cpuid));
 
-	KASSERT(count > 0 && count <= 32, ("invalid count %d\n", count));
+	KASSERT(count > 0 && count <= 32, ("invalid count %d", count));
 
 	mask = count - 1;
-	KASSERT((count & mask) == 0, ("count %d is not power of 2\n", count));
+	KASSERT((count & mask) == 0, ("count %d is not power of 2", count));
 
 	lwkt_gettoken(&ioapic_irqmap_tok);
 
@@ -1245,17 +1243,17 @@ ioapic_abi_msi_release_intern(int type, const char *desc,
 		int intr = intrs[i];
 
 		KASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS,
-		    ("invalid intr %d\n", intr));
+		    ("invalid intr %d", intr));
 
 		map = &ioapic_irqmaps[cpuid][intr];
 		KASSERT(map->im_type == type,
-		    ("try release non-%s intr %d, type %d\n", desc,
+		    ("trying to release non-%s intr %d, type %d", desc,
 		     intr, map->im_type));
 		KASSERT(map->im_msi_base >= 0 && map->im_msi_base <= intr,
-		    ("intr %d, invalid %s-base %d\n", intr, desc,
+		    ("intr %d, invalid %s-base %d", intr, desc,
 		     map->im_msi_base));
 		KASSERT((map->im_msi_base & mask) == 0,
-		    ("intr %d, %s-base %d is not proper aligned %d\n",
+		    ("intr %d, %s-base %d is not properly aligned %d",
 		     intr, desc, map->im_msi_base, count));
 
 		if (msi_base < 0) {
@@ -1263,7 +1261,7 @@ ioapic_abi_msi_release_intern(int type, const char *desc,
 		} else {
 			KASSERT(map->im_msi_base == msi_base,
 			    ("intr %d, inconsistent %s-base, "
-			     "was %d, now %d\n",
+			     "was %d, now %d",
 			     intr, desc, msi_base, map->im_msi_base));
 		}
 
@@ -1289,7 +1287,7 @@ ioapic_abi_msi_release_intern(int type, const char *desc,
 
 		if (map->im_type == type) {
 			KASSERT(map->im_msi_base != msi_base,
-			    ("more than %d %s was allocated\n", count, desc));
+			    ("more than %d %s was allocated", count, desc));
 		}
 	}
 
@@ -1333,16 +1331,16 @@ ioapic_abi_msi_map(int intr, uint64_t *addr, uint32_t *data, int cpuid)
 	    ("invalid cpuid %d", cpuid));
 
 	KASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS,
-	    ("invalid intr %d\n", intr));
+	    ("invalid intr %d", intr));
 
 	lwkt_gettoken(&ioapic_irqmap_tok);
 
 	map = &ioapic_irqmaps[cpuid][intr];
 	KASSERT(map->im_type == IOAPIC_IMT_MSI ||
 	    map->im_type == IOAPIC_IMT_MSIX,
-	    ("try map non-MSI/MSI-X intr %d, type %d\n", intr, map->im_type));
+	    ("trying to map non-MSI/MSI-X intr %d, type %d", intr, map->im_type));
 	KASSERT(map->im_msi_base >= 0 && map->im_msi_base <= intr,
-	    ("intr %d, invalid %s-base %d\n", intr,
+	    ("intr %d, invalid %s-base %d", intr,
 	     map->im_type == IOAPIC_IMT_MSI ? "MSI" : "MSI-X",
 	     map->im_msi_base));
 

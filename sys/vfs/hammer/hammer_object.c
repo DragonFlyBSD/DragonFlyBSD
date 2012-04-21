@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.97 2008/09/23 22:28:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -2028,7 +2026,7 @@ retry:
 			 * split existing records.
 			 */
 			if (off < ran_beg && leaf->base.key > ran_beg) {
-				panic("hammer left edge case %016llx %d\n",
+				panic("hammer left edge case %016llx %d",
 					(long long)leaf->base.key,
 					leaf->data_len);
 			}
@@ -2049,7 +2047,7 @@ retry:
 			if (leaf->base.key - 1 > ran_end) {
 				if (leaf->base.key - leaf->data_len > ran_end)
 					break;
-				panic("hammer right edge case\n");
+				panic("hammer right edge case");
 			}
 		} else {
 			off = leaf->base.key;

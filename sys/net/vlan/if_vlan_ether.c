@@ -55,7 +55,7 @@ vlan_start_dispatch(netmsg_t msg)
 	ifp = msg->lmsg.u.ms_resultp;
 
 	M_ASSERTPKTHDR(m);
-	KASSERT(m->m_flags & M_VLANTAG, ("mbuf has not been vlan tagged!\n"));
+	KASSERT(m->m_flags & M_VLANTAG, ("mbuf has not been vlan tagged!"));
 
 	ifnet_serialize_tx(ifp);
 
@@ -129,7 +129,7 @@ vlan_ether_ptap(struct bpf_if *bp, struct mbuf *m, uint16_t vlantag)
 	struct ether_vlan_header evh;
 
 	KASSERT(m->m_len >= ETHER_HDR_LEN,
-		("ether header is not contiguous!\n"));
+		("ether header is not contiguous!"));
 
 	eh = mtod(m, const struct ether_header *);
 	m_adj(m, ETHER_HDR_LEN);

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.94 2008/08/15 20:51:31 kmacy Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.23 2008/06/05 18:06:32 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -260,11 +259,11 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	if (alignment == 0)
 		alignment = 1;
 	if (alignment & (alignment - 1))
-		panic("alignment must be power of 2\n");
+		panic("alignment must be power of 2");
 
 	if (boundary != 0) {
 		if (boundary & (boundary - 1))
-			panic("boundary must be power of 2\n");
+			panic("boundary must be power of 2");
 		if (boundary < maxsegsz) {
 			kprintf("boundary < maxsegsz:\n");
 			print_backtrace(-1);
@@ -609,7 +608,7 @@ bus_dmamem_free(bus_dma_tag_t dmat, void *vaddr, bus_dmamap_t map)
 	 * NULL
 	 */
 	if (map != NULL)
-		panic("bus_dmamem_free: Invalid map freed\n");
+		panic("bus_dmamem_free: Invalid map freed");
 	if (BUS_DMAMEM_KMALLOC(dmat))
 		kfree(vaddr, M_DEVBUF);
 	else
@@ -849,7 +848,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 			 (BUS_DMA_PRIVBZONE | BUS_DMA_ALLOCALL));
 
 		if (dmat->flags & BUS_DMA_PROTECTED)
-			panic("protected dmamap callback will be defered\n");
+			panic("protected dmamap callback will be defered");
 
 		bus_dma_tag_unlock(dmat);
 		return error;
@@ -905,12 +904,12 @@ bus_dmamap_load_mbuf_segment(bus_dma_tag_t dmat, bus_dmamap_t map,
 
 	M_ASSERTPKTHDR(m0);
 
-	KASSERT(maxsegs >= 1, ("invalid maxsegs %d\n", maxsegs));
+	KASSERT(maxsegs >= 1, ("invalid maxsegs %d", maxsegs));
 	KASSERT(maxsegs <= dmat->nsegments,
-		("%d too many segments, dmat only support %d segments\n",
+		("%d too many segments, dmat only supports %d segments",
 		 maxsegs, dmat->nsegments));
 	KASSERT(flags & BUS_DMA_NOWAIT,
-		("only BUS_DMA_NOWAIT is supported\n"));
+		("only BUS_DMA_NOWAIT is supported"));
 
 	if (m0->m_pkthdr.len <= dmat->maxsize) {
 		int first = 1;
@@ -1104,7 +1103,7 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 	struct bounce_zone *bz, *new_bz;
 
 	KASSERT(dmat->bounce_zone == NULL,
-		("bounce zone was already assigned\n"));
+		("bounce zone was already assigned"));
 
 	new_bz = kmalloc(sizeof(*new_bz), M_DEVBUF, M_INTWAIT | M_ZERO);
 

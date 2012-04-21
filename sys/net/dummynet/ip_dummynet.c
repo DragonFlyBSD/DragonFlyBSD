@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.55 2008/09/16 12:30:57 sephe Exp $
  */
 
 #include "opt_ipdn.h"
@@ -313,11 +312,11 @@ heap_extract(struct dn_heap *h, void *obj)
     father = 0; /* Default: move up smallest child */
     if (obj != NULL) { /* Extract specific element, index is at offset */
 	if (h->offset <= 0)
-	    panic("%s from middle not supported on this heap!!!\n", __func__);
+	    panic("%s from middle not supported on this heap!!!", __func__);
 
 	father = *((int *)((char *)obj + h->offset));
 	if (father < 0 || father >= h->elements) {
-	    panic("%s father %d out of bound 0..%d\n", __func__,
+	    panic("%s father %d out of bound 0..%d", __func__,
 	    	  father, h->elements);
 	}
     }
@@ -713,7 +712,7 @@ expire_queues(struct dn_flow_set *fs)
 	    kfree(q, M_DUMMYNET);
 
 	    KASSERT(fs->rq_elements > 0,
-		    ("invalid rq_elements %d\n", fs->rq_elements));
+		    ("invalid rq_elements %d", fs->rq_elements));
 	    fs->rq_elements--;
 	}
     }
@@ -810,7 +809,7 @@ find_queue(struct dn_flow_set *fs, struct dn_flow_id *id)
 		kfree(q, M_DUMMYNET);
 
 		KASSERT(fs->rq_elements > 0,
-			("invalid rq_elements %d\n", fs->rq_elements));
+			("invalid rq_elements %d", fs->rq_elements));
 		fs->rq_elements--;
 	    }
 	}
@@ -1201,7 +1200,7 @@ purge_flow_set(struct dn_flow_set *fs, int all)
 	}
     }
     KASSERT(rq_elements == fs->rq_elements,
-	    ("# rq elements mismatch, freed %d, total %d\n",
+	    ("# rq elements mismatch, freed %d, total %d",
 	     rq_elements, fs->rq_elements));
     fs->rq_elements = 0;
 
@@ -1872,7 +1871,7 @@ dummynet_clock(systimer_t info __unused, int in_ipi __unused,
     struct intrframe *frame __unused)
 {
     KASSERT(mycpuid == ip_dn_cpu,
-    	    ("dummynet systimer comes on cpu%d, should be %d!\n",
+	    ("dummynet systimer comes on cpu%d, should be %d!",
 	     mycpuid, ip_dn_cpu));
 
     crit_enter();

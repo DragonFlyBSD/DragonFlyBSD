@@ -27,8 +27,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/net/ifq_var.h,v 1.10 2008/05/14 11:59:23 sephe Exp $
  */
 /*
  * NOTE ON MPSAFE access.  Routines which manipulate the packet queue must
@@ -262,7 +260,7 @@ static __inline void
 ifq_prepend(struct ifaltq *_ifq, struct mbuf *_m)
 {
 	ALTQ_LOCK(_ifq);
-	KASSERT(_ifq->altq_prepended == NULL, ("pending prepended mbuf\n"));
+	KASSERT(_ifq->altq_prepended == NULL, ("pending prepended mbuf"));
 	_ifq->altq_prepended = _m;
 	_ifq->ifq_len++;
 	ALTQ_UNLOCK(_ifq);

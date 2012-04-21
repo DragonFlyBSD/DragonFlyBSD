@@ -582,7 +582,7 @@ mfs_doio(struct bio *bio, struct mfsnode *mfsp)
 		bp->b_error = copyout(bp->b_data, base, bp->b_bcount);
 		break;
 	default:
-		panic("mfs: bad b_cmd %d\n", bp->b_cmd);
+		panic("mfs: bad b_cmd %d", bp->b_cmd);
 	}
 	if (bp->b_error)
 		bp->b_flags |= B_ERROR;

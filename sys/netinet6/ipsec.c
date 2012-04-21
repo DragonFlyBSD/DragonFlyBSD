@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.22 2008/05/27 01:10:43 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -258,7 +257,7 @@ ipsec4_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 		break;
 #endif
 	default:
-		panic("ipsec4_getpolicybysock: unsupported address family\n");
+		panic("ipsec4_getpolicybysock: unsupported address family");
 	}
 	if (*error)
 		return NULL;

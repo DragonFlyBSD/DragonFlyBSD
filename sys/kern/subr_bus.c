@@ -2208,7 +2208,7 @@ resource_list_add(struct resource_list *rl, int type, int rid,
 
 	if (cpuid != -1) {
 		if (rle->cpuid != -1 && rle->cpuid != cpuid) {
-			panic("resource_list_add: moving from cpu%d -> cpu%d\n",
+			panic("resource_list_add: moving from cpu%d -> cpu%d",
 			    rle->cpuid, cpuid);
 		}
 		rle->cpuid = cpuid;

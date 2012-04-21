@@ -5440,7 +5440,7 @@ ahc_search_qinfifo(struct ahc_softc *ahc, int target, char channel,
 		if (scb == NULL) {
 			kprintf("qinpos = %d, SCB index = %d\n",
 				qinpos, ahc->qinfifo[qinpos]);
-			panic("Loop 1\n");
+			panic("Loop 1");
 		}
 
 		if (ahc_match_scb(ahc, scb, target, channel, lun, tag, role)) {
@@ -5506,7 +5506,7 @@ ahc_search_qinfifo(struct ahc_softc *ahc, int target, char channel,
 		if (scb == NULL) {
 			kprintf("found = %d, qinstart = %d, qinfifionext = %d\n",
 				found, qinstart, ahc->qinfifonext);
-			panic("First/Second Qinfifo fixup\n");
+			panic("First/Second Qinfifo fixup");
 		}
 		/*
 		 * ahc_swap_with_next_hscb forces our next pointer to
@@ -5552,7 +5552,7 @@ ahc_search_qinfifo(struct ahc_softc *ahc, int target, char channel,
 		if (scb == NULL) {
 			kprintf("scb_index = %d, next = %d\n",
 				scb_index, next);
-			panic("Waiting List traversal\n");
+			panic("Waiting List traversal");
 		}
 		if (ahc_match_scb(ahc, scb, target, channel,
 				  lun, SCB_LIST_NULL, role)) {
@@ -6228,7 +6228,7 @@ ahc_calc_residual(struct ahc_softc *ahc, struct scb *scb)
 		/* Case 4 */
 		return;
 	} else if ((resid_sgptr & ~SG_PTR_MASK) != 0) {
-		panic("Bogus resid sgptr value 0x%x\n", resid_sgptr);
+		panic("Bogus resid sgptr value 0x%x", resid_sgptr);
 		/* NOTREACHED */
 		return;
 	} else {
@@ -6601,7 +6601,7 @@ ahc_download_instr(struct ahc_softc *ahc, u_int instrptr, uint8_t *dconsts)
 			 * (AND with an immediate of FF).
 			 */
 			if (fmt1_ins->immediate != 1)
-				panic("%s: BMOV not supported\n",
+				panic("%s: BMOV not supported",
 				      ahc_name(ahc));
 			fmt1_ins->opcode = AIC_OP_AND;
 			fmt1_ins->immediate = 0xff;
@@ -7645,7 +7645,7 @@ ahc_update_scsiid(struct ahc_softc *ahc, u_int targid_mask)
 	u_int scsiid;
 
 	if ((ahc->features & AHC_MULTI_TID) == 0)
-		panic("ahc_update_scsiid called on non-multitid unit\n");
+		panic("ahc_update_scsiid called on non-multitid unit");
 
 	/*
 	 * Since we will rely on the TARGID mask

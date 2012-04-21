@@ -64,7 +64,6 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.41 2008/11/09 10:50:15 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -383,7 +382,7 @@ rtfree_remote(struct rtentry *rt)
 	KKASSERT(rt->rt_cpuid != mycpuid);
 
 	if (route_assert_owner_access) {
-		panic("rt remote free rt_cpuid %d, mycpuid %d\n",
+		panic("rt remote free rt_cpuid %d, mycpuid %d",
 		      rt->rt_cpuid, mycpuid);
 	} else {
 		kprintf("rt remote free rt_cpuid %d, mycpuid %d\n",
@@ -1703,7 +1702,7 @@ rtsearch_msghandler(netmsg_t msg)
 	 */
 	if ((rnh = rt_tables[mycpuid][rtinfo.rti_dst->sa_family]) == NULL) {
 		if (mycpuid != 0)
-			panic("partially initialized routing tables\n");
+			panic("partially initialized routing tables");
 		lwkt_replymsg(&rmsg->base.lmsg, EAFNOSUPPORT);
 		return;
 	}

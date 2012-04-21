@@ -853,7 +853,7 @@ acx100_ratectl_attach(struct ieee80211com *ic, u_int rc)
 		/* This could only happen during detaching */
 		return NULL;
 	default:
-		panic("unknown rate control algo %u\n", rc);
+		panic("unknown rate control algo %u", rc);
 		return NULL;
 	}
 }

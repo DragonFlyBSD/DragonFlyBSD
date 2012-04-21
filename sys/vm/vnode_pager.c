@@ -41,7 +41,6 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.43 2008/06/19 23:27:39 dillon Exp $
  */
 
 /*
@@ -509,7 +508,7 @@ vnode_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	vp = object->handle;
 	rtval = VOP_GETPAGES(vp, mpp, PAGE_SIZE, 0, 0, seqaccess);
 	if (rtval == EOPNOTSUPP)
-		panic("vnode_pager: vfs's must implement vop_getpages\n");
+		panic("vnode_pager: vfs's must implement vop_getpages");
 	return rtval;
 }
 
@@ -595,7 +594,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 	 */
 	if (vp->v_type == VBLK || vp->v_type == VCHR) {
 		int secmask = vp->v_rdev->si_bsize_phys - 1;
-		KASSERT(secmask < PAGE_SIZE, ("vnode_pager_generic_getpages: sector size %d too large\n", secmask + 1));
+		KASSERT(secmask < PAGE_SIZE, ("vnode_pager_generic_getpages: sector size %d too large", secmask + 1));
 		bytecount = (bytecount + secmask) & ~secmask;
 	}
 

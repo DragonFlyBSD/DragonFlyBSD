@@ -3124,7 +3124,7 @@ static void ncr_script_copy_and_bind (ncb_p np, ncrcmd *src, ncrcmd *dst, int le
 					}
 					/* fall through */
 				default:
-					panic("ncr_script_copy_and_bind: weird relocation %x @ %d\n", old, (int)(src - start));
+					panic("ncr_script_copy_and_bind: weird relocation %x @ %d", old, (int)(src - start));
 					break;
 				}
 

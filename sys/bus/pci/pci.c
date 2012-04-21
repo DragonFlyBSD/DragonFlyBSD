@@ -541,7 +541,7 @@ pci_fixup_nextptr(int *nextptr0)
 	int nextptr = *nextptr0;
 
 	/* "Next pointer" is only one byte */
-	KASSERT(nextptr <= 0xff, ("Illegal next pointer %d\n", nextptr));
+	KASSERT(nextptr <= 0xff, ("Illegal next pointer %d", nextptr));
 
 	if (nextptr & 0x3) {
 		/*
@@ -956,13 +956,13 @@ pcie_set_max_readrq(device_t dev, uint16_t rqsize)
 
 	rqsize &= PCIEM_DEVCTL_MAX_READRQ_MASK;
 	if (rqsize > PCIEM_DEVCTL_MAX_READRQ_4096) {
-		panic("%s: invalid max read request size 0x%02x\n",
+		panic("%s: invalid max read request size 0x%02x",
 		      device_get_nameunit(dev), rqsize);
 	}
 
 	expr_ptr = pci_get_pciecap_ptr(dev);
 	if (!expr_ptr)
-		panic("%s: not PCIe device\n", device_get_nameunit(dev));
+		panic("%s: not PCIe device", device_get_nameunit(dev));
 
 	val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
 	if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) != rqsize) {
@@ -986,7 +986,7 @@ pcie_get_max_readrq(device_t dev)
 
 	expr_ptr = pci_get_pciecap_ptr(dev);
 	if (!expr_ptr)
-		panic("%s: not PCIe device\n", device_get_nameunit(dev));
+		panic("%s: not PCIe device", device_get_nameunit(dev));
 
 	val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
 	return (val & PCIEM_DEVCTL_MAX_READRQ_MASK);
@@ -1426,7 +1426,7 @@ pci_pending_msix_vector(device_t dev, u_int index)
 	uint32_t offset, bit;
 
 	KASSERT(msix->msix_table_res != NULL && msix->msix_pba_res != NULL,
-	    ("MSI-X is not setup yet\n"));
+	    ("MSI-X is not setup yet"));
 
 	KASSERT(msix->msix_msgnum > index, ("bogus index"));
 	offset = msix->msix_pba_offset + (index / 32) * 4;
@@ -1482,10 +1482,10 @@ pci_alloc_msix_vector_method(device_t dev, device_t child, u_int vector,
 	int error, irq, rid;
 
 	KASSERT(msix->msix_table_res != NULL &&
-	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
-	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid cpuid %d\n", cpuid));
+	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet"));
+	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid cpuid %d", cpuid));
 	KASSERT(vector < msix->msix_msgnum,
-	    ("invalid MSI-X vector %u, total %d\n", vector, msix->msix_msgnum));
+	    ("invalid MSI-X vector %u, total %d", vector, msix->msix_msgnum));
 
 	if (bootverbose) {
 		device_printf(child,
@@ -1535,19 +1535,19 @@ pci_release_msix_vector_method(device_t dev, device_t child, int rid)
 	int irq, cpuid;
 
 	KASSERT(msix->msix_table_res != NULL &&
-	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
-	KASSERT(msix->msix_alloc > 0, ("No MSI-X allocated\n"));
-	KASSERT(rid > 0, ("invalid rid %d\n", rid));
+	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet"));
+	KASSERT(msix->msix_alloc > 0, ("No MSI-X allocated"));
+	KASSERT(rid > 0, ("invalid rid %d", rid));
 
 	mv = pci_find_msix_vector(child, rid);
-	KASSERT(mv != NULL, ("MSI-X rid %d is not allocated\n", rid));
-	KASSERT(mv->mv_address == 0, ("MSI-X rid %d not teardown\n", rid));
+	KASSERT(mv != NULL, ("MSI-X rid %d is not allocated", rid));
+	KASSERT(mv->mv_address == 0, ("MSI-X rid %d not teardown", rid));
 
 	/* Make sure resource is no longer allocated. */
 	rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, rid);
-	KASSERT(rle != NULL, ("missing MSI-X resource, rid %d\n", rid));
+	KASSERT(rle != NULL, ("missing MSI-X resource, rid %d", rid));
 	KASSERT(rle->res == NULL,
-	    ("MSI-X resource is still allocated, rid %d\n", rid));
+	    ("MSI-X resource is still allocated, rid %d", rid));
 
 	irq = rle->start;
 	cpuid = rle->cpuid;
@@ -1591,7 +1591,7 @@ pci_setup_msix(device_t dev)
 	struct resource *table_res, *pba_res;
 
 	KASSERT(cfg->msix.msix_table_res == NULL &&
-	    cfg->msix.msix_pba_res == NULL, ("MSI-X has been setup yet\n"));
+	    cfg->msix.msix_pba_res == NULL, ("MSI-X has been setup yet"));
 
 	/* If rid 0 is allocated, then fail. */
 	rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, 0);
@@ -1613,7 +1613,7 @@ pci_setup_msix(device_t dev)
 
 	KASSERT(cfg->msix.msix_alloc == 0 &&
 	    TAILQ_EMPTY(&cfg->msix.msix_vectors),
-	    ("MSI-X vector has been allocated\n"));
+	    ("MSI-X vector has been allocated"));
 
 	/* Make sure the appropriate BARs are mapped. */
 	rle = resource_list_find(&dinfo->resources, SYS_RES_MEMORY,
@@ -1646,9 +1646,9 @@ pci_teardown_msix(device_t dev)
 	struct pcicfg_msix *msix = &dinfo->cfg.msix;
 
 	KASSERT(msix->msix_table_res != NULL &&
-	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
+	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet"));
 	KASSERT(msix->msix_alloc == 0 && TAILQ_EMPTY(&msix->msix_vectors),
-	    ("MSI-X vector is still allocated\n"));
+	    ("MSI-X vector is still allocated"));
 
 	pci_mask_msix_allvectors(dev);
 
@@ -1663,7 +1663,7 @@ pci_enable_msix(device_t dev)
 	struct pcicfg_msix *msix = &dinfo->cfg.msix;
 
 	KASSERT(msix->msix_table_res != NULL &&
-	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
+	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet"));
 
 	/* Update control register to enable MSI-X. */
 	msix->msix_ctrl |= PCIM_MSIXCTRL_MSIX_ENABLE;
@@ -1678,7 +1678,7 @@ pci_disable_msix(device_t dev)
 	struct pcicfg_msix *msix = &dinfo->cfg.msix;
 
 	KASSERT(msix->msix_table_res != NULL &&
-	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
+	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet"));
 
 	/* Disable MSI -> HT mapping. */
 	pci_ht_map_msi(dev, 0);
@@ -1893,8 +1893,8 @@ pci_alloc_msi_method(device_t dev, device_t child, int *rid, int count,
 	uint16_t ctrl;
 
 	KASSERT(count != 0 && count <= 32 && powerof2(count),
-	    ("invalid MSI count %d\n", count));
-	KASSERT(start_cpuid < ncpus, ("invalid cpuid %d\n", start_cpuid));
+	    ("invalid MSI count %d", count));
+	KASSERT(start_cpuid < ncpus, ("invalid cpuid %d", start_cpuid));
 
 	/* If rid 0 is allocated, then fail. */
 	rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, 0);
@@ -1914,7 +1914,7 @@ pci_alloc_msi_method(device_t dev, device_t child, int *rid, int count,
 	    !pci_do_msi)
 		return (ENODEV);
 
-	KASSERT(count <= cfg->msi.msi_msgnum, ("large MSI count %d, max %d\n",
+	KASSERT(count <= cfg->msi.msi_msgnum, ("large MSI count %d, max %d",
 	    count, cfg->msi.msi_msgnum));
 
 	if (bootverbose) {
@@ -2027,7 +2027,7 @@ pci_release_msi_method(device_t dev, device_t child)
 		if (i == 0) {
 			cpuid = rle->cpuid;
 			KASSERT(cpuid >= 0 && cpuid < ncpus,
-			    ("invalid MSI target cpuid %d\n", cpuid));
+			    ("invalid MSI target cpuid %d", cpuid));
 		} else {
 			KASSERT(rle->cpuid == cpuid,
 			    ("MSI targets different cpus, "
@@ -3045,13 +3045,13 @@ pci_setup_intr(device_t dev, device_t child, struct resource *irq, int flags,
 			u_int vector;
 
 			KASSERT(dinfo->cfg.msix.msix_alloc > 0,
-			    ("No MSI-X or MSI rid %d allocated\n", rid));
+			    ("No MSI-X or MSI rid %d allocated", rid));
 
 			mv = pci_find_msix_vector(child, rid);
 			KASSERT(mv != NULL,
-			    ("MSI-X rid %d is not allocated\n", rid));
+			    ("MSI-X rid %d is not allocated", rid));
 			KASSERT(mv->mv_address == 0,
-			    ("MSI-X rid %d has been setup\n", rid));
+			    ("MSI-X rid %d has been setup", rid));
 
 			error = PCIB_MAP_MSI(device_get_parent(dev),
 			    child, rman_get_start(irq), &addr, &data,
@@ -3110,9 +3110,9 @@ pci_teardown_intr(device_t dev, device_t child, struct resource *irq,
 			struct pcicfg_msi *msi = &dinfo->cfg.msi;
 
 			KASSERT(rid <= msi->msi_alloc,
-			    ("MSI-X index too high\n"));
+			    ("MSI-X index too high"));
 			KASSERT(msi->msi_handlers > 0,
-			    ("MSI rid %d is not setup\n", rid));
+			    ("MSI rid %d is not setup", rid));
 
 			msi->msi_handlers--;
 			if (msi->msi_handlers == 0)
@@ -3125,9 +3125,9 @@ pci_teardown_intr(device_t dev, device_t child, struct resource *irq,
 
 			mv = pci_find_msix_vector(child, rid);
 			KASSERT(mv != NULL,
-			    ("MSI-X rid %d is not allocated\n", rid));
+			    ("MSI-X rid %d is not allocated", rid));
 			KASSERT(mv->mv_address != 0,
-			    ("MSI-X rid %d has not been setup\n", rid));
+			    ("MSI-X rid %d has not been setup", rid));
 
 			pci_mask_msix_vector(child, PCI_MSIX_RID2VEC(rid));
 			mv->mv_address = 0;

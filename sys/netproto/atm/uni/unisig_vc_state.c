@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_vc_state.c,v 1.6.2.1 2001/07/25 20:53:44 pirzyk Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_vc_state.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -217,7 +216,7 @@ unisig_vc_state(struct unisig *usp, struct unisig_vccb *uvp, int event,
 		state = UNI_NULL;
 	action = unisig_vc_states[event][state];
 	if (action >= MAX_ACTION || action < 0)
-		panic("unisig_vc_state: invalid action\n");
+		panic("unisig_vc_state: invalid action");
 
 	/*
 	 * Perform the requested action
