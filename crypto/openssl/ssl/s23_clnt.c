@@ -287,12 +287,14 @@ static int ssl23_client_hello(SSL *s)
 
 	if (ssl2_compat && ssl23_no_ssl2_ciphers(s))
 		ssl2_compat = 0;
-
+#ifndef OPENSSL_NO_TLS1_2_CLIENT
 	if (!(s->options & SSL_OP_NO_TLSv1_2))
 		{
 		version = TLS1_2_VERSION;
 		}
-	else if (!(s->options & SSL_OP_NO_TLSv1_1))
+	else
+#endif
+	if (!(s->options & SSL_OP_NO_TLSv1_1))
 		{
 		version = TLS1_1_VERSION;
 		}
@@ -467,6 +469,15 @@ static int ssl23_client_hello(SSL *s)
 				SSLerr(SSL_F_SSL23_CLIENT_HELLO,SSL_R_NO_CIPHERS_AVAILABLE);
 				return -1;
 				}
+#ifdef OPENSSL_MAX_TLS1_2_CIPHER_LENGTH
+			/* Some servers hang if client hello > 256 bytes
+			 * as hack workaround chop number of supported ciphers
+			 * to keep it well below this if we use TLS v1.2
+			 */
+			if (TLS1_get_version(s) >= TLS1_2_VERSION
+				&& i > OPENSSL_MAX_TLS1_2_CIPHER_LENGTH)
+				i = OPENSSL_MAX_TLS1_2_CIPHER_LENGTH & ~1;
+#endif
 			s2n(i,p);
 			p+=i;
 
@@ -521,8 +532,13 @@ static int ssl23_client_hello(SSL *s)
 			d=buf;
 			*(d++) = SSL3_RT_HANDSHAKE;
 			*(d++) = version_major;
-			*(d++) = version_minor; /* arguably we should send the *lowest* suported version here
-			                         * (indicating, e.g., TLS 1.0 in "SSL 3.0 format") */
+			/* Some servers hang if we use long client hellos
+			 * and a record number > TLS 1.0.
+			 */
+			if (TLS1_get_client_version(s) > TLS1_VERSION)
+				*(d++) = 1;
+			else
+				*(d++) = version_minor;
 			s2n((int)l,d);
 
 			/* number of bytes to write */
