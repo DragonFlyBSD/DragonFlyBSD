@@ -70,7 +70,6 @@
 #include "ufs_extern.h"
 
 #include <sys/buf2.h>
-#include <sys/mplock2.h>
 #include <sys/thread2.h>
 #include <sys/lock.h>
 
@@ -484,7 +483,7 @@ softdep_process_worklist(struct mount *matchmnt)
 	int matchcnt, loopcount;
 	long starttime;
 
-	get_mplock();
+	ACQUIRE_LOCK(&lk);
 
 	/*
 	 * Record the process identifier of our caller so that we can give
@@ -551,8 +550,12 @@ softdep_process_worklist(struct mount *matchmnt)
 		 * We do not generally want to stop for buffer space, but if
 		 * we are really being a buffer hog, we will stop and wait.
 		 */
-		if (loopcount++ % 128 == 0)
+		if (loopcount++ % 128 == 0) {
+			FREE_LOCK(&lk);
 			bwillinode(1);
+			ACQUIRE_LOCK(&lk);
+		}
+
 		/*
 		 * Never allow processing to run for more than one
 		 * second. Otherwise the other syncer tasks may get
@@ -569,7 +572,7 @@ softdep_process_worklist(struct mount *matchmnt)
 			wakeup(&softdep_worklist_req);
 	}
 done:
-	rel_mplock();
+	FREE_LOCK(&lk);
 	return (matchcnt);
 }
 
@@ -588,7 +591,7 @@ process_worklist_item(struct mount *matchmnt, int flags)
 	matchfs = NULL;
 	if (matchmnt != NULL)
 		matchfs = VFSTOUFS(matchmnt)->um_fs;
-	ACQUIRE_LOCK(&lk);
+
 	/*
 	 * Normally we just process each item on the worklist in order.
 	 * However, if we are in a situation where we cannot lock any
@@ -605,14 +608,12 @@ process_worklist_item(struct mount *matchmnt, int flags)
 			break;
 	}
 	if (wk == NULL) {
-		FREE_LOCK(&lk);
 		return (0);
 	}
 	WORKLIST_REMOVE(wk);
 	num_on_worklist -= 1;
 	FREE_LOCK(&lk);
 	switch (wk->wk_type) {
-
 	case D_DIRREM:
 		/* removal of a directory entry */
 		if (WK_DIRREM(wk)->dm_mnt == matchmnt)
@@ -646,6 +647,7 @@ process_worklist_item(struct mount *matchmnt, int flags)
 		    "softdep", TYPENAME(wk->wk_type));
 		/* NOTREACHED */
 	}
+	ACQUIRE_LOCK(&lk);
 	return (matchcnt);
 }
 
@@ -659,7 +661,6 @@ softdep_move_dependencies(struct buf *oldbp, struct buf *newbp)
 {
 	struct worklist *wk, *wktail;
 
-	get_mplock();
 	if (LIST_FIRST(&newbp->b_dep) != NULL)
 		panic("softdep_move_dependencies: need merge code");
 	wktail = NULL;
@@ -674,7 +675,6 @@ softdep_move_dependencies(struct buf *oldbp, struct buf *newbp)
 		newbp->b_ops = &softdep_bioops;
 	}
 	FREE_LOCK(&lk);
-	rel_mplock();
 }
 
 /*
@@ -3027,7 +3027,6 @@ softdep_disk_io_initiation(struct buf *bp)
 	if (bp->b_cmd == BUF_CMD_READ)
 		panic("softdep_disk_io_initiation: read");
 
-	get_mplock();
 	ACQUIRE_LOCK(&lk);
 	marker.wk_type = D_LAST + 1;	/* Not a normal workitem */
 	
@@ -3092,7 +3091,6 @@ softdep_disk_io_initiation(struct buf *bp)
 		}
 	}
 	FREE_LOCK(&lk);
-	rel_mplock();
 }
 
 /*
@@ -4015,13 +4013,11 @@ softdep_fsync(struct vnode *vp)
 	if ((vp->v_mount->mnt_flag & MNT_SOFTDEP) == 0)
 		return (0);
 
-	get_mplock();
 	ip = VTOI(vp);
 	fs = ip->i_fs;
 	ACQUIRE_LOCK(&lk);
 	if (inodedep_lookup(fs, ip->i_number, 0, &inodedep) == 0) {
 		FREE_LOCK(&lk);
-		rel_mplock();
 		return (0);
 	}
 	if (LIST_FIRST(&inodedep->id_inowait) != NULL ||
@@ -4078,13 +4074,11 @@ softdep_fsync(struct vnode *vp)
 		error = VFS_VGET(mnt, NULL, parentino, &pvp);
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 		if (error != 0) {
-			rel_mplock();
 			return (error);
 		}
 		if (flushparent) {
 			if ((error = ffs_update(pvp, 1)) != 0) {
 				vput(pvp);
-				rel_mplock();
 				return (error);
 			}
 		}
@@ -4096,7 +4090,6 @@ softdep_fsync(struct vnode *vp)
 			error = bwrite(bp);
 		vput(pvp);
 		if (error != 0) {
-			rel_mplock();
 			return (error);
 		}
 		ACQUIRE_LOCK(&lk);
@@ -4104,7 +4097,6 @@ softdep_fsync(struct vnode *vp)
 			break;
 	}
 	FREE_LOCK(&lk);
-	rel_mplock();
 	return (0);
 }
 
@@ -4712,13 +4704,9 @@ request_cleanup(int resource, int islocked)
 	 * inode as that could lead to deadlock.
 	 */
 	if (num_on_worklist > max_softdeps / 10) {
-		if (islocked)
-			FREE_LOCK(&lk);
 		process_worklist_item(NULL, LK_NOWAIT);
 		process_worklist_item(NULL, LK_NOWAIT);
 		stat_worklist_push += 2;
-		if (islocked)
-			ACQUIRE_LOCK(&lk);
 		return(1);
 	}
 
@@ -4935,8 +4923,6 @@ softdep_count_dependencies(struct buf *bp, int wantcount)
 	struct diradd *dap;
 	int i, retval;
 
-	get_mplock();
-
 	retval = 0;
 	ACQUIRE_LOCK(&lk);
 
@@ -4999,7 +4985,6 @@ softdep_count_dependencies(struct buf *bp, int wantcount)
 	}
 out:
 	FREE_LOCK(&lk);
-	rel_mplock();
 
 	return retval;
 }
