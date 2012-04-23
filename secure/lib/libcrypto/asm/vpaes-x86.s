@@ -601,6 +601,8 @@ vpaes_cbc_encrypt:
 	movl	24(%esp),%edi
 	movl	28(%esp),%eax
 	movl	32(%esp),%edx
+	subl	$16,%eax
+	jc	.L020cbc_abort
 	leal	-56(%esp),%ebx
 	movl	36(%esp),%ebp
 	andl	$-16,%ebx
@@ -610,18 +612,17 @@ vpaes_cbc_encrypt:
 	subl	%esi,%edi
 	movl	%ebx,48(%esp)
 	movl	%edi,(%esp)
-	subl	$16,%eax
 	movl	%edx,4(%esp)
 	movl	%ebp,8(%esp)
 	movl	%eax,%edi
-	leal	.L_vpaes_consts+0x30-.L020pic_point,%ebp
+	leal	.L_vpaes_consts+0x30-.L021pic_point,%ebp
 	call	_vpaes_preheat
-.L020pic_point:
+.L021pic_point:
 	cmpl	$0,%ecx
-	je	.L021cbc_dec_loop
-	jmp	.L022cbc_enc_loop
+	je	.L022cbc_dec_loop
+	jmp	.L023cbc_enc_loop
 .align	16
-.L022cbc_enc_loop:
+.L023cbc_enc_loop:
 	movdqu	(%esi),%xmm0
 	pxor	%xmm1,%xmm0
 	call	_vpaes_encrypt_core
@@ -631,10 +632,10 @@ vpaes_cbc_encrypt:
 	movdqu	%xmm0,(%ebx,%esi,1)
 	leal	16(%esi),%esi
 	subl	$16,%edi
-	jnc	.L022cbc_enc_loop
-	jmp	.L023cbc_done
+	jnc	.L023cbc_enc_loop
+	jmp	.L024cbc_done
 .align	16
-.L021cbc_dec_loop:
+.L022cbc_dec_loop:
 	movdqu	(%esi),%xmm0
 	movdqa	%xmm1,16(%esp)
 	movdqa	%xmm0,32(%esp)
@@ -646,11 +647,12 @@ vpaes_cbc_encrypt:
 	movdqu	%xmm0,(%ebx,%esi,1)
 	leal	16(%esi),%esi
 	subl	$16,%edi
-	jnc	.L021cbc_dec_loop
-.L023cbc_done:
+	jnc	.L022cbc_dec_loop
+.L024cbc_done:
 	movl	8(%esp),%ebx
 	movl	48(%esp),%esp
 	movdqu	%xmm1,(%ebx)
+.L020cbc_abort:
 	popl	%edi
 	popl	%esi
 	popl	%ebx

@@ -321,6 +321,10 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			} else {
 				p->p_sigacts->ps_flag &= ~PS_NOCLDWAIT;
 			}
+			if (ps->ps_sigact[_SIG_IDX(SIGCHLD)] == SIG_IGN)
+				ps->ps_flag |= PS_CLDSIGIGN;
+			else
+				ps->ps_flag &= ~PS_CLDSIGIGN;
 		}
 		/*
 		 * Set bit in p_sigignore for signals that are set to SIG_IGN,
@@ -433,7 +437,9 @@ execsigs(struct proc *p)
 	/*
 	 * Reset no zombies if child dies flag as Solaris does.
 	 */
-	p->p_sigacts->ps_flag &= ~PS_NOCLDWAIT;
+	p->p_sigacts->ps_flag &= ~(PS_NOCLDWAIT | PS_CLDSIGIGN);
+	if (ps->ps_sigact[_SIG_IDX(SIGCHLD)] == SIG_IGN)
+		ps->ps_sigact[_SIG_IDX(SIGCHLD)] = SIG_DFL;
 }
 
 /*

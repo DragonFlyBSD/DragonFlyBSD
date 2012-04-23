@@ -1,6 +1,4 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 1991 Regents of the University of California.
  * All rights reserved.
  * Copyright (c) 1994 John S. Dyson
@@ -862,7 +860,7 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 			continue;
 		}
 
-		if (m->object->ref_count == 0) {
+		if (m->object == NULL || m->object->ref_count == 0) {
 			/*
 			 * If the object is not being used, we ignore previous 
 			 * references.
@@ -975,9 +973,11 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 			int swap_pageouts_ok;
 			struct vnode *vp = NULL;
 
+			swap_pageouts_ok = 0;
 			object = m->object;
-
-			if ((object->type != OBJT_SWAP) && (object->type != OBJT_DEFAULT)) {
+			if (object &&
+			    (object->type != OBJT_SWAP) && 
+			    (object->type != OBJT_DEFAULT)) {
 				swap_pageouts_ok = 1;
 			} else {
 				swap_pageouts_ok = !(defer_swap_pageouts || disable_swap_pageouts);
@@ -990,7 +990,9 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 			 * We don't bother paging objects that are "dead".  
 			 * Those objects are in a "rundown" state.
 			 */
-			if (!swap_pageouts_ok || (object->flags & OBJ_DEAD)) {
+			if (!swap_pageouts_ok || 
+			    (object == NULL) ||
+			    (object->flags & OBJ_DEAD)) {
 				vm_page_and_queue_spin_lock(m);
 				if (m->queue - m->pc == PQ_INACTIVE) {
 					TAILQ_REMOVE(
@@ -1251,7 +1253,7 @@ vm_pageout_scan_active(int pass, int q,
 		 * don't bother paying the expense.
 		 */
 		actcount = 0;
-		if (m->object->ref_count != 0) {
+		if (m->object && m->object->ref_count != 0) {
 			if (m->flags & PG_REFERENCED)
 				++actcount;
 			actcount += pmap_ts_referenced(m);
@@ -1265,6 +1267,7 @@ vm_pageout_scan_active(int pass, int q,
 
 		/*
 		 * actcount is only valid if the object ref_count is non-zero.
+		 * If the page does not have an object, actcount will be zero.
 		 */
 		if (actcount && m->object->ref_count != 0) {
 			vm_page_and_queue_spin_lock(m);
@@ -1281,7 +1284,8 @@ vm_pageout_scan_active(int pass, int q,
 		} else {
 			m->act_count -= min(m->act_count, ACT_DECLINE);
 			if (vm_pageout_algorithm ||
-			    m->object->ref_count == 0 ||
+			    (m->object == NULL) ||
+			    (m->object && (m->object->ref_count == 0)) ||
 			    m->act_count < pass + 1
 			) {
 				/*
@@ -1296,7 +1300,8 @@ vm_pageout_scan_active(int pass, int q,
 				 */
 				--inactive_shortage;
 				if (avail_shortage - delta > 0 ||
-				    m->object->ref_count == 0) {
+				    (m->object && (m->object->ref_count == 0)))
+				{
 					if (avail_shortage - delta > 0)
 						++*recycle_countp;
 					vm_page_protect(m, VM_PROT_NONE);

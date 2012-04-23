@@ -200,7 +200,7 @@ _vpaes_decrypt_core:
 .byte	102,15,56,0,226
 	pxor	%xmm0,%xmm4
 	movdqa	112(%r10),%xmm0
-	movdqa	.Lk_sr-.Lk_dsbd(%r11),%xmm2
+	movdqa	-352(%r11),%xmm2
 .byte	102,15,56,0,195
 	pxor	%xmm4,%xmm0
 .byte	102,15,56,0,194
@@ -668,9 +668,10 @@ vpaes_decrypt:
 .align	16
 vpaes_cbc_encrypt:
 	xchgq	%rcx,%rdx
+	subq	$16,%rcx
+	jc	.Lcbc_abort
 	movdqu	(%r8),%xmm6
 	subq	%rdi,%rsi
-	subq	$16,%rcx
 	call	_vpaes_preheat
 	cmpl	$0,%r9d
 	je	.Lcbc_dec_loop
@@ -699,6 +700,7 @@ vpaes_cbc_encrypt:
 	jnc	.Lcbc_dec_loop
 .Lcbc_done:
 	movdqu	%xmm6,(%r8)
+.Lcbc_abort:
 	.byte	0xf3,0xc3
 .size	vpaes_cbc_encrypt,.-vpaes_cbc_encrypt
 
