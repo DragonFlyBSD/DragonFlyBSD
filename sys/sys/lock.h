@@ -70,7 +70,7 @@ struct lock {
 	int	lk_waitcount;		/* # of processes sleeping for lock */
 	short	lk_exclusivecount;	/* # of recursive exclusive locks */
 	short	lk_unused1;
-	const char	*lk_wmesg;		/* resource sleeping (for tsleep) */
+	const char *lk_wmesg;		/* resource sleeping (for tsleep) */
 	int	lk_timo;		/* maximum sleep time (for tsleep) */
 	struct thread *lk_lockholder;	/* thread of excl lock holder */
 #ifdef	DEBUG_LOCKS
