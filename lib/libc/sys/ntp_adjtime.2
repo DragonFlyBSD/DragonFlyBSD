@@ -24,9 +24,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/ntp_adjtime.2,v 1.1.2.1 2003/04/22 17:31:18 trhodes Exp $
-.\" $DragonFly: src/lib/libc/sys/ntp_adjtime.2,v 1.5 2008/02/01 21:40:53 swildner Exp $
 .\"
-.Dd April 1, 2003
+.Dd April 25, 2012
 .Dt NTP_ADJTIME 2
 .Os
 .Sh NAME
@@ -43,7 +42,9 @@
 The
 .Fn ntp_adjtime
 system call is used as a kernel interface
-for the Network Time Protocol daemon,
+for Network Time Protocol daemons like
+.Xr dntpd 8
+and
 .Xr ntpd 8 .
 Certain fields of the
 .Vt timex
@@ -144,6 +145,7 @@ if the caller
 does not have sufficient permissions.
 .Sh SEE ALSO
 .Xr ntp_gettime 2 ,
+.Xr dntpd 8 ,
 .Xr ntpd 8 Pq Pa pkgsrc/net/openntpd
 .Sh AUTHORS
 This manual page was written by
