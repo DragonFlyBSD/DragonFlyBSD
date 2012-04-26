@@ -325,15 +325,24 @@ void
 tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to)
 {
 	struct scoreboard *scb = &tp->scb;
+	int rexmt_high_update = 0;
 
 	tcp_sack_ack_blocks(scb, tp->snd_una);
 	tcp_sack_add_blocks(tp, to);
 	update_lostseq(scb, tp->snd_una, tp->t_maxseg);
-	if (SEQ_LT(tp->rexmt_high, tp->snd_una))
+	if (SEQ_LT(tp->rexmt_high, tp->snd_una)) {
 		tp->rexmt_high = tp->snd_una;
-	if ((tp->t_flags & TF_SACKRESCUED) &&
-	    SEQ_LT(tp->rexmt_rescue, tp->snd_una))
-		tp->t_flags &= ~TF_SACKRESCUED;
+		rexmt_high_update = 1;
+	}
+	if (tp->t_flags & TF_SACKRESCUED) {
+		if (SEQ_LT(tp->rexmt_rescue, tp->snd_una)) {
+			tp->t_flags &= ~TF_SACKRESCUED;
+		} else if (rexmt_high_update &&
+		    SEQ_LT(tp->rexmt_rescue, tp->rexmt_high)) {
+			/* Drag RescueRxt along with HighRxt */
+			tp->rexmt_rescue = tp->rexmt_high;
+		}
+	}
 }
 
 /*
@@ -579,17 +588,50 @@ sendunsacked:
 	if (lastblock != NULL && SEQ_LT(torexmt, lastblock->sblk_end))
 		goto sendunsacked;
 
+	/* Rescue retransmission */
 	if (tcp_do_rescuesack) {
 		tcpstat.tcps_sackrescue_try++;
-		if (lastblock == NULL)
-			tcpstat.tcps_sackrescue_smart++;
+		if (tp->t_flags & TF_SACKRESCUED) {
+			if (!tcp_aggressive_rescuesack)
+				return FALSE;
 
-		if (tp->t_flags & TF_SACKRESCUED)
-			return FALSE;
+			/*
+			 * Aggressive variant of the rescue retransmission.
+			 *
+			 * The idea of the rescue retransmission is to sustain
+			 * the ACK clock thus to avoid timeout retransmission.
+			 *
+			 * Under some situations, the conservative approach
+			 * suggested in the draft
+ 			 * http://tools.ietf.org/html/
+			 * draft-nishida-tcpm-rescue-retransmission-00
+			 * could not sustain ACK clock, since it only allows
+			 * one rescue retransmission before a cumulative ACK
+			 * covers the segement transmitted by rescue
+			 * retransmission.
+			 *
+			 * We try to locate the next unSACKed segment which
+			 * follows the previously sent rescue segment.  If
+			 * there is no such segment, we loop back to the first
+			 * unacknowledged segment.
+			 */
+
+			/*
+			 * Skip SACKed data, but here we follow
+			 * the last transmitted rescue segment.
+			 */
+			torexmt = tp->rexmt_rescue;
+			tcp_sack_skip_sacked(scb, &torexmt);
+			if (torexmt == tp->snd_max) {
+				/* Nothing left to retransmit; restart */
+				torexmt = tp->snd_una;
+			}
+		}
 		*rescue = TRUE;
-		tcpstat.tcps_sackrescue++;
 		goto sendunsacked;
 	} else if (tcp_do_smartsack && lastblock == NULL) {
+		tcpstat.tcps_sackrescue_try++;
+		*rescue = TRUE;
 		goto sendunsacked;
 	}
 

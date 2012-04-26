@@ -86,6 +86,7 @@ extern int tcp_low_rtobase;
 extern int tcp_do_sack;
 extern int tcp_do_smartsack;
 extern int tcp_do_rescuesack;
+extern int tcp_aggressive_rescuesack;
 extern int tcp_aggregate_acks;
 
 /* TCP segment queue entry */
@@ -355,7 +356,7 @@ struct tcp_stats {
 	u_long	tcps_sndidle;		/* sending idle detected */
 	u_long	tcps_sackrescue;	/* SACK rescue data packets sent */
 	u_long	tcps_sackrescue_try;	/* SACK rescues attempted */
-	u_long	tcps_sackrescue_smart;	/* Smart SACK can send rescue data */
+	u_long	tcps_unused00;		/* unused */
 
 	u_long	tcps_rcvtotal;		/* total packets received */
 	u_long	tcps_rcvpack;		/* packets received in sequence */
