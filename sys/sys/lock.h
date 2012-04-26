@@ -70,7 +70,7 @@ struct lock {
 	int	lk_waitcount;		/* # of processes sleeping for lock */
 	short	lk_exclusivecount;	/* # of recursive exclusive locks */
 	short	lk_unused1;
-	char	*lk_wmesg;		/* resource sleeping (for tsleep) */
+	const char *lk_wmesg;		/* resource sleeping (for tsleep) */
 	int	lk_timo;		/* maximum sleep time (for tsleep) */
 	struct thread *lk_lockholder;	/* thread of excl lock holder */
 #ifdef	DEBUG_LOCKS
@@ -188,8 +188,8 @@ struct lock {
 void dumplockinfo(struct lock *lkp);
 struct proc;
 
-void	lockinit (struct lock *, char *wmesg, int timo, int flags);
-void	lockreinit (struct lock *, char *wmesg, int timo, int flags);
+void	lockinit (struct lock *, const char *wmesg, int timo, int flags);
+void	lockreinit (struct lock *, const char *wmesg, int timo, int flags);
 void	lockuninit(struct lock *);
 #ifdef DEBUG_LOCKS
 int	debuglockmgr (struct lock *, u_int flags,

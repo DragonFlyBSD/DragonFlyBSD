@@ -581,7 +581,7 @@ lockmgr_clrexclusive_interlocked(struct lock *lkp)
  * Initialize a lock; required before use.
  */
 void
-lockinit(struct lock *lkp, char *wmesg, int timo, int flags)
+lockinit(struct lock *lkp, const char *wmesg, int timo, int flags)
 {
 	spin_init(&lkp->lk_spinlock);
 	lkp->lk_flags = (flags & LK_EXTFLG_MASK);
@@ -599,7 +599,7 @@ lockinit(struct lock *lkp, char *wmesg, int timo, int flags)
  * must already hold the interlock.
  */
 void
-lockreinit(struct lock *lkp, char *wmesg, int timo, int flags)
+lockreinit(struct lock *lkp, const char *wmesg, int timo, int flags)
 {
 	spin_lock(&lkp->lk_spinlock);
 	lkp->lk_flags = (lkp->lk_flags & ~LK_EXTFLG_MASK) |

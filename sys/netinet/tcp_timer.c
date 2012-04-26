@@ -576,6 +576,7 @@ tcp_timer_rexmt_handler(struct tcpcb *tp)
 	}
 	tp->snd_nxt = tp->snd_una;
 	tp->rexmt_high = tp->snd_una;
+	tp->t_flags &= ~TF_SACKRESCUED;
 	tp->snd_recover = tp->snd_max;
 	/*
 	 * Force a segment to be sent.

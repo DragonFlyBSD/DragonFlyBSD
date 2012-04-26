@@ -189,6 +189,14 @@ int tcp_do_smartsack = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, smartsack, CTLFLAG_RW,
     &tcp_do_smartsack, 0, "Enable Smart SACK Algorithms");
 
+int tcp_do_rescuesack = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, rescuesack, CTLFLAG_RW,
+    &tcp_do_rescuesack, 0, "Rescue retransmission for SACK");
+
+int tcp_aggressive_rescuesack = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, rescuesack_agg, CTLFLAG_RW,
+    &tcp_aggressive_rescuesack, 0, "Aggressive rescue retransmission for SACK");
+
 SYSCTL_NODE(_net_inet_tcp, OID_AUTO, reass, CTLFLAG_RW, 0,
     "TCP Segment Reassembly Queue");
 
@@ -1950,6 +1958,7 @@ fastretransmit:
 				++tcpstat.tcps_sndfastrexmit;
 				tp->snd_cwnd = tp->snd_ssthresh;
 				tp->rexmt_high = tp->snd_nxt;
+				tp->t_flags &= ~TF_SACKRESCUED;
 				if (SEQ_GT(old_snd_nxt, tp->snd_nxt))
 					tp->snd_nxt = old_snd_nxt;
 				KASSERT(tp->snd_limited <= 2,
@@ -3099,43 +3108,80 @@ tcp_newreno_partial_ack(struct tcpcb *tp, struct tcphdr *th, int acked)
 static void
 tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
 {
-	uint32_t pipe, seglen;
-	tcp_seq nextrexmt;
-	boolean_t lostdup;
 	tcp_seq old_snd_nxt = tp->snd_nxt;
 	u_long ocwnd = tp->snd_cwnd;
+	uint32_t pipe;
 	int nseg = 0;		/* consecutive new segments */
+	int nseg_rexmt = 0;	/* retransmitted segments */
 #define MAXBURST 4		/* limit burst of new packets on partial ack */
 
 	tp->t_rtttime = 0;
 	pipe = tcp_sack_compute_pipe(tp);
 	while ((tcp_seq_diff_t)(ocwnd - pipe) >= (tcp_seq_diff_t)tp->t_maxseg &&
-	    (!tcp_do_smartsack || nseg < MAXBURST) &&
-	    tcp_sack_nextseg(tp, &nextrexmt, &seglen, &lostdup)) {
-		uint32_t sent;
-		tcp_seq old_snd_max;
+	    (!tcp_do_smartsack || nseg < MAXBURST)) {
+		tcp_seq old_snd_max, old_rexmt_high, nextrexmt;
+		uint32_t sent, seglen;
+		boolean_t rescue;
 		int error;
+
+		old_rexmt_high = tp->rexmt_high;
+	    	if (!tcp_sack_nextseg(tp, &nextrexmt, &seglen, &rescue)) {
+			tp->rexmt_high = old_rexmt_high;
+			break;
+		}
+
+		/*
+		 * If the next tranmission is a rescue retranmission,
+		 * we check whether we have already sent some data
+		 * (either new segments or retransmitted segments)
+		 * into the the network or not.  Since the idea of rescue
+		 * retransmission is to sustain ACK clock, as long as
+		 * some segments are in the network, ACK clock will be
+		 * kept ticking.
+		 */
+		if (rescue && (nseg_rexmt > 0 || nseg > 0)) {
+			tp->rexmt_high = old_rexmt_high;
+			break;
+		}
 
 		if (nextrexmt == tp->snd_max)
 			++nseg;
+		else
+			++nseg_rexmt;
 		tp->snd_nxt = nextrexmt;
 		tp->snd_cwnd = nextrexmt - tp->snd_una + seglen;
 		old_snd_max = tp->snd_max;
 		if (nextrexmt == tp->snd_una)
 			tcp_callout_stop(tp, tp->tt_rexmt);
 		error = tcp_output(tp);
-		if (error != 0)
+		if (error != 0) {
+			tp->rexmt_high = old_rexmt_high;
 			break;
+		}
 		sent = tp->snd_nxt - nextrexmt;
-		if (sent <= 0)
+		if (sent <= 0) {
+			tp->rexmt_high = old_rexmt_high;
 			break;
-		if (!lostdup)
-			pipe += sent;
+		}
+		pipe += sent;
 		tcpstat.tcps_sndsackpack++;
 		tcpstat.tcps_sndsackbyte += sent;
+
+		if (rescue) {
+			tcpstat.tcps_sackrescue++;
+			tp->rexmt_rescue = tp->snd_nxt;
+			tp->t_flags |= TF_SACKRESCUED;
+			break;
+		}
 		if (SEQ_LT(nextrexmt, old_snd_max) &&
-		    SEQ_LT(tp->rexmt_high, tp->snd_nxt))
+		    SEQ_LT(tp->rexmt_high, tp->snd_nxt)) {
 			tp->rexmt_high = seq_min(tp->snd_nxt, old_snd_max);
+			if ((tp->t_flags & TF_SACKRESCUED) &&
+			    SEQ_LT(tp->rexmt_rescue, tp->rexmt_high)) {
+				/* Drag RescueRxt along with HighRxt */
+				tp->rexmt_rescue = tp->rexmt_high;
+			}
+		}
 	}
 	if (SEQ_GT(old_snd_nxt, tp->snd_nxt))
 		tp->snd_nxt = old_snd_nxt;

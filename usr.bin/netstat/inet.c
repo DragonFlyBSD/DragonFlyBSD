@@ -446,10 +446,10 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 		"\t\t%lu data packet%s (%lu byte%s)\n");
 	p2(tcps_sndrexmitpack, tcps_sndrexmitbyte,
 		"\t\t%lu data packet%s (%lu byte%s) retransmitted\n");
-	p2(tcps_sndsackpack, tcps_sndsackbyte,
-		"\t\t%lu data packet%s (%lu byte%s) sent by SACK recovery\n");
 	p2(tcps_sndsackrtopack, tcps_sndsackrtobyte,
 		"\t\t%lu data packet%s (%lu byte%s) retransmitted by SACK\n");
+	p2(tcps_sndsackpack, tcps_sndsackbyte,
+		"\t\t%lu data packet%s (%lu byte%s) sent by SACK recovery\n");
 	p2a(tcps_sndfastrexmit, tcps_sndearlyrexmit,
 		"\t\t%lu Fast Retransmit%s (%lu early)\n");
 	p(tcps_sndlimited, "\t\t%lu packet%s sent by Limited Transmit\n");
@@ -537,6 +537,9 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 	p(tcps_sacksbfailed, "\t\t%lu failure%s\n");
 	p(tcps_sacksbreused, "\t\t%lu record%s reused\n");
 	p(tcps_sacksbfast, "\t\t%lu record%s fast allocated\n");
+
+	p2(tcps_sackrescue, tcps_sackrescue_try,
+	    "\t%lu SACK rescue%s (of %lu attempt%s)\n");
 
 	free(stattmp);
 #undef p
