@@ -483,8 +483,10 @@ tcp_revert_congestion_state(struct tcpcb *tp)
 		++tcpstat.tcps_sndfastrexmitbad;
 		if (tp->t_flags & TF_EARLYREXMT)
 			++tcpstat.tcps_sndearlyrexmitbad;
-	} else
+	} else {
 		++tcpstat.tcps_sndrtobad;
+		tp->snd_last = ticks;
+	}
 	tp->t_badrxtwin = 0;
 	tp->t_rxtshift = 0;
 	tp->snd_nxt = tp->snd_max;
