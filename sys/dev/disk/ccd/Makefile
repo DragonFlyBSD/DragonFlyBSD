@@ -4,7 +4,6 @@ KMOD=   ccd
 SRCS=   ccd.c use_ccd.h
 
 NCCD?=          4
-CLEANFILES=	use_ccd.h
 
 use_ccd.h:
 	echo "#define NCCD ${NCCD}" > ${.TARGET}

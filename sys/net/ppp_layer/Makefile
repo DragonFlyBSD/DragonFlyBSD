@@ -19,8 +19,6 @@ SRCS+=	bsd_comp.c
 SRCS+=	ppp_deflate.c zlib.c
 .endif
 
-CLEANFILES=	use_ppp.h
-
 use_ppp.h:
 	echo "#define NPPP ${NPPP}" > ${.TARGET}
 
