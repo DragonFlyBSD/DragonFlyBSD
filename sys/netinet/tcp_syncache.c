@@ -851,6 +851,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	tp->irs = sc->sc_irs;
 	tcp_rcvseqinit(tp);
 	tcp_sendseqinit(tp);
+	tp->snd_wnd = sc->sc_sndwnd;
 	tp->snd_wl1 = sc->sc_irs;
 	tp->rcv_up = sc->sc_irs + 1;
 	tp->rcv_wnd = sc->sc_wnd;
@@ -861,7 +862,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		tp->t_flags |= TF_NOOPT;
 	if (sc->sc_flags & SCF_WINSCALE) {
 		tp->t_flags |= TF_REQ_SCALE | TF_RCVD_SCALE;
-		tp->requested_s_scale = sc->sc_requested_s_scale;
+		tp->snd_scale = sc->sc_requested_s_scale;
 		tp->request_r_scale = sc->sc_request_r_scale;
 	}
 	if (sc->sc_flags & SCF_TIMESTAMP) {
@@ -1031,6 +1032,9 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 		else
 			sc->sc_flags &= ~SCF_SACK_PERMITTED;
 
+		/* Update initial send window */
+		sc->sc_sndwnd = th->th_win;
+
 		/*
 		 * PCB may have changed, pick up new values.
 		 */
@@ -1119,6 +1123,7 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 	if (to->to_flags & TOF_SIGNATURE)
 		sc->sc_flags = SCF_SIGNATURE;
 #endif /* TCP_SIGNATURE */
+	sc->sc_sndwnd = th->th_win;
 
 	if (syncache_respond(sc, m) == 0) {
 		syncache_insert(sc, sch);

@@ -236,7 +236,6 @@ struct tcpcb {
 	u_char	snd_scale;		/* window scaling for send window */
 	u_char	rcv_scale;		/* window scaling for recv window */
 	u_char	request_r_scale;	/* pending window scaling */
-	u_char	requested_s_scale;
 	u_long	ts_recent;		/* timestamp echo data */
 
 	u_long	ts_recent_age;		/* when last updated */
@@ -483,6 +482,7 @@ struct syncache {
 #define SCF_SIGNATURE		0x40		/* send MD5 digests */
 #define SCF_MARKER		0x80		/* not a real entry */
 	int		sc_rxtused;		/* time spent in SYN|ACK rxt */
+	u_long		sc_sndwnd;		/* send window */
 	TAILQ_ENTRY(syncache) sc_hash;
 	TAILQ_ENTRY(syncache) sc_timerq;
 };

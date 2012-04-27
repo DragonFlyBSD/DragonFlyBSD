@@ -850,12 +850,6 @@ findpcb:
 	if (tp->t_state <= TCPS_CLOSED)
 		goto drop;
 
-	/* Unscale the window into a 32-bit value. */
-	if (!(thflags & TH_SYN))
-		tiwin = th->th_win << tp->snd_scale;
-	else
-		tiwin = th->th_win;
-
 	so = inp->inp_socket;
 
 #ifdef TCPDEBUG
@@ -939,14 +933,7 @@ findpcb:
 				tp->snd_up = tp->snd_una;
 				tp->snd_max = tp->snd_nxt = tp->iss + 1;
 				tp->last_ack_sent = tp->rcv_nxt;
-/*
- * XXX possible bug - it doesn't appear that tp->snd_wnd is unscaled
- * until the _second_ ACK is received:
- *    rcv SYN (set wscale opts)	 --> send SYN/ACK, set snd_wnd = window.
- *    rcv ACK, calculate tiwin --> process SYN_RECEIVED, determine wscale,
- *	  move to ESTAB, set snd_wnd to tiwin.
- */
-				tp->snd_wnd = tiwin;	/* unscaled */
+
 				goto after_listen;
 			}
 			if (thflags & TH_RST) {
@@ -1069,6 +1056,12 @@ after_listen:
 	KASSERT(tp->t_state != TCPS_LISTEN, ("tcp_input: TCPS_LISTEN state"));
 	KKASSERT(so->so_port == &curthread->td_msgport);
 
+	/* Unscale the window into a 32-bit value. */
+	if (!(thflags & TH_SYN))
+		tiwin = th->th_win << tp->snd_scale;
+	else
+		tiwin = th->th_win;
+
 	/*
 	 * This is the second part of the MSS DoS prevention code (after
 	 * minmss on the sending side) and it deals with too many too small
@@ -1094,10 +1087,16 @@ after_listen:
 	 */
 	tcp_dooptions(&to, optp, optlen, (thflags & TH_SYN) != 0);
 	if (tp->t_state == TCPS_SYN_SENT && (thflags & TH_SYN)) {
-		if (to.to_flags & TOF_SCALE) {
+		if ((to.to_flags & TOF_SCALE) && (tp->t_flags & TF_REQ_SCALE)) {
 			tp->t_flags |= TF_RCVD_SCALE;
-			tp->requested_s_scale = to.to_requested_s_scale;
+			tp->snd_scale = to.to_requested_s_scale;
 		}
+
+		/*
+		 * Initial send window; will be updated upon next ACK
+		 */
+		tp->snd_wnd = th->th_win;
+
 		if (to.to_flags & TOF_TS) {
 			tp->t_flags |= TF_RCVD_TSTMP;
 			tp->ts_recent = to.to_tsval;
@@ -1446,7 +1445,6 @@ after_listen:
 		}
 		if (!(thflags & TH_SYN))
 			goto drop;
-		tp->snd_wnd = th->th_win;	/* initial send window */
 
 		tp->irs = th->th_seq;
 		tcp_rcvseqinit(tp);
@@ -1456,10 +1454,8 @@ after_listen:
 			soisconnected(so);
 			/* Do window scaling on this connection? */
 			if ((tp->t_flags & (TF_RCVD_SCALE | TF_REQ_SCALE)) ==
-			    (TF_RCVD_SCALE | TF_REQ_SCALE)) {
-				tp->snd_scale = tp->requested_s_scale;
+			    (TF_RCVD_SCALE | TF_REQ_SCALE))
 				tp->rcv_scale = tp->request_r_scale;
-			}
 			tp->rcv_adv += tp->rcv_wnd;
 			tp->snd_una++;		/* SYN is acked */
 			tcp_callout_stop(tp, tp->tt_rexmt);
@@ -1840,10 +1836,8 @@ after_listen:
 		soisconnected(so);
 		/* Do window scaling? */
 		if ((tp->t_flags & (TF_RCVD_SCALE | TF_REQ_SCALE)) ==
-		    (TF_RCVD_SCALE | TF_REQ_SCALE)) {
-			tp->snd_scale = tp->requested_s_scale;
+		    (TF_RCVD_SCALE | TF_REQ_SCALE))
 			tp->rcv_scale = tp->request_r_scale;
-		}
 		/*
 		 * Make transitions:
 		 *      SYN-RECEIVED  -> ESTABLISHED
@@ -2056,10 +2050,8 @@ fastretransmit:
 			tp->snd_una++;
 			/* Do window scaling? */
 			if ((tp->t_flags & (TF_RCVD_SCALE | TF_REQ_SCALE)) ==
-			    (TF_RCVD_SCALE | TF_REQ_SCALE)) {
-				tp->snd_scale = tp->requested_s_scale;
+			    (TF_RCVD_SCALE | TF_REQ_SCALE))
 				tp->rcv_scale = tp->request_r_scale;
-			}
 		}
 
 process_ACK:
