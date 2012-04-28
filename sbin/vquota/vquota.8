@@ -25,7 +25,7 @@
 .
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd March 23, 2012
+.Dd March 28, 2012
 .Dt VQUOTA 8
 .Os
 .Sh NAME
@@ -44,6 +44,13 @@ This manual page documents the
 .Nm
 utility which provides functions for managing virtual file system
 accounting and quotas.
+.Pp
+To use the
+.Nm
+utility, the
+.Va vfs.quota_enabled
+tunable needs to be set in
+.Xr loader.conf 5 .
 .Pp
 The following options are available:
 .Bl -tag -width Ds
@@ -119,6 +126,9 @@ command:
 .Pp
 .Dl "vquota show /mnt/data"
 .
+.Sh SEE ALSO
+.Xr vquotactl 2 ,
+.Xr loader.conf 5
 .Sh HISTORY
 The
 .Nm

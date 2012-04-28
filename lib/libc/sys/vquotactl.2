@@ -47,6 +47,13 @@ messages specific to the
 mount point are sent or returned via the
 .Fa pref
 parameter.
+.Pp
+To use the
+.Fn vquotactl
+call, the
+.Va vfs.quota_enabled
+tunable needs to be set in
+.Xr loader.conf 5 .
 .Sh RETURN VALUES
 .Rv -std vquotactl
 .Sh ERRORS
@@ -62,6 +69,7 @@ The message embedded in the
 argument was not understood.
 .El
 .Sh SEE ALSO
+.Xr loader.conf 5 ,
 .Xr vquota 8
 .Sh HISTORY
 The
