@@ -92,7 +92,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	truncate.2 tls.2 umask.2 umtx.2 undelete.2 \
 	unlink.2 unlinkat.2 utimes.2 utrace.2 upc_register.2 usched_set.2 \
 	uuidgen.2 \
-	varsym.2 vfork.2 wait.2 write.2
+	varsym.2 vfork.2 vquotactl.2 wait.2 write.2
 
 .if !defined(NO_P1003_1B)
 MAN+=	sched_get_priority_max.2 sched_setparam.2 \
