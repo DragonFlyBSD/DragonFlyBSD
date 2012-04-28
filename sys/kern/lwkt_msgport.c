@@ -195,6 +195,7 @@ static int lwkt_spin_putport(lwkt_port_t port, lwkt_msg_t msg);
 static int lwkt_spin_waitmsg(lwkt_msg_t msg, int flags);
 static void *lwkt_spin_waitport(lwkt_port_t port, int flags);
 static void lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg);
+static void lwkt_spin_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
 
 static void *lwkt_serialize_getport(lwkt_port_t port);
 static int lwkt_serialize_putport(lwkt_port_t port, lwkt_msg_t msg);
@@ -282,7 +283,7 @@ lwkt_initport_spin(lwkt_port_t port)
 		   lwkt_spin_waitmsg,
 		   lwkt_spin_waitport,
 		   lwkt_spin_replyport,
-		   lwkt_panic_dropmsg);
+		   lwkt_spin_dropmsg);
     spin_init(&port->mpu_spin);
 }
 
@@ -910,6 +911,24 @@ lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	if (dowakeup)
 	    wakeup(port);
     }
+}
+
+/*
+ * lwkt_spin_dropmsg() - Backend to lwkt_dropmsg()
+ *
+ * This function could _only_ be used when caller is in the same thread
+ * as the message's target port owner thread.
+ */
+static void
+lwkt_spin_dropmsg(lwkt_port_t port, lwkt_msg_t msg)
+{
+    KASSERT(port->mpu_td == curthread,
+    	    ("message could only be dropped in the same thread "
+	     "as the message target port thread\n"));
+    spin_lock(&port->mpu_spin);
+    _lwkt_pullmsg(port, msg);
+    msg->ms_flags |= MSGF_DONE;
+    spin_unlock(&port->mpu_spin);
 }
 
 /************************************************************************
