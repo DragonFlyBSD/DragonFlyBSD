@@ -30,7 +30,7 @@
 .Os
 .Sh NAME
 .Nm vquotactl
-.Nd is used to set or return VFS quota data.
+.Nd set or return VFS quota data
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -40,21 +40,19 @@
 .Sh DESCRIPTION
 The
 .Fn vquotactl
-call serves as the only kernel/userland VFS quota interface. proplib(3)
+call serves as the only kernel/userland VFS quota interface.
+.Xr proplib 3
 messages specific to the
 .Fa path
 mount point are sent or returned via the
 .Fa pref
 parameter.
 .Sh RETURN VALUES
-Upon successful completion, the
-.Fn vquotactl
-function returns the value 0; otherwise an error-specific code
-is returned.
+.Rv -std vquotactl
 .Sh ERRORS
 A
 .Fn vquotactl
-call may return the following error codes :
+call may return the following error codes:
 .Bl -tag -width Er
 .It Bq Er EOPNOTSUPP
 VFS quota support has not been enabled at system startup
@@ -64,7 +62,6 @@ The message embedded in the
 argument was not understood.
 .El
 .Sh SEE ALSO
-.Xr loader.conf 5 ,
 .Xr vquota 8
 .Sh HISTORY
 The
@@ -72,4 +69,4 @@ The
 function call appeared in
 .Dx 2.13 .
 .Sh AUTHORS
-.An Francois Tigeot .
+.An Francois Tigeot
