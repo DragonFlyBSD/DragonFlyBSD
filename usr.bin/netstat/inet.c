@@ -453,7 +453,8 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 	p2a(tcps_sndfastrexmit, tcps_sndearlyrexmit,
 		"\t\t%lu Fast Retransmit%s (%lu early)\n");
 	p(tcps_sndlimited, "\t\t%lu packet%s sent by Limited Transmit\n");
-	p(tcps_sndrtobad, "\t\t%lu spurious RTO retransmit%s\n");
+	p2(tcps_sndrtobad, tcps_eifelresponse,
+		"\t\t%lu spurious RTO retransmit%s (%lu Eifel-response%s)\n");
 	p2a(tcps_sndfastrexmitbad, tcps_sndearlyrexmitbad,
 		"\t\t%lu spurious Fast Retransmit%s (%lu early)\n");
 	p2a(tcps_eifeldetected, tcps_rttcantdetect,

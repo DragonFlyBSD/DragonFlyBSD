@@ -88,6 +88,7 @@ extern int tcp_do_smartsack;
 extern int tcp_do_rescuesack;
 extern int tcp_aggressive_rescuesack;
 extern int tcp_aggregate_acks;
+extern int tcp_eifel_rtoinc;
 
 /* TCP segment queue entry */
 struct tseg_qent {
@@ -166,7 +167,7 @@ struct tcpcb {
 #define TF_SIGNATURE	0x00004000	/* require MD5 digests (RFC2385) */
 #define TF_SACKRESCUED	0x00008000	/* sent rescue SACK recovery data */
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
-#define	TF_UNUSED00	0x00020000	/* unused */
+#define	TF_REBASERTO	0x00020000	/* Recalculate RTO based on new RTT */
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
 #define	TF_RXWIN0SENT	0x00080000	/* sent a receiver win 0 in response */
 #define	TF_FASTRECOVERY	0x00100000	/* in NewReno Fast Recovery */
@@ -242,6 +243,10 @@ struct tcpcb {
 	tcp_seq	last_ack_sent;
 
 /* experimental */
+	int	t_srtt_prev;		/* adjusted SRTT prior to retransmit */
+	int	t_rttvar_prev;		/* RTTVAR prior to retransmit */
+	int	t_rxtcur_prev;		/* rexmt timeout prior to retransmit */
+	tcp_seq	snd_max_prev;		/* SND_MAX prior to retransmit */
 	u_long	snd_cwnd_prev;		/* cwnd prior to retransmit */
 	u_long	snd_wacked_prev;	/* prior bytes acked in send window */
 	u_long	snd_ssthresh_prev;	/* ssthresh prior to retransmit */
@@ -355,7 +360,7 @@ struct tcp_stats {
 	u_long	tcps_sndidle;		/* sending idle detected */
 	u_long	tcps_sackrescue;	/* SACK rescue data packets sent */
 	u_long	tcps_sackrescue_try;	/* SACK rescues attempted */
-	u_long	tcps_unused00;		/* unused */
+	u_long	tcps_eifelresponse;	/* Eifel responses */
 
 	u_long	tcps_rcvtotal;		/* total packets received */
 	u_long	tcps_rcvpack;		/* packets received in sequence */

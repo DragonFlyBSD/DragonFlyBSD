@@ -241,7 +241,7 @@ static void	 tcp_pulloutofband(struct socket *,
 		     struct tcphdr *, struct mbuf *, int);
 static int	 tcp_reass(struct tcpcb *, struct tcphdr *, int *,
 		     struct mbuf *);
-static void	 tcp_xmit_timer(struct tcpcb *, int);
+static void	 tcp_xmit_timer(struct tcpcb *, int, tcp_seq);
 static void	 tcp_newreno_partial_ack(struct tcpcb *, struct tcphdr *, int);
 static void	 tcp_sack_rexmt(struct tcpcb *, struct tcphdr *);
 static int	 tcp_rmx_msl(const struct tcpcb *);
@@ -1195,11 +1195,13 @@ after_listen:
 				 */
 				if ((to.to_flags & TOF_TS) && to.to_tsecr) {
 					tcp_xmit_timer(tp,
-						       ticks - to.to_tsecr + 1);
+					    ticks - to.to_tsecr + 1,
+					    th->th_ack);
 				} else if (tp->t_rtttime &&
 					   SEQ_GT(th->th_ack, tp->t_rtseq)) {
 					tcp_xmit_timer(tp,
-						       ticks - tp->t_rtttime);
+					    ticks - tp->t_rtttime,
+					    th->th_ack);
 				}
 				tcp_xmit_bandwidth_limit(tp, th->th_ack);
 				acked = th->th_ack - tp->snd_una;
@@ -2097,9 +2099,9 @@ process_ACK:
 		 * timestamps of 0.
 		 */
 		if ((to.to_flags & TOF_TS) && (to.to_tsecr != 0))
-			tcp_xmit_timer(tp, ticks - to.to_tsecr + 1);
+			tcp_xmit_timer(tp, ticks - to.to_tsecr + 1, th->th_ack);
 		else if (tp->t_rtttime && SEQ_GT(th->th_ack, tp->t_rtseq))
-			tcp_xmit_timer(tp, ticks - tp->t_rtttime);
+			tcp_xmit_timer(tp, ticks - tp->t_rtttime, th->th_ack);
 		tcp_xmit_bandwidth_limit(tp, th->th_ack);
 
 		/*
@@ -2750,13 +2752,34 @@ tcp_pulloutofband(struct socket *so, struct tcphdr *th, struct mbuf *m, int off)
  * and update averages and current timeout.
  */
 static void
-tcp_xmit_timer(struct tcpcb *tp, int rtt)
+tcp_xmit_timer(struct tcpcb *tp, int rtt, tcp_seq ack)
 {
-	int delta;
+	int rebaserto = 0;
 
 	tcpstat.tcps_rttupdated++;
 	tp->t_rttupdated++;
-	if (tp->t_srtt != 0) {
+	if ((tp->t_flags & TF_REBASERTO) && SEQ_GT(ack, tp->snd_max_prev)) {
+#ifdef DEBUG_EIFEL_RESPONSE
+		kprintf("srtt/rttvar, prev %d/%d, cur %d/%d, ",
+		    tp->t_srtt_prev, tp->t_rttvar_prev,
+		    tp->t_srtt, tp->t_rttvar);
+#endif
+
+		tcpstat.tcps_eifelresponse++;
+		rebaserto = 1;
+		tp->t_flags &= ~TF_REBASERTO;
+		tp->t_srtt = max(tp->t_srtt_prev, (rtt << TCP_RTT_SHIFT));
+		tp->t_rttvar = max(tp->t_rttvar_prev,
+		    (rtt << (TCP_RTTVAR_SHIFT - 1)));
+		if (tp->t_rttbest > tp->t_srtt + tp->t_rttvar)
+			tp->t_rttbest = tp->t_srtt + tp->t_rttvar;
+
+#ifdef DEBUG_EIFEL_RESPONSE
+		kprintf("new %d/%d ", tp->t_srtt, tp->t_rttvar);
+#endif
+	} else if (tp->t_srtt != 0) {
+		int delta;
+
 		/*
 		 * srtt is stored as fixed point with 5 bits after the
 		 * binary point (i.e., scaled by 8).  The following magic
@@ -2800,6 +2823,13 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt)
 	tp->t_rtttime = 0;
 	tp->t_rxtshift = 0;
 
+#ifdef DEBUG_EIFEL_RESPONSE
+	if (rebaserto) {
+		kprintf("| rxtcur prev %d, old %d, ",
+		    tp->t_rxtcur_prev, tp->t_rxtcur);
+	}
+#endif
+
 	/*
 	 * the retransmit should happen at rtt + 4 * rttvar.
 	 * Because of the way we do the smoothing, srtt and rttvar
@@ -2813,6 +2843,30 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt)
 	 */
 	TCPT_RANGESET(tp->t_rxtcur, TCP_REXMTVAL(tp),
 		      max(tp->t_rttmin, rtt + 2), TCPTV_REXMTMAX);
+
+	if (rebaserto) {
+		if (tp->t_rxtcur < tp->t_rxtcur_prev + tcp_eifel_rtoinc) {
+			/*
+			 * RFC4015 requires that the new RTO is at least
+			 * 2*G (tcp_eifel_rtoinc) greater then the RTO
+			 * (t_rxtcur_prev) when the spurious retransmit
+			 * timeout happens.
+			 *
+			 * The above condition could be true, if the SRTT
+			 * and RTTVAR used to calculate t_rxtcur_prev
+			 * resulted in a value less than t_rttmin.  So
+			 * simply increasing SRTT by tcp_eifel_rtoinc when
+			 * preparing for the Eifel response in
+			 * tcp_save_congestion_state() could not ensure
+			 * that the new RTO will be tcp_eifel_rtoinc greater
+			 * t_rxtcur_prev.
+			 */
+			tp->t_rxtcur = tp->t_rxtcur_prev + tcp_eifel_rtoinc;
+		}
+#ifdef DEBUG_EIFEL_RESPONSE
+		kprintf("new %d\n", tp->t_rxtcur);
+#endif
+	}
 
 	/*
 	 * We received an ack for a packet that wasn't retransmitted;

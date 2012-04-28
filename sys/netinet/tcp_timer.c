@@ -191,6 +191,15 @@ int	tcp_keepcnt = TCPTV_KEEPCNT;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, keepcnt, CTLFLAG_RW,
     &tcp_keepcnt, 0, "Maximum number of keepalive probes to be sent");
 
+static int tcp_do_eifel_response = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, eifel_response, CTLFLAG_RW,
+    &tcp_do_eifel_response, 0, "Eifel response algorithm (RFC 4015)");
+
+int tcp_eifel_rtoinc = 2;
+SYSCTL_PROC(_net_inet_tcp, OID_AUTO, eifel_rtoinc, CTLTYPE_INT|CTLFLAG_RW,
+    &tcp_eifel_rtoinc, 0, sysctl_msec_to_ticks, "I",
+    "Eifel response RTO increment");
+
 /* max idle time in persist */
 int	tcp_maxpersistidle;
 
@@ -457,6 +466,14 @@ tcp_save_congestion_state(struct tcpcb *tp)
 	tp->snd_wacked_prev = tp->snd_wacked;
 	tp->snd_ssthresh_prev = tp->snd_ssthresh;
 	tp->snd_recover_prev = tp->snd_recover;
+
+	tp->t_rxtcur_prev = tp->t_rxtcur;
+	tp->t_srtt_prev = tp->t_srtt +
+	    (tcp_eifel_rtoinc << TCP_RTT_SHIFT);
+	tp->t_rttvar_prev = tp->t_rttvar;
+	tp->snd_max_prev = tp->snd_max;
+	tp->t_flags &= ~TF_REBASERTO;
+
 	if (IN_FASTRECOVERY(tp))
 		tp->t_flags |= TF_WASFRECOVERY;
 	else
@@ -486,6 +503,8 @@ tcp_revert_congestion_state(struct tcpcb *tp)
 	} else {
 		++tcpstat.tcps_sndrtobad;
 		tp->snd_last = ticks;
+		if (tcp_do_eifel_response)
+			tp->t_flags |= TF_REBASERTO;
 	}
 	tp->t_badrxtwin = 0;
 	tp->t_rxtshift = 0;
