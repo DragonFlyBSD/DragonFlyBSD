@@ -71,7 +71,7 @@ PKGSRC_OPTIONS+=	MAKE_JOBS=${MAKE_JOBS}
 PKGSRC_OPTIONS+=	WRKOBJDIR=/usr/pkgobj
 PKGSRC_OPTIONS+=	PKG_DEFAULT_OPTIONS='dri inet6'
 .if !make(gui)
-PKGSRC_OPTIONS+=	PKG_OPTIONS.scmgit=-scmgit-gui
+PKGSRC_OPTIONS+=	PKG_OPTIONS.scmgit='-python -scmgit-gui'
 .endif
 
 # Even though buildiso wipes the packages, our check target has to run
