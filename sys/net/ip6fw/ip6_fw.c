@@ -869,7 +869,7 @@ add_entry6(struct ip6_fw_head *chainptr, struct ip6_fw *frwl)
 
 	/* If entry number is 0, find highest numbered rule and add 100 */
 	if (ftmp->fw_number == 0) {
-		for (fcp = chainptr->lh_first; fcp; fcp = fcp->chain.le_next) {
+		LIST_FOREACH(fcp, chainptr, chain) {
 			if (fcp->rule->fw_number != (u_short)-1)
 				nbr = fcp->rule->fw_number;
 			else
@@ -881,7 +881,7 @@ add_entry6(struct ip6_fw_head *chainptr, struct ip6_fw *frwl)
 	}
 
 	/* Got a valid number; now insert it, keeping the list ordered */
-	for (fcp = chainptr->lh_first; fcp; fcp = fcp->chain.le_next) {
+	LIST_FOREACH(fcp, chainptr, chain) {
 		if (fcp->rule->fw_number > ftmp->fw_number) {
 			if (fcpl) {
 				LIST_INSERT_AFTER(fcpl, fwc, chain);
