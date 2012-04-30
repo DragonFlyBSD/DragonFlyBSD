@@ -499,7 +499,6 @@ swapout_procs(int action)
 static int
 swapout_procs_callback(struct proc *p, void *data)
 {
-	struct vmspace *vm;
 	struct lwp *lp;
 	int action = *(int *)data;
 	int minslp = -1;
@@ -508,7 +507,6 @@ swapout_procs_callback(struct proc *p, void *data)
 		return(0);
 
 	lwkt_gettoken(&p->p_token);
-	vm = p->p_vmspace;
 
 	/*
 	 * We only consider active processes.

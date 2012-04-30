@@ -402,11 +402,9 @@ tmpfs_setattr(struct vop_setattr_args *v)
 static int
 tmpfs_fsync(struct vop_fsync_args *v)
 {
-	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
 	struct vnode *vp = v->a_vp;
 
-	tmp = VFS_TO_TMPFS(vp->v_mount);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	tmpfs_update(vp);

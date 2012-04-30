@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/kern_varsym.c,v 1.9 2007/04/30 07:18:54 dillon Exp $
  */
 
 /*
@@ -139,13 +137,11 @@ sys_varsym_set(struct varsym_set_args *uap)
     char name[MAXVARSYM_NAME];
     char *buf;
     struct thread *td;
-    struct proc *p;
     struct lwp *lp;
     int error;
 
     td = curthread;
     lp = td->td_lwp;
-    p = lp ? lp->lwp_proc : NULL;
 
     if ((error = copyinstr(uap->name, name, sizeof(name), NULL)) != 0)
 	goto done2;
