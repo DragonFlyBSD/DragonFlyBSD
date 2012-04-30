@@ -44,7 +44,6 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.51 2008/08/29 20:08:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -354,14 +353,11 @@ void
 dsgone(struct diskslices **sspp)
 {
 	int slice;
-	struct diskslice *sp;
 	struct diskslices *ssp;
 
 	if ((ssp = *sspp) != NULL) {
-		for (slice = 0; slice < ssp->dss_nslices; slice++) {
-			sp = &ssp->dss_slices[slice];
+		for (slice = 0; slice < ssp->dss_nslices; slice++)
 			free_ds_label(ssp, slice);
-		}
 		kfree(ssp, M_DEVBUF);
 		*sspp = NULL;
 	}
