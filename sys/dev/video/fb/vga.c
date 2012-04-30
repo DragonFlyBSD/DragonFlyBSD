@@ -47,9 +47,7 @@
 
 #include <machine/clock.h>
 #include <machine/md_var.h>
-#ifdef __i386__
 #include <machine/pc/bios.h>
-#endif
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -62,10 +60,6 @@
 #define VGA_DEBUG		0
 #endif
 
-/* machine/pc/bios.h has got too much i386-specific stuff in it */
-#ifndef BIOS_PADDRTOVADDR
-#define BIOS_PADDRTOVADDR(x) (((x) - ISA_HOLE_START) + atdevbase)
-#endif
 int
 vga_probe_unit(int unit, video_adapter_t *buf, int flags)
 {
