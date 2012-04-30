@@ -810,7 +810,7 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 		    (bp->b_bio2.bio_offset == NOOFFSET) &&
 		    (VOP_BMAP(vp, loffset, &bp->b_bio2.bio_offset, &maxclen, NULL, BUF_CMD_WRITE) ||
 		     bp->b_bio2.bio_offset == NOOFFSET)) {
-			bawrite(bp);
+			bdwrite(bp);
 			vp->v_clen = 0;
 			vp->v_lasta = bp->b_bio2.bio_offset;
 			vp->v_cstart = loffset + blksize;
@@ -823,7 +823,7 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 			vp->v_clen = 0;
 		if (!async && vp->v_clen == 0) { /* I/O not contiguous */
 			vp->v_cstart = loffset + blksize;
-			bawrite(bp);
+			bdwrite(bp);
 		} else {	/* Wait for rest of cluster */
 			vp->v_cstart = loffset;
 			bdwrite(bp);
@@ -840,9 +840,12 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 					  vp->v_clen + blksize);
 		vp->v_clen = 0;
 		vp->v_cstart = loffset + blksize;
-	} else if (vm_page_count_severe()) {
+	} else if (vm_page_count_severe() &&
+		   bp->b_loffset + blksize < filesize) {
 		/*
-		 * We are low on memory, get it going NOW
+		 * We are low on memory, get it going NOW.  However, do not
+		 * try to push out a partial block at the end of the file
+		 * as this could lead to extremely non-optimal write activity.
 		 */
 		bawrite(bp);
 	} else {
