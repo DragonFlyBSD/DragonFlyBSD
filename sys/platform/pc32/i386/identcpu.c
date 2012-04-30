@@ -1278,7 +1278,7 @@ finish:
 
 #ifdef CPU_HAS_SSE2
 	if ((cpu_feature & CPUID_SSE2) == 0)
-		panic("CPU does not has SSE2, remove options CPU_HAS_SSE2\n");
+		panic("CPU does not has SSE2, remove options CPU_HAS_SSE2");
 #endif
 }
 

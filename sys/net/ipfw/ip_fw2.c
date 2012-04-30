@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.100 2008/11/22 11:03:35 sephe Exp $
  */
 
 /*
@@ -431,8 +430,8 @@ static void		ipfw_tick(void *);
 static __inline int
 ipfw_free_rule(struct ip_fw *rule)
 {
-	KASSERT(rule->cpuid == mycpuid, ("rule freed on cpu%d\n", mycpuid));
-	KASSERT(rule->refcnt > 0, ("invalid refcnt %u\n", rule->refcnt));
+	KASSERT(rule->cpuid == mycpuid, ("rule freed on cpu%d", mycpuid));
+	KASSERT(rule->refcnt > 0, ("invalid refcnt %u", rule->refcnt));
 	rule->refcnt--;
 	if (rule->refcnt == 0) {
 		kfree(rule, M_IPFW);
@@ -453,7 +452,7 @@ ipfw_unref_rule(void *priv)
 static __inline void
 ipfw_ref_rule(struct ip_fw *rule)
 {
-	KASSERT(rule->cpuid == mycpuid, ("rule used on cpu%d\n", mycpuid));
+	KASSERT(rule->cpuid == mycpuid, ("rule used on cpu%d", mycpuid));
 #ifdef KLD_MODULE
 	atomic_add_int(&ipfw_refcnt, 1);
 #endif
@@ -891,7 +890,7 @@ do {									\
 		prev->next = q = q->next;				\
 	else								\
 		head = q = q->next;					\
-	KASSERT(dyn_count > 0, ("invalid dyn count %u\n", dyn_count));	\
+	KASSERT(dyn_count > 0, ("invalid dyn count %u", dyn_count));	\
 	dyn_count--;							\
 	kfree(old_q, M_IPFW);						\
 } while (0)
@@ -1149,7 +1148,7 @@ realloc_dynamic_table(void)
 	uint32_t old_curr_dyn_buckets;
 
 	KASSERT(dyn_buckets <= 65536 && (dyn_buckets & (dyn_buckets - 1)) == 0,
-		("invalid dyn_buckets %d\n", dyn_buckets));
+		("invalid dyn_buckets %d", dyn_buckets));
 
 	/* Save the current buckets array for later error recovery */
 	old_dyn_v = ipfw_dyn_v;
@@ -1841,7 +1840,7 @@ after_ip_checks:
 			return IP_FW_DENY;
 
 		KASSERT(args->rule->cpuid == mycpuid,
-			("rule used on cpu%d\n", mycpuid));
+			("rule used on cpu%d", mycpuid));
 
 		/* This rule was deleted */
 		if (args->rule->rule_flags & IPFW_RULE_F_INVALID)
@@ -2418,7 +2417,7 @@ check_body:
 				goto done;
 
 			default:
-				panic("-- unknown opcode %d\n", cmd->opcode);
+				panic("-- unknown opcode %d", cmd->opcode);
 			} /* end of switch() on opcodes */
 
 			if (cmd->len & F_NOT)
@@ -2478,7 +2477,7 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	if (cmd->opcode == O_LOG)
 		cmd += F_LEN(cmd);
 	KASSERT(cmd->opcode == O_PIPE || cmd->opcode == O_QUEUE,
-		("Rule is not PIPE or QUEUE, opcode %d\n", cmd->opcode));
+		("Rule is not PIPE or QUEUE, opcode %d", cmd->opcode));
 
 	pkt->dn_m = m;
 	pkt->dn_flags = (dir & DN_FLAGS_DIR_MASK);
@@ -2539,11 +2538,11 @@ ipfw_dec_static_count(struct ip_fw *rule)
 	/* Static rule's counts are updated only on CPU0 */
 	KKASSERT(mycpuid == 0);
 
-	KASSERT(static_count > 0, ("invalid static count %u\n", static_count));
+	KASSERT(static_count > 0, ("invalid static count %u", static_count));
 	static_count--;
 
 	KASSERT(static_ioc_len >= l,
-		("invalid static len %u\n", static_ioc_len));
+		("invalid static len %u", static_ioc_len));
 	static_ioc_len -= l;
 }
 
@@ -2698,7 +2697,7 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 	}
 	KASSERT(ioc_rule->rulenum != IPFW_DEFAULT_RULE &&
 		ioc_rule->rulenum != 0,
-		("invalid rule num %d\n", ioc_rule->rulenum));
+		("invalid rule num %d", ioc_rule->rulenum));
 
 	/*
 	 * Now find the right place for the new rule in the sorted list.
@@ -2710,7 +2709,7 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 			break;
 		}
 	}
-	KASSERT(f != NULL, ("no default rule?!\n"));
+	KASSERT(f != NULL, ("no default rule?!"));
 
 	if (rule_flags & IPFW_RULE_F_STATE) {
 		int size;
@@ -2932,7 +2931,7 @@ ipfw_flush(int kill_default)
 	lmsg->u.ms_result = kill_default;
 	ifnet_domsg(lmsg, 0);
 
-	KASSERT(dyn_count == 0, ("%u dyn rule remains\n", dyn_count));
+	KASSERT(dyn_count == 0, ("%u dyn rule remains", dyn_count));
 
 	if (kill_default) {
 		if (ipfw_dyn_v != NULL) {
@@ -2944,14 +2943,14 @@ ipfw_flush(int kill_default)
 		}
 
 		KASSERT(static_count == 0,
-			("%u static rules remains\n", static_count));
+			("%u static rules remain", static_count));
 		KASSERT(static_ioc_len == 0,
-			("%u bytes of static rules remains\n", static_ioc_len));
+			("%u bytes of static rules remain", static_ioc_len));
 	} else {
 		KASSERT(static_count == 1,
-			("%u static rules remains\n", static_count));
+			("%u static rules remain", static_count));
 		KASSERT(static_ioc_len == IOC_RULESIZE(ctx->ipfw_default_rule),
-			("%u bytes of static rules remains, should be %lu\n",
+			("%u bytes of static rules remain, should be %lu",
 			 static_ioc_len,
 			 (u_long)IOC_RULESIZE(ctx->ipfw_default_rule)));
 	}
@@ -3098,7 +3097,7 @@ ipfw_alt_delete_ruleset_dispatch(netmsg_t nmsg)
 			rule = rule->next;
 		}
 	}
-	KASSERT(del, ("no match set?!\n"));
+	KASSERT(del, ("no match set?!"));
 
 	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
 }
@@ -3123,7 +3122,7 @@ ipfw_disable_ruleset_state_dispatch(netmsg_t nmsg)
 			rule->rule_flags &= ~IPFW_RULE_F_STATE;
 		}
 	}
-	KASSERT(cleared, ("no match set?!\n"));
+	KASSERT(cleared, ("no match set?!"));
 
 	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
 }
@@ -3760,7 +3759,7 @@ ipfw_copy_rule(const struct ip_fw *rule, struct ipfw_ioc_rule *ioc_rule)
 		++i;
 #endif
 	}
-	KASSERT(i == ncpus, ("static rule is not duplicated on every cpu\n"));
+	KASSERT(i == ncpus, ("static rule is not duplicated on every cpu"));
 
 	bcopy(rule->cmd, ioc_rule->cmd, ioc_rule->cmd_len * 4 /* XXX */);
 
@@ -4169,7 +4168,7 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		break;
 
 	default:
-		panic("unknown ipfw return value: %d\n", ret);
+		panic("unknown ipfw return value: %d", ret);
 	}
 back:
 	*m0 = m;
@@ -4238,7 +4237,7 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		break;
 
 	default:
-		panic("unknown ipfw return value: %d\n", ret);
+		panic("unknown ipfw return value: %d", ret);
 	}
 back:
 	*m0 = m;

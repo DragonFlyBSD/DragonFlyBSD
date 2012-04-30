@@ -1559,7 +1559,7 @@ nge_encap(struct nge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 		}
 	}
 	/* Caller should make sure that 'm_head' is not excessive fragmented */
-	KASSERT(m == NULL, ("too many fragments\n"));
+	KASSERT(m == NULL, ("too many fragments"));
 
 	sc->nge_ldata->nge_tx_list[*txidx].nge_extsts = 0;
 	if (m_head->m_pkthdr.csum_flags) {

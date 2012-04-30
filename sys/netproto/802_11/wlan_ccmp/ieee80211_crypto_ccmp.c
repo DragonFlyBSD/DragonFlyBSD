@@ -600,7 +600,7 @@ ccmp_decrypt(struct ieee80211_key *key, u_int64_t pn, struct mbuf *m, int hdrlen
 			space_next = len > space ? len - space : 0;
 			KASSERT(m->m_len >= space_next,
 				("not enough data in following buffer, "
-				"m_len %u need %u\n", m->m_len, space_next));
+				"m_len %u need %u", m->m_len, space_next));
 
 			xor_block(b+space, pos_next, space_next);
 			CCMP_DECRYPT(i, b, b0, pos, a, space);

@@ -129,7 +129,7 @@ mb_reserve(struct mbchain *mbp, int size)
 	caddr_t bpos;
 
 	if (size > MLEN)
-		panic("mb_reserve: size = %d\n", size);
+		panic("mb_reserve: size = %d", size);
 	m = mbp->mb_cur;
 	if (mbp->mb_mleft < size) {
 		mn = m_get(MB_WAIT, MT_DATA);

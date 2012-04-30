@@ -3180,7 +3180,7 @@ ahci_put_err_ccb(struct ahci_ccb *ccb)
 	if (ap->ap_sc->sc_cap & AHCI_REG_CAP_SNCQ) {
 		sact = ahci_pread(ap, AHCI_PREG_SACT);
 		if (sact) {
-			panic("ahci_port_err_ccb(%d) but SACT %08x != 0\n",
+			panic("ahci_port_err_ccb(%d) but SACT %08x != 0",
 			      ccb->ccb_slot, sact);
 		}
 	}

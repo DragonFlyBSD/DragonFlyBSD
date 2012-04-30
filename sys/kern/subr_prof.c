@@ -403,7 +403,6 @@ void
 addupc_intr(struct proc *p, u_long pc, u_int ticks)
 {
 	struct uprof *prof;
-	caddr_t addr;
 	u_int i;
 
 	if (ticks == 0)
@@ -413,7 +412,6 @@ addupc_intr(struct proc *p, u_long pc, u_int ticks)
 	    (i = PC_TO_INDEX(pc, prof)) >= prof->pr_size)
 		return;			/* out of range; ignore */
 
-	addr = prof->pr_base + i;
 	prof->pr_addr = pc;
 	prof->pr_ticks = ticks;
 	need_proftick();

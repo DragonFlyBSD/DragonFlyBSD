@@ -906,7 +906,7 @@ digiclose(struct dev_close_args *ap)
 	pnum = MINOR_TO_PORT(mynor);
 
 	sc = (struct digi_softc *)devclass_get_softc(digi_devclass, unit);
-	KASSERT(sc, ("digi%d: softc not allocated in digiclose\n", unit));
+	KASSERT(sc, ("digi%d: softc not allocated in digiclose", unit));
 
 	if (mynor & (CTRL_DEV | CONTROL_MASK)) {
 		sc->opencnt--;
@@ -997,7 +997,7 @@ digiread(struct dev_read_args *ap)
 	pnum = MINOR_TO_PORT(mynor);
 
 	sc = (struct digi_softc *)devclass_get_softc(digi_devclass, unit);
-	KASSERT(sc, ("digi%d: softc not allocated in digiclose\n", unit));
+	KASSERT(sc, ("digi%d: softc not allocated in digiclose", unit));
 	tp = &sc->ttys[pnum];
 
 	error = linesw[tp->t_line].l_read(tp, ap->a_uio, ap->a_ioflag);
@@ -1026,7 +1026,7 @@ digiwrite(struct dev_write_args *ap)
 	pnum = MINOR_TO_PORT(mynor);
 
 	sc = (struct digi_softc *)devclass_get_softc(digi_devclass, unit);
-	KASSERT(sc, ("digi%d: softc not allocated in digiclose\n", unit));
+	KASSERT(sc, ("digi%d: softc not allocated in digiclose", unit));
 	tp = &sc->ttys[pnum];
 
 	error = linesw[tp->t_line].l_write(tp, ap->a_uio, ap->a_ioflag);
@@ -1102,7 +1102,7 @@ digiioctl(struct dev_ioctl_args *ap)
 
 	lwkt_gettoken(&tty_token);
 	sc = (struct digi_softc *)devclass_get_softc(digi_devclass, unit);
-	KASSERT(sc, ("digi%d: softc not allocated in digiioctl\n", unit));
+	KASSERT(sc, ("digi%d: softc not allocated in digiioctl", unit));
 
 	if (sc->status == DIGI_STATUS_DISABLED) {
 		lwkt_reltoken(&tty_token);
@@ -1410,7 +1410,7 @@ digiparam(struct tty *tp, struct termios *t)
 	pnum = MINOR_TO_PORT(mynor);
 
 	sc = (struct digi_softc *)devclass_get_softc(digi_devclass, unit);
-	KASSERT(sc, ("digi%d: softc not allocated in digiparam\n", unit));
+	KASSERT(sc, ("digi%d: softc not allocated in digiparam", unit));
 
 	port = &sc->ports[pnum];
 
@@ -1754,7 +1754,7 @@ digistart(struct tty *tp)
 	pnum = MINOR_TO_PORT(minor(tp->t_dev));
 
 	sc = (struct digi_softc *)devclass_get_softc(digi_devclass, unit);
-	KASSERT(sc, ("digi%d: softc not allocated in digistart\n", unit));
+	KASSERT(sc, ("digi%d: softc not allocated in digistart", unit));
 
 	port = &sc->ports[pnum];
 	bc = port->bc;
@@ -1839,7 +1839,7 @@ digistop(struct tty *tp, int rw)
 	pnum = MINOR_TO_PORT(minor(tp->t_dev));
 
 	sc = (struct digi_softc *)devclass_get_softc(digi_devclass, unit);
-	KASSERT(sc, ("digi%d: softc not allocated in digistop\n", unit));
+	KASSERT(sc, ("digi%d: softc not allocated in digistop", unit));
 	port = sc->ports + pnum;
 
 	DLOG(DIGIDB_TX, (sc->dev, "port %d: pause TX\n", pnum));

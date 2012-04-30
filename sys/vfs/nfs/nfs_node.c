@@ -112,7 +112,7 @@ nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
 retry:
 	nhpp = NFSNOHASH(fnv_32_buf(fhp->fh_bytes, fhsize, FNV1_32_INIT));
 loop:
-	for (np = nhpp->lh_first; np; np = np->n_hash.le_next) {
+	LIST_FOREACH(np, nhpp, n_hash) {
 		if (mntp != NFSTOV(np)->v_mount || np->n_fhsize != fhsize ||
 		    bcmp((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize)) {
 			continue;
@@ -120,7 +120,7 @@ loop:
 		vp = NFSTOV(np);
 		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
-		for (np = nhpp->lh_first; np; np = np->n_hash.le_next) {
+		LIST_FOREACH(np, nhpp, n_hash) {
 			if (mntp == NFSTOV(np)->v_mount &&
 			    np->n_fhsize == fhsize &&
 			    bcmp((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize) == 0
@@ -239,7 +239,7 @@ nfs_nget_nonblock(struct mount *mntp, nfsfh_t *fhp, int fhsize,
 retry:
 	nhpp = NFSNOHASH(fnv_32_buf(fhp->fh_bytes, fhsize, FNV1_32_INIT));
 loop:
-	for (np = nhpp->lh_first; np; np = np->n_hash.le_next) {
+	LIST_FOREACH(np, nhpp, n_hash) {
 		if (mntp != NFSTOV(np)->v_mount || np->n_fhsize != fhsize ||
 		    bcmp((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize)) {
 			continue;

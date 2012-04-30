@@ -29,8 +29,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.26 2008/10/27 02:56:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -355,7 +353,7 @@ so_pru_send_async(struct socket *so, int flags, struct mbuf *m,
 	struct sockaddr *addr = NULL;
 
 	KASSERT(so->so_proto->pr_flags & PR_ASYNC_SEND,
-	    ("async pru_send is not supported\n"));
+	    ("async pru_send is not supported"));
 
 	flags |= PRUS_NOREPLY;
 	if (addr0 != NULL) {

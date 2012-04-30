@@ -32,7 +32,6 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.41 2008/08/17 05:20:10 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -281,7 +280,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	}
 
 	KASSERT(cmd != SIOCALIFADDR && cmd != SIOCDLIFADDR,
-		("recursive SIOC%cLIFADDR!\n",
+		("recursive SIOC%cLIFADDR!",
 		 cmd == SIOCDLIFADDR ? 'D' : 'A'));
 
 	return in_control_redispatch(cmd, data, ifp, td);
@@ -300,7 +299,7 @@ in_ialink_dispatch(netmsg_t msg)
 	ifac = &ia->ia_ifa.ifa_containers[cpu];
 	ASSERT_IFAC_VALID(ifac);
 	KASSERT((ifac->ifa_listmask & IFA_LIST_IN_IFADDRHEAD) == 0,
-		("ia is on in_ifaddrheads\n"));
+		("ia is on in_ifaddrheads"));
 
 	ifac->ifa_listmask |= IFA_LIST_IN_IFADDRHEAD;
 	iac = &ifac->ifa_proto_u.u_in_ifac;
@@ -324,7 +323,7 @@ in_iaunlink_dispatch(netmsg_t msg)
 	ifac = &ia->ia_ifa.ifa_containers[cpu];
 	ASSERT_IFAC_VALID(ifac);
 	KASSERT(ifac->ifa_listmask & IFA_LIST_IN_IFADDRHEAD,
-		("ia is not on in_ifaddrheads\n"));
+		("ia is not on in_ifaddrheads"));
 
 	iac = &ifac->ifa_proto_u.u_in_ifac;
 	TAILQ_REMOVE(&in_ifaddrheads[cpu], iac, ia_link);
@@ -348,7 +347,7 @@ in_iahashins_dispatch(netmsg_t msg)
 	ifac = &ia->ia_ifa.ifa_containers[cpu];
 	ASSERT_IFAC_VALID(ifac);
 	KASSERT((ifac->ifa_listmask & IFA_LIST_IN_IFADDRHASH) == 0,
-		("ia is on in_ifaddrhashtbls\n"));
+		("ia is on in_ifaddrhashtbls"));
 
 	ifac->ifa_listmask |= IFA_LIST_IN_IFADDRHASH;
 	iac = &ifac->ifa_proto_u.u_in_ifac;
@@ -373,7 +372,7 @@ in_iahashrem_dispatch(netmsg_t msg)
 	ifac = &ia->ia_ifa.ifa_containers[cpu];
 	ASSERT_IFAC_VALID(ifac);
 	KASSERT(ifac->ifa_listmask & IFA_LIST_IN_IFADDRHASH,
-		("ia is not on in_ifaddrhashtbls\n"));
+		("ia is not on in_ifaddrhashtbls"));
 
 	iac = &ifac->ifa_proto_u.u_in_ifac;
 	LIST_REMOVE(iac, ia_hash);
@@ -441,7 +440,7 @@ in_ianext(struct in_ifaddr *oia)
 	ifac = &oia->ia_ifa.ifa_containers[mycpuid];
 	ASSERT_IFAC_VALID(ifac);
 	KASSERT(ifac->ifa_listmask & IFA_LIST_IN_IFADDRHEAD,
-		("ia is not on in_ifaddrheads\n"));
+		("ia is not on in_ifaddrheads"));
 
 	iac = &ifac->ifa_proto_u.u_in_ifac;
 	iac = TAILQ_NEXT(iac, ia_link);
@@ -764,7 +763,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		ifac = &ia->ia_ifa.ifa_containers[mycpuid];
 		KASSERT((ifac->ifa_listmask & IFA_LIST_IN_IFADDRHASH) == 0,
 			("SIOC%cIFADDR failed on new ia, "
-			 "but the new ia is still in hash table\n",
+			 "but the new ia is still in hash table",
 			 cmd == SIOCSIFADDR ? 'S' : 'A'));
 	}
 #endif

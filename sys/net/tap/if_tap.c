@@ -36,6 +36,7 @@
  */
 
 #include "opt_inet.h"
+#include "use_tap.h"
 
 #include <sys/param.h>
 #include <sys/conf.h>
@@ -77,7 +78,11 @@
 
 #define TAP_IFFLAGS	(IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST)
 
+#if NTAP <= 1
 #define TAP_PREALLOCATED_UNITS	4
+#else
+#define TAP_PREALLOCATED_UNITS	NTAP
+#endif
 
 #define CDEV_NAME	"tap"
 #define TAPDEBUG	if (tapdebug) if_printf

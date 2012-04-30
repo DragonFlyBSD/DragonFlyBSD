@@ -40,7 +40,6 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_inline.h#47 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_inline.h,v 1.25 2007/04/19 18:53:52 scottl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_inline.h,v 1.4 2007/07/19 00:23:04 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_INLINE_H_
@@ -453,7 +452,7 @@ ahc_queue_scb(struct ahc_softc *ahc, struct scb *scb)
 
 	if (scb->hscb->tag == SCB_LIST_NULL
 	 || scb->hscb->next == SCB_LIST_NULL)
-		panic("Attempt to queue invalid SCB tag %x:%x\n",
+		panic("Attempt to queue invalid SCB tag %x:%x",
 		      scb->hscb->tag, scb->hscb->next);
 
 	/*

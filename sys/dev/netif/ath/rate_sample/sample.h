@@ -226,7 +226,7 @@ static unsigned calc_usecs_unicast_packet(struct ath_softc *sc,
 
 		/* NB: this is intentionally not a runtime check */
 		KASSERT(cix < rt->rateCount,
-		    ("bogus cix %d, max %u, mode %u\n", cix, rt->rateCount,
+		    ("bogus cix %d, max %u, mode %u", cix, rt->rateCount,
 		     sc->sc_curmode));
 
 		ctsrate = rt->info[cix].rateCode | rt->info[cix].shortPreamble;

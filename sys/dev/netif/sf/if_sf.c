@@ -1223,7 +1223,7 @@ sf_encap(struct sf_softc *sc, struct sf_tx_bufdesc_type0 *c,
 		}
 	}
 	/* Caller should make sure that 'm_head' is not excessive fragmented */
-	KASSERT(m == NULL, ("too many fragments\n"));
+	KASSERT(m == NULL, ("too many fragments"));
 
 	c->sf_mbuf = m_head;
 	c->sf_id = SF_TX_BUFDESC_ID;

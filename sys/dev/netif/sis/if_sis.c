@@ -1613,7 +1613,7 @@ sis_encap(struct sis_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 	int frag, cur, maxsegs, nsegs, error, i;
 
 	maxsegs = SIS_TX_LIST_CNT - SIS_NSEGS_RESERVED - cd->sis_tx_cnt;
-	KASSERT(maxsegs >= 1, ("not enough TX descs\n"));
+	KASSERT(maxsegs >= 1, ("not enough TX descs"));
 	if (maxsegs > SIS_NSEGS)
 		maxsegs = SIS_NSEGS;
 

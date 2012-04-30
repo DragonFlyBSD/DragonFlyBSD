@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_sigmgr_state.c,v 1.6 2000/01/17 20:49:58 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_sigmgr_state.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -239,7 +238,7 @@ unisig_sigmgr_state(struct unisig *usp, int event, KBuffer *m)
 	ATM_DEBUG4("unisig_sigmgr_state: usp=%p, state=%d, event=%d, action=%d\n",
 			usp, usp->us_state, event, action);
 	if (action >= MAX_ACTION || action < 0) {
-		panic("unisig_sigmgr_state: invalid action\n");
+		panic("unisig_sigmgr_state: invalid action");
 	}
 
 	/*
@@ -778,7 +777,7 @@ unisig_sigmgr_act14(struct unisig *usp, KBuffer *m)
 		cause.coding_standard = T_ATM_CAUSE_UNSPECIFIED_NORMAL;
 		err = atm_cm_release(usp->us_conn, &cause);
 		if (err)
-			panic("unisig_sigmgr_act14: close failed\n");
+			panic("unisig_sigmgr_act14: close failed");
 	}
 
 	/*

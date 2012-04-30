@@ -430,7 +430,7 @@ ntfs_ntput(struct ntnode *ip)
 #ifdef DIAGNOSTIC
 	if (ip->i_usecount < 0) {
 		spin_unlock(&ip->i_interlock);
-		panic("ntfs_ntput: ino: %"PRId64" usecount: %d \n",
+		panic("ntfs_ntput: ino: %"PRId64" usecount: %d ",
 		      ip->i_number,ip->i_usecount);
 	}
 #endif
@@ -445,7 +445,7 @@ ntfs_ntput(struct ntnode *ip)
 
 	if (ip->i_fnlist.lh_first) {
 		spin_unlock(&ip->i_interlock);
-		panic("ntfs_ntput: ntnode has fnodes\n");
+		panic("ntfs_ntput: ntnode has fnodes");
 	}
 
 	/*
@@ -490,7 +490,7 @@ ntfs_ntrele(struct ntnode *ip)
 
 	if (ip->i_usecount < 0) {
 		spin_unlock(&ip->i_interlock);
-		panic("ntfs_ntrele: ino: %"PRId64" usecount: %d \n",
+		panic("ntfs_ntrele: ino: %"PRId64" usecount: %d ",
 		      ip->i_number,ip->i_usecount);
 	}
 	spin_unlock(&ip->i_interlock);
@@ -1927,7 +1927,7 @@ ntfs_toupper_unuse(void)
 	}
 #ifdef DIAGNOSTIC
 	else if (ntfs_toupper_usecount < 0) {
-		panic("ntfs_toupper_unuse(): use count negative: %d\n",
+		panic("ntfs_toupper_unuse(): use count negative: %d",
 			ntfs_toupper_usecount);
 	}
 #endif

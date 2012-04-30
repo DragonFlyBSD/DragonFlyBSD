@@ -407,7 +407,7 @@ _test_frame_enter(struct trapframe *frame)
 	}
 	if ((char *)frame < td->td_kstack ||
 	    (char *)frame > td->td_kstack + td->td_kstack_size) {
-		panic("_test_frame_exit: frame not on kstack %p kstack=%p\n",
+		panic("_test_frame_exit: frame not on kstack %p kstack=%p",
 			frame, td->td_kstack);
 	}
 }
@@ -446,7 +446,7 @@ _test_frame_exit(struct trapframe *frame)
 	}
 	if ((char *)frame < td->td_kstack ||
 	    (char *)frame > td->td_kstack + td->td_kstack_size) {
-		panic("_test_frame_exit: frame not on kstack %p kstack=%p\n",
+		panic("_test_frame_exit: frame not on kstack %p kstack=%p",
 			frame, td->td_kstack);
 	}
 }

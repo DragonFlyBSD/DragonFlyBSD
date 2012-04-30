@@ -29,7 +29,6 @@
  *
  * $Id: ng_btsocket_rfcomm.c,v 1.28 2003/09/14 23:29:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/socket/ng_btsocket_rfcomm.c,v 1.27 2007/10/29 19:06:47 emax Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/socket/ng_btsocket_rfcomm.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -734,9 +733,9 @@ ng_btsocket_rfcomm_detach(struct socket *so)
 		msleep(&pcb->state, &pcb->pcb_mtx, PZERO, "rf_det", 0);
 
 	if (pcb->session != NULL)
-		panic("%s: pcb->session != NULL\n", __func__);
+		panic("%s: pcb->session != NULL", __func__);
 	if (pcb->flags & NG_BTSOCKET_RFCOMM_DLC_TIMO)
-		panic("%s: timeout on closed DLC, flags=%#x\n",
+		panic("%s: timeout on closed DLC, flags=%#x",
 			__func__, pcb->flags);
 
 	mtx_lock(&ng_btsocket_rfcomm_sockets_mtx);
@@ -797,7 +796,7 @@ ng_btsocket_rfcomm_disconnect(struct socket *so)
 		break;
 
 	default:
-		panic("%s: Invalid DLC state=%d, flags=%#x\n",
+		panic("%s: Invalid DLC state=%d, flags=%#x",
 			__func__, pcb->state, pcb->flags);
 		break;
 	}
@@ -1017,7 +1016,7 @@ ng_btsocket_rfcomm_upcall(struct socket *so, void *arg, int waitflag)
 	int	error;
 
 	if (so == NULL)
-		panic("%s: so == NULL\n", __func__);
+		panic("%s: so == NULL", __func__);
 
 	if ((error = ng_btsocket_rfcomm_task_wakeup()) != 0)
 		NG_BTSOCKET_RFCOMM_ALERT(
@@ -1048,7 +1047,7 @@ ng_btsocket_rfcomm_sessions_task(void *ctx, int pending)
 
 			NG_BT_MBUFQ_DRAIN(&s->outq);
 			if (!LIST_EMPTY(&s->dlcs))
-				panic("%s: DLC list is not empty\n", __func__);
+				panic("%s: DLC list is not empty", __func__);
 
 			/* Close L2CAP socket */
 			s->l2so->so_upcallarg = NULL;
@@ -1131,7 +1130,7 @@ ng_btsocket_rfcomm_session_task(ng_btsocket_rfcomm_session_p s)
 		break;
 
 	default:
-		panic("%s: Invalid session state=%d, flags=%#x\n",
+		panic("%s: Invalid session state=%d, flags=%#x",
 			__func__, s->state, s->flags);
 		break;
 	}
@@ -1183,7 +1182,7 @@ ng_btsocket_rfcomm_connect_ind(ng_btsocket_rfcomm_session_p s, int channel)
 
 	pcb1 = so2rfcomm_pcb(so1);
 	if (pcb1 == NULL)
-		panic("%s: pcb1 == NULL\n", __func__);
+		panic("%s: pcb1 == NULL", __func__);
 
 	mtx_lock(&pcb1->pcb_mtx);
 
@@ -1428,7 +1427,7 @@ ng_btsocket_rfcomm_session_accept(ng_btsocket_rfcomm_session_p s0)
 	/* Accept incoming L2CAP connection */
 	l2so = TAILQ_FIRST(&s0->l2so->so_comp);
 	if (l2so == NULL)
-		panic("%s: l2so == NULL\n", __func__);
+		panic("%s: l2so == NULL", __func__);
 
 	TAILQ_REMOVE(&s0->l2so->so_comp, l2so, so_list);
 	s0->l2so->so_qlen --;
@@ -1787,7 +1786,7 @@ ng_btsocket_rfcomm_session_process_pcb(ng_btsocket_rfcomm_session_p s)
 		
 /*		case NG_BTSOCKET_RFCOMM_DLC_CLOSED: */
 		default:
-			panic("%s: Invalid DLC state=%d, flags=%#x\n",
+			panic("%s: Invalid DLC state=%d, flags=%#x",
 				__func__, pcb->state, pcb->flags);
 			break;
 		}
@@ -1886,7 +1885,7 @@ ng_btsocket_rfcomm_receive_frame(ng_btsocket_rfcomm_session_p s,
 	for (m = m0; m->m_next != NULL; m = m->m_next)
 		;
 	if (m->m_len <= 0)
-		panic("%s: Empty mbuf at the end of the chain, len=%d\n",
+		panic("%s: Empty mbuf at the end of the chain, len=%d",
 			__func__, m->m_len);
 
 	/*
@@ -3002,7 +3001,7 @@ ng_btsocket_rfcomm_send_command(ng_btsocket_rfcomm_session_p s,
 		break;
 
 	default:
-		panic("%s: Invalid frame type=%#x\n", __func__, type);
+		panic("%s: Invalid frame type=%#x", __func__, type);
 		return (EINVAL);
 		/* NOT REACHED */
 	}
@@ -3323,7 +3322,7 @@ ng_btsocket_rfcomm_pcb_kill(ng_btsocket_rfcomm_pcb_p pcb, int error)
 		__func__, pcb->so, pcb->dlci, pcb->state, pcb->flags, error);
 
 	if (pcb->session == NULL)
-		panic("%s: DLC without session, pcb=%p, state=%d, flags=%#x\n",
+		panic("%s: DLC without session, pcb=%p, state=%d, flags=%#x",
 			__func__, pcb, pcb->state, pcb->flags);
 
 	mtx_assert(&pcb->session->session_mtx, MA_OWNED);
@@ -3375,7 +3374,7 @@ ng_btsocket_rfcomm_pcb_kill(ng_btsocket_rfcomm_pcb_p pcb, int error)
 
 /*		case NG_BTSOCKET_RFCOMM_SESSION_LISTENING: */
 		default:
-			panic("%s: Invalid session state=%d, flags=%#x\n",
+			panic("%s: Invalid session state=%d, flags=%#x",
 				__func__, s->state, s->flags);
 			break;
 		}
@@ -3451,7 +3450,7 @@ ng_btsocket_rfcomm_timeout(ng_btsocket_rfcomm_pcb_p pcb)
 		pcb->timo = timeout(ng_btsocket_rfcomm_process_timeout, pcb,
 					ng_btsocket_rfcomm_timo * hz);
 	} else
-		panic("%s: Duplicated socket timeout?!\n", __func__);
+		panic("%s: Duplicated socket timeout?!", __func__);
 } /* ng_btsocket_rfcomm_timeout */
 
 /*
@@ -3468,7 +3467,7 @@ ng_btsocket_rfcomm_untimeout(ng_btsocket_rfcomm_pcb_p pcb)
 		pcb->flags &= ~NG_BTSOCKET_RFCOMM_DLC_TIMO;
 		pcb->flags &= ~NG_BTSOCKET_RFCOMM_DLC_TIMEDOUT;
 	} else
-		panic("%s: No socket timeout?!\n", __func__);
+		panic("%s: No socket timeout?!", __func__);
 } /* ng_btsocket_rfcomm_timeout */
 
 /*
@@ -3568,9 +3567,9 @@ ng_btsocket_rfcomm_prepare_packet(struct sockbuf *sb, int length)
 	}
 
 	if (length < 0)
-		panic("%s: length=%d\n", __func__, length);
+		panic("%s: length=%d", __func__, length);
 	if (length > 0 && n == NULL)
-		panic("%s: bogus length=%d, n=%p\n", __func__, length, n);
+		panic("%s: bogus length=%d, n=%p", __func__, length, n);
 
 	return (top);
 } /* ng_btsocket_rfcomm_prepare_packet */

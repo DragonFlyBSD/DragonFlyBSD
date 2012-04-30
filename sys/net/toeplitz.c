@@ -187,7 +187,7 @@ toeplitz_get_key(uint8_t *key, int keylen)
 	int i;
 
 	if (keylen > TOEPLITZ_KEYLEN_MAX)
-		panic("invalid key length %d\n", keylen);
+		panic("invalid key length %d", keylen);
 
 	/* Replicate key seeds to form key */
 	for (i = 0; i < keylen; ++i)

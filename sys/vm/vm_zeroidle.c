@@ -241,7 +241,7 @@ pagezero_start(void __unused *arg)
 
 	error = kthread_create(vm_pagezero, NULL, &td, "pagezero");
 	if (error)
-		panic("pagezero_start: error %d\n", error);
+		panic("pagezero_start: error %d", error);
 }
 
 SYSINIT(pagezero, SI_SUB_KTHREAD_VM, SI_ORDER_ANY, pagezero_start, NULL);

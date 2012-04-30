@@ -801,7 +801,7 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	if (ra != ef->nrelatab)
 		panic("lost relatab");
 	if (mapbase != (vm_offset_t) ef->address + mapsize)
-		panic("mapbase 0x%lx != address %p + mapsize 0x%lx (0x%lx)\n",
+		panic("mapbase 0x%lx != address %p + mapsize 0x%lx (0x%lx)",
 		      mapbase, ef->address, mapsize,
 		      (vm_offset_t) ef->address + mapsize);
 

@@ -1144,7 +1144,6 @@ TO_REMOVE+=/usr/share/man/cat1/gcc34.1.gz
 TO_REMOVE+=/usr/share/man/man1/gcc34.1.gz
 TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc34.mk
 TO_REMOVE+=/etc/rc.d/kerberos
-TO_REMOVE+=/var/heimdal
 TO_REMOVE+=/usr/share/man/cat9/compile_dev_ops.9.gz
 TO_REMOVE+=/usr/share/man/man9/compile_dev_ops.9.gz
 TO_REMOVE+=/usr/share/man/cat9/destroy_all_devs.9.gz

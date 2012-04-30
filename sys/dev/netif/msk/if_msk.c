@@ -1802,7 +1802,7 @@ mskc_detach(device_t dev)
 #ifdef INVARIANTS
 	if (device_is_attached(dev)) {
 		KASSERT(sc->msk_intrhand == NULL,
-			("intr is not torn down yet\n"));
+			("intr is not torn down yet"));
 	}
 #endif
 
@@ -2392,7 +2392,7 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 	maxsegs = MSK_TX_RING_CNT - sc_if->msk_cdata.msk_tx_cnt -
 		  MSK_RESERVED_TX_DESC_CNT;
 	KASSERT(maxsegs >= MSK_SPARE_TX_DESC_CNT,
-		("not enough spare TX desc\n"));
+		("not enough spare TX desc"));
 	if (maxsegs > MSK_MAXTXSEGS)
 		maxsegs = MSK_MAXTXSEGS;
 

@@ -897,9 +897,9 @@ sk_jfree(void *arg)
 	struct sk_chain_data *cd = &entry->sc_if->sk_cdata;
 
 	if (&cd->sk_jpool_ent[entry->slot] != entry)
-		panic("%s: free wrong jumbo buffer\n", __func__);
+		panic("%s: free wrong jumbo buffer", __func__);
 	else if (entry->inuse == 0)
-		panic("%s: jumbo buffer already freed\n", __func__);
+		panic("%s: jumbo buffer already freed", __func__);
 
 	lwkt_serialize_enter(&cd->sk_jpool_serializer);
 
@@ -917,9 +917,9 @@ sk_jref(void *arg)
 	struct sk_chain_data *cd = &entry->sc_if->sk_cdata;
 
 	if (&cd->sk_jpool_ent[entry->slot] != entry)
-		panic("%s: free wrong jumbo buffer\n", __func__);
+		panic("%s: free wrong jumbo buffer", __func__);
 	else if (entry->inuse == 0)
-		panic("%s: jumbo buffer already freed\n", __func__);
+		panic("%s: jumbo buffer already freed", __func__);
 
 	atomic_add_int(&entry->inuse, 1);
 }
@@ -1629,7 +1629,7 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf **m_head0, uint32_t *txidx)
 	DPRINTFN(2, ("sk_encap\n"));
 
 	maxsegs = SK_TX_RING_CNT - sc_if->sk_cdata.sk_tx_cnt - SK_NDESC_RESERVE;
-	KASSERT(maxsegs >= SK_NDESC_SPARE, ("not enough spare TX desc\n"));
+	KASSERT(maxsegs >= SK_NDESC_SPARE, ("not enough spare TX desc"));
 	if (maxsegs > SK_NTXSEG)
 		maxsegs = SK_NTXSEG;
 

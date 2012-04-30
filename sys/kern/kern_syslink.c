@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.16 2008/10/26 04:29:19 sephe Exp $
  */
 /*
  * This module implements the core syslink() system call and provides
@@ -177,7 +175,7 @@ slmsg_ctor(void *data, void *private, int ocflags)
 	} else if (slmsg->oc == sl_objcache_big) {
 		slmsg->maxsize = SLMSG_BIG;
 	} else {
-		panic("slmsg_ctor: bad objcache?\n");
+		panic("slmsg_ctor: bad objcache?");
 	}
 	if (slmsg->maxsize) {
 		slmsg->msg = kmalloc(slmsg->maxsize,

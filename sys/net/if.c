@@ -432,7 +432,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		KASSERT(ifp->if_deserialize != NULL &&
 			ifp->if_tryserialize != NULL &&
 			ifp->if_serialize_assert != NULL,
-			("serialize functions are partially setup\n"));
+			("serialize functions are partially setup"));
 
 		/*
 		 * If the device supplies serialize functions,
@@ -441,13 +441,13 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		 */
 		KASSERT(serializer == NULL,
 			("both serialize functions and default serializer "
-			 "are supplied\n"));
+			 "are supplied"));
 		ifp->if_serializer = NULL;
 	} else {
 		KASSERT(ifp->if_deserialize == NULL &&
 			ifp->if_tryserialize == NULL &&
 			ifp->if_serialize_assert == NULL,
-			("serialize functions are partially setup\n"));
+			("serialize functions are partially setup"));
 		ifp->if_serialize = if_default_serialize;
 		ifp->if_deserialize = if_default_deserialize;
 		ifp->if_tryserialize = if_default_tryserialize;
@@ -2497,7 +2497,7 @@ ifa_create(int size, int flags)
 	struct ifaddr *ifa;
 	int i;
 
-	KASSERT(size >= sizeof(*ifa), ("ifaddr size too small\n"));
+	KASSERT(size >= sizeof(*ifa), ("ifaddr size too small"));
 
 	ifa = kmalloc(size, M_IFADDR, flags | M_ZERO);
 	if (ifa == NULL)
@@ -2527,7 +2527,7 @@ ifac_free(struct ifaddr_container *ifac, int cpu_id)
 	KKASSERT(ifac->ifa_magic == IFA_CONTAINER_MAGIC);
 	KKASSERT(ifac->ifa_refcnt == 0);
 	KASSERT(ifac->ifa_listmask == 0,
-		("ifa is still on %#x lists\n", ifac->ifa_listmask));
+		("ifa is still on %#x lists", ifac->ifa_listmask));
 
 	ifac->ifa_magic = IFA_CONTAINER_DEAD;
 
@@ -2536,7 +2536,7 @@ ifac_free(struct ifaddr_container *ifac, int cpu_id)
 #endif
 
 	KASSERT(ifa->ifa_ncnt > 0 && ifa->ifa_ncnt <= ncpus,
-		("invalid # of ifac, %d\n", ifa->ifa_ncnt));
+		("invalid # of ifac, %d", ifa->ifa_ncnt));
 	if (atomic_fetchadd_int(&ifa->ifa_ncnt, -1) == 1) {
 #ifdef IFADDR_DEBUG
 		kprintf("free ifa %p\n", ifa);
@@ -2560,7 +2560,7 @@ ifa_iflink_dispatch(netmsg_t nmsg)
 	ifac = &ifa->ifa_containers[cpu];
 	ASSERT_IFAC_VALID(ifac);
 	KASSERT((ifac->ifa_listmask & IFA_LIST_IFADDRHEAD) == 0,
-		("ifaddr is on if_addrheads\n"));
+		("ifaddr is on if_addrheads"));
 
 	ifac->ifa_listmask |= IFA_LIST_IFADDRHEAD;
 	if (msg->tail)
@@ -2601,7 +2601,7 @@ ifa_ifunlink_dispatch(netmsg_t nmsg)
 	ifac = &ifa->ifa_containers[cpu];
 	ASSERT_IFAC_VALID(ifac);
 	KASSERT(ifac->ifa_listmask & IFA_LIST_IFADDRHEAD,
-		("ifaddr is not on if_addrhead\n"));
+		("ifaddr is not on if_addrhead"));
 
 	TAILQ_REMOVE(&ifp->if_addrheads[cpu], ifac, ifa_link);
 	ifac->ifa_listmask &= ~IFA_LIST_IFADDRHEAD;
@@ -2758,7 +2758,7 @@ if_ring_count2(int cnt, int cnt_max)
 	int shift = 0;
 
 	KASSERT(cnt_max >= 1 && powerof2(cnt_max),
-	    ("invalid ring count max %d\n", cnt_max));
+	    ("invalid ring count max %d", cnt_max));
 
 	if (cnt <= 0)
 		cnt = cnt_max;
@@ -2772,7 +2772,7 @@ if_ring_count2(int cnt, int cnt_max)
 	cnt = 1 << shift;
 
 	KASSERT(cnt >= 1 && cnt <= ncpus2 && cnt <= cnt_max,
-	    ("calculate cnt %d, ncpus2 %d, cnt max %d\n",
+	    ("calculate cnt %d, ncpus2 %d, cnt max %d",
 	     cnt, ncpus2, cnt_max));
 	return cnt;
 }

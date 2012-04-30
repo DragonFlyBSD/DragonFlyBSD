@@ -29,8 +29,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.45 2008/11/11 10:46:58 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -337,9 +335,9 @@ ip_cpufn_in(struct mbuf **mptr, int hoff)
 void
 ip_hashcheck(struct mbuf *m, const struct pktinfo *pi)
 {
-	KASSERT((m->m_flags & M_HASH), ("no valid packet hash\n"));
+	KASSERT((m->m_flags & M_HASH), ("no valid packet hash"));
 	KASSERT(m->m_pkthdr.hash < ncpus2,
-		("invalid packet hash %#x\n", m->m_pkthdr.hash));
+		("invalid packet hash %#x", m->m_pkthdr.hash));
 
 	/*
 	 * XXX generic packet handling defrag on CPU 0 for now.

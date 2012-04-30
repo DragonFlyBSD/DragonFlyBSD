@@ -168,7 +168,7 @@ spx_input(struct mbuf *m, struct ipxpcb *ipxp)
 
 	spxstat.spxs_rcvtotal++;
 	if (ipxp == NULL) {
-		panic("No ipxpcb in spx_input\n");
+		panic("No ipxpcb in spx_input");
 		return;
 	}
 

@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.27 2008/07/31 22:30:33 dillon Exp $
  */
 
 /*
@@ -1479,7 +1477,7 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 		KKASSERT(resv && resv->zone == zone);
 
 	} else if (layer2->zone != zone) {
-		panic("hammer_blockmap_lookup: bad zone %d/%d\n",
+		panic("hammer_blockmap_lookup: bad zone %d/%d",
 			layer2->zone, zone);
 	}
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {

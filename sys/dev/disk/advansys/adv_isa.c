@@ -207,7 +207,7 @@ adv_isa_probe(device_t dev)
 			bus_set_resource(dev, SYS_RES_DRQ, 0,
 					 adv->isa_dma_channel, 1, -1);
 		} else {
-			panic("advisaprobe: Unknown card revision\n");
+			panic("advisaprobe: Unknown card revision");
 		}
 
 		/*
@@ -305,7 +305,7 @@ adv_isa_probe(device_t dev)
 			adv->max_dma_addr = ADV_VL_MAX_DMA_ADDR;
 			break;
 		default:
-			panic("advisaprobe: Invalid card type\n");
+			panic("advisaprobe: Invalid card type");
 		}
 			
 		/* Determine our IRQ */

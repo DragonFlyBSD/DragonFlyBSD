@@ -3706,7 +3706,7 @@ static const char *wpi_cmd_str(int cmd)
 	case WPI_CMD_BLUETOOTH:	return "WPI_CMD_BLUETOOTH";
 
 	default:
-		KASSERT(1, ("Unknown Command: %d\n", cmd));
+		KASSERT(1, ("Unknown Command: %d", cmd));
 		return "UNKNOWN CMD";	/* Make the compiler happy */
 	}
 }

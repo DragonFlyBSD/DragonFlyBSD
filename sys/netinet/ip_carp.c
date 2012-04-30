@@ -702,7 +702,7 @@ carp_clone_destroy(struct ifnet *ifp)
 	bpfdetach(ifp);
 	if_detach(ifp);
 
-	KASSERT(sc->sc_naddrs == 0, ("certain inet address is still active\n"));
+	KASSERT(sc->sc_naddrs == 0, ("certain inet address is still active"));
 	kfree(sc, M_CARP);
 
 	return 0;
@@ -725,7 +725,7 @@ carp_if_remove(struct carp_if *ocif, struct carp_softc *sc)
 			found = 1;
 #endif
 	}
-	KASSERT(found, ("%s carp_softc is not on carp_if\n", __func__));
+	KASSERT(found, ("%s carp_softc is not on carp_if", __func__));
 
 	if (count == 1) {
 		/* Last one is going to be unlinked */
@@ -763,10 +763,10 @@ carp_if_insert(struct carp_if *ocif, struct carp_softc *sc)
 
 #ifdef INVARIANTS
 	if (sc->sc_carpdev != NULL) {
-		KASSERT(onlist, ("%s is not on %s carp list\n",
+		KASSERT(onlist, ("%s is not on %s carp list",
 		    sc->sc_if.if_xname, sc->sc_carpdev->if_xname));
 	} else {
-		KASSERT(!onlist, ("%s is already on carp list\n",
+		KASSERT(!onlist, ("%s is already on carp list",
 		    sc->sc_if.if_xname));
 	}
 #endif
@@ -842,7 +842,7 @@ carp_detach(struct carp_softc *sc, boolean_t detach, boolean_t del_iaback)
 
 		ifp->if_carp = carp_if_remove(ocif, sc);
 		KASSERT(ifp->if_carp != ocif,
-		    ("%s carp_if_remove failed\n", __func__));
+		    ("%s carp_if_remove failed", __func__));
 
 		sc->sc_carpdev = NULL;
 		sc->sc_ia = NULL;
@@ -1274,7 +1274,7 @@ carp_send_ad_timeout(void *xsc)
 	struct carp_softc *sc = xsc;
 	struct netmsg_carp *cmsg = &sc->sc_ad_msg;
 
-	KASSERT(mycpuid == 0, ("%s not on cpu0 but on cpu%d\n",
+	KASSERT(mycpuid == 0, ("%s not on cpu0 but on cpu%d",
 	    __func__, mycpuid));
 
 	crit_enter();
@@ -1690,7 +1690,7 @@ carp_master_down_timeout(void *xsc)
 	struct carp_softc *sc = xsc;
 	struct netmsg_carp *cmsg = &sc->sc_md_msg;
 
-	KASSERT(mycpuid == 0, ("%s not on cpu0 but on cpu%d\n",
+	KASSERT(mycpuid == 0, ("%s not on cpu0 but on cpu%d",
 	    __func__, mycpuid));
 
 	crit_enter();
@@ -1938,7 +1938,7 @@ carp_ioctl_getvhaddr(struct carp_softc *sc, struct ifdrv *ifd)
 		ifd->ifd_len = cmsg.nc_datalen;
 	} else {
 		KASSERT(cmsg.nc_data == NULL,
-		    ("%s temp vhaddr is alloc upon error\n", __func__));
+		    ("%s temp vhaddr is alloc upon error", __func__));
 	}
 
 	ifnet_serialize_all(ifp);
@@ -2056,7 +2056,7 @@ carp_del_addr(struct carp_softc *sc, struct ifaddr *carp_ifa)
 		if (vha->vha_ia == carp_ia)
 			break;
 	}
-	KASSERT(vha != NULL, ("no corresponding vhaddr %p\n", carp_ifa));
+	KASSERT(vha != NULL, ("no corresponding vhaddr %p", carp_ifa));
 
 	/*
 	 * Remove the vhaddr from the list before deactivating
@@ -2083,7 +2083,7 @@ carp_config_addr(struct carp_softc *sc, struct ifaddr *carp_ifa)
 		if (vha->vha_ia == carp_ia)
 			break;
 	}
-	KASSERT(vha != NULL, ("no corresponding vhaddr %p\n", carp_ifa));
+	KASSERT(vha != NULL, ("no corresponding vhaddr %p", carp_ifa));
 
 	/* Remove then reinsert, to keep the vhaddr list sorted */
 	carp_remove_vhaddr(sc, vha);
@@ -2625,7 +2625,7 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 static void
 carp_start(struct ifnet *ifp)
 {
-	panic("%s: start called\n", ifp->if_xname);
+	panic("%s: start called", ifp->if_xname);
 }
 
 static void
@@ -2759,18 +2759,18 @@ carp_activate_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 
 	KKASSERT(vha->vha_ia != NULL);
 
-	KASSERT(ia_if != NULL, ("NULL backing address\n"));
-	KASSERT(vha->vha_iaback == NULL, ("%p is already activated\n", vha));
+	KASSERT(ia_if != NULL, ("NULL backing address"));
+	KASSERT(vha->vha_iaback == NULL, ("%p is already activated", vha));
 	KASSERT((vha->vha_flags & CARP_VHAF_OWNER) == 0,
-		("inactive vhaddr %p is the address owner\n", vha));
+		("inactive vhaddr %p is the address owner", vha));
 
 	KASSERT(sc->sc_carpdev == NULL || sc->sc_carpdev == ifp,
-		("%s is already on %s\n", sc->sc_if.if_xname,
+		("%s is already on %s", sc->sc_if.if_xname,
 		 sc->sc_carpdev->if_xname));
 
 	if (ocif == NULL) {
 		KASSERT(sc->sc_carpdev == NULL,
-			("%s is already on %s\n", sc->sc_if.if_xname,
+			("%s is already on %s", sc->sc_if.if_xname,
 			 sc->sc_carpdev->if_xname));
 
 		error = ifpromisc(ifp, 1);
@@ -2788,7 +2788,7 @@ carp_activate_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 	}
 
 	ifp->if_carp = carp_if_insert(ocif, sc);
-	KASSERT(ifp->if_carp != NULL, ("%s carp_if_insert failed\n", __func__));
+	KASSERT(ifp->if_carp != NULL, ("%s carp_if_insert failed", __func__));
 
 	sc->sc_ia = ia_if;
 	sc->sc_carpdev = ifp;
@@ -2825,7 +2825,7 @@ carp_activate_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 	 */
 	KASSERT(imo->imo_multicast_ifp == NULL ||
 		imo->imo_multicast_ifp == &sc->sc_if,
-		("%s didn't leave mcast group on %s\n",
+		("%s didn't leave mcast group on %s",
 		 sc->sc_if.if_xname, imo->imo_multicast_ifp->if_xname));
 
 	if (imo->imo_num_memberships == 0) {
@@ -2860,7 +2860,7 @@ carp_deactivate_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 
 	if (vha->vha_iaback == NULL) {
 		KASSERT((vha->vha_flags & CARP_VHAF_OWNER) == 0,
-			("inactive vhaddr %p is the address owner\n", vha));
+			("inactive vhaddr %p is the address owner", vha));
 		return;
 	}
 

@@ -538,7 +538,7 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 		return FALSE;
 
 	default:
-		panic("unknown ipfw return value: %d\n", i);
+		panic("unknown ipfw return value: %d", i);
 	}
 }
 
@@ -944,7 +944,7 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_len >= ETHER_HDR_LEN,
-		("ether header is not contiguous!\n"));
+		("ether header is not contiguous!"));
 
 	eh = mtod(m, struct ether_header *);
 
@@ -1215,7 +1215,7 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 				return;
 
 			KASSERT(ifp == m->m_pkthdr.rcvif,
-				("bridge_input_p changed rcvif\n"));
+				("bridge_input_p changed rcvif"));
 		}
 	}
 
@@ -1226,7 +1226,7 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 		if (m == NULL)
 			return;
 		KASSERT(ifp == m->m_pkthdr.rcvif,
-		    ("carp_input changed rcvif\n"));
+		    ("carp_input changed rcvif"));
 	}
 #endif
 

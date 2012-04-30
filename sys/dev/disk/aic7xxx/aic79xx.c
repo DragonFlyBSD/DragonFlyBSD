@@ -40,7 +40,6 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#246 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.40 2007/04/19 18:53:52 scottl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.31 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -1443,7 +1442,7 @@ ahd_handle_seqint(struct ahd_softc *ahd, u_int intstat)
 				break;
 			}
 			default:
-				panic("Unexpected TaskMgmt Func\n");
+				panic("Unexpected TaskMgmt Func");
 				break;
 			}
 		}
@@ -1999,7 +1998,7 @@ ahd_handle_lqiphase_error(struct ahd_softc *ahd, u_int lqistat1)
 			kprintf("LQIRETRY for LQIPHASE_NLQ\n");
 			ahd_outb(ahd, LQCTL2, LQIRETRY);
 		} else
-			panic("ahd_handle_lqiphase_error: No phase errors\n");
+			panic("ahd_handle_lqiphase_error: No phase errors");
 		ahd_dump_card_state(ahd);
 		ahd_outb(ahd, CLRINT, CLRSCSIINT);
 		ahd_unpause(ahd);
@@ -7401,7 +7400,7 @@ ahd_search_qinfifo(struct ahd_softc *ahd, int target, char channel,
 		if (scb == NULL) {
 			kprintf("qinpos = %d, SCB index = %d\n",
 				qinpos, ahd->qinfifo[qinpos]);
-			panic("Loop 1\n");
+			panic("Loop 1");
 		}
 
 		if (ahd_match_scb(ahd, scb, target, channel, lun, tag, role)) {
@@ -7473,7 +7472,7 @@ ahd_search_qinfifo(struct ahd_softc *ahd, int target, char channel,
 		if (scb == NULL) {
 			kprintf("%s: SCB = 0x%x Not Active!\n",
 			       ahd_name(ahd), scbid);
-			panic("Waiting TID List traversal\n");
+			panic("Waiting TID List traversal");
 		}
 		ahd_set_scbptr(ahd, scbid);
 		tid_next = ahd_inw_scbram(ahd, SCB_NEXT2);
@@ -7599,7 +7598,7 @@ ahd_search_scb_list(struct ahd_softc *ahd, int target, char channel,
 		if (scb == NULL) {
 			kprintf("%s: SCB = %d Not Active!\n",
 			       ahd_name(ahd), scbid);
-			panic("Waiting List traversal\n");
+			panic("Waiting List traversal");
 		}
 		ahd_set_scbptr(ahd, scbid);
 		*list_tail = scbid;
@@ -8362,7 +8361,7 @@ ahd_calc_residual(struct ahd_softc *ahd, struct scb *scb)
 		aic_freeze_scb(scb);
 		return;
 	} else if ((resid_sgptr & ~SG_PTR_MASK) != 0) {
-		panic("Bogus resid sgptr value 0x%x\n", resid_sgptr);
+		panic("Bogus resid sgptr value 0x%x", resid_sgptr);
 		/* NOTREACHED */
 	} else {
 		struct ahd_dma_seg *sg;
@@ -10101,7 +10100,7 @@ ahd_update_scsiid(struct ahd_softc *ahd, u_int targid_mask)
 	u_int scsiid;
 
 	if ((ahd->features & AHD_MULTI_TID) == 0)
-		panic("ahd_update_scsiid called on non-multitid unit\n");
+		panic("ahd_update_scsiid called on non-multitid unit");
 
 	/*
 	 * Since we will rely on the TARGID mask

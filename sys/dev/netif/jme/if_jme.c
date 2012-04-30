@@ -772,7 +772,7 @@ jme_attach(device_t dev)
 		break;
 
 	default:
-		panic("unknown device id 0x%04x\n", did);
+		panic("unknown device id 0x%04x", did);
 	}
 	if (rev >= JME_REV2) {
 		sc->jme_clksrc = GHC_TXOFL_CLKSRC | GHC_TXMAC_CLKSRC;
@@ -1521,7 +1521,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	if (maxsegs > JME_MAXTXSEGS)
 		maxsegs = JME_MAXTXSEGS;
 	KASSERT(maxsegs >= (sc->jme_txd_spare - symbol_desc),
-		("not enough segments %d\n", maxsegs));
+		("not enough segments %d", maxsegs));
 
 	error = bus_dmamap_load_mbuf_defrag(sc->jme_cdata.jme_tx_tag,
 			txd->tx_dmamap, m_head,
@@ -1996,7 +1996,7 @@ jme_txeof(struct jme_softc *sc)
 	while (cons != sc->jme_cdata.jme_tx_prod) {
 		txd = &sc->jme_cdata.jme_txdesc[cons];
 		KASSERT(txd->tx_m != NULL,
-			("%s: freeing NULL mbuf!\n", __func__));
+			("%s: freeing NULL mbuf!", __func__));
 
 		status = le32toh(txd->tx_desc->flags);
 		if ((status & JME_TD_OWN) == JME_TD_OWN)
@@ -2031,7 +2031,7 @@ jme_txeof(struct jme_softc *sc)
 		txd->tx_m = NULL;
 		sc->jme_cdata.jme_tx_cnt -= txd->tx_ndesc;
 		KASSERT(sc->jme_cdata.jme_tx_cnt >= 0,
-			("%s: Active Tx desc counter was garbled\n", __func__));
+			("%s: Active Tx desc counter was garbled", __func__));
 		txd->tx_ndesc = 0;
 	}
 	sc->jme_cdata.jme_tx_cons = cons;
@@ -3203,7 +3203,7 @@ jme_enable_rss(struct jme_softc *sc)
 
 	KASSERT(sc->jme_cdata.jme_rx_ring_cnt == JME_NRXRING_2 ||
 		sc->jme_cdata.jme_rx_ring_cnt == JME_NRXRING_4,
-		("%s: invalid # of RX rings (%d)\n",
+		("%s: invalid # of RX rings (%d)",
 		 sc->arpcom.ac_if.if_xname, sc->jme_cdata.jme_rx_ring_cnt));
 
 	rssc = RSSC_HASH_64_ENTRY;
@@ -3285,7 +3285,7 @@ jme_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		break;
 
 	default:
-		panic("%s unsupported serialize type\n", ifp->if_xname);
+		panic("%s unsupported serialize type", ifp->if_xname);
 	}
 }
 
@@ -3329,7 +3329,7 @@ jme_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		break;
 
 	default:
-		panic("%s unsupported serialize type\n", ifp->if_xname);
+		panic("%s unsupported serialize type", ifp->if_xname);
 	}
 }
 
@@ -3366,7 +3366,7 @@ jme_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		    &sc->jme_cdata.jme_rx_data[3].jme_rx_serialize);
 
 	default:
-		panic("%s unsupported serialize type\n", ifp->if_xname);
+		panic("%s unsupported serialize type", ifp->if_xname);
 	}
 }
 
@@ -3438,7 +3438,7 @@ jme_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 		break;
 
 	default:
-		panic("%s unsupported serialize type\n", ifp->if_xname);
+		panic("%s unsupported serialize type", ifp->if_xname);
 	}
 }
 

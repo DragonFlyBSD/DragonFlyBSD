@@ -1266,7 +1266,7 @@ in6_savefaddr(struct socket *so, const struct sockaddr *faddr)
 	struct sockaddr_in6 *sin6;
 
 	KASSERT(faddr->sa_family == AF_INET6,
-	    ("not AF_INET6 faddr %d\n", faddr->sa_family));
+	    ("not AF_INET6 faddr %d", faddr->sa_family));
 
 	sin6 = kmalloc(sizeof(*sin6), M_SONAME, M_WAITOK | M_ZERO);
 	sin6->sin6_family = AF_INET6;

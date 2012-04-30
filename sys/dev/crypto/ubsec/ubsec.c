@@ -2261,11 +2261,11 @@ ubsec_kprocess_modexp_sw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 #ifdef DIAGNOSTIC
 	/* Misaligned output buffer will hang the chip. */
 	if ((letoh32(mcr->mcr_opktbuf.pb_addr) & 3) != 0)
-		panic("%s: modexp invalid addr 0x%x\n",
+		panic("%s: modexp invalid addr 0x%x",
 		    device_get_nameunit(sc->sc_dev),
 		    letoh32(mcr->mcr_opktbuf.pb_addr));
 	if ((letoh32(mcr->mcr_opktbuf.pb_len) & 3) != 0)
-		panic("%s: modexp invalid len 0x%x\n",
+		panic("%s: modexp invalid len 0x%x",
 		    device_get_nameunit(sc->sc_dev),
 		    letoh32(mcr->mcr_opktbuf.pb_len));
 #endif
@@ -2459,11 +2459,11 @@ ubsec_kprocess_modexp_hw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 #ifdef DIAGNOSTIC
 	/* Misaligned output buffer will hang the chip. */
 	if ((letoh32(mcr->mcr_opktbuf.pb_addr) & 3) != 0)
-		panic("%s: modexp invalid addr 0x%x\n",
+		panic("%s: modexp invalid addr 0x%x",
 		    device_get_nameunit(sc->sc_dev),
 		    letoh32(mcr->mcr_opktbuf.pb_addr));
 	if ((letoh32(mcr->mcr_opktbuf.pb_len) & 3) != 0)
-		panic("%s: modexp invalid len 0x%x\n",
+		panic("%s: modexp invalid len 0x%x",
 		    device_get_nameunit(sc->sc_dev),
 		    letoh32(mcr->mcr_opktbuf.pb_len));
 #endif

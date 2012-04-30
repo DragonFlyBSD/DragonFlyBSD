@@ -973,7 +973,7 @@ pcn_encap(struct pcn_softc *sc, struct mbuf *m_head, u_int32_t *txidx)
 		}
 	}
 	/* Caller should make sure that 'm_head' is not excessive fragmented */
-	KASSERT(m == NULL, ("too many fragments\n"));
+	KASSERT(m == NULL, ("too many fragments"));
 
 	sc->pcn_cdata.pcn_tx_chain[cur] = m_head;
 	sc->pcn_ldata->pcn_tx_list[cur].pcn_txctl |=

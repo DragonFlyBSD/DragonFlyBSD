@@ -312,7 +312,7 @@ ieee80211_ifattach(struct ieee80211com *ic,
 	ifp->if_resolvemulti = NULL;	/* NB: callers check */
 
 	ifa = ifaddr_byindex(ifp->if_index);
-	KASSERT(ifa != NULL, ("%s: no lladdr!\n", __func__));
+	KASSERT(ifa != NULL, ("%s: no lladdr!", __func__));
 	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
 	sdl->sdl_type = IFT_ETHER;		/* XXX IFT_IEEE80211? */
 	sdl->sdl_alen = IEEE80211_ADDR_LEN;

@@ -1476,7 +1476,7 @@ hammer_unload_inode(struct hammer_inode *ip)
 	hammer_mount_t hmp = ip->hmp;
 
 	KASSERT(hammer_oneref(&ip->lock),
-		("hammer_unload_inode: %d refs\n", hammer_isactive(&ip->lock)));
+		("hammer_unload_inode: %d refs", hammer_isactive(&ip->lock)));
 	KKASSERT(ip->vp == NULL);
 	KKASSERT(ip->flush_state == HAMMER_FST_IDLE);
 	KKASSERT(ip->cursor_ip_refs == 0);

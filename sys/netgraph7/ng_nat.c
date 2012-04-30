@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_nat.c,v 1.12 2008/06/01 15:13:32 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_nat.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -718,7 +717,7 @@ ng_nat_rcvdata(hook_p hook, item_p item )
 			return (EINVAL);
 		}
 	} else
-		panic("ng_nat: unknown hook!\n");
+		panic("ng_nat: unknown hook!");
 
 	m->m_pkthdr.len = m->m_len = ntohs(ip->ip_len);
 

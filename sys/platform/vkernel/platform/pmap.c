@@ -1784,7 +1784,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * and pmap_allocpte() didn't give us one.  Oops!
 	 */
 	if (pte == NULL) {
-		panic("pmap_enter: invalid page directory pmap=%p, va=0x%p\n",
+		panic("pmap_enter: invalid page directory pmap=%p, va=0x%p",
 		      pmap, (void *)va);
 	}
 
@@ -2261,7 +2261,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 		unsigned ptepindex;
 
 		if (addr >= VM_MAX_USER_ADDRESS)
-			panic("pmap_copy: invalid to pmap_copy page tables\n");
+			panic("pmap_copy: invalid to pmap_copy page tables");
 
 		/*
 		 * Don't let optional prefaulting of pages make us go
@@ -2393,7 +2393,7 @@ pmap_page_assertzero(vm_paddr_t phys)
 	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 	for (i = 0; i < PAGE_SIZE; i += 4) {
 	    if (*(int *)((char *)gd->gd_CADDR3 + i) != 0) {
-		panic("pmap_page_assertzero() @ %p not zero!\n",
+		panic("pmap_page_assertzero() @ %p not zero!",
 		    (void *)gd->gd_CADDR3);
 	    }
 	}

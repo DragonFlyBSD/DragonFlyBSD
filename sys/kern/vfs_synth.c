@@ -75,7 +75,7 @@ getsynthvnode(const char *devname)
 	     &synth_mp->mnt_ncmountpt);
 
 	if (error) {
-		panic("synth: nlookup_init_root failed with %d\n", error);
+		panic("synth: nlookup_init_root failed with %d", error);
 		/* NOTREACHED */
 	}
 
@@ -117,15 +117,15 @@ synthinit(void *arg __unused)
 	int error;
 
 	if ((error = vfs_rootmountalloc("devfs", "dummy", &synth_mp))) {
-		panic("synth: vfs_rootmountalloc failed with %d\n", error);
+		panic("synth: vfs_rootmountalloc failed with %d", error);
 		/* NOTREACHED */
 	}
 	if ((error = VFS_MOUNT(synth_mp, NULL, NULL, proc0.p_ucred))) {
-		panic("synth: vfs_mount failed with %d\n", error);
+		panic("synth: vfs_mount failed with %d", error);
 		/* NOTREACHED */
 	}
 	if ((error = VFS_ROOT(synth_mp, &synth_vp))) {
-		panic("synth: vfs_root failed with %d\n", error);
+		panic("synth: vfs_root failed with %d", error);
 		/* NOTREACHED */
 	}
 	cache_allocroot(&synth_mp->mnt_ncmountpt, synth_mp, synth_vp);

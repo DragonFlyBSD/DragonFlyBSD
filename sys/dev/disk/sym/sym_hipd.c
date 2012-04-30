@@ -760,7 +760,7 @@ static m_addr_t __vtobus(bus_dma_tag_t dev_dmat, void *m)
 	}
 	/* Unlock */
 	if (!vp)
-		panic("sym: VTOBUS FAILED!\n");
+		panic("sym: VTOBUS FAILED!");
 	return vp ? vp->baddr + (((m_addr_t) m) - a) : 0;
 }
 
@@ -842,7 +842,7 @@ struct sym_nvram {
 #define	assert(expression) { \
 	if (!(expression)) { \
 		(void)panic( \
-			"assertion \"%s\" failed: file \"%s\", line %d\n", \
+			"assertion \"%s\" failed: file \"%s\", line %d", \
 			#expression, \
 			__FILE__, __LINE__); \
 	} \
@@ -7853,7 +7853,7 @@ sym_execute_ccb(void *arg, bus_dma_segment_t *psegs, int nsegs, int error)
 #if 0
 	switch (cp->cdb_buf[0]) {
 	case 0x0A: case 0x2A: case 0xAA:
-		panic("XXXXXXXXXXXXX WRITE NOT YET ALLOWED XXXXXXXXXXXXXX\n");
+		panic("XXXXXXXXXXXXX WRITE NOT YET ALLOWED XXXXXXXXXXXXXX");
 		MDELAY(10000);
 		break;
 	default:

@@ -125,11 +125,11 @@ ieee80211_ack_duration(const struct ieee80211_rate_table *rt,
 	KASSERT(rix != (uint8_t)-1, ("rate %d has no info", rate));
 	if (isShortPreamble) {
 		KASSERT(rt->info[rix].spAckDuration != 0,
-			("shpreamble ack dur is not computed!\n"));
+			("shpreamble ack dur is not computed!"));
 		return rt->info[rix].spAckDuration;
 	} else {
 		KASSERT(rt->info[rix].lpAckDuration != 0,
-			("lgpreamble ack dur is not computed!\n"));
+			("lgpreamble ack dur is not computed!"));
 		return rt->info[rix].lpAckDuration;
 	}
 }

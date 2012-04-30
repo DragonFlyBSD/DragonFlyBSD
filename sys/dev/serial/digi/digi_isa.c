@@ -223,7 +223,7 @@ digi_isa_probe(device_t dev)
 	struct digi_softc *sc = device_get_softc(dev);
 	int i;
 
-	KASSERT(sc, ("digi%d: softc not allocated in digi_isa_probe\n",
+	KASSERT(sc, ("digi%d: softc not allocated in digi_isa_probe",
 	    device_get_unit(dev)));
 
 	bzero(sc, sizeof(*sc));
@@ -321,7 +321,7 @@ digi_isa_attach(device_t dev)
 	u_long msize, iosize;
 	long scport;
 
-	KASSERT(sc, ("digi%d: softc not allocated in digi_isa_attach\n",
+	KASSERT(sc, ("digi%d: softc not allocated in digi_isa_attach",
 	    device_get_unit(dev)));
 
 	res = ENXIO;

@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.48 2008/09/24 12:07:19 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -539,7 +538,7 @@ netisr_pollmore(netmsg_t msg)
 
 	KASSERT(pctx->polling_enabled,
 		("# of registered poll handlers are not zero, "
-		 "but polling is not enabled\n"));
+		 "but polling is not enabled"));
 
 	pctx->phase = 5;
 	if (pctx->residual_burst > 0) {
@@ -616,7 +615,7 @@ netisr_poll(netmsg_t msg)
 
 	KASSERT(pctx->polling_enabled,
 		("# of registered poll handlers are not zero, "
-		 "but polling is not enabled\n"));
+		 "but polling is not enabled"));
 
 	pctx->phase = 3;
 	if (pctx->residual_burst == 0) { /* first call in this tick */

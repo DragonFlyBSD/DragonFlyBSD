@@ -3413,7 +3413,7 @@ pmap_page_assertzero(vm_paddr_t phys)
 
 	for (i = 0; i < PAGE_SIZE; i += sizeof(long)) {
 		if (*(long *)((char *)va + i) != 0) {
-			panic("pmap_page_assertzero() @ %p not zero!\n",
+			panic("pmap_page_assertzero() @ %p not zero!",
 			      (void *)(intptr_t)va);
 		}
 	}

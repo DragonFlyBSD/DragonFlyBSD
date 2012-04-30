@@ -973,7 +973,7 @@ usbd_new_device(device_t parent, usbd_bus_handle bus, int depth,
 				goto found;
 			}
 		}
-		panic("usbd_new_device: cannot find HS port\n");
+		panic("usbd_new_device: cannot find HS port");
 	found:
 		DPRINTFN(1,("usbd_new_device: high speed port %d\n", p));
 	} else {

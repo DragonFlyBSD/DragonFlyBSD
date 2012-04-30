@@ -107,7 +107,7 @@ ncp_mchecksize(struct ncp_rq *rqp, int size) {
 	caddr_t bpos1;
 
 	if (size>MLEN)
-		panic("ncp_mchecksize\n");
+		panic("ncp_mchecksize");
 	if (M_TRAILINGSPACE(rqp->mrq)<(size)) {
 		struct mbuf *m;
 		m = m_get(MB_WAIT, MT_DATA);

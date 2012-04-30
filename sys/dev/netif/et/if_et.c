@@ -30,7 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
  */
 
 #include <sys/param.h>
@@ -980,7 +979,7 @@ et_dma_mbuf_destroy(device_t dev, int tx_done, const int rx_done[])
 
 				KASSERT(rb->rb_mbuf == NULL,
 					("RX mbuf in %d RX ring is "
-					 "not freed yet\n", i));
+					 "not freed yet", i));
 				bus_dmamap_destroy(sc->sc_rxbuf_dtag,
 						   rb->rb_dmap);
 			}
@@ -998,7 +997,7 @@ et_dma_mbuf_destroy(device_t dev, int tx_done, const int rx_done[])
 			struct et_txbuf *tb = &tbd->tbd_buf[i];
 
 			KASSERT(tb->tb_mbuf == NULL,
-				("TX mbuf is not freed yet\n"));
+				("TX mbuf is not freed yet"));
 			bus_dmamap_destroy(sc->sc_txbuf_dtag, tb->tb_dmap);
 		}
 		bus_dma_tag_destroy(sc->sc_txbuf_dtag);
@@ -1945,7 +1944,7 @@ et_encap(struct et_softc *sc, struct mbuf **m0)
 	if (maxsegs > ET_NSEG_MAX)
 		maxsegs = ET_NSEG_MAX;
 	KASSERT(maxsegs >= ET_NSEG_SPARE,
-		("not enough spare TX desc (%d)\n", maxsegs));
+		("not enough spare TX desc (%d)", maxsegs));
 
 	KKASSERT(tx_ring->tr_ready_index < ET_TX_NDESC);
 	first_idx = tx_ring->tr_ready_index;
@@ -2108,7 +2107,7 @@ et_newbuf(struct et_rxbuf_data *rbd, int buf_idx, int init, int len0)
 	bus_dmamap_t dmap;
 	int error, len, nseg;
 
-	KASSERT(!rbd->rbd_jumbo, ("calling %s with jumbo ring\n", __func__));
+	KASSERT(!rbd->rbd_jumbo, ("calling %s with jumbo ring", __func__));
 
 	KKASSERT(buf_idx < ET_RX_NDESC);
 	rb = &rbd->rbd_buf[buf_idx];
@@ -2326,9 +2325,9 @@ et_jfree(void *xjslot)
 	struct et_jumbo_data *jd = jslot->jslot_data;
 
 	if (&jd->jd_slots[jslot->jslot_index] != jslot) {
-		panic("%s wrong jslot!?\n", __func__);
+		panic("%s wrong jslot!?", __func__);
 	} else if (jslot->jslot_inuse == 0) {
-		panic("%s jslot already freed\n", __func__);
+		panic("%s jslot already freed", __func__);
 	} else {
 		lwkt_serialize_enter(&jd->jd_serializer);
 
@@ -2349,9 +2348,9 @@ et_jref(void *xjslot)
 	struct et_jumbo_data *jd = jslot->jslot_data;
 
 	if (&jd->jd_slots[jslot->jslot_index] != jslot)
-		panic("%s wrong jslot!?\n", __func__);
+		panic("%s wrong jslot!?", __func__);
 	else if (jslot->jslot_inuse == 0)
-		panic("%s jslot already freed\n", __func__);
+		panic("%s jslot already freed", __func__);
 	else
 		atomic_add_int(&jslot->jslot_inuse, 1);
 }
@@ -2365,7 +2364,7 @@ et_newbuf_jumbo(struct et_rxbuf_data *rbd, int buf_idx, int init)
 	struct et_jslot *jslot;
 	int error;
 
-	KASSERT(rbd->rbd_jumbo, ("calling %s with non-jumbo ring\n", __func__));
+	KASSERT(rbd->rbd_jumbo, ("calling %s with non-jumbo ring", __func__));
 
 	KKASSERT(buf_idx < ET_RX_NDESC);
 	rb = &rbd->rbd_buf[buf_idx];

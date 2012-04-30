@@ -64,7 +64,6 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.45 2008/10/27 02:56:30 sephe Exp $
  */
 
 #include "opt_sctp.h"
@@ -755,7 +754,7 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 			 * have already installed genmask
 			 * on each CPU before we reach here.
 			 */
-			panic("genmask is gone!?\n");
+			panic("genmask is gone!?");
 		}
 	}
 	rtm->rtm_index = rt->rt_ifp->if_index;

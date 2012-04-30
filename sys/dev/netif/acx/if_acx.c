@@ -1197,7 +1197,7 @@ acx_start(struct ifnet *ifp)
 
 		f = mtod(m, struct ieee80211_frame *);
 		if ((f->i_fc[1] & IEEE80211_FC1_WEP) && !sc->chip_hw_crypt) {
-			KASSERT(ni != NULL, ("TX node is NULL (WEP)\n"));
+			KASSERT(ni != NULL, ("TX node is NULL (WEP)"));
 			if (ieee80211_crypto_encap(ic, ni, m) == NULL) {
 				ieee80211_free_node(ni);
 				m_freem(m);
@@ -2345,7 +2345,7 @@ acx_buf_dma_addr(void *arg, bus_dma_segment_t *seg, int nseg,
 		return;
 
 	/* XXX */
-	KASSERT(nseg == 1, ("too many RX dma segments\n"));
+	KASSERT(nseg == 1, ("too many RX dma segments"));
 	*((uint32_t *)arg) = seg->ds_addr;
 }
 
@@ -2402,7 +2402,7 @@ acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
 	uint8_t ctrl, rate;
 	int error;
 
-	KASSERT(txbuf->tb_mbuf == NULL, ("free TX buf has mbuf installed\n"));
+	KASSERT(txbuf->tb_mbuf == NULL, ("free TX buf has mbuf installed"));
 
 	if (m->m_pkthdr.len > MCLBYTES) {
 		if_printf(&sc->sc_ic.ic_if, "mbuf too big\n");

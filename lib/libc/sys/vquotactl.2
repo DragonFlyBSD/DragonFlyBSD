@@ -1,0 +1,80 @@
+.\" Copyright (c) 2012 François Tigeot
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.
+.\" Note: The date here should be updated whenever a non-trivial
+.\" change is made to the manual page.
+.Dd April 28, 2012
+.Dt VQUOTACTL 2
+.Os
+.Sh NAME
+.Nm vquotactl
+.Nd set or return VFS quota data
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/vfs_quota.h
+.Ft int
+.Fn vquotactl "const char *path" "struct plistref *pref"
+.Sh DESCRIPTION
+The
+.Fn vquotactl
+call serves as the only kernel/userland VFS quota interface.
+.Xr proplib 3
+messages specific to the
+.Fa path
+mount point are sent or returned via the
+.Fa pref
+parameter.
+.Pp
+To use the
+.Fn vquotactl
+call, the
+.Va vfs.quota_enabled
+tunable needs to be set in
+.Xr loader.conf 5 .
+.Sh RETURN VALUES
+.Rv -std vquotactl
+.Sh ERRORS
+A
+.Fn vquotactl
+call may return the following error codes:
+.Bl -tag -width Er
+.It Bq Er EOPNOTSUPP
+VFS quota support has not been enabled at system startup
+.It Bq Er EINVAL
+The message embedded in the
+.Fa pref
+argument was not understood.
+.El
+.Sh SEE ALSO
+.Xr loader.conf 5 ,
+.Xr vquota 8
+.Sh HISTORY
+The
+.Fn vquotactl
+function call appeared in
+.Dx 2.13 .
+.Sh AUTHORS
+.An Francois Tigeot

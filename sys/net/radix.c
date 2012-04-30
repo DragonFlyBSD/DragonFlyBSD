@@ -32,7 +32,6 @@
  *
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  * $FreeBSD: src/sys/net/radix.c,v 1.20.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/radix.c,v 1.14 2006/12/22 23:44:54 swildner Exp $
  */
 
 /*
@@ -1071,7 +1070,7 @@ rn_init(void)
 
 	SLIST_FOREACH(dom, &domains, dom_next) {
 		if (dom->dom_maxrtkey > RN_MAXKEYLEN) {
-			panic("domain %s maxkey too big %d/%d\n",
+			panic("domain %s maxkey too big %d/%d",
 			      dom->dom_name, dom->dom_maxrtkey, RN_MAXKEYLEN);
 		}
 	}

@@ -1589,7 +1589,7 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 
 	maxsegs = adapter->num_tx_desc_avail - EM_TX_RESERVED;
 	KASSERT(maxsegs >= adapter->spare_tx_desc,
-		("not enough spare TX desc\n"));
+		("not enough spare TX desc"));
 	if (adapter->pcix_82544) {
 		/* Half it; see the comment in em_attach() */
 		maxsegs >>= 1;
@@ -2660,11 +2660,11 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	 * helpful for QinQ too.
 	 */
 	KASSERT(mp->m_len >= ETHER_HDR_LEN,
-		("em_txcsum_pullup is not called (eh)?\n"));
+		("em_txcsum_pullup is not called (eh)?"));
 	eh = mtod(mp, struct ether_vlan_header *);
 	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
 		KASSERT(mp->m_len >= ETHER_HDR_LEN + EVL_ENCAPLEN,
-			("em_txcsum_pullup is not called (evh)?\n"));
+			("em_txcsum_pullup is not called (evh)?"));
 		etype = ntohs(eh->evl_proto);
 		ehdrlen = ETHER_HDR_LEN + EVL_ENCAPLEN;
 	} else {
@@ -2680,7 +2680,7 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 		return 0;
 
 	KASSERT(mp->m_len >= ehdrlen + EM_IPVHL_SIZE,
-		("em_txcsum_pullup is not called (eh+ip_vhl)?\n"));
+		("em_txcsum_pullup is not called (eh+ip_vhl)?"));
 
 	/* NOTE: We could only safely access ip.ip_vhl part */
 	ip = (struct ip *)(mp->m_data + ehdrlen);

@@ -3739,7 +3739,7 @@ bridge_rtnode_insert(struct bridge_softc *sc, struct bridge_rtnode *brt)
 
 	do {
 		dir = bridge_rtnode_addr_cmp(brt->brt_addr, lbrt->brt_addr);
-		KASSERT(dir != 0, ("rtnode already exist\n"));
+		KASSERT(dir != 0, ("rtnode already exist"));
 
 		if (dir > 0) {
 			LIST_INSERT_BEFORE(lbrt, brt, brt_hash);
@@ -3752,7 +3752,7 @@ bridge_rtnode_insert(struct bridge_softc *sc, struct bridge_rtnode *brt)
 		lbrt = LIST_NEXT(lbrt, brt_hash);
 	} while (lbrt != NULL);
 
-	panic("no suitable position found for rtnode\n");
+	panic("no suitable position found for rtnode");
 out:
 	LIST_INSERT_HEAD(&sc->sc_rtlists[mycpuid], brt, brt_list);
 	if (mycpuid == 0) {

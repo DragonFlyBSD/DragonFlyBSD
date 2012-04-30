@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_1284.c,v 1.11 2000/01/14 08:03:14 nsouch Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_1284.c,v 1.5 2006/12/22 23:12:17 swildner Exp $
- *
  */
 
 /*
@@ -175,7 +173,7 @@ ppb_request_mode(int mode, int options)
 			request_mode = EPP_1284_NORMAL;
 			break;
 		default:
-			panic("%s: unsupported mode %d\n", __func__, mode);
+			panic("%s: unsupported mode %d", __func__, mode);
 		}
 	}
 
@@ -609,7 +607,7 @@ ppb_1284_read_id(device_t bus, int mode, char *buffer,
 		error = spp_1284_read(bus, PPB_BYTE, buffer, max, read);
 		break;
 	default:
-		panic("%s: unsupported mode %d\n", __func__, mode);
+		panic("%s: unsupported mode %d", __func__, mode);
 	}
 
 	ppb_1284_terminate(bus);

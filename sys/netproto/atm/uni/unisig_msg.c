@@ -805,7 +805,7 @@ unisig_rcv_msg(struct unisig *usp, KBuffer *m)
 	err = usf_init(&usf, usp, m, USF_DECODE, 0);
 	if (err) {
 		if (err == EINVAL)
-			panic("unisig_rcv_msg: invalid parameter\n");
+			panic("unisig_rcv_msg: invalid parameter");
 		ATM_DEBUG1("unisig_rcv_msg: decode init failed with %d\n",
 				err);
 		goto done;

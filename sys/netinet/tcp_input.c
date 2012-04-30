@@ -241,7 +241,7 @@ static void	 tcp_pulloutofband(struct socket *,
 		     struct tcphdr *, struct mbuf *, int);
 static int	 tcp_reass(struct tcpcb *, struct tcphdr *, int *,
 		     struct mbuf *);
-static void	 tcp_xmit_timer(struct tcpcb *, int);
+static void	 tcp_xmit_timer(struct tcpcb *, int, tcp_seq);
 static void	 tcp_newreno_partial_ack(struct tcpcb *, struct tcphdr *, int);
 static void	 tcp_sack_rexmt(struct tcpcb *, struct tcphdr *);
 static int	 tcp_rmx_msl(const struct tcpcb *);
@@ -850,12 +850,6 @@ findpcb:
 	if (tp->t_state <= TCPS_CLOSED)
 		goto drop;
 
-	/* Unscale the window into a 32-bit value. */
-	if (!(thflags & TH_SYN))
-		tiwin = th->th_win << tp->snd_scale;
-	else
-		tiwin = th->th_win;
-
 	so = inp->inp_socket;
 
 #ifdef TCPDEBUG
@@ -939,14 +933,7 @@ findpcb:
 				tp->snd_up = tp->snd_una;
 				tp->snd_max = tp->snd_nxt = tp->iss + 1;
 				tp->last_ack_sent = tp->rcv_nxt;
-/*
- * XXX possible bug - it doesn't appear that tp->snd_wnd is unscaled
- * until the _second_ ACK is received:
- *    rcv SYN (set wscale opts)	 --> send SYN/ACK, set snd_wnd = window.
- *    rcv ACK, calculate tiwin --> process SYN_RECEIVED, determine wscale,
- *	  move to ESTAB, set snd_wnd to tiwin.
- */
-				tp->snd_wnd = tiwin;	/* unscaled */
+
 				goto after_listen;
 			}
 			if (thflags & TH_RST) {
@@ -1069,6 +1056,12 @@ after_listen:
 	KASSERT(tp->t_state != TCPS_LISTEN, ("tcp_input: TCPS_LISTEN state"));
 	KKASSERT(so->so_port == &curthread->td_msgport);
 
+	/* Unscale the window into a 32-bit value. */
+	if (!(thflags & TH_SYN))
+		tiwin = th->th_win << tp->snd_scale;
+	else
+		tiwin = th->th_win;
+
 	/*
 	 * This is the second part of the MSS DoS prevention code (after
 	 * minmss on the sending side) and it deals with too many too small
@@ -1094,10 +1087,16 @@ after_listen:
 	 */
 	tcp_dooptions(&to, optp, optlen, (thflags & TH_SYN) != 0);
 	if (tp->t_state == TCPS_SYN_SENT && (thflags & TH_SYN)) {
-		if (to.to_flags & TOF_SCALE) {
+		if ((to.to_flags & TOF_SCALE) && (tp->t_flags & TF_REQ_SCALE)) {
 			tp->t_flags |= TF_RCVD_SCALE;
-			tp->requested_s_scale = to.to_requested_s_scale;
+			tp->snd_scale = to.to_requested_s_scale;
 		}
+
+		/*
+		 * Initial send window; will be updated upon next ACK
+		 */
+		tp->snd_wnd = th->th_win;
+
 		if (to.to_flags & TOF_TS) {
 			tp->t_flags |= TF_RCVD_TSTMP;
 			tp->ts_recent = to.to_tsval;
@@ -1196,11 +1195,13 @@ after_listen:
 				 */
 				if ((to.to_flags & TOF_TS) && to.to_tsecr) {
 					tcp_xmit_timer(tp,
-						       ticks - to.to_tsecr + 1);
+					    ticks - to.to_tsecr + 1,
+					    th->th_ack);
 				} else if (tp->t_rtttime &&
 					   SEQ_GT(th->th_ack, tp->t_rtseq)) {
 					tcp_xmit_timer(tp,
-						       ticks - tp->t_rtttime);
+					    ticks - tp->t_rtttime,
+					    th->th_ack);
 				}
 				tcp_xmit_bandwidth_limit(tp, th->th_ack);
 				acked = th->th_ack - tp->snd_una;
@@ -1446,7 +1447,6 @@ after_listen:
 		}
 		if (!(thflags & TH_SYN))
 			goto drop;
-		tp->snd_wnd = th->th_win;	/* initial send window */
 
 		tp->irs = th->th_seq;
 		tcp_rcvseqinit(tp);
@@ -1456,10 +1456,8 @@ after_listen:
 			soisconnected(so);
 			/* Do window scaling on this connection? */
 			if ((tp->t_flags & (TF_RCVD_SCALE | TF_REQ_SCALE)) ==
-			    (TF_RCVD_SCALE | TF_REQ_SCALE)) {
-				tp->snd_scale = tp->requested_s_scale;
+			    (TF_RCVD_SCALE | TF_REQ_SCALE))
 				tp->rcv_scale = tp->request_r_scale;
-			}
 			tp->rcv_adv += tp->rcv_wnd;
 			tp->snd_una++;		/* SYN is acked */
 			tcp_callout_stop(tp, tp->tt_rexmt);
@@ -1840,10 +1838,8 @@ after_listen:
 		soisconnected(so);
 		/* Do window scaling? */
 		if ((tp->t_flags & (TF_RCVD_SCALE | TF_REQ_SCALE)) ==
-		    (TF_RCVD_SCALE | TF_REQ_SCALE)) {
-			tp->snd_scale = tp->requested_s_scale;
+		    (TF_RCVD_SCALE | TF_REQ_SCALE))
 			tp->rcv_scale = tp->request_r_scale;
-		}
 		/*
 		 * Make transitions:
 		 *      SYN-RECEIVED  -> ESTABLISHED
@@ -2056,10 +2052,8 @@ fastretransmit:
 			tp->snd_una++;
 			/* Do window scaling? */
 			if ((tp->t_flags & (TF_RCVD_SCALE | TF_REQ_SCALE)) ==
-			    (TF_RCVD_SCALE | TF_REQ_SCALE)) {
-				tp->snd_scale = tp->requested_s_scale;
+			    (TF_RCVD_SCALE | TF_REQ_SCALE))
 				tp->rcv_scale = tp->request_r_scale;
-			}
 		}
 
 process_ACK:
@@ -2105,9 +2099,9 @@ process_ACK:
 		 * timestamps of 0.
 		 */
 		if ((to.to_flags & TOF_TS) && (to.to_tsecr != 0))
-			tcp_xmit_timer(tp, ticks - to.to_tsecr + 1);
+			tcp_xmit_timer(tp, ticks - to.to_tsecr + 1, th->th_ack);
 		else if (tp->t_rtttime && SEQ_GT(th->th_ack, tp->t_rtseq))
-			tcp_xmit_timer(tp, ticks - tp->t_rtttime);
+			tcp_xmit_timer(tp, ticks - tp->t_rtttime, th->th_ack);
 		tcp_xmit_bandwidth_limit(tp, th->th_ack);
 
 		/*
@@ -2758,13 +2752,34 @@ tcp_pulloutofband(struct socket *so, struct tcphdr *th, struct mbuf *m, int off)
  * and update averages and current timeout.
  */
 static void
-tcp_xmit_timer(struct tcpcb *tp, int rtt)
+tcp_xmit_timer(struct tcpcb *tp, int rtt, tcp_seq ack)
 {
-	int delta;
+	int rebaserto = 0;
 
 	tcpstat.tcps_rttupdated++;
 	tp->t_rttupdated++;
-	if (tp->t_srtt != 0) {
+	if ((tp->t_flags & TF_REBASERTO) && SEQ_GT(ack, tp->snd_max_prev)) {
+#ifdef DEBUG_EIFEL_RESPONSE
+		kprintf("srtt/rttvar, prev %d/%d, cur %d/%d, ",
+		    tp->t_srtt_prev, tp->t_rttvar_prev,
+		    tp->t_srtt, tp->t_rttvar);
+#endif
+
+		tcpstat.tcps_eifelresponse++;
+		rebaserto = 1;
+		tp->t_flags &= ~TF_REBASERTO;
+		tp->t_srtt = max(tp->t_srtt_prev, (rtt << TCP_RTT_SHIFT));
+		tp->t_rttvar = max(tp->t_rttvar_prev,
+		    (rtt << (TCP_RTTVAR_SHIFT - 1)));
+		if (tp->t_rttbest > tp->t_srtt + tp->t_rttvar)
+			tp->t_rttbest = tp->t_srtt + tp->t_rttvar;
+
+#ifdef DEBUG_EIFEL_RESPONSE
+		kprintf("new %d/%d ", tp->t_srtt, tp->t_rttvar);
+#endif
+	} else if (tp->t_srtt != 0) {
+		int delta;
+
 		/*
 		 * srtt is stored as fixed point with 5 bits after the
 		 * binary point (i.e., scaled by 8).  The following magic
@@ -2808,6 +2823,13 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt)
 	tp->t_rtttime = 0;
 	tp->t_rxtshift = 0;
 
+#ifdef DEBUG_EIFEL_RESPONSE
+	if (rebaserto) {
+		kprintf("| rxtcur prev %d, old %d, ",
+		    tp->t_rxtcur_prev, tp->t_rxtcur);
+	}
+#endif
+
 	/*
 	 * the retransmit should happen at rtt + 4 * rttvar.
 	 * Because of the way we do the smoothing, srtt and rttvar
@@ -2821,6 +2843,30 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt)
 	 */
 	TCPT_RANGESET(tp->t_rxtcur, TCP_REXMTVAL(tp),
 		      max(tp->t_rttmin, rtt + 2), TCPTV_REXMTMAX);
+
+	if (rebaserto) {
+		if (tp->t_rxtcur < tp->t_rxtcur_prev + tcp_eifel_rtoinc) {
+			/*
+			 * RFC4015 requires that the new RTO is at least
+			 * 2*G (tcp_eifel_rtoinc) greater then the RTO
+			 * (t_rxtcur_prev) when the spurious retransmit
+			 * timeout happens.
+			 *
+			 * The above condition could be true, if the SRTT
+			 * and RTTVAR used to calculate t_rxtcur_prev
+			 * resulted in a value less than t_rttmin.  So
+			 * simply increasing SRTT by tcp_eifel_rtoinc when
+			 * preparing for the Eifel response in
+			 * tcp_save_congestion_state() could not ensure
+			 * that the new RTO will be tcp_eifel_rtoinc greater
+			 * t_rxtcur_prev.
+			 */
+			tp->t_rxtcur = tp->t_rxtcur_prev + tcp_eifel_rtoinc;
+		}
+#ifdef DEBUG_EIFEL_RESPONSE
+		kprintf("new %d\n", tp->t_rxtcur);
+#endif
+	}
 
 	/*
 	 * We received an ack for a packet that wasn't retransmitted;

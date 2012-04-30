@@ -62,7 +62,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.56 2008/07/01 02:02:56 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -127,7 +126,7 @@ kernacc(c_caddr_t addr, int len, int rw)
 	vm_prot_t prot;
 
 	KASSERT((rw & (~VM_PROT_ALL)) == 0,
-	    ("illegal ``rw'' argument to kernacc (%x)\n", rw));
+	    ("illegal ``rw'' argument to kernacc (%x)", rw));
 
 	/*
 	 * The globaldata space is not part of the kernel_map proper,
@@ -164,7 +163,7 @@ useracc(c_caddr_t addr, int len, int rw)
 	vm_offset_t wrap;
 
 	KASSERT((rw & (~VM_PROT_ALL)) == 0,
-	    ("illegal ``rw'' argument to useracc (%x)\n", rw));
+	    ("illegal ``rw'' argument to useracc (%x)", rw));
 	prot = rw;
 	/*
 	 * XXX - check separately to disallow access to user area and user
@@ -500,7 +499,6 @@ swapout_procs(int action)
 static int
 swapout_procs_callback(struct proc *p, void *data)
 {
-	struct vmspace *vm;
 	struct lwp *lp;
 	int action = *(int *)data;
 	int minslp = -1;
@@ -509,7 +507,6 @@ swapout_procs_callback(struct proc *p, void *data)
 		return(0);
 
 	lwkt_gettoken(&p->p_token);
-	vm = p->p_vmspace;
 
 	/*
 	 * We only consider active processes.

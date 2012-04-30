@@ -85,7 +85,7 @@ key_output(struct mbuf *m, struct socket *so, ...)
 	
 
 	if (m == NULL)
-		panic("key_output: NULL pointer was passed.\n");
+		panic("key_output: NULL pointer was passed.");
 
 	pfkeystat.out_total++;
 	pfkeystat.out_bytes += m->m_pkthdr.len;
@@ -185,7 +185,7 @@ key_sendup(struct socket *so, struct sadb_msg *msg, u_int len, int target)
 
 	/* sanity check */
 	if (so == NULL || msg == NULL)
-		panic("key_sendup: NULL pointer was passed.\n");
+		panic("key_sendup: NULL pointer was passed.");
 
 	KEYDEBUG(KEYDEBUG_KEY_DUMP,
 		kprintf("key_sendup: \n");
@@ -252,9 +252,9 @@ key_sendup_mbuf(struct socket *so, struct mbuf *m, int target)
 	int error = 0;
 
 	if (m == NULL)
-		panic("key_sendup_mbuf: NULL pointer was passed.\n");
+		panic("key_sendup_mbuf: NULL pointer was passed.");
 	if (so == NULL && target == KEY_SENDUP_ONE)
-		panic("key_sendup_mbuf: NULL pointer was passed.\n");
+		panic("key_sendup_mbuf: NULL pointer was passed.");
 
 	pfkeystat.in_total++;
 	pfkeystat.in_bytes += m->m_pkthdr.len;

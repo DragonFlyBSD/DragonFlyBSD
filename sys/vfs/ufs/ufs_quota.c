@@ -35,7 +35,6 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.27 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -769,7 +768,7 @@ ufs_dqget(struct vnode *vp, u_long id, struct ufsmount *ump, int type,
 	 * Check the cache first.
 	 */
 	dqh = DQHASH(dqvp, id);
-	for (dq = dqh->lh_first; dq; dq = dq->dq_hash.le_next) {
+	LIST_FOREACH(dq, dqh, dq_hash) {
 		if (dq->dq_id != id ||
 		    dq->dq_ump->um_quotas[dq->dq_type] != dqvp)
 			continue;

@@ -3590,7 +3590,7 @@ ciss_spawn_notify_thread(struct ciss_softc *sc)
     if (kthread_create(ciss_notify_thread, sc,
 		       &sc->ciss_notify_thread, "ciss_notify%d",
 		       device_get_unit(sc->ciss_dev)))
-	panic("Could not create notify thread\n");
+	panic("Could not create notify thread");
 }
 
 /************************************************************************

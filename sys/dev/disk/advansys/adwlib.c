@@ -885,7 +885,7 @@ adw_idle_cmd_send(struct adw_softc *adw, adw_idle_cmd_t cmd, u_int parameter)
 	}
 
 	if (timeout == 0)
-		panic("%s: Idle Command Timed Out!\n", adw_name(adw));
+		panic("%s: Idle Command Timed Out!", adw_name(adw));
 	crit_exit();
 	return (status);
 }

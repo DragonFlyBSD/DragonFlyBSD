@@ -105,7 +105,7 @@ digi_pci_attach(device_t dev)
 #endif
 
 	sc = device_get_softc(dev);
-	KASSERT(sc, ("digi%d: softc not allocated in digi_pci_attach\n",
+	KASSERT(sc, ("digi%d: softc not allocated in digi_pci_attach",
 	    device_get_unit(dev)));
 
 	bzero(sc, sizeof(*sc));

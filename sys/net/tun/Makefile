@@ -5,8 +5,6 @@ SRCS=   if_tun.c opt_inet.h opt_inet6.h opt_ipx.h use_tun.h
 
 NTUN?=	2
 
-CLEANFILES=	use_tun.h
-
 .if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:
 	echo "#define INET 1" > ${.TARGET}

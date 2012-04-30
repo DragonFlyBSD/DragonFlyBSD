@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.10 2008/05/27 23:44:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -135,7 +133,7 @@ vke_sysinit(void *arg __unused)
 {
 	int i, unit;
 
-	KASSERT(NetifNum <= VKNETIF_MAX, ("too many netifs: %d\n", NetifNum));
+	KASSERT(NetifNum <= VKNETIF_MAX, ("too many netifs: %d", NetifNum));
 
 	unit = 0;
 	for (i = 0; i < NetifNum; ++i) {

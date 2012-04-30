@@ -134,7 +134,7 @@ ioapic_config(void)
 		info->io_idx = i++;
 
 	if (i > IOAPIC_COUNT_MAX)
-		panic("ioapic_config: more than 16 I/O APIC\n");
+		panic("ioapic_config: more than 16 I/O APIC");
 
 	/*
 	 * Setup APIC ID
@@ -241,7 +241,7 @@ ioapic_add(void *addr, int gsi_base, int npin)
 			      info->io_gsi_base, info->io_npin);
 		}
 		if (info->io_addr == addr)
-			panic("ioapic_add: duplicated addr %p\n", addr);
+			panic("ioapic_add: duplicated addr %p", addr);
 	}
 
 	ninfo = kmalloc(sizeof(*ninfo), M_DEVBUF, M_WAITOK | M_ZERO);
@@ -423,7 +423,7 @@ ioapic_gsi_search(int gsi)
 		    gsi < info->io_gsi_base + info->io_npin)
 			return info;
 	}
-	panic("ioapic_gsi_search: no I/O APIC\n");
+	panic("ioapic_gsi_search: no I/O APIC");
 }
 
 int
@@ -591,7 +591,7 @@ ioapic_alloc_apic_id(int start)
 
 		start = apic_id + 1;
 	}
-	panic("ioapic_unused_apic_id: never reached\n");
+	panic("ioapic_unused_apic_id: never reached");
 }
 
 void *
@@ -609,7 +609,7 @@ ioapic_sysinit(void *dummy __unused)
 	if (!ioapic_enable)
 		return;
 
-	KASSERT(lapic_enable, ("I/O APIC is enabled, but LAPIC is disabled\n"));
+	KASSERT(lapic_enable, ("I/O APIC is enabled, but LAPIC is disabled"));
 	error = ioapic_config();
 	if (error) {
 		ioapic_enable = 0;

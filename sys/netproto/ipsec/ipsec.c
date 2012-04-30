@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.19 2006/12/22 23:57:54 swildner Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -735,7 +734,7 @@ ipsec6_get_ulp(struct mbuf *m, struct secpolicyindex *spidx, int needport)
 
 	/* sanity check */
 	if (m == NULL)
-		panic("ipsec6_get_ulp: NULL pointer was passed.\n");
+		panic("ipsec6_get_ulp: NULL pointer was passed.");
 
 	KEYDEBUG(KEYDEBUG_IPSEC_DUMP,
 		kprintf("ipsec6_get_ulp:\n"); kdebug_mbuf(m));
@@ -834,7 +833,7 @@ ipsec_init_policy(struct socket *so, struct inpcbpolicy **pcb_sp)
 
 	/* sanity check. */
 	if (so == NULL || pcb_sp == NULL)
-		panic("ipsec_init_policy: NULL pointer was passed.\n");
+		panic("ipsec_init_policy: NULL pointer was passed.");
 
 	new = kmalloc(sizeof(struct inpcbpolicy),
 			M_SECA, M_INTWAIT | M_ZERO | M_NULLOK);
@@ -1282,7 +1281,7 @@ ipsec_get_reqlevel(struct ipsecrequest *isr)
 		break;
 
 	default:
-		panic("ipsec_get_reqlevel: Illegal IPsec level %u\n",
+		panic("ipsec_get_reqlevel: Illegal IPsec level %u",
 			isr->level);
 	}
 

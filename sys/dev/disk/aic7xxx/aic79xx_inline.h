@@ -40,7 +40,6 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx_inline.h#57 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_inline.h,v 1.16 2004/08/04 17:55:34 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_inline.h,v 1.8 2007/07/06 02:40:58 pavalos Exp $
  */
 
 #ifndef _AIC79XX_INLINE_H_
@@ -108,7 +107,7 @@ ahd_set_modes(struct ahd_softc *ahd, ahd_mode src, ahd_mode dst)
 #ifdef AHD_DEBUG
 	if (ahd->src_mode == AHD_MODE_UNKNOWN
 	 || ahd->dst_mode == AHD_MODE_UNKNOWN)
-		panic("Setting mode prior to saving it.\n");
+		panic("Setting mode prior to saving it.");
 	if ((ahd_debug & AHD_SHOW_MODEPTR) != 0)
 		kprintf("%s: Setting mode 0x%x\n", ahd_name(ahd),
 		       ahd_build_mode_state(ahd, src, dst));
@@ -141,7 +140,7 @@ ahd_assert_modes(struct ahd_softc *ahd, ahd_mode srcmode,
 #ifdef AHD_DEBUG
 	if ((srcmode & AHD_MK_MSK(ahd->src_mode)) == 0
 	 || (dstmode & AHD_MK_MSK(ahd->dst_mode)) == 0) {
-		panic("%s:%s:%d: Mode assertion failed.\n",
+		panic("%s:%s:%d: Mode assertion failed.",
 		       ahd_name(ahd), file, line);
 	}
 #endif
@@ -779,7 +778,7 @@ ahd_queue_scb(struct ahd_softc *ahd, struct scb *scb)
 	ahd_swap_with_next_hscb(ahd, scb);
 
 	if (SCBID_IS_NULL(SCB_GET_TAG(scb)))
-		panic("Attempt to queue invalid SCB tag %x\n",
+		panic("Attempt to queue invalid SCB tag %x",
 		      SCB_GET_TAG(scb));
 
 	/*

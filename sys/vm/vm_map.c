@@ -64,7 +64,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.56 2007/04/29 18:25:41 dillon Exp $
  */
 
 /*
@@ -727,7 +726,7 @@ vm_map_entry_kreserve(int count)
 	gd->gd_vme_avail -= count;
 	crit_exit();
 	KASSERT(gd->gd_vme_base != NULL,
-		("no reserved entries left, gd_vme_avail = %d\n",
+		("no reserved entries left, gd_vme_avail = %d",
 		gd->gd_vme_avail));
 	return(count);
 }

@@ -1100,7 +1100,7 @@ lge_encap(struct lge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 		}
 	}
 	/* Caller should make sure that 'm_head' is not excessive fragmented */
-	KASSERT(m == NULL, ("too many fragments\n"));
+	KASSERT(m == NULL, ("too many fragments"));
 
 	cur_tx->lge_mbuf = m_head;
 	cur_tx->lge_ctl = LGE_TXCTL_WANTINTR|LGE_FRAGCNT(frag)|tot_len;

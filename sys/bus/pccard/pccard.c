@@ -719,7 +719,7 @@ pccard_function_disable(struct pccard_function *pf)
 		struct resource_list_entry *rle =
 		    resource_list_find(&devi->resources, SYS_RES_IRQ, 0);
 		if (rle == NULL)
-			panic("Can't disable an interrupt with no IRQ res\n");
+			panic("Can't disable an interrupt with no IRQ res");
 		BUS_TEARDOWN_INTR(dev, pf->dev, rle->res,
 		    pf->intr_handler_cookie);
 	}

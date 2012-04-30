@@ -378,7 +378,7 @@ mdstrategy_preload(struct dev_strategy_args *ap)
 			      bp->b_bcount);
 			break;
 		default:
-			panic("md: bad cmd %d\n", bp->b_cmd);
+			panic("md: bad cmd %d", bp->b_cmd);
 		}
 		bp->b_resid = 0;
 		devstat_end_transaction_buf(&sc->stats, bp);

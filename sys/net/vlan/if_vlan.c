@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.43 2008/11/22 04:00:53 sephe Exp $
  */
 
 /*
@@ -619,7 +618,7 @@ vlan_link_dispatch(netmsg_t msg)
 
 	vlantrunks = ifp_p->if_vlantrunks;
 	KASSERT(vlantrunks != NULL,
-		("vlan trunk has not been initialized yet\n"));
+		("vlan trunk has not been initialized yet"));
 
 	entry = &ifv->ifv_entries[cpu];
 	trunk = &vlantrunks[cpu];
@@ -779,7 +778,7 @@ vlan_unlink_dispatch(netmsg_t msg)
 	int cpu = mycpuid;
 
 	KASSERT(vmsg->nv_ifp_p->if_vlantrunks != NULL,
-		("vlan trunk has not been initialized yet\n"));
+		("vlan trunk has not been initialized yet"));
 	entry = &ifv->ifv_entries[cpu];
 
 	crit_enter();
@@ -799,7 +798,7 @@ vlan_unlink(struct ifvlan *ifv, struct ifnet *ifp_p)
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	KASSERT(ifp_p->if_vlantrunks != NULL,
-		("vlan trunk has not been initialized yet\n"));
+		("vlan trunk has not been initialized yet"));
 
 	bzero(&vmsg, sizeof(vmsg));
 

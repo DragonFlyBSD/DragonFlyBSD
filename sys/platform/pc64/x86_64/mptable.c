@@ -754,7 +754,7 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
  
 	error = mptable_map(&mpt);
 	if (error)
-		panic("mptable_lapic_enumerate mptable_map failed\n");
+		panic("mptable_lapic_enumerate mptable_map failed");
 	KKASSERT(!MPTABLE_POS_USE_DEFAULT(&mpt));
 
 	cth = mpt.mp_cth;
@@ -772,7 +772,7 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 	error = mptable_iterate_entries(cth,
 		    mptable_lapic_pass1_callback, &arg1);
 	if (error)
-		panic("mptable_iterate_entries(lapic_pass1) failed\n");
+		panic("mptable_iterate_entries(lapic_pass1) failed");
 	KKASSERT(arg1.cpu_count != 0);
  
 	/* See if we need to fixup HT logical CPUs. */
@@ -794,7 +794,7 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 	error = mptable_iterate_entries(cth,
 		    mptable_lapic_pass2_callback, &arg2);
 	if (error)
-		panic("mptable_iterate_entries(lapic_pass2) failed\n");
+		panic("mptable_iterate_entries(lapic_pass2) failed");
 	KKASSERT(arg2.found_bsp);
 
 	/* Map local apic */
@@ -962,7 +962,7 @@ mptable_ioapic_create_list(void)
 
 	error = mptable_map(&mpt);
 	if (error)
-		panic("mptable_ioapic_create_list: mptable_map failed\n");
+		panic("mptable_ioapic_create_list: mptable_map failed");
 	KKASSERT(!MPTABLE_POS_USE_DEFAULT(&mpt));
 
 	error = mptable_iterate_entries(mpt.mp_cth,
@@ -1091,7 +1091,7 @@ mptable_pci_int_register(void)
 
 	error = mptable_map(&mpt);
 	if (error)
-		panic("mptable_pci_int_register: mptable_map failed\n");
+		panic("mptable_pci_int_register: mptable_map failed");
 	KKASSERT(!MPTABLE_POS_USE_DEFAULT(&mpt));
 
 	cth = mpt.mp_cth;
@@ -1202,7 +1202,7 @@ mptable_ioapic_probe(struct ioapic_enumerator *e)
 
 	error = mptable_map(&mpt);
 	if (error)
-		panic("mptable_ioapic_probe: mptable_map failed\n");
+		panic("mptable_ioapic_probe: mptable_map failed");
 	KKASSERT(!MPTABLE_POS_USE_DEFAULT(&mpt));
 
 	cth = mpt.mp_cth;
@@ -1334,7 +1334,7 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 
 	error = mptable_map(&mpt);
 	if (error)
-		panic("mptable_ioapic_probe: mptable_map failed\n");
+		panic("mptable_ioapic_probe: mptable_map failed");
 	KKASSERT(!MPTABLE_POS_USE_DEFAULT(&mpt));
 
 	cth = mpt.mp_cth;
@@ -1354,7 +1354,7 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 		error = mptable_iterate_entries(cth,
 			    mptable_ioapic_int_callback, &arg);
 		if (error)
-			panic("mptable_ioapic_int failed\n");
+			panic("mptable_ioapic_int failed");
 
 		if (arg.ioapic_nint == 0) {
 			if (bootverbose) {

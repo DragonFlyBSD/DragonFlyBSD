@@ -37,7 +37,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.15 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -361,7 +360,7 @@ mii_phy_set_media(struct mii_softc *sc)
 	 */
 
 	KASSERT(ife->ifm_data >= 0 && ife->ifm_data < MII_NMEDIA,
-		("bogus ife->ifm_data (%d)\n", ife->ifm_data));
+		("bogus ife->ifm_data (%d)", ife->ifm_data));
 
 	anar = mii_media_table[ife->ifm_data].mm_anar;
 	bmcr = mii_media_table[ife->ifm_data].mm_bmcr;

@@ -841,7 +841,7 @@ amdsetsync(struct amd_softc *amd, u_int target, u_int clockrate,
 static void
 amdsettags(struct amd_softc *amd, u_int target, int tagenb)
 {
-	panic("Implement me!\n");
+	panic("Implement me!");
 }
 
 

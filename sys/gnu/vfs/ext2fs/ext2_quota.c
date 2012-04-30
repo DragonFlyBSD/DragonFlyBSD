@@ -727,7 +727,7 @@ ext2_dqget(struct vnode *vp, u_long id, struct ext2mount *ump, int type,
 	 * Check the cache first.
 	 */
 	dqh = DQHASH(dqvp, id);
-	for (dq = dqh->lh_first; dq; dq = dq->dq_hash.le_next) {
+	LIST_FOREACH(dq, dqh, dq_hash) {
 		if (dq->dq_id != id ||
 		    dq->dq_ump->um_quotas[dq->dq_type] != dqvp)
 			continue;

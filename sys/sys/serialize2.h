@@ -20,7 +20,7 @@
 static __inline void
 lwkt_serialize_array_enter(lwkt_serialize_t *_arr, int _arrcnt, int _s)
 {
-	KASSERT(_s < _arrcnt, ("nothing to be serialized\n"));
+	KASSERT(_s < _arrcnt, ("nothing to be serialized"));
 	while (_s < _arrcnt)
 		lwkt_serialize_enter(_arr[_s++]);
 }
@@ -30,7 +30,7 @@ lwkt_serialize_array_try(lwkt_serialize_t *_arr, int _arrcnt, int _s)
 {
 	int _i;
 
-	KASSERT(_s < _arrcnt, ("nothing to be serialized\n"));
+	KASSERT(_s < _arrcnt, ("nothing to be serialized"));
 	for (_i = _s; _i < _arrcnt; ++_i) {
 		if (!lwkt_serialize_try(_arr[_i])) {
 			while (--_i >= _s)
@@ -44,7 +44,7 @@ lwkt_serialize_array_try(lwkt_serialize_t *_arr, int _arrcnt, int _s)
 static __inline void
 lwkt_serialize_array_exit(lwkt_serialize_t *_arr, int _arrcnt, int _s)
 {
-	KASSERT(_arrcnt > _s, ("nothing to be deserialized\n"));
+	KASSERT(_arrcnt > _s, ("nothing to be deserialized"));
 	while (--_arrcnt >= _s)
 		lwkt_serialize_exit(_arr[_arrcnt]);
 }

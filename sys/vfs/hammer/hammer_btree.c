@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.76 2008/08/06 15:38:58 dillon Exp $
  */
 
 /*
@@ -2623,7 +2621,7 @@ hammer_btree_get_parent(hammer_transaction_t trans, hammer_node_t node,
 	}
 	if (i == parent->ondisk->count) {
 		hammer_unlock(&parent->lock);
-		panic("Bad B-Tree link: parent %p node %p\n", parent, node);
+		panic("Bad B-Tree link: parent %p node %p", parent, node);
 	}
 	*parent_indexp = i;
 	KKASSERT(*errorp == 0);
@@ -3091,7 +3089,7 @@ btree_max_elements(u_int8_t type)
 		return(HAMMER_BTREE_LEAF_ELMS);
 	if (type == HAMMER_BTREE_TYPE_INTERNAL)
 		return(HAMMER_BTREE_INT_ELMS);
-	panic("btree_max_elements: bad type %d\n", type);
+	panic("btree_max_elements: bad type %d", type);
 }
 #endif
 

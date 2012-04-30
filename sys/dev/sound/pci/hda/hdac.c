@@ -1645,7 +1645,7 @@ hdac_corb_init(struct hdac_softc *sc)
 		corbsize = HDAC_CORBSIZE_CORBSIZE(HDAC_CORBSIZE_CORBSIZE_2);
 		break;
 	default:
-		panic("%s: Invalid CORB size (%x)\n", __func__, sc->corb_size);
+		panic("%s: Invalid CORB size (%x)", __func__, sc->corb_size);
 	}
 	HDAC_WRITE_1(&sc->mem, HDAC_CORBSIZE, corbsize);
 
@@ -1696,7 +1696,7 @@ hdac_rirb_init(struct hdac_softc *sc)
 		rirbsize = HDAC_RIRBSIZE_RIRBSIZE(HDAC_RIRBSIZE_RIRBSIZE_2);
 		break;
 	default:
-		panic("%s: Invalid RIRB size (%x)\n", __func__, sc->rirb_size);
+		panic("%s: Invalid RIRB size (%x)", __func__, sc->rirb_size);
 	}
 	HDAC_WRITE_1(&sc->mem, HDAC_RIRBSIZE, rirbsize);
 
