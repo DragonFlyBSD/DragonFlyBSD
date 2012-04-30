@@ -432,8 +432,9 @@ skip:
 				(intmax_t)bp->b_loffset);
 		}
 		bp->b_flags &= ~B_IODEBUG;
+		if (blksize == HAMMER_XBUFSIZE)
+			bp->b_flags |= B_CLUSTEROK;
 
-		bp->b_flags |= B_CLUSTEROK;
 		n = blksize - offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
@@ -794,7 +795,8 @@ hammer_vop_write(struct vop_write_args *ap)
 		}
 		kflags |= NOTE_WRITE;
 		hammer_stats_file_write += n;
-		bp->b_flags |= B_CLUSTEROK;
+		if (blksize == HAMMER_XBUFSIZE)
+			bp->b_flags |= B_CLUSTEROK;
 		if (ip->ino_data.size < uio->uio_offset) {
 			ip->ino_data.size = uio->uio_offset;
 			flags = HAMMER_INODE_SDIRTY;
@@ -842,7 +844,10 @@ hammer_vop_write(struct vop_write_args *ap)
 		 *	  configure a HAMMER file as swap, or when HAMMER
 		 *	  is serving NFS (for commits).  Ick ick.
 		 */
-		bp->b_flags |= B_AGE | B_CLUSTEROK;
+		bp->b_flags |= B_AGE;
+		if (blksize == HAMMER_XBUFSIZE)
+			bp->b_flags |= B_CLUSTEROK;
+
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if ((ap->a_ioflag & IO_DIRECT) && endofblk) {
