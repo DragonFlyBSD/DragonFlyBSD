@@ -812,7 +812,7 @@ tw_osli_free_resources(struct twa_softc *sc)
 	dev_ops_remove_minor(&twa_ops, device_get_unit(sc->bus_dev));
 
 	/* Destroy the control device. */
-	if (sc->ctrl_dev != (struct cdev *)NULL)
+	if (sc->ctrl_dev != NULL)
 		destroy_dev(sc->ctrl_dev);
 
 	if ((error = sysctl_ctx_free(&sc->sysctl_ctxt)))

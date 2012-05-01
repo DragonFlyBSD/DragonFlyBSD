@@ -1876,8 +1876,7 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 			e->ether_type = eh->ether_type;
 			/* XXX_IMPORT: later */
 			lwkt_reltoken(&pf_token);
-			ip_output(m, (void *)NULL, &ro, 0,
-			    (void *)NULL, (void *)NULL);
+			ip_output(m, NULL, &ro, 0, NULL, NULL);
 			lwkt_gettoken(&pf_token);
 		}
 		break;

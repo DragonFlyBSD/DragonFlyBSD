@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_buffer.c,v 1.5 1999/08/28 00:41:43 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_buffer.c,v 1.7 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -210,7 +209,7 @@ eni_allocate_buffer(Eni_unit *eup, u_long *size)
 		/* Indicate 0 bytes allocated */
 		*size = 0;
 		/* Return NULL buffer */
-		return ( (caddr_t)NULL );
+		return ( NULL );
 	}
 
 	/*
@@ -326,7 +325,7 @@ eni_allocate_buffer(Eni_unit *eup, u_long *size)
 		/* No buffer to return - indicate zero length */
 		*size = 0;
 		/* Return NULL buffer */
-		return ( (caddr_t)NULL );
+		return ( NULL );
 	}
 }
 

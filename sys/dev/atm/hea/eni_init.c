@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_init.c,v 1.3 1999/08/28 00:41:44 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_init.c,v 1.5 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -73,7 +72,7 @@ eni_init(Eni_unit *eup)
 	words = ( eup->eu_ramsize > MAX_CLIENT_RAM * ENI_BUF_PGSZ ?
 		TX_LARGE_BSIZE : TX_SMALL_BSIZE ) * ENI_BUF_PGSZ;
 	if ( ( eup->eu_txbuf = eni_allocate_buffer ( eup, &words ) ) ==
-	    (caddr_t)NULL ) {
+	    NULL ) {
 		return ENOMEM;
 	} 
 	eup->eu_txsize = words >> 2;		/* Bytes to words */

@@ -160,7 +160,7 @@ tprintf_open(struct proc *p)
 		sess_hold(p->p_session);
 		return ((tpr_t) p->p_session);
 	}
-	return ((tpr_t) NULL);
+	return (NULL);
 }
 
 void
