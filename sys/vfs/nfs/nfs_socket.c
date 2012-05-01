@@ -627,12 +627,13 @@ tryagain:
 			    /*
 			     * Only log short packets if not EOF
 			     */
-			    if (auio.uio_resid != sizeof(u_int32_t))
-			    log(LOG_INFO,
-				 "short receive (%d/%d) from nfs server %s\n",
-				 (int)(sizeof(u_int32_t) - auio.uio_resid),
-				 (int)sizeof(u_int32_t),
-				 nmp->nm_mountp->mnt_stat.f_mntfromname);
+			    if (auio.uio_resid != sizeof(u_int32_t)) {
+				log(LOG_INFO,
+				    "short receive (%d/%d) from nfs server %s\n",
+				    (int)(sizeof(u_int32_t) - auio.uio_resid),
+				    (int)sizeof(u_int32_t),
+				    nmp->nm_mountp->mnt_stat.f_mntfromname);
+			    }
 			    error = EPIPE;
 			}
 			if (error)
@@ -662,11 +663,12 @@ tryagain:
 			} while (error == EWOULDBLOCK || error == EINTR ||
 				 error == ERESTART);
 			if (error == 0 && sio.sb_cc != len) {
-			    if (sio.sb_cc != 0)
-			    log(LOG_INFO,
-				"short receive (%zu/%d) from nfs server %s\n",
-				(size_t)len - auio.uio_resid, len,
-				nmp->nm_mountp->mnt_stat.f_mntfromname);
+			    if (sio.sb_cc != 0) {
+				log(LOG_INFO,
+				    "short receive (%zu/%d) from nfs server %s\n",
+				    (size_t)len - auio.uio_resid, len,
+				    nmp->nm_mountp->mnt_stat.f_mntfromname);
+			    }
 			    error = EPIPE;
 			}
 			*mp = sio.sb_mb;
