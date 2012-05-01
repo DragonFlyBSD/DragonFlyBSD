@@ -845,7 +845,6 @@ static void
 cx28975_interrupt(struct sbsh_softc *sc)
 {
 	volatile struct cx28975_cmdarea  *p = sc->cmdp;
-	u_int8_t  t;
 
 	if (p->intr_host != 0xfe)
 		return;
@@ -864,13 +863,11 @@ cx28975_interrupt(struct sbsh_softc *sc)
 		}
 
 		p->intr_host = 0;
-		t = p->intr_host;
 		p->out_ack = 0;
 	} else {
 		wakeup(sc);
 
 		p->intr_host = 0;
-		t = p->intr_host;
 	}
 }
 

@@ -481,9 +481,6 @@ fail:
 static void
 wpi_unload_firmware(struct wpi_softc *sc)
 {
-	struct ifnet *ifp;
-	ifp = sc->sc_ifp;
-
 	if (sc->fw_fp) {
 		wlan_assert_serialized();
 		wlan_serialize_exit();

@@ -943,11 +943,9 @@ epic_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	epic_softc_t *sc;
 	struct mii_data *mii;
-	struct ifmedia *ifm;
 
 	sc = ifp->if_softc;
 	mii = device_get_softc(sc->miibus);
-	ifm = &mii->mii_media;
 
 	/* Nothing should be selected if interface is down */
 	if ((ifp->if_flags & IFF_UP) == 0) {
