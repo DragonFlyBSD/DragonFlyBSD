@@ -440,7 +440,7 @@ static void
 lp_intr (void *arg)
 {
 	device_t dev = (device_t)arg;
-        device_t ppbus = device_get_parent(dev);
+	device_t ppbus = device_get_parent(dev);
 	struct lp_data *sc = DEVTOSOFTC(dev);
 	int len, j;
 	u_char *bp;
