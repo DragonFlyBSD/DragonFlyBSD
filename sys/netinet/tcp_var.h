@@ -446,13 +446,13 @@ static const int tcprexmtthresh = 3;
  */
 struct tcpopt {
 	u_long		to_flags;	/* which options are present */
-#define	TOF_TS			0x0001		/* timestamp */
+#define	TOF_TS			0x0001	/* timestamp */
 #define	TOF_MSS			0x0010
 #define	TOF_SCALE		0x0020
 #define	TOF_SACK_PERMITTED	0x0040
 #define	TOF_SACK		0x0080
-#define TOF_SIGNATURE   0x0100          /* signature option present */
-#define TOF_SIGLEN      0x0200          /* sigature length valid (RFC2385) */
+#define TOF_SIGNATURE		0x0100	/* signature option present */
+#define TOF_SIGLEN		0x0200	/* signature length valid (RFC2385) */
 	u_int32_t	to_tsval;
 	u_int32_t	to_tsecr;
 	u_int16_t	to_mss;
