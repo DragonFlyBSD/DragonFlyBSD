@@ -954,6 +954,13 @@ dinfo(int dn, int lc, struct statinfo *now, struct statinfo *then)
 			  NULL, NULL) != 0)
 		errx(1, "%s", devstat_errbuf);
 
+#if 0
+	/*
+	 * Remove this hack, it no longer works properly and will
+	 * report 100% busy in situations where the device is able
+	 * to respond to the requests faster than the busy counter's
+	 * granularity.
+	 */
 	if ((device_busy == 0) &&
 	    (transfers_per_secondr > 5 || transfers_per_secondw > 5)) {
 		/* the device has been 100% busy, fake it because
@@ -961,6 +968,7 @@ dinfo(int dn, int lc, struct statinfo *now, struct statinfo *then)
 		 * field in the devstat struct is not updated */
 		device_busy = elapsed_time;
 	}
+#endif
 	if (device_busy > elapsed_time) {
 		/* this normally happens after one or more periods
 		 * where the device has been 100% busy, correct it */
