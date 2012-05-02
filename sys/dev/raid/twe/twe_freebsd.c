@@ -423,7 +423,7 @@ twe_free(struct twe_softc *sc)
     dev_ops_remove_minor(&twe_ops, device_get_unit(sc->twe_dev));
 
     /* destroy control device */
-    if (sc->twe_dev_t != (cdev_t)NULL)
+    if (sc->twe_dev_t != NULL)
 	destroy_dev(sc->twe_dev_t);
 
     sysctl_ctx_free(&sc->sysctl_ctx);

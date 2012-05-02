@@ -2024,16 +2024,11 @@ hpt_attach(device_t dev)
 	}
 
 
-	if((ccb = (union ccb *)kmalloc(sizeof(*ccb), M_DEVBUF, M_WAITOK)) != (union ccb*)NULL)
-	{
-		bzero(ccb, sizeof(*ccb));
-		ccb->ccb_h.pinfo.priority = 1;
-		ccb->ccb_h.pinfo.index = CAM_UNQUEUED_INDEX;
-	}
-	else
-	{
-		return ENOMEM;
-	}
+	ccb = kmalloc(sizeof(*ccb), M_DEVBUF, M_WAITOK);
+	bzero(ccb, sizeof(*ccb));
+	ccb->ccb_h.pinfo.priority = 1;
+	ccb->ccb_h.pinfo.index = CAM_UNQUEUED_INDEX;
+
 	/*
 	 * Create the device queue for our SIM(s).
 	 */

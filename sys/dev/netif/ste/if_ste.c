@@ -1122,11 +1122,9 @@ ste_init(void *xsc)
 	struct ste_softc	*sc;
 	int			i;
 	struct ifnet		*ifp;
-	struct mii_data		*mii;
 
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
-	mii = device_get_softc(sc->ste_miibus);
 
 	ste_stop(sc);
 

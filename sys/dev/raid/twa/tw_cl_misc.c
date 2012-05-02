@@ -742,14 +742,16 @@ tw_cli_check_ctlr_state(struct tw_cli_ctlr_context *ctlr, TW_UINT32 status_reg)
 		     (ctlr->device_id != TW_CL_DEVICE_ID_9K_SA)) ||
 		    (!(ctlr->reset_in_progress)) ||
 		    ((status_reg & TWA_STATUS_QUEUE_ERROR_INTERRUPT) == 0))
-		tw_cl_create_event(ctlr_handle, TW_CL_FALSE,
-			TW_CL_MESSAGE_SOURCE_COMMON_LAYER_EVENT,
-			0x1302, 0x1, TW_CL_SEVERITY_ERROR_STRING,
-			"Unexpected status bit(s)",
-			"status reg = 0x%x Unexpected bits: %s",
-			status_reg & TWA_STATUS_UNEXPECTED_BITS,
-			tw_cli_describe_bits(status_reg &
-				TWA_STATUS_UNEXPECTED_BITS, desc));
+		{
+			tw_cl_create_event(ctlr_handle, TW_CL_FALSE,
+			    TW_CL_MESSAGE_SOURCE_COMMON_LAYER_EVENT,
+			    0x1302, 0x1, TW_CL_SEVERITY_ERROR_STRING,
+			    "Unexpected status bit(s)",
+			    "status reg = 0x%x Unexpected bits: %s",
+			    status_reg & TWA_STATUS_UNEXPECTED_BITS,
+			    tw_cli_describe_bits(status_reg &
+				    TWA_STATUS_UNEXPECTED_BITS, desc));
+		}
 
 		if (status_reg & TWA_STATUS_PCI_PARITY_ERROR_INTERRUPT) {
 			tw_cl_create_event(ctlr_handle, TW_CL_FALSE,

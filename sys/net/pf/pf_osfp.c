@@ -93,9 +93,9 @@ pf_osfp_fingerprint(struct pf_pdesc *pd, struct mbuf *m, int off,
 
 	if (pd->af == PF_INET) {
 		ip = mtod(m, struct ip *);
-		ip6 = (struct ip6_hdr *)NULL;
+		ip6 = NULL;
 	} else {
-		ip = (struct ip *)NULL;
+		ip = NULL;
 		ip6 = mtod(m, struct ip6_hdr *);
 	}
 	if (!pf_pull_hdr(m, off, hdr, tcp->th_off << 2, NULL, NULL,

@@ -330,7 +330,7 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp)
 failed:
 	if (bp)
 		brelse (bp);
-	mp->mnt_data = (qaddr_t)NULL;
+	mp->mnt_data = NULL;
 	dev->si_mountpoint = NULL;
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
 	return (error);

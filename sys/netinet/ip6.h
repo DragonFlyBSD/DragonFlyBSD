@@ -334,7 +334,7 @@ do {									\
 				panic("m_pulldown malfunction");	\
 			(val) = (typ)(mtod(t, caddr_t) + tmp);		\
 		} else {						\
-			(val) = (typ)NULL;				\
+			(val) = NULL;					\
 			(m) = NULL;					\
 		}							\
 	}								\
@@ -352,7 +352,7 @@ do {									\
 				panic("m_pulldown malfunction");	\
 			(val) = (typ)mtod(t, caddr_t);			\
 		} else {						\
-			(val) = (typ)NULL;				\
+			(val) = NULL;					\
 			(m) = NULL;					\
 		}							\
 	}								\

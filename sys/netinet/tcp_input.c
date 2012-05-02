@@ -3027,11 +3027,11 @@ tcp_mss(struct tcpcb *tp, int offer)
 		mss -= TCPOLEN_TSTAMP_APPA;
 
 #if	(MCLBYTES & (MCLBYTES - 1)) == 0
-		if (mss > MCLBYTES)
-			mss &= ~(MCLBYTES-1);
+	if (mss > MCLBYTES)
+		mss &= ~(MCLBYTES-1);
 #else
-		if (mss > MCLBYTES)
-			mss = mss / MCLBYTES * MCLBYTES;
+	if (mss > MCLBYTES)
+		mss = mss / MCLBYTES * MCLBYTES;
 #endif
 	/*
 	 * If there's a pipesize, change the socket buffer

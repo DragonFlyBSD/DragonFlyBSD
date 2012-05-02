@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_vcm.c,v 1.3 1999/08/28 00:41:47 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_vcm.c,v 1.7 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -153,7 +152,7 @@ eni_openvcc(Cmn_unit *cup, Cmn_vcc *cvp)
 			RX_CLIENT_BSIZE * ENI_BUF_PGSZ;
 
 	if ( ( evp->ev_rxbuf = eni_allocate_buffer ( eup, (u_long *)&size ) )
-	    == (caddr_t)NULL ) {
+	    == NULL ) {
 		return ( ENOMEM );
 	}
 	evp->ev_rxpos = 0;

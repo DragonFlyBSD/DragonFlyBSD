@@ -6301,7 +6301,7 @@ static	ccb_p sym_get_ccb (hcb_p np, u_char tn, u_char ln, u_char tag_order)
 	lcb_p lp = sym_lp(np, tp, ln);
 	u_short tag = NO_TAG;
 	SYM_QUEHEAD *qp;
-	ccb_p cp = (ccb_p) NULL;
+	ccb_p cp = NULL;
 
 	/*
 	 *  Look for a free CCB
