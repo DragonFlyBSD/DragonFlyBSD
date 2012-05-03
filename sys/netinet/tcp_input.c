@@ -236,7 +236,8 @@ int tcp_sosend_async = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosend_async, CTLFLAG_RW,
     &tcp_sosend_async, 0, "TCP asynchronized pru_send");
 
-static void	 tcp_dooptions(struct tcpopt *, u_char *, int, boolean_t);
+static void	 tcp_dooptions(struct tcpopt *, u_char *, int, boolean_t,
+		    tcp_seq);
 static void	 tcp_pulloutofband(struct socket *,
 		     struct tcphdr *, struct mbuf *, int);
 static int	 tcp_reass(struct tcpcb *, struct tcphdr *, int *,
@@ -1033,7 +1034,7 @@ findpcb:
 		 * for syncache, or perform t/tcp connection.
 		 */
 		if (so->so_qlen <= so->so_qlimit) {
-			tcp_dooptions(&to, optp, optlen, TRUE);
+			tcp_dooptions(&to, optp, optlen, TRUE, th->th_ack);
 			if (!syncache_add(&inc, &to, th, so, m))
 				goto drop;
 
@@ -1085,7 +1086,7 @@ after_listen:
 	 * Process options.
 	 * XXX this is tradtitional behavior, may need to be cleaned up.
 	 */
-	tcp_dooptions(&to, optp, optlen, (thflags & TH_SYN) != 0);
+	tcp_dooptions(&to, optp, optlen, (thflags & TH_SYN) != 0, th->th_ack);
 	if (tp->t_state == TCPS_SYN_SENT && (thflags & TH_SYN)) {
 		if ((to.to_flags & TOF_SCALE) && (tp->t_flags & TF_REQ_SCALE)) {
 			tp->t_flags |= TF_RCVD_SCALE;
@@ -1991,6 +1992,27 @@ fastretransmit:
 					tp->snd_nxt = oldsndnxt;
 				}
 				tp->snd_cwnd = oldcwnd;
+
+				if (TCP_DO_SACK(tp) &&
+				    (to.to_flags &
+				     (TOF_DSACK | TOF_SACK_REDUNDANT)) ==
+				     (TOF_DSACK | TOF_SACK_REDUNDANT)) {
+					/*
+					 * If the ACK carries DSACK and other
+					 * SACK blocks carry information that
+					 * we have already known, don't count
+					 * this ACK as duplicate ACK and, in
+					 * particular, don't start early
+					 * retransmit.  It usually happens
+					 * after spurious retransmit.
+					 */
+					KASSERT(tp->t_dupacks > 0,
+					    ("invalid dupacks %d",
+					     tp->t_dupacks));
+					tp->t_dupacks--;
+					goto drop;
+				}
+
 				sent = tp->snd_max - oldsndmax;
 				if (sent > tp->t_maxseg) {
 					KASSERT((tp->t_dupacks == 2 &&
@@ -2612,7 +2634,8 @@ drop:
  * Parse TCP options and place in tcpopt.
  */
 static void
-tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
+tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn,
+    tcp_seq ack)
 {
 	int opt, optlen, i;
 
@@ -2694,6 +2717,10 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 					break;
 				}
 			}
+			if ((to->to_flags & TOF_SACK) &&
+			    tcp_sack_ndsack_blocks(to->to_sackblocks,
+			    to->to_nsackblocks, ack))
+				to->to_flags |= TOF_DSACK;
 			break;
 #ifdef TCP_SIGNATURE
 		/*

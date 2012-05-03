@@ -453,6 +453,8 @@ struct tcpopt {
 #define	TOF_SACK		0x0080
 #define TOF_SIGNATURE		0x0100	/* signature option present */
 #define TOF_SIGLEN		0x0200	/* signature length valid (RFC2385) */
+#define TOF_DSACK		0x0400	/* D-SACK */
+#define TOF_SACK_REDUNDANT	0x0800	/* all SACK blocks are known */
 	u_int32_t	to_tsval;
 	u_int32_t	to_tsecr;
 	u_int16_t	to_mss;

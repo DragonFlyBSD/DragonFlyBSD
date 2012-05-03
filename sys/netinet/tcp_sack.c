@@ -72,7 +72,7 @@ struct sackblock {
 #define	MAXSAVEDBLOCKS	8			/* per connection limit */
 
 static int insert_block(struct scoreboard *scb,
-			const struct raw_sackblock *raw_sb);
+			const struct raw_sackblock *raw_sb, boolean_t *update);
 static void update_lostseq(struct scoreboard *scb, tcp_seq snd_una,
 			   u_int maxseg);
 
@@ -298,16 +298,18 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 	const int numblocks = to->to_nsackblocks;
 	struct raw_sackblock *blocks = to->to_sackblocks;
 	struct scoreboard *scb = &tp->scb;
-	int startblock;
-	int i;
+	int startblock, i;
 
 	if (tcp_sack_ndsack_blocks(blocks, numblocks, tp->snd_una) > 0)
 		startblock = 1;
 	else
 		startblock = 0;
 
+	to->to_flags |= TOF_SACK_REDUNDANT;
 	for (i = startblock; i < numblocks; i++) {
 		struct raw_sackblock *newsackblock = &blocks[i];
+		boolean_t update;
+		int error;
 
 		/* don't accept bad SACK blocks */
 		if (SEQ_GT(newsackblock->rblk_end, tp->snd_max)) {
@@ -316,7 +318,10 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 		}
 		tcpstat.tcps_sacksbupdate++;
 
-		if (insert_block(scb, newsackblock))
+		error = insert_block(scb, newsackblock, &update);
+		if (update)
+			to->to_flags &= ~TOF_SACK_REDUNDANT;
+		if (error)
 			break;
 	}
 }
@@ -349,11 +354,13 @@ tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to)
  * Insert SACK block into sender's scoreboard.
  */
 static int
-insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb)
+insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb,
+    boolean_t *update)
 {
 	struct sackblock *sb, *workingblock;
 	boolean_t overlap_front;
 
+	*update = TRUE;
 	if (TAILQ_EMPTY(&scb->sackblocks)) {
 		struct sackblock *newblock;
 
@@ -385,6 +392,8 @@ insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb)
 			workingblock = sb;
 			if (SEQ_GT(raw_sb->rblk_end, sb->sblk_end))
 				sb->sblk_end = raw_sb->rblk_end;
+			else
+				*update = FALSE;
 			tcpstat.tcps_sacksbreused++;
 		} else {
 			workingblock = alloc_sackblock_limit(scb, raw_sb);
