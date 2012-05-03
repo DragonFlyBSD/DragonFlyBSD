@@ -2216,6 +2216,7 @@ options 	DRM_LINUX
 # Misc devices
 #
 device		cmx		# Omnikey CardMan 4040 smartcard reader
+device		amdsbwd		# AMD South Bridge watchdog
 device		gpio		# Enable support for the gpio framework
 device		ichwd		# Intel ICH watchdog interrupt timer
 device		tbridge		# regression testing
