@@ -95,6 +95,8 @@ wdog_reset_all(void *unused)
 	int period, min_period = INT_MAX;
 
 	spin_lock(&wdogmtx);
+	if (LIST_EMPTY(&wdoglist))
+		goto done;
 	LIST_FOREACH(wd, &wdoglist, link) {
 		period = wdog_reset(wd);
 		if (period < min_period)
@@ -105,6 +107,7 @@ wdog_reset_all(void *unused)
 
 	wdog_auto_period = min_period;
 
+done:
 	spin_unlock(&wdogmtx);
 }
 
