@@ -2359,7 +2359,6 @@ options		DSCHED_BFQ
 options		DSCHED_FQ
 
 # WATCHDOG
-options		WATCHDOG_ENABLE		# Enable watchdog support framework
 options		WDOG_DISABLE_ON_PANIC	# Automatically disable watchdogs on panic
 
 # LED

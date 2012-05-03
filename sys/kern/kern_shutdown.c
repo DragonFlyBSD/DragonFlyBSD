@@ -818,7 +818,7 @@ panic(const char *fmt, ...)
 	led_switch("error", 1);
 #endif
 
-#if defined(WDOG_DISABLE_ON_PANIC) && defined(WATCHDOG_ENABLE)
+#if defined(WDOG_DISABLE_ON_PANIC)
 	wdog_disable();
 #endif
 

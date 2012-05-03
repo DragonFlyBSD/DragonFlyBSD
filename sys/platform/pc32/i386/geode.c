@@ -47,7 +47,6 @@
  * SUCH DAMAGE.
  *
  */
-#include "opt_cpu.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -132,8 +131,6 @@ geode_get_timecount(void)
 		bus_space_read_4(geode_sc.sc_iot, geode_sc.sc_ioh, GCB_TSC));
 }
 
-
-#ifdef WATCHDOG_ENABLE
 static int
 geode_watchdog(void *unused, int period)
 {
@@ -151,7 +148,6 @@ static struct watchdog	geode_wdog = {
 	.arg		=	NULL,
 	.period_max	=	0x03ff,
 };
-#endif /* WATCHDOG_ENABLE */
 
 static int
 geode_probe(device_t self)
@@ -203,7 +199,6 @@ geode_attach(device_t self)
 	cputimer_register(&geode_timer);
 	cputimer_select(&geode_timer, 0);
 
-#ifdef WATCHDOG_ENABLE
 	/* enable watchdog and configure */
 	bus_space_write_2(geode_sc.sc_iot, geode_sc.sc_ioh, GCB_WDTO, 0);
 	sts |= WDOVF_CLEAR;
@@ -212,7 +207,6 @@ geode_attach(device_t self)
 	cnfg |= WDTYPE1_RESET | WDPRES_DIV_512;
 	bus_space_write_2(geode_sc.sc_iot, geode_sc.sc_ioh, GCB_WDCNFG, cnfg);
 	wdog_register(&geode_wdog);
-#endif /* WATCHDOG_ENABLE */
 
 	return 0;
 }
