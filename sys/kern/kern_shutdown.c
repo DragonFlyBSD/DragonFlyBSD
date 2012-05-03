@@ -41,7 +41,6 @@
 
 #include "opt_ddb.h"
 #include "opt_ddb_trace.h"
-#include "opt_hw_wdog.h"
 #include "opt_panic.h"
 #include "opt_show_busybufs.h"
 #include "use_gpio.h"
@@ -126,17 +125,6 @@ SYSCTL_INT(_kern, OID_AUTO, sync_on_panic, CTLFLAG_RW,
 	&sync_on_panic, 0, "Do a sync before rebooting from a panic");
 
 SYSCTL_NODE(_kern, OID_AUTO, shutdown, CTLFLAG_RW, 0, "Shutdown environment");
-
-#ifdef	HW_WDOG
-/*
- * If there is a hardware watchdog, point this at the function needed to
- * hold it off.
- * It's needed when the kernel needs to do some lengthy operations.
- * e.g. in wd.c when dumping core.. It's most annoying to have
- * your precious core-dump only half written because the wdog kicked in.
- */
-watchdog_tickle_fn wdog_tickler = NULL;
-#endif	/* HW_WDOG */
 
 /*
  * Variable panicstr contains argument to first call to panic; used as flag

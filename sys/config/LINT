@@ -2070,12 +2070,6 @@ options 	BOOTP_COMPAT	# Workaround for broken bootp daemons.
 options 	BOOTP_WIRED_TO=fxp0 # Use interface fxp0 for BOOTP
 
 #
-# Add tie-ins for a hardware watchdog.  This only enable the hooks;
-# the user must still supply the actual driver.
-#
-options 	HW_WDOG
-
-#
 # Set the number of PV entries per process.  Increasing this can
 # stop panics related to heavy use of shared memory. However, that can
 # (combined with large amounts of physical memory) cause panics at
