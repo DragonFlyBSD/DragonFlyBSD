@@ -3253,7 +3253,8 @@ tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
 		if (SEQ_LT(nextrexmt, old_snd_max) &&
 		    SEQ_LT(tp->rexmt_high, tp->snd_nxt)) {
 			tp->rexmt_high = seq_min(tp->snd_nxt, old_snd_max);
-			if ((tp->t_flags & TF_SACKRESCUED) &&
+			if (tcp_aggressive_rescuesack &&
+			    (tp->t_flags & TF_SACKRESCUED) &&
 			    SEQ_LT(tp->rexmt_rescue, tp->rexmt_high)) {
 				/* Drag RescueRxt along with HighRxt */
 				tp->rexmt_rescue = tp->rexmt_high;
