@@ -193,7 +193,7 @@ int tcp_do_rescuesack = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rescuesack, CTLFLAG_RW,
     &tcp_do_rescuesack, 0, "Rescue retransmission for SACK");
 
-int tcp_aggressive_rescuesack = 1;
+int tcp_aggressive_rescuesack = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rescuesack_agg, CTLFLAG_RW,
     &tcp_aggressive_rescuesack, 0, "Aggressive rescue retransmission for SACK");
 
