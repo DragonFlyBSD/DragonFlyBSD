@@ -236,6 +236,10 @@ int tcp_sosend_async = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosend_async, CTLFLAG_RW,
     &tcp_sosend_async, 0, "TCP asynchronized pru_send");
 
+static int tcp_ignore_redun_dsack = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, ignore_redun_dsack, CTLFLAG_RW,
+    &tcp_ignore_redun_dsack, 0, "Ignore redundant DSACK");
+
 static void	 tcp_dooptions(struct tcpopt *, u_char *, int, boolean_t,
 		    tcp_seq);
 static void	 tcp_pulloutofband(struct socket *,
@@ -1922,6 +1926,27 @@ after_listen:
 			} else if (SEQ_LT(th->th_ack, tp->snd_recover)) {
 				tp->t_dupacks = 0;
 				break;
+			} else if (tcp_ignore_redun_dsack && TCP_DO_SACK(tp) &&
+			    (to.to_flags & (TOF_DSACK | TOF_SACK_REDUNDANT)) ==
+			    (TOF_DSACK | TOF_SACK_REDUNDANT)) {
+				/*
+				 * If the ACK carries DSACK and other
+				 * SACK blocks carry information that
+				 * we have already known, don't count
+				 * this ACK as duplicate ACK.  This
+				 * prevents spurious early retransmit
+				 * and fast retransmit.  This also
+				 * meets the requirement of RFC3042
+				 * that new segments should not be sent
+				 * if the SACK blocks do not contain
+				 * new information (XXX we actually
+				 * loosen the requirment that only DSACK
+				 * is checked here).
+				 *
+				 * This kind of ACKs are usually sent
+				 * after spurious retransmit.
+				 */
+				/* Do nothing; don't change t_dupacks */
 			} else if (++tp->t_dupacks == tcprexmtthresh) {
 				tcp_seq old_snd_nxt;
 				u_int win;
@@ -1992,27 +2017,6 @@ fastretransmit:
 					tp->snd_nxt = oldsndnxt;
 				}
 				tp->snd_cwnd = oldcwnd;
-
-				if (TCP_DO_SACK(tp) &&
-				    (to.to_flags &
-				     (TOF_DSACK | TOF_SACK_REDUNDANT)) ==
-				     (TOF_DSACK | TOF_SACK_REDUNDANT)) {
-					/*
-					 * If the ACK carries DSACK and other
-					 * SACK blocks carry information that
-					 * we have already known, don't count
-					 * this ACK as duplicate ACK and, in
-					 * particular, don't start early
-					 * retransmit.  It usually happens
-					 * after spurious retransmit.
-					 */
-					KASSERT(tp->t_dupacks > 0,
-					    ("invalid dupacks %d",
-					     tp->t_dupacks));
-					tp->t_dupacks--;
-					goto drop;
-				}
-
 				sent = tp->snd_max - oldsndmax;
 				if (sent > tp->t_maxseg) {
 					KASSERT((tp->t_dupacks == 2 &&
