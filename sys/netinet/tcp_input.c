@@ -1947,7 +1947,7 @@ after_listen:
 				 * after spurious retransmit.
 				 */
 				/* Do nothing; don't change t_dupacks */
-			} else if (++tp->t_dupacks == tcprexmtthresh) {
+			} else if (++tp->t_dupacks == tp->t_rxtthresh) {
 				tcp_seq old_snd_nxt;
 				u_int win;
 

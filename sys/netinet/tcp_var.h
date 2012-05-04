@@ -138,6 +138,7 @@ struct netmsg_tcp_timer;
 struct tcpcb {
 	struct	tsegqe_head t_segq;
 	int	t_dupacks;		/* consecutive dup acks recd */
+	int	t_rxtthresh;		/* # dup acks to start fast rxt */
 	int	tt_cpu;			/* sanity check the cpu */
 
 	struct	tcp_callout *tt_rexmt;	/* retransmit timer */
