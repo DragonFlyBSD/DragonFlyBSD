@@ -309,7 +309,6 @@ TW_INT32
 tw_cli_drain_aen_queue(struct tw_cli_ctlr_context *ctlr)
 {
 	struct tw_cli_req_context	*req;
-	struct tw_cl_command_header	*cmd_hdr;
 	TW_TIME				end_time;
 	TW_UINT16			aen_code;
 	TW_INT32			error;
@@ -357,8 +356,9 @@ tw_cli_drain_aen_queue(struct tw_cli_ctlr_context *ctlr)
 		}
 
 		if ((error = req->cmd_pkt->command.cmd_pkt_9k.status)) {
-			cmd_hdr = &req->cmd_pkt->cmd_hdr;
 #if       0
+			struct tw_cl_command_header	*cmd_hdr;
+			cmd_hdr = &req->cmd_pkt->cmd_hdr;
 			tw_cli_create_ctlr_event(ctlr,
 				TW_CL_MESSAGE_SOURCE_CONTROLLER_ERROR,
 				cmd_hdr);

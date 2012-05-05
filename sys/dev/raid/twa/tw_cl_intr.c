@@ -571,7 +571,6 @@ TW_VOID
 tw_cli_aen_callback(struct tw_cli_req_context *req)
 {
 	struct tw_cli_ctlr_context	*ctlr = req->ctlr;
-	struct tw_cl_command_header	*cmd_hdr;
 	struct tw_cl_command_9k		*cmd =
 		&(req->cmd_pkt->command.cmd_pkt_9k);
 	TW_UINT16			aen_code = TWA_AEN_QUEUE_EMPTY;
@@ -589,9 +588,10 @@ tw_cli_aen_callback(struct tw_cli_req_context *req)
 	 */
 	if (!(error = req->error_code))
 		if ((error = cmd->status)) {
+#if       0
+			struct tw_cl_command_header	*cmd_hdr;
 			cmd_hdr = (struct tw_cl_command_header *)
 				(&(req->cmd_pkt->cmd_hdr));
-#if       0
 			tw_cli_create_ctlr_event(ctlr,
 				TW_CL_MESSAGE_SOURCE_CONTROLLER_ERROR,
 				cmd_hdr);

@@ -1041,14 +1041,12 @@ static void
 mpssas_logical_unit_reset_complete(struct mps_softc *sc, struct mps_command *tm)
 {
 	MPI2_SCSI_TASK_MANAGE_REPLY *reply;
-	MPI2_SCSI_TASK_MANAGE_REQUEST *req;
 	unsigned int cm_count = 0;
 	struct mps_command *cm;
 	struct mpssas_target *targ;
 
 	callout_stop(&tm->cm_callout);
 
-	req = (MPI2_SCSI_TASK_MANAGE_REQUEST *)tm->cm_req;
 	reply = (MPI2_SCSI_TASK_MANAGE_REPLY *)tm->cm_reply;
 	targ = tm->cm_targ;
 
@@ -1131,12 +1129,10 @@ static void
 mpssas_target_reset_complete(struct mps_softc *sc, struct mps_command *tm)
 {
 	MPI2_SCSI_TASK_MANAGE_REPLY *reply;
-	MPI2_SCSI_TASK_MANAGE_REQUEST *req;
 	struct mpssas_target *targ;
 
 	callout_stop(&tm->cm_callout);
 
-	req = (MPI2_SCSI_TASK_MANAGE_REQUEST *)tm->cm_req;
 	reply = (MPI2_SCSI_TASK_MANAGE_REPLY *)tm->cm_reply;
 	targ = tm->cm_targ;
 
@@ -2364,11 +2360,9 @@ mpssas_send_smpcmd(struct mpssas_softc *sassc, union ccb *ccb, uint64_t sasaddr)
 	uint8_t *request, *response;
 	MPI2_SMP_PASSTHROUGH_REQUEST *req;
 	struct mps_softc *sc;
-	struct sglist *sg;
 	int error;
 
 	sc = sassc->sc;
-	sg = NULL;
 	error = 0;
 
 	/*
