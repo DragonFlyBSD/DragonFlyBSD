@@ -104,9 +104,8 @@ lmc_parse_file(char *path)
 	int fd;
 	char *rpath;
 	char *lm_map;
-	char resolved[MAXPATHLEN];
 
-	rpath = realpath(path, resolved);
+	rpath = realpath(path, NULL);
 	if (rpath == NULL)
 		return;
 
@@ -141,8 +140,7 @@ lmc_parse_file(char *path)
 	}
 	close(fd);
 	p = xmalloc(sizeof(struct lmc));
-	p->path = xmalloc(strlen(rpath)+1);
-	strcpy(p->path, rpath);
+	p->path = rpath;
 	TAILQ_INSERT_HEAD(&lmc_head, p, next);
 	lmc_parse(lm_map, st.st_size);
 	munmap(lm_map, st.st_size);
@@ -155,11 +153,10 @@ lmc_parse_dir(char *idir)
 	struct dirent *dp;
 	struct lmc *p;
 	char conffile[MAXPATHLEN];
-	char resolved[MAXPATHLEN];
 	char *ext;
 	char *rpath;
 
-	rpath = realpath(idir, resolved);
+	rpath = realpath(idir, NULL);
 	if (rpath == NULL)
 		return;
 
