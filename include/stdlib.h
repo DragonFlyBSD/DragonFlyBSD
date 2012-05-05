@@ -32,7 +32,6 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.67 2008/07/22 11:40:42 ache Exp $
- * $DragonFly: src/include/stdlib.h,v 1.22 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -208,7 +207,7 @@ int	 posix_openpt(int);
 char	*ptsname(int);
 int	 putenv(char *);
 long	 random(void);
-char	*realpath(const char *, char resolved_path[]);
+char	*realpath(const char * __restrict, char * __restrict);
 unsigned short
 	*seed48(unsigned short[3]);
 int	 setkey(const char *);
