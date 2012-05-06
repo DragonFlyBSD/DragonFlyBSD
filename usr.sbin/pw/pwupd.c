@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/pwupd.c,v 1.12.2.4 2001/12/21 15:21:32 nectar Exp $
- * $DragonFly: src/usr.sbin/pw/pwupd.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pw/pwupd.c,v 1.21 2008/07/17 13:47:59 jhb Exp $
  */
 
 #include <stdio.h>
@@ -109,7 +108,8 @@ fmtpwentry(char *buf, struct passwd * pwd, int type)
 	int             l;
 	char           *pw;
 
-	pw = (pwd->pw_passwd == NULL || !*pwd->pw_passwd) ? "" : (type == PWF_MASTER) ? pwd->pw_passwd : "*";
+	pw = (type == PWF_MASTER) ?
+	    ((pwd->pw_passwd == NULL) ? "" : pwd->pw_passwd) : "*";
 
 	if (type == PWF_PASSWD)
 		l = sprintf(buf, "%s:*:%ld:%ld:%s:%s:%s\n",
@@ -145,7 +145,8 @@ pw_update(struct passwd * pwd, char const * user, int mode)
 	 * Note: -C is only available in FreeBSD 2.2 and above
 	 */
 #ifdef HAVE_PWDB_C
-	if (pwdb("-C", NULL) == 0) {	/* Check only */
+	rc = pwdb("-C", NULL);	/* Check only */
+	if (rc == 0) {
 #else
 	{				/* No -C */
 #endif
@@ -164,6 +165,8 @@ pw_update(struct passwd * pwd, char const * user, int mode)
 		else
 			fmtpwentry(pwbuf, pwd, PWF_PASSWD);
 
+		if (l < 0)
+			l = 0;
 		rc = fileupdate(getpwpath(_PASSWD), 0644, pwbuf, pfx, l, mode);
 		if (rc == 0) {
 

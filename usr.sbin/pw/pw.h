@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/pw.h,v 1.10.2.2 2001/07/19 01:46:55 kris Exp $
- * $DragonFly: src/usr.sbin/pw/pw.h,v 1.3 2005/05/07 23:42:39 corecode Exp $
+ * $FreeBSD: src/usr.sbin/pw/pw.h,v 1.16 2011/03/08 20:13:29 jkim Exp $
  */
 
 #include <stdio.h>
@@ -82,6 +81,7 @@ struct userconf
 	char	*newmail;		/* Mail to send to new accounts */
 	char	*logfile;		/* Where to log changes */
 	char	*home;			/* Where to create home directory */
+	mode_t	homemode;		/* Home directory permissions */
 	char	*shelldir;		/* Where shells are located */
 	char	**shells;		/* List of shells */
 	char	*shell_default;		/* Default shell */
@@ -95,6 +95,7 @@ struct userconf
 	int	numgroups;		/* (internal) size of default_group array */
 };
 
+#define	_DEF_DIRMODE	(S_IRWXU | S_IRWXG | S_IRWXO)
 #define _PATH_PW_CONF	"/etc/pw.conf"
 #define _UC_MAXLINE	1024
 #define _UC_MAXSHELLS	32

@@ -23,19 +23,22 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/pw_group.c,v 1.12.2.1 2000/06/28 19:19:04 ache Exp $
- * $DragonFly: src/usr.sbin/pw/pw_group.c,v 1.3 2004/09/25 20:38:21 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pw/pw_group.c,v 1.16 2008/02/23 01:25:22 scf Exp $
  */
 
 #include <ctype.h>
 #include <err.h>
 #include <termios.h>
+#include <stdbool.h>
 #include <unistd.h>
 
 #include "pw.h"
 #include "bitmap.h"
 
 
+static struct passwd *lookup_pwent(const char *user);
+static void	delete_members(char ***members, int *grmembers, int *i,
+    struct carg *arg, struct group *grp);
 static int      print_group(struct group * grp, int pretty);
 static gid_t    gr_gidpolicy(struct userconf * cnf, struct cargs * args);
 
@@ -168,11 +171,13 @@ pw_group(struct userconf * cnf, int mode, struct cargs * args)
 	 * software.
 	 */
 
-	if ((arg = getarg(args, 'h')) != NULL) {
+	if ((arg = getarg(args, 'h')) != NULL ||
+	    (arg = getarg(args, 'H')) != NULL) {
 		if (strcmp(arg->val, "-") == 0)
 			grp->gr_passwd = "*";	/* No access */
 		else {
 			int             fd = atoi(arg->val);
+			int		precrypt = (arg->ch == 'H');
 			int             b;
 			int             istty = isatty(fd);
 			struct termios  t;
@@ -206,41 +211,49 @@ pw_group(struct userconf * cnf, int mode, struct cargs * args)
 				*p = '\0';
 			if (!*line)
 				errx(EX_DATAERR, "empty password read on file descriptor %d", fd);
-			grp->gr_passwd = pw_pwcrypt(line);
+			if (precrypt) {
+				if (strchr(line, ':') != NULL)
+					return EX_DATAERR;
+				grp->gr_passwd = line;
+			} else
+				grp->gr_passwd = pw_pwcrypt(line);
 		}
 	}
 
-	if (((arg = getarg(args, 'M')) != NULL || (arg = getarg(args, 'm')) != NULL) && arg->val) {
+	if (((arg = getarg(args, 'M')) != NULL ||
+	    (arg = getarg(args, 'd')) != NULL ||
+	    (arg = getarg(args, 'm')) != NULL) && arg->val) {
 		int	i = 0;
 		char   *p;
 		struct passwd	*pwd;
 
 		/* Make sure this is not stay NULL with -M "" */
 		extendarray(&members, &grmembers, 200);
-		if (arg->ch == 'm') {
+		if (arg->ch == 'd')
+			delete_members(&members, &grmembers, &i, arg, grp);
+		else if (arg->ch == 'm') {
 			int	k = 0;
 
 			while (grp->gr_mem[k] != NULL) {
-				if (extendarray(&members, &grmembers, i + 2) != -1) {
+				if (extendarray(&members, &grmembers, i + 2) != -1)
 					members[i++] = grp->gr_mem[k];
-				}
 				k++;
 			}
 		}
-		for (p = strtok(arg->val, ", \t"); p != NULL; p = strtok(NULL, ", \t")) {
-			int     j;
-			if ((pwd = GETPWNAM(p)) == NULL) {
-				if (!isdigit((unsigned char)*p) || (pwd = getpwuid((uid_t) atoi(p))) == NULL)
-					errx(EX_NOUSER, "user `%s' does not exist", p);
+
+		if (arg->ch != 'd')
+			for (p = strtok(arg->val, ", \t"); p != NULL; p = strtok(NULL, ", \t")) {
+				int	j;
+
+				/*
+				 * Check for duplicates
+				 */
+				pwd = lookup_pwent(p);
+				for (j = 0; j < i && strcmp(members[j], pwd->pw_name) != 0; j++)
+					;
+				if (j == i && extendarray(&members, &grmembers, i + 2) != -1)
+					members[i++] = newstr(pwd->pw_name);
 			}
-			/*
-			 * Check for duplicates
-			 */
-			for (j = 0; j < i && strcmp(members[j], pwd->pw_name)!=0; j++)
-				;
-			if (j == i && extendarray(&members, &grmembers, i + 2) != -1)
-				members[i++] = newstr(pwd->pw_name);
-		}
 		while (i < grmembers)
 			members[i++] = NULL;
 		grp->gr_mem = members;
@@ -272,6 +285,63 @@ pw_group(struct userconf * cnf, int mode, struct cargs * args)
 		free(members);
 
 	return EXIT_SUCCESS;
+}
+
+
+/*
+ * Lookup a passwd entry using a name or UID.
+ */
+static struct passwd *
+lookup_pwent(const char *user)
+{
+	struct passwd *pwd;
+
+	if ((pwd = GETPWNAM(user)) == NULL &&
+	    (!isdigit((unsigned char)*user) ||
+	    (pwd = getpwuid((uid_t) atoi(user))) == NULL))
+		errx(EX_NOUSER, "user `%s' does not exist", user);
+
+	return (pwd);
+}
+
+
+/*
+ * Delete requested members from a group.
+ */
+static void
+delete_members(char ***members, int *grmembers, int *i, struct carg *arg,
+    struct group *grp)
+{
+	bool matchFound;
+	char *user;
+	char *valueCopy;
+	char *valuePtr;
+	int k;
+	struct passwd *pwd;
+
+	k = 0;
+	while (grp->gr_mem[k] != NULL) {
+		matchFound = false;
+		if ((valueCopy = strdup(arg->val)) == NULL)
+			errx(EX_UNAVAILABLE, "out of memory");
+		valuePtr = valueCopy;
+		while ((user = strsep(&valuePtr, ", \t")) != NULL) {
+			pwd = lookup_pwent(user);
+			if (strcmp(grp->gr_mem[k], pwd->pw_name) == 0) {
+				matchFound = true;
+				break;
+			}
+		}
+		free(valueCopy);
+
+		if (!matchFound &&
+		    extendarray(members, grmembers, *i + 2) != -1)
+			(*members)[(*i)++] = grp->gr_mem[k];
+
+		k++;
+	}
+
+	return;
 }
 
 

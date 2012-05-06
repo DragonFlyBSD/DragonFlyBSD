@@ -22,10 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/pw/pw.8,v 1.19.2.12 2003/05/08 15:01:44 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/pw/pw.8,v 1.5 2008/05/02 02:05:08 swildner Exp $
+.\" $FreeBSD: src/usr.sbin/pw/pw.8,v 1.45 2011/12/22 03:36:54 eadler Exp $
 .\"
-.Dd December 9, 1996
+.Dd December 21, 2011
 .Dt PW 8
 .Os
 .Sh NAME
@@ -47,12 +46,13 @@
 .Op Fl g Ar group
 .Op Fl G Ar grouplist
 .Op Fl m
+.Op Fl M Ar mode
 .Op Fl k Ar dir
 .Op Fl w Ar method
 .Op Fl s Ar shell
 .Op Fl o
 .Op Fl L Ar class
-.Op Fl h Ar fd
+.Op Fl h Ar fd | Fl H Ar fd
 .Op Fl N
 .Op Fl P
 .Op Fl Y
@@ -69,6 +69,7 @@
 .Op Fl g Ar group
 .Op Fl G Ar grouplist
 .Op Fl k Ar dir
+.Op Fl M Ar mode
 .Op Fl u Ar min , Ns Ar max
 .Op Fl i Ar min , Ns Ar max
 .Op Fl w Ar method
@@ -98,11 +99,12 @@
 .Op Fl G Ar grouplist
 .Op Fl l Ar name
 .Op Fl m
+.Op Fl M Ar mode
 .Op Fl k Ar dir
 .Op Fl w Ar method
 .Op Fl s Ar shell
 .Op Fl L Ar class
-.Op Fl h Ar fd
+.Op Fl h Ar fd | Fl H Ar fd
 .Op Fl N
 .Op Fl P
 .Op Fl Y
@@ -131,7 +133,7 @@
 .Op Fl g Ar gid
 .Op Fl M Ar members
 .Op Fl o
-.Op Fl h Ar fd
+.Op Fl h Ar fd | Fl H Ar fd
 .Op Fl N
 .Op Fl P
 .Op Fl Y
@@ -153,7 +155,8 @@
 .Op Fl l Ar name
 .Op Fl M Ar members
 .Op Fl m Ar newmembers
-.Op Fl h Ar fd
+.Op Fl d Ar oldmembers
+.Op Fl h Ar fd | Fl H Ar fd
 .Op Fl N
 .Op Fl P
 .Op Fl Y
@@ -399,7 +402,7 @@ may be defined by either its name or group number.
 .It Fl G Ar grouplist
 Set additional group memberships for an account.
 .Ar grouplist
-is a comma-separated list of group names or group numbers.
+is a comma, space or tab-separated list of group names or group numbers.
 The user's name is added to the group lists in
 .Pa /etc/group ,
 and
@@ -428,6 +431,11 @@ The new home directory is populated with the contents of the
 .Ar skeleton
 directory, which typically contains a set of shell configuration files that the
 user may personalize to taste.
+Files in this directory are usually named
+.Pa dot . Ns Aq Ar config
+where the
+.Pa dot
+prefix will be stripped.
 When
 .Fl m
 is used on an account with
@@ -444,6 +452,16 @@ option (see below), bearing the name of the new account.
 This can be overridden by the
 .Fl d
 option on the command line, if desired.
+.It Fl M Ar mode
+Create the user's home directory with the specified
+.Ar mode ,
+modified by the current
+.Xr umask 2 .
+If omitted, it is derived from the parent process'
+.Xr umask 2 .
+This option is only useful in combination with the
+.Fl m
+flag.
 .It Fl k Ar dir
 Set the
 .Ar skeleton
@@ -508,6 +526,12 @@ is given as the argument
 then the password will be set to
 .Ql \&* ,
 rendering the account inaccessible via password-based login.
+.It Fl H Ar fd
+Read an encrypted password string from the specified file descriptor.
+This is like
+.Fl h ,
+but the password should be supplied already encrypted in a form
+suitable for writing directly to the password database.
 .El
 .Pp
 It is possible to use
@@ -592,6 +616,9 @@ Set the default
 directory, from which prototype shell and other initialization files are copied when
 .Nm
 creates a user's home directory.
+See description of
+.Fl k
+for naming conventions of these files.
 .It Xo
 .Fl u Ar min , Ns Ar max ,
 .Fl i Ar min , Ns Ar max
@@ -689,6 +716,17 @@ are also removed if the user's uid is unique and not also used by another accoun
 system.
 .Pp
 The
+.Ar usermod
+command adds one additional option:
+.Bl -tag -width "-G grouplist"
+.It Fl l Ar name
+This option allows changing of an existing account name to
+.Ql \&name .
+The new name must not already exist, and any attempt to duplicate an
+existing account name will be rejected.
+.El
+.Pp
+The
 .Ar usershow
 command allows viewing of an account in one of two formats.
 By default, the format is identical to the format used in
@@ -752,6 +790,15 @@ of existing users to a group without replacing the existing list of
 members.
 Login names or user ids may be used, and duplicate users are
 silently eliminated.
+.It Fl d Ar oldmembers
+Similar to
+.Fl M ,
+this option allows the
+.Em deletion
+of existing users from a group without replacing the existing list of
+members.
+Login names or user ids may be used, and duplicate users are
+silently eliminated.
 .El
 .Pp
 .Ar groupadd
@@ -807,12 +854,48 @@ The
 and
 .Ar unlock
 commands take a user name or uid of the account to lock or unlock,
-respectively.  The
+respectively.
+The
 .Fl V ,
 .Fl C ,
 and
 .Fl q
 options as described above are accepted by these commands.
+.Sh NOTES
+For a summary of options available with each command, you can use
+.Dl pw [command] help
+For example,
+.Dl pw useradd help
+lists all available options for the useradd operation.
+.Pp
+The
+.Nm
+utility allows 8-bit characters in the passwd GECOS field (user's full name,
+office, work and home phone number subfields), but disallows them in
+user login and group names.
+Use 8-bit characters with caution, as connection to the Internet will
+require that your mail transport program supports 8BITMIME, and will
+convert headers containing 8-bit characters to 7-bit quoted-printable
+format.
+.Xr sendmail 8
+does support this.
+Use of 8-bit characters in the GECOS field should be used in
+conjunction with the user's default locale and character set
+and should not be implemented without their use.
+Using 8-bit characters may also affect other
+programs that transmit the contents of the GECOS field over the
+Internet, such as
+.Xr fingerd 8 ,
+and a small number of TCP/IP clients, such as IRC, where full names
+specified in the passwd file may be used by default.
+.Pp
+The
+.Nm
+utility writes a log to the
+.Pa /var/log/userlog
+file when actions such as user or group additions or deletions occur.
+The location of this logfile can be changed in
+.Xr pw.conf 5 .
 .Sh FILES
 .Bl -tag -width /etc/master.passwd.new -compact
 .It Pa /etc/master.passwd
@@ -834,7 +917,7 @@ Pw default options file
 .It Pa /var/log/userlog
 User/group modification logfile
 .El
-.Sh DIAGNOSTICS
+.Sh EXIT STATUS
 The
 .Nm
 utility returns EXIT_SUCCESS on successful operation, otherwise
@@ -905,44 +988,10 @@ Update error for passwd or group database files.
 No base home directory configured.
 .El
 .El
-.Sh NOTES
-For a summary of options available with each command, you can use
-.Dl pw [command] help
-For example,
-.Dl pw useradd help
-lists all available options for the useradd operation.
-.Pp
-The
-.Nm
-utility allows 8-bit characters in the passwd GECOS field (user's full name,
-office, work and home phone number subfields), but disallows them in
-user login and group names.
-Use 8-bit characters with caution, as connection to the Internet will
-require that your mail transport program supports 8BITMIME, and will
-convert headers containing 8-bit characters to 7-bit quoted-printable
-format.
-.Xr sendmail 8
-does support this.
-Use of 8-bit characters in the GECOS field should be used in
-conjunction with the user's default locale and character set
-and should not be implemented without their use.
-Using 8-bit characters may also affect other
-programs that transmit the contents of the GECOS field over the
-Internet, such as
-.Xr fingerd 8 ,
-and a small number of TCP/IP clients, such as IRC, where full names
-specified in the passwd file may be used by default.
-.Pp
-The
-.Nm
-utility writes a log to the
-.Pa /var/log/userlog
-file when actions such as user or group additions or deletions occur.
-The location of this logfile can be changed in
-.Xr pw.conf 5 .
 .Sh SEE ALSO
 .Xr chpass 1 ,
 .Xr passwd 1 ,
+.Xr umask 2 ,
 .Xr group 5 ,
 .Xr login.conf 5 ,
 .Xr passwd 5 ,

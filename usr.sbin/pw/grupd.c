@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/grupd.c,v 1.8 1999/10/26 04:27:14 davidn Exp $
- * $DragonFly: src/usr.sbin/pw/grupd.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pw/grupd.c,v 1.10 2001/08/30 06:32:17 dd Exp $
  */
 
 #include <stdio.h>

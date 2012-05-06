@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/pw_conf.c,v 1.10.2.2 2001/01/14 08:41:19 dougb Exp $
- * $DragonFly: src/usr.sbin/pw/pw_conf.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pw/pw_conf.c,v 1.16 2011/03/08 20:13:29 jkim Exp $
  */
 
 #include <string.h>
@@ -45,6 +44,7 @@ enum {
 	_UC_NEWMAIL,
 	_UC_LOGFILE,
 	_UC_HOMEROOT,
+	_UC_HOMEMODE,
 	_UC_SHELLPATH,
 	_UC_SHELLS,
 	_UC_DEFAULTSHELL,
@@ -88,6 +88,7 @@ static struct userconf config =
 	NULL,			/* Mail to send to new accounts */
 	"/var/log/userlog",	/* Where to log changes */
 	"/home",		/* Where to create home directory */
+	_DEF_DIRMODE,		/* Home directory perms, modified by umask */
 	"/bin",			/* Where shells are located */
 	system_shells,		/* List of shells (first is default) */
 	bourne_shell,		/* Default shell */
@@ -112,6 +113,7 @@ static char const *comments[_UC_FIELDS] =
 	"\n# Mail this file to new user (/etc/newuser.msg or no)\n",
 	"\n# Log add/change/remove information in this file\n",
 	"\n# Root directory in which $HOME directory is created\n",
+	"\n# Mode for the new $HOME directory, will be modified by umask\n",
 	"\n# Colon separated list of directories containing valid shells\n",
 	"\n# Comma separated list of available shells (without paths)\n",
 	"\n# Default shell (without path)\n",
@@ -137,6 +139,7 @@ static char const *kwds[] =
 	"newmail",
 	"logfile",
 	"home",
+	"homemode",
 	"shellpath",
 	"shells",
 	"defaultshell",
@@ -253,6 +256,7 @@ read_userconfig(char const * file)
 				static char const toks[] = " \t\r\n,=";
 				char           *q = strtok(NULL, toks);
 				int             i = 0;
+				mode_t          *modeset;
 
 				while (i < _UC_FIELDS && strcmp(p, kwds[i]) != 0)
 					++i;
@@ -291,6 +295,12 @@ read_userconfig(char const * file)
 				case _UC_HOMEROOT:
 					config.home = (q == NULL || !boolean_val(q, 1))
 						? "/home" : newstr(q);
+					break;
+				case _UC_HOMEMODE:
+					modeset = setmode(q);
+					config.homemode = (q == NULL || !boolean_val(q, 1))
+						? _DEF_DIRMODE : getmode(modeset, _DEF_DIRMODE);
+					free(modeset);
 					break;
 				case _UC_SHELLPATH:
 					config.shelldir = (q == NULL || !boolean_val(q, 1))
@@ -411,6 +421,10 @@ write_userconfig(char const * file)
 				case _UC_HOMEROOT:
 					val = config.home;
 					break;
+				case _UC_HOMEMODE:
+					sprintf(buf, "%04o", config.homemode);
+					quote = 0;
+					break;
 				case _UC_SHELLPATH:
 					val = config.shelldir;
 					break;
@@ -418,6 +432,8 @@ write_userconfig(char const * file)
 					for (j = k = 0; j < _UC_MAXSHELLS && system_shells[j] != NULL; j++) {
 						char	lbuf[64];
 						int	l = snprintf(lbuf, sizeof lbuf, "%s\"%s\"", k ? "," : "", system_shells[j]);
+						if (l < 0)
+							l = 0;
 						if (l + k + 1 < len || extendline(&buf, &len, len + LNBUFSZ) != -1) {
 							strcpy(buf + k, lbuf);
 							k += l;
@@ -436,6 +452,8 @@ write_userconfig(char const * file)
 					for (j = k = 0; j < config.numgroups && config.groups[j] != NULL; j++) {
 						char	lbuf[64];
 						int	l = snprintf(lbuf, sizeof lbuf, "%s\"%s\"", k ? "," : "", config.groups[j]);
+						if (l < 0)
+							l = 0;
 						if (l + k + 1 < len || extendline(&buf, &len, len + 1024) != -1) {
 							strcpy(buf + k, lbuf);
 							k +=  l;

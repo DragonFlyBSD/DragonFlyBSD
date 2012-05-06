@@ -22,10 +22,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
  *
- * $FreeBSD: src/usr.sbin/pw/pw_user.c,v 1.34.2.13 2003/02/01 21:20:10 gad Exp $
- * $DragonFly: src/usr.sbin/pw/pw_user.c,v 1.4 2004/11/30 20:12:21 joerg Exp $
+ * $FreeBSD: src/usr.sbin/pw/pw_user.c,v 1.72 2012/02/22 06:27:20 kevlo Exp $
  */
 
 #include <ctype.h>
@@ -39,19 +37,11 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <unistd.h>
-#include <utmp.h>
 #include <login_cap.h>
-#if defined(USE_MD5RAND)
-#include <md5.h>
-#endif
 #include "pw.h"
 #include "bitmap.h"
 
-#if (MAXLOGNAME-1) > UT_NAMESIZE
-#define LOGNAMESIZE UT_NAMESIZE
-#else
 #define LOGNAMESIZE (MAXLOGNAME-1)
-#endif
 
 static		char locked_str[] = "*LOCKED*";
 
@@ -65,7 +55,7 @@ static char    *pw_shellpolicy(struct userconf * cnf, struct cargs * args, char 
 static char    *pw_password(struct userconf * cnf, struct cargs * args, char const * user);
 static char    *shell_path(char const * path, char *shells[], char *sh);
 static void     rmat(uid_t uid);
-static void	rmskey(char const * name);
+static void     rmopie(char const * name);
 
 /*-
  * -C config      configuration file
@@ -84,6 +74,7 @@ static void	rmskey(char const * name);
  * -L class       user class
  * -l name        new login name
  * -h fd          password filehandle
+ * -H fd          encrypted password filehandle
  * -F             force print or add
  *   Setting defaults:
  * -D             set user defaults
@@ -112,6 +103,8 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 	struct stat     st;
 	char            line[_PASSWORD_LEN+1];
 	FILE	       *fp;
+	char *dmode_c;
+	void *set = NULL;
 
 	static struct passwd fakeuser =
 	{
@@ -125,9 +118,7 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 		"/nonexistent",
 		"/bin/sh",
 		0
-#if defined(__DragonFly__)
 		,0
-#endif
 	};
 
 
@@ -151,6 +142,15 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 
 	if ((arg = getarg(args, 'b')) != NULL) {
 		cnf->home = arg->val;
+	}
+
+	if ((arg = getarg(args, 'M')) != NULL) {
+		dmode_c = arg->val;
+		if ((set = setmode(dmode_c)) == NULL)
+			errx(EX_DATAERR, "invalid directory creation mode '%s'",
+			    dmode_c);
+		cnf->homemode = getmode(set, _DEF_DIRMODE);
+		free(set);
 	}
 
 	/*
@@ -178,19 +178,23 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 			if (strchr(cnf->home+1, '/') == NULL) {
 				strcpy(dbuf, "/usr");
 				strncat(dbuf, cnf->home, MAXPATHLEN-5);
-				if (mkdir(dbuf, 0755) != -1 || errno == EEXIST) {
+				if (mkdir(dbuf, _DEF_DIRMODE) != -1 || errno == EEXIST) {
 					chown(dbuf, 0, 0);
-					symlink(dbuf, cnf->home);
+					/*
+					 * Skip first "/" and create symlink:
+					 * /home -> usr/home
+					 */
+					symlink(dbuf+1, cnf->home);
 				}
 				/* If this falls, fall back to old method */
 			}
-			p = strncpy(dbuf, cnf->home, sizeof dbuf);
-			dbuf[MAXPATHLEN-1] = '\0';
+			strlcpy(dbuf, cnf->home, sizeof(dbuf));
+			p = dbuf;
 			if (stat(dbuf, &st) == -1) {
 				while ((p = strchr(++p, '/')) != NULL) {
 					*p = '\0';
 					if (stat(dbuf, &st) == -1) {
-						if (mkdir(dbuf, 0755) == -1)
+						if (mkdir(dbuf, _DEF_DIRMODE) == -1)
 							goto direrr;
 						chown(dbuf, 0, 0);
 					} else if (!S_ISDIR(st.st_mode))
@@ -199,7 +203,7 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 				}
 			}
 			if (stat(dbuf, &st) == -1) {
-				if (mkdir(dbuf, 0755) == -1) {
+				if (mkdir(dbuf, _DEF_DIRMODE) == -1) {
 				direrr:	err(EX_OSFILE, "mkdir '%s'", dbuf);
 				}
 				chown(dbuf, 0, 0);
@@ -374,10 +378,10 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 
 			if (!PWALTDIR()) {
 				/*
-				 * Remove skey record from /etc/skeykeys
+				 * Remove opie record from /etc/opiekeys
 		        	 */
 
-				rmskey(pwd->pw_name);
+				rmopie(pwd->pw_name);
 
 				/*
 				 * Remove crontabs
@@ -393,7 +397,7 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 			 * invalidated by deletion
 			 */
 			sprintf(file, "%s/%s", _PATH_MAILDIR, pwd->pw_name);
-			strlcpy(home, pwd->pw_dir, sizeof home);
+			strlcpy(home, pwd->pw_dir, sizeof(home));
 
 			rc = delpwent(pwd);
 			if (rc == -1)
@@ -533,7 +537,8 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 		}
 
 		if ((arg  = getarg(args, 'd')) != NULL) {
-			edited = strcmp(pwd->pw_dir, arg->val) != 0;
+			if (strcmp(pwd->pw_dir, arg->val))
+				edited = 1;
 			if (stat(pwd->pw_dir = arg->val, &st) == -1) {
 				if (getarg(args, 'm') == NULL && strcmp(pwd->pw_dir, "/nonexistent") != 0)
 				  warnx("WARNING: home `%s' does not exist", pwd->pw_dir);
@@ -541,7 +546,8 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 				warnx("WARNING: home `%s' is not a directory", pwd->pw_dir);
 		}
 
-		if ((arg = getarg(args, 'w')) != NULL && getarg(args, 'h') == NULL) {
+		if ((arg = getarg(args, 'w')) != NULL &&
+		    getarg(args, 'h') == NULL && getarg(args, 'H') == NULL) {
 			login_cap_t *lc;
 
 			lc = login_getpwclass(pwd);
@@ -599,7 +605,8 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 		}
 	}
 
-	if ((arg = getarg(args, 'h')) != NULL) {
+	if ((arg = getarg(args, 'h')) != NULL ||
+	    (arg = getarg(args, 'H')) != NULL) {
 		if (strcmp(arg->val, "-") == 0) {
 			if (!pwd->pw_passwd || *pwd->pw_passwd != '*') {
 				pwd->pw_passwd = "*";	/* No access */
@@ -607,6 +614,7 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 			}
 		} else {
 			int             fd = atoi(arg->val);
+			int		precrypt = (arg->ch == 'H');
 			int             b;
 			int             istty = isatty(fd);
 			struct termios  t;
@@ -621,7 +629,10 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 					/* Disable echo */
 					n.c_lflag &= ~(ECHO);
 					tcsetattr(fd, TCSANOW, &n);
-					printf("%sassword for user %s:", (mode == M_UPDATE) ? "New p" : "P", pwd->pw_name);
+					printf("%s%spassword for user %s:",
+					     (mode == M_UPDATE) ? "new " : "",
+					     precrypt ? "encrypted " : "",
+					     pwd->pw_name);
 					fflush(stdout);
 				}
 			}
@@ -632,20 +643,27 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 				fflush(stdout);
 			}
 			if (b < 0) {
-				warn("-h file descriptor");
+				warn("-%c file descriptor", precrypt ? 'H' :
+				    'h');
 				return EX_IOERR;
 			}
 			line[b] = '\0';
-			if ((p = strpbrk(line, " \t\r\n")) != NULL)
+			if ((p = strpbrk(line, "\r\n")) != NULL)
 				*p = '\0';
 			if (!*line)
 				errx(EX_DATAERR, "empty password read on file descriptor %d", fd);
-			lc = login_getpwclass(pwd);
-			if (lc == NULL ||
-			    login_setcryptfmt(lc, "md5", NULL) == NULL)
-				warn("setting crypt(3) format");
-			login_close(lc);
-			pwd->pw_passwd = pw_pwcrypt(line);
+			if (precrypt) {
+				if (strchr(line, ':') != NULL)
+					return EX_DATAERR;
+				pwd->pw_passwd = line;
+			} else {
+				lc = login_getpwclass(pwd);
+				if (lc == NULL ||
+				    login_setcryptfmt(lc, "md5", NULL) == NULL)
+					warn("setting crypt(3) format");
+				login_close(lc);
+				pwd->pw_passwd = pw_pwcrypt(line);
+			}
 			edited = 1;
 		}
 	}
@@ -742,7 +760,7 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 	 * existing files will *not* be overwritten.
 	 */
 	if (!PWALTDIR() && getarg(args, 'm') != NULL && pwd->pw_dir && *pwd->pw_dir == '/' && pwd->pw_dir[1]) {
-		copymkdir(pwd->pw_dir, cnf->dotdir, 0755, pwd->pw_uid, pwd->pw_gid);
+		copymkdir(pwd->pw_dir, cnf->dotdir, cnf->homemode, pwd->pw_uid, pwd->pw_gid);
 		pw_log(cnf, mode, W_USER, "%s(%ld) home %s made",
 		       pwd->pw_name, (long) pwd->pw_uid, pwd->pw_dir);
 	}
@@ -887,9 +905,9 @@ pw_gidpolicy(struct userconf * cnf, struct cargs * args, char *nam, gid_t prefer
 			if ((grp = GETGRNAM(nam)) != NULL)
 				gid = grp->gr_gid;
 		}
-		a_gid = grpargs.lh_first;
+		a_gid = LIST_FIRST(&grpargs);
 		while (a_gid != NULL) {
-			struct carg    *t = a_gid->list.le_next;
+			struct carg    *t = LIST_NEXT(a_gid, list);
 			LIST_REMOVE(a_gid, list);
 			a_gid = t;
 		}
@@ -960,8 +978,7 @@ shell_path(char const * path, char *shells[], char *sh)
 		/*
 		 * We need to search paths
 		 */
-		strncpy(paths, path, sizeof paths);
-		paths[sizeof paths - 1] = '\0';
+		strlcpy(paths, path, sizeof(paths));
 		for (p = strtok(paths, ": \t\r\n"); p != NULL; p = strtok(NULL, ": \t\r\n")) {
 			int             i;
 			static char     shellpath[256];
@@ -996,13 +1013,15 @@ pw_shellpolicy(struct userconf * cnf, struct cargs * args, char *newshell)
 	return shell_path(cnf->shelldir, cnf->shells, sh ? sh : cnf->shell_default);
 }
 
-static char const chars[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.";
+#define	SALTSIZE	32
+
+static char const chars[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ./";
 
 char           *
 pw_pwcrypt(char *password)
 {
 	int             i;
-	char            salt[12];
+	char            salt[SALTSIZE + 1];
 	char		*cryptpw;
 
 	static char     buf[256];
@@ -1010,9 +1029,9 @@ pw_pwcrypt(char *password)
 	/*
 	 * Calculate a salt value
 	 */
-	for (i = 0; i < 8; i++)
-		salt[i] = chars[arc4random() % 63];
-	salt[i] = '\0';
+	for (i = 0; i < SALTSIZE; i++)
+		salt[i] = chars[arc4random_uniform(sizeof(chars) - 1)];
+	salt[SALTSIZE] = '\0';
 
 	cryptpw = crypt(password, salt);
 	if (cryptpw == NULL)
@@ -1020,75 +1039,25 @@ pw_pwcrypt(char *password)
 	return strcpy(buf, cryptpw);
 }
 
-#if defined(USE_MD5RAND)
-u_char *
-pw_getrand(u_char *buf, int len)	/* cryptographically secure rng */
-{
-	int i;
-	for (i=0;i<len;i+=16) {
-		u_char ubuf[16];
-
-		MD5_CTX md5_ctx;
-		struct timeval tv, tvo;
-		struct rusage ru;
-		int n=0;
-		int t;
-
-		MD5Init (&md5_ctx);
-		t=getpid();
-		MD5Update (&md5_ctx, (u_char*)&t, sizeof t);
-		t=getppid();
-		MD5Update (&md5_ctx, (u_char*)&t, sizeof t);
-		gettimeofday (&tvo, NULL);
-		do {
-			getrusage (RUSAGE_SELF, &ru);
-			MD5Update (&md5_ctx, (u_char*)&ru, sizeof ru);
-			gettimeofday (&tv, NULL);
-			MD5Update (&md5_ctx, (u_char*)&tv, sizeof tv);
-		} while (n++<20 || tv.tv_usec-tvo.tv_usec<100*1000);
-		MD5Final (ubuf, &md5_ctx);
-		memcpy(buf+i, ubuf, MIN(16, len-i));
-	}
-	return buf;
-}
-
-#else	/* Portable version */
-
-static u_char *
-pw_getrand(u_char *buf, int len)
-{
-	int i;
-
-	srandomdev();
-	for (i = 0; i < len; i++) {
-		unsigned long val = random();
-		/* Use all bits in the random value */
-		buf[i]=(u_char)((val >> 24) ^ (val >> 16) ^ (val >> 8) ^ val);
-	}
-	return buf;
-}
-
-#endif
 
 static char    *
 pw_password(struct userconf * cnf, struct cargs * args, char const * user)
 {
 	int             i, l;
 	char            pwbuf[32];
-	u_char		rndbuf[sizeof pwbuf];
 
 	switch (cnf->default_password) {
 	case -1:		/* Random password */
 		l = (arc4random() % 8 + 8);	/* 8 - 16 chars */
-		pw_getrand(rndbuf, l);
 		for (i = 0; i < l; i++)
-			pwbuf[i] = chars[rndbuf[i] % (sizeof(chars)-1)];
+			pwbuf[i] = chars[arc4random_uniform(sizeof(chars)-1)];
 		pwbuf[i] = '\0';
 
 		/*
 		 * We give this information back to the user
 		 */
-		if (getarg(args, 'h') == NULL && getarg(args, 'N') == NULL) {
+		if (getarg(args, 'h') == NULL && getarg(args, 'H') == NULL &&
+		    getarg(args, 'N') == NULL) {
 			if (isatty(STDOUT_FILENO))
 				printf("Password for '%s' is: ", user);
 			printf("%s\n", pwbuf);
@@ -1104,8 +1073,7 @@ pw_password(struct userconf * cnf, struct cargs * args, char const * user)
 		return "*";
 
 	case 1:		/* user's name */
-		strncpy(pwbuf, user, sizeof pwbuf);
-		pwbuf[sizeof pwbuf - 1] = '\0';
+		strlcpy(pwbuf, user, sizeof(pwbuf));
 		break;
 	}
 	return pw_pwcrypt(pwbuf);
@@ -1130,17 +1098,14 @@ print_user(struct passwd * pwd, int pretty, int v7)
 		struct tm *    tptr;
 
 		if ((p = strtok(pwd->pw_gecos, ",")) != NULL) {
-			strncpy(uname, p, sizeof uname);
-			uname[sizeof uname - 1] = '\0';
+			strlcpy(uname, p, sizeof(uname));
 			if ((p = strtok(NULL, ",")) != NULL) {
-				strncpy(office, p, sizeof office);
-				office[sizeof office - 1] = '\0';
+				strlcpy(office, p, sizeof(office));
 				if ((p = strtok(NULL, ",")) != NULL) {
-					strncpy(wphone, p, sizeof wphone);
-					wphone[sizeof wphone - 1] = '\0';
+					strlcpy(wphone, p, sizeof(wphone));
 					if ((p = strtok(NULL, "")) != NULL) {
-						strncpy(hphone, p, sizeof hphone);
-						hphone[sizeof hphone - 1] = '\0';
+						strlcpy(hphone, p,
+						    sizeof(hphone));
 					}
 				}
 			}
@@ -1277,10 +1242,10 @@ rmat(uid_t uid)
 }
 
 static void
-rmskey(char const * name)
+rmopie(char const * name)
 {
-	static const char etcskey[] = "/etc/skeykeys";
-	FILE   *fp = fopen(etcskey, "r+");
+	static const char etcopie[] = "/etc/opiekeys";
+	FILE   *fp = fopen(etcopie, "r+");
 
 	if (fp != NULL) {
 		char	tmp[1024];

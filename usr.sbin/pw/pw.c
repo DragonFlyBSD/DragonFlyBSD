@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/pw.c,v 1.18.2.5 2001/07/19 01:46:55 kris Exp $
- * $DragonFly: src/usr.sbin/pw/pw.c,v 1.3 2004/12/18 22:48:04 swildner Exp $
+ * $FreeBSD: src/usr.sbin/pw/pw.c,v 1.33 2008/02/23 01:25:22 scf Exp $
  */
 
 #include <err.h>
@@ -104,18 +103,18 @@ main(int argc, char *argv[])
 	static const char *opts[W_NUM][M_NUM] =
 	{
 		{ /* user */
-			"V:C:qn:u:c:d:e:p:g:G:mk:s:oL:i:w:h:Db:NPy:Y",
+			"V:C:qn:u:c:d:e:p:g:G:mM:k:s:oL:i:w:h:H:Db:NPy:Y",
 			"V:C:qn:u:rY",
-			"V:C:qn:u:c:d:e:p:g:G:ml:k:s:w:L:h:FNPY",
+			"V:C:qn:u:c:d:e:p:g:G:mM:l:k:s:w:L:h:H:FNPY",
 			"V:C:qn:u:FPa7",
 			"V:C:q",
 			"V:C:q",
 			"V:C:q"
 		},
 		{ /* grp  */
-			"V:C:qn:g:h:M:pNPY",
+			"V:C:qn:g:h:H:M:opNPY",
 			"V:C:qn:g:Y",
-			"V:C:qn:g:l:h:FM:m:NPY",
+			"V:C:qn:d:g:l:h:H:FM:m:NPY",
 			"V:C:qn:g:FPa",
 			"V:C:q"
 		 }
@@ -127,7 +126,6 @@ main(int argc, char *argv[])
 		pw_group
 	};
 
-	umask(0);		/* We wish to handle this manually */
 	LIST_INIT(&arglist);
 
 	setlocale(LC_ALL, "");
@@ -224,7 +222,7 @@ main(int argc, char *argv[])
 			setgrdir(etcpath);
 		}
 	}
-    
+
 	/*
 	 * Now, let's do the common initialisation
 	 */
@@ -309,10 +307,12 @@ cmdhelp(int mode, int which)
 				"\t-g grp         initial group\n"
 				"\t-G grp1,grp2   additional groups\n"
 				"\t-m [ -k dir ]  create and set up home\n"
+				"\t-M mode        home directory permissions\n"
 				"\t-s shell       name of login shell\n"
 				"\t-o             duplicate uid ok\n"
 				"\t-L class       user class\n"
 				"\t-h fd          read password on fd\n"
+				"\t-H fd          read encrypted password on fd\n"
 				"\t-Y             update NIS maps\n"
 				"\t-N             no update\n"
 				"  Setting defaults:\n"
@@ -325,6 +325,7 @@ cmdhelp(int mode, int which)
 				"\t-G grp1,grp2   additional groups\n"
 				"\t-L class       default user class\n"
 				"\t-k dir         default home skeleton\n"
+				"\t-M mode        home directory permissions\n"
 				"\t-u min,max     set min,max uids\n"
 				"\t-i min,max     set min,max gids\n"
 				"\t-w method      set default password method\n"
@@ -352,9 +353,11 @@ cmdhelp(int mode, int which)
 				"\t-l name        new login name\n"
 				"\t-L class       user class\n"
 				"\t-m [ -k dir ]  create and set up home\n"
+				"\t-M mode        home directory permissions\n"
 				"\t-s shell       name of login shell\n"
 				"\t-w method      set new password using method\n"
 				"\t-h fd          read password on fd\n"
+				"\t-H fd          read encrypted password on fd\n"
 				"\t-Y             update NIS maps\n"
 				"\t-N             no update\n",
 				"usage: pw usershow [uid|name] [switches]\n"
@@ -403,6 +406,7 @@ cmdhelp(int mode, int which)
 				"\t-g gid         group id\n"
 				"\t-M usr1,usr2   replaces users as group members\n"
 				"\t-m usr1,usr2   add users as group members\n"
+				"\t-d usr1,usr2   delete users as group members\n"
 				"\t-l name        new group name\n"
 				"\t-Y             update NIS maps\n"
 				"\t-N             no update\n",
@@ -428,10 +432,10 @@ cmdhelp(int mode, int which)
 struct carg    *
 getarg(struct cargs * _args, int ch)
 {
-	struct carg    *c = _args->lh_first;
+	struct carg    *c = LIST_FIRST(_args);
 
 	while (c != NULL && c->ch != ch)
-		c = c->list.le_next;
+		c = LIST_NEXT(c, list);
 	return c;
 }
 

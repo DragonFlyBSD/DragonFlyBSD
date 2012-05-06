@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/rm_r.c,v 1.5.2.1 2001/07/30 10:19:54 dd Exp $
- * $DragonFly: src/usr.sbin/pw/rm_r.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pw/rm_r.c,v 1.6 2001/06/24 20:25:20 dd Exp $
  */
 
 #include <stdio.h>
