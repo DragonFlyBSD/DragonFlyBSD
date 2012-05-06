@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ichwd.4,v 1.5 2011/05/22 14:03:30 uqs Exp
 .\"
-.Dd August 20, 2008
+.Dd May 3, 2012
 .Dt ICHWD 4
 .Os
 .Sh NAME
@@ -64,10 +64,9 @@ The
 driver attempts to detect this condition and will refuse to attach if
 it believes the WDT is disabled.
 .Sh SEE ALSO
-.Xr watchdog 4 ,
-.Xr watchdog 8 ,
-.Xr watchdogd 8 ,
-.Xr watchdog 9
+.Xr watchdogd 8
+.\".Xr wdog 4 ,
+.\".Xr wdog 9
 .Rs
 .%T Using the Intel ICH Family Watchdog Timer (WDT)
 .%R Intel Application Note AP-725
