@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD$
 .\"
-.Dd January 20, 2012
+.Dd May 6, 2012
 .Dt RTLD 1
 .Os
 .Sh NAME
@@ -90,14 +90,19 @@ dynamic linker.
 After the dynamic linker has finished loading,
 relocating, and initializing the program and its required shared
 objects, it transfers control to the entry point of the program.
+The following search order is used to locate required shared objects:
 .Pp
-To locate the required shared objects in the file system,
-.Nm
-may use a
-.Dq hints
-file prepared by the
-.Xr ldconfig 8
-utility.
+.Bd -literal -offset "XX"
+1. DT_RPATH of the referencing object unless that object also
+   contains a DT_RUNPATH tag
+2. DT_RPATH of the program unless the referencing object contains
+   a DT_RUNPATH tag
+3. Path indicated by LD_LIBRARY_PATH environment variable
+4. DT_RUNPATH of the referencing object
+5. Hints file produced by the ldconfig utility
+6. The /usr/lib directory unless the referencing object was linked
+   using the "-z nodefaultlib" option
+.Ed
 .Pp
 The
 .Nm
