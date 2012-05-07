@@ -68,10 +68,11 @@
 #define	STEP		hz/4
 
 #define	ULPT_BSIZE	16384
+#define ULPT_JUNK_SIZE	512
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (ulptdebug) kprintf x
-#define DPRINTFN(n,x)	if (ulptdebug>(n)) kprintf x
+#define DPRINTFN(n,x)	if (ulptdebug>=(n)) kprintf x
 int	ulptdebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, ulpt, CTLFLAG_RW, 0, "USB ulpt");
 SYSCTL_INT(_hw_usb_ulpt, OID_AUTO, debug, CTLFLAG_RW,
@@ -106,7 +107,8 @@ struct ulpt_softc {
 	usbd_pipe_handle sc_in_pipe;	/* bulk in pipe */
 	usbd_xfer_handle sc_in_xfer1;
 	usbd_xfer_handle sc_in_xfer2;
-	u_char sc_junk[64];	/* somewhere to dump input */
+	u_char *sc_junk1;		/* somewhere to dump input */
+	u_char *sc_junk2;		/* somewhere to dump input */
 
 	u_char sc_state;
 #define	ULPT_OPEN	0x01	/* device is open */
@@ -301,6 +303,8 @@ ulpt_attach(device_t self)
 	sc->sc_iface = iface;
 	sc->sc_ifaceno = id->bInterfaceNumber;
 	sc->sc_udev = dev;
+	sc->sc_junk1 = NULL;
+	sc->sc_junk2 = NULL;
 
 	sc->sc_cdev1 = make_dev(&ulpt_ops, device_get_unit(self),
 				UID_ROOT, GID_OPERATOR, 0644,
@@ -525,11 +529,15 @@ ulptopen(struct dev_open_args *ap)
 			sc->sc_state = 0;
 			goto done;
 		}
+		sc->sc_junk1 = usbd_alloc_buffer(sc->sc_in_xfer1,
+						 ULPT_JUNK_SIZE);
+		sc->sc_junk2 = usbd_alloc_buffer(sc->sc_in_xfer2,
+						 ULPT_JUNK_SIZE);
 		usbd_setup_xfer(sc->sc_in_xfer1, sc->sc_in_pipe, sc,
-		    sc->sc_junk, sizeof sc->sc_junk, USBD_SHORT_XFER_OK,
+		    sc->sc_junk1, ULPT_JUNK_SIZE, USBD_SHORT_XFER_OK,
 		    USBD_NO_TIMEOUT, ulpt_input);
 		usbd_setup_xfer(sc->sc_in_xfer2, sc->sc_in_pipe, sc,
-		    sc->sc_junk, sizeof sc->sc_junk, USBD_SHORT_XFER_OK,
+		    sc->sc_junk2, ULPT_JUNK_SIZE, USBD_SHORT_XFER_OK,
 		    USBD_NO_TIMEOUT, ulpt_input);
 		usbd_transfer(sc->sc_in_xfer1); /* ignore failed start */
 	}
@@ -620,8 +628,10 @@ ulpt_do_write(struct ulpt_softc *sc, struct uio *uio, int flags)
 	while ((n = szmin(ULPT_BSIZE, uio->uio_resid)) != 0) {
 		ulpt_statusmsg(ulpt_status(sc), sc);
 		error = uiomove(bufp, n, uio);
-		if (error)
+		if (error) {
+			DPRINTF(("ulpt_do_write: uiomove error = %d\n", error));
 			break;
+		}
 		DPRINTFN(1, ("ulptwrite: transfer %d bytes\n", n));
 		err = usbd_bulk_transfer(xfer, sc->sc_out_pipe, USBD_NO_COPY,
 			  USBD_NO_TIMEOUT, bufp, &n, "ulptwr");
@@ -645,11 +655,12 @@ ulptwrite(struct dev_write_args *ap)
 
 	sc = devclass_get_softc(ulpt_devclass, ULPTUNIT(dev));
 
-	if (sc->sc_dying)
+	if (sc == NULL || sc->sc_dying)
 		return (EIO);
 
 	sc->sc_refcnt++;
 	error = ulpt_do_write(sc, ap->a_uio, ap->a_ioflag);
+	DPRINTF(("ulpt_write: error = %d\n", error));
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(sc->sc_dev);
 	return (error);
