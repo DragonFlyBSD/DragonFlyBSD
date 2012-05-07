@@ -22,7 +22,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/sbni.4,v 1.1.2.1 2003/04/15 17:23:32 fjoe Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/sbni.4,v 1.9 2007/07/29 17:27:45 swildner Exp $
 .\"
 .Dd January 8, 2002
 .Dt SBNI 4 i386
@@ -38,7 +37,7 @@ The
 .Nm
 driver provides support for leased line modems of following models:
 .Pp
-.Bl -tag -compact
+.Bl -tag -compact -width ".Pa SBNI12-10, SBNI12D-10, ISA and PCI"
 .It Pa SBNI12-02, SBNI12D-02
 .It Pa SBNI12-04, SBNI12D-04
 .It Pa SBNI12-05, SBNI12D-05, ISA and PCI
@@ -86,7 +85,7 @@ device sbni1 at isa? port 0x214 irq 7 flags 0xd6abcdef
 .Sh FILES
 The sources for the driver reside in:
 .Pp
-.Bl -tag -compact
+.Bl -tag -compact -width ".Pa /sys/dev/netif/sbni/if_sbnireg.h"
 .It Pa /sys/dev/netif/sbni/if_sbni.c
 .It Pa /sys/dev/netif/sbni/if_sbnireg.h
 .It Pa /sys/dev/netif/sbni/if_sbnivar.h

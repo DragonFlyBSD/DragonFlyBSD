@@ -1846,12 +1846,6 @@ options 	BOOTP_COMPAT	# Workaround for broken bootp daemons.
 options 	BOOTP_WIRED_TO=fxp0 # Use interface fxp0 for BOOTP
 
 #
-# Add tie-ins for a hardware watchdog.  This only enable the hooks;
-# the user must still supply the actual driver.
-#
-options 	HW_WDOG
-
-#
 # Set the number of PV entries per process.  Increasing this can
 # stop panics related to heavy use of shared memory. However, that can
 # (combined with large amounts of physical memory) cause panics at
@@ -2222,7 +2216,9 @@ options 	DRM_LINUX
 # Misc devices
 #
 device		cmx		# Omnikey CardMan 4040 smartcard reader
+device		amdsbwd		# AMD South Bridge watchdog
 device		gpio		# Enable support for the gpio framework
+device		ichwd		# Intel ICH watchdog interrupt timer
 device		tbridge		# regression testing
 
 #
@@ -2358,7 +2354,6 @@ options		DSCHED_BFQ
 options		DSCHED_FQ
 
 # WATCHDOG
-options		WATCHDOG_ENABLE		# Enable watchdog support framework
 options		WDOG_DISABLE_ON_PANIC	# Automatically disable watchdogs on panic
 
 # LED

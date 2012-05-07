@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/pw_log.c,v 1.5.2.1 2000/06/28 19:19:04 ache Exp $
- * $DragonFly: src/usr.sbin/pw/pw_log.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pw/pw_log.c,v 1.6 2000/06/22 16:48:41 ache Exp $
  */
 
 #include <fcntl.h>

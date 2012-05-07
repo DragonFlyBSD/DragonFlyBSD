@@ -81,7 +81,6 @@ DDB
 DDB_TRACE
 DDB_UNATTENDED	opt_ddb.h
 GDB_REMOTE_CHAT	opt_ddb.h
-HW_WDOG
 KTRACE
 LIBICONV
 MD_NSECT	opt_md.h
@@ -655,9 +654,6 @@ DSCHED_FQ		opt_dsched.h
 
 # Receive Side Scaling (now basecode)
 RSS_DEBUG		opt_rss.h
-
-# Enable watchdogs
-WATCHDOG_ENABLE	opt_cpu.h
 
 # Panic settings
 WDOG_DISABLE_ON_PANIC	opt_panic.h

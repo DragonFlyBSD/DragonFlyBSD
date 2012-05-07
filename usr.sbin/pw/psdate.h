@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/psdate.h,v 1.4 1999/08/28 01:19:17 peter Exp $
- * $DragonFly: src/usr.sbin/pw/psdate.h,v 1.3 2003/11/03 19:31:41 eirikn Exp $
+ * $FreeBSD: src/usr.sbin/pw/psdate.h,v 1.5 2002/07/11 19:07:35 alfred Exp $
  */
 
 #ifndef _PSDATE_H_

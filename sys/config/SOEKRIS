@@ -11,7 +11,6 @@ cpu		I586_CPU
 ident		SOEKRIS
 maxusers	0
 options		CPU_GEODE
-options		WATCHDOG_ENABLE
 options		WDOG_DISABLE_ON_PANIC
 options		ERROR_LED_ON_PANIC
 device		gpio

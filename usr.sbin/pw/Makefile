@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.sbin/pw/Makefile,v 1.11.2.3 2001/06/21 02:16:32 dd Exp $
-# $DragonFly: src/usr.sbin/pw/Makefile,v 1.3 2008/10/29 18:18:04 swildner Exp $
 
 PROG=	pw
 SRCS=	pw.c pw_conf.c pw_user.c pw_group.c pw_log.c pw_nis.c pw_vpw.c \
@@ -9,10 +8,7 @@ WARNS?=	2
 
 MAN=	pw.conf.5 pw.8
 
-#RND=	-DUSE_MD5RAND
 LDADD=	-lcrypt -lutil
 DPADD=	${LIBCRYPT} ${LIBUTIL}
-
-BINMODE=0555
 
 .include <bsd.prog.mk>

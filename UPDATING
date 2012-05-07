@@ -20,6 +20,12 @@ effect for a while. The hw.ioapic_enable tunable now serves its purpose.
 If you have 'options APIC_IO' in your kernel config, you'll have to
 remove it.
 
+WATCHDOG_ENABLE & HW_WDOG OPTIONS REMOVED
+-----------------------------------------
+
+The wdog framework is now compiled into our kernels by default, so the
+options are no longer needed.
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 2.10 to later versions               +
 +-----------------------------------------------------------------------+

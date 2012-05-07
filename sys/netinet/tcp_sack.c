@@ -72,9 +72,9 @@ struct sackblock {
 #define	MAXSAVEDBLOCKS	8			/* per connection limit */
 
 static int insert_block(struct scoreboard *scb,
-			const struct raw_sackblock *raw_sb);
+			const struct raw_sackblock *raw_sb, boolean_t *update);
 static void update_lostseq(struct scoreboard *scb, tcp_seq snd_una,
-			   u_int maxseg);
+			   u_int maxseg, int rxtthresh);
 
 static MALLOC_DEFINE(M_SACKBLOCK, "sblk", "sackblock struct");
 
@@ -298,16 +298,18 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 	const int numblocks = to->to_nsackblocks;
 	struct raw_sackblock *blocks = to->to_sackblocks;
 	struct scoreboard *scb = &tp->scb;
-	int startblock;
-	int i;
+	int startblock, i;
 
 	if (tcp_sack_ndsack_blocks(blocks, numblocks, tp->snd_una) > 0)
 		startblock = 1;
 	else
 		startblock = 0;
 
+	to->to_flags |= TOF_SACK_REDUNDANT;
 	for (i = startblock; i < numblocks; i++) {
 		struct raw_sackblock *newsackblock = &blocks[i];
+		boolean_t update;
+		int error;
 
 		/* don't accept bad SACK blocks */
 		if (SEQ_GT(newsackblock->rblk_end, tp->snd_max)) {
@@ -316,7 +318,10 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 		}
 		tcpstat.tcps_sacksbupdate++;
 
-		if (insert_block(scb, newsackblock))
+		error = insert_block(scb, newsackblock, &update);
+		if (update)
+			to->to_flags &= ~TOF_SACK_REDUNDANT;
+		if (error)
 			break;
 	}
 }
@@ -329,7 +334,7 @@ tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to)
 
 	tcp_sack_ack_blocks(scb, tp->snd_una);
 	tcp_sack_add_blocks(tp, to);
-	update_lostseq(scb, tp->snd_una, tp->t_maxseg);
+	update_lostseq(scb, tp->snd_una, tp->t_maxseg, tp->t_rxtthresh);
 	if (SEQ_LT(tp->rexmt_high, tp->snd_una)) {
 		tp->rexmt_high = tp->snd_una;
 		rexmt_high_update = 1;
@@ -337,7 +342,7 @@ tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to)
 	if (tp->t_flags & TF_SACKRESCUED) {
 		if (SEQ_LT(tp->rexmt_rescue, tp->snd_una)) {
 			tp->t_flags &= ~TF_SACKRESCUED;
-		} else if (rexmt_high_update &&
+		} else if (tcp_aggressive_rescuesack && rexmt_high_update &&
 		    SEQ_LT(tp->rexmt_rescue, tp->rexmt_high)) {
 			/* Drag RescueRxt along with HighRxt */
 			tp->rexmt_rescue = tp->rexmt_high;
@@ -349,11 +354,13 @@ tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to)
  * Insert SACK block into sender's scoreboard.
  */
 static int
-insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb)
+insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb,
+    boolean_t *update)
 {
 	struct sackblock *sb, *workingblock;
 	boolean_t overlap_front;
 
+	*update = TRUE;
 	if (TAILQ_EMPTY(&scb->sackblocks)) {
 		struct sackblock *newblock;
 
@@ -385,6 +392,8 @@ insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb)
 			workingblock = sb;
 			if (SEQ_GT(raw_sb->rblk_end, sb->sblk_end))
 				sb->sblk_end = raw_sb->rblk_end;
+			else
+				*update = FALSE;
 			tcpstat.tcps_sacksbreused++;
 		} else {
 			workingblock = alloc_sackblock_limit(scb, raw_sb);
@@ -450,7 +459,8 @@ tcp_sack_dump_blocks(struct scoreboard *scb)
  * Optimization to quickly determine which packets are lost.
  */
 static void
-update_lostseq(struct scoreboard *scb, tcp_seq snd_una, u_int maxseg)
+update_lostseq(struct scoreboard *scb, tcp_seq snd_una, u_int maxseg,
+    int rxtthresh)
 {
 	struct sackblock *sb;
 	int nsackblocks = 0;
@@ -460,8 +470,8 @@ update_lostseq(struct scoreboard *scb, tcp_seq snd_una, u_int maxseg)
 	while (sb != NULL) {
 		++nsackblocks;
 		bytes_sacked += sb->sblk_end - sb->sblk_start;
-		if (nsackblocks == tcprexmtthresh ||
-		    bytes_sacked >= tcprexmtthresh * maxseg) {
+		if (nsackblocks == rxtthresh ||
+		    bytes_sacked >= rxtthresh * maxseg) {
 			scb->lostseq = sb->sblk_start;
 			return;
 		}

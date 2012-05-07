@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/cpdir.c,v 1.5.2.1 2000/08/14 19:01:35 jhb Exp $
+ * $FreeBSD: src/usr.sbin/pw/cpdir.c,v 1.11 2012/02/14 10:17:03 kevlo Exp $
  */
 
 #include <err.h>
@@ -38,14 +38,16 @@
 #include <sys/param.h>
 #include <dirent.h>
 
+#include "pw.h"
 #include "pwupd.h"
 
 void
 copymkdir(char const * dir, char const * skel, mode_t mode, uid_t uid, gid_t gid)
 {
-	int             rc = 0;
 	char            src[MAXPATHLEN];
 	char            dst[MAXPATHLEN];
+	char            lnk[MAXPATHLEN];
+	int             len;
 
 	if (mkdir(dir, mode) != 0 && errno != EEXIST) {
 		warn("mkdir(%s)", dir);
@@ -58,9 +60,7 @@ copymkdir(char const * dir, char const * skel, mode_t mode, uid_t uid, gid_t gid
 
 		++counter;
 		chown(dir, uid, gid);
-		if (skel == NULL || *skel == '\0')
-			rc = 1;
-		else {
+		if (skel != NULL && *skel != '\0') {
 			DIR            *d = opendir(skel);
 
 			if (d != NULL) {
@@ -71,7 +71,7 @@ copymkdir(char const * dir, char const * skel, mode_t mode, uid_t uid, gid_t gid
 
 					if (snprintf(src, sizeof(src), "%s/%s", skel, p) >= (int)sizeof(src))
 						warn("warning: pathname too long '%s/%s' (skel not copied)", skel, p);
-					else if (stat(src, &st) == 0) {
+					else if (lstat(src, &st) == 0) {
 						if (strncmp(p, "dot.", 4) == 0)	/* Conversion */
 							p += 3;
 						if (snprintf(dst, sizeof(dst), "%s/%s", dir, p) >= (int)sizeof(dst))
@@ -79,12 +79,16 @@ copymkdir(char const * dir, char const * skel, mode_t mode, uid_t uid, gid_t gid
 						else {
 						    if (S_ISDIR(st.st_mode)) {	/* Recurse for this */
 							if (strcmp(e->d_name, ".") != 0 && strcmp(e->d_name, "..") != 0) {
-								copymkdir(dst, src, (st.st_mode & 0777), uid, gid);
-								chflags(dst, st.st_flags);	/* propogate flags */
+								copymkdir(dst, src, st.st_mode & _DEF_DIRMODE, uid, gid);
+								chflags(dst, st.st_flags);	/* propagate flags */
 							}
+						    } else if (S_ISLNK(st.st_mode) && (len = readlink(src, lnk, sizeof(lnk) - 1)) != -1) {
+							lnk[len] = '\0';
+							symlink(lnk, dst);
+							lchown(dst, uid, gid);
 							/*
-							 * Note: don't propogate special attributes
-							 * but do propogate file flags
+							 * Note: don't propagate special attributes
+							 * but do propagate file flags
 							 */
 						    } else if (S_ISREG(st.st_mode) && (outfd = open(dst, O_RDWR | O_CREAT | O_EXCL, st.st_mode)) != -1) {
 							if ((infd = open(src, O_RDONLY)) == -1) {
@@ -102,7 +106,7 @@ copymkdir(char const * dir, char const * skel, mode_t mode, uid_t uid, gid_t gid
 									write(outfd, copybuf, b);
 								close(infd);
 								/*
-								 * Propogate special filesystem flags
+								 * Propagate special filesystem flags
 								 */
 								fchown(outfd, uid, gid);
 								fchflags(outfd, st.st_flags);

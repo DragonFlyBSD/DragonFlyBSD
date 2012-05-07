@@ -1726,6 +1726,7 @@ bus/isa/isa_if.m		optional isa
 bus/isa/isa_common.c		optional isa
 bus/isa/isahint.c		optional isa
 bus/isa/pnpeat.c		optional isa
+dev/misc/amdsbwd/amdsbwd.c	optional amdsbwd
 dev/misc/ecc/ecc_amd8000.c	optional ecc
 dev/misc/ecc/ecc_e31200.c	optional ecc
 dev/misc/ecc/ecc_x3400.c	optional ecc
@@ -1734,6 +1735,7 @@ dev/misc/kbdmux/kbdmux.c	optional kbdmux
 dev/misc/orm/orm.c		optional isa
 dev/misc/gpio/gpio.c		optional gpio
 dev/misc/gpio/gpio_led.c	optional gpio
+dev/misc/ichwd/ichwd.c		optional ichwd
 dev/misc/tbridge/safe_mem.c	optional tbridge
 dev/misc/tbridge/tbridge.c	optional tbridge
 bus/isa/pnp.c			optional isa

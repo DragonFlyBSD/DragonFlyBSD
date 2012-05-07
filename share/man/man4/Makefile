@@ -30,6 +30,7 @@ MAN=	aac.4 \
 	altq.4 \
 	amd.4 \
 	amdpm.4 \
+	amdsbwd.4 \
 	amdsmb.4 \
 	amr.4 \
 	an.4 \
@@ -105,6 +106,7 @@ MAN=	aac.4 \
 	hptiop.4 \
 	hptmv.4 \
 	ichsmb.4 \
+	ichwd.4 \
 	icmp.4 \
 	icmp6.4 \
 	ida.4 \

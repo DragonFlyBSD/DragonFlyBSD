@@ -697,6 +697,7 @@ tcp_newtcpcb(struct inpcb *inp)
 	bzero(tp, sizeof(struct tcpcb));
 	LIST_INIT(&tp->t_segq);
 	tp->t_maxseg = tp->t_maxopd = isipv6 ? tcp_v6mssdflt : tcp_mssdflt;
+	tp->t_rxtthresh = tcprexmtthresh;
 
 	/* Set up our timeouts. */
 	tp->tt_rexmt = &it->inp_tp_rexmt;

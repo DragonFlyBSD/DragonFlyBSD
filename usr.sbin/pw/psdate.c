@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/psdate.c,v 1.6.2.1 2000/06/28 19:19:04 ache Exp $
- * $DragonFly: src/usr.sbin/pw/psdate.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pw/psdate.c,v 1.8 2004/06/17 14:07:16 robert Exp $
  */
 
 #include <stdio.h>
@@ -232,8 +231,8 @@ parse_date(time_t dt, char const * str)
 		 * Skip past any weekday prefix
 		 */
 		weekday(&str);
-		str = strncpy(tmp, str, sizeof tmp - 1);
-		tmp[sizeof tmp - 1] = '\0';
+		strlcpy(tmp, str, sizeof(tmp));
+		str = tmp;
 		T = localtime(&dt);
 
 		/*
@@ -273,19 +272,15 @@ parse_date(time_t dt, char const * str)
 			if ((q = strpbrk(p, " \t")) != NULL) {	/* Time first? */
 				int             l = q - str;
 
-				strncpy(timestr, str, l);
-				timestr[l] = '\0';
-				strncpy(datestr, q + 1, sizeof datestr);
-				datestr[sizeof datestr - 1] = '\0';
+				strlcpy(timestr, str, l + 1);
+				strlcpy(datestr, q + 1, sizeof(datestr));
 				parse_time(timestr, &T->tm_hour, &T->tm_min, &T->tm_sec);
 				parse_datesub(datestr, &T->tm_mday, &T->tm_mon, &T->tm_year);
 			} else if ((q = strrchr(tmp, ' ')) != NULL) {	/* Time last */
 				int             l = q - tmp;
 
-				strncpy(timestr, q + 1, sizeof timestr);
-				timestr[sizeof timestr - 1] = '\0';
-				strncpy(datestr, tmp, l);
-				datestr[l] = '\0';
+				strlcpy(timestr, q + 1, sizeof(timestr));
+				strlcpy(datestr, tmp, l + 1);
 			} else	/* Bail out */
 				return dt;
 			parse_time(timestr, &T->tm_hour, &T->tm_min, &T->tm_sec);

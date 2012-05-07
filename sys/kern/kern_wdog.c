@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include "opt_cpu.h"
+
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
@@ -48,7 +48,6 @@
 #include <sys/wdog.h>
 #include <machine/limits.h>
 
-#ifdef WATCHDOG_ENABLE
 static LIST_HEAD(, watchdog) wdoglist = LIST_HEAD_INITIALIZER(&wdoglist);
 static struct spinlock	wdogmtx;
 static struct callout	wdog_callout;
@@ -95,6 +94,8 @@ wdog_reset_all(void *unused)
 	int period, min_period = INT_MAX;
 
 	spin_lock(&wdogmtx);
+	if (LIST_EMPTY(&wdoglist))
+		goto done;
 	LIST_FOREACH(wd, &wdoglist, link) {
 		period = wdog_reset(wd);
 		if (period < min_period)
@@ -105,6 +106,7 @@ wdog_reset_all(void *unused)
 
 	wdog_auto_period = min_period;
 
+done:
 	spin_unlock(&wdogmtx);
 }
 
@@ -225,5 +227,3 @@ wdog_uninit(void)
 
 SYSINIT(wdog_register, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, wdog_init, NULL);
 SYSUNINIT(wdog_register, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, wdog_uninit, NULL);
-
-#endif /* WATCHDOG_ENABLE */

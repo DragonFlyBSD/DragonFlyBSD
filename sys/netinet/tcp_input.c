@@ -193,7 +193,7 @@ int tcp_do_rescuesack = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rescuesack, CTLFLAG_RW,
     &tcp_do_rescuesack, 0, "Rescue retransmission for SACK");
 
-int tcp_aggressive_rescuesack = 1;
+int tcp_aggressive_rescuesack = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rescuesack_agg, CTLFLAG_RW,
     &tcp_aggressive_rescuesack, 0, "Aggressive rescue retransmission for SACK");
 
@@ -236,7 +236,12 @@ int tcp_sosend_async = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosend_async, CTLFLAG_RW,
     &tcp_sosend_async, 0, "TCP asynchronized pru_send");
 
-static void	 tcp_dooptions(struct tcpopt *, u_char *, int, boolean_t);
+static int tcp_ignore_redun_dsack = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, ignore_redun_dsack, CTLFLAG_RW,
+    &tcp_ignore_redun_dsack, 0, "Ignore redundant DSACK");
+
+static void	 tcp_dooptions(struct tcpopt *, u_char *, int, boolean_t,
+		    tcp_seq);
 static void	 tcp_pulloutofband(struct socket *,
 		     struct tcphdr *, struct mbuf *, int);
 static int	 tcp_reass(struct tcpcb *, struct tcphdr *, int *,
@@ -1033,7 +1038,7 @@ findpcb:
 		 * for syncache, or perform t/tcp connection.
 		 */
 		if (so->so_qlen <= so->so_qlimit) {
-			tcp_dooptions(&to, optp, optlen, TRUE);
+			tcp_dooptions(&to, optp, optlen, TRUE, th->th_ack);
 			if (!syncache_add(&inc, &to, th, so, m))
 				goto drop;
 
@@ -1085,7 +1090,7 @@ after_listen:
 	 * Process options.
 	 * XXX this is tradtitional behavior, may need to be cleaned up.
 	 */
-	tcp_dooptions(&to, optp, optlen, (thflags & TH_SYN) != 0);
+	tcp_dooptions(&to, optp, optlen, (thflags & TH_SYN) != 0, th->th_ack);
 	if (tp->t_state == TCPS_SYN_SENT && (thflags & TH_SYN)) {
 		if ((to.to_flags & TOF_SCALE) && (tp->t_flags & TF_REQ_SCALE)) {
 			tp->t_flags |= TF_RCVD_SCALE;
@@ -1921,7 +1926,28 @@ after_listen:
 			} else if (SEQ_LT(th->th_ack, tp->snd_recover)) {
 				tp->t_dupacks = 0;
 				break;
-			} else if (++tp->t_dupacks == tcprexmtthresh) {
+			} else if (tcp_ignore_redun_dsack && TCP_DO_SACK(tp) &&
+			    (to.to_flags & (TOF_DSACK | TOF_SACK_REDUNDANT)) ==
+			    (TOF_DSACK | TOF_SACK_REDUNDANT)) {
+				/*
+				 * If the ACK carries DSACK and other
+				 * SACK blocks carry information that
+				 * we have already known, don't count
+				 * this ACK as duplicate ACK.  This
+				 * prevents spurious early retransmit
+				 * and fast retransmit.  This also
+				 * meets the requirement of RFC3042
+				 * that new segments should not be sent
+				 * if the SACK blocks do not contain
+				 * new information (XXX we actually
+				 * loosen the requirment that only DSACK
+				 * is checked here).
+				 *
+				 * This kind of ACKs are usually sent
+				 * after spurious retransmit.
+				 */
+				/* Do nothing; don't change t_dupacks */
+			} else if (++tp->t_dupacks == tp->t_rxtthresh) {
 				tcp_seq old_snd_nxt;
 				u_int win;
 
@@ -2612,7 +2638,8 @@ drop:
  * Parse TCP options and place in tcpopt.
  */
 static void
-tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
+tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn,
+    tcp_seq ack)
 {
 	int opt, optlen, i;
 
@@ -2694,6 +2721,10 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 					break;
 				}
 			}
+			if ((to->to_flags & TOF_SACK) &&
+			    tcp_sack_ndsack_blocks(to->to_sackblocks,
+			    to->to_nsackblocks, ack))
+				to->to_flags |= TOF_DSACK;
 			break;
 #ifdef TCP_SIGNATURE
 		/*
@@ -3222,7 +3253,8 @@ tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
 		if (SEQ_LT(nextrexmt, old_snd_max) &&
 		    SEQ_LT(tp->rexmt_high, tp->snd_nxt)) {
 			tp->rexmt_high = seq_min(tp->snd_nxt, old_snd_max);
-			if ((tp->t_flags & TF_SACKRESCUED) &&
+			if (tcp_aggressive_rescuesack &&
+			    (tp->t_flags & TF_SACKRESCUED) &&
 			    SEQ_LT(tp->rexmt_rescue, tp->rexmt_high)) {
 				/* Drag RescueRxt along with HighRxt */
 				tp->rexmt_rescue = tp->rexmt_high;

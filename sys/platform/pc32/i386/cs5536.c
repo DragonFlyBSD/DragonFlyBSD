@@ -50,7 +50,6 @@
  *
  */
 
-#include "opt_cpu.h"
 #include "use_gpio.h"
 
 #include <sys/param.h>
@@ -333,7 +332,6 @@ cs5536_get_timecount(void)
 	return (cs5536_timer.base + rdmsr(AMD5536_TMC));
 }
 
-#ifdef WATCHDOG_ENABLE
 static int
 cs5536_watchdog(void *unused, int period)
 {
@@ -364,7 +362,6 @@ static struct watchdog	cs5536_wdog = {
 	.arg		=	NULL,
 	.period_max	=	0xffff,
 };
-#endif /* WATCHDOG_ENABLE */
 
 static int
 cs5536_probe(device_t self)
@@ -414,13 +411,11 @@ cs5536_attach(device_t self)
 	cs5536_sc.sc_iot = I386_BUS_SPACE_IO;
 	cs5536_sc.sc_ioh = rdmsr(MSR_LBAR_MFGPT);
 
-#ifdef WATCHDOG_ENABLE
 	/* enable watchdog and configure */
 	bus_space_write_2(cs5536_sc.sc_iot, cs5536_sc.sc_ioh, AMD5536_MFGPT0_SETUP,
 		AMD5536_MFGPT_CNT_EN | AMD5536_MFGPT_CMP2EV |
 		AMD5536_MFGPT_CMP2 | AMD5536_MFGPT_DIV_MASK);
 	wdog_register(&cs5536_wdog);
-#endif /* WATCHDOG_ENABLE */
 
 #if NGPIO > 0
 	/* bus_space_map(sc->sc_gpio_iot, ga & 0xffff, 0xff, 0,... */

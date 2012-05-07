@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pw/pw_vpw.c,v 1.3 2000/01/15 00:20:21 davidn Exp $
- * $DragonFly: src/usr.sbin/pw/pw_vpw.c,v 1.4 2005/12/05 02:40:27 swildner Exp $
+ * $FreeBSD: src/usr.sbin/pw/pw_vpw.c,v 1.4 2004/06/17 14:07:16 robert Exp $
  */
 
 #include <stdio.h>
@@ -57,8 +56,7 @@ vnextpwent(char const * nam, uid_t uid, int doclose)
 	struct passwd * pw = NULL;
 	static char pwtmp[1024];
 
-        strncpy(pwtmp, getpwpath(_MASTERPASSWD), sizeof pwtmp);
-        pwtmp[sizeof pwtmp - 1] = '\0';
+        strlcpy(pwtmp, getpwpath(_MASTERPASSWD), sizeof(pwtmp));
 
         if (pwd_fp != NULL || (pwd_fp = fopen(pwtmp, "r")) != NULL) {
                 int done = 0;
@@ -205,8 +203,7 @@ vnextgrent(char const * nam, gid_t gid, int doclose)
 	static int memlen = 0;
 
 	extendline(&grtmp, &grlen, MAXPATHLEN);
-	strncpy(grtmp, getgrpath(_GROUP), MAXPATHLEN);
-	grtmp[MAXPATHLEN - 1] = '\0';
+	strlcpy(grtmp, getgrpath(_GROUP), MAXPATHLEN);
 
 	if (grp_fp != NULL || (grp_fp = fopen(grtmp, "r")) != NULL) {
 		int done = 0;

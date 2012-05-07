@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.10 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.13 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <sys/devicestat.h>
@@ -198,7 +197,6 @@ ips_send_flush_request(ips_command_t *command, struct bio *bio)
 {
 	command->arg = bio;
 	ips_generic_cmd *flush_cmd;
-	ipsdisk_softc_t *dsc;
 	ips_softc_t *sc = command->sc;
 
 	if (!ips_debug_ignore_flush_cmd) {
@@ -208,7 +206,6 @@ ips_send_flush_request(ips_command_t *command, struct bio *bio)
 	}
 
 	command->callback = ips_flush_request_finish;
-	dsc = bio->bio_driver_info;
 	flush_cmd = command->command_buffer;
 	flush_cmd->command	= IPS_CACHE_FLUSH_CMD;
 	flush_cmd->id		= command->id;
