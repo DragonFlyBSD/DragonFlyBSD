@@ -190,7 +190,7 @@ static	int inodedep_lookup(struct fs *, ino_t, int, struct inodedep **);
 static	int pagedep_lookup(struct inode *, ufs_lbn_t, int,
 	    struct pagedep **);
 static	int request_cleanup(int, int);
-static	int process_worklist_item(struct mount *);
+static	int process_worklist_item(struct mount *, int);
 static	void add_to_worklist(struct worklist *);
 
 /*
