@@ -56,7 +56,7 @@
 
 #define AUTHORS \
   proper_name ("Mike Haertel"), \
-  _("others, see <http://git.sv.gnu.org/cgit/grep.git/tree/AUTHORS>")
+  _("others, see\n<http://git.sv.gnu.org/cgit/grep.git/tree/AUTHORS>")
 
 /* When stdout is connected to a regular file, save its stat
    information here, so that we can automatically skip it, thus
@@ -1114,7 +1114,8 @@ grep (int fd, struct stat const *st)
 
   if (! fillbuf (save, st))
     {
-      suppressible_error (filename, errno);
+      if (errno != EINVAL)
+        suppressible_error (filename, errno);
       return 0;
     }
 
