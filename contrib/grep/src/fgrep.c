@@ -9,4 +9,4 @@ struct matcher const matchers[] = {
 const char before_options[] =
 N_("PATTERN is a set of newline-separated fixed strings.\n");
 const char after_options[] =
-N_("Invocation as `fgrep' is deprecated; use `grep -F' instead.\n");
+N_("Invocation as 'fgrep' is deprecated; use 'grep -F' instead.\n");

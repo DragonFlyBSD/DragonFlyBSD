@@ -1,6 +1,7 @@
-/* isdir.c -- determine whether a directory exists
+/* Save and restore current working directory.
 
-   Copyright (C) 1990, 1998, 2006, 2009-2011 Free Software Foundation, Inc.
+   Copyright (C) 1995, 1997-1998, 2003, 2009-2012 Free Software Foundation,
+   Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,19 +16,19 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#include <config.h>
+/* Written by Jim Meyering.  */
 
-#include "isdir.h"
+#ifndef SAVE_CWD_H
+# define SAVE_CWD_H 1
 
-#include <sys/types.h>
-#include <sys/stat.h>
+struct saved_cwd
+  {
+    int desc;
+    char *name;
+  };
 
-/* If PATH is an existing directory or symbolic link to a directory,
-   return nonzero, else 0.  */
-int
-isdir (const char *path)
-{
-  struct stat stats;
+int save_cwd (struct saved_cwd *cwd);
+int restore_cwd (const struct saved_cwd *cwd);
+void free_cwd (struct saved_cwd *cwd);
 
-  return stat (path, &stats) == 0 && S_ISDIR (stats.st_mode);
-}
+#endif /* SAVE_CWD_H */

@@ -1,5 +1,5 @@
 /* searchutils.c - helper subroutines for grep's matchers.
-   Copyright 1992, 1998, 2000, 2007, 2009-2011 Free Software Foundation, Inc.
+   Copyright 1992, 1998, 2000, 2007, 2009-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,11 +28,7 @@ kwsinit (kwset_t *kwset)
   static char trans[NCHAR];
   int i;
 
-  if (match_icase
-#if MBS_SUPPORT
-      && MB_CUR_MAX == 1
-#endif
-     )
+  if (match_icase && MB_CUR_MAX == 1)
     {
       for (i = 0; i < NCHAR; ++i)
         trans[i] = tolower (i);

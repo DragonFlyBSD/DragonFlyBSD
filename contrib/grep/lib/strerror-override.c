@@ -1,6 +1,6 @@
 /* strerror-override.c --- POSIX compatible system error routine
 
-   Copyright (C) 2010-2011 Free Software Foundation, Inc.
+   Copyright (C) 2010-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 
 #include <errno.h>
 
-#if GNULIB_defined_ESOCK /* native Windows platforms */
+#if GNULIB_defined_EWINSOCK /* native Windows platforms */
 # if HAVE_WINSOCK2_H
 #  include <winsock2.h>
 # endif
@@ -34,147 +34,109 @@
 const char *
 strerror_override (int errnum)
 {
-  const char *msg = NULL;
-
-#if GNULIB_defined_ETXTBSY \
-    || GNULIB_defined_ESOCK \
-    || GNULIB_defined_ENOMSG \
-    || GNULIB_defined_EIDRM \
-    || GNULIB_defined_ENOLINK \
-    || GNULIB_defined_EPROTO \
-    || GNULIB_defined_EMULTIHOP \
-    || GNULIB_defined_EBADMSG \
-    || GNULIB_defined_EOVERFLOW \
-    || GNULIB_defined_ENOTSUP \
-    || GNULIB_defined_ESTALE \
-    || GNULIB_defined_EDQUOT \
-    || GNULIB_defined_ECANCELED
   /* These error messages are taken from glibc/sysdeps/gnu/errlist.c.  */
   switch (errnum)
     {
-# if GNULIB_defined_ETXTBSY
-    case ETXTBSY:
-      msg = "Text file busy";
-      break;
-# endif
+#if REPLACE_STRERROR_0
+    case 0:
+      return "Success";
+#endif
 
-# if GNULIB_defined_ESOCK /* native Windows platforms */
-      /* EWOULDBLOCK is the same as EAGAIN.  */
+#if GNULIB_defined_ESOCK /* native Windows platforms with older <errno.h> */
     case EINPROGRESS:
-      msg = "Operation now in progress";
-      break;
+      return "Operation now in progress";
     case EALREADY:
-      msg = "Operation already in progress";
-      break;
+      return "Operation already in progress";
     case ENOTSOCK:
-      msg = "Socket operation on non-socket";
-      break;
+      return "Socket operation on non-socket";
     case EDESTADDRREQ:
-      msg = "Destination address required";
-      break;
+      return "Destination address required";
     case EMSGSIZE:
-      msg = "Message too long";
-      break;
+      return "Message too long";
     case EPROTOTYPE:
-      msg = "Protocol wrong type for socket";
-      break;
+      return "Protocol wrong type for socket";
     case ENOPROTOOPT:
-      msg = "Protocol not available";
-      break;
+      return "Protocol not available";
     case EPROTONOSUPPORT:
-      msg = "Protocol not supported";
-      break;
-    case ESOCKTNOSUPPORT:
-      msg = "Socket type not supported";
-      break;
+      return "Protocol not supported";
     case EOPNOTSUPP:
-      msg = "Operation not supported";
-      break;
-    case EPFNOSUPPORT:
-      msg = "Protocol family not supported";
-      break;
+      return "Operation not supported";
     case EAFNOSUPPORT:
-      msg = "Address family not supported by protocol";
-      break;
+      return "Address family not supported by protocol";
     case EADDRINUSE:
-      msg = "Address already in use";
-      break;
+      return "Address already in use";
     case EADDRNOTAVAIL:
-      msg = "Cannot assign requested address";
-      break;
+      return "Cannot assign requested address";
     case ENETDOWN:
-      msg = "Network is down";
-      break;
+      return "Network is down";
     case ENETUNREACH:
-      msg = "Network is unreachable";
-      break;
-    case ENETRESET:
-      msg = "Network dropped connection on reset";
-      break;
-    case ECONNABORTED:
-      msg = "Software caused connection abort";
-      break;
+      return "Network is unreachable";
     case ECONNRESET:
-      msg = "Connection reset by peer";
-      break;
+      return "Connection reset by peer";
     case ENOBUFS:
-      msg = "No buffer space available";
-      break;
+      return "No buffer space available";
     case EISCONN:
-      msg = "Transport endpoint is already connected";
-      break;
+      return "Transport endpoint is already connected";
     case ENOTCONN:
-      msg = "Transport endpoint is not connected";
-      break;
-    case ESHUTDOWN:
-      msg = "Cannot send after transport endpoint shutdown";
-      break;
-    case ETOOMANYREFS:
-      msg = "Too many references: cannot splice";
-      break;
+      return "Transport endpoint is not connected";
     case ETIMEDOUT:
-      msg = "Connection timed out";
-      break;
+      return "Connection timed out";
     case ECONNREFUSED:
-      msg = "Connection refused";
-      break;
+      return "Connection refused";
     case ELOOP:
-      msg = "Too many levels of symbolic links";
-      break;
-    case EHOSTDOWN:
-      msg = "Host is down";
-      break;
+      return "Too many levels of symbolic links";
     case EHOSTUNREACH:
-      msg = "No route to host";
-      break;
+      return "No route to host";
+    case EWOULDBLOCK:
+      return "Operation would block";
+    case ETXTBSY:
+      return "Text file busy";
+    case ENODATA:
+      return "No data available";
+    case ENOSR:
+      return "Out of streams resources";
+    case ENOSTR:
+      return "Device not a stream";
+    case ENOTRECOVERABLE:
+      return "State not recoverable";
+    case EOWNERDEAD:
+      return "Owner died";
+    case ETIME:
+      return "Timer expired";
+    case EOTHER:
+      return "Other error";
+#endif
+#if GNULIB_defined_EWINSOCK /* native Windows platforms */
+    case ESOCKTNOSUPPORT:
+      return "Socket type not supported";
+    case EPFNOSUPPORT:
+      return "Protocol family not supported";
+    case ESHUTDOWN:
+      return "Cannot send after transport endpoint shutdown";
+    case ETOOMANYREFS:
+      return "Too many references: cannot splice";
+    case EHOSTDOWN:
+      return "Host is down";
     case EPROCLIM:
-      msg = "Too many processes";
-      break;
+      return "Too many processes";
     case EUSERS:
-      msg = "Too many users";
-      break;
+      return "Too many users";
     case EDQUOT:
-      msg = "Disk quota exceeded";
-      break;
+      return "Disk quota exceeded";
     case ESTALE:
-      msg = "Stale NFS file handle";
-      break;
+      return "Stale NFS file handle";
     case EREMOTE:
-      msg = "Object is remote";
-      break;
-#  if HAVE_WINSOCK2_H
+      return "Object is remote";
+# if HAVE_WINSOCK2_H
       /* WSA_INVALID_HANDLE maps to EBADF */
       /* WSA_NOT_ENOUGH_MEMORY maps to ENOMEM */
       /* WSA_INVALID_PARAMETER maps to EINVAL */
     case WSA_OPERATION_ABORTED:
-      msg = "Overlapped operation aborted";
-      break;
+      return "Overlapped operation aborted";
     case WSA_IO_INCOMPLETE:
-      msg = "Overlapped I/O event object not in signaled state";
-      break;
+      return "Overlapped I/O event object not in signaled state";
     case WSA_IO_PENDING:
-      msg = "Overlapped operations will complete later";
-      break;
+      return "Overlapped operations will complete later";
       /* WSAEINTR maps to EINTR */
       /* WSAEBADF maps to EBADF */
       /* WSAEACCES maps to EACCES */
@@ -182,36 +144,36 @@ strerror_override (int errnum)
       /* WSAEINVAL maps to EINVAL */
       /* WSAEMFILE maps to EMFILE */
       /* WSAEWOULDBLOCK maps to EWOULDBLOCK */
-      /* WSAEINPROGRESS is EINPROGRESS */
-      /* WSAEALREADY is EALREADY */
-      /* WSAENOTSOCK is ENOTSOCK */
-      /* WSAEDESTADDRREQ is EDESTADDRREQ */
-      /* WSAEMSGSIZE is EMSGSIZE */
-      /* WSAEPROTOTYPE is EPROTOTYPE */
-      /* WSAENOPROTOOPT is ENOPROTOOPT */
-      /* WSAEPROTONOSUPPORT is EPROTONOSUPPORT */
+      /* WSAEINPROGRESS maps to EINPROGRESS */
+      /* WSAEALREADY maps to EALREADY */
+      /* WSAENOTSOCK maps to ENOTSOCK */
+      /* WSAEDESTADDRREQ maps to EDESTADDRREQ */
+      /* WSAEMSGSIZE maps to EMSGSIZE */
+      /* WSAEPROTOTYPE maps to EPROTOTYPE */
+      /* WSAENOPROTOOPT maps to ENOPROTOOPT */
+      /* WSAEPROTONOSUPPORT maps to EPROTONOSUPPORT */
       /* WSAESOCKTNOSUPPORT is ESOCKTNOSUPPORT */
-      /* WSAEOPNOTSUPP is EOPNOTSUPP */
+      /* WSAEOPNOTSUPP maps to EOPNOTSUPP */
       /* WSAEPFNOSUPPORT is EPFNOSUPPORT */
-      /* WSAEAFNOSUPPORT is EAFNOSUPPORT */
-      /* WSAEADDRINUSE is EADDRINUSE */
-      /* WSAEADDRNOTAVAIL is EADDRNOTAVAIL */
-      /* WSAENETDOWN is ENETDOWN */
-      /* WSAENETUNREACH is ENETUNREACH */
-      /* WSAENETRESET is ENETRESET */
-      /* WSAECONNABORTED is ECONNABORTED */
-      /* WSAECONNRESET is ECONNRESET */
-      /* WSAENOBUFS is ENOBUFS */
-      /* WSAEISCONN is EISCONN */
-      /* WSAENOTCONN is ENOTCONN */
+      /* WSAEAFNOSUPPORT maps to EAFNOSUPPORT */
+      /* WSAEADDRINUSE maps to EADDRINUSE */
+      /* WSAEADDRNOTAVAIL maps to EADDRNOTAVAIL */
+      /* WSAENETDOWN maps to ENETDOWN */
+      /* WSAENETUNREACH maps to ENETUNREACH */
+      /* WSAENETRESET maps to ENETRESET */
+      /* WSAECONNABORTED maps to ECONNABORTED */
+      /* WSAECONNRESET maps to ECONNRESET */
+      /* WSAENOBUFS maps to ENOBUFS */
+      /* WSAEISCONN maps to EISCONN */
+      /* WSAENOTCONN maps to ENOTCONN */
       /* WSAESHUTDOWN is ESHUTDOWN */
       /* WSAETOOMANYREFS is ETOOMANYREFS */
-      /* WSAETIMEDOUT is ETIMEDOUT */
-      /* WSAECONNREFUSED is ECONNREFUSED */
-      /* WSAELOOP is ELOOP */
+      /* WSAETIMEDOUT maps to ETIMEDOUT */
+      /* WSAECONNREFUSED maps to ECONNREFUSED */
+      /* WSAELOOP maps to ELOOP */
       /* WSAENAMETOOLONG maps to ENAMETOOLONG */
       /* WSAEHOSTDOWN is EHOSTDOWN */
-      /* WSAEHOSTUNREACH is EHOSTUNREACH */
+      /* WSAEHOSTUNREACH maps to EHOSTUNREACH */
       /* WSAENOTEMPTY maps to ENOTEMPTY */
       /* WSAEPROCLIM is EPROCLIM */
       /* WSAEUSERS is EUSERS */
@@ -219,127 +181,109 @@ strerror_override (int errnum)
       /* WSAESTALE is ESTALE */
       /* WSAEREMOTE is EREMOTE */
     case WSASYSNOTREADY:
-      msg = "Network subsystem is unavailable";
-      break;
+      return "Network subsystem is unavailable";
     case WSAVERNOTSUPPORTED:
-      msg = "Winsock.dll version out of range";
-      break;
+      return "Winsock.dll version out of range";
     case WSANOTINITIALISED:
-      msg = "Successful WSAStartup not yet performed";
-      break;
+      return "Successful WSAStartup not yet performed";
     case WSAEDISCON:
-      msg = "Graceful shutdown in progress";
-      break;
+      return "Graceful shutdown in progress";
     case WSAENOMORE: case WSA_E_NO_MORE:
-      msg = "No more results";
-      break;
+      return "No more results";
     case WSAECANCELLED: case WSA_E_CANCELLED:
-      msg = "Call was canceled";
-      break;
+      return "Call was canceled";
     case WSAEINVALIDPROCTABLE:
-      msg = "Procedure call table is invalid";
-      break;
+      return "Procedure call table is invalid";
     case WSAEINVALIDPROVIDER:
-      msg = "Service provider is invalid";
-      break;
+      return "Service provider is invalid";
     case WSAEPROVIDERFAILEDINIT:
-      msg = "Service provider failed to initialize";
-      break;
+      return "Service provider failed to initialize";
     case WSASYSCALLFAILURE:
-      msg = "System call failure";
-      break;
+      return "System call failure";
     case WSASERVICE_NOT_FOUND:
-      msg = "Service not found";
-      break;
+      return "Service not found";
     case WSATYPE_NOT_FOUND:
-      msg = "Class type not found";
-      break;
+      return "Class type not found";
     case WSAEREFUSED:
-      msg = "Database query was refused";
-      break;
+      return "Database query was refused";
     case WSAHOST_NOT_FOUND:
-      msg = "Host not found";
-      break;
+      return "Host not found";
     case WSATRY_AGAIN:
-      msg = "Nonauthoritative host not found";
-      break;
+      return "Nonauthoritative host not found";
     case WSANO_RECOVERY:
-      msg = "Nonrecoverable error";
-      break;
+      return "Nonrecoverable error";
     case WSANO_DATA:
-      msg = "Valid name, no data record of requested type";
-      break;
+      return "Valid name, no data record of requested type";
       /* WSA_QOS_* omitted */
-#  endif
 # endif
-
-# if GNULIB_defined_ENOMSG
-    case ENOMSG:
-      msg = "No message of desired type";
-      break;
-# endif
-
-# if GNULIB_defined_EIDRM
-    case EIDRM:
-      msg = "Identifier removed";
-      break;
-# endif
-
-# if GNULIB_defined_ENOLINK
-    case ENOLINK:
-      msg = "Link has been severed";
-      break;
-# endif
-
-# if GNULIB_defined_EPROTO
-    case EPROTO:
-      msg = "Protocol error";
-      break;
-# endif
-
-# if GNULIB_defined_EMULTIHOP
-    case EMULTIHOP:
-      msg = "Multihop attempted";
-      break;
-# endif
-
-# if GNULIB_defined_EBADMSG
-    case EBADMSG:
-      msg = "Bad message";
-      break;
-# endif
-
-# if GNULIB_defined_EOVERFLOW
-    case EOVERFLOW:
-      msg = "Value too large for defined data type";
-      break;
-# endif
-
-# if GNULIB_defined_ENOTSUP
-    case ENOTSUP:
-      msg = "Not supported";
-      break;
-# endif
-
-# if GNULIB_defined_ESTALE
-    case ESTALE:
-      msg = "Stale NFS file handle";
-      break;
-# endif
-
-# if GNULIB_defined_EDQUOT
-    case EDQUOT:
-      msg = "Disk quota exceeded";
-      break;
-# endif
-
-# if GNULIB_defined_ECANCELED
-    case ECANCELED:
-      msg = "Operation canceled";
-      break;
-# endif
-    }
 #endif
 
-  return msg;
+#if GNULIB_defined_ENOMSG
+    case ENOMSG:
+      return "No message of desired type";
+#endif
+
+#if GNULIB_defined_EIDRM
+    case EIDRM:
+      return "Identifier removed";
+#endif
+
+#if GNULIB_defined_ENOLINK
+    case ENOLINK:
+      return "Link has been severed";
+#endif
+
+#if GNULIB_defined_EPROTO
+    case EPROTO:
+      return "Protocol error";
+#endif
+
+#if GNULIB_defined_EMULTIHOP
+    case EMULTIHOP:
+      return "Multihop attempted";
+#endif
+
+#if GNULIB_defined_EBADMSG
+    case EBADMSG:
+      return "Bad message";
+#endif
+
+#if GNULIB_defined_EOVERFLOW
+    case EOVERFLOW:
+      return "Value too large for defined data type";
+#endif
+
+#if GNULIB_defined_ENOTSUP
+    case ENOTSUP:
+      return "Not supported";
+#endif
+
+#if GNULIB_defined_ENETRESET
+    case ENETRESET:
+      return "Network dropped connection on reset";
+#endif
+
+#if GNULIB_defined_ECONNABORTED
+    case ECONNABORTED:
+      return "Software caused connection abort";
+#endif
+
+#if GNULIB_defined_ESTALE
+    case ESTALE:
+      return "Stale NFS file handle";
+#endif
+
+#if GNULIB_defined_EDQUOT
+    case EDQUOT:
+      return "Disk quota exceeded";
+#endif
+
+#if GNULIB_defined_ECANCELED
+    case ECANCELED:
+      return "Operation canceled";
+#endif
+
+    default:
+      return NULL;
+    }
 }

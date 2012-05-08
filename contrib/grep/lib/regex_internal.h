@@ -1,7 +1,5 @@
-/* -*- buffer-read-only: t -*- vi: set ro: */
-/* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Extended regular expression matching and search library.
-   Copyright (C) 2002-2011 Free Software Foundation, Inc.
+   Copyright (C) 2002-2012 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
    Contributed by Isamu Hasegawa <isamu@yamato.ibm.com>.
 
@@ -16,15 +14,13 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License along
-   with this program; if not, write to the Free Software Foundation,
-   Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA. */
+   with this program; if not, see <http://www.gnu.org/licenses/>.  */
 
 #ifndef _REGEX_INTERNAL_H
 #define _REGEX_INTERNAL_H 1
 
 #include <assert.h>
 #include <ctype.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,13 +30,14 @@
 # include "localcharset.h"
 #endif
 #include <locale.h>
-
 #include <wchar.h>
 #include <wctype.h>
+#include <stdbool.h>
 #include <stdint.h>
 #if defined _LIBC
 # include <bits/libc-lock.h>
 #else
+# define __libc_lock_define(CLASS,NAME)
 # define __libc_lock_init(NAME) do { } while (0)
 # define __libc_lock_lock(NAME) do { } while (0)
 # define __libc_lock_unlock(NAME) do { } while (0)
@@ -78,11 +75,6 @@
 # define gettext_noop(String) String
 #endif
 
-/* For loser systems without the definition.  */
-#ifndef SIZE_MAX
-# define SIZE_MAX ((size_t) -1)
-#endif
-
 #if (defined MB_CUR_MAX && HAVE_WCTYPE_H && HAVE_ISWCTYPE && HAVE_WCSCOLL) || _LIBC
 # define RE_ENABLE_I18N
 #endif
@@ -113,8 +105,8 @@
 # define __wctype wctype
 # define __iswctype iswctype
 # define __btowc btowc
-# define __wcrtomb wcrtomb
 # define __mbrtowc mbrtowc
+# define __wcrtomb wcrtomb
 # define __regfree regfree
 # define attribute_hidden
 #endif /* not _LIBC */
@@ -126,6 +118,11 @@
 #endif
 
 typedef __re_idx_t Idx;
+#ifdef _REGEX_LARGE_OFFSETS
+# define IDX_MAX (SIZE_MAX - 2)
+#else
+# define IDX_MAX INT_MAX
+#endif
 
 /* Special return value for failure to match.  */
 #define REG_MISSING ((Idx) -1)
@@ -336,7 +333,7 @@ typedef struct
     Idx idx;			/* for BACK_REF */
     re_context_type ctx_type;	/* for ANCHOR */
   } opr;
-#if __GNUC__ >= 2 && !__STRICT_ANSI__
+#if __GNUC__ >= 2 && !defined __STRICT_ANSI__
   re_token_type_t type : 8;
 #else
   re_token_type_t type;
@@ -417,26 +414,24 @@ struct re_dfa_t;
 typedef struct re_dfa_t re_dfa_t;
 
 #ifndef _LIBC
-# if defined __i386__ && !defined __EMX__
-#  define internal_function   __attribute ((regparm (3), stdcall))
-# else
-#  define internal_function
-# endif
+# define internal_function
 #endif
 
+#ifndef NOT_IN_libc
 static reg_errcode_t re_string_realloc_buffers (re_string_t *pstr,
 						Idx new_buf_len)
      internal_function;
-#ifdef RE_ENABLE_I18N
+# ifdef RE_ENABLE_I18N
 static void build_wcs_buffer (re_string_t *pstr) internal_function;
 static reg_errcode_t build_wcs_upper_buffer (re_string_t *pstr)
-     internal_function;
-#endif /* RE_ENABLE_I18N */
+  internal_function;
+# endif /* RE_ENABLE_I18N */
 static void build_upper_buffer (re_string_t *pstr) internal_function;
 static void re_string_translate_buffer (re_string_t *pstr) internal_function;
 static unsigned int re_string_context_at (const re_string_t *input, Idx idx,
 					  int eflags)
      internal_function __attribute ((pure));
+#endif
 #define re_string_peek_byte(pstr, offset) \
   ((pstr)->mbs[(pstr)->cur_idx + offset])
 #define re_string_fetch_byte(pstr) \
@@ -474,6 +469,9 @@ static unsigned int re_string_context_at (const re_string_t *input, Idx idx,
 #ifndef MAX
 # define MAX(a,b) ((a) < (b) ? (b) : (a))
 #endif
+#ifndef MIN
+# define MIN(a,b) ((a) < (b) ? (a) : (b))
+#endif
 
 #define re_malloc(t,n) ((t *) malloc ((n) * sizeof (t)))
 #define re_realloc(p,t,n) ((t *) realloc (p, (n) * sizeof (t)))
@@ -489,8 +487,8 @@ struct bin_tree_t
 
   re_token_t token;
 
-  /* `node_idx' is the index in dfa->nodes, if `type' == 0.
-     Otherwise `type' indicate the type of this node.  */
+  /* 'node_idx' is the index in dfa->nodes, if 'type' == 0.
+     Otherwise 'type' indicate the type of this node.  */
   Idx node_idx;
 };
 typedef struct bin_tree_t bin_tree_t;
@@ -543,9 +541,9 @@ struct re_dfastate_t
   struct re_dfastate_t **trtable, **word_trtable;
   unsigned int context : 4;
   unsigned int halt : 1;
-  /* If this state can accept `multi byte'.
+  /* If this state can accept "multi byte".
      Note that we refer to multibyte characters, and multi character
-     collating elements as `multi byte'.  */
+     collating elements as "multi byte".  */
   unsigned int accept_mb : 1;
   /* If this state has backreference node(s).  */
   unsigned int has_backref : 1;
@@ -674,7 +672,7 @@ struct re_dfa_t
   re_bitset_ptr_t sb_char;
   int str_tree_storage_idx;
 
-  /* number of subexpressions `re_nsub' is in regex_t.  */
+  /* number of subexpressions 're_nsub' is in regex_t.  */
   re_hashval_t state_hash_mask;
   Idx init_node;
   Idx nbackref; /* The number of backreference in this dfa.  */
@@ -698,9 +696,7 @@ struct re_dfa_t
 #ifdef DEBUG
   char* re_str;
 #endif
-#ifdef _LIBC
   __libc_lock_define (, lock)
-#endif
 };
 
 #define re_node_set_init_empty(set) memset (set, '\0', sizeof (re_node_set))
@@ -824,16 +820,16 @@ re_string_wchar_at (const re_string_t *pstr, Idx idx)
   return (wint_t) pstr->wcs[idx];
 }
 
+# ifndef NOT_IN_libc
 static int
 internal_function __attribute ((pure))
 re_string_elem_size_at (const re_string_t *pstr _UNUSED_PARAMETER_,
 			Idx idx _UNUSED_PARAMETER_)
 {
-# ifdef _LIBC
+#  ifdef _LIBC
   const unsigned char *p, *extra;
   const int32_t *table, *indirect;
-  int32_t tmp;
-#  include <locale/weight.h>
+#   include <locale/weight.h>
   uint_fast32_t nrules = _NL_CURRENT_WORD (LC_COLLATE, _NL_COLLATE_NRULES);
 
   if (nrules != 0)
@@ -844,13 +840,14 @@ re_string_elem_size_at (const re_string_t *pstr _UNUSED_PARAMETER_,
       indirect = (const int32_t *) _NL_CURRENT (LC_COLLATE,
 						_NL_COLLATE_INDIRECTMB);
       p = pstr->mbs + idx;
-      tmp = findidx (&p);
+      findidx (&p, pstr->len - idx);
       return p - pstr->mbs - idx;
     }
   else
-# endif /* _LIBC */
+#  endif /* _LIBC */
     return 1;
 }
+# endif
 #endif /* RE_ENABLE_I18N */
 
 #ifndef __GNUC_PREREQ

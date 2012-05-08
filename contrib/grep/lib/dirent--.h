@@ -1,6 +1,6 @@
-/* Duplicate a bounded initial segment of a string, with out-of-memory
-   checking.
-   Copyright (C) 2003, 2009-2011 Free Software Foundation, Inc.
+/* Like dirent.h, but redefine some names to avoid glitches.
+
+   Copyright (C) 2009-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,9 +15,9 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#include <stddef.h>
+/* Written by Eric Blake.  */
 
-/* Return a newly allocated copy of at most N bytes of STRING.
-   In other words, return a copy of the initial segment of length N of
-   STRING.  */
-extern char *xstrndup (const char *string, size_t n);
+#include "dirent-safer.h"
+
+#undef opendir
+#define opendir opendir_safer

@@ -1,5 +1,5 @@
 /* Declaration for error-reporting function
-   Copyright (C) 1995-1997, 2003, 2006, 2008-2011 Free Software Foundation,
+   Copyright (C) 1995-1997, 2003, 2006, 2008-2012 Free Software Foundation,
    Inc.
    This file is part of the GNU C Library.
 
@@ -35,9 +35,9 @@
 extern "C" {
 #endif
 
-/* Print a message with `fprintf (stderr, FORMAT, ...)';
+/* Print a message with 'fprintf (stderr, FORMAT, ...)';
    if ERRNUM is nonzero, follow it with ": " and strerror (ERRNUM).
-   If STATUS is nonzero, terminate the program with `exit (STATUS)'.  */
+   If STATUS is nonzero, terminate the program with 'exit (STATUS)'.  */
 
 extern void error (int __status, int __errnum, const char *__format, ...)
      _GL_ATTRIBUTE_FORMAT ((__printf__, 3, 4));
@@ -51,7 +51,7 @@ extern void error_at_line (int __status, int __errnum, const char *__fname,
    function without parameters instead.  */
 extern void (*error_print_progname) (void);
 
-/* This variable is incremented each time `error' is called.  */
+/* This variable is incremented each time 'error' is called.  */
 extern unsigned int error_message_count;
 
 /* Sometimes we want to have at most one error per line.  This

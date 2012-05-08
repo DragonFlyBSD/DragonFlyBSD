@@ -1,6 +1,6 @@
-/* Duplicate a bounded initial segment of a string, with out-of-memory
-   checking.
-   Copyright (C) 2003, 2006-2007, 2009-2011 Free Software Foundation, Inc.
+/* Invoke dup, but avoid some glitches.
+
+   Copyright (C) 2001, 2004-2006, 2009-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,22 +15,20 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+/* Written by Paul Eggert.  */
+
 #include <config.h>
 
-/* Specification.  */
-#include "xstrndup.h"
+#include "unistd-safer.h"
 
-#include <string.h>
-#include "xalloc.h"
+#include <fcntl.h>
+#include <unistd.h>
 
-/* Return a newly allocated copy of at most N bytes of STRING.
-   In other words, return a copy of the initial segment of length N of
-   STRING.  */
-char *
-xstrndup (const char *string, size_t n)
+/* Like dup, but do not return STDIN_FILENO, STDOUT_FILENO, or
+   STDERR_FILENO.  */
+
+int
+dup_safer (int fd)
 {
-  char *s = strndup (string, n);
-  if (! s)
-    xalloc_die ();
-  return s;
+  return fcntl (fd, F_DUPFD, STDERR_FILENO + 1);
 }

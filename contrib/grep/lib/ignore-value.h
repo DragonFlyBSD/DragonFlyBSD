@@ -1,6 +1,6 @@
 /* ignore a function return without a compiler warning
 
-   Copyright (C) 2008-2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -53,10 +53,5 @@
 # else
 #  define ignore_value(x) (({ __typeof__ (x) __x = (x); (void) __x; }))
 # endif
-
-/* ignore_value works for scalars, pointers and aggregates;
-   deprecate ignore_ptr.  */
-static inline void _GL_ATTRIBUTE_DEPRECATED
-ignore_ptr (void *p) { (void) p; } /* deprecated: use ignore_value */
 
 #endif

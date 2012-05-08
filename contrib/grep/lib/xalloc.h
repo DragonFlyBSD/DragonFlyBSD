@@ -1,6 +1,6 @@
 /* xalloc.h -- malloc with out-of-memory checking
 
-   Copyright (C) 1990-2000, 2003-2004, 2006-2011 Free Software Foundation, Inc.
+   Copyright (C) 1990-2000, 2003-2004, 2006-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -27,12 +27,6 @@ extern "C" {
 # endif
 
 
-# if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 8)
-#  define _GL_ATTRIBUTE_NORETURN __attribute__ ((__noreturn__))
-# else
-#  define _GL_ATTRIBUTE_NORETURN /* empty */
-# endif
-
 # if __GNUC__ >= 3
 #  define _GL_ATTRIBUTE_MALLOC __attribute__ ((__malloc__))
 # else
@@ -50,7 +44,7 @@ extern "C" {
    or by using gnulib's xalloc-die module.  This is the
    function to call when one wants the program to die because of a
    memory allocation failure.  */
-extern void xalloc_die (void) _GL_ATTRIBUTE_NORETURN;
+extern _Noreturn void xalloc_die (void);
 
 void *xmalloc (size_t s)
       _GL_ATTRIBUTE_MALLOC _GL_ATTRIBUTE_ALLOC_SIZE ((1));
@@ -198,9 +192,9 @@ x2nrealloc (void *p, size_t *pn, size_t s)
         {
           /* The approximate size to use for initial small allocation
              requests, when the invoking code specifies an old size of
-             zero.  64 bytes is the largest "small" request for the
-             GNU C library malloc.  */
-          enum { DEFAULT_MXFAST = 64 };
+             zero.  This is the largest "small" request for the GNU C
+             library malloc.  */
+          enum { DEFAULT_MXFAST = 64 * sizeof (size_t) / 4 };
 
           n = DEFAULT_MXFAST / s;
           n += !n;

@@ -1,6 +1,6 @@
 /* stripslash.c -- remove redundant trailing slashes from a file name
 
-   Copyright (C) 1990, 2001, 2003-2006, 2009-2011 Free Software Foundation,
+   Copyright (C) 1990, 2001, 2003-2006, 2009-2012 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@ strip_trailing_slashes (char *file)
   bool had_slash;
 
   /* last_component returns "" for file system roots, but we need to turn
-     `///' into `/'.  */
+     "///" into "/".  */
   if (! *base)
     base = file;
   base_lim = base + base_len (base);

@@ -1,6 +1,6 @@
 /* A more useful interface to strtol.
 
-   Copyright (C) 1995-1996, 1998-1999, 2001-2004, 2006-2011 Free Software
+   Copyright (C) 1995-1996, 1998-1999, 2001-2004, 2006-2012 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -51,12 +51,6 @@ _DECLARE_XSTRTOL (xstrtoll, long long int)
 _DECLARE_XSTRTOL (xstrtoull, unsigned long long int)
 #endif
 
-#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 8)
-# define _GL_ATTRIBUTE_NORETURN __attribute__ ((__noreturn__))
-#else
-# define _GL_ATTRIBUTE_NORETURN /* empty */
-#endif
-
 /* Report an error for an invalid integer in an option argument.
 
    ERR is the error code returned by one of the xstrto* functions.
@@ -72,8 +66,8 @@ _DECLARE_XSTRTOL (xstrtoull, unsigned long long int)
 
    After reporting an error, exit with a failure status.  */
 
-void xstrtol_fatal (enum strtol_error,
-                    int, char, struct option const *,
-                    char const *) _GL_ATTRIBUTE_NORETURN;
+void _Noreturn xstrtol_fatal (enum strtol_error,
+                              int, char, struct option const *,
+                              char const *);
 
 #endif /* not XSTRTOL_H_ */

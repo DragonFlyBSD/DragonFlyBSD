@@ -15,4 +15,4 @@ struct matcher const matchers[] = {
 const char before_options[] =
 N_("PATTERN is an extended regular expression (ERE).\n");
 const char after_options[] =
-N_("Invocation as `egrep' is deprecated; use `grep -E' instead.\n");
+N_("Invocation as 'egrep' is deprecated; use 'grep -E' instead.\n");

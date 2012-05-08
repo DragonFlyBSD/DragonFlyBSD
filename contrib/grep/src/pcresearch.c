@@ -1,5 +1,5 @@
 /* pcresearch.c - searching subroutines using PCRE for grep.
-   Copyright 2000, 2007, 2009-2011 Free Software Foundation, Inc.
+   Copyright 2000, 2007, 2009-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -101,19 +101,14 @@ Pcompile (char const *pattern, size_t size)
 #endif
 }
 
-/* Pexecute is a no-return function when building --without-pcre.  */
-#if !HAVE_LIBPCRE
-# define WITHOUT_PCRE_NORETURN _GL_ATTRIBUTE_NORETURN
-#else
-# define WITHOUT_PCRE_NORETURN /* empty */
-#endif
-
-size_t WITHOUT_PCRE_NORETURN
+size_t
 Pexecute (char const *buf, size_t size, size_t *match_size,
           char const *start_ptr)
 {
 #if !HAVE_LIBPCRE
-  abort ();
+  /* We can't get here, because Pcompile would have been called earlier.  */
+  error (EXIT_TROUBLE, 0, _("internal error"));
+  return -1;
 #else
   /* This array must have at least two elements; everything after that
      is just for performance improvement in pcre_exec.  */
@@ -138,6 +133,9 @@ Pexecute (char const *buf, size_t size, size_t *match_size,
 
       if (start_ptr && start_ptr >= line_end)
         continue;
+
+      if (INT_MAX < line_end - line_buf)
+        error (EXIT_TROUBLE, 0, _("exceeded PCRE's line length limit"));
 
       e = pcre_exec (cre, extra, line_buf, line_end - line_buf,
                      start_ofs < 0 ? 0 : start_ofs, 0,

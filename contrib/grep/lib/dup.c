@@ -1,7 +1,6 @@
-/* dirname.c -- return all but the last element in a file name
+/* Duplicate an open file descriptor.
 
-   Copyright (C) 1990, 1998, 2000-2001, 2003-2006, 2009-2011 Free Software
-   Foundation, Inc.
+   Copyright (C) 2011-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -18,21 +17,45 @@
 
 #include <config.h>
 
-#include "dirname.h"
+/* Specification.  */
+#include <unistd.h>
 
-#include <stdlib.h>
-#include <string.h>
-#include "xalloc.h"
+#include <errno.h>
 
-/* Just like mdir_name (dirname-lgpl.c), except, rather than
-   returning NULL upon malloc failure, here, we report the
-   "memory exhausted" condition and exit.  */
+#include "msvc-inval.h"
 
-char *
-dir_name (char const *file)
+#undef dup
+
+#if HAVE_MSVC_INVALID_PARAMETER_HANDLER
+static inline int
+dup_nothrow (int fd)
 {
-  char *result = mdir_name (file);
-  if (!result)
-    xalloc_die ();
+  int result;
+
+  TRY_MSVC_INVAL
+    {
+      result = dup (fd);
+    }
+  CATCH_MSVC_INVAL
+    {
+      result = -1;
+      errno = EBADF;
+    }
+  DONE_MSVC_INVAL;
+
+  return result;
+}
+#else
+# define dup_nothrow dup
+#endif
+
+int
+rpl_dup (int fd)
+{
+  int result = dup_nothrow (fd);
+#if REPLACE_FCHDIR
+  if (result >= 0)
+    result = _gl_register_dup (fd, result);
+#endif
   return result;
 }
