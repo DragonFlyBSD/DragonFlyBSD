@@ -9,60 +9,71 @@ CONTRIBDIR=	${BASEDIR}/lib
 CFLAGS+=	-I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=	-DHAVE_CONFIG_H
 
-SRCS=		c-ctype.c \
+SRCS=		argmatch.c \
+		c-ctype.c \
 		c-strcasecmp.c \
 		c-strncasecmp.c \
+		cloexec.c \
+		close-stream.c \
+		closeout.c \
+		cycle-check.c \
+		opendir-safer.c \
+		dirname-lgpl.c \
+		basename-lgpl.c \
+		stripslash.c \
+		exclude.c \
 		exitfail.c \
-		isdir.c \
+		creat-safer.c \
+		open-safer.c \
+		fd-hook.c \
+		filenamecat-lgpl.c \
+		hard-locale.c \
+		hash.c \
+		i-ring.c \
 		localcharset.c \
 		malloca.c \
 		mbchar.c \
 		mbscasecmp.c \
 		mbslen.c \
 		mbsstr.c \
+		openat-die.c \
+		openat-safer.c \
 		progname.c \
 		propername.c \
+		quotearg.c \
+		save-cwd.c \
 		striconv.c \
 		strnlen1.c \
 		trim.c \
-		width.c \
-		version-etc.c \
-		version-etc-fsf.c \
-		xalloc-die.c \
-		xstriconv.c \
-		xstrndup.c \
-		xstrtoumax.c \
-		savedir.c \
-		argmatch.c \
-		basename.c \
-		basename-lgpl.c \
-		close-stream.c \
-		closeout.c \
-		dirname.c \
-		dirname-lgpl.c \
-		error.c \
-		exclude.c \
-		getopt.c \
-		getopt1.c \
-		hard-locale.c \
-		hash.c \
-		mempcpy.c \
-		obstack.c \
-		quote.c \
-		quotearg.c \
-		regex.c \
-		stripslash.c \
-		wcwidth.c \
-		xmalloc.c \
-		xstrtol.c \
-		xstrtol-error.c \
-		xstrtoul.c \
-		close-stream.c \
-		closeout.c \
+		dup-safer.c \
+		fd-safer.c \
 		u8-mbtoucr.c \
 		u8-uctomb.c \
 		u8-uctomb-aux.c \
+		pipe-safer.c \
+		width.c \
+		version-etc.c \
+		version-etc-fsf.c \
 		xmalloc.c \
-		strerror.c
+		xalloc-die.c \
+		xstriconv.c \
+		xstrtoimax.c \
+		xstrtol.c \
+		xstrtoul.c \
+		xstrtol-error.c \
+		colorize.c \
+		chdir-long.c \
+		dup2.c \
+		error.c \
+		fcntl.c \
+		fts.c \
+		getopt.c \
+		getopt1.c \
+		obstack.c \
+		openat-proc.c \
+		regex.c \
+		strerror.c \
+		strerror-override.c \
+		wcwidth.c
 
 .include <bsd.lib.mk>

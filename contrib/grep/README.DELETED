@@ -2,6 +2,7 @@
 ABOUT-NLS
 AUTHORS
 ChangeLog
+ChangeLog-2009
 GNUmakefile
 INSTALL
 Makefile.am
@@ -61,7 +62,9 @@ lib/stddef.in.h
 lib/stdint.in.h
 lib/stdlib.in.h
 lib/string.in.h
+lib/strings.in.h
 lib/sys_stat.in.h
+lib/sys_types.in.h
 lib/time.in.h
 lib/unistd.in.h
 lib/unitypes.in.h
