@@ -197,6 +197,10 @@ int tcp_aggressive_rescuesack = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rescuesack_agg, CTLFLAG_RW,
     &tcp_aggressive_rescuesack, 0, "Aggressive rescue retransmission for SACK");
 
+int tcp_do_rfc3517bis = 0;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3517bis, CTLFLAG_RW,
+    &tcp_do_rfc3517bis, 0, "Enable RFC3517 update");
+
 SYSCTL_NODE(_net_inet_tcp, OID_AUTO, reass, CTLFLAG_RW, 0,
     "TCP Segment Reassembly Queue");
 
@@ -249,6 +253,7 @@ static int	 tcp_reass(struct tcpcb *, struct tcphdr *, int *,
 static void	 tcp_xmit_timer(struct tcpcb *, int, tcp_seq);
 static void	 tcp_newreno_partial_ack(struct tcpcb *, struct tcphdr *, int);
 static void	 tcp_sack_rexmt(struct tcpcb *, struct tcphdr *);
+static boolean_t tcp_sack_limitedxmit(struct tcpcb *);
 static int	 tcp_rmx_msl(const struct tcpcb *);
 static void	 tcp_established(struct tcpcb *);
 
@@ -281,6 +286,15 @@ do { \
      (tp->snd_wl1 == th->th_seq &&					\
       (SEQ_LT(tp->snd_wl2, th->th_ack) ||				\
        (tp->snd_wl2 == th->th_ack && tiwin > tp->snd_wnd))))
+
+#define	iceildiv(n, d)		(((n)+(d)-1) / (d))
+#define need_early_retransmit(tp, ownd) \
+    (tcp_do_early_retransmit && \
+     (tcp_do_eifel_detect && (tp->t_flags & TF_RCVD_TSTMP)) && \
+     ownd < (4 * tp->t_maxseg) && \
+     tp->t_dupacks + 1 >= iceildiv(ownd, tp->t_maxseg) && \
+     (!TCP_DO_SACK(tp) || ownd <= tp->t_maxseg || \
+      tcp_sack_has_sacked(&tp->scb, ownd - tp->t_maxseg)))
 
 static int
 tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
@@ -1884,16 +1898,40 @@ after_listen:
 		if (SEQ_LEQ(th->th_ack, tp->snd_una)) {
 			if (TCP_DO_SACK(tp))
 				tcp_sack_update_scoreboard(tp, &to);
-			if (tlen != 0 || tiwin != tp->snd_wnd) {
-				tp->t_dupacks = 0;
-				break;
-			}
-			tcpstat.tcps_rcvdupack++;
 			if (!tcp_callout_active(tp, tp->tt_rexmt) ||
 			    th->th_ack != tp->snd_una) {
+				tcpstat.tcps_rcvdupack++;
 				tp->t_dupacks = 0;
 				break;
 			}
+			if (tlen != 0 || tiwin != tp->snd_wnd) {
+				if (!tcp_do_rfc3517bis ||
+				    !TCP_DO_SACK(tp) ||
+				    (to.to_flags &
+				     (TOF_SACK | TOF_SACK_REDUNDANT))
+				     != TOF_SACK) {
+					tp->t_dupacks = 0;
+					break;
+				}
+				/*
+				 * Update window information.
+				 */
+				if (tiwin != tp->snd_wnd &&
+				    acceptable_window_update(tp, th, tiwin)) {
+					/* keep track of pure window updates */
+					if (tlen == 0 &&
+					    tp->snd_wl2 == th->th_ack &&
+					    tiwin > tp->snd_wnd)
+						tcpstat.tcps_rcvwinupd++;
+					tp->snd_wnd = tiwin;
+					tp->snd_wl1 = th->th_seq;
+					tp->snd_wl2 = th->th_ack;
+					if (tp->snd_wnd > tp->max_sndwnd)
+						tp->max_sndwnd = tp->snd_wnd;
+				}
+			}
+			tcpstat.tcps_rcvdupack++;
+
 			/*
 			 * We have outstanding data (other than
 			 * a window probe), this is a completely
@@ -1990,6 +2028,21 @@ fastretransmit:
 				else
 					tp->snd_cwnd += tp->t_maxseg *
 					    (tp->t_dupacks - tp->snd_limited);
+			} else if (tcp_do_rfc3517bis && TCP_DO_SACK(tp)) {
+				if (tcp_sack_islost(&tp->scb, tp->snd_una))
+					goto fastretransmit;
+				if (tcp_do_limitedtransmit) {
+					/* outstanding data */
+					uint32_t ownd =
+					    tp->snd_max - tp->snd_una;
+
+					if (!tcp_sack_limitedxmit(tp) &&
+					    need_early_retransmit(tp, ownd)) {
+						++tcpstat.tcps_sndearlyrexmit;
+						tp->t_flags |= TF_EARLYREXMT;
+						goto fastretransmit;
+					}
+				}
 			} else if (tcp_do_limitedtransmit) {
 				u_long oldcwnd = tp->snd_cwnd;
 				tcp_seq oldsndmax = tp->snd_max;
@@ -1997,8 +2050,6 @@ fastretransmit:
 				/* outstanding data */
 				uint32_t ownd = tp->snd_max - tp->snd_una;
 				u_int sent;
-
-#define	iceildiv(n, d)		(((n)+(d)-1) / (d))
 
 				KASSERT(tp->t_dupacks == 1 ||
 					tp->t_dupacks == 2,
@@ -2031,22 +2082,16 @@ fastretransmit:
 				} else if (sent > 0) {
 					++tp->snd_limited;
 					++tcpstat.tcps_sndlimited;
-				} else if (tcp_do_early_retransmit &&
-				    (tcp_do_eifel_detect &&
-				     (tp->t_flags & TF_RCVD_TSTMP)) &&
-				    ownd < 4 * tp->t_maxseg &&
-				    tp->t_dupacks + 1 >=
-				      iceildiv(ownd, tp->t_maxseg) &&
-				    (!TCP_DO_SACK(tp) ||
-				     ownd <= tp->t_maxseg ||
-				     tcp_sack_has_sacked(&tp->scb,
-							ownd - tp->t_maxseg))) {
+				} else if (need_early_retransmit(tp, ownd)) {
 					++tcpstat.tcps_sndearlyrexmit;
 					tp->t_flags |= TF_EARLYREXMT;
 					goto fastretransmit;
 				}
 			}
-			goto drop;
+			if (tlen != 0)
+				break;
+			else
+				goto drop;
 		}
 
 		KASSERT(SEQ_GT(th->th_ack, tp->snd_una), ("th_ack <= snd_una"));
@@ -3264,6 +3309,47 @@ tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
 	if (SEQ_GT(old_snd_nxt, tp->snd_nxt))
 		tp->snd_nxt = old_snd_nxt;
 	tp->snd_cwnd = ocwnd;
+}
+
+static boolean_t
+tcp_sack_limitedxmit(struct tcpcb *tp)
+{
+	tcp_seq oldsndnxt = tp->snd_nxt;
+	tcp_seq oldsndmax = tp->snd_max;
+	u_long ocwnd = tp->snd_cwnd;
+	uint32_t pipe;
+	boolean_t ret = FALSE;
+
+	tp->rexmt_high = tp->snd_una - 1;
+	pipe = tcp_sack_compute_pipe(tp);
+	while ((tcp_seq_diff_t)(ocwnd - pipe) >= (tcp_seq_diff_t)tp->t_maxseg) {
+		uint32_t sent;
+		tcp_seq next;
+		int error;
+
+		next = tp->snd_nxt = tp->snd_max;
+		tp->snd_cwnd = tp->snd_nxt - tp->snd_una + tp->t_maxseg;
+
+		error = tcp_output(tp);
+		if (error)
+			break;
+
+		sent = tp->snd_nxt - next;
+		if (sent <= 0)
+			break;
+		pipe += sent;
+		++tcpstat.tcps_sndlimited;
+		ret = TRUE;
+	}
+
+	if (SEQ_LT(oldsndnxt, oldsndmax)) {
+		KASSERT(SEQ_GEQ(oldsndnxt, tp->snd_una),
+		    ("snd_una moved in other threads"));
+		tp->snd_nxt = oldsndnxt;
+	}
+	tp->snd_cwnd = ocwnd;
+
+	return ret;
 }
 
 /*
