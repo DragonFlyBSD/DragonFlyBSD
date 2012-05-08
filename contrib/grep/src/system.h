@@ -1,5 +1,5 @@
 /* Portability cruft.  Include after config.h and sys/types.h.
-   Copyright 1996, 1998-2000, 2007, 2009-2011 Free Software Foundation, Inc.
+   Copyright 1996, 1998-2000, 2007, 2009-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -27,15 +27,10 @@
 #include "configmake.h"
 #include "dirname.h"
 #include "minmax.h"
+#include "same-inode.h"
 
 #if O_BINARY
 # define HAVE_DOS_FILE_CONTENTS 1
-#endif
-
-#ifdef EISDIR
-# define is_EISDIR(e, f) ((e) == EISDIR)
-#else
-# define is_EISDIR(e, f) 0
 #endif
 
 #include <stdlib.h>
@@ -53,7 +48,7 @@ enum { EXIT_TROUBLE = 2 };
 #include <locale.h>
 
 #ifndef initialize_main
-#define initialize_main(argcp, argvp)
+# define initialize_main(argcp, argvp)
 #endif
 
 #include "unlocked-io.h"

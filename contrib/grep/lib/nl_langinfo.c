@@ -1,6 +1,6 @@
 /* nl_langinfo() replacement: query locale dependent information.
 
-   Copyright (C) 2007-2011 Free Software Foundation, Inc.
+   Copyright (C) 2007-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -141,7 +141,8 @@ nl_langinfo (nl_item item)
       {
         static char buf[2 + 10 + 1];
 
-        /* Woe32 has a function returning the locale's codepage as a number.  */
+        /* The Windows API has a function returning the locale's codepage as
+           a number.  */
         sprintf (buf, "CP%u", GetACP ());
         return buf;
       }

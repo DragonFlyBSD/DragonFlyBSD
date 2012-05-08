@@ -1,6 +1,6 @@
 /* A more useful interface to strtol.
 
-   Copyright (C) 1995-1996, 1998-2001, 2003-2007, 2009-2011 Free Software
+   Copyright (C) 1995-1996, 1998-2001, 2003-2007, 2009-2012 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -42,6 +42,19 @@
 #include <string.h>
 
 #include "intprops.h"
+
+/* xstrtoll.c and xstrtoull.c, which include this file, require that
+   ULLONG_MAX, LLONG_MAX, LLONG_MIN are defined, but <limits.h> does not
+   define them on all platforms.  */
+#ifndef ULLONG_MAX
+# define ULLONG_MAX TYPE_MAXIMUM (unsigned long long)
+#endif
+#ifndef LLONG_MAX
+# define LLONG_MAX TYPE_MAXIMUM (long long int)
+#endif
+#ifndef LLONG_MIN
+# define LLONG_MIN TYPE_MINIMUM (long long int)
+#endif
 
 static strtol_error
 bkm_scale (__strtol_t *x, int scale_factor)
@@ -113,9 +126,9 @@ __xstrtol (const char *s, char **ptr, int strtol_base,
       err = LONGINT_OVERFLOW;
     }
 
-  /* Let valid_suffixes == NULL mean `allow any suffix'.  */
+  /* Let valid_suffixes == NULL mean "allow any suffix".  */
   /* FIXME: update all callers except the ones that allow suffixes
-     after the number, changing last parameter NULL to `""'.  */
+     after the number, changing last parameter NULL to "".  */
   if (!valid_suffixes)
     {
       *val = tmp;
@@ -136,7 +149,7 @@ __xstrtol (const char *s, char **ptr, int strtol_base,
 
       if (strchr (valid_suffixes, '0'))
         {
-          /* The ``valid suffix'' '0' is a special flag meaning that
+          /* The "valid suffix" '0' is a special flag meaning that
              an optional second suffix is allowed, which can change
              the base.  A suffix "B" (e.g. "100MB") stands for a power
              of 1000, whereas a suffix "iB" (e.g. "100MiB") stands for

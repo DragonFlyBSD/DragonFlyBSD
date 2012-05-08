@@ -1,5 +1,5 @@
 /* kwsearch.c - searching subroutines using kwset for grep.
-   Copyright 1992, 1998, 2000, 2007, 2009-2011 Free Software Foundation, Inc.
+   Copyright 1992, 1998, 2000, 2007, 2009-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -32,21 +32,19 @@ static kwset_t kwset;
 void
 Fcompile (char const *pattern, size_t size)
 {
-  char const *beg, *end, *lim, *err, *pat;
-  size_t psize;
+  char const *err;
+  size_t psize = size;
+  char const *pat = (match_icase && MB_CUR_MAX > 1
+                     ? mbtolower (pattern, &psize)
+                     : pattern);
 
   kwsinit (&kwset);
-  psize = size;
-#if MBS_SUPPORT
-  if (match_icase && MB_CUR_MAX > 1)
-    pat = mbtolower (pattern, &psize);
-  else
-#endif
-    pat = pattern;
 
-  beg = pat;
+  char const *beg = pat;
   do
     {
+      char const *lim;
+      char const *end;
       for (lim = beg;; ++lim)
         {
           end = lim;
@@ -85,7 +83,6 @@ Fexecute (char const *buf, size_t size, size_t *match_size,
   char eol = eolbyte;
   struct kwsmatch kwsmatch;
   size_t ret_val;
-#if MBS_SUPPORT
   if (MB_CUR_MAX > 1)
     {
       if (match_icase)
@@ -96,7 +93,6 @@ Fexecute (char const *buf, size_t size, size_t *match_size,
           buf = case_buf;
         }
     }
-#endif /* MBS_SUPPORT */
 
   for (mb_start = beg = start_ptr ? start_ptr : buf; beg <= buf + size; beg++)
     {
@@ -104,9 +100,8 @@ Fexecute (char const *buf, size_t size, size_t *match_size,
       if (offset == (size_t) -1)
         goto failure;
       len = kwsmatch.size[0];
-#if MBS_SUPPORT
-      if (MB_CUR_MAX > 1 && is_mb_middle (&mb_start, beg + offset, buf + size,
-                                          len))
+      if (MB_CUR_MAX > 1
+          && is_mb_middle (&mb_start, beg + offset, buf + size, len))
         {
           /* The match was a part of multibyte character, advance at least
              one byte to ensure no infinite loop happens.  */
@@ -120,7 +115,6 @@ Fexecute (char const *buf, size_t size, size_t *match_size,
             beg += mb_len - 1;
           continue;
         }
-#endif /* MBS_SUPPORT */
       beg += offset;
       if (start_ptr && !match_words)
         goto success_in_beg_and_len;

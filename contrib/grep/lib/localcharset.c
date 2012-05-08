@@ -1,8 +1,6 @@
-/* -*- buffer-read-only: t -*- vi: set ro: */
-/* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Determine a canonical name for the current locale's character encoding.
 
-   Copyright (C) 2000-2006, 2008-2011 Free Software Foundation, Inc.
+   Copyright (C) 2000-2006, 2008-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,8 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License along
-   with this program; if not, write to the Free Software Foundation,
-   Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.  */
+   with this program; if not, see <http://www.gnu.org/licenses/>.  */
 
 /* Written by Bruno Haible <bruno@clisp.org>.  */
 
@@ -36,7 +33,7 @@
 #endif
 
 #if defined _WIN32 || defined __WIN32__
-# define WIN32_NATIVE
+# define WINDOWS_NATIVE
 #endif
 
 #if defined __EMX__
@@ -46,7 +43,7 @@
 # endif
 #endif
 
-#if !defined WIN32_NATIVE
+#if !defined WINDOWS_NATIVE
 # include <unistd.h>
 # if HAVE_LANGINFO_CODESET
 #  include <langinfo.h>
@@ -59,7 +56,7 @@
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
 # endif
-#elif defined WIN32_NATIVE
+#elif defined WINDOWS_NATIVE
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
 #endif
@@ -85,7 +82,7 @@
 #endif
 
 #if defined _WIN32 || defined __WIN32__ || defined __CYGWIN__ || defined __EMX__ || defined __DJGPP__
-  /* Win32, Cygwin, OS/2, DOS */
+  /* Native Windows, Cygwin, OS/2, DOS */
 # define ISSLASH(C) ((C) == '/' || (C) == '\\')
 #endif
 
@@ -125,7 +122,7 @@ get_charset_aliases (void)
   cp = charset_aliases;
   if (cp == NULL)
     {
-#if !(defined DARWIN7 || defined VMS || defined WIN32_NATIVE || defined __CYGWIN__)
+#if !(defined DARWIN7 || defined VMS || defined WINDOWS_NATIVE || defined __CYGWIN__)
       const char *dir;
       const char *base = "charset.alias";
       char *file_name;
@@ -310,7 +307,7 @@ get_charset_aliases (void)
            "DECKOREAN" "\0" "EUC-KR" "\0";
 # endif
 
-# if defined WIN32_NATIVE || defined __CYGWIN__
+# if defined WINDOWS_NATIVE || defined __CYGWIN__
       /* To avoid the troubles of installing a separate file in the same
          directory as the DLL and of retrieving the DLL's directory at
          runtime, simply inline the aliases here.  */
@@ -362,7 +359,7 @@ locale_charset (void)
   const char *codeset;
   const char *aliases;
 
-#if !(defined WIN32_NATIVE || defined OS2)
+#if !(defined WINDOWS_NATIVE || defined OS2)
 
 # if HAVE_LANGINFO_CODESET
 
@@ -409,10 +406,10 @@ locale_charset (void)
             }
         }
 
-      /* Woe32 has a function returning the locale's codepage as a number:
-         GetACP().  This encoding is used by Cygwin, unless the user has set
-         the environment variable CYGWIN=codepage:oem (which very few people
-         do).
+      /* The Windows API has a function returning the locale's codepage as a
+         number: GetACP().  This encoding is used by Cygwin, unless the user
+         has set the environment variable CYGWIN=codepage:oem (which very few
+         people do).
          Output directed to console windows needs to be converted (to
          GetOEMCP() if the console is using a raster font, or to
          GetConsoleOutputCP() if it is using a TrueType font).  Cygwin does
@@ -455,12 +452,12 @@ locale_charset (void)
 
 # endif
 
-#elif defined WIN32_NATIVE
+#elif defined WINDOWS_NATIVE
 
   static char buf[2 + 10 + 1];
 
-  /* Woe32 has a function returning the locale's codepage as a number:
-     GetACP().
+  /* The Windows API has a function returning the locale's codepage as a
+     number: GetACP().
      When the output goes to a console window, it needs to be provided in
      GetOEMCP() encoding if the console is using a raster font, or in
      GetConsoleOutputCP() encoding if it is using a TrueType font.

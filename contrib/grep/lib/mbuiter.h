@@ -1,5 +1,5 @@
 /* Iterating through multibyte strings: macros for multi-byte encodings.
-   Copyright (C) 2001, 2005, 2007, 2009-2011 Free Software Foundation, Inc.
+   Copyright (C) 2001, 2005, 2007, 2009-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -55,9 +55,9 @@
      initializes the iterator, starting at startptr.
 
    mbui_avail (iter)
-     returns true if there are more multibyte chracters available before
+     returns true if there are more multibyte characters available before
      the end of string is reached. In this case, mbui_cur (iter) is
-     initialized to the next multibyte chracter.
+     initialized to the next multibyte character.
 
    mbui_advance (iter)
      advances the iterator by one multibyte character.
