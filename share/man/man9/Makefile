@@ -212,6 +212,7 @@ MAN=	accept_filter.9 \
 	vref.9 \
 	vrele.9 \
 	vslock.9 \
+	wdog.9 \
 	zone.9
 #	ieee80211_amrr.9 \
 
@@ -946,6 +947,8 @@ MLINKS+=VOP_RDWR.9 VOP_READ.9 \
 MLINKS+=VOP_REMOVE.9 VOP_RMDIR.9
 MLINKS+=vref.9 VREF.9
 MLINKS+=vslock.9 vsunlock.9
+MLINKS+=wdog.9 wdog_register.9 \
+	wdog.9 wdog_unregister.9
 MLINKS+=zone.9 zalloc.9 \
 	zone.9 zbootinit.9 \
 	zone.9 zdestroy.9 \

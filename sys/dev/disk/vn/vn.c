@@ -341,14 +341,28 @@ vnstrategy(struct dev_strategy_args *ap)
 		 * fs backing the VN device and whatever is running on
 		 * the VN device.
 		 */
-		if (bp->b_cmd == BUF_CMD_READ) {
+		switch (bp->b_cmd) {
+		case (BUF_CMD_READ):
 			vn_lock(vn->sc_vp, LK_SHARED | LK_RETRY);
 			error = VOP_READ(vn->sc_vp, &auio, IO_RECURSE,
 					 vn->sc_cred);
-		} else {
+			break;
+
+		case (BUF_CMD_WRITE):
 			vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY);
 			error = VOP_WRITE(vn->sc_vp, &auio, IO_RECURSE,
 					  vn->sc_cred);
+			break;
+
+		case (BUF_CMD_FLUSH):
+			auio.uio_resid = 0;
+			vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY);
+			error = VOP_FSYNC(vn->sc_vp, MNT_WAIT, 0);
+			break;
+		default:
+			auio.uio_resid = 0;
+			error = 0;
+			break;
 		}
 		vn_unlock(vn->sc_vp);
 		bp->b_resid = auio.uio_resid;

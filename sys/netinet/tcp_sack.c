@@ -311,7 +311,11 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 		boolean_t update;
 		int error;
 
-		/* don't accept bad SACK blocks */
+		/* Guard against ACK reordering */
+		if (SEQ_LT(newsackblock->rblk_start, tp->snd_una))
+			continue;
+
+		/* Don't accept bad SACK blocks */
 		if (SEQ_GT(newsackblock->rblk_end, tp->snd_max)) {
 			tcpstat.tcps_rcvbadsackopt++;
 			break;		/* skip all other blocks */
