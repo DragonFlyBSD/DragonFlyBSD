@@ -95,7 +95,7 @@ static void errmsg_restore(char *);
 static char *errmsg_save(void);
 static void *fill_search_info(const char *, size_t, void *);
 static char *find_library(const char *, const Obj_Entry *);
-static const char *gethints(const Obj_Entry *);
+static const char *gethints(bool);
 static void init_dag(Obj_Entry *);
 static void init_rtld(caddr_t, Elf_Auxinfo **);
 static void initlist_add_neededs(Needed_Entry *, Objlist *);
@@ -1544,7 +1544,8 @@ find_library(const char *xname, const Obj_Entry *refobj)
       (pathname = search_library_path(name, ld_library_path)) != NULL ||
       (objgiven &&
       (pathname = search_library_path(name, refobj->runpath)) != NULL) ||
-      (pathname = search_library_path(name, gethints(refobj))) != NULL ||
+      (pathname = search_library_path(name, gethints(refobj->z_nodeflib)))
+       != NULL ||
       (objgiven && !refobj->z_nodeflib &&
       (pathname = search_library_path(name, STANDARD_LIBRARY_PATH)) != NULL))
 	return pathname;
@@ -1651,108 +1652,107 @@ find_symdef(unsigned long symnum, const Obj_Entry *refobj,
  * If DF_1_NODEFLIB flag set, omit STANDARD_LIBRARY_PATH directories
  */
 static const char *
-gethints(const Obj_Entry *obj)
+gethints(bool nostdlib)
 {
-    static char *hints;
+    static char *hints, *filtered_path;
+    struct elfhints_hdr hdr;
+    struct fill_search_info_args sargs, hargs;
+    struct dl_serinfo smeta, hmeta, *SLPinfo, *hintinfo;
+    struct dl_serpath *SLPpath, *hintpath;
+    char *p;
+    unsigned int SLPndx, hintndx, fndx, fcount;
+    int fd;
+    size_t flen;
+    bool skip;
 
     if (hints == NULL) {
-	int fd;
-	struct elfhints_hdr hdr;
-	char *p;
-
 	/* Keep from trying again in case the hints file is bad. */
 	hints = "";
 
 	if ((fd = open(ld_elf_hints_path, O_RDONLY)) == -1)
-	    return NULL;
+	    return (NULL);
 	if (read(fd, &hdr, sizeof hdr) != sizeof hdr ||
-	  hdr.magic != ELFHINTS_MAGIC ||
-	  hdr.version != 1) {
+	  hdr.magic != ELFHINTS_MAGIC || hdr.version != 1) {
 	    close(fd);
-	    return NULL;
+	    return (NULL);
 	}
 	p = xmalloc(hdr.dirlistlen + 1);
 	if (lseek(fd, hdr.strtab + hdr.dirlist, SEEK_SET) == -1 ||
 	  read(fd, p, hdr.dirlistlen + 1) != (ssize_t)hdr.dirlistlen + 1) {
 	    free(p);
 	    close(fd);
-	    return NULL;
+	    return (NULL);
 	}
-	/* skip stdlib if compiled with -z nodeflib */
-	if ((obj != NULL) && obj->z_nodeflib) {
-	    struct fill_search_info_args sargs, hargs;
-	    struct dl_serinfo smeta, hmeta, *SLPinfo, *hintinfo;
-	    struct dl_serpath *SLPpath, *hintpath;
-	    unsigned int SLPndx, hintndx, fndx, fcount;
-	    char *filtered_path;
-	    size_t flen;
-	    bool skip;
-
-	    smeta.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
-	    smeta.dls_cnt  = 0;
-	    hmeta.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
-	    hmeta.dls_cnt  = 0;
-
-	    sargs.request = RTLD_DI_SERINFOSIZE;
-	    sargs.serinfo = &smeta;
-	    hargs.request = RTLD_DI_SERINFOSIZE;
-	    hargs.serinfo = &hmeta;
-
-	    path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &sargs);
-	    path_enumerate(p, fill_search_info, &hargs);
-
-	    SLPinfo = malloc(smeta.dls_size);
-	    hintinfo = malloc(hmeta.dls_size);
-
-	    sargs.request  = RTLD_DI_SERINFO;
-	    sargs.serinfo  = SLPinfo;
-	    sargs.serpath  = &SLPinfo->dls_serpath[0];
-	    sargs.strspace = (char *)&SLPinfo->dls_serpath[smeta.dls_cnt];
-
-	    hargs.request  = RTLD_DI_SERINFO;
-	    hargs.serinfo  = hintinfo;
-	    hargs.serpath  = &hintinfo->dls_serpath[0];
-	    hargs.strspace = (char *)&hintinfo->dls_serpath[hmeta.dls_cnt];
-
-	    path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &sargs);
-	    path_enumerate(p, fill_search_info, &hargs);
-
-	    fndx = 0;
-	    fcount = 0;
-	    filtered_path = xmalloc(hdr.dirlistlen + 1);
-	    hintpath = &hintinfo->dls_serpath[0];
-	    for (hintndx = 0; hintndx < hmeta.dls_cnt; hintndx++) {
-		skip = false;
-		SLPpath = &SLPinfo->dls_serpath[0];
-		for (SLPndx = 0; SLPndx < smeta.dls_cnt; SLPndx++) {
-		    if (strcmp(hintpath->dls_name, SLPpath->dls_name) == 0)
-			skip = true;
-		    SLPpath++;
-		}
-		if (!skip) {
-		    if (fcount > 0) {
-			filtered_path[fndx] = ':';
-			fndx++;
-		    }
-		    fcount++;
-		    flen = strlen(hintpath->dls_name);
-		    strncpy((filtered_path + fndx), hintpath->dls_name, flen);
-		    fndx+= flen;
-		}
-		hintpath++;
-	    }
-	    filtered_path[fndx] = '\0';
-
-	    free(p);
-	    free(SLPinfo);
-	    free(hintinfo);
-	    hints = filtered_path;
-	}
-	else
-	    hints = p;
+	hints = p;
 	close(fd);
     }
-    return hints[0] != '\0' ? hints : NULL;
+
+    if (!nostdlib)
+	return (hints[0] != '\0' ? hints : NULL);
+
+    if (filtered_path != NULL)
+	goto filt_ret;
+    
+    smeta.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
+    smeta.dls_cnt  = 0;
+    hmeta.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
+    hmeta.dls_cnt  = 0;
+
+    sargs.request = RTLD_DI_SERINFOSIZE;
+    sargs.serinfo = &smeta;
+    hargs.request = RTLD_DI_SERINFOSIZE;
+    hargs.serinfo = &hmeta;
+
+    path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &sargs);
+    path_enumerate(p, fill_search_info, &hargs);
+
+    SLPinfo = malloc(smeta.dls_size);
+    hintinfo = malloc(hmeta.dls_size);
+
+    sargs.request  = RTLD_DI_SERINFO;
+    sargs.serinfo  = SLPinfo;
+    sargs.serpath  = &SLPinfo->dls_serpath[0];
+    sargs.strspace = (char *)&SLPinfo->dls_serpath[smeta.dls_cnt];
+
+    hargs.request  = RTLD_DI_SERINFO;
+    hargs.serinfo  = hintinfo;
+    hargs.serpath  = &hintinfo->dls_serpath[0];
+    hargs.strspace = (char *)&hintinfo->dls_serpath[hmeta.dls_cnt];
+
+    path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &sargs);
+    path_enumerate(p, fill_search_info, &hargs);
+
+    fndx = 0;
+    fcount = 0;
+    filtered_path = xmalloc(hdr.dirlistlen + 1);
+    hintpath = &hintinfo->dls_serpath[0];
+    for (hintndx = 0; hintndx < hmeta.dls_cnt; hintndx++, hintpath++) {
+	skip = false;
+	SLPpath = &SLPinfo->dls_serpath[0];
+	for (SLPndx = 0; SLPndx < smeta.dls_cnt; SLPndx++, SLPpath++) {
+	    if (!strcmp(hintpath->dls_name, SLPpath->dls_name)) {
+		skip = true;
+		break;
+	    }
+	}
+	if (skip)
+	    continue;
+	if (fcount > 0) {
+	    filtered_path[fndx] = ':';
+	    fndx++;
+	}
+	fcount++;
+	flen = strlen(hintpath->dls_name);
+	strncpy((filtered_path + fndx), hintpath->dls_name, flen);
+	fndx+= flen;
+    }
+    filtered_path[fndx] = '\0';
+
+    free(SLPinfo);
+    free(hintinfo);
+
+filt_ret:
+    return (filtered_path[0] != '\0' ? filtered_path : NULL);
 }
 
 static void
@@ -3285,7 +3285,7 @@ do_search_info(const Obj_Entry *obj, int request, struct dl_serinfo *info)
     path_enumerate(obj->rpath, fill_search_info, &args);
     path_enumerate(ld_library_path, fill_search_info, &args);
     path_enumerate(obj->runpath, fill_search_info, &args);
-    path_enumerate(gethints(obj), fill_search_info, &args);
+    path_enumerate(gethints(obj->z_nodeflib), fill_search_info, &args);
     if (!obj->z_nodeflib)
       path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &args);
 
@@ -3319,7 +3319,8 @@ do_search_info(const Obj_Entry *obj, int request, struct dl_serinfo *info)
 	return (-1);
 
     args.flags = LA_SER_CONFIG;
-    if (path_enumerate(gethints(obj), fill_search_info, &args) != NULL)
+    if (path_enumerate(gethints(obj->z_nodeflib), fill_search_info, &args)
+      != NULL)
 	return (-1);
 
     args.flags = LA_SER_DEFAULT;
