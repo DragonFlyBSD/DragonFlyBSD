@@ -88,6 +88,7 @@ extern int tcp_do_smartsack;
 extern int tcp_do_rescuesack;
 extern int tcp_aggressive_rescuesack;
 extern int tcp_do_rfc3517bis;
+extern int tcp_rfc3517bis_rxt;
 extern int tcp_aggregate_acks;
 extern int tcp_eifel_rtoinc;
 

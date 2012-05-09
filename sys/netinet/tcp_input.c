@@ -201,6 +201,10 @@ int tcp_do_rfc3517bis = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3517bis, CTLFLAG_RW,
     &tcp_do_rfc3517bis, 0, "Enable RFC3517 update");
 
+int tcp_rfc3517bis_rxt = 0;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3517bis_rxt, CTLFLAG_RW,
+    &tcp_rfc3517bis_rxt, 0, "Enable RFC3517 retransmit update");
+
 SYSCTL_NODE(_net_inet_tcp, OID_AUTO, reass, CTLFLAG_RW, 0,
     "TCP Segment Reassembly Queue");
 
@@ -2029,7 +2033,8 @@ fastretransmit:
 					tp->snd_cwnd += tp->t_maxseg *
 					    (tp->t_dupacks - tp->snd_limited);
 			} else if (tcp_do_rfc3517bis && TCP_DO_SACK(tp)) {
-				if (tcp_sack_islost(&tp->scb, tp->snd_una))
+				if (tcp_rfc3517bis_rxt &&
+				    tcp_sack_islost(&tp->scb, tp->snd_una))
 					goto fastretransmit;
 				if (tcp_do_limitedtransmit) {
 					/* outstanding data */
