@@ -472,15 +472,15 @@ tcp_save_congestion_state(struct tcpcb *tp)
 	    (tcp_eifel_rtoinc << TCP_RTT_SHIFT);
 	tp->t_rttvar_prev = tp->t_rttvar;
 	tp->snd_max_prev = tp->snd_max;
-	tp->t_flags &= ~TF_REBASERTO;
+	tp->rxt_flags &= ~TRXT_F_REBASERTO;
 
 	if (IN_FASTRECOVERY(tp))
-		tp->t_flags |= TF_WASFRECOVERY;
+		tp->rxt_flags |= TRXT_F_WASFRECOVERY;
 	else
-		tp->t_flags &= ~TF_WASFRECOVERY;
+		tp->rxt_flags &= ~TRXT_F_WASFRECOVERY;
 	if (tp->t_flags & TF_RCVD_TSTMP) {
 		tp->t_rexmtTS = ticks;
-		tp->t_flags |= TF_FIRSTACCACK;
+		tp->rxt_flags |= TRXT_F_FIRSTACCACK;
 	}
 #ifdef later
 	tcp_sack_save_scoreboard(&tp->scb);
@@ -494,17 +494,17 @@ tcp_revert_congestion_state(struct tcpcb *tp)
 	tp->snd_wacked = tp->snd_wacked_prev;
 	tp->snd_ssthresh = tp->snd_ssthresh_prev;
 	tp->snd_recover = tp->snd_recover_prev;
-	if (tp->t_flags & TF_WASFRECOVERY)
+	if (tp->rxt_flags & TRXT_F_WASFRECOVERY)
 		ENTER_FASTRECOVERY(tp);
-	if (tp->t_flags & TF_FASTREXMT) {
+	if (tp->rxt_flags & TRXT_F_FASTREXMT) {
 		++tcpstat.tcps_sndfastrexmitbad;
-		if (tp->t_flags & TF_EARLYREXMT)
+		if (tp->rxt_flags & TRXT_F_EARLYREXMT)
 			++tcpstat.tcps_sndearlyrexmitbad;
 	} else {
 		++tcpstat.tcps_sndrtobad;
 		tp->snd_last = ticks;
 		if (tcp_do_eifel_response)
-			tp->t_flags |= TF_REBASERTO;
+			tp->rxt_flags |= TRXT_F_REBASERTO;
 	}
 	tp->t_badrxtwin = 0;
 	tp->t_rxtshift = 0;
@@ -550,7 +550,7 @@ tcp_timer_rexmt_handler(struct tcpcb *tp)
 		 */
 		tp->t_badrxtwin = ticks + (tp->t_srtt >> (TCP_RTT_SHIFT + 1));
 		tcp_save_congestion_state(tp);
-		tp->t_flags &= ~(TF_FASTREXMT | TF_EARLYREXMT);
+		tp->rxt_flags &= ~(TRXT_F_FASTREXMT | TRXT_F_EARLYREXMT);
 	}
 	if (tp->t_state == TCPS_SYN_SENT || tp->t_state == TCPS_SYN_RECEIVED) {
 		/*

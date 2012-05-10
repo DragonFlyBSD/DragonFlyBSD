@@ -1195,7 +1195,7 @@ after_listen:
 				 */
 				if (tcp_do_eifel_detect &&
 				    (to.to_flags & TOF_TS) && to.to_tsecr &&
-				    (tp->t_flags & TF_FIRSTACCACK)) {
+				    (tp->rxt_flags & TRXT_F_FIRSTACCACK)) {
 					/* Eifel detection applicable. */
 					if (to.to_tsecr < tp->t_rexmtTS) {
 						tcp_revert_congestion_state(tp);
@@ -1209,8 +1209,8 @@ after_listen:
 					tcp_revert_congestion_state(tp);
 					++tcpstat.tcps_rttdetected;
 				}
-				tp->t_flags &= ~(TF_FIRSTACCACK |
-						 TF_FASTREXMT | TF_EARLYREXMT);
+				tp->rxt_flags &= ~(TRXT_F_FIRSTACCACK |
+				    TRXT_F_FASTREXMT | TRXT_F_EARLYREXMT);
 				/*
 				 * Recalculate the retransmit timer / rtt.
 				 *
@@ -2000,7 +2000,7 @@ fastretransmit:
 				if (tcp_do_eifel_detect &&
 				    (tp->t_flags & TF_RCVD_TSTMP)) {
 					tcp_save_congestion_state(tp);
-					tp->t_flags |= TF_FASTREXMT;
+					tp->rxt_flags |= TRXT_F_FASTREXMT;
 				}
 				/*
 				 * We know we're losing at the current
@@ -2047,7 +2047,8 @@ fastretransmit:
 					if (!tcp_sack_limitedxmit(tp) &&
 					    need_early_retransmit(tp, ownd)) {
 						++tcpstat.tcps_sndearlyrexmit;
-						tp->t_flags |= TF_EARLYREXMT;
+						tp->rxt_flags |=
+						    TRXT_F_EARLYREXMT;
 						goto fastretransmit;
 					}
 				}
@@ -2092,7 +2093,7 @@ fastretransmit:
 					++tcpstat.tcps_sndlimited;
 				} else if (need_early_retransmit(tp, ownd)) {
 					++tcpstat.tcps_sndearlyrexmit;
-					tp->t_flags |= TF_EARLYREXMT;
+					tp->rxt_flags |= TRXT_F_EARLYREXMT;
 					goto fastretransmit;
 				}
 			}
@@ -2142,7 +2143,7 @@ process_ACK:
 
 		if (tcp_do_eifel_detect && acked > 0 &&
 		    (to.to_flags & TOF_TS) && (to.to_tsecr != 0) &&
-		    (tp->t_flags & TF_FIRSTACCACK)) {
+		    (tp->rxt_flags & TRXT_F_FIRSTACCACK)) {
 			/* Eifel detection applicable. */
 			if (to.to_tsecr < tp->t_rexmtTS) {
 				++tcpstat.tcps_eifeldetected;
@@ -2191,7 +2192,8 @@ process_ACK:
 			goto step6;
 
 		/* Stop looking for an acceptable ACK since one was received. */
-		tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT | TF_EARLYREXMT);
+		tp->rxt_flags &= ~(TRXT_F_FIRSTACCACK |
+		    TRXT_F_FASTREXMT | TRXT_F_EARLYREXMT);
 
 		if (acked > so->so_snd.ssb_cc) {
 			tp->snd_wnd -= so->so_snd.ssb_cc;
@@ -2842,7 +2844,8 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt, tcp_seq ack)
 
 	tcpstat.tcps_rttupdated++;
 	tp->t_rttupdated++;
-	if ((tp->t_flags & TF_REBASERTO) && SEQ_GT(ack, tp->snd_max_prev)) {
+	if ((tp->rxt_flags & TRXT_F_REBASERTO) &&
+	    SEQ_GT(ack, tp->snd_max_prev)) {
 #ifdef DEBUG_EIFEL_RESPONSE
 		kprintf("srtt/rttvar, prev %d/%d, cur %d/%d, ",
 		    tp->t_srtt_prev, tp->t_rttvar_prev,
@@ -2851,7 +2854,7 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt, tcp_seq ack)
 
 		tcpstat.tcps_eifelresponse++;
 		rebaserto = 1;
-		tp->t_flags &= ~TF_REBASERTO;
+		tp->rxt_flags &= ~TRXT_F_REBASERTO;
 		tp->t_srtt = max(tp->t_srtt_prev, (rtt << TCP_RTT_SHIFT));
 		tp->t_rttvar = max(tp->t_rttvar_prev,
 		    (rtt << (TCP_RTTVAR_SHIFT - 1)));

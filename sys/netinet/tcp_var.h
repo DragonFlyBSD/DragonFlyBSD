@@ -170,14 +170,14 @@ struct tcpcb {
 #define TF_SIGNATURE	0x00004000	/* require MD5 digests (RFC2385) */
 #define TF_UNUSED001	0x00008000
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
-#define	TF_REBASERTO	0x00020000	/* Recalculate RTO based on new RTT */
+#define	TF_UNUSED005	0x00020000
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
 #define	TF_RXWIN0SENT	0x00080000	/* sent a receiver win 0 in response */
 #define	TF_FASTRECOVERY	0x00100000	/* in NewReno Fast Recovery */
-#define	TF_WASFRECOVERY	0x00200000	/* was in NewReno Fast Recovery */
-#define	TF_FIRSTACCACK	0x00400000	/* Look for 1st acceptable ACK. */
-#define	TF_FASTREXMT	0x00800000	/* Did Fast Retransmit. */
-#define	TF_EARLYREXMT	0x01000000	/* Did Early (Fast) Retransmit. */
+#define	TF_UNUSED006	0x00200000
+#define	TF_UNUSED007	0x00400000
+#define	TF_UNUSED008	0x00800000
+#define	TF_UNUSED009	0x01000000
 #define	TF_FORCE	0x02000000	/* Set if forcing out a byte */
 #define TF_ONOUTPUTQ	0x04000000	/* on t_outputq list */
 #define TF_UNUSED002	0x08000000
@@ -246,6 +246,12 @@ struct tcpcb {
 	tcp_seq	last_ack_sent;
 
 /* experimental */
+	u_int	rxt_flags;
+#define	TRXT_F_REBASERTO	0x0001	/* Recalculate RTO based on new RTT */
+#define	TRXT_F_WASFRECOVERY	0x0002	/* was in NewReno Fast Recovery */
+#define	TRXT_F_FIRSTACCACK	0x0004	/* Look for 1st acceptable ACK. */
+#define	TRXT_F_FASTREXMT	0x0008	/* Did Fast Retransmit. */
+#define	TRXT_F_EARLYREXMT	0x0010	/* Did Early (Fast) Retransmit. */
 	int	t_srtt_prev;		/* adjusted SRTT prior to retransmit */
 	int	t_rttvar_prev;		/* RTTVAR prior to retransmit */
 	int	t_rxtcur_prev;		/* rexmt timeout prior to retransmit */
