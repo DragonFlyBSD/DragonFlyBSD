@@ -1,5 +1,5 @@
 /* Print --version and bug-reporting information in a consistent format.
-   Copyright (C) 1999, 2003, 2005, 2009-2011 Free Software Foundation, Inc.
+   Copyright (C) 1999, 2003, 2005, 2009-2012 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 # include <stdarg.h>
 # include <stdio.h>
 
-/* The `sentinel' attribute was added in gcc 4.0.  */
+/* The 'sentinel' attribute was added in gcc 4.0.  */
 #ifndef _GL_ATTRIBUTE_SENTINEL
 # if 4 <= __GNUC__
 #  define _GL_ATTRIBUTE_SENTINEL __attribute__ ((__sentinel__))
@@ -37,7 +37,7 @@ extern const char version_etc_copyright[];
    standard way: command and package names, package version, followed
    by a short GPLv3+ notice and a list of up to 10 author names.
 
-   If COMMAND_NAME is NULL, the PACKAGE is asumed to be the name of
+   If COMMAND_NAME is NULL, the PACKAGE is assumed to be the name of
    the program.  The formats are therefore:
 
    PACKAGE VERSION
@@ -72,7 +72,7 @@ extern void version_etc (FILE *stream,
                          /* const char *author1, ..., NULL */ ...)
   _GL_ATTRIBUTE_SENTINEL;
 
-/* Display the usual `Report bugs to' stanza */
+/* Display the usual "Report bugs to" stanza.  */
 extern void emit_bug_reporting_address (void);
 
 #endif /* VERSION_ETC_H */

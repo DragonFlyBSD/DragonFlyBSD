@@ -1,5 +1,5 @@
 /* grep.h - interface to grep driver for searching subroutines.
-   Copyright (C) 1992, 1998, 2001, 2007, 2009-2011 Free Software Foundation,
+   Copyright (C) 1992, 1998, 2001, 2007, 2009-2012 Free Software Foundation,
    Inc.
 
    This program is free software; you can redistribute it and/or modify
@@ -19,10 +19,6 @@
 
 #ifndef GREP_GREP_H
 #define GREP_GREP_H 1
-
-#if __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 6) || __STRICT_ANSI__
-# define __attribute__(x)
-#endif
 
 /* Function pointer types.  */
 typedef void (*compile_fp_t) (char const *, size_t);

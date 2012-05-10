@@ -1,6 +1,6 @@
 /* dirname.c -- return all but the last element in a file name
 
-   Copyright (C) 1990, 1998, 2000-2001, 2003-2006, 2009-2011 Free Software
+   Copyright (C) 1990, 1998, 2000-2001, 2003-2006, 2009-2012 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -25,7 +25,7 @@
 
 /* Return the length of the prefix of FILE that will be used by
    dir_name.  If FILE is in the working directory, this returns zero
-   even though `dir_name (FILE)' will return ".".  Works properly even
+   even though 'dir_name (FILE)' will return ".".  Works properly even
    if there are trailing slashes (by effectively ignoring them).  */
 
 size_t
@@ -53,9 +53,9 @@ dir_len (char const *file)
 }
 
 
-/* In general, we can't use the builtin `dirname' function if available,
+/* In general, we can't use the builtin 'dirname' function if available,
    since it has different meanings in different environments.
-   In some environments the builtin `dirname' modifies its argument.
+   In some environments the builtin 'dirname' modifies its argument.
 
    Return the leading directories part of FILE, allocated with malloc.
    Works properly even if there are trailing slashes (by effectively

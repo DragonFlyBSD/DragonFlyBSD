@@ -38,7 +38,6 @@ COMM=	${SYS}/conf/*.[ch] \
 	${SYS}/vfs/union/*.[ch] \
 	${SYS}/vfs/msdosfs/*.[ch] \
 	${SYS}/net/*.[ch] \
-	${SYS}/netproto/atalk/*.[ch] \
 	${SYS}/netproto/atm/*.[ch] \
 	${SYS}/netinet/*.[ch] \
 	${SYS}/netproto/ipx/*.[ch] \

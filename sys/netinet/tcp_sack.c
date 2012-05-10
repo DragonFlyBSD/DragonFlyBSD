@@ -469,13 +469,27 @@ update_lostseq(struct scoreboard *scb, tcp_seq snd_una, u_int maxseg,
 	struct sackblock *sb;
 	int nsackblocks = 0;
 	int bytes_sacked = 0;
+	int rxtthresh_bytes;
+
+	/*
+	 * XXX
+	 * The RFC3517bis recommends to reduce the byte threshold.
+	 * However, it will cause extra spurious retransmit if
+	 * segments are reordered.  Before certain DupThresh adaptive
+	 * algorithm is implemented, we don't reduce the byte
+	 * threshold (tcp_rfc3517bis_rxt is off by default).
+	 */
+	if (tcp_do_rfc3517bis && tcp_rfc3517bis_rxt)
+		rxtthresh_bytes = (rxtthresh - 1) * maxseg;
+	else
+		rxtthresh_bytes = rxtthresh * maxseg;
 
 	sb = TAILQ_LAST(&scb->sackblocks, sackblock_list);
 	while (sb != NULL) {
 		++nsackblocks;
 		bytes_sacked += sb->sblk_end - sb->sblk_start;
 		if (nsackblocks == rxtthresh ||
-		    bytes_sacked >= rxtthresh * maxseg) {
+		    bytes_sacked >= rxtthresh_bytes) {
 			scb->lostseq = sb->sblk_start;
 			return;
 		}
@@ -487,8 +501,8 @@ update_lostseq(struct scoreboard *scb, tcp_seq snd_una, u_int maxseg,
 /*
  * Return whether the given sequence number is considered lost.
  */
-static boolean_t
-scb_islost(struct scoreboard *scb, tcp_seq seqnum)
+boolean_t
+tcp_sack_islost(struct scoreboard *scb, tcp_seq seqnum)
 {
 	return SEQ_LT(seqnum, scb->lostseq);
 }
@@ -577,7 +591,7 @@ tcp_sack_nextseg(struct tcpcb *tp, tcp_seq *nextrexmt, uint32_t *plen,
 	*rescue = FALSE;
 	if (lastblock != NULL) {
 		if (SEQ_LT(torexmt, lastblock->sblk_end) &&
-		    scb_islost(scb, torexmt)) {
+		    tcp_sack_islost(scb, torexmt)) {
 sendunsacked:
 			*nextrexmt = torexmt;
 			/* If the left-hand edge has been SACKed, pull it in. */
@@ -603,7 +617,7 @@ sendunsacked:
 		goto sendunsacked;
 
 	/* Rescue retransmission */
-	if (tcp_do_rescuesack) {
+	if (tcp_do_rescuesack || tcp_do_rfc3517bis) {
 		tcpstat.tcps_sackrescue_try++;
 		if (tp->t_flags & TF_SACKRESCUED) {
 			if (!tcp_aggressive_rescuesack)

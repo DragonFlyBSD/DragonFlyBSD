@@ -1,7 +1,5 @@
-/* -*- buffer-read-only: t -*- vi: set ro: */
-/* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Safe automatic memory allocation.
-   Copyright (C) 2003, 2006-2007, 2009-2011 Free Software Foundation, Inc.
+   Copyright (C) 2003, 2006-2007, 2009-2012 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2003.
 
    This program is free software; you can redistribute it and/or modify
@@ -15,14 +13,15 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.  */
+   along with this program; if not, see <http://www.gnu.org/licenses/>.  */
 
 #define _GL_USE_STDLIB_ALLOC 1
 #include <config.h>
 
 /* Specification.  */
 #include "malloca.h"
+
+#include <stdint.h>
 
 #include "verify.h"
 
@@ -87,7 +86,7 @@ mmalloca (size_t n)
           ((int *) p)[-1] = MAGIC_NUMBER;
 
           /* Enter p into the hash table.  */
-          slot = (unsigned long) p % HASH_TABLE_SIZE;
+          slot = (uintptr_t) p % HASH_TABLE_SIZE;
           ((struct header *) (p - HEADER_SIZE))->next = mmalloca_results[slot];
           mmalloca_results[slot] = p;
 
@@ -120,7 +119,7 @@ freea (void *p)
         {
           /* Looks like a mmalloca() result.  To see whether it really is one,
              perform a lookup in the hash table.  */
-          size_t slot = (unsigned long) p % HASH_TABLE_SIZE;
+          size_t slot = (uintptr_t) p % HASH_TABLE_SIZE;
           void **chain = &mmalloca_results[slot];
           for (; *chain != NULL;)
             {

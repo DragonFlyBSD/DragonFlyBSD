@@ -1,5 +1,5 @@
 /* kwset.h - header declaring the keyword set library.
-   Copyright (C) 1989, 1998, 2005, 2007, 2009-2011 Free Software Foundation,
+   Copyright (C) 1989, 1998, 2005, 2007, 2009-2012 Free Software Foundation,
    Inc.
 
    This program is free software; you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 
 struct kwsmatch
 {
-  int index;			/* Index number of matching keyword. */
+  size_t index;			/* Index number of matching keyword. */
   size_t offset[1];		/* Offset of each submatch. */
   size_t size[1];		/* Length of each submatch. */
 };

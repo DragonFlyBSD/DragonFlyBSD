@@ -87,6 +87,8 @@ extern int tcp_do_sack;
 extern int tcp_do_smartsack;
 extern int tcp_do_rescuesack;
 extern int tcp_aggressive_rescuesack;
+extern int tcp_do_rfc3517bis;
+extern int tcp_rfc3517bis_rxt;
 extern int tcp_aggregate_acks;
 extern int tcp_eifel_rtoinc;
 
@@ -653,6 +655,8 @@ uint32_t tcp_sack_compute_pipe(struct tcpcb *tp);
 boolean_t
 	 tcp_sack_nextseg(struct tcpcb *tp, tcp_seq *nextrexmt, uint32_t *len,
 			  boolean_t *rescue);
+boolean_t
+	 tcp_sack_islost(struct scoreboard *scb, tcp_seq seq);
 #ifdef later
 void	 tcp_sack_revert_scoreboard(struct scoreboard *scb, tcp_seq snd_una,
 				    u_int maxseg);

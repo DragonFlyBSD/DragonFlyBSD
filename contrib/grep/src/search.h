@@ -1,5 +1,5 @@
 /* search.c - searching subroutines using dfa, kwset and regex for grep.
-   Copyright 1992, 1998, 2000, 2007, 2009-2011 Free Software Foundation, Inc.
+   Copyright 1992, 1998, 2000, 2007, 2009-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -38,10 +38,8 @@
 /* searchutils.c */
 extern void kwsinit (kwset_t *);
 
-#if MBS_SUPPORT
 extern char *mbtolower (const char *, size_t *);
 extern bool is_mb_middle (const char **, const char *, const char *, size_t);
-#endif
 
 /* dfasearch.c */
 extern void GEAcompile (char const *, size_t, reg_syntax_t);

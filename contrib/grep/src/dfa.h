@@ -1,5 +1,5 @@
 /* dfa.h - declarations for GNU deterministic regexp compiler
-   Copyright (C) 1988, 1998, 2007, 2009-2011 Free Software Foundation, Inc.
+   Copyright (C) 1988, 1998, 2007, 2009-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -17,10 +17,6 @@
    51 Franklin Street - Fifth Floor, Boston, MA  02110-1301, USA */
 
 /* Written June, 1988 by Mike Haertel */
-
-#if __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 6) || __STRICT_ANSI__
-# define __attribute__(x)
-#endif
 
 /* Element of a list of strings, at least one of which is known to
    appear in any R.E. matching the DFA. */
@@ -67,7 +63,7 @@ extern void dfacomp (char const *, size_t, struct dfa *, int);
    encountered a back-reference (1) or not (0).  The caller may use this
    to decide whether to fall back on a backtracking matcher. */
 extern char *dfaexec (struct dfa *d, char const *begin, char *end,
-                      int newline, int *count, int *backref);
+                      int newline, size_t *count, int *backref);
 
 /* Free the storage held by the components of a struct dfa. */
 extern void dfafree (struct dfa *);
@@ -86,7 +82,7 @@ extern void dfaanalyze (struct dfa *, int);
 
 /* Compute, for each possible character, the transitions out of a given
    state, storing them in an array of integers. */
-extern void dfastate (int, struct dfa *, int []);
+extern void dfastate (ptrdiff_t, struct dfa *, ptrdiff_t []);
 
 /* Error handling. */
 
@@ -99,4 +95,4 @@ extern void dfawarn (const char *);
 /* dfaerror() is called by the regexp routines whenever an error occurs.  It
    takes a single argument, a NUL-terminated string describing the error.
    The user must supply a dfaerror.  */
-extern void dfaerror (const char *) __attribute__ ((noreturn));
+extern _Noreturn void dfaerror (const char *);
