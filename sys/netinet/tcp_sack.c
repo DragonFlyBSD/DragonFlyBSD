@@ -261,7 +261,8 @@ tcp_sack_destroy(struct scoreboard *scb)
 void
 tcp_sack_report_cleanup(struct tcpcb *tp)
 {
-	tp->t_flags &= ~(TF_DUPSEG | TF_ENCLOSESEG | TF_SACKLEFT);
+	tp->sack_flags &=
+	    ~(TSACK_F_DUPSEG | TSACK_F_ENCLOSESEG | TSACK_F_SACKLEFT);
 	tp->reportblk.rblk_start = tp->reportblk.rblk_end;
 }
 
@@ -343,9 +344,9 @@ tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to)
 		tp->rexmt_high = tp->snd_una;
 		rexmt_high_update = 1;
 	}
-	if (tp->t_flags & TF_SACKRESCUED) {
+	if (tp->sack_flags & TSACK_F_SACKRESCUED) {
 		if (SEQ_LT(tp->rexmt_rescue, tp->snd_una)) {
-			tp->t_flags &= ~TF_SACKRESCUED;
+			tp->sack_flags &= ~TSACK_F_SACKRESCUED;
 		} else if (tcp_aggressive_rescuesack && rexmt_high_update &&
 		    SEQ_LT(tp->rexmt_rescue, tp->rexmt_high)) {
 			/* Drag RescueRxt along with HighRxt */
@@ -619,7 +620,7 @@ sendunsacked:
 	/* Rescue retransmission */
 	if (tcp_do_rescuesack || tcp_do_rfc3517bis) {
 		tcpstat.tcps_sackrescue_try++;
-		if (tp->t_flags & TF_SACKRESCUED) {
+		if (tp->sack_flags & TSACK_F_SACKRESCUED) {
 			if (!tcp_aggressive_rescuesack)
 				return FALSE;
 
@@ -841,7 +842,7 @@ tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen)
 	    TCPOLEN_SACK_ALIGNED + TCPOLEN_SACK_BLOCK,
 	    ("no room for SACK header and one block: optlen %d", optlen));
 
-	if (tp->t_flags & TF_DUPSEG)
+	if (tp->sack_flags & TSACK_F_DUPSEG)
 		tcpstat.tcps_snddsackopt++;
 	else
 		tcpstat.tcps_sndsackopt++;
@@ -856,7 +857,7 @@ tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen)
 		optlen += TCPOLEN_SACK_BLOCK;
 		hstart = tp->reportblk.rblk_start;
 		hend = tp->reportblk.rblk_end;
-		if (tp->t_flags & TF_ENCLOSESEG) {
+		if (tp->sack_flags & TSACK_F_ENCLOSESEG) {
 			KASSERT(TCP_MAXOLEN - optlen >= TCPOLEN_SACK_BLOCK,
 			    ("no room for enclosing SACK block: oplen %d",
 			    optlen));
@@ -869,7 +870,7 @@ tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen)
 		if (SEQ_GT(hstart, tp->rcv_nxt))
 			tcp_sack_update_reported_history(tp, hstart, hend);
 	}
-	if (tcp_do_smartsack && (tp->t_flags & TF_SACKLEFT)) {
+	if (tcp_do_smartsack && (tp->sack_flags & TSACK_F_SACKLEFT)) {
 		/* Fill in from left!  Walk re-assembly queue. */
 		struct tseg_qent *q;
 
@@ -898,7 +899,8 @@ tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen)
 		}
 	}
 	tp->reportblk.rblk_start = tp->reportblk.rblk_end;
-	tp->t_flags &= ~(TF_DUPSEG | TF_ENCLOSESEG | TF_SACKLEFT);
+	tp->sack_flags &=
+	    ~(TSACK_F_DUPSEG | TSACK_F_ENCLOSESEG | TSACK_F_SACKLEFT);
 	nblocks = (lp - olp - 1) / 2;
 	*olp = htonl(TCPOPT_SACK_ALIGNED |
 		     (TCPOLEN_SACK + nblocks * TCPOLEN_SACK_BLOCK));

@@ -364,7 +364,8 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 		/* conversion to int (in i) handles seq wraparound */
 		i = p->tqe_th->th_seq + p->tqe_len - th->th_seq;
 		if (i > 0) {		/* overlaps preceding segment */
-			tp->t_flags |= (TF_DUPSEG | TF_ENCLOSESEG);
+			tp->sack_flags |=
+			    (TSACK_F_DUPSEG | TSACK_F_ENCLOSESEG);
 			/* enclosing block starts w/ preceding segment */
 			tp->encloseblk.rblk_start = p->tqe_th->th_seq;
 			if (i >= *tlenp) {
@@ -410,13 +411,14 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 
 		if (i <= 0)
 			break;
-		if (!(tp->t_flags & TF_DUPSEG)) {    /* first time through */
-			tp->t_flags |= (TF_DUPSEG | TF_ENCLOSESEG);
+		if (!(tp->sack_flags & TSACK_F_DUPSEG)) {
+			/* first time through */
+			tp->sack_flags |= (TSACK_F_DUPSEG | TSACK_F_ENCLOSESEG);
 			tp->encloseblk = tp->reportblk;
 			/* report trailing duplicate D-SACK segment */
 			tp->reportblk.rblk_start = q->tqe_th->th_seq;
 		}
-		if ((tp->t_flags & TF_ENCLOSESEG) &&
+		if ((tp->sack_flags & TSACK_F_ENCLOSESEG) &&
 		    SEQ_GT(qend_sack, tp->encloseblk.rblk_end)) {
 			/* extend enclosing block if one exists */
 			tp->encloseblk.rblk_end = qend_sack;
@@ -455,7 +457,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 		 * When not reporting a duplicate segment, use
 		 * the larger enclosing block as the SACK block.
 		 */
-		if (!(tp->t_flags & TF_DUPSEG))
+		if (!(tp->sack_flags & TSACK_F_DUPSEG))
 			tp->reportblk.rblk_end = tend_sack;
 		LIST_REMOVE(q, tqe_q);
 		kfree(q, M_TSEGQ);
@@ -474,7 +476,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			 * When not reporting a duplicate segment, use
 			 * the larger enclosing block as the SACK block.
 			 */
-			if (!(tp->t_flags & TF_DUPSEG))
+			if (!(tp->sack_flags & TSACK_F_DUPSEG))
 				tp->reportblk.rblk_start = p->tqe_th->th_seq;
 			kfree(te, M_TSEGQ);
 			atomic_add_int(&tcp_reass_qsize, -1);
@@ -494,12 +496,12 @@ present:
 	if (q == NULL || q->tqe_th->th_seq != tp->rcv_nxt)
 		return (0);
 	tp->rcv_nxt += q->tqe_len;
-	if (!(tp->t_flags & TF_DUPSEG))	{
+	if (!(tp->sack_flags & TSACK_F_DUPSEG))	{
 		/* no SACK block to report since ACK advanced */
 		tp->reportblk.rblk_start = tp->reportblk.rblk_end;
 	}
 	/* no enclosing block to report since ACK advanced */
-	tp->t_flags &= ~TF_ENCLOSESEG;
+	tp->sack_flags &= ~TSACK_F_ENCLOSESEG;
 	flags = q->tqe_th->th_flags & TH_FIN;
 	LIST_REMOVE(q, tqe_q);
 	KASSERT(LIST_EMPTY(&tp->t_segq) ||
@@ -1699,7 +1701,8 @@ after_listen:
 			    th->th_seq + tlen, thflags);
 			if (SEQ_GT(tp->reportblk.rblk_end, tp->rcv_nxt))
 				tp->reportblk.rblk_end = tp->rcv_nxt;
-			tp->t_flags |= (TF_DUPSEG | TF_SACKLEFT | TF_ACKNOW);
+			tp->sack_flags |= (TSACK_F_DUPSEG | TSACK_F_SACKLEFT);
+			tp->t_flags |= TF_ACKNOW;
 		}
 		if (thflags & TH_SYN) {
 			thflags &= ~TH_SYN;
@@ -2022,7 +2025,7 @@ fastretransmit:
 				++tcpstat.tcps_sndfastrexmit;
 				tp->snd_cwnd = tp->snd_ssthresh;
 				tp->rexmt_high = tp->snd_nxt;
-				tp->t_flags &= ~TF_SACKRESCUED;
+				tp->sack_flags &= ~TSACK_F_SACKRESCUED;
 				if (SEQ_GT(old_snd_nxt, tp->snd_nxt))
 					tp->snd_nxt = old_snd_nxt;
 				KASSERT(tp->snd_limited <= 2,
@@ -2490,7 +2493,7 @@ dodata:							/* XXX */
 			}
 			sorwakeup(so);
 		} else {
-			if (!(tp->t_flags & TF_DUPSEG)) {
+			if (!(tp->sack_flags & TSACK_F_DUPSEG)) {
 				/* Initialize SACK report block. */
 				tp->reportblk.rblk_start = th->th_seq;
 				tp->reportblk.rblk_end = TCP_SACK_BLKEND(
@@ -3297,14 +3300,14 @@ tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
 		if (rescue) {
 			tcpstat.tcps_sackrescue++;
 			tp->rexmt_rescue = tp->snd_nxt;
-			tp->t_flags |= TF_SACKRESCUED;
+			tp->sack_flags |= TSACK_F_SACKRESCUED;
 			break;
 		}
 		if (SEQ_LT(nextrexmt, old_snd_max) &&
 		    SEQ_LT(tp->rexmt_high, tp->snd_nxt)) {
 			tp->rexmt_high = seq_min(tp->snd_nxt, old_snd_max);
 			if (tcp_aggressive_rescuesack &&
-			    (tp->t_flags & TF_SACKRESCUED) &&
+			    (tp->sack_flags & TSACK_F_SACKRESCUED) &&
 			    SEQ_LT(tp->rexmt_rescue, tp->rexmt_high)) {
 				/* Drag RescueRxt along with HighRxt */
 				tp->rexmt_rescue = tp->rexmt_high;

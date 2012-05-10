@@ -168,7 +168,7 @@ struct tcpcb {
 #define	TF_NOPUSH	0x00001000	/* don't push */
 #define TF_LISTEN	0x00002000	/* listen(2) has been called */
 #define TF_SIGNATURE	0x00004000	/* require MD5 digests (RFC2385) */
-#define TF_SACKRESCUED	0x00008000	/* sent rescue SACK recovery data */
+#define TF_UNUSED001	0x00008000
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
 #define	TF_REBASERTO	0x00020000	/* Recalculate RTO based on new RTT */
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
@@ -180,9 +180,9 @@ struct tcpcb {
 #define	TF_EARLYREXMT	0x01000000	/* Did Early (Fast) Retransmit. */
 #define	TF_FORCE	0x02000000	/* Set if forcing out a byte */
 #define TF_ONOUTPUTQ	0x04000000	/* on t_outputq list */
-#define TF_DUPSEG	0x08000000	/* last seg a duplicate */
-#define TF_ENCLOSESEG	0x10000000	/* enclosing SACK block */
-#define TF_SACKLEFT	0x20000000	/* send SACK blocks from left side */
+#define TF_UNUSED002	0x08000000
+#define TF_UNUSED003	0x10000000
+#define TF_UNUSED004	0x20000000
 #define TF_KEEPALIVE	0x40000000	/* temporary keepalive */
 #define TF_RXRESIZED	0x80000000	/* rcvbuf was resized */
 	tcp_seq	snd_up;			/* send urgent pointer */
@@ -258,6 +258,11 @@ struct tcpcb {
 	u_long	t_rexmtTS;		/* timestamp of last retransmit */
 	u_char	snd_limited;		/* segments limited transmitted */
 
+	u_int	sack_flags;
+#define TSACK_F_SACKRESCUED	0x0001	/* sent rescue SACK recovery data */
+#define TSACK_F_DUPSEG		0x0002	/* last seg a duplicate */
+#define TSACK_F_ENCLOSESEG	0x0004	/* enclosing SACK block */
+#define TSACK_F_SACKLEFT	0x0008	/* send SACK blocks from left side */
 	tcp_seq	rexmt_high;		/* highest seq # retransmitted + 1 */
 	tcp_seq	rexmt_rescue;		/* rescue SACKED sequence number */
 	tcp_seq	snd_max_rexmt;		/* snd_max when rexmting snd_una */
@@ -266,6 +271,7 @@ struct tcpcb {
 	struct raw_sackblock encloseblk;
 	int	nsackhistory;
 	struct raw_sackblock sackhistory[MAX_SACK_REPORT_BLOCKS]; /* reported */
+
 	TAILQ_ENTRY(tcpcb) t_outputq;	/* tcp_output needed list */
 
 	/* bandwith limitation */
