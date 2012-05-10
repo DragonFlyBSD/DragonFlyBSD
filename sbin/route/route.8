@@ -31,7 +31,6 @@
 .\"
 .\"     @(#)route.8	8.3 (Berkeley) 3/19/94
 .\" $FreeBSD: src/sbin/route/route.8,v 1.17.2.9 2003/02/24 00:56:43 trhodes Exp $
-.\" $DragonFly: src/sbin/route/route.8,v 1.7 2008/07/19 13:43:03 swildner Exp $
 .\"
 .Dd June 8, 2001
 .Dt ROUTE 8
@@ -138,7 +137,6 @@ will ``flush'' the routing tables of all gateway entries.
 When the address family may is specified by any of the
 .Fl osi ,
 .Fl xns ,
-.Fl atalk ,
 .Fl inet6 ,
 or
 .Fl inet
@@ -229,15 +227,13 @@ The optional modifiers
 .Fl mpls ,
 .Fl xns ,
 .Fl osi ,
-.Fl atalk ,
 and
 .Fl link
 specify that all subsequent addresses are in the
 .Tn MPLS ,
 .Tn XNS ,
-.Tn OSI ,
 or
-.Tn AppleTalk
+.Tn OSI
 address families,
 or are specified as link-level addresses,
 and the names must be numeric specifications rather than

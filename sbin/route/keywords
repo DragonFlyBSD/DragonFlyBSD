@@ -1,9 +1,7 @@
 #	@(#)keywords	8.2 (Berkeley) 3/19/94
 # $FreeBSD: src/sbin/route/keywords,v 1.4.2.1 2001/10/02 10:04:01 ru Exp $
-# $DragonFly: src/sbin/route/keywords,v 1.4 2008/07/07 22:02:09 nant Exp $
 
 add
-atalk
 blackhole
 change
 cloning
