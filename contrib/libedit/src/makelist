@@ -128,7 +128,7 @@ _EOF
 	}
 	END {
 	    printf("};\n");
-	    printf("\nprotected const el_bindings_t* help__get()");
+	    printf("\nprotected const el_bindings_t* help__get(void)");
 	    printf("{ return el_func_help; }\n");
 	}'
 	;;
@@ -194,7 +194,7 @@ _EOF
 	}
 	END {
 	    printf("\n};\n");
-	    printf("\nprotected const el_func_t* func__get() { return el_func; }\n");
+	    printf("\nprotected const el_func_t* func__get(void) { return el_func; }\n");
 	}'
 	;;
 
