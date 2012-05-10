@@ -109,6 +109,7 @@ extern char		*rl_basic_word_break_characters;
 extern char		*rl_completer_word_break_characters;
 extern char		*rl_completer_quote_characters;
 extern Function		*rl_completion_entry_function;
+extern char		*(* rl_completion_word_break_hook)(void);
 extern CPPFunction	*rl_attempted_completion_function;
 extern int		 rl_attempted_completion_over;
 extern int		rl_completion_type;
