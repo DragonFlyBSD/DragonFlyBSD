@@ -41,10 +41,6 @@ __RCSID("$NetBSD: el.c,v 1.70 2012/03/11 21:14:56 christos Exp $");
 #endif
 #endif /* not lint && not SCCSID */
 
-#ifndef MAXPATHLEN
-#define MAXPATHLEN 4096
-#endif
-
 /*
  * el.c: EditLine interface functions
  */

@@ -127,10 +127,6 @@ wchar_t *wcsdup(const wchar_t *);
 typedef unsigned int	u_int32_t;
 #endif
 
-#ifndef SIZE_T_MAX
-#define SIZE_T_MAX	((size_t)-1)
-#endif
-
 #define	REGEX		/* Use POSIX.2 regular expression functions */
 #undef	REGEXP		/* Use UNIX V8 regular expression functions */
 
