@@ -295,7 +295,7 @@ do { \
 #define need_early_retransmit(tp, ownd) \
     (tcp_do_early_retransmit && \
      (tcp_do_eifel_detect && (tp->t_flags & TF_RCVD_TSTMP)) && \
-     ownd < (4 * tp->t_maxseg) && \
+     ownd < ((tp->t_rxtthresh + 1) * tp->t_maxseg) && \
      tp->t_dupacks + 1 >= iceildiv(ownd, tp->t_maxseg) && \
      (!TCP_DO_SACK(tp) || ownd <= tp->t_maxseg || \
       tcp_sack_has_sacked(&tp->scb, ownd - tp->t_maxseg)))
