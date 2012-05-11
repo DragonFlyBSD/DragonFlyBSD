@@ -1,7 +1,7 @@
 /* MI Command Set for GDB, the GNU debugger.
 
-   Copyright (C) 2000, 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2000, 2003-2005, 2007-2012 Free Software Foundation,
+   Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
 
@@ -36,6 +36,7 @@ extern const char mi_all_values[];
 typedef void (mi_cmd_argv_ftype) (char *command, char **argv, int argc);
 
 /* Function implementing each command */
+extern mi_cmd_argv_ftype mi_cmd_ada_task_info;
 extern mi_cmd_argv_ftype mi_cmd_add_inferior;
 extern mi_cmd_argv_ftype mi_cmd_break_insert;
 extern mi_cmd_argv_ftype mi_cmd_break_commands;

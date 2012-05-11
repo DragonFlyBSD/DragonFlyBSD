@@ -1,6 +1,6 @@
 /* ELF executable support for BFD.
    Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
+   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Written by Fred Fish @ Cygnus Support, from information published
@@ -499,7 +499,6 @@ elf_object_p (bfd *abfd)
   asection *s;
   bfd_size_type amt;
   const bfd_target *target;
-  const bfd_target * const *target_ptr;
 
   preserve.marker = NULL;
 
@@ -588,34 +587,9 @@ elf_object_p (bfd *abfd)
       && (ebd->elf_machine_alt1 == 0
 	  || i_ehdrp->e_machine != ebd->elf_machine_alt1)
       && (ebd->elf_machine_alt2 == 0
-	  || i_ehdrp->e_machine != ebd->elf_machine_alt2))
-    {
-      if (ebd->elf_machine_code != EM_NONE)
-	goto got_wrong_format_error;
-
-      /* This is the generic ELF target.  Let it match any ELF target
-	 for which we do not have a specific backend.  */
-      for (target_ptr = bfd_target_vector; *target_ptr != NULL; target_ptr++)
-	{
-	  const struct elf_backend_data *back;
-
-	  if ((*target_ptr)->flavour != bfd_target_elf_flavour)
-	    continue;
-	  back = xvec_get_elf_backend_data (*target_ptr);
-	  if (back->s->arch_size != ARCH_SIZE)
-	    continue;
-	  if (back->elf_machine_code == i_ehdrp->e_machine
-	      || (back->elf_machine_alt1 != 0
-		  && back->elf_machine_alt1 == i_ehdrp->e_machine)
-	      || (back->elf_machine_alt2 != 0
-		  && back->elf_machine_alt2 == i_ehdrp->e_machine))
-	    {
-	      /* target_ptr is an ELF backend which matches this
-		 object file, so reject the generic ELF target.  */
-	      goto got_wrong_format_error;
-	    }
-	}
-    }
+	  || i_ehdrp->e_machine != ebd->elf_machine_alt2)
+      && ebd->elf_machine_code != EM_NONE)
+    goto got_wrong_format_error;
 
   if (i_ehdrp->e_type == ET_EXEC)
     abfd->flags |= EXEC_P;
@@ -633,43 +607,9 @@ elf_object_p (bfd *abfd)
     }
 
   if (ebd->elf_machine_code != EM_NONE
-      && i_ehdrp->e_ident[EI_OSABI] != ebd->elf_osabi)
-    {
-      if (ebd->elf_osabi != ELFOSABI_NONE)
-	goto got_wrong_format_error;
-
-      /* This is an ELFOSABI_NONE ELF target.  Let it match any ELF
-	 target of the compatible machine for which we do not have a
-	 backend with matching ELFOSABI.  */
-      for (target_ptr = bfd_target_vector;
-	   *target_ptr != NULL;
-	   target_ptr++)
-	{
-	  const struct elf_backend_data *back;
-
-	  /* Skip this target and targets with incompatible byte
-	     order.  */
-	  if (*target_ptr == target
-	      || (*target_ptr)->flavour != bfd_target_elf_flavour
-	      || (*target_ptr)->byteorder != target->byteorder
-	      || ((*target_ptr)->header_byteorder
-		  != target->header_byteorder))
-	    continue;
-
-	  back = xvec_get_elf_backend_data (*target_ptr);
-	  if (back->elf_osabi == i_ehdrp->e_ident[EI_OSABI]
-	      && (back->elf_machine_code == i_ehdrp->e_machine
-		  || (back->elf_machine_alt1 != 0
-		      && back->elf_machine_alt1 == i_ehdrp->e_machine)
-		  || (back->elf_machine_alt2 != 0
-		      && back->elf_machine_alt2 == i_ehdrp->e_machine)))
-	    {
-	      /* target_ptr is an ELF backend which matches this
-		 object file, so reject the ELFOSABI_NONE ELF target.  */
-	      goto got_wrong_format_error;
-	    }
-	}
-    }
+      && i_ehdrp->e_ident[EI_OSABI] != ebd->elf_osabi
+      && ebd->elf_osabi != ELFOSABI_NONE)
+    goto got_wrong_format_error;
 
   if (i_ehdrp->e_shoff != 0)
     {
@@ -1282,6 +1222,20 @@ elf_slurp_symbol_table (bfd *abfd, asymbol **symptrs, bfd_boolean dynamic)
 	  else if (isym->st_shndx == SHN_COMMON)
 	    {
 	      sym->symbol.section = bfd_com_section_ptr;
+	      if ((abfd->flags & BFD_PLUGIN) != 0)
+		{
+		  asection *xc = bfd_get_section_by_name (abfd, "COMMON");
+
+		  if (xc == NULL)
+		    {
+		      flagword flags = (SEC_ALLOC | SEC_IS_COMMON | SEC_KEEP
+					| SEC_EXCLUDE);
+		      xc = bfd_make_section_with_flags (abfd, "COMMON", flags);
+		      if (xc == NULL)
+			goto error_return;
+		    }
+		  sym->symbol.section = xc;
+		}
 	      /* Elf puts the alignment into the `value' field, and
 		 the size into the `size' field.  BFD wants to see the
 		 size in the value field, and doesn't care (at the

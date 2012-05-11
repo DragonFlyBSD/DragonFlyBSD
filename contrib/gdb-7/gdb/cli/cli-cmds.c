@@ -1,7 +1,6 @@
 /* GDB CLI commands.
 
-   Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010,
-   2011 Free Software Foundation, Inc.
+   Copyright (C) 2000-2005, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,6 +20,7 @@
 #include "defs.h"
 #include "exceptions.h"
 #include "arch-utils.h"
+#include "dyn-string.h"
 #include "readline/readline.h"
 #include "readline/tilde.h"
 #include "completer.h"
@@ -91,6 +91,9 @@ void apropos_command (char *, int);
 /* Prototypes for local utility functions */
 
 static void ambiguous_line_spec (struct symtabs_and_lines *);
+
+static void filter_sals (struct symtabs_and_lines *);
+
 
 /* Limit the call depth of user-defined commands */
 int max_user_call_depth;
@@ -185,6 +188,8 @@ struct cmd_list_element *setchecklist;
 
 struct cmd_list_element *showchecklist;
 
+struct cmd_list_element *skiplist;
+
 /* Command tracing state.  */
 
 int source_verbose = 0;
@@ -243,16 +248,6 @@ help_command (char *command, int from_tty)
   help_cmd (command, gdb_stdout);
 }
 
-/* String compare function for qsort.  */
-static int
-compare_strings (const void *arg1, const void *arg2)
-{
-  const char **s1 = (const char **) arg1;
-  const char **s2 = (const char **) arg2;
-
-  return strcmp (*s1, *s2);
-}
-
 /* The "complete" command is used by Emacs to implement completion.  */
 
 static void
@@ -534,7 +529,9 @@ source_script_from_stream (FILE *stream, const char *file)
 
       TRY_CATCH (e, RETURN_MASK_ERROR)
 	{
-	  source_python_script (stream, file);
+          /* The python support reopens the file using python functions,
+             so there's no point in passing STREAM here.  */
+	  source_python_script (file);
 	}
       if (e.reason < 0)
 	{
@@ -576,7 +573,7 @@ source_script_with_search (const char *file, int from_tty, int search_path)
 
   if (!find_and_open_script (file, search_path, &stream, &full_path))
     {
-      /* The script wasn't found, or was otherwise inaccessible.  
+      /* The script wasn't found, or was otherwise inaccessible.
          If the source command was invoked interactively, throw an
 	 error.  Otherwise (e.g. if it was invoked by a script),
 	 silently ignore the error.  */
@@ -587,7 +584,12 @@ source_script_with_search (const char *file, int from_tty, int search_path)
     }
 
   old_cleanups = make_cleanup (xfree, full_path);
-  source_script_from_stream (stream, file);
+  /* The python support reopens the file, so we need to pass full_path here
+     in case the file was found on the search path.  It's useful to do this
+     anyway so that error messages show the actual file used.  But only do
+     this if we (may have) used search_path, as printing the full path in
+     errors for the non-search case can be more noise than signal.  */
+  source_script_from_stream (stream, search_path ? full_path : file);
   do_cleanups (old_cleanups);
 }
 
@@ -726,7 +728,7 @@ shell_escape (char *arg, int from_tty)
   chdir (current_directory);
 #endif
 #else /* Can fork.  */
-  int rc, status, pid;
+  int status, pid;
 
   if ((pid = vfork ()) == 0)
     {
@@ -750,8 +752,7 @@ shell_escape (char *arg, int from_tty)
     }
 
   if (pid != -1)
-    while ((rc = wait (&status)) != pid && rc != -1)
-      ;
+    waitpid (pid, &status, 0);
   else
     error (_("Fork failed"));
 #endif /* Can fork.  */
@@ -787,8 +788,9 @@ edit_command (char *arg, int from_tty)
       /* Now should only be one argument -- decode it in SAL.  */
 
       arg1 = arg;
-      sals = decode_line_1 (&arg1, 0, 0, 0, 0);
+      sals = decode_line_1 (&arg1, DECODE_LINE_LIST_MODE, 0, 0);
 
+      filter_sals (&sals);
       if (! sals.nelts)
 	{
 	  /*  C++  */
@@ -917,8 +919,9 @@ list_command (char *arg, int from_tty)
     dummy_beg = 1;
   else
     {
-      sals = decode_line_1 (&arg1, 0, 0, 0, 0);
+      sals = decode_line_1 (&arg1, DECODE_LINE_LIST_MODE, 0, 0);
 
+      filter_sals (&sals);
       if (!sals.nelts)
 	return;			/*  C++  */
       if (sals.nelts > 1)
@@ -950,9 +953,11 @@ list_command (char *arg, int from_tty)
       else
 	{
 	  if (dummy_beg)
-	    sals_end = decode_line_1 (&arg1, 0, 0, 0, 0);
+	    sals_end = decode_line_1 (&arg1, DECODE_LINE_LIST_MODE, 0, 0);
 	  else
-	    sals_end = decode_line_1 (&arg1, 0, sal.symtab, sal.line, 0);
+	    sals_end = decode_line_1 (&arg1, DECODE_LINE_LIST_MODE,
+				      sal.symtab, sal.line);
+	  filter_sals (&sals);
 	  if (sals_end.nelts == 0)
 	    return;
 	  if (sals_end.nelts > 1)
@@ -1064,7 +1069,7 @@ print_disassembly (struct gdbarch *gdbarch, const char *name,
 			 paddress (gdbarch, low), paddress (gdbarch, high));
 
       /* Dump the specified range.  */
-      gdb_disassembly (gdbarch, uiout, 0, flags, -1, low, high);
+      gdb_disassembly (gdbarch, current_uiout, 0, flags, -1, low, high);
 
       printf_filtered ("End of assembler dump.\n");
       gdb_flush (gdb_stdout);
@@ -1273,6 +1278,180 @@ apropos_command (char *searchstr, int from_tty)
       error (_("Error in regular expression: %s"), err);
     }
 }
+
+/* Subroutine of alias_command to simplify it.
+   Return the first N elements of ARGV flattened back to a string
+   with a space separating each element.
+   ARGV may not be NULL.
+   This does not take care of quoting elements in case they contain spaces
+   on purpose.  */
+
+static dyn_string_t
+argv_to_dyn_string (char **argv, int n)
+{
+  int i;
+  dyn_string_t result = dyn_string_new (10);
+
+  gdb_assert (argv != NULL);
+  gdb_assert (n >= 0 && n <= countargv (argv));
+
+  for (i = 0; i < n; ++i)
+    {
+      if (i > 0)
+	dyn_string_append_char (result, ' ');
+      dyn_string_append_cstr (result, argv[i]);
+    }
+
+  return result;
+}
+
+/* Subroutine of alias_command to simplify it.
+   Return TRUE if COMMAND exists, unambiguously.  Otherwise FALSE.  */
+
+static int
+valid_command_p (char *command)
+{
+  struct cmd_list_element *c;
+
+  c = lookup_cmd_1 (& command, cmdlist, NULL, 1);
+
+  if (c == NULL || c == (struct cmd_list_element *) -1)
+    return FALSE;
+
+  /* This is the slightly tricky part.
+     lookup_cmd_1 will return a pointer to the last part of COMMAND
+     to match, leaving COMMAND pointing at the remainder.  */
+  while (*command == ' ' || *command == '\t')
+    ++command;
+  return *command == '\0';
+}
+
+/* Make an alias of an existing command.  */
+
+static void
+alias_command (char *args, int from_tty)
+{
+  int i, alias_argc, command_argc;
+  int abbrev_flag = 0;
+  char *args2, *equals, *alias, *command;
+  char **alias_argv, **command_argv;
+  dyn_string_t alias_dyn_string, command_dyn_string;
+  struct cmd_list_element *c;
+  static const char usage[] = N_("Usage: alias [-a] [--] ALIAS = COMMAND");
+
+  if (args == NULL || strchr (args, '=') == NULL)
+    error (_(usage));
+
+  args2 = xstrdup (args);
+  make_cleanup (xfree, args2);
+  equals = strchr (args2, '=');
+  *equals = '\0';
+  alias_argv = gdb_buildargv (args2);
+  make_cleanup_freeargv (alias_argv);
+  command_argv = gdb_buildargv (equals + 1);
+  make_cleanup_freeargv (command_argv);
+
+  for (i = 0; alias_argv[i] != NULL; )
+    {
+      if (strcmp (alias_argv[i], "-a") == 0)
+	{
+	  ++alias_argv;
+	  abbrev_flag = 1;
+	}
+      else if (strcmp (alias_argv[i], "--") == 0)
+	{
+	  ++alias_argv;
+	  break;
+	}
+      else
+	break;
+    }
+
+  if (alias_argv[0] == NULL || command_argv[0] == NULL
+      || *alias_argv[0] == '\0' || *command_argv[0] == '\0')
+    error (_(usage));
+
+  for (i = 0; alias_argv[i] != NULL; ++i)
+    {
+      if (! valid_user_defined_cmd_name_p (alias_argv[i]))
+	{
+	  if (i == 0)
+	    error (_("Invalid command name: %s"), alias_argv[i]);
+	  else
+	    error (_("Invalid command element name: %s"), alias_argv[i]);
+	}
+    }
+
+  alias_argc = countargv (alias_argv);
+  command_argc = countargv (command_argv);
+
+  /* COMMAND must exist.
+     Reconstruct the command to remove any extraneous spaces,
+     for better error messages.  */
+  command_dyn_string = argv_to_dyn_string (command_argv, command_argc);
+  make_cleanup_dyn_string_delete (command_dyn_string);
+  command = dyn_string_buf (command_dyn_string);
+  if (! valid_command_p (command))
+    error (_("Invalid command to alias to: %s"), command);
+
+  /* ALIAS must not exist.  */
+  alias_dyn_string = argv_to_dyn_string (alias_argv, alias_argc);
+  make_cleanup_dyn_string_delete (alias_dyn_string);
+  alias = dyn_string_buf (alias_dyn_string);
+  if (valid_command_p (alias))
+    error (_("Alias already exists: %s"), alias);
+
+  /* If ALIAS is one word, it is an alias for the entire COMMAND.
+     Example: alias spe = set print elements
+
+     Otherwise ALIAS and COMMAND must have the same number of words,
+     and every word except the last must match; and the last word of
+     ALIAS is made an alias of the last word of COMMAND.
+     Example: alias set print elms = set pr elem
+     Note that unambiguous abbreviations are allowed.  */
+
+  if (alias_argc == 1)
+    {
+      /* add_cmd requires *we* allocate space for name, hence the xstrdup.  */
+      add_com_alias (xstrdup (alias_argv[0]), command, class_alias,
+		     abbrev_flag);
+    }
+  else
+    {
+      int i;
+      dyn_string_t alias_prefix_dyn_string, command_prefix_dyn_string;
+      char *alias_prefix, *command_prefix;
+      struct cmd_list_element *c_alias, *c_command;
+
+      if (alias_argc != command_argc)
+	error (_("Mismatched command length between ALIAS and COMMAND."));
+
+      /* Create copies of ALIAS and COMMAND without the last word,
+	 and use that to verify the leading elements match.  */
+      alias_prefix_dyn_string =
+	argv_to_dyn_string (alias_argv, alias_argc - 1);
+      make_cleanup_dyn_string_delete (alias_prefix_dyn_string);
+      command_prefix_dyn_string =
+	argv_to_dyn_string (alias_argv, command_argc - 1);
+      make_cleanup_dyn_string_delete (command_prefix_dyn_string);
+      alias_prefix = dyn_string_buf (alias_prefix_dyn_string);
+      command_prefix = dyn_string_buf (command_prefix_dyn_string);
+
+      c_command = lookup_cmd_1 (& command_prefix, cmdlist, NULL, 1);
+      /* We've already tried to look up COMMAND.  */
+      gdb_assert (c_command != NULL
+		  && c_command != (struct cmd_list_element *) -1);
+      gdb_assert (c_command->prefixlist != NULL);
+      c_alias = lookup_cmd_1 (& alias_prefix, cmdlist, NULL, 1);
+      if (c_alias != c_command)
+	error (_("ALIAS and COMMAND prefixes do not match."));
+
+      /* add_cmd requires *we* allocate space for name, hence the xstrdup.  */
+      add_alias_cmd (xstrdup (alias_argv[alias_argc - 1]),
+		     command_argv[command_argc - 1],
+		     class_alias, abbrev_flag, c_command->prefixlist);
+    }
+}
 
 /* Print a list of files and line numbers which a user may choose from
    in order to list a function which was specified ambiguously (as
@@ -1287,6 +1466,85 @@ ambiguous_line_spec (struct symtabs_and_lines *sals)
   for (i = 0; i < sals->nelts; ++i)
     printf_filtered (_("file: \"%s\", line number: %d\n"),
 		     sals->sals[i].symtab->filename, sals->sals[i].line);
+}
+
+/* Sort function for filter_sals.  */
+
+static int
+compare_symtabs (const void *a, const void *b)
+{
+  const struct symtab_and_line *sala = a;
+  const struct symtab_and_line *salb = b;
+  int r;
+
+  if (!sala->symtab->dirname)
+    {
+      if (salb->symtab->dirname)
+	return -1;
+    }
+  else if (!salb->symtab->dirname)
+    {
+      if (sala->symtab->dirname)
+	return 1;
+    }
+  else
+    {
+      r = filename_cmp (sala->symtab->dirname, salb->symtab->dirname);
+      if (r)
+	return r;
+    }
+
+  r = filename_cmp (sala->symtab->filename, salb->symtab->filename);
+  if (r)
+    return r;
+
+  if (sala->line < salb->line)
+    return -1;
+  return sala->line == salb->line ? 0 : 1;
+}
+
+/* Remove any SALs that do not match the current program space, or
+   which appear to be "file:line" duplicates.  */
+
+static void
+filter_sals (struct symtabs_and_lines *sals)
+{
+  int i, out, prev;
+
+  out = 0;
+  for (i = 0; i < sals->nelts; ++i)
+    {
+      if (sals->sals[i].pspace == current_program_space
+	  && sals->sals[i].symtab != NULL)
+	{
+	  sals->sals[out] = sals->sals[i];
+	  ++out;
+	}
+    }
+  sals->nelts = out;
+
+  qsort (sals->sals, sals->nelts, sizeof (struct symtab_and_line),
+	 compare_symtabs);
+
+  out = 1;
+  prev = 0;
+  for (i = 1; i < sals->nelts; ++i)
+    {
+      if (compare_symtabs (&sals->sals[prev], &sals->sals[i]))
+	{
+	  /* Symtabs differ.  */
+	  sals->sals[out] = sals->sals[i];
+	  prev = out;
+	  ++out;
+	}
+    }
+  sals->nelts = out;
+
+  if (sals->nelts == 0)
+    {
+      xfree (sals->sals);
+      sals->sals = NULL;
+    }
 }
 
 static void
@@ -1330,6 +1588,7 @@ init_cmd_lists (void)
   showprintlist = NULL;
   setchecklist = NULL;
   showchecklist = NULL;
+  skiplist = NULL;
 }
 
 static void
@@ -1395,7 +1654,7 @@ init_cli_cmds (void)
   char *source_help_text;
 
   /* Define the classes of commands.
-     They will appear in the help list in the reverse of this order.  */
+     They will appear in the help list in alphabetical order.  */
 
   add_cmd ("internals", class_maintenance, NULL, _("\
 Maintenance commands.\n\
@@ -1641,14 +1900,7 @@ Two arguments (separated by a comma) are taken as a range of memory to dump,\n\
   if (xdb_commands)
     add_com_alias ("va", "disassemble", class_xdb, 0);
 
-  /* NOTE: cagney/2000-03-20: Being able to enter ``(gdb) !ls'' would
-     be a really useful feature.  Unfortunately, the below wont do
-     this.  Instead it adds support for the form ``(gdb) ! ls''
-     (i.e. the space is required).  If the ``!'' command below is
-     added the complains about no ``!'' command would be replaced by
-     complains about how the ``!'' command is broken :-)  */
-  if (xdb_commands)
-    add_com_alias ("!", "shell", class_support, 0);
+  add_com_alias ("!", "shell", class_support, 0);
 
   c = add_com ("make", class_support, make_command, _("\
 Run the ``make'' program using the rest of the line as arguments."));
@@ -1675,4 +1927,18 @@ When 'on', each command is displayed as it is executed."),
 			   NULL,
 			   NULL,
 			   &setlist, &showlist);
+
+  c = add_com ("alias", class_support, alias_command, _("\
+Define a new command that is an alias of an existing command.\n\
+Usage: alias [-a] [--] ALIAS = COMMAND\n\
+ALIAS is the name of the alias command to create.\n\
+COMMAND is the command being aliased to.\n\
+If \"-a\" is specified, the command is an abbreviation,\n\
+and will not appear in help command list output.\n\
+\n\
+Examples:\n\
+Make \"spe\" an alias of \"set print elements\":\n\
+  alias spe = set print elements\n\
+Make \"elms\" an alias of \"elements\" in the \"set print\" command:\n\
+  alias -a set print elms = set print elements"));
 }

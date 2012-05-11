@@ -1,8 +1,6 @@
 /* Print values for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
-   1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
-   2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1988-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -36,6 +34,9 @@
 #include "dfp.h"
 #include "python/python.h"
 #include "ada-lang.h"
+#include "gdb_obstack.h"
+#include "charset.h"
+#include <ctype.h>
 
 #include <errno.h>
 
@@ -396,11 +397,12 @@ val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 }
 
 /* Check whether the value VAL is printable.  Return 1 if it is;
-   return 0 and print an appropriate error message to STREAM if it
-   is not.  */
+   return 0 and print an appropriate error message to STREAM according to
+   OPTIONS if it is not.  */
 
 static int
-value_check_printable (struct value *val, struct ui_file *stream)
+value_check_printable (struct value *val, struct ui_file *stream,
+		       const struct value_print_options *options)
 {
   if (val == 0)
     {
@@ -410,7 +412,10 @@ value_check_printable (struct value *val, struct ui_file *stream)
 
   if (value_entirely_optimized_out (val))
     {
-      val_print_optimized_out (stream);
+      if (options->summary && !scalar_type_p (value_type (val)))
+	fprintf_filtered (stream, "...");
+      else
+	val_print_optimized_out (stream);
       return 0;
     }
 
@@ -438,7 +443,7 @@ common_val_print (struct value *val, struct ui_file *stream, int recurse,
 		  const struct value_print_options *options,
 		  const struct language_defn *language)
 {
-  if (!value_check_printable (val, stream))
+  if (!value_check_printable (val, stream, options))
     return 0;
 
   if (language->la_language == language_ada)
@@ -464,7 +469,7 @@ int
 value_print (struct value *val, struct ui_file *stream,
 	     const struct value_print_options *options)
 {
-  if (!value_check_printable (val, stream))
+  if (!value_check_printable (val, stream, options))
     return 0;
 
   if (!options->raw)
@@ -1464,6 +1469,450 @@ read_string (CORE_ADDR addr, int len, int width, unsigned int fetchlimit,
   discard_cleanups (old_chain);
 
   return errcode;
+}
+
+/* Return true if print_wchar can display W without resorting to a
+   numeric escape, false otherwise.  */
+
+static int
+wchar_printable (gdb_wchar_t w)
+{
+  return (gdb_iswprint (w)
+	  || w == LCST ('\a') || w == LCST ('\b')
+	  || w == LCST ('\f') || w == LCST ('\n')
+	  || w == LCST ('\r') || w == LCST ('\t')
+	  || w == LCST ('\v'));
+}
+
+/* A helper function that converts the contents of STRING to wide
+   characters and then appends them to OUTPUT.  */
+
+static void
+append_string_as_wide (const char *string,
+		       struct obstack *output)
+{
+  for (; *string; ++string)
+    {
+      gdb_wchar_t w = gdb_btowc (*string);
+      obstack_grow (output, &w, sizeof (gdb_wchar_t));
+    }
+}
+
+/* Print a wide character W to OUTPUT.  ORIG is a pointer to the
+   original (target) bytes representing the character, ORIG_LEN is the
+   number of valid bytes.  WIDTH is the number of bytes in a base
+   characters of the type.  OUTPUT is an obstack to which wide
+   characters are emitted.  QUOTER is a (narrow) character indicating
+   the style of quotes surrounding the character to be printed.
+   NEED_ESCAPE is an in/out flag which is used to track numeric
+   escapes across calls.  */
+
+static void
+print_wchar (gdb_wint_t w, const gdb_byte *orig,
+	     int orig_len, int width,
+	     enum bfd_endian byte_order,
+	     struct obstack *output,
+	     int quoter, int *need_escapep)
+{
+  int need_escape = *need_escapep;
+
+  *need_escapep = 0;
+  if (gdb_iswprint (w) && (!need_escape || (!gdb_iswdigit (w)
+					    && w != LCST ('8')
+					    && w != LCST ('9'))))
+    {
+      gdb_wchar_t wchar = w;
+
+      if (w == gdb_btowc (quoter) || w == LCST ('\\'))
+	obstack_grow_wstr (output, LCST ("\\"));
+      obstack_grow (output, &wchar, sizeof (gdb_wchar_t));
+    }
+  else
+    {
+      switch (w)
+	{
+	case LCST ('\a'):
+	  obstack_grow_wstr (output, LCST ("\\a"));
+	  break;
+	case LCST ('\b'):
+	  obstack_grow_wstr (output, LCST ("\\b"));
+	  break;
+	case LCST ('\f'):
+	  obstack_grow_wstr (output, LCST ("\\f"));
+	  break;
+	case LCST ('\n'):
+	  obstack_grow_wstr (output, LCST ("\\n"));
+	  break;
+	case LCST ('\r'):
+	  obstack_grow_wstr (output, LCST ("\\r"));
+	  break;
+	case LCST ('\t'):
+	  obstack_grow_wstr (output, LCST ("\\t"));
+	  break;
+	case LCST ('\v'):
+	  obstack_grow_wstr (output, LCST ("\\v"));
+	  break;
+	default:
+	  {
+	    int i;
+
+	    for (i = 0; i + width <= orig_len; i += width)
+	      {
+		char octal[30];
+		ULONGEST value;
+
+		value = extract_unsigned_integer (&orig[i], width,
+						  byte_order);
+		/* If the value fits in 3 octal digits, print it that
+		   way.  Otherwise, print it as a hex escape.  */
+		if (value <= 0777)
+		  sprintf (octal, "\\%.3o", (int) (value & 0777));
+		else
+		  sprintf (octal, "\\x%lx", (long) value);
+		append_string_as_wide (octal, output);
+	      }
+	    /* If we somehow have extra bytes, print them now.  */
+	    while (i < orig_len)
+	      {
+		char octal[5];
+
+		sprintf (octal, "\\%.3o", orig[i] & 0xff);
+		append_string_as_wide (octal, output);
+		++i;
+	      }
+
+	    *need_escapep = 1;
+	  }
+	  break;
+	}
+    }
+}
+
+/* Print the character C on STREAM as part of the contents of a
+   literal string whose delimiter is QUOTER.  ENCODING names the
+   encoding of C.  */
+
+void
+generic_emit_char (int c, struct type *type, struct ui_file *stream,
+		   int quoter, const char *encoding)
+{
+  enum bfd_endian byte_order
+    = gdbarch_byte_order (get_type_arch (type));
+  struct obstack wchar_buf, output;
+  struct cleanup *cleanups;
+  gdb_byte *buf;
+  struct wchar_iterator *iter;
+  int need_escape = 0;
+
+  buf = alloca (TYPE_LENGTH (type));
+  pack_long (buf, type, c);
+
+  iter = make_wchar_iterator (buf, TYPE_LENGTH (type),
+			      encoding, TYPE_LENGTH (type));
+  cleanups = make_cleanup_wchar_iterator (iter);
+
+  /* This holds the printable form of the wchar_t data.  */
+  obstack_init (&wchar_buf);
+  make_cleanup_obstack_free (&wchar_buf);
+
+  while (1)
+    {
+      int num_chars;
+      gdb_wchar_t *chars;
+      const gdb_byte *buf;
+      size_t buflen;
+      int print_escape = 1;
+      enum wchar_iterate_result result;
+
+      num_chars = wchar_iterate (iter, &result, &chars, &buf, &buflen);
+      if (num_chars < 0)
+	break;
+      if (num_chars > 0)
+	{
+	  /* If all characters are printable, print them.  Otherwise,
+	     we're going to have to print an escape sequence.  We
+	     check all characters because we want to print the target
+	     bytes in the escape sequence, and we don't know character
+	     boundaries there.  */
+	  int i;
+
+	  print_escape = 0;
+	  for (i = 0; i < num_chars; ++i)
+	    if (!wchar_printable (chars[i]))
+	      {
+		print_escape = 1;
+		break;
+	      }
+
+	  if (!print_escape)
+	    {
+	      for (i = 0; i < num_chars; ++i)
+		print_wchar (chars[i], buf, buflen,
+			     TYPE_LENGTH (type), byte_order,
+			     &wchar_buf, quoter, &need_escape);
+	    }
+	}
+
+      /* This handles the NUM_CHARS == 0 case as well.  */
+      if (print_escape)
+	print_wchar (gdb_WEOF, buf, buflen, TYPE_LENGTH (type),
+		     byte_order, &wchar_buf, quoter, &need_escape);
+    }
+
+  /* The output in the host encoding.  */
+  obstack_init (&output);
+  make_cleanup_obstack_free (&output);
+
+  convert_between_encodings (INTERMEDIATE_ENCODING, host_charset (),
+			     obstack_base (&wchar_buf),
+			     obstack_object_size (&wchar_buf),
+			     1, &output, translit_char);
+  obstack_1grow (&output, '\0');
+
+  fputs_filtered (obstack_base (&output), stream);
+
+  do_cleanups (cleanups);
+}
+
+/* Print the character string STRING, printing at most LENGTH
+   characters.  LENGTH is -1 if the string is nul terminated.  TYPE is
+   the type of each character.  OPTIONS holds the printing options;
+   printing stops early if the number hits print_max; repeat counts
+   are printed as appropriate.  Print ellipses at the end if we had to
+   stop before printing LENGTH characters, or if FORCE_ELLIPSES.
+   QUOTE_CHAR is the character to print at each end of the string.  If
+   C_STYLE_TERMINATOR is true, and the last character is 0, then it is
+   omitted.  */
+
+void
+generic_printstr (struct ui_file *stream, struct type *type, 
+		  const gdb_byte *string, unsigned int length, 
+		  const char *encoding, int force_ellipses,
+		  int quote_char, int c_style_terminator,
+		  const struct value_print_options *options)
+{
+  enum bfd_endian byte_order = gdbarch_byte_order (get_type_arch (type));
+  unsigned int i;
+  unsigned int things_printed = 0;
+  int in_quotes = 0;
+  int need_comma = 0;
+  int width = TYPE_LENGTH (type);
+  struct obstack wchar_buf, output;
+  struct cleanup *cleanup;
+  struct wchar_iterator *iter;
+  int finished = 0;
+  int need_escape = 0;
+  gdb_wchar_t wide_quote_char = gdb_btowc (quote_char);
+
+  if (length == -1)
+    {
+      unsigned long current_char = 1;
+
+      for (i = 0; current_char; ++i)
+	{
+	  QUIT;
+	  current_char = extract_unsigned_integer (string + i * width,
+						   width, byte_order);
+	}
+      length = i;
+    }
+
+  /* If the string was not truncated due to `set print elements', and
+     the last byte of it is a null, we don't print that, in
+     traditional C style.  */
+  if (c_style_terminator
+      && !force_ellipses
+      && length > 0
+      && (extract_unsigned_integer (string + (length - 1) * width,
+				    width, byte_order) == 0))
+    length--;
+
+  if (length == 0)
+    {
+      fputs_filtered ("\"\"", stream);
+      return;
+    }
+
+  /* Arrange to iterate over the characters, in wchar_t form.  */
+  iter = make_wchar_iterator (string, length * width, encoding, width);
+  cleanup = make_cleanup_wchar_iterator (iter);
+
+  /* WCHAR_BUF is the obstack we use to represent the string in
+     wchar_t form.  */
+  obstack_init (&wchar_buf);
+  make_cleanup_obstack_free (&wchar_buf);
+
+  while (!finished && things_printed < options->print_max)
+    {
+      int num_chars;
+      enum wchar_iterate_result result;
+      gdb_wchar_t *chars;
+      const gdb_byte *buf;
+      size_t buflen;
+
+      QUIT;
+
+      if (need_comma)
+	{
+	  obstack_grow_wstr (&wchar_buf, LCST (", "));
+	  need_comma = 0;
+	}
+
+      num_chars = wchar_iterate (iter, &result, &chars, &buf, &buflen);
+      /* We only look at repetitions when we were able to convert a
+	 single character in isolation.  This makes the code simpler
+	 and probably does the sensible thing in the majority of
+	 cases.  */
+      while (num_chars == 1 && things_printed < options->print_max)
+	{
+	  /* Count the number of repetitions.  */
+	  unsigned int reps = 0;
+	  gdb_wchar_t current_char = chars[0];
+	  const gdb_byte *orig_buf = buf;
+	  int orig_len = buflen;
+
+	  if (need_comma)
+	    {
+	      obstack_grow_wstr (&wchar_buf, LCST (", "));
+	      need_comma = 0;
+	    }
+
+	  while (num_chars == 1 && current_char == chars[0])
+	    {
+	      num_chars = wchar_iterate (iter, &result, &chars,
+					 &buf, &buflen);
+	      ++reps;
+	    }
+
+	  /* Emit CURRENT_CHAR according to the repetition count and
+	     options.  */
+	  if (reps > options->repeat_count_threshold)
+	    {
+	      if (in_quotes)
+		{
+		  if (options->inspect_it)
+		    obstack_grow_wstr (&wchar_buf, LCST ("\\"));
+		  obstack_grow (&wchar_buf, &wide_quote_char,
+				sizeof (gdb_wchar_t));
+		  obstack_grow_wstr (&wchar_buf, LCST (", "));
+		  in_quotes = 0;
+		}
+	      obstack_grow_wstr (&wchar_buf, LCST ("'"));
+	      need_escape = 0;
+	      print_wchar (current_char, orig_buf, orig_len, width,
+			   byte_order, &wchar_buf, '\'', &need_escape);
+	      obstack_grow_wstr (&wchar_buf, LCST ("'"));
+	      {
+		/* Painful gyrations.  */
+		int j;
+		char *s = xstrprintf (_(" <repeats %u times>"), reps);
+
+		for (j = 0; s[j]; ++j)
+		  {
+		    gdb_wchar_t w = gdb_btowc (s[j]);
+		    obstack_grow (&wchar_buf, &w, sizeof (gdb_wchar_t));
+		  }
+		xfree (s);
+	      }
+	      things_printed += options->repeat_count_threshold;
+	      need_comma = 1;
+	    }
+	  else
+	    {
+	      /* Saw the character one or more times, but fewer than
+		 the repetition threshold.  */
+	      if (!in_quotes)
+		{
+		  if (options->inspect_it)
+		    obstack_grow_wstr (&wchar_buf, LCST ("\\"));
+		  obstack_grow (&wchar_buf, &wide_quote_char,
+				sizeof (gdb_wchar_t));
+		  in_quotes = 1;
+		  need_escape = 0;
+		}
+
+	      while (reps-- > 0)
+		{
+		  print_wchar (current_char, orig_buf,
+			       orig_len, width,
+			       byte_order, &wchar_buf,
+			       quote_char, &need_escape);
+		  ++things_printed;
+		}
+	    }
+	}
+
+      /* NUM_CHARS and the other outputs from wchar_iterate are valid
+	 here regardless of which branch was taken above.  */
+      if (num_chars < 0)
+	{
+	  /* Hit EOF.  */
+	  finished = 1;
+	  break;
+	}
+
+      switch (result)
+	{
+	case wchar_iterate_invalid:
+	  if (!in_quotes)
+	    {
+	      if (options->inspect_it)
+		obstack_grow_wstr (&wchar_buf, LCST ("\\"));
+	      obstack_grow (&wchar_buf, &wide_quote_char,
+			    sizeof (gdb_wchar_t));
+	      in_quotes = 1;
+	    }
+	  need_escape = 0;
+	  print_wchar (gdb_WEOF, buf, buflen, width, byte_order,
+		       &wchar_buf, quote_char, &need_escape);
+	  break;
+
+	case wchar_iterate_incomplete:
+	  if (in_quotes)
+	    {
+	      if (options->inspect_it)
+		obstack_grow_wstr (&wchar_buf, LCST ("\\"));
+	      obstack_grow (&wchar_buf, &wide_quote_char,
+			    sizeof (gdb_wchar_t));
+	      obstack_grow_wstr (&wchar_buf, LCST (","));
+	      in_quotes = 0;
+	    }
+	  obstack_grow_wstr (&wchar_buf,
+			     LCST (" <incomplete sequence "));
+	  print_wchar (gdb_WEOF, buf, buflen, width,
+		       byte_order, &wchar_buf,
+		       0, &need_escape);
+	  obstack_grow_wstr (&wchar_buf, LCST (">"));
+	  finished = 1;
+	  break;
+	}
+    }
+
+  /* Terminate the quotes if necessary.  */
+  if (in_quotes)
+    {
+      if (options->inspect_it)
+	obstack_grow_wstr (&wchar_buf, LCST ("\\"));
+      obstack_grow (&wchar_buf, &wide_quote_char,
+		    sizeof (gdb_wchar_t));
+    }
+
+  if (force_ellipses || !finished)
+    obstack_grow_wstr (&wchar_buf, LCST ("..."));
+
+  /* OUTPUT is where we collect `char's for printing.  */
+  obstack_init (&output);
+  make_cleanup_obstack_free (&output);
+
+  convert_between_encodings (INTERMEDIATE_ENCODING, host_charset (),
+			     obstack_base (&wchar_buf),
+			     obstack_object_size (&wchar_buf),
+			     1, &output, translit_char);
+  obstack_1grow (&output, '\0');
+
+  fputs_filtered (obstack_base (&output), stream);
+
+  do_cleanups (cleanup);
 }
 
 /* Print a string from the inferior, starting at ADDR and printing up to LEN

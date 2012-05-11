@@ -1,6 +1,6 @@
 /* The find command.
 
-   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -132,6 +132,7 @@ parse_find_args (char *args, ULONGEST *max_countp,
       len = value_as_long (v);
       if (len == 0)
 	{
+	  do_cleanups (old_cleanups);
 	  printf_filtered (_("Empty search range.\n"));
 	  return;
 	}
@@ -150,7 +151,7 @@ parse_find_args (char *args, ULONGEST *max_countp,
       v = parse_to_comma_and_eval (&s);
       end_addr = value_as_address (v);
       if (start_addr > end_addr)
-	error (_("Invalid search space, end preceeds start."));
+	error (_("Invalid search space, end precedes start."));
       search_space_len = end_addr - start_addr + 1;
       /* We don't support searching all of memory
 	 (i.e. start=0, end = 0xff..ff).

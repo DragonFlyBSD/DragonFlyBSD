@@ -1,6 +1,5 @@
 /* Header file for GDB CLI command implementation library.
-   Copyright (c) 2000,2006,2007,2008,2009,2010,2011
-   Free Software Foundation, Inc.
+   Copyright (c) 2000, 2006-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -105,6 +104,8 @@ extern struct cmd_list_element *showdebuglist;
 extern struct cmd_list_element *setchecklist;
 
 extern struct cmd_list_element *showchecklist;
+
+extern struct cmd_list_element *skiplist;
 
 /* Exported to gdb/top.c */
 

@@ -1,7 +1,6 @@
 /* Generic code for supporting multiple C++ ABI's
 
-   Copyright (C) 2001, 2002, 2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2001-2003, 2005-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -262,6 +261,7 @@ find_cp_abi (const char *short_name)
 static void
 list_cp_abis (int from_tty)
 {
+  struct ui_out *uiout = current_uiout;
   struct cleanup *cleanup_chain;
   int i;
 
@@ -309,6 +309,8 @@ set_cp_abi_cmd (char *args, int from_tty)
 static void
 show_cp_abi_cmd (char *args, int from_tty)
 {
+  struct ui_out *uiout = current_uiout;
+
   ui_out_text (uiout, "The currently selected C++ ABI is \"");
 
   ui_out_field_string (uiout, "cp-abi", current_cp_abi.shortname);

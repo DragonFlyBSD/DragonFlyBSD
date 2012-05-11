@@ -1,7 +1,6 @@
 /* MI Command Set - environment commands.
 
-   Copyright (C) 2002, 2003, 2004, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2002-2004, 2007-2012 Free Software Foundation, Inc.
 
    Contributed by Red Hat Inc.
 
@@ -69,6 +68,8 @@ env_execute_cli_command (const char *cmd, const char *args)
 void
 mi_cmd_env_pwd (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
+
   if (argc > 0)
     error (_("-environment-pwd: No arguments required"));
           
@@ -112,6 +113,7 @@ env_mod_path (char *dirname, char **which_path)
 void
 mi_cmd_env_path (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   char *exec_path;
   char *env;
   int reset = 0;
@@ -122,7 +124,7 @@ mi_cmd_env_path (char *command, char **argv, int argc)
     {
       RESET_OPT
     };
-  static struct mi_opt opts[] =
+  static const struct mi_opt opts[] =
   {
     {"r", RESET_OPT, 0},
     { 0, 0, 0 }
@@ -185,6 +187,7 @@ mi_cmd_env_path (char *command, char **argv, int argc)
 void
 mi_cmd_env_dir (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   int i;
   int optind = 0;
   int reset = 0;
@@ -193,7 +196,7 @@ mi_cmd_env_dir (char *command, char **argv, int argc)
     {
       RESET_OPT
     };
-  static struct mi_opt opts[] =
+  static const struct mi_opt opts[] =
   {
     {"r", RESET_OPT, 0},
     { 0, 0, 0 }
@@ -257,7 +260,8 @@ mi_cmd_inferior_tty_show (char *command, char **argv, int argc)
     error (_("-inferior-tty-show: Usage: No args"));
 
   if (inferior_io_terminal)
-    ui_out_field_string (uiout, "inferior_tty_terminal", inferior_io_terminal);
+    ui_out_field_string (current_uiout,
+			 "inferior_tty_terminal", inferior_io_terminal);
 }
 
 void 

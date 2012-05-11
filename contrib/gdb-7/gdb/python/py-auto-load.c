@@ -1,6 +1,6 @@
 /* GDB routines for supporting auto-loaded scripts.
 
-   Copyright (C) 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2010-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -18,6 +18,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "defs.h"
+#include "filenames.h"
 #include "gdb_string.h"
 #include "gdb_regex.h"
 #include "top.h"
@@ -68,11 +69,15 @@ struct auto_load_pspace_info
 {
   /* For each program space we keep track of loaded scripts.  */
   struct htab *loaded_scripts;
+
+  /* Non-zero if we've issued the warning about an auto-load script not being
+     found.  We only want to issue this warning once.  */
+  int script_not_found_warning_printed;
 };
 
 /* Objects of this type are stored in the loaded script hash table.  */
 
-struct loaded_script_entry
+struct loaded_script
 {
   /* Name as provided by the objfile.  */
   const char *name;
@@ -132,7 +137,7 @@ get_auto_load_pspace_data (struct program_space *pspace)
 static hashval_t
 hash_loaded_script_entry (const void *data)
 {
-  const struct loaded_script_entry *e = data;
+  const struct loaded_script *e = data;
 
   return htab_hash_string (e->name);
 }
@@ -142,17 +147,17 @@ hash_loaded_script_entry (const void *data)
 static int
 eq_loaded_script_entry (const void *a, const void *b)
 {
-  const struct loaded_script_entry *ea = a;
-  const struct loaded_script_entry *eb = b;
+  const struct loaded_script *ea = a;
+  const struct loaded_script *eb = b;
 
   return strcmp (ea->name, eb->name) == 0;
 }
 
-/* Create the hash table used for loaded scripts.
+/* Initialize the table to track loaded scripts.
    Each entry is hashed by the full path name.  */
 
 static void
-create_loaded_scripts_hash (struct auto_load_pspace_info *pspace_info)
+init_loaded_scripts_info (struct auto_load_pspace_info *pspace_info)
 {
   /* Choose 31 as the starting size of the hash table, somewhat arbitrarily.
      Space for each entry is obtained with one malloc so we can free them
@@ -162,6 +167,64 @@ create_loaded_scripts_hash (struct auto_load_pspace_info *pspace_info)
 					     hash_loaded_script_entry,
 					     eq_loaded_script_entry,
 					     xfree);
+
+  pspace_info->script_not_found_warning_printed = FALSE;
+}
+
+/* Wrapper on get_auto_load_pspace_data to also allocate the hash table
+   for loading scripts.  */
+
+static struct auto_load_pspace_info *
+get_auto_load_pspace_data_for_loading (struct program_space *pspace)
+{
+  struct auto_load_pspace_info *info;
+
+  info = get_auto_load_pspace_data (pspace);
+  if (info->loaded_scripts == NULL)
+    init_loaded_scripts_info (info);
+
+  return info;
+}
+
+/* Add script NAME to hash table HTAB.
+   FULL_PATH is NULL if the script wasn't found.
+   The result is true if the script was already in the hash table.  */
+
+static int
+maybe_add_script (struct htab *htab, const char *name, const char *full_path)
+{
+  struct loaded_script **slot, entry;
+  int in_hash_table;
+
+  entry.name = name;
+  entry.full_path = full_path;
+  slot = (struct loaded_script **) htab_find_slot (htab, &entry, INSERT);
+  in_hash_table = *slot != NULL;
+
+  /* If this script is not in the hash table, add it.  */
+
+  if (! in_hash_table)
+    {
+      char *p;
+
+      /* Allocate all space in one chunk so it's easier to free.  */
+      *slot = xmalloc (sizeof (**slot)
+		       + strlen (name) + 1
+		       + (full_path != NULL ? (strlen (full_path) + 1) : 0));
+      p = ((char*) *slot) + sizeof (**slot);
+      strcpy (p, name);
+      (*slot)->name = p;
+      if (full_path != NULL)
+	{
+	  p += strlen (p) + 1;
+	  strcpy (p, full_path);
+	  (*slot)->full_path = p;
+	}
+      else
+	(*slot)->full_path = NULL;
+    }
+
+  return in_hash_table;
 }
 
 /* Load scripts specified in OBJFILE.
@@ -182,11 +245,8 @@ source_section_scripts (struct objfile *objfile, const char *source_name,
 {
   const char *p;
   struct auto_load_pspace_info *pspace_info;
-  struct loaded_script_entry **slot, entry;
 
-  pspace_info = get_auto_load_pspace_data (current_program_space);
-  if (pspace_info->loaded_scripts == NULL)
-    create_loaded_scripts_hash (pspace_info);
+  pspace_info = get_auto_load_pspace_data_for_loading (current_program_space);
 
   for (p = start; p < end; ++p)
     {
@@ -226,57 +286,36 @@ source_section_scripts (struct objfile *objfile, const char *source_name,
       opened = find_and_open_script (file, 1 /*search_path*/,
 				     &stream, &full_path);
 
-      /* If the file is not found, we still record the file in the hash table,
-	 we only want to print an error message once.
+      /* If one script isn't found it's not uncommon for more to not be
+	 found either.  We don't want to print an error message for each
+	 script, too much noise.  Instead, we print the warning once and tell
+	 the user how to find the list of scripts that weren't loaded.
+
 	 IWBN if complaints.c were more general-purpose.  */
 
-      entry.name = file;
-      if (opened)
-	entry.full_path = full_path;
-      else
-	entry.full_path = NULL;
-      slot = ((struct loaded_script_entry **)
-	      htab_find_slot (pspace_info->loaded_scripts,
-			      &entry, INSERT));
-      in_hash_table = *slot != NULL;
-
-      /* If this file is not in the hash table, add it.  */
-      if (! in_hash_table)
-	{
-	  char *p;
-
-	  *slot = xmalloc (sizeof (**slot)
-			   + strlen (file) + 1
-			   + (opened ? (strlen (full_path) + 1) : 0));
-	  p = ((char*) *slot) + sizeof (**slot);
-	  strcpy (p, file);
-	  (*slot)->name = p;
-	  if (opened)
-	    {
-	      p += strlen (p) + 1;
-	      strcpy (p, full_path);
-	      (*slot)->full_path = p;
-	    }
-	  else
-	    (*slot)->full_path = NULL;
-	}
-
-      if (opened)
-	free (full_path);
+      in_hash_table = maybe_add_script (pspace_info->loaded_scripts, file,
+					opened ? full_path : NULL);
 
       if (! opened)
 	{
-	  /* We don't throw an error, the program is still debuggable.
-	     Check in_hash_table to only print the warning once.  */
-	  if (! in_hash_table)
-	    warning (_("%s (referenced in %s): %s"),
-		     file, GDBPY_AUTO_SECTION_NAME, safe_strerror (errno));
-	  continue;
+	  /* We don't throw an error, the program is still debuggable.  */
+	  if (! pspace_info->script_not_found_warning_printed)
+	    {
+	      warning (_("Missing auto-load scripts referenced in section %s\n\
+of file %s\n\
+Use `info auto-load-scripts [REGEXP]' to list them."),
+		       GDBPY_AUTO_SECTION_NAME, objfile->name);
+	      pspace_info->script_not_found_warning_printed = TRUE;
+	    }
 	}
-
-      /* If this file is not currently loaded, load it.  */
-      if (! in_hash_table)
-	source_python_script_for_objfile (objfile, stream, file);
+      else
+	{
+	  /* If this file is not currently loaded, load it.  */
+	  if (! in_hash_table)
+	    source_python_script_for_objfile (objfile, full_path);
+	  fclose (stream);
+	  xfree (full_path);
+	}
     }
 }
 
@@ -322,6 +361,7 @@ clear_section_scripts (void)
     {
       htab_delete (info->loaded_scripts);
       info->loaded_scripts = NULL;
+      info->script_not_found_warning_printed = FALSE;
     }
 }
 
@@ -378,7 +418,20 @@ auto_load_objfile_script (struct objfile *objfile, const char *suffix)
 
   if (input)
     {
-      source_python_script_for_objfile (objfile, input, debugfile);
+      struct auto_load_pspace_info *pspace_info;
+
+      /* Add this script to the hash table too so "info auto-load-scripts"
+	 can print it.  */
+      pspace_info =
+	get_auto_load_pspace_data_for_loading (current_program_space);
+      maybe_add_script (pspace_info->loaded_scripts, debugfile, debugfile);
+
+      /* To preserve existing behaviour we don't check for whether the
+	 script was already in the table, and always load it.
+	 It's highly unlikely that we'd ever load it twice,
+	 and these scripts are required to be idempotent under multiple
+	 loads anyway.  */
+      source_python_script_for_objfile (objfile, debugfile);
       fclose (input);
     }
 
@@ -416,32 +469,77 @@ load_auto_scripts_for_objfile (struct objfile *objfile)
     }
 }
 
+/* Collect scripts to be printed in a vec.  */
+
+typedef struct loaded_script *loaded_script_ptr;
+DEF_VEC_P (loaded_script_ptr);
+
 /* Traversal function for htab_traverse.
-   Print the entry if specified in the regex.  */
+   Collect the entry if it matches the regexp.  */
 
 static int
-maybe_print_section_script (void **slot, void *info)
+collect_matching_scripts (void **slot, void *info)
 {
-  struct loaded_script_entry *entry = *slot;
+  struct loaded_script *script = *slot;
+  VEC (loaded_script_ptr) **scripts_ptr = info;
 
-  if (re_exec (entry->name))
-    {
-      printf_filtered (_("Script name: %s\n"), entry->name);
-      printf_filtered (_("  Full name: %s\n"),
-		       entry->full_path ? entry->full_path : _("unknown"));
-    }
+  if (re_exec (script->name))
+    VEC_safe_push (loaded_script_ptr, *scripts_ptr, script);
 
   return 1;
 }
 
-/* "maint print section-scripts" command.  */
+/* Print SCRIPT.  */
 
 static void
-maintenance_print_section_scripts (char *pattern, int from_tty)
+print_script (struct loaded_script *script)
 {
+  struct ui_out *uiout = current_uiout;
+  struct cleanup *chain;
+
+  chain = make_cleanup_ui_out_tuple_begin_end (uiout, NULL);
+
+  ui_out_field_string (uiout, "loaded", script->full_path ? "Yes" : "Missing");
+  ui_out_field_string (uiout, "script", script->name);
+  ui_out_text (uiout, "\n");
+
+  /* If the name isn't the full path, print it too.  */
+  if (script->full_path != NULL
+      && strcmp (script->name, script->full_path) != 0)
+    {
+      ui_out_text (uiout, "\tfull name: ");
+      ui_out_field_string (uiout, "full_path", script->full_path);
+      ui_out_text (uiout, "\n");
+    }
+
+  do_cleanups (chain);
+}
+
+/* Helper for info_auto_load_scripts to sort the scripts by name.  */
+
+static int
+sort_scripts_by_name (const void *ap, const void *bp)
+{
+  const struct loaded_script *a = *(const struct loaded_script **) ap;
+  const struct loaded_script *b = *(const struct loaded_script **) bp;
+
+  return FILENAME_CMP (a->name, b->name);
+}
+
+/* "info auto-load-scripts" command.  */
+
+static void
+info_auto_load_scripts (char *pattern, int from_tty)
+{
+  struct ui_out *uiout = current_uiout;
   struct auto_load_pspace_info *pspace_info;
+  struct cleanup *script_chain;
+  VEC (loaded_script_ptr) *scripts;
+  int nr_scripts;
 
   dont_repeat ();
+
+  pspace_info = get_auto_load_pspace_data (current_program_space);
 
   if (pattern && *pattern)
     {
@@ -449,23 +547,58 @@ maintenance_print_section_scripts (char *pattern, int from_tty)
 
       if (re_err)
 	error (_("Invalid regexp: %s"), re_err);
-
-      printf_filtered (_("Objfile scripts matching %s:\n"), pattern);
     }
   else
     {
       re_comp ("");
-      printf_filtered (_("Objfile scripts:\n"));
     }
 
-  pspace_info = get_auto_load_pspace_data (current_program_space);
-  if (pspace_info == NULL || pspace_info->loaded_scripts == NULL)
-    return;
+  /* We need to know the number of rows before we build the table.
+     Plus we want to sort the scripts by name.
+     So first traverse the hash table collecting the matching scripts.  */
 
-  immediate_quit++;
-  htab_traverse_noresize (pspace_info->loaded_scripts,
-			  maybe_print_section_script, NULL);
-  immediate_quit--;
+  scripts = VEC_alloc (loaded_script_ptr, 10);
+  script_chain = make_cleanup (VEC_cleanup (loaded_script_ptr), &scripts);
+
+  if (pspace_info != NULL && pspace_info->loaded_scripts != NULL)
+    {
+      immediate_quit++;
+      /* Pass a pointer to scripts as VEC_safe_push can realloc space.  */
+      htab_traverse_noresize (pspace_info->loaded_scripts,
+			      collect_matching_scripts, &scripts);
+      immediate_quit--;
+    }
+
+  nr_scripts = VEC_length (loaded_script_ptr, scripts);
+  make_cleanup_ui_out_table_begin_end (uiout, 2, nr_scripts,
+				       "AutoLoadedScriptsTable");
+
+  ui_out_table_header (uiout, 7, ui_left, "loaded", "Loaded");
+  ui_out_table_header (uiout, 70, ui_left, "script", "Script");
+  ui_out_table_body (uiout);
+
+  if (nr_scripts > 0)
+    {
+      int i;
+      loaded_script_ptr script;
+
+      qsort (VEC_address (loaded_script_ptr, scripts),
+	     VEC_length (loaded_script_ptr, scripts),
+	     sizeof (loaded_script_ptr), sort_scripts_by_name);
+      for (i = 0; VEC_iterate (loaded_script_ptr, scripts, i, script); ++i)
+	print_script (script);
+    }
+
+  do_cleanups (script_chain);
+
+  if (nr_scripts == 0)
+    {
+      if (pattern && *pattern)
+	ui_out_message (uiout, 0, "No auto-load scripts matching %s.\n",
+			pattern);
+      else
+	ui_out_message (uiout, 0, "No auto-load scripts.\n");
+    }
 }
 
 void
@@ -486,10 +619,10 @@ an executable or shared library."),
 			   &setlist,
 			   &showlist);
 
-  add_cmd ("section-scripts", class_maintenance,
-	   maintenance_print_section_scripts,
-	   _("Print dump of auto-loaded section scripts matching REGEXP."),
-	   &maintenanceprintlist);
+  add_info ("auto-load-scripts",
+	    info_auto_load_scripts,
+	    _("Print the list of automatically loaded scripts.\n\
+Usage: info auto-load-scripts [REGEXP]"));
 }
 
 #else /* ! HAVE_PYTHON */

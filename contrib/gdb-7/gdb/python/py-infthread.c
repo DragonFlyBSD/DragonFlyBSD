@@ -1,6 +1,6 @@
 /* Python interface to inferior threads.
 
-   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2009-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -49,7 +49,6 @@ create_thread_object (struct thread_info *tp)
 
   thread_obj->thread = tp;
   thread_obj->inf_obj = find_inferior_object (PIDGET (tp->ptid));
-  Py_INCREF (thread_obj->inf_obj);
 
   return thread_obj;
 }

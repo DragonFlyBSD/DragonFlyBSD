@@ -1,7 +1,6 @@
 /* Language independent support for printing types for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988, 1989, 1991, 1992, 1993, 1994, 1995, 1998, 1999,
-   2000, 2001, 2003, 2006, 2007, 2008, 2009, 2010, 2011
+   Copyright (C) 1986, 1988-1989, 1991-1995, 1998-2001, 2003, 2006-2012
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -316,8 +315,10 @@ _initialize_typeprint (void)
 Print definition of type TYPE.\n\
 Argument may be a type name defined by typedef, or \"struct STRUCT-TAG\"\n\
 or \"class CLASS-NAME\" or \"union UNION-TAG\" or \"enum ENUM-TAG\".\n\
-The selected stack frame's lexical context is used to look up the name."));
+The selected stack frame's lexical context is used to look up the name.\n\
+Contrary to \"whatis\", \"ptype\" always unrolls any typedefs."));
 
   add_com ("whatis", class_vars, whatis_command,
-	   _("Print data type of expression EXP."));
+	   _("Print data type of expression EXP.\n\
+Only one level of typedefs is unrolled.  See also \"ptype\"."));
 }

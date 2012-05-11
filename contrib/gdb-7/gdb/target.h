@@ -1,8 +1,6 @@
 /* Interface between GDB and target environments, including files and processes
 
-   Copyright (C) 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
-   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1990-2012 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support.  Written by John Gilmore.
 
@@ -28,6 +26,7 @@ struct objfile;
 struct ui_file;
 struct mem_attrib;
 struct target_ops;
+struct bp_location;
 struct bp_target_info;
 struct regcache;
 struct target_section_table;
@@ -150,7 +149,10 @@ enum target_waitkind
 
     /* The target has run out of history information,
        and cannot run backward any further.  */
-    TARGET_WAITKIND_NO_HISTORY
+    TARGET_WAITKIND_NO_HISTORY,
+
+    /* There are no resumed children left in the program.  */
+    TARGET_WAITKIND_NO_RESUMED
   };
 
 struct target_waitstatus
@@ -200,13 +202,9 @@ extern char *target_waitstatus_to_string (const struct target_waitstatus *);
    deal with.  */
 enum inferior_event_type
   {
-    /* There is a request to quit the inferior, abandon it.  */
-    INF_QUIT_REQ,
     /* Process a normal inferior event which will result in target_wait
        being called.  */
     INF_REG_EVENT,
-    /* Deal with an error on the inferior.  */
-    INF_ERROR,
     /* We are called because a timer went off.  */
     INF_TIMER,
     /* We are called to do stuff after the inferior stops.  */
@@ -255,6 +253,8 @@ enum target_object
   TARGET_OBJECT_AVAILABLE_FEATURES,
   /* Currently loaded libraries, in XML format.  */
   TARGET_OBJECT_LIBRARIES,
+  /* Currently loaded libraries specific for SVR4 systems, in XML format.  */
+  TARGET_OBJECT_LIBRARIES_SVR4,
   /* Get OS specific data.  The ANNEX specifies the type (running
      processes, etc.).  The data being transfered is expected to follow
      the DTD specified in features/osdata.dtd.  */
@@ -277,6 +277,10 @@ enum target_object
   TARGET_OBJECT_HPUX_SOLIB_GOT,
   /* Traceframe info, in XML format.  */
   TARGET_OBJECT_TRACEFRAME_INFO,
+  /* Load maps for FDPIC systems.  */
+  TARGET_OBJECT_FDPIC,
+  /* Darwin dynamic linker info data.  */
+  TARGET_OBJECT_DARWIN_DYLD_INFO
   /* Possible future objects: TARGET_OBJECT_FILE, ...  */
 };
 
@@ -459,6 +463,10 @@ struct target_ops
     int (*to_remove_watchpoint) (CORE_ADDR, int, int, struct expression *);
     int (*to_insert_watchpoint) (CORE_ADDR, int, int, struct expression *);
 
+    int (*to_insert_mask_watchpoint) (struct target_ops *,
+				      CORE_ADDR, CORE_ADDR, int);
+    int (*to_remove_mask_watchpoint) (struct target_ops *,
+				      CORE_ADDR, CORE_ADDR, int);
     int (*to_stopped_by_watchpoint) (void);
     int to_have_steppable_watchpoint;
     int to_have_continuable_watchpoint;
@@ -472,6 +480,8 @@ struct target_ops
 
     int (*to_can_accel_watchpoint_condition) (CORE_ADDR, int, int,
 					      struct expression *);
+    int (*to_masked_watch_num_registers) (struct target_ops *,
+					  CORE_ADDR, CORE_ADDR);
     void (*to_terminal_init) (void);
     void (*to_terminal_inferior) (void);
     void (*to_terminal_ours_for_output) (void);
@@ -494,7 +504,11 @@ struct target_ops
     int (*to_has_exited) (int, int, int *);
     void (*to_mourn_inferior) (struct target_ops *);
     int (*to_can_run) (void);
-    void (*to_notice_signals) (ptid_t ptid);
+
+    /* Documentation of this routine is provided with the corresponding
+       target_* macro.  */
+    void (*to_pass_signals) (int, unsigned char *);
+
     int (*to_thread_alive) (struct target_ops *, ptid_t ptid);
     void (*to_find_new_threads) (struct target_ops *);
     char *(*to_pid_to_str) (struct target_ops *, ptid_t);
@@ -517,7 +531,6 @@ struct target_ops
     int (*to_can_async_p) (void);
     int (*to_is_async_p) (void);
     void (*to_async) (void (*) (enum inferior_event_type, void *), void *);
-    int (*to_async_mask) (int);
     int (*to_supports_non_stop) (void);
     /* find_memory_regions support method for gcore */
     int (*to_find_memory_regions) (find_memory_region_ftype func, void *data);
@@ -630,9 +643,24 @@ struct target_ops
     /* Can target execute in reverse?  */
     int (*to_can_execute_reverse) (void);
 
+    /* The direction the target is currently executing.  Must be
+       implemented on targets that support reverse execution and async
+       mode.  The default simply returns forward execution.  */
+    enum exec_direction_kind (*to_execution_direction) (void);
+
     /* Does this target support debugging multiple processes
        simultaneously?  */
     int (*to_supports_multi_process) (void);
+
+    /* Does this target support enabling and disabling tracepoints while a trace
+       experiment is running?  */
+    int (*to_supports_enable_disable_tracepoint) (void);
+
+    /* Does this target support disabling address space randomization?  */
+    int (*to_supports_disable_randomization) (void);
+
+    /* Does this target support the tracenz bytecode for string collection?  */
+    int (*to_supports_string_tracing) (void);
 
     /* Determine current architecture of thread PTID.
 
@@ -658,11 +686,21 @@ struct target_ops
     /* Prepare the target for a tracing run.  */
     void (*to_trace_init) (void);
 
-    /* Send full details of a tracepoint to the target.  */
-    void (*to_download_tracepoint) (struct breakpoint *t);
+    /* Send full details of a tracepoint location to the target.  */
+    void (*to_download_tracepoint) (struct bp_location *location);
+
+    /* Is the target able to download tracepoint locations in current
+       state?  */
+    int (*to_can_download_tracepoint) (void);
 
     /* Send full details of a trace state variable to the target.  */
     void (*to_download_trace_state_variable) (struct trace_state_variable *tsv);
+
+    /* Enable a tracepoint on the target.  */
+    void (*to_enable_tracepoint) (struct bp_location *location);
+
+    /* Disable a tracepoint on the target.  */
+    void (*to_disable_tracepoint) (struct bp_location *location);
 
     /* Inform the target info of memory regions that are readonly
        (such as text sections), and so it should return data from
@@ -674,6 +712,9 @@ struct target_ops
 
     /* Get the current status of a tracing run.  */
     int (*to_get_trace_status) (struct trace_status *ts);
+
+    void (*to_get_tracepoint_status) (struct breakpoint *tp,
+				      struct uploaded_tp *utp);
 
     /* Stop a trace run.  */
     void (*to_trace_stop) (void);
@@ -700,10 +741,20 @@ struct target_ops
     LONGEST (*to_get_raw_trace_data) (gdb_byte *buf,
 				      ULONGEST offset, LONGEST len);
 
+    /* Get the minimum length of instruction on which a fast tracepoint
+       may be set on the target.  If this operation is unsupported,
+       return -1.  If for some reason the minimum length cannot be
+       determined, return 0.  */
+    int (*to_get_min_fast_tracepoint_insn_len) (void);
+
     /* Set the target's tracing behavior in response to unexpected
        disconnection - set VAL to 1 to keep tracing, 0 to stop.  */
     void (*to_set_disconnected_tracing) (int val);
     void (*to_set_circular_trace_buffer) (int val);
+
+    /* Add/change textual notes about the trace run, returning 1 if
+       successful, 0 otherwise.  */
+    int (*to_set_trace_notes) (char *user, char *notes, char* stopnotes);
 
     /* Return the processor core that thread PTID was last seen on.
        This information is updated only when:
@@ -863,6 +914,19 @@ struct address_space *target_thread_address_space (ptid_t);
 #define	target_supports_multi_process()	\
      (*current_target.to_supports_multi_process) ()
 
+/* Returns true if this target can disable address space randomization.  */
+
+int target_supports_disable_randomization (void);
+
+/* Returns true if this target can enable and disable tracepoints
+   while a trace experiment is running.  */
+
+#define target_supports_enable_disable_tracepoint() \
+  (*current_target.to_supports_enable_disable_tracepoint) ()
+
+#define target_supports_string_tracing() \
+  (*current_target.to_supports_string_tracing) ()
+
 /* Invalidate all target dcaches.  */
 extern void target_dcache_invalidate (void);
 
@@ -874,6 +938,9 @@ extern int target_read_stack (CORE_ADDR memaddr, gdb_byte *myaddr, int len);
 
 extern int target_write_memory (CORE_ADDR memaddr, const gdb_byte *myaddr,
 				int len);
+
+extern int target_write_raw_memory (CORE_ADDR memaddr, const gdb_byte *myaddr,
+				    int len);
 
 /* Fetches the target's memory map.  If one is found it is sorted
    and returned, after some consistency checking.  Otherwise, NULL
@@ -1120,10 +1187,19 @@ void target_mourn_inferior (void);
 #define target_can_run(t) \
      ((t)->to_can_run) ()
 
-/* post process changes to signal handling in the inferior.  */
+/* Set list of signals to be handled in the target.
 
-#define target_notice_signals(ptid) \
-     (*current_target.to_notice_signals) (ptid)
+   PASS_SIGNALS is an array of size NSIG, indexed by target signal number
+   (enum target_signal).  For every signal whose entry in this array is
+   non-zero, the target is allowed -but not required- to skip reporting
+   arrival of the signal to the GDB core by returning from target_wait,
+   and to pass the signal directly to the inferior instead.
+
+   However, if the target is hardware single-stepping a thread that is
+   about to receive a signal, it needs to be reported in any case, even
+   if mentioned in a previous target_pass_signals call.   */
+
+extern void target_pass_signals (int nsig, unsigned char *pass_signals);
 
 /* Check to see if a thread is still alive.  */
 
@@ -1218,22 +1294,8 @@ int target_supports_non_stop (void);
 #define target_async(CALLBACK,CONTEXT) \
      (current_target.to_async ((CALLBACK), (CONTEXT)))
 
-/* This is to be used ONLY within call_function_by_hand().  It provides
-   a workaround, to have inferior function calls done in sychronous
-   mode, even though the target is asynchronous.  After
-   target_async_mask(0) is called, calls to target_can_async_p() will
-   return FALSE , so that target_resume() will not try to start the
-   target asynchronously.  After the inferior stops, we IMMEDIATELY
-   restore the previous nature of the target, by calling
-   target_async_mask(1).  After that, target_can_async_p() will return
-   TRUE.  ANY OTHER USE OF THIS FEATURE IS DEPRECATED.
-
-   FIXME ezannoni 1999-12-13: we won't need this once we move
-   the turning async on and off to the single execution commands,
-   from where it is done currently, in remote_resume().  */
-
-#define target_async_mask(MASK)	\
-  (current_target.to_async_mask (MASK))
+#define target_execution_direction() \
+  (current_target.to_execution_direction ())
 
 /* Converts a process id to a string.  Usually, the string just contains
    `process xyz', but on some systems it may contain
@@ -1349,6 +1411,20 @@ extern char *target_thread_name (struct thread_info *);
 #define	target_remove_watchpoint(addr, len, type, cond) \
      (*current_target.to_remove_watchpoint) (addr, len, type, cond)
 
+/* Insert a new masked watchpoint at ADDR using the mask MASK.
+   RW may be hw_read for a read watchpoint, hw_write for a write watchpoint
+   or hw_access for an access watchpoint.  Returns 0 for success, 1 if
+   masked watchpoints are not supported, -1 for failure.  */
+
+extern int target_insert_mask_watchpoint (CORE_ADDR, CORE_ADDR, int);
+
+/* Remove a masked watchpoint at ADDR with the mask MASK.
+   RW may be hw_read for a read watchpoint, hw_write for a write watchpoint
+   or hw_access for an access watchpoint.  Returns 0 for success, non-zero
+   for failure.  */
+
+extern int target_remove_mask_watchpoint (CORE_ADDR, CORE_ADDR, int);
+
 #define target_insert_hw_breakpoint(gdbarch, bp_tgt) \
      (*current_target.to_insert_hw_breakpoint) (gdbarch, bp_tgt)
 
@@ -1381,6 +1457,12 @@ extern int target_ranged_break_num_registers (void);
    the watchpoint triggers.  */
 #define target_can_accel_watchpoint_condition(addr, len, type, cond) \
   (*current_target.to_can_accel_watchpoint_condition) (addr, len, type, cond)
+
+/* Return number of debug registers needed for a masked watchpoint,
+   -1 if masked watchpoints are not supported or -2 if the given address
+   and mask combination cannot be used.  */
+
+extern int target_masked_watch_num_registers (CORE_ADDR addr, CORE_ADDR mask);
 
 /* Target can execute in reverse?  */
 #define target_can_execute_reverse \
@@ -1415,8 +1497,17 @@ extern int target_search_memory (CORE_ADDR start_addr,
 #define target_download_tracepoint(t) \
   (*current_target.to_download_tracepoint) (t)
 
+#define target_can_download_tracepoint() \
+  (*current_target.to_can_download_tracepoint) ()
+
 #define target_download_trace_state_variable(tsv) \
   (*current_target.to_download_trace_state_variable) (tsv)
+
+#define target_enable_tracepoint(loc) \
+  (*current_target.to_enable_tracepoint) (loc)
+
+#define target_disable_tracepoint(loc) \
+  (*current_target.to_disable_tracepoint) (loc)
 
 #define target_trace_start() \
   (*current_target.to_trace_start) ()
@@ -1426,6 +1517,9 @@ extern int target_search_memory (CORE_ADDR start_addr,
 
 #define target_get_trace_status(ts) \
   (*current_target.to_get_trace_status) (ts)
+
+#define target_get_tracepoint_status(tp,utp)		\
+  (*current_target.to_get_tracepoint_status) (tp, utp)
 
 #define target_trace_stop() \
   (*current_target.to_trace_stop) ()
@@ -1448,11 +1542,17 @@ extern int target_search_memory (CORE_ADDR start_addr,
 #define target_get_raw_trace_data(buf,offset,len) \
   (*current_target.to_get_raw_trace_data) ((buf), (offset), (len))
 
+#define target_get_min_fast_tracepoint_insn_len() \
+  (*current_target.to_get_min_fast_tracepoint_insn_len) ()
+
 #define target_set_disconnected_tracing(val) \
   (*current_target.to_set_disconnected_tracing) (val)
 
 #define	target_set_circular_trace_buffer(val)	\
   (*current_target.to_set_circular_trace_buffer) (val)
+
+#define	target_set_trace_notes(user,notes,stopnotes)		\
+  (*current_target.to_set_trace_notes) ((user), (notes), (stopnotes))
 
 #define target_get_tib_address(ptid, addr) \
   (*current_target.to_get_tib_address) ((ptid), (addr))

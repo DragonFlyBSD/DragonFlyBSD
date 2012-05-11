@@ -1,7 +1,7 @@
 /* Output generating routines for GDB.
 
-   Copyright (C) 1999, 2000, 2001, 2002, 2003, 2005, 2007, 2008, 2009, 2010,
-   2011 Free Software Foundation, Inc.
+   Copyright (C) 1999-2003, 2005, 2007-2012 Free Software Foundation,
+   Inc.
 
    Contributed by Cygnus Solutions.
    Written by Fernando Nasser for Cygnus.
@@ -33,7 +33,7 @@ struct ui_file;
 
 /* FIXME: This should not be a global but something passed down from main.c
    or top.c.  */
-extern struct ui_out *uiout;
+extern struct ui_out *current_uiout;
 
 /* alignment enum */
 enum ui_align
@@ -113,6 +113,8 @@ extern void ui_out_field_fmt_int (struct ui_out *uiout, int width,
 				  enum ui_align align, const char *fldname, 
 		 		  int value);
 
+/* Output a field containing an address.  */
+
 extern void ui_out_field_core_addr (struct ui_out *uiout, const char *fldname,
 				    struct gdbarch *gdbarch, CORE_ADDR address);
 
@@ -145,8 +147,6 @@ struct cleanup *make_cleanup_ui_out_stream_delete (struct ui_stream *buf);
 extern void ui_out_wrap_hint (struct ui_out *uiout, char *identstring);
 
 extern void ui_out_flush (struct ui_out *uiout);
-
-extern void ui_out_get_field_separator (struct ui_out *uiout);
 
 extern int ui_out_set_flags (struct ui_out *uiout, int mask);
 

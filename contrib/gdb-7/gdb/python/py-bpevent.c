@@ -1,6 +1,6 @@
 /* Python interface to inferior breakpoint stop events.
 
-   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2009-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -24,7 +24,7 @@ static PyTypeObject breakpoint_event_object_type;
 /* Create and initialize a BreakpointEvent object.  */
 
 PyObject *
-create_breakpoint_event_object (PyObject *breakpoint)
+create_breakpoint_event_object (PyObject *breakpoint_list, PyObject *first_bp)
 {
   PyObject *breakpoint_event_obj =
       create_stop_event_object (&breakpoint_event_object_type);
@@ -34,7 +34,11 @@ create_breakpoint_event_object (PyObject *breakpoint)
 
   if (evpy_add_attribute (breakpoint_event_obj,
                           "breakpoint",
-                          breakpoint) < 0)
+                          first_bp) < 0)
+    goto fail;
+  if (evpy_add_attribute (breakpoint_event_obj,
+                          "breakpoints",
+                          breakpoint_list) < 0)
     goto fail;
 
   return breakpoint_event_obj;

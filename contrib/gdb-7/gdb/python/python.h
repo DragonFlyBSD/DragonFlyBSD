@@ -1,6 +1,6 @@
 /* Python/gdb header for generic use in gdb
 
-   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -30,7 +30,7 @@ extern void finish_python_initialization (void);
 
 void eval_python_from_control_command (struct command_line *);
 
-void source_python_script (FILE *stream, const char *file);
+void source_python_script (const char *file);
 
 int apply_val_pretty_printer (struct type *type, const gdb_byte *valaddr,
 			      int embedded_offset, CORE_ADDR address,

@@ -1,8 +1,7 @@
 /* Support for printing Fortran types for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988, 1989, 1991, 1993, 1994, 1995, 1996, 1998, 2000,
-   2001, 2002, 2003, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1986, 1988-1989, 1991, 1993-1996, 1998, 2000-2003,
+   2006-2012 Free Software Foundation, Inc.
 
    Contributed by Motorola.  Adapted from the C version by Farooq Butt
    (fmbutt@engage.sps.mot.com).
@@ -321,10 +320,6 @@ f_type_print_base (struct type *type, struct ui_file *stream, int show,
       break;
 
     case TYPE_CODE_CHAR:
-      /* Override name "char" and make it "character".  */
-      fprintfi_filtered (level, stream, "character");
-      break;
-
     case TYPE_CODE_INT:
       /* There may be some character types that attempt to come
          through as TYPE_CODE_INT since dbxstclass.h is so

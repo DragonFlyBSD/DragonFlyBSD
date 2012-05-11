@@ -1,7 +1,7 @@
 /* Abstraction of GNU v2 abi.
 
-   Copyright (C) 2001, 2002, 2003, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2001-2003, 2005, 2007-2012 Free Software Foundation,
+   Inc.
 
    Contributed by Daniel Berlin <dberlin@redhat.com>
 
@@ -26,6 +26,7 @@
 #include "gdbtypes.h"
 #include "value.h"
 #include "demangle.h"
+#include "gdb-demangle.h"
 #include "cp-abi.h"
 #include "cp-support.h"
 #include "exceptions.h"

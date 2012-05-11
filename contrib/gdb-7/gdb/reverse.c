@@ -1,7 +1,6 @@
 /* Reverse execution and reverse debugging.
 
-   Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2006-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -49,9 +48,6 @@ exec_reverse_once (char *cmd, char *args, int from_tty)
   char *reverse_command;
   enum exec_direction_kind dir = execution_direction;
   struct cleanup *old_chain;
-
-  if (dir == EXEC_ERROR)
-    error (_("Target %s does not support this command."), target_shortname);
 
   if (dir == EXEC_REVERSE)
     error (_("Already in reverse mode.  Use '%s' or 'set exec-dir forward'."),
@@ -187,7 +183,7 @@ delete_one_bookmark (int num)
   if (b == bookmark_chain)
     bookmark_chain = b->next;
 
-  /* Find bookmark preceeding "marked" one, so we can unlink.  */
+  /* Find bookmark preceding "marked" one, so we can unlink.  */
   if (b)
     {
       ALL_BOOKMARKS (b1)

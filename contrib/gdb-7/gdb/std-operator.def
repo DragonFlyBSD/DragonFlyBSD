@@ -1,7 +1,7 @@
 /* Standard language operator definitions for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1989, 1992, 1994, 2000, 2003, 2005, 2007, 2008, 2009,
-   2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1989, 1992, 1994, 2000, 2003, 2005, 2007-2012
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -138,6 +138,12 @@ OP (OP_DOUBLE)
    innermost frame executing in that block; if the block is NULL
    use the selected frame.  */
 OP (OP_VAR_VALUE)
+
+/* OP_VAR_ENTRY_VALUE takes one struct symbol * in the following element,
+   followed by another OP_VAR_ENTRY_VALUE, making three exp_elements.
+   somename@entry may mean parameter value as present at the entry of the
+   current function.  Implemented via DW_OP_GNU_entry_value.  */
+OP (OP_VAR_ENTRY_VALUE)
 
 /* OP_LAST is followed by an integer in the next exp_element.
    The integer is zero for the last value printed,
@@ -276,11 +282,6 @@ OP (STRUCTOP_PTR)
 /* C++: OP_THIS is just a placeholder for the class instance variable.
    It just comes in a tight (OP_THIS, OP_THIS) pair.  */
 OP (OP_THIS)
-
-/* Objective-C: OP_OBJC_SELF is just a placeholder for the class
-   instance variable.  It just comes in a tight (OP_OBJC_SELF,
-   OP_OBJC_SELF) pair.  */
-OP (OP_OBJC_SELF)
 
 /* Objective C: "@selector" pseudo-operator.  */
 OP (OP_OBJC_SELECTOR)

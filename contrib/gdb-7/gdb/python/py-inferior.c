@@ -1,6 +1,6 @@
 /* Python interface to inferiors.
 
-   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2009-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -22,6 +22,7 @@
 #include "gdbcore.h"
 #include "gdbthread.h"
 #include "inferior.h"
+#include "objfiles.h"
 #include "observer.h"
 #include "python-internal.h"
 #include "arch-utils.h"
@@ -119,15 +120,35 @@ python_inferior_exit (struct inferior *inf)
   if (inf->has_exit_code)
     exit_code = &inf->exit_code;
 
-  if (emit_exited_event (exit_code) < 0)
+  if (emit_exited_event (exit_code, inf) < 0)
     gdbpy_print_stack ();
 
   do_cleanups (cleanup);
 }
 
-/* Return a borrowed reference to the Python object of type Inferior
+/* Callback used to notify Python listeners about new objfiles loaded in the
+   inferior.  */
+
+static void
+python_new_objfile (struct objfile *objfile)
+{
+  struct cleanup *cleanup;
+
+  if (objfile == NULL)
+    return;
+
+  cleanup = ensure_python_env (get_objfile_arch (objfile), current_language);
+
+  if (emit_new_objfile_event (objfile) < 0)
+    gdbpy_print_stack ();
+
+  do_cleanups (cleanup);
+}
+
+/* Return a reference to the Python object of type Inferior
    representing INFERIOR.  If the object has already been created,
-   return it,  otherwise, create it.  Return NULL on failure.  */
+   return it and increment the reference count,  otherwise, create it.
+   Return NULL on failure.  */
 PyObject *
 inferior_to_inferior_object (struct inferior *inferior)
 {
@@ -136,15 +157,9 @@ inferior_to_inferior_object (struct inferior *inferior)
   inf_obj = inferior_data (inferior, infpy_inf_data_key);
   if (!inf_obj)
     {
-      struct cleanup *cleanup;
-      cleanup = ensure_python_env (python_gdbarch, python_language);
-
       inf_obj = PyObject_New (inferior_object, &inferior_object_type);
       if (!inf_obj)
-	{
-	  do_cleanups (cleanup);
 	  return NULL;
-	}
 
       inf_obj->inferior = inferior;
       inf_obj->threads = NULL;
@@ -152,15 +167,15 @@ inferior_to_inferior_object (struct inferior *inferior)
 
       set_inferior_data (inferior, infpy_inf_data_key, inf_obj);
 
-      do_cleanups (cleanup);
     }
+  else
+    Py_INCREF ((PyObject *)inf_obj);
 
   return (PyObject *) inf_obj;
 }
 
 /* Finds the Python Inferior object for the given PID.  Returns a
-   borrowed reference, or NULL if PID does not match any inferior
-   object.  */
+   reference, or NULL if PID does not match any inferior object. */
 
 PyObject *
 find_inferior_object (int pid)
@@ -180,6 +195,7 @@ find_thread_object (ptid_t ptid)
   int pid;
   struct threadlist_entry *thread;
   PyObject *inf_obj;
+  thread_object *found = NULL;
 
   pid = PIDGET (ptid);
   if (pid == 0)
@@ -187,11 +203,21 @@ find_thread_object (ptid_t ptid)
 
   inf_obj = find_inferior_object (pid);
 
-  if (inf_obj)
-    for (thread = ((inferior_object *)inf_obj)->threads; thread;
-	 thread = thread->next)
-      if (ptid_equal (thread->thread_obj->thread->ptid, ptid))
-	return thread->thread_obj;
+  if (! inf_obj)
+    return NULL;
+
+  for (thread = ((inferior_object *)inf_obj)->threads; thread;
+       thread = thread->next)
+    if (ptid_equal (thread->thread_obj->thread->ptid, ptid))
+      {
+	found = thread->thread_obj;
+	break;
+      }
+
+  Py_DECREF (inf_obj);
+
+  if (found)
+    return found;
 
   return NULL;
 }
@@ -233,10 +259,15 @@ delete_thread_object (struct thread_info *tp, int ignore)
   inferior_object *inf_obj;
   thread_object *thread_obj;
   struct threadlist_entry **entry, *tmp;
+  
+  cleanup = ensure_python_env (python_gdbarch, python_language);
 
   inf_obj = (inferior_object *) find_inferior_object (PIDGET(tp->ptid));
   if (!inf_obj)
-    return;
+    {
+      do_cleanups (cleanup);
+      return;
+    }
 
   /* Find thread entry in its inferior's thread_list.  */
   for (entry = &inf_obj->threads; *entry != NULL; entry =
@@ -245,9 +276,11 @@ delete_thread_object (struct thread_info *tp, int ignore)
       break;
 
   if (!*entry)
-    return;
-
-  cleanup = ensure_python_env (python_gdbarch, python_language);
+    {
+      Py_DECREF (inf_obj);
+      do_cleanups (cleanup);
+      return;
+    }
 
   tmp = *entry;
   tmp->thread_obj->thread = NULL;
@@ -256,6 +289,7 @@ delete_thread_object (struct thread_info *tp, int ignore)
   inf_obj->nthreads--;
 
   Py_DECREF (tmp->thread_obj);
+  Py_DECREF (inf_obj);
   xfree (tmp);
 
   do_cleanups (cleanup);
@@ -321,8 +355,15 @@ build_inferior_list (struct inferior *inf, void *arg)
 {
   PyObject *list = arg;
   PyObject *inferior = inferior_to_inferior_object (inf);
+  int success = 0;
 
-  if (PyList_Append (list, inferior))
+  if (! inferior)
+    return 0;
+
+  success = PyList_Append (list, inferior);
+  Py_DECREF (inferior);
+
+  if (success)
     return 1;
 
   return 0;
@@ -333,9 +374,7 @@ build_inferior_list (struct inferior *inf, void *arg)
 PyObject *
 gdbpy_inferiors (PyObject *unused, PyObject *unused2)
 {
-  int i = 0;
-  PyObject *list, *inferior;
-  struct inferior *inf;
+  PyObject *list, *tuple;
 
   list = PyList_New (0);
   if (!list)
@@ -347,7 +386,10 @@ gdbpy_inferiors (PyObject *unused, PyObject *unused2)
       return NULL;
     }
 
-  return PyList_AsTuple (list);
+  tuple = PyList_AsTuple (list);
+  Py_DECREF (list);
+
+  return tuple;
 }
 
 /* Membuf and memory manipulation.  */
@@ -428,7 +470,8 @@ infpy_read_memory (PyObject *self, PyObject *args, PyObject *kw)
 static PyObject *
 infpy_write_memory (PyObject *self, PyObject *args, PyObject *kw)
 {
-  int buf_len, error = 0;
+  Py_ssize_t buf_len;
+  int error = 0;
   const char *buffer;
   CORE_ADDR addr, length;
   PyObject *addr_obj, *length_obj = NULL;
@@ -616,6 +659,17 @@ infpy_is_valid (PyObject *self, PyObject *args)
   Py_RETURN_TRUE;
 }
 
+static void
+infpy_dealloc (PyObject *obj)
+{
+  inferior_object *inf_obj = (inferior_object *) obj;
+  struct inferior *inf = inf_obj->inferior;
+
+  if (! inf)
+    return;
+
+  set_inferior_data (inf, infpy_inf_data_key, NULL);
+}
 
 /* Clear the INFERIOR pointer in an Inferior object and clear the
    thread list.  */
@@ -647,6 +701,20 @@ py_free_inferior (struct inferior *inf, void *datum)
   do_cleanups (cleanup);
 }
 
+/* Implementation of gdb.selected_inferior() -> gdb.Inferior.
+   Returns the current inferior object.  */
+
+PyObject *
+gdbpy_selected_inferior (PyObject *self, PyObject *args)
+{
+  PyObject *inf_obj;
+
+  inf_obj = inferior_to_inferior_object (current_inferior ());
+  Py_INCREF (inf_obj);
+
+  return inf_obj;
+}
+
 void
 gdbpy_initialize_inferior (void)
 {
@@ -665,7 +733,9 @@ gdbpy_initialize_inferior (void)
   observer_attach_normal_stop (python_on_normal_stop);
   observer_attach_target_resumed (python_on_resume);
   observer_attach_inferior_exit (python_inferior_exit);
+  observer_attach_new_objfile (python_new_objfile);
 
+  membuf_object_type.tp_new = PyType_GenericNew;
   if (PyType_Ready (&membuf_object_type) < 0)
     return;
 
@@ -713,7 +783,7 @@ static PyTypeObject inferior_object_type =
   "gdb.Inferior",		  /* tp_name */
   sizeof (inferior_object),	  /* tp_basicsize */
   0,				  /* tp_itemsize */
-  0,				  /* tp_dealloc */
+  infpy_dealloc,		  /* tp_dealloc */
   0,				  /* tp_print */
   0,				  /* tp_getattr */
   0,				  /* tp_setattr */
@@ -803,5 +873,4 @@ static PyTypeObject membuf_object_type = {
   0,				  /* tp_dictoffset */
   0,				  /* tp_init */
   0,				  /* tp_alloc */
-  PyType_GenericNew		  /* tp_new */
 };

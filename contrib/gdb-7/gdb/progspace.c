@@ -1,6 +1,6 @@
 /* Program and address space management, for GDB, the GNU debugger.
 
-   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2009-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -397,7 +397,7 @@ maintenance_info_program_spaces_command (char *args, int from_tty)
 	error (_("program space ID %d not known."), requested);
     }
 
-  print_program_space (uiout, requested);
+  print_program_space (current_uiout, requested);
 }
 
 /* Simply returns the count of program spaces.  */

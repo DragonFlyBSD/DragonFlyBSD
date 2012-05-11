@@ -1,6 +1,6 @@
 /* Routines for handling XML generic OS data provided by target.
 
-   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -291,28 +291,38 @@ get_osdata_column (struct osdata_item *item, const char *name)
 static void
 info_osdata_command (char *type, int from_tty)
 {
+  struct ui_out *uiout = current_uiout;
   struct osdata *osdata = NULL;
-  struct osdata_item *last;
+  struct osdata_item *last = NULL;
   struct cleanup *old_chain;
-  int ncols;
-  int nprocs;
+  int ncols = 0;
+  int nrows;
 
   osdata = get_osdata (type);
   old_chain = make_cleanup_osdata_free (osdata);
 
-  nprocs = VEC_length (osdata_item_s, osdata->items);
+  nrows = VEC_length (osdata_item_s, osdata->items);
 
-  if (!type && nprocs == 0)
+  if (!type && nrows == 0)
     error (_("Available types of OS data not reported."));
+  
+  if (!VEC_empty (osdata_item_s, osdata->items))
+    {
+      last = VEC_last (osdata_item_s, osdata->items);
+      if (last->columns)
+        ncols = VEC_length (osdata_column_s, last->columns);
+    }
 
-  last = VEC_last (osdata_item_s, osdata->items);
-  if (last && last->columns)
-    ncols = VEC_length (osdata_column_s, last->columns);
-  else
-    ncols = 0;
-
-  make_cleanup_ui_out_table_begin_end (uiout, ncols, nprocs,
+  make_cleanup_ui_out_table_begin_end (uiout, ncols, nrows,
 				       "OSDataTable");
+
+  /* With no columns/items, we just output an empty table, but we
+     still output the table.  This matters for MI.  */
+  if (ncols == 0)
+    {
+      do_cleanups (old_chain);
+      return;
+    }
 
   if (last && last->columns)
     {
@@ -323,13 +333,18 @@ info_osdata_command (char *type, int from_tty)
           VEC_iterate (osdata_column_s, last->columns,
                        ix, col);
           ix++)
-       ui_out_table_header (uiout, 10, ui_left,
-                            col->name, col->name);
+	{
+	  char col_name[32];
+	  
+	  snprintf (col_name, 32, "col%d", ix);
+	  ui_out_table_header (uiout, 10, ui_left,
+			       col_name, col->name);
+        }
     }
 
   ui_out_table_body (uiout);
 
-  if (nprocs != 0)
+  if (nrows != 0)
     {
       struct osdata_item *item;
       int ix_items;
@@ -352,8 +367,13 @@ info_osdata_command (char *type, int from_tty)
               VEC_iterate (osdata_column_s, item->columns,
                            ix_cols, col);
               ix_cols++)
-           ui_out_field_string (uiout, col->name, col->value);
-
+	   {
+	     char col_name[32];
+	     
+	     snprintf (col_name, 32, "col%d", ix_cols);
+	     ui_out_field_string (uiout, col_name, col->value);
+	   }
+	 
          do_cleanups (old_chain);
 
          ui_out_text (uiout, "\n");

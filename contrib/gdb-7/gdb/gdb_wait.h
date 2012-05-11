@@ -1,6 +1,5 @@
 /* Standard wait macros.
-   Copyright (C) 2000, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2000, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -77,12 +76,6 @@
 #endif
 
 /* These are not defined in POSIX, but are used by our programs.  */
-
-#define WAITTYPE	int
-
-#ifndef	WCOREDUMP
-#define WCOREDUMP(w)	(((w)&0200) != 0)
-#endif
 
 #ifndef	WSETEXIT
 # ifdef	W_EXITCODE

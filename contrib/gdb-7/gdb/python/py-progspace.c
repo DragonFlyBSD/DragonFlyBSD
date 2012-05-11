@@ -1,6 +1,6 @@
 /* Python interface to program spaces.
 
-   Copyright (C) 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2010-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 

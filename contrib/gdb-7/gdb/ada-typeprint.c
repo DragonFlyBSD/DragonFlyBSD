@@ -1,6 +1,6 @@
 /* Support for printing Ada types for GDB, the GNU debugger.
-   Copyright (C) 1986, 1988, 1989, 1991, 1997, 1998, 1999, 2000, 2001, 2002,
-   2003, 2004, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1988-1989, 1991, 1997-2004, 2007-2012 Free
+   Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -340,56 +340,51 @@ print_array_type (struct type *type, struct ui_file *stream, int show,
     }
 
   n_indices = -1;
-  if (show < 0)
-    fprintf_filtered (stream, "...");
-  else
+  if (ada_is_simple_array_type (type))
     {
-      if (ada_is_simple_array_type (type))
+      struct type *range_desc_type;
+      struct type *arr_type;
+
+      range_desc_type = ada_find_parallel_type (type, "___XA");
+      ada_fixup_array_indexes_type (range_desc_type);
+
+      bitsize = 0;
+      if (range_desc_type == NULL)
 	{
-	  struct type *range_desc_type;
-	  struct type *arr_type;
-
-	  range_desc_type = ada_find_parallel_type (type, "___XA");
-	  ada_fixup_array_indexes_type (range_desc_type);
-
-	  bitsize = 0;
-	  if (range_desc_type == NULL)
+	  for (arr_type = type; TYPE_CODE (arr_type) == TYPE_CODE_ARRAY;
+	       arr_type = TYPE_TARGET_TYPE (arr_type))
 	    {
-	      for (arr_type = type; TYPE_CODE (arr_type) == TYPE_CODE_ARRAY;
-		   arr_type = TYPE_TARGET_TYPE (arr_type))
-		{
-		  if (arr_type != type)
-		    fprintf_filtered (stream, ", ");
-		  print_range (TYPE_INDEX_TYPE (arr_type), stream);
-		  if (TYPE_FIELD_BITSIZE (arr_type, 0) > 0)
-		    bitsize = TYPE_FIELD_BITSIZE (arr_type, 0);
-		}
-	    }
-	  else
-	    {
-	      int k;
-
-	      n_indices = TYPE_NFIELDS (range_desc_type);
-	      for (k = 0, arr_type = type;
-		   k < n_indices;
-		   k += 1, arr_type = TYPE_TARGET_TYPE (arr_type))
-		{
-		  if (k > 0)
-		    fprintf_filtered (stream, ", ");
-		  print_range_type (TYPE_FIELD_TYPE (range_desc_type, k),
-				    stream);
-		  if (TYPE_FIELD_BITSIZE (arr_type, 0) > 0)
-		    bitsize = TYPE_FIELD_BITSIZE (arr_type, 0);
-		}
+	      if (arr_type != type)
+		fprintf_filtered (stream, ", ");
+	      print_range (TYPE_INDEX_TYPE (arr_type), stream);
+	      if (TYPE_FIELD_BITSIZE (arr_type, 0) > 0)
+		bitsize = TYPE_FIELD_BITSIZE (arr_type, 0);
 	    }
 	}
       else
 	{
-	  int i, i0;
+	  int k;
 
-	  for (i = i0 = ada_array_arity (type); i > 0; i -= 1)
-	    fprintf_filtered (stream, "%s<>", i == i0 ? "" : ", ");
+	  n_indices = TYPE_NFIELDS (range_desc_type);
+	  for (k = 0, arr_type = type;
+	       k < n_indices;
+	       k += 1, arr_type = TYPE_TARGET_TYPE (arr_type))
+	    {
+	      if (k > 0)
+		fprintf_filtered (stream, ", ");
+	      print_range_type (TYPE_FIELD_TYPE (range_desc_type, k),
+				stream);
+	      if (TYPE_FIELD_BITSIZE (arr_type, 0) > 0)
+		bitsize = TYPE_FIELD_BITSIZE (arr_type, 0);
+	    }
 	}
+    }
+  else
+    {
+      int i, i0;
+
+      for (i = i0 = ada_array_arity (type); i > 0; i -= 1)
+	fprintf_filtered (stream, "%s<>", i == i0 ? "" : ", ");
     }
 
   fprintf_filtered (stream, ") of ");
@@ -626,8 +621,17 @@ print_record_type (struct type *type0, struct ui_file *stream, int show,
 
   parent_type = ada_parent_type (type);
   if (ada_type_name (parent_type) != NULL)
-    fprintf_filtered (stream, "new %s with record",
-		      decoded_type_name (parent_type));
+    {
+      const char *parent_name = decoded_type_name (parent_type);
+
+      /* If we fail to decode the parent type name, then use the parent
+	 type name as is.  Not pretty, but should never happen except
+	 when the debugging info is incomplete or incorrect.  This
+	 prevents a crash trying to print a NULL pointer.  */
+      if (parent_name == NULL)
+	parent_name = ada_type_name (parent_type);
+      fprintf_filtered (stream, "new %s with record", parent_name);
+    }
   else if (parent_type == NULL && ada_is_tagged_type (type, 0))
     fprintf_filtered (stream, "tagged record");
   else
@@ -766,7 +770,7 @@ ada_print_type (struct type *type0, const char *varstring,
     fprintf_filtered (stream, "%.*s: ",
 		      ada_name_prefix_len (varstring), varstring);
 
-  if (type_name != NULL && show <= 0)
+  if (type_name != NULL && show <= 0 && !ada_is_aligner_type (type))
     {
       fprintf_filtered (stream, "%.*s",
 			ada_name_prefix_len (type_name), type_name);
@@ -775,18 +779,9 @@ ada_print_type (struct type *type0, const char *varstring,
 
   if (ada_is_aligner_type (type))
     ada_print_type (ada_aligned_type (type), "", stream, show, level);
-  else if (ada_is_constrained_packed_array_type (type))
-    {
-      if (TYPE_CODE (type) == TYPE_CODE_PTR)
-        {
-          fprintf_filtered (stream, "access ");
-          print_array_type (TYPE_TARGET_TYPE (type), stream, show, level);
-        }
-      else
-        {
-          print_array_type (type, stream, show, level);
-        }
-    }
+  else if (ada_is_constrained_packed_array_type (type)
+	   && TYPE_CODE (type) != TYPE_CODE_PTR)
+    print_array_type (type, stream, show, level);
   else
     switch (TYPE_CODE (type))
       {

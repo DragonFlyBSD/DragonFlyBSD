@@ -29,8 +29,7 @@ rm -f ${otmp}
 cat <<EOF >>${otmp}
 /* GDB Notifications to Observers.
 
-   Copyright (C) 2004, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2004-2005, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -64,6 +63,7 @@ struct bpstats;
 struct so_list;
 struct objfile;
 struct thread_info;
+struct inferior;
 EOF
         ;;
 esac

@@ -1,7 +1,6 @@
 /* Block-related functions for the GNU debugger, GDB.
 
-   Copyright (C) 2003, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,6 +24,8 @@
 #include "gdb_obstack.h"
 #include "cp-support.h"
 #include "addrmap.h"
+#include "gdbtypes.h"
+#include "exceptions.h"
 
 /* This is used by struct block to store namespace-related info for
    C++ files, namely using declarations and the current namespace in
@@ -75,6 +76,20 @@ block_linkage_function (const struct block *bl)
 {
   while ((BLOCK_FUNCTION (bl) == NULL || block_inlined_p (bl))
 	 && BLOCK_SUPERBLOCK (bl) != NULL)
+    bl = BLOCK_SUPERBLOCK (bl);
+
+  return BLOCK_FUNCTION (bl);
+}
+
+/* Return the symbol for the function which contains a specified
+   block, described by a struct block BL.  The return value will be
+   the closest enclosing function, which might be an inline
+   function.  */
+
+struct symbol *
+block_containing_function (const struct block *bl)
+{
+  while (BLOCK_FUNCTION (bl) == NULL && BLOCK_SUPERBLOCK (bl) != NULL)
     bl = BLOCK_SUPERBLOCK (bl);
 
   return BLOCK_FUNCTION (bl);
@@ -158,6 +173,38 @@ blockvector_for_pc_sect (CORE_ADDR pc, struct obj_section *section,
       bot--;
     }
   return 0;
+}
+
+/* Return call_site for specified PC in GDBARCH.  PC must match exactly, it
+   must be the next instruction after call (or after tail call jump).  Throw
+   NO_ENTRY_VALUE_ERROR otherwise.  This function never returns NULL.  */
+
+struct call_site *
+call_site_for_pc (struct gdbarch *gdbarch, CORE_ADDR pc)
+{
+  struct symtab *symtab;
+  void **slot = NULL;
+
+  /* -1 as tail call PC can be already after the compilation unit range.  */
+  symtab = find_pc_symtab (pc - 1);
+
+  if (symtab != NULL && symtab->call_site_htab != NULL)
+    slot = htab_find_slot (symtab->call_site_htab, &pc, NO_INSERT);
+
+  if (slot == NULL)
+    {
+      struct minimal_symbol *msym = lookup_minimal_symbol_by_pc (pc);
+
+      /* DW_TAG_gnu_call_site will be missing just if GCC could not determine
+	 the call target.  */
+      throw_error (NO_ENTRY_VALUE_ERROR,
+		   _("DW_OP_GNU_entry_value resolving cannot find "
+		     "DW_TAG_GNU_call_site %s in %s"),
+		   paddress (gdbarch, pc),
+		   msym == NULL ? "???" : SYMBOL_PRINT_NAME (msym));
+    }
+
+  return *slot;
 }
 
 /* Return the blockvector immediately containing the innermost lexical block

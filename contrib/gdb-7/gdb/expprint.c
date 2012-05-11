@@ -1,8 +1,7 @@
 /* Print in infix form a struct expression.
 
-   Copyright (C) 1986, 1988, 1989, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-   1998, 1999, 2000, 2003, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1986, 1988-1989, 1991-2000, 2003, 2007-2012 Free
+   Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -132,6 +131,16 @@ print_subexp_standard (struct expression *exp, int *pos,
 	    fputs_filtered ("::", stream);
 	  }
 	fputs_filtered (SYMBOL_PRINT_NAME (exp->elts[pc + 2].symbol), stream);
+      }
+      return;
+
+    case OP_VAR_ENTRY_VALUE:
+      {
+	struct block *b;
+
+	(*pos) += 2;
+	fprintf_filtered (stream, "%s@entry",
+			  SYMBOL_PRINT_NAME (exp->elts[pc + 1].symbol));
       }
       return;
 
@@ -499,14 +508,11 @@ print_subexp_standard (struct expression *exp, int *pos,
 
     case OP_THIS:
       ++(*pos);
-      fputs_filtered ("this", stream);
-      return;
-
-      /* Objective-C ops */
-
-    case OP_OBJC_SELF:
-      ++(*pos);
-      fputs_filtered ("self", stream);	/* The ObjC equivalent of "this".  */
+      if (exp->language_defn->la_name_of_this)
+	fputs_filtered (exp->language_defn->la_name_of_this, stream);
+      else
+	fprintf_filtered (stream, _("<language %s has no 'this'>"),
+			  exp->language_defn->la_name);
       return;
 
       /* Modula-2 ops */
@@ -855,6 +861,13 @@ dump_subexp_body_standard (struct expression *exp,
       fprintf_filtered (stream, " (%s)",
 			SYMBOL_PRINT_NAME (exp->elts[elt + 1].symbol));
       elt += 3;
+      break;
+    case OP_VAR_ENTRY_VALUE:
+      fprintf_filtered (stream, "Entry value of symbol @");
+      gdb_print_host_address (exp->elts[elt].symbol, stream);
+      fprintf_filtered (stream, " (%s)",
+			SYMBOL_PRINT_NAME (exp->elts[elt].symbol));
+      elt += 2;
       break;
     case OP_LAST:
       fprintf_filtered (stream, "History element %ld",

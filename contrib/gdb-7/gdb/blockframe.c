@@ -1,9 +1,7 @@
 /* Get info from stack frames; convert between frames, blocks,
    functions and pc values.
 
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
-   2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2004, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -358,7 +356,7 @@ find_pc_partial_function (CORE_ADDR pc, char **name, CORE_ADDR *address,
    if there is no such frame.  If BLOCK is NULL, just return NULL.  */
 
 struct frame_info *
-block_innermost_frame (struct block *block)
+block_innermost_frame (const struct block *block)
 {
   struct frame_info *frame;
   CORE_ADDR start;

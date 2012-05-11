@@ -1,6 +1,6 @@
 /* Program and address space management, for GDB, the GNU debugger.
 
-   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2009-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -184,6 +184,9 @@ struct program_space
     /* List of shared objects mapped into this space.  Managed by
        solib.c.  */
     struct so_list *so_list;
+
+    /* Number of calls to solib_add.  */
+    unsigned solib_add_generation;
 
     /* Per pspace data-pointers required by other GDB modules.  */
     void **data;

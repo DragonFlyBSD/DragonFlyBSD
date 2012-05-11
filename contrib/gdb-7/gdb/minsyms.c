@@ -1,7 +1,5 @@
 /* GDB routines for manipulating the minimal symbol tables.
-   Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001,
-   2002, 2003, 2004, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1992-2004, 2007-2012 Free Software Foundation, Inc.
    Contributed by Cygnus Support, using pieces from other GDB modules.
 
    This file is part of GDB.
@@ -91,7 +89,7 @@ msymbol_hash_iw (const char *string)
 	++string;
       if (*string && *string != '(')
 	{
-	  hash = hash * 67 + *string - 113;
+	  hash = SYMBOL_HASH_NEXT (hash, *string);
 	  ++string;
 	}
     }
@@ -106,7 +104,7 @@ msymbol_hash (const char *string)
   unsigned int hash = 0;
 
   for (; *string; ++string)
-    hash = hash * 67 + *string - 113;
+    hash = SYMBOL_HASH_NEXT (hash, *string);
   return hash;
 }
 
@@ -239,11 +237,16 @@ lookup_minimal_symbol (const char *name, const char *sfile,
 
 		  if (pass == 1)
 		    {
-		      match = strcmp (SYMBOL_LINKAGE_NAME (msymbol),
-				      modified_name) == 0;
+		      int (*cmp) (const char *, const char *);
+
+		      cmp = (case_sensitivity == case_sensitive_on
+		             ? strcmp : strcasecmp);
+		      match = cmp (SYMBOL_LINKAGE_NAME (msymbol),
+				   modified_name) == 0;
 		    }
 		  else
 		    {
+		      /* The function respects CASE_SENSITIVITY.  */
 		      match = SYMBOL_MATCHES_SEARCH_NAME (msymbol,
 							  modified_name);
 		    }
@@ -303,6 +306,46 @@ lookup_minimal_symbol (const char *name, const char *sfile,
     return trampoline_symbol;
 
   return NULL;
+}
+
+/* Iterate over all the minimal symbols in the objfile OBJF which
+   match NAME.  Both the ordinary and demangled names of each symbol
+   are considered.  The caller is responsible for canonicalizing NAME,
+   should that need to be done.
+   
+   For each matching symbol, CALLBACK is called with the symbol and
+   USER_DATA as arguments.  */
+
+void
+iterate_over_minimal_symbols (struct objfile *objf, const char *name,
+			      void (*callback) (struct minimal_symbol *,
+						void *),
+			      void *user_data)
+{
+  unsigned int hash;
+  struct minimal_symbol *iter;
+  int (*cmp) (const char *, const char *);
+
+  /* The first pass is over the ordinary hash table.  */
+  hash = msymbol_hash (name) % MINIMAL_SYMBOL_HASH_SIZE;
+  iter = objf->msymbol_hash[hash];
+  cmp = (case_sensitivity == case_sensitive_on ? strcmp : strcasecmp);
+  while (iter)
+    {
+      if (cmp (SYMBOL_LINKAGE_NAME (iter), name) == 0)
+	(*callback) (iter, user_data);
+      iter = iter->hash_next;
+    }
+
+  /* The second pass is over the demangled table.  */
+  hash = msymbol_hash_iw (name) % MINIMAL_SYMBOL_HASH_SIZE;
+  iter = objf->msymbol_demangled_hash[hash];
+  while (iter)
+    {
+      if (SYMBOL_MATCHES_SEARCH_NAME (iter, name))
+	(*callback) (iter, user_data);
+      iter = iter->demangled_hash_next;
+    }
 }
 
 /* Look through all the current minimal symbol tables and find the
@@ -578,7 +621,7 @@ lookup_minimal_symbol_by_pc_section_1 (CORE_ADDR pc,
 
 		  /* If we are looking for a trampoline and this is a
 		     text symbol, or the other way around, check the
-		     preceeding symbol too.  If they are otherwise
+		     preceding symbol too.  If they are otherwise
 		     identical prefer that one.  */
 		  if (hi > 0
 		      && MSYMBOL_TYPE (&msymbol[hi]) == other_type

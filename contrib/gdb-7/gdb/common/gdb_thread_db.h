@@ -6,13 +6,15 @@
 #endif
 
 #ifndef LIBTHREAD_DB_SEARCH_PATH
-#define LIBTHREAD_DB_SEARCH_PATH ""
+/* $sdir appears before $pdir for some minimal security protection:
+   we trust the system libthread_db.so a bit more than some random
+   libthread_db associated with whatever libpthread the app is using.  */
+#define LIBTHREAD_DB_SEARCH_PATH "$sdir:$pdir"
 #endif
 
 #else
 
-/* Copyright (C) 1999, 2000, 2007, 2008, 2009, 2010, 2011
-Free Software Foundation, Inc.
+/* Copyright (C) 1999-2000, 2007-2012 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -199,16 +201,6 @@ typedef struct td_notify
     int syscallno;		/* Number of system call used.  */
   } u;
 } td_notify_t;
-
-/* Some people still have libc5 or old glibc with no uintptr_t.
-   They lose.  glibc 2.1.3 was released on 2000-02-25, and it has
-   uintptr_t, so it's reasonable to force these people to upgrade.  */
-
-#ifndef HAVE_UINTPTR_T
-#error No uintptr_t available; your C library is too old.
-/* Inhibit further compilation errors after this error.  */
-#define uintptr_t void *
-#endif
 
 /* Structure used to report event.  */
 typedef struct td_event_msg

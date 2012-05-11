@@ -51,7 +51,6 @@ sparcv9 | sparc64)	gdb_host_cpu=sparc ;;
 s390*)			gdb_host_cpu=s390 ;;
 sh*)			gdb_host_cpu=sh ;;
 x86_64*)		gdb_host_cpu=i386 ;;
-xscale*)		gdb_host_cpu=arm ;;
 m32r*)			gdb_host_cpu=m32r ;;
 xtensa*)		gdb_host_cpu=xtensa ;;
 *)			gdb_host_cpu=$host_cpu ;;

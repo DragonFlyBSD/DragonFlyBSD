@@ -1,6 +1,5 @@
 /* MI Option Parser.
-   Copyright (C) 2000, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2000, 2007-2012 Free Software Foundation, Inc.
    Contributed by Cygnus Solutions (a Red Hat company).
 
    This file is part of GDB.
@@ -42,7 +41,7 @@
 
 struct mi_opt;
 extern int mi_getopt (const char *prefix, int argc, char **argv,
-		      struct mi_opt *opt, int *optind, char **optarg);
+		      const struct mi_opt *opt, int *optind, char **optarg);
 
 /* The option list.  Terminated by NAME==NULL.  ARG_P that the option
    requires an argument.  INDEX is returned to identify th option. */

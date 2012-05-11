@@ -1,6 +1,5 @@
 /* UI_FILE - a generic STDIO like output stream.
-   Copyright (C) 1999, 2000, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1999-2000, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -45,6 +44,17 @@ typedef void (ui_file_fputs_ftype) (const char *, struct ui_file *stream);
 extern void set_ui_file_fputs (struct ui_file *stream,
 			       ui_file_fputs_ftype *fputs);
 
+/* This version of "write" is safe for use in signal handlers.
+   It's not guaranteed that all existing output will have been
+   flushed first.
+   Implementations are also free to ignore some or all of the request.
+   fputs_async is not provided as the async versions are rarely used,
+   no point in having both for a rarely used interface.  */
+typedef void (ui_file_write_async_safe_ftype)
+  (struct ui_file *stream, const char *buf, long length_buf);
+extern void set_ui_file_write_async_safe
+  (struct ui_file *stream, ui_file_write_async_safe_ftype *write_async_safe);
+
 typedef long (ui_file_read_ftype) (struct ui_file *stream,
 				   char *buf, long length_buf);
 extern void set_ui_file_read (struct ui_file *stream,
@@ -82,6 +92,9 @@ extern int ui_file_isatty (struct ui_file *);
 
 extern void ui_file_write (struct ui_file *file, const char *buf,
 			   long length_buf);
+
+extern void ui_file_write_async_safe (struct ui_file *file, const char *buf,
+				      long length_buf);
 
 /* NOTE: copies left to right.  */
 extern void ui_file_put (struct ui_file *src,

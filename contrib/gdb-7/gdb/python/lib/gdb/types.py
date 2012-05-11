@@ -1,5 +1,5 @@
 # Type utilities.
-# Copyright (C) 2010, 2011 Free Software Foundation, Inc.
+# Copyright (C) 2010-2012 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -89,3 +89,23 @@ def make_enum_dict(enum_type):
         # The enum's value is stored in "bitpos".
         enum_dict[field.name] = field.bitpos
     return enum_dict
+
+
+def deep_items (type_):
+    """Return an iterator that recursively traverses anonymous fields.
+
+    Arguments:
+        type_: The type to traverse.  It should be one of
+        gdb.TYPE_CODE_STRUCT or gdb.TYPE_CODE_UNION.
+
+    Returns:
+        an iterator similar to gdb.Type.iteritems(), i.e., it returns
+        pairs of key, value, but for any anonymous struct or union
+        field that field is traversed recursively, depth-first.
+    """
+    for k, v in type_.iteritems ():
+        if k:
+            yield k, v
+        else:
+            for i in deep_items (v.type):
+                yield i

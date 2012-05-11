@@ -1,5 +1,5 @@
 /* Compressed section support (intended for debug sections).
-   Copyright 2008, 2010
+   Copyright 2008, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -158,7 +158,7 @@ DESCRIPTION
 bfd_boolean
 bfd_get_full_section_contents (bfd *abfd, sec_ptr sec, bfd_byte **ptr)
 {
-  bfd_size_type sz = sec->rawsize ? sec->rawsize : sec->size;
+  bfd_size_type sz;
   bfd_byte *p = *ptr;
 #ifdef HAVE_ZLIB_H
   bfd_boolean ret;
@@ -169,6 +169,10 @@ bfd_get_full_section_contents (bfd *abfd, sec_ptr sec, bfd_byte **ptr)
   bfd_byte *uncompressed_buffer;
 #endif
 
+  if (abfd->direction != write_direction && sec->rawsize != 0)
+    sz = sec->rawsize;
+  else
+    sz = sec->size;
   if (sz == 0)
     return TRUE;
 

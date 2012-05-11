@@ -1,7 +1,7 @@
 /* MI Command Set for GDB, the GNU debugger.
 
-   Copyright (C) 2000, 2001, 2003, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2000-2001, 2003, 2007-2012 Free Software Foundation,
+   Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
 
@@ -33,6 +33,7 @@ static void build_table (struct mi_cmd *commands);
 
 struct mi_cmd mi_cmds[] =
 {
+  { "ada-task-info", { NULL, 0 }, mi_cmd_ada_task_info },
   { "add-inferior", { NULL, 0 }, mi_cmd_add_inferior },
   { "break-after", { "ignore", 1 }, NULL },
   { "break-condition", { "cond", 1 }, NULL },

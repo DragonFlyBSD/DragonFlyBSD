@@ -1,6 +1,5 @@
 /* MI Command Set - breakpoint and watchpoint commands.
-   Copyright (C) 2000, 2001, 2002, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2000-2002, 2007-2012 Free Software Foundation, Inc.
    Contributed by Cygnus Solutions (a Red Hat company).
 
    This file is part of GDB.
@@ -34,6 +33,7 @@ void
 mi_cmd_file_list_exec_source_file (char *command, char **argv, int argc)
 {
   struct symtab_and_line st;
+  struct ui_out *uiout = current_uiout;
   
   if (!mi_valid_noargs ("-file-list-exec-source-file", argc, argv))
     error (_("-file-list-exec-source-file: Usage: No args"));
@@ -67,6 +67,8 @@ static void
 print_partial_file_name (const char *filename, const char *fullname,
 			 void *ignore)
 {
+  struct ui_out *uiout = current_uiout;
+
   ui_out_begin (uiout, ui_out_type_tuple, NULL);
 
   ui_out_field_string (uiout, "file", filename);
@@ -80,6 +82,7 @@ print_partial_file_name (const char *filename, const char *fullname,
 void
 mi_cmd_file_list_exec_source_files (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   struct symtab *s;
   struct objfile *objfile;
 
@@ -105,7 +108,8 @@ mi_cmd_file_list_exec_source_files (char *command, char **argv, int argc)
     ui_out_end (uiout, ui_out_type_tuple);
   }
 
-  map_partial_symbol_filenames (print_partial_file_name, NULL);
+  map_partial_symbol_filenames (print_partial_file_name, NULL,
+				1 /*need_fullname*/);
 
   ui_out_end (uiout, ui_out_type_list);
 }

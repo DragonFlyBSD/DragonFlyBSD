@@ -1,8 +1,7 @@
 /* Parse expressions for GDB.
 
-   Copyright (C) 1986, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-   1998, 1999, 2000, 2001, 2004, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1986, 1989-2001, 2004-2005, 2007-2012 Free Software
+   Foundation, Inc.
 
    Modified from expread.y by the Department of Computer Science at the
    State University of New York at Buffalo, 1991.
@@ -23,7 +22,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* Parse an expression from text in a string,
-   and return the result as a  struct expression  pointer.
+   and return the result as a struct expression pointer.
    That structure contains arithmetic operations in reverse polish,
    with constants represented by operations that are followed by special data.
    See expression.h for the details of the format.
@@ -190,7 +189,7 @@ free_funcalls (void *ignore)
     }
 }
 
-/* This page contains the functions for adding data to the  struct expression
+/* This page contains the functions for adding data to the struct expression
    being constructed.  */
 
 /* Add one element to the end of the expression.  */
@@ -198,8 +197,8 @@ free_funcalls (void *ignore)
 /* To avoid a bug in the Sun 4 compiler, we pass things that can fit into
    a register through here.  */
 
-void
-write_exp_elt (union exp_element expelt)
+static void
+write_exp_elt (const union exp_element *expelt)
 {
   if (expout_ptr >= expout_size)
     {
@@ -208,7 +207,7 @@ write_exp_elt (union exp_element expelt)
 	xrealloc ((char *) expout, sizeof (struct expression)
 		  + EXP_ELEM_TO_BYTES (expout_size));
     }
-  expout->elts[expout_ptr++] = expelt;
+  expout->elts[expout_ptr++] = *expelt;
 }
 
 void
@@ -218,7 +217,7 @@ write_exp_elt_opcode (enum exp_opcode expelt)
 
   memset (&tmp, 0, sizeof (union exp_element));
   tmp.opcode = expelt;
-  write_exp_elt (tmp);
+  write_exp_elt (&tmp);
 }
 
 void
@@ -228,7 +227,7 @@ write_exp_elt_sym (struct symbol *expelt)
 
   memset (&tmp, 0, sizeof (union exp_element));
   tmp.symbol = expelt;
-  write_exp_elt (tmp);
+  write_exp_elt (&tmp);
 }
 
 void
@@ -238,7 +237,7 @@ write_exp_elt_block (struct block *b)
 
   memset (&tmp, 0, sizeof (union exp_element));
   tmp.block = b;
-  write_exp_elt (tmp);
+  write_exp_elt (&tmp);
 }
 
 void
@@ -248,7 +247,7 @@ write_exp_elt_objfile (struct objfile *objfile)
 
   memset (&tmp, 0, sizeof (union exp_element));
   tmp.objfile = objfile;
-  write_exp_elt (tmp);
+  write_exp_elt (&tmp);
 }
 
 void
@@ -258,7 +257,7 @@ write_exp_elt_longcst (LONGEST expelt)
 
   memset (&tmp, 0, sizeof (union exp_element));
   tmp.longconst = expelt;
-  write_exp_elt (tmp);
+  write_exp_elt (&tmp);
 }
 
 void
@@ -268,7 +267,7 @@ write_exp_elt_dblcst (DOUBLEST expelt)
 
   memset (&tmp, 0, sizeof (union exp_element));
   tmp.doubleconst = expelt;
-  write_exp_elt (tmp);
+  write_exp_elt (&tmp);
 }
 
 void
@@ -280,7 +279,7 @@ write_exp_elt_decfloatcst (gdb_byte expelt[16])
   for (index = 0; index < 16; index++)
     tmp.decfloatconst[index] = expelt[index];
 
-  write_exp_elt (tmp);
+  write_exp_elt (&tmp);
 }
 
 void
@@ -290,7 +289,7 @@ write_exp_elt_type (struct type *expelt)
 
   memset (&tmp, 0, sizeof (union exp_element));
   tmp.type = expelt;
-  write_exp_elt (tmp);
+  write_exp_elt (&tmp);
 }
 
 void
@@ -300,7 +299,7 @@ write_exp_elt_intern (struct internalvar *expelt)
 
   memset (&tmp, 0, sizeof (union exp_element));
   tmp.internalvar = expelt;
-  write_exp_elt (tmp);
+  write_exp_elt (&tmp);
 }
 
 /* Add a string constant to the end of the expression.
@@ -853,6 +852,7 @@ operator_length_standard (const struct expression *expr, int endpos,
     case OP_BOOL:
     case OP_LAST:
     case OP_INTERNALVAR:
+    case OP_VAR_ENTRY_VALUE:
       oplen = 3;
       break;
 
@@ -963,7 +963,6 @@ operator_length_standard (const struct expression *expr, int endpos,
 
       /* C++ */
     case OP_THIS:
-    case OP_OBJC_SELF:
       oplen = 2;
       break;
 
@@ -1060,7 +1059,7 @@ prefixify_subexp (struct expression *inexpr,
 }
 
 /* Read an expression from the string *STRINGPTR points to,
-   parse it, and return a pointer to a  struct expression  that we malloc.
+   parse it, and return a pointer to a struct expression that we malloc.
    Use block BLOCK as the lexical context for variable names;
    if BLOCK is zero, use the block of the selected stack frame.
    Meanwhile, advance *STRINGPTR to point after the expression,

@@ -1,6 +1,5 @@
 /* Support for printing Pascal types for GDB, the GNU debugger.
-   Copyright (C) 2000, 2001, 2002, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2000-2002, 2006-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -31,7 +30,7 @@
 #include "language.h"
 #include "p-lang.h"
 #include "typeprint.h"
-
+#include "gdb-demangle.h"
 #include "gdb_string.h"
 #include <errno.h>
 #include <ctype.h>
@@ -153,7 +152,7 @@ pascal_type_print_derivation_info (struct ui_file *stream, struct type *type)
 /* Print the Pascal method arguments ARGS to the file STREAM.  */
 
 void
-pascal_type_print_method_args (char *physname, char *methodname,
+pascal_type_print_method_args (const char *physname, const char *methodname,
 			       struct ui_file *stream)
 {
   int is_constructor = (strncmp (physname, "__ct__", 6) == 0);
@@ -173,8 +172,7 @@ pascal_type_print_method_args (char *physname, char *methodname,
       while (isdigit (physname[0]))
 	{
 	  int len = 0;
-	  int i;
-	  char storec;
+	  int i, j;
 	  char *argname;
 
 	  while (isdigit (physname[len]))
@@ -183,10 +181,10 @@ pascal_type_print_method_args (char *physname, char *methodname,
 	    }
 	  i = strtol (physname, &argname, 0);
 	  physname += len;
-	  storec = physname[i];
-	  physname[i] = 0;
-	  fputs_filtered (physname, stream);
-	  physname[i] = storec;
+
+	  for (j = 0; j < i; ++j)
+	    fputc_filtered (physname[j], stream);
+
 	  physname += i;
 	  if (physname[0] != 0)
 	    {
@@ -638,7 +636,7 @@ pascal_type_print_base (struct type *type, struct ui_file *stream, int show,
 	         It might work for GNU pascal.  */
 	      for (j = 0; j < len2; j++)
 		{
-		  char *physname = TYPE_FN_FIELD_PHYSNAME (f, j);
+		  const char *physname = TYPE_FN_FIELD_PHYSNAME (f, j);
 
 		  int is_constructor = (strncmp (physname, "__ct__", 6) == 0);
 		  int is_destructor = (strncmp (physname, "__dt__", 6) == 0);

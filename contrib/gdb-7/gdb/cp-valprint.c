@@ -1,8 +1,7 @@
 /* Support for printing C++ values for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988, 1989, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-   2000, 2001, 2002, 2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1986, 1988-1989, 1991-1997, 2000-2003, 2005-2012 Free
+   Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -340,9 +339,19 @@ cp_print_value_fields (struct type *type, struct type *real_type,
 		}
 	      else if (field_is_static (&TYPE_FIELD (type, i)))
 		{
-		  struct value *v = value_static_field (type, i);
+		  volatile struct gdb_exception ex;
+		  struct value *v = NULL;
 
-		  if (v == NULL)
+		  TRY_CATCH (ex, RETURN_MASK_ERROR)
+		    {
+		      v = value_static_field (type, i);
+		    }
+
+		  if (ex.reason < 0)
+		    fprintf_filtered (stream,
+				      _("<error reading variable: %s>"),
+				      ex.message);
+		  else if (v == NULL)
 		    val_print_optimized_out (stream);
 		  else
 		    cp_print_static_field (TYPE_FIELD_TYPE (type, i),

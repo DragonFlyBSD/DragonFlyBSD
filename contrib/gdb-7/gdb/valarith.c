@@ -1,8 +1,7 @@
 /* Perform arithmetic and other operations on values, for GDB.
 
-   Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
-   1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009,
-   2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1988-2005, 2007-2012 Free Software Foundation,
+   Inc.
 
    This file is part of GDB.
 
@@ -335,15 +334,8 @@ value_user_defined_cpp_op (struct value **args, int nargs, char *operator,
 
   struct symbol *symp = NULL;
   struct value *valp = NULL;
-  struct type **arg_types;
-  int i;
 
-  arg_types = (struct type **) alloca (nargs * (sizeof (struct type *)));
-  /* Prepare list of argument types for overload resolution.  */
-  for (i = 0; i < nargs; i++)
-    arg_types[i] = value_type (args[i]);
-
-  find_overload_match (arg_types, nargs, operator, BOTH /* could be method */,
+  find_overload_match (args, nargs, operator, BOTH /* could be method */,
                        0 /* strict match */, &args[0], /* objp */
                        NULL /* pass NULL symbol since symbol is unknown */,
                        &valp, &symp, static_memfuncp, 0);

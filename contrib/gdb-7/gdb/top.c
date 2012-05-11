@@ -1,8 +1,6 @@
 /* Top level stuff for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
-   2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -48,6 +46,7 @@
 #include "event-loop.h"
 #include "gdbthread.h"
 #include "python/python.h"
+#include "interps.h"
 
 /* readline include files.  */
 #include "readline/readline.h"
@@ -64,6 +63,10 @@
 #include <ctype.h>
 #include "ui-out.h"
 #include "cli-out.h"
+
+#define PROMPT(X) the_prompts.prompt_stack[the_prompts.top + X].prompt
+#define PREFIX(X) the_prompts.prompt_stack[the_prompts.top + X].prefix
+#define SUFFIX(X) the_prompts.prompt_stack[the_prompts.top + X].suffix
 
 /* Default command line prompt.  This is overriden in some configs.  */
 
@@ -137,8 +140,8 @@ int xgdb_verbose;
 /* Buffer used for reading command lines, and the size
    allocated for it so far.  */
 
-char *line;
-int linesize = 100;
+char *saved_command_line;
+int saved_command_line_size = 100;
 
 /* Nonzero if the current command is modified by "server ".  This
    affects things like recording into the command history, commands
@@ -283,18 +286,17 @@ void (*deprecated_context_hook) (int id);
 /* NOTE 1999-04-29: This function will be static again, once we modify
    gdb to use the event loop as the default command loop and we merge
    event-top.c into this file, top.c.  */
-/* static */ int
-quit_cover (void *s)
+/* static */ void
+quit_cover (void)
 {
   caution = 0;			/* Throw caution to the wind -- we're exiting.
 				   This prevents asking the user dumb 
 				   questions.  */
   quit_command ((char *) 0, 0);
-  return 0;
 }
 #endif /* defined SIGHUP */
 
-/* Line number we are currently in in a file which is being sourced.  */
+/* Line number we are currently in, in a file which is being sourced.  */
 /* NOTE 1999-04-29: This variable will be static again, once we modify
    gdb to use the event loop as the default command loop and we merge
    event-top.c into this file, top.c.  */
@@ -339,10 +341,14 @@ do_chdir_cleanup (void *old_dir)
 }
 #endif
 
-void
+struct cleanup *
 prepare_execute_command (void)
 {
-  free_all_values ();
+  struct value *mark;
+  struct cleanup *cleanup;
+
+  mark = value_mark ();
+  cleanup = make_cleanup_value_free_to_mark (mark);
 
   /* With multiple threads running while the one we're examining is
      stopped, the dcache can get stale without us being able to detect
@@ -350,6 +356,8 @@ prepare_execute_command (void)
      help things like backtrace.  */
   if (non_stop)
     target_dcache_invalidate ();
+
+  return cleanup;
 }
 
 /* Execute the line P as a command, in the current user context.
@@ -358,12 +366,14 @@ prepare_execute_command (void)
 void
 execute_command (char *p, int from_tty)
 {
+  struct cleanup *cleanup_if_error, *cleanup;
   struct cmd_list_element *c;
   enum language flang;
   static int warned = 0;
   char *line;
 
-  prepare_execute_command ();
+  cleanup_if_error = make_bpstat_clear_actions_cleanup ();
+  cleanup = prepare_execute_command ();
 
   /* Force cleanup of any alloca areas if using C alloca instead of
      a builtin alloca.  */
@@ -371,7 +381,10 @@ execute_command (char *p, int from_tty)
 
   /* This can happen when command_line_input hits end of file.  */
   if (p == NULL)
-    return;
+    {
+      do_cleanups (cleanup);
+      return;
+    }
 
   target_log_command (p);
 
@@ -426,7 +439,18 @@ execute_command (char *p, int from_tty)
 	deprecated_call_command_hook (c, arg, from_tty & caution);
       else
 	cmd_func (c, arg, from_tty & caution);
-       
+
+      /* If the interpreter is in sync mode (we're running a user
+	 command's list, running command hooks or similars), and we
+	 just ran a synchronous command that started the target, wait
+	 for that command to end.  */
+      if (!interpreter_async && sync_execution)
+	{
+	  while (gdb_do_one_event () >= 0)
+	    if (!sync_execution)
+	      break;
+	}
+
       /* If this command has been post-hooked, run the hook last.  */
       execute_cmd_post_hook (c);
 
@@ -462,6 +486,9 @@ execute_command (char *p, int from_tty)
 	  warned = 1;
 	}
     }
+
+  do_cleanups (cleanup);
+  discard_cleanups (cleanup_if_error);
 }
 
 /* Run execute_command for P and FROM_TTY.  Capture its output into the
@@ -479,6 +506,9 @@ execute_command_to_string (char *p, int from_tty)
      restoration callbacks.  */
   cleanup = set_batch_flag_and_make_cleanup_restore_page_info ();
 
+  make_cleanup_restore_integer (&interpreter_async);
+  interpreter_async = 0;
+
   str_file = mem_fileopen ();
 
   make_cleanup_ui_file_delete (str_file);
@@ -488,10 +518,10 @@ execute_command_to_string (char *p, int from_tty)
   make_cleanup_restore_ui_file (&gdb_stdtarg);
   make_cleanup_restore_ui_file (&gdb_stdtargerr);
 
-  if (ui_out_redirect (uiout, str_file) < 0)
+  if (ui_out_redirect (current_uiout, str_file) < 0)
     warning (_("Current output protocol does not support redirection"));
   else
-    make_cleanup_ui_out_redirect_pop (uiout);
+    make_cleanup_ui_out_redirect_pop (current_uiout);
 
   gdb_stdout = str_file;
   gdb_stderr = str_file;
@@ -533,7 +563,10 @@ command_loop (void)
 				    get_prompt () : (char *) NULL,
 				    instream == stdin, "prompt");
       if (command == 0)
-	return;
+	{
+	  do_cleanups (old_chain);
+	  return;
+	}
 
       make_command_stats_cleanup (1);
 
@@ -563,7 +596,7 @@ dont_repeat (void)
      thing read from stdin in line and don't want to delete it.  Null
      lines won't repeat here in any case.  */
   if (instream == stdin)
-    *line = 0;
+    *saved_command_line = 0;
 }
 
 /* Prevent dont_repeat from working, and return a cleanup that
@@ -778,8 +811,7 @@ gdb_readline_wrapper (char *prompt)
     (*after_char_processing_hook) ();
   gdb_assert (after_char_processing_hook == NULL);
 
-  /* gdb_do_one_event argument is unused.  */
-  while (gdb_do_one_event (NULL) >= 0)
+  while (gdb_do_one_event () >= 0)
     if (gdb_readline_wrapper_done)
       break;
 
@@ -1025,10 +1057,10 @@ command_line_input (char *prompt_arg, int repeat, char *annotation_suffix)
   /* If we just got an empty line, and that is supposed to repeat the
      previous command, return the value in the global buffer.  */
   if (repeat && p == linebuffer)
-    return line;
+    return saved_command_line;
   for (p1 = linebuffer; *p1 == ' ' || *p1 == '\t'; p1++);
   if (repeat && !*p1)
-    return line;
+    return saved_command_line;
 
   *p = 0;
 
@@ -1049,13 +1081,13 @@ command_line_input (char *prompt_arg, int repeat, char *annotation_suffix)
   /* Save into global buffer if appropriate.  */
   if (repeat)
     {
-      if (linelength > linesize)
+      if (linelength > saved_command_line_size)
 	{
-	  line = xrealloc (line, linelength);
-	  linesize = linelength;
+	  saved_command_line = xrealloc (saved_command_line, linelength);
+	  saved_command_line_size = linelength;
 	}
-      strcpy (line, linebuffer);
-      return line;
+      strcpy (saved_command_line, linebuffer);
+      return saved_command_line;
     }
 
   return linebuffer;
@@ -1074,7 +1106,7 @@ print_gdb_version (struct ui_file *stream)
   /* Second line is a copyright notice.  */
 
   fprintf_filtered (stream,
-		    "Copyright (C) 2011 Free Software Foundation, Inc.\n");
+		    "Copyright (C) 2012 Free Software Foundation, Inc.\n");
 
   /* Following the copyright is a brief statement that the program is
      free software, that users are free to copy and change it on
@@ -1109,23 +1141,28 @@ and \"show warranty\" for details.\n");
     }
 }
 
-/* get_prompt: access method for the GDB prompt string.  */
+
+/* The current top level prompt, settable with "set prompt", and/or
+   with the python `gdb.prompt_hook' hook.  */
+static char *top_prompt;
+
+/* Access method for the GDB prompt string.  */
 
 char *
 get_prompt (void)
 {
-  return PROMPT (0);
+  return top_prompt;
 }
 
+/* Set method for the GDB prompt string.  */
+
 void
-set_prompt (char *s)
+set_prompt (const char *s)
 {
-/* ??rehrauer: I don't know why this fails, since it looks as though
-   assignments to prompt are wrapped in calls to xstrdup...
-   if (prompt != NULL)
-     xfree (prompt);
- */
-  PROMPT (0) = xstrdup (s);
+  char *p = xstrdup (s);
+
+  xfree (top_prompt);
+  top_prompt = p;
 }
 
 
@@ -1305,8 +1342,9 @@ input_from_terminal_p (void)
 static void
 dont_repeat_command (char *ignored, int from_tty)
 {
-  *line = 0;			/* Can't call dont_repeat here because we're 
-				   not necessarily reading from stdin.  */
+  /* Can't call dont_repeat here because we're not necessarily reading
+     from stdin.  */
+  *saved_command_line = 0;
 }
 
 /* Functions to manipulate command line editing control variables.  */
@@ -1478,8 +1516,8 @@ init_history (void)
 }
 
 static void
-show_new_async_prompt (struct ui_file *file, int from_tty,
-		       struct cmd_list_element *c, const char *value)
+show_prompt (struct ui_file *file, int from_tty,
+	     struct cmd_list_element *c, const char *value)
 {
   fprintf_filtered (file, _("Gdb's prompt is \"%s\".\n"), value);
 }
@@ -1511,23 +1549,13 @@ show_exec_done_display_p (struct ui_file *file, int from_tty,
 static void
 init_main (void)
 {
-  /* initialize the prompt stack to a simple "(gdb) " prompt or to
-     whatever the DEFAULT_PROMPT is.  */
-  the_prompts.top = 0;
-  PREFIX (0) = "";
-  PROMPT (0) = xstrdup (DEFAULT_PROMPT);
-  SUFFIX (0) = "";
+  /* Initialize the prompt to a simple "(gdb) " prompt or to whatever
+     the DEFAULT_PROMPT is.  */
+  set_prompt (DEFAULT_PROMPT);
+
   /* Set things up for annotation_level > 1, if the user ever decides
      to use it.  */
   async_annotation_suffix = "prompt";
-  /* Set the variable associated with the setshow prompt command.  */
-  new_async_prompt = xstrdup (PROMPT (0));
-
-  /* If gdb was started with --annotate=2, this is equivalent to the
-     user entering the command 'set annotate 2' at the gdb prompt, so
-     we need to do extra processing.  */
-  if (annotation_level > 1)
-    set_async_annotation_level (NULL, 0, NULL);
 
   /* Set the important stuff up for command editing.  */
   command_editing_p = 1;
@@ -1547,11 +1575,11 @@ init_main (void)
   rl_add_defun ("operate-and-get-next", gdb_rl_operate_and_get_next, 15);
 
   add_setshow_string_cmd ("prompt", class_support,
-			  &new_async_prompt,
+			  &top_prompt,
 			  _("Set gdb's prompt"),
 			  _("Show gdb's prompt"),
-			  NULL, set_async_prompt,
-			  show_new_async_prompt,
+			  NULL, NULL,
+			  show_prompt,
 			  &setlist, &showlist);
 
   add_com ("dont-repeat", class_support, dont_repeat_command, _("\
@@ -1607,7 +1635,7 @@ Set annotation_level."), _("\
 Show annotation_level."), _("\
 0 == normal;     1 == fullname (for use when running under emacs)\n\
 2 == output annotated suitably for use by programs that control GDB."),
-			    set_async_annotation_level,
+			    NULL,
 			    show_annotation_level,
 			    &setlist, &showlist);
 

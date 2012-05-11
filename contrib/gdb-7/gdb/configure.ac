@@ -1,7 +1,5 @@
 dnl Autoconf configure script for GDB, the GNU debugger.
-dnl Copyright (C) 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-dnl 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-dnl Free Software Foundation, Inc.
+dnl Copyright (C) 1995-2012 Free Software Foundation, Inc.
 dnl
 dnl This file is part of GDB.
 dnl 
@@ -86,6 +84,26 @@ AC_SUBST(GNULIB_STDINT_H)
 PACKAGE=gdb
 AC_DEFINE_UNQUOTED(PACKAGE, "$PACKAGE", [Name of this package. ])
 AC_SUBST(PACKAGE)
+
+# We never need to detect it in this sub-configure.
+# But preserve it for config.status --recheck.
+AC_ARG_VAR(MAKEINFO,
+  [Parent configure detects if it is of sufficient version.])
+AC_ARG_VAR(MAKEINFOFLAGS,
+  [Parameters for MAKEINFO.])
+
+MAKEINFO_EXTRA_FLAGS=""
+AC_CACHE_CHECK([whether $MAKEINFO supports @click], gdb_cv_have_makeinfo_click,
+  [echo '@clicksequence{a @click{} b}' >conftest.texinfo
+  if eval "$MAKEINFO conftest.texinfo >&5 2>&5"; then
+    gdb_cv_have_makeinfo_click=yes
+  else
+    gdb_cv_have_makeinfo_click=no
+  fi])
+if test x"$gdb_cv_have_makeinfo_click" = xyes; then
+  MAKEINFO_EXTRA_FLAGS="$MAKEINFO_EXTRA_FLAGS -DHAVE_MAKEINFO_CLICK"
+fi
+AC_SUBST(MAKEINFO_EXTRA_FLAGS)
 
 # GDB does not use automake, but gnulib does.  This line lets us
 # generate its Makefile.in.
@@ -433,6 +451,29 @@ AC_SEARCH_LIBS(dlgetmodinfo, [dl xpdl])
 
 AM_ICONV
 
+# GDB may fork/exec the iconv program to get the list of supported character
+# sets.  Allow the user to specify where to find it.
+# There are several factors affecting the choice of option name:
+# - There is already --with-libiconv-prefix but we can't use it, it specifies
+#   the build-time location of libiconv files.
+# - The program we need to find is iconv, which comes with glibc.  The user
+#   doesn't necessarily have libiconv installed.  Therefore naming this
+#   --with-libiconv-foo feels wrong.
+# - We want the path to be relocatable, but GDB_AC_DEFINE_RELOCATABLE is
+#   defined to work on directories not files (though it really doesn't know
+#   the difference).
+# - Calling this --with-iconv-prefix is perceived to cause too much confusion
+#   with --with-libiconv-prefix.
+# Putting these together is why the option name is --with-iconv-bin.
+
+AC_ARG_WITH(iconv-bin,
+AS_HELP_STRING([--with-iconv-bin=PATH], [specify where to find the iconv program]),
+[iconv_bin="${withval}"
+ AC_DEFINE_UNQUOTED([ICONV_BIN], ["${iconv_bin}"],
+                    [Path of directory of iconv program.])
+ GDB_AC_DEFINE_RELOCATABLE(ICONV_BIN, iconv, ${iconv_bin})
+])
+
 # On alpha-osf, it appears that libtermcap and libcurses are not compatible.
 # There is a very specific comment in /usr/include/curses.h explaining that
 # termcap routines built into libcurses must not be used.
@@ -539,21 +580,6 @@ if test "$with_system_readline" = yes; then
   READLINE_DEPS=
   READLINE_CFLAGS=
   READLINE_TEXI_INCFLAG=
-
-  # readline-6.0 started to use the name `_rl_echoing_p'.
-  # `$(READLINE_DIR)/' of bundled readline would not resolve in configure.
-
-  AC_MSG_CHECKING([for readline_echoing_p])
-  save_LIBS=$LIBS
-  LIBS="$LIBS $READLINE"
-  AC_LINK_IFELSE(AC_LANG_PROGRAM(,[[extern int readline_echoing_p;
-				    return readline_echoing_p;]]),
-		 [READLINE_ECHOING_P=yes],
-		 [READLINE_ECHOING_P=no
-		  AC_DEFINE([readline_echoing_p], [_rl_echoing_p],
-			    [readline-6.0 started to use different name.])])
-  LIBS="$save_LIBS"
-  AC_MSG_RESULT([$READLINE_ECHOING_P])
 else
   READLINE='$(READLINE_DIR)/libreadline.a'
   READLINE_DEPS='$(READLINE)'
@@ -564,6 +590,34 @@ AC_SUBST(READLINE)
 AC_SUBST(READLINE_DEPS)
 AC_SUBST(READLINE_CFLAGS)
 AC_SUBST(READLINE_TEXI_INCFLAG)
+
+# Generate jit-reader.h
+
+# This is typedeffed to GDB_CORE_ADDR in jit-reader.h
+TARGET_PTR=
+
+AC_CHECK_SIZEOF(unsigned long long)
+AC_CHECK_SIZEOF(unsigned long)
+AC_CHECK_SIZEOF(unsigned __int128)
+
+if test "x${ac_cv_sizeof_unsigned_long}" = "x8"; then
+  TARGET_PTR="unsigned long"
+elif test "x${ac_cv_sizeof_unsigned_long_long}" = "x8"; then
+  TARGET_PTR="unsigned long long"
+elif test "x${ac_cv_sizeof_unsigned___int128}" = "x16"; then
+  TARGET_PTR="unsigned __int128"
+else
+  TARGET_PTR="unsigned long"
+fi
+
+AC_SUBST(TARGET_PTR)
+AC_CONFIG_FILES([jit-reader.h:jit-reader.in])
+
+AC_SEARCH_LIBS(dlopen, dl)
+
+GDB_AC_WITH_DIR([JIT_READER_DIR], [jit-reader-dir],
+                [directory to load the JIT readers from],
+                [${libdir}/gdb])
 
 AC_ARG_WITH(expat,
   AS_HELP_STRING([--with-expat], [include expat support (auto/yes/no)]),
@@ -915,7 +969,8 @@ AC_CHECK_HEADERS([nlist.h machine/reg.h poll.h sys/poll.h proc_service.h \
 		  sys/resource.h sys/procfs.h sys/ptrace.h ptrace.h \
 		  sys/reg.h sys/debugreg.h sys/select.h sys/syscall.h \
 		  sys/types.h sys/wait.h wait.h termios.h termio.h \
-		  sgtty.h unistd.h elf_hp.h ctype.h time.h locale.h])
+		  sgtty.h unistd.h elf_hp.h ctype.h time.h locale.h \
+		  dlfcn.h])
 AC_CHECK_HEADERS(link.h, [], [],
 [#if HAVE_SYS_TYPES_H
 # include <sys/types.h>
