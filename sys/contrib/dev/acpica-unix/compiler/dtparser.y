@@ -42,8 +42,8 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-#include <contrib/dev/acpica/compiler/aslcompiler.h>
-#include <contrib/dev/acpica/compiler/dtcompiler.h>
+#include "aslcompiler.h"
+#include "dtcompiler.h"
 
 #define _COMPONENT          DT_COMPILER
         ACPI_MODULE_NAME    ("dtparser")

@@ -42,7 +42,7 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-#include <contrib/dev/acpica/compiler/aslcompiler.h>
+#include "aslcompiler.h"
 #include "dtparser.y.h"
 
 #define YY_NO_INPUT     /* No file input, we use strings only */
