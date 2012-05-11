@@ -1,26 +1,27 @@
-$DragonFly: src/usr.sbin/acpi/acpidb/osunixxf.c.patch,v 1.2 2007/01/17 17:31:19 y0netan1 Exp $
-
---- osunixxf.c.orig	2006-09-13 02:49:37.000000000 +0900
-+++ osunixxf.c	2006-11-17 15:53:31.000000000 +0900
-@@ -428,13 +428,19 @@
- AcpiOsGetLine (
-     char                    *Buffer)
+diff --git a/sys/contrib/dev/acpica-unix/osunixxf.c b/sys/contrib/dev/acpica-unix/osunixxf.c
+index 967d544..44162e5 100644
+--- a/sys/contrib/dev/acpica-unix/osunixxf.c
++++ b/sys/contrib/dev/acpica-unix/osunixxf.c
+@@ -400,6 +400,7 @@ AcpiOsGetLine (
+     UINT32                  *BytesRead)
  {
--    UINT8                   Temp;
-+    UINT8                  Temp;
-+    int			    c;
+     UINT8                   Temp;
++    int                     c;
      UINT32                  i;
  
  
-     for (i = 0; ; i++)
-     {
+@@ -410,7 +411,13 @@ AcpiOsGetLine (
+             return (AE_BUFFER_OVERFLOW);
+         }
+ 
 -        scanf ("%1c", &Temp);
 +        c = scanf ("%1c", &Temp);
-+	if (c != 1)
-+	{
-+	    AcpiGbl_DbTerminateThreads = TRUE;
-+	    break;
-+	}
++        if (c != 1)
++        {
++                AcpiGbl_DbTerminateThreads = TRUE;
++                break;
++        }
++
          if (!Temp || Temp == '\n')
          {
              break;
