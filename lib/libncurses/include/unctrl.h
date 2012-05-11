@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998,2000 Free Software Foundation, Inc.                   *
+ * Copyright (c) 1998-2008,2009 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,14 +39,13 @@
  * as ^?. Printable characters are displayed as is.
  */
 
-/* $Id: unctrl.h.in,v 1.10 2001/03/24 21:53:25 tom Exp $ */
-/* $DragonFly: src/lib/libncurses/include/unctrl.h,v 1.1 2005/03/12 19:13:54 eirikn Exp $ */
+/* $Id: unctrl.h.in,v 1.11 2009/04/18 21:00:52 tom Exp $ */
 
 #ifndef NCURSES_UNCTRL_H_incl
 #define NCURSES_UNCTRL_H_incl	1
 
 #undef  NCURSES_VERSION
-#define NCURSES_VERSION "5.4"
+#define NCURSES_VERSION "5.9"
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,6 +55,10 @@ extern "C" {
 
 #undef unctrl
 NCURSES_EXPORT(NCURSES_CONST char *) unctrl (chtype);
+
+#if 0
+NCURSES_EXPORT(NCURSES_CONST char *) NCURSES_SP_NAME(unctrl) (SCREEN*, chtype);
+#endif
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,5 @@
-'\" t
 .\"***************************************************************************
-.\" Copyright (c) 1998-2006,2010 Free Software Foundation, Inc.              *
+.\" Copyright (c) 2010 Free Software Foundation, Inc.                        *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -27,37 +26,57 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: menu_userptr.3x,v 1.10 2010/12/04 18:40:45 tom Exp $
-.TH menu_userptr 3X ""
+.\" $Id: form_variables.3x,v 1.3 2010/12/04 18:38:55 tom Exp $
+.TH form_variables 3X ""
+.ds n 5
+.na
+.hy 0
 .SH NAME
-\fBmenu_userptr\fR \- associate application data with a menu item
+\fBTYPE_ALNUM\fR,
+\fBTYPE_ALPHA\fR,
+\fBTYPE_ENUM\fR,
+\fBTYPE_INTEGER\fR,
+\fBTYPE_IPV4\fR,
+\fBTYPE_NUMERIC\fR,
+\fBTYPE_REGEXP\fR
+\- form system global variables
+.ad
+.hy
 .SH SYNOPSIS
-\fB#include <menu.h>\fR
+.nf
+\fB#include <form.h>\fR
 .br
-int set_menu_userptr(MENU *menu, void *userptr);
+.PP
+\fBFIELDTYPE * TYPE_ALNUM;\fR
+\fBFIELDTYPE * TYPE_ALPHA;\fR
+\fBFIELDTYPE * TYPE_ENUM;\fR
+\fBFIELDTYPE * TYPE_INTEGER;\fR
+\fBFIELDTYPE * TYPE_IPV4;\fR
+\fBFIELDTYPE * TYPE_NUMERIC;\fR
+\fBFIELDTYPE * TYPE_REGEXP;\fR
 .br
-void *menu_userptr(const MENU *menu);
-.br
+.fi
 .SH DESCRIPTION
-Every menu and every menu item has a field that can be used to hold
-application-specific data (that is, the menu-driver code leaves it alone).
-These functions get and set the menu user pointer field.
-.SH RETURN VALUE
-\fBmenu_userptr\fR returns a pointer (which may be \fBNULL\fR).
-It does not set errno.
-.PP
-\fBset_menu_userptr\fP returns \fBE_OK\fP (success).
-.SH SEE ALSO
-\fBcurses\fR(3X), \fBmenu\fR(3X).
-.SH NOTES
-The header file \fB<menu.h>\fR automatically includes the header file
-\fB<curses.h>\fR.
+These are building blocks for the form library,
+defining fields that can be created using \fBset_fieldtype\fP(3X).
+Each provides functions for field- and character-validation,
+according to the given datatype.
+.SS TYPE_ALNUM
+This holds alphanumeric data.
+.SS TYPE_ALPHA
+This holds alphabetic data.
+.SS TYPE_ENUM
+This holds an enumerated type.
+.SS TYPE_INTEGER
+This holds a decimal integer.
+.SS TYPE_IPV4
+This holds an IPv4 internet address, e.g., "127.0.0.1".
+.SS TYPE_NUMERIC
+This holds a decimal number, with optional sign and decimal point.
+.SS TYPE_REGEXP
+This holds a regular expression.
 .SH PORTABILITY
-These routines emulate the System V menu library.  They were not supported on
-Version 7 or BSD versions.
-.PP
-The user pointer is a void pointer.
-We chose not to leave it as a char pointer for SVr4 compatibility.
-.SH AUTHORS
-Juergen Pfeifer.  Manual pages and adaptation for new curses by Eric
-S. Raymond.
+The \fBTYPE_IPV4\fP variable is an extension not provided by older
+implementations of the form library.
+.SH SEE ALSO
+\fBform\fR(3X).
