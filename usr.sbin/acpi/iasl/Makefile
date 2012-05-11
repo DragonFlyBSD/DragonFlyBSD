@@ -3,7 +3,6 @@
 
 PROG=	iasl
 SRCS=	aslcompiler.y.h aslcompilerlex.l aslcompilerparse.y \
-	dtparser.y.h dtparserlex.l dtparserparse.y \
 	aslanalyze.c aslbtypes.c aslwalks.c aslcodegen.c \
 	aslcompile.c aslerror.c aslfiles.c asllength.c \
 	asllisting.c aslload.c asllookup.c aslmain.c \
@@ -45,8 +44,7 @@ DPADD=	${LIBPTHREAD}
 LFLAGS=	-i -PAslCompiler
 YFLAGS=	-d -pAslCompiler
 
-CLEANFILES= aslcompiler.y.h aslcompilerlex.l aslcompilerparse.y \
-	dtparser.y.h dtparserlex.l dtparserparse.y
+CLEANFILES= aslcompiler.y.h aslcompilerlex.l aslcompilerparse.y
 
 aslcompiler.y.h: aslcompilerparse.h
 	cat ${.ALLSRC} > ${.TARGET}
@@ -57,13 +55,7 @@ aslcompilerlex.l: aslcompiler.l
 aslcompilerparse.y: aslcompiler.y
 	cat ${.ALLSRC} > ${.TARGET}
 
-dtparser.y.h: dtparserparse.h
-	cat ${.ALLSRC} > ${.TARGET}
-
-dtparserlex.l: dtparser.l
-	cat ${.ALLSRC} > ${.TARGET}
-
-dtparserparse.y: dtparser.y
-	cat ${.ALLSRC} > ${.TARGET}
+LFLAGS= -i -PDtParser
+YFLAGS= -d -pDtParser
 
 .include <bsd.prog.mk>
