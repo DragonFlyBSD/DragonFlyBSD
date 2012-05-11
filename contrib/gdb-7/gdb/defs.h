@@ -903,6 +903,7 @@ enum gdb_osabi
   GDB_OSABI_NETBSD_AOUT,
   GDB_OSABI_NETBSD_ELF,
   GDB_OSABI_OPENBSD_ELF,
+  GDB_OSABI_DRAGONFLY,
   GDB_OSABI_WINCE,
   GDB_OSABI_GO32,
   GDB_OSABI_IRIX,
@@ -1174,6 +1175,9 @@ void dummy_obstack_deallocate (void *object, void *data);
 
 extern void initialize_progspace (void);
 extern void initialize_inferiors (void);
+
+/* For DragonFly kgdb */
+extern int kernel_debugger;
 
 /* Special block numbers */
 
