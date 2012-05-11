@@ -261,8 +261,16 @@ DtFatal (
 
     DtError (ASL_ERROR, MessageId, FieldObject, ExtraMessage);
 
+/*
+ * TBD: remove this entire function, DtFatal
+ *
+ * We cannot abort the compiler on error, because we may be compiling a
+ * list of files. We must move on to the next file.
+ */
+#ifdef __OBSOLETE
     CmCleanupAndExit ();
     exit (1);
+#endif
 }
 
 
@@ -388,7 +396,6 @@ DtGetFileSize (
  * FUNCTION:    DtGetFieldValue
  *
  * PARAMETERS:  Field               - Current field list pointer
- *              Name                - Field name
  *
  * RETURN:      Field value
  *
@@ -398,23 +405,14 @@ DtGetFileSize (
 
 char *
 DtGetFieldValue (
-    DT_FIELD                *Field,
-    char                    *Name)
+    DT_FIELD                *Field)
 {
-
-    /* Search the field list for the name */
-
-    while (Field)
+    if (!Field)
     {
-        if (!ACPI_STRCMP (Name, Field->Name))
-        {
-            return (Field->Value);
-        }
-
-        Field = Field->Next;
+        return (NULL);
     }
 
-    return (NULL);
+    return (Field->Value);
 }
 
 
@@ -473,6 +471,7 @@ DtGetFieldType (
     case ACPI_DMT_BUFFER:
     case ACPI_DMT_BUF7:
     case ACPI_DMT_BUF16:
+    case ACPI_DMT_BUF128:
     case ACPI_DMT_PCI_PATH:
         Type = DT_FIELD_TYPE_BUFFER;
         break;
@@ -550,7 +549,7 @@ DtGetBufferLength (
  *
  * FUNCTION:    DtGetFieldLength
  *
- * PARAMETERS:  Field               - Current field list pointer
+ * PARAMETERS:  Field               - Current field
  *              Info                - Data table info
  *
  * RETURN:      Field length
@@ -618,6 +617,7 @@ DtGetFieldLength (
 
     case ACPI_DMT_UINT32:
     case ACPI_DMT_NAME4:
+    case ACPI_DMT_SLIC:
     case ACPI_DMT_SIG:
         ByteLength = 4;
         break;
@@ -637,7 +637,7 @@ DtGetFieldLength (
         break;
 
     case ACPI_DMT_STRING:
-        Value = DtGetFieldValue (Field, Info->Name);
+        Value = DtGetFieldValue (Field);
         if (Value)
         {
             ByteLength = ACPI_STRLEN (Value) + 1;
@@ -647,6 +647,7 @@ DtGetFieldLength (
 
             sprintf (MsgBuffer, "Expected \"%s\"", Info->Name);
             DtFatal (ASL_MSG_COMPILER_INTERNAL, NULL, MsgBuffer);
+            return (0);
         }
         break;
 
@@ -659,7 +660,7 @@ DtGetFieldLength (
         break;
 
     case ACPI_DMT_BUFFER:
-        Value = DtGetFieldValue (Field, Info->Name);
+        Value = DtGetFieldValue (Field);
         if (Value)
         {
             ByteLength = DtGetBufferLength (Value);
@@ -669,6 +670,7 @@ DtGetFieldLength (
 
             sprintf (MsgBuffer, "Expected \"%s\"", Info->Name);
             DtFatal (ASL_MSG_COMPILER_INTERNAL, NULL, MsgBuffer);
+            return (0);
         }
         break;
 
@@ -677,8 +679,12 @@ DtGetFieldLength (
         ByteLength = 16;
         break;
 
+    case ACPI_DMT_BUF128:
+        ByteLength = 128;
+        break;
+
     case ACPI_DMT_UNICODE:
-        Value = DtGetFieldValue (Field, Info->Name);
+        Value = DtGetFieldValue (Field);
 
         /* TBD: error if Value is NULL? (as below?) */
 
@@ -687,7 +693,7 @@ DtGetFieldLength (
 
     default:
         DtFatal (ASL_MSG_COMPILER_INTERNAL, Field, "Invalid table opcode");
-        break;
+        return (0);
     }
 
     return (ByteLength);

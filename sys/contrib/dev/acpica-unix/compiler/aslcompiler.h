@@ -337,6 +337,10 @@ void
 ApCheckForGpeNameConflict (
     ACPI_PARSE_OBJECT       *Op);
 
+void
+ApCheckRegMethod (
+    ACPI_PARSE_OBJECT       *Op);
+
 
 /*
  * aslerror - error handling/reporting
@@ -529,7 +533,7 @@ AslMapNamedOpcodeToDataType (
 /*
  * aslpredef - ACPI predefined names support
  */
-void
+BOOLEAN
 ApCheckForPredefinedMethod (
     ACPI_PARSE_OBJECT       *Op,
     ASL_METHOD_INFO         *MethodInfo);
@@ -834,6 +838,13 @@ UtCheckIntegerRange (
 UINT64
 UtDoConstant (
     char                    *String);
+
+ACPI_STATUS
+UtStrtoul64 (
+    char                    *String,
+    UINT32                  Base,
+    UINT64                  *RetInteger);
+
 
 /*
  * asluuid - UUID support

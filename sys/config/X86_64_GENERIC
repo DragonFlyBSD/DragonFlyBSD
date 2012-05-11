@@ -70,6 +70,8 @@ options 	DDB
 options 	DDB_TRACE
 options 	INVARIANTS
 
+#options 	ACPI_DEBUG
+
 device		isa
 device		pci
 
