@@ -104,43 +104,79 @@ static const char *dktypenames[] = {
 #define FS_RESERVED20	20		/* (CCD under FreeBSD) */
 #define FS_JFS2		21
 #define FS_HAMMER	22
+#define FS_HAMMER2	23
 #define FS_UDF		24
 #define FS_EFS		26
 #define FS_ZFS		27
 
 #ifdef	DKTYPENAMES
+
 static const char *fstypenames[] = {
-	"unused",
-	"swap",
-	"Version 6",
-	"Version 7",
-	"System V",
-	"4.1BSD",
-	"Eighth Edition",
-	"4.2BSD",
-	"MSDOS",
-	"4.4LFS",
-	"unknown",
-	"HPFS",
-	"ISO9660",
-	"boot",
-	"vinum",
-	"raid",
-	"?",
-	"?",
-	"?",
-	"ccd",
-	"?",	/* don't use in case freebsd reassigns jfs / bug in freebsd */
-	"jfs",
-	"HAMMER",
-	"?",
-	"UDF",
-	"?",
-	"EFS",
-	"ZFS",
+	"unused",		/* 0	*/
+	"swap",			/* 1	*/
+	"Version 6",		/* 2	*/
+	"Version 7",		/* 3	*/
+	"System V",		/* 4	*/
+	"4.1BSD",		/* 5	*/
+	"Eighth Edition",	/* 6	*/
+	"4.2BSD",		/* 7	*/
+	"MSDOS",		/* 8	*/
+	"4.4LFS",		/* 9	*/
+	"unknown",		/* 10	*/
+	"HPFS",			/* 11	*/
+	"ISO9660",		/* 12	*/
+	"boot",			/* 13	*/
+	"vinum",		/* 14	*/
+	"raid",			/* 15	*/
+	"?",			/* 16	*/
+	"?",			/* 17	*/
+	"?",			/* 18	*/
+	"ccd",			/* 19	*/
+	"?",			/* 20	(do not reuse, bug in freebsd) */
+	"jfs",			/* 21	*/
+	"HAMMER",		/* 22	*/
+	"HAMMER2",		/* 23	*/
+	"UDF",			/* 24	*/
+	"?",			/* 25	*/
+	"EFS",			/* 26	*/
+	"ZFS",			/* 27	*/
 	NULL
 };
+
+static const char *fstype_to_vfsname[] = {
+	NULL,			/* 0	*/
+	NULL,			/* 1	*/
+	NULL,			/* 2	*/
+	NULL,			/* 3	*/
+	NULL,			/* 4	*/
+	NULL,			/* 5	*/
+	NULL,			/* 6	*/
+	"ufs",			/* 7	*/
+	"msdos",		/* 8	*/
+	NULL,			/* 9	*/
+	NULL,			/* 10	*/
+	"hpfs",			/* 11	*/
+	"cd9660",		/* 12	*/
+	NULL,			/* 13	*/
+	NULL,			/* 14	*/
+	NULL,			/* 15	*/
+	NULL,			/* 16	*/
+	NULL,			/* 17	*/
+	NULL,			/* 18	*/
+	NULL,			/* 19	*/
+	NULL,			/* 20	*/
+	NULL,			/* 21	*/
+	"hammer",		/* 22	*/
+	"hammer2",		/* 23	*/
+	"udf",			/* 24	*/
+	NULL,			/* 25	*/
+	NULL,			/* 26	*/
+	NULL,			/* 27	*/
+	NULL
+};
+
 #define FSMAXTYPES	(NELEM(fstypenames) - 1)
+
 #endif
 
 #endif /* SYS_DTYPE_H_ */

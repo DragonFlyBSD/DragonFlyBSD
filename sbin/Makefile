@@ -48,6 +48,7 @@ SUBDIR=	adjkerntz \
 	mknod \
 	mountctl \
 	mount \
+	mount_ufs \
 	mount_cd9660 \
 	mount_devfs \
 	mount_ext2fs \
