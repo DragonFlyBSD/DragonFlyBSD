@@ -65,6 +65,8 @@ static struct mntopt mopts[] = {
 	MOPT_NULL
 };
 
+int mount_ufs(int, const char **);
+
 int
 mount_ufs(int argc, const char **argv)
 {
