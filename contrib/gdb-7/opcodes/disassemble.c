@@ -1,6 +1,6 @@
 /* Select disassembly routine for specified architecture.
    Copyright 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-   2004, 2005, 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of the GNU opcodes library.
 
@@ -34,6 +34,7 @@
 #define ARCH_d10v
 #define ARCH_d30v
 #define ARCH_dlx
+#define ARCH_epiphany
 #define ARCH_fr30
 #define ARCH_frv
 #define ARCH_h8300
@@ -70,6 +71,7 @@
 #define ARCH_pj
 #define ARCH_powerpc
 #define ARCH_rs6000
+#define ARCH_rl78
 #define ARCH_rx
 #define ARCH_s390
 #define ARCH_score
@@ -81,6 +83,8 @@
 #define ARCH_tic54x
 #define ARCH_tic6x
 #define ARCH_tic80
+#define ARCH_tilegx
+#define ARCH_tilepro
 #define ARCH_v850
 #define ARCH_vax
 #define ARCH_w65
@@ -198,6 +202,7 @@ disassembler (abfd)
 #ifdef ARCH_i386
     case bfd_arch_i386:
     case bfd_arch_l1om:
+    case bfd_arch_k1om:
       disassemble = print_insn_i386;
       break;
 #endif
@@ -219,6 +224,11 @@ disassembler (abfd)
 #ifdef ARCH_ip2k
     case bfd_arch_ip2k:
       disassemble = print_insn_ip2k;
+      break;
+#endif
+#ifdef ARCH_epiphany
+    case bfd_arch_epiphany:
+      disassemble = print_insn_epiphany;
       break;
 #endif
 #ifdef ARCH_fr30
@@ -346,6 +356,11 @@ disassembler (abfd)
 	disassemble = print_insn_rs6000;
       break;
 #endif
+#ifdef ARCH_rl78
+    case bfd_arch_rl78:
+      disassemble = print_insn_rl78;
+      break;
+#endif
 #ifdef ARCH_rx
     case bfd_arch_rx:
       disassemble = print_insn_rx;
@@ -465,6 +480,16 @@ disassembler (abfd)
 #ifdef ARCH_m32c
     case bfd_arch_m32c:
       disassemble = print_insn_m32c;
+      break;
+#endif
+#ifdef ARCH_tilegx
+    case bfd_arch_tilegx:
+      disassemble = print_insn_tilegx;
+      break;
+#endif
+#ifdef ARCH_tilepro
+    case bfd_arch_tilepro:
+      disassemble = print_insn_tilepro;
       break;
 #endif
     default:

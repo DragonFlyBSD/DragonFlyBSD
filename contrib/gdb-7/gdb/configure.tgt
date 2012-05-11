@@ -94,7 +94,7 @@ arm*-*-symbianelf*)
 	# Target: SymbianOS/arm
 	gdb_target_obs="arm-tdep.o solib-target.o arm-symbian-tdep.o"
 	;;
-arm*-*-* | thumb*-*-* | strongarm*-*-* | xscale-*-*)
+arm*-*-*)
 	# Target: ARM embedded system
 	gdb_target_obs="arm-tdep.o"
 	gdb_sim=../sim/arm/libsim.a
@@ -550,6 +550,17 @@ spu*-*-*)
 	# Target: Cell BE SPU
 	gdb_target_obs="spu-tdep.o"
 	build_gdbserver=yes
+	;;
+
+tic6x-*-*linux)
+	# Target: GNU/Linux TI C6x
+	gdb_target_obs="tic6x-tdep.o tic6x-linux-tdep.o solib-dsbt.o \
+			glibc-tdep.o corelow.o linux-tdep.o"
+	;;
+
+tic6x-*-*)
+	# Target: TI C6X 
+	gdb_target_obs="tic6x-tdep.o"
 	;;
 
 xstormy16-*-*)

@@ -1,8 +1,7 @@
 /* Definitions for dealing with stack frames, for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1996, 1997,
-   1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1986, 1988-1994, 1996-2004, 2007-2012 Free Software
+   Foundation, Inc.
 
    This file is part of GDB.
 
@@ -206,6 +205,8 @@ enum frame_type
   /* A frame representing an inlined function, associated with an
      upcoming (prev, outer, older) NORMAL_FRAME.  */
   INLINE_FRAME,
+  /* A virtual frame of a tail call - see dwarf2_tailcall_frame_unwind.  */
+  TAILCALL_FRAME,
   /* In a signal handler, various OSs handle this in various ways.
      The main thing is that the frame may be far from normal.  */
   SIGTRAMP_FRAME,
@@ -444,47 +445,16 @@ extern struct address_space *get_frame_address_space (struct frame_info *);
 
 enum unwind_stop_reason
   {
-    /* No particular reason; either we haven't tried unwinding yet,
-       or we didn't fail.  */
-    UNWIND_NO_REASON,
+#define SET(name, description) name,
+#define FIRST_ENTRY(name) UNWIND_FIRST = name,
+#define LAST_ENTRY(name) UNWIND_LAST = name,
+#define FIRST_ERROR(name) UNWIND_FIRST_ERROR = name,
 
-    /* The previous frame's analyzer returns an invalid result
-       from this_id.
-
-       FIXME drow/2006-08-16: This is how GDB used to indicate end of
-       stack.  We should migrate to a model where frames always have a
-       valid ID, and this becomes not just an error but an internal
-       error.  But that's a project for another day.  */
-    UNWIND_NULL_ID,
-
-    /* This frame is the outermost.  */
-    UNWIND_OUTERMOST,
-
-    /* All the conditions after this point are considered errors;
-       abnormal stack termination.  If a backtrace stops for one
-       of these reasons, we'll let the user know.  This marker
-       is not a valid stop reason.  */
-    UNWIND_FIRST_ERROR,
-
-    /* Can't unwind further, because that would require knowing the
-       values of registers or memory that haven't been collected.  */
-    UNWIND_UNAVAILABLE,
-
-    /* This frame ID looks like it ought to belong to a NEXT frame,
-       but we got it for a PREV frame.  Normally, this is a sign of
-       unwinder failure.  It could also indicate stack corruption.  */
-    UNWIND_INNER_ID,
-
-    /* This frame has the same ID as the previous one.  That means
-       that unwinding further would almost certainly give us another
-       frame with exactly the same ID, so break the chain.  Normally,
-       this is a sign of unwinder failure.  It could also indicate
-       stack corruption.  */
-    UNWIND_SAME_ID,
-
-    /* The frame unwinder didn't find any saved PC, but we needed
-       one to unwind further.  */
-    UNWIND_NO_SAVED_PC,
+#include "unwind_stop_reasons.def"
+#undef SET
+#undef FIRST_ENTRY
+#undef LAST_ENTRY
+#undef FIRST_ERROR
   };
 
 /* Return the reason why we can't unwind past this frame.  */
@@ -689,7 +659,7 @@ extern void print_stack_frame (struct frame_info *, int print_level,
 extern void print_frame_info (struct frame_info *, int print_level,
 			      enum print_what print_what, int args);
 
-extern struct frame_info *block_innermost_frame (struct block *);
+extern struct frame_info *block_innermost_frame (const struct block *);
 
 extern int deprecated_pc_in_call_dummy (struct gdbarch *gdbarch, CORE_ADDR pc);
 
@@ -709,6 +679,47 @@ extern int frame_register_read (struct frame_info *frame, int regnum,
 				gdb_byte *buf);
 
 /* From stack.c.  */
+
+extern const char print_entry_values_no[];
+extern const char print_entry_values_only[];
+extern const char print_entry_values_preferred[];
+extern const char print_entry_values_if_needed[];
+extern const char print_entry_values_both[];
+extern const char print_entry_values_compact[];
+extern const char print_entry_values_default[];
+extern const char *print_entry_values;
+
+/* Inferior function parameter value read in from a frame.  */
+
+struct frame_arg
+{
+  /* Symbol for this parameter used for example for its name.  */
+  struct symbol *sym;
+
+  /* Value of the parameter.  It is NULL if ERROR is not NULL; if both VAL and
+     ERROR are NULL this parameter's value should not be printed.  */
+  struct value *val;
+
+  /* String containing the error message, it is more usually NULL indicating no
+     error occured reading this parameter.  */
+  char *error;
+
+  /* One of the print_entry_values_* entries as appropriate specifically for
+     this frame_arg.  It will be different from print_entry_values.  With
+     print_entry_values_no this frame_arg should be printed as a normal
+     parameter.  print_entry_values_only says it should be printed as entry
+     value parameter.  print_entry_values_compact says it should be printed as
+     both as a normal parameter and entry values parameter having the same
+     value - print_entry_values_compact is not permitted fi ui_out_is_mi_like_p
+     (in such case print_entry_values_no and print_entry_values_only is used
+     for each parameter kind specifically.  */
+  const char *entry_kind;
+};
+
+extern void read_frame_arg (struct symbol *sym, struct frame_info *frame,
+			    struct frame_arg *argp,
+			    struct frame_arg *entryargp);
+
 extern void args_info (char *, int);
 
 extern void locals_info (char *, int);

@@ -1,8 +1,6 @@
 /* Support routines for decoding "stabs" debugging information format.
 
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
-   2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -41,6 +39,7 @@
 #include "buildsym.h"
 #include "complaints.h"
 #include "demangle.h"
+#include "gdb-demangle.h"
 #include "language.h"
 #include "doublest.h"
 #include "cp-abi.h"
@@ -729,7 +728,7 @@ define_symbol (CORE_ADDR valu, char *string, int desc, int type,
 	SYMBOL_SET_NAMES (sym, string, p - string, 1, objfile);
 
       if (SYMBOL_LANGUAGE (sym) == language_cplus)
-	cp_scan_for_anonymous_namespaces (sym);
+	cp_scan_for_anonymous_namespaces (sym, objfile);
 
     }
   p++;
@@ -2236,7 +2235,7 @@ rs6000_builtin_type (int typenum, struct objfile *objfile)
 /* Replace *OLD_NAME with the method name portion of PHYSNAME.  */
 
 static void
-update_method_name_from_physname (char **old_name, char *physname)
+update_method_name_from_physname (char **old_name, const char *physname)
 {
   char *method_name;
 

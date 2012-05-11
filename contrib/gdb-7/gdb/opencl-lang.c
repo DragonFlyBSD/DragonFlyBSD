@@ -1,5 +1,5 @@
 /* OpenCL language support for GDB, the GNU debugger.
-   Copyright (C) 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2010-2012 Free Software Foundation, Inc.
 
    Contributed by Ken Werner <ken.werner@de.ibm.com>.
 
@@ -354,13 +354,14 @@ lval_func_free_closure (struct value *v)
     }
 }
 
-static struct lval_funcs opencl_value_funcs =
+static const struct lval_funcs opencl_value_funcs =
   {
     lval_func_read,
     lval_func_write,
     lval_func_check_validity,
     lval_func_check_any_valid,
-    NULL,
+    NULL,	/* indirect */
+    NULL,	/* coerce_ref */
     lval_func_check_synthetic_pointer,
     lval_func_copy_closure,
     lval_func_free_closure
@@ -1023,6 +1024,8 @@ const struct language_defn opencl_language_defn =
   default_print_array_index,
   default_pass_by_reference,
   c_get_string,
+  strcmp_iw_ordered,
+  iterate_over_symbols,
   LANG_MAGIC
 };
 

@@ -7,8 +7,7 @@
 
 @c This file is part of the GDB manual.
 @c
-@c Copyright (C) 2003, 2004, 2005, 2006, 2009, 2010, 2011
-@c Free Software Foundation, Inc.
+@c Copyright (C) 2003-2006, 2009-2012 Free Software Foundation, Inc.
 @c
 @c See the file gdb.texinfo for copying conditions.
 
@@ -488,6 +487,11 @@ named @code{trace_quick16}, for consistency.
 @item @code{tracev} (0x2e) @var{n}: @result{} @var{a}
 Record the value of trace state variable number @var{n} in the trace
 buffer.  The handling of @var{n} is as described for @code{getv}.
+
+@item @code{tracenz} (0x2f)  @var{addr} @var{size} @result{}
+Record the bytes at @var{addr} in a trace buffer, for later retrieval
+by GDB.  Stop at either the first zero byte, or when @var{size} bytes
+have been recorded, whichever occurs first.
 
 @item @code{end} (0x27): @result{}
 Stop executing bytecode; the result should be the top element of the

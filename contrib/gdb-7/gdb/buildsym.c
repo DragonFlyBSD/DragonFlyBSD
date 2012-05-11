@@ -1,7 +1,5 @@
 /* Support routines for building symbol tables in GDB's internal format.
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
-   2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2004, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -112,11 +110,8 @@ add_free_pendings (struct pending *list)
       free_pendings = list;
     }
 }
-      
-/* Add a symbol to one of the lists of symbols.  While we're at it, if
-   we're in the C++ case and don't have full namespace debugging info,
-   check to see if it references an anonymous namespace; if so, add an
-   appropriate using directive.  */
+
+/* Add a symbol to one of the lists of symbols.  */
 
 void
 add_symbol_to_list (struct symbol *symbol, struct pending **listhead)
@@ -1100,8 +1095,6 @@ end_symtab (CORE_ADDR end_addr, struct objfile *objfile, int section)
 	    {
 	      symtab->dirname = NULL;
 	    }
-	  symtab->free_code = free_linetable;
-	  symtab->free_func = NULL;
 
 	  /* Use whatever language we have been using for this
 	     subfile, not the one that was deduced in allocate_symtab
@@ -1112,18 +1105,10 @@ end_symtab (CORE_ADDR end_addr, struct objfile *objfile, int section)
 	  symtab->language = subfile->language;
 
 	  /* Save the debug format string (if any) in the symtab.  */
-	  if (subfile->debugformat != NULL)
-	    {
-	      symtab->debugformat = obsavestring (subfile->debugformat,
-					      strlen (subfile->debugformat),
-						  &objfile->objfile_obstack);
-	    }
+	  symtab->debugformat = subfile->debugformat;
 
 	  /* Similarly for the producer.  */
-	  if (subfile->producer != NULL)
-	    symtab->producer = obsavestring (subfile->producer,
-					     strlen (subfile->producer),
-					     &objfile->objfile_obstack);
+	  symtab->producer = subfile->producer;
 
 	  /* All symtabs for the main file and the subfiles share a
 	     blockvector, so we need to clear primary for everything
@@ -1169,12 +1154,6 @@ end_symtab (CORE_ADDR end_addr, struct objfile *objfile, int section)
 	{
 	  xfree ((void *) subfile->line_vector);
 	}
-      if (subfile->debugformat != NULL)
-	{
-	  xfree ((void *) subfile->debugformat);
-	}
-      if (subfile->producer != NULL)
-	xfree (subfile->producer);
 
       nextsub = subfile->next;
       xfree ((void *) subfile);
@@ -1279,20 +1258,15 @@ hashname (char *name)
 
 
 void
-record_debugformat (char *format)
+record_debugformat (const char *format)
 {
-  current_subfile->debugformat = xstrdup (format);
+  current_subfile->debugformat = format;
 }
 
 void
 record_producer (const char *producer)
 {
-  /* The producer is not always provided in the debugging info.
-     Do nothing if PRODUCER is NULL.  */
-  if (producer == NULL)
-    return;
-
-  current_subfile->producer = xstrdup (producer);
+  current_subfile->producer = producer;
 }
 
 /* Merge the first symbol list SRCLIST into the second symbol list

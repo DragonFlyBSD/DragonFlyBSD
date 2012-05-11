@@ -1,7 +1,7 @@
 /* Header file for command-reading library command.c.
 
-   Copyright (C) 1986, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1999, 2000,
-   2002, 2004, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1989-1995, 1999-2000, 2002, 2004, 2007-2012 Free
+   Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -105,6 +105,8 @@ var_types;
 struct cmd_list_element;
 
 /* Forward-declarations of the entry-points of cli/cli-decode.c.  */
+
+extern int valid_user_defined_cmd_name_p (const char *name);
 
 extern struct cmd_list_element *add_cmd (char *, enum command_class,
 					 void (*fun) (char *, int), char *,

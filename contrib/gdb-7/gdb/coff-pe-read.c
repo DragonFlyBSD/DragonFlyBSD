@@ -2,8 +2,7 @@
    convert to internal format, for GDB. Used as a last resort if no
    debugging symbols recognized.
 
-   Copyright (C) 2003, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -24,9 +23,8 @@
 
 #include "coff-pe-read.h"
 
-#include "bfd.h"
-
 #include "defs.h"
+#include "bfd.h"
 #include "gdbtypes.h"
 
 #include "symtab.h"

@@ -1,7 +1,6 @@
 /* YACC parser for C++ names, for GDB.
 
-   Copyright (C) 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2003-2005, 2007-2012 Free Software Foundation, Inc.
 
    Parts of the lexer are based on c-exp.y from GDB.
 
@@ -41,6 +40,7 @@
 #include "libiberty.h"
 #include "demangle.h"
 #include "cp-support.h"
+#include "gdb_assert.h"
 
 /* Bison does not make it easy to create a parser without global
    state, unfortunately.  Here are all the global variables used
@@ -60,7 +60,7 @@ static const char *lexptr, *prev_lexptr, *error_lexptr, *global_errmsg;
 
 struct demangle_info {
   int used;
-  struct demangle_info *prev, *next;
+  struct demangle_info *next;
   struct demangle_component comps[ALLOC_CHUNK];
 };
 
@@ -76,7 +76,6 @@ d_grab (void)
       if (demangle_info->next == NULL)
 	{
 	  more = malloc (sizeof (struct demangle_info));
-	  more->prev = demangle_info;
 	  more->next = NULL;
 	  demangle_info->next = more;
 	}
@@ -1935,20 +1934,14 @@ yyerror (char *msg)
    generally allocate too many components, but the extra memory usage
    doesn't hurt because the trees are temporary and the storage is
    reused.  More may be allocated later, by d_grab.  */
-static void
+static struct demangle_info *
 allocate_info (void)
 {
-  if (demangle_info == NULL)
-    {
-      demangle_info = malloc (sizeof (struct demangle_info));
-      demangle_info->prev = NULL;
-      demangle_info->next = NULL;
-    }
-  else
-    while (demangle_info->prev)
-      demangle_info = demangle_info->prev;
+  struct demangle_info *info = malloc (sizeof (struct demangle_info));
 
-  demangle_info->used = 0;
+  info->next = NULL;
+  info->used = 0;
+  return info;
 }
 
 /* Convert RESULT to a string.  The return value is allocated
@@ -1966,23 +1959,99 @@ cp_comp_to_string (struct demangle_component *result, int estimated_len)
 			       &err);
 }
 
+/* A convenience function to allocate and initialize a new struct
+   demangled_parse_info.  */
+
+struct demangle_parse_info *
+cp_new_demangle_parse_info (void)
+{
+  struct demangle_parse_info *info;
+
+  info = malloc (sizeof (struct demangle_parse_info));
+  info->info = NULL;
+  info->tree = NULL;
+  obstack_init (&info->obstack);
+
+  return info;
+}
+
+/* Free any memory associated with the given PARSE_INFO.  */
+
+void
+cp_demangled_name_parse_free (struct demangle_parse_info *parse_info)
+{
+  struct demangle_info *info = parse_info->info;
+
+  /* Free any allocated chunks of memory for the parse.  */
+  while (info != NULL)
+    {
+      struct demangle_info *next = info->next;
+
+      free (info);
+      info = next;
+    }
+
+  /* Free any memory allocated during typedef replacement.  */
+  obstack_free (&parse_info->obstack, NULL);
+
+  /* Free the parser info.  */
+  free (parse_info);
+}
+
+/* Merge the two parse trees given by DEST and SRC.  The parse tree
+   in SRC is attached to DEST at the node represented by TARGET.
+   SRC is then freed.
+
+   NOTE 1: Since there is no API to merge obstacks, this function does
+   even attempt to try it.  Fortunately, we do not (yet?) need this ability.
+   The code will assert if SRC->obstack is not empty.
+
+   NOTE 2: The string from which SRC was parsed must not be freed, since
+   this function will place pointers to that string into DEST.  */
+
+void
+cp_merge_demangle_parse_infos (struct demangle_parse_info *dest,
+			       struct demangle_component *target,
+			       struct demangle_parse_info *src)
+
+{
+  struct demangle_info *di;
+
+  /* Copy the SRC's parse data into DEST.  */
+  *target = *src->tree;
+  di = dest->info;
+  while (di->next != NULL)
+    di = di->next;
+  di->next = src->info;
+
+  /* Clear the (pointer to) SRC's parse data so that it is not freed when
+     cp_demangled_parse_info_free is called.  */
+  src->info = NULL;
+
+  /* Free SRC.  */
+  cp_demangled_name_parse_free (src);
+}
+
 /* Convert a demangled name to a demangle_component tree.  On success,
-   the root of the new tree is returned; it is valid until the next
-   call to this function and should not be freed.  On error, NULL is
+   a structure containing the root of the new tree is returned; it must
+   be freed by calling cp_demangled_name_parse_free. On error, NULL is
    returned, and an error message will be set in *ERRMSG (which does
    not need to be freed).  */
 
-struct demangle_component *
+struct demangle_parse_info *
 cp_demangled_name_to_comp (const char *demangled_name, const char **errmsg)
 {
   static char errbuf[60];
-  struct demangle_component *result;
+  struct demangle_parse_info *result;
 
   prev_lexptr = lexptr = demangled_name;
   error_lexptr = NULL;
   global_errmsg = NULL;
 
-  allocate_info ();
+  demangle_info = allocate_info ();
+
+  result = cp_new_demangle_parse_info ();
+  result->info = demangle_info;
 
   if (yyparse ())
     {
@@ -1993,10 +2062,11 @@ cp_demangled_name_to_comp (const char *demangled_name, const char **errmsg)
 	  strcat (errbuf, "'");
 	  *errmsg = errbuf;
 	}
+      cp_demangled_name_parse_free (result);
       return NULL;
     }
 
-  result = global_result;
+  result->tree = global_result;
   global_result = NULL;
 
   return result;
@@ -2042,7 +2112,24 @@ void
 xfree (void *ptr)
 {
   if (ptr != NULL)
-    free (ptr);
+    {
+      /* Literal `free' would get translated back to xfree again.  */
+      CONCAT2 (fr,ee) (ptr);
+    }
+}
+
+/* GDB normally defines internal_error itself, but when this file is built
+   as a standalone program, we must also provide an implementation.  */
+
+void
+internal_error (const char *file, int line, const char *fmt, ...)
+{
+  va_list ap;
+
+  va_start (ap, fmt);
+  fprintf (stderr, "%s:%d: internal error: ", file, line);
+  vfprintf (stderr, fmt, ap);
+  exit (1);
 }
 
 int
@@ -2052,7 +2139,7 @@ main (int argc, char **argv)
   char buf[65536];
   int arg;
   const char *errmsg;
-  struct demangle_component *result;
+  struct demangle_parse_info *result;
 
   arg = 1;
   if (argv[arg] && strcmp (argv[arg], "--debug") == 0)
@@ -2071,7 +2158,7 @@ main (int argc, char **argv)
 	str2 = cplus_demangle (buf, DMGL_PARAMS | DMGL_ANSI | DMGL_VERBOSE);
 	if (str2 == NULL)
 	  {
-	    /* printf ("Demangling error\n"); */
+	    printf ("Demangling error\n");
 	    if (c)
 	      printf ("%s%c%s\n", buf, c, extra_chars);
 	    else
@@ -2086,7 +2173,8 @@ main (int argc, char **argv)
 	    continue;
 	  }
 
-	cp_print (result);
+	cp_print (result->tree);
+	cp_demangled_name_parse_free (result);
 
 	free (str2);
 	if (c)
@@ -2105,7 +2193,8 @@ main (int argc, char **argv)
 	  fputc ('\n', stderr);
 	  return 0;
 	}
-      cp_print (result);
+      cp_print (result->tree);
+      cp_demangled_name_parse_free (result);
       putchar ('\n');
     }
   return 0;

@@ -145,6 +145,7 @@ struct gdbarch
   int int_bit;
   int long_bit;
   int long_long_bit;
+  int long_long_align_bit;
   int half_bit;
   const struct floatformat ** half_format;
   int float_bit;
@@ -161,6 +162,7 @@ struct gdbarch
   gdbarch_write_pc_ftype *write_pc;
   gdbarch_virtual_frame_pointer_ftype *virtual_frame_pointer;
   gdbarch_pseudo_register_read_ftype *pseudo_register_read;
+  gdbarch_pseudo_register_read_value_ftype *pseudo_register_read_value;
   gdbarch_pseudo_register_write_ftype *pseudo_register_write;
   int num_regs;
   int num_pseudo_regs;
@@ -269,6 +271,7 @@ struct gdbarch
   gdbarch_auto_wide_charset_ftype *auto_wide_charset;
   const char * solib_symbols_extension;
   int has_dos_based_file_system;
+  gdbarch_gen_return_address_ftype *gen_return_address;
 };
 
 
@@ -297,6 +300,7 @@ struct gdbarch startup_gdbarch =
   8 * sizeof (int),  /* int_bit */
   8 * sizeof (long),  /* long_bit */
   8 * sizeof (LONGEST),  /* long_long_bit */
+  8 * sizeof (LONGEST),  /* long_long_align_bit */
   16,  /* half_bit */
   0,  /* half_format */
   8 * sizeof (float),  /* float_bit */
@@ -313,6 +317,7 @@ struct gdbarch startup_gdbarch =
   0,  /* write_pc */
   legacy_virtual_frame_pointer,  /* virtual_frame_pointer */
   0,  /* pseudo_register_read */
+  0,  /* pseudo_register_read_value */
   0,  /* pseudo_register_write */
   0,  /* num_regs */
   0,  /* num_pseudo_regs */
@@ -421,6 +426,7 @@ struct gdbarch startup_gdbarch =
   default_auto_wide_charset,  /* auto_wide_charset */
   0,  /* solib_symbols_extension */
   0,  /* has_dos_based_file_system */
+  default_gen_return_address,  /* gen_return_address */
   /* startup_gdbarch() */
 };
 
@@ -459,6 +465,7 @@ gdbarch_alloc (const struct gdbarch_info *info,
   gdbarch->int_bit = 4*TARGET_CHAR_BIT;
   gdbarch->long_bit = 4*TARGET_CHAR_BIT;
   gdbarch->long_long_bit = 2*gdbarch->long_bit;
+  gdbarch->long_long_align_bit = 2*gdbarch->long_bit;
   gdbarch->half_bit = 2*TARGET_CHAR_BIT;
   gdbarch->float_bit = 4*TARGET_CHAR_BIT;
   gdbarch->double_bit = 8*TARGET_CHAR_BIT;
@@ -511,6 +518,7 @@ gdbarch_alloc (const struct gdbarch_info *info,
   gdbarch->fast_tracepoint_valid_at = default_fast_tracepoint_valid_at;
   gdbarch->auto_charset = default_auto_charset;
   gdbarch->auto_wide_charset = default_auto_wide_charset;
+  gdbarch->gen_return_address = default_gen_return_address;
   /* gdbarch_alloc() */
 
   return gdbarch;
@@ -571,6 +579,7 @@ verify_gdbarch (struct gdbarch *gdbarch)
   /* Skip verify of int_bit, invalid_p == 0 */
   /* Skip verify of long_bit, invalid_p == 0 */
   /* Skip verify of long_long_bit, invalid_p == 0 */
+  /* Skip verify of long_long_align_bit, invalid_p == 0 */
   /* Skip verify of half_bit, invalid_p == 0 */
   if (gdbarch->half_format == 0)
     gdbarch->half_format = floatformats_ieee_half;
@@ -594,6 +603,7 @@ verify_gdbarch (struct gdbarch *gdbarch)
   /* Skip verify of write_pc, has predicate.  */
   /* Skip verify of virtual_frame_pointer, invalid_p == 0 */
   /* Skip verify of pseudo_register_read, has predicate.  */
+  /* Skip verify of pseudo_register_read_value, has predicate.  */
   /* Skip verify of pseudo_register_write, has predicate.  */
   if (gdbarch->num_regs == -1)
     fprintf_unfiltered (log, "\n\tnum_regs");
@@ -704,6 +714,7 @@ verify_gdbarch (struct gdbarch *gdbarch)
   /* Skip verify of auto_charset, invalid_p == 0 */
   /* Skip verify of auto_wide_charset, invalid_p == 0 */
   /* Skip verify of has_dos_based_file_system, invalid_p == 0 */
+  /* Skip verify of gen_return_address, invalid_p == 0 */
   buf = ui_file_xstrdup (log, &length);
   make_cleanup (xfree, buf);
   if (length > 0)
@@ -942,7 +953,10 @@ gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file)
                       gdbarch_gcore_bfd_target_p (gdbarch));
   fprintf_unfiltered (file,
                       "gdbarch_dump: gcore_bfd_target = %s\n",
-                      gdbarch->gcore_bfd_target);
+                      pstring (gdbarch->gcore_bfd_target));
+  fprintf_unfiltered (file,
+                      "gdbarch_dump: gen_return_address = <%s>\n",
+                      host_address_to_string (gdbarch->gen_return_address));
   fprintf_unfiltered (file,
                       "gdbarch_dump: gdbarch_get_longjmp_target_p() = %d\n",
                       gdbarch_get_longjmp_target_p (gdbarch));
@@ -1009,6 +1023,9 @@ gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file)
   fprintf_unfiltered (file,
                       "gdbarch_dump: long_double_format = %s\n",
                       pformat (gdbarch->long_double_format));
+  fprintf_unfiltered (file,
+                      "gdbarch_dump: long_long_align_bit = %s\n",
+                      plongest (gdbarch->long_long_align_bit));
   fprintf_unfiltered (file,
                       "gdbarch_dump: long_long_bit = %s\n",
                       plongest (gdbarch->long_long_bit));
@@ -1084,6 +1101,12 @@ gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file)
   fprintf_unfiltered (file,
                       "gdbarch_dump: pseudo_register_read = <%s>\n",
                       host_address_to_string (gdbarch->pseudo_register_read));
+  fprintf_unfiltered (file,
+                      "gdbarch_dump: gdbarch_pseudo_register_read_value_p() = %d\n",
+                      gdbarch_pseudo_register_read_value_p (gdbarch));
+  fprintf_unfiltered (file,
+                      "gdbarch_dump: pseudo_register_read_value = <%s>\n",
+                      host_address_to_string (gdbarch->pseudo_register_read_value));
   fprintf_unfiltered (file,
                       "gdbarch_dump: gdbarch_pseudo_register_write_p() = %d\n",
                       gdbarch_pseudo_register_write_p (gdbarch));
@@ -1408,6 +1431,23 @@ set_gdbarch_long_long_bit (struct gdbarch *gdbarch,
 }
 
 int
+gdbarch_long_long_align_bit (struct gdbarch *gdbarch)
+{
+  gdb_assert (gdbarch != NULL);
+  /* Skip verify of long_long_align_bit, invalid_p == 0 */
+  if (gdbarch_debug >= 2)
+    fprintf_unfiltered (gdb_stdlog, "gdbarch_long_long_align_bit called\n");
+  return gdbarch->long_long_align_bit;
+}
+
+void
+set_gdbarch_long_long_align_bit (struct gdbarch *gdbarch,
+                                 int long_long_align_bit)
+{
+  gdbarch->long_long_align_bit = long_long_align_bit;
+}
+
+int
 gdbarch_half_bit (struct gdbarch *gdbarch)
 {
   gdb_assert (gdbarch != NULL);
@@ -1697,6 +1737,30 @@ set_gdbarch_pseudo_register_read (struct gdbarch *gdbarch,
                                   gdbarch_pseudo_register_read_ftype pseudo_register_read)
 {
   gdbarch->pseudo_register_read = pseudo_register_read;
+}
+
+int
+gdbarch_pseudo_register_read_value_p (struct gdbarch *gdbarch)
+{
+  gdb_assert (gdbarch != NULL);
+  return gdbarch->pseudo_register_read_value != NULL;
+}
+
+struct value *
+gdbarch_pseudo_register_read_value (struct gdbarch *gdbarch, struct regcache *regcache, int cookednum)
+{
+  gdb_assert (gdbarch != NULL);
+  gdb_assert (gdbarch->pseudo_register_read_value != NULL);
+  if (gdbarch_debug >= 2)
+    fprintf_unfiltered (gdb_stdlog, "gdbarch_pseudo_register_read_value called\n");
+  return gdbarch->pseudo_register_read_value (gdbarch, regcache, cookednum);
+}
+
+void
+set_gdbarch_pseudo_register_read_value (struct gdbarch *gdbarch,
+                                        gdbarch_pseudo_register_read_value_ftype pseudo_register_read_value)
+{
+  gdbarch->pseudo_register_read_value = pseudo_register_read_value;
 }
 
 int
@@ -3830,6 +3894,23 @@ set_gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch,
   gdbarch->has_dos_based_file_system = has_dos_based_file_system;
 }
 
+void
+gdbarch_gen_return_address (struct gdbarch *gdbarch, struct agent_expr *ax, struct axs_value *value, CORE_ADDR scope)
+{
+  gdb_assert (gdbarch != NULL);
+  gdb_assert (gdbarch->gen_return_address != NULL);
+  if (gdbarch_debug >= 2)
+    fprintf_unfiltered (gdb_stdlog, "gdbarch_gen_return_address called\n");
+  gdbarch->gen_return_address (gdbarch, ax, value, scope);
+}
+
+void
+set_gdbarch_gen_return_address (struct gdbarch *gdbarch,
+                                gdbarch_gen_return_address_ftype gen_return_address)
+{
+  gdbarch->gen_return_address = gen_return_address;
+}
+
 
 /* Keep a registry of per-architecture data-pointers required by GDB
    modules.  */
@@ -4030,7 +4111,7 @@ gdbarch_register (enum bfd_architecture bfd_architecture,
     {
       if (bfd_architecture == (*curr)->bfd_architecture)
 	internal_error (__FILE__, __LINE__,
-                        _("gdbarch: Duplicate registraration "
+                        _("gdbarch: Duplicate registration "
 			  "of architecture (%s)"),
 	                bfd_arch_info->printable_name);
     }

@@ -1,6 +1,5 @@
 /* Header file for GDB CLI command implementation library.
-   Copyright (c) 2000, 2002, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (c) 2000, 2002, 2007-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by

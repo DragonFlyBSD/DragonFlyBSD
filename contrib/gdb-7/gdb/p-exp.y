@@ -1,6 +1,5 @@
 /* YACC parser for Pascal expressions, for GDB.
-   Copyright (C) 2000, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2000, 2006-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -612,7 +611,7 @@ exp	:	THIS
 			  write_exp_elt_opcode (OP_THIS);
 			  write_exp_elt_opcode (OP_THIS);
 			  /* We need type of this.  */
-			  this_val = value_of_this (0);
+			  this_val = value_of_this_silent (parse_language);
 			  if (this_val)
 			    this_type = value_type (this_val);
 			  else
@@ -760,7 +759,7 @@ variable:	name_not_typename
 			      write_exp_string ($1.stoken);
 			      write_exp_elt_opcode (STRUCTOP_PTR);
 			      /* We need type of this.  */
-			      this_val = value_of_this (0);
+			      this_val = value_of_this_silent (parse_language);
 			      if (this_val)
 				this_type = value_type (this_val);
 			      else

@@ -1,6 +1,5 @@
 /* Support for printing Java types for GDB, the GNU debugger.
-   Copyright (C) 1997, 1998, 1999, 2000, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1997-2000, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -23,6 +22,7 @@
 #include "gdbtypes.h"
 #include "value.h"
 #include "demangle.h"
+#include "gdb-demangle.h"
 #include "jv-lang.h"
 #include "gdb_string.h"
 #include "typeprint.h"
@@ -221,7 +221,8 @@ java_type_print_base (struct type *type, struct ui_file *stream, int show,
 
 	      for (j = 0; j < n_overloads; j++)
 		{
-		  char *real_physname, *physname, *p;
+		  const char *real_physname;
+		  char *physname, *p;
 		  int is_full_physname_constructor;
 
 		  real_physname = TYPE_FN_FIELD_PHYSNAME (f, j);

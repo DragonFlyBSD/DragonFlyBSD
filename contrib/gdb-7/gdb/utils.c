@@ -1,8 +1,6 @@
 /* General utility routines for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
-   1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
-   2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1988-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,6 +18,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "defs.h"
+#include "dyn-string.h"
 #include "gdb_assert.h"
 #include <ctype.h>
 #include "gdb_string.h"
@@ -44,11 +43,12 @@
 #endif
 
 #include <signal.h>
+#include "timeval-utils.h"
 #include "gdbcmd.h"
 #include "serial.h"
 #include "bfd.h"
 #include "target.h"
-#include "demangle.h"
+#include "gdb-demangle.h"
 #include "expression.h"
 #include "language.h"
 #include "charset.h"
@@ -59,6 +59,7 @@
 #include "gdbcore.h"
 #include "top.h"
 #include "main.h"
+#include "solist.h"
 
 #include "inferior.h"		/* for signed_pointer_to_address */
 
@@ -135,35 +136,6 @@ int quit_flag;
 
 int immediate_quit;
 
-/* Nonzero means that encoded C++/ObjC names should be printed out in their
-   C++/ObjC form rather than raw.  */
-
-int demangle = 1;
-static void
-show_demangle (struct ui_file *file, int from_tty,
-	       struct cmd_list_element *c, const char *value)
-{
-  fprintf_filtered (file,
-		    _("Demangling of encoded C++/ObjC names "
-		      "when displaying symbols is %s.\n"),
-		    value);
-}
-
-/* Nonzero means that encoded C++/ObjC names should be printed out in their
-   C++/ObjC form even in assembler language displays.  If this is set, but
-   DEMANGLE is zero, names are printed raw, i.e. DEMANGLE controls.  */
-
-int asm_demangle = 0;
-static void
-show_asm_demangle (struct ui_file *file, int from_tty,
-		   struct cmd_list_element *c, const char *value)
-{
-  fprintf_filtered (file,
-		    _("Demangling of C++/ObjC names in "
-		      "disassembly listings is %s.\n"),
-		    value);
-}
-
 /* Nonzero means that strings with character values >0x7F should be printed
    as octal escapes.  Zero means just print the value (e.g. it's an
    international character, and the terminal or window can cope.)  */
@@ -235,6 +207,18 @@ struct cleanup *
 make_cleanup_freeargv (char **arg)
 {
   return make_my_cleanup (&cleanup_chain, do_freeargv, arg);
+}
+
+static void
+do_dyn_string_delete (void *arg)
+{
+  dyn_string_delete ((dyn_string_t) arg);
+}
+
+struct cleanup *
+make_cleanup_dyn_string_delete (dyn_string_t arg)
+{
+  return make_my_cleanup (&cleanup_chain, do_dyn_string_delete, arg);
 }
 
 static void
@@ -403,6 +387,24 @@ make_cleanup_unpush_target (struct target_ops *ops)
   return make_my_cleanup (&cleanup_chain, do_unpush_target, ops);
 }
 
+/* Helper for make_cleanup_htab_delete compile time checking the types.  */
+
+static void
+do_htab_delete_cleanup (void *htab_voidp)
+{
+  htab_t htab = htab_voidp;
+
+  htab_delete (htab);
+}
+
+/* Return a new cleanup that deletes HTAB.  */
+
+struct cleanup *
+make_cleanup_htab_delete (htab_t htab)
+{
+  return make_cleanup (do_htab_delete_cleanup, htab);
+}
+
 struct restore_ui_file_closure
 {
   struct ui_file **variable;
@@ -429,6 +431,57 @@ make_cleanup_restore_ui_file (struct ui_file **variable)
   c->value = *variable;
 
   return make_cleanup_dtor (do_restore_ui_file, (void *) c, xfree);
+}
+
+/* Helper for make_cleanup_value_free_to_mark.  */
+
+static void
+do_value_free_to_mark (void *value)
+{
+  value_free_to_mark ((struct value *) value);
+}
+
+/* Free all values allocated since MARK was obtained by value_mark
+   (except for those released) when the cleanup is run.  */
+
+struct cleanup *
+make_cleanup_value_free_to_mark (struct value *mark)
+{
+  return make_my_cleanup (&cleanup_chain, do_value_free_to_mark, mark);
+}
+
+/* Helper for make_cleanup_value_free.  */
+
+static void
+do_value_free (void *value)
+{
+  value_free (value);
+}
+
+/* Free VALUE.  */
+
+struct cleanup *
+make_cleanup_value_free (struct value *value)
+{
+  return make_my_cleanup (&cleanup_chain, do_value_free, value);
+}
+
+/* Helper for make_cleanup_free_so.  */
+
+static void
+do_free_so (void *arg)
+{
+  struct so_list *so = arg;
+
+  free_so (so);
+}
+
+/* Make cleanup handler calling free_so for SO.  */
+
+struct cleanup *
+make_cleanup_free_so (struct so_list *so)
+{
+  return make_my_cleanup (&cleanup_chain, do_free_so, so);
 }
 
 struct cleanup *
@@ -581,7 +634,7 @@ free_current_contents (void *ptr)
 }
 
 /* Provide a known function that does nothing, to use as a base for
-   for a possibly long chain of cleanups.  This is useful where we
+   a possibly long chain of cleanups.  This is useful where we
    use the cleanup chain for handling normal cleanups as well as dealing
    with cleanups that need to be done as a result of a call to error().
    In such cases, we may not be certain where the first cleanup is, unless
@@ -608,7 +661,8 @@ static int display_space;
 struct cmd_stats 
 {
   int msg_type;
-  long start_time;
+  long start_cpu_time;
+  struct timeval start_wall_time;
   long start_space;
 };
 
@@ -640,12 +694,19 @@ report_command_stats (void *arg)
 
   if (display_time)
     {
-      long cmd_time = get_run_time () - start_stats->start_time;
+      long cmd_time = get_run_time () - start_stats->start_cpu_time;
+      struct timeval now_wall_time, delta_wall_time;
+
+      gettimeofday (&now_wall_time, NULL);
+      timeval_sub (&delta_wall_time,
+		   &now_wall_time, &start_stats->start_wall_time);
 
       printf_unfiltered (msg_type == 0
-			 ? _("Startup time: %ld.%06ld\n")
-			 : _("Command execution time: %ld.%06ld\n"),
-			 cmd_time / 1000000, cmd_time % 1000000);
+			 ? _("Startup time: %ld.%06ld (cpu), %ld.%06ld (wall)\n")
+			 : _("Command execution time: %ld.%06ld (cpu), %ld.%06ld (wall)\n"),
+			 cmd_time / 1000000, cmd_time % 1000000,
+			 (long) delta_wall_time.tv_sec,
+			 (long) delta_wall_time.tv_usec);
     }
 
   if (display_space)
@@ -681,271 +742,10 @@ make_command_stats_cleanup (int msg_type)
 #endif
 
   new_stat->msg_type = msg_type;
-  new_stat->start_time = get_run_time ();
+  new_stat->start_cpu_time = get_run_time ();
+  gettimeofday (&new_stat->start_wall_time, NULL);
 
   return make_cleanup_dtor (report_command_stats, new_stat, xfree);
-}
-
-/* Continuations are implemented as cleanups internally.  Inherit from
-   cleanups.  */
-struct continuation
-{
-  struct cleanup base;
-};
-
-/* Add a continuation to the continuation list of THREAD.  The new
-   continuation will be added at the front.  */
-void
-add_continuation (struct thread_info *thread,
-		  void (*continuation_hook) (void *), void *args,
-		  void (*continuation_free_args) (void *))
-{
-  struct cleanup *as_cleanup = &thread->continuations->base;
-  make_cleanup_ftype *continuation_hook_fn = continuation_hook;
-
-  make_my_cleanup2 (&as_cleanup,
-		    continuation_hook_fn,
-		    args,
-		    continuation_free_args);
-
-  thread->continuations = (struct continuation *) as_cleanup;
-}
-
-/* Add a continuation to the continuation list of INFERIOR.  The new
-   continuation will be added at the front.  */
-
-void
-add_inferior_continuation (void (*continuation_hook) (void *), void *args,
-			   void (*continuation_free_args) (void *))
-{
-  struct inferior *inf = current_inferior ();
-  struct cleanup *as_cleanup = &inf->continuations->base;
-  make_cleanup_ftype *continuation_hook_fn = continuation_hook;
-
-  make_my_cleanup2 (&as_cleanup,
-		    continuation_hook_fn,
-		    args,
-		    continuation_free_args);
-
-  inf->continuations = (struct continuation *) as_cleanup;
-}
-
-/* Do all continuations of the current inferior.  */
-
-void
-do_all_inferior_continuations (void)
-{
-  struct cleanup *as_cleanup;
-  struct inferior *inf = current_inferior ();
-
-  if (inf->continuations == NULL)
-    return;
-
-  /* Copy the list header into another pointer, and set the global
-     list header to null, so that the global list can change as a side
-     effect of invoking the continuations and the processing of the
-     preexisting continuations will not be affected.  */
-
-  as_cleanup = &inf->continuations->base;
-  inf->continuations = NULL;
-
-  /* Work now on the list we have set aside.  */
-  do_my_cleanups (&as_cleanup, NULL);
-}
-
-/* Get rid of all the inferior-wide continuations of INF.  */
-
-void
-discard_all_inferior_continuations (struct inferior *inf)
-{
-  struct cleanup *continuation_ptr = &inf->continuations->base;
-
-  discard_my_cleanups (&continuation_ptr, NULL);
-  inf->continuations = NULL;
-}
-
-static void
-restore_thread_cleanup (void *arg)
-{
-  ptid_t *ptid_p = arg;
-
-  switch_to_thread (*ptid_p);
-}
-
-/* Walk down the continuation list of PTID, and execute all the
-   continuations.  There is a problem though.  In some cases new
-   continuations may be added while we are in the middle of this loop.
-   If this happens they will be added in the front, and done before we
-   have a chance of exhausting those that were already there.  We need
-   to then save the beginning of the list in a pointer and do the
-   continuations from there on, instead of using the global beginning
-   of list as our iteration pointer.  */
-static void
-do_all_continuations_ptid (ptid_t ptid,
-			   struct continuation **continuations_p)
-{
-  struct cleanup *old_chain;
-  ptid_t current_thread;
-  struct cleanup *as_cleanup;
-
-  if (*continuations_p == NULL)
-    return;
-
-  current_thread = inferior_ptid;
-
-  /* Restore selected thread on exit.  Don't try to restore the frame
-     as well, because:
-
-    - When running continuations, the selected frame is always #0.
-
-    - The continuations may trigger symbol file loads, which may
-      change the frame layout (frame ids change), which would trigger
-      a warning if we used make_cleanup_restore_current_thread.  */
-
-  old_chain = make_cleanup (restore_thread_cleanup, &current_thread);
-
-  /* Let the continuation see this thread as selected.  */
-  switch_to_thread (ptid);
-
-  /* Copy the list header into another pointer, and set the global
-     list header to null, so that the global list can change as a side
-     effect of invoking the continuations and the processing of the
-     preexisting continuations will not be affected.  */
-
-  as_cleanup = &(*continuations_p)->base;
-  *continuations_p = NULL;
-
-  /* Work now on the list we have set aside.  */
-  do_my_cleanups (&as_cleanup, NULL);
-
-  do_cleanups (old_chain);
-}
-
-/* Callback for iterate over threads.  */
-static int
-do_all_continuations_thread_callback (struct thread_info *thread, void *data)
-{
-  do_all_continuations_ptid (thread->ptid, &thread->continuations);
-  return 0;
-}
-
-/* Do all continuations of thread THREAD.  */
-void
-do_all_continuations_thread (struct thread_info *thread)
-{
-  do_all_continuations_thread_callback (thread, NULL);
-}
-
-/* Do all continuations of all threads.  */
-void
-do_all_continuations (void)
-{
-  iterate_over_threads (do_all_continuations_thread_callback, NULL);
-}
-
-/* Callback for iterate over threads.  */
-static int
-discard_all_continuations_thread_callback (struct thread_info *thread,
-					   void *data)
-{
-  struct cleanup *continuation_ptr = &thread->continuations->base;
-
-  discard_my_cleanups (&continuation_ptr, NULL);
-  thread->continuations = NULL;
-  return 0;
-}
-
-/* Get rid of all the continuations of THREAD.  */
-void
-discard_all_continuations_thread (struct thread_info *thread)
-{
-  discard_all_continuations_thread_callback (thread, NULL);
-}
-
-/* Get rid of all the continuations of all threads.  */
-void
-discard_all_continuations (void)
-{
-  iterate_over_threads (discard_all_continuations_thread_callback, NULL);
-}
-
-
-/* Add a continuation to the intermediate continuation list of THREAD.
-   The new continuation will be added at the front.  */
-void
-add_intermediate_continuation (struct thread_info *thread,
-			       void (*continuation_hook)
-			       (void *), void *args,
-			       void (*continuation_free_args) (void *))
-{
-  struct cleanup *as_cleanup = &thread->intermediate_continuations->base;
-  make_cleanup_ftype *continuation_hook_fn = continuation_hook;
-
-  make_my_cleanup2 (&as_cleanup,
-		    continuation_hook_fn,
-		    args,
-		    continuation_free_args);
-
-  thread->intermediate_continuations = (struct continuation *) as_cleanup;
-}
-
-/* Walk down the cmd_continuation list, and execute all the
-   continuations.  There is a problem though.  In some cases new
-   continuations may be added while we are in the middle of this
-   loop.  If this happens they will be added in the front, and done
-   before we have a chance of exhausting those that were already
-   there.  We need to then save the beginning of the list in a pointer
-   and do the continuations from there on, instead of using the
-   global beginning of list as our iteration pointer.  */
-static int
-do_all_intermediate_continuations_thread_callback (struct thread_info *thread,
-						   void *data)
-{
-  do_all_continuations_ptid (thread->ptid,
-			     &thread->intermediate_continuations);
-  return 0;
-}
-
-/* Do all intermediate continuations of thread THREAD.  */
-void
-do_all_intermediate_continuations_thread (struct thread_info *thread)
-{
-  do_all_intermediate_continuations_thread_callback (thread, NULL);
-}
-
-/* Do all intermediate continuations of all threads.  */
-void
-do_all_intermediate_continuations (void)
-{
-  iterate_over_threads (do_all_intermediate_continuations_thread_callback,
-			NULL);
-}
-
-/* Callback for iterate over threads.  */
-static int
-discard_all_intermediate_continuations_thread_callback (struct thread_info *thread,
-							void *data)
-{
-  struct cleanup *continuation_ptr = &thread->intermediate_continuations->base;
-
-  discard_my_cleanups (&continuation_ptr, NULL);
-  thread->intermediate_continuations = NULL;
-  return 0;
-}
-
-/* Get rid of all the intermediate continuations of THREAD.  */
-void
-discard_all_intermediate_continuations_thread (struct thread_info *thread)
-{
-  discard_all_intermediate_continuations_thread_callback (thread, NULL);
-}
-
-/* Get rid of all the intermediate continuations of all threads.  */
-void
-discard_all_intermediate_continuations (void)
-{
-  iterate_over_threads (discard_all_intermediate_continuations_thread_callback,
-			NULL);
 }
 
 
@@ -1439,7 +1239,7 @@ quit (void)
    memory requested in SIZE.  */
 
 void
-nomem (long size)
+malloc_failure (long size)
 {
   if (size > 0)
     {
@@ -1451,146 +1251,6 @@ nomem (long size)
     {
       internal_error (__FILE__, __LINE__, _("virtual memory exhausted."));
     }
-}
-
-/* The xmalloc() (libiberty.h) family of memory management routines.
-
-   These are like the ISO-C malloc() family except that they implement
-   consistent semantics and guard against typical memory management
-   problems.  */
-
-/* NOTE: These are declared using PTR to ensure consistency with
-   "libiberty.h".  xfree() is GDB local.  */
-
-PTR				/* ARI: PTR */
-xmalloc (size_t size)
-{
-  void *val;
-
-  /* See libiberty/xmalloc.c.  This function need's to match that's
-     semantics.  It never returns NULL.  */
-  if (size == 0)
-    size = 1;
-
-  val = malloc (size);		/* ARI: malloc */
-  if (val == NULL)
-    nomem (size);
-
-  return (val);
-}
-
-void *
-xzalloc (size_t size)
-{
-  return xcalloc (1, size);
-}
-
-PTR				/* ARI: PTR */
-xrealloc (PTR ptr, size_t size)	/* ARI: PTR */
-{
-  void *val;
-
-  /* See libiberty/xmalloc.c.  This function need's to match that's
-     semantics.  It never returns NULL.  */
-  if (size == 0)
-    size = 1;
-
-  if (ptr != NULL)
-    val = realloc (ptr, size);	/* ARI: realloc */
-  else
-    val = malloc (size);		/* ARI: malloc */
-  if (val == NULL)
-    nomem (size);
-
-  return (val);
-}
-
-PTR				/* ARI: PTR */
-xcalloc (size_t number, size_t size)
-{
-  void *mem;
-
-  /* See libiberty/xmalloc.c.  This function need's to match that's
-     semantics.  It never returns NULL.  */
-  if (number == 0 || size == 0)
-    {
-      number = 1;
-      size = 1;
-    }
-
-  mem = calloc (number, size);		/* ARI: xcalloc */
-  if (mem == NULL)
-    nomem (number * size);
-
-  return mem;
-}
-
-void
-xfree (void *ptr)
-{
-  if (ptr != NULL)
-    free (ptr);		/* ARI: free */
-}
-
-
-/* Like asprintf/vasprintf but get an internal_error if the call
-   fails.  */
-
-char *
-xstrprintf (const char *format, ...)
-{
-  char *ret;
-  va_list args;
-
-  va_start (args, format);
-  ret = xstrvprintf (format, args);
-  va_end (args);
-  return ret;
-}
-
-void
-xasprintf (char **ret, const char *format, ...)
-{
-  va_list args;
-
-  va_start (args, format);
-  (*ret) = xstrvprintf (format, args);
-  va_end (args);
-}
-
-void
-xvasprintf (char **ret, const char *format, va_list ap)
-{
-  (*ret) = xstrvprintf (format, ap);
-}
-
-char *
-xstrvprintf (const char *format, va_list ap)
-{
-  char *ret = NULL;
-  int status = vasprintf (&ret, format, ap);
-
-  /* NULL is returned when there was a memory allocation problem, or
-     any other error (for instance, a bad format string).  A negative
-     status (the printed length) with a non-NULL buffer should never
-     happen, but just to be sure.  */
-  if (ret == NULL || status < 0)
-    internal_error (__FILE__, __LINE__, _("vasprintf call failed"));
-  return ret;
-}
-
-int
-xsnprintf (char *str, size_t size, const char *format, ...)
-{
-  va_list args;
-  int ret;
-
-  va_start (args, format);
-  ret = vsnprintf (str, size, format, args);
-  gdb_assert (ret < size);
-  va_end (args);
-
-  return ret;
 }
 
 /* My replacement for the read system call.
@@ -1614,7 +1274,7 @@ myread (int desc, char *addr, int len)
     }
   return orglen;
 }
-
+
 /* Make a copy of the string at PTR with SIZE characters
    (and add a null character at the end in the copy).
    Uses malloc to get the space.  Returns the address of the copy.  */
@@ -2500,8 +2160,8 @@ fputs_maybe_filtered (const char *linebuffer, struct ui_file *stream,
 
   /* Don't do any filtering if it is disabled.  */
   if (stream != gdb_stdout
-      || ! pagination_enabled
-      || ! input_from_terminal_p ()
+      || !pagination_enabled
+      || batch_flag
       || (lines_per_page == UINT_MAX && chars_per_line == UINT_MAX)
       || top_level_interpreter () == NULL
       || ui_out_is_mi_like_p (interp_ui_out (top_level_interpreter ())))
@@ -2974,10 +2634,12 @@ strcmp_iw (const char *string1, const char *string2)
 	{
 	  string2++;
 	}
-      if (*string1 != *string2)
-	{
-	  break;
-	}
+      if (case_sensitivity == case_sensitive_on && *string1 != *string2)
+	break;
+      if (case_sensitivity == case_sensitive_off
+	  && (tolower ((unsigned char) *string1)
+	      != tolower ((unsigned char) *string2)))
+	break;
       if (*string1 != '\0')
 	{
 	  string1++;
@@ -2997,6 +2659,10 @@ strcmp_iw (const char *string1, const char *string2)
    find names in the list that match some fixed NAME according to
    strcmp_iw(LIST_ELT, NAME), then the place to start looking is right
    where this function would put NAME.
+
+   This function must be neutral to the CASE_SENSITIVITY setting as the user
+   may choose it during later lookup.  Therefore this function always sorts
+   primarily case-insensitively and secondarily case-sensitively.
 
    Here are some examples of why using strcmp to sort is a bad idea:
 
@@ -3023,47 +2689,78 @@ strcmp_iw (const char *string1, const char *string2)
 int
 strcmp_iw_ordered (const char *string1, const char *string2)
 {
-  while ((*string1 != '\0') && (*string2 != '\0'))
-    {
-      while (isspace (*string1))
-	{
-	  string1++;
-	}
-      while (isspace (*string2))
-	{
-	  string2++;
-	}
-      if (*string1 != *string2)
-	{
-	  break;
-	}
-      if (*string1 != '\0')
-	{
-	  string1++;
-	  string2++;
-	}
-    }
+  const char *saved_string1 = string1, *saved_string2 = string2;
+  enum case_sensitivity case_pass = case_sensitive_off;
 
-  switch (*string1)
+  for (;;)
     {
-      /* Characters are non-equal unless they're both '\0'; we want to
-	 make sure we get the comparison right according to our
-	 comparison in the cases where one of them is '\0' or '('.  */
-    case '\0':
-      if (*string2 == '\0')
+      /* C1 and C2 are valid only if *string1 != '\0' && *string2 != '\0'.
+	 Provide stub characters if we are already at the end of one of the
+	 strings.  */
+      char c1 = 'X', c2 = 'X';
+
+      while (*string1 != '\0' && *string2 != '\0')
+	{
+	  while (isspace (*string1))
+	    string1++;
+	  while (isspace (*string2))
+	    string2++;
+
+	  switch (case_pass)
+	  {
+	    case case_sensitive_off:
+	      c1 = tolower ((unsigned char) *string1);
+	      c2 = tolower ((unsigned char) *string2);
+	      break;
+	    case case_sensitive_on:
+	      c1 = *string1;
+	      c2 = *string2;
+	      break;
+	  }
+	  if (c1 != c2)
+	    break;
+
+	  if (*string1 != '\0')
+	    {
+	      string1++;
+	      string2++;
+	    }
+	}
+
+      switch (*string1)
+	{
+	  /* Characters are non-equal unless they're both '\0'; we want to
+	     make sure we get the comparison right according to our
+	     comparison in the cases where one of them is '\0' or '('.  */
+	case '\0':
+	  if (*string2 == '\0')
+	    break;
+	  else
+	    return -1;
+	case '(':
+	  if (*string2 == '\0')
+	    return 1;
+	  else
+	    return -1;
+	default:
+	  if (*string2 == '\0' || *string2 == '(')
+	    return 1;
+	  else if (c1 > c2)
+	    return 1;
+	  else if (c1 < c2)
+	    return -1;
+	  /* PASSTHRU */
+	}
+
+      if (case_pass == case_sensitive_on)
 	return 0;
-      else
-	return -1;
-    case '(':
-      if (*string2 == '\0')
-	return 1;
-      else
-	return -1;
-    default:
-      if (*string2 == '(')
-	return 1;
-      else
-	return *string1 - *string2;
+      
+      /* Otherwise the strings were equal in case insensitive way, make
+	 a more fine grained comparison in a case sensitive way.  */
+
+      case_pass = case_sensitive_on;
+      string1 = saved_string1;
+      string2 = saved_string2;
     }
 }
 
@@ -3137,13 +2834,6 @@ Show number of lines gdb thinks are in a page."), NULL,
 
   init_page_info ();
 
-  add_setshow_boolean_cmd ("demangle", class_support, &demangle, _("\
-Set demangling of encoded C++/ObjC names when displaying symbols."), _("\
-Show demangling of encoded C++/ObjC names when displaying symbols."), NULL,
-			   NULL,
-			   show_demangle,
-			   &setprintlist, &showprintlist);
-
   add_setshow_boolean_cmd ("pagination", class_support,
 			   &pagination_enabled, _("\
 Set state of pagination."), _("\
@@ -3166,13 +2856,6 @@ Set printing of 8-bit characters in strings as \\nnn."), _("\
 Show printing of 8-bit characters in strings as \\nnn."), NULL,
 			   NULL,
 			   show_sevenbit_strings,
-			   &setprintlist, &showprintlist);
-
-  add_setshow_boolean_cmd ("asm-demangle", class_support, &asm_demangle, _("\
-Set demangling of C++/ObjC names in disassembly listings."), _("\
-Show demangling of C++/ObjC names in disassembly listings."), NULL,
-			   NULL,
-			   show_asm_demangle,
 			   &setprintlist, &showprintlist);
 
   add_setshow_boolean_cmd ("timestamp", class_maintenance,
@@ -3241,6 +2924,27 @@ print_core_address (struct gdbarch *gdbarch, CORE_ADDR address)
     return hex_string_custom (address, 8);
   else
     return hex_string_custom (address, 16);
+}
+
+/* Callback hash_f for htab_create_alloc or htab_create_alloc_ex.  */
+
+hashval_t
+core_addr_hash (const void *ap)
+{
+  const CORE_ADDR *addrp = ap;
+
+  return *addrp;
+}
+
+/* Callback eq_f for htab_create_alloc or htab_create_alloc_ex.  */
+
+int
+core_addr_eq (const void *ap, const void *bp)
+{
+  const CORE_ADDR *addr_ap = ap;
+  const CORE_ADDR *addr_bp = bp;
+
+  return *addr_ap == *addr_bp;
 }
 
 static char *
@@ -3605,7 +3309,7 @@ gdb_realpath (const char *filename)
   /* FIXME: cagney/2002-11-13:
 
      Method 2a: Use realpath() with a NULL buffer.  Some systems, due
-     to the problems described in in method 3, have modified their
+     to the problems described in method 3, have modified their
      realpath() implementation so that it will allocate a buffer when
      NULL is passed in.  Before this can be used, though, some sort of
      configure time test would need to be added.  Otherwize the code
@@ -3933,7 +3637,7 @@ gdb_buildargv (const char *s)
   char **argv = buildargv (s);
 
   if (s != NULL && argv == NULL)
-    nomem (0);
+    malloc_failure (0);
   return argv;
 }
 
@@ -3943,6 +3647,17 @@ compare_positive_ints (const void *ap, const void *bp)
   /* Because we know we're comparing two ints which are positive,
      there's no danger of overflow here.  */
   return * (int *) ap - * (int *) bp;
+}
+
+/* String compare function for qsort.  */
+
+int
+compare_strings (const void *arg1, const void *arg2)
+{
+  const char **s1 = (const char **) arg1;
+  const char **s2 = (const char **) arg2;
+
+  return strcmp (*s1, *s2);
 }
 
 #define AMBIGUOUS_MESS1	".\nMatching formats:"
@@ -4004,6 +3719,67 @@ parse_pid_to_attach (char *args)
     error (_("Illegal process-id: %s."), args);
 
   return pid;
+}
+
+/* Helper for make_bpstat_clear_actions_cleanup.  */
+
+static void
+do_bpstat_clear_actions_cleanup (void *unused)
+{
+  bpstat_clear_actions ();
+}
+
+/* Call bpstat_clear_actions for the case an exception is throw.  You should
+   discard_cleanups if no exception is caught.  */
+
+struct cleanup *
+make_bpstat_clear_actions_cleanup (void)
+{
+  return make_cleanup (do_bpstat_clear_actions_cleanup, NULL);
+}
+
+/* Check for GCC >= 4.x according to the symtab->producer string.  Return minor
+   version (x) of 4.x in such case.  If it is not GCC or it is GCC older than
+   4.x return -1.  If it is GCC 5.x or higher return INT_MAX.  */
+
+int
+producer_is_gcc_ge_4 (const char *producer)
+{
+  const char *cs;
+  int major, minor;
+
+  if (producer == NULL)
+    {
+      /* For unknown compilers expect their behavior is not compliant.  For GCC
+	 this case can also happen for -gdwarf-4 type units supported since
+	 gcc-4.5.  */
+
+      return -1;
+    }
+
+  /* Skip any identifier after "GNU " - such as "C++" or "Java".  */
+
+  if (strncmp (producer, "GNU ", strlen ("GNU ")) != 0)
+    {
+      /* For non-GCC compilers expect their behavior is not compliant.  */
+
+      return -1;
+    }
+  cs = &producer[strlen ("GNU ")];
+  while (*cs && !isdigit (*cs))
+    cs++;
+  if (sscanf (cs, "%d.%d", &major, &minor) != 2)
+    {
+      /* Not recognized as GCC.  */
+
+      return -1;
+    }
+
+  if (major < 4)
+    return -1;
+  if (major > 4)
+    return INT_MAX;
+  return minor;
 }
 
 /* Provide a prototype to silence -Wmissing-prototypes.  */

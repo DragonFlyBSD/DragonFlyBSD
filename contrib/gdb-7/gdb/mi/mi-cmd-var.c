@@ -1,7 +1,7 @@
 /* MI Command Set - varobj commands.
 
-   Copyright (C) 2000, 2002, 2004, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2000, 2002, 2004-2005, 2007-2012 Free Software
+   Foundation, Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
 
@@ -51,6 +51,7 @@ static void
 print_varobj (struct varobj *var, enum print_values print_values,
 	      int print_expression)
 {
+  struct ui_out *uiout = current_uiout;
   char *type;
   int thread_id;
   char *display_hint;
@@ -98,6 +99,7 @@ print_varobj (struct varobj *var, enum print_values print_values,
 void
 mi_cmd_var_create (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   CORE_ADDR frameaddr = 0;
   struct varobj *var;
   char *name;
@@ -167,6 +169,7 @@ mi_cmd_var_delete (char *command, char **argv, int argc)
   int numdel;
   int children_only_p = 0;
   struct cleanup *old_cleanups;
+  struct ui_out *uiout = current_uiout;
 
   if (argc < 1 || argc > 2)
     error (_("-var-delete: Usage: [-c] EXPRESSION."));
@@ -196,7 +199,7 @@ mi_cmd_var_delete (char *command, char **argv, int argc)
       children_only_p = 1;
       do_cleanups (old_cleanups);
       name = xstrdup (argv[1]);
-      make_cleanup (free_current_contents, &name);
+      old_cleanups = make_cleanup (free_current_contents, &name);
     }
 
   /* If we didn't error out, now NAME contains the name of the
@@ -244,6 +247,7 @@ mi_cmd_var_set_format (char *command, char **argv, int argc)
   enum varobj_display_formats format;
   struct varobj *var;
   char *val;
+  struct ui_out *uiout = current_uiout;
 
   if (argc != 2)
     error (_("-var-set-format: Usage: NAME FORMAT."));
@@ -310,6 +314,7 @@ mi_cmd_var_set_frozen (char *command, char **argv, int argc)
 void
 mi_cmd_var_show_format (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   enum varobj_display_formats format;
   struct varobj *var;
 
@@ -328,6 +333,7 @@ mi_cmd_var_show_format (char *command, char **argv, int argc)
 void
 mi_cmd_var_info_num_children (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   struct varobj *var;
 
   if (argc != 1)
@@ -394,6 +400,7 @@ mi_print_value_p (struct varobj *var, enum print_values print_values)
 void
 mi_cmd_var_list_children (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   struct varobj *var;  
   VEC(varobj_p) *children;
   struct varobj *child;
@@ -466,6 +473,7 @@ mi_cmd_var_list_children (char *command, char **argv, int argc)
 void
 mi_cmd_var_info_type (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   struct varobj *var;
 
   if (argc != 1)
@@ -480,6 +488,7 @@ mi_cmd_var_info_type (char *command, char **argv, int argc)
 void
 mi_cmd_var_info_path_expression (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   struct varobj *var;
   char *path_expr;
 
@@ -497,6 +506,7 @@ mi_cmd_var_info_path_expression (char *command, char **argv, int argc)
 void
 mi_cmd_var_info_expression (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   enum varobj_languages lang;
   struct varobj *var;
 
@@ -515,6 +525,7 @@ mi_cmd_var_info_expression (char *command, char **argv, int argc)
 void
 mi_cmd_var_show_attributes (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   int attr;
   char *attstr;
   struct varobj *var;
@@ -538,6 +549,7 @@ mi_cmd_var_show_attributes (char *command, char **argv, int argc)
 void
 mi_cmd_var_evaluate_expression (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   struct varobj *var;
 
   enum varobj_display_formats format;
@@ -549,7 +561,7 @@ mi_cmd_var_evaluate_expression (char *command, char **argv, int argc)
     {
       OP_FORMAT
     };
-  static struct mi_opt opts[] =
+  static const struct mi_opt opts[] =
   {
     {"f", OP_FORMAT, 1},
     { 0, 0, 0 }
@@ -606,6 +618,7 @@ mi_cmd_var_evaluate_expression (char *command, char **argv, int argc)
 void
 mi_cmd_var_assign (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   struct varobj *var;
   char *expression, *val;
 
@@ -667,6 +680,7 @@ mi_cmd_var_update_iter (struct varobj *var, void *data_pointer)
 void
 mi_cmd_var_update (char *command, char **argv, int argc)
 {
+  struct ui_out *uiout = current_uiout;
   struct cleanup *cleanup;
   char *name;
   enum print_values print_values;
@@ -722,6 +736,7 @@ static void
 varobj_update_one (struct varobj *var, enum print_values print_values,
 		   int explicit)
 {
+  struct ui_out *uiout = current_uiout;
   struct cleanup *cleanup = NULL;
   VEC (varobj_update_result) *changes;
   varobj_update_result *r;

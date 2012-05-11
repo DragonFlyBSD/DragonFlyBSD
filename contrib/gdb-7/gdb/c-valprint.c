@@ -1,8 +1,7 @@
 /* Support for printing C values for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988, 1989, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-   1998, 1999, 2000, 2001, 2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1986, 1988-1989, 1991-2001, 2003, 2005-2012 Free
+   Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -380,10 +379,19 @@ c_val_print (struct type *type, const gdb_byte *valaddr,
 	{
 	  if (TYPE_CODE (elttype) != TYPE_CODE_UNDEF)
 	    {
-	      struct value *deref_val =
-		value_at
-		(TYPE_TARGET_TYPE (type),
-		 unpack_pointer (type, valaddr + embedded_offset));
+	      struct value *deref_val;
+
+	      deref_val = coerce_ref_if_computed (original_value);
+	      if (deref_val != NULL)
+		{
+		  /* More complicated computed references are not supported.  */
+		  gdb_assert (embedded_offset == 0);
+		}
+	      else
+		deref_val = value_at (TYPE_TARGET_TYPE (type),
+				      unpack_pointer (type,
+						      (valaddr
+						       + embedded_offset)));
 
 	      common_val_print (deref_val, stream, recurse, options,
 				current_language);

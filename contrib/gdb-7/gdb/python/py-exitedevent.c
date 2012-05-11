@@ -1,6 +1,6 @@
 /* Python interface to inferior exit events.
 
-   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2009-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -22,9 +22,10 @@
 static PyTypeObject exited_event_object_type;
 
 static PyObject *
-create_exited_event_object (const LONGEST *exit_code)
+create_exited_event_object (const LONGEST *exit_code, struct inferior *inf)
 {
   PyObject *exited_event;
+  PyObject *inf_obj;
 
   exited_event = create_event_object (&exited_event_object_type);
 
@@ -35,6 +36,12 @@ create_exited_event_object (const LONGEST *exit_code)
       && evpy_add_attribute (exited_event,
 			     "exit_code",
 			     PyLong_FromLongLong (*exit_code)) < 0)
+    goto fail;
+
+  inf_obj = inferior_to_inferior_object (inf);
+  if (!inf_obj || evpy_add_attribute (exited_event,
+                                      "inferior",
+                                      inf_obj) < 0)
     goto fail;
 
   return exited_event;
@@ -48,14 +55,14 @@ create_exited_event_object (const LONGEST *exit_code)
    will create a new Python exited event object.  */
 
 int
-emit_exited_event (const LONGEST *exit_code)
+emit_exited_event (const LONGEST *exit_code, struct inferior *inf)
 {
   PyObject *event;
 
   if (evregpy_no_listeners_p (gdb_py_events.exited))
     return 0;
 
-  event = create_exited_event_object (exit_code);
+  event = create_exited_event_object (exit_code, inf);
 
   if (event)
     return evpy_emit_event (event, gdb_py_events.exited);

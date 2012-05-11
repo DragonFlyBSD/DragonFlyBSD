@@ -1,7 +1,7 @@
 /* YACC parser for C expressions, for GDB.
 
-   Copyright (C) 1986, 1989, 1990, 1991, 1993, 1994, 2002, 2006, 2007, 2008,
-   2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1989-1991, 1993-1994, 2002, 2006-2012 Free
+   Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -755,8 +755,8 @@ variable:	name_not_typename
 			      if (innermost_block == 0 || 
 				  contained_in (block_found, innermost_block))
 				innermost_block = block_found;
-			      write_exp_elt_opcode (OP_OBJC_SELF);
-			      write_exp_elt_opcode (OP_OBJC_SELF);
+			      write_exp_elt_opcode (OP_THIS);
+			      write_exp_elt_opcode (OP_THIS);
 			      write_exp_elt_opcode (STRUCTOP_PTR);
 			      write_exp_string ($1.stoken);
 			      write_exp_elt_opcode (STRUCTOP_PTR);

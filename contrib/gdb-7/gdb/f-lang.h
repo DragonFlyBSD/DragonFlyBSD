@@ -1,7 +1,7 @@
 /* Fortran language support definitions for GDB, the GNU debugger.
 
-   Copyright (C) 1992, 1993, 1994, 1995, 1998, 2000, 2005, 2007, 2008, 2009,
-   2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1992-1995, 1998, 2000, 2005, 2007-2012 Free Software
+   Foundation, Inc.
 
    Contributed by Motorola.  Adapted from the C definitions by Farooq Butt
    (fmbutt@engage.sps.mot.com).

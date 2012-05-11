@@ -1,7 +1,6 @@
 /* UI_FILE - a generic STDIO like output stream.
 
-   Copyright (C) 1999, 2000, 2001, 2002, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1999-2002, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -30,6 +29,7 @@
 
 static ui_file_isatty_ftype null_file_isatty;
 static ui_file_write_ftype null_file_write;
+static ui_file_write_ftype null_file_write_async_safe;
 static ui_file_fputs_ftype null_file_fputs;
 static ui_file_read_ftype null_file_read;
 static ui_file_flush_ftype null_file_flush;
@@ -42,6 +42,7 @@ struct ui_file
     int *magic;
     ui_file_flush_ftype *to_flush;
     ui_file_write_ftype *to_write;
+    ui_file_write_async_safe_ftype *to_write_async_safe;
     ui_file_fputs_ftype *to_fputs;
     ui_file_read_ftype *to_read;
     ui_file_delete_ftype *to_delete;
@@ -61,6 +62,7 @@ ui_file_new (void)
   set_ui_file_data (file, NULL, null_file_delete);
   set_ui_file_flush (file, null_file_flush);
   set_ui_file_write (file, null_file_write);
+  set_ui_file_write_async_safe (file, null_file_write_async_safe);
   set_ui_file_fputs (file, null_file_fputs);
   set_ui_file_read (file, null_file_read);
   set_ui_file_isatty (file, null_file_isatty);
@@ -155,6 +157,14 @@ null_file_fputs (const char *buf, struct ui_file *file)
 }
 
 static void
+null_file_write_async_safe (struct ui_file *file,
+			    const char *buf,
+			    long sizeof_buf)
+{
+  return;
+}
+
+static void
 null_file_delete (struct ui_file *file)
 {
   return;
@@ -203,6 +213,14 @@ ui_file_write (struct ui_file *file,
   file->to_write (file, buf, length_buf);
 }
 
+void
+ui_file_write_async_safe (struct ui_file *file,
+			  const char *buf,
+			  long length_buf)
+{
+  file->to_write_async_safe (file, buf, length_buf);
+}
+
 long
 ui_file_read (struct ui_file *file, char *buf, long length_buf)
 {
@@ -244,6 +262,13 @@ set_ui_file_write (struct ui_file *file,
 		    ui_file_write_ftype *write)
 {
   file->to_write = write;
+}
+
+void
+set_ui_file_write_async_safe (struct ui_file *file,
+			      ui_file_write_async_safe_ftype *write_async_safe)
+{
+  file->to_write_async_safe = write_async_safe;
 }
 
 void
@@ -437,6 +462,7 @@ mem_file_write (struct ui_file *file,
    <stdio.h>'s FILE.  */
 
 static ui_file_write_ftype stdio_file_write;
+static ui_file_write_async_safe_ftype stdio_file_write_async_safe;
 static ui_file_fputs_ftype stdio_file_fputs;
 static ui_file_read_ftype stdio_file_read;
 static ui_file_isatty_ftype stdio_file_isatty;
@@ -450,6 +476,9 @@ struct stdio_file
   {
     int *magic;
     FILE *file;
+    /* The associated file descriptor is extracted ahead of time for
+       stdio_file_write_async_safe's benefit, in case fileno isn't async-safe.  */
+    int fd;
     int close_p;
   };
 
@@ -461,10 +490,12 @@ stdio_file_new (FILE *file, int close_p)
 
   stdio->magic = &stdio_file_magic;
   stdio->file = file;
+  stdio->fd = fileno (file);
   stdio->close_p = close_p;
   set_ui_file_data (ui_file, stdio, stdio_file_delete);
   set_ui_file_flush (ui_file, stdio_file_flush);
   set_ui_file_write (ui_file, stdio_file_write);
+  set_ui_file_write_async_safe (ui_file, stdio_file_write_async_safe);
   set_ui_file_fputs (ui_file, stdio_file_fputs);
   set_ui_file_read (ui_file, stdio_file_read);
   set_ui_file_isatty (ui_file, stdio_file_isatty);
@@ -510,16 +541,14 @@ stdio_file_read (struct ui_file *file, char *buf, long length_buf)
      the file.  Wait until at least one byte of data is available.
      Control-C can interrupt gdb_select, but not read.  */
   {
-    int fd = fileno (stdio->file);
-
     fd_set readfds;
     FD_ZERO (&readfds);
-    FD_SET (fd, &readfds);
-    if (gdb_select (fd + 1, &readfds, NULL, NULL, NULL) == -1)
+    FD_SET (stdio->fd, &readfds);
+    if (gdb_select (stdio->fd + 1, &readfds, NULL, NULL, NULL) == -1)
       return -1;
   }
 
-  return read (fileno (stdio->file), buf, length_buf);
+  return read (stdio->fd, buf, length_buf);
 }
 
 static void
@@ -532,6 +561,28 @@ stdio_file_write (struct ui_file *file, const char *buf, long length_buf)
 		    _("stdio_file_write: bad magic number"));
   /* Calling error crashes when we are called from the exception framework.  */
   if (fwrite (buf, length_buf, 1, stdio->file))
+    ;
+}
+
+static void
+stdio_file_write_async_safe (struct ui_file *file,
+			     const char *buf, long length_buf)
+{
+  struct stdio_file *stdio = ui_file_data (file);
+
+  if (stdio->magic != &stdio_file_magic)
+    {
+      /* gettext isn't necessarily async safe, so we can't use _("error message") here.
+	 We could extract the correct translation ahead of time, but this is an extremely
+	 rare event, and one of the other stdio_file_* routines will presumably catch
+	 the problem anyway.  For now keep it simple and ignore the error here.  */
+      return;
+    }
+
+  /* This is written the way it is to avoid a warning from gcc about not using the
+     result of write (since it can be declared with attribute warn_unused_result).
+     Alas casting to void doesn't work for this.  */
+  if (write (stdio->fd, buf, length_buf))
     ;
 }
 
@@ -556,7 +607,7 @@ stdio_file_isatty (struct ui_file *file)
   if (stdio->magic != &stdio_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("stdio_file_isatty: bad magic number"));
-  return (isatty (fileno (stdio->file)));
+  return (isatty (stdio->fd));
 }
 
 /* Like fdopen().  Create a ui_file from a previously opened FILE.  */

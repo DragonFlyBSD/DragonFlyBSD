@@ -1,7 +1,7 @@
 /* Manages interpreters for GDB, the GNU debugger.
 
-   Copyright (C) 2000, 2002, 2003, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2000, 2002-2003, 2007-2012 Free Software Foundation,
+   Inc.
 
    Written by Jim Ingham <jingham@apple.com> of Apple Computer, Inc.
 
@@ -36,13 +36,14 @@ extern struct gdb_exception interp_exec (struct interp *interp,
 					 const char *command);
 extern int interp_quiet_p (struct interp *interp);
 
-typedef void *(interp_init_ftype) (int top_level);
+typedef void *(interp_init_ftype) (struct interp *self, int top_level);
 typedef int (interp_resume_ftype) (void *data);
 typedef int (interp_suspend_ftype) (void *data);
 typedef int (interp_prompt_p_ftype) (void *data);
 typedef struct gdb_exception (interp_exec_ftype) (void *data,
 						  const char *command);
 typedef void (interp_command_loop_ftype) (void *data);
+typedef struct ui_out *(interp_ui_out_ftype) (struct interp *self);
 
 struct interp_procs
 {
@@ -51,16 +52,23 @@ struct interp_procs
   interp_suspend_ftype *suspend_proc;
   interp_exec_ftype *exec_proc;
   interp_prompt_p_ftype *prompt_proc_p;
+
+  /* Returns the ui_out currently used to collect results for this
+     interpreter.  It can be a formatter for stdout, as is the case
+     for the console & mi outputs, or it might be a result
+     formatter.  */
+  interp_ui_out_ftype *ui_out_proc;
+
   interp_command_loop_ftype *command_loop_proc;
 };
 
-extern struct interp *interp_new (const char *name, void *data,
-				  struct ui_out *uiout,
-				  const struct interp_procs *procs);
+extern struct interp *interp_new (const char *name, const struct interp_procs *procs);
 extern void interp_add (struct interp *interp);
 extern int interp_set (struct interp *interp, int top_level);
 extern struct interp *interp_lookup (const char *name);
 extern struct ui_out *interp_ui_out (struct interp *interp);
+extern void *interp_data (struct interp *interp);
+extern const char *interp_name (struct interp *interp);
 
 extern int current_interp_named_p (const char *name);
 extern int current_interp_display_prompt_p (void);
@@ -68,6 +76,15 @@ extern void current_interp_command_loop (void);
 /* Returns opaque data associated with the top-level interpreter.  */
 extern void *top_level_interpreter_data (void);
 extern struct interp *top_level_interpreter (void);
+
+/* True if the current interpreter is in async mode, false if in sync
+   mode.  If in sync mode, running a synchronous execution command
+   (with execute_command, e.g, "next") will not return until the
+   command is finished.  If in async mode, then running a synchronous
+   command returns right after resuming the target.  Waiting for the
+   command's completion is later done on the top event loop (using
+   continuations).  */
+extern int interpreter_async;
 
 extern void clear_interpreter_hooks (void);
 

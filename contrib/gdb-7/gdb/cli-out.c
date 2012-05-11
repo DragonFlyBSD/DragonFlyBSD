@@ -1,7 +1,7 @@
 /* Output generating routines for GDB CLI.
 
-   Copyright (C) 1999, 2000, 2002, 2003, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1999-2000, 2002-2003, 2005, 2007-2012 Free Software
+   Foundation, Inc.
 
    Contributed by Cygnus Solutions.
    Written by Fernando Nasser for Cygnus.
@@ -342,7 +342,7 @@ out_field_fmt (struct ui_out *uiout, int fldno,
 static void
 field_separator (void)
 {
-  cli_out_data *data = ui_out_data (uiout);
+  cli_out_data *data = ui_out_data (current_uiout);
   struct ui_file *stream = VEC_last (ui_filep, data->streams);
 
   fputc_filtered (' ', stream);

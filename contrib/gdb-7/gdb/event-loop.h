@@ -1,6 +1,5 @@
 /* Definitions used by the GDB event loop.
-   Copyright (C) 1999, 2000, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1999-2000, 2007-2012 Free Software Foundation, Inc.
    Written by Elena Zannoni <ezannoni@cygnus.com> of Cygnus Solutions.
 
    This file is part of GDB.
@@ -91,7 +90,7 @@ queue_position;
 /* Exported functions from event-loop.c */
 
 extern void start_event_loop (void);
-extern int gdb_do_one_event (void *data);
+extern int gdb_do_one_event (void);
 extern void delete_file_handler (int fd);
 extern void add_file_handler (int fd, handler_func *proc, 
 			      gdb_client_data client_data);

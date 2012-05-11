@@ -1,6 +1,5 @@
 /* Remote target communications for serial-line targets in custom GDB protocol
-   Copyright (C) 1999, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1999, 2003-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -55,5 +54,9 @@ void remote_file_delete (const char *remote_file, int from_tty);
 bfd *remote_bfd_open (const char *remote_file, const char *target);
 
 int remote_filename_p (const char *filename);
+
+extern int remote_register_number_and_offset (struct gdbarch *gdbarch,
+					      int regnum, int *pnum,
+					      int *poffset);
 
 #endif

@@ -1,8 +1,6 @@
 /* Top level stuff for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008,
-   2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2005, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -104,6 +102,7 @@ extern char *external_editor_command;
    file or directory.  FLAG is true if the value is relocatable, false
    otherwise.  Returns a newly allocated string; this may return NULL
    under the same conditions as make_relative_prefix.  */
+
 static char *
 relocate_path (const char *progname, const char *initial, int flag)
 {
@@ -117,12 +116,13 @@ relocate_path (const char *progname, const char *initial, int flag)
    the result is a directory, it is used; otherwise, INITIAL is used.
    The chosen directory is then canonicalized using lrealpath.  This
    function always returns a newly-allocated string.  */
-static char *
-relocate_directory (const char *progname, const char *initial, int flag)
+
+char *
+relocate_gdb_directory (const char *initial, int flag)
 {
   char *dir;
 
-  dir = relocate_path (progname, initial, flag);
+  dir = relocate_path (gdb_program_name, initial, flag);
   if (dir)
     {
       struct stat s;
@@ -225,6 +225,10 @@ get_init_files (char **system_gdbinit,
 static int
 captured_command_loop (void *data)
 {
+  /* Top-level execution commands can be run on the background from
+     here on.  */
+  interpreter_async = 1;
+
   current_interp_command_loop ();
   /* FIXME: cagney/1999-11-05: A correct command_loop() implementaton
      would clean things up (restoring the cleanup chain) to the state
@@ -294,7 +298,14 @@ captured_main (void *data)
   int save_auto_load;
   struct objfile *objfile;
 
-  struct cleanup *pre_stat_chain = make_command_stats_cleanup (0);
+  struct cleanup *pre_stat_chain;
+
+#ifdef HAVE_SBRK
+  /* Set this before calling make_command_stats_cleanup.  */
+  lim_at_start = (char *) sbrk (0);
+#endif
+
+  pre_stat_chain = make_command_stats_cleanup (0);
 
 #if defined (HAVE_SETLOCALE) && defined (HAVE_LC_MESSAGES)
   setlocale (LC_MESSAGES, "");
@@ -305,10 +316,6 @@ captured_main (void *data)
   bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);
 
-#ifdef HAVE_SBRK
-  lim_at_start = (char *) sbrk (0);
-#endif
-
   cmdsize = 1;
   cmdarg = (struct cmdarg *) xmalloc (cmdsize * sizeof (*cmdarg));
   ncmd = 0;
@@ -317,8 +324,8 @@ captured_main (void *data)
   ndir = 0;
 
   quit_flag = 0;
-  line = (char *) xmalloc (linesize);
-  line[0] = '\0';		/* Terminate saved (now empty) cmd line.  */
+  saved_command_line = (char *) xmalloc (saved_command_line_size);
+  saved_command_line[0] = '\0';
   instream = stdin;
 
   gdb_stdout = stdio_fileopen (stdout);
@@ -342,22 +349,21 @@ captured_main (void *data)
   current_directory = gdb_dirbuf;
 
   /* Set the sysroot path.  */
-  gdb_sysroot = relocate_directory (argv[0], TARGET_SYSTEM_ROOT,
-				    TARGET_SYSTEM_ROOT_RELOCATABLE);
+  gdb_sysroot = relocate_gdb_directory (TARGET_SYSTEM_ROOT,
+					TARGET_SYSTEM_ROOT_RELOCATABLE);
 
-  debug_file_directory = relocate_directory (argv[0], DEBUGDIR,
-					     DEBUGDIR_RELOCATABLE);
+  debug_file_directory = relocate_gdb_directory (DEBUGDIR,
+						 DEBUGDIR_RELOCATABLE);
 
-  gdb_datadir = relocate_directory (argv[0], GDB_DATADIR,
-				    GDB_DATADIR_RELOCATABLE);
+  gdb_datadir = relocate_gdb_directory (GDB_DATADIR,
+					GDB_DATADIR_RELOCATABLE);
 
 #ifdef WITH_PYTHON_PATH
   {
     /* For later use in helping Python find itself.  */
     char *tmp = concat (WITH_PYTHON_PATH, SLASH_STRING, "lib", NULL);
 
-    python_libdir = relocate_directory (argv[0], tmp,
-					PYTHON_PATH_RELOCATABLE);
+    python_libdir = relocate_gdb_directory (tmp, PYTHON_PATH_RELOCATABLE);
     xfree (tmp);
   }
 #endif

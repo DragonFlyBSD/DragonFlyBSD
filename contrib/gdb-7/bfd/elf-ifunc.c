@@ -299,9 +299,10 @@ keep:
      5. Otherwise use .got so that it can be shared among different
      objects at run-time.
      We only need to relocate .got entry in shared object.  */
-  if ((info->shared
-       && (h->dynindx == -1
-	   || h->forced_local))
+  if (h->got.refcount <= 0
+      || (info->shared
+	  && (h->dynindx == -1
+	      || h->forced_local))
       || (!info->shared
 	  && !h->pointer_equality_needed)
       || (info->executable && info->shared)

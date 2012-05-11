@@ -1,6 +1,6 @@
 /* Python interface to inferior events.
 
-   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2009-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -104,13 +104,14 @@ typedef struct
 } event_object;
 
 extern int emit_continue_event (ptid_t ptid);
-extern int emit_exited_event (const LONGEST *exit_code);
+extern int emit_exited_event (const LONGEST *exit_code, struct inferior *inf);
 
 extern int evpy_emit_event (PyObject *event,
                             eventregistry_object *registry);
 
 extern PyObject *create_event_object (PyTypeObject *py_type);
 extern PyObject *create_thread_event_object (PyTypeObject *py_type);
+extern int emit_new_objfile_event (struct objfile *objfile);
 
 extern void evpy_dealloc (PyObject *self);
 extern int evpy_add_attribute (PyObject *event,

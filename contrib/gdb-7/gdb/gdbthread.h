@@ -1,6 +1,6 @@
 /* Multi-process/thread control defs for GDB, the GNU debugger.
-   Copyright (C) 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1997, 1998, 1999,
-   2000, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1987-1993, 1997-2000, 2007-2012 Free Software
+   Foundation, Inc.
    Contributed by Lynx Real-Time Systems, Inc.  Los Gatos, CA.
    
 
@@ -28,6 +28,15 @@ struct symtab;
 #include "frame.h"
 #include "ui-out.h"
 #include "inferior.h"
+
+/* Frontend view of the thread state.  Possible extensions: stepping,
+   finishing, until(ling),...  */
+enum thread_state
+{
+  THREAD_STOPPED,
+  THREAD_RUNNING,
+  THREAD_EXITED,
+};
 
 /* Inferior thread specific part of `struct infcall_control_state'.
 
@@ -133,9 +142,7 @@ struct thread_info
      from saying that there is an active target and we are stopped at
      a breakpoint, for instance.  This is a real indicator whether the
      thread is off and running.  */
-  /* This field is internal to thread.c.  Never access it directly,
-     use is_executing instead.  */
-  int executing_;
+  int executing;
 
   /* Frontend view of the thread state.  Note that the RUNNING/STOPPED
      states are different from EXECUTING.  When the thread is stopped
@@ -144,9 +151,7 @@ struct thread_info
      still be true.  As a possible future extension, this could turn
      into enum { stopped, exited, stepping, finishing, until(ling),
      running ... }  */
-  /* This field is internal to thread.c.  Never access it directly,
-     use is_running instead.  */
-  int state_;
+  int state;
 
   /* If this is > 0, then it means there's code out there that relies
      on this thread being listed.  Don't delete it from the lists even
@@ -176,19 +181,15 @@ struct thread_info
   int stepping_over_breakpoint;
 
   /* Set to TRUE if we should finish single-stepping over a breakpoint
-     after hitting the current step-resume breakpoint.  */
+     after hitting the current step-resume breakpoint.  The context here
+     is that GDB is to do `next' or `step' while signal arrives.
+     When stepping over a breakpoint and signal arrives, GDB will attempt
+     to skip signal handler, so it inserts a step_resume_breakpoint at the
+     signal return address, and resume inferior.
+     step_after_step_resume_breakpoint is set to TRUE at this moment in
+     order to keep GDB in mind that there is still a breakpoint to step over
+     when GDB gets back SIGTRAP from step_resume_breakpoint.  */
   int step_after_step_resume_breakpoint;
-
-  /* This is set TRUE when a catchpoint of a shared library event
-     triggers.  Since we don't wish to leave the inferior in the
-     solib hook when we report the event, we step the inferior
-     back to user code before stopping and reporting the event.  */
-  int stepping_through_solib_after_catch;
-
-  /* When stepping_through_solib_after_catch is TRUE, this is a
-     list of the catchpoints that should be reported as triggering
-     when we finally do stop stepping.  */
-  bpstat stepping_through_solib_catchpoints;
 
   /* Per-thread command support.  */
 
@@ -346,7 +347,7 @@ extern int any_running (void);
    marks all threads.
 
    Note that this is different from the running state.  See the
-   description of state_ and executing_ fields of struct
+   description of state and executing fields of struct
    thread_info.  */
 extern void set_executing (ptid_t ptid, int executing);
 

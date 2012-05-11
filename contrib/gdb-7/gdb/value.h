@@ -1,8 +1,6 @@
 /* Definitions for values of C expressions, for GDB.
 
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
-   2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -156,13 +154,15 @@ struct lval_funcs
 {
   /* Fill in VALUE's contents.  This is used to "un-lazy" values.  If
      a problem arises in obtaining VALUE's bits, this function should
-     call 'error'.  */
+     call 'error'.  If it is NULL value_fetch_lazy on "un-lazy"
+     non-optimized-out value is an internal error.  */
   void (*read) (struct value *v);
 
   /* Handle an assignment TOVAL = FROMVAL by writing the value of
      FROMVAL to TOVAL's location.  The contents of TOVAL have not yet
      been updated.  If a problem arises in doing so, this function
-     should call 'error'.  */
+     should call 'error'.  If it is NULL such TOVAL assignment is an error as
+     TOVAL is not considered as an lvalue.  */
   void (*write) (struct value *toval, struct value *fromval);
 
   /* Check the validity of some bits in VALUE.  This should return 1
@@ -177,6 +177,11 @@ struct lval_funcs
      this value.  This method may return NULL, in which case value_ind
      will fall back to ordinary indirection.  */
   struct value *(*indirect) (struct value *value);
+
+  /* If non-NULL, this is used to implement reference resolving for
+     this value.  This method may return NULL, in which case coerce_ref
+     will fall back to ordinary references resolving.  */
+  struct value *(*coerce_ref) (const struct value *value);
 
   /* If non-NULL, this is used to determine whether the indicated bits
      of VALUE are a synthetic pointer.  */
@@ -204,12 +209,14 @@ struct lval_funcs
    and closure CLOSURE.  */
 
 extern struct value *allocate_computed_value (struct type *type,
-                                              struct lval_funcs *funcs,
-                                              void *closure);
+					      const struct lval_funcs *funcs,
+					      void *closure);
+
+extern struct value *allocate_optimized_out_value (struct type *type);
 
 /* If VALUE is lval_computed, return its lval_funcs structure.  */
 
-extern struct lval_funcs *value_computed_funcs (struct value *value);
+extern const struct lval_funcs *value_computed_funcs (const struct value *);
 
 /* If VALUE is lval_computed, return its closure.  The meaning of the
    returned value depends on the functions VALUE uses.  */
@@ -310,6 +317,9 @@ extern void set_value_component_location (struct value *component,
 extern enum lval_type *deprecated_value_lval_hack (struct value *);
 #define VALUE_LVAL(val) (*deprecated_value_lval_hack (val))
 
+/* Like VALUE_LVAL, except the parameter can be const.  */
+extern enum lval_type value_lval_const (const struct value *value);
+
 /* If lval == lval_memory, return the address in the inferior.  If
    lval == lval_register, return the byte offset into the registers
    structure.  Otherwise, return 0.  The returned address
@@ -335,6 +345,11 @@ extern struct frame_id *deprecated_value_frame_id_hack (struct value *);
 /* Register number if the value is from a register.  */
 extern short *deprecated_value_regnum_hack (struct value *);
 #define VALUE_REGNUM(val) (*deprecated_value_regnum_hack (val))
+
+/* Return value after lval_funcs->coerce_ref (after check_typedef).  Return
+   NULL if lval_funcs->coerce_ref is not applicable for whatever reason.  */
+
+extern struct value *coerce_ref_if_computed (const struct value *arg);
 
 /* Convert a REF to the object referenced.  */
 
@@ -479,10 +494,14 @@ extern struct value *value_at_lazy (struct type *type, CORE_ADDR addr);
 extern struct value *value_from_contents_and_address (struct type *,
 						      const gdb_byte *,
 						      CORE_ADDR);
+extern struct value *value_from_contents (struct type *, const gdb_byte *);
 
 extern struct value *default_value_from_register (struct type *type,
 						  int regnum,
 						  struct frame_info *frame);
+
+extern void read_frame_register_value (struct value *value,
+				       struct frame_info *frame);
 
 extern struct value *value_from_register (struct type *type, int regnum,
 					  struct frame_info *frame);
@@ -490,7 +509,8 @@ extern struct value *value_from_register (struct type *type, int regnum,
 extern CORE_ADDR address_from_register (struct type *type, int regnum,
 					struct frame_info *frame);
 
-extern struct value *value_of_variable (struct symbol *var, struct block *b);
+extern struct value *value_of_variable (struct symbol *var,
+					const struct block *b);
 
 extern struct value *address_of_variable (struct symbol *var, struct block *b);
 
@@ -581,7 +601,7 @@ extern struct fn_field *value_find_oload_method_list (struct value **,
 
 enum oload_search_type { NON_METHOD, METHOD, BOTH };
 
-extern int find_overload_match (struct type **arg_types, int nargs,
+extern int find_overload_match (struct value **args, int nargs,
 				const char *name,
 				enum oload_search_type method, int lax,
 				struct value **objp, struct symbol *fsym,
@@ -612,7 +632,7 @@ extern struct value *value_dynamic_cast (struct type *type, struct value *arg);
 
 extern struct value *value_zero (struct type *type, enum lval_type lv);
 
-extern struct value *value_one (struct type *type, enum lval_type lv);
+extern struct value *value_one (struct type *type);
 
 extern struct value *value_repeat (struct value *arg1, int count);
 
@@ -714,7 +734,9 @@ extern int value_logical_not (struct value *arg1);
 
 /* C++ */
 
-extern struct value *value_of_this (int complain);
+extern struct value *value_of_this (const struct language_defn *lang);
+
+extern struct value *value_of_this_silent (const struct language_defn *lang);
 
 extern struct value *value_x_binop (struct value *arg1, struct value *arg2,
 				    enum exp_opcode op,
@@ -736,7 +758,7 @@ extern int binop_user_defined_p (enum exp_opcode op, struct value *arg1,
 
 extern int unop_user_defined_p (enum exp_opcode op, struct value *arg1);
 
-extern int destructor_name_p (const char *name, const struct type *type);
+extern int destructor_name_p (const char *name, struct type *type);
 
 extern void value_incref (struct value *val);
 
@@ -833,8 +855,6 @@ extern struct value *find_function_in_inferior (const char *,
 						struct objfile **);
 
 extern struct value *value_allocate_space_in_inferior (int);
-
-extern struct value *value_of_local (const char *name, int complain);
 
 extern struct value *value_subscripted_rvalue (struct value *array,
 					       LONGEST index, int lowerbound);

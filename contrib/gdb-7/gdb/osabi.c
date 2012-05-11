@@ -1,7 +1,6 @@
 /* OS ABI variant handling for GDB.
 
-   Copyright (C) 2001, 2002, 2003, 2004, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2001-2004, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -514,11 +513,15 @@ generic_elf_osabi_sniffer (bfd *abfd)
   switch (elfosabi)
     {
     case ELFOSABI_NONE:
+    case ELFOSABI_GNU:
       /* When the EI_OSABI field in the ELF header is ELFOSABI_NONE
          (0), then the ELF structures in the file are conforming to
          the base specification for that machine (there are no
          OS-specific extensions).  In order to determine the real OS
-         in use we must look for OS-specific notes.  */
+         in use, we must look for OS-specific notes.
+
+         The same applies for ELFOSABI_GNU: this can mean GNU/Hurd,
+         GNU/Linux, and possibly more.  */
       bfd_map_over_sections (abfd,
 			     generic_elf_osabi_sniff_abi_tag_sections,
 			     &osabi);
@@ -530,14 +533,6 @@ generic_elf_osabi_sniffer (bfd *abfd)
 
     case ELFOSABI_NETBSD:
       osabi = GDB_OSABI_NETBSD_ELF;
-      break;
-
-    case ELFOSABI_LINUX:
-      osabi = GDB_OSABI_LINUX;
-      break;
-
-    case ELFOSABI_HURD:
-      osabi = GDB_OSABI_HURD;
       break;
 
     case ELFOSABI_SOLARIS:

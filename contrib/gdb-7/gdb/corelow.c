@@ -1,8 +1,7 @@
 /* Core dump and executable file functions below target vector, for GDB.
 
-   Copyright (C) 1986, 1987, 1989, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-   1998, 1999, 2000, 2001, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
-   2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-1987, 1989, 1991-2001, 2003-2012 Free Software
+   Foundation, Inc.
 
    This file is part of GDB.
 
@@ -47,6 +46,7 @@
 #include "filenames.h"
 #include "progspace.h"
 #include "objfiles.h"
+#include "wrapper.h"
 
 
 #ifndef O_LARGEFILE
@@ -428,7 +428,7 @@ core_open (char *filename, int from_tty)
      may be a thread_stratum target loaded on top of target core by
      now.  The layer above should claim threads found in the BFD
      sections.  */
-  target_find_new_threads ();
+  gdb_target_find_new_threads ();
 
   p = bfd_core_file_failing_command (core_bfd);
   if (p)

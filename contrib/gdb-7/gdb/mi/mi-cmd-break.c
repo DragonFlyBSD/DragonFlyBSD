@@ -1,6 +1,5 @@
 /* MI Command Set - breakpoint and watchpoint commands.
-   Copyright (C) 2000, 2001, 2002, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2000-2002, 2007-2012 Free Software Foundation, Inc.
    Contributed by Cygnus Solutions (a Red Hat company).
 
    This file is part of GDB.
@@ -29,6 +28,7 @@
 #include "gdb.h"
 #include "exceptions.h"
 #include "observer.h"
+#include "mi-main.h"
 
 enum
   {
@@ -46,10 +46,10 @@ static int mi_can_breakpoint_notify;
 /* Output a single breakpoint, when allowed. */
 
 static void
-breakpoint_notify (int b)
+breakpoint_notify (struct breakpoint *b)
 {
   if (mi_can_breakpoint_notify)
-    gdb_breakpoint_query (uiout, b, NULL);
+    gdb_breakpoint_query (current_uiout, b->number, NULL);
 }
 
 enum bp_type
@@ -83,7 +83,7 @@ mi_cmd_break_insert (char *command, char **argv, int argc)
       IGNORE_COUNT_OPT, THREAD_OPT, PENDING_OPT, DISABLE_OPT,
       TRACEPOINT_OPT,
     };
-  static struct mi_opt opts[] =
+  static const struct mi_opt opts[] =
   {
     {"h", HARDWARE_OPT, 0},
     {"t", TEMP_OPT, 0},
@@ -146,8 +146,6 @@ mi_cmd_break_insert (char *command, char **argv, int argc)
   if (! mi_breakpoint_observers_installed)
     {
       observer_attach_breakpoint_created (breakpoint_notify);
-      observer_attach_breakpoint_modified (breakpoint_notify);
-      observer_attach_breakpoint_deleted (breakpoint_notify);
       mi_breakpoint_observers_installed = 1;
     }
 
@@ -170,7 +168,7 @@ mi_cmd_break_insert (char *command, char **argv, int argc)
 		     temp_p, type_wanted,
 		     ignore_count,
 		     pending ? AUTO_BOOLEAN_TRUE : AUTO_BOOLEAN_FALSE,
-		     NULL, 0, enabled, 0);
+		     &bkpt_breakpoint_ops, 0, enabled, 0, 0);
   do_cleanups (back_to);
 
 }
@@ -187,7 +185,7 @@ mi_cmd_break_passcount (char *command, char **argv, int argc)
 {
   int n;
   int p;
-  struct breakpoint *t;
+  struct tracepoint *t;
 
   if (argc != 2)
     error (_("Usage: tracepoint-number passcount"));
@@ -203,7 +201,7 @@ mi_cmd_break_passcount (char *command, char **argv, int argc)
     }
   else
     {
-      error (_("Cound not find tracepoint %d"), n);
+      error (_("Could not find tracepoint %d"), n);
     }
 }
 
@@ -222,7 +220,7 @@ mi_cmd_break_watch (char *command, char **argv, int argc)
     {
       READ_OPT, ACCESS_OPT
     };
-  static struct mi_opt opts[] =
+  static const struct mi_opt opts[] =
   {
     {"r", READ_OPT, 0},
     {"a", ACCESS_OPT, 0},

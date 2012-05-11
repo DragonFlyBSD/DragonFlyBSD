@@ -1,8 +1,7 @@
 /* Cache and manage frames for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1987, 1989, 1991, 1994, 1995, 1996, 1998, 2000, 2001,
-   2002, 2003, 2004, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1986-1987, 1989, 1991, 1994-1996, 1998, 2000-2004,
+   2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1306,8 +1305,8 @@ get_current_frame (void)
     {
       struct frame_info *sentinel_frame =
 	create_sentinel_frame (current_program_space, get_current_regcache ());
-      if (catch_exceptions (uiout, unwind_to_current_frame, sentinel_frame,
-			    RETURN_MASK_ERROR) != 0)
+      if (catch_exceptions (current_uiout, unwind_to_current_frame,
+			    sentinel_frame, RETURN_MASK_ERROR) != 0)
 	{
 	  /* Oops! Fake a current frame?  Is this useful?  It has a PC
              of zero, for instance.  */
@@ -1328,17 +1327,21 @@ has_stack_frames (void)
   if (!target_has_registers || !target_has_stack || !target_has_memory)
     return 0;
 
-  /* No current inferior, no frame.  */
-  if (ptid_equal (inferior_ptid, null_ptid))
-    return 0;
+  /* Traceframes are effectively a substitute for the live inferior.  */
+  if (get_traceframe_number () < 0)
+    {
+      /* No current inferior, no frame.  */
+      if (ptid_equal (inferior_ptid, null_ptid))
+	return 0;
 
-  /* Don't try to read from a dead thread.  */
-  if (is_exited (inferior_ptid))
-    return 0;
+      /* Don't try to read from a dead thread.  */
+      if (is_exited (inferior_ptid))
+	return 0;
 
-  /* ... or from a spinning thread.  */
-  if (is_executing (inferior_ptid))
-    return 0;
+      /* ... or from a spinning thread.  */
+      if (is_executing (inferior_ptid))
+	return 0;
+    }
 
   return 1;
 }
@@ -2031,8 +2034,10 @@ get_frame_address_in_block (struct frame_info *this_frame)
   while (get_frame_type (next_frame) == INLINE_FRAME)
     next_frame = next_frame->next;
 
-  if (get_frame_type (next_frame) == NORMAL_FRAME
+  if ((get_frame_type (next_frame) == NORMAL_FRAME
+       || get_frame_type (next_frame) == TAILCALL_FRAME)
       && (get_frame_type (this_frame) == NORMAL_FRAME
+	  || get_frame_type (this_frame) == TAILCALL_FRAME
 	  || get_frame_type (this_frame) == INLINE_FRAME))
     return pc - 1;
 
@@ -2345,23 +2350,11 @@ frame_stop_reason_string (enum unwind_stop_reason reason)
 {
   switch (reason)
     {
-    case UNWIND_NULL_ID:
-      return _("unwinder did not report frame ID");
+#define SET(name, description) \
+    case name: return _(description);
+#include "unwind_stop_reasons.def"
+#undef SET
 
-    case UNWIND_UNAVAILABLE:
-      return _("Not enough registers or memory available to unwind further");
-
-    case UNWIND_INNER_ID:
-      return _("previous frame inner to this frame (corrupt stack?)");
-
-    case UNWIND_SAME_ID:
-      return _("previous frame identical to this frame (corrupt stack?)");
-
-    case UNWIND_NO_SAVED_PC:
-      return _("frame did not save the PC");
-
-    case UNWIND_NO_REASON:
-    case UNWIND_FIRST_ERROR:
     default:
       internal_error (__FILE__, __LINE__,
 		      "Invalid frame stop reason");

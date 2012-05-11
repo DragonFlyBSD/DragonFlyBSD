@@ -1,7 +1,7 @@
 /* Output generating routines for GDB.
 
-   Copyright (C) 1999, 2000, 2001, 2002, 2004, 2005, 2007, 2008, 2009, 2010,
-   2011 Free Software Foundation, Inc.
+   Copyright (C) 1999-2002, 2004-2005, 2007-2012 Free Software
+   Foundation, Inc.
 
    Contributed by Cygnus Solutions.
    Written by Fernando Nasser for Cygnus.
@@ -222,7 +222,7 @@ struct ui_out def_uiout =
 /* FIXME: This should not be a global, but something passed down from main.c
    or top.c.  */
 
-struct ui_out *uiout = &def_uiout;
+struct ui_out *current_uiout = &def_uiout;
 
 /* These are the interfaces to implementation functions.  */
 
@@ -485,6 +485,8 @@ ui_out_field_fmt_int (struct ui_out *uiout,
 
   uo_field_int (uiout, fldno, input_width, input_align, fldname, value);
 }
+
+/* Documented in ui-out.h.  */
 
 void
 ui_out_field_core_addr (struct ui_out *uiout,
@@ -1048,7 +1050,7 @@ append_header_to_list (struct ui_out *uiout,
   uiout->table.header_next = uiout->table.header_last;
 }
 
-/* Extract the format information for the NEXT header and and advance
+/* Extract the format information for the NEXT header and advance
    the header pointer.  Return 0 if there was no next header.  */
 
 static int
@@ -1112,13 +1114,6 @@ specified after table_body and inside a list."));
     }
 }
 
-
-/* Access to ui_out format private members.  */
-
-void
-ui_out_get_field_separator (struct ui_out *uiout)
-{
-}
 
 /* Access to ui-out members data.  */
 

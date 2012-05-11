@@ -1,7 +1,6 @@
 /* Build symbol tables in GDB's internal format.
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1995, 1996,
-   1997, 1998, 1999, 2000, 2002, 2003, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1986-1993, 1995-2000, 2002-2003, 2007-2012 Free
+   Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -70,8 +69,8 @@ struct subfile
     struct linetable *line_vector;
     int line_vector_length;
     enum language language;
-    char *producer;
-    char *debugformat;
+    const char *producer;
+    const char *debugformat;
     struct symtab *symtab;
   };
 
@@ -292,7 +291,15 @@ extern void record_pending_block (struct objfile *objfile,
 				  struct block *block,
 				  struct pending_block *opblock);
 
-extern void record_debugformat (char *format);
+/* Record the name of the debug format in the current pending symbol
+   table.  FORMAT must be a string with a lifetime at least as long as
+   the symtab's objfile.  */
+
+extern void record_debugformat (const char *format);
+
+/* Record the name of the debuginfo producer (usually the compiler) in
+   the current pending symbol table.  PRODUCER must be a string with a
+   lifetime at least as long as the symtab's objfile.  */
 
 extern void record_producer (const char *producer);
 

@@ -1,6 +1,6 @@
 /* Process record and replay target for GDB, the GNU debugger.
 
-   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -30,6 +30,8 @@
 #include "record.h"
 #include "elf-bfd.h"
 #include "gcore.h"
+#include "event-loop.h"
+#include "inf-loop.h"
 
 #include <signal.h>
 
@@ -231,6 +233,7 @@ static int (*record_beneath_to_remove_breakpoint) (struct gdbarch *,
 static int (*record_beneath_to_stopped_by_watchpoint) (void);
 static int (*record_beneath_to_stopped_data_address) (struct target_ops *,
 						      CORE_ADDR *);
+static void (*record_beneath_to_async) (void (*) (enum inferior_event_type, void *), void *);
 
 /* Alloc and free functions for record_reg, record_mem, and record_end 
    entries.  */
@@ -806,8 +809,21 @@ static int (*tmp_to_remove_breakpoint) (struct gdbarch *,
 					struct bp_target_info *);
 static int (*tmp_to_stopped_by_watchpoint) (void);
 static int (*tmp_to_stopped_data_address) (struct target_ops *, CORE_ADDR *);
+static int (*tmp_to_stopped_data_address) (struct target_ops *, CORE_ADDR *);
+static void (*tmp_to_async) (void (*) (enum inferior_event_type, void *), void *);
 
 static void record_restore (void);
+
+/* Asynchronous signal handle registered as event loop source for when
+   we have pending events ready to be passed to the core.  */
+
+static struct async_event_handler *record_async_inferior_event_token;
+
+static void
+record_async_inferior_event_handler (gdb_client_data data)
+{
+  inferior_event_handler (INF_REG_EVENT, NULL);
+}
 
 /* Open the process record target.  */
 
@@ -852,9 +868,6 @@ record_open_1 (char *name, int from_tty)
   if (non_stop)
     error (_("Process record target can't debug inferior in non-stop mode "
 	     "(non-stop)."));
-  if (target_async_permitted)
-    error (_("Process record target can't debug inferior in asynchronous "
-	     "mode (target-async)."));
 
   if (!gdbarch_process_record_p (target_gdbarch))
     error (_("Process record: the current architecture doesn't support "
@@ -911,6 +924,7 @@ record_open (char *name, int from_tty)
   tmp_to_remove_breakpoint = NULL;
   tmp_to_stopped_by_watchpoint = NULL;
   tmp_to_stopped_data_address = NULL;
+  tmp_to_async = NULL;
 
   /* Set the beneath function pointers.  */
   for (t = current_target.beneath; t != NULL; t = t->beneath)
@@ -943,6 +957,8 @@ record_open (char *name, int from_tty)
 	tmp_to_stopped_by_watchpoint = t->to_stopped_by_watchpoint;
       if (!tmp_to_stopped_data_address)
 	tmp_to_stopped_data_address = t->to_stopped_data_address;
+      if (!tmp_to_async)
+	tmp_to_async = t->to_async;
     }
   if (!tmp_to_xfer_partial)
     error (_("Could not find 'to_xfer_partial' method on the target stack."));
@@ -966,11 +982,17 @@ record_open (char *name, int from_tty)
   record_beneath_to_remove_breakpoint = tmp_to_remove_breakpoint;
   record_beneath_to_stopped_by_watchpoint = tmp_to_stopped_by_watchpoint;
   record_beneath_to_stopped_data_address = tmp_to_stopped_data_address;
+  record_beneath_to_async = tmp_to_async;
 
   if (core_bfd)
     record_core_open_1 (name, from_tty);
   else
     record_open_1 (name, from_tty);
+
+  /* Register extra event sources in the event loop.  */
+  record_async_inferior_event_token
+    = create_async_event_handler (record_async_inferior_event_handler,
+				  NULL);
 }
 
 /* "to_close" target method.  Close the process record target.  */
@@ -1002,9 +1024,33 @@ record_close (int quitting)
 	}
       record_core_buf_list = NULL;
     }
+
+  if (record_async_inferior_event_token)
+    delete_async_event_handler (&record_async_inferior_event_token);
 }
 
 static int record_resume_step = 0;
+
+/* True if we've been resumed, and so each record_wait call should
+   advance execution.  If this is false, record_wait will return a
+   TARGET_WAITKIND_IGNORE.  */
+static int record_resumed = 0;
+
+/* The execution direction of the last resume we got.  This is
+   necessary for async mode.  Vis (order is not strictly accurate):
+
+   1. user has the global execution direction set to forward
+   2. user does a reverse-step command
+   3. record_resume is called with global execution direction
+      temporarily switched to reverse
+   4. GDB's execution direction is reverted back to forward
+   5. target record notifies event loop there's an event to handle
+   6. infrun asks the target which direction was it going, and switches
+      the global execution direction accordingly (to reverse)
+   7. infrun polls an event out of the record target, and handles it
+   8. GDB goes back to the event loop, and goto #4.
+*/
+static enum exec_direction_kind record_execution_dir = EXEC_FORWARD;
 
 /* "to_resume" target method.  Resume the process record target.  */
 
@@ -1013,6 +1059,8 @@ record_resume (struct target_ops *ops, ptid_t ptid, int step,
                enum target_signal signal)
 {
   record_resume_step = step;
+  record_resumed = 1;
+  record_execution_dir = execution_direction;
 
   if (!RECORD_IS_REPLAY)
     {
@@ -1053,6 +1101,16 @@ record_resume (struct target_ops *ops, ptid_t ptid, int step,
 
       record_beneath_to_resume (record_beneath_to_resume_ops,
                                 ptid, step, signal);
+    }
+
+  /* We are about to start executing the inferior (or simulate it),
+     let's register it with the event loop.  */
+  if (target_can_async_p ())
+    {
+      target_async (inferior_event_handler, 0);
+      /* Notify the event loop there's an event to wait for.  We do
+	 most of the work in record_wait.  */
+      mark_async_event_handler (record_async_inferior_event_token);
     }
 }
 
@@ -1100,17 +1158,27 @@ record_wait_cleanups (void *ignore)
    where to stop.  */
 
 static ptid_t
-record_wait (struct target_ops *ops,
-	     ptid_t ptid, struct target_waitstatus *status,
-	     int options)
+record_wait_1 (struct target_ops *ops,
+	       ptid_t ptid, struct target_waitstatus *status,
+	       int options)
 {
   struct cleanup *set_cleanups = record_gdb_operation_disable_set ();
 
   if (record_debug)
     fprintf_unfiltered (gdb_stdlog,
 			"Process record: record_wait "
-			"record_resume_step = %d\n",
-			record_resume_step);
+			"record_resume_step = %d, record_resumed = %d, direction=%s\n",
+			record_resume_step, record_resumed,
+			record_execution_dir == EXEC_FORWARD ? "forward" : "reverse");
+
+  if (!record_resumed)
+    {
+      gdb_assert ((options & TARGET_WNOHANG) != 0);
+
+      /* No interesting event.  */
+      status->kind = TARGET_WAITKIND_IGNORE;
+      return minus_one_ptid;
+    }
 
   record_get_sig = 0;
   signal (SIGINT, record_sig_handler);
@@ -1134,12 +1202,20 @@ record_wait (struct target_ops *ops,
 	    {
 	      ret = record_beneath_to_wait (record_beneath_to_wait_ops,
 					    ptid, status, options);
+	      if (status->kind == TARGET_WAITKIND_IGNORE)
+		{
+		  if (record_debug)
+		    fprintf_unfiltered (gdb_stdlog,
+					"Process record: record_wait "
+					"target beneath not done yet\n");
+		  return ret;
+		}
 
               if (single_step_breakpoints_inserted ())
                 remove_single_step_breakpoints ();
 
 	      if (record_resume_step)
-	        return ret;
+		return ret;
 
 	      /* Is this a SIGTRAP?  */
 	      if (status->kind == TARGET_WAITKIND_STOPPED
@@ -1204,6 +1280,10 @@ record_wait (struct target_ops *ops,
 			  set_executing (inferior_ptid, 1);
 			}
 
+		      if (record_debug)
+			fprintf_unfiltered (gdb_stdlog,
+					    "Process record: record_wait "
+					    "issuing one more step in the target beneath\n");
 		      record_beneath_to_resume (record_beneath_to_resume_ops,
 						ptid, step,
 						TARGET_SIGNAL_0);
@@ -1383,6 +1463,24 @@ replay_out:
 
   do_cleanups (set_cleanups);
   return inferior_ptid;
+}
+
+static ptid_t
+record_wait (struct target_ops *ops,
+	     ptid_t ptid, struct target_waitstatus *status,
+	     int options)
+{
+  ptid_t return_ptid;
+
+  return_ptid = record_wait_1 (ops, ptid, status, options);
+  if (status->kind != TARGET_WAITKIND_IGNORE)
+    {
+      /* We're reporting a stop.  Make sure any spurious
+	 target_wait(WNOHANG) doesn't advance the target until the
+	 core wants us resumed again.  */
+      record_resumed = 0;
+    }
+  return return_ptid;
 }
 
 static int
@@ -1720,6 +1818,37 @@ record_goto_bookmark (gdb_byte *bookmark, int from_tty)
 }
 
 static void
+record_async (void (*callback) (enum inferior_event_type event_type,
+				void *context), void *context)
+{
+  /* If we're on top of a line target (e.g., linux-nat, remote), then
+     set it to async mode as well.  Will be NULL if we're sitting on
+     top of the core target, for "record restore".  */
+  if (record_beneath_to_async != NULL)
+    record_beneath_to_async (callback, context);
+}
+
+static int
+record_can_async_p (void)
+{
+  /* We only enable async when the user specifically asks for it.  */
+  return target_async_permitted;
+}
+
+static int
+record_is_async_p (void)
+{
+  /* We only enable async when the user specifically asks for it.  */
+  return target_async_permitted;
+}
+
+static enum exec_direction_kind
+record_execution_direction (void)
+{
+  return record_execution_dir;
+}
+
+static void
 init_record_ops (void)
 {
   record_ops.to_shortname = "record";
@@ -1746,6 +1875,10 @@ init_record_ops (void)
   /* Add bookmark target methods.  */
   record_ops.to_get_bookmark = record_get_bookmark;
   record_ops.to_goto_bookmark = record_goto_bookmark;
+  record_ops.to_async = record_async;
+  record_ops.to_can_async_p = record_can_async_p;
+  record_ops.to_is_async_p = record_is_async_p;
+  record_ops.to_execution_direction = record_execution_direction;
   record_ops.to_magic = OPS_MAGIC;
 }
 
@@ -1756,6 +1889,18 @@ record_core_resume (struct target_ops *ops, ptid_t ptid, int step,
                     enum target_signal signal)
 {
   record_resume_step = step;
+  record_resumed = 1;
+  record_execution_dir = execution_direction;
+
+  /* We are about to start executing the inferior (or simulate it),
+     let's register it with the event loop.  */
+  if (target_can_async_p ())
+    {
+      target_async (inferior_event_handler, 0);
+
+      /* Notify the event loop there's an event to wait for.  */
+      mark_async_event_handler (record_async_inferior_event_token);
+    }
 }
 
 /* "to_kill" method for prec over corefile.  */
@@ -1955,6 +2100,10 @@ init_record_core_ops (void)
   /* Add bookmark target methods.  */
   record_core_ops.to_get_bookmark = record_get_bookmark;
   record_core_ops.to_goto_bookmark = record_goto_bookmark;
+  record_core_ops.to_async = record_async;
+  record_core_ops.to_can_async_p = record_can_async_p;
+  record_core_ops.to_is_async_p = record_is_async_p;
+  record_core_ops.to_execution_direction = record_execution_direction;
   record_core_ops.to_magic = OPS_MAGIC;
 }
 

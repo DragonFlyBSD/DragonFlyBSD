@@ -1,6 +1,6 @@
 /* Python pretty-printing
 
-   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -526,7 +526,7 @@ print_children (PyObject *printer, const char *hint,
   for (i = 0; i < options->print_max; ++i)
     {
       PyObject *py_v, *item = PyIter_Next (iter);
-      char *name;
+      const char *name;
       struct cleanup *inner_cleanup;
 
       if (! item)

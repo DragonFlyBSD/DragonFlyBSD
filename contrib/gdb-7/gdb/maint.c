@@ -1,7 +1,7 @@
 /* Support for GDB maintenance commands.
 
-   Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1999, 2000, 2001, 2002,
-   2003, 2004, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1992-1997, 1999-2004, 2007-2012 Free Software
+   Foundation, Inc.
 
    Written by Fred Fish at Cygnus Support.
 
@@ -74,19 +74,7 @@ show_watchdog (struct ui_file *file, int from_tty,
   fprintf_filtered (file, _("Watchdog timer is %s.\n"), value);
 }
 
-/*
-
-   LOCAL FUNCTION
-
-   maintenance_command -- access the maintenance subcommands
-
-   SYNOPSIS
-
-   void maintenance_command (char *args, int from_tty)
-
-   DESCRIPTION
-
- */
+/* Access the maintenance subcommands.  */
 
 static void
 maintenance_command (char *args, int from_tty)

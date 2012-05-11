@@ -158,6 +158,9 @@
    */
 #undef HAVE_DIRENT_H
 
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#undef HAVE_DLFCN_H
+
 /* Define if ELF support should be included. */
 #undef HAVE_ELF
 
@@ -716,8 +719,21 @@
 /* Define to 1 if you have the `_mcleanup' function. */
 #undef HAVE__MCLEANUP
 
+/* Path of directory of iconv program. */
+#undef ICONV_BIN
+
+/* Define if the iconv directory should be relocated when GDB is moved. */
+#undef ICONV_BIN_RELOCATABLE
+
 /* Define as const if the declaration of iconv() needs const. */
 #undef ICONV_CONST
+
+/* directory to load the JIT readers from */
+#undef JIT_READER_DIR
+
+/* Define if the jit-reader-dir directory should be relocated when GDB is
+   moved. */
+#undef JIT_READER_DIR_RELOCATABLE
 
 /* Define to a substitute value for mmap()'s MAP_ANONYMOUS flag. */
 #undef MAP_ANONYMOUS
@@ -803,6 +819,15 @@
 
 /* The size of `long', as computed by sizeof. */
 #undef SIZEOF_LONG
+
+/* The size of `unsigned long', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED_LONG
+
+/* The size of `unsigned long long', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED_LONG_LONG
+
+/* The size of `unsigned __int128', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED___INT128
 
 /* Define to l, ll, u, ul, ull, etc., as suitable for constants of type
    'size_t'. */
@@ -946,9 +971,6 @@
 
 /* Define to `int' if <sys/types.h> does not define. */
 #undef pid_t
-
-/* readline-6.0 started to use different name. */
-#undef readline_echoing_p
 
 /* Define to the equivalent of the C99 'restrict' keyword, or to
    nothing if this is not supported.  Do not define if restrict is
