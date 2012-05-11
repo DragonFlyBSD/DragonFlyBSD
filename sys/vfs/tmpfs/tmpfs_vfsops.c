@@ -186,14 +186,21 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	pages_limit = vm_swap_max + vmstats.v_page_count / 2;
 
-	if (size_max == 0)
+	if (size_max == 0) {
 		pages = pages_limit / 2;
-	else if (size_max < PAGE_SIZE)
+	} else if (size_max < PAGE_SIZE) {
 		pages = 1;
-	else if (OFF_TO_IDX(size_max) > pages_limit)
-		pages = pages_limit;
-	else
+	} else if (OFF_TO_IDX(size_max) > pages_limit) {
+		/*
+		 * do not force pages = pages_limit for this case, otherwise
+		 * we might not honor tmpfs size requests from /etc/fstab
+		 * during boot because they are mounted prior to swap being
+		 * turned on.
+		 */
 		pages = OFF_TO_IDX(size_max);
+	} else {
+		pages = OFF_TO_IDX(size_max);
+	}
 
 	if (nodes_max == 0)
 		nodes = 3 + pages * PAGE_SIZE / 1024;
