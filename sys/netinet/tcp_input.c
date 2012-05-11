@@ -1907,7 +1907,8 @@ after_listen:
 				tcp_sack_update_scoreboard(tp, &to);
 			if (!tcp_callout_active(tp, tp->tt_rexmt) ||
 			    th->th_ack != tp->snd_una) {
-				tcpstat.tcps_rcvdupack++;
+				if (tlen == 0 && tiwin == tp->snd_wnd)
+					tcpstat.tcps_rcvdupack++;
 				tp->t_dupacks = 0;
 				break;
 			}
