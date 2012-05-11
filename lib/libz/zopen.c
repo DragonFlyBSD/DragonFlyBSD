@@ -2,7 +2,6 @@
  * Public domain stdio wrapper for libz, written by Johan Danielsson.
  *
  * $FreeBSD: src/lib/libz/zopen.c,v 1.2.2.2 2003/02/01 13:33:12 sobomax Exp $
- * $DragonFly: src/lib/libz/zopen.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
  */
 
 #include <stdio.h>
@@ -23,6 +22,12 @@ xgzwrite(void *cookie, const char *data, int size)
     return gzwrite(cookie, (void*)data, size);
 }
 
+static int
+xgzclose(void *cookie)
+{
+    return gzclose((gzFile) cookie);
+}
+
 FILE *
 zopen(const char *fname, const char *mode)
 {
@@ -31,7 +36,7 @@ zopen(const char *fname, const char *mode)
 	return NULL;
 
     if(*mode == 'r')
-	return (funopen(gz, xgzread, NULL, NULL, gzclose));
+	return (funopen(gz, xgzread, NULL, NULL, xgzclose));
     else
-	return (funopen(gz, NULL, xgzwrite, NULL, gzclose));
+	return (funopen(gz, NULL, xgzwrite, NULL, xgzclose));
 }

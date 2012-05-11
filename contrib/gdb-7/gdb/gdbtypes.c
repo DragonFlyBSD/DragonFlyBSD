@@ -1,8 +1,6 @@
 /* Support routines for manipulating internal types for GDB.
 
-   Copyright (C) 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001, 2002,
-   2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1992-1996, 1998-2012 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support, using pieces from other GDB modules.
 
@@ -60,7 +58,7 @@ const struct rank VOID_PTR_CONVERSION_BADNESS = {2,0};
 const struct rank BOOL_PTR_CONVERSION_BADNESS = {3,0};
 const struct rank BASE_CONVERSION_BADNESS = {2,0};
 const struct rank REFERENCE_CONVERSION_BADNESS = {2,0};
-
+const struct rank NULL_POINTER_CONVERSION_BADNESS = {2,0};
 const struct rank NS_POINTER_CONVERSION_BADNESS = {10,0};
 
 /* Floatformat pairs.  */
@@ -449,6 +447,8 @@ make_function_type (struct type *type, struct type **typeptr)
 
   TYPE_LENGTH (ntype) = 1;
   TYPE_CODE (ntype) = TYPE_CODE_FUNC;
+
+  INIT_FUNC_SPECIFIC (ntype);
 
   return ntype;
 }
@@ -1105,13 +1105,39 @@ type_name_no_tag (const struct type *type)
   return TYPE_NAME (type);
 }
 
+/* A wrapper of type_name_no_tag which calls error if the type is anonymous.
+   Since GCC PR debug/47510 DWARF provides associated information to detect the
+   anonymous class linkage name from its typedef.
+
+   Parameter TYPE should not yet have CHECK_TYPEDEF applied, this function will
+   apply it itself.  */
+
+const char *
+type_name_no_tag_or_error (struct type *type)
+{
+  struct type *saved_type = type;
+  const char *name;
+  struct objfile *objfile;
+
+  CHECK_TYPEDEF (type);
+
+  name = type_name_no_tag (type);
+  if (name != NULL)
+    return name;
+
+  name = type_name_no_tag (saved_type);
+  objfile = TYPE_OBJFILE (saved_type);
+  error (_("Invalid anonymous type %s [in module %s], GCC PR debug/47510 bug?"),
+	 name ? name : "<anonymous>", objfile ? objfile->name : "<arch>");
+}
+
 /* Lookup a typedef or primitive type named NAME, visible in lexical
    block BLOCK.  If NOERR is nonzero, return zero if NAME is not
    suitably defined.  */
 
 struct type *
 lookup_typename (const struct language_defn *language,
-		 struct gdbarch *gdbarch, char *name,
+		 struct gdbarch *gdbarch, const char *name,
 		 const struct block *block, int noerr)
 {
   struct symbol *sym;
@@ -1168,7 +1194,7 @@ lookup_signed_typename (const struct language_defn *language,
    visible in lexical block BLOCK.  */
 
 struct type *
-lookup_struct (char *name, struct block *block)
+lookup_struct (const char *name, struct block *block)
 {
   struct symbol *sym;
 
@@ -1190,7 +1216,7 @@ lookup_struct (char *name, struct block *block)
    visible in lexical block BLOCK.  */
 
 struct type *
-lookup_union (char *name, struct block *block)
+lookup_union (const char *name, struct block *block)
 {
   struct symbol *sym;
   struct type *t;
@@ -1215,7 +1241,7 @@ lookup_union (char *name, struct block *block)
    visible in lexical block BLOCK.  */
 
 struct type *
-lookup_enum (char *name, struct block *block)
+lookup_enum (const char *name, struct block *block)
 {
   struct symbol *sym;
 
@@ -1425,6 +1451,10 @@ stub_noname_complaint (void)
    NOTE: This will return a typedef if TYPE_TARGET_TYPE for the typedef has
    not been computed and we're either in the middle of reading symbols, or
    there was no name for the typedef in the debug info.
+
+   NOTE: Lookup of opaque types can throw errors for invalid symbol files.
+   QUITs in the symbol reading code can also throw.
+   Thus this function can throw an exception.
 
    If TYPE is a TYPE_CODE_TYPEDEF, its length is updated to the length of
    the target type.
@@ -1925,7 +1955,7 @@ init_type (enum type_code code, int length, int flags,
         TYPE_SPECIFIC_FIELD (type) = TYPE_SPECIFIC_FLOATFORMAT;
         break;
       case TYPE_CODE_FUNC:
-        TYPE_SPECIFIC_FIELD (type) = TYPE_SPECIFIC_CALLING_CONVENTION;
+	INIT_FUNC_SPECIFIC (type);
         break;
     }
   return type;
@@ -2255,7 +2285,7 @@ compare_badness (struct badness_vector *a, struct badness_vector *b)
 
 struct badness_vector *
 rank_function (struct type **parms, int nparms, 
-	       struct type **args, int nargs)
+	       struct value **args, int nargs)
 {
   int i;
   struct badness_vector *bv;
@@ -2278,7 +2308,8 @@ rank_function (struct type **parms, int nparms,
 
   /* Now rank all the parameters of the candidate function.  */
   for (i = 1; i <= min_len; i++)
-    bv->rank[i] = rank_one_type (parms[i-1], args[i-1]);
+    bv->rank[i] = rank_one_type (parms[i - 1], value_type (args[i - 1]),
+				 args[i - 1]);
 
   /* If more arguments than parameters, add dummy entries.  */
   for (i = min_len + 1; i <= nargs; i++)
@@ -2377,6 +2408,7 @@ types_equal (struct type *a, struct type *b)
  * PARM is intended to be the parameter type of a function; and
  * ARG is the supplied argument's type.  This function tests if
  * the latter can be converted to the former.
+ * VALUE is the argument's value or NULL if none (or called recursively)
  *
  * Return 0 if they are identical types;
  * Otherwise, return an integer which corresponds to how compatible
@@ -2384,7 +2416,7 @@ types_equal (struct type *a, struct type *b)
  * Generally the "bad" conversions are all uniformly assigned a 100.  */
 
 struct rank
-rank_one_type (struct type *parm, struct type *arg)
+rank_one_type (struct type *parm, struct type *arg, struct value *value)
 {
   struct rank rank = {0,0};
 
@@ -2400,10 +2432,10 @@ rank_one_type (struct type *parm, struct type *arg)
   /* See through references, since we can almost make non-references
      references.  */
   if (TYPE_CODE (arg) == TYPE_CODE_REF)
-    return (sum_ranks (rank_one_type (parm, TYPE_TARGET_TYPE (arg)),
+    return (sum_ranks (rank_one_type (parm, TYPE_TARGET_TYPE (arg), NULL),
                        REFERENCE_CONVERSION_BADNESS));
   if (TYPE_CODE (parm) == TYPE_CODE_REF)
-    return (sum_ranks (rank_one_type (TYPE_TARGET_TYPE (parm), arg),
+    return (sum_ranks (rank_one_type (TYPE_TARGET_TYPE (parm), arg, NULL),
                        REFERENCE_CONVERSION_BADNESS));
   if (overload_debug)
   /* Debugging only.  */
@@ -2440,8 +2472,16 @@ rank_one_type (struct type *parm, struct type *arg)
 	    return EXACT_MATCH_BADNESS;
 	  return INCOMPATIBLE_TYPE_BADNESS;
 	case TYPE_CODE_FUNC:
-	  return rank_one_type (TYPE_TARGET_TYPE (parm), arg);
+	  return rank_one_type (TYPE_TARGET_TYPE (parm), arg, NULL);
 	case TYPE_CODE_INT:
+	  if (value != NULL && TYPE_CODE (value_type (value)) == TYPE_CODE_INT
+	      && value_as_long (value) == 0)
+	    {
+	      /* Null pointer conversion: allow it to be cast to a pointer.
+		 [4.10.1 of C++ standard draft n3290]  */
+	      return NULL_POINTER_CONVERSION_BADNESS;
+	    }
+	  /* fall through  */
 	case TYPE_CODE_ENUM:
 	case TYPE_CODE_FLAGS:
 	case TYPE_CODE_CHAR:
@@ -2456,7 +2496,7 @@ rank_one_type (struct type *parm, struct type *arg)
 	case TYPE_CODE_PTR:
 	case TYPE_CODE_ARRAY:
 	  return rank_one_type (TYPE_TARGET_TYPE (parm), 
-				TYPE_TARGET_TYPE (arg));
+				TYPE_TARGET_TYPE (arg), NULL);
 	default:
 	  return INCOMPATIBLE_TYPE_BADNESS;
 	}
@@ -2464,7 +2504,7 @@ rank_one_type (struct type *parm, struct type *arg)
       switch (TYPE_CODE (arg))
 	{
 	case TYPE_CODE_PTR:	/* funcptr -> func */
-	  return rank_one_type (parm, TYPE_TARGET_TYPE (arg));
+	  return rank_one_type (parm, TYPE_TARGET_TYPE (arg), NULL);
 	default:
 	  return INCOMPATIBLE_TYPE_BADNESS;
 	}
@@ -2720,7 +2760,7 @@ rank_one_type (struct type *parm, struct type *arg)
 	  /* Not in C++ */
 	case TYPE_CODE_SET:
 	  return rank_one_type (TYPE_FIELD_TYPE (parm, 0), 
-				TYPE_FIELD_TYPE (arg, 0));
+				TYPE_FIELD_TYPE (arg, 0), NULL);
 	default:
 	  return INCOMPATIBLE_TYPE_BADNESS;
 	}
@@ -3231,9 +3271,10 @@ recursive_dump_type (struct type *type, int spaces)
 	puts_filtered ("\n");
 	break;
 
-      case TYPE_SPECIFIC_CALLING_CONVENTION:
+      case TYPE_SPECIFIC_FUNC:
 	printfi_filtered (spaces, "calling_convention %d\n",
                           TYPE_CALLING_CONVENTION (type));
+	/* tail_call_list is not printed.  */
 	break;
     }
 
@@ -3628,12 +3669,15 @@ append_composite_type_field_aligned (struct type *t, char *name,
 
 	  if (alignment)
 	    {
-	      int left = FIELD_BITPOS (f[0]) % (alignment * TARGET_CHAR_BIT);
+	      int left;
+
+	      alignment *= TARGET_CHAR_BIT;
+	      left = FIELD_BITPOS (f[0]) % alignment;
 
 	      if (left)
 		{
-		  FIELD_BITPOS (f[0]) += left;
-		  TYPE_LENGTH (t) += left / TARGET_CHAR_BIT;
+		  FIELD_BITPOS (f[0]) += (alignment - left);
+		  TYPE_LENGTH (t) += (alignment - left) / TARGET_CHAR_BIT;
 		}
 	    }
 	}

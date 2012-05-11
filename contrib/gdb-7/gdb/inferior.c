@@ -1,6 +1,6 @@
 /* Multi-process control for GDB, the GNU debugger.
 
-   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -31,6 +31,7 @@
 #include "symfile.h"
 #include "environ.h"
 #include "cli/cli-utils.h"
+#include "continuations.h"
 
 void _initialize_inferiors (void);
 
@@ -495,7 +496,7 @@ prune_inferiors (void)
     {
       if (ss == current
 	  || !ss->removable
-	  || (ss->pid != FAKE_PROCESS_ID))
+	  || ss->pid != FAKE_PROCESS_ID)
 	{
 	  ss_link = &ss->next;
 	  ss = *ss_link;
@@ -581,7 +582,7 @@ print_inferior (struct ui_out *uiout, char *requested_inferiors)
 	ui_out_field_string (uiout, "target-id",
 			     target_pid_to_str (pid_to_ptid (inf->pid)));
       else
-        ui_out_field_string (uiout, "target-id", "<null>");
+	ui_out_field_string (uiout, "target-id", "<null>");
 
       if (inf->pspace->ebfd)
 	ui_out_field_string (uiout, "exec",
@@ -731,10 +732,10 @@ inferior_command (char *args, int from_tty)
     }
 
   if (inf->pid != FAKE_PROCESS_ID && is_running (inferior_ptid))
-    ui_out_text (uiout, "(running)\n");
+    ui_out_text (current_uiout, "(running)\n");
   else if (inf->pid != FAKE_PROCESS_ID)
     {
-      ui_out_text (uiout, "\n");
+      ui_out_text (current_uiout, "\n");
       print_stack_frame (get_selected_frame (NULL), 1, SRC_AND_LOC);
     }
 }
@@ -744,7 +745,7 @@ inferior_command (char *args, int from_tty)
 static void
 info_inferiors_command (char *args, int from_tty)
 {
-  print_inferior (uiout, args);
+  print_inferior (current_uiout, args);
 }
 
 /* remove-inferior ID */
@@ -1070,7 +1071,7 @@ initialize_inferiors (void)
      can only allocate an inferior when all those modules have done
      that.  Do this after initialize_progspace, due to the
      current_program_space reference.  */
-     
+
   current_inferior_ = add_inferior (FAKE_PROCESS_ID);
   current_inferior_->pspace = current_program_space;
   current_inferior_->aspace = current_program_space->aspace;

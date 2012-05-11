@@ -1,7 +1,6 @@
 /* Target-dependent code for the i386.
 
-   Copyright (C) 2001, 2002, 2003, 2004, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2001-2004, 2006-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -311,10 +310,11 @@ extern int i386_ymm_regnum_p (struct gdbarch *gdbarch, int regnum);
 extern const char *i386_pseudo_register_name (struct gdbarch *gdbarch,
 					      int regnum);
 
-extern enum register_status i386_pseudo_register_read (struct gdbarch *gdbarch,
-						       struct regcache *regcache,
-						       int regnum,
-						       gdb_byte *buf);
+extern void i386_pseudo_register_read_into_value (struct gdbarch *gdbarch,
+						  struct regcache *regcache,
+						  int regnum,
+						  struct value *result);
+
 extern void i386_pseudo_register_write (struct gdbarch *gdbarch,
 					struct regcache *regcache,
 					int regnum, const gdb_byte *buf);

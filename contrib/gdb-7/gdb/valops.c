@@ -1,8 +1,6 @@
 /* Perform non-arithmetic operations on values, for GDB.
 
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
-   2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -61,20 +59,20 @@ static struct value *search_struct_method (const char *, struct value **,
 					   struct value **,
 					   int, int *, struct type *);
 
-static int find_oload_champ_namespace (struct type **, int,
+static int find_oload_champ_namespace (struct value **, int,
 				       const char *, const char *,
 				       struct symbol ***,
 				       struct badness_vector **,
 				       const int no_adl);
 
 static
-int find_oload_champ_namespace_loop (struct type **, int,
+int find_oload_champ_namespace_loop (struct value **, int,
 				     const char *, const char *,
 				     int, struct symbol ***,
 				     struct badness_vector **, int *,
 				     const int no_adl);
 
-static int find_oload_champ (struct type **, int, int, int,
+static int find_oload_champ (struct value **, int, int, int,
 			     struct fn_field *, struct symbol **,
 			     struct badness_vector **);
 
@@ -860,14 +858,14 @@ value_zero (struct type *type, enum lval_type lv)
 {
   struct value *val = allocate_value (type);
 
-  VALUE_LVAL (val) = lv;
+  VALUE_LVAL (val) = (lv == lval_computed ? not_lval : lv);
   return val;
 }
 
-/* Create a value of numeric type TYPE that is one, and return it.  */
+/* Create a not_lval value of numeric type TYPE that is one, and return it.  */
 
 struct value *
-value_one (struct type *type, enum lval_type lv)
+value_one (struct type *type)
 {
   struct type *type1 = check_typedef (type);
   struct value *val;
@@ -901,7 +899,7 @@ value_one (struct type *type, enum lval_type lv)
       val = allocate_value (type);
       for (i = 0; i < high_bound - low_bound + 1; i++)
 	{
-	  tmp = value_one (eltype, lv);
+	  tmp = value_one (eltype);
 	  memcpy (value_contents_writeable (val) + i * TYPE_LENGTH (eltype),
 		  value_contents_all (tmp), TYPE_LENGTH (eltype));
 	}
@@ -911,7 +909,9 @@ value_one (struct type *type, enum lval_type lv)
       error (_("Not a numeric type."));
     }
 
-  VALUE_LVAL (val) = lv;
+  /* value_one result is never used for assignments to.  */
+  gdb_assert (VALUE_LVAL (val) == not_lval);
+
   return val;
 }
 
@@ -1108,7 +1108,8 @@ value_fetch_lazy (struct value *val)
 	 watchpoints from trying to watch the saved frame pointer.  */
       value_free_to_mark (mark);
     }
-  else if (VALUE_LVAL (val) == lval_computed)
+  else if (VALUE_LVAL (val) == lval_computed
+	   && value_computed_funcs (val)->read != NULL)
     value_computed_funcs (val)->read (val);
   else if (value_optimized_out (val))
     /* Keep it optimized out.  */;
@@ -1377,11 +1378,15 @@ value_assign (struct value *toval, struct value *fromval)
 
     case lval_computed:
       {
-	struct lval_funcs *funcs = value_computed_funcs (toval);
+	const struct lval_funcs *funcs = value_computed_funcs (toval);
 
-	funcs->write (toval, fromval);
+	if (funcs->write != NULL)
+	  {
+	    funcs->write (toval, fromval);
+	    break;
+	  }
       }
-      break;
+      /* Fall through.  */
 
     default:
       error (_("Left operand of assignment is not an lvalue."));
@@ -1484,9 +1489,8 @@ value_repeat (struct value *arg1, int count)
 }
 
 struct value *
-value_of_variable (struct symbol *var, struct block *b)
+value_of_variable (struct symbol *var, const struct block *b)
 {
-  struct value *val;
   struct frame_info *frame;
 
   if (!symbol_read_needs_frame (var))
@@ -1507,11 +1511,7 @@ value_of_variable (struct symbol *var, struct block *b)
 	}
     }
 
-  val = read_var_value (var, frame);
-  if (!val)
-    error (_("Address of symbol \"%s\" is unknown."), SYMBOL_PRINT_NAME (var));
-
-  return val;
+  return read_var_value (var, frame);
 }
 
 struct value *
@@ -1740,7 +1740,7 @@ value_ind (struct value *arg1)
 
   if (VALUE_LVAL (arg1) == lval_computed)
     {
-      struct lval_funcs *funcs = value_computed_funcs (arg1);
+      const struct lval_funcs *funcs = value_computed_funcs (arg1);
 
       if (funcs->indirect)
 	{
@@ -2489,7 +2489,7 @@ value_find_oload_method_list (struct value **argp, const char *method,
 			   basetype, boffset);
 }
 
-/* Given an array of argument types (ARGTYPES) (which includes an
+/* Given an array of arguments (ARGS) (which includes an
    entry for "this" in the case of C++ methods), the number of
    arguments NARGS, the NAME of a function whether it's a method or
    not (METHOD), and the degree of laxness (LAX) in conforming to
@@ -2532,13 +2532,14 @@ value_find_oload_method_list (struct value **argp, const char *method,
    resolution is permitted.  */
 
 int
-find_overload_match (struct type **arg_types, int nargs, 
+find_overload_match (struct value **args, int nargs,
 		     const char *name, enum oload_search_type method,
 		     int lax, struct value **objp, struct symbol *fsym,
 		     struct value **valp, struct symbol **symp, 
 		     int *staticp, const int no_adl)
 {
   struct value *obj = (objp ? *objp : NULL);
+  struct type *obj_type = obj ? value_type (obj) : NULL;
   /* Index of best overloaded function.  */
   int func_oload_champ = -1;
   int method_oload_champ = -1;
@@ -2585,6 +2586,7 @@ find_overload_match (struct type **arg_types, int nargs,
 	  if (*valp)
 	    {
 	      *staticp = 1;
+	      do_cleanups (all_cleanups);
 	      return 0;
 	    }
 	}
@@ -2606,7 +2608,7 @@ find_overload_match (struct type **arg_types, int nargs,
       if (fns_ptr)
 	{
 	  gdb_assert (TYPE_DOMAIN_TYPE (fns_ptr[0].type) != NULL);
-	  method_oload_champ = find_oload_champ (arg_types, nargs, method,
+	  method_oload_champ = find_oload_champ (args, nargs, method,
 	                                         num_fns, fns_ptr,
 	                                         oload_syms, &method_badness);
 
@@ -2628,7 +2630,8 @@ find_overload_match (struct type **arg_types, int nargs,
          and non member function, the first argument must now be
          dereferenced.  */
       if (method == BOTH)
-	arg_types[0] = TYPE_TARGET_TYPE (arg_types[0]);
+	deprecated_set_value_type (args[0],
+				   TYPE_TARGET_TYPE (value_type (args[0])));
 
       if (fsym)
         {
@@ -2670,10 +2673,11 @@ find_overload_match (struct type **arg_types, int nargs,
       if (func_name == NULL)
         {
 	  *symp = fsym;
+	  do_cleanups (all_cleanups);
           return 0;
         }
 
-      func_oload_champ = find_oload_champ_namespace (arg_types, nargs,
+      func_oload_champ = find_oload_champ_namespace (args, nargs,
                                                      func_name,
                                                      qualified_name,
                                                      &oload_syms,
@@ -2777,11 +2781,11 @@ find_overload_match (struct type **arg_types, int nargs,
   if (objp)
     {
       struct type *temp_type = check_typedef (value_type (temp));
-      struct type *obj_type = check_typedef (value_type (*objp));
+      struct type *objtype = check_typedef (obj_type);
 
       if (TYPE_CODE (temp_type) != TYPE_CODE_PTR
-	  && (TYPE_CODE (obj_type) == TYPE_CODE_PTR
-	      || TYPE_CODE (obj_type) == TYPE_CODE_REF))
+	  && (TYPE_CODE (objtype) == TYPE_CODE_PTR
+	      || TYPE_CODE (objtype) == TYPE_CODE_REF))
 	{
 	  temp = value_addr (temp);
 	}
@@ -2810,7 +2814,7 @@ find_overload_match (struct type **arg_types, int nargs,
    performned.  */
 
 static int
-find_oload_champ_namespace (struct type **arg_types, int nargs,
+find_oload_champ_namespace (struct value **args, int nargs,
 			    const char *func_name,
 			    const char *qualified_name,
 			    struct symbol ***oload_syms,
@@ -2819,7 +2823,7 @@ find_oload_champ_namespace (struct type **arg_types, int nargs,
 {
   int oload_champ;
 
-  find_oload_champ_namespace_loop (arg_types, nargs,
+  find_oload_champ_namespace_loop (args, nargs,
 				   func_name,
 				   qualified_name, 0,
 				   oload_syms, oload_champ_bv,
@@ -2839,7 +2843,7 @@ find_oload_champ_namespace (struct type **arg_types, int nargs,
    *OLOAD_CHAMP_BV.  */
 
 static int
-find_oload_champ_namespace_loop (struct type **arg_types, int nargs,
+find_oload_champ_namespace_loop (struct value **args, int nargs,
 				 const char *func_name,
 				 const char *qualified_name,
 				 int namespace_len,
@@ -2876,7 +2880,7 @@ find_oload_champ_namespace_loop (struct type **arg_types, int nargs,
     {
       searched_deeper = 1;
 
-      if (find_oload_champ_namespace_loop (arg_types, nargs,
+      if (find_oload_champ_namespace_loop (args, nargs,
 					   func_name, qualified_name,
 					   next_namespace_len,
 					   oload_syms, oload_champ_bv,
@@ -2905,12 +2909,22 @@ find_oload_champ_namespace_loop (struct type **arg_types, int nargs,
   /* If we have reached the deepest level perform argument
      determined lookup.  */
   if (!searched_deeper && !no_adl)
-    make_symbol_overload_list_adl (arg_types, nargs, func_name);
+    {
+      int ix;
+      struct type **arg_types;
+
+      /* Prepare list of argument types for overload resolution.  */
+      arg_types = (struct type **)
+	alloca (nargs * (sizeof (struct type *)));
+      for (ix = 0; ix < nargs; ix++)
+	arg_types[ix] = value_type (args[ix]);
+      make_symbol_overload_list_adl (arg_types, nargs, func_name);
+    }
 
   while (new_oload_syms[num_fns])
     ++num_fns;
 
-  new_oload_champ = find_oload_champ (arg_types, nargs, 0, num_fns,
+  new_oload_champ = find_oload_champ (args, nargs, 0, num_fns,
 				      NULL, new_oload_syms,
 				      &new_oload_champ_bv);
 
@@ -2947,7 +2961,7 @@ find_oload_champ_namespace_loop (struct type **arg_types, int nargs,
     }
 }
 
-/* Look for a function to take NARGS args of types ARG_TYPES.  Find
+/* Look for a function to take NARGS args of ARGS.  Find
    the best match from among the overloaded methods or functions
    (depending on METHOD) given by FNS_PTR or OLOAD_SYMS, respectively.
    The number of methods/functions in the list is given by NUM_FNS.
@@ -2957,7 +2971,7 @@ find_oload_champ_namespace_loop (struct type **arg_types, int nargs,
    It is the caller's responsibility to free *OLOAD_CHAMP_BV.  */
 
 static int
-find_oload_champ (struct type **arg_types, int nargs, int method,
+find_oload_champ (struct value **args, int nargs, int method,
 		  int num_fns, struct fn_field *fns_ptr,
 		  struct symbol **oload_syms,
 		  struct badness_vector **oload_champ_bv)
@@ -3003,7 +3017,7 @@ find_oload_champ (struct type **arg_types, int nargs, int method,
       /* Compare parameter types to supplied argument types.  Skip
          THIS for static methods.  */
       bv = rank_function (parm_types, nparms, 
-			  arg_types + static_offset,
+			  args + static_offset,
 			  nargs - static_offset);
 
       if (!*oload_champ_bv)
@@ -3077,6 +3091,7 @@ classify_oload_match (struct badness_vector *oload_champ_bv,
 		      int static_offset)
 {
   int ix;
+  enum oload_classification worst = STANDARD;
 
   for (ix = 1; ix <= nargs - static_offset; ix++)
     {
@@ -3089,23 +3104,27 @@ classify_oload_match (struct badness_vector *oload_champ_bv,
          NS_POINTER_CONVERSION_BADNESS or worse return NON_STANDARD.  */
       else if (compare_ranks (oload_champ_bv->rank[ix],
                               NS_POINTER_CONVERSION_BADNESS) <= 0)
-	return NON_STANDARD;	/* Non-standard type conversions
+	worst = NON_STANDARD;	/* Non-standard type conversions
 				   needed.  */
     }
 
-  return STANDARD;		/* Only standard conversions needed.  */
+  /* If no INCOMPATIBLE classification was found, return the worst one
+     that was found (if any).  */
+  return worst;
 }
 
 /* C++: return 1 is NAME is a legitimate name for the destructor of
    type TYPE.  If TYPE does not have a destructor, or if NAME is
-   inappropriate for TYPE, an error is signaled.  */
+   inappropriate for TYPE, an error is signaled.  Parameter TYPE should not yet
+   have CHECK_TYPEDEF applied, this function will apply it itself.  */
+
 int
-destructor_name_p (const char *name, const struct type *type)
+destructor_name_p (const char *name, struct type *type)
 {
   if (name[0] == '~')
     {
-      char *dname = type_name_no_tag (type);
-      char *cp = strchr (dname, '<');
+      const char *dname = type_name_no_tag_or_error (type);
+      const char *cp = strchr (dname, '<');
       unsigned int len;
 
       /* Do not compare the template part for template classes.  */
@@ -3225,7 +3244,7 @@ compare_parameters (struct type *t1, struct type *t2, int skip_artificial)
       for (i = 0; i < TYPE_NFIELDS (t2); ++i)
 	{
 	  if (compare_ranks (rank_one_type (TYPE_FIELD_TYPE (t1, start + i),
-	                                   TYPE_FIELD_TYPE (t2, i)),
+					    TYPE_FIELD_TYPE (t2, i), NULL),
 	                     EXACT_MATCH_BADNESS) != 0)
 	    return 0;
 	}
@@ -3560,6 +3579,13 @@ value_full_object (struct value *argp,
   if (!real_type || real_type == value_enclosing_type (argp))
     return argp;
 
+  /* In a destructor we might see a real type that is a superclass of
+     the object's type.  In this case it is better to leave the object
+     as-is.  */
+  if (full
+      && TYPE_LENGTH (real_type) < TYPE_LENGTH (value_enclosing_type (argp)))
+    return argp;
+
   /* If we have the full object, but for some reason the enclosing
      type is wrong, set it.  */
   /* pai: FIXME -- sounds iffy */
@@ -3594,73 +3620,46 @@ value_full_object (struct value *argp,
 }
 
 
-/* Return the value of the local variable, if one exists.
-   Flag COMPLAIN signals an error if the request is made in an
-   inappropriate context.  */
+/* Return the value of the local variable, if one exists.  Throw error
+   otherwise, such as if the request is made in an inappropriate context.  */
 
 struct value *
-value_of_local (const char *name, int complain)
+value_of_this (const struct language_defn *lang)
 {
-  struct symbol *func, *sym;
+  struct symbol *sym;
   struct block *b;
-  struct value * ret;
   struct frame_info *frame;
 
-  if (complain)
-    frame = get_selected_frame (_("no frame selected"));
-  else
-    {
-      frame = deprecated_safe_get_selected_frame ();
-      if (frame == 0)
-	return 0;
-    }
+  if (!lang->la_name_of_this)
+    error (_("no `this' in current language"));
 
-  func = get_frame_function (frame);
-  if (!func)
-    {
-      if (complain)
-	error (_("no `%s' in nameless context"), name);
-      else
-	return 0;
-    }
+  frame = get_selected_frame (_("no frame selected"));
 
-  b = SYMBOL_BLOCK_VALUE (func);
-  if (dict_empty (BLOCK_DICT (b)))
-    {
-      if (complain)
-	error (_("no args, no `%s'"), name);
-      else
-	return 0;
-    }
+  b = get_frame_block (frame, NULL);
 
-  /* Calling lookup_block_symbol is necessary to get the LOC_REGISTER
-     symbol instead of the LOC_ARG one (if both exist).  */
-  sym = lookup_block_symbol (b, name, VAR_DOMAIN);
+  sym = lookup_language_this (lang, b);
   if (sym == NULL)
-    {
-      if (complain)
-	error (_("current stack frame does not contain a variable named `%s'"),
-	       name);
-      else
-	return NULL;
-    }
+    error (_("current stack frame does not contain a variable named `%s'"),
+	   lang->la_name_of_this);
 
-  ret = read_var_value (sym, frame);
-  if (ret == 0 && complain)
-    error (_("`%s' argument unreadable"), name);
-  return ret;
+  return read_var_value (sym, frame);
 }
 
-/* C++/Objective-C: return the value of the class instance variable,
-   if one exists.  Flag COMPLAIN signals an error if the request is
-   made in an inappropriate context.  */
+/* Return the value of the local variable, if one exists.  Return NULL
+   otherwise.  Never throw error.  */
 
 struct value *
-value_of_this (int complain)
+value_of_this_silent (const struct language_defn *lang)
 {
-  if (!current_language->la_name_of_this)
-    return 0;
-  return value_of_local (current_language->la_name_of_this, complain);
+  struct value *ret = NULL;
+  volatile struct gdb_exception except;
+
+  TRY_CATCH (except, RETURN_MASK_ERROR)
+    {
+      ret = value_of_this (lang);
+    }
+
+  return ret;
 }
 
 /* Create a slice (sub-string, sub-array) of ARRAY, that is LENGTH

@@ -1,7 +1,7 @@
 /* Handle lists of commands, their decoding and documentation, for GDB.
 
-   Copyright (c) 1986, 1989, 1990, 1991, 1998, 2000, 2001, 2002, 2004, 2007,
-   2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (c) 1986, 1989-1991, 1998, 2000-2002, 2004, 2007-2012 Free
+   Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -126,8 +126,8 @@ set_cmd_completer (struct cmd_list_element *cmd,
   cmd->completer = completer; /* Ok.  */
 }
 
-
 /* Add element named NAME.
+   Space for NAME and DOC must be allocated by the caller.
    CLASS is the top level category into which commands are broken down
    for "help" purposes.
    FUN should be the function to execute the command;
@@ -1018,7 +1018,7 @@ print_doc_line (struct ui_file *stream, char *str)
   line_buffer[p - str] = '\0';
   if (islower (line_buffer[0]))
     line_buffer[0] = toupper (line_buffer[0]);
-  ui_out_text (uiout, line_buffer);
+  ui_out_text (current_uiout, line_buffer);
 }
 
 /* Print one-line help for command C.
@@ -1127,14 +1127,47 @@ find_command_name_length (const char *text)
      Note that this is larger than the character set allowed when
      creating user-defined commands.  */
 
+  /* Recognize '!' as a single character command so that, e.g., "!ls"
+     works as expected.  */
+  if (*p == '!')
+    return 1;
+
   while (isalnum (*p) || *p == '-' || *p == '_'
 	 /* Characters used by TUI specific commands.  */
 	 || *p == '+' || *p == '<' || *p == '>' || *p == '$'
 	 /* Characters used for XDB compatibility.  */
-	 || (xdb_commands && (*p == '!' || *p == '/' || *p == '?')))
+	 || (xdb_commands && (*p == '/' || *p == '?')))
     p++;
 
   return p - text;
+}
+
+/* Return TRUE if NAME is a valid user-defined command name.
+   This is a stricter subset of all gdb commands,
+   see find_command_name_length.  */
+
+int
+valid_user_defined_cmd_name_p (const char *name)
+{
+  const char *p;
+
+  if (*name == '\0')
+    return FALSE;
+
+  /* Alas "42" is a legitimate user-defined command.
+     In the interests of not breaking anything we preserve that.  */
+
+  for (p = name; *p != '\0'; ++p)
+    {
+      if (isalnum (*p)
+	  || *p == '-'
+	  || *p == '_')
+	; /* Ok.  */
+      else
+	return FALSE;
+    }
+
+  return TRUE;
 }
 
 /* This routine takes a line of TEXT and a CLIST in which to start the
@@ -1500,7 +1533,7 @@ deprecated_cmd_warning (char **text)
    
    If LINE refers to an alias, *alias will point to that alias.
    
-   If LINE is a postfix command (i.e. one that is preceeded by a prefix
+   If LINE is a postfix command (i.e. one that is preceded by a prefix
    command) set *prefix_cmd.
    
    Set *cmd to point to the command LINE indicates.
@@ -1528,7 +1561,7 @@ lookup_cmd_composition (char *text,
   
   while (1)
     { 
-      /* Go through as many command lists as we need to 
+      /* Go through as many command lists as we need to,
 	 to find the command TEXT refers to.  */
       
       prev_cmd = *cmd;

@@ -1,7 +1,6 @@
 /* TUI display registers in window.
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
-   2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1998-2004, 2007-2012 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -230,10 +229,19 @@ tui_show_register_group (struct reggroup *group,
 		+ gdbarch_num_pseudo_regs (gdbarch);
        regnum++)
     {
-      /* Must be in the group and have a name.  */
-      if (gdbarch_register_reggroup_p (gdbarch, regnum, group)
-          && gdbarch_register_name (gdbarch, regnum) != 0)
-        nr_regs++;
+      const char *name;
+
+      /* Must be in the group.  */
+      if (!gdbarch_register_reggroup_p (gdbarch, regnum, group))
+	continue;
+
+      /* If the register name is empty, it is undefined for this
+	 processor, so don't display anything.  */
+      name = gdbarch_register_name (gdbarch, regnum);
+      if (name == 0 || *name == '\0')
+	continue;
+
+      nr_regs++;
     }
 
   if (display_info->regs_content_count > 0 && !refresh_values_only)
@@ -273,12 +281,15 @@ tui_show_register_group (struct reggroup *group,
           struct tui_data_element *data;
           const char *name;
 
+          /* Must be in the group.  */
           if (!gdbarch_register_reggroup_p (gdbarch, regnum, group))
             continue;
 
-          name = gdbarch_register_name (gdbarch, regnum);
-          if (name == 0)
-            continue;
+	  /* If the register name is empty, it is undefined for this
+	     processor, so don't display anything.  */
+	  name = gdbarch_register_name (gdbarch, regnum);
+	  if (name == 0 || *name == '\0')
+	    continue;
 
 	  data_item_win =
             &display_info->regs_content[pos]->which_element.data_window;
@@ -292,9 +303,6 @@ tui_show_register_group (struct reggroup *group,
                   data->name = name;
                   data->highlight = FALSE;
                 }
-              if (data->value == (void*) NULL)
-                data->value = (void*) xmalloc (MAX_REGISTER_SIZE);
-
               tui_get_register (frame, data, regnum, 0);
             }
           pos++;
@@ -691,11 +699,9 @@ tui_register_format (struct frame_info *frame,
   char *p, *s;
 
   name = gdbarch_register_name (gdbarch, regnum);
-  if (name == 0)
-    {
-      return;
-    }
-  
+  if (name == 0 || *name == '\0')
+    return;
+
   pagination_enabled = 0;
   old_stdout = gdb_stdout;
   stream = tui_sfileopen (256);
@@ -730,23 +736,22 @@ tui_get_register (struct frame_info *frame,
     *changedp = FALSE;
   if (target_has_registers)
     {
-      gdb_byte buf[MAX_REGISTER_SIZE];
+      struct value *old_val = data->value;
 
-      get_frame_register (frame, regnum, buf);
+      data->value = get_frame_register_value (frame, regnum);
+      release_value (data->value);
       if (changedp)
 	{
 	  struct gdbarch *gdbarch = get_frame_arch (frame);
 	  int size = register_size (gdbarch, regnum);
-	  char *old = (char*) data->value;
-	  int i;
 
-	  for (i = 0; i < size; i++)
-	    if (buf[i] != old[i])
-	      {
-		*changedp = TRUE;
-		old[i] = buf[i];
-	      }
+	  if (value_optimized_out (data->value) != value_optimized_out (old_val)
+	      || !value_available_contents_eq (data->value, 0,
+					       old_val, 0, size))
+	    *changedp = TRUE;
 	}
+
+      value_free (old_val);
 
       /* Reformat the data content if the value changed.  */
       if (changedp == 0 || *changedp == TRUE)

@@ -1,7 +1,7 @@
 /* Fortran language support routines for GDB, the GNU debugger.
 
-   Copyright (C) 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001, 2002, 2003,
-   2004, 2005, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1993-1996, 1998-2005, 2007-2012 Free Software
+   Foundation, Inc.
 
    Contributed by Motorola.  Adapted from the C parser by Farooq Butt
    (fmbutt@engage.sps.mot.com).
@@ -32,6 +32,7 @@
 #include "valprint.h"
 #include "value.h"
 #include "cp-support.h"
+#include "charset.h"
 
 
 /* Following is dubious stuff that had been in the xcoff reader.  */
@@ -76,6 +77,33 @@ static void f_printchar (int c, struct type *type, struct ui_file * stream);
 static void f_emit_char (int c, struct type *type,
 			 struct ui_file * stream, int quoter);
 
+/* Return the encoding that should be used for the character type
+   TYPE.  */
+
+static const char *
+f_get_encoding (struct type *type)
+{
+  const char *encoding;
+
+  switch (TYPE_LENGTH (type))
+    {
+    case 1:
+      encoding = target_charset (get_type_arch (type));
+      break;
+    case 4:
+      if (gdbarch_byte_order (get_type_arch (type)) == BFD_ENDIAN_BIG)
+	encoding = "UTF-32BE";
+      else
+	encoding = "UTF-32LE";
+      break;
+
+    default:
+      error (_("unrecognized character type"));
+    }
+
+  return encoding;
+}
+
 /* Print the character C on STREAM as part of the contents of a literal
    string whose delimiter is QUOTER.  Note that that format for printing
    characters and strings is language specific.
@@ -85,48 +113,12 @@ static void f_emit_char (int c, struct type *type,
 static void
 f_emit_char (int c, struct type *type, struct ui_file *stream, int quoter)
 {
-  c &= 0xFF;			/* Avoid sign bit follies.  */
+  const char *encoding = f_get_encoding (type);
 
-  if (PRINT_LITERAL_FORM (c))
-    {
-      if (c == '\\' || c == quoter)
-	fputs_filtered ("\\", stream);
-      fprintf_filtered (stream, "%c", c);
-    }
-  else
-    {
-      switch (c)
-	{
-	case '\n':
-	  fputs_filtered ("\\n", stream);
-	  break;
-	case '\b':
-	  fputs_filtered ("\\b", stream);
-	  break;
-	case '\t':
-	  fputs_filtered ("\\t", stream);
-	  break;
-	case '\f':
-	  fputs_filtered ("\\f", stream);
-	  break;
-	case '\r':
-	  fputs_filtered ("\\r", stream);
-	  break;
-	case '\033':
-	  fputs_filtered ("\\e", stream);
-	  break;
-	case '\007':
-	  fputs_filtered ("\\a", stream);
-	  break;
-	default:
-	  fprintf_filtered (stream, "\\%.3o", (unsigned int) c);
-	  break;
-	}
-    }
+  generic_emit_char (c, type, stream, quoter, encoding);
 }
 
-/* FIXME:  This is a copy of the same function from c-exp.y.  It should
-   be replaced with a true F77version.  */
+/* Implementation of la_printchar.  */
 
 static void
 f_printchar (int c, struct type *type, struct ui_file *stream)
@@ -148,83 +140,16 @@ f_printstr (struct ui_file *stream, struct type *type, const gdb_byte *string,
 	    unsigned int length, const char *encoding, int force_ellipses,
 	    const struct value_print_options *options)
 {
-  unsigned int i;
-  unsigned int things_printed = 0;
-  int in_quotes = 0;
-  int need_comma = 0;
+  const char *type_encoding = f_get_encoding (type);
 
-  if (length == 0)
-    {
-      fputs_filtered ("''", gdb_stdout);
-      return;
-    }
+  if (TYPE_LENGTH (type) == 4)
+    fputs_filtered ("4_", stream);
 
-  for (i = 0; i < length && things_printed < options->print_max; ++i)
-    {
-      /* Position of the character we are examining
-         to see whether it is repeated.  */
-      unsigned int rep1;
-      /* Number of repetitions we have detected so far.  */
-      unsigned int reps;
+  if (!encoding || !*encoding)
+    encoding = type_encoding;
 
-      QUIT;
-
-      if (need_comma)
-	{
-	  fputs_filtered (", ", stream);
-	  need_comma = 0;
-	}
-
-      rep1 = i + 1;
-      reps = 1;
-      while (rep1 < length && string[rep1] == string[i])
-	{
-	  ++rep1;
-	  ++reps;
-	}
-
-      if (reps > options->repeat_count_threshold)
-	{
-	  if (in_quotes)
-	    {
-	      if (options->inspect_it)
-		fputs_filtered ("\\', ", stream);
-	      else
-		fputs_filtered ("', ", stream);
-	      in_quotes = 0;
-	    }
-	  f_printchar (string[i], type, stream);
-	  fprintf_filtered (stream, " <repeats %u times>", reps);
-	  i = rep1 - 1;
-	  things_printed += options->repeat_count_threshold;
-	  need_comma = 1;
-	}
-      else
-	{
-	  if (!in_quotes)
-	    {
-	      if (options->inspect_it)
-		fputs_filtered ("\\'", stream);
-	      else
-		fputs_filtered ("'", stream);
-	      in_quotes = 1;
-	    }
-	  LA_EMIT_CHAR (string[i], type, stream, '"');
-	  ++things_printed;
-	}
-    }
-
-  /* Terminate the quotes if necessary.  */
-  if (in_quotes)
-    {
-      if (options->inspect_it)
-	fputs_filtered ("\\'", stream);
-      else
-	fputs_filtered ("'", stream);
-    }
-
-  if (force_ellipses || i < length)
-    fputs_filtered ("...", stream);
+  generic_printstr (stream, type, string, length, encoding,
+		    force_ellipses, '\'', 0, options);
 }
 
 
@@ -384,6 +309,8 @@ const struct language_defn f_language_defn =
   default_print_array_index,
   default_pass_by_reference,
   default_get_string,
+  strcmp_iw_ordered,
+  iterate_over_symbols,
   LANG_MAGIC
 };
 

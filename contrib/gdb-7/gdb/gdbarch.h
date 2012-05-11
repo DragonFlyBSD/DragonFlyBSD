@@ -54,6 +54,7 @@ struct displaced_step_closure;
 struct core_regset_section;
 struct syscall;
 struct agent_expr;
+struct axs_value;
 
 /* The architecture associated with the connection to the target.
  
@@ -118,6 +119,12 @@ extern void set_gdbarch_long_bit (struct gdbarch *gdbarch, int long_bit);
 
 extern int gdbarch_long_long_bit (struct gdbarch *gdbarch);
 extern void set_gdbarch_long_long_bit (struct gdbarch *gdbarch, int long_long_bit);
+
+/* Alignment of a long long or unsigned long long for the target
+   machine. */
+
+extern int gdbarch_long_long_align_bit (struct gdbarch *gdbarch);
+extern void set_gdbarch_long_long_align_bit (struct gdbarch *gdbarch, int long_long_align_bit);
 
 /* The ABI default bit-size and format for "half", "float", "double", and
    "long double".  These bit/format pairs should eventually be combined
@@ -215,6 +222,17 @@ extern int gdbarch_pseudo_register_read_p (struct gdbarch *gdbarch);
 typedef enum register_status (gdbarch_pseudo_register_read_ftype) (struct gdbarch *gdbarch, struct regcache *regcache, int cookednum, gdb_byte *buf);
 extern enum register_status gdbarch_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache, int cookednum, gdb_byte *buf);
 extern void set_gdbarch_pseudo_register_read (struct gdbarch *gdbarch, gdbarch_pseudo_register_read_ftype *pseudo_register_read);
+
+/* Read a register into a new struct value.  If the register is wholly
+   or partly unavailable, this should call mark_value_bytes_unavailable
+   as appropriate.  If this is defined, then pseudo_register_read will
+   never be called. */
+
+extern int gdbarch_pseudo_register_read_value_p (struct gdbarch *gdbarch);
+
+typedef struct value * (gdbarch_pseudo_register_read_value_ftype) (struct gdbarch *gdbarch, struct regcache *regcache, int cookednum);
+extern struct value * gdbarch_pseudo_register_read_value (struct gdbarch *gdbarch, struct regcache *regcache, int cookednum);
+extern void set_gdbarch_pseudo_register_read_value (struct gdbarch *gdbarch, gdbarch_pseudo_register_read_value_ftype *pseudo_register_read_value);
 
 extern int gdbarch_pseudo_register_write_p (struct gdbarch *gdbarch);
 
@@ -1002,6 +1020,16 @@ extern void set_gdbarch_solib_symbols_extension (struct gdbarch *gdbarch, const 
 
 extern int gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch);
 extern void set_gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch, int has_dos_based_file_system);
+
+/* Generate bytecodes to collect the return address in a frame.
+   Since the bytecodes run on the target, possibly with GDB not even
+   connected, the full unwinding machinery is not available, and
+   typically this function will issue bytecodes for one or more likely
+   places that the return address may be found. */
+
+typedef void (gdbarch_gen_return_address_ftype) (struct gdbarch *gdbarch, struct agent_expr *ax, struct axs_value *value, CORE_ADDR scope);
+extern void gdbarch_gen_return_address (struct gdbarch *gdbarch, struct agent_expr *ax, struct axs_value *value, CORE_ADDR scope);
+extern void set_gdbarch_gen_return_address (struct gdbarch *gdbarch, gdbarch_gen_return_address_ftype *gen_return_address);
 
 /* Definition for an unknown syscall, used basically in error-cases.  */
 #define UNKNOWN_SYSCALL (-1)

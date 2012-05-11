@@ -1,7 +1,6 @@
 /* Objective-C language support routines for GDB, the GNU debugger.
 
-   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2002-2005, 2007-2012 Free Software Foundation, Inc.
 
    Contributed by Apple Computer, Inc.
    Written by Michael Snyder.
@@ -541,6 +540,8 @@ const struct language_defn objc_language_defn = {
   default_print_array_index,
   default_pass_by_reference,
   default_get_string,
+  strcmp_iw_ordered,
+  iterate_over_symbols,
   LANG_MAGIC
 };
 
@@ -952,49 +953,7 @@ classes_info (char *regexp, int from_tty)
     printf_filtered (_("No classes matching \"%s\"\n"), regexp ? regexp : "*");
 }
 
-/* 
- * Function: find_imps (char *selector, struct symbol **sym_arr)
- *
- * Input:  a string representing a selector
- *         a pointer to an array of symbol pointers
- *         possibly a pointer to a symbol found by the caller.
- *
- * Output: number of methods that implement that selector.  Side
- * effects: The array of symbol pointers is filled with matching syms.
- *
- * By analogy with function "find_methods" (symtab.c), builds a list
- * of symbols matching the ambiguous input, so that "decode_line_2"
- * (symtab.c) can list them and ask the user to choose one or more.
- * In this case the matches are objective c methods
- * ("implementations") matching an objective c selector.
- *
- * Note that it is possible for a normal (c-style) function to have
- * the same name as an objective c selector.  To prevent the selector
- * from eclipsing the function, we allow the caller (decode_line_1) to
- * search for such a function first, and if it finds one, pass it in
- * to us.  We will then integrate it into the list.  We also search
- * for one here, among the minsyms.
- *
- * NOTE: if NUM_DEBUGGABLE is non-zero, the sym_arr will be divided
- *       into two parts: debuggable (struct symbol) syms, and
- *       non_debuggable (struct minimal_symbol) syms.  The debuggable
- *       ones will come first, before NUM_DEBUGGABLE (which will thus
- *       be the index of the first non-debuggable one).
- */
-
-/*
- * Function: total_number_of_imps (char *selector);
- *
- * Input:  a string representing a selector 
- * Output: number of methods that implement that selector.
- *
- * By analogy with function "total_number_of_methods", this allows
- * decode_line_1 (symtab.c) to detect if there are objective c methods
- * matching the input, and to allocate an array of pointers to them
- * which can be manipulated by "decode_line_2" (also in symtab.c).
- */
-
-char * 
+static char * 
 parse_selector (char *method, char **selector)
 {
   char *s1 = NULL;
@@ -1050,7 +1009,7 @@ parse_selector (char *method, char **selector)
   return s2;
 }
 
-char * 
+static char * 
 parse_method (char *method, char *type, char **class, 
 	      char **category, char **selector)
 {
@@ -1154,15 +1113,11 @@ parse_method (char *method, char *type, char **class,
 }
 
 static void
-find_methods (struct symtab *symtab, char type, 
-	      const char *class, const char *category, 
-	      const char *selector, struct symbol **syms, 
-	      unsigned int *nsym, unsigned int *ndebug)
+find_methods (char type, const char *class, const char *category, 
+	      const char *selector,
+	      VEC (const_char_ptr) **symbol_names)
 {
   struct objfile *objfile = NULL;
-  struct minimal_symbol *msymbol = NULL;
-  struct block *block = NULL;
-  struct symbol *sym = NULL;
 
   char *symname = NULL;
 
@@ -1171,21 +1126,15 @@ find_methods (struct symtab *symtab, char type,
   char *ncategory = NULL;
   char *nselector = NULL;
 
-  unsigned int csym = 0;
-  unsigned int cdebug = 0;
-
   static char *tmp = NULL;
   static unsigned int tmplen = 0;
 
-  gdb_assert (nsym != NULL);
-  gdb_assert (ndebug != NULL);
-
-  if (symtab)
-    block = BLOCKVECTOR_BLOCK (BLOCKVECTOR (symtab), STATIC_BLOCK);
+  gdb_assert (symbol_names != NULL);
 
   ALL_OBJFILES (objfile)
     {
       unsigned int *objc_csym;
+      struct minimal_symbol *msymbol = NULL;
 
       /* The objfile_csym variable counts the number of ObjC methods
 	 that this objfile defines.  We save that count as a private
@@ -1202,7 +1151,6 @@ find_methods (struct symtab *symtab, char type,
       ALL_OBJFILE_MSYMBOLS (objfile, msymbol)
 	{
 	  struct gdbarch *gdbarch = get_objfile_arch (objfile);
-	  CORE_ADDR pc = SYMBOL_VALUE_ADDRESS (msymbol);
 
 	  QUIT;
 
@@ -1216,17 +1164,7 @@ find_methods (struct symtab *symtab, char type,
 	    /* Not a method name.  */
 	    continue;
 
-	  /* The minimal symbol might point to a function descriptor;
-	     resolve it to the actual code address instead.  */
-	  pc = gdbarch_convert_from_func_ptr_addr (gdbarch, pc,
-						   &current_target);
-
 	  objfile_csym++;
-
-	  if (symtab)
-	    if (pc < BLOCK_START (block) || pc >= BLOCK_END (block))
-	      /* Not in the specified symtab.  */
-	      continue;
 
 	  /* Now that thinks are a bit sane, clean up the symname.  */
 	  while ((strlen (symname) + 1) >= tmplen)
@@ -1255,41 +1193,9 @@ find_methods (struct symtab *symtab, char type,
 	      ((nselector == NULL) || (strcmp (selector, nselector) != 0)))
 	    continue;
 
-	  sym = find_pc_function (pc);
-	  if (sym != NULL)
-	    {
-	      const char *newsymname = SYMBOL_NATURAL_NAME (sym);
-	  
-	      if (strcmp (symname, newsymname) == 0)
-		{
-		  /* Found a high-level method sym: swap it into the
-		     lower part of sym_arr (below num_debuggable).  */
-		  if (syms != NULL)
-		    {
-		      syms[csym] = syms[cdebug];
-		      syms[cdebug] = sym;
-		    }
-		  csym++;
-		  cdebug++;
-		}
-	      else
-		{
-		  warning (
-"debugging symbol \"%s\" does not match minimal symbol (\"%s\"); ignoring",
-                           newsymname, symname);
-		  if (syms != NULL)
-		    syms[csym] = (struct symbol *) msymbol;
-		  csym++;
-		}
-	    }
-	  else
-	    {
-	      /* Found a non-debuggable method symbol.  */
-	      if (syms != NULL)
-		syms[csym] = (struct symbol *) msymbol;
-	      csym++;
-	    }
+	  VEC_safe_push (const_char_ptr, *symbol_names, symname);
 	}
+
       if (objc_csym == NULL)
 	{
 	  objc_csym = obstack_alloc (&objfile->objfile_obstack,
@@ -1301,38 +1207,79 @@ find_methods (struct symtab *symtab, char type,
 	/* Count of ObjC methods in this objfile should be constant.  */
 	gdb_assert (*objc_csym == objfile_csym);
     }
-
-  if (nsym != NULL)
-    *nsym = csym;
-  if (ndebug != NULL)
-    *ndebug = cdebug;
 }
 
-char *find_imps (struct symtab *symtab, struct block *block,
-		 char *method, struct symbol **syms, 
-		 unsigned int *nsym, unsigned int *ndebug)
+/* Uniquify a VEC of strings.  */
+
+static void
+uniquify_strings (VEC (const_char_ptr) **strings)
+{
+  int ix;
+  const char *elem, *last = NULL;
+  int out;
+
+  qsort (VEC_address (const_char_ptr, *strings),
+	 VEC_length (const_char_ptr, *strings),
+	 sizeof (const_char_ptr),
+	 compare_strings);
+  out = 0;
+  for (ix = 0; VEC_iterate (const_char_ptr, *strings, ix, elem); ++ix)
+    {
+      if (last == NULL || strcmp (last, elem) != 0)
+	{
+	  /* Keep ELEM.  */
+	  VEC_replace (const_char_ptr, *strings, out, elem);
+	  ++out;
+	}
+      last = elem;
+    }
+  VEC_truncate (const_char_ptr, *strings, out);
+}
+
+/* 
+ * Function: find_imps (char *selector, struct symbol **sym_arr)
+ *
+ * Input:  a string representing a selector
+ *         a pointer to an array of symbol pointers
+ *         possibly a pointer to a symbol found by the caller.
+ *
+ * Output: number of methods that implement that selector.  Side
+ * effects: The array of symbol pointers is filled with matching syms.
+ *
+ * By analogy with function "find_methods" (symtab.c), builds a list
+ * of symbols matching the ambiguous input, so that "decode_line_2"
+ * (symtab.c) can list them and ask the user to choose one or more.
+ * In this case the matches are objective c methods
+ * ("implementations") matching an objective c selector.
+ *
+ * Note that it is possible for a normal (c-style) function to have
+ * the same name as an objective c selector.  To prevent the selector
+ * from eclipsing the function, we allow the caller (decode_line_1) to
+ * search for such a function first, and if it finds one, pass it in
+ * to us.  We will then integrate it into the list.  We also search
+ * for one here, among the minsyms.
+ *
+ * NOTE: if NUM_DEBUGGABLE is non-zero, the sym_arr will be divided
+ *       into two parts: debuggable (struct symbol) syms, and
+ *       non_debuggable (struct minimal_symbol) syms.  The debuggable
+ *       ones will come first, before NUM_DEBUGGABLE (which will thus
+ *       be the index of the first non-debuggable one).
+ */
+
+char *
+find_imps (char *method, VEC (const_char_ptr) **symbol_names)
 {
   char type = '\0';
   char *class = NULL;
   char *category = NULL;
   char *selector = NULL;
 
-  unsigned int csym = 0;
-  unsigned int cdebug = 0;
-
-  unsigned int ncsym = 0;
-  unsigned int ncdebug = 0;
-
   char *buf = NULL;
   char *tmp = NULL;
 
-  gdb_assert (nsym != NULL);
-  gdb_assert (ndebug != NULL);
+  int selector_case = 0;
 
-  if (nsym != NULL)
-    *nsym = 0;
-  if (ndebug != NULL)
-    *ndebug = 0;
+  gdb_assert (symbol_names != NULL);
 
   buf = (char *) alloca (strlen (method) + 1);
   strcpy (buf, method);
@@ -1340,99 +1287,37 @@ char *find_imps (struct symtab *symtab, struct block *block,
 
   if (tmp == NULL)
     {
-      struct symbol *sym = NULL;
-      struct minimal_symbol *msym = NULL;
-
       strcpy (buf, method);
       tmp = parse_selector (buf, &selector);
 
       if (tmp == NULL)
 	return NULL;
 
-      sym = lookup_symbol (selector, block, VAR_DOMAIN, 0);
+      selector_case = 1;
+    }
+
+  find_methods (type, class, category, selector, symbol_names);
+
+  /* If we hit the "selector" case, and we found some methods, then
+     add the selector itself as a symbol, if it exists.  */
+  if (selector_case && !VEC_empty (const_char_ptr, *symbol_names))
+    {
+      struct symbol *sym = lookup_symbol (selector, NULL, VAR_DOMAIN, 0);
+
       if (sym != NULL) 
+	VEC_safe_push (const_char_ptr, *symbol_names,
+		       SYMBOL_NATURAL_NAME (sym));
+      else
 	{
-	  if (syms)
-	    syms[csym] = sym;
-	  csym++;
-	  cdebug++;
-	}
+	  struct minimal_symbol *msym = lookup_minimal_symbol (selector, 0, 0);
 
-      if (sym == NULL)
-	msym = lookup_minimal_symbol (selector, 0, 0);
-
-      if (msym != NULL) 
-	{
-	  if (syms)
-	    syms[csym] = (struct symbol *)msym;
-	  csym++;
+	  if (msym != NULL) 
+	    VEC_safe_push (const_char_ptr, *symbol_names,
+			   SYMBOL_NATURAL_NAME (msym));
 	}
     }
 
-  if (syms != NULL)
-    find_methods (symtab, type, class, category, selector, 
-		  syms + csym, &ncsym, &ncdebug);
-  else
-    find_methods (symtab, type, class, category, selector, 
-		  NULL, &ncsym, &ncdebug);
-
-  /* If we didn't find any methods, just return.  */
-  if (ncsym == 0 && ncdebug == 0)
-    return method;
-
-  /* Take debug symbols from the second batch of symbols and swap them
-   * with debug symbols from the first batch.  Repeat until either the
-   * second section is out of debug symbols or the first section is
-   * full of debug symbols.  Either way we have all debug symbols
-   * packed to the beginning of the buffer.
-   */
-
-  if (syms != NULL) 
-    {
-      while ((cdebug < csym) && (ncdebug > 0))
-	{
-	  struct symbol *s = NULL;
-	  /* First non-debugging symbol.  */
-	  unsigned int i = cdebug;
-	  /* Last of second batch of debug symbols.  */
-	  unsigned int j = csym + ncdebug - 1;
-
-	  s = syms[j];
-	  syms[j] = syms[i];
-	  syms[i] = s;
-
-	  /* We've moved a symbol from the second debug section to the
-             first one.  */
-	  cdebug++;
-	  ncdebug--;
-	}
-    }
-
-  csym += ncsym;
-  cdebug += ncdebug;
-
-  if (nsym != NULL)
-    *nsym = csym;
-  if (ndebug != NULL)
-    *ndebug = cdebug;
-
-  if (syms == NULL)
-    return method + (tmp - buf);
-
-  if (csym > 1)
-    {
-      /* Sort debuggable symbols.  */
-      if (cdebug > 1)
-	qsort (syms, cdebug, sizeof (struct minimal_symbol *), 
-	       compare_classes);
-      
-      /* Sort minimal_symbols.  */
-      if ((csym - cdebug) > 1)
-	qsort (&syms[cdebug], csym - cdebug, 
-	       sizeof (struct minimal_symbol *), compare_classes);
-    }
-  /* Terminate the sym_arr list.  */
-  syms[csym] = 0;
+  uniquify_strings (symbol_names);
 
   return method + (tmp - buf);
 }

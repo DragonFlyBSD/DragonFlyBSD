@@ -1,8 +1,7 @@
 /* Multiple source language support for GDB.
 
-   Copyright (C) 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001,
-   2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1991-1996, 1998-2005, 2007-2012 Free Software
+   Foundation, Inc.
 
    Contributed by the Department of Computer Science at the State University
    of New York at Buffalo.
@@ -1200,6 +1199,8 @@ const struct language_defn unknown_language_defn =
   default_print_array_index,
   default_pass_by_reference,
   default_get_string,
+  strcmp_iw_ordered,
+  iterate_over_symbols,
   LANG_MAGIC
 };
 
@@ -1241,6 +1242,8 @@ const struct language_defn auto_language_defn =
   default_print_array_index,
   default_pass_by_reference,
   default_get_string,
+  strcmp_iw_ordered,
+  iterate_over_symbols,
   LANG_MAGIC
 };
 
@@ -1280,6 +1283,8 @@ const struct language_defn local_language_defn =
   default_print_array_index,
   default_pass_by_reference,
   default_get_string,
+  strcmp_iw_ordered,
+  iterate_over_symbols,
   LANG_MAGIC
 };
 

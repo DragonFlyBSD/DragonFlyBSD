@@ -1,8 +1,6 @@
 /* Generic symbol file reading for the GNU debugger, GDB.
 
-   Copyright (C) 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
-   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1990-2012 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support, using pieces from other GDB modules.
 
@@ -56,6 +54,7 @@
 #include "elf-bfd.h"
 #include "solib.h"
 #include "remote.h"
+#include "stack.h"
 
 #include <sys/types.h>
 #include <fcntl.h>
@@ -527,7 +526,7 @@ relative_addr_info_to_section_offsets (struct section_offsets *section_offsets,
       struct other_sections *osp;
 
       osp = &addrs->other[i];
-      if (osp->addr == 0)
+      if (osp->sectindex == -1)
   	continue;
 
       /* Record all sections in offsets.  */
@@ -568,10 +567,7 @@ addrs_section_compar (const void *ap, const void *bp)
   if (retval)
     return retval;
 
-  /* SECTINDEX is undefined iff ADDR is zero.  */
-  a_idx = a->addr == 0 ? 0 : a->sectindex;
-  b_idx = b->addr == 0 ? 0 : b->sectindex;
-  return a_idx - b_idx;
+  return a->sectindex - b->sectindex;
 }
 
 /* Provide sorted array of pointers to sections of ADDRS.  The array is
@@ -734,8 +730,7 @@ addr_info_make_relative (struct section_addr_info *addrs, bfd *abfd)
 		     bfd_get_filename (abfd));
 
 	  addrs->other[i].addr = 0;
-
-	  /* SECTINDEX is invalid if ADDR is zero.  */
+	  addrs->other[i].sectindex = -1;
 	}
     }
 
@@ -1067,6 +1062,9 @@ new_symfile_objfile (struct objfile *objfile, int add_flags)
    syms_from_objfile, above.
    ADDRS is ignored when SYMFILE_MAINLINE bit is set in ADD_FLAGS.
 
+   PARENT is the original objfile if ABFD is a separate debug info file.
+   Otherwise PARENT is NULL.
+
    Upon success, returns a pointer to the objfile that was added.
    Upon failure, jumps back to command level (never returns).  */
 
@@ -1076,12 +1074,13 @@ symbol_file_add_with_addrs_or_offsets (bfd *abfd,
                                        struct section_addr_info *addrs,
                                        struct section_offsets *offsets,
                                        int num_offsets,
-                                       int flags)
+                                       int flags, struct objfile *parent)
 {
   struct objfile *objfile;
   struct cleanup *my_cleanups;
   const char *name = bfd_get_filename (abfd);
   const int from_tty = add_flags & SYMFILE_VERBOSE;
+  const int mainline = add_flags & SYMFILE_MAINLINE;
   const int should_print = ((from_tty || info_verbose)
 			    && (readnow_symbol_files
 				|| (add_flags & SYMFILE_NO_READ) == 0));
@@ -1098,13 +1097,16 @@ symbol_file_add_with_addrs_or_offsets (bfd *abfd,
      interactively wiping out any existing symbols.  */
 
   if ((have_full_symbols () || have_partial_symbols ())
-      && (add_flags & SYMFILE_MAINLINE)
+      && mainline
       && from_tty
       && !query (_("Load new symbol table from \"%s\"? "), name))
     error (_("Not confirmed."));
 
-  objfile = allocate_objfile (abfd, flags);
+  objfile = allocate_objfile (abfd, flags | (mainline ? OBJF_MAINLINE : 0));
   discard_cleanups (my_cleanups);
+
+  if (parent)
+    add_separate_debug_objfile (objfile, parent);
 
   /* We either created a new mapped symbol table, mapped an existing
      symbol table file which has not had initial symbol reading
@@ -1161,8 +1163,6 @@ symbol_file_add_with_addrs_or_offsets (bfd *abfd,
      time.  */
   gdb_flush (gdb_stdout);
 
-  do_cleanups (my_cleanups);
-
   if (objfile->sf == NULL)
     {
       observer_notify_new_objfile (objfile);
@@ -1196,11 +1196,10 @@ symbol_file_add_separate (bfd *bfd, int symfile_flags, struct objfile *objfile)
     (bfd, symfile_flags,
      sap, NULL, 0,
      objfile->flags & (OBJF_REORDERED | OBJF_SHARED | OBJF_READNOW
-		       | OBJF_USERLOADED));
+		       | OBJF_USERLOADED),
+     objfile);
 
   do_cleanups (my_cleanup);
-
-  add_separate_debug_objfile (new_objfile, objfile);
 }
 
 /* Process the symbol file ABFD, as either the main file or as a
@@ -1211,10 +1210,10 @@ symbol_file_add_separate (bfd *bfd, int symfile_flags, struct objfile *objfile)
 struct objfile *
 symbol_file_add_from_bfd (bfd *abfd, int add_flags,
                           struct section_addr_info *addrs,
-                          int flags)
+                          int flags, struct objfile *parent)
 {
   return symbol_file_add_with_addrs_or_offsets (abfd, add_flags, addrs, 0, 0,
-                                                flags);
+                                                flags, parent);
 }
 
 
@@ -1226,7 +1225,7 @@ symbol_file_add (char *name, int add_flags, struct section_addr_info *addrs,
 		 int flags)
 {
   return symbol_file_add_from_bfd (symfile_bfd_open (name), add_flags, addrs,
-                                   flags);
+                                   flags, NULL);
 }
 
 
@@ -1309,15 +1308,52 @@ get_debug_link_info (struct objfile *objfile, unsigned long *crc32_out)
   return contents;
 }
 
+/* Return 32-bit CRC for ABFD.  If successful store it to *FILE_CRC_RETURN and
+   return 1.  Otherwise print a warning and return 0.  ABFD seek position is
+   not preserved.  */
+
+static int
+get_file_crc (bfd *abfd, unsigned long *file_crc_return)
+{
+  unsigned long file_crc = 0;
+
+  if (bfd_seek (abfd, 0, SEEK_SET) != 0)
+    {
+      warning (_("Problem reading \"%s\" for CRC: %s"),
+	       bfd_get_filename (abfd), bfd_errmsg (bfd_get_error ()));
+      return 0;
+    }
+
+  for (;;)
+    {
+      gdb_byte buffer[8 * 1024];
+      bfd_size_type count;
+
+      count = bfd_bread (buffer, sizeof (buffer), abfd);
+      if (count == (bfd_size_type) -1)
+	{
+	  warning (_("Problem reading \"%s\" for CRC: %s"),
+		   bfd_get_filename (abfd), bfd_errmsg (bfd_get_error ()));
+	  return 0;
+	}
+      if (count == 0)
+	break;
+      file_crc = gnu_debuglink_crc32 (file_crc, buffer, count);
+    }
+
+  *file_crc_return = file_crc;
+  return 1;
+}
+
 static int
 separate_debug_file_exists (const char *name, unsigned long crc,
 			    struct objfile *parent_objfile)
 {
-  unsigned long file_crc = 0;
+  unsigned long file_crc;
+  int file_crc_p;
   bfd *abfd;
-  gdb_byte buffer[8*1024];
-  int count;
   struct stat parent_stat, abfd_stat;
+  int verified_as_different;
 
   /* Find a separate debug info file as if symbols would be present in
      PARENT_OBJFILE itself this function would not be called.  .gnu_debuglink
@@ -1344,25 +1380,46 @@ separate_debug_file_exists (const char *name, unsigned long crc,
      negatives.  */
 
   if (bfd_stat (abfd, &abfd_stat) == 0
-      && bfd_stat (parent_objfile->obfd, &parent_stat) == 0
-      && abfd_stat.st_dev == parent_stat.st_dev
-      && abfd_stat.st_ino == parent_stat.st_ino
-      && abfd_stat.st_ino != 0)
+      && abfd_stat.st_ino != 0
+      && bfd_stat (parent_objfile->obfd, &parent_stat) == 0)
     {
-      bfd_close (abfd);
-      return 0;
+      if (abfd_stat.st_dev == parent_stat.st_dev
+	  && abfd_stat.st_ino == parent_stat.st_ino)
+	{
+	  bfd_close (abfd);
+	  return 0;
+	}
+      verified_as_different = 1;
     }
+  else
+    verified_as_different = 0;
 
-  while ((count = bfd_bread (buffer, sizeof (buffer), abfd)) > 0)
-    file_crc = gnu_debuglink_crc32 (file_crc, buffer, count);
+  file_crc_p = get_file_crc (abfd, &file_crc);
 
   bfd_close (abfd);
 
+  if (!file_crc_p)
+    return 0;
+
   if (crc != file_crc)
     {
-      warning (_("the debug information found in \"%s\""
-		 " does not match \"%s\" (CRC mismatch).\n"),
-	       name, parent_objfile->name);
+      /* If one (or both) the files are accessed for example the via "remote:"
+	 gdbserver way it does not support the bfd_stat operation.  Verify
+	 whether those two files are not the same manually.  */
+
+      if (!verified_as_different && !parent_objfile->crc32_p)
+	{
+	  parent_objfile->crc32_p = get_file_crc (parent_objfile->obfd,
+						  &parent_objfile->crc32);
+	  if (!parent_objfile->crc32_p)
+	    return 0;
+	}
+
+      if (verified_as_different || parent_objfile->crc32 != file_crc)
+	warning (_("the debug information found in \"%s\""
+		   " does not match \"%s\" (CRC mismatch).\n"),
+		 name, parent_objfile->name);
+
       return 0;
     }
 
@@ -1863,7 +1920,7 @@ load_progress (ULONGEST bytes, void *untyped_arg)
     {
       /* The write is just starting.  Let the user know we've started
 	 this section.  */
-      ui_out_message (uiout, 0, "Loading section %s, size %s lma %s\n",
+      ui_out_message (current_uiout, 0, "Loading section %s, size %s lma %s\n",
 		      args->section_name, hex_string (args->section_size),
 		      paddress (target_gdbarch, args->lma));
       return;
@@ -1975,6 +2032,7 @@ generic_load (char *args, int from_tty)
   struct cleanup *old_cleanups = make_cleanup (null_cleanup, 0);
   struct load_section_data cbdata;
   struct load_progress_data total_progress;
+  struct ui_out *uiout = current_uiout;
 
   CORE_ADDR entry;
   char **argv;
@@ -2102,6 +2160,7 @@ print_transfer_performance (struct ui_file *stream,
 			    const struct timeval *end_time)
 {
   ULONGEST time_count;
+  struct ui_out *uiout = current_uiout;
 
   /* Compute the elapsed time in milliseconds, as a tradeoff between
      accuracy and overflow.  */
@@ -2253,7 +2312,7 @@ add_symbol_file_command (char *args, int from_tty)
 		    }
 		  else
 		    error (_("USAGE: add-symbol-file <filename> <textaddress>"
-			     " [-mapped] [-readnow] [-s <secname> <addr>]*"));
+			     " [-readnow] [-s <secname> <addr>]*"));
 	      }
 	  }
     }
@@ -2385,6 +2444,29 @@ reread_symbols (void)
 	      exec_file_attach (bfd_get_filename (objfile->obfd), 0);
 	    }
 
+	  /* Keep the calls order approx. the same as in free_objfile.  */
+
+	  /* Free the separate debug objfiles.  It will be
+	     automatically recreated by sym_read.  */
+	  free_objfile_separate_debug (objfile);
+
+	  /* Remove any references to this objfile in the global
+	     value lists.  */
+	  preserve_values (objfile);
+
+	  /* Nuke all the state that we will re-read.  Much of the following
+	     code which sets things to NULL really is necessary to tell
+	     other parts of GDB that there is nothing currently there.
+
+	     Try to keep the freeing order compatible with free_objfile.  */
+
+	  if (objfile->sf != NULL)
+	    {
+	      (*objfile->sf->sym_finish) (objfile);
+	    }
+
+	  clear_objfile_data (objfile);
+
 	  /* Clean up any state BFD has sitting around.  We don't need
 	     to close the descriptor but BFD lacks a way of closing the
 	     BFD without closing the descriptor.  */
@@ -2409,27 +2491,6 @@ reread_symbols (void)
 		     alloca (SIZEOF_N_SECTION_OFFSETS (num_offsets)));
 	  memcpy (offsets, objfile->section_offsets,
 		  SIZEOF_N_SECTION_OFFSETS (num_offsets));
-
-	  /* Remove any references to this objfile in the global
-	     value lists.  */
-	  preserve_values (objfile);
-
-	  /* Nuke all the state that we will re-read.  Much of the following
-	     code which sets things to NULL really is necessary to tell
-	     other parts of GDB that there is nothing currently there.
-
-	     Try to keep the freeing order compatible with free_objfile.  */
-
-	  if (objfile->sf != NULL)
-	    {
-	      (*objfile->sf->sym_finish) (objfile);
-	    }
-
-	  clear_objfile_data (objfile);
-
-	  /* Free the separate debug objfiles.  It will be
-	     automatically recreated by sym_read.  */
-          free_objfile_separate_debug (objfile);
 
 	  /* FIXME: Do we have to free a whole linked list, or is this
 	     enough?  */
@@ -2460,7 +2521,6 @@ reread_symbols (void)
 	  objfile->psymtabs = NULL;
 	  objfile->psymtabs_addrmap = NULL;
 	  objfile->free_psymtabs = NULL;
-	  objfile->cp_namespace_symtab = NULL;
 	  objfile->template_symbols = NULL;
 	  objfile->msymbols = NULL;
 	  objfile->deprecated_sym_private = NULL;
@@ -2470,9 +2530,6 @@ reread_symbols (void)
 	  memset (&objfile->msymbol_demangled_hash, 0,
 		  sizeof (objfile->msymbol_demangled_hash));
 
-	  objfile->psymbol_cache = psymbol_bcache_init ();
-	  objfile->macro_cache = bcache_xmalloc (NULL, NULL);
-	  objfile->filename_cache = bcache_xmalloc (NULL, NULL);
 	  /* obstack_init also initializes the obstack so it is
 	     empty.  We could use obstack_specify_allocation but
 	     gdb_obstack.h specifies the alloc/dealloc
@@ -2781,7 +2838,7 @@ clear_symtab_users (int add_flags)
   clear_displays ();
   if ((add_flags & SYMFILE_DEFER_BP_RESET) == 0)
     breakpoint_re_set ();
-  set_default_breakpoint (0, NULL, 0, 0, 0);
+  clear_last_displayed_sal ();
   clear_pc_function_cache ();
   observer_notify_new_objfile (NULL);
 

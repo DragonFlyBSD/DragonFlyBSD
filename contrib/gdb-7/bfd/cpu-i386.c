@@ -31,7 +31,8 @@ bfd_i386_compatible (const bfd_arch_info_type *a,
   const bfd_arch_info_type *compat = bfd_default_compatible (a, b);
 
   /* Don't allow mixing x64_32 with x86_64.  */
-  if (compat && a->bits_per_address != b->bits_per_address)
+  if (compat
+      && (a->mach & bfd_mach_x64_32) != (b->mach & bfd_mach_x64_32))
     compat = NULL;
 
   return compat;
@@ -40,7 +41,7 @@ bfd_i386_compatible (const bfd_arch_info_type *a,
 static const bfd_arch_info_type bfd_x64_32_arch_intel_syntax =
 {
   64, /* 64 bits in a word */
-  32, /* 32 bits in an address */
+  64, /* 64 bits in an address */
   8,  /* 8 bits in a byte */
   bfd_arch_i386,
   bfd_mach_x64_32_intel_syntax,
@@ -104,7 +105,7 @@ static const bfd_arch_info_type i8086_arch =
 static const bfd_arch_info_type bfd_x64_32_arch =
 {
   64, /* 64 bits in a word */
-  32, /* 32 bits in an address */
+  64, /* 64 bits in an address */
   8,  /* 8 bits in a byte */
   bfd_arch_i386,
   bfd_mach_x64_32,

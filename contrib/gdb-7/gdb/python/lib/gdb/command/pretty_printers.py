@@ -1,5 +1,5 @@
 # Pretty-printer commands.
-# Copyright (C) 2010, 2011 Free Software Foundation, Inc.
+# Copyright (C) 2010-2012 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -148,7 +148,7 @@ class InfoPrettyPrinter(gdb.Command):
 
     def invoke1(self, title, printer_list,
                 obj_name_to_match, object_re, name_re, subname_re):
-        """"Subroutine of invoke to simplify it."""
+        """Subroutine of invoke to simplify it."""
         if printer_list and object_re.match(obj_name_to_match):
             print title
             self.list_pretty_printers(printer_list, name_re, subname_re)
@@ -368,3 +368,5 @@ def register_pretty_printer_commands():
     InfoPrettyPrinter()
     EnablePrettyPrinter()
     DisablePrettyPrinter()
+
+register_pretty_printer_commands()

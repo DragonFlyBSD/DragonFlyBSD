@@ -1,7 +1,6 @@
 /* Dynamic architecture support for GDB, the GNU debugger.
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
-   2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1998-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -784,6 +783,14 @@ default_remote_breakpoint_from_pc (struct gdbarch *gdbarch, CORE_ADDR *pcptr,
 				   int *kindptr)
 {
   gdbarch_breakpoint_from_pc (gdbarch, pcptr, kindptr);
+}
+
+void
+default_gen_return_address (struct gdbarch *gdbarch,
+			    struct agent_expr *ax, struct axs_value *value,
+			    CORE_ADDR scope)
+{
+  error (_("This architecture has no method to collect a return address."));
 }
 
 /* */

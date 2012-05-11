@@ -1,6 +1,6 @@
 /* linker.c -- BFD linker routines
    Copyright 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
-   2003, 2004, 2005, 2006, 2007, 2008, 2009
+   2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
    Written by Steve Chamberlain and Ian Lance Taylor, Cygnus Support
 
@@ -465,10 +465,8 @@ _bfd_link_hash_newfunc (struct bfd_hash_entry *entry,
       struct bfd_link_hash_entry *h = (struct bfd_link_hash_entry *) entry;
 
       /* Initialize the local fields.  */
-      h->type = bfd_link_hash_new;
-      memset (&h->u.undef.next, 0,
-	      (sizeof (struct bfd_link_hash_entry)
-	       - offsetof (struct bfd_link_hash_entry, u.undef.next)));
+      memset ((char *) &h->root + sizeof (h->root), 0,
+	      sizeof (*h) - sizeof (h->root));
     }
 
   return entry;
@@ -606,21 +604,32 @@ bfd_wrapped_link_hash_lookup (bfd *abfd,
   return bfd_link_hash_lookup (info->hash, string, create, copy, follow);
 }
 
-/* Traverse a generic link hash table.  The only reason this is not a
-   macro is to do better type checking.  This code presumes that an
-   argument passed as a struct bfd_hash_entry * may be caught as a
-   struct bfd_link_hash_entry * with no explicit cast required on the
-   call.  */
+/* Traverse a generic link hash table.  Differs from bfd_hash_traverse
+   in the treatment of warning symbols.  When warning symbols are
+   created they replace the real symbol, so you don't get to see the
+   real symbol in a bfd_hash_travere.  This traversal calls func with
+   the real symbol.  */
 
 void
 bfd_link_hash_traverse
-  (struct bfd_link_hash_table *table,
+  (struct bfd_link_hash_table *htab,
    bfd_boolean (*func) (struct bfd_link_hash_entry *, void *),
    void *info)
 {
-  bfd_hash_traverse (&table->table,
-		     (bfd_boolean (*) (struct bfd_hash_entry *, void *)) func,
-		     info);
+  unsigned int i;
+
+  htab->table.frozen = 1;
+  for (i = 0; i < htab->table.size; i++)
+    {
+      struct bfd_link_hash_entry *p;
+
+      p = (struct bfd_link_hash_entry *) htab->table.table[i];
+      for (; p != NULL; p = (struct bfd_link_hash_entry *) p->root.next)
+	if (!(*func) (p->type == bfd_link_hash_warning ? p->u.i.link : p, info))
+	  goto out;
+    }
+ out:
+  htab->table.frozen = 0;
 }
 
 /* Add a symbol to the linker hash table undefs list.  */
@@ -1296,7 +1305,7 @@ generic_link_check_archive_element (bfd *abfd,
 	  else
 	    h->u.c.p->section = bfd_make_section_old_way (symbfd,
 							  p->section->name);
-	  h->u.c.p->section->flags = SEC_ALLOC;
+	  h->u.c.p->section->flags |= SEC_ALLOC;
 	}
       else
 	{
@@ -1568,6 +1577,8 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
   struct bfd_link_hash_entry *h;
   bfd_boolean cycle;
 
+  BFD_ASSERT (section != NULL);
+
   if (bfd_is_ind_section (section)
       || (flags & BSF_INDIRECT) != 0)
     row = INDR_ROW;
@@ -1609,8 +1620,8 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
       || (info->notice_hash != NULL
 	  && bfd_hash_lookup (info->notice_hash, name, FALSE, FALSE) != NULL))
     {
-      if (! (*info->callbacks->notice) (info, h->root.string, abfd, section,
-					value))
+      if (! (*info->callbacks->notice) (info, h,
+					abfd, section, value, flags, string))
 	return FALSE;
     }
 
@@ -1643,7 +1654,6 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	  /* Make a new weak undefined symbol.  */
 	  h->type = bfd_link_hash_undefweak;
 	  h->u.undef.abfd = abfd;
-	  h->u.undef.weak = abfd;
 	  break;
 
 	case CDEF:
@@ -1651,9 +1661,7 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	     previously common.  */
 	  BFD_ASSERT (h->type == bfd_link_hash_common);
 	  if (! ((*info->callbacks->multiple_common)
-		 (info, h->root.string,
-		  h->u.c.p->section->owner, bfd_link_hash_common, h->u.c.size,
-		  abfd, bfd_link_hash_defined, 0)))
+		 (info, h, abfd, bfd_link_hash_defined, 0)))
 	    return FALSE;
 	  /* Fall through.  */
 	case DEF:
@@ -1758,13 +1766,13 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	  if (section == bfd_com_section_ptr)
 	    {
 	      h->u.c.p->section = bfd_make_section_old_way (abfd, "COMMON");
-	      h->u.c.p->section->flags = SEC_ALLOC;
+	      h->u.c.p->section->flags |= SEC_ALLOC;
 	    }
 	  else if (section->owner != abfd)
 	    {
 	      h->u.c.p->section = bfd_make_section_old_way (abfd,
 							    section->name);
-	      h->u.c.p->section->flags = SEC_ALLOC;
+	      h->u.c.p->section->flags |= SEC_ALLOC;
 	    }
 	  else
 	    h->u.c.p->section = section;
@@ -1782,9 +1790,7 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	     two sizes, and use the section required by the larger symbol.  */
 	  BFD_ASSERT (h->type == bfd_link_hash_common);
 	  if (! ((*info->callbacks->multiple_common)
-		 (info, h->root.string,
-		  h->u.c.p->section->owner, bfd_link_hash_common, h->u.c.size,
-		  abfd, bfd_link_hash_common, value)))
+		 (info, h, abfd, bfd_link_hash_common, value)))
 	    return FALSE;
 	  if (value > h->u.c.size)
 	    {
@@ -1807,13 +1813,13 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 		{
 		  h->u.c.p->section
 		    = bfd_make_section_old_way (abfd, "COMMON");
-		  h->u.c.p->section->flags = SEC_ALLOC;
+		  h->u.c.p->section->flags |= SEC_ALLOC;
 		}
 	      else if (section->owner != abfd)
 		{
 		  h->u.c.p->section
 		    = bfd_make_section_old_way (abfd, section->name);
-		  h->u.c.p->section->flags = SEC_ALLOC;
+		  h->u.c.p->section->flags |= SEC_ALLOC;
 		}
 	      else
 		h->u.c.p->section = section;
@@ -1821,23 +1827,11 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	  break;
 
 	case CREF:
-	  {
-	    bfd *obfd;
-
-	    /* We have found a common definition for a symbol which
-	       was already defined.  FIXME: It would nice if we could
-	       report the BFD which defined an indirect symbol, but we
-	       don't have anywhere to store the information.  */
-	    if (h->type == bfd_link_hash_defined
-		|| h->type == bfd_link_hash_defweak)
-	      obfd = h->u.def.section->owner;
-	    else
-	      obfd = NULL;
-	    if (! ((*info->callbacks->multiple_common)
-		   (info, h->root.string, obfd, h->type, 0,
-		    abfd, bfd_link_hash_common, value)))
-	      return FALSE;
-	  }
+	  /* We have found a common definition for a symbol which
+	     was already defined.  */
+	  if (! ((*info->callbacks->multiple_common)
+		 (info, h, abfd, bfd_link_hash_common, value)))
+	    return FALSE;
 	  break;
 
 	case MIND:
@@ -1848,47 +1842,16 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	  /* Fall through.  */
 	case MDEF:
 	  /* Handle a multiple definition.  */
-	  if (!info->allow_multiple_definition)
-	    {
-	      asection *msec = NULL;
-	      bfd_vma mval = 0;
-
-	      switch (h->type)
-		{
-		case bfd_link_hash_defined:
-		  msec = h->u.def.section;
-		  mval = h->u.def.value;
-		  break;
-	        case bfd_link_hash_indirect:
-		  msec = bfd_ind_section_ptr;
-		  mval = 0;
-		  break;
-		default:
-		  abort ();
-		}
-
-	      /* Ignore a redefinition of an absolute symbol to the
-		 same value; it's harmless.  */
-	      if (h->type == bfd_link_hash_defined
-		  && bfd_is_abs_section (msec)
-		  && bfd_is_abs_section (section)
-		  && value == mval)
-		break;
-
-	      if (! ((*info->callbacks->multiple_definition)
-		     (info, h->root.string, msec->owner, msec, mval,
-		      abfd, section, value)))
-		return FALSE;
-	    }
+	  if (! ((*info->callbacks->multiple_definition)
+		 (info, h, abfd, section, value)))
+	    return FALSE;
 	  break;
 
 	case CIND:
 	  /* Create an indirect symbol from an existing common symbol.  */
 	  BFD_ASSERT (h->type == bfd_link_hash_common);
 	  if (! ((*info->callbacks->multiple_common)
-		 (info, h->root.string,
-		  h->u.c.p->section->owner, bfd_link_hash_common, h->u.c.size,
-		  abfd, bfd_link_hash_indirect, 0)))
+		 (info, h, abfd, bfd_link_hash_indirect, 0)))
 	    return FALSE;
 	  /* Fall through.  */
 	case IND:
@@ -2490,9 +2453,6 @@ _bfd_generic_link_write_global_symbol (struct generic_link_hash_entry *h,
       (struct generic_write_global_symbol_info *) data;
   asymbol *sym;
 
-  if (h->root.type == bfd_link_hash_warning)
-    h = (struct generic_link_hash_entry *) h->root.u.i.link;
-
   if (h->written)
     return TRUE;
 
@@ -2928,12 +2888,13 @@ FUNCTION
 	bfd_section_already_linked
 
 SYNOPSIS
-        void bfd_section_already_linked (bfd *abfd, asection *sec,
-					 struct bfd_link_info *info);
+        bfd_boolean bfd_section_already_linked (bfd *abfd,
+						asection *sec,
+						struct bfd_link_info *info);
 
 DESCRIPTION
-	Check if @var{sec} has been already linked during a reloceatable
-	or final link.
+	Check if @var{data} has been already linked during a reloceatable
+	or final link.  Return TRUE if it has.
 
 .#define bfd_section_already_linked(abfd, sec, info) \
 .       BFD_SEND (abfd, _section_already_linked, (abfd, sec, info))
@@ -3027,20 +2988,109 @@ bfd_section_already_linked_table_free (void)
   bfd_hash_table_free (&_bfd_section_already_linked_table);
 }
 
+/* Report warnings as appropriate for duplicate section SEC.
+   Return FALSE if we decide to keep SEC after all.  */
+
+bfd_boolean
+_bfd_handle_already_linked (asection *sec,
+			    struct bfd_section_already_linked *l,
+			    struct bfd_link_info *info)
+{
+  switch (sec->flags & SEC_LINK_DUPLICATES)
+    {
+    default:
+      abort ();
+
+    case SEC_LINK_DUPLICATES_DISCARD:
+      /* If we found an LTO IR match for this comdat group on
+	 the first pass, replace it with the LTO output on the
+	 second pass.  We can't simply choose real object
+	 files over IR because the first pass may contain a
+	 mix of LTO and normal objects and we must keep the
+	 first match, be it IR or real.  */
+      if (info->loading_lto_outputs
+	  && (l->sec->owner->flags & BFD_PLUGIN) != 0)
+	{
+	  l->sec = sec;
+	  return FALSE;
+	}
+      break;
+
+    case SEC_LINK_DUPLICATES_ONE_ONLY:
+      info->callbacks->einfo
+	(_("%B: ignoring duplicate section `%A'\n"),
+	 sec->owner, sec);
+      break;
+
+    case SEC_LINK_DUPLICATES_SAME_SIZE:
+      if ((l->sec->owner->flags & BFD_PLUGIN) != 0)
+	;
+      else if (sec->size != l->sec->size)
+	info->callbacks->einfo
+	  (_("%B: duplicate section `%A' has different size\n"),
+	   sec->owner, sec);
+      break;
+
+    case SEC_LINK_DUPLICATES_SAME_CONTENTS:
+      if ((l->sec->owner->flags & BFD_PLUGIN) != 0)
+	;
+      else if (sec->size != l->sec->size)
+	info->callbacks->einfo
+	  (_("%B: duplicate section `%A' has different size\n"),
+	   sec->owner, sec);
+      else if (sec->size != 0)
+	{
+	  bfd_byte *sec_contents, *l_sec_contents = NULL;
+
+	  if (!bfd_malloc_and_get_section (sec->owner, sec, &sec_contents))
+	    info->callbacks->einfo
+	      (_("%B: could not read contents of section `%A'\n"),
+	       sec->owner, sec);
+	  else if (!bfd_malloc_and_get_section (l->sec->owner, l->sec,
+						&l_sec_contents))
+	    info->callbacks->einfo
+	      (_("%B: could not read contents of section `%A'\n"),
+	       l->sec->owner, l->sec);
+	  else if (memcmp (sec_contents, l_sec_contents, sec->size) != 0)
+	    info->callbacks->einfo
+	      (_("%B: duplicate section `%A' has different contents\n"),
+	       sec->owner, sec);
+
+	  if (sec_contents)
+	    free (sec_contents);
+	  if (l_sec_contents)
+	    free (l_sec_contents);
+	}
+      break;
+    }
+
+  /* Set the output_section field so that lang_add_section
+     does not create a lang_input_section structure for this
+     section.  Since there might be a symbol in the section
+     being discarded, we must retain a pointer to the section
+     which we are really going to use.  */
+  sec->output_section = bfd_abs_section_ptr;
+  sec->kept_section = l->sec;
+  return TRUE;
+}
+
 /* This is used on non-ELF inputs.  */
 
-void
-_bfd_generic_section_already_linked (bfd *abfd, asection *sec,
+bfd_boolean
+_bfd_generic_section_already_linked (bfd *abfd ATTRIBUTE_UNUSED,
+				     asection *sec,
 				     struct bfd_link_info *info)
 {
-  flagword flags;
   const char *name;
   struct bfd_section_already_linked *l;
   struct bfd_section_already_linked_hash_entry *already_linked_list;
 
-  flags = sec->flags;
-  if ((flags & SEC_LINK_ONCE) == 0)
-    return;
+  if ((sec->flags & SEC_LINK_ONCE) == 0)
+    return FALSE;
+
+  /* The generic linker doesn't handle section groups.  */
+  if ((sec->flags & SEC_GROUP) != 0)
+    return FALSE;
 
   /* FIXME: When doing a relocatable link, we may have trouble
      copying relocations in other sections that refer to local symbols
@@ -3059,81 +3109,18 @@ _bfd_generic_section_already_linked (bfd *abfd, asection *sec,
 
   already_linked_list = bfd_section_already_linked_table_lookup (name);
 
-  for (l = already_linked_list->entry; l != NULL; l = l->next)
+  l = already_linked_list->entry;
+  if (l != NULL)
     {
-      bfd_boolean skip = FALSE;
-      struct coff_comdat_info *s_comdat
-	= bfd_coff_get_comdat_section (abfd, sec);
-      struct coff_comdat_info *l_comdat
-	= bfd_coff_get_comdat_section (l->sec->owner, l->sec);
-
-      /* We may have 3 different sections on the list: group section,
-	 comdat section and linkonce section. SEC may be a linkonce or
-	 comdat section. We always ignore group section. For non-COFF
-	 inputs, we also ignore comdat section.
-
-	 FIXME: Is that safe to match a linkonce section with a comdat
-	 section for COFF inputs?  */
-      if ((l->sec->flags & SEC_GROUP) != 0)
-	skip = TRUE;
-      else if (bfd_get_flavour (abfd) == bfd_target_coff_flavour)
-	{
-	  if (s_comdat != NULL
-	      && l_comdat != NULL
-	      && strcmp (s_comdat->name, l_comdat->name) != 0)
-	    skip = TRUE;
-	}
-      else if (l_comdat != NULL)
-	skip = TRUE;
-
-      if (!skip)
-	{
-	  /* The section has already been linked.  See if we should
-             issue a warning.  */
-	  switch (flags & SEC_LINK_DUPLICATES)
-	    {
-	    default:
-	      abort ();
-
-	    case SEC_LINK_DUPLICATES_DISCARD:
-	      break;
-
-	    case SEC_LINK_DUPLICATES_ONE_ONLY:
-	      (*_bfd_error_handler)
-		(_("%B: warning: ignoring duplicate section `%A'\n"),
-		 abfd, sec);
-	      break;
-
-	    case SEC_LINK_DUPLICATES_SAME_CONTENTS:
-	      /* FIXME: We should really dig out the contents of both
-                 sections and memcmp them.  The COFF/PE spec says that
-                 the Microsoft linker does not implement this
-                 correctly, so I'm not going to bother doing it
-                 either.  */
-	      /* Fall through.  */
-	    case SEC_LINK_DUPLICATES_SAME_SIZE:
-	      if (sec->size != l->sec->size)
-		(*_bfd_error_handler)
-		  (_("%B: warning: duplicate section `%A' has different size\n"),
-		   abfd, sec);
-	      break;
-	    }
-
-	  /* Set the output_section field so that lang_add_section
-	     does not create a lang_input_section structure for this
-	     section.  Since there might be a symbol in the section
-	     being discarded, we must retain a pointer to the section
-	     which we are really going to use.  */
-	  sec->output_section = bfd_abs_section_ptr;
-	  sec->kept_section = l->sec;
-
-	  return;
-	}
+      /* The section has already been linked.  See if we should
+	 issue a warning.  */
+      return _bfd_handle_already_linked (sec, l, info);
     }
 
   /* This is the first section with this name.  Record it.  */
-  if (! bfd_section_already_linked_table_insert (already_linked_list, sec))
+  if (!bfd_section_already_linked_table_insert (already_linked_list, sec))
     info->callbacks->einfo (_("%F%P: already_linked_table: %E\n"));
+  return FALSE;
 }
 
 /* Convert symbols in excluded output sections to use a kept section.  */
@@ -3142,9 +3129,6 @@ static bfd_boolean
 fix_syms (struct bfd_link_hash_entry *h, void *data)
 {
   bfd *obfd = (bfd *) data;
-
-  if (h->type == bfd_link_hash_warning)
-    h = h->u.i.link;
 
   if (h->type == bfd_link_hash_defined
       || h->type == bfd_link_hash_defweak)
@@ -3395,4 +3379,27 @@ bfd_find_version_for_sym (struct bfd_elf_version_tree *verdefs,
     }
 
   return NULL;
+}
+
+/*
+FUNCTION
+	bfd_hide_sym_by_version
+
+SYNOPSIS
+	bfd_boolean bfd_hide_sym_by_version
+	  (struct bfd_elf_version_tree *verdefs, const char *sym_name);
+
+DESCRIPTION
+	Search an elf version script tree for symbol versioning
+	info for a given symbol.  Return TRUE if the symbol is hidden.
+
+*/
+
+bfd_boolean
+bfd_hide_sym_by_version (struct bfd_elf_version_tree *verdefs,
+			 const char *sym_name)
+{
+  bfd_boolean hidden = FALSE;
+  bfd_find_version_for_sym (verdefs, sym_name, &hidden);
+  return hidden;
 }

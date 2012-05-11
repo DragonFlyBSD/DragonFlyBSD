@@ -1,7 +1,6 @@
 /* Handle set and show GDB commands.
 
-   Copyright (c) 2000, 2001, 2002, 2003, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (c) 2000-2003, 2007-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -125,6 +124,8 @@ deprecated_show_value_hack (struct ui_file *ignore_file,
 void
 do_setshow_command (char *arg, int from_tty, struct cmd_list_element *c)
 {
+  struct ui_out *uiout = current_uiout;
+
   if (c->type == set_cmd)
     {
       switch (c->var_type)
@@ -358,21 +359,18 @@ do_setshow_command (char *arg, int from_tty, struct cmd_list_element *c)
 	    }
 	  break;
 	case var_uinteger:
-	  if (*(unsigned int *) c->var == UINT_MAX)
-	    {
-	      fputs_filtered ("unlimited", stb->stream);
-	      break;
-	    }
-	  /* else fall through */
 	case var_zuinteger:
-	case var_zinteger:
-	  fprintf_filtered (stb->stream, "%u", *(unsigned int *) c->var);
+	  if (c->var_type == var_uinteger
+	      && *(unsigned int *) c->var == UINT_MAX)
+	    fputs_filtered ("unlimited", stb->stream);
+	  else
+	    fprintf_filtered (stb->stream, "%u", *(unsigned int *) c->var);
 	  break;
 	case var_integer:
-	  if (*(int *) c->var == INT_MAX)
-	    {
-	      fputs_filtered ("unlimited", stb->stream);
-	    }
+	case var_zinteger:
+	  if (c->var_type == var_integer
+	      && *(int *) c->var == INT_MAX)
+	    fputs_filtered ("unlimited", stb->stream);
 	  else
 	    fprintf_filtered (stb->stream, "%d", *(int *) c->var);
 	  break;
@@ -414,6 +412,7 @@ void
 cmd_show_list (struct cmd_list_element *list, int from_tty, char *prefix)
 {
   struct cleanup *showlist_chain;
+  struct ui_out *uiout = current_uiout;
 
   showlist_chain = make_cleanup_ui_out_tuple_begin_end (uiout, "showlist");
   for (; list != NULL; list = list->next)

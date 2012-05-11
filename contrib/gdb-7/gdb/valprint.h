@@ -1,7 +1,7 @@
 /* Declarations for value printing routines for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988, 1989, 1991, 1992, 1993, 1994, 2000, 2005, 2007,
-   2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986, 1988-1989, 1991-1994, 2000, 2005, 2007-2012 Free
+   Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -157,5 +157,14 @@ extern void val_print_optimized_out (struct ui_file *stream);
 extern void val_print_unavailable (struct ui_file *stream);
 
 extern void val_print_invalid_address (struct ui_file *stream);
+
+extern void generic_emit_char (int c, struct type *type, struct ui_file *stream,
+			       int quoter, const char *encoding);
+
+extern void generic_printstr (struct ui_file *stream, struct type *type, 
+			      const gdb_byte *string, unsigned int length, 
+			      const char *encoding, int force_ellipses,
+			      int quote_char, int c_style_terminator,
+			      const struct value_print_options *options);
 
 #endif

@@ -1,7 +1,6 @@
 /* Command-line output logging for GDB, the GNU debugger.
 
-   Copyright (c) 2003, 2004, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (c) 2003-2004, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -81,6 +80,7 @@ set_logging_redirect (char *args, int from_tty, struct cmd_list_element *c)
 {
   struct cleanup *cleanups = NULL;
   struct ui_file *output, *new_logging_no_redirect_file;
+  struct ui_out *uiout = current_uiout;
 
   if (saved_filename == NULL
       || (logging_redirect != 0 && logging_no_redirect_file == NULL)
@@ -166,7 +166,7 @@ pop_output_files (void)
   saved_output.targ = NULL;
   saved_output.targerr = NULL;
 
-  ui_out_redirect (uiout, NULL);
+  ui_out_redirect (current_uiout, NULL);
 }
 
 /* This is a helper for the `set logging' command.  */
@@ -226,7 +226,7 @@ handle_redirections (int from_tty)
   gdb_stdtarg = output;
   gdb_stdtargerr = output;
 
-  if (ui_out_redirect (uiout, output) < 0)
+  if (ui_out_redirect (current_uiout, output) < 0)
     warning (_("Current output protocol does not support redirection"));
 }
 

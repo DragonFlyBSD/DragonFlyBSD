@@ -1,7 +1,6 @@
 /* Implementation of the GDB variable objects API.
 
-   Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
-   2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1999-2012 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -361,6 +360,25 @@ static struct type *java_type_of_child (struct varobj *parent, int index);
 static char *java_value_of_variable (struct varobj *var,
 				     enum varobj_display_formats format);
 
+/* Ada implementation */
+
+static int ada_number_of_children (struct varobj *var);
+
+static char *ada_name_of_variable (struct varobj *parent);
+
+static char *ada_name_of_child (struct varobj *parent, int index);
+
+static char *ada_path_expr_of_child (struct varobj *child);
+
+static struct value *ada_value_of_root (struct varobj **var_handle);
+
+static struct value *ada_value_of_child (struct varobj *parent, int index);
+
+static struct type *ada_type_of_child (struct varobj *parent, int index);
+
+static char *ada_value_of_variable (struct varobj *var,
+				    enum varobj_display_formats format);
+
 /* The language specific vector */
 
 struct language_specific
@@ -444,7 +462,18 @@ static struct language_specific languages[vlang_end] = {
    java_value_of_root,
    java_value_of_child,
    java_type_of_child,
-   java_value_of_variable}
+   java_value_of_variable},
+  /* Ada */
+  {
+   vlang_ada,
+   ada_number_of_children,
+   ada_name_of_variable,
+   ada_name_of_child,
+   ada_path_expr_of_child,
+   ada_value_of_root,
+   ada_value_of_child,
+   ada_type_of_child,
+   ada_value_of_variable}
 };
 
 /* A little convenience enum for dealing with C++/Java.  */
@@ -580,6 +609,7 @@ varobj_create (char *objname,
          return a sensible error.  */
       if (!gdb_parse_exp_1 (&p, block, 0, &var->root->exp))
 	{
+	  do_cleanups (old_chain);
 	  return NULL;
 	}
 
@@ -1085,7 +1115,7 @@ update_dynamic_varobj_children (struct varobj *var,
       if (to < 0 || i < to)
 	{
 	  PyObject *py_v;
-	  char *name;
+	  const char *name;
 	  struct value *v;
 	  struct cleanup *inner;
 	  int can_mention = from < 0 || i >= from;
@@ -2401,6 +2431,9 @@ variable_language (struct varobj *var)
     case language_java:
       lang = vlang_java;
       break;
+    case language_ada:
+      lang = vlang_ada;
+      break;
     }
 
   return lang;
@@ -2576,25 +2609,21 @@ value_get_print_value (struct value *value, enum varobj_display_formats format,
 
 	if (PyObject_HasAttr (value_formatter, gdbpy_to_string_cst))
 	  {
-	    char *hint;
 	    struct value *replacement;
 	    PyObject *output = NULL;
-
-	    hint = gdbpy_get_display_hint (value_formatter);
-	    if (hint)
-	      {
-		if (!strcmp (hint, "string"))
-		  string_print = 1;
-		xfree (hint);
-	      }
 
 	    output = apply_varobj_pretty_printer (value_formatter,
 						  &replacement,
 						  stb);
+
+	    /* If we have string like output ...  */
 	    if (output)
 	      {
 		make_cleanup_py_decref (output);
 
+		/* If this is a lazy string, extract it.  For lazy
+		   strings we always print as a string, so set
+		   string_print.  */
 		if (gdbpy_is_lazy_string (output))
 		  {
 		    gdbpy_extract_lazy_string (output, &str_addr, &type,
@@ -2604,12 +2633,27 @@ value_get_print_value (struct value *value, enum varobj_display_formats format,
 		  }
 		else
 		  {
+		    /* If it is a regular (non-lazy) string, extract
+		       it and copy the contents into THEVALUE.  If the
+		       hint says to print it as a string, set
+		       string_print.  Otherwise just return the extracted
+		       string as a value.  */
+
 		    PyObject *py_str
 		      = python_string_to_target_python_string (output);
 
 		    if (py_str)
 		      {
 			char *s = PyString_AsString (py_str);
+			char *hint;
+
+			hint = gdbpy_get_display_hint (value_formatter);
+			if (hint)
+			  {
+			    if (!strcmp (hint, "string"))
+			      string_print = 1;
+			    xfree (hint);
+			  }
 
 			len = PyString_Size (py_str);
 			thevalue = xmemdup (s, len + 1, len + 1);
@@ -2628,6 +2672,9 @@ value_get_print_value (struct value *value, enum varobj_display_formats format,
 		      gdbpy_print_stack ();
 		  }
 	      }
+	    /* If the printer returned a replacement value, set VALUE
+	       to REPLACEMENT.  If there is not a replacement value,
+	       just use the value passed to this function.  */
 	    if (replacement)
 	      value = replacement;
 	  }
@@ -2638,12 +2685,18 @@ value_get_print_value (struct value *value, enum varobj_display_formats format,
   get_formatted_print_options (&opts, format_code[(int) format]);
   opts.deref_ref = 0;
   opts.raw = 1;
+
+  /* If the THEVALUE has contents, it is a regular string.  */
   if (thevalue)
     LA_PRINT_STRING (stb, type, thevalue, len, encoding, 0, &opts);
   else if (string_print)
+    /* Otherwise, if string_print is set, and it is not a regular
+       string, it is a lazy string.  */
     val_print_string (type, encoding, str_addr, len, stb, &opts);
   else
+    /* All other cases.  */
     common_val_print (value, stb, 0, &opts, current_language);
+
   thevalue = ui_file_xstrdup (stb, NULL);
 
   do_cleanups (old_chain);
@@ -3389,8 +3442,14 @@ cplus_describe_child (struct varobj *parent, int index,
 		 will create an lvalue, for all appearences, so we don't
 		 need to use more fancy:
 		         *(Base1*)(&d)
-		 construct.  */
-	      *cfull_expression = xstrprintf ("(%s(%s%s) %s)", 
+		 construct.
+
+		 When we are in the scope of the base class or of one
+		 of its children, the type field name will be interpreted
+		 as a constructor, if it exists.  Therefore, we must
+		 indicate that the name is a class name by using the
+		 'class' keyword.  See PR mi/11912  */
+	      *cfull_expression = xstrprintf ("(%s(class %s%s) %s)", 
 					      ptr, 
 					      TYPE_FIELD_NAME (type, index),
 					      ptr,
@@ -3582,6 +3641,56 @@ static char *
 java_value_of_variable (struct varobj *var, enum varobj_display_formats format)
 {
   return cplus_value_of_variable (var, format);
+}
+
+/* Ada specific callbacks for VAROBJs.  */
+
+static int
+ada_number_of_children (struct varobj *var)
+{
+  return c_number_of_children (var);
+}
+
+static char *
+ada_name_of_variable (struct varobj *parent)
+{
+  return c_name_of_variable (parent);
+}
+
+static char *
+ada_name_of_child (struct varobj *parent, int index)
+{
+  return c_name_of_child (parent, index);
+}
+
+static char*
+ada_path_expr_of_child (struct varobj *child)
+{
+  return c_path_expr_of_child (child);
+}
+
+static struct value *
+ada_value_of_root (struct varobj **var_handle)
+{
+  return c_value_of_root (var_handle);
+}
+
+static struct value *
+ada_value_of_child (struct varobj *parent, int index)
+{
+  return c_value_of_child (parent, index);
+}
+
+static struct type *
+ada_type_of_child (struct varobj *parent, int index)
+{
+  return c_type_of_child (parent, index);
+}
+
+static char *
+ada_value_of_variable (struct varobj *var, enum varobj_display_formats format)
+{
+  return c_value_of_variable (var, format);
 }
 
 /* Iterate all the existing _root_ VAROBJs and call the FUNC callback for them

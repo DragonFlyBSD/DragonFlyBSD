@@ -1,8 +1,6 @@
 /* Read ELF (Executable and Linking Format) object files for GDB.
 
-   Copyright (C) 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1991-2012 Free Software Foundation, Inc.
 
    Written by Fred Fish at Cygnus Support.
 
@@ -206,18 +204,7 @@ record_minimal_symbol (const char *name, int name_len, int copy_name,
 					  bfd_section, objfile);
 }
 
-/*
-
-   LOCAL FUNCTION
-
-   elf_symtab_read -- read the symbol table of an ELF file
-
-   SYNOPSIS
-
-   void elf_symtab_read (struct objfile *objfile, int type,
-			 long number_of_symbols, asymbol **symbol_table)
-
-   DESCRIPTION
+/* Read the symbol table of an ELF file.
 
    Given an objfile, a symbol table, and a flag indicating whether the
    symbol table contains regular, dynamic, or synthetic symbols, add all
@@ -227,9 +214,7 @@ record_minimal_symbol (const char *name, int name_len, int copy_name,
    defined in the ELF symbol table, which can be used to locate
    the beginnings of sections from each ".o" file that was linked to
    form the executable objfile.  We gather any such info and record it
-   in data structures hung off the objfile's private data.
-
- */
+   in data structures hung off the objfile's private data.  */
 
 #define ST_REGULAR 0
 #define ST_DYNAMIC 1
@@ -285,7 +270,7 @@ elf_symtab_read (struct objfile *objfile, int type,
 	{
 	  struct minimal_symbol *msym;
 	  bfd *abfd = objfile->obfd;
-	  asection *sect; 
+	  asection *sect;
 
 	  /* Symbol is a reference to a function defined in
 	     a shared library.
@@ -375,7 +360,7 @@ elf_symtab_read (struct objfile *objfile, int type,
 
 		 NOTE: uweigand-20071112: Synthetic symbols do not
 		 have an ELF-private part, so do not touch those.  */
-	      unsigned int shndx = type == ST_SYNTHETIC ? 0 : 
+	      unsigned int shndx = type == ST_SYNTHETIC ? 0 :
 		((elf_symbol_type *) sym)->internal_elf_sym.st_shndx;
 
 	      switch (shndx)
@@ -411,7 +396,11 @@ elf_symtab_read (struct objfile *objfile, int type,
 		  else
 		    ms_type = mst_text;
 		}
-	      else if ((sym->name[0] == '.' && sym->name[1] == 'L')
+	      /* The BSF_SYNTHETIC check is there to omit ppc64 function
+		 descriptors mistaken for static functions starting with 'L'.
+		 */
+	      else if ((sym->name[0] == '.' && sym->name[1] == 'L'
+			&& (sym->flags & BSF_SYNTHETIC) == 0)
 		       || ((sym->flags & BSF_LOCAL)
 			   && sym->name[0] == '$'
 			   && sym->name[1] == 'L'))
@@ -477,7 +466,7 @@ elf_symtab_read (struct objfile *objfile, int type,
 			     already includes one element, so we
 			     need to allocate max_index aadditional
 			     elements.  */
-			  size = (sizeof (struct stab_section_info) 
+			  size = (sizeof (struct stab_section_info)
 				  + (sizeof (CORE_ADDR) * max_index));
 			  sectinfo = (struct stab_section_info *)
 			    xmalloc (size);
@@ -531,7 +520,7 @@ elf_symtab_read (struct objfile *objfile, int type,
 	  else
 	    {
 	      /* FIXME:  Solaris2 shared libraries include lots of
-		 odd "absolute" and "undefined" symbols, that play 
+		 odd "absolute" and "undefined" symbols, that play
 		 hob with actions like finding what function the PC
 		 is in.  Ignore them if they aren't text, data, or bss.  */
 	      /* ms_type = mst_unknown; */
@@ -550,7 +539,7 @@ elf_symtab_read (struct objfile *objfile, int type,
 		 ELF-private part.  However, in some cases (e.g. synthetic
 		 'dot' symbols on ppc64) the udata.p entry is set to point back
 		 to the original ELF symbol it was derived from.  Get the size
-		 from that symbol.  */ 
+		 from that symbol.  */
 	      if (type != ST_SYNTHETIC)
 		elf_sym = (elf_symbol_type *) sym;
 	      else
@@ -558,7 +547,7 @@ elf_symtab_read (struct objfile *objfile, int type,
 
 	      if (elf_sym)
 		MSYMBOL_SIZE(msym) = elf_sym->internal_elf_sym.st_size;
-	  
+
 	      msym->filename = filesymname;
 	      gdbarch_elf_make_msymbol_special (gdbarch, sym, msym);
 	    }
@@ -663,14 +652,14 @@ elf_rel_plt_read (struct objfile *objfile, asymbol **dyn_symbol_table)
 	 OBJFILE the symbol is undefined and the objfile having NAME defined
 	 may not yet have been loaded.  */
 
-      if (string_buffer_size < name_len + got_suffix_len)
+      if (string_buffer_size < name_len + got_suffix_len + 1)
 	{
 	  string_buffer_size = 2 * (name_len + got_suffix_len);
 	  string_buffer = xrealloc (string_buffer, string_buffer_size);
 	}
       memcpy (string_buffer, name, name_len);
       memcpy (&string_buffer[name_len], SYMBOL_GOT_PLT_SUFFIX,
-	      got_suffix_len);
+	      got_suffix_len + 1);
 
       msym = record_minimal_symbol (string_buffer, name_len + got_suffix_len,
                                     1, address, mst_slot_got_plt, got_plt,
@@ -899,7 +888,7 @@ elf_gnu_ifunc_resolve_name (const char *name, CORE_ADDR *addr_p)
 {
   if (elf_gnu_ifunc_resolve_by_cache (name, addr_p))
     return 1;
-  
+
   if (elf_gnu_ifunc_resolve_by_got (name, addr_p))
     return 1;
 
@@ -1041,7 +1030,7 @@ elf_gnu_ifunc_resolver_return_stop (struct breakpoint *b)
     }
   gdb_assert (b->type == bp_gnu_ifunc_resolver);
 
-  gdb_assert (current_program_space == b->pspace);
+  gdb_assert (current_program_space == b->pspace || b->pspace == NULL);
   elf_gnu_ifunc_record_cache (b->addr_string, resolved_pc);
 
   sal = find_pc_line (resolved_pc, 0);
@@ -1197,7 +1186,7 @@ find_separate_debug_file_by_buildid (struct objfile *objfile)
 }
 
 /* Scan and build partial symbols for a symbol file.
-   We have been initialized by a call to elf_symfile_init, which 
+   We have been initialized by a call to elf_symfile_init, which
    currently does nothing.
 
    SECTION_OFFSETS is a set of offsets to apply to relocate the symbols
@@ -1227,7 +1216,7 @@ find_separate_debug_file_by_buildid (struct objfile *objfile)
 static void
 elf_symfile_read (struct objfile *objfile, int symfile_flags)
 {
-  bfd *abfd = objfile->obfd;
+  bfd *synth_abfd, *abfd = objfile->obfd;
   struct elfinfo ei;
   struct cleanup *back_to;
   long symcount = 0, dynsymcount = 0, synthcount, storage_needed;
@@ -1298,9 +1287,26 @@ elf_symfile_read (struct objfile *objfile, int symfile_flags)
       elf_rel_plt_read (objfile, dyn_symbol_table);
     }
 
+  /* Contrary to binutils --strip-debug/--only-keep-debug the strip command from
+     elfutils (eu-strip) moves even the .symtab section into the .debug file.
+
+     bfd_get_synthetic_symtab on ppc64 for each function descriptor ELF symbol
+     'name' creates a new BSF_SYNTHETIC ELF symbol '.name' with its code
+     address.  But with eu-strip files bfd_get_synthetic_symtab would fail to
+     read the code address from .opd while it reads the .symtab section from
+     a separate debug info file as the .opd section is SHT_NOBITS there.
+
+     With SYNTH_ABFD the .opd section will be read from the original
+     backlinked binary where it is valid.  */
+
+  if (objfile->separate_debug_objfile_backlink)
+    synth_abfd = objfile->separate_debug_objfile_backlink->obfd;
+  else
+    synth_abfd = abfd;
+
   /* Add synthetic symbols - for instance, names for any PLT entries.  */
 
-  synthcount = bfd_get_synthetic_symtab (abfd, symcount, symbol_table,
+  synthcount = bfd_get_synthetic_symtab (synth_abfd, symcount, symbol_table,
 					 dynsymcount, dyn_symbol_table,
 					 &synthsyms);
   if (synthcount > 0)
@@ -1370,7 +1376,7 @@ elf_symfile_read (struct objfile *objfile, int symfile_flags)
 				bfd_section_size (abfd, str_sect));
     }
 
-  if (dwarf2_has_info (objfile))
+  if (dwarf2_has_info (objfile, NULL))
     {
       /* elf_sym_fns_gdb_index cannot handle simultaneous non-DWARF debug
 	 information present in OBJFILE.  If there is such debug info present
@@ -1416,7 +1422,7 @@ elf_symfile_read (struct objfile *objfile, int symfile_flags)
 static void
 read_psyms (struct objfile *objfile)
 {
-  if (dwarf2_has_info (objfile))
+  if (dwarf2_has_info (objfile, NULL))
     dwarf2_build_psymtabs (objfile);
 }
 
@@ -1541,7 +1547,7 @@ elfstab_offset_sections (struct objfile *objfile, struct partial_symtab *pst)
       /* Found it!  Allocate a new psymtab struct, and fill it in.  */
       maybe->found++;
       pst->section_offsets = (struct section_offsets *)
-	obstack_alloc (&objfile->objfile_obstack, 
+	obstack_alloc (&objfile->objfile_obstack,
 		       SIZEOF_N_SECTION_OFFSETS (objfile->num_sections));
       for (i = 0; i < maybe->num_sections; i++)
 	(pst->section_offsets)->offsets[i] = maybe->sections[i];

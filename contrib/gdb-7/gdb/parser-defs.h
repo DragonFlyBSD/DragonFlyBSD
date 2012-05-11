@@ -1,8 +1,7 @@
 /* Parser definitions for GDB.
 
-   Copyright (C) 1986, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-   1998, 1999, 2000, 2002, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1986, 1989-2000, 2002, 2007-2012 Free Software
+   Foundation, Inc.
 
    Modified from expread.y by the Department of Computer Science at the
    State University of New York at Buffalo.
@@ -130,8 +129,6 @@ union type_stack_elt
   };
 extern union type_stack_elt *type_stack;
 extern int type_stack_depth, type_stack_size;
-
-extern void write_exp_elt (union exp_element);
 
 extern void write_exp_elt_opcode (enum exp_opcode);
 

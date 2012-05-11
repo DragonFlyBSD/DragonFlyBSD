@@ -1,7 +1,6 @@
 /* Code dealing with blocks for GDB.
 
-   Copyright (C) 2003, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -129,11 +128,9 @@ struct blockvector
 #define BLOCKVECTOR_BLOCK(blocklist,n) (blocklist)->block[n]
 #define BLOCKVECTOR_MAP(blocklist) ((blocklist)->map)
 
-/* Special block numbers */
-
-enum { GLOBAL_BLOCK = 0, STATIC_BLOCK = 1, FIRST_LOCAL_BLOCK = 2 };
-
 extern struct symbol *block_linkage_function (const struct block *);
+
+extern struct symbol *block_containing_function (const struct block *);
 
 extern int block_inlined_p (const struct block *block);
 
@@ -145,6 +142,9 @@ extern struct blockvector *blockvector_for_pc_sect (CORE_ADDR,
 						    struct obj_section *,
 						    struct block **,
                                                     struct symtab *);
+
+extern struct call_site *call_site_for_pc (struct gdbarch *gdbarch,
+					   CORE_ADDR pc);
 
 extern struct block *block_for_pc (CORE_ADDR);
 

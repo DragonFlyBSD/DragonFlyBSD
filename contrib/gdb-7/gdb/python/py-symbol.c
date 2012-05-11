@@ -1,6 +1,6 @@
 /* Python interface to symbols.
 
-   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 2008-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -63,6 +63,22 @@ sympy_str (PyObject *self)
   result = PyString_FromString (SYMBOL_PRINT_NAME (symbol));
 
   return result;
+}
+
+static PyObject *
+sympy_get_type (PyObject *self, void *closure)
+{
+  struct symbol *symbol = NULL;
+
+  SYMPY_REQUIRE_VALID (self, symbol);
+
+  if (SYMBOL_TYPE (symbol) == NULL)
+    {
+      Py_INCREF (Py_None);
+      return Py_None;
+    }
+
+  return type_to_type_object (SYMBOL_TYPE (symbol));
 }
 
 static PyObject *
@@ -258,9 +274,10 @@ gdbpy_lookup_symbol (PyObject *self, PyObject *args, PyObject *kw)
   int domain = VAR_DOMAIN, is_a_field_of_this = 0;
   const char *name;
   static char *keywords[] = { "name", "block", "domain", NULL };
-  struct symbol *symbol;
+  struct symbol *symbol = NULL;
   PyObject *block_obj = NULL, *ret_tuple, *sym_obj, *bool_obj;
-  struct block *block = NULL;
+  const struct block *block = NULL;
+  volatile struct gdb_exception except;
 
   if (! PyArg_ParseTupleAndKeywords (args, kw, "s|O!i", keywords, &name,
 				     &block_object_type, &block_obj, &domain))
@@ -281,7 +298,11 @@ gdbpy_lookup_symbol (PyObject *self, PyObject *args, PyObject *kw)
       GDB_PY_HANDLE_EXCEPTION (except);
     }
 
-  symbol = lookup_symbol (name, block, domain, &is_a_field_of_this);
+  TRY_CATCH (except, RETURN_MASK_ALL)
+    {
+      symbol = lookup_symbol (name, block, domain, &is_a_field_of_this);
+    }
+  GDB_PY_HANDLE_EXCEPTION (except);
 
   ret_tuple = PyTuple_New (2);
   if (!ret_tuple)
@@ -319,14 +340,19 @@ gdbpy_lookup_global_symbol (PyObject *self, PyObject *args, PyObject *kw)
   int domain = VAR_DOMAIN;
   const char *name;
   static char *keywords[] = { "name", "domain", NULL };
-  struct symbol *symbol;
+  struct symbol *symbol = NULL;
   PyObject *sym_obj;
+  volatile struct gdb_exception except;
 
   if (! PyArg_ParseTupleAndKeywords (args, kw, "s|i", keywords, &name,
 				     &domain))
     return NULL;
 
-  symbol = lookup_symbol_global (name, NULL, domain);
+  TRY_CATCH (except, RETURN_MASK_ALL)
+    {
+      symbol = lookup_symbol_global (name, NULL, domain);
+    }
+  GDB_PY_HANDLE_EXCEPTION (except);
 
   if (symbol)
     {
@@ -412,6 +438,8 @@ gdbpy_initialize_symbols (void)
 
 
 static PyGetSetDef symbol_object_getset[] = {
+  { "type", sympy_get_type, NULL,
+    "Type of the symbol.", NULL },
   { "symtab", sympy_get_symtab, NULL,
     "Symbol table in which the symbol appears.", NULL },
   { "name", sympy_get_name, NULL,

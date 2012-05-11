@@ -1,7 +1,6 @@
 /* MI Interpreter Definitions and Commands for GDB, the GNU debugger.
 
-   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2002-2005, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -35,6 +34,7 @@
 #include "observer.h"
 #include "gdbthread.h"
 #include "solist.h"
+#include "gdb.h"
 
 /* These are the interpreter setup, etc. functions for the MI interpreter */
 static void mi_execute_command_wrapper (char *cmd);
@@ -64,13 +64,18 @@ static void mi_on_resume (ptid_t ptid);
 static void mi_solib_loaded (struct so_list *solib);
 static void mi_solib_unloaded (struct so_list *solib);
 static void mi_about_to_proceed (void);
+static void mi_breakpoint_created (struct breakpoint *b);
+static void mi_breakpoint_deleted (struct breakpoint *b);
+static void mi_breakpoint_modified (struct breakpoint *b);
 
 static int report_initial_inferior (struct inferior *inf, void *closure);
 
 static void *
-mi_interpreter_init (int top_level)
+mi_interpreter_init (struct interp *interp, int top_level)
 {
   struct mi_interp *mi = XMALLOC (struct mi_interp);
+  const char *name;
+  int mi_version;
 
   /* HACK: We need to force stdout/stderr to point at the console.  This avoids
      any potential side effects caused by legacy code that is still
@@ -86,6 +91,22 @@ mi_interpreter_init (int top_level)
   mi->targ = mi_console_file_new (raw_stdout, "@", '"');
   mi->event_channel = mi_console_file_new (raw_stdout, "=", 0);
 
+  name = interp_name (interp);
+  /* INTERP_MI selects the most recent released version.  "mi2" was
+     released as part of GDB 6.0.  */
+  if (strcmp (name, INTERP_MI) == 0)
+    mi_version = 2;
+  else if (strcmp (name, INTERP_MI1) == 0)
+    mi_version = 1;
+  else if (strcmp (name, INTERP_MI2) == 0)
+    mi_version = 2;
+  else if (strcmp (name, INTERP_MI3) == 0)
+    mi_version = 3;
+  else
+    gdb_assert_not_reached ("unhandled MI version");
+
+  mi->uiout = mi_out_new (mi_version);
+
   if (top_level)
     {
       observer_attach_new_thread (mi_new_thread);
@@ -99,6 +120,9 @@ mi_interpreter_init (int top_level)
       observer_attach_solib_loaded (mi_solib_loaded);
       observer_attach_solib_unloaded (mi_solib_unloaded);
       observer_attach_about_to_proceed (mi_about_to_proceed);
+      observer_attach_breakpoint_created (mi_breakpoint_created);
+      observer_attach_breakpoint_deleted (mi_breakpoint_deleted);
+      observer_attach_breakpoint_modified (mi_breakpoint_modified);
 
       /* The initial inferior is created before this function is called, so we
 	 need to report it explicitly.  Use iteration in case future version
@@ -394,18 +418,24 @@ mi_on_normal_stop (struct bpstats *bs, int print_frame)
     {
       int core;
 
-      if (uiout != mi_uiout)
+      if (current_uiout != mi_uiout)
 	{
 	  /* The normal_stop function has printed frame information into 
 	     CLI uiout, or some other non-MI uiout.  There's no way we
 	     can extract proper fields from random uiout object, so we print
 	     the frame again.  In practice, this can only happen when running
 	     a CLI command in MI.  */
-	  struct ui_out *saved_uiout = uiout;
+	  struct ui_out *saved_uiout = current_uiout;
+	  struct target_waitstatus last;
+	  ptid_t last_ptid;
 
-	  uiout = mi_uiout;
+	  current_uiout = mi_uiout;
+
+	  get_last_target_status (&last_ptid, &last);
+	  bpstat_print (bs, last.kind);
+
 	  print_stack_frame (get_selected_frame (NULL), 0, SRC_AND_LOC);
-	  uiout = saved_uiout;
+	  current_uiout = saved_uiout;
 	}
 
       ui_out_field_int (mi_uiout, "thread-id",
@@ -450,6 +480,95 @@ mi_about_to_proceed (void)
 
   mi_proceeded = 1;
 }
+
+/* When non-zero, no MI notifications will be emitted in
+   response to breakpoint change observers.  */
+int mi_suppress_breakpoint_notifications = 0;
+
+/* Emit notification about a created breakpoint.  */
+static void
+mi_breakpoint_created (struct breakpoint *b)
+{
+  struct mi_interp *mi = top_level_interpreter_data ();
+  struct ui_out *mi_uiout = interp_ui_out (top_level_interpreter ());
+  struct gdb_exception e;
+
+  if (mi_suppress_breakpoint_notifications)
+    return;
+
+  if (b->number <= 0)
+    return;
+
+  target_terminal_ours ();
+  fprintf_unfiltered (mi->event_channel,
+		      "breakpoint-created");
+  /* We want the output from gdb_breakpoint_query to go to
+     mi->event_channel.  One approach would be to just
+     call gdb_breakpoint_query, and then use mi_out_put to
+     send the current content of mi_outout into mi->event_channel.
+     However, that will break if anything is output to mi_uiout
+     prior the calling the breakpoint_created notifications.
+     So, we use ui_out_redirect.  */
+  ui_out_redirect (mi_uiout, mi->event_channel);
+  TRY_CATCH (e, RETURN_MASK_ERROR)
+    gdb_breakpoint_query (mi_uiout, b->number, NULL);
+  ui_out_redirect (mi_uiout, NULL);
+
+  gdb_flush (mi->event_channel);
+}
+
+/* Emit notification about deleted breakpoint.  */
+static void
+mi_breakpoint_deleted (struct breakpoint *b)
+{
+  struct mi_interp *mi = top_level_interpreter_data ();
+
+  if (mi_suppress_breakpoint_notifications)
+    return;
+
+  if (b->number <= 0)
+    return;
+
+  target_terminal_ours ();
+
+  fprintf_unfiltered (mi->event_channel, "breakpoint-deleted,id=\"%d\"",
+		      b->number);
+
+  gdb_flush (mi->event_channel);
+}
+
+/* Emit notification about modified breakpoint.  */
+static void
+mi_breakpoint_modified (struct breakpoint *b)
+{
+  struct mi_interp *mi = top_level_interpreter_data ();
+  struct ui_out *mi_uiout = interp_ui_out (top_level_interpreter ());
+  struct gdb_exception e;
+
+  if (mi_suppress_breakpoint_notifications)
+    return;
+
+  if (b->number <= 0)
+    return;
+
+  target_terminal_ours ();
+  fprintf_unfiltered (mi->event_channel,
+		      "breakpoint-modified");
+  /* We want the output from gdb_breakpoint_query to go to
+     mi->event_channel.  One approach would be to just
+     call gdb_breakpoint_query, and then use mi_out_put to
+     send the current content of mi_outout into mi->event_channel.
+     However, that will break if anything is output to mi_uiout
+     prior the calling the breakpoint_created notifications.
+     So, we use ui_out_redirect.  */
+  ui_out_redirect (mi_uiout, mi->event_channel);
+  TRY_CATCH (e, RETURN_MASK_ERROR)
+    gdb_breakpoint_query (mi_uiout, b->number, NULL);
+  ui_out_redirect (mi_uiout, NULL);
+
+  gdb_flush (mi->event_channel);
+}
+
 
 static int
 mi_output_running_pid (struct thread_info *info, void *arg)
@@ -605,6 +724,14 @@ report_initial_inferior (struct inferior *inf, void *closure)
   return 0;
 }
 
+static struct ui_out *
+mi_ui_out (struct interp *interp)
+{
+  struct mi_interp *mi = interp_data (interp);
+
+  return mi->uiout;
+}
+
 extern initialize_file_ftype _initialize_mi_interp; /* -Wmissing-prototypes */
 
 void
@@ -616,15 +743,13 @@ _initialize_mi_interp (void)
     mi_interpreter_resume,	/* resume_proc */
     mi_interpreter_suspend,	/* suspend_proc */
     mi_interpreter_exec,	/* exec_proc */
-    mi_interpreter_prompt_p	/* prompt_proc_p */
+    mi_interpreter_prompt_p,	/* prompt_proc_p */
+    mi_ui_out 			/* ui_out_proc */
   };
 
   /* The various interpreter levels.  */
-  interp_add (interp_new (INTERP_MI1, NULL, mi_out_new (1), &procs));
-  interp_add (interp_new (INTERP_MI2, NULL, mi_out_new (2), &procs));
-  interp_add (interp_new (INTERP_MI3, NULL, mi_out_new (3), &procs));
-
-  /* "mi" selects the most recent released version.  "mi2" was
-     released as part of GDB 6.0.  */
-  interp_add (interp_new (INTERP_MI, NULL, mi_out_new (2), &procs));
+  interp_add (interp_new (INTERP_MI1, &procs));
+  interp_add (interp_new (INTERP_MI2, &procs));
+  interp_add (interp_new (INTERP_MI3, &procs));
+  interp_add (interp_new (INTERP_MI, &procs));
 }

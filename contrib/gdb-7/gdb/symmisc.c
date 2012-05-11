@@ -1,8 +1,7 @@
 /* Do various things to symbol tables (other than lookup), for GDB.
 
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2002, 2003, 2004, 2007, 2008, 2009, 2010,
-   2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2000, 2002-2004, 2007-2012 Free Software
+   Foundation, Inc.
 
    This file is part of GDB.
 
@@ -79,46 +78,6 @@ struct print_symbol_args
 
 static int print_symbol (void *);
 
-/* Free all the storage associated with the struct symtab <- S.
-   Note that some symtabs have contents that all live inside one big block of
-   memory, and some share the contents of another symbol table and so you
-   should not free the contents on their behalf (except sometimes the
-   linetable, which maybe per symtab even when the rest is not).
-   It is s->free_code that says which alternative to use.  */
-
-void
-free_symtab (struct symtab *s)
-{
-  switch (s->free_code)
-    {
-    case free_nothing:
-      /* All the contents are part of a big block of memory (an obstack),
-         and some other symtab is in charge of freeing that block.
-         Therefore, do nothing.  */
-      break;
-
-    case free_linetable:
-      /* Everything will be freed either by our `free_func'
-         or by some other symtab, except for our linetable.
-         Free that now.  */
-      if (LINETABLE (s))
-	xfree (LINETABLE (s));
-      break;
-    }
-
-  /* If there is a single block of memory to free, free it.  */
-  if (s->free_func != NULL)
-    s->free_func (s);
-
-  /* Free source-related stuff.  */
-  if (s->line_charpos != NULL)
-    xfree (s->line_charpos);
-  if (s->fullname != NULL)
-    xfree (s->fullname);
-  if (s->debugformat != NULL)
-    xfree (s->debugformat);
-  xfree (s);
-}
 
 void
 print_symbol_bcache_statistics (void)

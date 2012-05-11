@@ -1,7 +1,5 @@
 /* Read dbx symbol tables and convert to internal format, for GDB.
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2008, 2009, 2010.
-   Free Software Foundation, Inc.
+   Copyright (C) 1986-2004, 2008-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -104,6 +102,10 @@ struct symloc
 #define STRING_OFFSET(p) (SYMLOC(p)->string_offset)
 #define FILE_STRING_OFFSET(p) (SYMLOC(p)->file_string_offset)
 
+
+/* The objfile we are currently reading.  */
+
+static struct objfile *dbxread_objfile;
 
 /* Remember what we deduced to be the source language of this psymtab.  */
 
@@ -343,10 +345,10 @@ add_this_object_header_file (int i)
 static void
 add_old_header_file (char *name, int instance)
 {
-  struct header_file *p = HEADER_FILES (current_objfile);
+  struct header_file *p = HEADER_FILES (dbxread_objfile);
   int i;
 
-  for (i = 0; i < N_HEADER_FILES (current_objfile); i++)
+  for (i = 0; i < N_HEADER_FILES (dbxread_objfile); i++)
     if (filename_cmp (p[i].name, name) == 0 && instance == p[i].instance)
       {
 	add_this_object_header_file (i);
@@ -374,30 +376,30 @@ add_new_header_file (char *name, int instance)
 
   /* Make sure there is room for one more header file.  */
 
-  i = N_ALLOCATED_HEADER_FILES (current_objfile);
+  i = N_ALLOCATED_HEADER_FILES (dbxread_objfile);
 
-  if (N_HEADER_FILES (current_objfile) == i)
+  if (N_HEADER_FILES (dbxread_objfile) == i)
     {
       if (i == 0)
 	{
-	  N_ALLOCATED_HEADER_FILES (current_objfile) = 10;
-	  HEADER_FILES (current_objfile) = (struct header_file *)
+	  N_ALLOCATED_HEADER_FILES (dbxread_objfile) = 10;
+	  HEADER_FILES (dbxread_objfile) = (struct header_file *)
 	    xmalloc (10 * sizeof (struct header_file));
 	}
       else
 	{
 	  i *= 2;
-	  N_ALLOCATED_HEADER_FILES (current_objfile) = i;
-	  HEADER_FILES (current_objfile) = (struct header_file *)
-	    xrealloc ((char *) HEADER_FILES (current_objfile),
+	  N_ALLOCATED_HEADER_FILES (dbxread_objfile) = i;
+	  HEADER_FILES (dbxread_objfile) = (struct header_file *)
+	    xrealloc ((char *) HEADER_FILES (dbxread_objfile),
 		      (i * sizeof (struct header_file)));
 	}
     }
 
   /* Create an entry for this header file.  */
 
-  i = N_HEADER_FILES (current_objfile)++;
-  hfile = HEADER_FILES (current_objfile) + i;
+  i = N_HEADER_FILES (dbxread_objfile)++;
+  hfile = HEADER_FILES (dbxread_objfile) + i;
   hfile->name = xstrdup (name);
   hfile->instance = instance;
   hfile->length = 10;
@@ -412,7 +414,7 @@ add_new_header_file (char *name, int instance)
 static struct type **
 explicit_lookup_type (int real_filenum, int index)
 {
-  struct header_file *f = &HEADER_FILES (current_objfile)[real_filenum];
+  struct header_file *f = &HEADER_FILES (dbxread_objfile)[real_filenum];
 
   if (index >= f->length)
     {
@@ -2533,7 +2535,7 @@ read_ofile_symtab (struct partial_symtab *pst)
      objfile->section_offsets.  */ 
   section_offsets = pst->section_offsets;
 
-  current_objfile = objfile;
+  dbxread_objfile = objfile;
   subfile_stack = NULL;
 
   stringtab_global = DBX_STRINGTAB (objfile);
@@ -2698,7 +2700,7 @@ read_ofile_symtab (struct partial_symtab *pst)
 
   end_stabs ();
 
-  current_objfile = NULL;
+  dbxread_objfile = NULL;
 }
 
 
@@ -3429,7 +3431,7 @@ elfstab_build_psymtabs (struct objfile *objfile, asection *stabsect,
   bfd *sym_bfd = objfile->obfd;
   char *name = bfd_get_filename (sym_bfd);
   struct dbx_symfile_info *info;
-  struct cleanup *back_to = NULL;
+  struct cleanup *back_to = make_cleanup (null_cleanup, NULL);
 
   /* There is already a dbx_symfile_info allocated by our caller.
      It might even contain some info from the ELF symtab to help us.  */
@@ -3473,7 +3475,7 @@ elfstab_build_psymtabs (struct objfile *objfile, asection *stabsect,
   symbuf_left = bfd_section_size (objfile->obfd, stabsect);
   stabs_data = symfile_relocate_debug_section (objfile, stabsect, NULL);
   if (stabs_data)
-    back_to = make_cleanup (free_current_contents, (void *) &stabs_data);
+    make_cleanup (free_current_contents, (void *) &stabs_data);
 
   /* In an elf file, we've already installed the minimal symbols that came
      from the elf (non-stab) symbol table, so always act like an
@@ -3483,8 +3485,7 @@ elfstab_build_psymtabs (struct objfile *objfile, asection *stabsect,
      case it does, it will install them itself.  */
   dbx_symfile_read (objfile, 0);
 
-  if (back_to)
-    do_cleanups (back_to);
+  do_cleanups (back_to);
 }
 
 /* Scan and build partial symbols for a file with special sections for stabs

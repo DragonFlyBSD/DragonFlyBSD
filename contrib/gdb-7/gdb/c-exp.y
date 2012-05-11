@@ -1,7 +1,6 @@
 /* YACC parser for C expressions, for GDB.
-   Copyright (C) 1986, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-   1998, 1999, 2000, 2003, 2004, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1986, 1989-2000, 2003-2004, 2006-2012 Free Software
+   Foundation, Inc.
 
    This file is part of GDB.
 
@@ -208,6 +207,7 @@ static struct stoken operator_stoken (const char *);
 %token NEW DELETE
 %type <sval> operator
 %token REINTERPRET_CAST DYNAMIC_CAST STATIC_CAST CONST_CAST
+%token ENTRY
 
 /* Special type cases, put in to allow the parser to distinguish different
    legal basetypes.  */
@@ -756,6 +756,21 @@ block	:	block COLONCOLON name
 			  $$ = SYMBOL_BLOCK_VALUE (tem); }
 	;
 
+variable:	name_not_typename ENTRY
+			{ struct symbol *sym = $1.sym;
+
+			  if (sym == NULL || !SYMBOL_IS_ARGUMENT (sym)
+			      || !symbol_read_needs_frame (sym))
+			    error (_("@entry can be used only for function "
+				     "parameters, not for \"%s\""),
+				   copy_name ($1.stoken));
+
+			  write_exp_elt_opcode (OP_VAR_ENTRY_VALUE);
+			  write_exp_elt_sym (sym);
+			  write_exp_elt_opcode (OP_VAR_ENTRY_VALUE);
+			}
+	;
+
 variable:	block COLONCOLON name
 			{ struct symbol *sym;
 			  sym = lookup_symbol (copy_name ($3), $1,
@@ -804,7 +819,7 @@ qualified_name:	TYPENAME COLONCOLON name
 			  tmp_token.ptr[tmp_token.length] = 0;
 
 			  /* Check for valid destructor name.  */
-			  destructor_name_p (tmp_token.ptr, type);
+			  destructor_name_p (tmp_token.ptr, $1.type);
 			  write_exp_elt_opcode (OP_SCOPE);
 			  write_exp_elt_type (type);
 			  write_exp_string (tmp_token);
@@ -2224,6 +2239,21 @@ lex_one_token (void)
 	return toktype;
       }
 
+    case '@':
+      {
+	char *p = &tokstart[1];
+	size_t len = strlen ("entry");
+
+	while (isspace (*p))
+	  p++;
+	if (strncmp (p, "entry", len) == 0 && !isalnum (p[len])
+	    && p[len] != '_')
+	  {
+	    lexptr = &p[len];
+	    return ENTRY;
+	  }
+      }
+      /* FALLTHRU */
     case '+':
     case '-':
     case '*':
@@ -2234,7 +2264,6 @@ lex_one_token (void)
     case '^':
     case '~':
     case '!':
-    case '@':
     case '<':
     case '>':
     case '?':
@@ -2486,7 +2515,7 @@ classify_inner_name (struct block *block, int first_name)
     return NAME;
 
   copy = copy_name (yylval.tsym.stoken);
-  new_type = cp_lookup_nested_type (type, copy, block);
+  new_type = cp_lookup_nested_type (yylval.tsym.type, copy, block);
 
   if (new_type == NULL)
     /* We know the caller won't expect us to update yylval.  */

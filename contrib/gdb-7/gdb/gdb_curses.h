@@ -1,7 +1,6 @@
 /* Portable <curses.h>.
 
-   Copyright (C) 2004, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2004, 2006-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -28,6 +27,14 @@
 #elif defined (HAVE_CURSESX_H)
 #include <cursesX.h>
 #elif defined (HAVE_CURSES_H)
+#ifdef __MINGW32__
+/* Windows API headers, included e.g. by serial.h, define MOUSE_MOVED,
+   and so does PDCurses's curses.h, but for an entirely different
+   purpose.  Since we don't use the Windows semantics of MOUSE_MOVED
+   anywhere, avoid compiler warnings by undefining MOUSE_MOVED before
+   including curses.h.  */
+#undef MOUSE_MOVED
+#endif
 #include <curses.h>
 #endif
 

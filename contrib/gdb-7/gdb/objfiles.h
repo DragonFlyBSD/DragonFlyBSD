@@ -1,8 +1,6 @@
 /* Definitions for symbol file management in GDB.
 
-   Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001,
-   2002, 2003, 2004, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1992-2004, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -128,13 +126,13 @@ struct obj_section
 
 /* The memory address of section S (vma + offset).  */
 #define obj_section_addr(s)				      		\
-  (bfd_get_section_vma ((s)->objfile->abfd, s->the_bfd_section)		\
+  (bfd_get_section_vma ((s)->objfile->obfd, s->the_bfd_section)		\
    + obj_section_offset (s))
 
 /* The one-passed-the-end memory address of section S
    (vma + size + offset).  */
 #define obj_section_endaddr(s)						\
-  (bfd_get_section_vma ((s)->objfile->abfd, s->the_bfd_section)		\
+  (bfd_get_section_vma ((s)->objfile->obfd, s->the_bfd_section)		\
    + bfd_get_section_size ((s)->the_bfd_section)			\
    + obj_section_offset (s))
 
@@ -173,19 +171,9 @@ struct objfile
   {
 
     /* All struct objfile's are chained together by their next pointers.
-       The global variable "object_files" points to the first link in this
-       chain.
-
-       FIXME:  There is a problem here if the objfile is reusable, and if
-       multiple users are to be supported.  The problem is that the objfile
-       list is linked through a member of the objfile struct itself, which
-       is only valid for one gdb process.  The list implementation needs to
-       be changed to something like:
-
-       struct list {struct list *next; struct objfile *objfile};
-
-       where the list structure is completely maintained separately within
-       each gdb process.  */
+       The program space field "objfiles"  (frequently referenced via
+       the macro "object_files") points to the first link in this
+       chain.  */
 
     struct objfile *next;
 
@@ -196,7 +184,8 @@ struct objfile
 
     CORE_ADDR addr_low;
 
-    /* Some flag bits for this objfile.  */
+    /* Some flag bits for this objfile.
+       The values are defined by OBJF_*.  */
 
     unsigned short flags;
 
@@ -243,6 +232,11 @@ struct objfile
        we read its symbols.  */
 
     long mtime;
+
+    /* Cached 32-bit CRC as computed by gnu_debuglink_crc32.  CRC32 is valid
+       iff CRC32_P.  */
+    unsigned long crc32;
+    int crc32_p;
 
     /* Obstack to hold objects that should be freed when we load a new symbol
        table from this object file.  */
@@ -389,13 +383,6 @@ struct objfile
     /* Place to stash various statistics about this objfile.  */
       OBJSTATS;
 
-    /* A symtab that the C++ code uses to stash special symbols
-       associated to namespaces.  */
-
-    /* FIXME/carlton-2003-06-27: Delete this in a few years once
-       "possible namespace symbols" go away.  */
-    struct symtab *cp_namespace_symtab;
-
     /* A linked list of symbols created when reading template types or
        function templates.  These symbols are not stored in any symbol
        table, so we have to keep them here to relocate them
@@ -441,25 +428,15 @@ struct objfile
 
 #define OBJF_PSYMTABS_READ (1 << 4)
 
+/* Set if this is the main symbol file
+   (as opposed to symbol file for dynamically loaded code).  */
+
+#define OBJF_MAINLINE (1 << 5)
+
 /* The object file that contains the runtime common minimal symbols
    for SunOS4.  Note that this objfile has no associated BFD.  */
 
 extern struct objfile *rt_common_objfile;
-
-/* When we need to allocate a new type, we need to know which objfile_obstack
-   to allocate the type on, since there is one for each objfile.  The places
-   where types are allocated are deeply buried in function call hierarchies
-   which know nothing about objfiles, so rather than trying to pass a
-   particular objfile down to them, we just do an end run around them and
-   set current_objfile to be whatever objfile we expect to be using at the
-   time types are being allocated.  For instance, when we start reading
-   symbols for a particular objfile, we set current_objfile to point to that
-   objfile, and when we are done, we set it back to NULL, to ensure that we
-   never put a type someplace other than where we are expecting to put it.
-   FIXME:  Maybe we should review the entire type handling system and
-   see if there is a better way to avoid this problem.  */
-
-extern struct objfile *current_objfile;
 
 /* Declarations for functions defined in objfiles.c */
 

@@ -1,7 +1,6 @@
 /* Auxiliary vector support for GDB, the GNU debugger.
 
-   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2004-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -26,6 +25,7 @@
 #include "valprint.h"
 #include "gdb_assert.h"
 #include "gdbcore.h"
+#include "observer.h"
 
 #include "auxv.h"
 #include "elf/common.h"
@@ -277,6 +277,78 @@ target_auxv_parse (struct target_ops *ops, gdb_byte **readptr,
   return default_auxv_parse (ops, readptr, endptr, typep, valp);
 }
 
+
+/* Per-inferior data key for auxv.  */
+static const struct inferior_data *auxv_inferior_data;
+
+/*  Auxiliary Vector information structure.  This is used by GDB
+    for caching purposes for each inferior.  This helps reduce the
+    overhead of transfering data from a remote target to the local host.  */
+struct auxv_info
+{
+  LONGEST length;
+  gdb_byte *data;
+};
+
+/* Handles the cleanup of the auxv cache for inferior INF.  ARG is ignored.
+   Frees whatever allocated space there is to be freed and sets INF's auxv cache
+   data pointer to NULL.
+
+   This function is called when the following events occur: inferior_appeared,
+   inferior_exit and executable_changed.  */
+
+static void
+auxv_inferior_data_cleanup (struct inferior *inf, void *arg)
+{
+  struct auxv_info *info;
+
+  info = inferior_data (inf, auxv_inferior_data);
+  if (info != NULL)
+    {
+      xfree (info->data);
+      xfree (info);
+      set_inferior_data (inf, auxv_inferior_data, NULL);
+    }
+}
+
+/* Invalidate INF's auxv cache.  */
+
+static void
+invalidate_auxv_cache_inf (struct inferior *inf)
+{
+  auxv_inferior_data_cleanup (inf, NULL);
+}
+
+/* Invalidate current inferior's auxv cache.  */
+
+static void
+invalidate_auxv_cache (void)
+{
+  invalidate_auxv_cache_inf (current_inferior ());
+}
+
+/* Fetch the auxv object from inferior INF.  If auxv is cached already,
+   return a pointer to the cache.  If not, fetch the auxv object from the
+   target and cache it.  This function always returns a valid INFO pointer.  */
+
+static struct auxv_info *
+get_auxv_inferior_data (struct target_ops *ops)
+{
+  struct auxv_info *info;
+  struct inferior *inf = current_inferior ();
+
+  info = inferior_data (inf, auxv_inferior_data);
+  if (info == NULL)
+    {
+      info = XZALLOC (struct auxv_info);
+      info->length = target_read_alloc (ops, TARGET_OBJECT_AUXV,
+					NULL, &info->data);
+      set_inferior_data (inf, auxv_inferior_data, info);
+    }
+
+  return info;
+}
+
 /* Extract the auxiliary vector entry with a_type matching MATCH.
    Return zero if no such entry was found, or -1 if there was
    an error getting the information.  On success, return 1 after
@@ -286,28 +358,30 @@ target_auxv_search (struct target_ops *ops, CORE_ADDR match, CORE_ADDR *valp)
 {
   CORE_ADDR type, val;
   gdb_byte *data;
-  LONGEST n = target_read_alloc (ops, TARGET_OBJECT_AUXV, NULL, &data);
-  gdb_byte *ptr = data;
+  gdb_byte *ptr;
+  struct auxv_info *info;
 
-  if (n <= 0)
-    return n;
+  info = get_auxv_inferior_data (ops);
+
+  data = info->data;
+  ptr = data;
+
+  if (info->length <= 0)
+    return info->length;
 
   while (1)
-    switch (target_auxv_parse (ops, &ptr, data + n, &type, &val))
+    switch (target_auxv_parse (ops, &ptr, data + info->length, &type, &val))
       {
       case 1:			/* Here's an entry, check it.  */
 	if (type == match)
 	  {
-	    xfree (data);
 	    *valp = val;
 	    return 1;
 	  }
 	break;
       case 0:			/* End of the vector.  */
-	xfree (data);
 	return 0;
       default:			/* Bogosity.  */
-	xfree (data);
 	return -1;
       }
 
@@ -321,15 +395,18 @@ fprint_target_auxv (struct ui_file *file, struct target_ops *ops)
 {
   CORE_ADDR type, val;
   gdb_byte *data;
-  LONGEST len = target_read_alloc (ops, TARGET_OBJECT_AUXV, NULL,
-				   &data);
-  gdb_byte *ptr = data;
+  gdb_byte *ptr;
+  struct auxv_info *info;
   int ents = 0;
 
-  if (len <= 0)
-    return len;
+  info = get_auxv_inferior_data (ops);
 
-  while (target_auxv_parse (ops, &ptr, data + len, &type, &val) > 0)
+  data = info->data;
+  ptr = data;
+  if (info->length <= 0)
+    return info->length;
+
+  while (target_auxv_parse (ops, &ptr, data + info->length, &type, &val) > 0)
     {
       const char *name = "???";
       const char *description = "";
@@ -418,8 +495,6 @@ fprint_target_auxv (struct ui_file *file, struct target_ops *ops)
 	break;
     }
 
-  xfree (data);
-
   return ents;
 }
 
@@ -448,4 +523,13 @@ _initialize_auxv (void)
   add_info ("auxv", info_auxv_command,
 	    _("Display the inferior's auxiliary vector.\n\
 This is information provided by the operating system at program startup."));
+
+  /* Set an auxv cache per-inferior.  */
+  auxv_inferior_data
+    = register_inferior_data_with_cleanup (auxv_inferior_data_cleanup);
+
+  /* Observers used to invalidate the auxv cache when needed.  */
+  observer_attach_inferior_exit (invalidate_auxv_cache_inf);
+  observer_attach_inferior_appeared (invalidate_auxv_cache_inf);
+  observer_attach_executable_changed (invalidate_auxv_cache);
 }

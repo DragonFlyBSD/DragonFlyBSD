@@ -1,7 +1,6 @@
 /* Routines for name->symbol lookups in GDB.
    
-   Copyright (C) 2003, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007-2012 Free Software Foundation, Inc.
 
    Contributed by David Carlton <carlton@bactrian.org> and by Kealia,
    Inc.
@@ -826,7 +825,7 @@ dict_hash (const char *string0)
 	    }
 	  /* FALL THROUGH */
 	default:
-	  hash = hash * 67 + *string - 113;
+	  hash = SYMBOL_HASH_NEXT (hash, *string);
 	  string += 1;
 	  break;
 	}

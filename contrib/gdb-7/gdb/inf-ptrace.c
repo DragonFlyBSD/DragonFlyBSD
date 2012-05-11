@@ -1,8 +1,7 @@
 /* Low-level child interface to ptrace.
 
-   Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1998,
-   1999, 2000, 2001, 2002, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1988-1996, 1998-2002, 2004-2012 Free Software
+   Foundation, Inc.
 
    This file is part of GDB.
 
@@ -134,7 +133,7 @@ inf_ptrace_create_inferior (struct target_ops *ops,
     }
 
   pid = fork_inferior (exec_file, allargs, env, inf_ptrace_me, NULL,
-		       NULL, NULL);
+		       NULL, NULL, NULL);
 
   if (! ops_already_pushed)
     discard_cleanups (back_to);

@@ -1,7 +1,7 @@
 /* Longjump free calls to GDB internal routines.
 
-   Copyright (C) 1999, 2000, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 1999-2000, 2005, 2007-2012 Free Software Foundation,
+   Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -47,5 +47,7 @@ extern enum gdb_rc gdb_value_struct_elt (struct ui_out *uiout,
 extern int gdb_value_ind (struct value *val, struct value ** rval);
 
 extern int gdb_parse_and_eval_type (char *, int, struct type **);
+
+extern int gdb_target_find_new_threads (void);
 
 #endif /* wrapper.h */

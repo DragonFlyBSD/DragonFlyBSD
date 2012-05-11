@@ -1,7 +1,6 @@
 /* Native-dependent code for modern i386 BSD's.
 
-   Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010,
-   2011 Free Software Foundation, Inc.
+   Copyright (C) 2000-2005, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -312,18 +311,9 @@ i386bsd_dr_get_status (void)
 {
   struct dbreg dbregs;
 
-  /* FIXME: kettenis/2001-03-31: Calling perror_with_name if the
-     ptrace call fails breaks debugging remote targets.  The correct
-     way to fix this is to add the hardware breakpoint and watchpoint
-     stuff to the target vector.  For now, just return zero if the
-     ptrace call fails.  */
   if (ptrace (PT_GETDBREGS, PIDGET (inferior_ptid),
 	      (PTRACE_TYPE_ARG3) &dbregs, 0) == -1)
-#if 0
     perror_with_name (_("Couldn't read debug registers"));
-#else
-    return 0;
-#endif
 
   return DBREG_DRX ((&dbregs), 6);
 }

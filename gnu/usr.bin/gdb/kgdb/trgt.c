@@ -268,7 +268,7 @@ kgdb_switch_to_thread(struct kthr *thr)
 	if (thread_id == 0)
 		error ("invalid tid");
 	snprintf(buf, sizeof(buf), "%d", thread_id);
-	if (!gdb_thread_select(uiout, buf, &err))
+	if (!gdb_thread_select(current_uiout, buf, &err))
 		error ("%s", err);
 }
 

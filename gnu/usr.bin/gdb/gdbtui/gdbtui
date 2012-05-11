@@ -1,0 +1,13 @@
+#!/bin/sh
+# Wrapper for "gdb -tui"
+# The binary gdbtui was deprecated on gdb 7.4, and removed on gdb 7.5
+
+PROG=/usr/bin/gdb
+ARGS=
+
+while test $# -ne 0; do
+	ARGS="${ARGS}$1 "
+	shift
+done
+
+${PROG} -tui ${ARGS}

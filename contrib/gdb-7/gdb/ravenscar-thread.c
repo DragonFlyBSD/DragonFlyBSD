@@ -1,6 +1,6 @@
 /* Ada Ravenscar thread support.
 
-   Copyright 2004, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright 2004, 2009-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -51,6 +51,7 @@ static ptid_t base_ptid;
 static const char running_thread_name[] = "__gnat_running_thread_table";
 
 static const char known_tasks_name[] = "system__tasking__debug__known_tasks";
+static const char first_task_name[] = "system__tasking__debug__first_task";
 
 static const char ravenscar_runtime_initializer[] =
   "system__bb__threads__initialize";
@@ -135,10 +136,12 @@ has_ravenscar_runtime (void)
     lookup_minimal_symbol (ravenscar_runtime_initializer, NULL, NULL);
   struct minimal_symbol *msym_known_tasks =
     lookup_minimal_symbol (known_tasks_name, NULL, NULL);
+  struct minimal_symbol *msym_first_task =
+    lookup_minimal_symbol (first_task_name, NULL, NULL);
   struct minimal_symbol *msym_running_thread = get_running_thread_msymbol ();
 
   return (msym_ravenscar_runtime_initializer
-	  && msym_known_tasks
+	  && (msym_known_tasks || msym_first_task)
 	  && msym_running_thread);
 }
 
@@ -219,7 +222,7 @@ ravenscar_add_thread (struct ada_task_info *task)
 static void
 ravenscar_find_new_threads (struct target_ops *ops)
 {
-  ada_build_task_list (0);
+  ada_build_task_list ();
 
   /* Do not clear the thread list before adding the Ada task, to keep
      the thread that the process stratum has included into it

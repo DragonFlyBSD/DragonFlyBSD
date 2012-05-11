@@ -1,7 +1,5 @@
 /* List lines of source files for GDB, the GNU debugger.
-   Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008,
-   2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1986-2005, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -245,7 +243,7 @@ select_source_symtab (struct symtab *s)
      if one exists.  */
   if (lookup_symbol (main_name (), 0, VAR_DOMAIN, 0))
     {
-      sals = decode_line_spec (main_name (), 1);
+      sals = decode_line_spec (main_name (), DECODE_LINE_FUNFIRSTLINE);
       sal = sals.sals[0];
       xfree (sals.sals);
       current_source_pspace = sal.pspace;
@@ -335,6 +333,32 @@ show_directories_command (struct ui_file *file, int from_tty,
   show_directories_1 (NULL, from_tty);
 }
 
+/* Forget line positions and file names for the symtabs in a
+   particular objfile.  */
+
+void
+forget_cached_source_info_for_objfile (struct objfile *objfile)
+{
+  struct symtab *s;
+
+  ALL_OBJFILE_SYMTABS (objfile, s)
+    {
+      if (s->line_charpos != NULL)
+	{
+	  xfree (s->line_charpos);
+	  s->line_charpos = NULL;
+	}
+      if (s->fullname != NULL)
+	{
+	  xfree (s->fullname);
+	  s->fullname = NULL;
+	}
+    }
+
+  if (objfile->sf)
+    objfile->sf->qf->forget_cached_source_info (objfile);
+}
+
 /* Forget what we learned about line positions in source files, and
    which directories contain them; must check again now since files
    may be found in a different directory now.  */
@@ -343,28 +367,12 @@ void
 forget_cached_source_info (void)
 {
   struct program_space *pspace;
-  struct symtab *s;
   struct objfile *objfile;
 
   ALL_PSPACES (pspace)
     ALL_PSPACE_OBJFILES (pspace, objfile)
     {
-      for (s = objfile->symtabs; s != NULL; s = s->next)
-	{
-	  if (s->line_charpos != NULL)
-	    {
-	      xfree (s->line_charpos);
-	      s->line_charpos = NULL;
-	    }
-	  if (s->fullname != NULL)
-	    {
-	      xfree (s->fullname);
-	      s->fullname = NULL;
-	    }
-	}
-
-      if (objfile->sf)
-	objfile->sf->qf->forget_cached_source_info (objfile);
+      forget_cached_source_info_for_objfile (objfile);
     }
 
   last_source_visited = NULL;
@@ -1095,6 +1103,7 @@ open_source_file (struct symtab *s)
 
    If this function fails to find the file that this symtab represents,
    NULL will be returned and s->fullname will be set to NULL.  */
+
 char *
 symtab_to_fullname (struct symtab *s)
 {
@@ -1103,8 +1112,12 @@ symtab_to_fullname (struct symtab *s)
   if (!s)
     return NULL;
 
-  /* Don't check s->fullname here, the file could have been 
-     deleted/moved/..., look for it again.  */
+  /* Use cached copy if we have it.
+     We rely on forget_cached_source_info being called appropriately
+     to handle cases like the file being moved.  */
+  if (s->fullname)
+    return s->fullname;
+
   r = find_and_open_source (s->filename, s->dirname, &s->fullname);
 
   if (r >= 0)
@@ -1145,30 +1158,6 @@ find_source_lines (struct symtab *s, int desc)
   if (mtime && mtime < st.st_mtime)
     warning (_("Source file is more recent than executable."));
 
-#ifdef LSEEK_NOT_LINEAR
-  {
-    char c;
-
-    /* Have to read it byte by byte to find out where the chars live.  */
-
-    line_charpos[0] = lseek (desc, 0, SEEK_CUR);
-    nlines = 1;
-    while (myread (desc, &c, 1) > 0)
-      {
-	if (c == '\n')
-	  {
-	    if (nlines == lines_allocated)
-	      {
-		lines_allocated *= 2;
-		line_charpos =
-		  (int *) xrealloc ((char *) line_charpos,
-				    sizeof (int) * lines_allocated);
-	      }
-	    line_charpos[nlines++] = lseek (desc, 0, SEEK_CUR);
-	  }
-      }
-  }
-#else /* lseek linear.  */
   {
     struct cleanup *old_cleanups;
 
@@ -1207,53 +1196,13 @@ find_source_lines (struct symtab *s, int desc)
       }
     do_cleanups (old_cleanups);
   }
-#endif /* lseek linear.  */
+
   s->nlines = nlines;
   s->line_charpos =
     (int *) xrealloc ((char *) line_charpos, nlines * sizeof (int));
 
 }
 
-/* Return the character position of a line LINE in symtab S.
-   Return 0 if anything is invalid.  */
-
-#if 0				/* Currently unused */
-
-int
-source_line_charpos (struct symtab *s, int line)
-{
-  if (!s)
-    return 0;
-  if (!s->line_charpos || line <= 0)
-    return 0;
-  if (line > s->nlines)
-    line = s->nlines;
-  return s->line_charpos[line - 1];
-}
-
-/* Return the line number of character position POS in symtab S.  */
-
-int
-source_charpos_line (struct symtab *s, int chr)
-{
-  int line = 0;
-  int *lnp;
-
-  if (s == 0 || s->line_charpos == 0)
-    return 0;
-  lnp = s->line_charpos;
-  /* Files are usually short, so sequential search is Ok.  */
-  while (line < s->nlines && *lnp <= chr)
-    {
-      line++;
-      lnp++;
-    }
-  if (line >= s->nlines)
-    line = s->nlines;
-  return line;
-}
-
-#endif /* 0 */
 
 
 /* Get full pathname and line number positions for a symtab.
@@ -1330,6 +1279,7 @@ print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
   FILE *stream;
   int nlines = stopline - line;
   struct cleanup *cleanup;
+  struct ui_out *uiout = current_uiout;
 
   /* Regardless of whether we can open the file, set current_source_symtab.  */
   current_source_symtab = s;
@@ -1370,10 +1320,12 @@ print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
 	  print_sys_errmsg (name, errno);
 	}
       else
-	ui_out_field_int (uiout, "line", line);
-      ui_out_text (uiout, "\tin ");
-      ui_out_field_string (uiout, "file", s->filename);
-      ui_out_text (uiout, "\n");
+	{
+	  ui_out_field_int (uiout, "line", line);
+	  ui_out_text (uiout, "\tin ");
+	  ui_out_field_string (uiout, "file", s->filename);
+	  ui_out_text (uiout, "\n");
+	}
 
       return;
     }
@@ -1461,12 +1413,14 @@ line_info (char *arg, int from_tty)
   struct symtab_and_line sal;
   CORE_ADDR start_pc, end_pc;
   int i;
+  struct cleanup *cleanups;
 
   init_sal (&sal);		/* initialize to zeroes */
 
   if (arg == 0)
     {
       sal.symtab = current_source_symtab;
+      sal.pspace = current_program_space;
       sal.line = last_line_listed;
       sals.nelts = 1;
       sals.sals = (struct symtab_and_line *)
@@ -1475,16 +1429,20 @@ line_info (char *arg, int from_tty)
     }
   else
     {
-      sals = decode_line_spec_1 (arg, 0);
+      sals = decode_line_spec_1 (arg, DECODE_LINE_LIST_MODE);
 
       dont_repeat ();
     }
+
+  cleanups = make_cleanup (xfree, sals.sals);
 
   /* C++  More than one line may have been specified, as when the user
      specifies an overloaded function name.  Print info on them all.  */
   for (i = 0; i < sals.nelts; i++)
     {
       sal = sals.sals[i];
+      if (sal.pspace != current_program_space)
+	continue;
 
       if (sal.symtab == 0)
 	{
@@ -1550,7 +1508,7 @@ line_info (char *arg, int from_tty)
 	printf_filtered (_("Line number %d is out of range for \"%s\".\n"),
 			 sal.line, sal.symtab->filename);
     }
-  xfree (sals.sals);
+  do_cleanups (cleanups);
 }
 
 /* Commands to search the source file for a regexp.  */

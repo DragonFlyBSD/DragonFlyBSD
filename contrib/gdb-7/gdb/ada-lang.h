@@ -1,7 +1,7 @@
 /* Ada language support definitions for GDB, the GNU debugger.
 
-   Copyright (C) 1992, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-   2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+   Copyright (C) 1992, 1997-2005, 2007-2012 Free Software Foundation,
+   Inc.
 
    This file is part of GDB.
 
@@ -22,6 +22,7 @@
 #define ADA_LANG_H 1
 
 struct frame_info;
+struct inferior;
 
 #include "value.h"
 #include "gdbtypes.h"
@@ -237,15 +238,6 @@ extern int user_select_syms (struct ada_symbol_info *, int, int);
 
 extern int get_selections (int *, int, int, int, char *);
 
-extern char *ada_start_decode_line_1 (char *);
-
-extern struct symtabs_and_lines ada_finish_decode_line_1 (char **,
-                                                          struct symtab *,
-                                                          int, char ***);
-
-extern struct symtabs_and_lines ada_sals_for_line (const char*, int,
-						   int, char***, int);
-
 extern int ada_scan_number (const char *, int, LONGEST *, int *);
 
 extern struct type *ada_parent_type (struct type *);
@@ -373,6 +365,8 @@ extern char *ada_breakpoint_rewrite (char *, int *);
 
 extern char *ada_main_name (void);
 
+extern char *ada_name_for_lookup (const char *name);
+
 /* Tasking-related: ada-tasks.c */
 
 extern int valid_task_id (int);
@@ -383,19 +377,10 @@ typedef void (ada_task_list_iterator_ftype) (struct ada_task_info *task);
 extern void iterate_over_live_ada_tasks
   (ada_task_list_iterator_ftype *iterator);
 
-extern int ada_build_task_list (int warn_if_null);
+extern int ada_build_task_list (void);
 
-extern int ada_exception_catchpoint_p (struct breakpoint *b);
-  
-extern struct symtab_and_line
-  ada_decode_exception_location (char *args, char **addr_string,
-                                 char **exp_string, char **cond_string,
-                                 struct expression **cond,
-                                 struct breakpoint_ops **ops);
-
-extern struct symtab_and_line
-  ada_decode_assert_location (char *args, char **addr_string,
-                              struct breakpoint_ops **ops);
-
+extern void print_ada_task_info (struct ui_out *uiout,
+				 char *taskno_str,
+				 struct inferior *inf);
 
 #endif

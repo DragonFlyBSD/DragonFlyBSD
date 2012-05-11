@@ -1,7 +1,6 @@
 /* Very simple "bfd" target, for GDB, the GNU debugger.
 
-   Copyright (C) 2003, 2005, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2003, 2005, 2007-2012 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -78,14 +77,14 @@ target_bfd_xclose (struct target_ops *t, int quitting)
 }
 
 struct target_ops *
-target_bfd_reopen (struct bfd *bfd)
+target_bfd_reopen (struct bfd *abfd)
 {
   struct target_ops *t;
   struct target_bfd_data *data;
 
   data = XZALLOC (struct target_bfd_data);
-  data->bfd = bfd;
-  build_section_table (bfd, &data->table.sections, &data->table.sections_end);
+  data->bfd = abfd;
+  build_section_table (abfd, &data->table.sections, &data->table.sections_end);
 
   t = XZALLOC (struct target_ops);
   t->to_shortname = "bfd";
