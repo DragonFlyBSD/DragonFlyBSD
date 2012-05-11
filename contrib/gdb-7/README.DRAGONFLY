@@ -1,13 +1,13 @@
-GNU GDB 7.3
-===========
+GNU GDB 7.4.1
+=============
 
 Original source can be downloaded from:
 http://ftp.gnu.org/gnu/gdb
 
-file = gdb-7.3a.tar.bz2
-date = 24 August 2011
-size = 19503041
-sha1 = d68061206a3485bab32da3fb751c6c3b913c2b9c
+file = gdb-7.4.1.tar.bz2
+date = 26 April 2012
+size = 20619200
+sha1 = 1b0f8c3778d4b10c8d2be6922ac01a9900e8116c
 
 A list of files and directories removed is in README.DELETED
 
