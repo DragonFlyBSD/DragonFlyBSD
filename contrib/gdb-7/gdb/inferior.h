@@ -32,8 +32,6 @@ struct regcache;
 struct ui_out;
 struct terminal_info;
 
-#define FAKE_PROCESS_ID -777
-
 /* For bpstat.  */
 #include "breakpoint.h"
 
