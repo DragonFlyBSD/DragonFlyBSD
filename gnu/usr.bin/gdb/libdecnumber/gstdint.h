@@ -1,4 +1,4 @@
-/* generated for  gcc (DragonFly) 4.4.5 */
+/* generated for  gcc (DragonFly) 4.4.7 2012.03.13 */
 
 #ifndef GCC_GENERATED_STDINT_H
 #define GCC_GENERATED_STDINT_H 1

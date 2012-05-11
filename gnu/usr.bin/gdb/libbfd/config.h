@@ -145,8 +145,14 @@
 /* Define if <sys/procfs.h> has prpsinfo32_t. */
 /* #undef HAVE_PRPSINFO32_T */
 
+/* Define if <sys/procfs.h> has prpsinfo32_t.pr_pid. */
+/* #undef HAVE_PRPSINFO32_T_PR_PID */
+
 /* Define if <sys/procfs.h> has prpsinfo_t. */
 #define HAVE_PRPSINFO_T 1
+
+/* Define if <sys/procfs.h> has prpsinfo_t.pr_pid. */
+/* #undef HAVE_PRPSINFO_T_PR_PID */
 
 /* Define if <sys/procfs.h> has prstatus32_t. */
 /* #undef HAVE_PRSTATUS32_T */
@@ -163,8 +169,14 @@
 /* Define if <sys/procfs.h> has psinfo32_t. */
 /* #undef HAVE_PSINFO32_T */
 
+/* Define if <sys/procfs.h> has psinfo32_t.pr_pid. */
+/* #undef HAVE_PSINFO32_T_PR_PID */
+
 /* Define if <sys/procfs.h> has psinfo_t. */
 /* #undef HAVE_PSINFO_T */
+
+/* Define if <sys/procfs.h> has psinfo_t.pr_pid. */
+/* #undef HAVE_PSINFO_T_PR_PID */
 
 /* Define if <sys/procfs.h> has pstatus32_t. */
 /* #undef HAVE_PSTATUS32_T */
@@ -305,7 +317,7 @@
 #define TIME_WITH_SYS_TIME 1
 
 /* Name of host specific header file to include in trad-core.c. */
-/* #undef TRAD_HEADER */
+#define TRAD_HEADER "hosts/i386bsd.h"
 
 /* Use b modifier when opening binary files? */
 /* #undef USE_BINARY_FOPEN */
@@ -345,7 +357,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.21.51"
+#define VERSION "2.22.51"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */

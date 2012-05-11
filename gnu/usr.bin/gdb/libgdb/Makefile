@@ -22,6 +22,7 @@ CFLAGS+= -DBINDIR='"/usr/bin"'
 CFLAGS+= -DMACHINE_ARCH='"${MACHINE_ARCH}"'
 CFLAGS+= -DTARGET_ARCH='"${TARGET_ARCH}"'
 CFLAGS+= -DVERSION_STRING='"${VERSION}"'
+CFLAGS+= -DTUI				# enable "gdb -tui" (TUI MODE)
 
 SRCS+=	observer.h gdb_stdint.h
 
@@ -37,7 +38,7 @@ SRCS+=	\
 	auxv.c \
 	bfd-target.c \
 	blockframe.c breakpoint.c findvar.c regcache.c \
-	charset.c disasm.c dummy-frame.c dfp.c \
+	charset.c continuations.c disasm.c dummy-frame.c dfp.c \
 	source.c value.c eval.c valops.c valarith.c valprint.c printcmd.c \
 	block.c symtab.c psymtab.c symfile.c symmisc.c linespec.c dictionary.c \
 	infcall.c \
@@ -60,7 +61,7 @@ SRCS+=	\
 	bcache.c objfiles.c observer.c minsyms.c maint.c demangle.c \
 	dbxread.c coffread.c coff-pe-read.c \
 	dwarf2read.c mipsread.c stabsread.c corefile.c \
-	dwarf2expr.c dwarf2loc.c dwarf2-frame.c \
+	dwarf2expr.c dwarf2loc.c dwarf2-frame.c dwarf2-frame-tailcall.c \
 	ada-lang.c c-lang.c d-lang.c f-lang.c objc-lang.c \
 	ada-tasks.c \
 	ui-out.c cli-out.c \
@@ -84,10 +85,12 @@ SRCS+=	\
 	trad-frame.c \
 	tramp-frame.c \
 	solib.c solib-target.c \
-	prologue-value.c memory-map.c memrange.c xml-support.c xml-syscall.c \
+	prologue-value.c memory-map.c memrange.c \
+	xml-support.c xml-syscall.c xml-utils.c \
 	target-descriptions.c target-memory.c xml-tdesc.c xml-builtin.c \
 	inferior.c osdata.c gdb_usleep.c record.c gcore.c \
-	jit.c progspace.c
+	jit.c progspace.c skip.c \
+	common-utils.c buffer.c ptid.c gdb-dlfcn.c
 
 # TSOBS
 SRCS+=	inflow.c
@@ -109,7 +112,7 @@ SRCS+=	mi-out.c mi-console.c \
 	mi-cmds.c mi-cmd-env.c mi-cmd-var.c mi-cmd-break.c mi-cmd-stack.c \
 	mi-cmd-file.c mi-cmd-disas.c mi-symbol-cmds.c mi-cmd-target.c \
 	mi-interp.c \
-	mi-main.c mi-parse.c mi-getopt.c mi-common.c
+	mi-main.c mi-parse.c mi-getopt.c
 
 # PYTHON OBJS
 SRCS+=	python.c \
@@ -151,7 +154,14 @@ SRCS+=	c-exp.y \
 
 SRCS+=	init.c
 
-XMLFILES= gdb-target.dtd xinclude.dtd library-list.dtd osdata.dtd
+XMLFILES= \
+	gdb-target.dtd \
+	xinclude.dtd \
+	library-list.dtd \
+	library-list-svr4.dtd \
+	osdata.dtd \
+	threads.dtd \
+	traceframe-info.dtd
 
 # kernel-debugger
 #SRCS+=	freebsd-uthread.c

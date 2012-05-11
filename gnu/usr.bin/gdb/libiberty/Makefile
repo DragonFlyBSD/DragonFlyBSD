@@ -8,13 +8,37 @@ CONTRIBDIR=	${BASEDIR}/libiberty
 
 CFLAGS+=	-I${BASEDIR}/include -I${.CURDIR} -DHAVE_CONFIG_H
 
-SRCS=	cp-demangle.c cplus-dem.c cp-demint.c floatformat.c getopt.c
-SRCS+=	getopt1.c getruntime.c hashtab.c objalloc.c obstack.c
-SRCS+=	regex.c safe-ctype.c splay-tree.c
-
-SRCS+=	argv.c concat.c hex.c lbasename.c xexit.c xstrdup.c xstrerror.c
-SRCS+=	lrealpath.c make-relative-prefix.c filename_cmp.c stpcpy.c
-SRCS+=	unlink-if-ordinary.c
-SRCS+=	pexecute.c pex-common.c pex-one.c pex-unix.c make-temp-file.c
+SRCS+=	./argv.c \
+	./cp-demangle.c \
+	./cp-demint.c \
+	./cplus-dem.c \
+	./concat.c \
+	./dyn-string.c \
+	./filename_cmp.c \
+	./floatformat.c \
+	./getopt.c \
+	./getopt1.c \
+	./getpwd.c \
+	./getruntime.c \
+	./hashtab.c \
+	./hex.c \
+	./lbasename.c \
+	./lrealpath.c \
+	./make-relative-prefix.c \
+	./make-temp-file.c \
+	./objalloc.c \
+	./obstack.c \
+	./pex-common.c \
+	./pex-one.c \
+	./pex-unix.c \
+	./pexecute.c \
+	./regex.c \
+	./safe-ctype.c \
+	./splay-tree.c \
+	./timeval-utils.c \
+	./unlink-if-ordinary.c \
+	./xexit.c \
+	./xstrdup.c \
+	./xstrerror.c
 
 .include <bsd.lib.mk>

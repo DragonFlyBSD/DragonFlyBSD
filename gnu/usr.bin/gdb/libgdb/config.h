@@ -159,6 +159,9 @@
    */
 #define HAVE_DIRENT_H 1
 
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#define HAVE_DLFCN_H 1
+
 /* Define if ELF support should be included. */
 #define HAVE_ELF 1
 
@@ -398,7 +401,7 @@
 #define HAVE_RAW_DECL_MEMMEM 1
 
 /* Define to 1 if mempcpy is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_MEMPCPY */
+#define HAVE_RAW_DECL_MEMPCPY 1
 
 /* Define to 1 if memrchr is declared even after undefining macros. */
 #define HAVE_RAW_DECL_MEMRCHR 1
@@ -410,7 +413,7 @@
 #define HAVE_RAW_DECL_STPCPY 1
 
 /* Define to 1 if stpncpy is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_STPNCPY */
+#define HAVE_RAW_DECL_STPNCPY 1
 
 /* Define to 1 if strcasestr is declared even after undefining macros. */
 #define HAVE_RAW_DECL_STRCASESTR 1
@@ -550,10 +553,10 @@
 #define HAVE_STRUCT_REG 1
 
 /* Define to 1 if `struct reg' is a member of `r_fs'. */
-/* #undef HAVE_STRUCT_REG_R_FS */
+#define HAVE_STRUCT_REG_R_FS 1
 
 /* Define to 1 if `struct reg' is a member of `r_gs'. */
-/* #undef HAVE_STRUCT_REG_R_GS */
+#define HAVE_STRUCT_REG_R_GS 1
 
 /* Define if <link.h> exists and defines a struct so_map which has members
    with an ``som_'' prefix. (Found on older *BSD systems.) */
@@ -717,8 +720,21 @@
 /* Define to 1 if you have the `_mcleanup' function. */
 #define HAVE__MCLEANUP 1
 
+/* Path of directory of iconv program. */
+/* #undef ICONV_BIN */
+
+/* Define if the iconv directory should be relocated when GDB is moved. */
+/* #undef ICONV_BIN_RELOCATABLE */
+
 /* Define as const if the declaration of iconv() needs const. */
 #define ICONV_CONST 
+
+/* directory to load the JIT readers from */
+#define JIT_READER_DIR "/usr/lib/gdb"
+
+/* Define if the jit-reader-dir directory should be relocated when GDB is
+   moved. */
+#define JIT_READER_DIR_RELOCATABLE 1
 
 /* Define to a substitute value for mmap()'s MAP_ANONYMOUS flag. */
 #define MAP_ANONYMOUS MAP_ANON
@@ -804,6 +820,21 @@
 
 /* The size of `long', as computed by sizeof. */
 /* #undef SIZEOF_LONG */
+
+/* The size of `unsigned long', as computed by sizeof. */
+#if defined(__i386__)
+#define SIZEOF_UNSIGNED_LONG 4
+#elif defined(__x86_64__)
+#define SIZEOF_UNSIGNED_LONG 8
+#else
+#error Unsupported platform
+#endif
+
+/* The size of `unsigned long long', as computed by sizeof. */
+#define SIZEOF_UNSIGNED_LONG_LONG 8
+
+/* The size of `unsigned __int128', as computed by sizeof. */
+#define SIZEOF_UNSIGNED___INT128 0
 
 /* Define to l, ll, u, ul, ull, etc., as suitable for constants of type
    'size_t'. */
@@ -947,9 +978,6 @@
 
 /* Define to `int' if <sys/types.h> does not define. */
 /* #undef pid_t */
-
-/* readline-6.0 started to use different name. */
-/* #undef readline_echoing_p */
 
 /* Define to the equivalent of the C99 'restrict' keyword, or to
    nothing if this is not supported.  Do not define if restrict is

@@ -19,7 +19,7 @@ INFOENTRY_annotate=	"* GDB annotation.			Annotations for the GNU debugger (GDB).
 CLEANFILES=	gdb-cfg.texi
 
 gdb.info: gdb.texinfo fdl.texi gpl.texi agentexpr.texi \
-	rluser.texi inc-hist.texinfo \
+	rluser.texi hsuser.texi \
 	gdb-cfg.texi GDBvn.texi
 
 gdb-cfg.texi: ${SRCDIR}/all-cfg.texi

@@ -110,6 +110,9 @@
 /* Define to 1 if you have the `getpagesize' function. */
 #define HAVE_GETPAGESIZE 1
 
+/* Define to 1 if you have the `getrlimit' function. */
+#define HAVE_GETRLIMIT 1
+
 /* Define to 1 if you have the `getrusage' function. */
 #define HAVE_GETRUSAGE 1
 
@@ -206,6 +209,9 @@
 /* Define to 1 if you have the `setproctitle' function. */
 #define HAVE_SETPROCTITLE 1
 
+/* Define to 1 if you have the `setrlimit' function. */
+#define HAVE_SETRLIMIT 1
+
 /* Define to 1 if you have the `sigsetmask' function. */
 #define HAVE_SIGSETMASK 1
 
@@ -231,7 +237,7 @@
 #define HAVE_STPCPY 1
 
 /* Define to 1 if you have the `stpncpy' function. */
-/* #undef HAVE_STPNCPY */
+#define HAVE_STPNCPY 1
 
 /* Define to 1 if you have the `strcasecmp' function. */
 #define HAVE_STRCASECMP 1
@@ -429,7 +435,7 @@
 #define PACKAGE_VERSION ""
 
 /* The size of `int', as computed by sizeof. */
-/* #define SIZEOF_INT 4 */
+#define SIZEOF_INT 4
 
 /* Define if you know the direction of stack growth for your system; otherwise
    it will be automatically deduced at run-time. STACK_DIRECTION > 0 => grows
