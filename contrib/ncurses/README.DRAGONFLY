@@ -1,0 +1,21 @@
+GNU NCURSES 5.9
+===============
+
+Original source can be downloaded from:
+http://ftp.gnu.org/pub/gnu/ncurses
+
+file = ncurses-5.9.tar.gz
+date = 5 April 2011
+size = 2826473
+sha1 = 3e042e5f2c7223bffdaac9646a533b8c758b65b5
+
+A list of files and directories removed is in README.DELETED
+
+The .h files copied into base where created using configure opts:
+	--enable-widec
+	--enable-const
+	--with-sysmouse
+	--enable-termcap
+	--enable-bsdpad
+
+No files have been added or modified.
