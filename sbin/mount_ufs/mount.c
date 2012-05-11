@@ -39,15 +39,11 @@
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/mountctl.h>
-#define DKTYPENAMES
-#include <sys/dtype.h>
-#include <sys/diskslice.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
 #include <err.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <fstab.h>
 #include <pwd.h>
 #include <signal.h>
@@ -61,7 +57,7 @@
 #include "pathnames.h"
 
 /* `meta' options */
-#define MOUNT_META_OPTION_FSTAB		"fstab"	
+#define MOUNT_META_OPTION_FSTAB		"fstab"
 #define MOUNT_META_OPTION_CURRENT	"current"
 
 int debug, fstab_style, verbose;
@@ -83,16 +79,19 @@ static void   putfsent(const struct statfs *);
 static void   usage(void);
 static char  *flags2opts(int);
 static char  *xstrdup(const char *str);
-static void   checkdisklabel(const char *devpath, const char **vfstypep);
+
+/* mount_ufs.c */
+int mount_ufs(int, const char **);
 
 /*
  * List of VFS types that can be remounted without becoming mounted on top
  * of each other.
  * XXX Is this list correct?
  */
-static const char *remountable_fs_names[] = {
-	"ufs", "ffs", "ext2fs", "hammer", "hammer2",
-	NULL
+static const char *
+remountable_fs_names[] = {
+	"ufs", "ffs", "ext2fs",
+	0
 };
 
 int
@@ -110,7 +109,7 @@ main(int argc, char **argv)
 	options = NULL;
 	vfslist = NULL;
 	vfstype = "ufs";
-	while ((ch = getopt(argc, argv, "adF:fo:prwt:uv")) != -1) {
+	while ((ch = getopt(argc, argv, "adF:fo:prwt:uv")) != -1)
 		switch (ch) {
 		case 'a':
 			all = 1;
@@ -155,7 +154,6 @@ main(int argc, char **argv)
 			usage();
 			/* NOTREACHED */
 		}
-	}
 	argc -= optind;
 	argv += optind;
 
@@ -258,25 +256,13 @@ main(int argc, char **argv)
 	case 2:
 		/*
 		 * If -t flag has not been specified, the path cannot be
-		 * found.
-		 *
-		 * If the spec is not a file and contains a ':' then assume
-		 * NFS.
-		 *
-		 * If the spec is a cdev attempt to extract the fstype from
-		 * the label.
-		 *
-		 * When all else fails ufs is assumed.
+		 * found, spec contains either a ':' or a '@', and the
+		 * spec is not a file with those characters, then assume
+		 * that an NFS filesystem is being specified ala Sun.
 		 */
-		if (vfslist == NULL) {
-			if (strpbrk(argv[0], ":") != NULL &&
-			    access(argv[0], 0) == -1) {
-				vfstype = "nfs";
-			} else {
-				checkdisklabel(argv[0], &vfstype);
-			}
-		}
-
+		if (vfslist == NULL && strpbrk(argv[0], ":@") != NULL &&
+		    access(argv[0], 0) == -1)
+			vfstype = "nfs";
 		rval = mountfs(vfstype, getdevpath(argv[0], 0), argv[1],
 			       init_flags, options, NULL);
 		break;
@@ -425,6 +411,9 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 		free(optbuf);
 		return (1);
 	case 0:					/* Child. */
+		if (strcmp(vfstype, "ufs") == 0)
+			exit(mount_ufs(argc, argv));
+
 		/* Go find an executable. */
 		for (edir = edirs; *edir; edir++) {
 			snprintf(execname,
@@ -625,7 +614,7 @@ update_options(char *opts, char *fstab, int curflags)
 	for (p = expopt; (o = strsep(&p, ",")) != NULL;) {
 		if ((tmpopt = malloc( strlen(o) + 2 + 1 )) == NULL)
 			errx(1, "malloc failed");
-	
+
 		strcpy(tmpopt, "no");
 		strcat(tmpopt, o);
 		remopt(newopt, tmpopt);
@@ -698,7 +687,7 @@ putfsent(const struct statfs *ent)
 	struct stat sb;
 	struct fstab *fst;
 	char *opts;
-  
+
 	opts = flags2opts(ent->f_flags);
 	printf("%s\t%s\t%s %s", ent->f_mntfromname, ent->f_mntonname,
 	    ent->f_fstypename, opts);
@@ -755,69 +744,4 @@ xstrdup(const char *str)
 		errx(1, "strdup failed (could not allocate memory)");
 	}
 	return ret;
-}
-
-/*
- * Hack 'cd9660' for the default fstype on cd media if no disklabel
- * found.
- */
-static int
-iscdmedia(const char *path, int fd __unused)
-{
-	int n;
-
-	if (strrchr(path, '/'))
-		path = strrchr(path, '/') + 1;
-	if (sscanf(path, "acd%d", &n) == 1)
-		return 1;
-	if (sscanf(path, "cd%d", &n) == 1)
-		return 1;
-	return 0;
-}
-
-/*
- * If the device path is a cdev attempt to access the disklabel to determine
- * the filesystem type.  Adjust *vfstypep if we can figure it out
- * definitively.
- *
- * Ignore any portion of the device path after an '@' or ':'.
- */
-static void
-checkdisklabel(const char *devpath, const char **vfstypep)
-{
-	struct stat st;
-	struct partinfo info;
-	char *path = strdup(devpath);
-	int fd;
-
-	if (strchr(path, '@'))
-		*strchr(path, '@') = 0;
-	if (strchr(path, ':'))
-		*strchr(path, ':') = 0;
-
-	if (stat(path, &st) < 0)
-		goto done;
-	if (!S_ISCHR(st.st_mode))
-		goto done;
-	fd = open(path, O_RDONLY);
-	if (fd < 0)
-		goto done;
-	if (ioctl(fd, DIOCGPART, &info) == 0) {
-		if (info.fstype >= 0 && info.fstype < (int)FSMAXTYPES) {
-			if (fstype_to_vfsname[info.fstype]) {
-				*vfstypep = fstype_to_vfsname[info.fstype];
-			} else if (iscdmedia(path, fd)) {
-				*vfstypep = "cd9660";
-			} else {
-				fprintf(stderr,
-					"mount: warning: fstype in disklabel "
-					"not set to anything I understand\n");
-				fprintf(stderr,
-					"attempting to mount with -t ufs\n");
-			}
-		}
-	}
-	close(fd);
-done:
-	free(path);
 }

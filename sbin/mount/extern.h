@@ -30,6 +30,3 @@
 /* vfslist.c */
 int checkvfsname(const char *, const char **);
 const char **makevfslist(char *);
-
-/* mount_ufs.c */
-int mount_ufs(int, const char **);
