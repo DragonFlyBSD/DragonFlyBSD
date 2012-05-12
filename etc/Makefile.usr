@@ -37,7 +37,7 @@ help all:
 	@echo "    make src-update          - update your src repo from the net"
 .endif
 	@echo ""
-.if exists(${.CURDIR}/src-sys.tgz)
+.if exists(${.CURDIR}/src-sys.tar.bz2)
 	@echo "    make release-sys-extract - extract the pre-packaged sys-only sources"
 .endif
 	@echo ""
@@ -112,5 +112,5 @@ src-update:
 	cd ${.CURDIR}/src && git pull
 
 release-sys-extract:
-	cd ${.CURDIR} && tar xvpzf src-sys.tgz
+	cd ${.CURDIR} && tar xvpjf src-sys.tar.bz2
 
