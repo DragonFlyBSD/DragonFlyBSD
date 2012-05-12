@@ -327,6 +327,9 @@ typedef struct {
 #define EM_CUDA 	190	/* NVIDIA CUDA architecture */
 #define EM_TILEGX	191	/* Tilera TILE-Gx multicore architecture family */
 
+/* Alpha backend magic number.  Written in the absence of an ABI.  */
+#define EM_ALPHA		0x9026
+
 /* Special section indexes. */
 
 #define SHN_UNDEF	     0		/* Undefined, missing, irrelevant. */
