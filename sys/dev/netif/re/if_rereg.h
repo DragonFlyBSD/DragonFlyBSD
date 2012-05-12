@@ -33,7 +33,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.24 2008/10/19 06:00:24 sephe Exp $
  */
 
 /*
@@ -167,6 +166,7 @@
 #define RE_HWREV_8168B2		0x38000000
 #define RE_HWREV_8168C		0x3C000000
 #define RE_HWREV_8168CP		0x3C800000
+#define RE_HWREV_8105E		0x40800000
 #define RE_HWREV_8139CPLUS	0x74800000
 #define RE_HWREV_8169SC2	0x98000000
 #define RE_HWREV_8101E2		0xB4000000

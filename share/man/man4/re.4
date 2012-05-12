@@ -29,14 +29,13 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man4/re.4,v 1.8 2008/10/09 13:45:16 sephe Exp $
 .\"
 .Dd November 2, 2006
 .Dt RE 4
 .Os
 .Sh NAME
 .Nm re
-.Nd "RealTek 8139C+/8169/816xS/811xS/8101E PCI/PCIe Ethernet adapter driver"
+.Nd "RealTek 8139C+/8169/816xS/811xS/8101E/8105E PCI/PCIe Ethernet adapter driver"
 .Sh SYNOPSIS
 .Cd "device miibus"
 .Cd "device re"
@@ -210,7 +209,8 @@ it may not work reliably.
 The
 .Nm
 driver supports RealTek RTL8139C+, RTL8169, RTL816xS, RTL811xS,
-and RTL8101E based Fast Ethernet and Gigabit Ethernet adapters including:
+RTL8105E, and RTL8101E based Fast Ethernet and Gigabit Ethernet adapters
+including:
 .Pp
 .Bl -bullet -compact
 .It
