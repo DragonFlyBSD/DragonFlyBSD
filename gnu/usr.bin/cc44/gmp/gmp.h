@@ -1,7 +1,8 @@
 /* Definitions for GNU multiple precision functions.   -*- mode: c -*-
 
 Copyright 1991, 1993, 1994, 1995, 1996, 1997, 1999, 2000, 2001, 2002, 2003,
-2004, 2005, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Free Software Foundation,
+Inc.
 
 This file is part of the GNU MP Library.
 
@@ -28,6 +29,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 /* Instantiated by configure. */
 #if ! defined (__GMP_WITHIN_CONFIGURE)
+/* Can't use Makefile.xxx definitions because mpfr uses this header too */
 #if defined(__i386__)
 #define __GMP_BITS_PER_MP_LIMB             32
 #elif defined(__x86_64__)
@@ -129,9 +131,6 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    __GMP_DECLSPEC_XX is similarly used for libgmpxx.  __GMP_WITHIN_GMPXX
    indicates when building libgmpxx, and in that case libgmpxx functions are
    exports, but libgmp functions which might get called are imports.
-
-   libmp.la uses __GMP_DECLSPEC, just as if it were libgmp.la.  libgmp and
-   libmp don't call each other, so there's no conflict or confusion.
 
    Libtool DLL_EXPORT define is not used.
 
@@ -333,7 +332,8 @@ typedef __mpq_struct *mpq_ptr;
   || defined (__STDIO__)              /* Apple MPW MrC */       \
   || defined (_MSL_STDIO_H)           /* Metrowerks */          \
   || defined (_STDIO_H_INCLUDED)      /* QNX4 */		\
-  || defined (_ISO_STDIO_ISO_H)       /* Sun C++ */
+  || defined (_ISO_STDIO_ISO_H)       /* Sun C++ */		\
+  || defined (__STDIO_LOADED)         /* VMS */
 #define _GMP_H_HAVE_FILE 1
 #endif
 
@@ -2275,13 +2275,13 @@ enum
 
 /* Define CC and CFLAGS which were used to build this version of GMP */
 #define __GMP_CC "gcc -std=gnu99"
-#define __GMP_CFLAGS "-O2 -pedantic -m64 -mtune=k8 -march=k8"
+#define __GMP_CFLAGS "-O2 -pedantic"
 
 /* Major version number is the value of __GNU_MP__ too, above and in mp.h. */
 #define __GNU_MP_VERSION 5
 #define __GNU_MP_VERSION_MINOR 0
-#define __GNU_MP_VERSION_PATCHLEVEL 2
-#define __GMP_MP_RELEASE (__GNU_MP_VERSION * 10000 + __GNU_MP_VERSION_MINOR * 100 + __GNU_MP_VERSION_PATCHLEVEL)
+#define __GNU_MP_VERSION_PATCHLEVEL 5
+#define __GNU_MP_RELEASE (__GNU_MP_VERSION * 10000 + __GNU_MP_VERSION_MINOR * 100 + __GNU_MP_VERSION_PATCHLEVEL)
 
 #define __GMP_H__
 #endif /* __GMP_H__ */

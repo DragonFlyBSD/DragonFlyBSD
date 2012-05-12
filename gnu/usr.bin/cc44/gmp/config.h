@@ -4,7 +4,7 @@
 /*
 
 Copyright 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006,
-2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -162,6 +162,14 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* #undef HAVE_HOST_CPU_pentiumpro */
 /* #undef HAVE_HOST_CPU_pentium2 */
 /* #undef HAVE_HOST_CPU_pentium3 */
+/* #undef HAVE_HOST_CPU_s390_z900 */
+/* #undef HAVE_HOST_CPU_s390_z990 */
+/* #undef HAVE_HOST_CPU_s390_z9 */
+/* #undef HAVE_HOST_CPU_s390_z10 */
+/* #undef HAVE_HOST_CPU_s390_z196 */
+
+/* Define to 1 iff we have a s390 with 64-bit registers.  */
+/* #undef HAVE_HOST_CPU_s390_zarch */
 
 /* Define to 1 if the system has the type `intmax_t'. */
 #define HAVE_INTMAX_T 1
@@ -461,13 +469,13 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 #define PACKAGE "gmp"
 
 /* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "gmp-bugs@gmplib.org"
+#define PACKAGE_BUGREPORT "gmp-bugs@gmplib.org, see http://gmplib.org/manual/Reporting-Bugs.html"
 
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "GNU MP"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "GNU MP 5.0.2"
+#define PACKAGE_STRING "GNU MP 5.0.5"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "gmp"
@@ -476,7 +484,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 #define PACKAGE_URL "http://www.gnu.org/software/gmp/"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.0.2"
+#define PACKAGE_VERSION "5.0.5"
 
 /* Define to 1 if the C compiler supports function prototypes. */
 #define PROTOTYPES 1
@@ -484,20 +492,20 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
 
-/* The size of a `mp_limb_t', as computed by sizeof. */
-#define SIZEOF_MP_LIMB_T (__LONG_INT_BITS / 8)
+/* The size of `mp_limb_t', as computed by sizeof. */
+#define SIZEOF_MP_LIMB_T __LONG_INT_BYTES
 
-/* The size of a `unsigned', as computed by sizeof. */
-#define SIZEOF_UNSIGNED (__INT_BITS / 8)
+/* The size of `unsigned', as computed by sizeof. */
+#define SIZEOF_UNSIGNED 4
 
-/* The size of a `unsigned long', as computed by sizeof. */
-#define SIZEOF_UNSIGNED_LONG (__LONG_INT_BITS / 8)
+/* The size of `unsigned long', as computed by sizeof. */
+#define SIZEOF_UNSIGNED_LONG __LONG_INT_BYTES
 
-/* The size of a `unsigned short', as computed by sizeof. */
-#define SIZEOF_UNSIGNED_SHORT (__SHORT_BITS / 8)
+/* The size of `unsigned short', as computed by sizeof. */
+#define SIZEOF_UNSIGNED_SHORT 2
 
 /* The size of `void *', as computed by sizeof. */
-#define SIZEOF_VOID_P (__LONG_INT_BITS / 8)
+#define SIZEOF_VOID_P __LONG_INT_BYTES
 
 /* Define to 1 if sscanf requires writable inputs */
 /* #undef SSCANF_WRITABLE_INPUT */
@@ -512,7 +520,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 #define TUNE_SQR_TOOM2_MAX 80
 
 /* Version number of package */
-#define VERSION "5.0.2"
+#define VERSION "5.0.5"
 
 /* Define to 1 to enable ASSERT checking, per --enable-assert */
 /* #undef WANT_ASSERT */
