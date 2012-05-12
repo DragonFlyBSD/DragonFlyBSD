@@ -107,7 +107,7 @@ mpz_nextprime (mpz_ptr p, mpz_srcptr n)
 	  difference = 0;
 
 	  /* Miller-Rabin test */
-	  if (mpz_millerrabin (p, 10))
+	  if (mpz_millerrabin (p, 25))
 	    goto done;
 	next:;
 	  incr += 2;

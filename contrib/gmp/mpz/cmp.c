@@ -28,7 +28,7 @@ int
 #ifdef BERKELEY_MP
 mcmp (mpz_srcptr u, mpz_srcptr v)
 #else
-mpz_cmp (mpz_srcptr u, mpz_srcptr v)
+mpz_cmp (mpz_srcptr u, mpz_srcptr v) __GMP_NOTHROW
 #endif
 {
   mp_size_t  usize, vsize, dsize, asize;

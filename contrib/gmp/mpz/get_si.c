@@ -22,7 +22,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 signed long int
-mpz_get_si (mpz_srcptr z)
+mpz_get_si (mpz_srcptr z) __GMP_NOTHROW
 {
   mp_ptr zp = z->_mp_d;
   mp_size_t size = z->_mp_size;
@@ -34,10 +34,10 @@ mpz_get_si (mpz_srcptr z)
 #endif
 
   if (size > 0)
-    return (long) zl & LONG_MAX;
+    return zl & LONG_MAX;
   else if (size < 0)
     /* This expression is necessary to properly handle 0x80000000 */
-    return ~(((long) zl - 1L) & LONG_MAX);
+    return -1 - (long) ((zl - 1) & LONG_MAX);
   else
     return 0;
 }

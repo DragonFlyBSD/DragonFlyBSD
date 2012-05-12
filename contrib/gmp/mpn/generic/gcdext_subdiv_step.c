@@ -181,15 +181,17 @@ mpn_gcdext_subdiv_step (mp_ptr gp, mp_size_t *gn, mp_ptr up, mp_size_t *usizep,
 
       if (qn + u0n > un)
 	{
-	  ASSERT_NOCARRY (mpn_add (u1, tp, qn + u0n, u1, un));
+	  mp_size_t u1n = un;
 	  un = qn + u0n;
-	  un -= (u1[un-1] == 0);
+	  un -= (tp[un-1] == 0);
+	  u1[un] = mpn_add (u1, tp, un, u1, u1n);
 	}
       else
 	{
 	  u1[un] = mpn_add (u1, u1, un, tp, qn + u0n);
-	  un += (u1[un] > 0);
 	}
+
+      un += (u1[un] > 0);
     }
 
   *unp = un;
