@@ -1,43 +1,21 @@
+GNU NCURSES 5.9
+===============
 
-			ncurses 5.7 AS USED BY DRAGONFLY
+Original source can be downloaded from:
+http://ftp.gnu.org/pub/gnu/ncurses
 
-    This directory contains a selected set of files from the gnu 
-    ncurses-5.4.tar.gz distribution.   No files have been moved
-    or modified from their extracted position.
+file = ncurses-5.9.tar.gz
+date = 5 April 2011
+size = 2826473
+sha1 = 3e042e5f2c7223bffdaac9646a533b8c758b65b5
 
-    This distribution was downloaded from the following site:
+A list of files and directories removed is in README.DELETED
 
-	http://ftp.gnu.org/pub/gnu/ncurses/
-
-    MD5 (ncurses-5.7.tar.gz) = cce05daf61a64501ef6cd8da1f727ec6
-    SHA1 (ncurses-5.7.tar.gz) = 8233ee56ed84ae05421e4e6d6db6c1fe72ee6797
-
-    DO NOT CREATE OR EDIT ANY FILES IN THIS DIRECTORY HIERARCHY!  THIS
-    HIERARCHY REPRESENTS AN EXACT COPY, MINUS UNNEEDED FILES, OF THE
-    ORIGINAL ARCHIVE.  All modifications are made in the 
-    DragonFly build wrapper, in /usr/src/gnu/lib/libncurses
-    by creating overrides or performing surgery on the distribution into
-    local files.  The only additional files added to this directory
-    are README.DRAGONFLY and README.DELETED.
-
-    The .h files copied into base where created using configure opts:
+The .h files copied into base where created using configure opts:
 	--enable-widec
 	--enable-const
 	--with-sysmouse
 	--enable-termcap
 	--enable-bsdpad
 
-    UPGRADE PROCEDURE:
-
-	* download a new ncurses-5.X dist greater then 5.7
-
-	* extract the archive into the contrib/ directory.
-
-	* Check overrides and patches in /usr/src/gnu/lib/libncurses and
-	  modify as appropriate.
-
-	  DO NOT MAKE ANY EDITS TO THE DISTRIBUTION IN THIS CONTRIB
-	  DIRECTORY, OTHER THEN TO ADD OR DELETE FILES ASSOCIATED WITH THE
-	  GNU DISTRIBUTION.
-
-    The file README.DELETED contains a list of deleted files.
+No files have been added or modified.

@@ -121,7 +121,12 @@ MAN=	\
 	terminfo.5 \
 	tput.1 \
 	tset.1 \
-	wresize.3
+	wresize.3 \
+	tabs.1 \
+	curs_sp_funcs.3 \
+	curs_variables.3 \
+	form_variables.3 \
+	term_variables.3
 
 MLINKS+=	curs_add_wch.3 add_wch.3
 MLINKS+=	curs_add_wch.3 echo_wchar.3

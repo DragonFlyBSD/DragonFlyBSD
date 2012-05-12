@@ -63,6 +63,7 @@ SRCS+=	\
 	fty_alnum.c \
 	fty_alpha.c \
 	fty_enum.c \
+	fty_generic.c \
 	fty_int.c \
 	fty_ipv4.c \
 	fty_num.c \

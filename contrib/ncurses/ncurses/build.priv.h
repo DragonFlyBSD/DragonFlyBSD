@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998,2000 Free Software Foundation, Inc.                   *
+ * Copyright (c) 2010 Free Software Foundation, Inc.                        *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -27,49 +27,82 @@
  ****************************************************************************/
 
 /****************************************************************************
- *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
- *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *  Author: Thomas E. Dickey                        2010                    *
  ****************************************************************************/
 
-/* $Id: termcap.h.in,v 1.16 2001/03/24 21:53:27 tom Exp $ */
 
-#ifndef NCURSES_TERMCAP_H_incl
-#define NCURSES_TERMCAP_H_incl	1
+/*
+ * $Id: build.priv.h,v 1.6 2010/05/22 20:30:35 tom Exp $
+ *
+ *	build.priv.h
+ *
+ *	This is a reduced version of curses.priv.h, for build-time utilties.
+ *	Because it has fewer dependencies, this simplifies cross-compiling.
+ *
+ */
 
-#undef  NCURSES_VERSION
-#define NCURSES_VERSION "@NCURSES_MAJOR@.@NCURSES_MINOR@"
+#ifndef CURSES_PRIV_H
+#define CURSES_PRIV_H 1
 
 #include <ncurses_dll.h>
 
 #ifdef __cplusplus
-extern "C"
-{
-#endif /* __cplusplus */
+extern "C" {
+#endif
 
+#include <ncurses_cfg.h>
+
+#if USE_RCS_IDS
+#define MODULE_ID(id) static const char Ident[] = id;
+#else
+#define MODULE_ID(id) /*nothing*/
+#endif
+
+#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 
-#undef  NCURSES_CONST 
-#define NCURSES_CONST @NCURSES_CONST@ 
+#include <assert.h>
+#include <stdio.h>
 
-#undef  NCURSES_OSPEED 
-#define NCURSES_OSPEED @NCURSES_OSPEED@ 
+#include <errno.h>
 
-extern NCURSES_EXPORT_VAR(char) PC;
-extern NCURSES_EXPORT_VAR(char *) UP;
-extern NCURSES_EXPORT_VAR(char *) BC;
-extern NCURSES_EXPORT_VAR(NCURSES_OSPEED) ospeed; 
+#include <curses.h>	/* we'll use -Ipath directive to get the right one! */
 
-#if !defined(NCURSES_TERM_H_incl)
-extern NCURSES_EXPORT(char *) tgetstr (NCURSES_CONST char *, char **);
-extern NCURSES_EXPORT(char *) tgoto (const char *, int, int);
-extern NCURSES_EXPORT(int) tgetent (char *, const char *);
-extern NCURSES_EXPORT(int) tgetflag (NCURSES_CONST char *);
-extern NCURSES_EXPORT(int) tgetnum (NCURSES_CONST char *);
-extern NCURSES_EXPORT(int) tputs (const char *, int, int (*)(int));
+/* usually in <unistd.h> */
+#ifndef EXIT_SUCCESS
+#define EXIT_SUCCESS 0
+#endif
+
+#ifndef EXIT_FAILURE
+#define EXIT_FAILURE 1
+#endif
+
+#define FreeAndNull(p)   free(p); p = 0
+#define UChar(c)         ((unsigned char)(c))
+#define SIZEOF(v)        (sizeof(v) / sizeof(v[0]))
+
+#include <nc_alloc.h>
+
+/* declare these, to avoid needing term.h */
+#if BROKEN_LINKER || USE_REENTRANT
+#define NCURSES_ARRAY(name) \
+	NCURSES_WRAPPED_VAR(NCURSES_CONST char * const *, name)
+
+NCURSES_ARRAY(boolnames);
+NCURSES_ARRAY(boolfnames);
+NCURSES_ARRAY(numnames);
+NCURSES_ARRAY(numfnames);
+NCURSES_ARRAY(strnames);
+NCURSES_ARRAY(strfnames);
+#endif
+
+#if NO_LEAKS
+NCURSES_EXPORT(void) _nc_names_leaks(void);
 #endif
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* NCURSES_TERMCAP_H_incl */
+#endif /* CURSES_PRIV_H */

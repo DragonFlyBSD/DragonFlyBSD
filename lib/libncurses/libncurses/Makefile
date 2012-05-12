@@ -56,8 +56,8 @@ codes.c: ${NCURSESTINFODIR}/MKcodes.awk
 comp_captab.c: make_hash
 	sh -e ${NCURSESTINFODIR}/MKcaptab.sh awk 0 ${NCURSESTINFODIR}/MKcaptab.awk ${TERMINFO_CAPS} > $@
 
-make_hash: ${NCURSESTINFODIR}/comp_hash.c
-	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -DMAIN_PROGRAM ${NXLDLIBS} -o ${.TARGET} ${NCURSESTINFODIR}/comp_hash.c
+make_hash: ${NCURSESTINFODIR}/make_hash.c
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -DMAIN_PROGRAM ${NXLDLIBS} -o ${.TARGET} ${NCURSESTINFODIR}/make_hash.c
 
 make_hash: hashsize.h ncurses_def.h curses.h
 
@@ -224,6 +224,7 @@ SRCS+=	\
 	name_match.c \
 	parse_entry.c \
 	read_entry.c \
+	read_termcap.c \
 	setbuf.c \
 	strings.c \
 	trim_sgr0.c \
@@ -278,10 +279,6 @@ SRCS+=	\
 	names.c \
 	unctrl.c
 
-# Use instead of read_termcap.c.
-# From our old libtermcap.
-SRCS+=  termcap.c
-
 SYMLINKS+=libncurses.a ${LIBDIR}/libcurses.a
 SYMLINKS+=libncurses.a ${LIBDIR}/libtinfo.a
 SYMLINKS+=libncurses.a ${LIBDIR}/libmytinfo.a
@@ -305,7 +302,7 @@ SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtinfo.a
 
 INCS=	term.h ${.CURDIR}/../include/termcap.h \
 	${.CURDIR}/../include/unctrl.h curses.h \
-	${NCURSESDIR}/include/ncurses_dll.h
+	${.CURDIR}/../include/ncurses_dll.h
 INCSLINKS=curses.h ${INCLUDEDIR}/ncurses.h
 
 # Make the generated files depend on the headers, otherwise

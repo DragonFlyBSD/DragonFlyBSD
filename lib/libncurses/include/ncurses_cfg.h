@@ -46,7 +46,7 @@
 #ifndef NC_CONFIG_H
 #define NC_CONFIG_H
 
-#define SYSTEM_NAME "dragonfly2.5.1"
+#define SYSTEM_NAME "dragonfly3.1"
 #define CC_HAS_PROTOS 1
 #if 0
 #include <stdlib.h>
@@ -55,8 +55,8 @@
 #define MIXEDCASE_FILENAMES 1
 #define USE_SYSMOUSE 1
 #define USE_DATABASE 1
-#define TERMINFO_DIRS "/usr/local/share/terminfo"
-#define TERMINFO "/usr/local/share/terminfo"
+#define TERMINFO_DIRS "/home/marino/share/terminfo"
+#define TERMINFO "/home/marino/share/terminfo"
 #define HAVE_BIG_CORE 1
 #define USE_TERMCAP 1
 #define TERMPATH "/etc/termcap:/usr/share/misc/termcap"
@@ -88,6 +88,7 @@
 #define HAVE_HAS_KEY 1
 #define HAVE_RESIZETERM 1
 #define HAVE_RESIZE_TERM 1
+#define HAVE_TERM_ENTRY_H 1
 #define HAVE_USE_DEFAULT_COLORS 1
 #define HAVE_WRESIZE 1
 #define NCURSES_EXT_FUNCS 1
@@ -106,8 +107,11 @@
 #define USE_SIGWINCH 1
 #define USE_ASSUMED_COLOR 1
 #define USE_HASHMAP 1
+#define NCURSES_WRAP_PREFIX "_nc_"
 #define GCC_SCANF 1
+#define GCC_SCANFLIKE(fmt,var)  __attribute__((format(scanf,fmt,var)))
 #define GCC_PRINTF 1
+#define GCC_PRINTFLIKE(fmt,var) __attribute__((format(printf,fmt,var)))
 #define GCC_UNUSED __attribute__((unused))
 #define GCC_NORETURN __attribute__((noreturn))
 #define NDEBUG 1
@@ -121,6 +125,7 @@
 #define HAVE_GETOPT_H 1
 #define HAVE_LIMITS_H 1
 #define HAVE_LOCALE_H 1
+#define HAVE_MATH_H 1
 #define HAVE_POLL_H 1
 #define HAVE_SYS_IOCTL_H 1
 #define HAVE_SYS_PARAM_H 1
@@ -162,6 +167,15 @@
 #define RETSIGTYPE void
 #define HAVE_SIZECHANGE 1
 #define HAVE_WORKING_POLL 1
+#define HAVE_VA_COPY 1
+#define HAVE___VA_COPY 1
+#define HAVE_UNISTD_H 1
+#define HAVE_FORK 1
+#define HAVE_VFORK 1
+#define HAVE_WORKING_VFORK 1
+#define HAVE_WORKING_FORK 1
+#define USE_OPENPTY_HEADER <libutil.h>
+#define USE_XTERM_PTY 1
 #define HAVE_IOSTREAM 1
 #define HAVE_TYPEINFO 1
 #define IOSTREAM_NAMESPACE 1
@@ -175,7 +189,7 @@
 #define HAVE_FORM_H 1
 #define HAVE_LIBFORM 1
 #define NCURSES_PATHSEP ':'
-#define NCURSES_VERSION_STRING "5.7.20081102"
+#define NCURSES_VERSION_STRING "5.9.20110404"
 
 #include <ncurses_def.h>
 
