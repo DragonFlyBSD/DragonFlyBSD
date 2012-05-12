@@ -115,8 +115,8 @@ hgcd_matrix_update_q (struct hgcd_matrix *M, mp_srcptr qp, mp_size_t qn,
       if (c[0] | c[1])
 	{
 	  M->n = n + qn + 1;
-	  M->p[0][col][n-1] = c[0];
-	  M->p[1][col][n-1] = c[1];
+	  M->p[0][col][M->n - 1] = c[0];
+	  M->p[1][col][M->n - 1] = c[1];
 	}
       else
 	{

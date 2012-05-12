@@ -35,7 +35,7 @@ mpq_set_si (MP_RAT *dest, signed long int num, unsigned long int den)
       return;
     }
 
-  abs_num = ABS (num);
+  abs_num = ABS_CAST (unsigned long, num);
 
   if (num == 0)
     {

@@ -22,7 +22,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 int
-mpq_equal (mpq_srcptr op1, mpq_srcptr op2)
+mpq_equal (mpq_srcptr op1, mpq_srcptr op2) __GMP_NOTHROW
 {
   mp_size_t  num1_size, num2_size, den1_size, den2_size, i;
   mp_srcptr  num1_ptr,  num2_ptr,  den1_ptr,  den2_ptr;

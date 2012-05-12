@@ -4,7 +4,8 @@
    BE SUBJECT TO INCOMPATIBLE CHANGES IN FUTURE GNU MP RELEASES.
 
 Copyright 1991, 1993, 1994, 1995, 1996, 1997, 1999, 2000, 2001, 2002, 2003,
-2004, 2005, 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Free Software Foundation,
+Inc.
 
 This file is part of the GNU MP Library.
 
@@ -64,7 +65,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #define DECL_copyi(name) \
   DECL_copyd (name)
 #define DECL_divexact_1(name) \
-  __GMP_DECLSPEC mp_limb_t name __GMP_PROTO ((mp_ptr, mp_srcptr, mp_size_t, mp_limb_t))
+  __GMP_DECLSPEC void name __GMP_PROTO ((mp_ptr, mp_srcptr, mp_size_t, mp_limb_t))
 #define DECL_divexact_by3c(name) \
   __GMP_DECLSPEC mp_limb_t name __GMP_PROTO ((mp_ptr, mp_srcptr, mp_size_t, mp_limb_t))
 #define DECL_divrem_1(name) \
@@ -478,6 +479,7 @@ __GMP_DECLSPEC void  __gmp_tmp_debug_free  __GMP_PROTO ((const char *, int, int,
 #define UNLIKELY(cond)                 __GMP_UNLIKELY(cond)
 
 #define ABS(x) ((x) >= 0 ? (x) : -(x))
+#define ABS_CAST(T,x) ((x) >= 0 ? (T)(x) : -((T)((x) + 1) - 1))
 #undef MIN
 #define MIN(l,o) ((l) < (o) ? (l) : (o))
 #undef MAX
@@ -4519,12 +4521,17 @@ extern struct fft_table_nk mpn_fft_table3[2][FFT_TABLE3_SIZE];
 #define mpn_toom2_sqr_itch(an) \
   (2 * ((an) + GMP_NUMB_BITS))
 
-/* Can probably be trimmed to 2 an + O(log an). */
+/* toom33/toom3: Scratch need is 5an/2 + 10k, k is the recursion depth.
+   We use 3an + C, so that we can use a smaller constant.
+ */
 #define mpn_toom33_mul_itch(an, bn) \
-  ((5 * (an) >> 1) + GMP_NUMB_BITS)
+  (3 * (an) + GMP_NUMB_BITS)
 #define mpn_toom3_sqr_itch(an) \
-  ((5 * (an) >> 1) + GMP_NUMB_BITS)
+  (3 * (an) + GMP_NUMB_BITS)
 
+/* toom33/toom3: Scratch need is 8an/3 + 13k, k is the recursion depth.
+   We use 3an + C, so that we can use a smaller constant.
+ */
 #define mpn_toom44_mul_itch(an, bn) \
   (3 * (an) + GMP_NUMB_BITS)
 #define mpn_toom4_sqr_itch(an) \

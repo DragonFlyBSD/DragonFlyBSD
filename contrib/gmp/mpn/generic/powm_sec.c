@@ -7,7 +7,7 @@
    SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2007, 2008, 2009 Free Software Foundation, Inc.
+Copyright 2007, 2008, 2009, 2011, 2012 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -82,7 +82,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 #if ! HAVE_NATIVE_mpn_sqr_basecase
 /* The limit of the generic code is SQR_TOOM2_THRESHOLD.  */
-#define SQR_BASECASE_MAX  SQR_TOOM2_THRESHOLD
+#define SQR_BASECASE_LIM  SQR_TOOM2_THRESHOLD
 #endif
 
 #if HAVE_NATIVE_mpn_sqr_basecase
@@ -91,12 +91,19 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    mpn_sqr_basecase, it comes from SQR_TOOM2_THRESHOLD_MAX in the assembly
    file.  An assembly mpn_sqr_basecase that does not define it, should allow
    any size.  */
-#define SQR_BASECASE_MAX  SQR_TOOM2_THRESHOLD
+#define SQR_BASECASE_LIM  SQR_TOOM2_THRESHOLD
 #endif
 #endif
 
-#ifndef SQR_BASECASE_MAX
-/* If SQR_BASECASE_MAX is now not defined, use mpn_sqr_basecase for any operand
+#ifdef WANT_FAT_BINARY
+/* For fat builds, we use SQR_TOOM2_THRESHOLD which will expand to a read from
+   __gmpn_cpuvec.  Perhaps any possible sqr_basecase.asm allow any size, and we
+   limit the use unnecessarily.  We cannot tell, so play it safe.  FIXME.  */
+#define SQR_BASECASE_LIM  SQR_TOOM2_THRESHOLD
+#endif
+
+#ifndef SQR_BASECASE_LIM
+/* If SQR_BASECASE_LIM is now not defined, use mpn_sqr_basecase for any operand
    size.  */
 #define mpn_local_sqr(rp,up,n,tp) mpn_sqr_basecase(rp,up,n)
 #else
@@ -110,7 +117,7 @@ mpn_local_sqr (mp_ptr rp, mp_srcptr up, mp_size_t n, mp_ptr tp)
   ASSERT (n >= 1);
   ASSERT (! MPN_OVERLAP_P (rp, 2*n, up, n));
 
-  if (n < SQR_BASECASE_MAX)
+  if (BELOW_THRESHOLD (n, SQR_BASECASE_LIM))
     {
       mpn_sqr_basecase (rp, up, n);
       return;
@@ -125,8 +132,6 @@ mpn_local_sqr (mp_ptr rp, mp_srcptr up, mp_size_t n, mp_ptr tp)
   if (n > 1)
     {
       mp_limb_t cy;
-      TMP_DECL;
-      TMP_MARK;
 
       cy = mpn_mul_1 (tp, up + 1, n - 1, up[0]);
       tp[n - 1] = cy;
@@ -148,8 +153,6 @@ mpn_local_sqr (mp_ptr rp, mp_srcptr up, mp_size_t n, mp_ptr tp)
 #endif
 	rp[2 * n - 1] += cy;
       }
-
-      TMP_FREE;
     }
 }
 #endif
@@ -196,15 +199,12 @@ static void
 redcify (mp_ptr rp, mp_srcptr up, mp_size_t un, mp_srcptr mp, mp_size_t n, mp_ptr tp)
 {
   mp_ptr qp;
-  TMP_DECL;
-  TMP_MARK;
 
   qp = tp + un + n;
 
   MPN_ZERO (tp, n);
   MPN_COPY (tp + n, up, un);
   mpn_tdiv_qr (qp, rp, 0L, tp, un + n, mp, n);
-  TMP_FREE;
 }
 
 /* rp[n-1..0] = bp[bn-1..0] ^ ep[en-1..0] mod mp[n-1..0]
@@ -224,12 +224,9 @@ mpn_powm_sec (mp_ptr rp, mp_srcptr bp, mp_size_t bn,
   mp_ptr pp, this_pp;
   long i;
   int cnd;
-  TMP_DECL;
 
   ASSERT (en > 1 || (en == 1 && ep[0] > 0));
   ASSERT (n >= 1 && ((mp[0] & 1) != 0));
-
-  TMP_MARK;
 
   count_leading_zeros (cnt, ep[en - 1]);
   ebi = (mp_bitcnt_t) en * GMP_LIMB_BITS - cnt;
@@ -261,7 +258,11 @@ mpn_powm_sec (mp_ptr rp, mp_srcptr bp, mp_size_t bn,
   else
     ebi -= windowsize;
 
+#if WANT_CACHE_SECURITY
+  mpn_tabselect (rp, pp, n, 1 << windowsize, expbits);
+#else
   MPN_COPY (rp, pp + n * expbits, n);
+#endif
 
   while (ebi != 0)
     {
@@ -297,7 +298,6 @@ mpn_powm_sec (mp_ptr rp, mp_srcptr bp, mp_size_t bn,
   mpn_redc_1_sec (rp, tp, mp, n, minv);
   cnd = mpn_sub_n (tp, rp, mp, n);	/* we need just retval */
   mpn_subcnd_n (rp, rp, mp, n, !cnd);
-  TMP_FREE;
 }
 
 #if ! HAVE_NATIVE_mpn_tabselect

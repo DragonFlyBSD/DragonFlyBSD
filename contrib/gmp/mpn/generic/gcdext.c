@@ -386,7 +386,10 @@ mpn_gcdext (mp_ptr gp, mp_ptr up, mp_size_t *usizep,
       MPN_COPY (gp, ap, n);
 
       MPN_CMP (c, u0, u1, un);
-      ASSERT (c != 0);
+      /* c == 0 can happen only when A = (2k+1) G, B = 2 G. And in
+	 this case we choose the cofactor + 1, corresponding to G = A
+	 - k B, rather than -1, corresponding to G = - A + (k+1) B. */
+      ASSERT (c != 0 || (un == 1 && u0[0] == 1 && u1[0] == 1));
       if (c < 0)
 	{
 	  MPN_NORMALIZE (u0, un);
