@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: mitem_value.3x,v 1.10 2010/12/04 18:40:45 tom Exp $
-.TH mitem_value 3X ""
+.TH mitem_value 3 ""
 .SH NAME
 \fBmitem_value\fR \- set and get menu item values
 .SH SYNOPSIS
@@ -39,7 +39,7 @@ bool item_value(const ITEM *item);
 .br
 .SH DESCRIPTION
 If you turn off the menu option \fBO_ONEVALUE\fR (e.g., with
-\fBset_menu_opts\fR or \fBmenu_opts_off\fR; see \fBmenu_opts\fR(3X)), the menu
+\fBset_menu_opts\fR or \fBmenu_opts_off\fR; see \fBmenu_opts\fR(3)), the menu
 becomes multi-valued; that is, more than one item may simultaneously be
 selected.
 .PP
@@ -58,7 +58,7 @@ System error occurred (see \fBerrno\fR).
 .B E_REQUEST_DENIED
 The menu driver could not process the request.
 .SH SEE ALSO
-\fBcurses\fR(3X), \fBmenu\fR(3X).
+\fBcurses\fR(3), \fBmenu\fR(3).
 .SH NOTES
 The header file \fB<menu.h>\fR automatically includes the header file
 \fB<curses.h>\fR.

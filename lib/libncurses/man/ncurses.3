@@ -29,7 +29,7 @@
 .\"
 .\" $Id: ncurses.3x,v 1.103 2011/02/05 23:21:29 tom Exp $
 .hy 0
-.TH ncurses 3X ""
+.TH ncurses 3 ""
 .de bP
 .IP \(bu 4
 ..
@@ -121,7 +121,7 @@ screen, is supplied.
 Others may be created with \fBnewwin\fR.
 .PP
 Note that \fBcurses\fR does not handle overlapping windows, that's done by
-the \fBpanel\fR(3X) library.
+the \fBpanel\fR(3) library.
 This means that you can either use
 \fBstdscr\fR or divide the screen into tiled windows and not using
 \fBstdscr\fR at all.
@@ -149,7 +149,7 @@ Special windows called \fIpads\fR may also be manipulated.
 These are windows
 which are not constrained to the size of the screen and whose contents need not
 be completely displayed.
-See \fBcurs_pad\fR(3X) for more information.
+See \fBcurs_pad\fR(3) for more information.
 .PP
 In addition to drawing characters on the screen, video attributes and colors
 may be supported, causing the characters to show up in such modes as
@@ -294,440 +294,440 @@ l l
 l l .
 \fBcurses\fR Routine Name/Manual Page Name
 =
-COLOR_PAIR/\fBcurs_color\fR(3X)
-PAIR_NUMBER/\fBcurs_attr\fR(3X)
-_nc_free_and_exit/\fBcurs_memleaks\fR(3X)*
-_nc_freeall/\fBcurs_memleaks\fR(3X)*
-_nc_tracebits/\fBcurs_trace\fR(3X)*
-_traceattr/\fBcurs_trace\fR(3X)*
-_traceattr2/\fBcurs_trace\fR(3X)*
-_tracechar/\fBcurs_trace\fR(3X)*
-_tracechtype/\fBcurs_trace\fR(3X)*
-_tracechtype2/\fBcurs_trace\fR(3X)*
-_tracedump/\fBcurs_trace\fR(3X)*
-_tracef/\fBcurs_trace\fR(3X)*
-_tracemouse/\fBcurs_trace\fR(3X)*
-add_wch/\fBcurs_add_wch\fR(3X)
-add_wchnstr/\fBcurs_add_wchstr\fR(3X)
-add_wchstr/\fBcurs_add_wchstr\fR(3X)
-addch/\fBcurs_addch\fR(3X)
-addchnstr/\fBcurs_addchstr\fR(3X)
-addchstr/\fBcurs_addchstr\fR(3X)
-addnstr/\fBcurs_addstr\fR(3X)
-addnwstr/\fBcurs_addwstr\fR(3X)
-addstr/\fBcurs_addstr\fR(3X)
-addwstr/\fBcurs_addwstr\fR(3X)
-assume_default_colors/\fBdefault_colors\fR(3X)*
-attr_get/\fBcurs_attr\fR(3X)
-attr_off/\fBcurs_attr\fR(3X)
-attr_on/\fBcurs_attr\fR(3X)
-attr_set/\fBcurs_attr\fR(3X)
-attroff/\fBcurs_attr\fR(3X)
-attron/\fBcurs_attr\fR(3X)
-attrset/\fBcurs_attr\fR(3X)
-baudrate/\fBcurs_termattrs\fR(3X)
-beep/\fBcurs_beep\fR(3X)
-bkgd/\fBcurs_bkgd\fR(3X)
-bkgdset/\fBcurs_bkgd\fR(3X)
-bkgrnd/\fBcurs_bkgrnd\fR(3X)
-bkgrndset/\fBcurs_bkgrnd\fR(3X)
-border/\fBcurs_border\fR(3X)
-border_set/\fBcurs_border_set\fR(3X)
-box/\fBcurs_border\fR(3X)
-box_set/\fBcurs_border_set\fR(3X)
-can_change_color/\fBcurs_color\fR(3X)
-cbreak/\fBcurs_inopts\fR(3X)
-chgat/\fBcurs_attr\fR(3X)
-clear/\fBcurs_clear\fR(3X)
-clearok/\fBcurs_outopts\fR(3X)
-clrtobot/\fBcurs_clear\fR(3X)
-clrtoeol/\fBcurs_clear\fR(3X)
-color_content/\fBcurs_color\fR(3X)
-color_set/\fBcurs_attr\fR(3X)
-copywin/\fBcurs_overlay\fR(3X)
-curs_set/\fBcurs_kernel\fR(3X)
-curses_version/\fBcurs_extend\fR(3X)*
-def_prog_mode/\fBcurs_kernel\fR(3X)
-def_shell_mode/\fBcurs_kernel\fR(3X)
-define_key/\fBdefine_key\fR(3X)*
-del_curterm/\fBcurs_terminfo\fR(3X)
-delay_output/\fBcurs_util\fR(3X)
-delch/\fBcurs_delch\fR(3X)
-deleteln/\fBcurs_deleteln\fR(3X)
-delscreen/\fBcurs_initscr\fR(3X)
-delwin/\fBcurs_window\fR(3X)
-derwin/\fBcurs_window\fR(3X)
-doupdate/\fBcurs_refresh\fR(3X)
-dupwin/\fBcurs_window\fR(3X)
-echo/\fBcurs_inopts\fR(3X)
-echo_wchar/\fBcurs_add_wch\fR(3X)
-echochar/\fBcurs_addch\fR(3X)
-endwin/\fBcurs_initscr\fR(3X)
-erase/\fBcurs_clear\fR(3X)
-erasechar/\fBcurs_termattrs\fR(3X)
-erasewchar/\fBcurs_termattrs\fR(3X)
-filter/\fBcurs_util\fR(3X)
-flash/\fBcurs_beep\fR(3X)
-flushinp/\fBcurs_util\fR(3X)
-get_wch/\fBcurs_get_wch\fR(3X)
-get_wstr/\fBcurs_get_wstr\fR(3X)
-getattrs/\fBcurs_attr\fR(3X)
-getbegx/\fBcurs_legacy\fR(3X)*
-getbegy/\fBcurs_legacy\fR(3X)*
-getbegyx/\fBcurs_getyx\fR(3X)
-getbkgd/\fBcurs_bkgd\fR(3X)
-getbkgrnd/\fBcurs_bkgrnd\fR(3X)
-getcchar/\fBcurs_getcchar\fR(3X)
-getch/\fBcurs_getch\fR(3X)
-getcurx/\fBcurs_legacy\fR(3X)*
-getcury/\fBcurs_legacy\fR(3X)*
-getmaxx/\fBcurs_legacy\fR(3X)*
-getmaxy/\fBcurs_legacy\fR(3X)*
-getmaxyx/\fBcurs_getyx\fR(3X)
-getmouse/\fBcurs_mouse\fR(3X)*
-getn_wstr/\fBcurs_get_wstr\fR(3X)
-getnstr/\fBcurs_getstr\fR(3X)
-getparx/\fBcurs_legacy\fR(3X)*
-getpary/\fBcurs_legacy\fR(3X)*
-getparyx/\fBcurs_getyx\fR(3X)
-getstr/\fBcurs_getstr\fR(3X)
-getsyx/\fBcurs_kernel\fR(3X)
-getwin/\fBcurs_util\fR(3X)
-getyx/\fBcurs_getyx\fR(3X)
-halfdelay/\fBcurs_inopts\fR(3X)
-has_colors/\fBcurs_color\fR(3X)
-has_ic/\fBcurs_termattrs\fR(3X)
-has_il/\fBcurs_termattrs\fR(3X)
-has_key/\fBcurs_getch\fR(3X)*
-hline/\fBcurs_border\fR(3X)
-hline_set/\fBcurs_border_set\fR(3X)
-idcok/\fBcurs_outopts\fR(3X)
-idlok/\fBcurs_outopts\fR(3X)
-immedok/\fBcurs_outopts\fR(3X)
-in_wch/\fBcurs_in_wch\fR(3X)
-in_wchnstr/\fBcurs_in_wchstr\fR(3X)
-in_wchstr/\fBcurs_in_wchstr\fR(3X)
-inch/\fBcurs_inch\fR(3X)
-inchnstr/\fBcurs_inchstr\fR(3X)
-inchstr/\fBcurs_inchstr\fR(3X)
-init_color/\fBcurs_color\fR(3X)
-init_pair/\fBcurs_color\fR(3X)
-initscr/\fBcurs_initscr\fR(3X)
-innstr/\fBcurs_instr\fR(3X)
-innwstr/\fBcurs_inwstr\fR(3X)
-ins_nwstr/\fBcurs_ins_wstr\fR(3X)
-ins_wch/\fBcurs_ins_wch\fR(3X)
-ins_wstr/\fBcurs_ins_wstr\fR(3X)
-insch/\fBcurs_insch\fR(3X)
-insdelln/\fBcurs_deleteln\fR(3X)
-insertln/\fBcurs_deleteln\fR(3X)
-insnstr/\fBcurs_insstr\fR(3X)
-insstr/\fBcurs_insstr\fR(3X)
-instr/\fBcurs_instr\fR(3X)
-intrflush/\fBcurs_inopts\fR(3X)
-inwstr/\fBcurs_inwstr\fR(3X)
-is_cleared/\fBcurs_opaque\fR(3X)*
-is_idcok/\fBcurs_opaque\fR(3X)*
-is_idlok/\fBcurs_opaque\fR(3X)*
-is_immedok/\fBcurs_opaque\fR(3X)*
-is_keypad/\fBcurs_opaque\fR(3X)*
-is_leaveok/\fBcurs_opaque\fR(3X)*
-is_linetouched/\fBcurs_touch\fR(3X)
-is_nodelay/\fBcurs_opaque\fR(3X)*
-is_notimeout/\fBcurs_opaque\fR(3X)*
-is_scrollok/\fBcurs_opaque\fR(3X)*
-is_syncok/\fBcurs_opaque\fR(3X)*
-is_term_resized/\fBresizeterm\fR(3X)*
-is_wintouched/\fBcurs_touch\fR(3X)
-isendwin/\fBcurs_initscr\fR(3X)
-key_defined/\fBkey_defined\fR(3X)*
-key_name/\fBcurs_util\fR(3X)
-keybound/\fBkeybound\fR(3X)*
-keyname/\fBcurs_util\fR(3X)
-keyok/\fBkeyok\fR(3X)*
-keypad/\fBcurs_inopts\fR(3X)
-killchar/\fBcurs_termattrs\fR(3X)
-killwchar/\fBcurs_termattrs\fR(3X)
-leaveok/\fBcurs_outopts\fR(3X)
-longname/\fBcurs_termattrs\fR(3X)
-mcprint/\fBcurs_print\fR(3X)*
-meta/\fBcurs_inopts\fR(3X)
-mouse_trafo/\fBcurs_mouse\fR(3X)*
-mouseinterval/\fBcurs_mouse\fR(3X)*
-mousemask/\fBcurs_mouse\fR(3X)*
-move/\fBcurs_move\fR(3X)
-mvadd_wch/\fBcurs_add_wch\fR(3X)
-mvadd_wchnstr/\fBcurs_add_wchstr\fR(3X)
-mvadd_wchstr/\fBcurs_add_wchstr\fR(3X)
-mvaddch/\fBcurs_addch\fR(3X)
-mvaddchnstr/\fBcurs_addchstr\fR(3X)
-mvaddchstr/\fBcurs_addchstr\fR(3X)
-mvaddnstr/\fBcurs_addstr\fR(3X)
-mvaddnwstr/\fBcurs_addwstr\fR(3X)
-mvaddstr/\fBcurs_addstr\fR(3X)
-mvaddwstr/\fBcurs_addwstr\fR(3X)
-mvchgat/\fBcurs_attr\fR(3X)
-mvcur/\fBcurs_terminfo\fR(3X)
-mvdelch/\fBcurs_delch\fR(3X)
-mvderwin/\fBcurs_window\fR(3X)
-mvget_wch/\fBcurs_get_wch\fR(3X)
-mvget_wstr/\fBcurs_get_wstr\fR(3X)
-mvgetch/\fBcurs_getch\fR(3X)
-mvgetn_wstr/\fBcurs_get_wstr\fR(3X)
-mvgetnstr/\fBcurs_getstr\fR(3X)
-mvgetstr/\fBcurs_getstr\fR(3X)
-mvhline/\fBcurs_border\fR(3X)
-mvhline_set/\fBcurs_border_set\fR(3X)
-mvin_wch/\fBcurs_in_wch\fR(3X)
-mvin_wchnstr/\fBcurs_in_wchstr\fR(3X)
-mvin_wchstr/\fBcurs_in_wchstr\fR(3X)
-mvinch/\fBcurs_inch\fR(3X)
-mvinchnstr/\fBcurs_inchstr\fR(3X)
-mvinchstr/\fBcurs_inchstr\fR(3X)
-mvinnstr/\fBcurs_instr\fR(3X)
-mvinnwstr/\fBcurs_inwstr\fR(3X)
-mvins_nwstr/\fBcurs_ins_wstr\fR(3X)
-mvins_wch/\fBcurs_ins_wch\fR(3X)
-mvins_wstr/\fBcurs_ins_wstr\fR(3X)
-mvinsch/\fBcurs_insch\fR(3X)
-mvinsnstr/\fBcurs_insstr\fR(3X)
-mvinsstr/\fBcurs_insstr\fR(3X)
-mvinstr/\fBcurs_instr\fR(3X)
-mvinwstr/\fBcurs_inwstr\fR(3X)
-mvprintw/\fBcurs_printw\fR(3X)
-mvscanw/\fBcurs_scanw\fR(3X)
-mvvline/\fBcurs_border\fR(3X)
-mvvline_set/\fBcurs_border_set\fR(3X)
-mvwadd_wch/\fBcurs_add_wch\fR(3X)
-mvwadd_wchnstr/\fBcurs_add_wchstr\fR(3X)
-mvwadd_wchstr/\fBcurs_add_wchstr\fR(3X)
-mvwaddch/\fBcurs_addch\fR(3X)
-mvwaddchnstr/\fBcurs_addchstr\fR(3X)
-mvwaddchstr/\fBcurs_addchstr\fR(3X)
-mvwaddnstr/\fBcurs_addstr\fR(3X)
-mvwaddnwstr/\fBcurs_addwstr\fR(3X)
-mvwaddstr/\fBcurs_addstr\fR(3X)
-mvwaddwstr/\fBcurs_addwstr\fR(3X)
-mvwchgat/\fBcurs_attr\fR(3X)
-mvwdelch/\fBcurs_delch\fR(3X)
-mvwget_wch/\fBcurs_get_wch\fR(3X)
-mvwget_wstr/\fBcurs_get_wstr\fR(3X)
-mvwgetch/\fBcurs_getch\fR(3X)
-mvwgetn_wstr/\fBcurs_get_wstr\fR(3X)
-mvwgetnstr/\fBcurs_getstr\fR(3X)
-mvwgetstr/\fBcurs_getstr\fR(3X)
-mvwhline/\fBcurs_border\fR(3X)
-mvwhline_set/\fBcurs_border_set\fR(3X)
-mvwin/\fBcurs_window\fR(3X)
-mvwin_wch/\fBcurs_in_wch\fR(3X)
-mvwin_wchnstr/\fBcurs_in_wchstr\fR(3X)
-mvwin_wchstr/\fBcurs_in_wchstr\fR(3X)
-mvwinch/\fBcurs_inch\fR(3X)
-mvwinchnstr/\fBcurs_inchstr\fR(3X)
-mvwinchstr/\fBcurs_inchstr\fR(3X)
-mvwinnstr/\fBcurs_instr\fR(3X)
-mvwinnwstr/\fBcurs_inwstr\fR(3X)
-mvwins_nwstr/\fBcurs_ins_wstr\fR(3X)
-mvwins_wch/\fBcurs_ins_wch\fR(3X)
-mvwins_wstr/\fBcurs_ins_wstr\fR(3X)
-mvwinsch/\fBcurs_insch\fR(3X)
-mvwinsnstr/\fBcurs_insstr\fR(3X)
-mvwinsstr/\fBcurs_insstr\fR(3X)
-mvwinstr/\fBcurs_instr\fR(3X)
-mvwinwstr/\fBcurs_inwstr\fR(3X)
-mvwprintw/\fBcurs_printw\fR(3X)
-mvwscanw/\fBcurs_scanw\fR(3X)
-mvwvline/\fBcurs_border\fR(3X)
-mvwvline_set/\fBcurs_border_set\fR(3X)
-napms/\fBcurs_kernel\fR(3X)
-newpad/\fBcurs_pad\fR(3X)
-newterm/\fBcurs_initscr\fR(3X)
-newwin/\fBcurs_window\fR(3X)
-nl/\fBcurs_outopts\fR(3X)
-nocbreak/\fBcurs_inopts\fR(3X)
-nodelay/\fBcurs_inopts\fR(3X)
-noecho/\fBcurs_inopts\fR(3X)
-nofilter/\fBcurs_util\fR(3X)*
-nonl/\fBcurs_outopts\fR(3X)
-noqiflush/\fBcurs_inopts\fR(3X)
-noraw/\fBcurs_inopts\fR(3X)
-notimeout/\fBcurs_inopts\fR(3X)
-overlay/\fBcurs_overlay\fR(3X)
-overwrite/\fBcurs_overlay\fR(3X)
-pair_content/\fBcurs_color\fR(3X)
-pechochar/\fBcurs_pad\fR(3X)
-pnoutrefresh/\fBcurs_pad\fR(3X)
-prefresh/\fBcurs_pad\fR(3X)
-printw/\fBcurs_printw\fR(3X)
-putp/\fBcurs_terminfo\fR(3X)
-putwin/\fBcurs_util\fR(3X)
-qiflush/\fBcurs_inopts\fR(3X)
-raw/\fBcurs_inopts\fR(3X)
-redrawwin/\fBcurs_refresh\fR(3X)
-refresh/\fBcurs_refresh\fR(3X)
-reset_prog_mode/\fBcurs_kernel\fR(3X)
-reset_shell_mode/\fBcurs_kernel\fR(3X)
-resetty/\fBcurs_kernel\fR(3X)
-resizeterm/\fBresizeterm\fR(3X)*
-restartterm/\fBcurs_terminfo\fR(3X)
-ripoffline/\fBcurs_kernel\fR(3X)
-savetty/\fBcurs_kernel\fR(3X)
-scanw/\fBcurs_scanw\fR(3X)
-scr_dump/\fBcurs_scr_dump\fR(3X)
-scr_init/\fBcurs_scr_dump\fR(3X)
-scr_restore/\fBcurs_scr_dump\fR(3X)
-scr_set/\fBcurs_scr_dump\fR(3X)
-scrl/\fBcurs_scroll\fR(3X)
-scroll/\fBcurs_scroll\fR(3X)
-scrollok/\fBcurs_outopts\fR(3X)
-set_curterm/\fBcurs_terminfo\fR(3X)
-set_term/\fBcurs_initscr\fR(3X)
-setcchar/\fBcurs_getcchar\fR(3X)
-setscrreg/\fBcurs_outopts\fR(3X)
-setsyx/\fBcurs_kernel\fR(3X)
-setterm/\fBcurs_terminfo\fR(3X)
-setupterm/\fBcurs_terminfo\fR(3X)
-slk_attr/\fBcurs_slk\fR(3X)*
-slk_attr_off/\fBcurs_slk\fR(3X)
-slk_attr_on/\fBcurs_slk\fR(3X)
-slk_attr_set/\fBcurs_slk\fR(3X)
-slk_attroff/\fBcurs_slk\fR(3X)
-slk_attron/\fBcurs_slk\fR(3X)
-slk_attrset/\fBcurs_slk\fR(3X)
-slk_clear/\fBcurs_slk\fR(3X)
-slk_color/\fBcurs_slk\fR(3X)
-slk_init/\fBcurs_slk\fR(3X)
-slk_label/\fBcurs_slk\fR(3X)
-slk_noutrefresh/\fBcurs_slk\fR(3X)
-slk_refresh/\fBcurs_slk\fR(3X)
-slk_restore/\fBcurs_slk\fR(3X)
-slk_set/\fBcurs_slk\fR(3X)
-slk_touch/\fBcurs_slk\fR(3X)
-standend/\fBcurs_attr\fR(3X)
-standout/\fBcurs_attr\fR(3X)
-start_color/\fBcurs_color\fR(3X)
-subpad/\fBcurs_pad\fR(3X)
-subwin/\fBcurs_window\fR(3X)
-syncok/\fBcurs_window\fR(3X)
-term_attrs/\fBcurs_termattrs\fR(3X)
-termattrs/\fBcurs_termattrs\fR(3X)
-termname/\fBcurs_termattrs\fR(3X)
-tgetent/\fBcurs_termcap\fR(3X)
-tgetflag/\fBcurs_termcap\fR(3X)
-tgetnum/\fBcurs_termcap\fR(3X)
-tgetstr/\fBcurs_termcap\fR(3X)
-tgoto/\fBcurs_termcap\fR(3X)
-tigetflag/\fBcurs_terminfo\fR(3X)
-tigetnum/\fBcurs_terminfo\fR(3X)
-tigetstr/\fBcurs_terminfo\fR(3X)
-timeout/\fBcurs_inopts\fR(3X)
-touchline/\fBcurs_touch\fR(3X)
-touchwin/\fBcurs_touch\fR(3X)
-tparm/\fBcurs_terminfo\fR(3X)
-tputs/\fBcurs_termcap\fR(3X)
-tputs/\fBcurs_terminfo\fR(3X)
-trace/\fBcurs_trace\fR(3X)*
-typeahead/\fBcurs_inopts\fR(3X)
-unctrl/\fBcurs_util\fR(3X)
-unget_wch/\fBcurs_get_wch\fR(3X)
-ungetch/\fBcurs_getch\fR(3X)
-ungetmouse/\fBcurs_mouse\fR(3X)*
-untouchwin/\fBcurs_touch\fR(3X)
-use_default_colors/\fBdefault_colors\fR(3X)*
-use_env/\fBcurs_util\fR(3X)
-use_extended_names/\fBcurs_extend\fR(3X)*
-use_legacy_coding/\fBlegacy_coding\fR(3X)*
-vid_attr/\fBcurs_terminfo\fR(3X)
-vid_puts/\fBcurs_terminfo\fR(3X)
-vidattr/\fBcurs_terminfo\fR(3X)
-vidputs/\fBcurs_terminfo\fR(3X)
-vline/\fBcurs_border\fR(3X)
-vline_set/\fBcurs_border_set\fR(3X)
-vw_printw/\fBcurs_printw\fR(3X)
-vw_scanw/\fBcurs_scanw\fR(3X)
-vwprintw/\fBcurs_printw\fR(3X)
-vwscanw/\fBcurs_scanw\fR(3X)
-wadd_wch/\fBcurs_add_wch\fR(3X)
-wadd_wchnstr/\fBcurs_add_wchstr\fR(3X)
-wadd_wchstr/\fBcurs_add_wchstr\fR(3X)
-waddch/\fBcurs_addch\fR(3X)
-waddchnstr/\fBcurs_addchstr\fR(3X)
-waddchstr/\fBcurs_addchstr\fR(3X)
-waddnstr/\fBcurs_addstr\fR(3X)
-waddnwstr/\fBcurs_addwstr\fR(3X)
-waddstr/\fBcurs_addstr\fR(3X)
-waddwstr/\fBcurs_addwstr\fR(3X)
-wattr_get/\fBcurs_attr\fR(3X)
-wattr_off/\fBcurs_attr\fR(3X)
-wattr_on/\fBcurs_attr\fR(3X)
-wattr_set/\fBcurs_attr\fR(3X)
-wattroff/\fBcurs_attr\fR(3X)
-wattron/\fBcurs_attr\fR(3X)
-wattrset/\fBcurs_attr\fR(3X)
-wbkgd/\fBcurs_bkgd\fR(3X)
-wbkgdset/\fBcurs_bkgd\fR(3X)
-wbkgrnd/\fBcurs_bkgrnd\fR(3X)
-wbkgrndset/\fBcurs_bkgrnd\fR(3X)
-wborder/\fBcurs_border\fR(3X)
-wborder_set/\fBcurs_border_set\fR(3X)
-wchgat/\fBcurs_attr\fR(3X)
-wclear/\fBcurs_clear\fR(3X)
-wclrtobot/\fBcurs_clear\fR(3X)
-wclrtoeol/\fBcurs_clear\fR(3X)
-wcolor_set/\fBcurs_attr\fR(3X)
-wcursyncup/\fBcurs_window\fR(3X)
-wdelch/\fBcurs_delch\fR(3X)
-wdeleteln/\fBcurs_deleteln\fR(3X)
-wecho_wchar/\fBcurs_add_wch\fR(3X)
-wechochar/\fBcurs_addch\fR(3X)
-wenclose/\fBcurs_mouse\fR(3X)*
-werase/\fBcurs_clear\fR(3X)
-wget_wch/\fBcurs_get_wch\fR(3X)
-wget_wstr/\fBcurs_get_wstr\fR(3X)
-wgetbkgrnd/\fBcurs_bkgrnd\fR(3X)
-wgetch/\fBcurs_getch\fR(3X)
-wgetn_wstr/\fBcurs_get_wstr\fR(3X)
-wgetnstr/\fBcurs_getstr\fR(3X)
-wgetstr/\fBcurs_getstr\fR(3X)
-whline/\fBcurs_border\fR(3X)
-whline_set/\fBcurs_border_set\fR(3X)
-win_wch/\fBcurs_in_wch\fR(3X)
-win_wchnstr/\fBcurs_in_wchstr\fR(3X)
-win_wchstr/\fBcurs_in_wchstr\fR(3X)
-winch/\fBcurs_inch\fR(3X)
-winchnstr/\fBcurs_inchstr\fR(3X)
-winchstr/\fBcurs_inchstr\fR(3X)
-winnstr/\fBcurs_instr\fR(3X)
-winnwstr/\fBcurs_inwstr\fR(3X)
-wins_nwstr/\fBcurs_ins_wstr\fR(3X)
-wins_wch/\fBcurs_ins_wch\fR(3X)
-wins_wstr/\fBcurs_ins_wstr\fR(3X)
-winsch/\fBcurs_insch\fR(3X)
-winsdelln/\fBcurs_deleteln\fR(3X)
-winsertln/\fBcurs_deleteln\fR(3X)
-winsnstr/\fBcurs_insstr\fR(3X)
-winsstr/\fBcurs_insstr\fR(3X)
-winstr/\fBcurs_instr\fR(3X)
-winwstr/\fBcurs_inwstr\fR(3X)
-wmouse_trafo/\fBcurs_mouse\fR(3X)*
-wmove/\fBcurs_move\fR(3X)
-wnoutrefresh/\fBcurs_refresh\fR(3X)
-wprintw/\fBcurs_printw\fR(3X)
-wredrawln/\fBcurs_refresh\fR(3X)
-wrefresh/\fBcurs_refresh\fR(3X)
-wresize/\fBwresize\fR(3X)*
-wscanw/\fBcurs_scanw\fR(3X)
-wscrl/\fBcurs_scroll\fR(3X)
-wsetscrreg/\fBcurs_outopts\fR(3X)
-wstandend/\fBcurs_attr\fR(3X)
-wstandout/\fBcurs_attr\fR(3X)
-wsyncdown/\fBcurs_window\fR(3X)
-wsyncup/\fBcurs_window\fR(3X)
-wtimeout/\fBcurs_inopts\fR(3X)
-wtouchln/\fBcurs_touch\fR(3X)
-wunctrl/\fBcurs_util\fR(3X)
-wvline/\fBcurs_border\fR(3X)
-wvline_set/\fBcurs_border_set\fR(3X)
+COLOR_PAIR/\fBcurs_color\fR(3)
+PAIR_NUMBER/\fBcurs_attr\fR(3)
+_nc_free_and_exit/\fBcurs_memleaks\fR(3)*
+_nc_freeall/\fBcurs_memleaks\fR(3)*
+_nc_tracebits/\fBcurs_trace\fR(3)*
+_traceattr/\fBcurs_trace\fR(3)*
+_traceattr2/\fBcurs_trace\fR(3)*
+_tracechar/\fBcurs_trace\fR(3)*
+_tracechtype/\fBcurs_trace\fR(3)*
+_tracechtype2/\fBcurs_trace\fR(3)*
+_tracedump/\fBcurs_trace\fR(3)*
+_tracef/\fBcurs_trace\fR(3)*
+_tracemouse/\fBcurs_trace\fR(3)*
+add_wch/\fBcurs_add_wch\fR(3)
+add_wchnstr/\fBcurs_add_wchstr\fR(3)
+add_wchstr/\fBcurs_add_wchstr\fR(3)
+addch/\fBcurs_addch\fR(3)
+addchnstr/\fBcurs_addchstr\fR(3)
+addchstr/\fBcurs_addchstr\fR(3)
+addnstr/\fBcurs_addstr\fR(3)
+addnwstr/\fBcurs_addwstr\fR(3)
+addstr/\fBcurs_addstr\fR(3)
+addwstr/\fBcurs_addwstr\fR(3)
+assume_default_colors/\fBdefault_colors\fR(3)*
+attr_get/\fBcurs_attr\fR(3)
+attr_off/\fBcurs_attr\fR(3)
+attr_on/\fBcurs_attr\fR(3)
+attr_set/\fBcurs_attr\fR(3)
+attroff/\fBcurs_attr\fR(3)
+attron/\fBcurs_attr\fR(3)
+attrset/\fBcurs_attr\fR(3)
+baudrate/\fBcurs_termattrs\fR(3)
+beep/\fBcurs_beep\fR(3)
+bkgd/\fBcurs_bkgd\fR(3)
+bkgdset/\fBcurs_bkgd\fR(3)
+bkgrnd/\fBcurs_bkgrnd\fR(3)
+bkgrndset/\fBcurs_bkgrnd\fR(3)
+border/\fBcurs_border\fR(3)
+border_set/\fBcurs_border_set\fR(3)
+box/\fBcurs_border\fR(3)
+box_set/\fBcurs_border_set\fR(3)
+can_change_color/\fBcurs_color\fR(3)
+cbreak/\fBcurs_inopts\fR(3)
+chgat/\fBcurs_attr\fR(3)
+clear/\fBcurs_clear\fR(3)
+clearok/\fBcurs_outopts\fR(3)
+clrtobot/\fBcurs_clear\fR(3)
+clrtoeol/\fBcurs_clear\fR(3)
+color_content/\fBcurs_color\fR(3)
+color_set/\fBcurs_attr\fR(3)
+copywin/\fBcurs_overlay\fR(3)
+curs_set/\fBcurs_kernel\fR(3)
+curses_version/\fBcurs_extend\fR(3)*
+def_prog_mode/\fBcurs_kernel\fR(3)
+def_shell_mode/\fBcurs_kernel\fR(3)
+define_key/\fBdefine_key\fR(3)*
+del_curterm/\fBcurs_terminfo\fR(3)
+delay_output/\fBcurs_util\fR(3)
+delch/\fBcurs_delch\fR(3)
+deleteln/\fBcurs_deleteln\fR(3)
+delscreen/\fBcurs_initscr\fR(3)
+delwin/\fBcurs_window\fR(3)
+derwin/\fBcurs_window\fR(3)
+doupdate/\fBcurs_refresh\fR(3)
+dupwin/\fBcurs_window\fR(3)
+echo/\fBcurs_inopts\fR(3)
+echo_wchar/\fBcurs_add_wch\fR(3)
+echochar/\fBcurs_addch\fR(3)
+endwin/\fBcurs_initscr\fR(3)
+erase/\fBcurs_clear\fR(3)
+erasechar/\fBcurs_termattrs\fR(3)
+erasewchar/\fBcurs_termattrs\fR(3)
+filter/\fBcurs_util\fR(3)
+flash/\fBcurs_beep\fR(3)
+flushinp/\fBcurs_util\fR(3)
+get_wch/\fBcurs_get_wch\fR(3)
+get_wstr/\fBcurs_get_wstr\fR(3)
+getattrs/\fBcurs_attr\fR(3)
+getbegx/\fBcurs_legacy\fR(3)*
+getbegy/\fBcurs_legacy\fR(3)*
+getbegyx/\fBcurs_getyx\fR(3)
+getbkgd/\fBcurs_bkgd\fR(3)
+getbkgrnd/\fBcurs_bkgrnd\fR(3)
+getcchar/\fBcurs_getcchar\fR(3)
+getch/\fBcurs_getch\fR(3)
+getcurx/\fBcurs_legacy\fR(3)*
+getcury/\fBcurs_legacy\fR(3)*
+getmaxx/\fBcurs_legacy\fR(3)*
+getmaxy/\fBcurs_legacy\fR(3)*
+getmaxyx/\fBcurs_getyx\fR(3)
+getmouse/\fBcurs_mouse\fR(3)*
+getn_wstr/\fBcurs_get_wstr\fR(3)
+getnstr/\fBcurs_getstr\fR(3)
+getparx/\fBcurs_legacy\fR(3)*
+getpary/\fBcurs_legacy\fR(3)*
+getparyx/\fBcurs_getyx\fR(3)
+getstr/\fBcurs_getstr\fR(3)
+getsyx/\fBcurs_kernel\fR(3)
+getwin/\fBcurs_util\fR(3)
+getyx/\fBcurs_getyx\fR(3)
+halfdelay/\fBcurs_inopts\fR(3)
+has_colors/\fBcurs_color\fR(3)
+has_ic/\fBcurs_termattrs\fR(3)
+has_il/\fBcurs_termattrs\fR(3)
+has_key/\fBcurs_getch\fR(3)*
+hline/\fBcurs_border\fR(3)
+hline_set/\fBcurs_border_set\fR(3)
+idcok/\fBcurs_outopts\fR(3)
+idlok/\fBcurs_outopts\fR(3)
+immedok/\fBcurs_outopts\fR(3)
+in_wch/\fBcurs_in_wch\fR(3)
+in_wchnstr/\fBcurs_in_wchstr\fR(3)
+in_wchstr/\fBcurs_in_wchstr\fR(3)
+inch/\fBcurs_inch\fR(3)
+inchnstr/\fBcurs_inchstr\fR(3)
+inchstr/\fBcurs_inchstr\fR(3)
+init_color/\fBcurs_color\fR(3)
+init_pair/\fBcurs_color\fR(3)
+initscr/\fBcurs_initscr\fR(3)
+innstr/\fBcurs_instr\fR(3)
+innwstr/\fBcurs_inwstr\fR(3)
+ins_nwstr/\fBcurs_ins_wstr\fR(3)
+ins_wch/\fBcurs_ins_wch\fR(3)
+ins_wstr/\fBcurs_ins_wstr\fR(3)
+insch/\fBcurs_insch\fR(3)
+insdelln/\fBcurs_deleteln\fR(3)
+insertln/\fBcurs_deleteln\fR(3)
+insnstr/\fBcurs_insstr\fR(3)
+insstr/\fBcurs_insstr\fR(3)
+instr/\fBcurs_instr\fR(3)
+intrflush/\fBcurs_inopts\fR(3)
+inwstr/\fBcurs_inwstr\fR(3)
+is_cleared/\fBcurs_opaque\fR(3)*
+is_idcok/\fBcurs_opaque\fR(3)*
+is_idlok/\fBcurs_opaque\fR(3)*
+is_immedok/\fBcurs_opaque\fR(3)*
+is_keypad/\fBcurs_opaque\fR(3)*
+is_leaveok/\fBcurs_opaque\fR(3)*
+is_linetouched/\fBcurs_touch\fR(3)
+is_nodelay/\fBcurs_opaque\fR(3)*
+is_notimeout/\fBcurs_opaque\fR(3)*
+is_scrollok/\fBcurs_opaque\fR(3)*
+is_syncok/\fBcurs_opaque\fR(3)*
+is_term_resized/\fBresizeterm\fR(3)*
+is_wintouched/\fBcurs_touch\fR(3)
+isendwin/\fBcurs_initscr\fR(3)
+key_defined/\fBkey_defined\fR(3)*
+key_name/\fBcurs_util\fR(3)
+keybound/\fBkeybound\fR(3)*
+keyname/\fBcurs_util\fR(3)
+keyok/\fBkeyok\fR(3)*
+keypad/\fBcurs_inopts\fR(3)
+killchar/\fBcurs_termattrs\fR(3)
+killwchar/\fBcurs_termattrs\fR(3)
+leaveok/\fBcurs_outopts\fR(3)
+longname/\fBcurs_termattrs\fR(3)
+mcprint/\fBcurs_print\fR(3)*
+meta/\fBcurs_inopts\fR(3)
+mouse_trafo/\fBcurs_mouse\fR(3)*
+mouseinterval/\fBcurs_mouse\fR(3)*
+mousemask/\fBcurs_mouse\fR(3)*
+move/\fBcurs_move\fR(3)
+mvadd_wch/\fBcurs_add_wch\fR(3)
+mvadd_wchnstr/\fBcurs_add_wchstr\fR(3)
+mvadd_wchstr/\fBcurs_add_wchstr\fR(3)
+mvaddch/\fBcurs_addch\fR(3)
+mvaddchnstr/\fBcurs_addchstr\fR(3)
+mvaddchstr/\fBcurs_addchstr\fR(3)
+mvaddnstr/\fBcurs_addstr\fR(3)
+mvaddnwstr/\fBcurs_addwstr\fR(3)
+mvaddstr/\fBcurs_addstr\fR(3)
+mvaddwstr/\fBcurs_addwstr\fR(3)
+mvchgat/\fBcurs_attr\fR(3)
+mvcur/\fBcurs_terminfo\fR(3)
+mvdelch/\fBcurs_delch\fR(3)
+mvderwin/\fBcurs_window\fR(3)
+mvget_wch/\fBcurs_get_wch\fR(3)
+mvget_wstr/\fBcurs_get_wstr\fR(3)
+mvgetch/\fBcurs_getch\fR(3)
+mvgetn_wstr/\fBcurs_get_wstr\fR(3)
+mvgetnstr/\fBcurs_getstr\fR(3)
+mvgetstr/\fBcurs_getstr\fR(3)
+mvhline/\fBcurs_border\fR(3)
+mvhline_set/\fBcurs_border_set\fR(3)
+mvin_wch/\fBcurs_in_wch\fR(3)
+mvin_wchnstr/\fBcurs_in_wchstr\fR(3)
+mvin_wchstr/\fBcurs_in_wchstr\fR(3)
+mvinch/\fBcurs_inch\fR(3)
+mvinchnstr/\fBcurs_inchstr\fR(3)
+mvinchstr/\fBcurs_inchstr\fR(3)
+mvinnstr/\fBcurs_instr\fR(3)
+mvinnwstr/\fBcurs_inwstr\fR(3)
+mvins_nwstr/\fBcurs_ins_wstr\fR(3)
+mvins_wch/\fBcurs_ins_wch\fR(3)
+mvins_wstr/\fBcurs_ins_wstr\fR(3)
+mvinsch/\fBcurs_insch\fR(3)
+mvinsnstr/\fBcurs_insstr\fR(3)
+mvinsstr/\fBcurs_insstr\fR(3)
+mvinstr/\fBcurs_instr\fR(3)
+mvinwstr/\fBcurs_inwstr\fR(3)
+mvprintw/\fBcurs_printw\fR(3)
+mvscanw/\fBcurs_scanw\fR(3)
+mvvline/\fBcurs_border\fR(3)
+mvvline_set/\fBcurs_border_set\fR(3)
+mvwadd_wch/\fBcurs_add_wch\fR(3)
+mvwadd_wchnstr/\fBcurs_add_wchstr\fR(3)
+mvwadd_wchstr/\fBcurs_add_wchstr\fR(3)
+mvwaddch/\fBcurs_addch\fR(3)
+mvwaddchnstr/\fBcurs_addchstr\fR(3)
+mvwaddchstr/\fBcurs_addchstr\fR(3)
+mvwaddnstr/\fBcurs_addstr\fR(3)
+mvwaddnwstr/\fBcurs_addwstr\fR(3)
+mvwaddstr/\fBcurs_addstr\fR(3)
+mvwaddwstr/\fBcurs_addwstr\fR(3)
+mvwchgat/\fBcurs_attr\fR(3)
+mvwdelch/\fBcurs_delch\fR(3)
+mvwget_wch/\fBcurs_get_wch\fR(3)
+mvwget_wstr/\fBcurs_get_wstr\fR(3)
+mvwgetch/\fBcurs_getch\fR(3)
+mvwgetn_wstr/\fBcurs_get_wstr\fR(3)
+mvwgetnstr/\fBcurs_getstr\fR(3)
+mvwgetstr/\fBcurs_getstr\fR(3)
+mvwhline/\fBcurs_border\fR(3)
+mvwhline_set/\fBcurs_border_set\fR(3)
+mvwin/\fBcurs_window\fR(3)
+mvwin_wch/\fBcurs_in_wch\fR(3)
+mvwin_wchnstr/\fBcurs_in_wchstr\fR(3)
+mvwin_wchstr/\fBcurs_in_wchstr\fR(3)
+mvwinch/\fBcurs_inch\fR(3)
+mvwinchnstr/\fBcurs_inchstr\fR(3)
+mvwinchstr/\fBcurs_inchstr\fR(3)
+mvwinnstr/\fBcurs_instr\fR(3)
+mvwinnwstr/\fBcurs_inwstr\fR(3)
+mvwins_nwstr/\fBcurs_ins_wstr\fR(3)
+mvwins_wch/\fBcurs_ins_wch\fR(3)
+mvwins_wstr/\fBcurs_ins_wstr\fR(3)
+mvwinsch/\fBcurs_insch\fR(3)
+mvwinsnstr/\fBcurs_insstr\fR(3)
+mvwinsstr/\fBcurs_insstr\fR(3)
+mvwinstr/\fBcurs_instr\fR(3)
+mvwinwstr/\fBcurs_inwstr\fR(3)
+mvwprintw/\fBcurs_printw\fR(3)
+mvwscanw/\fBcurs_scanw\fR(3)
+mvwvline/\fBcurs_border\fR(3)
+mvwvline_set/\fBcurs_border_set\fR(3)
+napms/\fBcurs_kernel\fR(3)
+newpad/\fBcurs_pad\fR(3)
+newterm/\fBcurs_initscr\fR(3)
+newwin/\fBcurs_window\fR(3)
+nl/\fBcurs_outopts\fR(3)
+nocbreak/\fBcurs_inopts\fR(3)
+nodelay/\fBcurs_inopts\fR(3)
+noecho/\fBcurs_inopts\fR(3)
+nofilter/\fBcurs_util\fR(3)*
+nonl/\fBcurs_outopts\fR(3)
+noqiflush/\fBcurs_inopts\fR(3)
+noraw/\fBcurs_inopts\fR(3)
+notimeout/\fBcurs_inopts\fR(3)
+overlay/\fBcurs_overlay\fR(3)
+overwrite/\fBcurs_overlay\fR(3)
+pair_content/\fBcurs_color\fR(3)
+pechochar/\fBcurs_pad\fR(3)
+pnoutrefresh/\fBcurs_pad\fR(3)
+prefresh/\fBcurs_pad\fR(3)
+printw/\fBcurs_printw\fR(3)
+putp/\fBcurs_terminfo\fR(3)
+putwin/\fBcurs_util\fR(3)
+qiflush/\fBcurs_inopts\fR(3)
+raw/\fBcurs_inopts\fR(3)
+redrawwin/\fBcurs_refresh\fR(3)
+refresh/\fBcurs_refresh\fR(3)
+reset_prog_mode/\fBcurs_kernel\fR(3)
+reset_shell_mode/\fBcurs_kernel\fR(3)
+resetty/\fBcurs_kernel\fR(3)
+resizeterm/\fBresizeterm\fR(3)*
+restartterm/\fBcurs_terminfo\fR(3)
+ripoffline/\fBcurs_kernel\fR(3)
+savetty/\fBcurs_kernel\fR(3)
+scanw/\fBcurs_scanw\fR(3)
+scr_dump/\fBcurs_scr_dump\fR(3)
+scr_init/\fBcurs_scr_dump\fR(3)
+scr_restore/\fBcurs_scr_dump\fR(3)
+scr_set/\fBcurs_scr_dump\fR(3)
+scrl/\fBcurs_scroll\fR(3)
+scroll/\fBcurs_scroll\fR(3)
+scrollok/\fBcurs_outopts\fR(3)
+set_curterm/\fBcurs_terminfo\fR(3)
+set_term/\fBcurs_initscr\fR(3)
+setcchar/\fBcurs_getcchar\fR(3)
+setscrreg/\fBcurs_outopts\fR(3)
+setsyx/\fBcurs_kernel\fR(3)
+setterm/\fBcurs_terminfo\fR(3)
+setupterm/\fBcurs_terminfo\fR(3)
+slk_attr/\fBcurs_slk\fR(3)*
+slk_attr_off/\fBcurs_slk\fR(3)
+slk_attr_on/\fBcurs_slk\fR(3)
+slk_attr_set/\fBcurs_slk\fR(3)
+slk_attroff/\fBcurs_slk\fR(3)
+slk_attron/\fBcurs_slk\fR(3)
+slk_attrset/\fBcurs_slk\fR(3)
+slk_clear/\fBcurs_slk\fR(3)
+slk_color/\fBcurs_slk\fR(3)
+slk_init/\fBcurs_slk\fR(3)
+slk_label/\fBcurs_slk\fR(3)
+slk_noutrefresh/\fBcurs_slk\fR(3)
+slk_refresh/\fBcurs_slk\fR(3)
+slk_restore/\fBcurs_slk\fR(3)
+slk_set/\fBcurs_slk\fR(3)
+slk_touch/\fBcurs_slk\fR(3)
+standend/\fBcurs_attr\fR(3)
+standout/\fBcurs_attr\fR(3)
+start_color/\fBcurs_color\fR(3)
+subpad/\fBcurs_pad\fR(3)
+subwin/\fBcurs_window\fR(3)
+syncok/\fBcurs_window\fR(3)
+term_attrs/\fBcurs_termattrs\fR(3)
+termattrs/\fBcurs_termattrs\fR(3)
+termname/\fBcurs_termattrs\fR(3)
+tgetent/\fBcurs_termcap\fR(3)
+tgetflag/\fBcurs_termcap\fR(3)
+tgetnum/\fBcurs_termcap\fR(3)
+tgetstr/\fBcurs_termcap\fR(3)
+tgoto/\fBcurs_termcap\fR(3)
+tigetflag/\fBcurs_terminfo\fR(3)
+tigetnum/\fBcurs_terminfo\fR(3)
+tigetstr/\fBcurs_terminfo\fR(3)
+timeout/\fBcurs_inopts\fR(3)
+touchline/\fBcurs_touch\fR(3)
+touchwin/\fBcurs_touch\fR(3)
+tparm/\fBcurs_terminfo\fR(3)
+tputs/\fBcurs_termcap\fR(3)
+tputs/\fBcurs_terminfo\fR(3)
+trace/\fBcurs_trace\fR(3)*
+typeahead/\fBcurs_inopts\fR(3)
+unctrl/\fBcurs_util\fR(3)
+unget_wch/\fBcurs_get_wch\fR(3)
+ungetch/\fBcurs_getch\fR(3)
+ungetmouse/\fBcurs_mouse\fR(3)*
+untouchwin/\fBcurs_touch\fR(3)
+use_default_colors/\fBdefault_colors\fR(3)*
+use_env/\fBcurs_util\fR(3)
+use_extended_names/\fBcurs_extend\fR(3)*
+use_legacy_coding/\fBlegacy_coding\fR(3)*
+vid_attr/\fBcurs_terminfo\fR(3)
+vid_puts/\fBcurs_terminfo\fR(3)
+vidattr/\fBcurs_terminfo\fR(3)
+vidputs/\fBcurs_terminfo\fR(3)
+vline/\fBcurs_border\fR(3)
+vline_set/\fBcurs_border_set\fR(3)
+vw_printw/\fBcurs_printw\fR(3)
+vw_scanw/\fBcurs_scanw\fR(3)
+vwprintw/\fBcurs_printw\fR(3)
+vwscanw/\fBcurs_scanw\fR(3)
+wadd_wch/\fBcurs_add_wch\fR(3)
+wadd_wchnstr/\fBcurs_add_wchstr\fR(3)
+wadd_wchstr/\fBcurs_add_wchstr\fR(3)
+waddch/\fBcurs_addch\fR(3)
+waddchnstr/\fBcurs_addchstr\fR(3)
+waddchstr/\fBcurs_addchstr\fR(3)
+waddnstr/\fBcurs_addstr\fR(3)
+waddnwstr/\fBcurs_addwstr\fR(3)
+waddstr/\fBcurs_addstr\fR(3)
+waddwstr/\fBcurs_addwstr\fR(3)
+wattr_get/\fBcurs_attr\fR(3)
+wattr_off/\fBcurs_attr\fR(3)
+wattr_on/\fBcurs_attr\fR(3)
+wattr_set/\fBcurs_attr\fR(3)
+wattroff/\fBcurs_attr\fR(3)
+wattron/\fBcurs_attr\fR(3)
+wattrset/\fBcurs_attr\fR(3)
+wbkgd/\fBcurs_bkgd\fR(3)
+wbkgdset/\fBcurs_bkgd\fR(3)
+wbkgrnd/\fBcurs_bkgrnd\fR(3)
+wbkgrndset/\fBcurs_bkgrnd\fR(3)
+wborder/\fBcurs_border\fR(3)
+wborder_set/\fBcurs_border_set\fR(3)
+wchgat/\fBcurs_attr\fR(3)
+wclear/\fBcurs_clear\fR(3)
+wclrtobot/\fBcurs_clear\fR(3)
+wclrtoeol/\fBcurs_clear\fR(3)
+wcolor_set/\fBcurs_attr\fR(3)
+wcursyncup/\fBcurs_window\fR(3)
+wdelch/\fBcurs_delch\fR(3)
+wdeleteln/\fBcurs_deleteln\fR(3)
+wecho_wchar/\fBcurs_add_wch\fR(3)
+wechochar/\fBcurs_addch\fR(3)
+wenclose/\fBcurs_mouse\fR(3)*
+werase/\fBcurs_clear\fR(3)
+wget_wch/\fBcurs_get_wch\fR(3)
+wget_wstr/\fBcurs_get_wstr\fR(3)
+wgetbkgrnd/\fBcurs_bkgrnd\fR(3)
+wgetch/\fBcurs_getch\fR(3)
+wgetn_wstr/\fBcurs_get_wstr\fR(3)
+wgetnstr/\fBcurs_getstr\fR(3)
+wgetstr/\fBcurs_getstr\fR(3)
+whline/\fBcurs_border\fR(3)
+whline_set/\fBcurs_border_set\fR(3)
+win_wch/\fBcurs_in_wch\fR(3)
+win_wchnstr/\fBcurs_in_wchstr\fR(3)
+win_wchstr/\fBcurs_in_wchstr\fR(3)
+winch/\fBcurs_inch\fR(3)
+winchnstr/\fBcurs_inchstr\fR(3)
+winchstr/\fBcurs_inchstr\fR(3)
+winnstr/\fBcurs_instr\fR(3)
+winnwstr/\fBcurs_inwstr\fR(3)
+wins_nwstr/\fBcurs_ins_wstr\fR(3)
+wins_wch/\fBcurs_ins_wch\fR(3)
+wins_wstr/\fBcurs_ins_wstr\fR(3)
+winsch/\fBcurs_insch\fR(3)
+winsdelln/\fBcurs_deleteln\fR(3)
+winsertln/\fBcurs_deleteln\fR(3)
+winsnstr/\fBcurs_insstr\fR(3)
+winsstr/\fBcurs_insstr\fR(3)
+winstr/\fBcurs_instr\fR(3)
+winwstr/\fBcurs_inwstr\fR(3)
+wmouse_trafo/\fBcurs_mouse\fR(3)*
+wmove/\fBcurs_move\fR(3)
+wnoutrefresh/\fBcurs_refresh\fR(3)
+wprintw/\fBcurs_printw\fR(3)
+wredrawln/\fBcurs_refresh\fR(3)
+wrefresh/\fBcurs_refresh\fR(3)
+wresize/\fBwresize\fR(3)*
+wscanw/\fBcurs_scanw\fR(3)
+wscrl/\fBcurs_scroll\fR(3)
+wsetscrreg/\fBcurs_outopts\fR(3)
+wstandend/\fBcurs_attr\fR(3)
+wstandout/\fBcurs_attr\fR(3)
+wsyncdown/\fBcurs_window\fR(3)
+wsyncup/\fBcurs_window\fR(3)
+wtimeout/\fBcurs_inopts\fR(3)
+wtouchln/\fBcurs_touch\fR(3)
+wunctrl/\fBcurs_util\fR(3)
+wvline/\fBcurs_border\fR(3)
+wvline_set/\fBcurs_border_set\fR(3)
 .TE
 .SH RETURN VALUE
 Routines that return an integer return \fBERR\fR upon failure and an
@@ -844,7 +844,7 @@ If it is not specified, \fBncurses\fR uses 132.
 NCURSES_ASSUMED_COLORS
 Override the compiled-in assumption that the
 terminal's default colors are white-on-black
-(see \fBdefault_colors\fR(3X)).
+(see \fBdefault_colors\fR(3)).
 You may set the foreground and background color values with this environment
 variable by proving a 2-element list: foreground,background.
 For example, to tell ncurses to not assume anything
@@ -1096,7 +1096,7 @@ terminal capability database
 \fBterminfo\fR(\*n) and related pages whose names begin "curs_" for detailed routine
 descriptions.
 .br
-\fBcurs_variables\fR(3X) 
+\fBcurs_variables\fR(3) 
 .SH EXTENSIONS
 The \fBncurses\fR library can be compiled with an option (\fB\-DUSE_GETCAP\fR)
 that falls back to the old-style /etc/termcap file if the terminal setup code
@@ -1107,21 +1107,21 @@ the \fBncurses\fR startup code, at significant cost in core and startup cycles.
 .PP
 The \fBncurses\fR library includes facilities for capturing mouse events on
 certain terminals (including xterm).
-See the \fBcurs_mouse\fR(3X)
+See the \fBcurs_mouse\fR(3)
 manual page for details.
 .PP
 The \fBncurses\fR library includes facilities for responding to window
 resizing events, e.g., when running in an xterm.
-See the \fBresizeterm\fR(3X)
-and \fBwresize\fR(3X) manual pages for details.
+See the \fBresizeterm\fR(3)
+and \fBwresize\fR(3) manual pages for details.
 In addition, the library may be configured with a SIGWINCH handler.
 .PP
 The \fBncurses\fR library extends the fixed set of function key capabilities
 of terminals by allowing the application designer to define additional
 key sequences at runtime.
-See the \fBdefine_key\fR(3X)
-\fBkey_defined\fR(3X),
-and \fBkeyok\fR(3X) manual pages for details.
+See the \fBdefine_key\fR(3)
+\fBkey_defined\fR(3),
+and \fBkeyok\fR(3) manual pages for details.
 .PP
 The \fBncurses\fR library can exploit the capabilities of terminals which
 implement the ISO\-6429 SGR 39 and SGR 49 controls, which allow an application
@@ -1129,11 +1129,11 @@ to reset the terminal to its original foreground and background colors.
 From the users' perspective, the application is able to draw colored
 text on a background whose color is set independently, providing better
 control over color contrasts.
-See the \fBdefault_colors\fR(3X) manual page for details.
+See the \fBdefault_colors\fR(3) manual page for details.
 .PP
 The \fBncurses\fR library includes a function for directing application output
 to a printer attached to the terminal device.
-See the \fBcurs_print\fR(3X) manual page for details.
+See the \fBcurs_print\fR(3) manual page for details.
 .SH PORTABILITY
 The \fBncurses\fR library is intended to be BASE-level conformant with XSI
 Curses.
@@ -1147,33 +1147,33 @@ sections of the library man pages.
 This implementation also contains several extensions:
 .bP
 The routine \fBhas_key\fR is not part of XPG4, nor is it present in SVr4.
-See the \fBcurs_getch\fR(3X) manual page for details.
+See the \fBcurs_getch\fR(3) manual page for details.
 .bP
 The routine \fBslk_attr\fR is not part of XPG4, nor is it present in SVr4.
-See the \fBcurs_slk\fR(3X) manual page for details.
+See the \fBcurs_slk\fR(3) manual page for details.
 .bP
 The routines \fBgetmouse\fR, \fBmousemask\fR, \fBungetmouse\fR,
 \fBmouseinterval\fR, and \fBwenclose\fR relating to mouse interfacing are not
 part of XPG4, nor are they present in SVr4.
-See the \fBcurs_mouse\fR(3X) manual page for details.
+See the \fBcurs_mouse\fR(3) manual page for details.
 .bP
 The routine \fBmcprint\fR was not present in any previous curses implementation.
-See the \fBcurs_print\fR(3X) manual page for details.
+See the \fBcurs_print\fR(3) manual page for details.
 .bP
 The routine \fBwresize\fR is not part of XPG4, nor is it present in SVr4.
-See the \fBwresize\fR(3X) manual page for details.
+See the \fBwresize\fR(3) manual page for details.
 .bP
 The WINDOW structure's internal details can be hidden from application
 programs.
-See \fBcurs_opaque\fR(3X) for the discussion of \fBis_scrollok\fR, etc.
+See \fBcurs_opaque\fR(3) for the discussion of \fBis_scrollok\fR, etc.
 .bP
 This implementation can be configured to provide rudimentary support
 for multi-threaded applications.
-See \fBcurs_threads\fR(3X) for details.
+See \fBcurs_threads\fR(3) for details.
 .bP
 This implementation can also be configured to provide a set of functions which
 improve the ability to manage multiple screens.
-See \fBcurs_sp_funcs\fR(3X) for details.
+See \fBcurs_sp_funcs\fR(3) for details.
 .PP
 In historic curses versions, delays embedded in the capabilities \fBcr\fR,
 \fBind\fR, \fBcub1\fR, \fBff\fR and \fBtab\fR activated corresponding delay

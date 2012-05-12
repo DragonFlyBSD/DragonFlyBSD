@@ -28,7 +28,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_attr.3x,v 1.36 2010/12/04 18:36:44 tom Exp $
-.TH curs_attr 3X ""
+.TH curs_attr 3 ""
 .na
 .hy 0
 .SH NAME
@@ -135,7 +135,7 @@ attributes.
 .PP
 The \fBattrset\fR and related routines do not affect the attributes used
 when erasing portions of the window.
-See \fBcurs_bkgd\fR(3X) for functions which modify the attributes used for
+See \fBcurs_bkgd\fR(3) for functions which modify the attributes used for
 erasing and clearing.
 .PP
 The routine \fBcolor_set\fR sets the current color of the given window to the
@@ -157,7 +157,7 @@ than the remaining window width means to change attributes all the way to the
 end of the current line.  The \fBwchgat\fR function generalizes this to any
 window; the \fBmvwchgat\fR function does a cursor move before acting.  In these
 functions, the color argument is a color-pair index (as in the first argument
-of \fIinit_pair\fR, see \fBcurs_color\fR(3X)).  The \fBopts\fR argument is not
+of \fIinit_pair\fR, see \fBcurs_color\fR(3)).  The \fBopts\fR argument is not
 presently used, but is reserved for the future (leave it \fBNULL\fR).
 .SS Attributes
 The following video attributes, defined in \fB<curses.h>\fR, can be passed to
@@ -262,9 +262,9 @@ Functions with a "mv" prefix first perform a cursor movement using
 \fBwmove\fP, and return an error if the position is outside the window,
 or if the window pointer is null.
 .SH SEE ALSO
-\fBcurses\fR(3X),
-\fBcurs_addch\fR(3X),
-\fBcurs_addstr\fR(3X),
-\fBcurs_bkgd\fR(3X),
-\fBcurs_printw\fR(3X),
-\fBcurs_variables\fR(3X)
+\fBcurses\fR(3),
+\fBcurs_addch\fR(3),
+\fBcurs_addstr\fR(3),
+\fBcurs_bkgd\fR(3),
+\fBcurs_printw\fR(3),
+\fBcurs_variables\fR(3)

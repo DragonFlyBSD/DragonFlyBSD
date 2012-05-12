@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: form_field_validation.3x,v 1.20 2010/12/04 18:38:55 tom Exp $
-.TH form_field_validation 3X ""
+.TH form_field_validation 3 ""
 .SH NAME
 \fBform_field_validation\fR \- data type validation for fields
 .SH SYNOPSIS
@@ -113,7 +113,7 @@ itself is not validated. Please note that this is an ncurses extension. This
 field type may not be available in other curses implementations.
 .PP
 It is possible to set up new programmer-defined field types.  See the
-\fBform_fieldtype\fR(3X) manual page.
+\fBform_fieldtype\fR(3) manual page.
 .SH RETURN VALUE
 The functions \fBfield_type\fR and \fBfield_arg\fR return \fBNULL\fR on
 error. The function \fBset_field_type\fR returns one of the following:
@@ -124,9 +124,9 @@ The routine succeeded.
 .B E_SYSTEM_ERROR
 System error occurred (see \fBerrno\fR).
 .SH SEE ALSO
-\fBcurses\fR(3X),
-\fBform\fR(3X),
-\fBform_variables\fR(3X).
+\fBcurses\fR(3),
+\fBform\fR(3),
+\fBform_variables\fR(3).
 .SH NOTES
 The header file \fB<form.h>\fR automatically includes the header file
 \fB<curses.h>\fR.

@@ -28,7 +28,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_getch.3x,v 1.36 2011/01/22 19:38:51 tom Exp $
-.TH curs_getch 3X ""
+.TH curs_getch 3 ""
 .na
 .hy 0
 .de bP
@@ -230,8 +230,8 @@ returns TRUE or FALSE according to whether
 the current terminal type recognizes a key with that value.
 Note that a few values do not correspond to a real key,
 e.g., \fBKEY_RESIZE\fP and \fBKEY_MOUSE\fP.
-See \fBresizeterm\fR(3X) for more details about \fBKEY_RESIZE\fP, and
-\fBcurs_mouse\fR(3X) for a discussion of \fBKEY_MOUSE\fP.
+See \fBresizeterm\fR(3) for more details about \fBKEY_RESIZE\fP, and
+\fBcurs_mouse\fR(3) for a discussion of \fBKEY_MOUSE\fP.
 .PP
 .SH RETURN VALUE
 All routines return the integer \fBERR\fR upon failure and an integer value
@@ -331,14 +331,14 @@ The \fBhas_key\fR function is unique to \fBncurses\fR.
 We recommend that
 any code using it be conditionalized on the \fBNCURSES_VERSION\fR feature macro.
 .SH SEE ALSO
-\fBcurses\fR(3X),
-\fBcurs_inopts\fR(3X),
-\fBcurs_outopts\fR(3X),
-\fBcurs_mouse\fR(3X),
-\fBcurs_move\fR(3X),
-\fBcurs_refresh\fR(3X),
-\fBresizeterm\fR(3X).
+\fBcurses\fR(3),
+\fBcurs_inopts\fR(3),
+\fBcurs_outopts\fR(3),
+\fBcurs_mouse\fR(3),
+\fBcurs_move\fR(3),
+\fBcurs_refresh\fR(3),
+\fBresizeterm\fR(3).
 .PP
 Comparable functions in the wide-character (ncursesw) library are
 described in
-\fBcurs_get_wch\fR(3X).
+\fBcurs_get_wch\fR(3).

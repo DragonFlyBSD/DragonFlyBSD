@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_termcap.3x,v 1.26 2010/12/04 18:38:55 tom Exp $
-.TH curs_termcap 3X ""
+.TH curs_termcap 3 ""
 .na
 .hy 0
 .ds n 5
@@ -102,7 +102,7 @@ Only the first two characters of the \fBid\fR parameter of
 The \fBtgoto\fR routine instantiates the parameters into the given capability.
 The output from this routine is to be passed to \fBtputs\fR.
 .PP
-The \fBtputs\fR routine is described on the \fBcurs_terminfo\fR(3X) manual
+The \fBtputs\fR routine is described on the \fBcurs_terminfo\fR(3) manual
 page.  It can retrieve capabilities by either termcap or terminfo name.
 .PP
 The variables
@@ -166,7 +166,7 @@ e.g., not distinguishing between input and output.
 In particular, some applications are reported to declare and/or
 modify \fBospeed\fR.
 .SH SEE ALSO
-\fBcurses\fR(3X),
+\fBcurses\fR(3),
 \fBterminfo\fR(\*n),
-\fBterm_variables\fR(3X),
+\fBterm_variables\fR(3),
 \fBputc\fR(3).

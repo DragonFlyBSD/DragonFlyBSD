@@ -28,7 +28,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_mouse.3x,v 1.38 2010/12/04 18:38:55 tom Exp $
-.TH curs_mouse 3X ""
+.TH curs_mouse 3 ""
 .na
 .hy 0
 .SH NAME
@@ -74,7 +74,7 @@ MEVENT;\fR
 .br
 .SH DESCRIPTION
 These functions provide an interface to mouse events from
-\fBncurses\fR(3X).
+\fBncurses\fR(3).
 Mouse events are represented by \fBKEY_MOUSE\fR
 pseudo-key values in the \fBwgetch\fR input stream.
 .PP
@@ -238,7 +238,7 @@ In that case, it returns the maximum interval value (166).
 are boolean functions returning \fBTRUE\fR or \fBFALSE\fR depending
 on their test result.
 .SH PORTABILITY
-These calls were designed for \fBncurses\fR(3X), and are not found in SVr4
+These calls were designed for \fBncurses\fR(3), and are not found in SVr4
 curses, 4.4BSD curses, or any other previous version of curses.
 .PP
 The feature macro \fBNCURSES_MOUSE_VERSION\fR is provided so the preprocessor
@@ -262,7 +262,7 @@ The mask uses 29 bits.
 The order of the \fBMEVENT\fR structure members is not guaranteed.
 Additional fields may be added to the structure in the future.
 .PP
-Under \fBncurses\fR(3X), these calls are implemented using either
+Under \fBncurses\fR(3), these calls are implemented using either
 xterm's built-in mouse-tracking API or
 platform-specific drivers including
 .RS
@@ -274,7 +274,7 @@ OS/2 EMX
 .RE
 If you are using an unsupported configuration,
 mouse events will not be visible to
-\fBncurses\fR(3X) (and the \fBmousemask\fR function will always
+\fBncurses\fR(3) (and the \fBmousemask\fR function will always
 return \fB0\fR).
 .PP
 If the terminfo entry contains a \fBXM\fR string,
@@ -309,7 +309,7 @@ if your $TERM environment variable contains "xterm",
 or \fBkmous\fR is defined in
 the terminal description, then the terminal may send mouse events.
 .SH SEE ALSO
-\fBcurses\fR(3X),
-\fBcurs_kernel\fR(3X),
-\fBcurs_slk\fR(3X),
-\fBcurs_variables\fR(3X).
+\fBcurses\fR(3),
+\fBcurs_kernel\fR(3),
+\fBcurs_slk\fR(3),
+\fBcurs_variables\fR(3).

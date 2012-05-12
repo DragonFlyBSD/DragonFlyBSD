@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_sp_funcs.3x,v 1.5 2010/12/04 18:38:55 tom Exp $
-.TH curs_sp_funcs 3X ""
+.TH curs_sp_funcs 3 ""
 .na
 .hy 0
 .SH NAME
@@ -309,7 +309,7 @@ this returns a pointer to the lowest panel in the given screen.
 .TP 5
 new_prescr
 when creating a new screen, the library uses static variables which
-have been preset, e.g., by \fBuse_env\fP(3X), \fBfilter\fP(3X), etc.
+have been preset, e.g., by \fBuse_env\fP(3), \fBfilter\fP(3), etc.
 With the screen-pointer extension,
 there are situations where it must create a current screen before
 the unextended library does.
@@ -340,7 +340,7 @@ where an \fINCURSES_OUTC\fP is used in the unextended library.
 .TP 5
 NCURSES_OUTC
 This is a function-pointer type used for the cases where a function passes
-characters to the output stream, e.g., \fBvidputs\fP(3X).
+characters to the output stream, e.g., \fBvidputs\fP(3).
 .PP
 .SH PORTABILITY
 These routines are specific to ncurses.
@@ -348,6 +348,6 @@ They were not supported on Version 7, BSD or System V implementations.
 It is recommended that any code depending on ncurses extensions
 be conditioned using \fINCURSES_SP_FUNCS\fP.
 .SH SEE ALSO
-\fBcurses\fR(3X),
-\fBcurs_opaque\fR(3X),
-\fBcurs_threads\fR(3X).
+\fBcurses\fR(3),
+\fBcurs_opaque\fR(3),
+\fBcurs_threads\fR(3).
