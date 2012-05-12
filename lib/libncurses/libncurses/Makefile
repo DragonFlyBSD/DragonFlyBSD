@@ -13,6 +13,7 @@ NCURSESWCHARDIR=${NCURSESDIR}/ncurses/widechar
 
 CFLAGS+= 	-I${NCURSESDIR}/ncurses/
 CFLAGS+=	-DTRACE
+CFLAGS+=	-DUSE_GETCAP
 
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
 ncurses_def.h:
