@@ -77,15 +77,19 @@
   This allows the writing of 0's to create holes and will be the default
   compression algorithm for HAMMER2.
 
-* Copies support for redundancy.  The media blockref structure would
-  have become too bloated but I found a clean way to do copies using the
-  blockset structure (which is a set of 8 fully associative blockref's).
+* Copies support for redundancy.  Each copy has its own blockref.  The
+  blockrefs representing the copies must exist within the same blockset
+  (set of 8 blockrefs), though I may relax this requirement in the
+  implementation.
 
   The design is such that the filesystem should be able to function at
   full speed even if disks are pulled or inserted, as long as at least one
   good copy is present.  A background task will be needed to resynchronize
   missing copies (or remove excessive copies in the case where the copies
   value is reduced on a live filesystem).
+
+  Copies are specified using the same copyinfo[] array that is used to
+  specify cluster interconnections for PFS's.
 
 * Clusterable with MESI cache coherency and dynamic granularity.
   The media format for HAMMER1 was less condusive to logical clustering
@@ -229,23 +233,71 @@ structures generally follow the kernel's filesystem hiearchy.  Second,
 HAMMER2's writable snapshots make it possible to implement several forms
 of multi-master clustering.
 
-This is important: The mount device path you specify serves to bootstrap
-your entry into the cluster, but your mount will make active connections
-to ALL copy elements in the hammer2_copy_data[] array (stored in the volume
-header) which match the PFSID of the directory in the super-root that you
-specified.  The local media path does not have to be mentioned in this
-array but becomes part of the cluster based on its type and access
-rights.  ALL ELEMENTS ARE TREATED ACCORDING TO TYPE NO MATTER WHICH ONE
-YOU MOUNT FROM.
+The mount device path you specify serves to bootstrap your entry into
+the cluster.  This can be local media or directly specify a network
+cluster connection (or several).  When a local media mount is used the
+volume header is scanned for local copies and the best volume header is
+selected from all available copies.  Multiple devices may be specified for
+redundancy.
 
-The actual cluster may be far larger than the elements you list in the
-hammer2_copy_data[] array.  You list only the elements you wish to
-directly connect to and you are able to access the rest of the cluster
-indirectly through those connections.
+The volume header on local media also contains cluster connection
+specifications keyed by super-root pfsid.  Network connections are
+maintained to all targets.  ALL ELEMENTS ARE TREATED ACCORDING TO TYPE
+NO MATTER WHICH ONE YOU MOUNT FROM.
 
-All nodes in the cluster may act as administrative proxies.  All nodes
-in the cluster, including your mount point, are classified as one of the
-following as specified in the inode's structure:
+The actual networked cluster may be far larger than the elements you list
+in the hammer2_copy_data[] array, but your machine will only make direct
+connections as specified by the array.
+
+In the simplest case you simply network a few machines together as ring 0
+masters and each client connects directly to all the masters (and/or are
+the masters themselves).  Thus any quorum operation is straight-forward.
+These master nodes are labeled 'ring 0'.
+
+If you have too many clients to reasonably connect directly you set up
+sub-clusters as satellites.  This is called 'ring 1'.  Ring 1 may contain
+several sub-clusters.  A client then connects to all the nodes in a
+particular sub-cluster (typically 3).  The quorum protocol runs as per
+normal except that once the operation is resolved against the sub-cluster
+an aggregation must be resolved against the master nodes (ring 0).  The
+sub-cluster does this for the client... all the client sees is the normal
+quorum operation against the sub-cluster.
+
+Since each node in the sub-cluster connects to all master nodes we get
+a multiplication.  If we set a reasonable upper limit of, say, 256
+connections at each master node then ring 1 may contain 85 sub-clusters x 3
+nodes in each sub-cluster.
+
+In the most complex case when one wishes to support potentially millions
+of clients then further fan-out is required into ring 2, ring 3, and
+so forth.  However, each sub-cluster in ring 2 must only connect to
+1 sub-cluster in ring 1 (otherwise the cache state will become mightily
+confused).  Using reasonable metrics this will allow ring 2 to contain
+85 * 85 = 7225 sub-clusters.  At this point you could have 1000 clients
+connect to each sub-cluster and support 7.2 million clients, but if that
+isn't enough going to another ring will support 61M clients, and so forth.
+
+Each ring imposes additional latencies for cache operations but the key
+to making this work efficiently is that the satellite clusters can negotiate
+coarse-grained cache coherency locks with the next lower ring and then
+fan-out finer-grained locks to the next higher ring.  Since caching can
+occur anywhere (including on the connecting client), it is the cache
+coherency lock that ultimately dictates efficiency and allows a client
+(or satellite) to access large amoutns of data from local storage.
+
+Modifying operations, particularly commits, also have higher latencies
+when multiple rings are in use.  In this situation it is possible to
+short-cut localized operations by having competing clients connect to
+to sub-clusters which are near each other topologically... having the
+competing clients connect to the same sub-cluster would be the most optimal.
+
+In addition, sub-clusters (typically in ring 1) can act in SOFT_MASTER mode
+which allows the sub-cluster to acknowledge a full commit within its own
+quorum only, and then resolve asynchronously to the masters in ring 0.
+
+The nodes in these intermediate rings can be pure proxies with only memory
+caches, use local media for persistent cache, or use local media to
+completely slave the filesystem.
 
     ADMIN	- Media does not participate, administrative proxy only
     CACHE	- Media only acts as a persistent cache

@@ -45,11 +45,14 @@ main(int ac, char **av)
 {
 	const char *sel_path = NULL;
 	const char *uuid_str = NULL;
+	const char *arg;
 	int pfs_type = HAMMER2_PFSTYPE_NONE;
 	int quick_opt = 0;
 	int all_opt = 0;
 	int ecode = 0;
 	int ch;
+
+	srandomdev();
 
 	/*
 	 * Core options
@@ -172,14 +175,14 @@ main(int ac, char **av)
 		 * Create snapshot with optional pfs_type and optional
 		 * label override.
 		 */
-	} else if (strcmp(av[0], "node") == 0) {
+	} else if (strcmp(av[0], "service") == 0) {
 		/*
-		 * Start the master node daemon.  This daemon accepts
-		 * connections from local and remote clients, implements
-		 * and maintains the spanning tree protocol, and manages
-		 * the core messaging protocol.
+		 * Start the service daemon.  This daemon accepts
+		 * connections from local and remote clients, handles
+		 * the security handshake, and manages the core messaging
+		 * protocol.
 		 */
-		ecode = cmd_node();
+		ecode = cmd_service();
 	} else if (strcmp(av[0], "leaf") == 0) {
 		/*
 		 * Start the management daemon for a specific PFS.
@@ -209,7 +212,52 @@ main(int ac, char **av)
 		 * Connect to the command line monitor in the hammer2 master
 		 * node for the machine using HAMMER2_DBG_SHELL messages.
 		 */
-		ecode = cmd_debug();
+		ecode = cmd_debug((ac < 2) ? NULL : av[1]);
+	} else if (strcmp(av[0], "rsainit") == 0) {
+		/*
+		 * Initialize a RSA keypair.  If no target directory is
+		 * specified we default to "/etc/hammer2".
+		 */
+		arg = (ac < 2) ? HAMMER2_DEFAULT_DIR : av[1];
+		ecode = cmd_rsainit(arg);
+	} else if (strcmp(av[0], "rsaenc") == 0) {
+		/*
+		 * Encrypt the input symmetrically by running it through
+		 * the specified public and/or private key files.
+		 *
+		 * If no key files are specified data is encoded using
+		 * "/etc/hammer2/rsa.pub".
+		 *
+		 * WARNING: no padding is added, data stream must contain
+		 *	    random padding for this to be secure.
+		 *
+		 * Used for debugging only
+		 */
+		if (ac == 1) {
+			const char *rsapath = HAMMER2_DEFAULT_DIR "/rsa.pub";
+			ecode = cmd_rsaenc(&rsapath, 1);
+		} else {
+			ecode = cmd_rsaenc((const char **)&av[1], ac - 1);
+		}
+	} else if (strcmp(av[0], "rsadec") == 0) {
+		/*
+		 * Decrypt the input symmetrically by running it through
+		 * the specified public and/or private key files.
+		 *
+		 * If no key files are specified data is decoded using
+		 * "/etc/hammer2/rsa.prv".
+		 *
+		 * WARNING: no padding is added, data stream must contain
+		 *	    random padding for this to be secure.
+		 *
+		 * Used for debugging only
+		 */
+		if (ac == 1) {
+			const char *rsapath = HAMMER2_DEFAULT_DIR "/rsa.prv";
+			ecode = cmd_rsadec(&rsapath, 1);
+		} else {
+			ecode = cmd_rsadec((const char **)&av[1], ac - 1);
+		}
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", av[0]);
 		usage(1);

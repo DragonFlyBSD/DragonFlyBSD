@@ -41,11 +41,12 @@ static void debug_tty(hammer2_iocom_t *iocom);
 static void hammer2_debug_parse(hammer2_msg_t *msg, char *cmdbuf);
 
 int
-cmd_debug(void)
+cmd_debug(const char *hostname)
 {
 	struct sockaddr_in lsin;
 	struct hammer2_iocom iocom;
 	hammer2_msg_t *msg;
+	struct hostent *hen;
 	int fd;
 
 	/*
@@ -64,6 +65,19 @@ cmd_debug(void)
 	lsin.sin_family = AF_INET;
 	lsin.sin_addr.s_addr = 0;
 	lsin.sin_port = htons(HAMMER2_LISTEN_PORT);
+
+	if (hostname) {
+		hen = gethostbyname2(hostname, AF_INET);
+		if (hen == NULL) {
+			if (inet_pton(AF_INET, hostname, &lsin.sin_addr) != 1) {
+				fprintf(stderr,
+					"Cannot resolve %s\n", hostname);
+				return 1;
+			}
+		} else {
+			bcopy(hen->h_addr, &lsin.sin_addr, hen->h_length);
+		}
+	}
 	if (connect(fd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {
 		close(fd);
 		fprintf(stderr, "debug: connect failed: %s\n",

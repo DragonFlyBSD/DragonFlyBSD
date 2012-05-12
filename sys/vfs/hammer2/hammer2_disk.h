@@ -163,11 +163,11 @@
 #define HAMMER2_NEWFS_ALIGNMASK		(HAMMER2_VOLUME_ALIGN - 1)
 #define HAMMER2_NEWFS_ALIGNMASK64	((hammer2_off_t)HAMMER2_NEWFS_ALIGNMASK)
 
-#define HAMMER2_RESERVE_BYTES64		(2LLU * 1024 * 1024 * 1024)
-#define HAMMER2_RESERVE_MASK64		(HAMMER2_RESERVE_BYTES64 - 1)
-#define HAMMER2_RESERVE_SEG		(4 * 1024 * 1024)
-#define HAMMER2_RESERVE_SEG64		((hammer2_off_t)HAMMER2_RESERVE_SEG)
-#define HAMMER2_RESERVE_BLOCKS		(HAMMER2_RESERVE_SEG / HAMMER2_PBUFSIZE)
+#define HAMMER2_ZONE_BYTES64		(2LLU * 1024 * 1024 * 1024)
+#define HAMMER2_ZONE_MASK64		(HAMMER2_ZONE_BYTES64 - 1)
+#define HAMMER2_ZONE_SEG		(4 * 1024 * 1024)
+#define HAMMER2_ZONE_SEG64		((hammer2_off_t)HAMMER2_ZONE_SEG)
+#define HAMMER2_ZONE_BLOCKS_SEG		(HAMMER2_ZONE_SEG / HAMMER2_PBUFSIZE)
 
 /*
  * Two linear areas can be reserved after the initial 2MB segment in the base
@@ -620,7 +620,7 @@ struct hammer2_copy_data {
 	uint16_t flags;		/* 04-05 flags field */
 	uint8_t error;		/* 06	 last operational error */
 	uint8_t priority;	/* 07	 priority and round-robin flag */
-	uint8_t remote_pfstype;	/* 08	 probed direct remote PFS type */
+	uint8_t remote_pfs_type;/* 08	 probed direct remote PFS type */
 	uint8_t reserved08[23];	/* 09-1F */
 	uuid_t	pfs_id;		/* 20-2F copy target must match this uuid */
 	uint8_t label[16];	/* 30-3F import/export label */
@@ -657,10 +657,13 @@ typedef struct hammer2_copy_data hammer2_copy_data_t;
  * the tree which are stored in the volumeh eader and must be tracked on
  * the fly.
  *
- * COPIES: Multiple copies may be specified on the mount line AND/OR you
- *	   just specify one and the mount code tries to pick up the others
- *	   from copyinfo[].  The copyid field in the volume header along
- *	   with the fsid validates the copies.
+ * NOTE: The copyinfo[] array contains the configuration for both the
+ *	 cluster connections and any local media copies.  The volume
+ *	 header will be replicated for each local media copy.
+ *
+ *	 The mount command may specify multiple medias or just one and
+ *	 allow HAMMER2 to pick up the others when it checks the copyinfo[]
+ *	 array on mount.
  *
  * NOTE: root_blockref points to the super-root directory, not the root
  *	 directory.  The root directory will be a subdirectory under the
@@ -698,7 +701,7 @@ struct hammer2_volume_data {
 	uint32_t	flags;			/* 0034 */
 	uint8_t		copyid;			/* 0038 copyid of phys vol */
 	uint8_t		freemap_version;	/* 0039 freemap algorithm */
-	uint8_t		reserved003A;		/* 003A */
+	uint8_t		pfstype;		/* 003A local media pfstype */
 	uint8_t		reserved003B;		/* 003B */
 	uint32_t	reserved003C;		/* 003C */
 

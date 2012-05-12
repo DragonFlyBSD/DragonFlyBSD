@@ -35,10 +35,12 @@
 
 #include "hammer2.h"
 
-static void *node_master_accept(void *data);
-static void *node_master_service(void *data);
-static void node_master_recv(hammer2_iocom_t *iocom);
-static void node_master_send(hammer2_iocom_t *iocom);
+static void *master_accept(void *data);
+static void *master_service(void *data);
+static void master_auth_rx(hammer2_iocom_t *iocom);
+static void master_auth_tx(hammer2_iocom_t *iocom);
+static void master_link_rx(hammer2_iocom_t *iocom);
+static void master_link_tx(hammer2_iocom_t *iocom);
 
 /*
  * Start-up the master listener daemon for the machine.
@@ -58,7 +60,7 @@ static void node_master_send(hammer2_iocom_t *iocom);
  * Backbones are specified via /etc/hammer2.conf.
  */
 int
-cmd_node(void)
+cmd_service(void)
 {
 	struct sockaddr_in lsin;
 	int on;
@@ -68,7 +70,7 @@ cmd_node(void)
 	 * Acquire socket and set options
 	 */
 	if ((lfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "node_master_listen: socket(): %s\n",
+		fprintf(stderr, "master_listen: socket(): %s\n",
 			strerror(errno));
 		return 1;
 	}
@@ -100,7 +102,7 @@ cmd_node(void)
 	 * In debug mode this call will create the pthread without forking
 	 * and set NormalExit to 0, instead of fork.
 	 */
-	hammer2_demon(node_master_accept, (void *)(intptr_t)lfd);
+	hammer2_demon(master_accept, (void *)(intptr_t)lfd);
 	if (NormalExit)
 		close(lfd);
 	return 0;
@@ -112,7 +114,7 @@ cmd_node(void)
  */
 static
 void *
-node_master_accept(void *data)
+master_accept(void *data)
 {
 	struct sockaddr_in asin;
 	socklen_t alen;
@@ -139,9 +141,9 @@ node_master_accept(void *data)
 			break;
 		}
 		thread = NULL;
-		fprintf(stderr, "node_master_accept: accept fd %d\n", fd);
+		fprintf(stderr, "master_accept: accept fd %d\n", fd);
 		pthread_create(&thread, NULL,
-			       node_master_service, (void *)(intptr_t)fd);
+			       master_service, (void *)(intptr_t)fd);
 	}
 	return (NULL);
 }
@@ -151,14 +153,14 @@ node_master_accept(void *data)
  */
 static
 void *
-node_master_service(void *data)
+master_service(void *data)
 {
 	hammer2_iocom_t iocom;
 	int fd;
 
 	fd = (int)(intptr_t)data;
 	hammer2_iocom_init(&iocom, fd, -1);
-	hammer2_iocom_core(&iocom, node_master_recv, node_master_send, NULL);
+	hammer2_iocom_core(&iocom, master_auth_rx, master_auth_tx, NULL);
 
 	fprintf(stderr,
 		"iocom on fd %d terminated error rx=%d, tx=%d\n",
@@ -168,13 +170,39 @@ node_master_service(void *data)
 	return (NULL);
 }
 
+/************************************************************************
+ *			    AUTHENTICATION				*
+ ************************************************************************
+ *
+ * Additional messaging-based authentication must occur before normal
+ * message operation.  The connection has already been encrypted at
+ * this point.
+ */
+static
+void
+master_auth_rx(hammer2_iocom_t *iocom __unused)
+{
+	printf("AUTHRX\n");
+	iocom->recvmsg_callback = master_link_rx;
+	iocom->sendmsg_callback = master_link_tx;
+}
+
+static
+void
+master_auth_tx(hammer2_iocom_t *iocom __unused)
+{
+	printf("AUTHTX\n");
+	iocom->recvmsg_callback = master_link_rx;
+	iocom->sendmsg_callback = master_link_tx;
+}
+
 /*
  * Callback from hammer2_iocom_core() when messages might be present
  * on the socket.
  */
 static
 void
-node_master_recv(hammer2_iocom_t *iocom)
+master_link_rx(hammer2_iocom_t *iocom)
 {
 	hammer2_msg_t *msg;
 
@@ -196,7 +224,7 @@ node_master_recv(hammer2_iocom_t *iocom)
 	}
 	if (iocom->ioq_rx.error) {
 		fprintf(stderr,
-			"node_master_recv: comm error %d\n",
+			"master_recv: comm error %d\n",
 			iocom->ioq_rx.error);
 	}
 }
@@ -207,7 +235,7 @@ node_master_recv(hammer2_iocom_t *iocom)
  */
 static
 void
-node_master_send(hammer2_iocom_t *iocom)
+master_link_tx(hammer2_iocom_t *iocom)
 {
 	hammer2_iocom_flush(iocom);
 }

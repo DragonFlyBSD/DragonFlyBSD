@@ -233,7 +233,7 @@ main(int ac, char **av)
 	uuid_to_string(&Hammer2_RPFSId, &rpfsidstr, &status);
 
 	/*
-	 * Calculate the amount of reserved space.  HAMMER2_RESERVE_SEG (4MB)
+	 * Calculate the amount of reserved space.  HAMMER2_ZONE_SEG (4MB)
 	 * is reserved at the beginning of every 2GB of storage, rounded up.
 	 * Thus a 200MB filesystem will still have a 4MB reserve area.
 	 *
@@ -241,8 +241,8 @@ main(int ac, char **av)
 	 * reserve is used to help 'df' calculate the amount of available
 	 * space.
 	 */
-	reserved_space = ((total_space + HAMMER2_RESERVE_MASK64) /
-			  HAMMER2_RESERVE_BYTES64) * HAMMER2_RESERVE_SEG64;
+	reserved_space = ((total_space + HAMMER2_ZONE_MASK64) /
+			  HAMMER2_ZONE_BYTES64) * HAMMER2_ZONE_SEG64;
 
 	free_space = total_space - reserved_space -
 		     BootAreaSize - AuxAreaSize;
@@ -449,7 +449,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	hammer2_blockref_t root_blockref;
 	uint64_t now;
 	hammer2_off_t volu_base = 0;
-	hammer2_off_t boot_base = HAMMER2_RESERVE_SEG;
+	hammer2_off_t boot_base = HAMMER2_ZONE_SEG;
 	hammer2_off_t aux_base = boot_base + BootAreaSize;
 	hammer2_off_t alloc_base = aux_base + AuxAreaSize;
 	hammer2_off_t tmp_base;
@@ -462,7 +462,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 */
 	bzero(buf, HAMMER2_PBUFSIZE);
 	tmp_base = volu_base;
-	for (i = 0; i < HAMMER2_RESERVE_BLOCKS; ++i) {
+	for (i = 0; i < HAMMER2_ZONE_BLOCKS_SEG; ++i) {
 		n = pwrite(fd, buf, HAMMER2_PBUFSIZE, tmp_base);
 		if (n != HAMMER2_PBUFSIZE) {
 			perror("write");
@@ -649,10 +649,10 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * Write the volume header and all alternates.
 	 */
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
-		if (i * HAMMER2_RESERVE_BYTES64 >= total_space)
+		if (i * HAMMER2_ZONE_BYTES64 >= total_space)
 			break;
 		n = pwrite(fd, buf, HAMMER2_PBUFSIZE,
-			   volu_base + i * HAMMER2_RESERVE_BYTES64);
+			   volu_base + i * HAMMER2_ZONE_BYTES64);
 		if (n != HAMMER2_PBUFSIZE) {
 			perror("write");
 			exit(1);

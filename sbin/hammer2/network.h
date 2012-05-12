@@ -34,6 +34,46 @@
  */
 
 /***************************************************************************
+ *				CRYPTO HANDSHAKE			   *
+ ***************************************************************************
+ *
+ * The initial public-key exchange is implementing by transmitting a
+ * 512-byte buffer to the other side in a symmetrical fashion.  This
+ * buffer contains the following:
+ *
+ * (1) A random session key.
+ *
+ * (2) A verifier to determine that the decode was successful.  It encodes
+ *     an XOR of each group of 4 bytes from the session key.
+ *
+ * (3) Additional configuration and additional random data.
+ *
+ *     - The hammer2 message header magic for endian detect
+ *
+ *     - The hammer2 protocol version.  The two sides agree on the
+ *	 smaller of the two.
+ *
+ *     - All unused fields (junk*) are filled with random data.
+ *
+ * This structure must be exactly 512 bytes and expects to use 256-byte
+ * RSA keys.
+ */
+struct hammer2_handshake {
+	char pad1[8];		/* 000 */
+	uint16_t magic;		/* 008 HAMMER2_MSGHDR_MAGIC for endian detect */
+	uint16_t version;	/* 00A hammer2 protocol version */
+	uint32_t flags;		/* 00C protocol extension flags */
+	uint8_t sess[64];	/* 010 512-bit session key */
+	uint8_t verf[16];	/* 050 verifier = ~sess */
+	char quickmsg[32];	/* 060 reason for connecting */
+	char junk080[128];	/* 080-0FF */
+	char pad2[8];		/* 100-107 */
+	char junk100[256-8];	/* 108-1FF */
+};
+
+typedef struct hammer2_handshake hammer2_handshake_t;
+
+/***************************************************************************
  *				LOW LEVEL MESSAGING			   *
  ***************************************************************************
  *
@@ -92,14 +132,20 @@ struct hammer2_ioq {
 
 typedef struct hammer2_ioq hammer2_ioq_t;
 
-#define HAMMER2_IOQ_ERROR_SYNC	1		/* bad magic / out of sync */
-#define HAMMER2_IOQ_ERROR_EOF	2		/* unexpected EOF */
-#define HAMMER2_IOQ_ERROR_SOCK	3		/* read() error on socket */
-#define HAMMER2_IOQ_ERROR_FIELD	4		/* invalid field */
-#define HAMMER2_IOQ_ERROR_HCRC	5		/* core header crc bad */
-#define HAMMER2_IOQ_ERROR_XCRC	6		/* ext header crc bad */
-#define HAMMER2_IOQ_ERROR_ACRC	7		/* aux data crc bad */
-#define HAMMER2_IOQ_ERROR_STATE	8		/* bad state */
+#define HAMMER2_IOQ_ERROR_SYNC		1	/* bad magic / out of sync */
+#define HAMMER2_IOQ_ERROR_EOF		2	/* unexpected EOF */
+#define HAMMER2_IOQ_ERROR_SOCK		3	/* read() error on socket */
+#define HAMMER2_IOQ_ERROR_FIELD		4	/* invalid field */
+#define HAMMER2_IOQ_ERROR_HCRC		5	/* core header crc bad */
+#define HAMMER2_IOQ_ERROR_XCRC		6	/* ext header crc bad */
+#define HAMMER2_IOQ_ERROR_ACRC		7	/* aux data crc bad */
+#define HAMMER2_IOQ_ERROR_STATE		8	/* bad state */
+#define HAMMER2_IOQ_ERROR_NOPEER	9	/* bad socket peer */
+#define HAMMER2_IOQ_ERROR_NORKEY	10	/* no remote keyfile found */
+#define HAMMER2_IOQ_ERROR_NOLKEY	11	/* no local keyfile found */
+#define HAMMER2_IOQ_ERROR_KEYXCHGFAIL	12	/* key exchange failed */
+#define HAMMER2_IOQ_ERROR_KEYFMT	13	/* key file format problem */
+#define HAMMER2_IOQ_ERROR_BADURANDOM	14	/* /dev/urandom is bad */
 
 #define HAMMER2_IOQ_MAXIOVEC    16
 
@@ -117,6 +163,8 @@ struct hammer2_iocom {
 	int	sock_fd;			/* comm socket or pipe */
 	int	alt_fd;				/* thread signal, tty, etc */
 	int	flags;
+	int	rxmisc;
+	int	txmisc;
 	char	rxbuf[HAMMER2_MSGBUF_SIZE];	/* for ioq_rx only */
 };
 

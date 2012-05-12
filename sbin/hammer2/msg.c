@@ -77,6 +77,15 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd)
 	hammer2_ioq_init(iocom, &iocom->ioq_rx);
 	hammer2_ioq_init(iocom, &iocom->ioq_tx);
 
+	/*
+	 * Negotiate session crypto synchronously.  This will mark the
+	 * connection as error'd if it fails.
+	 */
+	hammer2_crypto_negotiate(iocom);
+
+	/*
+	 * Make sure our fds are set to non-blocking for the iocom core.
+	 */
 	if (sock_fd >= 0)
 		fcntl(sock_fd, F_SETFL, O_NONBLOCK);
 #if 0

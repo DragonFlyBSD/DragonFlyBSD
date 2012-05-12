@@ -72,7 +72,12 @@
 #include <pthread.h>
 #include <poll.h>
 
+#include <libutil.h>
+
 #include "network.h"
+
+#define HAMMER2_DEFAULT_DIR	"/etc/hammer2"
+#define HAMMER2_PATH_REMOTE	HAMMER2_DEFAULT_DIR "/remote"
 
 extern int DebugOpt;
 extern int NormalExit;
@@ -90,9 +95,12 @@ int cmd_pfs_create(const char *sel_path, const char *name,
 			uint8_t pfs_type, const char *uuid_str);
 int cmd_pfs_delete(const char *sel_path, const char *name);
 
-int cmd_node(void);
+int cmd_service(void);
 int cmd_leaf(const char *sel_path);
-int cmd_debug(void);
+int cmd_debug(const char *hostname);
+int cmd_rsainit(const char *dir_path);
+int cmd_rsaenc(const char **keys, int nkeys);
+int cmd_rsadec(const char **keys, int nkeys);
 
 void hammer2_ioq_init(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
 void hammer2_ioq_done(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
@@ -115,6 +123,8 @@ void hammer2_ioq_write(hammer2_msg_t *msg);
 void hammer2_ioq_stream(hammer2_msg_t *msg, int reply);
 void hammer2_iocom_drain(hammer2_iocom_t *iocom);
 void hammer2_iocom_flush(hammer2_iocom_t *iocom);
+
+void hammer2_crypto_negotiate(hammer2_iocom_t *iocom);
 
 void hammer2_debug_remote(hammer2_msg_t *msg);
 void msg_printf(hammer2_msg_t *msg, const char *ctl, ...);

@@ -857,7 +857,7 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 	 * block device's EOF.
 	 */
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++) {
-		error = bread(hmp->devvp, i * HAMMER2_RESERVE_BYTES64, 
+		error = bread(hmp->devvp, i * HAMMER2_ZONE_BYTES64,
 			      HAMMER2_VOLUME_BYTES, &bp);
 		if (error) {
 			brelse(bp);
