@@ -30,7 +30,7 @@
 # SUCH DAMAGE.
 #
 #	@(#)termcap.src	8.2 (Berkeley) 11/17/93
-# $FreeBSD: src/share/termcap/termcap.src,v 1.150 2008/01/08 16:00:24 rafan Exp $
+# $FreeBSD$
 
 #	Termcap source file
 #	John Kunze, Berkeley
@@ -1476,6 +1476,259 @@ nansi.sysk|nansisysk|PC-DOS Public Domain NANSI.SYS with keypad redefined for vi
 	:al=\E[1L:dl=\E[1M:ic=\E[1@:dc=\E[1P:\
 	:is=U4 PC-DOS Public Domain NANSI.SYS with keypad redefined for vi 9-29-86\n\E[;75;8p:\
 	:tc=ansi.sysk:
+#	Hellmuth Michaelis <hm@FreeBSD.org>
+#	pcvt vt220 terminal emulator console (pc keyboard & monitor)
+#	termcap entries for pure VT220-Emulation and 25, 28, 35, 40, 43 and
+#	50 lines entries
+#	80 columns
+#---------------------------------------------------------------------------
+pcvt25|dec vt220 with 25 lines:\
+	:li#25:\
+	:co#80:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;25r\E[25;1H:\
+	:tc=pcvtXX:
+
+pcvt28|dec vt220 with 28 lines:\
+	:li#28:\
+	:co#80:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;28r\E[28;1H:\
+	:tc=pcvtXX:
+
+pcvt35|dec vt220 with 35 lines:\
+	:li#35:\
+	:co#80:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;35r\E[35;1H:\
+	:tc=pcvtXX:
+
+pcvt40|dec vt220 with 40 lines:\
+	:li#40:\
+	:co#80:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;40r\E[40;1H:\
+	:tc=pcvtXX:
+
+pcvt43|dec vt220 with 43 lines:\
+	:li#43:\
+	:co#80:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;43r\E[43;1H:\
+	:tc=pcvtXX:
+
+pcvt50|dec vt220 with 50 lines:\
+	:li#50:\
+	:co#80:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;50r\E[50;1H:\
+	:tc=pcvtXX:
+#	termcap entries for pure VT220-Emulation and 25, 28, 35, 40, 43 and
+#	50 lines entries
+#	132 columns
+pcvt25w|dec vt220 with 25 lines and 132 cols:\
+	:li#25:\
+	:co#132:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;25r\E[25;1H:\
+	:tc=pcvtXX:
+
+pcvt28w|dec vt220 with 28 lines and 132 cols:\
+	:li#28:\
+	:co#132:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;28r\E[28;1H:\
+	:tc=pcvtXX:
+
+pcvt35w|dec vt220 with 35 lines and 132 cols:\
+	:li#35:\
+	:co#132:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;35r\E[35;1H:\
+	:tc=pcvtXX:
+
+pcvt40w|dec vt220 with 40 lines and 132 cols:\
+	:li#40:\
+	:co#132:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;40r\E[40;1H:\
+	:tc=pcvtXX:
+
+pcvt43w|dec vt220 with 43 lines and 132 cols:\
+	:li#43:\
+	:co#132:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;43r\E[43;1H:\
+	:tc=pcvtXX:
+
+pcvt50w|dec vt220 with 50 lines and 132 cols:\
+	:li#50:\
+	:co#132:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;50r\E[50;1H:\
+	:tc=pcvtXX:
+#	termcap entries for HP-Emulation and 25, 28, 35, 40, 43 and 50
+#	lines entries. note that the HP-Emulation uses the bottom 3 lines
+#	for status and function key labels, so we get always 3 lines less.
+#	"Xs" is a nonstandard, private flag indicating HP-like fkey labels
+#	80 column entries
+pcvt22h|dec vt220 with HP-fkey labels and 22 lines:\
+	:li#22:\
+	:co#80:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;22r\E[22;1H:\
+	:tc=pcvtXX:
+
+pcvt25h|dec vt220 with HP-fkey labels and 25 lines:\
+	:li#25:\
+	:co#80:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;25r\E[25;1H:\
+	:tc=pcvtXX:
+
+pcvt32h|dec vt220 with HP-fkey labels and 32 lines:\
+	:li#32:\
+	:co#80:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;32r\E[32;1H:\
+	:tc=pcvtXX:
+
+pcvt37h|dec vt220 with HP-fkey labels and 37 lines:\
+	:li#37:\
+	:co#80:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;37r\E[37;1H:\
+	:tc=pcvtXX:
+
+pcvt40h|dec vt220 with HP-fkey labels and 40 lines:\
+	:li#40:\
+	:co#80:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;40r\E[40;1H:\
+	:tc=pcvtXX:
+
+pcvt47h|dec vt220 with HP-fkey labels and 47 lines:\
+	:li#47:\
+	:co#80:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;47r\E[47;1H:\
+	:tc=pcvtXX:
+#	termcap entries for HP-Emulation and 25, 28, 35, 40, 43 and 50
+#	lines entries. note that the HP-Emulation uses the bottom 3 lines
+#	for status and function key labels, so we get always 3 lines less.
+#	"Xs" is a nonstandard, private flag indicating HP-like fkey labels
+#	132 column entries
+pcvt22hw|dec vt220 with HP-fkey labels, 22 lines and 132 cols:\
+	:li#22:\
+	:co#132:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;22r\E[22;1H:\
+	:tc=pcvtXX:
+
+pcvt25hw|dec vt220 with HP-fkey labels, 25 lines and 132 cols:\
+	:li#25:\
+	:co#132:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;25r\E[25;1H:\
+	:tc=pcvtXX:
+
+pcvt32hw|dec vt220 with HP-fkey labels, 32 lines and 132 cols:\
+	:li#32:\
+	:co#132:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;32r\E[32;1H:\
+	:tc=pcvtXX:
+
+pcvt37hw|dec vt220 with HP-fkey labels, 37 lines and 132 cols:\
+	:li#37:\
+	:co#132:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;37r\E[37;1H:\
+	:tc=pcvtXX:
+
+pcvt40hw|dec vt220 with HP-fkey labels, 40 lines and 132 cols:\
+	:li#40:\
+	:co#132:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;40r\E[40;1H:\
+	:tc=pcvtXX:
+
+pcvt47hw|dec vt220 with HP-fkey labels, 47 lines and 132 cols:\
+	:li#47:\
+	:co#132:\
+	:Xs:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h\E[1;47r\E[47;1H:\
+	:tc=pcvtXX:
+#	main entry, without "is" and "li" capabilities
+pcvtXX|pcvt vt200 emulator (DEC VT220):\
+	:AL=\E[%dL:\
+	:DC=\E[%dP:\
+	:DL=\E[%dM:\
+	:DO=\E[%dB:\
+	:IC=\E[%d@:\
+	:LE=\E[%dD:\
+	:RI=\E[%dC:\
+	:SF=\E[%dS:\
+	:SR=\E[%dT:\
+	:UP=\E[%dA:\
+	:ac=llmmkkjjuuttvvwwqqxxnnpprr``aa:\
+	:ae=^O:\
+	:al=\E[L:\
+	:am:\
+	:as=^N:\
+	:bl=^G:\
+	:bs:\
+	:cb=\E[1K:\
+	:cd=\E[J:\
+	:ce=\E[K:\
+	:cl=\E[H\E[J:\
+	:cm=\E[%i%d;%dH:\
+	:cr=^M:\
+	:cs=\E[%i%d;%dr:\
+	:ct=\E[3g:\
+	:dc=\E[P:\
+	:dl=\E[M:\
+	:do=^J:\
+	:eA=\E)0:\
+	:ei=\E[4l:\
+	:ho=\E[H:\
+	:im=\E[4h:\
+	:it#8:\
+	:k1=\E[17~:\
+	:k2=\E[18~:\
+	:k3=\E[19~:\
+	:k4=\E[20~:\
+	:k5=\E[21~:\
+	:k6=\E[23~:\
+	:k7=\E[24~:\
+	:k8=\E[25~:\
+	:kD=\E[3~:\
+	:kH=\E[4~:\
+	:kI=\E[2~:\
+	:kN=\E[6~:\
+	:kP=\E[5~:\
+	:kb=\177:\
+	:kd=\EOB:\
+	:ke=\E[?1l\E>:\
+	:kh=\E[1~:\
+	:kl=\EOD:\
+	:km:\
+	:kr=\EOC:\
+	:ks=\E[?1h\E=:\
+	:ku=\EOA:\
+	:le=^H:\
+	:mb=\E[5m:\
+	:md=\E[1m:\
+	:me=\E[m:\
+	:mi:\
+	:mr=\E[7m:\
+	:ms:\
+	:nd=\E[C:\
+	:pb#16000000:\
+	:pt:\
+	:rc=\E8:\
+	:rf=/usr/share/tabset/vt100:\
+	:rs=\Ec\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h:\
+	:sc=\E7:\
+	:se=\E[27m:\
+	:sf=\ED:\
+	:so=\E[7m:\
+	:sr=\EM:\
+	:st=\EH:\
+	:ue=\E[24m:\
+	:up=\E[A:\
+	:us=\E[4m:\
+	:vt#3:\
+	:xn:
+
 # # --------------------------------
 #
 # T: TELETYPE
@@ -2137,7 +2390,7 @@ cons60l1|cons60-iso8859-1:\
 cons60l1-m|cons60-iso8859-1-mono:\
 	:li#60:tc=cons25l1-m:
 # 132x25 ISO 8859-1 FreeBSD console
-cons25l1-w|:cons25w-iso8859-1:\
+cons25l1-w|cons25w-iso8859-1:\
 	:co#132:tc=cons25l1:
 cons30l1-w|cons30w-iso8859-1:\
 	:co#132:tc=cons30l1:
@@ -2148,7 +2401,7 @@ cons50l1-w|cons50w-iso8859-1:\
 cons60l1-w|cons60w-iso8859-1:\
 	:co#132:tc=cons60l1:
 # ISO 8859-7 FreeBSD console with ACS support
-cons25l7:cons25-iso8859-7:\
+cons25l7|cons25-iso8859-7:\
 	:ac=f\260g\261{\360}\243+\253,\273i\247:\
 	:tc=cons25w:
 cons25l7-m|cons25-iso8859-7-mono:\
@@ -2228,7 +2481,7 @@ vt100|dec-vt100|vt100-am|vt100am|dec vt100:\
 	:K1=\EOq:K2=\EOr:K3=\EOs:K4=\EOp:K5=\EOn:pt:sr=2*\EM:xn:\
 	:sc=2\E7:rc=2\E8:cs=5\E[%i%d;%dr:UP=2\E[%dA:DO=2\E[%dB:RI=2\E[%dC:\
 	:LE=2\E[%dD:ct=2\E[3g:st=2\EH:ta=^I:ms:bl=^G:cr=^M:eo:it#8:\
-	:RA=\E[?7l:SA=\E[?7h:
+	:RA=\E[?7l:SA=\E[?7h:po=\E[5i:pf=\E[4i:
 vt100-nam|dec-vt100-nam|vt100nam|vt100 w/no am:\
 	:am@:xn@:\
 	:is=\E>\E[?1;3;4;5;7l\E[?8h\E[1;24r\E[24;1H:\
@@ -2518,7 +2771,9 @@ SC|screen|VT 100/ANSI X3.64 virtual terminal:\
 	:ku=\EOA:kd=\EOB:kr=\EOC:kl=\EOD:kb=^H:\
 	:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:k5=\E[15~:k6=\E[17~:\
 	:k7=\E[18~:k8=\E[19~:k9=\E[20~:k;=\E[21~:F1=\E[23~:F2=\E[24~:\
-	:kh=\E[1~:kI=\E[2~:kD=\E[3~:kH=\E[4~:@7=\E[4~:kP=\E[5~:\
+	:F3=\E[25~:F4=\E[26~:F5=\E[28~:F6=\E[29~:\
+	:F7=\E[31~:F8=\E[32~:F9=\E[33~:FA=\E[34~:\
+	:kh=\E[1~:kI=\E[2~:kD=\E[3~:@7=\E[4~:kP=\E[5~:\
 	:kN=\E[6~:eA=\E(B\E)0:as=^N:ae=^O:ti=\E[?1049h:te=\E[?1049l:\
 	:vi=\E[?25l:ve=\E[34h\E[?25h:vs=\E[34l:\
 	:Co#8:pa#64:AF=\E[3%dm:AB=\E[4%dm:op=\E[39;49m:AX:\
@@ -2529,48 +2784,54 @@ SH|screen-s|VT 100/ANSI X3.64 virtual terminal with hardstatus line:\
 	:ts=\E_:fs=\E\\:ds=\E_\E\\:tc=screen:
 SW|screen-w|VT 100/ANSI X3.64 virtual terminal with 132 cols:\
 	:co#132:tc=screen:
-# $Xorg: termcap,v 1.3 2000/08/17 19:55:10 cpqbld Exp $
+screen-256color|VT 100/ANSI X3.64 terminal with 256 colors:\
+	:Co#256:pa#32767:\
+	:AB=\E[48;5;%dm:AF=\E[38;5;%dm:tc=screen:
+# $XTermId: termcap,v 1.78 2009/11/09 00:24:26 tom Exp $
 #
 # Note:
 #	termcap format is limited to 1023 characters.  This set of descriptions
 #	is a subset of the terminfo, since not all features can be fit into
 #	that limit.  The 'xterm' description supports color.  The monochrome
-#	'xtermm' drops color in favor of additional function keys.  If you need
-#	both, use terminfo.
+#	'xterm-mono' drops color in favor of additional function keys.  If you
+#	need both, use terminfo.
 #
 #	The 1023-character limit applies to each entry after resolving the
 #	"tc=" strings.  Some implementations may discount all or part of the
 #	formatting characters in the entry (i.e., the backslash newline tab
 #	colon).  GNU termcap does not have this limit.
 #
-#	I checked the limits using ncurses "captoinfo -CrTv", which prints
+#	I checked the limits using ncurses "captoinfo -CrTUvx", which prints
 #	the resolved length of each entry in a comment at the end - T.Dickey
+
+# Add the capability to "clear the screen" after exiting vi, more/less, etc.
 #
-# $XFree86: xc/programs/xterm/termcap,v 3.28 2001/01/17 23:46:39 dawes Exp $
-#
-xterm-xfree86|XFree86 xterm:\
-	:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:\
-	:k5=\E[15~:k6=\E[17~:k7=\E[18~:k8=\E[19~:\
-	:k9=\E[20~:k;=\E[21~:F1=\E[23~:F2=\E[24~:\
-	:@7=\EOF:@8=\EOM:kI=\E[2~:\
-	:kh=\EOH:kP=\E[5~:kN=\E[6~:\
-	:ku=\EOA:kd=\EOB:kr=\EOC:kl=\EOD:Km=\E[M:tc=xterm-basic:
+xterm-clear:\
+	:te=\E[?1049l:ti=\E[?1049h:\
+	:tc=xterm-new:
+xterm-new|modern xterm:\
+	:@7=\EOF:@8=\EOM:F1=\E[23~:F2=\E[24~:K2=\EOE:Km=\E[M:\
+	:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:k5=\E[15~:k6=\E[17~:\
+	:k7=\E[18~:k8=\E[19~:k9=\E[20~:k;=\E[21~:kI=\E[2~:\
+	:kN=\E[6~:kP=\E[5~:kd=\EOB:kh=\EOH:kl=\EOD:kr=\EOC:ku=\EOA:\
+	:tc=xterm-basic:
 #
 # This chunk is used for building the VT220/Sun/PC keyboard variants.
-xterm-basic|xterm common (XFree86):\
-	:li#24:co#80:am:kn#12:km:mi:ms:xn:AX:bl=^G:\
-	:is=\E[!p\E[?3;4l\E[4l\E>:rs=\E[!p\E[?3;4l\E[4l\E>:le=^H:\
-	:AL=\E[%dL:DL=\E[%dM:DC=\E[%dP:al=\E[L:dc=\E[P:dl=\E[M:\
-	:UP=\E[%dA:DO=\E[%dB:LE=\E[%dD:RI=\E[%dC:\
-	:ho=\E[H:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:cm=\E[%i%d;%dH:cs=\E[%i%d;%dr:\
-	:im=\E[4h:ei=\E[4l:ks=\E[?1h\E=:ke=\E[?1l\E>:kD=\E[3~:kb=^H:\
-	:sf=\n:sr=\EM:st=\EH:ct=\E[3g:sc=\E7:rc=\E8:\
-	:eA=\E(B\E)0:as=\E(0:ae=\E(B:ml=\El:mu=\Em:up=\E[A:nd=\E[C:\
-	:md=\E[1m:me=\E[m:mr=\E[7m:so=\E[7m:se=\E[27m:us=\E[4m:ue=\E[24m:\
-	:ti=\E[?1049h:te=\E[?1049l:vi=\E[?25l:ve=\E[?25h:\
-	:ut:Co#8:pa#64:op=\E[39;49m:AB=\E[4%dm:AF=\E[3%dm:
+xterm-basic|modern xterm common:\
+	:am:bs:km:mi:ms:ut:xn:AX:\
+	:Co#8:co#80:kn#12:li#24:pa#64:\
+	:AB=\E[4%dm:AF=\E[3%dm:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:\
+	:DO=\E[%dB:LE=\E[%dD:RI=\E[%dC:UP=\E[%dA:ae=\E(B:al=\E[L:\
+	:as=\E(0:bl=^G:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:\
+	:cm=\E[%i%d;%dH:cs=\E[%i%d;%dr:ct=\E[3g:dc=\E[P:dl=\E[M:\
+	:ei=\E[4l:ho=\E[H:im=\E[4h:is=\E[!p\E[?3;4l\E[4l\E>:\
+	:kD=\E[3~:kb=^H:ke=\E[?1l\E>:ks=\E[?1h\E=:le=^H:md=\E[1m:\
+	:me=\E[m:ml=\El:mr=\E[7m:mu=\Em:nd=\E[C:op=\E[39;49m:\
+	:rc=\E8:rs=\E[!p\E[?3;4l\E[4l\E>:sc=\E7:se=\E[27m:sf=^J:\
+	:so=\E[7m:sr=\EM:st=\EH:\
+	:ue=\E[24m:up=\E[A:us=\E[4m:ve=\E[?12l\E[?25h:vi=\E[?25l:vs=\E[?12;25h:
 
-# The xterm-xfree86 description has all of the features, but is not completely
+# The xterm-new description has all of the features, but is not completely
 # compatible with vt220.  If you are using a Sun or PC keyboard, set the
 # sunKeyboard resource to true:
 #	+ maps the editing keypad
@@ -2580,68 +2841,97 @@ xterm-basic|xterm common (XFree86):\
 #	+ uses DEC-style control sequences for the application keypad.
 #
 xterm-vt220|xterm emulating vt220:\
-	:kH=\E[4~::@7=\E[4~:*6=\E[4~:kh=\E[1~:Km=\E[M:tc=xterm-basic:
+	:*6=\E[4~:@7=\E[4~:K2=\EOu:Km=\E[M:kH=\E[4~:kh=\E[1~:\
+	:tc=xterm-basic:
 
 xterm-24|xterms|vs100|24x80 xterm:\
-	:li#24:\
-	:tc=xterm:
+	:li#24:tc=xterm-old:
 xterm-65|65x80 xterm:\
-	:li#65:tc=xterm:
+	:li#65:tc=xterm-old:
 xterm-bold|xterm with bold for underline:\
-	:so=\E[7m:us=\E[1m:tc=xterm:
+	:so=\E[7m:us=\E[1m:tc=xterm-old:
 xterm-boldso|xterm with bold for standout:\
-	:se=\E[m:so=\E[1m:tc=xterm:
+	:se=\E[m:so=\E[1m:tc=xterm-old:
 xterm-mono|monochrome xterm:\
-	:kn#20:\
-	:st@:ut@:Co@:NC@:op@:AB@:AF@:pa@:Sf@:Sb@:tc=xterm:
+	:ut@:\
+	:Co@:NC@:kn#20:pa@:\
+	:AB@:AF@:Sb@:Sf@:op@:st@:tc=xterm-old:
 #
 # Alternate terminal description that "works" for interactive shells such as
 # tcsh and bash.
 xterm-noapp|xterm with cursor keys in normal mode:\
-	:kl=\E[D:kd=\E[B:kr=\E[C:ku=\E[A:ks=\E=:ke=\E>:ti@:te@:tc=xterm:
+	:kd=\E[B:ke=\E>:kl=\E[D:kr=\E[C:ks=\E=:ku=\E[A:te@:ti@:\
+	:tc=xterm:
+#
+# This should work for the commonly used "color xterm" variations (XFree86
+# xterm, color_xterm, nxterm, rxvt).  Note that it does not set 'bce', so for
+# XFree86 and rxvt, some applications that use colors will be less efficient,
+# and in a few special cases (with "smart" optimization) the wrong color will
+# be painted in spots.
+xterm-color|generic "ANSI" color xterm:\
+	:Co#8:NC@:pa#64:\
+	:AB=\E[4%dm:AF=\E[3%dm:ac=:op=\E[m:tc=xterm-r6:
 #
 # These aliases are for compatibility with the terminfo; termcap cannot provide
-# the extra features, but termcap applications still want the names.
-xterm-16color|xterm alias 1:tc=xterm-xfree86:
-xterm-88color|xterm alias 2:tc=xterm-256color:
-xterm-256color|xterm alias 3:tc=xterm-xfree86:
-xterm-nrc|xterm alias 4:tc=xterm:
-xterm-rep|xterm alias 5:tc=xterm:
-xterm-xmc|xterm alias 6:sg#1:tc=xterm:
+# the extra features such as color initialization, but termcap applications
+# still want the names.
+xterm-16color|xterm alias 1:\
+	:tc=xterm-new:
+
+xterm-88color|xterm alias 2:\
+	:Co#88:pa#7744:tc=xterm-256color:
+
+xterm-256color|xterm alias 3:\
+	:Co#256:pa#32767:\
+	:AB=\E[48;5;%dm:AF=\E[38;5;%dm:tc=xterm-new:
+
+xterm-nrc|xterm alias 4:\
+	:tc=xterm:
+xterm-rep|xterm alias 5:\
+	:tc=xterm:
+xterm-xmc|xterm alias 6:\
+	:sg#1:tc=xterm:
 #
 # An 8-bit description is doable with termcap, but there are probably no
 # termcap (or BSD curses) applications that are able to use it.
+#
+# Add the capability to "clear the screen" after exiting vi, more/less, etc.
+#
+xterm-8bit-clear:\
+	:te=\233?1049l:ti=\233?1049h:ue=\23324m:\
+	:tc=xterm-8bit:
 xterm-8bit|xterm terminal emulator 8-bit controls (X Window System):\
-	:co#80:li#24:\
-	:it#8:am:km:mi:ms:xn:\
-	:AL=\233%dL:DC=\233%dP:DL=\233%dM:DO=\233%dB:IC=\233%d@:LE=\233%dD:\
-	:RI=\233%dC:UP=\233%dA:ae=^O:al=\233L:as=^N:bl=^G:bt=\233Z:\
-	:cd=\233J:ce=\233K:cl=\233H\2332J:cm=\233%i%d;%dH:cr=^M:\
-	:cs=\233%i%d;%dr:ct=\2333g:dc=\233P:dl=\233M:do=^J:up=\233A:nd=\233C:\
-	:ei=\2334l:ho=\233H:im=\2334h:\
+	:am:km:mi:ms:xn:\
+	:co#80:it#8:li#24:\
+	:AL=\233%dL:DC=\233%dP:DL=\233%dM:DO=\233%dB:IC=\233%d@:\
+	:K2=\217y:Km=\233M:LE=\233%dD:RI=\233%dC:UP=\233%dA:\
+	:ae=\E(B:al=\233L:as=\E(0:bl=^G:bt=\233Z:cd=\233J:ce=\233K:\
+	:cl=\233H\2332J:cm=\233%i%d;%dH:cr=^M:cs=\233%i%d;%dr:\
+	:ct=\2333g:dc=\233P:dl=\233M:do=^J:ei=\2334l:ho=\233H:\
+	:im=\2334h:\
 	:is=\E[62"p\E G\233m\233?7h\E>\E7\233?1;3;4;6l\2334l\233r\E8:\
 	:k1=\23311~:k2=\23312~:k3=\23313~:k4=\23314~:k5=\23315~:\
 	:k6=\23317~:k7=\23318~:k8=\23319~:k9=\23320~:kD=\2333~:\
 	:kI=\2332~:kN=\2336~:kP=\2335~:kb=^H:kd=\217B:\
 	:ke=\233?1l\E>:kh=\2331~:kl=\217D:kr=\217C:ks=\233?1h\E=:\
-	:ku=\217A:le=^H:mb=\2335m:md=\2331m:me=\233m^O:mr=\2337m:\
-	:rc=\E8:sc=\E7:se=\23327m:sf=^J:so=\2337m:sr=\215:\
-	:st=\210:ta=^I:te=\233?1049l:ti=\233?1049h:ue=\23324m:us=\2334m:\
-	:vb=\233?5h\233?5l:ve=\233?25h:vi=\233?25l:Km=\233M:
+	:ku=\217A:le=^H:mb=\2335m:md=\2331m:me=\233m:mr=\2337m:\
+	:nd=\233C:rc=\E8:sc=\E7:se=\23327m:sf=^J:so=\2337m:sr=\215:\
+	:st=\210:ta=^I:ue=\23324m:\
+	:up=\233A:us=\2334m:vb=\233?5h\233?5l:ve=\233?25l\233?25h:\
+	:vs=\233?12;25h:vi=\233?25l:
 #
-xterm-hp|XFree86 xterm with hpterm function keys:\
-	:k1=\Ep:k2=\Eq:k3=\Er:k4=\Es:k5=\Et:k6=\Eu:k7=\Ev:k8=\Ew:\
-	:kC=\EJ:kD=\EP:@7=\EF:kI=\EQ:kN=\ES:kP=\ET:kh=\Eh:\
-	:kd=\EB:kl=\ED:kr=\EC:ku=\EA:tc=xterm-basic:
+xterm-hp|xterm with hpterm function keys:\
+	:@7=\EF:k1=\Ep:k2=\Eq:k3=\Er:k4=\Es:k5=\Et:k6=\Eu:k7=\Ev:\
+	:k8=\Ew:kC=\EJ:kD=\EP:kI=\EQ:kN=\ES:kP=\ET:kd=\EB:kh=\Eh:\
+	:kl=\ED:kr=\EC:ku=\EA:tc=xterm-basic:
 #
-xterm-sco|XFree86 xterm with SCO function keys:\
-	:kl=\E[D:kd=\E[B:kr=\E[C:ku=\E[A:@7=\E[F:\
-	:k1=\E[M:k2=\E[N:k3=\E[O:k4=\E[P:k5=\E[Q:\
-	:k6=\E[R:k7=\E[S:k8=\E[T:k9=\E[U:k;=\E[V:\
-	:F1=\E[W:F2=\E[X:F3=\E[Y:F5=\E[a:F6=\E[b:\
-	:F7=\E[c:F8=\E[d:F9=\E[e:FA=\E[f:FB=\E[g:\
-	:FC=\E[h:FD=\E[i:FE=\E[j:FF=\E[k:\
-	:kh=\E[H:kI=\E[L:kN=\E[G:kP=\E[I:ac@:tc=xterm-basic:
+xterm-sco|xterm with SCO function keys:\
+	:@7=\E[F:F1=\E[W:F2=\E[X:F3=\E[Y:F5=\E[a:F6=\E[b:F7=\E[c:\
+	:F8=\E[d:F9=\E[e:FA=\E[f:FB=\E[g:FC=\E[h:FD=\E[i:FE=\E[j:\
+	:FF=\E[k:ac=:k1=\E[M:k2=\E[N:k3=\E[O:k4=\E[P:k5=\E[Q:\
+	:k6=\E[R:k7=\E[S:k8=\E[T:k9=\E[U:k;=\E[V:kD=\177:kI=\E[L:\
+	:kN=\E[G:kP=\E[I:kd=\E[B:kh=\E[H:kl=\E[D:kr=\E[C:ku=\E[A:\
+	:tc=xterm-basic:
 #
 xterm-vt52|xterm emulating vt52:\
 	:bs:\
@@ -2651,63 +2941,77 @@ xterm-vt52|xterm emulating vt52:\
 	:le=\ED:nd=\EC:nw=^M^J:sf=^J:sr=\EI:ta=^I:up=\EA:
 #
 xterm-sun|xterm with Sun functionkeys:\
-	:k1=\E[224z:k2=\E[225z:k3=\E[226z:k4=\E[227z:\
-	:k5=\E[228z:k6=\E[229z:k7=\E[230z:k8=\E[231z:\
-	:k9=\E[232z:k;=\E[233z:F1=\E[192z:F2=\E[193z:\
-	:%1=\E[196z:&8=\E[195z:@0=\E[200z:kI=\E[2z:\
-	:kN=\E[222z:kP=\E[216z:kh=\E[214z:kD=^?:\
-	:Km=\E[M:@5=\E[197z::@7=\E[220z:\
+	:%1=\E[196z:&8=\E[195z:@0=\E[200z:@5=\E[197z:@7=\E[220z:\
+	:F1=\E[192z:F2=\E[193z:K2=\E[218z:Km=\E[M:k1=\E[224z:\
+	:k2=\E[225z:k3=\E[226z:k4=\E[227z:k5=\E[228z:k6=\E[229z:\
+	:k7=\E[230z:k8=\E[231z:k9=\E[232z:k;=\E[233z:kD=\E[3z:\
+	:kI=\E[2z:kN=\E[222z:kP=\E[216z:kh=\E[214z:\
 	:tc=xterm-basic:
 #
 # vi may work better with this entry, because vi doesn't use insert mode much.
-# |xterm-ic|xterm-vi|xterm with insert character instead of insert mode:
+# |xterm-ic|xterm-vi|xterm with insert character instead of insert mode:\
 xterm-ic|xterm-vi|xterm with insert char:\
-	:im@:ei@:mi@:ic=\E[@:IC=\E[%d@:tc=xterm:
+	:mi@:\
+	:IC=\E[%d@:ei@:ic=\E[@:im@:tc=xterm:
 #
 # Compatible with the X11R6.3 xterm
+#
+# Add the capability to "clear the screen" after exiting vi, more/less, etc.
+#
+xterm-r6-clear:\
+	:te=\E[2J\E[?47l\E8:ti=\E7\E[?47h:ue=\E[m:\
+	:tc=xterm-r6:
 xterm-r6|xterm-old|X11R6 xterm:\
+	:am:bs:km:mi:ms:pt:xn:\
+	:co#80:kn#20:li#24:\
+	:*6=\E[4~:@0=\E[1~:@7=\E[4~:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:\
+	:DO=\E[%dB:F1=\E[23~:F2=\E[24~:F3=\E[25~:F4=\E[26~:\
+	:F5=\E[28~:F6=\E[29~:F7=\E[31~:F8=\E[32~:F9=\E[33~:\
+	:FA=\E[34~:LE=\E[%dD:RI=\E[%dC:UP=\E[%dA:ae=^O:al=\E[L:\
+	:as=^N:bl=^G:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:cm=\E[%i%d;%dH:\
+	:cs=\E[%i%d;%dr:ct=\E[3g:dc=\E[P:dl=\E[M:eA=\E)0:ei=\E[4l:\
+	:ho=\E[H:im=\E[4h:\
 	:is=\E[m\E[?7h\E[4l\E>\E7\E[r\E[?1;3;4;6l\E8:\
-	:rs=\E[m\E[?7h\E[4l\E>\E7\E[r\E[?1;3;4;6l\E8:\
-	:AL=\E[%dL:DL=\E[%dM:DC=\E[%dP:DO=\E[%dB:UP=\E[%dA:\
-	:LE=\E[%dD:RI=\E[%dC:al=\E[L:am:bl=^G:\
-	:bs:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:cm=\E[%i%d;%dH:co#80:\
-	:cs=\E[%i%d;%dr:ct=\E[3g:dc=\E[P:dl=\E[M:ho=\E[H:\
-	:im=\E[4h:ei=\E[4l:mi:ks=\E[?1h\E=:ke=\E[?1l\E>:@7=\E[4~:kh=\E[1~:\
 	:k1=\E[11~:k2=\E[12~:k3=\E[13~:k4=\E[14~:k5=\E[15~:\
 	:k6=\E[17~:k7=\E[18~:k8=\E[19~:k9=\E[20~:k;=\E[21~:\
-	:F1=\E[23~:F2=\E[24~:F3=\E[25~:F4=\E[26~:F5=\E[28~:\
-	:F6=\E[29~:F7=\E[31~:F8=\E[32~:F9=\E[33~:FA=\E[34~:\
-	:kn#20:km:@0=\E[1~:kI=\E[2~:kD=^?:*6=\E[4~:kP=\E[5~:kN=\E[6~:\
-	:kb=^H:ku=\EOA:kd=\EOB:kr=\EOC:kl=\EOD:\
-	:li#24:md=\E[1m:me=\E[m:mr=\E[7m:ms:nd=\E[C:pt:\
-	:eA=\E)0:as=^N:ae=^O:ml=\El:mu=\Em:\
-	:sc=\E7:rc=\E8:sf=\n:so=\E[7m:se=\E[m:sr=\EM:\
-	:ti=\E7\E[?47h:te=\E[2J\E[?47l\E8:up=\E[A:us=\E[4m:ue=\E[m:xn:
+	:kD=\E[3~:kI=\E[2~:kN=\E[6~:kP=\E[5~:kb=^H:kd=\EOB:\
+	:ke=\E[?1l\E>:kh=\E[1~:kl=\EOD:kr=\EOC:ks=\E[?1h\E=:\
+	:ku=\EOA:md=\E[1m:me=\E[m:ml=\El:mr=\E[7m:mu=\Em:nd=\E[C:\
+	:rc=\E8:rs=\E[m\E[?7h\E[4l\E>\E7\E[r\E[?1;3;4;6l\E8:\
+	:sc=\E7:se=\E[m:sf=^J:so=\E[7m:sr=\EM:\
+	:ue=\E[m:up=\E[A:us=\E[4m:
 #
 # Compatible with the R5 xterm
+#
+# Add the capability to "clear the screen" after exiting vi, more/less, etc.
+#
+xterm-r5-clear:\
+	:te=\E[2J\E[?47l\E8:ti=\E7\E[?47h:ue=\E[m:\
+	:tc=xterm-r5:
 xterm-r5|X11R5 xterm X11R5:\
-	:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:IC=\E[%d@:UP=\E[%dA:\
-	:al=\E[L:am:\
-	:bs:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:cm=\E[%i%d;%dH:co#80:\
-	:cs=\E[%i%d;%dr:ct=\E[3g:\
-	:dc=\E[P:dl=\E[M:\
-	:im=\E[4h:ei=\E[4l:mi:\
-	:ho=\E[H:\
+	:am:bs:km:mi:ms:pt:xn:\
+	:co#80:kn#4:li#24:\
+	:@7=\E[4~:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:\
+	:IC=\E[%d@:UP=\E[%dA:al=\E[L:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:\
+	:cm=\E[%i%d;%dH:cs=\E[%i%d;%dr:ct=\E[3g:dc=\E[P:dl=\E[M:\
+	:ei=\E[4l:ho=\E[H:im=\E[4h:\
 	:is=\E[r\E[m\E[2J\E[H\E[?7h\E[?1;3;4;6l\E[4l:\
+	:k1=\E[11~:k2=\E[12~:k3=\E[13~:k4=\E[14~:kb=^H:kd=\EOB:\
+	:ke=\E[?1l\E>:kh=\E[1~:kl=\EOD:kr=\EOC:ks=\E[?1h\E=:\
+	:ku=\EOA:md=\E[1m:me=\E[m:mr=\E[7m:nd=\E[C:rc=\E8:\
 	:rs=\E>\E[?1;3;4;5;6l\E[4l\E[?7h\E[m\E[r\E[2J\E[H:\
-	:k1=\E[11~:k2=\E[12~:k3=\E[13~:k4=\E[14~:kb=^H:kd=\EOB:ke=\E[?1l\E>:\
-	:kl=\EOD:km:kn#4:kr=\EOC:ks=\E[?1h\E=:ku=\EOA:\
-	:@7=\E[4~:kh=\E[1~:\
-	:li#24:md=\E[1m:me=\E[m:mr=\E[7m:ms:nd=\E[C:pt:\
-	:sc=\E7:rc=\E8:sf=\n:so=\E[7m:se=\E[m:sr=\EM:\
-	:te=\E[2J\E[?47l\E8:ti=\E7\E[?47h:\
-	:up=\E[A:us=\E[4m:ue=\E[m:xn:
+	:sc=\E7:se=\E[m:sf=^J:so=\E[7m:sr=\EM:\
+	:up=\E[A:us=\E[4m:
+#
+# Customization begins here.
+xterm-xfree86|xterm terminal emulator (XFree86):\
+	:tc=xterm-new:
 #
 # This is the only entry which you should have to customize, since "xterm"
 # is widely used for a variety of incompatible terminal emulations including
 # color_xterm and rxvt.
-xterm|xterm-color|X11 terminal emulator:\
-	:ti@:te@:tc=xterm-xfree86:
+xterm|X11 terminal emulator:\
+	:tc=xterm-new:
 #	:tc=xterm-r6:
 # dtterm termcap entry - Obtained from Xinside's CDE with permission
 # from Thomas Roell
@@ -3745,6 +4049,31 @@ wy100q|Wyse 100 for Quotron:\
 	:dc=\EW:dl=\ER:do=^J:ei=\Er:im=\Eq:is=\E`\072\200\EC\EDF\E0\E'\E(\EA21:\
 	:kd=^J:kl=^H:kr=^L:ku=^K:li#24:nd=^L:up=^K:us=\EG8:ue=\EG0:\
 	:so=\EG4:se=\EG0:sg#1:sr=\Ej:ho=^^:ug#1:
+# Wyse 120 definitions from conf/81882 by Meister des Chaos <meister@netz00.com>
+wy120|wyse120|wy150|wyse150|Wyse 120/150:\
+        :am:bw:hs:km:mi:ms:xo:\
+        :co#80:it#8:li#24:pb#9601:ws#45:\
+        :ae=\EcD:al=\EE:as=\EcE:bl=^G:bt=\EI:cd=\EY:ce=\ET:cl=\E+:\
+        :cm=\E=%+ %+ :cr=^M:ct=\E0:dc=\EW:dl=\ER:do=^J:ds=\EF\r:\
+        :ei=\Er:fs=^M:ho=^^:i1=\EcB0\EcC1:i2=\EwJ\Ew1:im=\Eq:ip=:\
+        :is=\Ed$\EcD\E'\Er\EH\003\Ed/\EO\Ee1\Ed*\E`@\E`9\E`1\016\024\El:\
+        :k1=^A@\r:k2=^AA\r:k3=^AB\r:k4=^AC\r:k5=^AD\r:k6=^AE\r:\
+        :k7=^AF\r:k8=^AG\r:k9=^AH\r:kD=\EW:kI=\EQ:kN=\EK:kP=\EJ:\
+        :kb=^H:kd=^J:kh=^^:kl=^H:kr=^L:ku=^K:le=^H:ll=^^^K:mb=\EG2:\
+        :me=\E(\EH\003\EG0\EcD:mh=\EGp:mr=\EG4:nd=^L:nw=\r\n:\
+        :se=\EG0:sf=\n:so=\EGt:sr=\Ej:st=\E1:ta=\011:te=\Ew1:\
+        :ti=\Ew0:ts=\EF:ue=\EG0:up=^K:us=\EG8:vb=\E`8\E`9:ve=\E`1:\
+        :vi=\E`0:
+wy120-w|wyse120-w|wy150-w|wyse150-w|wyse 120/150 132-column:\
+	:cm=\Ea%i%dR%dC:co#132:ws#97:tc=wy120:
+wy120-25|wyse120-25|wy150-25|wyse150-25|wyse 120/150 80-column 25-lines:\
+        :li#25:tc=wy120:
+wy120-25-w|wyse120-25-w|wy150-25-w|wyse150-25-w|wyse 120/150 132-column 25-lines:\
+	:cm=\Ea%i%dR%dC:co#132:li#25:ws#97:tc=wy120:
+wy120-vb|wyse120-vb|wy150-vb|wyse150-vb|Wyse 120/150 visible bell:\
+	:bl@:tc=wy120:
+wy120-w-vb|wy120-wvb|wyse120-wvb|wy150-w-vb|wyse150-w-vb|Wyse 120/150 132-column visible bell:\
+	:bl@:cm=\Ea%i%dR%dC:co#132:ws#97:tc=wy120:
 # # --------------------------------
 #
 # y: TELERAY
@@ -4080,11 +4409,11 @@ yterm10|yterm 1.0 UCB ascii.kbd:\
 	:ku=^K:kd=^J:kl=^H:kr=^L:kh=^^:ma=^Hh\012j^Kk^Ll^^H:\
 	:k0=\E0:k1=\E1:k2=\E2:k3=\E3:k4=\E4:k5=\E5:k6=\E6:k7=\E7:k8=\E8:k9=\E9:\
 	:vs=^O\E[7i\E[m\E[?7h\E[?3g\r\EHY0      \EH        \EH        \EH        \EH        \EH        \EH        \EH        \EH        \EH\r:
-# YTERM varient version 1.1.  (gts 9-13-84)  Version 1.1 has :xn:.
+# YTERM variant version 1.1.  (gts 9-13-84)  Version 1.1 has :xn:.
 yterm11|yterm 1.1 UCB ascii.kbd:\
 	:xn:is=^O\E[7i\E[m\E[?7h\E[?3g\r\EHY1  for \EHYTERM 1.\EH1 with A\EHSCII.KBD\EH 9-13-84\EH        \EH        \EH        \EH        \EH\n:\
 	:tc=yterm10:
-# YTERM 1.0 varient no autowrap or tabs
+# YTERM 1.0 variant no autowrap or tabs
 # X does not remember autowrap or tabs when T is deleted and restarted.
 yterm10nat|yterm 1.0 UCB ascii.kbd no autowrap or tabs:\
 	:am@:pt@:vs=^O\E[7i\E[m\E[?7l\E[?3g\rY2\r:\
@@ -4146,7 +4475,7 @@ h19k|h19kermit|heathkit emulation provided by Kermit (no auto margin):\
 	:am@:ta@:pt@:xt:da:db:tc=h19-u:
 # Amiga termcap by Kent Polk, kent@swrinde.nde.swri.edu (30 May 90)
 # Added a few more entries, converted caret-type control sequence (^x) entries
-# to '\0xx' entries since a couple of people mentioned loosing '^x' sequences.
+# to '\0xx' entries since a couple of people mentioned losing '^x' sequences.
 #
 # :as, :ae			Support for alternate character sets.
 # :ve=\E[\040p:vi=\E[\060\040p	cursor visible/invisible.
@@ -4248,7 +4577,9 @@ linux|Linux Console:\
 	:me=\E[0;10m:mh=\E[2m:mr=\E[7m:nd=\E[C:nw=^M^J:rc=\E8:\
 	:sc=\E7:se=\E[m:sf=^J:so=\E[7m:sr=\EM:st=\EH:ta=^I:\
 	:ue=\E[24m:up=\E[A:us=\E[4m:vb=200\E[?5h\E[?5l:\
-	:ve=\E[?25h:vi=\E[?25l:
+	:ve=\E[?25h:vi=\E[?25l:\
+	:k;=\E[21~:F1=\E[23~:F2=\E[24~:F3=\E[25~:F4=\E[26~:F5=\E[28~:\
+	:F6=\E[29~:F7=\E[31~:F8=\E[32~:F9=\E[33~:FA=\E[34~:
 linux-m|Linux Console no color:\
 	:pa@:Co@:AF@:AB@:op@:\
 	:tc=linux:
@@ -4294,29 +4625,21 @@ rxvt-mono|rxvt terminal emulator (monochrome) (X Window System):\
 	:te=\E[?47l\E8:ti=\E7\E[?47h:ue=\E[24m:up=\E[A:us=\E[4m:\
 	:vb=\E[?5h\E[?5l:ve=\E[?25h:vi=\E[?25l:vs=\E[?25h:
 
+# Termcap entry for rxvt-unicode, taken from http://cvs.schmorp.de/rxvt-unicode/doc/rxvt.7.html#I_need_a_termcap_file_entry
+rxvt-unicode|rxvt-unicode terminal (X Window System):\
+	:SF=\E[%dS:SR=\E[%dT:bw:ec=\E[%dX:kb=\177:kd=\EOB:ke=\E[?1l\E>:\
+	:kl=\EOD:kr=\EOC:ks=\E[?1h\E=:ku=\EOA:lm#0:te=\E[r\E[?1049l:\
+	:ti=\E[?1049h:tc=rxvt-mono:
+
 rxvt|rxvt terminal emulator (X Window System):\
 	:pa#64:Co#8:AF=\E[3%dm:AB=\E[4%dm:op=\E[39;49m:tc=rxvt-mono:
 
-rxvt-unicode|rxvt-unicode terminal (X Window System):\
-	:am:bw:eo:km:mi:ms:xn:xo:\
-	:co#80:it#8:li#24:lm#0:\
-	:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:IC=\E[%d@:\
-	:K1=\EOw:K2=\EOu:K3=\EOy:K4=\EOq:K5=\EOs:LE=\E[%dD:\
-	:RI=\E[%dC:SF=\E[%dS:SR=\E[%dT:UP=\E[%dA:ae=\E(B:al=\E[L:\
-	:as=\E(0:bl=^G:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:\
-	:cm=\E[%i%d;%dH:cr=^M:cs=\E[%i%d;%dr:ct=\E[3g:dc=\E[P:\
-	:dl=\E[M:do=^J:ec=\E[%dX:ei=\E[4l:ho=\E[H:\
-	:i1=\E[?47l\E=\E[?1l:ic=\E[@:im=\E[4h:\
-	:is=\E[r\E[m\E[2J\E[H\E[?7h\E[?1;3;4;6l\E[4l:\
-	:k1=\E[11~:k2=\E[12~:k3=\E[13~:k4=\E[14~:k5=\E[15~:\
-	:k6=\E[17~:k7=\E[18~:k8=\E[19~:k9=\E[20~:kD=\E[3~:\
-	:kI=\E[2~:kN=\E[6~:kP=\E[5~:kb=\177:kd=\EOB:ke=\E[?1l\E&gt;:\
-	:kh=\E[7~:kl=\EOD:kr=\EOC:ks=\E[?1h\E=:ku=\EOA:le=^H:\
-	:mb=\E[5m:md=\E[1m:me=\E[m\017:mr=\E[7m:nd=\E[C:rc=\E8:\
-	:sc=\E7:se=\E[27m:sf=^J:so=\E[7m:sr=\EM:st=\EH:ta=^I:\
-	:te=\E[r\E[?1049l:ti=\E[?1049h:ue=\E[24m:up=\E[A:\
-	:us=\E[4m:vb=\E[?5h\E[?5l:ve=\E[?25h:vi=\E[?25l:\
-	:vs=\E[?25h:
+rxvt-256color|rxvt terminal emulator with 256 colors:\
+	:Co#256:pa#32767:\
+	:AB=\E[48;5;%dm:AF=\E[38;5;%dm:op=\E[39;49m:tc=rxvt-unicode:
+
+rxvt-unicode-256color|rxvt-unicode terminal with 256 colors (X Window System):\
+	:tc=rxvt-256color:
 
 # Termcap entry for Eterm, taken from the sources of Eterm-0.9.2
 Eterm|Eterm Terminal Emulator (X11 Window System):\

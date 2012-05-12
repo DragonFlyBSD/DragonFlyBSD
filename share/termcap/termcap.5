@@ -51,10 +51,9 @@
 .\" *                                                                          *
 .\" ***************************************************************************/
 .\"
-.\" $FreeBSD: src/share/termcap/termcap.5,v 1.12.2.6 2002/08/15 08:30:27 ru Exp $
-.\" $DragonFly: src/share/termcap/termcap.5,v 1.7 2008/05/02 02:05:06 swildner Exp $
+.\" $FreeBSD$
 .\"
-.Dd April 16, 1994
+.Dd May 12, 2012
 .Dt TERMCAP 5
 .Os
 .Sh NAME
@@ -160,11 +159,11 @@ move_standout_mode	ms	safe to	move while in standout mode
 over_strike		os	terminal can overstrike
 status_line_esc_ok	es	escape can be used on the status line
 dest_tabs_magic_smso	xt	tabs destructive, magic	so char	(t1061)
-tilde_glitch		hz	can't print ~'s	(hazeltine)
+tilde_glitch		hz	cannot print ~'s (hazeltine)
 transparent_underline	ul	underline character overstrikes
 xon_xoff		xo	terminal uses xon/xoff handshaking
-needs_xon_xoff		nx	padding	won't work, xon/xoff required
-prtr_silent		5i	printer	won't echo on screen
+needs_xon_xoff		nx	padding	will not work, xon/xoff required
+prtr_silent		5i	printer	will not echo on screen
 hard_cursor		HC	cursor is hard to see
 non_rev_rmcup		NR	enter_ca_mode does not reverse exit_ca_mode
 no_pad_char		NP	pad character does not exist
@@ -210,7 +209,7 @@ magic_cookie_glitch_ul	ug	number of blanks left by underline
 #
 max_colors		Co	maximum	numbers	of colors on screen
 max_pairs		pa	maximum	number of color-pairs on the screen
-no_color_video		NC	video attributes that can't be used with
+no_color_video		NC	video attributes that cannot be used with
 				colors
 #
 # The following	numeric	capabilities are present in the	SVr4.0 term
@@ -1036,7 +1035,7 @@ and the Lear Siegler
 .Tn ADM Ns \-3
 is described as
 .Bd -literal -offset indent
-l3\||\|adm3\||\|3\||\|LSI \s-1ADM\s0-3:\e
+l3\||\|adm3\||\|3\||\|LSI ADM-3:\e
 :am:bl=^G:cl=^Z:co#80:cr=^M:do=^J:le=^H:li#24:sf=^J:
 .Ed
 .Ss Parameterized Strings
@@ -1387,7 +1386,7 @@ to enter and exit delete mode
 (which is any mode the terminal needs to be placed in for
 .Sy \&dc
 to work).
-.Ss Highlighting, Underlining, and Visible  Bells
+.Ss Highlighting, Underlining, and Visible Bells
 If your terminal has one or more kinds of display attributes,
 these can be represented in a number of different ways.
 You should choose one display form as
@@ -1822,7 +1821,7 @@ from the status line can be given as
 .Sy \&ts
 and
 .Sy \&fs .
-.Pf ( Sy \&fs
+.Pf ( Xr \&fs
 must leave the cursor position in the same place that it was before
 .Sy \&ts .
 If necessary, the
@@ -1996,6 +1995,25 @@ Unfortunately, due to lack of a definition for string parameters in
 only
 .Xr terminfo 5
 supports these capabilities.
+.Pp
+For the
+.Xr xterm 1
+terminal emulator the traditional behavior in
+.Fx
+when exiting a pager such as
+.Xr less 1
+or
+.Xr more 1 ,
+or an editor such as
+.Xr vi 1
+is
+.Em NOT
+to clear the screen after the program exits.
+If you prefer to clear the screen there are a number of
+.Dq xterm-clear
+entries that add this capability in the
+.Nm
+file that you can use directly, or as examples.
 .Ss Glitches and Braindamage
 Hazeltine terminals, which do not allow `~' characters to be displayed,
 should indicate
@@ -2102,15 +2120,11 @@ Hash database file containing terminal descriptions (see
 .Xr tset 1 ,
 .Xr ul 1 ,
 .Xr vi 1 ,
+.Xr xterm 1 ,
 .Xr ncurses 3 ,
 .Xr printf 3 ,
 .Xr termcap 3 ,
 .Xr term 5
-.Sh HISTORY
-The
-.Nm
-file format appeared in
-.Bx 3 .
 .Sh CAVEATS AND BUGS
 The
 .Em Note :
@@ -2140,3 +2154,8 @@ The total length of a single entry (excluding only escaped newlines)
 may not exceed 1024.
 .Pp
 Not all programs support all entries.
+.Sh HISTORY
+The
+.Nm
+file format appeared in
+.Bx 3 .
