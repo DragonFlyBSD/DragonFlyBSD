@@ -33,6 +33,11 @@
  * SUCH DAMAGE.
  */
 
+#include <openssl/rsa.h>	/* public/private key functions */
+#include <openssl/pem.h>	/* public/private key file load */
+#include <openssl/err.h>
+#include <openssl/evp.h>	/* aes_256_cbc functions */
+
 /***************************************************************************
  *				CRYPTO HANDSHAKE			   *
  ***************************************************************************
@@ -41,7 +46,13 @@
  * 512-byte buffer to the other side in a symmetrical fashion.  This
  * buffer contains the following:
  *
- * (1) A random session key.
+ * (1) A random session key.  512 bits is specified.  We use aes_256_cbc()
+ *     and initialize the key with the first 256 bits and the iv[] with
+ *     the second.  Note that the transmitted and received session
+ *     keys are XOR'd together to create the session key used for
+ *     communications (so even if the verifier is compromised the session
+ *     will still be gobbly gook if the public key has not been completely
+ *     broken).
  *
  * (2) A verifier to determine that the decode was successful.  It encodes
  *     an XOR of each group of 4 bytes from the session key.
@@ -72,6 +83,12 @@ struct hammer2_handshake {
 };
 
 typedef struct hammer2_handshake hammer2_handshake_t;
+
+#define HAMMER2_AES_KEY_SIZE	32
+#define HAMMER2_AES_KEY_MASK	(HAMMER2_AES_KEY_SIZE - 1)
+#define HAMMER2_AES_TYPE	aes_256_cbc
+#define HAMMER2_AES_TYPE_EVP	EVP_aes_256_cbc()
+#define HAMMER2_AES_TYPE_STR	#HAMMER2_AES_TYPE
 
 /***************************************************************************
  *				LOW LEVEL MESSAGING			   *
@@ -120,14 +137,19 @@ struct hammer2_ioq {
 	       HAMMER2_MSGQ_STATE_AUXDATA2,
 	       HAMMER2_MSGQ_STATE_ERROR } state;
 	int		fifo_beg;		/* buffered data */
+	int		fifo_cdx;		/* encrypt/decrypt index */
 	int		fifo_end;
 	int		hbytes;			/* header size */
 	int		abytes;			/* aux_data size */
+	int		already;		/* aux_data already decrypted */
 	int		error;
 	int		seq;			/* salt sequencer */
 	int		msgcount;
+	EVP_CIPHER_CTX	ctx;
+	char		iv[HAMMER2_AES_KEY_SIZE]; /* encrypt or decrypt iv[] */
 	hammer2_msg_t	*msg;
 	hammer2_msg_queue_t msgq;
+	char		buf[HAMMER2_MSGBUF_SIZE]; /* staging buffer */
 };
 
 typedef struct hammer2_ioq hammer2_ioq_t;
@@ -146,6 +168,7 @@ typedef struct hammer2_ioq hammer2_ioq_t;
 #define HAMMER2_IOQ_ERROR_KEYXCHGFAIL	12	/* key exchange failed */
 #define HAMMER2_IOQ_ERROR_KEYFMT	13	/* key file format problem */
 #define HAMMER2_IOQ_ERROR_BADURANDOM	14	/* /dev/urandom is bad */
+#define HAMMER2_IOQ_ERROR_MSGSEQ	15	/* message sequence error */
 
 #define HAMMER2_IOQ_MAXIOVEC    16
 
@@ -165,7 +188,7 @@ struct hammer2_iocom {
 	int	flags;
 	int	rxmisc;
 	int	txmisc;
-	char	rxbuf[HAMMER2_MSGBUF_SIZE];	/* for ioq_rx only */
+	char	sess[HAMMER2_AES_KEY_SIZE];	/* aes_256_cbc key */
 };
 
 typedef struct hammer2_iocom hammer2_iocom_t;
@@ -175,6 +198,7 @@ typedef struct hammer2_iocom hammer2_iocom_t;
 #define HAMMER2_IOCOMF_WREQ	0x00000004	/* request write-avail event */
 #define HAMMER2_IOCOMF_WIDLE	0x00000008	/* request write-avail event */
 #define HAMMER2_IOCOMF_SIGNAL	0x00000010
+#define HAMMER2_IOCOMF_CRYPTED	0x00000020	/* encrypt enabled */
 
 /***************************************************************************
  *				HIGH LEVEL MESSAGING			   *

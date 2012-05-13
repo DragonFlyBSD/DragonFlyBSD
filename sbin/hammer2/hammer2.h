@@ -125,6 +125,14 @@ void hammer2_iocom_drain(hammer2_iocom_t *iocom);
 void hammer2_iocom_flush(hammer2_iocom_t *iocom);
 
 void hammer2_crypto_negotiate(hammer2_iocom_t *iocom);
+void hammer2_crypto_decrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
+void hammer2_crypto_decrypt_aux(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
+			hammer2_msg_t *msg, int already);
+int hammer2_crypto_encrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
+			struct iovec *iov, int n);
+void hammer2_crypto_encrypt_wrote(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
+			int nact);
+
 
 void hammer2_debug_remote(hammer2_msg_t *msg);
 void msg_printf(hammer2_msg_t *msg, const char *ctl, ...);

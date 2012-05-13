@@ -300,7 +300,7 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 	 * allocate a msg until we have its core header.
 	 */
 	bytes = ioq->fifo_end - ioq->fifo_beg;
-	nmax = sizeof(iocom->rxbuf) - ioq->fifo_end;
+	nmax = sizeof(ioq->buf) - ioq->fifo_end;
 	msg = ioq->msg;
 
 	switch(ioq->state) {
@@ -313,7 +313,7 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 		 */
 		if (bytes < (int)sizeof(msg->any.head)) {
 			n = read(iocom->sock_fd,
-				 iocom->rxbuf + ioq->fifo_end,
+				 ioq->buf + ioq->fifo_end,
 				 nmax);
 			if (n <= 0) {
 				if (n == 0) {
@@ -342,12 +342,14 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 		if (bytes < (int)sizeof(msg->any.head))
 			break;
 
-		flags = 0;
-		head = (void *)(iocom->rxbuf + ioq->fifo_beg);
-
 		/*
-		 * XXX Decrypt the core header
+		 * Calculate the header, decrypt data received so far.
+		 * Data will be decrypted in-place.  Partial blocks are
+		 * not immediately decrypted.
 		 */
+		hammer2_crypto_decrypt(iocom, ioq);
+		flags = 0;
+		head = (void *)(ioq->buf + ioq->fifo_beg);
 
 		/*
 		 * Check and fixup the core header.  Note that the icrc
@@ -414,11 +416,11 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 		 * book-keeping is easier if we don't bcopy() yet.
 		 */
 		if (bytes + nmax < ioq->hbytes) {
-			bcopy(iocom->rxbuf + ioq->fifo_beg, iocom->rxbuf,
-			      bytes);
+			bcopy(ioq->buf + ioq->fifo_beg, ioq->buf, bytes);
+			ioq->fifo_cdx -= ioq->fifo_beg;
 			ioq->fifo_beg = 0;
 			ioq->fifo_end = bytes;
-			nmax = sizeof(iocom->rxbuf) - ioq->fifo_end;
+			nmax = sizeof(ioq->buf) - ioq->fifo_end;
 		}
 		ioq->state = HAMMER2_MSGQ_STATE_HEADER2;
 		/* fall through */
@@ -460,9 +462,11 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 		}
 
 		/*
-		 * XXX Decrypt the extended header
+		 * Calculate the extended header, decrypt data received
+		 * so far.
 		 */
-		head = (void *)(iocom->rxbuf + ioq->fifo_beg);
+		hammer2_crypto_decrypt(iocom, ioq);
+		head = (void *)(ioq->buf + ioq->fifo_beg);
 
 		/*
 		 * Check the crc on the extended header
@@ -507,17 +511,24 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 		 * way so we can check the crc.
 		 */
 		assert(msg->aux_size == 0);
+		ioq->already = ioq->fifo_cdx - ioq->fifo_beg;
+		if (ioq->already > ioq->abytes)
+			ioq->already = ioq->abytes;
 		if (bytes >= ioq->abytes) {
-			bcopy(iocom->rxbuf + ioq->fifo_beg, msg->aux_data,
+			bcopy(ioq->buf + ioq->fifo_beg, msg->aux_data,
 			      ioq->abytes);
 			msg->aux_size = ioq->abytes;
 			ioq->fifo_beg += ioq->abytes;
+			if (ioq->fifo_cdx < ioq->fifo_beg)
+				ioq->fifo_cdx = ioq->fifo_beg;
 			bytes -= ioq->abytes;
 		} else if (bytes) {
-			bcopy(iocom->rxbuf + ioq->fifo_beg, msg->aux_data,
+			bcopy(ioq->buf + ioq->fifo_beg, msg->aux_data,
 			      bytes);
 			msg->aux_size = bytes;
 			ioq->fifo_beg += bytes;
+			if (ioq->fifo_cdx < ioq->fifo_beg)
+				ioq->fifo_cdx = ioq->fifo_beg;
 			bytes = 0;
 		}
 		ioq->state = HAMMER2_MSGQ_STATE_AUXDATA2;
@@ -559,10 +570,7 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 			break;
 		}
 		assert(msg->aux_size == ioq->abytes);
-
-		/*
-		 * XXX Decrypt the data
-		 */
+		hammer2_crypto_decrypt_aux(iocom, ioq, msg, ioq->already);
 
 		/*
 		 * Check aux_icrc, then we are done.
@@ -581,6 +589,18 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 		 */
 		assert(0);
 		break;
+	}
+
+	/*
+	 * Check the message sequence.  The iv[] should prevent any
+	 * possibility of a replay but we add this check anyway.
+	 */
+	if (msg && ioq->error == 0) {
+		if ((msg->any.head.salt & 255) != (ioq->seq & 255)) {
+			ioq->error = HAMMER2_IOQ_ERROR_MSGSEQ;
+		} else {
+			++ioq->seq;
+		}
 	}
 
 	/*
@@ -626,8 +646,11 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 		 * Leave the FIFO intact.
 		 */
 		iocom->flags |= HAMMER2_IOCOMF_RREQ;
+#if 0
+		ioq->fifo_cdx = 0;
 		ioq->fifo_beg = 0;
 		ioq->fifo_end = 0;
+#endif
 	} else {
 		/*
 		 * Return msg, clear the FIFO if it is now empty.
@@ -639,6 +662,7 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 		 */
 		if (ioq->fifo_beg == ioq->fifo_end) {
 			iocom->flags |= HAMMER2_IOCOMF_RREQ;
+			ioq->fifo_cdx = 0;
 			ioq->fifo_beg = 0;
 			ioq->fifo_end = 0;
 		} else {
@@ -676,11 +700,15 @@ hammer2_ioq_write(hammer2_msg_t *msg)
 	}
 
 	/*
-	 * Finish populating the msg fields
+	 * Finish populating the msg fields.  The salt ensures that the iv[]
+	 * array is ridiculously randomized and we also re-seed our PRNG
+	 * every 32768 messages just to be sure.
 	 */
 	msg->any.head.magic = HAMMER2_MSGHDR_MAGIC;
 	msg->any.head.salt = (random() << 8) | (ioq->seq & 255);
 	++ioq->seq;
+	if ((ioq->seq & 32767) == 0)
+		srandomdev();
 
 	/*
 	 * Calculate aux_icrc if 0, calculate icrc2, and finally
@@ -785,6 +813,15 @@ hammer2_iocom_flush(hammer2_iocom_t *iocom)
 		return;
 
 	/*
+	 * Encrypt and write the data.  The crypto code will move the
+	 * data into the fifo and adjust the iov as necessary.  If
+	 * encryption is disabled the iov is left alone.
+	 *
+	 * hammer2_crypto_encrypt_wrote()
+	 */
+	n = hammer2_crypto_encrypt(iocom, ioq, iov, n);
+
+	/*
 	 * Execute the writev() then figure out what happened.
 	 */
 	nact = writev(iocom->sock_fd, iov, n);
@@ -799,6 +836,7 @@ hammer2_iocom_flush(hammer2_iocom_t *iocom)
 		}
 		return;
 	}
+	hammer2_crypto_encrypt_wrote(iocom, ioq, nact);
 	if (nact == nmax)
 		iocom->flags &= ~HAMMER2_IOCOMF_WREQ;
 	else

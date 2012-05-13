@@ -35,10 +35,6 @@
 
 #include "hammer2.h"
 
-#include <openssl/rsa.h>
-#include <openssl/pem.h>
-#include <openssl/err.h>
-
 /*
  * Synchronously negotiate crypto for a new session.  This must occur
  * within 10 seconds or the connection is error'd out.
@@ -92,7 +88,8 @@ hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
 	char realname[128];
 	hammer2_handshake_t handtx;
 	hammer2_handshake_t handrx;
-	char buf[sizeof(handtx)];
+	char buf1[sizeof(handtx)];
+	char buf2[sizeof(handtx)];
 	char *ptr;
 	char *path;
 	struct stat st;
@@ -248,7 +245,7 @@ urandfail:
 	if (bcmp(&handrx, &handtx, sizeof(handtx)) == 0)
 		goto urandfail;			/* read all zeros */
 	close(fd);
-	ERR_load_crypto_strings();
+	/* ERR_load_crypto_strings(); openssl debugging */
 
 	/*
 	 * Handshake with the remote.
@@ -290,20 +287,20 @@ urandfail:
 			 */
 			do {
 				++*(int *)(ptr + 4);
-				if (RSA_private_encrypt(blksize, ptr, buf,
+				if (RSA_private_encrypt(blksize, ptr, buf1,
 					    keys[2], RSA_NO_PADDING) < 0) {
 					iocom->ioq_rx.error =
 						HAMMER2_IOQ_ERROR_KEYXCHGFAIL;
 				}
-			} while (buf[0] & 0xC0);
+			} while (buf1[0] & 0xC0);
 
-			if (RSA_public_encrypt(blksize, buf, ptr,
+			if (RSA_public_encrypt(blksize, buf1, buf2,
 					    keys[0], RSA_NO_PADDING) < 0) {
 				iocom->ioq_rx.error =
 					HAMMER2_IOQ_ERROR_KEYXCHGFAIL;
 			}
 		}
-		if (write(iocom->sock_fd, ptr, blksize) != (ssize_t)blksize) {
+		if (write(iocom->sock_fd, buf2, blksize) != (ssize_t)blksize) {
 			fprintf(stderr, "WRITE ERROR\n");
 		}
 	}
@@ -327,11 +324,11 @@ urandfail:
 		ptr -= (i & blkmask);
 		i += n;
 		if (keys[0] && (i & blkmask) == 0) {
-			if (RSA_private_decrypt(blksize, ptr, buf,
+			if (RSA_private_decrypt(blksize, ptr, buf1,
 					   keys[2], RSA_NO_PADDING) < 0)
 				iocom->ioq_rx.error =
 						HAMMER2_IOQ_ERROR_KEYXCHGFAIL;
-			if (RSA_public_decrypt(blksize, buf, ptr,
+			if (RSA_public_decrypt(blksize, buf1, ptr,
 					   keys[0], RSA_NO_PADDING) < 0)
 				iocom->ioq_rx.error =
 						HAMMER2_IOQ_ERROR_KEYXCHGFAIL;
@@ -372,9 +369,40 @@ keyxchgfail:
 	if (n != 0)
 		goto keyxchgfail;
 
-	if (DebugOpt) {
-		fprintf(stderr, "Remote data: %s\n", handrx.quickmsg);
+	/*
+	 * Calculate the session key and initialize the iv[].
+	 */
+	assert(HAMMER2_AES_KEY_SIZE * 2 == sizeof(handrx.sess));
+	for (i = 0; i < HAMMER2_AES_KEY_SIZE; ++i) {
+		iocom->sess[i] = handrx.sess[i] ^ handtx.sess[i];
+		iocom->ioq_rx.iv[i] = handrx.sess[HAMMER2_AES_KEY_SIZE + i] ^
+				      handtx.sess[HAMMER2_AES_KEY_SIZE + i];
+		iocom->ioq_tx.iv[i] = handrx.sess[HAMMER2_AES_KEY_SIZE + i] ^
+				      handtx.sess[HAMMER2_AES_KEY_SIZE + i];
 	}
+	printf("sess: ");
+	for (i = 0; i < HAMMER2_AES_KEY_SIZE; ++i)
+		printf("%02x", (unsigned char)iocom->sess[i]);
+	printf("\n");
+	printf("iv: ");
+	for (i = 0; i < HAMMER2_AES_KEY_SIZE; ++i)
+		printf("%02x", (unsigned char)iocom->ioq_rx.iv[i]);
+	printf("\n");
+
+	EVP_CIPHER_CTX_init(&iocom->ioq_rx.ctx);
+	EVP_DecryptInit_ex(&iocom->ioq_rx.ctx, HAMMER2_AES_TYPE_EVP, NULL,
+			   iocom->sess, iocom->ioq_rx.iv);
+	EVP_CIPHER_CTX_set_padding(&iocom->ioq_rx.ctx, 0);
+
+	EVP_CIPHER_CTX_init(&iocom->ioq_tx.ctx);
+	EVP_EncryptInit_ex(&iocom->ioq_tx.ctx, HAMMER2_AES_TYPE_EVP, NULL,
+			   iocom->sess, iocom->ioq_tx.iv);
+	EVP_CIPHER_CTX_set_padding(&iocom->ioq_tx.ctx, 0);
+
+	iocom->flags |= HAMMER2_IOCOMF_CRYPTED;
+
+	if (DebugOpt)
+		fprintf(stderr, "auth success: %s\n", handrx.quickmsg);
 done:
 	if (path)
 		free(path);
@@ -384,4 +412,123 @@ done:
 		RSA_free(keys[1]);
 	if (keys[1])
 		RSA_free(keys[2]);
+}
+
+/*
+ * Decrypt pending data in the ioq's fifo.  The data is decrypted in-place.
+ */
+void
+hammer2_crypto_decrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq)
+{
+	int p_len;
+	int n;
+	int i;
+	char buf[512];
+
+	if ((iocom->flags & HAMMER2_IOCOMF_CRYPTED) == 0)
+		return;
+	p_len = ioq->fifo_end - ioq->fifo_cdx;
+	p_len &= ~HAMMER2_AES_KEY_MASK;
+	if (p_len == 0)
+		return;
+	for (i = 0; i < p_len; i += n) {
+		n = (p_len - i > (int)sizeof(buf)) ?
+			(int)sizeof(buf) : p_len - i;
+		bcopy(ioq->buf + ioq->fifo_cdx + i, buf, n);
+		EVP_DecryptUpdate(&ioq->ctx,
+				  ioq->buf + ioq->fifo_cdx + i, &n,
+				  buf, n);
+	}
+	ioq->fifo_cdx += p_len;
+}
+
+/*
+ * Decrypt data in the message's auxilary buffer.  The data is decrypted
+ * in-place.
+ */
+void
+hammer2_crypto_decrypt_aux(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
+			   hammer2_msg_t *msg, int already)
+{
+	int p_len;
+	int n;
+	int i;
+	char buf[512];
+
+	if ((iocom->flags & HAMMER2_IOCOMF_CRYPTED) == 0)
+		return;
+	p_len = msg->aux_size;
+	assert((p_len & HAMMER2_AES_KEY_MASK) == 0);
+	if (p_len == 0)
+		return;
+	i = already;
+	while (i < p_len) {
+		n = (p_len - i > (int)sizeof(buf)) ?
+			(int)sizeof(buf) : p_len - i;
+		bcopy(msg->aux_data + i, buf, n);
+		EVP_DecryptUpdate(&ioq->ctx,
+				  msg->aux_data + i, &n,
+				  buf, n);
+		i += n;
+	}
+#if 0
+	EVP_DecryptUpdate(&iocom->ioq_rx.ctx,
+			  msg->aux_data, &p_len,
+			  msg->aux_data, p_len);
+#endif
+}
+
+int
+hammer2_crypto_encrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
+		       struct iovec *iov, int n)
+{
+	int p_len;
+	int i;
+	int already;
+	int nmax;
+
+	if ((iocom->flags & HAMMER2_IOCOMF_CRYPTED) == 0)
+		return (n);
+	nmax = sizeof(ioq->buf) - ioq->fifo_cdx;	/* max new bytes */
+	already = ioq->fifo_cdx - ioq->fifo_beg;	/* already encrypted */
+
+	for (i = 0; i < n; ++i) {
+		p_len = iov[i].iov_len;
+		if (p_len <= already) {
+			already -= p_len;
+			continue;
+		}
+		p_len -= already;
+		if (p_len > nmax)
+			p_len = nmax;
+		EVP_EncryptUpdate(&ioq->ctx,
+				  ioq->buf + ioq->fifo_cdx, &p_len,
+				  (char *)iov[i].iov_base + already, p_len);
+		ioq->fifo_cdx += p_len;
+		ioq->fifo_end += p_len;
+		nmax -= p_len;
+		if (nmax == 0)
+			break;
+		already = 0;
+	}
+	iov[0].iov_base = ioq->buf + ioq->fifo_beg;
+	iov[0].iov_len = ioq->fifo_cdx - ioq->fifo_beg;
+
+	return (1);
+}
+
+void
+hammer2_crypto_encrypt_wrote(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
+			     int nact)
+{
+	if ((iocom->flags & HAMMER2_IOCOMF_CRYPTED) == 0)
+		return;
+	if (nact == 0)
+		return;
+	ioq->fifo_beg += nact;
+	if (ioq->fifo_beg == ioq->fifo_end) {
+		ioq->fifo_beg = 0;
+		ioq->fifo_cdx = 0;
+		ioq->fifo_end = 0;
+	}
 }
