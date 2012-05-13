@@ -2,6 +2,49 @@
  OpenSSL CHANGES
  _______________
 
+ Changes between 1.0.0i and 1.0.0j [10 May 2012]
+
+  *) Sanity check record length before skipping explicit IV in DTLS
+     to fix DoS attack.
+
+     Thanks to Codenomicon for discovering this issue using Fuzz-o-Matic
+     fuzzing as a service testing platform.
+     (CVE-2012-2333)
+     [Steve Henson]
+
+  *) Initialise tkeylen properly when encrypting CMS messages.
+     Thanks to Solar Designer of Openwall for reporting this issue.
+     [Steve Henson]
+
+ Changes between 1.0.0h and 1.0.0i [19 Apr 2012]
+
+  *) Check for potentially exploitable overflows in asn1_d2i_read_bio
+     BUF_mem_grow and BUF_mem_grow_clean. Refuse attempts to shrink buffer
+     in CRYPTO_realloc_clean.
+
+     Thanks to Tavis Ormandy, Google Security Team, for discovering this
+     issue and to Adam Langley <agl@chromium.org> for fixing it.
+     (CVE-2012-2110)
+     [Adam Langley (Google), Tavis Ormandy, Google Security Team]
+
+ Changes between 1.0.0g and 1.0.0h [12 Mar 2012]
+
+  *) Fix MMA (Bleichenbacher's attack on PKCS #1 v1.5 RSA padding) weakness
+     in CMS and PKCS7 code. When RSA decryption fails use a random key for
+     content decryption and always return the same error. Note: this attack
+     needs on average 2^20 messages so it only affects automated senders. The
+     old behaviour can be reenabled in the CMS code by setting the
+     CMS_DEBUG_DECRYPT flag: this is useful for debugging and testing where
+     an MMA defence is not necessary.
+     Thanks to Ivan Nestlerode <inestlerode@us.ibm.com> for discovering
+     this issue. (CVE-2012-0884)
+     [Steve Henson]
+
+  *) Fix CVE-2011-4619: make sure we really are receiving a 
+     client hello before rejecting multiple SGC restarts. Thanks to
+     Ivan Nestlerode <inestlerode@us.ibm.com> for discovering this bug.
+     [Steve Henson]
+
  Changes between 1.0.0f and 1.0.0g [18 Jan 2012]
 
   *) Fix for DTLS DoS issue introduced by fix for CVE-2011-4109.

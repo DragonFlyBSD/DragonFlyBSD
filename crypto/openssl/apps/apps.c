@@ -109,7 +109,7 @@
  *
  */
 
-#ifndef _POSIX_C_SOURCE
+#if !defined(_POSIX_C_SOURCE) && defined(OPENSSL_SYS_VMS)
 #define _POSIX_C_SOURCE 2	/* On VMS, you need to define this to get
 				   the declaration of fileno().  The value
 				   2 is to make sure no function defined
@@ -1215,7 +1215,8 @@ STACK_OF(X509) *load_certs(BIO *err, const char *file, int format,
 	const char *pass, ENGINE *e, const char *desc)
 	{
 	STACK_OF(X509) *certs;
-	load_certs_crls(err, file, format, pass, e, desc, &certs, NULL);
+	if (!load_certs_crls(err, file, format, pass, e, desc, &certs, NULL))
+		return NULL;
 	return certs;
 	}	
 
@@ -1223,7 +1224,8 @@ STACK_OF(X509_CRL) *load_crls(BIO *err, const char *file, int format,
 	const char *pass, ENGINE *e, const char *desc)
 	{
 	STACK_OF(X509_CRL) *crls;
-	load_certs_crls(err, file, format, pass, e, desc, NULL, &crls);
+	if (!load_certs_crls(err, file, format, pass, e, desc, NULL, &crls))
+		return NULL;
 	return crls;
 	}	
 
