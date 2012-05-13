@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_color.3x,v 1.35 2010/12/20 00:50:58 tom Exp $
-.TH curs_color 3X ""
+.TH curs_color 3 ""
 .de bP
 .IP \(bu 4
 ..
@@ -206,7 +206,7 @@ historical implementations may use a single shared color palette.
 Note that setting an implicit background color via a color pair affects only
 character cells that a character write operation explicitly touches.  To change
 the background color used when parts of a window are blanked by erasing or
-scrolling operations, see \fBcurs_bkgd\fR(3X).
+scrolling operations, see \fBcurs_bkgd\fR(3).
 .PP
 Several caveats apply on 386 and 486 machines with VGA-compatible graphics:
 .bP
@@ -236,8 +236,8 @@ e.g., for the values returned by
 \fBcolor_content\fP and \fBpair_content\fP,
 and will treat those as optional parameters when null.
 .SH SEE ALSO
-\fBcurses\fR(3X),
-\fBcurs_initscr\fR(3X),
-\fBcurs_attr\fR(3X),
-\fBcurs_variables\fR(3X),
-\fBdefault_colors\fR(3X)
+\fBcurses\fR(3),
+\fBcurs_initscr\fR(3),
+\fBcurs_attr\fR(3),
+\fBcurs_variables\fR(3),
+\fBdefault_colors\fR(3)

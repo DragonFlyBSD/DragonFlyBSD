@@ -28,7 +28,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_addch.3x,v 1.32 2011/01/15 14:15:10 tom Exp $
-.TH curs_addch 3X ""
+.TH curs_addch 3 ""
 .SH NAME
 \fBaddch\fR,
 \fBwaddch\fR,
@@ -77,7 +77,7 @@ the ^-representation of the control character.
 Video attributes can be combined with a character argument passed to
 \fBaddch\fR or related functions by logical-ORing them into the character.
 (Thus, text, including attributes, can be copied from one place to another
-using \fBinch\fR and \fBaddch\fR.)  See the \fBcurs_attr\fR(3X) page for
+using \fBinch\fR and \fBaddch\fR.)  See the \fBcurs_attr\fR(3) page for
 values of predefined video attribute constants that can be usefully OR'ed
 into characters.
 .PP
@@ -164,7 +164,7 @@ were not documented in
 any publicly released System V.  However, many publicly available terminfos
 include \fBacsc\fR strings in which their key characters (pryz{|}) are
 embedded, and a second-hand list of their character descriptions has come
-to light.  The ACS-prefixed names for them were invented for \fBncurses\fR(3X).
+to light.  The ACS-prefixed names for them were invented for \fBncurses\fR(3).
 .LP
 The \fBTABSIZE\fR variable is implemented in some versions of curses,
 but is not part of X/Open curses.
@@ -173,15 +173,15 @@ If \fIch\fR is a carriage return,
 the cursor is moved to the beginning of the current row of the window.
 This is true of other implementations, but is not documented.
 .SH SEE ALSO
-\fBcurses\fR(3X),
-\fBcurs_attr\fR(3X),
-\fBcurs_clear\fR(3X),
-\fBcurs_inch\fR(3X),
-\fBcurs_outopts\fR(3X),
-\fBcurs_refresh\fR(3X),
-\fBcurs_variables\fR(3X),
+\fBcurses\fR(3),
+\fBcurs_attr\fR(3),
+\fBcurs_clear\fR(3),
+\fBcurs_inch\fR(3),
+\fBcurs_outopts\fR(3),
+\fBcurs_refresh\fR(3),
+\fBcurs_variables\fR(3),
 \fBputc\fR(3).
 .PP
 Comparable functions in the wide-character (ncursesw) library are
 described in
-\fBcurs_add_wch\fR(3X).
+\fBcurs_add_wch\fR(3).

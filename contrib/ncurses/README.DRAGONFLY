@@ -18,4 +18,5 @@ The .h files copied into base where created using configure opts:
 	--enable-termcap
 	--enable-bsdpad
 
-No files have been added or modified.
+The following files have been modified:
+	ncurses/tinfo/comp_scan.c

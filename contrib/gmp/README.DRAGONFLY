@@ -2,13 +2,13 @@
  GNU MULTIPLE PRECISION ARITHMETIC LIBRARY
 ===========================================
 
-Original Source can be downloaded from:
-http://gmplib.org/
+Original source can be downloaded from:
+ftp://ftp.gmplib.org/pub/gmp-5.0.5/
 
-file = gmp-5.0.2.tar.bz2
-date = 8 May 2011
-size = 2024576
-sha1 = 2968220e1988eabb61f921d11e5d2db5431e0a35
+file = gmp-5.0.5.tar.bz2
+date = 6 May 2012
+size = 2052144
+sha1 = 12a662456033e21aed3e318aef4177f4000afe3b
 
 A list of files and directories removed is in README.DELETED
 

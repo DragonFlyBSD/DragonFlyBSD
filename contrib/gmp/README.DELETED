@@ -55,11 +55,11 @@ mpn/power/
 mpn/powerpc32/
 mpn/powerpc64/
 mpn/pyr/
-mpn/s390/
+mpn/s390_32
+mpn/s390_64
 mpn/sh/
 mpn/sparc32/
 mpn/sparc64/
-mpn/thumb/
 mpn/vax/
 mpn/x86/
 mpn/x86_64/

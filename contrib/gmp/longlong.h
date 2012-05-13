@@ -1,7 +1,7 @@
 /* longlong.h -- definitions for mixed size 32/64 bit arithmetic.
 
 Copyright 1991, 1992, 1993, 1994, 1996, 1997, 1999, 2000, 2001, 2002, 2003,
-2004, 2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+2004, 2005, 2007, 2008, 2009, 2011 Free Software Foundation, Inc.
 
 This file is free software; you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -654,27 +654,172 @@ extern UWtype __MPN(udiv_qrnnd) _PROTO ((UWtype *, UWtype, UWtype, UWtype));
 #endif /* hppa */
 
 #if (defined (__i370__) || defined (__s390__) || defined (__mvs__)) && W_TYPE_SIZE == 32
-#define smul_ppmm(xh, xl, m0, m1) \
+#if defined (__zarch__) || defined (HAVE_HOST_CPU_s390_zarch)
+#define add_ssaaaa(sh, sl, ah, al, bh, bl)				\
+  do {									\
+/*  if (__builtin_constant_p (bl))					\
+      __asm__ ("alfi\t%1,%o5\n\talcr\t%0,%3"				\
+	       : "=r" (sh), "=&r" (sl)					\
+	       : "0"  (ah), "r" (bh), "%1" (al), "n" (bl) __CLOBBER_CC);\
+    else								\
+*/    __asm__ ("alr\t%1,%5\n\talcr\t%0,%3"				\
+	       : "=r" (sh), "=&r" (sl)					\
+	       : "0"  (ah), "r" (bh), "%1" (al), "r" (bl)__CLOBBER_CC);	\
+  } while (0)
+#define sub_ddmmss(sh, sl, ah, al, bh, bl)				\
+  do {									\
+/*  if (__builtin_constant_p (bl))					\
+      __asm__ ("slfi\t%1,%o5\n\tslbr\t%0,%3"				\
+	       : "=r" (sh), "=&r" (sl)					\
+	       : "0" (ah), "r" (bh), "1" (al), "n" (bl) __CLOBBER_CC);	\
+    else								\
+*/    __asm__ ("slr\t%1,%5\n\tslbr\t%0,%3"				\
+	       : "=r" (sh), "=&r" (sl)					\
+	       : "0" (ah), "r" (bh), "1" (al), "r" (bl) __CLOBBER_CC);	\
+  } while (0)
+#if __GMP_GNUC_PREREQ (4,5)
+#define umul_ppmm(xh, xl, m0, m1)					\
+  do {									\
+    union {UDItype __ll;						\
+	   struct {USItype __h, __l;} __i;				\
+	  } __x;							\
+    __x.__ll = (UDItype) (m0) * (UDItype) (m1);				\
+    (xh) = __x.__i.__h; (xl) = __x.__i.__l;				\
+  } while (0)
+#else
+#if 0
+/* FIXME: this fails if gcc knows about the 64-bit registers.  Use only
+   with a new enough processor pretending we have 32-bit registers.  */
+#define umul_ppmm(xh, xl, m0, m1)					\
+  do {									\
+    union {UDItype __ll;						\
+	   struct {USItype __h, __l;} __i;				\
+	  } __x;							\
+    __asm__ ("mlr\t%0,%2"						\
+	     : "=r" (__x.__ll)						\
+	     : "%0" (m0), "r" (m1));					\
+    (xh) = __x.__i.__h; (xl) = __x.__i.__l;				\
+  } while (0)
+#else
+#define umul_ppmm(xh, xl, m0, m1)					\
+  do {									\
+  /* When we have 64-bit regs and gcc is aware of that, we cannot simply use
+     DImode for the product, since that would be allocated to a single 64-bit
+     register, whereas mlr uses the low 32-bits of an even-odd register pair.
+  */									\
+    register USItype __r0 __asm__ ("0");				\
+    register USItype __r1 __asm__ ("1") = (m0);				\
+    __asm__ ("mlr\t%0,%3"						\
+	     : "=r" (__r0), "=r" (__r1)					\
+	     : "r" (__r1), "r" (m1));					\
+    (xh) = __r0; (xl) = __r1;						\
+  } while (0)
+#endif /* if 0 */
+#endif
+#if 0
+/* FIXME: this fails if gcc knows about the 64-bit registers.  Use only
+   with a new enough processor pretending we have 32-bit registers.  */
+#define udiv_qrnnd(q, r, n1, n0, d)					\
+  do {									\
+    union {UDItype __ll;						\
+	   struct {USItype __h, __l;} __i;				\
+	  } __x;							\
+    __x.__i.__h = n1; __x.__i.__l = n0;					\
+    __asm__ ("dlr\t%0,%2"						\
+	     : "=r" (__x.__ll)						\
+	     : "0" (__x.__ll), "r" (d));				\
+    (q) = __x.__i.__l; (r) = __x.__i.__h;				\
+  } while (0)
+#else
+#define udiv_qrnnd(q, r, n1, n0, d)					\
+  do {									\
+    register USItype __r0 __asm__ ("0") = (n1);				\
+    register USItype __r1 __asm__ ("1") = (n0);				\
+    __asm__ ("dlr\t%0,%4"						\
+	     : "=r" (__r0), "=r" (__r1)					\
+	     : "r" (__r0), "r" (__r1), "r" (d));			\
+    (q) = __r1; (r) = __r0;						\
+  } while (0)
+#endif /* if 0 */
+#else /* if __zarch__ */
+/* FIXME: this fails if gcc knows about the 64-bit registers.  */
+#define smul_ppmm(xh, xl, m0, m1)					\
   do {									\
     union {DItype __ll;							\
 	   struct {USItype __h, __l;} __i;				\
 	  } __x;							\
-    __asm__ ("lr %N0,%1\n\tmr %0,%2"					\
-	     : "=&r" (__x.__ll)						\
-	     : "r" (m0), "r" (m1));					\
+    __asm__ ("mr\t%0,%2"						\
+	     : "=r" (__x.__ll)						\
+	     : "%0" (m0), "r" (m1));					\
     (xh) = __x.__i.__h; (xl) = __x.__i.__l;				\
   } while (0)
-#define sdiv_qrnnd(q, r, n1, n0, d) \
+/* FIXME: this fails if gcc knows about the 64-bit registers.  */
+#define sdiv_qrnnd(q, r, n1, n0, d)					\
   do {									\
     union {DItype __ll;							\
 	   struct {USItype __h, __l;} __i;				\
 	  } __x;							\
     __x.__i.__h = n1; __x.__i.__l = n0;					\
-    __asm__ ("dr %0,%2"							\
+    __asm__ ("dr\t%0,%2"						\
 	     : "=r" (__x.__ll)						\
 	     : "0" (__x.__ll), "r" (d));				\
     (q) = __x.__i.__l; (r) = __x.__i.__h;				\
   } while (0)
+#endif /* if __zarch__ */
+#endif
+
+#if defined (__s390x__) && W_TYPE_SIZE == 64
+/* We need to cast operands with register constraints, otherwise their types
+   will be assumed to be SImode by gcc.  For these machines, such operations
+   will insert a value into the low 32 bits, and leave the high 32 bits with
+   garbage.  */
+#define add_ssaaaa(sh, sl, ah, al, bh, bl)				\
+  do {									\
+    __asm__ ("algr\t%1,%5\n\talcgr\t%0,%3"				\
+	       : "=r" (sh), "=&r" (sl)					\
+	       : "0"  ((UDItype)(ah)), "r" ((UDItype)(bh)),		\
+		 "%1" ((UDItype)(al)), "r" ((UDItype)(bl)) __CLOBBER_CC); \
+  } while (0)
+#define sub_ddmmss(sh, sl, ah, al, bh, bl)				\
+  do {									\
+    __asm__ ("slgr\t%1,%5\n\tslbgr\t%0,%3"				\
+	     : "=r" (sh), "=&r" (sl)					\
+	     : "0" ((UDItype)(ah)), "r" ((UDItype)(bh)),		\
+	       "1" ((UDItype)(al)), "r" ((UDItype)(bl)) __CLOBBER_CC);	\
+  } while (0)
+#define umul_ppmm(xh, xl, m0, m1)					\
+  do {									\
+    union {unsigned int __attribute__ ((mode(TI))) __ll;		\
+	   struct {UDItype __h, __l;} __i;				\
+	  } __x;							\
+    __asm__ ("mlgr\t%0,%2"						\
+	     : "=r" (__x.__ll)						\
+	     : "%0" ((UDItype)(m0)), "r" ((UDItype)(m1)));		\
+    (xh) = __x.__i.__h; (xl) = __x.__i.__l;				\
+  } while (0)
+#define udiv_qrnnd(q, r, n1, n0, d)					\
+  do {									\
+    union {unsigned int __attribute__ ((mode(TI))) __ll;		\
+	   struct {UDItype __h, __l;} __i;				\
+	  } __x;							\
+    __x.__i.__h = n1; __x.__i.__l = n0;					\
+    __asm__ ("dlgr\t%0,%2"						\
+	     : "=r" (__x.__ll)						\
+	     : "0" (__x.__ll), "r" ((UDItype)(d)));			\
+    (q) = __x.__i.__l; (r) = __x.__i.__h;				\
+  } while (0)
+#if 0 /* FIXME: Enable for z10 (?) */
+#define count_leading_zeros(cnt, x)					\
+  do {									\
+    union {unsigned int __attribute__ ((mode(TI))) __ll;		\
+	   struct {UDItype __h, __l;} __i;				\
+	  } __clr_cnt;							\
+    __asm__ ("flogr\t%0,%1"						\
+	     : "=r" (__clr_cnt.__ll)					\
+	     : "r" (x) __CLOBBER_CC);					\
+    (cnt) = __clr_cnt.__i.__h;						\
+  } while (0)
+#endif
 #endif
 
 #if (defined (__i386__) || defined (__i486__)) && W_TYPE_SIZE == 32
@@ -1271,7 +1416,7 @@ extern UWtype __MPN(udiv_qrnnd) _PROTO ((UWtype *, UWtype, UWtype, UWtype));
 #define count_leading_zeros(count, x) \
   __asm__ ("cntlzd %0,%1" : "=r" (count) : "r" (x))
 #define COUNT_LEADING_ZEROS_0 64
-#if __GMP_GNUC_PREREQ (4,4)
+#if 0 && __GMP_GNUC_PREREQ (4,4) /* Disable, this results in libcalls! */
 #define umul_ppmm(w1, w0, u, v) \
   do {									\
     typedef unsigned int __ll_UTItype __attribute__((mode(TI)));	\
@@ -1869,6 +2014,7 @@ extern UWtype mpn_udiv_qrnnd_r _PROTO ((UWtype, UWtype, UWtype, UWtype *));
     (q) = __MPN(udiv_w_sdiv) (&__r, nh, nl, d);				\
     (r) = __r;								\
   } while (0)
+__GMP_DECLSPEC UWtype __MPN(udiv_w_sdiv) (UWtype *, UWtype, UWtype, UWtype);
 #endif
 
 /* If udiv_qrnnd was not defined for this processor, use __udiv_qrnnd_c.  */

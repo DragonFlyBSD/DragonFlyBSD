@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_inchstr.3x,v 1.15 2010/12/04 18:36:44 tom Exp $
-.TH curs_inchstr 3X ""
+.TH curs_inchstr 3 ""
 .na
 .hy 0
 .SH NAME
@@ -68,7 +68,7 @@ the last argument, return a leading substring at most \fIn\fR characters long
 (exclusive of the trailing (chtype)0).
 Constants defined in \fB<curses.h>\fR can be used with the \fB&\fR (logical
 AND) operator to extract the character or the attribute alone from any position
-in the \fIchstr\fR [see \fBcurs_inch\fR(3X)].
+in the \fIchstr\fR [see \fBcurs_inch\fR(3)].
 .SH RETURN VALUE
 All routines return the integer \fBERR\fR upon failure and an integer value
 other than \fBERR\fR upon successful completion (the number of characters
@@ -92,8 +92,8 @@ These functions are described in the XSI Curses standard, Issue 4.  It is no
 more specific than the SVr4 documentation on the trailing 0.  It does specify
 that the successful return of the functions is \fBOK\fR.
 .SH SEE ALSO
-\fBcurses\fR(3X), \fBcurs_inch\fR(3X).
+\fBcurses\fR(3), \fBcurs_inch\fR(3).
 .PP
 Comparable functions in the wide-character (ncursesw) library are
 described in
-\fBcurs_in_wchstr\fR(3X).
+\fBcurs_in_wchstr\fR(3).

@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: panel.3x,v 1.17 2010/10/02 23:22:44 tom Exp $
-.TH panel 3X ""
+.TH panel 3 ""
 .ds n 5
 .ds d @TERMINFO@
 .SH NAME
@@ -68,7 +68,7 @@ panel \- panel stack extension for curses
 \fBint del_panel(PANEL *pan)\fR
 .br
 .SH DESCRIPTION
-Panels are \fBcurses\fR(3X) windows with the added feature of
+Panels are \fBcurses\fR(3) windows with the added feature of
 depth.  Panel functions allow the use of stacked windows and ensure
 the proper portions of each window and the curses \fBstdscr\fR window are
 hidden or displayed when panels are added, moved, modified or removed.
@@ -80,7 +80,7 @@ A window is associated with every panel. The panel routines enable
 you to create, move, hide, and show panels, as well as position a
 panel at any desired location in the stack.
 .P
-Panel routines are a functional layer added to \fBcurses\fR(3X), make only
+Panel routines are a functional layer added to \fBcurses\fR(3), make only
 high-level curses calls, and work anywhere terminfo curses does.
 .SH FUNCTIONS
 .TP
@@ -133,7 +133,7 @@ to move a panel window.
 .B replace_panel(pan,window)
 replaces the current window of panel with \fBwindow\fR (useful, for
 example if you want to resize a panel; if you're using \fBncurses\fR,
-you can call \fBreplace_panel\fR on the output of \fBwresize\fR(3X)).
+you can call \fBreplace_panel\fR on the output of \fBwresize\fR(3)).
 It does not change the position of the panel in the stack.
 .TP
 .B panel_above(pan)
@@ -182,8 +182,8 @@ interface for the panels library
 libpanel.a
 the panels library itself
 .SH SEE ALSO
-\fBcurses\fR(3X),
-\fBcurs_variables\fR(3X),
+\fBcurses\fR(3),
+\fBcurs_variables\fR(3),
 .PP
 This describes \fBncurses\fR
 version @NCURSES_MAJOR@.@NCURSES_MINOR@ (patch @NCURSES_PATCH@).

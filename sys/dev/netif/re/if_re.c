@@ -269,6 +269,10 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD | RE_C_STOP_RXTX |
 	  RE_C_FASTE },
 
+	{ RE_HWREV_8105E,	RE_MACVER_UNKN,		ETHERMTU,
+	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
+	  RE_C_STOP_RXTX | RE_C_FASTE },
+
 	{ RE_HWREV_NULL, 0, 0, 0 }
 };
 

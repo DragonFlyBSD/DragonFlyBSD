@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_print.3x,v 1.10 2010/12/04 18:40:45 tom Exp $
-.TH curs_print 3X ""
+.TH curs_print 3 ""
 .SH NAME
 \fBmcprint\fR \- ship binary data to printer
 .SH SYNOPSIS
@@ -59,10 +59,10 @@ Couldn't allocate sufficient memory to buffer the printer write.
 When \fBmcprint\fR succeeds, it returns the number of characters actually
 sent to the printer.
 .SH PORTABILITY
-The \fBmcprint\fR call was designed for \fBncurses\fR(3X), and is not found
+The \fBmcprint\fR call was designed for \fBncurses\fR(3), and is not found
 in SVr4 curses, 4.4BSD curses, or any other previous version of curses.
 .SH BUGS
 Padding in the \fBmc5p\fR, \fBmc4\fR and \fBmc5\fR capabilities will not be
 interpreted.
 .SH SEE ALSO
-\fBcurses\fR(3X)\fR
+\fBcurses\fR(3)\fR

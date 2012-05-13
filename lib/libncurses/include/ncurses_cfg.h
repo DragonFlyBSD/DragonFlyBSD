@@ -55,8 +55,8 @@
 #define MIXEDCASE_FILENAMES 1
 #define USE_SYSMOUSE 1
 #define USE_DATABASE 1
-#define TERMINFO_DIRS "/home/marino/share/terminfo"
-#define TERMINFO "/home/marino/share/terminfo"
+#define TERMINFO_DIRS "/usr/local/share/terminfo"
+#define TERMINFO "/usr/local/share/terminfo"
 #define HAVE_BIG_CORE 1
 #define USE_TERMCAP 1
 #define TERMPATH "/etc/termcap:/usr/share/misc/termcap"

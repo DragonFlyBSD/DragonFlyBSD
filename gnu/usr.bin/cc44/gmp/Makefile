@@ -8,9 +8,8 @@ CONTRIBDIR=	${.CURDIR}/../../../../contrib/gmp
 
 CFLAGS+=	-D__GMP_WITHIN_GMP -I${CONTRIBDIR} -I${.OBJDIR} -I${.CURDIR}
 CFLAGS+=	-I${CONTRIBDIR}/mpn/generic
-CFLAGS+=	-D__LONG_INT_BITS=${LONG_INT_BITS}
+CFLAGS+=	-D__LONG_INT_BYTES=${LONG_INT_BYTES}
 CFLAGS+=	-D__INT_BITS=${INT_BITS}
-CFLAGS+=	-D__SHORT_BITS=${SHORT_BITS}
 CFLAGS+=	-DHAVE_HOST_CPU_FAMILY_${CPU_FAMILY}=1
 
 
@@ -85,10 +84,10 @@ MPZ_OBJECTS = mpz/abs$U.lo mpz/add$U.lo mpz/add_ui$U.lo			\
   mpz/urandomm$U.lo mpz/xor$U.lo
 
 MPQ_OBJECTS = mpq/abs$U.lo mpq/aors$U.lo				\
-  mpq/canonicalize$U.lo mpq/clear$U.lo					\
+  mpq/canonicalize$U.lo mpq/clear$U.lo mpq/clears$U.lo			\
   mpq/cmp$U.lo mpq/cmp_si$U.lo mpq/cmp_ui$U.lo mpq/div$U.lo		\
   mpq/get_d$U.lo mpq/get_den$U.lo mpq/get_num$U.lo mpq/get_str$U.lo	\
-  mpq/init$U.lo mpq/inp_str$U.lo mpq/inv$U.lo				\
+  mpq/init$U.lo mpq/inits$U.lo mpq/inp_str$U.lo mpq/inv$U.lo		\
   mpq/md_2exp$U.lo mpq/mul$U.lo mpq/neg$U.lo mpq/out_str$U.lo		\
   mpq/set$U.lo mpq/set_den$U.lo mpq/set_num$U.lo			\
   mpq/set_si$U.lo mpq/set_str$U.lo mpq/set_ui$U.lo			\

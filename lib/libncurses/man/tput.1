@@ -95,7 +95,7 @@ If the capability is a string that takes parameters, the arguments
 Most parameters are numbers.
 Only a few terminfo capabilities require string parameters;
 \fB@TPUT@\fR uses a table to decide which to pass as strings.
-Normally \fB@TPUT@\fR uses \fBtparm\fR (3X) to perform the substitution.
+Normally \fB@TPUT@\fR uses \fBtparm\fR (3) to perform the substitution.
 If no parameters are given for the capability,
 \fB@TPUT@\fR writes the string without performing the substitution.
 .TP
@@ -109,7 +109,7 @@ meaning of the \fB0\fR and \fB1\fR boolean and string exit codes (see the
 EXIT CODES section).
 .IP
 Again, \fB@TPUT@\fR uses a table and the presence of parameters in its input
-to decide whether to use \fBtparm\fR (3X),
+to decide whether to use \fBtparm\fR (3),
 and how to interpret the parameters.
 .TP
 \fB\-V\fR

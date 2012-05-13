@@ -35,7 +35,7 @@
 .\" $Id: terminfo.head,v 1.18 2010/07/31 16:08:48 tom Exp $
 .TH terminfo 5 "" "" "File Formats"
 .ds n 5
-.ds d /home/marino/share/terminfo
+.ds d /usr/local/share/terminfo
 .SH NAME
 terminfo \- terminal capability data base
 .SH SYNOPSIS
@@ -46,7 +46,7 @@ is a data base describing terminals, used by screen-oriented programs such as
 \fBnvi\fR(1),
 \fBrogue\fR(1)
 and libraries such as
-\fBcurses\fR(3X).
+\fBcurses\fR(3).
 .I Terminfo
 describes terminals by giving a set of capabilities which they
 have, by specifying how to perform screen operations, and by
@@ -2171,7 +2171,7 @@ and
 .B rc
 (save and restore cursor) commands may be useful for ensuring that
 your synthesized insert/delete string does not move the cursor.
-(Note that the \fBncurses\fR(3X) library does this synthesis
+(Note that the \fBncurses\fR(3) library does this synthesis
 automatically, so you need not compose insert/delete strings for
 an entry with \fBcsr\fR).
 .PP
@@ -3323,10 +3323,10 @@ files containing terminal descriptions
 .SH SEE ALSO
 \fBtic\fR(1M),
 \fBinfocmp\fR(1M),
-\fBcurses\fR(3X),
+\fBcurses\fR(3),
 \fBprintf\fR(3),
 \fBterm\fR(\*n).
-\fBterm_variables\fR(3X).
+\fBterm_variables\fR(3).
 .SH AUTHORS
 Zeyd M. Ben-Halim, Eric S. Raymond, Thomas E. Dickey.
 Based on pcurses by Pavel Curtis.

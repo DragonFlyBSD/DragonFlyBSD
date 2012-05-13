@@ -21,7 +21,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 void
-mpq_swap (mpq_ptr u, mpq_ptr v)
+mpq_swap (mpq_ptr u, mpq_ptr v) __GMP_NOTHROW
 {
   mp_ptr up, vp;
   mp_size_t usize, vsize;
