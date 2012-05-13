@@ -144,12 +144,12 @@ agile|agiles|sri agiles:\
 # least one line with no tabs in it, and once you tab through that line,
 # it completely weirds out.
 dtc|ps|dtc382|382:\
-	:do=^J:al=^P^Z:am:le=^H:\
-	:bs:co#80:ce=^P^U:cl=20^P^]:cm=%r^P^Q%.%.:dc=^X:\
-	:dl=^P^S:ei=^Pi:ho=^P^R:im=^PI:ve=^Pb:vs=^PB:pc=\177:te=20^P^]:\
-	:li#24:nd=^PR:.se=^P \200:.so=^P \002^PF:us=^P \020:ue=^P \200:\
-	:up=^P^L:nc:xr:xs:da:db:.pt:cr=^P^M:cd=^P^U^P^S^P^S:\
-	:if=/usr/share/tabset/dtc382:
+	:am:da:db:xs:\
+	:co#80:li#24:lm#96:\
+	:al=^P^Z:bl=^G:cd=\020\025\020\023\020\023:ce=^P^U:\
+	:cl=20\020\035:cm=\020\021%r%.%.:cr=^P^M:dc=^X:dl=^P^S:\
+	:ei=^Pi:ho=^P^R:im=^PI:le=^H:nd=^PR:pc=\177:sf=^J:te=:\
+	:ti=20\020\035:ue=^P \200:up=^P^L:us=^P ^P:ve=^Pb:vs=^PB:
 dtc300s|300|300s|dtc 300s:\
 	:ct=\E3:st=\E1:do=^J:\
 	:kb=^h:le=^H:bs:co#132:hc:hu=\EH:hd=\Eh:os:pt:up=^Z:
@@ -209,14 +209,20 @@ x1720|1700|x1750|xerox 1720:\
 # To use the labels, use FL=\E[%d;00q%-16s
 #
 5410|4410|tty5410|att4410|AT&T Teletype 5410 terminal with 80 columns:\
-	:al=\E[L:am:bs:cd=\E[J:ce=\E[K:cl=\E[H\E[J:\
-	:cm=5\E[%i%2;%2H:co#80:dc=\E[P:dl=\E[M:ic=\E[@:\
-	:kd=\E[B:kh=\E[H:kl=\E[D:kr=\E[C:ku=\E[A:\
-	:li#24:nd=\E[C:se=\E[m:so=\E[2;7m:sr=\EM:\
-	:ue=\E[m:up=\E[A:us=\E[4m:EE=\E[m:BO=\E[0;7m:DS=\E[2m:\
-	:KM=/usr/lib/ua/kmap.5410:is=\E[0m^O\E[?6l:kn#8:\
-	:k1=\EOc:k2=\EOd:k3=\EOe:k4=\EOf:k4=\EOg:k6=\EOh:\
-	:k7=\EOi:k8=\EOj:ko=nd,up,ho:
+	:am:hs:mi:ms:xo:\
+	:Nl#8:co#80:it#8:lh#2:li#24:lw#8:ws#80:\
+	:ac=++,,--..00``aaffgghhjjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~:\
+	:ae=^O:al=\E[L:as=^N:bl=^G:cd=\E[J:ce=\E[K:cl=\E[H\E[J:\
+	:cm=\E[%i%d;%dH:cr=^M:cs=\E[%i%d;%dr:dc=\E[P:dl=\E[M:\
+	:do=\E[B:ei=:fs=\E8:ho=\E[H:i1=\E[?3l\E)0:\
+	:i2=\E[1;03q   f1           \EOP\E[2;03q   f2           \EOQ\E[3;03q   f3           \EOR\E[4;03q   f4           \EOS\E[5;03q   f5           \EOT\E[6;03q   f6           \EOU\E[7;03q   f7           \EOV\E[8;03q   f8           \EOW:\
+	:ic=\E[@:im=:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:k5=\EOT:\
+	:k6=\EOU:k7=\EOV:k8=\EOW:kC=\E[2J:kH=\E[24;1H:kb=^H:\
+	:kd=\E[B:kh=\E[H:kl=\E[D:kr=\E[C:ku=\E[A:le=^H:ll=\E[24H:\
+	:mb=\E[5m:md=\E[2;7m:me=\E[0m:mh=\E[2m:mk=\E[8m:mr=\E[7m:\
+	:nd=\E[C:nw=^M^J:rc=\E8:rs=\Ec\E[?3l\E[2;0y:sc=\E7:\
+	:se=\E[m:sf=^J:so=\E[7m:sr=\EM:ta=^I:ts=\E7\E[25;%+^AH:\
+	:ue=\E[m:up=\E[A:us=\E[4m:bs:
 # AT&T 630 MTG DMD from muller%sdcc7@ucsd.edu (Keith Muller)
 att630|dmd630|ATT630|630DMD|630dmd|630MTG|AT&T 630 windowing terminal:\
 	:am:da:db:ms:bs:co#80:it#8:li#60:lm#0:\
@@ -240,21 +246,54 @@ dmd620-w|att620-w|ATT620-w|620DMD-w|620MTG-w|AT&T 620 windowing terminal 132 col
 	:li#24:co#132:tc=att630:
 # AT&T Teletype 5420 Terminal (a.k.a. 4415) June 5, 1985
 5420|4415|tty5420|att4415|AT&T Teletype 5420 terminal:\
-	:al=\E[L:am:bs:cd=\E[J:ce=\E[K:cl=\E[H\E[J:\
-	:cm=\E[%i%2;%2H:co#80:dc=\E[P:dl=\E[M:im=\E[4h:ei=\E[4l:\
-	:kd=\E[B:kh=\E[H:kl=\E[D:kr=\E[C:ku=\E[A:\
-	:li#24:nd=\E[C:se=\E[m:so=\E[2;7m:sr=\EM:\
-	:ue=\E[m:up=\E[A:us=\E[4m:EE=\E[m:BO=\E[0;7m:DS=\E[2m:\
-	:KM=/usr/lib/ua/kmap.5420:\
-	:is=\E[0m^O\E[1;2;3;4;6l\E[12;13;14;20l\E[?6;97;99l\E[?7h\E[4i\Ex\E[25;1j\212\E[8;0j\E[9;0j\E[10;0j\E[19;1j:\
-	:db:mi:pt:kn#8:k1=\EOc:k2=\EOd:k3=\EOe:k4=\EOf:k5=\EOg:k6=\EOh:\
-	:k7=\EOi:k8=\EOj:ve=\E[11;0j:\
-	:vs=\E[11;1j:ko=bt,nd,up,dc,dl,ho,im,al:
-# AT&T Teletype 5425 Terminal (a.k.a 4425) June 5, 1985
-5425|4425|tty5425|att4425|AT&T Teletype 5425:\
-	:FL=\E[%d;00q%-16s\E~:FE=\E|:KM=/usr/lib/ua/kmap.5425:\
-	:is=\E[0m^O\E[1;2;3;4;6l\E[12;13;14;20l\E[?6l\E[?7h\E[4i\E[9;0j\E[10;0j\E[11;0j\E[21;1j\E[25;1j\212:\
-	:ve=\E[12;0j:vs=\E[12;1j:tc=5420:
+	:bs:db:mi:xo:\
+	:Nl#8:lh#2:lm#78:lw#8:ws#55:\
+	:@1=\Et:@7=\Ez:@8=\Eent:AL=\E[%dL:CM=\E[%i%d;%dt:\
+	:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:IC=\E[%d@:LE=\E[%dD:LF=\E|:\
+	:LO=\E~:RA=\E[?7l:RI=\E[%dC:SA=\E[?7h:SF=\E[%dE:SR=\E[%dF:\
+	:UP=\E[%dA:bt=\E[Z:ch=\E[%+^AG:cl=\E[x\E[J:\
+	:cm=\E[%i%d;%dx:ct=\E[3g:cv=\E[%+^Ad:ec=\E[%ds\E[%dD:\
+	:ei=\E[4l:ho=\E[x:i1=100\E[?3l:i2=\E[?5l:ic@:im=\E[4h:\
+	:is=\E[m\017\E[1;2;3;4;6l\E[12;13;14;20l\E[?6;97;99l\E[?7h\E[4i\Ex\E[21;1j\212:\
+	:k1=\EOc:k2=\EOd:k3=\EOe:k4=\EOf:k5=\EOg:k6=\EOh:k7=\EOi:\
+	:k8=\EOj:kA=\E[L:kB=\E[Z:kD=\E[P:kE=\E[2K:kF=\E[T:kH=\Eu:\
+	:kI=\E[4h:kL=\E[M:kN=\E[U:kP=\E[V:kR=\E[S:\
+	:ke=\E[19;0j\E[21;1j\212:ks=\E[19;1j\E[21;4j\Eent:\
+	:l1=F1:l2=F2:l3=F3:l4=F4:l5=F5:l6=F6:l7=F7:l8=F8:ll=\Ew:\
+	:me=\E[0m\017:mp=\EV:pf=\E[?9i:po=\E[?4i:ps=\E[?2i:st=\EH:\
+	:ts=\E7\E[25;%+^HH:vb=\E[?5h\E[?5l:ve=\E[11;0j:\
+	:vs=\E[11;1j:tc=att4410:
+# The Teletype 5425 is really version 2 of the Teletype 5420. It
+# is quite similar, except for some minor differences. No page
+# mode, for example, so all of the :cm: sequences used above have
+# to change back to what's being used for the 5410. Many of the
+# option settings have changed their numbering as well.
+#
+# This has been tested on a preliminary model.
+#
+# (att5425: added <rmam>/<smam> based on the init string -- esr)
+# (sgr removed to fit entry within 1023 bytes)
+# (acsc removed to fit entry within 1023 bytes)
+# (terminfo-only capabilities suppressed to fit entry within 1023 bytes)
+att5425|tty5425|att4425|AT&T 4425/5425:\
+	:am:da:db:hs:mi:ms:xn:xo:\
+	:co#80:it#8:li#24:lm#78:ws#55:\
+	:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:IC=\E[%d@:\
+	:LE=\E[%dD:RI=\E[%dC:SF=\E[%dE:SR=\E[%dF:UP=\E[%dA:ae=^O:\
+	:al=\E[L:as=^N:bl=^G:bt=\E[Z:cd=\E[J:ce=\E[K:cl=\E[H\E[J:\
+	:cm=\E[%i%d;%dH:cr=^M:cs=\E[%i%d;%dr:ct=\E[3g:dc=\E[P:\
+	:dl=\E[M:do=^J:ec=\E[%ds\E[%dD:ei=\E[4l:fs=\E8:ho=\E[H:\
+	:i1=100\E<\E[?3l:i2=\E[?5l:im=\E[4h:\
+	:is=\E[m\017\E[1;2;3;4;6l\E[12;13;14;20l\E[?6;97;99l\E[?7h\E[4i\Ex\E[25;1j\212:\
+	:k1=\EOc:k2=\EOd:k3=\EOe:k4=\EOf:k5=\EOg:k6=\EOh:k7=\EOi:\
+	:k8=\EOj:kD=\E[P:kI=\E[4h:kb=^H:kd=\E[B:\
+	:ke=\E[21;0j\E[25;1j\212:kh=\E[H:kl=\E[D:kr=\E[C:\
+	:ks=\E[21;1j\E[25;4j\Eent\E~:ku=\E[A:le=^H:ll=\E[24H:\
+	:mb=\E[5m:md=\E[2;7m:me=\E[0m:mh=\E[2m:mr=\E[7m:nd=\E[C:\
+	:nw=^M^J:rc=\E8:rs=\Ec\E[?3l\E[2;0y:sc=\E7:se=\E[m:sf=^J:\
+	:so=\E[7m:sr=\EM:st=\EH:ta=^I:ts=\E7\E[25;%+^HH:ue=\E[m:\
+	:up=\E[A:us=\E[4m:vb=\E[?5h\E[?5l:ve=\E[12;0j:\
+	:vs=\E[12;1j:
 t4|4420|tty4420|Teletype 4420:\
 	:vs=\ER:ve=\ER:am:da:db:mi:cr=\EG:\
 	:nl=\EG\EB:li#23:\
@@ -262,12 +301,16 @@ t4|4420|tty4420|Teletype 4420:\
 	:bs:up=\E7:do=\EB:nd=\EC:al=\EL:\
 	:dl=\EM:dc=\EP:ic=\E\136:sf=\EH\EM\EY5 :sr=\ET:kb=^H:
 pc6300plus|6300|6300plus:\
-	:al=\E[1L:am:bs:cd=\E[0J:ce=\E[0K:cl=\E[2J\E[H:cm=\E[%i%2;%2H:co#80:\
-	:dc=\E[1P:dl=\E[1M:do=\E[B:ho=\E[H:\
-	:ic=\E[1@:kb=\10:kd=\E[B:kl=\E[D:kr=\E[C:ku=\E[A:li#24:\
-	:k1=\EOc:k2=\EOd:k3=\EOe:k4=\EOf:k5=\EOg:k6=\EOh:k7=\EOi:k8=\EOj:\
-	:k9=\EOk:k10=\EOu:nd=\E[C:se=\E[m:so=\E[7m:ue=\E[m:up=\E[A:us=\E[4m:\
-	:EE=\E[m:BO=\E[0;7m:CV=\E[=C:CI=\E[=1C:KM=/usr/lib/ua/kmap.s5:
+	:am:bs:xo:\
+	:co#80:li#24:\
+	:al=\E[1L:bl=^G:cd=\E[0J:ce=\E[0K:cl=\E[2J\E[H:\
+	:cm=\E[%i%2;%2H:cr=^M:ct=\E[3g:dc=\E[1P:dl=\E[1M:do=\E[B:\
+	:ei=:ho=\E[H:ic=\E[1@:im=:k1=\EOc:k2=\EOd:k3=\EOe:k4=\EOf:\
+	:k5=\EOg:k6=\EOh:k7=\EOi:k8=\EOj:k9=\EOk:k;=\EOu:kb=^H:\
+	:kd=\E[B:kl=\E[D:kr=\E[C:ku=\E[A:le=^H:mb=\E[5m:md=\E[1m:\
+	:me=\E[m:mh=\E[2m:mk=\E[9m:mr=\E[7m:nd=\E[C:nw=^M^J:\
+	:se=\E[m:sf=^J:so=\E[7m:st=\EH:ue=\E[m:up=\E[A:us=\E[4m:\
+	:ve=\E[=1C:vi=\E[=C:
 # AT&T 6386 decompiled and hacked from SVR3.1 terminfo
 # From: caron@polya.Stanford.EDU (Ilan G. Caron)
 # Problems:  (1) The mode lines are screwed up - they're not in standout
@@ -296,8 +339,19 @@ AT386|at386|386AT|386at|at/386 console:\
 	:se=\E[m:sf=\E[S:so=\E[43;30m:ta=\t:ue=\E[m:up=\E[A:\
 	:sr=\E[T:TC=\E[%d@:IC=\E[%d@:\
 	:us=\E[4m:vb=^G:bc=\E[D:
-s4|PC7300|unixpc|pc7300|7300|3b1|Safari 4:\
-	:so=\E[2;7m:DS=\E[2m:XS=\E[9m:KM=/usr/lib/ua/kmap.s4:tc=pc6300plus:
+att7300|unixpc|pc7300|3b1|s4|AT&T UNIX PC Model 7300:\
+	:am:xo:\
+	:co#80:it#8:li#24:\
+	:AL=\E[%dL:DL=\E[%dM:DO=\E[%dB:LE=\E[%dD:RI=\E[%dC:\
+	:UP=\E[%dA:al=\E[L:bl=^G:bt=\E^I:cd=\E[0J:ce=\E[0K:\
+	:cl=\E[2J\E[H:cm=\E[%i%d;%dH:cr=^M:dc=\E[P:dl=\E[M:\
+	:do=\E[B:ei=:ho=\E[H:i1=\017\E[=1w:ic=\E[@:im=:k1=\EOc:\
+	:k2=\EOd:k3=\EOe:k4=\EOf:k5=\EOg:k6=\EOh:k7=\EOi:k8=\EOj:\
+	:kD=\ENf:kI=\ENj:kN=\E[U:kP=\E[V:kb=^H:kd=\E[B:kh=\E[H:\
+	:kl=\E[D:kr=\E[C:ku=\E[A:le=^H:mb=\E[9m:md=\E[1m:\
+	:me=\E[0;10m:mh=\E[2m:mr=\E[7m:nd=\E[C:nw=\EE:se=\E[m:\
+	:sf=^J:so=\E[7m:sr=\EM:ue=\E[m:up=\E[A:us=\E[4m:ve=\E[=0C:\
+	:vi=\E[=1C:
 # AT&T Teletype 610 Terminal
 b610|610|610bct|tty610:\
 	:CV=\E[25h:CI=\E[25l:KM=/usr/lib/ua/kmap.s4:\
@@ -322,10 +376,13 @@ dm1520|dm1521|1521|1520|datamedia 1520:\
 	:ku=^_:kd=^J:kl=^H:kr=^\:kh=^Y:\
 	:li#24:nd=^\:up=^_:xn:ma=^\ ^_^P^YH:pt:
 dm2500|datamedia2500|2500|datamedia 2500:\
-	:do=^J:al=15^P\n^X^]^X^]:le=^H:bs:ce=^W:cl=^^^^\177:\
-	:cm=^L%r%n%.%.:co#80:dc=10*^P\b^X^]:dl=10*^P^Z^X^]:\
-	:dm=^P:ed=^X^]:ei=10\377\377^X^]:ho=^B:ic=10*^P^\^X^]:\
-	:im=^P:li#24:nc:nd=^\:pc=\377:so@=^N:se=^X^]:up=^Z:
+	:bs:nc:\
+	:co#80:li#24:\
+	:al=15\020\n\030\035\030\035:bl=^G:ce=^W:cl=^^^^\177:\
+	:cm=\014%r%n%.%.:dc=10*\020\010\030\035:\
+	:dl=10*\020\032\030\035:dm=^P:do=^J:ed=^X^]:\
+	:ei=10\377\377\030\035:ho=^B:ic=10*\020\034\030\035:\
+	:im=^P:le=^H:nd=^\:pc=\377:se=^X^]:sf=^J:so=^N:up=^Z:
 dm3025|datamedia 3025a:\
 	:MT:is=\EQ\EU\EV:do=^J:\
 	:al=130\EP\n\EQ:le=^H:bs:cd=2\EJ:ce=\EK:cl=2\EM:cm=\EY%r%+ %+ :\
@@ -559,20 +616,19 @@ luna|luna68k|LUNA68K Bitmap console:\
 	:li#46:co#88:tc=ansi:
 # SCO console and SOS-Syscons console for 386bsd
 scoansi|SCO Extended ANSI standard crt:\
-	:al=\E[L:am:bs:cd=\E[J:ce=\E[K:cl=\E[2J\E[H:cm=\E[%i%d;%dH:co#80:\
-	:dc=\E[P:dl=\E[M:do=\E[B:bt=\E[Z:ho=\E[H:ic=\E[@:li#25:\
-	:nd=\E[C:pt:so=\E[7m:se=\E[m:us=\E[4m:ue=\E[m:up=\E[A:\
-	:k1=\E[M:k2=\E[N:k3=\E[O:k4=\E[P:k5=\E[Q:k6=\E[R:\
-	:k7=\E[S:k8=\E[T:k9=\E[U:k0=\E[V:\
-	:kb=^h:ku=\E[A:kd=\E[B:kl=\E[D:kr=\E[C:eo:sf=\E[S:sr=\E[T:\
-	:mb=\E[5m:md=\E[1m:me=\E[m:\
-	:GS=\E[12m:GE=\E[10m:GV=\63:GH=D:\
-	:GC=E:GL=\64:GR=C:RT=^J:G1=?:G2=Z:G3=@:G4=Y:G5=;:G6=I:G7=H:G8=<:\
-	:GU=A:GD=B:\
-	:CW=\E[M:NU=\E[N:RF=\E[O:RC=\E[P:\
-	:WL=\E[S:WR=\E[T:CL=\E[U:CR=\E[V:\
-	:HM=\E[H:EN=\E[F:PU=\E[I:PD=\E[G:\
-	:Gc=N:Gd=K:Gh=M:Gl=L:Gu=J:Gv=\072:
+	:am:bs:eo:xo:\
+	:co#80:it#8:li#25:\
+	:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:IC=\E[%d@:\
+	:LE=\E[%dD:RI=\E[%dC:SF=\E[%dS:SR=\E[%dT:UP=\E[%dA:\
+	:al=\E[L:bl=^G:bt=\E[Z:cd=\E[m\E[J:ce=\E[m\E[K:\
+	:cl=\E[H\E[2J:cm=\E[%i%d;%dH:dc=\E[P:dl=\E[M:do=\E[B:ei=:\
+	:ho=\E[H:ic=\E[@:im=:k1=\E[M:k2=\E[N:k3=\E[O:k4=\E[P:\
+	:k5=\E[Q:k6=\E[R:k7=\E[S:k8=\E[T:k9=\E[U:kD=\177:kI=\E[L:\
+	:kN=\E[G:kP=\E[I:kb=^H:kd=\E[B:kh=\E[H:kl=\E[D:kr=\E[C:\
+	:ku=\E[A:le=^H:mb=\E[5m:md=\E[1m:me=\E[0;10m:mr=\E[7m:\
+	:nd=\E[C:rc=\E8:sc=\E7:se=\E[m:sf=\E[S:so=\E[7m:sr=\E[T:\
+	:st=\EH:ta=^I:ue=\E[m:up=\E[A:us=\E[4m:ve=\E[=10;12C:\
+	:vi=\E[=14;12C:vs=\E[=0;12C:
 trs80|trs-80|radio shack trs-80 Model I:\
 	:do=^J:am:le=^H:bs:co#64:li#16:
 d800|Direct 800/A:\
@@ -1026,14 +1082,15 @@ mod2|Modgraph GX-1000, set to 80x24, keypad not enabled:\
 	:bs:cd=50\EJ:ce=3\EK:cl=50\EH\EJ:cm=5\EY%+ %+ :co#80:li#24:nd=2\EC:\
 	:pt:sr=5\EI:up=2\EA:da:db:am:
 wsiris|iris40|iris emulating a 40 line visual 50 (approximately):\
-	:am:al=\EL:is=\E7B0\E7F7\E7C2\E7R3:\
-	:bs:cd=\EJ:ce=\EK:cl=\EH\EJ:ho=\EH:cm=\EY%+ %+ :co#80:li#40:nd=\EC:\
-	:pt:sr=\EI:up=\EA:ku=\EA:kd=\EB:kr=\EC:kl=\ED:\
-	:k0=\E0:k1=\E1:k2=\E2:k3=\E3:k4=\E4:k5=\E5:k6=\E6:k7=\E7:k8=\E8:k9=\E9:\
-	:vs=\E;:ve=\E>:cl=\Ev:ho=\EH:dl=\EM:so=\E9P:se=\E0@:\
-	:HS=\E7F2:HE=\E7F7:\
-	:us=\E7R2\E9P:ue=\E7R3\E0@:\
-	:CT#2:CZ=*Bblack,red,green,yellow,blue,magenta,cyan,*Fwhite:
+	:am:bs:nc:pt:\
+	:co#80:it#8:kn#3:li#40:\
+	:al=\EL:bl=^G:cd=\EJ:ce=\EK:cl=\Ev:cm=\EY%+ %+ :dl=\EM:\
+	:do=\EB:ho=\EH:is=\E7B0\E7F7\E7C2\E7R3:k0=\E0:k1=\E1:\
+	:k2=\E2:k3=\E3:k4=\E4:k5=\E5:k6=\E6:k7=\E7:k8=\E8:k9=\E9:\
+	:kd=\EB:kl=\ED:kr=\EC:ku=\EA:le=^H:me=\E7F7:mh=\E7F2:nd=\EC:\
+	:nl=\EB:se=\E0@:sf=^J:so=\E9P:sr=\EI:ta=^I:ue=\E7R3\E0@:\
+	:up=\EA:us=\E7R2\E9P:vb=\E7F4\E7B1\013\E7F7\E7B0:ve=\E>:\
+	:vs=\E;:
 # davis@unidata.ucar.edu
 iris-ansi|iris-ansi-net|IRIS emulating ANSI terminal:\
 	:am:co#80:it#8:li#40:bl=^G:md=\E[1m:cl=\E[H\E[2J:\
@@ -1886,14 +1943,15 @@ tek4025a|4025a|Tektronix 4025A:\
 	:is=^_com 33\r\n\41sto 9,17,25,33,41,49,57,65,73\r:tc=4025:
 # From jcoker@ucbic
 tek4107|tek4207|4107|4207|Tektronix 4107 graphics terminal with memory:\
-	:ti=\E[?6l\E[H\E[J:te=\E[?6h\E%!0\ELBP0\E%!1\E[32;1f:\
-	:is=\E%!0\ELBP0\E%!1\E[H\E[2g\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[J:\
-	:li#32:do=^J:al=3\E[L:xn:am:le=^H:bs:cd=\E[J:\
-	:ce=5\E[K:cl=156\E[H\E[J:cm=\E[%i%d;%dH:co#80:dc=4\E[P:dl=3\E[M:\
-	:ho=\E[H:ic=4\E[@:md=\E[1m:mr=\E[7m:mb=\E[5m:me=\E[m:ku=\EM:\
-	:kd=\ED:kl=\E[D:kr=\E[C:kh=\E[H:\
-	:ul:pt:bw:bt=\E[Z:mi:nd=\E[C:se=\E[m:so=\E[7m:\
-	:ue=\E[m:us=\E[4m:up=\EM:
+	:am:bs:mi:ms:ul:xn:xt:\
+	:co#79:it#8:li#29:\
+	:bl=^G:cd=\EJ:ce=\EK:cl=\ELZ:cm=\EY%+ %+ :cr=^M:do=^J:kb=^H:\
+	:kd=\EB:kl=\ED:kr=\EC:ku=\EA:le=^H:mb=\E%!1\E[5m\E%!0:\
+	:md=\E%!1\E[1m\E%!0:me=\E%!1\E[m\E%!0:\
+	:mh=\E%!1\E[<0m\E%!0:mr=\E%!1\E[7m\E%!0:nd=\EC:\
+	:se=\E%!1\E[m\E%!0:sf=^J:so=\E%!1\E[7;5m\E%!0:sr=\EI:\
+	:ta=^I:ue=\E%!1\E[m\E%!0:up=\EA:us=\E%!1\E[4m\E%!0:\
+	:ve=\E%!0:vs=\E%!3:
 #  Tektronix 4107 with sysline
 4107-s|tek4107-s|Tektronix 4107 with sysline but no memory:\
 	:is=\E%!1\E[2;32r\E[132D\E[2g\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[8C\EH\E[J:\
@@ -1941,11 +1999,17 @@ tek4107|tek4207|4107|4207|Tektronix 4107 graphics terminal with memory:\
 	:cl=\E\f:uc=^H\EMG1_\EMG0:so=\EMT2:se=\EMT1:\
 	:.ns:.as=\E^N:.ae=\E^O:
 4105|tek4105:\
-	:al=\E[1L:am:bs:cd=\E[J:ce=\E[K:cl=\E[2J\E[H:cm=\E[%i%2;%2H:co#80:\
-	:dc=\E[1P:dl=\E[1M:do=\E[1B:ho=\E[H:im=\E[4h:li#30:mi:nd=\E[1C:\
-	:as=\E[1m:ae=\E[0m:ms:pt:se=\E[0m:so=\E[7m:up=\E[1A:kb=^h:ku=\E[1A:\
-	:kd=\E[1B:kl=\E[1D:kr=\E[1C:us=\E[4m:ue=\E[0m:is=\E%!1\E[?6l\E[0m:\
-	:mr=\E[<3m:md=\E[<4m:mh=\E[<6m:mb=\E[<7m:me=\E[<1m:ti=\E%!1\E[?6l:xt:
+	:am:bs:mi:ms:ul:xn:xt:\
+	:co#79:it#8:li#29:\
+	:ac=:ae=\E[m:al=\E[1L:as=\E[1m:bl=^G:bt=\E[Z:cd=\E[J:\
+	:ce=\E[K:cl=\E[2J\E[H:cm=\E[%i%2;%2H:cr=^M:ct=\E[1g:\
+	:dc=\E[1P:dl=\E[1M:do=\E[1B:ei=\E[4l:ho=\E[H:i1=\E%!1\E[m:\
+	:im=\E[4h:is=\E%!1\E[?6141\E[m:kb=^H:kd=\E[1B:kl=\E[1D:\
+	:kr=\E[1C:ku=\E[1A:le=\E[1D:mb=\E[=3;<7m:md=\E[=7;<4m:\
+	:me=\E[=0;<1m:mh=\E[=1;<6m:mk=\E[=6;<5:mr=\E[=1;<3m:\
+	:nd=\E[1C:se=\E[=0;<1m:sf=\E[S:so=\E[=2;<3m:sr=\E[T:ta=^I:\
+	:te=:ti=\E%!1\E[?6l\E[2J:ue=\E[=0;<1m:up=\E[1A:\
+	:us=\E[=5;<2m:
 # This entry is from Tek. Inc.  (Brian Biehl)
 4115|tek4115|Tektronix 4115:\
 	:co#80:li#34:\
@@ -1960,15 +2024,18 @@ tek4107|tek4207|4107|4207|Tektronix 4107 graphics terminal with memory:\
 	:ve=\E%\0410\ELBG8\E%\0411\E[34;1H:\
 	:vs=\E%\0410\ELBB2\E%\0411:
 # The tek4125 emulates a vt100 incorrectly - the scrolling region
-# command is ignored. The following entry replaces the cs with the
-# needed al, dl, and im; removes some cursor pad commands that the tek4125
+# command is ignored.  The following entry replaces :cs: with the needed
+# :AL:, :AL:, and :im:; removes some cursor pad commands that the tek4125
 # chokes on; and adds a lot of initialization for the tek dialog area.
 # Note that this entry uses all 34 lines and sets the cursor color to green.
 # Steve Jacobson 8/85
-tek4125:\
-	:ks=\E=:li#34:\
-	:is=\E%\!0\EQD1\EUX03\EKA\ELBB2\ELCE0\ELI100\ELJ2\ELLB2\ELM0\ELS1\ELX00\ELV1\E%\!1\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h:dl=\E[1M:\
-	:al=\E[1L:cs@:sc@:rc@:im=\E1:tc=vt100:
+# (tek4125: there were two "\!"s in the is that I replaced with "\E!";
+# commented out, :im:=\E1 because there's no :ei:  -- esr)
+tek4125|tektronix 4125:\
+	:li#34:\
+	:al=\E[1L:cs@:dl=\E[1M:\
+	:is=\E%\E!0\EQD1\EUX03\EKA\ELBB2\ELCE0\ELI100\ELJ2\ELLB2\ELM0\ELS1\ELX00\ELV1\E%\E!1\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h:\
+	:ks=\E=:rc@:sc@:tc=vt100:
 # From carolyn@dali.berkeley.edu  Thu Oct 31 12:54:27 1985
 4404|tek4404:\
 	:al=\E[1L:bs:cd=\E[J:ce=\E[K:cl=\E[;H\E[2J:cm=\E[%i%d;%dH:co#80:\
@@ -2728,7 +2795,7 @@ vt520|DEC VT520 :\
 	:k5=\E[17~:k6=\E[18~:k7=\E[19~:k8=\E[20~:k9=\E[21~:\
 	:kb=\b:kd=\E[B:ke=\E>:kl=\E[D:\
 	:kr=\E[C:ks=\E=:ku=\E[A:nd=\E[C:\
-	:rc=\E8:rf=/usr/lib/tabset/vt100:\
+	:sc=\E7:rc=\E8:rf=/usr/lib/tabset/vt100:\
 	:se=\E[m:so=\E[7m:\
 	:sr=\EM:ue=\E[m:up=\E[A:us=\E[4m:nl=\E[B:ko=do,nd,up:
 #
@@ -2926,12 +2993,15 @@ xterm-hp|xterm with hpterm function keys:\
 	:kl=\ED:kr=\EC:ku=\EA:tc=xterm-basic:
 #
 xterm-sco|xterm with SCO function keys:\
-	:@7=\E[F:F1=\E[W:F2=\E[X:F3=\E[Y:F5=\E[a:F6=\E[b:F7=\E[c:\
-	:F8=\E[d:F9=\E[e:FA=\E[f:FB=\E[g:FC=\E[h:FD=\E[i:FE=\E[j:\
-	:FF=\E[k:ac=:k1=\E[M:k2=\E[N:k3=\E[O:k4=\E[P:k5=\E[Q:\
-	:k6=\E[R:k7=\E[S:k8=\E[T:k9=\E[U:k;=\E[V:kD=\177:kI=\E[L:\
-	:kN=\E[G:kP=\E[I:kd=\E[B:kh=\E[H:kl=\E[D:kr=\E[C:ku=\E[A:\
-	:tc=xterm-basic:
+	:@1=\E[E:@7=\E[F:F1=\E[W:F2=\E[X:F3=\E[Y:F4=\E[Z:F5=\E[a:\
+	:F6=\E[b:F7=\E[c:F8=\E[d:F9=\E[e:FA=\E[f:FB=\E[g:FC=\E[h:\
+	:FD=\E[i:FE=\E[j:FF=\E[k:FG=\E[l:FH=\E[m:FI=\E[n:FJ=\E[o:\
+	:FK=\E[p:FL=\E[q:FM=\E[r:FN=\E[s:FO=\E[t:FP=\E[u:FQ=\E[v:\
+	:FR=\E[w:FS=\E[x:FT=\E[y:FU=\E[z:FV=\E[@:FW=\E[[:FX=\E[\\:\
+	:FY=\E[]:FZ=\E[\136:Fa=\E[_:Fb=\E[`:Fc=\E[{:Km=\E[>M:\
+	:k1=\E[M:k2=\E[N:k3=\E[O:k4=\E[P:k5=\E[Q:k6=\E[R:k7=\E[S:\
+	:k8=\E[T:k9=\E[U:k;=\E[V:kD=\177:kI=\E[L:kN=\E[G:kP=\E[I:\
+	:kd=\E[B:kh=\E[H:kl=\E[D:kr=\E[C:ku=\E[A:tc=xterm-basic:
 #
 xterm-vt52|xterm emulating vt52:\
 	:bs:\
@@ -4035,7 +4105,7 @@ wy99|wyse-99gt|wyse99gt|wyse 99GT, 80 col, native mode:\
 	:lm#0:md=\Ee1\EG6:me=\Ee0\E(:mh=\Ee1\EGb:mb=\Ee1\EG2:\
 	:mk=\Ee1\EG1:mp=\E):mr=\Ee1\EG4:pf=^T:po=\EP\E7:ps=:\Ed&\E7\
 	:fs=\004:ds=\EA31:i2=\EA30:vb=\E\1361\E\1360:da:db:sf=^J:sr=\Ej:\
-	:cl=^Z:ce=\ET:cd=\EY:al=\EE:dl=\ER:dc=\EW:\
+	:ts=\EF:cl=^Z:ce=\ET:cd=\EY:al=\EE:dl=\ER:dc=\EW:\
 	:so=\EGt:se=\EG0:sg#1:ue=\EG0:us=\EG8:ug#1:ll=\Ea24R1C:\
 	:pt:bs:nd=^L:up=^K:do=^J:ho=^^:kl=^H:kr=^L:ku=^K:kd=^J:kh=^^:kn#20:\
 	:ei=\Er:im=\Eq:mi:if=/usr/share/tabset/stdcrt:\
@@ -4336,7 +4406,7 @@ ibmx|ibmpcx|IBM PC xenix console display:\
 	:GH=\E[196g:GV=\E[179g:\
 	:GU=\E[193g:GD=\E[194g:\
 	:G1=\E[191g:G2=\E[218g:G3=\E[192g:G4=\E[217g:\
-	:CW=\E[E:NU=\E[F:RF=\E[G:RC=\E[H:\
+	:CW=\E[E:NU=\E[F:RF=\E[G:\
 	:WL=\E[K:WR=\E[L:CL=\E[M:CR=\E[N:\
 	:HM=\E[Y:EN=\E[d:PU=\E[Z:PD=\E[e:
 ibmc|ibmcpc|IBM PC xenix color console display:\
@@ -4358,7 +4428,7 @@ zen50|z50:zephyr:\
 	:am:al=\EE:ce=\ET:dc=\EW:dl=\ER:ic=\EQ:\
 	:cl=\E+:bs:ma=^Hh^Ll^Jj^Kk:sg#1:se=\EGO:so=\EG4:\
 	:kl=^H:kr=^L:ku=^K:kd=^J:kh=\036:up=^K:\
-	:BS=^U:CL=^V:CR=^B:RK=^L:UK=^K:LK=^H:DK=^J:HM=\036:
+	:BS=^U:CL=^V:CR=^B:kl=^L:ku=^K:kr=^H:kd=^J:kh=\036:
 go140|graphon go-140:\
 	:co#80:li#24:cl=10\E[;H\E[2J:bs:cm=\E[%i%2;%2H:nd=\E[C:up=\E[A:\
 	:ce=\E[K:cd=10\E[J:so=\E[7m:se=\E[m:us=\E[4m:ue=\E[m:\
@@ -4519,16 +4589,32 @@ pcplot:\
 vid|vidtex|Compuserve vidtex program:\
 	:am:bc=\ED:cl=^L:li#25:co#40:nd=\EC:up=\EA:cd=\EJ:ce=\EK:\
 	:ho=\EH:cm=\EY%+\40%+\40:pt:
-# Fortune from c160-3bp@Coral (Robert Nathanson) via tut   Wed Oct 5, 1983
+# From: Robert Nathanson <c160-3bp@Coral> via tut   Wed Oct 5, 1983
+# (This had extension capabilities
+#	:rv=\EH:re=\EI:rg=0:GG=0:\
+#	:CO=\E\\:WL=^Aa\r:WR=^Ab\r:CL=^Ac\r:CR=^Ad\r:DL=^Ae\r:RF=^Af\r:\
+#	:RC=^Ag\r:CW=^Ah\r:NU=^Aj\r:EN=^Ak\r:HM=^Al:PL=^Am\r:\
+#	:PU=^An\r:PD=^Ao\r:PR=^Ap\r:HP=^A@\r:RT=^Aq\r:TB=\r:CN=\177:MP=\E+F:
+# It had both ":bs:" and ":bs=^H:"; I removed the latter.  Also, it had
+# ":sg=0:" and ":ug=0:"; evidently the composer was trying (unnecessarily)
+# to force both magic cookie glitches off.  Once upon a time, I
+# used a Fortune myself, so I know the capabilities of the form ^A[a-z]\r are
+# function keys; thus the "Al" value for HM was certainly an error.  I renamed
+# EN/PD/PU/CO/CF/RT according to the XENIX/TC mappings, but not HM/DL/RF/RC.
+# I think :rv: and :re: are start/end reverse video and :rg: is a nonexistent
+# "reverse-video-glitch" capability; I have put :rv: and :re: in with standard
+# names below.  I've removed obsolete ":nl=5^J:" as there is a :do: -- esr)
 fos|fortune|Fortune system:\
-	:is=^_..:li#25:co#80:am:bs:bw:cl=20^L:cd=3*^\Y:\
-	:ic=5^\Q:dc=5^\W:dl=15^\R:al=15^\E:cm=^\C%+ %+ :ta=^Z:ho=10^^:do=3^J:\
-	:up=3^K:bs=^H:kb=^H:kd=^Ay\r:kh=^A?\r:kl=^Aw\r:kr=^Az\r:ku=^Ax\r:\
-	:nl=5^J:so=^\H`:se=^\I`:sg=0:us=^\HP:ue=^\IP:ug=0:ce=^\Z:rv=\EH:re=\EI:\
-	:rg=0:GS=\Eo:GE=^O:GG=0:GV=-:GH=&:GU=%:GD=#:G1=(:G2= :G3=":G4=*:CF=\E]:\
-	:CO=\E\\:WL=^Aa\r:WR=^Ab\r:CL=^Ac\r:CR=^Ad\r:DL=^Ae\r:RF=^Af\r:\
-	:RC=^Ag\r:CW=^Ah\r:NU=^Aj\r:EN=^Ak\r:HM=^Al:PL=^Am\r:PU=^An\r:PD=^Ao\r:\
-	:PR=^Ap\r:HP=^A@\r:RT=^Aq\r:TB=\r:CN=\177:MP=\E+F:
+	:am:bs:bw:\
+	:co#80:li#25:\
+	:@7=^Ak\r:@8=^Aq:ac=j*k(l m"q&v%w#x-:ae=^O:al=15\034E:\
+	:as=\Eo:bl=^G:cd=3*\034Y:ce=^\Z:cl=20\014:cm=\034C%+ %+ :\
+	:cr=^M:dc=5\034W:dl=15\034R:do=3\n:ei=:ho=10\036:ic=5\034Q:\
+	:im=:is=^_..:k1=^Aa\r:k2=^Ab\r:k3=^Ac\r:k4=^Ad\r:k5=^Ae\r:\
+	:k6=^Af\r:k7=^Ag\r:k8=^Ah\r:kN=^Ao\r:kP=^An\r:kb=^H:\
+	:kd=^Ay\r:kh=^A?\r:kl=^Aw\r:kr=^Az\r:ku=^Ax\r:le=^H:mb=\EN:\
+	:me=\EI:mr=\EH:nw=^M^J:se=^\I`:sf=^J:so=^\H`:ta=^Z:ue=^\IP:\
+	:up=3\013:us=^\HP:ve=\E\\:vi=\E]:vs=\E\072:
 # basis from Peter Harrison, Computer Graphics Lab, San Francisco
 #   ucbvax!ucsfmis!harrison ...uucp / ucbvax!ucsfmis!harrison@BERKELEY ...ARPA
 basis|BASIS108 computer with terminal translation table active:\
