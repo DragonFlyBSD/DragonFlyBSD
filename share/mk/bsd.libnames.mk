@@ -24,6 +24,7 @@ LIBCRYPT?=	${DESTDIR}${LIBDIR}/libcrypt.a
 LIBCRYPTO?=	${DESTDIR}${LIBDIR}/libcrypto.a	# XXX in secure dist, not base
 LIBCRYPTSETUP?=	${DESTDIR}${LIBDIR}/libcryptsetup.a
 LIBCURSES?=	${DESTDIR}${LIBDIR}/libcurses.a
+LIBCURSESW?=	${DESTDIR}${LIBDIR}/libcursesw.a
 LIBDEVATTR?=	${DESTDIR}${LIBDIR}/libdevattr.a
 LIBDEVINFO?=	${DESTDIR}${LIBDIR}/libdevinfo.a
 LIBDEVMAPPER?=	${DESTDIR}${LIBDIR}/libdevmapper.a
@@ -57,7 +58,7 @@ LIBMENU?=	${DESTDIR}${LIBDIR}/libmenu.a
 .if !defined(NO_SENDMAIL)
 LIBMILTER?=	${DESTDIR}${LIBDIR}/libmilter.a
 .endif
-LIBMYTINFO?=	${DESTDIR}${LIBDIR}/libmytinfo.a
+LIBMYTINFO?=	"don't use LIBMYTINFO, use LIBNCURSES"
 LIBNCP?=	${DESTDIR}${LIBDIR}/libncp.a
 LIBNCURSES?=	${DESTDIR}${LIBDIR}/libncurses.a
 LIBNETGRAPH?=	${DESTDIR}${LIBDIR}/libnetgraph.a

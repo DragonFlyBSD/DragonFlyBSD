@@ -1,10 +1,24 @@
-# $DragonFly: src/lib/libncurses/Makefile.inc,v 1.6 2005/09/22 11:14:44 asmodai Exp $
-
 NCURSESDIR=	${.CURDIR}/../../../contrib/ncurses
 
-CFLAGS+=	-I${NCURSESDIR}/include/
-CFLAGS+=	-I${.CURDIR}/../include/
-CFLAGS+=	-I${.CURDIR} -I${.OBJDIR}
+.if defined (ENABLE_WIDEC)
 CFLAGS+=	-D_XOPEN_SOURCE_EXTENDED
+CFLAGS+=	-DENABLE_WIDEC
+CFLAGS+=	-DSET_NCURSES_CH_T=cchar_t
+CFLAGS+=	-DSET_NEED_WCHAR_H=1
+LIB_SUFFIX=	w
+.else
+CFLAGS+=	-DSET_NCURSES_CH_T=chtype
+CFLAGS+=	-DSET_NEED_WCHAR_H=0
+LIB_SUFFIX=
+.endif
+
+CFLAGS+=	-I.
+CFLAGS+=	-I${NCURSESDIR}/include
+CFLAGS+=	-I${NCURSESDIR}/ncurses
+CFLAGS+=	-I${.CURDIR}/../include
+CFLAGS+=	-I${.CURDIR}
+CFLAGS+=	-I${.OBJDIR}
 
 SHLIB_MAJOR=	6
+
+TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps

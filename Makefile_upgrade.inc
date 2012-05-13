@@ -1982,6 +1982,9 @@ TO_REMOVE+=/usr/include/openssl/eng_int.h
 TO_REMOVE+=/usr/include/openssl/ui_locl.h
 TO_REMOVE+=/usr/include/dev/disk/mpt/mpilib/mpi_inb.h
 TO_REMOVE+=/usr/share/misc/map3270
+TO_REMOVE+=/usr/lib/libmytinfo.a
+TO_REMOVE+=/usr/lib/libmytinfo.so
+TO_REMOVE+=/usr/lib/profile/libmytinfo.a
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys

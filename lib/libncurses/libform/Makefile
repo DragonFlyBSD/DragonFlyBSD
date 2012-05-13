@@ -1,6 +1,4 @@
-# $DragonFly: src/lib/libncurses/libform/Makefile,v 1.5 2005/12/06 02:22:23 corecode Exp $
-
-LIB=    form
+LIB=    form${LIB_SUFFIX}
 
 .include "../Makefile.inc"
 
@@ -8,12 +6,12 @@ NCURSESFORMDIR= ${NCURSESDIR}/form ${.OBJDIR}
 
 .PATH: ${NCURSESFORMDIR}
 
-CFLAGS+= 	-I${NCURSESDIR}/menu -I${NCURSESDIR}/ncurses
-
-TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
+CFLAGS+= 	-I${NCURSESDIR}/menu
 
 ncurses_def.h:
-	sh ${NCURSESDIR}/include/MKncurses_def.sh ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
+	AWK=awk sh ${NCURSESDIR}/include/MKncurses_def.sh \
+	  ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
+
 curses.h:
 	cat ${.CURDIR}/../include/curses.head >$@
 	sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
@@ -69,6 +67,8 @@ SRCS+=	\
 	fty_num.c \
 	fty_regex.c
 
+.if defined(ENABLE_WIDEC)
 INCS=	form.h
+.endif
 
 .include <bsd.lib.mk>

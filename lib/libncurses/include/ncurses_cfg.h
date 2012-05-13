@@ -69,6 +69,7 @@
 #define USE_LINKS 1
 #define BSD_TPUTS 1
 #define HAVE_LANGINFO_CODESET 1
+#ifdef ENABLE_WIDEC
 #define USE_WIDEC_SUPPORT 1
 #define HAVE_PUTWC 1
 #define HAVE_BTOWC 1
@@ -83,6 +84,7 @@
 #define HAVE_WCSTOMBS 1
 #define HAVE_MBSTOWCS 1
 #define NEED_WCHAR_H 1
+#endif
 #define HAVE_FSEEKO 1
 #define HAVE_CURSES_VERSION 1
 #define HAVE_HAS_KEY 1

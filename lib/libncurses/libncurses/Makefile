@@ -1,4 +1,4 @@
-LIB=    ncurses
+LIB=    ncurses${LIB_SUFFIX}
 
 .include "../Makefile.inc"
 
@@ -7,39 +7,38 @@ NCURSESSERIALDIR=${NCURSESDIR}/ncurses/tty
 NCURSESTINFODIR=${NCURSESDIR}/ncurses/tinfo
 NCURSESTRACEDIR=${NCURSESDIR}/ncurses/trace
 NCURSESWCHARDIR=${NCURSESDIR}/ncurses/widechar
-.PATH: ${NCURSESBASEDIR} ${NCURSESSERIALDIR} ${NCURSESTINFODIR} \
-	${NCURSESTRACEDIR} ${NCURSESWCHARDIR} ${.OBJDIR} ${.CURDIR}/../include \
-	${NCURSESDIR}/include/
+.PATH: ${NCURSESBASEDIR} ${NCURSESSERIALDIR} ${NCURSESTINFODIR} ${NCURSESTRACEDIR} \
+	${.OBJDIR} ${.CURDIR}/../include ${NCURSESDIR}/include/
 
-CFLAGS+= 	-I${NCURSESDIR}/ncurses/
 CFLAGS+=	-DTRACE
 CFLAGS+=	-DUSE_GETCAP
 CFLAGS+=	-DDRAGONFLY_NATIVE
 
-TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
 ncurses_def.h:
-	sh ${NCURSESDIR}/include/MKncurses_def.sh ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
+	AWK=awk sh ${NCURSESDIR}/include/MKncurses_def.sh \
+	  ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
+
 curses.h: $(TERMINFO_CAPS) \
 		curses.head \
 		${NCURSESDIR}/include/curses.tail \
 		${NCURSESDIR}/include//MKkey_defs.sh
 	cat  ${.CURDIR}/../include/curses.head >$@
 	AWK=awk sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
-	sh -c 'if test "cchar_t" = "cchar_t" ; then cat ${NCURSESDIR}/include/curses.wide >>$@ ; fi'
+.if defined(ENABLE_WIDEC)
+	cat ${NCURSESDIR}/include/curses.wide >>$@
+.endif
 	cat ${NCURSESDIR}/include/curses.tail >>$@
 
-#curses.h: curses.head curses.tail
-#	cat ${.CURDIR}/../include/curses.head >$@
-#	sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
-#	cat ${NCURSESDIR}/include/curses.wide >>$@
-#	cat ${NCURSESDIR}/include/curses.tail >>$@
 term.h: MKterm.h.awk ncurses_cfg.h
 	awk -f ${.CURDIR}/../include/MKterm.h.awk ${TERMINFO_CAPS} > $@
 	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../include/ncurses_cfg.h $@
+
 hashsize.h:
 	sh ${NCURSESDIR}/include/MKhashsize.sh ${TERMINFO_CAPS} >$@
+
 parametrized.h:
 	sh ${NCURSESDIR}/include/MKparametrized.sh ${TERMINFO_CAPS} >$@
+
 init_keytry.h: make_keys keys.list
 	./make_keys keys.list > $@
 
@@ -51,10 +50,10 @@ keys.list:
 
 names.c: ${NCURSESTINFODIR}/MKnames.awk
 	awk -f ${NCURSESTINFODIR}/MKnames.awk bigstrings=$(USE_BIG_STRINGS) ${TERMINFO_CAPS} >$@
-	#cat namehdr boolnames boolfnames numnames numfnames strnames strfnames nameftr >names.c
-	#cat namehdr boolcodes numcodes strcodes codeftr >codes.c
+
 codes.c: ${NCURSESTINFODIR}/MKcodes.awk
 	awk -f ${NCURSESTINFODIR}/MKcodes.awk bigstrings=$(USE_BIG_STRINGS) ${TERMINFO_CAPS} >$@
+
 comp_captab.c: make_hash
 	sh -e ${NCURSESTINFODIR}/MKcaptab.sh awk 0 ${NCURSESTINFODIR}/MKcaptab.awk ${TERMINFO_CAPS} > $@
 
@@ -248,6 +247,8 @@ SRCS+=	\
 	visbuf.c \
 
 # Widechar
+.if defined(ENABLE_WIDEC)
+.PATH: ${NCURSESWCHARDIR}
 SRCS+=	\
 	charable.c \
 	lib_add_wch.c \
@@ -269,6 +270,7 @@ SRCS+=	\
 	lib_vline_set.c \
 	lib_wacs.c \
 	lib_wunctrl.c
+.endif
 
 # Generated
 SRCS+=	\
@@ -281,43 +283,44 @@ SRCS+=	\
 	names.c \
 	unctrl.c
 
-SYMLINKS+=libncurses.a ${LIBDIR}/libcurses.a
-SYMLINKS+=libncurses.a ${LIBDIR}/libtinfo.a
-SYMLINKS+=libncurses.a ${LIBDIR}/libmytinfo.a
-SYMLINKS+=libncurses.a ${LIBDIR}/libtermlib.a
-SYMLINKS+=libncurses.a ${LIBDIR}/libtermcap.a
+SYMLINKS+=libncurses${LIB_SUFFIX}.a ${LIBDIR}/libcurses${LIB_SUFFIX}.a
+SYMLINKS+=libncurses${LIB_SUFFIX}.a ${LIBDIR}/libtermcap${LIB_SUFFIX}.a
+SYMLINKS+=libncurses${LIB_SUFFIX}.a ${LIBDIR}/libtermlib${LIB_SUFFIX}.a
+SYMLINKS+=libncurses${LIB_SUFFIX}.a ${LIBDIR}/libtinfo${LIB_SUFFIX}.a
 .if !defined(NOPIC)
 # no need for major at all, it's an ld-time redirection only
-SYMLINKS+=libncurses.so ${SHLIBDIR}/libcurses.so
-SYMLINKS+=libncurses.so ${SHLIBDIR}/libtermcap.so
-SYMLINKS+=libncurses.so ${SHLIBDIR}/libtermlib.so
-SYMLINKS+=libncurses.so ${SHLIBDIR}/libmytinfo.so
-SYMLINKS+=libncurses.so ${SHLIBDIR}/libtinfo.so
+SYMLINKS+=libncurses${LIB_SUFFIX}.so ${SHLIBDIR}/libcurses${LIB_SUFFIX}.so
+SYMLINKS+=libncurses${LIB_SUFFIX}.so ${SHLIBDIR}/libtermcap${LIB_SUFFIX}.so
+SYMLINKS+=libncurses${LIB_SUFFIX}.so ${SHLIBDIR}/libtermlib${LIB_SUFFIX}.so
+SYMLINKS+=libncurses${LIB_SUFFIX}.so ${SHLIBDIR}/libtinfo${LIB_SUFFIX}.so
 .endif
 .if !defined(NOPROFILE)
-SYMLINKS+=libncurses.a ${PROFLIBDIR}/libcurses.a
-SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtermcap.a
-SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtermlib.a
-SYMLINKS+=libncurses.a ${PROFLIBDIR}/libmytinfo.a
-SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtinfo.a
+SYMLINKS+=libncurses${LIB_SUFFIX}.a ${PROFLIBDIR}/libcurses${LIB_SUFFIX}.a
+SYMLINKS+=libncurses${LIB_SUFFIX}.a ${PROFLIBDIR}/libtermcap${LIB_SUFFIX}.a
+SYMLINKS+=libncurses${LIB_SUFFIX}.a ${PROFLIBDIR}/libtermlib${LIB_SUFFIX}.a
+SYMLINKS+=libncurses${LIB_SUFFIX}.a ${PROFLIBDIR}/libtinfo${LIB_SUFFIX}.a
 .endif
 
-INCS=	term.h ${.CURDIR}/../include/termcap.h \
+XINCS=	term.h ${.CURDIR}/../include/termcap.h \
 	${.CURDIR}/../include/unctrl.h curses.h \
 	${.CURDIR}/../include/ncurses_dll.h
+
+.if defined(ENABLE_WIDEC)
+INCS= ${XINCS}
 INCSLINKS=curses.h ${INCLUDEDIR}/ncurses.h
+.endif
 
 # Make the generated files depend on the headers, otherwise
 # the make depend step cannot run -j parallel due to not yet
 # knowing what the actual dependencies are.
 #
-codes.c: ${INCS}
-comp_captab.c: ${INCS}
-expanded.c: ${INCS}
-fallback.c: ${INCS}
-lib_gen.c: ${INCS}
-lib_keyname.c: ${INCS}
-names.c: ${INCS}
-unctrl.c: ${INCS}
+codes.c: ${XINCS}
+comp_captab.c: ${XINCS}
+expanded.c: ${XINCS}
+fallback.c: ${XINCS}
+lib_gen.c: ${XINCS}
+lib_keyname.c: ${XINCS}
+names.c: ${XINCS}
+unctrl.c: ${XINCS}
 
 .include <bsd.lib.mk>
