@@ -53,15 +53,12 @@ misc/cmpdef.cmd
 misc/csort
 misc/emx.src
 misc/gen-pkgconfig.in
-misc/gen_edit.sh
 misc/makedef.cmd
 misc/makellib
 misc/ncurses-config.in
 misc/ncurses.supp
-misc/run_tic.in
 misc/shlib
 misc/tdlint
-misc/terminfo.src
 mk-0th.awk
 mk-1st.awk
 mk-2nd.awk
@@ -89,5 +86,5 @@ panel/llib-lpanelt
 panel/llib-lpaneltw
 panel/llib-lpanelw
 panel/modules
-progs/
+progs/Makefile.in
 test/

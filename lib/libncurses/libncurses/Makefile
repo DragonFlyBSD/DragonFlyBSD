@@ -11,7 +11,6 @@ NCURSESWCHARDIR=${NCURSESDIR}/ncurses/widechar
 	${.OBJDIR} ${.CURDIR}/../include ${NCURSESDIR}/include/
 
 CFLAGS+=	-DTRACE
-CFLAGS+=	-DUSE_GETCAP
 CFLAGS+=	-DDRAGONFLY_NATIVE
 
 ncurses_def.h:

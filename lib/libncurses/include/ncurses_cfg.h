@@ -55,11 +55,12 @@
 #define MIXEDCASE_FILENAMES 1
 #define USE_SYSMOUSE 1
 #define USE_DATABASE 1
-#define TERMINFO_DIRS "/usr/local/share/terminfo"
-#define TERMINFO "/usr/local/share/terminfo"
+#define TERMINFO_DIRS "/usr/share/terminfo"
+#define TERMINFO "/usr/share/terminfo"
 #define HAVE_BIG_CORE 1
 #define USE_TERMCAP 1
 #define TERMPATH "/etc/termcap:/usr/share/misc/termcap"
+#define USE_GETCAP 1
 #define USE_HOME_TERMINFO 1
 #define USE_ROOT_ENVIRON 1
 #define HAVE_REMOVE 1
@@ -159,6 +160,7 @@
 #define HAVE_TCGETPGRP 1
 #define HAVE_TIMES 1
 #define HAVE_VSNPRINTF 1
+#define HAVE_BSD_CGETENT 1
 #define HAVE_ISASCII 1
 #define HAVE_NANOSLEEP 1
 #define HAVE_TERMIOS_H 1
