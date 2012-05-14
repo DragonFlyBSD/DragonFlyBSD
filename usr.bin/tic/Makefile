@@ -16,8 +16,10 @@ CFLAGS+=	-I${.CURDIR}/../../lib/libncurses/include
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.OBJDIR}
 
-DPADD=		${LIBNCURSES} ${LIBNCURSESW}
-LDADD=		-lncurses -lncursesw
+# Ideally this should be -lncursesw
+# Wide version can be used when DragonFly 3.3 branch is created
+DPADD=		${LIBNCURSES}
+LDADD=		-lncurses
 
 ncurses_def.h:
 	AWK=awk sh ${NCURSESDIR}/include/MKncurses_def.sh \
