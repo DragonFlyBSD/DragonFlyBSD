@@ -193,6 +193,7 @@ SUBDIR=	alias \
 	telnet \
 	tftp \
 	time \
+	tic \
 	tip \
 	top \
 	touch \
