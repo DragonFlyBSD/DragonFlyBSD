@@ -17,6 +17,9 @@ The .h files copied into base where created using configure opts:
 	--with-sysmouse
 	--enable-termcap
 	--enable-bsdpad
+	--enable-getcap
+	--with-default-terminfo-dir=/usr/share/terminfo
+	--with-terminfo-dirs=/usr/share/terminfo
 
 The following files have been modified:
 	ncurses/tinfo/comp_scan.c

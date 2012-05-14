@@ -3749,6 +3749,7 @@ static int arcmsr_probe(device_t dev)
 		break;
 	case PCIDevVenIDARC1880:
 		type = "SAS 6G";
+		arcmsr_msi_enable = 0;
 		break;
 	default:
 		type = x_type;

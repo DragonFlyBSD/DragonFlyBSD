@@ -1,6 +1,4 @@
-# $DragonFly: src/lib/libncurses/libpanel/Makefile,v 1.5 2005/12/06 02:22:23 corecode Exp $
-
-LIB=    panel
+LIB=    panel${LIB_SUFFIX}
 
 .include "../Makefile.inc"
 
@@ -8,12 +6,12 @@ NCURSESPANELDIR=${NCURSESDIR}/panel ${.OBJDIR}
 
 .PATH: ${NCURSESPANELDIR}
 
-CFLAGS+= 	-I${NCURSESDIR}/menu -I${NCURSESDIR}/ncurses
-
-TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
+CFLAGS+= 	-I${NCURSESDIR}/menu
 
 ncurses_def.h:
-	sh ${NCURSESDIR}/include/MKncurses_def.sh ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
+	AWK=awk sh ${NCURSESDIR}/include/MKncurses_def.sh \
+	  ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
+
 curses.h:
 	cat ${.CURDIR}/../include/curses.head >$@
 	sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@

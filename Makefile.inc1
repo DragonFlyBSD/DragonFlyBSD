@@ -770,7 +770,7 @@ BSTRAPDIRS= ${_strfile} \
 	usr.bin/mklocale usr.bin/uuencode usr.bin/compile_et usr.bin/hexdump \
 	usr.bin/cap_mkdb usr.bin/true usr.bin/false \
 	usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
-	usr.bin/tail usr.bin/unifdef \
+	usr.bin/tail usr.bin/unifdef usr.bin/tic \
 	usr.sbin/chown usr.sbin/mtree usr.sbin/config \
 	usr.sbin/btxld usr.sbin/zic usr.sbin/makewhatis \
 	gnu/usr.bin/texinfo gnu/usr.bin/grep usr.bin/sort \
