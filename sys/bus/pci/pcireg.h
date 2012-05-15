@@ -61,6 +61,7 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCI_SLOTMAX	31
 #define	PCI_FUNCMAX	7
 #define	PCI_REGMAX	255
+#define	PCIE_REGMAX	4095
 #define	PCI_MAXHDRTYPE	2
 
 /* PCI config header registers for all devices */
