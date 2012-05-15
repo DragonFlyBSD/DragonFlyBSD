@@ -735,12 +735,6 @@ pcie_slotimpl(const pcicfgregs *cfg)
 	uint16_t port_type;
 
 	/*
-	 * Only version 1 can be parsed currently 
-	 */
-	if ((expr->expr_cap & PCIEM_CAP_VER_MASK) != PCIEM_CAP_VER_1)
-		return 0;
-
-	/*
 	 * - Slot implemented bit is meaningful iff current port is
 	 *   root port or down stream port.
 	 * - Testing for root port or down stream port is meanningful
@@ -776,12 +770,6 @@ pci_read_cap_express(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 
 	expr->expr_ptr = ptr;
 	expr->expr_cap = REG(ptr + PCIER_CAPABILITY, 2);
-
-	/*
-	 * Only version 1 can be parsed currently 
-	 */
-	if ((expr->expr_cap & PCIEM_CAP_VER_MASK) != PCIEM_CAP_VER_1)
-		return;
 
 	/*
 	 * Read slot capabilities.  Slot capabilities exists iff
@@ -2393,8 +2381,6 @@ pci_print_verbose_expr(const pcicfgregs *cfg)
 
 	kprintf("\tPCI Express ver.%d cap=0x%04x",
 		expr->expr_cap & PCIEM_CAP_VER_MASK, expr->expr_cap);
-	if ((expr->expr_cap & PCIEM_CAP_VER_MASK) != PCIEM_CAP_VER_1)
-		goto back;
 
 	port_type = expr->expr_cap & PCIEM_CAP_PORT_TYPE;
 
@@ -2420,6 +2406,12 @@ pci_print_verbose_expr(const pcicfgregs *cfg)
 	case PCIE_PCI2PCIE_BRIDGE:
 		port_name = "PCI2PCIE";
 		break;
+	case PCIE_ROOT_END_POINT:
+		port_name = "ROOTDEV";
+		break;
+	case PCIE_ROOT_EVT_COLL:
+		port_name = "ROOTEVTC";
+		break;
 	default:
 		port_name = NULL;
 		break;
@@ -2436,7 +2428,6 @@ pci_print_verbose_expr(const pcicfgregs *cfg)
 		if (expr->expr_slotcap & PCIEM_SLTCAP_HP_CAP)
 			kprintf("[HOTPLUG]");
 	}
-back:
 	kprintf("\n");
 }
 
