@@ -80,6 +80,7 @@
 #define HAMMER2_PATH_REMOTE	HAMMER2_DEFAULT_DIR "/remote"
 
 extern int DebugOpt;
+extern int VerboseOpt;
 extern int NormalExit;
 
 int hammer2_ioctl_handle(const char *sel_path);
@@ -97,7 +98,8 @@ int cmd_pfs_delete(const char *sel_path, const char *name);
 
 int cmd_service(void);
 int cmd_leaf(const char *sel_path);
-int cmd_debug(const char *hostname);
+int cmd_shell(const char *hostname);
+int cmd_show(const char *devpath);
 int cmd_rsainit(const char *dir_path);
 int cmd_rsaenc(const char **keys, int nkeys);
 int cmd_rsadec(const char **keys, int nkeys);
@@ -133,6 +135,10 @@ int hammer2_crypto_encrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
 void hammer2_crypto_encrypt_wrote(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
 			int nact);
 
+const char *hammer2_time64_to_str(uint64_t htime64, char **strp);
+const char *hammer2_uuid_to_str(uuid_t *uuid, char **strp);
+const char *hammer2_iptype_to_str(uint8_t type);
+const char *hammer2_pfstype_to_str(uint8_t type);
 
-void hammer2_debug_remote(hammer2_msg_t *msg);
+void hammer2_shell_remote(hammer2_msg_t *msg);
 void msg_printf(hammer2_msg_t *msg, const char *ctl, ...);

@@ -215,7 +215,7 @@ master_link_rx(hammer2_iocom_t *iocom)
 			break;
 		case HAMMER2_DBG_SHELL:
 		case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
-			hammer2_debug_remote(msg);
+			hammer2_shell_remote(msg);
 			break;
 		default:
 			hammer2_replymsg(msg, HAMMER2_MSG_ERR_UNKNOWN);

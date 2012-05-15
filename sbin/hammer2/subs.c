@@ -159,3 +159,86 @@ hammer2_bswap_head(hammer2_msg_hdr_t *head)
 	head->aux_bytes	= bswap16(head->aux_bytes);
 	head->aux_icrc	= bswap32(head->aux_icrc);
 }
+
+const char *
+hammer2_time64_to_str(uint64_t htime64, char **strp)
+{
+	struct tm *tp;
+	time_t t;
+
+	if (*strp) {
+		free(*strp);
+		*strp = NULL;
+	}
+	*strp = malloc(64);
+	t = htime64 / 1000000;
+	tp = localtime(&t);
+	strftime(*strp, 64, "%d-%b-%Y %H:%M:%S", tp);
+	return (*strp);
+}
+
+const char *
+hammer2_uuid_to_str(uuid_t *uuid, char **strp)
+{
+	uint32_t status;
+	if (*strp) {
+		free(*strp);
+		*strp = NULL;
+	}
+	uuid_to_string(uuid, strp, &status);
+	return (*strp);
+}
+
+const char *
+hammer2_iptype_to_str(uint8_t type)
+{
+	switch(type) {
+	case HAMMER2_OBJTYPE_UNKNOWN:
+		return("UNKNOWN");
+	case HAMMER2_OBJTYPE_DIRECTORY:
+		return("DIR");
+	case HAMMER2_OBJTYPE_REGFILE:
+		return("FILE");
+	case HAMMER2_OBJTYPE_FIFO:
+		return("FIFO");
+	case HAMMER2_OBJTYPE_CDEV:
+		return("CDEV");
+	case HAMMER2_OBJTYPE_BDEV:
+		return("BDEV");
+	case HAMMER2_OBJTYPE_SOFTLINK:
+		return("SOFTLINK");
+	case HAMMER2_OBJTYPE_HARDLINK:
+		return("HARDLINK");
+	case HAMMER2_OBJTYPE_SOCKET:
+		return("SOCKET");
+	case HAMMER2_OBJTYPE_WHITEOUT:
+		return("WHITEOUT");
+	default:
+		return("ILLEGAL");
+	}
+}
+
+const char *
+hammer2_pfstype_to_str(uint8_t type)
+{
+	switch(type) {
+	case HAMMER2_PFSTYPE_NONE:
+		return("NONE");
+	case HAMMER2_PFSTYPE_ADMIN:
+		return("ADMIN");
+	case HAMMER2_PFSTYPE_CACHE:
+		return("CACHE");
+	case HAMMER2_PFSTYPE_COPY:
+		return("COPY");
+	case HAMMER2_PFSTYPE_SLAVE:
+		return("SLAVE");
+	case HAMMER2_PFSTYPE_SOFT_SLAVE:
+		return("SOFT_SLAVE");
+	case HAMMER2_PFSTYPE_SOFT_MASTER:
+		return("SOFT_MASTER");
+	case HAMMER2_PFSTYPE_MASTER:
+		return("MASTER");
+	default:
+		return("ILLEGAL");
+	}
+}

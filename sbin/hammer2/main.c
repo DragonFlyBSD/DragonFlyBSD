@@ -38,6 +38,7 @@
 static void usage(int code);
 
 int DebugOpt;
+int VerboseOpt;
 int NormalExit = 1;	/* if set to 0 main() has to pthread_exit() */
 
 int
@@ -57,10 +58,13 @@ main(int ac, char **av)
 	/*
 	 * Core options
 	 */
-	while ((ch = getopt(ac, av, "adqs:t:u:")) != -1) {
+	while ((ch = getopt(ac, av, "adqs:t:u:v")) != -1) {
 		switch(ch) {
 		case 'a':
 			all_opt = 1;
+			break;
+		case 'd':
+			DebugOpt = 1;
 			break;
 		case 'q':
 			/*
@@ -102,8 +106,8 @@ main(int ac, char **av)
 			 */
 			uuid_str = optarg;
 			break;
-		case 'd':
-			DebugOpt = 1;
+		case 'v':
+			++VerboseOpt;
 			break;
 		default:
 			fprintf(stderr, "Unknown option: %c\n", ch);
@@ -147,32 +151,32 @@ main(int ac, char **av)
 		 * Get status of PFS and its connections (-a for all PFSs)
 		 */
 		ecode = cmd_remote_status(sel_path, all_opt);
-	} else if (strcmp(av[0], "pfs_list") == 0) {
+	} else if (strcmp(av[0], "pfs-list") == 0) {
 		/*
 		 * List all PFSs
 		 */
 		ecode = cmd_pfs_list(sel_path);
-	} else if (strcmp(av[0], "pfs_create") == 0) {
+	} else if (strcmp(av[0], "pfs-create") == 0) {
 		/*
 		 * Create new PFS using pfs_type
 		 */
 		if (ac < 2) {
-			fprintf(stderr, "pfs_create: requires name\n");
+			fprintf(stderr, "pfs-create: requires name\n");
 			usage(1);
 		}
 		ecode = cmd_pfs_create(sel_path, av[1], pfs_type, uuid_str);
-	} else if (strcmp(av[0], "pfs_delete") == 0) {
+	} else if (strcmp(av[0], "pfs-delete") == 0) {
 		/*
 		 * Delete a PFS by name
 		 */
 		if (ac < 2) {
-			fprintf(stderr, "pfs_delete: requires name\n");
+			fprintf(stderr, "pfs-delete: requires name\n");
 			usage(1);
 		}
 		ecode = cmd_pfs_delete(sel_path, av[1]);
 	} else if (strcmp(av[0], "snapshot") == 0) {
 		/*
-		 * Create snapshot with optional pfs_type and optional
+		 * Create snapshot with optional pfs-type and optional
 		 * label override.
 		 */
 	} else if (strcmp(av[0], "service") == 0) {
@@ -207,12 +211,12 @@ main(int ac, char **av)
 		 * complexity of the HAMMER2 VFS kernel code.
 		 */
 		ecode = cmd_leaf(sel_path);
-	} else if (strcmp(av[0], "debug") == 0) {
+	} else if (strcmp(av[0], "shell") == 0) {
 		/*
 		 * Connect to the command line monitor in the hammer2 master
 		 * node for the machine using HAMMER2_DBG_SHELL messages.
 		 */
-		ecode = cmd_debug((ac < 2) ? NULL : av[1]);
+		ecode = cmd_shell((ac < 2) ? NULL : av[1]);
 	} else if (strcmp(av[0], "rsainit") == 0) {
 		/*
 		 * Initialize a RSA keypair.  If no target directory is
@@ -258,6 +262,17 @@ main(int ac, char **av)
 		} else {
 			ecode = cmd_rsadec((const char **)&av[1], ac - 1);
 		}
+	} else if (strcmp(av[0], "show") == 0) {
+		/*
+		 * Raw dump of filesystem.  Use -v to check all crc's, and
+		 * -vv to dump bulk file data.
+		 */
+		if (ac != 2) {
+			fprintf(stderr, "show: requires device path\n");
+			usage(1);
+		} else {
+			cmd_show(av[1]);
+		}
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", av[0]);
 		usage(1);
@@ -283,6 +298,21 @@ usage(int code)
 	fprintf(stderr,
 		"hammer2 [-s path] command...\n"
 		"    -s path            Select filesystem\n"
+		"    -t type            PFS type for pfs-create\n"
+		"    -u uuid            uuid for pfs-create\n"
+		"\n"
+		"    connect <target>   Add cluster link\n"
+		"    disconnect <target> Del cluster link\n"
+		"    status             Report cluster status\n"
+		"    pfs-list           List PFSs\n"
+		"    pfs-create <label> Create a PFS\n"
+		"    pfs-delete <label> Destroy a PFS\n"
+		"    snapshot           Snapshot a PFS\n"
+		"    service            Start service daemon\n"
+		"    leaf               Start pfs leaf daemon\n"
+		"    shell [<host>]     Connect to debug shell\n"
+		"    rsainit            Initialize rsa fields\n"
+		"    show devpath       Raw hammer2 media dump\n"
 	);
 	exit(code);
 }

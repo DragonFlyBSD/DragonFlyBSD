@@ -35,13 +35,19 @@
 
 #include "hammer2.h"
 
-static void debug_recv(hammer2_iocom_t *iocom);
-static void debug_send(hammer2_iocom_t *iocom);
-static void debug_tty(hammer2_iocom_t *iocom);
-static void hammer2_debug_parse(hammer2_msg_t *msg, char *cmdbuf);
+#define SHOW_TAB	2
+
+static void shell_recv(hammer2_iocom_t *iocom);
+static void shell_send(hammer2_iocom_t *iocom);
+static void shell_tty(hammer2_iocom_t *iocom);
+static void hammer2_shell_parse(hammer2_msg_t *msg, char *cmdbuf);
+
+/************************************************************************
+ *				    SHELL				*
+ ************************************************************************/
 
 int
-cmd_debug(const char *hostname)
+cmd_shell(const char *hostname)
 {
 	struct sockaddr_in lsin;
 	struct hammer2_iocom iocom;
@@ -94,7 +100,7 @@ cmd_debug(const char *hostname)
 	msg = hammer2_allocmsg(&iocom, HAMMER2_DBG_SHELL, 0);
 	hammer2_ioq_write(msg);
 
-	hammer2_iocom_core(&iocom, debug_recv, debug_send, debug_tty);
+	hammer2_iocom_core(&iocom, shell_recv, shell_send, shell_tty);
 	fprintf(stderr, "debug: disconnected\n");
 	close(fd);
 	return 0;
@@ -106,7 +112,7 @@ cmd_debug(const char *hostname)
  */
 static
 void
-debug_recv(hammer2_iocom_t *iocom)
+shell_recv(hammer2_iocom_t *iocom)
 {
 	hammer2_msg_t *msg;
 
@@ -157,14 +163,14 @@ debug_recv(hammer2_iocom_t *iocom)
  */
 static
 void
-debug_send(hammer2_iocom_t *iocom)
+shell_send(hammer2_iocom_t *iocom)
 {
 	hammer2_iocom_flush(iocom);
 }
 
 static
 void
-debug_tty(hammer2_iocom_t *iocom)
+shell_tty(hammer2_iocom_t *iocom)
 {
 	hammer2_msg_t *msg;
 	char buf[256];
@@ -193,7 +199,7 @@ debug_tty(hammer2_iocom_t *iocom)
  * then finish up by outputting another prompt.
  */
 void
-hammer2_debug_remote(hammer2_msg_t *msg)
+hammer2_shell_remote(hammer2_msg_t *msg)
 {
 	/* hammer2_iocom_t *iocom = msg->iocom; */
 
@@ -212,13 +218,13 @@ hammer2_debug_remote(hammer2_msg_t *msg)
 		 * Otherwise this is a command which we must process.
 		 * When we are finished we generate a final reply.
 		 */
-		hammer2_debug_parse(msg, msg->aux_data);
+		hammer2_shell_parse(msg, msg->aux_data);
 		hammer2_replymsg(msg, 0);
 	}
 }
 
 static void
-hammer2_debug_parse(hammer2_msg_t *msg, char *cmdbuf)
+hammer2_shell_parse(hammer2_msg_t *msg, char *cmdbuf)
 {
 	/* hammer2_iocom_t *iocom = msg->iocom; */
 	char *cmd = strsep(&cmdbuf, " \t");
@@ -254,4 +260,230 @@ msg_printf(hammer2_msg_t *msg, const char *ctl, ...)
 	bcopy(buf, rmsg->aux_data, len);
 
 	hammer2_ioq_write(rmsg);
+}
+
+/************************************************************************
+ *				    SHOW				*
+ ************************************************************************/
+
+static void show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref);
+static void tabprintf(int tab, const char *ctl, ...);
+
+int
+cmd_show(const char *devpath)
+{
+	hammer2_blockref_t broot;
+	int fd;
+
+	fd = open(devpath, O_RDONLY);
+	if (fd < 0) {
+		perror("open");
+		return 1;
+	}
+	bzero(&broot, sizeof(broot));
+	broot.type = HAMMER2_BREF_TYPE_VOLUME;
+	broot.data_off = 0 | HAMMER2_PBUFRADIX;
+	show_bref(fd, 0, 0, &broot);
+	close(fd);
+
+	return 0;
+}
+
+static void
+show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
+{
+	hammer2_media_data_t media;
+	hammer2_blockref_t *bscan;
+	int bcount;
+	int i;
+	int didnl;
+	int obrace = 1;
+	size_t bytes;
+	const char *type_str;
+	char *str = NULL;
+
+	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_EMPTY:
+		type_str = "empty";
+		break;
+	case HAMMER2_BREF_TYPE_INODE:
+		type_str = "inode";
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		type_str = "indblk";
+		break;
+	case HAMMER2_BREF_TYPE_DATA:
+		type_str = "data";
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		type_str = "volume";
+		break;
+	default:
+		type_str = "unknown";
+		break;
+	}
+
+
+	tabprintf(tab, "%s.%-3d %016jx/%-2d mir=%016jx mod=%016jx ",
+	       type_str, bi,
+	       bref->key, bref->keybits,
+	       bref->mirror_tid, bref->modify_tid);
+	tab += SHOW_TAB;
+
+	bytes = (size_t)1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	if (bytes > sizeof(media)) {
+		printf("(bad block size %zd)\n", bytes);
+		return;
+	}
+	if (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1) {
+		lseek(fd, bref->data_off & ~HAMMER2_OFF_MASK_RADIX, 0);
+		if (read(fd, &media, bytes) != (ssize_t)bytes) {
+			printf("(media read failed)\n");
+			return;
+		}
+	}
+
+	bscan = NULL;
+	bcount = 0;
+	didnl = 0;
+
+	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_EMPTY:
+		obrace = 0;
+		break;
+	case HAMMER2_BREF_TYPE_INODE:
+		printf("{\n");
+		if (media.ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
+			/* no blockrefs */
+		} else {
+			bscan = &media.ipdata.u.blockset.blockref[0];
+			bcount = HAMMER2_SET_COUNT;
+		}
+		tabprintf(tab, "filename \"%s\"\n", media.ipdata.filename);
+		tabprintf(tab, "version  %d\n", media.ipdata.version);
+		tabprintf(tab, "uflags   0x%08x\n",
+			  media.ipdata.uflags);
+		if (media.ipdata.rmajor || media.ipdata.rminor) {
+			tabprintf(tab, "rmajor   %d\n",
+				  media.ipdata.rmajor);
+			tabprintf(tab, "rminor   %d\n",
+				  media.ipdata.rminor);
+		}
+		tabprintf(tab, "ctime    %s\n",
+			  hammer2_time64_to_str(media.ipdata.ctime, &str));
+		tabprintf(tab, "mtime    %s\n",
+			  hammer2_time64_to_str(media.ipdata.mtime, &str));
+		tabprintf(tab, "atime    %s\n",
+			  hammer2_time64_to_str(media.ipdata.atime, &str));
+		tabprintf(tab, "btime    %s\n",
+			  hammer2_time64_to_str(media.ipdata.btime, &str));
+		tabprintf(tab, "uid      %s\n",
+			  hammer2_uuid_to_str(&media.ipdata.uid, &str));
+		tabprintf(tab, "gid      %s\n",
+			  hammer2_uuid_to_str(&media.ipdata.gid, &str));
+		tabprintf(tab, "type     %s\n",
+			  hammer2_iptype_to_str(media.ipdata.type));
+		tabprintf(tab, "opflgs   0x%02x\n",
+			  media.ipdata.op_flags);
+		tabprintf(tab, "capflgs  0x%04x\n",
+			  media.ipdata.cap_flags);
+		tabprintf(tab, "mode     %-7o\n",
+			  media.ipdata.mode);
+		tabprintf(tab, "inum     0x%016jx\n",
+			  media.ipdata.inum);
+		tabprintf(tab, "size     %ju\n",
+			  (uintmax_t)media.ipdata.size);
+		tabprintf(tab, "nlinks   %ju\n",
+			  (uintmax_t)media.ipdata.nlinks);
+		tabprintf(tab, "iparent  0x%016jx\n",
+			  (uintmax_t)media.ipdata.iparent);
+		tabprintf(tab, "name_key 0x%016jx\n",
+			  (uintmax_t)media.ipdata.name_key);
+		tabprintf(tab, "name_len %u\n",
+			  media.ipdata.name_len);
+		tabprintf(tab, "ncopies  %u\n",
+			  media.ipdata.ncopies);
+		tabprintf(tab, "compalg  %u\n",
+			  media.ipdata.comp_algo);
+		if (media.ipdata.op_flags & HAMMER2_OPFLAG_PFSROOT) {
+			tabprintf(tab, "pfs_type %u (%s)\n",
+				  media.ipdata.pfs_type,
+				  hammer2_pfstype_to_str(media.ipdata.pfs_type));
+			tabprintf(tab, "pfs_inum 0x%016jx\n",
+				  (uintmax_t)media.ipdata.pfs_inum);
+			tabprintf(tab, "pfs_id   %s\n",
+				  hammer2_uuid_to_str(&media.ipdata.pfs_id,
+						      &str));
+			tabprintf(tab, "pfs_fsid %s\n",
+				  hammer2_uuid_to_str(&media.ipdata.pfs_fsid,
+						      &str));
+		}
+		tabprintf(tab, "data_quota  %ju\n",
+			  (uintmax_t)media.ipdata.data_quota);
+		tabprintf(tab, "data_count  %ju\n",
+			  (uintmax_t)media.ipdata.data_count);
+		tabprintf(tab, "inode_quota %ju\n",
+			  (uintmax_t)media.ipdata.inode_quota);
+		tabprintf(tab, "inode_count %ju\n",
+			  (uintmax_t)media.ipdata.inode_count);
+		tabprintf(tab, "attr_tid    0x%016jx\n",
+			  (uintmax_t)media.ipdata.attr_tid);
+		if (media.ipdata.type == HAMMER2_OBJTYPE_DIRECTORY) {
+			tabprintf(tab, "dirent_tid  %016jx\n",
+				  (uintmax_t)media.ipdata.dirent_tid);
+		}
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		bscan = &media.npdata.blockref[0];
+		bcount = bytes / sizeof(hammer2_blockref_t);
+		didnl = 1;
+		printf("{\n");
+		break;
+	case HAMMER2_BREF_TYPE_DATA:
+		if (VerboseOpt >= 2) {
+			printf("{\n");
+		} else {
+			printf("\n");
+			obrace = 0;
+		}
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		bscan = &media.voldata.sroot_blockset.blockref[0];
+		bcount = HAMMER2_SET_COUNT;
+		printf("{\n");
+		break;
+	default:
+		break;
+	}
+	if (str)
+		free(str);
+	for (i = 0; i < bcount; ++i) {
+		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY) {
+			if (didnl == 0) {
+				printf("\n");
+				didnl = 1;
+			}
+			show_bref(fd, tab, i, &bscan[i]);
+		}
+	}
+	tab -= SHOW_TAB;
+	if (obrace) {
+		if (bref->type == HAMMER2_BREF_TYPE_INODE)
+			tabprintf(tab, "} (%s.%d, \"%s\")\n",
+				  type_str, bi, media.ipdata.filename);
+		else
+			tabprintf(tab, "} (%s.%d)\n", type_str,bi);
+	}
+}
+
+static
+void
+tabprintf(int tab, const char *ctl, ...)
+{
+	va_list va;
+
+	printf("%*.*s", tab, tab, "");
+	va_start(va, ctl);
+	vprintf(ctl, va);
+	va_end(va);
 }
