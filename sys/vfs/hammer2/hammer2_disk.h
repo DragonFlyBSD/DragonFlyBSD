@@ -719,8 +719,8 @@ struct hammer2_volume_data {
 	 */
 	hammer2_off_t	allocator_size;		/* 0060 Total data space */
 	hammer2_off_t   allocator_free;		/* 0068	Free space */
-	hammer2_tid_t	allocator_beg;		/* 0070 Initial allocations */
-	hammer2_tid_t	last_tid;		/* 0078 Last transaction id */
+	hammer2_off_t	allocator_beg;		/* 0070 Initial allocations */
+	hammer2_tid_t	mirror_tid;		/* 0078 best committed tid */
 	hammer2_tid_t	alloc_tid;		/* 0080 Alloctable modify tid */
 	hammer2_blockref_t alloc_blockref;	/* 0088-00C7 */
 
@@ -827,6 +827,7 @@ typedef struct hammer2_volume_data hammer2_volume_data_t;
 #define HAMMER2_NUM_VOLHDRS		4
 
 union hammer2_media_data {
+	hammer2_volume_data_t	voldata;
         hammer2_inode_data_t    ipdata;
 	hammer2_indblock_data_t npdata;
 	char			buf[HAMMER2_PBUFSIZE];

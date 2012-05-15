@@ -137,7 +137,8 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list*/
 #define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying */
 #define HAMMER2_CHAIN_MODIFIED_AUX	0x00000800	/* hmp->vchain only */
-#define HAMMER2_CHAIN_MOUNTED		0x00001000	/* PFS is mounted */
+#define HAMMER2_CHAIN_MODIFY_TID	0x00001000	/* mod updates field */
+#define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -150,9 +151,14 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
  *
  * NOTE: OPTDATA allows us to avoid instantiating buffers for INDIRECT
  *	 blocks in the INITIAL-create state.
+ *
+ * NOTE: NO_MODIFY_TID tells the function to not set HAMMER2_CHAIN_MODIFY_TID
+ *	 when marking the chain modified (used when a sub-chain modification
+ *	 propagates upward).
  */
 #define HAMMER2_MODIFY_NOSUB		0x00000001	/* do not set SUBMOD */
 #define HAMMER2_MODIFY_OPTDATA		0x00000002	/* data can be NULL */
+#define HAMMER2_MODIFY_NO_MODIFY_TID	0x00000004
 
 /*
  * Flags passed to hammer2_chain_lock()
@@ -409,7 +415,8 @@ hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
 				int type, size_t bytes);
 void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 				hammer2_chain_t *chain);
-void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
+				hammer2_tid_t modify_tid);
 void hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 
 /*

@@ -132,7 +132,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		atomic_set_int(&ip->chain.flags, HAMMER2_CHAIN_DESTROYED |
 						 HAMMER2_CHAIN_SUBMODIFIED);
 	}
-	hammer2_chain_flush(hmp, &ip->chain);
+	hammer2_chain_flush(hmp, &ip->chain, 0);
 	hammer2_inode_unlock_ex(ip);
 	hammer2_chain_drop(hmp, &ip->chain);	/* vp ref */
 
@@ -179,7 +179,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 * on the volume root as a catch-all, which is far more optimal.
 	 */
 	if (ap->a_flags & VOP_FSYNC_SYSCALL)
-		hammer2_chain_flush(hmp, &ip->chain);
+		hammer2_chain_flush(hmp, &ip->chain, 0);
 	hammer2_inode_unlock_ex(ip);
 	return (0);
 }

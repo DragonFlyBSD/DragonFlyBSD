@@ -445,7 +445,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hammer2_chain_unlock(hmp, rchain);
 		kprintf("hammer2_mount: PFS label already mounted!\n");
 		hammer2_vfs_unmount(mp, MNT_FORCE);
-		return EINVAL;
+		return EBUSY;
 	}
 	atomic_set_int(&rchain->flags, HAMMER2_CHAIN_MOUNTED);
 
@@ -705,7 +705,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
 				 HAMMER2_CHAIN_MODIFIED_AUX |
 				 HAMMER2_CHAIN_SUBMODIFIED)) {
-		hammer2_chain_flush(hmp, &hmp->vchain);
+		hammer2_chain_flush(hmp, &hmp->vchain, 0);
 		haswork = 1;
 	} else {
 		haswork = 0;
@@ -896,7 +896,7 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 			bp = NULL;
 			continue;
 		}
-		if (valid == 0 || hmp->voldata.last_tid < vd->last_tid) {
+		if (valid == 0 || hmp->voldata.mirror_tid < vd->mirror_tid) {
 			valid = 1;
 			hmp->voldata = *vd;
 		}
