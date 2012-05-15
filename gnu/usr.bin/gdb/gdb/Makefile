@@ -6,11 +6,15 @@ CFLAGS+= -I${BASEDIR}/bfd -I${BASEDIR}/gdb -I${BASEDIR}/gdb/config
 CFLAGS+= -I${BASEDIR}/gdb/common -I${.CURDIR}/../libbfd
 CFLAGS+= -I${.OBJDIR}/../libbfd
 
-DPADD=	${GDBLIBS}
-DPADD+=	${LIBEDIT} ${LIBTERMCAP} ${LIBM} ${LIBZ}
-LDADD=	-L../libgdb -lgdb -L../libbfd -lbfd -L../libopcodes -lopcodes -L../libiberty -liberty
-LDADD+=	-L../libdecnumber -ldecnumber
-LDADD+=	-ledit -ltermcap -lm -lz
+DPADD=  ${GDBLIBS}
+DPADD+= ${LIBNCURSES} ${LIBM} ${LIBZ} ${LIBKVM}
+LDADD=  -L../libgdb -lgdb
+LDADD+= -L../libreadline -lreadline
+LDADD+= -L../libopcodes -lopcodes
+LDADD+= -L../libbfd -lbfd
+LDADD+= -L../libiberty -liberty
+LDADD+= -L../libdecnumber -ldecnumber
+LDADD+= -lncurses -lm -lz -lkvm
 
 SUBDIR=	doc
 

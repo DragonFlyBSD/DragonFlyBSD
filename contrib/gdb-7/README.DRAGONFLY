@@ -37,6 +37,5 @@ Local modifications applied to following files:
 	gdb/mi/mi-main.c
 	gdb/osabi.c
 	gdb/top.c
-	gdb/tui-io.c
 	include/elf/common.h
 	include/libiberty.h
