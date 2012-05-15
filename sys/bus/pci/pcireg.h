@@ -630,6 +630,7 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define PCIER_CAPABILITY	0x2
 #define PCIEM_CAP_VER_MASK	0x000f	/* Version */
 #define PCIEM_CAP_VER_1		0x0001
+#define PCIEM_CAP_VER_2		0x0002
 #define PCIEM_CAP_PORT_TYPE	0x00f0	/* Port type mask */
 #define PCIEM_CAP_SLOT_IMPL	0x0100	/* Slot implemented,
 					 * valid only for root port and
@@ -643,6 +644,8 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define PCIE_DOWN_STREAM_PORT	0x0060	/* Switch downstream port */
 #define PCIE_PCIE2PCI_BRIDGE	0x0070	/* PCI Express to PCI/PCI-X bridge */
 #define PCIE_PCI2PCIE_BRIDGE	0x0080	/* PCI/PCI-X to PCI Express bridge */
+#define PCIE_ROOT_END_POINT	0x0090	/* Root Complex Integrated Endpoint */
+#define PCIE_ROOT_EVT_COLL	0x00a0	/* Root Complex Event Collector */
 
 /* PCI Express device control, 16bits */
 #define PCIER_DEVCTRL			0x08
