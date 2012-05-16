@@ -240,6 +240,16 @@ hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts)
 	ts->tv_nsec = (unsigned int)(xtime % 1000000) * 1000L;
 }
 
+u_int64_t
+hammer2_timespec_to_time(struct timespec *ts)
+{
+	u_int64_t xtime;
+
+	xtime = (unsigned)(ts->tv_nsec / 1000) +
+		(unsigned long)ts->tv_sec * 1000000ULL;
+	return(xtime);
+}
+
 /*
  * Convert a uuid to a unix uid or gid
  */
@@ -247,6 +257,13 @@ u_int32_t
 hammer2_to_unix_xid(uuid_t *uuid)
 {
 	return(*(u_int32_t *)&uuid->node[2]);
+}
+
+void
+hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid)
+{
+	bzero(uuid, sizeof(*uuid));
+	*(u_int32_t *)&uuid->node[2] = guid;
 }
 
 /*
@@ -359,4 +376,13 @@ hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 	} else {
 		return (HAMMER2_PBUFSIZE);
 	}
+}
+
+void
+hammer2_update_time(uint64_t *timep)
+{
+	struct timeval tv;
+
+	getmicrotime(&tv);
+	*timep = (unsigned long)tv.tv_sec * 1000000 + tv.tv_usec;
 }

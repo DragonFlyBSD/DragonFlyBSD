@@ -58,6 +58,14 @@ static hammer2_off_t hammer2_assign_physical(hammer2_inode_t *ip,
 static void hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize);
 static void hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize);
 
+static __inline
+void
+hammer2_knote(struct vnode *vp, int flags)
+{
+	if (flags)
+		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
+}
+
 /*
  * Last reference to a vnode is going away but it is still cached.
  */
@@ -222,8 +230,8 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_fileid = ip->ip_data.inum;
 	vap->va_mode = ip->ip_data.mode;
 	vap->va_nlink = ip->ip_data.nlinks;
-	vap->va_uid = 0;
-	vap->va_gid = 0;
+	vap->va_uid = hammer2_to_unix_xid(&ip->ip_data.uid);
+	vap->va_gid = hammer2_to_unix_xid(&ip->ip_data.gid);
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
 	vap->va_size = ip->ip_data.size;
@@ -256,11 +264,12 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	struct vattr *vap;
 	int error;
 	int kflags = 0;
-	int doctime = 0;
 	int domtime = 0;
+	uint64_t ctime;
 
 	vp = ap->a_vp;
 	vap = ap->a_vap;
+	hammer2_update_time(&ctime);
 
 	ip = VTOI(vp);
 	hmp = ip->hmp;
@@ -282,7 +291,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 			if (ip->ip_data.uflags != flags) {
 				hammer2_chain_modify(hmp, &ip->chain, 0);
 				ip->ip_data.uflags = flags;
-				doctime = 1;
+				ip->ip_data.ctime = ctime;
 				kflags |= NOTE_ATTRIB;
 			}
 			if (ip->ip_data.uflags & (IMMUTABLE | APPEND)) {
@@ -290,13 +299,40 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 				goto done;
 			}
 		}
+		goto done;
 	}
-
 	if (ip->ip_data.uflags & (IMMUTABLE | APPEND)) {
 		error = EPERM;
 		goto done;
 	}
-	/* uid, gid */
+	if (vap->va_uid != (uid_t)VNOVAL || vap->va_gid != (gid_t)VNOVAL) {
+		mode_t cur_mode = ip->ip_data.mode;
+		uid_t cur_uid = hammer2_to_unix_xid(&ip->ip_data.uid);
+		gid_t cur_gid = hammer2_to_unix_xid(&ip->ip_data.gid);
+		uuid_t uuid_uid;
+		uuid_t uuid_gid;
+
+		error = vop_helper_chown(ap->a_vp, vap->va_uid, vap->va_gid,
+					 ap->a_cred,
+					 &cur_uid, &cur_gid, &cur_mode);
+		if (error == 0) {
+			hammer2_guid_to_uuid(&uuid_uid, cur_uid);
+			hammer2_guid_to_uuid(&uuid_gid, cur_gid);
+			if (bcmp(&uuid_uid, &ip->ip_data.uid,
+				 sizeof(uuid_uid)) ||
+			    bcmp(&uuid_gid, &ip->ip_data.gid,
+				 sizeof(uuid_gid)) ||
+			    ip->ip_data.mode != cur_mode
+			) {
+				hammer2_chain_modify(hmp, &ip->chain, 0);
+				ip->ip_data.uid = uuid_uid;
+				ip->ip_data.gid = uuid_gid;
+				ip->ip_data.mode = cur_mode;
+				ip->ip_data.ctime = ctime;
+			}
+			kflags |= NOTE_ATTRIB;
+		}
+	}
 
 	/*
 	 * Resize the file
@@ -316,6 +352,32 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		default:
 			error = EINVAL;
 			goto done;
+		}
+	}
+#if 0
+	/* atime not supported */
+	if (vap->va_atime.tv_sec != VNOVAL) {
+		hammer2_chain_modify(hmp, &ip->chain, 0);
+		ip->ip_data.atime = hammer2_timespec_to_time(&vap->va_atime);
+		kflags |= NOTE_ATTRIB;
+	}
+#endif
+	if (vap->va_mtime.tv_sec != VNOVAL) {
+		hammer2_chain_modify(hmp, &ip->chain, 0);
+		ip->ip_data.mtime = hammer2_timespec_to_time(&vap->va_mtime);
+		kflags |= NOTE_ATTRIB;
+	}
+	if (vap->va_mode != (mode_t)VNOVAL) {
+		mode_t cur_mode = ip->ip_data.mode;
+		uid_t cur_uid = hammer2_to_unix_xid(&ip->ip_data.uid);
+		gid_t cur_gid = hammer2_to_unix_xid(&ip->ip_data.gid);
+
+		error = vop_helper_chmod(ap->a_vp, vap->va_mode, ap->a_cred,
+					 cur_uid, cur_gid, &cur_mode);
+		if (error == 0 && ip->ip_data.mode != cur_mode) {
+			ip->ip_data.mode = cur_mode;
+			ip->ip_data.ctime = ctime;
+			kflags |= NOTE_ATTRIB;
 		}
 	}
 done:
@@ -587,7 +649,6 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 * might wind up being copied into the embedded data area.
 	 */
 	hammer2_inode_lock_ex(ip);
-	hammer2_chain_modify(hmp, &ip->chain, 0);
 	error = hammer2_write_file(ip, uio, ap->a_ioflag, seqcount);
 
 	hammer2_inode_unlock_ex(ip);
@@ -652,6 +713,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	struct buf *bp;
 	int kflags;
 	int error;
+	int modified = 0;
 
 	/*
 	 * Setup if append
@@ -671,6 +733,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	 */
 	old_eof = ip->ip_data.size;
 	if (uio->uio_offset + uio->uio_resid > ip->ip_data.size) {
+		modified = 1;
 		hammer2_extend_file(ip, uio->uio_offset + uio->uio_resid);
 		kflags |= NOTE_EXTEND;
 	}
@@ -792,13 +855,14 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		error = uiomove(bp->b_data + loff, n, uio);
 		hammer2_chain_lock(ip->hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 		kflags |= NOTE_WRITE;
+		modified = 1;
 
 		if (error) {
 			brelse(bp);
 			break;
 		}
 
-		/* XXX update ino_data.mtime */
+		/* XXX update ip_data.mtime */
 
 		/*
 		 * Once we dirty a buffer any cached offset becomes invalid.
@@ -828,9 +892,13 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	 * Cleanup.  If we extended the file EOF but failed to write through
 	 * the entire write is a failure and we have to back-up.
 	 */
-	if (error && ip->ip_data.size != old_eof)
+	if (error && ip->ip_data.size != old_eof) {
 		hammer2_truncate_file(ip, old_eof);
-	/* hammer2_knote(ip->vp, kflags); */
+	} else if (modified) {
+		hammer2_chain_modify(ip->hmp, &ip->chain, 0);
+		hammer2_update_time(&ip->ip_data.mtime);
+	}
+	hammer2_knote(ip->vp, kflags);
 	return error;
 }
 

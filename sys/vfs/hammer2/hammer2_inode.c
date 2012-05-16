@@ -213,6 +213,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	hammer2_inode_t *nip;
 	hammer2_key_t lhc;
 	int error;
+	uid_t xuid;
 
 	lhc = hammer2_dirhash(name, name_len);
 
@@ -270,12 +271,36 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	}
 	hammer2_voldata_unlock(hmp);
 	nip->ip_data.version = HAMMER2_INODE_VERSION_ONE;
-	nip->ip_data.ctime = 0;
-	nip->ip_data.mtime = 0;
+	hammer2_update_time(&nip->ip_data.ctime);
+	nip->ip_data.mtime = nip->ip_data.ctime;
 	if (vap)
 		nip->ip_data.mode = vap->va_mode;
 	nip->ip_data.nlinks = 1;
-	/* uid, gid, etc */
+	if (vap) {
+		if (dip) {
+			xuid = hammer2_to_unix_xid(&dip->ip_data.uid);
+			xuid = vop_helper_create_uid(dip->pmp->mp,
+						     dip->ip_data.mode,
+						     xuid,
+						     cred,
+						     &vap->va_mode);
+		} else {
+			xuid = 0;
+		}
+		if (vap->va_vaflags & VA_UID_UUID_VALID)
+			nip->ip_data.uid = vap->va_uid_uuid;
+		else if (vap->va_uid != (uid_t)VNOVAL)
+			hammer2_guid_to_uuid(&nip->ip_data.uid, vap->va_uid);
+		else
+			hammer2_guid_to_uuid(&nip->ip_data.uid, xuid);
+
+		if (vap->va_vaflags & VA_GID_UUID_VALID)
+			nip->ip_data.gid = vap->va_gid_uuid;
+		else if (vap->va_gid != (gid_t)VNOVAL)
+			hammer2_guid_to_uuid(&nip->ip_data.gid, vap->va_gid);
+		else if (dip)
+			nip->ip_data.gid = dip->ip_data.gid;
+	}
 
 	/*
 	 * Regular files and softlinks allow a small amount of data to be

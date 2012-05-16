@@ -344,13 +344,16 @@ int hammer2_get_dtype(hammer2_inode_t *ip);
 int hammer2_get_vtype(hammer2_inode_t *ip);
 u_int8_t hammer2_get_obj_type(enum vtype vtype);
 void hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts);
+u_int64_t hammer2_timespec_to_time(struct timespec *ts);
 u_int32_t hammer2_to_unix_xid(uuid_t *uuid);
+void hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
 int hammer2_bytes_to_radix(size_t bytes);
 
 int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 			 hammer2_key_t *lbasep, hammer2_key_t *leofp);
+void hammer2_update_time(uint64_t *timep);
 
 /*
  * hammer2_inode.c
