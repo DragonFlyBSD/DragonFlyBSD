@@ -94,12 +94,12 @@ extern int tcp_eifel_rtoinc;
 
 /* TCP segment queue entry */
 struct tseg_qent {
-	LIST_ENTRY(tseg_qent) tqe_q;
+	TAILQ_ENTRY(tseg_qent) tqe_q;
 	int	tqe_len;		/* TCP segment data length */
 	struct	tcphdr *tqe_th;		/* a pointer to tcp header */
 	struct	mbuf	*tqe_m;		/* mbuf contains packet */
 };
-LIST_HEAD(tsegqe_head, tseg_qent);
+TAILQ_HEAD(tsegqe_head, tseg_qent);
 extern int	tcp_reass_maxseg;
 extern int	tcp_reass_qsize;
 #ifdef MALLOC_DECLARE

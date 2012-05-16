@@ -627,7 +627,7 @@ send:
 	 */
 	if ((tp->t_flags & (TF_SACK_PERMITTED | TF_NOOPT)) ==
 		TF_SACK_PERMITTED &&
-	    (!LIST_EMPTY(&tp->t_segq) ||
+	    (!TAILQ_EMPTY(&tp->t_segq) ||
 	     tp->reportblk.rblk_start != tp->reportblk.rblk_end))
 		tcp_sack_fill_report(tp, opt, &optlen);
 

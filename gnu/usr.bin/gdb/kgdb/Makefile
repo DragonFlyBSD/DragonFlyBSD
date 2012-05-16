@@ -6,11 +6,15 @@ CFLAGS+= -I${BASEDIR}/bfd -I${BASEDIR}/gdb -I${BASEDIR}/gdb/config -I${.CURDIR}/
 CFLAGS+= -I${.OBJDIR}/../libbfd -I${BASEDIR}/gdb/common
 CFLAGS+= -D_KERNEL_STRUCTURES
 
-DPADD=	${LIBEDIT} ${LIBKVM} ${LIBTERMCAP} ${LIBM} ${LIBZ}
-DPADD+=	${GDBLIBS}
-LDADD=	-L../libgdb -lgdb -L../libbfd -lbfd -L../libopcodes -lopcodes
-LDADD+= -L../libiberty -liberty -L../libdecnumber -ldecnumber
-LDADD+=	-ledit -lkvm -ltermcap -lm -lz
+DPADD=  ${GDBLIBS}
+DPADD+= ${LIBNCURSES} ${LIBM} ${LIBZ} ${LIBKVM}
+LDADD=  -L../libgdb -lgdb
+LDADD+= -L../libreadline -lreadline
+LDADD+= -L../libopcodes -lopcodes
+LDADD+= -L../libbfd -lbfd
+LDADD+= -L../libiberty -liberty
+LDADD+= -L../libdecnumber -ldecnumber
+LDADD+= -lncurses -lm -lz -lkvm
 
 WARNS?=	2
 

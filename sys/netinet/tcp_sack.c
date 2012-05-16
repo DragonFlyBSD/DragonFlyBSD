@@ -874,7 +874,7 @@ tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen)
 		/* Fill in from left!  Walk re-assembly queue. */
 		struct tseg_qent *q;
 
-		q = LIST_FIRST(&tp->t_segq);
+		q = TAILQ_FIRST(&tp->t_segq);
 		while (q != NULL &&
 		    TCP_MAXOLEN - optlen >= TCPOLEN_SACK_BLOCK) {
 			*lp++ = htonl(q->tqe_th->th_seq);
@@ -882,7 +882,7 @@ tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen)
 			    q->tqe_th->th_seq + q->tqe_len,
 			    q->tqe_th->th_flags));
 			optlen += TCPOLEN_SACK_BLOCK;
-			q = LIST_NEXT(q, tqe_q);
+			q = TAILQ_NEXT(q, tqe_q);
 		}
 	} else {
 		int n = 0;

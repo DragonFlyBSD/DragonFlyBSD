@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/gdb/kgdb/kgdb.1,v 1.10 2006/10/21 17:39:35 ru Exp $
 .\"
-.Dd October 11, 2006
+.Dd May 15, 2012
 .Os
 .Dt KGDB 1
 .Sh NAME
@@ -34,6 +34,7 @@
 .Nm
 .Op Fl a | Fl f | Fl fullname
 .Op Fl q | Fl quiet
+.Op Fl t | Fl tui-mode
 .Op Fl v
 .Op Fl w
 .Op Fl d Ar crashdir
@@ -67,6 +68,13 @@ Suppress printing of the banner when the debugger starts.
 The
 .Fl quiet
 form is supported for compatibility as well.
+.It Fl t
+Activate the Text User Interface (TUI).  The
+.Fl tui-mode
+shows the source file, assembly output, program registers and
+gdb commands in separate text windows.  It implicitly sets the
+.Fl quiet
+option as well.
 .It Fl v
 Increase verbosity.
 .It Fl w

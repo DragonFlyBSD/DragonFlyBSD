@@ -347,7 +347,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	/*
 	 * Find a segment which begins after this one does.
 	 */
-	LIST_FOREACH(q, &tp->t_segq, tqe_q) {
+	TAILQ_FOREACH(q, &tp->t_segq, tqe_q) {
 		if (SEQ_GT(q->tqe_th->th_seq, th->th_seq))
 			break;
 		p = q;
@@ -430,8 +430,8 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			break;
 		}
 
-		nq = LIST_NEXT(q, tqe_q);
-		LIST_REMOVE(q, tqe_q);
+		nq = TAILQ_NEXT(q, tqe_q);
+		TAILQ_REMOVE(&tp->t_segq, q, tqe_q);
 		m_freem(q->tqe_m);
 		kfree(q, M_TSEGQ);
 		atomic_add_int(&tcp_reass_qsize, -1);
@@ -459,13 +459,13 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 		 */
 		if (!(tp->sack_flags & TSACK_F_DUPSEG))
 			tp->reportblk.rblk_end = tend_sack;
-		LIST_REMOVE(q, tqe_q);
+		TAILQ_REMOVE(&tp->t_segq, q, tqe_q);
 		kfree(q, M_TSEGQ);
 		atomic_add_int(&tcp_reass_qsize, -1);
 	}
 
 	if (p == NULL) {
-		LIST_INSERT_HEAD(&tp->t_segq, te, tqe_q);
+		TAILQ_INSERT_HEAD(&tp->t_segq, te, tqe_q);
 	} else {
 		/* check if can coalesce with preceding segment */
 		if (p->tqe_th->th_seq + p->tqe_len == th->th_seq) {
@@ -481,7 +481,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			kfree(te, M_TSEGQ);
 			atomic_add_int(&tcp_reass_qsize, -1);
 		} else {
-			LIST_INSERT_AFTER(p, te, tqe_q);
+			TAILQ_INSERT_AFTER(&tp->t_segq, p, te, tqe_q);
 		}
 	}
 
@@ -492,7 +492,7 @@ present:
 	 */
 	if (!TCPS_HAVEESTABLISHED(tp->t_state))
 		return (0);
-	q = LIST_FIRST(&tp->t_segq);
+	q = TAILQ_FIRST(&tp->t_segq);
 	if (q == NULL || q->tqe_th->th_seq != tp->rcv_nxt)
 		return (0);
 	tp->rcv_nxt += q->tqe_len;
@@ -503,9 +503,9 @@ present:
 	/* no enclosing block to report since ACK advanced */
 	tp->sack_flags &= ~TSACK_F_ENCLOSESEG;
 	flags = q->tqe_th->th_flags & TH_FIN;
-	LIST_REMOVE(q, tqe_q);
-	KASSERT(LIST_EMPTY(&tp->t_segq) ||
-		LIST_FIRST(&tp->t_segq)->tqe_th->th_seq != tp->rcv_nxt,
+	TAILQ_REMOVE(&tp->t_segq, q, tqe_q);
+	KASSERT(TAILQ_EMPTY(&tp->t_segq) ||
+		TAILQ_FIRST(&tp->t_segq)->tqe_th->th_seq != tp->rcv_nxt,
 		("segment not coalesced"));
 	if (so->so_state & SS_CANTRCVMORE) {
 		m_freem(q->tqe_m);
@@ -1276,7 +1276,7 @@ after_listen:
 			}
 		} else if (tiwin == tp->snd_wnd &&
 		    th->th_ack == tp->snd_una &&
-		    LIST_EMPTY(&tp->t_segq) &&
+		    TAILQ_EMPTY(&tp->t_segq) &&
 		    tlen <= ssb_space(&so->so_rcv)) {
 			u_long newsize = 0;	/* automatic sockbuf scaling */
 			/*
@@ -2474,7 +2474,7 @@ dodata:							/* XXX */
 		 * fast retransmit can work).
 		 */
 		if (th->th_seq == tp->rcv_nxt &&
-		    LIST_EMPTY(&tp->t_segq) &&
+		    TAILQ_EMPTY(&tp->t_segq) &&
 		    TCPS_HAVEESTABLISHED(tp->t_state)) {
 			if (DELAY_ACK(tp)) {
 				tcp_callout_reset(tp, tp->tt_delack,

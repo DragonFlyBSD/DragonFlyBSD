@@ -83,7 +83,7 @@ usage(void)
 {
 
 	fprintf(stderr,
-	    "usage: %s [-afqv] [-d crashdir] [-c core | -n dumpnr | -r device]\n"
+	    "usage: %s [-afqtv] [-d crashdir] [-c core | -n dumpnr | -r device]\n"
 	    "\t[kernel [core]]\n", getprogname());
 	exit(1);
 }
@@ -326,6 +326,8 @@ main(int argc, char *argv[])
 				argv[a] = "-q";
 			else if (strcmp(s, "fullname") == 0)
 				argv[a] = "-f";
+			else if (strcmp(s, "tui-mode") == 0)
+				argv[a] = "-t";
 		}
 	}
 
@@ -337,7 +339,7 @@ main(int argc, char *argv[])
 	args.argv[0] = argv[0];
 	add_arg(&args, "--kernel");
 
-	while ((ch = getopt(argc, argv, "ac:d:fn:qr:vw")) != -1) {
+	while ((ch = getopt(argc, argv, "ac:d:fn:qr:tvw")) != -1) {
 		switch (ch) {
 		case 'a':
 			annotation_level++;
@@ -378,6 +380,12 @@ main(int argc, char *argv[])
 				/* NOTREACHED */
 			}
 			remote = strdup(optarg);
+			break;
+		case 't':
+			args.interpreter_p = INTERP_TUI;
+			add_arg(&args, "-tui");
+			quiet = 1;
+			add_arg(&args, "-q");
 			break;
 		case 'v':	/* increase verbosity. */
 			verbose++;
