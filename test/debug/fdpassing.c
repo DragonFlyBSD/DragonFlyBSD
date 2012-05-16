@@ -27,7 +27,7 @@ main(int ac, char **av)
     int dummy;
 
     if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) < 0) {
-	perror("socktepair");
+	perror("socketpair");
 	exit(1);
     }
     fcntl(fds[0], F_SETFL, 0);
