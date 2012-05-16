@@ -695,7 +695,7 @@ tcp_newtcpcb(struct inpcb *inp)
 	it = (struct inp_tp *)inp;
 	tp = &it->tcb;
 	bzero(tp, sizeof(struct tcpcb));
-	LIST_INIT(&tp->t_segq);
+	TAILQ_INIT(&tp->t_segq);
 	tp->t_maxseg = tp->t_maxopd = isipv6 ? tcp_v6mssdflt : tcp_mssdflt;
 	tp->t_rxtthresh = tcprexmtthresh;
 
@@ -976,8 +976,8 @@ tcp_close(struct tcpcb *tp)
 
 no_valid_rt:
 	/* free the reassembly queue, if any */
-	while((q = LIST_FIRST(&tp->t_segq)) != NULL) {
-		LIST_REMOVE(q, tqe_q);
+	while((q = TAILQ_FIRST(&tp->t_segq)) != NULL) {
+		TAILQ_REMOVE(&tp->t_segq, q, tqe_q);
 		m_freem(q->tqe_m);
 		kfree(q, M_TSEGQ);
 		atomic_add_int(&tcp_reass_qsize, -1);
@@ -1028,8 +1028,8 @@ tcp_drain_oncpu(struct inpcbhead *head)
 	while ((inpb = LIST_NEXT(marker, inp_list)) != NULL) {
 		if ((inpb->inp_flags & INP_PLACEMARKER) == 0 &&
 		    (tcpb = intotcpcb(inpb)) != NULL &&
-		    (te = LIST_FIRST(&tcpb->t_segq)) != NULL) {
-			LIST_REMOVE(te, tqe_q);
+		    (te = TAILQ_FIRST(&tcpb->t_segq)) != NULL) {
+			TAILQ_REMOVE(&tcpb->t_segq, te, tqe_q);
 			m_freem(te->tqe_m);
 			kfree(te, M_TSEGQ);
 			atomic_add_int(&tcp_reass_qsize, -1);
