@@ -479,7 +479,8 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 		"\t\t%lu packet%s (%lu byte%s) received in-sequence\n");
 	p2(tcps_rcvduppack, tcps_rcvdupbyte,
 		"\t\t%lu completely duplicate packet%s (%lu byte%s)\n");
-	p(tcps_pawsdrop, "\t\t%lu old duplicate packet%s\n");
+	p2(tcps_pawsdrop, tcps_pawsaccept,
+		"\t\t%lu old duplicate packet%s (%lu packet%s accepted)\n");
 	p2(tcps_rcvpartduppack, tcps_rcvpartdupbyte,
 		"\t\t%lu packet%s with some dup. data (%lu byte%s duped)\n");
 	p2(tcps_rcvoopack, tcps_rcvoobyte,

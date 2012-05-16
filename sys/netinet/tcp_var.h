@@ -400,6 +400,7 @@ struct tcp_stats {
 	u_long	tcps_rcvackbyte;	/* bytes acked by rcvd acks */
 	u_long	tcps_rcvwinupd;		/* rcvd window update packets */
 	u_long	tcps_pawsdrop;		/* segments dropped due to PAWS */
+	u_long	tcps_pawsaccept;	/* segments accepted, PAWS tolerance */
 	u_long	tcps_predack;		/* times hdr predict ok for acks */
 	u_long	tcps_preddat;		/* times hdr predict ok for data pkts */
 	u_long	tcps_pcbcachemiss;
