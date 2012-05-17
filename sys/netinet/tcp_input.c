@@ -177,6 +177,15 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, abc, CTLFLAG_RW,
     "TCP Appropriate Byte Counting (RFC 3465)");
 
 /*
+ * The following value actually takes range [25ms, 250ms],
+ * given that most modern systems use 1ms ~ 10ms as the unit
+ * of timestamp option.
+ */
+static u_int tcp_paws_tolerance = 25;
+SYSCTL_UINT(_net_inet_tcp, OID_AUTO, paws_tolerance, CTLFLAG_RW,
+    &tcp_paws_tolerance, 0, "RFC1323 PAWS tolerance");
+
+/*
  * Define as tunable for easy testing with SACK on and off.
  * Warning:  do not change setting in the middle of an existing active TCP flow,
  *   else strange things might happen to that flow.
@@ -299,6 +308,45 @@ do { \
      tp->t_dupacks + 1 >= iceildiv(ownd, tp->t_maxseg) && \
      (!TCP_DO_SACK(tp) || ownd <= tp->t_maxseg || \
       tcp_sack_has_sacked(&tp->scb, ownd - tp->t_maxseg)))
+
+/*
+ * Returns TRUE, if this segment can be merged with the last
+ * pending segment in the reassemble queue and this segment
+ * does not overlap with the pending segment immediately
+ * preceeding the last pending segment.
+ */
+static __inline boolean_t
+tcp_paws_canreasslast(const struct tcpcb *tp, const struct tcphdr *th, int tlen)
+{
+	const struct tseg_qent *last, *prev;
+
+	last = TAILQ_LAST(&tp->t_segq, tsegqe_head);
+	if (last == NULL)
+		return FALSE;
+
+	/* This segment comes immediately after the last pending segment */
+	if (last->tqe_th->th_seq + last->tqe_len == th->th_seq)
+		return TRUE;
+
+	if (th->th_seq + tlen != last->tqe_th->th_seq)
+		return FALSE;
+	/* This segment comes immediately before the last pending segment */
+
+	prev = TAILQ_PREV(last, tsegqe_head, tqe_q);
+	if (prev == NULL) {
+		/*
+		 * No pending preceeding segment, we assume this segment
+		 * could be reassembled.
+		 */
+		return TRUE;
+	}
+
+	/* This segment does not overlap with the preceeding segment */
+	if (SEQ_GEQ(th->th_seq, prev->tqe_th->th_seq + prev->tqe_len))
+		return TRUE;
+
+	return FALSE;
+}
 
 static int
 tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
@@ -1655,7 +1703,6 @@ after_listen:
 	 */
 	if ((to.to_flags & TOF_TS) && tp->ts_recent != 0 &&
 	    TSTMP_LT(to.to_tsval, tp->ts_recent)) {
-
 		/* Check to see if ts_recent is over 24 days old.  */
 		if ((int)(ticks - tp->ts_recent_age) > TCP_PAWS_IDLE) {
 			/*
@@ -1670,6 +1717,39 @@ after_listen:
 			 * dropped when ts_recent is old.
 			 */
 			tp->ts_recent = 0;
+		} else if (tcp_paws_tolerance && tlen != 0 &&
+		    tp->t_state == TCPS_ESTABLISHED &&
+		    (thflags & (TH_SYN|TH_FIN|TH_RST|TH_URG|TH_ACK)) == TH_ACK&&
+		    !(tp->t_flags & (TF_NEEDSYN | TF_NEEDFIN)) &&
+		    th->th_ack == tp->snd_una &&
+		    tiwin == tp->snd_wnd &&
+		    TSTMP_GEQ(to.to_tsval + tcp_paws_tolerance, tp->ts_recent)&&
+		    (th->th_seq == tp->rcv_nxt ||
+		     (SEQ_GT(th->th_seq, tp->rcv_nxt) && 
+		      tcp_paws_canreasslast(tp, th, tlen)))) {
+			/*
+			 * This tends to prevent valid new segments from being
+			 * dropped by the reordered segments sent by the fast
+			 * retransmission algorithm on the sending side, i.e.
+			 * the fast retransmitted segment w/ larger timestamp
+			 * arrives earlier than the previously sent new segments
+			 * w/ smaller timestamp.
+			 *
+			 * If following conditions are met, the segment is
+			 * accepted:
+			 * - The segment contains data
+			 * - The connection is established
+			 * - The header does not contain important flags
+			 * - SYN or FIN is not needed
+			 * - It does not acknowledge new data
+			 * - Receive window is not changed
+			 * - The timestamp is within "acceptable" range
+			 * - The new segment is what we are expecting or
+			 *   the new segment could be merged w/ the last
+			 *   pending segment on the reassemble queue
+			 */
+			tcpstat.tcps_pawsaccept++;
+			tcpstat.tcps_pawsdrop++;
 		} else {
 			tcpstat.tcps_rcvduppack++;
 			tcpstat.tcps_rcvdupbyte += tlen;
