@@ -1716,11 +1716,10 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		nkeybits = keybits;
 		if (nkeybits < bref->keybits)
 			nkeybits = bref->keybits;
-		while ((~(((hammer2_key_t)1 << nkeybits) - 1) &
+		while (nkeybits < 64 &&
+		       (~(((hammer2_key_t)1 << nkeybits) - 1) &
 		        (key ^ bref->key)) != 0) {
 			++nkeybits;
-			if (nkeybits == 64)
-				break;
 		}
 
 		/*
