@@ -8,6 +8,7 @@ MAN=	builtin.1 intro.1
 MLINKS=	builtin.1 alias.1 \
 	builtin.1 alloc.1 \
 	builtin.1 bg.1 \
+	builtin.1 bind.1 \
 	builtin.1 bindkey.1 \
 	builtin.1 break.1 \
 	builtin.1 breaksw.1 \
@@ -50,6 +51,7 @@ MLINKS=	builtin.1 alias.1 \
 	builtin.1 jobid.1 \
 	builtin.1 jobs.1 \
 	builtin.1 limit.1 \
+	builtin.1 local.1 \
 	builtin.1 log.1 \
 	builtin.1 logout.1 \
 	builtin.1 ls-F.1 \
@@ -61,6 +63,7 @@ MLINKS=	builtin.1 alias.1 \
 	builtin.1 readonly.1 \
 	builtin.1 rehash.1 \
 	builtin.1 repeat.1 \
+	builtin.1 return.1 \
 	builtin.1 sched.1 \
 	builtin.1 set.1 \
 	builtin.1 setenv.1 \
@@ -73,7 +76,9 @@ MLINKS=	builtin.1 alias.1 \
 	builtin.1 suspend.1 \
 	builtin.1 switch.1 \
 	builtin.1 telltc.1 \
+	builtin.1 termname.1 \
 	builtin.1 then.1 \
+	builtin.1 times.1 \
 	builtin.1 trap.1 \
 	builtin.1 type.1 \
 	builtin.1 ulimit.1 \
