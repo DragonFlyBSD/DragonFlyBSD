@@ -953,6 +953,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			chain->u.ip->pip = parent->u.ip;
 			chain->u.ip->pmp = parent->u.ip->pmp;
+			chain->u.ip->depth = parent->u.ip->depth + 1;
 		}
 	}
 
@@ -1517,6 +1518,7 @@ again:
 		if (scan->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			chain->u.ip->pip = scan->u.ip;
 			chain->u.ip->pmp = scan->u.ip->pmp;
+			chain->u.ip->depth = scan->u.ip->depth + 1;
 		}
 	}
 
@@ -2010,8 +2012,10 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	/*
 	 * If this is an inode clear the pip.
 	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
+	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		chain->u.ip->pip = NULL;
+		chain->u.ip->depth = 0;
+	}
 
 	/*
 	 * The chain is still likely referenced, possibly even by a vnode

@@ -58,7 +58,7 @@ static struct lock hammer2_mntlk;
 
 int hammer2_debug;
 int hammer2_cluster_enable = 1;
-int hammer2_hardlink_enable = 0;
+int hammer2_hardlink_enable = 1;
 long hammer2_iod_file_read;
 long hammer2_iod_meta_read;
 long hammer2_iod_indr_read;

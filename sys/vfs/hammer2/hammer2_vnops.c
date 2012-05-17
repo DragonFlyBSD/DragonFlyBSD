@@ -508,7 +508,8 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		 * or some entries will be missed.
 		 */
 		chain = hammer2_chain_next(hmp, &parent, chain,
-					   0, (hammer2_key_t)-1, 0);
+					   HAMMER2_DIRHASH_VISIBLE,
+					   (hammer2_key_t)-1, 0);
 		if (chain) {
 			saveoff = (chain->bref.key &
 				   HAMMER2_DIRHASH_USERMSK) + 1;
@@ -1576,6 +1577,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 {
 	hammer2_inode_t *dip;	/* target directory to create link in */
 	hammer2_inode_t *ip;	/* inode we are hardlinking to */
+	hammer2_inode_t *oip;
 	hammer2_mount_t *hmp;
 	struct namecache *ncp;
 	const uint8_t *name;
@@ -1590,7 +1592,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	/*
 	 * (ip) is the inode we are linking to.
 	 */
-	ip = VTOI(ap->a_vp);
+	ip = oip = VTOI(ap->a_vp);
 	hammer2_inode_lock_nlinks(ip);
 
 	ncp = ap->a_nch->ncp;
@@ -1602,22 +1604,35 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * and move the nlinks lock if necessary.  Tell the function to
 	 * bump the hardlink count on the consolidated file.
 	 */
-	error = hammer2_hardlink_consolidate(&ip, dip, 1);
+	error = hammer2_hardlink_consolidate(&ip, dip);
 	if (error)
 		goto done;
 
 	/*
-	 * When creating a hardlink we have to bump the nlinks count
-	 * in ip
-	 * in ip after successfully connecting the directory entry to
-	 * (ip).
+	 * If the consolidation changed ip to a HARDLINK pointer we have
+	 * to adjust the vnode to point to the actual ip.
+	 */
+	if (oip != ip) {
+		hammer2_chain_ref(hmp, &ip->chain);
+		hammer2_inode_lock_ex(ip);
+		hammer2_inode_lock_ex(oip);
+		ip->vp = ap->a_vp;
+		ap->a_vp->v_data = ip;
+		oip->vp = NULL;
+		hammer2_inode_unlock_ex(oip);
+		hammer2_inode_unlock_ex(ip);
+		hammer2_chain_drop(hmp, &oip->chain);
+	}
+
+	/*
+	 * The act of connecting the existing (ip) will properly bump the
+	 * nlinks count.  However, vp will incorrectly point at the old
+	 * inode which has now been turned into a OBJTYPE_HARDLINK pointer.
+	 *
+	 * We must reconnect the vp.
 	 */
 	hammer2_chain_lock(hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_inode_connect(dip, ip, name, name_len);
-	if (error == 0) {
-		hammer2_chain_modify(ip->hmp, &ip->chain, 0);
-		++ip->ip_data.nlinks;
-	}
 	hammer2_chain_unlock(hmp, &ip->chain);
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1880,7 +1895,10 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	cache_setvp(ap->a_tnch, NULL);
 
 	/*
-	 * Disconnect ip from the source directory.
+	 * Disconnect (fdip, fname) from the source directory.  This will
+	 * disconnect (ip) if it represents a direct file.  If (ip) represents
+	 * a hardlink the HARDLINK pointer object will be removed but the
+	 * hardlink will stay intact.
 	 *
 	 * If (ip) is already hardlinked we have to resolve to a consolidated
 	 * file but we do not bump the nlinks count.  (ip) must hold the nlinks
@@ -1892,16 +1910,13 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * contents of the inode.
 	 */
 	if (ip->ip_data.nlinks > 1) {
-		error = hammer2_hardlink_consolidate(&ip, tdip, 0);
+		error = hammer2_hardlink_consolidate(&ip, tdip);
 		if (error)
 			goto done;
 	}
 	error = hammer2_unlink_file(fdip, fname, fname_len, -1);
 	if (error)
 		goto done;
-
-	if (ip->chain.parent != NULL)
-		panic("hammer2_vop_nrename(): rename source != ip!");
 
 	/*
 	 * Reconnect ip to target directory.

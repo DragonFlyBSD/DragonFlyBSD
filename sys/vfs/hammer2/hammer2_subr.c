@@ -146,7 +146,12 @@ hammer2_voldata_unlock(hammer2_mount_t *hmp)
 int
 hammer2_get_dtype(hammer2_inode_t *ip)
 {
-	switch(ip->ip_data.type) {
+	uint8_t type;
+
+	if ((type = ip->ip_data.type) == HAMMER2_OBJTYPE_HARDLINK)
+		type = ip->ip_data.target_type;
+
+	switch(type) {
 	case HAMMER2_OBJTYPE_UNKNOWN:
 		return (DT_UNKNOWN);
 	case HAMMER2_OBJTYPE_DIRECTORY:

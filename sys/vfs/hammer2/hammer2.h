@@ -210,22 +210,16 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 
 /*
  * A hammer2 inode.
- *
- * NOTE: Hardlinks are usually resolved through its forwarding inode(s)
- *	 but fwd will be non-NULL if the related inode/vnode is resolved
- *	 prior to the hardlink being created, or if a hardlink's real
- *	 inode had to be moved.  In these situations the old inode pointer
- *	 will get a (fwd) entry.  All vnops must forward through it.
  */
 struct hammer2_inode {
 	struct hammer2_mount	*hmp;		/* Global mount */
 	struct hammer2_pfsmount	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
-	struct hammer2_inode	*fwd;		/* forwarding inode */
 	struct vnode		*vp;
 	hammer2_chain_t		chain;
 	struct hammer2_inode_data ip_data;
 	struct lockf		advlock;
+	u_int			depth;		/* directory depth */
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
@@ -381,13 +375,15 @@ int hammer2_inode_create(hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len,
 			hammer2_inode_t **nipp);
 
-int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *nip,
+int hammer2_inode_duplicate(hammer2_inode_t *dip,
+			hammer2_inode_t *oip, hammer2_inode_t **nipp,
+			const uint8_t *name, size_t name_len);
+int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 			const uint8_t *name, size_t name_len);
 
 int hammer2_unlink_file(hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len, int isdir);
-int hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip,
-			int bumpnlinks);
+int hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip);
 int hammer2_hardlink_deconsolidate(hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_inode_t **ipp);
 int hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,

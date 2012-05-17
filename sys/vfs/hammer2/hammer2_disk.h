@@ -451,7 +451,7 @@ struct hammer2_inode_data {
 	 *	 a separate node.  {pfs_fsid, pfs_id} must be used for
 	 *	 registration in the cluster.
 	 */
-	uint8_t		reserved84;	/* 0084 */
+	uint8_t		target_type;	/* 0084 hardlink target type */
 	uint8_t		reserved85;	/* 0085 */
 	uint8_t		reserved86;	/* 0086 */
 	uint8_t		pfs_type;	/* 0087 (if PFSROOT) node type */
