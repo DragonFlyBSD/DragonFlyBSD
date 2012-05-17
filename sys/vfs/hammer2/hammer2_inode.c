@@ -230,6 +230,8 @@ hammer2_inode_create(hammer2_inode_t *dip,
 		chain = hammer2_chain_lookup(hmp, &parent, lhc, lhc, 0);
 		if (chain == NULL)
 			break;
+		if ((lhc & HAMMER2_DIRHASH_VISIBLE) == 0)
+			error = ENOSPC;
 		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
 			error = ENOSPC;
 		hammer2_chain_unlock(hmp, chain);
@@ -419,18 +421,15 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 
 
 /*
- * Connect inode (ip) to the specified directory using the specified name.
- * (ip) must be locked.
+ * Connect inode (oip) to the specified directory using the specified name.
+ * (oip) must be locked.
  *
- * If (ip) is not currently connected we simply connect it up.
+ * If (oip) is not currently connected we simply connect it up.
  *
- * If (ip) is already connected we create a OBJTYPE_HARDLINK entry which
- * points to (ip)'s inode number.  (ip) is expected to be the terminus of
+ * If (oip) is already connected we create a OBJTYPE_HARDLINK entry which
+ * points to (oip)'s inode number.  (oip) is expected to be the terminus of
  * the hardlink sitting as a hidden file in a common parent directory
- * in this situation.
- *
- * If (nipp) is non-NULL then (*nip) is set to point at the new inode
- * and returned locked.
+ * in this situation (thus the lock order is correct).
  */
 int
 hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
@@ -508,6 +507,10 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 * target file and not the hardlink pointer entry.
 	 */
 	if (hlink) {
+		/*
+		 * Create the HARDLINK pointer.  oip represents the hardlink
+		 * target in this situation.
+		 */
 		nip = chain->u.ip;
 		hammer2_chain_modify(hmp, chain, 0);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
@@ -517,20 +520,27 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 		nip->ip_data.target_type = oip->ip_data.type;
 		nip->ip_data.type = HAMMER2_OBJTYPE_HARDLINK;
 		nip->ip_data.inum = oip->ip_data.inum;
+		nip->ip_data.nlinks = 1;
 		kprintf("created hardlink %*.*s\n",
 			(int)name_len, (int)name_len, name);
 		hammer2_chain_unlock(hmp, chain);
 	} else {
+		/*
+		 * The name may have changed on reconnect, adjust oip.
+		 *
+		 * We are using oip as chain, already locked by caller,
+		 * do not unlock it.
+		 */
+		hammer2_chain_modify(hmp, chain, 0);
 		if (oip->ip_data.name_len != name_len ||
 		    bcmp(oip->ip_data.filename, name, name_len) != 0) {
-			hammer2_chain_modify(hmp, chain, 0);
 			KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 			bcopy(name, oip->ip_data.filename, name_len);
 			oip->ip_data.name_key = lhc;
 			oip->ip_data.name_len = name_len;
 		}
+		oip->ip_data.nlinks = 1;
 	}
-	/*nip->ip_data.nlinks = 1;*/
 
 	return (0);
 }
