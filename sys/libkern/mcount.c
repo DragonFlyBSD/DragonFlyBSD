@@ -31,12 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/mcount.c,v 1.16 1999/12/29 04:54:41 peter Exp $
- * $DragonFly: src/sys/libkern/mcount.c,v 1.9 2007/01/12 22:12:50 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/gmon.h>
-#ifdef _KERNEL
+#if defined(_KERNEL) && !defined(_KERNEL_VIRTUAL)
 #ifndef GUPROF
 #include <sys/systm.h>
 #endif
@@ -75,7 +74,7 @@ _MCOUNT_DECL(uintfptr_t frompc, uintfptr_t selfpc)
 	struct tostruct *top, *prevtop;
 	struct gmonparam *p;
 	long toindex;
-#ifdef _KERNEL
+#if defined(_KERNEL) && !defined(_KERNEL_VIRTUAL)
 	MCOUNT_DECL(s)
 #endif
 
@@ -88,14 +87,14 @@ _MCOUNT_DECL(uintfptr_t frompc, uintfptr_t selfpc)
 	if (p->state != GMON_PROF_ON)
 		return;
 #endif
-#ifdef _KERNEL
+#if defined(_KERNEL) && !defined(_KERNEL_VIRTUAL)
 	MCOUNT_ENTER(s);
 #else
 	p->state = GMON_PROF_BUSY;
 #endif
 	frompci = frompc - p->lowpc;
 
-#ifdef _KERNEL
+#if defined(_KERNEL) && !defined(_KERNEL_VIRTUAL)
 	/*
 	 * When we are called from an exception handler, frompci may be
 	 * for a user address.  Convert such frompci's to the index of
@@ -143,7 +142,7 @@ _MCOUNT_DECL(uintfptr_t frompc, uintfptr_t selfpc)
 	}
 #endif /* GUPROF */
 
-#ifdef _KERNEL
+#if defined(_KERNEL) && !defined(_KERNEL_VIRTUAL)
 	/*
 	 * When we are called from an exception handler, frompc is faked
 	 * to be for where the exception occurred.  We've just solidified
@@ -241,7 +240,7 @@ _MCOUNT_DECL(uintfptr_t frompc, uintfptr_t selfpc)
 
 	}
 done:
-#ifdef _KERNEL
+#if defined(_KERNEL) && !defined(_KERNEL_VIRTUAL)
 	MCOUNT_EXIT(s);
 #else
 	p->state = GMON_PROF_ON;
@@ -249,7 +248,7 @@ done:
 	return;
 overflow:
 	p->state = GMON_PROF_ERROR;
-#ifdef _KERNEL
+#if defined(_KERNEL) && !defined(_KERNEL_VIRTUAL)
 	MCOUNT_EXIT(s);
 #endif
 	return;

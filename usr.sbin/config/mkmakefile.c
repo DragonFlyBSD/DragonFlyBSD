@@ -163,8 +163,11 @@ makefile(void)
 	fprintf(ofp, ".makeenv MACHINE\n");
 	fprintf(ofp, ".makeenv MACHINE_ARCH\n");
 	fprintf(ofp, "IDENT=");
-	if (profiling)
-		fprintf(ofp, " -DGPROF");
+	if (profiling) {
+		/* Don't compile kernel profiling code for vkernel */
+		if (strncmp(platformname, "vkernel", 6) != 0)
+			fprintf(ofp, " -DGPROF");
+	}
 
 	if (cputype == 0) {
 		printf("cpu type must be specified\n");
