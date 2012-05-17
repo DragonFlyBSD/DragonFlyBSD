@@ -159,9 +159,19 @@ static struct tcpcb *
 #endif
 
 static int	tcp_lport_extension = 1;
-
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, lportext, CTLFLAG_RW,
     &tcp_lport_extension, 0, "");
+
+/*
+ * For some ill optimized programs, which try to use TCP_NOPUSH
+ * to improve performance, will have small amount of data sits
+ * in the sending buffer.  These small amount of data will _not_
+ * be pushed into the network until more data are written into
+ * the socket or the socket write side is shutdown.
+ */ 
+static int	tcp_disable_nopush = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, disable_nopush, CTLFLAG_RW,
+    &tcp_disable_nopush, 0, "TCP_NOPUSH socket option will have no effect");
 
 /*
  * TCP attaches to socket via pru_attach(), reserving space,
@@ -1387,6 +1397,8 @@ tcp_ctloutput(netmsg_t msg)
 			break;
 
 		case TCP_NOPUSH:
+			if (tcp_disable_nopush)
+				break;
 			if (optval)
 				tp->t_flags |= TF_NOPUSH;
 			else {
