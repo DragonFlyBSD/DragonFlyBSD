@@ -312,7 +312,7 @@ pmap_pte_quick(pmap_t pmap, vm_offset_t va)
 			*(unsigned *)gd->gd_PMAP1 = newpf | PG_RW | PG_V;
 			cpu_invlpg(gd->gd_PADDR1);
 		}
-		return gd->gd_PADDR1 + ((unsigned) index & (NPTEPG - 1));
+		return gd->gd_PADDR1 + (index & (NPTEPG - 1));
 	}
 	return (0);
 }

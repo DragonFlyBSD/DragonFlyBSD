@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/prof_machdep.c,v 1.14.2.1 2000/08/03 00:09:30 ps Exp $
- * $DragonFly: src/sys/platform/pc32/isa/prof_machdep.c,v 1.10 2008/08/02 01:14:43 dillon Exp $
  */
 
 #ifdef GUPROF
@@ -234,7 +233,7 @@ cputime(void)
 	 */
 	delta = prev_count - count;
 	prev_count = count;
-	if ((int) delta <= 0)
+	if (delta <= 0)
 		return (delta + (timer0_max_count << CPUTIME_CLOCK_I8254_SHIFT));
 	return (delta);
 }
