@@ -58,6 +58,7 @@ static struct lock hammer2_mntlk;
 
 int hammer2_debug;
 int hammer2_cluster_enable = 1;
+int hammer2_hardlink_enable = 0;
 long hammer2_iod_file_read;
 long hammer2_iod_meta_read;
 long hammer2_iod_indr_read;
@@ -79,6 +80,8 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, debug, CTLFLAG_RW,
 	   &hammer2_debug, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_enable, CTLFLAG_RW,
 	   &hammer2_cluster_enable, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, hardlink_enable, CTLFLAG_RW,
+	   &hammer2_hardlink_enable, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RW,
 	   &hammer2_iod_file_read, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_read, CTLFLAG_RW,

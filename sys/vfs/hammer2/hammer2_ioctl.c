@@ -379,7 +379,6 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	int error;
 
 	error = hammer2_unlink_file(hmp->schain->u.ip,
-				    pfs->name, strlen(pfs->name),
-				    0, 1);
+				    pfs->name, strlen(pfs->name), 0);
 	return (error);
 }

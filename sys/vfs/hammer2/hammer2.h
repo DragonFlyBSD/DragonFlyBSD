@@ -210,11 +210,18 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 
 /*
  * A hammer2 inode.
+ *
+ * NOTE: Hardlinks are usually resolved through its forwarding inode(s)
+ *	 but fwd will be non-NULL if the related inode/vnode is resolved
+ *	 prior to the hardlink being created, or if a hardlink's real
+ *	 inode had to be moved.  In these situations the old inode pointer
+ *	 will get a (fwd) entry.  All vnops must forward through it.
  */
 struct hammer2_inode {
 	struct hammer2_mount	*hmp;		/* Global mount */
 	struct hammer2_pfsmount	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
+	struct hammer2_inode	*fwd;		/* forwarding inode */
 	struct vnode		*vp;
 	hammer2_chain_t		chain;
 	struct hammer2_inode_data ip_data;
@@ -309,6 +316,7 @@ extern struct vop_ops hammer2_fifo_vops;
 
 extern int hammer2_debug;
 extern int hammer2_cluster_enable;
+extern int hammer2_hardlink_enable;
 extern long hammer2_iod_file_read;
 extern long hammer2_iod_meta_read;
 extern long hammer2_iod_indr_read;
@@ -360,6 +368,8 @@ void hammer2_update_time(uint64_t *timep);
  */
 struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
 
+void hammer2_inode_lock_nlinks(hammer2_inode_t *ip);
+void hammer2_inode_unlock_nlinks(hammer2_inode_t *ip);
 hammer2_inode_t *hammer2_inode_alloc(hammer2_pfsmount_t *pmp, void *data);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
@@ -367,19 +377,21 @@ void hammer2_inode_drop(hammer2_inode_t *ip);
 int hammer2_inode_calc_alloc(hammer2_key_t filesize);
 
 int hammer2_inode_create(hammer2_inode_t *dip,
-			 struct vattr *vap, struct ucred *cred,
-			 const uint8_t *name, size_t name_len,
-			 hammer2_inode_t **nipp);
+			struct vattr *vap, struct ucred *cred,
+			const uint8_t *name, size_t name_len,
+			hammer2_inode_t **nipp);
 
 int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *nip,
 			const uint8_t *name, size_t name_len);
 
-int hammer2_hardlink_create(hammer2_inode_t *ip, hammer2_inode_t *dip,
-			const uint8_t *name, size_t name_len);
-
 int hammer2_unlink_file(hammer2_inode_t *dip,
-			const uint8_t *name, size_t name_len,
-			int isdir, int adjlinks);
+			const uint8_t *name, size_t name_len, int isdir);
+int hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip,
+			int bumpnlinks);
+int hammer2_hardlink_deconsolidate(hammer2_inode_t *dip,
+			hammer2_chain_t **chainp, hammer2_inode_t **ipp);
+int hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
+			hammer2_inode_t **ipp);
 
 /*
  * hammer2_chain.c

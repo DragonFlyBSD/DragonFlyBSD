@@ -323,6 +323,9 @@ hammer2_inode_create(hammer2_inode_t *dip,
 /*
  * Connect inode (ip) to the specified directory using the specified name.
  * (ip) must be locked.
+ *
+ * If (ip) represents a hidden hardlink target file then the inode we create
+ * for the directory entry will be setup as OBJTYPE_HARDLINK.
  */
 int
 hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
@@ -396,64 +399,6 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 }
 
 /*
- * Create a hardlink forwarding entry (dip, name) to the specified (ip).
- *
- * This is one of the more complex implementations in HAMMER2.  The
- * filesystem strictly updates its chains bottom-up in a copy-on-write
- * fashion.  This makes hardlinks difficult to implement but we've come up
- * with a dandy solution.
- *
- * When a file has more than one link the actual inode is created as a
- * hidden directory entry (indexed by inode number) in a common parent of
- * all hardlinks which reference the file.  The hardlinks in each directory
- * are merely forwarding entries to the hidden inode.
- *
- * Implementation:
- *
- *	Most VOPs can be blissfully unaware of the forwarding entries.
- *	nresolve, nlink, and remove code have to be forwarding-aware
- *	in order to return the (ip/vp) for the actual file (and otherwise do
- *	the right thing).
- *
- *	(1) If the ip we are linking to is a normal embedded inode (nlinks==1)
- *	    we have to replace the directory entry with a forwarding inode
- *	    and move the normal ip/vp to a hidden entry indexed by the inode
- *	    number in a common parent directory.
- *
- *	(2) If the ip we are linking to is already a hidden entry but is not
- *	    a common parent we have to move its entry to a common parent by
- *	    moving the entry upward.
- *
- *	(3) The trivial case is the entry is already hidden and already a
- *	    common parent.  We adjust nlinks for the entry and are done.
- *	    (this is the fall-through case).
- */
-int
-hammer2_hardlink_create(hammer2_inode_t *ip, hammer2_inode_t *dip,
-			const uint8_t *name, size_t name_len)
-{
-	return ENOTSUP;
-#if 0
-	hammer2_inode_t *nip;
-	hammer2_inode_t *xip;
-
-
-       hammer2_inode_t *nip;   /* hardlink forwarding inode */
-        error = hammer2_inode_create(hmp, NULL, ap->a_cred,
-                                     dip, name, name_len, &nip);
-        if (error) {
-                KKASSERT(nip == NULL);
-                return error;
-        }
-        KKASSERT(nip->ip_data.type == HAMMER2_OBJTYPE_HARDLINK);
-        hammer2_chain_modify(&nip->chain, 0);
-        nip->ip_data.inum = ip->ip_data.inum;
-	hammer2_chain_unlock(hmp, &nip->chain);
-	/
-#endif
-}
-
-/*
  * Unlink the file from the specified directory inode.  The directory inode
  * does not need to be locked.
  *
@@ -469,8 +414,8 @@ hammer2_hardlink_create(hammer2_inode_t *ip, hammer2_inode_t *dip,
  * is non-zero, we have to locate the hardlink and adjust its nlinks field.
  */
 int
-hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
-		    int isdir, int adjlinks)
+hammer2_unlink_file(hammer2_inode_t *dip,
+		    const uint8_t *name, size_t name_len, int isdir)
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
@@ -546,23 +491,6 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 		/* dchain NULL */
 	}
 
-#if 0
-	/*
-	 * If adjlinks is non-zero this is a real deletion (otherwise it is
-	 * probably a rename).  XXX
-	 */
-	if (adjlinks) {
-		if (chain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK) {
-			/*hammer2_adjust_hardlink(chain->u.ip, -1);*/
-			/* error handling */
-		} else {
-			waslastlink = 1;
-		}
-	} else {
-		waslastlink = 0;
-	}
-#endif
-
 	/*
 	 * Found, the chain represents the inode.  Remove the parent reference
 	 * to the chain.  The chain itself is no longer referenced and will
@@ -573,22 +501,6 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 	/* XXX nlinks (hardlink special case) */
 	/* XXX nlinks (parent directory) */
 
-#if 0
-	/*
-	 * Destroy any associated vnode, but only if this was the last
-	 * link.  XXX this might not be needed.
-	 */
-	if (chain->u.ip->vp) {
-		struct vnode *vp;
-		vp = hammer2_igetv(chain->u.ip, &error);
-		if (error == 0) {
-			vn_unlock(vp);
-			/* hammer2_knote(vp, NOTE_DELETE); */
-			cache_inval_vp(vp, CINV_DESTROY);
-			vrele(vp);
-		}
-	}
-#endif
 	error = 0;
 
 done:
@@ -612,4 +524,66 @@ hammer2_inode_calc_alloc(hammer2_key_t filesize)
 	for (radix = HAMMER2_MINALLOCRADIX; frag > (1 << radix); ++radix)
 		;
 	return (radix);
+}
+
+void
+hammer2_inode_lock_nlinks(hammer2_inode_t *ip)
+{
+	hammer2_chain_ref(ip->hmp, &ip->chain);
+}
+
+void
+hammer2_inode_unlock_nlinks(hammer2_inode_t *ip)
+{
+	hammer2_chain_drop(ip->hmp, &ip->chain);
+}
+
+/*
+ * Consolidate for hard link creation.  This moves the specified terminal
+ * hardlink inode to a directory common to its current directory and tdip
+ * if necessary, replacing *ipp with the new inode chain element and
+ * modifying the original inode chain element to OBJTYPE_HARDLINK.
+ *
+ * The link count is bumped if requested.
+ */
+int
+hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip,
+			     int bumpnlinks)
+{
+	if (hammer2_hardlink_enable < 0)
+		return (0);
+	if (hammer2_hardlink_enable == 0)
+		return (ENOTSUP);
+	/* XXX */
+	return (0);
+}
+
+/*
+ * If (*ipp) is non-NULL it points to the forward OBJTYPE_HARDLINK inode while
+ * (*chainp) points to the resolved (hidden hardlink target) inode.  In this
+ * situation when nlinks is 1 we wish to deconsolidate the hardlink, moving
+ * it back to the directory that now represents the only remaining link.
+ */
+int
+hammer2_hardlink_deconsolidate(hammer2_inode_t *dip, hammer2_chain_t **chainp,
+			       hammer2_inode_t **ipp)
+{
+	if (*ipp == NULL)
+		return (0);
+	/* XXX */
+	return (0);
+}
+
+/*
+ * When presented with a (*chainp) representing an inode of type
+ * OBJTYPE_HARDLINK this code will save the original inode (with a ref)
+ * in (*ipp), and then locate the hidden hardlink target in (dip) or
+ * any parent directory above (dip).  The locked (*chainp) is replaced
+ * with a new locked (*chainp) representing the hardlink target.
+ */
+int
+hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
+		      hammer2_inode_t **ipp)
+{
+	return (EIO);
 }
