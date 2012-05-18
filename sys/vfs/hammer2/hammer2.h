@@ -125,6 +125,15 @@ typedef struct hammer2_chain hammer2_chain_t;
 int hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2);
 SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 
+/*
+ * MOVED - This bit is set during the flush when the MODIFIED bit is cleared,
+ *	   indicating that the parent's blocktable must inherit a change to
+ *	   the bref (typically a block reallocation)
+ *
+ *	   It must also be set in situations where a chain is not MODIFIED
+ *	   but whos bref has changed (typically due to fields other than
+ *	   a block reallocation).
+ */
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* active mods */
 #define HAMMER2_CHAIN_DIRTYEMBED	0x00000002	/* inode embedded */
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
@@ -132,7 +141,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DELETED		0x00000010
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
-#define HAMMER2_CHAIN_MOVED		0x00000080	/* moved */
+#define HAMMER2_CHAIN_MOVED		0x00000080	/* bref changed */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list*/
 #define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying */
@@ -220,6 +229,8 @@ struct hammer2_inode {
 	struct hammer2_inode_data ip_data;
 	struct lockf		advlock;
 	u_int			depth;		/* directory depth */
+	hammer2_off_t		delta_dcount;	/* adjust data_count */
+	hammer2_off_t		delta_icount;	/* adjust inode_count */
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
@@ -402,7 +413,7 @@ int hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how);
 void hammer2_chain_moved(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				int flags);
-void hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain,
+void hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *chain,
 				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_find(hammer2_mount_t *hmp,

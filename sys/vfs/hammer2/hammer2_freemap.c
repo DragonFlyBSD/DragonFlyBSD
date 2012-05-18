@@ -95,9 +95,15 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 		/*
 		 * Allocate from the allocation iterator using a SEGSIZE
 		 * aligned block and reload the packing cache if possible.
+		 *
+		 * Skip reserved areas at the beginning of each zone.
 		 */
 		data_off = hmp->voldata.allocator_beg;
 		data_off = (data_off + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
+		if ((data_off & HAMMER2_ZONE_MASK64) < HAMMER2_ZONE_SEG) {
+			KKASSERT((data_off & HAMMER2_ZONE_MASK64) == 0);
+			data_off += HAMMER2_ZONE_SEG64;
+		}
 		data_next = data_off + bytes;
 
 		if ((data_next & HAMMER2_SEGMASK) == 0) {

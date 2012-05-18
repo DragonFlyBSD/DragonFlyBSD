@@ -621,16 +621,27 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 	return (error);
 }
 
+/*
+ * Filesystem status
+ *
+ * XXX incorporate pmp->iroot->ip_data.inode_quota and data_quota
+ */
 static
 int
 hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
+	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
 
+	pmp = MPTOPMP(mp);
 	hmp = MPTOHMP(mp);
 
-	mp->mnt_stat.f_files = 10;
-	mp->mnt_stat.f_bfree = 10;
+	mp->mnt_stat.f_files = pmp->iroot->ip_data.inode_count +
+			       pmp->iroot->delta_icount;
+	mp->mnt_stat.f_ffree = 0;
+	mp->mnt_stat.f_blocks = hmp->voldata.allocator_size / HAMMER2_PBUFSIZE;
+	mp->mnt_stat.f_bfree = (hmp->voldata.allocator_size -
+				hmp->voldata.allocator_beg) / HAMMER2_PBUFSIZE;
 	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
 
 	*sbp = mp->mnt_stat;
@@ -641,13 +652,20 @@ static
 int
 hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 {
+	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
 
+	pmp = MPTOPMP(mp);
 	hmp = MPTOHMP(mp);
 
 	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
-	mp->mnt_vstat.f_files = 0;
-	mp->mnt_vstat.f_bavail = mp->mnt_stat.f_bfree;
+	mp->mnt_vstat.f_files = pmp->iroot->ip_data.inode_count +
+				pmp->iroot->delta_icount;
+	mp->mnt_vstat.f_ffree = 0;
+	mp->mnt_vstat.f_blocks = hmp->voldata.allocator_size / HAMMER2_PBUFSIZE;
+	mp->mnt_vstat.f_bfree = (hmp->voldata.allocator_size -
+				 hmp->voldata.allocator_beg) / HAMMER2_PBUFSIZE;
+	mp->mnt_vstat.f_bavail = mp->mnt_vstat.f_bfree;
 
 	*sbp = mp->mnt_vstat;
 	return (0);

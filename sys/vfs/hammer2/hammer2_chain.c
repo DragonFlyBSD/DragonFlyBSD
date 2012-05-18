@@ -217,7 +217,10 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 				lockmgr(&parent->lk, LK_EXCLUSIVE);
 			if (atomic_cmpset_int(&chain->refs, 1, 0)) {
 				/*
-				 * Succeeded, recurse and drop parent
+				 * Succeeded, recurse and drop parent.
+				 * These chain elements should be synchronized
+				 * so no delta data or inode count updates
+				 * should be needed.
 				 */
 				if (!(chain->flags & HAMMER2_CHAIN_DELETED)) {
 					SPLAY_REMOVE(hammer2_chain_splay,
@@ -553,9 +556,10 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
  * XXX flags currently ignored, uses chain->bp to detect data/no-data.
  */
 void
-hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain,
+hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *chain,
 		     int nradix, int flags)
 {
+	hammer2_mount_t *hmp = ip->hmp;
 	struct buf *nbp;
 	hammer2_off_t pbase;
 	size_t obytes;
@@ -597,6 +601,7 @@ hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 	chain->bref.data_off = hammer2_freemap_alloc(hmp, chain->bref.type,
 						     nbytes);
 	chain->bytes = nbytes;
+	ip->delta_dcount += (ssize_t)(nbytes - obytes); /* XXX atomic */
 
 	/*
 	 * The device buffer may be larger than the allocation size.
@@ -1417,6 +1422,8 @@ again:
 	 */
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
+		KKASSERT((parent->u.ip->ip_data.op_flags &
+			  HAMMER2_OPFLAG_DIRECTDATA) == 0);
 		KKASSERT(parent->data != NULL);
 		base = &parent->data->ipdata.u.blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
@@ -1494,7 +1501,9 @@ again:
 	}
 
 	/*
-	 * Link the chain into its parent.
+	 * Link the chain into its parent.  Later on we will have to set
+	 * the MOVED bit in situations where we don't mark the new chain
+	 * as being modified.
 	 */
 	if (chain->parent != NULL)
 		panic("hammer2: hammer2_chain_create: chain already connected");
@@ -1510,15 +1519,22 @@ again:
 	/*
 	 * Additional linkage for inodes.  Reuse the parent pointer to
 	 * find the parent directory.
+	 *
+	 * Cumulative adjustments are inherited on [re]attach.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		hammer2_chain_t *scan = parent;
+		hammer2_inode_t *ip = chain->u.ip;
+
 		while (scan->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
 			scan = scan->parent;
 		if (scan->bref.type == HAMMER2_BREF_TYPE_INODE) {
-			chain->u.ip->pip = scan->u.ip;
-			chain->u.ip->pmp = scan->u.ip->pmp;
-			chain->u.ip->depth = scan->u.ip->depth + 1;
+			ip->pip = scan->u.ip;
+			ip->pmp = scan->u.ip->pmp;
+			ip->depth = scan->u.ip->depth + 1;
+			ip->delta_icount += ip->ip_data.inode_count;
+			ip->delta_dcount += ip->ip_data.data_count;
+			++ip->pip->delta_icount;
 		}
 	}
 
@@ -1853,13 +1869,13 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 
 		/*
 		 * Load the new indirect block by acquiring or allocating
-		 * the related chain entries, then simply move it to the
+		 * the related chain entries, then simply move them to the
 		 * new parent (ichain).
 		 *
-		 * Flagging the new chain entry MOVED will cause a flush
-		 * to synchronize its block into the new indirect block.
-		 * The chain is unlocked after being moved but needs to
-		 * retain a reference for the MOVED state
+		 * When adjusting the parent/child relationship we must
+		 * set the MOVED bit if we do not otherwise set the
+		 * MODIFIED bit, and call setsubmod() to ensure that the
+		 * parent sees the bref adjustment.
 		 *
 		 * We must still set SUBMODIFIED in the parent but we do
 		 * that after the loop.
@@ -1890,6 +1906,10 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * Insert the new indirect block into the parent now that we've
 	 * cleared out some entries in the parent.  We calculated a good
 	 * insertion index in the loop above (ichain->index).
+	 *
+	 * We don't have to set MOVED here because we mark ichain modified
+	 * down below (so the normal modified -> flush -> set-moved sequence
+	 * applies).
 	 */
 	KKASSERT(ichain->index >= 0);
 	if (SPLAY_INSERT(hammer2_chain_splay, &parent->shead, ichain))
@@ -1957,6 +1977,7 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		     hammer2_chain_t *chain)
 {
 	hammer2_blockref_t *base;
+	hammer2_inode_t *ip;
 	int count;
 
 	if (chain->parent != parent)
@@ -2011,10 +2032,24 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	chain->parent = NULL;
 
 	/*
-	 * If this is an inode clear the pip.
+	 * Cumulative adjustments must be propagated to the parent inode
+	 * when deleting and synchronized to ip.  A future reattachment
+	 * (e.g. during a rename) expects only to use ip_data.*_count.
+	 *
+	 * Clear the pointer to the parent inode.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
-		chain->u.ip->pip = NULL;
+		ip = chain->u.ip;
+		if (ip->pip) {
+			ip->pip->delta_icount += ip->delta_icount;
+			ip->pip->delta_dcount += ip->delta_dcount;
+			ip->ip_data.inode_count += ip->delta_icount;
+			ip->ip_data.data_count += ip->delta_dcount;
+			ip->delta_icount = 0;
+			ip->delta_dcount = 0;
+			--ip->pip->delta_icount;
+			ip->pip = NULL;
+		}
 		chain->u.ip->depth = 0;
 	}
 
@@ -2221,6 +2256,8 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_INODE:
+				KKASSERT((chain->data->ipdata.op_flags &
+					  HAMMER2_OPFLAG_DIRECTDATA) == 0);
 				base = &chain->data->ipdata.u.blockset.
 					blockref[0];
 				count = HAMMER2_SET_COUNT;
@@ -2255,6 +2292,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 					 child->index < count);
 				hammer2_chain_lock(hmp, child,
 						   HAMMER2_RESOLVE_NEVER);
+				KKASSERT(child->parent == chain);
 				if (child->flags & HAMMER2_CHAIN_MOVED) {
 					base[child->index] = child->bref;
 					if (chain->bref.mirror_tid <
@@ -2275,6 +2313,8 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				} else if (bcmp(&base[child->index],
 					   &child->bref,
 					   sizeof(child->bref)) != 0) {
+					kprintf("child %p index %d\n",
+						child, child->index);
 					panic("hammer2: unflagged bref update");
 				}
 				hammer2_chain_unlock(hmp, child);
@@ -2324,6 +2364,24 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 	if ((chain->flags & (HAMMER2_CHAIN_MODIFIED |
 			     HAMMER2_CHAIN_MODIFIED_AUX)) == 0) {
 		goto done;
+	}
+
+	/*
+	 * Synchronize cumulative data and inode count adjustments to
+	 * the inode and propagate the deltas upward to the parent.
+	 */
+	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+		hammer2_inode_t *ip;
+
+		ip = chain->u.ip;
+		ip->ip_data.inode_count += ip->delta_icount;
+		ip->ip_data.data_count += ip->delta_dcount;
+		if (ip->pip) {
+			ip->pip->delta_icount += ip->delta_icount;
+			ip->pip->delta_dcount += ip->delta_dcount;
+		}
+		ip->delta_icount = 0;
+		ip->delta_dcount = 0;
 	}
 
 	/*
@@ -2496,7 +2554,9 @@ hammer2_chain_flush_pass2(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 
 /*
  * Stand-alone flush.  If the chain is unable to completely flush we have
- * to be sure that SUBMODIFIED propagates up the parent chain.
+ * to be sure that SUBMODIFIED propagates up the parent chain.  We must not
+ * clear the MOVED bit after flushing in this situation or our desynchronized
+ * bref will not properly update in the parent.
  *
  * This routine can be called from several places but the most important
  * is from the hammer2_vop_reclaim() function.  We want to try to completely
@@ -2661,14 +2721,14 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 
 	/*
 	 * Update the blockref in the parent.  We do not have to set
-	 * MOVED in the parent because SUBMODIFIED has already been
-	 * set, so a normal flush will pick up the changes and propagate
-	 * them upward for us.
+	 * MOVED in the parent because the parent has been marked modified,
+	 * so the flush sequence will pick up the bref change.
 	 *
 	 * We do have to propagate mirror_tid upward.
 	 */
 	KKASSERT(chain->index >= 0 &&
 		 chain->index < count);
+	KKASSERT(chain->parent == parent);
 	if (chain->flags & HAMMER2_CHAIN_MOVED) {
 		base[chain->index] = chain->bref;
 		if (parent->bref.mirror_tid < chain->bref.mirror_tid)

@@ -908,6 +908,8 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
  *
  * NOOFFSET is returned if the data is inode-embedded.  In this case the
  * strategy code will simply bcopy() the data into the inode.
+ *
+ * The inode's delta_dcount is adjusted.
  */
 static
 hammer2_off_t
@@ -947,6 +949,7 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 					     HAMMER2_BREF_TYPE_DATA,
 					     lblksize);
 		pbase = chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX;
+		ip->delta_dcount += lblksize;
 	} else {
 		switch (chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
@@ -1060,7 +1063,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			allocbuf(bp, nblksize);
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_DATA:
-				hammer2_chain_resize(hmp, chain,
+				hammer2_chain_resize(ip, chain,
 					     hammer2_bytes_to_radix(nblksize),
 					     HAMMER2_MODIFY_OPTDATA);
 				bzero(bp->b_data + loff, nblksize - loff);
@@ -1099,7 +1102,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		if (chain) {
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_DATA:
-				hammer2_chain_resize(hmp, chain,
+				hammer2_chain_resize(ip, chain,
 					     hammer2_bytes_to_radix(nblksize),
 					     0);
 				hammer2_chain_modify(hmp, chain, 0);
@@ -1148,6 +1151,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		 * Delete physical data blocks past the file EOF.
 		 */
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+			ip->delta_dcount -= chain->bytes;
 			hammer2_chain_delete(hmp, parent, chain);
 		}
 		/* XXX check parent if empty indirect block & delete */
@@ -1266,9 +1270,10 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 						     obase, nblksize,
 						     HAMMER2_BREF_TYPE_DATA,
 						     nblksize);
+			ip->delta_dcount += nblksize;
 		} else {
 			KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA);
-			hammer2_chain_resize(hmp, chain, nradix,
+			hammer2_chain_resize(ip, chain, nradix,
 					     HAMMER2_MODIFY_OPTDATA);
 		}
 		bp->b_bio2.bio_offset = chain->bref.data_off &
@@ -1611,6 +1616,8 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	/*
 	 * If the consolidation changed ip to a HARDLINK pointer we have
 	 * to adjust the vnode to point to the actual ip.
+	 *
+	 * XXX this can race against concurrent vnode ops.
 	 */
 	if (oip != ip) {
 		hammer2_chain_ref(hmp, &ip->chain);

@@ -335,8 +335,9 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 {
 	hammer2_mount_t *hmp = dip->hmp;
 	hammer2_inode_t *nip;
-	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_chain_t *scan;
 	hammer2_key_t lhc;
 	int error;
 
@@ -393,6 +394,29 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	hammer2_chain_modify(hmp, chain, 0);
 	nip->ip_data = oip->ip_data;
 
+	/*
+	 * XXX This is currently a horrible hack.  Well, if we wanted to
+	 *     duplicate a file, i.e. as in a snapshot, we definitely
+	 *     would have to flush it first.
+	 *
+	 *     For hardlink target generation we can theoretically move any
+	 *     active chain structures without flushing, but that gets really
+	 *     iffy for code which follows chain->parent and ip->pip links.
+	 *
+	 * XXX only works with files.  Duplicating a directory hierarchy
+	 *     requires a flush but doesn't deal with races post-flush.
+	 *     Well, it would work I guess, but you might catch some files
+	 *     mid-operation.
+	 *
+	 * We cannot leave oip with any in-memory chains because (for a
+	 * hardlink), oip will become a OBJTYPE_HARDLINK which is just a
+	 * pointer to the real hardlink's inum and can't have any sub-chains.
+	 */
+	hammer2_inode_lock_ex(oip);
+	hammer2_chain_flush(hmp, &oip->chain, 0);
+	hammer2_inode_unlock_ex(oip);
+	KKASSERT(SPLAY_EMPTY(&oip->chain.shead));
+
 	if (name) {
 		/*
 		 * Directory entries are inodes so if the name has changed
@@ -408,7 +432,6 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 		 * target.  The name isn't used but to ease debugging give it
 		 * a name after its inode number.
 		 */
-		nip->ip_data = oip->ip_data;
 		ksnprintf(nip->ip_data.filename, sizeof(nip->ip_data.filename),
 			  "0x%016jx", (intmax_t)nip->ip_data.inum);
 		nip->ip_data.name_len = strlen(nip->ip_data.filename);
@@ -805,6 +828,10 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 	/*
 	 * Create a hidden inode directory entry in the parent, copying
 	 * (*oip)'s state.  Then replace oip with OBJTYPE_HARDLINK.
+	 *
+	 * The duplication function will either flush or move any chains
+	 * under oip to the new hardlink target inode, retiring all chains
+	 * related to oip before returning.  XXX vp->ip races.
 	 */
 	error = hammer2_inode_duplicate(fdip, oip, &nip, NULL, 0);
 	if (error == 0) {
