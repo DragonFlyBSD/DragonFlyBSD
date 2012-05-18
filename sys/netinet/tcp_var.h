@@ -168,7 +168,7 @@ struct tcpcb {
 #define	TF_NOPUSH	0x00001000	/* don't push */
 #define TF_LISTEN	0x00002000	/* listen(2) has been called */
 #define TF_SIGNATURE	0x00004000	/* require MD5 digests (RFC2385) */
-#define TF_UNUSED001	0x00008000
+#define TF_NCR		0x00008000	/* Non-Congestion Robustness RFC4653 */
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
 #define	TF_UNUSED005	0x00020000
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
@@ -609,6 +609,7 @@ SYSCTL_DECL(_net_inet_tcp);
 #endif
 
 #define TCP_DO_SACK(tp)		((tp)->t_flags & TF_SACK_PERMITTED)
+#define TCP_DO_NCR(tp)		(((tp)->t_flags & TF_NCR) && TCP_DO_SACK((tp)))
 #define TCP_SACK_BLKEND(len, thflags) \
 	((len) + (((thflags) & TH_FIN) != 0))
 
@@ -670,6 +671,8 @@ boolean_t
 			  boolean_t *rescue);
 boolean_t
 	 tcp_sack_islost(struct scoreboard *scb, tcp_seq seq);
+void	 tcp_sack_update_lostseq(struct scoreboard *scb, tcp_seq snd_una,
+	    u_int maxseg, int rxtthresh);
 #ifdef later
 void	 tcp_sack_revert_scoreboard(struct scoreboard *scb, tcp_seq snd_una,
 				    u_int maxseg);

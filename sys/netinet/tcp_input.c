@@ -350,6 +350,19 @@ tcp_paws_canreasslast(const struct tcpcb *tp, const struct tcphdr *th, int tlen)
 	return FALSE;
 }
 
+static __inline void
+tcp_ncr_update_rxtthresh(struct tcpcb *tp)
+{
+	int old_rxtthresh = tp->t_rxtthresh;
+	uint32_t ownd = tp->snd_max - tp->snd_una;
+
+	tp->t_rxtthresh = max(3, ((ownd / tp->t_maxseg) >> 1));
+	if (tp->t_rxtthresh != old_rxtthresh) {
+		tcp_sack_update_lostseq(&tp->scb, tp->snd_una,
+		    tp->t_maxseg, tp->t_rxtthresh);
+	}
+}
+
 static int
 tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 {
@@ -3239,6 +3252,9 @@ tcp_sack_rexmt(struct tcpcb *tp)
 	tp->snd_cwnd = ocwnd;
 }
 
+/*
+ * Return TRUE, if some new segments are sent
+ */
 static boolean_t
 tcp_sack_limitedxmit(struct tcpcb *tp)
 {
@@ -3276,6 +3292,9 @@ tcp_sack_limitedxmit(struct tcpcb *tp)
 		tp->snd_nxt = oldsndnxt;
 	}
 	tp->snd_cwnd = ocwnd;
+
+	if (ret && TCP_DO_NCR(tp))
+		tcp_ncr_update_rxtthresh(tp);
 
 	return ret;
 }
@@ -3388,6 +3407,7 @@ tcp_fast_recovery(struct tcpcb *tp, tcp_seq th_ack, const struct tcpopt *to)
 			tp->snd_cwnd += tp->t_maxseg;
 			tcp_output(tp);
 		}
+		return TRUE;
 	} else if (SEQ_LT(th_ack, tp->snd_recover)) {
 		tp->t_dupacks = 0;
 		return FALSE;
@@ -3409,7 +3429,12 @@ tcp_fast_recovery(struct tcpcb *tp, tcp_seq th_ack, const struct tcpopt *to)
 		 * retransmit.
 		 */
 		/* Do nothing; don't change t_dupacks */
-	} else if (++tp->t_dupacks == tp->t_rxtthresh) {
+		return TRUE;
+	} else if (tp->t_dupacks == 0 && TCP_DO_NCR(tp)) {
+		tcp_ncr_update_rxtthresh(tp);
+	}
+
+	if (++tp->t_dupacks == tp->t_rxtthresh) {
 		tcp_seq old_snd_nxt;
 		u_int win;
 
@@ -3449,20 +3474,18 @@ fastretransmit:
 			tp->snd_cwnd += tp->t_maxseg *
 			    (tp->t_dupacks - tp->snd_limited);
 		}
-	} else if (tcp_do_rfc3517bis && TCP_DO_SACK(tp)) {
-		if (tcp_rfc3517bis_rxt &&
+	} else if ((tcp_do_rfc3517bis && TCP_DO_SACK(tp)) || TCP_DO_NCR(tp)) {
+		if (tcp_rfc3517bis_rxt && tcp_do_rfc3517bis &&
 		    tcp_sack_islost(&tp->scb, tp->snd_una))
 			goto fastretransmit;
-		if (tcp_do_limitedtransmit) {
+		if (tcp_do_limitedtransmit || TCP_DO_NCR(tp)) {
 			/* outstanding data */
-			uint32_t ownd =
-			    tp->snd_max - tp->snd_una;
+			uint32_t ownd = tp->snd_max - tp->snd_una;
 
 			if (!tcp_sack_limitedxmit(tp) &&
 			    need_early_retransmit(tp, ownd)) {
 				++tcpstat.tcps_sndearlyrexmit;
-				tp->rxt_flags |=
-				    TRXT_F_EARLYREXMT;
+				tp->rxt_flags |= TRXT_F_EARLYREXMT;
 				goto fastretransmit;
 			}
 		}
