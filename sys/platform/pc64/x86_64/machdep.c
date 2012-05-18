@@ -1521,8 +1521,8 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	 * exceeding Maxmem.
 	 */
 	for (i = j = 0; i <= physmap_idx; i += 2) {
-		if (physmap[i+1] > ptoa((vm_paddr_t)Maxmem))
-			physmap[i+1] = ptoa((vm_paddr_t)Maxmem);
+		if (physmap[i+1] > ptoa(Maxmem))
+			physmap[i+1] = ptoa(Maxmem);
 		physmap[i] = (physmap[i] + PHYSMAP_ALIGN_MASK) &
 			     ~PHYSMAP_ALIGN_MASK;
 		physmap[i+1] = physmap[i+1] & ~PHYSMAP_ALIGN_MASK;
@@ -1595,7 +1595,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			*pte = pa | PG_V | PG_RW | PG_N;
 			cpu_invltlb();
 
-			tmp = *(int *)ptr;
+			tmp = *ptr;
 			/*
 			 * Test for alternating 1's and 0's
 			 */
@@ -1627,7 +1627,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			/*
 			 * Restore original value.
 			 */
-			*(int *)ptr = tmp;
+			*ptr = tmp;
 
 			/*
 			 * Adjust array of valid/good pages.

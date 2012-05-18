@@ -12,17 +12,15 @@
 #
 # WARNING: HAMMER filesystems (and pseudo-filesystems) must be
 # occassionally pruned and reblocked.  'man hammer' for more information.
-#
-# $DragonFly: src/share/examples/rconfig/hammer.sh,v 1.4 2008/10/21 14:02:48 swildner Exp $
 
 set disk = "ad6"
 
-# For safety this only runs on a CD-booted machine
+# For safety this only runs on a CD- or PXE-booted machine
 #
-df / | awk '{ print $1; }' | fgrep cd
+df / | egrep -q '^(*.cd|.+:)'
 if ( $status > 0 ) then
     echo "This program formats your disk and you didn't run it from"
-    echo "A CD boot!"
+    echo "a CD or NFS boot!"
     exit 1
 endif
 
@@ -58,13 +56,15 @@ fdisk -IB ${disk}
 disklabel64 -r -w ${disk}s1 auto
 disklabel64 -B ${disk}s1
 disklabel64 ${disk}s1 > /tmp/label
+
 cat >> /tmp/label << EOF
-  a: 256m 0 4.2BSD
+  a: 768m 0 4.2BSD
   b: 2g * swap
   d: * * HAMMER
 EOF
 disklabel64 -R ${disk}s1 /tmp/label
 
+# Create file systems
 newfs /dev/${disk}s1a
 newfs_hammer -L ROOT /dev/${disk}s1d
 

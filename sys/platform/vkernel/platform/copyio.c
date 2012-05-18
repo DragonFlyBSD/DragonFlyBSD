@@ -225,7 +225,7 @@ fuword(const void *base)
 	long v;
 
 	if (copyin(base, &v, sizeof(v)) == 0)
-		return((long)v);
+		return(v);
 	return(-1);
 }
 

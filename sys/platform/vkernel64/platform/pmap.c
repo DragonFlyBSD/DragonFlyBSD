@@ -1845,7 +1845,7 @@ pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, vm_offset_t va)
 		m = PHYS_TO_VM_PAGE(oldpte);
 		if (oldpte & VPTE_M) {
 #if defined(PMAP_DIAGNOSTIC)
-			if (pmap_nw_modified((pt_entry_t) oldpte)) {
+			if (pmap_nw_modified(oldpte)) {
 				kprintf("pmap_remove: modified page not "
 					"writable: va: 0x%lx, pte: 0x%lx\n",
 					va, oldpte);

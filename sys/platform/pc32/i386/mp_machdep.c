@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.60 2008/06/07 12:03:52 mneumann Exp $
  */
 
 #include "opt_cpu.h"
@@ -555,14 +554,14 @@ install_ap_tramp(u_int boot_addr)
 	/* modify the target for boot code segment */
 	dst16 = (u_int16_t *) (dst + ((u_int) bootCodeSeg - boot_base));
 	dst8 = (u_int8_t *) (dst16 + 1);
-	*dst16 = (u_int) boot_addr & 0xffff;
-	*dst8 = ((u_int) boot_addr >> 16) & 0xff;
+	*dst16 = boot_addr & 0xffff;
+	*dst8 = (boot_addr >> 16) & 0xff;
 
 	/* modify the target for boot data segment */
 	dst16 = (u_int16_t *) (dst + ((u_int) bootDataSeg - boot_base));
 	dst8 = (u_int8_t *) (dst16 + 1);
-	*dst16 = (u_int) boot_addr & 0xffff;
-	*dst8 = ((u_int) boot_addr >> 16) & 0xff;
+	*dst16 = boot_addr & 0xffff;
+	*dst8 = (boot_addr >> 16) & 0xff;
 }
 
 

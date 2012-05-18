@@ -609,7 +609,7 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 			paddr = _bus_dma_extract(pmap, vaddr);
 			if (run_filter(dmat, paddr) != 0)
 				map->pagesneeded++;
-			vaddr += (PAGE_SIZE - ((vm_offset_t)vaddr & PAGE_MASK));
+			vaddr += (PAGE_SIZE - (vaddr & PAGE_MASK));
 		}
 	}
 
