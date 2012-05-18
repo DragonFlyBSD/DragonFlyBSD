@@ -50,6 +50,7 @@ MLINKS=	builtin.1 alias.1 \
 	builtin.1 if.1 \
 	builtin.1 jobid.1 \
 	builtin.1 jobs.1 \
+	builtin.1 let.1 \
 	builtin.1 limit.1 \
 	builtin.1 local.1 \
 	builtin.1 log.1 \
@@ -92,7 +93,8 @@ MLINKS=	builtin.1 alias.1 \
 	builtin.1 until.1 \
 	builtin.1 wait.1 \
 	builtin.1 where.1 \
-	builtin.1 while.1
+	builtin.1 while.1 \
+	builtin.1 wordexp.1
 
 MLINKS+=intro.1 introduction.1
 

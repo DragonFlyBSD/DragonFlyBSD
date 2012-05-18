@@ -87,6 +87,7 @@
 .Nm jobid ,
 .Nm jobs ,
 .Nm kill ,
+.Nm let ,
 .Nm limit ,
 .Nm local ,
 .Nm log ,
@@ -139,7 +140,8 @@
 .Nm wait ,
 .Nm where ,
 .Nm which ,
-.Nm while
+.Nm while ,
+.Nm wordexp
 .Nd shell builtin commands
 .Sh SYNOPSIS
 .Nm
@@ -242,6 +244,7 @@ with the other shells.
 .It Ic jobid Ta \&No Ta \&No Ta Yes
 .It Ic jobs Ta \&No Ta Yes Ta Yes
 .It Ic kill Ta Yes Ta Yes Ta Yes
+.It Ic let Ta \&No Ta \&No Ta Yes
 .It Ic limit Ta \&No Ta Yes Ta \&No
 .It Ic local Ta \&No Ta \&No Ta Yes
 .It Ic log Ta \&No Ta Yes Ta \&No
@@ -295,6 +298,7 @@ with the other shells.
 .It Ic where Ta \&No Ta Yes Ta \&No
 .It Ic which Ta Yes Ta Yes Ta \&No
 .It Ic while Ta \&No Ta Yes Ta Yes
+.It Ic wordexp Ta \&No Ta \&No Ta Yes
 .El
 .Sh SEE ALSO
 .Xr csh 1 ,
