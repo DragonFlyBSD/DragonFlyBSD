@@ -53,7 +53,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/amr/amr_cam.c,v 1.28 2008/11/03 00:53:54 scottl Exp $
+ * $FreeBSD: src/sys/dev/amr/amr_cam.c,v 1.29 2011/11/07 06:44:47 ed Exp $
  */
 
 #include <sys/param.h>
@@ -103,9 +103,10 @@ static driver_t	amr_pass_driver = {
 };
 
 DRIVER_MODULE(amrp, amr, amr_pass_driver, amr_pass_devclass, NULL, NULL);
+MODULE_VERSION(amrp, 1);
 MODULE_DEPEND(amrp, cam, 1, 1, 1);
 
-MALLOC_DEFINE(M_AMRCAM, "amrcam", "AMR CAM memory");
+static MALLOC_DEFINE(M_AMRCAM, "amrcam", "AMR CAM memory");
 
 /***********************************************************************
  * Enqueue/dequeue functions

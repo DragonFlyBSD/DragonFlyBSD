@@ -54,7 +54,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/amr/amr.c,v 1.95 2010/01/07 21:01:37 mbr Exp $
+ * $FreeBSD: src/sys/dev/amr/amr.c,v 1.97 2012/04/20 20:27:31 jhb Exp $
  */
 
 /*
@@ -173,7 +173,7 @@ static void	amr_init_sysctl(struct amr_softc *sc);
 static int	amr_linux_ioctl_int(struct cdev *dev, u_long cmd, caddr_t addr,
 		    int32_t flag, struct sysmsg *sm);
 
-MALLOC_DEFINE(M_AMR, "amr", "AMR memory");
+static MALLOC_DEFINE(M_AMR, "amr", "AMR memory");
 
 /********************************************************************************
  ********************************************************************************
@@ -555,6 +555,31 @@ shutdown_out:
     amr_startup(sc);
 }
 
+/*
+ * Bug-for-bug compatibility with Linux!
+ * Some apps will send commands with inlen and outlen set to 0,
+ * even though they expect data to be transfered to them from the
+ * card.  Linux accidentally allows this by allocating a 4KB
+ * buffer for the transfer anyways, but it then throws it away
+ * without copying it back to the app.
+ *
+ * The amr(4) firmware relies on this feature.  In fact, it assumes
+ * the buffer is always a power of 2 up to a max of 64k.  There is
+ * also at least one case where it assumes a buffer less than 16k is
+ * greater than 16k.  Force a minimum buffer size of 32k and round
+ * sizes between 32k and 64k up to 64k as a workaround.
+ */
+static unsigned long
+amr_ioctl_buffer_length(unsigned long len)
+{
+
+    if (len <= 32 * 1024)
+	return (32 * 1024);
+    if (len <= 64 * 1024)
+	return (64 * 1024);
+    return (len);
+}
+
 int
 amr_linux_ioctl_int(struct cdev *dev, u_long cmd, caddr_t addr, int32_t flag,
     struct sysmsg *sm)
@@ -684,16 +709,7 @@ amr_linux_ioctl_int(struct cdev *dev, u_long cmd, caddr_t addr, int32_t flag,
 	    error = ENOIOCTL;
 	    break;
 	} else {
-	    /*
-	     * Bug-for-bug compatibility with Linux!
-	     * Some apps will send commands with inlen and outlen set to 0,
-	     * even though they expect data to be transfered to them from the
-	     * card.  Linux accidentally allows this by allocating a 4KB
-	     * buffer for the transfer anyways, but it then throws it away
-	     * without copying it back to the app.
-	     */
-	    if (!len)
-		len = 4096;
+	    len = amr_ioctl_buffer_length(imax(ali.inlen, ali.outlen));
 
 	    dp = kmalloc(len, M_AMR, M_WAITOK | M_ZERO);
 
@@ -723,7 +739,7 @@ amr_linux_ioctl_int(struct cdev *dev, u_long cmd, caddr_t addr, int32_t flag,
 	    status = ac->ac_status;
 	    error = copyout(&status, &((struct amr_mailbox *)&((struct amr_linux_ioctl *)addr)->mbox[0])->mb_status, sizeof(status));
 	    if (ali.outlen) {
-		error = copyout(dp, (void *)(uintptr_t)mb->mb_physaddr, len);
+		error = copyout(dp, (void *)(uintptr_t)mb->mb_physaddr, ali.outlen);
 		if (error)
 		    break;
 	    }
@@ -773,7 +789,7 @@ amr_ioctl(struct dev_ioctl_args *ap)
     struct amr_command		*ac;
     struct amr_mailbox_ioctl	*mbi;
     void			*dp, *au_buffer;
-    unsigned long		au_length;
+    unsigned long		au_length, real_length;
     unsigned char		*au_cmd;
     int				*au_statusp, au_direction;
     int				error;
@@ -865,8 +881,9 @@ amr_ioctl(struct dev_ioctl_args *ap)
     }
 
     /* handle inbound data buffer */
+    real_length = amr_ioctl_buffer_length(au_length);
     if (au_length != 0 && au_cmd[0] != 0x06) {
-	if ((dp = kmalloc(au_length, M_AMR, M_WAITOK|M_ZERO)) == NULL) {
+	if ((dp = kmalloc(real_length, M_AMR, M_WAITOK|M_ZERO)) == NULL) {
 	    error = ENOMEM;
 	    goto out;
 	}
@@ -925,7 +942,7 @@ amr_ioctl(struct dev_ioctl_args *ap)
 
     /* build the command */
     ac->ac_data = dp;
-    ac->ac_length = au_length;
+    ac->ac_length = real_length;
     ac->ac_flags |= AMR_CMD_DATAIN|AMR_CMD_DATAOUT;
 
     /* run the command */

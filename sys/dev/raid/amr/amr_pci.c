@@ -116,6 +116,7 @@ static driver_t amr_pci_driver = {
 
 static devclass_t	amr_devclass;
 DRIVER_MODULE(amr, pci, amr_pci_driver, amr_devclass, NULL, NULL);
+MODULE_VERSION(amr, 1);
 MODULE_DEPEND(amr, pci, 1, 1, 1);
 MODULE_DEPEND(amr, cam, 1, 1, 1);
 
@@ -260,7 +261,7 @@ amr_pci_attach(device_t dev)
 	goto out;
     }
     if (bus_setup_intr(sc->amr_dev, sc->amr_irq,
-	0, amr_pci_intr,
+	INTR_MPSAFE, amr_pci_intr,
 	sc, &sc->amr_intr, NULL)) {
         device_printf(sc->amr_dev, "can't set up interrupt\n");
 	goto out;
