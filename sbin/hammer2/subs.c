@@ -242,3 +242,26 @@ hammer2_pfstype_to_str(uint8_t type)
 		return("ILLEGAL");
 	}
 }
+
+const char *
+sizetostr(hammer2_off_t size)
+{
+	static char buf[32];
+
+	if (size < 1024 / 2) {
+		snprintf(buf, sizeof(buf), "%6.2f", (double)size);
+	} else if (size < 1024 * 1024 / 2) {
+		snprintf(buf, sizeof(buf), "%6.2fKB",
+			(double)size / 1024);
+	} else if (size < 1024 * 1024 * 1024LL / 2) {
+		snprintf(buf, sizeof(buf), "%6.2fMB",
+			(double)size / (1024 * 1024));
+	} else if (size < 1024 * 1024 * 1024LL * 1024LL / 2) {
+		snprintf(buf, sizeof(buf), "%6.2fGB",
+			(double)size / (1024 * 1024 * 1024LL));
+	} else {
+		snprintf(buf, sizeof(buf), "%6.2fTB",
+			(double)size / (1024 * 1024 * 1024LL * 1024LL));
+	}
+	return(buf);
+}

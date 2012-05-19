@@ -187,6 +187,8 @@ main(int ac, char **av)
 		 * protocol.
 		 */
 		ecode = cmd_service();
+	} else if (strcmp(av[0], "stat") == 0) {
+		ecode = cmd_stat(ac - 1, (const char **)&av[1]);
 	} else if (strcmp(av[0], "leaf") == 0) {
 		/*
 		 * Start the management daemon for a specific PFS.
@@ -309,6 +311,7 @@ usage(int code)
 		"    pfs-delete <label> Destroy a PFS\n"
 		"    snapshot           Snapshot a PFS\n"
 		"    service            Start service daemon\n"
+		"    stat [<path>]	Return inode quota & config\n"
 		"    leaf               Start pfs leaf daemon\n"
 		"    shell [<host>]     Connect to debug shell\n"
 		"    rsainit            Initialize rsa fields\n"

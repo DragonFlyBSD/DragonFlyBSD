@@ -297,6 +297,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
 	int bcount;
 	int i;
 	int didnl;
+	int namelen;
 	int obrace = 1;
 	size_t bytes;
 	const char *type_str;
@@ -324,21 +325,23 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
 	}
 
 
-	tabprintf(tab, "%s.%-3d %016jx/%-2d mir=%016jx mod=%016jx ",
-	       type_str, bi,
-	       bref->key, bref->keybits,
-	       bref->mirror_tid, bref->modify_tid);
+	tabprintf(tab, "%s.%-3d %016jx %016jx/%-2d mir=%016jx mod=%016jx ",
+	       type_str, bi, (intmax_t)bref->data_off,
+	       (intmax_t)bref->key, (intmax_t)bref->keybits,
+	       (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid);
 	tab += SHOW_TAB;
 
 	bytes = (size_t)1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
-	if (bytes > sizeof(media)) {
+	if (bytes < HAMMER2_MINIOSIZE || bytes > sizeof(media)) {
 		printf("(bad block size %zd)\n", bytes);
+		sleep(1);
 		return;
 	}
 	if (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1) {
 		lseek(fd, bref->data_off & ~HAMMER2_OFF_MASK_RADIX, 0);
 		if (read(fd, &media, bytes) != (ssize_t)bytes) {
 			printf("(media read failed)\n");
+			sleep(1);
 			return;
 		}
 	}
@@ -359,7 +362,11 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
 			bscan = &media.ipdata.u.blockset.blockref[0];
 			bcount = HAMMER2_SET_COUNT;
 		}
-		tabprintf(tab, "filename \"%s\"\n", media.ipdata.filename);
+		namelen = media.ipdata.name_len;
+		if (namelen > HAMMER2_INODE_MAXNAME)
+			namelen = 0;
+		tabprintf(tab, "filename \"%*.*s\"\n",
+			  namelen, namelen, media.ipdata.filename);
 		tabprintf(tab, "version  %d\n", media.ipdata.version);
 		tabprintf(tab, "uflags   0x%08x\n",
 			  media.ipdata.uflags);

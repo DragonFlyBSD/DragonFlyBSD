@@ -97,6 +97,7 @@ int cmd_pfs_create(const char *sel_path, const char *name,
 int cmd_pfs_delete(const char *sel_path, const char *name);
 
 int cmd_service(void);
+int cmd_stat(int ac, const char **av);
 int cmd_leaf(const char *sel_path);
 int cmd_shell(const char *hostname);
 int cmd_show(const char *devpath);
@@ -139,6 +140,7 @@ const char *hammer2_time64_to_str(uint64_t htime64, char **strp);
 const char *hammer2_uuid_to_str(uuid_t *uuid, char **strp);
 const char *hammer2_iptype_to_str(uint8_t type);
 const char *hammer2_pfstype_to_str(uint8_t type);
+const char *sizetostr(hammer2_off_t size);
 
 void hammer2_shell_remote(hammer2_msg_t *msg);
 void msg_printf(hammer2_msg_t *msg, const char *ctl, ...);
