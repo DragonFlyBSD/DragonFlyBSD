@@ -99,6 +99,7 @@ SPLAY_HEAD(hammer2_chain_splay, hammer2_chain);
 
 struct hammer2_chain {
 	struct hammer2_blockref	bref;
+	struct hammer2_blockref	bref_flush;	/* synchronized w/MOVED bit */
 	struct hammer2_chain *parent;		/* return chain to root */
 	struct hammer2_chain_splay shead;
 	SPLAY_ENTRY(hammer2_chain) snode;
@@ -253,6 +254,13 @@ struct hammer2_data {
 
 typedef struct hammer2_data hammer2_data_t;
 
+struct hammer2_freecache {
+	hammer2_off_t	bulk;
+	hammer2_off_t	single;
+};
+
+typedef struct hammer2_freecache hammer2_freecache_t;
+
 /*
  * Global (per device) mount structure for device (aka vp->v_mount->hmp)
  */
@@ -275,7 +283,7 @@ struct hammer2_mount {
 	struct lock	voldatalk;	/* lockmgr lock */
 
 	hammer2_volume_data_t voldata;
-	hammer2_off_t	freecache[HAMMER2_FREECACHE_TYPES][HAMMER2_MAX_RADIX+1];
+	hammer2_freecache_t freecache[HAMMER2_FREECACHE_TYPES][HAMMER2_MAX_RADIX+1];
 };
 
 typedef struct hammer2_mount hammer2_mount_t;
@@ -393,7 +401,8 @@ int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 			const uint8_t *name, size_t name_len);
 
 int hammer2_unlink_file(hammer2_inode_t *dip,
-			const uint8_t *name, size_t name_len, int isdir);
+			const uint8_t *name, size_t name_len,
+			int isdir, hammer2_inode_t *retain_ip);
 int hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip);
 int hammer2_hardlink_deconsolidate(hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_inode_t **ipp);
@@ -436,7 +445,7 @@ hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes);
 void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
-				hammer2_chain_t *chain);
+				hammer2_chain_t *chain, int retain);
 void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				hammer2_tid_t modify_tid);
 void hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain);
@@ -452,6 +461,8 @@ int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
  */
 hammer2_off_t hammer2_freemap_alloc(hammer2_mount_t *hmp,
 				int type, size_t bytes);
+void hammer2_freemap_free(hammer2_mount_t *hmp, hammer2_off_t data_off,
+				int type);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

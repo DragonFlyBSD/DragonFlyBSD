@@ -876,15 +876,18 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		if (ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if ((ioflag & IO_DIRECT) && loff + n == lblksize) {
-			bp->b_flags |= B_CLUSTEROK;
+			if (bp->b_bcount == HAMMER2_PBUFSIZE)
+				bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
 		} else if (ioflag & IO_ASYNC) {
 			bawrite(bp);
 		} else if (hammer2_cluster_enable) {
-			bp->b_flags |= B_CLUSTEROK;
+			if (bp->b_bcount == HAMMER2_PBUFSIZE)
+				bp->b_flags |= B_CLUSTEROK;
 			cluster_write(bp, leof, HAMMER2_PBUFSIZE, seqcount);
 		} else {
-			bp->b_flags |= B_CLUSTEROK;
+			if (bp->b_bcount == HAMMER2_PBUFSIZE)
+				bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
 		}
 	}
@@ -1079,7 +1082,8 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 				break;
 			}
 			hammer2_chain_unlock(hmp, chain);
-			bp->b_flags |= B_CLUSTEROK;
+			if (bp->b_bcount == HAMMER2_PBUFSIZE)
+				bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
 		} else {
 			/*
@@ -1095,9 +1099,12 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		/*
 		 * WARNING: This utilizes a device buffer for the data.
 		 *
-		 * XXX case should not occur
+		 * This case should not occur because file truncations without
+		 * a vnode (and hence no logical buffer cache) should only
+		 * always truncate to 0-length.
 		 */
 		panic("hammer2_truncate_file: non-zero truncation, no-vnode");
+#if 0
 		chain = hammer2_chain_lookup(hmp, &parent, lbase, lbase, 0);
 		if (chain) {
 			switch(chain->bref.type) {
@@ -1118,6 +1125,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			}
 			hammer2_chain_unlock(hmp, chain);
 		}
+#endif
 	}
 
 	/*
@@ -1152,7 +1160,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		 */
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 			ip->delta_dcount -= chain->bytes;
-			hammer2_chain_delete(hmp, parent, chain);
+			hammer2_chain_delete(hmp, parent, chain, 0);
 		}
 		/* XXX check parent if empty indirect block & delete */
 		chain = hammer2_chain_next(hmp, &parent, chain,
@@ -1195,6 +1203,11 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	if ((ip->ip_data.op_flags & HAMMER2_OPFLAG_DIRECTDATA) &&
 	    nsize <= HAMMER2_EMBEDDED_BYTES) {
 		ip->ip_data.size = nsize;
+		nvextendbuf(ip->vp,
+			    ip->ip_data.size, nsize,
+			    0, HAMMER2_EMBEDDED_BYTES,
+			    0, (int)nsize,
+			    1);
 		return;
 	}
 
@@ -1227,7 +1240,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 
 	/*
 	 * We have work to do, including possibly resizing the buffer
-	 * at the EOF point and turning off DIRECTDATA mode.
+	 * at the previous EOF point and turning off DIRECTDATA mode.
 	 */
 	bp = NULL;
 	if (((int)osize & HAMMER2_PBUFMASK)) {
@@ -1235,11 +1248,12 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		KKASSERT(error == 0);
 
 		if (obase != nbase) {
-			allocbuf(bp, HAMMER2_PBUFSIZE);
+			if (oblksize != HAMMER2_PBUFSIZE)
+				allocbuf(bp, HAMMER2_PBUFSIZE);
 		} else {
-			allocbuf(bp, nblksize);
+			if (oblksize != nblksize)
+				allocbuf(bp, nblksize);
 		}
-		vfs_bio_clrbuf(bp);
 	}
 
 	/*
@@ -1279,7 +1293,8 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		bp->b_bio2.bio_offset = chain->bref.data_off &
 					HAMMER2_OFF_MASK;
 		hammer2_chain_unlock(hmp, chain);
-		bp->b_flags |= B_CLUSTEROK;
+		if (bp->b_bcount == HAMMER2_PBUFSIZE)
+			bp->b_flags |= B_CLUSTEROK;
 		bdwrite(bp);
 		hammer2_chain_unlock(hmp, parent);
 	}
@@ -1339,10 +1354,9 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 */
 	ip = NULL;
 	if (chain && chain->u.ip->ip_data.type == HAMMER2_OBJTYPE_HARDLINK) {
-		kprintf("hammer2: need to find hardlink for %s\n",
-			chain->u.ip->ip_data.filename);
 		error = hammer2_hardlink_find(dip, &chain, &ip);
 		if (error) {
+			kprintf("hammer2: unable to find hardlink\n");
 			if (chain) {
 				hammer2_chain_unlock(hmp, chain);
 				chain = NULL;
@@ -1796,7 +1810,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
-	error = hammer2_unlink_file(dip, name, name_len, 0);
+	error = hammer2_unlink_file(dip, name, name_len, 0, NULL);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1828,7 +1842,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
-	error = hammer2_unlink_file(dip, name, name_len, 1);
+	error = hammer2_unlink_file(dip, name, name_len, 1, NULL);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1895,7 +1909,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	/*
 	 * Remove target if it exists
 	 */
-	error = hammer2_unlink_file(tdip, tname, tname_len, -1);
+	error = hammer2_unlink_file(tdip, tname, tname_len, -1, NULL);
 	if (error && error != ENOENT)
 		goto done;
 	cache_setunresolved(ap->a_tnch);
@@ -1921,7 +1935,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		if (error)
 			goto done;
 	}
-	error = hammer2_unlink_file(fdip, fname, fname_len, -1);
+	error = hammer2_unlink_file(fdip, fname, fname_len, -1, ip);
 	if (error)
 		goto done;
 

@@ -57,6 +57,7 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 {
 	hammer2_off_t data_off;
 	hammer2_off_t data_next;
+	hammer2_freecache_t *fc;
 	/*struct buf *bp;*/
 	int radix;
 	int fctype;
@@ -82,15 +83,26 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 	radix = hammer2_bytes_to_radix(bytes);
 	bytes = 1 << radix;
 
+	if (radix <= HAMMER2_MAX_RADIX)
+		fc = &hmp->freecache[fctype][radix];
+	else
+		fc = NULL;
+
 	lockmgr(&hmp->alloclk, LK_EXCLUSIVE);
-	if (radix <= HAMMER2_MAX_RADIX && hmp->freecache[fctype][radix]) {
+	if (fc && fc->single) {
 		/*
-		 * Allocate from our packing cache
+		 * Allocate from our single-block cache.
 		 */
-		data_off = hmp->freecache[fctype][radix];
-		hmp->freecache[fctype][radix] += bytes;
-		if ((hmp->freecache[fctype][radix] & HAMMER2_SEGMASK) == 0)
-			hmp->freecache[fctype][radix] = 0;
+		data_off = fc->single;
+		fc->single = 0;
+	} else if (fc && fc->bulk) {
+		/*
+		 * Allocate from our packing cache.
+		 */
+		data_off = fc->bulk;
+		fc->bulk += bytes;
+		if ((fc->bulk & HAMMER2_SEGMASK) == 0)
+			fc->bulk = 0;
 	} else {
 		/*
 		 * Allocate from the allocation iterator using a SEGSIZE
@@ -98,6 +110,7 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 		 *
 		 * Skip reserved areas at the beginning of each zone.
 		 */
+		hammer2_voldata_lock(hmp);
 		data_off = hmp->voldata.allocator_beg;
 		data_off = (data_off + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
 		if ((data_off & HAMMER2_ZONE_MASK64) < HAMMER2_ZONE_SEG) {
@@ -113,8 +126,10 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 			hmp->voldata.allocator_beg =
 					(data_next + HAMMER2_SEGMASK64) &
 					~HAMMER2_SEGMASK64;
-			hmp->freecache[fctype][radix] = data_next;
+			fc->bulk = data_next;
 		}
+		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED_AUX);
+		hammer2_voldata_unlock(hmp);
 	}
 	lockmgr(&hmp->alloclk, LK_RELEASE);
 
@@ -147,6 +162,40 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 			type, (intmax_t)data_off, bytes);
 	}
 	return (data_off | radix);
+}
+
+void
+hammer2_freemap_free(hammer2_mount_t *hmp, hammer2_off_t data_off, int type)
+{
+	hammer2_freecache_t *fc;
+	int radix;
+	int fctype;
+
+	switch(type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		fctype = HAMMER2_FREECACHE_INODE;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		fctype = HAMMER2_FREECACHE_INODE;
+		break;
+	case HAMMER2_BREF_TYPE_DATA:
+		fctype = HAMMER2_FREECACHE_DATA;
+		break;
+	default:
+		fctype = HAMMER2_FREECACHE_DATA;
+		break;
+	}
+	radix = (int)data_off & HAMMER2_OFF_MASK_RADIX;
+	data_off &= ~HAMMER2_OFF_MASK_RADIX;
+	if (radix >= HAMMER2_MAX_RADIX)
+		return;
+
+	fc = &hmp->freecache[fctype][radix];
+	if (fc->single == 0) {
+		lockmgr(&hmp->alloclk, LK_EXCLUSIVE);
+		fc->single = data_off;
+		lockmgr(&hmp->alloclk, LK_RELEASE);
+	}
 }
 
 #if 0

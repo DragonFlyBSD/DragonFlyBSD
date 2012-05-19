@@ -110,9 +110,11 @@ cmd_pfs_create(const char *sel_path, const char *name,
 	int fd;
 	uint32_t status;
 
+	/*
+	 * Default to MASTER
+	 */
 	if (pfs_type == HAMMER2_PFSTYPE_NONE) {
-		fprintf(stderr, "hammer2: pfs_create: requires -t pfs_type\n");
-		return(1);
+		pfs_type = HAMMER2_PFSTYPE_MASTER;
 	}
 
 	if ((fd = hammer2_ioctl_handle(sel_path)) < 0)

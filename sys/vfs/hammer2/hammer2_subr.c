@@ -369,9 +369,9 @@ hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 	int radix;
 
 	*lbasep = uoff & ~HAMMER2_PBUFMASK64;
-	*leofp = ip->ip_data.size & ~HAMMER2_PBUFMASK;
+	*leofp = ip->ip_data.size & ~HAMMER2_PBUFMASK64;
 	KKASSERT(*lbasep <= *leofp);
-	if (*lbasep == *leofp) {
+	if (*lbasep == *leofp /*&& *leofp < 1024 * 1024*/) {
 		radix = hammer2_bytes_to_radix(
 				(size_t)(ip->ip_data.size - *leofp));
 		if (radix < HAMMER2_MINALLOCRADIX)

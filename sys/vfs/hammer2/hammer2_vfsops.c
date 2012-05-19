@@ -365,10 +365,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 * vchain setup. vchain.data is special cased to NULL.
 		 * vchain.refs is initialized and will never drop to 0.
 		 */
-		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 		hmp->vchain.refs = 1;
 		hmp->vchain.data = (void *)&hmp->voldata;
+		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
+		hmp->vchain.bref_flush = hmp->vchain.bref;
 		/* hmp->vchain.u.xxx is left NULL */
 		lockinit(&hmp->vchain.lk, "volume", 0, LK_CANRECURSE);
 		lockinit(&hmp->alloclk, "h2alloc", 0, 0);
@@ -570,8 +571,6 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			vrele(devvp);
 			devvp = NULL;
 		}
-		kmalloc_destroy(&hmp->minode);
-		kmalloc_destroy(&hmp->mchain);
 	}
 	hammer2_mount_unlock(hmp);
 
@@ -582,6 +581,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	kfree(pmp, M_HAMMER2);
 	if (hmp->pmp_count == 0) {
 		TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
+		kmalloc_destroy(&hmp->minode);
+		kmalloc_destroy(&hmp->mchain);
 		kfree(hmp, M_HAMMER2);
 	}
 	lockmgr(&hammer2_mntlk, LK_RELEASE);
