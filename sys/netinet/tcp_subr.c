@@ -266,6 +266,10 @@ int tcp_low_rtobase = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, low_rtobase, CTLFLAG_RW,
     &tcp_low_rtobase, 0, "Lowering the Initial RTO (RFC 6298)");
 
+static int tcp_do_ncr = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, ncr, CTLFLAG_RW,
+    &tcp_do_ncr, 0, "Non-Congestion Robustness (RFC 4653)");
+
 static MALLOC_DEFINE(M_TCPTEMP, "tcptemp", "TCP Templates for Keepalives");
 static struct malloc_pipe tcptemp_mpipe;
 
@@ -721,8 +725,11 @@ tcp_newtcpcb(struct inpcb *inp)
 	tp->t_keepcnt = tcp_keepcnt;
 	tp->t_maxidle = tp->t_keepintvl * tp->t_keepcnt;
 
+	if (tcp_do_ncr)
+		tp->t_flags |= TF_NCR;
 	if (tcp_do_rfc1323)
-		tp->t_flags = (TF_REQ_SCALE | TF_REQ_TSTMP);
+		tp->t_flags |= (TF_REQ_SCALE | TF_REQ_TSTMP);
+
 	tp->t_inpcb = inp;	/* XXX */
 	tp->t_state = TCPS_CLOSED;
 	/*
