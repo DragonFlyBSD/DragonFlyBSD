@@ -52,6 +52,8 @@ static int hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data);
 
 int
 hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
@@ -104,6 +106,13 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case HAMMER2IOC_PFS_DELETE:
 		if (error == 0)
 			error = hammer2_ioctl_pfs_delete(ip, data);
+		break;
+	case HAMMER2IOC_INODE_GET:
+		error = hammer2_ioctl_inode_get(ip, data);
+		break;
+	case HAMMER2IOC_INODE_SET:
+		if (error == 0)
+			error = hammer2_ioctl_inode_set(ip, data);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -381,5 +390,36 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	error = hammer2_unlink_file(hmp->schain->u.ip,
 				    pfs->name, strlen(pfs->name),
 				    0, NULL);
+	return (error);
+}
+
+/*
+ * Retrieve the raw inode structure
+ */
+static int
+hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
+{
+	hammer2_ioc_inode_t *ino = data;
+
+	hammer2_inode_lock_sh(ip);
+	ino->ip_data = ip->ip_data;
+	hammer2_inode_unlock_sh(ip);
+	return (0);
+}
+
+static int
+hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
+{
+	hammer2_ioc_inode_t *ino = data;
+	int error = EINVAL;
+
+	hammer2_inode_lock_ex(ip);
+	if (ino->flags & HAMMER2IOC_INODE_FLAG_IQUOTA) {
+	}
+	if (ino->flags & HAMMER2IOC_INODE_FLAG_DQUOTA) {
+	}
+	if (ino->flags & HAMMER2IOC_INODE_FLAG_COPIES) {
+	}
+	hammer2_inode_unlock_ex(ip);
 	return (error);
 }

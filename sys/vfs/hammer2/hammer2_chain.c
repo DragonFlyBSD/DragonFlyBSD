@@ -1546,7 +1546,8 @@ again:
 	 * Additional linkage for inodes.  Reuse the parent pointer to
 	 * find the parent directory.
 	 *
-	 * Cumulative adjustments are inherited on [re]attach.
+	 * Cumulative adjustments are inherited on [re]attach and will
+	 * propagate up the tree on the next flush.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		hammer2_chain_t *scan = parent;
@@ -1558,8 +1559,8 @@ again:
 			ip->pip = scan->u.ip;
 			ip->pmp = scan->u.ip->pmp;
 			ip->depth = scan->u.ip->depth + 1;
-			ip->delta_icount += ip->ip_data.inode_count;
-			ip->delta_dcount += ip->ip_data.data_count;
+			ip->pip->delta_icount += ip->ip_data.inode_count;
+			ip->pip->delta_dcount += ip->ip_data.data_count;
 			++ip->pip->delta_icount;
 		}
 	}
@@ -2057,16 +2058,20 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 
 	/*
 	 * Cumulative adjustments must be propagated to the parent inode
-	 * when deleting and synchronized to ip.  A future reattachment
-	 * (e.g. during a rename) expects only to use ip_data.*_count.
+	 * when deleting and synchronized to ip.
+	 *
+	 * NOTE:  We do not propagate ip->delta_*count to the parent because
+	 *	  these represent adjustments that have not yet been
+	 *	  propagated upward, so we don't need to remove them from
+	 *	  the parent.
 	 *
 	 * Clear the pointer to the parent inode.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		ip = chain->u.ip;
 		if (ip->pip) {
-			ip->pip->delta_icount += ip->delta_icount;
-			ip->pip->delta_dcount += ip->delta_dcount;
+			ip->pip->delta_icount -= ip->ip_data.inode_count;
+			ip->pip->delta_dcount -= ip->ip_data.data_count;
 			ip->ip_data.inode_count += ip->delta_icount;
 			ip->ip_data.data_count += ip->delta_dcount;
 			ip->delta_icount = 0;
