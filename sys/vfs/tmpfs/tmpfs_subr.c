@@ -54,9 +54,7 @@
 #include <vfs/tmpfs/tmpfs.h>
 #include <vfs/tmpfs/tmpfs_vnops.h>
 
-static ino_t t_ino = 2;
-static struct spinlock	ino_lock;
-static ino_t tmpfs_fetch_ino(void);
+static ino_t tmpfs_fetch_ino(struct tmpfs_mount *);
 
 /* --------------------------------------------------------------------- */
 
@@ -115,7 +113,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	nnode->tn_uid = uid;
 	nnode->tn_gid = gid;
 	nnode->tn_mode = mode;
-	nnode->tn_id = tmpfs_fetch_ino();
+	nnode->tn_id = tmpfs_fetch_ino(tmp);
 	nnode->tn_advlock.init_done = 0;
 
 	/* Type-specific initialization. */
@@ -1340,13 +1338,11 @@ out:
 /* --------------------------------------------------------------------- */
 
 static ino_t
-tmpfs_fetch_ino(void)
+tmpfs_fetch_ino(struct tmpfs_mount *tmp)
 {
-	ino_t	ret;
+	ino_t ret;
 
-	spin_lock(&ino_lock);
-	ret = t_ino++;
-	spin_unlock(&ino_lock);
+	ret = tmp->tm_ino++;
 
-	return ret;
+	return (ret);
 }

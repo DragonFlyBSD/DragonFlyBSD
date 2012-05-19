@@ -251,6 +251,8 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	    tmpfs_node_init, tmpfs_node_fini,
 	    &tmp->tm_node_zone_malloc_args);
 
+	tmp->tm_ino = 2;
+
 	/* Allocate the root node. */
 	error = tmpfs_alloc_node(tmp, VDIR, root_uid, root_gid,
 				 root_mode & ALLPERMS, NULL, NULL,
