@@ -385,11 +385,14 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how)
 	}
 
 	/*
-	 * Zero the data area if the chain is in the INITIAL-create state
+	 * Zero the data area if the chain is in the INITIAL-create state.
 	 */
 	bdata = (char *)chain->bp->b_data + boff;
-	if (chain->flags & HAMMER2_CHAIN_INITIAL)
+	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
 		bzero(bdata, chain->bytes);
+		chain->bp->b_flags |= B_CACHE;
+		bdirty(chain->bp);
+	}
 
 	/*
 	 * Setup the data pointer, either pointing it to an embedded data
@@ -2435,7 +2438,6 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		 *
 		 * Make sure the buffer(s) have been flushed out here.
 		 */
-#if 1
 		bbytes = chain->bytes;
 		pbase = chain->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
 		boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
@@ -2451,18 +2453,37 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				brelse(bp);
 			}
 		}
-#endif
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		/*
-		 * Indirect blocks may be in an INITIAL state.
+		 * Indirect blocks may be in an INITIAL state.  Use the
+		 * chain_lock() call to ensure that the buffer has been
+		 * instantiated (even though it is already locked the buffer
+		 * might not have been instantiated).
+		 *
+		 * Only write the buffer out if it is dirty, it is possible
+		 * the operating system had already written out the buffer.
 		 */
+		hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_ALWAYS);
+		KKASSERT(chain->bp != NULL);
+
+		bp = chain->bp;
+		if ((chain->flags & HAMMER2_CHAIN_DIRTYBP) ||
+		    (bp->b_flags & B_DIRTY)) {
+			bawrite(chain->bp);
+		} else {
+			brelse(chain->bp);
+		}
+		chain->bp = NULL;
+		chain->data = NULL;
+		hammer2_chain_unlock(hmp, chain);
 		break;
 	default:
 		/*
 		 * Embedded elements have to be flushed out.
 		 */
 		KKASSERT(chain->data != NULL);
+		KKASSERT(chain->bp == NULL);
 		bref = &chain->bref;
 
 		KKASSERT((bref->data_off & HAMMER2_OFF_MASK) != 0);
@@ -2493,10 +2514,15 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 			/*
 			 * Copy the data to the buffer, mark the buffer
 			 * dirty, and convert the chain to unmodified.
+			 *
+			 * We expect we might have to make adjustments to
+			 * non-data delayed-write buffers when doing an
+			 * actual flush so use bawrite() instead of
+			 * cluster_awrite() here.
 			 */
 			bcopy(chain->data, bdata, chain->bytes);
 			bp->b_flags |= B_CLUSTEROK;
-			bdwrite(bp);
+			bawrite(bp);
 			bp = NULL;
 			chain->bref.check.iscsi32.value =
 				hammer2_icrc32(chain->data, chain->bytes);
