@@ -674,6 +674,11 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 	 * If this is a directory the directory must be empty.  However, if
 	 * isdir < 0 we are doing a rename and the directory does not have
 	 * to be empty.
+	 *
+	 * NOTE: We check the full key range here which covers both visible
+	 *	 and invisible entries.  Theoretically there should be no
+	 *	 invisible (hardlink target) entries if there are no visible
+	 *	 entries.
 	 */
 	if (type == HAMMER2_OBJTYPE_DIRECTORY && isdir >= 0) {
 		dparent = chain;

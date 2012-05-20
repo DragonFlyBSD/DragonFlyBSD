@@ -386,12 +386,12 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how)
 
 	/*
 	 * Zero the data area if the chain is in the INITIAL-create state.
+	 * Mark the buffer for bdwrite().
 	 */
 	bdata = (char *)chain->bp->b_data + boff;
 	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
 		bzero(bdata, chain->bytes);
-		chain->bp->b_flags |= B_CACHE;
-		bdirty(chain->bp);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
 	}
 
 	/*
@@ -454,6 +454,8 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 
 	/*
 	 * Undo a recursive lock
+	 *
+	 * XXX shared locks not handled properly
 	 */
 	if (lockcountnb(&chain->lk) > 1) {
 		KKASSERT(chain->refs > 1);
@@ -464,9 +466,14 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 
 	/*
 	 * Shortcut the case if the data is embedded or not resolved.
+	 *
 	 * Do NOT null-out pointers to embedded data (e.g. inode).
+	 *
+	 * The DIRTYBP flag is non-applicable in this situation and can
+	 * be cleared to keep the flags state clean.
 	 */
 	if (chain->bp == NULL) {
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
 		lockmgr(&chain->lk, LK_RELEASE);
 		hammer2_chain_drop(hmp, chain);
 		return;
@@ -521,6 +528,12 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
 		chain->bp->b_flags |= B_RELBUF;
 
+	/*
+	 * The DIRTYBP flag tracks whether we have to bdwrite() the buffer
+	 * or not.  The flag will get re-set when chain_modify() is called,
+	 * even if MODIFIED is already set, allowing the OS to retire the
+	 * buffer independent of a hammer2 flus.
+	 */
 	chain->data = NULL;
 	if (chain->flags & HAMMER2_CHAIN_DIRTYBP) {
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
@@ -663,9 +676,8 @@ hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *chain,
 
 		/*
 		 * NOTE: The INITIAL state of the chain is left intact.
-		 *
-		 * NOTE: Because of the reallocation we have to set DIRTYBP
-		 *	 if INITIAL is not set.
+		 *	 We depend on hammer2_chain_modify() to do the
+		 *	 right thing.
 		 *
 		 * NOTE: We set B_NOCACHE to throw away the previous bp and
 		 *	 any VM backing store, even if it was dirty.
@@ -676,8 +688,16 @@ hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *chain,
 		brelse(chain->bp);
 		chain->bp = nbp;
 		chain->data = (void *)bdata;
-		if ((chain->flags & HAMMER2_CHAIN_INITIAL) == 0)
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
+		hammer2_chain_modify(hmp, chain, 0);
+	}
+
+	/*
+	 * Make sure the chain is marked MOVED and SUBMOD is set in the
+	 * parent(s) so the adjustments are picked up by flush.
+	 */
+	if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
+		hammer2_chain_ref(hmp, chain);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
 	}
 	hammer2_chain_parent_setsubmod(hmp, chain);
 }
@@ -713,12 +733,19 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain, int flags)
 
 	/*
 	 * If the chain is already marked MODIFIED we can just return.
+	 *
+	 * However, it is possible that a prior lock/modify sequence
+	 * retired the buffer.  During this lock/modify sequence MODIFIED
+	 * may still be set but the buffer could wind up clean.  Since
+	 * the caller is going to modify the buffer further we have to
+	 * be sure that DIRTYBP is set again.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 		if ((flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
 		    chain->bp == NULL) {
 			goto skip1;
 		}
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
 		return;
 	}
 

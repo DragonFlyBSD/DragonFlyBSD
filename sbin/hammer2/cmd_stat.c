@@ -58,7 +58,7 @@ cmd_stat(int ac, const char **av)
 	}
 	if (w < 16)
 		w = 16;
-	printf("%-*.*s ncp data-use  inode-use\n", w, w, "PATH");
+	printf("%-*.*s ncp data-use  inode-use kaddr\n", w, w, "PATH");
 	for (i = 0; i < ac; ++i) {
 		if ((fd = open(av[i], O_RDONLY)) < 0) {
 			fprintf(stderr, "%s: %s\n", av[i], strerror(errno));
@@ -74,6 +74,7 @@ cmd_stat(int ac, const char **av)
 		printf("%3d ", ino.ip_data.ncopies);
 		printf("%9s ", sizetostr(ino.ip_data.data_count));
 		printf("%9s ", sizetostr(ino.ip_data.inode_count));
+		printf("%p ", ino.kdata);
 		if (ino.ip_data.data_quota || ino.ip_data.inode_quota) {
 			printf(" quota ");
 			printf("%12s", sizetostr(ino.ip_data.data_quota));

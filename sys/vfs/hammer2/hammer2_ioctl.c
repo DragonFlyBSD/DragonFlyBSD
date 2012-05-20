@@ -403,6 +403,7 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 
 	hammer2_inode_lock_sh(ip);
 	ino->ip_data = ip->ip_data;
+	ino->kdata = ip;
 	hammer2_inode_unlock_sh(ip);
 	return (0);
 }
