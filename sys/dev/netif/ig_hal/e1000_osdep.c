@@ -82,6 +82,20 @@ e1000_read_pcie_cap_reg(struct e1000_hw *hw, uint32_t reg, uint16_t *value)
 	return E1000_SUCCESS;
 }
 
+int32_t
+e1000_write_pcie_cap_reg(struct e1000_hw *hw, uint32_t reg, uint16_t *value)
+{
+	device_t dev = ((struct e1000_osdep *)hw->back)->dev;
+	uint8_t pcie_ptr;
+
+	pcie_ptr = pci_get_pciecap_ptr(dev);
+	if (pcie_ptr == 0)
+		return E1000_NOT_IMPLEMENTED;
+
+	pci_write_config(dev, pcie_ptr + reg, *value, 2);
+	return E1000_SUCCESS;
+}
+
 /* Module glue */
 static moduledata_t ig_hal_mod = { "ig_hal" };
 DECLARE_MODULE(ig_hal, ig_hal_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);

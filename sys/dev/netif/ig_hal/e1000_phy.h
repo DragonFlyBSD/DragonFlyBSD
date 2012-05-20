@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2009, Intel Corporation 
+  Copyright (c) 2001-2011, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD: $*/
+/*$FreeBSD:$*/
 
 #ifndef _E1000_PHY_H_
 #define _E1000_PHY_H_
@@ -50,10 +50,12 @@ s32  e1000_phy_setup_autoneg(struct e1000_hw *hw);
 s32  e1000_copper_link_autoneg(struct e1000_hw *hw);
 s32  e1000_copper_link_setup_igp(struct e1000_hw *hw);
 s32  e1000_copper_link_setup_m88(struct e1000_hw *hw);
+s32  e1000_copper_link_setup_m88_gen2(struct e1000_hw *hw);
 s32  e1000_phy_force_speed_duplex_igp(struct e1000_hw *hw);
 s32  e1000_phy_force_speed_duplex_m88(struct e1000_hw *hw);
 s32  e1000_phy_force_speed_duplex_ife(struct e1000_hw *hw);
 s32  e1000_get_cable_length_m88(struct e1000_hw *hw);
+s32  e1000_get_cable_length_m88_gen2(struct e1000_hw *hw);
 s32  e1000_get_cable_length_igp_2(struct e1000_hw *hw);
 s32  e1000_get_cfg_done_generic(struct e1000_hw *hw);
 s32  e1000_get_phy_id(struct e1000_hw *hw);
@@ -101,6 +103,8 @@ s32  e1000_write_phy_reg_hv(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_write_phy_reg_hv_locked(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_write_phy_reg_page_hv(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_link_stall_workaround_hv(struct e1000_hw *hw);
+s32  e1000_read_phy_reg_i2c(struct e1000_hw *hw, u32 offset, u16 *data);
+s32  e1000_write_phy_reg_i2c(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_copper_link_setup_82577(struct e1000_hw *hw);
 s32  e1000_check_polarity_82577(struct e1000_hw *hw);
 s32  e1000_get_phy_info_82577(struct e1000_hw *hw);

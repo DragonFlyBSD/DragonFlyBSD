@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2009, Intel Corporation 
+  Copyright (c) 2001-2011, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD: $*/
+/*$FreeBSD*/
 
 #ifndef _E1000_API_H_
 #define _E1000_API_H_
@@ -46,12 +46,18 @@ extern void    e1000_init_function_pointers_82571(struct e1000_hw *hw);
 extern void    e1000_init_function_pointers_82541(struct e1000_hw *hw);
 extern void    e1000_init_function_pointers_80003es2lan(struct e1000_hw *hw);
 extern void    e1000_init_function_pointers_ich8lan(struct e1000_hw *hw);
+extern void    e1000_init_function_pointers_82575(struct e1000_hw *hw);
+extern void    e1000_rx_fifo_flush_82575(struct e1000_hw *hw);
+extern void    e1000_init_function_pointers_vf(struct e1000_hw *hw);
+extern void    e1000_power_up_fiber_serdes_link(struct e1000_hw *hw);
+extern void    e1000_shutdown_fiber_serdes_link(struct e1000_hw *hw);
 
 s32  e1000_set_mac_type(struct e1000_hw *hw);
 s32  e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device);
 s32  e1000_init_mac_params(struct e1000_hw *hw);
 s32  e1000_init_nvm_params(struct e1000_hw *hw);
 s32  e1000_init_phy_params(struct e1000_hw *hw);
+s32  e1000_init_mbx_params(struct e1000_hw *hw);
 s32  e1000_get_bus_info(struct e1000_hw *hw);
 void e1000_clear_vfta(struct e1000_hw *hw);
 void e1000_write_vfta(struct e1000_hw *hw, u32 offset, u32 value);
@@ -81,6 +87,8 @@ s32  e1000_get_cable_length(struct e1000_hw *hw);
 s32  e1000_validate_mdi_setting(struct e1000_hw *hw);
 s32  e1000_read_phy_reg(struct e1000_hw *hw, u32 offset, u16 *data);
 s32  e1000_write_phy_reg(struct e1000_hw *hw, u32 offset, u16 data);
+s32  e1000_write_8bit_ctrl_reg(struct e1000_hw *hw, u32 reg,
+                               u32 offset, u8 data);
 s32  e1000_get_phy_info(struct e1000_hw *hw);
 void e1000_release_phy(struct e1000_hw *hw);
 s32  e1000_acquire_phy(struct e1000_hw *hw);
