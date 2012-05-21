@@ -207,6 +207,8 @@ device		vx		# 3Com 3c590, 3c595 (``Vortex'')
 
 device		em		# Intel PRO/1000 adapter Gigabit Ethernet Card (``Wiseman'')
 				# Requires ig_hal
+device		igb		# Intel Pro/1000 (82575, 82576, 82580, i350)
+				# Requires ig_hal
 device		ig_hal		# Intel PRO/1000 hardware abstraction layer
 
 # PCI Ethernet NICs that use the common MII bus controller code.
