@@ -147,7 +147,7 @@ acpi_timer_identify(driver_t *driver, device_t parent)
 	rtype = SYS_RES_IOPORT;
 	break;
     default:
-	return_VOID;
+	return (ENXIO);
     }
     rid = 0;
     rlen = AcpiGbl_FADT.PmTimerLength;
