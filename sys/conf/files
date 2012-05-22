@@ -2027,6 +2027,7 @@ ${ACPICA_DIR}/disassembler/dmresrcs.c		optional acpi acpi_debug
 ${ACPICA_DIR}/disassembler/dmutils.c		optional acpi acpi_debug
 ${ACPICA_DIR}/disassembler/dmwalk.c		optional acpi acpi_debug
 ${ACPICA_DIR}/events/evevent.c			optional acpi
+${ACPICA_DIR}/events/evglock.c			optional acpi
 ${ACPICA_DIR}/events/evgpe.c			optional acpi
 ${ACPICA_DIR}/events/evgpeblk.c			optional acpi
 ${ACPICA_DIR}/events/evgpeinit.c		optional acpi

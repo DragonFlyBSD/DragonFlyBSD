@@ -49,6 +49,8 @@ ACPI_STATUS
 AcpiOsGetLine(char *Buffer, UINT32 BufferLength, UINT32 *BytesRead)
 {
 #ifdef DDB
+    char *cp;
+
     cp = Buffer;
     if (db_readline(Buffer, BufferLength) > 0)
         while (*cp != '\0' && *cp != '\n' && *cp != '\r')
