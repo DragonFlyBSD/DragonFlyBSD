@@ -303,7 +303,6 @@ static int opt_cache = 4;
 static int opt_utrace = 0;
 static int g_malloc_flags = 0;
 static int malloc_panic;
-static int malloc_started = 0;
 
 static const int32_t weirdary[16] = {
 	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR,
@@ -321,7 +320,11 @@ static void slabterm(slglobaldata_t slgd, slab_t slab);
 static void *_vmem_alloc(int ri, size_t slab_size);
 static void _vmem_free(void *ptr, size_t slab_size);
 static void _mpanic(const char *ctl, ...) __printflike(1, 2);
-static void malloc_init(void);
+#ifndef STANDALONE_DEBUG
+static void malloc_init(void) __constructor(0);
+#else
+static void malloc_init(void) __constructor(101);
+#endif
 
 struct nmalloc_utrace {
 	void *p;
@@ -350,18 +353,6 @@ static void
 malloc_init(void)
 {
 	const char *p = NULL;
-	static spinlock_t malloc_init_lock;
-
-	if (malloc_started)
-		return;
-
-	if (__isthreaded) {
-		_SPINLOCK(&malloc_init_lock);
-		if (malloc_started) {
-			_SPINUNLOCK(&malloc_init_lock);
-			return;
-		}
-	}
 
 	Regions[0].mask = -1; /* disallow activity in lowest region */
 
@@ -408,10 +399,6 @@ malloc_init(void)
 
 	UTRACE((void *) -1, 0, NULL);
 	_nmalloc_thr_init();
-	malloc_started = 1;
-
-	if (__isthreaded)
-		_SPINUNLOCK(&malloc_init_lock);
 }
 
 /*
@@ -436,9 +423,6 @@ _nmalloc_thr_init(void)
 	cpu_ccfence();
 	TAILQ_INIT(&slglobal.full_zones);
 	slglobal.sldepot = &sldepots[slgi & (NDEPOTS - 1)];
-
-	if (slglobal.masked)
-		return;
 
 	slglobal.masked = 1;
 	if (did_init == 0) {
@@ -727,9 +711,6 @@ memalloc(size_t size, int flags)
 #endif
 	size_t off;
 	char *obj;
-
-	if (!malloc_started)
-		malloc_init();
 
 	/*
 	 * If 0 bytes is requested we have to return a unique pointer, allocate
