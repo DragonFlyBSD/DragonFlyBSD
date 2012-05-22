@@ -40,7 +40,7 @@
  * --------------------------------------------------------------------- */
 #include <sys/dirent.h>
 #include <sys/mount.h>
-#include <sys/queue.h>
+#include <sys/tree.h>
 #include <sys/vnode.h>
 #include <sys/file.h>
 #include <sys/lock.h>
@@ -62,7 +62,7 @@ MALLOC_DECLARE(M_TMPFSMNT);
  * Internal representation of a tmpfs directory entry.
  */
 struct tmpfs_dirent {
-	TAILQ_ENTRY(tmpfs_dirent)	td_entries;
+	RB_ENTRY(tmpfs_dirent) rb_node;
 
 	/* Length of the name stored in this directory entry.  This avoids
 	 * the need to recalculate it every time the name is used. */
@@ -77,19 +77,24 @@ struct tmpfs_dirent {
 	struct tmpfs_node *		td_node;
 };
 
-/* A directory in tmpfs holds a sorted list of directory entries, which in
+struct tmpfs_dirtree;
+RB_HEAD(tmpfs_dirtree, tmpfs_dirent);
+RB_PROTOTYPE(tmpfs_dirtree, tmpfs_dirent, rb_node,
+	tmpfs_dirtree_compare);
+
+
+/* A directory in tmpfs holds a set of directory entries, which in
  * turn point to other files (which can be directories themselves).
  *
- * In tmpfs, this list is managed by a tail queue, whose head is defined by
- * the struct tmpfs_dir type.
+ * In tmpfs, this set is managed by a red-black tree, whose root is defined
+ * by the struct tmpfs_dirtree type.
  *
- * It is imporant to notice that directories do not have entries for . and
+ * It is important to notice that directories do not have entries for . and
  * .. as other file systems do.  These can be generated when requested
  * based on information available by other means, such as the pointer to
  * the node itself in the former case or the pointer to the parent directory
  * in the latter case.  This is done to simplify tmpfs's code and, more
  * importantly, to remove redundancy. */
-TAILQ_HEAD(tmpfs_dir, tmpfs_dirent);
 
 /* Each entry in a directory has a cookie that identifies it.  Cookies
  * supersede offsets within directories because, given how tmpfs stores
@@ -252,10 +257,10 @@ struct tmpfs_node {
 			 * this property identifies the root node. */
 			struct tmpfs_node *	tn_parent;
 
-			/* Head of a tail-queue that links the contents of
+			/* Root of a red-black tree that links the contents of
 			 * the directory together.  See above for a
 			 * description of its contents. */
-			struct tmpfs_dir	tn_dirhead;
+			struct tmpfs_dirtree	tn_dirtree;
 
 			/* Number and pointer of the first directory entry
 			 * returned by the readdir operation if it were

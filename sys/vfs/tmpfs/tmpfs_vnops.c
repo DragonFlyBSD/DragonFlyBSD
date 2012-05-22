@@ -924,7 +924,7 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	struct vnode *tdvp = v->a_tdvp;
 	struct namecache *tncp = v->a_tnch->ncp;
 	struct vnode *tvp;
-	struct tmpfs_dirent *de;
+	struct tmpfs_dirent *de, *tde;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *fdnode;
 	struct tmpfs_node *fnode;
@@ -1039,6 +1039,9 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	 */
 	if (fdnode != tdnode)
 		tmpfs_dir_detach(fdnode, de);
+	else {
+		RB_REMOVE(tmpfs_dirtree, &fdnode->tn_dir.tn_dirtree, de);
+	}
 
 	/*
 	 * Handle any name change.  Swap with newname, we will
@@ -1054,6 +1057,25 @@ tmpfs_nrename(struct vop_nrename_args *v)
 		de->td_name = newname;
 		de->td_namelen = (uint16_t)tncp->nc_nlen;
 		newname = oldname;
+	}
+
+	/*
+	 * If we are overwriting an entry, we have to remove the old one
+	 * from the target directory.
+	 */
+	if (tvp != NULL) {
+		/* Remove the old entry from the target directory. */
+		tde = tmpfs_dir_lookup(tdnode, tnode, tncp);
+		tmpfs_dir_detach(tdnode, tde);
+		tmpfs_knote(tdnode->tn_vnode, NOTE_DELETE);
+
+		/*
+		 * Free the directory entry we just deleted.  Note that the
+		 * node referred by it will not be removed until the vnode is
+		 * really reclaimed.
+		 */
+		tmpfs_free_dirent(VFS_TO_TMPFS(tvp->v_mount), tde);
+		/*cache_inval_vp(tvp, CINV_DESTROY);*/
 	}
 
 	/*
@@ -1084,26 +1106,8 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	} else {
 		TMPFS_NODE_LOCK(tdnode);
 		tdnode->tn_status |= TMPFS_NODE_MODIFIED;
+		RB_INSERT(tmpfs_dirtree, &tdnode->tn_dir.tn_dirtree, de);
 		TMPFS_NODE_UNLOCK(tdnode);
-	}
-
-	/*
-	 * If we are overwriting an entry, we have to remove the old one
-	 * from the target directory.
-	 */
-	if (tvp != NULL) {
-		/* Remove the old entry from the target directory. */
-		de = tmpfs_dir_lookup(tdnode, tnode, tncp);
-		tmpfs_dir_detach(tdnode, de);
-		tmpfs_knote(tdnode->tn_vnode, NOTE_DELETE);
-
-		/*
-		 * Free the directory entry we just deleted.  Note that the
-		 * node referred by it will not be removed until the vnode is
-		 * really reclaimed.
-		 */
-		tmpfs_free_dirent(VFS_TO_TMPFS(tvp->v_mount), de);
-		/*cache_inval_vp(tvp, CINV_DESTROY);*/
 	}
 
 	/*
@@ -1368,14 +1372,14 @@ outok:
 				off = TMPFS_DIRCOOKIE_DOTDOT;
 			} else {
 				if (off == TMPFS_DIRCOOKIE_DOTDOT) {
-					de = TAILQ_FIRST(&node->tn_dir.tn_dirhead);
+					de = RB_MIN(tmpfs_dirtree, &node->tn_dir.tn_dirtree);
 				} else if (de != NULL) {
-					de = TAILQ_NEXT(de, td_entries);
+					de = RB_NEXT(tmpfs_dirtree, &node->tn_dir.tn_dirtree, de);
 				} else {
 					de = tmpfs_dir_lookupbycookie(node,
 					    off);
 					KKASSERT(de != NULL);
-					de = TAILQ_NEXT(de, td_entries);
+					de = RB_NEXT(tmpfs_dirtree, &node->tn_dir.tn_dirtree, de);
 				}
 				if (de == NULL)
 					off = TMPFS_DIRCOOKIE_EOF;
