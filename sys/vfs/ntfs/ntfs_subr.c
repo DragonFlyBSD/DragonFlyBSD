@@ -1160,7 +1160,7 @@ ntfs_ntreaddir(struct ntfsmount *ntmp, struct fnode *fp,
 
 	do {
 		dprintf(("ntfs_ntreaddir: scan: 0x%x, %d, %d, %d, %d\n",
-			 attrnum, (u_int32_t) blnum, cnum, num, aoff));
+			 attrnum, blnum, cnum, num, aoff));
 		rdsize = (attrnum == NTFS_A_INDXROOT) ? vap->va_datalen : blsize;
 		error = ntfs_readattr(ntmp, ip, attrnum, "$I30",
 				ntfs_cntob(blnum * cpbl), rdsize, rdbuf, NULL);
@@ -1215,7 +1215,7 @@ ntfs_ntreaddir(struct ntfsmount *ntmp, struct fnode *fp,
 			aoff = 0;
 			if (ntfs_cntob(blnum * cpbl) >= iavap->va_datalen)
 				break;
-			dprintf(("ntfs_ntreaddir: blnum: %d\n", (u_int32_t) blnum));
+			dprintf(("ntfs_ntreaddir: blnum: %d\n", blnum));
 		}
 	} while (iavap);
 

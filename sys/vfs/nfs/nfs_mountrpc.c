@@ -38,7 +38,6 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_mountrpc.c,v 1.2 2006/12/23 00:41:29 swildner Exp $
  */
 /*
  * Procedures used by NFS_ROOT and BOOTP to do an NFS mount rpc to obtain
@@ -103,17 +102,17 @@ nfs_mountopts(struct nfs_args *args, char *p)
 	args->sotype = SOCK_STREAM;
 	if (p == NULL)
 		return;
-	if ((tmp = (char *)substr(p, "rsize=")))
+	if ((tmp = substr(p, "rsize=")))
 		args->rsize = getdec(&tmp);
-	if ((tmp = (char *)substr(p, "wsize=")))
+	if ((tmp = substr(p, "wsize=")))
 		args->wsize = getdec(&tmp);
-	if ((tmp = (char *)substr(p, "intr")))
+	if ((tmp = substr(p, "intr")))
 		args->flags |= NFSMNT_INT;
-	if ((tmp = (char *)substr(p, "soft")))
+	if ((tmp = substr(p, "soft")))
 		args->flags |= NFSMNT_SOFT;
-	if ((tmp = (char *)substr(p, "noconn")))
+	if ((tmp = substr(p, "noconn")))
 		args->flags |= NFSMNT_NOCONN;
-	if ((tmp = (char *)substr(p, "udp")))
+	if ((tmp = substr(p, "udp")))
 		args->sotype = SOCK_DGRAM;
 }
 

@@ -832,8 +832,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	enum vtype f_type;
 
 	dprintf(("ntfs_vgetex: ino: %d, attr: 0x%x:%s, lkf: 0x%lx, f: 0x%lx\n",
-		ino, attrtype, attrname?attrname:"", (u_long)lkflags,
-		(u_long)flags ));
+		ino, attrtype, attrname?attrname:"", lkflags, flags));
 
 	ntmp = VFSTONTFS(mp);
 	*vpp = NULL;
