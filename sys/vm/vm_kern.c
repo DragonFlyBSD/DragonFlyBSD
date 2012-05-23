@@ -64,7 +64,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.29 2007/06/07 23:14:29 dillon Exp $
  */
 
 /*
@@ -235,7 +234,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	 *
 	 * NOTE: vm_map_wire() handles any kstack guard.
 	 */
-	vm_map_wire(map, (vm_offset_t)addr, addr + size, kmflags);
+	vm_map_wire(map, addr, addr + size, kmflags);
 
 	return (addr);
 }

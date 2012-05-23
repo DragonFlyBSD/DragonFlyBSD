@@ -37,7 +37,6 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.67 2008/09/28 05:04:22 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -550,7 +549,7 @@ ufs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 	 */
 	if ((cred->cr_uid != ip->i_uid || uid != ip->i_uid ||
 	    (gid != ip->i_gid && !(cred->cr_gid == gid ||
-	    groupmember((gid_t)gid, cred)))) &&
+	    groupmember(gid, cred)))) &&
 	    (error = priv_check_cred(cred, PRIV_VFS_CHOWN, 0)))
 		return (error);
 	ogid = ip->i_gid;

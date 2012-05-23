@@ -248,7 +248,7 @@ vm_object_clear_flag(vm_object_t object, u_int bits)
 static __inline void
 vm_object_pip_add(vm_object_t object, u_int i)
 {
-	refcount_acquire_n(&object->paging_in_progress, (u_int)i);
+	refcount_acquire_n(&object->paging_in_progress, i);
 }
 
 static __inline void
