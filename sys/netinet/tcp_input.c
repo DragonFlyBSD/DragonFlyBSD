@@ -3188,7 +3188,7 @@ tcp_sack_rexmt(struct tcpcb *tp)
 		int error;
 
 		old_rexmt_high = tp->rexmt_high;
-	    	if (!tcp_sack_nextseg(tp, &nextrexmt, &seglen, &rescue)) {
+		if (!tcp_sack_nextseg(tp, &nextrexmt, &seglen, &rescue)) {
 			tp->rexmt_high = old_rexmt_high;
 			break;
 		}
