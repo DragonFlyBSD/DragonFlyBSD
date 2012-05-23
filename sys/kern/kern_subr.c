@@ -118,9 +118,9 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 
 		case UIO_SYSSPACE:
 			if (uio->uio_rw == UIO_READ)
-				bcopy((caddr_t)cp, iov->iov_base, cnt);
+				bcopy(cp, iov->iov_base, cnt);
 			else
-				bcopy(iov->iov_base, (caddr_t)cp, cnt);
+				bcopy(iov->iov_base, cp, cnt);
 			break;
 		case UIO_NOCOPY:
 			break;

@@ -604,7 +604,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    kup = btokup(z);
 	    *kup = 0;
 	    kmem_slab_free(z, ZoneSize);	/* may block */
-	    atomic_add_int(&ZoneGenAlloc, -(int)ZoneSize / 1024);
+	    atomic_add_int(&ZoneGenAlloc, -ZoneSize / 1024);
 	}
 	crit_exit();
     }
@@ -780,7 +780,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    z = kmem_slab_alloc(ZoneSize, ZoneSize, flags|M_ZERO);
 	    if (z == NULL)
 		goto fail;
-	    atomic_add_int(&ZoneGenAlloc, (int)ZoneSize / 1024);
+	    atomic_add_int(&ZoneGenAlloc, ZoneSize / 1024);
 	}
 
 	/*

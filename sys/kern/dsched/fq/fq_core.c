@@ -333,7 +333,7 @@ fq_balance_self(struct fq_thread_io *tdio) {
 	DSCHED_DISK_CTX_LOCK_ASSERT(diskctx);
 #endif
 
-	used_budget = ((int64_t)avg_latency * transactions);
+	used_budget = avg_latency * transactions;
 	budget = diskctx->budgetpb[(tdio->head.p) ? tdio->head.p->p_ionice : 0];
 
 	if (used_budget > 0) {
