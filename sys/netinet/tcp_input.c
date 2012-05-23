@@ -3261,28 +3261,26 @@ tcp_sack_limitedxmit(struct tcpcb *tp)
 	tcp_seq oldsndnxt = tp->snd_nxt;
 	tcp_seq oldsndmax = tp->snd_max;
 	u_long ocwnd = tp->snd_cwnd;
-	uint32_t pipe;
+	uint32_t pipe, sent;
 	boolean_t ret = FALSE;
+	tcp_seq_diff_t cwnd_left;
+	tcp_seq next;
 
 	tp->rexmt_high = tp->snd_una - 1;
 	pipe = tcp_sack_compute_pipe(tp);
-	while ((tcp_seq_diff_t)(ocwnd - pipe) >= (tcp_seq_diff_t)tp->t_maxseg) {
-		uint32_t sent;
-		tcp_seq next;
-		int error;
+	cwnd_left = (tcp_seq_diff_t)(ocwnd - pipe);
+	if (cwnd_left < (tcp_seq_diff_t)tp->t_maxseg)
+		return FALSE;
 
-		next = tp->snd_nxt = tp->snd_max;
-		tp->snd_cwnd = tp->snd_nxt - tp->snd_una + tp->t_maxseg;
+	next = tp->snd_nxt = tp->snd_max;
+	tp->snd_cwnd = tp->snd_nxt - tp->snd_una +
+	    rounddown(cwnd_left, tp->t_maxseg);
 
-		error = tcp_output(tp);
-		if (error)
-			break;
+	tcp_output(tp);
 
-		sent = tp->snd_nxt - next;
-		if (sent <= 0)
-			break;
-		pipe += sent;
-		++tcpstat.tcps_sndlimited;
+	sent = tp->snd_nxt - next;
+	if (sent > 0) {
+		tcpstat.tcps_sndlimited += howmany(sent, tp->t_maxseg);
 		ret = TRUE;
 	}
 
