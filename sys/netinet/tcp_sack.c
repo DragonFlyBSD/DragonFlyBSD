@@ -392,13 +392,17 @@ insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb,
 		++scb->nblocks;
 	} else {
 		if (overlap_front || sb->sblk_end == raw_sb->rblk_start) {
+			tcpstat.tcps_sacksbreused++;
+
 			/* Extend old block */
 			workingblock = sb;
-			if (SEQ_GT(raw_sb->rblk_end, sb->sblk_end))
+			if (SEQ_GT(raw_sb->rblk_end, sb->sblk_end)) {
 				sb->sblk_end = raw_sb->rblk_end;
-			else
+			} else {
+				/* Exact match, nothing to consolidate */
 				*update = FALSE;
-			tcpstat.tcps_sacksbreused++;
+				return 0;
+			}
 		} else {
 			workingblock = alloc_sackblock_limit(scb, raw_sb);
 			if (workingblock == NULL)
