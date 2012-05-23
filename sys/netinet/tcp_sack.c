@@ -654,10 +654,10 @@ sendunsacked:
 			 */
 			torexmt = tp->rexmt_rescue;
 			tcp_sack_skip_sacked(scb, &torexmt);
-			if (torexmt == tp->snd_max) {
-				/* Nothing left to retransmit; restart */
-				torexmt = tp->snd_una;
-			}
+		}
+		if (torexmt == tp->snd_max) {
+			/* Nothing left to retransmit; restart */
+			torexmt = tp->snd_una;
 		}
 		*rescue = TRUE;
 		goto sendunsacked;
