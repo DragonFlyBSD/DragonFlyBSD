@@ -137,17 +137,17 @@ usbd_libinit(void)
 	}
 
 	windrv_wrap((funcptr)usbd_ioinvalid,
-	    (funcptr *)&usbd_ioinvalid_wrap, 2, WINDRV_WRAP_STDCALL);
+	    &usbd_ioinvalid_wrap, 2, WINDRV_WRAP_STDCALL);
 	windrv_wrap((funcptr)usbd_iodispatch,
-	    (funcptr *)&usbd_iodispatch_wrap, 2, WINDRV_WRAP_STDCALL);
+	    &usbd_iodispatch_wrap, 2, WINDRV_WRAP_STDCALL);
 	windrv_wrap((funcptr)usbd_pnp,
-	    (funcptr *)&usbd_pnp_wrap, 2, WINDRV_WRAP_STDCALL);
+	    &usbd_pnp_wrap, 2, WINDRV_WRAP_STDCALL);
 	windrv_wrap((funcptr)usbd_power,
-	    (funcptr *)&usbd_power_wrap, 2, WINDRV_WRAP_STDCALL);
+	    &usbd_power_wrap, 2, WINDRV_WRAP_STDCALL);
 	windrv_wrap((funcptr)usbd_irpcancel,
-	    (funcptr *)&usbd_irpcancel_wrap, 2, WINDRV_WRAP_STDCALL);
+	    &usbd_irpcancel_wrap, 2, WINDRV_WRAP_STDCALL);
 	windrv_wrap((funcptr)usbd_xfertask,
-	    (funcptr *)&usbd_xfertask_wrap, 2, WINDRV_WRAP_STDCALL);
+	    &usbd_xfertask_wrap, 2, WINDRV_WRAP_STDCALL);
 
 	/* Create a fake USB driver instance. */
 

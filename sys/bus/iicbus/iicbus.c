@@ -97,13 +97,13 @@ iic_probe_device(device_t dev, u_char addr)
 
 	if ((addr & 1) == 0) {
 		/* is device writable? */
-		if (!iicbus_start(dev, (u_char)addr, 0)) {
+		if (!iicbus_start(dev, addr, 0)) {
 			iicbus_stop(dev);
 			return (1);
 		}
 	} else {
 		/* is device readable? */
-		if (!iicbus_block_read(dev, (u_char)addr, &byte, 1, &count))
+		if (!iicbus_block_read(dev, addr, &byte, 1, &count))
 			return (1);
 	}
 

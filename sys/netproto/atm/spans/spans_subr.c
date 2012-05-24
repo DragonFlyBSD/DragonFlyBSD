@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_subr.c,v 1.4 1999/08/28 00:48:52 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_subr.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -446,7 +445,7 @@ spans_switch_reset(struct spans *spp, int cause)
 			 * Close the SVC and notify the owner
 			 */
 			outstate = vcp->vc_sstate;
-			SPANS_VC_CANCEL((struct vccb *) vcp);
+			SPANS_VC_CANCEL(vcp);
 			vcp->vc_ustate = VCCU_CLOSED;
 			vcp->vc_sstate = SPANS_VC_FREE;
 			if (outstate == SPANS_VC_OPEN ||

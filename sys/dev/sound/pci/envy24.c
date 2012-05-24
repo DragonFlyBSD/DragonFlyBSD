@@ -1430,7 +1430,7 @@ envy24_p8u(struct sc_chinfo *ch)
 
 	length = sndbuf_getready(ch->buffer) / 2;
 	dmabuf = ch->parent->pbuf;
-	data = (u_int8_t *)ch->data;
+	data = ch->data;
 	src = sndbuf_getreadyptr(ch->buffer);
 	dst = src / 2 + ch->offset;
 	ssize = ch->size;

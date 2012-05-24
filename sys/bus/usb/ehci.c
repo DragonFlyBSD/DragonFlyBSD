@@ -1,6 +1,5 @@
 /*	$NetBSD: ehci.c,v 1.91 2005/02/27 00:27:51 perry Exp $ */
 /*	$FreeBSD: src/sys/dev/usb/ehci.c,v 1.36.2.3 2006/09/24 13:39:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.36 2008/08/14 20:55:53 hasso Exp $	*/
 
 /*
  * Copyright (c) 2004 The NetBSD Foundation, Inc.
@@ -773,7 +772,7 @@ ehci_idone(struct ehci_xfer *ex)
 #ifdef EHCI_DEBUG
 		char sbuf[128];
 
-		bitmask_snprintf((u_int32_t)status,
+		bitmask_snprintf(status,
 		    "\20\7HALTED\6BUFERR\5BABBLE\4XACTERR"
 		    "\3MISSED\2SPLIT\1PING", sbuf, sizeof(sbuf));
 

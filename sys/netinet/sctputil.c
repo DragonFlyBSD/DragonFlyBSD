@@ -2256,7 +2256,7 @@ sctp_notify_peer_addr_change(struct sctp_tcb *stcb, uint32_t state,
 	m_notify->m_len = sizeof(struct sctp_paddr_change);
 	m_notify->m_next = NULL;
 
-	to = (struct sockaddr *)(struct sockaddr *)
+	to = (struct sockaddr *)
 	    &stcb->asoc.primary_destination->ro._l_addr;
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_NEEDS_MAPPED_V4) &&
 	    to->sa_family == AF_INET) {
@@ -2360,7 +2360,7 @@ sctp_notify_send_failed(struct sctp_tcb *stcb, u_int32_t error,
 
 	/* Steal off the mbuf */
 	chk->data = NULL;
-	to = (struct sockaddr *)(struct sockaddr *)&stcb->asoc.primary_destination->ro._l_addr;
+	to = (struct sockaddr *)&stcb->asoc.primary_destination->ro._l_addr;
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_NEEDS_MAPPED_V4) &&
 	    to->sa_family == AF_INET) {
 		struct sockaddr_in *sin;
@@ -2441,7 +2441,7 @@ sctp_notify_adaption_layer(struct sctp_tcb *stcb,
 	m_notify->m_len = sizeof(struct sctp_adaption_event);
 	m_notify->m_next = NULL;
 
-	to = (struct sockaddr *)(struct sockaddr *)&stcb->asoc.primary_destination->ro._l_addr;
+	to = (struct sockaddr *)&stcb->asoc.primary_destination->ro._l_addr;
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_NEEDS_MAPPED_V4) &&
 	    (to->sa_family == AF_INET)) {
 		struct sockaddr_in *sin;
@@ -2520,7 +2520,7 @@ sctp_notify_partial_delivery_indication(struct sctp_tcb *stcb,
 	m_notify->m_len = sizeof(struct sctp_pdapi_event);
 	m_notify->m_next = NULL;
 
-	to = (struct sockaddr *)(struct sockaddr *)&stcb->asoc.primary_destination->ro._l_addr;
+	to = (struct sockaddr *)&stcb->asoc.primary_destination->ro._l_addr;
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_NEEDS_MAPPED_V4) &&
 	    (to->sa_family == AF_INET)) {
 		struct sockaddr_in *sin;
@@ -2608,7 +2608,7 @@ sctp_notify_shutdown_event(struct sctp_tcb *stcb)
 	m_notify->m_len = sizeof(struct sctp_shutdown_event);
 	m_notify->m_next = NULL;
 
-	to = (struct sockaddr *)(struct sockaddr *)&stcb->asoc.primary_destination->ro._l_addr;
+	to = (struct sockaddr *)&stcb->asoc.primary_destination->ro._l_addr;
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_NEEDS_MAPPED_V4) &&
 	    to->sa_family == AF_INET) {
 		struct sockaddr_in *sin;
@@ -2713,7 +2713,7 @@ sctp_notify_stream_reset(struct sctp_tcb *stcb,
 		sctp_m_freem(m_notify);
 		return;
 	}
-	to = (struct sockaddr *)(struct sockaddr *)&stcb->asoc.primary_destination->ro._l_addr;
+	to = (struct sockaddr *)&stcb->asoc.primary_destination->ro._l_addr;
 	if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_NEEDS_MAPPED_V4) &&
 	    to->sa_family == AF_INET) {
 		struct sockaddr_in *sin;

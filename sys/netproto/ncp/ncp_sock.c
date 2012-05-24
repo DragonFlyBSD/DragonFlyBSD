@@ -88,7 +88,7 @@ static int
 ncp_soconnect(struct socket *so,struct sockaddr *target, struct thread *td) {
 	int error;
 
-	error = soconnect(so, (struct sockaddr*)target, td);
+	error = soconnect(so, target, td);
 	if (error)
 		return error;
 	/*
@@ -129,7 +129,7 @@ ncp_getsockname(struct socket *so, caddr_t asa, int *alen) {
 	if (error==0) {
 		if (sa) {
 			len = min(len, sa->sa_len);
-			bcopy(sa, (caddr_t)asa, (u_int)len);
+			bcopy(sa, asa, (u_int)len);
 		}
 		*alen=len;
 	}
@@ -343,8 +343,7 @@ ncp_watchdog(struct ncp_conn *conn) {
 		so = conn->wdg_so;
 		sbinit(&sio, 1000000);
 		flags = MSG_DONTWAIT;
-		error = so_pru_soreceive(so, (struct sockaddr**)&sa,
-					 NULL, &sio, NULL, &flags);
+		error = so_pru_soreceive(so, &sa, NULL, &sio, NULL, &flags);
 		if (error)
 			break;
 		len = sio.sb_cc;

@@ -677,10 +677,10 @@ ipe4_attach(void)
 	/* attach to encapsulation framework */
 	/* XXX save return cookie for detach on module remove */
 	encap_attach_func(AF_INET, -1,
-		ipe4_encapcheck, (struct protosw*) &ipe4_protosw[0], NULL);
+		ipe4_encapcheck, &ipe4_protosw[0], NULL);
 #ifdef INET6
 	encap_attach_func(AF_INET6, -1,
-		ipe4_encapcheck, (struct protosw*) &ipe4_protosw[1], NULL);
+		ipe4_encapcheck, &ipe4_protosw[1], NULL);
 #endif
 }
 SYSINIT(ipe4_xform_init, SI_SUB_PROTO_DOMAIN, SI_ORDER_MIDDLE, ipe4_attach, NULL);

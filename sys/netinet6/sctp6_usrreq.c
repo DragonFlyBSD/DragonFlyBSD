@@ -281,7 +281,7 @@ sctp6_input(struct mbuf **mp, int *offp, int proto)
 			/* in6p's ref-count increased && stcb locked */
 			if ((in6p) && (stcb)) {
 				sctp_send_packet_dropped(stcb, net, m, iphlen, 1);
-				sctp_chunk_output((struct sctp_inpcb *)in6p, stcb, 2);
+				sctp_chunk_output(in6p, stcb, 2);
 			}  else if ((in6p != NULL) && (stcb == NULL)) {
 				refcount_up = 1;
 			}

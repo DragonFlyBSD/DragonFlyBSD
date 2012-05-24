@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ah_core.c,v 1.2.2.5 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.11 2008/01/05 14:02:40 swildner Exp $	*/
 /*	$KAME: ah_core.c,v 1.44 2001/03/12 11:24:39 itojun Exp $	*/
 
 /*
@@ -428,7 +427,7 @@ ah_keyed_sha1_loop(struct ah_algorithm_state *state, caddr_t addr, size_t len)
 		panic("ah_keyed_sha1_loop: what?");
 	ctxt = (SHA1_CTX *)state->foo;
 
-	SHA1Update(ctxt, (caddr_t)addr, (size_t)len);
+	SHA1Update(ctxt, addr, len);
 }
 
 static void
@@ -655,7 +654,7 @@ ah_hmac_sha1_loop(struct ah_algorithm_state *state, caddr_t addr, size_t len)
 		panic("ah_hmac_sha1_loop: what?");
 
 	ctxt = (SHA1_CTX *)(((u_char *)state->foo) + 128);
-	SHA1Update(ctxt, (caddr_t)addr, (size_t)len);
+	SHA1Update(ctxt, addr, len);
 }
 
 static void
@@ -779,7 +778,7 @@ ah_hmac_sha2_256_loop(struct ah_algorithm_state *state, caddr_t addr, size_t
 		panic("ah_hmac_sha2_256_loop: what?");
 
 	ctxt = (SHA256_CTX *)(((u_char *)state->foo) + 128);
-	SHA256_Update(ctxt, (caddr_t)addr, (size_t)len);
+	SHA256_Update(ctxt, addr, len);
 }
 
 static void
@@ -904,7 +903,7 @@ ah_hmac_sha2_384_loop(struct ah_algorithm_state *state, caddr_t addr,
 		panic("ah_hmac_sha2_384_loop: what?");
 
 	ctxt = (SHA384_CTX *)(((u_char *)state->foo) + 128);
-	SHA384_Update(ctxt, (caddr_t)addr, (size_t)len);
+	SHA384_Update(ctxt, addr, len);
 }
 
 static void
@@ -1029,7 +1028,7 @@ ah_hmac_sha2_512_loop(struct ah_algorithm_state *state, caddr_t addr,
 		panic("ah_hmac_sha2_512_loop: what?");
 
 	ctxt = (SHA512_CTX *)(((u_char *)state->foo) + 128);
-	SHA512_Update(ctxt, (caddr_t)addr, (size_t)len);
+	SHA512_Update(ctxt, addr, len);
 }
 
 static void

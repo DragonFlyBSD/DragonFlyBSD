@@ -132,10 +132,9 @@ AES_GMAC_Update(AES_GMAC_CTX *ctx, uint8_t *data, uint16_t len)
 	if (len > 0) {
 		plen = len % GMAC_BLOCK_LEN;
 		if (len >= GMAC_BLOCK_LEN)
-			ghash_update(&ctx->ghash, (uint8_t *)data, len - plen);
+			ghash_update(&ctx->ghash, data, len - plen);
 		if (plen) {
-			bcopy((uint8_t *)data + (len - plen), (uint8_t *)blk,
-			    plen);
+			bcopy(data + (len - plen), (uint8_t *)blk, plen);
 			ghash_update(&ctx->ghash, (uint8_t *)blk,
 			    GMAC_BLOCK_LEN);
 		}

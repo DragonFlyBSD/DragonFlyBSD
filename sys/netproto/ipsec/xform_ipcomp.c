@@ -320,7 +320,7 @@ ipcomp_input_cb(struct cryptop *crp)
 	}
 
 	/* Restore the Next Protocol field */
-	m_copyback(m, protoff, sizeof (u_int8_t), (u_int8_t *) &nproto);
+	m_copyback(m, protoff, sizeof (u_int8_t), &nproto);
 
 	IPSEC_COMMON_INPUT_CB(m, sav, skip, protoff, NULL);
 

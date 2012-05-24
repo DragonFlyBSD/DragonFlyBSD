@@ -486,7 +486,7 @@ ntoskrnl_strstr(char *s, char *find)
 		} while (strncmp(s, find, len) != 0);
 		s--;
 	}
-	return ((char *)s);
+	return (s);
 }
 
 /* Taken from libc */

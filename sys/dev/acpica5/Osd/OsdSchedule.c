@@ -98,8 +98,8 @@ acpi_task_thread(void *arg)
     get_mplock();
     for (;;) {
 	at = (void *)lwkt_waitport(&curthread->td_msgport, 0);
-	func = (ACPI_OSD_EXEC_CALLBACK)at->at_function;
-	func((void *)at->at_context);
+	func = at->at_function;
+	func(at->at_context);
 	lwkt_replymsg(&at->at_msg, 0);
     }
     rel_mplock();

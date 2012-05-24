@@ -138,7 +138,7 @@ acpi_hpet_identify(driver_t *driver, device_t parent)
 
 	/* Currently, ID and minimum clock tick info is unused. */
 
-	status = AcpiGetTable(ACPI_SIG_HPET, 1, (ACPI_TABLE_HEADER **)&hdr);
+	status = AcpiGetTable(ACPI_SIG_HPET, 1, &hdr);
 	if (ACPI_FAILURE(status))
 		return ENXIO;
 

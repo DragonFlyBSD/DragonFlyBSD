@@ -2,7 +2,6 @@
  *
  * Name: acfreebsd.h - OS specific defines, etc.
  *       $Revision: 11 $
- *	 $DragonFly: src/sys/dev/acpica5/acdragonfly.h,v 1.3 2007/01/17 17:31:19 y0netan1 Exp $
  *
  *****************************************************************************/
 
@@ -212,7 +211,7 @@ strstr(char *s, char *find)
     } while (strncmp(s, find, len) != 0);
     s--;
     }
-    return ((char *)s);
+    return (s);
 }
 
 #endif /* _KERNEL */

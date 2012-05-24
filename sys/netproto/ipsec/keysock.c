@@ -160,8 +160,7 @@ key_sendup0(struct rawcb *rp, struct mbuf *m, int promisc)
 		pfkeystat.in_msgtype[pmsg->sadb_msg_type]++;
 	}
 
-	if (!ssb_appendaddr(&rp->rcb_socket->so_rcv, (struct sockaddr *)&key_src,
-	    m, NULL)) {
+	if (!ssb_appendaddr(&rp->rcb_socket->so_rcv, &key_src, m, NULL)) {
 		pfkeystat.in_nomem++;
 		m_freem(m);
 		error = ENOBUFS;

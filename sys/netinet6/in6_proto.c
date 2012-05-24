@@ -396,7 +396,7 @@ extern int in6_inithead (void **, int);
 struct domain inet6domain = {
 	AF_INET6, "internet6", NULL, NULL, NULL,
 	(struct protosw *)inet6sw,
-	(struct protosw *)&inet6sw[NELEM(inet6sw)],
+	&inet6sw[NELEM(inet6sw)],
 	SLIST_ENTRY_INITIALIZER,
 	in6_inithead, offsetof(struct sockaddr_in6, sin6_addr) << 3,
 	sizeof(struct sockaddr_in6), in6_domifattach, in6_domifdetach

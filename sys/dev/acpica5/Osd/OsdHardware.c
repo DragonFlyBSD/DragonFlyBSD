@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdHardware.c,v 1.13 2004/04/14 03:39:08 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdHardware.c,v 1.5 2008/08/02 01:14:42 dillon Exp $
  */
 
 /*
@@ -119,7 +118,7 @@ AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UINT64 *Value,
     if (!pci_cfgregopen())
         return (AE_NOT_EXIST);
 
-    *(UINT64 *)Value = pci_cfgregread(PciId->Bus, PciId->Device,
+    *Value = pci_cfgregread(PciId->Bus, PciId->Device,
     				      PciId->Function, Register, bytes);
     *Value &= (1 << (bytes * 8)) - 1;
 

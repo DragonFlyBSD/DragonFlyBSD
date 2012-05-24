@@ -1276,7 +1276,7 @@ sppp_cisco_input(struct sppp *sp, struct mbuf *m)
 		    SPP_FMT "cisco input: %d bytes "
 		    "<0x%lx 0x%lx 0x%lx 0x%x 0x%x-0x%x>\n",
 		    SPP_ARGS(ifp), m->m_pkthdr.len,
-		    (u_long)ntohl (h->type), (u_long)h->par1, (u_long)h->par2, (u_int)h->rel,
+		    (u_long)ntohl (h->type), h->par1, h->par2, (u_int)h->rel,
 		    (u_int)h->time0, (u_int)h->time1);
 	switch (ntohl (h->type)) {
 	default:
@@ -1375,8 +1375,8 @@ sppp_cisco_send(struct sppp *sp, int type, long par1, long par2)
 	if (debug)
 		log(LOG_DEBUG,
 		    SPP_FMT "cisco output: <0x%lx 0x%lx 0x%lx 0x%x 0x%x-0x%x>\n",
-			SPP_ARGS(ifp), (u_long)ntohl (ch->type), (u_long)ch->par1,
-			(u_long)ch->par2, (u_int)ch->rel, (u_int)ch->time0, (u_int)ch->time1);
+			SPP_ARGS(ifp), (u_long)ntohl (ch->type), ch->par1,
+			ch->par2, (u_int)ch->rel, (u_int)ch->time0, (u_int)ch->time1);
 
 	if (IF_QFULL (&sp->pp_cpq)) {
 		IF_DROP (&sp->pp_fastq);

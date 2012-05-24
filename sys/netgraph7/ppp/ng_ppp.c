@@ -59,7 +59,6 @@
  * Authors: Archie Cobbs <archie@freebsd.org>, Alexander Motin <mav@alkar.net>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.75 2008/02/06 20:37:34 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_ppp.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -2396,7 +2395,7 @@ ng_ppp_addproto(struct mbuf *m, uint16_t proto, int compOK)
 
 		return ng_ppp_prepend(m, &pbyte, 1);
 	} else {
-		uint16_t pword = htons((uint16_t)proto);
+		uint16_t pword = htons(proto);
 
 		return ng_ppp_prepend(m, &pword, 2);
 	}

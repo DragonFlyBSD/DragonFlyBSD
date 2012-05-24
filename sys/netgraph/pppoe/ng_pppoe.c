@@ -370,7 +370,7 @@ AAA
 			sp->neg->numtags = count;
 			break;	/* XXX chop off what's too long */
 		}
-		bcopy(*tag, (char *)dp, tlen);
+		bcopy(*tag, dp, tlen);
 		length += tlen;
 		dp += tlen;
 	}
