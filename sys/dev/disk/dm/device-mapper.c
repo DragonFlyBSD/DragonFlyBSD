@@ -347,7 +347,7 @@ disk_ioctl_switch(cdev_t dev, u_long cmd, void *data)
 	{
 		struct partinfo *dpart;
 		u_int64_t size;
-		dpart = (void *)data;
+		dpart = data;
 		bzero(dpart, sizeof(*dpart));
 
 		if ((dmv = dev->si_drv1) == NULL)

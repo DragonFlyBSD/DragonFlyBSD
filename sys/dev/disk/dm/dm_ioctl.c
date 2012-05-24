@@ -745,7 +745,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * use it.
 		 */
 		prop_dictionary_get_cstring(target_dict,
-		    DM_TABLE_PARAMS, (char **) &str);
+		    DM_TABLE_PARAMS, &str);
 
 		if (SLIST_EMPTY(tbl))
 			/* insert this table to head */
