@@ -1799,7 +1799,7 @@ static void stl_eiointr(stlbrd_t *brdp)
         kprintf("stl_eiointr(brdp=%p)\n", brdp);
 #endif
 
-        panelp = (stlpanel_t *) brdp->panels[0];
+        panelp = brdp->panels[0];
         iobase = panelp->iobase;
         while (inb(brdp->iostatus) & EIO_INTRPEND)
                 (* panelp->isr)(panelp, iobase);

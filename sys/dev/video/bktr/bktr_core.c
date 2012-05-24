@@ -2715,19 +2715,18 @@ rgb_vbi_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 		for (i = 0; i < (rows/interlace); i++) {
 		    target = target_buffer;
 		    if ( notclipped(bktr, i, width)) {
-			split(bktr, (volatile uint32_t **) &dma_prog,
-			      bktr->y2 - bktr->y, OP_WRITE,
+			split(bktr, &dma_prog, bktr->y2 - bktr->y, OP_WRITE,
 			      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 	
 		    } else {
 			while(getline(bktr, i)) {
 			    if (bktr->y != bktr->y2 ) {
-				split(bktr, (volatile uint32_t **) &dma_prog,
+				split(bktr, &dma_prog,
 				      bktr->y2 - bktr->y, OP_WRITE,
 				      Bpp, (volatile u_char **)(uintptr_t)&target, cols);
 			    }
 			    if (bktr->yclip != bktr->yclip2 ) {
-				split(bktr,(volatile uint32_t **) &dma_prog,
+				split(bktr,&dma_prog,
 				      bktr->yclip2 - bktr->yclip,
 				      OP_SKIP,
 				      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
@@ -2772,19 +2771,18 @@ rgb_vbi_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 		for (i = 0; i < (rows/interlace); i++) {
 		    target = target_buffer;
 		    if ( notclipped(bktr, i, width)) {
-			split(bktr, (volatile uint32_t **) &dma_prog,
-			      bktr->y2 - bktr->y, OP_WRITE,
+			split(bktr, &dma_prog, bktr->y2 - bktr->y, OP_WRITE,
 			      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 		    } else {
 			while(getline(bktr, i)) {
 			    if (bktr->y != bktr->y2 ) {
-				split(bktr, (volatile uint32_t **) &dma_prog,
+				split(bktr, &dma_prog,
 				      bktr->y2 - bktr->y, OP_WRITE,
 				      Bpp, (volatile u_char **)(uintptr_t)&target,
 				      cols);
 			    }	
 			    if (bktr->yclip != bktr->yclip2 ) {
-				split(bktr, (volatile uint32_t **) &dma_prog,
+				split(bktr, &dma_prog,
 				      bktr->yclip2 - bktr->yclip, OP_SKIP,
 				      Bpp, (volatile u_char **)(uintptr_t) &target,  cols);
 			    }	
@@ -2869,19 +2867,19 @@ rgb_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 	for (i = 0; i < (rows/interlace); i++) {
 	    target = target_buffer;
 	    if ( notclipped(bktr, i, width)) {
-		split(bktr, (volatile uint32_t **) &dma_prog,
+		split(bktr, &dma_prog,
 		      bktr->y2 - bktr->y, OP_WRITE,
 		      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 
 	    } else {
 		while(getline(bktr, i)) {
 		    if (bktr->y != bktr->y2 ) {
-			split(bktr, (volatile uint32_t **) &dma_prog,
+			split(bktr, &dma_prog,
 			      bktr->y2 - bktr->y, OP_WRITE,
 			      Bpp, (volatile u_char **)(uintptr_t)&target, cols);
 		    }
 		    if (bktr->yclip != bktr->yclip2 ) {
-			split(bktr,(volatile uint32_t **) &dma_prog,
+			split(bktr,&dma_prog,
 			      bktr->yclip2 - bktr->yclip,
 			      OP_SKIP,
 			      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
@@ -2935,19 +2933,19 @@ rgb_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 		for (i = 0; i < (rows/interlace); i++) {
 		    target = target_buffer;
 		    if ( notclipped(bktr, i, width)) {
-			split(bktr, (volatile uint32_t **) &dma_prog,
+			split(bktr, &dma_prog,
 			      bktr->y2 - bktr->y, OP_WRITE,
 			      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 		    } else {
 			while(getline(bktr, i)) {
 			    if (bktr->y != bktr->y2 ) {
-				split(bktr, (volatile uint32_t **) &dma_prog,
+				split(bktr, &dma_prog,
 				      bktr->y2 - bktr->y, OP_WRITE,
 				      Bpp, (volatile u_char **)(uintptr_t)&target,
 				      cols);
 			    }	
 			    if (bktr->yclip != bktr->yclip2 ) {
-				split(bktr, (volatile uint32_t **) &dma_prog,
+				split(bktr, &dma_prog,
 				      bktr->yclip2 - bktr->yclip, OP_SKIP,
 				      Bpp, (volatile u_char **)(uintptr_t)&target,  cols);
 			    }	
