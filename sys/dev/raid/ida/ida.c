@@ -338,7 +338,7 @@ ida_command(struct ida_softc *ida, int command, void *data, int datasize,
 	bzero(hwqcb, sizeof(struct ida_hdr) + sizeof(struct ida_req));
 
 	bus_dmamap_load(ida->buffer_dmat, qcb->dmamap,
-	    (void *)data, datasize, ida_setup_dmamap, hwqcb, 0);
+	    data, datasize, ida_setup_dmamap, hwqcb, 0);
 	op = qcb->flags & DMA_DATA_IN ?
 	    BUS_DMASYNC_PREREAD : BUS_DMASYNC_PREWRITE;
 	bus_dmamap_sync(ida->buffer_dmat, qcb->dmamap, op);
