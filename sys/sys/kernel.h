@@ -86,6 +86,7 @@ extern int profhz;			/* profiling clock's frequency */
 extern int ticks;
 extern int lbolt;			/* once a second sleep address */
 extern void *lbolt_syncer;		/* approx 1 hz but may be sped up */
+extern int vmm_guest; 			/* Running as virtual machine guest? */
 
 /*
  * Enumerated types for known system startup interfaces.

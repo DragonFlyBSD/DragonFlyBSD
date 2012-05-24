@@ -27,7 +27,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/initcpu.c,v 1.19.2.9 2003/04/05 13:47:19 dwmalone Exp $
- * $DragonFly: src/sys/platform/pc32/i386/initcpu.c,v 1.10 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -84,6 +83,18 @@ u_int	cpu_procinfo = 0;	/* HyperThreading Info / Brand Index / CLFUSH */
 u_int	cpu_procinfo2 = 0;	/* Multicore info */
 char	cpu_vendor[20] = "";	/* CPU Origin code */
 u_int	cpu_vendor_id = 0;	/* CPU vendor ID */
+u_int	cpu_clflush_line_size = 32;	/* Default CLFLUSH line size */
+
+/*
+ * -1: automatic (enable on h/w, disable on VMs)
+ * 0: disable
+ * 1: enable (where available)
+ */
+static int hw_clflush_enable = -1;
+
+SYSCTL_INT(_hw, OID_AUTO, clflush_enable, CTLFLAG_RD, &hw_clflush_enable, 0,
+	   "");
+
 
 SYSCTL_UINT(_hw, OID_AUTO, via_feature_rng, CTLFLAG_RD,
 	&via_feature_rng, 0, "VIA C3/C7 RNG feature available in CPU");
@@ -685,6 +696,19 @@ initializecpu(void)
 		break;
 	}
 	enable_sse();
+
+	if (cpu_feature2 & CPUID2_VMM)
+		vmm_guest = 1;
+
+	TUNABLE_INT_FETCH("hw.clflush_enable", &hw_clflush_enable);
+	if (cpu_feature & CPUID_CLFSH) {
+		cpu_clflush_line_size = ((cpu_procinfo >> 8) & 0xff) * 8;
+
+		if (hw_clflush_enable == 0 ||
+		    ((hw_clflush_enable == -1) && vmm_guest))
+			cpu_feature &= ~CPUID_CLFSH;
+	}
+
 }
 
 #if defined(I586_CPU) && defined(CPU_WT_ALLOC)

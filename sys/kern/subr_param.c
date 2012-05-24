@@ -88,6 +88,7 @@ int	nbuf;
 int	nswbuf;
 long	maxswzone;			/* max swmeta KVA storage */
 long	maxbcache;			/* max buffer cache KVA storage */
+int	vmm_guest = 0; 			/* Running as virtual machine guest? */
 u_quad_t	maxtsiz;			/* max text size */
 u_quad_t	dfldsiz;			/* initial data size limit */
 u_quad_t	maxdsiz;			/* max data size */
