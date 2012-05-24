@@ -475,15 +475,7 @@ tcp_sack_update_lostseq(struct scoreboard *scb, tcp_seq snd_una, u_int maxseg,
 	int bytes_sacked = 0;
 	int rxtthresh_bytes;
 
-	/*
-	 * XXX
-	 * The RFC3517bis recommends to reduce the byte threshold.
-	 * However, it will cause extra spurious retransmit if
-	 * segments are reordered.  Before certain DupThresh adaptive
-	 * algorithm is implemented, we don't reduce the byte
-	 * threshold (tcp_rfc3517bis_rxt is off by default).
-	 */
-	if (tcp_do_rfc3517bis && tcp_rfc3517bis_rxt)
+	if (tcp_do_rfc3517bis)
 		rxtthresh_bytes = (rxtthresh - 1) * maxseg;
 	else
 		rxtthresh_bytes = rxtthresh * maxseg;

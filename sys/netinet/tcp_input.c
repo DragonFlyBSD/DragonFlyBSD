@@ -3379,6 +3379,8 @@ tcp_established(struct tcpcb *tp)
 static boolean_t
 tcp_fast_recovery(struct tcpcb *tp, tcp_seq th_ack, const struct tcpopt *to)
 {
+	boolean_t fast_sack_rexmt = TRUE;
+
 	tcpstat.tcps_rcvdupack++;
 
 	/*
@@ -3467,24 +3469,40 @@ fastretransmit:
 			tp->snd_nxt = old_snd_nxt;
 		KASSERT(tp->snd_limited <= 2, ("tp->snd_limited too big"));
 		if (TCP_DO_SACK(tp)) {
-			tcp_sack_rexmt(tp);
+			if (fast_sack_rexmt)
+				tcp_sack_rexmt(tp);
 		} else {
 			tp->snd_cwnd += tp->t_maxseg *
 			    (tp->t_dupacks - tp->snd_limited);
 		}
 	} else if ((tcp_do_rfc3517bis && TCP_DO_SACK(tp)) || TCP_DO_NCR(tp)) {
+		/*
+		 * The RFC3517bis recommends to reduce the byte threshold,
+		 * and enter fast retransmit if IsLost(snd_una).  However,
+		 * if we use IsLost(snd_una) based fast retransmit here,
+		 * segments reordering will cause spurious retransmit.  So
+		 * we defer the IsLost(snd_una) based fast retransmit until
+		 * the extended limited transmit can't send any segments and
+		 * early retransmit can't be done.
+		 */
 		if (tcp_rfc3517bis_rxt && tcp_do_rfc3517bis &&
 		    tcp_sack_islost(&tp->scb, tp->snd_una))
 			goto fastretransmit;
-		if (tcp_do_limitedtransmit || TCP_DO_NCR(tp)) {
-			/* outstanding data */
-			uint32_t ownd = tp->snd_max - tp->snd_una;
 
-			if (!tcp_sack_limitedxmit(tp) &&
-			    need_early_retransmit(tp, ownd)) {
-				++tcpstat.tcps_sndearlyrexmit;
-				tp->rxt_flags |= TRXT_F_EARLYREXMT;
-				goto fastretransmit;
+		if (tcp_do_limitedtransmit || TCP_DO_NCR(tp)) {
+			if (!tcp_sack_limitedxmit(tp)) {
+				/* outstanding data */
+				uint32_t ownd = tp->snd_max - tp->snd_una;
+
+				if (need_early_retransmit(tp, ownd)) {
+					++tcpstat.tcps_sndearlyrexmit;
+					tp->rxt_flags |= TRXT_F_EARLYREXMT;
+					goto fastretransmit;
+				} else if (tcp_do_rfc3517bis &&
+				    tcp_sack_islost(&tp->scb, tp->snd_una)) {
+					fast_sack_rexmt = FALSE;
+					goto fastretransmit;
+				}
 			}
 		}
 	} else if (tcp_do_limitedtransmit) {
