@@ -311,7 +311,7 @@ tcp_sack_add_blocks(struct tcpcb *tp, struct tcpopt *to)
 		int error;
 
 		/* Guard against ACK reordering */
-		if (SEQ_LT(newsackblock->rblk_start, tp->snd_una))
+		if (SEQ_LEQ(newsackblock->rblk_start, tp->snd_una))
 			continue;
 
 		/* Don't accept bad SACK blocks */
@@ -674,6 +674,24 @@ tcp_sack_skip_sacked(struct scoreboard *scb, tcp_seq *prexmt)
 	/* skip SACKed data */
 	if (sack_block_lookup(scb, *prexmt, &sb))
 		*prexmt = sb->sblk_end;
+}
+
+/*
+ * The length of the first amount of unSACKed data
+ */
+uint32_t
+tcp_sack_first_unsacked_len(struct tcpcb *tp)
+{
+	struct sackblock *sb;
+
+	sb = TAILQ_FIRST(&tp->scb.sackblocks);
+	if (sb == NULL)
+		return tp->t_maxseg;
+
+	KASSERT(SEQ_LT(tp->snd_una, sb->sblk_start),
+	    ("invalid sb start %u, snd_una %u",
+	     sb->sblk_start, tp->snd_una));
+	return (sb->sblk_start - tp->snd_una);
 }
 
 #ifdef later

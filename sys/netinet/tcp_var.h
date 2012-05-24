@@ -679,6 +679,7 @@ void	 tcp_sack_revert_scoreboard(struct scoreboard *scb, tcp_seq snd_una,
 void	 tcp_sack_save_scoreboard(struct scoreboard *scb);
 #endif
 void	 tcp_sack_skip_sacked(struct scoreboard *scb, tcp_seq *prexmt);
+uint32_t tcp_sack_first_unsacked_len(struct tcpcb *tp);
 void	 tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to);
 void	 tcp_save_congestion_state(struct tcpcb *tp);
 void	 tcp_revert_congestion_state(struct tcpcb *tp);

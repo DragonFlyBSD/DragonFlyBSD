@@ -206,6 +206,10 @@ int tcp_aggressive_rescuesack = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rescuesack_agg, CTLFLAG_RW,
     &tcp_aggressive_rescuesack, 0, "Aggressive rescue retransmission for SACK");
 
+static int tcp_force_sackrxt = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, force_sackrxt, CTLFLAG_RW,
+    &tcp_force_sackrxt, 0, "Allowed forced SACK retransmit burst");
+
 int tcp_do_rfc3517bis = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3517bis, CTLFLAG_RW,
     &tcp_do_rfc3517bis, 0, "Enable RFC3517 update");
@@ -265,7 +269,7 @@ static int	 tcp_reass(struct tcpcb *, struct tcphdr *, int *,
 		     struct mbuf *);
 static void	 tcp_xmit_timer(struct tcpcb *, int, tcp_seq);
 static void	 tcp_newreno_partial_ack(struct tcpcb *, struct tcphdr *, int);
-static void	 tcp_sack_rexmt(struct tcpcb *);
+static void	 tcp_sack_rexmt(struct tcpcb *, boolean_t);
 static boolean_t tcp_sack_limitedxmit(struct tcpcb *);
 static int	 tcp_rmx_msl(const struct tcpcb *);
 static void	 tcp_established(struct tcpcb *);
@@ -2178,7 +2182,8 @@ process_ACK:
 			} else {
 				if (TCP_DO_SACK(tp)) {
 					tp->snd_max_rexmt = tp->snd_max;
-					tcp_sack_rexmt(tp);
+					tcp_sack_rexmt(tp,
+					    tp->snd_una == tp->rexmt_high);
 				} else {
 					tcp_newreno_partial_ack(tp, th, acked);
 				}
@@ -3169,18 +3174,32 @@ tcp_newreno_partial_ack(struct tcpcb *tp, struct tcphdr *th, int acked)
  * except when retransmitting snd_una.
  */
 static void
-tcp_sack_rexmt(struct tcpcb *tp)
+tcp_sack_rexmt(struct tcpcb *tp, boolean_t force)
 {
 	tcp_seq old_snd_nxt = tp->snd_nxt;
 	u_long ocwnd = tp->snd_cwnd;
 	uint32_t pipe;
 	int nseg = 0;		/* consecutive new segments */
 	int nseg_rexmt = 0;	/* retransmitted segments */
+	int maxrexmt = 0;
 #define MAXBURST 4		/* limit burst of new packets on partial ack */
+
+	if (force) {
+		uint32_t unsacked = tcp_sack_first_unsacked_len(tp);
+
+		/*
+		 * Try to fill the first hole in the receiver's
+		 * reassemble queue.
+		 */
+		maxrexmt = howmany(unsacked, tp->t_maxseg);
+		if (maxrexmt > tcp_force_sackrxt)
+			maxrexmt = tcp_force_sackrxt;
+	}
 
 	tp->t_rtttime = 0;
 	pipe = tcp_sack_compute_pipe(tp);
-	while ((tcp_seq_diff_t)(ocwnd - pipe) >= (tcp_seq_diff_t)tp->t_maxseg &&
+	while (((tcp_seq_diff_t)(ocwnd - pipe) >= (tcp_seq_diff_t)tp->t_maxseg
+	        || (force && nseg_rexmt < maxrexmt && nseg == 0)) &&
 	    (!tcp_do_smartsack || nseg < MAXBURST)) {
 		tcp_seq old_snd_max, old_rexmt_high, nextrexmt;
 		uint32_t sent, seglen;
@@ -3394,8 +3413,20 @@ tcp_fast_recovery(struct tcpcb *tp, tcp_seq th_ack, const struct tcpopt *to)
 	 */
 	if (IN_FASTRECOVERY(tp)) {
 		if (TCP_DO_SACK(tp)) {
+			boolean_t force = FALSE;
+
+			if (tp->snd_una == tp->rexmt_high &&
+			    (to->to_flags & (TOF_SACK | TOF_SACK_REDUNDANT)) ==
+			    TOF_SACK) {
+				/*
+				 * New segments got SACKed and
+				 * no retransmit yet.
+				 */
+				force = TRUE;
+			}
+
 			/* No artifical cwnd inflation. */
-			tcp_sack_rexmt(tp);
+			tcp_sack_rexmt(tp, force);
 		} else {
 			/*
 			 * Dup acks mean that packets have left
@@ -3470,7 +3501,7 @@ fastretransmit:
 		KASSERT(tp->snd_limited <= 2, ("tp->snd_limited too big"));
 		if (TCP_DO_SACK(tp)) {
 			if (fast_sack_rexmt)
-				tcp_sack_rexmt(tp);
+				tcp_sack_rexmt(tp, FALSE);
 		} else {
 			tp->snd_cwnd += tp->t_maxseg *
 			    (tp->t_dupacks - tp->snd_limited);
