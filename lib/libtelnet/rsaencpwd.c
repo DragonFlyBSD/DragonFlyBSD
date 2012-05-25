@@ -175,7 +175,7 @@ rsaencpwd_send(ap)
 	if (!auth_sendname(UserNameRequested, strlen(UserNameRequested))) {
 		return(0);
 	}
-	if (!Data(ap, NULL, (void *)NULL, 0)) {
+	if (!Data(ap, NULL, NULL, 0)) {
 		return(0);
 	}
 

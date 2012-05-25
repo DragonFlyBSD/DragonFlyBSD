@@ -447,7 +447,7 @@ check_user(char *name, char *cred)
 
 	if (pw = sgetpwnam(name)) {
 		if (pw->pw_shell == NULL) {
-			pw = (struct passwd *) NULL;
+			pw = NULL;
 			return(0);
 		}
 
@@ -456,7 +456,7 @@ check_user(char *name, char *cred)
 		/* The strcmp does not catch null passwords! */
 		if (pw == NULL || *pw->pw_passwd == '\0' ||
 			strcmp(xpasswd, pw->pw_passwd)) {
-			pw = (struct passwd *) NULL;
+			pw = NULL;
 			return(0);
 		}
 		return(1);

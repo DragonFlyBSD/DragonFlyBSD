@@ -197,15 +197,15 @@ processParams(isess_t *sess, pdu_t *pp)
 			 free(ta);
 	       } else if(strncmp(ptr, "MaxRecvDataSegmentLength", klen) == 0) {
 		    // danny's RFC
-		    op->maxXmitDataSegmentLength = strtol(eq+1, (char **)NULL, 0);
+		    op->maxXmitDataSegmentLength = strtol(eq+1, NULL, 0);
 	       } else  if(strncmp(ptr, "TargetPortalGroupTag", klen) == 0) {
-		    op->targetPortalGroupTag = strtol(eq+1, (char **)NULL, 0);
+		    op->targetPortalGroupTag = strtol(eq+1, NULL, 0);
 	       } else if(strncmp(ptr, "HeaderDigest", klen) == 0) {
 		    op->headerDigest = selectFrom(eq+1, DigestMethods);
 	       } else if(strncmp(ptr, "DataDigest", klen) == 0) {
 		    op->dataDigest = selectFrom(eq+1, DigestMethods);
 	       } else if(strncmp(ptr, "MaxOutstandingR2T", klen) == 0)
-		    op->maxOutstandingR2T = strtol(eq+1, (char **)NULL, 0);
+		    op->maxOutstandingR2T = strtol(eq+1, NULL, 0);
 #if 0
 	       else
 	       for(kp = keyMap; kp->name; kp++) {
@@ -303,7 +303,7 @@ handleChap(isess_t *sess, pdu_t *pp)
 	((cp = getkeyval("CHAP_C=", pp)) == NULL))
 	  return -1;
 
-     if((digest = chapDigest(ap, (char)strtol(ip, (char **)NULL, 0), cp, op->chapSecret)) == NULL)
+     if((digest = chapDigest(ap, (char)strtol(ip, NULL, 0), cp, op->chapSecret)) == NULL)
 	  return -1;
 
      addText(&spp, "CHAP_N=%s", op->chapIName? op->chapIName: op->initiatorName);

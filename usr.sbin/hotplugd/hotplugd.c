@@ -198,7 +198,7 @@ exec_script(const char *file, int class, const char *name)
 	}
 	if (pid == 0) {
 		/* child process */
-		execl(file, basename(file), strclass, name, (char *)NULL);
+		execl(file, basename(file), strclass, name, NULL);
 		syslog(LOG_ERR, "execl %s: %m", file);
 		_exit(1);
 		/* NOTREACHED */
