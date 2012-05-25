@@ -210,7 +210,7 @@ static int tcp_force_sackrxt = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, force_sackrxt, CTLFLAG_RW,
     &tcp_force_sackrxt, 0, "Allowed forced SACK retransmit burst");
 
-int tcp_do_rfc3517bis = 0;
+int tcp_do_rfc3517bis = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3517bis, CTLFLAG_RW,
     &tcp_do_rfc3517bis, 0, "Enable RFC3517 update");
 
