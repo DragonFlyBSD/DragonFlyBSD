@@ -344,7 +344,7 @@ tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to)
 		rexmt_high_update = 1;
 	}
 	if (tp->sack_flags & TSACK_F_SACKRESCUED) {
-		if (SEQ_LT(tp->rexmt_rescue, tp->snd_una)) {
+		if (SEQ_LEQ(tp->rexmt_rescue, tp->snd_una)) {
 			tp->sack_flags &= ~TSACK_F_SACKRESCUED;
 		} else if (tcp_aggressive_rescuesack && rexmt_high_update &&
 		    SEQ_LT(tp->rexmt_rescue, tp->rexmt_high)) {
