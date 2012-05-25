@@ -57,7 +57,6 @@
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
 
-#include "opt_ddb.h"
 #include "opt_isp.h"
 
 #define	ISP_PLATFORM_VERSION_MAJOR	7

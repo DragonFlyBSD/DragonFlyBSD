@@ -31,8 +31,6 @@
  * $FreeBSD: src/sys/amd64/amd64/support.S,v 1.127 2007/05/23 08:33:04 kib Exp $
  */
 
-#include "opt_ddb.h"
-
 #include <machine/asmacros.h>
 #include <machine/pmap.h>
 

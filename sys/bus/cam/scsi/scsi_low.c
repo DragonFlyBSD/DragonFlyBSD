@@ -1,6 +1,5 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.28 2008/05/18 20:30:20 pavalos Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -59,7 +58,6 @@
  * 2) Identify msgin => lun nexus (slp->sl_Lnexus)
  * 3) Qtag msg => ccb nexus (slp->sl_Qnexus)
  */
-#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/buf.h>

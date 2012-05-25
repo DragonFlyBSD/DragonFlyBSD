@@ -66,14 +66,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.37 2008/09/17 21:44:18 dillon Exp $
  */
 
 /*
  * External virtual filesystem routines
  */
-#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
