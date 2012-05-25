@@ -273,7 +273,7 @@ static void	 tcp_sack_rexmt(struct tcpcb *, boolean_t);
 static boolean_t tcp_sack_limitedxmit(struct tcpcb *);
 static int	 tcp_rmx_msl(const struct tcpcb *);
 static void	 tcp_established(struct tcpcb *);
-static boolean_t tcp_fast_recovery(struct tcpcb *, tcp_seq,
+static boolean_t tcp_recv_dupack(struct tcpcb *, tcp_seq,
 		     const struct tcpopt *);
 
 /* Neighbor Discovery, Neighbor Unreachability Detection Upper layer hint. */
@@ -2025,7 +2025,7 @@ after_listen:
 				}
 				break;
 			}
-			if (tcp_fast_recovery(tp, th->th_ack, &to))
+			if (tcp_recv_dupack(tp, th->th_ack, &to))
 				goto drop;
 			else
 				break;
@@ -2519,7 +2519,7 @@ dodata:							/* XXX */
 	/*
 	 * Delayed duplicated ACK processing
 	 */
-	if (delayed_dupack && tcp_fast_recovery(tp, th_dupack, &to))
+	if (delayed_dupack && tcp_recv_dupack(tp, th_dupack, &to))
 		needoutput = FALSE;
 
 	/*
@@ -3396,7 +3396,7 @@ tcp_established(struct tcpcb *tp)
  * Returns TRUE, if the ACK should be dropped
  */
 static boolean_t
-tcp_fast_recovery(struct tcpcb *tp, tcp_seq th_ack, const struct tcpopt *to)
+tcp_recv_dupack(struct tcpcb *tp, tcp_seq th_ack, const struct tcpopt *to)
 {
 	boolean_t fast_sack_rexmt = TRUE;
 
