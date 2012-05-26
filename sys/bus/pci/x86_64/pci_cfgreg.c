@@ -63,7 +63,7 @@ static uint32_t pcie_badslots;
 static int cfgmech;
 static struct spinlock pcicfg_spin;
 
-static int mcfg_enable = 1;
+static int mcfg_enable = 0;
 TUNABLE_INT("hw.pci.mcfg", &mcfg_enable);
 
 static uint32_t	pci_docfgregread(int bus, int slot, int func, int reg, int bytes);
