@@ -41,8 +41,6 @@
 #include "fs.h"
 extern void panic(const char *, ...);
 #else
-#include "opt_ddb.h"
-
 #include <sys/systm.h>
 #include <sys/lock.h>
 #include <sys/vnode.h>

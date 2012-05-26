@@ -35,7 +35,6 @@
  * Kernel tracepoint facility.
  */
 
-#include "opt_ddb.h"
 #include "opt_ktr.h"
 
 #include <sys/param.h>

@@ -56,8 +56,6 @@
 #include "ext2_fs_sb.h"
 #include "fs.h"
 
-#include "opt_ddb.h"
-
 /*
  * Return buffer with the contents of block "offset" from the beginning of
  * directory "ip".  If "res" is non-zero, fill it in with a pointer to the

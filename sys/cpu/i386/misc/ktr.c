@@ -30,14 +30,11 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/cpu/i386/misc/ktr.c,v 1.1 2005/06/20 20:37:28 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
  */
 
-#include "opt_ddb.h"
 #include "opt_ktr.h"
 
 #include <sys/param.h>
