@@ -198,7 +198,6 @@ struct protosw inet6sw[] = {
 #ifndef INET
 	/* don't call initialization and timeout routines twice */
 	.pr_init = tcp_init,
-	.pr_fasttimo = tcp_fasttimo,
 	.pr_slowtimo = NULL,
 #endif
 	.pr_drain = tcp_drain,

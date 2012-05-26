@@ -639,7 +639,6 @@ void	 tcp_ctloutput(union netmsg *);
 struct tcpcb *
 	 tcp_drop (struct tcpcb *, int);
 void	 tcp_drain (void);
-void	 tcp_fasttimo (void);
 void	 tcp_init (void);
 void	 tcp_thread_init (void);
 int	 tcp_input (struct mbuf **, int *, int);
