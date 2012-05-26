@@ -32,7 +32,6 @@
  * @(#)from: clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro
  * @(#)from: clnt_udp.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/usr.sbin/ypbind/yp_ping.c,v 1.17 2008/09/15 14:01:40 dfr Exp $
- * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.7 2005/11/24 22:23:02 swildner Exp $
  */
 
 /*
@@ -172,7 +171,7 @@ ypproc_domain_nonack_2_recv(domainname *argp, CLIENT *clnt)
 
 	memset((char *)&clnt_res, 0, sizeof (clnt_res));
 	if (clnt_call(clnt, YPPROC_DOMAIN_NONACK,
-		(xdrproc_t) NULL, (caddr_t) argp,
+		NULL, (caddr_t) argp,
 		(xdrproc_t) xdr_bool, (caddr_t) &clnt_res,
 		TIMEOUT) != RPC_SUCCESS) {
 		return (NULL);

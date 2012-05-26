@@ -351,7 +351,7 @@ write_timestamp(void)
 	time_t		clk;
 	struct tm 	*tm;
 
-	clk = time ( (time_t)NULL );
+	clk = time ( NULL );
 	tm = localtime ( &clk );
 
 	if ( Log && Debug_Level > 1 )
