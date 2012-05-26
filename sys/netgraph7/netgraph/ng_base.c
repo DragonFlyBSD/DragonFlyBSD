@@ -2983,15 +2983,15 @@ int
 ng_mod_event(module_t mod, int event, void *data)
 {
 	struct ng_type *const type = data;
-	int s, error = 0;
+	int error = 0;
 
 	switch (event) {
 	case MOD_LOAD:
 
 		/* Register new netgraph node type */
-		s = splnet();
+		crit_enter();
 		if ((error = ng_newtype(type)) != 0) {
-			splx(s);
+			crit_exit();
 			break;
 		}
 
@@ -3003,23 +3003,23 @@ ng_mod_event(module_t mod, int event, void *data)
 				LIST_REMOVE(type, types);
 				mtx_unlock(&ng_typelist_mtx);
 			}
-		splx(s);
+		crit_exit();
 		break;
 
 	case MOD_UNLOAD:
-		s = splnet();
+		crit_enter();
 		if (type->refs > 1) {		/* make sure no nodes exist! */
 			error = EBUSY;
 		} else {
 			if (type->refs == 0) {
 				/* failed load, nothing to undo */
-				splx(s);
+				crit_exit();
 				break;
 			}
 			if (type->mod_event != NULL) {	/* check with type */
 				error = (*type->mod_event)(mod, event, data);
 				if (error != 0) {	/* type refuses.. */
-					splx(s);
+					crit_exit();
 					break;
 				}
 			}
@@ -3027,7 +3027,7 @@ ng_mod_event(module_t mod, int event, void *data)
 			LIST_REMOVE(type, types);
 			mtx_unlock(&ng_typelist_mtx);
 		}
-		splx(s);
+		crit_exit();
 		break;
 
 	default:
