@@ -180,18 +180,6 @@ struct acpicache;
 /* Always use DragonFly code over our local versions */
 #define ACPI_USE_SYSTEM_CLIBRARY
 
-/* DragonFly doesn't have strupr, should be fixed. (move to libkern) */
-static __inline char *
-strupr(char *str)
-{
-    char *c = str;
-    while(*c) {
-    *c = toupper(*c);
-    c++;
-    }
-    return(str);
-}
-
 #ifdef _KERNEL
 
 /* Or strstr (used in debugging mode, also move to libkern) */
