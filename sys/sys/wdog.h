@@ -60,6 +60,6 @@ void wdog_disable(void);
 #endif /* KERNEL */
 
 #define WDIOCRESET	_IOW('W', 42, u_int)
-#define WDOG_DEFAULT_PERIOD	10 /* 10 seconds */
+#define WDOG_DEFAULT_PERIOD	30 /* 30 seconds */
 
 #endif /* _SYS_WDOG_H_ */
