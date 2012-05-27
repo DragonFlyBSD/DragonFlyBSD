@@ -128,6 +128,7 @@ static int	igb_txctx_pullup(struct igb_tx_ring *, struct mbuf **);
 static boolean_t igb_txctx(struct igb_tx_ring *, struct mbuf *);
 static void	igb_add_sysctl(struct igb_softc *);
 static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
+static int	igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
 
 static void	igb_vf_init_stats(struct igb_softc *);
 static void	igb_reset(struct igb_softc *);
@@ -1347,6 +1348,11 @@ igb_add_sysctl(struct igb_softc *sc)
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, igb_sysctl_intr_rate, "I", "interrupt rate");
+
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "tx_intr_nsegs", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, igb_sysctl_tx_intr_nsegs, "I",
+	    "# segments per TX interrupt");
 }
 
 static int
@@ -1477,6 +1483,18 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
+	 * Allocate TX head write-back buffer
+	 */
+	txr->tx_hdr = bus_dmamem_coherent_any(txr->sc->parent_tag,
+	    __VM_CACHELINE_SIZE, __VM_CACHELINE_SIZE, BUS_DMA_WAITOK,
+	    &txr->tx_hdr_dtag, &txr->tx_hdr_dmap, &txr->tx_hdr_paddr);
+	if (txr->tx_hdr == NULL) {
+		device_printf(txr->sc->dev,
+		    "Unable to allocate TX head write-back buffer\n");
+		return ENOMEM;
+	}
+
+	/*
 	 * Create DMA tag for TX buffers
 	 */
 	error = bus_dma_tag_create(txr->sc->parent_tag,
@@ -1512,6 +1530,19 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 			return error;
 		}
 	}
+
+	/*
+	 * Initialize various watermark
+	 */
+	txr->spare_desc = IGB_TX_SPARE;
+	txr->intr_nsegs = txr->sc->num_tx_desc / 16;
+	txr->oact_hi_desc = txr->sc->num_tx_desc / 2;
+	txr->oact_lo_desc = txr->sc->num_tx_desc / 8;
+	if (txr->oact_lo_desc > IGB_TX_OACTIVE_MAX)
+		txr->oact_lo_desc = IGB_TX_OACTIVE_MAX;
+	if (txr->oact_lo_desc < txr->spare_desc + IGB_TX_RESERVED)
+		txr->oact_lo_desc = txr->spare_desc + IGB_TX_RESERVED;
+
 	return 0;
 }
 
@@ -1544,6 +1575,14 @@ igb_destroy_tx_ring(struct igb_tx_ring *txr, int ndesc)
 		txr->txdma.dma_vaddr = NULL;
 	}
 
+	if (txr->tx_hdr != NULL) {
+		bus_dmamap_unload(txr->tx_hdr_dtag, txr->tx_hdr_dmap);
+		bus_dmamem_free(txr->tx_hdr_dtag, txr->tx_hdr,
+		    txr->tx_hdr_dmap);
+		bus_dma_tag_destroy(txr->tx_hdr_dtag);
+		txr->tx_hdr = NULL;
+	}
+
 	if (txr->tx_buf == NULL)
 		return;
 
@@ -1562,19 +1601,17 @@ igb_destroy_tx_ring(struct igb_tx_ring *txr, int ndesc)
 static void
 igb_init_tx_ring(struct igb_tx_ring *txr)
 {
-	int i;
-
 	/* Clear the old descriptor contents */
 	bzero(txr->tx_base,
 	    sizeof(union e1000_adv_tx_desc) * txr->sc->num_tx_desc);
 
+	/* Clear TX head write-back buffer */
+	*(txr->tx_hdr) = 0;
+
 	/* Reset indices */
 	txr->next_avail_desc = 0;
 	txr->next_to_clean = 0;
-
-	/* Clear the watch index */
-	for (i = 0; i < txr->sc->num_tx_desc; ++i)
-		txr->tx_buf[i].next_eop = -1;
+	txr->tx_nsegs = 0;
 
 	/* Set number of descriptors available */
 	txr->tx_avail = txr->sc->num_tx_desc;
@@ -1592,6 +1629,7 @@ igb_init_tx_unit(struct igb_softc *sc)
 		struct igb_tx_ring *txr = &sc->tx_rings[i];
 		uint64_t bus_addr = txr->txdma.dma_paddr;
 		uint32_t txdctl = 0;
+		uint32_t dca_txctrl;
 
 		E1000_WRITE_REG(hw, E1000_TDLEN(i),
 		    sc->num_tx_desc * sizeof(struct e1000_tx_desc));
@@ -1609,6 +1647,15 @@ igb_init_tx_unit(struct igb_softc *sc)
 		txdctl |= IGB_TX_WTHRESH << 16;
 		txdctl |= E1000_TXDCTL_QUEUE_ENABLE;
 		E1000_WRITE_REG(hw, E1000_TXDCTL(i), txdctl);
+
+		dca_txctrl = E1000_READ_REG(hw, E1000_DCA_TXCTRL(i));
+		dca_txctrl &= ~E1000_DCA_TXCTRL_TX_WB_RO_EN;
+		E1000_WRITE_REG(hw, E1000_DCA_TXCTRL(i), dca_txctrl);
+
+		E1000_WRITE_REG(hw, E1000_TDWBAH(i),
+		    (uint32_t)(txr->tx_hdr_paddr >> 32));
+		E1000_WRITE_REG(hw, E1000_TDWBAL(i),
+		    ((uint32_t)txr->tx_hdr_paddr) | E1000_TX_HEAD_WB_ENABLE);
 	}
 
 	if (sc->vf_ifp)
@@ -1724,7 +1771,6 @@ igb_txctx(struct igb_tx_ring *txr, struct mbuf *mp)
 	TXD->mss_l4len_idx = htole32(mss_l4len_idx);
 
 	txbuf->m_head = NULL;
-	txbuf->next_eop = -1;
 
 	/* We've consumed the first desc, adjust counters */
 	if (++ctxd == txr->sc->num_tx_desc)
@@ -1739,87 +1785,48 @@ static void
 igb_txeof(struct igb_tx_ring *txr)
 {
 	struct ifnet *ifp = &txr->sc->arpcom.ac_if;
-	int first, last, done;
-	struct igb_tx_buf *txbuf;
-	struct e1000_tx_desc *tx_desc, *eop_desc;
+	int first, hdr, avail;
 
 	if (txr->tx_avail == txr->sc->num_tx_desc)
 		return;
 
 	first = txr->next_to_clean;
-	tx_desc = &txr->tx_base[first];
-	txbuf = &txr->tx_buf[first];
-	last = txbuf->next_eop;
-	eop_desc = &txr->tx_base[last];
+	hdr = *(txr->tx_hdr);
 
-	/*
-	 * What this does is get the index of the
-	 * first descriptor AFTER the EOP of the 
-	 * first packet, that way we can do the
-	 * simple comparison on the inner while loop.
-	 */
-	if (++last == txr->sc->num_tx_desc)
-		last = 0;
-	done = last;
+	if (first == hdr)
+		return;
 
-	while (eop_desc->upper.fields.status & E1000_TXD_STAT_DD) {
-		/* We clean the range of the packet */
-		while (first != done) {
-			tx_desc->upper.data = 0;
-			tx_desc->lower.data = 0;
-			tx_desc->buffer_addr = 0;
-			++txr->tx_avail;
+	avail = txr->tx_avail;
+	while (first != hdr) {
+		struct igb_tx_buf *txbuf = &txr->tx_buf[first];
 
-			if (txbuf->m_head) {
-				bus_dmamap_unload(txr->tx_tag, txbuf->map);
-				m_freem(txbuf->m_head);
-				txbuf->m_head = NULL;
-			}
-			txbuf->next_eop = -1;
-
-			if (++first == txr->sc->num_tx_desc)
-				first = 0;
-
-			txbuf = &txr->tx_buf[first];
-			tx_desc = &txr->tx_base[first];
+		++avail;
+		if (txbuf->m_head) {
+			bus_dmamap_unload(txr->tx_tag, txbuf->map);
+			m_freem(txbuf->m_head);
+			txbuf->m_head = NULL;
+			++ifp->if_opackets;
 		}
-		++ifp->if_opackets;
-
-		/* See if we can continue to the next packet */
-		last = txbuf->next_eop;
-		if (last != -1) {
-			eop_desc = &txr->tx_base[last];
-
-			/* Get new done point */
-			if (++last == txr->sc->num_tx_desc)
-				last = 0;
-			done = last;
-		} else {
-			break;
-		}
+		if (++first == txr->sc->num_tx_desc)
+			first = 0;
 	}
 	txr->next_to_clean = first;
+	txr->tx_avail = avail;
 
 	/*
 	 * If we have a minimum free, clear IFF_OACTIVE
 	 * to tell the stack that it is OK to send packets.
 	 */
-	if (txr->tx_avail > IGB_TX_CLEANUP_THRESHOLD(txr->sc)) {
+	if (IGB_IS_NOT_OACTIVE(txr)) {
 		ifp->if_flags &= ~IFF_OACTIVE;
 
-#ifdef foo
-		/* All clean, turn off the watchdog */
-		if (txr->tx_avail == txr->sc->num_tx_desc)
-			ifp->if_timer = 0;
-#else
 		/*
 		 * We have enough TX descriptors, turn off
-		 * the watchdog.  On some 82575EB chips,
-		 * tiny amount of done TX descriptors will
-		 * not trigger TX descriptor write-back.
+		 * the watchdog.  We allow small amount of
+		 * packets (roughly intr_nsegs) pending on
+		 * the transmit ring.
 		 */
 		ifp->if_timer = 0;
-#endif
 	}
 }
 
@@ -2849,8 +2856,8 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 	struct igb_tx_buf *tx_buf, *tx_buf_mapped;
 	union e1000_adv_tx_desc	*txd = NULL;
 	struct mbuf *m_head = *m_headp;
-	uint32_t olinfo_status = 0, cmd_type_len = 0;
-	int maxsegs, nsegs, i, j, error, first, last = 0;
+	uint32_t olinfo_status = 0, cmd_type_len = 0, cmd_rs = 0;
+	int maxsegs, nsegs, i, j, error, last = 0;
 	uint32_t hdrlen = 0;
 
 	if (m_head->m_len < IGB_TXCSUM_MINHL &&
@@ -2878,20 +2885,13 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 
 	/*
 	 * Map the packet for DMA.
-	 *
-	 * Capture the first descriptor index,
-	 * this descriptor will have the index
-	 * of the EOP which is the only one that
-	 * now gets a DONE bit writeback.
 	 */
-	first = txr->next_avail_desc;
-	tx_buf = &txr->tx_buf[first];
+	tx_buf = &txr->tx_buf[txr->next_avail_desc];
 	tx_buf_mapped = tx_buf;
 	map = tx_buf->map;
 
-	KASSERT(txr->tx_avail > 2, ("invalid avail TX desc\n"));
-	maxsegs = txr->tx_avail - 2;
-	KASSERT(maxsegs >= IGB_MAX_SCATTER - 2, ("not enough spare TX desc\n"));
+	maxsegs = txr->tx_avail - IGB_TX_RESERVED;
+	KASSERT(maxsegs >= txr->spare_desc, ("not enough spare TX desc\n"));
 	if (maxsegs > IGB_MAX_SCATTER)
 		maxsegs = IGB_MAX_SCATTER;
 
@@ -2932,8 +2932,19 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 		olinfo_status |= (E1000_TXD_POPTS_IXSM << 8);
 		if (m_head->m_pkthdr.csum_flags & (CSUM_UDP | CSUM_TCP))
 			olinfo_status |= (E1000_TXD_POPTS_TXSM << 8);
+		txr->tx_nsegs++;
 	}
 #endif
+
+	txr->tx_nsegs += nsegs;
+	if (txr->tx_nsegs >= txr->intr_nsegs) {
+		/*
+		 * Report Status (RS) is turned on every intr_nsegs
+		 * descriptors (roughly).
+		 */
+		txr->tx_nsegs = 0;
+		cmd_rs = E1000_ADVTXD_DCMD_RS;
+	}
 
 	/* Calculate payload length */
 	olinfo_status |= ((m_head->m_pkthdr.len - hdrlen)
@@ -2961,7 +2972,6 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 		if (++i == txr->sc->num_tx_desc)
 			i = 0;
 		tx_buf->m_head = NULL;
-		tx_buf->next_eop = -1;
 	}
 
 	KASSERT(txr->tx_avail > nsegs, ("invalid avail TX desc\n"));
@@ -2973,18 +2983,9 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 	tx_buf->map = map;
 
 	/*
-	 * Last Descriptor of Packet
-	 * needs End Of Packet (EOP)
-	 * and Report Status (RS)
+	 * Last Descriptor of Packet needs End Of Packet (EOP)
 	 */
-	txd->read.cmd_type_len |=
-	    htole32(E1000_ADVTXD_DCMD_EOP | E1000_ADVTXD_DCMD_RS);
-	/*
-	 * Keep track in the first buffer which
-	 * descriptor will be written back
-	 */
-	tx_buf = &txr->tx_buf[first];
-	tx_buf->next_eop = last;
+	txd->read.cmd_type_len |= htole32(E1000_ADVTXD_DCMD_EOP | cmd_rs);
 
 	/*
 	 * Advance the Transmit Descriptor Tail (TDT), this tells the E1000
@@ -3013,12 +3014,11 @@ igb_start(struct ifnet *ifp)
 		return;
 	}
 
-	/* Call cleanup if number of TX descriptors low */
-	if (txr->tx_avail <= IGB_TX_CLEANUP_THRESHOLD(sc))
+	if (!IGB_IS_NOT_OACTIVE(txr))
 		igb_txeof(txr);
 
 	while (!ifq_is_empty(&ifp->if_snd)) {
-		if (txr->tx_avail < IGB_MAX_SCATTER) {
+		if (IGB_IS_OACTIVE(txr)) {
 			ifp->if_flags |= IFF_OACTIVE;
 			/* Set watchdog on */
 			ifp->if_timer = 5;
@@ -3123,4 +3123,34 @@ igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
 	if (bootverbose)
 		if_printf(ifp, "Interrupt rate set to %d/sec\n", sc->intr_rate);
 	return 0;
+}
+
+static int
+igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
+{
+	struct igb_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct igb_tx_ring *txr = sc->queues[0].txr;
+	int error, nsegs;
+
+	nsegs = txr->intr_nsegs;
+	error = sysctl_handle_int(oidp, &nsegs, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (nsegs <= 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+
+	if (nsegs >= sc->num_tx_desc - txr->oact_lo_desc ||
+	    nsegs >= txr->oact_hi_desc - IGB_MAX_SCATTER) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		txr->intr_nsegs = nsegs;
+	}
+
+	ifnet_deserialize_all(ifp);
+
+	return error;
 }

@@ -143,6 +143,14 @@
 #define IGB_TXCSUM_MINHL		(ETHER_HDR_LEN + EVL_ENCAPLEN + \
 					 IGB_IPVHL_SIZE)
 
+/* One for TX csum offloading desc, the other 2 are reserved */
+#define IGB_TX_RESERVED			3
+
+/* Large enough for 64K TSO */
+#define IGB_TX_SPARE			32
+
+#define IGB_TX_OACTIVE_MAX		64
+
 struct igb_softc;
 
 /*
@@ -178,12 +186,21 @@ struct igb_tx_ring {
 	struct igb_softc	*sc;
 	uint32_t		me;
 	struct igb_dma		txdma;
+	bus_dma_tag_t		tx_hdr_dtag;
+	bus_dmamap_t		tx_hdr_dmap;
+	bus_addr_t		tx_hdr_paddr;
 	struct e1000_tx_desc	*tx_base;
 	uint32_t		next_avail_desc;
 	uint32_t		next_to_clean;
-	uint16_t		tx_avail;
+	uint32_t		*tx_hdr;
+	int			tx_avail;
 	struct igb_tx_buf	*tx_buf;
 	bus_dma_tag_t		tx_tag;
+	int			tx_nsegs;
+	int			spare_desc;
+	int			oact_lo_desc;
+	int			oact_hi_desc;
+	int			intr_nsegs;
 
 	u_long			no_desc_avail;
 	u_long			tx_packets;
@@ -314,7 +331,6 @@ struct igb_softc {
 };
 
 struct igb_tx_buf {
-	int		next_eop;	/* Index of the desc to watch */
 	struct mbuf	*m_head;
 	bus_dmamap_t	map;		/* bus_dma map for packet */
 };
@@ -334,5 +350,8 @@ struct igb_rx_buf {
 	cur &= 0xFFFFFFFF00000000LL;		\
 	cur |= new;				\
 }
+
+#define IGB_IS_OACTIVE(txr)	((txr)->tx_avail < (txr)->oact_lo_desc)
+#define IGB_IS_NOT_OACTIVE(txr)	((txr)->tx_avail >= (txr)->oact_hi_desc)
 
 #endif /* _IF_IGB_H_ */
