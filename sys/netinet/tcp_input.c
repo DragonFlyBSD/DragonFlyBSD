@@ -3490,7 +3490,16 @@ fastretransmit:
 		tp->t_rtttime = 0;
 		old_snd_nxt = tp->snd_nxt;
 		tp->snd_nxt = th_ack;
-		tp->snd_cwnd = tp->t_maxseg;
+		if (TCP_DO_SACK(tp)) {
+			uint32_t rxtlen;
+
+			rxtlen = tcp_sack_first_unsacked_len(tp);
+			if (rxtlen > tp->t_maxseg)
+				rxtlen = tp->t_maxseg;
+			tp->snd_cwnd = rxtlen;
+		} else {
+			tp->snd_cwnd = tp->t_maxseg;
+		}
 		tcp_output(tp);
 		++tcpstat.tcps_sndfastrexmit;
 		tp->snd_cwnd = tp->snd_ssthresh;
