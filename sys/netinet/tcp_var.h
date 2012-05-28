@@ -654,22 +654,22 @@ void	 tcp_respond (struct tcpcb *, void *,
 	    struct tcphdr *, struct mbuf *, tcp_seq, tcp_seq, int);
 struct rtentry *
 	 tcp_rtlookup (struct in_conninfo *);
-int	 tcp_sack_bytes_below(struct scoreboard *scb, tcp_seq seq);
+int	 tcp_sack_bytes_below(const struct scoreboard *scb, tcp_seq seq);
 void	 tcp_sack_destroy(struct scoreboard *scb);
 void	 tcp_sack_cleanup(struct scoreboard *scb);
 void	 tcp_sack_report_cleanup(struct tcpcb *tp);
-int	 tcp_sack_ndsack_blocks(struct raw_sackblock *blocks,
+int	 tcp_sack_ndsack_blocks(const struct raw_sackblock *blocks,
 	    const int numblocks, tcp_seq snd_una);
 void	 tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen);
 boolean_t
-	 tcp_sack_has_sacked(struct scoreboard *scb, u_int amount);
+	 tcp_sack_has_sacked(const struct scoreboard *scb, u_int amount);
 void	 tcp_sack_tcpcb_init(struct tcpcb *tp);
-uint32_t tcp_sack_compute_pipe(struct tcpcb *tp);
+uint32_t tcp_sack_compute_pipe(const struct tcpcb *tp);
 boolean_t
 	 tcp_sack_nextseg(struct tcpcb *tp, tcp_seq *nextrexmt, uint32_t *len,
 			  boolean_t *rescue);
 boolean_t
-	 tcp_sack_islost(struct scoreboard *scb, tcp_seq seq);
+	 tcp_sack_islost(const struct scoreboard *scb, tcp_seq seq);
 void	 tcp_sack_update_lostseq(struct scoreboard *scb, tcp_seq snd_una,
 	    u_int maxseg, int rxtthresh);
 #ifdef later
@@ -678,7 +678,7 @@ void	 tcp_sack_revert_scoreboard(struct scoreboard *scb, tcp_seq snd_una,
 void	 tcp_sack_save_scoreboard(struct scoreboard *scb);
 #endif
 void	 tcp_sack_skip_sacked(struct scoreboard *scb, tcp_seq *prexmt);
-uint32_t tcp_sack_first_unsacked_len(struct tcpcb *tp);
+uint32_t tcp_sack_first_unsacked_len(const struct tcpcb *tp);
 void	 tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to);
 void	 tcp_save_congestion_state(struct tcpcb *tp);
 void	 tcp_revert_congestion_state(struct tcpcb *tp);

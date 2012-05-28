@@ -270,8 +270,8 @@ tcp_sack_report_cleanup(struct tcpcb *tp)
  *		2 if duplicate of out-of-order D-SACK block.
  */
 int
-tcp_sack_ndsack_blocks(struct raw_sackblock *blocks, const int numblocks,
-		       tcp_seq snd_una)
+tcp_sack_ndsack_blocks(const struct raw_sackblock *blocks, const int numblocks,
+    tcp_seq snd_una)
 {
 	if (numblocks == 0)
 		return 0;
@@ -447,9 +447,9 @@ insert_block(struct scoreboard *scb, const struct raw_sackblock *raw_sb,
 
 #ifdef DEBUG_SACK_BLOCKS
 static void
-tcp_sack_dump_blocks(struct scoreboard *scb)
+tcp_sack_dump_blocks(const struct scoreboard *scb)
 {
-	struct sackblock *sb;
+	const struct sackblock *sb;
 
 	kprintf("%d blocks:", scb->nblocks);
 	TAILQ_FOREACH(sb, &scb->sackblocks, sblk_list)
@@ -458,7 +458,7 @@ tcp_sack_dump_blocks(struct scoreboard *scb)
 }
 #else
 static __inline void
-tcp_sack_dump_blocks(struct scoreboard *scb)
+tcp_sack_dump_blocks(const struct scoreboard *scb)
 {
 }
 #endif
@@ -498,7 +498,7 @@ tcp_sack_update_lostseq(struct scoreboard *scb, tcp_seq snd_una, u_int maxseg,
  * Return whether the given sequence number is considered lost.
  */
 boolean_t
-tcp_sack_islost(struct scoreboard *scb, tcp_seq seqnum)
+tcp_sack_islost(const struct scoreboard *scb, tcp_seq seqnum)
 {
 	return SEQ_LT(seqnum, scb->lostseq);
 }
@@ -507,9 +507,9 @@ tcp_sack_islost(struct scoreboard *scb, tcp_seq seqnum)
  * True if at least "amount" has been SACKed.  Used by Early Retransmit.
  */
 boolean_t
-tcp_sack_has_sacked(struct scoreboard *scb, u_int amount)
+tcp_sack_has_sacked(const struct scoreboard *scb, u_int amount)
 {
-	struct sackblock *sb;
+	const struct sackblock *sb;
 	int bytes_sacked = 0;
 
 	TAILQ_FOREACH(sb, &scb->sackblocks, sblk_list) {
@@ -524,9 +524,9 @@ tcp_sack_has_sacked(struct scoreboard *scb, u_int amount)
  * Number of bytes SACKed below seq.
  */
 int
-tcp_sack_bytes_below(struct scoreboard *scb, tcp_seq seq)
+tcp_sack_bytes_below(const struct scoreboard *scb, tcp_seq seq)
 {
-	struct sackblock *sb;
+	const struct sackblock *sb;
 	int bytes_sacked = 0;
 
 	sb = TAILQ_FIRST(&scb->sackblocks);
@@ -541,10 +541,10 @@ tcp_sack_bytes_below(struct scoreboard *scb, tcp_seq seq)
  * Return estimate of the number of bytes outstanding in the network.
  */
 uint32_t
-tcp_sack_compute_pipe(struct tcpcb *tp)
+tcp_sack_compute_pipe(const struct tcpcb *tp)
 {
-	struct scoreboard *scb = &tp->scb;
-	struct sackblock *sb;
+	const struct scoreboard *scb = &tp->scb;
+	const struct sackblock *sb;
 	int nlost, nretransmitted;
 	tcp_seq end;
 
@@ -680,9 +680,9 @@ tcp_sack_skip_sacked(struct scoreboard *scb, tcp_seq *prexmt)
  * The length of the first amount of unSACKed data
  */
 uint32_t
-tcp_sack_first_unsacked_len(struct tcpcb *tp)
+tcp_sack_first_unsacked_len(const struct tcpcb *tp)
 {
-	struct sackblock *sb;
+	const struct sackblock *sb;
 
 	sb = TAILQ_FIRST(&tp->scb.sackblocks);
 	if (sb == NULL)
@@ -721,7 +721,7 @@ tcp_sack_revert_scoreboard(struct scoreboard *scb, tcp_seq snd_una,
 
 #ifdef DEBUG_SACK_HISTORY
 static void
-tcp_sack_dump_history(char *msg, struct tcpcb *tp)
+tcp_sack_dump_history(const char *msg, const struct tcpcb *tp)
 {
 	int i;
 	static int ndumped;
@@ -738,7 +738,7 @@ tcp_sack_dump_history(char *msg, struct tcpcb *tp)
 }
 #else
 static __inline void
-tcp_sack_dump_history(char *msg, struct tcpcb *tp)
+tcp_sack_dump_history(const char *msg, const struct tcpcb *tp)
 {
 }
 #endif
