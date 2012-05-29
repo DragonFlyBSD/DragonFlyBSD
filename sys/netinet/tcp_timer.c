@@ -462,23 +462,30 @@ tcp_timer_persist(void *xtp)
 void
 tcp_save_congestion_state(struct tcpcb *tp)
 {
+	/*
+	 * Record connection's current states so that they could be
+	 * recovered, if this turns out to be a spurious retransmit.
+	 */
 	tp->snd_cwnd_prev = tp->snd_cwnd;
 	tp->snd_wacked_prev = tp->snd_wacked;
 	tp->snd_ssthresh_prev = tp->snd_ssthresh;
 	tp->snd_recover_prev = tp->snd_recover;
 
-	tp->t_rxtcur_prev = tp->t_rxtcur;
-	tp->t_srtt_prev = tp->t_srtt +
-	    (tcp_eifel_rtoinc << TCP_RTT_SHIFT);
-	tp->t_rttvar_prev = tp->t_rttvar;
+	/*
+	 * State for Eifel response after spurious timeout retransmit
+	 * is detected.  We save the current value of snd_max even if
+	 * we are called from fast retransmit code, so if RTO needs
+	 * rebase, it will be rebased using the RTT of segment that
+	 * is not sent during possible congestion.
+	 */
 	tp->snd_max_prev = tp->snd_max;
-	tp->rxt_flags &= ~TRXT_F_REBASERTO;
 
 	if (IN_FASTRECOVERY(tp))
 		tp->rxt_flags |= TRXT_F_WASFRECOVERY;
 	else
 		tp->rxt_flags &= ~TRXT_F_WASFRECOVERY;
 	if (tp->t_flags & TF_RCVD_TSTMP) {
+		/* States for Eifel detection */
 		tp->t_rexmtTS = ticks;
 		tp->rxt_flags |= TRXT_F_FIRSTACCACK;
 	}
@@ -540,17 +547,33 @@ tcp_timer_rexmt_handler(struct tcpcb *tp)
 	}
 	if (tp->t_rxtshift == 1) {
 		/*
-		 * first retransmit; record ssthresh and cwnd so they can
-		 * be recovered if this turns out to be a "bad" retransmit.
-		 * A retransmit is considered "bad" if an ACK for this
+		 * First retransmit.
+		 */
+
+		/*
+		 * State for "RTT based spurious timeout retransmit detection"
+		 *
+		 * RTT based spurious timeout retransmit detection:
+		 * A retransmit is considered spurious if an ACK for this
 		 * segment is received within RTT/2 interval; the assumption
 		 * here is that the ACK was already in flight.  See
 		 * "On Estimating End-to-End Network Path Properties" by
 		 * Allman and Paxson for more details.
 		 */
 		tp->t_badrxtwin = ticks + (tp->t_srtt >> (TCP_RTT_SHIFT + 1));
+
+		/*
+		 * States for Eifel response after spurious timeout retransmit
+		 * is detected.
+		 */
+		tp->t_rxtcur_prev = tp->t_rxtcur;
+		tp->t_srtt_prev = tp->t_srtt +
+		    (tcp_eifel_rtoinc << TCP_RTT_SHIFT);
+		tp->t_rttvar_prev = tp->t_rttvar;
+
 		tcp_save_congestion_state(tp);
-		tp->rxt_flags &= ~(TRXT_F_FASTREXMT | TRXT_F_EARLYREXMT);
+		tp->rxt_flags &= ~(TRXT_F_FASTREXMT | TRXT_F_EARLYREXMT |
+		    TRXT_F_REBASERTO);
 	}
 	if (tp->t_state == TCPS_SYN_SENT || tp->t_state == TCPS_SYN_RECEIVED) {
 		/*

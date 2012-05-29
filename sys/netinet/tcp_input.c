@@ -2888,8 +2888,7 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt, tcp_seq ack)
 			 * and RTTVAR used to calculate t_rxtcur_prev
 			 * resulted in a value less than t_rttmin.  So
 			 * simply increasing SRTT by tcp_eifel_rtoinc when
-			 * preparing for the Eifel response in
-			 * tcp_save_congestion_state() could not ensure
+			 * preparing for the Eifel response could not ensure
 			 * that the new RTO will be tcp_eifel_rtoinc greater
 			 * t_rxtcur_prev.
 			 */
