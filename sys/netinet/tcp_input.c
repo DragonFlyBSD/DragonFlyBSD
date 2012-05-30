@@ -331,8 +331,13 @@ tcp_paws_canreasslast(const struct tcpcb *tp, const struct tcphdr *th, int tlen)
 		return FALSE;
 
 	/* This segment comes immediately after the last pending segment */
-	if (last->tqe_th->th_seq + last->tqe_len == th->th_seq)
+	if (last->tqe_th->th_seq + last->tqe_len == th->th_seq) {
+		if (last->tqe_th->th_flags & TH_FIN) {
+			/* No segments should follow segment w/ FIN */
+			return FALSE;
+		}
 		return TRUE;
+	}
 
 	if (th->th_seq + tlen != last->tqe_th->th_seq)
 		return FALSE;
