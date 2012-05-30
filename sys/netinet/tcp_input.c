@@ -273,8 +273,7 @@ static void	 tcp_sack_rexmt(struct tcpcb *, boolean_t);
 static boolean_t tcp_sack_limitedxmit(struct tcpcb *);
 static int	 tcp_rmx_msl(const struct tcpcb *);
 static void	 tcp_established(struct tcpcb *);
-static boolean_t tcp_recv_dupack(struct tcpcb *, tcp_seq,
-		     const struct tcpopt *);
+static boolean_t tcp_recv_dupack(struct tcpcb *, tcp_seq, u_int);
 
 /* Neighbor Discovery, Neighbor Unreachability Detection Upper layer hint. */
 #ifdef INET6
@@ -654,6 +653,7 @@ tcp_input(struct mbuf **mp, int *offp, int proto)
 	int todrop, acked;
 	boolean_t ourfinisacked, needoutput = FALSE, delayed_dupack = FALSE;
 	tcp_seq th_dupack = 0; /* XXX gcc warning */
+	u_int to_flags = 0; /* XXX gcc warning */
 	u_long tiwin;
 	int recvwin;
 	struct tcpopt to;		/* options in this segment */
@@ -2037,10 +2037,11 @@ after_listen:
 				} else {
 					delayed_dupack = TRUE;
 					th_dupack = th->th_ack;
+					to_flags = to.to_flags;
 				}
 				break;
 			}
-			if (tcp_recv_dupack(tp, th->th_ack, &to))
+			if (tcp_recv_dupack(tp, th->th_ack, to.to_flags))
 				goto drop;
 			else
 				break;
@@ -2534,7 +2535,7 @@ dodata:							/* XXX */
 	/*
 	 * Delayed duplicated ACK processing
 	 */
-	if (delayed_dupack && tcp_recv_dupack(tp, th_dupack, &to))
+	if (delayed_dupack && tcp_recv_dupack(tp, th_dupack, to_flags))
 		needoutput = FALSE;
 
 	/*
@@ -3410,7 +3411,7 @@ tcp_established(struct tcpcb *tp)
  * Returns TRUE, if the ACK should be dropped
  */
 static boolean_t
-tcp_recv_dupack(struct tcpcb *tp, tcp_seq th_ack, const struct tcpopt *to)
+tcp_recv_dupack(struct tcpcb *tp, tcp_seq th_ack, u_int to_flags)
 {
 	boolean_t fast_sack_rexmt = TRUE;
 
@@ -3430,7 +3431,7 @@ tcp_recv_dupack(struct tcpcb *tp, tcp_seq th_ack, const struct tcpopt *to)
 			boolean_t force = FALSE;
 
 			if (tp->snd_una == tp->rexmt_high &&
-			    (to->to_flags & (TOF_SACK | TOF_SACK_REDUNDANT)) ==
+			    (to_flags & (TOF_SACK | TOF_SACK_REDUNDANT)) ==
 			    TOF_SACK) {
 				/*
 				 * New segments got SACKed and
@@ -3457,7 +3458,7 @@ tcp_recv_dupack(struct tcpcb *tp, tcp_seq th_ack, const struct tcpopt *to)
 		tp->t_dupacks = 0;
 		return FALSE;
 	} else if (tcp_ignore_redun_dsack && TCP_DO_SACK(tp) &&
-	    (to->to_flags & (TOF_DSACK | TOF_SACK_REDUNDANT)) ==
+	    (to_flags & (TOF_DSACK | TOF_SACK_REDUNDANT)) ==
 	    (TOF_DSACK | TOF_SACK_REDUNDANT)) {
 		/*
 		 * If the ACK carries DSACK and other SACK blocks

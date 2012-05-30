@@ -462,7 +462,7 @@ static const int tcprexmtthresh = 3;
  * to tcp_dooptions.
  */
 struct tcpopt {
-	u_long		to_flags;	/* which options are present */
+	u_int		to_flags;	/* which options are present */
 #define	TOF_TS			0x0001	/* timestamp */
 #define	TOF_MSS			0x0010
 #define	TOF_SCALE		0x0020
