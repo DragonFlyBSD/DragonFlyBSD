@@ -602,7 +602,8 @@ crypt_des(const char *key, const char *setting)
 	 */
 	q = (u_char *) keybuf;
 	while (q - (u_char *) keybuf - 8) {
-		if ((*q++ = *key << 1))
+		*q++ = *key << 1;
+		if (*key != '\0')
 			key++;
 	}
 	if (des_setkey((u_char *) keybuf))
