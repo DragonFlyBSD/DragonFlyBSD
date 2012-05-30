@@ -436,6 +436,9 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			/* enclosing block starts w/ preceding segment */
 			tp->encloseblk.rblk_start = p->tqe_th->th_seq;
 			if (i >= *tlenp) {
+				if (th->th_flags & TH_FIN)
+					p->tqe_th->th_flags |= TH_FIN;
+
 				/* preceding encloses incoming segment */
 				tp->encloseblk.rblk_end = TCP_SACK_BLKEND(
 				    p->tqe_th->th_seq + p->tqe_len,
@@ -497,6 +500,9 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			break;
 		}
 
+		if (q->tqe_th->th_flags & TH_FIN)
+			th->th_flags |= TH_FIN;
+
 		nq = TAILQ_NEXT(q, tqe_q);
 		TAILQ_REMOVE(&tp->t_segq, q, tqe_q);
 		m_freem(q->tqe_m);
@@ -512,12 +518,14 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 
 	/* check if can coalesce with following segment */
 	if (q != NULL && (th->th_seq + *tlenp == q->tqe_th->th_seq)) {
-		tcp_seq tend = te->tqe_th->th_seq + te->tqe_len;
-		tcp_seq tend_sack = TCP_SACK_BLKEND(tend, te->tqe_th->th_flags);
+		tcp_seq tend_sack;
 
 		te->tqe_len += q->tqe_len;
 		if (q->tqe_th->th_flags & TH_FIN)
 			te->tqe_th->th_flags |= TH_FIN;
+		tend_sack = TCP_SACK_BLKEND(te->tqe_th->th_seq + te->tqe_len,
+		    te->tqe_th->th_flags);
+
 		m_cat(te->tqe_m, q->tqe_m);
 		tp->encloseblk.rblk_end = tend_sack;
 		/*
@@ -536,6 +544,8 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	} else {
 		/* check if can coalesce with preceding segment */
 		if (p->tqe_th->th_seq + p->tqe_len == th->th_seq) {
+			if (te->tqe_th->th_flags & TH_FIN)
+				p->tqe_th->th_flags |= TH_FIN;
 			p->tqe_len += te->tqe_len;
 			m_cat(p->tqe_m, te->tqe_m);
 			tp->encloseblk.rblk_start = p->tqe_th->th_seq;
