@@ -415,12 +415,13 @@ struct tcp_stats {
 	u_long	tcps_mturesent;		/* resends due to MTU discovery */
 	u_long	tcps_listendrop;	/* listen queue overflows */
 	u_long	tcps_rcvbadsackopt;	/* rcvd illegal SACK options */
+	u_long	tcps_sackrenege;	/* times other side reneged */
 
 	u_long	tcps_sacksbupdate;	/* times SACK scoreboard updated */
 	u_long	tcps_sacksboverflow;	/* times SACK scoreboard overflowed */
 	u_long	tcps_sacksbreused;	/* times SACK sb-block reused */
 	u_long	tcps_sacksbfailed;	/* times SACK sb update failed */
-	u_long	tcps_sacksbfast;	/* timee SACK sb-block uses cache */
+	u_long	tcps_sacksbfast;	/* times SACK sb-block uses cache */
 
 	u_long	tcps_sc_added;		/* entry added to syncache */
 	u_long	tcps_sc_retransmitted;	/* syncache entry was retransmitted */

@@ -494,6 +494,7 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 	p(tcps_rcvbadoff, "\t\t%lu discarded for bad header offset field%s\n");
 	p1a(tcps_rcvshort, "\t\t%lu discarded because packet too short\n");
 	p(tcps_rcvbadsackopt, "\t\t%lu bad SACK option%s\n");
+	p1a(tcps_sackrenege, "\t\t%lu other side reneged\n");
 	p(tcps_connattempt, "\t%lu connection request%s\n");
 	p(tcps_accepts, "\t%lu connection accept%s\n");
 	p(tcps_badsyn, "\t%lu bad connection attempt%s\n");

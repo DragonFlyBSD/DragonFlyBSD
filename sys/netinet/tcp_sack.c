@@ -217,8 +217,11 @@ tcp_sack_ack_blocks(struct scoreboard *scb, tcp_seq th_ack)
 		    ("SACK block count underflow: %d < 0", scb->nblocks));
 		sb = nb;
 	}
-	if (sb && SEQ_GT(th_ack, sb->sblk_start))
-		sb->sblk_start = th_ack;	/* other side reneged? XXX */
+	if (sb && SEQ_GEQ(th_ack, sb->sblk_start)) {
+		/* Other side reneged? XXX */
+		tcpstat.tcps_sackrenege++;
+		tcp_sack_cleanup(scb);
+	}
 }
 
 /*
