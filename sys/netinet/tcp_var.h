@@ -173,7 +173,7 @@ struct tcpcb {
 #define	TF_UNUSED005	0x00020000
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
 #define	TF_RXWIN0SENT	0x00080000	/* sent a receiver win 0 in response */
-#define	TF_FASTRECOVERY	0x00100000	/* in NewReno Fast Recovery */
+#define	TF_FASTRECOVERY	0x00100000	/* in Fast Recovery */
 #define	TF_UNUSED006	0x00200000
 #define	TF_UNUSED007	0x00400000
 #define	TF_UNUSED008	0x00800000
@@ -189,7 +189,7 @@ struct tcpcb {
 	u_long	snd_last;		/* time last data were sent */
 
 	tcp_seq	snd_una;		/* send unacknowledged */
-	tcp_seq	snd_recover;		/* for use with NewReno Fast Recovery */
+	tcp_seq	snd_recover;		/* for use with Fast Recovery */
 	tcp_seq	snd_max;		/* highest sequence number sent;
 					 * used to recognize retransmits */
 	tcp_seq	snd_nxt;		/* send next */
@@ -248,7 +248,7 @@ struct tcpcb {
 /* experimental */
 	u_int	rxt_flags;
 #define	TRXT_F_REBASERTO	0x0001	/* Recalculate RTO based on new RTT */
-#define	TRXT_F_WASFRECOVERY	0x0002	/* was in NewReno Fast Recovery */
+#define	TRXT_F_WASFRECOVERY	0x0002	/* was in Fast Recovery */
 #define	TRXT_F_FIRSTACCACK	0x0004	/* Look for 1st acceptable ACK. */
 #define	TRXT_F_FASTREXMT	0x0008	/* Did Fast Retransmit. */
 #define	TRXT_F_EARLYREXMT	0x0010	/* Did Early (Fast) Retransmit. */
