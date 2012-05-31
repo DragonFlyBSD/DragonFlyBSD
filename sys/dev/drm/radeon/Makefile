@@ -1,4 +1,3 @@
-.PATH:	${.CURDIR}
 KMOD	= radeon
 SRCS	= r300_cmdbuf.c r600_cp.c radeon_cp.c radeon_drv.c radeon_state.c \
 	  radeon_irq.c radeon_mem.c radeon_cs.c r600_blit.c
