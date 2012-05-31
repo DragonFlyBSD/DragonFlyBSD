@@ -1927,7 +1927,7 @@ SRBdone(struct amd_softc *amd, struct amd_srb *pSRB)
 					ptr2++;
 				}
 				/* ??????? */
-				pcsio->resid = (u_int32_t) swlval;
+				pcsio->resid = swlval;
 
 #ifdef	AMD_DEBUG0
 				kprintf("XferredLen=%8x,NotYetXferLen=%8x,",

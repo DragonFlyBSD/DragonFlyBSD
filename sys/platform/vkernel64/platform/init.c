@@ -348,6 +348,8 @@ main(int ac, char **av)
 	setrealcpu();
 	init_kqueue();
 
+	vmm_guest = 1;
+
 	/*
 	 * Check TSC
 	 */

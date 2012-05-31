@@ -27,7 +27,6 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/lib/libc/xdr/xdr_sizeof.c,v 1.5 2003/03/07 13:19:40 nectar Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_sizeof.c,v 1.2 2005/12/05 00:47:57 swildner Exp $
  */
 
 /*
@@ -146,7 +145,7 @@ xdr_sizeof(xdrproc_t func, void *data)
 	x.x_op = XDR_ENCODE;
 	x.x_ops = &ops;
 	x.x_handy = 0;
-	x.x_private = (caddr_t) NULL;
+	x.x_private = NULL;
 	x.x_base = (caddr_t) 0;
 
 	stat = func(&x, data);

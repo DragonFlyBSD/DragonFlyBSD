@@ -31,6 +31,7 @@ platform/vkernel64/x86_64/mp.c		optional	smp		\
 cpu/x86_64/misc/elf_machdep.c		standard
 cpu/x86_64/misc/lwbuf.c			standard
 cpu/x86_64/misc/in_cksum2.s		optional	inet
+cpu/x86_64/misc/in_cksum2.s		optional	inet6
 cpu/x86_64/misc/monitor.s		standard
 cpu/x86_64/misc/ktr.c			optional	ktr
 cpu/x86_64/misc/db_disasm.c		optional	ddb

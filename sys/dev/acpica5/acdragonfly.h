@@ -2,7 +2,6 @@
  *
  * Name: acfreebsd.h - OS specific defines, etc.
  *       $Revision: 11 $
- *	 $DragonFly: src/sys/dev/acpica5/acdragonfly.h,v 1.3 2007/01/17 17:31:19 y0netan1 Exp $
  *
  *****************************************************************************/
 
@@ -181,18 +180,6 @@ struct acpicache;
 /* Always use DragonFly code over our local versions */
 #define ACPI_USE_SYSTEM_CLIBRARY
 
-/* DragonFly doesn't have strupr, should be fixed. (move to libkern) */
-static __inline char *
-strupr(char *str)
-{
-    char *c = str;
-    while(*c) {
-    *c = toupper(*c);
-    c++;
-    }
-    return(str);
-}
-
 #ifdef _KERNEL
 
 /* Or strstr (used in debugging mode, also move to libkern) */
@@ -212,7 +199,7 @@ strstr(char *s, char *find)
     } while (strncmp(s, find, len) != 0);
     s--;
     }
-    return ((char *)s);
+    return (s);
 }
 
 #endif /* _KERNEL */

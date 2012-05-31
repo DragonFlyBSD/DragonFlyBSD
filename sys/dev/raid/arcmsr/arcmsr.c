@@ -3332,7 +3332,7 @@ static void arcmsr_map_free_srb(void *arg, bus_dma_segment_t *segs, int nseg, in
 		srb_phyaddr=srb_phyaddr+SRB_SIZE;
 		srb_tmp = (struct CommandControlBlock *)((unsigned long)srb_tmp+SRB_SIZE);
 	}
-	acb->vir2phy_offset=(unsigned long)srb_tmp-(unsigned long)srb_phyaddr;
+	acb->vir2phy_offset=(unsigned long)srb_tmp-srb_phyaddr;
 	return;
 }
 /*

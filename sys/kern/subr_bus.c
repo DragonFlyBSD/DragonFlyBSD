@@ -1942,7 +1942,7 @@ resource_long_value(const char *name, int unit, const char *resname,
 	int error;
 
 	if (resource_kenv(name, unit, resname, &kvalue) == 0) {
-		*result = (long)kvalue;
+		*result = kvalue;
 		return 0;
 	}
 	if ((error = resource_find(name, unit, resname, &res)) != 0)

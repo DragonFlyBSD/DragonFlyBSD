@@ -30,14 +30,11 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/platform/vkernel/platform/shutdown.c,v 1.1 2007/07/01 02:51:45 dillon Exp $
  */
 /*
  * Install a signal handler for SIGTERM which shuts down the virtual kernel
  */
 
-#include "opt_ddb.h"
 #include <sys/types.h>
 #include <sys/systm.h>
 #include <sys/reboot.h>

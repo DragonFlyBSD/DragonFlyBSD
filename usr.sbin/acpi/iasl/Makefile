@@ -2,7 +2,7 @@
 # $DragonFly: src/usr.sbin/acpi/iasl/Makefile,v 1.2 2007/01/17 17:31:20 y0netan1 Exp $
 
 PROG=	iasl
-SRCS=	aslcompiler.y.h aslcompilerlex.l aslcompilerparse.y \
+SRCS=	aslcompiler.y.h aslcompilerlex.c aslcompilerparse.c \
 	aslanalyze.c aslbtypes.c aslwalks.c aslcodegen.c \
 	aslcompile.c aslerror.c aslfiles.c asllength.c \
 	asllisting.c aslload.c asllookup.c aslmain.c \
@@ -30,29 +30,41 @@ SRCS+=	dbfileio.c dmbuffer.c dmnames.c dmopcode.c dmobject.c \
 	utalloc.c utcopy.c utdebug.c utdelete.c utinit.c \
         utglobal.c utobject.c utlock.c utmisc.c utmath.c utdecode.c \
 		utxface.c utxferror.c \
-	dttemplate.c dtcompile.c dtsubtable.c dtutils.c dtfield.c dtio.c dttable.c dtexpress.c
+	dttemplate.c dtcompile.c dtsubtable.c dtutils.c dtfield.c dtio.c dttable.c dtexpress.c \
+	dtparser.y.h dtparserlex.c dtparserparse.c
 
 SRCS+=	adfile.c adwalk.c dmrestag.c dmtbdump.c dmtbinfo.c dmtable.c psloop.c utcache.c utmutex.c utresrc.c utstate.c
 
 MAN=	iasl.8
 
-CFLAGS+= -D_ACPI_ASL_COMPILER -DACPI_ASL_COMPILER -DACPI_USE_ALTERNATE_TIMEOUT -I.
+CFLAGS+= -DACPI_ASL_COMPILER -I.
+LFLAGS= -i -s
+YFLAGS= -d
 
 CFLAGS+= -D_USE_BERKELEY_YACC
-LDADD=	-lpthread
-DPADD=	${LIBPTHREAD}
-LFLAGS=	-i -PAslCompiler
-YFLAGS=	-d -pAslCompiler
+LDADD= -lpthread
+DPADD= ${LIBPTHREAD}
 
-CLEANFILES= aslcompiler.y.h aslcompilerlex.l aslcompilerparse.y
+CLEANFILES= aslcompiler.y.h aslcompilerlex.c aslcompilerparse.c	\
+	aslcompilerparse.h dtparser.y.h dtparserlex.c				\
+	dtparserparse.c dtparserparse.h
 
-aslcompiler.y.h: aslcompilerparse.h
-	cat ${.ALLSRC} > ${.TARGET}
+aslcompilerlex.c: aslcompiler.l
+	${LEX} ${LFLAGS} -PAslCompiler -o${.TARGET} ${.ALLSRC}
 
-aslcompilerlex.l: aslcompiler.l
-	cat ${.ALLSRC} > ${.TARGET}
+aslcompilerparse.c: aslcompiler.y
+	${YACC} ${YFLAGS} -pAslCompiler -o${.TARGET} ${.ALLSRC}
 
-aslcompilerparse.y: aslcompiler.y
-	cat ${.ALLSRC} > ${.TARGET}
+aslcompiler.y.h: aslcompilerparse.c
+	mv -f aslcompilerparse.h ${.TARGET}
+
+dtparserlex.c: dtparser.l
+	${LEX} ${LFLAGS} -PDtParser -o${.TARGET} ${.ALLSRC}
+
+dtparserparse.c: dtparser.y
+	${YACC} ${YFLAGS} -pDtParser -o${.TARGET} ${.ALLSRC}
+
+dtparser.y.h: dtparserparse.c
+	mv -f dtparserparse.h ${.TARGET}
 
 .include <bsd.prog.mk>

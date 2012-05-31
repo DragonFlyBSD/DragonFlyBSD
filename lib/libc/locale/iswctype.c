@@ -1,5 +1,4 @@
 /*	$NetBSD: src/lib/libc/locale/iswctype.c,v 1.14 2003/08/07 16:43:04 agc Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/iswctype.c,v 1.1 2005/03/16 06:54:41 joerg Exp $ */
 
 /*
  * Copyright (c) 1989 The Regents of the University of California.
@@ -202,7 +201,7 @@ wctrans(const char *charclass)
 			return((wctrans_t)&rl->rl_wctrans[i]);
 	}
 
-	return((wctrans_t)NULL);
+	return(NULL);
 }
 
 #undef towctrans
@@ -227,7 +226,7 @@ wctype(const char *property)
 		if (strcmp(rl->rl_wctype[i].te_name, property) == 0)
 			return((wctype_t)&rl->rl_wctype[i]);
 	}
-	return((wctype_t)NULL);
+	return(NULL);
 }
 
 #undef iswctype

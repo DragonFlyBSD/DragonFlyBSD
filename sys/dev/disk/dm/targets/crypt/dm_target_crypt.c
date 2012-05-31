@@ -1459,7 +1459,7 @@ dmtc_crypto_cb_dump_done(struct cryptop *crp)
 	n = atomic_fetchadd_int(&dump_helper->sectors, -1);
 
 	if (n == 1) {
-		priv = (dm_target_crypt_config_t *)dump_helper->priv;
+		priv = dump_helper->priv;
 		atomic_add_int(dump_helper->ident, 1);
 		wakeup(dump_helper);
 	}

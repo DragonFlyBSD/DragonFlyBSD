@@ -706,7 +706,7 @@ static int stliprobe(struct isa_device *idp)
 #if STLDEBUG
 	kprintf("%s(%d): btype=%x unit=%d brd=%d io=%x mem=%lx(%p)\n",
 		__file__, __LINE__, btype, brdp->unitid, brdp->brdnr,
-		brdp->iobase, brdp->paddr, (void *) brdp->vaddr);
+		brdp->iobase, brdp->paddr, brdp->vaddr);
 #endif
 
 	stli_stliprobed[idp->id_unit] = brdp->brdnr;

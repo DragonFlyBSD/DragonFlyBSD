@@ -11,7 +11,7 @@ SRCS+=	aehandlers.c aetables.c dbcmds.c dbdisply.c dbexec.c dbfileio.c \
 	dmutils.c dmwalk.c dsfield.c dsinit.c dscontrol.c \
 	dsmethod.c dsmthdat.c dsobject.c dsopcode.c dsargs.c \
 	dsutils.c dswexec.c dswload.c dswload2.c dswscope.c dswstate.c \
-	evevent.c evgpe.c evgpeutil.c evgpeinit.c evgpeblk.c evmisc.c \
+	evevent.c evglock.c evgpe.c evgpeutil.c evgpeinit.c evgpeblk.c evmisc.c \
 	evregion.c evrgnini.c evsci.c evxface.c evxfgpe.c \
 	evxfevnt.c evxfregn.c exconfig.c exconvrt.c \
 	excreate.c exdump.c exdebug.c exfield.c exfldio.c \

@@ -943,7 +943,7 @@ link_elf_symbol_values(linker_file_t lf, c_linker_sym_t sym, linker_symval_t *sy
 
     if (es >= ef->symtab && ((es - ef->symtab) < ef->nchains)) {
 	symval->name = ef->strtab + es->st_name;
-	symval->value = (caddr_t) ef->address + es->st_value;
+	symval->value = ef->address + es->st_value;
 	symval->size = es->st_size;
 	return 0;
     }
@@ -951,7 +951,7 @@ link_elf_symbol_values(linker_file_t lf, c_linker_sym_t sym, linker_symval_t *sy
 	return ENOENT;
     if (es >= ef->ddbsymtab && ((es - ef->ddbsymtab) < ef->ddbsymcnt)) {
 	symval->name = ef->ddbstrtab + es->st_name;
-	symval->value = (caddr_t) ef->address + es->st_value;
+	symval->value = ef->address + es->st_value;
 	symval->size = es->st_size;
 	return 0;
     }

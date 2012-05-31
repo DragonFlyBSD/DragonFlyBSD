@@ -125,7 +125,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 			} else {
 			/* Godmar thinks: this shouldn't happen w/o fragments */
 				kprintf("nsize %d(%d) > osize %d(%d) nb %d\n",
-					(int)nsize, (int)size, (int)osize,
+					nsize, size, osize,
 					(int)ip->i_size, (int)nb);
 				panic(
 				    "ext2_balloc: Something is terribly wrong");

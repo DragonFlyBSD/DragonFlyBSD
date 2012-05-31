@@ -1053,7 +1053,7 @@ icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 		}
 
 		so_pru_ctlinput(
-			(struct protosw *)&inet6sw[ip6_protox[nxt]],
+			&inet6sw[ip6_protox[nxt]],
 			code, (struct sockaddr *)&icmp6dst, &ip6cp);
 	}
 	return (0);

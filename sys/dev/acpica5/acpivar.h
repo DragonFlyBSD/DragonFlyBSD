@@ -197,8 +197,8 @@ extern struct lock acpi_lock;
 /*
  * Various features and capabilities for the acpi_get_features() method.
  * In particular, these are used for the ACPI 3.0 _PDC and _OSC methods.
- * See the Intel document titled "Processor Driver Capabilities Bit
- * Definitions", number 302223-005.
+ * See the Intel document titled "Intel Processor Vendor-Specific ACPI",
+ * number 302223-005.
  */
 #define ACPI_PDC_PX_MSR		(1 << 0) /* Intel SpeedStep PERF_CTL MSRs */
 #define ACPI_PDC_MP_C1_IO_HALT	(1 << 1) /* Intel C1 "IO then halt" sequence */
@@ -285,6 +285,16 @@ acpi_get_type(device_t dev)
     return (t);
 }
 
+/* Find the difference between two PM tick counts. */
+static __inline uint32_t
+acpi_TimerDelta(uint32_t end, uint32_t start)
+{
+
+	if (end < start && (AcpiGbl_FADT.Flags & ACPI_FADT_32BIT_TIMER) == 0)
+		end |= 0x01000000;
+	return (end - start);
+}
+
 #ifdef ACPI_DEBUGGER
 void		acpi_EnterDebugger(void);
 #endif
@@ -320,7 +330,6 @@ BOOLEAN		acpi_DeviceIsPresent(device_t dev);
 BOOLEAN		acpi_BatteryIsPresent(device_t dev);
 ACPI_STATUS	acpi_GetHandleInScope(ACPI_HANDLE parent, char *path,
 		    ACPI_HANDLE *result);
-uint32_t	acpi_TimerDelta(uint32_t end, uint32_t start);
 ACPI_BUFFER	*acpi_AllocBuffer(int size);
 ACPI_STATUS	acpi_ConvertBufferToInteger(ACPI_BUFFER *bufp,
 		    UINT32 *number);

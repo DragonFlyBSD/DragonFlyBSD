@@ -1396,7 +1396,7 @@ uhci_idone(uhci_intr_info_t *ii)
 #ifdef USB_DEBUG
 		char sbuf[128];
 
-		bitmask_snprintf((u_int32_t)status,
+		bitmask_snprintf(status,
 				 "\20\22BITSTUFF\23CRCTO\24NAK\25"
 				 "BABBLE\26DBUFFER\27STALLED\30ACTIVE",
 				 sbuf, sizeof(sbuf));

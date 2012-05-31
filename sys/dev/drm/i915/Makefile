@@ -1,8 +1,7 @@
-.PATH:	${.CURDIR}/..
 KMOD	= i915
 SRCS    = i915_dma.c i915_drv.c i915_irq.c i915_mem.c i915_suspend.c
 SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h
-CFLAGS += ${DEBUG_FLAGS} -I. -I..
+CFLAGS += ${DEBUG_FLAGS} -I. -I.. -I@/dev/drm -I@/dev/drm/i915
 
 .if defined(DRM_DEBUG)
 DRM_DEBUG_OPT= "\#define DRM_DEBUG 1"

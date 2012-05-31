@@ -198,7 +198,7 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 	int			reg;
 	struct mii_softc	*other = NULL;
 	struct mlphy_softc	*msc = (struct mlphy_softc *)xsc;
-	struct mii_softc	*sc = (struct mii_softc *)&msc->ml_mii;
+	struct mii_softc	*sc = &msc->ml_mii;
 	device_t		*devlist;
 	int			devs, i;
 	const struct mii_media	*mm;

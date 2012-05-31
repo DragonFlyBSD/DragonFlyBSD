@@ -197,8 +197,7 @@ sgetrune(const char *string, size_t n, char const **result,
         j = 2;
         outp = outbuf;
         if (flags & ISOFSMNT_KICONV && cd9660_iconv) {
-                cd9660_iconv->convchr(handle, (const char **)&string,
-                        &i, &outp, &j);
+                cd9660_iconv->convchr(handle, &string, &i, &outp, &j);
                 len -= i;
         } else {
                 len = 1;

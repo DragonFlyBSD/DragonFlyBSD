@@ -32,7 +32,6 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.26 2008/06/19 23:27:39 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -176,7 +175,7 @@ ffs_read(struct vop_read_args *ap)
 		/*
 		 * otherwise use the general form
 		 */
-		error = uiomove(bp->b_data + blkoffset, (int)xfersize, uio);
+		error = uiomove(bp->b_data + blkoffset, xfersize, uio);
 
 		if (error)
 			break;
@@ -372,7 +371,7 @@ ffs_write(struct vop_write_args *ap)
 		if (size < xfersize)
 			xfersize = size;
 
-		error = uiomove(bp->b_data + blkoffset, (int)xfersize, uio);
+		error = uiomove(bp->b_data + blkoffset, xfersize, uio);
 		if ((ioflag & (IO_VMIO|IO_DIRECT)) && 
 		    (LIST_FIRST(&bp->b_dep) == NULL)) {
 			bp->b_flags |= B_RELBUF;

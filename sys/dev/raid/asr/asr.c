@@ -2107,7 +2107,7 @@ ASR_sync(Asr_softc_t *sc, int bus, int target, int lun)
 		PRIVATE_SCSI_SCB_EXECUTE_MESSAGE	Message;
 		PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE	Message_Ptr;
 
-		Message_Ptr = (PRIVATE_SCSI_SCB_EXECUTE_MESSAGE *)&Message;
+		Message_Ptr = &Message;
 		bzero(Message_Ptr, sizeof(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE)
 		    - sizeof(I2O_SG_ELEMENT) + sizeof(I2O_SGE_SIMPLE_ELEMENT));
 
@@ -2541,7 +2541,7 @@ asr_attach(device_t dev)
 		PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE	Message_Ptr;
 		int					posted = 0;
 
-		Message_Ptr = (PRIVATE_SCSI_SCB_EXECUTE_MESSAGE *)&Message;
+		Message_Ptr = &Message;
 		bzero(Message_Ptr, sizeof(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE) -
 		    sizeof(I2O_SG_ELEMENT) + sizeof(I2O_SGE_SIMPLE_ELEMENT));
 
@@ -2583,8 +2583,7 @@ asr_attach(device_t dev)
 		    | I2O_SCB_FLAG_SENSE_DATA_IN_BUFFER));
 
 		PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setByteCount(
-		  (PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE)Message_Ptr,
-		  sizeof(struct scsi_inquiry_data));
+		  Message_Ptr, sizeof(struct scsi_inquiry_data));
 		SG(&(Message_Ptr->SGL), 0,
 		  I2O_SGL_FLAGS_LAST_ELEMENT | I2O_SGL_FLAGS_END_OF_BUFFER,
 		  iq, sizeof(struct scsi_inquiry_data));

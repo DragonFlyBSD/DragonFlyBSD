@@ -755,7 +755,7 @@ static m_addr_t __vtobus(bus_dma_tag_t dev_dmat, void *m)
 	mp = ___get_dma_pool(dev_dmat);
 	if (mp) {
 		vp = mp->vtob[hc];
-		while (vp && (m_addr_t) vp->vaddr != a)
+		while (vp && vp->vaddr != a)
 			vp = vp->next;
 	}
 	/* Unlock */
@@ -3729,14 +3729,14 @@ static void sym_log_hard_error(hcb_p np, u_short sist, u_char dstat)
 		 dsp <= np->scripta_ba + np->scripta_sz) {
 		script_ofs	= dsp - np->scripta_ba;
 		script_size	= np->scripta_sz;
-		script_base	= (u_char *) np->scripta0;
+		script_base	= np->scripta0;
 		script_name	= "scripta";
 	}
 	else if (np->scriptb_ba < dsp &&
 		 dsp <= np->scriptb_ba + np->scriptb_sz) {
 		script_ofs	= dsp - np->scriptb_ba;
 		script_size	= np->scriptb_sz;
-		script_base	= (u_char *) np->scriptb0;
+		script_base	= np->scriptb0;
 		script_name	= "scriptb";
 	} else {
 		script_ofs	= dsp;

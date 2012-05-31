@@ -120,6 +120,7 @@ static struct dev_ops	pktgen_ops = {
 };
 
 static int		pktgen_refcnt;
+static struct lwkt_token pktgen_tok = LWKT_TOKEN_INITIALIZER(pktgen_token);
 
 MALLOC_DECLARE(M_PKTGEN);
 MALLOC_DEFINE(M_PKTGEN, CDEV_NAME, "Packet generator");
@@ -161,10 +162,10 @@ pktgen_open(struct dev_open_args *ap)
 	if (error)
 		return error;
 
-	get_mplock();
+	lwkt_gettoken(&pktgen_tok);
 
 	if (dev->si_drv1 != NULL) {
-		rel_mplock();
+		lwkt_reltoken(&pktgen_tok);
 		return EBUSY;
 	}
 
@@ -176,7 +177,7 @@ pktgen_open(struct dev_open_args *ap)
 
 	pktgen_refcnt++;
 
-	rel_mplock();
+	lwkt_reltoken(&pktgen_tok);
 	return 0;
 }
 
@@ -186,7 +187,7 @@ pktgen_close(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct pktgen *pktg = dev->si_drv1;
 
-	get_mplock();
+	lwkt_gettoken(&pktgen_tok);
 
 	KKASSERT(pktg->pktg_refcnt > 0);
 	if (--pktg->pktg_refcnt == 0)
@@ -196,7 +197,7 @@ pktgen_close(struct dev_close_args *ap)
 	KKASSERT(pktgen_refcnt > 0);
 	pktgen_refcnt--;
 
-	rel_mplock();
+	lwkt_reltoken(&pktgen_tok);
 	return 0;
 }
 
@@ -208,7 +209,7 @@ pktgen_ioctl(struct dev_ioctl_args *ap __unused)
 	struct pktgen *pktg = dev->si_drv1;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&pktgen_tok);
 
 	switch (ap->a_cmd) {
 	case PKTGENSTART:
@@ -224,7 +225,7 @@ pktgen_ioctl(struct dev_ioctl_args *ap __unused)
 		break;
 	}
 
-	rel_mplock();
+	lwkt_reltoken(&pktgen_tok);
 	return error;
 }
 
@@ -362,8 +363,6 @@ pktgen_udp_thread1(void *arg)
 	in_addr_t saddr, daddr;
 	u_short sport, dport;
 
-	rel_mplock();	/* Don't need MP lock */
-
 	callout_reset(&pktg->pktg_stop, pktg->pktg_duration * hz,
 		      pktgen_stop_cb, pktg);
 
@@ -472,8 +471,6 @@ pktgen_udp_thread(void *arg)
 	in_addr_t saddr, daddr;
 	u_short sport, dport;
 
-	rel_mplock();	/* Don't need MP lock */
-
 	callout_reset(&pktg->pktg_stop, pktg->pktg_duration * hz,
 		      pktgen_stop_cb, pktg);
 
@@ -569,8 +566,9 @@ pktgen_thread_exit(struct pktgen *pktg, uint64_t tx_cnt, uint64_t err_cnt)
 
 	end = pktg->pktg_end;
 	timevalsub(&end, &pktg->pktg_start);
-	kprintf("cnt %llu, err %llu, time %ld.%06ld\n",
-		pktg->pktg_tx_cnt, pktg->pktg_err_cnt, end.tv_sec, end.tv_usec);
+	kprintf("cnt %ju, err %ju, time %ld.%06ld\n",
+		(uintmax_t)pktg->pktg_tx_cnt,
+		(uintmax_t)pktg->pktg_err_cnt, end.tv_sec, end.tv_usec);
 
 	pktg->pktg_flags &= ~(PKTG_F_STOP | PKTG_F_CONFIG | PKTG_F_RUNNING);
 

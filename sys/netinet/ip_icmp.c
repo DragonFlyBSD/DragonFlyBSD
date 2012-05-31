@@ -95,6 +95,10 @@ static int	log_redirect = 0;
 SYSCTL_INT(_net_inet_icmp, OID_AUTO, log_redirect, CTLFLAG_RW,
 	&log_redirect, 0, "Enable output about ICMP redirects");
 
+static int	discard_sourcequench = 1;
+SYSCTL_INT(_net_inet_icmp, OID_AUTO, discard_sourcequench, CTLFLAG_RW,
+	&discard_sourcequench, 0, "Discard ICMP Source Quench");
+
 #ifdef ICMP_BANDLIM
 
 /*
@@ -382,6 +386,8 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 	case ICMP_SOURCEQUENCH:
 		if (code)
 			goto badcode;
+		if (discard_sourcequench)
+			break;
 		code = PRC_QUENCH;
 deliver:
 		/*

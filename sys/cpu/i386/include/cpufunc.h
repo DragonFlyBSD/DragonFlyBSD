@@ -142,6 +142,12 @@ btrl(u_int *mask, int bit)
 }
 
 static __inline void
+clflush(u_long addr)
+{
+	__asm __volatile("clflush %0" : : "m" (*(char *) addr));
+}
+
+static __inline void
 do_cpuid(u_int ax, u_int *p)
 {
 	__asm __volatile("cpuid"

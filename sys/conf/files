@@ -1901,40 +1901,40 @@ dev/drm/drm_sman.c			optional drm
 dev/drm/drm_subr_hash.c			optional drm
 dev/drm/drm_sysctl.c			optional drm
 dev/drm/drm_vm.c			optional drm
-dev/drm/i915_dma.c			optional i915drm drm
-dev/drm/i915_drv.c			optional i915drm drm
-dev/drm/i915_irq.c			optional i915drm drm
-dev/drm/i915_mem.c			optional i915drm drm
-dev/drm/i915_suspend.c			optional i915drm drm
-dev/drm/mach64_dma.c			optional mach64drm drm
-dev/drm/mach64_drv.c			optional mach64drm drm
-dev/drm/mach64_irq.c			optional mach64drm drm
-dev/drm/mach64_state.c			optional mach64drm drm
-dev/drm/mga_drv.c			optional mgadrm drm
-dev/drm/mga_state.c			optional mgadrm drm
-dev/drm/mga_warp.c			optional mgadrm drm
-dev/drm/mga_dma.c			optional mgadrm drm
-dev/drm/mga_irq.c			optional mgadrm drm
-dev/drm/r128_cce.c			optional r128drm drm
-dev/drm/r128_drv.c			optional r128drm drm
-dev/drm/r128_state.c			optional r128drm drm
-dev/drm/r128_irq.c			optional r128drm drm
-dev/drm/r300_cmdbuf.c			optional radeondrm drm
-dev/drm/r600_blit.c			optional radeondrm drm
-dev/drm/r600_cp.c			optional radeondrm drm
-dev/drm/radeon_cp.c			optional radeondrm drm
-dev/drm/radeon_cs.c			optional radeondrm drm
-dev/drm/radeon_drv.c			optional radeondrm drm
-dev/drm/radeon_state.c			optional radeondrm drm
-dev/drm/radeon_irq.c			optional radeondrm drm
-dev/drm/radeon_mem.c			optional radeondrm drm
-dev/drm/savage_bci.c			optional savagedrm drm
-dev/drm/savage_drv.c			optional savagedrm drm
-dev/drm/savage_state.c			optional savagedrm drm
-dev/drm/sis_drv.c			optional sisdrm drm
-dev/drm/sis_ds.c			optional sisdrm drm
-dev/drm/sis_mm.c			optional sisdrm drm
-dev/drm/tdfx_drv.c			optional tdfxdrm drm
+dev/drm/i915/i915_dma.c			optional i915drm drm
+dev/drm/i915/i915_drv.c			optional i915drm drm
+dev/drm/i915/i915_irq.c			optional i915drm drm
+dev/drm/i915/i915_mem.c			optional i915drm drm
+dev/drm/i915/i915_suspend.c		optional i915drm drm
+dev/drm/mach64/mach64_dma.c		optional mach64drm drm
+dev/drm/mach64/mach64_drv.c		optional mach64drm drm
+dev/drm/mach64/mach64_irq.c		optional mach64drm drm
+dev/drm/mach64/mach64_state.c		optional mach64drm drm
+dev/drm/mga/mga_dma.c			optional mgadrm drm
+dev/drm/mga/mga_drv.c			optional mgadrm drm
+dev/drm/mga/mga_irq.c			optional mgadrm drm
+dev/drm/mga/mga_state.c			optional mgadrm drm
+dev/drm/mga/mga_warp.c			optional mgadrm drm
+dev/drm/r128/r128_cce.c			optional r128drm drm
+dev/drm/r128/r128_drv.c			optional r128drm drm
+dev/drm/r128/r128_state.c		optional r128drm drm
+dev/drm/r128/r128_irq.c			optional r128drm drm
+dev/drm/radeon/r300_cmdbuf.c		optional radeondrm drm
+dev/drm/radeon/r600_blit.c		optional radeondrm drm
+dev/drm/radeon/r600_cp.c		optional radeondrm drm
+dev/drm/radeon/radeon_cp.c		optional radeondrm drm
+dev/drm/radeon/radeon_cs.c		optional radeondrm drm
+dev/drm/radeon/radeon_drv.c		optional radeondrm drm
+dev/drm/radeon/radeon_irq.c		optional radeondrm drm
+dev/drm/radeon/radeon_mem.c		optional radeondrm drm
+dev/drm/radeon/radeon_state.c		optional radeondrm drm
+dev/drm/savage/savage_bci.c		optional savagedrm drm
+dev/drm/savage/savage_drv.c		optional savagedrm drm
+dev/drm/savage/savage_state.c		optional savagedrm drm
+dev/drm/sis/sis_drv.c			optional sisdrm drm
+dev/drm/sis/sis_ds.c			optional sisdrm drm
+dev/drm/sis/sis_mm.c			optional sisdrm drm
+dev/drm/tdfx/tdfx_drv.c			optional tdfxdrm drm
 dev/misc/nsclpcsio/nsclpcsio_isa.c	optional nsclpcsio isa
 dev/powermng/aps/aps.c			optional aps isa
 dev/powermng/it/it.c			optional it isa
@@ -2027,6 +2027,7 @@ ${ACPICA_DIR}/disassembler/dmresrcs.c		optional acpi acpi_debug
 ${ACPICA_DIR}/disassembler/dmutils.c		optional acpi acpi_debug
 ${ACPICA_DIR}/disassembler/dmwalk.c		optional acpi acpi_debug
 ${ACPICA_DIR}/events/evevent.c			optional acpi
+${ACPICA_DIR}/events/evglock.c			optional acpi
 ${ACPICA_DIR}/events/evgpe.c			optional acpi
 ${ACPICA_DIR}/events/evgpeblk.c			optional acpi
 ${ACPICA_DIR}/events/evgpeinit.c		optional acpi

@@ -181,8 +181,7 @@ uipc_accept(netmsg_t msg)
 				(struct sockaddr *)unp2->unp_addr);
 			unp_free(unp2);
 		} else {
-			*msg->accept.nm_nam = dup_sockaddr(
-				(struct sockaddr *)&sun_noname);
+			*msg->accept.nm_nam = dup_sockaddr(&sun_noname);
 		}
 		error = 0;
 	}
@@ -337,8 +336,7 @@ uipc_peeraddr(netmsg_t msg)
 		 * connection is established.  So, this else clause is
 		 * added as workaround to return PF_LOCAL sockaddr.
 		 */
-		*msg->peeraddr.nm_nam = dup_sockaddr(
-				(struct sockaddr *)&sun_noname);
+		*msg->peeraddr.nm_nam = dup_sockaddr(&sun_noname);
 		error = 0;
 	}
 	lwkt_reltoken(&unp_token);

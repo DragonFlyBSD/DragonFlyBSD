@@ -45,16 +45,19 @@
 #include "acpivar.h"
 #include "acdebug.h"
 
-UINT32
-AcpiOsGetLine(char *Buffer)
+ACPI_STATUS
+AcpiOsGetLine(char *Buffer, UINT32 BufferLength, UINT32 *BytesRead)
 {
 #ifdef DDB
-    char	*cp;
+    char *cp;
 
-    db_readline(Buffer, 80);
-    for (cp = Buffer; *cp != 0; cp++)
-	if (*cp == '\n')
-	    *cp = 0;
+    cp = Buffer;
+    if (db_readline(Buffer, BufferLength) > 0)
+        while (*cp != '\0' && *cp != '\n' && *cp != '\r')
+            cp++;
+    *cp = '\0';
+    if (BytesRead != NULL)
+        *BytesRead = cp - Buffer;
     return (AE_OK);
 #else
     kprintf("AcpiOsGetLine called but no input support");

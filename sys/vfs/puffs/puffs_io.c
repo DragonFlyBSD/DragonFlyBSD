@@ -239,7 +239,7 @@ puffs_bioread(struct vnode *vp, struct uio *uio, int ioflag,
 
 		lbn = uio->uio_offset / biosize;
 		boff = uio->uio_offset & (biosize - 1);
-		loffset = (off_t)lbn * biosize;
+		loffset = lbn * biosize;
 		fsize = puffs_meta_getsize(vp);
 
 		if (loffset + boff >= fsize) {

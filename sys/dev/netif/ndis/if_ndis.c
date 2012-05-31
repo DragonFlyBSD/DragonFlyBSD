@@ -3214,7 +3214,7 @@ ndis_scan_results(struct ndis_softc *sc)
 			wb->nwbx_supportedrates[j] & 0x7f;
 		}
 		rates[1] = j;
-		sp.ssid = (uint8_t *)&ssid[0];
+		sp.ssid = &ssid[0];
 		memcpy(sp.ssid + 2, &wb->nwbx_ssid.ns_ssid,
 		    wb->nwbx_ssid.ns_ssidlen);
 		sp.ssid[1] = wb->nwbx_ssid.ns_ssidlen;

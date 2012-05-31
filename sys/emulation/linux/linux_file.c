@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.39 2008/09/28 05:08:16 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -366,7 +365,7 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	} else {
 		justone = 0;
 	}
-	if ((size_t)nbytes < 0)
+	if ((ssize_t)nbytes < 0)
 		nbytes = 0;
 
 	off = fp->f_offset;

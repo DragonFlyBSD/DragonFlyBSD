@@ -180,7 +180,7 @@ krb4encpwd_send(ap)
 		return(0);
 	}
 
-	if (!Data(ap, KRB4_ENCPWD_ACK, (void *)NULL, 0)) {
+	if (!Data(ap, KRB4_ENCPWD_ACK, NULL, 0)) {
 		return(0);
 	}
 

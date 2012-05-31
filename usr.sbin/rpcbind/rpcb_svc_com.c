@@ -190,7 +190,7 @@ map_set(RPCB *regp, char *owner)
 		free(rbl);
 		return (FALSE);
 	}
-	rbl->rpcb_next = (rpcblist_ptr)NULL;
+	rbl->rpcb_next = NULL;
 	if (list_rbl == NULL) {
 		list_rbl = rbl;
 	} else {
@@ -692,7 +692,7 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
 	rpcbs_rmtcall(versnum - 2, reply_type, a.rmt_prog, a.rmt_vers,
 			a.rmt_proc, transp->xp_netid, rbl);
 
-	if (rbl == (rpcblist_ptr)NULL) {
+	if (rbl == NULL) {
 #ifdef RPCBIND_DEBUG
 		if (debugging)
 			fprintf(stderr, "not found\n");

@@ -1339,12 +1339,12 @@ trm_Interrupt(void *vpACB)
 		if (pDCB->DCBFlag & ABORT_DEV_)
 				trm_EnableMsgOutAbort1(pACB, pSRB);
 		phase = (u_int16_t) pSRB->ScsiPhase;  /* phase: */
-		stateV = (void *) trm_SCSI_phase0[phase];
+		stateV = trm_SCSI_phase0[phase];
 		stateV(pACB, pSRB, &scsi_status);
 		pSRB->ScsiPhase = scsi_status & PHASEMASK; 
 		/* phase:0,1,2,3,4,5,6,7 */
 		phase = (u_int16_t) scsi_status & PHASEMASK;       
-		stateV = (void *) trm_SCSI_phase1[phase];
+		stateV = trm_SCSI_phase1[phase];
 		stateV(pACB, pSRB, &scsi_status);  
 	}
 }

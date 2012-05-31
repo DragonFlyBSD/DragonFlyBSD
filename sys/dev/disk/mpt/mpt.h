@@ -121,8 +121,6 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include "opt_ddb.h"
-
 /**************************** Register Definitions ****************************/
 #include <dev/disk/mpt/mpt_reg.h>
 

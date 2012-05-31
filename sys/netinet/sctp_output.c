@@ -334,8 +334,7 @@ sctp_add_cookie(struct sctp_inpcb *inp, struct mbuf *init, int init_offset,
 	/* Time to sign the cookie */
 	sctp_hash_digest_m((char *)inp->sctp_ep.secret_key[
 	    (int)(inp->sctp_ep.current_secret_number)],
-	    SCTP_SECRET_SIZE, mret, sizeof(struct sctp_paramhdr),
-	    (uint8_t *)signature);
+	    SCTP_SECRET_SIZE, mret, sizeof(struct sctp_paramhdr), signature);
 	sig->m_len += SCTP_SIGNATURE_SIZE;
 	cookie_sz += SCTP_SIGNATURE_SIZE;
 
@@ -2617,7 +2616,8 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 	else {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			kprintf("Unknown protocol (TSNH) type %d\n", ((struct sockaddr *)to)->sa_family);
+			kprintf("Unknown protocol (TSNH) type %d\n",
+			    to->sa_family);
 		}
 #endif
 		sctp_m_freem(m);
@@ -5480,7 +5480,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
 		kprintf("Ok we have done the fillup no_data_chunk=%d tf=%d prw:%d\n",
-		       (int)no_data_chunks,
+		       no_data_chunks,
 		       (int)asoc->total_flight, (int)asoc->peers_rwnd);
 	}
 #endif
@@ -9722,7 +9722,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 				ph++;
 				mm->m_pkthdr.len = tot_out + sizeof(struct sctp_paramhdr);
 				mm->m_len = mm->m_pkthdr.len;
-				error = uiomove((caddr_t)ph, (int)tot_out, uio);
+				error = uiomove((caddr_t)ph, tot_out, uio);
 				if (error) {
 					/*
 					 * Here if we can't get his data we

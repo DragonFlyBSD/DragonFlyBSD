@@ -30,14 +30,11 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.30 2008/06/30 03:57:41 dillon Exp $
  */
 
 /*
  * External virtual filesystem routines
  */
-#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

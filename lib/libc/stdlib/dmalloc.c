@@ -321,7 +321,12 @@ static void slabterm(slglobaldata_t slgd, slab_t slab);
 static void *_vmem_alloc(int ri, size_t slab_size);
 static void _vmem_free(void *ptr, size_t slab_size);
 static void _mpanic(const char *ctl, ...) __printflike(1, 2);
-static void malloc_init(void);
+#ifndef STANDALONE_DEBUG
+static void malloc_init(void) __constructor(0);
+#else
+static void malloc_init(void) __constructor(101);
+#endif
+
 
 struct nmalloc_utrace {
 	void *p;

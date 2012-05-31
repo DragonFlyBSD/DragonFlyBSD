@@ -256,8 +256,7 @@ ext2_write(struct vop_write_args *ap)
 		if (size < xfersize)
 			xfersize = size;
 
-		error = uiomove((char *)bp->b_data + blkoffset,
-				(int)xfersize, uio);
+		error = uiomove((char *)bp->b_data + blkoffset, xfersize, uio);
 		if ((ioflag & IO_VMIO) &&
 		    LIST_FIRST(&bp->b_dep) == NULL) /* in ext2fs? */
 			bp->b_flags |= B_RELBUF;

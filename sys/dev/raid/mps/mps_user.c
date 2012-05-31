@@ -2047,8 +2047,8 @@ mps_ioctl(struct cdev *dev, u_long cmd, void *arg, int flag)
 
 	mps_page = NULL;
 	sc = dev->si_drv1;
-	page_req = (void *)arg;
-	ext_page_req = (void *)arg;
+	page_req = arg;
+	ext_page_req = arg;
 
 	switch (cmd) {
 	case MPSIO_READ_CFG_HEADER:

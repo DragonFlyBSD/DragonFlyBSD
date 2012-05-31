@@ -935,15 +935,13 @@ cml_zerokey(u_int8_t **sched)
 static void
 twofish128_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
-	twofish_encrypt((twofish_ctx *) key, (u_int8_t *) blk,
-	    (u_int8_t *) blk);
+	twofish_encrypt((twofish_ctx *) key, blk, blk);
 }
 
 static void
 twofish128_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
-	twofish_decrypt(((twofish_ctx *) key), (u_int8_t *) blk,
-	    (u_int8_t *) blk);
+	twofish_decrypt(((twofish_ctx *) key), blk, blk);
 }
 
 static int
@@ -956,8 +954,7 @@ twofish128_setkey(u_int8_t **sched, u_int8_t *key, int len)
 	*sched = kmalloc(sizeof(twofish_ctx), M_CRYPTO_DATA,
 			 M_INTWAIT | M_ZERO);
 	if (*sched != NULL) {
-		twofish_set_key((twofish_ctx *) *sched, (u_int8_t *) key,
-		    len * 8);
+		twofish_set_key((twofish_ctx *) *sched, key, len * 8);
 		err = 0;
 	} else
 		err = ENOMEM;
@@ -975,15 +972,13 @@ twofish128_zerokey(u_int8_t **sched)
 static void
 serpent128_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
-	serpent_encrypt((serpent_ctx *) key, (u_int8_t *) blk,
-	    (u_int8_t *) blk);
+	serpent_encrypt((serpent_ctx *) key, blk, blk);
 }
 
 static void
 serpent128_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
-	serpent_decrypt(((serpent_ctx *) key), (u_int8_t *) blk,
-	    (u_int8_t *) blk);
+	serpent_decrypt(((serpent_ctx *) key), blk, blk);
 }
 
 static int
@@ -996,8 +991,7 @@ serpent128_setkey(u_int8_t **sched, u_int8_t *key, int len)
 	*sched = kmalloc(sizeof(serpent_ctx), M_CRYPTO_DATA,
 			 M_INTWAIT | M_ZERO);
 	if (*sched != NULL) {
-		serpent_set_key((serpent_ctx *) *sched, (u_int8_t *) key,
-		    len * 8);
+		serpent_set_key((serpent_ctx *) *sched, key, len * 8);
 		err = 0;
 	} else
 		err = ENOMEM;

@@ -195,7 +195,7 @@ dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	prot = PROT_READ;	/* XXX should pass in? */
 
 	paddr = pmap_phys_address(
-		    dev_dmmap(dev, (vm_offset_t)offset << PAGE_SHIFT, prot));
+		    dev_dmmap(dev, offset << PAGE_SHIFT, prot));
 	KASSERT(paddr != -1,("dev_pager_getpage: map function returns error"));
 
 	if (page->flags & PG_FICTITIOUS) {

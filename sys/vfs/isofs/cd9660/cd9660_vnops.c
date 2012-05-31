@@ -460,7 +460,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 	idp->curroff = uio->uio_offset;
 
 	if ((entryoffsetinblock = idp->curroff & bmask) &&
-	    (error = cd9660_devblkatoff(vdp, (off_t)idp->curroff, NULL, &bp))) {
+	    (error = cd9660_devblkatoff(vdp, idp->curroff, NULL, &bp))) {
 		kfree(idp, M_TEMP);
 		goto done;
 	}
@@ -476,7 +476,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 			if (bp != NULL)
 				brelse(bp);
 			if ((error =
-			    cd9660_devblkatoff(vdp, (off_t)idp->curroff, NULL, &bp)) != 0)
+			    cd9660_devblkatoff(vdp, idp->curroff, NULL, &bp)) != 0)
 				break;
 			entryoffsetinblock = 0;
 		}

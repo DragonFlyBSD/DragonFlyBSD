@@ -1953,7 +1953,7 @@ init386(int first)
 	TUNABLE_INT_FETCH("hw.lapic_enable", &lapic_enable);
 
 	/*
-	 * Some of the virtaul machines do not work w/ I/O APIC
+	 * Some of the virtual machines do not work w/ I/O APIC
 	 * enabled.  If the user does not explicitly enable or
 	 * disable the I/O APIC (ioapic_enable < 0), then we
 	 * disable I/O APIC on all virtual machines.

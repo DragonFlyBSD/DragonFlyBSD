@@ -85,7 +85,6 @@ static int	acpi_timer_probe(device_t dev);
 static int	acpi_timer_attach(device_t dev);
 static int	acpi_timer_sysctl_freq(SYSCTL_HANDLER_ARGS);
 
-static u_int	acpi_timer_read(void);
 static int	acpi_timer_test(void);
 
 static device_method_t acpi_timer_methods[] = {
@@ -140,9 +139,17 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     }
     acpi_timer_dev = dev;
 
+    switch (AcpiGbl_FADT.XPmTimerBlock.SpaceId) {
+    case ACPI_ADR_SPACE_SYSTEM_MEMORY:
+	rtype = SYS_RES_MEMORY;
+	break;
+    case ACPI_ADR_SPACE_SYSTEM_IO:
+	rtype = SYS_RES_IOPORT;
+	break;
+    default:
+	return (ENXIO);
+    }
     rid = 0;
-    rtype = AcpiGbl_FADT.XPmTimerBlock.SpaceId ?
-	SYS_RES_IOPORT : SYS_RES_MEMORY;
     rlen = AcpiGbl_FADT.PmTimerLength;
     rstart = AcpiGbl_FADT.XPmTimerBlock.Address;
     if (bus_set_resource(dev, rtype, rid, rstart, rlen, -1)) {
@@ -164,9 +171,17 @@ acpi_timer_probe(device_t dev)
     if (dev != acpi_timer_dev)
 	return (ENXIO);
 
+    switch (AcpiGbl_FADT.XPmTimerBlock.SpaceId) {
+    case ACPI_ADR_SPACE_SYSTEM_MEMORY:
+	rtype = SYS_RES_MEMORY;
+	break;
+    case ACPI_ADR_SPACE_SYSTEM_IO:
+	rtype = SYS_RES_IOPORT;
+	break;
+    default:
+	return (ENXIO);
+    }
     rid = 0;
-    rtype = AcpiGbl_FADT.XPmTimerBlock.SpaceId ?
-	SYS_RES_IOPORT : SYS_RES_MEMORY;
     acpi_timer_reg = bus_alloc_resource_any(dev, rtype, &rid, RF_ACTIVE);
     if (acpi_timer_reg == NULL) {
 	device_printf(dev, "couldn't allocate resource (%s 0x%lx)\n",
@@ -223,9 +238,17 @@ acpi_timer_attach(device_t dev)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
+    switch (AcpiGbl_FADT.XPmTimerBlock.SpaceId) {
+    case ACPI_ADR_SPACE_SYSTEM_MEMORY:
+	rtype = SYS_RES_MEMORY;
+	break;
+    case ACPI_ADR_SPACE_SYSTEM_IO:
+	rtype = SYS_RES_IOPORT;
+	break;
+    default:
+	return (ENXIO);
+    }
     rid = 0;
-    rtype = AcpiGbl_FADT.XPmTimerBlock.SpaceId ?
-	SYS_RES_IOPORT : SYS_RES_MEMORY;
     acpi_timer_reg = bus_alloc_resource_any(dev, rtype, &rid, RF_ACTIVE);
     if (acpi_timer_reg == NULL)
 	return (ENXIO);
@@ -328,7 +351,7 @@ acpi_timer_sysctl_freq(SYSCTL_HANDLER_ARGS)
 }
  
 SYSCTL_PROC(_machdep, OID_AUTO, acpi_timer_freq, CTLTYPE_INT | CTLFLAG_RW,
-	    0, sizeof(u_int), acpi_timer_sysctl_freq, "I", "");
+    0, sizeof(u_int), acpi_timer_sysctl_freq, "I", "ACPI timer frequency");
 
 /*
  * Some ACPI timers are known or believed to suffer from implementation

@@ -419,7 +419,7 @@ crom_add_entry(struct crom_chunk *chunk, int key, int val)
 	reg = (struct csrreg *)(void *)&i;
 	reg->key = key;
 	reg->val = val;
-	return(crom_add_quad(chunk, (u_int32_t) i));
+	return(crom_add_quad(chunk, i));
 }
 
 int

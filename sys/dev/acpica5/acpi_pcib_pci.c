@@ -34,6 +34,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
+#include <sys/rman.h>
 
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>

@@ -43,7 +43,6 @@
  *
  * $Id: vinumioctl.c,v 1.14 2000/10/27 03:07:53 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumioctl.c,v 1.25.2.4 2002/02/03 00:44:19 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.11 2007/07/13 18:55:45 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -334,7 +333,7 @@ vinumioctl(struct dev_ioctl_args *ap)
     case VINUM_VOLUME_TYPE:
 	objno = Volno(dev);
 
-	if ((unsigned)objno >= (unsigned)vinum_conf.volumes_allocated) {
+	if (objno >= (unsigned)vinum_conf.volumes_allocated) {
 	    error = ENXIO;
 	    break;
 	}

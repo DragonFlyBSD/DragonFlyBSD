@@ -39,7 +39,6 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.15 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -452,7 +451,7 @@ parityrebuild(struct plex *plex,
 	    else if (sdno != psd) {			    /* update parity */
 		sbuf = (int *) bpp[sdno]->b_data;
 		for (i = 0; i < isize; i++)
-		    ((int *) newparity_buf)[i] ^= sbuf[i];  /* xor in the buffer */
+		    newparity_buf[i] ^= sbuf[i];	    /* xor in the buffer */
 	    }
 	}
 	if (sdno != psd) {				    /* release all bps except parity */

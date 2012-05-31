@@ -1,8 +1,7 @@
-.PATH:	${.CURDIR}/..
 KMOD= 	sis
 SRCS=	sis_drv.c sis_ds.c sis_mm.c
 SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h
-CFLAGS+=	${DEBUG_FLAGS} -I. -I..
+CFLAGS+=	${DEBUG_FLAGS} -I. -I.. -I@/dev/drm -I@/dev/drm/sis
 
 .if defined(DRM_DEBUG)
 DRM_DEBUG_OPT= "\#define DRM_DEBUG 1"

@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.24 2008/10/03 07:59:20 hasso Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -1094,7 +1093,7 @@ nd6_dad_start(struct ifaddr *ifa,
 		return;
 	}
 	callout_init(&dp->dad_timer_ch);
-	TAILQ_INSERT_TAIL(&dadq, (struct dadq *)dp, dad_list);
+	TAILQ_INSERT_TAIL(&dadq, dp, dad_list);
 
 	nd6log((LOG_DEBUG, "%s: starting DAD for %s\n", if_name(ifa->ifa_ifp),
 	    ip6_sprintf(&ia->ia_addr.sin6_addr)));
@@ -1144,7 +1143,7 @@ nd6_dad_stop(struct ifaddr *ifa)
 
 	nd6_dad_stoptimer(dp);
 
-	TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
+	TAILQ_REMOVE(&dadq, dp, dad_list);
 	kfree(dp, M_IP6NDP);
 	dp = NULL;
 	_IFAFREE(ifa, 0);
@@ -1188,7 +1187,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 		nd6log((LOG_INFO, "%s: could not run DAD, driver problem?\n",
 			if_name(ifa->ifa_ifp)));
 
-		TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
+		TAILQ_REMOVE(&dadq, dp, dad_list);
 		kfree(dp, M_IP6NDP);
 		dp = NULL;
 		_IFAFREE(ifa, 0);
@@ -1266,7 +1265,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 			    if_name(ifa->ifa_ifp),
 			    ip6_sprintf(&ia->ia_addr.sin6_addr)));
 
-			TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
+			TAILQ_REMOVE(&dadq, dp, dad_list);
 			kfree(dp, M_IP6NDP);
 			dp = NULL;
 			_IFAFREE(ifa, 0);
@@ -1305,7 +1304,7 @@ nd6_dad_duplicated(struct ifaddr *ifa)
 	log(LOG_ERR, "%s: manual intervention required\n",
 	    if_name(ifa->ifa_ifp));
 
-	TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
+	TAILQ_REMOVE(&dadq, dp, dad_list);
 	kfree(dp, M_IP6NDP);
 	dp = NULL;
 	_IFAFREE(ifa, 0);

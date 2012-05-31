@@ -38,7 +38,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pppoe.c,v 1.94 2008/03/03 19:36:03 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_pppoe.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_pppoe.c,v 1.10 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -392,7 +391,7 @@ make_packet(sessp sp) {
 			sp->neg->numtags = count;
 			break;	/* XXX chop off what's too long */
 		}
-		bcopy(*tag, (char *)dp, tlen);
+		bcopy(*tag, dp, tlen);
 		length += tlen;
 		dp += tlen;
 	}

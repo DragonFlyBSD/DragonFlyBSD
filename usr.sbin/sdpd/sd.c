@@ -1,5 +1,4 @@
 /* $NetBSD: sd.c,v 1.2 2007/11/09 20:08:41 plunky Exp $ */
-/* $DragonFly: src/usr.sbin/sdpd/sd.c,v 1.1 2008/01/06 21:51:30 hasso Exp $ */
 
 /*
  * sd.c
@@ -215,6 +214,6 @@ profile_t	sd_profile_descriptor = {
 	sd_profile_uuids,
 	sizeof(sd_profile_uuids),
 	0,
-	(profile_data_valid_p) NULL,
+	NULL,
 	(attr_t const * const) &sd_profile_attrs
 };

@@ -506,7 +506,7 @@ mpt_print_reply(void *vmsg)
 		mpt_print_scsi_io_reply((MSG_SCSI_IO_REPLY *)msg);
 		break;
 	default:
-		mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
+		mpt_print_reply_hdr(msg);
 		break;
 	}
 }

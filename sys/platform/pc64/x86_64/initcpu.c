@@ -63,6 +63,17 @@ char	cpu_vendor[20];		/* CPU Origin code */
 u_int	cpu_vendor_id;		/* CPU vendor ID */
 u_int	cpu_fxsr;		/* SSE enabled */
 u_int	cpu_mxcsr_mask;		/* Valid bits in mxcsr */
+u_int	cpu_clflush_line_size = 32;	/* Default CLFLUSH line size */
+
+/*
+ * -1: automatic (enable on h/w, disable on VMs)
+ * 0: disable
+ * 1: enable (where available)
+ */
+static int hw_clflush_enable = -1;
+
+SYSCTL_INT(_hw, OID_AUTO, clflush_enable, CTLFLAG_RD, &hw_clflush_enable, 0,
+	   "");
 
 SYSCTL_UINT(_hw, OID_AUTO, via_feature_rng, CTLFLAG_RD,
 	&via_feature_rng, 0, "VIA C3/C7 RNG feature available in CPU");
@@ -179,4 +190,16 @@ initializecpu(void)
 	    CPUID_TO_FAMILY(cpu_id) == 0x6 &&
 	    CPUID_TO_MODEL(cpu_id) >= 0xf)
 		init_via();
+
+	if (cpu_feature2 & CPUID2_VMM)
+		vmm_guest = 1;
+
+	TUNABLE_INT_FETCH("hw.clflush_enable", &hw_clflush_enable);
+	if (cpu_feature & CPUID_CLFSH) {
+		cpu_clflush_line_size = ((cpu_procinfo >> 8) & 0xff) * 8;
+
+		if (hw_clflush_enable == 0 ||
+		    ((hw_clflush_enable == -1) && vmm_guest))
+			cpu_feature &= ~CPUID_CLFSH;
+	}
 }

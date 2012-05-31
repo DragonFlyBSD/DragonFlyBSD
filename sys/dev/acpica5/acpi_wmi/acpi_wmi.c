@@ -679,7 +679,7 @@ acpi_wmi_ec_handler(UINT32 function, ACPI_PHYSICAL_ADDRESS address,
 		case ACPI_READ:
 			status = ACPI_EC_READ(sc->ec_dev, ec_addr, &ec_data, 1);
 			if (ACPI_SUCCESS(status))
-				*value |= ((UINT64)ec_data) << i;
+				*value |= ec_data << i;
 		break;
 		case ACPI_WRITE:
 			ec_data = (UINT8)((*value) >> i);

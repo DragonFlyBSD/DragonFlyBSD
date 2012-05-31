@@ -63,7 +63,7 @@ static uint32_t pcie_badslots;
 static int cfgmech;
 static struct spinlock pcicfg_spin;
 
-static int mcfg_enable = 1;
+static int mcfg_enable = 0;
 TUNABLE_INT("hw.pci.mcfg", &mcfg_enable);
 
 static uint32_t	pci_docfgregread(int bus, int slot, int func, int reg, int bytes);
@@ -262,16 +262,16 @@ pcireg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes)
 int
 pcie_cfgregopen(uint64_t base, uint8_t minbus, uint8_t maxbus)
 {
+	if (bootverbose) {
+		kprintf("PCIe: Memory Mapped configuration base @ 0x%jx, "
+		        "bus [%d, %d]\n", (uintmax_t)base, minbus, maxbus);
+	}
+
 	if (!mcfg_enable)
 		return 0;
 
 	if (minbus != 0)
 		return 0;
-
-	if (bootverbose) {
-		kprintf("PCIe: Memory Mapped configuration base @ 0x%jx, "
-		        "bus [%d, %d]\n", (uintmax_t)base, minbus, maxbus);
-	}
 
 	pcie_base = (vm_offset_t)pmap_mapdev_uncacheable(base,
 	    ((unsigned)maxbus + 1) << 20);

@@ -2070,7 +2070,7 @@ hpt_attach(device_t dev)
 	ccb->csa.event_enable = AC_LOST_DEVICE;
 	ccb->csa.callback = hpt_async;
 	ccb->csa.callback_arg = hpt_vsim;
-	xpt_action((union ccb *)ccb);
+	xpt_action(ccb);
 	kfree(ccb, M_DEVBUF);
 
 	callout_init(&pAdapter->event_timer_connect);

@@ -170,7 +170,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		nfsstats.biocache_reads++;
 		lbn = uio->uio_offset / biosize;
 		boff = uio->uio_offset & (biosize - 1);
-		loffset = (off_t)lbn * biosize;
+		loffset = lbn * biosize;
 
 		/*
 		 * Start the read ahead(s), as required.
@@ -179,7 +179,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		    for (nra = 0; nra < nmp->nm_readahead && nra < seqcount &&
 			(off_t)(lbn + 1 + nra) * biosize < np->n_size; nra++) {
 			rabn = lbn + 1 + nra;
-			raoffset = (off_t)rabn * biosize;
+			raoffset = rabn * biosize;
 			if (findblk(vp, raoffset, FINDBLK_TEST) == NULL) {
 			    rabp = nfs_getcacheblk(vp, raoffset, biosize, td);
 			    if (!rabp)

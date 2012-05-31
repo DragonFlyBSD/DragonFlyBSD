@@ -29,7 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.29 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -1372,7 +1371,7 @@ sn_getmcf(struct arpcom *ac, u_char *mcf)
 {
 	int i;
 	u_int index, index2;
-	u_char *af = (u_char *) mcf;
+	u_char *af = mcf;
 	struct ifmultiaddr *ifma;
 
 	bzero(mcf, MCFSZ);

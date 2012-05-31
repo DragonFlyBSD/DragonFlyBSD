@@ -143,7 +143,7 @@ amrd_dump(struct dev_dump_args *ap)
     size_t length = ap->a_length;
     struct amrd_softc	*amrd_sc;
     struct amr_softc	*amr_sc;
-    int			error;
+    int			error = 0;
 
     amrd_sc = (struct amrd_softc *)dev->si_drv1;
     if (amrd_sc == NULL)
@@ -152,11 +152,11 @@ amrd_dump(struct dev_dump_args *ap)
 
     if (length > 0) {
 	int	driveno = amrd_sc->amrd_drive - amr_sc->amr_drive;
-	if ((error = amr_dump_blocks(amr_sc,driveno,offset / AMR_BLKSIZE ,(void *)virtual,(int) length / AMR_BLKSIZE  )) != 0)
-	    	return(error);
 
+	error = amr_dump_blocks(amr_sc, driveno, offset / AMR_BLKSIZE,
+	    virtual, (int)length / AMR_BLKSIZE);
     }
-    return(0);
+    return(error);
 }
 
 /*

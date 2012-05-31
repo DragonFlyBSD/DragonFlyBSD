@@ -259,7 +259,7 @@ cxm_msp_dpl_write(device_t iicbus, int i2c_addr,
 	unsigned char msg[3];
 	int sent;
 
-	msg[0] = (unsigned char)dev;
+	msg[0] = dev;
 	msg[1] = (unsigned char)(addr >> 8);
 	msg[2] = (unsigned char)addr;
 

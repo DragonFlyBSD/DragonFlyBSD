@@ -894,7 +894,7 @@ acpi_read_ivar(device_t dev, device_t child, int index, uintptr_t *result)
 	*(ACPI_HANDLE *)result = ad->ad_handle;
 	break;
     case ACPI_IVAR_MAGIC:
-	*(uintptr_t *)result = ad->ad_magic;
+	*result = ad->ad_magic;
 	break;
     case ACPI_IVAR_PRIVATE:
 	*(void **)result = ad->ad_private;
@@ -932,7 +932,7 @@ acpi_write_ivar(device_t dev, device_t child, int index, uintptr_t value)
 	ad->ad_handle = (ACPI_HANDLE)value;
 	break;
     case ACPI_IVAR_MAGIC:
-	ad->ad_magic = (uintptr_t)value;
+	ad->ad_magic = value;
 	break;
     case ACPI_IVAR_PRIVATE:
 	ad->ad_private = (void *)value;
@@ -1905,21 +1905,6 @@ acpi_GetHandleInScope(ACPI_HANDLE parent, char *path, ACPI_HANDLE *result)
 	    return (AE_NOT_FOUND);
 	parent = r;
     }
-}
-
-/* Find the difference between two PM tick counts. */
-uint32_t
-acpi_TimerDelta(uint32_t end, uint32_t start)
-{
-    uint32_t delta;
-
-    if (end >= start)
-	delta = end - start;
-    else if (AcpiGbl_FADT.Flags & ACPI_FADT_32BIT_TIMER)
-	delta = ((0xFFFFFFFF - start) + end + 1);
-    else
-	delta = ((0x00FFFFFF - start) + end + 1) & 0x00FFFFFF;
-    return (delta);
 }
 
 /*

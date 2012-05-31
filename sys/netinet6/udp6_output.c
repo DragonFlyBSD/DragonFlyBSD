@@ -166,7 +166,7 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 			error = EISCONN;
 			goto release;
 		}
-		if (!prison_remote_ip(td, (struct sockaddr *)addr6)) {
+		if (!prison_remote_ip(td, addr6)) {
 			error = EAFNOSUPPORT; /* IPv4 only jail */
 			goto release;
 		}

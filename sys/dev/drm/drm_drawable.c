@@ -163,8 +163,7 @@ void drm_drawable_free_all(struct drm_device *dev)
 	for (info = RB_MIN(drawable_tree, &dev->drw_head);
 	    info != NULL ; info = next) {
 		next = RB_NEXT(drawable_tree, &dev->drw_head, info);
-		RB_REMOVE(drawable_tree, &dev->drw_head,
-		    (struct bsd_drm_drawable_info *)info);
+		RB_REMOVE(drawable_tree, &dev->drw_head, info);
 		DRM_SPINUNLOCK(&dev->drw_lock);
 		free(info->info.rects, DRM_MEM_DRAWABLE);
 		free(info, DRM_MEM_DRAWABLE);
