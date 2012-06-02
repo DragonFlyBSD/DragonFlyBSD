@@ -79,9 +79,6 @@
 #ifndef _SYS_SYSREF_H_
 #include <sys/sysref.h>
 #endif
-#ifndef _SYS_CCMS_H_
-#include <sys/ccms.h>
-#endif
 #ifndef _MACHINE_LOCK_H_
 #include <machine/lock.h>
 #endif
@@ -197,8 +194,7 @@ struct vnode {
 		struct	kqinfo vpi_kqinfo;	/* identity of poller(s) */
 	} v_pollinfo;
 	struct vmresident *v_resident;		/* optional vmresident */
-	struct ccms_dataspace v_ccms;		/* cache coherency */
-	struct mount *v_pfsmp;			/* real mount point for pfs/nullfs mounts */
+	struct mount *v_pfsmp;			/* real mp for pfs/nullfs mt */
 #ifdef	DEBUG_LOCKS
 	const char *filename;			/* Source file doing locking */
 	int line;				/* Line number doing locking */

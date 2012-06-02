@@ -546,7 +546,6 @@ vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 {
 	struct uio auio;
 	struct iovec aiov;
-	struct ccms_lock ccms_lock;
 	int error;
 
 	if ((ioflg & IO_NODELOCKED) == 0)
@@ -560,13 +559,11 @@ vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 	auio.uio_segflg = segflg;
 	auio.uio_rw = rw;
 	auio.uio_td = curthread;
-	ccms_lock_get_uio(&vp->v_ccms, &ccms_lock, &auio);
 	if (rw == UIO_READ) {
 		error = VOP_READ(vp, &auio, ioflg, cred);
 	} else {
 		error = VOP_WRITE(vp, &auio, ioflg, cred);
 	}
-	ccms_lock_put(&vp->v_ccms, &ccms_lock);
 	if (aresid)
 		*aresid = auio.uio_resid;
 	else
@@ -642,7 +639,6 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 static int
 vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
-	struct ccms_lock ccms_lock;
 	struct vnode *vp;
 	int error, ioflag;
 
@@ -672,9 +668,7 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	vn_lock(vp, LK_SHARED | LK_RETRY);
 	ioflag |= sequential_heuristic(uio, fp);
 
-	ccms_lock_get_uio(&vp->v_ccms, &ccms_lock, uio);
 	error = VOP_READ(vp, uio, ioflag, cred);
-	ccms_lock_put(&vp->v_ccms, &ccms_lock);
 	fp->f_nextoff = uio->uio_offset;
 	vn_unlock(vp);
 	if ((flags & O_FOFFSET) == 0 && (vp->v_flag & VNOTSEEKABLE) == 0)
@@ -688,7 +682,6 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 static int
 vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
-	struct ccms_lock ccms_lock;
 	struct vnode *vp;
 	int error, ioflag;
 
@@ -730,9 +723,7 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		uio->uio_offset = vn_get_fpf_offset(fp);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	ioflag |= sequential_heuristic(uio, fp);
-	ccms_lock_get_uio(&vp->v_ccms, &ccms_lock, uio);
 	error = VOP_WRITE(vp, uio, ioflag, cred);
-	ccms_lock_put(&vp->v_ccms, &ccms_lock);
 	fp->f_nextoff = uio->uio_offset;
 	vn_unlock(vp);
 	if ((flags & O_FOFFSET) == 0)
