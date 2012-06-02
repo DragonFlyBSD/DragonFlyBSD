@@ -414,7 +414,6 @@ vnode_ctor(void *obj, void *private, int ocflags)
 
 	lwkt_token_init(&vp->v_token, "vnode");
 	lockinit(&vp->v_lock, "vnode", 0, 0);
-	ccms_dataspace_init(&vp->v_ccms);
 	TAILQ_INIT(&vp->v_namecache);
 	RB_INIT(&vp->v_rbclean_tree);
 	RB_INIT(&vp->v_rbdirty_tree);
@@ -432,7 +431,6 @@ vnode_dtor(void *obj, void *private)
 	struct vnode *vp = obj;
 
 	KKASSERT((vp->v_flag & (VCACHED|VFREE)) == 0);
-	ccms_dataspace_destroy(&vp->v_ccms);
 }
 
 /****************************************************************
