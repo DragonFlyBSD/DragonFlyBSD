@@ -1129,6 +1129,8 @@ splz_check(void)
  *
  * We only want to execute the splz() on the 1->0 transition of
  * critcount and not in a hard code section or if too deeply nested.
+ *
+ * NOTE: gd->gd_spinlocks_wr is implied to be 0 when td_critcount is 0.
  */
 void
 lwkt_maybe_splz(thread_t td)
