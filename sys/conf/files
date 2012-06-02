@@ -803,7 +803,6 @@ kern/init_main.c	standard nowerror
 kern/init_sysent.c	standard
 kern/kern_checkpoint.c	standard
 kern/kern_sysref.c	standard
-kern/kern_ccms.c	standard
 kern/kern_intr.c	standard
 kern/kern_varsym.c	standard
 kern/kern_module.c	standard

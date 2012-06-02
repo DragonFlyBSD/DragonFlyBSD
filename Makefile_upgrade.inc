@@ -1985,6 +1985,7 @@ TO_REMOVE+=/usr/share/misc/map3270
 TO_REMOVE+=/usr/lib/libmytinfo.a
 TO_REMOVE+=/usr/lib/libmytinfo.so
 TO_REMOVE+=/usr/lib/profile/libmytinfo.a
+TO_REMOVE+=/usr/include/sys/ccms.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
