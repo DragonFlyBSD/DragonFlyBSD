@@ -201,6 +201,8 @@ struct igb_tx_ring {
 	int			oact_lo_desc;
 	int			oact_hi_desc;
 	int			intr_nsegs;
+	int			tx_intr_bit;
+	uint32_t		tx_intr_mask;
 
 	u_long			no_desc_avail;
 	u_long			tx_packets;
@@ -227,6 +229,8 @@ struct igb_rx_ring {
 	struct igb_rx_buf	*rx_buf;
 	bus_dma_tag_t		rx_tag;
 	bus_dmamap_t		rx_sparemap;
+	int			rx_intr_bit;
+	uint32_t		rx_intr_mask;
 
 	/*
 	 * First/last mbuf pointers, for
@@ -245,6 +249,8 @@ struct igb_softc {
 
 	struct e1000_osdep	osdep;
 	device_t		dev;
+	uint32_t		flags;
+#define IGB_FLAG_SHARED_INTR	0x1
 
 	bus_dma_tag_t		parent_tag;
 
@@ -292,6 +298,7 @@ struct igb_softc {
 
 	/* Interface queues */
 	struct igb_queue	*queues;
+	uint32_t		intr_mask;
 
 	/*
 	 * Transmit rings

@@ -169,11 +169,17 @@ static void	igb_poll(struct ifnet *, enum poll_cmd, int);
 #endif
 
 static void	igb_intr(void *);
+static void	igb_shared_intr(void *);
 static void	igb_rxeof(struct igb_rx_ring *, int);
 static void	igb_txeof(struct igb_tx_ring *);
-static void	igb_set_itr(struct igb_softc *);
+static void	igb_set_eitr(struct igb_softc *);
 static void	igb_enable_intr(struct igb_softc *);
 static void	igb_disable_intr(struct igb_softc *);
+static void	igb_init_unshared_intr(struct igb_softc *);
+static void	igb_init_intr(struct igb_softc *);
+static int	igb_setup_intr(struct igb_softc *);
+static void	igb_setup_tx_intr(struct igb_tx_ring *);
+static void	igb_setup_rx_intr(struct igb_rx_ring *);
 
 /* Management and WOL Support */
 static void	igb_get_mgmt(struct igb_softc *);
@@ -270,7 +276,6 @@ static int
 igb_attach(device_t dev)
 {
 	struct igb_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t eeprom_data;
 	u_int intr_flags;
 	int error = 0;
@@ -509,17 +514,11 @@ igb_attach(device_t dev)
 	igb_add_hw_stats(adapter);
 #endif
 
-	error = bus_setup_intr(dev, sc->intr_res, INTR_MPSAFE, igb_intr, sc,
-	    &sc->intr_tag, ifp->if_serializer);
+	error = igb_setup_intr(sc);
 	if (error) {
-		device_printf(dev, "Failed to register interrupt handler");
 		ether_ifdetach(&sc->arpcom.ac_if);
 		goto failed;
 	}
-
-	ifp->if_cpuid = rman_get_cpuid(sc->intr_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
-
 	return 0;
 
 failed:
@@ -785,6 +784,9 @@ igb_init(void *xsc)
 	sc->rx_mbuf_sz = MCLBYTES;
 #endif
 
+	/* Initialize interrupt */
+	igb_init_intr(sc);
+
 	/* Prepare receive descriptors and buffers */
 	for (i = 0; i < sc->num_queues; ++i) {
 		int error;
@@ -804,9 +806,6 @@ igb_init(void *xsc)
 
 	/* Don't lose promiscuous settings */
 	igb_set_promisc(sc);
-
-	/* Configure interrupt moderation */
-	igb_set_itr(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
@@ -2391,13 +2390,11 @@ igb_enable_intr(struct igb_softc *sc)
 {
 	lwkt_serialize_handler_enable(sc->arpcom.ac_if.if_serializer);
 
-	/* With RSS set up what to auto clear */
-	if (sc->msix_mem) {
-		uint32_t mask = (sc->que_mask | sc->link_mask);
-
-		E1000_WRITE_REG(&sc->hw, E1000_EIAC, mask);
-		E1000_WRITE_REG(&sc->hw, E1000_EIAM, mask);
-		E1000_WRITE_REG(&sc->hw, E1000_EIMS, mask);
+	if ((sc->flags & IGB_FLAG_SHARED_INTR) == 0) {
+		/* XXX MSI-X should use sc->intr_mask */
+		E1000_WRITE_REG(&sc->hw, E1000_EIAC, 0);
+		E1000_WRITE_REG(&sc->hw, E1000_EIAM, sc->intr_mask);
+		E1000_WRITE_REG(&sc->hw, E1000_EIMS, sc->intr_mask);
 		E1000_WRITE_REG(&sc->hw, E1000_IMS, E1000_IMS_LSC);
 	} else {
 		E1000_WRITE_REG(&sc->hw, E1000_IMS, IMS_ENABLE_MASK);
@@ -2408,10 +2405,10 @@ igb_enable_intr(struct igb_softc *sc)
 static void
 igb_disable_intr(struct igb_softc *sc)
 {
-	if (sc->msix_mem != NULL) {
+	if ((sc->flags & IGB_FLAG_SHARED_INTR) == 0) {
 		E1000_WRITE_REG(&sc->hw, E1000_EIMC, 0xffffffff);
 		E1000_WRITE_REG(&sc->hw, E1000_EIAC, 0);
-	} 
+	}
 	E1000_WRITE_REG(&sc->hw, E1000_IMC, 0xffffffff);
 	E1000_WRITE_FLUSH(&sc->hw);
 
@@ -2754,6 +2751,48 @@ igb_intr(void *xsc)
 {
 	struct igb_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	uint32_t eicr;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	eicr = E1000_READ_REG(&sc->hw, E1000_EICR);
+
+	if (eicr == 0)
+		return;
+
+	if (ifp->if_flags & IFF_RUNNING) {
+		if (eicr & sc->rx_rings[0].rx_intr_mask)
+			igb_rxeof(&sc->rx_rings[0], -1);
+
+		if (eicr & sc->tx_rings[0].tx_intr_mask) {
+			igb_txeof(&sc->tx_rings[0]);
+			if (!ifq_is_empty(&ifp->if_snd))
+				if_devstart(ifp);
+		}
+	}
+
+	if (eicr & E1000_EICR_OTHER) {
+		uint32_t icr = E1000_READ_REG(&sc->hw, E1000_ICR);
+
+		/* Link status change */
+		if (icr & E1000_ICR_LSC) {
+			sc->hw.mac.get_link_status = 1;
+			igb_update_link_status(sc);
+		}
+	}
+
+	/*
+	 * Reading EICR has the side effect to clear interrupt mask,
+	 * so all interrupts need to be enabled here.
+	 */
+	E1000_WRITE_REG(&sc->hw, E1000_EIMS, sc->intr_mask);
+}
+
+static void
+igb_shared_intr(void *xsc)
+{
+	struct igb_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t reg_icr;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
@@ -3075,7 +3114,7 @@ igb_watchdog(struct ifnet *ifp)
 }
 
 static void
-igb_set_itr(struct igb_softc *sc)
+igb_set_eitr(struct igb_softc *sc)
 {
 	uint32_t itr = 0;
 
@@ -3117,7 +3156,7 @@ igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
 
 	sc->intr_rate = intr_rate;
 	if (ifp->if_flags & IFF_RUNNING)
-		igb_set_itr(sc);
+		igb_set_eitr(sc);
 
 	ifnet_deserialize_all(ifp);
 
@@ -3154,4 +3193,250 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 	ifnet_deserialize_all(ifp);
 
 	return error;
+}
+
+static void
+igb_init_intr(struct igb_softc *sc)
+{
+	if (sc->flags & IGB_FLAG_SHARED_INTR)
+		igb_set_eitr(sc);
+	else
+		igb_init_unshared_intr(sc);
+}
+
+static void
+igb_init_unshared_intr(struct igb_softc *sc)
+{
+	struct e1000_hw *hw = &sc->hw;
+	const struct igb_rx_ring *rxr;
+	const struct igb_tx_ring *txr;
+	uint32_t ivar, index;
+	int i;
+
+	/*
+	 * Enable extended mode
+	 */
+	if (sc->hw.mac.type != e1000_82575) {
+		E1000_WRITE_REG(hw, E1000_GPIE, E1000_GPIE_NSICR);
+	} else {
+		uint32_t tmp;
+
+		tmp = E1000_READ_REG(hw, E1000_CTRL_EXT);
+		tmp |= E1000_CTRL_EXT_IRCA;
+		E1000_WRITE_REG(hw, E1000_CTRL_EXT, tmp);
+	}
+
+	/*
+	 * Map TX/RX interrupts to EICR
+	 */
+	switch (sc->hw.mac.type) {
+	case e1000_82580:
+	case e1000_i350:
+	case e1000_vfadapt:
+	case e1000_vfadapt_i350:
+		/* RX entries */
+		for (i = 0; i < sc->num_queues; ++i) {
+			rxr = &sc->rx_rings[i];
+
+			index = i >> 1;
+			ivar = E1000_READ_REG_ARRAY(hw, E1000_IVAR0, index);
+
+			if (i & 1) {
+				ivar &= 0xff00ffff;
+				ivar |=
+				(rxr->rx_intr_bit | E1000_IVAR_VALID) << 16;
+			} else {
+				ivar &= 0xffffff00;
+				ivar |=
+				(rxr->rx_intr_bit | E1000_IVAR_VALID);
+			}
+			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, ivar);
+		}
+		/* TX entries */
+		for (i = 0; i < sc->num_queues; ++i) {
+			txr = &sc->tx_rings[i];
+
+			index = i >> 1;
+			ivar = E1000_READ_REG_ARRAY(hw, E1000_IVAR0, index);
+
+			if (i & 1) {
+				ivar &= 0x00ffffff;
+				ivar |=
+				(txr->tx_intr_bit | E1000_IVAR_VALID) << 24;
+			} else {
+				ivar &= 0xffff00ff;
+				ivar |=
+				(txr->tx_intr_bit | E1000_IVAR_VALID) << 8;
+			}
+			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, ivar);
+		}
+		/* Clear unused IVAR_MISC */
+		E1000_WRITE_REG(hw, E1000_IVAR_MISC, 0);
+		break;
+
+	case e1000_82576:
+		/* RX entries */
+		for (i = 0; i < sc->num_queues; ++i) {
+			rxr = &sc->rx_rings[i];
+
+			index = i & 0x7; /* Each IVAR has two entries */
+			ivar = E1000_READ_REG_ARRAY(hw, E1000_IVAR0, index);
+
+			if (i < 8) {
+				ivar &= 0xffffff00;
+				ivar |=
+				(rxr->rx_intr_bit | E1000_IVAR_VALID);
+			} else {
+				ivar &= 0xff00ffff;
+				ivar |=
+				(rxr->rx_intr_bit | E1000_IVAR_VALID) << 16;
+			}
+			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, ivar);
+		}
+		/* TX entries */
+		for (i = 0; i < sc->num_queues; ++i) {
+			txr = &sc->tx_rings[i];
+
+			index = i & 0x7; /* Each IVAR has two entries */
+			ivar = E1000_READ_REG_ARRAY(hw, E1000_IVAR0, index);
+
+			if (i < 8) {
+				ivar &= 0xffff00ff;
+				ivar |=
+				(txr->tx_intr_bit | E1000_IVAR_VALID) << 8;
+			} else {
+				ivar &= 0x00ffffff;
+				ivar |=
+				(txr->tx_intr_bit | E1000_IVAR_VALID) << 24;
+			}
+			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, ivar);
+		}
+		/* Clear unused IVAR_MISC */
+		E1000_WRITE_REG(hw, E1000_IVAR_MISC, 0);
+		break;
+
+	case e1000_82575:
+		/*
+		 * Enable necessary interrupt bits.
+		 *
+		 * The name of the register is confusing; in addition to
+		 * configuring the first vector of MSI-X, it also configures
+		 * which bits of EICR could be set by the hardware even when
+		 * MSI or line interrupt is used; it thus controls interrupt
+		 * generation.  It MUST be configured explicitly; the default
+		 * value mentioned in the datasheet is wrong: RX queue0 and
+		 * TX queue0 are NOT enabled by default.
+		 */
+		E1000_WRITE_REG(&sc->hw, E1000_MSIXBM(0), sc->intr_mask);
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 * Configure interrupt moderation
+	 */
+	igb_set_eitr(sc);
+}
+
+static int
+igb_setup_intr(struct igb_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, i;
+
+	/*
+	 * Setup interrupt mask
+	 */
+	for (i = 0; i < sc->num_queues; ++i)
+		igb_setup_tx_intr(&sc->tx_rings[i]);
+	for (i = 0; i < sc->num_queues; ++i)
+		igb_setup_rx_intr(&sc->rx_rings[i]);
+
+	sc->intr_mask = E1000_EICR_OTHER;
+	for (i = 0; i < sc->num_queues; ++i)
+		sc->intr_mask |= sc->rx_rings[i].rx_intr_mask;
+	for (i = 0; i < sc->num_queues; ++i)
+		sc->intr_mask |= sc->tx_rings[i].tx_intr_mask;
+
+	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
+		int unshared;
+
+		unshared = device_getenv_int(sc->dev, "irq.unshared", 0);
+		if (!unshared) {
+			sc->flags |= IGB_FLAG_SHARED_INTR;
+			if (bootverbose)
+				device_printf(sc->dev, "IRQ shared\n");
+		} else if (bootverbose) {
+			device_printf(sc->dev, "IRQ unshared\n");
+		}
+	}
+
+	error = bus_setup_intr(sc->dev, sc->intr_res, INTR_MPSAFE,
+	    (sc->flags & IGB_FLAG_SHARED_INTR) ? igb_shared_intr : igb_intr,
+	    sc, &sc->intr_tag, ifp->if_serializer);
+	if (error) {
+		device_printf(sc->dev, "Failed to register interrupt handler");
+		return error;
+	}
+
+	ifp->if_cpuid = rman_get_cpuid(sc->intr_res);
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
+	return 0;
+}
+
+static void
+igb_setup_tx_intr(struct igb_tx_ring *txr)
+{
+	if (txr->sc->hw.mac.type == e1000_82575) {
+		txr->tx_intr_bit = 0;	/* unused */
+		switch (txr->me) {
+		case 0:
+			txr->tx_intr_mask = E1000_EICR_TX_QUEUE0;
+			break;
+		case 1:
+			txr->tx_intr_mask = E1000_EICR_TX_QUEUE1;
+			break;
+		case 2:
+			txr->tx_intr_mask = E1000_EICR_TX_QUEUE2;
+			break;
+		case 3:
+			txr->tx_intr_mask = E1000_EICR_TX_QUEUE3;
+			break;
+		default:
+			panic("unsupported # of TX ring, %d\n", txr->me);
+		}
+	} else {
+		txr->tx_intr_bit = 0;	/* XXX */
+		txr->tx_intr_mask = 1 << txr->tx_intr_bit;
+	}
+}
+
+static void
+igb_setup_rx_intr(struct igb_rx_ring *rxr)
+{
+	if (rxr->sc->hw.mac.type == e1000_82575) {
+		rxr->rx_intr_bit = 0;	/* unused */
+		switch (rxr->me) {
+		case 0:
+			rxr->rx_intr_mask = E1000_EICR_RX_QUEUE0;
+			break;
+		case 1:
+			rxr->rx_intr_mask = E1000_EICR_RX_QUEUE1;
+			break;
+		case 2:
+			rxr->rx_intr_mask = E1000_EICR_RX_QUEUE2;
+			break;
+		case 3:
+			rxr->rx_intr_mask = E1000_EICR_RX_QUEUE3;
+			break;
+		default:
+			panic("unsupported # of RX ring, %d\n", rxr->me);
+		}
+	} else {
+		rxr->rx_intr_bit = 1;	/* XXX */
+		rxr->rx_intr_mask = 1 << rxr->rx_intr_bit;
+	}
 }
