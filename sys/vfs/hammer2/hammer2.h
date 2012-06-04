@@ -66,6 +66,7 @@
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
 #include "hammer2_ioctl.h"
+#include "hammer2_ccms.h"
 
 struct hammer2_chain;
 struct hammer2_inode;
