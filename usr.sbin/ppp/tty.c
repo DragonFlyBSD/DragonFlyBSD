@@ -45,10 +45,17 @@
 #include <unistd.h>
 #ifndef NONETGRAPH
 #include <netgraph.h>
+#ifdef WANT_NETGRAPH7
+#include <netgraph7/async/ng_async.h>
+#include <netgraph7/ng_message.h>
+#include <netgraph7/ppp/ng_ppp.h>
+#include <netgraph/tty/ng_tty.h>	/* XXX should be netgraph7/tty but that one is not ported yet */
+#else
 #include <netgraph/async/ng_async.h>
 #include <netgraph/ng_message.h>
 #include <netgraph/ppp/ng_ppp.h>
 #include <netgraph/tty/ng_tty.h>
+#endif
 #endif
 
 #include "layer.h"

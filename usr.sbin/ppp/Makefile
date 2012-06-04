@@ -78,6 +78,10 @@ LDADD+=	-lradius
 DPADD+= ${LIBRADIUS}
 .endif
 
+.if defined(WANT_NETGRAPH7)
+CFLAGS+=-DWANT_NETGRAPH7
+.endif
+
 .if defined(NONETGRAPH)
 CFLAGS+=-DNONETGRAPH
 .else

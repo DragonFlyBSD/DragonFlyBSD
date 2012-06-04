@@ -39,10 +39,17 @@
 #include <net/route.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
+#ifdef WANT_NETGRAPH7
+#include <netgraph7/ether/ng_ether.h>
+#include <netgraph7/ng_message.h>
+#include <netgraph7/pppoe/ng_pppoe.h>
+#include <netgraph7/socket/ng_socket.h>
+#else
 #include <netgraph/ether/ng_ether.h>
 #include <netgraph/ng_message.h>
 #include <netgraph/pppoe/ng_pppoe.h>
 #include <netgraph/socket/ng_socket.h>
+#endif
 
 #include <errno.h>
 #include <stdio.h>

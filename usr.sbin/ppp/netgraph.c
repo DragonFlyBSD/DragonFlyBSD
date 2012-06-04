@@ -37,9 +37,15 @@
 #include <net/ethernet.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
+#ifdef WANT_NETGRAPH7
+#include <netgraph7/ng_ether.h>
+#include <netgraph7/ng_message.h>
+#include <netgraph7/ng_socket.h>
+#else
 #include <netgraph/ng_ether.h>
 #include <netgraph/ng_message.h>
 #include <netgraph/ng_socket.h>
+#endif
 
 #include <errno.h>
 #include <stdio.h>
