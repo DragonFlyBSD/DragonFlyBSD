@@ -1628,6 +1628,7 @@ igb_init_tx_unit(struct igb_softc *sc)
 	for (i = 0; i < sc->num_queues; ++i) {
 		struct igb_tx_ring *txr = &sc->tx_rings[i];
 		uint64_t bus_addr = txr->txdma.dma_paddr;
+		uint64_t hdr_paddr = txr->tx_hdr_paddr;
 		uint32_t txdctl = 0;
 		uint32_t dca_txctrl;
 
@@ -1653,9 +1654,9 @@ igb_init_tx_unit(struct igb_softc *sc)
 		E1000_WRITE_REG(hw, E1000_DCA_TXCTRL(i), dca_txctrl);
 
 		E1000_WRITE_REG(hw, E1000_TDWBAH(i),
-		    (uint32_t)(txr->tx_hdr_paddr >> 32));
+		    (uint32_t)(hdr_paddr >> 32));
 		E1000_WRITE_REG(hw, E1000_TDWBAL(i),
-		    ((uint32_t)txr->tx_hdr_paddr) | E1000_TX_HEAD_WB_ENABLE);
+		    ((uint32_t)hdr_paddr) | E1000_TX_HEAD_WB_ENABLE);
 	}
 
 	if (sc->vf_ifp)
