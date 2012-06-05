@@ -1080,7 +1080,7 @@ jme_dma_alloc(struct jme_softc *sc)
 {
 	struct jme_txdesc *txd;
 	bus_dmamem_t dmem;
-	int error, i;
+	int error, i, asize;
 
 	sc->jme_cdata.jme_txdesc =
 	kmalloc(sc->jme_cdata.jme_tx_desc_cnt * sizeof(struct jme_txdesc),
@@ -1113,11 +1113,11 @@ jme_dma_alloc(struct jme_softc *sc)
 	/*
 	 * Create DMA stuffs for TX ring
 	 */
+	asize = roundup2(JME_TX_RING_SIZE(sc), JME_TX_RING_ALIGN);
 	error = bus_dmamem_coherent(sc->jme_cdata.jme_ring_tag,
 			JME_TX_RING_ALIGN, 0,
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			JME_TX_RING_SIZE(sc),
-			BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
+			asize, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		device_printf(sc->jme_dev, "could not allocate Tx ring.\n");
 		return error;
@@ -1156,9 +1156,10 @@ jme_dma_alloc(struct jme_softc *sc)
 	/*
 	 * Create DMA stuffs for shadow status block
 	 */
+	asize = roundup2(JME_SSB_SIZE, JME_SSB_ALIGN);
 	error = bus_dmamem_coherent(sc->jme_cdata.jme_buffer_tag,
 			JME_SSB_ALIGN, 0, BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			JME_SSB_SIZE, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
+			asize, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		device_printf(sc->jme_dev,
 		    "could not create shadow status block.\n");
@@ -3097,13 +3098,13 @@ static int
 jme_rxring_dma_alloc(struct jme_rxdata *rdata)
 {
 	bus_dmamem_t dmem;
-	int error;
+	int error, asize;
 
+	asize = roundup2(JME_RX_RING_SIZE(rdata), JME_RX_RING_ALIGN);
 	error = bus_dmamem_coherent(rdata->jme_sc->jme_cdata.jme_ring_tag,
 			JME_RX_RING_ALIGN, 0,
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			JME_RX_RING_SIZE(rdata),
-			BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
+			asize, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		device_printf(rdata->jme_sc->jme_dev,
 		    "could not allocate %dth Rx ring.\n", rdata->jme_rx_idx);

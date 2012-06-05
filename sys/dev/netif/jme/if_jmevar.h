@@ -39,8 +39,8 @@
  * JMC250 supports upto JME_NDESC_MAX descriptors and the number of
  * descriptors should be multiple of JME_NDESC_ALIGN.
  */
-#define	JME_TX_DESC_CNT_DEF	384
-#define	JME_RX_DESC_CNT_DEF	256
+#define	JME_TX_DESC_CNT_DEF	512
+#define	JME_RX_DESC_CNT_DEF	512
 
 #define JME_NDESC_ALIGN		16
 #define JME_NDESC_MAX		1024
@@ -61,13 +61,13 @@
  * should not cross 4G bytes boundary on the 64bits address
  * mode.
  */
-#define	JME_TX_RING_ALIGN	16
-#define	JME_RX_RING_ALIGN	16
+#define	JME_TX_RING_ALIGN	__VM_CACHELINE_SIZE
+#define	JME_RX_RING_ALIGN	__VM_CACHELINE_SIZE
 #define	JME_MAXSEGSIZE		4096
 #define	JME_TSO_MAXSIZE		(65535 + sizeof(struct ether_vlan_header))
 #define	JME_MAXTXSEGS		32
 #define	JME_RX_BUF_ALIGN	sizeof(uint64_t)
-#define	JME_SSB_ALIGN		16
+#define	JME_SSB_ALIGN		__VM_CACHELINE_SIZE
 
 #if (BUS_SPACE_MAXADDR != BUS_SPACE_MAXADDR_32BIT)
 #define JME_RING_BOUNDARY	0x100000000ULL
