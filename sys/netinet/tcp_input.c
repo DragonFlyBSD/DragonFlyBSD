@@ -415,6 +415,9 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	}
 	atomic_add_int(&tcp_reass_qsize, 1);
 
+	if (th->th_flags & TH_FIN)
+		tp->t_flags |= TF_QUEDFIN;
+
 	/*
 	 * Find a segment which begins after this one does.
 	 */
@@ -2018,16 +2021,30 @@ after_listen:
 	case TCPS_TIME_WAIT:
 
 		if (SEQ_LEQ(th->th_ack, tp->snd_una)) {
+			boolean_t maynotdup = FALSE;
+
 			if (TCP_DO_SACK(tp))
 				tcp_sack_update_scoreboard(tp, &to);
+
+			if (tlen != 0 || tiwin != tp->snd_wnd ||
+			    ((thflags & TH_FIN) && !(tp->t_flags & TF_SAWFIN)))
+				maynotdup = TRUE;
+
 			if (!tcp_callout_active(tp, tp->tt_rexmt) ||
 			    th->th_ack != tp->snd_una) {
-				if (tlen == 0 && tiwin == tp->snd_wnd)
+				if (!maynotdup)
 					tcpstat.tcps_rcvdupack++;
 				tp->t_dupacks = 0;
 				break;
 			}
-			if (tlen != 0 || tiwin != tp->snd_wnd) {
+
+#define DELAY_DUPACK \
+do { \
+	delayed_dupack = TRUE; \
+	th_dupack = th->th_ack; \
+	to_flags = to.to_flags; \
+} while (0)
+			if (maynotdup) {
 				if (!tcp_do_rfc3517bis ||
 				    !TCP_DO_SACK(tp) ||
 				    (to.to_flags &
@@ -2035,12 +2052,22 @@ after_listen:
 				     != TOF_SACK) {
 					tp->t_dupacks = 0;
 				} else {
-					delayed_dupack = TRUE;
-					th_dupack = th->th_ack;
-					to_flags = to.to_flags;
+					DELAY_DUPACK;
 				}
 				break;
 			}
+			if ((thflags & TH_FIN) && !(tp->t_flags & TF_QUEDFIN)) {
+				/*
+				 * This could happen, if the reassemable
+				 * queue overflew or was drained.  Don't
+				 * drop this FIN here; defer the duplicated
+				 * ACK processing until this FIN gets queued.
+				 */
+				DELAY_DUPACK;
+				break;
+			}
+#undef DELAY_DUPACK
+
 			if (tcp_recv_dupack(tp, th->th_ack, to.to_flags))
 				goto drop;
 			else
@@ -2404,6 +2431,8 @@ dodata:							/* XXX */
 	 * connection then we just ignore the text.
 	 */
 	if ((tlen || (thflags & TH_FIN)) && !TCPS_HAVERCVDFIN(tp->t_state)) {
+		if (thflags & TH_FIN)
+			tp->t_flags |= TF_SAWFIN;
 		m_adj(m, drop_hdrlen);	/* delayed header drop */
 		/*
 		 * Insert segment which includes th into TCP reassembly queue
@@ -2420,6 +2449,8 @@ dodata:							/* XXX */
 		if (th->th_seq == tp->rcv_nxt &&
 		    TAILQ_EMPTY(&tp->t_segq) &&
 		    TCPS_HAVEESTABLISHED(tp->t_state)) {
+			if (thflags & TH_FIN)
+				tp->t_flags |= TF_QUEDFIN;
 			if (DELAY_ACK(tp)) {
 				tcp_callout_reset(tp, tp->tt_delack,
 				    tcp_delacktime, tcp_timer_delack);
