@@ -31,12 +31,13 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 20, 2009
+.Dd June 6, 2012
 .Dt HASHINIT 9
 .Os
 .Sh NAME
 .Nm hashinit ,
 .Nm hashinit_ext ,
+.Nm hashdestroy ,
 .Nm phashinit ,
 .Nm phashinit_ext
 .Nd generic hash table functions for the kernel
@@ -48,6 +49,8 @@
 .Fn hashinit "int count" "struct malloc_type *type" "u_long *hashmask"
 .Ft void *
 .Fn hashinit_ext "int count" "size_t size" "struct malloc_type *type" "u_long *hashmask"
+.Ft void
+.Fn hashdestroy "void *hashtbl" "struct malloc_type *type" "u_long hashmask"
 .Ft void *
 .Fn phashinit "int count" "struct malloc_type *type" "u_long *nentries"
 .Ft void *
@@ -96,6 +99,22 @@ which take the
 of the structure as an additional argument and will zero the array instead
 of assuming that it is an array of
 .Dv LIST_HEAD Ns s .
+.Pp
+The
+.Fn hashdestroy
+function frees the space occupied by the hash table pointed to by argument
+.Fa hashtbl .
+Argument
+.Fa type
+determines the malloc arena to use when freeing space.
+The argument
+.Fa hashmask
+should be the bit mask returned by the call to
+.Fn hashinit
+that allocated the hash table.
+The argument
+.Fa flags
+must be used with one of the following values.
 .Sh SEE ALSO
 .Xr tcp 4 ,
 .Xr udp 4 ,
@@ -104,3 +123,11 @@ of assuming that it is an array of
 .Sh AUTHORS
 This manual page was written by
 .An Hiten Pandya Aq hmp@backplane.com .
+.Sh BUGS
+There is no
+.Fn phashdestroy
+function, and using
+.Fn hashdestroy
+to free a hash table allocated by
+.Fn phashinit
+usually has grave consequences.

@@ -446,7 +446,8 @@ MLINKS+=firmware.9 firmware_get.9 \
 	firmware.9 firmware_put.9 \
 	firmware.9 firmware_register.9 \
 	firmware.9 firmware_unregister.9
-MLINKS+=hashinit.9 hashinit_ext.9 \
+MLINKS+=hashinit.9 hashdestroy.9 \
+	hashinit.9 hashinit_ext.9 \
 	hashinit.9 phashinit.9 \
 	hashinit.9 phashinit_ext.9
 MLINKS+=ioctl.9 _IOR.9 \
