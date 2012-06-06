@@ -24,7 +24,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  *
- * __FBSDID("$FreeBSD: src/sys/dev/drm/drm_hashtab.c,v 1.1 2010/01/31 14:25:29 rnoland Exp $");
+ * $FreeBSD: src/sys/dev/drm/drm_hashtab.c,v 1.1 2010/01/31 14:25:29 rnoland Exp $
  **************************************************************************/
 
 /*
@@ -34,21 +34,17 @@
  * Thomas Hellström <thomas-at-tungstengraphics-dot-com>
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm_hashtab.h"
-
-#if defined(__DragonFly__)
-#include "dev/drm/drm_priv_hash.h"
-#else
 #include <sys/hash.h>
-#endif
+
+#include "drmP.h"
+#include "drm_hashtab.h"
 
 int drm_ht_create(struct drm_open_hash *ht, unsigned int order)
 {
 	ht->size = 1 << order;
 	ht->order = order;
 	ht->table = NULL;
-	ht->table = drm_hashinit(ht->size, DRM_MEM_HASHTAB, &ht->mask);
+	ht->table = hashinit(ht->size, DRM_MEM_HASHTAB, &ht->mask);
 	if (!ht->table) {
 		DRM_ERROR("Out of memory for hash table\n");
 		return -ENOMEM;

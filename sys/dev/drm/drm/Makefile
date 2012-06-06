@@ -19,7 +19,6 @@ SRCS    = \
 	drm_pci.c \
 	drm_scatter.c \
 	drm_sman.c \
-	drm_subr_hash.c \
 	drm_sysctl.c \
 	drm_vm.c
 

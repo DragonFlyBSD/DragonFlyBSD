@@ -26,8 +26,8 @@
  * $FreeBSD: src/sys/sys/hash.h,v 1.3 2007/04/09 22:55:14 thompsa Exp $
  */
 
-#ifndef _DRM_PRIV_HASH_H
-#define	_DRM_PRIV_HASH_H_
+#ifndef _SYS_HASH_H
+#define	_SYS_HASH_H_
 #include <sys/types.h>
 
 /* Convenience */
@@ -119,16 +119,4 @@ hash32_strne(const void *buf, size_t len, int end, const char **ep,
 	return hash;
 }
 
-/* Added to act as private header files for hash function */
-
-void *
-drm_hashinit_flags(int elements, struct malloc_type *type, u_long *hashmask,
-    int flags);
-
-void *
-drm_hashinit(int elements, struct malloc_type *type, u_long *hashmask);
-
-void
-drm_hashdestroy(void *vhashtbl, struct malloc_type *type, u_long hashmask);
-
-#endif /* !_DRM_PRIV_HASH_H_ */
+#endif /* !_SYS_HASH_H_ */
