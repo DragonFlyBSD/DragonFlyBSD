@@ -478,6 +478,9 @@ static uint32_t	bce_rx_ticks = 125;		/* bcm: 18 */
 
 static int	bce_msi_enable = 1;
 
+static int	bce_rx_pages = RX_PAGES_DEFAULT;
+static int	bce_tx_pages = TX_PAGES_DEFAULT;
+
 TUNABLE_INT("hw.bce.tx_bds_int", &bce_tx_bds_int);
 TUNABLE_INT("hw.bce.tx_bds", &bce_tx_bds);
 TUNABLE_INT("hw.bce.tx_ticks_int", &bce_tx_ticks_int);
@@ -487,6 +490,8 @@ TUNABLE_INT("hw.bce.rx_bds", &bce_rx_bds);
 TUNABLE_INT("hw.bce.rx_ticks_int", &bce_rx_ticks_int);
 TUNABLE_INT("hw.bce.rx_ticks", &bce_rx_ticks);
 TUNABLE_INT("hw.bce.msi.enable", &bce_msi_enable);
+TUNABLE_INT("hw.bce.rx_pages", &bce_rx_pages);
+TUNABLE_INT("hw.bce.tx_pages", &bce_tx_pages);
 
 /****************************************************************************/
 /* DragonFly device dispatch table.                                         */
@@ -937,7 +942,7 @@ bce_attach(device_t dev)
 	ifp->if_hwassist = BCE_IF_HWASSIST;
 	ifp->if_capabilities = BCE_IF_CAPABILITIES;
 	ifp->if_capenable = ifp->if_capabilities;
-	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD);
+	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD(sc));
 	ifq_set_ready(&ifp->if_snd);
 
 	if (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)
@@ -2032,7 +2037,6 @@ bce_dma_free(struct bce_softc *sc)
 		bus_dma_tag_destroy(sc->status_tag);
 	}
 
-
 	/* Destroy the statistics block. */
 	if (sc->stats_tag != NULL) {
 		if (sc->stats_block != NULL) {
@@ -2057,7 +2061,7 @@ bce_dma_free(struct bce_softc *sc)
 
 	/* Destroy the TX buffer descriptor DMA stuffs. */
 	if (sc->tx_bd_chain_tag != NULL) {
-		for (i = 0; i < TX_PAGES; i++) {
+		for (i = 0; i < sc->tx_pages; i++) {
 			if (sc->tx_bd_chain[i] != NULL) {
 				bus_dmamap_unload(sc->tx_bd_chain_tag,
 						  sc->tx_bd_chain_map[i]);
@@ -2071,7 +2075,7 @@ bce_dma_free(struct bce_softc *sc)
 
 	/* Destroy the RX buffer descriptor DMA stuffs. */
 	if (sc->rx_bd_chain_tag != NULL) {
-		for (i = 0; i < RX_PAGES; i++) {
+		for (i = 0; i < sc->rx_pages; i++) {
 			if (sc->rx_bd_chain[i] != NULL) {
 				bus_dmamap_unload(sc->rx_bd_chain_tag,
 						  sc->rx_bd_chain_map[i]);
@@ -2085,7 +2089,7 @@ bce_dma_free(struct bce_softc *sc)
 
 	/* Destroy the TX mbuf DMA stuffs. */
 	if (sc->tx_mbuf_tag != NULL) {
-		for (i = 0; i < TOTAL_TX_BD; i++) {
+		for (i = 0; i < TOTAL_TX_BD(sc); i++) {
 			/* Must have been unloaded in bce_stop() */
 			KKASSERT(sc->tx_mbuf_ptr[i] == NULL);
 			bus_dmamap_destroy(sc->tx_mbuf_tag,
@@ -2096,7 +2100,7 @@ bce_dma_free(struct bce_softc *sc)
 
 	/* Destroy the RX mbuf DMA stuffs. */
 	if (sc->rx_mbuf_tag != NULL) {
-		for (i = 0; i < TOTAL_RX_BD; i++) {
+		for (i = 0; i < TOTAL_RX_BD(sc); i++) {
 			/* Must have been unloaded in bce_stop() */
 			KKASSERT(sc->rx_mbuf_ptr[i] == NULL);
 			bus_dmamap_destroy(sc->rx_mbuf_tag,
@@ -2109,6 +2113,32 @@ bce_dma_free(struct bce_softc *sc)
 	/* Destroy the parent tag */
 	if (sc->parent_tag != NULL)
 		bus_dma_tag_destroy(sc->parent_tag);
+
+	if (sc->tx_bd_chain_map != NULL)
+		kfree(sc->tx_bd_chain_map, M_DEVBUF);
+	if (sc->tx_bd_chain != NULL)
+		kfree(sc->tx_bd_chain, M_DEVBUF);
+	if (sc->tx_bd_chain_paddr != NULL)
+		kfree(sc->tx_bd_chain_paddr, M_DEVBUF);
+
+	if (sc->rx_bd_chain_map != NULL)
+		kfree(sc->rx_bd_chain_map, M_DEVBUF);
+	if (sc->rx_bd_chain != NULL)
+		kfree(sc->rx_bd_chain, M_DEVBUF);
+	if (sc->rx_bd_chain_paddr != NULL)
+		kfree(sc->rx_bd_chain_paddr, M_DEVBUF);
+
+	if (sc->tx_mbuf_map != NULL)
+		kfree(sc->tx_mbuf_map, M_DEVBUF);
+	if (sc->tx_mbuf_ptr != NULL)
+		kfree(sc->tx_mbuf_ptr, M_DEVBUF);
+
+	if (sc->rx_mbuf_map != NULL)
+		kfree(sc->rx_mbuf_map, M_DEVBUF);
+	if (sc->rx_mbuf_ptr != NULL)
+		kfree(sc->rx_mbuf_ptr, M_DEVBUF);
+	if (sc->rx_mbuf_paddr != NULL)
+		kfree(sc->rx_mbuf_paddr, M_DEVBUF);
 }
 
 
@@ -2175,11 +2205,51 @@ static int
 bce_dma_alloc(struct bce_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i, j, rc = 0;
+	int i, j, rc = 0, pages;
 	bus_addr_t busaddr, max_busaddr;
 	bus_size_t status_align, stats_align;
 
-	/* 
+	pages = device_getenv_int(sc->bce_dev, "rx_pages", bce_rx_pages);
+	if (pages <= 0 || pages > RX_PAGES_MAX || !powerof2(pages)) {
+		device_printf(sc->bce_dev, "invalid # of RX pages\n");
+		pages = RX_PAGES_DEFAULT;
+	}
+	sc->rx_pages = pages;
+
+	pages = device_getenv_int(sc->bce_dev, "tx_pages", bce_tx_pages);
+	if (pages <= 0 || pages > TX_PAGES_MAX || !powerof2(pages)) {
+		device_printf(sc->bce_dev, "invalid # of TX pages\n");
+		pages = TX_PAGES_DEFAULT;
+	}
+	sc->tx_pages = pages;
+
+	sc->tx_bd_chain_map = kmalloc(sizeof(bus_dmamap_t) * sc->tx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->tx_bd_chain = kmalloc(sizeof(struct tx_bd *) * sc->tx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->tx_bd_chain_paddr = kmalloc(sizeof(bus_addr_t) * sc->tx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+
+	sc->rx_bd_chain_map = kmalloc(sizeof(bus_dmamap_t) * sc->rx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->rx_bd_chain = kmalloc(sizeof(struct rx_bd *) * sc->rx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->rx_bd_chain_paddr = kmalloc(sizeof(bus_addr_t) * sc->rx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+
+	sc->tx_mbuf_map = kmalloc(sizeof(bus_dmamap_t) * TOTAL_TX_BD(sc),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->tx_mbuf_ptr = kmalloc(sizeof(struct mbuf *) * TOTAL_TX_BD(sc),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+
+	sc->rx_mbuf_map = kmalloc(sizeof(bus_dmamap_t) * TOTAL_RX_BD(sc),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->rx_mbuf_ptr = kmalloc(sizeof(struct mbuf *) * TOTAL_RX_BD(sc),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->rx_mbuf_paddr = kmalloc(sizeof(bus_addr_t) * TOTAL_RX_BD(sc),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+
+	/*
 	 * The embedded PCIe to PCI-X bridge (EPB) 
 	 * in the 5708 cannot address memory above 
 	 * 40 bits (E7_5708CB1_23043 & E6_5708SB1_23043). 
@@ -2312,7 +2382,7 @@ bce_dma_alloc(struct bce_softc *sc)
 		return rc;
 	}
 
-	for (i = 0; i < TX_PAGES; i++) {
+	for (i = 0; i < sc->tx_pages; i++) {
 		rc = bus_dmamem_alloc(sc->tx_bd_chain_tag,
 				      (void **)&sc->tx_bd_chain[i],
 				      BUS_DMA_WAITOK | BUS_DMA_ZERO |
@@ -2364,7 +2434,7 @@ bce_dma_alloc(struct bce_softc *sc)
 	}
 
 	/* Create DMA maps for the TX mbufs clusters. */
-	for (i = 0; i < TOTAL_TX_BD; i++) {
+	for (i = 0; i < TOTAL_TX_BD(sc); i++) {
 		rc = bus_dmamap_create(sc->tx_mbuf_tag,
 				       BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 				       &sc->tx_mbuf_map[i]);
@@ -2398,7 +2468,7 @@ bce_dma_alloc(struct bce_softc *sc)
 		return rc;
 	}
 
-	for (i = 0; i < RX_PAGES; i++) {
+	for (i = 0; i < sc->rx_pages; i++) {
 		rc = bus_dmamem_alloc(sc->rx_bd_chain_tag,
 				      (void **)&sc->rx_bd_chain[i],
 				      BUS_DMA_WAITOK | BUS_DMA_ZERO |
@@ -2460,7 +2530,7 @@ bce_dma_alloc(struct bce_softc *sc)
 	}
 
 	/* Create DMA maps for the RX mbuf clusters. */
-	for (i = 0; i < TOTAL_RX_BD; i++) {
+	for (i = 0; i < TOTAL_RX_BD(sc); i++) {
 		rc = bus_dmamap_create(sc->rx_mbuf_tag, BUS_DMA_WAITOK,
 				       &sc->rx_mbuf_map[i]);
 		if (rc != 0) {
@@ -3759,11 +3829,11 @@ bce_newbuf_std(struct bce_softc *sc, uint16_t *prod, uint16_t *chain_prod,
 #endif
 
 	/* Make sure the inputs are valid. */
-	DBRUNIF((*chain_prod > MAX_RX_BD),
+	DBRUNIF((*chain_prod > MAX_RX_BD(sc)),
 		if_printf(&sc->arpcom.ac_if, "%s(%d): "
 			  "RX producer out of range: 0x%04X > 0x%04X\n",
 			  __FILE__, __LINE__,
-			  *chain_prod, (uint16_t)MAX_RX_BD));
+			  *chain_prod, (uint16_t)MAX_RX_BD(sc)));
 
 	DBPRINT(sc, BCE_VERBOSE_RECV, "%s(enter): prod = 0x%04X, chain_prod = 0x%04X, "
 		"prod_bseq = 0x%08X\n", __func__, *prod, *chain_prod, *prod_bseq);
@@ -3807,11 +3877,11 @@ bce_newbuf_std(struct bce_softc *sc, uint16_t *prod, uint16_t *chain_prod,
 	sc->rx_mbuf_tmpmap = map;
 
 	/* Watch for overflow. */
-	DBRUNIF((sc->free_rx_bd > USABLE_RX_BD),
+	DBRUNIF((sc->free_rx_bd > USABLE_RX_BD(sc)),
 		if_printf(&sc->arpcom.ac_if, "%s(%d): "
 			  "Too many free rx_bd (0x%04X > 0x%04X)!\n",
 			  __FILE__, __LINE__, sc->free_rx_bd,
-			  (uint16_t)USABLE_RX_BD));
+			  (uint16_t)USABLE_RX_BD(sc)));
 
 	/* Update some debug statistic counters */
 	DBRUNIF((sc->free_rx_bd < sc->rx_low_watermark),
@@ -3922,8 +3992,8 @@ bce_init_tx_chain(struct bce_softc *sc)
 	sc->tx_cons = 0;
 	sc->tx_prod_bseq   = 0;
 	sc->used_tx_bd = 0;
-	sc->max_tx_bd = USABLE_TX_BD;
-	DBRUNIF(1, sc->tx_hi_watermark = USABLE_TX_BD);
+	sc->max_tx_bd = USABLE_TX_BD(sc);
+	DBRUNIF(1, sc->tx_hi_watermark = USABLE_TX_BD(sc));
 	DBRUNIF(1, sc->tx_full_count = 0);
 
 	/*
@@ -3937,13 +4007,13 @@ bce_init_tx_chain(struct bce_softc *sc)
 	 */
 
 	/* Set the TX next pointer chain entries. */
-	for (i = 0; i < TX_PAGES; i++) {
+	for (i = 0; i < sc->tx_pages; i++) {
 		int j;
 
 		txbd = &sc->tx_bd_chain[i][USABLE_TX_BD_PER_PAGE];
 
 		/* Check if we've reached the last page. */
-		if (i == (TX_PAGES - 1))
+		if (i == (sc->tx_pages - 1))
 			j = 0;
 		else
 			j = i + 1;
@@ -3973,7 +4043,7 @@ bce_free_tx_chain(struct bce_softc *sc)
 	DBPRINT(sc, BCE_VERBOSE_RESET, "Entering %s()\n", __func__);
 
 	/* Unmap, unload, and free any mbufs still in the TX mbuf chain. */
-	for (i = 0; i < TOTAL_TX_BD; i++) {
+	for (i = 0; i < TOTAL_TX_BD(sc); i++) {
 		if (sc->tx_mbuf_ptr[i] != NULL) {
 			bus_dmamap_unload(sc->tx_mbuf_tag, sc->tx_mbuf_map[i]);
 			m_freem(sc->tx_mbuf_ptr[i]);
@@ -3983,7 +4053,7 @@ bce_free_tx_chain(struct bce_softc *sc)
 	}
 
 	/* Clear each TX chain page. */
-	for (i = 0; i < TX_PAGES; i++)
+	for (i = 0; i < sc->tx_pages; i++)
 		bzero(sc->tx_bd_chain[i], BCE_TX_CHAIN_PAGE_SZ);
 	sc->used_tx_bd = 0;
 
@@ -4025,7 +4095,7 @@ bce_init_rx_context(struct bce_softc *sc)
 		uint32_t lo_water, hi_water;
 
 		lo_water = BCE_L2CTX_RX_LO_WATER_MARK_DEFAULT;
-		hi_water = USABLE_RX_BD / 4;
+		hi_water = USABLE_RX_BD(sc) / 4;
 
 		lo_water /= BCE_L2CTX_RX_LO_WATER_MARK_SCALE;
 		hi_water /= BCE_L2CTX_RX_HI_WATER_MARK_SCALE;
@@ -4075,19 +4145,19 @@ bce_init_rx_chain(struct bce_softc *sc)
 	sc->rx_prod = 0;
 	sc->rx_cons = 0;
 	sc->rx_prod_bseq = 0;
-	sc->free_rx_bd = USABLE_RX_BD;
-	sc->max_rx_bd = USABLE_RX_BD;
-	DBRUNIF(1, sc->rx_low_watermark = USABLE_RX_BD);
+	sc->free_rx_bd = USABLE_RX_BD(sc);
+	sc->max_rx_bd = USABLE_RX_BD(sc);
+	DBRUNIF(1, sc->rx_low_watermark = USABLE_RX_BD(sc));
 	DBRUNIF(1, sc->rx_empty_count = 0);
 
 	/* Initialize the RX next pointer chain entries. */
-	for (i = 0; i < RX_PAGES; i++) {
+	for (i = 0; i < sc->rx_pages; i++) {
 		int j;
 
 		rxbd = &sc->rx_bd_chain[i][USABLE_RX_BD_PER_PAGE];
 
 		/* Check if we've reached the last page. */
-		if (i == (RX_PAGES - 1))
+		if (i == (sc->rx_pages - 1))
 			j = 0;
 		else
 			j = i + 1;
@@ -4101,8 +4171,8 @@ bce_init_rx_chain(struct bce_softc *sc)
 
 	/* Allocate mbuf clusters for the rx_bd chain. */
 	prod = prod_bseq = 0;
-	while (prod < TOTAL_RX_BD) {
-		chain_prod = RX_CHAIN_IDX(prod);
+	while (prod < TOTAL_RX_BD(sc)) {
+		chain_prod = RX_CHAIN_IDX(sc, prod);
 		if (bce_newbuf_std(sc, &prod, &chain_prod, &prod_bseq, 1)) {
 			if_printf(&sc->arpcom.ac_if,
 				  "Error filling RX chain: rx_bd[0x%04X]!\n",
@@ -4143,7 +4213,7 @@ bce_free_rx_chain(struct bce_softc *sc)
 	DBPRINT(sc, BCE_VERBOSE_RESET, "Entering %s()\n", __func__);
 
 	/* Free any mbufs still in the RX mbuf chain. */
-	for (i = 0; i < TOTAL_RX_BD; i++) {
+	for (i = 0; i < TOTAL_RX_BD(sc); i++) {
 		if (sc->rx_mbuf_ptr[i] != NULL) {
 			bus_dmamap_unload(sc->rx_mbuf_tag, sc->rx_mbuf_map[i]);
 			m_freem(sc->rx_mbuf_ptr[i]);
@@ -4153,7 +4223,7 @@ bce_free_rx_chain(struct bce_softc *sc)
 	}
 
 	/* Clear each RX chain page. */
-	for (i = 0; i < RX_PAGES; i++)
+	for (i = 0; i < sc->rx_pages; i++)
 		bzero(sc->rx_bd_chain[i], BCE_RX_CHAIN_PAGE_SZ);
 
 	/* Check if we lost any mbufs in the process. */
@@ -4342,8 +4412,8 @@ bce_rx_intr(struct bce_softc *sc, int count)
 		 * Convert the producer/consumer indices
 		 * to an actual rx_bd index.
 		 */
-		sw_chain_cons = RX_CHAIN_IDX(sw_cons);
-		sw_chain_prod = RX_CHAIN_IDX(sw_prod);
+		sw_chain_cons = RX_CHAIN_IDX(sc, sw_cons);
+		sw_chain_prod = RX_CHAIN_IDX(sc, sw_prod);
 
 		/* Get the used rx_bd. */
 		rxbd = &sc->rx_bd_chain[RX_PAGE(sw_chain_cons)]
@@ -4625,19 +4695,19 @@ bce_tx_intr(struct bce_softc *sc)
 #ifdef BCE_DEBUG
 		struct tx_bd *txbd = NULL;
 #endif
-		sw_tx_chain_cons = TX_CHAIN_IDX(sw_tx_cons);
+		sw_tx_chain_cons = TX_CHAIN_IDX(sc, sw_tx_cons);
 
 		DBPRINT(sc, BCE_INFO_SEND,
 			"%s(): hw_tx_cons = 0x%04X, sw_tx_cons = 0x%04X, "
 			"sw_tx_chain_cons = 0x%04X\n",
 			__func__, hw_tx_cons, sw_tx_cons, sw_tx_chain_cons);
 
-		DBRUNIF((sw_tx_chain_cons > MAX_TX_BD),
+		DBRUNIF((sw_tx_chain_cons > MAX_TX_BD(sc)),
 			if_printf(ifp, "%s(%d): "
 				  "TX chain consumer out of range! "
 				  " 0x%04X > 0x%04X\n",
 				  __FILE__, __LINE__, sw_tx_chain_cons,
-				  (int)MAX_TX_BD);
+				  (int)MAX_TX_BD(sc));
 			bce_breakpoint(sc));
 
 		DBRUNIF(1, txbd = &sc->tx_bd_chain[TX_PAGE(sw_tx_chain_cons)]
@@ -4936,7 +5006,7 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	}
 
 	prod = sc->tx_prod;
-	chain_prod_start = chain_prod = TX_CHAIN_IDX(prod);
+	chain_prod_start = chain_prod = TX_CHAIN_IDX(sc, prod);
 
 	/* Map the mbuf into DMAable memory. */
 	map = sc->tx_mbuf_map[chain_prod_start];
@@ -4976,7 +5046,7 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	 * the mbuf.
 	 */
 	for (i = 0; i < nsegs; i++) {
-		chain_prod = TX_CHAIN_IDX(prod);
+		chain_prod = TX_CHAIN_IDX(sc, prod);
 		txbd= &sc->tx_bd_chain[TX_PAGE(chain_prod)][TX_IDX(chain_prod)];
 
 		txbd->tx_bd_haddr_lo = htole32(BCE_ADDR_LO(segs[i].ds_addr));
@@ -5066,7 +5136,7 @@ bce_start(struct ifnet *ifp)
 		"%s(): Start: tx_prod = 0x%04X, tx_chain_prod = %04zX, "
 		"tx_prod_bseq = 0x%08X\n",
 		__func__,
-		sc->tx_prod, TX_CHAIN_IDX(sc->tx_prod), sc->tx_prod_bseq);
+		sc->tx_prod, TX_CHAIN_IDX(sc, sc->tx_prod), sc->tx_prod_bseq);
 
 	for (;;) {
 		struct mbuf *m_head;
@@ -5118,7 +5188,7 @@ bce_start(struct ifnet *ifp)
 		"%s(): End: tx_prod = 0x%04X, tx_chain_prod = 0x%04zX, "
 		"tx_prod_bseq = 0x%08X\n",
 		__func__,
-		sc->tx_prod, TX_CHAIN_IDX(sc->tx_prod), sc->tx_prod_bseq);
+		sc->tx_prod, TX_CHAIN_IDX(sc, sc->tx_prod), sc->tx_prod_bseq);
 
 	REG_WR(sc, BCE_MQ_COMMAND,
 	    REG_RD(sc, BCE_MQ_COMMAND) | BCE_MQ_COMMAND_NO_MAP_ERROR);
@@ -6065,7 +6135,7 @@ bce_sysctl_dump_rx_chain(SYSCTL_HANDLER_ARGS)
 
         if (result == 1) {
                 sc = (struct bce_softc *)arg1;
-                bce_dump_rx_chain(sc, 0, USABLE_RX_BD);
+                bce_dump_rx_chain(sc, 0, USABLE_RX_BD(sc));
         }
 
         return error;
@@ -6093,7 +6163,7 @@ bce_sysctl_dump_tx_chain(SYSCTL_HANDLER_ARGS)
 
         if (result == 1) {
                 sc = (struct bce_softc *)arg1;
-                bce_dump_tx_chain(sc, 0, USABLE_TX_BD);
+                bce_dump_tx_chain(sc, 0, USABLE_TX_BD(sc));
         }
 
         return error;
@@ -6256,6 +6326,11 @@ bce_add_sysctls(struct bce_softc *sc)
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bce_sysctl_rx_ticks, "I",
 			"Receive coalescing ticks");
+
+	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "rx_pages",
+		CTLFLAG_RD, &sc->rx_pages, 0, "# of RX pages");
+	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_pages",
+		CTLFLAG_RD, &sc->tx_pages, 0, "# of TX pages");
 
 #ifdef BCE_DEBUG
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
@@ -6771,7 +6846,7 @@ bce_dump_tx_mbuf_chain(struct bce_softc *sc, int chain_prod, int count)
 	for (i = 0; i < count; i++) {
 		if_printf(ifp, "txmbuf[%d]\n", chain_prod);
 		bce_dump_mbuf(sc, sc->tx_mbuf_ptr[chain_prod]);
-		chain_prod = TX_CHAIN_IDX(NEXT_TX_BD(chain_prod));
+		chain_prod = TX_CHAIN_IDX(sc, NEXT_TX_BD(chain_prod));
 	}
 
 	if_printf(ifp,
@@ -6801,7 +6876,7 @@ bce_dump_rx_mbuf_chain(struct bce_softc *sc, int chain_prod, int count)
 	for (i = 0; i < count; i++) {
 		if_printf(ifp, "rxmbuf[0x%04X]\n", chain_prod);
 		bce_dump_mbuf(sc, sc->rx_mbuf_ptr[chain_prod]);
-		chain_prod = RX_CHAIN_IDX(NEXT_RX_BD(chain_prod));
+		chain_prod = RX_CHAIN_IDX(sc, NEXT_RX_BD(chain_prod));
 	}
 
 	if_printf(ifp,
@@ -6822,7 +6897,7 @@ bce_dump_txbd(struct bce_softc *sc, int idx, struct tx_bd *txbd)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	if (idx > MAX_TX_BD) {
+	if (idx > MAX_TX_BD(sc)) {
 		/* Index out of range. */
 		if_printf(ifp, "tx_bd[0x%04X]: Invalid tx_bd index!\n", idx);
 	} else if ((idx & USABLE_TX_BD_PER_PAGE) == USABLE_TX_BD_PER_PAGE) {
@@ -6891,7 +6966,7 @@ bce_dump_rxbd(struct bce_softc *sc, int idx, struct rx_bd *rxbd)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	if (idx > MAX_RX_BD) {
+	if (idx > MAX_RX_BD(sc)) {
 		/* Index out of range. */
 		if_printf(ifp, "rx_bd[0x%04X]: Invalid rx_bd index!\n", idx);
 	} else if ((idx & USABLE_RX_BD_PER_PAGE) == USABLE_RX_BD_PER_PAGE) {
@@ -6947,14 +7022,14 @@ bce_dump_tx_chain(struct bce_softc *sc, int tx_prod, int count)
 
 	if_printf(ifp, "page size      = 0x%08X, "
 		  "tx chain pages        = 0x%08X\n",
-		  (uint32_t)BCM_PAGE_SIZE, (uint32_t)TX_PAGES);
+		  (uint32_t)BCM_PAGE_SIZE, (uint32_t)sc->tx_pages);
 
 	if_printf(ifp, "tx_bd per page = 0x%08X, "
 		  "usable tx_bd per page = 0x%08X\n",
 		  (uint32_t)TOTAL_TX_BD_PER_PAGE,
 		  (uint32_t)USABLE_TX_BD_PER_PAGE);
 
-	if_printf(ifp, "total tx_bd    = 0x%08X\n", (uint32_t)TOTAL_TX_BD);
+	if_printf(ifp, "total tx_bd    = 0x%08X\n", (uint32_t)TOTAL_TX_BD(sc));
 
 	if_printf(ifp,
 	"----------------------------"
@@ -6967,7 +7042,7 @@ bce_dump_tx_chain(struct bce_softc *sc, int tx_prod, int count)
 
 	 	txbd = &sc->tx_bd_chain[TX_PAGE(tx_prod)][TX_IDX(tx_prod)];
 		bce_dump_txbd(sc, tx_prod, txbd);
-		tx_prod = TX_CHAIN_IDX(NEXT_TX_BD(tx_prod));
+		tx_prod = TX_CHAIN_IDX(sc, NEXT_TX_BD(tx_prod));
 	}
 
 	if_printf(ifp,
@@ -6997,14 +7072,14 @@ bce_dump_rx_chain(struct bce_softc *sc, int rx_prod, int count)
 
 	if_printf(ifp, "page size      = 0x%08X, "
 		  "rx chain pages        = 0x%08X\n",
-		  (uint32_t)BCM_PAGE_SIZE, (uint32_t)RX_PAGES);
+		  (uint32_t)BCM_PAGE_SIZE, (uint32_t)sc->rx_pages);
 
 	if_printf(ifp, "rx_bd per page = 0x%08X, "
 		  "usable rx_bd per page = 0x%08X\n",
 		  (uint32_t)TOTAL_RX_BD_PER_PAGE,
 		  (uint32_t)USABLE_RX_BD_PER_PAGE);
 
-	if_printf(ifp, "total rx_bd    = 0x%08X\n", (uint32_t)TOTAL_RX_BD);
+	if_printf(ifp, "total rx_bd    = 0x%08X\n", (uint32_t)TOTAL_RX_BD(sc));
 
 	if_printf(ifp,
 	"----------------------------"
@@ -7017,7 +7092,7 @@ bce_dump_rx_chain(struct bce_softc *sc, int rx_prod, int count)
 
 		rxbd = &sc->rx_bd_chain[RX_PAGE(rx_prod)][RX_IDX(rx_prod)];
 		bce_dump_rxbd(sc, rx_prod, rxbd);
-		rx_prod = RX_CHAIN_IDX(NEXT_RX_BD(rx_prod));
+		rx_prod = RX_CHAIN_IDX(sc, NEXT_RX_BD(rx_prod));
 	}
 
 	if_printf(ifp,
@@ -7051,11 +7126,11 @@ bce_dump_status_block(struct bce_softc *sc)
 
 	if_printf(ifp, "0x%04X(0x%04X) - rx_cons0\n",
 	    sblk->status_rx_quick_consumer_index0,
-	    (uint16_t)RX_CHAIN_IDX(sblk->status_rx_quick_consumer_index0));
+	    (uint16_t)RX_CHAIN_IDX(sc, sblk->status_rx_quick_consumer_index0));
 
 	if_printf(ifp, "0x%04X(0x%04X) - tx_cons0\n",
 	    sblk->status_tx_quick_consumer_index0,
-	    (uint16_t)TX_CHAIN_IDX(sblk->status_tx_quick_consumer_index0));
+	    (uint16_t)TX_CHAIN_IDX(sc, sblk->status_tx_quick_consumer_index0));
 
 	if_printf(ifp, "        0x%04X - status_idx\n", sblk->status_idx);
 
@@ -7063,37 +7138,43 @@ bce_dump_status_block(struct bce_softc *sc)
 	if (sblk->status_rx_quick_consumer_index1) {
 		if_printf(ifp, "0x%04X(0x%04X) - rx_cons1\n",
 		sblk->status_rx_quick_consumer_index1,
-		(uint16_t)RX_CHAIN_IDX(sblk->status_rx_quick_consumer_index1));
+		(uint16_t)RX_CHAIN_IDX(sc,
+		    sblk->status_rx_quick_consumer_index1));
 	}
 
 	if (sblk->status_tx_quick_consumer_index1) {
 		if_printf(ifp, "0x%04X(0x%04X) - tx_cons1\n",
 		sblk->status_tx_quick_consumer_index1,
-		(uint16_t)TX_CHAIN_IDX(sblk->status_tx_quick_consumer_index1));
+		(uint16_t)TX_CHAIN_IDX(sc,
+		    sblk->status_tx_quick_consumer_index1));
 	}
 
 	if (sblk->status_rx_quick_consumer_index2) {
 		if_printf(ifp, "0x%04X(0x%04X)- rx_cons2\n",
 		sblk->status_rx_quick_consumer_index2,
-		(uint16_t)RX_CHAIN_IDX(sblk->status_rx_quick_consumer_index2));
+		(uint16_t)RX_CHAIN_IDX(sc,
+		    sblk->status_rx_quick_consumer_index2));
 	}
 
 	if (sblk->status_tx_quick_consumer_index2) {
 		if_printf(ifp, "0x%04X(0x%04X) - tx_cons2\n",
 		sblk->status_tx_quick_consumer_index2,
-		(uint16_t)TX_CHAIN_IDX(sblk->status_tx_quick_consumer_index2));
+		(uint16_t)TX_CHAIN_IDX(sc,
+		    sblk->status_tx_quick_consumer_index2));
 	}
 
 	if (sblk->status_rx_quick_consumer_index3) {
 		if_printf(ifp, "0x%04X(0x%04X) - rx_cons3\n",
 		sblk->status_rx_quick_consumer_index3,
-		(uint16_t)RX_CHAIN_IDX(sblk->status_rx_quick_consumer_index3));
+		(uint16_t)RX_CHAIN_IDX(sc,
+		    sblk->status_rx_quick_consumer_index3));
 	}
 
 	if (sblk->status_tx_quick_consumer_index3) {
 		if_printf(ifp, "0x%04X(0x%04X) - tx_cons3\n",
 		sblk->status_tx_quick_consumer_index3,
-		(uint16_t)TX_CHAIN_IDX(sblk->status_tx_quick_consumer_index3));
+		(uint16_t)TX_CHAIN_IDX(sc,
+		    sblk->status_tx_quick_consumer_index3));
 	}
 
 	if (sblk->status_rx_quick_consumer_index4 ||
@@ -7544,22 +7625,22 @@ bce_dump_driver_state(struct bce_softc *sc)
 
 	if_printf(ifp, "     0x%04X(0x%04X) - (sc->tx_prod) "
 		  "tx producer index\n",
-		  sc->tx_prod, (uint16_t)TX_CHAIN_IDX(sc->tx_prod));
+		  sc->tx_prod, (uint16_t)TX_CHAIN_IDX(sc, sc->tx_prod));
 
 	if_printf(ifp, "     0x%04X(0x%04X) - (sc->tx_cons) "
 		  "tx consumer index\n",
-		  sc->tx_cons, (uint16_t)TX_CHAIN_IDX(sc->tx_cons));
+		  sc->tx_cons, (uint16_t)TX_CHAIN_IDX(sc, sc->tx_cons));
 
 	if_printf(ifp, "         0x%08X - (sc->tx_prod_bseq) "
 		  "tx producer bseq index\n", sc->tx_prod_bseq);
 
 	if_printf(ifp, "     0x%04X(0x%04X) - (sc->rx_prod) "
 		  "rx producer index\n",
-		  sc->rx_prod, (uint16_t)RX_CHAIN_IDX(sc->rx_prod));
+		  sc->rx_prod, (uint16_t)RX_CHAIN_IDX(sc, sc->rx_prod));
 
 	if_printf(ifp, "     0x%04X(0x%04X) - (sc->rx_cons) "
 		  "rx consumer index\n",
-		  sc->rx_cons, (uint16_t)RX_CHAIN_IDX(sc->rx_cons));
+		  sc->rx_cons, (uint16_t)RX_CHAIN_IDX(sc, sc->rx_cons));
 
 	if_printf(ifp, "         0x%08X - (sc->rx_prod_bseq) "
 		  "rx producer bseq index\n", sc->rx_prod_bseq);
@@ -7870,7 +7951,7 @@ bce_breakpoint(struct bce_softc *sc)
 
 	bce_dump_driver_state(sc);
 	bce_dump_status_block(sc);
-	bce_dump_tx_chain(sc, 0, TOTAL_TX_BD);
+	bce_dump_tx_chain(sc, 0, TOTAL_TX_BD(sc));
 	bce_dump_hw_state(sc);
 	bce_dump_txp_state(sc);
 
