@@ -1713,7 +1713,8 @@ sctp_move_pcb_and_assoc(struct sctp_inpcb *old_inp, struct sctp_inpcb *new_inp,
 	stcb->sctp_socket = new_inp->sctp_socket;
 	stcb->sctp_ep = new_inp;
 	if (new_inp->sctp_tcbhash != NULL) {
-		kfree(new_inp->sctp_tcbhash, M_PCB);
+		hashdestroy(new_inp->sctp_tcbhash, M_PCB,
+		    new_inp->sctp_hashmark);
 		new_inp->sctp_tcbhash = NULL;
 	}
 	if ((new_inp->sctp_flags & SCTP_PCB_FLAGS_BOUNDALL) == 0) {
@@ -2493,7 +2494,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 	}
 	/* Now lets see about freeing the EP hash table. */
 	if (inp->sctp_tcbhash != NULL) {
-		kfree(inp->sctp_tcbhash, M_PCB);
+		hashdestroy(inp->sctp_tcbhash, M_PCB, inp->sctp_hashmark);
 		inp->sctp_tcbhash = 0;
 	}
 	SCTP_INP_WUNLOCK(inp);

@@ -34,7 +34,6 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.c,v 1.7 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.12 2006/09/10 01:26:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -68,8 +67,7 @@ void
 ntfs_nthashinit(void)
 {
 	lockinit(&ntfs_hashlock, "ntfs_nthashlock", 0, 0);
-	ntfs_nthashtbl = HASHINIT(desiredvnodes, M_NTFSNTHASH, M_WAITOK,
-	    &ntfs_nthash);
+	ntfs_nthashtbl = hashinit(desiredvnodes, M_NTFSNTHASH, &ntfs_nthash);
 	lwkt_token_init(&ntfs_nthash_slock, "ntfsihash");
 }
 
@@ -81,7 +79,7 @@ ntfs_nthash_uninit(struct vfsconf *vfc)
 {
 	lwkt_gettoken(&ntfs_nthash_slock);
 	if (ntfs_nthashtbl)
-		kfree(ntfs_nthashtbl, M_NTFSNTHASH);
+		hashdestroy(ntfs_nthashtbl, M_NTFSNTHASH, ntfs_nthash);
 	lwkt_reltoken(&ntfs_nthash_slock);
 
 	return 0;

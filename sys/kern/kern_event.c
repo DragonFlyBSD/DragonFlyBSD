@@ -512,7 +512,7 @@ kqueue_terminate(struct kqueue *kq)
 			knote_detach_and_drop(kn);
 	}
 	if (kq->kq_knhash) {
-		kfree(kq->kq_knhash, M_KQUEUE);
+		hashdestroy(kq->kq_knhash, M_KQUEUE, kq->kq_knhashmask);
 		kq->kq_knhash = NULL;
 		kq->kq_knhashmask = 0;
 	}

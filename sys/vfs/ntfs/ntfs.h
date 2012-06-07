@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs.h,v 1.8.2.2 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.16 2006/12/23 00:41:30 swildner Exp $
  */
 
 /*#define NTFS_DEBUG 1*/
@@ -306,7 +305,6 @@ MALLOC_DECLARE(M_NTFSDIR);
 MALLOC_DECLARE(M_NTFSNTHASH);
 #endif
 
-#define HASHINIT(a, b, c, d)	hashinit((a), (b), (d))
 #define VOP__UNLOCK(a, b)	vn_unlock((a))
 #define VGET(a, b)		vget((a), (b))
 #define VN_LOCK(a, b)		vn_lock((a), (b))

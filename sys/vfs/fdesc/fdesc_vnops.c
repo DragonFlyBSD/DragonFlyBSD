@@ -97,7 +97,7 @@ int
 fdesc_uninit(struct vfsconf *vfsp)
 {
 	if (fdhashtbl)
-		kfree(fdhashtbl, M_CACHE);
+		hashdestroy(fdhashtbl, M_CACHE, fdhash);
 	return (0);
 }
 int

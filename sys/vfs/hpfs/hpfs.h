@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.23 2006/12/23 00:41:29 swildner Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -385,7 +384,6 @@ MALLOC_DECLARE(M_HPFSNO);
 #define	FID(f)		(*((lsn_t *)(f)->fid_data))
 #define dbtodoff(dbn)	((off_t)(dbn) << DEV_BSHIFT)
 
-#define HASHINIT(a, b, c, d)	hashinit((a), (b), (d))
 #define VOP__LOCK(a, b)		vn_lock((a), (b))
 #define VOP__UNLOCK(a, b)	vn_unlock((a))
 #define VGET(a, b, c)		vget((a), (b))
