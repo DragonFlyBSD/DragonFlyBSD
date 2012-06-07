@@ -595,7 +595,6 @@ lwkt_switch(void)
     globaldata_t gd = mycpu;
     thread_t td = gd->gd_curthread;
     thread_t ntd;
-    thread_t xtd;
     int spinning = 0;
 
     KKASSERT(gd->gd_processing_ipiq == 0);
@@ -774,7 +773,6 @@ lwkt_switch(void)
 	if (fairq_bypass > 0)
 		goto skip;
 
-	xtd = NULL;
 	while ((ntd = TAILQ_NEXT(ntd, td_threadq)) != NULL) {
 		/*
 		 * Never schedule threads returning to userland or the

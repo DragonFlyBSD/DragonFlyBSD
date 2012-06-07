@@ -172,7 +172,7 @@ int drm_ht_remove_item(struct drm_open_hash *ht, struct drm_hash_item *item)
 void drm_ht_remove(struct drm_open_hash *ht)
 {
 	if (ht->table) {
-		drm_hashdestroy(ht->table, DRM_MEM_HASHTAB, ht->mask);
+		hashdestroy(ht->table, DRM_MEM_HASHTAB, ht->mask);
 		ht->table = NULL;
 	}
 }

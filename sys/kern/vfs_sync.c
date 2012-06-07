@@ -292,7 +292,7 @@ vn_syncer_thr_stop(void *ctxp)
 
 	lwkt_reltoken(&ctx->sc_token);
 	
-	kfree(ctx->syncer_workitem_pending, M_DEVBUF);
+	hashdestroy(ctx->syncer_workitem_pending, M_DEVBUF, ctx->syncer_mask);
 	kfree(ctx, M_TEMP);
 }
 

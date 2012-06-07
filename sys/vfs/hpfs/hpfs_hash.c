@@ -32,7 +32,6 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.16 2006/09/10 01:26:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,8 +66,7 @@ hpfs_hphashinit(void)
 {
 
 	lockinit (&hpfs_hphash_lock, "hpfs_hphashlock", 0, 0);
-	hpfs_hphashtbl = HASHINIT(desiredvnodes, M_HPFSHASH, M_WAITOK,
-	    &hpfs_hphash);
+	hpfs_hphashtbl = hashinit(desiredvnodes, M_HPFSHASH, &hpfs_hphash);
 	lwkt_token_init(&hpfs_hphash_token, "hpfsihash");
 }
 
@@ -80,7 +78,7 @@ hpfs_hphash_uninit(struct vfsconf *vfc)
 {
 	lwkt_gettoken(&hpfs_hphash_token);
 	if (hpfs_hphashtbl)
-		kfree(hpfs_hphashtbl, M_HPFSHASH);
+		hashdestroy(hpfs_hphashtbl, M_HPFSHASH, hpfs_hphash);
 	lwkt_reltoken(&hpfs_hphash_token);
 
 	return 0;

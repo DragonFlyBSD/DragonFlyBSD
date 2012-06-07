@@ -81,7 +81,7 @@ nwfs_hash_init(void)
 void
 nwfs_hash_free(void)
 {
-	kfree(nwhashtbl, M_NWFSHASH);
+	hashdestroy(nwhashtbl, M_NWFSHASH, nwnodehash);
 }
 
 int

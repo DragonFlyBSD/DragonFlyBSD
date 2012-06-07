@@ -219,7 +219,8 @@ bad:
 		if (smp->sm_cred)
 			crfree(smp->sm_cred);
 		if (smp->sm_hash)
-			kfree(smp->sm_hash, M_SMBFSHASH);
+			hashdestroy(smp->sm_hash, M_SMBFSHASH,
+			    smp->sm_hashlen);
 		lockdestroy(&smp->sm_hashlock);
 #ifdef SMBFS_USEZONE
 		zfree(smbfsmount_zone, smp);
@@ -266,7 +267,7 @@ smbfs_unmount(struct mount *mp, int mntflags)
 	if (smp->sm_cred)
 		crfree(smp->sm_cred);
 	if (smp->sm_hash)
-		kfree(smp->sm_hash, M_SMBFSHASH);
+		hashdestroy(smp->sm_hash, M_SMBFSHASH, smp->sm_hashlen);
 	lockdestroy(&smp->sm_hashlock);
 #ifdef SMBFS_USEZONE
 	zfree(smbfsmount_zone, smp);

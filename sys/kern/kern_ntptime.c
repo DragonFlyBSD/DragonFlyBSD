@@ -29,7 +29,6 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.13 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -608,9 +607,6 @@ hardupdate(long offset)
 {
 	long mtemp;
 	l_fp ftemp;
-	globaldata_t gd;
-
-	gd = mycpu;
 
 	/*
 	 * Select how the phase is to be controlled and from which
@@ -635,9 +631,6 @@ hardupdate(long offset)
 	 * mode (PLL or FLL). If the PPS signal is present and enabled
 	 * to discipline the frequency, the PPS frequency is used;
 	 * otherwise, the argument offset is used to compute it.
-	 *
-	 * gd_time_seconds is basically an uncompensated uptime.  We use
-	 * this for consistency.
 	 */
 	if (time_status & STA_PPSFREQ && time_status & STA_PPSSIGNAL) {
 		time_reftime = time_second;
