@@ -6,6 +6,7 @@ SUBDIR=	\
 	crypto \
 	disk \
 	drm \
+	drm2 \
 	misc \
 	netif \
 	pccard \

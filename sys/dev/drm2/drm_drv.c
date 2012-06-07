@@ -82,7 +82,6 @@ DECLARE_MODULE(drmn, drm_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
 MODULE_VERSION(drmn, 1);
 MODULE_DEPEND(drmn, agp, 1, 1, 1);
 MODULE_DEPEND(drmn, pci, 1, 1, 1);
-MODULE_DEPEND(drmn, mem, 1, 1, 1);
 MODULE_DEPEND(drmn, iicbus, 1, 1, 1);
 
 static drm_ioctl_desc_t		  drm_ioctls[256] = {
