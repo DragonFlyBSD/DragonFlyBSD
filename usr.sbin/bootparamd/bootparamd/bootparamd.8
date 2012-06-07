@@ -1,6 +1,5 @@
 .\" @(#)bootparamd.8
 .\" $FreeBSD: src/usr.sbin/bootparamd/bootparamd/bootparamd.8,v 1.15 2005/01/18 20:02:31 ru Exp $
-.\" $DragonFly: src/usr.sbin/bootparamd/bootparamd/bootparamd.8,v 1.3 2006/02/17 19:40:12 swildner Exp $
 .Dd December 14, 2000
 .Dt BOOTPARAMD 8
 .Os
@@ -59,7 +58,7 @@ The SunOS kernel hangs until it receives a reply.
 To accommodate this behaviour add an alias address
 that responds to an all-0 broadcast.
 So, add something like
-.Ql "ifconfig xl0 192.168.200.254 netmask 255.255.255.255 broadcast 192.168.200.0 alias
+.Ql "ifconfig xl0 192.168.200.254 netmask 255.255.255.255 broadcast 192.168.200.0 alias"
 on the relevant network interface on your
 .Nm
 server.

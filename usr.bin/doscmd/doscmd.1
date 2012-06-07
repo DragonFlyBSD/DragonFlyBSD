@@ -29,7 +29,6 @@
 .\"
 .\"	BSDI doscmd.1,v 2.3 1996/04/08 19:32:29 bostic Exp
 .\" $FreeBSD: src/usr.bin/doscmd/doscmd.1,v 1.12.2.11 2002/06/20 23:45:41 charnier Exp $
-.\" $DragonFly: src/usr.bin/doscmd/doscmd.1,v 1.7 2008/04/29 09:33:41 swildner Exp $
 .\"
 .Dd January 30, 1995
 .Dt DOSCMD 1
@@ -486,7 +485,7 @@ for
 will be set to the actual current directory.
 Note that this means that invocations such as:
 .Pp
-.Dl "doscmd ../foo
+.Dl "doscmd ../foo"
 .Pp
 will not work as the
 .Cm C:
@@ -494,9 +493,9 @@ directory will start with the current path.
 Also, the following environment variables will be defined if not
 already defined:
 .Bd -literal
-.Cm "COMSPEC=C:\eCOMMAND.COM
-.Cm "PATH=C:\e
-.Cm "PROMPT=DOS>
+.Cm "COMSPEC=C:\eCOMMAND.COM"
+.Cm "PATH=C:\e"
+.Cm "PROMPT=DOS>"
 .Ed
 .Pp
 The
