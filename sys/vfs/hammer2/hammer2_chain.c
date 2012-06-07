@@ -55,9 +55,9 @@ static hammer2_chain_t *hammer2_chain_create_indirect(
 			hammer2_key_t key, int keybits);
 
 /*
- * Splay tree
+ * We use a red-black tree to guarantee safe lookups under shared locks.
  */
-SPLAY_GENERATE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
+RB_GENERATE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 int
 hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
@@ -243,8 +243,8 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 					 * Disconnect the chain and clear
 					 * pip if it was an inode.
 					 */
-					SPLAY_REMOVE(hammer2_chain_splay,
-						     &parent->shead, chain);
+					RB_REMOVE(hammer2_chain_tree,
+						  &parent->rbhead, chain);
 					atomic_set_int(&chain->flags,
 						       HAMMER2_CHAIN_DELETED);
 					if (ip)
@@ -925,7 +925,7 @@ hammer2_chain_find(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
 	hammer2_chain_t *chain;
 
 	dummy.index = index;
-	chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead, &dummy);
+	chain = RB_FIND(hammer2_chain_tree, &parent->rbhead, &dummy);
 	return (chain);
 }
 
@@ -961,7 +961,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * modified.
 	 */
 	dummy.index = index;
-	chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead, &dummy);
+	chain = RB_FIND(hammer2_chain_tree, &parent->rbhead, &dummy);
 	if (chain) {
 		if (flags & HAMMER2_LOOKUP_NOLOCK)
 			hammer2_chain_ref(hmp, chain);
@@ -1021,7 +1021,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 */
 	chain->parent = parent;
 	chain->index = index;
-	if (SPLAY_INSERT(hammer2_chain_splay, &parent->shead, chain))
+	if (RB_INSERT(hammer2_chain_tree, &parent->rbhead, chain))
 		panic("hammer2_chain_link: collision");
 	KKASSERT(parent->refs > 0);
 	atomic_add_int(&parent->refs, 1);	/* for splay entry */
@@ -1541,14 +1541,14 @@ again:
 	for (i = 0; i < count; ++i) {
 		if (base == NULL) {
 			dummy_chain.index = i;
-			if (SPLAY_FIND(hammer2_chain_splay,
-				       &parent->shead, &dummy_chain) == NULL) {
+			if (RB_FIND(hammer2_chain_tree,
+				    &parent->rbhead, &dummy_chain) == NULL) {
 				break;
 			}
 		} else if (base[i].type == 0) {
 			dummy_chain.index = i;
-			if (SPLAY_FIND(hammer2_chain_splay,
-				       &parent->shead, &dummy_chain) == NULL) {
+			if (RB_FIND(hammer2_chain_tree,
+				    &parent->rbhead, &dummy_chain) == NULL) {
 				break;
 			}
 		}
@@ -1593,7 +1593,7 @@ again:
 	KKASSERT(chain->parent == NULL);
 	chain->parent = parent;
 	chain->index = i;
-	if (SPLAY_INSERT(hammer2_chain_splay, &parent->shead, chain))
+	if (RB_INSERT(hammer2_chain_tree, &parent->rbhead, chain))
 		panic("hammer2_chain_link: collision");
 	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 	KKASSERT(parent->refs > 0);
@@ -1740,7 +1740,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	/*
 	 * Calculate the base blockref pointer or NULL if the chain
 	 * is known to be empty.  We need to calculate the array count
-	 * for SPLAY lookups either way.
+	 * for RB lookups either way.
 	 */
 	hammer2_chain_modify(hmp, parent, HAMMER2_MODIFY_OPTDATA);
 	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
@@ -1796,7 +1796,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		int nkeybits;
 
 		dummy.index = i;
-		chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead, &dummy);
+		chain = RB_FIND(hammer2_chain_tree, &parent->rbhead, &dummy);
 		if (chain) {
 			bref = &chain->bref;
 		} else if (base && base[i].type) {
@@ -1915,7 +1915,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 * has a key.
 		 */
 		dummy.index = i;
-		chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead, &dummy);
+		chain = RB_FIND(hammer2_chain_tree, &parent->rbhead, &dummy);
 		if (chain) {
 			bref = &chain->bref;
 		} else if (base && base[i].type) {
@@ -1966,8 +1966,8 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 */
 		chain = hammer2_chain_get(hmp, parent, i,
 					  HAMMER2_LOOKUP_NODATA);
-		SPLAY_REMOVE(hammer2_chain_splay, &parent->shead, chain);
-		if (SPLAY_INSERT(hammer2_chain_splay, &ichain->shead, chain))
+		RB_REMOVE(hammer2_chain_tree, &parent->rbhead, chain);
+		if (RB_INSERT(hammer2_chain_tree, &ichain->rbhead, chain))
 			panic("hammer2_chain_create_indirect: collision");
 		chain->parent = ichain;
 		if (base)
@@ -1993,7 +1993,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * applies).
 	 */
 	KKASSERT(ichain->index >= 0);
-	if (SPLAY_INSERT(hammer2_chain_splay, &parent->shead, ichain))
+	if (RB_INSERT(hammer2_chain_tree, &parent->rbhead, ichain))
 		panic("hammer2_chain_create_indirect: ichain insertion");
 	ichain->parent = parent;
 	atomic_add_int(&parent->refs, 1);
@@ -2111,7 +2111,7 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	if (base)
 		bzero(&base[chain->index], sizeof(*base));
 
-	SPLAY_REMOVE(hammer2_chain_splay, &parent->shead, chain);
+	RB_REMOVE(hammer2_chain_tree, &parent->rbhead, chain);
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 	atomic_add_int(&parent->refs, -1);	/* for splay entry */
 	chain->index = -1;
@@ -2261,12 +2261,12 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		 * Flush the children and update the blockrefs in the chain.
 		 * Be careful of ripouts during the loop.
 		 */
-		next = SPLAY_MIN(hammer2_chain_splay, &chain->shead);
+		next = RB_MIN(hammer2_chain_tree, &chain->rbhead);
 		if (next)
 			hammer2_chain_ref(hmp, next);
 		while ((child = next) != NULL) {
-			next = SPLAY_NEXT(hammer2_chain_splay,
-					  &chain->shead, child);
+			next = RB_NEXT(hammer2_chain_tree,
+				       &chain->rbhead, child);
 			if (next)
 				hammer2_chain_ref(hmp, next);
 			/*
@@ -2311,12 +2311,12 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		/*
 		 * Now synchronize any block updates.
 		 */
-		next = SPLAY_MIN(hammer2_chain_splay, &chain->shead);
+		next = RB_MIN(hammer2_chain_tree, &chain->rbhead);
 		if (next)
 			hammer2_chain_ref(hmp, next);
 		while ((child = next) != NULL) {
-			next = SPLAY_NEXT(hammer2_chain_splay,
-					  &chain->shead, child);
+			next = RB_NEXT(hammer2_chain_tree,
+				       &chain->rbhead, child);
 			if (next)
 				hammer2_chain_ref(hmp, next);
 			if ((child->flags & HAMMER2_CHAIN_MOVED) == 0) {

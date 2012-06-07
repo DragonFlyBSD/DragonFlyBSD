@@ -97,15 +97,15 @@ struct hammer2_pfsmount;
  * element is flushed and unmarked.  Until then the child's blockref may
  * not match the blockref at (parent, index).
  */
-SPLAY_HEAD(hammer2_chain_splay, hammer2_chain);
+RB_HEAD(hammer2_chain_tree, hammer2_chain);
 
 struct hammer2_chain {
 	ccms_cst_t	cst;			/* attr or data cst */
 	struct hammer2_blockref	bref;
 	struct hammer2_blockref	bref_flush;	/* synchronized w/MOVED bit */
 	struct hammer2_chain *parent;		/* return chain to root */
-	struct hammer2_chain_splay shead;
-	SPLAY_ENTRY(hammer2_chain) snode;
+	struct hammer2_chain_tree rbhead;
+	RB_ENTRY(hammer2_chain) rbnode;
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
 	union {
 		struct hammer2_inode *ip;
@@ -126,7 +126,7 @@ struct hammer2_chain {
 typedef struct hammer2_chain hammer2_chain_t;
 
 int hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2);
-SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
+RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 /*
  * MOVED - This bit is set during the flush when the MODIFIED bit is cleared,

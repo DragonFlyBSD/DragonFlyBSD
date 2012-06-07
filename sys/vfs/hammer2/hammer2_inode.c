@@ -414,7 +414,7 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	hammer2_inode_lock_ex(oip);
 	hammer2_chain_flush(hmp, &oip->chain, 0);
 	hammer2_inode_unlock_ex(oip);
-	KKASSERT(SPLAY_EMPTY(&oip->chain.shead));
+	KKASSERT(RB_EMPTY(&oip->chain.rbhead));
 
 	nip = chain->u.ip;
 	hammer2_chain_modify(hmp, chain, 0);
