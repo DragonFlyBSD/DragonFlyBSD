@@ -371,8 +371,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
 		hmp->vchain.bref_flush = hmp->vchain.bref;
+		ccms_cst_init(&hmp->vchain.cst, NULL);
 		/* hmp->vchain.u.xxx is left NULL */
-		lockinit(&hmp->vchain.lk, "volume", 0, LK_CANRECURSE);
 		lockinit(&hmp->alloclk, "h2alloc", 0, 0);
 		lockinit(&hmp->voldatalk, "voldata", 0, LK_CANRECURSE);
 

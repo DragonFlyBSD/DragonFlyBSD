@@ -54,6 +54,7 @@
 #include <sys/mountctl.h>
 #include <sys/priv.h>
 #include <sys/stat.h>
+#include <sys/thread.h>
 #include <sys/globaldata.h>
 #include <sys/lockf.h>
 #include <sys/buf.h>
@@ -99,6 +100,7 @@ struct hammer2_pfsmount;
 SPLAY_HEAD(hammer2_chain_splay, hammer2_chain);
 
 struct hammer2_chain {
+	ccms_cst_t	cst;			/* attr or data cst */
 	struct hammer2_blockref	bref;
 	struct hammer2_blockref	bref_flush;	/* synchronized w/MOVED bit */
 	struct hammer2_chain *parent;		/* return chain to root */
@@ -115,7 +117,6 @@ struct hammer2_chain {
 	struct buf	*bp;		/* buffer cache (ro) */
 	hammer2_media_data_t *data;	/* modified copy of data (rw) */
 	u_int		bytes;		/* physical size of data */
-	struct lock	lk;		/* lockmgr lock */
 	int		index;		/* index in parent */
 	u_int		refs;
 	u_int		busy;		/* soft-busy */
@@ -221,13 +222,16 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 
 /*
  * A hammer2 inode.
+ *
+ * NOTE: The inode's attribute CST which is also used to lock the inode
+ *	 is embedded in the chain (chain.cst) and aliased w/ attr_cst.
  */
 struct hammer2_inode {
 	struct hammer2_mount	*hmp;		/* Global mount */
 	struct hammer2_pfsmount	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
-	ccms_inode_t		*cino;		/* cluster cache state */
+	ccms_cst_t		topo_cst;	/* directory topology cst */
 	hammer2_chain_t		chain;
 	struct hammer2_inode_data ip_data;
 	struct lockf		advlock;
@@ -237,6 +241,12 @@ struct hammer2_inode {
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
+
+#if defined(_KERNEL)
+
+#define attr_cst	chain.cst
+
+#endif
 
 /*
  * A hammer2 indirect block

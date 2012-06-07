@@ -77,13 +77,13 @@ void
 hammer2_inode_lock_sh(hammer2_inode_t *ip)
 {
 	KKASSERT(ip->chain.refs > 0);
-	lockmgr(&ip->chain.lk, LK_SHARED);
+	ccms_thread_lock(&ip->chain.cst, CCMS_STATE_SHARED);
 }
 
 void
 hammer2_inode_unlock_sh(hammer2_inode_t *ip)
 {
-	lockmgr(&ip->chain.lk, LK_RELEASE);
+	ccms_thread_unlock(&ip->chain.cst);
 }
 
 /*
@@ -113,19 +113,19 @@ hammer2_inode_unbusy(hammer2_inode_t *ip)
 void
 hammer2_mount_exlock(hammer2_mount_t *hmp)
 {
-	lockmgr(&hmp->vchain.lk, LK_EXCLUSIVE);
+	ccms_thread_lock(&hmp->vchain.cst, CCMS_STATE_EXCLUSIVE);
 }
 
 void
 hammer2_mount_shlock(hammer2_mount_t *hmp)
 {
-	lockmgr(&hmp->vchain.lk, LK_SHARED);
+	ccms_thread_lock(&hmp->vchain.cst, CCMS_STATE_SHARED);
 }
 
 void
 hammer2_mount_unlock(hammer2_mount_t *hmp)
 {
-	lockmgr(&hmp->vchain.lk, LK_RELEASE);
+	ccms_thread_unlock(&hmp->vchain.cst);
 }
 
 void

@@ -111,20 +111,17 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 		ip = kmalloc(sizeof(*ip), hmp->minode, M_WAITOK | M_ZERO);
 		chain = &ip->chain;
 		chain->u.ip = ip;
-		lockinit(&chain->lk, "inode", 0, LK_CANRECURSE);
 		ip->hmp = hmp;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		np = kmalloc(sizeof(*np), hmp->mchain, M_WAITOK | M_ZERO);
 		chain = &np->chain;
 		chain->u.np = np;
-		lockinit(&chain->lk, "iblk", 0, LK_CANRECURSE);
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 		dp = kmalloc(sizeof(*dp), hmp->mchain, M_WAITOK | M_ZERO);
 		chain = &dp->chain;
 		chain->u.dp = dp;
-		lockinit(&chain->lk, "dblk", 0, LK_CANRECURSE);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		chain = NULL;
@@ -146,7 +143,8 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 	chain->index = -1;		/* not yet assigned */
 	chain->refs = 1;
 	chain->bytes = bytes;
-	lockmgr(&chain->lk, LK_EXCLUSIVE);
+	ccms_cst_init(&chain->cst, chain);
+	ccms_thread_lock(&chain->cst, CCMS_STATE_EXCLUSIVE);
 
 	return (chain);
 }
@@ -217,8 +215,10 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		if (refs == 1) {
 			KKASSERT(chain != &hmp->vchain);
 			parent = chain->parent;
-			if (parent)
-				lockmgr(&parent->lk, LK_EXCLUSIVE);
+			if (parent) {
+				ccms_thread_lock(&parent->cst,
+						CCMS_STATE_EXCLUSIVE);
+			}
 			if (atomic_cmpset_int(&chain->refs, 1, 0)) {
 				/*
 				 * Succeeded, recurse and drop parent.
@@ -240,13 +240,6 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 				 */
 				if (!(chain->flags & HAMMER2_CHAIN_DELETED)) {
 					/*
-					 * Disconnect the CCMS inode if this
-					 * was an inode.
-					 */
-					if (ip && ip->cino)
-						ccms_inode_delete(ip->cino);
-
-					/*
 					 * Disconnect the chain and clear
 					 * pip if it was an inode.
 					 */
@@ -260,22 +253,20 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 				}
 
 				/*
-				 * Destroy the disconnected ccms_inode if
-				 * applicable.
+				 * When cleaning out a hammer2_inode we must
+				 * also clean out the related ccms_inode.
 				 */
-				if (ip && ip->cino) {
-					ccms_inode_destroy(ip->cino);
-					ip->cino = NULL;
-				}
+				if (ip)
+					ccms_cst_uninit(&ip->topo_cst);
 				chain->parent = NULL;
 				if (parent)
-					lockmgr(&parent->lk, LK_RELEASE);
+					ccms_thread_unlock(&parent->cst);
 				hammer2_chain_free(hmp, chain);
 				chain = parent;
 				/* recurse on parent */
 			} else {
 				if (parent)
-					lockmgr(&parent->lk, LK_RELEASE);
+					ccms_thread_unlock(&parent->cst);
 				/* retry the same chain */
 			}
 		} else {
@@ -345,7 +336,7 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how)
 	 */
 	KKASSERT(chain->refs > 0);
 	atomic_add_int(&chain->refs, 1);
-	lockmgr(&chain->lk, LK_EXCLUSIVE);
+	ccms_thread_lock(&chain->cst, CCMS_STATE_EXCLUSIVE);
 
 	/*
 	 * If we already have a valid data pointer no further action is
@@ -485,14 +476,15 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	long *counterp;
 
 	/*
-	 * Undo a recursive lock
+	 * Release the CST lock but with a special 1->0 transition case.
 	 *
-	 * XXX shared locks not handled properly
+	 * Returns non-zero if lock references remain.  When zero is
+	 * returned the last lock reference is retained and any shared
+	 * lock is upgraded to an exclusive lock for final disposition.
 	 */
-	if (lockcountnb(&chain->lk) > 1) {
+	if (ccms_thread_unlock_zero(&chain->cst)) {
 		KKASSERT(chain->refs > 1);
 		atomic_add_int(&chain->refs, -1);
-		lockmgr(&chain->lk, LK_RELEASE);
 		return;
 	}
 
@@ -506,7 +498,7 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	 */
 	if (chain->bp == NULL) {
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
-		lockmgr(&chain->lk, LK_RELEASE);
+		ccms_thread_unlock(&chain->cst);
 		hammer2_chain_drop(hmp, chain);
 		return;
 	}
@@ -590,7 +582,7 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		}
 	}
 	chain->bp = NULL;
-	lockmgr(&chain->lk, LK_RELEASE);
+	ccms_thread_unlock(&chain->cst);
 	hammer2_chain_drop(hmp, chain);
 }
 
@@ -947,9 +939,9 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		  int index, int flags)
 {
 	hammer2_blockref_t *bref;
+	hammer2_inode_t *ip;
 	hammer2_chain_t *chain;
 	hammer2_chain_t dummy;
-	ccms_cst_t *cst;
 	int how;
 
 	/*
@@ -960,11 +952,6 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		how = HAMMER2_RESOLVE_NEVER;
 	else
 		how = HAMMER2_RESOLVE_MAYBE;
-
-	/*
-	 * Resolve cache state XXX
-	 */
-	cst = NULL;
 
 	/*
 	 * First see if we have a (possibly modified) chain element cached
@@ -1043,20 +1030,18 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * Additional linkage for inodes.  Reuse the parent pointer to
 	 * find the parent directory.
 	 *
-	 * The CCMS for the pfs-root is initialized from the mount code,
-	 * this chain_get, or chain_create, when the pmp is assigned and
-	 * non-NULL.  No CCMS is initialized here for the super-root and
-	 * the CCMS for the PFS root is initialized in the mount code.
+	 * The ccms_inode is initialized from its parent directory.  The
+	 * chain of ccms_inode's is seeded by the mount code.
 	 */
 	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
+		ip = chain->u.ip;
 		while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
 			parent = parent->parent;
 		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
-			chain->u.ip->pip = parent->u.ip;
-			chain->u.ip->pmp = parent->u.ip->pmp;
-			chain->u.ip->depth = parent->u.ip->depth + 1;
-			if (cst)
-				chain->u.ip->cino = cst->tag.cino;
+			ip->pip = parent->u.ip;
+			ip->pmp = parent->u.ip->pmp;
+			ip->depth = parent->u.ip->depth + 1;
+			ccms_cst_init(&ip->topo_cst, &ip->chain);
 		}
 	}
 
@@ -1071,7 +1056,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		hammer2_chain_lock(hmp, chain, how);	/* recusive lock */
 		hammer2_chain_drop(hmp, chain);		/* excess ref */
 	}
-	lockmgr(&chain->lk, LK_RELEASE);		/* from alloc */
+	ccms_thread_unlock(&chain->cst);			/* from alloc */
 
 	return (chain);
 }
@@ -1463,12 +1448,6 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	int allocated = 0;
 	int count;
 	int i;
-	ccms_cst_t *cst;
-
-	/*
-	 * Resolve cache state
-	 */
-	cst = NULL;
 
 	if (chain == NULL) {
 		/*
@@ -1627,10 +1606,8 @@ again:
 	 * Cumulative adjustments are inherited on [re]attach and will
 	 * propagate up the tree on the next flush.
 	 *
-	 * The CCMS for the pfs-root is initialized from the mount code,
-	 * this chain_get, or chain_create, when the pmp is assigned and
-	 * non-NULL.  No CCMS is initialized here for the super-root and
-	 * the CCMS for the PFS root is initialized in the mount code.
+	 * The ccms_inode is initialized from its parent directory.  The
+	 * chain of ccms_inode's is seeded by the mount code.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		hammer2_chain_t *scan = parent;
@@ -1645,9 +1622,7 @@ again:
 			ip->pip->delta_icount += ip->ip_data.inode_count;
 			ip->pip->delta_dcount += ip->ip_data.data_count;
 			++ip->pip->delta_icount;
-
-			if (cst)
-				ip->cino = cst->tag.cino;
+			ccms_cst_init(&ip->topo_cst, &ip->chain);
 		}
 	}
 
@@ -2146,11 +2121,6 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * Cumulative adjustments must be propagated to the parent inode
 	 * when deleting and synchronized to ip.
 	 *
-	 * The CCMS is deleted when pip is NULL'd out, here and also in
-	 * chain_drop().  The CCMS is uninitialized when the pmp is NULL'd
-	 * out (if it was non-NULL).  This is interlocked by the
-	 * HAMMER2_CHAIN_DELETED flag to prevent reentrancy.
-	 *
 	 * NOTE:  We do not propagate ip->delta_*count to the parent because
 	 *	  these represent adjustments that have not yet been
 	 *	  propagated upward, so we don't need to remove them from
@@ -2161,8 +2131,6 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		ip = chain->u.ip;
 		if (ip->pip) {
-			ccms_inode_delete(ip->cino);
-
 			ip->pip->delta_icount -= ip->ip_data.inode_count;
 			ip->pip->delta_dcount -= ip->ip_data.data_count;
 			ip->ip_data.inode_count += ip->delta_icount;
@@ -2801,11 +2769,10 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 	}
 
 	/*
-	 * We are locking backwards so allow the lock to fail
+	 * We are locking backwards so allow the lock to fail.
 	 */
-	if (lockmgr(&parent->lk, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
+	if (ccms_thread_lock_nonblock(&parent->cst, CCMS_STATE_EXCLUSIVE))
 		return;
-	}
 
 	/*
 	 * We are updating brefs but we have to call chain_modify()
@@ -2871,7 +2838,6 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		   sizeof(chain->bref)) != 0) {
 		panic("hammer2: unflagged bref update(2)");
 	}
-
-	lockmgr(&parent->lk, LK_RELEASE);	/* release manual lockmgr op */
+	ccms_thread_unlock(&parent->cst);		/* release manual op */
 	hammer2_chain_unlock(hmp, parent);
 }
