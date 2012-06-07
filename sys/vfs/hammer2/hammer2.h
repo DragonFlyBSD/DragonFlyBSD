@@ -227,6 +227,7 @@ struct hammer2_inode {
 	struct hammer2_pfsmount	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
+	ccms_inode_t		*cino;		/* cluster cache state */
 	hammer2_chain_t		chain;
 	struct hammer2_inode_data ip_data;
 	struct lockf		advlock;
@@ -297,6 +298,7 @@ struct hammer2_pfsmount {
 	struct hammer2_mount	*hmp;		/* device global mount */
 	hammer2_chain_t 	*rchain;	/* PFS root chain */
 	hammer2_inode_t		*iroot;		/* PFS root inode */
+	ccms_domain_t		ccms_dom;
 	struct netexport	export;		/* nfs export */
 	int			ronly;		/* read-only mount */
 };

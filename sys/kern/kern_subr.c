@@ -265,6 +265,17 @@ hashinit(int elements, struct malloc_type *type, u_long *hashmask)
 	return (hashtbl);
 }
 
+void
+hashdestroy(void *vhashtbl, struct malloc_type *type, u_long hashmask)
+{
+	LIST_HEAD(generic, generic) *hashtbl, *hp;
+
+	hashtbl = vhashtbl;
+	for (hp = hashtbl; hp <= &hashtbl[hashmask]; hp++)
+		KASSERT(LIST_EMPTY(hp), ("%s: hash not empty", __func__));
+	kfree(hashtbl, type);
+}
+
 /*
  * This is a newer version which allocates a hash table of structures.
  *

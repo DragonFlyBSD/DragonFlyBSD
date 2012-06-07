@@ -207,6 +207,7 @@ void
 hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
 	hammer2_chain_t *parent;
+	hammer2_inode_t *ip;
 	u_int refs;
 
 	while (chain) {
@@ -228,12 +229,43 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 				KKASSERT((chain->flags &
 					  (HAMMER2_CHAIN_MOVED |
 					   HAMMER2_CHAIN_MODIFIED)) == 0);
+
+				if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
+					ip = chain->u.ip;
+				else
+					ip = NULL;
+
+				/*
+				 * Delete interlock
+				 */
 				if (!(chain->flags & HAMMER2_CHAIN_DELETED)) {
+					/*
+					 * Disconnect the CCMS inode if this
+					 * was an inode.
+					 */
+					if (ip && ip->cino)
+						ccms_inode_delete(ip->cino);
+
+					/*
+					 * Disconnect the chain and clear
+					 * pip if it was an inode.
+					 */
 					SPLAY_REMOVE(hammer2_chain_splay,
 						     &parent->shead, chain);
 					atomic_set_int(&chain->flags,
 						       HAMMER2_CHAIN_DELETED);
+					if (ip)
+						ip->pip = NULL;
 					/* parent refs dropped via recursion */
+				}
+
+				/*
+				 * Destroy the disconnected ccms_inode if
+				 * applicable.
+				 */
+				if (ip && ip->cino) {
+					ccms_inode_destroy(ip->cino);
+					ip->cino = NULL;
 				}
 				chain->parent = NULL;
 				if (parent)
@@ -917,6 +949,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	hammer2_blockref_t *bref;
 	hammer2_chain_t *chain;
 	hammer2_chain_t dummy;
+	ccms_cst_t *cst;
 	int how;
 
 	/*
@@ -927,6 +960,11 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		how = HAMMER2_RESOLVE_NEVER;
 	else
 		how = HAMMER2_RESOLVE_MAYBE;
+
+	/*
+	 * Resolve cache state XXX
+	 */
+	cst = NULL;
 
 	/*
 	 * First see if we have a (possibly modified) chain element cached
@@ -946,7 +984,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * the get function must always succeed, panic if there's no
+	 * The get function must always succeed, panic if there's no
 	 * data to index.
 	 */
 	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
@@ -1004,6 +1042,11 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	/*
 	 * Additional linkage for inodes.  Reuse the parent pointer to
 	 * find the parent directory.
+	 *
+	 * The CCMS for the pfs-root is initialized from the mount code,
+	 * this chain_get, or chain_create, when the pmp is assigned and
+	 * non-NULL.  No CCMS is initialized here for the super-root and
+	 * the CCMS for the PFS root is initialized in the mount code.
 	 */
 	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
 		while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
@@ -1012,6 +1055,8 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			chain->u.ip->pip = parent->u.ip;
 			chain->u.ip->pmp = parent->u.ip->pmp;
 			chain->u.ip->depth = parent->u.ip->depth + 1;
+			if (cst)
+				chain->u.ip->cino = cst->tag.cino;
 		}
 	}
 
@@ -1418,6 +1463,12 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	int allocated = 0;
 	int count;
 	int i;
+	ccms_cst_t *cst;
+
+	/*
+	 * Resolve cache state
+	 */
+	cst = NULL;
 
 	if (chain == NULL) {
 		/*
@@ -1575,6 +1626,11 @@ again:
 	 *
 	 * Cumulative adjustments are inherited on [re]attach and will
 	 * propagate up the tree on the next flush.
+	 *
+	 * The CCMS for the pfs-root is initialized from the mount code,
+	 * this chain_get, or chain_create, when the pmp is assigned and
+	 * non-NULL.  No CCMS is initialized here for the super-root and
+	 * the CCMS for the PFS root is initialized in the mount code.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		hammer2_chain_t *scan = parent;
@@ -1589,6 +1645,9 @@ again:
 			ip->pip->delta_icount += ip->ip_data.inode_count;
 			ip->pip->delta_dcount += ip->ip_data.data_count;
 			++ip->pip->delta_icount;
+
+			if (cst)
+				ip->cino = cst->tag.cino;
 		}
 	}
 
@@ -2087,6 +2146,11 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * Cumulative adjustments must be propagated to the parent inode
 	 * when deleting and synchronized to ip.
 	 *
+	 * The CCMS is deleted when pip is NULL'd out, here and also in
+	 * chain_drop().  The CCMS is uninitialized when the pmp is NULL'd
+	 * out (if it was non-NULL).  This is interlocked by the
+	 * HAMMER2_CHAIN_DELETED flag to prevent reentrancy.
+	 *
 	 * NOTE:  We do not propagate ip->delta_*count to the parent because
 	 *	  these represent adjustments that have not yet been
 	 *	  propagated upward, so we don't need to remove them from
@@ -2097,6 +2161,8 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		ip = chain->u.ip;
 		if (ip->pip) {
+			ccms_inode_delete(ip->cino);
+
 			ip->pip->delta_icount -= ip->ip_data.inode_count;
 			ip->pip->delta_dcount -= ip->ip_data.data_count;
 			ip->ip_data.inode_count += ip->delta_icount;

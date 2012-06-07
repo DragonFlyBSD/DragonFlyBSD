@@ -352,6 +352,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
 	}
+	ccms_domain_init(&pmp->ccms_dom);
 	pmp->hmp = hmp;
 	++hmp->pmp_count;
 	lockmgr(&hammer2_mntlk, LK_RELEASE);
@@ -458,6 +459,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	pmp->rchain = rchain;		/* left held & unlocked */
 	pmp->iroot = rchain->u.ip;	/* implied hold from rchain */
 	pmp->iroot->pmp = pmp;
+
 	kprintf("iroot %p\n", pmp->iroot);
 
 	vfs_getnewfsid(mp);
@@ -554,6 +556,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		hammer2_chain_drop(hmp, pmp->rchain);
 		pmp->rchain = NULL;
 	}
+	ccms_domain_uninit(&pmp->ccms_dom);
 	if (hmp->pmp_count == 0) {
 		if (hmp->schain) {
 			KKASSERT(hmp->schain->refs == 1);

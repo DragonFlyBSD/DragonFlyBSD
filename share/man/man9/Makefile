@@ -80,6 +80,7 @@ MAN=	accept_filter.9 \
 	fetch.9 \
 	firmware.9 \
 	hash.9 \
+	hashinit.9 \
 	hexdump.9 \
 	ieee80211.9 \
 	ieee80211_beacon.9 \
@@ -446,10 +447,16 @@ MLINKS+=firmware.9 firmware_get.9 \
 	firmware.9 firmware_put.9 \
 	firmware.9 firmware_register.9 \
 	firmware.9 firmware_unregister.9
-MLINKS+=hash.9 hashinit.9 \
-	hash.9 hashinit_ext.9 \
-	hash.9 phashinit.9 \
-	hash.9 phashinit_ext.9
+MLINKS+=hash.9 hash32.9 \
+	hash.9 hash32_buf.9 \
+	hash.9 hash32_str.9 \
+	hash.9 hash32_stre.9 \
+	hash.9 hash32_strn.9 \
+	hash.9 hash32_strne.9
+MLINKS+=hashinit.9 hashdestroy.9 \
+	hashinit.9 hashinit_ext.9 \
+	hashinit.9 phashinit.9 \
+	hashinit.9 phashinit_ext.9
 MLINKS+=ioctl.9 _IOR.9 \
 	ioctl.9 _IOW.9 \
 	ioctl.9 _IOWR.9 \

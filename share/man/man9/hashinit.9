@@ -1,0 +1,133 @@
+.\"
+.\" Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Hiten Pandya <hmp@backplane.com>.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd June 6, 2012
+.Dt HASHINIT 9
+.Os
+.Sh NAME
+.Nm hashinit ,
+.Nm hashinit_ext ,
+.Nm hashdestroy ,
+.Nm phashinit ,
+.Nm phashinit_ext
+.Nd generic hash table functions for the kernel
+.Sh SYNOPSIS
+.In sys/param.h
+.In sys/systm.h
+.In sys/malloc.h
+.Ft void *
+.Fn hashinit "int count" "struct malloc_type *type" "u_long *hashmask"
+.Ft void *
+.Fn hashinit_ext "int count" "size_t size" "struct malloc_type *type" "u_long *hashmask"
+.Ft void
+.Fn hashdestroy "void *hashtbl" "struct malloc_type *type" "u_long hashmask"
+.Ft void *
+.Fn phashinit "int count" "struct malloc_type *type" "u_long *nentries"
+.Ft void *
+.Fn phashinit_ext "int count" "size_t size" "struct malloc_type *type" "u_long *nentries"
+.Sh DESCRIPTION
+The kernel hash functions are used for creating a generic hash table.
+.Pp
+The
+.Fn hashinit
+function returns a pointer to a hash table which is sized a
+.Dq "power of two"
+greater or equal to the element
+.Fa count
+requested.
+The masking value is stored in
+.Fa hashmask .
+.Pp
+The
+.Fn phashinit
+function returns a pointer to a prime number sized hash table.
+The element
+.Fa count
+requested is used to dictate an upper-bound for the size of the
+hash table.
+The final size of the hash table is stored by the function in
+.Fa nentries .
+.Pp
+The
+.Fa type
+argument to both of the above functions is used for keeping track
+of memory allocated for the hash table.
+See the
+.Xr kmalloc 9
+manual page for more information on memory statistics.
+.Pp
+The
+.Fn hashinit_ext
+and
+.Fn phashinit_ext
+functions are extended versions of
+.Fn hashinit
+and
+.Fn phashinit
+which take the
+.Fa size
+of the structure as an additional argument and will zero the array instead
+of assuming that it is an array of
+.Dv LIST_HEAD Ns s .
+.Pp
+The
+.Fn hashdestroy
+function frees the space occupied by the hash table pointed to by argument
+.Fa hashtbl .
+Argument
+.Fa type
+determines the malloc arena to use when freeing space.
+The argument
+.Fa hashmask
+should be the bit mask returned by the call to
+.Fn hashinit
+that allocated the hash table.
+The argument
+.Fa flags
+must be used with one of the following values.
+.Sh SEE ALSO
+.Xr tcp 4 ,
+.Xr udp 4 ,
+.Xr kmalloc 9 ,
+.Xr nlookup 9
+.Sh AUTHORS
+This manual page was written by
+.An Hiten Pandya Aq hmp@backplane.com .
+.Sh BUGS
+There is no
+.Fn phashdestroy
+function, and using
+.Fn hashdestroy
+to free a hash table allocated by
+.Fn phashinit
+usually has grave consequences.

@@ -127,10 +127,16 @@ ccms_domain_init(ccms_domain_t *dom)
 {
 	bzero(dom, sizeof(*dom));
 	kmalloc_create(&dom->mcst, "CCMS-cst");
-	ccms_inode_init(dom, &dom->root, NULL);
-	dom->root.domain = dom;
+	/*dom->root.domain = dom;*/
 }
 
+void
+ccms_domain_uninit(ccms_domain_t *dom)
+{
+	kmalloc_destroy(&dom->mcst);
+}
+
+#if 0
 /*
  * Initialize a ccms_inode for use.  The inode will be initialized but
  * is not yet connected to the rest of the topology.  However, it can
@@ -148,12 +154,9 @@ ccms_inode_init(ccms_domain_t *dom, ccms_inode_t *cino, void *handle)
 	RB_INIT(&cino->tree);
 	cino->domain = dom;
 	cino->handle = handle;
-	cino->attr_cst.cino = cino;
+	/* cino->attr_cst.cino = cino; no rbtree association */
 	cino->attr_cst.lstate = CCMS_STATE_INVALID;
 	cino->attr_cst.rstate = CCMS_STATE_INVALID;
-	cino->topo_cst.cino = cino;
-	cino->topo_cst.lstate = CCMS_STATE_INVALID;
-	cino->topo_cst.rstate = CCMS_STATE_INVALID;
 
 	/*
 	 * The dataspace must be initialized w/cache-state set to INVALID
@@ -171,15 +174,37 @@ ccms_inode_init(ccms_domain_t *dom, ccms_inode_t *cino, void *handle)
 }
 
 /*
- * Insert an inode into the topology.  The inode has already been
- * initialized and could even be in active.
+ * Associate the topology CST with a CCMS inode.  The topology CST must
+ * be held locked (typically SHARED) by the caller.  The caller is responsible
+ * for interlocking a unique ccms_inode to prevent SMP races.
  */
 void
-ccms_inode_insert(ccms_inode_t *cpar, ccms_inode_t *cino)
+ccms_inode_associate(ccms_inode_t *cino, ccms_cst_t *topo_cst)
 {
+	KKASSERT(topo_cst->tag.cino == NULL);
+
+	spin_lock(&cino->spin);
+	topo_cst->tag.cino = cino;
+	topo_cst->flags |= CCMS_CST_INODE;
+
+	cino->topo_cst = topo_cst;
+	cino->parent = topo_cst->cino;
+	cino->flags |= CCMS_INODE_INSERTED;
+	spin_unlock(&cino->spin);
+}
+
+#if 0
+
+int
+ccms_lock_get(ccms_inode_t *cino, ccms_lock_t *lock)
+
 	spin_lock(&cpar->spin);
 	spin_lock(&cino->spin);
+
 	KKASSERT((cino->flags & CCMS_INODE_INSERTED) == 0);
+	cino->topo_cst.beg_offset = key;
+	cino->topo_cst.end_offset = key;
+
 	if (RB_INSERT(ccms_rb_tree, &cpar->tree, &cino->topo_cst)) {
 		spin_unlock(&cino->spin);
 		spin_unlock(&cpar->spin);
@@ -191,18 +216,21 @@ ccms_inode_insert(ccms_inode_t *cpar, ccms_inode_t *cino)
 	spin_unlock(&cpar->spin);
 }
 
+#endif
+
 /*
  * Delete an inode from the topology.  The inode can remain in active use
  * after the deletion (e.g. when unlinking a file which still has open
- * descriptors).
+ * descriptors) but it's topo_cst is removed from its parent.
  *
  * If the caller is destroying the ccms_inode the caller must call
  * ccms_inode_uninit() to invalidate the cache state (which can block).
  */
 void
-ccms_inode_delete(ccms_inode_t *cino)
+ccms_inode_disassociate(ccms_inode_t *cino)
 {
 	ccms_inode_t *cpar;
+	ccms_cst_t *topo_cst;
 	int flags;
 
 	/*
@@ -217,6 +245,13 @@ ccms_inode_delete(ccms_inode_t *cino)
 		return;
 	if ((flags & CCMS_INODE_INSERTED) == 0)
 		return;
+
+	/*
+	 *
+	 */
+	topo_cst = cino->topo_cst;
+
+ccms_lock_put(ccms_inode_t *cino, ccms_lock_t *lock)
 
 	/*
 	 * We have the interlock, we are the only ones who can delete
@@ -246,7 +281,7 @@ ccms_inode_uninit(ccms_inode_t *cino)
 {
 	ccms_cst_t *scan;
 
-	KKASSERT(cino->flags & CCMS_INODE_DELETING);
+	KKASSERT((cino->flags & CCMS_INODE_INSERTED) == 0);
 	spin_lock(&cino->spin);
 
 	while ((scan = RB_ROOT(&cino->tree)) != NULL) {
@@ -272,7 +307,6 @@ ccms_inode_uninit(ccms_inode_t *cino)
 	cino->attr_cst.flags |= CCMS_CST_DELETING;
 	KKASSERT((cino->topo_cst.flags & CCMS_CST_DELETING) == 0);
 	cino->topo_cst.flags |= CCMS_CST_DELETING;
-	scan = ccms_free_pass1(cino, 0);
 	spin_unlock(&cino->spin);
 
 	/*
@@ -285,11 +319,19 @@ ccms_inode_uninit(ccms_inode_t *cino)
 	ccms_lstate_put(&cino->topo_cst);
 	ccms_rstate_put(&cino->topo_cst);
 
+	/*
+	 * Clean out the ccms_inode free CST cache
+	 */
+	spin_lock(&cino->spin);
+	scan = ccms_free_pass1(cino, 0);
+	spin_unlock(&cino->spin);
 	ccms_free_pass2(scan);
 
 	cino->domain = NULL;
 	cino->handle = NULL;
 }
+
+#endif
 
 /*
  * This is the core CCMS lock acquisition code and is typically called

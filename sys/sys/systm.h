@@ -151,6 +151,7 @@ int	nullop (void);
 int	seltrue (cdev_t dev, int which);
 int	ureadc (int, struct uio *);
 void	*hashinit (int count, struct malloc_type *type, u_long *hashmask);
+void	hashdestroy(void *vhashtbl, struct malloc_type *type, u_long hashmask);
 void	*phashinit (int count, struct malloc_type *type, u_long *nentries);
 void	*hashinit_ext (int count, size_t size,
 			struct malloc_type *type, u_long *hashmask);
