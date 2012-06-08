@@ -481,13 +481,11 @@ udf_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 	struct buf *bp;
 	struct vnode *devvp;
 	struct udf_mnt *udfmp;
-	struct thread *td;
 	struct vnode *vp;
 	struct udf_node *unode;
 	struct file_entry *fe;
 	int error, sector, size;
 
-	td = curthread;
 	udfmp = VFSTOUDFFS(mp);
 
 	/* See if we already have this in the cache */
