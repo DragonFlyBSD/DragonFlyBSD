@@ -219,7 +219,7 @@ out:
 #endif
 
 static void
-dconschat_ready(struct dcons_state *dc, int ready, char *reason)
+dconschat_ready(struct dcons_state *dc, int ready, const char *reason)
 {
 	static char oldreason[64] = "";
 	int old;
@@ -269,11 +269,7 @@ dconschat_fetch_header(struct dcons_state *dc)
 	}
 	if (ntohl(dbuf.version) != DCONS_VERSION) {
 		snprintf(ebuf, sizeof(ebuf),
-#if __FreeBSD_version < 500000
-		    "wrong version %ld,%d",
-#else
 		    "wrong version %d,%d",
-#endif
 		    ntohl(dbuf.version), DCONS_VERSION);
 		/* XXX exit? */
 		dconschat_ready(dc, 0, ebuf);
@@ -305,13 +301,8 @@ dconschat_fetch_header(struct dcons_state *dc)
 
 		if (verbose) {
 			printf("port %d   size offset   gen   pos\n", j);
-#if __FreeBSD_version < 500000
-			printf("output: %5d %6ld %5d %5d\n"
-				"input : %5d %6ld %5d %5d\n",
-#else
 			printf("output: %5d %6d %5d %5d\n"
 				"input : %5d %6d %5d %5d\n",
-#endif
 			o->size, ntohl(dbuf.ooffset[j]), o->gen, o->pos,
 			i->size, ntohl(dbuf.ioffset[j]), i->gen, i->pos);
 		}
@@ -452,7 +443,7 @@ dconschat_write_dcons(struct dcons_state *dc, int port, char *buf, int blen)
 	ch->pos = ptr & DCONS_POS_MASK;
 
 	while(blen > 0) {
-		wlen = MIN(blen, ch->size - ch->pos);
+		wlen = MIN(blen, (int)(ch->size - ch->pos));
 		wlen = MIN(wlen, MAX_XFER);
 		len = dwrite(dc, buf, wlen, ch->buf + ch->pos);
 		if (len < 0) {
@@ -732,7 +723,7 @@ dconschat_proc_socket(struct dcons_state *dc)
 	for (i = 0; i < n; i ++) {
 		e = &elist[i];
 		p = (struct dcons_port *)e->udata;
-		if (e->ident == p->s) {
+		if (e->ident == (uintptr_t)p->s) {
 			dconschat_accept_socket(dc, p);
 		} else {
 			dconschat_read_socket(dc, p);
@@ -744,14 +735,14 @@ dconschat_proc_socket(struct dcons_state *dc)
 static int
 dconschat_proc_dcons(struct dcons_state *dc)
 {
-	int port, len, err;
+	int port, len, error;
 	char buf[MAX_XFER];
 	struct dcons_port *p;
 
-	err = dconschat_get_ptr(dc);
-	if (err) {
+	error = dconschat_get_ptr(dc);
+	if (error) {
 		/* XXX we should stop write operation too. */
-		return err;
+		return error;
 	}
 	for (port = 0; port < DCONS_NPORT; port ++) {
 		p = &dc->port[port];
@@ -817,7 +808,7 @@ main(int argc, char **argv)
 	struct dcons_state *dc;
 	struct fw_eui64 eui;
 	struct eui64 target;
-	char devname[256], *core = NULL, *system = NULL;
+	char devicename[256], *core = NULL, *sysfile = NULL;
 	int i, ch, error;
 	int unit=0, wildcard=0;
 	int port[DCONS_NPORT];
@@ -874,7 +865,7 @@ main(int argc, char **argv)
 			core = optarg;
 			break;	
 		case 'N':
-			system = optarg;
+			sysfile = optarg;
 			break;	
 		case 'R':
 			dc->flags |= F_RD_ONLY;
@@ -910,9 +901,9 @@ main(int argc, char **argv)
 	case TYPE_FW:
 #define MAXDEV 10
 		for (i = 0; i < MAXDEV; i ++) {
-			snprintf(devname, sizeof(devname),
+			snprintf(devicename, sizeof(devicename),
 			    "/dev/fwmem%d.%d", unit, i);
-			dc->fd = open(devname, O_RDWR);
+			dc->fd = open(devicename, O_RDWR);
 			if (dc->fd >= 0)
 				goto found;
 		}
@@ -924,10 +915,10 @@ found:
 		break;
 	case TYPE_KVM:
 	{
-		struct nlist nl[] = {{"dcons_buf"}, {""}};
+		struct nlist nl[] = {{.n_name = "dcons_buf"}, {.n_name = ""}};
 		void *dcons_buf;
 
-		dc->kd = kvm_open(system, core, NULL,
+		dc->kd = kvm_open(sysfile, core, NULL,
 		    (dc->flags & F_RD_ONLY) ? O_RDONLY : O_RDWR, "dconschat");
 		if (dc->kd == NULL)
 			errx(1, "kvm_open");
@@ -959,7 +950,7 @@ found:
 	dc->zero.tv_nsec = 0;
 	for (i = 0; i < DCONS_NPORT; i++)
 		dconschat_init_socket(dc, i,
-		    wildcard ? NULL : "localhost", port[i]);
+		    wildcard ? NULL : __DECONST(char *, "localhost"), port[i]);
 
 	dconschat_start_session(dc);
 
