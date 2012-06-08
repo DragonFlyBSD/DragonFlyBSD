@@ -195,7 +195,7 @@ crom_parse_text(struct crom_context *cc, char *buf, int len)
 	struct csrtext *textleaf;
 	u_int32_t *bp;
 	int i, qlen;
-	static char *nullstr = "(null)";
+	static const char *nullstr = "(null)";
 
 	if (cc->depth < 0)
 		return;
@@ -249,7 +249,7 @@ crom_crc(u_int32_t *ptr, int len)
 static void
 crom_desc_specver(u_int32_t spec, u_int32_t ver, char *buf, int len)
 {
-	char *s = NULL;
+	const char *s = NULL;
 
 	if (spec == CSRVAL_ANSIT10 || spec == 0) {
 		switch (ver) {
@@ -299,12 +299,12 @@ crom_desc_specver(u_int32_t spec, u_int32_t ver, char *buf, int len)
 		ksnprintf(buf, len, "%s", s);
 }
 
-char *
+const char *
 crom_desc(struct crom_context *cc, char *buf, int len)
 {
 	struct csrreg *reg;
 	struct csrdirectory *dir;
-	char *desc;
+	const char *desc;
 	u_int16_t crc;
 
 	reg = crom_get(cc);
