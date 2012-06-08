@@ -40,6 +40,7 @@
 #include <err.h>
 #include <errno.h>
 #include <grp.h>
+#include <mntopts.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,7 +51,6 @@
 #include <libutil.h>
 
 #include "defs.h"
-#include "mntopts.h"
 #include "mount_tmpfs.h"
 
 /* --------------------------------------------------------------------- */

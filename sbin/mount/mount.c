@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1980, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount.c	8.25 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/mount/mount.c,v 1.39.2.3 2001/08/01 08:26:23 obrien Exp $
- * $DragonFly: src/sbin/mount/mount.c,v 1.10 2005/04/03 17:13:08 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -49,6 +48,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fstab.h>
+#include <mntopts.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stdio.h>
@@ -57,7 +57,6 @@
 #include <unistd.h>
 
 #include "extern.h"
-#include "mntopts.h"
 #include "pathnames.h"
 
 /* `meta' options */

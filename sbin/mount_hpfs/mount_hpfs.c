@@ -29,7 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_hpfs/mount_hpfs.c,v 1.1 1999/12/09 19:09:15 semenu Exp $
- * $DragonFly: src/sbin/mount_hpfs/mount_hpfs.c,v 1.8 2005/04/03 18:59:24 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -40,14 +39,13 @@
 #include <ctype.h>
 #include <err.h>
 #include <grp.h>
+#include <mntopts.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-
-#include "mntopts.h"
 
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,

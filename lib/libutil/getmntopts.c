@@ -32,7 +32,6 @@
  *
  * @(#)getmntopts.c	8.3 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/mount/getmntopts.c,v 1.9 1999/10/09 11:54:06 phk Exp $
- * $DragonFly: src/sbin/mount/getmntopts.c,v 1.4 2004/09/06 01:19:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,11 +39,10 @@
 
 #include <err.h>
 #include <errno.h>
+#include <mntopts.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
-
-#include "mntopts.h"
 
 int getmnt_silent = 0;
 
@@ -124,7 +122,7 @@ checkpath(const char *path, char *resolved)
 	struct stat sb;
 
 	if (realpath(path, resolved) != NULL && stat(resolved, &sb) == 0) {
-		if (!S_ISDIR(sb.st_mode)) 
+		if (!S_ISDIR(sb.st_mode))
 			errx(EX_USAGE, "%s: not a directory", resolved);
 	} else
 		errx(EX_USAGE, "%s: %s", resolved, strerror(errno));

@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.14 2008/07/14 22:22:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,6 +58,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <mntopts.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,7 +66,6 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "mntopts.h"
 #include "mounttab.h"
 
 #define	ALTF_BG		0x1

@@ -40,7 +40,6 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_cd9660.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mount_cd9660/mount_cd9660.c,v 1.15.2.3 2001/03/14 12:05:01 bp Exp $
- * $DragonFly: src/sbin/mount_cd9660/mount_cd9660.c,v 1.5 2005/04/02 21:43:15 dillon Exp $
  */
 
 #include <sys/cdio.h>
@@ -54,14 +53,13 @@
 
 #include <err.h>
 #include <errno.h>
+#include <mntopts.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <locale.h>
 #include <sysexits.h>
 #include <unistd.h>
-
-#include "mntopts.h"
 
 struct mntopt mopts[] = {
 	MOPT_STDOPTS,

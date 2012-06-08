@@ -1,9 +1,7 @@
 PROG=	mount_devfs
-SRCS=	mount_devfs.c getmntopts.c
 MAN=	mount_devfs.8
 
-MOUNT=	${.CURDIR}/../mount
-CFLAGS+= -I${.CURDIR}/../../sys -I${MOUNT}
-.PATH:	${MOUNT}
+LDADD=	-lutil
+DPADD=	${LIBUTIL}
 
 .include <bsd.prog.mk>

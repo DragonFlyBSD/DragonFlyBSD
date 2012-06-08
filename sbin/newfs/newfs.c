@@ -53,6 +53,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <mntopts.h>
 #include <inttypes.h>
 #include <paths.h>
 #include <stdio.h>
@@ -69,7 +70,6 @@
 
 #include <stdarg.h>
 
-#include "mntopts.h"
 #include "defs.h"
 
 struct mntopt mopts[] = {

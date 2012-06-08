@@ -1,15 +1,11 @@
 # $FreeBSD: src/sbin/mount_nwfs/Makefile,v 1.1.2.2 2001/04/25 10:58:39 ru Exp $
-# $DragonFly: src/sbin/mount_nwfs/Makefile,v 1.3 2006/10/17 00:55:42 pavalos Exp $
 
 PROG=	mount_nwfs
-SRCS=	mount_nwfs.c getmntopts.c
 MAN=	mount_nwfs.8
 
-MOUNT=	${.CURDIR}/../mount
-CFLAGS+= -DNWFS -I${MOUNT}
-.PATH:	${MOUNT}
+CFLAGS+= -DNWFS
 
-DPADD=	${LIBNCP} ${LIBIPX}
-LDADD=	-lncp -lipx
+DPADD=	${LIBNCP} ${LIBIPX} ${LIBUTIL}
+LDADD=	-lncp -lipx -lutil
 
 .include <bsd.prog.mk>

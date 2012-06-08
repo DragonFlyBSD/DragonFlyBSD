@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_nwfs/mount_nwfs.c,v 1.4.2.1 2000/04/17 08:34:18 bp Exp $
- * $DragonFly: src/sbin/mount_nwfs/mount_nwfs.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/stat.h>
@@ -49,11 +48,11 @@
 #include <err.h>
 #include <sysexits.h>
 #include <time.h>
+#include <mntopts.h>
 
 #include <netncp/ncp_lib.h>
 #include <netncp/ncp_rcfile.h>
 #include <vfs/nwfs/nwfs_mount.h>
-#include "mntopts.h"
 
 #define	NWFS_VFSNAME	"nwfs"
 

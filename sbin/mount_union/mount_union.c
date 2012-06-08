@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_union.c	8.5 (Berkeley) 3/27/94
  * $FreeBSD: src/sbin/mount_union/mount_union.c,v 1.12 1999/10/09 11:54:14 phk Exp $
- * $DragonFly: src/sbin/mount_union/mount_union.c,v 1.7 2005/04/02 21:42:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,13 +44,12 @@
 #include <vfs/union/union.h>
 
 #include <err.h>
+#include <mntopts.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-
-#include "mntopts.h"
 
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,

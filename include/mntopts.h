@@ -32,11 +32,12 @@
  *
  *	@(#)mntopts.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/mount/mntopts.h,v 1.16 1999/10/09 11:54:07 phk Exp $
- * $DragonFly: src/sbin/mount/mntopts.h,v 1.4 2005/01/06 03:21:00 cpressey Exp $
  */
 
-#ifndef _MOUNT_MNTOPTS_H_
-#define _MOUNT_MNTOPTS_H_
+#ifndef _MNTOPTS_H_
+#define _MNTOPTS_H_
+
+#include <sys/cdefs.h>
 
 struct mntopt {
 	const char *m_option;	/* option name */
@@ -52,7 +53,7 @@ struct mntopt {
 #define MOPT_NOEXEC		{ "exec",	1, MNT_NOEXEC, 0 }
 #define MOPT_NOSUID		{ "suid",	1, MNT_NOSUID, 0 }
 #define MOPT_NOSYMFOLLOW	{ "symfollow",  1, MNT_NOSYMFOLLOW, 0 }
-#define MOPT_TRIM		{ "trim",	0, MNT_TRIM, 0 }   
+#define MOPT_TRIM		{ "trim",	0, MNT_TRIM, 0 }
 #define MOPT_RDONLY		{ "rdonly",	0, MNT_RDONLY, 0 }
 #define MOPT_SYNC		{ "sync",	0, MNT_SYNCHRONOUS, 0 }
 #define MOPT_UNION		{ "union",	0, MNT_UNION, 0 }
@@ -97,9 +98,14 @@ struct mntopt {
 	MOPT_NOCLUSTERW,						\
 	MOPT_IGNORE
 
+extern int getmnt_silent;
+
+__BEGIN_DECLS
+#if __BSD_VISIBLE
 void getmntopts(const char *, const struct mntopt *, int *, int *);
 void rmslashes(char *, char *);
 void checkpath(const char *, char resolved_path[]);
-extern int getmnt_silent;
+#endif /* __BSD_VISIBLE */
+__END_DECLS
 
-#endif
+#endif	/* !_MNTOPTS_H_ */
