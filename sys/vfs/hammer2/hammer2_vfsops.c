@@ -606,21 +606,27 @@ int
 hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 {
 	hammer2_pfsmount_t *pmp;
+	hammer2_mount_t *hmp;
 	int error;
 	struct vnode *vp;
 
 	pmp = MPTOPMP(mp);
-	hammer2_mount_exlock(pmp->hmp);
+	hmp = pmp->hmp;
+	hammer2_mount_exlock(hmp);
 	if (pmp->iroot == NULL) {
 		*vpp = NULL;
 		error = EINVAL;
 	} else {
+		hammer2_chain_lock(hmp, &pmp->iroot->chain,
+				   HAMMER2_RESOLVE_ALWAYS |
+				   HAMMER2_RESOLVE_SHARED);
 		vp = hammer2_igetv(pmp->iroot, &error);
+		hammer2_chain_unlock(hmp, &pmp->iroot->chain);
 		*vpp = vp;
 		if (vp == NULL)
 			kprintf("vnodefail\n");
 	}
-	hammer2_mount_unlock(pmp->hmp);
+	hammer2_mount_unlock(hmp);
 
 	return (error);
 }

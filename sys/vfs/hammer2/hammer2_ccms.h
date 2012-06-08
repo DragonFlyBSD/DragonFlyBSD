@@ -198,6 +198,7 @@ struct ccms_cst {
 	ccms_key_t	key_beg;	/* key range (inclusive) */
 	ccms_key_t	key_end;	/* key range (inclusive) */
 
+	int32_t		upgrade;	/* upgrades pending */
 	int32_t		count;		/* active shared/exclusive count */
 	int32_t		blocked;	/* wakeup blocked on release */
 	thread_t	td;		/* if excl lock (count < 0) */
@@ -227,8 +228,11 @@ void ccms_cst_uninit(ccms_cst_t *cst);
 
 void ccms_thread_lock(ccms_cst_t *cst, ccms_state_t state);
 int ccms_thread_lock_nonblock(ccms_cst_t *cst, ccms_state_t state);
+ccms_state_t ccms_thread_lock_upgrade(ccms_cst_t *cst);
+void ccms_thread_lock_restore(ccms_cst_t *cst, ccms_state_t ostate);
 void ccms_thread_unlock(ccms_cst_t *cst);
 int ccms_thread_unlock_zero(ccms_cst_t *cst);
+int ccms_thread_lock_owned(ccms_cst_t *cst);
 
 void ccms_lock_get(ccms_lock_t *lock);
 void ccms_lock_put(ccms_lock_t *lock);

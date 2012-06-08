@@ -73,6 +73,7 @@ void
 ccms_cst_init(ccms_cst_t *cst, void *handle)
 {
 	bzero(cst, sizeof(*cst));
+	spin_init(&cst->spin);
 	cst->handle = handle;
 }
 
@@ -184,20 +185,30 @@ ccms_lock_put(ccms_lock_t *lock)
 void
 ccms_thread_lock(ccms_cst_t *cst, ccms_state_t state)
 {
+	/*
+	 * Regardless of the type of lock requested if the current thread
+	 * already holds an exclusive lock we bump the exclusive count and
+	 * return.  This requires no spinlock.
+	 */
 	if (cst->count < 0 && cst->td == curthread) {
 		--cst->count;
 		return;
 	}
 
+	/*
+	 * Otherwise use the spinlock to interlock the operation and sleep
+	 * as necessary.
+	 */
 	spin_lock(&cst->spin);
 	if (state == CCMS_STATE_SHARED) {
-		while (cst->count < 0) {
+		while (cst->count < 0 || cst->upgrade) {
 			cst->blocked = 1;
 			ssleep(cst, &cst->spin, 0, "ccmslck", hz);
 		}
 		++cst->count;
+		KKASSERT(cst->td == NULL);
 	} else if (state == CCMS_STATE_EXCLUSIVE) {
-		while (cst->count != 0) {
+		while (cst->count != 0 || cst->upgrade) {
 			cst->blocked = 1;
 			ssleep(cst, &cst->spin, 0, "ccmslck", hz);
 		}
@@ -224,13 +235,14 @@ ccms_thread_lock_nonblock(ccms_cst_t *cst, ccms_state_t state)
 
 	spin_lock(&cst->spin);
 	if (state == CCMS_STATE_SHARED) {
-		if (cst->count < 0) {
+		if (cst->count < 0 || cst->upgrade) {
 			spin_unlock(&cst->spin);
 			return (EBUSY);
 		}
 		++cst->count;
+		KKASSERT(cst->td == NULL);
 	} else if (state == CCMS_STATE_EXCLUSIVE) {
-		if (cst->count != 0) {
+		if (cst->count != 0 || cst->upgrade) {
 			spin_unlock(&cst->spin);
 			return (EBUSY);
 		}
@@ -245,12 +257,70 @@ ccms_thread_lock_nonblock(ccms_cst_t *cst, ccms_state_t state)
 }
 
 /*
+ * Temporarily upgrade a thread lock for making local structural changes.
+ * No new shared or exclusive locks can be acquired by others while we are
+ * upgrading, but other upgraders are allowed.
+ */
+ccms_state_t
+ccms_thread_lock_upgrade(ccms_cst_t *cst)
+{
+	/*
+	 * Nothing to do if already exclusive
+	 */
+	if (cst->count < 0) {
+		KKASSERT(cst->td == curthread);
+		return(CCMS_STATE_EXCLUSIVE);
+	}
+
+	/*
+	 * Convert a shared lock to exclusive.
+	 */
+	if (cst->count > 0) {
+		spin_lock(&cst->spin);
+		++cst->upgrade;
+		--cst->count;
+		while (cst->count) {
+			cst->blocked = 1;
+			ssleep(cst, &cst->spin, 0, "ccmsupg", hz);
+		}
+		cst->count = -1;
+		cst->td = curthread;
+		spin_unlock(&cst->spin);
+		return(CCMS_STATE_SHARED);
+	}
+	panic("ccms_thread_lock_upgrade: not locked");
+	/* NOT REACHED */
+	return(0);
+}
+
+void
+ccms_thread_lock_restore(ccms_cst_t *cst, ccms_state_t ostate)
+{
+	if (ostate == CCMS_STATE_SHARED) {
+		KKASSERT(cst->td == curthread);
+		KKASSERT(cst->count == -1);
+		spin_lock(&cst->spin);
+		--cst->upgrade;
+		cst->count = 1;
+		cst->td = NULL;
+		if (cst->blocked) {
+			cst->blocked = 0;
+			spin_unlock(&cst->spin);
+			wakeup(cst);
+		} else {
+			spin_unlock(&cst->spin);
+		}
+	}
+}
+
+/*
  * Release a local thread lock
  */
 void
 ccms_thread_unlock(ccms_cst_t *cst)
 {
 	if (cst->count < 0) {
+		KKASSERT(cst->td == curthread);
 		if (cst->count < -1) {
 			++cst->count;
 			return;
@@ -284,33 +354,82 @@ ccms_thread_unlock(ccms_cst_t *cst)
  * Release a local thread lock with special handling of the last lock
  * reference.
  *
- * On the last lock reference the lock, if shared, will be upgraded to
- * an exclusive lock and we return 0 without unlocking it.
+ * If no upgrades are in progress then the last reference to the lock will
+ * upgrade the lock to exclusive (if it was shared) and return 0 without
+ * unlocking it.
  *
- * If more than one reference remains we drop the reference and return
- * non-zero.
+ * If more than one reference remains, or upgrades are in progress,
+ * we drop the reference and return non-zero to indicate that more
+ * locks are present or pending.
  */
 int
 ccms_thread_unlock_zero(ccms_cst_t *cst)
 {
 	if (cst->count < 0) {
-		if (cst->count == -1)
-			return(0);
-		++cst->count;
-	} else {
-		KKASSERT(cst->count > 0);
-		spin_lock(&cst->spin);
-		if (cst->count == 1) {
-			cst->count = -1;
-			cst->td = curthread;
+		/*
+		 * Exclusive owned by us, no races possible as long as it
+		 * remains negative.  Return 0 and leave us locked on the
+		 * last lock.
+		 */
+		KKASSERT(cst->td == curthread);
+		if (cst->count == -1) {
+			spin_lock(&cst->spin);
+			if (cst->upgrade) {
+				cst->count = 0;
+				if (cst->blocked) {
+					cst->blocked = 0;
+					spin_unlock(&cst->spin);
+					wakeup(cst);
+				} else {
+					spin_unlock(&cst->spin);
+				}
+				return(1);
+			}
 			spin_unlock(&cst->spin);
 			return(0);
+		}
+		++cst->count;
+	} else {
+		/*
+		 * Convert the last shared lock to an exclusive lock
+		 * and return 0.
+		 *
+		 * If there are upgrades pending the cst is unlocked and
+		 * the upgrade waiters are woken up.  The upgrade count
+		 * prevents new exclusive holders for the duration.
+		 */
+		spin_lock(&cst->spin);
+		KKASSERT(cst->count > 0);
+		if (cst->count == 1) {
+			if (cst->upgrade) {
+				cst->count = 0;
+				if (cst->blocked) {
+					cst->blocked = 0;
+					spin_unlock(&cst->spin);
+					wakeup(cst);
+				} else {
+					spin_unlock(&cst->spin);
+				}
+				return(1);
+			} else {
+				cst->count = -1;
+				cst->td = curthread;
+				spin_unlock(&cst->spin);
+				return(0);
+			}
 		}
 		--cst->count;
 		spin_unlock(&cst->spin);
 	}
 	return(1);
 }
+
+int
+ccms_thread_lock_owned(ccms_cst_t *cst)
+{
+	return(cst->count < 0 && cst->td == curthread);
+}
+
 
 #if 0
 /*

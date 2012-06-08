@@ -472,15 +472,18 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	lkey = saveoff | HAMMER2_DIRHASH_VISIBLE;
 
 	parent = &ip->chain;
-	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
+						HAMMER2_RESOLVE_SHARED);
 	if (error) {
 		hammer2_chain_unlock(hmp, parent);
 		goto done;
 	}
-	chain = hammer2_chain_lookup(hmp, &parent, lkey, lkey, 0);
+	chain = hammer2_chain_lookup(hmp, &parent, lkey, lkey,
+				     HAMMER2_LOOKUP_SHARED);
 	if (chain == NULL) {
 		chain = hammer2_chain_lookup(hmp, &parent,
-					     lkey, (hammer2_key_t)-1, 0);
+					     lkey, (hammer2_key_t)-1,
+					     HAMMER2_LOOKUP_SHARED);
 	}
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
@@ -509,7 +512,8 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		 */
 		chain = hammer2_chain_next(hmp, &parent, chain,
 					   HAMMER2_DIRHASH_VISIBLE,
-					   (hammer2_key_t)-1, 0);
+					   (hammer2_key_t)-1,
+					   HAMMER2_LOOKUP_SHARED);
 		if (chain) {
 			saveoff = (chain->bref.key &
 				   HAMMER2_DIRHASH_USERMSK) + 1;
@@ -651,7 +655,6 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 */
 	hammer2_inode_lock_ex(ip);
 	error = hammer2_write_file(ip, uio, ap->a_ioflag, seqcount);
-
 	hammer2_inode_unlock_ex(ip);
 	return (error);
 }
@@ -1327,10 +1330,11 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 * Note: In DragonFly the kernel handles '.' and '..'.
 	 */
 	parent = &dip->chain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
+					HAMMER2_RESOLVE_SHARED);
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-				     0);
+				     HAMMER2_LOOKUP_SHARED);
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    chain->u.ip &&
@@ -1340,7 +1344,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 		}
 		chain = hammer2_chain_next(hmp, &parent, chain,
 					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-					   0);
+					   HAMMER2_LOOKUP_SHARED);
 	}
 	hammer2_chain_unlock(hmp, parent);
 
@@ -1351,6 +1355,8 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 * to locate the real file via a hardlink.  ip will be referenced but
 	 * not locked in that situation.  chain is passed in locked and
 	 * returned locked.
+	 *
+	 * XXX what kind of chain lock?
 	 */
 	ip = NULL;
 	if (chain && chain->u.ip->ip_data.type == HAMMER2_OBJTYPE_HARDLINK) {
@@ -1368,6 +1374,8 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	/*
 	 * Deconsolidate any hardlink whos nlinks == 1.  Ignore errors.
 	 * If an error occurs chain and ip are left alone.
+	 *
+	 * XXX upgrade shared lock?
 	 */
 	if (ip && chain && chain->u.ip->ip_data.nlinks == 1 && !hmp->ronly) {
 		kprintf("hammer2: need to unconsolidate hardlink for %s\n",
@@ -1507,10 +1515,12 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 	loff = ap->a_loffset & HAMMER2_OFF_MASK_LO;
 
 	parent = &ip->chain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
+					HAMMER2_RESOLVE_SHARED);
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lbeg, lend,
-				     HAMMER2_LOOKUP_NODATA);
+				     HAMMER2_LOOKUP_NODATA |
+				     HAMMER2_LOOKUP_SHARED);
 	if (chain == NULL) {
 		*ap->a_doffsetp = ZFOFFSET;
 		hammer2_chain_unlock(hmp, parent);
@@ -1526,7 +1536,8 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 		}
 		chain = hammer2_chain_next(hmp, &parent, chain,
 					   lbeg, lend,
-					   HAMMER2_LOOKUP_NODATA);
+					   HAMMER2_LOOKUP_NODATA |
+					   HAMMER2_LOOKUP_SHARED);
 	}
 	hammer2_chain_unlock(hmp, parent);
 
@@ -2024,10 +2035,12 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	 */
 	if (nbio->bio_offset == NOOFFSET) {
 		parent = &ip->chain;
-		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
+						HAMMER2_RESOLVE_SHARED);
 
 		chain = hammer2_chain_lookup(hmp, &parent, lbase, lbase,
-					     HAMMER2_LOOKUP_NODATA);
+					     HAMMER2_LOOKUP_NODATA |
+					     HAMMER2_LOOKUP_SHARED);
 		if (chain == NULL) {
 			/*
 			 * Data is zero-fill

@@ -63,22 +63,19 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 
 /*
  * Get the vnode associated with the given inode, allocating the vnode if
- * necessary.
+ * necessary.  The vnode will be returned exclusively locked.
+ *
+ * The caller must lock the inode (shared or exclusive).
  *
  * Great care must be taken to avoid deadlocks and vnode acquisition/reclaim
  * races.
- *
- * The vnode will be returned exclusively locked and referenced.  The
- * reference on the vnode prevents it from being reclaimed.
- *
- * The inode (ip) must be referenced by the caller and not locked to avoid
- * it getting ripped out from under us or deadlocked.
  */
 struct vnode *
 hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 {
 	struct vnode *vp;
 	hammer2_pfsmount_t *pmp;
+	ccms_state_t ostate;
 
 	pmp = ip->pmp;
 	KKASSERT(pmp != NULL);
@@ -94,26 +91,20 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 		vp = ip->vp;
 		if (vp) {
 			/*
-			 * Lock the inode and check for a reclaim race
-			 */
-			hammer2_inode_lock_ex(ip);
-			if (ip->vp != vp) {
-				hammer2_inode_unlock_ex(ip);
-				continue;
-			}
-
-			/*
 			 * Inode must be unlocked during the vget() to avoid
 			 * possible deadlocks, vnode is held to prevent
 			 * destruction during the vget().  The vget() can
 			 * still fail if we lost a reclaim race on the vnode.
 			 */
 			vhold_interlocked(vp);
-			hammer2_inode_unlock_ex(ip);
+			ccms_thread_unlock(&ip->chain.cst);
 			if (vget(vp, LK_EXCLUSIVE)) {
 				vdrop(vp);
+				ccms_thread_lock(&ip->chain.cst,
+						 CCMS_STATE_EXCLUSIVE);
 				continue;
 			}
+			ccms_thread_lock(&ip->chain.cst, CCMS_STATE_EXCLUSIVE);
 			vdrop(vp);
 			/* vp still locked and ref from vget */
 			*errorp = 0;
@@ -134,11 +125,11 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 		/*
 		 * Lock the inode and check for an allocation race.
 		 */
-		hammer2_inode_lock_ex(ip);
+		ostate = ccms_thread_lock_upgrade(&ip->chain.cst);
 		if (ip->vp != NULL) {
 			vp->v_type = VBAD;
 			vx_put(vp);
-			hammer2_inode_unlock_ex(ip);
+			ccms_thread_lock_restore(&ip->chain.cst, ostate);
 			continue;
 		}
 
@@ -176,7 +167,7 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 		vp->v_data = ip;
 		ip->vp = vp;
 		hammer2_chain_ref(ip->hmp, &ip->chain);	/* vp association */
-		hammer2_inode_unlock_ex(ip);
+		ccms_thread_lock_restore(&ip->chain.cst, ostate);
 		break;
 	}
 
@@ -410,11 +401,12 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 * We cannot leave oip with any in-memory chains because (for a
 	 * hardlink), oip will become a OBJTYPE_HARDLINK which is just a
 	 * pointer to the real hardlink's inum and can't have any sub-chains.
+	 * XXX might be 0-ref chains left.
 	 */
 	hammer2_inode_lock_ex(oip);
 	hammer2_chain_flush(hmp, &oip->chain, 0);
 	hammer2_inode_unlock_ex(oip);
-	KKASSERT(RB_EMPTY(&oip->chain.rbhead));
+	/*KKASSERT(RB_EMPTY(&oip->chain.rbhead));*/
 
 	nip = chain->u.ip;
 	hammer2_chain_modify(hmp, chain, 0);

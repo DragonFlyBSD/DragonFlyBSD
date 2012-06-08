@@ -98,6 +98,7 @@ struct hammer2_pfsmount;
  * not match the blockref at (parent, index).
  */
 RB_HEAD(hammer2_chain_tree, hammer2_chain);
+TAILQ_HEAD(flush_deferral_list, hammer2_chain);
 
 struct hammer2_chain {
 	ccms_cst_t	cst;			/* attr or data cst */
@@ -119,7 +120,6 @@ struct hammer2_chain {
 	u_int		bytes;		/* physical size of data */
 	int		index;		/* index in parent */
 	u_int		refs;
-	u_int		busy;		/* soft-busy */
 	u_int		flags;
 };
 
@@ -157,6 +157,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  */
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
+#define HAMMER2_LOOKUP_SHARED		0x00000100
 
 /*
  * Flags passed to hammer2_chain_modify() and hammer2_chain_resize()
@@ -178,6 +179,9 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_RESOLVE_NEVER		1
 #define HAMMER2_RESOLVE_MAYBE		2
 #define HAMMER2_RESOLVE_ALWAYS		3
+#define HAMMER2_RESOLVE_MASK		0x0F
+
+#define HAMMER2_RESOLVE_SHARED		0x10
 
 /*
  * Cluster different types of storage together for allocations
@@ -241,12 +245,6 @@ struct hammer2_inode {
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
-
-#if defined(_KERNEL)
-
-#define attr_cst	chain.cst
-
-#endif
 
 /*
  * A hammer2 indirect block

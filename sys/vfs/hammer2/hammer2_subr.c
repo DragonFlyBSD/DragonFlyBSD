@@ -77,15 +77,17 @@ void
 hammer2_inode_lock_sh(hammer2_inode_t *ip)
 {
 	KKASSERT(ip->chain.refs > 0);
-	ccms_thread_lock(&ip->chain.cst, CCMS_STATE_SHARED);
+	hammer2_chain_lock(ip->hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS |
+						HAMMER2_RESOLVE_SHARED);
 }
 
 void
 hammer2_inode_unlock_sh(hammer2_inode_t *ip)
 {
-	ccms_thread_unlock(&ip->chain.cst);
+	hammer2_chain_unlock(ip->hmp, &ip->chain);
 }
 
+#if 0
 /*
  * Soft-busy an inode.
  *
@@ -96,7 +98,7 @@ void
 hammer2_inode_busy(hammer2_inode_t *ip)
 {
 	if (ip->chain.busy++ == 0)
-		hammer2_chain_ref(ip->hmp, &ip->chain);
+		hammer2_chain_ref(ip->hmp, &ip->chain, 0);
 }
 
 void
@@ -105,6 +107,8 @@ hammer2_inode_unbusy(hammer2_inode_t *ip)
 	if (--ip->chain.busy == 0)
 		hammer2_chain_drop(ip->hmp, &ip->chain);
 }
+
+#endif
 
 /*
  * Mount-wide locks
