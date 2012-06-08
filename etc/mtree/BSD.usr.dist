@@ -44,10 +44,6 @@
         ..
     ..
     libdata
-        doscmd
-            fonts
-            ..
-        ..
         gcc41
         ..
         gcc44

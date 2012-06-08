@@ -26,6 +26,12 @@ WATCHDOG_ENABLE & HW_WDOG OPTIONS REMOVED
 The wdog framework is now compiled into our kernels by default, so the
 options are no longer needed.
 
+DOSCMD(1) REMOVED
+-----------------
+
+doscmd(1) has been removed. It was i386 only. The doscmd(1) specific
+NO_X make.conf option was removed too.
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 2.10 to later versions               +
 +-----------------------------------------------------------------------+
