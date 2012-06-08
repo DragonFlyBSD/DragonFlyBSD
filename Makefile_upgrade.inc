@@ -1986,6 +1986,10 @@ TO_REMOVE+=/usr/lib/libmytinfo.a
 TO_REMOVE+=/usr/lib/libmytinfo.so
 TO_REMOVE+=/usr/lib/profile/libmytinfo.a
 TO_REMOVE+=/usr/include/sys/ccms.h
+TO_REMOVE+=/usr/bin/doscmd
+TO_REMOVE+=/usr/libdata/doscmd
+TO_REMOVE+=/usr/share/man/cat1/doscmd.1.gz
+TO_REMOVE+=/usr/share/man/man1/doscmd.1.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
