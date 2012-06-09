@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/emulation/dragonfly12/dfbsd12_stat.c,v 1.4 2008/09/17 21:44:16 dillon Exp $
  */
 
 #include "opt_compatdf12.h"
@@ -54,7 +52,7 @@
 static void
 cvtstat(struct dfbsd12_stat *oldstat, struct stat *newstat)
 {
-	bzero(oldstat, sizeof(oldstat));
+	bzero(oldstat, sizeof(*oldstat));
 
 	oldstat->st_dev = newstat->st_dev;
 	oldstat->st_ino = newstat->st_ino;	/* truncation */
