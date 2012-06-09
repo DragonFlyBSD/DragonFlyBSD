@@ -34,11 +34,16 @@
  */
 #include <sys/types.h>
 #include <sys/mount.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <vfs/hammer2/hammer2_mount.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <unistd.h>
+
+static int cluster_connect(const char *volume);
 
 /*
  * Usage: mount_hammer2 [volume] [mtpt]
@@ -64,11 +69,81 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
+	/*
+	 * Connect to the cluster controller.  This handles both remote
+	 * mounts and device cache/master/slave mounts.
+	 *
+	 * When doing remote mounts that are allowed to run in the background
+	 * the mount program will fork, detach, print a message, and exit(0)
+	 * the originator while retrying in the background.
+	 */
+	info.cluster_fd = cluster_connect(argv[1]);
+	if (info.cluster_fd < 0) {
+		fprintf(stderr,
+			"hammer2_mount: cluster_connect(%s) failed\n",
+			argv[1]);
+		exit(1);
+	}
+
+	/*
+	 * Try to mount it
+	 */
 	info.volume = argv[1];
 	info.hflags = 0;
 	mountpt = argv[2];
 
 	error = mount(vfc.vfc_name, mountpt, mount_flags, &info);
-	if (error)
+	if (error) {
 		perror("mount: ");
+		exit(1);
+	}
+
+	/*
+	 * XXX fork a backgrounded reconnector process to handle connection
+	 *     failures. XXX
+	 */
+
+	return (0);
+}
+
+/*
+ * Connect to the cluster controller.  We can connect to a local or remote
+ * cluster controller, depending.  For a multi-node cluster we always want
+ * to connect to the local controller and let it maintain the connections
+ * to the multiple remote nodes.
+ */
+static
+int
+cluster_connect(const char *volume __unused)
+{
+	struct sockaddr_in lsin;
+	int fd;
+
+	/*
+	 * This starts the hammer2 service if it isn't already running,
+	 * so we can connect to it.
+	 */
+	system("/sbin/hammer2 -q service");
+
+	/*
+	 * Connect us to the service but leave the rest to the kernel.
+	 * If the connection is lost during the mount
+	 */
+	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("socket");
+		return(-1);
+	}
+	bzero(&lsin, sizeof(lsin));
+	lsin.sin_family = AF_INET;
+	lsin.sin_addr.s_addr = 0;
+	lsin.sin_port = htons(HAMMER2_LISTEN_PORT);
+
+	if (connect(fd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {
+		close(fd);
+		fprintf(stderr, "mount_hammer2: unable to connect to "
+				"cluster controller\n");
+		return(-1);
+	}
+
+	return(fd);
 }

@@ -45,7 +45,7 @@
 struct hammer2_mount_info {
 	const char	*volume;
 	int		hflags;		/* extended hammer mount flags */
-	int		unused01;
+	int		cluster_fd;	/* cluster management pipe/socket */
 	char		reserved1[112];
 };
 

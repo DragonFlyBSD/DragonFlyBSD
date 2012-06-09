@@ -42,10 +42,12 @@
 #include <sys/uuid.h>
 #include <sys/vfsops.h>
 #include <sys/sysctl.h>
+#include <sys/socket.h>
 
 #include "hammer2.h"
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
+#include "hammer2_network.h"
 
 struct hammer2_sync_info {
 	int error;
@@ -135,6 +137,9 @@ static int hammer2_install_volume_header(hammer2_mount_t *hmp);
 static int hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
+static void hammer2_cluster_thread_rd(void *arg);
+static void hammer2_cluster_thread_wr(void *arg);
+
 /*
  * HAMMER2 vfs operations.
  */
@@ -206,7 +211,7 @@ hammer2_vfs_init(struct vfsconf *conf)
 static
 int
 hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
-	      struct ucred *cred)
+		  struct ucred *cred)
 {
 	struct hammer2_mount_info info;
 	hammer2_pfsmount_t *pmp;
@@ -238,6 +243,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		/*
 		 * Root mount
 		 */
+		bzero(&info, sizeof(info));
+		info.cluster_fd = -1;
 		return (EOPNOTSUPP);
 	} else {
 		/*
@@ -274,9 +281,10 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 
 	/*
-	 * New non-root mount
+	 * PFS mount
+	 *
+	 * Lookup name and verify it refers to a block device.
 	 */
-	/* Lookup name and verify it refers to a block device */
 	error = nlookup_init(&nd, dev, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -462,6 +470,24 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	kprintf("iroot %p\n", pmp->iroot);
 
+	/*
+	 * Ref the cluster management messaging descriptor.  The mount
+	 * program deals with the other end of the communications pipe.
+	 */
+	pmp->msg_fp = holdfp(curproc->p_fd, info.cluster_fd, -1);
+	if (pmp->msg_fp == NULL) {
+		kprintf("hammer2_mount: bad cluster_fd!\n");
+		hammer2_vfs_unmount(mp, MNT_FORCE);
+		return EBADF;
+	}
+	lwkt_create(hammer2_cluster_thread_rd, pmp, &pmp->msgrd_td,
+		    NULL, 0, -1, "hammer2-msgrd");
+	lwkt_create(hammer2_cluster_thread_wr, pmp, &pmp->msgwr_td,
+		    NULL, 0, -1, "hammer2-msgwr");
+
+	/*
+	 * Finish setup
+	 */
 	vfs_getnewfsid(mp);
 	vfs_add_vnodeops(mp, &hammer2_vnode_vops, &mp->mnt_vn_norm_ops);
 	vfs_add_vnodeops(mp, &hammer2_spec_vops, &mp->mnt_vn_spec_ops);
@@ -474,6 +500,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		  sizeof(mp->mnt_stat.f_mntonname) - 1,
 		  &size);
 
+	/*
+	 * Initial statfs to prime mnt_stat.
+	 */
 	hammer2_vfs_statfs(mp, &mp->mnt_stat, cred);
 
 	return 0;
@@ -557,6 +586,27 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		pmp->rchain = NULL;
 	}
 	ccms_domain_uninit(&pmp->ccms_dom);
+
+	/*
+	 * Ask the cluster controller to go away
+	 */
+	atomic_set_int(&pmp->msg_ctl, HAMMER2_CLUSTERCTL_KILL);
+	while (pmp->msgrd_td || pmp->msgwr_td) {
+		wakeup(&pmp->msg_ctl);
+		tsleep(pmp, 0, "clstrkl", hz);
+	}
+
+	/*
+	 * Drop communications descriptor
+	 */
+	if (pmp->msg_fp) {
+		fdrop(pmp->msg_fp);
+		pmp->msg_fp = NULL;
+	}
+
+	/*
+	 * If no PFS's left drop the master hammer2_mount for the device.
+	 */
 	if (hmp->pmp_count == 0) {
 		if (hmp->schain) {
 			KKASSERT(hmp->schain->refs == 1);
@@ -945,3 +995,45 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 	return (error);
 }
 
+/*
+ * Cluster controller thread.  Perform messaging functions.  We have one
+ * thread for the reader and one for the writer.  The writer handles
+ * shutdown requests (which should break the reader thread).
+ */
+static
+void
+hammer2_cluster_thread_rd(void *arg)
+{
+	hammer2_pfsmount_t *pmp = arg;
+	hammer2_any_t any;
+	int error;
+
+	while ((pmp->msg_ctl & HAMMER2_CLUSTERCTL_KILL) == 0) {
+		error = fp_read(pmp->msg_fp,
+				any.buf, sizeof(hammer2_msg_hdr_t),
+				NULL, 1, UIO_SYSSPACE);
+		kprintf("fp_read %d\n", error);
+		if (error)
+			break;
+	}
+	pmp->msgrd_td = NULL;
+	/* pmp can be ripped out from under us at this point */
+	wakeup(pmp);
+	lwkt_exit();
+}
+
+static
+void
+hammer2_cluster_thread_wr(void *arg)
+{
+	hammer2_pfsmount_t *pmp = arg;
+
+	while ((pmp->msg_ctl & HAMMER2_CLUSTERCTL_KILL) == 0) {
+		tsleep(&pmp->msg_ctl, 0, "msgwr", hz);
+	}
+	fp_shutdown(pmp->msg_fp, SHUT_RDWR);
+	pmp->msgwr_td = NULL;
+	/* pmp can be ripped out from under us at this point */
+	wakeup(pmp);
+	lwkt_exit();
+}

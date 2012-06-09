@@ -293,7 +293,8 @@ struct hammer2_mount {
 	struct lock	voldatalk;	/* lockmgr lock */
 
 	hammer2_volume_data_t voldata;
-	hammer2_freecache_t freecache[HAMMER2_FREECACHE_TYPES][HAMMER2_MAX_RADIX+1];
+	hammer2_freecache_t freecache[HAMMER2_FREECACHE_TYPES]
+				     [HAMMER2_MAX_RADIX+1];
 };
 
 typedef struct hammer2_mount hammer2_mount_t;
@@ -309,9 +310,15 @@ struct hammer2_pfsmount {
 	ccms_domain_t		ccms_dom;
 	struct netexport	export;		/* nfs export */
 	int			ronly;		/* read-only mount */
+	struct file		*msg_fp;	/* cluster pipe->userland */
+	thread_t		msgrd_td;	/* cluster thread */
+	thread_t		msgwr_td;	/* cluster thread */
+	int			msg_ctl;	/* wakeup flags */
 };
 
 typedef struct hammer2_pfsmount hammer2_pfsmount_t;
+
+#define HAMMER2_CLUSTERCTL_KILL	0x0001
 
 #if defined(_KERNEL)
 
