@@ -21,8 +21,6 @@ M4FLAGS=
 LDADD= -lcrypt -lmd -lutil -lz
 DPADD=	${LIBCRYPT} ${LIBMD} ${LIBUTIL} ${LIBZ}
 
-WARNS?=	5
-
 .SUFFIXES: .8 .8.m4
 
 .8.m4.8:
