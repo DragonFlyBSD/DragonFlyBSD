@@ -193,7 +193,7 @@ p_flags(struct prompt *prompt, u_int32_t f, unsigned max)
   if (max > sizeof name - 1)
     max = sizeof name - 1;
 
-  for (flags = name; p->b_mask && flags - name < max; p++)
+  for (flags = name; p->b_mask && flags - name < (int)max; p++)
     if (p->b_mask & f)
       *flags++ = p->b_val;
   *flags = '\0';
