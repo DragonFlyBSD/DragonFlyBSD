@@ -1277,7 +1277,6 @@ puffs_vnop_rename(struct vop_nrename_args *ap)
 	struct ucred *cred = ap->a_cred;
 	struct puffs_mount *pmp = MPTOPUFFSMP(fdvp->v_mount);
 	int error;
-	boolean_t doabort = TRUE;
 
 	if (!EXISTSOP(pmp, RENAME))
 		return EOPNOTSUPP;
@@ -1329,7 +1328,6 @@ puffs_vnop_rename(struct vop_nrename_args *ap)
 	    PUFFS_VN_RENAME, VPTOPNC(fdvp));
 
 	PUFFS_MSG_ENQUEUEWAIT2(pmp, park_rename, fdvp->v_data, NULL, error);
-	doabort = FALSE;
 	PUFFS_MSG_RELEASE(rename);
 	error = checkerr(pmp, error, __func__);
 

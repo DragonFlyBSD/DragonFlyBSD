@@ -1,9 +1,7 @@
 # $FreeBSD: src/usr.sbin/dconschat/Makefile,v 1.1 2003/10/24 15:44:10 simokawa Exp $
-# $DragonFly: src/usr.sbin/dconschat/Makefile,v 1.1 2004/09/23 06:38:29 simokawa Exp $
 
 PROG=	dconschat
 MAN=	dconschat.8
-WARNS?=	1
 
 CFLAGS+= -I${.CURDIR}/../../sys
 

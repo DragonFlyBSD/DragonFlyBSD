@@ -30,7 +30,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_msdos/mount_msdos.c,v 1.19.2.1 2000/07/20 10:35:13 kris Exp $
- * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.8 2008/11/02 21:52:46 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +44,7 @@
 #include <err.h>
 #include <grp.h>
 #include <locale.h>
+#include <mntopts.h>
 #include <pwd.h>
 #include <stdio.h>
 /* must be after stdio to declare fparseln */
@@ -53,8 +53,6 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-
-#include "mntopts.h"
 
 /*
  * XXX - no way to specify "foo=<bar>"-type options; that's what we'd

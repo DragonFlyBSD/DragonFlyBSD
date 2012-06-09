@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_portal.c	8.6 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount_portal/mount_portal.c,v 1.16 1999/10/09 11:54:11 phk Exp $
- * $DragonFly: src/sbin/mount_portal/mount_portal.c,v 1.6 2005/11/06 12:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -49,13 +48,13 @@
 
 #include <err.h>
 #include <errno.h>
+#include <mntopts.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "mntopts.h"
 #include "pathnames.h"
 #include "portald.h"
 

@@ -31,18 +31,18 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/devfs.h>
 
 #include <err.h>
+#include <mntopts.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-
-#include "mntopts.h"
 
 #if 0
 #define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }

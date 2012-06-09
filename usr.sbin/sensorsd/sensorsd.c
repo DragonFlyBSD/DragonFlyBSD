@@ -1,5 +1,4 @@
 /* $OpenBSD: sensorsd.c,v 1.46 2008/06/14 00:16:10 cnst Exp $ */
-/* $DragonFly: src/usr.sbin/sensorsd/sensorsd.c,v 1.2 2008/10/19 08:16:20 hasso Exp $ */
 
 /*
  * Copyright (c) 2003 Henning Brauer <henning@openbsd.org>
@@ -25,6 +24,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,8 +99,7 @@ int			  debug = 0;
 void
 usage(void)
 {
-	extern char *__progname;
-	fprintf(stderr, "usage: %s [-d] [-c check]\n", __progname);
+	fprintf(stderr, "usage: %s [-d] [-c check]\n", getprogname());
 	exit(1);
 }
 
@@ -389,14 +388,14 @@ check_sdlim(struct sdlim_t *sdlim, time_t this_check)
 void
 execute(char *command)
 {
-	char *argp[] = {"sh", "-c", command, NULL};
+	const char *argp[] = {"sh", "-c", command, NULL};
 
 	switch (fork()) {
 	case -1:
 		syslog(LOG_CRIT, "execute: fork() failed");
 		break;
 	case 0:
-		execv("/bin/sh", argp);
+		execv("/bin/sh", __DECONST(char **, argp));
 		_exit(1);
 		/* NOTREACHED */
 	default:
@@ -519,7 +518,7 @@ report_sdlim(struct sdlim_t *sdlim, time_t last_report)
 					break;
 				case 'l':
 				{
-					char *s = "";
+					const char *s = "";
 					switch(limit->ustatus){
 					case SENSORSD_S_UNSPEC:
 						s = "uninitialised";
@@ -543,7 +542,7 @@ report_sdlim(struct sdlim_t *sdlim, time_t last_report)
 				}
 				case 's':
 				{
-					char *s;
+					const char *s;
 					switch(limit->astatus){
 					case SENSOR_S_UNSPEC:
 						s = "UNSPEC";
@@ -620,7 +619,7 @@ print_sensor(enum sensor_type type, int64_t value)
 		    (value - 273150000) / 1000000.0);
 		break;
 	case SENSOR_FANRPM:
-		snprintf(fbuf, RFBUFSIZ, "%lld RPM", value);
+		snprintf(fbuf, RFBUFSIZ, "%"PRId64" RPM", value);
 		break;
 	case SENSOR_VOLTS_DC:
 		snprintf(fbuf, RFBUFSIZ, "%.2f V DC", value / 1000000.0);
@@ -638,7 +637,7 @@ print_sensor(enum sensor_type type, int64_t value)
 		snprintf(fbuf, RFBUFSIZ, "%s", value? "On" : "Off");
 		break;
 	case SENSOR_INTEGER:
-		snprintf(fbuf, RFBUFSIZ, "%lld", value);
+		snprintf(fbuf, RFBUFSIZ, "%"PRId64, value);
 		break;
 	case SENSOR_PERCENT:
 		snprintf(fbuf, RFBUFSIZ, "%.2f%%", value / 1000.0);
@@ -647,16 +646,16 @@ print_sensor(enum sensor_type type, int64_t value)
 		snprintf(fbuf, RFBUFSIZ, "%.2f lx", value / 1000000.0);
 		break;
 	case SENSOR_DRIVE:
-		if (0 < value && value < sizeof(drvstat)/sizeof(drvstat[0]))
+		if (0 < value && value < (int64_t)NELEM(drvstat))
 			snprintf(fbuf, RFBUFSIZ, "%s", drvstat[value]);
 		else
-			snprintf(fbuf, RFBUFSIZ, "%lld ???", value);
+			snprintf(fbuf, RFBUFSIZ, "%"PRId64" ???", value);
 		break;
 	case SENSOR_TIMEDELTA:
 		snprintf(fbuf, RFBUFSIZ, "%.6f secs", value / 1000000000.0);
 		break;
 	default:
-		snprintf(fbuf, RFBUFSIZ, "%lld ???", value);
+		snprintf(fbuf, RFBUFSIZ, "%"PRId64" ???", value);
 	}
 
 	return (fbuf);
@@ -776,7 +775,7 @@ get_val(char *buf, int upper, enum sensor_type type)
 
 /* ARGSUSED */
 void
-reparse_cfg(int signo)
+reparse_cfg(__unused int signo)
 {
 	reload = 1;
 }

@@ -3,7 +3,6 @@
 PROG=	fwcontrol
 SRCS=	fwcontrol.c fwcrom.c fwdv.c
 MAN=	fwcontrol.8
-WARNS?=	2
 
 .PATH:	${.CURDIR}/../../sys/bus/firewire
 

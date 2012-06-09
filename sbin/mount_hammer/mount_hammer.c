@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.9 2008/07/19 18:48:15 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -55,8 +53,7 @@
 #include <err.h>
 #include <assert.h>
 #include <ctype.h>
-
-#include "mntopts.h"
+#include <mntopts.h>
 
 typedef const char **ary_ptr_t;
 

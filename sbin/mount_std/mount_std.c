@@ -36,20 +36,18 @@
  *
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * $FreeBSD: src/sbin/mount_std/mount_std.c,v 1.10.2.1 2001/07/30 10:30:07 dd Exp $
- * $DragonFly: src/sbin/mount_std/mount_std.c,v 1.5 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mount.h>
 
 #include <err.h>
+#include <mntopts.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-
-#include "mntopts.h"
 
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,

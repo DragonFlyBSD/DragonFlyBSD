@@ -29,7 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3.2.2 2001/10/12 22:08:43 semenu Exp $
- * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.9 2008/11/02 21:52:46 swildner Exp $
  *
  */
 
@@ -45,6 +44,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <grp.h>
+#include <mntopts.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,8 +52,6 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <libutil.h>
-
-#include "mntopts.h"
 
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,

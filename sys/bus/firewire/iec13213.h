@@ -32,7 +32,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/iec13213.h,v 1.10 2003/06/16 08:29:24 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/iec13213.h,v 1.3 2004/02/05 13:32:08 joerg Exp $
  */
 
 #define	STATE_CLEAR	0x0000
@@ -218,7 +217,7 @@ struct csrreg *crom_search_key(struct crom_context *, u_int8_t);
 int crom_has_specver(u_int32_t *, u_int32_t, u_int32_t);
 
 #ifndef _KERNEL
-char *crom_desc(struct crom_context *, char *, int);
+const char *crom_desc(struct crom_context *, char *, int);
 #endif
 
 /* For CROM build */
