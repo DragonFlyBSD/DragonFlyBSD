@@ -1641,9 +1641,6 @@ vesa_diag(video_adapter_t *adp, int level)
 	if (adp != vesa_adp)
 		return 1;
 
-	if (level <= 0)
-		return 0;
-
 	return 0;
 }
 
