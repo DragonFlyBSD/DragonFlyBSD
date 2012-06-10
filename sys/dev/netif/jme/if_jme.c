@@ -405,6 +405,10 @@ jme_miibus_statchg(device_t dev)
 		 */
 		rdata->jme_rx_cons = 0;
 	}
+	if (sc->jme_cdata.jme_rx_ring_cnt > JME_NRXRING_MIN)
+		jme_enable_rss(sc);
+	else
+		jme_disable_rss(sc);
 
 	jme_txeof(sc);
 	if (sc->jme_cdata.jme_tx_cnt != 0) {
