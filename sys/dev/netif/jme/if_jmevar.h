@@ -125,6 +125,7 @@ struct jme_txdesc {
 
 struct jme_rxdesc {
 	struct mbuf 		*rx_m;
+	bus_addr_t		rx_paddr;
 	bus_dmamap_t		rx_dmamap;
 	struct jme_desc		*rx_desc;
 };

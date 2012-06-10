@@ -245,6 +245,18 @@ TUNABLE_INT("hw.jme.rx_ring_count", &jme_rx_ring_count);
 TUNABLE_INT("hw.jme.msi.enable", &jme_msi_enable);
 TUNABLE_INT("hw.jme.msix.enable", &jme_msix_enable);
 
+static __inline void
+jme_setup_rxdesc(struct jme_rxdesc *rxd)
+{
+	struct jme_desc *desc;
+
+	desc = rxd->rx_desc;
+	desc->buflen = htole32(MCLBYTES);
+	desc->addr_lo = htole32(JME_ADDR_LO(rxd->rx_paddr));
+	desc->addr_hi = htole32(JME_ADDR_HI(rxd->rx_paddr));
+	desc->flags = htole32(JME_RD_OWN | JME_RD_INTR | JME_RD_64BIT);
+}
+
 /*
  *	Read a PHY register on the MII of the JMC250.
  */
@@ -2051,10 +2063,7 @@ jme_discard_rxbufs(struct jme_rxdata *rdata, int cons, int count)
 	int i;
 
 	for (i = 0; i < count; ++i) {
-		struct jme_desc *desc = &rdata->jme_rx_ring[cons];
-
-		desc->flags = htole32(JME_RD_OWN | JME_RD_INTR | JME_RD_64BIT);
-		desc->buflen = htole32(MCLBYTES);
+		jme_setup_rxdesc(&rdata->jme_rxdesc[cons]);
 		JME_DESC_INC(cons, rdata->jme_rx_desc_cnt);
 	}
 }
@@ -2778,7 +2787,6 @@ jme_init_rx_ring(struct jme_rxdata *rdata)
 static int
 jme_newbuf(struct jme_rxdata *rdata, struct jme_rxdesc *rxd, int init)
 {
-	struct jme_desc *desc;
 	struct mbuf *m;
 	bus_dma_segment_t segs;
 	bus_dmamap_t map;
@@ -2816,13 +2824,9 @@ jme_newbuf(struct jme_rxdata *rdata, struct jme_rxdesc *rxd, int init)
 	rxd->rx_dmamap = rdata->jme_rx_sparemap;
 	rdata->jme_rx_sparemap = map;
 	rxd->rx_m = m;
+	rxd->rx_paddr = segs.ds_addr;
 
-	desc = rxd->rx_desc;
-	desc->buflen = htole32(segs.ds_len);
-	desc->addr_lo = htole32(JME_ADDR_LO(segs.ds_addr));
-	desc->addr_hi = htole32(JME_ADDR_HI(segs.ds_addr));
-	desc->flags = htole32(JME_RD_OWN | JME_RD_INTR | JME_RD_64BIT);
-
+	jme_setup_rxdesc(rxd);
 	return 0;
 }
 
