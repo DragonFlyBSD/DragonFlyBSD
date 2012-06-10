@@ -1589,10 +1589,10 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	txd->tx_ndesc = 1 - i;
 	for (; i < nsegs; i++) {
 		desc = &sc->jme_cdata.jme_tx_ring[prod];
-		desc->flags = htole32(JME_TD_OWN | flag64);
 		desc->buflen = htole32(txsegs[i].ds_len);
 		desc->addr_hi = htole32(JME_ADDR_HI(txsegs[i].ds_addr));
 		desc->addr_lo = htole32(JME_ADDR_LO(txsegs[i].ds_addr));
+		desc->flags = htole32(JME_TD_OWN | flag64);
 
 		sc->jme_cdata.jme_tx_cnt++;
 		KKASSERT(sc->jme_cdata.jme_tx_cnt <=
