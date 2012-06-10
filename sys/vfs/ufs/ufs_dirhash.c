@@ -791,13 +791,13 @@ ufsdirhash_hash(struct dirhash *dh, char *name, int namelen)
 	uint32_t hash;
 
 	/*
-	 * We hash the name and then some ofther bit of data which is
-	 * invarient over the dirhash's lifetime. Otherwise names
+	 * We hash the name and then some other bit of data that is
+	 * invariant over the dirhash's lifetime. Otherwise names
 	 * differing only in the last byte are placed close to one
 	 * another in the table, which is bad for linear probing.
 	 */
 	hash = fnv_32_buf(name, namelen, FNV1_32_INIT);
-	hash = fnv_32_buf(dh, sizeof(dh), hash);
+	hash = fnv_32_buf(&dh, sizeof(dh), hash);
 	return (hash % dh->dh_hlen);
 }
 
