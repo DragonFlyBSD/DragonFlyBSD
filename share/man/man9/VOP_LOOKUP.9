@@ -191,7 +191,7 @@ vop_lookup(struct vnode *dvp,
     if (error) {
 	int vpid;
 
-	if (error = ENOENT)
+	if (error == ENOENT)
 	    return error;
 
 	vp = *vpp;
