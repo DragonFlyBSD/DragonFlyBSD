@@ -164,22 +164,6 @@ struct igb_dma {
 };
 
 /*
- * Driver queue struct: this is the interrupt container
- * for the associated tx and rx ring.
- */
-struct igb_queue {
-	struct igb_softc	*sc;
-	uint32_t		msix;		/* This queue's MSIX vector */
-	uint32_t		eims;		/* This queue's EIMS bit */
-	uint32_t		eitr_setting;
-	struct resource		*res;
-	void			*tag;
-	struct igb_tx_ring	*txr;
-	struct igb_rx_ring	*rxr;
-	uint64_t		irqs;
-};
-
-/*
  * Transmit ring: one per queue
  */
 struct igb_tx_ring {
@@ -280,7 +264,6 @@ struct igb_softc {
 	int			max_frame_size;
 	int			min_frame_size;
 	int			pause_frames;
-	uint16_t		num_queues;
 	uint16_t		vf_ifp;	/* a VF interface */
 
 	/* Management and WOL features */
@@ -295,14 +278,12 @@ struct igb_softc {
 	uint32_t		dma_coalesce;
 
 	int			intr_rate;
-
-	/* Interface queues */
-	struct igb_queue	*queues;
 	uint32_t		intr_mask;
 
 	/*
 	 * Transmit rings
 	 */
+	int			tx_ring_cnt;
 	struct igb_tx_ring	*tx_rings;
 	int			num_tx_desc;
 
@@ -312,6 +293,7 @@ struct igb_softc {
 	/* 
 	 * Receive rings
 	 */
+	int			rx_ring_cnt;
 	struct igb_rx_ring	*rx_rings;
 	int			num_rx_desc;
 	uint32_t		rx_mbuf_sz;
