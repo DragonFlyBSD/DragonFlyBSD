@@ -3240,7 +3240,7 @@ re_get_eaddr(struct re_softc *sc, uint8_t *eaddr)
 			re_read_eeprom(sc, (caddr_t)as, eaddr_off, 3);
 			for (i = 0; i < ETHER_ADDR_LEN / 2; i++)
 				as[i] = le16toh(as[i]);
-			bcopy(as, eaddr, sizeof(eaddr));
+			bcopy(as, eaddr, ETHER_ADDR_LEN);
 			return;
 		}
 	}
