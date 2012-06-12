@@ -167,6 +167,13 @@ static void	igb_start(struct ifnet *);
 #ifdef DEVICE_POLLING
 static void	igb_poll(struct ifnet *, enum poll_cmd, int);
 #endif
+static void	igb_serialize(struct ifnet *, enum ifnet_serialize);
+static void	igb_deserialize(struct ifnet *, enum ifnet_serialize);
+static int	igb_tryserialize(struct ifnet *, enum ifnet_serialize);
+#ifdef INVARIANTS
+static void	igb_serialize_assert(struct ifnet *, enum ifnet_serialize,
+		    boolean_t);
+#endif
 
 static void	igb_intr(void *);
 static void	igb_shared_intr(void *);
@@ -187,6 +194,9 @@ static void	igb_rel_mgmt(struct igb_softc *);
 static void	igb_get_hw_control(struct igb_softc *);
 static void     igb_rel_hw_control(struct igb_softc *);
 static void     igb_enable_wol(device_t);
+
+static void	igb_serialize_skipmain(struct igb_softc *);
+static void	igb_deserialize_skipmain(struct igb_softc *);
 
 static device_method_t igb_methods[] = {
 	/* Device interface */
@@ -278,7 +288,7 @@ igb_attach(device_t dev)
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
 	u_int intr_flags;
-	int error = 0;
+	int error = 0, i, j;
 
 #ifdef notyet
 	/* SYSCTL stuff */
@@ -390,6 +400,24 @@ igb_attach(device_t dev)
 	error = igb_alloc_rings(sc);
 	if (error)
 		goto failed;
+
+	/*
+	 * Setup serializers
+	 */
+	lwkt_serialize_init(&sc->main_serialize);
+	i = 0;
+	sc->serializes[i++] = &sc->main_serialize;
+
+	sc->tx_serialize = i;
+	for (j = 0; j < sc->tx_ring_cnt; ++j)
+		sc->serializes[i++] = &sc->tx_rings[j].tx_serialize;
+
+	sc->rx_serialize = i;
+	for (j = 0; j < sc->rx_ring_cnt; ++j)
+		sc->serializes[i++] = &sc->rx_rings[j].rx_serialize;
+
+	sc->serialize_cnt = i;
+	KKASSERT(sc->serialize_cnt <= IGB_NSERIALIZE);
 
 	/* Allocate the appropriate stats memory */
 	if (sc->vf_ifp) {
@@ -1278,6 +1306,12 @@ igb_setup_ifp(struct igb_softc *sc)
 	ifp->if_init =  igb_init;
 	ifp->if_ioctl = igb_ioctl;
 	ifp->if_start = igb_start;
+	ifp->if_serialize = igb_serialize;
+	ifp->if_deserialize = igb_deserialize;
+	ifp->if_tryserialize = igb_tryserialize;
+#ifdef INVARIANTS
+	ifp->if_serialize_assert = igb_serialize_assert;
+#endif
 #ifdef DEVICE_POLLING
 	ifp->if_poll = igb_poll;
 #endif
@@ -1381,6 +1415,7 @@ igb_alloc_rings(struct igb_softc *sc)
 		/* Set up some basics */
 		txr->sc = sc;
 		txr->me = i;
+		lwkt_serialize_init(&txr->tx_serialize);
 
 		error = igb_create_tx_ring(txr);
 		if (error)
@@ -1398,6 +1433,7 @@ igb_alloc_rings(struct igb_softc *sc)
 		/* Set up some basics */
 		rxr->sc = sc;
 		rxr->me = i;
+		lwkt_serialize_init(&rxr->rx_serialize);
 
 		error = igb_create_rx_ring(rxr);
 		if (error)
@@ -2376,7 +2412,7 @@ igb_set_vlan(struct igb_softc *sc)
 static void
 igb_enable_intr(struct igb_softc *sc)
 {
-	lwkt_serialize_handler_enable(sc->arpcom.ac_if.if_serializer);
+	lwkt_serialize_handler_enable(&sc->main_serialize);
 
 	if ((sc->flags & IGB_FLAG_SHARED_INTR) == 0) {
 		/* XXX MSI-X should use sc->intr_mask */
@@ -2400,7 +2436,7 @@ igb_disable_intr(struct igb_softc *sc)
 	E1000_WRITE_REG(&sc->hw, E1000_IMC, 0xffffffff);
 	E1000_WRITE_FLUSH(&sc->hw);
 
-	lwkt_serialize_handler_disable(sc->arpcom.ac_if.if_serializer);
+	lwkt_serialize_handler_disable(&sc->main_serialize);
 }
 
 /*
@@ -2702,7 +2738,7 @@ igb_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	struct igb_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	switch (cmd) {
 	case POLL_REGISTER:
@@ -2716,17 +2752,31 @@ igb_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	case POLL_AND_CHECK_STATUS:
 		reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+			igb_serialize_skipmain(sc);
 			sc->hw.mac.get_link_status = 1;
 			igb_update_link_status(sc);
+			igb_deserialize_skipmain(sc);
 		}
 		/* FALL THROUGH */
 	case POLL_ONLY:
 		if (ifp->if_flags & IFF_RUNNING) {
-			igb_rxeof(&sc->rx_rings[0], count);
+			struct igb_tx_ring *txr;
+			int i;
 
-			igb_txeof(&sc->tx_rings[0]);
+			for (i = 0; i < sc->rx_ring_cnt; ++i) {
+				struct igb_rx_ring *rxr = &sc->rx_rings[i];
+
+				lwkt_serialize_enter(&rxr->rx_serialize);
+				igb_rxeof(rxr, count);
+				lwkt_serialize_exit(&rxr->rx_serialize);
+			}
+
+			txr = &sc->tx_rings[0];
+			lwkt_serialize_enter(&txr->tx_serialize);
+			igb_txeof(txr);
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
+			lwkt_serialize_exit(&txr->tx_serialize);
 		}
 		break;
 	}
@@ -2741,7 +2791,7 @@ igb_intr(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t eicr;
 
-	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	eicr = E1000_READ_REG(&sc->hw, E1000_EICR);
 
@@ -2749,13 +2799,26 @@ igb_intr(void *xsc)
 		return;
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		if (eicr & sc->rx_rings[0].rx_intr_mask)
-			igb_rxeof(&sc->rx_rings[0], -1);
+		struct igb_tx_ring *txr;
+		int i;
 
-		if (eicr & sc->tx_rings[0].tx_intr_mask) {
-			igb_txeof(&sc->tx_rings[0]);
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			struct igb_rx_ring *rxr = &sc->rx_rings[i];
+
+			if (eicr & rxr->rx_intr_mask) {
+				lwkt_serialize_enter(&rxr->rx_serialize);
+				igb_rxeof(rxr, -1);
+				lwkt_serialize_exit(&rxr->rx_serialize);
+			}
+		}
+
+		txr = &sc->tx_rings[0];
+		if (eicr & txr->tx_intr_mask) {
+			lwkt_serialize_enter(&txr->tx_serialize);
+			igb_txeof(txr);
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
+			lwkt_serialize_exit(&txr->tx_serialize);
 		}
 	}
 
@@ -2764,8 +2827,10 @@ igb_intr(void *xsc)
 
 		/* Link status change */
 		if (icr & E1000_ICR_LSC) {
+			igb_serialize_skipmain(sc);
 			sc->hw.mac.get_link_status = 1;
 			igb_update_link_status(sc);
+			igb_deserialize_skipmain(sc);
 		}
 	}
 
@@ -2783,7 +2848,7 @@ igb_shared_intr(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t reg_icr;
 
-	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 
@@ -2799,17 +2864,31 @@ igb_shared_intr(void *xsc)
 		return;
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		igb_rxeof(&sc->rx_rings[0], -1);
+		struct igb_tx_ring *txr;
+		int i;
 
-		igb_txeof(&sc->tx_rings[0]);
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			struct igb_rx_ring *rxr = &sc->rx_rings[i];
+
+			lwkt_serialize_enter(&rxr->rx_serialize);
+			igb_rxeof(rxr, -1);
+			lwkt_serialize_exit(&rxr->rx_serialize);
+		}
+
+		txr = &sc->tx_rings[0];
+		lwkt_serialize_enter(&txr->tx_serialize);
+		igb_txeof(txr);
 		if (!ifq_is_empty(&ifp->if_snd))
 			if_devstart(ifp);
+		lwkt_serialize_exit(&txr->tx_serialize);
 	}
 
 	/* Link status change */
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+		igb_serialize_skipmain(sc);
 		sc->hw.mac.get_link_status = 1;
 		igb_update_link_status(sc);
+		igb_deserialize_skipmain(sc);
 	}
 
 	if (reg_icr & E1000_ICR_RXO)
@@ -3032,7 +3111,7 @@ igb_start(struct ifnet *ifp)
 	struct igb_tx_ring *txr = &sc->tx_rings[0];
 	struct mbuf *m_head;
 
-	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ASSERT_SERIALIZED(&txr->tx_serialize);
 
 	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
 		return;
@@ -3363,7 +3442,7 @@ igb_setup_intr(struct igb_softc *sc)
 
 	error = bus_setup_intr(sc->dev, sc->intr_res, INTR_MPSAFE,
 	    (sc->flags & IGB_FLAG_SHARED_INTR) ? igb_shared_intr : igb_intr,
-	    sc, &sc->intr_tag, ifp->if_serializer);
+	    sc, &sc->intr_tag, &sc->main_serialize);
 	if (error) {
 		device_printf(sc->dev, "Failed to register interrupt handler");
 		return error;
@@ -3428,3 +3507,56 @@ igb_setup_rx_intr(struct igb_rx_ring *rxr)
 		rxr->rx_intr_mask = 1 << rxr->rx_intr_bit;
 	}
 }
+
+static void
+igb_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct igb_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_enter(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz);
+}
+
+static void
+igb_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct igb_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_exit(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz);
+}
+
+static int
+igb_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct igb_softc *sc = ifp->if_softc;
+
+	return ifnet_serialize_array_try(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz);
+}
+
+static void
+igb_serialize_skipmain(struct igb_softc *sc)
+{
+	lwkt_serialize_array_enter(sc->serializes, sc->serialize_cnt, 1);
+}
+
+static void
+igb_deserialize_skipmain(struct igb_softc *sc)
+{
+	lwkt_serialize_array_exit(sc->serializes, sc->serialize_cnt, 1);
+}
+
+#ifdef INVARIANTS
+
+static void
+igb_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
+    boolean_t serialized)
+{
+	struct igb_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_assert(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz, serialized);
+}
+
+#endif	/* INVARIANTS */

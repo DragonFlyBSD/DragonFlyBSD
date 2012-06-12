@@ -150,6 +150,9 @@
 
 #define IGB_TX_OACTIVE_MAX		64
 
+/* main + 16x RX + 16x TX */
+#define IGB_NSERIALIZE			33
+
 struct igb_softc;
 
 /*
@@ -166,6 +169,7 @@ struct igb_dma {
  * Transmit ring: one per queue
  */
 struct igb_tx_ring {
+	struct lwkt_serialize	tx_serialize;
 	struct igb_softc	*sc;
 	uint32_t		me;
 	struct igb_dma		txdma;
@@ -204,6 +208,7 @@ struct igb_tx_ring {
  * Receive ring: one per queue
  */
 struct igb_rx_ring {
+	struct lwkt_serialize	rx_serialize;
 	struct igb_softc	*sc;
 	uint32_t		me;
 	struct igb_dma		rxdma;
@@ -268,6 +273,12 @@ struct igb_softc {
 
 	/* Multicast array pointer */
 	uint8_t			*mta;
+
+	int			serialize_cnt;
+	int			tx_serialize;
+	int			rx_serialize;
+	struct lwkt_serialize	*serializes[IGB_NSERIALIZE];
+	struct lwkt_serialize	main_serialize;
 
 	int			intr_rate;
 	uint32_t		intr_mask;
