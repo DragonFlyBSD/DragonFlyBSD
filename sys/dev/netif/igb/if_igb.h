@@ -173,6 +173,7 @@ struct igb_tx_ring {
 	bus_dmamap_t		tx_hdr_dmap;
 	bus_addr_t		tx_hdr_paddr;
 	struct e1000_tx_desc	*tx_base;
+	int			num_tx_desc;
 	uint32_t		next_avail_desc;
 	uint32_t		next_to_clean;
 	uint32_t		*tx_hdr;
@@ -208,6 +209,7 @@ struct igb_rx_ring {
 	struct igb_dma		rxdma;
 	union e1000_adv_rx_desc	*rx_base;
 	boolean_t		discard;
+	int			num_rx_desc;
 	uint32_t		next_to_check;
 	struct igb_rx_buf	*rx_buf;
 	bus_dma_tag_t		rx_tag;
@@ -275,14 +277,12 @@ struct igb_softc {
 	 */
 	int			tx_ring_cnt;
 	struct igb_tx_ring	*tx_rings;
-	int			num_tx_desc;
 
 	/*
 	 * Receive rings
 	 */
 	int			rx_ring_cnt;
 	struct igb_rx_ring	*rx_rings;
-	int			num_rx_desc;
 
 	/* Misc stats maintained by the driver */
 	u_long			dropped_pkts;

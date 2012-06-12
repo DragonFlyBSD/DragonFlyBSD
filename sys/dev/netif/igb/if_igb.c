@@ -1283,7 +1283,7 @@ igb_setup_ifp(struct igb_softc *sc)
 #endif
 	ifp->if_watchdog = igb_watchdog;
 
-	ifq_set_maxlen(&ifp->if_snd, sc->num_tx_desc - 1);
+	ifq_set_maxlen(&ifp->if_snd, sc->tx_rings[0].num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 
 	ether_ifattach(ifp, sc->hw.mac.addr, NULL);
@@ -1339,9 +1339,9 @@ igb_add_sysctl(struct igb_softc *sc)
 	}
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->num_rx_desc, 0, NULL);
+	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->rx_rings[0].num_rx_desc, 0, NULL);
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-	    OID_AUTO, "txd", CTLFLAG_RD, &sc->num_tx_desc, 0, NULL);
+	    OID_AUTO, "txd", CTLFLAG_RD, &sc->tx_rings[0].num_tx_desc, 0, NULL);
 
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
@@ -1413,14 +1413,20 @@ igb_dma_free(struct igb_softc *sc)
 	int i;
 
 	if (sc->tx_rings != NULL) {
-		for (i = 0; i < sc->tx_ring_cnt; ++i)
-			igb_destroy_tx_ring(&sc->tx_rings[i], sc->num_tx_desc);
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+			struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+			igb_destroy_tx_ring(txr, txr->num_tx_desc);
+		}
 		kfree(sc->tx_rings, M_DEVBUF);
 	}
 
 	if (sc->rx_rings != NULL) {
-		for (i = 0; i < sc->rx_ring_cnt; ++i)
-			igb_destroy_rx_ring(&sc->rx_rings[i], sc->num_rx_desc);
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			struct igb_rx_ring *rxr = &sc->rx_rings[i];
+
+			igb_destroy_rx_ring(rxr, rxr->num_rx_desc);
+		}
 		kfree(sc->rx_rings, M_DEVBUF);
 	}
 }
@@ -1439,15 +1445,15 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 		device_printf(txr->sc->dev,
 		    "Using %d TX descriptors instead of %d!\n",
 		    IGB_DEFAULT_TXD, igb_txd);
-		txr->sc->num_tx_desc = IGB_DEFAULT_TXD;
+		txr->num_tx_desc = IGB_DEFAULT_TXD;
 	} else {
-		txr->sc->num_tx_desc = igb_txd;
+		txr->num_tx_desc = igb_txd;
 	}
 
 	/*
 	 * Allocate TX descriptor ring
 	 */
-	tsize = roundup2(txr->sc->num_tx_desc * sizeof(union e1000_adv_tx_desc),
+	tsize = roundup2(txr->num_tx_desc * sizeof(union e1000_adv_tx_desc),
 	    IGB_DBA_ALIGN);
 	txr->txdma.dma_vaddr = bus_dmamem_coherent_any(txr->sc->parent_tag,
 	    IGB_DBA_ALIGN, tsize, BUS_DMA_WAITOK,
@@ -1460,7 +1466,7 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	txr->tx_base = txr->txdma.dma_vaddr;
 	bzero(txr->tx_base, tsize);
 
-	txr->tx_buf = kmalloc(sizeof(struct igb_tx_buf) * txr->sc->num_tx_desc,
+	txr->tx_buf = kmalloc(sizeof(struct igb_tx_buf) * txr->num_tx_desc,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
@@ -1499,7 +1505,7 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	/*
 	 * Create DMA maps for TX buffers
 	 */
-	for (i = 0; i < txr->sc->num_tx_desc; ++i) {
+	for (i = 0; i < txr->num_tx_desc; ++i) {
 		struct igb_tx_buf *txbuf = &txr->tx_buf[i];
 
 		error = bus_dmamap_create(txr->tx_tag,
@@ -1516,9 +1522,9 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	 * Initialize various watermark
 	 */
 	txr->spare_desc = IGB_TX_SPARE;
-	txr->intr_nsegs = txr->sc->num_tx_desc / 16;
-	txr->oact_hi_desc = txr->sc->num_tx_desc / 2;
-	txr->oact_lo_desc = txr->sc->num_tx_desc / 8;
+	txr->intr_nsegs = txr->num_tx_desc / 16;
+	txr->oact_hi_desc = txr->num_tx_desc / 2;
+	txr->oact_lo_desc = txr->num_tx_desc / 8;
 	if (txr->oact_lo_desc > IGB_TX_OACTIVE_MAX)
 		txr->oact_lo_desc = IGB_TX_OACTIVE_MAX;
 	if (txr->oact_lo_desc < txr->spare_desc + IGB_TX_RESERVED)
@@ -1532,7 +1538,7 @@ igb_free_tx_ring(struct igb_tx_ring *txr)
 {
 	int i;
 
-	for (i = 0; i < txr->sc->num_tx_desc; ++i) {
+	for (i = 0; i < txr->num_tx_desc; ++i) {
 		struct igb_tx_buf *txbuf = &txr->tx_buf[i];
 
 		if (txbuf->m_head != NULL) {
@@ -1584,7 +1590,7 @@ igb_init_tx_ring(struct igb_tx_ring *txr)
 {
 	/* Clear the old descriptor contents */
 	bzero(txr->tx_base,
-	    sizeof(union e1000_adv_tx_desc) * txr->sc->num_tx_desc);
+	    sizeof(union e1000_adv_tx_desc) * txr->num_tx_desc);
 
 	/* Clear TX head write-back buffer */
 	*(txr->tx_hdr) = 0;
@@ -1595,7 +1601,7 @@ igb_init_tx_ring(struct igb_tx_ring *txr)
 	txr->tx_nsegs = 0;
 
 	/* Set number of descriptors available */
-	txr->tx_avail = txr->sc->num_tx_desc;
+	txr->tx_avail = txr->num_tx_desc;
 }
 
 static void
@@ -1614,7 +1620,7 @@ igb_init_tx_unit(struct igb_softc *sc)
 		uint32_t dca_txctrl;
 
 		E1000_WRITE_REG(hw, E1000_TDLEN(i),
-		    sc->num_tx_desc * sizeof(struct e1000_tx_desc));
+		    txr->num_tx_desc * sizeof(struct e1000_tx_desc));
 		E1000_WRITE_REG(hw, E1000_TDBAH(i),
 		    (uint32_t)(bus_addr >> 32));
 		E1000_WRITE_REG(hw, E1000_TDBAL(i),
@@ -1755,7 +1761,7 @@ igb_txctx(struct igb_tx_ring *txr, struct mbuf *mp)
 	txbuf->m_head = NULL;
 
 	/* We've consumed the first desc, adjust counters */
-	if (++ctxd == txr->sc->num_tx_desc)
+	if (++ctxd == txr->num_tx_desc)
 		ctxd = 0;
 	txr->next_avail_desc = ctxd;
 	--txr->tx_avail;
@@ -1769,7 +1775,7 @@ igb_txeof(struct igb_tx_ring *txr)
 	struct ifnet *ifp = &txr->sc->arpcom.ac_if;
 	int first, hdr, avail;
 
-	if (txr->tx_avail == txr->sc->num_tx_desc)
+	if (txr->tx_avail == txr->num_tx_desc)
 		return;
 
 	first = txr->next_to_clean;
@@ -1789,7 +1795,7 @@ igb_txeof(struct igb_tx_ring *txr)
 			txbuf->m_head = NULL;
 			++ifp->if_opackets;
 		}
-		if (++first == txr->sc->num_tx_desc)
+		if (++first == txr->num_tx_desc)
 			first = 0;
 	}
 	txr->next_to_clean = first;
@@ -1826,15 +1832,15 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 		device_printf(rxr->sc->dev,
 		    "Using %d RX descriptors instead of %d!\n",
 		    IGB_DEFAULT_RXD, igb_rxd);
-		rxr->sc->num_rx_desc = IGB_DEFAULT_RXD;
+		rxr->num_rx_desc = IGB_DEFAULT_RXD;
 	} else {
-		rxr->sc->num_rx_desc = igb_rxd;
+		rxr->num_rx_desc = igb_rxd;
 	}
 
 	/*
 	 * Allocate RX descriptor ring
 	 */
-	rsize = roundup2(rxr->sc->num_rx_desc * sizeof(union e1000_adv_rx_desc),
+	rsize = roundup2(rxr->num_rx_desc * sizeof(union e1000_adv_rx_desc),
 	    IGB_DBA_ALIGN);
 	rxr->rxdma.dma_vaddr = bus_dmamem_coherent_any(rxr->sc->parent_tag,
 	    IGB_DBA_ALIGN, rsize, BUS_DMA_WAITOK,
@@ -1848,7 +1854,7 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 	rxr->rx_base = rxr->rxdma.dma_vaddr;
 	bzero(rxr->rx_base, rsize);
 
-	rxr->rx_buf = kmalloc(sizeof(struct igb_rx_buf) * rxr->sc->num_rx_desc,
+	rxr->rx_buf = kmalloc(sizeof(struct igb_rx_buf) * rxr->num_rx_desc,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
@@ -1889,7 +1895,7 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 	/*
 	 * Create DMA maps for RX buffers
 	 */
-	for (i = 0; i < rxr->sc->num_rx_desc; i++) {
+	for (i = 0; i < rxr->num_rx_desc; i++) {
 		struct igb_rx_buf *rxbuf = &rxr->rx_buf[i];
 
 		error = bus_dmamap_create(rxr->rx_tag,
@@ -1909,7 +1915,7 @@ igb_free_rx_ring(struct igb_rx_ring *rxr)
 {
 	int i;
 
-	for (i = 0; i < rxr->sc->num_rx_desc; ++i) {
+	for (i = 0; i < rxr->num_rx_desc; ++i) {
 		struct igb_rx_buf *rxbuf = &rxr->rx_buf[i];
 
 		if (rxbuf->m_head != NULL) {
@@ -2016,10 +2022,10 @@ igb_init_rx_ring(struct igb_rx_ring *rxr)
 
 	/* Clear the ring contents */
 	bzero(rxr->rx_base,
-	    rxr->sc->num_rx_desc * sizeof(union e1000_adv_rx_desc));
+	    rxr->num_rx_desc * sizeof(union e1000_adv_rx_desc));
 
 	/* Now replenish the ring mbufs */
-	for (i = 0; i < rxr->sc->num_rx_desc; ++i) {
+	for (i = 0; i < rxr->num_rx_desc; ++i) {
 		int error;
 
 		error = igb_newbuf(rxr, i, TRUE);
@@ -2100,7 +2106,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 		uint32_t rxdctl;
 
 		E1000_WRITE_REG(hw, E1000_RDLEN(i),
-		    sc->num_rx_desc * sizeof(struct e1000_rx_desc));
+		    rxr->num_rx_desc * sizeof(struct e1000_rx_desc));
 		E1000_WRITE_REG(hw, E1000_RDBAH(i),
 		    (uint32_t)(bus_addr >> 32));
 		E1000_WRITE_REG(hw, E1000_RDBAL(i),
@@ -2197,7 +2203,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 		E1000_WRITE_REG(hw, E1000_RDH(i), rxr->next_to_check);
-		E1000_WRITE_REG(hw, E1000_RDT(i), rxr->sc->num_rx_desc - 1);
+		E1000_WRITE_REG(hw, E1000_RDT(i), rxr->num_rx_desc - 1);
 	}
 }
 
@@ -2300,7 +2306,7 @@ discard:
 			ether_input_pkt(ifp, m, NULL);
 
 		/* Advance our pointers to the next descriptor. */
-		if (++i == rxr->sc->num_rx_desc)
+		if (++i == rxr->num_rx_desc)
 			i = 0;
 
 		cur = &rxr->rx_base[i];
@@ -2309,7 +2315,7 @@ discard:
 	rxr->next_to_check = i;
 
 	if (--i < 0)
-		i = rxr->sc->num_rx_desc - 1;
+		i = rxr->num_rx_desc - 1;
 	E1000_WRITE_REG(&rxr->sc->hw, E1000_RDT(rxr->me), i);
 }
 
@@ -2991,7 +2997,7 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 		txd->read.cmd_type_len = htole32(cmd_type_len | seg_len);
 		txd->read.olinfo_status = htole32(olinfo_status);
 		last = i;
-		if (++i == txr->sc->num_tx_desc)
+		if (++i == txr->num_tx_desc)
 			i = 0;
 		tx_buf->m_head = NULL;
 	}
@@ -3164,7 +3170,7 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 
 	ifnet_serialize_all(ifp);
 
-	if (nsegs >= sc->num_tx_desc - txr->oact_lo_desc ||
+	if (nsegs >= txr->num_tx_desc - txr->oact_lo_desc ||
 	    nsegs >= txr->oact_hi_desc - IGB_MAX_SCATTER) {
 		error = EINVAL;
 	} else {
