@@ -128,6 +128,9 @@ do { \
 #define EMX_RSS_DPRINTF(sc, lvl, fmt, ...)	((void)0)
 #endif	/* EMX_RSS_DEBUG */
 
+#define EMX_TX_SERIALIZE	1
+#define EMX_RX_SERIALIZE	2
+
 #define EMX_NAME	"Intel(R) PRO/1000 "
 
 #define EMX_DEVICE(id)	\
@@ -3584,30 +3587,8 @@ emx_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct emx_softc *sc = ifp->if_softc;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		lwkt_serialize_array_enter(sc->serializes, EMX_NSERIALIZE, 0);
-		break;
-
-	case IFNET_SERIALIZE_MAIN:
-		lwkt_serialize_enter(&sc->main_serialize);
-		break;
-
-	case IFNET_SERIALIZE_TX:
-		lwkt_serialize_enter(&sc->tx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(0):
-		lwkt_serialize_enter(&sc->rx_data[0].rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(1):
-		lwkt_serialize_enter(&sc->rx_data[1].rx_serialize);
-		break;
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	ifnet_serialize_array_enter(sc->serializes, EMX_NSERIALIZE,
+	    EMX_TX_SERIALIZE, EMX_RX_SERIALIZE, slz);
 }
 
 static void
@@ -3615,30 +3596,8 @@ emx_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct emx_softc *sc = ifp->if_softc;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		lwkt_serialize_array_exit(sc->serializes, EMX_NSERIALIZE, 0);
-		break;
-
-	case IFNET_SERIALIZE_MAIN:
-		lwkt_serialize_exit(&sc->main_serialize);
-		break;
-
-	case IFNET_SERIALIZE_TX:
-		lwkt_serialize_exit(&sc->tx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(0):
-		lwkt_serialize_exit(&sc->rx_data[0].rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(1):
-		lwkt_serialize_exit(&sc->rx_data[1].rx_serialize);
-		break;
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	ifnet_serialize_array_exit(sc->serializes, EMX_NSERIALIZE,
+	    EMX_TX_SERIALIZE, EMX_RX_SERIALIZE, slz);
 }
 
 static int
@@ -3646,26 +3605,8 @@ emx_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct emx_softc *sc = ifp->if_softc;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		return lwkt_serialize_array_try(sc->serializes,
-						EMX_NSERIALIZE, 0);
-
-	case IFNET_SERIALIZE_MAIN:
-		return lwkt_serialize_try(&sc->main_serialize);
-
-	case IFNET_SERIALIZE_TX:
-		return lwkt_serialize_try(&sc->tx_serialize);
-
-	case IFNET_SERIALIZE_RX(0):
-		return lwkt_serialize_try(&sc->rx_data[0].rx_serialize);
-
-	case IFNET_SERIALIZE_RX(1):
-		return lwkt_serialize_try(&sc->rx_data[1].rx_serialize);
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	return ifnet_serialize_array_try(sc->serializes, EMX_NSERIALIZE,
+	    EMX_TX_SERIALIZE, EMX_RX_SERIALIZE, slz);
 }
 
 static void
@@ -3684,53 +3625,12 @@ emx_deserialize_skipmain(struct emx_softc *sc)
 
 static void
 emx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
-		     boolean_t serialized)
+    boolean_t serialized)
 {
 	struct emx_softc *sc = ifp->if_softc;
-	int i;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		if (serialized) {
-			for (i = 0; i < EMX_NSERIALIZE; ++i)
-				ASSERT_SERIALIZED(sc->serializes[i]);
-		} else {
-			for (i = 0; i < EMX_NSERIALIZE; ++i)
-				ASSERT_NOT_SERIALIZED(sc->serializes[i]);
-		}
-		break;
-
-	case IFNET_SERIALIZE_MAIN:
-		if (serialized)
-			ASSERT_SERIALIZED(&sc->main_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&sc->main_serialize);
-		break;
-
-	case IFNET_SERIALIZE_TX:
-		if (serialized)
-			ASSERT_SERIALIZED(&sc->tx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&sc->tx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(0):
-		if (serialized)
-			ASSERT_SERIALIZED(&sc->rx_data[0].rx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&sc->rx_data[0].rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(1):
-		if (serialized)
-			ASSERT_SERIALIZED(&sc->rx_data[1].rx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&sc->rx_data[1].rx_serialize);
-		break;
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	ifnet_serialize_array_assert(sc->serializes, EMX_NSERIALIZE,
+	    EMX_TX_SERIALIZE, EMX_RX_SERIALIZE, slz, serialized);
 }
 
 #endif	/* INVARIANTS */
