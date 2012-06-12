@@ -143,8 +143,8 @@ static void	igb_set_multi(struct igb_softc *);
 static void	igb_set_promisc(struct igb_softc *);
 static void	igb_disable_promisc(struct igb_softc *);
 
-static int	igb_dma_alloc(struct igb_softc *);
-static void	igb_dma_free(struct igb_softc *);
+static int	igb_alloc_rings(struct igb_softc *);
+static void	igb_free_rings(struct igb_softc *);
 static int	igb_create_tx_ring(struct igb_tx_ring *);
 static int	igb_create_rx_ring(struct igb_rx_ring *);
 static void	igb_free_tx_ring(struct igb_tx_ring *);
@@ -386,8 +386,8 @@ igb_attach(device_t dev)
 	/* Set the frame limits assuming  standard ethernet sized frames. */
 	sc->max_frame_size = ETHERMTU + ETHER_HDR_LEN + ETHER_CRC_LEN;
 
-	/* Allocate RX/TX rings' busdma(9) stuffs */
-	error = igb_dma_alloc(sc);
+	/* Allocate RX/TX rings */
+	error = igb_alloc_rings(sc);
 	if (error)
 		goto failed;
 
@@ -573,7 +573,7 @@ igb_detach(device_t dev)
 		    sc->mem_res);
 	}
 
-	igb_dma_free(sc);
+	igb_free_rings(sc);
 
 	if (sc->mta != NULL)
 		kfree(sc->mta, M_DEVBUF);
@@ -1354,7 +1354,7 @@ igb_add_sysctl(struct igb_softc *sc)
 }
 
 static int
-igb_dma_alloc(struct igb_softc *sc)
+igb_alloc_rings(struct igb_softc *sc)
 {
 	int error, i;
 
@@ -1408,7 +1408,7 @@ igb_dma_alloc(struct igb_softc *sc)
 }
 
 static void
-igb_dma_free(struct igb_softc *sc)
+igb_free_rings(struct igb_softc *sc)
 {
 	int i;
 
