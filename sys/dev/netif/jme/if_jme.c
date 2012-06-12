@@ -138,6 +138,7 @@ static int	jme_encap(struct jme_softc *, struct mbuf **);
 static void	jme_rxpkt(struct jme_rxdata *);
 static int	jme_rxring_dma_alloc(struct jme_rxdata *);
 static int	jme_rxbuf_dma_alloc(struct jme_rxdata *);
+static int	jme_rxbuf_dma_filter(void *, bus_addr_t);
 
 static void	jme_tick(void *);
 static void	jme_stop(struct jme_softc *);
@@ -2341,8 +2342,9 @@ jme_rxeof(struct jme_rxdata *rdata, int count)
 			 * This test should be enough to detect the pending
 			 * RSS information delivery, given:
 			 * - If RSS hash is not calculated, the hashinfo
-			 *   will be 0.  Howvever, RX buffers' physical
-			 *   address will never be 0
+			 *   will be 0.  Howvever, the lower 32bits of RX
+			 *   buffers' physical address will never be 0.
+			 *   (see jme_rxbuf_dma_filter)
 			 * - If RSS hash is calculated, the lowest 4 bits
 			 *   of hashinfo will be set, while the RX buffers
 			 *   are at least 2K aligned.
@@ -3193,17 +3195,39 @@ jme_rxring_dma_alloc(struct jme_rxdata *rdata)
 }
 
 static int
+jme_rxbuf_dma_filter(void *arg __unused, bus_addr_t paddr)
+{
+	if ((paddr & 0xffffffff) == 0) {
+		/*
+		 * Don't allow lower 32bits of the RX buffer's
+		 * physical address to be 0, else it will break
+		 * hardware pending RSS information delivery
+		 * detection on RX path.
+		 */
+		return 1;
+	}
+	return 0;
+}
+
+static int
 jme_rxbuf_dma_alloc(struct jme_rxdata *rdata)
 {
+	bus_addr_t lowaddr;
 	int i, error;
+
+	lowaddr = BUS_SPACE_MAXADDR;
+	if (JME_ENABLE_HWRSS(rdata->jme_sc)) {
+		/* jme_rxbuf_dma_filter will be called */
+		lowaddr = BUS_SPACE_MAXADDR_32BIT;
+	}
 
 	/* Create tag for Rx buffers. */
 	error = bus_dma_tag_create(
 	    rdata->jme_sc->jme_cdata.jme_buffer_tag,/* parent */
 	    JME_RX_BUF_ALIGN, 0,	/* algnmnt, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    lowaddr,			/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
+	    jme_rxbuf_dma_filter, NULL,	/* filter, filterarg */
 	    MCLBYTES,			/* maxsize */
 	    1,				/* nsegments */
 	    MCLBYTES,			/* maxsegsize */
