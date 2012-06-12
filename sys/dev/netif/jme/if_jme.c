@@ -73,6 +73,9 @@
 /* Define the following to disable printing Rx errors. */
 #undef	JME_SHOW_ERRORS
 
+#define JME_TX_SERIALIZE	1
+#define JME_RX_SERIALIZE	2
+
 #define	JME_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 
 #ifdef JME_RSS_DEBUG
@@ -682,7 +685,11 @@ jme_attach(device_t dev)
 
 	i = 0;
 	sc->jme_serialize_arr[i++] = &sc->jme_serialize;
+
+	KKASSERT(i == JME_TX_SERIALIZE);
 	sc->jme_serialize_arr[i++] = &sc->jme_cdata.jme_tx_serialize;
+
+	KKASSERT(i == JME_RX_SERIALIZE);
 	for (j = 0; j < sc->jme_cdata.jme_rx_ring_cnt; ++j) {
 		sc->jme_serialize_arr[i++] =
 		    &sc->jme_cdata.jme_rx_data[j].jme_rx_serialize;
@@ -3259,43 +3266,8 @@ jme_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct jme_softc *sc = ifp->if_softc;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		lwkt_serialize_array_enter(sc->jme_serialize_arr,
-		    sc->jme_serialize_cnt, 0);
-		break;
-
-	case IFNET_SERIALIZE_MAIN:
-		lwkt_serialize_enter(&sc->jme_serialize);
-		break;
-
-	case IFNET_SERIALIZE_TX:
-		lwkt_serialize_enter(&sc->jme_cdata.jme_tx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(0):
-		lwkt_serialize_enter(
-		    &sc->jme_cdata.jme_rx_data[0].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(1):
-		lwkt_serialize_enter(
-		    &sc->jme_cdata.jme_rx_data[1].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(2):
-		lwkt_serialize_enter(
-		    &sc->jme_cdata.jme_rx_data[2].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(3):
-		lwkt_serialize_enter(
-		    &sc->jme_cdata.jme_rx_data[3].jme_rx_serialize);
-		break;
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	ifnet_serialize_array_enter(sc->jme_serialize_arr,
+	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE, slz);
 }
 
 static void
@@ -3303,43 +3275,8 @@ jme_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct jme_softc *sc = ifp->if_softc;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		lwkt_serialize_array_exit(sc->jme_serialize_arr,
-		    sc->jme_serialize_cnt, 0);
-		break;
-
-	case IFNET_SERIALIZE_MAIN:
-		lwkt_serialize_exit(&sc->jme_serialize);
-		break;
-
-	case IFNET_SERIALIZE_TX:
-		lwkt_serialize_exit(&sc->jme_cdata.jme_tx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(0):
-		lwkt_serialize_exit(
-		    &sc->jme_cdata.jme_rx_data[0].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(1):
-		lwkt_serialize_exit(
-		    &sc->jme_cdata.jme_rx_data[1].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(2):
-		lwkt_serialize_exit(
-		    &sc->jme_cdata.jme_rx_data[2].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(3):
-		lwkt_serialize_exit(
-		    &sc->jme_cdata.jme_rx_data[3].jme_rx_serialize);
-		break;
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	ifnet_serialize_array_exit(sc->jme_serialize_arr,
+	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE, slz);
 }
 
 static int
@@ -3347,36 +3284,8 @@ jme_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct jme_softc *sc = ifp->if_softc;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		return lwkt_serialize_array_try(sc->jme_serialize_arr,
-		    sc->jme_serialize_cnt, 0);
-
-	case IFNET_SERIALIZE_MAIN:
-		return lwkt_serialize_try(&sc->jme_serialize);
-
-	case IFNET_SERIALIZE_TX:
-		return lwkt_serialize_try(&sc->jme_cdata.jme_tx_serialize);
-
-	case IFNET_SERIALIZE_RX(0):
-		return lwkt_serialize_try(
-		    &sc->jme_cdata.jme_rx_data[0].jme_rx_serialize);
-
-	case IFNET_SERIALIZE_RX(1):
-		return lwkt_serialize_try(
-		    &sc->jme_cdata.jme_rx_data[1].jme_rx_serialize);
-
-	case IFNET_SERIALIZE_RX(2):
-		return lwkt_serialize_try(
-		    &sc->jme_cdata.jme_rx_data[2].jme_rx_serialize);
-
-	case IFNET_SERIALIZE_RX(3):
-		return lwkt_serialize_try(
-		    &sc->jme_cdata.jme_rx_data[3].jme_rx_serialize);
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	return ifnet_serialize_array_try(sc->jme_serialize_arr,
+	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE, slz);
 }
 
 #ifdef INVARIANTS
@@ -3386,69 +3295,10 @@ jme_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
     boolean_t serialized)
 {
 	struct jme_softc *sc = ifp->if_softc;
-	struct jme_rxdata *rdata;
-	int i;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		if (serialized) {
-			for (i = 0; i < sc->jme_serialize_cnt; ++i)
-				ASSERT_SERIALIZED(sc->jme_serialize_arr[i]);
-		} else {
-			for (i = 0; i < sc->jme_serialize_cnt; ++i)
-				ASSERT_NOT_SERIALIZED(sc->jme_serialize_arr[i]);
-		}
-		break;
-
-	case IFNET_SERIALIZE_MAIN:
-		if (serialized)
-			ASSERT_SERIALIZED(&sc->jme_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&sc->jme_serialize);
-		break;
-
-	case IFNET_SERIALIZE_TX:
-		if (serialized)
-			ASSERT_SERIALIZED(&sc->jme_cdata.jme_tx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&sc->jme_cdata.jme_tx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(0):
-		rdata = &sc->jme_cdata.jme_rx_data[0];
-		if (serialized)
-			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(1):
-		rdata = &sc->jme_cdata.jme_rx_data[1];
-		if (serialized)
-			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(2):
-		rdata = &sc->jme_cdata.jme_rx_data[2];
-		if (serialized)
-			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(3):
-		rdata = &sc->jme_cdata.jme_rx_data[3];
-		if (serialized)
-			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
-		break;
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	ifnet_serialize_array_assert(sc->jme_serialize_arr,
+	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE,
+	    slz, serialized);
 }
 
 #endif	/* INVARIANTS */
