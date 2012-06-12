@@ -2113,11 +2113,34 @@ jme_rxpkt(struct jme_rxdata *rdata)
 
 	cons = rdata->jme_rx_cons;
 	desc = &rdata->jme_rx_ring[cons];
+
 	flags = le32toh(desc->flags);
 	status = le32toh(desc->buflen);
 	hash = le32toh(desc->addr_hi);
 	hashinfo = le32toh(desc->addr_lo);
 	nsegs = JME_RX_NSEGS(status);
+
+	if (nsegs > 1) {
+		/* Skip the first descriptor. */
+		JME_DESC_INC(cons, rdata->jme_rx_desc_cnt);
+
+		/*
+		 * Clear the OWN bit of the following RX descriptors;
+		 * hardware will not clear the OWN bit except the first
+		 * RX descriptor.
+		 *
+		 * Since the first RX descriptor is setup, i.e. OWN bit
+		 * on, before its followins RX descriptors, leaving the
+		 * OWN bit on the following RX descriptors will trick
+		 * the hardware into thinking that the following RX
+		 * descriptors are ready to be used too.
+		 */
+		for (count = 1; count < nsegs; count++,
+		     JME_DESC_INC(cons, rdata->jme_rx_desc_cnt))
+			rdata->jme_rx_ring[cons].flags = 0;
+
+		cons = rdata->jme_rx_cons;
+	}
 
 	JME_RSS_DPRINTF(rdata->jme_sc, 15, "ring%d, flags 0x%08x, "
 			"hash 0x%08x, hash info 0x%08x\n",
