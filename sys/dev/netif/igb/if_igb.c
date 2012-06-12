@@ -385,7 +385,6 @@ igb_attach(device_t dev)
 
 	/* Set the frame limits assuming  standard ethernet sized frames. */
 	sc->max_frame_size = ETHERMTU + ETHER_HDR_LEN + ETHER_CRC_LEN;
-	sc->min_frame_size = ETHER_MIN_LEN;
 
 	/* Allocate RX/TX rings' busdma(9) stuffs */
 	error = igb_dma_alloc(sc);
@@ -491,7 +490,8 @@ igb_attach(device_t dev)
 	}
 
 	/* Determine if we have to control management hardware */
-	sc->has_manage = e1000_enable_mng_pass_thru(&sc->hw);
+	if (e1000_enable_mng_pass_thru(&sc->hw))
+		sc->flags |= IGB_FLAG_HAS_MGMT;
 
 	/*
 	 * Setup Wake-on-Lan
@@ -781,8 +781,6 @@ igb_init(void *xsc)
 		adapter->rx_mbuf_sz = MJUMPAGESIZE;
 	else
 		adapter->rx_mbuf_sz = MJUM9BYTES;
-#else
-	sc->rx_mbuf_sz = MCLBYTES;
 #endif
 
 	/* Initialize interrupt */
@@ -2407,7 +2405,7 @@ igb_disable_intr(struct igb_softc *sc)
 static void
 igb_get_mgmt(struct igb_softc *sc)
 {
-	if (sc->has_manage) {
+	if (sc->flags & IGB_FLAG_HAS_MGMT) {
 		int manc2h = E1000_READ_REG(&sc->hw, E1000_MANC2H);
 		int manc = E1000_READ_REG(&sc->hw, E1000_MANC);
 
@@ -2430,7 +2428,7 @@ igb_get_mgmt(struct igb_softc *sc)
 static void
 igb_rel_mgmt(struct igb_softc *sc)
 {
-	if (sc->has_manage) {
+	if (sc->flags & IGB_FLAG_HAS_MGMT) {
 		int manc = E1000_READ_REG(&sc->hw, E1000_MANC);
 
 		/* Re-enable hardware interception of ARP */

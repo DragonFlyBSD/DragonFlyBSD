@@ -112,8 +112,7 @@
 
 #define IGB_TX_PTHRESH			8
 #define IGB_TX_HTHRESH			1
-#define IGB_TX_WTHRESH			((hw->mac.type != e1000_82575 && \
-                                          sc->msix_mem) ? 1 : 16)
+#define IGB_TX_WTHRESH			16
 
 #define MAX_NUM_MULTICAST_ADDRESSES	128
 #define IGB_FC_PAUSE_TIME		0x0680
@@ -235,26 +234,16 @@ struct igb_softc {
 	device_t		dev;
 	uint32_t		flags;
 #define IGB_FLAG_SHARED_INTR	0x1
+#define IGB_FLAG_HAS_MGMT	0x2
 
 	bus_dma_tag_t		parent_tag;
 
 	int			mem_rid;
 	struct resource 	*mem_res;
 
-	struct resource 	*msix_mem;
-	void			*tag;
-	uint32_t		que_mask;
-
-	int			linkvec;
-	int			link_mask;
-	int			link_irq;
-
 	struct ifmedia		media;
 	struct callout		timer;
 
-#if 0
-	int			msix;	/* total vectors allocated */
-#endif
 	int			intr_type;
 	int			intr_rid;
 	struct resource		*intr_res;
@@ -262,13 +251,11 @@ struct igb_softc {
 
 	int			if_flags;
 	int			max_frame_size;
-	int			min_frame_size;
 	int			pause_frames;
 	uint16_t		vf_ifp;	/* a VF interface */
 
 	/* Management and WOL features */
 	int			wol;
-	int			has_manage;
 
 	/* Info about the interface */
 	uint8_t			link_active;
@@ -276,6 +263,9 @@ struct igb_softc {
 	uint16_t		link_duplex;
 	uint32_t		smartspeed;
 	uint32_t		dma_coalesce;
+
+	/* Multicast array pointer */
+	uint8_t			*mta;
 
 	int			intr_rate;
 	uint32_t		intr_mask;
@@ -287,17 +277,12 @@ struct igb_softc {
 	struct igb_tx_ring	*tx_rings;
 	int			num_tx_desc;
 
-	/* Multicast array pointer */
-	uint8_t			*mta;
-
-	/* 
+	/*
 	 * Receive rings
 	 */
 	int			rx_ring_cnt;
 	struct igb_rx_ring	*rx_rings;
 	int			num_rx_desc;
-	uint32_t		rx_mbuf_sz;
-	uint32_t		rx_mask;
 
 	/* Misc stats maintained by the driver */
 	u_long			dropped_pkts;
