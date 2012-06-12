@@ -313,4 +313,7 @@ do {					\
 
 #define JME_TXD_RSVD		1
 
+#define JME_ENABLE_HWRSS(sc)	\
+	((sc)->jme_cdata.jme_rx_ring_cnt > JME_NRXRING_MIN)
+
 #endif

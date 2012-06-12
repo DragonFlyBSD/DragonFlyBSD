@@ -70,9 +70,6 @@
 
 #include "miibus_if.h"
 
-/* Define the following to disable printing Rx errors. */
-#undef	JME_SHOW_ERRORS
-
 #define JME_TX_SERIALIZE	1
 #define JME_RX_SERIALIZE	2
 
@@ -238,7 +235,7 @@ static const struct {
 
 static int	jme_rx_desc_count = JME_RX_DESC_CNT_DEF;
 static int	jme_tx_desc_count = JME_TX_DESC_CNT_DEF;
-static int	jme_rx_ring_count = 1;
+static int	jme_rx_ring_count = 0;
 static int	jme_msi_enable = 1;
 static int	jme_msix_enable = 1;
 
@@ -408,7 +405,7 @@ jme_miibus_statchg(device_t dev)
 		 */
 		rdata->jme_rx_cons = 0;
 	}
-	if (sc->jme_cdata.jme_rx_ring_cnt > JME_NRXRING_MIN)
+	if (JME_ENABLE_HWRSS(sc))
 		jme_enable_rss(sc);
 	else
 		jme_disable_rss(sc);
@@ -2297,6 +2294,45 @@ jme_rxeof(struct jme_rxdata *rdata, int count)
 			break;
 		}
 
+		/*
+		 * NOTE:
+		 * RSS hash and hash information may _not_ be set by the
+		 * hardware even if the OWN bit is cleared and VALID bit
+		 * is set.
+		 *
+		 * If the RSS information is not delivered by the hardware
+		 * yet, we MUST NOT accept this packet, let alone reusing
+		 * its RX descriptor.  If this packet was accepted and its
+		 * RX descriptor was reused before hardware delivering the
+		 * RSS information, the RX buffer's address would be trashed
+		 * by the RSS information delivered by the hardware.
+		 */
+		if (JME_ENABLE_HWRSS(rdata->jme_sc)) {
+			struct jme_rxdesc *rxd;
+			uint32_t hashinfo;
+
+			hashinfo = le32toh(desc->addr_lo);
+			rxd = &rdata->jme_rxdesc[rdata->jme_rx_cons];
+
+			/*
+			 * This test should be enough to detect the pending
+			 * RSS information delivery, given:
+			 * - If RSS hash is not calculated, the hashinfo
+			 *   will be 0.  Howvever, RX buffers' physical
+			 *   address will never be 0
+			 * - If RSS hash is calculated, the lowest 4 bits
+			 *   of hashinfo will be set, while the RX buffers
+			 *   are at least 2K aligned.
+			 */
+			if (hashinfo == JME_ADDR_LO(rxd->rx_paddr)) {
+#ifdef JME_SHOW_RSSWB
+				if_printf(&rdata->jme_sc->arpcom.ac_if,
+				    "RSS is not written back yet\n");
+#endif
+				break;
+			}
+		}
+
 		/* Received a frame. */
 		jme_rxpkt(rdata);
 	}
@@ -2428,7 +2464,7 @@ jme_init(void *xsc)
 	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT)
 		sc->jme_txd_spare += 1;
 
-	if (sc->jme_cdata.jme_rx_ring_cnt > JME_NRXRING_MIN)
+	if (JME_ENABLE_HWRSS(sc))
 		jme_enable_rss(sc);
 	else
 		jme_disable_rss(sc);
