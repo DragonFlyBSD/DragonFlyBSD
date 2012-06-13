@@ -1167,11 +1167,11 @@ post_stats:
 			 * we probably should panic here!
 			 */
 			m->m_flags &= ~M_HASH;
-			ether_input_wronghash++;
+			atomic_add_long(&ether_input_wronghash, 1);
 		}
 	}
 #ifdef RSS_DEBUG
-	ether_input_requeue++;
+	atomic_add_long(&ether_input_requeue, 1);
 #endif
 	netisr_queue(isr, m);
 }
@@ -1445,13 +1445,13 @@ ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi)
 	 */
 	if (pi != NULL && (m->m_flags & M_HASH)) {
 #ifdef RSS_DEBUG
-		ether_pktinfo_try++;
+		atomic_add_long(&ether_pktinfo_try, 1);
 #endif
 		netisr_hashcheck(pi->pi_netisr, m, pi);
 		if (m->m_flags & M_HASH) {
 			ether_dispatch(pi->pi_netisr, m);
 #ifdef RSS_DEBUG
-			ether_pktinfo_hit++;
+			atomic_add_long(&ether_pktinfo_hit, 1);
 #endif
 			logether(pkt_end, ifp);
 			return;
@@ -1460,9 +1460,9 @@ ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi)
 #ifdef RSS_DEBUG
 	else if (ifp->if_capenable & IFCAP_RSS) {
 		if (pi == NULL)
-			ether_rss_nopi++;
+			atomic_add_long(&ether_rss_nopi, 1);
 		else
-			ether_rss_nohash++;
+			atomic_add_long(&ether_rss_nohash, 1);
 	}
 #endif
 

@@ -94,22 +94,22 @@
 .Fo puffs_fuse_node_link
 .Fa "const char *from" "const char *to"
 .Fc
-.Ft int
-.Fo puffs_fuse_node_chmod
-.Fa "const char *path" "mode_t permissions"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_own
-.Fa "const char *path" "uid_t owner" "gid_t group"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_truncate
-.Fa "const char *path" "off_t newsize"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_utime
-.Fa "const char *path" "struct utimbuf *newtimes"
-.Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_chmod
+.\".Fa "const char *path" "mode_t permissions"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_own
+.\".Fa "const char *path" "uid_t owner" "gid_t group"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_truncate
+.\".Fa "const char *path" "off_t newsize"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_utime
+.\".Fa "const char *path" "struct utimbuf *newtimes"
+.\".Fc
 .Ft int
 .Fo puffs_fuse_node_open
 .Fa "const char *path" "struct fuse_file_info *fileinfo"
@@ -124,91 +124,91 @@
 .Fa "const char *path" "char *buffer" "size_t bufferlen" "off_t startoffset"
 .Fa "struct fuse_file_info *fileinfo"
 .Fc
-.Ft int
-.Fo puffs_fuse_fs_statfs
-.Fa "const char *path" "struct statvfs *vfsinfo"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_flush
-.Fa "const char *path" "struct fuse_file_info *fileinfo"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_fsync
-.Fa "const char *path" "int flags" "struct fuse_file_info *fileinfo"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_setxattr
-.Fa "const char *path" "const char *attrname" "const char *attrvalue"
-.Fa "size_t attrsize" "int flags"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_getxattr
-.Fa "const char *path" "const char *attrname" "const char *attrvalue"
-.Fa "size_t attrvaluesize"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_listxattr
-.Fa "const char *path" "const char *attrname"
-.Fa "size_t attrvaluesize"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_removexattr
-.Fa "const char *path" "const char *attrname"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_opendir
-.Fa "const char *path" "struct fuse_file_info *fileinfo"
-.Fc
+.\".Ft int
+.\".Fo puffs_fuse_fs_statfs
+.\".Fa "const char *path" "struct statvfs *vfsinfo"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_flush
+.\".Fa "const char *path" "struct fuse_file_info *fileinfo"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_fsync
+.\".Fa "const char *path" "int flags" "struct fuse_file_info *fileinfo"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_setxattr
+.\".Fa "const char *path" "const char *attrname" "const char *attrvalue"
+.\".Fa "size_t attrsize" "int flags"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_getxattr
+.\".Fa "const char *path" "const char *attrname" "const char *attrvalue"
+.\".Fa "size_t attrvaluesize"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_listxattr
+.\".Fa "const char *path" "const char *attrname"
+.\".Fa "size_t attrvaluesize"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_removexattr
+.\".Fa "const char *path" "const char *attrname"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_opendir
+.\".Fa "const char *path" "struct fuse_file_info *fileinfo"
+.\".Fc
 .Ft int
 .Fo puffs_fuse_node_readdir
 .Fa "const char *path" "void *data" "fuse_fill_dir_t fillinfo"
 .Fa "off_t offset" "struct fuse_file_info *fileinfo"
 .Fc
-.Ft int
-.Fo puffs_fuse_node_releasedir
-.Fa "const char *path" "struct fuse_file_info *fileinfo"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_fsyncdir
-.Fa "const char *path" "int flags" "struct fuse_file_info *fileinfo"
-.Fc
-.Ft void *
-.Fo puffs_fuse_fs_init
-.Fa "struct fuse_conn_info *connectioninfo"
-.Fc
-.Ft void
-.Fo puffs_fuse_node_destroy
-.Fa "void *connection"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_access
-.Fa "const char *path" "int accesstype"
-.Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_releasedir
+.\".Fa "const char *path" "struct fuse_file_info *fileinfo"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_fsyncdir
+.\".Fa "const char *path" "int flags" "struct fuse_file_info *fileinfo"
+.\".Fc
+.\".Ft void *
+.\".Fo puffs_fuse_fs_init
+.\".Fa "struct fuse_conn_info *connectioninfo"
+.\".Fc
+.\".Ft void
+.\".Fo puffs_fuse_node_destroy
+.\".Fa "void *connection"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_access
+.\".Fa "const char *path" "int accesstype"
+.\".Fc
 .Ft int
 .Fo puffs_fuse_node_create
 .Fa "const char *path" "mode_t permissions" "struct fuse_file_info *fileinfo"
 .Fc
-.Ft int
-.Fo puffs_fuse_node_ftruncate
-.Fa "const char *path" "off_t offset" "struct fuse_file_info *fileinfo"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_fgetattr
-.Fa "const char *path" "struct stat *attrs" "struct fuse_file_info *fileinfo"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_lock
-.Fa "const char *path" "struct fuse_file_info *fileinfo"
-.Fa "int locktype" "struct flock *lockinfo"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_utimens
-.Fa "const char *path" "const struct timespec *newtimes"
-.Fc
-.Ft int
-.Fo puffs_fuse_node_bmap
-.Fa "const char *path" "size_t mapsize" "uint64_t offset"
-.Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_ftruncate
+.\".Fa "const char *path" "off_t offset" "struct fuse_file_info *fileinfo"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_fgetattr
+.\".Fa "const char *path" "struct stat *attrs" "struct fuse_file_info *fileinfo"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_lock
+.\".Fa "const char *path" "struct fuse_file_info *fileinfo"
+.\".Fa "int locktype" "struct flock *lockinfo"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_utimens
+.\".Fa "const char *path" "const struct timespec *newtimes"
+.\".Fc
+.\".Ft int
+.\".Fo puffs_fuse_node_bmap
+.\".Fa "const char *path" "size_t mapsize" "uint64_t offset"
+.\".Fc
 .Sh DESCRIPTION
 .Nm
 is a reimplementation of the file system in user space subsystem.
