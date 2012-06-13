@@ -74,6 +74,8 @@ The type to use is indicated in the function name.
 The available types that can be used are:
 .Pp
 .Bl -tag -offset indent -width short -compact
+.It Li cpumask
+CPU mask (cpumask_t)
 .It Li int
 unsigned integer
 .It Li long
@@ -176,6 +178,13 @@ This section describes the semantics of each operation using a C like notation.
 .Bd -literal -compact
 *p += v;
 .Ed
+.El
+.Pp
+The
+.Fn atomic_add
+functions are not implemented for the type
+.Dq Li cpumask .
+.Bl -hang
 .It Fn atomic_clear p v
 .Bd -literal -compact
 *p &= ~v;
@@ -241,8 +250,9 @@ functions are not implemented for the types
 .Dq Li short ,
 .Dq Li ptr ,
 .Dq Li 8 ,
+.Dq Li 16 ,
 and
-.Dq Li 16
+.Dq Li cpumask
 and do
 not have any variants with memory barriers at this time.
 .Bl -hang
@@ -254,6 +264,13 @@ not have any variants with memory barriers at this time.
 .Bd -literal -compact
 *p -= v;
 .Ed
+.El
+.Pp
+The
+.Fn atomic_subtract
+functions are not implemented for the type
+.Dq Li cpumask .
+.Bl -hang
 .It Fn atomic_store p v
 .Bd -literal -compact
 *p = v;
