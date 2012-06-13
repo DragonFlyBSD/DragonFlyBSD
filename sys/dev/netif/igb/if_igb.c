@@ -431,6 +431,9 @@ igb_attach(device_t dev)
 	}
 	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", igb_rxr);
 	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, ring_max);
+#ifdef IGB_RSS_DEBUG
+	sc->rx_ring_cnt = device_getenv_int(dev, "rxr_debug", sc->rx_ring_cnt);
+#endif
 	sc->tx_ring_cnt = 1; /* XXX */
 
 	sc->intr_rate = IGB_INTR_RATE;
@@ -2270,7 +2273,8 @@ igb_init_rx_unit(struct igb_softc *sc)
 
 	if (IGB_ENABLE_HWRSS(sc)) {
 		uint8_t key[IGB_NRSSRK * IGB_RSSRK_SIZE];
-		uint32_t reta, reta_shift;
+		uint32_t reta_shift;
+		int j, r;
 
 		/*
 		 * NOTE:
@@ -2299,17 +2303,21 @@ igb_init_rx_unit(struct igb_softc *sc)
 		reta_shift = IGB_RETA_SHIFT;
 		if (hw->mac.type == e1000_82575)
 			reta_shift = IGB_RETA_SHIFT_82575;
-		reta = 0;
-		for (i = 0; i < IGB_RETA_SIZE; ++i) {
-			uint32_t q;
 
-			q = (i % sc->rx_ring_cnt) << reta_shift;
-			reta |= q << (8 * i);
+		r = 0;
+		for (j = 0; j < IGB_NRETA; ++j) {
+			uint32_t reta = 0;
+
+			for (i = 0; i < IGB_RETA_SIZE; ++i) {
+				uint32_t q;
+
+				q = (r % sc->rx_ring_cnt) << reta_shift;
+				reta |= q << (8 * i);
+				++r;
+			}
+			IGB_RSS_DPRINTF(sc, 1, "reta 0x%08x\n", reta);
+			E1000_WRITE_REG(hw, E1000_RETA(j), reta);
 		}
-		IGB_RSS_DPRINTF(sc, 1, "reta 0x%08x\n", reta);
-
-		for (i = 0; i < IGB_NRETA; ++i)
-			E1000_WRITE_REG(hw, E1000_RETA(i), reta);
 
 		/*
 		 * Enable multiple receive queues.
