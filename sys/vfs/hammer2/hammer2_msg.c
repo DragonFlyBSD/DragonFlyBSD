@@ -34,6 +34,8 @@
 
 #include "hammer2.h"
 
+RB_GENERATE(hammer2_state_tree, hammer2_state, rbnode, hammer2_state_cmp);
+
 /*
  * Process state tracking for a message after reception, prior to
  * execution.
@@ -128,6 +130,11 @@ hammer2_state_msgrx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 	lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 
 	state->msgid = msg->any.head.msgid;
+	state->source = msg->any.head.source;
+	state->target = msg->any.head.target;
+	kprintf("received msg %08x msgid %u source=%u target=%u\n",
+		msg->any.head.cmd, msg->any.head.msgid, msg->any.head.source,
+		msg->any.head.target);
 	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY)
 		state = RB_FIND(hammer2_state_tree, &pmp->statewr_tree, state);
 	else
@@ -222,7 +229,7 @@ hammer2_state_msgrx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 		 */
 		if (state == NULL) {
 			kprintf("hammer2_state_msgrx: no state match for "
-				"REPLY\n");
+				"REPLY cmd=%08x\n", msg->any.head.cmd);
 			error = EINVAL;
 			break;
 		}
@@ -374,12 +381,21 @@ hammer2_state_msgtx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 		 * half-closed if DELETE is set.  Since this is a new
 		 * message it isn't possible to transition into the fully
 		 * closed state here.
+		 *
+		 * XXX state must be assigned and inserted by
+		 *     hammer2_msg_write().  txcmd is assigned by us
+		 *     on-transmit.
 		 */
+		KKASSERT(state != NULL);
+#if 0
 		if (state == NULL) {
 			state = pmp->freerd_state;
 			pmp->freerd_state = NULL;
 			msg->state = state;
 			state->msg = msg;
+			state->msgid = msg->any.head.msgid;
+			state->source = msg->any.head.source;
+			state->target = msg->any.head.target;
 		}
 		KKASSERT((state->flags & HAMMER2_STATE_INSERTED) == 0);
 		if (RB_INSERT(hammer2_state_tree, &pmp->staterd_tree, state)) {
@@ -388,6 +404,7 @@ hammer2_state_msgtx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 			break;
 		}
 		state->flags |= HAMMER2_STATE_INSERTED;
+#endif
 		state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
 		error = 0;
 		break;
@@ -556,6 +573,25 @@ hammer2_state_free(hammer2_state_t *state)
 		hammer2_msg_free(pmp, msg);
 }
 
+hammer2_msg_t *
+hammer2_msg_alloc(hammer2_pfsmount_t *pmp, uint16_t source, uint16_t target,
+		  uint32_t cmd)
+{
+	hammer2_msg_t *msg;
+	size_t hbytes;
+
+	hbytes = (cmd & HAMMER2_MSGF_SIZE) * HAMMER2_MSG_ALIGN;
+	msg = kmalloc(offsetof(struct hammer2_msg, any) + hbytes,
+		      pmp->mmsg, M_WAITOK | M_ZERO);
+	msg->hdr_size = hbytes;
+	msg->any.head.magic = HAMMER2_MSGHDR_MAGIC;
+	msg->any.head.source = source;
+	msg->any.head.target = target;
+	msg->any.head.cmd = cmd;
+
+	return (msg);
+}
+
 void
 hammer2_msg_free(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 {
@@ -574,6 +610,14 @@ hammer2_msg_free(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 int
 hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
 {
+	if (state1->source < state2->source)
+		return(-1);
+	if (state1->source > state2->source)
+		return(1);
+	if (state1->target < state2->target)
+		return(-1);
+	if (state1->target > state2->target)
+		return(1);
 	if (state1->msgid < state2->msgid)
 		return(-1);
 	if (state1->msgid > state2->msgid)
@@ -582,23 +626,76 @@ hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
 }
 
 /*
- * Execute a received message.
+ * Write a message.  {source, target, cmd} have been set.
  *
- * If msg is part of a transaction msg->state will be non-NULL.  In this
- * situation state->msg saves the original command and can be replaced
- * by ongoing activity if desired.  Any msg which does not match state->msg
- * will be destroyed after we return.
- *
- * Single-element transactions set both CREATE and DELETE.
- *
- * Non-blocking transactions also set ABORT with CREATE.
- *
- * Specific transactional ABORTs can also be received and must be handled,
- * and can be received even when the other end has closed (after DELETE
- * received) if we have not yet closed our end of the transaction.
+ * If CREATE is set we allocate the state and msgid and do the insertion.
+ * If CREATE is not set the state and msgid must already be assigned.
  */
-int
-hammer2_msg_execute(hammer2_pfsmount_t *pmp __unused, hammer2_msg_t *msg __unused)
+hammer2_state_t *
+hammer2_msg_write(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg,
+		  int (*func)(hammer2_pfsmount_t *, hammer2_msg_t *))
 {
-	return(0);
+	hammer2_state_t *state;
+	uint16_t xcrc16;
+	uint32_t xcrc32;
+
+	/*
+	 * Setup transaction (if applicable).  One-off messages always
+	 * use a msgid of 0.
+	 */
+	if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
+		/*
+		 * New transaction, requires tracking state and a unique
+		 * msgid.
+		 */
+		KKASSERT(msg->state == NULL);
+		state = kmalloc(sizeof(*state), pmp->mmsg, M_WAITOK | M_ZERO);
+		state->pmp = pmp;
+		state->flags = HAMMER2_STATE_DYNAMIC;
+		state->func = func;
+		state->msg = msg;
+		state->source = msg->any.head.source;
+		state->target = msg->any.head.target;
+		msg->state = state;
+
+		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+		if ((state->msgid = pmp->msgid_iterator++) == 0)
+			state->msgid = pmp->msgid_iterator++;
+		while (RB_INSERT(hammer2_state_tree,
+				 &pmp->statewr_tree, state)) {
+			if ((state->msgid = pmp->msgid_iterator++) == 0)
+				state->msgid = pmp->msgid_iterator++;
+		}
+		msg->any.head.msgid = state->msgid;
+	} else if (msg->state) {
+		/*
+		 * Continuance or termination
+		 */
+		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+	} else {
+		/*
+		 * One-off message (always uses msgid 0)
+		 */
+		msg->any.head.msgid = 0;
+		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+	}
+
+	/*
+	 * Set icrc2 and icrc1
+	 */
+	if (msg->hdr_size > sizeof(msg->any.head)) {
+		xcrc32 = hammer2_icrc32(&msg->any.head + 1,
+					msg->hdr_size - sizeof(msg->any.head));
+		xcrc16 = (uint16_t)xcrc32 ^ (uint16_t)(xcrc32 >> 16);
+		msg->any.head.icrc2 = xcrc16;
+	}
+	xcrc32 = hammer2_icrc32(msg->any.buf + HAMMER2_MSGHDR_CRCOFF,
+				HAMMER2_MSGHDR_CRCBYTES);
+	xcrc16 = (uint16_t)xcrc32 ^ (uint16_t)(xcrc32 >> 16);
+	msg->any.head.icrc1 = xcrc16;
+
+	TAILQ_INSERT_TAIL(&pmp->msgq, msg, qentry);
+	lockmgr(&pmp->msglk, LK_RELEASE);
+
+	return (msg->state);
 }

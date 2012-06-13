@@ -509,12 +509,13 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 
 #define HAMMER2_PFSTYPE_NONE		0
 #define HAMMER2_PFSTYPE_ADMIN		1
-#define HAMMER2_PFSTYPE_CACHE		2
-#define HAMMER2_PFSTYPE_COPY		3
-#define HAMMER2_PFSTYPE_SLAVE		4
-#define HAMMER2_PFSTYPE_SOFT_SLAVE	5
-#define HAMMER2_PFSTYPE_SOFT_MASTER	6
-#define HAMMER2_PFSTYPE_MASTER		7
+#define HAMMER2_PFSTYPE_CLIENT		2
+#define HAMMER2_PFSTYPE_CACHE		3
+#define HAMMER2_PFSTYPE_COPY		4
+#define HAMMER2_PFSTYPE_SLAVE		5
+#define HAMMER2_PFSTYPE_SOFT_SLAVE	6
+#define HAMMER2_PFSTYPE_SOFT_MASTER	7
+#define HAMMER2_PFSTYPE_MASTER		8
 
 /*
  * The allocref structure represents the allocation table.  One 64K block
@@ -701,7 +702,7 @@ struct hammer2_volume_data {
 	uint32_t	flags;			/* 0034 */
 	uint8_t		copyid;			/* 0038 copyid of phys vol */
 	uint8_t		freemap_version;	/* 0039 freemap algorithm */
-	uint8_t		pfstype;		/* 003A local media pfstype */
+	uint8_t		pfs_type;		/* 003A local media pfstype */
 	uint8_t		reserved003B;		/* 003B */
 	uint32_t	reserved003C;		/* 003C */
 

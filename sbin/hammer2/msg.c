@@ -178,8 +178,6 @@ hammer2_allocreply(hammer2_msg_t *msg, uint32_t cmd, int aux_size)
 
 	rmsg = hammer2_allocmsg(msg->iocom, cmd, aux_size);
 	rmsg->any.head = msg->any.head;
-	rmsg->any.head.source = msg->any.head.target;
-	rmsg->any.head.target = msg->any.head.source;
 	rmsg->any.head.cmd = (cmd | HAMMER2_MSGF_REPLY) &
 			     ~(HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE);
 	rmsg->any.head.aux_icrc = 0;
@@ -917,13 +915,9 @@ void
 hammer2_replymsg(hammer2_msg_t *msg, uint16_t error)
 {
 	hammer2_persist_t *pers;
-	uint16_t t16;
 
 	assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
 
-	t16 = msg->any.head.source;
-	msg->any.head.source = msg->any.head.target;
-	msg->any.head.target = t16;
 	msg->any.head.error = error;
 	msg->any.head.cmd |= HAMMER2_MSGF_REPLY;
 	msg->aux_size = 0;

@@ -320,6 +320,7 @@ struct hammer2_pfsmount {
 	thread_t		msgrd_td;	/* cluster thread */
 	thread_t		msgwr_td;	/* cluster thread */
 	int			msg_ctl;	/* wakeup flags */
+	uint32_t		msgid_iterator;
 	struct lock		msglk;		/* lockmgr lock */
 	TAILQ_HEAD(, hammer2_msg) msgq;		/* transmit queue */
 	struct hammer2_state	*freerd_state;	/* allocation cache */
@@ -336,18 +337,26 @@ typedef struct hammer2_pfsmount hammer2_pfsmount_t;
  * In-memory message structure for hammer2.
  *
  * Persistent cache state messages will be associated with a hammer2_chain.
+ *
+ * NOTE!  If REPLY is set then the source and target fields in the message
+ *	  are swapped.  That is, source and target remain unchanged whether
+ *	  the message is a command from side A or a reply from side B.
+ *	  The message is routed based on target if REPLY is not set, and on
+ *	  source if REPLY is set.
  */
 struct hammer2_state {
 	RB_ENTRY(hammer2_state) rbnode;		/* indexed by msgid */
 	struct hammer2_pfsmount	*pmp;
 	uint32_t	txcmd;			/* mostly for CMDF flags */
 	uint32_t	rxcmd;			/* mostly for CMDF flags */
-	uint32_t	msgid;
+	uint16_t	source;			/* command originator */
+	uint16_t	target;			/* reply originator */
+	uint32_t	msgid;			/* {source,target,msgid} uniq */
 	int		flags;
 	int		error;
 	struct hammer2_chain *chain;		/* msg associated w/chain */
 	struct hammer2_msg *msg;
-	void (*func)(struct hammer2_state *state, struct hammer2_msg *msg);
+	int (*func)(struct hammer2_pfsmount *, struct hammer2_msg *);
 };
 
 #define HAMMER2_STATE_INSERTED	0x0001
@@ -533,6 +542,18 @@ void hammer2_state_cleanuptx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
 int hammer2_msg_execute(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
 void hammer2_state_free(hammer2_state_t *state);
 void hammer2_msg_free(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
+hammer2_msg_t *hammer2_msg_alloc(hammer2_pfsmount_t *pmp,
+				uint16_t source, uint16_t target,
+				uint32_t cmd);
+hammer2_state_t *hammer2_msg_write(hammer2_pfsmount_t *pmp,
+				hammer2_msg_t *msg,
+				int (*func)(hammer2_pfsmount_t *,
+					    hammer2_msg_t *));
+
+/*
+ * hammer2_msgops.c
+ */
+int hammer2_msg_adhoc_input(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
 
 /*
  * hammer2_freemap.c

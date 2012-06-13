@@ -81,6 +81,7 @@
 
 extern int DebugOpt;
 extern int VerboseOpt;
+extern int QuietOpt;
 extern int NormalExit;
 
 int hammer2_ioctl_handle(const char *sel_path);

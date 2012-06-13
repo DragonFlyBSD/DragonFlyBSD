@@ -172,9 +172,9 @@ struct hammer2_msg_hdr {
 	uint16_t	icrc1;		/* base header crc &salt on */
 	uint32_t	salt;		/* random salt helps crypto/replay */
 
-	uint16_t	source;		/* source linkid */
-	uint16_t	target;		/* target linkid */
-	uint32_t	msgid;		/* message id */
+	uint16_t	source;		/* command originator linkid */
+	uint16_t	target;		/* reply originator linkid */
+	uint32_t	msgid;		/* {source,target,msgid} unique */
 
 	uint32_t	cmd;		/* flags | cmd | hdr_size / 32 */
 	uint16_t	error;		/* error field */
@@ -228,10 +228,11 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
 
 #define HAMMER2_MSG_PROTO_LNK		0x00000000U
 #define HAMMER2_MSG_PROTO_DBG		0x00100000U
-#define HAMMER2_MSG_PROTO_CAC		0x00200000U
-#define HAMMER2_MSG_PROTO_QRM		0x00300000U
-#define HAMMER2_MSG_PROTO_BLK		0x00400000U
-#define HAMMER2_MSG_PROTO_VOP		0x00500000U
+#define HAMMER2_MSG_PROTO_DOM		0x00200000U
+#define HAMMER2_MSG_PROTO_CAC		0x00300000U
+#define HAMMER2_MSG_PROTO_QRM		0x00400000U
+#define HAMMER2_MSG_PROTO_BLK		0x00500000U
+#define HAMMER2_MSG_PROTO_VOP		0x00600000U
 
 /*
  * Message command constructors, sans flags
@@ -249,6 +250,10 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
 					 HAMMER2_MSG_HDR_ENCODE(elm))
 
 #define HAMMER2_MSG_DBG(cmd, elm)	(HAMMER2_MSG_PROTO_DBG |	\
+					 ((cmd) << 8) | 		\
+					 HAMMER2_MSG_HDR_ENCODE(elm))
+
+#define HAMMER2_MSG_DOM(cmd, elm)	(HAMMER2_MSG_PROTO_DOM |	\
 					 ((cmd) << 8) | 		\
 					 HAMMER2_MSG_HDR_ENCODE(elm))
 
@@ -276,7 +281,7 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
  *		  pad message buffers on shared-memory transports.  Not
  *		  typically used with TCP.
  *
- * AUTHn	- Authenticate the connection, negotiate administrative
+ * AUTH		- Authenticate the connection, negotiate administrative
  *		  rights & encryption, protocol class, etc.  Only PAD and
  *		  AUTH messages (not even PING) are accepted until
  *		  authentication is complete.  This message also identifies
@@ -286,7 +291,7 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
  *		  typically 1/sec on idle link, link is lost after 10 seconds
  *		  of inactivity.
  *
- * HSPAN	- One-way message on link-0, host-spanning tree message.
+ * STATUS	- One-way message on link-0, host-spanning tree message.
  *		  Connection and authentication status is propagated using
  *		  these messages on a per-connection basis.  Works like SPAN
  *		  but is only used for general status.  See the hammer2
@@ -309,9 +314,63 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
 #define HAMMER2_LNK_PAD		HAMMER2_MSG_LNK(0x000, hammer2_msg_hdr)
 #define HAMMER2_LNK_PING	HAMMER2_MSG_LNK(0x001, hammer2_msg_hdr)
 #define HAMMER2_LNK_AUTH	HAMMER2_MSG_LNK(0x010, hammer2_lnk_auth)
-#define HAMMER2_LNK_HSPAN	HAMMER2_MSG_LNK(0x011, hammer2_lnk_hspan)
-#define HAMMER2_LNK_SPAN	HAMMER2_MSG_LNK(0x012, hammer2_lnk_span)
+#define HAMMER2_LNK_SPAN	HAMMER2_MSG_LNK(0x011, hammer2_lnk_span)
 #define HAMMER2_LNK_ERROR	HAMMER2_MSG_LNK(0xFFF, hammer2_msg_hdr)
+
+/*
+ * SPAN - Registration (transaction, left open)
+ *
+ * This message registers a PFS/PFS_TYPE with the other end of the connection,
+ * telling the other end who we are and what we can provide or what we want
+ * to consume.  Multiple registrations can be maintained as open transactions
+ * with each one specifying a unique {source} linkid.
+ *
+ * Registrations are sent from {source}=S {1...n} to {target}=0 and maintained
+ * as open transactions.  Registrations are also received and maintains as
+ * open transactions, creating a matrix of linkid's.
+ *
+ * While these transactions are open additional transactions can be executed
+ * between any two linkid's {source}=S (registrations we sent) to {target}=T
+ * (registrations we received).
+ *
+ * Closure of any registration transaction will automatically abort any open
+ * transactions using the related linkids.  Closure can be initiated
+ * voluntarily from either side with either end issuing a DELETE, or they
+ * can be ABORTed.
+ *
+ * Status updates are performed via the open transaction.
+ *
+ * --
+ *
+ * A registration identifies a node and its various PFS parameters including
+ * the PFS_TYPE.  For example, a diskless HAMMER2 client typically identifies
+ * itself as PFSTYPE_CLIENT.
+ *
+ * Any node may serve as a cluster controller, aggregating and passing
+ * on received registrations, but end-points do not have to implement this
+ * ability.  Most end-points typically implement a single client-style or
+ * server-style PFS_TYPE and rendezvous at a cluster controller.
+ *
+ * The cluster controller does not aggregate/pass-on all received
+ * registrations.  It typically filters what gets passed on based on
+ * what it receives.
+ *
+ * STATUS UPDATES: Status updates use the same structure but typically
+ *		   only contain incremental changes to pfs_type, with the
+ *		   label field containing a text status.
+ */
+struct hammer2_lnk_span {
+	hammer2_msg_hdr_t head;
+	uuid_t		pfs_id;		/* rendezvous pfs uuid */
+	uuid_t		pfs_fsid;	/* unique pfs uuid */
+	uint8_t		pfs_type;	/* peer type */
+	uint8_t		reserved01;
+	uint16_t	proto_version;	/* high level protocol support */
+	uint32_t	status;		/* status flags */
+	uint8_t		reserved02[8];
+	uint32_t	reserved03[16];
+	char		label[256];	/* PFS label (can be wildcard) */
+};
 
 /*
  * Debug layer ops operate on any link
@@ -325,6 +384,13 @@ struct hammer2_dbg_shell {
 	hammer2_msg_hdr_t	head;
 };
 typedef struct hammer2_dbg_shell hammer2_dbg_shell_t;
+
+/*
+ * Domain layer ops operate on any link, link-0 may be used when the
+ * directory connected target is the desired registration.
+ *
+ * (nothing defined)
+ */
 
 /*
  * Cache layer ops operate on any link, link-0 may be used when the

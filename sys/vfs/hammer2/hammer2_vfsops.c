@@ -139,6 +139,7 @@ static int hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 static void hammer2_cluster_thread_rd(void *arg);
 static void hammer2_cluster_thread_wr(void *arg);
+static int hammer2_msg_span_reply(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
 
 /*
  * HAMMER2 vfs operations.
@@ -1084,8 +1085,11 @@ hammer2_cluster_thread_rd(void *arg)
 			hammer2_msg_free(pmp, msg);
 			if (error == EALREADY)
 				error = 0;
+		} else if (msg->state) {
+			error = msg->state->func(pmp, msg);
+			hammer2_state_cleanuprx(pmp, msg);
 		} else {
-			error = hammer2_msg_execute(pmp, msg);
+			error = hammer2_msg_adhoc_input(pmp, msg);
 			hammer2_state_cleanuprx(pmp, msg);
 		}
 		msg = NULL;
@@ -1129,7 +1133,20 @@ hammer2_cluster_thread_wr(void *arg)
 	ssize_t res;
 	int error = 0;
 
+	/*
+	 * Initiate a SPAN transaction registering our PFS with the other
+	 * end using {source}=1.  The transaction is left open.
+	 */
+	msg = hammer2_msg_alloc(pmp, 1, 0,
+				HAMMER2_LNK_SPAN | HAMMER2_MSGF_CREATE);
+	hammer2_msg_write(pmp, msg, hammer2_msg_span_reply);
+
+	/*
+	 * Transmit loop
+	 */
+	msg = NULL;
 	lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+
 	while ((pmp->msg_ctl & HAMMER2_CLUSTERCTL_KILL) == 0 && error == 0) {
 		lksleep(&pmp->msg_ctl, &pmp->msglk, 0, "msgwr", hz);
 		while ((msg = TAILQ_FIRST(&pmp->msgq)) != NULL) {
@@ -1217,4 +1234,11 @@ hammer2_cluster_thread_wr(void *arg)
 	pmp->msgwr_td = NULL;
 	wakeup(pmp);
 	lwkt_exit();
+}
+
+static int
+hammer2_msg_span_reply(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
+{
+	kprintf("SPAN REPLY\n");
+	return(0);
 }

@@ -300,6 +300,7 @@ caches, use local media for persistent cache, or use local media to
 completely slave the filesystem.
 
     ADMIN	- Media does not participate, administrative proxy only
+    CLIENT	- Media does not participate, client only
     CACHE	- Media only acts as a persistent cache
     COPY	- Media only acts as a local copy
     SLAVE	- Media is a RO slave that can be mounted RW

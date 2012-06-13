@@ -131,6 +131,9 @@ hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
 
 	/*
 	 * Find the remote host's public key
+	 *
+	 * If the link is not to be encrypted (<ip>.none located) we shortcut
+	 * the handshake entirely.  No buffers are exchanged.
 	 */
 	asprintf(&path, "%s/%s.pub", HAMMER2_PATH_REMOTE, peername);
 	if ((fp = fopen(path, "r")) == NULL) {
@@ -146,6 +149,7 @@ hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
 		}
 		if (DebugOpt)
 			fprintf(stderr, "auth succeeded, unencrypted link\n");
+		goto done;
 	}
 	if (fp) {
 		keys[0] = PEM_read_RSA_PUBKEY(fp, NULL, NULL, NULL);

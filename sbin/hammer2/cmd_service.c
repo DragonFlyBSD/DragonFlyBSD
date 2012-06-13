@@ -88,10 +88,14 @@ cmd_service(void)
 	lsin.sin_port = htons(HAMMER2_LISTEN_PORT);
 	if (bind(lfd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {
 		close(lfd);
-		fprintf(stderr, "master listen: daemon already running\n");
+		if (QuietOpt == 0) {
+			fprintf(stderr,
+				"master listen: daemon already running\n");
+		}
 		return 0;
 	}
-	fprintf(stderr, "master listen: startup\n");
+	if (QuietOpt == 0)
+		fprintf(stderr, "master listen: startup\n");
 	listen(lfd, 50);
 
 	/*

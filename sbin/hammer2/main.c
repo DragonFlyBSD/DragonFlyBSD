@@ -39,6 +39,7 @@ static void usage(int code);
 
 int DebugOpt;
 int VerboseOpt;
+int QuietOpt;
 int NormalExit = 1;	/* if set to 0 main() has to pthread_exit() */
 
 int
@@ -48,7 +49,6 @@ main(int ac, char **av)
 	const char *uuid_str = NULL;
 	const char *arg;
 	int pfs_type = HAMMER2_PFSTYPE_NONE;
-	int quick_opt = 0;
 	int all_opt = 0;
 	int ecode = 0;
 	int ch;
@@ -65,13 +65,6 @@ main(int ac, char **av)
 			break;
 		case 'd':
 			DebugOpt = 1;
-			break;
-		case 'q':
-			/*
-			 * Quick mode - do not block verifying certain
-			 * operations such as (connect).
-			 */
-			quick_opt = 1;
 			break;
 		case 's':
 			sel_path = optarg;
@@ -107,7 +100,16 @@ main(int ac, char **av)
 			uuid_str = optarg;
 			break;
 		case 'v':
-			++VerboseOpt;
+			if (QuietOpt)
+				--QuietOpt;
+			else
+				++VerboseOpt;
+			break;
+		case 'q':
+			if (VerboseOpt)
+				--VerboseOpt;
+			else
+				++QuietOpt;
 			break;
 		default:
 			fprintf(stderr, "Unknown option: %c\n", ch);
