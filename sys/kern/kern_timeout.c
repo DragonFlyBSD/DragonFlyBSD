@@ -70,7 +70,6 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.27 2007/11/14 18:27:52 swildner Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -133,7 +132,6 @@ typedef struct softclock_pcpu *softclock_pcpu_t;
  */
 static MALLOC_DEFINE(M_CALLOUT, "callout", "callout structures");
 static int callwheelsize;
-static int callwheelbits;
 static int callwheelmask;
 static struct softclock_pcpu softclock_pcpu_ary[MAXCPU];
 
@@ -149,11 +147,8 @@ swi_softclock_setup(void *arg)
 	 * Figure out how large a callwheel we need.  It must be a power of 2.
 	 */
 	callwheelsize = 1;
-	callwheelbits = 0;
-	while (callwheelsize < ncallout) {
+	while (callwheelsize < ncallout)
 		callwheelsize <<= 1;
-		++callwheelbits;
-	}
 	callwheelmask = callwheelsize - 1;
 
 	/*
