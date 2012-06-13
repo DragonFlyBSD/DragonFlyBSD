@@ -2958,6 +2958,7 @@ ohci_device_bulk_start(usbd_xfer_handle xfer)
 	}
 #endif
 
+	xfer->actlen = 0;
 	len = xfer->length;
 	endpt = xfer->pipe->endpoint->edesc->bEndpointAddress;
 	isread = UE_GET_DIR(endpt) == UE_DIR_IN;
