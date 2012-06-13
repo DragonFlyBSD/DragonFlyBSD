@@ -30,6 +30,7 @@
  */
 
 #include "opt_polling.h"
+#include "opt_igb.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -72,6 +73,16 @@
 #include <dev/netif/ig_hal/e1000_api.h>
 #include <dev/netif/ig_hal/e1000_82575.h>
 #include <dev/netif/igb/if_igb.h>
+
+#ifdef IGB_RSS_DEBUG
+#define IGB_RSS_DPRINTF(sc, lvl, fmt, ...) \
+do { \
+	if (sc->rss_debug >= lvl) \
+		if_printf(&sc->arpcom.ac_if, fmt, __VA_ARGS__); \
+} while (0)
+#else	/* !IGB_RSS_DEBUG */
+#define IGB_RSS_DPRINTF(sc, lvl, fmt, ...)	((void)0)
+#endif	/* IGB_RSS_DEBUG */
 
 #define IGB_NAME	"Intel(R) PRO/1000 "
 #define IGB_DEVICE(id)	\
@@ -185,8 +196,8 @@ static void	igb_disable_intr(struct igb_softc *);
 static void	igb_init_unshared_intr(struct igb_softc *);
 static void	igb_init_intr(struct igb_softc *);
 static int	igb_setup_intr(struct igb_softc *);
-static void	igb_setup_tx_intr(struct igb_tx_ring *);
-static void	igb_setup_rx_intr(struct igb_rx_ring *);
+static void	igb_setup_tx_intr(struct igb_tx_ring *, int *, int);
+static void	igb_setup_rx_intr(struct igb_rx_ring *, int *, int);
 
 /* Management and WOL Support */
 static void	igb_get_mgmt(struct igb_softc *);
@@ -223,6 +234,7 @@ DRIVER_MODULE(if_igb, pci, igb_driver, igb_devclass, NULL, NULL);
 
 static int	igb_rxd = IGB_DEFAULT_RXD;
 static int	igb_txd = IGB_DEFAULT_TXD;
+static int	igb_rxr = 0;
 static int	igb_msi_enable = 1;
 static int	igb_msix_enable = 1;
 static int	igb_eee_disabled = 1;	/* Energy Efficient Ethernet */
@@ -236,6 +248,7 @@ static int	igb_dma_coalesce = 0;
 
 TUNABLE_INT("hw.igb.rxd", &igb_rxd);
 TUNABLE_INT("hw.igb.txd", &igb_txd);
+TUNABLE_INT("hw.igb.rxr", &igb_rxr);
 TUNABLE_INT("hw.igb.msi.enable", &igb_msi_enable);
 TUNABLE_INT("hw.igb.msix.enable", &igb_msix_enable);
 TUNABLE_INT("hw.igb.fc_setting", &igb_fc_setting);
@@ -264,6 +277,39 @@ igb_rxcsum(uint32_t staterr, struct mbuf *mp)
 	}
 }
 
+static __inline struct pktinfo *
+igb_rssinfo(struct mbuf *m, struct pktinfo *pi,
+    uint32_t hash, uint32_t hashtype, uint32_t staterr)
+{
+	switch (hashtype) {
+	case E1000_RXDADV_RSSTYPE_IPV4_TCP:
+		pi->pi_netisr = NETISR_IP;
+		pi->pi_flags = 0;
+		pi->pi_l3proto = IPPROTO_TCP;
+		break;
+
+	case E1000_RXDADV_RSSTYPE_IPV4:
+		if (staterr & E1000_RXD_STAT_IXSM)
+			return NULL;
+
+		if ((staterr &
+		     (E1000_RXD_STAT_TCPCS | E1000_RXDEXT_STATERR_TCPE)) ==
+		    E1000_RXD_STAT_TCPCS) {
+			pi->pi_netisr = NETISR_IP;
+			pi->pi_flags = 0;
+			pi->pi_l3proto = IPPROTO_UDP;
+			break;
+		}
+		/* FALL THROUGH */
+	default:
+		return NULL;
+	}
+
+	m->m_flags |= M_HASH;
+	m->m_pkthdr.hash = toeplitz_hash(hash);
+	return pi;
+}
+
 static int
 igb_probe(device_t dev)
 {
@@ -288,7 +334,7 @@ igb_attach(device_t dev)
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
 	u_int intr_flags;
-	int error = 0, i, j;
+	int error = 0, i, j, ring_max;
 
 #ifdef notyet
 	/* SYSCTL stuff */
@@ -369,8 +415,27 @@ igb_attach(device_t dev)
 	sc->hw.bus.pci_cmd_word = pci_read_config(dev, PCIR_COMMAND, 2);
 	sc->hw.back = &sc->osdep;
 
+	switch (sc->hw.mac.type) {
+	case e1000_82575:
+		ring_max = IGB_MAX_RING_82575;
+		break;
+	case e1000_82580:
+		ring_max = IGB_MAX_RING_82580;
+		break;
+	case e1000_i350:
+		ring_max = IGB_MAX_RING_I350;
+		break;
+	case e1000_82576:
+		ring_max = IGB_MAX_RING_82576;
+		break;
+	default:
+		ring_max = IGB_MIN_RING;
+		break;
+	}
+	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", igb_rxr);
+	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, ring_max);
 	sc->tx_ring_cnt = 1; /* XXX */
-	sc->rx_ring_cnt = 1; /* XXX */
+
 	sc->intr_rate = IGB_INTR_RATE;
 
 	/* Do Shared Code initialization */
@@ -748,6 +813,8 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
 			reinit = 1;
 		}
+		if (mask & IFCAP_RSS)
+			ifp->if_capenable ^= IFCAP_RSS;
 		if (reinit && (ifp->if_flags & IFF_RUNNING))
 			igb_init(sc);
 		break;
@@ -1324,6 +1391,8 @@ igb_setup_ifp(struct igb_softc *sc)
 
 	ifp->if_capabilities =
 	    IFCAP_HWCSUM | IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
+	if (IGB_ENABLE_HWRSS(sc))
+		ifp->if_capabilities |= IFCAP_RSS;
 	ifp->if_capenable = ifp->if_capabilities;
 	ifp->if_hwassist = IGB_CSUM_FEATURES;
 
@@ -1363,6 +1432,11 @@ igb_setup_ifp(struct igb_softc *sc)
 static void
 igb_add_sysctl(struct igb_softc *sc)
 {
+#ifdef IGB_RSS_DEBUG
+	char rx_pkt[32];
+	int i;
+#endif
+
 	sysctl_ctx_init(&sc->sysctl_ctx);
 	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
 	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
@@ -1373,9 +1447,13 @@ igb_add_sysctl(struct igb_softc *sc)
 	}
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->rx_rings[0].num_rx_desc, 0, NULL);
+	    OID_AUTO, "rxr", CTLFLAG_RD, &sc->rx_ring_cnt, 0, "# of RX rings");
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-	    OID_AUTO, "txd", CTLFLAG_RD, &sc->tx_rings[0].num_tx_desc, 0, NULL);
+	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->rx_rings[0].num_rx_desc, 0,
+	    "# of RX descs");
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "txd", CTLFLAG_RD, &sc->tx_rings[0].num_tx_desc, 0,
+	    "# of TX descs");
 
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
@@ -1384,7 +1462,19 @@ igb_add_sysctl(struct igb_softc *sc)
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "tx_intr_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, igb_sysctl_tx_intr_nsegs, "I",
-	    "# segments per TX interrupt");
+	    "# of segments per TX interrupt");
+
+#ifdef IGB_RSS_DEBUG
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug, 0,
+	    "RSS debug level");
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		ksnprintf(rx_pkt, sizeof(rx_pkt), "rx%d_pkt", i);
+		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, rx_pkt,
+		    CTLFLAG_RW, &sc->rx_rings[i].rx_packets, "RXed packets");
+	}
+#endif
 }
 
 static int
@@ -2158,63 +2248,83 @@ igb_init_rx_unit(struct igb_softc *sc)
 		E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
 	}
 
+	rxcsum = E1000_READ_REG(&sc->hw, E1000_RXCSUM);
+	rxcsum &= ~(E1000_RXCSUM_PCSS_MASK | E1000_RXCSUM_IPPCSE);
+
 	/*
-	 * Setup for RX MultiQueue
+	 * Receive Checksum Offload for TCP and UDP
+	 *
+	 * Checksum offloading is also enabled if multiple receive
+	 * queue is to be supported, since we need it to figure out
+	 * fragments.
 	 */
-	rxcsum = E1000_READ_REG(hw, E1000_RXCSUM);
-#if 0
-	if (sc->rx_ring_cnt >1) {
-		u32 random[10], mrqc, shift = 0;
-		union igb_reta {
-			u32 dword;
-			u8  bytes[4];
-		} reta;
+	if ((ifp->if_capenable & IFCAP_RXCSUM) || IGB_ENABLE_HWRSS(sc)) {
+		/*
+		 * NOTE:
+		 * PCSD must be enabled to enable multiple
+		 * receive queues.
+		 */
+		rxcsum |= E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL |
+		    E1000_RXCSUM_PCSD;
+	} else {
+		rxcsum &= ~(E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL |
+		    E1000_RXCSUM_PCSD);
+	}
+	E1000_WRITE_REG(&sc->hw, E1000_RXCSUM, rxcsum);
 
-		arc4rand(&random, sizeof(random), 0);
-		if (adapter->hw.mac.type == e1000_82575)
-			shift = 6;
-		/* Warning FM follows */
-		for (int i = 0; i < 128; i++) {
-			reta.bytes[i & 3] =
-			    (i % sc->rx_ring_cnt) << shift;
-			if ((i & 3) == 3)
-				E1000_WRITE_REG(hw,
-				    E1000_RETA(i >> 2), reta.dword);
-		}
-		/* Now fill in hash table */
-		mrqc = E1000_MRQC_ENABLE_RSS_4Q;
-		for (int i = 0; i < 10; i++)
-			E1000_WRITE_REG_ARRAY(hw,
-			    E1000_RSSRK(0), i, random[i]);
-
-		mrqc |= (E1000_MRQC_RSS_FIELD_IPV4 |
-		    E1000_MRQC_RSS_FIELD_IPV4_TCP);
-		mrqc |= (E1000_MRQC_RSS_FIELD_IPV6 |
-		    E1000_MRQC_RSS_FIELD_IPV6_TCP);
-		mrqc |=( E1000_MRQC_RSS_FIELD_IPV4_UDP |
-		    E1000_MRQC_RSS_FIELD_IPV6_UDP);
-		mrqc |=( E1000_MRQC_RSS_FIELD_IPV6_UDP_EX |
-		    E1000_MRQC_RSS_FIELD_IPV6_TCP_EX);
-
-		E1000_WRITE_REG(hw, E1000_MRQC, mrqc);
+	if (IGB_ENABLE_HWRSS(sc)) {
+		uint8_t key[IGB_NRSSRK * IGB_RSSRK_SIZE];
+		uint32_t reta, reta_shift;
 
 		/*
-		** NOTE: Receive Full-Packet Checksum Offload 
-		** is mutually exclusive with Multiqueue. However
-		** this is not the same as TCP/IP checksums which
-		** still work.
-		*/
-		rxcsum |= E1000_RXCSUM_PCSD;
-	} else
-#endif
-	{
-		/* Non RSS setup */
-		if (ifp->if_capenable & IFCAP_RXCSUM)
-			rxcsum |= E1000_RXCSUM_IPPCSE;
-		else
-			rxcsum &= ~E1000_RXCSUM_TUOFL;
+		 * NOTE:
+		 * When we reach here, RSS has already been disabled
+		 * in igb_stop(), so we could safely configure RSS key
+		 * and redirect table.
+		 */
+
+		/*
+		 * Configure RSS key
+		 */
+		toeplitz_get_key(key, sizeof(key));
+		for (i = 0; i < IGB_NRSSRK; ++i) {
+			uint32_t rssrk;
+
+			rssrk = IGB_RSSRK_VAL(key, i);
+			IGB_RSS_DPRINTF(sc, 1, "rssrk%d 0x%08x\n", i, rssrk);
+
+			E1000_WRITE_REG(hw, E1000_RSSRK(i), rssrk);
+		}
+
+		/*
+		 * Configure RSS redirect table in following fashion:
+	 	 * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
+		 */
+		reta_shift = IGB_RETA_SHIFT;
+		if (hw->mac.type == e1000_82575)
+			reta_shift = IGB_RETA_SHIFT_82575;
+		reta = 0;
+		for (i = 0; i < IGB_RETA_SIZE; ++i) {
+			uint32_t q;
+
+			q = (i % sc->rx_ring_cnt) << reta_shift;
+			reta |= q << (8 * i);
+		}
+		IGB_RSS_DPRINTF(sc, 1, "reta 0x%08x\n", reta);
+
+		for (i = 0; i < IGB_NRETA; ++i)
+			E1000_WRITE_REG(hw, E1000_RETA(i), reta);
+
+		/*
+		 * Enable multiple receive queues.
+		 * Enable IPv4 RSS standard hash functions.
+		 * Disable RSS interrupt on 82575
+		 */
+		E1000_WRITE_REG(&sc->hw, E1000_MRQC,
+				E1000_MRQC_ENABLE_RSS_4Q |
+				E1000_MRQC_RSS_FIELD_IPV4_TCP |
+				E1000_MRQC_RSS_FIELD_IPV4);
 	}
-	E1000_WRITE_REG(hw, E1000_RXCSUM, rxcsum);
 
 	/* Setup the Receive Control Register */
 	rctl &= ~(3 << E1000_RCTL_MO_SHIFT);
@@ -2259,6 +2369,7 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 		return;
 
 	while ((staterr & E1000_RXD_STAT_DD) && count != 0) {
+		struct pktinfo *pi = NULL, pi0;
 		struct igb_rx_buf *rxbuf = &rxr->rx_buf[i];
 		struct mbuf *m = NULL;
 		boolean_t eop;
@@ -2270,6 +2381,7 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 		if ((staterr & E1000_RXDEXT_ERR_FRAME_ERR_MASK) == 0 &&
 		    !rxr->discard) {
 			struct mbuf *mp = rxbuf->m_head;
+			uint32_t hash, hashtype;
 			uint16_t vlan;
 			int len;
 
@@ -2279,6 +2391,14 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 				vlan = be16toh(cur->wb.upper.vlan);
 			else
 				vlan = le16toh(cur->wb.upper.vlan);
+
+			hash = le32toh(cur->wb.lower.hi_dword.rss);
+			hashtype = le32toh(cur->wb.lower.lo_dword.data) &
+			    E1000_RXDADV_RSSTYPE_MASK;
+
+			IGB_RSS_DPRINTF(rxr->sc, 10,
+			    "ring%d, hash 0x%08x, hashtype %u\n",
+			    rxr->me, hash, hashtype);
 
 			bus_dmamap_sync(rxr->rx_tag, rxbuf->map,
 			    BUS_DMASYNC_POSTREAD);
@@ -2315,11 +2435,12 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 					m->m_flags |= M_VLANTAG;
 				}
 
-#if 0
 				if (ifp->if_capenable & IFCAP_RSS) {
-					pi = emx_rssinfo(m, &pi0, mrq,
-							 rss_hash, staterr);
+					pi = igb_rssinfo(m, &pi0,
+					    hash, hashtype, staterr);
 				}
+#ifdef IGB_RSS_DEBUG
+				rxr->rx_packets++;
 #endif
 			}
 		} else {
@@ -2339,7 +2460,7 @@ discard:
 		}
 
 		if (m != NULL)
-			ether_input_pkt(ifp, m, NULL);
+			ether_input_pkt(ifp, m, pi);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == rxr->num_rx_desc)
@@ -3411,15 +3532,33 @@ static int
 igb_setup_intr(struct igb_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, i;
+	int error, i, intr_bit, intr_bitmax;
 
 	/*
 	 * Setup interrupt mask
 	 */
+	switch (sc->hw.mac.type) {
+	case e1000_82575:
+		intr_bitmax = IGB_MAX_TXRXINT_82575;
+		break;
+	case e1000_82580:
+		intr_bitmax = IGB_MAX_TXRXINT_82580;
+		break;
+	case e1000_i350:
+		intr_bitmax = IGB_MAX_TXRXINT_I350;
+		break;
+	case e1000_82576:
+		intr_bitmax = IGB_MAX_TXRXINT_82576;
+		break;
+	default:
+		intr_bitmax = IGB_MIN_TXRXINT;
+		break;
+	}
+	intr_bit = 0;
 	for (i = 0; i < sc->tx_ring_cnt; ++i)
-		igb_setup_tx_intr(&sc->tx_rings[i]);
+		igb_setup_tx_intr(&sc->tx_rings[i], &intr_bit, intr_bitmax);
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
-		igb_setup_rx_intr(&sc->rx_rings[i]);
+		igb_setup_rx_intr(&sc->rx_rings[i], &intr_bit, intr_bitmax);
 
 	sc->intr_mask = E1000_EICR_OTHER;
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
@@ -3455,7 +3594,7 @@ igb_setup_intr(struct igb_softc *sc)
 }
 
 static void
-igb_setup_tx_intr(struct igb_tx_ring *txr)
+igb_setup_tx_intr(struct igb_tx_ring *txr, int *intr_bit0, int intr_bitmax)
 {
 	if (txr->sc->hw.mac.type == e1000_82575) {
 		txr->tx_intr_bit = 0;	/* unused */
@@ -3476,13 +3615,17 @@ igb_setup_tx_intr(struct igb_tx_ring *txr)
 			panic("unsupported # of TX ring, %d\n", txr->me);
 		}
 	} else {
-		txr->tx_intr_bit = 0;	/* XXX */
+		int intr_bit = *intr_bit0;
+
+		txr->tx_intr_bit = intr_bit % intr_bitmax;
 		txr->tx_intr_mask = 1 << txr->tx_intr_bit;
+
+		*intr_bit0 = intr_bit + 1;
 	}
 }
 
 static void
-igb_setup_rx_intr(struct igb_rx_ring *rxr)
+igb_setup_rx_intr(struct igb_rx_ring *rxr, int *intr_bit0, int intr_bitmax)
 {
 	if (rxr->sc->hw.mac.type == e1000_82575) {
 		rxr->rx_intr_bit = 0;	/* unused */
@@ -3503,8 +3646,12 @@ igb_setup_rx_intr(struct igb_rx_ring *rxr)
 			panic("unsupported # of RX ring, %d\n", rxr->me);
 		}
 	} else {
-		rxr->rx_intr_bit = 1;	/* XXX */
+		int intr_bit = *intr_bit0;
+
+		rxr->rx_intr_bit = intr_bit % intr_bitmax;
 		rxr->rx_intr_mask = 1 << rxr->rx_intr_bit;
+
+		*intr_bit0 = intr_bit + 1;
 	}
 }
 

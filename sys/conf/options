@@ -622,6 +622,9 @@ EMX_RSS_DEBUG		opt_emx.h
 # jme driver
 JME_RSS_DEBUG		opt_jme.h
 
+# igb driver
+IGB_RSS_DEBUG		opt_igb.h
+
 # dcons options
 DCONS_BUF_SIZE		opt_dcons.h
 DCONS_POLL_HZ		opt_dcons.h

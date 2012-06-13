@@ -35,6 +35,24 @@
 /* Tunables */
 
 /*
+ * Max ring count
+ */
+#define IGB_MAX_RING_82575	4
+#define IGB_MAX_RING_I350	8
+#define IGB_MAX_RING_82580	8
+#define IGB_MAX_RING_82576	16
+#define IGB_MIN_RING		1
+
+/*
+ * Max TX/RX interrupt bits
+ */
+#define IGB_MAX_TXRXINT_82575	4	/* XXX not used */
+#define IGB_MAX_TXRXINT_I350	8
+#define IGB_MAX_TXRXINT_82580	8
+#define IGB_MAX_TXRXINT_82576	16
+#define IGB_MIN_TXRXINT		2	/* XXX VF? */
+
+/*
  * IGB_TXD: Maximum number of Transmit Descriptors
  *
  *   This value is the number of transmit descriptors allocated by the driver.
@@ -152,6 +170,18 @@
 
 /* main + 16x RX + 16x TX */
 #define IGB_NSERIALIZE			33
+
+#define IGB_NRSSRK			10
+#define IGB_RSSRK_SIZE			4
+#define IGB_RSSRK_VAL(key, i)		(key[(i) * IGB_RSSRK_SIZE] | \
+					 key[(i) * IGB_RSSRK_SIZE + 1] << 8 | \
+					 key[(i) * IGB_RSSRK_SIZE + 2] << 16 | \
+					 key[(i) * IGB_RSSRK_SIZE + 3] << 24)
+
+#define IGB_NRETA			32
+#define IGB_RETA_SIZE			4
+#define IGB_RETA_SHIFT			0
+#define IGB_RETA_SHIFT_82575		6
 
 struct igb_softc;
 
@@ -292,6 +322,7 @@ struct igb_softc {
 	/*
 	 * Receive rings
 	 */
+	int			rss_debug;
 	int			rx_ring_cnt;
 	struct igb_rx_ring	*rx_rings;
 
@@ -314,6 +345,8 @@ struct igb_softc {
 
 	void 			*stats;
 };
+
+#define IGB_ENABLE_HWRSS(sc)	((sc)->rx_ring_cnt > 1)
 
 struct igb_tx_buf {
 	struct mbuf	*m_head;
