@@ -65,89 +65,38 @@
  * at each hop until a DELETE is received from both sides.
  *
  * One-way messages such as those used by spanning tree commands are not
- * recorded.  These are sent with no flags set.  Aborts and replies are not
- * possible.
+ * recorded.  These are sent without the CREATE, DELETE, or ABORT flags set.
+ * ABORT is not supported for one-off messages.  The REPLY bit can be used
+ * to distinguish between command and status if desired.
  *
- * A normal message with no persistent state is sent with CREATE|DELETE and
- * the response is returned with REPLY|CREATE|DELETE.  A normal command can
- * be aborted by sending an ABORT message to the msgid that is in progress.
- * An ABORT sent by the originator must still wait for the reply from the
- * target and, since we've already sent the DELETE with our CREATE|DELETE,
- * may also cross the REPLY|CREATE|DELETE message in the opposite direction.
- * In this situation the message state has been destroyed on the target and
- * the target ignores the ABORT (because CREATE is not set, and
- * differentiated from one-way messages because ABORT is set).
+ * Persistent-state messages are messages which require a reply to be
+ * returned.  These messages can also consist of multiple message elements
+ * for the command or reply or both (or neither).  The command message
+ * sequence sets CREATE on the first message and DELETE on the last message.
+ * A single message command sets both (CREATE|DELETE).  The reply message
+ * sequence works the same way but of course also sets the REPLY bit.
  *
- * A command which has persistent state must maintain a persistent message.
- * For example, a lock or cache state request.  A persistent message is
- * initiated with just CREATE and the initial response is returned with
- * REPLY|CREATE.  Successive messages are sent with no flags and responses
- * with just REPLY.  The DELETE flag acts like a half-close (and degenerately
- * works the same as it does for normal messages).  This flag can be set
- * in the initial command or any successive command, and in the initial reply
- * or in any successive reply.  The recorded message state is destroyed when
- * both sides have sent a DELETE.
+ * Persistent-state messages can be aborted by sending a message element
+ * with the ABORT flag set.  This flag can be combined with either or both
+ * the CREATE and DELETE flags.  When combined with the CREATE flag the
+ * command is treated as non-blocking but still executes.  Whem combined
+ * with the DELETE flag no additional message elements are required.
  *
- * Aborts for persistent messages work in the same fashion as they do for
- * normal messages, except that the target can also initiate an ABORT
- * by using ABORT|REPLY.  The target has one restriction, however, it cannot
- * send an ABORT with the CREATE flag set (i.e. as the initial reply),
- * because if the originator reuses the msgid the originator would not
- * then be able to determine that the ABORT is associated with the previous
- * session and not the new session.
+ * ABORT SPECIAL CASE - Mid-stream aborts.  A mid-stream abort can be sent
+ * when supported by the sender by sending an ABORT message with neither
+ * CREATE or DELETE set.  This effectively turns the message into a
+ * non-blocking message (but depending on what is being represented can also
+ * cut short prior data elements in the stream).
  *
- * If a link failure occurs any active or persistent messages will be
- * auto-replied to the originator, and auto-aborted to the target.
- *
- * Additional features:
- *
- *	ABORT+CREATE	- This may be used to make a non-blocking request.
- *			  The target receives the normal command and is free
- *			  to ignore the ABORT flag, but may use it as an
- *			  indication that a non-blocking request is being
- *			  made.  The target must still reply the message of
- *			  course.  Works for normal and persistent messages
- *			  but does NOT work for one-way messages (because
- *			  ABORT alone without recorded msgid state has to be
- *			  ignored).
- *
- *	ABORT		- ABORT messages are allowed to bypass input queues.
- *			  Normal ABORTs are sent without the DELETE flag,
- *			  even for normal messages which had already set the
- *			  DELETE flag in the initial message.  This allows
- *			  the normal DELETE half-close operation to proceed
- *			  so an ABORT is basically advisory and the originator
- *			  must still wait for a reply.  Aborts are also
- *			  advisory when sent by targets.
- *
- *			  ABORT messages cannot be used with one-way messages
- *			  as this would cause such messages to be ignored.
- *
- *	ABORT+DELETE	- This is a special form of ABORT that allows the
- *			  recorded message state on the sender and on all
- *			  hops the message is relayed through to be destroyed
- *			  on the fly, as if a two-way DELETE had occurred.
- *			  It will cause an auto-reply or auto-abort to be
- *			  issued as if the link had been lost, but allows
- *			  the link to remain live.
- *
- *			  This form is basically like a socket close(),
- *			  where you aren't just sending an EOF but you are
- *			  completely aborting the request in both directions.
- *
- *			  This form cannot be used with CREATE as that could
- *			  generate a false reply if msgid is reused and
- *			  crosses the abort over the wire.
- *
- *			  ABORT messages cannot be used with one-way messages
- *			  as this would cause such messages to be ignored.
- *
- *	SUBSTREAMS	- Persistent messages coupled with the fact that
- *			  all commands and responses run through a single
- *			  chain of relays over reliable streams allows one
- *			  to treat persistent message updates as a data
- *			  stream and use the DELETE flag or an ABORT to
- *			  indicate EOF.
+ * ABORT SPECIAL CASE - Abort-after-DELETE.  Persistent messages have to be
+ * abortable if the stream/pipe/whatever is lost.  In this situation any
+ * forwarding relay needs to unconditionally abort commands and replies that
+ * are still active.  This is done by sending an ABORT|DELETE even in
+ * situations where a DELETE has already been sent in that direction.  This
+ * is done, for example, when links are in a half-closed state.  In this
+ * situation it is possible for the abort request to race a transition to the
+ * fully closed state.  ABORT|DELETE messages which race the fully closed
+ * state are expected to be discarded by the other end.
  *
  *
  *			NEGOTIATION OF {source} AND {target}

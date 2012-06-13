@@ -351,6 +351,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
 	mp->mnt_data = (qaddr_t)pmp;
 	pmp->mp = mp;
+	kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
+	lockinit(&pmp->msglk, "h2msg", 0, 0);
+	TAILQ_INIT(&pmp->msgq);
+	RB_INIT(&pmp->staterd_tree);
+	RB_INIT(&pmp->statewr_tree);
 
 	if (create_hmp) {
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
@@ -630,6 +635,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	pmp->mp = NULL;
 	pmp->hmp = NULL;
 	mp->mnt_data = NULL;
+
+	kmalloc_destroy(&pmp->mmsg);
 
 	kfree(pmp, M_HAMMER2);
 	if (hmp->pmp_count == 0) {
@@ -1005,17 +1012,107 @@ void
 hammer2_cluster_thread_rd(void *arg)
 {
 	hammer2_pfsmount_t *pmp = arg;
-	hammer2_any_t any;
-	int error;
+	hammer2_msg_hdr_t hdr;
+	hammer2_msg_t *msg;
+	hammer2_state_t *state;
+	size_t hbytes;
+	int error = 0;
 
 	while ((pmp->msg_ctl & HAMMER2_CLUSTERCTL_KILL) == 0) {
-		error = fp_read(pmp->msg_fp,
-				any.buf, sizeof(hammer2_msg_hdr_t),
+		/*
+		 * Retrieve the message from the pipe or socket.
+		 */
+		error = fp_read(pmp->msg_fp, &hdr, sizeof(hdr),
 				NULL, 1, UIO_SYSSPACE);
-		kprintf("fp_read %d\n", error);
 		if (error)
 			break;
+		if (hdr.magic != HAMMER2_MSGHDR_MAGIC) {
+			kprintf("hammer2: msgrd: bad magic: %04x\n",
+				hdr.magic);
+			error = EINVAL;
+			break;
+		}
+		hbytes = (hdr.cmd & HAMMER2_MSGF_SIZE) * HAMMER2_MSG_ALIGN;
+		if (hbytes < sizeof(hdr) || hbytes > HAMMER2_MSGAUX_MAX) {
+			kprintf("hammer2: msgrd: bad header size %zd\n",
+				hbytes);
+			error = EINVAL;
+			break;
+		}
+		msg = kmalloc(offsetof(struct hammer2_msg, any) + hbytes,
+			      pmp->mmsg, M_WAITOK | M_ZERO);
+		msg->any.head = hdr;
+		msg->hdr_size = hbytes;
+		if (hbytes > sizeof(hdr)) {
+			error = fp_read(pmp->msg_fp, &msg->any.head + 1,
+					hbytes - sizeof(hdr),
+					NULL, 1, UIO_SYSSPACE);
+			if (error) {
+				kprintf("hammer2: short msg received\n");
+				error = EINVAL;
+				break;
+			}
+		}
+		msg->aux_size = hdr.aux_bytes * HAMMER2_MSG_ALIGN;
+		if (msg->aux_size > HAMMER2_MSGAUX_MAX) {
+			kprintf("hammer2: illegal msg payload size %zd\n",
+				msg->aux_size);
+			error = EINVAL;
+			break;
+		}
+		if (msg->aux_size) {
+			msg->aux_data = kmalloc(msg->aux_size, pmp->mmsg,
+						M_WAITOK | M_ZERO);
+			error = fp_read(pmp->msg_fp, msg->aux_data,
+					msg->aux_size,
+					NULL, 1, UIO_SYSSPACE);
+			if (error) {
+				kprintf("hammer2: short msg "
+					"payload received\n");
+				break;
+			}
+		}
+
+		/*
+		 * State machine tracking, state assignment for msg,
+		 * returns error and discard status.  Errors are fatal
+		 * to the connection except for EALREADY which forces
+		 * a discard without execution.
+		 */
+		error = hammer2_state_msgrx(pmp, msg);
+		if (error) {
+			hammer2_msg_free(pmp, msg);
+			if (error == EALREADY)
+				error = 0;
+		} else {
+			error = hammer2_msg_execute(pmp, msg);
+			hammer2_state_cleanuprx(pmp, msg);
+		}
+		msg = NULL;
 	}
+
+	if (error)
+		kprintf("hammer2: msg read failed error %d\n", error);
+
+	lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+	if (msg) {
+		if (msg->state && msg->state->msg == msg)
+			msg->state->msg = NULL;
+		hammer2_msg_free(pmp, msg);
+	}
+
+	if ((state = pmp->freerd_state) != NULL) {
+		pmp->freerd_state = NULL;
+		hammer2_state_free(state);
+	}
+
+	while ((state = RB_ROOT(&pmp->staterd_tree)) != NULL) {
+		RB_REMOVE(hammer2_state_tree, &pmp->staterd_tree, state);
+		hammer2_state_free(state);
+	}
+	lockmgr(&pmp->msglk, LK_RELEASE);
+
+	fp_shutdown(pmp->msg_fp, SHUT_RDWR);
 	pmp->msgrd_td = NULL;
 	/* pmp can be ripped out from under us at this point */
 	wakeup(pmp);
@@ -1027,13 +1124,97 @@ void
 hammer2_cluster_thread_wr(void *arg)
 {
 	hammer2_pfsmount_t *pmp = arg;
+	hammer2_msg_t *msg = NULL;
+	hammer2_state_t *state;
+	ssize_t res;
+	int error = 0;
 
-	while ((pmp->msg_ctl & HAMMER2_CLUSTERCTL_KILL) == 0) {
-		tsleep(&pmp->msg_ctl, 0, "msgwr", hz);
+	lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+	while ((pmp->msg_ctl & HAMMER2_CLUSTERCTL_KILL) == 0 && error == 0) {
+		lksleep(&pmp->msg_ctl, &pmp->msglk, 0, "msgwr", hz);
+		while ((msg = TAILQ_FIRST(&pmp->msgq)) != NULL) {
+			/*
+			 * Remove msg from the transmit queue and do
+			 * persist and half-closed state handling.
+			 */
+			TAILQ_REMOVE(&pmp->msgq, msg, qentry);
+			lockmgr(&pmp->msglk, LK_RELEASE);
+
+			error = hammer2_state_msgtx(pmp, msg);
+			if (error == EALREADY) {
+				error = 0;
+				hammer2_msg_free(pmp, msg);
+				lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+				continue;
+			}
+			if (error)
+				break;
+
+			/*
+			 * Dump the message to the pipe or socket.
+			 */
+			error = fp_write(pmp->msg_fp, &msg->any, msg->hdr_size,
+					 &res, UIO_SYSSPACE);
+			if (error || res != msg->hdr_size) {
+				if (error == 0)
+					error = EINVAL;
+				lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+				break;
+			}
+			if (msg->aux_size) {
+				error = fp_write(pmp->msg_fp,
+						 msg->aux_data, msg->aux_size,
+						 &res, UIO_SYSSPACE);
+				if (error || res != msg->aux_size) {
+					if (error == 0)
+						error = EINVAL;
+					lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+					break;
+				}
+			}
+			hammer2_state_cleanuptx(pmp, msg);
+			lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+		}
 	}
+
+	/*
+	 * Cleanup messages pending transmission and release msgq lock.
+	 */
+	if (error)
+		kprintf("hammer2: msg write failed error %d\n", error);
+
+	if (msg) {
+		if (msg->state && msg->state->msg == msg)
+			msg->state->msg = NULL;
+		hammer2_msg_free(pmp, msg);
+	}
+
+	while ((msg = TAILQ_FIRST(&pmp->msgq)) != NULL) {
+		TAILQ_REMOVE(&pmp->msgq, msg, qentry);
+		if (msg->state && msg->state->msg == msg)
+			msg->state->msg = NULL;
+		hammer2_msg_free(pmp, msg);
+	}
+
+	if ((state = pmp->freewr_state) != NULL) {
+		pmp->freewr_state = NULL;
+		hammer2_state_free(state);
+	}
+
+	while ((state = RB_ROOT(&pmp->statewr_tree)) != NULL) {
+		RB_REMOVE(hammer2_state_tree, &pmp->statewr_tree, state);
+		hammer2_state_free(state);
+	}
+	lockmgr(&pmp->msglk, LK_RELEASE);
+
+	/*
+	 * Cleanup descriptor, be sure the read size is shutdown so the
+	 * (probably blocked) read operations returns an error.
+	 *
+	 * pmp can be ripped out from under us once msgwr_td is set to NULL.
+	 */
 	fp_shutdown(pmp->msg_fp, SHUT_RDWR);
 	pmp->msgwr_td = NULL;
-	/* pmp can be ripped out from under us at this point */
 	wakeup(pmp);
 	lwkt_exit();
 }

@@ -68,11 +68,14 @@
 #include "hammer2_mount.h"
 #include "hammer2_ioctl.h"
 #include "hammer2_ccms.h"
+#include "hammer2_network.h"
 
 struct hammer2_chain;
 struct hammer2_inode;
 struct hammer2_mount;
 struct hammer2_pfsmount;
+struct hammer2_state;
+struct hammer2_msg;
 
 /*
  * The chain structure tracks blockref recursions all the way to
@@ -98,14 +101,16 @@ struct hammer2_pfsmount;
  * not match the blockref at (parent, index).
  */
 RB_HEAD(hammer2_chain_tree, hammer2_chain);
+RB_HEAD(hammer2_state_tree, hammer2_state);
 TAILQ_HEAD(flush_deferral_list, hammer2_chain);
 
 struct hammer2_chain {
 	ccms_cst_t	cst;			/* attr or data cst */
 	struct hammer2_blockref	bref;
 	struct hammer2_blockref	bref_flush;	/* synchronized w/MOVED bit */
-	struct hammer2_chain *parent;		/* return chain to root */
+	struct hammer2_chain	*parent;	/* return chain to root */
 	struct hammer2_chain_tree rbhead;
+	struct hammer2_state	*state;		/* if active cache msg */
 	RB_ENTRY(hammer2_chain) rbnode;
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
 	union {
@@ -307,6 +312,7 @@ struct hammer2_pfsmount {
 	struct hammer2_mount	*hmp;		/* device global mount */
 	hammer2_chain_t 	*rchain;	/* PFS root chain */
 	hammer2_inode_t		*iroot;		/* PFS root inode */
+	struct malloc_type	*mmsg;
 	ccms_domain_t		ccms_dom;
 	struct netexport	export;		/* nfs export */
 	int			ronly;		/* read-only mount */
@@ -314,11 +320,54 @@ struct hammer2_pfsmount {
 	thread_t		msgrd_td;	/* cluster thread */
 	thread_t		msgwr_td;	/* cluster thread */
 	int			msg_ctl;	/* wakeup flags */
+	struct lock		msglk;		/* lockmgr lock */
+	TAILQ_HEAD(, hammer2_msg) msgq;		/* transmit queue */
+	struct hammer2_state	*freerd_state;	/* allocation cache */
+	struct hammer2_state	*freewr_state;	/* allocation cache */
+	struct hammer2_state_tree staterd_tree;	/* active messages */
+	struct hammer2_state_tree statewr_tree;	/* active messages */
 };
 
 typedef struct hammer2_pfsmount hammer2_pfsmount_t;
 
 #define HAMMER2_CLUSTERCTL_KILL	0x0001
+
+/*
+ * In-memory message structure for hammer2.
+ *
+ * Persistent cache state messages will be associated with a hammer2_chain.
+ */
+struct hammer2_state {
+	RB_ENTRY(hammer2_state) rbnode;		/* indexed by msgid */
+	struct hammer2_pfsmount	*pmp;
+	uint32_t	txcmd;			/* mostly for CMDF flags */
+	uint32_t	rxcmd;			/* mostly for CMDF flags */
+	uint32_t	msgid;
+	int		flags;
+	int		error;
+	struct hammer2_chain *chain;		/* msg associated w/chain */
+	struct hammer2_msg *msg;
+	void (*func)(struct hammer2_state *state, struct hammer2_msg *msg);
+};
+
+#define HAMMER2_STATE_INSERTED	0x0001
+#define HAMMER2_STATE_DYNAMIC	0x0002
+
+struct hammer2_msg {
+	TAILQ_ENTRY(hammer2_msg) qentry;	/* serialized queue */
+	struct hammer2_state *state;
+	size_t		hdr_size;
+	size_t		aux_size;
+	char		*aux_data;
+	hammer2_any_t	any;
+};
+
+typedef struct hammer2_state hammer2_state_t;
+typedef struct hammer2_msg hammer2_msg_t;
+
+int hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2);
+RB_PROTOTYPE(hammer2_state_tree, hammer2_state, rbnode, hammer2_state_cmp);
+
 
 #if defined(_KERNEL)
 
@@ -473,6 +522,17 @@ void hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain);
  */
 int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 				int fflag, struct ucred *cred);
+
+/*
+ * hammer2_msg.c
+ */
+int hammer2_state_msgrx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
+int hammer2_state_msgtx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
+void hammer2_state_cleanuprx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
+void hammer2_state_cleanuptx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
+int hammer2_msg_execute(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
+void hammer2_state_free(hammer2_state_t *state);
+void hammer2_msg_free(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
 
 /*
  * hammer2_freemap.c
