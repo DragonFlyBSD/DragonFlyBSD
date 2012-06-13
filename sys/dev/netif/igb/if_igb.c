@@ -206,9 +206,6 @@ static void	igb_get_hw_control(struct igb_softc *);
 static void     igb_rel_hw_control(struct igb_softc *);
 static void     igb_enable_wol(device_t);
 
-static void	igb_serialize_skipmain(struct igb_softc *);
-static void	igb_deserialize_skipmain(struct igb_softc *);
-
 static device_method_t igb_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		igb_probe),
@@ -1105,16 +1102,15 @@ static void
 igb_timer(void *xsc)
 {
 	struct igb_softc *sc = xsc;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	ifnet_serialize_all(ifp);
+	lwkt_serialize_enter(&sc->main_serialize);
 
 	igb_update_link_status(sc);
 	igb_update_stats_counters(sc);
 
 	callout_reset(&sc->timer, hz, igb_timer, sc);
 
-	ifnet_deserialize_all(ifp);
+	lwkt_serialize_exit(&sc->main_serialize);
 }
 
 static void
@@ -2873,10 +2869,8 @@ igb_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	case POLL_AND_CHECK_STATUS:
 		reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-			igb_serialize_skipmain(sc);
 			sc->hw.mac.get_link_status = 1;
 			igb_update_link_status(sc);
-			igb_deserialize_skipmain(sc);
 		}
 		/* FALL THROUGH */
 	case POLL_ONLY:
@@ -2948,10 +2942,8 @@ igb_intr(void *xsc)
 
 		/* Link status change */
 		if (icr & E1000_ICR_LSC) {
-			igb_serialize_skipmain(sc);
 			sc->hw.mac.get_link_status = 1;
 			igb_update_link_status(sc);
-			igb_deserialize_skipmain(sc);
 		}
 	}
 
@@ -3006,10 +2998,8 @@ igb_shared_intr(void *xsc)
 
 	/* Link status change */
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-		igb_serialize_skipmain(sc);
 		sc->hw.mac.get_link_status = 1;
 		igb_update_link_status(sc);
-		igb_deserialize_skipmain(sc);
 	}
 
 	if (reg_icr & E1000_ICR_RXO)
@@ -3680,18 +3670,6 @@ igb_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 
 	return ifnet_serialize_array_try(sc->serializes, sc->serialize_cnt,
 	    sc->tx_serialize, sc->rx_serialize, slz);
-}
-
-static void
-igb_serialize_skipmain(struct igb_softc *sc)
-{
-	lwkt_serialize_array_enter(sc->serializes, sc->serialize_cnt, 1);
-}
-
-static void
-igb_deserialize_skipmain(struct igb_softc *sc)
-{
-	lwkt_serialize_array_exit(sc->serializes, sc->serialize_cnt, 1);
 }
 
 #ifdef INVARIANTS
