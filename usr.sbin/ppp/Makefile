@@ -21,8 +21,6 @@ M4FLAGS=
 LDADD= -lcrypt -lmd -lutil -lz
 DPADD=	${LIBCRYPT} ${LIBMD} ${LIBUTIL} ${LIBZ}
 
-WARNS?=	2
-
 .SUFFIXES: .8 .8.m4
 
 .8.m4.8:
@@ -76,6 +74,10 @@ CFLAGS+=-DNORADIUS
 SRCS+=	radius.c
 LDADD+=	-lradius
 DPADD+= ${LIBRADIUS}
+.endif
+
+.if defined(WANT_NETGRAPH7)
+CFLAGS+=-DWANT_NETGRAPH7
 .endif
 
 .if defined(NONETGRAPH)

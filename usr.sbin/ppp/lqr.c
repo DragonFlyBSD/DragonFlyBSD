@@ -119,8 +119,8 @@ lqr_RecvEcho(struct fsm *fp, struct mbuf *bp)
       log_Printf(LogWARN, "lqr_RecvEcho: Got sig 0x%08lx, not 0x%08lx !\n",
                 (u_long)lqr.signature, (u_long)SIGNATURE);
   } else
-    log_Printf(LogWARN, "lqr_RecvEcho: Got packet size %d, expecting %ld !\n",
-              m_length(bp), (long)sizeof(struct echolqr));
+    log_Printf(LogWARN, "lqr_RecvEcho: Got packet size %zu, expecting %zu !\n",
+              m_length(bp), sizeof(struct echolqr));
   return bp;
 }
 
@@ -128,7 +128,7 @@ void
 lqr_ChangeOrder(struct lqrdata *src, struct lqrdata *dst)
 {
   u_int32_t *sp, *dp;
-  int n;
+  unsigned n;
 
   sp = (u_int32_t *) src;
   dp = (u_int32_t *) dst;
@@ -191,7 +191,7 @@ SendLqrReport(void *v)
 }
 
 struct mbuf *
-lqr_Input(struct bundle *bundle, struct link *l, struct mbuf *bp)
+lqr_Input(struct bundle *bundle __unused, struct link *l, struct mbuf *bp)
 {
   struct physical *p = link2physical(l);
   struct lcp *lcp = p->hdlc.lqm.owner;
@@ -243,7 +243,7 @@ lqr_Input(struct bundle *bundle, struct link *l, struct mbuf *bp)
           (lastLQR && lastLQR == p->hdlc.lqm.lqr.peer.PeerInLQRs) ||
           (p->hdlc.lqm.lqr.peer_timeout &&
            p->hdlc.lqm.timer.rest * 100 / SECTICKS >
-           p->hdlc.lqm.lqr.peer_timeout))
+           (unsigned) p->hdlc.lqm.lqr.peer_timeout))
         SendLqrData(lcp);
     }
   }
@@ -357,8 +357,8 @@ lqr_Dump(const char *link, const char *message, const struct lqrdata *lqr)
 }
 
 static struct mbuf *
-lqr_LayerPush(struct bundle *b, struct link *l, struct mbuf *bp,
-              int pri, u_short *proto)
+lqr_LayerPush(struct bundle *b __unused, struct link *l, struct mbuf *bp,
+              int pri __unused, u_short *proto)
 {
   struct physical *p = link2physical(l);
   int len;
@@ -391,7 +391,7 @@ lqr_LayerPush(struct bundle *b, struct link *l, struct mbuf *bp,
   len = m_length(bp);
 
   if (!physical_IsSync(p))
-    p->hdlc.lqm.OutOctets += hdlc_WrapperOctets(&l->lcp, *proto);
+    p->hdlc.lqm.OutOctets += hdlc_WrapperOctets();
   p->hdlc.lqm.OutOctets += acf_WrapperOctets(&l->lcp, *proto) +
                            proto_WrapperOctets(&l->lcp, *proto) + len + 1;
   p->hdlc.lqm.OutPackets++;
@@ -429,7 +429,8 @@ lqr_LayerPush(struct bundle *b, struct link *l, struct mbuf *bp,
 }
 
 static struct mbuf *
-lqr_LayerPull(struct bundle *b, struct link *l, struct mbuf *bp, u_short *proto)
+lqr_LayerPull(struct bundle *b __unused, struct link *l __unused,
+             struct mbuf *bp, u_short *proto)
 {
   /*
    * We mark the packet as ours but don't do anything 'till it's dispatched

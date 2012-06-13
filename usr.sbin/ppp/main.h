@@ -29,5 +29,5 @@
  * $DragonFly: src/usr.sbin/ppp/main.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
-extern void Cleanup(int);
+extern void Cleanup(void);
 extern void AbortProgram(int);

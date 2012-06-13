@@ -143,8 +143,8 @@ static void	igb_set_multi(struct igb_softc *);
 static void	igb_set_promisc(struct igb_softc *);
 static void	igb_disable_promisc(struct igb_softc *);
 
-static int	igb_dma_alloc(struct igb_softc *);
-static void	igb_dma_free(struct igb_softc *);
+static int	igb_alloc_rings(struct igb_softc *);
+static void	igb_free_rings(struct igb_softc *);
 static int	igb_create_tx_ring(struct igb_tx_ring *);
 static int	igb_create_rx_ring(struct igb_rx_ring *);
 static void	igb_free_tx_ring(struct igb_tx_ring *);
@@ -167,6 +167,13 @@ static void	igb_start(struct ifnet *);
 #ifdef DEVICE_POLLING
 static void	igb_poll(struct ifnet *, enum poll_cmd, int);
 #endif
+static void	igb_serialize(struct ifnet *, enum ifnet_serialize);
+static void	igb_deserialize(struct ifnet *, enum ifnet_serialize);
+static int	igb_tryserialize(struct ifnet *, enum ifnet_serialize);
+#ifdef INVARIANTS
+static void	igb_serialize_assert(struct ifnet *, enum ifnet_serialize,
+		    boolean_t);
+#endif
 
 static void	igb_intr(void *);
 static void	igb_shared_intr(void *);
@@ -187,6 +194,9 @@ static void	igb_rel_mgmt(struct igb_softc *);
 static void	igb_get_hw_control(struct igb_softc *);
 static void     igb_rel_hw_control(struct igb_softc *);
 static void     igb_enable_wol(device_t);
+
+static void	igb_serialize_skipmain(struct igb_softc *);
+static void	igb_deserialize_skipmain(struct igb_softc *);
 
 static device_method_t igb_methods[] = {
 	/* Device interface */
@@ -278,7 +288,7 @@ igb_attach(device_t dev)
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
 	u_int intr_flags;
-	int error = 0;
+	int error = 0, i, j;
 
 #ifdef notyet
 	/* SYSCTL stuff */
@@ -359,7 +369,8 @@ igb_attach(device_t dev)
 	sc->hw.bus.pci_cmd_word = pci_read_config(dev, PCIR_COMMAND, 2);
 	sc->hw.back = &sc->osdep;
 
-	sc->num_queues = 1; /* Defaults for Legacy or MSI */
+	sc->tx_ring_cnt = 1; /* XXX */
+	sc->rx_ring_cnt = 1; /* XXX */
 	sc->intr_rate = IGB_INTR_RATE;
 
 	/* Do Shared Code initialization */
@@ -384,12 +395,29 @@ igb_attach(device_t dev)
 
 	/* Set the frame limits assuming  standard ethernet sized frames. */
 	sc->max_frame_size = ETHERMTU + ETHER_HDR_LEN + ETHER_CRC_LEN;
-	sc->min_frame_size = ETHER_MIN_LEN;
 
-	/* Allocate RX/TX rings' busdma(9) stuffs */
-	error = igb_dma_alloc(sc);
+	/* Allocate RX/TX rings */
+	error = igb_alloc_rings(sc);
 	if (error)
 		goto failed;
+
+	/*
+	 * Setup serializers
+	 */
+	lwkt_serialize_init(&sc->main_serialize);
+	i = 0;
+	sc->serializes[i++] = &sc->main_serialize;
+
+	sc->tx_serialize = i;
+	for (j = 0; j < sc->tx_ring_cnt; ++j)
+		sc->serializes[i++] = &sc->tx_rings[j].tx_serialize;
+
+	sc->rx_serialize = i;
+	for (j = 0; j < sc->rx_ring_cnt; ++j)
+		sc->serializes[i++] = &sc->rx_rings[j].rx_serialize;
+
+	sc->serialize_cnt = i;
+	KKASSERT(sc->serialize_cnt <= IGB_NSERIALIZE);
 
 	/* Allocate the appropriate stats memory */
 	if (sc->vf_ifp) {
@@ -490,7 +518,8 @@ igb_attach(device_t dev)
 	}
 
 	/* Determine if we have to control management hardware */
-	sc->has_manage = e1000_enable_mng_pass_thru(&sc->hw);
+	if (e1000_enable_mng_pass_thru(&sc->hw))
+		sc->flags |= IGB_FLAG_HAS_MGMT;
 
 	/*
 	 * Setup Wake-on-Lan
@@ -572,7 +601,7 @@ igb_detach(device_t dev)
 		    sc->mem_res);
 	}
 
-	igb_dma_free(sc);
+	igb_free_rings(sc);
 
 	if (sc->mta != NULL)
 		kfree(sc->mta, M_DEVBUF);
@@ -762,7 +791,7 @@ igb_init(void *xsc)
 	igb_get_mgmt(sc);
 
 	/* Prepare transmit descriptors and buffers */
-	for (i = 0; i < sc->num_queues; ++i)
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		igb_init_tx_ring(&sc->tx_rings[i]);
 	igb_init_tx_unit(sc);
 
@@ -780,15 +809,13 @@ igb_init(void *xsc)
 		adapter->rx_mbuf_sz = MJUMPAGESIZE;
 	else
 		adapter->rx_mbuf_sz = MJUM9BYTES;
-#else
-	sc->rx_mbuf_sz = MCLBYTES;
 #endif
 
 	/* Initialize interrupt */
 	igb_init_intr(sc);
 
 	/* Prepare receive descriptors and buffers */
-	for (i = 0; i < sc->num_queues; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		int error;
 
 		error = igb_init_rx_ring(&sc->rx_rings[i]);
@@ -1124,9 +1151,9 @@ igb_stop(struct igb_softc *sc)
 	e1000_led_off(&sc->hw);
 	e1000_cleanup_led(&sc->hw);
 
-	for (i = 0; i < sc->num_queues; ++i)
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		igb_free_tx_ring(&sc->tx_rings[i]);
-	for (i = 0; i < sc->num_queues; ++i)
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		igb_free_rx_ring(&sc->rx_rings[i]);
 }
 
@@ -1279,12 +1306,18 @@ igb_setup_ifp(struct igb_softc *sc)
 	ifp->if_init =  igb_init;
 	ifp->if_ioctl = igb_ioctl;
 	ifp->if_start = igb_start;
+	ifp->if_serialize = igb_serialize;
+	ifp->if_deserialize = igb_deserialize;
+	ifp->if_tryserialize = igb_tryserialize;
+#ifdef INVARIANTS
+	ifp->if_serialize_assert = igb_serialize_assert;
+#endif
 #ifdef DEVICE_POLLING
 	ifp->if_poll = igb_poll;
 #endif
 	ifp->if_watchdog = igb_watchdog;
 
-	ifq_set_maxlen(&ifp->if_snd, sc->num_tx_desc - 1);
+	ifq_set_maxlen(&ifp->if_snd, sc->tx_rings[0].num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 
 	ether_ifattach(ifp, sc->hw.mac.addr, NULL);
@@ -1340,9 +1373,9 @@ igb_add_sysctl(struct igb_softc *sc)
 	}
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->num_rx_desc, 0, NULL);
+	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->rx_rings[0].num_rx_desc, 0, NULL);
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-	    OID_AUTO, "txd", CTLFLAG_RD, &sc->num_tx_desc, 0, NULL);
+	    OID_AUTO, "txd", CTLFLAG_RD, &sc->tx_rings[0].num_tx_desc, 0, NULL);
 
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
@@ -1355,13 +1388,9 @@ igb_add_sysctl(struct igb_softc *sc)
 }
 
 static int
-igb_dma_alloc(struct igb_softc *sc)
+igb_alloc_rings(struct igb_softc *sc)
 {
 	int error, i;
-
-	/* First allocate the top level queue structs */
-	sc->queues = kmalloc(sizeof(struct igb_queue) * sc->num_queues,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * Create top level busdma tag
@@ -1378,14 +1407,15 @@ igb_dma_alloc(struct igb_softc *sc)
 	/*
 	 * Allocate TX descriptor rings and buffers
 	 */
-	sc->tx_rings = kmalloc(sizeof(struct igb_tx_ring) * sc->num_queues,
+	sc->tx_rings = kmalloc(sizeof(struct igb_tx_ring) * sc->tx_ring_cnt,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
-	for (i = 0; i < sc->num_queues; ++i) {
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		struct igb_tx_ring *txr = &sc->tx_rings[i];
 
 		/* Set up some basics */
 		txr->sc = sc;
 		txr->me = i;
+		lwkt_serialize_init(&txr->tx_serialize);
 
 		error = igb_create_tx_ring(txr);
 		if (error)
@@ -1395,50 +1425,44 @@ igb_dma_alloc(struct igb_softc *sc)
 	/*
 	 * Allocate RX descriptor rings and buffers
 	 */ 
-	sc->rx_rings = kmalloc(sizeof(struct igb_rx_ring) * sc->num_queues,
+	sc->rx_rings = kmalloc(sizeof(struct igb_rx_ring) * sc->rx_ring_cnt,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
-	for (i = 0; i < sc->num_queues; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 		/* Set up some basics */
 		rxr->sc = sc;
 		rxr->me = i;
+		lwkt_serialize_init(&rxr->rx_serialize);
 
 		error = igb_create_rx_ring(rxr);
 		if (error)
 			return error;
 	}
 
-	/*
-	 * Finally set up the queue holding structs
-	 */
-	for (i = 0; i < sc->num_queues; i++) {
-		struct igb_queue *que = &sc->queues[i];
-
-		que->sc = sc;
-		que->txr = &sc->tx_rings[i];
-		que->rxr = &sc->rx_rings[i];
-	}
 	return 0;
 }
 
 static void
-igb_dma_free(struct igb_softc *sc)
+igb_free_rings(struct igb_softc *sc)
 {
 	int i;
 
-	if (sc->queues != NULL)
-		kfree(sc->queues, M_DEVBUF);
-
 	if (sc->tx_rings != NULL) {
-		for (i = 0; i < sc->num_queues; ++i)
-			igb_destroy_tx_ring(&sc->tx_rings[i], sc->num_tx_desc);
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+			struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+			igb_destroy_tx_ring(txr, txr->num_tx_desc);
+		}
 		kfree(sc->tx_rings, M_DEVBUF);
 	}
 
 	if (sc->rx_rings != NULL) {
-		for (i = 0; i < sc->num_queues; ++i)
-			igb_destroy_rx_ring(&sc->rx_rings[i], sc->num_rx_desc);
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			struct igb_rx_ring *rxr = &sc->rx_rings[i];
+
+			igb_destroy_rx_ring(rxr, rxr->num_rx_desc);
+		}
 		kfree(sc->rx_rings, M_DEVBUF);
 	}
 }
@@ -1457,15 +1481,15 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 		device_printf(txr->sc->dev,
 		    "Using %d TX descriptors instead of %d!\n",
 		    IGB_DEFAULT_TXD, igb_txd);
-		txr->sc->num_tx_desc = IGB_DEFAULT_TXD;
+		txr->num_tx_desc = IGB_DEFAULT_TXD;
 	} else {
-		txr->sc->num_tx_desc = igb_txd;
+		txr->num_tx_desc = igb_txd;
 	}
 
 	/*
 	 * Allocate TX descriptor ring
 	 */
-	tsize = roundup2(txr->sc->num_tx_desc * sizeof(union e1000_adv_tx_desc),
+	tsize = roundup2(txr->num_tx_desc * sizeof(union e1000_adv_tx_desc),
 	    IGB_DBA_ALIGN);
 	txr->txdma.dma_vaddr = bus_dmamem_coherent_any(txr->sc->parent_tag,
 	    IGB_DBA_ALIGN, tsize, BUS_DMA_WAITOK,
@@ -1478,7 +1502,7 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	txr->tx_base = txr->txdma.dma_vaddr;
 	bzero(txr->tx_base, tsize);
 
-	txr->tx_buf = kmalloc(sizeof(struct igb_tx_buf) * txr->sc->num_tx_desc,
+	txr->tx_buf = kmalloc(sizeof(struct igb_tx_buf) * txr->num_tx_desc,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
@@ -1517,7 +1541,7 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	/*
 	 * Create DMA maps for TX buffers
 	 */
-	for (i = 0; i < txr->sc->num_tx_desc; ++i) {
+	for (i = 0; i < txr->num_tx_desc; ++i) {
 		struct igb_tx_buf *txbuf = &txr->tx_buf[i];
 
 		error = bus_dmamap_create(txr->tx_tag,
@@ -1534,9 +1558,9 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	 * Initialize various watermark
 	 */
 	txr->spare_desc = IGB_TX_SPARE;
-	txr->intr_nsegs = txr->sc->num_tx_desc / 16;
-	txr->oact_hi_desc = txr->sc->num_tx_desc / 2;
-	txr->oact_lo_desc = txr->sc->num_tx_desc / 8;
+	txr->intr_nsegs = txr->num_tx_desc / 16;
+	txr->oact_hi_desc = txr->num_tx_desc / 2;
+	txr->oact_lo_desc = txr->num_tx_desc / 8;
 	if (txr->oact_lo_desc > IGB_TX_OACTIVE_MAX)
 		txr->oact_lo_desc = IGB_TX_OACTIVE_MAX;
 	if (txr->oact_lo_desc < txr->spare_desc + IGB_TX_RESERVED)
@@ -1550,7 +1574,7 @@ igb_free_tx_ring(struct igb_tx_ring *txr)
 {
 	int i;
 
-	for (i = 0; i < txr->sc->num_tx_desc; ++i) {
+	for (i = 0; i < txr->num_tx_desc; ++i) {
 		struct igb_tx_buf *txbuf = &txr->tx_buf[i];
 
 		if (txbuf->m_head != NULL) {
@@ -1602,7 +1626,7 @@ igb_init_tx_ring(struct igb_tx_ring *txr)
 {
 	/* Clear the old descriptor contents */
 	bzero(txr->tx_base,
-	    sizeof(union e1000_adv_tx_desc) * txr->sc->num_tx_desc);
+	    sizeof(union e1000_adv_tx_desc) * txr->num_tx_desc);
 
 	/* Clear TX head write-back buffer */
 	*(txr->tx_hdr) = 0;
@@ -1613,7 +1637,7 @@ igb_init_tx_ring(struct igb_tx_ring *txr)
 	txr->tx_nsegs = 0;
 
 	/* Set number of descriptors available */
-	txr->tx_avail = txr->sc->num_tx_desc;
+	txr->tx_avail = txr->num_tx_desc;
 }
 
 static void
@@ -1624,7 +1648,7 @@ igb_init_tx_unit(struct igb_softc *sc)
 	int i;
 
 	/* Setup the Tx Descriptor Rings */
-	for (i = 0; i < sc->num_queues; ++i) {
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		struct igb_tx_ring *txr = &sc->tx_rings[i];
 		uint64_t bus_addr = txr->txdma.dma_paddr;
 		uint64_t hdr_paddr = txr->tx_hdr_paddr;
@@ -1632,7 +1656,7 @@ igb_init_tx_unit(struct igb_softc *sc)
 		uint32_t dca_txctrl;
 
 		E1000_WRITE_REG(hw, E1000_TDLEN(i),
-		    sc->num_tx_desc * sizeof(struct e1000_tx_desc));
+		    txr->num_tx_desc * sizeof(struct e1000_tx_desc));
 		E1000_WRITE_REG(hw, E1000_TDBAH(i),
 		    (uint32_t)(bus_addr >> 32));
 		E1000_WRITE_REG(hw, E1000_TDBAL(i),
@@ -1773,7 +1797,7 @@ igb_txctx(struct igb_tx_ring *txr, struct mbuf *mp)
 	txbuf->m_head = NULL;
 
 	/* We've consumed the first desc, adjust counters */
-	if (++ctxd == txr->sc->num_tx_desc)
+	if (++ctxd == txr->num_tx_desc)
 		ctxd = 0;
 	txr->next_avail_desc = ctxd;
 	--txr->tx_avail;
@@ -1787,7 +1811,7 @@ igb_txeof(struct igb_tx_ring *txr)
 	struct ifnet *ifp = &txr->sc->arpcom.ac_if;
 	int first, hdr, avail;
 
-	if (txr->tx_avail == txr->sc->num_tx_desc)
+	if (txr->tx_avail == txr->num_tx_desc)
 		return;
 
 	first = txr->next_to_clean;
@@ -1807,7 +1831,7 @@ igb_txeof(struct igb_tx_ring *txr)
 			txbuf->m_head = NULL;
 			++ifp->if_opackets;
 		}
-		if (++first == txr->sc->num_tx_desc)
+		if (++first == txr->num_tx_desc)
 			first = 0;
 	}
 	txr->next_to_clean = first;
@@ -1844,15 +1868,15 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 		device_printf(rxr->sc->dev,
 		    "Using %d RX descriptors instead of %d!\n",
 		    IGB_DEFAULT_RXD, igb_rxd);
-		rxr->sc->num_rx_desc = IGB_DEFAULT_RXD;
+		rxr->num_rx_desc = IGB_DEFAULT_RXD;
 	} else {
-		rxr->sc->num_rx_desc = igb_rxd;
+		rxr->num_rx_desc = igb_rxd;
 	}
 
 	/*
 	 * Allocate RX descriptor ring
 	 */
-	rsize = roundup2(rxr->sc->num_rx_desc * sizeof(union e1000_adv_rx_desc),
+	rsize = roundup2(rxr->num_rx_desc * sizeof(union e1000_adv_rx_desc),
 	    IGB_DBA_ALIGN);
 	rxr->rxdma.dma_vaddr = bus_dmamem_coherent_any(rxr->sc->parent_tag,
 	    IGB_DBA_ALIGN, rsize, BUS_DMA_WAITOK,
@@ -1866,7 +1890,7 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 	rxr->rx_base = rxr->rxdma.dma_vaddr;
 	bzero(rxr->rx_base, rsize);
 
-	rxr->rx_buf = kmalloc(sizeof(struct igb_rx_buf) * rxr->sc->num_rx_desc,
+	rxr->rx_buf = kmalloc(sizeof(struct igb_rx_buf) * rxr->num_rx_desc,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
@@ -1907,7 +1931,7 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 	/*
 	 * Create DMA maps for RX buffers
 	 */
-	for (i = 0; i < rxr->sc->num_rx_desc; i++) {
+	for (i = 0; i < rxr->num_rx_desc; i++) {
 		struct igb_rx_buf *rxbuf = &rxr->rx_buf[i];
 
 		error = bus_dmamap_create(rxr->rx_tag,
@@ -1927,7 +1951,7 @@ igb_free_rx_ring(struct igb_rx_ring *rxr)
 {
 	int i;
 
-	for (i = 0; i < rxr->sc->num_rx_desc; ++i) {
+	for (i = 0; i < rxr->num_rx_desc; ++i) {
 		struct igb_rx_buf *rxbuf = &rxr->rx_buf[i];
 
 		if (rxbuf->m_head != NULL) {
@@ -2034,10 +2058,10 @@ igb_init_rx_ring(struct igb_rx_ring *rxr)
 
 	/* Clear the ring contents */
 	bzero(rxr->rx_base,
-	    rxr->sc->num_rx_desc * sizeof(union e1000_adv_rx_desc));
+	    rxr->num_rx_desc * sizeof(union e1000_adv_rx_desc));
 
 	/* Now replenish the ring mbufs */
-	for (i = 0; i < rxr->sc->num_rx_desc; ++i) {
+	for (i = 0; i < rxr->num_rx_desc; ++i) {
 		int error;
 
 		error = igb_newbuf(rxr, i, TRUE);
@@ -2112,13 +2136,13 @@ igb_init_rx_unit(struct igb_softc *sc)
 	}
 
 	/* Setup the Base and Length of the Rx Descriptor Rings */
-	for (i = 0; i < sc->num_queues; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
 		uint64_t bus_addr = rxr->rxdma.dma_paddr;
 		uint32_t rxdctl;
 
 		E1000_WRITE_REG(hw, E1000_RDLEN(i),
-		    sc->num_rx_desc * sizeof(struct e1000_rx_desc));
+		    rxr->num_rx_desc * sizeof(struct e1000_rx_desc));
 		E1000_WRITE_REG(hw, E1000_RDBAH(i),
 		    (uint32_t)(bus_addr >> 32));
 		E1000_WRITE_REG(hw, E1000_RDBAL(i),
@@ -2139,7 +2163,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 	 */
 	rxcsum = E1000_READ_REG(hw, E1000_RXCSUM);
 #if 0
-	if (adapter->num_queues >1) {
+	if (sc->rx_ring_cnt >1) {
 		u32 random[10], mrqc, shift = 0;
 		union igb_reta {
 			u32 dword;
@@ -2152,7 +2176,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 		/* Warning FM follows */
 		for (int i = 0; i < 128; i++) {
 			reta.bytes[i & 3] =
-			    (i % adapter->num_queues) << shift;
+			    (i % sc->rx_ring_cnt) << shift;
 			if ((i & 3) == 3)
 				E1000_WRITE_REG(hw,
 				    E1000_RETA(i >> 2), reta.dword);
@@ -2211,11 +2235,11 @@ igb_init_rx_unit(struct igb_softc *sc)
 	 * Setup the HW Rx Head and Tail Descriptor Pointers
 	 *   - needs to be after enable
 	 */
-	for (i = 0; i < sc->num_queues; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 		E1000_WRITE_REG(hw, E1000_RDH(i), rxr->next_to_check);
-		E1000_WRITE_REG(hw, E1000_RDT(i), rxr->sc->num_rx_desc - 1);
+		E1000_WRITE_REG(hw, E1000_RDT(i), rxr->num_rx_desc - 1);
 	}
 }
 
@@ -2318,7 +2342,7 @@ discard:
 			ether_input_pkt(ifp, m, NULL);
 
 		/* Advance our pointers to the next descriptor. */
-		if (++i == rxr->sc->num_rx_desc)
+		if (++i == rxr->num_rx_desc)
 			i = 0;
 
 		cur = &rxr->rx_base[i];
@@ -2327,7 +2351,7 @@ discard:
 	rxr->next_to_check = i;
 
 	if (--i < 0)
-		i = rxr->sc->num_rx_desc - 1;
+		i = rxr->num_rx_desc - 1;
 	E1000_WRITE_REG(&rxr->sc->hw, E1000_RDT(rxr->me), i);
 }
 
@@ -2388,7 +2412,7 @@ igb_set_vlan(struct igb_softc *sc)
 static void
 igb_enable_intr(struct igb_softc *sc)
 {
-	lwkt_serialize_handler_enable(sc->arpcom.ac_if.if_serializer);
+	lwkt_serialize_handler_enable(&sc->main_serialize);
 
 	if ((sc->flags & IGB_FLAG_SHARED_INTR) == 0) {
 		/* XXX MSI-X should use sc->intr_mask */
@@ -2412,7 +2436,7 @@ igb_disable_intr(struct igb_softc *sc)
 	E1000_WRITE_REG(&sc->hw, E1000_IMC, 0xffffffff);
 	E1000_WRITE_FLUSH(&sc->hw);
 
-	lwkt_serialize_handler_disable(sc->arpcom.ac_if.if_serializer);
+	lwkt_serialize_handler_disable(&sc->main_serialize);
 }
 
 /*
@@ -2423,7 +2447,7 @@ igb_disable_intr(struct igb_softc *sc)
 static void
 igb_get_mgmt(struct igb_softc *sc)
 {
-	if (sc->has_manage) {
+	if (sc->flags & IGB_FLAG_HAS_MGMT) {
 		int manc2h = E1000_READ_REG(&sc->hw, E1000_MANC2H);
 		int manc = E1000_READ_REG(&sc->hw, E1000_MANC);
 
@@ -2446,7 +2470,7 @@ igb_get_mgmt(struct igb_softc *sc)
 static void
 igb_rel_mgmt(struct igb_softc *sc)
 {
-	if (sc->has_manage) {
+	if (sc->flags & IGB_FLAG_HAS_MGMT) {
 		int manc = E1000_READ_REG(&sc->hw, E1000_MANC);
 
 		/* Re-enable hardware interception of ARP */
@@ -2714,7 +2738,7 @@ igb_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	struct igb_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	switch (cmd) {
 	case POLL_REGISTER:
@@ -2728,17 +2752,31 @@ igb_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	case POLL_AND_CHECK_STATUS:
 		reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+			igb_serialize_skipmain(sc);
 			sc->hw.mac.get_link_status = 1;
 			igb_update_link_status(sc);
+			igb_deserialize_skipmain(sc);
 		}
 		/* FALL THROUGH */
 	case POLL_ONLY:
 		if (ifp->if_flags & IFF_RUNNING) {
-			igb_rxeof(sc->queues[0].rxr, count);
+			struct igb_tx_ring *txr;
+			int i;
 
-			igb_txeof(sc->queues[0].txr);
+			for (i = 0; i < sc->rx_ring_cnt; ++i) {
+				struct igb_rx_ring *rxr = &sc->rx_rings[i];
+
+				lwkt_serialize_enter(&rxr->rx_serialize);
+				igb_rxeof(rxr, count);
+				lwkt_serialize_exit(&rxr->rx_serialize);
+			}
+
+			txr = &sc->tx_rings[0];
+			lwkt_serialize_enter(&txr->tx_serialize);
+			igb_txeof(txr);
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
+			lwkt_serialize_exit(&txr->tx_serialize);
 		}
 		break;
 	}
@@ -2753,7 +2791,7 @@ igb_intr(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t eicr;
 
-	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	eicr = E1000_READ_REG(&sc->hw, E1000_EICR);
 
@@ -2761,13 +2799,26 @@ igb_intr(void *xsc)
 		return;
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		if (eicr & sc->rx_rings[0].rx_intr_mask)
-			igb_rxeof(&sc->rx_rings[0], -1);
+		struct igb_tx_ring *txr;
+		int i;
 
-		if (eicr & sc->tx_rings[0].tx_intr_mask) {
-			igb_txeof(&sc->tx_rings[0]);
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			struct igb_rx_ring *rxr = &sc->rx_rings[i];
+
+			if (eicr & rxr->rx_intr_mask) {
+				lwkt_serialize_enter(&rxr->rx_serialize);
+				igb_rxeof(rxr, -1);
+				lwkt_serialize_exit(&rxr->rx_serialize);
+			}
+		}
+
+		txr = &sc->tx_rings[0];
+		if (eicr & txr->tx_intr_mask) {
+			lwkt_serialize_enter(&txr->tx_serialize);
+			igb_txeof(txr);
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
+			lwkt_serialize_exit(&txr->tx_serialize);
 		}
 	}
 
@@ -2776,8 +2827,10 @@ igb_intr(void *xsc)
 
 		/* Link status change */
 		if (icr & E1000_ICR_LSC) {
+			igb_serialize_skipmain(sc);
 			sc->hw.mac.get_link_status = 1;
 			igb_update_link_status(sc);
+			igb_deserialize_skipmain(sc);
 		}
 	}
 
@@ -2795,7 +2848,7 @@ igb_shared_intr(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t reg_icr;
 
-	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 
@@ -2811,17 +2864,31 @@ igb_shared_intr(void *xsc)
 		return;
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		igb_rxeof(sc->queues[0].rxr, -1);
+		struct igb_tx_ring *txr;
+		int i;
 
-		igb_txeof(sc->queues[0].txr);
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			struct igb_rx_ring *rxr = &sc->rx_rings[i];
+
+			lwkt_serialize_enter(&rxr->rx_serialize);
+			igb_rxeof(rxr, -1);
+			lwkt_serialize_exit(&rxr->rx_serialize);
+		}
+
+		txr = &sc->tx_rings[0];
+		lwkt_serialize_enter(&txr->tx_serialize);
+		igb_txeof(txr);
 		if (!ifq_is_empty(&ifp->if_snd))
 			if_devstart(ifp);
+		lwkt_serialize_exit(&txr->tx_serialize);
 	}
 
 	/* Link status change */
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+		igb_serialize_skipmain(sc);
 		sc->hw.mac.get_link_status = 1;
 		igb_update_link_status(sc);
+		igb_deserialize_skipmain(sc);
 	}
 
 	if (reg_icr & E1000_ICR_RXO)
@@ -3009,7 +3076,7 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 		txd->read.cmd_type_len = htole32(cmd_type_len | seg_len);
 		txd->read.olinfo_status = htole32(olinfo_status);
 		last = i;
-		if (++i == txr->sc->num_tx_desc)
+		if (++i == txr->num_tx_desc)
 			i = 0;
 		tx_buf->m_head = NULL;
 	}
@@ -3041,10 +3108,10 @@ static void
 igb_start(struct ifnet *ifp)
 {
 	struct igb_softc *sc = ifp->if_softc;
-	struct igb_tx_ring *txr = sc->queues[0].txr;
+	struct igb_tx_ring *txr = &sc->tx_rings[0];
 	struct mbuf *m_head;
 
-	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ASSERT_SERIALIZED(&txr->tx_serialize);
 
 	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
 		return;
@@ -3083,7 +3150,7 @@ static void
 igb_watchdog(struct ifnet *ifp)
 {
 	struct igb_softc *sc = ifp->if_softc;
-	struct igb_tx_ring *txr = sc->queues[0].txr;
+	struct igb_tx_ring *txr = &sc->tx_rings[0];
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
@@ -3170,7 +3237,7 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 {
 	struct igb_softc *sc = (void *)arg1;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct igb_tx_ring *txr = sc->queues[0].txr;
+	struct igb_tx_ring *txr = &sc->tx_rings[0];
 	int error, nsegs;
 
 	nsegs = txr->intr_nsegs;
@@ -3182,7 +3249,7 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 
 	ifnet_serialize_all(ifp);
 
-	if (nsegs >= sc->num_tx_desc - txr->oact_lo_desc ||
+	if (nsegs >= txr->num_tx_desc - txr->oact_lo_desc ||
 	    nsegs >= txr->oact_hi_desc - IGB_MAX_SCATTER) {
 		error = EINVAL;
 	} else {
@@ -3235,7 +3302,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 	case e1000_vfadapt:
 	case e1000_vfadapt_i350:
 		/* RX entries */
-		for (i = 0; i < sc->num_queues; ++i) {
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
 			rxr = &sc->rx_rings[i];
 
 			index = i >> 1;
@@ -3253,7 +3320,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, ivar);
 		}
 		/* TX entries */
-		for (i = 0; i < sc->num_queues; ++i) {
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
 			txr = &sc->tx_rings[i];
 
 			index = i >> 1;
@@ -3276,7 +3343,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 
 	case e1000_82576:
 		/* RX entries */
-		for (i = 0; i < sc->num_queues; ++i) {
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
 			rxr = &sc->rx_rings[i];
 
 			index = i & 0x7; /* Each IVAR has two entries */
@@ -3294,7 +3361,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, ivar);
 		}
 		/* TX entries */
-		for (i = 0; i < sc->num_queues; ++i) {
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
 			txr = &sc->tx_rings[i];
 
 			index = i & 0x7; /* Each IVAR has two entries */
@@ -3349,15 +3416,15 @@ igb_setup_intr(struct igb_softc *sc)
 	/*
 	 * Setup interrupt mask
 	 */
-	for (i = 0; i < sc->num_queues; ++i)
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		igb_setup_tx_intr(&sc->tx_rings[i]);
-	for (i = 0; i < sc->num_queues; ++i)
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		igb_setup_rx_intr(&sc->rx_rings[i]);
 
 	sc->intr_mask = E1000_EICR_OTHER;
-	for (i = 0; i < sc->num_queues; ++i)
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		sc->intr_mask |= sc->rx_rings[i].rx_intr_mask;
-	for (i = 0; i < sc->num_queues; ++i)
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		sc->intr_mask |= sc->tx_rings[i].tx_intr_mask;
 
 	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
@@ -3375,7 +3442,7 @@ igb_setup_intr(struct igb_softc *sc)
 
 	error = bus_setup_intr(sc->dev, sc->intr_res, INTR_MPSAFE,
 	    (sc->flags & IGB_FLAG_SHARED_INTR) ? igb_shared_intr : igb_intr,
-	    sc, &sc->intr_tag, ifp->if_serializer);
+	    sc, &sc->intr_tag, &sc->main_serialize);
 	if (error) {
 		device_printf(sc->dev, "Failed to register interrupt handler");
 		return error;
@@ -3440,3 +3507,56 @@ igb_setup_rx_intr(struct igb_rx_ring *rxr)
 		rxr->rx_intr_mask = 1 << rxr->rx_intr_bit;
 	}
 }
+
+static void
+igb_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct igb_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_enter(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz);
+}
+
+static void
+igb_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct igb_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_exit(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz);
+}
+
+static int
+igb_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct igb_softc *sc = ifp->if_softc;
+
+	return ifnet_serialize_array_try(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz);
+}
+
+static void
+igb_serialize_skipmain(struct igb_softc *sc)
+{
+	lwkt_serialize_array_enter(sc->serializes, sc->serialize_cnt, 1);
+}
+
+static void
+igb_deserialize_skipmain(struct igb_softc *sc)
+{
+	lwkt_serialize_array_exit(sc->serializes, sc->serialize_cnt, 1);
+}
+
+#ifdef INVARIANTS
+
+static void
+igb_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
+    boolean_t serialized)
+{
+	struct igb_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_assert(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz, serialized);
+}
+
+#endif	/* INVARIANTS */

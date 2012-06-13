@@ -94,7 +94,6 @@ static ng_ID_t	ng_decodeidname(const char *name);
 static int	ngb_mod_event(module_t mod, int event, void *data);
 static void	ngintr(union netmsg *);
 static int	ng_load_module(const char *);
-static int	ng_unload_module(const char *);
 
 /* Our own netgraph malloc type */
 MALLOC_DEFINE(M_NETGRAPH, "netgraph", "netgraph structures and ctrl messages");
@@ -342,28 +341,6 @@ ng_load_module(const char *name)
 	kfree(path, M_LINKER);
 	if (error == 0)
 		lf->userrefs++;		/* pretend kldload'ed */
-	return (error);
-}
-
-static int
-ng_unload_module(const char *name)
-{
-	char filename[NG_TYPESIZ + 3];
-	linker_file_t lf;
-	int error;
-
-	if (!linker_api_available())
-		return (ENXIO);
-
-	/* Not found, try to load it as a loadable module */
-	ksnprintf(filename, sizeof(filename), "ng_%s.ko", name);
-	if ((lf = linker_find_file_by_name(filename)) == NULL)
-		return (ENXIO);
-	lf->userrefs--;		/* pretend kldunload'ed */
-	error = linker_file_unload(lf);
-	if (error)
-		lf->userrefs++;
-
 	return (error);
 }
 
@@ -1839,17 +1816,10 @@ ngb_mod_event(module_t mod, int event, void *data)
 	case MOD_LOAD:
 		/* Register line discipline */
 		crit_enter();
-		error = ng_load_module("ksocket");
-		if (error != 0) {
-			crit_exit();
-			break;
-		}
 		netisr_register(NETISR_NETGRAPH, ngintr, NULL);
-		error = 0;
 		crit_exit();
 		break;
 	case MOD_UNLOAD:
-		ng_unload_module("ksocket");
 		/* You cant unload it because an interface may be using it.  */
 		error = EBUSY;
 		break;

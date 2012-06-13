@@ -110,7 +110,7 @@ static struct bundle *SignalBundle;
 static struct prompt *SignalPrompt;
 
 void
-Cleanup(int excode)
+Cleanup(void)
 {
   SignalBundle->CleaningUp = 1;
   bundle_Close(SignalBundle, NULL, CLOSE_STAYDOWN);
@@ -144,7 +144,7 @@ static void
 CloseSession(int signo)
 {
   log_Printf(LogPHASE, "Signal %d, terminate.\n", signo);
-  Cleanup(EX_TERM);
+  Cleanup();
 }
 
 static pid_t BGPid = 0;
@@ -158,14 +158,14 @@ KillChild(int signo)
 }
 
 static void
-TerminalCont(int signo)
+TerminalCont(int signo __unused)
 {
   signal(SIGCONT, SIG_DFL);
   prompt_Continue(SignalPrompt);
 }
 
 static void
-TerminalStop(int signo)
+TerminalStop(int signo __unused)
 {
   prompt_Suspend(SignalPrompt);
   signal(SIGCONT, TerminalCont);
@@ -173,7 +173,7 @@ TerminalStop(int signo)
 }
 
 static void
-BringDownServer(int signo)
+BringDownServer(int signo __unused)
 {
   /* Drops all child prompts too ! */
   if (server_Close(SignalBundle))
@@ -181,7 +181,7 @@ BringDownServer(int signo)
 }
 
 static void
-RestartServer(int signo)
+RestartServer(int signo __unused)
 {
   /* Drops all child prompts and re-opens the socket */
   server_Reopen(SignalBundle);
@@ -303,7 +303,8 @@ main(int argc, char **argv)
 {
   char *name;
   const char *lastlabel;
-  int arg, f, holdfd[3], label;
+  int arg, holdfd[3], label;
+  unsigned f;
   struct bundle *bundle;
   struct prompt *prompt;
   struct switches sw;

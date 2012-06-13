@@ -39,10 +39,17 @@
 #include <net/route.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
+#ifdef WANT_NETGRAPH7
+#include <netgraph7/ether/ng_ether.h>
+#include <netgraph7/ng_message.h>
+#include <netgraph7/pppoe/ng_pppoe.h>
+#include <netgraph7/socket/ng_socket.h>
+#else
 #include <netgraph/ether/ng_ether.h>
 #include <netgraph/ng_message.h>
 #include <netgraph/pppoe/ng_pppoe.h>
 #include <netgraph/socket/ng_socket.h>
+#endif
 
 #include <errno.h>
 #include <stdio.h>
@@ -111,7 +118,7 @@ struct etherdevice {
 #define device2ether(d) \
   ((d)->type == ETHER_DEVICE ? (struct etherdevice *)d : NULL)
 
-int
+unsigned
 ether_DeviceSize(void)
 {
   return sizeof(struct etherdevice);
@@ -122,7 +129,7 @@ ether_Write(struct physical *p, const void *v, size_t n)
 {
   struct etherdevice *dev = device2ether(p->handler);
 
-  return NgSendData(p->fd, dev->hook, v, n) == -1 ? -1 : n;
+  return NgSendData(p->fd, dev->hook, v, n) == -1 ? -1 : (ssize_t)n;
 }
 
 static ssize_t
@@ -192,7 +199,7 @@ ether_Slot(struct physical *p)
 
 static void
 ether_device2iov(struct device *d, struct iovec *iov, int *niov,
-                 int maxiov, int *auxfd, int *nauxfd)
+                 int maxiov __unused, int *auxfd, int *nauxfd)
 {
   struct etherdevice *dev = device2ether(d);
   int sz = physical_MaxDeviceSize();
@@ -344,7 +351,7 @@ static const struct device baseetherdevice = {
 
 struct device *
 ether_iov2device(int type, struct physical *p, struct iovec *iov, int *niov,
-                 int maxiov, int *auxfd, int *nauxfd)
+                 int maxiov __unused, int *auxfd, int *nauxfd)
 {
   if (type == ETHER_DEVICE) {
     struct etherdevice *dev = (struct etherdevice *)iov[(*niov)++].iov_base;
@@ -445,7 +452,8 @@ ether_Create(struct physical *p)
   const struct hooklist *hlist;
   const struct nodeinfo *ninfo;
   char *path, *sessionid;
-  int ifacelen, f;
+  size_t ifacelen;
+  unsigned f;
 
   dev = NULL;
   path = NULL;
@@ -518,7 +526,7 @@ ether_Create(struct physical *p)
      * magically exist as a way of hooking stuff onto an ethernet device
      */
     path = (char *)alloca(ifacelen + 2);
-    sprintf(path, "%.*s:", ifacelen, iface);
+    sprintf(path, "%.*s:", (int)ifacelen, iface);
     if (NgSendMsg(dev->cs, path, NGM_GENERIC_COOKIE, NGM_LISTHOOKS,
                   NULL, 0) < 0) {
       log_Printf(LogWARN, "%s Cannot send a netgraph message: %s\n",

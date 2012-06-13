@@ -78,15 +78,9 @@ extern int log_IsKeptLocal(int, u_long);
 extern void log_Open(const char *);
 extern void log_SetTun(int);
 extern void log_Close(void);
-#ifdef __GNUC__
-extern void log_Printf(int, const char *,...)
-            __attribute__ ((format (printf, 2, 3)));
+extern void log_Printf(int, const char *,...) __printflike(2, 3);
 extern void log_WritePrompts(struct datalink *, const char *, ...)
-            __attribute__ ((format (printf, 2, 3)));
-#else
-extern void log_Printf(int, const char *,...);
-extern void log_WritePrompts(struct datalink *, const char *, ...);
-#endif
+__printflike(2, 3);
 extern void log_DumpBp(int, const char *, const struct mbuf *);
 extern void log_DumpBuff(int, const char *, const u_char *, int);
 extern int log_ShowLevel(struct cmdargs const *);

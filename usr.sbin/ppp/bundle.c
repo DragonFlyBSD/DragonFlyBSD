@@ -165,7 +165,7 @@ bundle_NewPhase(struct bundle *bundle, u_int new)
 }
 
 static void
-bundle_LayerStart(void *v, struct fsm *fp)
+bundle_LayerStart(void *v __unused, struct fsm *fp __unused)
 {
   /* The given FSM is about to start up ! */
 }
@@ -530,7 +530,7 @@ bundle_IsSet(struct fdescriptor *d, const fd_set *fdset)
 }
 
 static void
-bundle_DescriptorRead(struct fdescriptor *d, struct bundle *bundle,
+bundle_DescriptorRead(struct fdescriptor *d __unused, struct bundle *bundle,
                       const fd_set *fdset)
 {
   struct datalink *dl;
@@ -642,7 +642,7 @@ bundle_DescriptorRead(struct fdescriptor *d, struct bundle *bundle,
 }
 
 static int
-bundle_DescriptorWrite(struct fdescriptor *d, struct bundle *bundle,
+bundle_DescriptorWrite(struct fdescriptor *d __unused, struct bundle *bundle,
                        const fd_set *fdset)
 {
   struct datalink *dl;
@@ -670,25 +670,25 @@ void
 bundle_LockTun(struct bundle *bundle)
 {
   FILE *lockfile;
-  char pidfile[PATH_MAX];
+  char pidfilename[PATH_MAX];
 
-  snprintf(pidfile, sizeof pidfile, "%stun%d.pid", _PATH_VARRUN, bundle->unit);
-  lockfile = ID0fopen(pidfile, "w");
+  snprintf(pidfilename, sizeof pidfilename, "%stun%d.pid", _PATH_VARRUN, bundle->unit);
+  lockfile = ID0fopen(pidfilename, "w");
   if (lockfile != NULL) {
     fprintf(lockfile, "%d\n", (int)getpid());
     fclose(lockfile);
   } else
     log_Printf(LogERROR, "Warning: Can't create %s: %s\n",
-               pidfile, strerror(errno));
+               pidfilename, strerror(errno));
 }
 
 static void
 bundle_UnlockTun(struct bundle *bundle)
 {
-  char pidfile[PATH_MAX];
+  char pidfilename[PATH_MAX];
 
-  snprintf(pidfile, sizeof pidfile, "%stun%d.pid", _PATH_VARRUN, bundle->unit);
-  ID0unlink(pidfile);
+  snprintf(pidfilename, sizeof pidfilename, "%stun%d.pid", _PATH_VARRUN, bundle->unit);
+  ID0unlink(pidfilename);
 }
 
 struct bundle *
@@ -1090,7 +1090,7 @@ bundle_ShowStatus(struct cmdargs const *arg)
   else
     prompt_Printf(arg->prompt, "none\n");
 
-  prompt_Printf(arg->prompt, " Choked Timer:      %ds\n",
+  prompt_Printf(arg->prompt, " Choked Timer:      %us\n",
                 arg->bundle->cfg.choked.timeout);
 
 #ifndef NORADIUS
@@ -1099,9 +1099,9 @@ bundle_ShowStatus(struct cmdargs const *arg)
 
   prompt_Printf(arg->prompt, " Idle Timer:        ");
   if (arg->bundle->cfg.idle.timeout) {
-    prompt_Printf(arg->prompt, "%ds", arg->bundle->cfg.idle.timeout);
+    prompt_Printf(arg->prompt, "%us", arg->bundle->cfg.idle.timeout);
     if (arg->bundle->cfg.idle.min_timeout)
-      prompt_Printf(arg->prompt, ", min %ds",
+      prompt_Printf(arg->prompt, ", min %us",
                     arg->bundle->cfg.idle.min_timeout);
     remaining = bundle_RemainingIdleTime(arg->bundle);
     if (remaining != -1)
@@ -1171,9 +1171,10 @@ bundle_StartIdleTimer(struct bundle *bundle, unsigned secs)
 
     /* We want at least `secs' */
     if (bundle->cfg.idle.min_timeout > secs && bundle->upat) {
-      int up = now - bundle->upat;
+      unsigned up = now - bundle->upat;
 
-      if ((long long)bundle->cfg.idle.min_timeout - up > (long long)secs)
+      if (bundle->cfg.idle.min_timeout > up &&
+          bundle->cfg.idle.min_timeout - up > (long long)secs)
         /* Only increase from the current `remaining' value */
         secs = bundle->cfg.idle.min_timeout - up;
     }
@@ -1187,11 +1188,11 @@ bundle_StartIdleTimer(struct bundle *bundle, unsigned secs)
 }
 
 void
-bundle_SetIdleTimer(struct bundle *bundle, int timeout, int min_timeout)
+bundle_SetIdleTimer(struct bundle *bundle, unsigned timeout,
+		    unsigned min_timeout)
 {
   bundle->cfg.idle.timeout = timeout;
-  if (min_timeout >= 0)
-    bundle->cfg.idle.min_timeout = min_timeout;
+  bundle->cfg.idle.min_timeout = min_timeout;
   if (ncp_LayersOpen(&bundle->ncp))
     bundle_StartIdleTimer(bundle, 0);
 }
@@ -1368,7 +1369,8 @@ void
 bundle_ReceiveDatalink(struct bundle *bundle, int s)
 {
   char cmsgbuf[sizeof(struct cmsghdr) + sizeof(int) * SEND_MAXFD];
-  int niov, expect, f, *fd, nfd, onfd, got;
+  int niov, expect, f, *fd, nfd, onfd;
+  ssize_t got;
   struct iovec iov[SCATTER_SEGMENTS];
   struct cmsghdr *cmsg;
   struct msghdr msg;
@@ -1417,11 +1419,11 @@ bundle_ReceiveDatalink(struct bundle *bundle, int s)
   log_Printf(LogDEBUG, "Expecting %u scatter/gather bytes\n",
              (unsigned)iov[0].iov_len);
 
-  if ((got = recvmsg(s, &msg, MSG_WAITALL)) != iov[0].iov_len) {
+  if ((got = recvmsg(s, &msg, MSG_WAITALL)) != (ssize_t)iov[0].iov_len) {
     if (got == -1)
       log_Printf(LogERROR, "Failed recvmsg: %s\n", strerror(errno));
     else
-      log_Printf(LogERROR, "Failed recvmsg: Got %d, not %u\n",
+      log_Printf(LogERROR, "Failed recvmsg: Got %zu, not %u\n",
                  got, (unsigned)iov[0].iov_len);
     while (niov--)
       free(iov[niov].iov_base);
@@ -1474,7 +1476,7 @@ bundle_ReceiveDatalink(struct bundle *bundle, int s)
     if (got == -1)
       log_Printf(LogERROR, "Failed write: %s\n", strerror(errno));
     else
-      log_Printf(LogERROR, "Failed write: Got %d, not %d\n", got,
+      log_Printf(LogERROR, "Failed write: Got %zu, not %d\n", got,
                  (int)(sizeof pid));
     while (nfd--)
       close(fd[nfd]);
@@ -1487,7 +1489,7 @@ bundle_ReceiveDatalink(struct bundle *bundle, int s)
     if (got == -1)
       log_Printf(LogERROR, "Failed write: %s\n", strerror(errno));
     else
-      log_Printf(LogERROR, "Failed write: Got %d, not %d\n", got, expect);
+      log_Printf(LogERROR, "Failed write: Got %zu, not %d\n", got, expect);
     while (nfd--)
       close(fd[nfd]);
     while (niov--)
@@ -1534,7 +1536,8 @@ bundle_SendDatalink(struct datalink *dl, int s, struct sockaddr_un *sun)
   struct cmsghdr *cmsg;
   struct msghdr msg;
   struct iovec iov[SCATTER_SEGMENTS];
-  int niov, f, expect, newsid, fd[SEND_MAXFD], nfd, reply[2], got;
+  int niov, f, expect, newsid, fd[SEND_MAXFD], nfd, reply[2];
+  ssize_t got;
   pid_t newpid;
 
   log_Printf(LogPHASE, "Transmitting datalink %s\n", dl->name);
@@ -1606,8 +1609,8 @@ bundle_SendDatalink(struct datalink *dl, int s, struct sockaddr_un *sun)
     if ((got = sendmsg(s, &msg, 0)) == -1)
       log_Printf(LogERROR, "Failed sendmsg: %s: %s\n",
                  sun->sun_path, strerror(errno));
-    else if (got != iov[0].iov_len)
-      log_Printf(LogERROR, "%s: Failed initial sendmsg: Only sent %d of %u\n",
+    else if (got != (ssize_t)iov[0].iov_len)
+      log_Printf(LogERROR, "%s: Failed initial sendmsg: Only sent %zu of %u\n",
                  sun->sun_path, got, (unsigned)iov[0].iov_len);
     else {
       /* We must get the ACK before closing the descriptor ! */
@@ -1625,14 +1628,14 @@ bundle_SendDatalink(struct datalink *dl, int s, struct sockaddr_un *sun)
             log_Printf(LogERROR, "%s: Failed writev: %s\n",
                        sun->sun_path, strerror(errno));
           else
-            log_Printf(LogERROR, "%s: Failed writev: Wrote %d of %d\n",
+            log_Printf(LogERROR, "%s: Failed writev: Wrote %zu of %d\n",
                        sun->sun_path, got, expect);
         }
       } else if (got == -1)
         log_Printf(LogERROR, "%s: Failed socketpair read: %s\n",
                    sun->sun_path, strerror(errno));
       else
-        log_Printf(LogERROR, "%s: Failed socketpair read: Got %d of %d\n",
+        log_Printf(LogERROR, "%s: Failed socketpair read: Got %zu of %d\n",
                    sun->sun_path, got, (int)(sizeof newpid));
     }
 
@@ -1817,11 +1820,11 @@ bundle_setsid(struct bundle *bundle, int holdsession)
   }
 }
 
-int
+unsigned
 bundle_HighestState(struct bundle *bundle)
 {
   struct datalink *dl;
-  int result = DATALINK_CLOSED;
+  unsigned result = DATALINK_CLOSED;
 
   for (dl = bundle->links; dl; dl = dl->next)
     if (result < dl->state)
@@ -1914,7 +1917,7 @@ bundle_CalculateBandwidth(struct bundle *bundle)
 #endif
 
   if (maxoverhead) {
-    log_Printf(LogLCP, "Reducing MTU from %d to %d (CCP requirement)\n",
+    log_Printf(LogLCP, "Reducing MTU from %lu to %lu (CCP requirement)\n",
                bundle->iface->mtu, bundle->iface->mtu - maxoverhead);
     bundle->iface->mtu -= maxoverhead;
   }

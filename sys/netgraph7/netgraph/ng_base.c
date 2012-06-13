@@ -205,7 +205,7 @@ static int	ng_generic_msg(node_p here, item_p item, hook_p lasthook);
 static ng_ID_t	ng_decodeidname(const char *name);
 static int	ngb_mod_event(module_t mod, int event, void *data);
 static void	ng_worklist_add(node_p node);
-static void	ngintr(void *, int);
+static void	ngtask(void *, int);
 static int	ng_apply_item(node_p node, item_p item, int rw);
 static void	ng_flush_input_queue(node_p node);
 static node_p	ng_ID2noderef(ng_ID_t ID);
@@ -2983,15 +2983,15 @@ int
 ng_mod_event(module_t mod, int event, void *data)
 {
 	struct ng_type *const type = data;
-	int s, error = 0;
+	int error = 0;
 
 	switch (event) {
 	case MOD_LOAD:
 
 		/* Register new netgraph node type */
-		s = splnet();
+		crit_enter();
 		if ((error = ng_newtype(type)) != 0) {
-			splx(s);
+			crit_exit();
 			break;
 		}
 
@@ -3003,23 +3003,23 @@ ng_mod_event(module_t mod, int event, void *data)
 				LIST_REMOVE(type, types);
 				mtx_unlock(&ng_typelist_mtx);
 			}
-		splx(s);
+		crit_exit();
 		break;
 
 	case MOD_UNLOAD:
-		s = splnet();
+		crit_enter();
 		if (type->refs > 1) {		/* make sure no nodes exist! */
 			error = EBUSY;
 		} else {
 			if (type->refs == 0) {
 				/* failed load, nothing to undo */
-				splx(s);
+				crit_exit();
 				break;
 			}
 			if (type->mod_event != NULL) {	/* check with type */
 				error = (*type->mod_event)(mod, event, data);
 				if (error != 0) {	/* type refuses.. */
-					splx(s);
+					crit_exit();
 					break;
 				}
 			}
@@ -3027,7 +3027,7 @@ ng_mod_event(module_t mod, int event, void *data)
 			LIST_REMOVE(type, types);
 			mtx_unlock(&ng_typelist_mtx);
 		}
-		splx(s);
+		crit_exit();
 		break;
 
 	default:
@@ -3067,7 +3067,6 @@ ngb_mod_event(module_t mod, int event, void *data)
 		ng_qdzone = uma_zcreate("NetGraph data items", sizeof(struct ng_item),
 		    NULL, NULL, NULL, NULL, UMA_ALIGN_CACHE, 0);
 		uma_zone_set_max(ng_qdzone, maxdata);
-		netisr_register(NETISR_NETGRAPH, (netisr_fn_t)ngintr, NULL);
 		break;
 	case MOD_UNLOAD:
 		/* You can't unload it because an interface may be using it. */
@@ -3222,16 +3221,18 @@ SYSCTL_PROC(_debug, OID_AUTO, ng_dump_items, CTLTYPE_INT | CTLFLAG_RW,
 /***********************************************************************
 * Worklist routines
 **********************************************************************/
-/* NETISR thread enters here */
-/*
+/* NETGRAPH taskqueue routine
+ *
  * Pick a node off the list of nodes with work,
  * try get an item to process off it.
  * If there are no more, remove the node from the list.
+ *
+ * This routine used to be a netisr but because no actual packets are
+ * really sent to it, it has been converted to a taskqueue.
  */
 static void
-ngintr(void *context, int pending)
+ngtask(void *context, int pending)
 {
-	/* XXX replymsg XXX */
 	for (;;) {
 		node_p  node;
 
@@ -3299,7 +3300,7 @@ ng_worklist_add(node_p node)
 		NG_WORKLIST_LOCK();
 		STAILQ_INSERT_TAIL(&ng_worklist, node, nd_input_queue.q_work);
 		NG_WORKLIST_UNLOCK();
-		TASK_INIT(&ng_task, 0, ngintr, NULL);
+		TASK_INIT(&ng_task, 0, ngtask, NULL);
 		taskqueue_enqueue(taskqueue_swi, &ng_task);
 		CTR3(KTR_NET, "%20s: node [%x] (%p) put on worklist", __func__,
 		    node->nd_ID, node);

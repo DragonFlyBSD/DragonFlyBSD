@@ -45,10 +45,17 @@
 #include <unistd.h>
 #ifndef NONETGRAPH
 #include <netgraph.h>
+#ifdef WANT_NETGRAPH7
+#include <netgraph7/async/ng_async.h>
+#include <netgraph7/ng_message.h>
+#include <netgraph7/ppp/ng_ppp.h>
+#include <netgraph/tty/ng_tty.h>	/* XXX should be netgraph7/tty but that one is not ported yet */
+#else
 #include <netgraph/async/ng_async.h>
 #include <netgraph/ng_message.h>
 #include <netgraph/ppp/ng_ppp.h>
 #include <netgraph/tty/ng_tty.h>
+#endif
 #endif
 
 #include "layer.h"
@@ -92,7 +99,7 @@ struct ttydevice {
   int carrier_seconds;		/* seconds before CD is *required* */
 #ifndef NONETGRAPH
   struct {
-    int speed;			/* Pre-line-discipline speed */
+    unsigned speed;		/* Pre-line-discipline speed */
     int fd;			/* Pre-line-discipline fd */
     int disc;			/* Old line-discipline */
   } real;
@@ -104,7 +111,7 @@ struct ttydevice {
 
 #define device2tty(d) ((d)->type == TTY_DEVICE ? (struct ttydevice *)d : NULL)
 
-int
+unsigned
 tty_DeviceSize(void)
 {
   return sizeof(struct ttydevice);
@@ -410,7 +417,7 @@ tty_Write(struct physical *p, const void *v, size_t n)
   struct ttydevice *dev = device2tty(p->handler);
 
   if (isngtty(dev))
-    return NgSendData(p->fd, dev->hook, v, n) == -1 ? -1 : n;
+    return NgSendData(p->fd, dev->hook, v, n) == -1 ? -1 : (ssize_t)n;
   else
     return write(p->fd, v, n);
 }
@@ -537,7 +544,7 @@ tty_Speed(struct physical *p)
   if (tcgetattr(p->fd, &ios) == -1)
     return 0;
 
-  return SpeedToInt(cfgetispeed(&ios));
+  return SpeedToUnsigned(cfgetispeed(&ios));
 }
 
 static const char *
@@ -574,7 +581,7 @@ tty_Slot(struct physical *p)
 
 static void
 tty_device2iov(struct device *d, struct iovec *iov, int *niov,
-               int maxiov, int *auxfd, int *nauxfd)
+               int maxiov __unused, int *auxfd, int *nauxfd)
 {
   struct ttydevice *dev = device2tty(d);
   int sz = physical_MaxDeviceSize();
@@ -623,7 +630,7 @@ static struct device basettydevice = {
 
 struct device *
 tty_iov2device(int type, struct physical *p, struct iovec *iov, int *niov,
-               int maxiov, int *auxfd, int *nauxfd)
+               int maxiov __unused, int *auxfd, int *nauxfd)
 {
   if (type == TTY_DEVICE) {
     struct ttydevice *dev = (struct ttydevice *)iov[(*niov)++].iov_base;
@@ -720,7 +727,7 @@ tty_Create(struct physical *p)
       /* Change tty speed when we're not in -direct mode */
       ios.c_cflag &= ~(CSIZE | PARODD | PARENB);
       ios.c_cflag |= p->cfg.parity;
-      if (cfsetspeed(&ios, IntToSpeed(p->cfg.speed)) == -1)
+      if (cfsetspeed(&ios, UnsignedToSpeed(p->cfg.speed)) == -1)
 	log_Printf(LogWARN, "%s: %s: Unable to set speed to %d\n",
 		  p->link.name, p->name.full, p->cfg.speed);
   }

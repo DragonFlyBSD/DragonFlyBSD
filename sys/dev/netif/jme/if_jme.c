@@ -70,8 +70,8 @@
 
 #include "miibus_if.h"
 
-/* Define the following to disable printing Rx errors. */
-#undef	JME_SHOW_ERRORS
+#define JME_TX_SERIALIZE	1
+#define JME_RX_SERIALIZE	2
 
 #define	JME_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 
@@ -138,6 +138,7 @@ static int	jme_encap(struct jme_softc *, struct mbuf **);
 static void	jme_rxpkt(struct jme_rxdata *);
 static int	jme_rxring_dma_alloc(struct jme_rxdata *);
 static int	jme_rxbuf_dma_alloc(struct jme_rxdata *);
+static int	jme_rxbuf_dma_filter(void *, bus_addr_t);
 
 static void	jme_tick(void *);
 static void	jme_stop(struct jme_softc *);
@@ -235,7 +236,7 @@ static const struct {
 
 static int	jme_rx_desc_count = JME_RX_DESC_CNT_DEF;
 static int	jme_tx_desc_count = JME_TX_DESC_CNT_DEF;
-static int	jme_rx_ring_count = 1;
+static int	jme_rx_ring_count = 0;
 static int	jme_msi_enable = 1;
 static int	jme_msix_enable = 1;
 
@@ -244,6 +245,18 @@ TUNABLE_INT("hw.jme.tx_desc_count", &jme_tx_desc_count);
 TUNABLE_INT("hw.jme.rx_ring_count", &jme_rx_ring_count);
 TUNABLE_INT("hw.jme.msi.enable", &jme_msi_enable);
 TUNABLE_INT("hw.jme.msix.enable", &jme_msix_enable);
+
+static __inline void
+jme_setup_rxdesc(struct jme_rxdesc *rxd)
+{
+	struct jme_desc *desc;
+
+	desc = rxd->rx_desc;
+	desc->buflen = htole32(MCLBYTES);
+	desc->addr_lo = htole32(JME_ADDR_LO(rxd->rx_paddr));
+	desc->addr_hi = htole32(JME_ADDR_HI(rxd->rx_paddr));
+	desc->flags = htole32(JME_RD_OWN | JME_RD_INTR | JME_RD_64BIT);
+}
 
 /*
  *	Read a PHY register on the MII of the JMC250.
@@ -393,6 +406,10 @@ jme_miibus_statchg(device_t dev)
 		 */
 		rdata->jme_rx_cons = 0;
 	}
+	if (JME_ENABLE_HWRSS(sc))
+		jme_enable_rss(sc);
+	else
+		jme_disable_rss(sc);
 
 	jme_txeof(sc);
 	if (sc->jme_cdata.jme_tx_cnt != 0) {
@@ -666,7 +683,11 @@ jme_attach(device_t dev)
 
 	i = 0;
 	sc->jme_serialize_arr[i++] = &sc->jme_serialize;
+
+	KKASSERT(i == JME_TX_SERIALIZE);
 	sc->jme_serialize_arr[i++] = &sc->jme_cdata.jme_tx_serialize;
+
+	KKASSERT(i == JME_RX_SERIALIZE);
 	for (j = 0; j < sc->jme_cdata.jme_rx_ring_cnt; ++j) {
 		sc->jme_serialize_arr[i++] =
 		    &sc->jme_cdata.jme_rx_data[j].jme_rx_serialize;
@@ -1080,7 +1101,7 @@ jme_dma_alloc(struct jme_softc *sc)
 {
 	struct jme_txdesc *txd;
 	bus_dmamem_t dmem;
-	int error, i;
+	int error, i, asize;
 
 	sc->jme_cdata.jme_txdesc =
 	kmalloc(sc->jme_cdata.jme_tx_desc_cnt * sizeof(struct jme_txdesc),
@@ -1113,11 +1134,11 @@ jme_dma_alloc(struct jme_softc *sc)
 	/*
 	 * Create DMA stuffs for TX ring
 	 */
+	asize = roundup2(JME_TX_RING_SIZE(sc), JME_TX_RING_ALIGN);
 	error = bus_dmamem_coherent(sc->jme_cdata.jme_ring_tag,
 			JME_TX_RING_ALIGN, 0,
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			JME_TX_RING_SIZE(sc),
-			BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
+			asize, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		device_printf(sc->jme_dev, "could not allocate Tx ring.\n");
 		return error;
@@ -1156,9 +1177,10 @@ jme_dma_alloc(struct jme_softc *sc)
 	/*
 	 * Create DMA stuffs for shadow status block
 	 */
+	asize = roundup2(JME_SSB_SIZE, JME_SSB_ALIGN);
 	error = bus_dmamem_coherent(sc->jme_cdata.jme_buffer_tag,
 			JME_SSB_ALIGN, 0, BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			JME_SSB_SIZE, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
+			asize, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		device_printf(sc->jme_dev,
 		    "could not create shadow status block.\n");
@@ -1588,10 +1610,10 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	txd->tx_ndesc = 1 - i;
 	for (; i < nsegs; i++) {
 		desc = &sc->jme_cdata.jme_tx_ring[prod];
-		desc->flags = htole32(JME_TD_OWN | flag64);
 		desc->buflen = htole32(txsegs[i].ds_len);
 		desc->addr_hi = htole32(JME_ADDR_HI(txsegs[i].ds_addr));
 		desc->addr_lo = htole32(JME_ADDR_LO(txsegs[i].ds_addr));
+		desc->flags = htole32(JME_TD_OWN | flag64);
 
 		sc->jme_cdata.jme_tx_cnt++;
 		KKASSERT(sc->jme_cdata.jme_tx_cnt <=
@@ -2050,10 +2072,7 @@ jme_discard_rxbufs(struct jme_rxdata *rdata, int cons, int count)
 	int i;
 
 	for (i = 0; i < count; ++i) {
-		struct jme_desc *desc = &rdata->jme_rx_ring[cons];
-
-		desc->flags = htole32(JME_RD_OWN | JME_RD_INTR | JME_RD_64BIT);
-		desc->buflen = htole32(MCLBYTES);
+		jme_setup_rxdesc(&rdata->jme_rxdesc[cons]);
 		JME_DESC_INC(cons, rdata->jme_rx_desc_cnt);
 	}
 }
@@ -2095,11 +2114,34 @@ jme_rxpkt(struct jme_rxdata *rdata)
 
 	cons = rdata->jme_rx_cons;
 	desc = &rdata->jme_rx_ring[cons];
+
 	flags = le32toh(desc->flags);
 	status = le32toh(desc->buflen);
 	hash = le32toh(desc->addr_hi);
 	hashinfo = le32toh(desc->addr_lo);
 	nsegs = JME_RX_NSEGS(status);
+
+	if (nsegs > 1) {
+		/* Skip the first descriptor. */
+		JME_DESC_INC(cons, rdata->jme_rx_desc_cnt);
+
+		/*
+		 * Clear the OWN bit of the following RX descriptors;
+		 * hardware will not clear the OWN bit except the first
+		 * RX descriptor.
+		 *
+		 * Since the first RX descriptor is setup, i.e. OWN bit
+		 * on, before its followins RX descriptors, leaving the
+		 * OWN bit on the following RX descriptors will trick
+		 * the hardware into thinking that the following RX
+		 * descriptors are ready to be used too.
+		 */
+		for (count = 1; count < nsegs; count++,
+		     JME_DESC_INC(cons, rdata->jme_rx_desc_cnt))
+			rdata->jme_rx_ring[cons].flags = 0;
+
+		cons = rdata->jme_rx_cons;
+	}
 
 	JME_RSS_DPRINTF(rdata->jme_sc, 15, "ring%d, flags 0x%08x, "
 			"hash 0x%08x, hash info 0x%08x\n",
@@ -2276,6 +2318,46 @@ jme_rxeof(struct jme_rxdata *rdata, int count)
 			break;
 		}
 
+		/*
+		 * NOTE:
+		 * RSS hash and hash information may _not_ be set by the
+		 * hardware even if the OWN bit is cleared and VALID bit
+		 * is set.
+		 *
+		 * If the RSS information is not delivered by the hardware
+		 * yet, we MUST NOT accept this packet, let alone reusing
+		 * its RX descriptor.  If this packet was accepted and its
+		 * RX descriptor was reused before hardware delivering the
+		 * RSS information, the RX buffer's address would be trashed
+		 * by the RSS information delivered by the hardware.
+		 */
+		if (JME_ENABLE_HWRSS(rdata->jme_sc)) {
+			struct jme_rxdesc *rxd;
+			uint32_t hashinfo;
+
+			hashinfo = le32toh(desc->addr_lo);
+			rxd = &rdata->jme_rxdesc[rdata->jme_rx_cons];
+
+			/*
+			 * This test should be enough to detect the pending
+			 * RSS information delivery, given:
+			 * - If RSS hash is not calculated, the hashinfo
+			 *   will be 0.  Howvever, the lower 32bits of RX
+			 *   buffers' physical address will never be 0.
+			 *   (see jme_rxbuf_dma_filter)
+			 * - If RSS hash is calculated, the lowest 4 bits
+			 *   of hashinfo will be set, while the RX buffers
+			 *   are at least 2K aligned.
+			 */
+			if (hashinfo == JME_ADDR_LO(rxd->rx_paddr)) {
+#ifdef JME_SHOW_RSSWB
+				if_printf(&rdata->jme_sc->arpcom.ac_if,
+				    "RSS is not written back yet\n");
+#endif
+				break;
+			}
+		}
+
 		/* Received a frame. */
 		jme_rxpkt(rdata);
 	}
@@ -2407,7 +2489,7 @@ jme_init(void *xsc)
 	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT)
 		sc->jme_txd_spare += 1;
 
-	if (sc->jme_cdata.jme_rx_ring_cnt > JME_NRXRING_MIN)
+	if (JME_ENABLE_HWRSS(sc))
 		jme_enable_rss(sc);
 	else
 		jme_disable_rss(sc);
@@ -2777,7 +2859,6 @@ jme_init_rx_ring(struct jme_rxdata *rdata)
 static int
 jme_newbuf(struct jme_rxdata *rdata, struct jme_rxdesc *rxd, int init)
 {
-	struct jme_desc *desc;
 	struct mbuf *m;
 	bus_dma_segment_t segs;
 	bus_dmamap_t map;
@@ -2815,13 +2896,9 @@ jme_newbuf(struct jme_rxdata *rdata, struct jme_rxdesc *rxd, int init)
 	rxd->rx_dmamap = rdata->jme_rx_sparemap;
 	rdata->jme_rx_sparemap = map;
 	rxd->rx_m = m;
+	rxd->rx_paddr = segs.ds_addr;
 
-	desc = rxd->rx_desc;
-	desc->buflen = htole32(segs.ds_len);
-	desc->addr_lo = htole32(JME_ADDR_LO(segs.ds_addr));
-	desc->addr_hi = htole32(JME_ADDR_HI(segs.ds_addr));
-	desc->flags = htole32(JME_RD_OWN | JME_RD_INTR | JME_RD_64BIT);
-
+	jme_setup_rxdesc(rxd);
 	return 0;
 }
 
@@ -3097,13 +3174,13 @@ static int
 jme_rxring_dma_alloc(struct jme_rxdata *rdata)
 {
 	bus_dmamem_t dmem;
-	int error;
+	int error, asize;
 
+	asize = roundup2(JME_RX_RING_SIZE(rdata), JME_RX_RING_ALIGN);
 	error = bus_dmamem_coherent(rdata->jme_sc->jme_cdata.jme_ring_tag,
 			JME_RX_RING_ALIGN, 0,
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			JME_RX_RING_SIZE(rdata),
-			BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
+			asize, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		device_printf(rdata->jme_sc->jme_dev,
 		    "could not allocate %dth Rx ring.\n", rdata->jme_rx_idx);
@@ -3118,17 +3195,39 @@ jme_rxring_dma_alloc(struct jme_rxdata *rdata)
 }
 
 static int
+jme_rxbuf_dma_filter(void *arg __unused, bus_addr_t paddr)
+{
+	if ((paddr & 0xffffffff) == 0) {
+		/*
+		 * Don't allow lower 32bits of the RX buffer's
+		 * physical address to be 0, else it will break
+		 * hardware pending RSS information delivery
+		 * detection on RX path.
+		 */
+		return 1;
+	}
+	return 0;
+}
+
+static int
 jme_rxbuf_dma_alloc(struct jme_rxdata *rdata)
 {
+	bus_addr_t lowaddr;
 	int i, error;
+
+	lowaddr = BUS_SPACE_MAXADDR;
+	if (JME_ENABLE_HWRSS(rdata->jme_sc)) {
+		/* jme_rxbuf_dma_filter will be called */
+		lowaddr = BUS_SPACE_MAXADDR_32BIT;
+	}
 
 	/* Create tag for Rx buffers. */
 	error = bus_dma_tag_create(
 	    rdata->jme_sc->jme_cdata.jme_buffer_tag,/* parent */
 	    JME_RX_BUF_ALIGN, 0,	/* algnmnt, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    lowaddr,			/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
+	    jme_rxbuf_dma_filter, NULL,	/* filter, filterarg */
 	    MCLBYTES,			/* maxsize */
 	    1,				/* nsegments */
 	    MCLBYTES,			/* maxsegsize */
@@ -3250,43 +3349,8 @@ jme_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct jme_softc *sc = ifp->if_softc;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		lwkt_serialize_array_enter(sc->jme_serialize_arr,
-		    sc->jme_serialize_cnt, 0);
-		break;
-
-	case IFNET_SERIALIZE_MAIN:
-		lwkt_serialize_enter(&sc->jme_serialize);
-		break;
-
-	case IFNET_SERIALIZE_TX:
-		lwkt_serialize_enter(&sc->jme_cdata.jme_tx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(0):
-		lwkt_serialize_enter(
-		    &sc->jme_cdata.jme_rx_data[0].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(1):
-		lwkt_serialize_enter(
-		    &sc->jme_cdata.jme_rx_data[1].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(2):
-		lwkt_serialize_enter(
-		    &sc->jme_cdata.jme_rx_data[2].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(3):
-		lwkt_serialize_enter(
-		    &sc->jme_cdata.jme_rx_data[3].jme_rx_serialize);
-		break;
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	ifnet_serialize_array_enter(sc->jme_serialize_arr,
+	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE, slz);
 }
 
 static void
@@ -3294,43 +3358,8 @@ jme_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct jme_softc *sc = ifp->if_softc;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		lwkt_serialize_array_exit(sc->jme_serialize_arr,
-		    sc->jme_serialize_cnt, 0);
-		break;
-
-	case IFNET_SERIALIZE_MAIN:
-		lwkt_serialize_exit(&sc->jme_serialize);
-		break;
-
-	case IFNET_SERIALIZE_TX:
-		lwkt_serialize_exit(&sc->jme_cdata.jme_tx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(0):
-		lwkt_serialize_exit(
-		    &sc->jme_cdata.jme_rx_data[0].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(1):
-		lwkt_serialize_exit(
-		    &sc->jme_cdata.jme_rx_data[1].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(2):
-		lwkt_serialize_exit(
-		    &sc->jme_cdata.jme_rx_data[2].jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(3):
-		lwkt_serialize_exit(
-		    &sc->jme_cdata.jme_rx_data[3].jme_rx_serialize);
-		break;
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	ifnet_serialize_array_exit(sc->jme_serialize_arr,
+	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE, slz);
 }
 
 static int
@@ -3338,36 +3367,8 @@ jme_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct jme_softc *sc = ifp->if_softc;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		return lwkt_serialize_array_try(sc->jme_serialize_arr,
-		    sc->jme_serialize_cnt, 0);
-
-	case IFNET_SERIALIZE_MAIN:
-		return lwkt_serialize_try(&sc->jme_serialize);
-
-	case IFNET_SERIALIZE_TX:
-		return lwkt_serialize_try(&sc->jme_cdata.jme_tx_serialize);
-
-	case IFNET_SERIALIZE_RX(0):
-		return lwkt_serialize_try(
-		    &sc->jme_cdata.jme_rx_data[0].jme_rx_serialize);
-
-	case IFNET_SERIALIZE_RX(1):
-		return lwkt_serialize_try(
-		    &sc->jme_cdata.jme_rx_data[1].jme_rx_serialize);
-
-	case IFNET_SERIALIZE_RX(2):
-		return lwkt_serialize_try(
-		    &sc->jme_cdata.jme_rx_data[2].jme_rx_serialize);
-
-	case IFNET_SERIALIZE_RX(3):
-		return lwkt_serialize_try(
-		    &sc->jme_cdata.jme_rx_data[3].jme_rx_serialize);
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	return ifnet_serialize_array_try(sc->jme_serialize_arr,
+	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE, slz);
 }
 
 #ifdef INVARIANTS
@@ -3377,69 +3378,10 @@ jme_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
     boolean_t serialized)
 {
 	struct jme_softc *sc = ifp->if_softc;
-	struct jme_rxdata *rdata;
-	int i;
 
-	switch (slz) {
-	case IFNET_SERIALIZE_ALL:
-		if (serialized) {
-			for (i = 0; i < sc->jme_serialize_cnt; ++i)
-				ASSERT_SERIALIZED(sc->jme_serialize_arr[i]);
-		} else {
-			for (i = 0; i < sc->jme_serialize_cnt; ++i)
-				ASSERT_NOT_SERIALIZED(sc->jme_serialize_arr[i]);
-		}
-		break;
-
-	case IFNET_SERIALIZE_MAIN:
-		if (serialized)
-			ASSERT_SERIALIZED(&sc->jme_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&sc->jme_serialize);
-		break;
-
-	case IFNET_SERIALIZE_TX:
-		if (serialized)
-			ASSERT_SERIALIZED(&sc->jme_cdata.jme_tx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&sc->jme_cdata.jme_tx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(0):
-		rdata = &sc->jme_cdata.jme_rx_data[0];
-		if (serialized)
-			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(1):
-		rdata = &sc->jme_cdata.jme_rx_data[1];
-		if (serialized)
-			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(2):
-		rdata = &sc->jme_cdata.jme_rx_data[2];
-		if (serialized)
-			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
-		break;
-
-	case IFNET_SERIALIZE_RX(3):
-		rdata = &sc->jme_cdata.jme_rx_data[3];
-		if (serialized)
-			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
-		else
-			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
-		break;
-
-	default:
-		panic("%s unsupported serialize type", ifp->if_xname);
-	}
+	ifnet_serialize_array_assert(sc->jme_serialize_arr,
+	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE,
+	    slz, serialized);
 }
 
 #endif	/* INVARIANTS */

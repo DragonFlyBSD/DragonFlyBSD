@@ -17,7 +17,6 @@
  * Cronyx Id: ng_sppp.c,v 1.1.2.10 2004/03/01 15:17:21 rik Exp $
  *
  * $FreeBSD: src/sys/netgraph/ng_sppp.c,v 1.11 2006/12/29 13:59:50 jhb Exp $
- * $DragonFly: src/sys/netgraph7/ng_sppp.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -180,13 +179,7 @@ ng_sppp_free_unit (int unit)
 static int
 ng_sppp_ioctl (struct ifnet *ifp, u_long command, caddr_t data)
 {
-	int error = 0;
-
-	error = sppp_ioctl (ifp, command, data);
-	if (error)
-		return error;
-
-	return error;
+	return sppp_ioctl (ifp, command, data);
 }
 
 /*

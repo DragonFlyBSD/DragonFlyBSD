@@ -584,7 +584,7 @@ static void arcmsr_report_sense_info(struct CommandControlBlock *srb)
 
 	pccb->ccb_h.status |= CAM_SCSI_STATUS_ERROR;
 	pccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
-	if(&pccb->csio.sense_data) {
+	if(pccb->csio.sense_len) {
 		memset(&pccb->csio.sense_data, 0, sizeof(pccb->csio.sense_data));
 		memcpy(&pccb->csio.sense_data, srb->arcmsr_cdb.SenseData,
 		get_min(sizeof(struct SENSE_DATA), sizeof(pccb->csio.sense_data)));
@@ -2119,7 +2119,7 @@ static int arcmsr_iop_message_xfer(struct AdapterControlBlock *acb, union ccb * 
 			if (wqbuf_lastindex != wqbuf_firstindex) {
 				arcmsr_post_ioctldata2iop(acb);
 				/* has error report sensedata */
-			    if(&pccb->csio.sense_data) {
+			    if(pccb->csio.sense_len) {
 				((u_int8_t *)&pccb->csio.sense_data)[0] = (0x1 << 7 | 0x70);
 				/* Valid,ErrorCode */
 				((u_int8_t *)&pccb->csio.sense_data)[2] = 0x05;
@@ -2149,7 +2149,7 @@ static int arcmsr_iop_message_xfer(struct AdapterControlBlock *acb, union ccb * 
 					}
 				} else {
 					/* has error report sensedata */
-					if(&pccb->csio.sense_data) {
+					if(pccb->csio.sense_len) {
 					((u_int8_t *)&pccb->csio.sense_data)[0] = (0x1 << 7 | 0x70);
 					/* Valid,ErrorCode */
 					((u_int8_t *)&pccb->csio.sense_data)[2] = 0x05;

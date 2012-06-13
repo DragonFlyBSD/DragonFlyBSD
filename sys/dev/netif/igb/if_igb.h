@@ -112,8 +112,7 @@
 
 #define IGB_TX_PTHRESH			8
 #define IGB_TX_HTHRESH			1
-#define IGB_TX_WTHRESH			((hw->mac.type != e1000_82575 && \
-                                          sc->msix_mem) ? 1 : 16)
+#define IGB_TX_WTHRESH			16
 
 #define MAX_NUM_MULTICAST_ADDRESSES	128
 #define IGB_FC_PAUSE_TIME		0x0680
@@ -151,6 +150,9 @@
 
 #define IGB_TX_OACTIVE_MAX		64
 
+/* main + 16x RX + 16x TX */
+#define IGB_NSERIALIZE			33
+
 struct igb_softc;
 
 /*
@@ -164,25 +166,10 @@ struct igb_dma {
 };
 
 /*
- * Driver queue struct: this is the interrupt container
- * for the associated tx and rx ring.
- */
-struct igb_queue {
-	struct igb_softc	*sc;
-	uint32_t		msix;		/* This queue's MSIX vector */
-	uint32_t		eims;		/* This queue's EIMS bit */
-	uint32_t		eitr_setting;
-	struct resource		*res;
-	void			*tag;
-	struct igb_tx_ring	*txr;
-	struct igb_rx_ring	*rxr;
-	uint64_t		irqs;
-};
-
-/*
  * Transmit ring: one per queue
  */
 struct igb_tx_ring {
+	struct lwkt_serialize	tx_serialize;
 	struct igb_softc	*sc;
 	uint32_t		me;
 	struct igb_dma		txdma;
@@ -190,6 +177,7 @@ struct igb_tx_ring {
 	bus_dmamap_t		tx_hdr_dmap;
 	bus_addr_t		tx_hdr_paddr;
 	struct e1000_tx_desc	*tx_base;
+	int			num_tx_desc;
 	uint32_t		next_avail_desc;
 	uint32_t		next_to_clean;
 	uint32_t		*tx_hdr;
@@ -220,11 +208,13 @@ struct igb_tx_ring {
  * Receive ring: one per queue
  */
 struct igb_rx_ring {
+	struct lwkt_serialize	rx_serialize;
 	struct igb_softc	*sc;
 	uint32_t		me;
 	struct igb_dma		rxdma;
 	union e1000_adv_rx_desc	*rx_base;
 	boolean_t		discard;
+	int			num_rx_desc;
 	uint32_t		next_to_check;
 	struct igb_rx_buf	*rx_buf;
 	bus_dma_tag_t		rx_tag;
@@ -251,26 +241,16 @@ struct igb_softc {
 	device_t		dev;
 	uint32_t		flags;
 #define IGB_FLAG_SHARED_INTR	0x1
+#define IGB_FLAG_HAS_MGMT	0x2
 
 	bus_dma_tag_t		parent_tag;
 
 	int			mem_rid;
 	struct resource 	*mem_res;
 
-	struct resource 	*msix_mem;
-	void			*tag;
-	uint32_t		que_mask;
-
-	int			linkvec;
-	int			link_mask;
-	int			link_irq;
-
 	struct ifmedia		media;
 	struct callout		timer;
 
-#if 0
-	int			msix;	/* total vectors allocated */
-#endif
 	int			intr_type;
 	int			intr_rid;
 	struct resource		*intr_res;
@@ -278,14 +258,11 @@ struct igb_softc {
 
 	int			if_flags;
 	int			max_frame_size;
-	int			min_frame_size;
 	int			pause_frames;
-	uint16_t		num_queues;
 	uint16_t		vf_ifp;	/* a VF interface */
 
 	/* Management and WOL features */
 	int			wol;
-	int			has_manage;
 
 	/* Info about the interface */
 	uint8_t			link_active;
@@ -294,28 +271,29 @@ struct igb_softc {
 	uint32_t		smartspeed;
 	uint32_t		dma_coalesce;
 
-	int			intr_rate;
+	/* Multicast array pointer */
+	uint8_t			*mta;
 
-	/* Interface queues */
-	struct igb_queue	*queues;
+	int			serialize_cnt;
+	int			tx_serialize;
+	int			rx_serialize;
+	struct lwkt_serialize	*serializes[IGB_NSERIALIZE];
+	struct lwkt_serialize	main_serialize;
+
+	int			intr_rate;
 	uint32_t		intr_mask;
 
 	/*
 	 * Transmit rings
 	 */
+	int			tx_ring_cnt;
 	struct igb_tx_ring	*tx_rings;
-	int			num_tx_desc;
 
-	/* Multicast array pointer */
-	uint8_t			*mta;
-
-	/* 
+	/*
 	 * Receive rings
 	 */
+	int			rx_ring_cnt;
 	struct igb_rx_ring	*rx_rings;
-	int			num_rx_desc;
-	uint32_t		rx_mbuf_sz;
-	uint32_t		rx_mask;
 
 	/* Misc stats maintained by the driver */
 	u_long			dropped_pkts;

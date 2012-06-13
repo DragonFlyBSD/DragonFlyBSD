@@ -30,7 +30,7 @@
 
 struct mbuf {
   size_t m_size;		/* size allocated (excluding header) */
-  short m_offset;		/* offset from header end to start position */
+  u_short m_offset;		/* offset from header end to start position */
   size_t m_len;			/* available byte count in buffer */
   short m_type;			/* MB_* below */
   struct mbuf *m_next;		/* link to next mbuf */
@@ -99,14 +99,14 @@ struct mqueue {
 
 struct cmdargs;
 
-extern int m_length(struct mbuf *);
+extern size_t m_length(struct mbuf *);
 extern struct mbuf *m_get(size_t, int);
 extern struct mbuf *m_free(struct mbuf *);
 extern void m_freem(struct mbuf *);
 extern void mbuf_Write(struct mbuf *, const void *, size_t);
 extern struct mbuf *mbuf_Read(struct mbuf *, void *, size_t);
 extern size_t mbuf_View(struct mbuf *, void *, size_t);
-extern struct mbuf *m_prepend(struct mbuf *, const void *, size_t, size_t);
+extern struct mbuf *m_prepend(struct mbuf *, const void *, size_t, u_short);
 extern struct mbuf *m_adj(struct mbuf *, ssize_t);
 extern struct mbuf *m_pullup(struct mbuf *);
 extern void m_settype(struct mbuf *, int);
