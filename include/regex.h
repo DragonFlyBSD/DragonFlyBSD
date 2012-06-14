@@ -36,7 +36,6 @@
  *
  *	@(#)regex.h	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/include/regex.h,v 1.11 2004/07/12 06:07:26 tjr Exp $
- * $DragonFly: src/include/regex.h,v 1.3 2008/06/02 06:50:08 hasso Exp $
  */
 
 #ifndef _REGEX_H_
@@ -56,7 +55,7 @@ typedef	__size_t	size_t;
 typedef struct {
 	int re_magic;
 	size_t re_nsub;		/* number of parenthesized subexpressions */
-	__const char *re_endp;	/* end pointer for REG_PEND */
+	const char *re_endp;	/* end pointer for REG_PEND */
 	struct re_guts *re_g;	/* none of your business :-) */
 } regex_t;
 
