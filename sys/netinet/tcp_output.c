@@ -305,8 +305,10 @@ again:
 	if ((flags & TH_SYN) && SEQ_GT(tp->snd_nxt, tp->snd_una)) {
 		flags &= ~TH_SYN;
 		off--, len++;
-		if (len > 0 && tp->t_state == TCPS_SYN_SENT)
+		if (len > 0 && tp->t_state == TCPS_SYN_SENT) {
+			tp->t_flags &= ~TF_ACKNOW;
 			return 0;
+		}
 	}
 
 	/*
@@ -1063,6 +1065,7 @@ after_th:
 		KASSERT(error != 0, ("no error, but th not set"));
 	}
 	if (error) {
+		tp->t_flags &= ~TF_ACKNOW;
 
 		/*
 		 * We know that the packet was lost, so back out the
