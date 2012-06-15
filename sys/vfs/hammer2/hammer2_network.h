@@ -225,6 +225,9 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
 					 HAMMER2_MSGF_SIZE |	\
 					 HAMMER2_MSGF_PROTOS |	\
 					 HAMMER2_MSGF_REPLY)
+#define HAMMER2_MSGF_BASECMDMASK	(HAMMER2_MSGF_CMDS |	\
+					 HAMMER2_MSGF_SIZE |	\
+					 HAMMER2_MSGF_PROTOS)
 
 #define HAMMER2_MSG_PROTO_LNK		0x00000000U
 #define HAMMER2_MSG_PROTO_DBG		0x00100000U
@@ -241,7 +244,7 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
 #define HAMMER2_MSG_ALIGNMASK		(HAMMER2_MSG_ALIGN - 1)
 #define HAMMER2_MSG_DOALIGN(bytes)	(((bytes) + HAMMER2_MSG_ALIGNMASK) & \
 					 ~HAMMER2_MSG_ALIGNMASK)
-#define HAMMER2_MSG_HDR_ENCODE(elm)	((sizeof(struct elm) + 		\
+#define HAMMER2_MSG_HDR_ENCODE(elm)	(((uint32_t)sizeof(struct elm) + \
 					  HAMMER2_MSG_ALIGNMASK) /	\
 				         HAMMER2_MSG_ALIGN)
 
