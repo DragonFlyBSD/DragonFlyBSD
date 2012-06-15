@@ -110,23 +110,24 @@ void hammer2_ioq_init(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
 void hammer2_ioq_done(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
 void hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd);
 void hammer2_iocom_done(hammer2_iocom_t *iocom);
-hammer2_msg_t *hammer2_allocmsg(hammer2_iocom_t *iocom,
-			uint32_t cmd, int aux_size);
-hammer2_msg_t *hammer2_allocreply(hammer2_msg_t *msg,
-			uint32_t cmd, int aux_size);
-void hammer2_replymsg(hammer2_msg_t *msg, uint16_t error);
-void hammer2_freemsg(hammer2_msg_t *msg);
+hammer2_msg_t *hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size,
+			uint32_t cmd);
+void hammer2_msg_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
+			uint16_t error);
+void hammer2_msg_free(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 
 void hammer2_iocom_core(hammer2_iocom_t *iocom,
 			void (*iocom_recvmsg)(hammer2_iocom_t *),
 			void (*iocom_sendmsg)(hammer2_iocom_t *),
 			void (*iocom_altmsg)(hammer2_iocom_t *));
 hammer2_msg_t *hammer2_ioq_read(hammer2_iocom_t *iocom);
-void hammer2_ioq_write(hammer2_msg_t *msg);
+void hammer2_ioq_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 
-void hammer2_ioq_stream(hammer2_msg_t *msg, int reply);
 void hammer2_iocom_drain(hammer2_iocom_t *iocom);
 void hammer2_iocom_flush(hammer2_iocom_t *iocom);
+
+void hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+void hammer2_state_free(hammer2_state_t *state);
 
 void hammer2_crypto_negotiate(hammer2_iocom_t *iocom);
 void hammer2_crypto_decrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
@@ -143,5 +144,5 @@ const char *hammer2_iptype_to_str(uint8_t type);
 const char *hammer2_pfstype_to_str(uint8_t type);
 const char *sizetostr(hammer2_off_t size);
 
-void hammer2_shell_remote(hammer2_msg_t *msg);
-void msg_printf(hammer2_msg_t *msg, const char *ctl, ...);
+void hammer2_shell_remote(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+void iocom_printf(hammer2_iocom_t *iocom, uint32_t cmd, const char *ctl, ...);

@@ -219,12 +219,13 @@ master_link_rx(hammer2_iocom_t *iocom)
 			break;
 		case HAMMER2_DBG_SHELL:
 		case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
-			hammer2_shell_remote(msg);
+			hammer2_shell_remote(iocom, msg);
 			break;
 		default:
-			hammer2_replymsg(msg, HAMMER2_MSG_ERR_UNKNOWN);
+			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
 			break;
 		}
+		hammer2_state_cleanuprx(iocom, msg);
 	}
 	if (iocom->ioq_rx.error) {
 		fprintf(stderr,

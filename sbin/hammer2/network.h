@@ -108,23 +108,44 @@ typedef struct hammer2_handshake hammer2_handshake_t;
  */
 struct hammer2_iocom;
 struct hammer2_persist;
-
-struct hammer2_msg {
-	struct hammer2_iocom *iocom;
-	struct hammer2_persist  *persist;
-	TAILQ_ENTRY(hammer2_msg) entry;	/* queue */
-	char		*aux_data;	/* aux-data if any */
-	int		aux_size;
-	int		flags;
-	hammer2_any_t	any;		/* raw extended msg header */
-};
-
-typedef struct hammer2_msg hammer2_msg_t;
+struct hammre2_state;
+struct hammre2_msg;
 
 TAILQ_HEAD(hammer2_msg_queue, hammer2_msg);
+RB_HEAD(hammer2_state_tree, hammer2_state);
+
+struct hammer2_state {
+	RB_ENTRY(hammer2_state) rbnode;		/* indexed by msgid */
+	struct hammer2_iocom *iocom;
+	uint32_t	txcmd;			/* mostly for CMDF flags */
+	uint32_t	rxcmd;			/* mostly for CMDF flags */
+	uint16_t	source;			/* command originator */
+	uint16_t	target;			/* reply originator */
+	uint32_t	msgid;			/* {source,target,msgid} uniq */
+	int		flags;
+	int		error;
+	struct hammer2_msg *msg;
+	int (*func)(struct hammer2_iocom *, struct hammer2_msg *);
+};
+
+#define HAMMER2_STATE_INSERTED	0x0001
+#define HAMMER2_STATE_DYNAMIC	0x0002
+
+struct hammer2_msg {
+	TAILQ_ENTRY(hammer2_msg) qentry;
+	struct hammer2_state *state;
+	size_t		hdr_size;
+	size_t		aux_size;
+	char		*aux_data;
+	hammer2_any_t	any;
+};
+
+typedef struct hammer2_state hammer2_state_t;
+typedef struct hammer2_msg hammer2_msg_t;
 typedef struct hammer2_msg_queue hammer2_msg_queue_t;
 
-#define HAMMER2_MSGX_BSWAPPED	0x0001
+int hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2);
+RB_PROTOTYPE(hammer2_state_tree, hammer2_state, rbnode, hammer2_state_cmp);
 
 /*
  * hammer2_ioq - An embedded component of hammer2_connect, holds state
@@ -139,9 +160,9 @@ struct hammer2_ioq {
 	int		fifo_beg;		/* buffered data */
 	int		fifo_cdx;		/* encrypt/decrypt index */
 	int		fifo_end;
-	int		hbytes;			/* header size */
-	int		abytes;			/* aux_data size */
-	int		already;		/* aux_data already decrypted */
+	size_t		hbytes;			/* header size */
+	size_t		abytes;			/* aux_data size */
+	size_t		already;		/* aux_data already decrypted */
 	int		error;
 	int		seq;			/* salt sequencer */
 	int		msgcount;
@@ -169,6 +190,8 @@ typedef struct hammer2_ioq hammer2_ioq_t;
 #define HAMMER2_IOQ_ERROR_KEYFMT	13	/* key file format problem */
 #define HAMMER2_IOQ_ERROR_BADURANDOM	14	/* /dev/urandom is bad */
 #define HAMMER2_IOQ_ERROR_MSGSEQ	15	/* message sequence error */
+#define HAMMER2_IOQ_ERROR_EALREADY	16	/* ignore this message */
+#define HAMMER2_IOQ_ERROR_TRANS		17	/* state transaction issue */
 
 #define HAMMER2_IOQ_MAXIOVEC    16
 
@@ -189,6 +212,8 @@ struct hammer2_iocom {
 	int	rxmisc;
 	int	txmisc;
 	char	sess[HAMMER2_AES_KEY_SIZE];	/* aes_256_cbc key */
+	struct hammer2_state_tree staterd_tree; /* active messages */
+	struct hammer2_state_tree statewr_tree; /* active messages */
 };
 
 typedef struct hammer2_iocom hammer2_iocom_t;
@@ -199,118 +224,3 @@ typedef struct hammer2_iocom hammer2_iocom_t;
 #define HAMMER2_IOCOMF_WIDLE	0x00000008	/* request write-avail event */
 #define HAMMER2_IOCOMF_SIGNAL	0x00000010
 #define HAMMER2_IOCOMF_CRYPTED	0x00000020	/* encrypt enabled */
-
-/***************************************************************************
- *				HIGH LEVEL MESSAGING			   *
- ***************************************************************************
- *
- * Persistent state is stored via the hammer2_persist structure.
- */
-struct hammer2_persist {
-	uint32_t	lcmd;		/* recent command direction */
-	uint32_t	lrep;		/* recent reply direction */
-};
-
-typedef struct hammer2_persist hammer2_persist_t;
-
-#if 0
-
-
-
-/*
- * The global registration structure consolidates information accumulated
- * via the spanning tree algorithm and tells us which connection (link)
- * is the best path to get to any given registration.
- *
- * glob_node	- Splay entry for this registration in the global index
- *		  of all registrations.
- *
- * glob_entry	- tailq entry when this registration's best_span element
- *		  has changed state.
- *
- * span_list	- Head of a simple list of spanning tree entries which
- *		  we use to determine the best link.
- *
- * best_span	- Which of the span structure on span_list is the best
- *		  one.
- *
- * source_root	- Splay tree root indexing all mesasges sent from this
- *		  registration.  The messages are indexed by
- *		  {linkid,msgid} XXX
- *
- * target_root	- Splay tree root indexing all messages being sent to
- *		  this registration.  The messages are indexed by
- *		  {linkid,msgid}. XXX
- *
- *
- * Whenever spanning tree data causes a registration's best_link field to
- * change that registration is transmitted as spanning tree data to every
- * active link.  Note that pure clients to the cluster, of which there can
- * be millions, typically do not transmit spanning tree data to each other.
- *
- * Each registration is assigned a unique linkid local to the node (another
- * node might assign a different linkid to the same registration).  This
- * linkid must be persistent as long as messages are active and is used
- * to identify the message source and target.
- */
-TAILQ_HEAD(hammer2_span_list, hammer2_span);
-typedef struct hammer2_span_list hammer2_span_list_t;
-
-struct hammer2_reg {
-	SPLAY_ENTRY(hammer2_reg) glob_node;	/* index of registrations */
-	TAILQ_ENTRY(hammer2_reg) glob_entry;	/* when modified */
-	hammer2_span_list_t	span_list;	/* list of hammer2_span's */
-	hammer2_span_t		*best_span;	/* best span entry */
-	hammer2_pmsg_splay_head_t source_root; 	/* msgs sent from reg */
-	hammer2_pmsg_splay_head_t target_root; 	/* msgs sent to reg */
-	uuid_t	pfs_id;				/* key field */
-	uuid_t  pfs_fsid;			/* key field */
-	uint32_t linkid;
-	int	flags;
-	int	refs;
-};
-
-#define HAMMER2_PROTO_REGF_MODIFIED	0x0001
-
-/*
- * Each link (connection) collects spanning tree data received via the
- * link and stores it in these span structures.
- */
-struct hammer2_span {
-	TAILQ_ENTRY(hammer2_span)	span_entry;	/* from hammer2_reg */
-	SPLAY_ENTRY(hammer2_span)	span_node;	/* from hammer2_link */
-	hammer2_reg_t			*reg;
-	hammer2_link_t			*link;
-	int				weight;
-};
-
-/*
- * Most hammer2 messages represent transactions and have persistent state
- * which must be recorded.  Some messages, such as cache states and inode
- * representations are very long-lasting transactions.
- *
- * Each node in the graph must keep track of the message state in order
- * to perform the proper action when a connection is lost.  To do this
- * the message is indexed on the source and target (global) registration,
- * and the actual span element the message was received on and transmitted
- * to is recorded (allowing us to retrieve the physical links involved).
- *
- * The {source_reg, target_reg, msgid} uniquely identifies a message.  Any
- * streaming operations using the same msgid use the same rendezvous.
- *
- * It is important to note that recorded state must use the same physical
- * link (and thus the same chain of links across the graph) as was 'forged'
- * by the initial message for that msgid.  If the source span a message is
- * received on does not match the recorded source, or the recorded target
- * is no longer routeable, the message will be returned or generate an ABORT
- * with LINKFAIL as appropriate.
- */
-struct hammer2_pmsg {
-	SPLAY_ENTRY(hammer2_pmsg) source_reg;
-	SPLAY_ENTRY(hammer2_pmsg) target_reg;
-	hammer2_span_t	*source;
-	hammer2_span_t	*target;
-	uint16_t	msgid;
-};
-
-#endif

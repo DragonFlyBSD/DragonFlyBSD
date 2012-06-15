@@ -40,7 +40,7 @@
 static void shell_recv(hammer2_iocom_t *iocom);
 static void shell_send(hammer2_iocom_t *iocom);
 static void shell_tty(hammer2_iocom_t *iocom);
-static void hammer2_shell_parse(hammer2_msg_t *msg, char *cmdbuf);
+static void hammer2_shell_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 
 /************************************************************************
  *				    SHELL				*
@@ -97,8 +97,8 @@ cmd_shell(const char *hostname)
 	hammer2_iocom_init(&iocom, fd, 0);
 	printf("debug: connected\n");
 
-	msg = hammer2_allocmsg(&iocom, HAMMER2_DBG_SHELL, 0);
-	hammer2_ioq_write(msg);
+	msg = hammer2_msg_alloc(&iocom, 0, HAMMER2_DBG_SHELL);
+	hammer2_ioq_write(&iocom, msg);
 
 	hammer2_iocom_core(&iocom, shell_recv, shell_send, shell_tty);
 	fprintf(stderr, "debug: disconnected\n");
@@ -121,15 +121,20 @@ shell_recv(hammer2_iocom_t *iocom)
 
 		switch(msg->any.head.cmd & HAMMER2_MSGF_CMDSWMASK) {
 		case HAMMER2_LNK_ERROR:
-			fprintf(stderr, "Link Error: %d\n",
-				msg->any.head.error);
+		case HAMMER2_LNK_ERROR | HAMMER2_MSGF_REPLY:
+			if (msg->any.head.error) {
+				fprintf(stderr,
+					"Link Error: %d\n",
+					msg->any.head.error);
+			} else {
+				write(1, "debug> ", 7);
+			}
 			break;
 		case HAMMER2_DBG_SHELL:
 			/*
 			 * We send the commands, not accept them.
 			 */
-			hammer2_replymsg(msg, HAMMER2_MSG_ERR_UNKNOWN);
-			hammer2_freemsg(msg);
+			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
 			break;
 		case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
 			/*
@@ -138,18 +143,16 @@ shell_recv(hammer2_iocom_t *iocom)
 			if (msg->aux_size) {
 				msg->aux_data[msg->aux_size - 1] = 0;
 				write(1, msg->aux_data, strlen(msg->aux_data));
-			} else {
-				write(1, "debug> ", 7);
 			}
-			hammer2_freemsg(msg);
 			break;
 		default:
-			assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
 			fprintf(stderr, "Unknown message: %08x\n",
 				msg->any.head.cmd);
-			hammer2_replymsg(msg, HAMMER2_MSG_ERR_UNKNOWN);
+			assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
+			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
 			break;
 		}
+		hammer2_state_cleanuprx(iocom, msg);
 	}
 	if (iocom->ioq_rx.error) {
 		fprintf(stderr, "node_master_recv: comm error %d\n",
@@ -181,9 +184,9 @@ shell_tty(hammer2_iocom_t *iocom)
 		if (len && buf[len - 1] == '\n')
 			buf[--len] = 0;
 		++len;
-		msg = hammer2_allocmsg(iocom, HAMMER2_DBG_SHELL, len);
+		msg = hammer2_msg_alloc(iocom, len, HAMMER2_DBG_SHELL);
 		bcopy(buf, msg->aux_data, len);
-		hammer2_ioq_write(msg);
+		hammer2_ioq_write(iocom, msg);
 	} else {
 		/*
 		 * Set EOF flag without setting any error code for normal
@@ -199,10 +202,8 @@ shell_tty(hammer2_iocom_t *iocom)
  * then finish up by outputting another prompt.
  */
 void
-hammer2_shell_remote(hammer2_msg_t *msg)
+hammer2_shell_remote(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 {
-	/* hammer2_iocom_t *iocom = msg->iocom; */
-
 	if (msg->aux_data)
 		msg->aux_data[msg->aux_size - 1] = 0;
 	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
@@ -212,54 +213,60 @@ hammer2_shell_remote(hammer2_msg_t *msg)
 		 */
 		if (msg->aux_data)
 			write(2, msg->aux_data, strlen(msg->aux_data));
-		hammer2_freemsg(msg);
 	} else {
 		/*
 		 * Otherwise this is a command which we must process.
 		 * When we are finished we generate a final reply.
 		 */
-		hammer2_shell_parse(msg, msg->aux_data);
-		hammer2_replymsg(msg, 0);
+		hammer2_shell_parse(iocom, msg);
+		hammer2_msg_reply(iocom, msg, 0);
 	}
 }
 
 static void
-hammer2_shell_parse(hammer2_msg_t *msg, char *cmdbuf)
+hammer2_shell_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 {
-	/* hammer2_iocom_t *iocom = msg->iocom; */
+	char *cmdbuf = msg->aux_data;
 	char *cmd = strsep(&cmdbuf, " \t");
 
 	if (cmd == NULL || *cmd == 0) {
 		;
 	} else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
-		msg_printf(msg, "help        Command help\n");
+		iocom_printf(iocom, 0, "help        Command help\n");
 	} else {
-		msg_printf(msg, "Unrecognized command: %s\n", cmd);
+		iocom_printf(iocom, 0, "Unrecognized command: %s\n", cmd);
 	}
 }
 
 /*
  * Returns text debug output to the original defined by (msg).  (msg) is
- * not modified and stays intact.
+ * not modified and stays intact.  We use a one-way message with REPLY set
+ * to distinguish between a debug command and debug terminal output.
+ *
+ * To prevent loops iocom_printf() can filter the message (cmd) related
+ * to the iocom_printf().  We filter out DBG messages.
  */
 void
-msg_printf(hammer2_msg_t *msg, const char *ctl, ...)
+iocom_printf(hammer2_iocom_t *iocom, uint32_t cmd, const char *ctl, ...)
 {
-	/* hammer2_iocom_t *iocom = msg->iocom; */
 	hammer2_msg_t *rmsg;
 	va_list va;
 	char buf[1024];
 	size_t len;
+
+	if ((cmd & HAMMER2_MSGF_PROTOS) == HAMMER2_MSG_PROTO_DBG)
+		return;
 
 	va_start(va, ctl);
 	vsnprintf(buf, sizeof(buf), ctl, va);
 	va_end(va);
 	len = strlen(buf) + 1;
 
-	rmsg = hammer2_allocreply(msg, HAMMER2_DBG_SHELL, len);
+	rmsg = hammer2_msg_alloc(iocom, len, HAMMER2_DBG_SHELL |
+					     HAMMER2_MSGF_REPLY);
 	bcopy(buf, rmsg->aux_data, len);
 
-	hammer2_ioq_write(rmsg);
+	hammer2_ioq_write(iocom, rmsg);
 }
 
 /************************************************************************
