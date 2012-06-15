@@ -657,7 +657,7 @@ struct rtentry *
 	 tcp_rtlookup (struct in_conninfo *);
 int	 tcp_sack_bytes_below(const struct scoreboard *scb, tcp_seq seq);
 void	 tcp_sack_destroy(struct scoreboard *scb);
-void	 tcp_sack_cleanup(struct scoreboard *scb);
+void	 tcp_sack_discard(struct tcpcb *tp);
 void	 tcp_sack_report_cleanup(struct tcpcb *tp);
 int	 tcp_sack_ndsack_blocks(const struct raw_sackblock *blocks,
 	    const int numblocks, tcp_seq snd_una);

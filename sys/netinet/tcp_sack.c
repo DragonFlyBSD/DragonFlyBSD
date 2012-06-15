@@ -201,8 +201,9 @@ free_sackblock(struct scoreboard *scb, struct sackblock *s)
  * Free up SACK blocks for data that's been acked.
  */
 static void
-tcp_sack_ack_blocks(struct scoreboard *scb, tcp_seq th_ack)
+tcp_sack_ack_blocks(struct tcpcb *tp, tcp_seq th_ack)
 {
+	struct scoreboard *scb = &tp->scb;
 	struct sackblock *sb, *nb;
 
 	sb = TAILQ_FIRST(&scb->sackblocks);
@@ -220,14 +221,14 @@ tcp_sack_ack_blocks(struct scoreboard *scb, tcp_seq th_ack)
 	if (sb && SEQ_GEQ(th_ack, sb->sblk_start)) {
 		/* Other side reneged? XXX */
 		tcpstat.tcps_sackrenege++;
-		tcp_sack_cleanup(scb);
+		tcp_sack_discard(tp);
 	}
 }
 
 /*
  * Delete and free SACK blocks saved in scoreboard.
  */
-void
+static void
 tcp_sack_cleanup(struct scoreboard *scb)
 {
 	struct sackblock *sb, *nb;
@@ -240,6 +241,18 @@ tcp_sack_cleanup(struct scoreboard *scb)
 	    ("SACK block %d count not zero", scb->nblocks));
 	TAILQ_INIT(&scb->sackblocks);
 	scb->lastfound = NULL;
+}
+
+/*
+ * Discard SACK scoreboard, HighRxt, RescueRxt and LostSeq.
+ */
+void
+tcp_sack_discard(struct tcpcb *tp)
+{
+	tcp_sack_cleanup(&tp->scb);
+	tp->rexmt_high = tp->snd_una;
+	tp->sack_flags &= ~TSACK_F_SACKRESCUED;
+	tp->scb.lostseq = tp->snd_una;
 }
 
 /*
@@ -338,7 +351,7 @@ tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to)
 	struct scoreboard *scb = &tp->scb;
 	int rexmt_high_update = 0;
 
-	tcp_sack_ack_blocks(scb, tp->snd_una);
+	tcp_sack_ack_blocks(tp, tp->snd_una);
 	tcp_sack_add_blocks(tp, to);
 	tcp_sack_update_lostseq(scb, tp->snd_una, tp->t_maxseg,
 	    tp->t_rxtthresh);
