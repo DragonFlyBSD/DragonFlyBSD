@@ -175,7 +175,7 @@ struct tcpcb {
 #define	TF_RXWIN0SENT	0x00080000	/* sent a receiver win 0 in response */
 #define	TF_FASTRECOVERY	0x00100000	/* in Fast Recovery */
 #define	TF_QUEDFIN	0x00200000	/* FIN has been received */
-#define	TF_UNUSED007	0x00400000
+#define	TF_XMITNOW	0x00400000	/* Temporarily override Nagle */
 #define	TF_UNUSED008	0x00800000
 #define	TF_UNUSED009	0x01000000
 #define	TF_FORCE	0x02000000	/* Set if forcing out a byte */

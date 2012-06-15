@@ -3281,6 +3281,7 @@ tcp_sack_rexmt(struct tcpcb *tp, boolean_t force)
 		old_snd_max = tp->snd_max;
 		if (nextrexmt == tp->snd_una)
 			tcp_callout_stop(tp, tp->tt_rexmt);
+		tp->t_flags |= TF_XMITNOW;
 		error = tcp_output(tp);
 		if (error != 0) {
 			tp->rexmt_high = old_rexmt_high;
@@ -3341,6 +3342,7 @@ tcp_sack_limitedxmit(struct tcpcb *tp)
 	tp->snd_cwnd = tp->snd_nxt - tp->snd_una +
 	    rounddown(cwnd_left, tp->t_maxseg);
 
+	tp->t_flags |= TF_XMITNOW;
 	tcp_output(tp);
 
 	sent = tp->snd_nxt - next;
@@ -3606,6 +3608,7 @@ fastretransmit:
 		tp->snd_nxt = tp->snd_max;
 		tp->snd_cwnd = ownd +
 		    (tp->t_dupacks - tp->snd_limited) * tp->t_maxseg;
+		tp->t_flags |= TF_XMITNOW;
 		tcp_output(tp);
 
 		if (SEQ_LT(oldsndnxt, oldsndmax)) {
