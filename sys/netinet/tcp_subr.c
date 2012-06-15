@@ -1037,6 +1037,8 @@ tcp_drain_oncpu(struct inpcbhead *head)
 		    (tcpb = intotcpcb(inpb)) != NULL &&
 		    (te = TAILQ_FIRST(&tcpb->t_segq)) != NULL) {
 			TAILQ_REMOVE(&tcpb->t_segq, te, tqe_q);
+			if (te->tqe_th->th_flags & TH_FIN)
+				tcpb->t_flags &= ~TF_QUEDFIN;
 			m_freem(te->tqe_m);
 			kfree(te, M_TSEGQ);
 			atomic_add_int(&tcp_reass_qsize, -1);

@@ -56,7 +56,6 @@
  *      @(#)netdb.h	8.1 (Berkeley) 6/2/93
  *      From: Id: netdb.h,v 8.9 1996/11/19 08:39:29 vixie Exp $
  * $FreeBSD: src/include/netdb.h,v 1.45 2009/03/14 20:04:28 das Exp $
- * $DragonFly: src/include/netdb.h,v 1.7 2008/10/04 22:09:16 swildner Exp $
  */
 
 #ifndef _NETDB_H_
@@ -271,7 +270,7 @@ int		getservbyport_r(int, const char *, struct servent *, char *,
 int		getservent_r(struct servent *, char *, size_t,
 			     struct servent **);
 void		herror(const char *);
-__const char	*hstrerror(int);
+const char	*hstrerror(int);
 int		innetgr(const char *, const char *, const char *, const char *);
 void		setnetgrent(const char *);
 #endif

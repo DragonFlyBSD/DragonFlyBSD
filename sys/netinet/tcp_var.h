@@ -170,11 +170,11 @@ struct tcpcb {
 #define TF_SIGNATURE	0x00004000	/* require MD5 digests (RFC2385) */
 #define TF_NCR		0x00008000	/* Non-Congestion Robustness RFC4653 */
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
-#define	TF_UNUSED005	0x00020000
+#define	TF_SAWFIN	0x00020000	/* FIN has been seen */
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
 #define	TF_RXWIN0SENT	0x00080000	/* sent a receiver win 0 in response */
 #define	TF_FASTRECOVERY	0x00100000	/* in Fast Recovery */
-#define	TF_UNUSED006	0x00200000
+#define	TF_QUEDFIN	0x00200000	/* FIN has been received */
 #define	TF_UNUSED007	0x00400000
 #define	TF_UNUSED008	0x00800000
 #define	TF_UNUSED009	0x01000000

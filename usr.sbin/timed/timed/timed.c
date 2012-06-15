@@ -408,9 +408,10 @@ main(int argc, char *argv[])
 			justquit = 1;
 		}
 		for (ntp = nettab; ntp != NULL; ntp = ntp->next) {
-			if (ntp->status == MASTER)
+			if (ntp->status == MASTER) {
 				rmnetmachs(ntp);
 				ntp->status = NOMASTER;
+			}
 		}
 		checkignorednets();
 		pickslavenet(0);

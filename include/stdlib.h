@@ -265,7 +265,7 @@ char	*devname_r(dev_t, mode_t, char *, size_t);
 char	*fdevname(int);
 int	 fdevname_r(int, char *, size_t);
 int	 getloadavg(double [], int);
-__const char *
+const char *
 	 getprogname(void);
 
 int	 heapsort(void *, size_t, size_t, int (*)(const void *, const void *));

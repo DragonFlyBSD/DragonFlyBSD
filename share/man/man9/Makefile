@@ -7,6 +7,7 @@ MAN=	accept_filter.9 \
 	altq.9 \
 	at_exit.9 \
 	at_fork.9 \
+	atomic.9 \
 	bios.9 \
 	boot.9 \
 	buf.9 \
