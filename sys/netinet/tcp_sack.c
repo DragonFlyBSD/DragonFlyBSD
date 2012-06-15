@@ -593,7 +593,7 @@ tcp_sack_nextseg(struct tcpcb *tp, tcp_seq *nextrexmt, uint32_t *plen,
 	const struct sackblock *lastblock =
 	    TAILQ_LAST(&scb->sackblocks, sackblock_list);
 	tcp_seq torexmt;
-	long len, off;
+	long len, off, sendwin;
 
 	/* skip SACKed data */
 	tcp_sack_skip_sacked(scb, &tp->rexmt_high);
@@ -617,7 +617,8 @@ sendunsacked:
 
 	/* See if unsent data available within send window. */
 	off = tp->snd_max - tp->snd_una;
-	len = (long) ulmin(so->so_snd.ssb_cc, tp->snd_wnd) - off;
+	sendwin = min(tp->snd_wnd, tp->snd_bwnd);
+	len = (long) ulmin(so->so_snd.ssb_cc, sendwin) - off;
 	if (len > 0) {
 		*nextrexmt = tp->snd_max;	/* Send new data. */
 		*plen = tp->t_maxseg;
