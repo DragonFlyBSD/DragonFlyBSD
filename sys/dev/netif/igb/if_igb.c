@@ -198,6 +198,7 @@ static void	igb_init_intr(struct igb_softc *);
 static int	igb_setup_intr(struct igb_softc *);
 static void	igb_setup_tx_intr(struct igb_tx_ring *, int *, int);
 static void	igb_setup_rx_intr(struct igb_rx_ring *, int *, int);
+static void	igb_set_intr_mask(struct igb_softc *);
 
 /* Management and WOL Support */
 static void	igb_get_mgmt(struct igb_softc *);
@@ -434,6 +435,7 @@ igb_attach(device_t dev)
 #ifdef IGB_RSS_DEBUG
 	sc->rx_ring_cnt = device_getenv_int(dev, "rxr_debug", sc->rx_ring_cnt);
 #endif
+	sc->rx_ring_inuse = sc->rx_ring_cnt;
 	sc->tx_ring_cnt = 1; /* XXX */
 
 	sc->intr_rate = IGB_INTR_RATE;
@@ -857,6 +859,20 @@ igb_init(void *xsc)
 	/* Configure for OS presence */
 	igb_get_mgmt(sc);
 
+	if (IGB_ENABLE_HWRSS(sc)) {
+		if (sc->intr_type != PCI_INTR_TYPE_MSIX
+#ifdef DEVICE_POLLING
+		    || (ifp->if_flags & IFF_POLLING)
+#endif
+		    ) {
+			sc->rx_ring_inuse = IGB_MIN_RING_RSS;
+			if (bootverbose) {
+				if_printf(ifp, "RX rings %d/%d\n",
+				    sc->rx_ring_inuse, sc->rx_ring_cnt);
+			}
+		}
+	}
+
 	/* Prepare transmit descriptors and buffers */
 	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		igb_init_tx_ring(&sc->tx_rings[i]);
@@ -882,7 +898,7 @@ igb_init(void *xsc)
 	igb_init_intr(sc);
 
 	/* Prepare receive descriptors and buffers */
-	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+	for (i = 0; i < sc->rx_ring_inuse; ++i) {
 		int error;
 
 		error = igb_init_rx_ring(&sc->rx_rings[i]);
@@ -1447,6 +1463,9 @@ igb_add_sysctl(struct igb_softc *sc)
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "rxr", CTLFLAG_RD, &sc->rx_ring_cnt, 0, "# of RX rings");
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "rxr_inuse", CTLFLAG_RD, &sc->rx_ring_inuse, 0,
+	    "# of RX rings used");
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->rx_rings[0].num_rx_desc, 0,
 	    "# of RX descs");
@@ -2225,7 +2244,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 	}
 
 	/* Setup the Base and Length of the Rx Descriptor Rings */
-	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+	for (i = 0; i < sc->rx_ring_inuse; ++i) {
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
 		uint64_t bus_addr = rxr->rxdma.dma_paddr;
 		uint32_t rxdctl;
@@ -2311,7 +2330,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 			for (i = 0; i < IGB_RETA_SIZE; ++i) {
 				uint32_t q;
 
-				q = (r % sc->rx_ring_cnt) << reta_shift;
+				q = (r % sc->rx_ring_inuse) << reta_shift;
 				reta |= q << (8 * i);
 				++r;
 			}
@@ -2349,7 +2368,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 	 * Setup the HW Rx Head and Tail Descriptor Pointers
 	 *   - needs to be after enable
 	 */
-	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+	for (i = 0; i < sc->rx_ring_inuse; ++i) {
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 		E1000_WRITE_REG(hw, E1000_RDH(i), rxr->next_to_check);
@@ -2886,7 +2905,7 @@ igb_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			struct igb_tx_ring *txr;
 			int i;
 
-			for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			for (i = 0; i < sc->rx_ring_inuse; ++i) {
 				struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 				lwkt_serialize_enter(&rxr->rx_serialize);
@@ -2925,7 +2944,7 @@ igb_intr(void *xsc)
 		struct igb_tx_ring *txr;
 		int i;
 
-		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		for (i = 0; i < sc->rx_ring_inuse; ++i) {
 			struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 			if (eicr & rxr->rx_intr_mask) {
@@ -2988,7 +3007,7 @@ igb_shared_intr(void *xsc)
 		struct igb_tx_ring *txr;
 		int i;
 
-		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		for (i = 0; i < sc->rx_ring_inuse; ++i) {
 			struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 			lwkt_serialize_enter(&rxr->rx_serialize);
@@ -3384,6 +3403,7 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 static void
 igb_init_intr(struct igb_softc *sc)
 {
+	igb_set_intr_mask(sc);
 	if (sc->flags & IGB_FLAG_SHARED_INTR)
 		igb_set_eitr(sc);
 	else
@@ -3421,7 +3441,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 	case e1000_vfadapt:
 	case e1000_vfadapt_i350:
 		/* RX entries */
-		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		for (i = 0; i < sc->rx_ring_inuse; ++i) {
 			rxr = &sc->rx_rings[i];
 
 			index = i >> 1;
@@ -3462,7 +3482,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 
 	case e1000_82576:
 		/* RX entries */
-		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		for (i = 0; i < sc->rx_ring_inuse; ++i) {
 			rxr = &sc->rx_rings[i];
 
 			index = i & 0x7; /* Each IVAR has two entries */
@@ -3558,11 +3578,7 @@ igb_setup_intr(struct igb_softc *sc)
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		igb_setup_rx_intr(&sc->rx_rings[i], &intr_bit, intr_bitmax);
 
-	sc->intr_mask = E1000_EICR_OTHER;
-	for (i = 0; i < sc->rx_ring_cnt; ++i)
-		sc->intr_mask |= sc->rx_rings[i].rx_intr_mask;
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
-		sc->intr_mask |= sc->tx_rings[i].tx_intr_mask;
+	igb_set_intr_mask(sc);
 
 	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
 		int unshared;
@@ -3693,3 +3709,19 @@ igb_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 }
 
 #endif	/* INVARIANTS */
+
+static void
+igb_set_intr_mask(struct igb_softc *sc)
+{
+	int i;
+
+	sc->intr_mask = E1000_EICR_OTHER;
+	for (i = 0; i < sc->rx_ring_inuse; ++i)
+		sc->intr_mask |= sc->rx_rings[i].rx_intr_mask;
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
+		sc->intr_mask |= sc->tx_rings[i].tx_intr_mask;
+	if (bootverbose) {
+		if_printf(&sc->arpcom.ac_if, "intr mask 0x%08x\n",
+		    sc->intr_mask);
+	}
+}
