@@ -262,7 +262,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		/* fill siginfo structure */
 		sf.sf_si.si_signo = sig;
 		sf.sf_si.si_code = code;
-		sf.sf_si.si_addr = (void*)regs->tf_err;
+		sf.sf_si.si_addr = (void*)regs->tf_addr;
 	}
 	else {
 		/* Old FreeBSD-style arguments. */
