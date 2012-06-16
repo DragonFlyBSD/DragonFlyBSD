@@ -403,7 +403,7 @@ DoFile(const char *savedir, const char *device)
 	syslog(LOG_NOTICE, "writing %skernel to %s",
 	    compress ? "compressed " : "", buf);
 
-	while ((nr = read(fdkernin, buf, sizeof(buf))) > 0) {
+	while ((nr = read(fdkernin, buf, BUFFERSIZE)) > 0) {
 		nw = fwrite(buf, 1, nr, fpkern);
 		if (nw != nr) {
 			syslog(LOG_ERR, "kern.%d: %m", bounds);
