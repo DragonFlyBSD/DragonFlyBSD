@@ -3004,23 +3004,28 @@ igb_shared_intr(void *xsc)
 		return;
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		struct igb_tx_ring *txr;
-		int i;
+		if (reg_icr &
+		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO)) {
+			int i;
 
-		for (i = 0; i < sc->rx_ring_inuse; ++i) {
-			struct igb_rx_ring *rxr = &sc->rx_rings[i];
+			for (i = 0; i < sc->rx_ring_inuse; ++i) {
+				struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
-			lwkt_serialize_enter(&rxr->rx_serialize);
-			igb_rxeof(rxr, -1);
-			lwkt_serialize_exit(&rxr->rx_serialize);
+				lwkt_serialize_enter(&rxr->rx_serialize);
+				igb_rxeof(rxr, -1);
+				lwkt_serialize_exit(&rxr->rx_serialize);
+			}
 		}
 
-		txr = &sc->tx_rings[0];
-		lwkt_serialize_enter(&txr->tx_serialize);
-		igb_txeof(txr);
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
-		lwkt_serialize_exit(&txr->tx_serialize);
+		if (reg_icr & E1000_ICR_TXDW) {
+			struct igb_tx_ring *txr = &sc->tx_rings[0];
+
+			lwkt_serialize_enter(&txr->tx_serialize);
+			igb_txeof(txr);
+			if (!ifq_is_empty(&ifp->if_snd))
+				if_devstart(ifp);
+			lwkt_serialize_exit(&txr->tx_serialize);
+		}
 	}
 
 	/* Link status change */
