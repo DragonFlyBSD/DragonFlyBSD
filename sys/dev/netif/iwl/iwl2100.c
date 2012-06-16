@@ -1948,7 +1948,7 @@ iwl2100_set_opmode(struct iwl2100_softc *sc, enum ieee80211_opmode opmode)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_OPMODE;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
@@ -1989,7 +1989,7 @@ iwl2100_set_80211(struct iwl2100_softc *sc)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_80211;
 	cmd->c_param_len = sizeof(cmd->c_param[0]) * 3;
@@ -2022,7 +2022,7 @@ iwl2100_set_basicrates(struct iwl2100_softc *sc)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	/*
 	 * This configuration does not seem to have any effects
@@ -2064,7 +2064,7 @@ iwl2100_set_txrates(struct iwl2100_softc *sc)
 	 * Set TX rates
 	 */
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_TXRATES;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
@@ -2080,7 +2080,7 @@ iwl2100_set_txrates(struct iwl2100_softc *sc)
 	 * Set MSDU TX rates
 	 */
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_MSDU_TXRATES;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
@@ -2106,7 +2106,7 @@ iwl2100_set_powersave(struct iwl2100_softc *sc, int on)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_POWERSAVE;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
@@ -2132,7 +2132,7 @@ iwl2100_set_rtsthreshold(struct iwl2100_softc *sc, uint16_t rtsthreshold)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_RTSTHRESHOLD;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
@@ -2165,7 +2165,7 @@ iwl2100_set_bssid(struct iwl2100_softc *sc, const uint8_t *bssid)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_BSSID;
 	if (bssid != NULL) {
@@ -2193,7 +2193,7 @@ iwl2100_set_essid(struct iwl2100_softc *sc, const uint8_t *essid, int essid_len)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_ESSID;
 	if (essid != NULL) {
@@ -2225,7 +2225,7 @@ iwl2100_set_auth_ciphers(struct iwl2100_softc *sc,
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_SECURITY;
 	cmd->c_param_len = sizeof(*sec);
@@ -2265,7 +2265,7 @@ iwl2100_set_wepkey(struct iwl2100_softc *sc, const struct ieee80211_key *k)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_WEPKEY;
 	cmd->c_param_len = sizeof(*key);
@@ -2294,7 +2294,7 @@ iwl2100_set_weptxkey(struct iwl2100_softc *sc, ieee80211_keyix txkey)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_WEPTXKEY;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
@@ -2320,7 +2320,7 @@ iwl2100_set_privacy(struct iwl2100_softc *sc, int on)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_PRIVACY;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
@@ -2682,7 +2682,7 @@ iwl2100_config_op(struct iwl2100_softc *sc, uint32_t op)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 	cmd->c_cmd = op;
 
 	error = iwl2100_wait_cmd(sc);
@@ -2717,7 +2717,7 @@ iwl2100_set_chan(struct iwl2100_softc *sc, const struct ieee80211_channel *c)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_CHAN;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
@@ -2746,7 +2746,7 @@ iwl2100_set_scanopt(struct iwl2100_softc *sc, uint32_t chans, uint32_t flags)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	/*
 	 * NOTE:
@@ -2785,7 +2785,7 @@ iwl2100_set_scan(struct iwl2100_softc *sc)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SCAN;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
@@ -2819,7 +2819,7 @@ iwl2100_set_optie(struct iwl2100_softc *sc, void *optie, uint16_t optie_len)
 		return 0;
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_IE;
 	cmd->c_param_len = sizeof(*ie);
@@ -2847,7 +2847,7 @@ iwl2100_set_bintval(struct iwl2100_softc *sc, uint16_t bintval)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_BINTVAL;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
@@ -2873,7 +2873,7 @@ iwl2100_set_txpower(struct iwl2100_softc *sc, uint16_t txpower)
 	}
 
 	cmd = mtod(sc->sc_cmd, struct iwl2100_cmd *);
-	bzero(cmd, sizeof(cmd));
+	bzero(cmd, sizeof(*cmd));
 
 	cmd->c_cmd = IWL2100_CMD_SET_TXPOWER;
 	cmd->c_param_len = sizeof(cmd->c_param[0]);
