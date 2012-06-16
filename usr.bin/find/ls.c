@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,8 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ls.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/find/ls.c,v 1.17 2004/01/20 09:27:03 des Exp $
- * $DragonFly: src/usr.bin/find/ls.c,v 1.6 2005/02/22 01:52:44 joerg Exp $
+ * $FreeBSD: src/usr.bin/find/ls.c,v 1.23 2011/09/28 18:53:36 ed Exp $
  */
 
 #include <sys/param.h>
@@ -46,16 +41,11 @@
 #include <langinfo.h>
 #include <pwd.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "find.h"
-
-#ifndef PRId64
-#define	PRId64 "lld"
-#endif
 
 /* Derived from the print routines in the ls(1) source code. */
 
@@ -74,8 +64,7 @@ printlong(char *name, char *accpath, struct stat *sb)
 	    group_from_gid(sb->st_gid, 0));
 
 	if (S_ISCHR(sb->st_mode) || S_ISBLK(sb->st_mode))
-		printf("%3d, %3d ", major(sb->st_rdev),
-		    minor(sb->st_rdev));
+		printf("%#8jx ", (uintmax_t)sb->st_rdev);
 	else
 		printf("%8"PRId64" ", sb->st_size);
 	printtime(sb->st_mtime);

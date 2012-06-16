@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)find.c	8.5 (Berkeley) 8/5/94
- * $FreeBSD: src/usr.bin/find/find.c,v 1.17 2004/05/28 17:17:15 eik Exp $
+ * $FreeBSD: src/usr.bin/find/find.c,v 1.23 2010/12/11 08:32:16 joel Exp $
  */
 
 #include <sys/types.h>
@@ -174,7 +170,7 @@ find_execute(PLAN *plan, char *paths[])
 	PLAN *p;
 	int rval;
 
-	tree = fts_open(paths, ftsoptions, issort ? find_compare : NULL);
+	tree = fts_open(paths, ftsoptions, (issort ? find_compare : NULL));
 	if (tree == NULL)
 		err(1, "ftsopen");
 
@@ -224,10 +220,7 @@ find_execute(PLAN *plan, char *paths[])
 		 */
 		for (p = plan; p && (p->execute)(p, entry); p = p->next);
 	}
-	/* Finish any pending -exec ... {} + functions. */
-	for (p = plan; p != NULL; p = p->next)
-		if (p->execute == f_exec && p->flags & F_EXECPLUS)
-			(p->execute)(p, NULL);
+	finish_execplus();
 	if (errno)
 		err(1, "fts_read");
 	return (rval);
