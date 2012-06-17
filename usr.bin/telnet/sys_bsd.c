@@ -32,11 +32,9 @@
  *
  * @(#)sys_bsd.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnet/sys_bsd.c,v 1.2.8.4 2002/04/13 10:59:08 markm Exp $
- * $DragonFly: src/crypto/telnet/telnet/sys_bsd.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
 
  */
 
-#include <sys/cdefs.h>
 #include <stdlib.h>
 #include <err.h>
 

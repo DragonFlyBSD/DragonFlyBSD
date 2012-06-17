@@ -29,8 +29,6 @@
  | $Id: auth_subr.c,v 2.2 2007/06/01 08:09:37 danny Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>

@@ -31,10 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)strcasecmp.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libstand/strcasecmp.c,v 1.4 2005/12/11 02:27:26 swildner Exp $
  */
 
-#include <sys/cdefs.h>
 #include <string.h>
 #include "stand.h"
 

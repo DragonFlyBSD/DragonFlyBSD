@@ -1,5 +1,4 @@
 /* $OpenBSD: sensors.c,v 1.11 2007/03/23 14:48:22 ckuethe Exp $ */
-/* $DragonFly: src/usr.bin/systat/sensors.c,v 1.2 2008/11/10 04:59:45 swildner Exp $ */
 
 /*
  * Copyright (c) 2007 Deanna Phillips <deanna@openbsd.org>
@@ -19,7 +18,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <sys/sensors.h>

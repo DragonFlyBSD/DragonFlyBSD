@@ -47,9 +47,9 @@
 /*
  * $FreeBSD: src/usr.sbin/moused/moused.c,v 1.69 2005/01/06 08:38:29 philip Exp $
  */
+
 #include <machine/console.h>
 #include <sys/mouse.h>
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/consio.h>
 #include <sys/linker.h>

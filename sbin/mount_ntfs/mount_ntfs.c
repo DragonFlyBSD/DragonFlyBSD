@@ -32,7 +32,6 @@
  *
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #define NTFS
 #include <sys/mount.h>

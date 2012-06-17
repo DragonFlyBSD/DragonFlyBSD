@@ -4,7 +4,6 @@
  * MDDRIVER.C - test driver for MD2, MD4 and MD5
  *
  * $FreeBSD: src/sbin/md5/md5.c,v 1.35 2006/01/17 15:35:57 phk Exp $
- * $DragonFly: src/sbin/md5/md5.c,v 1.4 2008/01/16 14:18:57 matthias Exp $
  */
 
 /*
@@ -19,8 +18,6 @@
  *  These notices must be retained in any copies of any part of this
  *  documentation and/or software.
  */
-
-#include <sys/cdefs.h>
 
 #include <fcntl.h>
 #include <sys/types.h>

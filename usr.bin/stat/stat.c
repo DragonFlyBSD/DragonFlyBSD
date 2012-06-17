@@ -35,10 +35,8 @@
  *
  * $NetBSD: stat.c,v 1.13 2003/07/25 03:21:17 atatat Exp $
  * $FreeBSD: src/usr.bin/stat/stat.c,v 1.6 2003/10/06 01:55:17 dougb Exp $
- * $DragonFly: src/usr.bin/stat/stat.c,v 1.6 2005/06/29 00:24:49 corecode Exp $
  */
 
-#include <sys/cdefs.h>
 #if HAVE_CONFIG_H
 #include "config.h" 
 #else  /* HAVE_CONFIG_H */

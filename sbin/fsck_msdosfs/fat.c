@@ -31,11 +31,7 @@
  *
  * $NetBSD: fat.c,v 1.12 2000/10/10 20:24:52 is Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/fat.c,v 1.1.2.1 2001/08/01 05:47:56 obrien Exp $
- * $DragonFly: src/sbin/fsck_msdosfs/fat.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
  */
-
-
-#include <sys/cdefs.h>
 
 #include <stdlib.h>
 #include <string.h>

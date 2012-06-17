@@ -25,10 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.13 2008/11/10 02:05:31 swildner Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/types.h>
 #include <sys/ktr.h>

@@ -35,10 +35,7 @@
  *
  * @(#) Copyright (c) 1999 The NetBSD Foundation, Inc.  All rights reserved.
  * $FreeBSD: src/usr.bin/nl/nl.c,v 1.2.2.2 2002/07/15 06:18:43 tjr Exp $
- * $DragonFly: src/usr.bin/nl/nl.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/types.h>
 

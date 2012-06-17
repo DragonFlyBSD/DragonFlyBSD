@@ -29,8 +29,6 @@
  | $Id: misc.c,v 2.1 2006/11/12 08:06:51 danny Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>

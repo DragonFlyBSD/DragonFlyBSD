@@ -24,10 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kldstat/kldstat.c,v 1.20 2007/10/22 04:12:57 jb Exp $
- * $DragonFly: src/sbin/kldstat/kldstat.c,v 1.5 2008/01/08 15:27:57 matthias Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <err.h>
 #include <stdint.h>

@@ -1,5 +1,4 @@
 /*	$NetBSD: netif.c,v 1.10 1997/09/06 13:57:14 drochner Exp $	*/
-/* $DragonFly: src/lib/libstand/netif.c,v 1.3 2005/12/11 02:27:26 swildner Exp $							*/
 
 /*
  * Copyright (c) 1993 Adam Glass
@@ -34,7 +33,6 @@
 
 #include <sys/param.h>
 #include <sys/types.h>
-#include <sys/cdefs.h>
 #include <sys/mount.h>
 #include <string.h>
 

@@ -1,4 +1,3 @@
-/* $DragonFly: src/lib/libutil/trimdomain.c,v 1.2 2005/03/04 04:31:11 cpressey Exp $ */
 /*
  * Copyright (c) 2001 Brian Somers <brian@Awfulhak.org>
  *   Based on original work by Atsushi Murai <amurai@FreeBSD.org>
@@ -28,7 +27,6 @@
  * $FreeBSD: /repoman/r/ncvs/src/lib/libutil/trimdomain.c,v 1.5 2003/10/18 10:04:16 markm Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 
 #include <string.h>

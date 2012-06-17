@@ -32,10 +32,8 @@
  *
  * @(#)str.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/tr/str.c,v 1.10.2.2 2002/07/29 12:59:33 tjr Exp $
- * $DragonFly: src/usr.bin/tr/str.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 
 #include <ctype.h>

@@ -29,8 +29,6 @@
  | $Id: fsm.c,v 2.8 2007/05/19 16:34:21 danny Exp danny $
  */
 
-#include <sys/cdefs.h>
-
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>

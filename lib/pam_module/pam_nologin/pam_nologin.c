@@ -34,10 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpam/modules/pam_nologin/pam_nologin.c,v 1.13 2007/06/14 13:07:06 yar Exp $
- * $DragonFly: src/lib/pam_module/pam_nologin/pam_nologin.c,v 1.1 2008/01/02 17:41:30 matthias Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>

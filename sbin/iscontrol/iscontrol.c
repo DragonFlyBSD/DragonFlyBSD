@@ -31,8 +31,6 @@
  | the user level initiator (client)
  */
 
-#include <sys/cdefs.h>
-
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>
