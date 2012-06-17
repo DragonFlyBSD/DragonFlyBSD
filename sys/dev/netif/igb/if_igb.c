@@ -422,21 +422,6 @@ igb_attach(device_t dev)
 
 	sc->hw.hw_addr = (uint8_t *)&sc->osdep.mem_bus_space_handle;
 
-	/*
-	 * Allocate interrupt
-	 */
-	sc->intr_type = pci_alloc_1intr(dev, igb_msi_enable,
-	    &sc->intr_rid, &intr_flags);
-
-	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->intr_rid,
-	    intr_flags);
-	if (sc->intr_res == NULL) {
-		device_printf(dev, "Unable to allocate bus resource: "
-		    "interrupt\n");
-		error = ENXIO;
-		goto failed;
-	}
-
 	/* Save PCI command register for Shared Code */
 	sc->hw.bus.pci_cmd_word = pci_read_config(dev, PCIR_COMMAND, 2);
 	sc->hw.back = &sc->osdep;
@@ -470,6 +455,21 @@ igb_attach(device_t dev)
 	error = igb_alloc_rings(sc);
 	if (error)
 		goto failed;
+
+	/*
+	 * Allocate interrupt
+	 */
+	sc->intr_type = pci_alloc_1intr(dev, igb_msi_enable,
+	    &sc->intr_rid, &intr_flags);
+
+	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->intr_rid,
+	    intr_flags);
+	if (sc->intr_res == NULL) {
+		device_printf(dev, "Unable to allocate bus resource: "
+		    "interrupt\n");
+		error = ENXIO;
+		goto failed;
+	}
 
 	/*
 	 * Setup serializers
