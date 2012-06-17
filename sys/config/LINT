@@ -2495,6 +2495,7 @@ options		BCE_DEBUG
 options		EMX_RSS_DEBUG
 options		JME_RSS_DEBUG
 options		IGB_RSS_DEBUG
+options		IGB_MSIX_DEBUG
 #options	ED_NO_MIIBUS
 options 	ENABLE_ALART
 options 	FB_DEBUG=2

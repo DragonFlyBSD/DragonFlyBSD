@@ -54,6 +54,14 @@
 #define IGB_MIN_TXRXINT		2	/* XXX VF? */
 
 /*
+ * Max IVAR count
+ */
+#define IGB_MAX_IVAR_I350	4
+#define IGB_MAX_IVAR_82580	4
+#define IGB_MAX_IVAR_82576	8
+#define IGB_MAX_IVAR_VF		1
+
+/*
  * IGB_TXD: Maximum number of Transmit Descriptors
  *
  *   This value is the number of transmit descriptors allocated by the driver.
@@ -137,6 +145,8 @@
 #define IGB_FC_PAUSE_TIME		0x0680
 
 #define IGB_INTR_RATE			10000
+#define IGB_MSIX_RX_RATE		6000
+#define IGB_MSIX_TX_RATE		4000
 
 /*
  * TDBA/RDBA should be aligned on 16 byte boundary. But TDLEN/RDLEN should be
@@ -264,6 +274,27 @@ struct igb_rx_ring {
 	u_long			rx_packets;
 };
 
+struct igb_msix_data {
+	struct lwkt_serialize	*msix_serialize;
+	struct lwkt_serialize	msix_serialize0;
+	struct igb_softc	*msix_sc;
+	uint32_t		msix_mask;
+	struct igb_rx_ring	*msix_rx;
+	struct igb_tx_ring	*msix_tx;
+
+	driver_intr_t		*msix_func;
+	void			*msix_arg;
+
+	int			msix_cpuid;
+	char			msix_desc[32];
+	int			msix_rid;
+	struct resource		*msix_res;
+	void			*msix_handle;
+	u_int			msix_vector;
+	int			msix_rate;
+	char			msix_rate_desc[32];
+};
+
 struct igb_softc {
 	struct arpcom		arpcom;
 	struct e1000_hw		hw;
@@ -313,6 +344,8 @@ struct igb_softc {
 
 	int			intr_rate;
 	uint32_t		intr_mask;
+	int			sts_intr_bit;
+	uint32_t		sts_intr_mask;
 
 	/*
 	 * Transmit rings
@@ -325,6 +358,7 @@ struct igb_softc {
 	 */
 	int			rss_debug;
 	int			rx_ring_cnt;
+	int			rx_ring_msix;
 	int			rx_ring_inuse;
 	struct igb_rx_ring	*rx_rings;
 
@@ -346,6 +380,12 @@ struct igb_softc {
 	struct sysctl_oid	*sysctl_tree;
 
 	void 			*stats;
+
+	int			msix_tx_cpuid;
+	int			msix_mem_rid;
+	struct resource 	*msix_mem_res;
+	int			msix_cnt;
+	struct igb_msix_data	*msix_data;
 };
 
 #define IGB_ENABLE_HWRSS(sc)	((sc)->rx_ring_cnt > 1)
