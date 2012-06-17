@@ -204,8 +204,8 @@ static void	igb_set_intr_mask(struct igb_softc *);
 static void	igb_get_mgmt(struct igb_softc *);
 static void	igb_rel_mgmt(struct igb_softc *);
 static void	igb_get_hw_control(struct igb_softc *);
-static void     igb_rel_hw_control(struct igb_softc *);
-static void     igb_enable_wol(device_t);
+static void	igb_rel_hw_control(struct igb_softc *);
+static void	igb_enable_wol(device_t);
 
 static device_method_t igb_methods[] = {
 	/* Device interface */
