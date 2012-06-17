@@ -375,6 +375,34 @@ igb_attach(device_t dev)
 	else
 		sc->vf_ifp = 0;
 
+	/*
+	 * Configure total supported RX/TX ring count
+	 */
+	switch (sc->hw.mac.type) {
+	case e1000_82575:
+		ring_max = IGB_MAX_RING_82575;
+		break;
+	case e1000_82580:
+		ring_max = IGB_MAX_RING_82580;
+		break;
+	case e1000_i350:
+		ring_max = IGB_MAX_RING_I350;
+		break;
+	case e1000_82576:
+		ring_max = IGB_MAX_RING_82576;
+		break;
+	default:
+		ring_max = IGB_MIN_RING;
+		break;
+	}
+	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", igb_rxr);
+	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, ring_max);
+#ifdef IGB_RSS_DEBUG
+	sc->rx_ring_cnt = device_getenv_int(dev, "rxr_debug", sc->rx_ring_cnt);
+#endif
+	sc->rx_ring_inuse = sc->rx_ring_cnt;
+	sc->tx_ring_cnt = 1; /* XXX */
+
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
 
@@ -412,31 +440,6 @@ igb_attach(device_t dev)
 	/* Save PCI command register for Shared Code */
 	sc->hw.bus.pci_cmd_word = pci_read_config(dev, PCIR_COMMAND, 2);
 	sc->hw.back = &sc->osdep;
-
-	switch (sc->hw.mac.type) {
-	case e1000_82575:
-		ring_max = IGB_MAX_RING_82575;
-		break;
-	case e1000_82580:
-		ring_max = IGB_MAX_RING_82580;
-		break;
-	case e1000_i350:
-		ring_max = IGB_MAX_RING_I350;
-		break;
-	case e1000_82576:
-		ring_max = IGB_MAX_RING_82576;
-		break;
-	default:
-		ring_max = IGB_MIN_RING;
-		break;
-	}
-	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", igb_rxr);
-	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, ring_max);
-#ifdef IGB_RSS_DEBUG
-	sc->rx_ring_cnt = device_getenv_int(dev, "rxr_debug", sc->rx_ring_cnt);
-#endif
-	sc->rx_ring_inuse = sc->rx_ring_cnt;
-	sc->tx_ring_cnt = 1; /* XXX */
 
 	sc->intr_rate = IGB_INTR_RATE;
 
