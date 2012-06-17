@@ -199,6 +199,8 @@ static int	igb_setup_intr(struct igb_softc *);
 static void	igb_setup_tx_intr(struct igb_tx_ring *, int *, int);
 static void	igb_setup_rx_intr(struct igb_rx_ring *, int *, int);
 static void	igb_set_intr_mask(struct igb_softc *);
+static int	igb_alloc_intr(struct igb_softc *);
+static void	igb_free_intr(struct igb_softc *);
 
 /* Management and WOL Support */
 static void	igb_get_mgmt(struct igb_softc *);
@@ -331,7 +333,6 @@ igb_attach(device_t dev)
 {
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
-	u_int intr_flags;
 	int error = 0, i, j, ring_max;
 
 #ifdef notyet
@@ -456,20 +457,10 @@ igb_attach(device_t dev)
 	if (error)
 		goto failed;
 
-	/*
-	 * Allocate interrupt
-	 */
-	sc->intr_type = pci_alloc_1intr(dev, igb_msi_enable,
-	    &sc->intr_rid, &intr_flags);
-
-	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->intr_rid,
-	    intr_flags);
-	if (sc->intr_res == NULL) {
-		device_printf(dev, "Unable to allocate bus resource: "
-		    "interrupt\n");
-		error = ENXIO;
+	/* Allocate interrupt */
+	error = igb_alloc_intr(sc);
+	if (error)
 		goto failed;
-	}
 
 	/*
 	 * Setup serializers
@@ -659,12 +650,7 @@ igb_detach(device_t dev)
 	}
 	bus_generic_detach(dev);
 
-	if (sc->intr_res != NULL) {
-		bus_release_resource(dev, SYS_RES_IRQ, sc->intr_rid,
-		    sc->intr_res);
-	}
-	if (sc->intr_type == PCI_INTR_TYPE_MSI)
-		pci_release_msi(dev);
+	igb_free_intr(sc);
 
 	if (sc->mem_res != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mem_rid,
@@ -3732,4 +3718,33 @@ igb_set_intr_mask(struct igb_softc *sc)
 		if_printf(&sc->arpcom.ac_if, "intr mask 0x%08x\n",
 		    sc->intr_mask);
 	}
+}
+
+static int
+igb_alloc_intr(struct igb_softc *sc)
+{
+	u_int intr_flags;
+
+	sc->intr_type = pci_alloc_1intr(sc->dev, igb_msi_enable,
+	    &sc->intr_rid, &intr_flags);
+
+	sc->intr_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
+	    &sc->intr_rid, intr_flags);
+	if (sc->intr_res == NULL) {
+		device_printf(sc->dev, "Unable to allocate bus resource: "
+		    "interrupt\n");
+		return ENXIO;
+	}
+	return 0;
+}
+
+static void
+igb_free_intr(struct igb_softc *sc)
+{
+	if (sc->intr_res != NULL) {
+		bus_release_resource(sc->dev, SYS_RES_IRQ, sc->intr_rid,
+		    sc->intr_res);
+	}
+	if (sc->intr_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(sc->dev);
 }
