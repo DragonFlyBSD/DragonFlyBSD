@@ -831,8 +831,8 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	struct vnode *vp;
 	enum vtype f_type;
 
-	dprintf(("ntfs_vgetex: ino: %d, attr: 0x%x:%s, lkf: 0x%lx, f: 0x%lx\n",
-		ino, attrtype, attrname?attrname:"", lkflags, flags));
+	dprintf(("ntfs_vgetex: ino: %ju, attr: 0x%x:%s, lkf: 0x%lx, f: 0x%lx\n",
+		(uintmax_t) ino, attrtype, attrname?attrname:"", lkflags, flags));
 
 	ntmp = VFSTONTFS(mp);
 	*vpp = NULL;
@@ -897,7 +897,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 		ntfs_ntput(ip);
 		return (error);
 	}
-	dprintf(("ntfs_vget: vnode: %p for ntnode: %d\n", vp,ino));
+	dprintf(("ntfs_vget: vnode: %p for ntnode: %ju\n", vp, (uintmax_t)ino));
 
 	fp->f_vp = vp;
 	vp->v_data = fp;
