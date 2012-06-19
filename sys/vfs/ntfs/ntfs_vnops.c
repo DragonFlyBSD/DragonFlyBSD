@@ -753,8 +753,10 @@ ntfs_lookup(struct vop_old_lookup_args *ap)
 		dprintf(("ntfs_lookup: found ino: %d\n", 
 			VTONT(*ap->a_vpp)->i_number));
 
-		if (!lockparent)
+		if (!lockparent) {
 			VOP__UNLOCK(dvp, 0);
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
+		}
 	}
 	return (error);
 }
