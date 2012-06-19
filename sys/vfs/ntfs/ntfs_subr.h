@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.h,v 1.7.2.1 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.h,v 1.3 2003/08/20 09:56:33 rob Exp $
  */
 
 #define	VA_LOADED		0x0001

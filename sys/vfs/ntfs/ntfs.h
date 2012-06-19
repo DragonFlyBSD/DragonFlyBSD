@@ -28,13 +28,11 @@
  * $FreeBSD: src/sys/ntfs/ntfs.h,v 1.8.2.2 2001/10/12 22:08:49 semenu Exp $
  */
 
-/*#define NTFS_DEBUG 1*/
-#if defined(__NetBSD__) && defined(_KERNEL) && !defined(_LKM)
+#ifdef _KERNEL
 #include "opt_ntfs.h"
 #endif
-#if defined(__DragonFly__)
 #include <sys/thread2.h>
-#endif
+
 
 typedef u_int64_t cn_t;
 typedef u_int16_t wchar;
