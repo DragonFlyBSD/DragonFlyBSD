@@ -52,7 +52,6 @@
 #include <miscfs/specfs/specdev.h>
 #endif
 
-/* #define NTFS_DEBUG 1 */
 #include "ntfs.h"
 #include "ntfsmount.h"
 #include "ntfs_inode.h"

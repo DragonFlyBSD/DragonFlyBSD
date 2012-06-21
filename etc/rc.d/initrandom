@@ -42,11 +42,13 @@ initrandom_start()
 	# TSC, 8254, and a few other things that tend to be somewhat more
 	# random (even from a CD boot) so it isn't all that bad.
 	#
+	echo -n 'Initializing random seed: '
 	sysctl kern.seedenable=1 >/dev/null
 	( ps -fauxww; sysctl -a; date; df -ib; dmesg; ps -fauxww; ) \
 	    2>&1 | dd of=/dev/random bs=8k 2>/dev/null
 	cat /bin/ls | dd of=/dev/random bs=8k 2>/dev/null
 	sysctl kern.seedenable=0 >/dev/null
+	echo 'done. '
 }
 
 load_rc_config random

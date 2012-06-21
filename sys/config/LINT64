@@ -641,6 +641,9 @@ options 	NFS_WDELAYHASHSIZ=16	# and with this
 options 	NFS_MUIDHASHSIZ=63	# Tune the size of nfsmount with this
 options 	NFS_DEBUG		# Enable NFS Debugging
 
+# NTFS options:
+options		NTFS_DEBUG
+
 # MSDOSFS options:
 options		MSDOSFS_DEBUG		# Enable MSDOSFS Debugging
 

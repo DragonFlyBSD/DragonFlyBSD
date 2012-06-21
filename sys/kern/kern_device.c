@@ -442,8 +442,10 @@ dev_dkqfilter(cdev_t dev, struct knote *kn)
 	if (needmplock)
 		rel_mplock();
 
-	if (error == 0)
+	if (error == 0) 
 		return(ap.a_result);
+	else if (error == EOPNOTSUPP)
+		return(EOPNOTSUPP);
 	return(ENODEV);
 }
 

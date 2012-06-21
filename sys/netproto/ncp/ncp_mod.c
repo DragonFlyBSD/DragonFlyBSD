@@ -100,7 +100,8 @@ sys_sncp_connect(struct sncp_connect_args *uap)
 	if (!error) {
 		error = ncp_conn_gethandle(conn, td, &handle);
 		if (error == 0)
-			copyout(&handle->nh_id, uap->connHandle, sizeof(uap->connHandle));
+			copyout(&handle->nh_id, uap->connHandle,
+			    sizeof(*uap->connHandle));
 		ncp_conn_unlock(conn,td);
 	}
 	rel_mplock();
