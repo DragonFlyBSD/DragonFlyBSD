@@ -68,7 +68,7 @@ MLINKS= 	editline.3 el_init.3 \
 		editline.3 tok_end.3 \
 		editline.3 tok_reset.3 \
 		editline.3 tok_line.3 \
-		editline.3 tok_str.3 \
+		editline.3 tok_str.3
 
 CLEANFILES+=	common.h emacs.h fcns.c fcns.h help.c help.h vi.h editline.c
 AHDR=		vi.h emacs.h common.h
