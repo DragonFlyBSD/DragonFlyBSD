@@ -24,8 +24,7 @@ MLINKS=		refuse.3 fuse_main.3 \
 		refuse.3 puffs_fuse_node_rename.3 \
 		refuse.3 puffs_fuse_node_rmdir.3 \
 		refuse.3 puffs_fuse_node_symlink.3 \
-		refuse.3 puffs_fuse_node_write.3 \
-		refuse.3 puffs_fuse_unlink.3
+		refuse.3 puffs_fuse_node_write.3
 
 .ifdef DEBUG
 CFLAGS+=	-g -DFUSE_OPT_DEBUG

@@ -2024,6 +2024,8 @@ TO_REMOVE+=/usr/share/man/cat3/tok_wreset.3.gz
 TO_REMOVE+=/usr/share/man/man3/tok_wreset.3.gz
 TO_REMOVE+=/usr/share/man/cat3/tok_wstr.3.gz
 TO_REMOVE+=/usr/share/man/man3/tok_wstr.3.gz
+TO_REMOVE+=/usr/share/man/cat3/puffs_fuse_unlink.3.gz
+TO_REMOVE+=/usr/share/man/man3/puffs_fuse_unlink.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
