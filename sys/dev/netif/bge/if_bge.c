@@ -3256,14 +3256,8 @@ static void
 bge_stop(struct bge_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct ifmedia_entry *ifm;
-	struct mii_data *mii = NULL;
-	int mtmp, itmp;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	if ((sc->bge_flags & BGE_FLAG_TBI) == 0)
-		mii = device_get_softc(sc->bge_miibus);
 
 	callout_stop(&sc->bge_stat_timer);
 
@@ -3323,26 +3317,6 @@ bge_stop(struct bge_softc *sc)
 
 	/* Free TX buffers. */
 	bge_free_tx_ring(sc);
-
-	/*
-	 * Isolate/power down the PHY, but leave the media selection
-	 * unchanged so that things will be put back to normal when
-	 * we bring the interface back up.
-	 *
-	 * 'mii' may be NULL in the following cases:
-	 * - The device uses TBI.
-	 * - bge_stop() is called by bge_detach().
-	 */
-	if (mii != NULL) {
-		itmp = ifp->if_flags;
-		ifp->if_flags |= IFF_UP;
-		ifm = mii->mii_media.ifm_cur;
-		mtmp = ifm->ifm_media;
-		ifm->ifm_media = IFM_ETHER|IFM_NONE;
-		mii_mediachg(mii);
-		ifm->ifm_media = mtmp;
-		ifp->if_flags = itmp;
-	}
 
 	sc->bge_link = 0;
 	sc->bge_coal_chg = 0;
