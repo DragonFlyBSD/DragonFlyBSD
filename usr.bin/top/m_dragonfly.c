@@ -64,11 +64,6 @@ static int show_fullcmd;
 
 int n_cpus = 0;
 
-/*
- * needs to be a global symbol, so wrapper can be modified accordingly.
- */
-static int show_threads = 0;
-
 /* get_process_info passes back a handle.  This is what it looks like: */
 
 struct handle {
@@ -464,9 +459,13 @@ get_process_info(struct system_info *si, struct process_select *sel,
 	int show_idle;
 	int show_system;
 	int show_uid;
+	int show_threads;
+
+	show_threads = sel->threads;
 
 
-	pbase = kvm_getprocs(kd, KERN_PROC_ALL, 0, &nproc);
+	pbase = kvm_getprocs(kd,
+	    KERN_PROC_ALL | (show_threads ? KERN_PROC_FLAG_LWP : 0), 0, &nproc);
 	if (nproc > onproc)
 		pref = (struct kinfo_proc **)realloc(pref, sizeof(struct kinfo_proc *)
 		    * (onproc = nproc));
