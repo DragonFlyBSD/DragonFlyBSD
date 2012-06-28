@@ -1259,6 +1259,16 @@ bge_chipinit(struct bge_softc *sc)
 			} else {
 				dma_rw_ctl |= (1 << 20) | (1 << 18) | (1 << 15);
 			}
+		} else if (sc->bge_asicrev == BGE_ASICREV_BCM5703) {
+			/*
+			 * In the BCM5703, the DMA read watermark should
+			 * be set to less than or equal to the maximum
+			 * memory read byte count of the PCI-X command
+			 * register.
+			 */
+			dma_rw_ctl = BGE_PCI_READ_CMD|BGE_PCI_WRITE_CMD |
+			    (0x4 << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
+			    (0x3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
 		} else if (sc->bge_asicrev == BGE_ASICREV_BCM5704) {
 			/*
 			 * The 5704 uses a different encoding of read/write
