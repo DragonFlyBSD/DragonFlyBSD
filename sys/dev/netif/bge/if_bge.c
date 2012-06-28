@@ -1296,6 +1296,16 @@ bge_chipinit(struct bge_softc *sc)
 	    BGE_MODECTL_TX_NO_PHDR_CSUM);
 
 	/*
+	 * BCM5701 B5 have a bug causing data corruption when using
+	 * 64-bit DMA reads, which can be terminated early and then
+	 * completed later as 32-bit accesses, in combination with
+	 * certain bridges.
+	 */
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5701 &&
+	    sc->bge_chipid == BGE_CHIPID_BCM5701_B5)
+		BGE_SETBIT(sc, BGE_MODE_CTL, BGE_MODECTL_FORCE_PCI32);
+
+	/*
 	 * Disable memory write invalidate.  Apparently it is not supported
 	 * properly by these devices.
 	 */
