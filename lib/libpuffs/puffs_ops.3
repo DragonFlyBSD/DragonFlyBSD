@@ -273,7 +273,7 @@ Initiate I/O, but do not wait for completion.
 .It Dv MNT_LAZY
 Synchorize data not synchoronized by the file system syncer,
 i.e. data not written when
-.Fn node_fsync
+.Fn puffs_node_fsync
 is called with
 .Dv FSYNC_LAZY .
 .El

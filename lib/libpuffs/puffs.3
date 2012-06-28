@@ -509,9 +509,9 @@ address as a cookie and store file system specific data in the private
 portion of
 .Vt struct puffs_node .
 The library assumes this by default.
-If it is not desirable, the file system implementation can call
-.Fn puffs_set_cookiemap
-to provide an alternative cookie-to-node mapping function.
+.\"If it is not desirable, the file system implementation can call
+.\".Fn puffs_set_cookiemap
+.\"to provide an alternative cookie-to-node mapping function.
 .Sh SEE ALSO
 .Xr mount 2 ,
 .Xr puffs_cc 3 ,
