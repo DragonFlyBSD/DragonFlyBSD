@@ -1648,8 +1648,10 @@ bge_blockinit(struct bge_softc *sc)
 
 	/* Turn on write DMA state machine */
 	val = BGE_WDMAMODE_ENABLE|BGE_WDMAMODE_ALL_ATTNS;
-	if (BGE_IS_5755_PLUS(sc))
-		val |= (1 << 29);	/* Enable host coalescing bug fix. */
+	if (BGE_IS_5755_PLUS(sc)) {
+		/* Enable host coalescing bug fix. */
+		val |= BGE_WDMAMODE_STATUS_TAG_FIX;
+	}
 	CSR_WRITE_4(sc, BGE_WDMA_MODE, val);
 	DELAY(40);
 
@@ -2205,8 +2207,7 @@ bge_reset(struct bge_softc *sc)
 
 	/* Disable fastboot on controllers that support it. */
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5752 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5755 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5787) {
+	    BGE_IS_5755_PLUS(sc)) {
 		if (bootverbose)
 			if_printf(&sc->arpcom.ac_if, "Disabling fastboot\n");
 		CSR_WRITE_4(sc, BGE_FASTBOOT_PC, 0x0);
