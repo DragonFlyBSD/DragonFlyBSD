@@ -1939,6 +1939,25 @@ bge_attach(device_t dev)
 		      : ((sc->bge_flags & BGE_FLAG_PCIE) ?
 			"PCI-E" : "PCI"));
 
+	/*
+	 * All controllers that are not 5755 or higher have 4GB
+	 * boundary DMA bug.
+	 * Whenever an address crosses a multiple of the 4GB boundary
+	 * (including 4GB, 8Gb, 12Gb, etc.) and makes the transition
+	 * from 0xX_FFFF_FFFF to 0x(X+1)_0000_0000 an internal DMA
+	 * state machine will lockup and cause the device to hang.
+	 */
+	if (BGE_IS_5755_PLUS(sc) == 0)
+		sc->bge_flags |= BGE_FLAG_BOUNDARY_4G;
+
+	/*
+	 * The 40bit DMA bug applies to the 5714/5715 controllers and is
+	 * not actually a MAC controller bug but an issue with the embedded
+	 * PCIe to PCI-X bridge in the device. Use 40bit DMA workaround.
+	 */
+	if (BGE_IS_5714_FAMILY(sc) && (sc->bge_flags & BGE_FLAG_PCIX))
+		sc->bge_flags |= BGE_FLAG_MAXADDR_40BIT;
+
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
@@ -3457,12 +3476,22 @@ bge_dma_alloc(struct bge_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i, error;
+	bus_addr_t lowaddr;
+	bus_size_t boundary;
+
+	boundary = 0;
+	if (sc->bge_flags & BGE_FLAG_BOUNDARY_4G)
+		boundary = BGE_DMA_BOUNDARY_4G;
+
+	lowaddr = BUS_SPACE_MAXADDR;
+	if (sc->bge_flags & BGE_FLAG_MAXADDR_40BIT)
+		lowaddr = BGE_DMA_MAXADDR_40BIT;
 
 	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
 	 */
-	error = bus_dma_tag_create(NULL, 1, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+	error = bus_dma_tag_create(NULL, 1, boundary,
+				   lowaddr, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   BUS_SPACE_MAXSIZE_32BIT, 0,
 				   BUS_SPACE_MAXSIZE_32BIT,
