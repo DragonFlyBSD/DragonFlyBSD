@@ -1889,14 +1889,18 @@ bge_attach(device_t dev)
 	if (sc->bge_chipid == BGE_CHIPID_BCM5704_A0)
 		sc->bge_flags |= BGE_FLAG_5704_A0_BUG;
 
-	if (BGE_IS_5705_PLUS(sc) &&
-		!(sc->bge_flags & BGE_FLAG_ADJUST_TRIM)) {
+	if (BGE_IS_5705_PLUS(sc)) {
 		if (sc->bge_asicrev == BGE_ASICREV_BCM5755 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5761 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5784 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5787) {
-		    	if (sc->bge_chipid != BGE_CHIPID_BCM5722_A0)
-			    sc->bge_flags |= BGE_FLAG_JITTER_BUG;
+			uint32_t product = pci_get_device(dev);
+
+			if (product != PCI_PRODUCT_BROADCOM_BCM5722 &&
+			    product != PCI_PRODUCT_BROADCOM_BCM5756)
+				sc->bge_flags |= BGE_FLAG_JITTER_BUG;
+			if (product == PCI_PRODUCT_BROADCOM_BCM5755M)
+				sc->bge_flags |= BGE_FLAG_ADJUST_TRIM;
 		} else if (sc->bge_asicrev != BGE_ASICREV_BCM5906) {
 			sc->bge_flags |= BGE_FLAG_BER_BUG;
 		}
