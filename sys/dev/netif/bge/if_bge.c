@@ -1954,8 +1954,10 @@ bge_attach(device_t dev)
 		 * (This bit is not valid on PCI Express controllers.)
 		 */
 		if ((pci_read_config(sc->bge_dev, BGE_PCI_PCISTATE, 4) &
-		    BGE_PCISTATE_PCI_BUSMODE) == 0)
+		    BGE_PCISTATE_PCI_BUSMODE) == 0) {
 			sc->bge_flags |= BGE_FLAG_PCIX;
+			sc->bge_pcixcap = pci_get_pcixcap_ptr(sc->bge_dev);
+		}
  	}
 
 	device_printf(dev, "CHIP ID 0x%08x; "
@@ -2324,6 +2326,29 @@ bge_reset(struct bge_softc *sc)
 	pci_write_config(dev, BGE_PCI_CACHESZ, cachesize, 4);
 	pci_write_config(dev, BGE_PCI_CMD, command, 4);
 	write_op(sc, BGE_MISC_CFG, (65 << 1));
+
+	/*
+	 * Disable PCI-X relaxed ordering to ensure status block update
+	 * comes first then packet buffer DMA. Otherwise driver may
+	 * read stale status block.
+	 */
+	if (sc->bge_flags & BGE_FLAG_PCIX) {
+		uint16_t devctl;
+
+		devctl = pci_read_config(dev,
+		    sc->bge_pcixcap + PCIXR_COMMAND, 2);
+		devctl &= ~PCIXM_COMMAND_ERO;
+		if (sc->bge_asicrev == BGE_ASICREV_BCM5703) {
+			devctl &= ~PCIXM_COMMAND_MAX_READ;
+			devctl |= PCIXM_COMMAND_MAX_READ_2048;
+		} else if (sc->bge_asicrev == BGE_ASICREV_BCM5704) {
+			devctl &= ~(PCIXM_COMMAND_MAX_SPLITS |
+			    PCIXM_COMMAND_MAX_READ);
+			devctl |= PCIXM_COMMAND_MAX_READ_2048;
+		}
+		pci_write_config(dev, sc->bge_pcixcap + PCIXR_COMMAND,
+		    devctl, 2);
+	}
 
 	/* Enable memory arbiter. */
 	if (BGE_IS_5714_FAMILY(sc)) {
