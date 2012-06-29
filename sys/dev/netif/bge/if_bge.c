@@ -1497,7 +1497,10 @@ bge_blockinit(struct bge_softc *sc)
 	else
 		val = BGE_STD_RX_RING_CNT / 8;
 	CSR_WRITE_4(sc, BGE_RBDI_STD_REPL_THRESH, val);
-	CSR_WRITE_4(sc, BGE_RBDI_JUMBO_REPL_THRESH, BGE_JUMBO_RX_RING_CNT/8);
+	if (BGE_IS_JUMBO_CAPABLE(sc)) {
+		CSR_WRITE_4(sc, BGE_RBDI_JUMBO_REPL_THRESH,
+		    BGE_JUMBO_RX_RING_CNT/8);
+	}
 
 	/*
 	 * Disable all unused send rings by setting the 'ring disabled'
@@ -1540,7 +1543,8 @@ bge_blockinit(struct bge_softc *sc)
 
 	/* Initialize RX ring indexes */
 	bge_writembx(sc, BGE_MBX_RX_STD_PROD_LO, 0);
-	bge_writembx(sc, BGE_MBX_RX_JUMBO_PROD_LO, 0);
+	if (BGE_IS_JUMBO_CAPABLE(sc))
+		bge_writembx(sc, BGE_MBX_RX_JUMBO_PROD_LO, 0);
 	bge_writembx(sc, BGE_MBX_RX_MINI_PROD_LO, 0);
 
 	/*
