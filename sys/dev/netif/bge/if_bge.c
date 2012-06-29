@@ -1629,12 +1629,11 @@ bge_blockinit(struct bge_softc *sc)
 	}
 
 	/* Set up address of status block */
+	bzero(sc->bge_ldata.bge_status_block, BGE_STATUS_BLK_SZ);
 	CSR_WRITE_4(sc, BGE_HCC_STATUSBLK_ADDR_HI,
 	    BGE_ADDR_HI(sc->bge_ldata.bge_status_block_paddr));
 	CSR_WRITE_4(sc, BGE_HCC_STATUSBLK_ADDR_LO,
 	    BGE_ADDR_LO(sc->bge_ldata.bge_status_block_paddr));
-	sc->bge_ldata.bge_status_block->bge_idx[0].bge_rx_prod_idx = 0;
-	sc->bge_ldata.bge_status_block->bge_idx[0].bge_tx_cons_idx = 0;
 
 	/*
 	 * Set up status block partail update size.
