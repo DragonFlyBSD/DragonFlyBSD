@@ -2178,6 +2178,30 @@ bge_attach(device_t dev)
 			sc, 0, bge_sysctl_tx_max_coal_bds, "I",
 			"Transmit max coalesced BD count.");
 
+	if (sc->bge_flags & BGE_FLAG_PCIE) {
+		/*
+		 * A common design characteristic for many Broadcom
+		 * client controllers is that they only support a
+		 * single outstanding DMA read operation on the PCIe
+		 * bus. This means that it will take twice as long to
+		 * fetch a TX frame that is split into header and
+		 * payload buffers as it does to fetch a single,
+		 * contiguous TX frame (2 reads vs. 1 read). For these
+		 * controllers, coalescing buffers to reduce the number
+		 * of memory reads is effective way to get maximum
+		 * performance(about 940Mbps).  Without collapsing TX
+		 * buffers the maximum TCP bulk transfer performance
+		 * is about 850Mbps. However forcing coalescing mbufs
+		 * consumes a lot of CPU cycles, so leave it off by
+		 * default.
+		 */
+		SYSCTL_ADD_INT(&sc->bge_sysctl_ctx,
+			       SYSCTL_CHILDREN(sc->bge_sysctl_tree),
+			       OID_AUTO, "force_defrag", CTLFLAG_RW,
+			       &sc->bge_force_defrag, 0,
+			       "Force defragment on TX path");
+	}
+
 	/*
 	 * Call MI attach routine.
 	 */
@@ -2867,6 +2891,21 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 		error = m_devpad(m_head, BGE_MIN_FRAME);
 		if (error)
 			goto back;
+	}
+
+	if (sc->bge_force_defrag && (sc->bge_flags & BGE_FLAG_PCIE) &&
+	    m_head->m_next != NULL) {
+		struct mbuf *m_new;
+
+		/*
+		 * Forcefully defragment mbuf chain to overcome hardware
+		 * limitation which only support a single outstanding
+		 * DMA read operation.  If it fails, keep moving on using
+		 * the original mbuf chain.
+		 */
+		m_new = m_defrag(m_head, MB_DONTWAIT);
+		if (m_new != NULL)
+			*m_head0 = m_head = m_new;
 	}
 
 	error = bus_dmamap_load_mbuf_defrag(sc->bge_cdata.bge_tx_mtag, map,
