@@ -284,7 +284,7 @@ load_queue(struct queue *queue)
 	char *queuefn;
 	char *mailfn;
 
-	bzero(queue, sizeof(queue));
+	bzero(queue, sizeof(*queue));
 	LIST_INIT(&queue->queue);
 
 	spooldir = opendir(config.spooldir);

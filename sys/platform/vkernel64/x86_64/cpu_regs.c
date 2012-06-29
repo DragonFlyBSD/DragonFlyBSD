@@ -277,7 +277,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		/* fill siginfo structure */
 		sf.sf_si.si_signo = sig;
 		sf.sf_si.si_code = code;
-		sf.sf_si.si_addr = (void *)regs->tf_err;
+		sf.sf_si.si_addr = (void *)regs->tf_addr;
 	} else {
 		/*
 		 * Old FreeBSD-style arguments.
@@ -285,7 +285,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		 * handler (signo, code, [uc], addr)
 		 */
 		regs->tf_rsi = (register_t)code;	/* argument 2 */
-		regs->tf_rcx = (register_t)regs->tf_err; /* argument 4 */
+		regs->tf_rcx = (register_t)regs->tf_addr; /* argument 4 */
 		sf.sf_ahu.sf_handler = catcher;
 	}
 

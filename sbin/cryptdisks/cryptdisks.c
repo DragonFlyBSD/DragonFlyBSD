@@ -227,12 +227,14 @@ parse_crypt_options(struct generic_opts *go, char *option)
 
 		go->timeout = ullval;
 	} else if (strcmp(option, "keyscript") == 0) {
+		size_t keymem_len = 8192;
+
 		if (noparam)
 			syntax_error("The option 'keyscript' needs a parameter");
 			/* NOTREACHED */
 
 		/* Allocate safe key memory */
-		buf = alloc_safe_mem(8192);
+		buf = alloc_safe_mem(keymem_len);
 		if (buf == NULL)
 			err(1, "Could not allocate safe memory");
 			/* NOTREACHED */
@@ -242,7 +244,7 @@ parse_crypt_options(struct generic_opts *go, char *option)
 			syntax_error("The 'keyscript' file could not be run");
 			/* NOTREACHED */
 
-		if ((fread(buf, 1, sizeof(buf), fd)) == 0)
+		if ((fread(buf, 1, keymem_len, fd)) == 0)
 			syntax_error("The 'keyscript' program failed");
 			/* NOTREACHED */
 		pclose(fd);

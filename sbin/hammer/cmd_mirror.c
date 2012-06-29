@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.16 2008/11/09 05:22:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -493,7 +491,7 @@ generate_histogram(int fd, const char *filesystem,
 
 	/* needs 2 extra */
 	tid_bytes = malloc(sizeof(*tid_bytes) * (HIST_COUNT + 2));
-	bzero(tid_bytes, sizeof(tid_bytes));
+	bzero(tid_bytes, sizeof(*tid_bytes) * (HIST_COUNT + 2));
 
 	if (*repeatp == 0) {
 		fprintf(stderr, "Prescan to break up bulk transfer");

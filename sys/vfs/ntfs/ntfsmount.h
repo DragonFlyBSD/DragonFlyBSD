@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfsmount.h,v 1.6.2.1 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfsmount.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 #include <sys/iconv.h>

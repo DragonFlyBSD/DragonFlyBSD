@@ -24,10 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kbdmap/kbdmap.c,v 1.2 2002/10/27 17:44:33 wollman Exp $
- * $DragonFly: src/usr.sbin/kbdmap/kbdmap.c,v 1.1 2004/06/21 01:37:42 cpressey Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/queue.h>
 

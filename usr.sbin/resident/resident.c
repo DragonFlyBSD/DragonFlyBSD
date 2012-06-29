@@ -22,11 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/usr.sbin/resident/resident.c,v 1.8 2005/04/22 16:59:46 liamfoy Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/wait.h>

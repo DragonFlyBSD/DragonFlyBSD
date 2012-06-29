@@ -2525,9 +2525,9 @@ carp_ioctl_getdevname_dispatch(netmsg_t msg)
 	struct carp_softc *sc = cmsg->nc_softc;
 	char *devname = cmsg->nc_data;
 
-	bzero(devname, sizeof(devname));
+	bzero(devname, IFNAMSIZ);
 	if (sc->sc_carpdev != NULL)
-		strlcpy(devname, sc->sc_carpdev->if_xname, sizeof(devname));
+		strlcpy(devname, sc->sc_carpdev->if_xname, IFNAMSIZ);
 
 	lwkt_replymsg(&cmsg->base.lmsg, 0);
 }

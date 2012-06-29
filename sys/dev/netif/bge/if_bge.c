@@ -1210,6 +1210,7 @@ bge_chipinit(struct bge_softc *sc)
 {
 	int i;
 	uint32_t dma_rw_ctl;
+	uint16_t val;
 
 	/* Set endian type before we access any non-PCI registers. */
 	pci_write_config(sc->bge_dev, BGE_PCI_MISC_CTL, BGE_INIT, 4);
@@ -1229,6 +1230,17 @@ bge_chipinit(struct bge_softc *sc)
 	    i < BGE_STATUS_BLOCK_END + 1; i += sizeof(uint32_t))
 		BGE_MEMWIN_WRITE(sc, i, 0);
 
+	if (sc->bge_chiprev == BGE_CHIPREV_5704_BX) {
+		/*
+		 * Fix data corruption caused by non-qword write with WB.
+		 * Fix master abort in PCI mode.
+		 * Fix PCI latency timer.
+		 */
+		val = pci_read_config(sc->bge_dev, BGE_PCI_MSI_DATA + 2, 2);
+		val |= (1 << 10) | (1 << 12) | (1 << 13);
+		pci_write_config(sc->bge_dev, BGE_PCI_MSI_DATA + 2, val, 2);
+	}
+
 	/* Set up the PCI DMA control register. */
 	if (sc->bge_flags & BGE_FLAG_PCIE) {
 		/* PCI Express */
@@ -1247,6 +1259,16 @@ bge_chipinit(struct bge_softc *sc)
 			} else {
 				dma_rw_ctl |= (1 << 20) | (1 << 18) | (1 << 15);
 			}
+		} else if (sc->bge_asicrev == BGE_ASICREV_BCM5703) {
+			/*
+			 * In the BCM5703, the DMA read watermark should
+			 * be set to less than or equal to the maximum
+			 * memory read byte count of the PCI-X command
+			 * register.
+			 */
+			dma_rw_ctl = BGE_PCI_READ_CMD|BGE_PCI_WRITE_CMD |
+			    (0x4 << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
+			    (0x3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
 		} else if (sc->bge_asicrev == BGE_ASICREV_BCM5704) {
 			/*
 			 * The 5704 uses a different encoding of read/write
@@ -1294,6 +1316,16 @@ bge_chipinit(struct bge_softc *sc)
 	CSR_WRITE_4(sc, BGE_MODE_CTL, BGE_DMA_SWAP_OPTIONS|
 	    BGE_MODECTL_MAC_ATTN_INTR|BGE_MODECTL_HOST_SEND_BDS|
 	    BGE_MODECTL_TX_NO_PHDR_CSUM);
+
+	/*
+	 * BCM5701 B5 have a bug causing data corruption when using
+	 * 64-bit DMA reads, which can be terminated early and then
+	 * completed later as 32-bit accesses, in combination with
+	 * certain bridges.
+	 */
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5701 &&
+	    sc->bge_chipid == BGE_CHIPID_BCM5701_B5)
+		BGE_SETBIT(sc, BGE_MODE_CTL, BGE_MODECTL_FORCE_PCI32);
 
 	/*
 	 * Disable memory write invalidate.  Apparently it is not supported
@@ -1638,8 +1670,10 @@ bge_blockinit(struct bge_softc *sc)
 
 	/* Turn on write DMA state machine */
 	val = BGE_WDMAMODE_ENABLE|BGE_WDMAMODE_ALL_ATTNS;
-	if (BGE_IS_5755_PLUS(sc))
-		val |= (1 << 29);	/* Enable host coalescing bug fix. */
+	if (BGE_IS_5755_PLUS(sc)) {
+		/* Enable host coalescing bug fix. */
+		val |= BGE_WDMAMODE_STATUS_TAG_FIX;
+	}
 	CSR_WRITE_4(sc, BGE_WDMA_MODE, val);
 	DELAY(40);
 
@@ -1877,14 +1911,18 @@ bge_attach(device_t dev)
 	if (sc->bge_chipid == BGE_CHIPID_BCM5704_A0)
 		sc->bge_flags |= BGE_FLAG_5704_A0_BUG;
 
-	if (BGE_IS_5705_PLUS(sc) &&
-		!(sc->bge_flags & BGE_FLAG_ADJUST_TRIM)) {
+	if (BGE_IS_5705_PLUS(sc)) {
 		if (sc->bge_asicrev == BGE_ASICREV_BCM5755 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5761 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5784 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5787) {
-		    	if (sc->bge_chipid != BGE_CHIPID_BCM5722_A0)
-			    sc->bge_flags |= BGE_FLAG_JITTER_BUG;
+			uint32_t product = pci_get_device(dev);
+
+			if (product != PCI_PRODUCT_BROADCOM_BCM5722 &&
+			    product != PCI_PRODUCT_BROADCOM_BCM5756)
+				sc->bge_flags |= BGE_FLAG_JITTER_BUG;
+			if (product == PCI_PRODUCT_BROADCOM_BCM5755M)
+				sc->bge_flags |= BGE_FLAG_ADJUST_TRIM;
 		} else if (sc->bge_asicrev != BGE_ASICREV_BCM5906) {
 			sc->bge_flags |= BGE_FLAG_BER_BUG;
 		}
@@ -1916,8 +1954,10 @@ bge_attach(device_t dev)
 		 * (This bit is not valid on PCI Express controllers.)
 		 */
 		if ((pci_read_config(sc->bge_dev, BGE_PCI_PCISTATE, 4) &
-		    BGE_PCISTATE_PCI_BUSMODE) == 0)
+		    BGE_PCISTATE_PCI_BUSMODE) == 0) {
 			sc->bge_flags |= BGE_FLAG_PCIX;
+			sc->bge_pcixcap = pci_get_pcixcap_ptr(sc->bge_dev);
+		}
  	}
 
 	device_printf(dev, "CHIP ID 0x%08x; "
@@ -1926,6 +1966,25 @@ bge_attach(device_t dev)
 		      (sc->bge_flags & BGE_FLAG_PCIX) ? "PCI-X"
 		      : ((sc->bge_flags & BGE_FLAG_PCIE) ?
 			"PCI-E" : "PCI"));
+
+	/*
+	 * All controllers that are not 5755 or higher have 4GB
+	 * boundary DMA bug.
+	 * Whenever an address crosses a multiple of the 4GB boundary
+	 * (including 4GB, 8Gb, 12Gb, etc.) and makes the transition
+	 * from 0xX_FFFF_FFFF to 0x(X+1)_0000_0000 an internal DMA
+	 * state machine will lockup and cause the device to hang.
+	 */
+	if (BGE_IS_5755_PLUS(sc) == 0)
+		sc->bge_flags |= BGE_FLAG_BOUNDARY_4G;
+
+	/*
+	 * The 40bit DMA bug applies to the 5714/5715 controllers and is
+	 * not actually a MAC controller bug but an issue with the embedded
+	 * PCIe to PCI-X bridge in the device. Use 40bit DMA workaround.
+	 */
+	if (BGE_IS_5714_FAMILY(sc) && (sc->bge_flags & BGE_FLAG_PCIX))
+		sc->bge_flags |= BGE_FLAG_MAXADDR_40BIT;
 
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -2195,8 +2254,7 @@ bge_reset(struct bge_softc *sc)
 
 	/* Disable fastboot on controllers that support it. */
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5752 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5755 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5787) {
+	    BGE_IS_5755_PLUS(sc)) {
 		if (bootverbose)
 			if_printf(&sc->arpcom.ac_if, "Disabling fastboot\n");
 		CSR_WRITE_4(sc, BGE_FASTBOOT_PC, 0x0);
@@ -2268,6 +2326,29 @@ bge_reset(struct bge_softc *sc)
 	pci_write_config(dev, BGE_PCI_CACHESZ, cachesize, 4);
 	pci_write_config(dev, BGE_PCI_CMD, command, 4);
 	write_op(sc, BGE_MISC_CFG, (65 << 1));
+
+	/*
+	 * Disable PCI-X relaxed ordering to ensure status block update
+	 * comes first then packet buffer DMA. Otherwise driver may
+	 * read stale status block.
+	 */
+	if (sc->bge_flags & BGE_FLAG_PCIX) {
+		uint16_t devctl;
+
+		devctl = pci_read_config(dev,
+		    sc->bge_pcixcap + PCIXR_COMMAND, 2);
+		devctl &= ~PCIXM_COMMAND_ERO;
+		if (sc->bge_asicrev == BGE_ASICREV_BCM5703) {
+			devctl &= ~PCIXM_COMMAND_MAX_READ;
+			devctl |= PCIXM_COMMAND_MAX_READ_2048;
+		} else if (sc->bge_asicrev == BGE_ASICREV_BCM5704) {
+			devctl &= ~(PCIXM_COMMAND_MAX_SPLITS |
+			    PCIXM_COMMAND_MAX_READ);
+			devctl |= PCIXM_COMMAND_MAX_READ_2048;
+		}
+		pci_write_config(dev, sc->bge_pcixcap + PCIXR_COMMAND,
+		    devctl, 2);
+	}
 
 	/* Enable memory arbiter. */
 	if (BGE_IS_5714_FAMILY(sc)) {
@@ -3226,14 +3307,8 @@ static void
 bge_stop(struct bge_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct ifmedia_entry *ifm;
-	struct mii_data *mii = NULL;
-	int mtmp, itmp;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	if ((sc->bge_flags & BGE_FLAG_TBI) == 0)
-		mii = device_get_softc(sc->bge_miibus);
 
 	callout_stop(&sc->bge_stat_timer);
 
@@ -3293,26 +3368,6 @@ bge_stop(struct bge_softc *sc)
 
 	/* Free TX buffers. */
 	bge_free_tx_ring(sc);
-
-	/*
-	 * Isolate/power down the PHY, but leave the media selection
-	 * unchanged so that things will be put back to normal when
-	 * we bring the interface back up.
-	 *
-	 * 'mii' may be NULL in the following cases:
-	 * - The device uses TBI.
-	 * - bge_stop() is called by bge_detach().
-	 */
-	if (mii != NULL) {
-		itmp = ifp->if_flags;
-		ifp->if_flags |= IFF_UP;
-		ifm = mii->mii_media.ifm_cur;
-		mtmp = ifm->ifm_media;
-		ifm->ifm_media = IFM_ETHER|IFM_NONE;
-		mii_mediachg(mii);
-		ifm->ifm_media = mtmp;
-		ifp->if_flags = itmp;
-	}
 
 	sc->bge_link = 0;
 	sc->bge_coal_chg = 0;
@@ -3446,12 +3501,22 @@ bge_dma_alloc(struct bge_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i, error;
+	bus_addr_t lowaddr;
+	bus_size_t boundary;
+
+	boundary = 0;
+	if (sc->bge_flags & BGE_FLAG_BOUNDARY_4G)
+		boundary = BGE_DMA_BOUNDARY_4G;
+
+	lowaddr = BUS_SPACE_MAXADDR;
+	if (sc->bge_flags & BGE_FLAG_MAXADDR_40BIT)
+		lowaddr = BGE_DMA_MAXADDR_40BIT;
 
 	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
 	 */
-	error = bus_dma_tag_create(NULL, 1, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+	error = bus_dma_tag_create(NULL, 1, boundary,
+				   lowaddr, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   BUS_SPACE_MAXSIZE_32BIT, 0,
 				   BUS_SPACE_MAXSIZE_32BIT,

@@ -42,6 +42,7 @@
 #define IGB_MAX_RING_82580	8
 #define IGB_MAX_RING_82576	16
 #define IGB_MIN_RING		1
+#define IGB_MIN_RING_RSS	2
 
 /*
  * Max TX/RX interrupt bits
@@ -324,6 +325,7 @@ struct igb_softc {
 	 */
 	int			rss_debug;
 	int			rx_ring_cnt;
+	int			rx_ring_inuse;
 	struct igb_rx_ring	*rx_rings;
 
 	/* Misc stats maintained by the driver */

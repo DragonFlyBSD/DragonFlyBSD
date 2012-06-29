@@ -1,6 +1,5 @@
 #	from: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/share/mk/bsd.prog.mk,v 1.86.2.17 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.prog.mk,v 1.14 2008/05/19 10:26:02 corecode Exp $
 
 .include <bsd.init.mk>
 
@@ -161,7 +160,7 @@ realinstall: _maninstall
 .if !target(lint)
 lint: ${SRCS}
 .if defined(PROG)
-	@${LINT} ${LINTFLAGS} ${.ALLSRC} | more 2>&1
+	-@${LINT} ${LINTFLAGS} ${CFLAGS:M-I*:S/-I/-I /g} ${.ALLSRC}
 .endif
 .endif
 

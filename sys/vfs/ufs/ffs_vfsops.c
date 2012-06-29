@@ -458,7 +458,6 @@ ffs_reload(struct mount *mp, struct ucred *cred)
 	struct buf *bp;
 	struct fs *fs, *newfs;
 	struct partinfo dpart;
-	cdev_t dev;
 	int i, blks, size, error;
 	struct scaninfo scaninfo;
 	int32_t *lp;
@@ -474,8 +473,6 @@ ffs_reload(struct mount *mp, struct ucred *cred)
 	vn_unlock(devvp);
 	if (error)
 		panic("ffs_reload: dirty1");
-
-	dev = devvp->v_rdev;
 
 	/*
 	 * The backing device must be VMIO-capable because we use getblk().

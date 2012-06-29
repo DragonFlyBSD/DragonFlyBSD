@@ -175,7 +175,7 @@ struct tcpcb {
 #define	TF_RXWIN0SENT	0x00080000	/* sent a receiver win 0 in response */
 #define	TF_FASTRECOVERY	0x00100000	/* in Fast Recovery */
 #define	TF_QUEDFIN	0x00200000	/* FIN has been received */
-#define	TF_UNUSED007	0x00400000
+#define	TF_XMITNOW	0x00400000	/* Temporarily override Nagle */
 #define	TF_UNUSED008	0x00800000
 #define	TF_UNUSED009	0x01000000
 #define	TF_FORCE	0x02000000	/* Set if forcing out a byte */
@@ -657,7 +657,7 @@ struct rtentry *
 	 tcp_rtlookup (struct in_conninfo *);
 int	 tcp_sack_bytes_below(const struct scoreboard *scb, tcp_seq seq);
 void	 tcp_sack_destroy(struct scoreboard *scb);
-void	 tcp_sack_cleanup(struct scoreboard *scb);
+void	 tcp_sack_discard(struct tcpcb *tp);
 void	 tcp_sack_report_cleanup(struct tcpcb *tp);
 int	 tcp_sack_ndsack_blocks(const struct raw_sackblock *blocks,
 	    const int numblocks, tcp_seq snd_una);

@@ -577,7 +577,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 		KKASSERT(layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL);
 
 		hammer_modify_buffer(trans, *bufferp, layer1, sizeof(*layer1));
-		bzero(layer1, sizeof(layer1));
+		bzero(layer1, sizeof(*layer1));
 		layer1->phys_offset = phys_off;
 		layer1->blocks_free = stat->counter;
 		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
@@ -669,7 +669,7 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 		 * Free the L1 entry
 		 */
 		hammer_modify_buffer(trans, *bufferp, layer1, sizeof(*layer1));
-		bzero(layer1, sizeof(layer1));
+		bzero(layer1, sizeof(*layer1));
 		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
 		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 		hammer_modify_buffer_done(*bufferp);

@@ -585,7 +585,7 @@ tcp_timer_rexmt_handler(struct tcpcb *tp)
 		tp->t_rxtsyn += tp->t_rxtcur;
 	}
 	/* Throw away SACK blocks on a RTO, as specified by RFC2018. */
-	tcp_sack_cleanup(&tp->scb);
+	tcp_sack_discard(tp);
 	tcpstat.tcps_rexmttimeo++;
 	if (tp->t_state == TCPS_SYN_SENT) {
 		if (tcp_low_rtobase) {
@@ -619,8 +619,6 @@ tcp_timer_rexmt_handler(struct tcpcb *tp)
 		tp->t_srtt = 0;
 	}
 	tp->snd_nxt = tp->snd_una;
-	tp->rexmt_high = tp->snd_una;
-	tp->sack_flags &= ~TSACK_F_SACKRESCUED;
 	tp->snd_recover = tp->snd_max;
 	/*
 	 * Force a segment to be sent.

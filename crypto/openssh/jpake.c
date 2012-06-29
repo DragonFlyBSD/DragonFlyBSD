@@ -133,7 +133,7 @@ jpake_free(struct jpake_ctx *pctx)
 #undef JPAKE_BN_CLEAR_FREE
 #undef JPAKE_BUF_CLEAR_FREE
 
-	bzero(pctx, sizeof(pctx));
+	bzero(pctx, sizeof(*pctx));
 	xfree(pctx);
 }
 

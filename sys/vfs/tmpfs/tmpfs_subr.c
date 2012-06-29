@@ -55,6 +55,11 @@
 #include <vfs/tmpfs/tmpfs_vnops.h>
 
 static ino_t tmpfs_fetch_ino(struct tmpfs_mount *);
+static int tmpfs_dirtree_compare(struct tmpfs_dirent *a,
+	struct tmpfs_dirent *b);
+
+RB_GENERATE(tmpfs_dirtree, tmpfs_dirent, rb_node, tmpfs_dirtree_compare);
+
 
 /* --------------------------------------------------------------------- */
 
@@ -129,7 +134,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 		break;
 
 	case VDIR:
-		TAILQ_INIT(&nnode->tn_dir.tn_dirhead);
+		RB_INIT(&nnode->tn_dir.tn_dirtree);
 		KKASSERT(parent != nnode);
 		KKASSERT(IMPLIES(parent == NULL, tmp->tm_root == NULL));
 		nnode->tn_dir.tn_parent = parent;
@@ -609,7 +614,7 @@ void
 tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 {
 	TMPFS_NODE_LOCK(dnode);
-	TAILQ_INSERT_TAIL(&dnode->tn_dir.tn_dirhead, de, td_entries);
+	RB_INSERT(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
 
 	TMPFS_ASSERT_ELOCKED(dnode);
 	dnode->tn_size += sizeof(struct tmpfs_dirent);
@@ -633,7 +638,7 @@ tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 		dnode->tn_dir.tn_readdir_lastn = 0;
 		dnode->tn_dir.tn_readdir_lastp = NULL;
 	}
-	TAILQ_REMOVE(&dnode->tn_dir.tn_dirhead, de, td_entries);
+	RB_REMOVE(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
 
 	TMPFS_ASSERT_ELOCKED(dnode);
 	dnode->tn_size -= sizeof(struct tmpfs_dirent);
@@ -658,17 +663,16 @@ tmpfs_dir_lookup(struct tmpfs_node *node, struct tmpfs_node *f,
 {
 	struct tmpfs_dirent *de;
 	int len = ncp->nc_nlen;
+	struct tmpfs_dirent wanted;
+
+	wanted.td_namelen = len;
+	wanted.td_name = ncp->nc_name;
 
 	TMPFS_VALIDATE_DIR(node);
 
-	TAILQ_FOREACH(de, &node->tn_dir.tn_dirhead, td_entries) {
-		if (f != NULL && de->td_node != f)
-		    continue;
-		if (len == de->td_namelen) {
-			if (!memcmp(ncp->nc_name, de->td_name, len))
-				break;
-		}
-	}
+	de = RB_FIND(tmpfs_dirtree, &node->tn_dir.tn_dirtree, &wanted);
+
+	KKASSERT(f == NULL || f == de->td_node);
 
 	TMPFS_NODE_LOCK(node);
 	node->tn_status |= TMPFS_NODE_ACCESSED;
@@ -760,7 +764,7 @@ tmpfs_dir_getdotdotdent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 		if (error == 0) {
 			struct tmpfs_dirent *de;
 
-			de = TAILQ_FIRST(&node->tn_dir.tn_dirhead);
+			de = RB_MIN(tmpfs_dirtree, &node->tn_dir.tn_dirtree);
 			if (de == NULL)
 				uio->uio_offset = TMPFS_DIRCOOKIE_EOF;
 			else
@@ -790,7 +794,7 @@ tmpfs_dir_lookupbycookie(struct tmpfs_node *node, off_t cookie)
 		return node->tn_dir.tn_readdir_lastp;
 	}
 
-	TAILQ_FOREACH(de, &node->tn_dir.tn_dirhead, td_entries) {
+	RB_FOREACH(de, tmpfs_dirtree, &node->tn_dir.tn_dirtree) {
 		if (tmpfs_dircookie(de) == cookie) {
 			break;
 		}
@@ -892,7 +896,7 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 		error = uiomove((caddr_t)&d, reclen, uio);
 
 		(*cntp)++;
-		de = TAILQ_NEXT(de, td_entries);
+		de = RB_NEXT(tmpfs_dirtree, node->tn_dir.tn_dirtree, de);
 	} while (error == 0 && uio->uio_resid > 0 && de != NULL);
 
 	/* Update the offset and cache. */
@@ -1345,4 +1349,15 @@ tmpfs_fetch_ino(struct tmpfs_mount *tmp)
 	ret = tmp->tm_ino++;
 
 	return (ret);
+}
+
+static int
+tmpfs_dirtree_compare(struct tmpfs_dirent *a, struct tmpfs_dirent *b)
+{
+	if (a->td_namelen > b->td_namelen)
+		return 1;
+	else if (a->td_namelen < b->td_namelen)
+		return -1;
+	else
+		return strncmp(a->td_name, b->td_name, a->td_namelen);
 }

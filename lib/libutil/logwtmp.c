@@ -28,10 +28,8 @@
  *
  * @(#)logwtmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libutil/logwtmp.c,v 1.14 2000/01/15 03:26:54 shin Exp $
- * $DragonFly: src/lib/libutil/logwtmp.c,v 1.5 2007/12/30 13:44:33 matthias Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/socket.h>

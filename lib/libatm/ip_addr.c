@@ -142,7 +142,7 @@ format_ip_addr(struct in_addr *addr)
 	/*
 	 * Look up name in DNS
 	 */
-	ip_host = gethostbyaddr(addr, sizeof(addr), AF_INET);
+	ip_host = gethostbyaddr(addr, sizeof(*addr), AF_INET);
 	if (ip_host && ip_host->h_name &&
 			strlen(ip_host->h_name)) {
 		/*

@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_compr.h,v 1.6 1999/12/03 20:37:38 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_compr.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
  */
 
 #define NTFS_COMPBLOCK_SIZE	0x1000

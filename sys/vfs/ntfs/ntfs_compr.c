@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_compr.c,v 1.7 1999/12/03 20:37:38 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_compr.c,v 1.4 2003/08/07 21:17:42 dillon Exp $
  */
 
 #include <sys/param.h>

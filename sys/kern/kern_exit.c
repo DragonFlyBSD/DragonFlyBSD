@@ -1004,7 +1004,7 @@ loop:
 				*status = W_STOPCODE(p->p_xstat);
 			/* Zero rusage so we get something consistent. */
 			if (rusage)
-				bzero(rusage, sizeof(rusage));
+				bzero(rusage, sizeof(*rusage));
 			error = 0;
 			lwkt_reltoken(&p->p_token);
 			goto done;

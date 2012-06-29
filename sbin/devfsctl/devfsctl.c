@@ -33,7 +33,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/cdefs.h>
 #include <sys/syslimits.h>
 #include <sys/ioctl.h>
 #include <sys/device.h>

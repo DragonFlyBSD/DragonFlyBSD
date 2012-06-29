@@ -52,7 +52,6 @@
 #include <miscfs/specfs/specdev.h>
 #endif
 
-/* #define NTFS_DEBUG 1 */
 #include "ntfs.h"
 #include "ntfsmount.h"
 #include "ntfs_inode.h"
@@ -369,13 +368,13 @@ ntfs_ntlookup(struct ntfsmount *ntmp, ino_t ino, struct ntnode **ipp)
 {
 	struct ntnode  *ip;
 
-	dprintf(("ntfs_ntlookup: looking for ntnode %d\n", ino));
+	dprintf(("ntfs_ntlookup: looking for ntnode %ju\n", (uintmax_t)ino));
 
 	do {
 		if ((ip = ntfs_nthashlookup(ntmp->ntm_dev, ino)) != NULL) {
 			ntfs_ntget(ip);
-			dprintf(("ntfs_ntlookup: ntnode %d: %p, usecount: %d\n",
-				ino, ip, ip->i_usecount));
+			dprintf(("ntfs_ntlookup: ntnode %ju: %p, usecount: %d\n",
+				(uintmax_t)ino, ip, ip->i_usecount));
 			*ipp = ip;
 			return (0);
 		}
@@ -404,8 +403,8 @@ ntfs_ntlookup(struct ntfsmount *ntmp, ino_t ino, struct ntnode **ipp)
 
 	*ipp = ip;
 
-	dprintf(("ntfs_ntlookup: ntnode %d: %p, usecount: %d\n",
-		ino, ip, ip->i_usecount));
+	dprintf(("ntfs_ntlookup: ntnode %ju: %p, usecount: %d\n",
+		(uintmax_t)ino, ip, ip->i_usecount));
 
 	return (0);
 }

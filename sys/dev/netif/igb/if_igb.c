@@ -198,13 +198,16 @@ static void	igb_init_intr(struct igb_softc *);
 static int	igb_setup_intr(struct igb_softc *);
 static void	igb_setup_tx_intr(struct igb_tx_ring *, int *, int);
 static void	igb_setup_rx_intr(struct igb_rx_ring *, int *, int);
+static void	igb_set_intr_mask(struct igb_softc *);
+static int	igb_alloc_intr(struct igb_softc *);
+static void	igb_free_intr(struct igb_softc *);
 
 /* Management and WOL Support */
 static void	igb_get_mgmt(struct igb_softc *);
 static void	igb_rel_mgmt(struct igb_softc *);
 static void	igb_get_hw_control(struct igb_softc *);
-static void     igb_rel_hw_control(struct igb_softc *);
-static void     igb_enable_wol(device_t);
+static void	igb_rel_hw_control(struct igb_softc *);
+static void	igb_enable_wol(device_t);
 
 static device_method_t igb_methods[] = {
 	/* Device interface */
@@ -330,7 +333,6 @@ igb_attach(device_t dev)
 {
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
-	u_int intr_flags;
 	int error = 0, i, j, ring_max;
 
 #ifdef notyet
@@ -374,44 +376,9 @@ igb_attach(device_t dev)
 	else
 		sc->vf_ifp = 0;
 
-	/* Enable bus mastering */
-	pci_enable_busmaster(dev);
-
 	/*
-	 * Allocate IO memory
+	 * Configure total supported RX/TX ring count
 	 */
-	sc->mem_rid = PCIR_BAR(0);
-	sc->mem_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &sc->mem_rid,
-	    RF_ACTIVE);
-	if (sc->mem_res == NULL) {
-		device_printf(dev, "Unable to allocate bus resource: memory\n");
-		error = ENXIO;
-		goto failed;
-	}
-	sc->osdep.mem_bus_space_tag = rman_get_bustag(sc->mem_res);
-	sc->osdep.mem_bus_space_handle = rman_get_bushandle(sc->mem_res);
-
-	sc->hw.hw_addr = (uint8_t *)&sc->osdep.mem_bus_space_handle;
-
-	/*
-	 * Allocate interrupt
-	 */
-	sc->intr_type = pci_alloc_1intr(dev, igb_msi_enable,
-	    &sc->intr_rid, &intr_flags);
-
-	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->intr_rid,
-	    intr_flags);
-	if (sc->intr_res == NULL) {
-		device_printf(dev, "Unable to allocate bus resource: "
-		    "interrupt\n");
-		error = ENXIO;
-		goto failed;
-	}
-
-	/* Save PCI command register for Shared Code */
-	sc->hw.bus.pci_cmd_word = pci_read_config(dev, PCIR_COMMAND, 2);
-	sc->hw.back = &sc->osdep;
-
 	switch (sc->hw.mac.type) {
 	case e1000_82575:
 		ring_max = IGB_MAX_RING_82575;
@@ -434,7 +401,31 @@ igb_attach(device_t dev)
 #ifdef IGB_RSS_DEBUG
 	sc->rx_ring_cnt = device_getenv_int(dev, "rxr_debug", sc->rx_ring_cnt);
 #endif
+	sc->rx_ring_inuse = sc->rx_ring_cnt;
 	sc->tx_ring_cnt = 1; /* XXX */
+
+	/* Enable bus mastering */
+	pci_enable_busmaster(dev);
+
+	/*
+	 * Allocate IO memory
+	 */
+	sc->mem_rid = PCIR_BAR(0);
+	sc->mem_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &sc->mem_rid,
+	    RF_ACTIVE);
+	if (sc->mem_res == NULL) {
+		device_printf(dev, "Unable to allocate bus resource: memory\n");
+		error = ENXIO;
+		goto failed;
+	}
+	sc->osdep.mem_bus_space_tag = rman_get_bustag(sc->mem_res);
+	sc->osdep.mem_bus_space_handle = rman_get_bushandle(sc->mem_res);
+
+	sc->hw.hw_addr = (uint8_t *)&sc->osdep.mem_bus_space_handle;
+
+	/* Save PCI command register for Shared Code */
+	sc->hw.bus.pci_cmd_word = pci_read_config(dev, PCIR_COMMAND, 2);
+	sc->hw.back = &sc->osdep;
 
 	sc->intr_rate = IGB_INTR_RATE;
 
@@ -463,6 +454,11 @@ igb_attach(device_t dev)
 
 	/* Allocate RX/TX rings */
 	error = igb_alloc_rings(sc);
+	if (error)
+		goto failed;
+
+	/* Allocate interrupt */
+	error = igb_alloc_intr(sc);
 	if (error)
 		goto failed;
 
@@ -654,12 +650,7 @@ igb_detach(device_t dev)
 	}
 	bus_generic_detach(dev);
 
-	if (sc->intr_res != NULL) {
-		bus_release_resource(dev, SYS_RES_IRQ, sc->intr_rid,
-		    sc->intr_res);
-	}
-	if (sc->intr_type == PCI_INTR_TYPE_MSI)
-		pci_release_msi(dev);
+	igb_free_intr(sc);
 
 	if (sc->mem_res != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mem_rid,
@@ -857,6 +848,20 @@ igb_init(void *xsc)
 	/* Configure for OS presence */
 	igb_get_mgmt(sc);
 
+	if (IGB_ENABLE_HWRSS(sc)) {
+		if (sc->intr_type != PCI_INTR_TYPE_MSIX
+#ifdef DEVICE_POLLING
+		    || (ifp->if_flags & IFF_POLLING)
+#endif
+		    ) {
+			sc->rx_ring_inuse = IGB_MIN_RING_RSS;
+			if (bootverbose) {
+				if_printf(ifp, "RX rings %d/%d\n",
+				    sc->rx_ring_inuse, sc->rx_ring_cnt);
+			}
+		}
+	}
+
 	/* Prepare transmit descriptors and buffers */
 	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		igb_init_tx_ring(&sc->tx_rings[i]);
@@ -882,7 +887,7 @@ igb_init(void *xsc)
 	igb_init_intr(sc);
 
 	/* Prepare receive descriptors and buffers */
-	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+	for (i = 0; i < sc->rx_ring_inuse; ++i) {
 		int error;
 
 		error = igb_init_rx_ring(&sc->rx_rings[i]);
@@ -1447,6 +1452,9 @@ igb_add_sysctl(struct igb_softc *sc)
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "rxr", CTLFLAG_RD, &sc->rx_ring_cnt, 0, "# of RX rings");
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "rxr_inuse", CTLFLAG_RD, &sc->rx_ring_inuse, 0,
+	    "# of RX rings used");
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->rx_rings[0].num_rx_desc, 0,
 	    "# of RX descs");
@@ -2225,7 +2233,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 	}
 
 	/* Setup the Base and Length of the Rx Descriptor Rings */
-	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+	for (i = 0; i < sc->rx_ring_inuse; ++i) {
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
 		uint64_t bus_addr = rxr->rxdma.dma_paddr;
 		uint32_t rxdctl;
@@ -2311,7 +2319,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 			for (i = 0; i < IGB_RETA_SIZE; ++i) {
 				uint32_t q;
 
-				q = (r % sc->rx_ring_cnt) << reta_shift;
+				q = (r % sc->rx_ring_inuse) << reta_shift;
 				reta |= q << (8 * i);
 				++r;
 			}
@@ -2349,7 +2357,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 	 * Setup the HW Rx Head and Tail Descriptor Pointers
 	 *   - needs to be after enable
 	 */
-	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+	for (i = 0; i < sc->rx_ring_inuse; ++i) {
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 		E1000_WRITE_REG(hw, E1000_RDH(i), rxr->next_to_check);
@@ -2886,7 +2894,7 @@ igb_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			struct igb_tx_ring *txr;
 			int i;
 
-			for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			for (i = 0; i < sc->rx_ring_inuse; ++i) {
 				struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 				lwkt_serialize_enter(&rxr->rx_serialize);
@@ -2925,7 +2933,7 @@ igb_intr(void *xsc)
 		struct igb_tx_ring *txr;
 		int i;
 
-		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		for (i = 0; i < sc->rx_ring_inuse; ++i) {
 			struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 			if (eicr & rxr->rx_intr_mask) {
@@ -2985,23 +2993,28 @@ igb_shared_intr(void *xsc)
 		return;
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		struct igb_tx_ring *txr;
-		int i;
+		if (reg_icr &
+		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO)) {
+			int i;
 
-		for (i = 0; i < sc->rx_ring_cnt; ++i) {
-			struct igb_rx_ring *rxr = &sc->rx_rings[i];
+			for (i = 0; i < sc->rx_ring_inuse; ++i) {
+				struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
-			lwkt_serialize_enter(&rxr->rx_serialize);
-			igb_rxeof(rxr, -1);
-			lwkt_serialize_exit(&rxr->rx_serialize);
+				lwkt_serialize_enter(&rxr->rx_serialize);
+				igb_rxeof(rxr, -1);
+				lwkt_serialize_exit(&rxr->rx_serialize);
+			}
 		}
 
-		txr = &sc->tx_rings[0];
-		lwkt_serialize_enter(&txr->tx_serialize);
-		igb_txeof(txr);
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
-		lwkt_serialize_exit(&txr->tx_serialize);
+		if (reg_icr & E1000_ICR_TXDW) {
+			struct igb_tx_ring *txr = &sc->tx_rings[0];
+
+			lwkt_serialize_enter(&txr->tx_serialize);
+			igb_txeof(txr);
+			if (!ifq_is_empty(&ifp->if_snd))
+				if_devstart(ifp);
+			lwkt_serialize_exit(&txr->tx_serialize);
+		}
 	}
 
 	/* Link status change */
@@ -3384,6 +3397,7 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 static void
 igb_init_intr(struct igb_softc *sc)
 {
+	igb_set_intr_mask(sc);
 	if (sc->flags & IGB_FLAG_SHARED_INTR)
 		igb_set_eitr(sc);
 	else
@@ -3421,7 +3435,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 	case e1000_vfadapt:
 	case e1000_vfadapt_i350:
 		/* RX entries */
-		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		for (i = 0; i < sc->rx_ring_inuse; ++i) {
 			rxr = &sc->rx_rings[i];
 
 			index = i >> 1;
@@ -3462,7 +3476,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 
 	case e1000_82576:
 		/* RX entries */
-		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		for (i = 0; i < sc->rx_ring_inuse; ++i) {
 			rxr = &sc->rx_rings[i];
 
 			index = i & 0x7; /* Each IVAR has two entries */
@@ -3558,11 +3572,7 @@ igb_setup_intr(struct igb_softc *sc)
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		igb_setup_rx_intr(&sc->rx_rings[i], &intr_bit, intr_bitmax);
 
-	sc->intr_mask = E1000_EICR_OTHER;
-	for (i = 0; i < sc->rx_ring_cnt; ++i)
-		sc->intr_mask |= sc->rx_rings[i].rx_intr_mask;
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
-		sc->intr_mask |= sc->tx_rings[i].tx_intr_mask;
+	igb_set_intr_mask(sc);
 
 	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
 		int unshared;
@@ -3693,3 +3703,48 @@ igb_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 }
 
 #endif	/* INVARIANTS */
+
+static void
+igb_set_intr_mask(struct igb_softc *sc)
+{
+	int i;
+
+	sc->intr_mask = E1000_EICR_OTHER;
+	for (i = 0; i < sc->rx_ring_inuse; ++i)
+		sc->intr_mask |= sc->rx_rings[i].rx_intr_mask;
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
+		sc->intr_mask |= sc->tx_rings[i].tx_intr_mask;
+	if (bootverbose) {
+		if_printf(&sc->arpcom.ac_if, "intr mask 0x%08x\n",
+		    sc->intr_mask);
+	}
+}
+
+static int
+igb_alloc_intr(struct igb_softc *sc)
+{
+	u_int intr_flags;
+
+	sc->intr_type = pci_alloc_1intr(sc->dev, igb_msi_enable,
+	    &sc->intr_rid, &intr_flags);
+
+	sc->intr_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
+	    &sc->intr_rid, intr_flags);
+	if (sc->intr_res == NULL) {
+		device_printf(sc->dev, "Unable to allocate bus resource: "
+		    "interrupt\n");
+		return ENXIO;
+	}
+	return 0;
+}
+
+static void
+igb_free_intr(struct igb_softc *sc)
+{
+	if (sc->intr_res != NULL) {
+		bus_release_resource(sc->dev, SYS_RES_IRQ, sc->intr_rid,
+		    sc->intr_res);
+	}
+	if (sc->intr_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(sc->dev);
+}

@@ -22,11 +22,8 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libthread_xu/thread/thr_kern.c,v 1.5 2008/09/30 16:57:06 swildner Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/signalvar.h>
 #include <sys/rtprio.h>

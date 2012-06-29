@@ -77,14 +77,12 @@ ffs_read(struct vop_read_args *ap)
 	off_t bytesinfile;
 	int xfersize, blkoffset;
 	int error, orig_resid;
-	u_short mode;
 	int seqcount;
 	int ioflag;
 
 	vp = ap->a_vp;
 	seqcount = ap->a_ioflag >> 16;
 	ip = VTOI(vp);
-	mode = ip->i_mode;
 	uio = ap->a_uio;
 	ioflag = ap->a_ioflag;
 #ifdef DIRECTIO

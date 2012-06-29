@@ -78,7 +78,6 @@
  * $FreeBSD: src/usr.bin/chat/chat.c,v 1.21 2003/10/31 06:22:03 kientzle Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <ctype.h>

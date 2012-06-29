@@ -31,7 +31,6 @@
  * $FreeBSD: src/sbin/mount_hpfs/mount_hpfs.c,v 1.1 1999/12/09 19:09:15 semenu Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/stat.h>

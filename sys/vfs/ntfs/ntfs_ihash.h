@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.h,v 1.5 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.h,v 1.5 2006/09/10 01:26:41 dillon Exp $
  */
 
 struct vfsconf;

@@ -33,9 +33,6 @@
  * $FreeBSD: src/sbin/fsck_msdosfs/main.c,v 1.4.2.1 2001/08/01 05:47:56 obrien Exp $
  */
 
-
-#include <sys/cdefs.h>
-
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>

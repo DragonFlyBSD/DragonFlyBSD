@@ -118,12 +118,6 @@ puffs_vnop_lookup(struct vop_nresolve_args *ap)
 	DPRINTF(("puffs_lookup: \"%s\", parent vnode %p\n",
 	    ncp->nc_name, dvp));
 
-	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
-		DPRINTF(("puffs_vnop_lookup: EAGAIN on ncp %p %s\n",
-		    ncp, ncp->nc_name));
-		return EAGAIN;
-	}
-
 	PUFFS_MSG_ALLOC(vn, lookup);
 	puffs_makecn(&lookup_msg->pvnr_cn, &lookup_msg->pvnr_cn_cred,
 	    ncp, cred);
@@ -168,7 +162,6 @@ puffs_vnop_lookup(struct vop_nresolve_args *ap)
 	}
 
  out:
-	vput(dvp);
 	if (!error && vp != NULL) {
 		vn_unlock(vp);
 		cache_setvp(nch, vp);

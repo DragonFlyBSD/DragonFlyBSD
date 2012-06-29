@@ -28,8 +28,6 @@
  | $Id: pdu.c,v 2.2 2006/12/01 09:11:56 danny Exp danny $
  */
 
-#include <sys/cdefs.h>
-
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/uio.h>

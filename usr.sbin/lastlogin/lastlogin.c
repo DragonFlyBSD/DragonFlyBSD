@@ -31,10 +31,8 @@
  *
  * $NetBSD: lastlogin.c,v 1.4 1998/02/03 04:45:35 perry Exp $
  * $FreeBSD: src/usr.sbin/lastlogin/lastlogin.c,v 1.2.2.2 2001/07/19 05:02:46 kris Exp $
- * $DragonFly: src/usr.sbin/lastlogin/lastlogin.c,v 1.5 2004/11/13 16:14:33 liamfoy Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/user.h>
 
 #include <err.h>

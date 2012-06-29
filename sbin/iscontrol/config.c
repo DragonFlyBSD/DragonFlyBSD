@@ -28,8 +28,6 @@
  | $Id: config.c,v 2.1 2006/11/12 08:06:51 danny Exp danny $
  */
 
-#include <sys/cdefs.h>
-
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>

@@ -58,14 +58,14 @@ can be used for associating file system specific data with the new
 node and will not be accessed by puffs.
 .It Fn puffs_nodewalk_fn pu pn arg
 A callback for
-.Fn puffs_nodewalk .
+.Fn puffs_pn_nodewalk .
 The list of nodes is iterated in the argument
 .Ar pn
 and the argument
 .Ar arg
 is the argument given to
-.Fn puffs_nodewalk .
-.It Fn puffs_nodewalk pu nwfn arg
+.Fn puffs_pn_nodewalk .
+.It Fn puffs_pn_nodewalk pu nwfn arg
 Walk all nodes associted with the mountpoint
 .Ar pu
 and call

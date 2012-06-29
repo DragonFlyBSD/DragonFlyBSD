@@ -305,8 +305,10 @@ again:
 	if ((flags & TH_SYN) && SEQ_GT(tp->snd_nxt, tp->snd_una)) {
 		flags &= ~TH_SYN;
 		off--, len++;
-		if (len > 0 && tp->t_state == TCPS_SYN_SENT)
+		if (len > 0 && tp->t_state == TCPS_SYN_SENT) {
+			tp->t_flags &= ~(TF_ACKNOW | TF_XMITNOW);
 			return 0;
+		}
 	}
 
 	/*
@@ -448,6 +450,8 @@ again:
 			goto send;
 		if (SEQ_LT(tp->snd_nxt, tp->snd_max))	/* retransmit case */
 			goto send;
+		if (tp->t_flags & TF_XMITNOW)
+			goto send;
 	}
 
 	/*
@@ -552,6 +556,7 @@ again:
 	/*
 	 * No reason to send a segment, just return.
 	 */
+	tp->t_flags &= ~TF_XMITNOW;
 	return (0);
 
 send:
@@ -1063,6 +1068,7 @@ after_th:
 		KASSERT(error != 0, ("no error, but th not set"));
 	}
 	if (error) {
+		tp->t_flags &= ~(TF_ACKNOW | TF_XMITNOW);
 
 		/*
 		 * We know that the packet was lost, so back out the
@@ -1132,7 +1138,7 @@ out:
 		tp->t_flags &= ~TF_RXRESIZED;
 	}
 	tp->last_ack_sent = tp->rcv_nxt;
-	tp->t_flags &= ~TF_ACKNOW;
+	tp->t_flags &= ~(TF_ACKNOW | TF_XMITNOW);
 	if (tcp_delack_enabled)
 		tcp_callout_stop(tp, tp->tt_delack);
 	if (sendalot)
