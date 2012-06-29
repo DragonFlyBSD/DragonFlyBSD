@@ -2533,9 +2533,9 @@ bge_rxeof(struct bge_softc *sc)
 		}
 
 		ifp->if_ipackets++;
-#ifndef __i386__
+#if !defined(__i386__) && !defined(__x86_64__)
 		/*
-		 * The i386 allows unaligned accesses, but for other
+		 * The x86 allows unaligned accesses, but for other
 		 * platforms we must make sure the payload is aligned.
 		 */
 		if (sc->bge_flags & BGE_FLAG_RX_ALIGNBUG) {
