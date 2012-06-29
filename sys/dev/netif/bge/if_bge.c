@@ -3073,9 +3073,6 @@ bge_init(void *xsc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (ifp->if_flags & IFF_RUNNING)
-		return;
-
 	/* Cancel pending I/O and flush buffers. */
 	bge_stop(sc);
 	bge_reset(sc);
@@ -3294,8 +3291,8 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			error = EINVAL;
 		} else if (ifp->if_mtu != ifr->ifr_mtu) {
 			ifp->if_mtu = ifr->ifr_mtu;
-			ifp->if_flags &= ~IFF_RUNNING;
-			bge_init(sc);
+			if (ifp->if_flags & IFF_RUNNING)
+				bge_init(sc);
 		}
 		break;
 	case SIOCSIFFLAGS:
@@ -3319,9 +3316,8 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			} else {
 				bge_init(sc);
 			}
-		} else {
-			if (ifp->if_flags & IFF_RUNNING)
-				bge_stop(sc);
+		} else if (ifp->if_flags & IFF_RUNNING) {
+			bge_stop(sc);
 		}
 		sc->bge_if_flags = ifp->if_flags;
 		break;
@@ -3367,7 +3363,6 @@ bge_watchdog(struct ifnet *ifp)
 
 	if_printf(ifp, "watchdog timeout -- resetting\n");
 
-	ifp->if_flags &= ~IFF_RUNNING;
 	bge_init(sc);
 
 	ifp->if_oerrors++;
