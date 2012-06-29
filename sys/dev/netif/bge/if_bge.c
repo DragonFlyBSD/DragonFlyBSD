@@ -111,7 +111,7 @@
 /* "device miibus" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
 
-#define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
+#define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP)
 #define BGE_MIN_FRAME		60
 
 static const struct bge_type bge_devs[] = {
