@@ -1631,8 +1631,24 @@ bge_blockinit(struct bge_softc *sc)
 	sc->bge_ldata.bge_status_block->bge_idx[0].bge_rx_prod_idx = 0;
 	sc->bge_ldata.bge_status_block->bge_idx[0].bge_tx_cons_idx = 0;
 
+	/*
+	 * Set up status block partail update size.
+	 *
+	 * Because only single TX ring, RX produce ring and Rx return ring
+	 * are used, ask device to update only minimum part of status block
+	 * except for BCM5700 AX/BX, whose status block partial update size
+	 * can't be configured.
+	 */
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5700 &&
+	    sc->bge_chipid != BGE_CHIPID_BCM5700_C0) {
+		/* XXX Actually reserved on BCM5700 AX/BX */
+		val = BGE_STATBLKSZ_FULL;
+	} else {
+		val = BGE_STATBLKSZ_32BYTE;
+	}
+
 	/* Turn on host coalescing state machine */
-	CSR_WRITE_4(sc, BGE_HCC_MODE, BGE_HCCMODE_ENABLE);
+	CSR_WRITE_4(sc, BGE_HCC_MODE, val | BGE_HCCMODE_ENABLE);
 
 	/* Turn on RX BD completion state machine and enable attentions */
 	CSR_WRITE_4(sc, BGE_RBDC_MODE,
