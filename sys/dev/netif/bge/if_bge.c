@@ -1701,6 +1701,10 @@ bge_blockinit(struct bge_softc *sc)
 		/* Enable host coalescing bug fix. */
 		val |= BGE_WDMAMODE_STATUS_TAG_FIX;
 	}
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5785) {
+		/* Request larger DMA burst size to get better performance. */
+		val |= BGE_WDMAMODE_BURST_ALL_DATA;
+	}
 	CSR_WRITE_4(sc, BGE_WDMA_MODE, val);
 	DELAY(40);
 
