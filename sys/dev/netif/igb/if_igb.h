@@ -194,6 +194,9 @@
 #define IGB_RETA_SHIFT			0
 #define IGB_RETA_SHIFT_82575		6
 
+#define IGB_EITR_INTVL_MASK		0x7ffc
+#define IGB_EITR_INTVL_SHIFT		2
+
 struct igb_softc;
 
 /*

@@ -3362,9 +3362,16 @@ igb_set_eitr(struct igb_softc *sc, int idx, int rate)
 			 */
 		} else {
 			eitr = 1000000 / rate;
-			eitr <<= 2;
+			eitr <<= IGB_EITR_INTVL_SHIFT;
 		}
-		eitr &= 0x7FFC;
+
+		if (eitr == 0) {
+			/* Don't disable it */
+			eitr = 1 << IGB_EITR_INTVL_SHIFT;
+		} else if (eitr > IGB_EITR_INTVL_MASK) {
+			/* Don't allow it to be too large */
+			eitr = IGB_EITR_INTVL_MASK;
+		}
 	}
 	if (sc->hw.mac.type == e1000_82575)
 		eitr |= eitr << 16;
