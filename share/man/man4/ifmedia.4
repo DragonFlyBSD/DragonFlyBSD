@@ -224,16 +224,26 @@ The following media types are defined for IEEE802.11 Wireless LAN:
 Frequency Hopping 1Mbps.  [FH/1Mbps, FH1, FrequencyHopping/1Mbps]
 .It Dv IFM_IEEE80211_FH2
 Frequency Hopping 2Mbps.  [FH/2Mbps, FH2, FrequencyHopping/2Mbps]
+.It Dv IFM_IEEE80211_DS354k
+Direct Sequence 354Kbps.  [DS/354Kbps, DS354K, DirectSequence/354Kbps]
+.It Dv IFM_IEEE80211_DS512k
+Direct Sequence 512Kbps.  [DS/512Kbps, DS512K, DirectSequence/512Kbps]
 .It Dv IFM_IEEE80211_DS1
-Direct Sequence 1Mbps.  [DS/1Mbps, DS1, DirectSequence/1Mbps]
+Direct Sequence 1Mbps.  [DS/1Mbps, DS1, DirectSequence/1Mbps, CCK1]
 .It Dv IFM_IEEE80211_DS2
-Direct Sequence 2Mbps.  [DS/2Mbps, DS2, DirectSequence/2Mbps]
+Direct Sequence 2Mbps.  [DS/2Mbps, DS2, DirectSequence/2Mbps, CCK2]
 .It Dv IFM_IEEE80211_DS5
-Direct Sequence 5Mbps.  [DS/5.5Mbps, DS5, DirectSequence/5.5Mbps]
+Direct Sequence 5Mbps.  [DS/5.5Mbps, DS5, DirectSequence/5.5Mbps, CCK5.5]
 .It Dv IFM_IEEE80211_DS11
-Direct Sequence 11Mbps.  [DS/11Mbps, DS11, DirectSequence/11Mbps]
+Direct Sequence 11Mbps.  [DS/11Mbps, DS11, DirectSequence/11Mbps, CCK11]
 .It Dv IFM_IEEE80211_DS22
 Direct Sequence 22Mbps.  [DS/22Mbps, DS22, DirectSequence/22Mbps]
+.\".It Dv IFM_IEEE80211_MCS
+.\"...
+.It Dv IFM_IEEE80211_OFDM3
+Orthogonal Frequency Division Multiplexing 3Mbps.  [OFDM/3Mbps OFDM3]
+.It Dv IFM_IEEE80211_OFDM4
+Orthogonal Frequency Division Multiplexing 4.5Mbps.  [OFDM/4.5Mbps OFDM4.5]
 .It Dv IFM_IEEE80211_OFDM6
 Orthogonal Frequency Division Multiplexing 6Mbps.  [OFDM/6Mbps, OFDM6]
 .It Dv IFM_IEEE80211_OFDM9
@@ -244,6 +254,8 @@ Orthogonal Frequency Division Multiplexing 12Mbps.  [OFDM/12Mbps, OFDM12]
 Orthogonal Frequency Division Multiplexing 18Mbps.  [OFDM/18Mbps, OFDM18]
 .It Dv IFM_IEEE80211_OFDM24
 Orthogonal Frequency Division Multiplexing 24Mbps.  [OFDM/24Mbps, OFDM24]
+.It Dv IFM_IEEE80211_OFDM27
+Orthogonal Frequency Division Multiplexing 27Mbps.  [OFDM/27Mbps, OFDM27]
 .It Dv IFM_IEEE80211_OFDM36
 Orthogonal Frequency Division Multiplexing 36Mbps.  [OFDM/36Mbps, OFDM36]
 .It Dv IFM_IEEE80211_OFDM48
@@ -255,7 +267,7 @@ Orthogonal Frequency Division Multiplexing 72Mbps.  [OFDM/72Mbps, OFDM72]
 .El
 .Pp
 The following media options are defined for IEEE802.11 Wireless LAN:
-.Bl -tag -offset indent -width ".Dv IFM_IEEE80211_IBSSMASTER"
+.Bl -tag -offset indent -width ".Dv IFM_IEEE80211_MONITOR"
 .It Dv IFM_IEEE80211_ADHOC
 Ad-hoc mode.  [adhoc]
 .Pp
@@ -266,24 +278,30 @@ In some drivers, it may be used with the
 Access Point mode.  [hostap]
 .It Dv IFM_IEEE80211_IBSS
 IBSS mode.  [ibss]
-.It Dv IFM_IEEE80211_IBSSMASTER
-Operate as an IBSS master.  [ibss-master]
+.It Dv IFM_IEEE80211_MBSS
+MBSS mode.  [mesh]
 .It Dv IFM_IEEE80211_MONITOR
 Monitor mode.  [monitor]
 .It Dv IFM_IEEE80211_TURBO
 Turbo mode.  [turbo]
+.It Dv IFM_IEEE80211_WDS
+WDS mode.  [wds]
 .El
 .Pp
 The following operating modes are defined for IEEE802.11 Wireless LAN:
-.Bl -tag -offset indent -width ".Dv IFM_IEEE80211_11A"
+.Bl -tag -offset indent -width ".Dv IFM_IEEE80211_11NA"
 .It Dv IFM_AUTO
 Autoselect the best mode.  [autoselect, auto]
 .It Dv IFM_IEEE80211_11A
 Orthogonal Frequency Division Multiplexing, 5GHz.  [11a]
+.It Dv IFM_IEEE80211_11NA
+High Throughput, 5GHz.  [11na]
 .It Dv IFM_IEEE80211_11B
 Direct Sequence mode.  [11b]
 .It Dv IFM_IEEE80211_11G
-Orthogonal Frequency Division Multiplexing, 2GHz.  [11g]
+Complementary Code Keying, 2GHz.  [11g]
+.It Dv IFM_IEEE80211_11NG
+High Throughput, 2GHz.  [11ng]
 .It Dv IFM_IEEE80211_FH
 Gaussian Frequency Shift Keying, 2GHz.  [fh]
 .El
