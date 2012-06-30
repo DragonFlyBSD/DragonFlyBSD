@@ -111,7 +111,7 @@
 /* "device miibus" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
 
-#define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
+#define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP)
 #define BGE_MIN_FRAME		60
 
 static const struct bge_type bge_devs[] = {
@@ -743,7 +743,8 @@ bge_miibus_statchg(device_t dev)
 	mii = device_get_softc(sc->bge_miibus);
 
 	BGE_CLRBIT(sc, BGE_MAC_MODE, BGE_MACMODE_PORTMODE);
-	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T) {
+	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T ||
+	    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX) {
 		BGE_SETBIT(sc, BGE_MAC_MODE, BGE_PORTMODE_GMII);
 	} else {
 		BGE_SETBIT(sc, BGE_MAC_MODE, BGE_PORTMODE_MII);
@@ -1497,7 +1498,10 @@ bge_blockinit(struct bge_softc *sc)
 	else
 		val = BGE_STD_RX_RING_CNT / 8;
 	CSR_WRITE_4(sc, BGE_RBDI_STD_REPL_THRESH, val);
-	CSR_WRITE_4(sc, BGE_RBDI_JUMBO_REPL_THRESH, BGE_JUMBO_RX_RING_CNT/8);
+	if (BGE_IS_JUMBO_CAPABLE(sc)) {
+		CSR_WRITE_4(sc, BGE_RBDI_JUMBO_REPL_THRESH,
+		    BGE_JUMBO_RX_RING_CNT/8);
+	}
 
 	/*
 	 * Disable all unused send rings by setting the 'ring disabled'
@@ -1540,7 +1544,8 @@ bge_blockinit(struct bge_softc *sc)
 
 	/* Initialize RX ring indexes */
 	bge_writembx(sc, BGE_MBX_RX_STD_PROD_LO, 0);
-	bge_writembx(sc, BGE_MBX_RX_JUMBO_PROD_LO, 0);
+	if (BGE_IS_JUMBO_CAPABLE(sc))
+		bge_writembx(sc, BGE_MBX_RX_JUMBO_PROD_LO, 0);
 	bge_writembx(sc, BGE_MBX_RX_MINI_PROD_LO, 0);
 
 	/*
@@ -1624,15 +1629,30 @@ bge_blockinit(struct bge_softc *sc)
 	}
 
 	/* Set up address of status block */
+	bzero(sc->bge_ldata.bge_status_block, BGE_STATUS_BLK_SZ);
 	CSR_WRITE_4(sc, BGE_HCC_STATUSBLK_ADDR_HI,
 	    BGE_ADDR_HI(sc->bge_ldata.bge_status_block_paddr));
 	CSR_WRITE_4(sc, BGE_HCC_STATUSBLK_ADDR_LO,
 	    BGE_ADDR_LO(sc->bge_ldata.bge_status_block_paddr));
-	sc->bge_ldata.bge_status_block->bge_idx[0].bge_rx_prod_idx = 0;
-	sc->bge_ldata.bge_status_block->bge_idx[0].bge_tx_cons_idx = 0;
+
+	/*
+	 * Set up status block partail update size.
+	 *
+	 * Because only single TX ring, RX produce ring and Rx return ring
+	 * are used, ask device to update only minimum part of status block
+	 * except for BCM5700 AX/BX, whose status block partial update size
+	 * can't be configured.
+	 */
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5700 &&
+	    sc->bge_chipid != BGE_CHIPID_BCM5700_C0) {
+		/* XXX Actually reserved on BCM5700 AX/BX */
+		val = BGE_STATBLKSZ_FULL;
+	} else {
+		val = BGE_STATBLKSZ_32BYTE;
+	}
 
 	/* Turn on host coalescing state machine */
-	CSR_WRITE_4(sc, BGE_HCC_MODE, BGE_HCCMODE_ENABLE);
+	CSR_WRITE_4(sc, BGE_HCC_MODE, val | BGE_HCCMODE_ENABLE);
 
 	/* Turn on RX BD completion state machine and enable attentions */
 	CSR_WRITE_4(sc, BGE_RBDC_MODE,
@@ -1645,13 +1665,20 @@ bge_blockinit(struct bge_softc *sc)
 	if (!BGE_IS_5705_PLUS(sc))
 		CSR_WRITE_4(sc, BGE_RXLS_MODE, BGE_RXLSMODE_ENABLE);
 
+	val = BGE_MACMODE_TXDMA_ENB | BGE_MACMODE_RXDMA_ENB |
+	    BGE_MACMODE_RX_STATS_CLEAR | BGE_MACMODE_TX_STATS_CLEAR |
+	    BGE_MACMODE_RX_STATS_ENB | BGE_MACMODE_TX_STATS_ENB |
+	    BGE_MACMODE_FRMHDR_DMA_ENB;
+
+	if (sc->bge_flags & BGE_FLAG_TBI)
+		val |= BGE_PORTMODE_TBI;
+	else if (sc->bge_flags & BGE_FLAG_MII_SERDES)
+		val |= BGE_PORTMODE_GMII;
+	else
+		val |= BGE_PORTMODE_MII;
+
 	/* Turn on DMA, clear stats */
-	CSR_WRITE_4(sc, BGE_MAC_MODE, BGE_MACMODE_TXDMA_ENB|
-	    BGE_MACMODE_RXDMA_ENB|BGE_MACMODE_RX_STATS_CLEAR|
-	    BGE_MACMODE_TX_STATS_CLEAR|BGE_MACMODE_RX_STATS_ENB|
-	    BGE_MACMODE_TX_STATS_ENB|BGE_MACMODE_FRMHDR_DMA_ENB|
-	    ((sc->bge_flags & BGE_FLAG_TBI) ?
-	     BGE_PORTMODE_TBI : BGE_PORTMODE_MII));
+	CSR_WRITE_4(sc, BGE_MAC_MODE, val);
 
 	/* Set misc. local control, enable interrupts on attentions */
 	CSR_WRITE_4(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_ONATTN);
@@ -1673,6 +1700,10 @@ bge_blockinit(struct bge_softc *sc)
 	if (BGE_IS_5755_PLUS(sc)) {
 		/* Enable host coalescing bug fix. */
 		val |= BGE_WDMAMODE_STATUS_TAG_FIX;
+	}
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5785) {
+		/* Request larger DMA burst size to get better performance. */
+		val |= BGE_WDMAMODE_BURST_ALL_DATA;
 	}
 	CSR_WRITE_4(sc, BGE_WDMA_MODE, val);
 	DELAY(40);
@@ -2070,12 +2101,14 @@ bge_attach(device_t dev)
 		hwcfg = ntohl(hwcfg);
 	}
 
-	if ((hwcfg & BGE_HWCFG_MEDIA) == BGE_MEDIA_FIBER)
-		sc->bge_flags |= BGE_FLAG_TBI;
-
 	/* The SysKonnect SK-9D41 is a 1000baseSX card. */
-	if (pci_get_subvendor(dev) == PCI_PRODUCT_SCHNEIDERKOCH_SK_9D41)
-		sc->bge_flags |= BGE_FLAG_TBI;
+	if (pci_get_subvendor(dev) == PCI_PRODUCT_SCHNEIDERKOCH_SK_9D41 ||
+	    (hwcfg & BGE_HWCFG_MEDIA) == BGE_MEDIA_FIBER) {
+		if (BGE_IS_5714_FAMILY(sc))
+			sc->bge_flags |= BGE_FLAG_MII_SERDES;
+		else
+			sc->bge_flags |= BGE_FLAG_TBI;
+	}
 
 	if (sc->bge_flags & BGE_FLAG_TBI) {
 		ifmedia_init(&sc->bge_ifmedia, IFM_IMASK,
@@ -2161,6 +2194,30 @@ bge_attach(device_t dev)
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bge_sysctl_tx_max_coal_bds, "I",
 			"Transmit max coalesced BD count.");
+
+	if (sc->bge_flags & BGE_FLAG_PCIE) {
+		/*
+		 * A common design characteristic for many Broadcom
+		 * client controllers is that they only support a
+		 * single outstanding DMA read operation on the PCIe
+		 * bus. This means that it will take twice as long to
+		 * fetch a TX frame that is split into header and
+		 * payload buffers as it does to fetch a single,
+		 * contiguous TX frame (2 reads vs. 1 read). For these
+		 * controllers, coalescing buffers to reduce the number
+		 * of memory reads is effective way to get maximum
+		 * performance(about 940Mbps).  Without collapsing TX
+		 * buffers the maximum TCP bulk transfer performance
+		 * is about 850Mbps. However forcing coalescing mbufs
+		 * consumes a lot of CPU cycles, so leave it off by
+		 * default.
+		 */
+		SYSCTL_ADD_INT(&sc->bge_sysctl_ctx,
+			       SYSCTL_CHILDREN(sc->bge_sysctl_tree),
+			       OID_AUTO, "force_defrag", CTLFLAG_RW,
+			       &sc->bge_force_defrag, 0,
+			       "Force defragment on TX path");
+	}
 
 	/*
 	 * Call MI attach routine.
@@ -2285,7 +2342,7 @@ bge_reset(struct bge_softc *sc)
 	 * powered up in D0 uninitialized.
 	 */
 	if (BGE_IS_5705_PLUS(sc))
-		reset |= 0x04000000;
+		reset |= BGE_MISCCFG_GPHY_PD_OVERRIDE;
 
 	/* Issue global reset */
 	write_op(sc, BGE_MISC_CFG, reset);
@@ -2404,11 +2461,6 @@ bge_reset(struct bge_softc *sc)
 		DELAY(10);
 	}
 
-	if (sc->bge_flags & BGE_FLAG_PCIE) {
-		reset = bge_readmem_ind(sc, 0x7c00);
-		bge_writemem_ind(sc, 0x7c00, reset | (1 << 25));
-	}
-
 	/* Fix up byte swapping */
 	CSR_WRITE_4(sc, BGE_MODE_CTL, BGE_DMA_SWAP_OPTIONS |
 	    BGE_MODECTL_BYTESWAP_DATA);
@@ -2431,9 +2483,11 @@ bge_reset(struct bge_softc *sc)
 
 	/* XXX: Broadcom Linux driver. */
 	if ((sc->bge_flags & BGE_FLAG_PCIE) &&
-	    sc->bge_chipid != BGE_CHIPID_BCM5750_A0) {
+	    sc->bge_chipid != BGE_CHIPID_BCM5750_A0 &&
+	    sc->bge_asicrev != BGE_ASICREV_BCM5785) {
 		uint32_t v;
 
+		/* Enable Data FIFO protection. */
 		v = CSR_READ_4(sc, 0x7c00);
 		CSR_WRITE_4(sc, 0x7c00, v | (1<<25));
 	}
@@ -2533,9 +2587,9 @@ bge_rxeof(struct bge_softc *sc)
 		}
 
 		ifp->if_ipackets++;
-#ifndef __i386__
+#if !defined(__i386__) && !defined(__x86_64__)
 		/*
-		 * The i386 allows unaligned accesses, but for other
+		 * The x86 allows unaligned accesses, but for other
 		 * platforms we must make sure the payload is aligned.
 		 */
 		if (sc->bge_flags & BGE_FLAG_RX_ALIGNBUG) {
@@ -2853,6 +2907,21 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 			goto back;
 	}
 
+	if (sc->bge_force_defrag && (sc->bge_flags & BGE_FLAG_PCIE) &&
+	    m_head->m_next != NULL) {
+		struct mbuf *m_new;
+
+		/*
+		 * Forcefully defragment mbuf chain to overcome hardware
+		 * limitation which only support a single outstanding
+		 * DMA read operation.  If it fails, keep moving on using
+		 * the original mbuf chain.
+		 */
+		m_new = m_defrag(m_head, MB_DONTWAIT);
+		if (m_new != NULL)
+			*m_head0 = m_head = m_new;
+	}
+
 	error = bus_dmamap_load_mbuf_defrag(sc->bge_cdata.bge_tx_mtag, map,
 			m_head0, segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error)
@@ -3004,9 +3073,6 @@ bge_init(void *xsc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (ifp->if_flags & IFF_RUNNING)
-		return;
-
 	/* Cancel pending I/O and flush buffers. */
 	bge_stop(sc);
 	bge_reset(sc);
@@ -3081,6 +3147,14 @@ bge_init(void *xsc)
 
 	/* Turn on receiver */
 	BGE_SETBIT(sc, BGE_RX_MODE, BGE_RXMODE_ENABLE);
+
+	/*
+	 * Set the number of good frames to receive after RX MBUF
+	 * Low Watermark has been reached.  After the RX MAC receives
+	 * this number of frames, it will drop subsequent incoming
+	 * frames until the MBUF High Watermark is reached.
+	 */
+	CSR_WRITE_4(sc, BGE_MAX_RX_FRAME_LOWAT, 2);
 
 	/* Tell firmware we're alive. */
 	BGE_SETBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
@@ -3217,8 +3291,8 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			error = EINVAL;
 		} else if (ifp->if_mtu != ifr->ifr_mtu) {
 			ifp->if_mtu = ifr->ifr_mtu;
-			ifp->if_flags &= ~IFF_RUNNING;
-			bge_init(sc);
+			if (ifp->if_flags & IFF_RUNNING)
+				bge_init(sc);
 		}
 		break;
 	case SIOCSIFFLAGS:
@@ -3242,9 +3316,8 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			} else {
 				bge_init(sc);
 			}
-		} else {
-			if (ifp->if_flags & IFF_RUNNING)
-				bge_stop(sc);
+		} else if (ifp->if_flags & IFF_RUNNING) {
+			bge_stop(sc);
 		}
 		sc->bge_if_flags = ifp->if_flags;
 		break;
@@ -3290,7 +3363,6 @@ bge_watchdog(struct ifnet *ifp)
 
 	if_printf(ifp, "watchdog timeout -- resetting\n");
 
-	ifp->if_flags &= ~IFF_RUNNING;
 	bge_init(sc);
 
 	ifp->if_oerrors++;

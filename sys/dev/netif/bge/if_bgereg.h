@@ -607,6 +607,7 @@
 #define BGE_RX_BD_RULES_CTL15		0x04F8
 #define BGE_RX_BD_RULES_MASKVAL15	0x04FC
 #define BGE_RX_RULES_CFG		0x0500
+#define BGE_MAX_RX_FRAME_LOWAT		0x0504
 #define BGE_SERDES_CFG			0x0590
 #define BGE_SERDES_STS			0x0594
 #define BGE_SGDIG_CFG			0x05B0
@@ -1407,6 +1408,7 @@
 #define BGE_WDMAMODE_LOCREAD_TOOBIG	0x00000200
 #define BGE_WDMAMODE_ALL_ATTNS		0x000003FC
 #define BGE_WDMAMODE_STATUS_TAG_FIX	0x20000000
+#define BGE_WDMAMODE_BURST_ALL_DATA	0xC0000000
 
 /* Write DMA status register */
 #define BGE_WDMASTAT_PCI_TGT_ABRT_ATTN	0x00000004
@@ -1796,6 +1798,7 @@
 #define BGE_MISCCFG_RESET_CORE_CLOCKS	0x00000001
 #define BGE_MISCCFG_TIMER_PRESCALER	0x000000FE
 #define BGE_MISCCFG_EPHY_IDDQ		0x00200000
+#define BGE_MISCCFG_GPHY_PD_OVERRIDE	0x04000000
 
 #define BGE_32BITTIME_66MHZ		(0x41 << 1)
 
@@ -2456,6 +2459,7 @@ struct bge_softc {
 #define BGE_FLAG_TBI		0x00000001
 #define BGE_FLAG_JUMBO		0x00000002
 #define BGE_FLAG_ETH_WIRESPEED	0x00000004
+#define BGE_FLAG_MII_SERDES	0x00000010
 #define BGE_FLAG_MSI		0x00000100	/* unused */
 #define BGE_FLAG_PCIX		0x00000200
 #define BGE_FLAG_PCIE		0x00000400
@@ -2495,6 +2499,7 @@ struct bge_softc {
 	uint32_t		bge_rx_max_coal_bds;
 	uint32_t		bge_tx_max_coal_bds;
 	uint32_t		bge_tx_buf_ratio;
+	int			bge_force_defrag;
 	int			bge_if_flags;
 	int			bge_txcnt;
 	int			bge_link;

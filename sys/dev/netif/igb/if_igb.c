@@ -139,7 +139,9 @@ static int	igb_txctx_pullup(struct igb_tx_ring *, struct mbuf **);
 static boolean_t igb_txctx(struct igb_tx_ring *, struct mbuf *);
 static void	igb_add_sysctl(struct igb_softc *);
 static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
+static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
+static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
 
 static void	igb_vf_init_stats(struct igb_softc *);
 static void	igb_reset(struct igb_softc *);
@@ -187,20 +189,28 @@ static void	igb_serialize_assert(struct ifnet *, enum ifnet_serialize,
 #endif
 
 static void	igb_intr(void *);
-static void	igb_shared_intr(void *);
+static void	igb_intr_shared(void *);
 static void	igb_rxeof(struct igb_rx_ring *, int);
 static void	igb_txeof(struct igb_tx_ring *);
-static void	igb_set_eitr(struct igb_softc *);
+static void	igb_set_eitr(struct igb_softc *, int, int);
 static void	igb_enable_intr(struct igb_softc *);
 static void	igb_disable_intr(struct igb_softc *);
 static void	igb_init_unshared_intr(struct igb_softc *);
 static void	igb_init_intr(struct igb_softc *);
 static int	igb_setup_intr(struct igb_softc *);
-static void	igb_setup_tx_intr(struct igb_tx_ring *, int *, int);
-static void	igb_setup_rx_intr(struct igb_rx_ring *, int *, int);
+static void	igb_set_txintr_mask(struct igb_tx_ring *, int *, int);
+static void	igb_set_rxintr_mask(struct igb_rx_ring *, int *, int);
 static void	igb_set_intr_mask(struct igb_softc *);
 static int	igb_alloc_intr(struct igb_softc *);
 static void	igb_free_intr(struct igb_softc *);
+static void	igb_teardown_intr(struct igb_softc *);
+static void	igb_msix_try_alloc(struct igb_softc *);
+static void	igb_msix_free(struct igb_softc *, boolean_t);
+static int	igb_msix_setup(struct igb_softc *);
+static void	igb_msix_teardown(struct igb_softc *, int);
+static void	igb_msix_rx(void *);
+static void	igb_msix_tx(void *);
+static void	igb_msix_status(void *);
 
 /* Management and WOL Support */
 static void	igb_get_mgmt(struct igb_softc *);
@@ -354,6 +364,7 @@ igb_attach(device_t dev)
 #endif
 
 	callout_init_mp(&sc->timer);
+	lwkt_serialize_init(&sc->main_serialize);
 
 	sc->dev = sc->osdep.dev = dev;
 
@@ -427,8 +438,6 @@ igb_attach(device_t dev)
 	sc->hw.bus.pci_cmd_word = pci_read_config(dev, PCIR_COMMAND, 2);
 	sc->hw.back = &sc->osdep;
 
-	sc->intr_rate = IGB_INTR_RATE;
-
 	/* Do Shared Code initialization */
 	if (e1000_setup_init_funcs(&sc->hw, TRUE)) {
 		device_printf(dev, "Setup of Shared code failed\n");
@@ -465,7 +474,6 @@ igb_attach(device_t dev)
 	/*
 	 * Setup serializers
 	 */
-	lwkt_serialize_init(&sc->main_serialize);
 	i = 0;
 	sc->serializes[i++] = &sc->main_serialize;
 
@@ -640,7 +648,7 @@ igb_detach(device_t dev)
 			igb_enable_wol(dev);
 		}
 
-		bus_teardown_intr(dev, sc->intr_res, sc->intr_tag);
+		igb_teardown_intr(sc);
 
 		ifnet_deserialize_all(ifp);
 
@@ -650,8 +658,15 @@ igb_detach(device_t dev)
 	}
 	bus_generic_detach(dev);
 
+	if (sc->sysctl_tree != NULL)
+		sysctl_ctx_free(&sc->sysctl_ctx);
+
 	igb_free_intr(sc);
 
+	if (sc->msix_mem_res != NULL) {
+		bus_release_resource(dev, SYS_RES_MEMORY, sc->msix_mem_rid,
+		    sc->msix_mem_res);
+	}
 	if (sc->mem_res != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mem_rid,
 		    sc->mem_res);
@@ -663,9 +678,6 @@ igb_detach(device_t dev)
 		kfree(sc->mta, M_DEVBUF);
 	if (sc->stats != NULL)
 		kfree(sc->stats, M_DEVBUF);
-
-	if (sc->sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->sysctl_ctx);
 
 	return 0;
 }
@@ -822,6 +834,7 @@ igb_init(void *xsc)
 {
 	struct igb_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	boolean_t polling;
 	int i;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
@@ -848,19 +861,17 @@ igb_init(void *xsc)
 	/* Configure for OS presence */
 	igb_get_mgmt(sc);
 
-	if (IGB_ENABLE_HWRSS(sc)) {
-		if (sc->intr_type != PCI_INTR_TYPE_MSIX
+	polling = FALSE;
 #ifdef DEVICE_POLLING
-		    || (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_POLLING)
+		polling = TRUE;
 #endif
-		    ) {
-			sc->rx_ring_inuse = IGB_MIN_RING_RSS;
-			if (bootverbose) {
-				if_printf(ifp, "RX rings %d/%d\n",
-				    sc->rx_ring_inuse, sc->rx_ring_cnt);
-			}
-		}
-	}
+
+	/* Configured used RX/TX rings */
+	igb_set_ring_inuse(sc, polling);
+
+	/* Initialize interrupt */
+	igb_init_intr(sc);
 
 	/* Prepare transmit descriptors and buffers */
 	for (i = 0; i < sc->tx_ring_cnt; ++i)
@@ -882,9 +893,6 @@ igb_init(void *xsc)
 	else
 		adapter->rx_mbuf_sz = MJUM9BYTES;
 #endif
-
-	/* Initialize interrupt */
-	igb_init_intr(sc);
 
 	/* Prepare receive descriptors and buffers */
 	for (i = 0; i < sc->rx_ring_inuse; ++i) {
@@ -917,18 +925,16 @@ igb_init(void *xsc)
 		igb_configure_queues(adapter);
 #endif
 
-	/* this clears any pending interrupts */
+	/* This clears any pending interrupts */
 	E1000_READ_REG(&sc->hw, E1000_ICR);
-#ifdef DEVICE_POLLING
+
 	/*
 	 * Only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	if (ifp->if_flags & IFF_POLLING)
+	if (polling) {
 		igb_disable_intr(sc);
-	else
-#endif /* DEVICE_POLLING */
-	{
+	} else {
 		igb_enable_intr(sc);
 		E1000_WRITE_REG(&sc->hw, E1000_ICS, E1000_ICS_LSC);
 	}
@@ -1374,7 +1380,7 @@ igb_setup_ifp(struct igb_softc *sc)
 	if_initname(ifp, device_get_name(sc->dev), device_get_unit(sc->dev));
 	ifp->if_softc = sc;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-	ifp->if_init =  igb_init;
+	ifp->if_init = igb_init;
 	ifp->if_ioctl = igb_ioctl;
 	ifp->if_start = igb_start;
 	ifp->if_serialize = igb_serialize;
@@ -1436,10 +1442,8 @@ igb_setup_ifp(struct igb_softc *sc)
 static void
 igb_add_sysctl(struct igb_softc *sc)
 {
-#ifdef IGB_RSS_DEBUG
-	char rx_pkt[32];
+	char node[32];
 	int i;
-#endif
 
 	sysctl_ctx_init(&sc->sysctl_ctx);
 	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
@@ -1462,9 +1466,23 @@ igb_add_sysctl(struct igb_softc *sc)
 	    OID_AUTO, "txd", CTLFLAG_RD, &sc->tx_rings[0].num_tx_desc, 0,
 	    "# of TX descs");
 
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-	    OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
-	    sc, 0, igb_sysctl_intr_rate, "I", "interrupt rate");
+	if (sc->intr_type != PCI_INTR_TYPE_MSIX) {
+		SYSCTL_ADD_PROC(&sc->sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->sysctl_tree),
+		    OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
+		    sc, 0, igb_sysctl_intr_rate, "I", "interrupt rate");
+	} else {
+		for (i = 0; i < sc->msix_cnt; ++i) {
+			struct igb_msix_data *msix = &sc->msix_data[i];
+
+			ksnprintf(node, sizeof(node), "msix%d_rate", i);
+			SYSCTL_ADD_PROC(&sc->sysctl_ctx,
+			    SYSCTL_CHILDREN(sc->sysctl_tree),
+			    OID_AUTO, node, CTLTYPE_INT | CTLFLAG_RW,
+			    msix, 0, igb_sysctl_msix_rate, "I",
+			    msix->msix_rate_desc);
+		}
+	}
 
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "tx_intr_nsegs", CTLTYPE_INT | CTLFLAG_RW,
@@ -1476,9 +1494,9 @@ igb_add_sysctl(struct igb_softc *sc)
 	    OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug, 0,
 	    "RSS debug level");
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
-		ksnprintf(rx_pkt, sizeof(rx_pkt), "rx%d_pkt", i);
+		ksnprintf(node, sizeof(node), "rx%d_pkt", i);
 		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, rx_pkt,
+		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_packets, "RXed packets");
 	}
 #endif
@@ -2545,11 +2563,22 @@ igb_set_vlan(struct igb_softc *sc)
 static void
 igb_enable_intr(struct igb_softc *sc)
 {
-	lwkt_serialize_handler_enable(&sc->main_serialize);
+	if (sc->intr_type != PCI_INTR_TYPE_MSIX) {
+		lwkt_serialize_handler_enable(&sc->main_serialize);
+	} else {
+		int i;
+
+		for (i = 0; i < sc->msix_cnt; ++i) {
+			lwkt_serialize_handler_enable(
+			    sc->msix_data[i].msix_serialize);
+		}
+	}
 
 	if ((sc->flags & IGB_FLAG_SHARED_INTR) == 0) {
-		/* XXX MSI-X should use sc->intr_mask */
-		E1000_WRITE_REG(&sc->hw, E1000_EIAC, 0);
+		if (sc->intr_type == PCI_INTR_TYPE_MSIX)
+			E1000_WRITE_REG(&sc->hw, E1000_EIAC, sc->intr_mask);
+		else
+			E1000_WRITE_REG(&sc->hw, E1000_EIAC, 0);
 		E1000_WRITE_REG(&sc->hw, E1000_EIAM, sc->intr_mask);
 		E1000_WRITE_REG(&sc->hw, E1000_EIMS, sc->intr_mask);
 		E1000_WRITE_REG(&sc->hw, E1000_IMS, E1000_IMS_LSC);
@@ -2569,7 +2598,16 @@ igb_disable_intr(struct igb_softc *sc)
 	E1000_WRITE_REG(&sc->hw, E1000_IMC, 0xffffffff);
 	E1000_WRITE_FLUSH(&sc->hw);
 
-	lwkt_serialize_handler_disable(&sc->main_serialize);
+	if (sc->intr_type != PCI_INTR_TYPE_MSIX) {
+		lwkt_serialize_handler_disable(&sc->main_serialize);
+	} else {
+		int i;
+
+		for (i = 0; i < sc->msix_cnt; ++i) {
+			lwkt_serialize_handler_disable(
+			    sc->msix_data[i].msix_serialize);
+		}
+	}
 }
 
 /*
@@ -2871,18 +2909,15 @@ igb_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	struct igb_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
 
-	ASSERT_SERIALIZED(&sc->main_serialize);
-
 	switch (cmd) {
 	case POLL_REGISTER:
-		igb_disable_intr(sc);
-		break;
-
 	case POLL_DEREGISTER:
-		igb_enable_intr(sc);
+		ASSERT_IFNET_SERIALIZED_ALL(ifp);
+		igb_init(sc);
 		break;
 
 	case POLL_AND_CHECK_STATUS:
+		ASSERT_SERIALIZED(&sc->main_serialize);
 		reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
 			sc->hw.mac.get_link_status = 1;
@@ -2890,6 +2925,7 @@ igb_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		}
 		/* FALL THROUGH */
 	case POLL_ONLY:
+		ASSERT_SERIALIZED(&sc->main_serialize);
 		if (ifp->if_flags & IFF_RUNNING) {
 			struct igb_tx_ring *txr;
 			int i;
@@ -2971,7 +3007,7 @@ igb_intr(void *xsc)
 }
 
 static void
-igb_shared_intr(void *xsc)
+igb_intr_shared(void *xsc)
 {
 	struct igb_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -3245,7 +3281,7 @@ igb_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
-	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
 	if (!sc->link_active) {
@@ -3313,28 +3349,35 @@ igb_watchdog(struct ifnet *ifp)
 }
 
 static void
-igb_set_eitr(struct igb_softc *sc)
+igb_set_eitr(struct igb_softc *sc, int idx, int rate)
 {
-	uint32_t itr = 0;
+	uint32_t eitr = 0;
 
-	if (sc->intr_rate > 0) {
+	if (rate > 0) {
 		if (sc->hw.mac.type == e1000_82575) {
-			itr = 1000000000 / 256 / sc->intr_rate;
+			eitr = 1000000000 / 256 / rate;
 			/*
 			 * NOTE:
 			 * Document is wrong on the 2 bits left shift
 			 */
 		} else {
-			itr = 1000000 / sc->intr_rate;
-			itr <<= 2;
+			eitr = 1000000 / rate;
+			eitr <<= IGB_EITR_INTVL_SHIFT;
 		}
-		itr &= 0x7FFC;
+
+		if (eitr == 0) {
+			/* Don't disable it */
+			eitr = 1 << IGB_EITR_INTVL_SHIFT;
+		} else if (eitr > IGB_EITR_INTVL_MASK) {
+			/* Don't allow it to be too large */
+			eitr = IGB_EITR_INTVL_MASK;
+		}
 	}
 	if (sc->hw.mac.type == e1000_82575)
-		itr |= itr << 16;
+		eitr |= eitr << 16;
 	else
-		itr |= E1000_EITR_CNT_IGNR;
-	E1000_WRITE_REG(&sc->hw, E1000_EITR(0), itr);
+		eitr |= E1000_EITR_CNT_IGNR;
+	E1000_WRITE_REG(&sc->hw, E1000_EITR(idx), eitr);
 }
 
 static int
@@ -3355,12 +3398,44 @@ igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
 
 	sc->intr_rate = intr_rate;
 	if (ifp->if_flags & IFF_RUNNING)
-		igb_set_eitr(sc);
+		igb_set_eitr(sc, 0, sc->intr_rate);
+
+	if (bootverbose)
+		if_printf(ifp, "interrupt rate set to %d/sec\n", sc->intr_rate);
 
 	ifnet_deserialize_all(ifp);
 
-	if (bootverbose)
-		if_printf(ifp, "Interrupt rate set to %d/sec\n", sc->intr_rate);
+	return 0;
+}
+
+static int
+igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS)
+{
+	struct igb_msix_data *msix = (void *)arg1;
+	struct igb_softc *sc = msix->msix_sc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, msix_rate;
+
+	msix_rate = msix->msix_rate;
+	error = sysctl_handle_int(oidp, &msix_rate, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (msix_rate < 0)
+		return EINVAL;
+
+	lwkt_serialize_enter(msix->msix_serialize);
+
+	msix->msix_rate = msix_rate;
+	if (ifp->if_flags & IFF_RUNNING)
+		igb_set_eitr(sc, msix->msix_vector, msix->msix_rate);
+
+	if (bootverbose) {
+		if_printf(ifp, "%s set to %d/sec\n", msix->msix_rate_desc,
+		    msix->msix_rate);
+	}
+
+	lwkt_serialize_exit(msix->msix_serialize);
+
 	return 0;
 }
 
@@ -3398,10 +3473,18 @@ static void
 igb_init_intr(struct igb_softc *sc)
 {
 	igb_set_intr_mask(sc);
-	if (sc->flags & IGB_FLAG_SHARED_INTR)
-		igb_set_eitr(sc);
-	else
+
+	if ((sc->flags & IGB_FLAG_SHARED_INTR) == 0)
 		igb_init_unshared_intr(sc);
+
+	if (sc->intr_type != PCI_INTR_TYPE_MSIX) {
+		igb_set_eitr(sc, 0, sc->intr_rate);
+	} else {
+		int i;
+
+		for (i = 0; i < sc->msix_cnt; ++i)
+			igb_set_eitr(sc, i, sc->msix_data[i].msix_rate);
+	}
 }
 
 static void
@@ -3417,10 +3500,49 @@ igb_init_unshared_intr(struct igb_softc *sc)
 	 * Enable extended mode
 	 */
 	if (sc->hw.mac.type != e1000_82575) {
-		E1000_WRITE_REG(hw, E1000_GPIE, E1000_GPIE_NSICR);
+		uint32_t gpie;
+		int ivar_max;
+
+		gpie = E1000_GPIE_NSICR;
+		if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
+			gpie |= E1000_GPIE_MSIX_MODE |
+			    E1000_GPIE_EIAME |
+			    E1000_GPIE_PBA;
+		}
+		E1000_WRITE_REG(hw, E1000_GPIE, gpie);
+
+		/*
+		 * Clear IVARs
+		 */
+		switch (sc->hw.mac.type) {
+		case e1000_82580:
+			ivar_max = IGB_MAX_IVAR_82580;
+			break;
+
+		case e1000_i350:
+			ivar_max = IGB_MAX_IVAR_I350;
+			break;
+
+		case e1000_vfadapt:
+		case e1000_vfadapt_i350:
+			ivar_max = IGB_MAX_IVAR_VF;
+			break;
+
+		case e1000_82576:
+			ivar_max = IGB_MAX_IVAR_82576;
+			break;
+
+		default:
+			panic("unknown mac type %d\n", sc->hw.mac.type);
+		}
+		for (i = 0; i < ivar_max; ++i)
+			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, i, 0);
+		E1000_WRITE_REG(hw, E1000_IVAR_MISC, 0);
 	} else {
 		uint32_t tmp;
 
+		KASSERT(sc->intr_type != PCI_INTR_TYPE_MSIX,
+		    ("82575 w/ MSI-X"));
 		tmp = E1000_READ_REG(hw, E1000_CTRL_EXT);
 		tmp |= E1000_CTRL_EXT_IRCA;
 		E1000_WRITE_REG(hw, E1000_CTRL_EXT, tmp);
@@ -3470,8 +3592,10 @@ igb_init_unshared_intr(struct igb_softc *sc)
 			}
 			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, ivar);
 		}
-		/* Clear unused IVAR_MISC */
-		E1000_WRITE_REG(hw, E1000_IVAR_MISC, 0);
+		if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
+			ivar = (sc->sts_intr_bit | E1000_IVAR_VALID) << 8;
+			E1000_WRITE_REG(hw, E1000_IVAR_MISC, ivar);
+		}
 		break;
 
 	case e1000_82576:
@@ -3511,8 +3635,10 @@ igb_init_unshared_intr(struct igb_softc *sc)
 			}
 			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, ivar);
 		}
-		/* Clear unused IVAR_MISC */
-		E1000_WRITE_REG(hw, E1000_IVAR_MISC, 0);
+		if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
+			ivar = (sc->sts_intr_bit | E1000_IVAR_VALID) << 8;
+			E1000_WRITE_REG(hw, E1000_IVAR_MISC, ivar);
+		}
 		break;
 
 	case e1000_82575:
@@ -3531,48 +3657,18 @@ igb_init_unshared_intr(struct igb_softc *sc)
 		break;
 
 	default:
-		break;
+		panic("unknown mac type %d\n", sc->hw.mac.type);
 	}
-
-	/*
-	 * Configure interrupt moderation
-	 */
-	igb_set_eitr(sc);
 }
 
 static int
 igb_setup_intr(struct igb_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, i, intr_bit, intr_bitmax;
+	int error;
 
-	/*
-	 * Setup interrupt mask
-	 */
-	switch (sc->hw.mac.type) {
-	case e1000_82575:
-		intr_bitmax = IGB_MAX_TXRXINT_82575;
-		break;
-	case e1000_82580:
-		intr_bitmax = IGB_MAX_TXRXINT_82580;
-		break;
-	case e1000_i350:
-		intr_bitmax = IGB_MAX_TXRXINT_I350;
-		break;
-	case e1000_82576:
-		intr_bitmax = IGB_MAX_TXRXINT_82576;
-		break;
-	default:
-		intr_bitmax = IGB_MIN_TXRXINT;
-		break;
-	}
-	intr_bit = 0;
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
-		igb_setup_tx_intr(&sc->tx_rings[i], &intr_bit, intr_bitmax);
-	for (i = 0; i < sc->rx_ring_cnt; ++i)
-		igb_setup_rx_intr(&sc->rx_rings[i], &intr_bit, intr_bitmax);
-
-	igb_set_intr_mask(sc);
+	if (sc->intr_type == PCI_INTR_TYPE_MSIX)
+		return igb_msix_setup(sc);
 
 	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
 		int unshared;
@@ -3588,7 +3684,7 @@ igb_setup_intr(struct igb_softc *sc)
 	}
 
 	error = bus_setup_intr(sc->dev, sc->intr_res, INTR_MPSAFE,
-	    (sc->flags & IGB_FLAG_SHARED_INTR) ? igb_shared_intr : igb_intr,
+	    (sc->flags & IGB_FLAG_SHARED_INTR) ? igb_intr_shared : igb_intr,
 	    sc, &sc->intr_tag, &sc->main_serialize);
 	if (error) {
 		device_printf(sc->dev, "Failed to register interrupt handler");
@@ -3602,7 +3698,7 @@ igb_setup_intr(struct igb_softc *sc)
 }
 
 static void
-igb_setup_tx_intr(struct igb_tx_ring *txr, int *intr_bit0, int intr_bitmax)
+igb_set_txintr_mask(struct igb_tx_ring *txr, int *intr_bit0, int intr_bitmax)
 {
 	if (txr->sc->hw.mac.type == e1000_82575) {
 		txr->tx_intr_bit = 0;	/* unused */
@@ -3633,7 +3729,7 @@ igb_setup_tx_intr(struct igb_tx_ring *txr, int *intr_bit0, int intr_bitmax)
 }
 
 static void
-igb_setup_rx_intr(struct igb_rx_ring *rxr, int *intr_bit0, int intr_bitmax)
+igb_set_rxintr_mask(struct igb_rx_ring *rxr, int *intr_bit0, int intr_bitmax)
 {
 	if (rxr->sc->hw.mac.type == e1000_82575) {
 		rxr->rx_intr_bit = 0;	/* unused */
@@ -3709,22 +3805,28 @@ igb_set_intr_mask(struct igb_softc *sc)
 {
 	int i;
 
-	sc->intr_mask = E1000_EICR_OTHER;
+	sc->intr_mask = sc->sts_intr_mask;
 	for (i = 0; i < sc->rx_ring_inuse; ++i)
 		sc->intr_mask |= sc->rx_rings[i].rx_intr_mask;
 	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		sc->intr_mask |= sc->tx_rings[i].tx_intr_mask;
-	if (bootverbose) {
-		if_printf(&sc->arpcom.ac_if, "intr mask 0x%08x\n",
-		    sc->intr_mask);
-	}
+	if (bootverbose)
+		device_printf(sc->dev, "intr mask 0x%08x\n", sc->intr_mask);
 }
 
 static int
 igb_alloc_intr(struct igb_softc *sc)
 {
+	int i, intr_bit, intr_bitmax;
 	u_int intr_flags;
 
+	igb_msix_try_alloc(sc);
+	if (sc->intr_type == PCI_INTR_TYPE_MSIX)
+		goto done;
+
+	/*
+	 * Allocate MSI/legacy interrupt resource
+	 */
 	sc->intr_type = pci_alloc_1intr(sc->dev, igb_msi_enable,
 	    &sc->intr_rid, &intr_flags);
 
@@ -3735,16 +3837,434 @@ igb_alloc_intr(struct igb_softc *sc)
 		    "interrupt\n");
 		return ENXIO;
 	}
+
+	/*
+	 * Setup MSI/legacy interrupt mask
+	 */
+	switch (sc->hw.mac.type) {
+	case e1000_82575:
+		intr_bitmax = IGB_MAX_TXRXINT_82575;
+		break;
+	case e1000_82580:
+		intr_bitmax = IGB_MAX_TXRXINT_82580;
+		break;
+	case e1000_i350:
+		intr_bitmax = IGB_MAX_TXRXINT_I350;
+		break;
+	case e1000_82576:
+		intr_bitmax = IGB_MAX_TXRXINT_82576;
+		break;
+	default:
+		intr_bitmax = IGB_MIN_TXRXINT;
+		break;
+	}
+	intr_bit = 0;
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
+		igb_set_txintr_mask(&sc->tx_rings[i], &intr_bit, intr_bitmax);
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
+		igb_set_rxintr_mask(&sc->rx_rings[i], &intr_bit, intr_bitmax);
+	sc->sts_intr_bit = 0;
+	sc->sts_intr_mask = E1000_EICR_OTHER;
+
+	/* Initialize interrupt rate */
+	sc->intr_rate = IGB_INTR_RATE;
+done:
+	igb_set_ring_inuse(sc, FALSE);
+	igb_set_intr_mask(sc);
 	return 0;
 }
 
 static void
 igb_free_intr(struct igb_softc *sc)
 {
-	if (sc->intr_res != NULL) {
-		bus_release_resource(sc->dev, SYS_RES_IRQ, sc->intr_rid,
-		    sc->intr_res);
+	if (sc->intr_type != PCI_INTR_TYPE_MSIX) {
+		if (sc->intr_res != NULL) {
+			bus_release_resource(sc->dev, SYS_RES_IRQ, sc->intr_rid,
+			    sc->intr_res);
+		}
+		if (sc->intr_type == PCI_INTR_TYPE_MSI)
+			pci_release_msi(sc->dev);
+	} else {
+		igb_msix_free(sc, TRUE);
 	}
-	if (sc->intr_type == PCI_INTR_TYPE_MSI)
-		pci_release_msi(sc->dev);
+}
+
+static void
+igb_teardown_intr(struct igb_softc *sc)
+{
+	if (sc->intr_type != PCI_INTR_TYPE_MSIX)
+		bus_teardown_intr(sc->dev, sc->intr_res, sc->intr_tag);
+	else
+		igb_msix_teardown(sc, sc->msix_cnt);
+}
+
+static void
+igb_msix_try_alloc(struct igb_softc *sc)
+{
+	int msix_enable, msix_cnt, msix_cnt2, alloc_cnt;
+	int i, x, error;
+	struct igb_msix_data *msix;
+	boolean_t aggregate, setup = FALSE;
+
+	/*
+	 * MSI-X must not be enable on 82575.
+	 * See 82575EB specification update
+	 */
+	if (sc->hw.mac.type == e1000_82575)
+		return;
+
+	/* Don't enable MSI-X on VF */
+	if (sc->vf_ifp)
+		return;
+
+	msix_enable = device_getenv_int(sc->dev, "msix.enable",
+	    igb_msix_enable);
+	if (!msix_enable)
+		return;
+
+	msix_cnt = pci_msix_count(sc->dev);
+#ifdef IGB_MSIX_DEBUG
+	msix_cnt = device_getenv_int(sc->dev, "msix.count", msix_cnt);
+#endif
+	if (msix_cnt <= 1) {
+		/* One MSI-X model does not make sense */
+		return;
+	}
+
+	i = 0;
+	while ((1 << (i + 1)) <= msix_cnt)
+		++i;
+	msix_cnt2 = 1 << i;
+
+	if (bootverbose) {
+		device_printf(sc->dev, "MSI-X count %d/%d\n",
+		    msix_cnt2, msix_cnt);
+	}
+
+	KKASSERT(msix_cnt2 <= msix_cnt);
+	if (msix_cnt == msix_cnt2) {
+		/* We need at least one MSI-X for link status */
+		msix_cnt2 >>= 1;
+		if (msix_cnt2 <= 1) {
+			/* One MSI-X for RX/TX does not make sense */
+			device_printf(sc->dev, "not enough MSI-X for TX/RX, "
+			    "MSI-X count %d/%d\n", msix_cnt2, msix_cnt);
+			return;
+		}
+		KKASSERT(msix_cnt > msix_cnt2);
+
+		if (bootverbose) {
+			device_printf(sc->dev, "MSI-X count fixup %d/%d\n",
+			    msix_cnt2, msix_cnt);
+		}
+	}
+
+	sc->rx_ring_msix = sc->rx_ring_cnt;
+	if (sc->rx_ring_msix > msix_cnt2)
+		sc->rx_ring_msix = msix_cnt2;
+
+	if (msix_cnt >= sc->tx_ring_cnt + sc->rx_ring_msix + 1) {
+		/*
+		 * Independent TX/RX MSI-X
+		 */
+		aggregate = FALSE;
+		if (bootverbose)
+			device_printf(sc->dev, "independent TX/RX MSI-X\n");
+		alloc_cnt = sc->tx_ring_cnt + sc->rx_ring_msix;
+	} else {
+		/*
+		 * Aggregate TX/RX MSI-X
+		 */
+		aggregate = TRUE;
+		if (bootverbose)
+			device_printf(sc->dev, "aggregate TX/RX MSI-X\n");
+		alloc_cnt = msix_cnt2;
+		if (alloc_cnt > ncpus2)
+			alloc_cnt = ncpus2;
+		if (sc->rx_ring_msix > alloc_cnt)
+			sc->rx_ring_msix = alloc_cnt;
+	}
+	++alloc_cnt;	/* For link status */
+
+	if (bootverbose) {
+		device_printf(sc->dev, "MSI-X alloc %d, RX ring %d\n",
+		    alloc_cnt, sc->rx_ring_msix);
+	}
+
+	sc->msix_mem_rid = PCIR_BAR(IGB_MSIX_BAR);
+	sc->msix_mem_res = bus_alloc_resource_any(sc->dev, SYS_RES_MEMORY,
+	    &sc->msix_mem_rid, RF_ACTIVE);
+	if (sc->msix_mem_res == NULL) {
+		device_printf(sc->dev, "Unable to map MSI-X table\n");
+		return;
+	}
+
+	sc->msix_cnt = alloc_cnt;
+	sc->msix_data = kmalloc(sizeof(struct igb_msix_data) * sc->msix_cnt,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	for (x = 0; x < sc->msix_cnt; ++x) {
+		msix = &sc->msix_data[x];
+
+		lwkt_serialize_init(&msix->msix_serialize0);
+		msix->msix_sc = sc;
+		msix->msix_rid = -1;
+		msix->msix_vector = x;
+		msix->msix_mask = 1 << msix->msix_vector;
+		msix->msix_rate = IGB_INTR_RATE;
+	}
+
+	x = 0;
+	if (!aggregate) {
+		int offset, offset_def;
+
+		if (sc->rx_ring_msix == ncpus2) {
+			offset = 0;
+		} else {
+			offset_def = (sc->rx_ring_msix *
+			    device_get_unit(sc->dev)) % ncpus2;
+
+			offset = device_getenv_int(sc->dev,
+			    "msix.rxoff", offset_def);
+			if (offset >= ncpus2 ||
+			    offset % sc->rx_ring_msix != 0) {
+				device_printf(sc->dev,
+				    "invalid msix.rxoff %d, use %d\n",
+				    offset, offset_def);
+				offset = offset_def;
+			}
+		}
+
+		/* RX rings */
+		for (i = 0; i < sc->rx_ring_msix; ++i) {
+			struct igb_rx_ring *rxr = &sc->rx_rings[i];
+
+			KKASSERT(x < sc->msix_cnt);
+			msix = &sc->msix_data[x++];
+			rxr->rx_intr_bit = msix->msix_vector;
+			rxr->rx_intr_mask = msix->msix_mask;
+
+			msix->msix_serialize = &rxr->rx_serialize;
+			msix->msix_func = igb_msix_rx;
+			msix->msix_arg = rxr;
+			msix->msix_cpuid = i + offset;
+			KKASSERT(msix->msix_cpuid < ncpus2);
+			ksnprintf(msix->msix_desc, sizeof(msix->msix_desc),
+			    "%s rx%d", device_get_nameunit(sc->dev), i);
+			msix->msix_rate = IGB_MSIX_RX_RATE;
+			ksnprintf(msix->msix_rate_desc,
+			    sizeof(msix->msix_rate_desc),
+			    "RX%d interrupt rate", i);
+		}
+
+		offset_def = device_get_unit(sc->dev) % ncpus2;
+		offset = device_getenv_int(sc->dev, "msix.txoff", offset_def);
+		if (offset >= ncpus2) {
+			device_printf(sc->dev, "invalid msix.txoff %d, "
+			    "use %d\n", offset, offset_def);
+			offset = offset_def;
+		}
+
+		/* TX rings */
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+			struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+			KKASSERT(x < sc->msix_cnt);
+			msix = &sc->msix_data[x++];
+			txr->tx_intr_bit = msix->msix_vector;
+			txr->tx_intr_mask = msix->msix_mask;
+
+			msix->msix_serialize = &txr->tx_serialize;
+			msix->msix_func = igb_msix_tx;
+			msix->msix_arg = txr;
+			msix->msix_cpuid = i + offset;
+			sc->msix_tx_cpuid = msix->msix_cpuid; /* XXX */
+			KKASSERT(msix->msix_cpuid < ncpus2);
+			ksnprintf(msix->msix_desc, sizeof(msix->msix_desc),
+			    "%s tx%d", device_get_nameunit(sc->dev), i);
+			msix->msix_rate = IGB_MSIX_TX_RATE;
+			ksnprintf(msix->msix_rate_desc,
+			    sizeof(msix->msix_rate_desc),
+			    "TX%d interrupt rate", i);
+		}
+	} else {
+		/* TODO */
+		error = EOPNOTSUPP;
+		goto back;
+	}
+
+	/*
+	 * Link status
+	 */
+	KKASSERT(x < sc->msix_cnt);
+	msix = &sc->msix_data[x++];
+	sc->sts_intr_bit = msix->msix_vector;
+	sc->sts_intr_mask = msix->msix_mask;
+
+	msix->msix_serialize = &sc->main_serialize;
+	msix->msix_func = igb_msix_status;
+	msix->msix_arg = sc;
+	msix->msix_cpuid = 0; /* TODO tunable */
+	ksnprintf(msix->msix_desc, sizeof(msix->msix_desc), "%s sts",
+	    device_get_nameunit(sc->dev));
+	ksnprintf(msix->msix_rate_desc, sizeof(msix->msix_rate_desc),
+	    "status interrupt rate");
+
+	KKASSERT(x == sc->msix_cnt);
+
+	error = pci_setup_msix(sc->dev);
+	if (error) {
+		device_printf(sc->dev, "Setup MSI-X failed\n");
+		goto back;
+	}
+	setup = TRUE;
+
+	for (i = 0; i < sc->msix_cnt; ++i) {
+		msix = &sc->msix_data[i];
+
+		error = pci_alloc_msix_vector(sc->dev, msix->msix_vector,
+		    &msix->msix_rid, msix->msix_cpuid);
+		if (error) {
+			device_printf(sc->dev,
+			    "Unable to allocate MSI-X %d on cpu%d\n",
+			    msix->msix_vector, msix->msix_cpuid);
+			goto back;
+		}
+
+		msix->msix_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
+		    &msix->msix_rid, RF_ACTIVE);
+		if (msix->msix_res == NULL) {
+			device_printf(sc->dev,
+			    "Unable to allocate MSI-X %d resource\n",
+			    msix->msix_vector);
+			error = ENOMEM;
+			goto back;
+		}
+	}
+
+	pci_enable_msix(sc->dev);
+	sc->intr_type = PCI_INTR_TYPE_MSIX;
+back:
+	if (error)
+		igb_msix_free(sc, setup);
+}
+
+static void
+igb_msix_free(struct igb_softc *sc, boolean_t setup)
+{
+	int i;
+
+	KKASSERT(sc->msix_cnt > 1);
+
+	for (i = 0; i < sc->msix_cnt; ++i) {
+		struct igb_msix_data *msix = &sc->msix_data[i];
+
+		if (msix->msix_res != NULL) {
+			bus_release_resource(sc->dev, SYS_RES_IRQ,
+			    msix->msix_rid, msix->msix_res);
+		}
+		if (msix->msix_rid >= 0)
+			pci_release_msix_vector(sc->dev, msix->msix_rid);
+	}
+	if (setup)
+		pci_teardown_msix(sc->dev);
+
+	sc->msix_cnt = 0;
+	kfree(sc->msix_data, M_DEVBUF);
+	sc->msix_data = NULL;
+}
+
+static int
+igb_msix_setup(struct igb_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
+
+	for (i = 0; i < sc->msix_cnt; ++i) {
+		struct igb_msix_data *msix = &sc->msix_data[i];
+		int error;
+
+		error = bus_setup_intr_descr(sc->dev, msix->msix_res,
+		    INTR_MPSAFE, msix->msix_func, msix->msix_arg,
+		    &msix->msix_handle, msix->msix_serialize, msix->msix_desc);
+		if (error) {
+			device_printf(sc->dev, "could not set up %s "
+			    "interrupt handler.\n", msix->msix_desc);
+			igb_msix_teardown(sc, i);
+			return error;
+		}
+	}
+	ifp->if_cpuid = sc->msix_tx_cpuid;
+
+	return 0;
+}
+
+static void
+igb_msix_teardown(struct igb_softc *sc, int msix_cnt)
+{
+	int i;
+
+	for (i = 0; i < msix_cnt; ++i) {
+		struct igb_msix_data *msix = &sc->msix_data[i];
+
+		bus_teardown_intr(sc->dev, msix->msix_res, msix->msix_handle);
+	}
+}
+
+static void
+igb_msix_rx(void *arg)
+{
+	struct igb_rx_ring *rxr = arg;
+
+	ASSERT_SERIALIZED(&rxr->rx_serialize);
+	igb_rxeof(rxr, -1);
+
+	E1000_WRITE_REG(&rxr->sc->hw, E1000_EIMS, rxr->rx_intr_mask);
+}
+
+static void
+igb_msix_tx(void *arg)
+{
+	struct igb_tx_ring *txr = arg;
+	struct ifnet *ifp = &txr->sc->arpcom.ac_if;
+
+	ASSERT_SERIALIZED(&txr->tx_serialize);
+
+	igb_txeof(txr);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+
+	E1000_WRITE_REG(&txr->sc->hw, E1000_EIMS, txr->tx_intr_mask);
+}
+
+static void
+igb_msix_status(void *arg)
+{
+	struct igb_softc *sc = arg;
+	uint32_t icr;
+
+	ASSERT_SERIALIZED(&sc->main_serialize);
+
+	icr = E1000_READ_REG(&sc->hw, E1000_ICR);
+	if (icr & E1000_ICR_LSC) {
+		sc->hw.mac.get_link_status = 1;
+		igb_update_link_status(sc);
+	}
+
+	E1000_WRITE_REG(&sc->hw, E1000_EIMS, sc->sts_intr_mask);
+}
+
+static void
+igb_set_ring_inuse(struct igb_softc *sc, boolean_t polling)
+{
+	if (!IGB_ENABLE_HWRSS(sc))
+		return;
+
+	if (sc->intr_type != PCI_INTR_TYPE_MSIX || polling)
+		sc->rx_ring_inuse = IGB_MIN_RING_RSS;
+	else
+		sc->rx_ring_inuse = sc->rx_ring_msix;
+	if (bootverbose) {
+		device_printf(sc->dev, "RX rings %d/%d\n",
+		    sc->rx_ring_inuse, sc->rx_ring_cnt);
+	}
 }

@@ -8,6 +8,7 @@ opt_polling.h:
 	echo '#define DEVICE_POLLING 1' > ${.OBJDIR}/${.TARGET}
 opt_igb.h:
 	echo '#define IGB_RSS_DEBUG 1' > ${.OBJDIR}/${.TARGET}
+	echo '#define IGB_MSIX_DEBUG 1' > ${.OBJDIR}/${.TARGET}
 .endif
 
 .include <bsd.kmod.mk>
