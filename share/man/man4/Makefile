@@ -137,6 +137,7 @@ MAN=	aac.4 \
 	iwifw.4 \
 	iwn.4 \
 	iwnfw.4 \
+	ixgbe.4 \
 	jme.4 \
 	joy.4 \
 	kate.4 \
