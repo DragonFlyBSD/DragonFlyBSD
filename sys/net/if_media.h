@@ -1,6 +1,5 @@
 /*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.19 2007/08/27 16:15:42 hasso Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -332,6 +331,15 @@ struct ifmedia_description {
 	{ IFM_1000_CX,	"1000baseCX" },					\
 	{ IFM_1000_T,	"1000baseT" },					\
 	{ IFM_HPNA_1,	"homePNA" },					\
+	{ IFM_10G_LR,	"10Gbase-LR" },					\
+	{ IFM_10G_SR,	"10Gbase-SR" },					\
+	{ IFM_10G_CX4,	"10Gbase-CX4" },				\
+	{ IFM_2500_SX,	"2500BaseSX" },					\
+	{ IFM_10G_LRM,	"10Gbase-LRM" },				\
+	{ IFM_10G_TWINAX,	"10Gbase-Twinax" },			\
+	{ IFM_10G_TWINAX_LONG,	"10Gbase-Twinax-Long" },		\
+	{ IFM_UNKNOWN,	"Unknown" },					\
+	{ IFM_10G_T,	"10Gbase-T" },					\
 	{ 0, NULL },							\
 }
 
@@ -354,6 +362,7 @@ struct ifmedia_description {
 	{ IFM_1000_LX,	"1000LX" },					\
 	{ IFM_1000_CX,	"1000CX" },					\
 	{ IFM_1000_T,	"1000T" },					\
+	{ IFM_2500_SX,	"2500SX" },					\
 	{ 0, NULL },							\
 }
 
