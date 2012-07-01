@@ -158,6 +158,18 @@ struct mii_attach_args {
 typedef struct mii_attach_args mii_attach_args_t;
 
 /*
+ * Used to probe a PHY to a network device.
+ */
+struct mii_probe_args {
+	ifm_change_cb_t mii_ifmedia_upd;
+	ifm_stat_cb_t mii_ifmedia_sts;
+	u_int mii_probemask;
+	int mii_capmask;
+	int mii_flags;
+	uintptr_t mii_priv;
+};
+
+/*
  * Used to match a PHY
  */
 struct mii_phydesc {
@@ -230,6 +242,9 @@ int	mii_mediachg(struct mii_data *);
 void	mii_tick(struct mii_data *);
 void	mii_pollstat(struct mii_data *);
 int	mii_phy_probe(device_t, device_t *, ifm_change_cb_t, ifm_stat_cb_t);
+int	mii_probe(device_t, device_t *, const struct mii_probe_args *);
+void	mii_probe_args_init(struct mii_probe_args *,
+	    ifm_change_cb_t, ifm_stat_cb_t);
 
 void	mii_phy_add_media(struct mii_softc *);
 void	mii_phy_set_media(struct mii_softc *);
