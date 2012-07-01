@@ -148,8 +148,8 @@ miibus_probe(device_t dev)
 		ma.mii_data = mii;
 		ma.mii_capmask = capmask;
 
-		args = kmalloc(sizeof(struct mii_attach_args),
-			      M_DEVBUF, M_INTWAIT);
+		args = kmalloc(sizeof(struct mii_attach_args), M_DEVBUF,
+		    M_WAITOK);
 		*args = ma;
 		child = device_add_child(dev, NULL, -1);
 		device_set_ivars(child, args);
@@ -248,7 +248,7 @@ mii_phy_probe(device_t dev, device_t *child,
 	void **v;
 	int i;
 
-	v = kmalloc(sizeof(vm_offset_t) * 2, M_DEVBUF, M_INTWAIT);
+	v = kmalloc(sizeof(vm_offset_t) * 2, M_DEVBUF, M_WAITOK);
 	v[0] = ifmedia_upd;
 	v[1] = ifmedia_sts;
 	*child = device_add_child(dev, "miibus", -1);
