@@ -442,6 +442,11 @@ for (file_i = 0; file_i < num_files; file_i++) {
 
 		if (/^$/) {		# skip empty lines
 		}
+		else if (/^\/\*\*/)	# ... and C style comments
+			while (!/\*\//) {
+				getline < src;
+				lineno++;
+			}
 		else if (/^INTERFACE[ 	]+[^ 	;]*[ 	]*;?[ 	]*$/)
 			handle_interface();
 		else if (/^CODE[ 	]*{$/)
