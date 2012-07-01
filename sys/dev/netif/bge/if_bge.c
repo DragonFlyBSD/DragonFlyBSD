@@ -632,17 +632,8 @@ bge_miibus_readreg(device_t dev, int phy, int reg)
 	uint32_t val, autopoll;
 	int i;
 
-	/*
-	 * Broadcom's own driver always assumes the internal
-	 * PHY is at GMII address 1. On some chips, the PHY responds
-	 * to accesses at all addresses, which could cause us to
-	 * bogusly attach the PHY 32 times at probe type. Always
-	 * restricting the lookup to address 1 is simpler than
-	 * trying to figure out which chips revisions should be
-	 * special-cased.
-	 */
-	if (phy != 1)
-		return(0);
+	KASSERT(phy == sc->bge_phyno,
+	    ("invalid phyno %d, should be %d", phy, sc->bge_phyno));
 
 	/* Reading with autopolling on may trigger PCI errors */
 	autopoll = CSR_READ_4(sc, BGE_MI_MODE);
@@ -690,11 +681,8 @@ bge_miibus_writereg(device_t dev, int phy, int reg, int val)
 	uint32_t autopoll;
 	int i;
 
-	/*
-	 * See the related comment in bge_miibus_readreg()
-	 */
-	if (phy != 1)
-		return(0);
+	KASSERT(phy == sc->bge_phyno,
+	    ("invalid phyno %d, should be %d", phy, sc->bge_phyno));
 
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5906 &&
 	    (reg == BRGPHY_MII_1000CTL || reg == BRGPHY_MII_AUXCTL))
@@ -2110,6 +2098,17 @@ bge_attach(device_t dev)
 			sc->bge_flags |= BGE_FLAG_TBI;
 	}
 
+	/*
+	 * Broadcom's own driver always assumes the internal
+	 * PHY is at GMII address 1.  On some chips, the PHY responds
+	 * to accesses at all addresses, which could cause us to
+	 * bogusly attach the PHY 32 times at probe type.  Always
+	 * restricting the lookup to address 1 is simpler than
+	 * trying to figure out which chips revisions should be
+	 * special-cased.
+	 */
+	sc->bge_phyno = 1;
+
 	if (sc->bge_flags & BGE_FLAG_TBI) {
 		ifmedia_init(&sc->bge_ifmedia, IFM_IMASK,
 		    bge_ifmedia_upd, bge_ifmedia_sts);
@@ -2120,13 +2119,14 @@ bge_attach(device_t dev)
 		ifmedia_set(&sc->bge_ifmedia, IFM_ETHER|IFM_AUTO);
 		sc->bge_ifmedia.ifm_media = sc->bge_ifmedia.ifm_cur->ifm_media;
 	} else {
-		/*
-		 * Do transceiver setup.
-		 */
-		if (mii_phy_probe(dev, &sc->bge_miibus,
-		    bge_ifmedia_upd, bge_ifmedia_sts)) {
+		struct mii_probe_args mii_args;
+
+		mii_probe_args_init(&mii_args, bge_ifmedia_upd, bge_ifmedia_sts);
+		mii_args.mii_probemask = 1 << sc->bge_phyno;
+
+		error = mii_probe(dev, &sc->bge_miibus, &mii_args);
+		if (error) {
 			device_printf(dev, "MII without any PHY!\n");
-			error = ENXIO;
 			goto fail;
 		}
 	}

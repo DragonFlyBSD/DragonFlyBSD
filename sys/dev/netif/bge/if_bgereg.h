@@ -2509,6 +2509,7 @@ struct bge_softc {
 	struct sysctl_ctx_list	bge_sysctl_ctx;
 	struct sysctl_oid	*bge_sysctl_tree;
 
+	int			bge_phyno;
 	uint32_t		bge_coal_chg;
 #define BGE_RX_COAL_TICKS_CHG	0x1
 #define BGE_TX_COAL_TICKS_CHG	0x2
