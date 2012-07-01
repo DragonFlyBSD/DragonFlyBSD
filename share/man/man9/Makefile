@@ -35,6 +35,7 @@ MAN=	accept_filter.9 \
 	copy.9 \
 	crit_enter.9 \
 	crypto.9 \
+	DB_COMMAND.9 \
 	DECLARE_MODULE.9 \
 	DELAY.9 \
 	devclass.9 \
@@ -396,6 +397,7 @@ MLINKS+=crypto.9 crypto_dispatch.9 \
 	crypto.9 crypto_unblock.9 \
 	crypto.9 crypto_unregister.9 \
 	crypto.9 crypto_unregister_all.9
+MLINKS+=DB_COMMAND.9 DB_SHOW_COMMAND.9
 MLINKS+=devclass_add_driver.9 devclass_delete_driver.9 \
 	devclass_add_driver.9 devclass_find_driver.9
 MLINKS+=device_add_child.9 device_add_child_ordered.9
