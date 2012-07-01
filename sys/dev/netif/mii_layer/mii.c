@@ -156,11 +156,10 @@ miibus_probe(device_t dev)
 	}
 
 	if (child == NULL)
-		return(ENXIO);
+		return ENXIO;
 
 	device_set_desc(dev, "MII bus");
-
-	return(0);
+	return 0;
 }
 
 int
@@ -179,7 +178,7 @@ miibus_attach(device_t dev)
 	ifmedia_init(&mii->mii_media, IFM_IMASK, ifmedia_upd, ifmedia_sts);
 	bus_generic_attach(dev);
 
-	return(0);
+	return 0;
 }
 
 int
@@ -192,7 +191,7 @@ miibus_detach(device_t dev)
 	ifmedia_removeall(&mii->mii_media);
 	mii->mii_ifp = NULL;
 
-	return(0);
+	return 0;
 }
 
 static int
@@ -201,7 +200,7 @@ miibus_readreg(device_t dev, int phy, int reg)
 	device_t parent;
 
 	parent = device_get_parent(dev);
-	return(MIIBUS_READREG(parent, phy, reg));
+	return MIIBUS_READREG(parent, phy, reg);
 }
 
 static int
@@ -210,7 +209,7 @@ miibus_writereg(device_t dev, int phy, int reg, int data)
 	device_t parent;
 
 	parent = device_get_parent(dev);
-	return(MIIBUS_WRITEREG(parent, phy, reg, data));
+	return MIIBUS_WRITEREG(parent, phy, reg, data);
 }
 
 static void
@@ -220,7 +219,6 @@ miibus_statchg(device_t dev)
 
 	parent = device_get_parent(dev);
 	MIIBUS_STATCHG(parent);
-	return;
 }
 
 static void
@@ -240,10 +238,7 @@ miibus_mediainit(device_t dev)
 		if (media == (IFM_ETHER|IFM_AUTO))
 			break;
 	}
-
 	ifmedia_set(&mii->mii_media, media);
-
-	return;
 }
 
 int
@@ -267,12 +262,11 @@ mii_phy_probe(device_t dev, device_t *child,
 	if (i == MII_NPHY) {
 		device_delete_child(dev, *child);
 		*child = NULL;
-		return(ENXIO);
+		return ENXIO;
 	}
 
 	bus_generic_attach(dev);
-
-	return(0);
+	return 0;
 }
 
 /*
@@ -291,13 +285,13 @@ mii_mediachg(struct mii_data *mii)
 	     child = LIST_NEXT(child, mii_list)) {
 		rv = (*child->mii_service)(child, mii, MII_MEDIACHG);
 		if (rv) {
-			return (rv);
+			return rv;
 		} else {
 			/* Reset autonegotiation timer. */
 			child->mii_ticks = 0;
 		}
 	}
-	return (0);
+	return 0;
 }
 
 /*
