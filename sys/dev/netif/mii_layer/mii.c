@@ -62,10 +62,13 @@
 
 #include "miibus_if.h"
 
-static int miibus_readreg	(device_t, int, int);
-static int miibus_writereg	(device_t, int, int, int);
-static void miibus_statchg	(device_t);
-static void miibus_mediainit	(device_t);
+static int	miibus_probe(device_t);
+static int	miibus_attach(device_t);
+static int	miibus_detach(device_t);
+static int	miibus_readreg(device_t, int, int);
+static int	miibus_writereg(device_t, int, int, int);
+static void	miibus_statchg(device_t);
+static void	miibus_mediainit(device_t);
 
 static device_method_t miibus_methods[] = {
 	/* device interface */
@@ -118,10 +121,10 @@ miibus_no_phy(device_t dev, int phyno)
 int
 miibus_probe(device_t dev)
 {
-	struct mii_attach_args	ma, *args;
-	struct mii_data		*mii;
-	device_t		child = NULL, parent;
-	int			capmask = 0xFFFFFFFF;
+	struct mii_attach_args ma, *args;
+	struct mii_data *mii;
+	device_t child = NULL, parent;
+	int capmask = 0xFFFFFFFF;
 
 	mii = device_get_softc(dev);
 	parent = device_get_parent(dev);
@@ -163,10 +166,10 @@ miibus_probe(device_t dev)
 int
 miibus_attach(device_t dev)
 {
-	void			**v;
-	ifm_change_cb_t		ifmedia_upd;
-	ifm_stat_cb_t		ifmedia_sts;
-	struct mii_data		*mii;
+	void **v;
+	ifm_change_cb_t ifmedia_upd;
+	ifm_stat_cb_t ifmedia_sts;
+	struct mii_data *mii;
 
 	mii = device_get_softc(dev);
 	mii->mii_ifp = device_get_softc(device_get_parent(dev));
@@ -182,7 +185,7 @@ miibus_attach(device_t dev)
 int
 miibus_detach(device_t dev)
 {
-	struct mii_data		*mii;
+	struct mii_data *mii;
 
 	bus_generic_detach(dev);
 	mii = device_get_softc(dev);
@@ -195,7 +198,7 @@ miibus_detach(device_t dev)
 static int
 miibus_readreg(device_t dev, int phy, int reg)
 {
-	device_t		parent;
+	device_t parent;
 
 	parent = device_get_parent(dev);
 	return(MIIBUS_READREG(parent, phy, reg));
@@ -204,7 +207,7 @@ miibus_readreg(device_t dev, int phy, int reg)
 static int
 miibus_writereg(device_t dev, int phy, int reg, int data)
 {
-	device_t		parent;
+	device_t parent;
 
 	parent = device_get_parent(dev);
 	return(MIIBUS_WRITEREG(parent, phy, reg, data));
@@ -213,7 +216,7 @@ miibus_writereg(device_t dev, int phy, int reg, int data)
 static void
 miibus_statchg(device_t dev)
 {
-	device_t		parent;
+	device_t parent;
 
 	parent = device_get_parent(dev);
 	MIIBUS_STATCHG(parent);
@@ -223,9 +226,9 @@ miibus_statchg(device_t dev)
 static void
 miibus_mediainit(device_t dev)
 {
-	struct mii_data		*mii;
-	struct ifmedia_entry	*m;
-	int			media = 0;
+	struct mii_data *mii;
+	struct ifmedia_entry *m;
+	int media = 0;
 
 	/* Poke the parent in case it has any media of its own to add. */
 	MIIBUS_MEDIAINIT(device_get_parent(dev));
@@ -244,11 +247,11 @@ miibus_mediainit(device_t dev)
 }
 
 int
-mii_phy_probe(device_t dev, device_t *child, ifm_change_cb_t ifmedia_upd,
-	      ifm_stat_cb_t ifmedia_sts)
+mii_phy_probe(device_t dev, device_t *child,
+    ifm_change_cb_t ifmedia_upd, ifm_stat_cb_t ifmedia_sts)
 {
-	void			**v;
-	int			i;
+	void **v;
+	int i;
 
 	v = kmalloc(sizeof(vm_offset_t) * 2, M_DEVBUF, M_INTWAIT);
 	v[0] = ifmedia_upd;

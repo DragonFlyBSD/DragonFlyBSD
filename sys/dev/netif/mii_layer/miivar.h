@@ -226,10 +226,6 @@ extern const struct mii_media	mii_media_table[MII_NMEDIA];
 extern devclass_t	miibus_devclass;
 extern driver_t		miibus_driver;
 
-int	miibus_probe(device_t);
-int	miibus_attach(device_t);
-int	miibus_detach(device_t);
-
 int	mii_mediachg(struct mii_data *);
 void	mii_tick(struct mii_data *);
 void	mii_pollstat(struct mii_data *);
