@@ -290,6 +290,8 @@ static void	bge_rxeof(struct bge_softc *);
 static void	bge_tick(void *);
 static void	bge_stats_update(struct bge_softc *);
 static void	bge_stats_update_regs(struct bge_softc *);
+static struct mbuf *
+		bge_defrag_shortdma(struct mbuf *);
 static int	bge_encap(struct bge_softc *, struct mbuf **, uint32_t *);
 
 #ifdef DEVICE_POLLING
@@ -2028,6 +2030,10 @@ bge_attach(device_t dev)
 	     misccfg == BGE_MISCCFG_BOARD_ID_5788M))
 		sc->bge_flags |= BGE_FLAG_5788;
 
+	/* BCM5755 or higher and BCM5906 have short DMA bug. */
+	if (BGE_IS_5755_PLUS(sc) || sc->bge_asicrev == BGE_ASICREV_BCM5906)
+		sc->bge_flags |= BGE_FLAG_SHORTDMA;
+
 	/*
 	 * Set various quirk flags.
 	 */
@@ -3030,7 +3036,7 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 	bus_dma_segment_t segs[BGE_NSEG_NEW];
 	bus_dmamap_t map;
 	int error, maxsegs, nsegs, idx, i;
-	struct mbuf *m_head = *m_head0;
+	struct mbuf *m_head = *m_head0, *m_new;
 
 	if (m_head->m_pkthdr.csum_flags) {
 		if (m_head->m_pkthdr.csum_flags & CSUM_IP)
@@ -3069,10 +3075,16 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 			goto back;
 	}
 
+	if ((sc->bge_flags & BGE_FLAG_SHORTDMA) && m_head->m_next != NULL) {
+		m_new = bge_defrag_shortdma(m_head);
+		if (m_new == NULL) {
+			error = ENOBUFS;
+			goto back;
+		}
+		*m_head0 = m_head = m_new;
+	}
 	if (sc->bge_force_defrag && (sc->bge_flags & BGE_FLAG_PCIE) &&
 	    m_head->m_next != NULL) {
-		struct mbuf *m_new;
-
 		/*
 		 * Forcefully defragment mbuf chain to overcome hardware
 		 * limitation which only support a single outstanding
@@ -4333,4 +4345,38 @@ bge_get_eaddr(struct bge_softc *sc, uint8_t eaddr[])
 			break;
 	}
 	return (*func == NULL ? ENXIO : 0);
+}
+
+/*
+ * NOTE: 'm' is not freed upon failure
+ */
+struct mbuf *
+bge_defrag_shortdma(struct mbuf *m)
+{
+	struct mbuf *n;
+	int found;
+
+	/*
+	 * If device receive two back-to-back send BDs with less than
+	 * or equal to 8 total bytes then the device may hang.  The two
+	 * back-to-back send BDs must in the same frame for this failure
+	 * to occur.  Scan mbuf chains and see whether two back-to-back
+	 * send BDs are there.  If this is the case, allocate new mbuf
+	 * and copy the frame to workaround the silicon bug.
+	 */
+	for (n = m, found = 0; n != NULL; n = n->m_next) {
+		if (n->m_len < 8) {
+			found++;
+			if (found > 1)
+				break;
+			continue;
+		}
+		found = 0;
+	}
+
+	if (found > 1)
+		n = m_defrag(m, MB_DONTWAIT);
+	else
+		n = m;
+	return n;
 }

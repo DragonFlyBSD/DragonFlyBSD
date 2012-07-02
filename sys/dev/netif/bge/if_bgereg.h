@@ -2526,6 +2526,7 @@ struct bge_softc {
 #define BGE_FLAG_RX_ALIGNBUG	0x00100000
 #define BGE_FLAG_NO_EEPROM	0x10000000
 #define BGE_FLAG_5788		0x20000000
+#define BGE_FLAG_SHORTDMA	0x40000000
 
 	uint32_t		bge_chipid;
 	uint32_t		bge_asicrev;
