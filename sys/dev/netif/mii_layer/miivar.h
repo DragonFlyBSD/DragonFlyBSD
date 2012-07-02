@@ -169,6 +169,9 @@ struct mii_probe_args {
 	uintptr_t mii_priv;
 };
 
+#define MII_PROBEMASK_DEFAULT	0xffffffff
+#define MII_CAPMASK_DEFAULT	0xffffffff
+
 /*
  * Used to match a PHY
  */

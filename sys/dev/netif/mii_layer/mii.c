@@ -288,8 +288,8 @@ mii_probe_args_init(struct mii_probe_args *args,
 
 	args->mii_ifmedia_upd = ifmedia_upd;
 	args->mii_ifmedia_sts = ifmedia_sts;
-	args->mii_probemask = 0xffffffff;
-	args->mii_capmask = 0xffffffff;
+	args->mii_probemask = MII_PROBEMASK_DEFAULT;
+	args->mii_capmask = MII_CAPMASK_DEFAULT;
 }
 
 /*
