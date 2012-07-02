@@ -339,6 +339,7 @@ static int	bge_init_tx_ring(struct bge_softc *);
 
 static int	bge_chipinit(struct bge_softc *);
 static int	bge_blockinit(struct bge_softc *);
+static void	bge_stop_block(struct bge_softc *, bus_size_t, uint32_t);
 
 static uint32_t	bge_readmem_ind(struct bge_softc *, uint32_t);
 static void	bge_writemem_ind(struct bge_softc *, uint32_t, uint32_t);
@@ -1423,22 +1424,20 @@ bge_blockinit(struct bge_softc *sc)
 	CSR_WRITE_4(sc, BGE_BMAN_DMA_DESCPOOL_HIWAT, 10);
 
 	/* Enable buffer manager */
-	if (!BGE_IS_5705_PLUS(sc)) {
-		CSR_WRITE_4(sc, BGE_BMAN_MODE,
-		    BGE_BMANMODE_ENABLE|BGE_BMANMODE_LOMBUF_ATTN);
+	CSR_WRITE_4(sc, BGE_BMAN_MODE,
+	    BGE_BMANMODE_ENABLE|BGE_BMANMODE_LOMBUF_ATTN);
 
-		/* Poll for buffer manager start indication */
-		for (i = 0; i < BGE_TIMEOUT; i++) {
-			if (CSR_READ_4(sc, BGE_BMAN_MODE) & BGE_BMANMODE_ENABLE)
-				break;
-			DELAY(10);
-		}
+	/* Poll for buffer manager start indication */
+	for (i = 0; i < BGE_TIMEOUT; i++) {
+		if (CSR_READ_4(sc, BGE_BMAN_MODE) & BGE_BMANMODE_ENABLE)
+			break;
+		DELAY(10);
+	}
 
-		if (i == BGE_TIMEOUT) {
-			if_printf(&sc->arpcom.ac_if,
-				  "buffer manager failed to start\n");
-			return(ENXIO);
-		}
+	if (i == BGE_TIMEOUT) {
+		if_printf(&sc->arpcom.ac_if,
+			  "buffer manager failed to start\n");
+		return(ENXIO);
 	}
 
 	/* Enable flow-through queues */
@@ -3594,35 +3593,35 @@ bge_stop(struct bge_softc *sc)
 	/*
 	 * Disable all of the receiver blocks
 	 */
-	BGE_CLRBIT(sc, BGE_RX_MODE, BGE_RXMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_RBDI_MODE, BGE_RBDIMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_RXLP_MODE, BGE_RXLPMODE_ENABLE);
-	if (!BGE_IS_5705_PLUS(sc))
-		BGE_CLRBIT(sc, BGE_RXLS_MODE, BGE_RXLSMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_RDBDI_MODE, BGE_RBDIMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_RDC_MODE, BGE_RDCMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_RBDC_MODE, BGE_RBDCMODE_ENABLE);
+	bge_stop_block(sc, BGE_RX_MODE, BGE_RXMODE_ENABLE);
+	bge_stop_block(sc, BGE_RBDI_MODE, BGE_RBDIMODE_ENABLE);
+	bge_stop_block(sc, BGE_RXLP_MODE, BGE_RXLPMODE_ENABLE);
+	if (BGE_IS_5700_FAMILY(sc))
+		bge_stop_block(sc, BGE_RXLS_MODE, BGE_RXLSMODE_ENABLE);
+	bge_stop_block(sc, BGE_RDBDI_MODE, BGE_RBDIMODE_ENABLE);
+	bge_stop_block(sc, BGE_RDC_MODE, BGE_RDCMODE_ENABLE);
+	bge_stop_block(sc, BGE_RBDC_MODE, BGE_RBDCMODE_ENABLE);
 
 	/*
 	 * Disable all of the transmit blocks
 	 */
-	BGE_CLRBIT(sc, BGE_SRS_MODE, BGE_SRSMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_SBDI_MODE, BGE_SBDIMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_SDI_MODE, BGE_SDIMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_RDMA_MODE, BGE_RDMAMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_SDC_MODE, BGE_SDCMODE_ENABLE);
-	if (!BGE_IS_5705_PLUS(sc))
-		BGE_CLRBIT(sc, BGE_DMAC_MODE, BGE_DMACMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_SBDC_MODE, BGE_SBDCMODE_ENABLE);
+	bge_stop_block(sc, BGE_SRS_MODE, BGE_SRSMODE_ENABLE);
+	bge_stop_block(sc, BGE_SBDI_MODE, BGE_SBDIMODE_ENABLE);
+	bge_stop_block(sc, BGE_SDI_MODE, BGE_SDIMODE_ENABLE);
+	bge_stop_block(sc, BGE_RDMA_MODE, BGE_RDMAMODE_ENABLE);
+	bge_stop_block(sc, BGE_SDC_MODE, BGE_SDCMODE_ENABLE);
+	if (BGE_IS_5700_FAMILY(sc))
+		bge_stop_block(sc, BGE_DMAC_MODE, BGE_DMACMODE_ENABLE);
+	bge_stop_block(sc, BGE_SBDC_MODE, BGE_SBDCMODE_ENABLE);
 
 	/*
 	 * Shut down all of the memory managers and related
 	 * state machines.
 	 */
-	BGE_CLRBIT(sc, BGE_HCC_MODE, BGE_HCCMODE_ENABLE);
-	BGE_CLRBIT(sc, BGE_WDMA_MODE, BGE_WDMAMODE_ENABLE);
-	if (!BGE_IS_5705_PLUS(sc))
-		BGE_CLRBIT(sc, BGE_MBCF_MODE, BGE_MBCFMODE_ENABLE);
+	bge_stop_block(sc, BGE_HCC_MODE, BGE_HCCMODE_ENABLE);
+	bge_stop_block(sc, BGE_WDMA_MODE, BGE_WDMAMODE_ENABLE);
+	if (BGE_IS_5700_FAMILY(sc))
+		bge_stop_block(sc, BGE_MBCF_MODE, BGE_MBCFMODE_ENABLE);
 	CSR_WRITE_4(sc, BGE_FTQ_RESET, 0xFFFFFFFF);
 	CSR_WRITE_4(sc, BGE_FTQ_RESET, 0);
 	if (!BGE_IS_5705_PLUS(sc)) {
@@ -4393,4 +4392,17 @@ bge_defrag_shortdma(struct mbuf *m)
 	else
 		n = m;
 	return n;
+}
+
+static void
+bge_stop_block(struct bge_softc *sc, bus_size_t reg, uint32_t bit)
+{
+	int i;
+
+	BGE_CLRBIT(sc, reg, bit);
+	for (i = 0; i < BGE_TIMEOUT; i++) {
+		if ((CSR_READ_4(sc, reg) & bit) == 0)
+			return;
+		DELAY(100);
+	}
 }
