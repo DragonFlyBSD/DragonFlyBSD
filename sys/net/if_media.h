@@ -542,6 +542,14 @@ struct ifmedia_baudrate {
 	{ IFM_ETHER|IFM_1000_CX,	IF_Mbps(1000) },		\
 	{ IFM_ETHER|IFM_1000_T,		IF_Mbps(1000) },		\
 	{ IFM_ETHER|IFM_HPNA_1,		IF_Mbps(1) },			\
+	{ IFM_ETHER|IFM_10G_LR,		IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_10G_SR,		IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_10G_CX4,	IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_2500_SX,	IF_Mbps(2500ULL) },		\
+	{ IFM_ETHER|IFM_10G_TWINAX,	IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_10G_TWINAX_LONG,IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_10G_LRM,	IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_10G_T,		IF_Gbps(10ULL) },		\
 									\
 	{ IFM_IEEE80211|IFM_IEEE80211_FH1, IF_Mbps(1) },		\
 	{ IFM_IEEE80211|IFM_IEEE80211_FH2, IF_Mbps(2) },		\
