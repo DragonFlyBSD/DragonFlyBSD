@@ -437,6 +437,10 @@ bge_readmem_ind(struct bge_softc *sc, uint32_t off)
 	device_t dev = sc->bge_dev;
 	uint32_t val;
 
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5906 &&
+	    off >= BGE_STATS_BLOCK && off < BGE_SEND_RING_1_TO_4)
+		return 0;
+
 	pci_write_config(dev, BGE_PCI_MEMWIN_BASEADDR, off, 4);
 	val = pci_read_config(dev, BGE_PCI_MEMWIN_DATA, 4);
 	pci_write_config(dev, BGE_PCI_MEMWIN_BASEADDR, 0, 4);
@@ -447,6 +451,10 @@ static void
 bge_writemem_ind(struct bge_softc *sc, uint32_t off, uint32_t val)
 {
 	device_t dev = sc->bge_dev;
+
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5906 &&
+	    off >= BGE_STATS_BLOCK && off < BGE_SEND_RING_1_TO_4)
+		return;
 
 	pci_write_config(dev, BGE_PCI_MEMWIN_BASEADDR, off, 4);
 	pci_write_config(dev, BGE_PCI_MEMWIN_DATA, val, 4);
