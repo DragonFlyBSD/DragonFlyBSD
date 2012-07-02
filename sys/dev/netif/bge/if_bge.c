@@ -2146,6 +2146,7 @@ bge_attach(device_t dev)
 	if (BGE_IS_5705_PLUS(sc)) {
 		if (pci_is_pcie(dev)) {
 			sc->bge_flags |= BGE_FLAG_PCIE;
+			sc->bge_pciecap = pci_get_pciecap_ptr(sc->bge_dev);
 			pcie_set_max_readrq(dev, PCIEM_DEVCTL_MAX_READRQ_4096);
 		}
 	} else {
@@ -2538,6 +2539,8 @@ bge_reset(struct bge_softc *sc)
 
 	/* XXX: Broadcom Linux driver. */
 	if (sc->bge_flags & BGE_FLAG_PCIE) {
+		uint16_t devctl;
+
 		if (sc->bge_chipid == BGE_CHIPID_BCM5750_A0) {
 			uint32_t v;
 
@@ -2545,11 +2548,20 @@ bge_reset(struct bge_softc *sc)
 			v = pci_read_config(dev, 0xc4, 4);
 			pci_write_config(dev, 0xc4, v | (1<<15), 4);
 		}
-		/*
-		 * Set PCIE max payload size to 128 bytes and
-		 * clear error status.
-		 */
-		pci_write_config(dev, 0xd8, 0xf5000, 4);
+
+		/* Clear enable no snoop and disable relaxed ordering. */
+		devctl = pci_read_config(dev,
+		    sc->bge_pciecap + PCIER_DEVCTRL, 2);
+		devctl &= ~(PCIEM_DEVCTL_RELAX_ORDER | PCIEM_DEVCTL_NOSNOOP);
+		pci_write_config(dev, sc->bge_pciecap + PCIER_DEVCTRL,
+		    devctl, 2);
+
+		/* Clear error status. */
+		pci_write_config(dev, sc->bge_pciecap + PCIER_DEVSTS,
+		    PCIEM_DEVSTS_CORR_ERR |
+		    PCIEM_DEVSTS_NFATAL_ERR |
+		    PCIEM_DEVSTS_FATAL_ERR |
+		    PCIEM_DEVSTS_UNSUPP_REQ, 2);
 	}
 
 	/* Reset some of the PCI state that got zapped by reset */
