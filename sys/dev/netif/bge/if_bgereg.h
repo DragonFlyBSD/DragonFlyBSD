@@ -2553,6 +2553,7 @@ struct bge_softc {
 	uint32_t		bge_tx_buf_ratio;
 	uint32_t		bge_mi_mode;
 	int			bge_force_defrag;
+	int			bge_mbox_reorder;
 	int			bge_if_flags;
 	int			bge_txcnt;
 	int			bge_link;

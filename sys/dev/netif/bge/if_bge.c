@@ -497,6 +497,8 @@ bge_writembx(struct bge_softc *sc, int off, int val)
 		off += BGE_LPMBX_IRQ0_HI - BGE_MBX_IRQ0_HI;
 
 	CSR_WRITE_4(sc, off, val);
+	if (sc->bge_mbox_reorder)
+		CSR_READ_4(sc, off);
 }
 
 static uint8_t
@@ -2155,6 +2157,8 @@ bge_attach(device_t dev)
 		    BGE_PCISTATE_PCI_BUSMODE) == 0) {
 			sc->bge_flags |= BGE_FLAG_PCIX;
 			sc->bge_pcixcap = pci_get_pcixcap_ptr(sc->bge_dev);
+			sc->bge_mbox_reorder = device_getenv_int(sc->bge_dev,
+			    "mbox_reorder", 0);
 		}
  	}
 
