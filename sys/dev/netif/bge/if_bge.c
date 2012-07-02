@@ -1818,10 +1818,6 @@ bge_probe(device_t dev)
 		return(ENXIO);
 
 	device_set_desc(dev, t->bge_name);
-	if (pci_get_subvendor(dev) == PCI_VENDOR_DELL) {
-		struct bge_softc *sc = device_get_softc(dev);
-		sc->bge_phy_flags |= BGE_PHY_NO_3LED;
-	}
 	return(0);
 }
 
@@ -1830,9 +1826,10 @@ bge_attach(device_t dev)
 {
 	struct ifnet *ifp;
 	struct bge_softc *sc;
-	uint32_t hwcfg = 0;
-	int error = 0, rid;
+	uint32_t hwcfg = 0, misccfg;
+	int error = 0, rid, capmask;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
+	uint16_t product, vendor;
 
 	sc = device_get_softc(dev);
 	sc->bge_dev = dev;
@@ -1925,6 +1922,35 @@ bge_attach(device_t dev)
 	 * Set various quirk flags.
 	 */
 
+	product = pci_get_device(dev);
+	vendor = pci_get_vendor(dev);
+
+	misccfg = CSR_READ_4(sc, BGE_MISC_CFG);
+	misccfg &= BGE_MISCCFG_BOARD_ID_MASK;
+
+	if ((sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
+	     sc->bge_asicrev == BGE_ASICREV_BCM5701) &&
+	    pci_get_subvendor(dev) == PCI_VENDOR_DELL)
+		sc->bge_phy_flags |= BGE_PHY_NO_3LED;
+
+	capmask = MII_CAPMASK_DEFAULT;
+	if ((sc->bge_asicrev == BGE_ASICREV_BCM5703 &&
+	     (misccfg == 0x4000 || misccfg == 0x8000)) ||
+	    (sc->bge_asicrev == BGE_ASICREV_BCM5705 &&
+	     vendor == PCI_VENDOR_BROADCOM &&
+	     (product == PCI_PRODUCT_BROADCOM_BCM5901 ||
+	      product == PCI_PRODUCT_BROADCOM_BCM5901A2 ||
+	      product == PCI_PRODUCT_BROADCOM_BCM5705F)) ||
+	    (vendor == PCI_VENDOR_BROADCOM &&
+	     (product == PCI_PRODUCT_BROADCOM_BCM5751F ||
+	      product == PCI_PRODUCT_BROADCOM_BCM5753F ||
+	      product == PCI_PRODUCT_BROADCOM_BCM5787F)) ||
+	    product == PCI_PRODUCT_BROADCOM_BCM57790 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM5906) {
+		/* 10/100 only */
+		capmask &= ~BMSR_EXTSTAT;
+	}
+
 	sc->bge_phy_flags |= BGE_PHY_WIRESPEED;
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
 	    (sc->bge_asicrev == BGE_ASICREV_BCM5705 &&
@@ -1944,19 +1970,22 @@ bge_attach(device_t dev)
 	if (sc->bge_chipid == BGE_CHIPID_BCM5704_A0)
 		sc->bge_phy_flags |= BGE_PHY_5704_A0_BUG;
 
-	if (BGE_IS_5705_PLUS(sc)) {
+	if (BGE_IS_5705_PLUS(sc) &&
+	    sc->bge_asicrev != BGE_ASICREV_BCM5906 &&
+	    /* sc->bge_asicrev != BGE_ASICREV_BCM5717 && */
+	    sc->bge_asicrev != BGE_ASICREV_BCM5785 &&
+	    /* sc->bge_asicrev != BGE_ASICREV_BCM57765 && */
+	    sc->bge_asicrev != BGE_ASICREV_BCM57780) {
 		if (sc->bge_asicrev == BGE_ASICREV_BCM5755 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5761 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5784 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5787) {
-			uint32_t product = pci_get_device(dev);
-
 			if (product != PCI_PRODUCT_BROADCOM_BCM5722 &&
 			    product != PCI_PRODUCT_BROADCOM_BCM5756)
 				sc->bge_phy_flags |= BGE_PHY_JITTER_BUG;
 			if (product == PCI_PRODUCT_BROADCOM_BCM5755M)
 				sc->bge_phy_flags |= BGE_PHY_ADJUST_TRIM;
-		} else if (sc->bge_asicrev != BGE_ASICREV_BCM5906) {
+		} else {
 			sc->bge_phy_flags |= BGE_PHY_BER_BUG;
 		}
 	}
@@ -2126,6 +2155,7 @@ bge_attach(device_t dev)
 
 		mii_probe_args_init(&mii_args, bge_ifmedia_upd, bge_ifmedia_sts);
 		mii_args.mii_probemask = 1 << sc->bge_phyno;
+		mii_args.mii_capmask = capmask;
 
 		error = mii_probe(dev, &sc->bge_miibus, &mii_args);
 		if (error) {
