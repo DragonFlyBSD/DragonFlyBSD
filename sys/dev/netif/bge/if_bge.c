@@ -1820,7 +1820,7 @@ bge_probe(device_t dev)
 	device_set_desc(dev, t->bge_name);
 	if (pci_get_subvendor(dev) == PCI_VENDOR_DELL) {
 		struct bge_softc *sc = device_get_softc(dev);
-		sc->bge_flags |= BGE_FLAG_NO_3LED;
+		sc->bge_phy_flags |= BGE_PHY_NO_3LED;
 	}
 	return(0);
 }
@@ -1925,24 +1925,24 @@ bge_attach(device_t dev)
 	 * Set various quirk flags.
 	 */
 
-	sc->bge_flags |= BGE_FLAG_ETH_WIRESPEED;
+	sc->bge_phy_flags |= BGE_PHY_WIRESPEED;
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
 	    (sc->bge_asicrev == BGE_ASICREV_BCM5705 &&
 	     (sc->bge_chipid != BGE_CHIPID_BCM5705_A0 &&
 	      sc->bge_chipid != BGE_CHIPID_BCM5705_A1)) ||
 	    sc->bge_asicrev == BGE_ASICREV_BCM5906)
-		sc->bge_flags &= ~BGE_FLAG_ETH_WIRESPEED;
+		sc->bge_phy_flags &= ~BGE_PHY_WIRESPEED;
 
 	if (sc->bge_chipid == BGE_CHIPID_BCM5701_A0 ||
 	    sc->bge_chipid == BGE_CHIPID_BCM5701_B0)
-		sc->bge_flags |= BGE_FLAG_CRC_BUG;
+		sc->bge_phy_flags |= BGE_PHY_CRC_BUG;
 
 	if (sc->bge_chiprev == BGE_CHIPREV_5703_AX ||
 	    sc->bge_chiprev == BGE_CHIPREV_5704_AX)
-		sc->bge_flags |= BGE_FLAG_ADC_BUG;
+		sc->bge_phy_flags |= BGE_PHY_ADC_BUG;
 
 	if (sc->bge_chipid == BGE_CHIPID_BCM5704_A0)
-		sc->bge_flags |= BGE_FLAG_5704_A0_BUG;
+		sc->bge_phy_flags |= BGE_PHY_5704_A0_BUG;
 
 	if (BGE_IS_5705_PLUS(sc)) {
 		if (sc->bge_asicrev == BGE_ASICREV_BCM5755 ||
@@ -1953,11 +1953,11 @@ bge_attach(device_t dev)
 
 			if (product != PCI_PRODUCT_BROADCOM_BCM5722 &&
 			    product != PCI_PRODUCT_BROADCOM_BCM5756)
-				sc->bge_flags |= BGE_FLAG_JITTER_BUG;
+				sc->bge_phy_flags |= BGE_PHY_JITTER_BUG;
 			if (product == PCI_PRODUCT_BROADCOM_BCM5755M)
-				sc->bge_flags |= BGE_FLAG_ADJUST_TRIM;
+				sc->bge_phy_flags |= BGE_PHY_ADJUST_TRIM;
 		} else if (sc->bge_asicrev != BGE_ASICREV_BCM5906) {
-			sc->bge_flags |= BGE_FLAG_BER_BUG;
+			sc->bge_phy_flags |= BGE_PHY_BER_BUG;
 		}
 	}
 

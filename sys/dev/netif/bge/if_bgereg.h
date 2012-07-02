@@ -2459,12 +2459,10 @@ struct bge_softc {
 	struct resource		*bge_res;
 	struct ifmedia		bge_ifmedia;	/* TBI media info */
 	int			bge_pcixcap;
-	uint32_t		bge_flags;
+	uint32_t		bge_flags;	/* BGE_FLAG_ */
 #define BGE_FLAG_TBI		0x00000001
 #define BGE_FLAG_JUMBO		0x00000002
-#define BGE_FLAG_ETH_WIRESPEED	0x00000004
 #define BGE_FLAG_MII_SERDES	0x00000010
-#define BGE_FLAG_MSI		0x00000100	/* unused */
 #define BGE_FLAG_PCIX		0x00000200
 #define BGE_FLAG_PCIE		0x00000400
 #define BGE_FLAG_5700_FAMILY	0x00001000
@@ -2474,14 +2472,8 @@ struct bge_softc {
 #define BGE_FLAG_5755_PLUS	0x00010000
 #define BGE_FLAG_MAXADDR_40BIT	0x00020000
 #define BGE_FLAG_RX_ALIGNBUG	0x00100000
-#define BGE_FLAG_NO_3LED	0x00200000
-#define BGE_FLAG_ADC_BUG	0x00400000
-#define BGE_FLAG_5704_A0_BUG	0x00800000
-#define BGE_FLAG_JITTER_BUG	0x01000000
-#define BGE_FLAG_BER_BUG	0x02000000
-#define BGE_FLAG_ADJUST_TRIM	0x04000000
-#define BGE_FLAG_CRC_BUG	0x08000000
 #define BGE_FLAG_NO_EEPROM	0x10000000
+
 	uint32_t		bge_chipid;
 	uint32_t		bge_asicrev;
 	uint32_t		bge_chiprev;
@@ -2511,6 +2503,16 @@ struct bge_softc {
 
 	struct sysctl_ctx_list	bge_sysctl_ctx;
 	struct sysctl_oid	*bge_sysctl_tree;
+
+	uint32_t		bge_phy_flags;
+#define BGE_PHY_NO_3LED		0x00200000
+#define BGE_PHY_ADC_BUG		0x00400000
+#define BGE_PHY_5704_A0_BUG	0x00800000
+#define BGE_PHY_JITTER_BUG	0x01000000
+#define BGE_PHY_BER_BUG		0x02000000
+#define BGE_PHY_ADJUST_TRIM	0x04000000
+#define BGE_PHY_CRC_BUG		0x08000000
+#define BGE_PHY_WIRESPEED	0x00000004
 
 	int			bge_phyno;
 	uint32_t		bge_coal_chg;
