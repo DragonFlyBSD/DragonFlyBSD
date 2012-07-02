@@ -277,6 +277,7 @@ static const struct bge_type bge_devs[] = {
 #define BGE_IS_5714_FAMILY(sc)		((sc)->bge_flags & BGE_FLAG_5714_FAMILY)
 #define BGE_IS_575X_PLUS(sc)		((sc)->bge_flags & BGE_FLAG_575X_PLUS)
 #define BGE_IS_5755_PLUS(sc)		((sc)->bge_flags & BGE_FLAG_5755_PLUS)
+#define BGE_IS_5788(sc)			((sc)->bge_flags & BGE_FLAG_5788)
 
 typedef int	(*bge_eaddr_fcn_t)(struct bge_softc *, uint8_t[]);
 
@@ -1946,15 +1947,18 @@ bge_attach(device_t dev)
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5906)
 		sc->bge_flags |= BGE_FLAG_NO_EEPROM;
 
+	misccfg = CSR_READ_4(sc, BGE_MISC_CFG) & BGE_MISCCFG_BOARD_ID_MASK;
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5705 &&
+	    (misccfg == BGE_MISCCFG_BOARD_ID_5788 ||
+	     misccfg == BGE_MISCCFG_BOARD_ID_5788M))
+		sc->bge_flags |= BGE_FLAG_5788;
+
 	/*
 	 * Set various quirk flags.
 	 */
 
 	product = pci_get_device(dev);
 	vendor = pci_get_vendor(dev);
-
-	misccfg = CSR_READ_4(sc, BGE_MISC_CFG);
-	misccfg &= BGE_MISCCFG_BOARD_ID_MASK;
 
 	if ((sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
 	     sc->bge_asicrev == BGE_ASICREV_BCM5701) &&
@@ -2869,7 +2873,11 @@ bge_tick(void *xsc)
 		 * and trigger interrupt.
 		 */
 		sc->bge_link_evt++;
-		BGE_SETBIT(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_SET);
+		if (sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
+		    BGE_IS_5788(sc))
+			BGE_SETBIT(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_SET);
+		else
+			BGE_SETBIT(sc, BGE_HCC_MODE, BGE_HCCMODE_COAL_NOW);
 	} else if (!sc->bge_link) {
 		mii_tick(device_get_softc(sc->bge_miibus));
 	}
@@ -3316,6 +3324,25 @@ bge_ifmedia_upd(struct ifnet *ifp)
 				mii_phy_reset(miisc);
 		}
 		mii_mediachg(mii);
+
+		/*
+		 * Force an interrupt so that we will call bge_link_upd
+		 * if needed and clear any pending link state attention.
+		 * Without this we are not getting any further interrupts
+		 * for link state changes and thus will not UP the link and
+		 * not be able to send in bge_start.  The only way to get
+		 * things working was to receive a packet and get an RX
+		 * intr.
+		 *
+		 * bge_tick should help for fiber cards and we might not
+		 * need to do this here if BGE_FLAG_TBI is set but as
+		 * we poll for fiber anyway it should not harm.
+		 */
+		if (sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
+		    BGE_IS_5788(sc))
+			BGE_SETBIT(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_SET);
+		else
+			BGE_SETBIT(sc, BGE_HCC_MODE, BGE_HCCMODE_COAL_NOW);
 	}
 	return(0);
 }
