@@ -352,6 +352,7 @@ static void	bge_miibus_statchg(device_t);
 static void	bge_bcm5700_link_upd(struct bge_softc *, uint32_t);
 static void	bge_tbi_link_upd(struct bge_softc *, uint32_t);
 static void	bge_copper_link_upd(struct bge_softc *, uint32_t);
+static void	bge_autopoll_link_upd(struct bge_softc *, uint32_t);
 
 static void	bge_reset(struct bge_softc *);
 
@@ -628,57 +629,54 @@ static int
 bge_miibus_readreg(device_t dev, int phy, int reg)
 {
 	struct bge_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val, autopoll;
+	uint32_t val;
 	int i;
 
 	KASSERT(phy == sc->bge_phyno,
 	    ("invalid phyno %d, should be %d", phy, sc->bge_phyno));
 
-	/* Reading with autopolling on may trigger PCI errors */
-	autopoll = CSR_READ_4(sc, BGE_MI_MODE);
-	if (autopoll & BGE_MIMODE_AUTOPOLL) {
-		BGE_CLRBIT(sc, BGE_MI_MODE, BGE_MIMODE_AUTOPOLL);
-		DELAY(40);
+	/* Clear the autopoll bit if set, otherwise may trigger PCI errors. */
+	if (sc->bge_mi_mode & BGE_MIMODE_AUTOPOLL) {
+		CSR_WRITE_4(sc, BGE_MI_MODE,
+		    sc->bge_mi_mode & ~BGE_MIMODE_AUTOPOLL);
+		DELAY(80);
 	}
 
-	CSR_WRITE_4(sc, BGE_MI_COMM, BGE_MICMD_READ|BGE_MICOMM_BUSY|
-	    BGE_MIPHY(phy)|BGE_MIREG(reg));
+	CSR_WRITE_4(sc, BGE_MI_COMM, BGE_MICMD_READ | BGE_MICOMM_BUSY |
+	    BGE_MIPHY(phy) | BGE_MIREG(reg));
 
+	/* Poll for the PHY register access to complete. */
 	for (i = 0; i < BGE_TIMEOUT; i++) {
 		DELAY(10);
 		val = CSR_READ_4(sc, BGE_MI_COMM);
-		if (!(val & BGE_MICOMM_BUSY))
+		if ((val & BGE_MICOMM_BUSY) == 0) {
+			DELAY(5);
+			val = CSR_READ_4(sc, BGE_MI_COMM);
 			break;
+		}
 	}
-
 	if (i == BGE_TIMEOUT) {
-		if_printf(ifp, "PHY read timed out "
-			  "(phy %d, reg %d, val 0x%08x)\n", phy, reg, val);
+		if_printf(&sc->arpcom.ac_if, "PHY read timed out "
+		    "(phy %d, reg %d, val 0x%08x)\n", phy, reg, val);
 		val = 0;
-		goto done;
 	}
 
-	DELAY(5);
-	val = CSR_READ_4(sc, BGE_MI_COMM);
-
-done:
-	if (autopoll & BGE_MIMODE_AUTOPOLL) {
-		BGE_SETBIT(sc, BGE_MI_MODE, BGE_MIMODE_AUTOPOLL);
-		DELAY(40);
+	/* Restore the autopoll bit if necessary. */
+	if (sc->bge_mi_mode & BGE_MIMODE_AUTOPOLL) {
+		CSR_WRITE_4(sc, BGE_MI_MODE, sc->bge_mi_mode);
+		DELAY(80);
 	}
 
 	if (val & BGE_MICOMM_READFAIL)
-		return(0);
+		return 0;
 
-	return(val & 0xFFFF);
+	return (val & 0xFFFF);
 }
 
 static int
 bge_miibus_writereg(device_t dev, int phy, int reg, int val)
 {
 	struct bge_softc *sc = device_get_softc(dev);
-	uint32_t autopoll;
 	int i;
 
 	KASSERT(phy == sc->bge_phyno,
@@ -686,17 +684,17 @@ bge_miibus_writereg(device_t dev, int phy, int reg, int val)
 
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5906 &&
 	    (reg == BRGPHY_MII_1000CTL || reg == BRGPHY_MII_AUXCTL))
-	       return(0);
+	       return 0;
 
-	/* Reading with autopolling on may trigger PCI errors */
-	autopoll = CSR_READ_4(sc, BGE_MI_MODE);
-	if (autopoll & BGE_MIMODE_AUTOPOLL) {
-		BGE_CLRBIT(sc, BGE_MI_MODE, BGE_MIMODE_AUTOPOLL);
-		DELAY(40);
+	/* Clear the autopoll bit if set, otherwise may trigger PCI errors. */
+	if (sc->bge_mi_mode & BGE_MIMODE_AUTOPOLL) {
+		CSR_WRITE_4(sc, BGE_MI_MODE,
+		    sc->bge_mi_mode & ~BGE_MIMODE_AUTOPOLL);
+		DELAY(80);
 	}
 
-	CSR_WRITE_4(sc, BGE_MI_COMM, BGE_MICMD_WRITE|BGE_MICOMM_BUSY|
-	    BGE_MIPHY(phy)|BGE_MIREG(reg)|val);
+	CSR_WRITE_4(sc, BGE_MI_COMM, BGE_MICMD_WRITE | BGE_MICOMM_BUSY |
+	    BGE_MIPHY(phy) | BGE_MIREG(reg) | val);
 
 	for (i = 0; i < BGE_TIMEOUT; i++) {
 		DELAY(10);
@@ -706,19 +704,18 @@ bge_miibus_writereg(device_t dev, int phy, int reg, int val)
 			break;
 		}
 	}
-
-	if (autopoll & BGE_MIMODE_AUTOPOLL) {
-		BGE_SETBIT(sc, BGE_MI_MODE, BGE_MIMODE_AUTOPOLL);
-		DELAY(40);
-	}
-
 	if (i == BGE_TIMEOUT) {
 		if_printf(&sc->arpcom.ac_if, "PHY write timed out "
-			  "(phy %d, reg %d, val %d)\n", phy, reg, val);
-		return(0);
+		    "(phy %d, reg %d, val %d)\n", phy, reg, val);
 	}
 
-	return(0);
+	/* Restore the autopoll bit if necessary. */
+	if (sc->bge_mi_mode & BGE_MIMODE_AUTOPOLL) {
+		CSR_WRITE_4(sc, BGE_MI_MODE, sc->bge_mi_mode);
+		DELAY(80);
+	}
+
+	return 0;
 }
 
 static void
@@ -729,6 +726,31 @@ bge_miibus_statchg(device_t dev)
 
 	sc = device_get_softc(dev);
 	mii = device_get_softc(sc->bge_miibus);
+
+	if ((mii->mii_media_status & (IFM_ACTIVE | IFM_AVALID)) ==
+	    (IFM_ACTIVE | IFM_AVALID)) {
+		switch (IFM_SUBTYPE(mii->mii_media_active)) {
+		case IFM_10_T:
+		case IFM_100_TX:
+			sc->bge_link = 1;
+			break;
+		case IFM_1000_T:
+		case IFM_1000_SX:
+		case IFM_2500_SX:
+			if (sc->bge_asicrev != BGE_ASICREV_BCM5906)
+				sc->bge_link = 1;
+			else
+				sc->bge_link = 0;
+			break;
+		default:
+			sc->bge_link = 0;
+			break;
+		}
+	} else {
+		sc->bge_link = 0;
+	}
+	if (sc->bge_link == 0)
+		return;
 
 	BGE_CLRBIT(sc, BGE_MAC_MODE, BGE_MACMODE_PORTMODE);
 	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T ||
@@ -1764,11 +1786,17 @@ bge_blockinit(struct bge_softc *sc)
 	    BGE_MACSTAT_LINK_CHANGED);
 	CSR_WRITE_4(sc, BGE_MI_STS, 0);
 
-	/* Enable PHY auto polling (for MII/GMII only) */
+	/*
+	 * Enable attention when the link has changed state for
+	 * devices that use auto polling.
+	 */
 	if (sc->bge_flags & BGE_FLAG_TBI) {
 		CSR_WRITE_4(sc, BGE_MI_STS, BGE_MISTS_LINK);
  	} else {
-		BGE_SETBIT(sc, BGE_MI_MODE, BGE_MIMODE_AUTOPOLL|10<<16);
+		if (sc->bge_mi_mode & BGE_MIMODE_AUTOPOLL) {
+			CSR_WRITE_4(sc, BGE_MI_MODE, sc->bge_mi_mode);
+			DELAY(80);
+		}
 		if (sc->bge_asicrev == BGE_ASICREV_BCM5700 &&
 		    sc->bge_chipid != BGE_CHIPID_BCM5700_B2) {
 			CSR_WRITE_4(sc, BGE_MAC_EVT_ENB,
@@ -1990,6 +2018,21 @@ bge_attach(device_t dev)
 		}
 	}
 
+	/* Identify the chips that use an CPMU. */
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5784 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM5761 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM5785 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM57780)
+		sc->bge_flags |= BGE_FLAG_CPMU;
+	if (sc->bge_flags & BGE_FLAG_CPMU)
+		sc->bge_mi_mode = BGE_MIMODE_500KHZ_CONST;
+	else
+		sc->bge_mi_mode = BGE_MIMODE_BASE;
+
+	/* Enable auto polling for BCM570[0-5]. */
+	if (BGE_IS_5700_FAMILY(sc) || sc->bge_asicrev == BGE_ASICREV_BCM5705)
+		sc->bge_mi_mode |= BGE_MIMODE_AUTOPOLL;
+
 	/* Allocate interrupt */
 	rid = 0;
 
@@ -2182,6 +2225,9 @@ bge_attach(device_t dev)
 		sc->bge_link_chg = BGE_MACSTAT_MI_INTERRUPT;
 	} else if (sc->bge_flags & BGE_FLAG_TBI) {
 		sc->bge_link_upd = bge_tbi_link_upd;
+		sc->bge_link_chg = BGE_MACSTAT_LINK_CHANGED;
+	} else if (sc->bge_mi_mode & BGE_MIMODE_AUTOPOLL) {
+		sc->bge_link_upd = bge_autopoll_link_upd;
 		sc->bge_link_chg = BGE_MACSTAT_LINK_CHANGED;
 	} else {
 		sc->bge_link_upd = bge_copper_link_upd;
@@ -3913,32 +3959,45 @@ bge_tbi_link_upd(struct bge_softc *sc, uint32_t status)
 static void
 bge_copper_link_upd(struct bge_softc *sc, uint32_t status __unused)
 {
-	/*
-	 * Check that the AUTOPOLL bit is set before
-	 * processing the event as a real link change.
-	 * Turning AUTOPOLL on and off in the MII read/write
-	 * functions will often trigger a link status
-	 * interrupt for no reason.
-	 */
-	if (CSR_READ_4(sc, BGE_MI_MODE) & BGE_MIMODE_AUTOPOLL) {
-		struct ifnet *ifp = &sc->arpcom.ac_if;
-		struct mii_data *mii = device_get_softc(sc->bge_miibus);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct mii_data *mii = device_get_softc(sc->bge_miibus);
 
-		mii_pollstat(mii);
+	mii_pollstat(mii);
+	bge_miibus_statchg(sc->bge_dev);
 
-		if (!sc->bge_link &&
-		    (mii->mii_media_status & IFM_ACTIVE) &&
-		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
-			sc->bge_link++;
-			if (bootverbose)
-				if_printf(ifp, "link UP\n");
-		} else if (sc->bge_link &&
-		    (!(mii->mii_media_status & IFM_ACTIVE) ||
-		    IFM_SUBTYPE(mii->mii_media_active) == IFM_NONE)) {
-			sc->bge_link = 0;
-			if (bootverbose)
-				if_printf(ifp, "link DOWN\n");
-		}
+	if (bootverbose) {
+		if (sc->bge_link)
+			if_printf(ifp, "link UP\n");
+		else
+			if_printf(ifp, "link DOWN\n");
+	}
+
+	/* Clear the attention. */
+	CSR_WRITE_4(sc, BGE_MAC_STS, BGE_MACSTAT_SYNC_CHANGED |
+	    BGE_MACSTAT_CFG_CHANGED | BGE_MACSTAT_MI_COMPLETE |
+	    BGE_MACSTAT_LINK_CHANGED);
+}
+
+static void
+bge_autopoll_link_upd(struct bge_softc *sc, uint32_t status __unused)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct mii_data *mii = device_get_softc(sc->bge_miibus);
+
+	mii_pollstat(mii);
+
+	if (!sc->bge_link &&
+	    (mii->mii_media_status & IFM_ACTIVE) &&
+	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
+		sc->bge_link++;
+		if (bootverbose)
+			if_printf(ifp, "link UP\n");
+	} else if (sc->bge_link &&
+	    (!(mii->mii_media_status & IFM_ACTIVE) ||
+	    IFM_SUBTYPE(mii->mii_media_active) == IFM_NONE)) {
+		sc->bge_link = 0;
+		if (bootverbose)
+			if_printf(ifp, "link DOWN\n");
 	}
 
 	/* Clear the attention. */
