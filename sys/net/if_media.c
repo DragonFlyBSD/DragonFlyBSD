@@ -1,6 +1,5 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.15 2007/08/27 16:15:42 hasso Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -363,7 +362,7 @@ ifmedia_match(struct ifmedia *ifm, int target, int mask)
 struct ifmedia_baudrate ifmedia_baudrate_descriptions[] =
     IFM_BAUDRATE_DESCRIPTIONS;
 
-int
+uint64_t
 ifmedia_baudrate(int mword)
 {
 	int i;

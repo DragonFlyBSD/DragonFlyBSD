@@ -115,7 +115,7 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 	    struct ifmedia *ifm, u_long cmd);
 
 /* Compute baudrate for a given media. */
-int	ifmedia_baudrate(int);
+uint64_t ifmedia_baudrate(int);
 #endif /*_KERNEL */
 
 /*
@@ -522,8 +522,8 @@ struct ifmedia_description {
  * Baudrate descriptions for the various media types.
  */
 struct ifmedia_baudrate {
-	int	ifmb_word;		/* media word */
-	int	ifmb_baudrate;		/* corresponding baudrate */
+	int		ifmb_word;		/* media word */
+	uint64_t	ifmb_baudrate;		/* corresponding baudrate */
 };
 
 #define IFM_BAUDRATE_DESCRIPTIONS {					\
