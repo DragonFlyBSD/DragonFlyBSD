@@ -649,6 +649,8 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 
 /* PCI Express device control, 16bits */
 #define PCIER_DEVCTRL			0x08
+#define PCIEM_DEVCTL_RELAX_ORDER	0x0010	/* Enable Relaxed Ordering */
+#define PCIEM_DEVCTL_NOSNOOP		0x0800	/* Enable No Snoop */
 #define PCIEM_DEVCTL_MAX_READRQ_MASK	0x7000	/* Max read request size */
 #define PCIEM_DEVCTL_MAX_READRQ_128	0x0000
 #define PCIEM_DEVCTL_MAX_READRQ_256	0x1000
@@ -656,6 +658,13 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define PCIEM_DEVCTL_MAX_READRQ_1024	0x3000
 #define PCIEM_DEVCTL_MAX_READRQ_2048	0x4000
 #define PCIEM_DEVCTL_MAX_READRQ_4096	0x5000
+
+/* PCI Express device status, 16bits */
+#define PCIER_DEVSTS			0x0a
+#define PCIEM_DEVSTS_CORR_ERR		0x1	/* Correctable Error */
+#define PCIEM_DEVSTS_NFATAL_ERR		0x2	/* Non-Fatal Error */
+#define PCIEM_DEVSTS_FATAL_ERR		0x4	/* Fatal Error */
+#define PCIEM_DEVSTS_UNSUPP_REQ		0x8	/* Unsupported Request */
 
 /* PCI Express link capabilities, 32bits */
 #define PCIER_LINKCAP			0x0c
