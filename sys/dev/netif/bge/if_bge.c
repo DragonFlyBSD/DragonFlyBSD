@@ -2044,10 +2044,65 @@ bge_attach(device_t dev)
 	if (BGE_IS_5755_PLUS(sc) || sc->bge_asicrev == BGE_ASICREV_BCM5906)
 		sc->bge_flags |= BGE_FLAG_SHORTDMA;
 
-	/*
-	 * Set various quirk flags.
-	 */
+  	/*
+	 * Check if this is a PCI-X or PCI Express device.
+  	 */
+	if (BGE_IS_5705_PLUS(sc)) {
+		if (pci_is_pcie(dev)) {
+			sc->bge_flags |= BGE_FLAG_PCIE;
+			sc->bge_pciecap = pci_get_pciecap_ptr(sc->bge_dev);
+			pcie_set_max_readrq(dev, PCIEM_DEVCTL_MAX_READRQ_4096);
+		}
+	} else {
+		/*
+		 * Check if the device is in PCI-X Mode.
+		 * (This bit is not valid on PCI Express controllers.)
+		 */
+		if ((pci_read_config(sc->bge_dev, BGE_PCI_PCISTATE, 4) &
+		    BGE_PCISTATE_PCI_BUSMODE) == 0) {
+			sc->bge_flags |= BGE_FLAG_PCIX;
+			sc->bge_pcixcap = pci_get_pcixcap_ptr(sc->bge_dev);
+			sc->bge_mbox_reorder = device_getenv_int(sc->bge_dev,
+			    "mbox_reorder", 0);
+		}
+ 	}
+	device_printf(dev, "CHIP ID 0x%08x; "
+		      "ASIC REV 0x%02x; CHIP REV 0x%02x; %s\n",
+		      sc->bge_chipid, sc->bge_asicrev, sc->bge_chiprev,
+		      (sc->bge_flags & BGE_FLAG_PCIX) ? "PCI-X"
+		      : ((sc->bge_flags & BGE_FLAG_PCIE) ?
+			"PCI-E" : "PCI"));
 
+	/*
+	 * The 40bit DMA bug applies to the 5714/5715 controllers and is
+	 * not actually a MAC controller bug but an issue with the embedded
+	 * PCIe to PCI-X bridge in the device. Use 40bit DMA workaround.
+	 */
+	if (BGE_IS_5714_FAMILY(sc) && (sc->bge_flags & BGE_FLAG_PCIX))
+		sc->bge_flags |= BGE_FLAG_MAXADDR_40BIT;
+
+	/* Identify the chips that use an CPMU. */
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5784 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM5761 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM5785 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM57780)
+		sc->bge_flags |= BGE_FLAG_CPMU;
+
+	/*
+	 * When using the BCM5701 in PCI-X mode, data corruption has
+	 * been observed in the first few bytes of some received packets.
+	 * Aligning the packet buffer in memory eliminates the corruption.
+	 * Unfortunately, this misaligns the packet payloads.  On platforms
+	 * which do not support unaligned accesses, we will realign the
+	 * payloads by copying the received packets.
+	 */
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5701 &&
+	    (sc->bge_flags & BGE_FLAG_PCIX))
+		sc->bge_flags |= BGE_FLAG_RX_ALIGNBUG;
+
+	/*
+	 * Set various PHY quirk flags.
+	 */
 	product = pci_get_device(dev);
 	vendor = pci_get_vendor(dev);
 
@@ -2113,71 +2168,17 @@ bge_attach(device_t dev)
 		}
 	}
 
-	/* Identify the chips that use an CPMU. */
-	if (sc->bge_asicrev == BGE_ASICREV_BCM5784 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5761 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5785 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM57780)
-		sc->bge_flags |= BGE_FLAG_CPMU;
-	if (sc->bge_flags & BGE_FLAG_CPMU)
-		sc->bge_mi_mode = BGE_MIMODE_500KHZ_CONST;
-	else
-		sc->bge_mi_mode = BGE_MIMODE_BASE;
-
-	/* Enable auto polling for BCM570[0-5]. */
-	if (BGE_IS_5700_FAMILY(sc) || sc->bge_asicrev == BGE_ASICREV_BCM5705)
-		sc->bge_mi_mode |= BGE_MIMODE_AUTOPOLL;
-
 	/* Allocate interrupt */
 	rid = 0;
-
 	sc->bge_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
-
 	if (sc->bge_irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;
 		goto fail;
 	}
 
-  	/*
-	 * Check if this is a PCI-X or PCI Express device.
-  	 */
-	if (BGE_IS_5705_PLUS(sc)) {
-		if (pci_is_pcie(dev)) {
-			sc->bge_flags |= BGE_FLAG_PCIE;
-			sc->bge_pciecap = pci_get_pciecap_ptr(sc->bge_dev);
-			pcie_set_max_readrq(dev, PCIEM_DEVCTL_MAX_READRQ_4096);
-		}
-	} else {
-		/*
-		 * Check if the device is in PCI-X Mode.
-		 * (This bit is not valid on PCI Express controllers.)
-		 */
-		if ((pci_read_config(sc->bge_dev, BGE_PCI_PCISTATE, 4) &
-		    BGE_PCISTATE_PCI_BUSMODE) == 0) {
-			sc->bge_flags |= BGE_FLAG_PCIX;
-			sc->bge_pcixcap = pci_get_pcixcap_ptr(sc->bge_dev);
-			sc->bge_mbox_reorder = device_getenv_int(sc->bge_dev,
-			    "mbox_reorder", 0);
-		}
- 	}
-
-	device_printf(dev, "CHIP ID 0x%08x; "
-		      "ASIC REV 0x%02x; CHIP REV 0x%02x; %s\n",
-		      sc->bge_chipid, sc->bge_asicrev, sc->bge_chiprev,
-		      (sc->bge_flags & BGE_FLAG_PCIX) ? "PCI-X"
-		      : ((sc->bge_flags & BGE_FLAG_PCIE) ?
-			"PCI-E" : "PCI"));
-
-	/*
-	 * The 40bit DMA bug applies to the 5714/5715 controllers and is
-	 * not actually a MAC controller bug but an issue with the embedded
-	 * PCIe to PCI-X bridge in the device. Use 40bit DMA workaround.
-	 */
-	if (BGE_IS_5714_FAMILY(sc) && (sc->bge_flags & BGE_FLAG_PCIX))
-		sc->bge_flags |= BGE_FLAG_MAXADDR_40BIT;
-
+	/* Initialize if_name earlier, so if_printf could be used */
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
@@ -2250,9 +2251,9 @@ bge_attach(device_t dev)
 	 * by its PCI subsystem ID, as we do below for the SysKonnect
 	 * SK-9D41.
 	 */
-	if (bge_readmem_ind(sc, BGE_SOFTWARE_GENCOMM_SIG) == BGE_MAGIC_NUMBER)
+	if (bge_readmem_ind(sc, BGE_SOFTWARE_GENCOMM_SIG) == BGE_MAGIC_NUMBER) {
 		hwcfg = bge_readmem_ind(sc, BGE_SOFTWARE_GENCOMM_NICCFG);
-	else {
+	} else {
 		if (bge_read_eeprom(sc, (caddr_t)&hwcfg, BGE_EE_HWCFG_OFFSET,
 				    sizeof(hwcfg))) {
 			device_printf(dev, "failed to read EEPROM\n");
@@ -2269,6 +2270,32 @@ bge_attach(device_t dev)
 			sc->bge_flags |= BGE_FLAG_MII_SERDES;
 		else
 			sc->bge_flags |= BGE_FLAG_TBI;
+	}
+
+	/* Setup MI MODE */
+	if (sc->bge_flags & BGE_FLAG_CPMU)
+		sc->bge_mi_mode = BGE_MIMODE_500KHZ_CONST;
+	else
+		sc->bge_mi_mode = BGE_MIMODE_BASE;
+	if (BGE_IS_5700_FAMILY(sc) || sc->bge_asicrev == BGE_ASICREV_BCM5705) {
+		/* Enable auto polling for BCM570[0-5]. */
+		sc->bge_mi_mode |= BGE_MIMODE_AUTOPOLL;
+	}
+
+	/* Setup link status update stuffs */
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5700 &&
+	    sc->bge_chipid != BGE_CHIPID_BCM5700_B2) {
+		sc->bge_link_upd = bge_bcm5700_link_upd;
+		sc->bge_link_chg = BGE_MACSTAT_MI_INTERRUPT;
+	} else if (sc->bge_flags & BGE_FLAG_TBI) {
+		sc->bge_link_upd = bge_tbi_link_upd;
+		sc->bge_link_chg = BGE_MACSTAT_LINK_CHANGED;
+	} else if (sc->bge_mi_mode & BGE_MIMODE_AUTOPOLL) {
+		sc->bge_link_upd = bge_autopoll_link_upd;
+		sc->bge_link_chg = BGE_MACSTAT_LINK_CHANGED;
+	} else {
+		sc->bge_link_upd = bge_copper_link_upd;
+		sc->bge_link_chg = BGE_MACSTAT_LINK_CHANGED;
 	}
 
 	/*
@@ -2303,33 +2330,6 @@ bge_attach(device_t dev)
 			device_printf(dev, "MII without any PHY!\n");
 			goto fail;
 		}
-	}
-
-	/*
-	 * When using the BCM5701 in PCI-X mode, data corruption has
-	 * been observed in the first few bytes of some received packets.
-	 * Aligning the packet buffer in memory eliminates the corruption.
-	 * Unfortunately, this misaligns the packet payloads.  On platforms
-	 * which do not support unaligned accesses, we will realign the
-	 * payloads by copying the received packets.
-	 */
-	if (sc->bge_asicrev == BGE_ASICREV_BCM5701 &&
-	    (sc->bge_flags & BGE_FLAG_PCIX))
-		sc->bge_flags |= BGE_FLAG_RX_ALIGNBUG;
-
-	if (sc->bge_asicrev == BGE_ASICREV_BCM5700 &&
-	    sc->bge_chipid != BGE_CHIPID_BCM5700_B2) {
-		sc->bge_link_upd = bge_bcm5700_link_upd;
-		sc->bge_link_chg = BGE_MACSTAT_MI_INTERRUPT;
-	} else if (sc->bge_flags & BGE_FLAG_TBI) {
-		sc->bge_link_upd = bge_tbi_link_upd;
-		sc->bge_link_chg = BGE_MACSTAT_LINK_CHANGED;
-	} else if (sc->bge_mi_mode & BGE_MIMODE_AUTOPOLL) {
-		sc->bge_link_upd = bge_autopoll_link_upd;
-		sc->bge_link_chg = BGE_MACSTAT_LINK_CHANGED;
-	} else {
-		sc->bge_link_upd = bge_copper_link_upd;
-		sc->bge_link_chg = BGE_MACSTAT_LINK_CHANGED;
 	}
 
 	/*
@@ -2371,7 +2371,6 @@ bge_attach(device_t dev)
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bge_sysctl_tx_max_coal_bds, "I",
 			"Transmit max coalesced BD count.");
-
 	if (sc->bge_flags & BGE_FLAG_PCIE) {
 		/*
 		 * A common design characteristic for many Broadcom
