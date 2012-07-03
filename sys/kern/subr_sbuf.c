@@ -400,7 +400,7 @@ int
 sbuf_vprintf(struct sbuf *s, const char *fmt, __va_list ap)
 {
 	int len;
-
+	__va_list ap_copy;
 	assert_sbuf_integrity(s);
 	assert_sbuf_state(s, 0);
 
@@ -411,8 +411,10 @@ sbuf_vprintf(struct sbuf *s, const char *fmt, __va_list ap)
 		return (-1);
 
 	do {
+		__va_copy(ap_copy, ap);
 		len = kvsnprintf(&s->s_buf[s->s_len], SBUF_FREESPACE(s) + 1,
-				 fmt, ap);
+				 fmt, ap_copy);
+		__va_end(ap_copy);
 	} while (len > SBUF_FREESPACE(s) &&
 	    sbuf_extend(s, len - SBUF_FREESPACE(s)) == 0);
 

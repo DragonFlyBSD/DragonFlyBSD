@@ -286,6 +286,7 @@
 #define BGE_CHIPID_BCM5787_A0		0xb000
 #define BGE_CHIPID_BCM5787_A1		0xb001
 #define BGE_CHIPID_BCM5787_A2		0xb002
+#define BGE_CHIPID_BCM5906_A0		0xc000
 #define BGE_CHIPID_BCM5906_A1		0xc001
 #define BGE_CHIPID_BCM5906_A2		0xc002
 #define BGE_CHIPID_BCM57780_A0		0x57780000
@@ -695,6 +696,7 @@
 #define BGE_TXMODE_FLOWCTL_ENABLE	0x00000010
 #define BGE_TXMODE_BIGBACKOFF_ENABLE	0x00000020
 #define BGE_TXMODE_LONGPAUSE_ENABLE	0x00000040
+#define BGE_TXMODE_MBUF_LOCKUP_FIX	0x00000100
 
 /* Transmit MAC status register */
 #define BGE_TXSTAT_RX_XOFFED		0x00000001
@@ -792,9 +794,12 @@
 #define BGE_MISTS_LINK			0x00000001
 #define BGE_MISTS_10MBPS		0x00000002
 
+#define BGE_MIMODE_CLK_10MHZ		0x00000001
 #define BGE_MIMODE_SHORTPREAMBLE	0x00000002
 #define BGE_MIMODE_AUTOPOLL		0x00000010
 #define BGE_MIMODE_CLKCNT		0x001F0000
+#define BGE_MIMODE_500KHZ_CONST		0x00008000
+#define BGE_MIMODE_BASE			0x000C0000
 
 
 /*
@@ -805,6 +810,7 @@
 #define BGE_SDI_STATS_CTL		0x0C08
 #define BGE_SDI_STATS_ENABLE_MASK	0x0C0C
 #define BGE_SDI_STATS_INCREMENT_MASK	0x0C10
+#define BGE_ISO_PKT_TX			0x0C20
 #define BGE_LOCSTATS_COS0		0x0C80
 #define BGE_LOCSTATS_COS1		0x0C84
 #define BGE_LOCSTATS_COS2		0x0C88
@@ -1150,6 +1156,51 @@
 /* Receive List Selector Status register */
 #define BGE_RXLSSTAT_ERROR		0x00000004
 
+#define	BGE_CPMU_CTRL			0x3600
+#define	BGE_CPMU_LSPD_10MB_CLK		0x3604
+#define	BGE_CPMU_LSPD_1000MB_CLK	0x360C
+#define	BGE_CPMU_LNK_AWARE_PWRMD	0x3610
+#define	BGE_CPMU_HST_ACC		0x361C
+#define	BGE_CPMU_CLCK_STAT		0x3630
+#define	BGE_CPMU_MUTEX_REQ		0x365C
+#define	BGE_CPMU_MUTEX_GNT		0x3660
+#define	BGE_CPMU_PHY_STRAP		0x3664
+
+/* Central Power Management Unit (CPMU) register */
+#define	BGE_CPMU_CTRL_LINK_IDLE_MODE	0x00000200
+#define	BGE_CPMU_CTRL_LINK_AWARE_MODE	0x00000400
+#define	BGE_CPMU_CTRL_LINK_SPEED_MODE	0x00004000
+#define	BGE_CPMU_CTRL_GPHY_10MB_RXONLY	0x00010000
+
+/* Link Speed 10MB/No Link Power Mode Clock Policy register */
+#define	BGE_CPMU_LSPD_10MB_MACCLK_MASK	0x001F0000
+#define	BGE_CPMU_LSPD_10MB_MACCLK_6_25	0x00130000
+
+/* Link Speed 1000MB Power Mode Clock Policy register */
+#define	BGE_CPMU_LSPD_1000MB_MACCLK_62_5	0x00000000
+#define	BGE_CPMU_LSPD_1000MB_MACCLK_12_5	0x00110000
+#define	BGE_CPMU_LSPD_1000MB_MACCLK_MASK	0x001F0000
+
+/* Link Aware Power Mode Clock Policy register */
+#define	BGE_CPMU_LNK_AWARE_MACCLK_MASK	0x001F0000
+#define	BGE_CPMU_LNK_AWARE_MACCLK_6_25	0x00130000
+
+#define	BGE_CPMU_HST_ACC_MACCLK_MASK	0x001F0000
+#define	BGE_CPMU_HST_ACC_MACCLK_6_25	0x00130000
+
+/* CPMU Clock Status register */
+#define	BGE_CPMU_CLCK_STAT_MAC_CLCK_MASK	0x001F0000
+#define	BGE_CPMU_CLCK_STAT_MAC_CLCK_62_5	0x00000000
+#define	BGE_CPMU_CLCK_STAT_MAC_CLCK_12_5	0x00110000
+#define	BGE_CPMU_CLCK_STAT_MAC_CLCK_6_25	0x00130000
+
+/* CPMU Mutex Request register */
+#define	BGE_CPMU_MUTEX_REQ_DRIVER	0x00001000
+#define	BGE_CPMU_MUTEX_GNT_DRIVER	0x00001000
+
+/* CPMU GPHY Strap register */
+#define	BGE_CPMU_PHY_STRAP_IS_SERDES	0x00000020
+
 /*
  * Mbuf Cluster Free registers (has nothing to do with BSD mbufs)
  */
@@ -1360,6 +1411,7 @@
  */
 #define BGE_RDMA_MODE			0x4800
 #define BGE_RDMA_STATUS			0x4804
+#define BGE_RDMA_RSRVCTRL		0x4900
 
 /* Read DMA mode register */
 #define BGE_RDMAMODE_RESET		0x00000001
@@ -1388,6 +1440,9 @@
 #define BGE_RDMASTAT_PCI_FIFOUFLOW_ATTN	0x00000080
 #define BGE_RDMASTAT_PCI_FIFOOREAD_ATTN	0x00000100
 #define BGE_RDMASTAT_LOCWRITE_TOOBIG	0x00000200
+
+/* Read DMA Reserved Control register */
+#define BGE_RDMA_RSRVCTRL_FIFO_OFLW_FIX	0x00000004
 
 /*
  * Write DMA control registers
@@ -1797,6 +1852,9 @@
 /* Misc. config register */
 #define BGE_MISCCFG_RESET_CORE_CLOCKS	0x00000001
 #define BGE_MISCCFG_TIMER_PRESCALER	0x000000FE
+#define BGE_MISCCFG_BOARD_ID_5788	0x00010000
+#define BGE_MISCCFG_BOARD_ID_5788M	0x00018000
+#define BGE_MISCCFG_BOARD_ID_MASK	0x0001e000
 #define BGE_MISCCFG_EPHY_IDDQ		0x00200000
 #define BGE_MISCCFG_GPHY_PD_OVERRIDE	0x04000000
 
@@ -2455,12 +2513,12 @@ struct bge_softc {
 	struct resource		*bge_res;
 	struct ifmedia		bge_ifmedia;	/* TBI media info */
 	int			bge_pcixcap;
-	uint32_t		bge_flags;
+	int			bge_pciecap;
+	uint32_t		bge_flags;	/* BGE_FLAG_ */
 #define BGE_FLAG_TBI		0x00000001
 #define BGE_FLAG_JUMBO		0x00000002
-#define BGE_FLAG_ETH_WIRESPEED	0x00000004
 #define BGE_FLAG_MII_SERDES	0x00000010
-#define BGE_FLAG_MSI		0x00000100	/* unused */
+#define	BGE_FLAG_CPMU		0x00000020
 #define BGE_FLAG_PCIX		0x00000200
 #define BGE_FLAG_PCIE		0x00000400
 #define BGE_FLAG_5700_FAMILY	0x00001000
@@ -2469,16 +2527,11 @@ struct bge_softc {
 #define BGE_FLAG_575X_PLUS	0x00008000
 #define BGE_FLAG_5755_PLUS	0x00010000
 #define BGE_FLAG_MAXADDR_40BIT	0x00020000
-#define BGE_FLAG_BOUNDARY_4G	0x00040000
 #define BGE_FLAG_RX_ALIGNBUG	0x00100000
-#define BGE_FLAG_NO_3LED	0x00200000
-#define BGE_FLAG_ADC_BUG	0x00400000
-#define BGE_FLAG_5704_A0_BUG	0x00800000
-#define BGE_FLAG_JITTER_BUG	0x01000000
-#define BGE_FLAG_BER_BUG	0x02000000
-#define BGE_FLAG_ADJUST_TRIM	0x04000000
-#define BGE_FLAG_CRC_BUG	0x08000000
 #define BGE_FLAG_NO_EEPROM	0x10000000
+#define BGE_FLAG_5788		0x20000000
+#define BGE_FLAG_SHORTDMA	0x40000000
+
 	uint32_t		bge_chipid;
 	uint32_t		bge_asicrev;
 	uint32_t		bge_chiprev;
@@ -2499,7 +2552,9 @@ struct bge_softc {
 	uint32_t		bge_rx_max_coal_bds;
 	uint32_t		bge_tx_max_coal_bds;
 	uint32_t		bge_tx_buf_ratio;
+	uint32_t		bge_mi_mode;
 	int			bge_force_defrag;
+	int			bge_mbox_reorder;
 	int			bge_if_flags;
 	int			bge_txcnt;
 	int			bge_link;
@@ -2509,6 +2564,17 @@ struct bge_softc {
 	struct sysctl_ctx_list	bge_sysctl_ctx;
 	struct sysctl_oid	*bge_sysctl_tree;
 
+	uint32_t		bge_phy_flags;
+#define BGE_PHY_NO_3LED		0x00200000
+#define BGE_PHY_ADC_BUG		0x00400000
+#define BGE_PHY_5704_A0_BUG	0x00800000
+#define BGE_PHY_JITTER_BUG	0x01000000
+#define BGE_PHY_BER_BUG		0x02000000
+#define BGE_PHY_ADJUST_TRIM	0x04000000
+#define BGE_PHY_CRC_BUG		0x08000000
+#define BGE_PHY_WIRESPEED	0x00000004
+
+	int			bge_phyno;
 	uint32_t		bge_coal_chg;
 #define BGE_RX_COAL_TICKS_CHG	0x1
 #define BGE_TX_COAL_TICKS_CHG	0x2

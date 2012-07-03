@@ -232,7 +232,7 @@ static int wpa_driver_ralink_set_ssid(struct wpa_driver_ralink_data *drv,
 	buf = os_zalloc(sizeof(NDIS_802_11_SSID));
 	if (buf == NULL)
 		return -1;
-	os_memset(buf, 0, sizeof(buf));
+	os_memset(buf, 0, sizeof(*buf));
 	buf->SsidLength = ssid_len;
 	os_memcpy(buf->Ssid, ssid, ssid_len);
 	os_memset(&iwr, 0, sizeof(iwr));

@@ -98,7 +98,7 @@ struct if_data {
 	u_long	ifi_mtu;		/* maximum transmission unit */
 	u_long	ifi_metric;		/* routing metric (external only) */
 	u_long  ifi_link_state;		/* current link state */
-	u_long	ifi_baudrate;		/* linespeed */
+	uint64_t ifi_baudrate;		/* linespeed */
 	/* volatile statistics */
 	u_long	ifi_ipackets;		/* packets received on interface */
 	u_long	ifi_ierrors;		/* input errors on interface */

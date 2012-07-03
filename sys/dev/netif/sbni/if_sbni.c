@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.28 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -250,7 +249,7 @@ sbni_attach(struct sbni_softc *sc, int unit, struct sbni_flags flags)
 
 	/* device attach does transition from UNCONFIGURED to IDLE state */
 
-	if_printf(ifp, "speed %ld, rxl ", ifp->if_baudrate);
+	if_printf(ifp, "speed %ju, rxl ", (uintmax_t)ifp->if_baudrate);
 	if (sc->delta_rxl)
 		kprintf("auto\n");
 	else

@@ -1,6 +1,5 @@
 /*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.19 2007/08/27 16:15:42 hasso Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -116,7 +115,7 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 	    struct ifmedia *ifm, u_long cmd);
 
 /* Compute baudrate for a given media. */
-int	ifmedia_baudrate(int);
+uint64_t ifmedia_baudrate(int);
 #endif /*_KERNEL */
 
 /*
@@ -332,6 +331,15 @@ struct ifmedia_description {
 	{ IFM_1000_CX,	"1000baseCX" },					\
 	{ IFM_1000_T,	"1000baseT" },					\
 	{ IFM_HPNA_1,	"homePNA" },					\
+	{ IFM_10G_LR,	"10Gbase-LR" },					\
+	{ IFM_10G_SR,	"10Gbase-SR" },					\
+	{ IFM_10G_CX4,	"10Gbase-CX4" },				\
+	{ IFM_2500_SX,	"2500BaseSX" },					\
+	{ IFM_10G_LRM,	"10Gbase-LRM" },				\
+	{ IFM_10G_TWINAX,	"10Gbase-Twinax" },			\
+	{ IFM_10G_TWINAX_LONG,	"10Gbase-Twinax-Long" },		\
+	{ IFM_UNKNOWN,	"Unknown" },					\
+	{ IFM_10G_T,	"10Gbase-T" },					\
 	{ 0, NULL },							\
 }
 
@@ -354,6 +362,7 @@ struct ifmedia_description {
 	{ IFM_1000_LX,	"1000LX" },					\
 	{ IFM_1000_CX,	"1000CX" },					\
 	{ IFM_1000_T,	"1000T" },					\
+	{ IFM_2500_SX,	"2500SX" },					\
 	{ 0, NULL },							\
 }
 
@@ -513,8 +522,8 @@ struct ifmedia_description {
  * Baudrate descriptions for the various media types.
  */
 struct ifmedia_baudrate {
-	int	ifmb_word;		/* media word */
-	int	ifmb_baudrate;		/* corresponding baudrate */
+	int		ifmb_word;		/* media word */
+	uint64_t	ifmb_baudrate;		/* corresponding baudrate */
 };
 
 #define IFM_BAUDRATE_DESCRIPTIONS {					\
@@ -533,6 +542,14 @@ struct ifmedia_baudrate {
 	{ IFM_ETHER|IFM_1000_CX,	IF_Mbps(1000) },		\
 	{ IFM_ETHER|IFM_1000_T,		IF_Mbps(1000) },		\
 	{ IFM_ETHER|IFM_HPNA_1,		IF_Mbps(1) },			\
+	{ IFM_ETHER|IFM_10G_LR,		IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_10G_SR,		IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_10G_CX4,	IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_2500_SX,	IF_Mbps(2500ULL) },		\
+	{ IFM_ETHER|IFM_10G_TWINAX,	IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_10G_TWINAX_LONG,IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_10G_LRM,	IF_Gbps(10ULL) },		\
+	{ IFM_ETHER|IFM_10G_T,		IF_Gbps(10ULL) },		\
 									\
 	{ IFM_IEEE80211|IFM_IEEE80211_FH1, IF_Mbps(1) },		\
 	{ IFM_IEEE80211|IFM_IEEE80211_FH2, IF_Mbps(2) },		\
