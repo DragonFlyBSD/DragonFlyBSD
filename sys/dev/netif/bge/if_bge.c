@@ -3362,7 +3362,7 @@ bge_init(void *xsc)
 	BGE_SETBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
 
 	/* Enable host interrupts if polling(4) is not enabled. */
-	BGE_SETBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_CLEAR_INTA);
+	PCI_SETBIT(sc->bge_dev, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_CLEAR_INTA, 4);
 #ifdef DEVICE_POLLING
 	if (ifp->if_flags & IFF_POLLING)
 		bge_disable_intr(sc);
@@ -4287,7 +4287,8 @@ bge_enable_intr(struct bge_softc *sc)
 	/*
 	 * Unmask the interrupt when we stop polling.
 	 */
-	BGE_CLRBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
+	PCI_CLRBIT(sc->bge_dev, BGE_PCI_MISC_CTL,
+	    BGE_PCIMISCCTL_MASK_PCI_INTR, 4);
 
 	/*
 	 * Trigger another interrupt, since above writing
@@ -4305,7 +4306,8 @@ bge_disable_intr(struct bge_softc *sc)
 	/*
 	 * Mask the interrupt when we start polling.
 	 */
-	BGE_SETBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
+	PCI_SETBIT(sc->bge_dev, BGE_PCI_MISC_CTL,
+	    BGE_PCIMISCCTL_MASK_PCI_INTR, 4);
 
 	/*
 	 * Acknowledge possible asserted interrupt.
