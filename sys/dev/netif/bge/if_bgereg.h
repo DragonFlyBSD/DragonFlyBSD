@@ -207,6 +207,7 @@
 #define BGE_PCIMISCCTL_CLOCKCTL_RW	0x00000020
 #define BGE_PCIMISCCTL_REG_WORDSWAP	0x00000040
 #define BGE_PCIMISCCTL_INDIRECT_ACCESS	0x00000080
+#define BGE_PCIMISCCTL_TAGGED_STATUS	0x00000200
 #define BGE_PCIMISCCTL_ASICREV		0xFFFF0000
 #define BGE_PCIMISCCTL_ASICREV_SHIFT	16
 
@@ -226,6 +227,8 @@
 					 BGE_PCIMISCCTL_CLEAR_INTA |	\
 					 BGE_PCIMISCCTL_MASK_PCI_INTR |	\
 					 BGE_PCIMISCCTL_INDIRECT_ACCESS)
+
+#define BGE_PCISTAT_INTR_NOTACT		0x2
 
 #define BGE_CHIPID_TIGON_I		0x4000
 #define BGE_CHIPID_TIGON_II		0x6000
@@ -2064,7 +2067,7 @@ struct bge_sts_idx {
 
 struct bge_status_block {
 	uint32_t		bge_status;
-	uint32_t		bge_rsvd0;
+	uint32_t		bge_status_tag;
 #if BYTE_ORDER == LITTLE_ENDIAN
 	uint16_t		bge_rx_jumbo_cons_idx;
 	uint16_t		bge_rx_std_cons_idx;
@@ -2514,6 +2517,8 @@ struct bge_softc {
 	struct ifmedia		bge_ifmedia;	/* TBI media info */
 	int			bge_pcixcap;
 	int			bge_pciecap;
+	uint32_t		bge_pci_miscctl;
+	uint32_t		bge_status_tag;
 	uint32_t		bge_flags;	/* BGE_FLAG_ */
 #define BGE_FLAG_TBI		0x00000001
 #define BGE_FLAG_JUMBO		0x00000002
@@ -2531,6 +2536,7 @@ struct bge_softc {
 #define BGE_FLAG_NO_EEPROM	0x10000000
 #define BGE_FLAG_5788		0x20000000
 #define BGE_FLAG_SHORTDMA	0x40000000
+#define BGE_FLAG_STATUS_TAG	0x80000000
 
 	uint32_t		bge_chipid;
 	uint32_t		bge_asicrev;
@@ -2548,9 +2554,13 @@ struct bge_softc {
 	uint32_t		bge_stat_ticks;
 	uint32_t		bge_rx_coal_ticks;
 	uint32_t		bge_tx_coal_ticks;
+	uint32_t		bge_rx_coal_bds;
+	uint32_t		bge_tx_coal_bds;
+	uint32_t		bge_rx_coal_ticks_int;
+	uint32_t		bge_tx_coal_ticks_int;
+	uint32_t		bge_rx_coal_bds_int;
+	uint32_t		bge_tx_coal_bds_int;
 	uint32_t		bge_tx_prodidx;
-	uint32_t		bge_rx_max_coal_bds;
-	uint32_t		bge_tx_max_coal_bds;
 	uint32_t		bge_tx_buf_ratio;
 	uint32_t		bge_mi_mode;
 	int			bge_force_defrag;
@@ -2576,10 +2586,14 @@ struct bge_softc {
 
 	int			bge_phyno;
 	uint32_t		bge_coal_chg;
-#define BGE_RX_COAL_TICKS_CHG	0x1
-#define BGE_TX_COAL_TICKS_CHG	0x2
-#define BGE_RX_MAX_COAL_BDS_CHG	0x4
-#define BGE_TX_MAX_COAL_BDS_CHG	0x8
+#define BGE_RX_COAL_TICKS_CHG		0x01
+#define BGE_TX_COAL_TICKS_CHG		0x02
+#define BGE_RX_COAL_BDS_CHG		0x04
+#define BGE_TX_COAL_BDS_CHG		0x08
+#define BGE_RX_COAL_TICKS_INT_CHG	0x10
+#define BGE_TX_COAL_TICKS_INT_CHG	0x20
+#define BGE_RX_COAL_BDS_INT_CHG		0x40
+#define BGE_TX_COAL_BDS_INT_CHG		0x80
 
 	void			(*bge_link_upd)(struct bge_softc *, uint32_t);
 	uint32_t		bge_link_chg;
@@ -2588,3 +2602,23 @@ struct bge_softc {
 #define BGE_NSEG_NEW		32
 #define BGE_NSEG_SPARE		5
 #define BGE_NSEG_RSVD		16
+
+/* RX coalesce ticks, unit: us */
+#define BGE_RX_COAL_TICKS_MIN	0
+#define BGE_RX_COAL_TICKS_DEF	100
+#define BGE_RX_COAL_TICKS_MAX	1023
+
+/* TX coalesce ticks, unit: us */
+#define BGE_TX_COAL_TICKS_MIN	0
+#define BGE_TX_COAL_TICKS_DEF	1023
+#define BGE_TX_COAL_TICKS_MAX	1023
+
+/* RX coalesce BDs */
+#define BGE_RX_COAL_BDS_MIN	1
+#define BGE_RX_COAL_BDS_DEF	80
+#define BGE_RX_COAL_BDS_MAX	255
+
+/* TX coalesce BDs */
+#define BGE_TX_COAL_BDS_MIN	1
+#define BGE_TX_COAL_BDS_DEF	128
+#define BGE_TX_COAL_BDS_MAX	255

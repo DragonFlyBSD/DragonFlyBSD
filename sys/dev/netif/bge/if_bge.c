@@ -284,8 +284,8 @@ typedef int	(*bge_eaddr_fcn_t)(struct bge_softc *, uint8_t[]);
 static int	bge_probe(device_t);
 static int	bge_attach(device_t);
 static int	bge_detach(device_t);
-static void	bge_txeof(struct bge_softc *);
-static void	bge_rxeof(struct bge_softc *);
+static void	bge_txeof(struct bge_softc *, uint16_t);
+static void	bge_rxeof(struct bge_softc *, uint16_t);
 
 static void	bge_tick(void *);
 static void	bge_stats_update(struct bge_softc *);
@@ -298,6 +298,7 @@ static int	bge_encap(struct bge_softc *, struct mbuf **, uint32_t *);
 static void	bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
 #endif
 static void	bge_intr(void *);
+static void	bge_intr_status_tag(void *);
 static void	bge_enable_intr(struct bge_softc *);
 static void	bge_disable_intr(struct bge_softc *);
 static void	bge_start(struct ifnet *);
@@ -375,8 +376,12 @@ static int	bge_get_eaddr(struct bge_softc *, uint8_t[]);
 static void	bge_coal_change(struct bge_softc *);
 static int	bge_sysctl_rx_coal_ticks(SYSCTL_HANDLER_ARGS);
 static int	bge_sysctl_tx_coal_ticks(SYSCTL_HANDLER_ARGS);
-static int	bge_sysctl_rx_max_coal_bds(SYSCTL_HANDLER_ARGS);
-static int	bge_sysctl_tx_max_coal_bds(SYSCTL_HANDLER_ARGS);
+static int	bge_sysctl_rx_coal_bds(SYSCTL_HANDLER_ARGS);
+static int	bge_sysctl_tx_coal_bds(SYSCTL_HANDLER_ARGS);
+static int	bge_sysctl_rx_coal_ticks_int(SYSCTL_HANDLER_ARGS);
+static int	bge_sysctl_tx_coal_ticks_int(SYSCTL_HANDLER_ARGS);
+static int	bge_sysctl_rx_coal_bds_int(SYSCTL_HANDLER_ARGS);
+static int	bge_sysctl_tx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bge_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *, uint32_t);
 
 /*
@@ -385,17 +390,6 @@ static int	bge_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *, uint32_t);
  */
 static int	bge_fake_autoneg = 0;
 TUNABLE_INT("hw.bge.fake_autoneg", &bge_fake_autoneg);
-
-/* Interrupt moderation control variables. */
-static int	bge_rx_coal_ticks = 100;	/* usec */
-static int	bge_tx_coal_ticks = 1023;	/* usec */
-static int	bge_rx_max_coal_bds = 80;
-static int	bge_tx_max_coal_bds = 128;
-
-TUNABLE_INT("hw.bge.rx_coal_ticks", &bge_rx_coal_ticks);
-TUNABLE_INT("hw.bge.tx_coal_ticks", &bge_tx_coal_ticks);
-TUNABLE_INT("hw.bge.rx_max_coal_bds", &bge_rx_max_coal_bds);
-TUNABLE_INT("hw.bge.tx_max_coal_bds", &bge_tx_max_coal_bds);
 
 #if !defined(KTR_IF_BGE)
 #define KTR_IF_BGE	KTR_ALL
@@ -1238,7 +1232,8 @@ bge_chipinit(struct bge_softc *sc)
 	uint16_t val;
 
 	/* Set endian type before we access any non-PCI registers. */
-	pci_write_config(sc->bge_dev, BGE_PCI_MISC_CTL, BGE_INIT, 4);
+	pci_write_config(sc->bge_dev, BGE_PCI_MISC_CTL,
+	    BGE_INIT | sc->bge_pci_miscctl, 4);
 
 	/* Clear the MAC control register */
 	CSR_WRITE_4(sc, BGE_MAC_MODE, 0);
@@ -1705,14 +1700,16 @@ bge_blockinit(struct bge_softc *sc)
 	/* Set up host coalescing defaults */
 	CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS, sc->bge_rx_coal_ticks);
 	CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS, sc->bge_tx_coal_ticks);
-	CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS, sc->bge_rx_max_coal_bds);
-	CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS, sc->bge_tx_max_coal_bds);
+	CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS, sc->bge_rx_coal_bds);
+	CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS, sc->bge_tx_coal_bds);
 	if (!BGE_IS_5705_PLUS(sc)) {
-		CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS_INT, 0);
-		CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS_INT, 0);
+		CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS_INT,
+		    sc->bge_rx_coal_ticks_int);
+		CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS_INT,
+		    sc->bge_tx_coal_ticks_int);
 	}
-	CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT, 1);
-	CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT, 1);
+	CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT, sc->bge_rx_coal_bds_int);
+	CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT, sc->bge_tx_coal_bds_int);
 
 	/* Set up address of statistics block */
 	if (!BGE_IS_5705_PLUS(sc)) {
@@ -1748,6 +1745,12 @@ bge_blockinit(struct bge_softc *sc)
 	} else {
 		val = BGE_STATBLKSZ_32BYTE;
 	}
+#if 0
+	if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
+		val |= 0x00000200 | 0x00000400;
+		if_printf(&sc->arpcom.ac_if, "enable TMR\n");
+	}
+#endif
 
 	/* Turn on host coalescing state machine */
 	CSR_WRITE_4(sc, BGE_HCC_MODE, val | BGE_HCCMODE_ENABLE);
@@ -1946,6 +1949,7 @@ bge_attach(device_t dev)
 	int error = 0, rid, capmask;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
 	uint16_t product, vendor;
+	driver_intr_t *intr_func;
 
 	sc = device_get_softc(dev);
 	sc->bge_dev = dev;
@@ -2100,6 +2104,15 @@ bge_attach(device_t dev)
 	    (sc->bge_flags & BGE_FLAG_PCIX))
 		sc->bge_flags |= BGE_FLAG_RX_ALIGNBUG;
 
+	if (!BGE_IS_5788(sc) && sc->bge_asicrev != BGE_ASICREV_BCM5700) {
+		if (device_getenv_int(dev, "status_tag", 1)) {
+			sc->bge_flags |= BGE_FLAG_STATUS_TAG;
+			sc->bge_pci_miscctl = BGE_PCIMISCCTL_TAGGED_STATUS;
+			if (bootverbose)
+				device_printf(dev, "enable status tag\n");
+		}
+	}
+
 	/*
 	 * Set various PHY quirk flags.
 	 */
@@ -2212,10 +2225,21 @@ bge_attach(device_t dev)
 
 	/* Set default tuneable values. */
 	sc->bge_stat_ticks = BGE_TICKS_PER_SEC;
-	sc->bge_rx_coal_ticks = bge_rx_coal_ticks;
-	sc->bge_tx_coal_ticks = bge_tx_coal_ticks;
-	sc->bge_rx_max_coal_bds = bge_rx_max_coal_bds;
-	sc->bge_tx_max_coal_bds = bge_tx_max_coal_bds;
+	sc->bge_rx_coal_ticks = BGE_RX_COAL_TICKS_DEF;
+	sc->bge_tx_coal_ticks = BGE_TX_COAL_TICKS_DEF;
+	sc->bge_rx_coal_bds = BGE_RX_COAL_BDS_DEF;
+	sc->bge_tx_coal_bds = BGE_TX_COAL_BDS_DEF;
+	if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
+		sc->bge_rx_coal_ticks_int = BGE_RX_COAL_TICKS_DEF;
+		sc->bge_tx_coal_ticks_int = BGE_TX_COAL_TICKS_DEF;
+		sc->bge_rx_coal_bds_int = BGE_RX_COAL_BDS_DEF;
+		sc->bge_tx_coal_bds_int = BGE_TX_COAL_BDS_DEF;
+	} else {
+		sc->bge_rx_coal_ticks_int = BGE_RX_COAL_TICKS_MIN;
+		sc->bge_tx_coal_ticks_int = BGE_TX_COAL_TICKS_MIN;
+		sc->bge_rx_coal_bds_int = BGE_RX_COAL_BDS_MIN;
+		sc->bge_tx_coal_bds_int = BGE_TX_COAL_BDS_MIN;
+	}
 
 	/* Set up ifnet structure */
 	ifp->if_softc = sc;
@@ -2361,15 +2385,15 @@ bge_attach(device_t dev)
 			"Transmit coalescing ticks (usec).");
 	SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
 			SYSCTL_CHILDREN(sc->bge_sysctl_tree),
-			OID_AUTO, "rx_max_coal_bds",
+			OID_AUTO, "rx_coal_bds",
 			CTLTYPE_INT | CTLFLAG_RW,
-			sc, 0, bge_sysctl_rx_max_coal_bds, "I",
+			sc, 0, bge_sysctl_rx_coal_bds, "I",
 			"Receive max coalesced BD count.");
 	SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
 			SYSCTL_CHILDREN(sc->bge_sysctl_tree),
-			OID_AUTO, "tx_max_coal_bds",
+			OID_AUTO, "tx_coal_bds",
 			CTLTYPE_INT | CTLFLAG_RW,
-			sc, 0, bge_sysctl_tx_max_coal_bds, "I",
+			sc, 0, bge_sysctl_tx_coal_bds, "I",
 			"Transmit max coalesced BD count.");
 	if (sc->bge_flags & BGE_FLAG_PCIE) {
 		/*
@@ -2394,15 +2418,45 @@ bge_attach(device_t dev)
 			       &sc->bge_force_defrag, 0,
 			       "Force defragment on TX path");
 	}
+	if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
+		if (!BGE_IS_5705_PLUS(sc)) {
+			SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
+			    SYSCTL_CHILDREN(sc->bge_sysctl_tree), OID_AUTO,
+			    "rx_coal_ticks_int", CTLTYPE_INT | CTLFLAG_RW,
+			    sc, 0, bge_sysctl_rx_coal_ticks_int, "I",
+			    "Receive coalescing ticks "
+			    "during interrupt (usec).");
+			SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
+			    SYSCTL_CHILDREN(sc->bge_sysctl_tree), OID_AUTO,
+			    "tx_coal_ticks_int", CTLTYPE_INT | CTLFLAG_RW,
+			    sc, 0, bge_sysctl_tx_coal_ticks_int, "I",
+			    "Transmit coalescing ticks "
+			    "during interrupt (usec).");
+		}
+		SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->bge_sysctl_tree), OID_AUTO,
+		    "rx_coal_bds_int", CTLTYPE_INT | CTLFLAG_RW,
+		    sc, 0, bge_sysctl_rx_coal_bds_int, "I",
+		    "Receive max coalesced BD count during interrupt.");
+		SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->bge_sysctl_tree), OID_AUTO,
+		    "tx_coal_bds_int", CTLTYPE_INT | CTLFLAG_RW,
+		    sc, 0, bge_sysctl_tx_coal_bds_int, "I",
+		    "Transmit max coalesced BD count during interrupt.");
+	}
 
 	/*
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, ether_addr, NULL);
 
-	error = bus_setup_intr(dev, sc->bge_irq, INTR_MPSAFE,
-			       bge_intr, sc, &sc->bge_intrhand, 
-			       ifp->if_serializer);
+	if (sc->bge_flags & BGE_FLAG_STATUS_TAG)
+		intr_func = bge_intr_status_tag;
+	else
+		intr_func = bge_intr;
+
+	error = bus_setup_intr(dev, sc->bge_irq, INTR_MPSAFE, intr_func, sc,
+	    &sc->bge_intrhand, ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		device_printf(dev, "couldn't set up irq\n");
@@ -2483,7 +2537,8 @@ bge_reset(struct bge_softc *sc)
 
 	pci_write_config(dev, BGE_PCI_MISC_CTL,
 	    BGE_PCIMISCCTL_INDIRECT_ACCESS|BGE_PCIMISCCTL_MASK_PCI_INTR|
-	    BGE_HIF_SWAP_OPTIONS|BGE_PCIMISCCTL_PCISTATE_RW, 4);
+	    BGE_HIF_SWAP_OPTIONS|BGE_PCIMISCCTL_PCISTATE_RW|
+	    sc->bge_pci_miscctl, 4);
 
 	/* Disable fastboot on controllers that support it. */
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5752 ||
@@ -2566,7 +2621,8 @@ bge_reset(struct bge_softc *sc)
 	/* Reset some of the PCI state that got zapped by reset */
 	pci_write_config(dev, BGE_PCI_MISC_CTL,
 	    BGE_PCIMISCCTL_INDIRECT_ACCESS|BGE_PCIMISCCTL_MASK_PCI_INTR|
-	    BGE_HIF_SWAP_OPTIONS|BGE_PCIMISCCTL_PCISTATE_RW, 4);
+	    BGE_HIF_SWAP_OPTIONS|BGE_PCIMISCCTL_PCISTATE_RW|
+	    sc->bge_pci_miscctl, 4);
 	pci_write_config(dev, BGE_PCI_CACHESZ, cachesize, 4);
 	pci_write_config(dev, BGE_PCI_CMD, command, 4);
 	write_op(sc, BGE_MISC_CFG, (65 << 1));
@@ -2692,19 +2748,14 @@ bge_reset(struct bge_softc *sc)
  */
 
 static void
-bge_rxeof(struct bge_softc *sc)
+bge_rxeof(struct bge_softc *sc, uint16_t rx_prod)
 {
 	struct ifnet *ifp;
 	int stdcnt = 0, jumbocnt = 0;
 
-	if (sc->bge_rx_saved_considx ==
-	    sc->bge_ldata.bge_status_block->bge_idx[0].bge_rx_prod_idx)
-		return;
-
 	ifp = &sc->arpcom.ac_if;
 
-	while (sc->bge_rx_saved_considx !=
-	       sc->bge_ldata.bge_status_block->bge_idx[0].bge_rx_prod_idx) {
+	while (sc->bge_rx_saved_considx != rx_prod) {
 		struct bge_rx_bd	*cur_rx;
 		uint32_t		rxidx;
 		struct mbuf		*m = NULL;
@@ -2823,14 +2874,10 @@ bge_rxeof(struct bge_softc *sc)
 }
 
 static void
-bge_txeof(struct bge_softc *sc)
+bge_txeof(struct bge_softc *sc, uint16_t tx_cons)
 {
 	struct bge_tx_bd *cur_tx = NULL;
 	struct ifnet *ifp;
-
-	if (sc->bge_tx_saved_considx ==
-	    sc->bge_ldata.bge_status_block->bge_idx[0].bge_tx_cons_idx)
-		return;
 
 	ifp = &sc->arpcom.ac_if;
 
@@ -2838,8 +2885,7 @@ bge_txeof(struct bge_softc *sc)
 	 * Go through our tx ring and free mbufs for those
 	 * frames that have been sent.
 	 */
-	while (sc->bge_tx_saved_considx !=
-	       sc->bge_ldata.bge_status_block->bge_idx[0].bge_tx_cons_idx) {
+	while (sc->bge_tx_saved_considx != tx_cons) {
 		uint32_t idx = 0;
 
 		idx = sc->bge_tx_saved_considx;
@@ -2875,6 +2921,8 @@ static void
 bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct bge_softc *sc = ifp->if_softc;
+	struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
+	uint16_t rx_prod, tx_cons;
  	uint32_t status;
 
 	switch(cmd) {
@@ -2895,9 +2943,24 @@ bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		}
 		/* fall through */
 	case POLL_ONLY:
+		if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
+			sc->bge_status_tag = sblk->bge_status_tag;
+			/*
+			 * Use a load fence to ensure that status_tag
+			 * is saved  before rx_prod and tx_cons.
+			 */
+			cpu_lfence();
+		}
+		rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
+		tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 		if (ifp->if_flags & IFF_RUNNING) {
-			bge_rxeof(sc);
-			bge_txeof(sc);
+			rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
+			if (sc->bge_rx_saved_considx != rx_prod)
+				bge_rxeof(sc, rx_prod);
+
+			tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
+			if (sc->bge_tx_saved_considx != tx_cons)
+				bge_txeof(sc, tx_cons);
 		}
 		break;
 	}
@@ -2946,12 +3009,73 @@ bge_intr(void *xsc)
 	}
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		/* Check RX return ring producer/consumer */
-		bge_rxeof(sc);
+		struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
+		uint16_t rx_prod, tx_cons;
 
-		/* Check TX ring producer/consumer */
-		bge_txeof(sc);
+		rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
+		if (sc->bge_rx_saved_considx != rx_prod)
+			bge_rxeof(sc, rx_prod);
+
+		tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
+		if (sc->bge_tx_saved_considx != tx_cons)
+			bge_txeof(sc, tx_cons);
 	}
+
+	if (sc->bge_coal_chg)
+		bge_coal_change(sc);
+}
+
+static void
+bge_intr_status_tag(void *xsc)
+{
+	struct bge_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
+	uint16_t rx_prod, tx_cons;
+	uint32_t val, status;
+
+	if (sc->bge_status_tag == sblk->bge_status_tag) {
+		val = pci_read_config(sc->bge_dev, BGE_PCI_PCISTATE, 4);
+		if (val & BGE_PCISTAT_INTR_NOTACT)
+			return;
+	}
+
+	/*
+	 * NOTE:
+	 * Interrupt will have to be disabled if tagged status
+	 * is used, else interrupt will always be asserted on
+	 * certain chips (at least on BCM5750 AX/BX).
+	 */
+	bge_writembx(sc, BGE_MBX_IRQ0_LO, 1);
+
+	sc->bge_status_tag = sblk->bge_status_tag;
+	/*
+	 * Use a load fence to ensure that status_tag is saved 
+	 * before rx_prod and tx_cons.
+	 */
+	cpu_lfence();
+
+	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
+	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
+	status = sblk->bge_status;
+
+	if ((status & BGE_STATFLAG_LINKSTATE_CHANGED) || sc->bge_link_evt) {
+		val = CSR_READ_4(sc, BGE_MAC_STS);
+		if ((val & sc->bge_link_chg) || sc->bge_link_evt) {
+			sc->bge_link_evt = 0;
+			sc->bge_link_upd(sc, val);
+		}
+	}
+
+	if (ifp->if_flags & IFF_RUNNING) {
+		if (sc->bge_rx_saved_considx != rx_prod)
+			bge_rxeof(sc, rx_prod);
+
+		if (sc->bge_tx_saved_considx != tx_cons)
+			bge_txeof(sc, tx_cons);
+	}
+
+	bge_writembx(sc, BGE_MBX_IRQ0_LO, sc->bge_status_tag << 24);
 
 	if (sc->bge_coal_chg)
 		bge_coal_change(sc);
@@ -3662,6 +3786,7 @@ bge_stop(struct bge_softc *sc)
 	/* Free TX buffers. */
 	bge_free_tx_ring(sc);
 
+	sc->bge_status_tag = 0;
 	sc->bge_link = 0;
 	sc->bge_coal_chg = 0;
 
@@ -4169,23 +4294,63 @@ bge_sysctl_tx_coal_ticks(SYSCTL_HANDLER_ARGS)
 }
 
 static int
-bge_sysctl_rx_max_coal_bds(SYSCTL_HANDLER_ARGS)
+bge_sysctl_rx_coal_bds(SYSCTL_HANDLER_ARGS)
 {
 	struct bge_softc *sc = arg1;
 
 	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
-				   &sc->bge_rx_max_coal_bds,
-				   BGE_RX_MAX_COAL_BDS_CHG);
+				   &sc->bge_rx_coal_bds,
+				   BGE_RX_COAL_BDS_CHG);
 }
 
 static int
-bge_sysctl_tx_max_coal_bds(SYSCTL_HANDLER_ARGS)
+bge_sysctl_tx_coal_bds(SYSCTL_HANDLER_ARGS)
 {
 	struct bge_softc *sc = arg1;
 
 	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
-				   &sc->bge_tx_max_coal_bds,
-				   BGE_TX_MAX_COAL_BDS_CHG);
+				   &sc->bge_tx_coal_bds,
+				   BGE_TX_COAL_BDS_CHG);
+}
+
+static int
+bge_sysctl_rx_coal_ticks_int(SYSCTL_HANDLER_ARGS)
+{
+	struct bge_softc *sc = arg1;
+
+	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
+				   &sc->bge_rx_coal_ticks_int,
+				   BGE_RX_COAL_TICKS_INT_CHG);
+}
+
+static int
+bge_sysctl_tx_coal_ticks_int(SYSCTL_HANDLER_ARGS)
+{
+	struct bge_softc *sc = arg1;
+
+	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
+				   &sc->bge_tx_coal_ticks_int,
+				   BGE_TX_COAL_TICKS_INT_CHG);
+}
+
+static int
+bge_sysctl_rx_coal_bds_int(SYSCTL_HANDLER_ARGS)
+{
+	struct bge_softc *sc = arg1;
+
+	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
+				   &sc->bge_rx_coal_bds_int,
+				   BGE_RX_COAL_BDS_INT_CHG);
+}
+
+static int
+bge_sysctl_tx_coal_bds_int(SYSCTL_HANDLER_ARGS)
+{
+	struct bge_softc *sc = arg1;
+
+	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
+				   &sc->bge_tx_coal_bds_int,
+				   BGE_TX_COAL_BDS_INT_CHG);
 }
 
 static int
@@ -4245,27 +4410,75 @@ bge_coal_change(struct bge_softc *sc)
 		}
 	}
 
-	if (sc->bge_coal_chg & BGE_RX_MAX_COAL_BDS_CHG) {
+	if (sc->bge_coal_chg & BGE_RX_COAL_BDS_CHG) {
 		CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS,
-			    sc->bge_rx_max_coal_bds);
+			    sc->bge_rx_coal_bds);
 		DELAY(10);
 		val = CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS);
 
 		if (bootverbose) {
-			if_printf(ifp, "rx_max_coal_bds -> %u\n",
-				  sc->bge_rx_max_coal_bds);
+			if_printf(ifp, "rx_coal_bds -> %u\n",
+				  sc->bge_rx_coal_bds);
 		}
 	}
 
-	if (sc->bge_coal_chg & BGE_TX_MAX_COAL_BDS_CHG) {
+	if (sc->bge_coal_chg & BGE_TX_COAL_BDS_CHG) {
 		CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS,
-			    sc->bge_tx_max_coal_bds);
+			    sc->bge_tx_coal_bds);
 		DELAY(10);
 		val = CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_max_coal_bds -> %u\n",
-				  sc->bge_tx_max_coal_bds);
+				  sc->bge_tx_coal_bds);
+		}
+	}
+
+	if (sc->bge_coal_chg & BGE_RX_COAL_TICKS_INT_CHG) {
+		CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS_INT,
+		    sc->bge_rx_coal_ticks_int);
+		DELAY(10);
+		val = CSR_READ_4(sc, BGE_HCC_RX_COAL_TICKS_INT);
+
+		if (bootverbose) {
+			if_printf(ifp, "rx_coal_ticks_int -> %u\n",
+			    sc->bge_rx_coal_ticks_int);
+		}
+	}
+
+	if (sc->bge_coal_chg & BGE_TX_COAL_TICKS_INT_CHG) {
+		CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS_INT,
+		    sc->bge_tx_coal_ticks_int);
+		DELAY(10);
+		val = CSR_READ_4(sc, BGE_HCC_TX_COAL_TICKS_INT);
+
+		if (bootverbose) {
+			if_printf(ifp, "tx_coal_ticks_int -> %u\n",
+			    sc->bge_tx_coal_ticks_int);
+		}
+	}
+
+	if (sc->bge_coal_chg & BGE_RX_COAL_BDS_INT_CHG) {
+		CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT,
+		    sc->bge_rx_coal_bds_int);
+		DELAY(10);
+		val = CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT);
+
+		if (bootverbose) {
+			if_printf(ifp, "rx_coal_bds_int -> %u\n",
+			    sc->bge_rx_coal_bds_int);
+		}
+	}
+
+	if (sc->bge_coal_chg & BGE_TX_COAL_BDS_INT_CHG) {
+		CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT,
+		    sc->bge_tx_coal_bds_int);
+		DELAY(10);
+		val = CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT);
+
+		if (bootverbose) {
+			if_printf(ifp, "tx_coal_bds_int -> %u\n",
+			    sc->bge_tx_coal_bds_int);
 		}
 	}
 
@@ -4282,7 +4495,7 @@ bge_enable_intr(struct bge_softc *sc)
 	/*
 	 * Enable interrupt.
 	 */
-	bge_writembx(sc, BGE_MBX_IRQ0_LO, 0);
+	bge_writembx(sc, BGE_MBX_IRQ0_LO, sc->bge_status_tag << 24);
 
 	/*
 	 * Unmask the interrupt when we stop polling.
