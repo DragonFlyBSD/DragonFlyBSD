@@ -284,7 +284,7 @@ void
 mii_probe_args_init(struct mii_probe_args *args,
     ifm_change_cb_t ifmedia_upd, ifm_stat_cb_t ifmedia_sts)
 {
-	memset(args, 0, sizeof(args));
+	memset(args, 0, sizeof(*args));
 
 	args->mii_ifmedia_upd = ifmedia_upd;
 	args->mii_ifmedia_sts = ifmedia_sts;
