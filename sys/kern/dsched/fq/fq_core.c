@@ -100,16 +100,8 @@ fq_dispatcher(struct fq_disk_ctx *diskctx)
 			 * supposed to die away nicely or that the disk is idle.
 			 */
 
-			if (__predict_false(diskctx->die == 1)) {
-				/* If we are supposed to die, drain all queues */
-				fq_drain(diskctx, FQ_DRAIN_FLUSH);
-
-				/* Now we can safely unlock and exit */
-				DSCHED_DISK_CTX_UNLOCK(&diskctx->head);
-				kprintf("fq_dispatcher is peacefully dying\n");
-				lwkt_exit();
-				/* NOTREACHED */
-			}
+			if (__predict_false(diskctx->die == 1))
+				break;
 
 			/*
 			 * We have been awakened because the disk is idle.
@@ -193,6 +185,18 @@ fq_dispatcher(struct fq_disk_ctx *diskctx)
 		DSCHED_DISK_CTX_LOCK(&diskctx->head);
 		dsched_disk_ctx_unref(&diskctx->head);
 	}
+
+	/*
+	 * If we are supposed to die, drain all queues, then
+	 * unlock and exit.
+	 */
+	fq_drain(diskctx, FQ_DRAIN_FLUSH);
+	DSCHED_DISK_CTX_UNLOCK(&diskctx->head);
+	kfree(dispatch_ary, M_TEMP);
+
+	kprintf("fq_dispatcher is peacefully dying\n");
+	lwkt_exit();
+	/* NOTREACHED */
 }
 
 void
