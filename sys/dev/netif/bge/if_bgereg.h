@@ -2605,7 +2605,7 @@ struct bge_softc {
 
 /* RX coalesce ticks, unit: us */
 #define BGE_RX_COAL_TICKS_MIN	0
-#define BGE_RX_COAL_TICKS_DEF	100
+#define BGE_RX_COAL_TICKS_DEF	160
 #define BGE_RX_COAL_TICKS_MAX	1023
 
 /* TX coalesce ticks, unit: us */
