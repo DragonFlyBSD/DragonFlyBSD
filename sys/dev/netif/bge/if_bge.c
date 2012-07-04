@@ -279,6 +279,9 @@ static const struct bge_type bge_devs[] = {
 #define BGE_IS_5755_PLUS(sc)		((sc)->bge_flags & BGE_FLAG_5755_PLUS)
 #define BGE_IS_5788(sc)			((sc)->bge_flags & BGE_FLAG_5788)
 
+#define BGE_IS_CRIPPLED(sc)		\
+	(BGE_IS_5788((sc)) || (sc)->bge_asicrev == BGE_ASICREV_BCM5700)
+
 typedef int	(*bge_eaddr_fcn_t)(struct bge_softc *, uint8_t[]);
 
 static int	bge_probe(device_t);
@@ -2111,7 +2114,7 @@ bge_attach(device_t dev)
 	    (sc->bge_flags & BGE_FLAG_PCIX))
 		sc->bge_flags |= BGE_FLAG_RX_ALIGNBUG;
 
-	if (!BGE_IS_5788(sc) && sc->bge_asicrev != BGE_ASICREV_BCM5700) {
+	if (!BGE_IS_CRIPPLED(sc)) {
 		if (device_getenv_int(dev, "status_tag", 1)) {
 			sc->bge_flags |= BGE_FLAG_STATUS_TAG;
 			sc->bge_pci_miscctl = BGE_PCIMISCCTL_TAGGED_STATUS;
@@ -3095,8 +3098,7 @@ bge_tick(void *xsc)
 		 * and trigger interrupt.
 		 */
 		sc->bge_link_evt++;
-		if (sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
-		    BGE_IS_5788(sc))
+		if (BGE_IS_CRIPPLED(sc))
 			BGE_SETBIT(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_SET);
 		else
 			BGE_SETBIT(sc, BGE_HCC_MODE, BGE_HCCMODE_COAL_NOW);
@@ -3571,8 +3573,7 @@ bge_ifmedia_upd(struct ifnet *ifp)
 		 * need to do this here if BGE_FLAG_TBI is set but as
 		 * we poll for fiber anyway it should not harm.
 		 */
-		if (sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
-		    BGE_IS_5788(sc))
+		if (BGE_IS_CRIPPLED(sc))
 			BGE_SETBIT(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_SET);
 		else
 			BGE_SETBIT(sc, BGE_HCC_MODE, BGE_HCCMODE_COAL_NOW);
