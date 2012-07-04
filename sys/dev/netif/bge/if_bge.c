@@ -383,7 +383,8 @@ static int	bge_sysctl_rx_coal_ticks_int(SYSCTL_HANDLER_ARGS);
 static int	bge_sysctl_tx_coal_ticks_int(SYSCTL_HANDLER_ARGS);
 static int	bge_sysctl_rx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bge_sysctl_tx_coal_bds_int(SYSCTL_HANDLER_ARGS);
-static int	bge_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *, uint32_t);
+static int	bge_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *,
+		    int, int, uint32_t);
 
 /*
  * Set following tunable to 1 for some IBM blade servers with the DNLK
@@ -4272,8 +4273,9 @@ bge_sysctl_rx_coal_ticks(SYSCTL_HANDLER_ARGS)
 	struct bge_softc *sc = arg1;
 
 	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
-				   &sc->bge_rx_coal_ticks,
-				   BGE_RX_COAL_TICKS_CHG);
+	    &sc->bge_rx_coal_ticks,
+	    BGE_RX_COAL_TICKS_MIN, BGE_RX_COAL_TICKS_MAX,
+	    BGE_RX_COAL_TICKS_CHG);
 }
 
 static int
@@ -4282,8 +4284,9 @@ bge_sysctl_tx_coal_ticks(SYSCTL_HANDLER_ARGS)
 	struct bge_softc *sc = arg1;
 
 	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
-				   &sc->bge_tx_coal_ticks,
-				   BGE_TX_COAL_TICKS_CHG);
+	    &sc->bge_tx_coal_ticks,
+	    BGE_TX_COAL_TICKS_MIN, BGE_TX_COAL_TICKS_MAX,
+	    BGE_TX_COAL_TICKS_CHG);
 }
 
 static int
@@ -4292,8 +4295,9 @@ bge_sysctl_rx_coal_bds(SYSCTL_HANDLER_ARGS)
 	struct bge_softc *sc = arg1;
 
 	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
-				   &sc->bge_rx_coal_bds,
-				   BGE_RX_COAL_BDS_CHG);
+	    &sc->bge_rx_coal_bds,
+	    BGE_RX_COAL_BDS_MIN, BGE_RX_COAL_BDS_MAX,
+	    BGE_RX_COAL_BDS_CHG);
 }
 
 static int
@@ -4302,8 +4306,9 @@ bge_sysctl_tx_coal_bds(SYSCTL_HANDLER_ARGS)
 	struct bge_softc *sc = arg1;
 
 	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
-				   &sc->bge_tx_coal_bds,
-				   BGE_TX_COAL_BDS_CHG);
+	    &sc->bge_tx_coal_bds,
+	    BGE_TX_COAL_BDS_MIN, BGE_TX_COAL_BDS_MAX,
+	    BGE_TX_COAL_BDS_CHG);
 }
 
 static int
@@ -4312,8 +4317,9 @@ bge_sysctl_rx_coal_ticks_int(SYSCTL_HANDLER_ARGS)
 	struct bge_softc *sc = arg1;
 
 	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
-				   &sc->bge_rx_coal_ticks_int,
-				   BGE_RX_COAL_TICKS_INT_CHG);
+	    &sc->bge_rx_coal_ticks_int,
+	    BGE_RX_COAL_TICKS_MIN, BGE_RX_COAL_TICKS_MAX,
+	    BGE_RX_COAL_TICKS_INT_CHG);
 }
 
 static int
@@ -4322,8 +4328,9 @@ bge_sysctl_tx_coal_ticks_int(SYSCTL_HANDLER_ARGS)
 	struct bge_softc *sc = arg1;
 
 	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
-				   &sc->bge_tx_coal_ticks_int,
-				   BGE_TX_COAL_TICKS_INT_CHG);
+	    &sc->bge_tx_coal_ticks_int,
+	    BGE_TX_COAL_TICKS_MIN, BGE_TX_COAL_TICKS_MAX,
+	    BGE_TX_COAL_TICKS_INT_CHG);
 }
 
 static int
@@ -4332,8 +4339,9 @@ bge_sysctl_rx_coal_bds_int(SYSCTL_HANDLER_ARGS)
 	struct bge_softc *sc = arg1;
 
 	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
-				   &sc->bge_rx_coal_bds_int,
-				   BGE_RX_COAL_BDS_INT_CHG);
+	    &sc->bge_rx_coal_bds_int,
+	    BGE_RX_COAL_BDS_MIN, BGE_RX_COAL_BDS_MAX,
+	    BGE_RX_COAL_BDS_INT_CHG);
 }
 
 static int
@@ -4342,13 +4350,14 @@ bge_sysctl_tx_coal_bds_int(SYSCTL_HANDLER_ARGS)
 	struct bge_softc *sc = arg1;
 
 	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
-				   &sc->bge_tx_coal_bds_int,
-				   BGE_TX_COAL_BDS_INT_CHG);
+	    &sc->bge_tx_coal_bds_int,
+	    BGE_TX_COAL_BDS_MIN, BGE_TX_COAL_BDS_MAX,
+	    BGE_TX_COAL_BDS_INT_CHG);
 }
 
 static int
 bge_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *coal,
-		    uint32_t coal_chg_mask)
+    int coal_min, int coal_max, uint32_t coal_chg_mask)
 {
 	struct bge_softc *sc = arg1;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -4359,7 +4368,7 @@ bge_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *coal,
 	v = *coal;
 	error = sysctl_handle_int(oidp, &v, 0, req);
 	if (!error && req->newptr != NULL) {
-		if (v < 0) {
+		if (v < coal_min || v > coal_max) {
 			error = EINVAL;
 		} else {
 			*coal = v;
