@@ -166,9 +166,6 @@ NETGRAPH_INIT(tty, &typestruct);
  * - ngt_unit is incremented atomically.
  */
 
-#define	NGTLOCK(sc)	IF_LOCK(&sc->outq)
-#define	NGTUNLOCK(sc)	IF_UNLOCK(&sc->outq)
-
 static int ngt_unit;
 static int ngt_ldisc;
 
