@@ -1244,15 +1244,15 @@ free_bounce_pages_all(bus_dma_tag_t dmat)
 	struct bounce_zone *bz = dmat->bounce_zone;
 	struct bounce_page *bpage;
 
-    if (dmat->flags & BUS_DMA_KEEP_PG_OFFSET) {
-             /*
-              * Reset the bounce page to start at offset 0.  Other uses
-              * of this bounce page may need to store a full page of
-              * data and/or assume it starts on a page boundary.
-              */
-        bpage->vaddr &= ~PAGE_MASK;
-        bpage->busaddr &= ~PAGE_MASK;
-    }
+	if (dmat->flags & BUS_DMA_KEEP_PG_OFFSET) {
+		/*
+		 * Reset the bounce page to start at offset 0.  Other uses
+		 * of this bounce page may need to store a full page of
+		 * data and/or assume it starts on a page boundary.
+		 */
+		bpage->vaddr &= ~PAGE_MASK;
+		bpage->busaddr &= ~PAGE_MASK;
+	}
 
 	BZ_LOCK(bz);
 
@@ -1381,11 +1381,11 @@ add_bounce_page(bus_dma_tag_t dmat, bus_dmamap_t map, vm_offset_t vaddr,
 
 	BZ_UNLOCK(bz);
 
-    if (dmat->flags & BUS_DMA_KEEP_PG_OFFSET) {
-        /* Page offset needs to be preserved. */
-        bpage->vaddr |= vaddr & PAGE_MASK;
-        bpage->busaddr |= vaddr & PAGE_MASK;
-    }
+	if (dmat->flags & BUS_DMA_KEEP_PG_OFFSET) {
+		/* Page offset needs to be preserved. */
+		bpage->vaddr |= vaddr & PAGE_MASK;
+		bpage->busaddr |= vaddr & PAGE_MASK;
+	}
 
 	bpage->datavaddr = vaddr;
 	bpage->datacount = size;
@@ -1403,14 +1403,14 @@ free_bounce_page(bus_dma_tag_t dmat, struct bounce_page *bpage)
 	bpage->datacount = 0;
  
 	if (dmat->flags & BUS_DMA_KEEP_PG_OFFSET) {
-    /*
-     * Reset the bounce page to start at offset 0.  Other uses
-     * of this bounce page may need to store a full page of
-     * data and/or assume it starts on a page boundary.
-     */
+		/*
+		 * Reset the bounce page to start at offset 0.  Other uses
+		 * of this bounce page may need to store a full page of
+		 * data and/or assume it starts on a page boundary.
+		 */
 		bpage->vaddr &= ~PAGE_MASK;
 		bpage->busaddr &= ~PAGE_MASK;
-    }
+	}
 
 	BZ_LOCK(bz);
 
