@@ -31,7 +31,7 @@
 #ifndef _PCMDSP_H_
 #define _PCMDSP_H_
 
-extern struct cdevsw dsp_cdevsw;
+extern struct dev_ops dsp_ops;
 
 struct dsp_cdevinfo;
 

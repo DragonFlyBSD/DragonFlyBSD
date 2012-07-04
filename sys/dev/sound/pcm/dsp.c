@@ -73,21 +73,23 @@ static d_close_t dsp_close;
 static d_read_t dsp_read;
 static d_write_t dsp_write;
 static d_ioctl_t dsp_ioctl;
-static d_poll_t dsp_poll;
+static d_kqfilter_t dsp_kqfilter;
 static d_mmap_t dsp_mmap;
 static d_mmap_single_t dsp_mmap_single;
 
-struct cdevsw dsp_cdevsw = {
-	.d_version =	D_VERSION,
+static void dsp_filter_detach(struct knote *);
+static int dsp_filter_read(struct knote *, long);
+static int dsp_filter_write(struct knote *, long);
+
+struct dev_ops dsp_ops = {
 	.d_open =	dsp_open,
 	.d_close =	dsp_close,
 	.d_read =	dsp_read,
 	.d_write =	dsp_write,
 	.d_ioctl =	dsp_ioctl,
-	.d_poll =	dsp_poll,
+	.d_kqfilter =   dsp_kqfilter,
 	.d_mmap =	dsp_mmap,
 	.d_mmap_single = dsp_mmap_single,
-	.d_name =	"dsp",
 };
 
 static eventhandler_tag dsp_ehtag = NULL;
@@ -442,8 +444,10 @@ static const struct {
 } while (0)
 
 static int
-dsp_open(struct cdev *i_dev, int flags, int mode, struct thread *td)
+dsp_open(struct dev_open_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+	int flags = ap->a_oflags;
 	struct pcm_channel *rdch, *wrch;
 	struct snddev_info *d;
 	uint32_t fmt, spd, prio, volctl;
@@ -693,8 +697,9 @@ dsp_open(struct cdev *i_dev, int flags, int mode, struct thread *td)
 }
 
 static int
-dsp_close(struct cdev *i_dev, int flags, int mode, struct thread *td)
+dsp_close(struct dev_close_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
 	struct pcm_channel *rdch, *wrch, *volch;
 	struct snddev_info *d;
 	int sg_ids, rdref, wdref;
@@ -885,14 +890,20 @@ dsp_io_ops(struct cdev *i_dev, struct uio *buf)
 }
 
 static int
-dsp_read(struct cdev *i_dev, struct uio *buf, int flag)
+dsp_read(struct dev_read_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+	struct uio *buf = ap->a_uio;
+
 	return (dsp_io_ops(i_dev, buf));
 }
 
 static int
-dsp_write(struct cdev *i_dev, struct uio *buf, int flag)
+dsp_write(struct dev_write_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+	struct uio *buf = ap->a_uio;
+
 	return (dsp_io_ops(i_dev, buf));
 }
 
@@ -1060,9 +1071,11 @@ dsp_ioctl_channel(struct cdev *dev, struct pcm_channel *volch, u_long cmd,
 }
 
 static int
-dsp_ioctl(struct cdev *i_dev, u_long cmd, caddr_t arg, int mode,
-    struct thread *td)
+dsp_ioctl(struct dev_ioctl_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t arg = ap->a_data;
     	struct pcm_channel *chn, *rdch, *wrch;
 	struct snddev_info *d;
 	u_long xcmd;
@@ -2195,19 +2208,23 @@ dsp_poll(struct cdev *i_dev, int events, struct thread *td)
 }
 
 static int
-dsp_mmap(struct cdev *i_dev, vm_ooffset_t offset, vm_paddr_t *paddr,
-    int nprot, vm_memattr_t *memattr)
+dsp_mmap(struct dev_mmap_args *ap)
 {
+	vm_offset_t offset = ap->a_offset;
 
 	/* XXX memattr is not honored */
-	*paddr = vtophys(offset);
+	ap->a_result = vtophys(offset);
 	return (0);
 }
 
 static int
-dsp_mmap_single(struct cdev *i_dev, vm_ooffset_t *offset,
-    vm_size_t size, struct vm_object **object, int nprot)
+dsp_mmap_single(struct dev_mmap_single_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+	vm_ooffset_t *offset = ap->a_offset;
+	vm_size_t size = ap->a_size;
+	struct vm_object **object = ap->a_object;
+	int nprot = ap->a_nprot;
 	struct snddev_info *d;
 	struct pcm_channel *wrch, *rdch, *c;
 
@@ -2447,7 +2464,7 @@ dsp_clone_alloc:
 		snd_clone_setmaxunit(d->clones, tumax);
 	if (ce != NULL) {
 		udcmask |= snd_c2unit(cunit);
-		*dev = make_dev(&dsp_cdevsw, PCMMINOR(udcmask),
+		dev = make_only_dev(&dsp_ops, PCMMINOR(udcmask),
 		    UID_ROOT, GID_WHEEL, 0666, "%s%d%s%d",
 		    devname, unit, devsep, cunit);
 		snd_clone_register(ce, *dev);
@@ -2553,7 +2570,7 @@ dsp_oss_audioinfo(struct cdev *i_dev, oss_audioinfo *ai)
 	 * DSP device.  (Users may use this ioctl with /dev/mixer and
 	 * /dev/midi.)
 	 */
-	if (ai->dev == -1 && i_dev->si_devsw != &dsp_cdevsw)
+	if (ai->dev == -1 && i_dev->si_ops != &dsp_ops)
 		return (EINVAL);
 
 	ch = NULL;

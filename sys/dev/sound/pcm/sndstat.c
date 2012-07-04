@@ -47,13 +47,11 @@ static d_open_t sndstat_open;
 static d_close_t sndstat_close;
 static d_read_t sndstat_read;
 
-static struct cdevsw sndstat_cdevsw = {
-	.d_version =	D_VERSION,
+static struct dev_ops sndstat_cdevsw = {
+	{ "sndstat", 0, 0 },
 	.d_open =	sndstat_open,
 	.d_close =	sndstat_close,
 	.d_read =	sndstat_read,
-	.d_name =	"sndstat",
-	.d_flags =	D_TRACKCLOSE,
 };
 
 struct sndstat_entry {
@@ -129,8 +127,10 @@ SYSCTL_PROC(_hw_snd, OID_AUTO, verbose, CTLTYPE_INT | CTLFLAG_RW,
             0, sizeof(int), sysctl_hw_sndverbose, "I", "verbosity level");
 
 static int
-sndstat_open(struct cdev *i_dev, int flags, int mode, struct thread *td)
+sndstat_open(struct dev_open_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+
 	if (sndstat_dev == NULL || i_dev != sndstat_dev)
 		return EBADF;
 
@@ -151,8 +151,10 @@ sndstat_open(struct cdev *i_dev, int flags, int mode, struct thread *td)
 }
 
 static int
-sndstat_close(struct cdev *i_dev, int flags, int mode, struct thread *td)
+sndstat_close(struct dev_close_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+
 	if (sndstat_dev == NULL || i_dev != sndstat_dev)
 		return EBADF;
 
@@ -171,8 +173,10 @@ sndstat_close(struct cdev *i_dev, int flags, int mode, struct thread *td)
 }
 
 static int
-sndstat_read(struct cdev *i_dev, struct uio *buf, int flag)
+sndstat_read(struct dev_read_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+	struct uio *buf = ap->a_uio;
 	int l, err;
 
 	if (sndstat_dev == NULL || i_dev != sndstat_dev)

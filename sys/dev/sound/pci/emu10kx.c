@@ -2187,18 +2187,17 @@ static d_open_t		emu10kx_open;
 static d_close_t	emu10kx_close;
 static d_read_t		emu10kx_read;
 
-static struct cdevsw emu10kx_cdevsw = {
+static struct dev_ops emu10kx_ops = {
 	.d_open = 	emu10kx_open,
 	.d_close =	emu10kx_close,
 	.d_read = 	emu10kx_read,
-	.d_name = 	"emu10kx",
-	.d_version = 	D_VERSION,
 };
 
 
 static int
-emu10kx_open(struct cdev *i_dev, int flags __unused, int mode __unused, struct thread *td __unused)
+emu10kx_open(struct dev_open_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
 	int error;
 	struct emu_sc_info *sc;
 
@@ -2226,8 +2225,9 @@ out:
 }
 
 static int
-emu10kx_close(struct cdev *i_dev, int flags __unused, int mode __unused, struct thread *td __unused)
+emu10kx_close(struct dev_close_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
 	struct emu_sc_info *sc;
 
 	sc = i_dev->si_drv1;
@@ -2245,8 +2245,10 @@ emu10kx_close(struct cdev *i_dev, int flags __unused, int mode __unused, struct 
 }
 
 static int
-emu10kx_read(struct cdev *i_dev, struct uio *buf, int flag __unused)
+emu10kx_read(struct dev_read_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+	struct uio *buf = ap->a_uio;
 	int l, err;
 	struct emu_sc_info *sc;
 
@@ -2332,7 +2334,7 @@ emu10kx_dev_init(struct emu_sc_info *sc)
 		 LK_CANRECURSE);
 	unit = device_get_unit(sc->dev);
 
-	sc->cdev = make_dev(&emu10kx_cdevsw, PCMMINOR(unit), UID_ROOT, GID_WHEEL, 0640, "emu10kx%d", unit);
+	sc->cdev = make_dev(&emu10kx_ops, PCMMINOR(unit), UID_ROOT, GID_WHEEL, 0640, "emu10kx%d", unit);
 	if (sc->cdev != NULL) {
 		sc->cdev->si_drv1 = sc;
 		return (0);

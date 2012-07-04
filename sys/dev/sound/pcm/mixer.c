@@ -31,6 +31,7 @@
 #endif
 
 #include <dev/sound/pcm/sound.h>
+#include <sys/device.h>
 #include <sys/eventhandler.h>
 
 #include "feeder_if.h"
@@ -98,12 +99,11 @@ static d_open_t mixer_open;
 static d_close_t mixer_close;
 static d_ioctl_t mixer_ioctl;
 
-static struct cdevsw mixer_cdevsw = {
-	.d_version =	D_VERSION,
+static struct dev_ops mixer_cdevsw = {
+	{ "mixer", 0, D_TRACKCLOSE },
 	.d_open =	mixer_open,
 	.d_close =	mixer_close,
 	.d_ioctl =	mixer_ioctl,
-	.d_name =	"mixer",
 };
 
 /**
@@ -1033,8 +1033,9 @@ mix_get_type(struct snd_mixer *m)
 /* ----------------------------------------------------------------------- */
 
 static int
-mixer_open(struct cdev *i_dev, int flags, int mode, struct thread *td)
+mixer_open(struct dev_open_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
 	struct snddev_info *d;
 	struct snd_mixer *m;
 
@@ -1057,8 +1058,9 @@ mixer_open(struct cdev *i_dev, int flags, int mode, struct thread *td)
 }
 
 static int
-mixer_close(struct cdev *i_dev, int flags, int mode, struct thread *td)
+mixer_close(struct dev_close_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
 	struct snddev_info *d;
 	struct snd_mixer *m;
 	int ret;
@@ -1190,9 +1192,12 @@ mixer_ioctl_channel_proc:
 }
 
 static int
-mixer_ioctl(struct cdev *i_dev, u_long cmd, caddr_t arg, int mode,
-    struct thread *td)
+mixer_ioctl(struct dev_ioctl_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t arg = ap->a_data;
+	int mode = ap->a_fflag;
 	struct snddev_info *d;
 	int ret;
 
@@ -1394,7 +1399,7 @@ mixer_oss_mixerinfo(struct cdev *i_dev, oss_mixerinfo *mi)
 	 * If probing the device handling the ioctl, make sure it's a mixer
 	 * device.  (This ioctl is valid on audio, mixer, and midi devices.)
 	 */
-	if (mi->dev == -1 && i_dev->si_devsw != &mixer_cdevsw)
+	if (mi->dev == -1 && i_dev->si_ops != &mixer_cdevsw)
 		return (EINVAL);
 
 	d = NULL;
