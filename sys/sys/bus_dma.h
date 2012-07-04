@@ -97,7 +97,7 @@
 #define BUS_DMA_ALLOCALL	0x0800	/* allocate all needed resources */
 #define BUS_DMA_PROTECTED	0x1000	/* all busdma functions are already
 					 * protected */
-
+#define BUS_DMA_KEEP_PG_OFFSET 0x2000
 /* Forwards needed by prototypes below. */
 struct mbuf;
 struct uio;
