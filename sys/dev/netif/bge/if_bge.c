@@ -3049,7 +3049,7 @@ bge_intr_status_tag(void *xsc)
 	sc->bge_status_tag = sblk->bge_status_tag;
 	/*
 	 * Use a load fence to ensure that status_tag is saved 
-	 * before rx_prod and tx_cons.
+	 * before rx_prod, tx_cons and status.
 	 */
 	cpu_lfence();
 
