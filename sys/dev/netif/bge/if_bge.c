@@ -358,6 +358,7 @@ static void	bge_bcm5700_link_upd(struct bge_softc *, uint32_t);
 static void	bge_tbi_link_upd(struct bge_softc *, uint32_t);
 static void	bge_copper_link_upd(struct bge_softc *, uint32_t);
 static void	bge_autopoll_link_upd(struct bge_softc *, uint32_t);
+static void	bge_link_poll(struct bge_softc *);
 
 static void	bge_reset(struct bge_softc *);
 
@@ -2928,7 +2929,6 @@ bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	struct bge_softc *sc = ifp->if_softc;
 	struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
 	uint16_t rx_prod, tx_cons;
- 	uint32_t status;
 
 	switch(cmd) {
 	case POLL_REGISTER:
@@ -2941,12 +2941,8 @@ bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		/*
 		 * Process link state changes.
 		 */
-		status = CSR_READ_4(sc, BGE_MAC_STS);
-		if ((status & sc->bge_link_chg) || sc->bge_link_evt) {
-			sc->bge_link_evt = 0;
-			sc->bge_link_upd(sc, status);
-		}
-		/* fall through */
+		bge_link_poll(sc);
+		/* Fall through */
 	case POLL_ONLY:
 		if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
 			sc->bge_status_tag = sblk->bge_status_tag;
@@ -2978,7 +2974,6 @@ bge_intr(void *xsc)
 {
 	struct bge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t status;
 
 	logif(intr);
 
@@ -3007,11 +3002,7 @@ bge_intr(void *xsc)
 	/*
 	 * Process link state changes.
 	 */
-	status = CSR_READ_4(sc, BGE_MAC_STS);
-	if ((status & sc->bge_link_chg) || sc->bge_link_evt) {
-		sc->bge_link_evt = 0;
-		sc->bge_link_upd(sc, status);
-	}
+	bge_link_poll(sc);
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
@@ -3037,9 +3028,11 @@ bge_intr_status_tag(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
 	uint16_t rx_prod, tx_cons;
-	uint32_t val, status;
+	uint32_t status;
 
 	if (sc->bge_status_tag == sblk->bge_status_tag) {
+		uint32_t val;
+
 		val = pci_read_config(sc->bge_dev, BGE_PCI_PCISTATE, 4);
 		if (val & BGE_PCISTAT_INTR_NOTACT)
 			return;
@@ -3064,13 +3057,8 @@ bge_intr_status_tag(void *xsc)
 	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 	status = sblk->bge_status;
 
-	if ((status & BGE_STATFLAG_LINKSTATE_CHANGED) || sc->bge_link_evt) {
-		val = CSR_READ_4(sc, BGE_MAC_STS);
-		if ((val & sc->bge_link_chg) || sc->bge_link_evt) {
-			sc->bge_link_evt = 0;
-			sc->bge_link_upd(sc, val);
-		}
-	}
+	if ((status & BGE_STATFLAG_LINKSTATE_CHANGED) || sc->bge_link_evt)
+		bge_link_poll(sc);
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (sc->bge_rx_saved_considx != rx_prod)
@@ -4639,5 +4627,17 @@ bge_stop_block(struct bge_softc *sc, bus_size_t reg, uint32_t bit)
 		if ((CSR_READ_4(sc, reg) & bit) == 0)
 			return;
 		DELAY(100);
+	}
+}
+
+static void
+bge_link_poll(struct bge_softc *sc)
+{
+	uint32_t status;
+
+	status = CSR_READ_4(sc, BGE_MAC_STS);
+	if ((status & sc->bge_link_chg) || sc->bge_link_evt) {
+		sc->bge_link_evt = 0;
+		sc->bge_link_upd(sc, status);
 	}
 }
