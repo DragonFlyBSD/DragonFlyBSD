@@ -1708,6 +1708,11 @@ bge_blockinit(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS_INT,
 		    sc->bge_tx_coal_ticks_int);
 	}
+	/*
+	 * NOTE:
+	 * The datasheet (57XX-PG105-R) says BCM5705+ do not
+	 * have following two registers; obviously it is wrong.
+	 */
 	CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT, sc->bge_rx_coal_bds_int);
 	CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT, sc->bge_tx_coal_bds_int);
 
