@@ -32,8 +32,6 @@ SUBDIR=	UI \
 	vjc
 #	eiface \
 #	fec \
-#	netgraph \
-#	socket \
 #	sync_ar \
 #	sync_sr \
 
