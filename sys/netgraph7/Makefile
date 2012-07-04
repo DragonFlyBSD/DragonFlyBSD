@@ -28,6 +28,7 @@ SUBDIR=	UI \
 	socket \
 	tcpmss \
 	tee \
+	tty \
 	vjc
 #	eiface \
 #	fec \
@@ -35,7 +36,6 @@ SUBDIR=	UI \
 #	socket \
 #	sync_ar \
 #	sync_sr \
-#	tty \
 
 .if !defined(NO_CRYPT) && exists(${.CURDIR}/../crypto/rc4/rc4.c)
 #SUBDIR+=	mppc

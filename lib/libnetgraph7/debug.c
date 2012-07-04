@@ -95,9 +95,7 @@
 */
 #include <netgraph7/tcpmss/ng_tcpmss.h>
 #include <netgraph7/tee/ng_tee.h>
-/*
 #include <netgraph7/tty/ng_tty.h>
-*/
 #include <netgraph7/vjc/ng_vjc.h>
 #ifdef	WHISTLE
 #include <machine/../isa/df_def.h>
@@ -168,9 +166,7 @@ static const struct ng_cookie cookies[] = {
 */
 	COOKIE(TCPMSS),
 	COOKIE(TEE),
-/*
 	COOKIE(TTY),
-*/
 	COOKIE(VJC),
 #ifdef WHISTLE
 	COOKIE(DF),
