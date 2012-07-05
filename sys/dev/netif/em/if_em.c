@@ -2126,7 +2126,7 @@ em_alloc_pci_res(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
 	u_int intr_flags;
-	int val, rid;
+	int val, rid, msi_enable;
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -2179,7 +2179,21 @@ em_alloc_pci_res(struct adapter *adapter)
 		    rman_get_bushandle(adapter->ioport);
 	}
 
-	adapter->intr_type = pci_alloc_1intr(dev, em_msi_enable,
+	/*
+	 * Don't enable MSI on PCI/PCI-X chips, see:
+	 * 82540EP and 82545GM specification update
+	 *
+	 * Don't enable MSI on 82571/82572, see:
+	 * 82571EB/82572EI specification update
+	 */
+	msi_enable = em_msi_enable;
+	if (msi_enable &&
+	    (!pci_is_pcie(dev) ||
+	     adapter->hw.mac.type == e1000_82571 ||
+	     adapter->hw.mac.type == e1000_82572))
+		msi_enable = 0;
+
+	adapter->intr_type = pci_alloc_1intr(dev, msi_enable,
 	    &adapter->intr_rid, &intr_flags);
 
 	adapter->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ,
