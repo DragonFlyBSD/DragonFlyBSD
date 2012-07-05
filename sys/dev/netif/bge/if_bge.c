@@ -1756,10 +1756,13 @@ bge_blockinit(struct bge_softc *sc)
 		val = BGE_STATBLKSZ_32BYTE;
 	}
 #if 0
-	if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
-		val |= 0x00000200 | 0x00000400;
-		if_printf(&sc->arpcom.ac_if, "enable TMR\n");
-	}
+	/*
+	 * Does not seem to have visible effect in both
+	 * bulk data (1472B UDP datagram) and tiny data
+	 * (18B UDP datagram) TX tests.
+	 */
+	if (!BGE_IS_CRIPPLED(sc))
+		val |= BGE_HCCMODE_CLRTICK_TX;
 #endif
 
 	/* Turn on host coalescing state machine */
