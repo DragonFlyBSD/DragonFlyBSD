@@ -402,6 +402,7 @@ sbuf_vprintf(struct sbuf *s, const char *fmt, __va_list ap)
 {
 	int len;
 	__va_list ap_copy;
+
 	assert_sbuf_integrity(s);
 	assert_sbuf_state(s, 0);
 
