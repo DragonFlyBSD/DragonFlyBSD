@@ -407,6 +407,7 @@ MLINKS+=fd.4 stderr.4 \
 MLINKS+=ipfirewall.4 ipaccounting.4 \
 	ipfirewall.4 ipacct.4 \
 	ipfirewall.4 ipfw.4
+MLINKS+=iicbus.4 ic.4
 MLINKS+=lo.4 loop.4
 MLINKS+=lp.4 plip.4
 MLINKS+=mem.4 kmem.4
