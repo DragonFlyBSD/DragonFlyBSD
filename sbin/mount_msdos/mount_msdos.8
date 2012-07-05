@@ -29,7 +29,6 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/mount_msdos/mount_msdos.8,v 1.19.2.1 2000/12/08 14:03:59 ru Exp $
-.\" $DragonFly: src/sbin/mount_msdos/mount_msdos.8,v 1.3 2008/04/29 09:33:41 swildner Exp $
 .\"
 .Dd September 12, 2009
 .Dt MOUNT_MSDOS 8
@@ -156,6 +155,18 @@ file name conversions for DOS names.
 .Xr unmount 2 ,
 .Xr fstab 5 ,
 .Xr mount 8
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Fx 2.0 .
+Its predecessor, the
+.Nm mount_pcfs
+utility appeared in
+.Fx 1.0 ,
+and was abandoned in favor
+of the more aptly-named
+.Nm .
 .Sh CAVEATS
 The use of the
 .Fl 9
@@ -170,15 +181,3 @@ mounted file system.
 Cluster sizes larger than 16K are unavoidable for file system sizes
 larger than 1G, and also occur when filesystems larger than 1G are
 shrunk to smaller than 1G using FIPS.
-.Sh HISTORY
-The
-.Nm
-utility first appeared in
-.Fx 2.0 .
-Its predecessor, the
-.Nm mount_pcfs
-utility appeared in
-.Fx 1.0 ,
-and was abandoned in favor
-of the more aptly-named
-.Nm .
