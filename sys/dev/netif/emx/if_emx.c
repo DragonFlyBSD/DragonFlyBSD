@@ -3746,13 +3746,33 @@ emx_set_itr(struct emx_softc *sc, uint32_t itr)
 static void
 emx_disable_aspm(struct emx_softc *sc)
 {
-	uint16_t link_cap, link_ctrl;
+	uint16_t link_cap, link_ctrl, disable;
 	uint8_t pcie_ptr, reg;
 	device_t dev = sc->dev;
 
 	switch (sc->hw.mac.type) {
+	case e1000_82571:
+	case e1000_82572:
 	case e1000_82573:
+		/*
+		 * 82573 specification update
+		 * #8 disable L0s
+		 * #41 disable L1
+		 *
+		 * 82571/82572 specification update
+		 # #13 disable L1
+		 * #68 disable L0s
+		 */
+		disable = PCIEM_LNKCTL_ASPM_L0S | PCIEM_LNKCTL_ASPM_L1;
+		break;
+
 	case e1000_82574:
+		/*
+		 * 82574 specification update #20
+		 *
+		 * There is no need to disable L1
+		 */
+		disable = PCIEM_LNKCTL_ASPM_L0S;
 		break;
 
 	default:
@@ -3768,10 +3788,10 @@ emx_disable_aspm(struct emx_softc *sc)
 		return;
 
 	if (bootverbose)
-		if_printf(&sc->arpcom.ac_if, "disable L0s\n");
+		if_printf(&sc->arpcom.ac_if, "disable ASPM %#02x\n", disable);
 
 	reg = pcie_ptr + PCIER_LINKCTRL;
 	link_ctrl = pci_read_config(dev, reg, 2);
-	link_ctrl &= ~PCIEM_LNKCTL_ASPM_L0S;
+	link_ctrl &= ~disable;
 	pci_write_config(dev, reg, link_ctrl, 2);
 }
