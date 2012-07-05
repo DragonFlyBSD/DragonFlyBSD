@@ -454,7 +454,7 @@ dsp_open(struct dev_open_args *ap)
 	int i, error, rderror, wrerror, devtype, wdevunit, rdevunit;
 
 	/* Kind of impossible.. */
-	if (i_dev == NULL || td == NULL)
+	if (i_dev == NULL)
 		return (ENODEV);
 
 	d = dsp_get_info(i_dev);
@@ -565,7 +565,7 @@ dsp_open(struct dev_open_args *ap)
 	if (DSP_F_READ(flags)) {
 		/* open for read */
 		rderror = pcm_chnalloc(d, &rdch, PCMDIR_REC,
-		    td->td_proc->p_pid, td->td_proc->p_comm, rdevunit);
+		    curproc->p_pid, curproc->p_comm, rdevunit);
 
 		if (rderror == 0 && chn_reset(rdch, fmt, spd) != 0)
 			rderror = ENXIO;
@@ -603,7 +603,7 @@ dsp_open(struct dev_open_args *ap)
 	if (DSP_F_WRITE(flags)) {
 		/* open for write */
 		wrerror = pcm_chnalloc(d, &wrch, PCMDIR_PLAY,
-		    td->td_proc->p_pid, td->td_proc->p_comm, wdevunit);
+		    curproc->p_pid, curproc->p_comm, wdevunit);
 
 		if (wrerror == 0 && chn_reset(wrch, fmt, spd) != 0)
 			wrerror = ENXIO;
@@ -1106,7 +1106,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 
 		if (d->mixer_dev != NULL) {
 			PCM_ACQUIRE_QUICK(d);
-			ret = mixer_ioctl_cmd(d->mixer_dev, cmd, arg, -1, td,
+			ret = mixer_ioctl_cmd(d->mixer_dev, cmd, arg, -1,
 			    MIXER_CMD_DIRECT);
 			PCM_RELEASE_QUICK(d);
 		} else
@@ -1846,7 +1846,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 
 		if (d->mixer_dev != NULL) {
 			PCM_ACQUIRE_QUICK(d);
-			ret = mixer_ioctl_cmd(d->mixer_dev, xcmd, arg, -1, td,
+			ret = mixer_ioctl_cmd(d->mixer_dev, xcmd, arg, -1,
 			    MIXER_CMD_DIRECT);
 			PCM_RELEASE_QUICK(d);
 		} else
@@ -1859,7 +1859,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 	case SNDCTL_DSP_SET_RECSRC:
 		if (d->mixer_dev != NULL) {
 			PCM_ACQUIRE_QUICK(d);
-			ret = mixer_ioctl_cmd(d->mixer_dev, cmd, arg, -1, td,
+			ret = mixer_ioctl_cmd(d->mixer_dev, cmd, arg, -1,
 			    MIXER_CMD_DIRECT);
 			PCM_RELEASE_QUICK(d);
 		} else
