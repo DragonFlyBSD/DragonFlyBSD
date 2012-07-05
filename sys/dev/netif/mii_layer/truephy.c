@@ -67,6 +67,7 @@ static device_method_t truephy_methods[] = {
 };
 
 static const struct mii_phydesc truephys[] = {
+	MII_PHYDESC(AGERE,  ET1011),
 	MII_PHYDESC(AGERE,	ET1011C),
 	MII_PHYDESC_NULL
 };
@@ -253,6 +254,12 @@ static void
 truephy_reset(struct mii_softc *sc)
 {
 	int i;
+
+	if (sc->mii_model == MII_MODEL_AGERE_ET1011) {
+		kprintf("phy phy phy model\n");
+		mii_phy_reset(sc);
+		return;
+	}
 
 	for (i = 0; i < 2; ++i) {
 		PHY_READ(sc, MII_PHYIDR1);

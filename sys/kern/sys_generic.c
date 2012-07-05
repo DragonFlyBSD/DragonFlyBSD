@@ -1024,6 +1024,7 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 
 			switch (error) {
 			case EBADF:
+			case ENODEV:
 				/*
 				 * A bad file descriptor is considered a
 				 * fatal error for select, bail out.
@@ -1344,6 +1345,7 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 			if (kevp[i].flags & EV_ERROR) {
 				switch(kevp[i].data) {
 				case EBADF:
+				case POLLNVAL:
 					/* Bad file descriptor */
 					if (count_res)
 						++*res;
