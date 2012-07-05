@@ -31,9 +31,8 @@
 .\"
 .\"     @(#)restore.8	8.4 (Berkeley) 5/1/95
 .\" $FreeBSD: src/sbin/restore/restore.8,v 1.20.2.15 2003/02/23 22:47:13 trhodes Exp $
-.\" $DragonFly: src/sbin/restore/restore.8,v 1.4 2006/04/17 18:01:37 swildner Exp $
 .\"
-.Dd May 1, 1995
+.Dd July 5, 2012
 .Dt RESTORE 8
 .Os
 .Sh NAME
@@ -73,16 +72,6 @@
 .Op Fl f Ar file
 .Op Fl s Ar fileno
 .Op Ar
-.Pp
-.Nm rrestore
-is an alternate name for
-.Nm .
-.Pp
-.in \" XXX
-(The
-.Bx 4.3
-option syntax is implemented for backward compatibility, but
-is not documented here.)
 .Sh DESCRIPTION
 The
 .Nm
@@ -106,6 +95,14 @@ Unless the
 flag is specified (see below),
 the appearance of a directory name refers to
 the files and (recursively) subdirectories of that directory.
+.Pp
+.Nm
+may also be invoked as
+.Nm rrestore .
+The
+.Bx 4.3
+option syntax is implemented for backward compatibility, but
+is not documented here.
 .Pp
 Exactly one of the following flags is required:
 .Bl -tag -width Ds
