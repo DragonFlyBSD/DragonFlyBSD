@@ -1281,39 +1281,4 @@ void			dpt_intr(void *arg);
 
 dpt_conf_t *		dpt_pio_get_conf(u_int32_t);
 
-#if 0
-extern void		hex_dump(u_char * data, int length,
-				 char *name, int no);
-extern char		*i2bin(unsigned int no, int length);
-extern char		*scsi_cmd_name(u_int8_t cmd);
-
-extern dpt_conf_t	*dpt_get_conf(dpt_softc_t *dpt, u_int8_t page,
-				      u_int8_t target, u_int8_t size,
-				      int extent);
-
-extern int		dpt_setup(dpt_softc_t * dpt, dpt_conf_t * conf);
-extern int		dpt_attach(dpt_softc_t * dpt);
-extern void		dpt_shutdown(int howto, dpt_softc_t *dpt);
-extern void		dpt_detect_cache(dpt_softc_t *dpt);
-
-extern int		dpt_user_cmd(dpt_softc_t *dpt, eata_pt_t *user_cmd,
-				     caddr_t cmdarg, int minor_no);
-
-extern u_int8_t	dpt_blinking_led(dpt_softc_t *dpt);
-
-extern dpt_rb_t	dpt_register_buffer(int unit, u_int8_t channel, u_int8_t target,
-				    u_int8_t lun, u_int8_t mode,
-				    u_int16_t length, u_int16_t offset, 
-				    dpt_rec_buff callback, dpt_rb_op_t op);
-
-extern int	dpt_send_buffer(int unit, u_int8_t channel, u_int8_t target,
-				u_int8_t lun, u_int8_t mode, u_int16_t length,
-				u_int16_t offset, void *data,
-				buff_wr_done callback);
-
-
-
-void dpt_reset_performance(dpt_softc_t *dpt);
-#endif
-
 #endif /* _DPT_H */
