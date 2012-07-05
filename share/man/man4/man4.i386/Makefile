@@ -28,8 +28,15 @@ MAN=	apm.4 \
 	viapm.4 \
 	vx.4
 
+MLINKS+=ar.4 if_ar.4
+MLINKS+=ep.4 if_ep.4
+MLINKS+=lnc.4 if_lnc.4
+MLINKS+=sbni.4 if_sbni.4
 MLINKS+=spkr.4 speaker.4
+MLINKS+=sr.4 if_sr.4
 MLINKS+=stl.4 stli.4
+MLINKS+=tx.4 if_tx.4
+MLINKS+=vx.4 if_vx.4
 
 MANSUBDIR=/i386
 
