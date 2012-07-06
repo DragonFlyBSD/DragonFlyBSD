@@ -1,5 +1,4 @@
 /* $NetBSD: server.c,v 1.3 2007/03/18 10:00:42 plunky Exp $ */
-/* $DragonFly: src/usr.sbin/sdpd/server.c,v 1.1 2008/01/06 21:51:30 hasso Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -111,7 +110,7 @@ server_init(server_p srv, char const *control, char const *sgroup)
 	assert(srv != NULL);
 	assert(control != NULL);
 
-	memset(srv, 0, sizeof(srv));
+	memset(srv, 0, sizeof(struct server));
 	srv->sgroup = sgroup;
 
 	/* Open control socket */
