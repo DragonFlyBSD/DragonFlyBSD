@@ -242,7 +242,10 @@ hammer2_iocom_core(hammer2_iocom_t *iocom,
  * Caller should retry on a read-event when NULL is returned.
  *
  * If an error occurs during reception a HAMMER2_LNK_ERROR msg will
- * be returned (and the caller must not call us again after that).
+ * be returned for each open transaction, then the ioq and iocom
+ * will be errored out and a non-transactional HAMMER2_LNK_ERROR
+ * msg will be returned as the final message.  The caller should not call
+ * us again after the final message is returned.
  */
 hammer2_msg_t *
 hammer2_ioq_read(hammer2_iocom_t *iocom)
@@ -250,6 +253,7 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 	hammer2_ioq_t *ioq = &iocom->ioq_rx;
 	hammer2_msg_t *msg;
 	hammer2_msg_hdr_t *head;
+	hammer2_state_t *state;
 	ssize_t n;
 	size_t bytes;
 	size_t nmax;
@@ -553,6 +557,13 @@ again:
 		}
 		break;
 	case HAMMER2_MSGQ_STATE_ERROR:
+		/*
+		 * Continued calls to drain recorded transactions (returning
+		 * a LNK_ERROR for each one), before we return the final
+		 * LNK_ERROR.
+		 */
+		assert(msg == NULL);
+		break;
 	default:
 		/*
 		 * We don't double-return errors, the caller should not
@@ -596,32 +607,54 @@ again:
 	 */
 	if (ioq->error) {
 		/*
-		 * An unrecoverable error occured during processing,
-		 * return a special error message.  Try to leave the
-		 * ioq state alone for post-mortem debugging.
+		 * An unrecoverable error causes all active receive
+		 * transactions to be terminated with a LNK_ERROR message.
 		 *
-		 * Link error messages are returned as one-way messages,
-		 * so no flags get set.  Source and target is 0 (link-level),
-		 * msgid is 0 (link-level).  All we really need to do is
-		 * set up magic, cmd, and error.
+		 * Once all active transactions are exhausted we set the
+		 * iocom ERROR flag and return a non-transactional LNK_ERROR
+		 * message, which should cause master processing loops to
+		 * terminate.
 		 */
 		assert(ioq->msg == msg);
-		if (msg == NULL)
-			msg = hammer2_msg_alloc(iocom, 0, 0);
-		else
+		if (msg) {
+			hammer2_msg_free(iocom, msg);
 			ioq->msg = NULL;
-
-		if (msg->aux_data) {
-			free(msg->aux_data);
-			msg->aux_data = NULL;
-			msg->aux_size = 0;
 		}
+
+		/*
+		 * No more I/O read processing
+		 */
+		ioq->state = HAMMER2_MSGQ_STATE_ERROR;
+
+		/*
+		 * Return LNK_ERROR for any open transaction, and finally
+		 * as a non-transactional message when no transactions are
+		 * left.
+		 */
+		msg = hammer2_msg_alloc(iocom, 0, 0);
 		bzero(&msg->any.head, sizeof(msg->any.head));
 		msg->any.head.magic = HAMMER2_MSGHDR_MAGIC;
 		msg->any.head.cmd = HAMMER2_LNK_ERROR;
 		msg->any.head.error = ioq->error;
-		ioq->state = HAMMER2_MSGQ_STATE_ERROR;
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
+
+		if ((state = RB_ROOT(&iocom->staterd_tree)) != NULL) {
+			/*
+			 * Active transactions are still present.  Simulate
+			 * the other end sending us a DELETE.
+			 */
+			state->txcmd |= HAMMER2_MSGF_DELETE;
+			msg->state = state;
+			msg->any.head.source = state->source;
+			msg->any.head.target = state->target;
+			msg->any.head.cmd |= HAMMER2_MSGF_ABORT |
+					     HAMMER2_MSGF_DELETE;
+		} else {
+			/*
+			 * No active transactions remain
+			 */
+			msg->state = NULL;
+			iocom->flags |= HAMMER2_IOCOMF_EOF;
+		}
 	} else if (msg == NULL) {
 		/*
 		 * Insufficient data received to finish building the message,
@@ -1215,8 +1248,17 @@ hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 	hammer2_state_t *state;
 
 	if ((state = msg->state) == NULL) {
+		/*
+		 * Free a non-transactional message, there is no state
+		 * to worry about.
+		 */
 		hammer2_msg_free(iocom, msg);
 	} else if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
+		/*
+		 * Message terminating transaction, destroy the related
+		 * state, the original message, and this message (if it
+		 * isn't the original message due to a CREATE|DELETE).
+		 */
 		/*lockmgr(&pmp->msglk, LK_EXCLUSIVE);*/
 		state->rxcmd |= HAMMER2_MSGF_DELETE;
 		if (state->txcmd & HAMMER2_MSGF_DELETE) {
@@ -1238,6 +1280,10 @@ hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		}
 		hammer2_msg_free(iocom, msg);
 	} else if (state->msg != msg) {
+		/*
+		 * Message not terminating transaction, leave state intact
+		 * and free message if it isn't the CREATE message.
+		 */
 		hammer2_msg_free(iocom, msg);
 	}
 }
@@ -1487,7 +1533,6 @@ hammer2_state_free(hammer2_state_t *state)
 
 	msg = state->msg;
 	state->msg = NULL;
-	free(state);
 	if (msg)
 		hammer2_msg_free(iocom, msg);
 	free(state);
