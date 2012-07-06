@@ -3670,19 +3670,6 @@ igb_setup_intr(struct igb_softc *sc)
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX)
 		return igb_msix_setup(sc);
 
-	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
-		int unshared;
-
-		unshared = device_getenv_int(sc->dev, "irq.unshared", 0);
-		if (!unshared) {
-			sc->flags |= IGB_FLAG_SHARED_INTR;
-			if (bootverbose)
-				device_printf(sc->dev, "IRQ shared\n");
-		} else if (bootverbose) {
-			device_printf(sc->dev, "IRQ unshared\n");
-		}
-	}
-
 	error = bus_setup_intr(sc->dev, sc->intr_res, INTR_MPSAFE,
 	    (sc->flags & IGB_FLAG_SHARED_INTR) ? igb_intr_shared : igb_intr,
 	    sc, &sc->intr_tag, &sc->main_serialize);
@@ -3829,6 +3816,21 @@ igb_alloc_intr(struct igb_softc *sc)
 	 */
 	sc->intr_type = pci_alloc_1intr(sc->dev, igb_msi_enable,
 	    &sc->intr_rid, &intr_flags);
+
+	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
+		int unshared;
+
+		unshared = device_getenv_int(sc->dev, "irq.unshared", 0);
+		if (!unshared) {
+			sc->flags |= IGB_FLAG_SHARED_INTR;
+			if (bootverbose)
+				device_printf(sc->dev, "IRQ shared\n");
+		} else {
+			intr_flags &= ~RF_SHAREABLE;
+			if (bootverbose)
+				device_printf(sc->dev, "IRQ unshared\n");
+		}
+	}
 
 	sc->intr_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
 	    &sc->intr_rid, intr_flags);
