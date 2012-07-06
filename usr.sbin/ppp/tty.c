@@ -49,7 +49,7 @@
 #include <netgraph7/async/ng_async.h>
 #include <netgraph7/ng_message.h>
 #include <netgraph7/ppp/ng_ppp.h>
-#include <netgraph/tty/ng_tty.h>	/* XXX should be netgraph7/tty but that one is not ported yet */
+#include <netgraph7/tty/ng_tty.h>
 #else
 #include <netgraph/async/ng_async.h>
 #include <netgraph/ng_message.h>

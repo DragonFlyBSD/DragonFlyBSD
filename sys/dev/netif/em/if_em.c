@@ -2126,7 +2126,7 @@ em_alloc_pci_res(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
 	u_int intr_flags;
-	int val, rid;
+	int val, rid, msi_enable;
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -2179,7 +2179,21 @@ em_alloc_pci_res(struct adapter *adapter)
 		    rman_get_bushandle(adapter->ioport);
 	}
 
-	adapter->intr_type = pci_alloc_1intr(dev, em_msi_enable,
+	/*
+	 * Don't enable MSI on PCI/PCI-X chips, see:
+	 * 82540EP and 82545GM specification update
+	 *
+	 * Don't enable MSI on 82571/82572, see:
+	 * 82571EB/82572EI specification update
+	 */
+	msi_enable = em_msi_enable;
+	if (msi_enable &&
+	    (!pci_is_pcie(dev) ||
+	     adapter->hw.mac.type == e1000_82571 ||
+	     adapter->hw.mac.type == e1000_82572))
+		msi_enable = 0;
+
+	adapter->intr_type = pci_alloc_1intr(dev, msi_enable,
 	    &adapter->intr_rid, &intr_flags);
 
 	adapter->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ,
@@ -4121,20 +4135,38 @@ em_set_itr(struct adapter *adapter, uint32_t itr)
 	}
 }
 
-/*
- * Disable the L0s, Errata #20
- */
 static void
 em_disable_aspm(struct adapter *adapter)
 {
-	uint16_t link_cap, link_ctrl;
+	uint16_t link_cap, link_ctrl, disable;
 	uint8_t pcie_ptr, reg;
 	device_t dev = adapter->dev;
 
 	switch (adapter->hw.mac.type) {
+	case e1000_82571:
+	case e1000_82572:
 	case e1000_82573:
+		/*
+		 * 82573 specification update
+		 * #8 disable L0s
+		 * #41 disable L1
+		 *
+		 * 82571/82572 specification update
+		 # #13 disable L1
+		 * #68 disable L0s
+		 */
+		disable = PCIEM_LNKCTL_ASPM_L0S | PCIEM_LNKCTL_ASPM_L1;
+		break;
+
 	case e1000_82574:
 	case e1000_82583:
+		/*
+		 * 82574 specification update #20
+		 * 82583 specification update #9
+		 *
+		 * There is no need to disable L1
+		 */
+		disable = PCIEM_LNKCTL_ASPM_L0S;
 		break;
 
 	default:
@@ -4149,11 +4181,13 @@ em_disable_aspm(struct adapter *adapter)
 	if ((link_cap & PCIEM_LNKCAP_ASPM_MASK) == 0)
 		return;
 
-	if (bootverbose)
-		if_printf(&adapter->arpcom.ac_if, "disable L0s\n");
+	if (bootverbose) {
+		if_printf(&adapter->arpcom.ac_if,
+		    "disable ASPM %#02x\n", disable);
+	}
 
 	reg = pcie_ptr + PCIER_LINKCTRL;
 	link_ctrl = pci_read_config(dev, reg, 2);
-	link_ctrl &= ~PCIEM_LNKCTL_ASPM_L0S;
+	link_ctrl &= ~disable;
 	pci_write_config(dev, reg, link_ctrl, 2);
 }

@@ -413,7 +413,7 @@ emx_attach(device_t dev)
 {
 	struct emx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error = 0, i, throttle;
+	int error = 0, i, throttle, msi_enable;
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
 
@@ -466,9 +466,19 @@ emx_attach(device_t dev)
 	sc->hw.hw_addr = (uint8_t *)&sc->osdep.mem_bus_space_handle;
 
 	/*
+	 * Don't enable MSI on 82571/82572, see:
+	 * 82571EB/82572EI specification update
+	 */
+	msi_enable = emx_msi_enable;
+	if (msi_enable &&
+	    (sc->hw.mac.type == e1000_82571 ||
+	     sc->hw.mac.type == e1000_82572))
+		msi_enable = 0;
+
+	/*
 	 * Allocate interrupt
 	 */
-	sc->intr_type = pci_alloc_1intr(dev, emx_msi_enable,
+	sc->intr_type = pci_alloc_1intr(dev, msi_enable,
 	    &sc->intr_rid, &intr_flags);
 
 	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->intr_rid,
@@ -3736,13 +3746,33 @@ emx_set_itr(struct emx_softc *sc, uint32_t itr)
 static void
 emx_disable_aspm(struct emx_softc *sc)
 {
-	uint16_t link_cap, link_ctrl;
+	uint16_t link_cap, link_ctrl, disable;
 	uint8_t pcie_ptr, reg;
 	device_t dev = sc->dev;
 
 	switch (sc->hw.mac.type) {
+	case e1000_82571:
+	case e1000_82572:
 	case e1000_82573:
+		/*
+		 * 82573 specification update
+		 * #8 disable L0s
+		 * #41 disable L1
+		 *
+		 * 82571/82572 specification update
+		 # #13 disable L1
+		 * #68 disable L0s
+		 */
+		disable = PCIEM_LNKCTL_ASPM_L0S | PCIEM_LNKCTL_ASPM_L1;
+		break;
+
 	case e1000_82574:
+		/*
+		 * 82574 specification update #20
+		 *
+		 * There is no need to disable L1
+		 */
+		disable = PCIEM_LNKCTL_ASPM_L0S;
 		break;
 
 	default:
@@ -3758,10 +3788,10 @@ emx_disable_aspm(struct emx_softc *sc)
 		return;
 
 	if (bootverbose)
-		if_printf(&sc->arpcom.ac_if, "disable L0s\n");
+		if_printf(&sc->arpcom.ac_if, "disable ASPM %#02x\n", disable);
 
 	reg = pcie_ptr + PCIER_LINKCTRL;
 	link_ctrl = pci_read_config(dev, reg, 2);
-	link_ctrl &= ~PCIEM_LNKCTL_ASPM_L0S;
+	link_ctrl &= ~disable;
 	pci_write_config(dev, reg, link_ctrl, 2);
 }

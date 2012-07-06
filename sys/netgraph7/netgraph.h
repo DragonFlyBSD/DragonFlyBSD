@@ -53,6 +53,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/mutex2.h>
+#include <netgraph7/ng_message.h>	/* NG_HOOKSIZ, NG_NODESIZ */
 #include "dragonfly.h"
 
 #ifdef HAVE_KERNEL_OPTION_HEADERS

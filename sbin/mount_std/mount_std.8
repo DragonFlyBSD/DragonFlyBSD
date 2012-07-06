@@ -35,9 +35,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/mount_std/mount_std.8,v 1.9.2.7 2003/02/10 12:21:07 des Exp $
-.\" $DragonFly: src/sbin/mount_std/mount_std.8,v 1.2 2003/06/17 04:27:33 dillon Exp $
 .\"
-.Dd May 13, 1996
+.Dd July 5, 2012
 .Dt MOUNT_STD 8
 .Os
 .Sh NAME
@@ -146,8 +145,6 @@ loadable module for it was found.
 .Xr linprocfs 5 ,
 .Xr procfs 5 ,
 .Xr mount 8
-.Sh CAVEATS
-None of the ``standard'' filesystems may be NFS-exported.
 .Sh HISTORY
 The
 .Nm
@@ -165,3 +162,5 @@ the
 .Dq linprocfs
 filesystem type first appeared in
 .Fx 4.0 .
+.Sh CAVEATS
+None of the ``standard'' filesystems may be NFS-exported.

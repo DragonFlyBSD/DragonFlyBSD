@@ -430,6 +430,11 @@ have permission to load the module.
 .Xr mount_union 8 ,
 .Xr sysctl 8 ,
 .Xr umount 8
+.Sh HISTORY
+A
+.Nm
+utility appeared in
+.At v1 .
 .Sh CAVEATS
 After a successful
 .Nm ,
@@ -439,10 +444,5 @@ is accessible from the mounted file system.
 The minimum permissions for
 the mount point for traversal across the mount point in both
 directions to be possible for all users is 0111 (execute for all).
-.Sh HISTORY
-A
-.Nm
-utility appeared in
-.At v1 .
 .Sh BUGS
 It is possible for a corrupted file system to cause a crash.

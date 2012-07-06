@@ -31,7 +31,7 @@
 .\" $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.8,v 1.6.2.9 2003/02/24 00:56:42 trhodes Exp $
 .\" $DragonFly: src/sbin/mount_ntfs/mount_ntfs.8,v 1.2 2003/06/17 04:27:33 dillon Exp $
 .\"
-.Dd January 3, 1999
+.Dd July 5, 2012
 .Dt MOUNT_NTFS 8
 .Os
 .Sh NAME
@@ -129,11 +129,6 @@ files are also not supported.
 .Xr fstab 5 ,
 .Xr mount 8 ,
 .Xr mount_msdos 8
-.Sh CAVEATS
-This utility is primarily used for read access to an NTFS volume.
-See the
-.Sx WRITING
-section for details about writing to an NTFS volume.
 .Sh HISTORY
 The
 .Nm
@@ -144,3 +139,8 @@ The NTFS kernel implementation,
 .Nm
 utility, and manual were written by
 .An Semen Ustimenko Aq semenu@FreeBSD.org .
+.Sh CAVEATS
+This utility is primarily used for read access to an NTFS volume.
+See the
+.Sx WRITING
+section for details about writing to an NTFS volume.

@@ -20,7 +20,6 @@ kdrv		KernelDriver; add/list/remove third-party kernel driver
 kerninclude	Shellscript to find unused #includes in the kernel.
 kernxref	Shellscript to cross reference symbols in the LINT kernel.
 local_syms	Shellscript to find symbols not referenced by other files.
-mid	 	Create a Message-ID database for mailing lists.
 netrate		Generate network packets.
 scsi-defects	Get at the primary or grown defect list of a SCSI disk.
 splitpatch	Python script to split a large patch file into independent

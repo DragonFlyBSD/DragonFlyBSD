@@ -387,9 +387,26 @@ MAN=	aac.4 \
 #	ural.4 \
 
 MLINKS=	acpi_thermal.4 acpi_tz.4
+#MLINKS+=acx.4 if_acx.4
+MLINKS+=ae.4 if_ae.4
+MLINKS+=age.4 if_age.4
 MLINKS+=agp.4 agpgart.4
+MLINKS+=alc.4 if_alc.4
+MLINKS+=ale.4 if_ale.4
+MLINKS+=an.4 if_an.4
+MLINKS+=ath.4 if_ath.4
+MLINKS+=aue.4 if_aue.4
+MLINKS+=axe.4 if_axe.4
+MLINKS+=bce.4 if_bce.4
+MLINKS+=bfe.4 if_bfe.4
+MLINKS+=bge.4 if_bge.4
 MLINKS+=bktr.4 brooktree.4
+MLINKS+=bridge.4 if_bridge.4
+#MLINKS+=bwi.4 if_bwi.4
 MLINKS+=crypto.4 cryptodev.4
+MLINKS+=cue.4 if_cue.4
+MLINKS+=dc.4 if_dc.4
+MLINKS+=disc.4 if_disc.4
 MLINKS+=dm.4 dm_target_linear.4
 MLINKS+=drm.4 i915drm.4 \
 	drm.4 mach64drm.4 \
@@ -401,35 +418,91 @@ MLINKS+=drm.4 i915drm.4 \
 	drm.4 tdfxdrm.4
 #	drm.4 viadrm.4
 MLINKS+=dsched.4 dsched_fq.4
+MLINKS+=ed.4 if_ed.4
+MLINKS+=ef.4 if_ef.4
+MLINKS+=em.4 if_em.4
+MLINKS+=et.4 if_et.4
+MLINKS+=faith.4 if_faith.4
 MLINKS+=fd.4 stderr.4 \
 	fd.4 stdin.4 \
 	fd.4 stdout.4
+MLINKS+=fwe.4 if_fwe.4
+MLINKS+=fxp.4 if_fxp.4
+MLINKS+=gif.4 if_gif.4
+MLINKS+=gre.4 if_gre.4
 MLINKS+=ipfirewall.4 ipaccounting.4 \
 	ipfirewall.4 ipacct.4 \
 	ipfirewall.4 ipfw.4
+MLINKS+=iicbus.4 ic.4 \
+	iicbus.4 if_ic.4
+MLINKS+=igb.4 if_igb.4
+MLINKS+=iwi.4 if_iwi.4
+#MLINKS+=iwl.4 if_iwl.4
+MLINKS+=iwn.4 if_iwn.4
+MLINKS+=ixgbe.4 if_ixgbe.4
+MLINKS+=jme.4 if_jme.4
+MLINKS+=kue.4 if_kue.4
+MLINKS+=lge.4 if_lge.4
+MLINKS+=lgue.4 if_lgue.4
 MLINKS+=lo.4 loop.4
 MLINKS+=lp.4 plip.4
 MLINKS+=mem.4 kmem.4
+MLINKS+=msk.4 if_msk.4
+MLINKS+=mxge.4 if_mxge.4
+MLINKS+=my.4 if_my.4
 MLINKS+=nata.4 acd.4 \
 	nata.4 ad.4 \
 	nata.4 afd.4 \
 	nata.4 ast.4
 MLINKS+=nataraid.4 ar.4
 MLINKS+=netintro.4 networking.4
+MLINKS+=nfe.4 if_nfe.4
+MLINKS+=nge.4 if_nge.4
 MLINKS+=pccbb.4 cbb.4
 MLINKS+=pcm.4 sound.4
+MLINKS+=pcn.4 if_pcn.4
+MLINKS+=ppp.4 if_ppp.4
+MLINKS+=ral.4 if_ral.4
 MLINKS+=random.4 urandom.4
+MLINKS+=re.4 if_re.4
+MLINKS+=rl.4 if_rl.4
+#MLINKS+=rtw.4 if_rtw.4
+MLINKS+=rue.4 if_rue.4
+#MLINKS+=rum.4 if_rum.4
+MLINKS+=sbsh.4 if_sbsh.4
 MLINKS+=scsi.4 CAM.4 \
 	scsi.4 cam.4 \
 	scsi.4 scbus.4 \
 	scsi.4 SCSI.4
+MLINKS+=sf.4 if_sf.4
+MLINKS+=sis.4 if_sis.4
+MLINKS+=sk.4 if_sk.4
+MLINKS+=sl.4 if_sl.4
+MLINKS+=sln.4 if_sln.4
 MLINKS+=smp.4 SMP.4
 MLINKS+=snd_sbc.4 snd_sb16.4 \
 	snd_sbc.4 snd_sb8.4
 MLINKS+=splash.4 screensaver.4
+MLINKS+=ste.4 if_ste.4
+MLINKS+=stf.4 if_stf.4
+MLINKS+=stge.4 if_stge.4
 MLINKS+=syscons.4 sc.4
+MLINKS+=tap.4 if_tap.4
+MLINKS+=ti.4 if_ti.4
+MLINKS+=tl.4 if_tl.4
+MLINKS+=tun.4 if_tun.4
+MLINKS+=txp.4 if_txp.4
+#MLINKS+=ural.4 if_ural.4
 MLINKS+=vga.4 vesa.4
+MLINKS+=vge.4 if_vge.4
+MLINKS+=vlan.4 if_vlan.4
 MLINKS+=vpo.4 imm.4
+MLINKS+=vr.4 if_vr.4
+MLINKS+=wb.4 if_wb.4
+MLINKS+=wi.4 if_wi.4
+MLINKS+=wpi.4 if_wpi.4
+MLINKS+=xe.4 if_xe.4
+MLINKS+=xl.4 if_xl.4
 
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR=	 man4.${MACHINE_ARCH}
