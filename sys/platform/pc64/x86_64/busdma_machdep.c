@@ -1244,16 +1244,6 @@ free_bounce_pages_all(bus_dma_tag_t dmat)
 	struct bounce_zone *bz = dmat->bounce_zone;
 	struct bounce_page *bpage;
 
-	if (dmat->flags & BUS_DMA_KEEP_PG_OFFSET) {
-		/*
-		 * Reset the bounce page to start at offset 0.  Other uses
-		 * of this bounce page may need to store a full page of
-		 * data and/or assume it starts on a page boundary.
-		 */
-		bpage->vaddr &= ~PAGE_MASK;
-		bpage->busaddr &= ~PAGE_MASK;
-	}
-
 	BZ_LOCK(bz);
 
 	while ((bpage = STAILQ_FIRST(&bz->bounce_page_list)) != NULL) {
