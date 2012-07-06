@@ -311,8 +311,23 @@ chn_wakeup(struct pcm_channel *c)
 	bs = c->bufsoft;
 
 	if (CHN_EMPTY(c, children.busy)) {
-		if (SEL_WAITING(sndbuf_getsel(bs)) && chn_polltrigger(c))
-			selwakeuppri(sndbuf_getsel(bs), PRIBIO);
+		/*if (SEL_WAITING(sndbuf_getsel(bs)) && chn_polltrigger(c))*/
+		if (SLIST_FIRST(&sndbuf_getkq(bs)->ki_note) && chn_polltrigger(c)) {
+			/*
+			 * XXX
+			 *
+			 * We would call KNOTE() here, but as we
+			 * are in interrupt context, we'd have to
+			 * acquire the MP lock before.
+			 * Instead, we'll queue a task in a software
+			 * interrupt, which will run with the MP lock
+			 * held.
+			 *
+			 * buffer.c:sndbuf_kqtask will then call
+			 * KNOTE() from safer context.
+			 */
+			taskqueue_enqueue(taskqueue_swi, &bs->kqtask);
+		}
 		if (c->flags & CHN_F_SLEEPING) {
 			/*
 			 * Ok, I can just panic it right here since it is
@@ -896,7 +911,6 @@ chn_sync(struct pcm_channel *c, int threshold)
 int
 chn_poll(struct pcm_channel *c, int ev, struct thread *td)
 {
-	struct snd_dbuf *bs = c->bufsoft;
 	int ret;
 
 	CHN_LOCKASSERT(c);
@@ -911,8 +925,7 @@ chn_poll(struct pcm_channel *c, int ev, struct thread *td)
 	if (chn_polltrigger(c)) {
 		chn_pollreset(c);
 		ret = ev;
-	} else
-		selrecord(td, sndbuf_getsel(bs));
+	}
 
 	return (ret);
 }

@@ -458,10 +458,10 @@ sndbuf_setrun(struct snd_dbuf *b, int go)
 	b->dl = go? b->blksz : 0;
 }
 
-struct selinfo *
-sndbuf_getsel(struct snd_dbuf *b)
+struct kqinfo *
+sndbuf_getkq(struct snd_dbuf *b)
 {
-	return &b->sel;
+	return &b->kq;
 }
 
 /************************************************************/

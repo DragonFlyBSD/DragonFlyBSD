@@ -56,6 +56,8 @@ struct snd_dbuf {
 	bus_dma_tag_t dmatag;
 	bus_addr_t buf_addr;
 	int dmaflags;
+	struct kqinfo kq;
+	struct task kqtask;
 	struct pcm_channel *channel;
 	char name[SNDBUF_NAMELEN];
 };
@@ -97,7 +99,7 @@ unsigned int sndbuf_getblksz(struct snd_dbuf *b);
 void sndbuf_setblksz(struct snd_dbuf *b, unsigned int blksz);
 unsigned int sndbuf_runsz(struct snd_dbuf *b);
 void sndbuf_setrun(struct snd_dbuf *b, int go);
-struct selinfo *sndbuf_getsel(struct snd_dbuf *b);
+struct kqinfo *sndbuf_getkq(struct snd_dbuf *b);
 
 unsigned int sndbuf_getxrun(struct snd_dbuf *b);
 void sndbuf_setxrun(struct snd_dbuf *b, unsigned int xrun);

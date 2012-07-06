@@ -67,6 +67,7 @@
 #include <sys/mplock2.h>
 #include <sys/mutex.h>
 #include <sys/condvar.h>
+#include <sys/taskqueue.h>
 
 #ifndef KOBJMETHOD_END
 #define KOBJMETHOD_END	{ NULL, NULL }
