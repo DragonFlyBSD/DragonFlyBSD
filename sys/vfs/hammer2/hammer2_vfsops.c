@@ -1131,14 +1131,28 @@ hammer2_cluster_thread_wr(void *arg)
 	hammer2_msg_t *msg = NULL;
 	hammer2_state_t *state;
 	ssize_t res;
+	size_t name_len;
 	int error = 0;
 
 	/*
 	 * Initiate a SPAN transaction registering our PFS with the other
 	 * end using {source}=1.  The transaction is left open.
+	 *
+	 * The hammer2_msg_write() function will queue the message, and we
+	 * pick it off and write it in our transmit loop.
 	 */
 	msg = hammer2_msg_alloc(pmp, 1, 0,
 				HAMMER2_LNK_SPAN | HAMMER2_MSGF_CREATE);
+	msg->any.lnk_span.pfs_id   = pmp->iroot->ip_data.pfs_id;
+	msg->any.lnk_span.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
+	msg->any.lnk_span.pfs_type = pmp->iroot->ip_data.pfs_type;
+	msg->any.lnk_span.proto_version = HAMMER2_SPAN_PROTO_1;
+	name_len = pmp->iroot->ip_data.name_len;
+	if (name_len >= sizeof(msg->any.lnk_span.label))
+		name_len = sizeof(msg->any.lnk_span.label) - 1;
+	bcopy(pmp->iroot->ip_data.filename, msg->any.lnk_span.label, name_len);
+	msg->any.lnk_span.label[name_len] = 0;
+
 	hammer2_msg_write(pmp, msg, hammer2_msg_span_reply);
 
 	/*

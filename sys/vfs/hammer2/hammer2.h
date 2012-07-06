@@ -368,7 +368,7 @@ struct hammer2_msg {
 	size_t		hdr_size;
 	size_t		aux_size;
 	char		*aux_data;
-	hammer2_any_t	any;
+	hammer2_msg_any_t any;
 };
 
 typedef struct hammer2_state hammer2_state_t;

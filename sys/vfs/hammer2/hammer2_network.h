@@ -225,9 +225,17 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
 					 HAMMER2_MSGF_SIZE |	\
 					 HAMMER2_MSGF_PROTOS |	\
 					 HAMMER2_MSGF_REPLY)
+
 #define HAMMER2_MSGF_BASECMDMASK	(HAMMER2_MSGF_CMDS |	\
 					 HAMMER2_MSGF_SIZE |	\
 					 HAMMER2_MSGF_PROTOS)
+
+#define HAMMER2_MSGF_TRANSMASK		(HAMMER2_MSGF_CMDS |	\
+					 HAMMER2_MSGF_SIZE |	\
+					 HAMMER2_MSGF_PROTOS |	\
+					 HAMMER2_MSGF_REPLY |	\
+					 HAMMER2_MSGF_CREATE |	\
+					 HAMMER2_MSGF_DELETE)
 
 #define HAMMER2_MSG_PROTO_LNK		0x00000000U
 #define HAMMER2_MSG_PROTO_DBG		0x00100000U
@@ -375,6 +383,10 @@ struct hammer2_lnk_span {
 	char		label[256];	/* PFS label (can be wildcard) */
 };
 
+typedef struct hammer2_lnk_span hammer2_lnk_span_t;
+
+#define HAMMER2_SPAN_PROTO_1	1
+
 /*
  * Debug layer ops operate on any link
  *
@@ -465,11 +477,12 @@ typedef struct hammer2_dbg_shell hammer2_dbg_shell_t;
  */
 #define HAMMER2_MSG_ERR_UNKNOWN		0x20
 
-union hammer2_any {
+union hammer2_msg_any {
 	char			buf[HAMMER2_MSGHDR_MAX];
 	hammer2_msg_hdr_t	head;
+	hammer2_lnk_span_t	lnk_span;
 };
 
-typedef union hammer2_any hammer2_any_t;
+typedef union hammer2_msg_any hammer2_msg_any_t;
 
 #endif

@@ -626,7 +626,9 @@ hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
 }
 
 /*
- * Write a message.  {source, target, cmd} have been set.
+ * Write a message.  {source, target, cmd} have been set.  This function
+ * merely queues the message to the management thread, it does not write
+ * to the message socket/pipe.
  *
  * If CREATE is set we allocate the state and msgid and do the insertion.
  * If CREATE is not set the state and msgid must already be assigned.
