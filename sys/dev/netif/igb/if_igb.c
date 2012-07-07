@@ -1781,6 +1781,10 @@ igb_init_tx_unit(struct igb_softc *sc)
 		E1000_WRITE_REG(hw, E1000_TDT(i), 0);
 		E1000_WRITE_REG(hw, E1000_TDH(i), 0);
 
+		/*
+		 * WTHRESH is ignored by the hardware, since header
+		 * write back mode is used.
+		 */
 		txdctl |= IGB_TX_PTHRESH;
 		txdctl |= IGB_TX_HTHRESH << 8;
 		txdctl |= IGB_TX_WTHRESH << 16;
@@ -1791,6 +1795,13 @@ igb_init_tx_unit(struct igb_softc *sc)
 		dca_txctrl &= ~E1000_DCA_TXCTRL_TX_WB_RO_EN;
 		E1000_WRITE_REG(hw, E1000_DCA_TXCTRL(i), dca_txctrl);
 
+		/*
+		 * Don't set WB_on_EITR:
+		 * - 82575 does not have it
+		 * - It almost has no effect on 82576, see:
+		 *   82576 specification update errata #26
+		 * - It causes unnecessary bus traffic
+		 */
 		E1000_WRITE_REG(hw, E1000_TDWBAH(i),
 		    (uint32_t)(hdr_paddr >> 32));
 		E1000_WRITE_REG(hw, E1000_TDWBAL(i),
@@ -2269,6 +2280,10 @@ igb_init_rx_unit(struct igb_softc *sc)
 		rxdctl &= 0xFFF00000;
 		rxdctl |= IGB_RX_PTHRESH;
 		rxdctl |= IGB_RX_HTHRESH << 8;
+		/*
+		 * Don't set WTHRESH to a value above 1 on 82576, see:
+		 * 82576 specification update errata #26
+		 */
 		rxdctl |= IGB_RX_WTHRESH << 16;
 		E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
 	}
