@@ -2576,16 +2576,6 @@ struct bge_softc {
 	struct sysctl_ctx_list	bge_sysctl_ctx;
 	struct sysctl_oid	*bge_sysctl_tree;
 
-	uint32_t		bge_phy_flags;
-#define BGE_PHY_NO_3LED		0x00200000
-#define BGE_PHY_ADC_BUG		0x00400000
-#define BGE_PHY_5704_A0_BUG	0x00800000
-#define BGE_PHY_JITTER_BUG	0x01000000
-#define BGE_PHY_BER_BUG		0x02000000
-#define BGE_PHY_ADJUST_TRIM	0x04000000
-#define BGE_PHY_CRC_BUG		0x08000000
-#define BGE_PHY_WIRESPEED	0x00000004
-
 	int			bge_phyno;
 	uint32_t		bge_coal_chg;
 #define BGE_RX_COAL_TICKS_CHG		0x01

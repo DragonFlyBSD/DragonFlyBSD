@@ -1963,6 +1963,7 @@ bge_attach(device_t dev)
 	uint8_t ether_addr[ETHER_ADDR_LEN];
 	uint16_t product, vendor;
 	driver_intr_t *intr_func;
+	uintptr_t mii_priv = 0;
 
 	sc = device_get_softc(dev);
 	sc->bge_dev = dev;
@@ -2135,7 +2136,7 @@ bge_attach(device_t dev)
 	if ((sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
 	     sc->bge_asicrev == BGE_ASICREV_BCM5701) &&
 	    pci_get_subvendor(dev) == PCI_VENDOR_DELL)
-		sc->bge_phy_flags |= BGE_PHY_NO_3LED;
+		mii_priv |= BRGPHY_FLAG_NO_3LED;
 
 	capmask = MII_CAPMASK_DEFAULT;
 	if ((sc->bge_asicrev == BGE_ASICREV_BCM5703 &&
@@ -2155,24 +2156,27 @@ bge_attach(device_t dev)
 		capmask &= ~BMSR_EXTSTAT;
 	}
 
-	sc->bge_phy_flags |= BGE_PHY_WIRESPEED;
+	mii_priv |= BRGPHY_FLAG_WIRESPEED;
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
 	    (sc->bge_asicrev == BGE_ASICREV_BCM5705 &&
 	     (sc->bge_chipid != BGE_CHIPID_BCM5705_A0 &&
 	      sc->bge_chipid != BGE_CHIPID_BCM5705_A1)) ||
 	    sc->bge_asicrev == BGE_ASICREV_BCM5906)
-		sc->bge_phy_flags &= ~BGE_PHY_WIRESPEED;
+		mii_priv &= ~BRGPHY_FLAG_WIRESPEED;
 
 	if (sc->bge_chipid == BGE_CHIPID_BCM5701_A0 ||
 	    sc->bge_chipid == BGE_CHIPID_BCM5701_B0)
-		sc->bge_phy_flags |= BGE_PHY_CRC_BUG;
+		mii_priv |= BRGPHY_FLAG_CRC_BUG;
 
 	if (sc->bge_chiprev == BGE_CHIPREV_5703_AX ||
 	    sc->bge_chiprev == BGE_CHIPREV_5704_AX)
-		sc->bge_phy_flags |= BGE_PHY_ADC_BUG;
+		mii_priv |= BRGPHY_FLAG_ADC_BUG;
 
 	if (sc->bge_chipid == BGE_CHIPID_BCM5704_A0)
-		sc->bge_phy_flags |= BGE_PHY_5704_A0_BUG;
+		mii_priv |= BRGPHY_FLAG_5704_A0;
+
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5906)
+		mii_priv |= BRGPHY_FLAG_5906;
 
 	if (BGE_IS_5705_PLUS(sc) &&
 	    sc->bge_asicrev != BGE_ASICREV_BCM5906 &&
@@ -2186,11 +2190,11 @@ bge_attach(device_t dev)
 		    sc->bge_asicrev == BGE_ASICREV_BCM5787) {
 			if (product != PCI_PRODUCT_BROADCOM_BCM5722 &&
 			    product != PCI_PRODUCT_BROADCOM_BCM5756)
-				sc->bge_phy_flags |= BGE_PHY_JITTER_BUG;
+				mii_priv |= BRGPHY_FLAG_JITTER_BUG;
 			if (product == PCI_PRODUCT_BROADCOM_BCM5755M)
-				sc->bge_phy_flags |= BGE_PHY_ADJUST_TRIM;
+				mii_priv |= BRGPHY_FLAG_ADJUST_TRIM;
 		} else {
-			sc->bge_phy_flags |= BGE_PHY_BER_BUG;
+			mii_priv |= BRGPHY_FLAG_BER_BUG;
 		}
 	}
 
@@ -2361,6 +2365,8 @@ bge_attach(device_t dev)
 		mii_probe_args_init(&mii_args, bge_ifmedia_upd, bge_ifmedia_sts);
 		mii_args.mii_probemask = 1 << sc->bge_phyno;
 		mii_args.mii_capmask = capmask;
+		mii_args.mii_privtag = MII_PRIVTAG_BRGPHY;
+		mii_args.mii_priv = mii_priv;
 
 		error = mii_probe(dev, &sc->bge_miibus, &mii_args);
 		if (error) {

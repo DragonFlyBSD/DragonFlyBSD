@@ -81,6 +81,7 @@
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
+#include <dev/netif/mii_layer/brgphyreg.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -679,6 +680,8 @@ bce_attach(device_t dev)
 	void (*irq_handle)(void *);
 	int rid, rc = 0;
 	int i, j;
+	struct mii_probe_args mii_args;
+	uintptr_t mii_priv = 0;
 
 	sc->bce_dev = dev;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -740,6 +743,15 @@ bce_attach(device_t dev)
 			      BCE_CHIP_ID(sc));
 		rc = ENODEV;
 		goto fail;
+	}
+
+	mii_priv |= BRGPHY_FLAG_WIRESPEED;
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709) {
+		if (BCE_CHIP_REV(sc) == BCE_CHIP_REV_Ax ||
+		    BCE_CHIP_REV(sc) == BCE_CHIP_REV_Bx)
+			mii_priv |= BRGPHY_FLAG_NO_EARLYDAC;
+	} else {
+		mii_priv |= BRGPHY_FLAG_BER_BUG;
 	}
 
 	if (sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
@@ -953,9 +965,15 @@ bce_attach(device_t dev)
 	/* Assume a standard 1500 byte MTU size for mbuf allocations. */
 	sc->mbuf_alloc_size  = MCLBYTES;
 
-	/* Look for our PHY. */
-	rc = mii_phy_probe(dev, &sc->bce_miibus,
-			   bce_ifmedia_upd, bce_ifmedia_sts);
+	/*
+	 * Look for our PHY.
+	 */
+	mii_probe_args_init(&mii_args, bce_ifmedia_upd, bce_ifmedia_sts);
+	mii_args.mii_probemask = 1 << sc->bce_phy_addr;
+	mii_args.mii_privtag = MII_PRIVTAG_BRGPHY;
+	mii_args.mii_priv = mii_priv;
+
+	rc = mii_probe(dev, &sc->bce_miibus, &mii_args);
 	if (rc != 0) {
 		device_printf(dev, "PHY probe failed!\n");
 		goto fail;
@@ -1232,11 +1250,8 @@ bce_miibus_read_reg(device_t dev, int phy, int reg)
 	int i;
 
 	/* Make sure we are accessing the correct PHY address. */
-	if (phy != sc->bce_phy_addr) {
-		DBPRINT(sc, BCE_VERBOSE,
-			"Invalid PHY address %d for PHY read!\n", phy);
-		return 0;
-	}
+	KASSERT(phy == sc->bce_phy_addr,
+	    ("invalid phyno %d, should be %d\n", phy, sc->bce_phy_addr));
 
 	if (sc->bce_phy_flags & BCE_PHY_INT_MODE_AUTO_POLLING_FLAG) {
 		val = REG_RD(sc, BCE_EMAC_MDIO_MODE);
@@ -1308,11 +1323,8 @@ bce_miibus_write_reg(device_t dev, int phy, int reg, int val)
 	int i;
 
 	/* Make sure we are accessing the correct PHY address. */
-	if (phy != sc->bce_phy_addr) {
-		DBPRINT(sc, BCE_WARN,
-			"Invalid PHY address %d for PHY write!\n", phy);
-		return(0);
-	}
+	KASSERT(phy == sc->bce_phy_addr,
+	    ("invalid phyno %d, should be %d\n", phy, sc->bce_phy_addr));
 
 	DBPRINT(sc, BCE_EXCESSIVE,
 		"%s(): phy = %d, reg = 0x%04X, val = 0x%04X\n",
