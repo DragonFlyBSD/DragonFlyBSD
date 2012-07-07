@@ -3909,8 +3909,8 @@ igb_msix_try_alloc(struct igb_softc *sc)
 	boolean_t aggregate, setup = FALSE;
 
 	/*
-	 * MSI-X must not be enable on 82575.
-	 * See 82575EB specification update
+	 * Don't enable MSI-X on 82575, see:
+	 * 82575 specification update errata #25
 	 */
 	if (sc->hw.mac.type == e1000_82575)
 		return;
