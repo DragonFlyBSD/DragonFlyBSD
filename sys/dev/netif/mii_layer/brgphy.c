@@ -511,9 +511,6 @@ brgphy_reset(struct mii_softc *sc)
 	if (sc->mii_privtag != MII_PRIVTAG_BRGPHY)
 		return;
 
-	device_printf(sc->mii_dev, "brgphy priv %ju\n",
-	    (uintmax_t)sc->mii_priv);
-
 	if (sc->mii_priv & BRGPHY_FLAG_ADC_BUG)
 		brgphy_adc_bug(sc);
 	if (sc->mii_priv & BRGPHY_FLAG_5704_A0)
