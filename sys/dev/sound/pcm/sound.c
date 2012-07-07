@@ -37,6 +37,7 @@
 #include <dev/sound/pcm/dsp.h>
 #include <dev/sound/pcm/sndstat.h>
 #include <dev/sound/version.h>
+#include <sys/devfs.h>
 #include <sys/limits.h>
 #include <sys/sysctl.h>
 
@@ -1120,6 +1121,14 @@ pcm_register(device_t dev, void *devinfo, int numplay, int numrec)
 
 	if (d->flags & SD_F_EQ)
 		feeder_eq_initsys(dev);
+
+	/* XXX use make_autoclone_dev? */
+	/* XXX PCMMAXCHAN can be created for regular channels */
+	d->dsp_clonedev = make_dev(&dsp_ops,
+			    PCMMINOR(device_get_unit(dev)),
+			    UID_ROOT, GID_WHEEL, 0666, "dsp%d",
+			    device_get_unit(dev));
+	devfs_clone_handler_add(devtoname(d->dsp_clonedev), dsp_clone);
 
 	sndstat_register(dev, d->status, sndstat_prepare_pcm);
 

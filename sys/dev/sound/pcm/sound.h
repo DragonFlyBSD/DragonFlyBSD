@@ -402,6 +402,7 @@ struct snddev_info {
 	char status[SND_STATUSLEN];
 	struct lock *lock;
 	struct cdev *mixer_dev;
+	struct cdev *dsp_clonedev;
 	uint32_t pvchanrate, pvchanformat;
 	uint32_t rvchanrate, rvchanformat;
 	int32_t eqpreamp;

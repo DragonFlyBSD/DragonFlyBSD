@@ -547,10 +547,6 @@ dsp_open(struct dev_open_args *ap)
 		break;
 	}
 
-	/* No matching devtype? */
-	if (fmt == 0 || spd == 0)
-		panic("impossible devtype %d", devtype);
-
 	rdch = NULL;
 	wrch = NULL;
 	rderror = 0;
@@ -2405,6 +2401,10 @@ dsp_stdclone(const char *name, char *namep, char *sep, int use_sep, int *u, int 
 	return (0);
 }
 
+/*
+ *     for i = 0 to channels of device N
+ *     if dspN.i isn't busy and in the right dir, create a dev_t and return it
+ */
 int
 dsp_clone(struct dev_clone_args *ap)
 {
