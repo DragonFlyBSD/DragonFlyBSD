@@ -201,6 +201,8 @@ static void	emx_serialize_assert(struct ifnet *, enum ifnet_serialize,
 #endif
 
 static void	emx_intr(void *);
+static void	emx_intr_mask(void *);
+static void	emx_intr_body(struct emx_softc *, boolean_t);
 static void	emx_rxeof(struct emx_softc *, int, int);
 static void	emx_txeof(struct emx_softc *);
 static void	emx_tx_collect(struct emx_softc *);
@@ -416,6 +418,7 @@ emx_attach(device_t dev)
 	int error = 0, i, throttle, msi_enable;
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
+	driver_intr_t *intr_func;
 
 	lwkt_serialize_init(&sc->main_serialize);
 	lwkt_serialize_init(&sc->tx_serialize);
@@ -480,6 +483,21 @@ emx_attach(device_t dev)
 	 */
 	sc->intr_type = pci_alloc_1intr(dev, msi_enable,
 	    &sc->intr_rid, &intr_flags);
+
+	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
+		int unshared;
+
+		unshared = device_getenv_int(dev, "irq.unshared", 0);
+		if (!unshared) {
+			sc->flags |= EMX_FLAG_SHARED_INTR;
+			if (bootverbose)
+				device_printf(dev, "IRQ shared\n");
+		} else {
+			intr_flags &= ~RF_SHAREABLE;
+			if (bootverbose)
+				device_printf(dev, "IRQ unshared\n");
+		}
+	}
 
 	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->intr_rid,
 	    intr_flags);
@@ -703,7 +721,22 @@ emx_attach(device_t dev)
 	if (sc->has_manage && !sc->has_amt)
 		emx_get_hw_control(sc);
 
-	error = bus_setup_intr(dev, sc->intr_res, INTR_MPSAFE, emx_intr, sc,
+	/*
+	 * Missing Interrupt Following ICR read:
+	 *
+	 * 82571/82572 specification update #76
+	 * 82573 specification update #31
+	 * 82574 specification update #12
+	 */
+	intr_func = emx_intr;
+	if ((sc->flags & EMX_FLAG_SHARED_INTR) &&
+	    (sc->hw.mac.type == e1000_82571 ||
+	     sc->hw.mac.type == e1000_82572 ||
+	     sc->hw.mac.type == e1000_82573 ||
+	     sc->hw.mac.type == e1000_82574))
+		intr_func = emx_intr_mask;
+
+	error = bus_setup_intr(dev, sc->intr_res, INTR_MPSAFE, intr_func, sc,
 			       &sc->intr_tag, &sc->main_serialize);
 	if (error) {
 		device_printf(dev, "Failed to register interrupt handler");
@@ -1190,7 +1223,12 @@ emx_init(void *xsc)
 static void
 emx_intr(void *xsc)
 {
-	struct emx_softc *sc = xsc;
+	emx_intr_body(xsc, TRUE);
+}
+
+static void
+emx_intr_body(struct emx_softc *sc, boolean_t chk_asserted)
+{
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t reg_icr;
 
@@ -1199,7 +1237,7 @@ emx_intr(void *xsc)
 
 	reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 
-	if ((reg_icr & E1000_ICR_INT_ASSERTED) == 0) {
+	if (chk_asserted && (reg_icr & E1000_ICR_INT_ASSERTED) == 0) {
 		logif(intr_end);
 		return;
 	}
@@ -1257,6 +1295,21 @@ emx_intr(void *xsc)
 		sc->rx_overruns++;
 
 	logif(intr_end);
+}
+
+static void
+emx_intr_mask(void *xsc)
+{
+	struct emx_softc *sc = xsc;
+
+	E1000_WRITE_REG(&sc->hw, E1000_IMC, 0xffffffff);
+	/*
+	 * NOTE:
+	 * ICR.INT_ASSERTED bit will never be set if IMS is 0,
+	 * so don't check it.
+	 */
+	emx_intr_body(sc, FALSE);
+	E1000_WRITE_REG(&sc->hw, E1000_IMS, IMS_ENABLE_MASK);
 }
 
 static void
