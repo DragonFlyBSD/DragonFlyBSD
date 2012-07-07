@@ -2337,29 +2337,6 @@ struct bge_gib {
 #define BGE_INC(x, y)	(x) = (x + 1) % y
 
 /*
- * Vital product data and structures.
- */
-#define BGE_VPD_FLAG		0x8000
- 
-/* VPD structures */
-struct vpd_res {
-	uint8_t			vr_id;
-	uint8_t			vr_len;
-	uint8_t			vr_pad;
-};
- 
-struct vpd_key {
-	char			vk_key[2];
-	uint8_t			vk_len;
-};
- 
-#define VPD_RES_ID	0x82	/* ID string */
-#define VPD_RES_READ	0x90	/* start of read only area */
-#define VPD_RES_WRITE	0x81	/* start of read/write area */
-#define VPD_RES_END	0x78	/* end tag */
-
-
-/*
  * Register access macros. The Tigon always uses memory mapped register
  * accesses and all registers must be accessed with 32 bit operations.
  */
@@ -2496,16 +2473,9 @@ struct bge_type {
 	char			*bge_name;
 };
 
-#define BGE_HWREV_TIGON		0x01
-#define BGE_HWREV_TIGON_II	0x02
 #define BGE_TIMEOUT		5000
 #define BGE_FIRMWARE_TIMEOUT	20000
 #define BGE_TXCONS_UNSET	0xFFFF	/* impossible value */
-
-struct bge_bcom_hack {
-	int			reg;
-	int			val;
-};
 
 struct bge_softc {
 	struct arpcom		arpcom;		/* interface info */
