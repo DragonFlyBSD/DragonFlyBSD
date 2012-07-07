@@ -432,7 +432,8 @@ static void	bce_phy_intr(struct bce_softc *);
 static void	bce_rx_intr(struct bce_softc *, int);
 static void	bce_tx_intr(struct bce_softc *);
 static void	bce_disable_intr(struct bce_softc *);
-static void	bce_enable_intr(struct bce_softc *, int);
+static void	bce_enable_intr(struct bce_softc *);
+static void	bce_reenable_intr(struct bce_softc *);
 
 #ifdef DEVICE_POLLING
 static void	bce_poll(struct ifnet *, enum poll_cmd, int);
@@ -4820,23 +4821,37 @@ bce_disable_intr(struct bce_softc *sc)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_enable_intr(struct bce_softc *sc, int coal_now)
+bce_enable_intr(struct bce_softc *sc)
 {
 	lwkt_serialize_handler_enable(sc->arpcom.ac_if.if_serializer);
 
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
 	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID |
 	       BCE_PCICFG_INT_ACK_CMD_MASK_INT | sc->last_status_idx);
-
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
 	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | sc->last_status_idx);
 
-	if (coal_now) {
-		REG_WR(sc, BCE_HC_COMMAND,
-		    sc->hc_command | BCE_HC_COMMAND_COAL_NOW);
-	}
+	REG_WR(sc, BCE_HC_COMMAND, sc->hc_command | BCE_HC_COMMAND_COAL_NOW);
 }
 
+
+/****************************************************************************/
+/* Reenables interrupt generation during interrupt handling.                */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_reenable_intr(struct bce_softc *sc)
+{
+	if (sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
+		REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
+		       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID |
+		       BCE_PCICFG_INT_ACK_CMD_MASK_INT | sc->last_status_idx);
+	}
+	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
+	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | sc->last_status_idx);
+}
 
 /****************************************************************************/
 /* Handles controller initialization.                                       */
@@ -4936,7 +4951,7 @@ bce_init(void *xsc)
 	} else
 #endif
 	/* Enable host interrupts. */
-	bce_enable_intr(sc, 1);
+	bce_enable_intr(sc);
 
 	bce_ifmedia_upd(ifp);
 
@@ -5371,7 +5386,7 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		       (1 << 16) | sc->bce_tx_quick_cons_trip);
 		return;
 	case POLL_DEREGISTER:
-		bce_enable_intr(sc, 1);
+		bce_enable_intr(sc);
 
 		REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
 		       (sc->bce_tx_quick_cons_trip_int << 16) |
@@ -5550,7 +5565,7 @@ bce_intr(struct bce_softc *sc)
 	}
 
 	/* Re-enable interrupts. */
-	bce_enable_intr(sc, 0);
+	bce_reenable_intr(sc);
 
 	if (sc->bce_coalchg_mask)
 		bce_coal_change(sc);
