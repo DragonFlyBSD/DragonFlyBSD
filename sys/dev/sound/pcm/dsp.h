@@ -31,7 +31,10 @@
 #ifndef _PCMDSP_H_
 #define _PCMDSP_H_
 
+#include <sys/device.h>
+
 extern struct dev_ops dsp_ops;
+extern d_clone_t dsp_clone;
 
 struct dsp_cdevinfo;
 

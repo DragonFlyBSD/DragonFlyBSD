@@ -2405,20 +2405,25 @@ dsp_stdclone(const char *name, char *namep, char *sep, int use_sep, int *u, int 
 	return (0);
 }
 
-static void
-dsp_clone(void *arg,
-    char *name, int namelen, struct cdev **dev)
+int
+dsp_clone(struct dev_clone_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
+	const char *name = ap->a_name;
 	struct snddev_info *d;
 	struct snd_clone_entry *ce;
 	struct pcm_channel *c;
 	int i, unit, udcmask, cunit, devtype, devhw, devcmax, tumax;
 	char *devname, *devcmp, *devsep;
+	int err = EBUSY;
+	static struct cdev *dev;
 
 	KASSERT(dsp_umax >= 0 && dsp_cmax >= 0, ("Uninitialized unit!"));
 
-	if (*dev != NULL)
-		return;
+	d = dsp_get_info(i_dev);
+	if (d != NULL) {
+		return (ENODEV);
+	}
 
 	unit = -1;
 	cunit = -1;
@@ -2449,15 +2454,16 @@ dsp_clone(void *arg,
 	}
 
 	d = devclass_get_softc(pcm_devclass, unit);
-	if (!PCM_REGISTERED(d) || d->clones == NULL)
-		return;
+	if (!PCM_REGISTERED(d) || d->clones == NULL) {
+		return (ENODEV);
+	}
 
 	/* XXX Need Giant magic entry ??? */
 
 	PCM_LOCK(d);
 	if (snd_clone_disabled(d->clones)) {
 		PCM_UNLOCK(d);
-		return;
+		return (ENODEV);
 	}
 
 	PCM_WAIT(d);
@@ -2471,7 +2477,7 @@ dsp_clone(void *arg,
 		    ("overflow: devcmax=%d, dsp_cmax=%d", devcmax, dsp_cmax));
 		if (cunit > devcmax) {
 			PCM_RELEASE_QUICK(d);
-			return;
+			return (ENODEV);
 		}
 		udcmask |= snd_c2unit(cunit);
 		CHN_FOREACH(c, d, channels.pcm) {
@@ -2521,11 +2527,11 @@ dsp_clone(void *arg,
 			goto dsp_clone_alloc;
 		}
 		PCM_RELEASE_QUICK(d);
-		return;
+		return (err);
 	}
 
 dsp_clone_alloc:
-	ce = snd_clone_alloc(d->clones, dev, &cunit, udcmask);
+	ce = snd_clone_alloc(d->clones, &dev, &cunit, udcmask);
 	if (tumax != -1)
 		snd_clone_setmaxunit(d->clones, tumax);
 	if (ce != NULL) {
@@ -2533,15 +2539,16 @@ dsp_clone_alloc:
 		dev = make_only_dev(&dsp_ops, PCMMINOR(udcmask),
 		    UID_ROOT, GID_WHEEL, 0666, "%s%d%s%d",
 		    devname, unit, devsep, cunit);
-		snd_clone_register(ce, *dev);
+		snd_clone_register(ce, dev);
+		err = 0;
 	}
 
 	PCM_RELEASE_QUICK(d);
-
 #if 0
 	if (*dev != NULL)
 		dev_ref(*dev);
 #endif
+	return (err);
 }
 
 static void
