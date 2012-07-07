@@ -283,6 +283,8 @@ static int	em_media_change(struct ifnet *);
 static void	em_timer(void *);
 
 static void	em_intr(void *);
+static void	em_intr_mask(void *);
+static void	em_intr_body(struct adapter *, boolean_t);
 static void	em_rxeof(struct adapter *, int);
 static void	em_txeof(struct adapter *);
 static void	em_tx_collect(struct adapter *);
@@ -438,6 +440,7 @@ em_attach(device_t dev)
 	int tsize, rsize;
 	int error = 0;
 	uint16_t eeprom_data, device_id, apme_mask;
+	driver_intr_t *intr_func;
 
 	adapter->dev = adapter->osdep.dev = dev;
 
@@ -811,8 +814,25 @@ em_attach(device_t dev)
 	    adapter->hw.mac.type >= e1000_82571)
 		em_get_hw_control(adapter);
 
+	/*
+	 * Missing Interrupt Following ICR read:
+	 *
+	 * 82571/82572 specification update #76
+	 * 82573 specification update #31
+	 * 82574 specification update #12
+	 * 82583 specification update #4
+	 */
+	intr_func = em_intr;
+	if ((adapter->flags & EM_FLAG_SHARED_INTR) &&
+	    (adapter->hw.mac.type == e1000_82571 ||
+	     adapter->hw.mac.type == e1000_82572 ||
+	     adapter->hw.mac.type == e1000_82573 ||
+	     adapter->hw.mac.type == e1000_82574 ||
+	     adapter->hw.mac.type == e1000_82583))
+		intr_func = em_intr_mask;
+
 	error = bus_setup_intr(dev, adapter->intr_res, INTR_MPSAFE,
-			       em_intr, adapter, &adapter->intr_tag,
+			       intr_func, adapter, &adapter->intr_tag,
 			       ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "Failed to register interrupt handler");
@@ -1391,7 +1411,12 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 static void
 em_intr(void *xsc)
 {
-	struct adapter *adapter = xsc;
+	em_intr_body(xsc, TRUE);
+}
+
+static void
+em_intr_body(struct adapter *adapter, boolean_t chk_asserted)
+{
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
 	uint32_t reg_icr;
 
@@ -1400,9 +1425,10 @@ em_intr(void *xsc)
 
 	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
 
-	if ((adapter->hw.mac.type >= e1000_82571 &&
-	     (reg_icr & E1000_ICR_INT_ASSERTED) == 0) ||
-	    reg_icr == 0) {
+	if (chk_asserted &&
+	    ((adapter->hw.mac.type >= e1000_82571 &&
+	      (reg_icr & E1000_ICR_INT_ASSERTED) == 0) ||
+	     reg_icr == 0)) {
 		logif(intr_end);
 		return;
 	}
@@ -1445,6 +1471,21 @@ em_intr(void *xsc)
 		adapter->rx_overruns++;
 
 	logif(intr_end);
+}
+
+static void
+em_intr_mask(void *xsc)
+{
+	struct adapter *adapter = xsc;
+
+	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
+	/*
+	 * NOTE:
+	 * ICR.INT_ASSERTED bit will never be set if IMS is 0,
+	 * so don't check it.
+	 */
+	em_intr_body(adapter, FALSE);
+	E1000_WRITE_REG(&adapter->hw, E1000_IMS, IMS_ENABLE_MASK);
 }
 
 static void
@@ -2195,6 +2236,21 @@ em_alloc_pci_res(struct adapter *adapter)
 
 	adapter->intr_type = pci_alloc_1intr(dev, msi_enable,
 	    &adapter->intr_rid, &intr_flags);
+
+	if (adapter->intr_type == PCI_INTR_TYPE_LEGACY) {
+		int unshared;
+
+		unshared = device_getenv_int(dev, "irq.unshared", 0);
+		if (!unshared) {
+			adapter->flags |= EM_FLAG_SHARED_INTR;
+			if (bootverbose)
+				device_printf(dev, "IRQ shared\n");
+		} else {
+			intr_flags &= ~RF_SHAREABLE;
+			if (bootverbose)
+				device_printf(dev, "IRQ unshared\n");
+		}
+	}
 
 	adapter->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ,
 	    &adapter->intr_rid, intr_flags);
