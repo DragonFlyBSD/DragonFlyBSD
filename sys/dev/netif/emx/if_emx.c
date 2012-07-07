@@ -64,13 +64,6 @@
  * SUCH DAMAGE.
  */
 
-/*
- * NOTE:
- *
- * MSI-X MUST NOT be enabled on 82574:
- *   <<82574 specification update>> errata #15
- */
-
 #include "opt_ifpoll.h"
 #include "opt_rss.h"
 #include "opt_emx.h"
@@ -469,8 +462,11 @@ emx_attach(device_t dev)
 	sc->hw.hw_addr = (uint8_t *)&sc->osdep.mem_bus_space_handle;
 
 	/*
+	 * Don't enable MSI-X on 82574, see:
+	 * 82574 specification update errata #15
+	 *
 	 * Don't enable MSI on 82571/82572, see:
-	 * 82571EB/82572EI specification update
+	 * 82571/82572 specification update errata #63
 	 */
 	msi_enable = emx_msi_enable;
 	if (msi_enable &&
@@ -724,9 +720,9 @@ emx_attach(device_t dev)
 	/*
 	 * Missing Interrupt Following ICR read:
 	 *
-	 * 82571/82572 specification update #76
-	 * 82573 specification update #31
-	 * 82574 specification update #12
+	 * 82571/82572 specification update errata #76
+	 * 82573 specification update errata #31
+	 * 82574 specification update errata #12
 	 */
 	intr_func = emx_intr;
 	if ((sc->flags & EMX_FLAG_SHARED_INTR) &&
@@ -3809,19 +3805,19 @@ emx_disable_aspm(struct emx_softc *sc)
 	case e1000_82573:
 		/*
 		 * 82573 specification update
-		 * #8 disable L0s
-		 * #41 disable L1
+		 * errata #8 disable L0s
+		 * errata #41 disable L1
 		 *
 		 * 82571/82572 specification update
-		 # #13 disable L1
-		 * #68 disable L0s
+		 # errata #13 disable L1
+		 * errata #68 disable L0s
 		 */
 		disable = PCIEM_LNKCTL_ASPM_L0S | PCIEM_LNKCTL_ASPM_L1;
 		break;
 
 	case e1000_82574:
 		/*
-		 * 82574 specification update #20
+		 * 82574 specification update errata #20
 		 *
 		 * There is no need to disable L1
 		 */
