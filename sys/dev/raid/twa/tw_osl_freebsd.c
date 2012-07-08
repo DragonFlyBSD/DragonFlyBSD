@@ -809,11 +809,10 @@ tw_osli_free_resources(struct twa_softc *sc)
 			tw_osli_dbg_dprintf(1, sc,
 				"release_resource(io) returned %d", error);
 
-	dev_ops_remove_minor(&twa_ops, device_get_unit(sc->bus_dev));
-
 	/* Destroy the control device. */
 	if (sc->ctrl_dev != (struct cdev *)NULL)
 		destroy_dev(sc->ctrl_dev);
+	dev_ops_remove_minor(&twa_ops, device_get_unit(sc->bus_dev));
 
 	if ((error = sysctl_ctx_free(&sc->sysctl_ctxt)))
 		tw_osli_dbg_dprintf(1, sc,
