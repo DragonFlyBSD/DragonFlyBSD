@@ -107,6 +107,7 @@
 #include <bus/pci/pcivar.h>
 
 #include <dev/netif/bge/if_bgereg.h>
+#include <dev/netif/bge/if_bgevar.h>
 
 /* "device miibus" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
@@ -4054,11 +4055,12 @@ bge_dma_alloc(struct bge_softc *sc)
 	/*
 	 * Create DMA stuffs for RX return ring.
 	 */
-	error = bge_dma_block_alloc(sc, BGE_RX_RTN_RING_SZ(sc),
-				    &sc->bge_cdata.bge_rx_return_ring_tag,
-				    &sc->bge_cdata.bge_rx_return_ring_map,
-				    (void *)&sc->bge_ldata.bge_rx_return_ring,
-				    &sc->bge_ldata.bge_rx_return_ring_paddr);
+	error = bge_dma_block_alloc(sc,
+	    BGE_RX_RTN_RING_SZ(sc->bge_return_ring_cnt),
+	    &sc->bge_cdata.bge_rx_return_ring_tag,
+	    &sc->bge_cdata.bge_rx_return_ring_map,
+	    (void *)&sc->bge_ldata.bge_rx_return_ring,
+	    &sc->bge_ldata.bge_rx_return_ring_paddr);
 	if (error) {
 		if_printf(ifp, "could not create RX ret ring\n");
 		return error;

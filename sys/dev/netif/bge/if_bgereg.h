@@ -1933,20 +1933,10 @@
 #define BGE_MEMWIN_START		0x00008000
 #define BGE_MEMWIN_END			0x0000FFFF
 
-
-#define BGE_MEMWIN_READ(sc, x, val)				\
-do {								\
-	pci_write_config(sc->bge_dev, BGE_PCI_MEMWIN_BASEADDR,	\
-	    (0xFFFF0000 & x), 4);				\
-	val = CSR_READ_4(sc, BGE_MEMWIN_START + (x & 0xFFFF));	\
-} while(0)
-
-#define BGE_MEMWIN_WRITE(sc, x, val)				\
-do {								\
-	pci_write_config(sc->bge_dev, BGE_PCI_MEMWIN_BASEADDR,	\
-	    (0xFFFF0000 & x), 4);				\
-	CSR_WRITE_4(sc, BGE_MEMWIN_START + (x & 0xFFFF), val);	\
-} while(0)
+#define PCI_SETBIT(dev, reg, x, s)	\
+	pci_write_config(dev, reg, (pci_read_config(dev, reg, s) | x), s)
+#define PCI_CLRBIT(dev, reg, x, s)	\
+	pci_write_config(dev, reg, (pci_read_config(dev, reg, s) & ~x), s)
 
 /*
  * This magic number is written to the firmware mailbox at 0xb50
@@ -1978,9 +1968,6 @@ struct bge_rcb {
 	uint32_t		bge_nicaddr;
 };
 #define BGE_RCB_MAXLEN_FLAGS(maxlen, flags)	((maxlen) << 16 | (flags))
-#define RCB_WRITE_4(sc, rcb, offset, val)			\
-	bus_space_write_4(sc->bge_btag, sc->bge_bhandle,	\
-			  rcb + offsetof(struct bge_rcb, offset), val)
 
 #define BGE_RCB_FLAG_USE_EXT_RX_BD	0x0001
 #define BGE_RCB_FLAG_RING_DISABLED	0x0002
@@ -2086,11 +2073,11 @@ struct bge_status_block {
 #endif
 	struct bge_sts_idx	bge_idx[16];
 };
+#define BGE_STATUS_BLK_SZ	sizeof(struct bge_status_block)
 
 #define BGE_STATFLAG_UPDATED		0x00000001
 #define BGE_STATFLAG_LINKSTATE_CHANGED	0x00000002
 #define BGE_STATFLAG_ERROR		0x00000004
-
 
 /*
  * Offset of MAC address inside EEPROM.
@@ -2297,93 +2284,7 @@ struct bge_stats {
 
 	uint8_t			Reserved4[320];
 };
-
-/*
- * Tigon general information block. This resides in host memory
- * and contains the status counters, ring control blocks and
- * producer pointers.
- */
-
-struct bge_gib {
-	struct bge_stats	bge_stats;
-	struct bge_rcb		bge_tx_rcb[16];
-	struct bge_rcb		bge_std_rx_rcb;
-	struct bge_rcb		bge_jumbo_rx_rcb;
-	struct bge_rcb		bge_mini_rx_rcb;
-	struct bge_rcb		bge_return_rcb;
-};
-
-/*
- * NOTE!  On the Alpha, we have an alignment constraint.
- * The first thing in the packet is a 14-byte Ethernet header.
- * This means that the packet is misaligned.  To compensate,
- * we actually offset the data 2 bytes into the cluster.  This
- * alignes the packet after the Ethernet header at a 32-bit
- * boundary.
- */
-
-#define BGE_MIN_FRAMELEN	60
-#define BGE_MAX_FRAMELEN	1536
-#define BGE_JUMBO_FRAMELEN	9018
-#define BGE_JUMBO_MTU		(BGE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
-
-#define BGE_TIMEOUT		5000
-#define BGE_FIRMWARE_TIMEOUT	20000
-#define BGE_TXCONS_UNSET	0xFFFF	/* impossible value */
-
-/*
- * Other utility macros.
- */
-#define BGE_INC(x, y)		(x) = ((x) + 1) % (y)
-
-/*
- * Register access macros. The Tigon always uses memory mapped register
- * accesses and all registers must be accessed with 32 bit operations.
- */
-
-#define CSR_WRITE_4(sc, reg, val)	\
-	bus_space_write_4(sc->bge_btag, sc->bge_bhandle, reg, val)
-
-#define CSR_READ_4(sc, reg)		\
-	bus_space_read_4(sc->bge_btag, sc->bge_bhandle, reg)
-
-#define BGE_SETBIT(sc, reg, x)	\
-	CSR_WRITE_4(sc, reg, (CSR_READ_4(sc, reg) | x))
-#define BGE_CLRBIT(sc, reg, x)	\
-	CSR_WRITE_4(sc, reg, (CSR_READ_4(sc, reg) & ~x))
-
-#define PCI_SETBIT(dev, reg, x, s)	\
-	pci_write_config(dev, reg, (pci_read_config(dev, reg, s) | x), s)
-#define PCI_CLRBIT(dev, reg, x, s)	\
-	pci_write_config(dev, reg, (pci_read_config(dev, reg, s) & ~x), s)
-
-/*
- * Memory management stuff. Note: the SSLOTS, MSLOTS and JSLOTS
- * values are tuneable. They control the actual amount of buffers
- * allocated for the standard, mini and jumbo receive rings.
- */
-
-#define BGE_SSLOTS	256
-#define BGE_MSLOTS	256
-#define BGE_JSLOTS	384
-
-#define BGE_JRAWLEN (BGE_JUMBO_FRAMELEN + ETHER_ALIGN)
-#define BGE_JLEN (BGE_JRAWLEN + \
-	(sizeof(uint64_t) - BGE_JRAWLEN % sizeof(uint64_t)))
-#define BGE_JPAGESZ PAGE_SIZE
-#define BGE_RESID (BGE_JPAGESZ - (BGE_JLEN * BGE_JSLOTS) % BGE_JPAGESZ)
-#define BGE_JMEM ((BGE_JLEN * BGE_JSLOTS) + BGE_RESID)
-
-struct bge_softc;
-
-struct bge_jslot {
-	struct bge_softc	*bge_sc;
-	void			*bge_buf;
-	bus_addr_t		bge_paddr;
-	int			bge_inuse;
-	int			bge_slot;
-	SLIST_ENTRY(bge_jslot)	jslot_link;
-};
+#define BGE_STATS_SZ		sizeof(struct bge_stats)
 
 #if (BUS_SPACE_MAXADDR != BUS_SPACE_MAXADDR_32BIT)
 #define	BGE_DMA_MAXADDR_40BIT	0xFFFFFFFFFF
@@ -2393,185 +2294,13 @@ struct bge_jslot {
 #define BGE_DMA_BOUNDARY_4G	0
 #endif
 
-/*
- * Ring structures. Most of these reside in host memory and we tell
- * the NIC where they are via the ring control blocks. The exceptions
- * are the tx and command rings, which live in NIC memory and which
- * we access via the shared memory window.
- */
-struct bge_ring_data {
-	struct bge_rx_bd	*bge_rx_std_ring;
-	bus_addr_t		bge_rx_std_ring_paddr;
-	struct bge_rx_bd	*bge_rx_jumbo_ring;
-	bus_addr_t		bge_rx_jumbo_ring_paddr;
-	struct bge_rx_bd	*bge_rx_return_ring;
-	bus_addr_t		bge_rx_return_ring_paddr;
-	struct bge_tx_bd	*bge_tx_ring;
-	bus_addr_t		bge_tx_ring_paddr;
-	struct bge_status_block	*bge_status_block;
-	bus_addr_t		bge_status_block_paddr;
-	struct bge_stats	*bge_stats;
-	bus_addr_t		bge_stats_paddr;
-	void			*bge_jumbo_buf;
-	struct bge_gib		bge_info;
-};
-
 #define BGE_STD_RX_RING_SZ	\
 	(sizeof(struct bge_rx_bd) * BGE_STD_RX_RING_CNT)
 #define BGE_JUMBO_RX_RING_SZ	\
 	(sizeof(struct bge_rx_bd) * BGE_JUMBO_RX_RING_CNT)
 #define BGE_TX_RING_SZ		\
 	(sizeof(struct bge_tx_bd) * BGE_TX_RING_CNT)
-#define BGE_RX_RTN_RING_SZ(x)	\
-	(sizeof(struct bge_rx_bd) * (x)->bge_return_ring_cnt)
-
-#define BGE_STATUS_BLK_SZ	sizeof(struct bge_status_block)
-#define BGE_STATS_SZ		sizeof(struct bge_stats)
-
-struct bge_rxchain {
-	struct mbuf	*bge_mbuf;
-	bus_addr_t	bge_paddr;
-};
-
-/*
- * Mbuf pointers. We need these to keep track of the virtual addresses
- * of our mbuf chains since we can only convert from physical to virtual,
- * not the other way around.
- */
-struct bge_chain_data {
-	bus_dma_tag_t		bge_parent_tag;
-	bus_dma_tag_t		bge_rx_std_ring_tag;
-	bus_dma_tag_t		bge_rx_jumbo_ring_tag;
-	bus_dma_tag_t		bge_rx_return_ring_tag;
-	bus_dma_tag_t		bge_tx_ring_tag;
-	bus_dma_tag_t		bge_status_tag;
-	bus_dma_tag_t		bge_stats_tag;
-	bus_dma_tag_t		bge_jumbo_tag;
-	bus_dma_tag_t		bge_tx_mtag;	/* TX mbuf DMA tag */
-	bus_dma_tag_t		bge_rx_mtag;	/* RX mbuf DMA tag */
-	bus_dmamap_t		bge_rx_tmpmap;
-	bus_dmamap_t		bge_tx_dmamap[BGE_TX_RING_CNT];
-	bus_dmamap_t		bge_rx_std_dmamap[BGE_STD_RX_RING_CNT];
-	bus_dmamap_t		bge_rx_std_ring_map;
-	bus_dmamap_t		bge_rx_jumbo_ring_map;
-	bus_dmamap_t		bge_tx_ring_map;
-	bus_dmamap_t		bge_rx_return_ring_map;
-	bus_dmamap_t		bge_status_map;
-	bus_dmamap_t		bge_stats_map;
-	bus_dmamap_t		bge_jumbo_map;
-	struct mbuf		*bge_tx_chain[BGE_TX_RING_CNT];
-	struct bge_rxchain	bge_rx_std_chain[BGE_STD_RX_RING_CNT];
-	struct bge_rxchain	bge_rx_jumbo_chain[BGE_JUMBO_RX_RING_CNT];
-	/* Stick the jumbo mem management stuff here too. */
-	struct bge_jslot	bge_jslots[BGE_JSLOTS];
-};
-
-struct bge_softc {
-	struct arpcom		arpcom;		/* interface info */
-	device_t		bge_dev;
-	device_t		bge_miibus;
-	bus_space_handle_t	bge_bhandle;
-	bus_space_tag_t		bge_btag;
-	void			*bge_intrhand;
-	struct resource		*bge_irq;
-	struct resource		*bge_res;
-	struct ifmedia		bge_ifmedia;	/* TBI media info */
-	int			bge_pcixcap;
-	int			bge_pciecap;
-	uint32_t		bge_pci_miscctl;
-	uint32_t		bge_status_tag;
-	uint32_t		bge_flags;	/* BGE_FLAG_ */
-#define BGE_FLAG_TBI		0x00000001
-#define BGE_FLAG_JUMBO		0x00000002
-#define BGE_FLAG_MII_SERDES	0x00000010
-#define	BGE_FLAG_CPMU		0x00000020
-#define BGE_FLAG_PCIX		0x00000200
-#define BGE_FLAG_PCIE		0x00000400
-#define BGE_FLAG_5700_FAMILY	0x00001000
-#define BGE_FLAG_5705_PLUS	0x00002000
-#define BGE_FLAG_5714_FAMILY	0x00004000
-#define BGE_FLAG_575X_PLUS	0x00008000
-#define BGE_FLAG_5755_PLUS	0x00010000
-#define BGE_FLAG_MAXADDR_40BIT	0x00020000
-#define BGE_FLAG_RX_ALIGNBUG	0x00100000
-#define BGE_FLAG_NO_EEPROM	0x10000000
-#define BGE_FLAG_5788		0x20000000
-#define BGE_FLAG_SHORTDMA	0x40000000
-#define BGE_FLAG_STATUS_TAG	0x80000000
-
-	uint32_t		bge_chipid;
-	uint32_t		bge_asicrev;
-	uint32_t		bge_chiprev;
-	struct bge_ring_data	bge_ldata;	/* rings */
-	struct bge_chain_data	bge_cdata;	/* mbufs */
-	uint16_t		bge_tx_saved_considx;
-	uint16_t		bge_rx_saved_considx;
-	uint16_t		bge_ev_saved_considx;
-	uint16_t		bge_return_ring_cnt;
-	uint16_t		bge_std;	/* current std ring head */
-	uint16_t		bge_jumbo;	/* current jumo ring head */
-	SLIST_HEAD(__bge_jfreehead, bge_jslot)	bge_jfree_listhead;
-	struct lwkt_serialize	bge_jslot_serializer;
-	uint32_t		bge_stat_ticks;
-	uint32_t		bge_rx_coal_ticks;
-	uint32_t		bge_tx_coal_ticks;
-	uint32_t		bge_rx_coal_bds;
-	uint32_t		bge_tx_coal_bds;
-	uint32_t		bge_rx_coal_ticks_int;
-	uint32_t		bge_tx_coal_ticks_int;
-	uint32_t		bge_rx_coal_bds_int;
-	uint32_t		bge_tx_coal_bds_int;
-	uint32_t		bge_tx_prodidx;
-	uint32_t		bge_tx_buf_ratio;
-	uint32_t		bge_mi_mode;
-	int			bge_force_defrag;
-	int			bge_mbox_reorder;
-	int			bge_if_flags;
-	int			bge_txcnt;
-	int			bge_link;
-	int			bge_link_evt;
-	struct callout		bge_stat_timer;
-
-	struct sysctl_ctx_list	bge_sysctl_ctx;
-	struct sysctl_oid	*bge_sysctl_tree;
-
-	int			bge_phyno;
-	uint32_t		bge_coal_chg;
-#define BGE_RX_COAL_TICKS_CHG		0x01
-#define BGE_TX_COAL_TICKS_CHG		0x02
-#define BGE_RX_COAL_BDS_CHG		0x04
-#define BGE_TX_COAL_BDS_CHG		0x08
-#define BGE_RX_COAL_TICKS_INT_CHG	0x10
-#define BGE_TX_COAL_TICKS_INT_CHG	0x20
-#define BGE_RX_COAL_BDS_INT_CHG		0x40
-#define BGE_TX_COAL_BDS_INT_CHG		0x80
-
-	void			(*bge_link_upd)(struct bge_softc *, uint32_t);
-	uint32_t		bge_link_chg;
-};
-
-#define BGE_NSEG_NEW		32
-#define BGE_NSEG_SPARE		5
-#define BGE_NSEG_RSVD		16
-
-/* RX coalesce ticks, unit: us */
-#define BGE_RX_COAL_TICKS_MIN	0
-#define BGE_RX_COAL_TICKS_DEF	160
-#define BGE_RX_COAL_TICKS_MAX	1023
-
-/* TX coalesce ticks, unit: us */
-#define BGE_TX_COAL_TICKS_MIN	0
-#define BGE_TX_COAL_TICKS_DEF	1023
-#define BGE_TX_COAL_TICKS_MAX	1023
-
-/* RX coalesce BDs */
-#define BGE_RX_COAL_BDS_MIN	1
-#define BGE_RX_COAL_BDS_DEF	80
-#define BGE_RX_COAL_BDS_MAX	255
-
-/* TX coalesce BDs */
-#define BGE_TX_COAL_BDS_MIN	1
-#define BGE_TX_COAL_BDS_DEF	128
-#define BGE_TX_COAL_BDS_MAX	255
+#define BGE_RX_RTN_RING_SZ(cnt)	\
+	(sizeof(struct bge_rx_bd) * (cnt))
 
 #endif	/* !_IF_BGEREG_H_ */
