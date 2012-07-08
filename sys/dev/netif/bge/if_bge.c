@@ -112,9 +112,12 @@
 #include "miibus_if.h"
 
 #define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP)
-#define BGE_MIN_FRAME		60
 
-static const struct bge_type bge_devs[] = {
+static const struct bge_type {
+	uint16_t		bge_vid;
+	uint16_t		bge_did;
+	char			*bge_name;
+} bge_devs[] = {
 	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C996,
 		"3COM 3C996 Gigabit Ethernet" },
 
@@ -2865,7 +2868,7 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod)
 					m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
 			}
 			if ((cur_rx->bge_flags & BGE_RXBDFLAG_TCP_UDP_CSUM) &&
-			    m->m_pkthdr.len >= BGE_MIN_FRAME) {
+			    m->m_pkthdr.len >= BGE_MIN_FRAMELEN) {
 				m->m_pkthdr.csum_data =
 					cur_rx->bge_tcp_udp_csum;
 				m->m_pkthdr.csum_flags |=
@@ -3212,8 +3215,8 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 		maxsegs = BGE_NSEG_NEW;
 
 	/*
-	 * Pad outbound frame to BGE_MIN_FRAME for an unusual reason.
-	 * The bge hardware will pad out Tx runts to BGE_MIN_FRAME,
+	 * Pad outbound frame to BGE_MIN_FRAMELEN for an unusual reason.
+	 * The bge hardware will pad out Tx runts to BGE_MIN_FRAMELEN,
 	 * but when such padded frames employ the bge IP/TCP checksum
 	 * offload, the hardware checksum assist gives incorrect results
 	 * (possibly from incorporating its own padding into the UDP/TCP
@@ -3221,8 +3224,8 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 	 * onboard checksum comes out correct.
 	 */
 	if ((csum_flags & BGE_TXBDFLAG_TCP_UDP_CSUM) &&
-	    m_head->m_pkthdr.len < BGE_MIN_FRAME) {
-		error = m_devpad(m_head, BGE_MIN_FRAME);
+	    m_head->m_pkthdr.len < BGE_MIN_FRAMELEN) {
+		error = m_devpad(m_head, BGE_MIN_FRAMELEN);
 		if (error)
 			goto back;
 	}

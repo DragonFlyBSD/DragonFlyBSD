@@ -1931,19 +1931,19 @@
 #define BGE_MEMWIN_END			0x0000FFFF
 
 
-#define BGE_MEMWIN_READ(sc, x, val)					\
-	do {								\
-		pci_write_config(sc->bge_dev, BGE_PCI_MEMWIN_BASEADDR,	\
-		    (0xFFFF0000 & x), 4);				\
-		val = CSR_READ_4(sc, BGE_MEMWIN_START + (x & 0xFFFF));	\
-	} while(0)
+#define BGE_MEMWIN_READ(sc, x, val)				\
+do {								\
+	pci_write_config(sc->bge_dev, BGE_PCI_MEMWIN_BASEADDR,	\
+	    (0xFFFF0000 & x), 4);				\
+	val = CSR_READ_4(sc, BGE_MEMWIN_START + (x & 0xFFFF));	\
+} while(0)
 
-#define BGE_MEMWIN_WRITE(sc, x, val)					\
-	do {								\
-		pci_write_config(sc->bge_dev, BGE_PCI_MEMWIN_BASEADDR,	\
-		    (0xFFFF0000 & x), 4);				\
-		CSR_WRITE_4(sc, BGE_MEMWIN_START + (x & 0xFFFF), val);	\
-	} while(0)
+#define BGE_MEMWIN_WRITE(sc, x, val)				\
+do {								\
+	pci_write_config(sc->bge_dev, BGE_PCI_MEMWIN_BASEADDR,	\
+	    (0xFFFF0000 & x), 4);				\
+	CSR_WRITE_4(sc, BGE_MEMWIN_START + (x & 0xFFFF), val);	\
+} while(0)
 
 /*
  * This magic number is written to the firmware mailbox at 0xb50
@@ -1959,14 +1959,14 @@ typedef struct {
 	uint32_t		bge_addr_lo;
 } bge_hostaddr;
 
-#define BGE_HOSTADDR(x, y)						\
-	do {								\
-		(x).bge_addr_lo = ((uint64_t) (y) & 0xffffffff);	\
-		(x).bge_addr_hi = ((uint64_t) (y) >> 32);		\
-	} while(0)
+#define BGE_HOSTADDR(x, y)				\
+do {							\
+	(x).bge_addr_lo = ((uint64_t)(y) & 0xffffffff);	\
+	(x).bge_addr_hi = ((uint64_t)(y) >> 32);	\
+} while(0)
 
-#define BGE_ADDR_LO(y)	((uint64_t) (y) & 0xFFFFFFFF)
-#define BGE_ADDR_HI(y)	((uint64_t) (y) >> 32)
+#define BGE_ADDR_LO(y)		((uint64_t)(y) & 0xFFFFFFFF)
+#define BGE_ADDR_HI(y)		((uint64_t)(y) >> 32)
 
 /* Ring control block structure */
 struct bge_rcb {
@@ -2083,9 +2083,6 @@ struct bge_status_block {
 #endif
 	struct bge_sts_idx	bge_idx[16];
 };
-
-#define BGE_TX_CONSIDX(x, i) x->bge_idx[i].bge_tx_considx
-#define BGE_RX_PRODIDX(x, i) x->bge_idx[i].bge_rx_prodidx
 
 #define BGE_STATFLAG_UPDATED		0x00000001
 #define BGE_STATFLAG_LINKSTATE_CHANGED	0x00000002
@@ -2322,19 +2319,19 @@ struct bge_gib {
  * boundary.
  */
 
-#define ETHER_ALIGN 2
-
-#define BGE_FRAMELEN		1518
+#define BGE_MIN_FRAMELEN	60
 #define BGE_MAX_FRAMELEN	1536
 #define BGE_JUMBO_FRAMELEN	9018
 #define BGE_JUMBO_MTU		(BGE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
-#define BGE_PAGE_SIZE		PAGE_SIZE
-#define BGE_MIN_FRAMELEN	60
+
+#define BGE_TIMEOUT		5000
+#define BGE_FIRMWARE_TIMEOUT	20000
+#define BGE_TXCONS_UNSET	0xFFFF	/* impossible value */
 
 /*
  * Other utility macros.
  */
-#define BGE_INC(x, y)	(x) = (x + 1) % y
+#define BGE_INC(x, y)		(x) = ((x) + 1) % (y)
 
 /*
  * Register access macros. The Tigon always uses memory mapped register
@@ -2423,11 +2420,10 @@ struct bge_ring_data {
 #define BGE_TX_RING_SZ		\
 	(sizeof(struct bge_tx_bd) * BGE_TX_RING_CNT)
 #define BGE_RX_RTN_RING_SZ(x)	\
-	(sizeof(struct bge_rx_bd) * x->bge_return_ring_cnt)
+	(sizeof(struct bge_rx_bd) * (x)->bge_return_ring_cnt)
 
-#define BGE_STATUS_BLK_SZ	sizeof (struct bge_status_block)
-
-#define BGE_STATS_SZ		sizeof (struct bge_stats)
+#define BGE_STATUS_BLK_SZ	sizeof(struct bge_status_block)
+#define BGE_STATS_SZ		sizeof(struct bge_stats)
 
 struct bge_rxchain {
 	struct mbuf	*bge_mbuf;
@@ -2466,16 +2462,6 @@ struct bge_chain_data {
 	/* Stick the jumbo mem management stuff here too. */
 	struct bge_jslot	bge_jslots[BGE_JSLOTS];
 };
-
-struct bge_type {
-	uint16_t		bge_vid;
-	uint16_t		bge_did;
-	char			*bge_name;
-};
-
-#define BGE_TIMEOUT		5000
-#define BGE_FIRMWARE_TIMEOUT	20000
-#define BGE_TXCONS_UNSET	0xFFFF	/* impossible value */
 
 struct bge_softc {
 	struct arpcom		arpcom;		/* interface info */
