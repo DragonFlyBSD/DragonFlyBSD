@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl_freebsd.c,v 1.18 2010/09/04 16:27:14 bz Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_osl_freebsd.c,v 1.19 2011/11/07 06:44:47 ed Exp $
  */
 
 /*
@@ -54,7 +54,7 @@ TW_INT32	TW_DEBUG_LEVEL_FOR_OSL = TW_OSL_DEBUG;
 TW_INT32	TW_OSL_DEBUG_LEVEL_FOR_CL = TW_OSL_DEBUG;
 #endif /* TW_OSL_DEBUG */
 
-MALLOC_DEFINE(TW_OSLI_MALLOC_CLASS, "twa_commands", "twa commands");
+static MALLOC_DEFINE(TW_OSLI_MALLOC_CLASS, "twa_commands", "twa commands");
 
 
 static	d_open_t		twa_open;
@@ -253,7 +253,7 @@ int twa_setup_intr(struct twa_softc *sc)
 
 	if (!(sc->intr_handle) && (sc->irq_res)) {
 		error = bus_setup_intr(sc->bus_dev, sc->irq_res,
-					0,
+					INTR_MPSAFE,
 					twa_pci_intr,
 					sc, &sc->intr_handle, NULL);
 	}
