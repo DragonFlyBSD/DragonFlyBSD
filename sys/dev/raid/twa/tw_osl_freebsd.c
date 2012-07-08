@@ -180,9 +180,6 @@ static TW_INT32	twa_probe(device_t dev);
 static TW_INT32	twa_attach(device_t dev);
 static TW_INT32	twa_detach(device_t dev);
 static TW_INT32	twa_shutdown(device_t dev);
-#if 0 /* XXX swildner */
-static TW_VOID	twa_busdma_lock(TW_VOID *lock_arg, bus_dma_lock_op_t op);
-#endif
 static TW_VOID	twa_pci_intr(TW_VOID *arg);
 static TW_VOID	twa_watchdog(TW_VOID *arg);
 int twa_setup_intr(struct twa_softc *sc);
@@ -641,10 +638,6 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 				max_sg_elements,	/* nsegments */
 				TW_CL_MAX_IO_SIZE,	/* maxsegsize */
 				BUS_DMA_ALLOCNOW,	/* flags */
-#if 0 /* XXX swildner */
-				twa_busdma_lock,	/* lockfunc */
-				sc->io_lock,		/* lockfuncarg */
-#endif
 				&sc->dma_tag		/* tag */)) {
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
@@ -669,10 +662,6 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 				max_sg_elements,	/* nsegments */
 				TW_CL_MAX_IO_SIZE,	/* maxsegsize */
 				BUS_DMA_ALLOCNOW,	/* flags */
-#if 0 /* XXX swildner */
-				twa_busdma_lock,	/* lockfunc */
-				sc->io_lock,		/* lockfuncarg */
-#endif
 				&sc->ioctl_tag		/* tag */)) {
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
@@ -914,38 +903,6 @@ twa_shutdown(device_t dev)
 	return(error);
 }
 
-
-
-#if 0 /* XXX swildner */
-/*
- * Function name:	twa_busdma_lock
- * Description:		Function to provide synchronization during busdma_swi.
- *
- * Input:		lock_arg -- lock mutex sent as argument
- *			op -- operation (lock/unlock) expected of the function
- * Output:		None
- * Return value:	None
- */
-TW_VOID
-twa_busdma_lock(TW_VOID *lock_arg, bus_dma_lock_op_t op)
-{
-	struct spinlock	*lock;
-
-	lock = (struct spinlock *)lock_arg;
-	switch (op) {
-	case BUS_DMA_LOCK:
-		spin_lock(lock);
-		break;
-
-	case BUS_DMA_UNLOCK:
-		spin_unlock(lock);
-		break;
-
-	default:
-		panic("Unknown operation 0x%x for twa_busdma_lock!", op);
-	}
-}
-#endif
 
 
 /*
