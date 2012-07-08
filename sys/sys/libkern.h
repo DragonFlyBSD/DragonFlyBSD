@@ -124,6 +124,7 @@ int	 strncasecmp (const char *, const char *, size_t);
 char	*strncpy (char * __restrict, const char * __restrict, size_t);
 char	*strsep(char **, const char *);
 int	_kfnmatch(const char *, const char *, int, int);
+void *	memcchr(const void *, int, size_t);
 
 /*
  * memset can't be an inline, it is used by gcc-4.x directly.
