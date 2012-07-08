@@ -34,6 +34,9 @@
  * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.25 2008/10/22 14:24:24 sephe Exp $
  */
 
+#ifndef _IF_BGEREG_H_
+#define _IF_BGEREG_H_
+
 /*
  * BCM570x memory map. The internal memory layout varies somewhat
  * depending on whether or not we have external SSRAM attached.
@@ -2570,3 +2573,5 @@ struct bge_softc {
 #define BGE_TX_COAL_BDS_MIN	1
 #define BGE_TX_COAL_BDS_DEF	128
 #define BGE_TX_COAL_BDS_MAX	255
+
+#endif	/* !_IF_BGEREG_H_ */
