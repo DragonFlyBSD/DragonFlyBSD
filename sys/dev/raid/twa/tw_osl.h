@@ -174,6 +174,7 @@ struct twa_softc {
 	bus_dmamap_t		ioctl_map; /* DMA map for ioctl data buffers */
 	struct resource		*irq_res;	/* interrupt resource */
 	TW_INT32		irq_res_id;	/* register resource id */
+	TW_INT32		irq_type;	/* interrupt type */
 	TW_VOID			*intr_handle;	/* interrupt handle */
 
 	struct sysctl_ctx_list	sysctl_ctxt;	/* sysctl context */

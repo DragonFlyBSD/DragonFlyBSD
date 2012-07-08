@@ -70,6 +70,9 @@ static struct dev_ops twa_ops = {
 
 static devclass_t	twa_devclass;
 
+static int		twa_msi_enable = 0;
+TUNABLE_INT("hw.twa.msi.enable", &twa_msi_enable);
+
 
 /*
  * Function name:	twa_open
@@ -296,6 +299,7 @@ twa_attach(device_t dev)
 	TW_INT32		bar_num;
 	TW_INT32		bar0_offset;
 	TW_INT32		bar_size;
+	TW_INT32		irq_flags;
 	TW_INT32		error;
 
 	tw_osli_dbg_dprintf(3, sc, "entered");
@@ -378,9 +382,11 @@ twa_attach(device_t dev)
 
 	/* Allocate and register our interrupt. */
 	sc->irq_res_id = 0;
+	sc->irq_type = pci_alloc_1intr(sc->bus_dev, twa_msi_enable,
+	    &sc->irq_res_id, &irq_flags);
 	if ((sc->irq_res = bus_alloc_resource(sc->bus_dev, SYS_RES_IRQ,
 				&(sc->irq_res_id), 0, ~0, 1,
-				RF_SHAREABLE | RF_ACTIVE)) == NULL) {
+				irq_flags)) == NULL) {
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
 			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
@@ -802,6 +808,8 @@ tw_osli_free_resources(struct twa_softc *sc)
 			tw_osli_dbg_dprintf(1, sc,
 				"release_resource(irq) returned %d", error);
 
+	if (sc->irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(sc->bus_dev);
 
 	/* Release the register window mapping. */
 	if (sc->reg_res != NULL)
