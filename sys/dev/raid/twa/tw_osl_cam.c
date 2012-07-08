@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl_cam.c,v 1.15 2010/08/30 19:15:04 delphij Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_osl_cam.c,v 1.16 2012/06/22 21:46:41 mav Exp $
  */
 
 /*
@@ -712,9 +712,9 @@ tw_osl_complete_io(struct tw_cl_req_handle *req_handle)
 			ccb->ccb_h.status = CAM_REQ_CMP;
 		else {
 			if (req_pkt->status & TW_CL_ERR_REQ_INVALID_TARGET)
-				ccb->ccb_h.status |= CAM_TID_INVALID;
+				ccb->ccb_h.status |= CAM_SEL_TIMEOUT;
 			else if (req_pkt->status & TW_CL_ERR_REQ_INVALID_LUN)
-				ccb->ccb_h.status |= CAM_LUN_INVALID;
+				ccb->ccb_h.status |= CAM_DEV_NOT_THERE;
 			else if (req_pkt->status & TW_CL_ERR_REQ_SCSI_ERROR)
 				ccb->ccb_h.status |= CAM_SCSI_STATUS_ERROR;
 			else if (req_pkt->status & TW_CL_ERR_REQ_BUS_RESET)
