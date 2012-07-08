@@ -885,10 +885,13 @@ twa_shutdown(device_t dev)
 	/* Disconnect interrupts. */
 	error = twa_teardown_intr(sc);
 
-#if 0 /* XXX swildner */
 	/* Stop watchdog task. */
+#if 0 /* XXX swildner */
 	callout_drain(&(sc->watchdog_callout[0]));
 	callout_drain(&(sc->watchdog_callout[1]));
+#else
+	callout_stop(&(sc->watchdog_callout[0]));
+	callout_stop(&(sc->watchdog_callout[1]));
 #endif
 
 	/* Disconnect from the controller. */
