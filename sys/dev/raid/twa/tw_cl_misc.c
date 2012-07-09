@@ -683,7 +683,7 @@ tw_cli_notify_ctlr_info(struct tw_cli_ctlr_context *ctlr)
 	tw_cl_create_event(ctlr->ctlr_handle, TW_CL_FALSE,
 		TW_CL_MESSAGE_SOURCE_COMMON_LAYER_ERROR,
 		0x1300, 0x3, TW_CL_SEVERITY_INFO_STRING,
-		"Controller details:",
+		"Controller details",
 		"Model %.16s, %d ports, Firmware %.16s, BIOS %.16s",
 		error[2]?(TW_INT8 *)TW_CL_NULL:ctlr_model,
 		num_ports,
