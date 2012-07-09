@@ -31,6 +31,7 @@ MAN=	accept_filter.9 \
 	callout.9 \
 	cd.9 \
 	condvar.9 \
+	config_intrhook.9 \
 	contigmalloc.9 \
 	copy.9 \
 	crit_enter.9 \
@@ -371,6 +372,8 @@ MLINKS+=condvar.9 cv_broadcast.9 \
 	condvar.9 cv_timedwait_sig.9 \
 	condvar.9 cv_wait.9 \
 	condvar.9 cv_wait_sig.9
+MLINKS+=config_intrhook.9 config_intrhook_disestablish.9 \
+	config_intrhook.9 config_intrhook_establish.9
 MLINKS+=contigmalloc.9 contigfree.9
 MLINKS+=copy.9 copyin.9 \
 	copy.9 copyinstr.9 \
