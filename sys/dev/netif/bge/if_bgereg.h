@@ -404,10 +404,6 @@
 #define BGE_PCICLOCKCTL_BIST_ENABLE	0x00010000
 
 
-#ifndef PCIM_CMD_MWIEN
-#define PCIM_CMD_MWIEN			0x0010
-#endif
-
 /*
  * High priority mailbox registers
  * Each mailbox is 64-bits wide, though we only use the
@@ -1751,6 +1747,11 @@
 #define BGE_MSIMODE_PCI_PERR_ATTN	0x00000010
 #define BGE_MSIMODE_MSI_FIFOUFLOW_ATTN	0x00000020
 #define BGE_MSIMODE_MSI_FIFOOFLOW_ATTN	0x00000040
+/*
+ * Duplicate MSI_FIFOUFLOW_ATTN, only applies to BCM57785 and BCM5718
+ * families.  See 5718-PG105-R.
+ */
+#define BGE_MSIMODE_ONESHOT_DISABLE	0x00000020
 
 /* MSI status register */
 #define BGE_MSISTAT_PCI_TGT_ABRT_ATTN	0x00000004
@@ -1932,6 +1933,16 @@
 
 #define BGE_MEMWIN_START		0x00008000
 #define BGE_MEMWIN_END			0x0000FFFF
+
+/*
+ * PCI-E transaction configure register.
+ * Applies to BCM5906 and BCM5755+.  See 5722-PG101-R.
+ *
+ * Earlier PCI-E chips, e.g. 5750, call it TLP workaround,
+ * and there are no interesting bits in it.
+ */
+#define BGE_PCIE_TRANSACT		0x7c04
+#define BGE_PCIE_TRANSACT_ONESHOT_MSI	0x20000000
 
 #define PCI_SETBIT(dev, reg, x, s)	\
 	pci_write_config(dev, reg, (pci_read_config(dev, reg, s) | x), s)

@@ -198,15 +198,19 @@ struct bge_softc {
 	bus_space_tag_t		bge_btag;
 	void			*bge_intrhand;
 	struct resource		*bge_irq;
+	int			bge_irq_type;
+	int			bge_irq_rid;
 	struct resource		*bge_res;
 	struct ifmedia		bge_ifmedia;	/* TBI media info */
 	int			bge_pcixcap;
 	int			bge_pciecap;
+	int			bge_msicap;
 	uint32_t		bge_pci_miscctl;
 	uint32_t		bge_status_tag;
 	uint32_t		bge_flags;	/* BGE_FLAG_ */
 #define BGE_FLAG_TBI		0x00000001
 #define BGE_FLAG_JUMBO		0x00000002
+#define BGE_FLAG_ONESHOT_MSI	0x00000004
 #define BGE_FLAG_MII_SERDES	0x00000010
 #define	BGE_FLAG_CPMU		0x00000020
 #define BGE_FLAG_PCIX		0x00000200

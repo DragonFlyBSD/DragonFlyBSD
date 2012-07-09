@@ -304,8 +304,11 @@ static int	bge_encap(struct bge_softc *, struct mbuf **, uint32_t *);
 #ifdef DEVICE_POLLING
 static void	bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
 #endif
-static void	bge_intr(void *);
-static void	bge_intr_status_tag(void *);
+static void	bge_intr_crippled(void *);
+static void	bge_intr_legacy(void *);
+static void	bge_msi(void *);
+static void	bge_msi_oneshot(void *);
+static void	bge_intr(struct bge_softc *);
 static void	bge_enable_intr(struct bge_softc *);
 static void	bge_disable_intr(struct bge_softc *);
 static void	bge_start(struct ifnet *);
@@ -327,6 +330,7 @@ static int	bge_read_eeprom(struct bge_softc *, caddr_t, uint32_t, size_t);
 
 static void	bge_setmulti(struct bge_softc *);
 static void	bge_setpromisc(struct bge_softc *);
+static void	bge_enable_msi(struct bge_softc *sc);
 
 static int	bge_alloc_jumbo_mem(struct bge_softc *);
 static void	bge_free_jumbo_mem(struct bge_softc *);
@@ -399,6 +403,9 @@ static int	bge_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *,
  */
 static int	bge_fake_autoneg = 0;
 TUNABLE_INT("hw.bge.fake_autoneg", &bge_fake_autoneg);
+
+static int	bge_msi_enable = 1;
+TUNABLE_INT("hw.bge.msi.enable", &bge_msi_enable);
 
 #if !defined(KTR_IF_BGE)
 #define KTR_IF_BGE	KTR_ALL
@@ -1358,9 +1365,11 @@ bge_chipinit(struct bge_softc *sc)
 
 	/*
 	 * Disable memory write invalidate.  Apparently it is not supported
-	 * properly by these devices.
+	 * properly by these devices.  Also ensure that INTx isn't disabled,
+	 * as these chips need it even when using MSI.
 	 */
-	PCI_CLRBIT(sc->bge_dev, BGE_PCI_CMD, PCIM_CMD_MWIEN, 4);
+	PCI_CLRBIT(sc->bge_dev, BGE_PCI_CMD,
+	    (PCIM_CMD_MWRICEN | PCIM_CMD_INTxDIS), 4);
 
 	/* Set the timer prescaler (always 66Mhz) */
 	CSR_WRITE_4(sc, BGE_MISC_CFG, 65 << 1/*BGE_32BITTIME_66MHZ*/);
@@ -1968,6 +1977,8 @@ bge_attach(device_t dev)
 	uint16_t product, vendor;
 	driver_intr_t *intr_func;
 	uintptr_t mii_priv = 0;
+	u_int intr_flags;
+	int msi_enable;
 
 	sc = device_get_softc(dev);
 	sc->bge_dev = dev;
@@ -2202,15 +2213,50 @@ bge_attach(device_t dev)
 		}
 	}
 
-	/* Allocate interrupt */
-	rid = 0;
-	sc->bge_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
-	    RF_SHAREABLE | RF_ACTIVE);
+	/*
+	 * Allocate interrupt
+	 */
+	msi_enable = bge_msi_enable;
+	if ((sc->bge_flags & BGE_FLAG_STATUS_TAG) == 0) {
+		/* If "tagged status" is disabled, don't enable MSI */
+		msi_enable = 0;
+	} else if (msi_enable) {
+		msi_enable = 0; /* Disable by default */
+		if (BGE_IS_575X_PLUS(sc)) {
+			msi_enable = 1;
+			/* XXX we filter all 5714 chips */
+			if (sc->bge_asicrev == BGE_ASICREV_BCM5714 ||
+			    (sc->bge_asicrev == BGE_ASICREV_BCM5750 &&
+			     (sc->bge_chiprev == BGE_CHIPREV_5750_AX ||
+			      sc->bge_chiprev == BGE_CHIPREV_5750_BX)))
+				msi_enable = 0;
+			else if (BGE_IS_5755_PLUS(sc) ||
+			    sc->bge_asicrev == BGE_ASICREV_BCM5906)
+				sc->bge_flags |= BGE_FLAG_ONESHOT_MSI;
+		}
+	}
+	if (msi_enable) {
+		if (pci_find_extcap(dev, PCIY_MSI, &sc->bge_msicap)) {
+			device_printf(dev, "no MSI capability\n");
+			msi_enable = 0;
+		}
+	}
+
+	sc->bge_irq_type = pci_alloc_1intr(dev, msi_enable, &sc->bge_irq_rid,
+	    &intr_flags);
+
+	sc->bge_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->bge_irq_rid,
+	    intr_flags);
 	if (sc->bge_irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;
 		goto fail;
 	}
+
+	if (sc->bge_irq_type == PCI_INTR_TYPE_MSI)
+		bge_enable_msi(sc);
+	else
+		sc->bge_flags &= ~BGE_FLAG_ONESHOT_MSI;
 
 	/* Initialize if_name earlier, so if_printf could be used */
 	ifp = &sc->arpcom.ac_if;
@@ -2473,11 +2519,19 @@ bge_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, ether_addr, NULL);
 
-	if (sc->bge_flags & BGE_FLAG_STATUS_TAG)
-		intr_func = bge_intr_status_tag;
-	else
-		intr_func = bge_intr;
-
+	if (sc->bge_irq_type == PCI_INTR_TYPE_MSI) {
+		if (sc->bge_flags & BGE_FLAG_ONESHOT_MSI) {
+			intr_func = bge_msi_oneshot;
+			if (bootverbose)
+				device_printf(dev, "oneshot MSI\n");
+		} else {
+			intr_func = bge_msi;
+		}
+	} else if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
+		intr_func = bge_intr_legacy;
+	} else {
+		intr_func = bge_intr_crippled;
+	}
 	error = bus_setup_intr(dev, sc->bge_irq, INTR_MPSAFE, intr_func, sc,
 	    &sc->bge_intrhand, ifp->if_serializer);
 	if (error) {
@@ -2518,12 +2572,17 @@ bge_detach(device_t dev)
 		device_delete_child(dev, sc->bge_miibus);
 	bus_generic_detach(dev);
 
-        if (sc->bge_irq != NULL)
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->bge_irq);
+	if (sc->bge_irq != NULL) {
+		bus_release_resource(dev, SYS_RES_IRQ, sc->bge_irq_rid,
+		    sc->bge_irq);
+	}
+	if (sc->bge_irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(dev);
 
-        if (sc->bge_res != NULL)
+	if (sc->bge_res != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY,
 		    BGE_PCI_BAR0, sc->bge_res);
+	}
 
 	if (sc->bge_sysctl_tree != NULL)
 		sysctl_ctx_free(&sc->bge_sysctl_ctx);
@@ -2673,10 +2732,21 @@ bge_reset(struct bge_softc *sc)
 		    devctl, 2);
 	}
 
-	/* Enable memory arbiter. */
+	/*
+	 * Enable memory arbiter and re-enable MSI if necessary.
+	 */
 	if (BGE_IS_5714_FAMILY(sc)) {
 		uint32_t val;
 
+		if (sc->bge_irq_type == PCI_INTR_TYPE_MSI) {
+			/*
+			 * Resetting BCM5714 family will clear MSI
+			 * enable bit; restore it after resetting.
+			 */
+			PCI_SETBIT(sc->bge_dev, sc->bge_msicap + PCIR_MSI_CTRL,
+			    PCIM_MSICTRL_MSI_ENABLE, 2);
+			BGE_SETBIT(sc, BGE_MSI_MODE, BGE_MSIMODE_ENABLE);
+		}
 		val = CSR_READ_4(sc, BGE_MARB_MODE);
 		CSR_WRITE_4(sc, BGE_MARB_MODE, BGE_MARBMODE_ENABLE | val);
 	} else {
@@ -2987,7 +3057,7 @@ bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 #endif
 
 static void
-bge_intr(void *xsc)
+bge_intr_crippled(void *xsc)
 {
 	struct bge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -3039,13 +3109,10 @@ bge_intr(void *xsc)
 }
 
 static void
-bge_intr_status_tag(void *xsc)
+bge_intr_legacy(void *xsc)
 {
 	struct bge_softc *sc = xsc;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
-	uint16_t rx_prod, tx_cons;
-	uint32_t status;
 
 	if (sc->bge_status_tag == sblk->bge_status_tag) {
 		uint32_t val;
@@ -3062,6 +3129,33 @@ bge_intr_status_tag(void *xsc)
 	 * certain chips (at least on BCM5750 AX/BX).
 	 */
 	bge_writembx(sc, BGE_MBX_IRQ0_LO, 1);
+
+	bge_intr(sc);
+}
+
+static void
+bge_msi(void *xsc)
+{
+	struct bge_softc *sc = xsc;
+
+	/* Disable interrupt first */
+	bge_writembx(sc, BGE_MBX_IRQ0_LO, 1);
+	bge_intr(sc);
+}
+
+static void
+bge_msi_oneshot(void *xsc)
+{
+	bge_intr(xsc);
+}
+
+static void
+bge_intr(struct bge_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
+	uint16_t rx_prod, tx_cons;
+	uint32_t status;
 
 	sc->bge_status_tag = sblk->bge_status_tag;
 	/*
@@ -3490,6 +3584,28 @@ bge_init(void *xsc)
 	 * frames until the MBUF High Watermark is reached.
 	 */
 	CSR_WRITE_4(sc, BGE_MAX_RX_FRAME_LOWAT, 2);
+
+	if (sc->bge_irq_type == PCI_INTR_TYPE_MSI) {
+		if (bootverbose) {
+			if_printf(ifp, "MSI_MODE: %#x\n",
+			    CSR_READ_4(sc, BGE_MSI_MODE));
+		}
+
+		/*
+		 * XXX
+		 * Linux driver turns it on for all chips supporting MSI?!
+		 */
+		if (sc->bge_flags & BGE_FLAG_ONESHOT_MSI) {
+			/*
+			 * XXX
+			 * According to 5722-PG101-R,
+			 * BGE_PCIE_TRANSACT_ONESHOT_MSI applies only to
+			 * BCM5906.
+			 */
+			BGE_SETBIT(sc, BGE_PCIE_TRANSACT,
+			    BGE_PCIE_TRANSACT_ONESHOT_MSI);
+		}
+	}
 
 	/* Tell firmware we're alive. */
 	BGE_SETBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
@@ -4513,6 +4629,10 @@ bge_enable_intr(struct bge_softc *sc)
 	 * Enable interrupt.
 	 */
 	bge_writembx(sc, BGE_MBX_IRQ0_LO, sc->bge_status_tag << 24);
+	if (sc->bge_flags & BGE_FLAG_ONESHOT_MSI) {
+		/* XXX Linux driver */
+		bge_writembx(sc, BGE_MBX_IRQ0_LO, sc->bge_status_tag << 24);
+	}
 
 	/*
 	 * Unmask the interrupt when we stop polling.
@@ -4664,4 +4784,24 @@ bge_link_poll(struct bge_softc *sc)
 		sc->bge_link_evt = 0;
 		sc->bge_link_upd(sc, status);
 	}
+}
+
+static void
+bge_enable_msi(struct bge_softc *sc)
+{
+	uint32_t msi_mode;
+
+	msi_mode = CSR_READ_4(sc, BGE_MSI_MODE);
+	msi_mode |= BGE_MSIMODE_ENABLE;
+	if (sc->bge_flags & BGE_FLAG_ONESHOT_MSI) {
+		/*
+		 * According to all of the datasheets that are publicly
+		 * available, bit 5 of the MSI_MODE is defined to be
+		 * "MSI FIFO Underrun Attn" for BCM5755+ and BCM5906, on
+		 * which "oneshot MSI" is enabled.  However, it is always
+		 * safe to clear it here.
+		 */
+		msi_mode &= ~BGE_MSIMODE_ONESHOT_DISABLE;
+	}
+	CSR_WRITE_4(sc, BGE_MSI_MODE, msi_mode);
 }
