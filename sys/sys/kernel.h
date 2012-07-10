@@ -40,7 +40,6 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.32 2008/08/25 17:11:23 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -169,7 +168,6 @@ enum sysinit_sub_id {
 	SI_SUB_P1003_1B		= 0x6E00000,	/* P1003.1B realtime */
 	SI_SUB_PSEUDO		= 0x7000000,	/* pseudo devices*/
 	SI_SUB_EXEC		= 0x7400000,	/* execve() handlers */
-	SI_SUB_PROTO_BEGIN	= 0x8000000,	/* network protocol pre-init */
 	SI_SUB_PROTO_IF		= 0x8400000,	/* interfaces */
 	SI_SUB_PROTO_DOMAIN	= 0x8800000,	/* domains (address families?)*/
 	SI_SUB_PROTO_IFATTACHDOMAIN	
