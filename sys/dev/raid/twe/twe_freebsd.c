@@ -363,6 +363,7 @@ twe_attach(device_t dev)
      */
     sc->twe_ich.ich_func = twe_intrhook;
     sc->twe_ich.ich_arg = sc;
+    sc->twe_ich.ich_desc = "twe";
     if (config_intrhook_establish(&sc->twe_ich) != 0) {
 	twe_printf(sc, "can't establish configuration hook\n");
 	twe_free(sc);

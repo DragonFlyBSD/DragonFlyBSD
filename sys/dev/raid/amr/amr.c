@@ -287,6 +287,7 @@ amr_attach(struct amr_softc *sc)
     bzero(&sc->amr_ich, sizeof(struct intr_config_hook));
     sc->amr_ich.ich_func = amr_startup;
     sc->amr_ich.ich_arg = sc;
+    sc->amr_ich.ich_desc = "amr";
     if (config_intrhook_establish(&sc->amr_ich) != 0) {
 	device_printf(sc->amr_dev, "can't establish configuration hook\n");
 	return(ENOMEM);
