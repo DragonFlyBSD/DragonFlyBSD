@@ -39,6 +39,8 @@ pcap-bt-linux.c
 pcap-bt-linux.h
 pcap-can-linux.c
 pcap-can-linux.h
+pcap-canusb-linux.c
+pcap-canusb-linux.h
 pcap-config.1
 pcap-config.in
 pcap-dag.c
