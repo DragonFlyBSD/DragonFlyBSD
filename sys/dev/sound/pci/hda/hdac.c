@@ -1151,54 +1151,27 @@ hdac_attach(device_t dev)
 		);
 	}
 
-#if defined(__i386__) || defined(__amd64__)
-	sc->flags |= HDAC_F_DMA_NOCACHE;
+	/*
+	 * Try to enable PCIe snoop to avoid messing around with
+	 * uncacheable DMA attribute.
+	 */
+	if (pci_is_pcie(dev)) {
+		int pcie_cap = pci_get_pciecap_ptr(dev);
+		uint16_t dev_ctl;
 
-	if (resource_int_value(device_get_name(dev),
-	    device_get_unit(dev), "snoop", &i) == 0 && i != 0) {
-#else
-	sc->flags &= ~HDAC_F_DMA_NOCACHE;
-#endif
-		/*
-		 * Try to enable PCIe snoop to avoid messing around with
-		 * uncacheable DMA attribute. Since PCIe snoop register
-		 * config is pretty much vendor specific, there are no
-		 * general solutions on how to enable it, forcing us (even
-		 * Microsoft) to enable uncacheable or write combined DMA
-		 * by default.
-		 *
-		 * http://msdn2.microsoft.com/en-us/library/ms790324.aspx
-		 */
-		for (i = 0; i < nitems(hdac_pcie_snoop); i++) {
-			if (hdac_pcie_snoop[i].vendor != vendor)
-				continue;
-			sc->flags &= ~HDAC_F_DMA_NOCACHE;
-			if (hdac_pcie_snoop[i].reg == 0x00)
-				break;
-			v = pci_read_config(dev, hdac_pcie_snoop[i].reg, 1);
-			if ((v & hdac_pcie_snoop[i].enable) ==
-			    hdac_pcie_snoop[i].enable)
-				break;
-			v &= hdac_pcie_snoop[i].mask;
-			v |= hdac_pcie_snoop[i].enable;
-			pci_write_config(dev, hdac_pcie_snoop[i].reg, v, 1);
-			v = pci_read_config(dev, hdac_pcie_snoop[i].reg, 1);
-			if ((v & hdac_pcie_snoop[i].enable) !=
-			    hdac_pcie_snoop[i].enable) {
-				HDA_BOOTVERBOSE(
-					device_printf(dev,
-					    "WARNING: Failed to enable PCIe "
-					    "snoop!\n");
-				);
-#if defined(__i386__) || defined(__amd64__)
-				sc->flags |= HDAC_F_DMA_NOCACHE;
-#endif
-			}
-			break;
+		dev_ctl = pci_read_config(dev,
+		    pcie_cap + PCIER_DEVCTRL, 2);
+		device_printf(dev, "link ctrl %#x\n", dev_ctl);
+
+		if (dev_ctl & PCIEM_DEVCTL_NOSNOOP) {
+			dev_ctl &= ~PCIEM_DEVCTL_NOSNOOP;
+			pci_write_config(dev,
+			    pcie_cap + PCIER_DEVCTRL, dev_ctl, 2);
+
+			device_printf(dev, "disable nosnoop\n");
 		}
-#if defined(__i386__) || defined(__amd64__)
+		sc->flags &= ~HDAC_F_DMA_NOCACHE;
 	}
-#endif
 
 	HDA_BOOTHVERBOSE(
 		device_printf(dev, "DMA Coherency: %s / vendor=0x%04x\n",
