@@ -1,7 +1,6 @@
-# $DragonFly: src/usr.bin/cpio/Makefile,v 1.2 2008/07/26 16:25:31 pavalos Exp $
-
 PROG=	bsdcpio
-SRCS=	cmdline.c cpio.c err.c line_reader.c matching.c pathmatch.c
+SRCS=	cmdline.c cpio.c
+SRCS+=	err.c line_reader.c
 DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBZ}
 LDADD=	-larchive -lbz2 -llzma -lmd -lz
 
