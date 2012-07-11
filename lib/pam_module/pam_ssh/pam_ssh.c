@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_ssh/pam_ssh.c,v 1.49 2011/11/20 15:18:49 des Exp $
+ * $FreeBSD: src/lib/libpam/modules/pam_ssh/pam_ssh.c,v 1.50 2012/05/26 17:03:45 des Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ pam_ssh_load_key(const char *dir, const char *kfn, const char *passphrase,
 	 * with an empty passphrase, and if the key is not encrypted,
 	 * accept only an empty passphrase.
 	 */
-	key = key_load_private(fn, NULL, &comment);
+	key = key_load_private(fn, "", &comment);
 	if (key != NULL && !(*passphrase == '\0' && nullok)) {
 		key_free(key);
 		return (NULL);
