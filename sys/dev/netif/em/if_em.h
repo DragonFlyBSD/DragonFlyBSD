@@ -247,6 +247,8 @@ struct em_dma_alloc {
 struct adapter {
 	struct arpcom		arpcom;
 	struct e1000_hw		hw;
+	int			flags;
+#define EM_FLAG_SHARED_INTR	0x1
 
 	/* DragonFly operating-system-specific structures. */
 	struct e1000_osdep	osdep;

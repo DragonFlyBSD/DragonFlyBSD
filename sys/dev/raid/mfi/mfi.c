@@ -697,6 +697,7 @@ mfi_attach(struct mfi_softc *sc)
 	/* Register a config hook to probe the bus for arrays */
 	sc->mfi_ich.ich_func = mfi_startup;
 	sc->mfi_ich.ich_arg = sc;
+	sc->mfi_ich.ich_desc = "mfi";
 	if (config_intrhook_establish(&sc->mfi_ich) != 0) {
 		device_printf(sc->mfi_dev, "Cannot establish configuration "
 		    "hook\n");

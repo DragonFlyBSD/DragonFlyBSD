@@ -190,6 +190,7 @@ isp_attach(ispsoftc_t *isp)
 
 	isp->isp_osinfo.ehook.ich_func = isp_intr_enable;
 	isp->isp_osinfo.ehook.ich_arg = isp;
+	isp->isp_osinfo.ehook.ich_desc = "isp";
 	/*
 	 * Haha. Set this first, because if we're loaded as a module isp_intr_enable
 	 * will be called right awawy, which will clear isp_osinfo.ehook_active,

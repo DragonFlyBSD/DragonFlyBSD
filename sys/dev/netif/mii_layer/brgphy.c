@@ -54,10 +54,7 @@
 #include "mii.h"
 #include "miivar.h"
 #include "miidevs.h"
-
 #include "brgphyreg.h"
-#include <dev/netif/bge/if_bgereg.h>
-#include <dev/netif/bce/if_bcereg.h>
 
 #include "miibus_if.h"
 
@@ -490,8 +487,6 @@ brgphy_loop(struct mii_softc *sc)
 static void
 brgphy_reset(struct mii_softc *sc)
 {
-	struct ifnet *ifp;
-
 	mii_phy_reset(sc);
 
 	switch (sc->mii_model) {
@@ -513,64 +508,50 @@ brgphy_reset(struct mii_softc *sc)
 		break;
 	}
 
-	ifp = sc->mii_pdata->mii_ifp;
-	if (strncmp(ifp->if_xname, "bge", 3) == 0) {
-		struct bge_softc *bge_sc = ifp->if_softc;
+	if (sc->mii_privtag != MII_PRIVTAG_BRGPHY)
+		return;
 
-		if (bge_sc->bge_phy_flags & BGE_PHY_ADC_BUG)
-			brgphy_adc_bug(sc);
-		if (bge_sc->bge_phy_flags & BGE_PHY_5704_A0_BUG)
-			brgphy_5704_a0_bug(sc);
-		if (bge_sc->bge_phy_flags & BGE_PHY_BER_BUG) {
-			brgphy_ber_bug(sc);
-		} else if (bge_sc->bge_phy_flags & BGE_PHY_JITTER_BUG) {
-			PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x0c00);
-			PHY_WRITE(sc, BRGPHY_MII_DSP_ADDR_REG, 0x000a);
+	if (sc->mii_priv & BRGPHY_FLAG_ADC_BUG)
+		brgphy_adc_bug(sc);
+	if (sc->mii_priv & BRGPHY_FLAG_5704_A0)
+		brgphy_5704_a0_bug(sc);
+	if (sc->mii_priv & BRGPHY_FLAG_BER_BUG) {
+		brgphy_ber_bug(sc);
+	} else if (sc->mii_priv & BRGPHY_FLAG_JITTER_BUG) {
+		PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x0c00);
+		PHY_WRITE(sc, BRGPHY_MII_DSP_ADDR_REG, 0x000a);
 
-			if (bge_sc->bge_phy_flags & BGE_PHY_ADJUST_TRIM) {
-				PHY_WRITE(sc, BRGPHY_MII_DSP_RW_PORT, 0x110b);
-				PHY_WRITE(sc, BRGPHY_TEST1,
-				    BRGPHY_TEST1_TRIM_EN | 0x4);
-			} else {
-				PHY_WRITE(sc, BRGPHY_MII_DSP_RW_PORT, 0x010b);
-			}
-
-			PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x0400);
-		}
-		if (bge_sc->bge_phy_flags & BGE_PHY_CRC_BUG)
-			brgphy_crc_bug(sc);
-
-		/* Set Jumbo frame settings in the PHY. */
-		brgphy_jumbo_settings(sc, ifp->if_mtu);
-
-		/* Adjust output voltage */
-		if (bge_sc->bge_asicrev == BGE_ASICREV_BCM5906)
-			PHY_WRITE(sc, BRGPHY_MII_EPHY_PTEST, 0x12);
-
-		/* Enable Ethernet@Wirespeed */
-		if (bge_sc->bge_phy_flags & BGE_PHY_WIRESPEED)
-			brgphy_eth_wirespeed(sc);
-
-		/* Enable Link LED on Dell boxes */
-		if (bge_sc->bge_phy_flags & BGE_PHY_NO_3LED) {
-			PHY_WRITE(sc, BRGPHY_MII_PHY_EXTCTL, 
-			PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL)
-				& ~BRGPHY_PHY_EXTCTL_3_LED);
-		}
-	} else if (strncmp(ifp->if_xname, "bce", 3) == 0) {
-		struct bce_softc *bce_sc = ifp->if_softc;
-
-		if (BCE_CHIP_NUM(bce_sc) == BCE_CHIP_NUM_5709) {
-			if (BCE_CHIP_REV(bce_sc) == BCE_CHIP_REV_Ax ||
-			    BCE_CHIP_REV(bce_sc) == BCE_CHIP_REV_Bx)
-				brgphy_disable_early_dac(sc);
-			brgphy_jumbo_settings(sc, ifp->if_mtu);
-			brgphy_eth_wirespeed(sc);
+		if (sc->mii_priv & BRGPHY_FLAG_ADJUST_TRIM) {
+			PHY_WRITE(sc, BRGPHY_MII_DSP_RW_PORT, 0x110b);
+			PHY_WRITE(sc, BRGPHY_TEST1,
+			    BRGPHY_TEST1_TRIM_EN | 0x4);
 		} else {
-			brgphy_ber_bug(sc);
-			brgphy_jumbo_settings(sc, ifp->if_mtu);
-			brgphy_eth_wirespeed(sc);
+			PHY_WRITE(sc, BRGPHY_MII_DSP_RW_PORT, 0x010b);
 		}
+
+		PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x0400);
+	}
+	if (sc->mii_priv & BRGPHY_FLAG_CRC_BUG)
+		brgphy_crc_bug(sc);
+	if (sc->mii_priv & BRGPHY_FLAG_NO_EARLYDAC)
+		brgphy_disable_early_dac(sc);
+
+	/* Set Jumbo frame settings in the PHY. */
+	brgphy_jumbo_settings(sc, sc->mii_pdata->mii_ifp->if_mtu);
+
+	/* Adjust output voltage */
+	if (sc->mii_priv & BRGPHY_FLAG_5906)
+		PHY_WRITE(sc, BRGPHY_MII_EPHY_PTEST, 0x12);
+
+	/* Enable Ethernet@Wirespeed */
+	if (sc->mii_priv & BRGPHY_FLAG_WIRESPEED)
+		brgphy_eth_wirespeed(sc);
+
+	/* Enable Link LED on Dell boxes */
+	if (sc->mii_priv & BRGPHY_FLAG_NO_3LED) {
+		PHY_WRITE(sc, BRGPHY_MII_PHY_EXTCTL,
+		    PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL) &
+		    ~BRGPHY_PHY_EXTCTL_3_LED);
 	}
 }
 

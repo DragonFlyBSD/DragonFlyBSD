@@ -235,6 +235,8 @@ struct emx_rxdata {
 struct emx_softc {
 	struct arpcom		arpcom;
 	struct e1000_hw		hw;
+	int			flags;
+#define EMX_FLAG_SHARED_INTR	0x1
 
 	/* DragonFly operating-system-specific structures. */
 	struct e1000_osdep	osdep;

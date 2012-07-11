@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl.h,v 1.9 2010/08/30 19:15:04 delphij Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_osl.h,v 1.10 2011/12/15 06:29:13 kevlo Exp $
  */
 
 /*
@@ -153,7 +153,7 @@ struct twa_softc {
 	struct lock		sim_lock_handle;/* sim lock shared with cam */
 	struct lock		*sim_lock;/* ptr to sim lock */
 
-	struct callout		watchdog_callout[2]; /* For command timout */
+	struct callout		watchdog_callout[2]; /* For command timeout */
 	TW_UINT32		watchdog_index;
 
 #ifdef TW_OSL_DEBUG
@@ -174,6 +174,7 @@ struct twa_softc {
 	bus_dmamap_t		ioctl_map; /* DMA map for ioctl data buffers */
 	struct resource		*irq_res;	/* interrupt resource */
 	TW_INT32		irq_res_id;	/* register resource id */
+	TW_INT32		irq_type;	/* interrupt type */
 	TW_VOID			*intr_handle;	/* interrupt handle */
 
 	struct sysctl_ctx_list	sysctl_ctxt;	/* sysctl context */

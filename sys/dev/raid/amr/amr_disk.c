@@ -95,9 +95,6 @@ static struct dev_ops amrd_ops = {
 };
 
 static devclass_t	amrd_devclass;
-#ifdef FREEBSD_4
-int			amr_disks_registered = 0;
-#endif
 
 static device_method_t amrd_methods[] = {
     DEVMETHOD(device_probe,	amrd_probe),
@@ -288,12 +285,8 @@ amrd_detach(device_t dev)
 #endif
 
     devstat_remove_entry(&sc->amrd_stats);
-#ifdef FREEBSD_4
-    if (--amr_disks_registered == 0)
-	cdevsw_remove(&amrddisk_cdevsw);
-#else
     disk_destroy(&sc->amrd_disk);
-#endif
+
     return(0);
 }
 

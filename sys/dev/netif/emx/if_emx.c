@@ -64,13 +64,6 @@
  * SUCH DAMAGE.
  */
 
-/*
- * NOTE:
- *
- * MSI-X MUST NOT be enabled on 82574:
- *   <<82574 specification update>> errata #15
- */
-
 #include "opt_ifpoll.h"
 #include "opt_rss.h"
 #include "opt_emx.h"
@@ -201,6 +194,8 @@ static void	emx_serialize_assert(struct ifnet *, enum ifnet_serialize,
 #endif
 
 static void	emx_intr(void *);
+static void	emx_intr_mask(void *);
+static void	emx_intr_body(struct emx_softc *, boolean_t);
 static void	emx_rxeof(struct emx_softc *, int, int);
 static void	emx_txeof(struct emx_softc *);
 static void	emx_tx_collect(struct emx_softc *);
@@ -416,6 +411,7 @@ emx_attach(device_t dev)
 	int error = 0, i, throttle, msi_enable;
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
+	driver_intr_t *intr_func;
 
 	lwkt_serialize_init(&sc->main_serialize);
 	lwkt_serialize_init(&sc->tx_serialize);
@@ -466,8 +462,11 @@ emx_attach(device_t dev)
 	sc->hw.hw_addr = (uint8_t *)&sc->osdep.mem_bus_space_handle;
 
 	/*
+	 * Don't enable MSI-X on 82574, see:
+	 * 82574 specification update errata #15
+	 *
 	 * Don't enable MSI on 82571/82572, see:
-	 * 82571EB/82572EI specification update
+	 * 82571/82572 specification update errata #63
 	 */
 	msi_enable = emx_msi_enable;
 	if (msi_enable &&
@@ -480,6 +479,21 @@ emx_attach(device_t dev)
 	 */
 	sc->intr_type = pci_alloc_1intr(dev, msi_enable,
 	    &sc->intr_rid, &intr_flags);
+
+	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
+		int unshared;
+
+		unshared = device_getenv_int(dev, "irq.unshared", 0);
+		if (!unshared) {
+			sc->flags |= EMX_FLAG_SHARED_INTR;
+			if (bootverbose)
+				device_printf(dev, "IRQ shared\n");
+		} else {
+			intr_flags &= ~RF_SHAREABLE;
+			if (bootverbose)
+				device_printf(dev, "IRQ unshared\n");
+		}
+	}
 
 	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->intr_rid,
 	    intr_flags);
@@ -703,7 +717,22 @@ emx_attach(device_t dev)
 	if (sc->has_manage && !sc->has_amt)
 		emx_get_hw_control(sc);
 
-	error = bus_setup_intr(dev, sc->intr_res, INTR_MPSAFE, emx_intr, sc,
+	/*
+	 * Missing Interrupt Following ICR read:
+	 *
+	 * 82571/82572 specification update errata #76
+	 * 82573 specification update errata #31
+	 * 82574 specification update errata #12
+	 */
+	intr_func = emx_intr;
+	if ((sc->flags & EMX_FLAG_SHARED_INTR) &&
+	    (sc->hw.mac.type == e1000_82571 ||
+	     sc->hw.mac.type == e1000_82572 ||
+	     sc->hw.mac.type == e1000_82573 ||
+	     sc->hw.mac.type == e1000_82574))
+		intr_func = emx_intr_mask;
+
+	error = bus_setup_intr(dev, sc->intr_res, INTR_MPSAFE, intr_func, sc,
 			       &sc->intr_tag, &sc->main_serialize);
 	if (error) {
 		device_printf(dev, "Failed to register interrupt handler");
@@ -1190,7 +1219,12 @@ emx_init(void *xsc)
 static void
 emx_intr(void *xsc)
 {
-	struct emx_softc *sc = xsc;
+	emx_intr_body(xsc, TRUE);
+}
+
+static void
+emx_intr_body(struct emx_softc *sc, boolean_t chk_asserted)
+{
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t reg_icr;
 
@@ -1199,7 +1233,7 @@ emx_intr(void *xsc)
 
 	reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 
-	if ((reg_icr & E1000_ICR_INT_ASSERTED) == 0) {
+	if (chk_asserted && (reg_icr & E1000_ICR_INT_ASSERTED) == 0) {
 		logif(intr_end);
 		return;
 	}
@@ -1257,6 +1291,21 @@ emx_intr(void *xsc)
 		sc->rx_overruns++;
 
 	logif(intr_end);
+}
+
+static void
+emx_intr_mask(void *xsc)
+{
+	struct emx_softc *sc = xsc;
+
+	E1000_WRITE_REG(&sc->hw, E1000_IMC, 0xffffffff);
+	/*
+	 * NOTE:
+	 * ICR.INT_ASSERTED bit will never be set if IMS is 0,
+	 * so don't check it.
+	 */
+	emx_intr_body(sc, FALSE);
+	E1000_WRITE_REG(&sc->hw, E1000_IMS, IMS_ENABLE_MASK);
 }
 
 static void
@@ -3756,19 +3805,19 @@ emx_disable_aspm(struct emx_softc *sc)
 	case e1000_82573:
 		/*
 		 * 82573 specification update
-		 * #8 disable L0s
-		 * #41 disable L1
+		 * errata #8 disable L0s
+		 * errata #41 disable L1
 		 *
 		 * 82571/82572 specification update
-		 # #13 disable L1
-		 * #68 disable L0s
+		 # errata #13 disable L1
+		 * errata #68 disable L0s
 		 */
 		disable = PCIEM_LNKCTL_ASPM_L0S | PCIEM_LNKCTL_ASPM_L1;
 		break;
 
 	case e1000_82574:
 		/*
-		 * 82574 specification update #20
+		 * 82574 specification update errata #20
 		 *
 		 * There is no need to disable L1
 		 */

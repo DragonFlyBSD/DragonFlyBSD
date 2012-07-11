@@ -152,6 +152,8 @@ miibus_probe(device_t dev)
 
 		ma.mii_data = mii;
 		ma.mii_capmask = probe_args->mii_capmask;
+		ma.mii_privtag = probe_args->mii_privtag;
+		ma.mii_priv = probe_args->mii_priv;
 
 		args = kmalloc(sizeof(struct mii_attach_args), M_DEVBUF,
 		    M_WAITOK);
@@ -290,6 +292,7 @@ mii_probe_args_init(struct mii_probe_args *args,
 	args->mii_ifmedia_sts = ifmedia_sts;
 	args->mii_probemask = MII_PROBEMASK_DEFAULT;
 	args->mii_capmask = MII_CAPMASK_DEFAULT;
+	args->mii_privtag = MII_PRIVTAG_NONE;
 }
 
 /*

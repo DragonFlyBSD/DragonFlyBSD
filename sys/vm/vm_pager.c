@@ -509,3 +509,14 @@ relpbuf(struct buf *bp, int *pfreecnt)
 	if (wake_freecnt)
 		wakeup(pfreecnt);
 }
+
+void
+pbuf_adjcount(int *pfreecnt, int n)
+{
+	if (n) {
+		spin_lock(&bswspin);
+		*pfreecnt += n;
+		spin_unlock(&bswspin);
+		wakeup(pfreecnt);
+	}
+}

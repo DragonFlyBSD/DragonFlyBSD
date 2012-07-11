@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl_freebsd.c,v 1.18 2010/09/04 16:27:14 bz Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_osl_freebsd.c,v 1.19 2011/11/07 06:44:47 ed Exp $
  */
 
 /*
@@ -54,7 +54,7 @@ TW_INT32	TW_DEBUG_LEVEL_FOR_OSL = TW_OSL_DEBUG;
 TW_INT32	TW_OSL_DEBUG_LEVEL_FOR_CL = TW_OSL_DEBUG;
 #endif /* TW_OSL_DEBUG */
 
-MALLOC_DEFINE(TW_OSLI_MALLOC_CLASS, "twa_commands", "twa commands");
+static MALLOC_DEFINE(TW_OSLI_MALLOC_CLASS, "twa_commands", "twa commands");
 
 
 static	d_open_t		twa_open;
@@ -69,6 +69,9 @@ static struct dev_ops twa_ops = {
 };
 
 static devclass_t	twa_devclass;
+
+static int		twa_msi_enable = 0;
+TUNABLE_INT("hw.twa.msi.enable", &twa_msi_enable);
 
 
 /*
@@ -177,9 +180,6 @@ static TW_INT32	twa_probe(device_t dev);
 static TW_INT32	twa_attach(device_t dev);
 static TW_INT32	twa_detach(device_t dev);
 static TW_INT32	twa_shutdown(device_t dev);
-#if 0 /* XXX swildner */
-static TW_VOID	twa_busdma_lock(TW_VOID *lock_arg, bus_dma_lock_op_t op);
-#endif
 static TW_VOID	twa_pci_intr(TW_VOID *arg);
 static TW_VOID	twa_watchdog(TW_VOID *arg);
 int twa_setup_intr(struct twa_softc *sc);
@@ -215,6 +215,7 @@ static driver_t	twa_pci_driver = {
 DRIVER_MODULE(twa, pci, twa_pci_driver, twa_devclass, NULL, NULL);
 MODULE_DEPEND(twa, cam, 1, 1, 1);
 MODULE_DEPEND(twa, pci, 1, 1, 1);
+MODULE_VERSION(twa, 1);
 
 
 /*
@@ -253,7 +254,7 @@ int twa_setup_intr(struct twa_softc *sc)
 
 	if (!(sc->intr_handle) && (sc->irq_res)) {
 		error = bus_setup_intr(sc->bus_dev, sc->irq_res,
-					0,
+					INTR_MPSAFE,
 					twa_pci_intr,
 					sc, &sc->intr_handle, NULL);
 	}
@@ -295,6 +296,7 @@ twa_attach(device_t dev)
 	TW_INT32		bar_num;
 	TW_INT32		bar0_offset;
 	TW_INT32		bar_size;
+	TW_INT32		irq_flags;
 	TW_INT32		error;
 
 	tw_osli_dbg_dprintf(3, sc, "entered");
@@ -377,9 +379,11 @@ twa_attach(device_t dev)
 
 	/* Allocate and register our interrupt. */
 	sc->irq_res_id = 0;
+	sc->irq_type = pci_alloc_1intr(sc->bus_dev, twa_msi_enable,
+	    &sc->irq_res_id, &irq_flags);
 	if ((sc->irq_res = bus_alloc_resource(sc->bus_dev, SYS_RES_IRQ,
 				&(sc->irq_res_id), 0, ~0, 1,
-				RF_SHAREABLE | RF_ACTIVE)) == NULL) {
+				irq_flags)) == NULL) {
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
 			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
@@ -634,10 +638,6 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 				max_sg_elements,	/* nsegments */
 				TW_CL_MAX_IO_SIZE,	/* maxsegsize */
 				BUS_DMA_ALLOCNOW,	/* flags */
-#if 0 /* XXX swildner */
-				twa_busdma_lock,	/* lockfunc */
-				sc->io_lock,		/* lockfuncarg */
-#endif
 				&sc->dma_tag		/* tag */)) {
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
@@ -662,10 +662,6 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 				max_sg_elements,	/* nsegments */
 				TW_CL_MAX_IO_SIZE,	/* maxsegsize */
 				BUS_DMA_ALLOCNOW,	/* flags */
-#if 0 /* XXX swildner */
-				twa_busdma_lock,	/* lockfunc */
-				sc->io_lock,		/* lockfuncarg */
-#endif
 				&sc->ioctl_tag		/* tag */)) {
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
@@ -801,6 +797,8 @@ tw_osli_free_resources(struct twa_softc *sc)
 			tw_osli_dbg_dprintf(1, sc,
 				"release_resource(irq) returned %d", error);
 
+	if (sc->irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(sc->bus_dev);
 
 	/* Release the register window mapping. */
 	if (sc->reg_res != NULL)
@@ -809,11 +807,10 @@ tw_osli_free_resources(struct twa_softc *sc)
 			tw_osli_dbg_dprintf(1, sc,
 				"release_resource(io) returned %d", error);
 
-	dev_ops_remove_minor(&twa_ops, device_get_unit(sc->bus_dev));
-
 	/* Destroy the control device. */
 	if (sc->ctrl_dev != NULL)
 		destroy_dev(sc->ctrl_dev);
+	dev_ops_remove_minor(&twa_ops, device_get_unit(sc->bus_dev));
 
 	if ((error = sysctl_ctx_free(&sc->sysctl_ctxt)))
 		tw_osli_dbg_dprintf(1, sc,
@@ -887,10 +884,13 @@ twa_shutdown(device_t dev)
 	/* Disconnect interrupts. */
 	error = twa_teardown_intr(sc);
 
-#if 0 /* XXX swildner */
 	/* Stop watchdog task. */
+#if 0 /* XXX swildner */
 	callout_drain(&(sc->watchdog_callout[0]));
 	callout_drain(&(sc->watchdog_callout[1]));
+#else
+	callout_stop(&(sc->watchdog_callout[0]));
+	callout_stop(&(sc->watchdog_callout[1]));
 #endif
 
 	/* Disconnect from the controller. */
@@ -905,38 +905,6 @@ twa_shutdown(device_t dev)
 	return(error);
 }
 
-
-
-#if 0 /* XXX swildner */
-/*
- * Function name:	twa_busdma_lock
- * Description:		Function to provide synchronization during busdma_swi.
- *
- * Input:		lock_arg -- lock mutex sent as argument
- *			op -- operation (lock/unlock) expected of the function
- * Output:		None
- * Return value:	None
- */
-TW_VOID
-twa_busdma_lock(TW_VOID *lock_arg, bus_dma_lock_op_t op)
-{
-	struct spinlock	*lock;
-
-	lock = (struct spinlock *)lock_arg;
-	switch (op) {
-	case BUS_DMA_LOCK:
-		spin_lock(lock);
-		break;
-
-	case BUS_DMA_UNLOCK:
-		spin_unlock(lock);
-		break;
-
-	default:
-		panic("Unknown operation 0x%x for twa_busdma_lock!", op);
-	}
-}
-#endif
 
 
 /*

@@ -104,6 +104,7 @@ static driver_t	amr_pass_driver = {
 
 DRIVER_MODULE(amrp, amr, amr_pass_driver, amr_pass_devclass, NULL, NULL);
 MODULE_VERSION(amrp, 1);
+MODULE_DEPEND(amrp, amr, 1, 1, 1);
 MODULE_DEPEND(amrp, cam, 1, 1, 1);
 
 static MALLOC_DEFINE(M_AMRCAM, "amrcam", "AMR CAM memory");

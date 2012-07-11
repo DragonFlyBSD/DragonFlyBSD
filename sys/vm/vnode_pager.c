@@ -739,7 +739,6 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 			     int flags, int *rtvals)
 {
 	int i;
-	vm_object_t object;
 	int maxsize, ncount, count;
 	vm_ooffset_t poffset;
 	struct uio auio;
@@ -747,7 +746,6 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	int error;
 	int ioflags;
 
-	object = vp->v_object;
 	count = bytecount / PAGE_SIZE;
 
 	for (i = 0; i < count; i++)

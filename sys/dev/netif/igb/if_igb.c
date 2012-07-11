@@ -1781,6 +1781,10 @@ igb_init_tx_unit(struct igb_softc *sc)
 		E1000_WRITE_REG(hw, E1000_TDT(i), 0);
 		E1000_WRITE_REG(hw, E1000_TDH(i), 0);
 
+		/*
+		 * WTHRESH is ignored by the hardware, since header
+		 * write back mode is used.
+		 */
 		txdctl |= IGB_TX_PTHRESH;
 		txdctl |= IGB_TX_HTHRESH << 8;
 		txdctl |= IGB_TX_WTHRESH << 16;
@@ -1791,6 +1795,13 @@ igb_init_tx_unit(struct igb_softc *sc)
 		dca_txctrl &= ~E1000_DCA_TXCTRL_TX_WB_RO_EN;
 		E1000_WRITE_REG(hw, E1000_DCA_TXCTRL(i), dca_txctrl);
 
+		/*
+		 * Don't set WB_on_EITR:
+		 * - 82575 does not have it
+		 * - It almost has no effect on 82576, see:
+		 *   82576 specification update errata #26
+		 * - It causes unnecessary bus traffic
+		 */
 		E1000_WRITE_REG(hw, E1000_TDWBAH(i),
 		    (uint32_t)(hdr_paddr >> 32));
 		E1000_WRITE_REG(hw, E1000_TDWBAL(i),
@@ -2269,6 +2280,10 @@ igb_init_rx_unit(struct igb_softc *sc)
 		rxdctl &= 0xFFF00000;
 		rxdctl |= IGB_RX_PTHRESH;
 		rxdctl |= IGB_RX_HTHRESH << 8;
+		/*
+		 * Don't set WTHRESH to a value above 1 on 82576, see:
+		 * 82576 specification update errata #26
+		 */
 		rxdctl |= IGB_RX_WTHRESH << 16;
 		E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
 	}
@@ -3670,19 +3685,6 @@ igb_setup_intr(struct igb_softc *sc)
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX)
 		return igb_msix_setup(sc);
 
-	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
-		int unshared;
-
-		unshared = device_getenv_int(sc->dev, "irq.unshared", 0);
-		if (!unshared) {
-			sc->flags |= IGB_FLAG_SHARED_INTR;
-			if (bootverbose)
-				device_printf(sc->dev, "IRQ shared\n");
-		} else if (bootverbose) {
-			device_printf(sc->dev, "IRQ unshared\n");
-		}
-	}
-
 	error = bus_setup_intr(sc->dev, sc->intr_res, INTR_MPSAFE,
 	    (sc->flags & IGB_FLAG_SHARED_INTR) ? igb_intr_shared : igb_intr,
 	    sc, &sc->intr_tag, &sc->main_serialize);
@@ -3830,6 +3832,21 @@ igb_alloc_intr(struct igb_softc *sc)
 	sc->intr_type = pci_alloc_1intr(sc->dev, igb_msi_enable,
 	    &sc->intr_rid, &intr_flags);
 
+	if (sc->intr_type == PCI_INTR_TYPE_LEGACY) {
+		int unshared;
+
+		unshared = device_getenv_int(sc->dev, "irq.unshared", 0);
+		if (!unshared) {
+			sc->flags |= IGB_FLAG_SHARED_INTR;
+			if (bootverbose)
+				device_printf(sc->dev, "IRQ shared\n");
+		} else {
+			intr_flags &= ~RF_SHAREABLE;
+			if (bootverbose)
+				device_printf(sc->dev, "IRQ unshared\n");
+		}
+	}
+
 	sc->intr_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
 	    &sc->intr_rid, intr_flags);
 	if (sc->intr_res == NULL) {
@@ -3907,8 +3924,8 @@ igb_msix_try_alloc(struct igb_softc *sc)
 	boolean_t aggregate, setup = FALSE;
 
 	/*
-	 * MSI-X must not be enable on 82575.
-	 * See 82575EB specification update
+	 * Don't enable MSI-X on 82575, see:
+	 * 82575 specification update errata #25
 	 */
 	if (sc->hw.mac.type == e1000_82575)
 		return;

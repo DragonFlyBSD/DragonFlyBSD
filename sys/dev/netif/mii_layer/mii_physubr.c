@@ -109,6 +109,8 @@ mii_softc_init(struct mii_softc *mii, struct mii_attach_args *ma)
 	mii->mii_flags |= ma->mii_flags;
 	mii->mii_model = MII_MODEL(ma->mii_id2);
 	mii->mii_rev = MII_REV(ma->mii_id2);
+	mii->mii_privtag = ma->mii_privtag;
+	mii->mii_priv = ma->mii_priv;
 
 	if (mii->mii_reset == NULL)
 		mii->mii_reset = mii_phy_reset;

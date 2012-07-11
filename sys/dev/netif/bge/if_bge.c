@@ -107,14 +107,18 @@
 #include <bus/pci/pcivar.h>
 
 #include <dev/netif/bge/if_bgereg.h>
+#include <dev/netif/bge/if_bgevar.h>
 
 /* "device miibus" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
 
 #define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP)
-#define BGE_MIN_FRAME		60
 
-static const struct bge_type bge_devs[] = {
+static const struct bge_type {
+	uint16_t		bge_vid;
+	uint16_t		bge_did;
+	char			*bge_name;
+} bge_devs[] = {
 	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C996,
 		"3COM 3C996 Gigabit Ethernet" },
 
@@ -1963,6 +1967,7 @@ bge_attach(device_t dev)
 	uint8_t ether_addr[ETHER_ADDR_LEN];
 	uint16_t product, vendor;
 	driver_intr_t *intr_func;
+	uintptr_t mii_priv = 0;
 
 	sc = device_get_softc(dev);
 	sc->bge_dev = dev;
@@ -2135,7 +2140,7 @@ bge_attach(device_t dev)
 	if ((sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
 	     sc->bge_asicrev == BGE_ASICREV_BCM5701) &&
 	    pci_get_subvendor(dev) == PCI_VENDOR_DELL)
-		sc->bge_phy_flags |= BGE_PHY_NO_3LED;
+		mii_priv |= BRGPHY_FLAG_NO_3LED;
 
 	capmask = MII_CAPMASK_DEFAULT;
 	if ((sc->bge_asicrev == BGE_ASICREV_BCM5703 &&
@@ -2155,24 +2160,27 @@ bge_attach(device_t dev)
 		capmask &= ~BMSR_EXTSTAT;
 	}
 
-	sc->bge_phy_flags |= BGE_PHY_WIRESPEED;
+	mii_priv |= BRGPHY_FLAG_WIRESPEED;
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
 	    (sc->bge_asicrev == BGE_ASICREV_BCM5705 &&
 	     (sc->bge_chipid != BGE_CHIPID_BCM5705_A0 &&
 	      sc->bge_chipid != BGE_CHIPID_BCM5705_A1)) ||
 	    sc->bge_asicrev == BGE_ASICREV_BCM5906)
-		sc->bge_phy_flags &= ~BGE_PHY_WIRESPEED;
+		mii_priv &= ~BRGPHY_FLAG_WIRESPEED;
 
 	if (sc->bge_chipid == BGE_CHIPID_BCM5701_A0 ||
 	    sc->bge_chipid == BGE_CHIPID_BCM5701_B0)
-		sc->bge_phy_flags |= BGE_PHY_CRC_BUG;
+		mii_priv |= BRGPHY_FLAG_CRC_BUG;
 
 	if (sc->bge_chiprev == BGE_CHIPREV_5703_AX ||
 	    sc->bge_chiprev == BGE_CHIPREV_5704_AX)
-		sc->bge_phy_flags |= BGE_PHY_ADC_BUG;
+		mii_priv |= BRGPHY_FLAG_ADC_BUG;
 
 	if (sc->bge_chipid == BGE_CHIPID_BCM5704_A0)
-		sc->bge_phy_flags |= BGE_PHY_5704_A0_BUG;
+		mii_priv |= BRGPHY_FLAG_5704_A0;
+
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5906)
+		mii_priv |= BRGPHY_FLAG_5906;
 
 	if (BGE_IS_5705_PLUS(sc) &&
 	    sc->bge_asicrev != BGE_ASICREV_BCM5906 &&
@@ -2186,11 +2194,11 @@ bge_attach(device_t dev)
 		    sc->bge_asicrev == BGE_ASICREV_BCM5787) {
 			if (product != PCI_PRODUCT_BROADCOM_BCM5722 &&
 			    product != PCI_PRODUCT_BROADCOM_BCM5756)
-				sc->bge_phy_flags |= BGE_PHY_JITTER_BUG;
+				mii_priv |= BRGPHY_FLAG_JITTER_BUG;
 			if (product == PCI_PRODUCT_BROADCOM_BCM5755M)
-				sc->bge_phy_flags |= BGE_PHY_ADJUST_TRIM;
+				mii_priv |= BRGPHY_FLAG_ADJUST_TRIM;
 		} else {
-			sc->bge_phy_flags |= BGE_PHY_BER_BUG;
+			mii_priv |= BRGPHY_FLAG_BER_BUG;
 		}
 	}
 
@@ -2361,6 +2369,8 @@ bge_attach(device_t dev)
 		mii_probe_args_init(&mii_args, bge_ifmedia_upd, bge_ifmedia_sts);
 		mii_args.mii_probemask = 1 << sc->bge_phyno;
 		mii_args.mii_capmask = capmask;
+		mii_args.mii_privtag = MII_PRIVTAG_BRGPHY;
+		mii_args.mii_priv = mii_priv;
 
 		error = mii_probe(dev, &sc->bge_miibus, &mii_args);
 		if (error) {
@@ -2859,7 +2869,7 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod)
 					m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
 			}
 			if ((cur_rx->bge_flags & BGE_RXBDFLAG_TCP_UDP_CSUM) &&
-			    m->m_pkthdr.len >= BGE_MIN_FRAME) {
+			    m->m_pkthdr.len >= BGE_MIN_FRAMELEN) {
 				m->m_pkthdr.csum_data =
 					cur_rx->bge_tcp_udp_csum;
 				m->m_pkthdr.csum_flags |=
@@ -3206,8 +3216,8 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 		maxsegs = BGE_NSEG_NEW;
 
 	/*
-	 * Pad outbound frame to BGE_MIN_FRAME for an unusual reason.
-	 * The bge hardware will pad out Tx runts to BGE_MIN_FRAME,
+	 * Pad outbound frame to BGE_MIN_FRAMELEN for an unusual reason.
+	 * The bge hardware will pad out Tx runts to BGE_MIN_FRAMELEN,
 	 * but when such padded frames employ the bge IP/TCP checksum
 	 * offload, the hardware checksum assist gives incorrect results
 	 * (possibly from incorporating its own padding into the UDP/TCP
@@ -3215,8 +3225,8 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 	 * onboard checksum comes out correct.
 	 */
 	if ((csum_flags & BGE_TXBDFLAG_TCP_UDP_CSUM) &&
-	    m_head->m_pkthdr.len < BGE_MIN_FRAME) {
-		error = m_devpad(m_head, BGE_MIN_FRAME);
+	    m_head->m_pkthdr.len < BGE_MIN_FRAMELEN) {
+		error = m_devpad(m_head, BGE_MIN_FRAMELEN);
 		if (error)
 			goto back;
 	}
@@ -4045,11 +4055,12 @@ bge_dma_alloc(struct bge_softc *sc)
 	/*
 	 * Create DMA stuffs for RX return ring.
 	 */
-	error = bge_dma_block_alloc(sc, BGE_RX_RTN_RING_SZ(sc),
-				    &sc->bge_cdata.bge_rx_return_ring_tag,
-				    &sc->bge_cdata.bge_rx_return_ring_map,
-				    (void *)&sc->bge_ldata.bge_rx_return_ring,
-				    &sc->bge_ldata.bge_rx_return_ring_paddr);
+	error = bge_dma_block_alloc(sc,
+	    BGE_RX_RTN_RING_SZ(sc->bge_return_ring_cnt),
+	    &sc->bge_cdata.bge_rx_return_ring_tag,
+	    &sc->bge_cdata.bge_rx_return_ring_map,
+	    (void *)&sc->bge_ldata.bge_rx_return_ring,
+	    &sc->bge_ldata.bge_rx_return_ring_paddr);
 	if (error) {
 		if_printf(ifp, "could not create RX ret ring\n");
 		return error;

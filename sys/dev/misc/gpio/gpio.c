@@ -392,15 +392,14 @@ gpio_ioctl(struct dev_ioctl_args *ap)
 	struct gpio	*gp;
 	gpio_pin_t	*pin;
 	cdev_t		dev;
-	int		error = 0;
 
 	dev = ap->a_head.a_dev;
+	gpsa = (struct gpio_pin_set_args *)ap->a_data;
 	gp = dev->si_drv1;
 	pin = dev->si_drv2;
 
 	switch(ap->a_cmd) {
 	case GPIOPINSET:
-		gpsa = (struct gpio_pin_set_args *)ap->a_data;
 		if (pin->pin_opened || pin->pin_mapped)
 			return EBUSY;
 
@@ -417,8 +416,7 @@ gpio_ioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case GPIOPINUNSET:
-		gpsa = (struct gpio_pin_set_args *)ap->a_data;
-		error = EINVAL;
+		return EINVAL;
 		break;
 
 	default:

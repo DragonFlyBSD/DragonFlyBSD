@@ -1107,6 +1107,7 @@ ich_pci_attach(device_t dev)
 
 		sc->intrhook.ich_func = ich_calibrate;
 		sc->intrhook.ich_arg = sc;
+		sc->intrhook.ich_desc = "snd_ich";
 		if (cold == 0 ||
 		    config_intrhook_establish(&sc->intrhook) != 0) {
 			sc->intrhook.ich_func = NULL;

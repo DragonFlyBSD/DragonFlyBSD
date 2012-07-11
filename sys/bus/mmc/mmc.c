@@ -164,6 +164,7 @@ mmc_attach(device_t dev)
 	/* We'll probe and attach our children later, but before / mount */
 	sc->config_intrhook.ich_func = mmc_delayed_attach;
 	sc->config_intrhook.ich_arg = sc;
+	sc->config_intrhook.ich_desc = "mmc";
 	if (config_intrhook_establish(&sc->config_intrhook) != 0)
 		device_printf(dev, "config_intrhook_establish failed\n");
 	return (0);

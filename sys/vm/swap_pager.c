@@ -1494,7 +1494,6 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	 * Update nsw parameters from swap_async_max sysctl values.  
 	 * Do not let the sysop crash the machine with bogus numbers.
 	 */
-
 	if (swap_async_max != nsw_wcount_async_max) {
 		int n;
 
@@ -1517,9 +1516,8 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		lwkt_gettoken(&vm_token);
 		n -= nsw_wcount_async_max;
 		if (nsw_wcount_async + n >= 0) {
-			nsw_wcount_async += n;
 			nsw_wcount_async_max += n;
-			wakeup(&nsw_wcount_async);
+			pbuf_adjcount(&nsw_wcount_async, n);
 		}
 		lwkt_reltoken(&vm_token);
 	}

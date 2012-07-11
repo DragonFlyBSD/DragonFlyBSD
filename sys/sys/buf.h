@@ -439,6 +439,7 @@ int	biowait_timeout (struct bio *, const char *, int);
 void	bpdone (struct buf *, int);
 void	biodone (struct bio *);
 void	biodone_sync (struct bio *);
+void	pbuf_adjcount(int *pfreecnt, int n);
 
 void	cluster_append(struct bio *, struct buf *);
 int	cluster_readx (struct vnode *, off_t, off_t, int,

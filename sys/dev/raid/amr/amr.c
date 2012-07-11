@@ -287,6 +287,7 @@ amr_attach(struct amr_softc *sc)
     bzero(&sc->amr_ich, sizeof(struct intr_config_hook));
     sc->amr_ich.ich_func = amr_startup;
     sc->amr_ich.ich_arg = sc;
+    sc->amr_ich.ich_desc = "amr";
     if (config_intrhook_establish(&sc->amr_ich) != 0) {
 	device_printf(sc->amr_dev, "can't establish configuration hook\n");
 	return(ENOMEM);
@@ -460,47 +461,6 @@ amr_open(struct dev_open_args *ap)
     sc->amr_state |= AMR_STATE_OPEN;
     return(0);
 }
-
-#ifdef LSI
-static int
-amr_del_ld(struct amr_softc *sc, int drv_no, int status)
-{
-
-    debug_called(1);
-
-    sc->amr_state &= ~AMR_STATE_QUEUE_FRZN;
-    sc->amr_state &= ~AMR_STATE_LD_DELETE;
-    sc->amr_state |= AMR_STATE_REMAP_LD;
-    debug(1, "State Set");
-
-    if (!status) {
-	debug(1, "disk begin destroyed %d",drv_no);
-	if (--amr_disks_registered == 0)
-	    cdevsw_remove(&amrddisk_cdevsw);
-	debug(1, "disk begin destroyed success");
-    }
-    return 0;
-}
-
-static int
-amr_prepare_ld_delete(struct amr_softc *sc)
-{
-
-    debug_called(1);
-    if (sc->ld_del_supported == 0)
-	return(ENOIOCTL);
-
-    sc->amr_state |= AMR_STATE_QUEUE_FRZN;
-    sc->amr_state |= AMR_STATE_LD_DELETE;
-
-    /* 5 minutes for the all the commands to be flushed.*/
-    tsleep((void *)&sc->ld_del_supported, PCATCH,"delete_logical_drv",hz * 60 * 1);
-    if ( sc->amr_busyslots )
-	return(ENOIOCTL);
-
-    return 0;
-}
-#endif
 
 /********************************************************************************
  * Accept the last close on the control device.
@@ -874,10 +834,6 @@ amr_ioctl(struct dev_ioctl_args *ap)
 	    goto out;
 	}
 	logical_drives_changed = 1;
-#ifdef LSI
-	if ((error = amr_prepare_ld_delete(sc)) != 0)
-	    return (error);
-#endif
     }
 
     /* handle inbound data buffer */
@@ -972,10 +928,8 @@ out:
     if (dp != NULL)
 	kfree(dp, M_AMR);
 
-#ifndef LSI
     if (logical_drives_changed)
 	amr_rescan_drives(dev);
-#endif
 
     return(error);
 }

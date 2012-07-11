@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/twa.4,v 1.9 2010/05/13 12:07:55 uqs Exp $
 .\"
-.Dd August 1, 2010
+.Dd July 8, 2012
 .Dt TWA 4
 .Os
 .Sh NAME
@@ -66,6 +66,12 @@ via the device nodes,
 where
 .Ar Y
 is the logical unit number.
+.Sh LOADER TUNABLES
+.Bl -tag -width indent
+.It Va hw.twa.msi.enable
+To use MSI (if supported), set this tunable to 1.
+The default is 0.
+.El
 .Sh HARDWARE
 The
 .Nm

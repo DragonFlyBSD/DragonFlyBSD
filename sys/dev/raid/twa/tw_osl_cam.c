@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl_cam.c,v 1.15 2010/08/30 19:15:04 delphij Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_osl_cam.c,v 1.16 2012/06/22 21:46:41 mav Exp $
  */
 
 /*
@@ -76,6 +76,7 @@ TW_INT32
 tw_osli_cam_attach(struct twa_softc *sc)
 {
 	struct cam_devq		*devq;
+	TW_INT32		error;
 
 	tw_osli_dbg_dprintf(3, sc, "entered");
 
@@ -103,6 +104,7 @@ tw_osli_cam_attach(struct twa_softc *sc)
 			device_get_unit(sc->bus_dev), sc->sim_lock,
 			TW_OSLI_MAX_NUM_IOS, 1, devq);
 	if (sc->sim == NULL) {
+		cam_simq_release(devq);
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
 			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
@@ -111,6 +113,7 @@ tw_osli_cam_attach(struct twa_softc *sc)
 			ENOMEM);
 		return(ENOMEM);
 	}
+	cam_simq_release(devq);
 
 	/*
 	 * Register the bus.
@@ -136,8 +139,8 @@ tw_osli_cam_attach(struct twa_softc *sc)
 				CAM_TARGET_WILDCARD,
 				CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path (sc->sim));
-		/* Passing TRUE to cam_sim_free will free the devq as well. */
 		cam_sim_free(sc->sim);
+		sc->sim = NULL; /* so cam_detach will not try to free it */
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
 			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
@@ -148,6 +151,19 @@ tw_osli_cam_attach(struct twa_softc *sc)
 		return(ENXIO);
 	}
 	lockmgr(sc->sim_lock, LK_RELEASE);
+
+	tw_osli_dbg_dprintf(3, sc, "Calling tw_osli_request_bus_scan");
+	/*
+	 * Request a bus scan, so that CAM gets to know of
+	 * the logical units that we control.
+	 */
+	if ((error = tw_osli_request_bus_scan(sc)))
+		tw_osli_printf(sc, "error = %d",
+			TW_CL_SEVERITY_ERROR_STRING,
+			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
+			0x2104,
+			"Bus scan request to CAM failed",
+			error);
 
 	tw_osli_dbg_dprintf(3, sc, "exiting");
 	return(0);
@@ -712,9 +728,9 @@ tw_osl_complete_io(struct tw_cl_req_handle *req_handle)
 			ccb->ccb_h.status = CAM_REQ_CMP;
 		else {
 			if (req_pkt->status & TW_CL_ERR_REQ_INVALID_TARGET)
-				ccb->ccb_h.status |= CAM_TID_INVALID;
+				ccb->ccb_h.status |= CAM_SEL_TIMEOUT;
 			else if (req_pkt->status & TW_CL_ERR_REQ_INVALID_LUN)
-				ccb->ccb_h.status |= CAM_LUN_INVALID;
+				ccb->ccb_h.status |= CAM_DEV_NOT_THERE;
 			else if (req_pkt->status & TW_CL_ERR_REQ_SCSI_ERROR)
 				ccb->ccb_h.status |= CAM_SCSI_STATUS_ERROR;
 			else if (req_pkt->status & TW_CL_ERR_REQ_BUS_RESET)

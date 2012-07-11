@@ -34,7 +34,6 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.36 2007/07/20 17:21:54 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -101,9 +100,6 @@ swapdev_strategy(struct vop_strategy_args *ap)
 	struct buf *bp = bio->bio_buf;
 	int sz, off, seg, index, blkno, nblkno;
 	struct swdevt *sp;
-	struct vnode *vp;
-
-	vp = ap->a_vp;
 	sz = howmany(bp->b_bcount, PAGE_SIZE);
 	blkno = (int)(bio->bio_offset >> PAGE_SHIFT);
 
@@ -203,9 +199,6 @@ sys_swapon(struct swapon_args *uap)
 	struct vnode *vp;
 	struct nlookupdata nd;
 	int error;
-	struct ucred *cred;
-
-	cred = td->td_ucred;
 
 	error = priv_check(td, PRIV_ROOT);
 	if (error)

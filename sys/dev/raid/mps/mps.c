@@ -1195,6 +1195,7 @@ mps_attach(struct mps_softc *sc)
 	 */
 	sc->mps_ich.ich_func = mps_startup;
 	sc->mps_ich.ich_arg = sc;
+	sc->mps_ich.ich_desc = "mps";
 	if (config_intrhook_establish(&sc->mps_ich) != 0) {
 		mps_dprint(sc, MPS_FAULT, "Cannot establish MPS config hook\n");
 		error = EINVAL;

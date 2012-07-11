@@ -363,6 +363,7 @@ twe_attach(device_t dev)
      */
     sc->twe_ich.ich_func = twe_intrhook;
     sc->twe_ich.ich_arg = sc;
+    sc->twe_ich.ich_desc = "twe";
     if (config_intrhook_establish(&sc->twe_ich) != 0) {
 	twe_printf(sc, "can't establish configuration hook\n");
 	twe_free(sc);
@@ -420,11 +421,10 @@ twe_free(struct twe_softc *sc)
     if (sc->twe_io != NULL)
 	bus_release_resource(sc->twe_dev, SYS_RES_IOPORT, TWE_IO_CONFIG_REG, sc->twe_io);
 
-    dev_ops_remove_minor(&twe_ops, device_get_unit(sc->twe_dev));
-
     /* destroy control device */
     if (sc->twe_dev_t != NULL)
 	destroy_dev(sc->twe_dev_t);
+    dev_ops_remove_minor(&twe_ops, device_get_unit(sc->twe_dev));
 
     sysctl_ctx_free(&sc->sysctl_ctx);
 }

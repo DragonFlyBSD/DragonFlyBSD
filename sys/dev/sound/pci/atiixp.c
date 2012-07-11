@@ -1002,6 +1002,7 @@ atiixp_pci_attach(device_t dev)
 
 	sc->delayed_attach.ich_func = atiixp_chip_post_init;
 	sc->delayed_attach.ich_arg = sc;
+	sc->delayed_attach.ich_desc = "snd_atiixp";
 	if (cold == 0 ||
 			config_intrhook_establish(&sc->delayed_attach) != 0) {
 		sc->delayed_attach.ich_func = NULL;
