@@ -1,18 +1,13 @@
 /*-
- * Copyright (c) 2002-2003 Networks Associates Technology, Inc.
- * Copyright (c) 2004-2011 Dag-Erling Smørgrav
+ * Copyright (c) 2012 Dag-Erling Smørgrav
  * All rights reserved.
- *
- * This software was developed for the FreeBSD Project by ThinkSec AS and
- * Network Associates Laboratories, the Security Research Division of
- * Network Associates, Inc.  under DARPA/SPAWAR contract N66001-01-C-8035
- * ("CBOSS"), as part of the DARPA CHATS research program.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
+ *    notice, this list of conditions and the following disclaimer
+ *    in this position and unchanged.
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
@@ -32,55 +27,43 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: openpam_get_option.c 531 2012-03-31 14:24:37Z des $
+ * $Id: openpam_features.c 608 2012-05-17 16:00:13Z des $
  */
 
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
 
-#include <sys/param.h>
-
-#include <string.h>
-
 #include <security/pam_appl.h>
 
 #include "openpam_impl.h"
 
-/*
- * OpenPAM extension
- *
- * Returns the value of a module option
- */
-
-const char *
-openpam_get_option(pam_handle_t *pamh,
-	const char *option)
-{
-	pam_chain_t *cur;
-	size_t len;
-	int i;
-
-	ENTERS(option);
-	if (pamh == NULL || pamh->current == NULL || option == NULL)
-		RETURNS(NULL);
-	cur = pamh->current;
-	len = strlen(option);
-	for (i = 0; i < cur->optc; ++i) {
-		if (strncmp(cur->optv[i], option, len) == 0) {
-			if (cur->optv[i][len] == '\0')
-				RETURNS(&cur->optv[i][len]);
-			else if (cur->optv[i][len] == '=')
-				RETURNS(&cur->optv[i][len + 1]);
-		}
+#define STRUCT_OPENPAM_FEATURE(name, descr, dflt)	\
+	[OPENPAM_##name] = {				\
+		"OPENPAM_" #name,			\
+		descr,					\
+		dflt					\
 	}
-	RETURNS(NULL);
-}
 
-/**
- * The =openpam_get_option function returns the value of the specified
- * option in the context of the currently executing service module, or
- * =NULL if the option is not set or no module is currently executing.
- *
- * >openpam_set_option
- */
+struct openpam_feature openpam_features[OPENPAM_NUM_FEATURES] = {
+	STRUCT_OPENPAM_FEATURE(
+	    RESTRICT_SERVICE_NAME,
+	    "Disallow path separators in service names",
+	    1
+	),
+	STRUCT_OPENPAM_FEATURE(
+	    VERIFY_POLICY_FILE,
+	    "Verify ownership and permissions of policy files",
+	    1
+	),
+	STRUCT_OPENPAM_FEATURE(
+	    RESTRICT_MODULE_NAME,
+	    "Disallow path separators in module names",
+	    0
+	),
+	STRUCT_OPENPAM_FEATURE(
+	    VERIFY_MODULE_FILE,
+	    "Verify ownership and permissions of module files",
+	    1
+	),
+};

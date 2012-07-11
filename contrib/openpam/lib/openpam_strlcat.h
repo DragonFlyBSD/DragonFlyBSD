@@ -27,22 +27,27 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: openpam_strlcmp.h 578 2012-04-06 00:45:59Z des $
+ * $Id: openpam_strlcat.h 578 2012-04-06 00:45:59Z des $
  */
 
-#ifndef OPENPAM_STRLCMP_H_INCLUDED
-#define OPENPAM_STRLCMP_H_INCLUDED
+#ifndef OPENPAM_STRLCAT_H_INCLUDED
+#define OPENPAM_STRLCAT_H_INCLUDED
 
-#ifndef HAVE_STRLCMP
-/* like strcmp(3), but verifies that the entirety of s1 was matched */
-static int
-strlcmp(const char *s1, const char *s2, size_t len)
+#ifndef HAVE_STRLCAT
+/* like strcat(3), but always NUL-terminates; returns strlen(src) */
+static size_t
+strlcat(char *dst, const char *src, size_t size)
 {
+	size_t len;
 
-	for (; len && *s1 && *s2; --len, ++s1, ++s2)
-		if (*s1 != *s2)
-			return ((unsigned char)*s1 - (unsigned char)*s2);
-	return ((unsigned char)*s1);
+	for (len = 0; *dst && size > 1; ++len, --size)
+		dst++;
+	for (; *src && size > 1; ++len, --size)
+		*dst++ = *src++;
+	*dst = '\0';
+	while (*src)
+		++len, ++src;
+	return (len);
 }
 #endif
 

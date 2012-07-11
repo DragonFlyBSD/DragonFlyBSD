@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011 Dag-Erling Smørgrav
+ * Copyright (c) 2012 Dag-Erling Smørgrav
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,23 +27,22 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: openpam_strlcmp.h 578 2012-04-06 00:45:59Z des $
+ * $Id$
  */
 
-#ifndef OPENPAM_STRLCMP_H_INCLUDED
-#define OPENPAM_STRLCMP_H_INCLUDED
+#ifndef OPENPAM_FEATURES_H_INCLUDED
+#define OPENPAM_FEATURES_H_INCLUDED
 
-#ifndef HAVE_STRLCMP
-/* like strcmp(3), but verifies that the entirety of s1 was matched */
-static int
-strlcmp(const char *s1, const char *s2, size_t len)
-{
+struct openpam_feature {
+	const char *name;
+	const char *desc;
+	int onoff;
+};
 
-	for (; len && *s1 && *s2; --len, ++s1, ++s2)
-		if (*s1 != *s2)
-			return ((unsigned char)*s1 - (unsigned char)*s2);
-	return ((unsigned char)*s1);
-}
-#endif
+extern struct openpam_feature openpam_features[OPENPAM_NUM_FEATURES];
+
+/* shortcut for internal use */
+#define OPENPAM_FEATURE(f) \
+	openpam_features[OPENPAM_##f].onoff
 
 #endif
