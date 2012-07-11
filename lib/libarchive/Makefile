@@ -25,7 +25,10 @@ SRCS=	archive_acl.c					\
 	archive_entry_stat.c				\
 	archive_entry_strmode.c				\
 	archive_entry_xattr.c				\
+	archive_getdate.c				\
+	archive_match.c					\
 	archive_options.c				\
+	archive_pathmatch.c				\
 	archive_ppmd7.c					\
 	archive_rb.c					\
 	archive_read.c					\
@@ -74,6 +77,7 @@ SRCS=	archive_acl.c					\
 	archive_write_open_file.c			\
 	archive_write_open_filename.c			\
 	archive_write_open_memory.c			\
+	archive_write_add_filter.c			\
 	archive_write_add_filter_bzip2.c		\
 	archive_write_add_filter_compress.c		\
 	archive_write_add_filter_gzip.c			\
@@ -112,9 +116,9 @@ MAN=	archive_entry.3					\
 	archive_write_disk.3				\
 	archive_write_set_options.3			\
 	cpio.5						\
-	libarchive-formats.5				\
 	libarchive.3					\
 	libarchive_internals.3				\
+	libarchive-formats.5				\
 	mtree.5						\
 	tar.5
 

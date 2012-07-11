@@ -400,6 +400,9 @@
 /* Define to 1 if you have the `lzmadec' library (-llzmadec). */
 /* #undef HAVE_LIBLZMADEC */
 
+/* Define to 1 if you have the `regex' library (-lregex). */
+/* #undef HAVE_LIBREGEX */
+
 /* Define to 1 if you have the `xml2' library (-lxml2). */
 /* #undef HAVE_LIBXML2 */
 
@@ -426,6 +429,9 @@
 
 /* Define to 1 if you have the <linux/magic.h> header file. */
 /* #undef HAVE_LINUX_MAGIC_H */
+
+/* Define to 1 if you have the <linux/types.h> header file. */
+/* #undef HAVE_LINUX_TYPES_H */
 
 /* Define to 1 if you have the `listea' function. */
 /* #undef HAVE_LISTEA */
@@ -478,9 +484,6 @@
 
 /* Define to 1 if you have the `mbrtowc' function. */
 #define HAVE_MBRTOWC 1
-
-/* Define to 1 if you have the `mbsnrtowcs' function. */
-/* #undef HAVE_MBSNRTOWCS */
 
 /* Define to 1 if you have the `memmove' function. */
 #define HAVE_MEMMOVE 1
@@ -602,6 +605,9 @@
 
 /* Define to 1 if `f_namemax' is a member of `struct statfs'. */
 /* #undef HAVE_STRUCT_STATFS_F_NAMEMAX */
+
+/* Define to 1 if `f_iosize' is a member of `struct statvfs'. */
+/* #undef HAVE_STRUCT_STATVFS_F_IOSIZE */
 
 /* Define to 1 if `st_birthtime' is a member of `struct stat'. */
 /* #undef HAVE_STRUCT_STAT_ST_BIRTHTIME */
@@ -767,9 +773,6 @@
 /* Define to 1 if you have the `wcslen' function. */
 #define HAVE_WCSLEN 1
 
-/* Define to 1 if you have the `wcsnrtombs' function. */
-/* #undef HAVE_WCSNRTOMBS */
-
 /* Define to 1 if you have the `wctomb' function. */
 #define HAVE_WCTOMB 1
 
@@ -844,7 +847,7 @@
 #define PACKAGE "libarchive"
 
 /* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "kientzle@FreeBSD.org"
+#define PACKAGE_BUGREPORT "libarchive-discuss@googlegroups.com"
 
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "libarchive"

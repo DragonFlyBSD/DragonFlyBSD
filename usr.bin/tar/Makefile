@@ -1,9 +1,6 @@
-# $DragonFly: src/usr.bin/tar/Makefile,v 1.16 2008/07/12 14:57:33 pavalos Exp $
-
 PROG=	bsdtar
-SRCS=	bsdtar.c cmdline.c err.c getdate.c line_reader.c matching.c \
-	pathmatch.c read.c subst.c \
-	tree.c util.c write.c
+SRCS=	bsdtar.c cmdline.c read.c subst.c util.c write.c
+SRCS+=	err.c line_reader.c
 DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBZ}
 LDADD=	-larchive -lbz2 -llzma -lmd -lz
 
