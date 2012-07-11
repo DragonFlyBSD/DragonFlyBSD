@@ -23,7 +23,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/amr.4,v 1.35 2006/06/18 14:45:28 brueffer Exp $
 .\"
-.Dd December 3, 2010
+.Dd July 11, 2012
 .Dt AMR 4
 .Os
 .Sh NAME
@@ -37,6 +37,10 @@ kernel configuration file:
 .Cd "device pci"
 .Cd "device scbus"
 .Cd "device amr"
+.Ed
+.Pp
+To compile in debugging code:
+.Cd options AMR_DEBUG=x # x=3 is maximum verbosity
 .Ed
 .Pp
 Alternatively, to load the driver as a
@@ -156,6 +160,10 @@ Intel RAID Controller SRCS16
 Intel RAID Controller SRCU42X
 .El
 .Sh DIAGNOSTICS
+Compiling with
+.Dv AAC_DEBUG
+will enable debug messages.
+.Pp
 .Ss Driver initialisation/shutdown phase
 .Bl -diag
 .It amr%d: memory window not available
