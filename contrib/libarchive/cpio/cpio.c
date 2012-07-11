@@ -82,7 +82,6 @@ __FBSDID("$FreeBSD: src/usr.bin/cpio/cpio.c,v 1.15 2008/12/06 07:30:40 kientzle 
 #include "cpio.h"
 #include "err.h"
 #include "line_reader.h"
-#include "matching.h"
 
 /* Fixed size of uname/gname caches. */
 #define	name_cache_size 101
@@ -119,6 +118,7 @@ static void	mode_in(struct cpio *);
 static void	mode_list(struct cpio *);
 static void	mode_out(struct cpio *);
 static void	mode_pass(struct cpio *, const char *);
+static const char *remove_leading_slash(const char *);
 static int	restore_time(struct cpio *, struct archive_entry *,
 		    const char *, int fd);
 static void	usage(void);
@@ -155,9 +155,9 @@ main(int argc, char *argv[])
 	else {
 #if defined(_WIN32) && !defined(__CYGWIN__)
 		lafe_progname = strrchr(*argv, '\\');
-#else
-		lafe_progname = strrchr(*argv, '/');
+		if (strrchr(*argv, '/') > lafe_progname)
 #endif
+		lafe_progname = strrchr(*argv, '/');
 		if (lafe_progname != NULL)
 			lafe_progname++;
 		else
@@ -189,6 +189,10 @@ main(int argc, char *argv[])
 	cpio->bytes_per_block = 512;
 	cpio->filename = NULL;
 
+	cpio->matching = archive_match_new();
+	if (cpio->matching == NULL)
+		lafe_errc(1, 0, "Out of memory");
+
 	while ((opt = cpio_getopt(cpio)) != -1) {
 		switch (opt) {
 		case '0': /* GNU convention: --null, -0 */
@@ -215,14 +219,20 @@ main(int argc, char *argv[])
 			cpio->extract_flags &= ~ARCHIVE_EXTRACT_NO_AUTODIR;
 			break;
 		case 'E': /* NetBSD/OpenBSD */
-			lafe_include_from_file(&cpio->matching,
-			    cpio->argument, cpio->option_null);
+			if (archive_match_include_pattern_from_file(
+			    cpio->matching, cpio->argument,
+			    cpio->option_null) != ARCHIVE_OK)
+				lafe_errc(1, 0, "Error : %s",
+				    archive_error_string(cpio->matching));
 			break;
 		case 'F': /* NetBSD/OpenBSD/GNU cpio */
 			cpio->filename = cpio->argument;
 			break;
 		case 'f': /* POSIX 1997 */
-			lafe_exclude(&cpio->matching, cpio->argument);
+			if (archive_match_exclude_pattern(cpio->matching,
+			    cpio->argument) != ARCHIVE_OK)
+				lafe_errc(1, 0, "Error : %s",
+				    archive_error_string(cpio->matching));
 			break;
 		case 'H': /* GNU cpio (also --format) */
 			cpio->format = cpio->argument;
@@ -368,9 +378,6 @@ main(int argc, char *argv[])
 	/* -v overrides -V */
 	if (cpio->dot && cpio->verbose)
 		cpio->dot = 0;
-	/* -v overrides -V */
-	if (cpio->dot && cpio->verbose)
-		cpio->dot = 0;
 	/* TODO: Flag other nonsensical combinations. */
 
 	switch (cpio->mode) {
@@ -384,7 +391,10 @@ main(int argc, char *argv[])
 		break;
 	case 'i':
 		while (*cpio->argv != NULL) {
-			lafe_include(&cpio->matching, *cpio->argv);
+			if (archive_match_include_pattern(cpio->matching,
+			    *cpio->argv) != ARCHIVE_OK)
+				lafe_errc(1, 0, "Error : %s",
+				    archive_error_string(cpio->matching));
 			--cpio->argc;
 			++cpio->argv;
 		}
@@ -404,6 +414,7 @@ main(int argc, char *argv[])
 		    "Must specify at least one of -i, -o, or -p");
 	}
 
+	archive_match_free(cpio->matching);
 	free_cache(cpio->gname_cache);
 	free_cache(cpio->uname_cache);
 	return (cpio->return_value);
@@ -574,6 +585,49 @@ mode_out(struct cpio *cpio)
 	archive_write_free(cpio->archive);
 }
 
+static const char *
+remove_leading_slash(const char *p)
+{
+	const char *rp;
+
+	/* Remove leading "//./" or "//?/" or "//?/UNC/"
+	 * (absolute path prefixes used by Windows API) */
+	if ((p[0] == '/' || p[0] == '\\') &&
+	    (p[1] == '/' || p[1] == '\\') &&
+	    (p[2] == '.' || p[2] == '?') &&
+	    (p[3] == '/' || p[3] == '\\'))
+	{
+		if (p[2] == '?' &&
+		    (p[4] == 'U' || p[4] == 'u') &&
+		    (p[5] == 'N' || p[5] == 'n') &&
+		    (p[6] == 'C' || p[6] == 'c') &&
+		    (p[7] == '/' || p[7] == '\\'))
+			p += 8;
+		else
+			p += 4;
+	}
+	do {
+		rp = p;
+		/* Remove leading drive letter from archives created
+		 * on Windows. */
+		if (((p[0] >= 'a' && p[0] <= 'z') ||
+		     (p[0] >= 'A' && p[0] <= 'Z')) &&
+			 p[1] == ':') {
+			p += 2;
+		}
+		/* Remove leading "/../", "//", etc. */
+		while (p[0] == '/' || p[0] == '\\') {
+			if (p[1] == '.' && p[2] == '.' &&
+				(p[3] == '/' || p[3] == '\\')) {
+				p += 3; /* Remove "/..", leave "/"
+					 * for next pass. */
+			} else
+				p += 1; /* Remove "/". */
+		}
+	} while (rp != p);
+	return (p);
+}
+
 /*
  * This is used by both out mode (to copy objects from disk into
  * an archive) and pass mode (to copy objects from disk to
@@ -585,7 +639,6 @@ file_to_archive(struct cpio *cpio, const char *srcpath)
 	const char *destpath;
 	struct archive_entry *entry, *spare;
 	size_t len;
-	const char *p;
 	int r;
 
 	/*
@@ -639,10 +692,7 @@ file_to_archive(struct cpio *cpio, const char *srcpath)
 				    "Can't allocate path buffer");
 		}
 		strcpy(cpio->pass_destpath, cpio->destdir);
-		p = srcpath;
-		while (p[0] == '/')
-			++p;
-		strcat(cpio->pass_destpath, p);
+		strcat(cpio->pass_destpath, remove_leading_slash(srcpath));
 		destpath = cpio->pass_destpath;
 	}
 	if (cpio->option_rename)
@@ -869,7 +919,7 @@ mode_in(struct cpio *cpio)
 			lafe_errc(1, archive_errno(a),
 			    "%s", archive_error_string(a));
 		}
-		if (lafe_excluded(cpio->matching, archive_entry_pathname(entry)))
+		if (archive_match_path_excluded(cpio->matching, entry))
 			continue;
 		if (cpio->option_rename) {
 			destpath = cpio_rename(archive_entry_pathname(entry));
@@ -971,7 +1021,7 @@ mode_list(struct cpio *cpio)
 			lafe_errc(1, archive_errno(a),
 			    "%s", archive_error_string(a));
 		}
-		if (lafe_excluded(cpio->matching, archive_entry_pathname(entry)))
+		if (archive_match_path_excluded(cpio->matching, entry))
 			continue;
 		if (cpio->verbose)
 			list_item_verbose(cpio, entry);
@@ -1139,12 +1189,24 @@ cpio_rename(const char *name)
 	static char buff[1024];
 	FILE *t;
 	char *p, *ret;
+#if defined(_WIN32) && !defined(__CYGWIN__)
+	FILE *to;
 
+	t = fopen("CONIN$", "r");
+	if (t == NULL)
+		return (name);
+	to = fopen("CONOUT$", "w");
+	if (to == NULL)
+		return (name);
+	fprintf(to, "%s (Enter/./(new name))? ", name);
+	fclose(to);
+#else
 	t = fopen("/dev/tty", "r+");
 	if (t == NULL)
 		return (name);
 	fprintf(t, "%s (Enter/./(new name))? ", name);
 	fflush(t);
+#endif
 
 	p = fgets(buff, sizeof(buff), t);
 	fclose(t);
@@ -1254,7 +1316,8 @@ lookup_uname_helper(struct cpio *cpio, const char **name, id_t id)
 	if (pwent == NULL) {
 		*name = NULL;
 		if (errno != 0 && errno != ENOENT)
-			lafe_warnc(errno, "getpwuid(%d) failed", id);
+			lafe_warnc(errno, "getpwuid(%s) failed",
+			    cpio_i64toa((int64_t)id));
 		return (errno);
 	}
 
@@ -1281,7 +1344,8 @@ lookup_gname_helper(struct cpio *cpio, const char **name, id_t id)
 	if (grent == NULL) {
 		*name = NULL;
 		if (errno != 0)
-			lafe_warnc(errno, "getgrgid(%d) failed", id);
+			lafe_warnc(errno, "getgrgid(%s) failed",
+			    cpio_i64toa((int64_t)id));
 		return (errno);
 	}
 

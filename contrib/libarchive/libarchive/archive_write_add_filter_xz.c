@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 2009,2010 Michihiro NAKAJIMA
  * Copyright (c) 2003-2010 Tim Kientzle
+ * Copyright (c) 2009-2012 Michihiro NAKAJIMA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -298,7 +298,17 @@ archive_compressor_xz_open(struct archive_write_filter *f)
 		return (ret);
 
 	if (data->compressed == NULL) {
-		data->compressed_buffer_size = 65536;
+		size_t bs = 65536, bpb;
+		if (f->archive->magic == ARCHIVE_WRITE_MAGIC) {
+			/* Buffer size should be a multiple number of the of bytes
+			 * per block for performance. */
+			bpb = archive_write_get_bytes_per_block(f->archive);
+			if (bpb > bs)
+				bs = bpb;
+			else if (bpb != 0)
+				bs -= bs % bpb;
+		}
+		data->compressed_buffer_size = bs;
 		data->compressed
 		    = (unsigned char *)malloc(data->compressed_buffer_size);
 		if (data->compressed == NULL) {
@@ -365,6 +375,9 @@ archive_compressor_xz_options(struct archive_write_filter *f,
 		return (ARCHIVE_OK);
 	}
 
+	/* Note: The "warn" return is just to inform the options
+	 * supervisor that we didn't handle it.  It will generate
+	 * a suitable error if no one used this option. */
 	return (ARCHIVE_WARN);
 }
 

@@ -188,8 +188,8 @@ struct archive_write_disk {
 	struct fixup_entry	*current_fixup;
 	int64_t			 user_uid;
 	int			 skip_file_set;
-	dev_t			 skip_file_dev;
-	ino_t			 skip_file_ino;
+	int64_t			 skip_file_dev;
+	int64_t			 skip_file_ino;
 	time_t			 start_time;
 
 	int64_t (*lookup_gid)(void *private, const char *gname, int64_t gid);
@@ -1143,9 +1143,10 @@ restore_entry(struct archive_write_disk *a)
 
 		/* If it's our archive, we're done. */
 		if (a->skip_file_set &&
-		    a->st.st_dev == a->skip_file_dev &&
-		    a->st.st_ino == a->skip_file_ino) {
-			archive_set_error(&a->archive, 0, "Refusing to overwrite archive");
+		    a->st.st_dev == (dev_t)a->skip_file_dev &&
+		    a->st.st_ino == (ino_t)a->skip_file_ino) {
+			archive_set_error(&a->archive, 0,
+			    "Refusing to overwrite archive");
 			return (ARCHIVE_FAILED);
 		}
 
@@ -1163,7 +1164,7 @@ restore_entry(struct archive_write_disk *a)
 			/* A dir is in the way of a non-dir, rmdir it. */
 			if (rmdir(a->name) != 0) {
 				archive_set_error(&a->archive, errno,
-				    "Can't remove already-existing dir");
+				    "Can't replace existing directory with non-directory");
 				return (ARCHIVE_FAILED);
 			}
 			/* Try again. */
@@ -1672,7 +1673,7 @@ cleanup_pathname_win(struct archive_write_disk *a)
 	p = a->name;
 	while (*p != '\0' && alen) {
 		l = mbtowc(&wc, p, alen);
-		if (l == -1) {
+		if (l == (size_t)-1) {
 			while (*p != '\0') {
 				if (*p == '\\')
 					*p = '/';
@@ -1979,6 +1980,7 @@ set_time(int fd, int mode, const char *name,
 	 * on fds and symlinks.
 	 */
 	struct timespec ts[2];
+	(void)mode; /* UNUSED */
 	ts[0].tv_sec = atime;
 	ts[0].tv_nsec = atime_nsec;
 	ts[1].tv_sec = mtime;
@@ -2036,6 +2038,11 @@ set_time(int fd, int mode, const char *name,
 	/*
 	 * We don't know how to set the time on this platform.
 	 */
+	(void)fd; /* UNUSED */
+	(void)mode; /* UNUSED */
+	(void)name; /* UNUSED */
+	(void)atime_nsec; /* UNUSED */
+	(void)mtime_nsec; /* UNUSED */
 	return (ARCHIVE_WARN);
 #endif
 }
@@ -2068,7 +2075,7 @@ set_times(struct archive_write_disk *a,
     time_t atime, long atime_nanos,
     time_t birthtime, long birthtime_nanos,
     time_t mtime, long mtime_nanos,
-    time_t ctime, long ctime_nanos)
+    time_t cctime, long ctime_nanos)
 {
 	/* Note: set_time doesn't use libarchive return conventions!
 	 * It uses syscall conventions.  So 0 here instead of ARCHIVE_OK. */
@@ -2083,9 +2090,12 @@ set_times(struct archive_write_disk *a,
 	if (a->user_uid == 0 &&
 	    set_time_tru64(fd, mode, name,
 			   atime, atime_nanos, mtime,
-			   mtime_nanos, ctime, ctime_nanos) == 0) {
+			   mtime_nanos, cctime, ctime_nanos) == 0) {
 		return (ARCHIVE_OK);
 	}
+#else /* Tru64 */
+	(void)cctime; /* UNUSED */
+	(void)ctime_nanos; /* UNUSED */
 #endif /* Tru64 */
 
 #ifdef HAVE_STRUCT_STAT_ST_BIRTHTIME
@@ -2102,6 +2112,9 @@ set_times(struct archive_write_disk *a,
 		r1 = set_time(fd, mode, name,
 			      atime, atime_nanos,
 			      birthtime, birthtime_nanos);
+#else
+	(void)birthtime; /* UNUSED */
+	(void)birthtime_nanos; /* UNUSED */
 #endif
 	r2 = set_time(fd, mode, name,
 		      atime, atime_nanos,
@@ -2117,11 +2130,11 @@ set_times(struct archive_write_disk *a,
 static int
 set_times_from_entry(struct archive_write_disk *a)
 {
-	time_t atime, birthtime, mtime, ctime;
+	time_t atime, birthtime, mtime, cctime;
 	long atime_nsec, birthtime_nsec, mtime_nsec, ctime_nsec;
 
 	/* Suitable defaults. */
-	atime = birthtime = mtime = ctime = a->start_time;
+	atime = birthtime = mtime = cctime = a->start_time;
 	atime_nsec = birthtime_nsec = mtime_nsec = ctime_nsec = 0;
 
 	/* If no time was provided, we're done. */
@@ -2145,7 +2158,7 @@ set_times_from_entry(struct archive_write_disk *a)
 		mtime_nsec = archive_entry_mtime_nsec(a->entry);
 	}
 	if (archive_entry_ctime_is_set(a->entry)) {
-		ctime = archive_entry_ctime(a->entry);
+		cctime = archive_entry_ctime(a->entry);
 		ctime_nsec = archive_entry_ctime_nsec(a->entry);
 	}
 
@@ -2153,7 +2166,7 @@ set_times_from_entry(struct archive_write_disk *a)
 			 atime, atime_nsec,
 			 birthtime, birthtime_nsec,
 			 mtime, mtime_nsec,
-			 ctime, ctime_nsec);
+			 cctime, ctime_nsec);
 }
 
 static int
@@ -2517,7 +2530,7 @@ set_mac_metadata(struct archive_write_disk *a, const char *pathname,
 	}
 	written = write(fd, metadata, metadata_size);
 	close(fd);
-	if (written != metadata_size
+	if ((size_t)written != metadata_size
 	    || copyfile(tmp.s, pathname, 0,
 			COPYFILE_UNPACK | COPYFILE_NOFOLLOW
 			| COPYFILE_ACL | COPYFILE_XATTR)) {
@@ -2534,12 +2547,12 @@ set_mac_metadata(struct archive_write_disk *a, const char *pathname,
 /* Default empty function body to satisfy mainline code. */
 static int
 set_acls(struct archive_write_disk *a, int fd, const char *name,
-	 struct archive_acl *acl)
+	 struct archive_acl *aacl)
 {
 	(void)a; /* UNUSED */
 	(void)fd; /* UNUSED */
 	(void)name; /* UNUSED */
-	(void)acl; /* UNUSED */
+	(void)aacl; /* UNUSED */
 	return (ARCHIVE_OK);
 }
 
@@ -2572,7 +2585,7 @@ set_acl(struct archive_write_disk *a, int fd, const char *name,
 	acl_t		 acl;
 	acl_entry_t	 acl_entry;
 	acl_permset_t	 acl_permset;
-	int		 ret;
+	int		 ret, r;
 	int		 ae_type, ae_permset, ae_tag, ae_id;
 	uid_t		 ae_uid;
 	gid_t		 ae_gid;
@@ -2584,9 +2597,9 @@ set_acl(struct archive_write_disk *a, int fd, const char *name,
 	if (entries == 0)
 		return (ARCHIVE_OK);
 	acl = acl_init(entries);
-	while (archive_acl_next(&a->archive, abstract_acl,
+	while ((r = archive_acl_next(&a->archive, abstract_acl,
 	    ae_requested_type, &ae_type, &ae_permset, &ae_tag, &ae_id,
-	    &ae_name) == ARCHIVE_OK) {
+	    &ae_name)) == ARCHIVE_OK) {
 		acl_create_entry(&acl, &acl_entry);
 
 		switch (ae_tag) {
@@ -2627,6 +2640,12 @@ set_acl(struct archive_write_disk *a, int fd, const char *name,
 			acl_add_perm(acl_permset, ACL_WRITE);
 		if (ae_permset & ARCHIVE_ENTRY_ACL_READ)
 			acl_add_perm(acl_permset, ACL_READ);
+	}
+	if (r == ARCHIVE_FATAL) {
+		acl_free(acl);
+		archive_set_error(&a->archive, errno,
+		    "Failed to archive_acl_next");
+		return (r);
 	}
 
 	/* Try restoring the ACL through 'fd' if we can. */
