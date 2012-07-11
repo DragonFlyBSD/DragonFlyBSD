@@ -1,18 +1,13 @@
 /*-
- * Copyright (c) 2002-2003 Networks Associates Technology, Inc.
- * Copyright (c) 2004-2011 Dag-Erling Smørgrav
+ * Copyright (c) 2012 Dag-Erling Smørgrav
  * All rights reserved.
- *
- * This software was developed for the FreeBSD Project by ThinkSec AS and
- * Network Associates Laboratories, the Security Research Division of
- * Network Associates, Inc.  under DARPA/SPAWAR contract N66001-01-C-8035
- * ("CBOSS"), as part of the DARPA CHATS research program.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
+ *    notice, this list of conditions and the following disclaimer
+ *    in this position and unchanged.
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
@@ -32,55 +27,49 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: openpam_get_option.c 531 2012-03-31 14:24:37Z des $
+ * $Id: openpam_set_feature.c 608 2012-05-17 16:00:13Z des $
  */
 
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
 
-#include <sys/param.h>
-
-#include <string.h>
-
 #include <security/pam_appl.h>
+#include <security/openpam.h>
 
 #include "openpam_impl.h"
 
 /*
  * OpenPAM extension
  *
- * Returns the value of a module option
+ * Enable or disable an optional feature.
  */
 
-const char *
-openpam_get_option(pam_handle_t *pamh,
-	const char *option)
+int
+openpam_set_feature(int feature, int onoff)
 {
-	pam_chain_t *cur;
-	size_t len;
-	int i;
 
-	ENTERS(option);
-	if (pamh == NULL || pamh->current == NULL || option == NULL)
-		RETURNS(NULL);
-	cur = pamh->current;
-	len = strlen(option);
-	for (i = 0; i < cur->optc; ++i) {
-		if (strncmp(cur->optv[i], option, len) == 0) {
-			if (cur->optv[i][len] == '\0')
-				RETURNS(&cur->optv[i][len]);
-			else if (cur->optv[i][len] == '=')
-				RETURNS(&cur->optv[i][len + 1]);
-		}
-	}
-	RETURNS(NULL);
+	ENTERF(feature);
+	if (feature < 0 || feature >= OPENPAM_NUM_FEATURES)
+		RETURNC(PAM_SYMBOL_ERR);
+	openpam_features[feature].onoff = onoff;
+	RETURNC(PAM_SUCCESS);
 }
 
-/**
- * The =openpam_get_option function returns the value of the specified
- * option in the context of the currently executing service module, or
- * =NULL if the option is not set or no module is currently executing.
+/*
+ * Error codes:
  *
- * >openpam_set_option
+ *	PAM_SYMBOL_ERR
+ */
+
+/**
+ * EXPERIMENTAL
+ *
+ * The =openpam_set_feature function sets the state of the specified
+ * feature to the value specified by the =onoff argument.
+ * See =openpam_get_feature for a list of recognized features.
+ *
+ * >openpam_get_feature
+ *
+ * AUTHOR DES
  */

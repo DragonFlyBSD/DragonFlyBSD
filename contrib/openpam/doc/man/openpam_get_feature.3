@@ -35,53 +35,71 @@
 .\" $Id$
 .\"
 .Dd May 26, 2012
-.Dt PAM_END 3
+.Dt OPENPAM_GET_FEATURE 3
 .Os
 .Sh NAME
-.Nm pam_end
-.Nd terminate the PAM transaction
+.Nm openpam_get_feature
+.Nd query the state of an optional feature
 .Sh LIBRARY
 .Lb libpam
 .Sh SYNOPSIS
 .In sys/types.h
 .In security/pam_appl.h
+.In security/openpam.h
 .Ft "int"
-.Fn pam_end "pam_handle_t *pamh" "int status"
+.Fn openpam_get_feature "int feature" "int *onoff"
 .Sh DESCRIPTION
-The
-.Fn pam_end
-function terminates a PAM transaction and destroys the
-corresponding PAM context, releasing all resources allocated to it.
+.Bf Sy
+This function is experimental and may be modified or removed in a future release without further warning.
+.Ef
 .Pp
 The
-.Fa status
-argument should be set to the error code returned by the
-last API call before the call to
-.Fn pam_end .
+.Fn openpam_get_feature
+function stores the current state of the
+specified feature in the variable pointed to by its
+.Fa onoff
+argument.
+.Pp
+The following features are recognized:
+.Bl -tag -width 18n
+.It Dv OPENPAM_RESTRICT_SERVICE_NAME
+Disallow path separators in service names.
+This feature is enabled by default.
+Disabling it allows the application to specify the path to
+the desired policy file directly.
+.It Dv OPENPAM_VERIFY_POLICY_FILE
+Verify the ownership and permissions of the policy file
+and the path leading up to it.
+This feature is enabled by default.
+.It Dv OPENPAM_RESTRICT_MODULE_NAME
+Disallow path separators in module names.
+This feature is disabled by default.
+Enabling it prevents the use of modules in non-standard
+locations.
+.It Dv OPENPAM_VERIFY_MODULE_FILE
+Verify the ownership and permissions of each loadable
+module and the path leading up to it.
+This feature is enabled by default.
+.El
 .Sh RETURN VALUES
 The
-.Fn pam_end
+.Fn openpam_get_feature
 function returns one of the following values:
 .Bl -tag -width 18n
-.It Bq Er PAM_SYSTEM_ERR
-System error.
+.It Bq Er PAM_SYMBOL_ERR
+Invalid symbol.
 .El
 .Sh SEE ALSO
+.Xr openpam_set_feature 3 ,
 .Xr pam 3 ,
 .Xr pam_strerror 3
 .Sh STANDARDS
-.Rs
-.%T "X/Open Single Sign-On Service (XSSO) - Pluggable Authentication Modules"
-.%D "June 1997"
-.Re
+The
+.Fn openpam_get_feature
+function is an OpenPAM extension.
 .Sh AUTHORS
 The
-.Fn pam_end
+.Fn openpam_get_feature
 function and this manual page were
-developed for the
-.Fx
-Project by ThinkSec AS and Network Associates Laboratories, the
-Security Research Division of Network Associates, Inc.\& under
-DARPA/SPAWAR contract N66001-01-C-8035
-.Pq Dq CBOSS ,
-as part of the DARPA CHATS research program.
+developed by
+.An Dag-Erling Sm\(/orgrav Aq des@des.no .
