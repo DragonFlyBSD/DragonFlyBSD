@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2003-2007 Tim Kientzle
- * Copyright (c) 2010-2011 Michihiro NAKAJIMA
+ * Copyright (c) 2010-2012 Michihiro NAKAJIMA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -187,11 +187,13 @@ archive_write_pax_options(struct archive_write *a, const char *key,
 		} else
 			archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
 			    "pax: invalid charset name");
-	} else
-		archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
-		    "pax: unknown keyword ``%s''", key);
+		return (ret);
+	}
 
-	return (ret);
+	/* Note: The "warn" return is just to inform the options
+	 * supervisor that we didn't handle it.  It will generate
+	 * a suitable error if no one used this option. */
+	return (ARCHIVE_WARN);
 }
 
 /*
@@ -332,8 +334,7 @@ archive_write_pax_header_xattrs(struct archive_write *a,
 		url_encoded_name = url_encode(name);
 		if (url_encoded_name != NULL) {
 			/* Convert narrow-character to UTF-8. */
-			r = archive_strcpy_in_locale(
-			    &(pax->l_url_encoded_name),
+			r = archive_strcpy_l(&(pax->l_url_encoded_name),
 			    url_encoded_name, pax->sconv_utf8);
 			free(url_encoded_name); /* Done with this. */
 			if (r == 0)
@@ -463,7 +464,6 @@ archive_write_pax_header(struct archive_write *a,
 {
 	struct archive_entry *entry_main;
 	const char *p;
-	char *t;
 	const char *suffix;
 	int need_extension, r, ret;
 	int sparse_count;
@@ -541,24 +541,73 @@ archive_write_pax_header(struct archive_write *a,
 		case AE_IFREG:
 			break;
 		case AE_IFDIR:
+		{
 			/*
 			 * Ensure a trailing '/'.  Modify the original
 			 * entry so the client sees the change.
 			 */
-			p = archive_entry_pathname(entry_original);
-			if (p[strlen(p) - 1] != '/') {
-				t = (char *)malloc(strlen(p) + 2);
-				if (t == NULL) {
+#if defined(_WIN32) && !defined(__CYGWIN__)
+			const wchar_t *wp;
+
+			wp = archive_entry_pathname_w(entry_original);
+			if (wp != NULL && wp[wcslen(wp) -1] != L'/') {
+				struct archive_wstring ws;
+
+				archive_string_init(&ws);
+				path_length = wcslen(wp);
+				if (archive_wstring_ensure(&ws,
+				    path_length + 2) == NULL) {
 					archive_set_error(&a->archive, ENOMEM,
-					"Can't allocate pax data");
+					    "Can't allocate pax data");
+					archive_wstring_free(&ws);
 					return(ARCHIVE_FATAL);
 				}
-				strcpy(t, p);
-				strcat(t, "/");
-				archive_entry_copy_pathname(entry_original, t);
-				free(t);
+				/* Should we keep '\' ? */
+				if (wp[path_length -1] == L'\\')
+					path_length--;
+				archive_wstrncpy(&ws, wp, path_length);
+				archive_wstrappend_wchar(&ws, L'/');
+				archive_entry_copy_pathname_w(
+				    entry_original, ws.s);
+				archive_wstring_free(&ws);
+				p = NULL;
+			} else
+#endif
+				p = archive_entry_pathname(entry_original);
+			/*
+			 * On Windows, this is a backup operation just in
+			 * case getting WCS failed. On POSIX, this is a
+			 * normal operation.
+			 */
+			if (p != NULL && p[strlen(p) - 1] != '/') {
+				struct archive_string as;
+
+				archive_string_init(&as);
+				path_length = strlen(p);
+				if (archive_string_ensure(&as,
+				    path_length + 2) == NULL) {
+					archive_set_error(&a->archive, ENOMEM,
+					    "Can't allocate pax data");
+					archive_string_free(&as);
+					return(ARCHIVE_FATAL);
+				}
+#if defined(_WIN32) && !defined(__CYGWIN__)
+				/* NOTE: This might break the pathname
+				 * if the current code page is CP932 and
+				 * the pathname includes a character '\'
+				 * as a part of its multibyte pathname. */
+				if (p[strlen(p) -1] == '\\')
+					path_length--;
+				else
+#endif
+				archive_strncpy(&as, p, path_length);
+				archive_strappend_char(&as, '/');
+				archive_entry_copy_pathname(
+				    entry_original, as.s);
+				archive_string_free(&as);
 			}
 			break;
+		}
 		case AE_IFSOCK:
 			archive_set_error(&a->archive,
 			    ARCHIVE_ERRNO_FILE_FORMAT,
@@ -655,7 +704,20 @@ archive_write_pax_header(struct archive_write *a,
 	}
 
 	/* Copy entry so we can modify it as needed. */
+#if defined(_WIN32) && !defined(__CYGWIN__)
+	/* Make sure the path separators in pahtname, hardlink and symlink
+	 * are all slash '/', not the Windows path separator '\'. */
+	entry_main = __la_win_entry_in_posix_pathseparator(entry_original);
+	if (entry_main == entry_original)
+		entry_main = archive_entry_clone(entry_original);
+#else
 	entry_main = archive_entry_clone(entry_original);
+#endif
+	if (entry_main == NULL) {
+		archive_set_error(&a->archive, ENOMEM,
+		    "Can't allocate pax data");
+		return(ARCHIVE_FATAL);
+	}
 	archive_string_empty(&(pax->pax_header)); /* Blank our work area. */
 	archive_string_empty(&(pax->sparse_map));
 	sparse_total = 0;
@@ -1261,7 +1323,7 @@ archive_write_pax_header(struct archive_write *a,
 			return (ARCHIVE_FATAL);
 		}
 		/* Pad out the end of the entry. */
-		r = __archive_write_nulls(a, pax->entry_padding);
+		r = __archive_write_nulls(a, (size_t)pax->entry_padding);
 		if (r != ARCHIVE_OK) {
 			/* If a write fails, we're pretty much toast. */
 			return (ARCHIVE_FATAL);
@@ -1603,7 +1665,7 @@ archive_write_pax_finish_entry(struct archive_write *a)
 			pax->sparse_list = sb;
 		}
 	}
-	ret = __archive_write_nulls(a, remaining + pax->entry_padding);
+	ret = __archive_write_nulls(a, (size_t)(remaining + pax->entry_padding));
 	pax->entry_bytes_remaining = pax->entry_padding = 0;
 	return (ret);
 }
@@ -1650,7 +1712,7 @@ archive_write_pax_data(struct archive_write *a, const void *buff, size_t s)
 		p = ((const unsigned char *)buff) + total;
 		ws = s - total;
 		if (ws > pax->sparse_list->remaining)
-			ws = pax->sparse_list->remaining;
+			ws = (size_t)pax->sparse_list->remaining;
 
 		if (pax->sparse_list->is_hole) {
 			/* Current block is hole thus we do not write

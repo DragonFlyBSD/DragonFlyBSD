@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2008-2011 Michihiro NAKAJIMA
+ * Copyright (c) 2008-2012 Michihiro NAKAJIMA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -289,7 +289,7 @@ static void	lzh_huffman_free(struct huffman *);
 static int	lzh_read_pt_bitlen(struct lzh_stream *, int start, int end);
 static int	lzh_make_fake_table(struct huffman *, uint16_t);
 static int	lzh_make_huffman_table(struct huffman *);
-static int inline lzh_decode_huffman(struct huffman *, unsigned);
+static inline int lzh_decode_huffman(struct huffman *, unsigned);
 static int	lzh_decode_huffman_tree(struct huffman *, unsigned, int);
 
 
@@ -445,11 +445,13 @@ archive_read_format_lha_options(struct archive_read *a,
 			else
 				ret = ARCHIVE_FATAL;
 		}
-	} else
-		archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
-		    "lha: unknown keyword ``%s''", key);
+		return (ret);
+	}
 
-	return (ret);
+	/* Note: The "warn" return is just to inform the options
+	 * supervisor that we didn't handle it.  It will generate
+	 * a suitable error if no one used this option. */
+	return (ARCHIVE_WARN);
 }
 
 static int
@@ -949,7 +951,7 @@ lha_read_file_header_1(struct archive_read *a, struct lha *lha)
 
 	/* Read extended headers */
 	err2 = lha_read_file_extended_header(a, lha, NULL, 2,
-	    lha->compsize + 2, &extdsize);
+	    (size_t)(lha->compsize + 2), &extdsize);
 	if (err2 < ARCHIVE_WARN)
 		return (err2);
 	if (err2 < err)
@@ -1444,7 +1446,7 @@ lha_read_data_none(struct archive_read *a, const void **buff,
 		return (ARCHIVE_FATAL);
 	}
 	if (bytes_avail > lha->entry_bytes_remaining)
-		bytes_avail = lha->entry_bytes_remaining;
+		bytes_avail = (ssize_t)lha->entry_bytes_remaining;
 	lha->entry_crc_calculated =
 	    lha_crc16(lha->entry_crc_calculated, *buff, bytes_avail);
 	*size = bytes_avail;
@@ -1527,7 +1529,7 @@ lha_read_data_lzh(struct archive_read *a, const void **buff,
 		return (ARCHIVE_FATAL);
 	}
 	if (bytes_avail > lha->entry_bytes_remaining)
-		bytes_avail = lha->entry_bytes_remaining;
+		bytes_avail = (ssize_t)lha->entry_bytes_remaining;
 
 	lha->strm.avail_in = bytes_avail;
 	lha->strm.total_in = 0;
@@ -1573,7 +1575,7 @@ static int
 archive_read_format_lha_read_data_skip(struct archive_read *a)
 {
 	struct lha *lha;
-	off_t bytes_skipped;
+	int64_t bytes_skipped;
 
 	lha = (struct lha *)(a->format->data);
 
@@ -2014,7 +2016,7 @@ lzh_copy_from_window(struct lzh_stream *strm, struct lzh_dec *ds)
 		if (ds->w_pos - ds->copy_pos <= strm->avail_out)
 			copy_bytes = ds->w_pos - ds->copy_pos;
 		else
-			copy_bytes = strm->avail_out;
+			copy_bytes = (size_t)strm->avail_out;
 		memcpy(strm->next_out,
 		    ds->w_buff + ds->copy_pos, copy_bytes);
 		ds->copy_pos += copy_bytes;
@@ -2022,7 +2024,7 @@ lzh_copy_from_window(struct lzh_stream *strm, struct lzh_dec *ds)
 		if (ds->w_remaining <= strm->avail_out)
 			copy_bytes = ds->w_remaining;
 		else
-			copy_bytes = strm->avail_out;
+			copy_bytes = (size_t)strm->avail_out;
 		memcpy(strm->next_out,
 		    ds->w_buff + ds->w_size - ds->w_remaining, copy_bytes);
 		ds->w_remaining -= copy_bytes;
