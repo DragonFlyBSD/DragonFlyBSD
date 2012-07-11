@@ -216,7 +216,7 @@
 /* #undef NETINET_ETHER_H_DECLARES_ETHER_HOSTTON */
 
 /* Define to 1 if netinet/if_ether.h declares `ether_hostton' */
-#define NETINET_IF_ETHER_H_DECLARES_ETHER_HOSTTON 
+#define NETINET_IF_ETHER_H_DECLARES_ETHER_HOSTTON /**/
 
 /* do not use protochain */
 /* #undef NO_PROTOCHAIN */
@@ -233,6 +233,9 @@
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME ""
 
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
+
 /* Define to the version of this package. */
 #define PACKAGE_VERSION ""
 
@@ -244,6 +247,9 @@
 
 /* target host supports CAN sniffing */
 /* #undef PCAP_SUPPORT_CAN */
+
+/* target host supports canusb */
+/* #undef PCAP_SUPPORT_CANUSB */
 
 /* target host supports netfilter sniffing */
 /* #undef PCAP_SUPPORT_NETFILTER */
