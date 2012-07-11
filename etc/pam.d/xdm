@@ -1,6 +1,5 @@
 #
-# $FreeBSD: src/etc/pam.d/xdm,v 1.11 2007/06/10 18:57:20 yar Exp $
-# $DragonFly: src/etc/pam.d/xdm,v 1.1 2005/07/22 18:20:43 joerg Exp $
+# $FreeBSD: src/etc/pam.d/xdm,v 1.12 2009/10/05 09:28:54 des Exp $
 #
 # PAM configuration for the "xdm" service
 #
@@ -12,11 +11,11 @@ auth		required	pam_unix.so		no_warn try_first_pass
 
 # account
 account		required	pam_nologin.so
-#account 	required	pam_krb5.so
+#account	required	pam_krb5.so
 account		required	pam_unix.so
 
 # session
-#session 	required	pam_ssh.so		want_agent
+#session	required	pam_ssh.so		want_agent
 # xdm has a software bug in it where session callbacks can occur
 # after the widget has been destroyed, causing a seg-fault.  Commenting
 # out the session line works around the problem.
