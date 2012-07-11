@@ -65,6 +65,7 @@ AHD_REG_PRETTY_PRINT	opt_aic79xx.h	# Print register bitfields in debug
 
 ADW_ALLOW_MEMIO		opt_adw.h	# Allow PCI devices to use memory
 					# mapped I/O
+AMR_DEBUG		opt_amr.h
 TWA_DEBUG		opt_twa.h
 
 #options for ACPI support

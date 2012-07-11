@@ -61,6 +61,8 @@
  * Driver for the AMI MegaRaid family of controllers.
  */
 
+#include "opt_amr.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
@@ -1001,7 +1003,7 @@ amr_query_controller(struct amr_softc *sc)
 	    sc->amr_drive[ldrv].al_size       = aex->ae_drivesize[ldrv];
 	    sc->amr_drive[ldrv].al_state      = aex->ae_drivestate[ldrv];
 	    sc->amr_drive[ldrv].al_properties = aex->ae_driveprop[ldrv];
-	    debug(2, "  drive %d: %d state %x properties %x\n", ldrv, sc->amr_drive[ldrv].al_size,
+	    debug(2, "  drive %d: %d state %x properties %x", ldrv, sc->amr_drive[ldrv].al_size,
 		  sc->amr_drive[ldrv].al_state, sc->amr_drive[ldrv].al_properties);
 	}
 	kfree(aex, M_AMR);

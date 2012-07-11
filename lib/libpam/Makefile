@@ -6,7 +6,7 @@ MODULE_DIR=	${LIBDIR}/security
 
 CFLAGS+= -DHAVE_CONFIG_H
 CFLAGS+= -DOPENPAM_MODULES_DIR='"${MODULE_DIR}/"'
-CFLAGS+= -I${SRCDIR}/lib -I${.CURDIR}
+CFLAGS+= -I${SRCDIR}/lib -I${SRCDIR}/include -I${.CURDIR}
 
 # Dist files
 SRCS=	openpam_borrow_cred.c \
@@ -15,17 +15,23 @@ SRCS=	openpam_borrow_cred.c \
 	openpam_constants.c \
 	openpam_dispatch.c \
 	openpam_dynamic.c \
+	openpam_features.c \
 	openpam_findenv.c \
 	openpam_free_data.c \
 	openpam_free_envlist.c \
+	openpam_get_feature.c \
 	openpam_get_option.c \
 	openpam_load.c \
 	openpam_log.c \
 	openpam_nullconv.c \
 	openpam_readline.c \
+	openpam_readlinev.c \
+	openpam_readword.c \
 	openpam_restore_cred.c \
 	openpam_set_option.c \
+	openpam_set_feature.c \
 	openpam_static.c \
+	openpam_straddch.c \
 	openpam_subst.c \
 	openpam_ttyconv.c \
 	pam_acct_mgmt.c \
@@ -92,12 +98,17 @@ MAN=	pam_acct_mgmt.3 \
 	openpam_borrow_cred.3 \
 	openpam_free_data.3 \
 	openpam_free_envlist.3 \
+	openpam_get_feature.3 \
 	openpam_get_option.3 \
 	openpam_log.3 \
 	openpam_nullconv.3 \
 	openpam_readline.3 \
+	openpam_readlinev.3 \
+	openpam_readword.3 \
 	openpam_restore_cred.3 \
+	openpam_set_feature.3 \
 	openpam_set_option.3 \
+	openpam_straddch.3 \
 	openpam_subst.3 \
 	openpam_ttyconv.3 \
 	pam_error.3 \

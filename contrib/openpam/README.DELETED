@@ -1,6 +1,7 @@
 INSTALL
 Makefile.am
 Makefile.in
+TODO
 aclocal.m4
 autogen.sh
 bin/
@@ -27,3 +28,5 @@ ltmain.sh
 misc/
 missing
 modules/
+pamgdb.in
+t/
