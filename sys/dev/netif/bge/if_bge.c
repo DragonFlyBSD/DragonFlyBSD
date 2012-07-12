@@ -2691,10 +2691,18 @@ bge_reset(struct bge_softc *sc)
 			pci_write_config(dev, 0xc4, v | (1<<15), 4);
 		}
 
-		/* Clear enable no snoop and disable relaxed ordering. */
 		devctl = pci_read_config(dev,
 		    sc->bge_pciecap + PCIER_DEVCTRL, 2);
+
+		/* Disable no snoop and disable relaxed ordering. */
 		devctl &= ~(PCIEM_DEVCTL_RELAX_ORDER | PCIEM_DEVCTL_NOSNOOP);
+
+		/* Old PCI-E chips only support 128 bytes Max PayLoad Size. */
+		if ((sc->bge_flags & BGE_FLAG_CPMU) == 0) {
+			devctl &= ~PCIEM_DEVCTL_MAX_PAYLOAD_MASK;
+			devctl |= PCIEM_DEVCTL_MAX_PAYLOAD_128;
+		}
+
 		pci_write_config(dev, sc->bge_pciecap + PCIER_DEVCTRL,
 		    devctl, 2);
 
