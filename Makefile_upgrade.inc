@@ -2029,6 +2029,7 @@ TO_REMOVE+=/usr/share/man/man3/puffs_fuse_unlink.3.gz
 TO_REMOVE+=/usr/include/netgraph7/ng_tty.h
 TO_REMOVE+=/etc/pam.d/gdm
 TO_REMOVE+=/etc/pam.d/kde
+TO_REMOVE+=/etc/rc.d/vfs_accounting
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys

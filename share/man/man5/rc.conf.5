@@ -2594,12 +2594,12 @@ has not completed within the specified time (in seconds).
 If set to
 .Dq Li YES ,
 the udevd daemon will be started on boot.
-.It Va vfs_accounting_enable
+.It Va vfs_quota_enable
 .Pq Vt bool
 If set to
 .Dq Li YES ,
-vfs accounting rc.d scripts will be run on boot.
-.It Va vfs_accounting_sync
+vfs quota rc.d scripts will be run on boot.
+.It Va vfs_quota_sync
 .Pq Vt str
 List of mount points whose counters are to be synchronized with on-disk
 usage during system startup. See also

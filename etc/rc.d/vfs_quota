@@ -1,26 +1,26 @@
 #!/bin/sh
 
-# PROVIDE: vfs_accounting
+# PROVIDE: vfs_quota
 # REQUIRE: mountcritlocal
 # BEFORE:  LOGIN
 
 . /etc/rc.subr
 
-name="vfs_accounting"
+name="vfs_quota"
 rcvar=`set_rcvar`
-start_cmd="vas_start"
+start_cmd="vq_start"
 
-vas_start()
+vq_start()
 {
-	if checkyesno vfs_accounting_enable; then
-		# For each dir in $vfs_accounting_sync, run vquota sync
+	if checkyesno vfs_quota_enable; then
+		# For each dir in $vfs_quota_sync, run vquota sync
 		#
-		case ${vfs_accounting_sync} in
+		case ${vfs_quota_sync} in
 		[Nn][Oo] | '')
 			;;
 		*)
 			echo -n 'Synchronizing VFS counters: '
-			for dir in ${vfs_accounting_sync}; do
+			for dir in ${vfs_quota_sync}; do
 				echo -n "${dir} "
 				if [ -d "${dir}" ]; then
 					/sbin/vquota sync ${dir}
