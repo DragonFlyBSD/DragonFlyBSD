@@ -650,6 +650,13 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 /* PCI Express device control, 16bits */
 #define PCIER_DEVCTRL			0x08
 #define PCIEM_DEVCTL_RELAX_ORDER	0x0010	/* Enable Relaxed Ordering */
+#define PCIEM_DEVCTL_MAX_PAYLOAD_MASK	0x00e0	/* Max Payload Size */
+#define PCIEM_DEVCTL_MAX_PAYLOAD_128	0x0000
+#define PCIEM_DEVCTL_MAX_PAYLOAD_256	0x0020
+#define PCIEM_DEVCTL_MAX_PAYLOAD_512	0x0040
+#define PCIEM_DEVCTL_MAX_PAYLOAD_1024	0x0060
+#define PCIEM_DEVCTL_MAX_PAYLOAD_2048	0x0080
+#define PCIEM_DEVCTL_MAX_PAYLOAD_4096	0x00a0
 #define PCIEM_DEVCTL_NOSNOOP		0x0800	/* Enable No Snoop */
 #define PCIEM_DEVCTL_MAX_READRQ_MASK	0x7000	/* Max read request size */
 #define PCIEM_DEVCTL_MAX_READRQ_128	0x0000
