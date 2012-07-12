@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)trek.6	8.2 (Berkeley) 12/30/93
 .\" $FreeBSD: src/games/trek/trek.6,v 1.4 1999/08/27 23:29:19 peter Exp $
-.\" $DragonFly: src/games/trek/trek.6,v 1.3 2007/03/27 10:08:02 swildner Exp $
 .\"
-.Dd November 14, 2009
+.Dd July 12, 2012
 .Dt TREK 6
 .Os
 .Sh NAME
@@ -37,10 +36,6 @@
 .Nd trekkie game
 .Sh SYNOPSIS
 .Nm
-.Oo
-.Op Fl a
-.Ar file
-.Oc
 .Sh DESCRIPTION
 .Nm Trek
 is a game of space glory and war.
@@ -48,11 +43,6 @@ Below is a summary of commands.
 For complete documentation, see
 .Em Trek
 by Eric Allman.
-.Pp
-If a filename is given, a log of the game is written onto that file.
-If the
-.Fl a
-flag is given before the filename, that file is appended to, not truncated.
 .Pp
 The game will ask you what length game you would like.
 Valid responses are

@@ -138,10 +138,6 @@ jmp_buf env;
 int
 main(int argc, char **argv)
 {
-#if 0
-	extern FILE		*f_log;
-	char		opencode;
-#endif
 	int		ac;
 	char		**av;
 
@@ -152,17 +148,8 @@ main(int argc, char **argv)
 	ac = argc;
 	av++;
 	srandomdev();
-#if 0
-	opencode = 'w';
-#endif
 	while (ac > 1 && av[0][0] == '-') {
 		switch (av[0][1]) {
-		  case 'a':	/* append to log file */
-#if 0
-			opencode = 'a';
-#endif
-			break;
-
 #ifdef xTRACE
 		  case 't':	/* trace */
 			if (getuid() != Mother)
@@ -178,12 +165,8 @@ main(int argc, char **argv)
 		ac--;
 		av++;
 	}
-	if (ac > 2)
-		syserr("arg count");
-#if 0
 	if (ac > 1)
-		f_log = fopen(av[0], opencode);
-#endif
+		syserr("arg count");
 
 	printf("\n   * * *   S T A R   T R E K   * * *\n\nPress return to continue.\n");
 
