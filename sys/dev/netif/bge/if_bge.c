@@ -2644,10 +2644,10 @@ bge_reset(struct bge_softc *sc)
 		/* Force PCI-E 1.0a mode */
 		if (sc->bge_asicrev != BGE_ASICREV_BCM5785 &&
 		    CSR_READ_4(sc, BGE_PCIE_PHY_TSTCTL) ==
-		    (BGE_PCIE_PCIE_PHY_TSTCTL_PSCRAM |
+		    (BGE_PCIE_PHY_TSTCTL_PSCRAM |
 		     BGE_PCIE_PHY_TSTCTL_PCIE10)) {
 			CSR_WRITE_4(sc, BGE_PCIE_PHY_TSTCTL,
-			    BGE_PCIE_PCIE_PHY_TSTCTL_PSCRAM);
+			    BGE_PCIE_PHY_TSTCTL_PSCRAM);
 		}
 		if (sc->bge_chipid != BGE_CHIPID_BCM5750_A0) {
 			/* Prevent PCIE link training during global reset */
