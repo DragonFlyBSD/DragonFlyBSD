@@ -342,7 +342,7 @@ struct	proc {
 #define	P_ADVLOCK	0x00001	/* Process may hold a POSIX advisory lock */
 #define	P_CONTROLT	0x00002	/* Has a controlling terminal */
 #define	P_SWAPPEDOUT	0x00004	/* Swapped out of memory */
-#define P_UNUSED3	0x00008
+#define P_SYSVSEM	0x00008	/* Might have SysV semaphores */
 #define	P_PPWAIT	0x00010	/* Parent is waiting for child to exec/exit */
 #define	P_PROFIL	0x00020	/* Has started profiling */
 #define P_UNUSED5	0x00040 /* was: Selecting; wakeup/waiting danger */
