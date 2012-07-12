@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.16 2007/10/02 12:57:00 hasso Exp $
  */
 
 #ifdef __i386__
@@ -240,8 +239,8 @@ parse(const char *string)
 				break;
 			case CTLTYPE_UQUAD:
 				uquadval = strtouq(newval, NULL, 0);
-				newval = &quadval;
-				newsize = sizeof(quadval);
+				newval = &uquadval;
+				newsize = sizeof(uquadval);
 				break;
 			case CTLTYPE_OPAQUE:
 				if (strcmp(fmt, "T,dev_t") == 0 ||
