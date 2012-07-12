@@ -5,7 +5,6 @@
  * This software is provided ``as is'' without express or implied warranty.
  *
  * $OpenBSD: list.c,v 1.5 2007/09/04 22:39:31 hshoexer Exp $
- * $DragonFly: src/games/hunt/hunt/list.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <stdio.h>
@@ -54,7 +53,8 @@ next_driver_fd(int fd)
 {
 	fd_set	r;
 	int	maxfd = -1;
-	int	i, s, ret, len;
+	int	i, s, ret;
+	socklen_t len;
 	struct driver *driver;
 	u_int16_t resp;
 

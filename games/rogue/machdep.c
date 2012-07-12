@@ -31,7 +31,6 @@
  *
  * @(#)machdep.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/machdep.c,v 1.6.2.1 2001/12/17 12:43:23 phantom Exp $
- * $DragonFly: src/games/rogue/machdep.c,v 1.4 2006/09/09 02:21:49 pavalos Exp $
  */
 
 /*
@@ -446,33 +445,6 @@ md_malloc(int n)
 
 	t = malloc(n);
 	return(t);
-}
-
-/* md_gseed() (Get Seed)
- *
- * This function returns a seed for the random number generator (RNG).  This
- * seed causes the RNG to begin generating numbers at some point in its
- * sequence.  Without a random seed, the RNG will generate the same set
- * of numbers, and every game will start out exactly the same way.  A good
- * number to use is the process id, given by getpid() on most UNIX systems.
- *
- * You need to find some single random integer, such as:
- *   process id.
- *   current time (minutes + seconds) returned from md_gct(), if implemented.
- *
- * It will not help to return "get_rand()" or "rand()" or the return value of
- * any pseudo-RNG.  If you don't have a random number, you can just return 1,
- * but this means your games will ALWAYS start the same way, and will play
- * exactly the same way given the same input.
- */
-
-int
-md_gseed(void)
-{
-	time_t seconds;
-
-	time(&seconds);
-	return((int)seconds);
 }
 
 /* md_exit():

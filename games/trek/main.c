@@ -29,13 +29,10 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/main.c,v 1.7.2.1 2001/03/05 12:11:14 kris Exp $
- * $DragonFly: src/games/trek/main.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 #include "trek.h"
 #include "getpar.h"
-
-#define PRIO		00	/* default priority */
 
 unsigned int	Mother	= 51 + (51 << 8);
 
@@ -143,9 +140,8 @@ main(int argc, char **argv)
 {
 #if 0
 	extern FILE		*f_log;
-#endif
 	char		opencode;
-	int		prio;
+#endif
 	int		ac;
 	char		**av;
 
@@ -156,13 +152,15 @@ main(int argc, char **argv)
 	ac = argc;
 	av++;
 	srandomdev();
+#if 0
 	opencode = 'w';
-	prio = PRIO;
-
+#endif
 	while (ac > 1 && av[0][0] == '-') {
 		switch (av[0][1]) {
 		  case 'a':	/* append to log file */
+#if 0
 			opencode = 'a';
+#endif
 			break;
 
 #ifdef xTRACE
@@ -172,13 +170,6 @@ main(int argc, char **argv)
 			Trace++;
 			break;
 #endif
-
-		  case 'p':	/* set priority */
-			if (getuid() != Mother)
-				goto badflag;
-			prio = atoi(av[0] + 2);
-			break;
-
 		  default:
 		  badflag:
 			printf("Invalid option: %s\n", av[0]);

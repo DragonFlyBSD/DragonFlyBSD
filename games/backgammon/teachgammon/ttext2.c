@@ -28,7 +28,6 @@
  *
  * @(#)ttext2.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/teachgammon/ttext2.c,v 1.3.2.1 2001/10/15 13:46:32 dd Exp $
- * $DragonFly: src/games/backgammon/teachgammon/ttext2.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
@@ -123,14 +122,12 @@ const char	*const lastch[] = {
 int
 text(const char *const *txt)
 {
-	const char *const *begin;
 	const char *a;
 	char b;
 	const char *c;
 	int i;
 
 	fixtty(noech);
-	begin = txt;
 	while (*txt) {
 		a = *(txt++);
 		if (*a != '\0') {
@@ -182,7 +179,6 @@ text(const char *const *txt)
 			fixtty(noech);
 			if (tflag)
 				curmove(curr, 0);
-			begin = txt;
 		}
 	}
 	fixtty(raw);

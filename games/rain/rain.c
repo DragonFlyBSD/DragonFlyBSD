@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rain.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rain/rain.c,v 1.8.2.1 2001/03/05 11:54:10 kris Exp $
- * $DragonFly: src/games/rain/rain.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
  */
 
 /*
@@ -127,9 +126,7 @@ main(int argc, char **argv)
 }
 
 static void
-onsig(int sig)
+onsig(__unused int sig)
 {
-
-	sig = 0;
 	sig_caught = 1;
 }

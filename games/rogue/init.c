@@ -80,7 +80,6 @@ boolean
 init(int argc, char *argv[])
 {
 	const char *pn;
-	int seed;
 
 	pn = md_gln();
 	if ((!pn) || (strlen(pn) >= MAX_OPT_LEN)) {
@@ -109,8 +108,7 @@ init(int argc, char *argv[])
 	if (score_only) {
 		put_scores(NULL, 0);
 	}
-	seed = md_gseed();
-	srrandom(seed);
+	srandomdev();
 	if (rest_file) {
 		restore(rest_file);
 		return(1);

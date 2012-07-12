@@ -564,7 +564,7 @@ void
 pspeak(int m, int skip)
 {
 	char *s, nonfirst;
-	char *numst, ps_save;
+	char *numst;
 	struct text *msg;
 	char *tbuf;
 
@@ -580,8 +580,8 @@ pspeak(int m, int skip)
 		for (numst = s; (*s ^= *tape++) != TAB; s++) /* get number */
 		  ; /* nothing */
 
-		ps_save = *s;	/* Temporarily trash the string (cringe) */
-		*s++ = 0;	/* decrypting number within the string */
+				/* Temporarily trash the string (cringe) */
+		*s++ = 0;	/* decrypting number within the string   */
 
 		if (atoi(numst) != 100 * skip && skip >= 0) {
 			while ((*s++ ^ *tape++) != LF)	/* flush the line */
