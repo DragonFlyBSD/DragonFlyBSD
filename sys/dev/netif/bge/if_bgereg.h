@@ -1944,6 +1944,10 @@
 #define BGE_PCIE_TRANSACT		0x7c04
 #define BGE_PCIE_TRANSACT_ONESHOT_MSI	0x20000000
 
+#define BGE_PCIE_PHY_TSTCTL		0x7e2c
+#define BGE_PCIE_PCIE_PHY_TSTCTL_PSCRAM	0x00000020
+#define BGE_PCIE_PHY_TSTCTL_PCIE10	0x00000040
+
 #define PCI_SETBIT(dev, reg, x, s)	\
 	pci_write_config(dev, reg, (pci_read_config(dev, reg, s) | x), s)
 #define PCI_CLRBIT(dev, reg, x, s)	\
