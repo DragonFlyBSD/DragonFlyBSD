@@ -422,11 +422,8 @@ c_common_handle_option (size_t scode, const char *arg, int value)
       cpp_opts->warn_comments = value;
       cpp_opts->warn_num_sign_change = value;
 
-#if 0
-      /* DragonFly: disabled in -Wall */
       if (warn_pointer_sign == -1)
 	warn_pointer_sign = value;
-#endif
       break;
 
     case OPT_Wbuiltin_macro_redefined:

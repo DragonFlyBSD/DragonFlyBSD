@@ -9,7 +9,7 @@
 
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
-		-Wold-style-definition -std=c99
+		-Wold-style-definition -Wno-pointer-sign -std=c99
 
 .if ${CCVER} != "gcc41"
 CWARNFLAGS+=	-Wold-style-declaration
