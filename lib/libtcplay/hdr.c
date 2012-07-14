@@ -100,7 +100,7 @@ verify_hdr(struct tchdr_dec *hdr)
 		return 0;
 	}
 
-	crc = crc32((void *)&hdr->keys, 256);
+	crc = crc32(&hdr->keys, 256);
 	if (crc != hdr->crc_keys) {
 #ifdef DEBUG
 		fprintf(stderr, "CRC32 mismatch (crc_keys)\n");

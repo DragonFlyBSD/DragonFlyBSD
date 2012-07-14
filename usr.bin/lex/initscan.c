@@ -2942,7 +2942,7 @@ static int yy_get_next_buffer()
 
 				b->yy_ch_buf = (char *)
 					/* Include room in for 2 EOB chars. */
-					yy_flex_realloc( (void *) b->yy_ch_buf,
+					yy_flex_realloc( b->yy_ch_buf,
 							 b->yy_buf_size + 2 );
 				}
 			else
@@ -3287,9 +3287,9 @@ YY_BUFFER_STATE b;
 		yy_current_buffer = (YY_BUFFER_STATE) 0;
 
 	if ( b->yy_is_our_buffer )
-		yy_flex_free( (void *) b->yy_ch_buf );
+		yy_flex_free( b->yy_ch_buf );
 
-	yy_flex_free( (void *) b );
+	yy_flex_free( b );
 	}
 
 
@@ -3470,7 +3470,7 @@ int new_state;
 
 		else
 			yy_start_stack = (int *) yy_flex_realloc(
-					(void *) yy_start_stack, new_size );
+					yy_start_stack, new_size );
 
 		if ( ! yy_start_stack )
 			YY_FATAL_ERROR(

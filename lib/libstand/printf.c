@@ -100,7 +100,7 @@ sprintf(char *buf, const char *cfmt, ...)
 	va_list ap;
 
 	va_start(ap, cfmt);
-	retval = kvprintf(cfmt, NULL, (void *)buf, 10, ap);
+	retval = kvprintf(cfmt, NULL, buf, 10, ap);
 	buf[retval] = '\0';
 	va_end(ap);
 	return retval;
@@ -111,7 +111,7 @@ vsprintf(char *buf, const char *cfmt, va_list ap)
 {
 	int	retval;
 	
-	retval = kvprintf(cfmt, NULL, (void *)buf, 10, ap);
+	retval = kvprintf(cfmt, NULL, buf, 10, ap);
 	buf[retval] = '\0';
 }
 

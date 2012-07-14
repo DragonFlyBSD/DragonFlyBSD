@@ -539,7 +539,7 @@ rtmsg_input(void)
 			rai->waiting = 0; /* XXX */
 			rai->timer = rtadvd_add_timer(ra_timeout,
 			    ra_timer_update, rai, rai);
-			ra_timer_update((void *)rai, &rai->timer->tm);
+			ra_timer_update(rai, &rai->timer->tm);
 			rtadvd_set_timer(&rai->timer->tm, rai->timer);
 		}
 	}

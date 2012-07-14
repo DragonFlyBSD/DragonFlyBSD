@@ -615,7 +615,7 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 			return ENXIO;
 		}
 		if (ukbd_enable_intr(kbd, TRUE, (usbd_intr_t *)data[1]) == 0)
-			ukbd_timeout((void *)kbd);
+			ukbd_timeout(kbd);
 		KBD_CONFIG_DONE(kbd);
 	}
 

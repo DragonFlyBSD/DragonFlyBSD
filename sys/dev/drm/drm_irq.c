@@ -101,7 +101,7 @@ void drm_vblank_cleanup(struct drm_device *dev)
 	callout_stop(&dev->vblank_disable_timer);
 	DRM_SPINUNLOCK(&dev->vbl_lock);
 
-	vblank_disable_fn((void *)dev);
+	vblank_disable_fn(dev);
 
 	free(dev->vblank, DRM_MEM_DRIVER);
 

@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/syscalls.c,v 1.10.2.6 2003/04/14 18:24:38 mdodd Exp $
- * $DragonFly: src/usr.bin/truss/syscalls.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
 /*
@@ -297,17 +296,17 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
       int i;
 
       /* yuck: get ss_len */
-      if (get_struct(fd, (void *)args[sc->offset], (void *)&ss,
+      if (get_struct(fd, (void *)args[sc->offset], &ss,
 	sizeof(ss.ss_len) + sizeof(ss.ss_family)) == -1)
 	err(1, "get_struct %p", (void *)args[sc->offset]);
       /* sockaddr_un never have the length filled in! */
       if (ss.ss_family == AF_UNIX) {
-	if (get_struct(fd, (void *)args[sc->offset], (void *)&ss,
+	if (get_struct(fd, (void *)args[sc->offset], &ss,
 	  sizeof(*sun))
 	  == -1)
 	  err(2, "get_struct %p", (void *)args[sc->offset]);
       } else {
-	if (get_struct(fd, (void *)args[sc->offset], (void *)&ss,
+	if (get_struct(fd, (void *)args[sc->offset], &ss,
 	    ss.ss_len < sizeof(ss) ? ss.ss_len : sizeof(ss))
 	  == -1)
 	  err(2, "get_struct %p", (void *)args[sc->offset]);

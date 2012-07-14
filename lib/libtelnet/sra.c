@@ -26,9 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- *
  * $FreeBSD: src/crypto/telnet/libtelnet/sra.c,v 1.1.2.7 2002/05/16 08:46:49 markm Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/sra.c,v 1.3 2006/01/17 23:50:34 dillon Exp $
  */
 
 #ifdef	SRA
@@ -290,7 +288,7 @@ sra_reply(Authenticator *ap, unsigned char *data, int cnt)
 		/* send it off */
 		if (auth_debug_mode)
 			printf("Sent KAB(U)\r\n");
-		if (!Data(ap, SRA_USER, (void *)xuser, strlen(xuser))) {
+		if (!Data(ap, SRA_USER, xuser, strlen(xuser))) {
 			if (auth_debug_mode)
 				printf("Not enough room\r\n");
 			return;
@@ -310,7 +308,7 @@ sra_reply(Authenticator *ap, unsigned char *data, int cnt)
 		/* send it off */
 		if (auth_debug_mode)
 			printf("Sent KAB(P)\r\n");
-		if (!Data(ap, SRA_PASS, (void *)xpass, strlen(xpass))) {
+		if (!Data(ap, SRA_PASS, xpass, strlen(xpass))) {
 			if (auth_debug_mode)
 				printf("Not enough room\r\n");
 			return;

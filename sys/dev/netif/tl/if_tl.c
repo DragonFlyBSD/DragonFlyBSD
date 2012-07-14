@@ -1624,17 +1624,17 @@ tl_intr(void *xsc)
 		r = 0;
 		break;
 	case (TL_INTR_TXEOF):
-		r = tl_intvec_txeof((void *)sc, type);
+		r = tl_intvec_txeof(sc, type);
 		break;
 	case (TL_INTR_TXEOC):
-		r = tl_intvec_txeoc((void *)sc, type);
+		r = tl_intvec_txeoc(sc, type);
 		break;
 	case (TL_INTR_STATOFLOW):
 		tl_stats_update_serialized(sc);
 		r = 1;
 		break;
 	case (TL_INTR_RXEOF):
-		r = tl_intvec_rxeof((void *)sc, type);
+		r = tl_intvec_rxeof(sc, type);
 		break;
 	case (TL_INTR_DUMMY):
 		if_printf(ifp, "got a dummy interrupt\n");
@@ -1642,12 +1642,12 @@ tl_intr(void *xsc)
 		break;
 	case (TL_INTR_ADCHK):
 		if (ivec)
-			r = tl_intvec_adchk((void *)sc, type);
+			r = tl_intvec_adchk(sc, type);
 		else
-			r = tl_intvec_netsts((void *)sc, type);
+			r = tl_intvec_netsts(sc, type);
 		break;
 	case (TL_INTR_RXEOC):
-		r = tl_intvec_rxeoc((void *)sc, type);
+		r = tl_intvec_rxeoc(sc, type);
 		break;
 	default:
 		if_printf(ifp, "bogus interrupt type\n");

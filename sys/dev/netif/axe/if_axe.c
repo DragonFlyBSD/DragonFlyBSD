@@ -227,7 +227,7 @@ axe_miibus_readreg(device_t dev, int phy, int reg)
 	}
 
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_SW, 0, 0, NULL);
-	err = axe_cmd(sc, AXE_CMD_MII_READ_REG, reg, phy, (void *)&val);
+	err = axe_cmd(sc, AXE_CMD_MII_READ_REG, reg, phy, &val);
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_HW, 0, 0, NULL);
 
 	if (err) {
@@ -252,7 +252,7 @@ axe_miibus_writereg(device_t dev, int phy, int reg, int val)
 	}
 
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_SW, 0, 0, NULL);
-	err = axe_cmd(sc, AXE_CMD_MII_WRITE_REG, reg, phy, (void *)&val);
+	err = axe_cmd(sc, AXE_CMD_MII_WRITE_REG, reg, phy, &val);
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_HW, 0, 0, NULL);
 
 	if (err) {
@@ -320,7 +320,7 @@ axe_setmulti(struct axe_softc *sc)
 	u_int16_t		rxmode;
 	u_int8_t		hashtbl[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-	axe_cmd(sc, AXE_CMD_RXCTL_READ, 0, 0, (void *)&rxmode);
+	axe_cmd(sc, AXE_CMD_RXCTL_READ, 0, 0, &rxmode);
 
 	if (ifp->if_flags & IFF_ALLMULTI || ifp->if_flags & IFF_PROMISC) {
 		rxmode |= AXE_RXCMD_ALLMULTI;
@@ -340,7 +340,7 @@ axe_setmulti(struct axe_softc *sc)
 		hashtbl[h / 8] |= 1 << (h % 8);
 	}
 
-	axe_cmd(sc, AXE_CMD_WRITE_MCAST, 0, 0, (void *)&hashtbl);
+	axe_cmd(sc, AXE_CMD_WRITE_MCAST, 0, 0, &hashtbl);
 	axe_cmd(sc, AXE_CMD_RXCTL_WRITE, 0, rxmode, NULL);
 }
 
@@ -436,8 +436,8 @@ axe_attach(device_t self)
 	/*
 	 * Load IPG values and PHY indexes.
 	 */
-	axe_cmd(sc, AXE_CMD_READ_IPG012, 0, 0, (void *)&sc->axe_ipgs);
-	axe_cmd(sc, AXE_CMD_READ_PHYID, 0, 0, (void *)&sc->axe_phyaddrs);
+	axe_cmd(sc, AXE_CMD_READ_IPG012, 0, 0, &sc->axe_ipgs);
+	axe_cmd(sc, AXE_CMD_READ_PHYID, 0, 0, &sc->axe_phyaddrs);
 
 	/*
 	 * Work around broken adapters that appear to lie about
@@ -896,8 +896,7 @@ axe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			if (ifp->if_flags & IFF_RUNNING &&
 			    ifp->if_flags & IFF_PROMISC &&
 			    !(sc->axe_if_flags & IFF_PROMISC)) {
-				axe_cmd(sc, AXE_CMD_RXCTL_READ,
-					0, 0, (void *)&rxmode);
+				axe_cmd(sc, AXE_CMD_RXCTL_READ, 0, 0, &rxmode);
 				rxmode |= AXE_RXCMD_PROMISC;
 				axe_cmd(sc, AXE_CMD_RXCTL_WRITE,
 					0, rxmode, NULL);
@@ -905,8 +904,7 @@ axe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			} else if (ifp->if_flags & IFF_RUNNING &&
 			    !(ifp->if_flags & IFF_PROMISC) &&
 			    sc->axe_if_flags & IFF_PROMISC) {
-				axe_cmd(sc, AXE_CMD_RXCTL_READ,
-					0, 0, (void *)&rxmode);
+				axe_cmd(sc, AXE_CMD_RXCTL_READ, 0, 0, &rxmode);
 				rxmode &= ~AXE_RXCMD_PROMISC;
 				axe_cmd(sc, AXE_CMD_RXCTL_WRITE,
 					0, rxmode, NULL);

@@ -91,8 +91,7 @@ key_setsecret(const char *secretkey)
 {
 	keystatus status;
 
-	if (!key_call((u_long) KEY_SET, (xdrproc_t)xdr_keybuf,
-			(void *)secretkey,
+	if (!key_call((u_long) KEY_SET, (xdrproc_t)xdr_keybuf, secretkey,
 			(xdrproc_t)xdr_keystatus, &status)) {
 		return (-1);
 	}

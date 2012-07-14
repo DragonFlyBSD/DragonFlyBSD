@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD$
- * $DragonFly: src/sys/boot/efi/libefi/bootinfo.c,v 1.1 2003/11/10 06:08:32 dillon Exp $
  */
 
 #include <stand.h>
@@ -288,7 +287,7 @@ bi_load(struct bootinfo *bi, struct preloaded_file *fp, UINTN *mapkey,
     }
 
     /* Try reading the /etc/fstab file to select the root device */
-    getrootmount(efi_fmtdev((void *)rootdev));
+    getrootmount(efi_fmtdev(rootdev));
     free(rootdev);
 
     ssym = esym = 0;

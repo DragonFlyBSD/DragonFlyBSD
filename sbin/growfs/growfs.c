@@ -283,7 +283,7 @@ growfs(int fsi, int fso, unsigned int Nflag)
 	 * Now write the new superblock back to disk.
 	 */
 	sblock.fs_time = utime;
-	wtfs((daddr_t)(SBOFF / DEV_BSIZE), (size_t)SBSIZE, (void *)&sblock,
+	wtfs((daddr_t)(SBOFF / DEV_BSIZE), (size_t)SBSIZE, &sblock,
 	    fso, Nflag);
 	DBG_PRINT0("sblock written\n");
 	DBG_DUMP_FS(&sblock,
@@ -326,7 +326,7 @@ growfs(int fsi, int fso, unsigned int Nflag)
 	 */
 	for (cylno = 0; cylno < sblock.fs_ncg; cylno++) {
 		wtfs(fsbtodb(&sblock, cgsblock(&sblock, cylno)),
-		    (size_t)SBSIZE, (void *)&sblock, fso, Nflag);
+		    (size_t)SBSIZE, &sblock, fso, Nflag);
 	}
 	DBG_PRINT0("sblock copies written\n");
 	DBG_DUMP_FS(&sblock,
@@ -501,7 +501,7 @@ initcg(int cylno, time_t utime, int fso, unsigned int Nflag)
 	sblock.fs_cstotal.cs_nifree += acg.cg_cs.cs_nifree;
 	*cs = acg.cg_cs;
 	wtfs(fsbtodb(&sblock, cgtod(&sblock, cylno)),
-	    (size_t)sblock.fs_bsize, (void *)&acg, fso, Nflag);
+	    (size_t)sblock.fs_bsize, &acg, fso, Nflag);
 	DBG_DUMP_CG(&sblock,
 	    "new cg",
 	    &acg);
@@ -630,7 +630,7 @@ cond_bl_upd(ufs_daddr_t *block, struct gfs_bpp *field,
 				 *	implement  copy on write here in  case
 				 *	of active snapshots.
 				 */
-				wtfs(dst, (size_t)sblock.fs_bsize, (void *)src,
+				wtfs(dst, (size_t)sblock.fs_bsize, src,
 				    fso, Nflag);
 			}
 
@@ -674,7 +674,7 @@ updjcg(int cylno, time_t utime, int fsi, int fso, unsigned int Nflag)
 	 * a copy.
 	 */
 	rdfs(fsbtodb(&osblock, cgtod(&osblock, cylno)),
-	    (size_t)osblock.fs_cgsize, (void *)&aocg, fsi);
+	    (size_t)osblock.fs_cgsize, &aocg, fsi);
 	DBG_PRINT0("jcg read\n");
 	DBG_DUMP_CG(&sblock,
 	    "old joining cg",
@@ -694,7 +694,7 @@ updjcg(int cylno, time_t utime, int fsi, int fso, unsigned int Nflag)
 		acg.cg_ncyl=sblock.fs_cpg;
 
 		wtfs(fsbtodb(&sblock, cgtod(&sblock, cylno)),
-		    (size_t)sblock.fs_cgsize, (void *)&acg, fso, Nflag);
+		    (size_t)sblock.fs_cgsize, &acg, fso, Nflag);
 		DBG_PRINT0("jcg written\n");
 		DBG_DUMP_CG(&sblock,
 		    "new joining cg",
@@ -884,7 +884,7 @@ updjcg(int cylno, time_t utime, int fsi, int fso, unsigned int Nflag)
 	 * Write the updated "joining" cylinder group back to disk.
 	 */
 	wtfs(fsbtodb(&sblock, cgtod(&sblock, cylno)), (size_t)sblock.fs_cgsize,
-	    (void *)&acg, fso, Nflag);
+	    &acg, fso, Nflag);
 	DBG_PRINT0("jcg written\n");
 	DBG_DUMP_CG(&sblock,
 	    "new joining cg",
@@ -948,7 +948,7 @@ updcsloc(time_t utime, int fsi, int fso, unsigned int Nflag)
 	 *	block from disk.
 	 */
 	rdfs(fsbtodb(&osblock, cgtod(&osblock, ocscg)),
-	    (size_t)osblock.fs_cgsize, (void *)&aocg, fsi);
+	    (size_t)osblock.fs_cgsize, &aocg, fsi);
 	DBG_PRINT0("oscg read\n");
 	DBG_DUMP_CG(&sblock,
 	    "old summary cg",
@@ -1112,7 +1112,7 @@ updcsloc(time_t utime, int fsi, int fso, unsigned int Nflag)
 		 * summary back to disk.
 		 */
 		wtfs(fsbtodb(&sblock, cgtod(&sblock, ocscg)),
-		    (size_t)sblock.fs_cgsize, (void *)&acg, fso, Nflag);
+		    (size_t)sblock.fs_cgsize, &acg, fso, Nflag);
 		DBG_PRINT0("oscg written\n");
 		DBG_DUMP_CG(&sblock,
 		    "old summary cg",
@@ -1143,7 +1143,7 @@ updcsloc(time_t utime, int fsi, int fso, unsigned int Nflag)
 		 * summary from disk, and make a copy.
 		 */
 		rdfs(fsbtodb(&sblock, cgtod(&sblock, ncscg)),
-		    (size_t)sblock.fs_cgsize, (void *)&aocg, fsi);
+		    (size_t)sblock.fs_cgsize, &aocg, fsi);
 		DBG_PRINT0("nscg read\n");
 		DBG_DUMP_CG(&sblock,
 		    "new summary cg",
@@ -1219,7 +1219,7 @@ updcsloc(time_t utime, int fsi, int fso, unsigned int Nflag)
 		 * back to disk.
 		 */
 		wtfs(fsbtodb(&sblock, cgtod(&sblock, ncscg)),
-		    (size_t)sblock.fs_cgsize, (void *)&acg, fso, Nflag);
+		    (size_t)sblock.fs_cgsize, &acg, fso, Nflag);
 		DBG_PRINT0("nscg written\n");
 		DBG_DUMP_CG(&sblock,
 		    "new summary cg",
@@ -1477,9 +1477,9 @@ updcsloc(time_t utime, int fsi, int fso, unsigned int Nflag)
 			 *	in the case we have any active snapshots.
 			 */
 			rdfs(fsbtodb(&sblock, bp[i].old*sblock.fs_frag),
-			    (size_t)sblock.fs_bsize, (void *)&ablk, fsi);
+			    (size_t)sblock.fs_bsize, &ablk, fsi);
 			wtfs(fsbtodb(&sblock, bp[i].new*sblock.fs_frag),
-			    (size_t)sblock.fs_bsize, (void *)&ablk, fso, Nflag);
+			    (size_t)sblock.fs_bsize, &ablk, fso, Nflag);
 			DBG_DUMP_HEX(&sblock,
 			    "copied full block",
 			    (unsigned char *)&ablk);
@@ -1532,7 +1532,7 @@ updcsloc(time_t utime, int fsi, int fso, unsigned int Nflag)
 	 * Write summary cylinder group back to disk.
 	 */
 	wtfs(fsbtodb(&sblock, cgtod(&sblock, ocscg)), (size_t)sblock.fs_cgsize,
-	    (void *)&acg, fso, Nflag);
+	    &acg, fso, Nflag);
 	DBG_PRINT0("scg written\n");
 	DBG_DUMP_CG(&sblock,
 	    "new summary cg",
@@ -1865,7 +1865,7 @@ ginode(ino_t inumber, int fsi, int cg)
 		 */
 		iblk = ino_to_fsba(&sblock, inumber);
 		in_src=fsbtodb(&sblock, iblk);
-		rdfs(in_src, (size_t)sblock.fs_bsize, (void *)&ablk, fsi);
+		rdfs(in_src, (size_t)sblock.fs_bsize, &ablk, fsi);
 		startinum = (inumber / INOPB(&sblock)) * INOPB(&sblock);
 	}
 
@@ -2056,8 +2056,7 @@ main(int argc, char **argv)
 	/*
 	 * Read the current superblock, and take a backup.
 	 */
-	rdfs((daddr_t)(SBOFF/DEV_BSIZE), (size_t)SBSIZE, (void *)&(osblock),
-	    fsi);
+	rdfs((daddr_t)(SBOFF/DEV_BSIZE), (size_t)SBSIZE, &osblock, fsi);
 	if (osblock.fs_magic != FS_MAGIC) {
 		errx(1, "superblock not recognized");
 	}
@@ -2125,7 +2124,7 @@ main(int argc, char **argv)
 	 * later on realize we have to abort our operation, on that block
 	 * there should be no data, so we can't destroy something yet.
 	 */
-	wtfs((daddr_t)pinfo.media_blocks-1, (size_t)DEV_BSIZE, (void *)&sblock, fso,
+	wtfs((daddr_t)pinfo.media_blocks-1, (size_t)DEV_BSIZE, &sblock, fso,
 	    Nflag);
 
 	/*
@@ -2333,7 +2332,7 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 		 */
 		cond_bl_upd(&(ino->di_ib[0]), bp, GFS_PS_INODE, fso, Nflag);
 		i1_src=fsbtodb(&sblock, ino->di_ib[0]);
-		rdfs(i1_src, (size_t)sblock.fs_bsize, (void *)&i1blk, fsi);
+		rdfs(i1_src, (size_t)sblock.fs_bsize, &i1blk, fsi);
 		for(ictr=0; ictr < MIN(howmany(sblock.fs_bsize,
 		    sizeof(ufs_daddr_t)), (unsigned int)remaining_blocks);
 		    ictr++) {
@@ -2357,7 +2356,7 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 		 */
 		cond_bl_upd(&(ino->di_ib[1]), bp, GFS_PS_INODE, fso, Nflag);
 		i2_src=fsbtodb(&sblock, ino->di_ib[1]);
-		rdfs(i2_src, (size_t)sblock.fs_bsize, (void *)&i2blk, fsi);
+		rdfs(i2_src, (size_t)sblock.fs_bsize, &i2blk, fsi);
 		for(ind2ctr=0; ind2ctr < howmany(sblock.fs_bsize,
 		    sizeof(ufs_daddr_t)); ind2ctr++) {
 			ind2ptr=&((ufs_daddr_t *)(void *)&i2blk)[ind2ctr];
@@ -2367,7 +2366,7 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 			cond_bl_upd(ind2ptr, bp, GFS_PS_IND_BLK_LVL2, fso,
 			    Nflag);
 			i1_src=fsbtodb(&sblock, *ind2ptr);
-			rdfs(i1_src, (size_t)sblock.fs_bsize, (void *)&i1blk,
+			rdfs(i1_src, (size_t)sblock.fs_bsize, &i1blk,
 			    fsi);
 			for(ictr=0; ictr<MIN(howmany((unsigned int)
 			    sblock.fs_bsize, sizeof(ufs_daddr_t)),
@@ -2396,7 +2395,7 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 		 */
 		cond_bl_upd(&(ino->di_ib[2]), bp, GFS_PS_INODE, fso, Nflag);
 		i3_src=fsbtodb(&sblock, ino->di_ib[2]);
-		rdfs(i3_src, (size_t)sblock.fs_bsize, (void *)&i3blk, fsi);
+		rdfs(i3_src, (size_t)sblock.fs_bsize, &i3blk, fsi);
 		for(ind3ctr=0; ind3ctr < howmany(sblock.fs_bsize,
 		    sizeof(ufs_daddr_t)); ind3ctr ++) {
 			ind3ptr=&((ufs_daddr_t *)(void *)&i3blk)[ind3ctr];
@@ -2406,7 +2405,7 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 			cond_bl_upd(ind3ptr, bp, GFS_PS_IND_BLK_LVL3, fso,
 			    Nflag);
 			i2_src=fsbtodb(&sblock, *ind3ptr);
-			rdfs(i2_src, (size_t)sblock.fs_bsize, (void *)&i2blk,
+			rdfs(i2_src, (size_t)sblock.fs_bsize, &i2blk,
 			    fsi);
 			for(ind2ctr=0; ind2ctr < howmany(sblock.fs_bsize,
 			    sizeof(ufs_daddr_t)); ind2ctr ++) {
@@ -2419,7 +2418,7 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 				    fso, Nflag);
 				i1_src=fsbtodb(&sblock, *ind2ptr);
 				rdfs(i1_src, (size_t)sblock.fs_bsize,
-				    (void *)&i1blk, fsi);
+				    &i1blk, fsi);
 				for(ictr=0; ictr < MIN(howmany(sblock.fs_bsize,
 				    sizeof(ufs_daddr_t)),
 				    (unsigned int)remaining_blocks); ictr++) {

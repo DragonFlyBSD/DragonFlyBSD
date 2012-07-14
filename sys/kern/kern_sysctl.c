@@ -1055,8 +1055,7 @@ kernel_sysctlbyname(char *name, void *old, size_t *oldlenp,
 	oid[1] = 3;		/* name2oid */
 	oidlen = sizeof(oid);
 
-	error = kernel_sysctl(oid, 2, oid, &oidlen, (void *)name,
-		    strlen(name), &plen);
+	error = kernel_sysctl(oid, 2, oid, &oidlen, name, strlen(name), &plen);
 	if (error)
 		return (error);
 

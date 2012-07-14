@@ -542,7 +542,7 @@ int mfi_tbolt_reset(struct mfi_softc *sc)
 				sc->issuepend_done = 0;
 				sc->MFA_enabled = 0;
 				sc->last_reply_idx = 0;
-				mfi_process_fw_state_chg_isr((void *) sc);
+				mfi_process_fw_state_chg_isr(sc);
 			}
 			lockmgr(&sc->mfi_io_lock, LK_RELEASE);
 			return 0;

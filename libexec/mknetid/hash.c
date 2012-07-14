@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/mknetid/hash.c,v 1.5 1999/08/28 00:09:40 peter Exp $
- * $DragonFly: src/libexec/mknetid/hash.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <stdio.h>
@@ -104,7 +103,7 @@ hashkey(char *key)
 
 	if (key == NULL)
 		return (-1);
-	return(hash((void *)key, strlen(key)) & HASH_MASK);
+	return(hash(key, strlen(key)) & HASH_MASK);
 }
 
 /* Find an entry in the hash table (may be hanging off a linked list). */

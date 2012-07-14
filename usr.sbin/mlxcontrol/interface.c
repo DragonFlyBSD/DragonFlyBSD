@@ -194,7 +194,7 @@ mlx_enquiry(int unit, struct mlx_enquiry2 *enq)
     cmd.mu_command[0] = MLX_CMD_ENQUIRY2;
 
     /* hand it off for processing */
-    mlx_perform(unit, mlx_command, (void *)&cmd);
+    mlx_perform(unit, mlx_command, &cmd);
 
     return(cmd.mu_status != 0);
 }
@@ -216,7 +216,7 @@ mlx_read_configuration(int unit, struct mlx_core_cfg *cfg)
     cmd.mu_command[0] = MLX_CMD_READ_CONFIG;
 
     /* hand it off for processing */
-    mlx_perform(unit, mlx_command, (void *)&cmd);
+    mlx_perform(unit, mlx_command, &cmd);
 
     return(cmd.mu_status != 0);
 }
@@ -283,7 +283,7 @@ mlx_get_device_state(int unit, int channel, int target, struct mlx_phys_drv *drv
     cmd.mu_command[3] = target;
 
     /* hand it off for processing */
-    mlx_perform(unit, mlx_command, (void *)&cmd);
+    mlx_perform(unit, mlx_command, &cmd);
 
     return(cmd.mu_status != 0);
 }
