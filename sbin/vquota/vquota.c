@@ -416,8 +416,8 @@ get_fslist(void)
 
 	/* iterate mounted filesystems */
 	for (i=0; i<nloc; i++) {
-	    /* vfs accounting enabled on this one ? */
-	    if (mntbufp[i].f_flags & MNT_ACCOUNTING)
+	    /* vfs quota enabled on this one ? */
+	    if (mntbufp[i].f_flags & MNT_QUOTA)
 		printf("%s on %s\n", mntbufp[i].f_mntfromname,
 		    mntbufp[i].f_mntonname);
 	}
