@@ -1,5 +1,5 @@
 #	@(#)Makefile	8.4 (Berkeley) 5/5/95
-# $FreeBSD: src/bin/sh/Makefile,v 1.56 2011/02/08 23:18:06 jilles Exp $
+# $FreeBSD: src/bin/sh/Makefile,v 1.57 2012/05/24 19:48:15 marcel Exp $
 
 PROG=	sh
 INSTALLFLAGS= -S
@@ -40,7 +40,7 @@ build-tools: mkinit.nx mknodes.nx mksyntax.nx
 
 .ORDER: builtins.c builtins.h
 builtins.c builtins.h: mkbuiltins builtins.def
-	cd ${.CURDIR}; sh mkbuiltins ${.OBJDIR}
+	sh ${.CURDIR}/mkbuiltins ${.CURDIR}
 
 init.c: mkinit.nx alias.c eval.c exec.c input.c jobs.c options.c parser.c \
 	redir.c trap.c var.c
