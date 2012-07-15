@@ -279,6 +279,7 @@ dev/netif/ale/if_ale.c			optional ale
 dev/netif/bce/if_bce.c			optional bce
 dev/netif/bfe/if_bfe.c			optional bfe
 dev/netif/bge/if_bge.c			optional bge
+dev/netif/bnx/if_bnx.c			optional bnx
 dev/disk/buslogic/bt.c			optional bt
 dev/disk/buslogic/bt_isa.c		optional bt isa
 dev/disk/buslogic/bt_pci.c		optional bt pci
