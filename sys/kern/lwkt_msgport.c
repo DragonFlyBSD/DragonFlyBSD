@@ -97,6 +97,10 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
 	     (msg->ms_flags & (MSGF_DONE|MSGF_QUEUED)) == MSGF_DONE);
     msg->ms_flags &= ~(MSGF_REPLY | MSGF_SYNC | MSGF_DONE);
     if ((error = lwkt_beginmsg(port, msg)) != EASYNC) {
+	/*
+	 * Target port opted to execute the message synchronously so
+	 * queue the response.
+	 */
 	lwkt_replymsg(msg, error);
     }
 }
@@ -104,10 +108,11 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
 /*
  * lwkt_domsg()
  *
- *	Request asynchronous completion and call lwkt_beginmsg().  The
+ *	Request synchronous completion and call lwkt_beginmsg().  The
  *	target port can opt to execute the message synchronously or
- *	asynchronously and this function will automatically queue the
- *	response if the target executes the message synchronously.
+ *	asynchronously and this function will automatically block and
+ *	wait for a response if the target executes the message
+ *	asynchronously.
  */
 int
 lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg, int flags)
@@ -119,6 +124,10 @@ lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg, int flags)
     msg->ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
     msg->ms_flags |= MSGF_SYNC;
     if ((error = lwkt_beginmsg(port, msg)) == EASYNC) {
+	/*
+	 * Target port opted to execute the message asynchronously so
+	 * block and wait for a reply.
+	 */
 	error = lwkt_waitmsg(msg, flags);
     } else {
 	msg->ms_flags |= MSGF_DONE | MSGF_REPLY;
@@ -706,6 +715,12 @@ lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
     return(msg->ms_error);
 }
 
+/*
+ * lwkt_thread_waitport()
+ *
+ *	Wait for a new message to be available on the port.  We must be the
+ *	the only thread waiting on the port.  The port must be owned by caller.
+ */
 static
 void *
 lwkt_thread_waitport(lwkt_port_t port, int flags)

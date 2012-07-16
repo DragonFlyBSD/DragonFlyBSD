@@ -136,8 +136,8 @@ MALLOC_DECLARE(M_LWKTMSG);
  *	- reply a message (executed on the originating port to return a
  *	  message to it).  This can be rather involved if abort is to be
  *	  supported, see lwkt_default_replyport().  Generally speaking
- *	  one sets MSGF_DONE.  If MSGF_SYNC is set the message is not
- *	  queued to the port and the reply code wakes up the waiter
+ *	  one sets MSGF_DONE and MSGF_REPLY.  If MSGF_SYNC is set the message
+ *	  is not queued to the port and the reply code wakes up the waiter
  *	  directly.
  *
  * The use of mp_u.td and mp_u.spin is specific to the port callback function
@@ -173,10 +173,17 @@ typedef struct lwkt_port {
 
 #endif
 
+/*
+ * Port state flags.
+ *
+ * WAITING      The owner of the port is descheduled waiting for a message
+ *              to be replied.  In case this a spin port there can actually
+ *              be more than one thread waiting on the port.
+ */
 #define MSGPORTF_WAITING	0x0001
 
 /*
- * These functions are good for userland as well as the kernel.  The 
+ * These functions are good for userland as well as the kernel.  The
  * messaging function support for userland is provided by the kernel's
  * kern/lwkt_msgport.c.  The port functions are provided by userland.
  */
