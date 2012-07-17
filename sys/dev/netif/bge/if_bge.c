@@ -2014,8 +2014,11 @@ bge_attach(device_t dev)
 	sc->bge_chipid =
 	    pci_read_config(dev, BGE_PCI_MISC_CTL, 4) >>
 	    BGE_PCIMISCCTL_ASICREV_SHIFT;
-        if (BGE_ASICREV(sc->bge_chipid) == BGE_ASICREV_USE_PRODID_REG)
+	if (BGE_ASICREV(sc->bge_chipid) == BGE_ASICREV_USE_PRODID_REG) {
+		/* All chips, which use BGE_PCI_PRODID_ASICREV, have CPMU */
+		sc->bge_flags |= BGE_FLAG_CPMU;
 		sc->bge_chipid = pci_read_config(dev, BGE_PCI_PRODID_ASICREV, 4);
+	}
 	sc->bge_asicrev = BGE_ASICREV(sc->bge_chipid);
 	sc->bge_chiprev = BGE_CHIPREV(sc->bge_chipid);
 
@@ -2105,13 +2108,6 @@ bge_attach(device_t dev)
 	if ((sc->bge_flags & BGE_FLAG_PCIX) &&
 	    (BGE_IS_5714_FAMILY(sc) || device_getenv_int(dev, "dma40b", 0)))
 		sc->bge_flags |= BGE_FLAG_MAXADDR_40BIT;
-
-	/* Identify the chips that use an CPMU. */
-	if (sc->bge_asicrev == BGE_ASICREV_BCM5784 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5761 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5785 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM57780)
-		sc->bge_flags |= BGE_FLAG_CPMU;
 
 	/*
 	 * When using the BCM5701 in PCI-X mode, data corruption has
