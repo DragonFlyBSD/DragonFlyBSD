@@ -2793,7 +2793,6 @@ bge_reset(struct bge_softc *sc)
 		if (i == BGE_FIRMWARE_TIMEOUT) {
 			if_printf(&sc->arpcom.ac_if, "firmware handshake "
 				  "timed out, found 0x%08x\n", val);
-			return;
 		}
 	}
 
