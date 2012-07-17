@@ -58,7 +58,7 @@ struct bge_gib {
 #define BGE_JUMBO_MTU		(BGE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 
 #define BGE_TIMEOUT		5000
-#define BGE_FIRMWARE_TIMEOUT	20000
+#define BGE_FIRMWARE_TIMEOUT	100000
 #define BGE_TXCONS_UNSET	0xFFFF	/* impossible value */
 
 /*
