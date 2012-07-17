@@ -1278,72 +1278,63 @@ bge_chipinit(struct bge_softc *sc)
 	}
 
 	/* Set up the PCI DMA control register. */
+	dma_rw_ctl = BGE_PCI_READ_CMD | BGE_PCI_WRITE_CMD;
 	if (sc->bge_flags & BGE_FLAG_PCIE) {
-		/* PCI Express */
-		dma_rw_ctl = BGE_PCI_READ_CMD|BGE_PCI_WRITE_CMD |
-		    (0xf << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
-		    (0x2 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
+		/* PCI-E bus */
+		/* DMA read watermark not used on PCI-E */
+		dma_rw_ctl |= (0x3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
 	} else if (sc->bge_flags & BGE_FLAG_PCIX) {
 		/* PCI-X bus */
-		if (BGE_IS_5714_FAMILY(sc)) {
-			dma_rw_ctl = BGE_PCI_READ_CMD|BGE_PCI_WRITE_CMD;
-			dma_rw_ctl &= ~BGE_PCIDMARWCTL_ONEDMA_ATONCE; /* XXX */
-			/* XXX magic values, Broadcom-supplied Linux driver */
-			if (sc->bge_asicrev == BGE_ASICREV_BCM5780) {
-				dma_rw_ctl |= (1 << 20) | (1 << 18) | 
-				    BGE_PCIDMARWCTL_ONEDMA_ATONCE;
-			} else {
-				dma_rw_ctl |= (1 << 20) | (1 << 18) | (1 << 15);
-			}
-		} else if (sc->bge_asicrev == BGE_ASICREV_BCM5703) {
-			/*
-			 * In the BCM5703, the DMA read watermark should
-			 * be set to less than or equal to the maximum
-			 * memory read byte count of the PCI-X command
-			 * register.
-			 */
-			dma_rw_ctl = BGE_PCI_READ_CMD|BGE_PCI_WRITE_CMD |
-			    (0x4 << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
-			    (0x3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
-		} else if (sc->bge_asicrev == BGE_ASICREV_BCM5704) {
-			/*
-			 * The 5704 uses a different encoding of read/write
-			 * watermarks.
-			 */
-			dma_rw_ctl = BGE_PCI_READ_CMD|BGE_PCI_WRITE_CMD |
-			    (0x7 << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
-			    (0x3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
-		} else {
-			dma_rw_ctl = BGE_PCI_READ_CMD|BGE_PCI_WRITE_CMD |
-			    (0x3 << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
-			    (0x3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT) |
-			    (0x0F);
-		}
-
-		/*
-		 * 5703 and 5704 need ONEDMA_AT_ONCE as a workaround
-		 * for hardware bugs.
-		 */
-		if (sc->bge_asicrev == BGE_ASICREV_BCM5703 ||
+		if (sc->bge_asicrev == BGE_ASICREV_BCM5780) {
+			dma_rw_ctl |= (0x4 << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
+			    (0x2 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
+			dma_rw_ctl |= BGE_PCIDMARWCTL_ONEDMA_ATONCE_GLOBAL;
+		} else if (sc->bge_asicrev == BGE_ASICREV_BCM5714) {
+			dma_rw_ctl |= (0x4 << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
+			    (0x2 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
+			dma_rw_ctl |= BGE_PCIDMARWCTL_ONEDMA_ATONCE_LOCAL;
+		} else if (sc->bge_asicrev == BGE_ASICREV_BCM5703 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5704) {
-			uint32_t tmp;
+			uint32_t rd_wat = 0x7;
+			uint32_t clkctl;
 
-			tmp = CSR_READ_4(sc, BGE_PCI_CLKCTL) & 0x1f;
-			if (tmp == 0x6 || tmp == 0x7)
-				dma_rw_ctl |= BGE_PCIDMARWCTL_ONEDMA_ATONCE;
+			clkctl = CSR_READ_4(sc, BGE_PCI_CLKCTL) & 0x1f;
+			if ((sc->bge_flags & BGE_FLAG_MAXADDR_40BIT) &&
+			    sc->bge_asicrev == BGE_ASICREV_BCM5704) {
+				dma_rw_ctl |=
+				    BGE_PCIDMARWCTL_ONEDMA_ATONCE_LOCAL;
+			} else if (clkctl == 0x6 || clkctl == 0x7) {
+				dma_rw_ctl |=
+				    BGE_PCIDMARWCTL_ONEDMA_ATONCE_GLOBAL;
+			}
+			if (sc->bge_asicrev == BGE_ASICREV_BCM5703)
+				rd_wat = 0x4;
+
+			dma_rw_ctl |= (rd_wat << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
+			    (3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
+			dma_rw_ctl |= BGE_PCIDMARWCTL_ASRT_ALL_BE;
+		} else {
+			dma_rw_ctl |= (0x3 << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
+			    (0x3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
+			dma_rw_ctl |= 0xf;
 		}
 	} else {
 		/* Conventional PCI bus */
-		dma_rw_ctl = BGE_PCI_READ_CMD|BGE_PCI_WRITE_CMD |
-		    (0x7 << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
-		    (0x7 << BGE_PCIDMARWCTL_WR_WAT_SHIFT) |
-		    (0x0F);
+		dma_rw_ctl |= (0x7 << BGE_PCIDMARWCTL_RD_WAT_SHIFT) |
+		    (0x7 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
+		if (sc->bge_asicrev != BGE_ASICREV_BCM5705 &&
+		    sc->bge_asicrev != BGE_ASICREV_BCM5750)
+			dma_rw_ctl |= 0xf;
 	}
 
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5703 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5704 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5705)
+	    sc->bge_asicrev == BGE_ASICREV_BCM5704) {
 		dma_rw_ctl &= ~BGE_PCIDMARWCTL_MINDMA;
+	} else if (sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM5701) {
+		dma_rw_ctl |= BGE_PCIDMARWCTL_USE_MRM |
+		    BGE_PCIDMARWCTL_ASRT_ALL_BE;
+	}
 	pci_write_config(sc->bge_dev, BGE_PCI_DMA_RW_CTL, dma_rw_ctl, 4);
 
 	/*
@@ -2111,7 +2102,8 @@ bge_attach(device_t dev)
 	 * not actually a MAC controller bug but an issue with the embedded
 	 * PCIe to PCI-X bridge in the device. Use 40bit DMA workaround.
 	 */
-	if (BGE_IS_5714_FAMILY(sc) && (sc->bge_flags & BGE_FLAG_PCIX))
+	if ((sc->bge_flags & BGE_FLAG_PCIX) &&
+	    (BGE_IS_5714_FAMILY(sc) || device_getenv_int(dev, "dma40b", 0)))
 		sc->bge_flags |= BGE_FLAG_MAXADDR_40BIT;
 
 	/* Identify the chips that use an CPMU. */
