@@ -50,6 +50,7 @@ MAN=	aac.4 \
 	bktr.4 \
 	blackhole.4 \
 	bluetooth.4 \
+	bnx.4 \
 	bpf.4 \
 	bridge.4 \
 	bt.4 \
