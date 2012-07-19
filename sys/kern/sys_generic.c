@@ -1024,7 +1024,6 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 
 			switch (error) {
 			case EBADF:
-			case ENODEV:
 				/*
 				 * A bad file descriptor is considered a
 				 * fatal error for select, bail out.
@@ -1041,10 +1040,17 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				 * ALWAYS filter out EOPNOTSUPP errors from
 				 * filters (at least until all filters support
 				 * EVFILT_EXCEPT)
+				 *
+				 * We also filter out ENODEV since dev_dkqfilter
+				 * returns ENODEV if EOPNOTSUPP is returned in an
+				 * inner call.
+				 *
+				 * XXX: fix this
 				 */
 				if (kevp[i].filter != EVFILT_READ &&
 				    kevp[i].filter != EVFILT_WRITE &&
-				    error != EOPNOTSUPP) {
+				    error != EOPNOTSUPP &&
+				    error != ENODEV) {
 					skap->error = error;
 					*res = -1;
 					return error;
@@ -1361,10 +1367,17 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					 * from filters, common applications
 					 * set POLLPRI|POLLRDBAND and most
 					 * filters do not support EVFILT_EXCEPT.
+					 *
+					 * We also filter out ENODEV since dev_dkqfilter
+					 * returns ENODEV if EOPNOTSUPP is returned in an
+					 * inner call.
+					 *
+					 * XXX: fix this
 					 */
 					if (kevp[i].filter != EVFILT_READ &&
 					    kevp[i].filter != EVFILT_WRITE &&
-					    kevp[i].data != EOPNOTSUPP) {
+					    kevp[i].data != EOPNOTSUPP &&
+					    kevp[i].data != ENODEV) {
 						if (count_res == 0)
 							++*res;
 						pfd->revents |= POLLERR;
