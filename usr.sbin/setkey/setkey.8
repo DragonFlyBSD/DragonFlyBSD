@@ -1,6 +1,5 @@
 .\"	$KAME: setkey.8,v 1.49 2001/05/18 05:49:51 sakane Exp $
 .\"	$FreeBSD: src/usr.sbin/setkey/setkey.8,v 1.4.2.15 2003/03/12 22:08:15 trhodes Exp $
-.\"	$DragonFly: src/usr.sbin/setkey/setkey.8,v 1.7 2008/08/10 21:29:17 hasso Exp $
 .\"
 .\" Copyright (C) 1995, 1996, 1997, 1998, and 1999 WIDE Project.
 .\" All rights reserved.
@@ -359,7 +358,7 @@ These are selections of the secure communication specified as
 IPv4/v6 address or IPv4/v6 address range, and it may accompany
 TCP/UDP port specification.
 This takes the following form:
-.Bd -literal -offset
+.Bd -literal
 .Ar address
 .Ar address/prefixlen
 .Ar address[port]
@@ -419,7 +418,7 @@ all protocols
 .It Ar policy
 .Ar policy
 is the one of following:
-.Bd -literal -offset
+.Bd -literal
 .Xo
 .Fl P Ar direction Li discard
 .Xc
@@ -587,7 +586,7 @@ lzs		rfc2395
 .Ed
 .\"
 .Sh EXAMPLES
-.Bd -literal -offset
+.Bd -literal
 add	2001:db8:4819::1 2001:db8:481d::1 esp 123457
 		-E des-cbc "ESP SA!!" ;
 

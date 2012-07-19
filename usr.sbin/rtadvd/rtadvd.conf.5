@@ -1,5 +1,4 @@
 .\"	$FreeBSD: src/usr.sbin/rtadvd/rtadvd.conf.5,v 1.1.2.9 2002/12/29 16:35:43 schweikh Exp $
-.\"	$DragonFly: src/usr.sbin/rtadvd/rtadvd.conf.5,v 1.4 2008/08/10 21:29:16 hasso Exp $
 .\"	$KAME: rtadvd.conf.5,v 1.35 2001/05/25 07:40:22 jinmei Exp $
 .\"
 .\" Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
@@ -334,7 +333,7 @@ With the following configuration,
 overrides the router lifetime parameter for the
 .Li ne0
 interface.
-.Bd -literal -offset
+.Bd -literal
 ne0:\\
 	:rltime#0:
 .Ed
@@ -346,7 +345,7 @@ The configuration must be used with the
 .Fl s
 option to
 .Xr rtadvd 8 .
-.Bd -literal -offset
+.Bd -literal
 ef0:\\
 	:addrs#1:addr="2001:db8:ffff:1000::":prefixlen#64:
 .Ed
@@ -354,7 +353,7 @@ ef0:\\
 The following example presents the default values in an explicit manner.
 The configuration is provided just for reference purposes;
 YOU DO NOT NEED TO HAVE IT AT ALL.
-.Bd -literal -offset
+.Bd -literal
 default:\\
 	:chlim#64:raflags#0:rltime#1800:rtime#0:retrans#0:\\
 	:pinfoflags#192:vltime#2592000:pltime#604800:mtu#0:

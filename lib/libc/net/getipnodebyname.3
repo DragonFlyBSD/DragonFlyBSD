@@ -29,7 +29,6 @@
 .\"
 .\"     From: @(#)gethostbyname.3	8.4 (Berkeley) 5/25/95
 .\" $FreeBSD: src/lib/libc/net/getipnodebyname.3,v 1.18 2007/01/09 00:28:02 imp Exp $
-.\" $DragonFly: src/lib/libc/net/getipnodebyname.3,v 1.4 2007/11/23 23:16:36 swildner Exp $
 .\"
 .Dd August 6, 2004
 .Dt GETIPNODEBYNAME 3
@@ -109,12 +108,12 @@ We note that a special flags value of
 (defined below)
 should handle most applications.
 That is, porting simple applications to use IPv6 replaces the call
-.Bd -literal -offset
+.Bd -literal
    hptr = gethostbyname(name);
 .Ed
 .Pp
 with
-.Bd -literal -offset
+.Bd -literal
    hptr = getipnodebyname(name, AF_INET6, AI_DEFAULT, &error_num);
 .Ed
 .Pp
@@ -271,7 +270,7 @@ records are returned as IPv4-mapped IPv6 addresses;
 The special flags value of
 .Dv AI_DEFAULT
 is defined as
-.Bd -literal -offset
+.Bd -literal
    #define  AI_DEFAULT  (AI_V4MAPPED_CFG | AI_ADDRCONFIG)
 .Ed
 .Pp

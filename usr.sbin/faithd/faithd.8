@@ -28,7 +28,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	$FreeBSD: src/usr.sbin/faithd/faithd.8,v 1.2.2.12 2003/03/12 22:08:14 trhodes Exp $
-.\"	$DragonFly: src/usr.sbin/faithd/faithd.8,v 1.10 2008/08/10 21:29:16 hasso Exp $
 .\"
 .Dd May 17, 1998
 .Dt FAITHD 8
@@ -285,7 +284,7 @@ Before invoking
 .Nm ,
 .Xr faith 4
 interface has to be configured properly.
-.Bd -literal -offset
+.Bd -literal
 # sysctl net.inet6.ip6.accept_rtadv=0
 # sysctl net.inet6.ip6.forwarding=1
 # sysctl net.inet6.ip6.keepfaith=1
@@ -299,7 +298,7 @@ To translate
 service, and provide no local telnet service, invoke
 .Nm
 as follows:
-.Bd -literal -offset
+.Bd -literal
 # faithd telnet
 .Ed
 .Pp
@@ -308,12 +307,12 @@ If you would like to provide local telnet service via
 on
 .Pa /usr/libexec/telnetd ,
 use the following command line:
-.Bd -literal -offset
+.Bd -literal
 # faithd telnet /usr/libexec/telnetd telnetd
 .Ed
 .Pp
 If you would like to pass extra arguments to the local daemon:
-.Bd -literal -offset
+.Bd -literal
 # faithd ftp /usr/libexec/ftpd ftpd -l
 .Ed
 .Pp
@@ -321,7 +320,7 @@ Here are some other examples.
 You may need
 .Fl p
 to translate rsh/rlogin services.
-.Bd -literal -offset
+.Bd -literal
 # faithd ssh
 # faithd login /usr/libexec/rlogin rlogind
 # faithd shell /usr/libexec/rshd rshd
@@ -336,7 +335,7 @@ for more details.
 Add the following lines into
 .Xr inetd.conf 5 .
 Syntax may vary depending upon your operating system.
-.Bd -literal -offset
+.Bd -literal
 telnet  stream  tcp6/faith  nowait  root  /usr/sbin/faithd  telnetd
 ftp     stream  tcp6/faith  nowait  root  /usr/sbin/faithd  ftpd -l
 ssh     stream  tcp6/faith  nowait  root  /usr/sbin/faithd  /usr/sbin/sshd -i
@@ -360,7 +359,7 @@ will invoke service-specific daemon like
 The following illustrates a simple
 .Pa faithd.conf
 setting.
-.Bd -literal -offset
+.Bd -literal
 # permit anyone from 2001:db8:ffff::/48 to use the translator,
 # to connect to the following IPv4 destinations:
 # - any location except 10.0.0.0/8 and 127.0.0.0/8.
