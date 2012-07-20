@@ -216,7 +216,7 @@ static void	mptable_bus_info_alloc(const mpcth_t,
 static void	mptable_bus_info_free(struct mptable_bus_info *);
 
 static int	mptable_lapic_probe(struct lapic_enumerator *);
-static void	mptable_lapic_enumerate(struct lapic_enumerator *);
+static int	mptable_lapic_enumerate(struct lapic_enumerator *);
 static void	mptable_lapic_default(void);
 
 static int	mptable_ioapic_probe(struct ioapic_enumerator *);
@@ -738,7 +738,7 @@ mptable_lapic_default(void)
  *     naps
  *     APIC ID <-> CPU ID mappings
  */
-static void
+static int
 mptable_lapic_enumerate(struct lapic_enumerator *e)
 {
 	struct mptable_pos mpt;
@@ -750,7 +750,7 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 
 	if (mptable_use_default) {
 		mptable_lapic_default();
-		return;
+		return 0;
 	}
  
 	error = mptable_map(&mpt);
@@ -802,6 +802,8 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 	lapic_map(lapic_addr);
 
 	mptable_unmap(&mpt);
+
+	return 0;
 }
 
 struct mptable_lapic_probe_cbarg {

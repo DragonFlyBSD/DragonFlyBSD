@@ -708,7 +708,11 @@ lapic_config(void)
 		return ENXIO;
 	}
 
-	e->lapic_enumerate(e);
+	error = e->lapic_enumerate(e);
+	if (error) {
+		kprintf("LAPIC: enumeration failed\n");
+		return ENXIO;
+	}
 
 	ap_max = MAXCPU - 1;
 	TUNABLE_INT_FETCH("hw.ap_max", &ap_max);

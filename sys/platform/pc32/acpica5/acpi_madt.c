@@ -132,7 +132,7 @@ static int			madt_iterate_entries(struct acpi_madt *,
 static vm_paddr_t		madt_lapic_pass1(void);
 static int			madt_lapic_pass2(int);
 
-static void			madt_lapic_enumerate(struct lapic_enumerator *);
+static int			madt_lapic_enumerate(struct lapic_enumerator *);
 static int			madt_lapic_probe(struct lapic_enumerator *);
 
 static void			madt_ioapic_enumerate(
@@ -449,7 +449,7 @@ madt_lapic_probe(struct lapic_enumerator *e)
 	return error;
 }
 
-static void
+static int
 madt_lapic_enumerate(struct lapic_enumerator *e)
 {
 	vm_paddr_t lapic_addr;
@@ -464,8 +464,21 @@ madt_lapic_enumerate(struct lapic_enumerator *e)
 	lapic_map(lapic_addr);
 
 	bsp_apic_id = APIC_ID(lapic->id);
+	if (bsp_apic_id == APICID_MAX) {
+		/*
+		 * XXX
+		 * Some old brain dead BIOS will set BSP's LAPIC apic id
+		 * to 255, though all LAPIC entries in MADT are valid.
+		 */
+		kprintf("%s invalid BSP LAPIC apic id %d\n", __func__,
+		    bsp_apic_id);
+		return EINVAL;
+	}
+
 	if (madt_lapic_pass2(bsp_apic_id))
-		panic("madt_lapic_enumerate: madt_lapic_pass2 failed\n");
+		panic("madt_lapic_enumerate: madt_lapic_pass2 failed");
+
+	return 0;
 }
 
 static struct lapic_enumerator	madt_lapic_enumerator = {
