@@ -1988,6 +1988,11 @@
 #define BGE_MEMWIN_END			0x0000FFFF
 
 /*
+ * PCI-E Core Private Register Access to TL, DL & PL
+ */
+#define BGE_PCIE_TLDLPL_PORT		0x7c00
+
+/*
  * PCI-E transaction configure register.
  * Applies to BCM5906 and BCM5755+.  See 5722-PG101-R.
  *
