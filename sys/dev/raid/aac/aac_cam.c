@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/aac/aac_cam.c,v 1.40 2010/12/06 17:06:21 jhb Exp $
+ * $FreeBSD: src/sys/dev/aac/aac_cam.c,v 1.42 2011/11/07 06:44:47 ed Exp $
  */
 
 /*
@@ -35,7 +35,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/sysctl.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
@@ -103,7 +102,7 @@ static driver_t	aac_pass_driver = {
 DRIVER_MODULE(aacp, aac, aac_pass_driver, aac_pass_devclass, NULL, NULL);
 MODULE_DEPEND(aacp, cam, 1, 1, 1);
 
-MALLOC_DEFINE(M_AACCAM, "aaccam", "AAC CAM info");
+static MALLOC_DEFINE(M_AACCAM, "aaccam", "AAC CAM info");
 
 static void
 aac_cam_rescan(struct aac_softc *sc, uint32_t channel, uint32_t target_id)
@@ -539,6 +538,7 @@ aac_cam_complete(struct aac_command *cm)
 	union	ccb *ccb;
 	struct 	aac_srb_response *srbr;
 	struct	aac_softc *sc;
+	int	sense_returned;
 
 	sc = cm->cm_sc;
 	fwprintf(sc, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
@@ -563,16 +563,17 @@ aac_cam_complete(struct aac_command *cm)
 
 			/* Take care of autosense */
 			if (srbr->sense_len) {
-				int sense_len, scsi_sense_len;
-
-				scsi_sense_len = sizeof(struct scsi_sense_data);
-				bzero(&ccb->csio.sense_data, scsi_sense_len);
-				sense_len = (srbr->sense_len >
-				    scsi_sense_len) ? scsi_sense_len :
-				    srbr->sense_len;
+				sense_returned = srbr->sense_len;
+				if (sense_returned < ccb->csio.sense_len)
+					ccb->csio.sense_resid =
+					   ccb->csio.sense_len -
+					   sense_returned;
+					else
+					    ccb->csio.sense_resid = 0;
+				bzero(&ccb->csio.sense_data,
+				    sizeof(struct scsi_sense_data));
 				bcopy(&srbr->sense[0], &ccb->csio.sense_data,
-				    srbr->sense_len);
-				ccb->csio.sense_len = sense_len;
+				    min(ccb->csio.sense_len, sense_returned));
 				ccb->ccb_h.status |= CAM_AUTOSNS_VALID;
 				// scsi_sense_print(&ccb->csio);
 			}

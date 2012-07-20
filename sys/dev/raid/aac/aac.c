@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/aac/aac.c,v 1.165 2010/09/29 14:22:00 emaste Exp $
+ * $FreeBSD: src/sys/dev/aac/aac.c,v 1.170 2012/02/13 16:48:49 emaste Exp $
  */
 
 /*
@@ -42,7 +42,6 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
-#include <sys/sysctl.h>
 #include <sys/poll.h>
 
 #include <sys/bus.h>
@@ -218,10 +217,10 @@ static struct dev_ops aac_ops = {
 	.d_kqfilter =	aac_kqfilter
 };
 
-MALLOC_DEFINE(M_AACBUF, "aacbuf", "Buffers for the AAC driver");
+static MALLOC_DEFINE(M_AACBUF, "aacbuf", "Buffers for the AAC driver");
 
 /* sysctl node */
-SYSCTL_NODE(_hw, OID_AUTO, aac, CTLFLAG_RD, 0, "AAC driver parameters");
+static SYSCTL_NODE(_hw, OID_AUTO, aac, CTLFLAG_RD, 0, "AAC driver parameters");
 
 /*
  * Device Interface
@@ -289,6 +288,23 @@ aac_attach(struct aac_softc *sc)
 	 * Print a little information about the controller.
 	 */
 	aac_describe_controller(sc);
+
+	/*
+	 * Add sysctls.
+	 */
+	sysctl_ctx_init(&sc->aac_sysctl_ctx);
+	sc->aac_sysctl_tree = SYSCTL_ADD_NODE(&sc->aac_sysctl_ctx,
+	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
+	    device_get_nameunit(sc->aac_dev), CTLFLAG_RD, 0, "");
+	if (sc->aac_sysctl_tree == NULL) {
+		device_printf(sc->aac_dev, "can't add sysctl node\n");
+		return (EINVAL);
+	}
+	SYSCTL_ADD_INT(&sc->aac_sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->aac_sysctl_tree),
+	    OID_AUTO, "firmware_build", CTLFLAG_RD,
+	    &sc->aac_revision.buildNumber, 0,
+	    "firmware build number");
 
 	/*
 	 * Register to probe our containers later.
@@ -639,6 +655,8 @@ aac_free(struct aac_softc *sc)
 		bus_release_resource(sc->aac_dev, SYS_RES_MEMORY,
 				     sc->aac_regs_rid1, sc->aac_regs_res1);
 	dev_ops_remove_minor(&aac_ops, device_get_unit(sc->aac_dev));
+
+	sysctl_ctx_free(&sc->aac_sysctl_ctx);
 }
 
 /*
@@ -655,7 +673,21 @@ aac_detach(device_t dev)
 	sc = device_get_softc(dev);
 	fwprintf(sc, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
 
+#if 0 /* XXX swildner */
+	callout_drain(&sc->aac_daemontime);
+#else
 	callout_stop(&sc->aac_daemontime);
+#endif
+
+	lockmgr(&sc->aac_io_lock, LK_EXCLUSIVE);
+	while (sc->aifflags & AAC_AIFFLAGS_RUNNING) {
+		sc->aifflags |= AAC_AIFFLAGS_EXIT;
+		wakeup(sc->aifthread);
+		lksleep(sc->aac_dev, &sc->aac_io_lock, 0, "aacdch", 0);
+	}
+	lockmgr(&sc->aac_io_lock, LK_RELEASE);
+	KASSERT((sc->aifflags & AAC_AIFFLAGS_RUNNING) == 0,
+	    ("%s: invalid detach state", __func__));
 
 	/* Remove the child containers */
 	while ((co = TAILQ_FIRST(&sc->aac_container_tqh)) != NULL) {
@@ -674,15 +706,6 @@ aac_detach(device_t dev)
 			return (error);
 		kfree(sim, M_AACBUF);
 	}
-
-	if (sc->aifflags & AAC_AIFFLAGS_RUNNING) {
-		sc->aifflags |= AAC_AIFFLAGS_EXIT;
-		wakeup(sc->aifthread);
-		tsleep(sc->aac_dev, PCATCH, "aacdch", 30 * hz);
-	}
-
-	if (sc->aifflags & AAC_AIFFLAGS_RUNNING)
-		panic("Cannot shutdown AIF thread");
 
 	if ((error = aac_shutdown(dev)))
 		return(error);
@@ -1008,7 +1031,7 @@ aac_command_thread(void *arg)
 		/*
 		 * First see if any FIBs need to be allocated.  This needs
 		 * to be called without the driver lock because contigmalloc
-		 * will grab Giant, and would result in an LOR.
+		 * can sleep.
 		 */
 		if ((sc->aifflags & AAC_AIFFLAGS_ALLOCFIBS) != 0) {
 			lockmgr(&sc->aac_io_lock, LK_RELEASE);
@@ -1362,7 +1385,9 @@ aac_alloc_command(struct aac_softc *sc, struct aac_command **cmp)
 
 	if ((cm = aac_dequeue_free(sc)) == NULL) {
 		if (sc->total_fibs < sc->aac_max_fibs) {
+			lockmgr(&sc->aac_io_lock, LK_EXCLUSIVE);
 			sc->aifflags |= AAC_AIFFLAGS_ALLOCFIBS;
+			lockmgr(&sc->aac_io_lock, LK_RELEASE);
 			wakeup(sc->aifthread);
 		}
 		return (EBUSY);
@@ -1405,11 +1430,7 @@ aac_release_command(struct aac_command *cm)
 
 	aac_enqueue_free(cm);
 
-	/*
-	 * Dequeue all events so that there's no risk of events getting
-	 * stranded.
-	 */
-	while ((event = TAILQ_FIRST(&sc->aac_ev_cmfree)) != NULL) {
+	if ((event = TAILQ_FIRST(&sc->aac_ev_cmfree)) != NULL) {
 		TAILQ_REMOVE(&sc->aac_ev_cmfree, event, ev_links);
 		event->ev_callback(sc, event, event->ev_arg);
 	}

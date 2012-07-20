@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/sys/aac_ioctl.h,v 1.14 2009/10/29 17:21:41 emaste Exp $
+ *	$FreeBSD: src/sys/sys/aac_ioctl.h,v 1.15 2011/02/21 09:01:34 brucec Exp $
  */
 
 #include <sys/ioccom.h>
@@ -119,7 +119,7 @@ union aac_statrequest {
 /* Do the native version of the ioctls.  Since the BSD encoding scheme
  * conflicts with the 'standard' AAC encoding scheme, the resulting numbers
  * will be different.  The '8' comes from the fact that the previous scheme
- * used 12 bits for the number, with the the 12th bit being the only set
+ * used 12 bits for the number, with the 12th bit being the only set
  * bit above bit 8.  Thus the value of 8, with the lower 8 bits holding the
  * command number.  9 is used for the odd overflow case.
  */
