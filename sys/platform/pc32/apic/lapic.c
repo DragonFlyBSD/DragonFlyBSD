@@ -671,7 +671,7 @@ lapic_unused_apic_id(int start)
 {
 	int i;
 
-	for (i = start; i < NAPICID; ++i) {
+	for (i = start; i < APICID_MAX; ++i) {
 		if (APICID_TO_CPUID(i) == -1)
 			return i;
 	}

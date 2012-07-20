@@ -40,6 +40,7 @@
 #include <machine_base/isa/isa_intr.h>
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
+#include <machine_base/apic/apicvar.h>
 
 #include "acpi_sdt.h"
 #include "acpi_sdt_var.h"
@@ -394,6 +395,12 @@ madt_lapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
 		lapic_ent = (const struct acpi_madt_lapic *)ent;
 		if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED)
 			arg->cpu_count++;
+		if (lapic_ent->ml_apic_id == APICID_MAX) {
+			kprintf("madt_lapic_probe: "
+			    "invalid LAPIC apic id %d\n",
+			    lapic_ent->ml_apic_id);
+			return EINVAL;
+		}
 	} else if (ent->me_type == MADT_ENT_LAPIC_ADDR) {
 		const struct acpi_madt_lapic_addr *lapic_addr_ent;
 
@@ -533,6 +540,12 @@ madt_ioapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
 		ioapic_ent = (const struct acpi_madt_ioapic *)ent;
 		if (ioapic_ent->mio_addr == 0) {
 			kprintf("madt_ioapic_probe: zero IOAPIC address\n");
+			return EINVAL;
+		}
+		if (ioapic_ent->mio_apic_id == APICID_MAX) {
+			kprintf("madt_ioapic_probe: "
+			    "invalid IOAPIC apic id %d\n",
+			    ioapic_ent->mio_apic_id);
 			return EINVAL;
 		}
 
