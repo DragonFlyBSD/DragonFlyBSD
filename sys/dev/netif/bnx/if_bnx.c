@@ -75,7 +75,7 @@
 /* "device miibus" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
 
-#define BNX_CSUM_FEATURES	(CSUM_IP | CSUM_TCP)
+#define BNX_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 
 static const struct bnx_type {
 	uint16_t		bnx_vid;
