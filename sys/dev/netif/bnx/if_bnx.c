@@ -1509,11 +1509,7 @@ bnx_blockinit(struct bnx_softc *sc)
 	CSR_WRITE_4(sc, BGE_WDMA_MODE, val);
 	DELAY(40);
 
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5761 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5784 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5785 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM57780 ||
-	    BNX_IS_57765_PLUS(sc)) {
+	if (BNX_IS_57765_PLUS(sc)) {
 		uint32_t dmactl;
 
 		dmactl = CSR_READ_4(sc, BGE_RDMA_RSRVCTRL);
@@ -1819,27 +1815,6 @@ bnx_attach(device_t dev)
 	}
 
 	mii_priv |= BRGPHY_FLAG_WIRESPEED;
-
-	if (sc->bnx_asicrev != BGE_ASICREV_BCM5906 &&
-	    sc->bnx_asicrev != BGE_ASICREV_BCM5717 &&
-	    sc->bnx_asicrev != BGE_ASICREV_BCM5719 &&
-	    sc->bnx_asicrev != BGE_ASICREV_BCM5720 &&
-	    sc->bnx_asicrev != BGE_ASICREV_BCM5785 &&
-	    sc->bnx_asicrev != BGE_ASICREV_BCM57765 &&
-	    sc->bnx_asicrev != BGE_ASICREV_BCM57780) {
-		if (sc->bnx_asicrev == BGE_ASICREV_BCM5755 ||
-		    sc->bnx_asicrev == BGE_ASICREV_BCM5761 ||
-		    sc->bnx_asicrev == BGE_ASICREV_BCM5784 ||
-		    sc->bnx_asicrev == BGE_ASICREV_BCM5787) {
-			if (product != PCI_PRODUCT_BROADCOM_BCM5722 &&
-			    product != PCI_PRODUCT_BROADCOM_BCM5756)
-				mii_priv |= BRGPHY_FLAG_JITTER_BUG;
-			if (product == PCI_PRODUCT_BROADCOM_BCM5755M)
-				mii_priv |= BRGPHY_FLAG_ADJUST_TRIM;
-		} else {
-			mii_priv |= BRGPHY_FLAG_BER_BUG;
-		}
-	}
 
 	/*
 	 * Allocate interrupt
@@ -2214,8 +2189,7 @@ bnx_reset(struct bnx_softc *sc)
 
 	/* XXX: Broadcom Linux driver. */
 	/* Force PCI-E 1.0a mode */
-	if (sc->bnx_asicrev != BGE_ASICREV_BCM5785 &&
-	    !BNX_IS_57765_PLUS(sc) &&
+	if (!BNX_IS_57765_PLUS(sc) &&
 	    CSR_READ_4(sc, BGE_PCIE_PHY_TSTCTL) ==
 	    (BGE_PCIE_PHY_TSTCTL_PSCRAM |
 	     BGE_PCIE_PHY_TSTCTL_PCIE10)) {
@@ -2360,9 +2334,7 @@ bnx_reset(struct bnx_softc *sc)
 	}
 
 	/* XXX: Broadcom Linux driver. */
-	if (!BNX_IS_57765_PLUS(sc) &&
-	    sc->bnx_chipid != BGE_CHIPID_BCM5750_A0 &&
-	    sc->bnx_asicrev != BGE_ASICREV_BCM5785) {
+	if (!BNX_IS_57765_PLUS(sc)) {
 		uint32_t v;
 
 		/* Enable Data FIFO protection. */
