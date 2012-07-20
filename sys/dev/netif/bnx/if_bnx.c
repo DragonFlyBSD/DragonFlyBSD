@@ -109,6 +109,9 @@ static const struct bnx_type {
 
 #define BNX_IS_JUMBO_CAPABLE(sc)	((sc)->bnx_flags & BNX_FLAG_JUMBO)
 #define BNX_IS_5717_PLUS(sc)		((sc)->bnx_flags & BNX_FLAG_5717_PLUS)
+#define BNX_IS_57765_PLUS(sc)		((sc)->bnx_flags & BNX_FLAG_57765_PLUS)
+#define BNX_IS_57765_FAMILY(sc)	 \
+	((sc)->bnx_flags & BNX_FLAG_57765_FAMILY)
 
 typedef int	(*bnx_eaddr_fcn_t)(struct bnx_softc *, uint8_t[]);
 
@@ -1053,7 +1056,7 @@ bnx_chipinit(struct bnx_softc *sc)
 	dma_rw_ctl = BGE_PCI_READ_CMD | BGE_PCI_WRITE_CMD |
 	    (0x3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
 
-	if (BNX_IS_5717_PLUS(sc)) {
+	if (BNX_IS_57765_PLUS(sc)) {
 		dma_rw_ctl &= ~BGE_PCIDMARWCTL_DIS_CACHE_ALIGNMENT;
 		if (sc->bnx_chipid == BGE_CHIPID_BCM57765_A0)
 			dma_rw_ctl &= ~BGE_PCIDMARWCTL_CRDRDR_RDMA_MRRS_MSK;
@@ -1116,7 +1119,7 @@ bnx_blockinit(struct bnx_softc *sc)
 	CSR_WRITE_4(sc, BGE_PCI_MEMWIN_BASEADDR, 0);
 
 	/* Configure mbuf pool watermarks */
-	if (BNX_IS_5717_PLUS(sc)) {
+	if (BNX_IS_57765_PLUS(sc)) {
 		CSR_WRITE_4(sc, BGE_BMAN_MBUFPOOL_READDMA_LOWAT, 0x0);
 		if (sc->arpcom.ac_if.if_mtu > ETHERMTU) {
 			CSR_WRITE_4(sc, BGE_BMAN_MBUFPOOL_MACRX_LOWAT, 0x7e);
@@ -1218,7 +1221,7 @@ bnx_blockinit(struct bnx_softc *sc)
 	    BGE_ADDR_LO(sc->bnx_ldata.bnx_rx_std_ring_paddr);
 	rcb->bge_hostaddr.bge_addr_hi =
 	    BGE_ADDR_HI(sc->bnx_ldata.bnx_rx_std_ring_paddr);
-	if (BNX_IS_5717_PLUS(sc)) {
+	if (BNX_IS_57765_PLUS(sc)) {
 		/*
 		 * Bits 31-16: Programmable ring size (2048, 1024, 512, .., 32)
 		 * Bits 15-2 : Maximum RX frame size
@@ -1310,7 +1313,7 @@ bnx_blockinit(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_RBDI_JUMBO_REPL_THRESH,
 		    BGE_JUMBO_RX_RING_CNT/8);
 	}
-	if (BNX_IS_5717_PLUS(sc)) {
+	if (BNX_IS_57765_PLUS(sc)) {
 		CSR_WRITE_4(sc, BGE_STD_REPLENISH_LWM, 32);
 		CSR_WRITE_4(sc, BGE_JMB_REPLENISH_LWM, 16);
 	}
@@ -1509,7 +1512,7 @@ bnx_blockinit(struct bnx_softc *sc)
 	    sc->bnx_asicrev == BGE_ASICREV_BCM5784 ||
 	    sc->bnx_asicrev == BGE_ASICREV_BCM5785 ||
 	    sc->bnx_asicrev == BGE_ASICREV_BCM57780 ||
-	    BNX_IS_5717_PLUS(sc)) {
+	    BNX_IS_57765_PLUS(sc)) {
 		uint32_t dmactl;
 
 		dmactl = CSR_READ_4(sc, BGE_RDMA_RSRVCTRL);
@@ -1768,8 +1771,11 @@ bnx_attach(device_t dev)
 	case BGE_ASICREV_BCM5717:
 	case BGE_ASICREV_BCM5719:
 	case BGE_ASICREV_BCM5720:
+		sc->bnx_flags |= BNX_FLAG_5717_PLUS | BNX_FLAG_57765_PLUS;
+		break;
+
 	case BGE_ASICREV_BCM57765:
-		sc->bnx_flags |= BNX_FLAG_5717_PLUS;
+		sc->bnx_flags |= BNX_FLAG_57765_FAMILY | BNX_FLAG_57765_PLUS;
 		break;
 	}
 	sc->bnx_flags |= BNX_FLAG_SHORTDMA;
@@ -1875,7 +1881,7 @@ bnx_attach(device_t dev)
 		goto fail;
 	}
 
-	if (BNX_IS_5717_PLUS(sc)) {
+	if (BNX_IS_57765_PLUS(sc)) {
 		sc->bnx_return_ring_cnt = BGE_RETURN_RING_CNT;
 	} else {
 		/* 5705/5750 limits RX return ring to 512 entries. */
@@ -2210,7 +2216,7 @@ bnx_reset(struct bnx_softc *sc)
 	/* XXX: Broadcom Linux driver. */
 	/* Force PCI-E 1.0a mode */
 	if (sc->bnx_asicrev != BGE_ASICREV_BCM5785 &&
-	    !BNX_IS_5717_PLUS(sc) &&
+	    !BNX_IS_57765_PLUS(sc) &&
 	    CSR_READ_4(sc, BGE_PCIE_PHY_TSTCTL) ==
 	    (BGE_PCIE_PHY_TSTCTL_PSCRAM |
 	     BGE_PCIE_PHY_TSTCTL_PCIE10)) {
@@ -2355,7 +2361,7 @@ bnx_reset(struct bnx_softc *sc)
 	}
 
 	/* XXX: Broadcom Linux driver. */
-	if (!BNX_IS_5717_PLUS(sc) &&
+	if (!BNX_IS_57765_PLUS(sc) &&
 	    sc->bnx_chipid != BGE_CHIPID_BCM5750_A0 &&
 	    sc->bnx_asicrev != BGE_ASICREV_BCM5785) {
 		uint32_t v;
