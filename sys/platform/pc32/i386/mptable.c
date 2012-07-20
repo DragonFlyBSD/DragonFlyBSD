@@ -59,6 +59,7 @@
 #include <machine_base/apic/ioapic_abi.h>
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
+#include <machine_base/apic/apicvar.h>
 #include <machine/psl.h>
 #include <machine/segments.h>
 #include <machine/tss.h>
@@ -821,6 +822,12 @@ mptable_lapic_probe_callback(void *xarg, const void *pos, int type)
 		return 0;
 	arg->cpu_count++;
 
+	if (ent->apic_id == APICID_MAX) {
+		kprintf("MPTABLE: invalid LAPIC apic id %d\n",
+		    ent->apic_id);
+		return EINVAL;
+	}
+
 	if (ent->cpu_flags & PROCENTRY_FLAG_BP) {
 		if (arg->found_bsp) {
 			kprintf("more than one BSP in base MP table\n");
@@ -902,6 +909,11 @@ mptable_ioapic_list_callback(void *xarg, const void *pos, int type)
 
 	if (ent->apic_address == NULL) {
 		kprintf("mptable_ioapic_create_list: zero IOAPIC addr\n");
+		return EINVAL;
+	}
+	if (ent->apic_id == APICID_MAX) {
+		kprintf("mptable_ioapic_create_list: "
+		    "invalid IOAPIC apic id %d\n", ent->apic_id);
 		return EINVAL;
 	}
 

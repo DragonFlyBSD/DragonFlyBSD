@@ -39,4 +39,10 @@
  */
 #define NAPICID		256
 
+/*
+ * APICID must be less than this value
+ * 255 is for "broadcast to all APICs"
+ */
+#define APICID_MAX	255
+
 #endif /* _MACHINE_APICVAR_H_ */
