@@ -1323,7 +1323,10 @@ bnx_blockinit(struct bnx_softc *sc)
 	 * in the flags field of all the TX send ring control blocks,
 	 * located in NIC memory.
 	 */
-	limit = 1;
+	if (BNX_IS_5717_PLUS(sc))
+		limit = 4;
+	else
+		limit = 1;
 	vrcb = BGE_MEMWIN_START + BGE_SEND_RING_RCB;
 	for (i = 0; i < limit; i++) {
 		RCB_WRITE_4(sc, vrcb, bge_maxlen_flags,
@@ -1353,9 +1356,7 @@ bnx_blockinit(struct bnx_softc *sc)
 	 * 'ring disabled' bit in the flags field of all the receive
 	 * return ring control blocks, located in NIC memory.
 	 */
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5717 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+	if (BNX_IS_5717_PLUS(sc)) {
 		/* Should be 17, use 16 until we get an SRAM map. */
 		limit = 16;
 	} else if (sc->bnx_asicrev == BGE_ASICREV_BCM57765) {
@@ -1980,9 +1981,7 @@ bnx_attach(device_t dev)
 	 * Other addresses may respond but they are not
 	 * IEEE compliant PHYs and should be ignored.
 	 */
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5717 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+	if (BNX_IS_5717_PLUS(sc)) {
 		int f;
 
 		f = pci_get_function(dev);
@@ -3966,8 +3965,17 @@ bnx_get_eaddr_nvram(struct bnx_softc *sc, uint8_t ether_addr[])
 {
 	int mac_offset = BGE_EE_MAC_OFFSET;
 
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5906)
+	if (BNX_IS_5717_PLUS(sc)) {
+		int f;
+
+		f = pci_get_function(sc->bnx_dev);
+		if (f & 1)
+			mac_offset = BGE_EE_MAC_OFFSET_5717;
+		if (f > 1)
+			mac_offset += BGE_EE_MAC_OFFSET_5717_OFF;
+	} else if (sc->bnx_asicrev == BGE_ASICREV_BCM5906) {
 		mac_offset = BGE_EE_MAC_OFFSET_5906;
+	}
 
 	return bnx_read_nvram(sc, ether_addr, mac_offset + 2, ETHER_ADDR_LEN);
 }
