@@ -1,8 +1,3 @@
-/*
- * @(#)tzfile.h		8.1
- * $DragonFly: src/lib/libc/stdtime/tzfile.h,v 1.3 2008/10/19 20:15:58 swildner Exp $
- */
-
 #ifndef TZFILE_H
 
 #define TZFILE_H

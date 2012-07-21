@@ -1,7 +1,5 @@
 /*
- * @(#)zdump.c	8.8
  * $FreeBSD: src/usr.sbin/zic/zdump.c,v 1.7 1999/08/28 01:21:19 peter Exp $
- * $DragonFly: src/usr.sbin/zic/zdump.c,v 1.5 2008/10/19 20:15:58 swildner Exp $
  */
 /*
 ** This code has been made independent of the rest of the time

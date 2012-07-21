@@ -2,7 +2,6 @@
 ** This file is in the public domain, so clarified as of
 ** 1996-06-05 by Arthur David Olson.
 **
-** @(#)localtime.c	8.15
 ** $FreeBSD: src/lib/libc/stdtime/localtime.c,v 1.25.2.2 2002/08/13 16:08:07 bmilekic Exp $
 */
 
@@ -318,12 +317,14 @@ tzload(const char *name, struct state * const sp, const int doextend)
 	int			fid;
 	int			stored;
 	int			nread;
-	union {
+	typedef union {
 		struct tzhead	tzhead;
 		char		buf[2 * sizeof(struct tzhead) +
 					2 * sizeof *sp +
 					4 * TZ_MAX_TIMES];
-	} u;
+	} u_t;
+	u_t				u;
+	u_t * const			up = &u;
 
 	sp->goback = sp->goahead = FALSE;
 
@@ -333,7 +334,7 @@ tzload(const char *name, struct state * const sp, const int doextend)
 		    name[0] == '/' || strchr(name, '.'))
 			name = NULL;
 	if (name == NULL && (name = TZDEFAULT) == NULL)
-		return -1;
+		goto oops;
 	{
 		int	doaccess;
 		struct stat	stab;
@@ -351,9 +352,9 @@ tzload(const char *name, struct state * const sp, const int doextend)
 		doaccess = name[0] == '/';
 		if (!doaccess) {
 			if ((p = TZDIR) == NULL)
-				return -1;
+				goto oops;
 			if ((strlen(p) + 1 + strlen(name) + 1) >= sizeof fullname)
-				return -1;
+				goto oops;
 			strcpy(fullname, p);
 			strcat(fullname, "/");
 			strcat(fullname, name);
@@ -365,36 +366,36 @@ tzload(const char *name, struct state * const sp, const int doextend)
 			name = fullname;
 		}
 		if (doaccess && access(name, R_OK) != 0)
-			return -1;
+			goto oops;
 		if ((fid = _open(name, O_RDONLY)) == -1)
-			return -1;
+			goto oops;
 		if ((_fstat(fid, &stab) < 0) || !S_ISREG(stab.st_mode)) {
 			_close(fid);
 			return -1;
 		}
 	}
-	nread = _read(fid, u.buf, sizeof u.buf);
+	nread = _read(fid, up->buf, sizeof up->buf);
 	if (_close(fid) < 0 || nread <= 0)
-		return -1;
+		goto oops;
 	for (stored = 4; stored <= 8; stored *= 2) {
 		int		ttisstdcnt;
 		int		ttisgmtcnt;
 
-		ttisstdcnt = (int) detzcode(u.tzhead.tzh_ttisstdcnt);
-		ttisgmtcnt = (int) detzcode(u.tzhead.tzh_ttisgmtcnt);
-		sp->leapcnt = (int) detzcode(u.tzhead.tzh_leapcnt);
-		sp->timecnt = (int) detzcode(u.tzhead.tzh_timecnt);
-		sp->typecnt = (int) detzcode(u.tzhead.tzh_typecnt);
-		sp->charcnt = (int) detzcode(u.tzhead.tzh_charcnt);
-		p = u.tzhead.tzh_charcnt + sizeof u.tzhead.tzh_charcnt;
+		ttisstdcnt = (int) detzcode(up->tzhead.tzh_ttisstdcnt);
+		ttisgmtcnt = (int) detzcode(up->tzhead.tzh_ttisgmtcnt);
+		sp->leapcnt = (int) detzcode(up->tzhead.tzh_leapcnt);
+		sp->timecnt = (int) detzcode(up->tzhead.tzh_timecnt);
+		sp->typecnt = (int) detzcode(up->tzhead.tzh_typecnt);
+		sp->charcnt = (int) detzcode(up->tzhead.tzh_charcnt);
+		p = up->tzhead.tzh_charcnt + sizeof up->tzhead.tzh_charcnt;
 		if (sp->leapcnt < 0 || sp->leapcnt > TZ_MAX_LEAPS ||
 			sp->typecnt <= 0 || sp->typecnt > TZ_MAX_TYPES ||
 			sp->timecnt < 0 || sp->timecnt > TZ_MAX_TIMES ||
 			sp->charcnt < 0 || sp->charcnt > TZ_MAX_CHARS ||
 			(ttisstdcnt != sp->typecnt && ttisstdcnt != 0) ||
 			(ttisgmtcnt != sp->typecnt && ttisgmtcnt != 0))
-				return -1;
-		if (nread - (p - u.buf) <
+				goto oops;
+		if (nread - (p - up->buf) <
 			sp->timecnt * stored +		/* ats */
 			sp->timecnt +			/* types */
 			sp->typecnt * 6 +		/* ttinfos */
@@ -402,7 +403,7 @@ tzload(const char *name, struct state * const sp, const int doextend)
 			sp->leapcnt * (stored + 4) +	/* lsinfos */
 			ttisstdcnt +			/* ttisstds */
 			ttisgmtcnt)			/* ttisgmts */
-				return -1;
+				goto oops;
 		for (i = 0; i < sp->timecnt; ++i) {
 			sp->ats[i] = (stored == 4) ?
 				detzcode(p) : detzcode64(p);
@@ -411,7 +412,7 @@ tzload(const char *name, struct state * const sp, const int doextend)
 		for (i = 0; i < sp->timecnt; ++i) {
 			sp->types[i] = (unsigned char) *p++;
 			if (sp->types[i] >= sp->typecnt)
-				return -1;
+				goto oops;
 		}
 		for (i = 0; i < sp->typecnt; ++i) {
 			struct ttinfo *	ttisp;
@@ -421,11 +422,11 @@ tzload(const char *name, struct state * const sp, const int doextend)
 			p += 4;
 			ttisp->tt_isdst = (unsigned char) *p++;
 			if (ttisp->tt_isdst != 0 && ttisp->tt_isdst != 1)
-				return -1;
+				goto oops;
 			ttisp->tt_abbrind = (unsigned char) *p++;
 			if (ttisp->tt_abbrind < 0 ||
 				ttisp->tt_abbrind > sp->charcnt)
-					return -1;
+					goto oops;
 		}
 		for (i = 0; i < sp->charcnt; ++i)
 			sp->chars[i] = *p++;
@@ -450,7 +451,7 @@ tzload(const char *name, struct state * const sp, const int doextend)
 				ttisp->tt_ttisstd = *p++;
 				if (ttisp->tt_ttisstd != TRUE &&
 					ttisp->tt_ttisstd != FALSE)
-						return -1;
+						goto oops;
 			}
 		}
 		for (i = 0; i < sp->typecnt; ++i) {
@@ -463,7 +464,7 @@ tzload(const char *name, struct state * const sp, const int doextend)
 				ttisp->tt_ttisgmt = *p++;
 				if (ttisp->tt_ttisgmt != TRUE &&
 					ttisp->tt_ttisgmt != FALSE)
-						return -1;
+						goto oops;
 			}
 		}
 		/*
@@ -496,11 +497,11 @@ tzload(const char *name, struct state * const sp, const int doextend)
 		/*
 		** If this is an old file, we're done.
 		*/
-		if (u.tzhead.tzh_version[0] == '\0')
+		if (up->tzhead.tzh_version[0] == '\0')
 			break;
-		nread -= p - u.buf;
+		nread -= p - up->buf;
 		for (i = 0; i < nread; ++i)
-			u.buf[i] = p[i];
+			up->buf[i] = p[i];
 		/*
 		** If this is a narrow integer time_t system, we're done.
 		*/
@@ -508,13 +509,13 @@ tzload(const char *name, struct state * const sp, const int doextend)
 			break;
 	}
 	if (doextend && nread > 2 &&
-		u.buf[0] == '\n' && u.buf[nread - 1] == '\n' &&
+		up->buf[0] == '\n' && up->buf[nread - 1] == '\n' &&
 		sp->typecnt + 2 <= TZ_MAX_TYPES) {
 			struct state	ts;
 			int		result;
 
-			u.buf[nread - 1] = '\0';
-			result = tzparse(&u.buf[1], &ts, FALSE);
+			up->buf[nread - 1] = '\0';
+			result = tzparse(&up->buf[1], &ts, FALSE);
 			if (result == 0 && ts.typecnt == 2 &&
 				sp->charcnt + ts.charcnt <= TZ_MAX_CHARS) {
 					for (i = 0; i < 2; ++i)
@@ -559,6 +560,8 @@ tzload(const char *name, struct state * const sp, const int doextend)
 		}
 	}
 	return 0;
+oops:
+	return -1;
 }
 
 static int
@@ -1593,27 +1596,35 @@ ctime_r(const time_t * const timep, char *buf)
 #endif /* !defined WRONG */
 
 /*
-** Simplified normalize logic courtesy Paul Eggert.
+** Normalize logic courtesy Paul Eggert.
 */
 
 static int
-increment_overflow(int *number, int delta)
+increment_overflow(int * const ip, int j)
 {
-	int	number0;
+	int const	i = *ip;
 
-	number0 = *number;
-	*number += delta;
-	return (*number < number0) != (delta < 0);
+	/*
+	** If i >= 0 there can only be overflow if i + j > INT_MAX
+	** or if j > INT_MAX - i; given i >= 0, INT_MAX - i cannot overflow.
+	** If i < 0 there can only be overflow if i + j < INT_MIN
+	** or if j < INT_MIN - i; given i < 0, INT_MIN - i cannot overflow.
+	*/
+	if ((i >= 0) ? (j > INT_MAX - i) : (j < INT_MIN - i))
+		return TRUE;
+	*ip += j;
+	return FALSE;
 }
 
 static int
-long_increment_overflow(long *number, int delta)
+long_increment_overflow(long * const lp, int const m)
 {
-	long	number0;
+	long const	l = *lp;
 
-	number0 = *number;
-	*number += delta;
-	return (*number < number0) != (delta < 0);
+	if ((l >= 0) ? (m > LONG_MAX - l) : (m < LONG_MIN - l))
+		return TRUE;
+	*lp += m;
+	return FALSE;
 }
 
 static int

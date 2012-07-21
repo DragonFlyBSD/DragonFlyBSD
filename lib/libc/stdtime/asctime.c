@@ -8,7 +8,6 @@
 ** the output of strftime is supposed to be locale specific
 ** whereas the output of asctime is supposed to be constant.
 **
-** @(#)asctime.c	8.5
 ** $FreeBSD: src/lib/libc/stdtime/asctime.c,v 1.7.6.1 2001/03/05 11:37:20 obrien Exp $
 */
 /*LINTLIBRARY*/

@@ -1,13 +1,6 @@
 /*
- * @(#)strftime.c	8.3
  * $NetBSD: strftime.c,v 1.19 2009/01/11 02:46:30 christos Exp $
- * $DragonFly: src/lib/libc/stdtime/strftime.c,v 1.7 2008/10/19 20:15:58 swildner Exp $
  */
-
-/*
-** Based on the UCB version with the ID appearing below.
-** This is ANSIish only when "multibyte character == plain character".
-*/
 
 /*
 ** We don't use these extensions in strftime operation even when
