@@ -256,6 +256,7 @@ static void
 mpt_set_options(struct mpt_softc *mpt)
 {
 	int bitmap;
+	int tval;
 
 	bitmap = 0;
 	if (kgetenv_int("mpt_disable", &bitmap)) {
@@ -310,7 +311,12 @@ mpt_set_options(struct mpt_softc *mpt)
 		}
 		mpt->do_cfg_role = 1;
 	}
+	tval = 0;
 	mpt->msi_enable = 0;
+	if (mpt->is_sas)
+		mpt->msi_enable = 1;
+	if (kgetenv_int("hw.mpt.msi.enable", &tval))
+		mpt->msi_enable = tval;
 }
 
 static void
@@ -359,6 +365,7 @@ mpt_pci_attach(device_t dev)
 	int		  iqd;
 	uint32_t	  data, cmd;
 	int		  mpt_io_bar, mpt_mem_bar;
+	u_int		  irq_flags;
 
 	mpt  = (struct mpt_softc*)device_get_softc(dev);
 
@@ -519,18 +526,12 @@ mpt_pci_attach(device_t dev)
 				mpt->pci_msi_count = 0;
 			}
 		}
-		if (iqd == 0 && pci_msi_count(dev) == 1) {
-			mpt->pci_msi_count = 1;
-			if (pci_alloc_msi(dev, &mpt->pci_msi_count) == 0) {
-				iqd = 1;
-			} else {
-				mpt->pci_msi_count = 0;
-			}
-		}
 	}
 #endif
+	mpt->irq_type = pci_alloc_1intr(dev, mpt->msi_enable, &iqd,
+	    &irq_flags);
 	mpt->pci_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &iqd,
-	    RF_ACTIVE | (mpt->pci_msi_count ? 0 : RF_SHAREABLE));
+	    irq_flags);
 	if (mpt->pci_irq == NULL) {
 		device_printf(dev, "could not allocate interrupt\n");
 		goto bad;
@@ -626,10 +627,8 @@ mpt_free_bus_resources(struct mpt_softc *mpt)
 		mpt->pci_irq = NULL;
 	}
 
-	if (mpt->pci_msi_count) {
+	if (mpt->irq_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(mpt->dev);
-		mpt->pci_msi_count = 0;
-	}
 
 	if (mpt->pci_pio_reg) {
 		bus_release_resource(mpt->dev, SYS_RES_IOPORT,
