@@ -1325,6 +1325,8 @@ bnx_blockinit(struct bnx_softc *sc)
 	 */
 	if (BNX_IS_5717_PLUS(sc))
 		limit = 4;
+	else if (BNX_IS_57765_FAMILY(sc))
+		limit = 2;
 	else
 		limit = 1;
 	vrcb = BGE_MEMWIN_START + BGE_SEND_RING_RCB;
@@ -1359,7 +1361,7 @@ bnx_blockinit(struct bnx_softc *sc)
 	if (BNX_IS_5717_PLUS(sc)) {
 		/* Should be 17, use 16 until we get an SRAM map. */
 		limit = 16;
-	} else if (sc->bnx_asicrev == BGE_ASICREV_BCM57765) {
+	} else if (BNX_IS_57765_FAMILY(sc)) {
 		limit = 4;
 	} else {
 		limit = 1;
