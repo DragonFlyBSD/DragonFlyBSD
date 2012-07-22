@@ -1052,6 +1052,45 @@ bnx_chipinit(struct bnx_softc *sc)
 	    i < BGE_STATUS_BLOCK_END + 1; i += sizeof(uint32_t))
 		BNX_MEMWIN_WRITE(sc, i, 0);
 
+	if (BNX_IS_57765_FAMILY(sc)) {
+		uint32_t val;
+
+		if (sc->bnx_chipid == BGE_CHIPID_BCM57765_A0) {
+			mode_ctl = CSR_READ_4(sc, BGE_MODE_CTL);
+			val = mode_ctl & ~BGE_MODECTL_PCIE_PORTS;
+
+			/* Access the lower 1K of PL PCI-E block registers. */
+			CSR_WRITE_4(sc, BGE_MODE_CTL,
+			    val | BGE_MODECTL_PCIE_PL_SEL);
+
+			val = CSR_READ_4(sc, BGE_PCIE_PL_LO_PHYCTL5);
+			val |= BGE_PCIE_PL_LO_PHYCTL5_DIS_L2CLKREQ;
+			CSR_WRITE_4(sc, BGE_PCIE_PL_LO_PHYCTL5, val);
+
+			CSR_WRITE_4(sc, BGE_MODE_CTL, mode_ctl);
+		}
+		if (sc->bnx_chiprev != BGE_CHIPREV_57765_AX) {
+			mode_ctl = CSR_READ_4(sc, BGE_MODE_CTL);
+			val = mode_ctl & ~BGE_MODECTL_PCIE_PORTS;
+
+			/* Access the lower 1K of DL PCI-E block registers. */
+			CSR_WRITE_4(sc, BGE_MODE_CTL,
+			    val | BGE_MODECTL_PCIE_DL_SEL);
+
+			val = CSR_READ_4(sc, BGE_PCIE_DL_LO_FTSMAX);
+			val &= ~BGE_PCIE_DL_LO_FTSMAX_MASK;
+			val |= BGE_PCIE_DL_LO_FTSMAX_VAL;
+			CSR_WRITE_4(sc, BGE_PCIE_DL_LO_FTSMAX, val);
+
+			CSR_WRITE_4(sc, BGE_MODE_CTL, mode_ctl);
+		}
+
+		val = CSR_READ_4(sc, BGE_CPMU_LSPD_10MB_CLK);
+		val &= ~BGE_CPMU_LSPD_10MB_MACCLK_MASK;
+		val |= BGE_CPMU_LSPD_10MB_MACCLK_6_25;
+		CSR_WRITE_4(sc, BGE_CPMU_LSPD_10MB_CLK, val);
+	}
+
 	/* Set up the PCI DMA control register. */
 	dma_rw_ctl = BGE_PCI_READ_CMD | BGE_PCI_WRITE_CMD |
 	    (0x3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
