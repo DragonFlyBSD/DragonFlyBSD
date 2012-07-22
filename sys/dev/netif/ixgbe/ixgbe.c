@@ -259,6 +259,9 @@ TUNABLE_INT("hw.ixgbe.flow_control", &ixgbe_flow_control);
 */
 static int ixgbe_smart_speed = ixgbe_smart_speed_on;
 
+static int ixgbe_msi_enable = 1;
+TUNABLE_INT("hw.ixgbe.msi.enable", &ixgbe_msi_enable);
+
 /*
  * MSIX should be the default for best performance,
  * but this allows it to be forced off for testing.
@@ -2244,14 +2247,19 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 	device_t dev = adapter->dev;
 	struct		ix_queue *que = adapter->queues;
 	int error, rid = 0;
+	unsigned int intr_flags;
 
 	/* MSI RID at 1 */
 	if (adapter->msix == 1)
 		rid = 1;
 
+	/* Try allocating a MSI interrupt first */
+	adapter->intr_type = pci_alloc_1intr(dev, ixgbe_msi_enable,
+		&rid, &intr_flags);
+
 	/* We allocate a single interrupt resource */
 	adapter->res = bus_alloc_resource_any(dev,
-            SYS_RES_IRQ, &rid, RF_SHAREABLE | RF_ACTIVE);
+            SYS_RES_IRQ, &rid, intr_flags);
 	if (adapter->res == NULL) {
 		device_printf(dev, "Unable to allocate bus resource: "
 		    "interrupt\n");
@@ -2546,6 +2554,8 @@ ixgbe_free_pci_resources(struct adapter * adapter)
 	}
 	if (adapter->res != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, rid, adapter->res);
+	if (adapter->intr_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(adapter->dev);
 
 mem:
 	if (adapter->msix)

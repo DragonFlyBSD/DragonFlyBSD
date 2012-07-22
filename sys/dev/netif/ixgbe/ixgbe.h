@@ -374,6 +374,7 @@ struct adapter {
 	 */
 	void			*tag;
 	struct resource 	*res;
+	int			intr_type;
 
 	struct ifmedia		media;
 	struct callout		timer;
