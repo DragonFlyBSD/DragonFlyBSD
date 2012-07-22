@@ -3021,7 +3021,7 @@ bnx_init(void *xsc)
 	 * this number of frames, it will drop subsequent incoming
 	 * frames until the MBUF High Watermark is reached.
 	 */
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM57765)
+	if (BNX_IS_57765_FAMILY(sc))
 		CSR_WRITE_4(sc, BGE_MAX_RX_FRAME_LOWAT, 1);
 	else
 		CSR_WRITE_4(sc, BGE_MAX_RX_FRAME_LOWAT, 2);
