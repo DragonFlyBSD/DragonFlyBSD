@@ -1,6 +1,5 @@
 /*
  * $OpenBSD: extern.h,v 1.6 2006/03/18 20:44:43 otto Exp $
- * $DragonFly: src/usr.bin/bc/extern.h,v 1.3 2007/09/01 18:42:08 pavalos Exp $
  */
 
 /*
@@ -39,4 +38,7 @@ extern int	sargc;
 extern char	**sargv;
 extern char	*filename;
 extern char	*cmdexpr;
-bool		interactive;
+extern bool	 interactive;
+extern EditLine	*el;
+extern History	*hist;
+extern HistEvent he;

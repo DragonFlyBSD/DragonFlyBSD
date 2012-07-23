@@ -1,7 +1,6 @@
 %{
 /*
  * $OpenBSD: scan.l,v 1.21 2006/03/18 20:44:43 otto Exp $
- * $DragonFly: src/usr.bin/bc/scan.l,v 1.3 2007/09/01 18:42:08 pavalos Exp $
  */
 
 /*
@@ -22,6 +21,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <histedit.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <string.h>
@@ -36,12 +36,21 @@
 int		lineno;
 bool		interactive;
 
+HistEvent	 he;
+EditLine	*el;
+History		*hist;
+
 static char	*strbuf = NULL;
 static size_t	strbuf_sz = 1;
 static bool	dot_seen;
 
 static void	init_strbuf(void);
 static void	add_str(const char *);
+static int	bc_yyinput(char *, int);
+
+#undef YY_INPUT
+#define YY_INPUT(buf,retval,max) \
+	(retval = bc_yyinput(buf, max))
 
 %}
 
@@ -284,4 +293,32 @@ yywrap(void)
 		return (0);
 	}
 	return (1);
+}
+
+static int
+bc_yyinput(char *buf, int maxlen)
+{
+	int num;
+	if (yyin == stdin && interactive) {
+		const char *bp;
+
+		if ((bp = el_gets(el, &num)) == NULL || num == 0)
+			return (0);
+		if (num > maxlen) {
+			el_push(el, (char *)(uintptr_t)(bp) + maxlen);
+			num = maxlen;
+		}
+		memcpy(buf, bp, num);
+		history(hist, &he, H_ENTER, bp);
+	} else {
+		int c = '*';
+		for (num = 0; num < maxlen &&
+		    (c = getc(yyin)) != EOF && c != '\n'; ++num)
+			buf[num] = (char) c;
+		if (c == '\n')
+			buf[num++] = (char) c;
+		if (c == EOF && ferror(yyin))
+			YY_FATAL_ERROR( "input in flex scanner failed" );
+	}
+	return (num);
 }
