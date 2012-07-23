@@ -1191,6 +1191,10 @@ bnx_blockinit(struct bnx_softc *sc)
 	 */
 	if (sc->bnx_asicrev == BGE_ASICREV_BCM5719)
 		val |= BGE_BMANMODE_NO_TX_UNDERRUN;
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5717 ||
+	    sc->bnx_chipid == BGE_CHIPID_BCM5719_A0 ||
+	    sc->bnx_chipid == BGE_CHIPID_BCM5720_A0)
+		val |= BGE_BMANMODE_LOMBUF_ATTN;
 	CSR_WRITE_4(sc, BGE_BMAN_MODE, val);
 
 	/* Poll for buffer manager start indication */
