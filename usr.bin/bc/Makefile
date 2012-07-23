@@ -3,7 +3,7 @@
 PROG=		bc
 SRCS=		bc.y scan.l y.tab.h
 CFLAGS+=	-I. -I${.CURDIR}
-WARNS?=		2
+WARNS?=		3
 
 DPADD=		${LIBEDIT} ${LIBTERMCAP}
 LDADD=		-ledit -ltermcap
