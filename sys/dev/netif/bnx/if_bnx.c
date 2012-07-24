@@ -2151,6 +2151,8 @@ bnx_attach(device_t dev)
 	ifp->if_cpuid = rman_get_cpuid(sc->bnx_irq);
 	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
+	sc->bnx_stat_cpuid = ifp->if_cpuid;
+
 	return(0);
 fail:
 	bnx_detach(dev);
@@ -2700,6 +2702,8 @@ bnx_tick(void *xsc)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
+	KKASSERT(mycpuid == sc->bnx_stat_cpuid);
+
 	bnx_stats_update_regs(sc);
 
 	if (sc->bnx_flags & BNX_FLAG_TBI) {
@@ -3062,7 +3066,8 @@ bnx_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	callout_reset(&sc->bnx_stat_timer, hz, bnx_tick, sc);
+	callout_reset_bycpu(&sc->bnx_stat_timer, hz, bnx_tick, sc,
+	    sc->bnx_stat_cpuid);
 }
 
 /*

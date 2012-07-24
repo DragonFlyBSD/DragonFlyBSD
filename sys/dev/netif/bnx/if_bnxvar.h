@@ -239,6 +239,7 @@ struct bnx_softc {
 	int			bnx_txcnt;
 	int			bnx_link;
 	int			bnx_link_evt;
+	int			bnx_stat_cpuid;
 	struct callout		bnx_stat_timer;
 
 	struct sysctl_ctx_list	bnx_sysctl_ctx;
