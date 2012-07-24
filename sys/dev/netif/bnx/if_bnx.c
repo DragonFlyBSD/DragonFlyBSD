@@ -1750,7 +1750,7 @@ bnx_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	sc->bnx_dev = dev;
-	callout_init(&sc->bnx_stat_timer);
+	callout_init_mp(&sc->bnx_stat_timer);
 	lwkt_serialize_init(&sc->bnx_jslot_serializer);
 
 	product = pci_get_device(dev);
