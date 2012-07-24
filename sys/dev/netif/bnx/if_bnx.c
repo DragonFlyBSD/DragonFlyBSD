@@ -1091,22 +1091,31 @@ bnx_chipinit(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_CPMU_LSPD_10MB_CLK, val);
 	}
 
-	/* Set up the PCI DMA control register. */
-	dma_rw_ctl = BGE_PCI_READ_CMD | BGE_PCI_WRITE_CMD |
-	    (0x3 << BGE_PCIDMARWCTL_WR_WAT_SHIFT);
-
-	if (BNX_IS_57765_PLUS(sc)) {
-		dma_rw_ctl &= ~BGE_PCIDMARWCTL_DIS_CACHE_ALIGNMENT;
-		if (sc->bnx_chipid == BGE_CHIPID_BCM57765_A0)
-			dma_rw_ctl &= ~BGE_PCIDMARWCTL_CRDRDR_RDMA_MRRS_MSK;
-		/*
-		 * Enable HW workaround for controllers that misinterpret
-		 * a status tag update and leave interrupts permanently
-		 * disabled.
-		 */
-		if (sc->bnx_asicrev != BGE_ASICREV_BCM5717 &&
-		    sc->bnx_asicrev != BGE_ASICREV_BCM57765)
-			dma_rw_ctl |= BGE_PCIDMARWCTL_TAGGED_STATUS_WA;
+	/*
+	 * Set up the PCI DMA control register.
+	 */
+	dma_rw_ctl = pci_read_config(sc->bnx_dev, BGE_PCI_DMA_RW_CTL, 4);
+	/*
+	 * Disable 32bytes cache alignment for DMA write to host memory
+	 *
+	 * NOTE:
+	 * 64bytes cache alignment for DMA write to host memory is still
+	 * enabled.
+	 */
+	dma_rw_ctl |= BGE_PCIDMARWCTL_DIS_CACHE_ALIGNMENT;
+	if (sc->bnx_chipid == BGE_CHIPID_BCM57765_A0)
+		dma_rw_ctl &= ~BGE_PCIDMARWCTL_CRDRDR_RDMA_MRRS_MSK;
+	/*
+	 * Enable HW workaround for controllers that misinterpret
+	 * a status tag update and leave interrupts permanently
+	 * disabled.
+	 */
+	if (sc->bnx_asicrev != BGE_ASICREV_BCM5717 &&
+	    !BNX_IS_57765_FAMILY(sc))
+		dma_rw_ctl |= BGE_PCIDMARWCTL_TAGGED_STATUS_WA;
+	if (bootverbose) {
+		if_printf(&sc->arpcom.ac_if, "DMA read/write %#x\n",
+		    dma_rw_ctl);
 	}
 	pci_write_config(sc->bnx_dev, BGE_PCI_DMA_RW_CTL, dma_rw_ctl, 4);
 
