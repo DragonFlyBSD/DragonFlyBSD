@@ -51,6 +51,7 @@
 
 #include <ctype.h>
 #include <err.h>
+#include <histedit.h>
 #include <netdb.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -61,6 +62,7 @@
 
 #include "extern.h"
 
+#define	MAXLINE		200
 #define	TIMEOUT		5		/* secs between rexmt's */
 
 struct	sockaddr_storage peeraddr;
@@ -69,11 +71,10 @@ int	trace;
 int	verbose;
 int	connected;
 char	mode[32];
-char	line[200];
+char	line[MAXLINE];
 int	margc;
 #define	MAX_MARGV	20
 char	*margv[MAX_MARGV];
-const char *prompt = "tftp";
 jmp_buf	toplevel;
 volatile int txrx_error;
 void	intr(int);
@@ -94,6 +95,7 @@ void	setverbose(int, char **);
 void	status(int, char **);
 
 static void command(void) __dead2;
+static const char *command_prompt(void);
 
 static void getusage(char *);
 static void makeargv(void);
@@ -564,22 +566,52 @@ tail(char *filename)
 	return (filename);
 }
 
+static const char *
+command_prompt(void)
+{
+	return ("tftp> ");
+}
+
 /*
  * Command parser.
  */
 static void
 command(void)
 {
+	HistEvent he;
 	struct cmd *c;
+	static EditLine *el;
+	static History *hist;
+	const char *bp;
 	char *cp;
+	int len, num, vrbose;
 
+	vrbose = isatty(0);
+	if (vrbose) {
+		el = el_init("tftp", stdin, stdout, stderr);
+		hist = history_init();
+		history(hist, &he, H_SETSIZE, 100);
+		el_set(el, EL_HIST, history, hist);
+		el_set(el, EL_EDITOR, "emacs");
+		el_set(el, EL_PROMPT, command_prompt);
+		el_set(el, EL_SIGNAL, 1);
+		el_source(el, NULL);
+	}
 	for (;;) {
-		printf("%s> ", prompt);
-		if (fgets(line, sizeof line , stdin) == 0) {
-			if (feof(stdin)) {
+		if (vrbose) {
+			if ((bp = el_gets(el, &num)) == NULL || num == 0)
 				exit(txrx_error);
-			} else {
-				continue;
+			len = (num > MAXLINE) ? MAXLINE : num;
+			memcpy(line, bp, len);
+			line[len] = '\0';
+			history(hist, &he, H_ENTER, bp);
+		} else {
+			if (fgets(line, sizeof line , stdin) == 0) {
+				if (feof(stdin)) {
+					exit(txrx_error);
+				} else {
+					continue;
+				}
 			}
 		}
 		if ((cp = strchr(line, '\n')))
