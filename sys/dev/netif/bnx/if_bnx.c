@@ -1831,9 +1831,6 @@ bnx_attach(device_t dev)
 	}
 	sc->bnx_flags |= BNX_FLAG_SHORTDMA;
 
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5906)
-		sc->bnx_flags |= BNX_FLAG_NO_EEPROM;
-
 	misccfg = CSR_READ_4(sc, BGE_MISC_CFG) & BGE_MISCCFG_BOARD_ID_MASK;
 
 	sc->bnx_pciecap = pci_get_pciecap_ptr(sc->bnx_dev);
@@ -1851,19 +1848,8 @@ bnx_attach(device_t dev)
 	 */
 
 	capmask = MII_CAPMASK_DEFAULT;
-	if ((sc->bnx_asicrev == BGE_ASICREV_BCM5703 &&
-	     (misccfg == 0x4000 || misccfg == 0x8000)) ||
-	    (sc->bnx_asicrev == BGE_ASICREV_BCM5705 &&
-	     vendor == PCI_VENDOR_BROADCOM &&
-	     (product == PCI_PRODUCT_BROADCOM_BCM5901 ||
-	      product == PCI_PRODUCT_BROADCOM_BCM5901A2 ||
-	      product == PCI_PRODUCT_BROADCOM_BCM5705F)) ||
-	    (vendor == PCI_VENDOR_BROADCOM &&
-	     (product == PCI_PRODUCT_BROADCOM_BCM5751F ||
-	      product == PCI_PRODUCT_BROADCOM_BCM5753F ||
-	      product == PCI_PRODUCT_BROADCOM_BCM5787F)) ||
-	    product == PCI_PRODUCT_BROADCOM_BCM57790 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5906) {
+	if (product == PCI_PRODUCT_BROADCOM_BCM57791 ||
+	    product == PCI_PRODUCT_BROADCOM_BCM57795) {
 		/* 10/100 only */
 		capmask &= ~BMSR_EXTSTAT;
 	}
