@@ -380,6 +380,54 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *),
 	crit_exit_gd(gd);
 }
 
+#ifdef SMP
+
+struct callout_remote_arg {
+	struct callout	*c;
+	void		(*ftn)(void *);
+	void		*arg;
+	int		to_ticks;
+};
+
+static void
+callout_reset_ipi(void *arg)
+{
+	struct callout_remote_arg *rmt = arg;
+
+	callout_reset(rmt->c, rmt->to_ticks, rmt->ftn, rmt->arg);
+}
+
+#endif
+
+void
+callout_reset_bycpu(struct callout *c, int to_ticks, void (*ftn)(void *),
+    void *arg, int cpuid)
+{
+	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid cpuid %d", cpuid));
+
+#ifndef SMP
+	callout_reset(c, to_ticks, ftn, arg);
+#else
+	if (cpuid == mycpuid) {
+		callout_reset(c, to_ticks, ftn, arg);
+	} else {
+		struct globaldata *target_gd;
+		struct callout_remote_arg rmt;
+		int seq;
+
+		rmt.c = c;
+		rmt.ftn = ftn;
+		rmt.arg = arg;
+		rmt.to_ticks = to_ticks;
+
+		target_gd = globaldata_find(cpuid);
+
+		seq = lwkt_send_ipiq(target_gd, callout_reset_ipi, &rmt);
+		lwkt_wait_ipiq(target_gd, seq);
+	}
+#endif
+}
+
 /*
  * Stop a running timer.  WARNING!  If called on a cpu other then the one
  * the callout was started on this function will liveloop on its IPI to
