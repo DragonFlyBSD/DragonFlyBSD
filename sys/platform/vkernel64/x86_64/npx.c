@@ -113,7 +113,7 @@ SYSCTL_INT(_hw, OID_AUTO, instruction_sse, CTLFLAG_RD,
 int
 npx_attach(device_t dev)
 {
-	npxinit(__INITIAL_NPXCW__);
+	npxinit(__INITIAL_FPUCW__);
 	return (0);
 }
 #endif
@@ -357,7 +357,7 @@ npxdna(struct trapframe *frame)
 	 */
 	if ((curthread->td_flags & TDF_USINGFP) == 0) {
 		curthread->td_flags |= TDF_USINGFP;
-		npxinit(__INITIAL_NPXCW__);
+		npxinit(__INITIAL_FPUCW__);
 		didinit = 1;
 	}
 

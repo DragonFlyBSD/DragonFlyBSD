@@ -31,7 +31,6 @@
  *
  *	@(#)rogue.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/rogue.h,v 1.3.2.1 2001/12/17 12:43:23 phantom Exp $
- * $DragonFly: src/games/rogue/rogue.h,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 #include <curses.h>
@@ -443,7 +442,6 @@ struct rogue_time {
 /* external routine declarations.
  */
 #define rrandom random
-#define srrandom(x) srandomdev()
 
 /* hit.c */
 void	mon_hit(object *);
@@ -505,7 +503,6 @@ const char	*md_gln(void);
 void	md_sleep(int);
 char	*md_getenv(const char *);
 char	*md_malloc(int);
-int	md_gseed(void);
 void	md_exit(int);
 void	md_lock(boolean);
 void	md_shell(const char *);

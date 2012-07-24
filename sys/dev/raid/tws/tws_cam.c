@@ -474,7 +474,7 @@ tws_aen_complete(struct tws_request *req)
     if ( aen_code != TWS_AEN_QUEUE_EMPTY ) {
         /* timeout(tws_fetch_aen, sc, 1);*/
         sc->stats.num_aens++;
-        tws_fetch_aen((void *)sc);
+        tws_fetch_aen(sc);
     }
 
 }
@@ -1037,10 +1037,10 @@ tws_dmamap_data_load_cbfn(void *arg, bus_dma_segment_t *segs,
             sgl_ptr = (u_int32_t *)(gcmd) + gcmd->size;
             gcmd->size += sgls *
                           ((req->sc->is64bit && !tws_use_32bit_sgls) ? 4 :2 );
-            tws_fill_sg_list(req->sc, (void *)segs, sgl_ptr, sgls);
+            tws_fill_sg_list(req->sc, segs, sgl_ptr, sgls);
 
         } else {
-            tws_fill_sg_list(req->sc, (void *)segs,
+            tws_fill_sg_list(req->sc, segs,
                       (void *)req->cmd_pkt->cmd.pkt_a.sg_list, sgls);
             req->cmd_pkt->cmd.pkt_a.lun_h4__sgl_entries |= sgls ;
         }
@@ -1136,7 +1136,7 @@ tws_intr_attn_aen(struct tws_softc *sc)
 
     /* maskoff db intrs untill all the aens are fetched */
     /* tws_disable_db_intr(sc); */
-    tws_fetch_aen((void *)sc);
+    tws_fetch_aen(sc);
     tws_write_reg(sc, TWS_I2O0_HOBDBC, TWS_BIT18, 4);
     db = tws_read_reg(sc, TWS_I2O0_IOBDB, 4);
 
@@ -1180,7 +1180,7 @@ tws_poll(struct cam_sim *sim)
 {
     struct tws_softc *sc = (struct tws_softc *)cam_sim_softc(sim);
     TWS_TRACE_DEBUG(sc, "entry", 0, 0);
-    tws_intr((void *) sc);
+    tws_intr(sc);
 }
 
 void
@@ -1192,7 +1192,7 @@ tws_timeout(void *arg)
 
     if ( tws_get_state(sc) != TWS_RESET ) {
         device_printf(sc->tws_dev, "Request timed out.\n");
-        tws_reset((void *)sc);
+        tws_reset(sc);
     }
 }
 

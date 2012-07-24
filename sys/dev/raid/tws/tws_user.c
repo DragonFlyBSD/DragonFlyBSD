@@ -143,7 +143,7 @@ tws_passthru(struct tws_softc *sc, void *buf)
     if ( error == EWOULDBLOCK ) {
         error = ETIMEDOUT;
         TWS_TRACE_DEBUG(sc, "lksleep timeout", error, req->request_id);
-        tws_reset((void *)sc);
+        tws_reset(sc);
     }
 
     if ( req->error_code == TWS_REQ_REQUEUE ) {

@@ -577,7 +577,7 @@ nfs_read(struct open_file *f, void *buf, size_t size, size_t *resid)
 #endif
 	while ((int)size > 0) {
 		twiddle();
-		cc = nfs_readdata(fp, fp->off, (void *)addr, size);
+		cc = nfs_readdata(fp, fp->off, addr, size);
 		/* XXX maybe should retry on certain errors */
 		if (cc == -1) {
 #ifdef NFS_DEBUG

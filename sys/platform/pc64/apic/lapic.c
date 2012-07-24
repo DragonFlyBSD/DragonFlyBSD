@@ -732,7 +732,7 @@ lapic_unused_apic_id(int start)
 {
 	int i;
 
-	for (i = start; i < NAPICID; ++i) {
+	for (i = start; i < APICID_MAX; ++i) {
 		if (APICID_TO_CPUID(i) == -1)
 			return i;
 	}
@@ -769,7 +769,11 @@ lapic_config(void)
 		return ENXIO;
 	}
 
-	e->lapic_enumerate(e);
+	error = e->lapic_enumerate(e);
+	if (error) {
+		kprintf("LAPIC: enumeration failed\n");
+		return ENXIO;
+	}
 
 	ap_max = MAXCPU - 1;
 	TUNABLE_INT_FETCH("hw.ap_max", &ap_max);

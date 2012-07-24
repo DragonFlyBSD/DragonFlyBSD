@@ -3078,7 +3078,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 			ccb->ccb_h.target_id, ccb->ccb_h.target_lun));
 
 		ccb->ccb_h.status = CAM_REQ_INPROG;
-		umass_reset(sc, umass_cam_cb, (void *) ccb);
+		umass_reset(sc, umass_cam_cb, ccb);
 		break;
 	}
 	case XPT_GET_TRAN_SETTINGS:

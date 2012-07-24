@@ -2,9 +2,7 @@
 ** This file is in the public domain, so clarified as of
 ** 1996-06-05 by Arthur David Olson.
 **
-** @(#)difftime.c	7.7
 ** $FreeBSD: src/lib/libc/stdtime/difftime.c,v 1.4.8.1 2001/03/05 11:37:21 obrien Exp $
-** $DragonFly: src/lib/libc/stdtime/difftime.c,v 1.5 2008/10/19 20:15:58 swildner Exp $
 */
 /*LINTLIBRARY*/
 

@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.60 2010/09/29 14:22:00 emaste Exp $
+ *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.63 2011/06/10 20:23:56 attilio Exp $
  */
 
 #include <sys/bio.h>
@@ -37,6 +37,7 @@
 #include <sys/devicestat.h>
 #include <sys/disk.h>
 #include <sys/eventhandler.h>
+#include <sys/sysctl.h>
 
 #define	AAC_TYPE_DEVO			1
 #define	AAC_TYPE_ALPHA			2
@@ -378,6 +379,9 @@ struct aac_softc
 							 * task */
 	struct intr_config_hook	aac_ich;
 
+	struct sysctl_ctx_list	aac_sysctl_ctx;
+	struct sysctl_oid	*aac_sysctl_tree;
+
 	/* management interface */
 	struct cdev *aac_dev_t;
 	struct lock		aac_aifq_lock;
@@ -389,13 +393,12 @@ struct aac_softc
 	struct thread		*aifthread;
 	int			aifflags;
 #define AAC_AIFFLAGS_RUNNING	(1 << 0)
-#define AAC_AIFFLAGS_AIF	(1 << 1)
+#define AAC_AIFFLAGS_UNUSED0	(1 << 1)
 #define	AAC_AIFFLAGS_EXIT	(1 << 2)
 #define AAC_AIFFLAGS_EXITED	(1 << 3)
-#define AAC_AIFFLAGS_PRINTF	(1 << 4)
+#define AAC_AIFFLAGS_UNUSED1	(1 << 4)
 #define	AAC_AIFFLAGS_ALLOCFIBS	(1 << 5)
-#define AAC_AIFFLAGS_PENDING	(AAC_AIFFLAGS_AIF | AAC_AIFFLAGS_PRINTF | \
-				 AAC_AIFFLAGS_ALLOCFIBS)
+#define AAC_AIFFLAGS_PENDING	AAC_AIFFLAGS_ALLOCFIBS
 	u_int32_t		flags;
 #define AAC_FLAGS_PERC2QC	(1 << 0)
 #define	AAC_FLAGS_ENABLE_CAM	(1 << 1)	/* No SCSI passthrough */
@@ -540,9 +543,8 @@ static __inline void							\
 aac_enqueue_ ## name (struct aac_command *cm)				\
 {									\
 	if ((cm->cm_flags & AAC_ON_AACQ_MASK) != 0) {			\
-		kprintf("command %p is on another queue, flags = %#x\n", \
-		       cm, cm->cm_flags);				\
-		panic("command is on another queue");			\
+		panic("aac: command %p is on another queue, flags = %#x", \
+		    cm, cm->cm_flags);					\
 	}								\
 	TAILQ_INSERT_TAIL(&cm->cm_sc->aac_ ## name, cm, cm_link);	\
 	cm->cm_flags |= AAC_ON_ ## index;				\
@@ -552,9 +554,8 @@ static __inline void							\
 aac_requeue_ ## name (struct aac_command *cm)				\
 {									\
 	if ((cm->cm_flags & AAC_ON_AACQ_MASK) != 0) {			\
-		kprintf("command %p is on another queue, flags = %#x\n", \
-		       cm, cm->cm_flags);				\
-		panic("command is on another queue");			\
+		panic("aac: command %p is on another queue, flags = %#x", \
+		    cm, cm->cm_flags);					\
 	}								\
 	TAILQ_INSERT_HEAD(&cm->cm_sc->aac_ ## name, cm, cm_link);	\
 	cm->cm_flags |= AAC_ON_ ## index;				\
@@ -567,10 +568,8 @@ aac_dequeue_ ## name (struct aac_softc *sc)				\
 									\
 	if ((cm = TAILQ_FIRST(&sc->aac_ ## name)) != NULL) {		\
 		if ((cm->cm_flags & AAC_ON_ ## index) == 0) {		\
-			kprintf("command %p not in queue, flags = %#x, " \
-			       "bit = %#x\n", cm, cm->cm_flags,		\
-			       AAC_ON_ ## index);			\
-			panic("command not in queue");			\
+			panic("aac: command %p not in queue, flags = %#x, bit = %#x", \
+			    cm, cm->cm_flags, AAC_ON_ ## index);	\
 		}							\
 		TAILQ_REMOVE(&sc->aac_ ## name, cm, cm_link);		\
 		cm->cm_flags &= ~AAC_ON_ ## index;			\
@@ -582,10 +581,8 @@ static __inline void							\
 aac_remove_ ## name (struct aac_command *cm)				\
 {									\
 	if ((cm->cm_flags & AAC_ON_ ## index) == 0) {			\
-		kprintf("command %p not in queue, flags = %#x, "	\
-		       "bit = %#x\n", cm, cm->cm_flags, 		\
-		       AAC_ON_ ## index);				\
-		panic("command not in queue");				\
+		panic("aac: command %p not in queue, flags = %#x, bit = %#x", \
+		    cm, cm->cm_flags, AAC_ON_ ## index);		\
 	}								\
 	TAILQ_REMOVE(&cm->cm_sc->aac_ ## name, cm, cm_link);		\
 	cm->cm_flags &= ~AAC_ON_ ## index;				\

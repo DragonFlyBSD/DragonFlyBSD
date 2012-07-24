@@ -28,9 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/kenv.9,v 1.9 2008/08/30 17:11:42 swildner Exp $
-.\"
-.Dd August 30, 2008
+.Dd July 21, 2012
 .Dt KENV 9
 .Os
 .Sh NAME
@@ -93,11 +91,10 @@ The
 and
 .Fn kgetenv_ulong
 functions return
-.Dv 1
-if unsuccessful,
 .Dv 0
-if successful, and return the
-found value in the given destination.
+if unsuccessful,
+.Dv 1
+if successful, and return the found value in the given destination.
 .Pp
 The
 .Fn kgetenv

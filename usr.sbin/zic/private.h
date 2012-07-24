@@ -1,7 +1,5 @@
 /*
- * @(#)private.h	8.6
  * $FreeBSD: src/lib/libc/stdtime/private.h,v 1.6.8.1 2000/08/23 00:19:15 jhb Exp $
- * $DragonFly: src/usr.sbin/zic/private.h,v 1.4 2008/10/19 20:15:58 swildner Exp $
  */
 
 #ifndef PRIVATE_H

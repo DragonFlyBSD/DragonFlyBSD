@@ -1,7 +1,5 @@
 /*
- * @(#)scheck.c	8.19
  * $FreeBSD: src/usr.sbin/zic/scheck.c,v 1.4 1999/08/28 01:21:19 peter Exp $
- * $DragonFly: src/usr.sbin/zic/scheck.c,v 1.4 2008/10/19 20:15:58 swildner Exp $
  */
 /*LINTLIBRARY*/
 

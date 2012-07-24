@@ -58,7 +58,7 @@ struct bge_gib {
 #define BGE_JUMBO_MTU		(BGE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 
 #define BGE_TIMEOUT		5000
-#define BGE_FIRMWARE_TIMEOUT	20000
+#define BGE_FIRMWARE_TIMEOUT	100000
 #define BGE_TXCONS_UNSET	0xFFFF	/* impossible value */
 
 /*
@@ -198,15 +198,19 @@ struct bge_softc {
 	bus_space_tag_t		bge_btag;
 	void			*bge_intrhand;
 	struct resource		*bge_irq;
+	int			bge_irq_type;
+	int			bge_irq_rid;
 	struct resource		*bge_res;
 	struct ifmedia		bge_ifmedia;	/* TBI media info */
 	int			bge_pcixcap;
 	int			bge_pciecap;
+	int			bge_msicap;
 	uint32_t		bge_pci_miscctl;
 	uint32_t		bge_status_tag;
 	uint32_t		bge_flags;	/* BGE_FLAG_ */
 #define BGE_FLAG_TBI		0x00000001
 #define BGE_FLAG_JUMBO		0x00000002
+#define BGE_FLAG_ONESHOT_MSI	0x00000004
 #define BGE_FLAG_MII_SERDES	0x00000010
 #define	BGE_FLAG_CPMU		0x00000020
 #define BGE_FLAG_PCIX		0x00000200

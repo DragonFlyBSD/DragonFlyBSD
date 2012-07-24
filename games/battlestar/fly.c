@@ -240,7 +240,7 @@ blast(void)
 }
 
 static void
-moveenemy(int sig)
+moveenemy(__unused int sig)
 {
 	double d;
 	int oldr, oldc;

@@ -35,7 +35,11 @@
 # MFILES	Optionally a list of interfaces used by the module.
 #		This file contains a default list of interfaces.
 #
-# FIRMWS	Firmware module in the form filename:shortname:version
+# FIRMWS	List of firmware images in format filename:shortname:version
+#
+# FIRMWARE_LICENSE
+#		Set to the name of the license the user has to agree on in
+#		order to use this firmware. See /usr/share/doc/legal
 #
 # +++ targets +++
 #

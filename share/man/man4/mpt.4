@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/mpt.4,v 1.22 2011/07/23 22:55:32 gjb Exp $
 .\"
-.Dd November 28, 2011
+.Dd July 21, 2012
 .Dt MPT 4
 .Os
 .Sh NAME
@@ -66,6 +66,13 @@ for the LSI Logic Fusion-MPT family of
 and
 .Tn SAS
 controllers.
+.Sh LOADER TUNABLES
+.Bl -tag -width indent
+.It Va hw.mpt.msi.enable
+This tunable specifies whether MSI will be used or not, provided the
+controller supports it.
+By default, the driver will use MSI for SAS adapters.
+.El
 .Sh HARDWARE
 The following controllers are supported by the
 .Nm
@@ -126,6 +133,10 @@ IBM eServer xSeries 335
 .Pp
 These systems also contain Integrated Raid Mirroring and Integrated
 Raid Mirroring Enhanced which this driver also supports.
+.Pp
+The 53c1030 is also available in
+.Tn VMware
+products.
 .Pp
 The
 .Tn SAS

@@ -397,7 +397,7 @@ ksprintf(char *buf, const char *cfmt, ...)
 	__va_list ap;
 
 	__va_start(ap, cfmt);
-	retval = kvcprintf(cfmt, NULL, (void *)buf, 10, ap);
+	retval = kvcprintf(cfmt, NULL, buf, 10, ap);
 	buf[retval] = '\0';
 	__va_end(ap);
 	return (retval);
@@ -411,7 +411,7 @@ kvsprintf(char *buf, const char *cfmt, __va_list ap)
 {
 	int retval;
 
-	retval = kvcprintf(cfmt, NULL, (void *)buf, 10, ap);
+	retval = kvcprintf(cfmt, NULL, buf, 10, ap);
 	buf[retval] = '\0';
 	return (retval);
 }

@@ -305,7 +305,7 @@ init_secondary(void)
 	initializecpu();
 
 	/* set up FPU state on the AP */
-	npxinit(__INITIAL_NPXCW__);
+	npxinit(__INITIAL_FPUCW__);
 
 	/* disable the APIC, just to be SURE */
 	lapic->svr &= ~APIC_SVR_ENABLE;

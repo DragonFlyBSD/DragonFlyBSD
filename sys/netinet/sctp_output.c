@@ -7310,7 +7310,7 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 	}
 	if (control) {
 		sctppcbinfo.mbuf_track++;
-		if (sctp_find_cmsg(SCTP_SNDRCV, (void *)&srcv, control,
+		if (sctp_find_cmsg(SCTP_SNDRCV, &srcv, control,
 				   sizeof(srcv))) {
 			if (srcv.sinfo_flags & MSG_SENDALL) {
 				/* its a sendall */
@@ -7481,7 +7481,7 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 			/* see if a init structure exists in cmsg headers */
 			struct sctp_initmsg initm;
 			int i;
-			if (sctp_find_cmsg(SCTP_INIT, (void *)&initm, control,
+			if (sctp_find_cmsg(SCTP_INIT, &initm, control,
 					   sizeof(initm))) {
 				/* we have an INIT override of the default */
 				if (initm.sinit_max_attempts)

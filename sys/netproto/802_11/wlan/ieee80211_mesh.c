@@ -2287,7 +2287,7 @@ mesh_verify_meshconf(struct ieee80211vap *vap, const uint8_t *ie)
 	}
 	if (meshconf->conf_authid != 0) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_MESH,
-		    "unknown auth auth algorithm: 0x%x\n",
+		    "unknown auth algorithm: 0x%x\n",
 		    meshconf->conf_pselid);
 		return 1;
 	}

@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.73 2009/08/20 19:17:53 jhb
+ * $FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.79 2011/11/17 23:04:43 eadler Exp $
  */
 
 #include "opt_acpi.h"
@@ -34,7 +34,6 @@
 #include <sys/kthread.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
-#include <sys/bus.h>
 #include <sys/proc.h>
 #include <sys/reboot.h>
 #include <sys/sysctl.h>
@@ -250,7 +249,7 @@ acpi_tz_attach(device_t dev)
 	SYSCTL_ADD_INT(&acpi_tz_sysctl_ctx,
 		       SYSCTL_CHILDREN(acpi_tz_sysctl_tree),
 		       OID_AUTO, "polling_rate", CTLFLAG_RW,
-		       &acpi_tz_polling_rate, 0, "monitor polling rate");
+		       &acpi_tz_polling_rate, 0, "monitor polling interval in seconds");
 	SYSCTL_ADD_INT(&acpi_tz_sysctl_ctx,
 		       SYSCTL_CHILDREN(acpi_tz_sysctl_tree), OID_AUTO,
 		       "user_override", CTLFLAG_RW, &acpi_tz_override, 0,

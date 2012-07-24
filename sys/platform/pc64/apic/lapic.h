@@ -46,7 +46,7 @@ struct lapic_enumerator {
 	int	lapic_prio;
 	TAILQ_ENTRY(lapic_enumerator) lapic_link;
 	int	(*lapic_probe)(struct lapic_enumerator *);
-	void	(*lapic_enumerate)(struct lapic_enumerator *);
+	int	(*lapic_enumerate)(struct lapic_enumerator *);
 };
 
 #define LAPIC_ENUM_PRIO_MPTABLE		20

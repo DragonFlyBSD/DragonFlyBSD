@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
- * $FreeBSD: src/bin/sh/input.c,v 1.35 2012/01/14 22:46:18 jilles Exp $
+ * $FreeBSD: src/bin/sh/input.c,v 1.36 2012/07/11 22:17:58 pfg Exp $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -184,7 +184,7 @@ retry:
 		if (rl_cp == NULL)
 			rl_cp = el_gets(el, &el_len);
 		if (rl_cp == NULL)
-			nr = 0;
+			nr = el_len == 0 ? 0 : -1;
 		else {
 			nr = el_len;
 			if (nr > BUFSIZ)

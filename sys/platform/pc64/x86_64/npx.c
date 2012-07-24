@@ -331,7 +331,7 @@ npxdna(void)
 	crit_enter();
 	if ((td->td_flags & (TDF_USINGFP | TDF_KERNELFP)) == 0) {
 		td->td_flags |= TDF_USINGFP;
-		npxinit(__INITIAL_NPXCW__);
+		npxinit(__INITIAL_FPUCW__);
 		didinit = 1;
 	}
 

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/bootinfo64.c,v 1.36 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/bootinfo64.c,v 1.1 2003/11/10 06:08:36 dillon Exp $
  */
 
 #include <stand.h>
@@ -206,7 +205,7 @@ bi_load64(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
     }
 
     /* Try reading the /etc/fstab file to select the root device */
-    getrootmount(i386_fmtdev((void *)rootdev));
+    getrootmount(i386_fmtdev(rootdev));
 
     /* find the last module in the chain */
     addr = 0;

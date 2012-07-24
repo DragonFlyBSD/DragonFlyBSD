@@ -29,7 +29,6 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ac/ac.8,v 1.13.2.5 2003/03/11 21:13:47 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/ac/ac.8,v 1.3 2006/02/17 19:40:09 swildner Exp $
 .\"
 .Dd March 15, 1994
 .Dt AC 8
@@ -111,7 +110,7 @@ hand.  No login or connect time accounting is performed if
 does not exist.
 .Pp
 For example,
-.Bd -literal -offset
+.Bd -literal
 ac -p -t "ttyd*" > modems
 ac -p -t "!ttyd*" > other
 .Ed

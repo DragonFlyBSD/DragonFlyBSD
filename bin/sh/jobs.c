@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)jobs.c	8.5 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/jobs.c,v 1.97 2012/02/04 23:12:14 jilles Exp $
+ * $FreeBSD: src/bin/sh/jobs.c,v 1.98 2012/04/02 17:16:24 jilles Exp $
  */
 
 #include <sys/ioctl.h>
@@ -891,8 +891,8 @@ vforkexecshell(struct job *jp, char **argv, char **envp, const char *path, int i
 	struct jmploc jmploc;
 	struct jmploc *savehandler;
 
-	TRACE(("vforkexecshell(%%%td, %p, %d) called\n", jp - jobtab, (void *)n,
-	    mode));
+	TRACE(("vforkexecshell(%%%td, %s, %p) called\n", jp - jobtab, argv[0],
+	    (void *)pip));
 	INTOFF;
 	flushall();
 	savehandler = handler;

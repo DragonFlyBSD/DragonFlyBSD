@@ -29,13 +29,10 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/main.c,v 1.7.2.1 2001/03/05 12:11:14 kris Exp $
- * $DragonFly: src/games/trek/main.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 #include "trek.h"
 #include "getpar.h"
-
-#define PRIO		00	/* default priority */
 
 unsigned int	Mother	= 51 + (51 << 8);
 
@@ -141,11 +138,6 @@ jmp_buf env;
 int
 main(int argc, char **argv)
 {
-#if 0
-	extern FILE		*f_log;
-#endif
-	char		opencode;
-	int		prio;
 	int		ac;
 	char		**av;
 
@@ -156,15 +148,8 @@ main(int argc, char **argv)
 	ac = argc;
 	av++;
 	srandomdev();
-	opencode = 'w';
-	prio = PRIO;
-
 	while (ac > 1 && av[0][0] == '-') {
 		switch (av[0][1]) {
-		  case 'a':	/* append to log file */
-			opencode = 'a';
-			break;
-
 #ifdef xTRACE
 		  case 't':	/* trace */
 			if (getuid() != Mother)
@@ -172,13 +157,6 @@ main(int argc, char **argv)
 			Trace++;
 			break;
 #endif
-
-		  case 'p':	/* set priority */
-			if (getuid() != Mother)
-				goto badflag;
-			prio = atoi(av[0] + 2);
-			break;
-
 		  default:
 		  badflag:
 			printf("Invalid option: %s\n", av[0]);
@@ -187,12 +165,8 @@ main(int argc, char **argv)
 		ac--;
 		av++;
 	}
-	if (ac > 2)
-		syserr("arg count");
-#if 0
 	if (ac > 1)
-		f_log = fopen(av[0], opencode);
-#endif
+		syserr("arg count");
 
 	printf("\n   * * *   S T A R   T R E K   * * *\n\nPress return to continue.\n");
 

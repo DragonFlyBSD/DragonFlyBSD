@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/revnetgroup/hash.c,v 1.6 1999/08/28 00:09:47 peter Exp $
- * $DragonFly: src/libexec/revnetgroup/hash.c,v 1.3 2008/11/19 17:46:55 swildner Exp $
  */
 
 #include <stdio.h>
@@ -104,7 +103,7 @@ hashkey(char *key)
 
 	if (key == NULL)
 		return (-1);
-	return(hash((void *)key, strlen(key)) & HASH_MASK);
+	return(hash(key, strlen(key)) & HASH_MASK);
 }
 
 /* Find an entry in the hash table (may be hanging off a linked list). */

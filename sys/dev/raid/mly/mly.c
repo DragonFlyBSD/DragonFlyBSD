@@ -305,7 +305,7 @@ mly_attach(device_t dev)
      * happen until interrupts are enabled, which should still be before
      * the SCSI subsystem gets to us, courtesy of the "SCSI settling delay".
      */
-    mly_periodic((void *)sc);
+    mly_periodic(sc);
 
     /*
      * Create the control device.

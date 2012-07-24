@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/bootinfo32.c,v 1.36 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/bootinfo32.c,v 1.1 2003/11/10 06:08:36 dillon Exp $
  */
 
 #include <stand.h>
@@ -162,7 +161,7 @@ bi_load32(char *args, int *howtop, int *bootdevp, vm_offset_t *bip, vm_offset_t 
     }
 
     /* Try reading the /etc/fstab file to select the root device */
-    getrootmount(i386_fmtdev((void *)rootdev));
+    getrootmount(i386_fmtdev(rootdev));
 
     /* Do legacy rootdev guessing */
 

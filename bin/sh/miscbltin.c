@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)miscbltin.c	8.4 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/miscbltin.c,v 1.45 2011/05/15 22:09:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/miscbltin.c,v 1.46 2012/05/15 22:50:47 jilles Exp $
  */
 
 /*
@@ -51,7 +51,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <termios.h>
 
 #include "shell.h"
 #include "options.h"

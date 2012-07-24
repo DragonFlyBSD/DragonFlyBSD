@@ -53,6 +53,7 @@
 #include <machine/smp.h>
 #include <machine_base/isa/isa_intr.h>
 #include <machine_base/apic/apicreg.h>
+#include <machine_base/apic/apicvar.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <machine/cputypes.h>
@@ -215,7 +216,7 @@ static void	mptable_bus_info_alloc(const mpcth_t,
 static void	mptable_bus_info_free(struct mptable_bus_info *);
 
 static int	mptable_lapic_probe(struct lapic_enumerator *);
-static void	mptable_lapic_enumerate(struct lapic_enumerator *);
+static int	mptable_lapic_enumerate(struct lapic_enumerator *);
 static void	mptable_lapic_default(void);
 
 static int	mptable_ioapic_probe(struct ioapic_enumerator *);
@@ -737,7 +738,7 @@ mptable_lapic_default(void)
  *     naps
  *     APIC ID <-> CPU ID mappings
  */
-static void
+static int
 mptable_lapic_enumerate(struct lapic_enumerator *e)
 {
 	struct mptable_pos mpt;
@@ -749,7 +750,7 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 
 	if (mptable_use_default) {
 		mptable_lapic_default();
-		return;
+		return 0;
 	}
  
 	error = mptable_map(&mpt);
@@ -801,6 +802,8 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 	lapic_map(lapic_addr);
 
 	mptable_unmap(&mpt);
+
+	return 0;
 }
 
 struct mptable_lapic_probe_cbarg {
@@ -821,6 +824,12 @@ mptable_lapic_probe_callback(void *xarg, const void *pos, int type)
 	if ((ent->cpu_flags & PROCENTRY_FLAG_EN) == 0)
 		return 0;
 	arg->cpu_count++;
+
+	if (ent->apic_id == APICID_MAX) {
+		kprintf("MPTABLE: invalid LAPIC apic id %d\n",
+		    ent->apic_id);
+		return EINVAL;
+	}
 
 	if (ent->cpu_flags & PROCENTRY_FLAG_BP) {
 		if (arg->found_bsp) {
@@ -903,6 +912,11 @@ mptable_ioapic_list_callback(void *xarg, const void *pos, int type)
 
 	if (ent->apic_address == 0) {
 		kprintf("mptable_ioapic_create_list: zero IOAPIC addr\n");
+		return EINVAL;
+	}
+	if (ent->apic_id == APICID_MAX) {
+		kprintf("mptable_ioapic_create_list: "
+		    "invalid IOAPIC apic id %d\n", ent->apic_id);
 		return EINVAL;
 	}
 

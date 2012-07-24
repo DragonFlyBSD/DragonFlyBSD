@@ -1,7 +1,6 @@
 %{
 /*
  * $OpenBSD: bc.y,v 1.32 2006/05/18 05:49:53 otto Exp $
- * $DragonFly: src/usr.bin/bc/bc.y,v 1.3 2007/09/01 18:42:08 pavalos Exp $
  */
 
 /*
@@ -39,6 +38,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <histedit.h>
 #include <limits.h>
 #include <search.h>
 #include <signal.h>
@@ -1056,7 +1056,7 @@ escape(const char *str)
 }
 
 /* ARGSUSED */
-void
+static void
 sigchld(int signo)
 {
 	pid_t pid;
@@ -1074,6 +1074,12 @@ sigchld(int signo)
 		else
 			break;
 	}
+}
+
+static const char *
+dummy_prompt(void)
+{
+	return ("");
 }
 
 int
@@ -1140,6 +1146,16 @@ main(int argc, char *argv[])
 			execl(_PATH_DC, "dc", "-x", NULL);
 			err(1, "cannot find dc");
 		}
+	}
+	if (interactive) {
+		el = el_init("bc", stdin, stderr, stderr);
+		hist = history_init();
+		history(hist, &he, H_SETSIZE, 100);
+		el_set(el, EL_HIST, history, hist);
+		el_set(el, EL_EDITOR, "emacs");
+		el_set(el, EL_SIGNAL, 1);
+		el_set(el, EL_PROMPT, dummy_prompt);
+		el_source(el, NULL);
 	}
 	yywrap();
 	return yyparse();

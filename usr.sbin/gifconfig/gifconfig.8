@@ -1,5 +1,4 @@
 .\"	$FreeBSD: src/usr.sbin/gifconfig/gifconfig.8,v 1.1.2.11 2003/03/11 21:13:49 trhodes Exp $
-.\"	$DragonFly: src/usr.sbin/gifconfig/gifconfig.8,v 1.6 2007/11/21 19:12:41 swildner Exp $
 .\"	$KAME: gifconfig.8,v 1.6 2000/11/22 11:10:09 itojun Exp $
 .\"
 .\" Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
@@ -113,7 +112,7 @@ tunnel between
 and
 .Li 10.2.3.4 ,
 you should perform the following command:
-.Bd -literal -offset
+.Bd -literal
 # gifconfig gif0 inet 10.1.1.1 10.2.3.4
 .Ed
 .Pp
@@ -121,7 +120,7 @@ you should perform the following command:
 .\" .Li 0.0.0.0
 .\" feature to establish a tunnel from host1 to host3
 .\" which will encapsulate and carry packets from host2, on host1 do:
-.\" .Bd -literal -offset
+.\" .Bd -literal
 .\" # ifconfig gif0 inet host1  127.0.0.2  # assign an address to gif0
 .\" # gifconfig gif0 inet host1 0.0.0.0    # assign encapsulation addresses
 .\" # route add host2 host3 -ifp gif0:     # encap host2 packets, send to host3
@@ -133,7 +132,7 @@ you should perform the following command:
 .\" most versions of FreeBSD.
 .\" .Pp
 .\" On host3 do:
-.\" .Bd -literal -offset
+.\" .Bd -literal
 .\" # ifconfig gif0 inet host3  127.0.0.2  # assign an address to gif0
 .\" # gifconfig gif0 inet host3 0.0.0.0    # assign encapsulation addresses
 .\" .Ed

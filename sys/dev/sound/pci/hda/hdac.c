@@ -3813,6 +3813,8 @@ hdac_attach(device_t dev)
 #else
 	sc->flags &= ~HDAC_F_DMA_NOCACHE;
 #endif
+
+#if 0
 		/*
 		 * Try to enable PCIe snoop to avoid messing around with
 		 * uncacheable DMA attribute. Since PCIe snoop register
@@ -3850,6 +3852,30 @@ hdac_attach(device_t dev)
 			}
 			break;
 		}
+#endif
+
+		if (pci_is_pcie(dev)) {
+			int pcie_cap = pci_get_pciecap_ptr(dev);
+			uint16_t dev_ctl;
+
+			dev_ctl = pci_read_config(dev,
+			    pcie_cap + PCIER_DEVCTRL, 2);
+			if (bootverbose) {
+				device_printf(dev, "device ctrl %#x\n",
+				    dev_ctl);
+			}
+
+			if (dev_ctl & PCIEM_DEVCTL_NOSNOOP) {
+				dev_ctl &= ~PCIEM_DEVCTL_NOSNOOP;
+				pci_write_config(dev,
+				    pcie_cap + PCIER_DEVCTRL, dev_ctl, 2);
+
+				if (bootverbose)
+					device_printf(dev, "disable nosnoop\n");
+			}
+			sc->flags &= ~HDAC_F_DMA_NOCACHE;
+		}
+
 #if 0 /* TODO: No uncacheable DMA support in DragonFly. */
 	}
 #endif
@@ -3896,7 +3922,7 @@ hdac_attach(device_t dev)
 	sc->intrhook.ich_desc = "snd_hda";
 	if (cold == 0 || config_intrhook_establish(&sc->intrhook) != 0) {
 		sc->intrhook.ich_func = NULL;
-		hdac_attach2((void *)sc);
+		hdac_attach2(sc);
 	}
 
 	return (0);

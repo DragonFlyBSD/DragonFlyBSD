@@ -1,5 +1,4 @@
 /* $NetBSD: src/lib/libc/citrus/citrus_ctype_fallback.c,v 1.2 2003/06/27 14:52:25 yamt Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_ctype_fallback.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -65,7 +64,7 @@ _citrus_ctype_btowc_fallback(_citrus_ctype_rec_t * __restrict cc,
 
 	memset(&pspriv, 0, sizeof(pspriv));
 	mb = (char)(unsigned)c;
-	err = _citrus_ctype_mbrtowc(cc, &wc, &mb, 1, (void *)&pspriv, &nr);
+	err = _citrus_ctype_mbrtowc(cc, &wc, &mb, 1, &pspriv, &nr);
 	if (!err && (nr == 0 || nr == 1))
 		*wcresult = wc;
 	else
@@ -94,7 +93,7 @@ _citrus_ctype_wctob_fallback(_citrus_ctype_rec_t * __restrict cc,
 		return 0;
 	}
 	memset(&pspriv, 0, sizeof(pspriv));
-	err = _citrus_ctype_wcrtomb(cc, buf, (wchar_t)wc, (void *)&pspriv, &nr);
+	err = _citrus_ctype_wcrtomb(cc, buf, (wchar_t)wc, &pspriv, &nr);
 	if (!err && nr == 1)
 		*cresult = buf[0];
 	else

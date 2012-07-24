@@ -2,7 +2,6 @@
 ** This file is in the public domain, so clarified as of
 ** 2006-07-17 by Arthur David Olson.
 **
-** @(#)zic.c	8.24
 ** $FreeBSD: src/usr.sbin/zic/zic.c,v 1.11 1999/08/28 01:21:20 peter Exp $
 */
 

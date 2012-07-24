@@ -727,7 +727,7 @@ genkbdopen(struct dev_open_args *ap)
 		return ENXIO;
 	}
 	i = kbd_allocate(kbd->kb_name, kbd->kb_unit, sc,
-			 genkbd_event, (void *)sc);
+			 genkbd_event, sc);
 	if (i < 0) {
 		lwkt_reltoken(&tty_token);
 		crit_exit();
@@ -766,7 +766,7 @@ genkbdclose(struct dev_close_args *ap)
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
 		/* XXX: we shall be forgiving and don't report error... */
 	} else {
-		kbd_release(kbd, (void *)sc);
+		kbd_release(kbd, sc);
 	}
 	lwkt_reltoken(&tty_token);
 	crit_exit();
@@ -956,7 +956,7 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 		break;
 	case KBDIO_UNLOADING:
 		/* the keyboard is going... */
-		kbd_release(kbd, (void *)sc);
+		kbd_release(kbd, sc);
 		if (sc->gkb_flags & KB_ASLEEP) {
 			sc->gkb_flags &= ~KB_ASLEEP;
 			wakeup((caddr_t)sc);

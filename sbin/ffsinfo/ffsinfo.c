@@ -37,7 +37,6 @@
  *
  * $TSHeader: src/sbin/ffsinfo/ffsinfo.c,v 1.4 2000/12/12 19:30:55 tomsoft Exp $
  * $FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
- * $DragonFly: src/sbin/ffsinfo/ffsinfo.c,v 1.5 2007/05/20 23:21:35 dillon Exp $
  *
  * @(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz Copyright (c) 1980, 1989, 1993 The Regents of the University of California. All rights reserved.
  * $FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
@@ -271,7 +270,7 @@ main(int argc, char **argv)
 	/*
 	 * Read the current superblock.
 	 */
-	rdfs((daddr_t)(SBOFF/DEV_BSIZE), (size_t)SBSIZE, (void *)&sblock, fsi);
+	rdfs((daddr_t)(SBOFF/DEV_BSIZE), (size_t)SBSIZE, &sblock, fsi);
 	if (sblock.fs_magic != FS_MAGIC) {
 		errx(1, "superblock not recognized");
 	}
@@ -340,7 +339,7 @@ main(int argc, char **argv)
 			 * ... dump the superblock copies ...
 			 */
 			rdfs(fsbtodb(&sblock, cgsblock(&sblock, cylno)),
-			    (size_t)SBSIZE, (void *)&osblock, fsi);
+			    (size_t)SBSIZE, &osblock, fsi);
 			DBG_DUMP_FS(&osblock,
 			    dbg_line);
 		}
@@ -348,7 +347,7 @@ main(int argc, char **argv)
 		 * ... read the cylinder group and dump whatever was requested.
 		 */
 		rdfs(fsbtodb(&sblock, cgtod(&sblock, cylno)),
-		    (size_t)sblock.fs_cgsize, (void *)&acg, fsi);
+		    (size_t)sblock.fs_cgsize, &acg, fsi);
 		if(cfg_lv & 0x008) {
 			DBG_DUMP_CG(&sblock,
 			    dbg_line,
@@ -449,7 +448,7 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 		 * Dump single indirect block.
 		 */
 		rdfs(fsbtodb(&sblock, ino->di_ib[0]), (size_t)sblock.fs_bsize,
-		    (void *)&i1blk, fsi);
+		    &i1blk, fsi);
 		snprintf(comment, sizeof(comment), "Inode 0x%08jx: indirect 0",
 		    (uintmax_t)inode);
 		DBG_DUMP_IBLK(&sblock,
@@ -463,7 +462,7 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 		 * Dump double indirect blocks.
 		 */
 		rdfs(fsbtodb(&sblock, ino->di_ib[1]), (size_t)sblock.fs_bsize,
-		    (void *)&i2blk, fsi);
+		    &i2blk, fsi);
 		snprintf(comment, sizeof(comment), "Inode 0x%08jx: indirect 1",
 		    (uintmax_t)inode);
 		DBG_DUMP_IBLK(&sblock,
@@ -475,7 +474,7 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 			ind2ptr=&((ufs_daddr_t *)(void *)&i2blk)[ind2ctr];
 
 			rdfs(fsbtodb(&sblock, *ind2ptr),
-			    (size_t)sblock.fs_bsize, (void *)&i1blk, fsi);
+			    (size_t)sblock.fs_bsize, &i1blk, fsi);
 			snprintf(comment, sizeof(comment),
 			    "Inode 0x%08jx: indirect 1->%d", (uintmax_t)inode,
 			    ind2ctr);
@@ -491,7 +490,7 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 		 * Dump triple indirect blocks.
 		 */
 		rdfs(fsbtodb(&sblock, ino->di_ib[2]), (size_t)sblock.fs_bsize,
-		    (void *)&i3blk, fsi);
+		    &i3blk, fsi);
 		snprintf(comment, sizeof(comment), "Inode 0x%08jx: indirect 2",
 		    (uintmax_t)inode);
 #define SQUARE(a) ((a)*(a))
@@ -506,7 +505,7 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 			ind3ptr=&((ufs_daddr_t *)(void *)&i3blk)[ind3ctr];
 
 			rdfs(fsbtodb(&sblock, *ind3ptr),
-			    (size_t)sblock.fs_bsize, (void *)&i2blk, fsi);
+			    (size_t)sblock.fs_bsize, &i2blk, fsi);
 			snprintf(comment, sizeof(comment),
 			    "Inode 0x%08jx: indirect 2->%d", (uintmax_t)inode,
 			    ind3ctr);
@@ -520,8 +519,7 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 				ind2ptr=&((ufs_daddr_t *)(void *)&i2blk)
 				    [ind2ctr];
 				rdfs(fsbtodb(&sblock, *ind2ptr),
-				    (size_t)sblock.fs_bsize, (void *)&i1blk,
-				    fsi);
+				    (size_t)sblock.fs_bsize, &i1blk, fsi);
 				snprintf(comment, sizeof(comment),
 				    "Inode 0x%08jx: indirect 2->%d->%d",
 				    (uintmax_t)inode, ind3ctr, ind3ctr);
@@ -586,7 +584,7 @@ ginode(ino_t inumber, int fsi)
 		 */
 		iblk = ino_to_fsba(&sblock, inumber);
 		rdfs(fsbtodb(&sblock, iblk), (size_t)sblock.fs_bsize,
-		    (void *)&ablk, fsi);
+		    &ablk, fsi);
 		startinum = (inumber / INOPB(&sblock)) * INOPB(&sblock);
 	}
 

@@ -131,8 +131,8 @@ vq_init(struct mount *mp)
 
 	/* enable data collection */
 	mp->mnt_op->vfs_account = vfs_stdaccount;
-	/* mark this filesystem as having accounting enabled */
-	mp->mnt_flag |= MNT_ACCOUNTING;
+	/* mark this filesystem quota enabled */
+	mp->mnt_flag |= MNT_QUOTA;
 	if (bootverbose)
 		kprintf("vfs accounting enabled for %s\n",
 		    mp->mnt_stat.f_mntonname);

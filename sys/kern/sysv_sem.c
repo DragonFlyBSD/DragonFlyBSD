@@ -39,6 +39,7 @@ static sy_call_t *semcalls[] = {
 	(sy_call_t *)sys_semop
 };
 
+static struct lwkt_token semu_token = LWKT_TOKEN_INITIALIZER(semu_token);
 static int	semtot = 0;
 static struct semid_ds *sema;	/* semaphore id pool */
 static struct sem *sem;		/* semaphore pool */
@@ -109,7 +110,8 @@ struct sem_undo {
 /*
  * Macro to find a particular sem_undo vector
  */
-#define SEMU(ix)	((struct sem_undo *)(((intptr_t)semu)+ix * seminfo.semusz))
+#define SEMU(ix)	((struct sem_undo *)(((intptr_t)semu) + (ix) * \
+					     seminfo.semusz))
 
 /*
  * semaphore info struct
@@ -221,8 +223,9 @@ sys_semsys(struct semsys_args *uap)
 /*
  * Allocate a new sem_undo structure for a process
  * (returns ptr to structure or NULL if no more room)
+ *
+ * semu_token is held by the caller.
  */
-
 static struct sem_undo *
 semu_alloc(struct proc *p)
 {
@@ -236,13 +239,11 @@ semu_alloc(struct proc *p)
 	 * (we'll purge any empty structures after the first pass so
 	 * two passes are always enough)
 	 */
-
 	for (attempt = 0; attempt < 2; attempt++) {
 		/*
 		 * Look for a free structure.
 		 * Fill it in and return it if we find one.
 		 */
-
 		for (i = 0; i < seminfo.semmnu; i++) {
 			suptr = SEMU(i);
 			if (suptr->un_proc == NULL) {
@@ -250,7 +251,7 @@ semu_alloc(struct proc *p)
 				semu_list = suptr;
 				suptr->un_cnt = 0;
 				suptr->un_proc = p;
-				return(suptr);
+				goto done;
 			}
 		}
 
@@ -269,13 +270,16 @@ semu_alloc(struct proc *p)
 					suptr->un_proc = NULL;
 					*supptr = suptr->un_next;
 					did_something = 1;
-				} else
+				} else {
 					supptr = &(suptr->un_next);
+				}
 			}
 
 			/* If we didn't free anything then just give-up */
-			if (!did_something)
-				return(NULL);
+			if (!did_something) {
+				suptr = NULL;
+				goto done;
+			}
 		} else {
 			/*
 			 * The second pass failed even though we freed
@@ -285,7 +289,9 @@ semu_alloc(struct proc *p)
 			panic("semu_alloc - second attempt failed");
 		}
 	}
-	return (NULL);
+	suptr = NULL;
+done:
+	return (suptr);
 }
 
 /*
@@ -299,10 +305,14 @@ semundo_adjust(struct proc *p, struct sem_undo **supptr, int semid, int semnum,
 	struct sem_undo *suptr;
 	struct undo *sunptr;
 	int i;
+	int error = 0;
 
-	/* Look for and remember the sem_undo if the caller doesn't provide
-	   it */
-
+	/*
+	 * Look for and remember the sem_undo if the caller doesn't
+	 * provide it.
+	 */
+	lwkt_gettoken(&semu_token);
+	lwkt_gettoken(&p->p_token);
 	suptr = *supptr;
 	if (suptr == NULL) {
 		for (suptr = semu_list; suptr != NULL;
@@ -314,10 +324,13 @@ semundo_adjust(struct proc *p, struct sem_undo **supptr, int semid, int semnum,
 		}
 		if (suptr == NULL) {
 			if (adjval == 0)
-				return(0);
+				goto done;
+			p->p_flags |= P_SYSVSEM;
 			suptr = semu_alloc(p);
-			if (suptr == NULL)
-				return(ENOSPC);
+			if (suptr == NULL) {
+				error = ENOSPC;
+				goto done;
+			}
 			*supptr = suptr;
 		}
 	}
@@ -340,20 +353,24 @@ semundo_adjust(struct proc *p, struct sem_undo **supptr, int semid, int semnum,
 				suptr->un_ent[i] =
 				    suptr->un_ent[suptr->un_cnt];
 		}
-		return(0);
+		goto done;
 	}
 
 	/* Didn't find the right entry - create it */
 	if (adjval == 0)
-		return(0);
+		goto done;
 	if (suptr->un_cnt != seminfo.semume) {
 		sunptr = &suptr->un_ent[suptr->un_cnt];
 		suptr->un_cnt++;
 		sunptr->un_adjval = adjval;
 		sunptr->un_id = semid; sunptr->un_num = semnum;
-	} else
-		return(EINVAL);
-	return(0);
+	} else {
+		error = EINVAL;
+	}
+done:
+	lwkt_reltoken(&p->p_token);
+	lwkt_reltoken(&semu_token);
+	return (error);
 }
 
 static void
@@ -361,6 +378,7 @@ semundo_clear(int semid, int semnum)
 {
 	struct sem_undo *suptr;
 
+	lwkt_gettoken(&semu_token);
 	for (suptr = semu_list; suptr != NULL; suptr = suptr->un_next) {
 		struct undo *sunptr = &suptr->un_ent[0];
 		int i = 0;
@@ -381,6 +399,7 @@ semundo_clear(int semid, int semnum)
 			i++, sunptr++;
 		}
 	}
+	lwkt_reltoken(&semu_token);
 }
 
 /*
@@ -1036,22 +1055,35 @@ semexit(struct proc *p)
 	did_something = 0;
 
 	/*
-	 * Go through the chain of undo vectors looking for one
-	 * associated with this process.
+	 * We're getting a global token, don't do it if we couldn't
+	 * possibly have any semaphores.
 	 */
+	if ((p->p_flags & P_SYSVSEM) == 0)
+		return;
 
+	/*
+	 * Go through the chain of undo vectors looking for one
+	 * associated with this process.  De-link it from the
+	 * list right now, while we have the token, but do not
+	 * clear un_proc until we finish cleaning up the relationship.
+	 */
+	lwkt_gettoken(&semu_token);
 	for (supptr = &semu_list; (suptr = *supptr) != NULL;
-	    supptr = &suptr->un_next) {
-		if (suptr->un_proc == p)
+	     supptr = &suptr->un_next) {
+		if (suptr->un_proc == p) {
+			*supptr = suptr->un_next;
 			break;
+		}
 	}
+	p->p_flags &= ~P_SYSVSEM;
+	lwkt_reltoken(&semu_token);
 
 	if (suptr == NULL)
 		return;
 
 #ifdef SEM_DEBUG
 	kprintf("proc @%08x has undo structure with %d entries\n", p,
-	    suptr->un_cnt);
+		suptr->un_cnt);
 #endif
 
 	/*
@@ -1099,9 +1131,9 @@ semexit(struct proc *p)
 	/*
 	 * Deallocate the undo vector.
 	 */
+	cpu_sfence();
+	suptr->un_proc = NULL;
 #ifdef SEM_DEBUG
 	kprintf("removing vector\n");
 #endif
-	suptr->un_proc = NULL;
-	*supptr = suptr->un_next;
 }
