@@ -552,16 +552,28 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM5751F",
 	},
 	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761E,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5761E",
+	},
+	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761,
 	    0,
 	    "Broadcom Corporation",
 	    "BCM5761",
 	},
 	{
-	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761E,
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57762,
 	    0,
 	    "Broadcom Corporation",
-	    "BCM5761E",
+	    "BCM57762",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57766,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM57766",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761S,
@@ -684,6 +696,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM57791 10/100 Ethernet",
 	},
 	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57786,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM57786",
+	},
+	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57765,
 	    0,
 	    "Broadcom Corporation",
@@ -700,6 +718,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Broadcom Corporation",
 	    "BCM57795 10/100 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57782,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM57782",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5702_ALT,
