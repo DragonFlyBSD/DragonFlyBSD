@@ -77,6 +77,8 @@
 
 #define BNX_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 
+#define BNX_INTR_CKINTVL	((10 * hz) / 1000)	/* 10ms */
+
 static const struct bnx_type {
 	uint16_t		bnx_vid;
 	uint16_t		bnx_did;
@@ -1751,6 +1753,7 @@ bnx_attach(device_t dev)
 	sc = device_get_softc(dev);
 	sc->bnx_dev = dev;
 	callout_init_mp(&sc->bnx_stat_timer);
+	callout_init_mp(&sc->bnx_intr_timer);
 	lwkt_serialize_init(&sc->bnx_jslot_serializer);
 
 	product = pci_get_device(dev);
@@ -1843,6 +1846,26 @@ bnx_attach(device_t dev)
 		break;
 	}
 	sc->bnx_flags |= BNX_FLAG_SHORTDMA;
+
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5717 ||
+	    BNX_IS_57765_FAMILY(sc)) {
+		/*
+		 * All BCM57785 and BCM5718 families chips have a bug that
+		 * under certain situation interrupt will not be enabled
+		 * even if status tag is written to BGE_MBX_IRQ0_LO mailbox.
+		 *
+		 * While BCM5719 and BCM5720 have a hardware workaround
+		 * which could fix the above bug.
+		 * See the comment near BGE_PCIDMARWCTL_TAGGED_STATUS_WA in
+		 * bnx_chipinit().
+		 *
+		 * For the rest of the chips in these two families, we will
+		 * have to poll the status block at high rate (10ms currently)
+		 * to check whether the interrupt is hosed or not.
+		 * See bnx_intr_check() for details.
+		 */
+		sc->bnx_flags |= BNX_FLAG_STATUSTAG_BUG;
+	}
 
 	misccfg = CSR_READ_4(sc, BGE_MISC_CFG) & BGE_MISCCFG_BOARD_ID_MASK;
 
@@ -2152,6 +2175,7 @@ bnx_attach(device_t dev)
 	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	sc->bnx_stat_cpuid = ifp->if_cpuid;
+	sc->bnx_intr_cpuid = ifp->if_cpuid;
 
 	return(0);
 fail:
@@ -3922,6 +3946,45 @@ bnx_coal_change(struct bnx_softc *sc)
 }
 
 static void
+bnx_intr_check(void *xsc)
+{
+	struct bnx_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	KKASSERT(mycpuid == sc->bnx_intr_cpuid);
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_POLLING)) != IFF_RUNNING) {
+		lwkt_serialize_exit(ifp->if_serializer);
+		return;
+	}
+
+	if (sblk->bge_idx[0].bge_rx_prod_idx != sc->bnx_rx_saved_considx ||
+	    sblk->bge_idx[0].bge_tx_cons_idx != sc->bnx_tx_saved_considx) {
+		if (sc->bnx_rx_check_considx == sc->bnx_rx_saved_considx &&
+		    sc->bnx_tx_check_considx == sc->bnx_tx_saved_considx) {
+			if (!sc->bnx_intr_maylose) {
+				sc->bnx_intr_maylose = TRUE;
+				goto done;
+			}
+			if (bootverbose)
+				if_printf(ifp, "lost interrupt\n");
+			bnx_msi(sc);
+		}
+	}
+	sc->bnx_intr_maylose = FALSE;
+	sc->bnx_rx_check_considx = sc->bnx_rx_saved_considx;
+	sc->bnx_tx_check_considx = sc->bnx_tx_saved_considx;
+
+done:
+	callout_reset(&sc->bnx_intr_timer, BNX_INTR_CKINTVL,
+	    bnx_intr_check, sc);
+	lwkt_serialize_exit(ifp->if_serializer);
+}
+
+static void
 bnx_enable_intr(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -3949,6 +4012,19 @@ bnx_enable_intr(struct bnx_softc *sc)
 	 * interrupt.
 	 */
 	BNX_SETBIT(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_SET);
+
+	if (sc->bnx_flags & BNX_FLAG_STATUSTAG_BUG) {
+		sc->bnx_intr_maylose = FALSE;
+		sc->bnx_rx_check_considx = 0;
+		sc->bnx_tx_check_considx = 0;
+
+		if (bootverbose)
+			if_printf(ifp, "status tag bug workaround\n");
+
+		/* 10ms check interval */
+		callout_reset_bycpu(&sc->bnx_intr_timer, BNX_INTR_CKINTVL,
+		    bnx_intr_check, sc, sc->bnx_intr_cpuid);
+	}
 }
 
 static void
@@ -3966,6 +4042,11 @@ bnx_disable_intr(struct bnx_softc *sc)
 	 * Acknowledge possible asserted interrupt.
 	 */
 	bnx_writembx(sc, BGE_MBX_IRQ0_LO, 1);
+
+	callout_stop(&sc->bnx_intr_timer);
+	sc->bnx_intr_maylose = FALSE;
+	sc->bnx_rx_check_considx = 0;
+	sc->bnx_tx_check_considx = 0;
 
 	lwkt_serialize_handler_disable(ifp->if_serializer);
 }

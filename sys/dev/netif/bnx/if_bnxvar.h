@@ -209,6 +209,7 @@ struct bnx_softc {
 #define BNX_FLAG_CPMU		0x00000020
 #define BNX_FLAG_57765_PLUS	0x00000040
 #define BNX_FLAG_57765_FAMILY	0x00000080
+#define BNX_FLAG_STATUSTAG_BUG	0x00000100
 #define BNX_FLAG_NO_EEPROM	0x10000000
 #define BNX_FLAG_SHORTDMA	0x40000000
 
@@ -241,6 +242,12 @@ struct bnx_softc {
 	int			bnx_link_evt;
 	int			bnx_stat_cpuid;
 	struct callout		bnx_stat_timer;
+
+	uint16_t		bnx_rx_check_considx;
+	uint16_t		bnx_tx_check_considx;
+	boolean_t		bnx_intr_maylose;
+	int			bnx_intr_cpuid;
+	struct callout		bnx_intr_timer;
 
 	struct sysctl_ctx_list	bnx_sysctl_ctx;
 	struct sysctl_oid	*bnx_sysctl_tree;
