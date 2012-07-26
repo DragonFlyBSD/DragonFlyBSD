@@ -1301,9 +1301,7 @@ bnx_blockinit(struct bnx_softc *sc)
 		 */
 		rcb->bge_maxlen_flags = BGE_RCB_MAXLEN_FLAGS(512, 0);
 	}
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5717 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5720)
+	if (BNX_IS_5717_PLUS(sc))
 		rcb->bge_nicaddr = BGE_STD_RX_RINGS_5717;
 	else
 		rcb->bge_nicaddr = BGE_STD_RX_RINGS;
@@ -1332,9 +1330,7 @@ bnx_blockinit(struct bnx_softc *sc)
 		rcb->bge_maxlen_flags =
 		    BGE_RCB_MAXLEN_FLAGS(BNX_MAX_FRAMELEN,
 		    BGE_RCB_FLAG_RING_DISABLED);
-		if (sc->bnx_asicrev == BGE_ASICREV_BCM5717 ||
-		    sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
-		    sc->bnx_asicrev == BGE_ASICREV_BCM5720)
+		if (BNX_IS_5717_PLUS(sc))
 			rcb->bge_nicaddr = BGE_JUMBO_RX_RINGS_5717;
 		else
 			rcb->bge_nicaddr = BGE_JUMBO_RX_RINGS;
@@ -1404,9 +1400,7 @@ bnx_blockinit(struct bnx_softc *sc)
 	BGE_HOSTADDR(taddr, sc->bnx_ldata.bnx_tx_ring_paddr);
 	RCB_WRITE_4(sc, vrcb, bge_hostaddr.bge_addr_hi, taddr.bge_addr_hi);
 	RCB_WRITE_4(sc, vrcb, bge_hostaddr.bge_addr_lo, taddr.bge_addr_lo);
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5717 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
-	    sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+	if (BNX_IS_5717_PLUS(sc)) {
 		RCB_WRITE_4(sc, vrcb, bge_nicaddr, BGE_SEND_RING_5717);
 	} else {
 		RCB_WRITE_4(sc, vrcb, bge_nicaddr,
