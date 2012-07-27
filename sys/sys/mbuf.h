@@ -174,6 +174,7 @@ struct pkthdr {
 	uint16_t hash;			/* packet hash */
 
 	uint16_t wlan_seqno;		/* IEEE 802.11 seq no. */
+	uint16_t segsz;			/* TSO segment size */
 };
 
 /*
@@ -279,6 +280,7 @@ struct mbuf {
 						 * NB: This flag is only used
 						 * by IP defragmenter.
 						 */
+#define CSUM_TSO		0x2000		/* will do TCP segmentation */
 
 #define	CSUM_DELAY_DATA		(CSUM_TCP | CSUM_UDP)
 #define	CSUM_DELAY_IP		(CSUM_IP)	/* XXX add ipv6 here too? */

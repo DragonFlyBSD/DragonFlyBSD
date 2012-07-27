@@ -624,6 +624,7 @@ extern	int tcp_minmss;
 extern	int tcp_delack_enabled;
 extern	int path_mtu_discovery;
 
+struct ip;
 union netmsg;
 
 int	 tcp_addrcpu(in_addr_t faddr, in_port_t fport,
@@ -686,7 +687,7 @@ void	 tcp_revert_congestion_state(struct tcpcb *tp);
 void	 tcp_setpersist (struct tcpcb *);
 struct tcptemp *tcp_maketemplate (struct tcpcb *);
 void	 tcp_freetemplate (struct tcptemp *);
-void	 tcp_fillheaders (struct tcpcb *, void *, void *);
+void	 tcp_fillheaders (struct tcpcb *, void *, void *, boolean_t);
 struct lwkt_port *
 	 tcp_soport(struct socket *, struct sockaddr *, struct mbuf **);
 struct lwkt_port *
@@ -698,6 +699,9 @@ void	 tcp_trace (short, short, struct tcpcb *, void *, struct tcphdr *,
 void	 tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq);
 u_long	 tcp_initial_window(struct tcpcb *tp);
 void	 tcp_timer_keep_activity(struct tcpcb *tp, int thflags);
+boolean_t
+	 tcp_tso_pullup(struct mbuf **mp, int hoff, struct ip **ip, int *iphlen,
+	 	struct tcphdr **th, int *thoff);
 void	 syncache_init(void);
 void	 syncache_unreach(struct in_conninfo *, struct tcphdr *);
 int	 syncache_expand(struct in_conninfo *, struct tcphdr *,

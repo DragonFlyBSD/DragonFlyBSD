@@ -336,6 +336,12 @@ support, the exact level of offloading varies between drivers.
 If the driver supports user-configurable checksum offloading,
 disable receive (or transmit) checksum offloading on the interface.
 These settings may not always be independent of each other.
+.It Cm tso
+If the driver supports TCP segmentation offloading,
+enable TCP segmentation offloading on the interface.
+.It Fl tso
+If the driver supports TCP segmentation offloading,
+disable TCP segmentation offloading on the interface.
 .It Cm vlanmtu , vlanhwtag
 If the driver offers user-configurable VLAN support, enable
 reception of extended frames or tag processing in hardware,
