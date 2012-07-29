@@ -89,6 +89,28 @@ The problem which adapter freezes with the message
 might be solved by updating the firmware and/or setting the
 .Va hw.ciss.nop_message_heartbeat
 tunable to non-zero at boot time.
+.Sh LOADER TUNABLES
+In addition to
+.Va hw.ciss.nop_message_heartbeat ,
+the
+.Nm
+driver supports a number of loader tunables:
+.Bl -tag -width indent
+.It Va hw.ciss.expose_hidden_physical
+This tunable controls whether physical devices that are marked hidden
+by the firmware should be exposed anyways.
+The default is 0 (to not expose hidden physical devices).
+.It Va hw.ciss.force_transport
+This tunable forces a particular transport to be used.
+Values are 0 (use hardware specific default), 1 (forces simple transport)
+and 2 (forces performant transport).
+The default is 0 (to let the driver decide based on hardware).
+.It Va hw.ciss.force_interrupt
+This tunable forces a particular interrupt delivery method to be used.
+Values are 0 (use hardware specific default), 1 (forces INTx) and
+2 (forces MSI).
+The default is 0 (to let the driver decide based on hardware).
+.El
 .Sh HARDWARE
 Controllers supported by the
 .Nm
