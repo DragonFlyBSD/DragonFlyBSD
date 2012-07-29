@@ -85,8 +85,7 @@ typedef struct file *file_t;
  *
  *	Open a file as specified.  Use O_* flags for flags.
  *
- *	NOTE! O_ROOTCRED not quite working yet, vn_open() asserts that the
- *	cred must match the process's cred. XXX
+ *	vn_open() asserts that the cred must match the process's cred.
  *
  *	NOTE! when fp_open() is called from a pure thread, root creds are
  *	used.
@@ -103,10 +102,8 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
 	return (error);
     fp = *fpp;
     td = curthread;
-    if (td->td_proc) {
-	if ((flags & O_ROOTCRED) == 0)
-	    fsetcred(fp, td->td_proc->p_ucred);
-    }
+    if (td->td_proc)
+	fsetcred(fp, td->td_proc->p_ucred);
     error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_LOCKVP);
     flags = FFLAGS(flags);
     if (error == 0)
@@ -177,7 +174,7 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
     if ((error = falloc(NULL, fpp, NULL)) != 0)
 	goto bad2;
     fp = *fpp;
-    if ((flags & O_ROOTCRED) == 0 && td->td_proc)
+    if (td->td_proc)
 	fsetcred(fp, td->td_proc->p_ucred);
 
     error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, fp);

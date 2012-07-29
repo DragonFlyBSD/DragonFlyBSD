@@ -97,10 +97,6 @@
 /* Attempt to bypass the buffer cache */
 #define O_DIRECT	0x00010000
 
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-#define O_ROOTCRED	0x00020000	/* fp_open */
-#endif
-
 #define O_FBLOCKING	0x00040000	/* force blocking I/O */
 #define O_FNONBLOCKING	0x00080000	/* force non-blocking I/O */
 #define O_FAPPEND	0x00100000	/* force append mode for write */
