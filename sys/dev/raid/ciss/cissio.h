@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/ciss/cissio.h,v 1.1.2.1 2001/12/12 06:38:16 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/cissio.h,v 1.4 2007/09/15 13:18:40 swildner Exp $
+ *	$FreeBSD: src/sys/dev/ciss/cissio.h,v 1.6 2008/07/11 21:20:51 scottl Exp $
  */
 
 /*
@@ -128,20 +127,20 @@ typedef struct {
     u_int32_t		Bus:6;
     u_int32_t		Mode:2;
     SCSI3Addr_struct	Target[2];
-} PhysDevAddr_struct;
+} __packed PhysDevAddr_struct;
   
 typedef struct {
     u_int32_t		VolId:30;
     u_int32_t		Mode:2;
     u_int8_t		reserved[4];
-} LogDevAddr_struct;
+} __packed LogDevAddr_struct;
 
 typedef union {
     u_int8_t		LunAddrBytes[8];
     SCSI3Addr_struct	SCSI3Lun[4];
     PhysDevAddr_struct	PhysDev;
     LogDevAddr_struct	LogDev;
-} LUNAddr_struct;
+} __packed LUNAddr_struct;
 
 typedef struct {
     u_int8_t	CDBLen;
@@ -152,7 +151,7 @@ typedef struct {
     } __packed Type;
     u_int16_t	Timeout;
     u_int8_t	CDB[16];
-} RequestBlock_struct;
+} __packed RequestBlock_struct;
 
 typedef union {
     struct {
@@ -166,7 +165,7 @@ typedef union {
 	u_int8_t	offense_num;
 	u_int32_t	offense_value;
     } __packed Invalid_Cmd;
-} MoreErrInfo_struct;
+} __packed MoreErrInfo_struct;
 
 typedef struct {
     u_int8_t		ScsiStatus;
@@ -175,7 +174,7 @@ typedef struct {
     u_int32_t		ResidualCnt;
     MoreErrInfo_struct	MoreErrInfo;
     u_int8_t		SenseInfo[SENSEINFOBYTES];
-} ErrorInfo_struct;
+} __packed ErrorInfo_struct;
 
 typedef struct {
     LUNAddr_struct	LUN_info;	/* 8 */
@@ -183,7 +182,35 @@ typedef struct {
     ErrorInfo_struct	error_info;	/* 48 */
     u_int16_t		buf_size;	/* 2 */
     u_int8_t		*buf;		/* 4 */
-} IOCTL_Command_struct;
+} __packed IOCTL_Command_struct;
+
+#ifdef __amd64__
+typedef struct {
+    LUNAddr_struct	LUN_info;	/* 8 */
+    RequestBlock_struct	Request;	/* 20 */
+    ErrorInfo_struct	error_info;	/* 48 */
+    u_int16_t		buf_size;	/* 2 */
+    u_int32_t		buf;		/* 4 */
+} __packed IOCTL_Command_struct32;
+#endif
+
+/************************************************************************
+ * Command queue statistics
+ */
+
+#define CISSQ_FREE	0
+#define CISSQ_NOTIFY	1
+#define CISSQ_COUNT	2
+
+struct ciss_qstat {
+    uint32_t		q_length;
+    uint32_t		q_max;
+};
+
+union ciss_statrequest {
+    uint32_t		cs_item;
+    struct ciss_qstat	cs_qstat;
+};
 
 /*
  * Note that we'd normally pass the struct in directly, but
@@ -200,5 +227,9 @@ typedef struct {
 #define CCISS_GETDRIVERVER	_IOR ('C', 208, DriverVer_type)
 #define CCISS_REVALIDVOLS	_IO  ('C', 209)
 #define CCISS_PASSTHRU		_IOWR ('C', 210, IOCTL_Command_struct)
+#ifdef __amd64
+#define CCISS_PASSTHRU32	_IOWR ('C', 210, IOCTL_Command_struct32)
+#endif
+#define CCISS_GETQSTATS		_IOWR ('C', 211, union ciss_statrequest)
 
 #pragma pack()

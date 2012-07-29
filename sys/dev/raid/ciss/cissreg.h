@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/ciss/cissreg.h,v 1.1.2.9 2005/12/31 06:28:57 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/cissreg.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ *	$FreeBSD: src/sys/dev/ciss/cissreg.h,v 1.21 2009/09/16 23:27:14 scottl Exp $
  */
 
 /*
@@ -76,7 +75,7 @@ struct ciss_header
 #define CISS_HDR_HOST_TAG_ERROR	(1<<1)
     u_int32_t	host_tag_zeroes;	/* tag is 64 bits, but interface only supports 32 */
     union ciss_device_address address;
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_cdb
 {
@@ -97,13 +96,13 @@ struct ciss_cdb
     u_int16_t	timeout;		/* seconds */
 #define CISS_CDB_BUFFER_SIZE	16
     u_int8_t	cdb[CISS_CDB_BUFFER_SIZE];
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_error_info_pointer
 {
     u_int64_t	error_info_address;	/* points to ciss_error_info structure */
     u_int32_t	error_info_length;
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_error_info
 {
@@ -139,16 +138,16 @@ struct ciss_error_info
 	    u_int8_t	res1[3];
 	    u_int8_t	type;
 	    u_int32_t	error_info;
-	} common_info __attribute__ ((packed));
+	} __packed common_info;
 	struct {
 	    u_int8_t	res1[2];
 	    u_int8_t	offense_size;
 	    u_int8_t	offense_offset;
 	    u_int32_t	offense_value;
-	} invalid_command __attribute__ ((packed));
+	} __packed invalid_command;
     } additional_error_info;
     u_int8_t	sense_info[0];
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_sg_entry
 {
@@ -157,7 +156,7 @@ struct ciss_sg_entry
     u_int32_t	length;
     u_int32_t	:31;
     u_int32_t	extension:1;		/* address points to another s/g chain */
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_command
 {
@@ -165,7 +164,7 @@ struct ciss_command
     struct ciss_cdb			cdb;
     struct ciss_error_info_pointer	error_info;
     struct ciss_sg_entry		sg[0];
-} __attribute__ ((packed));
+} __packed;
 
 #define CISS_OPCODE_REPORT_LOGICAL_LUNS		0xc2
 #define CISS_OPCODE_REPORT_PHYSICAL_LUNS	0xc3
@@ -175,7 +174,7 @@ struct ciss_lun_report
     u_int32_t	list_size;		/* big-endian */
     u_int32_t	:32;
     union ciss_device_address lun[0];
-} __attribute__ ((packed));
+} __packed;
 
 #define	CISS_VPD_LOGICAL_DRIVE_GEOMETRY		0xc1
 struct ciss_ldrive_geometry
@@ -199,7 +198,7 @@ struct ciss_report_cdb
     u_int32_t	length;			/* big-endian */
     u_int8_t	:8;
     u_int8_t	control;
-} __attribute__ ((packed));
+} __packed;
 
 /*
  * Note that it's not clear whether we have to set the detail field to
@@ -233,7 +232,7 @@ struct ciss_message_cdb
     u_int16_t	:16;
     u_int32_t	abort_tag;					/* XXX endianness? */
     u_int8_t	reserved[8];
-} __attribute__ ((packed));
+} __packed;
 
 /*
  * CISS vendor-specific commands/messages.
@@ -263,7 +262,7 @@ struct ciss_notify_cdb
     u_int32_t	length;			/* must be 512, little-endian */
 #define CISS_NOTIFY_DATA_SIZE	512
     u_int8_t	control;
-} __attribute__ ((packed));
+} __packed;
 
 #define CISS_NOTIFY_NOTIFIER		0
 #define CISS_NOTIFY_NOTIFIER_STATUS		0
@@ -313,19 +312,19 @@ struct ciss_notify_drive
     u_int8_t	spare_drive_flag;
     u_int8_t	big_physical_drive_number;
     u_int8_t	enclosure_bay_number;
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_notify_locator
 {
     u_int16_t	port;
     u_int16_t	id;
     u_int16_t	box;
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_notify_redundant_controller
 {
     u_int16_t	slot;
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_notify_logical_status
 {
@@ -333,8 +332,8 @@ struct ciss_notify_logical_status
     u_int8_t	previous_state;
     u_int8_t	new_state;
     u_int8_t	spare_state;
-} __attribute__ ((packed));
- 
+} __packed;
+
 struct ciss_notify_rebuild_aborted
 {
     u_int16_t	logical_drive;
@@ -342,7 +341,7 @@ struct ciss_notify_rebuild_aborted
     u_int8_t	error_drive;
     u_int8_t	big_replacement_drive;
     u_int8_t	big_error_drive;
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_notify_io_error
 {
@@ -353,12 +352,12 @@ struct ciss_notify_io_error
     u_int8_t	failure_bus;
     u_int8_t	failure_drive;
     u_int64_t	big_lba;
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_notify_consistency_completed
 {
     u_int16_t	logical_drive;
-} __attribute__ ((packed));
+} __packed;
 
 struct ciss_notify
 {
@@ -385,7 +384,7 @@ struct ciss_notify
     u_int16_t	pre_power_up_time;
     union ciss_device_address	device;
     /* XXX pads to 512 bytes */
-} __attribute__ ((packed));
+} __packed;
 
 /*
  * CISS config table, which describes the controller's
@@ -400,6 +399,7 @@ struct ciss_config_table
     u_int32_t	supported_methods;
 #define CISS_TRANSPORT_METHOD_READY	(1<<0)
 #define CISS_TRANSPORT_METHOD_SIMPLE	(1<<1)
+#define CISS_TRANSPORT_METHOD_PERF	(1<<2)
     u_int32_t	active_method;
     u_int32_t	requested_method;
     u_int32_t	command_physlimit;
@@ -425,7 +425,31 @@ struct ciss_config_table
 #define CISS_DRIVER_DAUGHTER_ATTACHED		(1<<8)
 #define CISS_DRIVER_SCSI_PREFETCH		(1<<9)
     u_int32_t	max_sg_length;		/* 31 in older firmware */
-} __attribute__ ((packed));
+} __packed;
+
+/*
+ * Configuration table for the Performant transport.  Only 4 request queues
+ * are mentioned in this table, though apparently up to 256 can exist.
+ */
+struct ciss_perf_config {
+    uint32_t	fetch_count[8];
+#define CISS_SG_FETCH_MAX	0
+#define CISS_SG_FETCH_1		1
+#define CISS_SG_FETCH_2		2
+#define CISS_SG_FETCH_4		3
+#define CISS_SG_FETCH_8		4
+#define CISS_SG_FETCH_16	5
+#define CISS_SG_FETCH_32	6
+#define CISS_SG_FETCH_NONE	7
+    uint32_t	rq_size;
+    uint32_t	rq_count;
+    uint32_t	rq_bank_lo;
+    uint32_t	rq_bank_hi;
+    struct {
+	uint32_t	rq_addr_lo;
+	uint32_t	rq_addr_hi;
+    } __packed rq[4];
+} __packed;
 
 /*
  * In a flagrant violation of what CISS seems to be meant to be about,
@@ -448,6 +472,7 @@ struct ciss_config_table
 #define CISS_BMIC_ID_PDRIVE		0x15
 #define CISS_BMIC_BLINK_PDRIVE		0x16
 #define CISS_BMIC_SENSE_BLINK_PDRIVE	0x17
+#define CISS_BMIC_SOFT_RESET		0x40
 #define CISS_BMIC_FLUSH_CACHE		0xc2
 #define CISS_BMIC_ACCEPT_MEDIA		0xe0
 
@@ -500,7 +525,7 @@ struct ciss_bmic_cdb {
     u_int8_t	bmic_opcode;
     u_int16_t	size;			/* big-endian */
     u_int8_t	res2;
-} __attribute__ ((packed));
+} __packed;
 
 /*
  * BMIC command command/return structures.
@@ -525,7 +550,7 @@ struct ciss_bmic_id_ldrive {
     char	logical_drive_label[64];
     u_int64_t	big_blocks_available;
     u_int8_t	res3[410];
-} __attribute__ ((packed));
+} __packed;
 
 /* CISS_BMIC_ID_LSTATUS */
 struct ciss_bmic_id_lstatus {
@@ -572,7 +597,7 @@ struct ciss_bmic_id_lstatus {
     u_int8_t	drive_rebuilding;
     u_int64_t	big_blocks_to_recover;
     u_int8_t	res4[28];
-} __attribute__ ((packed));
+} __packed;
 
 /* CISS_BMIC_ID_CTLR */
 struct ciss_bmic_id_table {
@@ -601,7 +626,7 @@ struct ciss_bmic_id_table {
     u_int8_t	big_drive_present_map[CISS_BIG_MAP_ENTRIES / 8];
     u_int8_t	big_external_drive_present_map[CISS_BIG_MAP_ENTRIES / 8];
     u_int8_t	big_non_disk_map[CISS_BIG_MAP_ENTRIES / 8];
-} __attribute__ ((packed));
+} __packed;
 
 /* CISS_BMIC_ID_PDRIVE */
 struct ciss_bmic_id_pdrive {
@@ -642,7 +667,7 @@ struct ciss_bmic_id_pdrive {
     u_int16_t	rpm;
     u_int8_t	drive_type;
     u_int8_t	res6[393];
-} __attribute__ ((packed));
+} __packed;
 
 /* CISS_BMIC_BLINK_PDRIVE */
 /* CISS_BMIC_SENSE_BLINK_PDRIVE */
@@ -653,7 +678,7 @@ struct ciss_bmic_blink_pdrive {
 #define CISS_BMIC_BLINK_ALL	1
 #define CISS_BMIC_BLINK_TIMED	2
     u_int8_t	res2[248];
-} __attribute__ ((packed));
+} __packed;
 
 /* CISS_BMIC_FLUSH_CACHE */
 struct ciss_bmic_flush_cache {
@@ -661,7 +686,7 @@ struct ciss_bmic_flush_cache {
 #define CISS_BMIC_FLUSH_AND_ENABLE	0
 #define CISS_BMIC_FLUSH_AND_DISABLE	1
     u_int8_t	res1[510];
-} __attribute__ ((packed));
+} __packed;
 
 #ifdef _KERNEL
 /*
@@ -685,6 +710,10 @@ struct ciss_bmic_flush_cache {
 #define CISS_TL_SIMPLE_OPQ	0x44	/* outbound post queue */
 #define CISS_TL_SIMPLE_OPQ_EMPTY	(~(u_int32_t)0)
 
+#define CISS_TL_SIMPLE_OSR	0x9c	/* outbound status register */
+#define CISS_TL_SIMPLE_ODC	0xa0	/* outbound doorbell clear register */
+#define CISS_TL_SIMPLE_ODC_CLEAR	(0x1)
+
 #define CISS_TL_SIMPLE_CFG_BAR	0xb4	/* should be 0x14 */
 #define CISS_TL_SIMPLE_CFG_OFF	0xb8	/* offset in BAR at which config table is located */
 
@@ -699,10 +728,17 @@ struct ciss_bmic_flush_cache {
 #define CISS_TL_SIMPLE_POST_CMD(sc, phys)	CISS_TL_SIMPLE_WRITE(sc, CISS_TL_SIMPLE_IPQ, phys)
 #define CISS_TL_SIMPLE_FETCH_CMD(sc)		CISS_TL_SIMPLE_READ(sc, CISS_TL_SIMPLE_OPQ)
 
-/*
- * XXX documentation conflicts with the Linux driver as to whether setting or clearing
- *     bits masks interrupts
- */
+#define CISS_TL_PERF_INTR_OPQ	(CISS_TL_SIMPLE_INTR_OPQ_SA5 | CISS_TL_SIMPLE_INTR_OPQ_SA5B)
+#define CISS_TL_PERF_INTR_MSI	0x01
+
+#define CISS_TL_PERF_POST_CMD(sc, cr)		CISS_TL_SIMPLE_WRITE(sc, CISS_TL_SIMPLE_IPQ, cr->cr_ccphys | (cr)->cr_sg_tag)
+#define CISS_TL_PERF_FLUSH_INT(sc)		CISS_TL_SIMPLE_READ(sc, CISS_TL_SIMPLE_OSR)
+#define CISS_TL_PERF_CLEAR_INT(sc)		CISS_TL_SIMPLE_WRITE(sc, CISS_TL_SIMPLE_ODC, CISS_TL_SIMPLE_ODC_CLEAR)
+#define CISS_CYCLE_MASK		0x00000001
+
+/* Only need one MSI/MSI-X vector */
+#define CISS_MSI_COUNT	1
+
 #define CISS_TL_SIMPLE_DISABLE_INTERRUPTS(sc) \
 	CISS_TL_SIMPLE_WRITE(sc, CISS_TL_SIMPLE_IMR, \
 			     CISS_TL_SIMPLE_READ(sc, CISS_TL_SIMPLE_IMR) | (sc)->ciss_interrupt_mask)
@@ -710,7 +746,6 @@ struct ciss_bmic_flush_cache {
 	CISS_TL_SIMPLE_WRITE(sc, CISS_TL_SIMPLE_IMR, \
 			     CISS_TL_SIMPLE_READ(sc, CISS_TL_SIMPLE_IMR) & ~(sc)->ciss_interrupt_mask)
 
-#define CISS_TL_SIMPLE_OPQ_INTERRUPT(sc) \
-	(CISS_TL_SIMPLE_READ(sc, CISS_TL_SIMPLE_ISR) & (sc)->ciss_interrupt_mask)
+
 
 #endif /* _KERNEL */
