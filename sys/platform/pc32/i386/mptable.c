@@ -77,6 +77,9 @@ extern u_int	base_memory;
 extern int	imcr_present;
 extern int	naps;
 
+static int	force_enable = 0;
+TUNABLE_INT("hw.lapic_force_enable", &force_enable);
+
 #define BIOS_BASE		(0xf0000)
 #define BIOS_BASE2		(0xe0000)
 #define BIOS_SIZE		(0x10000)
@@ -701,7 +704,7 @@ mptable_lapic_pass2_callback(void *xarg, const void *pos, int type)
 		 */
 		bzero(&proc, sizeof(proc));
 		proc.type = 0;
-		proc.cpu_flags = PROCENTRY_FLAG_EN;
+		proc.cpu_flags = (force_enable) ? PROCENTRY_FLAG_EN : ent->cpu_flags;
 		proc.apic_id = ent->apic_id;
 
 		for (i = 1; i < arg->logical_cpus; i++) {
