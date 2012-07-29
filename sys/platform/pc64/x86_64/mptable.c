@@ -658,10 +658,10 @@ mptable_lapic_pass1_callback(void *xarg, const void *pos, int type)
 		return 0;
 
 	arg->cpu_count++;
-	if (ent->apic_id < 32) {
-		arg->ht_apicid_mask |= 1 << ent->apic_id;
+	if (ent->apic_id < 64) {
+		arg->ht_apicid_mask |= 1UL << ent->apic_id;
 	} else if (arg->ht_fixup) {
-		kprintf("MPTABLE: lapic id > 32, disable HTT fixup\n");
+		kprintf("MPTABLE: lapic id > 64, disable HTT fixup\n");
 		arg->ht_fixup = 0;
 	}
 	return 0;
