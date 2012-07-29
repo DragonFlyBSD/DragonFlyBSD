@@ -617,6 +617,9 @@ AH_SUPPORT_AR5416	opt_ah.h
 # bce driver
 BCE_DEBUG		opt_bce.h
 
+# bnx driver
+BNX_TSO_DEBUG		opt_bnx.h
+
 # ed driver
 ED_NO_MIIBUS		opt_ed.h
 

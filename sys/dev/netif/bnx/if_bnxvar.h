@@ -210,6 +210,7 @@ struct bnx_softc {
 #define BNX_FLAG_57765_PLUS	0x00000040
 #define BNX_FLAG_57765_FAMILY	0x00000080
 #define BNX_FLAG_STATUSTAG_BUG	0x00000100
+#define BNX_FLAG_TSO		0x00000200
 #define BNX_FLAG_NO_EEPROM	0x10000000
 #define BNX_FLAG_SHORTDMA	0x40000000
 
@@ -263,9 +264,12 @@ struct bnx_softc {
 
 	void			(*bnx_link_upd)(struct bnx_softc *, uint32_t);
 	uint32_t		bnx_link_chg;
+
+#define BNX_TSO_NSTATS		45
+	u_long			bnx_tsosegs[BNX_TSO_NSTATS];
 };
 
-#define BNX_NSEG_NEW		32
+#define BNX_NSEG_NEW		40
 #define BNX_NSEG_SPARE		5
 #define BNX_NSEG_RSVD		16
 

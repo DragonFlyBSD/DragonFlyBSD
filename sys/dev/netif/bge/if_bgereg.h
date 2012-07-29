@@ -1474,6 +1474,7 @@
 #define BGE_RDMAMODE_FIFO_SIZE_128	0x00020000
 #define BGE_RDMAMODE_FIFO_LONG_BURST	0x00030000
 #define BGE_RDMAMODE_MULT_DMA_RD_DIS	0x01000000
+#define BGE_RDMAMODE_TSO4_ENABLE	0x08000000
 #define BGE_RDMAMODE_H2BNC_VLAN_DET	0x20000000
 
 /* Read DMA status register */
@@ -2068,11 +2069,11 @@ struct bge_tx_bd {
 	uint16_t		bge_flags;
 	uint16_t		bge_len;
 	uint16_t		bge_vlan_tag;
-	uint16_t		bge_rsvd;
+	uint16_t		bge_mss;
 #else
 	uint16_t		bge_len;
 	uint16_t		bge_flags;
-	uint16_t		bge_rsvd;
+	uint16_t		bge_mss;
 	uint16_t		bge_vlan_tag;
 #endif
 };

@@ -33,7 +33,7 @@
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
  */
 
-
+#include "opt_bnx.h"
 #include "opt_polling.h"
 
 #include <sys/param.h>
@@ -49,6 +49,9 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
+
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -180,6 +183,8 @@ static void	bnx_dma_block_free(bus_dma_tag_t, bus_dmamap_t, void *);
 static struct mbuf *
 		bnx_defrag_shortdma(struct mbuf *);
 static int	bnx_encap(struct bnx_softc *, struct mbuf **, uint32_t *);
+static int	bnx_setup_tso(struct bnx_softc *, struct mbuf **,
+		    uint16_t *, uint16_t *);
 
 static void	bnx_reset(struct bnx_softc *);
 static int	bnx_chipinit(struct bnx_softc *);
@@ -1629,6 +1634,8 @@ bnx_blockinit(struct bnx_softc *sc)
 		 */
 		val &= ~BGE_RDMAMODE_MULT_DMA_RD_DIS;
 	}
+	if (sc->bnx_flags & BNX_FLAG_TSO)
+		val |= BGE_RDMAMODE_TSO4_ENABLE;
 	val |= BGE_RDMAMODE_FIFO_LONG_BURST;
 	CSR_WRITE_4(sc, BGE_RDMA_MODE, val);
 	DELAY(40);
@@ -1652,7 +1659,12 @@ bnx_blockinit(struct bnx_softc *sc)
 	CSR_WRITE_4(sc, BGE_SDC_MODE, val);
 
 	/* Turn on send data initiator state machine */
-	CSR_WRITE_4(sc, BGE_SDI_MODE, BGE_SDIMODE_ENABLE);
+	if (sc->bnx_flags & BNX_FLAG_TSO) {
+		CSR_WRITE_4(sc, BGE_SDI_MODE, BGE_SDIMODE_ENABLE |
+		    BGE_SDIMODE_HW_LSO_PRE_DMA);
+	} else {
+		CSR_WRITE_4(sc, BGE_SDI_MODE, BGE_SDIMODE_ENABLE);
+	}
 
 	/* Turn on send BD initiator state machine */
 	CSR_WRITE_4(sc, BGE_SBDI_MODE, BGE_SBDIMODE_ENABLE);
@@ -1743,6 +1755,10 @@ bnx_attach(device_t dev)
 	driver_intr_t *intr_func;
 	uintptr_t mii_priv = 0;
 	u_int intr_flags;
+#ifdef BNX_TSO_DEBUG
+	char desc[32];
+	int i;
+#endif
 
 	sc = device_get_softc(dev);
 	sc->bnx_dev = dev;
@@ -1840,6 +1856,11 @@ bnx_attach(device_t dev)
 		break;
 	}
 	sc->bnx_flags |= BNX_FLAG_SHORTDMA;
+
+	sc->bnx_flags |= BNX_FLAG_TSO;
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5719 &&
+	    sc->bnx_chipid == BGE_CHIPID_BCM5719_A0)
+		sc->bnx_flags &= ~BNX_FLAG_TSO;
 
 	if (sc->bnx_asicrev == BGE_ASICREV_BCM5717 ||
 	    BNX_IS_57765_FAMILY(sc)) {
@@ -1963,6 +1984,10 @@ bnx_attach(device_t dev)
 
 	ifp->if_capabilities |= IFCAP_HWCSUM;
 	ifp->if_hwassist = BNX_CSUM_FEATURES;
+	if (sc->bnx_flags & BNX_FLAG_TSO) {
+		ifp->if_capabilities |= IFCAP_TSO;
+		ifp->if_hwassist |= CSUM_TSO;
+	}
 	ifp->if_capenable = ifp->if_capabilities;
 
 	/*
@@ -2140,6 +2165,15 @@ bnx_attach(device_t dev)
 	    "tx_coal_bds_int", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, bnx_sysctl_tx_coal_bds_int, "I",
 	    "Transmit max coalesced BD count during interrupt.");
+
+#ifdef BNX_TSO_DEBUG
+	for (i = 0; i < BNX_TSO_NSTATS; ++i) {
+		ksnprintf(desc, sizeof(desc), "tso%d", i + 1);
+		SYSCTL_ADD_ULONG(&sc->bnx_sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		    desc, CTLFLAG_RW, &sc->bnx_tsosegs[i], "");
+	}
+#endif
 
 	/*
 	 * Call MI attach routine.
@@ -2771,13 +2805,31 @@ static int
 bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 {
 	struct bge_tx_bd *d = NULL;
-	uint16_t csum_flags = 0;
+	uint16_t csum_flags = 0, vlan_tag = 0, mss = 0;
 	bus_dma_segment_t segs[BNX_NSEG_NEW];
 	bus_dmamap_t map;
 	int error, maxsegs, nsegs, idx, i;
 	struct mbuf *m_head = *m_head0, *m_new;
 
-	if (m_head->m_pkthdr.csum_flags) {
+	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
+#ifdef BNX_TSO_DEBUG
+		int tso_nsegs;
+#endif
+
+		error = bnx_setup_tso(sc, m_head0, &mss, &csum_flags);
+		if (error)
+			return error;
+		m_head = *m_head0;
+
+#ifdef BNX_TSO_DEBUG
+		tso_nsegs = (m_head->m_pkthdr.len / m_head->m_pkthdr.segsz) - 1;
+		if (tso_nsegs > (BNX_TSO_NSTATS - 1))
+			tso_nsegs = BNX_TSO_NSTATS - 1;
+		else if (tso_nsegs < 0)
+			tso_nsegs = 0;
+		sc->bnx_tsosegs[tso_nsegs]++;
+#endif
+	} else if (m_head->m_pkthdr.csum_flags & BNX_CSUM_FEATURES) {
 		if (m_head->m_pkthdr.csum_flags & CSUM_IP)
 			csum_flags |= BGE_TXBDFLAG_IP_CSUM;
 		if (m_head->m_pkthdr.csum_flags & (CSUM_TCP | CSUM_UDP))
@@ -2786,6 +2838,10 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 			csum_flags |= BGE_TXBDFLAG_IP_FRAG_END;
 		else if (m_head->m_flags & M_FRAG)
 			csum_flags |= BGE_TXBDFLAG_IP_FRAG;
+	}
+	if (m_head->m_flags & M_VLANTAG) {
+		csum_flags |= BGE_TXBDFLAG_VLAN_TAG;
+		vlan_tag = m_head->m_pkthdr.ether_vlantag;
 	}
 
 	idx = *txidx;
@@ -2822,7 +2878,8 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 		}
 		*m_head0 = m_head = m_new;
 	}
-	if (sc->bnx_force_defrag && m_head->m_next != NULL) {
+	if ((m_head->m_pkthdr.csum_flags & CSUM_TSO) == 0 &&
+	    sc->bnx_force_defrag && m_head->m_next != NULL) {
 		/*
 		 * Forcefully defragment mbuf chain to overcome hardware
 		 * limitation which only support a single outstanding
@@ -2849,6 +2906,8 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 		d->bge_addr.bge_addr_hi = BGE_ADDR_HI(segs[i].ds_addr);
 		d->bge_len = segs[i].ds_len;
 		d->bge_flags = csum_flags;
+		d->bge_vlan_tag = vlan_tag;
+		d->bge_mss = mss;
 
 		if (i == nsegs - 1)
 			break;
@@ -2856,15 +2915,6 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 	}
 	/* Mark the last segment as end of packet... */
 	d->bge_flags |= BGE_TXBDFLAG_END;
-
-	/* Set vlan tag to the first segment of the packet. */
-	d = &sc->bnx_ldata.bnx_tx_ring[*txidx];
-	if (m_head->m_flags & M_VLANTAG) {
-		d->bge_flags |= BGE_TXBDFLAG_VLAN_TAG;
-		d->bge_vlan_tag = m_head->m_pkthdr.ether_vlantag;
-	} else {
-		d->bge_vlan_tag = 0;
-	}
 
 	/*
 	 * Insure that the map for this transmission is placed at
@@ -3252,10 +3302,17 @@ bnx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 		if (mask & IFCAP_HWCSUM) {
 			ifp->if_capenable ^= (mask & IFCAP_HWCSUM);
-			if (IFCAP_HWCSUM & ifp->if_capenable)
-				ifp->if_hwassist = BNX_CSUM_FEATURES;
+			if (ifp->if_capenable & IFCAP_TXCSUM)
+				ifp->if_hwassist |= BNX_CSUM_FEATURES;
 			else
-				ifp->if_hwassist = 0;
+				ifp->if_hwassist &= ~BNX_CSUM_FEATURES;
+		}
+		if (mask & IFCAP_TSO) {
+			ifp->if_capenable ^= (mask & IFCAP_TSO);
+			if (ifp->if_capenable & IFCAP_TSO)
+				ifp->if_hwassist |= CSUM_TSO;
+			else
+				ifp->if_hwassist &= ~CSUM_TSO;
 		}
 		break;
 	default:
@@ -3467,6 +3524,7 @@ static int
 bnx_dma_alloc(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	bus_size_t txmaxsz;
 	int i, error;
 
 	/*
@@ -3533,10 +3591,14 @@ bnx_dma_alloc(struct bnx_softc *sc)
 	/*
 	 * Create DMA tag and maps for TX mbufs.
 	 */
+	if (sc->bnx_flags & BNX_FLAG_TSO)
+		txmaxsz = IP_MAXPACKET + sizeof(struct ether_vlan_header);
+	else
+		txmaxsz = BNX_JUMBO_FRAMELEN;
 	error = bus_dma_tag_create(sc->bnx_cdata.bnx_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   BNX_JUMBO_FRAMELEN, BNX_NSEG_NEW, MCLBYTES,
+				   txmaxsz, BNX_NSEG_NEW, PAGE_SIZE,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
 				   BUS_DMA_ONEBPAGE,
 				   &sc->bnx_cdata.bnx_tx_mtag);
@@ -4208,4 +4270,36 @@ bnx_dma_swap_options(struct bnx_softc *sc)
 		    BGE_MODECTL_HTX2B_ENABLE;
 	}
 	return dma_options;
+}
+
+static int
+bnx_setup_tso(struct bnx_softc *sc, struct mbuf **mp,
+    uint16_t *mss0, uint16_t *flags0)
+{
+	struct mbuf *m;
+	struct ip *ip;
+	struct tcphdr *th;
+	int thoff, iphlen, hoff, hlen;
+	boolean_t ret;
+	uint16_t flags, mss;
+
+	ret = ether_tso_pullup(mp, &hoff, &ip, &iphlen, &th, &thoff);
+	if (!ret)
+		return ENOBUFS;
+
+	m = *mp;
+	mss = m->m_pkthdr.segsz;
+	flags = BGE_TXBDFLAG_CPU_PRE_DMA | BGE_TXBDFLAG_CPU_POST_DMA;
+
+	ip->ip_len = htons(mss + iphlen + thoff);
+	th->th_sum = 0;
+
+	hlen = (iphlen + thoff) >> 2;
+	mss |= ((hlen & 0x3) << 14);
+	flags |= ((hlen & 0xf8) << 7) | ((hlen & 0x4) << 2);
+
+	*mss0 = mss;
+	*flags0 = flags;
+
+	return 0;
 }
