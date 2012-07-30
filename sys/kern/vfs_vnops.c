@@ -208,6 +208,10 @@ again:
 		error = EOPNOTSUPP;
 		goto bad;
 	}
+	if (vp->v_type != VDIR && (fmode & O_DIRECTORY)) {
+		error = ENOTDIR;
+		goto bad;
+	}
 	if ((fmode & O_CREAT) == 0) {
 		if (fmode & (FWRITE | O_TRUNC)) {
 			if (vp->v_type == VDIR) {
