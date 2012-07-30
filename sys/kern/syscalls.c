@@ -538,4 +538,5 @@ const char *syscallnames[] = {
 	"symlinkat",			/* 528 = symlinkat */
 	"swapoff",			/* 529 = swapoff */
 	"vquotactl",			/* 530 = vquotactl */
+	"linkat",			/* 531 = linkat */
 };

@@ -2287,6 +2287,33 @@ sys_link(struct link_args *uap)
 	return (error);
 }
 
+/*
+ * linkat_args(int fd1, char *path1, int fd2, char *path2, int flags)
+ *
+ * Make a hard file link. The path1 argument is relative to the directory
+ * associated with fd1, and similarly the path2 argument is relative to
+ * the directory associated with fd2.
+ */
+int
+sys_linkat(struct linkat_args *uap)
+{
+	struct nlookupdata nd, linknd;
+	struct file *fp1, *fp2;
+	int error;
+
+	error = nlookup_init_at(&nd, &fp1, uap->fd1, uap->path1, UIO_USERSPACE,
+	    (uap->flags & AT_SYMLINK_FOLLOW) ? NLC_FOLLOW : 0);
+	if (error == 0) {
+		error = nlookup_init_at(&linknd, &fp2, uap->fd2,
+		    uap->path2, UIO_USERSPACE, 0);
+		if (error == 0)
+			error = kern_link(&nd, &linknd);
+		nlookup_done_at(&linknd, fp2);
+	}
+	nlookup_done_at(&nd, fp1);
+	return (error);
+}
+
 int
 kern_symlink(struct nlookupdata *nd, char *path, int mode)
 {

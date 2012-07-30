@@ -417,4 +417,5 @@ union sysunion {
 	struct	symlinkat_args symlinkat;
 	struct	swapoff_args swapoff;
 	struct	vquotactl_args vquotactl;
+	struct	linkat_args linkat;
 };

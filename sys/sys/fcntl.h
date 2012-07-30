@@ -170,6 +170,7 @@
 #define AT_SYMLINK_NOFOLLOW	1
 #define AT_REMOVEDIR		2
 #define AT_EACCESS		4
+#define AT_SYMLINK_FOLLOW	8
 
 /*
  * Constants used for fcntl(2)
