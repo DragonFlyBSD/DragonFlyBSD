@@ -207,11 +207,6 @@
 #define ETHER_BPF_MTAP		BPF_MTAP
 #endif
 
-#if __FreeBSD_version < 700000
-#define CSUM_TSO		0
-#define IFCAP_TSO4		0
-#endif
-
 /*
  * Interrupt Moderation parameters 
  */
