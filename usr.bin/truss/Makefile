@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.bin/truss/Makefile,v 1.10.2.2 2002/07/23 09:18:30 ru Exp $
-# $DragonFly: src/usr.bin/truss/Makefile,v 1.8 2007/08/27 16:51:00 pavalos Exp $
 
 PROG=	truss
 SRCS=	main.c setup.c syscalls.c syscalls.h ioctl.c ${MACHINE_ARCH}-fbsd.c
@@ -28,7 +27,7 @@ syscalls.h:	syscalls.master
 	/bin/sh ${.CURDIR}/../../sys/kern/makesyscalls.sh syscalls.master \
 		${.CURDIR}/i386.conf
 
-ioctl.c: ${.CURDIR}/../kdump/mkioctls
+ioctl.c!
 	sh ${.CURDIR}/../kdump/mkioctls ${DESTDIR}/usr/include > ${.TARGET}
 
 .include <bsd.prog.mk>
