@@ -83,12 +83,8 @@ __opendir2(const char *name, int flags)
 	 */
 	if (stat(name, &statb) != 0)
 		return (NULL);
-	if (!S_ISDIR(statb.st_mode)) {
-		errno = ENOTDIR;
-		return (NULL);
-	}
 
-	if ((fd = _open(name, O_RDONLY | O_NONBLOCK)) == -1)
+	if ((fd = _open(name, O_RDONLY | O_NONBLOCK | O_DIRECTORY)) == -1)
 		return (NULL);
 	dirp = __fdopendir2(fd, flags);
 	if (dirp == NULL) {
