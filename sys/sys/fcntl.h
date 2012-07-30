@@ -37,7 +37,6 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.14 2008/02/12 20:00:38 corecode Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -107,7 +106,9 @@
 #define O_FBUFFERED	0x02000000	/* force buffered I/O */
 #define O_MAPONREAD	0x04000000	/* memory map read buffer */
 
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
 #define O_DIRECTORY	0x08000000	/* error if not a directory */
+#endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define FREVOKED	0x10000000	/* revoked by fdrevoke() */
