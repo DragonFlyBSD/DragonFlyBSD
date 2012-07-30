@@ -1811,7 +1811,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	struct file *nfp;
 	struct file *fp;
 	struct vnode *vp;
-	int type, indx, error;
+	int type, indx, error = 0;
 	struct flock lf;
 
 	if ((oflags & O_ACCMODE) == O_ACCMODE)
@@ -1930,7 +1930,9 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	*res = indx;
-	return (0);
+	if (oflags & O_CLOEXEC)
+		error = fsetfdflags(fdp, *res, UF_EXCLOSE);
+	return (error);
 }
 
 /*
@@ -4157,7 +4159,7 @@ sys_fhopen(struct fhopen_args *uap)
 	struct vattr vat;
 	struct vattr *vap = &vat;
 	struct flock lf;
-	int fmode, mode, error, type;
+	int fmode, mode, error = 0, type;
 	struct file *nfp; 
 	struct file *fp;
 	int indx;
@@ -4308,7 +4310,9 @@ sys_fhopen(struct fhopen_args *uap)
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	uap->sysmsg_result = indx;
-	return (0);
+	if (uap->flags & O_CLOEXEC)
+		error = fsetfdflags(fdp, indx, UF_EXCLOSE);
+	return (error);
 
 bad_drop:
 	fsetfd(fdp, NULL, indx);
