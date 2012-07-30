@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/lib/libc/sys/link.2,v 1.11.2.7 2001/12/14 18:34:01 ru Exp $
 .\" $DragonFly: src/lib/libc/sys/link.2,v 1.4 2007/04/26 17:35:03 swildner Exp $
 .\"
-.Dd March 5, 1999
+.Dd July 31, 2012
 .Dt LINK 2
 .Os
 .Sh NAME
@@ -45,6 +45,8 @@
 .In unistd.h
 .Ft int
 .Fn link "const char *name1" "const char *name2"
+.Ft int
+.Fn linkat "int fd1" "const char *name1" "int fd2" "const char *name2" "int flags"
 .Sh DESCRIPTION
 The
 .Fn link
@@ -80,6 +82,45 @@ and
 must be in the same file system.
 .Fa name1
 may not be a directory.
+.Pp
+When operating on a symlink,
+.Fn link
+resolves the symlink and creates a hard link on the target.
+.Fn linkat
+will do the same if
+.Dv AT_SYMLINK_FOLLOW
+is set in
+.Fa flags ,
+but it will link on the symlink itself if the flag is clear.
+.Pp
+The
+.Fn linkat
+system call is equivalent to
+.Fa link
+except in the case where either
+.Fa name1
+or
+.Fa name2
+or both are relative paths.
+In this case a relative path
+.Fa name1
+is interpreted relative to the directory associated with the file descriptor
+.Fa fd1
+instead of the current working directory and similarly for
+.Fa name2
+and the file descriptor
+.Fa fd2 .
+If
+.Fa fd1
+or
+.Fa fd2
+has the special value
+.Dv AT_FDCWD
+then
+.Fa name1
+or
+.Fa name2
+respectively is interpreted relative to the current working directory.
 .Sh RETURN VALUES
 .Rv -std link
 .Sh ERRORS
@@ -148,6 +189,38 @@ system.
 One of the pathnames specified
 is outside the process's allocated address space.
 .El
+.Pp
+In addition to the errors returned by the
+.Fn link
+syscall, the
+.Fn linkat
+system call may fail if:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa name1
+or
+.Fa name2
+argument does not specify an absolute path and the
+.Fa fd1
+or
+.Fa fd2
+argument, respectively, is neither
+.Dv AT_FDCWD
+nor a valid file descriptor open for searching.
+.It Bq Er ENOTDIR
+The
+.Fa name1
+or
+.Fa name2
+argument is not an absolute path and
+.Fa fd1
+or
+.Fa fd2 ,
+respectively, is neither
+.Dv AT_FDCWD
+nor a file descriptor associated with a directory.
+.El
 .Sh SEE ALSO
 .Xr readlink 2 ,
 .Xr symlink 2 ,
@@ -162,6 +235,10 @@ A
 .Fn link
 function call appeared in
 .At v7 .
+The
+.Fn linkat
+system call appeared in
+.Dx 3.1 .
 .Pp
 The
 .Fn link
