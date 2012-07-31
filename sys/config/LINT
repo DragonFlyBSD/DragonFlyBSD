@@ -2495,6 +2495,7 @@ options 	DEBUG_CRIT_SECTIONS
 options 	DEBUG_INTERRUPTS
 #options 	DISABLE_PSE
 options		BCE_DEBUG
+options		BNX_TSO_DEBUG
 options		EMX_RSS_DEBUG
 options		JME_RSS_DEBUG
 options		IGB_RSS_DEBUG
