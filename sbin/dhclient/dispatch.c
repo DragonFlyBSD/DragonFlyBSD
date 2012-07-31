@@ -1,5 +1,4 @@
-/*	$OpenBSD: dispatch.c,v 1.41 2008/05/09 05:19:14 reyk Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/dispatch.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dispatch.c,v 1.42 2008/05/26 03:11:49 deraadt Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>

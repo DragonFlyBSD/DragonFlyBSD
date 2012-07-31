@@ -1,5 +1,4 @@
-/*	$OpenBSD: dhcpd.h,v 1.66 2008/05/09 05:19:14 reyk Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/dhcpd.h,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhcpd.h,v 1.67 2008/05/26 03:11:48 deraadt Exp $	*/
 
 /*
  * Copyright (c) 2004 Henning Brauer <henning@openbsd.org>

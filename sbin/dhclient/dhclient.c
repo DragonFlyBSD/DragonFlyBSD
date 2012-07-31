@@ -1,5 +1,4 @@
-/*	$OpenBSD: dhclient.c,v 1.118 2008/05/09 05:19:14 reyk Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/dhclient.c,v 1.2 2008/09/10 10:01:18 matthias Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.119 2008/05/26 03:11:48 deraadt Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
