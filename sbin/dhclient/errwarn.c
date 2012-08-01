@@ -1,5 +1,4 @@
-/*	$OpenBSD: errwarn.c,v 1.15 2007/03/02 11:31:17 henning Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/errwarn.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/errwarn.c,v 1.17 2009/11/26 23:14:29 krw Exp $	*/
 
 /* Errors and warnings... */
 
@@ -80,9 +79,7 @@ error(char *fmt, ...)
 		write(STDERR_FILENO, "\n", 1);
 	}
 
-	syslog(LOG_CRIT, "exiting.");
 	if (log_perror) {
-		fprintf(stderr, "exiting.\n");
 		fflush(stderr);
 	}
 	exit(1);
