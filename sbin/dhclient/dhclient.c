@@ -1,4 +1,4 @@
-/* $OpenBSD: src/sbin/dhclient/dhclient.c,v 1.124 2009/03/10 23:19:36 krw Exp $ */
+/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.126 2009/05/20 20:37:43 thib Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -347,11 +347,8 @@ main(int argc, char *argv[])
 	if ((nullfd = open(_PATH_DEVNULL, O_RDWR, 0)) == -1)
 		error("cannot open %s: %m", _PATH_DEVNULL);
 
-	if ((pw = getpwnam("_dhcp")) == NULL) {
-		warning("no such user: _dhcp, falling back to \"nobody\"");
-		if ((pw = getpwnam("nobody")) == NULL)
-			error("no such user: nobody");
-	}
+	if ((pw = getpwnam("_dhcp")) == NULL)
+		error("no such user: _dhcp");
 
 	if (pipe(pipe_fd) == -1)
 		error("pipe");
