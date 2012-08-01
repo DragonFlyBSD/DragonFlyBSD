@@ -168,7 +168,7 @@ struct pkthdr {
 					/* valid if CSUM UDP|TCP|TSO */
 	uint8_t	csum_lhlen;		/* link header length */
 
-	uint16_t segsz;			/* TSO segment size */
+	uint16_t tso_segsz;		/* TSO segment size */
 	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
 
 	uint16_t hash;			/* packet hash */

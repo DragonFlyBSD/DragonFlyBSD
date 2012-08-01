@@ -2822,7 +2822,8 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 		m_head = *m_head0;
 
 #ifdef BNX_TSO_DEBUG
-		tso_nsegs = (m_head->m_pkthdr.len / m_head->m_pkthdr.segsz) - 1;
+		tso_nsegs = (m_head->m_pkthdr.len /
+		    m_head->m_pkthdr.tso_segsz) - 1;
 		if (tso_nsegs > (BNX_TSO_NSTATS - 1))
 			tso_nsegs = BNX_TSO_NSTATS - 1;
 		else if (tso_nsegs < 0)
@@ -4310,7 +4311,7 @@ bnx_setup_tso(struct bnx_softc *sc, struct mbuf **mp,
 	th = mtodoff(m, struct tcphdr *, hoff + iphlen);
 #endif
 
-	mss = m->m_pkthdr.segsz;
+	mss = m->m_pkthdr.tso_segsz;
 	flags = BGE_TXBDFLAG_CPU_PRE_DMA | BGE_TXBDFLAG_CPU_POST_DMA;
 
 	ip->ip_len = htons(mss + iphlen + thoff);

@@ -1026,7 +1026,7 @@ after_th:
 			m->m_pkthdr.csum_thlen = sizeof(struct tcphdr) + optlen;
 			if (use_tso) {
 				m->m_pkthdr.csum_flags = CSUM_TSO;
-				m->m_pkthdr.segsz = segsz;
+				m->m_pkthdr.tso_segsz = segsz;
 			} else {
 				m->m_pkthdr.csum_flags = CSUM_TCP;
 				m->m_pkthdr.csum_data =
