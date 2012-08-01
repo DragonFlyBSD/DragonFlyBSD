@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.129 2009/06/06 04:02:42 krw Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.130 2009/06/12 20:07:35 stevesk Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -197,7 +197,10 @@ routehandler(void)
 		if (addr_eq(a, defaddr))
 			break;
 
-		for (l = client->active; l != NULL; l = l->next)
+		/* state_panic() can try unexpired existing leases */
+		if (client->active && addr_eq(a, client->active->address))
+			break;
+		for (l = client->leases; l != NULL; l = l->next)
 			if (addr_eq(a, l->address))
 				break;
 
@@ -215,6 +218,7 @@ routehandler(void)
 			break;
 		if (findproto((char *)(ifam + 1), ifam->ifam_addrs) != AF_INET)
 			break;
+		/* XXX check addrs like RTM_NEWADDR instead of this? */
 		if (scripttime == 0 || t < scripttime + 10)
 			break;
 		errmsg = "interface address deleted";
