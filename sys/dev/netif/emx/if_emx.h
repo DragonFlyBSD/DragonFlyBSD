@@ -362,13 +362,6 @@ struct emx_softc {
 	unsigned long		rx_irq;
 	unsigned long		tx_irq;
 	unsigned long		link_irq;
-	unsigned long		tx_csum_try_pullup;
-	unsigned long		tx_csum_pullup1;
-	unsigned long		tx_csum_pullup1_failed;
-	unsigned long		tx_csum_pullup2;
-	unsigned long		tx_csum_pullup2_failed;
-	unsigned long		tx_csum_drop1;
-	unsigned long		tx_csum_drop2;
 
 	/* sysctl tree glue */
 	struct sysctl_ctx_list	sysctl_ctx;

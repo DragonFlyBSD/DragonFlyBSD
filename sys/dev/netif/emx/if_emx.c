@@ -215,7 +215,6 @@ static void	emx_destroy_rx_ring(struct emx_softc *,
 		    struct emx_rxdata *, int);
 static int	emx_newbuf(struct emx_softc *, struct emx_rxdata *, int, int);
 static int	emx_encap(struct emx_softc *, struct mbuf **);
-static int	emx_txcsum_pullup(struct emx_softc *, struct mbuf **);
 static int	emx_txcsum(struct emx_softc *, struct mbuf *,
 		    uint32_t *, uint32_t *);
 
@@ -1417,21 +1416,6 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	uint32_t txd_upper, txd_lower, cmd = 0;
 	int maxsegs, nsegs, i, j, first, last = 0, error;
 
-	if (m_head->m_len < EMX_TXCSUM_MINHL &&
-	    (m_head->m_flags & EMX_CSUM_FEATURES)) {
-		/*
-		 * Make sure that ethernet header and ip.ip_hl are in
-		 * contiguous memory, since if TXCSUM is enabled, later
-		 * TX context descriptor's setup need to access ip.ip_hl.
-		 */
-		error = emx_txcsum_pullup(sc, m_headp);
-		if (error) {
-			KKASSERT(*m_headp == NULL);
-			return error;
-		}
-		m_head = *m_headp;
-	}
-
 	txd_upper = txd_lower = 0;
 
 	/*
@@ -2164,45 +2148,12 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 {
 	struct e1000_context_desc *TXD;
 	struct emx_txbuf *tx_buffer;
-	struct ether_vlan_header *eh;
-	struct ip *ip;
 	int curr_txd, ehdrlen, csum_flags;
 	uint32_t cmd, hdr_len, ip_hlen;
-	uint16_t etype;
-
-	/*
-	 * Determine where frame payload starts.
-	 * Jump over vlan headers if already present,
-	 * helpful for QinQ too.
-	 */
-	KASSERT(mp->m_len >= ETHER_HDR_LEN,
-		("emx_txcsum_pullup is not called (eh)?"));
-	eh = mtod(mp, struct ether_vlan_header *);
-	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
-		KASSERT(mp->m_len >= ETHER_HDR_LEN + EVL_ENCAPLEN,
-			("emx_txcsum_pullup is not called (evh)?"));
-		etype = ntohs(eh->evl_proto);
-		ehdrlen = ETHER_HDR_LEN + EVL_ENCAPLEN;
-	} else {
-		etype = ntohs(eh->evl_encap_proto);
-		ehdrlen = ETHER_HDR_LEN;
-	}
-
-	/*
-	 * We only support TCP/UDP for IPv4 for the moment.
-	 * TODO: Support SCTP too when it hits the tree.
-	 */
-	if (etype != ETHERTYPE_IP)
-		return 0;
-
-	KASSERT(mp->m_len >= ehdrlen + EMX_IPVHL_SIZE,
-		("emx_txcsum_pullup is not called (eh+ip_vhl)?"));
-
-	/* NOTE: We could only safely access ip.ip_vhl part */
-	ip = (struct ip *)(mp->m_data + ehdrlen);
-	ip_hlen = ip->ip_hl << 2;
 
 	csum_flags = mp->m_pkthdr.csum_flags & EMX_CSUM_FEATURES;
+	ip_hlen = mp->m_pkthdr.csum_iphlen;
+	ehdrlen = mp->m_pkthdr.csum_lhlen;
 
 	if (sc->csum_ehlen == ehdrlen && sc->csum_iphlen == ip_hlen &&
 	    sc->csum_flags == csum_flags) {
@@ -2289,66 +2240,6 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 
 	sc->next_avail_tx_desc = curr_txd;
 	return 1;
-}
-
-static int
-emx_txcsum_pullup(struct emx_softc *sc, struct mbuf **m0)
-{
-	struct mbuf *m = *m0;
-	struct ether_header *eh;
-	int len;
-
-	sc->tx_csum_try_pullup++;
-
-	len = ETHER_HDR_LEN + EMX_IPVHL_SIZE;
-
-	if (__predict_false(!M_WRITABLE(m))) {
-		if (__predict_false(m->m_len < ETHER_HDR_LEN)) {
-			sc->tx_csum_drop1++;
-			m_freem(m);
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		eh = mtod(m, struct ether_header *);
-
-		if (eh->ether_type == htons(ETHERTYPE_VLAN))
-			len += EVL_ENCAPLEN;
-
-		if (m->m_len < len) {
-			sc->tx_csum_drop2++;
-			m_freem(m);
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		return 0;
-	}
-
-	if (__predict_false(m->m_len < ETHER_HDR_LEN)) {
-		sc->tx_csum_pullup1++;
-		m = m_pullup(m, ETHER_HDR_LEN);
-		if (m == NULL) {
-			sc->tx_csum_pullup1_failed++;
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		*m0 = m;
-	}
-	eh = mtod(m, struct ether_header *);
-
-	if (eh->ether_type == htons(ETHERTYPE_VLAN))
-		len += EVL_ENCAPLEN;
-
-	if (m->m_len < len) {
-		sc->tx_csum_pullup2++;
-		m = m_pullup(m, len);
-		if (m == NULL) {
-			sc->tx_csum_pullup2_failed++;
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		*m0 = m;
-	}
-	return 0;
 }
 
 static void
@@ -3304,21 +3195,6 @@ emx_print_debug_info(struct emx_softc *sc)
 	    sc->dropped_pkts);
 	device_printf(dev, "Driver tx dma failure in encap = %ld\n",
 	    sc->no_tx_dma_setup);
-
-	device_printf(dev, "TXCSUM try pullup = %lu\n",
-	    sc->tx_csum_try_pullup);
-	device_printf(dev, "TXCSUM m_pullup(eh) called = %lu\n",
-	    sc->tx_csum_pullup1);
-	device_printf(dev, "TXCSUM m_pullup(eh) failed = %lu\n",
-	    sc->tx_csum_pullup1_failed);
-	device_printf(dev, "TXCSUM m_pullup(eh+ip) called = %lu\n",
-	    sc->tx_csum_pullup2);
-	device_printf(dev, "TXCSUM m_pullup(eh+ip) failed = %lu\n",
-	    sc->tx_csum_pullup2_failed);
-	device_printf(dev, "TXCSUM non-writable(eh) droped = %lu\n",
-	    sc->tx_csum_drop1);
-	device_printf(dev, "TXCSUM non-writable(eh+ip) droped = %lu\n",
-	    sc->tx_csum_drop2);
 }
 
 static void
