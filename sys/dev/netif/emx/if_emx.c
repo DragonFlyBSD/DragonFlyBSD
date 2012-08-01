@@ -65,7 +65,6 @@
  */
 
 #include "opt_ifpoll.h"
-#include "opt_rss.h"
 #include "opt_emx.h"
 
 #include <sys/param.h>
