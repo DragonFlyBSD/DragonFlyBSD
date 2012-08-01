@@ -402,6 +402,8 @@ pktgen_udp_thread1(void *arg)
 				       ui->ui_dst.s_addr, psum);
 		m->m_pkthdr.csum_flags = (CSUM_IP | CSUM_UDP);
 		m->m_pkthdr.csum_data = offsetof(struct udphdr, uh_sum);
+		m->m_pkthdr.csum_iphlen = sizeof(struct ip);
+		m->m_pkthdr.csum_thlen = sizeof(struct udphdr);
 
 		ip = (struct ip *)ui;
 		ip->ip_len = ip_len;
