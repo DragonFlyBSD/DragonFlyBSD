@@ -140,6 +140,7 @@ note(char *fmt, ...)
 	return (0);
 }
 
+#ifdef DEBUG
 /*
  * Log a debug message...
  */
@@ -154,9 +155,7 @@ debug(char *fmt, ...)
 	vsnprintf(mbuf, sizeof(mbuf), fbuf, list);
 	va_end(list);
 
-#ifndef DEBUG
 	syslog(LOG_DEBUG, "%s", mbuf);
-#endif
 
 	if (log_perror) {
 		write(STDERR_FILENO, mbuf, strlen(mbuf));
@@ -165,7 +164,7 @@ debug(char *fmt, ...)
 
 	return (0);
 }
-
+#endif
 /*
  * Find %m in the input string and substitute an error message string.
  */

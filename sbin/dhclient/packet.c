@@ -1,5 +1,4 @@
-/*	$OpenBSD: packet.c,v 1.12 2006/12/28 01:10:46 stevesk Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/packet.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/packet.c,v 1.13 2009/06/06 04:02:42 krw Exp $	*/
 
 /* Packet assembly code, originally contributed by Archie Cobbs. */
 
@@ -190,10 +189,11 @@ decode_udp_ip_header(unsigned char *buf, int bufix, struct sockaddr_in *from,
 		return (-1);
 	}
 
+#ifdef DEBUG
 	if (ntohs(ip->ip_len) != buflen)
 		debug("ip length %d disagrees with bytes received %d.",
 		    ntohs(ip->ip_len), buflen);
-
+#endif
 	memcpy(&from->sin_addr, &ip->ip_src, 4);
 
 	/*
@@ -218,8 +218,10 @@ decode_udp_ip_header(unsigned char *buf, int bufix, struct sockaddr_in *from,
 			}
 			return (-1);
 		}
+#ifdef DEBUG
 		if (len + data != buf + bufix + buflen)
 			debug("accepting packet with data after udp payload.");
+#endif
 	}
 
 	usum = udp->uh_sum;

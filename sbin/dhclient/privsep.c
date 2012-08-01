@@ -1,5 +1,4 @@
-/*	$OpenBSD: privsep.c,v 1.14 2007/02/15 15:22:27 stevesk Exp $ */
-/*	$DragonFly: src/sbin/dhclient/privsep.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/privsep.c,v 1.15 2009/06/06 04:02:42 krw Exp $	*/
 
 /*
  * Copyright (c) 2004 Henning Brauer <henning@openbsd.org>
@@ -78,7 +77,9 @@ buf_read(int sock, void *buf, size_t nbytes)
 	do {
 		n = read(sock, buf, nbytes);
 		if (n == 0) {			/* connection closed */
+#ifdef DEBUG
 			debug("buf_read (connection closed)");
+#endif
 			exit(1);
 		}
 		if (n != -1 && n < nbytes)
