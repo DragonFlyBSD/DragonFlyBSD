@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.127 2009/05/25 00:17:40 stevesk Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.128 2009/06/03 02:05:34 stevesk Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -153,7 +153,6 @@ get_ifa(char *cp, int n)
 }
 struct iaddr defaddr = { .len = 4 }; /* NULL is for silence warnings */
 
-/* ARGSUSED */
 void
 routehandler(void)
 {
