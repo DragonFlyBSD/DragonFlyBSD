@@ -662,6 +662,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 		    htons((u_short)(tlen - sizeof(struct ip) + ip->ip_p)));
 		m->m_pkthdr.csum_flags = CSUM_TCP;
 		m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
+		m->m_pkthdr.csum_thlen = sizeof(struct tcphdr);
 	}
 #ifdef TCPDEBUG
 	if (tp == NULL || (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))

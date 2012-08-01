@@ -922,6 +922,7 @@ pass:
 	} else {
 		sw_csum = 0;
 	}
+	m->m_pkthdr.csum_iphlen = hlen;
 
 	/*
 	 * If small enough for interface, or the interface will take
@@ -1188,6 +1189,7 @@ smart_frag_failure:
 		m->m_pkthdr.len = mhlen + len;
 		m->m_pkthdr.rcvif = NULL;
 		m->m_pkthdr.csum_flags = m0->m_pkthdr.csum_flags;
+		m->m_pkthdr.csum_iphlen = mhlen;
 		mhip->ip_off = htons(mhip->ip_off);
 		mhip->ip_sum = 0;
 		if (sw_csum & CSUM_DELAY_IP)

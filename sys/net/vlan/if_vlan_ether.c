@@ -99,6 +99,7 @@ vlan_start_dispatch(netmsg_t msg)
 			if_printf(ifp, "vlan%u m_pullup failed", vlantag);
 			goto back;
 		}
+		m->m_pkthdr.csum_lhlen = sizeof(struct ether_vlan_header);
 
 		/*
 		 * Transform the Ethernet header into an Ethernet header

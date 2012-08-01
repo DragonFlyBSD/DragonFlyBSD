@@ -220,6 +220,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	M_PREPEND(m, sizeof(struct ether_header), MB_DONTWAIT);
 	if (m == NULL)
 		return (ENOBUFS);
+	m->m_pkthdr.csum_lhlen = sizeof(struct ether_header);
 	eh = mtod(m, struct ether_header *);
 	edst = eh->ether_dhost;
 

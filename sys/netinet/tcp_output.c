@@ -1023,12 +1023,14 @@ after_th:
 			    sizeof(struct ip6_hdr),
 			    sizeof(struct tcphdr) + optlen + len);
 		} else {
-			m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
+			m->m_pkthdr.csum_thlen = sizeof(struct tcphdr) + optlen;
 			if (use_tso) {
 				m->m_pkthdr.csum_flags = CSUM_TSO;
 				m->m_pkthdr.segsz = segsz;
 			} else {
 				m->m_pkthdr.csum_flags = CSUM_TCP;
+				m->m_pkthdr.csum_data =
+				    offsetof(struct tcphdr, th_sum);
 				if (len + optlen) {
 					th->th_sum = in_addword(th->th_sum,
 					    htons((u_short)(optlen + len)));

@@ -1323,6 +1323,7 @@ no_options:
 				       htons(tlen - hlen + IPPROTO_TCP));
 		m->m_pkthdr.csum_flags = CSUM_TCP;
 		m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
+		m->m_pkthdr.csum_thlen = sizeof(struct tcphdr) + optlen;
 		error = ip_output(m, sc->sc_ipopts, &sc->sc_route,
 				  IP_DEBUGROUTE, NULL, sc->sc_tp->t_inpcb);
 	}

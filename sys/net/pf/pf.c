@@ -5537,6 +5537,7 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 		sw_csum &= ~CSUM_DELAY_DATA;
 	}
 	m0->m_pkthdr.csum_flags &= ifp->if_hwassist;
+	m0->m_pkthdr.csum_iphlen = (ip->ip_hl << 2);
 
 	if (ip->ip_len <= ifp->if_mtu ||
 	    (ifp->if_hwassist & CSUM_FRAGMENT &&

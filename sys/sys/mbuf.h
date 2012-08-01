@@ -162,6 +162,11 @@ struct pkthdr {
 	/* variables for hardware checksum */
 	int	csum_flags;		/* flags regarding checksum */
 	int	csum_data;		/* data field used by csum routines */
+	uint16_t csum_iphlen;		/* IP header length */
+					/* valid if CSUM IP|UDP|TCP|TSO */
+	uint8_t	csum_thlen;		/* TCP/UDP header length */
+					/* valid if CSUM UDP|TCP|TSO */
+	uint8_t	csum_lhlen;		/* link header length */
 
 	/* firewall flags */
 	uint32_t fw_flags;		/* flags for PF */
