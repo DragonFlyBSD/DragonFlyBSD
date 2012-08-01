@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.131 2009/07/19 00:18:02 stevesk Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.132 2009/11/12 14:18:45 jsg Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -1660,7 +1660,7 @@ supersede:
 				case ACTION_PREPEND:
 					len = config->defaults[i].len +
 					    lease->options[i].len;
-					if (len > sizeof(dbuf)) {
+					if (len >= sizeof(dbuf)) {
 						warning("no space to %s %s",
 						    "prepend option",
 						    dhcp_options[i].name);
@@ -1679,7 +1679,7 @@ supersede:
 				case ACTION_APPEND:
 					len = config->defaults[i].len +
 					    lease->options[i].len;
-					if (len > sizeof(dbuf)) {
+					if (len >= sizeof(dbuf)) {
 						warning("no space to %s %s",
 						    "append option",
 						    dhcp_options[i].name);
