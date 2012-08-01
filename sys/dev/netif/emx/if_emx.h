@@ -156,9 +156,6 @@
 #define EMX_MSIX_MASK			0x01F00000 /* For 82574 use */
 
 #define EMX_CSUM_FEATURES		(CSUM_IP | CSUM_TCP | CSUM_UDP)
-#define EMX_IPVHL_SIZE			1 /* sizeof(ip.ip_vhl) */
-#define EMX_TXCSUM_MINHL		(ETHER_HDR_LEN + EVL_ENCAPLEN + \
-					 EMX_IPVHL_SIZE)
 
 /*
  * 82574 has a nonstandard address for EIAC
