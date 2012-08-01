@@ -168,18 +168,18 @@ struct pkthdr {
 					/* valid if CSUM UDP|TCP|TSO */
 	uint8_t	csum_lhlen;		/* link header length */
 
+	uint16_t segsz;			/* TSO segment size */
+	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
+
+	uint16_t hash;			/* packet hash */
+	uint16_t wlan_seqno;		/* IEEE 802.11 seq no. */
+
 	/* firewall flags */
 	uint32_t fw_flags;		/* flags for PF */
 
 	/* variables for PF processing */
 	struct pkthdr_pf pf;		/* structure for PF */
 	struct pkthdr_br br;		/* structure for bridging */
-
-	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
-	uint16_t hash;			/* packet hash */
-
-	uint16_t wlan_seqno;		/* IEEE 802.11 seq no. */
-	uint16_t segsz;			/* TSO segment size */
 };
 
 /*
