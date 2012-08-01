@@ -365,6 +365,8 @@ struct emx_softc {
 	unsigned long		rx_irq;
 	unsigned long		tx_irq;
 	unsigned long		link_irq;
+	unsigned long		tso_segments;
+	unsigned long		tso_ctx_reused;
 
 	/* sysctl tree glue */
 	struct sysctl_ctx_list	sysctl_ctx;

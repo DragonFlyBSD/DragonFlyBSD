@@ -2497,6 +2497,7 @@ options 	DEBUG_INTERRUPTS
 options		BCE_DEBUG
 options		BNX_TSO_DEBUG
 options		EMX_RSS_DEBUG
+options		EMX_TSO_DEBUG
 options		JME_RSS_DEBUG
 options		IGB_RSS_DEBUG
 options		IGB_MSIX_DEBUG

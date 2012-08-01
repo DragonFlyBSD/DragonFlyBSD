@@ -3229,6 +3229,9 @@ emx_print_debug_info(struct emx_softc *sc)
 	    sc->dropped_pkts);
 	device_printf(dev, "Driver tx dma failure in encap = %ld\n",
 	    sc->no_tx_dma_setup);
+
+	device_printf(dev, "TSO segments %lu\n", sc->tso_segments);
+	device_printf(dev, "TSO ctx reused %lu\n", sc->tso_ctx_reused);
 }
 
 static void
@@ -3795,6 +3798,10 @@ emx_tso_setup(struct emx_softc *sc, struct mbuf *mp,
 	int mss, pktlen, curr_txd;
 	struct ip *ip;
 
+#ifdef EMX_TSO_DEBUG
+	sc->tso_segments++;
+#endif
+
 	iphlen = mp->m_pkthdr.csum_iphlen;
 	thoff = mp->m_pkthdr.csum_thlen;
 	hoff = mp->m_pkthdr.csum_lhlen;
@@ -3812,6 +3819,9 @@ emx_tso_setup(struct emx_softc *sc, struct mbuf *mp,
 	    sc->csum_pktlen == pktlen) {
 		*txd_upper = sc->csum_txd_upper;
 		*txd_lower = sc->csum_txd_lower;
+#ifdef EMX_TSO_DEBUG
+		sc->tso_ctx_reused++;
+#endif
 		return 0;
 	}
 	hlen = hoff + iphlen + thoff;
