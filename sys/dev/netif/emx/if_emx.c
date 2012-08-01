@@ -217,6 +217,9 @@ static int	emx_newbuf(struct emx_softc *, struct emx_rxdata *, int, int);
 static int	emx_encap(struct emx_softc *, struct mbuf **);
 static int	emx_txcsum(struct emx_softc *, struct mbuf *,
 		    uint32_t *, uint32_t *);
+static int	emx_tso_pullup(struct emx_softc *, struct mbuf **);
+static int	emx_tso_setup(struct emx_softc *, struct mbuf *,
+		    uint32_t *, uint32_t *);
 
 static int 	emx_is_valid_eaddr(const uint8_t *);
 static int	emx_reset(struct emx_softc *);
@@ -439,6 +442,17 @@ emx_attach(device_t dev)
 
 	if (e1000_set_mac_type(&sc->hw))
 		return ENXIO;
+
+	/*
+	 * Pullup extra 4bytes into the first data segment, see:
+	 * 82571/82572 specification update errata #7
+	 *
+	 * NOTE:
+	 * 4bytes instead of 2bytes, which are mentioned in the errata,
+	 * are pulled; mainly to keep rest of the data properly aligned.
+	 */
+	if (sc->hw.mac.type == e1000_82571 || sc->hw.mac.type == e1000_82572)
+		sc->flags |= EMX_FLAG_TSO_PULLEX;
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -993,13 +1007,27 @@ emx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	case SIOCSIFCAP:
 		reinit = 0;
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
-		if (mask & IFCAP_HWCSUM) {
-			ifp->if_capenable ^= (mask & IFCAP_HWCSUM);
+		if (mask & IFCAP_RXCSUM) {
+			ifp->if_capenable ^= IFCAP_RXCSUM;
 			reinit = 1;
 		}
 		if (mask & IFCAP_VLAN_HWTAGGING) {
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
 			reinit = 1;
+		}
+		if (mask & IFCAP_TXCSUM) {
+			ifp->if_capenable ^= IFCAP_TXCSUM;
+			if (ifp->if_capenable & IFCAP_TXCSUM)
+				ifp->if_hwassist |= EMX_CSUM_FEATURES;
+			else
+				ifp->if_hwassist &= ~EMX_CSUM_FEATURES;
+		}
+		if (mask & IFCAP_TSO) {
+			ifp->if_capenable ^= IFCAP_TSO;
+			if (ifp->if_capenable & IFCAP_TSO)
+				ifp->if_hwassist |= CSUM_TSO;
+			else
+				ifp->if_hwassist &= ~CSUM_TSO;
 		}
 		if (mask & IFCAP_RSS)
 			ifp->if_capenable ^= IFCAP_RSS;
@@ -1141,12 +1169,6 @@ emx_init(void *xsc)
 		ctrl |= E1000_CTRL_VME;
 		E1000_WRITE_REG(&sc->hw, E1000_CTRL, ctrl);
 	}
-
-	/* Set hardware offload abilities */
-	if (ifp->if_capenable & IFCAP_TXCSUM)
-		ifp->if_hwassist = EMX_CSUM_FEATURES;
-	else
-		ifp->if_hwassist = 0;
 
 	/* Configure for OS presence */
 	emx_get_mgmt(sc);
@@ -1416,6 +1438,13 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	uint32_t txd_upper, txd_lower, cmd = 0;
 	int maxsegs, nsegs, i, j, first, last = 0, error;
 
+	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
+		error = emx_tso_pullup(sc, m_headp);
+		if (error)
+			return error;
+		m_head = *m_headp;
+	}
+
 	txd_upper = txd_lower = 0;
 
 	/*
@@ -1450,7 +1479,11 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	m_head = *m_headp;
 	sc->tx_nsegs += nsegs;
 
-	if (m_head->m_pkthdr.csum_flags & EMX_CSUM_FEATURES) {
+	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
+		/* TSO will consume one TX desc */
+		sc->tx_nsegs += emx_tso_setup(sc, m_head,
+		    &txd_upper, &txd_lower);
+	} else if (m_head->m_pkthdr.csum_flags & EMX_CSUM_FEATURES) {
 		/* TX csum offloading will consume one TX desc */
 		sc->tx_nsegs += emx_txcsum(sc, m_head, &txd_upper, &txd_lower);
 	}
@@ -1739,8 +1772,11 @@ emx_stop(struct emx_softc *sc)
 		emx_free_rx_ring(sc, &sc->rx_data[i]);
 
 	sc->csum_flags = 0;
-	sc->csum_ehlen = 0;
+	sc->csum_lhlen = 0;
 	sc->csum_iphlen = 0;
+	sc->csum_thlen = 0;
+	sc->csum_mss = 0;
+	sc->csum_pktlen = 0;
 
 	sc->tx_dd_head = 0;
 	sc->tx_dd_tail = 0;
@@ -1840,11 +1876,12 @@ emx_setup_ifp(struct emx_softc *sc)
 
 	ifp->if_capabilities = IFCAP_HWCSUM |
 			       IFCAP_VLAN_HWTAGGING |
-			       IFCAP_VLAN_MTU;
+			       IFCAP_VLAN_MTU |
+			       IFCAP_TSO;
 	if (sc->rx_ring_cnt > 1)
 		ifp->if_capabilities |= IFCAP_RSS;
 	ifp->if_capenable = ifp->if_capabilities;
-	ifp->if_hwassist = EMX_CSUM_FEATURES;
+	ifp->if_hwassist = EMX_CSUM_FEATURES | CSUM_TSO;
 
 	/*
 	 * Tell the upper layer(s) we support long frames.
@@ -2147,7 +2184,6 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 	   uint32_t *txd_upper, uint32_t *txd_lower)
 {
 	struct e1000_context_desc *TXD;
-	struct emx_txbuf *tx_buffer;
 	int curr_txd, ehdrlen, csum_flags;
 	uint32_t cmd, hdr_len, ip_hlen;
 
@@ -2155,7 +2191,7 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 	ip_hlen = mp->m_pkthdr.csum_iphlen;
 	ehdrlen = mp->m_pkthdr.csum_lhlen;
 
-	if (sc->csum_ehlen == ehdrlen && sc->csum_iphlen == ip_hlen &&
+	if (sc->csum_lhlen == ehdrlen && sc->csum_iphlen == ip_hlen &&
 	    sc->csum_flags == csum_flags) {
 		/*
 		 * Same csum offload context as the previous packets;
@@ -2171,7 +2207,6 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 	 */
 
 	curr_txd = sc->next_avail_tx_desc;
-	tx_buffer = &sc->tx_buf[curr_txd];
 	TXD = (struct e1000_context_desc *)&sc->tx_desc_base[curr_txd];
 
 	cmd = 0;
@@ -2222,7 +2257,7 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 		     E1000_TXD_DTYP_D;		/* Data descr */
 
 	/* Save the information for this csum offloading context */
-	sc->csum_ehlen = ehdrlen;
+	sc->csum_lhlen = ehdrlen;
 	sc->csum_iphlen = ip_hlen;
 	sc->csum_flags = csum_flags;
 	sc->csum_txd_upper = *txd_upper;
@@ -3719,4 +3754,131 @@ emx_disable_aspm(struct emx_softc *sc)
 	link_ctrl = pci_read_config(dev, reg, 2);
 	link_ctrl &= ~disable;
 	pci_write_config(dev, reg, link_ctrl, 2);
+}
+
+static int
+emx_tso_pullup(struct emx_softc *sc, struct mbuf **mp)
+{
+	int iphlen, hoff, thoff, ex = 0;
+	struct mbuf *m;
+
+	m = *mp;
+	KASSERT(M_WRITABLE(m), ("TSO mbuf not writable"));
+
+	iphlen = m->m_pkthdr.csum_iphlen;
+	thoff = m->m_pkthdr.csum_thlen;
+	hoff = m->m_pkthdr.csum_lhlen;
+
+	KASSERT(iphlen > 0, ("invalid ip hlen"));
+	KASSERT(thoff > 0, ("invalid tcp hlen"));
+	KASSERT(hoff > 0, ("invalid ether hlen"));
+
+	if (sc->flags & EMX_FLAG_TSO_PULLEX)
+		ex = 4;
+
+	if (m->m_len < hoff + iphlen + thoff + ex) {
+		m = m_pullup(m, hoff + iphlen + thoff + ex);
+		if (m == NULL) {
+			*mp = NULL;
+			return ENOBUFS;
+		}
+		*mp = m;
+	}
+	return 0;
+}
+
+static int
+emx_tso_setup(struct emx_softc *sc, struct mbuf *mp,
+    uint32_t *txd_upper, uint32_t *txd_lower)
+{
+	struct e1000_context_desc *TXD;
+	int hoff, iphlen, thoff, hlen;
+	int mss, pktlen, curr_txd;
+	struct ip *ip;
+
+	iphlen = mp->m_pkthdr.csum_iphlen;
+	thoff = mp->m_pkthdr.csum_thlen;
+	hoff = mp->m_pkthdr.csum_lhlen;
+	mss = mp->m_pkthdr.tso_segsz;
+	pktlen = mp->m_pkthdr.len;
+
+	ip = mtodoff(mp, struct ip *, hoff);
+	ip->ip_len = 0;
+
+	if (sc->csum_flags == CSUM_TSO &&
+	    sc->csum_iphlen == iphlen &&
+	    sc->csum_lhlen == hoff &&
+	    sc->csum_thlen == thoff &&
+	    sc->csum_mss == mss &&
+	    sc->csum_pktlen == pktlen) {
+		*txd_upper = sc->csum_txd_upper;
+		*txd_lower = sc->csum_txd_lower;
+		return 0;
+	}
+	hlen = hoff + iphlen + thoff;
+
+	/*
+	 * Setup a new TSO context.
+	 */
+
+	curr_txd = sc->next_avail_tx_desc;
+	TXD = (struct e1000_context_desc *)&sc->tx_desc_base[curr_txd];
+
+	*txd_lower = E1000_TXD_CMD_DEXT |	/* Extended descr type */
+		     E1000_TXD_DTYP_D |		/* Data descr type */
+		     E1000_TXD_CMD_TSE;		/* Do TSE on this packet */
+
+	/* IP and/or TCP header checksum calculation and insertion. */
+	*txd_upper = (E1000_TXD_POPTS_IXSM | E1000_TXD_POPTS_TXSM) << 8;
+
+	/*
+	 * Start offset for header checksum calculation.
+	 * End offset for header checksum calculation.
+	 * Offset of place put the checksum.
+	 */
+	TXD->lower_setup.ip_fields.ipcss = hoff;
+	TXD->lower_setup.ip_fields.ipcse = htole16(hoff + iphlen - 1);
+	TXD->lower_setup.ip_fields.ipcso = hoff + offsetof(struct ip, ip_sum);
+
+	/*
+	 * Start offset for payload checksum calculation.
+	 * End offset for payload checksum calculation.
+	 * Offset of place to put the checksum.
+	 */
+	TXD->upper_setup.tcp_fields.tucss = hoff + iphlen;
+	TXD->upper_setup.tcp_fields.tucse = 0;
+	TXD->upper_setup.tcp_fields.tucso =
+	    hoff + iphlen + offsetof(struct tcphdr, th_sum);
+
+	/*
+	 * Payload size per packet w/o any headers.
+	 * Length of all headers up to payload.
+	 */
+	TXD->tcp_seg_setup.fields.mss = htole16(mss);
+	TXD->tcp_seg_setup.fields.hdr_len = hlen;
+	TXD->cmd_and_length = htole32(E1000_TXD_CMD_IFCS |
+				E1000_TXD_CMD_DEXT |	/* Extended descr */
+				E1000_TXD_CMD_TSE |	/* TSE context */
+				E1000_TXD_CMD_IP |	/* Do IP csum */
+				E1000_TXD_CMD_TCP |	/* Do TCP checksum */
+				(pktlen - hlen));	/* Total len */
+
+	/* Save the information for this TSO context */
+	sc->csum_flags = CSUM_TSO;
+	sc->csum_lhlen = hoff;
+	sc->csum_iphlen = iphlen;
+	sc->csum_thlen = thoff;
+	sc->csum_mss = mss;
+	sc->csum_pktlen = pktlen;
+	sc->csum_txd_upper = *txd_upper;
+	sc->csum_txd_lower = *txd_lower;
+
+	if (++curr_txd == sc->num_tx_desc)
+		curr_txd = 0;
+
+	KKASSERT(sc->num_tx_desc_avail > 0);
+	sc->num_tx_desc_avail--;
+
+	sc->next_avail_tx_desc = curr_txd;
+	return 1;
 }

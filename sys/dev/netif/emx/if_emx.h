@@ -150,9 +150,9 @@
 #define EMX_TARC_SPEED_MODE		(1 << 21)
 
 #define EMX_MAX_SCATTER			64
-#define EMX_TSO_SIZE			(65535 + \
+#define EMX_TSO_SIZE			(IP_MAXPACKET + \
 					 sizeof(struct ether_vlan_header))
-#define EMX_MAX_SEGSIZE			4096
+#define EMX_MAX_SEGSIZE			PAGE_SIZE
 #define EMX_MSIX_MASK			0x01F00000 /* For 82574 use */
 
 #define EMX_CSUM_FEATURES		(CSUM_IP | CSUM_TCP | CSUM_UDP)
@@ -234,6 +234,7 @@ struct emx_softc {
 	struct e1000_hw		hw;
 	int			flags;
 #define EMX_FLAG_SHARED_INTR	0x1
+#define EMX_FLAG_TSO_PULLEX	0x2
 
 	/* DragonFly operating-system-specific structures. */
 	struct e1000_osdep	osdep;
@@ -300,8 +301,13 @@ struct emx_softc {
 
 	/* Saved csum offloading context information */
 	int			csum_flags;
-	int			csum_ehlen;
+	int			csum_lhlen;
 	int			csum_iphlen;
+
+	int			csum_thlen;	/* TSO */
+	int			csum_mss;	/* TSO */
+	int			csum_pktlen;	/* TSO */
+
 	uint32_t		csum_txd_upper;
 	uint32_t		csum_txd_lower;
 
