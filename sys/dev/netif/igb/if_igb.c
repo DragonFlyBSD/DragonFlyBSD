@@ -136,6 +136,8 @@ static int	igb_resume(device_t);
 static boolean_t igb_is_valid_ether_addr(const uint8_t *);
 static void	igb_setup_ifp(struct igb_softc *);
 static boolean_t igb_txcsum_ctx(struct igb_tx_ring *, struct mbuf *);
+static int	igb_tso_pullup(struct igb_tx_ring *, struct mbuf **);
+static void	igb_tso_ctx(struct igb_tx_ring *, struct mbuf *, uint32_t *);
 static void	igb_add_sysctl(struct igb_softc *);
 static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
@@ -413,6 +415,9 @@ igb_attach(device_t dev)
 #endif
 	sc->rx_ring_inuse = sc->rx_ring_cnt;
 	sc->tx_ring_cnt = 1; /* XXX */
+
+	if (sc->hw.mac.type == e1000_82575)
+		sc->flags |= IGB_FLAG_TSO_IPLEN0;
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -821,6 +826,13 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				ifp->if_hwassist |= IGB_CSUM_FEATURES;
 			else
 				ifp->if_hwassist &= ~IGB_CSUM_FEATURES;
+		}
+		if (mask & IFCAP_TSO) {
+			ifp->if_capenable ^= IFCAP_TSO;
+			if (ifp->if_capenable & IFCAP_TSO)
+				ifp->if_hwassist |= CSUM_TSO;
+			else
+				ifp->if_hwassist &= ~CSUM_TSO;
 		}
 		if (mask & IFCAP_RSS)
 			ifp->if_capenable ^= IFCAP_RSS;
@@ -1400,11 +1412,11 @@ igb_setup_ifp(struct igb_softc *sc)
 	ether_ifattach(ifp, sc->hw.mac.addr, NULL);
 
 	ifp->if_capabilities =
-	    IFCAP_HWCSUM | IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
+	    IFCAP_HWCSUM | IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU | IFCAP_TSO;
 	if (IGB_ENABLE_HWRSS(sc))
 		ifp->if_capabilities |= IFCAP_RSS;
 	ifp->if_capenable = ifp->if_capabilities;
-	ifp->if_hwassist = IGB_CSUM_FEATURES;
+	ifp->if_hwassist = IGB_CSUM_FEATURES | CSUM_TSO;
 
 	/*
 	 * Tell the upper layer(s) we support long frames
@@ -1829,7 +1841,6 @@ igb_txcsum_ctx(struct igb_tx_ring *txr, struct mbuf *mp)
 	struct e1000_adv_tx_context_desc *TXD;
 	uint32_t vlan_macip_lens, type_tucmd_mlhl, mss_l4len_idx;
 	int ehdrlen, ctxd, ip_hlen = 0;
-	uint16_t vlantag = 0;
 	boolean_t offload = TRUE;
 
 	if ((mp->m_pkthdr.csum_flags & IGB_CSUM_FEATURES) == 0)
@@ -1846,6 +1857,8 @@ igb_txcsum_ctx(struct igb_tx_ring *txr, struct mbuf *mp)
 	 * we need to be here just for that setup.
 	 */
 	if (mp->m_flags & M_VLANTAG) {
+		uint16_t vlantag;
+
 		vlantag = htole16(mp->m_pkthdr.ether_vlantag);
 		vlan_macip_lens |= (vlantag << E1000_ADVTXD_VLAN_SHIFT);
 	} else if (!offload) {
@@ -1857,16 +1870,14 @@ igb_txcsum_ctx(struct igb_tx_ring *txr, struct mbuf *mp)
 
 	/* Set the ether header length */
 	vlan_macip_lens |= ehdrlen << E1000_ADVTXD_MACLEN_SHIFT;
-
 	if (mp->m_pkthdr.csum_flags & CSUM_IP) {
 		type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_IPV4;
 		ip_hlen = mp->m_pkthdr.csum_iphlen;
 		KASSERT(ip_hlen > 0, ("invalid ip hlen"));
 	}
-
 	vlan_macip_lens |= ip_hlen;
-	type_tucmd_mlhl |= E1000_ADVTXD_DCMD_DEXT | E1000_ADVTXD_DTYP_CTXT;
 
+	type_tucmd_mlhl |= E1000_ADVTXD_DCMD_DEXT | E1000_ADVTXD_DTYP_CTXT;
 	if (mp->m_pkthdr.csum_flags & CSUM_TCP)
 		type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_TCP;
 	else if (mp->m_pkthdr.csum_flags & CSUM_UDP)
@@ -3050,6 +3061,13 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 	int maxsegs, nsegs, i, j, error, last = 0;
 	uint32_t hdrlen = 0;
 
+	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
+		error = igb_tso_pullup(txr, m_headp);
+		if (error)
+			return error;
+		m_head = *m_headp;
+	}
+
 	/* Set basic descriptor constants */
 	cmd_type_len |= E1000_ADVTXD_DTYP_DATA;
 	cmd_type_len |= E1000_ADVTXD_DCMD_IFCS | E1000_ADVTXD_DCMD_DEXT;
@@ -3101,7 +3119,13 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 	} else if (igb_tx_ctx_setup(txr, m_head))
 		olinfo_status |= E1000_TXD_POPTS_TXSM << 8;
 #else
-	if (igb_txcsum_ctx(txr, m_head)) {
+	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
+		igb_tso_ctx(txr, m_head, &hdrlen);
+		cmd_type_len |= E1000_ADVTXD_DCMD_TSE;
+		olinfo_status |= E1000_TXD_POPTS_IXSM << 8;
+		olinfo_status |= E1000_TXD_POPTS_TXSM << 8;
+		txr->tx_nsegs++;
+	} else if (igb_txcsum_ctx(txr, m_head)) {
 		if (m_head->m_pkthdr.csum_flags & CSUM_IP)
 			olinfo_status |= (E1000_TXD_POPTS_IXSM << 8);
 		if (m_head->m_pkthdr.csum_flags & (CSUM_UDP | CSUM_TCP))
@@ -4168,4 +4192,89 @@ igb_set_ring_inuse(struct igb_softc *sc, boolean_t polling)
 		device_printf(sc->dev, "RX rings %d/%d\n",
 		    sc->rx_ring_inuse, sc->rx_ring_cnt);
 	}
+}
+
+static int
+igb_tso_pullup(struct igb_tx_ring *txr __unused, struct mbuf **mp)
+{
+	int hoff, iphlen, thoff;
+	struct mbuf *m;
+
+	m = *mp;
+	KASSERT(M_WRITABLE(m), ("TSO mbuf not writable"));
+
+	iphlen = m->m_pkthdr.csum_iphlen;
+	thoff = m->m_pkthdr.csum_thlen;
+	hoff = m->m_pkthdr.csum_lhlen;
+
+	KASSERT(iphlen > 0, ("invalid ip hlen"));
+	KASSERT(thoff > 0, ("invalid tcp hlen"));
+	KASSERT(hoff > 0, ("invalid ether hlen"));
+
+	if (__predict_false(m->m_len < hoff + iphlen + thoff)) {
+		m = m_pullup(m, hoff + iphlen + thoff);
+		if (m == NULL) {
+			*mp = NULL;
+			return ENOBUFS;
+		}
+		*mp = m;
+	}
+	return 0;
+}
+
+static void
+igb_tso_ctx(struct igb_tx_ring *txr, struct mbuf *m, uint32_t *hlen)
+{
+	struct e1000_adv_tx_context_desc *TXD;
+	uint32_t vlan_macip_lens, type_tucmd_mlhl, mss_l4len_idx;
+	int hoff, ctxd, iphlen, thoff;
+
+	iphlen = m->m_pkthdr.csum_iphlen;
+	thoff = m->m_pkthdr.csum_thlen;
+	hoff = m->m_pkthdr.csum_lhlen;
+
+	if (txr->sc->flags & IGB_FLAG_TSO_IPLEN0) {
+		struct ip *ip;
+
+		ip = mtodoff(m, struct ip *, hoff);
+		ip->ip_len = 0;
+	}
+
+	vlan_macip_lens = type_tucmd_mlhl = mss_l4len_idx = 0;
+
+	ctxd = txr->next_avail_desc;
+	TXD = (struct e1000_adv_tx_context_desc *)&txr->tx_base[ctxd];
+
+	if (m->m_flags & M_VLANTAG) {
+		uint16_t vlantag;
+
+		vlantag = htole16(m->m_pkthdr.ether_vlantag);
+		vlan_macip_lens |= (vlantag << E1000_ADVTXD_VLAN_SHIFT);
+	}
+
+	vlan_macip_lens |= (hoff << E1000_ADVTXD_MACLEN_SHIFT);
+	vlan_macip_lens |= iphlen;
+
+	type_tucmd_mlhl |= E1000_ADVTXD_DCMD_DEXT | E1000_ADVTXD_DTYP_CTXT;
+	type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_TCP;
+	type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_IPV4;
+
+	mss_l4len_idx |= (m->m_pkthdr.tso_segsz << E1000_ADVTXD_MSS_SHIFT);
+	mss_l4len_idx |= (thoff << E1000_ADVTXD_L4LEN_SHIFT);
+	/* 82575 needs the queue index added */
+	if (txr->sc->hw.mac.type == e1000_82575)
+		mss_l4len_idx |= txr->me << 4;
+
+	TXD->vlan_macip_lens = htole32(vlan_macip_lens);
+	TXD->type_tucmd_mlhl = htole32(type_tucmd_mlhl);
+	TXD->seqnum_seed = htole32(0);
+	TXD->mss_l4len_idx = htole32(mss_l4len_idx);
+
+	/* We've consumed the first desc, adjust counters */
+	if (++ctxd == txr->num_tx_desc)
+		ctxd = 0;
+	txr->next_avail_desc = ctxd;
+	--txr->tx_avail;
+
+	*hlen = hoff + iphlen + thoff;
 }
