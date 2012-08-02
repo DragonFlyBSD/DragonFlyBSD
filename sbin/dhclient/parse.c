@@ -1,5 +1,4 @@
-/*	$OpenBSD: parse.c,v 1.18 2007/01/08 13:34:38 krw Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/parse.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/parse.c,v 1.19 2010/06/26 21:14:10 krw Exp $	*/
 
 /* Common parser code for dhcpd and dhclient. */
 
@@ -124,10 +123,9 @@ parse_string(FILE *cfile)
 		skip_to_semi(cfile);
 		return (NULL);
 	}
-	s = malloc(strlen(val) + 1);
+	s = strdup(val);
 	if (!s)
 		error("no memory for string %s.", val);
-	strlcpy(s, val, strlen(val) + 1);
 
 	if (!parse_semi(cfile)) {
 		free(s);
