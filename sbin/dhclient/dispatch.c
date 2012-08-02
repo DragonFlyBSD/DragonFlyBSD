@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/sbin/dhclient/dispatch.c,v 1.47 2010/07/02 22:03:27 deraadt Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dispatch.c,v 1.49 2010/10/23 14:26:57 phessler Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -132,6 +132,9 @@ dispatch(void)
 		 * a timeout registered, time out the select call then.
 		 */
 another:
+		if (!ifi)
+			error("No interfaces available");
+
 		if (!ifi->linkstat)
 			interfaces_invalidated = 0;
 
