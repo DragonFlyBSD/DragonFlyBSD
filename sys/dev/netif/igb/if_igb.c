@@ -135,8 +135,7 @@ static int	igb_resume(device_t);
 
 static boolean_t igb_is_valid_ether_addr(const uint8_t *);
 static void	igb_setup_ifp(struct igb_softc *);
-static int	igb_txctx_pullup(struct igb_tx_ring *, struct mbuf **);
-static boolean_t igb_txctx(struct igb_tx_ring *, struct mbuf *);
+static boolean_t igb_txcsum_ctx(struct igb_tx_ring *, struct mbuf *);
 static void	igb_add_sysctl(struct igb_softc *);
 static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
@@ -1824,23 +1823,20 @@ igb_init_tx_unit(struct igb_softc *sc)
 }
 
 static boolean_t
-igb_txctx(struct igb_tx_ring *txr, struct mbuf *mp)
+igb_txcsum_ctx(struct igb_tx_ring *txr, struct mbuf *mp)
 {
 	struct e1000_adv_tx_context_desc *TXD;
-	struct igb_tx_buf *txbuf;
 	uint32_t vlan_macip_lens, type_tucmd_mlhl, mss_l4len_idx;
-	struct ether_vlan_header *eh;
-	struct ip *ip = NULL;
 	int ehdrlen, ctxd, ip_hlen = 0;
-	uint16_t etype, vlantag = 0;
+	uint16_t vlantag = 0;
 	boolean_t offload = TRUE;
 
 	if ((mp->m_pkthdr.csum_flags & IGB_CSUM_FEATURES) == 0)
 		offload = FALSE;
 
 	vlan_macip_lens = type_tucmd_mlhl = mss_l4len_idx = 0;
+
 	ctxd = txr->next_avail_desc;
-	txbuf = &txr->tx_buf[ctxd];
 	TXD = (struct e1000_adv_tx_context_desc *)&txr->tx_base[ctxd];
 
 	/*
@@ -1855,51 +1851,16 @@ igb_txctx(struct igb_tx_ring *txr, struct mbuf *mp)
 		return FALSE;
 	}
 
-	/*
-	 * Determine where frame payload starts.
-	 * Jump over vlan headers if already present,
-	 * helpful for QinQ too.
-	 */
-	KASSERT(mp->m_len >= ETHER_HDR_LEN,
-	    ("igb_txctx_pullup is not called (eh)?\n"));
-	eh = mtod(mp, struct ether_vlan_header *);
-	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
-		KASSERT(mp->m_len >= ETHER_HDR_LEN + EVL_ENCAPLEN,
-		    ("igb_txctx_pullup is not called (evh)?\n"));
-		etype = ntohs(eh->evl_proto);
-		ehdrlen = ETHER_HDR_LEN + EVL_ENCAPLEN;
-	} else {
-		etype = ntohs(eh->evl_encap_proto);
-		ehdrlen = ETHER_HDR_LEN;
-	}
+	ehdrlen = mp->m_pkthdr.csum_lhlen;
+	KASSERT(ehdrlen > 0, ("invalid ether hlen"));
 
 	/* Set the ether header length */
 	vlan_macip_lens |= ehdrlen << E1000_ADVTXD_MACLEN_SHIFT;
 
-	switch (etype) {
-	case ETHERTYPE_IP:
-		KASSERT(mp->m_len >= ehdrlen + IGB_IPVHL_SIZE,
-		    ("igb_txctx_pullup is not called (eh+ip_vhl)?\n"));
-
-		/* NOTE: We could only safely access ip.ip_vhl part */
-		ip = (struct ip *)(mp->m_data + ehdrlen);
-		ip_hlen = ip->ip_hl << 2;
-
-		if (mp->m_pkthdr.csum_flags & CSUM_IP)
-			type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_IPV4;
-		break;
-
-#ifdef notyet
-	case ETHERTYPE_IPV6:
-		ip6 = (struct ip6_hdr *)(mp->m_data + ehdrlen);
-		ip_hlen = sizeof(struct ip6_hdr);
-		type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_IPV6;
-		break;
-#endif
-
-	default:
-		offload = FALSE;
-		break;
+	if (mp->m_pkthdr.csum_flags & CSUM_IP) {
+		type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_IPV4;
+		ip_hlen = mp->m_pkthdr.csum_iphlen;
+		KASSERT(ip_hlen > 0, ("invalid ip hlen"));
 	}
 
 	vlan_macip_lens |= ip_hlen;
@@ -1919,8 +1880,6 @@ igb_txctx(struct igb_tx_ring *txr, struct mbuf *mp)
 	TXD->type_tucmd_mlhl = htole32(type_tucmd_mlhl);
 	TXD->seqnum_seed = htole32(0);
 	TXD->mss_l4len_idx = htole32(mss_l4len_idx);
-
-	txbuf->m_head = NULL;
 
 	/* We've consumed the first desc, adjust counters */
 	if (++ctxd == txr->num_tx_desc)
@@ -3079,66 +3038,6 @@ igb_intr_shared(void *xsc)
 }
 
 static int
-igb_txctx_pullup(struct igb_tx_ring *txr, struct mbuf **m0)
-{
-	struct mbuf *m = *m0;
-	struct ether_header *eh;
-	int len;
-
-	txr->ctx_try_pullup++;
-
-	len = ETHER_HDR_LEN + IGB_IPVHL_SIZE;
-
-	if (__predict_false(!M_WRITABLE(m))) {
-		if (__predict_false(m->m_len < ETHER_HDR_LEN)) {
-			txr->ctx_drop1++;
-			m_freem(m);
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		eh = mtod(m, struct ether_header *);
-
-		if (eh->ether_type == htons(ETHERTYPE_VLAN))
-			len += EVL_ENCAPLEN;
-
-		if (m->m_len < len) {
-			txr->ctx_drop2++;
-			m_freem(m);
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		return 0;
-	}
-
-	if (__predict_false(m->m_len < ETHER_HDR_LEN)) {
-		txr->ctx_pullup1++;
-		m = m_pullup(m, ETHER_HDR_LEN);
-		if (m == NULL) {
-			txr->ctx_pullup1_failed++;
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		*m0 = m;
-	}
-	eh = mtod(m, struct ether_header *);
-
-	if (eh->ether_type == htons(ETHERTYPE_VLAN))
-		len += EVL_ENCAPLEN;
-
-	if (m->m_len < len) {
-		txr->ctx_pullup2++;
-		m = m_pullup(m, len);
-		if (m == NULL) {
-			txr->ctx_pullup2_failed++;
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		*m0 = m;
-	}
-	return 0;
-}
-
-static int
 igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 {
 	bus_dma_segment_t segs[IGB_MAX_SCATTER];
@@ -3149,23 +3048,6 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 	uint32_t olinfo_status = 0, cmd_type_len = 0, cmd_rs = 0;
 	int maxsegs, nsegs, i, j, error, last = 0;
 	uint32_t hdrlen = 0;
-
-	if (m_head->m_len < IGB_TXCSUM_MINHL &&
-	    ((m_head->m_pkthdr.csum_flags & IGB_CSUM_FEATURES) ||
-	     (m_head->m_flags & M_VLANTAG))) {
-		/*
-		 * Make sure that ethernet header and ip.ip_hl are in
-		 * contiguous memory, since if TXCSUM or VLANTAG is
-		 * enabled, later TX context descriptor's setup need
-		 * to access ip.ip_hl.
-		 */
-		error = igb_txctx_pullup(txr, m_headp);
-		if (error) {
-			KKASSERT(*m_headp == NULL);
-			return error;
-		}
-		m_head = *m_headp;
-	}
 
 	/* Set basic descriptor constants */
 	cmd_type_len |= E1000_ADVTXD_DTYP_DATA;
@@ -3218,8 +3100,9 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 	} else if (igb_tx_ctx_setup(txr, m_head))
 		olinfo_status |= E1000_TXD_POPTS_TXSM << 8;
 #else
-	if (igb_txctx(txr, m_head)) {
-		olinfo_status |= (E1000_TXD_POPTS_IXSM << 8);
+	if (igb_txcsum_ctx(txr, m_head)) {
+		if (m_head->m_pkthdr.csum_flags & CSUM_IP)
+			olinfo_status |= (E1000_TXD_POPTS_IXSM << 8);
 		if (m_head->m_pkthdr.csum_flags & (CSUM_UDP | CSUM_TCP))
 			olinfo_status |= (E1000_TXD_POPTS_TXSM << 8);
 		txr->tx_nsegs++;
