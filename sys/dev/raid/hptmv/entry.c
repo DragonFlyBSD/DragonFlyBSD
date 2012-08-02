@@ -2367,6 +2367,7 @@ hpt_action(struct cam_sim *sim, union ccb *ccb)
 			cpi->transport_version = 2;
 			cpi->protocol = PROTO_SCSI;
 			cpi->protocol_version = SCSI_REV_2;
+			cpi->maxio = HPTMV_DFLTPHYS;
 			cpi->ccb_h.status = CAM_REQ_CMP;
 			xpt_done(ccb);
 			break;
