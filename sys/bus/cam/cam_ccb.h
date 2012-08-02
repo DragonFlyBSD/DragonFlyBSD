@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.3 2003/07/29 04:00:34 njl Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.17 2008/02/10 00:01:01 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -561,6 +560,7 @@ struct ccb_pathinq {
 		struct ccb_pathinq_settings_sas sas;
 		char ccb_pathinq_settings_opaque[PATHINQ_SETTINGS_SIZE];
 	} xport_specific;
+	u_int		maxio;		/* Max supported I/O size, in bytes. */
 };
 
 /* Path Statistics CCB */
