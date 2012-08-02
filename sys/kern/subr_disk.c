@@ -596,8 +596,7 @@ disk_msg_send_sync(uint32_t cmd, void *load, void *load2)
 	disk_msg->load = load;
 	disk_msg->load2 = load2;
 
-	lwkt_sendmsg(port, &disk_msg->hdr);
-	lwkt_waitmsg(&disk_msg->hdr, 0);
+	lwkt_domsg(port, &disk_msg->hdr, 0);
 	objcache_put(disk_msg_cache, disk_msg);
 }
 
