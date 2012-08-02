@@ -665,6 +665,9 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 			}
 		}
 #endif
+
+#define IS_INTR_RUNNING	((frame && CLKF_INTR(intr_nest)) || CLKF_INTR_TD(td))
+
 		/*
 		 * Came from kernel mode, so we were:
 		 * - handling an interrupt,
@@ -680,14 +683,15 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		 * XXX assume system if frame is NULL.  A NULL frame 
 		 * can occur if ipi processing is done from a crit_exit().
 		 */
-		if (frame && CLKF_INTR(intr_nest))
+		if (IS_INTR_RUNNING)
 			td->td_iticks += bump;
 		else
 			td->td_sticks += bump;
 
-		if (frame && CLKF_INTR(intr_nest)) {
+		if (IS_INTR_RUNNING) {
 #ifdef DEBUG_PCTRACK
-			do_pctrack(frame, PCTRACK_INT);
+			if (frame)
+				do_pctrack(frame, PCTRACK_INT);
 #endif
 			cpu_time.cp_intr += bump;
 		} else {
@@ -701,6 +705,8 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 				cpu_time.cp_sys += bump;
 			}
 		}
+
+#undef IS_INTR_RUNNING
 	}
 }
 
