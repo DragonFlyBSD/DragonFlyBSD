@@ -404,6 +404,7 @@ pktgen_udp_thread1(void *arg)
 		m->m_pkthdr.csum_data = offsetof(struct udphdr, uh_sum);
 		m->m_pkthdr.csum_iphlen = sizeof(struct ip);
 		m->m_pkthdr.csum_thlen = sizeof(struct udphdr);
+		m->m_pkthdr.csum_lhlen = sizeof(struct ether_header);
 
 		ip = (struct ip *)ui;
 		ip->ip_len = ip_len;
