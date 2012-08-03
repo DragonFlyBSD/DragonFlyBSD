@@ -1270,22 +1270,26 @@ checklabel(struct disklabel32 *lp)
 				case '%':
 					total_percent += size;
 					break;
+				case 't':
+				case 'T':
+					size *= 1024ULL;
+					/* FALLTHROUGH */
+				case 'g':
+				case 'G':
+					size *= 1024ULL;
+					/* FALLTHROUGH */
+				case 'm':
+				case 'M':
+					size *= 1024ULL;
+					/* FALLTHROUGH */
 				case 'k':
 				case 'K':
 					size *= 1024ULL;
 					break;
-				case 'm':
-				case 'M':
-					size *= 1024ULL * 1024ULL;
-					break;
-				case 'g':
-				case 'G':
-					size *= 1024ULL * 1024ULL * 1024ULL;
-					break;
 				case '\0':
 					break;
 				default:
-					Warning("unknown size specifier '%c' (K/M/G are valid)",part_size_type[i]);
+					Warning("unknown size specifier '%c' (K/M/G/T are valid)",part_size_type[i]);
 					break;
 				}
 				/* don't count %'s yet */

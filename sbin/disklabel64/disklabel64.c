@@ -1112,6 +1112,10 @@ getasciipartspec(char *tp, struct disklabel64 *lp, int part,
 	case '*':
 		mpx = 0;
 		break;
+	case 't':
+	case 'T':
+		mpx *= 1024ULL;
+		/* fall through */
 	case 'g':
 	case 'G':
 		mpx *= 1024ULL;
@@ -1126,7 +1130,7 @@ getasciipartspec(char *tp, struct disklabel64 *lp, int part,
 		r = 0;			/* eat the suffix */
 		break;
 	default:
-		Warning("unknown size specifier '%c' (*/%%/K/M/G are valid)",
+		Warning("unknown size specifier '%c' (*/%%/K/M/G/T are valid)",
 			r);
 		return(1);
 	}
