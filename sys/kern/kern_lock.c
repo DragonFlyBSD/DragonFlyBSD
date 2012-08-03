@@ -710,5 +710,5 @@ lockmgr_printinfo(struct lock *lkp)
 void
 lock_sysinit(struct lock_args *arg)
 {
-	lockinit(arg->la_lock, arg->la_desc, 0, LK_CANRECURSE);
+	lockinit(arg->la_lock, arg->la_desc, 0, arg->la_flags);
 }

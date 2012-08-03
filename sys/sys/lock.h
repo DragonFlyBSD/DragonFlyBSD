@@ -191,6 +191,7 @@ struct proc;
 struct lock_args {
 	struct lock	*la_lock;
 	const char 	*la_desc;
+	int		la_flags;
 };
 
 void	lockinit (struct lock *, const char *wmesg, int timo, int flags);
@@ -216,10 +217,11 @@ int	lockowned (struct lock *);
 int	lockcount (struct lock *);
 int	lockcountnb (struct lock *);
 
-#define	LOCK_SYSINIT(name, lock, desc)				\
+#define	LOCK_SYSINIT(name, lock, desc, flags)				\
 	static struct lock_args name##_args = {				\
 		(lock),							\
-		(desc)							\
+		(desc),							\
+		(flags)							\
 	};								\
 	SYSINIT(name##_lock_sysinit, SI_SUB_DRIVERS, SI_ORDER_MIDDLE,	\
 	    lock_sysinit, &name##_args);					\
