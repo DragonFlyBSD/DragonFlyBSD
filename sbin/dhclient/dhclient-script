@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $OpenBSD: src/sbin/dhclient/dhclient-script,v 1.20 2011/04/04 11:29:51 krw Exp $
+# $OpenBSD: src/sbin/dhclient/dhclient-script,v 1.22 2011/04/09 19:53:00 krw Exp $
 #
 # Copyright (c) 2003 Kenneth R Westerback <krw@openbsd.org>
 #
@@ -40,14 +40,6 @@ add_new_address() {
 }
 
 delete_old_routes() {
-	if [ -n "$old_static_routes" ]; then
-		set $old_static_routes
-		while [ $# -gt 1 ]; do
-			route delete "$1" "$2"
-			shift; shift
-		done
-	fi
-
 	arp -dan
 }
 
@@ -63,14 +55,6 @@ add_new_routes() {
 		# stop processing the list after the first one.
 		break
 	done
-
-	if [ -n "$new_static_routes" ]; then
-		set $new_static_routes
-		while [ $# -gt 1 ]; do
-			route add $1 $2
-			shift; shift
-		done
-	fi
 }
 
 add_new_resolv_conf() {
