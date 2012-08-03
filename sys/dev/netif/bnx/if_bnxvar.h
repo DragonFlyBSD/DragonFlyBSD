@@ -221,7 +221,6 @@ struct bnx_softc {
 	struct bnx_chain_data	bnx_cdata;	/* mbufs */
 	uint16_t		bnx_tx_saved_considx;
 	uint16_t		bnx_rx_saved_considx;
-	uint16_t		bnx_ev_saved_considx;
 	uint16_t		bnx_return_ring_cnt;
 	uint16_t		bnx_std;	/* current std ring head */
 	uint16_t		bnx_jumbo;	/* current jumo ring head */

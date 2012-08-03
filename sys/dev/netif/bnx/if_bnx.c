@@ -4283,11 +4283,6 @@ bnx_setup_tso(struct bnx_softc *sc, struct mbuf **mp,
 	int thoff, iphlen, hoff, hlen;
 	uint16_t flags, mss;
 
-#if 0
-	if (!ether_tso_pullup(mp, &hoff, &ip, &iphlen, &th, &thoff))
-		return ENOBUFS;
-	m = *mp;
-#else
 	m = *mp;
 	KASSERT(M_WRITABLE(m), ("TSO mbuf not writable"));
 
@@ -4309,7 +4304,6 @@ bnx_setup_tso(struct bnx_softc *sc, struct mbuf **mp,
 	}
 	ip = mtodoff(m, struct ip *, hoff);
 	th = mtodoff(m, struct tcphdr *, hoff + iphlen);
-#endif
 
 	mss = m->m_pkthdr.tso_segsz;
 	flags = BGE_TXBDFLAG_CPU_PRE_DMA | BGE_TXBDFLAG_CPU_POST_DMA;
