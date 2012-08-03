@@ -428,7 +428,7 @@ vnode_ctor(void *obj, void *private, int ocflags)
 void
 vnode_dtor(void *obj, void *private)
 {
-	struct vnode *vp = obj;
+	struct vnode *vp __debugvar = obj;
 
 	KKASSERT((vp->v_flag & (VCACHED|VFREE)) == 0);
 }
