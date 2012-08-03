@@ -106,6 +106,7 @@ MAN=	aac.4 \
 	hifn.4 \
 	hptiop.4 \
 	hptmv.4 \
+	hptrr.4 \
 	ichsmb.4 \
 	ichwd.4 \
 	icmp.4 \

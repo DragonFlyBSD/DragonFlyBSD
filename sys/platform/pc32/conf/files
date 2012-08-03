@@ -39,6 +39,11 @@ hptmvraid.o			optional	hptmv			\
 	compile-with	"uudecode < $S/dev/raid/hptmv/i386-elf.raid.o.uu" \
 	no-implicit-rule
 #
+hptrr_lib.o			optional	hptrr			\
+	dependency	"$S/dev/raid/hptrr/i386-elf.hptrr_lib.o.uu"	\
+	compile-with	"uudecode < $S/dev/raid/hptrr/i386-elf.hptrr_lib.o.uu" \
+	no-implicit-rule
+#
 emulation/dragonfly12/dfbsd12_getdirentries.c	optional compat_df12
 emulation/dragonfly12/dfbsd12_stat.c	optional compat_df12
 #

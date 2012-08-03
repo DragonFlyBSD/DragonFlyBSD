@@ -372,6 +372,9 @@ dev/raid/hptmv/mv.c		optional hptmv
 dev/raid/hptmv/gui_lib.c	optional hptmv
 dev/raid/hptmv/hptproc.c	optional hptmv
 dev/raid/hptmv/ioctl.c		optional hptmv
+dev/raid/hptrr/hptrr_os_bsd.c	optional hptrr
+dev/raid/hptrr/hptrr_osm_bsd.c	optional hptrr
+dev/raid/hptrr/hptrr_config.c	optional hptrr
 dev/powermng/ichsmb/ichsmb.c	optional ichsmb
 dev/powermng/ichsmb/ichsmb_pci.c	optional ichsmb pci
 dev/powermng/coretemp/coretemp.c	optional coretemp
