@@ -42,8 +42,6 @@ static void master_auth_tx(hammer2_iocom_t *iocom);
 static void master_link_rx(hammer2_iocom_t *iocom);
 static void master_link_tx(hammer2_iocom_t *iocom);
 
-static void hammer2_lnk_span(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
-
 /*
  * Start-up the master listener daemon for the machine.
  *
@@ -215,23 +213,23 @@ void
 master_link_rx(hammer2_iocom_t *iocom)
 {
 	hammer2_msg_t *msg;
+	hammer2_state_t *state;
 	uint32_t cmd;
 
 	while ((iocom->flags & HAMMER2_IOCOMF_EOF) == 0 &&
 	       (msg = hammer2_ioq_read(iocom)) != NULL) {
 		/*
-		 * Switch on the transactional cmd, that is the original
-		 * msg->any.head.cmd that opened the transaction.  The actual
-		 * msg might be different.  The original msg cannot have
-		 * REPLY set by definition (but of course the currenet msg
-		 * might), so we don't bother with case statements for REPLY
-		 * for command sequences we expet to be transactional.
+		 * If the message state has a function established we just
+		 * call the function, otherwise we call the appropriate
+		 * link-level protocol related to the original command and
+		 * let it sort it out.
 		 *
 		 * Non-transactional one-off messages, on the otherhand,
 		 * might have REPLY set.
 		 */
-		if (msg->state) {
-			cmd = msg->state->msg->any.head.cmd;
+		state = msg->state;
+		if (state) {
+			cmd = state->msg->any.head.cmd;
 			fprintf(stderr,
 				"MSGRX persist=%08x cmd=%08x error %d\n",
 				cmd, msg->any.head.cmd, msg->any.head.error);
@@ -241,30 +239,21 @@ master_link_rx(hammer2_iocom_t *iocom)
 				"MSGRX persist=-------- cmd=%08x error %d\n",
 				cmd, msg->any.head.error);
 		}
-
-		switch(cmd & HAMMER2_MSGF_CMDSWMASK) {
-		case HAMMER2_LNK_ERROR:
-			/*
-			 * A non-transactional error is formulated when
-			 * the socket or pipe disconnects.  Ignore it.
-			 */
-			break;
-		case HAMMER2_LNK_SPAN:
-			/*
-			 * Messages related to the LNK_SPAN transaction.
-			 */
-			hammer2_lnk_span(iocom, msg);
-			break;
-		case HAMMER2_DBG_SHELL:
-		case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
-			/*
-			 * Non-transactional DBG messages.
-			 */
-			hammer2_shell_remote(iocom, msg);
-			break;
-		default:
-			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
-			break;
+		if (state && state->func) {
+			state->func(state, msg);
+		} else {
+			switch(cmd & HAMMER2_MSGF_PROTOS) {
+			case HAMMER2_MSG_PROTO_LNK:
+				hammer2_msg_lnk(iocom, msg);
+				break;
+			case HAMMER2_MSG_PROTO_DBG:
+				hammer2_msg_dbg(iocom, msg);
+				break;
+			default:
+				hammer2_msg_reply(iocom, msg,
+						  HAMMER2_MSG_ERR_UNKNOWN);
+				break;
+			}
 		}
 		hammer2_state_cleanuprx(iocom, msg);
 	}
@@ -284,37 +273,4 @@ void
 master_link_tx(hammer2_iocom_t *iocom)
 {
 	hammer2_iocom_flush(iocom);
-}
-
-/*
- * Receive a message which is part of a LNK_SPAN transaction.  Keep in
- * mind that only the original CREATE is utilizing the lnk_span message
- * header.
- *
- * We will get called for CREATE, DELETE, and intermediate states (including
- * errors), and in particular we will get called with an error if the link
- * is lost in the middle of the transaction.
- */
-static
-void
-hammer2_lnk_span(hammer2_iocom_t *iocom __unused, hammer2_msg_t *msg)
-{
-	char *alloc = NULL;
-
-	switch(msg->any.head.cmd & HAMMER2_MSGF_TRANSMASK) {
-	case HAMMER2_LNK_SPAN | HAMMER2_MSGF_CREATE:
-		fprintf(stderr,
-			"LNK_SPAN: %s/%s\n",
-			hammer2_uuid_to_str(&msg->any.lnk_span.pfs_id, &alloc),
-			msg->any.lnk_span.label);
-		free(alloc);
-		break;
-	case HAMMER2_LNK_ERROR | HAMMER2_MSGF_DELETE:
-		fprintf(stderr, "LNK_SPAN: Terminated with error\n");
-		break;
-	default:
-		fprintf(stderr,
-			"LNK_SPAN: Unknown msg %08x\n", msg->any.head.cmd);
-		break;
-	}
 }

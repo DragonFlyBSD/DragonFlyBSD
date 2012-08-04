@@ -89,7 +89,7 @@ cmd_pfs_list(const char *sel_path)
 			printf("%02x          ", pfs.pfs_type);
 			break;
 		}
-		uuid_to_string(&pfs.pfs_id, &pfs_id_str, &status);
+		uuid_to_string(&pfs.pfs_clid, &pfs_id_str, &status);
 		printf("%s ", pfs_id_str);
 		free(pfs_id_str);
 		pfs_id_str = NULL;
@@ -123,9 +123,9 @@ cmd_pfs_create(const char *sel_path, const char *name,
 	snprintf(pfs.name, sizeof(pfs.name), "%s", name);
 	pfs.pfs_type = pfs_type;
 	if (uuid_str) {
-		uuid_from_string(uuid_str, &pfs.pfs_id, &status);
+		uuid_from_string(uuid_str, &pfs.pfs_clid, &status);
 	} else {
-		uuid_create(&pfs.pfs_id, &status);
+		uuid_create(&pfs.pfs_clid, &status);
 	}
 	if (status == uuid_s_ok)
 		uuid_create(&pfs.pfs_fsid, &status);

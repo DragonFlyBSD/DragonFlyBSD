@@ -98,7 +98,7 @@ cmd_shell(const char *hostname)
 	printf("debug: connected\n");
 
 	msg = hammer2_msg_alloc(&iocom, 0, HAMMER2_DBG_SHELL);
-	hammer2_ioq_write(&iocom, msg);
+	hammer2_msg_write(&iocom, msg, NULL, NULL);
 
 	hammer2_iocom_core(&iocom, shell_recv, shell_send, shell_tty);
 	fprintf(stderr, "debug: disconnected\n");
@@ -186,7 +186,7 @@ shell_tty(hammer2_iocom_t *iocom)
 		++len;
 		msg = hammer2_msg_alloc(iocom, len, HAMMER2_DBG_SHELL);
 		bcopy(buf, msg->aux_data, len);
-		hammer2_ioq_write(iocom, msg);
+		hammer2_msg_write(iocom, msg, NULL, NULL);
 	} else {
 		/*
 		 * Set EOF flag without setting any error code for normal
@@ -202,24 +202,32 @@ shell_tty(hammer2_iocom_t *iocom)
  * then finish up by outputting another prompt.
  */
 void
-hammer2_shell_remote(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+hammer2_msg_dbg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 {
-	if (msg->aux_data)
-		msg->aux_data[msg->aux_size - 1] = 0;
-	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
+	switch(msg->any.head.cmd & HAMMER2_MSGF_CMDSWMASK) {
+	case HAMMER2_DBG_SHELL:
+		/*
+		 * This is a command which we must process.
+		 * When we are finished we generate a final reply.
+		 */
+		if (msg->aux_data)
+			msg->aux_data[msg->aux_size - 1] = 0;
+		hammer2_shell_parse(iocom, msg);
+		hammer2_msg_reply(iocom, msg, 0);
+		break;
+	case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
 		/*
 		 * A reply just prints out the string.  No newline is added
 		 * (it is expected to be embedded if desired).
 		 */
 		if (msg->aux_data)
+			msg->aux_data[msg->aux_size - 1] = 0;
+		if (msg->aux_data)
 			write(2, msg->aux_data, strlen(msg->aux_data));
-	} else {
-		/*
-		 * Otherwise this is a command which we must process.
-		 * When we are finished we generate a final reply.
-		 */
-		hammer2_shell_parse(iocom, msg);
-		hammer2_msg_reply(iocom, msg, 0);
+		break;
+	default:
+		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
+		break;
 	}
 }
 
@@ -266,7 +274,7 @@ iocom_printf(hammer2_iocom_t *iocom, uint32_t cmd, const char *ctl, ...)
 					     HAMMER2_MSGF_REPLY);
 	bcopy(buf, rmsg->aux_data, len);
 
-	hammer2_ioq_write(iocom, rmsg);
+	hammer2_msg_write(iocom, rmsg, NULL, NULL);
 }
 
 /************************************************************************
@@ -425,8 +433,8 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
 				  hammer2_pfstype_to_str(media.ipdata.pfs_type));
 			tabprintf(tab, "pfs_inum 0x%016jx\n",
 				  (uintmax_t)media.ipdata.pfs_inum);
-			tabprintf(tab, "pfs_id   %s\n",
-				  hammer2_uuid_to_str(&media.ipdata.pfs_id,
+			tabprintf(tab, "pfs_clid %s\n",
+				  hammer2_uuid_to_str(&media.ipdata.pfs_clid,
 						      &str));
 			tabprintf(tab, "pfs_fsid %s\n",
 				  hammer2_uuid_to_str(&media.ipdata.pfs_fsid,

@@ -445,10 +445,10 @@ struct hammer2_inode_data {
 	/*
 	 * These fields are currently only applicable to PFSROOTs.
 	 *
-	 * NOTE: We can't use {volume_data->fsid, pfs_id} to uniquely
+	 * NOTE: We can't use {volume_data->fsid, pfs_clid} to uniquely
 	 *	 identify an instance of a PFS in the cluster because
 	 *	 a mount may contain more than one copy of the PFS as
-	 *	 a separate node.  {pfs_fsid, pfs_id} must be used for
+	 *	 a separate node.  {pfs_clid, pfs_fsid} must be used for
 	 *	 registration in the cluster.
 	 */
 	uint8_t		target_type;	/* 0084 hardlink target type */
@@ -456,8 +456,8 @@ struct hammer2_inode_data {
 	uint8_t		reserved86;	/* 0086 */
 	uint8_t		pfs_type;	/* 0087 (if PFSROOT) node type */
 	uint64_t	pfs_inum;	/* 0088 (if PFSROOT) inum allocator */
-	uuid_t		pfs_id;		/* 0090 (if PFSROOT) pfs uuid */
-	uuid_t		pfs_fsid;	/* 00A0 (if PFSROOT) unique pfs uuid */
+	uuid_t		pfs_clid;	/* 0090 (if PFSROOT) cluster uuid */
+	uuid_t		pfs_fsid;	/* 00A0 (if PFSROOT) unique uuid */
 
 	/*
 	 * Quotas and cumulative sub-tree counters.
@@ -516,6 +516,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_PFSTYPE_SOFT_SLAVE	6
 #define HAMMER2_PFSTYPE_SOFT_MASTER	7
 #define HAMMER2_PFSTYPE_MASTER		8
+#define HAMMER2_PFSTYPE_MAX		9	/* 0-8 */
 
 /*
  * The allocref structure represents the allocation table.  One 64K block
@@ -623,7 +624,7 @@ struct hammer2_copy_data {
 	uint8_t priority;	/* 07	 priority and round-robin flag */
 	uint8_t remote_pfs_type;/* 08	 probed direct remote PFS type */
 	uint8_t reserved08[23];	/* 09-1F */
-	uuid_t	pfs_id;		/* 20-2F copy target must match this uuid */
+	uuid_t	pfs_clid;	/* 20-2F copy target must match this uuid */
 	uint8_t label[16];	/* 30-3F import/export label */
 	uint8_t path[64];	/* 40-7F target specification string or key */
 };

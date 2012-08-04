@@ -1,3 +1,9 @@
+
+* Kernel-side needs to clean up transaction queues and make appropriate
+  callbacks.
+
+* Userland side needs to do the same for any initiated transactions.
+
 * Nesting problems in the flusher.
 
 * Inefficient vfsync due to thousands of file buffers, one per-vnode.

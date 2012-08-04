@@ -323,7 +323,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		xip = chain->u.ip;
 		pfs->name_key = xip->ip_data.name_key;
 		pfs->pfs_type = xip->ip_data.pfs_type;
-		pfs->pfs_id = xip->ip_data.pfs_id;
+		pfs->pfs_clid = xip->ip_data.pfs_clid;
 		pfs->pfs_fsid = xip->ip_data.pfs_fsid;
 		KKASSERT(xip->ip_data.name_len < sizeof(pfs->name));
 		bcopy(xip->ip_data.filename, pfs->name,
@@ -370,7 +370,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	if (error == 0) {
 		hammer2_chain_modify(hmp, &nip->chain, 0);
 		nip->ip_data.pfs_type = pfs->pfs_type;
-		nip->ip_data.pfs_id = pfs->pfs_id;
+		nip->ip_data.pfs_clid = pfs->pfs_clid;
 		nip->ip_data.pfs_fsid = pfs->pfs_fsid;
 		hammer2_chain_unlock(hmp, &nip->chain);
 	}

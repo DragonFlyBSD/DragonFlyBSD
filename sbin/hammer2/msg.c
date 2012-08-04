@@ -36,7 +36,6 @@
 #include "hammer2.h"
 
 static int hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
-static int hammer2_state_msgtx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 static void hammer2_state_cleanuptx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 
 /*
@@ -77,6 +76,7 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd)
 	RB_INIT(&iocom->statewr_tree);
 	TAILQ_INIT(&iocom->freeq);
 	TAILQ_INIT(&iocom->freeq_aux);
+	TAILQ_INIT(&iocom->addrq);
 	iocom->sock_fd = sock_fd;
 	iocom->alt_fd = alt_fd;
 	iocom->flags = HAMMER2_IOCOMF_RREQ | HAMMER2_IOCOMF_WIDLE;
@@ -160,8 +160,9 @@ hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size, uint32_t cmd)
 	if (hbytes)
 		bzero(&msg->any.head, hbytes);
 	msg->hdr_size = hbytes;
-	msg->any.head.aux_icrc = 0;
 	msg->any.head.cmd = cmd;
+	msg->any.head.aux_descr = 0;
+	msg->any.head.aux_crc = 0;
 
 	return (msg);
 }
@@ -257,7 +258,6 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 	ssize_t n;
 	size_t bytes;
 	size_t nmax;
-	uint16_t xcrc16;
 	uint32_t xcrc32;
 	int error;
 
@@ -322,6 +322,10 @@ again:
 		 * Calculate the header, decrypt data received so far.
 		 * Data will be decrypted in-place.  Partial blocks are
 		 * not immediately decrypted.
+		 *
+		 * WARNING!  The header might be in the wrong endian, we
+		 *	     do not fix it up until we get the entire
+		 *	     extended header.
 		 */
 		hammer2_crypto_decrypt(iocom, ioq);
 		head = (void *)(ioq->buf + ioq->fifo_beg);
@@ -338,23 +342,19 @@ again:
 			break;
 		}
 
-		xcrc32 = hammer2_icrc32((char *)head + HAMMER2_MSGHDR_CRCOFF,
-					HAMMER2_MSGHDR_CRCBYTES);
-		if (head->magic == HAMMER2_MSGHDR_MAGIC_REV) {
-			hammer2_bswap_head(head);
-		}
-		xcrc16 = (uint16_t)xcrc32 ^ (uint16_t)(xcrc32 >> 16);
-		if (xcrc16 != head->icrc1) {
-			ioq->error = HAMMER2_IOQ_ERROR_HCRC;
-			break;
-		}
-
 		/*
 		 * Calculate the full header size and aux data size
 		 */
-		ioq->hbytes = (head->cmd & HAMMER2_MSGF_SIZE) *
-			      HAMMER2_MSG_ALIGN;
-		ioq->abytes = head->aux_bytes * HAMMER2_MSG_ALIGN;
+		if (head->magic == HAMMER2_MSGHDR_MAGIC_REV) {
+			ioq->hbytes = (bswap32(head->cmd) & HAMMER2_MSGF_SIZE) *
+				      HAMMER2_MSG_ALIGN;
+			ioq->abytes = bswap32(head->aux_bytes) *
+				      HAMMER2_MSG_ALIGN;
+		} else {
+			ioq->hbytes = (head->cmd & HAMMER2_MSGF_SIZE) *
+				      HAMMER2_MSG_ALIGN;
+			ioq->abytes = head->aux_bytes * HAMMER2_MSG_ALIGN;
+		}
 		if (ioq->hbytes < sizeof(msg->any.head) ||
 		    ioq->hbytes > sizeof(msg->any) ||
 		    ioq->abytes > HAMMER2_MSGAUX_MAX) {
@@ -435,22 +435,28 @@ again:
 
 		/*
 		 * Calculate the extended header, decrypt data received
-		 * so far.
+		 * so far.  Handle endian-conversion for the entire extended
+		 * header.
 		 */
 		hammer2_crypto_decrypt(iocom, ioq);
 		head = (void *)(ioq->buf + ioq->fifo_beg);
 
 		/*
-		 * Check the crc on the extended header
+		 * Check the CRC.
 		 */
-		if (ioq->hbytes > sizeof(hammer2_msg_hdr_t)) {
-			xcrc32 = hammer2_icrc32(head + 1,
-						ioq->hbytes - sizeof(*head));
-			xcrc16 = (uint16_t)xcrc32 ^ (uint16_t)(xcrc32 >> 16);
-			if (head->icrc2 != xcrc16) {
-				ioq->error = HAMMER2_IOQ_ERROR_XCRC;
-				break;
-			}
+		if (head->magic == HAMMER2_MSGHDR_MAGIC_REV)
+			xcrc32 = bswap32(head->hdr_crc);
+		else
+			xcrc32 = head->hdr_crc;
+		head->hdr_crc = 0;
+		if (hammer2_icrc32(head, ioq->hbytes) != xcrc32) {
+			ioq->error = HAMMER2_IOQ_ERROR_XCRC;
+			break;
+		}
+		head->hdr_crc = xcrc32;
+
+		if (head->magic == HAMMER2_MSGHDR_MAGIC_REV) {
+			hammer2_bswap_head(head);
 		}
 
 		/*
@@ -548,10 +554,10 @@ again:
 		hammer2_crypto_decrypt_aux(iocom, ioq, msg, ioq->already);
 
 		/*
-		 * Check aux_icrc, then we are done.
+		 * Check aux_crc, then we are done.
 		 */
 		xcrc32 = hammer2_icrc32(msg->aux_data, msg->aux_size);
-		if (xcrc32 != msg->any.head.aux_icrc) {
+		if (xcrc32 != msg->any.head.aux_crc) {
 			ioq->error = HAMMER2_IOQ_ERROR_ACRC;
 			break;
 		}
@@ -644,8 +650,7 @@ again:
 			 */
 			state->txcmd |= HAMMER2_MSGF_DELETE;
 			msg->state = state;
-			msg->any.head.source = state->source;
-			msg->any.head.target = state->target;
+			msg->any.head.spanid = state->spanid;
 			msg->any.head.cmd |= HAMMER2_MSGF_ABORT |
 					     HAMMER2_MSGF_DELETE;
 		} else {
@@ -694,36 +699,20 @@ again:
 
 /*
  * Calculate the header and data crc's and write a low-level message to
- * the connection.  If aux_icrc is non-zero the aux_data crc is already
+ * the connection.  If aux_crc is non-zero the aux_data crc is already
  * assumed to have been set.
  *
  * A non-NULL msg is added to the queue but not necessarily flushed.
  * Calling this function with msg == NULL will get a flush going.
  */
-void
+static void
 hammer2_ioq_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 {
 	hammer2_ioq_t *ioq = &iocom->ioq_tx;
-	uint16_t xcrc16;
 	uint32_t xcrc32;
 	int hbytes;
-	int error;
 
 	assert(msg);
-
-	/*
-	 * Process transactional state.
-	 */
-	if (ioq->error == 0) {
-		error = hammer2_state_msgtx(iocom, msg);
-		if (error) {
-			if (error == HAMMER2_IOQ_ERROR_EALREADY) {
-				hammer2_msg_free(iocom, msg);
-			} else {
-				ioq->error = error;
-			}
-		}
-	}
 
 	/*
 	 * Process terminal connection errors.
@@ -747,39 +736,22 @@ hammer2_ioq_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		srandomdev();
 
 	/*
-	 * Calculate aux_icrc if 0, calculate icrc2, and finally
-	 * calculate icrc1.
+	 * Calculate aux_crc if 0, then calculate hdr_crc.
 	 */
-	if (msg->aux_size && msg->any.head.aux_icrc == 0) {
+	if (msg->aux_size && msg->any.head.aux_crc == 0) {
 		assert((msg->aux_size & HAMMER2_MSG_ALIGNMASK) == 0);
 		xcrc32 = hammer2_icrc32(msg->aux_data, msg->aux_size);
-		msg->any.head.aux_icrc = xcrc32;
+		msg->any.head.aux_crc = xcrc32;
 	}
 	msg->any.head.aux_bytes = msg->aux_size / HAMMER2_MSG_ALIGN;
 	assert((msg->aux_size & HAMMER2_MSG_ALIGNMASK) == 0);
 
-	if ((msg->any.head.cmd & HAMMER2_MSGF_SIZE) >
-	    sizeof(msg->any.head) / HAMMER2_MSG_ALIGN) {
-		hbytes = (msg->any.head.cmd & HAMMER2_MSGF_SIZE) *
-			HAMMER2_MSG_ALIGN;
-		hbytes -= sizeof(msg->any.head);
-		xcrc32 = hammer2_icrc32(&msg->any.head + 1, hbytes);
-		xcrc16 = (uint16_t)xcrc32 ^ (uint16_t)(xcrc32 >> 16);
-		msg->any.head.icrc2 = xcrc16;
-	} else {
-		msg->any.head.icrc2 = 0;
-	}
-	xcrc32 = hammer2_icrc32(msg->any.buf + HAMMER2_MSGHDR_CRCOFF,
-				HAMMER2_MSGHDR_CRCBYTES);
-	xcrc16 = (uint16_t)xcrc32 ^ (uint16_t)(xcrc32 >> 16);
-	msg->any.head.icrc1 = xcrc16;
+	hbytes = (msg->any.head.cmd & HAMMER2_MSGF_SIZE) * HAMMER2_MSG_ALIGN;
+	msg->any.head.hdr_crc = 0;
+	msg->any.head.hdr_crc = hammer2_icrc32(&msg->any.head, hbytes);
 
 	/*
-	 * XXX Encrypt the message
-	 */
-
-	/*
-	 * Enqueue the message.
+	 * Enqueue the message (the flush codes handles stream encryption).
 	 */
 	TAILQ_INSERT_TAIL(&ioq->msgq, msg, qentry);
 	++ioq->msgcount;
@@ -935,48 +907,308 @@ hammer2_iocom_drain(hammer2_iocom_t *iocom)
 }
 
 /*
- * This is a shortcut to formulate a reply to msg with a simple error code.
- * It can reply to transaction or one-way messages, or terminate one side
- * of a stream.  A HAMMER2_LNK_ERROR command code is utilized to encode
- * the error code (which can be 0).
+ * Write a message to an iocom, with additional state processing.
+ *
+ * The iocom lock must be held by the caller. XXX
+ */
+void
+hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
+		  void (*func)(hammer2_state_t *, hammer2_msg_t *),
+		  void *data)
+{
+	hammer2_state_t *state;
+
+	/*
+	 * Handle state processing, create state if necessary.
+	 */
+	if ((state = msg->state) != NULL) {
+		/*
+		 * Existing transaction (could be reply).  It is also
+		 * possible for this to be the first reply (CREATE is set),
+		 * in which case we populate state->txcmd.
+		 */
+		msg->any.head.msgid = state->msgid;
+		msg->any.head.spanid = state->spanid;
+		if (func) {
+			state->func = func;
+			state->any.any = data;
+		}
+		if (msg->any.head.cmd & HAMMER2_MSGF_CREATE)
+			state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
+		fprintf(stderr, "MSGWRITE IN REPLY msgid %016jx\n",
+			(intmax_t)msg->any.head.msgid);
+	} else if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
+		fprintf(stderr, "MSGWRITE NEW MSG\n");
+		/*
+		 * No existing state and CREATE is set, create new
+		 * state for outgoing command.  This can't happen if
+		 * REPLY is set as the state would already exist for
+		 * a transaction reply.
+		 */
+		assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
+
+		state = malloc(sizeof(*state));
+		bzero(state, sizeof(*state));
+		state->iocom = iocom;
+		state->flags = HAMMER2_STATE_DYNAMIC;
+		state->msg = msg;
+		state->msgid = (uint64_t)(uintptr_t)state;
+		state->spanid = msg->any.head.spanid;
+		state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
+		state->func = func;
+		state->any.any = data;
+		RB_INSERT(hammer2_state_tree, &iocom->statewr_tree, state);
+		state->flags |= HAMMER2_STATE_INSERTED;
+		msg->state = state;
+		msg->any.head.msgid = state->msgid;
+		/* spanid set by caller */
+	} else {
+		fprintf(stderr, "MSGWRITE ONE-OFF\n");
+		msg->any.head.msgid = 0;
+		/* spanid set by caller */
+	}
+
+	/*
+	 * Queue it for output
+	 */
+	hammer2_ioq_write(iocom, msg);
+}
+
+#if 0
+
+	case HAMMER2_MSGF_DELETE:
+		/*
+		 * Sent ABORT+DELETE in case where msgid has already
+		 * been fully closed, ignore the message.
+		 */
+		if (state == NULL) {
+			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+				error = HAMMER2_IOQ_ERROR_EALREADY;
+			} else {
+				iocom_printf(iocom, msg->any.head.cmd,
+					     "hammer2_state_msgtx: "
+					     "no state match for DELETE\n");
+				error = HAMMER2_IOQ_ERROR_TRANS;
+			}
+			break;
+		}
+
+		/*
+		 * Sent ABORT+DELETE in case where msgid has
+		 * already been reused for an unrelated message,
+		 * ignore the message.
+		 */
+		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
+			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+				error = HAMMER2_IOQ_ERROR_EALREADY;
+			} else {
+				iocom_printf(iocom, msg->any.head.cmd,
+					     "hammer2_state_msgtx: "
+					     "state reused for DELETE\n");
+				error = HAMMER2_IOQ_ERROR_TRANS;
+			}
+			break;
+		}
+		error = 0;
+
+
+	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_DELETE:
+		/*
+		 * When transmitting a reply with DELETE set the original
+		 * persistent state message should already exist.
+		 *
+		 * This is very similar to the REPLY|CREATE|* case except
+		 * txcmd is already stored, so we just add the DELETE flag.
+		 *
+		 * Sent REPLY+ABORT+DELETE in case where msgid has
+		 * already been fully closed, ignore the message.
+		 */
+		if (state == NULL) {
+			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+				error = HAMMER2_IOQ_ERROR_EALREADY;
+			} else {
+				iocom_printf(iocom, msg->any.head.cmd,
+					     "hammer2_state_msgtx: "
+					     "no state match for "
+					     "REPLY | DELETE\n");
+				error = HAMMER2_IOQ_ERROR_TRANS;
+			}
+			break;
+		}
+
+		/*
+		 * Sent REPLY+ABORT+DELETE in case where msgid has already
+		 * been reused for an unrelated message, ignore the message.
+		 */
+		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
+			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+				error = HAMMER2_IOQ_ERROR_EALREADY;
+			} else {
+				iocom_printf(iocom, msg->any.head.cmd,
+					     "hammer2_state_msgtx: "
+					     "state reused for "
+					     "REPLY | DELETE\n");
+				error = HAMMER2_IOQ_ERROR_TRANS;
+			}
+			break;
+		}
+		error = 0;
+		break;
+	case HAMMER2_MSGF_REPLY:
+		/*
+		 * Check for mid-stream ABORT reply sent.
+		 *
+		 * One-off REPLY messages are allowed for e.g. status updates.
+		 */
+		if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+			if (state == NULL ||
+			    (state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
+				error = HAMMER2_IOQ_ERROR_EALREADY;
+				break;
+			}
+		}
+		error = 0;
+		break;
+	}
+	/*lockmgr(&pmp->msglk, LK_RELEASE);*/
+	return (error);
+#endif
+
+
+/*
+ * This is a shortcut to formulate a reply to msg with a simple error code,
+ * It can reply to and terminate a transaction, or it can reply to a one-way
+ * messages.  A HAMMER2_LNK_ERROR command code is utilized to encode
+ * the error code (which can be 0).  Not all transactions are terminated
+ * with HAMMER2_LNK_ERROR status (the low level only cares about the
+ * MSGF_DELETE flag), but most are.
  *
  * Replies to one-way messages are a bit of an oxymoron but the feature
  * is used by the debug (DBG) protocol.
  *
- * The reply contains no data.
+ * The reply contains no extended data.
  */
 void
-hammer2_msg_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint16_t error)
+hammer2_msg_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
 {
+	hammer2_state_t *state = msg->state;
 	hammer2_msg_t *nmsg;
 	uint32_t cmd;
 
+
+	/*
+	 * Reply with a simple error code and terminate the transaction.
+	 */
 	cmd = HAMMER2_LNK_ERROR;
-	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
-		/*
-		 * Reply to received reply, reply direction uses txcmd.
-		 * txcmd will be updated by hammer2_ioq_write().
-		 */
-		if (msg->state) {
-			if ((msg->state->rxcmd & HAMMER2_MSGF_CREATE) == 0)
-				cmd |= HAMMER2_MSGF_CREATE;
-			cmd |= HAMMER2_MSGF_DELETE;
-		}
+
+	/*
+	 * Check if our direction has even been initiated yet, set CREATE.
+	 *
+	 * Check what direction this is (command or reply direction).  Note
+	 * that txcmd might not have been initiated yet.
+	 *
+	 * If our direction has already been closed we just return without
+	 * doing anything.
+	 */
+	if (state) {
+		if (state->txcmd & HAMMER2_MSGF_DELETE)
+			return;
+		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
+			cmd |= HAMMER2_MSGF_CREATE;
+		if ((state->rxcmd & HAMMER2_MSGF_REPLY) == 0)
+			cmd |= HAMMER2_MSGF_REPLY;
+		cmd |= HAMMER2_MSGF_DELETE;
 	} else {
-		/*
-		 * Reply to received command, reply direction uses rxcmd.
-		 * txcmd will be updated by hammer2_ioq_write().
-		 */
-		cmd |= HAMMER2_MSGF_REPLY;
-		if (msg->state) {
-			if ((msg->state->rxcmd & HAMMER2_MSGF_CREATE) == 0)
-				cmd |= HAMMER2_MSGF_CREATE;
-			cmd |= HAMMER2_MSGF_DELETE;
-		}
+		if ((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0)
+			cmd |= HAMMER2_MSGF_REPLY;
 	}
+
 	nmsg = hammer2_msg_alloc(iocom, 0, cmd);
 	nmsg->any.head.error = error;
-	hammer2_ioq_write(iocom, nmsg);
+	nmsg->state = msg->state;
+	hammer2_msg_write(iocom, nmsg, NULL, 0);
+}
+
+/*
+ * Similar to hammer2_msg_reply() but leave the transaction open.  That is,
+ * we are generating a streaming reply or an intermediate acknowledgement
+ * of some sort as part of the higher level protocol, with more to come
+ * later.
+ */
+void
+hammer2_msg_result(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
+{
+	hammer2_state_t *state = msg->state;
+	hammer2_msg_t *nmsg;
+	uint32_t cmd;
+
+
+	/*
+	 * Reply with a simple error code and terminate the transaction.
+	 */
+	cmd = HAMMER2_LNK_ERROR;
+
+	/*
+	 * Check if our direction has even been initiated yet, set CREATE.
+	 *
+	 * Check what direction this is (command or reply direction).  Note
+	 * that txcmd might not have been initiated yet.
+	 *
+	 * If our direction has already been closed we just return without
+	 * doing anything.
+	 */
+	if (state) {
+		if (state->txcmd & HAMMER2_MSGF_DELETE)
+			return;
+		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
+			cmd |= HAMMER2_MSGF_CREATE;
+		if ((state->rxcmd & HAMMER2_MSGF_REPLY) == 0)
+			cmd |= HAMMER2_MSGF_REPLY;
+		/* continuing transaction, do not set MSGF_DELETE */
+	} else {
+		if ((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0)
+			cmd |= HAMMER2_MSGF_REPLY;
+	}
+
+	nmsg = hammer2_msg_alloc(iocom, 0, cmd);
+	nmsg->any.head.error = error;
+	nmsg->state = state;
+	hammer2_msg_write(iocom, nmsg, NULL, 0);
+}
+
+/*
+ * Terminate a transaction given a state structure by issuing a DELETE.
+ */
+void
+hammer2_state_reply(hammer2_state_t *state, uint32_t error)
+{
+	hammer2_msg_t *nmsg;
+	uint32_t cmd = HAMMER2_LNK_ERROR | HAMMER2_MSGF_DELETE;
+
+	/*
+	 * Nothing to do if we already transmitted a delete
+	 */
+	if (state->txcmd & HAMMER2_MSGF_DELETE)
+		return;
+
+	/*
+	 * We must also set CREATE if this is our first response to a
+	 * remote command.
+	 */
+	if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
+		cmd |= HAMMER2_MSGF_CREATE;
+
+	/*
+	 * Set REPLY if the other end initiated the command.  Otherwise
+	 * we are the command direction.
+	 */
+	if ((state->rxcmd & HAMMER2_MSGF_REPLY) == 0)
+		cmd |= HAMMER2_MSGF_REPLY;
+
+	nmsg = hammer2_msg_alloc(state->iocom, 0, cmd);
+	nmsg->any.head.error = error;
+	nmsg->state = state;
+	hammer2_msg_write(state->iocom, nmsg, NULL, 0);
 }
 
 /************************************************************************
@@ -1070,12 +1302,14 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 	/*lockmgr(&pmp->msglk, LK_EXCLUSIVE);*/
 
 	dummy.msgid = msg->any.head.msgid;
-	dummy.source = msg->any.head.source;
-	dummy.target = msg->any.head.target;
+	dummy.spanid = msg->any.head.spanid;
+#if 0
 	iocom_printf(iocom, msg->any.head.cmd,
-		     "received msg %08x msgid %u source=%u target=%u\n",
-		      msg->any.head.cmd, msg->any.head.msgid,
-		      msg->any.head.source, msg->any.head.target);
+		     "received msg %08x msgid %jx spanid=%jx\n",
+		      msg->any.head.cmd,
+		      (intmax_t)msg->any.head.msgid,
+		      (intmax_t)msg->any.head.spanid);
+#endif
 	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
 		state = RB_FIND(hammer2_state_tree,
 				&iocom->statewr_tree, &dummy);
@@ -1120,6 +1354,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		state->rxcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
 		RB_INSERT(hammer2_state_tree, &iocom->staterd_tree, state);
 		state->flags |= HAMMER2_STATE_INSERTED;
+		state->msgid = msg->any.head.msgid;
+		state->spanid = msg->any.head.spanid;
 		msg->state = state;
 		error = 0;
 		break;
@@ -1288,210 +1524,6 @@ hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 	}
 }
 
-/*
- * Process state tracking for a message prior to transmission.
- *
- * Called with msglk held and the msg dequeued.
- *
- * One-off messages are usually with dummy state and msg->state may be NULL
- * in this situation.
- *
- * New transactions (when CREATE is set) will insert the state.
- *
- * May request that caller discard the message by setting *discardp to 1.
- * A NULL state may be returned in this case.
- */
-static int
-hammer2_state_msgtx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
-{
-	hammer2_state_t *state;
-	int error;
-
-	/*
-	 * Lock RB tree.  If persistent state is present it will have already
-	 * been assigned to msg.
-	 */
-	/*lockmgr(&pmp->msglk, LK_EXCLUSIVE);*/
-	state = msg->state;
-
-	/*
-	 * Short-cut one-off or mid-stream messages (state may be NULL).
-	 */
-	if ((msg->any.head.cmd & (HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE |
-				  HAMMER2_MSGF_ABORT)) == 0) {
-		/*lockmgr(&pmp->msglk, LK_RELEASE);*/
-		return(0);
-	}
-
-
-	/*
-	 * Switch on CREATE, DELETE, REPLY, and also handle ABORT from
-	 * inside the case statements.
-	 */
-	switch(msg->any.head.cmd & (HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE |
-				    HAMMER2_MSGF_REPLY)) {
-	case HAMMER2_MSGF_CREATE:
-	case HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE:
-		/*
-		 * Insert the new persistent message state and mark
-		 * half-closed if DELETE is set.  Since this is a new
-		 * message it isn't possible to transition into the fully
-		 * closed state here.
-		 *
-		 * XXX state must be assigned and inserted by
-		 *     hammer2_msg_write().  txcmd is assigned by us
-		 *     on-transmit.
-		 */
-		assert(state != NULL);
-#if 0
-		if (state == NULL) {
-			state = pmp->freerd_state;
-			pmp->freerd_state = NULL;
-			msg->state = state;
-			state->msg = msg;
-			state->msgid = msg->any.head.msgid;
-			state->source = msg->any.head.source;
-			state->target = msg->any.head.target;
-		}
-		assert((state->flags & HAMMER2_STATE_INSERTED) == 0);
-		if (RB_INSERT(hammer2_state_tree, &pmp->staterd_tree, state)) {
-			iocom_printf(iocom, msg->any.head.cmd,
-				    "hammer2_state_msgtx: "
-				    "duplicate transaction\n");
-			error = HAMMER2_IOQ_ERROR_TRANS;
-			break;
-		}
-		state->flags |= HAMMER2_STATE_INSERTED;
-#endif
-		state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
-		error = 0;
-		break;
-	case HAMMER2_MSGF_DELETE:
-		/*
-		 * Sent ABORT+DELETE in case where msgid has already
-		 * been fully closed, ignore the message.
-		 */
-		if (state == NULL) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgtx: "
-					     "no state match for DELETE\n");
-				error = HAMMER2_IOQ_ERROR_TRANS;
-			}
-			break;
-		}
-
-		/*
-		 * Sent ABORT+DELETE in case where msgid has
-		 * already been reused for an unrelated message,
-		 * ignore the message.
-		 */
-		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgtx: "
-					     "state reused for DELETE\n");
-				error = HAMMER2_IOQ_ERROR_TRANS;
-			}
-			break;
-		}
-		error = 0;
-		break;
-	default:
-		/*
-		 * Check for mid-stream ABORT command sent
-		 */
-		if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-			if (state == NULL ||
-			    (state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-				break;
-			}
-		}
-		error = 0;
-		break;
-	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_CREATE:
-	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE:
-		/*
-		 * When transmitting a reply with CREATE set the original
-		 * persistent state message should already exist.
-		 */
-		if (state == NULL) {
-			iocom_printf(iocom, msg->any.head.cmd,
-				     "hammer2_state_msgtx: no state match "
-				     "for REPLY | CREATE\n");
-			error = HAMMER2_IOQ_ERROR_TRANS;
-			break;
-		}
-		state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
-		error = 0;
-		break;
-	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_DELETE:
-		/*
-		 * When transmitting a reply with DELETE set the original
-		 * persistent state message should already exist.
-		 *
-		 * This is very similar to the REPLY|CREATE|* case except
-		 * txcmd is already stored, so we just add the DELETE flag.
-		 *
-		 * Sent REPLY+ABORT+DELETE in case where msgid has
-		 * already been fully closed, ignore the message.
-		 */
-		if (state == NULL) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgtx: "
-					     "no state match for "
-					     "REPLY | DELETE\n");
-				error = HAMMER2_IOQ_ERROR_TRANS;
-			}
-			break;
-		}
-
-		/*
-		 * Sent REPLY+ABORT+DELETE in case where msgid has already
-		 * been reused for an unrelated message, ignore the message.
-		 */
-		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgtx: "
-					     "state reused for "
-					     "REPLY | DELETE\n");
-				error = HAMMER2_IOQ_ERROR_TRANS;
-			}
-			break;
-		}
-		error = 0;
-		break;
-	case HAMMER2_MSGF_REPLY:
-		/*
-		 * Check for mid-stream ABORT reply sent.
-		 *
-		 * One-off REPLY messages are allowed for e.g. status updates.
-		 */
-		if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-			if (state == NULL ||
-			    (state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-				break;
-			}
-		}
-		error = 0;
-		break;
-	}
-	/*lockmgr(&pmp->msglk, LK_RELEASE);*/
-	return (error);
-}
-
 static void
 hammer2_state_cleanuptx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 {
@@ -1545,13 +1577,9 @@ hammer2_state_free(hammer2_state_t *state)
 int
 hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
 {
-	if (state1->source < state2->source)
+	if (state1->spanid < state2->spanid)
 		return(-1);
-	if (state1->source > state2->source)
-		return(1);
-	if (state1->target < state2->target)
-		return(-1);
-	if (state1->target > state2->target)
+	if (state1->spanid > state2->spanid)
 		return(1);
 	if (state1->msgid < state2->msgid)
 		return(-1);

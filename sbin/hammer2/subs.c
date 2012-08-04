@@ -147,17 +147,20 @@ void
 hammer2_bswap_head(hammer2_msg_hdr_t *head)
 {
 	head->magic	= bswap16(head->magic);
-	head->icrc1	= bswap16(head->icrc1);
+	head->reserved02 = bswap16(head->reserved02);
 	head->salt	= bswap32(head->salt);
-	head->source	= bswap16(head->source);
-	head->target	= bswap16(head->target);
-	head->msgid	= bswap32(head->msgid);
+
+	head->msgid	= bswap64(head->msgid);
+	head->spanid	= bswap64(head->spanid);
+
 	head->cmd	= bswap32(head->cmd);
-	head->error	= bswap16(head->error);
-	head->resv05	= bswap16(head->resv05);
-	head->icrc2	= bswap16(head->icrc2);
-	head->aux_bytes	= bswap16(head->aux_bytes);
-	head->aux_icrc	= bswap32(head->aux_icrc);
+	head->aux_crc	= bswap32(head->aux_crc);
+	head->aux_bytes	= bswap32(head->aux_bytes);
+	head->error	= bswap32(head->error);
+	head->aux_descr = bswap64(head->aux_descr);
+	head->reserved30= bswap64(head->reserved30);
+	head->reserved38= bswap32(head->reserved38);
+	head->hdr_crc	= bswap32(head->hdr_crc);
 }
 
 const char *
@@ -264,4 +267,24 @@ sizetostr(hammer2_off_t size)
 			(double)size / (1024 * 1024 * 1024LL * 1024LL));
 	}
 	return(buf);
+}
+
+/*
+ * Allocation wrappers give us shims for possible future use
+ */
+void *
+hammer2_alloc(size_t bytes)
+{
+	void *ptr;
+
+	ptr = malloc(bytes);
+	assert(ptr);
+	bzero(ptr, bytes);
+	return (ptr);
+}
+
+void
+hammer2_free(void *ptr)
+{
+	free(ptr);
 }

@@ -108,28 +108,52 @@ typedef struct hammer2_handshake hammer2_handshake_t;
  */
 struct hammer2_iocom;
 struct hammer2_persist;
-struct hammre2_state;
-struct hammre2_msg;
+struct hammer2_state;
+struct hammer2_address;
+struct hammer2_msg;
 
+TAILQ_HEAD(hammer2_state_queue, hammer2_state);
 TAILQ_HEAD(hammer2_msg_queue, hammer2_msg);
+TAILQ_HEAD(hammer2_address_queue, hammer2_address);
 RB_HEAD(hammer2_state_tree, hammer2_state);
+
+struct h2span_link;
+struct h2span_connect;
 
 struct hammer2_state {
 	RB_ENTRY(hammer2_state) rbnode;		/* indexed by msgid */
+	TAILQ_ENTRY(hammer2_state) source_entry;/* if routed */
+	TAILQ_ENTRY(hammer2_state) target_entry;/* if routed */
 	struct hammer2_iocom *iocom;
+	struct hammer2_address_t *source_addr;	/* if routed */
+	struct hammer2_address_t *target_addr;	/* if routed */
 	uint32_t	txcmd;			/* mostly for CMDF flags */
 	uint32_t	rxcmd;			/* mostly for CMDF flags */
-	uint16_t	source;			/* command originator */
-	uint16_t	target;			/* reply originator */
-	uint32_t	msgid;			/* {source,target,msgid} uniq */
+	uint64_t	spanid;			/* routing id */
+	uint64_t	msgid;			/* {spanid,msgid} uniq */
 	int		flags;
 	int		error;
 	struct hammer2_msg *msg;
-	int (*func)(struct hammer2_iocom *, struct hammer2_msg *);
+	void (*func)(struct hammer2_state *, struct hammer2_msg *);
+	union {
+		void *any;
+		struct h2span_link *link;
+		struct h2span_connect *conn;
+		struct h2span_relay *relay;
+	} any;
+};
+
+struct hammer2_address {
+	TAILQ_ENTRY(hammer2_address) entry;	/* on-iocom */
+	struct hammer2_iocom *iocom;		/* related iocom */
+	struct hammer2_state_queue sourceq;	/* states on source queue */
+	struct hammer2_state_queue targetq;	/* states on target queue */
+	uint16_t	id;
 };
 
 #define HAMMER2_STATE_INSERTED	0x0001
 #define HAMMER2_STATE_DYNAMIC	0x0002
+#define HAMMER2_STATE_NODEID	0x0004		/* manages a node id */
 
 struct hammer2_msg {
 	TAILQ_ENTRY(hammer2_msg) qentry;
@@ -141,6 +165,7 @@ struct hammer2_msg {
 };
 
 typedef struct hammer2_state hammer2_state_t;
+typedef struct hammer2_address hammer2_address_t;
 typedef struct hammer2_msg hammer2_msg_t;
 typedef struct hammer2_msg_queue hammer2_msg_queue_t;
 
@@ -203,6 +228,7 @@ struct hammer2_iocom {
 	hammer2_ioq_t	ioq_tx;
 	hammer2_msg_queue_t freeq;		/* free msgs hdr only */
 	hammer2_msg_queue_t freeq_aux;		/* free msgs w/aux_data */
+	struct hammer2_address_queue  addrq;	/* source/target addrs */
 	void	(*recvmsg_callback)(struct hammer2_iocom *);
 	void	(*sendmsg_callback)(struct hammer2_iocom *);
 	void	(*altmsg_callback)(struct hammer2_iocom *);

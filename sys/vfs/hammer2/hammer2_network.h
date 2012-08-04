@@ -43,22 +43,65 @@
  * Mesh network protocol structures.
  *
  * The mesh is constructed from point-to-point streaming links with varying
- * levels of interconnectedness, forming a graph.  When a link is established
- * link id #0 is reserved for link-level communications.  This link is used
- * for authentication, registration, ping, further link id negotiations,
- * spanning tree, and so on.
+ * levels of interconnectedness, forming a graph.  The spanning tree protocol
+ * running on each node transmits a LNK_SPAN transactional message to the
+ * other end.  The protocol collects LNK_SPAN messages from all sources,
+ * aggregates them using a shortest-weighted-path algorithm, and transmits
+ * them over each link as well, creating a multplication within the topology.
  *
- * The spanning tree forms a weighted shortest-path-first graph amongst
- * those nodes with sufficient administrative rights to relay between
- * registrations.  Each link maintains a full reachability set, aggregates
- * it, and retransmits via the shortest path.  However, leaf nodes (even leaf
- * nodes with multiple connections) can opt not to be part of the spanning
- * tree and typically (due to administrative rights) their registrations
- * are not reported to other leafs.
+ * Any node in the graph may transmit a message to any other node by using
+ * the msgid of the LNK_SPAN open transaction as the message's 'linkid'.
+ * This identifies both sides so there is no 'source' and 'target' per-say.
+ *
+ * Open transactions are recorded by the source and the target, but not by
+ * intermediate nodes in the route.  Streaming protocols are used.  If a
+ * span element is lost its transaction will be aborted automatically (even
+ * if other routes to the same target are available), and any related
+ * messages will be aborted.  If the span element was chosen for aggregation
+ * this will propagate through the entire topology and thus ultimately reach
+ * the target which used the aggregated span element, but does not
+ * necessarily effect all paths in the topology.
+ *
+ * When a link failure occurs all SPANs related to that link are
+ * transactionally closed.  The SPANs are not deleted until closed in
+ * both directions, thus the spanid serves as a placeholder allowing all
+ * in-transit messages being routed over that spanid to be properly thrown
+ * out.  Once completely closed the spanid can be reused.
+ *
+ * NOTE: Multiple spans for the same physical {fsid,pfs_fsid} can be
+ *	 forwarded, allowing concurrency within the topology.
+ *
+ * NOTE: It is important that messages in a lost route be aborted because
+ *	 the messaging protocol expects serialization over any given route.
+ *	 Only propagated spans are forwarded as spans to other nodes, so any
+ *	 given open span transaction will represent a specific path.
+ *
+ *	 If a portion of the path in the middle of the topology is lost it
+ *	 will propagate in both directions all the way to the ends that used
+ *	 it.  Intermediate route nodes DO NOT silently re-route messages to
+ *	 another span.  Messages in-flight will meet the updating SPAN and
+ *	 simply be discarded by intermediate nodes.  Ultimately the updating
+ *	 SPAN reaches all end-points and auto-aborts the open transaction.
+ *
+ *	 If another path is available the transaction can be instantly
+ *	 retried.
+ *
+ * NOTE: It is possible to route messages virtually using the msgid of any
+ *	 open transaction instead of the msgid of a SPAN transaction, but
+ *	 not recommended and not currently coded.
+ *
+ * NOTE: Both the msgid and the spanid are 64-bit fields and may be populated
+ *	 with actual memory pointers (which simplifies the end-points).
+ *	 However, all such identifiers must be indexed as appropriate by the
+ *	 nodes and verified as being valid before any memory dereference
+ *	 occurs, for obvious reasons.
  *
  * All message responses follow the SAME PATH that the original message
  * followed, but in reverse.  This is an absolute requirement since messages
- * expecting replies record persistent state at each hop.
+ * expecting replies record persistent state at each hop.  Sequencing must
+ * be preserved.
+ *
+ *			MESSAGE TRANSACTIONAL STATES
  *
  * Message state is handled by the CREATE, DELETE, REPLY, and ABORT
  * flags.  Message state is typically recorded at the end points and
@@ -98,91 +141,71 @@
  * fully closed state.  ABORT|DELETE messages which race the fully closed
  * state are expected to be discarded by the other end.
  *
- *
- *			NEGOTIATION OF {source} AND {target}
- *
- * In this discussion 'originator' describes the original sender of a message
- * and not the relays inbetween, while 'sender' describes the last relay.
- * The two mean the same thing only when the originator IS the last relay.
- *
- * The {source} field is sender-localized.  The sender assigns this field
- * based on which connection the message originally came from.  The initial
- * message as sent by the originator sets source=0.  This also means that a
- * leaf connection will always send messages with source=0.
- *
- * The {source} field must be re-localized at each hop, since messages
- * coming from multiple connections to a node will use conflicting
- * {source} values.  This can lead to linkid exhaustion which is discussed
- * a few paragraphs down.
- *
- * The {target} field is sender-allocated.  Messages sent to {target} are
- * preceeded by a FORGE message to {target} which associates a registration
- * with {target}, or UNFORGE to delete the associtation.
- *
- * The msgid field is 32 bits (remember some messages have long-lived
- * persistent state so this is important!).  One-way messages always use
- * msgid=0.
- *
- *				LINKID EXHAUSTION
- *
- * Because {source} must be re-localized at each hop it is possible to run
- * out of link identifiers.  At the same time we want to allow millions of
- * client/leaf connections, and 'millions' is a lot bigger than 65535.
- *
- * We also have a problem with the persistent message state... If a single
- * client's vnode cache has a million vnodes that can represent a million
- * persistent cache states.  Multiply by a million clients and ... oops!
- *
- * To solve these problems leafs connect into protocol-aggregators rather
- * than directly to the cluster.  The linkid and core message protocols only
- * occur within the cluster and not by the leafs.  A leaf can still connect
- * to multiple aggregators for redundancy if it desires but may have to
- * pick and choose which inodes go where since acquiring a cache state lock
- * over one connection will cause conflicts to be invalidated on the other.
- * In otherwords, there are limitations to this approach.
- *
- * A protocol aggregator takes any number of connections and aggregates
- * the operations down to a single linkid.  For example, this means that
- * the protocol aggregator is responsible for maintaining all the cache
- * state and performing crunches to reduce the overall amount of state
- * down to something the cluster core can handle.
- *
  * --
  *
- * All message headers are 32-byte aligned and sized (all command and
- * response structures must be 32-byte aligned), and all transports must
- * support message headers up to HAMMER2_MSGHDR_MAX.  The msg structure
- * can handle up to 8160 bytes but to keep things fairly clean we limit
- * message headers to 2048 bytes.
+ * All base and extended message headers are 64-byte aligned, and all
+ * transports must support extended message headers up to HAMMER2_MSGHDR_MAX.
+ * Currently we allow extended message headers up to 2048 bytes.  Note
+ * that the extended header size is encoded in the 'cmd' field of the header.
  *
- * Any in-band data is padded to a 32-byte alignment and placed directly
+ * Any in-band data is padded to a 64-byte alignment and placed directly
  * after the extended header (after the higher-level cmd/rep structure).
  * The actual unaligned size of the in-band data is encoded in the aux_bytes
  * field in this case.  Maximum data sizes are negotiated during registration.
  *
- * Use of out-of-band data must be negotiated.  In this case bit 31 of
- * aux_bytes will be set and the remaining bits will contain information
- * specific to the out-of-band transfer (such as DMA channel, slot, etc).
+ * Auxillary data can be in-band or out-of-band.  In-band data sets aux_descr
+ * equal to 0.  Any out-of-band data must be negotiated by the SPAN protocol.
  *
- * (must be 32 bytes exactly to match the alignment requirement and to
- *  support pad records in shared-memory FIFO schemes)
+ * Auxillary data, whether in-band or out-of-band, must be at-least 64-byte
+ * aligned.  The aux_bytes field contains the actual byte-granular length
+ * and not the aligned length.
+ *
+ * hdr_crc is calculated over the entire, ALIGNED extended header.  For
+ * the purposes of calculating the crc, the hdr_crc field is 0.  That is,
+ * if calculating the crc in HW a 32-bit '0' must be inserted in place of
+ * the hdr_crc field when reading the entire header and compared at the
+ * end (but the actual hdr_crc must be left intact in memory).  A simple
+ * counter to replace the field going into the CRC generator does the job
+ * in HW.  The CRC endian is based on the magic number field and may have
+ * to be byte-swapped, too (which is also easy to do in HW).
+ *
+ * aux_crc is calculated over the entire, ALIGNED auxillary data.
+ *
+ *			SHARED MEMORY IMPLEMENTATIONS
+ *
+ * Shared-memory implementations typically use a pipe to transmit the extended
+ * message header and shared memory to store any auxilary data.  Auxillary
+ * data in one-way (non-transactional) messages is typically required to be
+ * inline.  CRCs are still recommended and required at the beginning, but
+ * may be negotiated away later.
+ *
+ *			 MULTI-PATH MESSAGE DUPLICATION
+ *
+ * Redundancy can be negotiated but is not required in the current spec.
+ * Basically you send the same message, with the same msgid, via several
+ * paths to the target.  The msgid is the rendezvous.  The first copy that
+ * makes it to the target is used, the second is ignored.  Similarly for
+ * replies.  This can improve performance during span flapping.  Only
+ * transactional messages will be serialized.  The target might receive
+ * multiple copies of one-way messages in higher protocol layers (potentially
+ * out of order, too).
  */
 struct hammer2_msg_hdr {
-	uint16_t	magic;		/* sanity, synchronization, endian */
-	uint16_t	icrc1;		/* base header crc &salt on */
-	uint32_t	salt;		/* random salt helps crypto/replay */
+	uint16_t	magic;		/* 00 sanity, synchro, endian */
+	uint16_t	reserved02;	/* 02 size of header in bytes */
+	uint32_t	salt;		/* 04 random salt helps w/crypto */
 
-	uint16_t	source;		/* command originator linkid */
-	uint16_t	target;		/* reply originator linkid */
-	uint32_t	msgid;		/* {source,target,msgid} unique */
+	uint64_t	msgid;		/* 08 message transaction id */
+	uint64_t	spanid;		/* 10 message routing id or 0 */
 
-	uint32_t	cmd;		/* flags | cmd | hdr_size / 32 */
-	uint16_t	error;		/* error field */
-	uint16_t	resv05;
-
-	uint16_t	icrc2;		/* extended header crc (after base) */
-	uint16_t	aux_bytes;	/* aux data descriptor or size / 32 */
-	uint32_t	aux_icrc;	/* aux data iscsi crc */
+	uint32_t	cmd;		/* 18 flags | cmd | hdr_size / ALIGN */
+	uint32_t	aux_crc;	/* 1C auxillary data crc */
+	uint32_t	aux_bytes;	/* 20 auxillary data length (bytes) */
+	uint32_t	error;		/* 24 error code or 0 */
+	uint64_t	aux_descr;	/* 28 negotiated OOB data descr */
+	uint64_t	reserved30;	/* 30 */
+	uint32_t	reserved38;	/* 38 */
+	uint32_t	hdr_crc;	/* 3C (aligned) extended header crc */
 };
 
 typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
@@ -196,8 +219,8 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
 /*
  * Administrative protocol limits.
  */
-#define HAMMER2_MSGHDR_MAX		2048	/* msg struct max is 8192-32 */
-#define HAMMER2_MSGAUX_MAX		65536	/* msg struct max is 2MB-32 */
+#define HAMMER2_MSGHDR_MAX		2048	/* <= 65535 */
+#define HAMMER2_MSGAUX_MAX		65536	/* <= 1MB */
 #define HAMMER2_MSGBUF_SIZE		(HAMMER2_MSGHDR_MAX * 4)
 #define HAMMER2_MSGBUF_MASK		(HAMMER2_MSGBUF_SIZE - 1)
 
@@ -248,7 +271,7 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
 /*
  * Message command constructors, sans flags
  */
-#define HAMMER2_MSG_ALIGN		32
+#define HAMMER2_MSG_ALIGN		64
 #define HAMMER2_MSG_ALIGNMASK		(HAMMER2_MSG_ALIGN - 1)
 #define HAMMER2_MSG_DOALIGN(bytes)	(((bytes) + HAMMER2_MSG_ALIGNMASK) & \
 					 ~HAMMER2_MSG_ALIGNMASK)
@@ -292,32 +315,24 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
  *		  pad message buffers on shared-memory transports.  Not
  *		  typically used with TCP.
  *
+ * PING		- One-way message on link-0, keep-alive, run by both sides
+ *		  typically 1/sec on idle link, link is lost after 10 seconds
+ *		  of inactivity.
+ *
  * AUTH		- Authenticate the connection, negotiate administrative
  *		  rights & encryption, protocol class, etc.  Only PAD and
  *		  AUTH messages (not even PING) are accepted until
  *		  authentication is complete.  This message also identifies
  *		  the host.
  *
- * PING		- One-way message on link-0, keep-alive, run by both sides
- *		  typically 1/sec on idle link, link is lost after 10 seconds
- *		  of inactivity.
+ * CONN		- Enable the SPAN protocol on link-0, possibly also installing
+ *		  a PFS filter (by cluster id, unique id, and/or wildcarded
+ *		  name).
  *
- * STATUS	- One-way message on link-0, host-spanning tree message.
- *		  Connection and authentication status is propagated using
- *		  these messages on a per-connection basis.  Works like SPAN
- *		  but is only used for general status.  See the hammer2
- *		  'rinfo' command.
- *
- * SPAN		- One-way message on link-0, spanning tree message adds,
- *		  drops, or updates a remote registration.  Sent by both
- *		  sides, delta changes only.  Visbility into remote
- *		  registrations may be limited and received registrations
- *		  may be filtered depending on administrative controls.
- *
- *		  A multiply-connected node maintains SPAN information on
- *		  each link independently and then retransmits an aggregation
- *		  of the shortest-weighted path for each registration to
- *		  all links when a received change adjusts the path.
+ * SPAN		- A SPAN transaction on link-0 enables messages to be relayed
+ *		  to/from a particular cluster node.  SPANs are received,
+ *		  sorted, aggregated, and retransmitted back out across all
+ *		  applicable connections.
  *
  *		  The leaf protocol also uses this to make a PFS available
  *		  to the cluster (e.g. on-mount).
@@ -325,11 +340,42 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
 #define HAMMER2_LNK_PAD		HAMMER2_MSG_LNK(0x000, hammer2_msg_hdr)
 #define HAMMER2_LNK_PING	HAMMER2_MSG_LNK(0x001, hammer2_msg_hdr)
 #define HAMMER2_LNK_AUTH	HAMMER2_MSG_LNK(0x010, hammer2_lnk_auth)
-#define HAMMER2_LNK_SPAN	HAMMER2_MSG_LNK(0x011, hammer2_lnk_span)
+#define HAMMER2_LNK_CONN	HAMMER2_MSG_LNK(0x011, hammer2_lnk_conn)
+#define HAMMER2_LNK_SPAN	HAMMER2_MSG_LNK(0x012, hammer2_lnk_span)
 #define HAMMER2_LNK_ERROR	HAMMER2_MSG_LNK(0xFFF, hammer2_msg_hdr)
 
 /*
- * SPAN - Registration (transaction, left open)
+ * LNK_CONN - Register connection for SPAN (transaction, left open)
+ *
+ * One LNK_CONN transaction may be opened on a stream connection, registering
+ * the connection with the SPAN subsystem and allowing the subsystem to
+ * accept and relay SPANs to this connection.
+ *
+ * The LNK_CONN message may contain a filter, limiting the desireable SPANs.
+ *
+ * This message contains a lot of the same info that a SPAN message contains,
+ * but is not a SPAN.  That is, without this message the SPAN subprotocol will
+ * not be executed on the connection, nor is this message a promise that the
+ * sending end is a client or node of a cluster.
+ */
+struct hammer2_lnk_conn {
+	hammer2_msg_hdr_t head;
+	uuid_t		pfs_clid;	/* rendezvous pfs uuid */
+	uuid_t		pfs_fsid;	/* unique pfs uuid */
+	uint8_t		pfs_type;	/* peer type */
+	uint8_t		reserved01;
+	uint16_t	proto_version;	/* high level protocol support */
+	uint32_t	status;		/* status flags */
+	uint8_t		reserved02[8];
+	int32_t		weight;		/* span weight */
+	uint32_t	reserved03[15];
+	char		label[256];	/* PFS label (can be wildcard) */
+};
+
+typedef struct hammer2_lnk_conn hammer2_lnk_conn_t;
+
+/*
+ * LNK_SPAN - Relay a SPAN (transaction, left open)
  *
  * This message registers a PFS/PFS_TYPE with the other end of the connection,
  * telling the other end who we are and what we can provide or what we want
@@ -372,14 +418,15 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
  */
 struct hammer2_lnk_span {
 	hammer2_msg_hdr_t head;
-	uuid_t		pfs_id;		/* rendezvous pfs uuid */
+	uuid_t		pfs_clid;	/* rendezvous pfs uuid */
 	uuid_t		pfs_fsid;	/* unique pfs uuid */
 	uint8_t		pfs_type;	/* peer type */
 	uint8_t		reserved01;
 	uint16_t	proto_version;	/* high level protocol support */
 	uint32_t	status;		/* status flags */
 	uint8_t		reserved02[8];
-	uint32_t	reserved03[16];
+	int32_t		weight;		/* span weight */
+	uint32_t	reserved03[15];
 	char		label[256];	/* PFS label (can be wildcard) */
 };
 
@@ -470,6 +517,8 @@ typedef struct hammer2_dbg_shell hammer2_dbg_shell_t;
 #define HAMMER2_QRM_COMMIT	HAMMER2_MSG_QRM(0x001, hammer2_qrm_commit)
 
 /*
+ * NOTE!!!! ALL EXTENDED HEADER STRUCTURES MUST BE 64-BYTE ALIGNED!!!
+ *
  * General message errors
  *
  *	0x00 - 0x1F	Local iocomm errors
@@ -481,6 +530,7 @@ union hammer2_msg_any {
 	char			buf[HAMMER2_MSGHDR_MAX];
 	hammer2_msg_hdr_t	head;
 	hammer2_lnk_span_t	lnk_span;
+	hammer2_lnk_conn_t	lnk_conn;
 };
 
 typedef union hammer2_msg_any hammer2_msg_any_t;

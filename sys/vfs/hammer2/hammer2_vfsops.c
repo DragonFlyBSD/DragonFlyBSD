@@ -139,7 +139,9 @@ static int hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 static void hammer2_cluster_thread_rd(void *arg);
 static void hammer2_cluster_thread_wr(void *arg);
-static int hammer2_msg_span_reply(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
+static int hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg);
+static int hammer2_msg_span_reply(hammer2_state_t *state, hammer2_msg_t *msg);
+static int hammer2_msg_lnk_rcvmsg(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
 
 /*
  * HAMMER2 vfs operations.
@@ -1082,13 +1084,37 @@ hammer2_cluster_thread_rd(void *arg)
 		 */
 		error = hammer2_state_msgrx(pmp, msg);
 		if (error) {
+			/*
+			 * Raw protocol or connection error
+			 */
 			hammer2_msg_free(pmp, msg);
 			if (error == EALREADY)
 				error = 0;
-		} else if (msg->state) {
-			error = msg->state->func(pmp, msg);
+		} else if (msg->state && msg->state->func) {
+			/*
+			 * Message related to state which already has a
+			 * handling function installed for it.
+			 */
+			error = msg->state->func(msg->state, msg);
+			hammer2_state_cleanuprx(pmp, msg);
+		} else if ((msg->any.head.cmd & HAMMER2_MSGF_PROTOS) ==
+			   HAMMER2_MSG_PROTO_LNK) {
+			/*
+			 * Message related to the LNK protocol set
+			 */
+			error = hammer2_msg_lnk_rcvmsg(pmp, msg);
+			hammer2_state_cleanuprx(pmp, msg);
+		} else if ((msg->any.head.cmd & HAMMER2_MSGF_PROTOS) ==
+			   HAMMER2_MSG_PROTO_DBG) {
+			/*
+			 * Message related to the DBG protocol set
+			 */
+			error = hammer2_msg_dbg_rcvmsg(pmp, msg);
 			hammer2_state_cleanuprx(pmp, msg);
 		} else {
+			/*
+			 * Other higher-level messages (e.g. vnops)
+			 */
 			error = hammer2_msg_adhoc_input(pmp, msg);
 			hammer2_state_cleanuprx(pmp, msg);
 		}
@@ -1135,25 +1161,27 @@ hammer2_cluster_thread_wr(void *arg)
 	int error = 0;
 
 	/*
-	 * Initiate a SPAN transaction registering our PFS with the other
-	 * end using {source}=1.  The transaction is left open.
+	 * Open a LNK_CONN transaction indicating that we want to take part
+	 * in the spanning tree algorithm.  Filter explicitly on the PFS
+	 * info in the iroot.
 	 *
-	 * The hammer2_msg_write() function will queue the message, and we
-	 * pick it off and write it in our transmit loop.
+	 * We do not transmit our (only) LNK_SPAN until the other end has
+	 * acknowledged our link connection request.
+	 *
+	 * The transaction remains fully open for the duration of the
+	 * connection.
 	 */
-	msg = hammer2_msg_alloc(pmp, 1, 0,
-				HAMMER2_LNK_SPAN | HAMMER2_MSGF_CREATE);
-	msg->any.lnk_span.pfs_id   = pmp->iroot->ip_data.pfs_id;
-	msg->any.lnk_span.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
-	msg->any.lnk_span.pfs_type = pmp->iroot->ip_data.pfs_type;
-	msg->any.lnk_span.proto_version = HAMMER2_SPAN_PROTO_1;
+	msg = hammer2_msg_alloc(pmp, 0, HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE);
+	msg->any.lnk_conn.pfs_clid = pmp->iroot->ip_data.pfs_clid;
+	msg->any.lnk_conn.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
+	msg->any.lnk_conn.pfs_type = pmp->iroot->ip_data.pfs_type;
+	msg->any.lnk_conn.proto_version = HAMMER2_SPAN_PROTO_1;
 	name_len = pmp->iroot->ip_data.name_len;
-	if (name_len >= sizeof(msg->any.lnk_span.label))
-		name_len = sizeof(msg->any.lnk_span.label) - 1;
-	bcopy(pmp->iroot->ip_data.filename, msg->any.lnk_span.label, name_len);
-	msg->any.lnk_span.label[name_len] = 0;
-
-	hammer2_msg_write(pmp, msg, hammer2_msg_span_reply);
+	if (name_len >= sizeof(msg->any.lnk_conn.label))
+		name_len = sizeof(msg->any.lnk_conn.label) - 1;
+	bcopy(pmp->iroot->ip_data.filename, msg->any.lnk_conn.label, name_len);
+	msg->any.lnk_conn.label[name_len] = 0;
+	hammer2_msg_write(pmp, msg, hammer2_msg_conn_reply, pmp);
 
 	/*
 	 * Transmit loop
@@ -1251,8 +1279,67 @@ hammer2_cluster_thread_wr(void *arg)
 }
 
 static int
-hammer2_msg_span_reply(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
+hammer2_msg_lnk_rcvmsg(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 {
-	kprintf("SPAN REPLY\n");
+	switch(msg->any.head.cmd & HAMMER2_MSGF_TRANSMASK) {
+	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE:
+		kprintf("CONN RECEIVE - (just ignore it)\n");
+		hammer2_msg_result(pmp, msg, 0);
+		break;
+	case HAMMER2_LNK_SPAN | HAMMER2_MSGF_CREATE:
+		kprintf("SPAN RECEIVE - ADDED FROM CLUSTER\n");
+		break;
+	case HAMMER2_LNK_SPAN | HAMMER2_MSGF_DELETE:
+		kprintf("SPAN RECEIVE - DELETED FROM CLUSTER\n");
+		break;
+	default:
+		break;
+	}
+	return(0);
+}
+
+/*
+ * This function is called when the other end replies to our LNK_CONN
+ * request.
+ *
+ * We transmit our (single) SPAN on the initial reply, leaving that
+ * transaction open too.
+ */
+static int
+hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg)
+{
+	hammer2_pfsmount_t *pmp = state->any.pmp;
+	size_t name_len;
+
+	if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
+		kprintf("LNK_CONN transaction replied to, initiate SPAN\n");
+		msg = hammer2_msg_alloc(pmp, 0, HAMMER2_LNK_SPAN |
+						HAMMER2_MSGF_CREATE);
+		msg->any.lnk_span.pfs_clid = pmp->iroot->ip_data.pfs_clid;
+		msg->any.lnk_span.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
+		msg->any.lnk_span.pfs_type = pmp->iroot->ip_data.pfs_type;
+		msg->any.lnk_span.proto_version = HAMMER2_SPAN_PROTO_1;
+		name_len = pmp->iroot->ip_data.name_len;
+		if (name_len >= sizeof(msg->any.lnk_span.label))
+			name_len = sizeof(msg->any.lnk_span.label) - 1;
+		bcopy(pmp->iroot->ip_data.filename,
+		      msg->any.lnk_span.label,
+		      name_len);
+		msg->any.lnk_span.label[name_len] = 0;
+		hammer2_msg_write(pmp, msg, hammer2_msg_span_reply, pmp);
+	}
+	if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
+		kprintf("LNK_CONN transaction terminated by remote\n");
+		hammer2_msg_reply(pmp, msg, 0);
+	}
+	return(0);
+}
+
+static int
+hammer2_msg_span_reply(hammer2_state_t *state, hammer2_msg_t *msg)
+{
+	hammer2_pfsmount_t *pmp = state->any.pmp;
+
+	kprintf("SPAN REPLY - Our span was terminated? %p\n", pmp);
 	return(0);
 }

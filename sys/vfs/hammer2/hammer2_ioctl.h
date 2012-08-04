@@ -74,9 +74,9 @@ typedef struct hammer2_ioc_remote hammer2_ioc_remote_t;
 /*
  * Ioctls to manage PFSs
  *
- * PFSs can be clustered by matching their pfs_id, and the PFSs making up
+ * PFSs can be clustered by matching their pfs_clid, and the PFSs making up
  * a cluster can be uniquely identified by combining the vol_id with
- * the pfs_id.
+ * the pfs_clid.
  */
 struct hammer2_ioc_pfs {
 	hammer2_key_t		name_key;	/* super-root directory scan */
@@ -88,7 +88,7 @@ struct hammer2_ioc_pfs {
 	uint32_t		reserved0014;
 	uint64_t		reserved0018;
 	uuid_t			pfs_fsid;	/* identifies PFS instance */
-	uuid_t			pfs_id;		/* identifies PFS cluster */
+	uuid_t			pfs_clid;	/* identifies PFS cluster */
 	char			name[NAME_MAX+1]; /* device@name mtpt */
 };
 

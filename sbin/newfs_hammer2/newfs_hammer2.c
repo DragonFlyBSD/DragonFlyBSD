@@ -516,7 +516,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 */
 	rawip->comp_algo = HAMMER2_COMP_AUTOZERO;
 
-	rawip->pfs_id = Hammer2_RPFSId;
+	rawip->pfs_clid = Hammer2_RPFSId;
 	rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
 	rawip->op_flags |= HAMMER2_OPFLAG_PFSROOT;
 
@@ -570,7 +570,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * snapshots and all if desired.  PFS ids are used to match up
 	 * mirror sources and targets and cluster copy sources and targets.
 	 */
-	rawip->pfs_id = Hammer2_SPFSId;
+	rawip->pfs_clid = Hammer2_SPFSId;
 	rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
 	rawip->op_flags |= HAMMER2_OPFLAG_PFSROOT;
 

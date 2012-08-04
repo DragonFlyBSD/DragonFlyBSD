@@ -898,8 +898,8 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 			oip->ip_data.iparent = 0;	/* XXX */
 			oip->ip_data.pfs_type = 0;
 			oip->ip_data.pfs_inum = 0;
-			bzero(&oip->ip_data.pfs_id,
-			      sizeof(oip->ip_data.pfs_id));
+			bzero(&oip->ip_data.pfs_clid,
+			      sizeof(oip->ip_data.pfs_clid));
 			bzero(&oip->ip_data.pfs_fsid,
 			      sizeof(oip->ip_data.pfs_fsid));
 			oip->ip_data.data_quota = 0;

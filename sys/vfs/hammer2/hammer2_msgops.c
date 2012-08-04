@@ -52,3 +52,26 @@ hammer2_msg_adhoc_input(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 	kprintf("ADHOC INPUT MSG %08x\n", msg->any.head.cmd);
 	return(0);
 }
+
+int
+hammer2_msg_dbg_rcvmsg(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
+{
+	switch(msg->any.head.cmd & HAMMER2_MSGF_CMDSWMASK) {
+	case HAMMER2_DBG_SHELL:
+		/*
+		 * Execute shell command (not supported atm)
+		 */
+		hammer2_msg_reply(pmp, msg, HAMMER2_MSG_ERR_UNKNOWN);
+		break;
+	case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
+		if (msg->aux_data) {
+			msg->aux_data[msg->aux_size - 1] = 0;
+			kprintf("DEBUGMSG: %s\n", msg->aux_data);
+		}
+		break;
+	default:
+		hammer2_msg_reply(pmp, msg, HAMMER2_MSG_ERR_UNKNOWN);
+		break;
+	}
+	return(0);
+}
