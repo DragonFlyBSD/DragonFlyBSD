@@ -45,7 +45,6 @@
  *
  * @(#)parseconf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rbootd/parseconf.c,v 1.9.2.1 2001/03/05 11:17:52 kris Exp $
- * $DragonFly: src/libexec/rbootd/parseconf.c,v 1.3 2008/04/20 13:44:24 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -79,7 +78,7 @@
 **		  to create a linked list of default boot files.
 */
 int
-ParseConfig()
+ParseConfig(void)
 {
 	FILE *fp;
 	CLIENT *client;
@@ -244,8 +243,7 @@ ParseConfig()
 **		  be copied if it's to be saved.
 */
 u_int8_t *
-ParseAddr(str)
-	char *str;
+ParseAddr(char *str)
 {
 	static u_int8_t addr[RMP_ADDRLEN];
 	char *cp;
@@ -308,7 +306,7 @@ ParseAddr(str)
 **		  called to re-order it's list of boot file pointers.
 */
 int
-GetBootFiles()
+GetBootFiles(void)
 {
 	DIR *dfd;
 	struct stat statb;

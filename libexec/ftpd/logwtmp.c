@@ -32,7 +32,6 @@
  *
  * @(#)logwtmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/ftpd/logwtmp.c,v 1.9.2.2 2002/08/08 12:24:54 yar Exp $
- * $DragonFly: src/libexec/ftpd/logwtmp.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -59,9 +58,7 @@ static int fd = -1;
  * after login, but before logout).
  */
 void
-ftpd_logwtmp(line, name, addr)
-	char *line, *name;
-	struct sockaddr *addr;
+ftpd_logwtmp(char *line, char *name, struct sockaddr *addr)
 {
 	struct utmp ut;
 	struct stat buf;

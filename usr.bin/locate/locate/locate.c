@@ -37,7 +37,6 @@
  * @(#) Copyright (c) 1995-1996 Wolfram Schneider, Berlin. @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)locate.c    8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/locate/locate/locate.c,v 1.12.2.1 2001/03/04 08:47:25 kris Exp $
- * $DragonFly: src/usr.bin/locate/locate/locate.c,v 1.4 2003/11/06 19:30:04 eirikn Exp $
  */
 
 /*
@@ -128,9 +127,7 @@ extern int	check_bigram_char(int);
 extern char 	*patprep(char *);
 
 int
-main(argc, argv)
-        int argc;
-        char **argv;
+main(int argc, char **argv)
 {
         register int ch;
         char **dbv = NULL;
@@ -216,9 +213,7 @@ main(argc, argv)
 
 
 void
-search_fopen(db, s)
-	char *db; /* database */
-	char **s; /* search strings */
+search_fopen(char *db, char **s)
 {
 	FILE *fp;
 #ifdef DEBUG
@@ -266,9 +261,7 @@ search_fopen(db, s)
 
 #ifdef MMAP
 void
-search_mmap(db, s)
-	char *db; /* database */
-	char **s; /* search strings */
+search_mmap(char *db, char **s)
 {
         struct stat sb;
         int fd;
@@ -311,7 +304,7 @@ search_mmap(db, s)
 
 #ifdef DEBUG
 unsigned long
-cputime ()
+cputime (void)
 {
 	struct rusage rus;
 
@@ -321,7 +314,7 @@ cputime ()
 #endif /* DEBUG */
 
 void
-usage ()
+usage (void)
 {
         (void)fprintf(stderr,
 	"usage: locate [-Scims] [-l limit] [-d database] pattern ...\n\n");

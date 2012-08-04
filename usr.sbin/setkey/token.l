@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/usr.sbin/setkey/token.l,v 1.2.2.3 2001/07/03 11:02:17 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/token.l,v 1.4 2008/06/05 18:06:33 swildner Exp $	*/
 /*	$KAME: token.l,v 1.21 2001/05/18 05:35:01 sakane Exp $	*/
 
 /*
@@ -296,23 +295,20 @@ any		{ PREPROC; return(ANY); }
 %%
 
 void
-yyfatal(s)
-	const char *s;
+yyfatal(const char *s)
 {
 	yyerror(s);
 	exit(1);
 }
 
 void
-yyerror(s)
-	const char *s;
+yyerror(const char *s)
 {
 	printf("line %d: %s at [%s]\n", lineno, s, yytext);
 }
 
 int
-parse(fp)
-	FILE **fp;
+parse(FILE **fp)
 {
 	yyin = *fp;
 

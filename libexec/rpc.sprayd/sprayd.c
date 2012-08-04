@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rpc.sprayd/sprayd.c,v 1.5 1999/08/28 00:09:59 peter Exp $
- * $DragonFly: src/libexec/rpc.sprayd/sprayd.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 #include <rpc/rpc.h>
@@ -59,22 +58,20 @@ static int from_inetd = 1;
 #define TIMEOUT 120
 
 void
-cleanup()
+cleanup(int sig)
 {
 	(void) pmap_unset(SPRAYPROG, SPRAYVERS);
 	exit(0);
 }
 
 void
-die()
+die(int sig)
 {
 	exit(0);
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	SVCXPRT *transp;
 	int sock = 0;
@@ -126,9 +123,7 @@ main(argc, argv)
 
 
 static void
-spray_service(rqstp, transp)
-	struct svc_req *rqstp;
-	SVCXPRT *transp;
+spray_service(struct svc_req *rqstp, SVCXPRT *transp)
 {
 	static spraycumul scum;
 	static struct timeval clear, get;

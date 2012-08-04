@@ -2450,8 +2450,7 @@ huphandler(int sig)
 	got_sighup = 1;
 }
 
-void terminate(sig)
-int sig;
+void terminate(int sig)
 {
 	close(mountdlockfd);
 	unlink(MOUNTDLOCK);

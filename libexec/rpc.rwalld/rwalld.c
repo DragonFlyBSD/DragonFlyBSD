@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rpc.rwalld/rwalld.c,v 1.8 1999/08/28 00:09:57 peter Exp $
- * $DragonFly: src/libexec/rpc.rwalld/rwalld.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 #include <err.h>
@@ -60,9 +59,7 @@ int nodaemon = 0;
 int from_inetd = 1;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	SVCXPRT *transp;
 	int s, salen;
@@ -133,26 +130,27 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: rpc.rwalld [-n]\n");
 	exit(1);
 }
 
-void possess()
+void
+possess(void)
 {
 	daemon(0, 0);
 }
 
-void killkids()
+void
+killkids(void)
 {
 	while(wait4(-1, NULL, WNOHANG, NULL) > 0)
 		;
 }
 
-void *wallproc_wall_1_svc(s, rqstp)
-	wrapstring		*s;
-	struct svc_req		*rqstp;
+void *
+wallproc_wall_1_svc(wrapstring *s, struct svc_req *rqstp)
 {
 	static void		*dummy = NULL;
 
@@ -171,9 +169,7 @@ void *wallproc_wall_1_svc(s, rqstp)
 }
 
 void
-wallprog_1(rqstp, transp)
-	struct svc_req *rqstp;
-	SVCXPRT *transp;
+wallprog_1(struct svc_req *rqstp, SVCXPRT *transp)
 {
 	union {
 		char *wallproc_wall_1_arg;

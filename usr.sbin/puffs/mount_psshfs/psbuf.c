@@ -186,7 +186,7 @@ psbuf_cmp(struct puffs_usermount *pu,
 }
 
 struct puffs_framebuf *
-psbuf_makeout()
+psbuf_makeout(void)
 {
 	struct puffs_framebuf *pb;
 

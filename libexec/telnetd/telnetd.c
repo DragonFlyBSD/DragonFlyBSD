@@ -397,8 +397,8 @@ main(int argc, char *argv[])
 	return(0);
 }  /* end of main */
 
-	void
-usage()
+void
+usage(void)
 {
 	fprintf(stderr, "usage: telnetd");
 #ifdef	AUTHENTICATION

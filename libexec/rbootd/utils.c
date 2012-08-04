@@ -74,9 +74,7 @@
 **		None.
 */
 void
-DispPkt(rconn, direct)
-	RMPCONN *rconn;
-	int direct;
+DispPkt(RMPCONN *rconn, int direct)
 {
 	static char BootFmt[] = "\t\tRetCode:%u SeqNo:%lx SessID:%x Vers:%u";
 	static char ReadFmt[] = "\t\tRetCode:%u Offset:%lx SessID:%x\n";
@@ -203,8 +201,7 @@ DispPkt(rconn, direct)
 **		  be copied if it's to be saved.
 */
 char *
-GetEtherAddr(addr)
-	u_int8_t *addr;
+GetEtherAddr(u_int8_t *addr)
 {
 	static char Hex[] = "0123456789abcdef";
 	static char etherstr[RMP_ADDRLEN*3];
@@ -244,9 +241,7 @@ GetEtherAddr(addr)
 **		- Characters are sent to `DbgFp'.
 */
 void
-DspFlnm(size, flnm)
-	u_int size;
-	char *flnm;
+DspFlnm(u_int size, char *flnm)
 {
 	int i;
 
@@ -271,8 +266,7 @@ DspFlnm(size, flnm)
 **		- If malloc() fails, a log message will be generated.
 */
 CLIENT *
-NewClient(addr)
-	u_int8_t *addr;
+NewClient(u_int8_t *addr)
 {
 	CLIENT *ctmp;
 
@@ -304,7 +298,7 @@ NewClient(addr)
 **		- This routine must be called with SIGHUP blocked.
 */
 void
-FreeClients()
+FreeClients(void)
 {
 	CLIENT *ctmp;
 
@@ -329,8 +323,7 @@ FreeClients()
 **		- If malloc() fails, a log message will be generated.
 */
 char *
-NewStr(str)
-	char *str;
+NewStr(char *str)
 {
 	char *stmp;
 
@@ -364,8 +357,7 @@ static RMPCONN *LastFree = NULL;
 **		- If malloc() fails, a log message will be generated.
 */
 RMPCONN *
-NewConn(rconn)
-	RMPCONN *rconn;
+NewConn(RMPCONN *rconn)
 {
 	RMPCONN *rtmp;
 
@@ -405,8 +397,7 @@ NewConn(rconn)
 **		- File desc associated with `rtmp->bootfd' will be closed.
 */
 void
-FreeConn(rtmp)
-	RMPCONN *rtmp;
+FreeConn(RMPCONN *rtmp)
 {
 	/*
 	 *  If the file descriptor is in use, close the file.
@@ -440,7 +431,7 @@ FreeConn(rtmp)
 **		- This routine must be called with SIGHUP blocked.
 */
 void
-FreeConns()
+FreeConns(void)
 {
 	RMPCONN *rtmp;
 
@@ -472,8 +463,7 @@ FreeConns()
 **		- This routine must be called with SIGHUP blocked.
 */
 void
-AddConn(rconn)
-	RMPCONN *rconn;
+AddConn(RMPCONN *rconn)
 {
 	if (RmpConns != NULL)
 		rconn->next = RmpConns;
@@ -500,8 +490,7 @@ AddConn(rconn)
 **		- This routine must be called with SIGHUP blocked.
 */
 RMPCONN *
-FindConn(rconn)
-	RMPCONN *rconn;
+FindConn(RMPCONN *rconn)
 {
 	RMPCONN *rtmp;
 
@@ -530,8 +519,7 @@ FindConn(rconn)
 **		- This routine must be called with SIGHUP blocked.
 */
 void
-RemoveConn(rconn)
-	RMPCONN *rconn;
+RemoveConn(RMPCONN *rconn)
 {
 	RMPCONN *thisrconn, *lastrconn;
 
