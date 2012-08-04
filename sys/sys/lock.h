@@ -188,9 +188,16 @@ struct lock {
 void dumplockinfo(struct lock *lkp);
 struct proc;
 
+struct lock_args {
+	struct lock	*la_lock;
+	const char 	*la_desc;
+	int		la_flags;
+};
+
 void	lockinit (struct lock *, const char *wmesg, int timo, int flags);
 void	lockreinit (struct lock *, const char *wmesg, int timo, int flags);
 void	lockuninit(struct lock *);
+void	lock_sysinit(struct lock_args *);
 #ifdef DEBUG_LOCKS
 int	debuglockmgr (struct lock *, u_int flags,
 			const char *,
@@ -210,7 +217,17 @@ int	lockowned (struct lock *);
 int	lockcount (struct lock *);
 int	lockcountnb (struct lock *);
 
+#define	LOCK_SYSINIT(name, lock, desc, flags)				\
+	static struct lock_args name##_args = {				\
+		(lock),							\
+		(desc),							\
+		(flags)							\
+	};								\
+	SYSINIT(name##_lock_sysinit, SI_SUB_DRIVERS, SI_ORDER_MIDDLE,	\
+	    lock_sysinit, &name##_args);					\
+	SYSUNINIT(name##_lock_sysuninit, SI_SUB_DRIVERS, SI_ORDER_MIDDLE,	\
+	    lockuninit, (lock))
+
 #endif /* _KERNEL */
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 #endif /* _SYS_LOCK_H_ */
-

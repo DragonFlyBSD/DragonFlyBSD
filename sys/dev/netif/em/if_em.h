@@ -137,7 +137,7 @@
 #define EM_TX_OACTIVE_MAX		64
 
 /* Interrupt throttle rate */
-#define EM_DEFAULT_ITR			10000
+#define EM_DEFAULT_ITR			6000
 
 /*
  * This parameter controls whether or not autonegotation is enabled.

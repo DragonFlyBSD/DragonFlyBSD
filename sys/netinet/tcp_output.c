@@ -85,6 +85,7 @@
 #include <sys/thread.h>
 #include <sys/globaldata.h>
 
+#include <net/if_var.h>
 #include <net/route.h>
 
 #include <netinet/in.h>
@@ -149,7 +150,13 @@ static int tcp_idle_restart = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, idle_restart, CTLFLAG_RW,
     &tcp_idle_restart, 0, "Reset congestion window after idle period");
 
+static int tcp_do_tso = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, tso, CTLFLAG_RW,
+    &tcp_do_tso, 0, "Enable TCP Segmentation Offload (TSO)");
+
 static void	tcp_idle_cwnd_validate(struct tcpcb *);
+
+static int	tcp_tso_getsize(struct tcpcb *tp, u_int *segsz, u_int *hlen);
 
 /*
  * Tcp output routine: figure out what should be sent and send it.
@@ -171,7 +178,7 @@ tcp_output(struct tcpcb *tp)
 	struct tcphdr *th;
 	u_char opt[TCP_MAXOLEN];
 	unsigned int ipoptlen, optlen, hdrlen;
-	int idle, idle_cwv = 0;
+	int idle;
 	boolean_t sendalot;
 	struct ip6_hdr *ip6;
 #ifdef INET6
@@ -179,6 +186,9 @@ tcp_output(struct tcpcb *tp)
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
+	boolean_t can_tso = FALSE, use_tso;
+	boolean_t report_sack, idle_cwv = FALSE;
+	u_int segsz, tso_hlen;
 
 	KKASSERT(so->so_port == &curthread->td_msgport);
 
@@ -198,7 +208,7 @@ tcp_output(struct tcpcb *tp)
 	 */
 	if (tp->snd_max == tp->snd_una &&
 	    (ticks - tp->snd_last) >= tp->t_rxtcur && tcp_idle_restart)
-		idle_cwv = 1;
+		idle_cwv = TRUE;
 
 	/*
 	 * Calculate whether the transmit stream was previously idle 
@@ -214,12 +224,48 @@ tcp_output(struct tcpcb *tp)
 	    !IN_FASTRECOVERY(tp))
 		nsacked = tcp_sack_bytes_below(&tp->scb, tp->snd_nxt);
 
+	/*
+	 * Find out whether TSO could be used or not
+	 *
+	 * For TSO capable devices, the following assumptions apply to
+	 * the processing of TCP flags:
+	 * - If FIN is set on the large TCP segment, the device must set
+	 *   FIN on the last segment that it creates from the large TCP
+	 *   segment.
+	 * - If PUSH is set on the large TCP segment, the device must set
+	 *   PUSH on the last segment that it creates from the large TCP
+	 *   segment.
+	 */
+#if !defined(IPSEC) && !defined(FAST_IPSEC)
+	if (tcp_do_tso
+#ifdef TCP_SIGNATURE
+	    && (tp->t_flags & TF_SIGNATURE) == 0
+#endif
+	) {
+		if (!isipv6) {
+			struct rtentry *rt = inp->inp_route.ro_rt;
+
+			if (rt != NULL && (rt->rt_flags & RTF_UP) &&
+			    (rt->rt_ifp->if_hwassist & CSUM_TSO))
+				can_tso = TRUE;
+		}
+	}
+#endif	/* !IPSEC && !FAST_IPSEC */
+
 again:
 	m = NULL;
 	ip = NULL;
 	ipov = NULL;
 	th = NULL;
 	ip6 = NULL;
+
+	if ((tp->t_flags & (TF_SACK_PERMITTED | TF_NOOPT)) ==
+		TF_SACK_PERMITTED &&
+	    (!TAILQ_EMPTY(&tp->t_segq) ||
+	     tp->reportblk.rblk_start != tp->reportblk.rblk_end))
+		report_sack = TRUE;
+	else
+		report_sack = FALSE;
 
 	/* Make use of SACK information when slow-starting after a RTO. */
 	if (TCP_DO_SACK(tp) && tp->snd_nxt != tp->snd_max &&
@@ -404,12 +450,64 @@ again:
 	}
 
 	/*
-	 * Truncate to the maximum segment length and ensure that FIN is
-	 * removed if the length no longer contains the last data byte.
+	 * Don't use TSO, if:
+	 * - Congestion window needs validation
+	 * - There are SACK blocks to report
+	 * - RST or SYN flags is set
+	 * - URG will be set
+	 *
+	 * XXX
+	 * Checking for SYN|RST looks overkill, just to be safe than sorry
 	 */
-	if (len > tp->t_maxseg) {
-		len = tp->t_maxseg;
+	use_tso = can_tso;
+	if (report_sack || idle_cwv || (flags & (TH_RST | TH_SYN)))
+		use_tso = FALSE;
+	if (use_tso) {
+		tcp_seq ugr_nxt = tp->snd_nxt;
+
+		if ((flags & TH_FIN) && (tp->t_flags & TF_SENTFIN) &&
+		    tp->snd_nxt == tp->snd_max)
+			--ugr_nxt;
+
+		if (SEQ_GT(tp->snd_up, ugr_nxt))
+			use_tso = FALSE;
+	}
+
+	if (use_tso) {
+		/*
+		 * Find out segment size and header length for TSO
+		 */
+		error = tcp_tso_getsize(tp, &segsz, &tso_hlen);
+		if (error)
+			use_tso = FALSE;
+	}
+	if (!use_tso) {
+		segsz = tp->t_maxseg;
+		tso_hlen = 0; /* not used */
+	}
+
+	/*
+	 * Truncate to the maximum segment length if not TSO, and ensure that
+	 * FIN is removed if the length no longer contains the last data byte.
+	 */
+	if (len > segsz) {
+		if (!use_tso) {
+			len = segsz;
+		} else {
+			/*
+			 * Truncate TSO transfers to (IP_MAXPACKET - iphlen -
+			 * thoff), and make sure that we send equal size
+			 * transfers down the stack (rather than big-small-
+			 * big-small-...).
+			 */
+			len = (min(len, (IP_MAXPACKET - tso_hlen)) / segsz) *
+			    segsz;
+			if (len <= segsz)
+				use_tso = FALSE;
+		}
 		sendalot = TRUE;
+	} else {
+		use_tso = FALSE;
 	}
 	if (SEQ_LT(tp->snd_nxt + len, tp->snd_una + so->so_snd.ssb_cc))
 		flags &= ~TH_FIN;
@@ -429,7 +527,7 @@ again:
 	 *	- we need to retransmit
 	 */
 	if (len) {
-		if (len == tp->t_maxseg)
+		if (len >= segsz)
 			goto send;
 		/*
 		 * NOTE! on localhost connections an 'ack' from the remote
@@ -488,7 +586,7 @@ again:
 		 */
 		if (avoid_pure_win_update == 0 ||
 		    (tp->t_flags & TF_RXRESIZED)) {
-			if (adv >= (long) (2 * tp->t_maxseg)) {
+			if (adv >= (long) (2 * segsz)) {
 				goto send;
 			}
 		}
@@ -630,10 +728,7 @@ send:
 	 * If this is a SACK connection and we have a block to report,
 	 * fill in the SACK blocks in the TCP options.
 	 */
-	if ((tp->t_flags & (TF_SACK_PERMITTED | TF_NOOPT)) ==
-		TF_SACK_PERMITTED &&
-	    (!TAILQ_EMPTY(&tp->t_segq) ||
-	     tp->reportblk.rblk_start != tp->reportblk.rblk_end))
+	if (report_sack)
 		tcp_sack_fill_report(tp, opt, &optlen);
 
 #ifdef TCP_SIGNATURE
@@ -675,29 +770,39 @@ send:
 	ipoptlen += ipsec_hdrsiz_tcp(tp);
 #endif
 
-	/*
-	 * Adjust data length if insertion of options will bump the packet
-	 * length beyond the t_maxopd length.  Clear FIN to prevent premature
-	 * closure since there is still more data to send after this (now
-	 * truncated) packet.
-	 *
-	 * If just the options do not fit we are in a no-win situation and
-	 * we treat it as an unreachable host.
-	 */
-	if (len + optlen + ipoptlen > tp->t_maxopd) {
-		if (tp->t_maxopd <= optlen + ipoptlen) {
-			static time_t last_optlen_report;
+	if (use_tso) {
+		KASSERT(len > segsz,
+		    ("invalid TSO len %ld, segsz %u", len, segsz));
+	} else {
+		KASSERT(len <= segsz,
+		    ("invalid len %ld, segsz %u", len, segsz));
 
-			if (last_optlen_report != time_second) {
-				last_optlen_report = time_second;
-				kprintf("tcpcb %p: MSS (%d) too small to hold options!\n", tp, tp->t_maxopd);
+		/*
+		 * Adjust data length if insertion of options will bump
+		 * the packet length beyond the t_maxopd length.  Clear
+		 * FIN to prevent premature closure since there is still
+		 * more data to send after this (now truncated) packet.
+		 *
+		 * If just the options do not fit we are in a no-win
+		 * situation and we treat it as an unreachable host.
+		 */
+		if (len + optlen + ipoptlen > tp->t_maxopd) {
+			if (tp->t_maxopd <= optlen + ipoptlen) {
+				static time_t last_optlen_report;
+
+				if (last_optlen_report != time_second) {
+					last_optlen_report = time_second;
+					kprintf("tcpcb %p: MSS (%d) too "
+					    "small to hold options!\n",
+					    tp, tp->t_maxopd);
+				}
+				error = EHOSTUNREACH;
+				goto out;
+			} else {
+				flags &= ~TH_FIN;
+				len = tp->t_maxopd - optlen - ipoptlen;
+				sendalot = TRUE;
 			}
-			error = EHOSTUNREACH;
-			goto out;
-		} else {
-			flags &= ~TH_FIN;
-			len = tp->t_maxopd - optlen - ipoptlen;
-			sendalot = TRUE;
 		}
 	}
 
@@ -729,7 +834,7 @@ send:
 			tcpstat.tcps_sndbyte += len;
 		}
 		if (idle_cwv) {
-			idle_cwv = 0;
+			idle_cwv = FALSE;
 			tcp_idle_cwnd_validate(tp);
 		}
 		/* Update last send time after CWV */
@@ -806,13 +911,13 @@ send:
 	if (isipv6) {
 		ip6 = mtod(m, struct ip6_hdr *);
 		th = (struct tcphdr *)(ip6 + 1);
-		tcp_fillheaders(tp, ip6, th);
+		tcp_fillheaders(tp, ip6, th, use_tso);
 	} else {
 		ip = mtod(m, struct ip *);
 		ipov = (struct ipovly *)ip;
 		th = (struct tcphdr *)(ip + 1);
 		/* this picks up the pseudo header (w/o the length) */
-		tcp_fillheaders(tp, ip, th);
+		tcp_fillheaders(tp, ip, th, use_tso);
 	}
 after_th:
 	/*
@@ -857,7 +962,7 @@ after_th:
 	 * window is less then one segment.
 	 */
 	if (recvwin < (long)(so->so_rcv.ssb_hiwat / 4) &&
-	    recvwin < (long)tp->t_maxseg)
+	    recvwin < (long)segsz)
 		recvwin = 0;
 	if (recvwin < (tcp_seq_diff_t)(tp->rcv_adv - tp->rcv_nxt))
 		recvwin = (tcp_seq_diff_t)(tp->rcv_adv - tp->rcv_nxt);
@@ -881,6 +986,7 @@ after_th:
 		th->th_win = htons((u_short) (recvwin>>tp->rcv_scale));
 
 	if (SEQ_GT(tp->snd_up, tp->snd_nxt)) {
+		KASSERT(!use_tso, ("URG with TSO"));
 		if (th != NULL) {
 			th->th_urp = htons((u_short)(tp->snd_up - tp->snd_nxt));
 			th->th_flags |= TH_URG;
@@ -917,11 +1023,18 @@ after_th:
 			    sizeof(struct ip6_hdr),
 			    sizeof(struct tcphdr) + optlen + len);
 		} else {
-			m->m_pkthdr.csum_flags = CSUM_TCP;
-			m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
-			if (len + optlen) {
-				th->th_sum = in_addword(th->th_sum,
-				    htons((u_short)(optlen + len)));
+			m->m_pkthdr.csum_thlen = sizeof(struct tcphdr) + optlen;
+			if (use_tso) {
+				m->m_pkthdr.csum_flags = CSUM_TSO;
+				m->m_pkthdr.tso_segsz = segsz;
+			} else {
+				m->m_pkthdr.csum_flags = CSUM_TCP;
+				m->m_pkthdr.csum_data =
+				    offsetof(struct tcphdr, th_sum);
+				if (len + optlen) {
+					th->th_sum = in_addword(th->th_sum,
+					    htons((u_short)(optlen + len)));
+				}
 			}
 
 			/*
@@ -1226,4 +1339,47 @@ tcp_idle_cwnd_validate(struct tcpcb *tp)
 
 	/* Restart ABC counting during congestion avoidance */
 	tp->snd_wacked = 0;
+}
+
+static int
+tcp_tso_getsize(struct tcpcb *tp, u_int *segsz, u_int *hlen0)
+{
+	struct inpcb * const inp = tp->t_inpcb;
+#ifdef INET6
+	const boolean_t isipv6 = (inp->inp_vflag & INP_IPV6) != 0;
+#else
+	const boolean_t isipv6 = FALSE;
+#endif
+	unsigned int ipoptlen, optlen;
+	u_int hlen;
+
+	hlen = sizeof(struct ip) + sizeof(struct tcphdr);
+
+	if (isipv6) {
+		ipoptlen = ip6_optlen(inp);
+	} else {
+		if (inp->inp_options) {
+			ipoptlen = inp->inp_options->m_len -
+			    offsetof(struct ipoption, ipopt_list);
+		} else {
+			ipoptlen = 0;
+		}
+	}
+#ifdef IPSEC
+	ipoptlen += ipsec_hdrsiz_tcp(tp);
+#endif
+	hlen += ipoptlen;
+
+	optlen = 0;
+	if ((tp->t_flags & (TF_REQ_TSTMP | TF_NOOPT)) == TF_REQ_TSTMP &&
+	    (tp->t_flags & TF_RCVD_TSTMP))
+		optlen += TCPOLEN_TSTAMP_APPA;
+	hlen += optlen;
+
+	if (tp->t_maxopd <= optlen + ipoptlen)
+		return EHOSTUNREACH;
+
+	*segsz = tp->t_maxopd - optlen - ipoptlen;
+	*hlen0 = hlen;
+	return 0;
 }

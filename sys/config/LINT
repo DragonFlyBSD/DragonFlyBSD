@@ -1236,6 +1236,11 @@ device		arcmsr		# Areca SATA II RAID
 device		hptmv
 
 #
+# Highpoint RocketRAID.  Supports RR172x, RR222x, RR2240, RR232x, RR2340,
+# RR2210, RR174x, RR2522, RR231x, RR230x.
+device		hptrr
+
+#
 # Highpoint RocketRaid 3xxx series SATA RAID
 device		hptiop
 
@@ -2495,7 +2500,9 @@ options 	DEBUG_CRIT_SECTIONS
 options 	DEBUG_INTERRUPTS
 #options 	DISABLE_PSE
 options		BCE_DEBUG
+options		BNX_TSO_DEBUG
 options		EMX_RSS_DEBUG
+options		EMX_TSO_DEBUG
 options		JME_RSS_DEBUG
 options		IGB_RSS_DEBUG
 options		IGB_MSIX_DEBUG

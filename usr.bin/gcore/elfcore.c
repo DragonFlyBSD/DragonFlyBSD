@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/gcore/elfcore.c,v 1.5.2.3 2001/07/11 23:59:11 obrien Exp $
- * $DragonFly: src/usr.bin/gcore/elfcore.c,v 1.5 2008/06/05 18:06:33 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -288,7 +287,7 @@ elf_puthdr(vm_map_entry_t map, void *dst, size_t *off, const prstatus_t *status,
 		ehdr->e_ident[EI_CLASS] = ELF_CLASS;
 		ehdr->e_ident[EI_DATA] = ELF_DATA;
 		ehdr->e_ident[EI_VERSION] = EV_CURRENT;
-		ehdr->e_ident[EI_OSABI] = ELFOSABI_FREEBSD;
+		ehdr->e_ident[EI_OSABI] = ELFOSABI_NONE;
 		ehdr->e_ident[EI_ABIVERSION] = 0;
 		ehdr->e_ident[EI_PAD] = 0;
 		ehdr->e_type = ET_CORE;
@@ -486,7 +485,7 @@ readmap(pid_t pid)
 
 		len = 0;
 		n = sscanf(mapbuf + pos, "%lx %lx %*d %*d %*x %3[-rwx]"
-		    " %*d %*d %*x %*s %*s %16s%*[\n]%n",
+		    " %*d %*d %*x %*s %*s %16s %*s%*[\n]%n",
 		    &start, &end, prot, type, &len);
 		if (n != 4)
 			errx(1, "ill-formed line in %s", mapname);

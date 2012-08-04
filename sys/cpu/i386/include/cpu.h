@@ -63,7 +63,8 @@
 #define cpu_swapin(p)	/* nothing */
 #define cpu_setstack(lp, ap)		((lp)->lwp_md.md_regs[SP] = (ap))
 
-#define CLKF_INTR(intr_nest)	((intr_nest) > 1 || (curthread->td_flags & TDF_INTTHREAD))
+#define CLKF_INTR(intr_nest)	((intr_nest) > 1)
+#define CLKF_INTR_TD(td)	((td)->td_flags & TDF_INTTHREAD)
 #define	CLKF_PC(framep)		((framep)->if_eip)
 
 /*

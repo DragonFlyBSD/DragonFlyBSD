@@ -249,7 +249,7 @@ int tcp_autorcvbuf_max = 2*1024*1024;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, recvbuf_max, CTLFLAG_RW,
     &tcp_autorcvbuf_max, 0, "Max size of automatic receive buffer");
 
-int tcp_sosend_agglim = 2;
+int tcp_sosend_agglim = 3;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosend_agglim, CTLFLAG_RW,
     &tcp_sosend_agglim, 0, "TCP sosend mbuf aggregation limit");
 

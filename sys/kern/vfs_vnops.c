@@ -208,6 +208,10 @@ again:
 		error = EOPNOTSUPP;
 		goto bad;
 	}
+	if (vp->v_type != VDIR && (fmode & O_DIRECTORY)) {
+		error = ENOTDIR;
+		goto bad;
+	}
 	if ((fmode & O_CREAT) == 0) {
 		if (fmode & (FWRITE | O_TRUNC)) {
 			if (vp->v_type == VDIR) {
@@ -647,9 +651,7 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	vp = (struct vnode *)fp->f_data;
 
 	ioflag = 0;
-	if (flags & O_FRNONBLOCKING) {
-		ioflag |= (IO_NDELAY | IO_NRDELAY);
-	} else if (flags & O_FBLOCKING) {
+	if (flags & O_FBLOCKING) {
 		/* ioflag &= ~IO_NDELAY; */
 	} else if (flags & O_FNONBLOCKING) {
 		ioflag |= IO_NDELAY;

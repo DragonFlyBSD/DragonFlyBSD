@@ -160,9 +160,8 @@
 
 #define IGB_MAX_SCATTER			64
 #define IGB_VFTA_SIZE			128
-#define IGB_TSO_SIZE			(65535 + \
+#define IGB_TSO_SIZE			(IP_MAXPACKET + \
 					 sizeof(struct ether_vlan_header))
-#define IGB_TSO_SEG_SIZE		4096	/* Max dma segment size */
 #define IGB_HDR_BUF			128
 #define IGB_PKTTYPE_MASK		0x0000FFF0
 
@@ -175,7 +174,7 @@
 #define IGB_TX_RESERVED			3
 
 /* Large enough for 64K TSO */
-#define IGB_TX_SPARE			32
+#define IGB_TX_SPARE			33
 
 #define IGB_TX_OACTIVE_MAX		64
 
@@ -307,6 +306,7 @@ struct igb_softc {
 	uint32_t		flags;
 #define IGB_FLAG_SHARED_INTR	0x1
 #define IGB_FLAG_HAS_MGMT	0x2
+#define IGB_FLAG_TSO_IPLEN0	0x4
 
 	bus_dma_tag_t		parent_tag;
 

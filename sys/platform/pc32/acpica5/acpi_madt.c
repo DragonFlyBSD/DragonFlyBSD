@@ -393,13 +393,14 @@ madt_lapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
 		const struct acpi_madt_lapic *lapic_ent;
 
 		lapic_ent = (const struct acpi_madt_lapic *)ent;
-		if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED)
+		if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
 			arg->cpu_count++;
-		if (lapic_ent->ml_apic_id == APICID_MAX) {
-			kprintf("madt_lapic_probe: "
-			    "invalid LAPIC apic id %d\n",
-			    lapic_ent->ml_apic_id);
-			return EINVAL;
+			if (lapic_ent->ml_apic_id == APICID_MAX) {
+				kprintf("madt_lapic_probe: "
+				    "invalid LAPIC apic id %d\n",
+				    lapic_ent->ml_apic_id);
+				return EINVAL;
+			}
 		}
 	} else if (ent->me_type == MADT_ENT_LAPIC_ADDR) {
 		const struct acpi_madt_lapic_addr *lapic_addr_ent;

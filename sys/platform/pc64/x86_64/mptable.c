@@ -77,6 +77,9 @@ extern u_long	ebda_addr;
 extern int	imcr_present;
 extern int	naps;
 
+static int	force_enable = 0;
+TUNABLE_INT("hw.lapic_force_enable", &force_enable);
+
 #define BIOS_BASE		(0xf0000)
 #define BIOS_BASE2		(0xe0000)
 #define BIOS_SIZE		(0x10000)
@@ -658,10 +661,10 @@ mptable_lapic_pass1_callback(void *xarg, const void *pos, int type)
 		return 0;
 
 	arg->cpu_count++;
-	if (ent->apic_id < 32) {
-		arg->ht_apicid_mask |= 1 << ent->apic_id;
+	if (ent->apic_id < 64) {
+		arg->ht_apicid_mask |= 1UL << ent->apic_id;
 	} else if (arg->ht_fixup) {
-		kprintf("MPTABLE: lapic id > 32, disable HTT fixup\n");
+		kprintf("MPTABLE: lapic id > 64, disable HTT fixup\n");
 		arg->ht_fixup = 0;
 	}
 	return 0;
@@ -702,7 +705,7 @@ mptable_lapic_pass2_callback(void *xarg, const void *pos, int type)
 		 */
 		bzero(&proc, sizeof(proc));
 		proc.type = 0;
-		proc.cpu_flags = PROCENTRY_FLAG_EN;
+		proc.cpu_flags = (force_enable) ? PROCENTRY_FLAG_EN : ent->cpu_flags;
 		proc.apic_id = ent->apic_id;
 
 		for (i = 1; i < arg->logical_cpus; i++) {

@@ -707,3 +707,8 @@ lockmgr_printinfo(struct lock *lkp)
 		kprintf(" with %d pending", lkp->lk_waitcount);
 }
 
+void
+lock_sysinit(struct lock_args *arg)
+{
+	lockinit(arg->la_lock, arg->la_desc, 0, arg->la_flags);
+}

@@ -96,6 +96,8 @@ void	callout_reset (struct callout *, int, void (*)(void *), void *);
 int	callout_stop (struct callout *);
 void	callout_stop_sync (struct callout *);
 void	callout_terminate (struct callout *);
+void	callout_reset_bycpu (struct callout *, int, void (*)(void *), void *,
+	    int);
 
 #endif
 

@@ -37,7 +37,6 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.14 2008/02/12 20:00:38 corecode Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -97,10 +96,9 @@
 /* Attempt to bypass the buffer cache */
 #define O_DIRECT	0x00010000
 
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-#define O_ROOTCRED	0x00020000	/* fp_open */
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#define O_CLOEXEC	0x00020000	/* atomically set FD_CLOEXEC */
 #endif
-
 #define O_FBLOCKING	0x00040000	/* force blocking I/O */
 #define O_FNONBLOCKING	0x00080000	/* force non-blocking I/O */
 #define O_FAPPEND	0x00100000	/* force append mode for write */
@@ -110,7 +108,10 @@
 #define O_FUNBUFFERED	0x01000000	/* force unbuffered (direct) I/O */
 #define O_FBUFFERED	0x02000000	/* force buffered I/O */
 #define O_MAPONREAD	0x04000000	/* memory map read buffer */
-#define O_FRNONBLOCKING	0x08000000	/* nonblocking I/O no disk wait */
+
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#define O_DIRECTORY	0x08000000	/* error if not a directory */
+#endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define FREVOKED	0x10000000	/* revoked by fdrevoke() */
@@ -121,7 +122,7 @@
 
 #define O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\
 			 O_FSYNCWRITE|O_FASYNCWRITE|O_FUNBUFFERED|O_FBUFFERED|\
-			 O_MAPONREAD|O_FRNONBLOCKING)
+			 O_MAPONREAD)
 
 #ifdef _KERNEL
 /* convert from open() flags to/from fflags; convert O_RD/WR to FREAD/FWRITE */
@@ -173,6 +174,7 @@
 #define AT_SYMLINK_NOFOLLOW	1
 #define AT_REMOVEDIR		2
 #define AT_EACCESS		4
+#define AT_SYMLINK_FOLLOW	8
 
 /*
  * Constants used for fcntl(2)

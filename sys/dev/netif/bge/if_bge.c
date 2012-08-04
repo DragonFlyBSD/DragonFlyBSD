@@ -2825,8 +2825,8 @@ bge_reset(struct bge_softc *sc)
 		uint32_t v;
 
 		/* Enable Data FIFO protection. */
-		v = CSR_READ_4(sc, 0x7c00);
-		CSR_WRITE_4(sc, 0x7c00, v | (1<<25));
+		v = CSR_READ_4(sc, BGE_PCIE_TLDLPL_PORT);
+		CSR_WRITE_4(sc, BGE_PCIE_TLDLPL_PORT, v | (1 << 25));
 	}
 
 	DELAY(10000);

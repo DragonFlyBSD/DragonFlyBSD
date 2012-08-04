@@ -522,7 +522,6 @@ acpi_print_rsdt(struct ACPIsdt *rsdp)
 		default:
 			addr = 0;
 		}
-		assert(addr != 0);
 		printf("0x%08lx", addr);
 	}
 	printf(" }\n");
@@ -778,7 +777,8 @@ acpi_handle_rsdt(struct ACPIsdt *rsdp)
 			addr = le64dec((char*)rsdp->body + i * addr_size);
 			break;
 		default:
-			assert((addr = 0));
+			printf("invalid addr_size: %d", addr_size);
+			continue;
 		}
 
 		sdp = (struct ACPIsdt *)acpi_map_sdt(addr);

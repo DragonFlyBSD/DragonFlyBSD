@@ -441,7 +441,7 @@ tcp_willblock(void)
  * of the tcpcb each time to conserve mbufs.
  */
 void
-tcp_fillheaders(struct tcpcb *tp, void *ip_ptr, void *tcp_ptr)
+tcp_fillheaders(struct tcpcb *tp, void *ip_ptr, void *tcp_ptr, boolean_t tso)
 {
 	struct inpcb *inp = tp->t_inpcb;
 	struct tcphdr *tcp_hdr = (struct tcphdr *)tcp_ptr;
@@ -464,6 +464,7 @@ tcp_fillheaders(struct tcpcb *tp, void *ip_ptr, void *tcp_ptr)
 #endif
 	{
 		struct ip *ip = (struct ip *) ip_ptr;
+		u_int plen;
 
 		ip->ip_vhl = IP_VHL_BORING;
 		ip->ip_tos = 0;
@@ -475,9 +476,13 @@ tcp_fillheaders(struct tcpcb *tp, void *ip_ptr, void *tcp_ptr)
 		ip->ip_p = IPPROTO_TCP;
 		ip->ip_src = inp->inp_laddr;
 		ip->ip_dst = inp->inp_faddr;
+
+		if (tso)
+			plen = htons(IPPROTO_TCP);
+		else
+			plen = htons(sizeof(struct tcphdr) + IPPROTO_TCP);
 		tcp_hdr->th_sum = in_pseudo(ip->ip_src.s_addr,
-				    ip->ip_dst.s_addr,
-				    htons(sizeof(struct tcphdr) + IPPROTO_TCP));
+		    ip->ip_dst.s_addr, plen);
 	}
 
 	tcp_hdr->th_sport = inp->inp_lport;
@@ -503,7 +508,7 @@ tcp_maketemplate(struct tcpcb *tp)
 
 	if ((tmp = mpipe_alloc_nowait(&tcptemp_mpipe)) == NULL)
 		return (NULL);
-	tcp_fillheaders(tp, &tmp->tt_ipgen, &tmp->tt_t);
+	tcp_fillheaders(tp, &tmp->tt_ipgen, &tmp->tt_t, FALSE);
 	return (tmp);
 }
 
@@ -657,6 +662,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 		    htons((u_short)(tlen - sizeof(struct ip) + ip->ip_p)));
 		m->m_pkthdr.csum_flags = CSUM_TCP;
 		m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
+		m->m_pkthdr.csum_thlen = sizeof(struct tcphdr);
 	}
 #ifdef TCPDEBUG
 	if (tp == NULL || (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
@@ -1815,7 +1821,7 @@ ipsec_hdrsiz_tcp(struct tcpcb *tp)
 		th = (struct tcphdr *)(ip6 + 1);
 		m->m_pkthdr.len = m->m_len =
 		    sizeof(struct ip6_hdr) + sizeof(struct tcphdr);
-		tcp_fillheaders(tp, ip6, th);
+		tcp_fillheaders(tp, ip6, th, FALSE);
 		hdrsiz = ipsec6_hdrsiz(m, IPSEC_DIR_OUTBOUND, inp);
 	} else
 #endif
@@ -1823,7 +1829,7 @@ ipsec_hdrsiz_tcp(struct tcpcb *tp)
 		ip = mtod(m, struct ip *);
 		th = (struct tcphdr *)(ip + 1);
 		m->m_pkthdr.len = m->m_len = sizeof(struct tcpiphdr);
-		tcp_fillheaders(tp, ip, th);
+		tcp_fillheaders(tp, ip, th, FALSE);
 		hdrsiz = ipsec4_hdrsiz(m, IPSEC_DIR_OUTBOUND, inp);
 	}
 
@@ -2227,3 +2233,67 @@ tcpsignature_apply(void *fstate, void *data, unsigned int len)
 	return (0);
 }
 #endif /* TCP_SIGNATURE */
+
+boolean_t
+tcp_tso_pullup(struct mbuf **mp, int hoff, struct ip **ip0, int *iphlen0,
+    struct tcphdr **th0, int *thoff0)
+{
+	struct mbuf *m = *mp;
+	struct ip *ip;
+	int len, iphlen;
+	struct tcphdr *th;
+	int thoff;
+
+	len = hoff + sizeof(struct ip);
+
+	/* The fixed IP header must reside completely in the first mbuf. */
+	if (m->m_len < len) {
+		m = m_pullup(m, len);
+		if (m == NULL)
+			goto fail;
+	}
+
+	ip = mtodoff(m, struct ip *, hoff);
+	iphlen = IP_VHL_HL(ip->ip_vhl) << 2;
+
+	/* The full IP header must reside completely in the one mbuf. */
+	if (m->m_len < hoff + iphlen) {
+		m = m_pullup(m, hoff + iphlen);
+		if (m == NULL)
+			goto fail;
+		ip = mtodoff(m, struct ip *, hoff);
+	}
+
+	KASSERT(ip->ip_p == IPPROTO_TCP, ("not tcp %d", ip->ip_p));
+
+	if (m->m_len < hoff + iphlen + sizeof(struct tcphdr)) {
+		m = m_pullup(m, hoff + iphlen + sizeof(struct tcphdr));
+		if (m == NULL)
+			goto fail;
+		ip = mtodoff(m, struct ip *, hoff);
+	}
+
+	th = (struct tcphdr *)((caddr_t)ip + iphlen);
+	thoff = th->th_off << 2;
+
+	if (m->m_len < hoff + iphlen + thoff) {
+		m = m_pullup(m, hoff + iphlen + thoff);
+		if (m == NULL)
+			goto fail;
+		ip = mtodoff(m, struct ip *, hoff);
+		th = (struct tcphdr *)((caddr_t)ip + iphlen);
+	}
+
+	*mp = m;
+	*ip0 = ip;
+	*iphlen0 = iphlen;
+	*th0 = th;
+	*thoff0 = thoff;
+	return TRUE;
+
+fail:
+	if (m != NULL)
+		m_freem(m);
+	*mp = NULL;
+	return FALSE;
+}

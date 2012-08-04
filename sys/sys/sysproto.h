@@ -2365,6 +2365,16 @@ struct	vquotactl_args {
 	const char *	path;	char path_[PAD_(const char *)];
 	struct plistref *	pref;	char pref_[PAD_(struct plistref *)];
 };
+struct	linkat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd1;	char fd1_[PAD_(int)];
+	char *	path1;	char path1_[PAD_(char *)];
+	int	fd2;	char fd2_[PAD_(int)];
+	char *	path2;	char path2_[PAD_(char *)];
+	int	flags;	char flags_[PAD_(int)];
+};
 
 #ifdef COMPAT_43
 
@@ -2982,6 +2992,7 @@ int	sys_readlinkat (struct readlinkat_args *);
 int	sys_symlinkat (struct symlinkat_args *);
 int	sys_swapoff (struct swapoff_args *);
 int	sys_vquotactl (struct vquotactl_args *);
+int	sys_linkat (struct linkat_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

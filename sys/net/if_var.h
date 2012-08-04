@@ -828,6 +828,9 @@ extern	int ifqmaxlen;
 extern	struct ifnet loif[];
 extern	int if_index;
 
+struct ip;
+struct tcphdr;
+
 void	ether_ifattach(struct ifnet *, uint8_t *, struct lwkt_serialize *);
 void	ether_ifattach_bpf(struct ifnet *, uint8_t *, u_int, u_int,
 			struct lwkt_serialize *);
@@ -838,6 +841,8 @@ void	ether_reinput_oncpu(struct ifnet *, struct mbuf *, int);
 void	ether_input_pkt(struct ifnet *, struct mbuf *, const struct pktinfo *);
 int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, u_long, caddr_t);
+boolean_t ether_tso_pullup(struct mbuf **, int *, struct ip **, int *,
+	    struct tcphdr **, int *);
 struct ifnet *ether_bridge_interface(struct ifnet *ifp);
 uint32_t	ether_crc32_le(const uint8_t *, size_t);
 uint32_t	ether_crc32_be(const uint8_t *, size_t);

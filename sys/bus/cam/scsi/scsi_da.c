@@ -1196,6 +1196,7 @@ daregister(struct cam_periph *periph, void *arg)
 	TASK_INIT(&softc->sysctl_task, 0, dasysctlinit, periph);
 
 	/* Check if the SIM does not want 6 byte commands */
+	bzero(&cpi, sizeof(cpi));
 	xpt_setup_ccb(&cpi.ccb_h, periph->path, /*priority*/1);
 	cpi.ccb_h.func_code = XPT_PATH_INQ;
 	xpt_action((union ccb *)&cpi);
@@ -1250,7 +1251,10 @@ daregister(struct cam_periph *periph, void *arg)
 	 */
 	CAM_SIM_UNLOCK(periph->sim);
 	disk_create(periph->unit_number, &softc->disk, &da_ops);
-	softc->disk.d_rawdev->si_iosize_max = MAXPHYS;
+	if (cpi.maxio == 0 || cpi.maxio > MAXPHYS)
+		softc->disk.d_rawdev->si_iosize_max = MAXPHYS;
+	else
+		softc->disk.d_rawdev->si_iosize_max = cpi.maxio;
 	CAM_SIM_LOCK(periph->sim);
 
 	/*

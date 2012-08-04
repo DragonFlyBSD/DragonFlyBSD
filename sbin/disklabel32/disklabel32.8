@@ -34,9 +34,8 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.30 2008/09/16 20:45:36 thomas Exp $
 .\"
-.Dd September 28, 2009
+.Dd August 3, 2012
 .Dt DISKLABEL32 8
 .Os
 .Sh NAME
@@ -684,6 +683,8 @@ The size of the partition in sectors,
 (megabytes - 1024*1024),
 .Cm G
 (gigabytes - 1024*1024*1024),
+.Cm T
+(gigabytes - 1024*1024*1024*1024),
 .Cm %
 (percentage of free space
 .Em after
@@ -700,9 +701,9 @@ a size of
 .Cm *
 indicates the entire disk.
 Lowercase versions of
-.Cm K , M ,
+.Cm K , M , G ,
 and
-.Cm G
+.Cm T
 are allowed.
 Size and type should be specified without any spaces between them.
 .Pp

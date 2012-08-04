@@ -162,6 +162,17 @@ struct pkthdr {
 	/* variables for hardware checksum */
 	int	csum_flags;		/* flags regarding checksum */
 	int	csum_data;		/* data field used by csum routines */
+	uint16_t csum_iphlen;		/* IP header length */
+					/* valid if CSUM IP|UDP|TCP|TSO */
+	uint8_t	csum_thlen;		/* TCP/UDP header length */
+					/* valid if CSUM UDP|TCP|TSO */
+	uint8_t	csum_lhlen;		/* link header length */
+
+	uint16_t tso_segsz;		/* TSO segment size */
+	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
+
+	uint16_t hash;			/* packet hash */
+	uint16_t wlan_seqno;		/* IEEE 802.11 seq no. */
 
 	/* firewall flags */
 	uint32_t fw_flags;		/* flags for PF */
@@ -169,11 +180,6 @@ struct pkthdr {
 	/* variables for PF processing */
 	struct pkthdr_pf pf;		/* structure for PF */
 	struct pkthdr_br br;		/* structure for bridging */
-
-	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
-	uint16_t hash;			/* packet hash */
-
-	uint16_t wlan_seqno;		/* IEEE 802.11 seq no. */
 };
 
 /*
@@ -279,6 +285,7 @@ struct mbuf {
 						 * NB: This flag is only used
 						 * by IP defragmenter.
 						 */
+#define CSUM_TSO		0x2000		/* will do TCP segmentation */
 
 #define	CSUM_DELAY_DATA		(CSUM_TCP | CSUM_UDP)
 #define	CSUM_DELAY_IP		(CSUM_IP)	/* XXX add ipv6 here too? */

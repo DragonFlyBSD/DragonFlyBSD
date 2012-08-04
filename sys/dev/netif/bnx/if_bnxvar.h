@@ -207,6 +207,10 @@ struct bnx_softc {
 #define BNX_FLAG_5717_PLUS	0x00000008
 #define BNX_FLAG_MII_SERDES	0x00000010
 #define BNX_FLAG_CPMU		0x00000020
+#define BNX_FLAG_57765_PLUS	0x00000040
+#define BNX_FLAG_57765_FAMILY	0x00000080
+#define BNX_FLAG_STATUSTAG_BUG	0x00000100
+#define BNX_FLAG_TSO		0x00000200
 #define BNX_FLAG_NO_EEPROM	0x10000000
 #define BNX_FLAG_SHORTDMA	0x40000000
 
@@ -217,7 +221,6 @@ struct bnx_softc {
 	struct bnx_chain_data	bnx_cdata;	/* mbufs */
 	uint16_t		bnx_tx_saved_considx;
 	uint16_t		bnx_rx_saved_considx;
-	uint16_t		bnx_ev_saved_considx;
 	uint16_t		bnx_return_ring_cnt;
 	uint16_t		bnx_std;	/* current std ring head */
 	uint16_t		bnx_jumbo;	/* current jumo ring head */
@@ -237,7 +240,14 @@ struct bnx_softc {
 	int			bnx_txcnt;
 	int			bnx_link;
 	int			bnx_link_evt;
+	int			bnx_stat_cpuid;
 	struct callout		bnx_stat_timer;
+
+	uint16_t		bnx_rx_check_considx;
+	uint16_t		bnx_tx_check_considx;
+	boolean_t		bnx_intr_maylose;
+	int			bnx_intr_cpuid;
+	struct callout		bnx_intr_timer;
 
 	struct sysctl_ctx_list	bnx_sysctl_ctx;
 	struct sysctl_oid	*bnx_sysctl_tree;
@@ -253,9 +263,12 @@ struct bnx_softc {
 
 	void			(*bnx_link_upd)(struct bnx_softc *, uint32_t);
 	uint32_t		bnx_link_chg;
+
+#define BNX_TSO_NSTATS		45
+	u_long			bnx_tsosegs[BNX_TSO_NSTATS];
 };
 
-#define BNX_NSEG_NEW		32
+#define BNX_NSEG_NEW		40
 #define BNX_NSEG_SPARE		5
 #define BNX_NSEG_RSVD		16
 

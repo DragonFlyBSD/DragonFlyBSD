@@ -911,20 +911,27 @@ pass:
 		}
 	}
 
-	m->m_pkthdr.csum_flags |= CSUM_IP;
-	sw_csum = m->m_pkthdr.csum_flags & ~ifp->if_hwassist;
-	if (sw_csum & CSUM_DELAY_DATA) {
-		in_delayed_cksum(m);
-		sw_csum &= ~CSUM_DELAY_DATA;
+	if ((m->m_pkthdr.csum_flags & CSUM_TSO) == 0) {
+		m->m_pkthdr.csum_flags |= CSUM_IP;
+		sw_csum = m->m_pkthdr.csum_flags & ~ifp->if_hwassist;
+		if (sw_csum & CSUM_DELAY_DATA) {
+			in_delayed_cksum(m);
+			sw_csum &= ~CSUM_DELAY_DATA;
+		}
+		m->m_pkthdr.csum_flags &= ifp->if_hwassist;
+	} else {
+		sw_csum = 0;
 	}
-	m->m_pkthdr.csum_flags &= ifp->if_hwassist;
+	m->m_pkthdr.csum_iphlen = hlen;
 
 	/*
 	 * If small enough for interface, or the interface will take
-	 * care of the fragmentation for us, can just send directly.
+	 * care of the fragmentation or segmentation for us, can just
+	 * send directly.
 	 */
-	if (ip->ip_len <= ifp->if_mtu || ((ifp->if_hwassist & CSUM_FRAGMENT) &&
-	    !(ip->ip_off & IP_DF))) {
+	if (ip->ip_len <= ifp->if_mtu ||
+	    ((ifp->if_hwassist & CSUM_FRAGMENT) && !(ip->ip_off & IP_DF)) ||
+	    (m->m_pkthdr.csum_flags & CSUM_TSO)) {
 		ip->ip_len = htons(ip->ip_len);
 		ip->ip_off = htons(ip->ip_off);
 		ip->ip_sum = 0;
@@ -1182,6 +1189,7 @@ smart_frag_failure:
 		m->m_pkthdr.len = mhlen + len;
 		m->m_pkthdr.rcvif = NULL;
 		m->m_pkthdr.csum_flags = m0->m_pkthdr.csum_flags;
+		m->m_pkthdr.csum_iphlen = mhlen;
 		mhip->ip_off = htons(mhip->ip_off);
 		mhip->ip_sum = 0;
 		if (sw_csum & CSUM_DELAY_IP)

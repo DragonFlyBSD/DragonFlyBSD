@@ -97,7 +97,7 @@
 #define EMX_TX_OACTIVE_MAX		64
 
 /* Interrupt throttle rate */
-#define EMX_DEFAULT_ITR			10000
+#define EMX_DEFAULT_ITR			6000
 
 /*
  * This parameter controls whether or not autonegotation is enabled.
@@ -150,15 +150,12 @@
 #define EMX_TARC_SPEED_MODE		(1 << 21)
 
 #define EMX_MAX_SCATTER			64
-#define EMX_TSO_SIZE			(65535 + \
+#define EMX_TSO_SIZE			(IP_MAXPACKET + \
 					 sizeof(struct ether_vlan_header))
-#define EMX_MAX_SEGSIZE			4096
+#define EMX_MAX_SEGSIZE			PAGE_SIZE
 #define EMX_MSIX_MASK			0x01F00000 /* For 82574 use */
 
 #define EMX_CSUM_FEATURES		(CSUM_IP | CSUM_TCP | CSUM_UDP)
-#define EMX_IPVHL_SIZE			1 /* sizeof(ip.ip_vhl) */
-#define EMX_TXCSUM_MINHL		(ETHER_HDR_LEN + EVL_ENCAPLEN + \
-					 EMX_IPVHL_SIZE)
 
 /*
  * 82574 has a nonstandard address for EIAC
@@ -237,6 +234,7 @@ struct emx_softc {
 	struct e1000_hw		hw;
 	int			flags;
 #define EMX_FLAG_SHARED_INTR	0x1
+#define EMX_FLAG_TSO_PULLEX	0x2
 
 	/* DragonFly operating-system-specific structures. */
 	struct e1000_osdep	osdep;
@@ -303,8 +301,13 @@ struct emx_softc {
 
 	/* Saved csum offloading context information */
 	int			csum_flags;
-	int			csum_ehlen;
+	int			csum_lhlen;
 	int			csum_iphlen;
+
+	int			csum_thlen;	/* TSO */
+	int			csum_mss;	/* TSO */
+	int			csum_pktlen;	/* TSO */
+
 	uint32_t		csum_txd_upper;
 	uint32_t		csum_txd_lower;
 
@@ -362,13 +365,8 @@ struct emx_softc {
 	unsigned long		rx_irq;
 	unsigned long		tx_irq;
 	unsigned long		link_irq;
-	unsigned long		tx_csum_try_pullup;
-	unsigned long		tx_csum_pullup1;
-	unsigned long		tx_csum_pullup1_failed;
-	unsigned long		tx_csum_pullup2;
-	unsigned long		tx_csum_pullup2_failed;
-	unsigned long		tx_csum_drop1;
-	unsigned long		tx_csum_drop2;
+	unsigned long		tso_segments;
+	unsigned long		tso_ctx_reused;
 
 	/* sysctl tree glue */
 	struct sysctl_ctx_list	sysctl_ctx;

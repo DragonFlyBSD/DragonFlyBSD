@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/opendir.c,v 1.10.2.1 2001/06/04 20:59:48 joerg Exp $
- * $DragonFly: src/lib/libc/gen/opendir.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)opendir.c	8.8 (Berkeley) 5/1/95
  */
@@ -83,12 +82,9 @@ __opendir2(const char *name, int flags)
 	 */
 	if (stat(name, &statb) != 0)
 		return (NULL);
-	if (!S_ISDIR(statb.st_mode)) {
-		errno = ENOTDIR;
-		return (NULL);
-	}
 
-	if ((fd = _open(name, O_RDONLY | O_NONBLOCK)) == -1)
+	fd = _open(name, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
+	if (fd == -1)
 		return (NULL);
 	dirp = __fdopendir2(fd, flags);
 	if (dirp == NULL) {

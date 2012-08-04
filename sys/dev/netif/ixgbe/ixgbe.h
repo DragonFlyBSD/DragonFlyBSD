@@ -39,9 +39,6 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#if __FreeBSD_version >= 800000
-#include <sys/buf_ring.h>
-#endif
 #include <sys/mbuf.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
@@ -196,21 +193,7 @@
 #define IXGBE_QUEUE_DEPLETED		8
 
 /* Offload bits in mbuf flag */
-#if __FreeBSD_version >= 800000
-#define CSUM_OFFLOAD		(CSUM_IP|CSUM_TCP|CSUM_UDP|CSUM_SCTP)
-#else
 #define CSUM_OFFLOAD		(CSUM_IP|CSUM_TCP|CSUM_UDP)
-#endif
-
-/* For 6.X code compatibility */
-#if !defined(ETHER_BPF_MTAP)
-#define ETHER_BPF_MTAP		BPF_MTAP
-#endif
-
-#if __FreeBSD_version < 700000
-#define CSUM_TSO		0
-#define IFCAP_TSO4		0
-#endif
 
 /*
  * Interrupt Moderation parameters 
@@ -302,7 +285,7 @@ struct tx_ring {
 	u32			txd_cmd;
 	bus_dma_tag_t		txtag;
 	char			lock_name[16];
-#if __FreeBSD_version >= 800000
+#ifdef IFNET_BUF_RING
 	struct buf_ring		*br;
 #endif
 #ifdef IXGBE_FDIR
@@ -506,19 +489,6 @@ ixgbe_is_sfp(struct ixgbe_hw *hw)
 		return FALSE;
 	}
 }
-
-/* Workaround to make 8.0 buildable */
-#if __FreeBSD_version >= 800000 && __FreeBSD_version < 800504
-static __inline int
-drbr_needs_enqueue(struct ifnet *ifp, struct buf_ring *br)
-{
-#ifdef ALTQ
-        if (ALTQ_IS_ENABLED(&ifp->if_snd))
-                return (1);
-#endif
-        return (!buf_ring_empty(br));
-}
-#endif
 
 /*
 ** Find the number of unrefreshed RX descriptors
