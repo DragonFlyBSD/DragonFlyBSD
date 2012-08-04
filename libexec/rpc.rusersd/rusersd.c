@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rpc.rusersd/rusersd.c,v 1.8 1999/08/28 00:09:56 peter Exp $
- * $DragonFly: src/libexec/rpc.rusersd/rusersd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <stdlib.h>
@@ -48,7 +47,7 @@ extern void rusers_service();
 int from_inetd = 1;
 
 void
-cleanup()
+cleanup(int sig)
 {
         (void) pmap_unset(RUSERSPROG, RUSERSVERS_IDLE);
         (void) pmap_unset(RUSERSPROG, RUSERSVERS_ORIG);
@@ -56,9 +55,7 @@ cleanup()
 }
 
 int
-main(argc, argv)
-        int argc;
-        char *argv[];
+main(int argc, char *argv[])
 {
 	SVCXPRT *transp;
         int sock = 0;

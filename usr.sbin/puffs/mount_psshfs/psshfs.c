@@ -82,7 +82,7 @@ add_ssharg(char ***sshargs, int *nargs, const char *arg)
 }
 
 static void
-usage()
+usage(void)
 {
 
 	fprintf(stderr, "usage: %s "

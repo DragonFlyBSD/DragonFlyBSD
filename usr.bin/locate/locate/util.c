@@ -35,7 +35,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/locate/util.c,v 1.6.2.1 2001/12/20 04:21:48 mikeh Exp $
- * $DragonFly: src/usr.bin/locate/locate/util.c,v 1.4 2005/08/04 17:31:23 drhodus Exp $
  */
 
 
@@ -60,8 +59,7 @@ int	check_bigram_char(int);
  * or the database is obviously not a locate database.
  */
 int
-check_bigram_char(ch)
-	int ch;
+check_bigram_char(int ch)
 {
 	/* legal bigram: 0, ASCII_MIN ... ASCII_MAX */
 	if (ch == 0 ||
@@ -83,10 +81,7 @@ check_bigram_char(ch)
  *
  */
 char **
-colon(dbv, path, dot)
-	char **dbv;
-	char *path;
-	char *dot; /* default for single ':' */
+colon(char **dbv, char *path, char *dot)
 {
 	int vlen, slen;
 	char *c, *ch, *p;
@@ -137,8 +132,7 @@ colon(dbv, path, dot)
 }
 
 void 
-print_matches(counter)
-	u_int counter;
+print_matches(u_int counter)
 {
 	(void)printf("%d\n", counter);
 }
@@ -151,8 +145,7 @@ print_matches(counter)
 static char globfree[100];
 
 char *
-patprep(name)
-	char *name;
+patprep(char *name)
 {
 	char *endmark, *p, *subp;
 
@@ -205,8 +198,7 @@ patprep(name)
 
 /* tolower word */
 u_char *
-tolower_word(word)
-	u_char *word;
+tolower_word(u_char *word)
 {
 	u_char *p;
 
@@ -228,8 +220,7 @@ tolower_word(word)
  */
 
 int 
-getwm(p)
-	caddr_t p;
+getwm(caddr_t p)
 {
 	static char buf[INTSIZE];
 	int i;
@@ -257,8 +248,7 @@ getwm(p)
  */
 
 int
-getwf(fp)
-	FILE *fp;
+getwf(FILE *fp)
 {
 	int word;
 

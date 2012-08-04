@@ -35,7 +35,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/code/locate.code.c,v 1.11.2.1 2001/03/04 08:46:46 kris Exp $
- * $DragonFly: src/usr.bin/locate/code/locate.code.c,v 1.4 2005/08/04 17:31:23 drhodus Exp $
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)locate.code.c	8.1 (Berkeley) 6/6/93
@@ -116,9 +115,7 @@ int	bgindex(char *);
 void	usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	u_char *cp, *oldpath, *path;
 	int ch, code, count, diffcount, oldcount;
@@ -265,7 +262,7 @@ bgindex(bg)			/* Return location of bg in bigrams or -1. */
 #endif /* !LOOKUP */
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 	    "usage: locate.code common_bigrams < list > squozen_list\n");

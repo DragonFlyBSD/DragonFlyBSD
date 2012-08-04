@@ -32,7 +32,6 @@
  *
  * @(#)ring.c	8.2 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnet/ring.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $
- * $DragonFly: src/crypto/telnet/telnet/ring.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /*
@@ -306,9 +305,8 @@ ring_encrypt(Ring *ring, void (*encryptor)(unsigned char *, int))
     ring->clearto = ring->supply;
 }
 
-    void
-ring_clearto(ring)
-    Ring *ring;
+void
+ring_clearto(Ring *ring)
 {
     if (!ring_empty(ring))
 	ring->clearto = ring->supply;

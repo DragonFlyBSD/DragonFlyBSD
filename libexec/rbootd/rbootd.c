@@ -46,7 +46,6 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rbootd.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rbootd/rbootd.c,v 1.11.2.1 2001/02/18 02:54:11 kris Exp $
- * $DragonFly: src/libexec/rbootd/rbootd.c,v 1.4 2006/03/18 19:43:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -66,9 +65,7 @@
 static void usage (void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	int c, fd, omask, maxfds;
 	fd_set rset;
@@ -280,7 +277,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: rbootd [-ad] [-i interface] [config_file]\n");
 	exit (1);
@@ -299,7 +296,7 @@ usage()
 **		- Timed out connections in `RmpConns' will be freed.
 */
 void
-DoTimeout()
+DoTimeout(void)
 {
 	RMPCONN *rtmp;
 	struct timeval now;
@@ -336,8 +333,7 @@ DoTimeout()
 */
 
 CLIENT *
-FindClient(rconn)
-	RMPCONN *rconn;
+FindClient(RMPCONN *rconn)
 {
 	CLIENT *ctmp;
 
@@ -362,8 +358,7 @@ FindClient(rconn)
 **		- This process ceases to exist.
 */
 void
-Exit(sig)
-	int sig;
+Exit(int sig)
 {
 	if (sig > 0)
 		syslog(LOG_ERR, "going down on signal %d", sig);
@@ -391,8 +386,7 @@ Exit(sig)
 **		- This routine must be called with SIGHUP blocked.
 */
 void
-ReConfig(signo)
-	int signo;
+ReConfig(int signo)
 {
 	syslog(LOG_NOTICE, "reconfiguring boot server");
 
@@ -418,8 +412,7 @@ ReConfig(signo)
 **		- Debug file is closed.
 */
 void
-DebugOff(signo)
-	int signo;
+DebugOff(int signo)
 {
 	if (DbgFp != NULL)
 		(void) fclose(DbgFp);
@@ -441,8 +434,7 @@ DebugOff(signo)
 **		  otherwise do nothing.
 */
 void
-DebugOn(signo)
-	int signo;
+DebugOn(int signo)
 {
 	if (DbgFp == NULL) {
 		if ((DbgFp = fopen(DbgFile, "w")) == NULL)

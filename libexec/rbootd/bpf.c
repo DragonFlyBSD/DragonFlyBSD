@@ -83,7 +83,7 @@ static u_int8_t *BpfPkt = NULL;
 **		If an error is encountered, the program terminates here.
 */
 int
-BpfOpen()
+BpfOpen(void)
 {
 	struct ifreq ifr;
 	char bpfdev[32];
@@ -212,8 +212,7 @@ BpfOpen()
 **		None.
 */
 char *
-BpfGetIntfName(errmsg)
-	char **errmsg;
+BpfGetIntfName(char **errmsg)
 {
 	struct ifreq ibuf[8], *ifrp, *ifend, *mp;
 	struct ifconf ifc;
@@ -302,9 +301,7 @@ BpfGetIntfName(errmsg)
 **		None.
 */
 int
-BpfRead(rconn, doread)
-	RMPCONN *rconn;
-	int doread;
+BpfRead(RMPCONN *rconn, int doread)
 {
 	int datlen, caplen, hdrlen;
 	static u_int8_t *bp = NULL, *ep = NULL;
@@ -368,8 +365,7 @@ BpfRead(rconn, doread)
 **		None.
 */
 int
-BpfWrite(rconn)
-	RMPCONN *rconn;
+BpfWrite(RMPCONN *rconn)
 {
 	if (write(BpfFd, (char *)&rconn->rmp, rconn->rmplen) < 0) {
 		syslog(LOG_ERR, "write: %s: %m", EnetStr(rconn));
@@ -392,7 +388,7 @@ BpfWrite(rconn)
 **		None.
 */
 void
-BpfClose()
+BpfClose(void)
 {
 	struct ifreq ifr;
 

@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rpc.rstatd/rstatd.c,v 1.8 1999/08/28 00:09:54 peter Exp $
- * $DragonFly: src/libexec/rpc.rstatd/rstatd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <stdlib.h>
@@ -47,7 +46,7 @@ int from_inetd = 1;     /* started from inetd ? */
 int closedown = 20;	/* how long to wait before going dormant */
 
 void
-cleanup()
+cleanup(int sig)
 {
         (void) pmap_unset(RSTATPROG, RSTATVERS_TIME);
         (void) pmap_unset(RSTATPROG, RSTATVERS_SWTCH);
@@ -56,9 +55,7 @@ cleanup()
 }
 
 int
-main(argc, argv)
-        int argc;
-        char *argv[];
+main(int argc, char *argv[])
 {
 	SVCXPRT *transp;
         int sock = 0;

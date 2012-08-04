@@ -96,7 +96,7 @@ getfiobyfd(struct puffs_usermount *pu, int fd)
 }
 
 struct puffs_framebuf *
-puffs_framebuf_make()
+puffs_framebuf_make(void)
 {
 	struct puffs_framebuf *pufbuf;
 

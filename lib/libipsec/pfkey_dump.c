@@ -206,8 +206,7 @@ static struct val2str str_alg_comp[] = {
  * dump SADB_MSG formated.  For debugging, you should use kdebug_sadb().
  */
 void
-pfkey_sadump(m)
-	struct sadb_msg *m;
+pfkey_sadump(struct sadb_msg *m)
 {
 	caddr_t mhp[SADB_EXT_MAX + 1];
 	struct sadb_sa *m_sa;
@@ -365,8 +364,7 @@ pfkey_sadump(m)
 }
 
 void
-pfkey_spdump(m)
-	struct sadb_msg *m;
+pfkey_spdump(struct sadb_msg *m)
 {
 	char pbuf[NI_MAXSERV];
 	caddr_t mhp[SADB_EXT_MAX + 1];
@@ -484,8 +482,7 @@ pfkey_spdump(m)
  * set "ipaddress" to buffer.
  */
 static char *
-str_ipaddr(sa)
-	struct sockaddr *sa;
+str_ipaddr(struct sockaddr *sa)
 {
 	static char buf[NI_MAXHOST];
 #ifdef NI_WITHSCOPEID
@@ -506,8 +503,7 @@ str_ipaddr(sa)
  * set "/prefix[port number]" to buffer.
  */
 static char *
-str_prefport(family, pref, port)
-	u_int family, pref, port;
+str_prefport(u_int family, u_int pref, u_int port)
 {
 	static char buf[128];
 	char prefbuf[128];
@@ -544,8 +540,7 @@ str_prefport(family, pref, port)
  * set "Mon Day Time Year" to buffer
  */
 static char *
-str_time(t)
-	time_t t;
+str_time(time_t t)
 {
 	static char buf[128];
 
@@ -564,9 +559,7 @@ str_time(t)
 }
 
 static void
-str_lifetime_byte(x, str)
-	struct sadb_lifetime *x;
-	char *str;
+str_lifetime_byte(struct sadb_lifetime *x, char *str)
 {
 	double y;
 	char *unit;

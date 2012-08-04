@@ -90,7 +90,7 @@ static int stat_is_init = 0;
 #endif
 
 void
-stat_init()
+stat_init(void)
 {
     stat_is_init = 1;
     alarm(0);
@@ -100,9 +100,7 @@ stat_init()
 }
 
 statstime *
-rstatproc_stats_3_svc(argp, rqstp)
-    void			*argp;
-    struct svc_req		*rqstp;
+rstatproc_stats_3_svc(void *argp, struct svc_req *rqstp)
 {
     if (! stat_is_init)
         stat_init();
@@ -111,9 +109,7 @@ rstatproc_stats_3_svc(argp, rqstp)
 }
 
 statsswtch *
-rstatproc_stats_2_svc(argp, rqstp)
-    void			*argp;
-    struct svc_req		*rqstp;
+rstatproc_stats_2_svc(void *argp, struct svc_req *rqstp)
 {
     if (! stat_is_init)
         stat_init();
@@ -122,9 +118,7 @@ rstatproc_stats_2_svc(argp, rqstp)
 }
 
 stats *
-rstatproc_stats_1_svc(argp, rqstp)
-    void			*argp;
-    struct svc_req		*rqstp;
+rstatproc_stats_1_svc(void *argp, struct svc_req *rqstp)
 {
     if (! stat_is_init)
         stat_init();
@@ -133,9 +127,7 @@ rstatproc_stats_1_svc(argp, rqstp)
 }
 
 u_int *
-rstatproc_havedisk_3_svc(argp, rqstp)
-    void			*argp;
-    struct svc_req		*rqstp;
+rstatproc_havedisk_3_svc(void *argp, struct svc_req *rqstp)
 {
     static u_int have;
 
@@ -147,23 +139,19 @@ rstatproc_havedisk_3_svc(argp, rqstp)
 }
 
 u_int *
-rstatproc_havedisk_2_svc(argp, rqstp)
-    void			*argp;
-    struct svc_req		*rqstp;
+rstatproc_havedisk_2_svc(void *argp, struct svc_req *rqstp)
 {
     return(rstatproc_havedisk_3_svc(argp, rqstp));
 }
 
 u_int *
-rstatproc_havedisk_1_svc(argp, rqstp)
-    void			*argp;
-    struct svc_req		*rqstp;
+rstatproc_havedisk_1_svc(void *argp, struct svc_req *rqstp)
 {
     return(rstatproc_havedisk_3_svc(argp, rqstp));
 }
 
 void
-updatestat()
+updatestat(void)
 {
 	int i, hz;
 	struct clockinfo clockrate;
@@ -292,7 +280,7 @@ updatestat()
  * returns true if have a disk
  */
 int
-haveadisk()
+haveadisk(void)
 {
 	register int i;
 	struct statinfo stats;
@@ -335,8 +323,7 @@ haveadisk()
 }
 
 void
-updatexfers(numdevs, devs)
-	int numdevs, *devs;
+updatexfers(int numdevs, int *devs)
 {
 	register int i, j, t;
 	struct statinfo stats;
@@ -396,9 +383,7 @@ updatexfers(numdevs, devs)
 }
 
 void
-rstat_service(rqstp, transp)
-	struct svc_req *rqstp;
-	SVCXPRT *transp;
+rstat_service(struct svc_req *rqstp, SVCXPRT *transp)
 {
 	union {
 		int fill;
