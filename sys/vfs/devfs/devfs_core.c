@@ -677,7 +677,7 @@ devfs_mount_add(struct devfs_mnt_data *mnt)
 
 	msg = devfs_msg_get();
 	msg->mdv_mnt = mnt;
-	msg = devfs_msg_send_sync(DEVFS_MOUNT_ADD, msg);
+	devfs_msg_send_sync(DEVFS_MOUNT_ADD, msg);
 	devfs_msg_put(msg);
 
 	return 0;
@@ -694,7 +694,7 @@ devfs_mount_del(struct devfs_mnt_data *mnt)
 
 	msg = devfs_msg_get();
 	msg->mdv_mnt = mnt;
-	msg = devfs_msg_send_sync(DEVFS_MOUNT_DEL, msg);
+	devfs_msg_send_sync(DEVFS_MOUNT_DEL, msg);
 	devfs_msg_put(msg);
 
 	return 0;
@@ -712,7 +712,7 @@ devfs_destroy_related(cdev_t dev)
 
 	msg = devfs_msg_get();
 	msg->mdv_load = dev;
-	msg = devfs_msg_send_sync(DEVFS_DESTROY_RELATED, msg);
+	devfs_msg_send_sync(DEVFS_DESTROY_RELATED, msg);
 	devfs_msg_put(msg);
 	return 0;
 }
@@ -725,7 +725,7 @@ devfs_clr_related_flag(cdev_t dev, uint32_t flag)
 	msg = devfs_msg_get();
 	msg->mdv_flags.dev = dev;
 	msg->mdv_flags.flag = flag;
-	msg = devfs_msg_send_sync(DEVFS_CLR_RELATED_FLAG, msg);
+	devfs_msg_send_sync(DEVFS_CLR_RELATED_FLAG, msg);
 	devfs_msg_put(msg);
 
 	return 0;
@@ -739,7 +739,7 @@ devfs_destroy_related_without_flag(cdev_t dev, uint32_t flag)
 	msg = devfs_msg_get();
 	msg->mdv_flags.dev = dev;
 	msg->mdv_flags.flag = flag;
-	msg = devfs_msg_send_sync(DEVFS_DESTROY_RELATED_WO_FLAG, msg);
+	devfs_msg_send_sync(DEVFS_DESTROY_RELATED_WO_FLAG, msg);
 	devfs_msg_put(msg);
 
 	return 0;
@@ -782,7 +782,7 @@ devfs_clone_handler_add(const char *name, d_clone_t *nhandler)
 	msg = devfs_msg_get();
 	msg->mdv_chandler.name = name;
 	msg->mdv_chandler.nhandler = nhandler;
-	msg = devfs_msg_send_sync(DEVFS_CHANDLER_ADD, msg);
+	devfs_msg_send_sync(DEVFS_CHANDLER_ADD, msg);
 	devfs_msg_put(msg);
 	return 0;
 }
@@ -800,7 +800,7 @@ devfs_clone_handler_del(const char *name)
 	msg = devfs_msg_get();
 	msg->mdv_chandler.name = name;
 	msg->mdv_chandler.nhandler = NULL;
-	msg = devfs_msg_send_sync(DEVFS_CHANDLER_DEL, msg);
+	devfs_msg_send_sync(DEVFS_CHANDLER_DEL, msg);
 	devfs_msg_put(msg);
 	return 0;
 }
@@ -827,7 +827,7 @@ devfs_find_device_by_name(const char *fmt, ...)
 
 	msg = devfs_msg_get();
 	msg->mdv_name = target;
-	msg = devfs_msg_send_sync(DEVFS_FIND_DEVICE_BY_NAME, msg);
+	devfs_msg_send_sync(DEVFS_FIND_DEVICE_BY_NAME, msg);
 	found = msg->mdv_cdev;
 	devfs_msg_put(msg);
 	kvasfree(&target);
@@ -848,7 +848,7 @@ devfs_find_device_by_udev(udev_t udev)
 
 	msg = devfs_msg_get();
 	msg->mdv_udev = udev;
-	msg = devfs_msg_send_sync(DEVFS_FIND_DEVICE_BY_UDEV, msg);
+	devfs_msg_send_sync(DEVFS_FIND_DEVICE_BY_UDEV, msg);
 	found = msg->mdv_cdev;
 	devfs_msg_put(msg);
 
@@ -870,7 +870,7 @@ devfs_inode_to_vnode(struct mount *mp, ino_t target)
 	msg = devfs_msg_get();
 	msg->mdv_ino.mp = mp;
 	msg->mdv_ino.ino = target;
-	msg = devfs_msg_send_sync(DEVFS_INODE_TO_VNODE, msg);
+	devfs_msg_send_sync(DEVFS_INODE_TO_VNODE, msg);
 	vp = msg->mdv_ino.vp;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	devfs_msg_put(msg);
@@ -969,7 +969,7 @@ devfs_scan_callback(devfs_scan_t *callback, void *arg)
 	msg = devfs_msg_get();
 	msg->mdv_load = callback;
 	msg->mdv_load2 = arg;
-	msg = devfs_msg_send_sync(DEVFS_SCAN_CALLBACK, msg);
+	devfs_msg_send_sync(DEVFS_SCAN_CALLBACK, msg);
 	devfs_msg_put(msg);
 
 	return 0;
@@ -1032,13 +1032,15 @@ devfs_msg_send(uint32_t cmd, devfs_msg_t devfs_msg)
 /*
  * devfs_msg_send_sync is the generic synchronous message sending
  * facility for devfs. It initializes a local reply port and waits
- * for the core's answer. This answer is then returned.
+ * for the core's answer. The core will write the answer on the same
+ * message which is sent back as reply. The caller still has a reference
+ * to the message, so we don't need to return it.
  */
-devfs_msg_t
+int
 devfs_msg_send_sync(uint32_t cmd, devfs_msg_t devfs_msg)
 {
 	struct lwkt_port rep_port;
-	devfs_msg_t	msg_incoming;
+	int	error;
 	lwkt_port_t port = &devfs_msg_port;
 
 	lwkt_initport_thread(&rep_port, curthread);
@@ -1046,10 +1048,9 @@ devfs_msg_send_sync(uint32_t cmd, devfs_msg_t devfs_msg)
 
 	devfs_msg->hdr.u.ms_result = cmd;
 
-	lwkt_sendmsg(port, (lwkt_msg_t)devfs_msg);
-	msg_incoming = lwkt_waitport(&rep_port, 0);
+	error = lwkt_domsg(port, (lwkt_msg_t)devfs_msg, 0);
 
-	return msg_incoming;
+	return error;
 }
 
 /*
@@ -2570,7 +2571,7 @@ devfs_config(void)
 
 	if (devfs_run && curthread != td_core) {
 		msg = devfs_msg_get();
-		msg = devfs_msg_send_sync(DEVFS_SYNC, msg);
+		devfs_msg_send_sync(DEVFS_SYNC, msg);
 		devfs_msg_put(msg);
 	}
 }

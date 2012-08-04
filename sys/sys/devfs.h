@@ -364,7 +364,7 @@ int devfs_gc(struct devfs_node *);
 int devfs_create_dev(cdev_t, uid_t, gid_t, int);
 int devfs_destroy_dev(cdev_t);
 
-devfs_msg_t devfs_msg_send_sync(uint32_t, devfs_msg_t);
+int  devfs_msg_send_sync(uint32_t, devfs_msg_t);
 void devfs_msg_send(uint32_t, devfs_msg_t);
 void devfs_msg_send_dev(uint32_t, cdev_t dev, uid_t, gid_t, int);
 void devfs_msg_send_mount(uint32_t, struct devfs_mnt_data *);
