@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.140 2011/04/17 20:06:08 phessler Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.141 2011/05/11 14:38:36 krw Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -1185,8 +1185,7 @@ make_discover(struct client_lease *lease)
 		}
 
 	/* Set up the option buffer to fit in a minimal UDP packet. */
-	i = cons_options(client->packet.options, 576 - DHCP_FIXED_LEN,
-	    options);
+	i = cons_options(options);
 	if (i == -1 || client->packet.options[i] != DHO_END)
 		error("options do not fit in DHCPDISCOVER packet.");
 	client->packet_length = DHCP_FIXED_NON_UDP+i+1;
@@ -1254,8 +1253,7 @@ make_request(struct client_lease * lease)
 		}
 
 	/* Set up the option buffer to fit in a minimal UDP packet. */
-	i = cons_options(client->packet.options, 576 - DHCP_FIXED_LEN,
-	    options);
+	i = cons_options(options);
 	if (i == -1 || client->packet.options[i] != DHO_END)
 		error("options do not fit in DHCPREQUEST packet.");
 	client->packet_length = DHCP_FIXED_NON_UDP+i+1;
@@ -1322,8 +1320,7 @@ make_decline(struct client_lease *lease)
 	}
 
 	/* Set up the option buffer to fit in a minimal UDP packet. */
-	i = cons_options(client->packet.options, 576 - DHCP_FIXED_LEN,
-	    options);
+	i = cons_options(options);
 	if (i == -1 || client->packet.options[i] != DHO_END)
 		error("options do not fit in DHCPDECLINE packet.");
 	client->packet_length = DHCP_FIXED_NON_UDP+i+1;
