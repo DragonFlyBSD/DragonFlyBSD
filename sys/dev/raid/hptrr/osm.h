@@ -185,7 +185,7 @@ int os_revalidate_device(void *osext, int target_id);
 HPT_U8 os_get_vbus_seq(void *osext);
 
 /* debug support */
-int  os_printk(char *fmt, ...);
+int  os_printk(char *fmt, ...) __printflike(1, 2);
 
 #if DBG
 extern int hptrr_dbg_level;
