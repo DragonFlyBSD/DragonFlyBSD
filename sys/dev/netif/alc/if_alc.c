@@ -30,37 +30,29 @@
 /* Driver for Atheros AR8131/AR8132 PCIe Ethernet. */
 
 #include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/bus.h>
+#include <sys/bitops.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
-#include <sys/lock.h>
+#include <sys/bus.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
-#include <sys/mbuf.h>
-#include <sys/module.h>
-#include <sys/spinlock.h>
+#include <sys/proc.h>
 #include <sys/rman.h>
-#include <sys/queue.h>
+#include <sys/serialize.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
-#include <sys/taskqueue.h>
 
-#include <net/bpf.h>
-#include <net/if.h>
-#include <net/if_arp.h>
 #include <net/ethernet.h>
+#include <net/if.h>
+#include <net/bpf.h>
+#include <net/if_arp.h>
 #include <net/if_dl.h>
-#include <net/if_llc.h>
 #include <net/if_media.h>
-#include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
 
-#include <netinet/in.h>
-#include <netinet/in_systm.h>
-#include <netinet/ip.h>
 #include <netinet/tcp.h>
 
 #include <dev/netif/mii_layer/mii.h>
@@ -68,39 +60,24 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
+#include <bus/pci/pcidevs.h>
 
-#include <machine/atomic.h>
-/*
-XXX
-#include <machine/bus.h>
-#include <machine/in_cksum.h>
-*/
-
-#include "if_alcreg.h"
-#include "if_alcvar.h"
+#include <dev/netif/alc/if_alcreg.h>
+#include <dev/netif/alc/if_alcvar.h>
 
 /* "device miibus" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
-#undef ALC_USE_CUSTOM_CSUM
 
+#undef ALC_USE_CUSTOM_CSUM
 #ifdef ALC_USE_CUSTOM_CSUM
 #define	ALC_CSUM_FEATURES	(CSUM_TCP | CSUM_UDP)
 #else
 #define	ALC_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 #endif
-#ifndef	IFCAP_VLAN_HWTSO
-#define	IFCAP_VLAN_HWTSO	0
-#endif
-
-MODULE_DEPEND(alc, pci, 1, 1, 1);
-MODULE_DEPEND(alc, ether, 1, 1, 1);
-MODULE_DEPEND(alc, miibus, 1, 1, 1);
 
 /* Tunables. */
-static int msi_disable = 0;
-static int msix_disable = 0;
-TUNABLE_INT("hw.alc.msi_disable", &msi_disable);
-TUNABLE_INT("hw.alc.msix_disable", &msix_disable);
+static int alc_msi_enable = 1;
+TUNABLE_INT("hw.alc.msi.enable", &alc_msi_enable);
 
 /*
  * Devices supported by this driver.
@@ -119,48 +96,50 @@ static struct alc_ident alc_ident_table[] = {
 		"Atheros AR8152 v1.1 PCIe Fast Ethernet" },
 	{ VENDORID_ATHEROS, DEVICEID_ATHEROS_AR8152_B2, 6 * 1024,
 		"Atheros AR8152 v2.0 PCIe Fast Ethernet" },
-	{ 0, 0, 0, NULL}
+	{ 0, 0, 0, NULL }
 };
 
-static void	alc_aspm(struct alc_softc *, int);
 static int	alc_attach(device_t);
-static int	alc_check_boundary(struct alc_softc *);
+static int	alc_probe(device_t);
 static int	alc_detach(device_t);
+static int	alc_shutdown(device_t);
+static int	alc_suspend(device_t);
+static int	alc_resume(device_t);
+static int	alc_miibus_readreg(device_t, int, int);
+static void	alc_miibus_statchg(device_t);
+static int	alc_miibus_writereg(device_t, int, int, int);
+
+static void	alc_init(void *);
+static void	alc_start(struct ifnet *);
+static void	alc_watchdog(struct alc_softc *);
+static int	alc_mediachange(struct ifnet *);
+static void	alc_mediastatus(struct ifnet *, struct ifmediareq *);
+static int	alc_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
+
+static void	alc_aspm(struct alc_softc *, int);
+#ifdef foo
+static int	alc_check_boundary(struct alc_softc *);
+#endif
 static void	alc_disable_l0s_l1(struct alc_softc *);
 static int	alc_dma_alloc(struct alc_softc *);
 static void	alc_dma_free(struct alc_softc *);
 static void	alc_dmamap_cb(void *, bus_dma_segment_t *, int, int);
 static int	alc_encap(struct alc_softc *, struct mbuf **);
 static struct alc_ident *alc_find_ident(device_t);
-#ifndef __NO_STRICT_ALIGNMENT
-static struct mbuf *
-		alc_fixup_rx(struct ifnet *, struct mbuf *);
-#endif
 static void	alc_get_macaddr(struct alc_softc *);
-static void	alc_init(void *);
 static void	alc_init_cmb(struct alc_softc *);
-static void	alc_init_locked(struct alc_softc *);
 static void	alc_init_rr_ring(struct alc_softc *);
 static int	alc_init_rx_ring(struct alc_softc *);
 static void	alc_init_smb(struct alc_softc *);
 static void	alc_init_tx_ring(struct alc_softc *);
-static void	alc_int_task(void *, int);
 static void	alc_intr(void *);
-static int	alc_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	alc_mac_config(struct alc_softc *);
-static int	alc_miibus_readreg(device_t, int, int);
-static void	alc_miibus_statchg(device_t);
-static int	alc_miibus_writereg(device_t, int, int, int);
-static int	alc_mediachange(struct ifnet *);
-static void	alc_mediastatus(struct ifnet *, struct ifmediareq *);
-static int	alc_newbuf(struct alc_softc *, struct alc_rxdesc *);
+static int	alc_newbuf(struct alc_softc *, struct alc_rxdesc *, boolean_t);
 static void	alc_phy_down(struct alc_softc *);
 static void	alc_phy_reset(struct alc_softc *);
-static int	alc_probe(device_t);
 static void	alc_reset(struct alc_softc *);
-static int	alc_resume(device_t);
 static void	alc_rxeof(struct alc_softc *, struct rx_rdesc *);
-static int	alc_rxintr(struct alc_softc *, int);
+static int	alc_rxintr(struct alc_softc *);
 static void	alc_rxfilter(struct alc_softc *);
 static void	alc_rxvlan(struct alc_softc *);
 #if 0
@@ -168,20 +147,15 @@ static void	alc_setlinkspeed(struct alc_softc *);
 /* XXX: WOL */
 static void	alc_setwol(struct alc_softc *);
 #endif
-static int	alc_shutdown(device_t);
-static void	alc_start(struct ifnet *);
 static void	alc_start_queue(struct alc_softc *);
 static void	alc_stats_clear(struct alc_softc *);
 static void	alc_stats_update(struct alc_softc *);
 static void	alc_stop(struct alc_softc *);
 static void	alc_stop_mac(struct alc_softc *);
 static void	alc_stop_queue(struct alc_softc *);
-static int	alc_suspend(device_t);
 static void	alc_sysctl_node(struct alc_softc *);
 static void	alc_tick(void *);
-static void	alc_tx_task(void *, int);
 static void	alc_txeof(struct alc_softc *);
-static void	alc_watchdog(struct alc_softc *);
 static int	sysctl_hw_alc_proc_limit(SYSCTL_HANDLER_ARGS);
 static int	sysctl_hw_alc_int_mod(SYSCTL_HANDLER_ARGS);
 
@@ -202,40 +176,14 @@ static device_method_t alc_methods[] = {
 	{ NULL, NULL }
 };
 
-static driver_t alc_driver = {
-	"alc",
-	alc_methods,
-	sizeof(struct alc_softc)
-};
-
+static DEFINE_CLASS_0(alc, alc_driver, alc_methods, sizeof(struct alc_softc));
 static devclass_t alc_devclass;
 
-DRIVER_MODULE(alc, pci, alc_driver, alc_devclass, NULL, NULL);
+DECLARE_DUMMY_MODULE(if_alc);
+DRIVER_MODULE(if_alc, pci, alc_driver, alc_devclass, NULL, NULL);
 DRIVER_MODULE(miibus, alc, miibus_driver, miibus_devclass, NULL, NULL);
 
-static struct resource_spec alc_res_spec_mem[] = {
-	{ SYS_RES_MEMORY,	PCIR_BAR(0),	RF_ACTIVE },
-	{ -1,			0,		0 }
-};
-
-static struct resource_spec alc_irq_spec_legacy[] = {
-	{ SYS_RES_IRQ,		0,		RF_ACTIVE | RF_SHAREABLE },
-	{ -1,			0,		0 }
-};
-
-#ifdef OLD_MSI
-static struct resource_spec alc_irq_spec_msi[] = {
-	{ SYS_RES_IRQ,		1,		RF_ACTIVE },
-	{ -1,			0,		0 }
-};
-
-static struct resource_spec alc_irq_spec_msix[] = {
-	{ SYS_RES_IRQ,		1,		RF_ACTIVE },
-	{ -1,			0,		0 }
-};
-#endif
-
-static uint32_t alc_dma_burst[] = { 128, 256, 512, 1024, 2048, 4096, 0 };
+static const uint32_t alc_dma_burst[] = { 128, 256, 512, 1024, 2048, 4096, 0 };
 
 static int
 alc_miibus_readreg(device_t dev, int phy, int reg)
@@ -359,15 +307,11 @@ alc_mediastatus(struct ifnet *ifp, struct ifmediareq *ifmr)
 	struct mii_data *mii;
 
 	sc = ifp->if_softc;
-	ALC_LOCK(sc);
-	if ((ifp->if_flags & IFF_UP) == 0) {
-		ALC_UNLOCK(sc);
+	if ((ifp->if_flags & IFF_UP) == 0)
 		return;
-	}
 	mii = device_get_softc(sc->alc_miibus);
 
 	mii_pollstat(mii);
-	ALC_UNLOCK(sc);
 	ifmr->ifm_status = mii->mii_media_status;
 	ifmr->ifm_active = mii->mii_media_active;
 }
@@ -381,14 +325,12 @@ alc_mediachange(struct ifnet *ifp)
 	int error;
 
 	sc = ifp->if_softc;
-	ALC_LOCK(sc);
 	mii = device_get_softc(sc->alc_miibus);
 	if (mii->mii_instance != 0) {
 		LIST_FOREACH(miisc, &mii->mii_phys, mii_list)
 			mii_phy_reset(miisc);
 	}
 	error = mii_mediachg(mii);
-	ALC_UNLOCK(sc);
 
 	return (error);
 }
@@ -683,8 +625,6 @@ alc_aspm(struct alc_softc *sc, int media)
 	uint32_t pmcfg;
 	uint16_t linkcfg;
 
-	ALC_LOCK_ASSERT(sc);
-
 	pmcfg = CSR_READ_4(sc, ALC_PM_CFG);
 	if ((sc->alc_flags & (ALC_FLAG_APS | ALC_FLAG_PCIE)) ==
 	    (ALC_FLAG_APS | ALC_FLAG_PCIE)) {
@@ -772,29 +712,32 @@ alc_attach(device_t dev)
 {
 	struct alc_softc *sc;
 	struct ifnet *ifp;
-	char *aspm_state[] = { "L0s/L1", "L0s", "L1", "L0s/L1" };
+	const char *aspm_state[] = { "L0s/L1", "L0s", "L1", "L0s/L1" };
 	uint16_t burst;
-	int base, error, i, msic, msixc, state;
+	int base, error, state;
 	uint32_t cap, ctl, val;
+	u_int intr_flags;
 
 	error = 0;
 	sc = device_get_softc(dev);
 	sc->alc_dev = dev;
 
-	lockinit(&sc->alc_lock, "alc_lock", 0, LK_CANRECURSE);
 	callout_init_mp(&sc->alc_tick_ch);
-	TASK_INIT(&sc->alc_int_task, 0, alc_int_task, sc);
 	sc->alc_ident = alc_find_ident(dev);
 
-	/* Map the device. */
+	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
-	sc->alc_res_spec = alc_res_spec_mem;
-	sc->alc_irq_spec = alc_irq_spec_legacy;
-	error = bus_alloc_resources(dev, sc->alc_res_spec, sc->alc_res);
+
+	/* Map the device. */
+	sc->alc_res_rid = PCIR_BAR(0);
+	sc->alc_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+	    &sc->alc_res_rid, RF_ACTIVE);
 	if (error != 0) {
 		device_printf(dev, "cannot allocate memory resources.\n");
 		goto fail;
 	}
+	sc->alc_res_btag = rman_get_bustag(sc->alc_res);
+	sc->alc_res_bhand = rman_get_bushandle(sc->alc_res);
 
 	/* Set PHY address. */
 	sc->alc_phyaddr = ALC_PHY_ADDR;
@@ -919,42 +862,12 @@ alc_attach(device_t dev)
 	    CSR_READ_4(sc, ALC_SRAM_TX_FIFO_LEN) * 8,
 	    CSR_READ_4(sc, ALC_SRAM_RX_FIFO_LEN) * 8);
 
+	sc->alc_irq_type = pci_alloc_1intr(dev, alc_msi_enable,
+	    &sc->alc_irq_rid, &intr_flags);
+
 	/* Allocate IRQ resources. */
-	msixc = pci_msix_count(dev);
-	msic = pci_msi_count(dev);
-	if (bootverbose) {
-		device_printf(dev, "MSIX count : %d\n", msixc);
-		device_printf(dev, "MSI count : %d\n", msic);
-	}
-
-#ifdef OLD_MSI
-	/* Prefer MSIX over MSI. */
-	if (msix_disable == 0 || msi_disable == 0) {
-		if (msix_disable == 0 && msixc == ALC_MSIX_MESSAGES &&
-		    pci_alloc_msix(dev, &msixc) == 0) {
-			if (msic == ALC_MSIX_MESSAGES) {
-				device_printf(dev,
-				    "Using %d MSIX message(s).\n", msixc);
-				sc->alc_flags |= ALC_FLAG_MSIX;
-				sc->alc_irq_spec = alc_irq_spec_msix;
-			} else
-				pci_release_msi(dev);
-		}
-		if (msi_disable == 0 && (sc->alc_flags & ALC_FLAG_MSIX) == 0 &&
-		    msic == ALC_MSI_MESSAGES &&
-		    pci_alloc_msi(dev, &msic) == 0) {
-			if (msic == ALC_MSI_MESSAGES) {
-				device_printf(dev,
-				    "Using %d MSI message(s).\n", msic);
-				sc->alc_flags |= ALC_FLAG_MSI;
-				sc->alc_irq_spec = alc_irq_spec_msi;
-			} else
-				pci_release_msi(dev);
-		}
-	}
-#endif
-
-	error = bus_alloc_resources(dev, sc->alc_irq_spec, sc->alc_irq);
+	sc->alc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+	    &sc->alc_irq_rid, intr_flags);
 	if (error != 0) {
 		device_printf(dev, "cannot allocate IRQ resources.\n");
 		goto fail;
@@ -976,11 +889,10 @@ alc_attach(device_t dev)
 	ifp->if_ioctl = alc_ioctl;
 	ifp->if_start = alc_start;
 	ifp->if_init = alc_init;
-	ifp->if_snd.ifq_maxlen = ALC_TX_RING_CNT - 1;
-	ifq_set_maxlen(&ifp->if_snd, ifp->if_snd.ifq_maxlen);
+	ifq_set_maxlen(&ifp->if_snd, ALC_TX_RING_CNT - 1);
 	ifq_set_ready(&ifp->if_snd);
-	ifp->if_capabilities = IFCAP_TXCSUM | IFCAP_TSO4;
-	ifp->if_hwassist = ALC_CSUM_FEATURES | CSUM_TSO;
+	ifp->if_capabilities = IFCAP_TXCSUM;
+	ifp->if_hwassist = ALC_CSUM_FEATURES;
 #if 0
 /* XXX: WOL */
 	if (pci_find_extcap(dev, PCIY_PMG, &pmc) == 0) {
@@ -991,19 +903,11 @@ alc_attach(device_t dev)
 #endif
 	ifp->if_capenable = ifp->if_capabilities;
 
-	/* Set up MII bus. */
-	if ((error = mii_phy_probe(dev, &sc->alc_miibus, alc_mediachange,
-	    alc_mediastatus)) != 0) {
-		device_printf(dev, "no PHY found!\n");
-		goto fail;
-	}
-
-	ether_ifattach(ifp, sc->alc_eaddr, NULL);
-
 	/* VLAN capability setup. */
 	ifp->if_capabilities |= IFCAP_VLAN_MTU;
 	ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_HWCSUM;
 	ifp->if_capenable = ifp->if_capabilities;
+
 	/*
 	 * XXX
 	 * It seems enabling Tx checksum offloading makes more trouble.
@@ -1017,9 +921,19 @@ alc_attach(device_t dev)
 	ifp->if_capenable &= ~IFCAP_TXCSUM;
 	ifp->if_hwassist &= ~ALC_CSUM_FEATURES;
 
+	/* Set up MII bus. */
+	if ((error = mii_phy_probe(dev, &sc->alc_miibus, alc_mediachange,
+	    alc_mediastatus)) != 0) {
+		device_printf(dev, "no PHY found!\n");
+		goto fail;
+	}
+
+	ether_ifattach(ifp, sc->alc_eaddr, NULL);
+
 	/* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
+#if 0
 	/* Create local taskq. */
 	TASK_INIT(&sc->alc_tx_task, 1, alc_tx_task, ifp);
 	sc->alc_tq = taskqueue_create("alc_taskq", M_WAITOK,
@@ -1053,6 +967,15 @@ alc_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
+#else
+	error = bus_setup_intr(dev, sc->alc_irq, INTR_MPSAFE, alc_intr, sc,
+	    &sc->alc_intrhand, ifp->if_serializer);
+	if (error) {
+		device_printf(dev, "could not set up interrupt handler.\n");
+		ether_ifdetach(ifp);
+		goto fail;
+	}
+#endif
 
 fail:
 	if (error != 0)
@@ -1064,65 +987,39 @@ fail:
 static int
 alc_detach(device_t dev)
 {
-	struct alc_softc *sc;
-	struct ifnet *ifp;
-	int i, msic;
+	struct alc_softc *sc = device_get_softc(dev);
 
-	sc = device_get_softc(dev);
-
-	ifp = sc->alc_ifp;
 	if (device_is_attached(dev)) {
-		ALC_LOCK(sc);
-		sc->alc_flags |= ALC_FLAG_DETACH;
+		struct ifnet *ifp = sc->alc_ifp;
+
+		lwkt_serialize_enter(ifp->if_serializer);
 		alc_stop(sc);
-		ALC_UNLOCK(sc);
-#if 0
-		/* XXX */
-		callout_drain(&sc->alc_tick_ch);
-#endif
-		taskqueue_drain(sc->alc_tq, &sc->alc_int_task);
-		taskqueue_drain(sc->alc_tq, &sc->alc_tx_task);
+		bus_teardown_intr(dev, sc->alc_irq, sc->alc_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 
-	if (sc->alc_tq != NULL) {
-		taskqueue_drain(sc->alc_tq, &sc->alc_int_task);
-		taskqueue_free(sc->alc_tq);
-		sc->alc_tq = NULL;
-	}
-
-	if (sc->alc_miibus != NULL) {
+	if (sc->alc_miibus != NULL)
 		device_delete_child(dev, sc->alc_miibus);
-		sc->alc_miibus = NULL;
-	}
 	bus_generic_detach(dev);
-	alc_dma_free(sc);
 
-	if (ifp != NULL) {
-// XXX?		if_free(ifp);
-		sc->alc_ifp = NULL;
-	}
-
-	if ((sc->alc_flags & ALC_FLAG_MSIX) != 0)
-		msic = ALC_MSIX_MESSAGES;
-	else if ((sc->alc_flags & ALC_FLAG_MSI) != 0)
-		msic = ALC_MSI_MESSAGES;
-	else
-		msic = 1;
-	for (i = 0; i < msic; i++) {
-		if (sc->alc_intrhand[i] != NULL) {
-			bus_teardown_intr(dev, sc->alc_irq[i],
-					  sc->alc_intrhand[i]);
-			sc->alc_intrhand[i] = NULL;
-		}
-	}
-	if (sc->alc_res[0] != NULL)
+	if (sc->alc_res != NULL)
 		alc_phy_down(sc);
-	bus_release_resources(dev, sc->alc_irq_spec, sc->alc_irq);
-	if ((sc->alc_flags & (ALC_FLAG_MSI | ALC_FLAG_MSIX)) != 0)
+
+	if (sc->alc_irq != NULL) {
+		bus_release_resource(dev, SYS_RES_IRQ, sc->alc_irq_rid,
+		    sc->alc_irq);
+	}
+	if (sc->alc_irq_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(dev);
-	bus_release_resources(dev, sc->alc_res_spec, sc->alc_res);
-	lockuninit(&sc->alc_lock);
+
+	if (sc->alc_res != NULL) {
+		bus_release_resource(dev, SYS_RES_MEMORY, sc->alc_res_rid,
+		    sc->alc_res);
+	}
+
+	alc_dma_free(sc);
 
 	return (0);
 }
@@ -1342,6 +1239,7 @@ alc_dmamap_cb(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
 	ctx->alc_busaddr = segs[0].ds_addr;
 }
 
+#ifdef foo
 /*
  * Normal and high Tx descriptors shares single Tx high address.
  * Four Rx descriptor/return rings and CMB shares the same Rx
@@ -1377,23 +1275,21 @@ alc_check_boundary(struct alc_softc *sc)
 
 	return (0);
 }
+#endif
 
 static int
 alc_dma_alloc(struct alc_softc *sc)
 {
 	struct alc_txdesc *txd;
 	struct alc_rxdesc *rxd;
-	bus_addr_t lowaddr;
 	struct alc_dmamap_arg ctx;
 	int error, i;
 
-	lowaddr = BUS_SPACE_MAXADDR;
-again:
 	/* Create parent DMA tag. */
 	error = bus_dma_tag_create(
 	    sc->alc_cdata.alc_parent_tag, /* parent */
 	    1, 0,			/* alignment, boundary */
-	    lowaddr,			/* lowaddr */
+	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
@@ -1411,7 +1307,7 @@ again:
 	error = bus_dma_tag_create(
 	    sc->alc_cdata.alc_parent_tag, /* parent */
 	    ALC_TX_RING_ALIGN, 0,	/* alignment, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    ALC_TX_RING_SZ,		/* maxsize */
@@ -1429,7 +1325,7 @@ again:
 	error = bus_dma_tag_create(
 	    sc->alc_cdata.alc_parent_tag, /* parent */
 	    ALC_RX_RING_ALIGN, 0,	/* alignment, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    ALC_RX_RING_SZ,		/* maxsize */
@@ -1446,7 +1342,7 @@ again:
 	error = bus_dma_tag_create(
 	    sc->alc_cdata.alc_parent_tag, /* parent */
 	    ALC_RR_RING_ALIGN, 0,	/* alignment, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    ALC_RR_RING_SZ,		/* maxsize */
@@ -1464,7 +1360,7 @@ again:
 	error = bus_dma_tag_create(
 	    sc->alc_cdata.alc_parent_tag, /* parent */
 	    ALC_CMB_ALIGN, 0,		/* alignment, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    ALC_CMB_SZ,			/* maxsize */
@@ -1481,7 +1377,7 @@ again:
 	error = bus_dma_tag_create(
 	    sc->alc_cdata.alc_parent_tag, /* parent */
 	    ALC_SMB_ALIGN, 0,		/* alignment, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    ALC_SMB_SZ,			/* maxsize */
@@ -1600,9 +1496,15 @@ again:
 	}
 	sc->alc_rdata.alc_smb_paddr = ctx.alc_busaddr;
 
+#ifdef foo
+	/*
+	 * All of the status blocks and descriptor rings are
+	 * allocated at lower 4GB, their addresses high 32bits
+	 * part are same (all 0).
+	 */
+
 	/* Make sure we've not crossed 4GB boundary. */
-	if (lowaddr != BUS_SPACE_MAXADDR_32BIT &&
-	    (error = alc_check_boundary(sc)) != 0) {
+	if ((error = alc_check_boundary(sc)) != 0) {
 		device_printf(sc->alc_dev, "4GB boundary crossed, "
 		    "switching to 32bit DMA addressing mode.\n");
 		alc_dma_free(sc);
@@ -1613,6 +1515,7 @@ again:
 		lowaddr = BUS_SPACE_MAXADDR_32BIT;
 		goto again;
 	}
+#endif
 
 	/*
 	 * Create Tx buffer parent tag.
@@ -1648,7 +1551,7 @@ again:
 	    ALC_TSO_MAXSIZE,		/* maxsize */
 	    ALC_MAXTXSEGS,		/* nsegments */
 	    ALC_TSO_MAXSEGSIZE,		/* maxsegsize */
-	    0,				/* flags */
+	    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE, /* flags */
 	    &sc->alc_cdata.alc_tx_tag);
 	if (error != 0) {
 		device_printf(sc->alc_dev, "could not create Tx DMA tag.\n");
@@ -1665,7 +1568,7 @@ again:
 	    MCLBYTES,			/* maxsize */
 	    1,				/* nsegments */
 	    MCLBYTES,			/* maxsegsize */
-	    0,				/* flags */
+	    BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW | BUS_DMA_ALIGNED, /* flags */
 	    &sc->alc_cdata.alc_rx_tag);
 	if (error != 0) {
 		device_printf(sc->alc_dev, "could not create Rx DMA tag.\n");
@@ -1677,7 +1580,8 @@ again:
 		txd->tx_m = NULL;
 		txd->tx_dmamap = NULL;
 		error = bus_dmamap_create(sc->alc_cdata.alc_tx_tag,
-					  BUS_DMA_WAITOK, &txd->tx_dmamap);
+					  BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
+					  &txd->tx_dmamap);
 		if (error != 0) {
 			device_printf(sc->alc_dev,
 			    "could not create Tx dmamap.\n");
@@ -1993,17 +1897,16 @@ alc_setwol(struct alc_softc *sc)
 static int
 alc_suspend(device_t dev)
 {
-	struct alc_softc *sc;
+	struct alc_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	sc = device_get_softc(dev);
-
-	ALC_LOCK(sc);
+	lwkt_serialize_enter(ifp->if_serializer);
 	alc_stop(sc);
 #if 0
 /* XXX: WOL */
 	alc_setwol(sc);
 #endif
-	ALC_UNLOCK(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (0);
 }
@@ -2011,13 +1914,12 @@ alc_suspend(device_t dev)
 static int
 alc_resume(device_t dev)
 {
-	struct alc_softc *sc;
-	struct ifnet *ifp;
+	struct alc_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t pmstat;
 
-	sc = device_get_softc(dev);
+	lwkt_serialize_enter(ifp->if_serializer);
 
-	ALC_LOCK(sc);
 	if ((sc->alc_flags & ALC_FLAG_PM) != 0) {
 		/* Disable PME and clear PME status. */
 		pmstat = pci_read_config(sc->alc_dev,
@@ -2028,14 +1930,13 @@ alc_resume(device_t dev)
 			    sc->alc_pmcap + PCIR_POWER_STATUS, pmstat, 2);
 		}
 	}
+
 	/* Reset PHY. */
 	alc_phy_reset(sc);
-	ifp = sc->alc_ifp;
-	if ((ifp->if_flags & IFF_UP) != 0) {
-		ifp->if_flags &= ~IFF_RUNNING;
-		alc_init_locked(sc);
-	}
-	ALC_UNLOCK(sc);
+	if (ifp->if_flags & IFF_UP)
+		alc_init(sc);
+
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (0);
 }
@@ -2054,8 +1955,6 @@ alc_encap(struct alc_softc *sc, struct mbuf **m_head)
 	bus_dmamap_t map;
 	uint32_t cflags, hdrlen, ip_off, poff, vtag;
 	int error, idx, nsegs, prod;
-
-	ALC_LOCK_ASSERT(sc);
 
 	M_ASSERTPKTHDR((*m_head));
 
@@ -2269,36 +2168,22 @@ alc_encap(struct alc_softc *sc, struct mbuf **m_head)
 }
 
 static void
-alc_tx_task(void *arg, int pending)
-{
-	struct ifnet *ifp;
-
-	ifp = (struct ifnet *)arg;
-	alc_start(ifp);
-}
-
-static void
 alc_start(struct ifnet *ifp)
 {
-	struct alc_softc *sc;
+	struct alc_softc *sc = ifp->if_softc;
 	struct mbuf *m_head;
 	int enq;
 
-	sc = ifp->if_softc;
-
-	ALC_LOCK(sc);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* Reclaim transmitted frames. */
 	if (sc->alc_cdata.alc_tx_cnt >= ALC_TX_DESC_HIWAT)
 		alc_txeof(sc);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING) {
-		ALC_UNLOCK(sc);
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
-	}
 	if ((sc->alc_flags & ALC_FLAG_LINK) == 0) {
 		ifq_purge(&ifp->if_snd);
-		ALC_UNLOCK(sc);
 		return;
 	}
 
@@ -2339,34 +2224,29 @@ alc_start(struct ifnet *ifp)
 		/* Set a timeout in case the chip goes out to lunch. */
 		sc->alc_watchdog_timer = ALC_TX_TIMEOUT;
 	}
-
-	ALC_UNLOCK(sc);
 }
 
 static void
 alc_watchdog(struct alc_softc *sc)
 {
-	struct ifnet *ifp;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	ALC_LOCK_ASSERT(sc);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (sc->alc_watchdog_timer == 0 || --sc->alc_watchdog_timer)
 		return;
 
-	ifp = sc->alc_ifp;
 	if ((sc->alc_flags & ALC_FLAG_LINK) == 0) {
 		if_printf(sc->alc_ifp, "watchdog timeout (lost link)\n");
 		ifp->if_oerrors++;
-		ifp->if_flags &= ~IFF_RUNNING;
-		alc_init_locked(sc);
+		alc_init(sc);
 		return;
 	}
 	if_printf(sc->alc_ifp, "watchdog timeout -- resetting\n");
 	ifp->if_oerrors++;
-	ifp->if_flags &= ~IFF_RUNNING;
-	alc_init_locked(sc);
+	alc_init(sc);
 	if (!ifq_is_empty(&ifp->if_snd))
-		taskqueue_enqueue(sc->alc_tq, &sc->alc_tx_task);
+		if_devstart(ifp);
 }
 
 static int
@@ -2377,7 +2257,8 @@ alc_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct mii_data *mii;
 	int error, mask;
 
-	(void)cr;
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	sc = ifp->if_softc;
 	ifr = (struct ifreq *)data;
 	error = 0;
@@ -2390,37 +2271,33 @@ alc_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		    ifr->ifr_mtu > ETHERMTU)) {
 			error = EINVAL;
 		} else if (ifp->if_mtu != ifr->ifr_mtu) {
-			ALC_LOCK(sc);
 			ifp->if_mtu = ifr->ifr_mtu;
+#if 0
 			/* AR813x/AR815x has 13 bits MSS field. */
 			if (ifp->if_mtu > ALC_TSO_MTU &&
 			    (ifp->if_capenable & IFCAP_TSO4) != 0) {
 				ifp->if_capenable &= ~IFCAP_TSO4;
 				ifp->if_hwassist &= ~CSUM_TSO;
 			}
-			ALC_UNLOCK(sc);
+#endif
 		}
 		break;
 	case SIOCSIFFLAGS:
-		ALC_LOCK(sc);
 		if ((ifp->if_flags & IFF_UP) != 0) {
 			if ((ifp->if_flags & IFF_RUNNING) != 0 &&
 			    ((ifp->if_flags ^ sc->alc_if_flags) &
 			    (IFF_PROMISC | IFF_ALLMULTI)) != 0)
 				alc_rxfilter(sc);
-			else if ((sc->alc_flags & ALC_FLAG_DETACH) == 0)
-				alc_init_locked(sc);
+			else if ((ifp->if_flags & IFF_RUNNING) == 0)
+				alc_init(sc);
 		} else if ((ifp->if_flags & IFF_RUNNING) != 0)
 			alc_stop(sc);
 		sc->alc_if_flags = ifp->if_flags;
-		ALC_UNLOCK(sc);
 		break;
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		ALC_LOCK(sc);
 		if ((ifp->if_flags & IFF_RUNNING) != 0)
 			alc_rxfilter(sc);
-		ALC_UNLOCK(sc);
 		break;
 	case SIOCSIFMEDIA:
 	case SIOCGIFMEDIA:
@@ -2428,7 +2305,6 @@ alc_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, cmd);
 		break;
 	case SIOCSIFCAP:
-		ALC_LOCK(sc);
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 		if ((mask & IFCAP_TXCSUM) != 0 &&
 		    (ifp->if_capabilities & IFCAP_TXCSUM) != 0) {
@@ -2437,19 +2313,6 @@ alc_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 				ifp->if_hwassist |= ALC_CSUM_FEATURES;
 			else
 				ifp->if_hwassist &= ~ALC_CSUM_FEATURES;
-		}
-		if ((mask & IFCAP_TSO4) != 0 &&
-		    (ifp->if_capabilities & IFCAP_TSO4) != 0) {
-			ifp->if_capenable ^= IFCAP_TSO4;
-			if ((ifp->if_capenable & IFCAP_TSO4) != 0) {
-				/* AR813x/AR815x has 13 bits MSS field. */
-				if (ifp->if_mtu > ALC_TSO_MTU) {
-					ifp->if_capenable &= ~IFCAP_TSO4;
-					ifp->if_hwassist &= ~CSUM_TSO;
-				} else
-					ifp->if_hwassist |= CSUM_TSO;
-			} else
-				ifp->if_hwassist &= ~CSUM_TSO;
 		}
 #if 0
 /* XXX: WOL */
@@ -2468,9 +2331,7 @@ alc_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		if ((mask & IFCAP_VLAN_HWCSUM) != 0 &&
 		    (ifp->if_capabilities & IFCAP_VLAN_HWCSUM) != 0)
 			ifp->if_capenable ^= IFCAP_VLAN_HWCSUM;
-		if ((mask & IFCAP_VLAN_HWTSO) != 0 &&
-		    (ifp->if_capabilities & IFCAP_VLAN_HWTSO) != 0)
-			ifp->if_capenable ^= IFCAP_VLAN_HWTSO;
+
 		/*
 		 * VLAN hardware tagging is required to do checksum
 		 * offload or TSO on VLAN interface. Checksum offload
@@ -2480,9 +2341,7 @@ alc_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		if ((ifp->if_capenable & IFCAP_TXCSUM) == 0)
 			ifp->if_capenable &= ~IFCAP_VLAN_HWCSUM;
 		if ((ifp->if_capenable & IFCAP_VLAN_HWTAGGING) == 0)
-			ifp->if_capenable &=
-			    ~(IFCAP_VLAN_HWTSO | IFCAP_VLAN_HWCSUM);
-		ALC_UNLOCK(sc);
+			ifp->if_capenable &= ~IFCAP_VLAN_HWCSUM;
 // XXX		VLAN_CAPABILITIES(ifp);
 		break;
 	default:
@@ -2498,8 +2357,6 @@ alc_mac_config(struct alc_softc *sc)
 {
 	struct mii_data *mii;
 	uint32_t reg;
-
-	ALC_LOCK_ASSERT(sc);
 
 	mii = device_get_softc(sc->alc_miibus);
 	reg = CSR_READ_4(sc, ALC_MAC_CFG);
@@ -2572,8 +2429,6 @@ alc_stats_update(struct alc_softc *sc)
 	struct ifnet *ifp;
 	uint32_t *reg;
 	int i;
-
-	ALC_LOCK_ASSERT(sc);
 
 	ifp = sc->alc_ifp;
 	stat = &sc->alc_stats;
@@ -2690,88 +2545,45 @@ alc_stats_update(struct alc_softc *sc)
 static void
 alc_intr(void *arg)
 {
-	struct alc_softc *sc;
+	struct alc_softc *sc = arg;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t status;
 
-	sc = (struct alc_softc *)arg;
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	status = CSR_READ_4(sc, ALC_INTR_STATUS);
-	if ((status & ALC_INTRS) == 0) {
-		return;
-	}
-	/* Disable interrupts. */
-	CSR_WRITE_4(sc, ALC_INTR_STATUS, INTR_DIS_INT);
-	taskqueue_enqueue(sc->alc_tq, &sc->alc_int_task);
-
-	return;
-}
-
-static void
-alc_int_task(void *arg, int pending)
-{
-	struct alc_softc *sc;
-	struct ifnet *ifp;
-	uint32_t status;
-	int more;
-
-	sc = (struct alc_softc *)arg;
-	ifp = sc->alc_ifp;
-
-	status = CSR_READ_4(sc, ALC_INTR_STATUS);
-	more = atomic_readandclear_32(&sc->alc_morework);
-	if (more != 0)
-		status |= INTR_RX_PKT;
 	if ((status & ALC_INTRS) == 0)
-		goto done;
+		return;
 
-	/* Acknowledge interrupts but still disable interrupts. */
+	/* Acknowledge interrupts and disable interrupts. */
 	CSR_WRITE_4(sc, ALC_INTR_STATUS, status | INTR_DIS_INT);
 
-	more = 0;
-	if ((ifp->if_flags & IFF_RUNNING) != 0) {
-		if ((status & INTR_RX_PKT) != 0) {
-			more = alc_rxintr(sc, sc->alc_process_limit);
-			if (more == EAGAIN)
-				atomic_set_int(&sc->alc_morework, 1);
-			else if (more == EIO) {
-				ALC_LOCK(sc);
-				ifp->if_flags &= ~IFF_RUNNING;
-				alc_init_locked(sc);
-				ALC_UNLOCK(sc);
+	if (ifp->if_flags & IFF_RUNNING) {
+		if (status & INTR_RX_PKT) {
+			if (alc_rxintr(sc)) {
+				alc_init(sc);
 				return;
 			}
 		}
-		if ((status & (INTR_DMA_RD_TO_RST | INTR_DMA_WR_TO_RST |
-		    INTR_TXQ_TO_RST)) != 0) {
-			if ((status & INTR_DMA_RD_TO_RST) != 0)
-				device_printf(sc->alc_dev,
+		if (status & (INTR_DMA_RD_TO_RST | INTR_DMA_WR_TO_RST |
+		    INTR_TXQ_TO_RST)) {
+			if (status & INTR_DMA_RD_TO_RST) {
+				if_printf(ifp,
 				    "DMA read error! -- resetting\n");
-			if ((status & INTR_DMA_WR_TO_RST) != 0)
-				device_printf(sc->alc_dev,
+			}
+			if (status & INTR_DMA_WR_TO_RST) {
+				if_printf(ifp,
 				    "DMA write error! -- resetting\n");
-			if ((status & INTR_TXQ_TO_RST) != 0)
-				device_printf(sc->alc_dev,
-				    "TxQ reset! -- resetting\n");
-			ALC_LOCK(sc);
-			ifp->if_flags &= ~IFF_RUNNING;
-			alc_init_locked(sc);
-			ALC_UNLOCK(sc);
+			}
+			if (status & INTR_TXQ_TO_RST)
+				if_printf(ifp, "TxQ reset! -- resetting\n");
+			alc_init(sc);
 			return;
 		}
-		if ((ifp->if_flags & IFF_RUNNING) != 0 &&
-		    !ifq_is_empty(&ifp->if_snd))
-			taskqueue_enqueue(sc->alc_tq, &sc->alc_tx_task);
-	}
+		if (!ifq_is_empty(&ifp->if_snd))
+			if_devstart(ifp);
 
-	if (more == EAGAIN ||
-	    (CSR_READ_4(sc, ALC_INTR_STATUS) & ALC_INTRS) != 0) {
-		taskqueue_enqueue(sc->alc_tq, &sc->alc_int_task);
-		return;
-	}
-
-done:
-	if ((ifp->if_flags & IFF_RUNNING) != 0) {
-		/* Re-enable interrupts if we're running. */
+		/* Re-enable interrupts */
 		CSR_WRITE_4(sc, ALC_INTR_STATUS, 0x7FFFFFFF);
 	}
 }
@@ -2783,8 +2595,6 @@ alc_txeof(struct alc_softc *sc)
 	struct alc_txdesc *txd;
 	uint32_t cons, prod;
 	int prog;
-
-	ALC_LOCK_ASSERT(sc);
 
 	ifp = sc->alc_ifp;
 
@@ -2838,7 +2648,7 @@ alc_txeof(struct alc_softc *sc)
 }
 
 static int
-alc_newbuf(struct alc_softc *sc, struct alc_rxdesc *rxd)
+alc_newbuf(struct alc_softc *sc, struct alc_rxdesc *rxd, boolean_t wait)
 {
 	struct mbuf *m;
 	bus_dma_segment_t segs[1];
@@ -2846,12 +2656,13 @@ alc_newbuf(struct alc_softc *sc, struct alc_rxdesc *rxd)
 	int nsegs;
 	int error;
 
-	m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(wait ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return (ENOBUFS);
-	m->m_len = m->m_pkthdr.len = RX_BUF_SIZE_MAX;
-#ifndef __NO_STRICT_ALIGNMENT
-	m_adj(m, sizeof(uint64_t));
+	m->m_len = m->m_pkthdr.len = MCLBYTES;
+#ifdef foo
+	/* Hardware require 4 bytes align */
+	m_adj(m, ETHER_ALIGN);
 #endif
 
 	error = bus_dmamap_load_mbuf_segment(
@@ -2880,7 +2691,7 @@ alc_newbuf(struct alc_softc *sc, struct alc_rxdesc *rxd)
 }
 
 static int
-alc_rxintr(struct alc_softc *sc, int count)
+alc_rxintr(struct alc_softc *sc)
 {
 	struct ifnet *ifp;
 	struct rx_rdesc *rrd;
@@ -2895,8 +2706,6 @@ alc_rxintr(struct alc_softc *sc, int count)
 	rr_cons = sc->alc_cdata.alc_rr_cons;
 	ifp = sc->alc_ifp;
 	for (prog = 0; (ifp->if_flags & IFF_RUNNING) != 0;) {
-		if (count-- <= 0)
-			break;
 		rrd = &sc->alc_rdata.alc_rr_ring[rr_cons];
 		status = le32toh(rrd->status);
 		if ((status & RRD_VALID) == 0)
@@ -2944,46 +2753,8 @@ alc_rxintr(struct alc_softc *sc, int count)
 		    sc->alc_cdata.alc_rx_cons);
 	}
 
-	return (count > 0 ? 0 : EAGAIN);
+	return 0;
 }
-
-#ifndef __NO_STRICT_ALIGNMENT
-static struct mbuf *
-alc_fixup_rx(struct ifnet *ifp, struct mbuf *m)
-{
-	struct mbuf *n;
-        int i;
-        uint16_t *src, *dst;
-
-	src = mtod(m, uint16_t *);
-	dst = src - 3;
-
-	if (m->m_next == NULL) {
-		for (i = 0; i < (m->m_len / sizeof(uint16_t) + 1); i++)
-			*dst++ = *src++;
-		m->m_data -= 6;
-		return (m);
-	}
-	/*
-	 * Append a new mbuf to received mbuf chain and copy ethernet
-	 * header from the mbuf chain. This can save lots of CPU
-	 * cycles for jumbo frame.
-	 */
-	MGETHDR(n, MB_DONTWAIT, MT_DATA);
-	if (n == NULL) {
-		ifp->if_iqdrops++;
-		m_freem(m);
-		return (NULL);
-	}
-	bcopy(m->m_data, n->m_data, ETHER_HDR_LEN);
-	m->m_data += ETHER_HDR_LEN;
-	m->m_len -= ETHER_HDR_LEN;
-	n->m_len = ETHER_HDR_LEN;
-	M_MOVE_PKTHDR(n, m);
-	n->m_next = m;
-	return (n);
-}
-#endif
 
 /* Receive a frame. */
 static void
@@ -3026,7 +2797,7 @@ alc_rxeof(struct alc_softc *sc, struct rx_rdesc *rrd)
 		rxd = &sc->alc_cdata.alc_rxdesc[rx_cons];
 		mp = rxd->rx_m;
 		/* Add a new receive buffer to the ring. */
-		if (alc_newbuf(sc, rxd) != 0) {
+		if (alc_newbuf(sc, rxd, FALSE) != 0) {
 			ifp->if_iqdrops++;
 			/* Reuse Rx buffers. */
 			if (sc->alc_cdata.alc_rxhead != NULL)
@@ -3046,7 +2817,6 @@ alc_rxeof(struct alc_softc *sc, struct rx_rdesc *rrd)
 			sc->alc_cdata.alc_rxhead = mp;
 			sc->alc_cdata.alc_rxtail = mp;
 		} else {
-			mp->m_flags &= ~M_PKTHDR;
 			sc->alc_cdata.alc_rxprev_tail =
 			    sc->alc_cdata.alc_rxtail;
 			sc->alc_cdata.alc_rxtail->m_next = mp;
@@ -3056,7 +2826,6 @@ alc_rxeof(struct alc_softc *sc, struct rx_rdesc *rrd)
 		if (count == nsegs - 1) {
 			/* Last desc. for this frame. */
 			m = sc->alc_cdata.alc_rxhead;
-			m->m_flags |= M_PKTHDR;
 			/*
 			 * It seems that L1C/L2C controller has no way
 			 * to tell hardware to strip CRC bytes.
@@ -3091,14 +2860,9 @@ alc_rxeof(struct alc_softc *sc, struct rx_rdesc *rrd)
 				m->m_pkthdr.ether_vlantag = ntohs(vtag);
 				m->m_flags |= M_VLANTAG;
 			}
-#ifndef __NO_STRICT_ALIGNMENT
-			m = alc_fixup_rx(ifp, m);
-			if (m != NULL)
-#endif
-			{
+
 			/* Pass it on. */
-			(*ifp->if_input)(ifp, m);
-			}
+			ifp->if_input(ifp, m);
 		}
 	}
 	/* Reset mbuf chains. */
@@ -3108,12 +2872,11 @@ alc_rxeof(struct alc_softc *sc, struct rx_rdesc *rrd)
 static void
 alc_tick(void *arg)
 {
-	struct alc_softc *sc;
+	struct alc_softc *sc = arg;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 
-	sc = (struct alc_softc *)arg;
-
-	ALC_LOCK(sc);
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	mii = device_get_softc(sc->alc_miibus);
 	mii_tick(mii);
@@ -3128,7 +2891,8 @@ alc_tick(void *arg)
 	alc_txeof(sc);
 	alc_watchdog(sc);
 	callout_reset(&sc->alc_tick_ch, hz, alc_tick, sc);
-	ALC_UNLOCK(sc);
+
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static void
@@ -3162,30 +2926,17 @@ alc_reset(struct alc_softc *sc)
 static void
 alc_init(void *xsc)
 {
-	struct alc_softc *sc;
-
-	sc = (struct alc_softc *)xsc;
-	ALC_LOCK(sc);
-	alc_init_locked(sc);
-	ALC_UNLOCK(sc);
-}
-
-static void
-alc_init_locked(struct alc_softc *sc)
-{
-	struct ifnet *ifp;
+	struct alc_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	bus_addr_t paddr;
 	uint32_t reg, rxf_hi, rxf_lo;
 
-	ALC_LOCK_ASSERT(sc);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	ifp = sc->alc_ifp;
 	mii = device_get_softc(sc->alc_miibus);
 
-	if ((ifp->if_flags & IFF_RUNNING) != 0)
-		return;
 	/*
 	 * Cancel any pending I/O.
 	 */
@@ -3248,11 +2999,7 @@ alc_init_locked(struct alc_softc *sc)
 	 * For strict-alignment architectures make sure to reduce buffer
 	 * size by 8 bytes to make room for alignment fixup.
 	 */
-#ifndef __NO_STRICT_ALIGNMENT
-	sc->alc_buf_size = RX_BUF_SIZE_MAX - sizeof(uint64_t);
-#else
 	sc->alc_buf_size = RX_BUF_SIZE_MAX;
-#endif
 	CSR_WRITE_4(sc, ALC_RX_BUF_SIZE, sc->alc_buf_size);
 
 	paddr = sc->alc_rdata.alc_rr_ring_paddr;
@@ -3487,17 +3234,17 @@ alc_init_locked(struct alc_softc *sc)
 static void
 alc_stop(struct alc_softc *sc)
 {
-	struct ifnet *ifp;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct alc_txdesc *txd;
 	struct alc_rxdesc *rxd;
 	uint32_t reg;
 	int i;
 
-	ALC_LOCK_ASSERT(sc);
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	/*
 	 * Mark the interface down and cancel the watchdog timer.
 	 */
-	ifp = sc->alc_ifp;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	sc->alc_flags &= ~ALC_FLAG_LINK;
 	callout_stop(&sc->alc_tick_ch);
@@ -3555,8 +3302,6 @@ alc_stop_mac(struct alc_softc *sc)
 	uint32_t reg;
 	int i;
 
-	ALC_LOCK_ASSERT(sc);
-
 	/* Disable Rx/Tx MAC. */
 	reg = CSR_READ_4(sc, ALC_MAC_CFG);
 	if ((reg & (MAC_CFG_TX_ENB | MAC_CFG_RX_ENB)) != 0) {
@@ -3586,8 +3331,6 @@ alc_start_queue(struct alc_softc *sc)
 	};
 	uint32_t cfg;
 
-	ALC_LOCK_ASSERT(sc);
-
 	/* Enable RxQ. */
 	cfg = CSR_READ_4(sc, ALC_RXQ_CFG);
 	cfg &= ~RXQ_CFG_ENB;
@@ -3604,8 +3347,6 @@ alc_stop_queue(struct alc_softc *sc)
 {
 	uint32_t reg;
 	int i;
-
-	ALC_LOCK_ASSERT(sc);
 
 	/* Disable RxQ. */
 	reg = CSR_READ_4(sc, ALC_RXQ_CFG);
@@ -3637,8 +3378,6 @@ alc_init_tx_ring(struct alc_softc *sc)
 	struct alc_txdesc *txd;
 	int i;
 
-	ALC_LOCK_ASSERT(sc);
-
 	sc->alc_cdata.alc_tx_prod = 0;
 	sc->alc_cdata.alc_tx_cons = 0;
 	sc->alc_cdata.alc_tx_cnt = 0;
@@ -3661,17 +3400,14 @@ alc_init_rx_ring(struct alc_softc *sc)
 	struct alc_rxdesc *rxd;
 	int i;
 
-	ALC_LOCK_ASSERT(sc);
-
 	sc->alc_cdata.alc_rx_cons = ALC_RX_RING_CNT - 1;
-	sc->alc_morework = 0;
 	rd = &sc->alc_rdata;
 	bzero(rd->alc_rx_ring, ALC_RX_RING_SZ);
 	for (i = 0; i < ALC_RX_RING_CNT; i++) {
 		rxd = &sc->alc_cdata.alc_rxdesc[i];
 		rxd->rx_m = NULL;
 		rxd->rx_desc = &rd->alc_rx_ring[i];
-		if (alc_newbuf(sc, rxd) != 0)
+		if (alc_newbuf(sc, rxd, TRUE) != 0)
 			return (ENOBUFS);
 	}
 
@@ -3693,8 +3429,6 @@ alc_init_rr_ring(struct alc_softc *sc)
 {
 	struct alc_ring_data *rd;
 
-	ALC_LOCK_ASSERT(sc);
-
 	sc->alc_cdata.alc_rr_cons = 0;
 	ALC_RXCHAIN_RESET(sc);
 
@@ -3710,8 +3444,6 @@ alc_init_cmb(struct alc_softc *sc)
 {
 	struct alc_ring_data *rd;
 
-	ALC_LOCK_ASSERT(sc);
-
 	rd = &sc->alc_rdata;
 	bzero(rd->alc_cmb, ALC_CMB_SZ);
 	bus_dmamap_sync(sc->alc_cdata.alc_cmb_tag, sc->alc_cdata.alc_cmb_map,
@@ -3722,8 +3454,6 @@ static void
 alc_init_smb(struct alc_softc *sc)
 {
 	struct alc_ring_data *rd;
-
-	ALC_LOCK_ASSERT(sc);
 
 	rd = &sc->alc_rdata;
 	bzero(rd->alc_smb, ALC_SMB_SZ);
@@ -3736,8 +3466,6 @@ alc_rxvlan(struct alc_softc *sc)
 {
 	struct ifnet *ifp;
 	uint32_t reg;
-
-	ALC_LOCK_ASSERT(sc);
 
 	ifp = sc->alc_ifp;
 	reg = CSR_READ_4(sc, ALC_MAC_CFG);
@@ -3756,8 +3484,6 @@ alc_rxfilter(struct alc_softc *sc)
 	uint32_t crc;
 	uint32_t mchash[2];
 	uint32_t rxcfg;
-
-	ALC_LOCK_ASSERT(sc);
 
 	ifp = sc->alc_ifp;
 

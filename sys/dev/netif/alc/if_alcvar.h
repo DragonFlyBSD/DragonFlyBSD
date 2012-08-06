@@ -52,9 +52,6 @@
 /* Water mark to kick reclaiming Tx buffers. */
 #define	ALC_TX_DESC_HIWAT	((ALC_TX_RING_CNT * 6) / 10)
 
-#define	ALC_MSI_MESSAGES	1
-#define	ALC_MSIX_MESSAGES	1
-
 #define	ALC_TX_RING_SZ		\
 	(sizeof(struct tx_desc) * ALC_TX_RING_CNT)
 #define	ALC_RX_RING_SZ		\
@@ -76,15 +73,6 @@
  * limit. Also Atheros says that maximum MTU for TSO is 6KB.
  */
 #define	ALC_TSO_MTU		(6 * 1024)
-
-
-#ifndef IFCAP_TSO4
-#define IFCAP_TSO4 0
-#endif
-
-#ifndef CSUM_TSO
-#define CSUM_TSO 0
-#endif
 
 
 struct alc_rxdesc {
@@ -212,11 +200,14 @@ struct alc_softc {
 	struct ifnet 		*alc_ifp;	/* points to arpcom.ac_if */
 	device_t		alc_dev;
 	device_t		alc_miibus;
-	struct resource		*alc_res[1];
-	struct resource_spec	*alc_res_spec;
-	struct resource		*alc_irq[ALC_MSI_MESSAGES];
-	struct resource_spec	*alc_irq_spec;
-	void			*alc_intrhand[ALC_MSI_MESSAGES];
+	int			alc_res_rid;
+	struct resource		*alc_res;
+	bus_space_handle_t	alc_res_bhand;
+	bus_space_tag_t		alc_res_btag;
+	int			alc_irq_type;
+	int			alc_irq_rid;
+	struct resource		*alc_irq;
+	void			*alc_intrhand;
 	struct alc_ident	*alc_ident;
 	int			alc_rev;
 	int			alc_chip_rev;
@@ -229,9 +220,6 @@ struct alc_softc {
 	int			alc_pmcap;
 	int			alc_flags;
 #define	ALC_FLAG_PCIE		0x0001
-#define	ALC_FLAG_PCIX		0x0002
-#define	ALC_FLAG_MSI		0x0004
-#define	ALC_FLAG_MSIX		0x0008
 #define ALC_FLAG_PM		0x0010
 #define	ALC_FLAG_FASTETHER	0x0020
 #define	ALC_FLAG_JUMBO		0x0040
@@ -251,30 +239,22 @@ struct alc_softc {
 	int			alc_if_flags;
 	int			alc_watchdog_timer;
 	int			alc_process_limit;
-	volatile int		alc_morework;
 	int			alc_int_rx_mod;
 	int			alc_int_tx_mod;
 	int			alc_buf_size;
 
 	struct sysctl_ctx_list	alc_sysctl_ctx;
-
-	struct task		alc_int_task;
-	struct task		alc_tx_task;
-	struct taskqueue	*alc_tq;
-	struct lock		alc_lock;
 };
 
 /* Register access macros. */
-#define	CSR_WRITE_4(_sc, reg, val)	\
-	bus_write_4((_sc)->alc_res[0], (reg), (val))
-#define	CSR_WRITE_2(_sc, reg, val)	\
-	bus_write_2((_sc)->alc_res[0], (reg), (val))
-#define	CSR_WRITE_1(_sc, reg, val)	\
-	bus_write_1((_sc)->alc_res[0], (reg), (val))
-#define	CSR_READ_2(_sc, reg)		\
-	bus_read_2((_sc)->alc_res[0], (reg))
-#define	CSR_READ_4(_sc, reg)		\
-	bus_read_4((_sc)->alc_res[0], (reg))
+#define CSR_WRITE_4(sc, reg, val)	\
+	bus_space_write_4(sc->alc_res_btag, sc->alc_res_bhand, (reg), (val))
+#define CSR_READ_4(sc, reg)		\
+	bus_space_read_4(sc->alc_res_btag, sc->alc_res_bhand, (reg))
+#define CSR_WRITE_2(sc, reg, val)	\
+	bus_space_write_2(sc->alc_res_btag, sc->alc_res_bhand, (reg), (val))
+#define CSR_READ_2(sc, reg)		\
+	bus_space_read_2(sc->alc_res_btag, sc->alc_res_bhand, (reg))
 
 #define	ALC_RXCHAIN_RESET(_sc)						\
 do {									\
@@ -283,10 +263,6 @@ do {									\
 	(_sc)->alc_cdata.alc_rxprev_tail = NULL;			\
 	(_sc)->alc_cdata.alc_rxlen = 0;					\
 } while (0)
-
-#define	ALC_LOCK(_sc)		lockmgr(&(_sc)->alc_lock, LK_EXCLUSIVE)
-#define	ALC_UNLOCK(_sc)		lockmgr(&(_sc)->alc_lock, LK_RELEASE)
-#define	ALC_LOCK_ASSERT(_sc)	KKASSERT(lockstatus(&(_sc)->alc_lock, curthread) != 0)
 
 #define	ALC_TX_TIMEOUT		5
 #define	ALC_RESET_TIMEOUT	100
