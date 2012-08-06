@@ -36,7 +36,6 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.19 2007/08/20 05:44:58 dillon Exp $
  */
 
 #ifndef	_SYS_LOCK_H_
@@ -227,6 +226,14 @@ int	lockcountnb (struct lock *);
 	    lock_sysinit, &name##_args);					\
 	SYSUNINIT(name##_lock_sysuninit, SI_SUB_DRIVERS, SI_ORDER_MIDDLE,	\
 	    lockuninit, (lock))
+
+/*
+ * Helpful macros for quickly coming up with assertions with informative
+ * panic messages.
+ */
+#define MPASS(ex)               MPASS4(ex, #ex, __FILE__, __LINE__)
+#define MPASS4(ex, what, file, line)                                    \
+        KASSERT((ex), ("Assertion %s failed at %s:%d", what, file, line))
 
 #endif /* _KERNEL */
 #endif /* _KERNEL || _KERNEL_STRUCTURES */

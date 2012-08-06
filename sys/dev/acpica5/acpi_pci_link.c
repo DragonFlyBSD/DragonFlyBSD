@@ -26,10 +26,6 @@
  * $FreeBSD: src/sys/dev/acpica/acpi_pci_link.c,v 1.56.2.1.6.1 2009/04/15 03:14:26 kensmith Exp $
  */
 
-#define MPASS(ex)               MPASS4(ex, #ex, __FILE__, __LINE__)
-#define MPASS4(ex, what, file, line)                                    \
-        KASSERT((ex), ("Assertion %s failed at %s:%d", what, file, line))
-
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/bus.h>
