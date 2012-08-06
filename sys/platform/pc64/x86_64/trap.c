@@ -201,6 +201,7 @@ userenter(struct thread *curtd, struct proc *curp)
 			crfree(ocred);
 	}
 
+#ifdef DDB
 	/*
 	 * Debugging, remove top two user stack pages to catch kernel faults
 	 */
@@ -209,6 +210,7 @@ userenter(struct thread *curtd, struct proc *curp)
 			    0x00007FFFFFFFD000LU,
 			    0x0000800000000000LU);
 	}
+#endif
 }
 
 /*
@@ -522,9 +524,10 @@ trap(struct trapframe *frame)
 			i = trap_pfault(frame, TRUE);
 			if (frame->tf_rip == 0) {
 				kprintf("T_PAGEFLT: Warning %%rip == 0!\n");
-				while (freeze_on_seg_fault) {
+#ifdef DDB
+				while (freeze_on_seg_fault)
 					tsleep(p, 0, "freeze", hz * 20);
-				}
+#endif
 			}
 			if (i == -1 || i == 0)
 				goto out;
@@ -854,13 +857,14 @@ trap_pfault(struct trapframe *frame, int usermode)
 		 * on onfault (e.g. copyin/copyout) routine.
 		 */
 		if (usermode == 0 && (td->td_pcb == NULL || td->td_pcb->pcb_onfault == NULL)) {
+#ifdef DDB
 			if (freeze_on_seg_fault) {
 				kprintf("trap_pfault: user address fault from kernel mode "
 					"%016lx\n", (long)frame->tf_addr);
-				while (freeze_on_seg_fault) {
+				while (freeze_on_seg_fault)
 					    tsleep(&freeze_on_seg_fault, 0, "frzseg", hz * 20);
-				}
 			}
+#endif
 		}
 		map = &vm->vm_map;
 	}
@@ -925,7 +929,11 @@ nogo:
 	 */
 	p = td->td_proc;
 	if (td->td_lwp->lwp_vkernel == NULL) {
+#ifdef DDB
 		if (bootverbose || freeze_on_seg_fault || ddb_on_seg_fault) {
+#else
+		if (bootverbose) {
+#endif
 			kprintf("seg-fault ft=%04x ff=%04x addr=%p rip=%p "
 			    "pid=%d cpu=%d p_comm=%s\n",
 			    ftype, fault_flags,
