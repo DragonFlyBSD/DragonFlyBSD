@@ -239,6 +239,9 @@ extern struct vm_object kernel_object;	/* the single kernel object */
 
 #ifdef _KERNEL
 
+#define VM_OBJECT_LOCK(object)		vm_object_hold(object)
+#define VM_OBJECT_UNLOCK(object)	vm_object_drop(object)
+
 static __inline void
 vm_object_set_flag(vm_object_t object, u_int bits)
 {
