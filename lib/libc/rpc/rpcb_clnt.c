@@ -1240,7 +1240,7 @@ rpcb_gettime(const char *host, time_t *timep)
 		}
 	}
 	CLNT_DESTROY(client);
-	return (st == RPC_SUCCESS? TRUE: FALSE);
+	return (st == RPC_SUCCESS);
 }
 
 /*
