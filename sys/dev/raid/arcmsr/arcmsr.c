@@ -2638,41 +2638,15 @@ static void arcmsr_action(struct cam_sim * psim, union ccb * pccb)
 			xpt_done(pccb);
 			break;
 		}
-	case XPT_CALC_GEOMETRY: {
-			struct ccb_calc_geometry *ccg;
-			u_int32_t size_mb;
-			u_int32_t secs_per_cylinder;
-
+	case XPT_CALC_GEOMETRY:
 			if(pccb->ccb_h.target_id == 16) {
 				pccb->ccb_h.status |= CAM_FUNC_NOTAVAIL;
 				xpt_done(pccb);
 				break;
 			}
-			ccg= &pccb->ccg;
-			if (ccg->block_size == 0) {
-				pccb->ccb_h.status = CAM_REQ_INVALID;
-				xpt_done(pccb);
-				break;
-			}
-			if(((1024L * 1024L)/ccg->block_size) < 0) {
-				pccb->ccb_h.status = CAM_REQ_INVALID;
-				xpt_done(pccb);
-				break;
-			}
-			size_mb=ccg->volume_size/((1024L * 1024L)/ccg->block_size);
-			if(size_mb > 1024 ) {
-				ccg->heads=255;
-				ccg->secs_per_track=63;
-			} else {
-				ccg->heads=64;
-				ccg->secs_per_track=32;
-			}
-			secs_per_cylinder=ccg->heads * ccg->secs_per_track;
-			ccg->cylinders=ccg->volume_size / secs_per_cylinder;
-			pccb->ccb_h.status |= CAM_REQ_CMP;
+			cam_calc_geometry(&pccb->ccg, 1);
 			xpt_done(pccb);
 			break;
-		}
 	default:
 		pccb->ccb_h.status |= CAM_REQ_INVALID;
 		xpt_done(pccb);

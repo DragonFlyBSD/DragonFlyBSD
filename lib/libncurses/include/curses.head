@@ -353,6 +353,8 @@ typedef	chtype	attr_t;		/* ...must be at least as wide as chtype */
 
 #if SET_NEED_WCHAR_H
 #include <wchar.h>		/* ...to get mbstate_t, etc. */
+#else
+typedef int wint_t;
 #endif
 
 #if 0
