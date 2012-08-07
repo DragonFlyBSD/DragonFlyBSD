@@ -237,13 +237,14 @@ TAILQ_HEAD(dsched_policy_head, dsched_policy);
 #define DSCHED_THREAD_IO_MAX_SZ		384
 #define DSCHED_DISK_CTX_MAX_SZ		1024
 
-#define DSCHED_POLICY_MODULE(name, evh)					\
+#define DSCHED_POLICY_MODULE(name, evh, version)			\
 static moduledata_t name##_mod = {					\
     #name,								\
     evh,								\
     NULL								\
 };									\
-DECLARE_MODULE(name, name##_mod, SI_SUB_PRE_DRIVERS, SI_ORDER_MIDDLE)
+DECLARE_MODULE(name, name##_mod, SI_SUB_PRE_DRIVERS, SI_ORDER_MIDDLE);	\
+MODULE_VERSION(name, version)
 
 void	dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit);
 void	dsched_disk_update_callback(struct disk *dp, struct disk_info *info);

@@ -1379,4 +1379,4 @@ bfq_sysctl_auto_max_budget_handler(SYSCTL_HANDLER_ARGS)
 	return error;
 }
 
-DSCHED_POLICY_MODULE(dsched_bfq, bfq_mod_handler);
+DSCHED_POLICY_MODULE(dsched_bfq, bfq_mod_handler, 1);

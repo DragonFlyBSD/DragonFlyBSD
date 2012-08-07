@@ -427,4 +427,4 @@ fq_mod_handler(module_t mod, int type, void *unused)
 	return 0;
 }
 
-DSCHED_POLICY_MODULE(dsched_fq, fq_mod_handler);
+DSCHED_POLICY_MODULE(dsched_fq, fq_mod_handler, 1);

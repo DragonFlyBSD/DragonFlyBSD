@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/hptiop/hptiop.c,v 1.11 2011/11/23 21:43:51 marius Exp $
+ * $FreeBSD: src/sys/dev/hptiop/hptiop.c,v 1.14 2012/08/06 05:27:26 delphij Exp $
  */
 
 #include <sys/param.h>
@@ -1229,6 +1229,7 @@ static driver_t hptiop_pci_driver = {
 };
 
 DRIVER_MODULE(hptiop, pci, hptiop_pci_driver, hptiop_devclass, NULL, NULL);
+MODULE_DEPEND(hptiop, cam, 1, 1, 1);
 MODULE_VERSION(hptiop, 1);
 
 static int hptiop_probe(device_t dev)
@@ -1245,9 +1246,13 @@ static int hptiop_probe(device_t dev)
 	id = pci_get_device(dev);
 
 	switch (id) {
-		case 0x4322:
-		case 0x4321:
+		case 0x4210:
+		case 0x4211:
+		case 0x4310:
+		case 0x4311:
 		case 0x4320:
+		case 0x4321:
+		case 0x4322:
 			sas = 1;
 		case 0x3220:
 		case 0x3320:
@@ -1257,12 +1262,14 @@ static int hptiop_probe(device_t dev)
 		case 0x3511:
 		case 0x3521:
 		case 0x3522:
+		case 0x3530:
 		case 0x3540:
+		case 0x3560:
 			ops = &hptiop_itl_ops;
 			break;
+		case 0x3020:
 		case 0x3120:
 		case 0x3122:
-		case 0x3020:
 			ops = &hptiop_mv_ops;
 			break;
 		default:
