@@ -57,7 +57,7 @@ cmd_pfs_list(const char *sel_path)
 		}
 		if (count == 0) {
 			printf("Type        "
-			       "Pfs_id                               "
+			       "ClusterId (pfs_clid)                 "
 			       "Label\n");
 		}
 		switch(pfs.pfs_type) {
@@ -100,6 +100,37 @@ cmd_pfs_list(const char *sel_path)
 
 	return (ecode);
 }
+
+int
+cmd_pfs_getid(const char *sel_path, const char *name, int privateid)
+{
+	hammer2_ioc_pfs_t pfs;
+	int ecode = 0;
+	int fd;
+	uint32_t status;
+	char *pfs_id_str = NULL;
+
+	if ((fd = hammer2_ioctl_handle(sel_path)) < 0)
+		return(1);
+	bzero(&pfs, sizeof(pfs));
+
+	snprintf(pfs.name, sizeof(pfs.name), "%s", name);
+	if (ioctl(fd, HAMMER2IOC_PFS_LOOKUP, &pfs) < 0) {
+		perror("ioctl");
+		ecode = 1;
+	} else {
+		if (privateid)
+			uuid_to_string(&pfs.pfs_fsid, &pfs_id_str, &status);
+		else
+			uuid_to_string(&pfs.pfs_clid, &pfs_id_str, &status);
+		printf("%s\n", pfs_id_str);
+		free(pfs_id_str);
+		pfs_id_str = NULL;
+	}
+	close(fd);
+	return (ecode);
+}
+
 
 int
 cmd_pfs_create(const char *sel_path, const char *name,
