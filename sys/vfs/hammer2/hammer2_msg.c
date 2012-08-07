@@ -170,6 +170,7 @@ hammer2_state_msgrx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 		msg->state = state;
 		state->msg = msg;
 		state->rxcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
+		state->txcmd = HAMMER2_MSGF_REPLY;
 		RB_INSERT(hammer2_state_tree, &pmp->staterd_tree, state);
 		state->flags |= HAMMER2_STATE_INSERTED;
 		error = 0;
@@ -228,7 +229,9 @@ hammer2_state_msgrx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 		 */
 		if (state == NULL) {
 			kprintf("hammer2_state_msgrx: no state match for "
-				"REPLY cmd=%08x\n", msg->any.head.cmd);
+				"REPLY cmd=%08x msgid=%016jx\n",
+				msg->any.head.cmd,
+				(intmax_t)msg->any.head.msgid);
 			error = EINVAL;
 			break;
 		}
@@ -300,10 +303,14 @@ hammer2_state_cleanuprx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 			if (state->msg == msg)
 				state->msg = NULL;
 			KKASSERT(state->flags & HAMMER2_STATE_INSERTED);
-			if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
+			if (state->rxcmd & HAMMER2_MSGF_REPLY) {
+				KKASSERT(msg->any.head.cmd &
+					 HAMMER2_MSGF_REPLY);
 				RB_REMOVE(hammer2_state_tree,
 					  &pmp->statewr_tree, state);
 			} else {
+				KKASSERT((msg->any.head.cmd &
+					  HAMMER2_MSGF_REPLY) == 0);
 				RB_REMOVE(hammer2_state_tree,
 					  &pmp->staterd_tree, state);
 			}
@@ -386,24 +393,8 @@ hammer2_state_msgtx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 		 *     on-transmit.
 		 */
 		KKASSERT(state != NULL);
-#if 0
-		if (state == NULL) {
-			state = pmp->freerd_state;
-			pmp->freerd_state = NULL;
-			msg->state = state;
-			state->msg = msg;
-			state->msgid = msg->any.head.msgid;
-			state->spanid = msg->any.head.spanid;
-		}
-		KKASSERT((state->flags & HAMMER2_STATE_INSERTED) == 0);
-		if (RB_INSERT(hammer2_state_tree, &pmp->staterd_tree, state)) {
-			kprintf("hammer2_state_msgtx: duplicate transaction\n");
-			error = EINVAL;
-			break;
-		}
-		state->flags |= HAMMER2_STATE_INSERTED;
-#endif
 		state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
+		state->rxcmd = HAMMER2_MSGF_REPLY;
 		error = 0;
 		break;
 	case HAMMER2_MSGF_DELETE:
@@ -416,7 +407,9 @@ hammer2_state_msgtx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 				error = EALREADY;
 			} else {
 				kprintf("hammer2_state_msgtx: no state match "
-					"for DELETE\n");
+					"for DELETE cmd=%08x msgid=%016jx\n",
+					msg->any.head.cmd,
+					(intmax_t)msg->any.head.msgid);
 				error = EINVAL;
 			}
 			break;
@@ -539,10 +532,14 @@ hammer2_state_cleanuptx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 			if (state->msg == msg)
 				state->msg = NULL;
 			KKASSERT(state->flags & HAMMER2_STATE_INSERTED);
-			if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
+			if (state->txcmd & HAMMER2_MSGF_REPLY) {
+				KKASSERT(msg->any.head.cmd &
+					 HAMMER2_MSGF_REPLY);
 				RB_REMOVE(hammer2_state_tree,
 					  &pmp->staterd_tree, state);
 			} else {
+				KKASSERT((msg->any.head.cmd &
+					  HAMMER2_MSGF_REPLY) == 0);
 				RB_REMOVE(hammer2_state_tree,
 					  &pmp->statewr_tree, state);
 			}
@@ -723,11 +720,13 @@ hammer2_msg_reply(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
 	 * doing anything.
 	 */
 	if (state) {
-		if (state->txcmd & HAMMER2_MSGF_DELETE)
+		if (state->txcmd & HAMMER2_MSGF_DELETE) {
+			hammer2_msg_free(pmp, msg);
 			return;
+		}
 		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
 			cmd |= HAMMER2_MSGF_CREATE;
-		if ((state->rxcmd & HAMMER2_MSGF_REPLY) == 0)
+		if (state->txcmd & HAMMER2_MSGF_REPLY)
 			cmd |= HAMMER2_MSGF_REPLY;
 		cmd |= HAMMER2_MSGF_DELETE;
 	} else {
@@ -737,6 +736,7 @@ hammer2_msg_reply(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
 
 	msg = hammer2_msg_alloc(pmp, 0, cmd);
 	msg->any.head.error = error;
+	msg->state = state;
 	hammer2_msg_write(pmp, msg, NULL, NULL);
 }
 
@@ -767,11 +767,13 @@ hammer2_msg_result(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
 	 * doing anything.
 	 */
 	if (state) {
-		if (state->txcmd & HAMMER2_MSGF_DELETE)
+		if (state->txcmd & HAMMER2_MSGF_DELETE) {
+			hammer2_msg_free(pmp, msg);
 			return;
+		}
 		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
 			cmd |= HAMMER2_MSGF_CREATE;
-		if ((state->rxcmd & HAMMER2_MSGF_REPLY) == 0)
+		if (state->txcmd & HAMMER2_MSGF_REPLY)
 			cmd |= HAMMER2_MSGF_REPLY;
 		/* continuing transaction, do not set MSGF_DELETE */
 	} else {
@@ -781,5 +783,6 @@ hammer2_msg_result(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
 
 	msg = hammer2_msg_alloc(pmp, 0, cmd);
 	msg->any.head.error = error;
+	msg->state = state;
 	hammer2_msg_write(pmp, msg, NULL, NULL);
 }

@@ -1286,7 +1286,7 @@ hammer2_msg_lnk_rcvmsg(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 	switch(msg->any.head.cmd & HAMMER2_MSGF_TRANSMASK) {
 	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE:
 		kprintf("CONN RECEIVE - (just ignore it)\n");
-		hammer2_msg_result(pmp, msg, 0);
+		hammer2_msg_result(pmp, msg, 0); /* reply & leave trans open */
 		break;
 	case HAMMER2_LNK_SPAN | HAMMER2_MSGF_CREATE:
 		kprintf("SPAN RECEIVE - ADDED FROM CLUSTER\n");
