@@ -1206,8 +1206,10 @@ hammer2_cluster_thread_wr(void *arg)
 				lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 				continue;
 			}
-			if (error)
+			if (error) {
+				lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 				break;
+			}
 
 			/*
 			 * Dump the message to the pipe or socket.

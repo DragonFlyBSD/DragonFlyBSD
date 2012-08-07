@@ -46,7 +46,7 @@
  * levels of interconnectedness, forming a graph.  The spanning tree protocol
  * running on each node transmits a LNK_SPAN transactional message to the
  * other end.  The protocol collects LNK_SPAN messages from all sources,
- * aggregates them using a shortest-weighted-path algorithm, and transmits
+ * aggregates them using a shortest-distance-path algorithm, and transmits
  * them over each link as well, creating a multplication within the topology.
  *
  * Any node in the graph may transmit a message to any other node by using
@@ -367,7 +367,7 @@ struct hammer2_lnk_conn {
 	uint16_t	proto_version;	/* high level protocol support */
 	uint32_t	status;		/* status flags */
 	uint8_t		reserved02[8];
-	int32_t		weight;		/* span weight */
+	int32_t		dist;		/* span distance */
 	uint32_t	reserved03[15];
 	char		label[256];	/* PFS label (can be wildcard) */
 };
@@ -425,7 +425,7 @@ struct hammer2_lnk_span {
 	uint16_t	proto_version;	/* high level protocol support */
 	uint32_t	status;		/* status flags */
 	uint8_t		reserved02[8];
-	int32_t		weight;		/* span weight */
+	int32_t		dist;		/* span distance */
 	uint32_t	reserved03[15];
 	char		label[256];	/* PFS label (can be wildcard) */
 };
