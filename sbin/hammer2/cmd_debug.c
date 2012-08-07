@@ -98,7 +98,7 @@ cmd_shell(const char *hostname)
 	printf("debug: connected\n");
 
 	msg = hammer2_msg_alloc(&iocom, 0, HAMMER2_DBG_SHELL);
-	hammer2_msg_write(&iocom, msg, NULL, NULL);
+	hammer2_msg_write(&iocom, msg, NULL, NULL, NULL);
 
 	hammer2_iocom_core(&iocom, shell_recv, shell_send, shell_tty);
 	fprintf(stderr, "debug: disconnected\n");
@@ -168,7 +168,7 @@ static
 void
 shell_send(hammer2_iocom_t *iocom)
 {
-	hammer2_iocom_flush(iocom);
+	hammer2_iocom_flush1(iocom);
 }
 
 static
@@ -186,7 +186,7 @@ shell_tty(hammer2_iocom_t *iocom)
 		++len;
 		msg = hammer2_msg_alloc(iocom, len, HAMMER2_DBG_SHELL);
 		bcopy(buf, msg->aux_data, len);
-		hammer2_msg_write(iocom, msg, NULL, NULL);
+		hammer2_msg_write(iocom, msg, NULL, NULL, NULL);
 	} else {
 		/*
 		 * Set EOF flag without setting any error code for normal
@@ -274,7 +274,7 @@ iocom_printf(hammer2_iocom_t *iocom, uint32_t cmd, const char *ctl, ...)
 					     HAMMER2_MSGF_REPLY);
 	bcopy(buf, rmsg->aux_data, len);
 
-	hammer2_msg_write(iocom, rmsg, NULL, NULL);
+	hammer2_msg_write(iocom, rmsg, NULL, NULL, NULL);
 }
 
 /************************************************************************
@@ -349,14 +349,12 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
 	bytes = (size_t)1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes < HAMMER2_MINIOSIZE || bytes > sizeof(media)) {
 		printf("(bad block size %zd)\n", bytes);
-		sleep(1);
 		return;
 	}
 	if (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1) {
 		lseek(fd, bref->data_off & ~HAMMER2_OFF_MASK_RADIX, 0);
 		if (read(fd, &media, bytes) != (ssize_t)bytes) {
 			printf("(media read failed)\n");
-			sleep(1);
 			return;
 		}
 	}

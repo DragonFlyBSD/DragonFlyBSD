@@ -49,12 +49,18 @@ hammer2_ioq_init(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
 	TAILQ_INIT(&ioq->msgq);
 }
 
+/*
+ * Cleanup queue.
+ *
+ * caller holds iocom->mtx.
+ */
 void
 hammer2_ioq_done(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
 {
 	hammer2_msg_t *msg;
 
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
+		assert(0);	/* shouldn't happen */
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);
 		hammer2_msg_free(iocom, msg);
 	}
@@ -72,16 +78,22 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd)
 {
 	bzero(iocom, sizeof(*iocom));
 
+	pthread_mutex_init(&iocom->mtx, NULL);
 	RB_INIT(&iocom->staterd_tree);
 	RB_INIT(&iocom->statewr_tree);
 	TAILQ_INIT(&iocom->freeq);
 	TAILQ_INIT(&iocom->freeq_aux);
 	TAILQ_INIT(&iocom->addrq);
+	TAILQ_INIT(&iocom->txmsgq);
 	iocom->sock_fd = sock_fd;
 	iocom->alt_fd = alt_fd;
-	iocom->flags = HAMMER2_IOCOMF_RREQ | HAMMER2_IOCOMF_WIDLE;
+	iocom->flags = HAMMER2_IOCOMF_RREQ;
 	hammer2_ioq_init(iocom, &iocom->ioq_rx);
 	hammer2_ioq_init(iocom, &iocom->ioq_tx);
+	if (pipe(iocom->wakeupfds) < 0)
+		assert(0);
+	fcntl(iocom->wakeupfds[0], F_SETFL, O_NONBLOCK);
+	fcntl(iocom->wakeupfds[1], F_SETFL, O_NONBLOCK);
 
 	/*
 	 * Negotiate session crypto synchronously.  This will mark the
@@ -101,12 +113,25 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd)
 #endif
 }
 
+/*
+ * Cleanup a terminating iocom.
+ *
+ * Caller should not hold iocom->mtx.  The iocom has already been disconnected
+ * from all possible references to it.
+ */
 void
 hammer2_iocom_done(hammer2_iocom_t *iocom)
 {
 	hammer2_msg_t *msg;
 
-	iocom->sock_fd = -1;
+	if (iocom->sock_fd >= 0) {
+		close(iocom->sock_fd);
+		iocom->sock_fd = -1;
+	}
+	if (iocom->alt_fd >= 0) {
+		close(iocom->alt_fd);
+		iocom->alt_fd = -1;
+	}
 	hammer2_ioq_done(iocom, &iocom->ioq_rx);
 	hammer2_ioq_done(iocom, &iocom->ioq_tx);
 	if ((msg = TAILQ_FIRST(&iocom->freeq)) != NULL) {
@@ -119,6 +144,15 @@ hammer2_iocom_done(hammer2_iocom_t *iocom)
 		msg->aux_data = NULL;
 		free(msg);
 	}
+	if (iocom->wakeupfds[0] >= 0) {
+		close(iocom->wakeupfds[0]);
+		iocom->wakeupfds[0] = -1;
+	}
+	if (iocom->wakeupfds[1] >= 0) {
+		close(iocom->wakeupfds[1]);
+		iocom->wakeupfds[1] = -1;
+	}
+	pthread_mutex_destroy(&iocom->mtx);
 }
 
 /*
@@ -130,6 +164,7 @@ hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size, uint32_t cmd)
 	hammer2_msg_t *msg;
 	int hbytes;
 
+	pthread_mutex_lock(&iocom->mtx);
 	if (aux_size) {
 		aux_size = (aux_size + HAMMER2_MSG_ALIGNMASK) &
 			   ~HAMMER2_MSG_ALIGNMASK;
@@ -139,6 +174,7 @@ hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size, uint32_t cmd)
 		if ((msg = TAILQ_FIRST(&iocom->freeq)) != NULL)
 			TAILQ_REMOVE(&iocom->freeq, msg, qentry);
 	}
+	pthread_mutex_unlock(&iocom->mtx);
 	if (msg == NULL) {
 		msg = malloc(sizeof(*msg));
 		bzero(msg, sizeof(*msg));
@@ -172,17 +208,29 @@ hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size, uint32_t cmd)
  *
  * NOTE: aux_size can be 0 with a non-NULL aux_data.
  */
+static
 void
-hammer2_msg_free(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+hammer2_msg_free_locked(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 {
+	msg->state = NULL;
 	if (msg->aux_data)
 		TAILQ_INSERT_TAIL(&iocom->freeq_aux, msg, qentry);
 	else
 		TAILQ_INSERT_TAIL(&iocom->freeq, msg, qentry);
 }
 
+void
+hammer2_msg_free(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+{
+	pthread_mutex_lock(&iocom->mtx);
+	hammer2_msg_free_locked(iocom, msg);
+	pthread_mutex_unlock(&iocom->mtx);
+}
+
 /*
  * I/O core loop for an iocom.
+ *
+ * Thread localized, iocom->mtx not held.
  */
 void
 hammer2_iocom_core(hammer2_iocom_t *iocom,
@@ -190,50 +238,119 @@ hammer2_iocom_core(hammer2_iocom_t *iocom,
 		   void (*sendmsg_func)(hammer2_iocom_t *),
 		   void (*altmsg_func)(hammer2_iocom_t *))
 {
-	struct pollfd fds[2];
+	struct pollfd fds[3];
+	char dummybuf[256];
 	int timeout;
+	int count;
+	int wi;	/* wakeup pipe */
+	int si;	/* socket */
+	int ai;	/* alt bulk path socket */
 
 	iocom->recvmsg_callback = recvmsg_func;
 	iocom->sendmsg_callback = sendmsg_func;
 	iocom->altmsg_callback = altmsg_func;
 
 	while ((iocom->flags & HAMMER2_IOCOMF_EOF) == 0) {
-		timeout = 5000;
+		if ((iocom->flags & (HAMMER2_IOCOMF_RWORK |
+				     HAMMER2_IOCOMF_WWORK |
+				     HAMMER2_IOCOMF_PWORK |
+				     HAMMER2_IOCOMF_ARWORK |
+				     HAMMER2_IOCOMF_AWWORK)) == 0) {
+			/*
+			 * Only poll if no immediate work is pending.
+			 * Otherwise we are just wasting our time calling
+			 * poll.
+			 */
+			timeout = 5000;
 
-		fds[0].fd = iocom->sock_fd;
-		fds[0].events = 0;
-		fds[0].revents = 0;
+			count = 0;
+			wi = -1;
+			si = -1;
+			ai = -1;
 
-		if (iocom->flags & HAMMER2_IOCOMF_RREQ)
-			fds[0].events |= POLLIN;
-		else
-			timeout = 0;
-		if ((iocom->flags & HAMMER2_IOCOMF_WIDLE) == 0) {
-			if (iocom->flags & HAMMER2_IOCOMF_WREQ)
-				fds[0].events |= POLLOUT;
-			else
-				timeout = 0;
-		}
+			/*
+			 * Always check the inter-thread pipe, e.g.
+			 * for iocom->txmsgq work.
+			 */
+			wi = count++;
+			fds[wi].fd = iocom->wakeupfds[0];
+			fds[wi].events = POLLIN;
+			fds[wi].revents = 0;
 
-		if (iocom->alt_fd >= 0) {
-			fds[1].fd = iocom->alt_fd;
-			fds[1].events |= POLLIN;
-			fds[1].revents = 0;
-			poll(fds, 2, timeout);
-		} else {
-			poll(fds, 1, timeout);
-		}
-		if ((fds[0].revents & POLLIN) ||
-		    (iocom->flags & HAMMER2_IOCOMF_RREQ) == 0) {
-			iocom->recvmsg_callback(iocom);
-		}
-		if ((iocom->flags & HAMMER2_IOCOMF_WIDLE) == 0) {
-			if ((fds[0].revents & POLLOUT) ||
-			    (iocom->flags & HAMMER2_IOCOMF_WREQ) == 0) {
-				iocom->sendmsg_callback(iocom);
+			/*
+			 * Check the socket input/output direction as
+			 * requested
+			 */
+			if (iocom->flags & (HAMMER2_IOCOMF_RREQ |
+					    HAMMER2_IOCOMF_WREQ)) {
+				si = count++;
+				fds[si].fd = iocom->sock_fd;
+				fds[si].events = 0;
+				fds[si].revents = 0;
+
+				if (iocom->flags & HAMMER2_IOCOMF_RREQ)
+					fds[si].events |= POLLIN;
+				if (iocom->flags & HAMMER2_IOCOMF_WREQ)
+					fds[si].events |= POLLOUT;
 			}
+
+			/*
+			 * Check the alternative fd for work.
+			 */
+			if (iocom->alt_fd >= 0) {
+				ai = count++;
+				fds[ai].fd = iocom->alt_fd;
+				fds[ai].events = POLLIN;
+				fds[ai].revents = 0;
+			}
+			poll(fds, count, timeout);
+
+			if (wi >= 0 && (fds[wi].revents & POLLIN))
+				iocom->flags |= HAMMER2_IOCOMF_PWORK;
+			if (si >= 0 && (fds[si].revents & POLLIN))
+				iocom->flags |= HAMMER2_IOCOMF_RWORK;
+			if (si >= 0 && (fds[si].revents & POLLOUT))
+				iocom->flags |= HAMMER2_IOCOMF_WWORK;
+			if (wi >= 0 && (fds[wi].revents & POLLOUT))
+				iocom->flags |= HAMMER2_IOCOMF_WWORK;
+			if (ai >= 0 && (fds[ai].revents & POLLIN))
+				iocom->flags |= HAMMER2_IOCOMF_ARWORK;
+		} else {
+			/*
+			 * Always check the pipe
+			 */
+			iocom->flags |= HAMMER2_IOCOMF_PWORK;
 		}
-		if (iocom->alt_fd >= 0 && (fds[1].revents & POLLIN))
+
+		/*
+		 * Pending message queues from other threads wake us up
+		 * with a write to the wakeupfds[] pipe.  We have to clear
+		 * the pipe with a dummy read.
+		 */
+		if (iocom->flags & HAMMER2_IOCOMF_PWORK) {
+			iocom->flags &= ~HAMMER2_IOCOMF_PWORK;
+			read(iocom->wakeupfds[0], dummybuf, sizeof(dummybuf));
+			iocom->flags |= HAMMER2_IOCOMF_RWORK;
+			iocom->flags |= HAMMER2_IOCOMF_WWORK;
+			if (TAILQ_FIRST(&iocom->txmsgq))
+				iocom->sendmsg_callback(iocom);
+		}
+
+		/*
+		 * Message write sequencing
+		 */
+		if (iocom->flags & HAMMER2_IOCOMF_WWORK)
+			iocom->sendmsg_callback(iocom);
+
+		/*
+		 * Message read sequencing.  Run this after the write
+		 * sequencing in case the write sequencing allowed another
+		 * auto-DELETE to occur on the read side.
+		 */
+		if (iocom->flags & HAMMER2_IOCOMF_RWORK)
+			iocom->recvmsg_callback(iocom);
+
+		if (iocom->flags & HAMMER2_IOCOMF_ARWORK)
 			iocom->altmsg_callback(iocom);
 	}
 }
@@ -247,6 +364,8 @@ hammer2_iocom_core(hammer2_iocom_t *iocom,
  * will be errored out and a non-transactional HAMMER2_LNK_ERROR
  * msg will be returned as the final message.  The caller should not call
  * us again after the final message is returned.
+ *
+ * Thread localized, iocom->mtx not held.
  */
 hammer2_msg_t *
 hammer2_ioq_read(hammer2_iocom_t *iocom)
@@ -262,6 +381,8 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 	int error;
 
 again:
+	iocom->flags &= ~(HAMMER2_IOCOMF_RREQ | HAMMER2_IOCOMF_RWORK);
+
 	/*
 	 * If a message is already pending we can just remove and
 	 * return it.  Message state has already been processed.
@@ -633,9 +754,10 @@ again:
 		ioq->state = HAMMER2_MSGQ_STATE_ERROR;
 
 		/*
-		 * Return LNK_ERROR for any open transaction, and finally
-		 * as a non-transactional message when no transactions are
-		 * left.
+		 * Simulate a remote LNK_ERROR DELETE msg for any open
+		 * transactions, ending with a final non-transactional
+		 * LNK_ERROR (that the session can detect) when no
+		 * transactions remain.
 		 */
 		msg = hammer2_msg_alloc(iocom, 0, 0);
 		bzero(&msg->any.head, sizeof(msg->any.head));
@@ -643,23 +765,71 @@ again:
 		msg->any.head.cmd = HAMMER2_LNK_ERROR;
 		msg->any.head.error = ioq->error;
 
+		pthread_mutex_lock(&iocom->mtx);
 		if ((state = RB_ROOT(&iocom->staterd_tree)) != NULL) {
 			/*
-			 * Active transactions are still present.  Simulate
-			 * the other end sending us a DELETE.
+			 * Active remote transactions are still present.
+			 * Simulate the other end sending us a DELETE.
 			 */
-			state->txcmd |= HAMMER2_MSGF_DELETE;
-			msg->state = state;
-			msg->any.head.spanid = state->spanid;
-			msg->any.head.cmd |= HAMMER2_MSGF_ABORT |
-					     HAMMER2_MSGF_DELETE;
+			if (state->rxcmd & HAMMER2_MSGF_DELETE) {
+				fprintf(stderr, "SIMULATE DELETION RCONT %p\n", state);
+				hammer2_msg_free(iocom, msg);
+				msg = NULL;
+			} else {
+				fprintf(stderr, "SIMULATE DELETION %p RD RXCMD %08x\n", state, state->rxcmd);
+				/*state->txcmd |= HAMMER2_MSGF_DELETE;*/
+				msg->state = state;
+				msg->any.head.spanid = state->spanid;
+				msg->any.head.msgid = state->msgid;
+				msg->any.head.cmd |= HAMMER2_MSGF_ABORT |
+						     HAMMER2_MSGF_DELETE;
+			}
+		} else if ((state = RB_ROOT(&iocom->statewr_tree)) != NULL) {
+			/*
+			 * Active local transactions are still present.
+			 * Simulate the other end sending us a DELETE.
+			 */
+			if (state->rxcmd & HAMMER2_MSGF_DELETE) {
+				fprintf(stderr, "SIMULATE DELETION WCONT\n");
+				hammer2_msg_free(iocom, msg);
+				msg = NULL;
+			} else {
+				fprintf(stderr, "SIMULATE DELETION WD RXCMD %08x\n", state->txcmd);
+				/*state->txcmd |= HAMMER2_MSGF_DELETE;*/
+				msg->state = state;
+				msg->any.head.spanid = state->spanid;
+				msg->any.head.msgid = state->msgid;
+				msg->any.head.cmd |= HAMMER2_MSGF_ABORT |
+						     HAMMER2_MSGF_DELETE |
+						     HAMMER2_MSGF_REPLY;
+				if ((state->rxcmd & HAMMER2_MSGF_CREATE) == 0) {
+					msg->any.head.cmd |=
+						     HAMMER2_MSGF_CREATE;
+				}
+			}
 		} else {
 			/*
-			 * No active transactions remain
+			 * No active local or remote transactions remain.
+			 * Generate a final LNK_ERROR and flag EOF.
 			 */
 			msg->state = NULL;
 			iocom->flags |= HAMMER2_IOCOMF_EOF;
+			fprintf(stderr, "EOF ON SOCKET\n");
 		}
+		pthread_mutex_unlock(&iocom->mtx);
+
+		/*
+		 * For the iocom error case we want to set RWORK to indicate
+		 * that more messages might be pending.
+		 *
+		 * It is possible to return NULL when there is more work to
+		 * do because each message has to be DELETEd in both
+		 * directions before we continue on with the next (though
+		 * this could be optimized).  The transmit direction will
+		 * re-set RWORK.
+		 */
+		if (msg)
+			iocom->flags |= HAMMER2_IOCOMF_RWORK;
 	} else if (msg == NULL) {
 		/*
 		 * Insufficient data received to finish building the message,
@@ -669,19 +839,16 @@ again:
 		 * Leave the FIFO intact.
 		 */
 		iocom->flags |= HAMMER2_IOCOMF_RREQ;
-#if 0
-		ioq->fifo_cdx = 0;
-		ioq->fifo_beg = 0;
-		ioq->fifo_end = 0;
-#endif
 	} else {
 		/*
-		 * Return msg, clear the FIFO if it is now empty.
-		 * Flag RREQ if the caller needs to wait for a read-event
-		 * or not.
+		 * Return msg.
 		 *
 		 * The fifo has already been advanced past the message.
 		 * Trivially reset the FIFO indices if possible.
+		 *
+		 * clear the FIFO if it is now empty and set RREQ to wait
+		 * for more from the socket.  If the FIFO is not empty set
+		 * TWORK to bypass the poll so we loop immediately.
 		 */
 		if (ioq->fifo_beg == ioq->fifo_end) {
 			iocom->flags |= HAMMER2_IOCOMF_RREQ;
@@ -689,7 +856,7 @@ again:
 			ioq->fifo_beg = 0;
 			ioq->fifo_end = 0;
 		} else {
-			iocom->flags &= ~HAMMER2_IOCOMF_RREQ;
+			iocom->flags |= HAMMER2_IOCOMF_RWORK;
 		}
 		ioq->state = HAMMER2_MSGQ_STATE_HEADER1;
 		ioq->msg = NULL;
@@ -704,73 +871,80 @@ again:
  *
  * A non-NULL msg is added to the queue but not necessarily flushed.
  * Calling this function with msg == NULL will get a flush going.
+ *
+ * Caller must hold iocom->mtx.
  */
-static void
-hammer2_ioq_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+void
+hammer2_iocom_flush1(hammer2_iocom_t *iocom)
 {
 	hammer2_ioq_t *ioq = &iocom->ioq_tx;
+	hammer2_msg_t *msg;
 	uint32_t xcrc32;
 	int hbytes;
+	hammer2_msg_queue_t tmpq;
 
-	assert(msg);
+	iocom->flags &= ~(HAMMER2_IOCOMF_WREQ | HAMMER2_IOCOMF_WWORK);
+	TAILQ_INIT(&tmpq);
+	pthread_mutex_lock(&iocom->mtx);
+	while ((msg = TAILQ_FIRST(&iocom->txmsgq)) != NULL) {
+		TAILQ_REMOVE(&iocom->txmsgq, msg, qentry);
+		TAILQ_INSERT_TAIL(&tmpq, msg, qentry);
+	}
+	pthread_mutex_unlock(&iocom->mtx);
 
-	/*
-	 * Process terminal connection errors.
-	 */
-	if (ioq->error) {
+	while ((msg = TAILQ_FIRST(&tmpq)) != NULL) {
+		/*
+		 * Process terminal connection errors.
+		 */
+		TAILQ_REMOVE(&tmpq, msg, qentry);
+		if (ioq->error) {
+			TAILQ_INSERT_TAIL(&ioq->msgq, msg, qentry);
+			++ioq->msgcount;
+			continue;
+		}
+
+		/*
+		 * Finish populating the msg fields.  The salt ensures that
+		 * the iv[] array is ridiculously randomized and we also
+		 * re-seed our PRNG every 32768 messages just to be sure.
+		 */
+		msg->any.head.magic = HAMMER2_MSGHDR_MAGIC;
+		msg->any.head.salt = (random() << 8) | (ioq->seq & 255);
+		++ioq->seq;
+		if ((ioq->seq & 32767) == 0)
+			srandomdev();
+
+		/*
+		 * Calculate aux_crc if 0, then calculate hdr_crc.
+		 */
+		if (msg->aux_size && msg->any.head.aux_crc == 0) {
+			assert((msg->aux_size & HAMMER2_MSG_ALIGNMASK) == 0);
+			xcrc32 = hammer2_icrc32(msg->aux_data, msg->aux_size);
+			msg->any.head.aux_crc = xcrc32;
+		}
+		msg->any.head.aux_bytes = msg->aux_size / HAMMER2_MSG_ALIGN;
+		assert((msg->aux_size & HAMMER2_MSG_ALIGNMASK) == 0);
+
+		hbytes = (msg->any.head.cmd & HAMMER2_MSGF_SIZE) *
+			 HAMMER2_MSG_ALIGN;
+		msg->any.head.hdr_crc = 0;
+		msg->any.head.hdr_crc = hammer2_icrc32(&msg->any.head, hbytes);
+
+		/*
+		 * Enqueue the message (the flush codes handles stream
+		 * encryption).
+		 */
 		TAILQ_INSERT_TAIL(&ioq->msgq, msg, qentry);
 		++ioq->msgcount;
-		hammer2_iocom_drain(iocom);
-		return;
 	}
-
-	/*
-	 * Finish populating the msg fields.  The salt ensures that the iv[]
-	 * array is ridiculously randomized and we also re-seed our PRNG
-	 * every 32768 messages just to be sure.
-	 */
-	msg->any.head.magic = HAMMER2_MSGHDR_MAGIC;
-	msg->any.head.salt = (random() << 8) | (ioq->seq & 255);
-	++ioq->seq;
-	if ((ioq->seq & 32767) == 0)
-		srandomdev();
-
-	/*
-	 * Calculate aux_crc if 0, then calculate hdr_crc.
-	 */
-	if (msg->aux_size && msg->any.head.aux_crc == 0) {
-		assert((msg->aux_size & HAMMER2_MSG_ALIGNMASK) == 0);
-		xcrc32 = hammer2_icrc32(msg->aux_data, msg->aux_size);
-		msg->any.head.aux_crc = xcrc32;
-	}
-	msg->any.head.aux_bytes = msg->aux_size / HAMMER2_MSG_ALIGN;
-	assert((msg->aux_size & HAMMER2_MSG_ALIGNMASK) == 0);
-
-	hbytes = (msg->any.head.cmd & HAMMER2_MSGF_SIZE) * HAMMER2_MSG_ALIGN;
-	msg->any.head.hdr_crc = 0;
-	msg->any.head.hdr_crc = hammer2_icrc32(&msg->any.head, hbytes);
-
-	/*
-	 * Enqueue the message (the flush codes handles stream encryption).
-	 */
-	TAILQ_INSERT_TAIL(&ioq->msgq, msg, qentry);
-	++ioq->msgcount;
-	iocom->flags &= ~HAMMER2_IOCOMF_WIDLE;
-
-	/*
-	 * Flush if we know we can write (WREQ not set) and if
-	 * sufficient messages have accumulated.  Otherwise hold
-	 * off to avoid piecemeal system calls.
-	 */
-	if (iocom->flags & HAMMER2_IOCOMF_WREQ)
-		return;
-	if (ioq->msgcount < HAMMER2_IOQ_MAXIOVEC / 2)
-		return;
-	hammer2_iocom_flush(iocom);
+	hammer2_iocom_flush2(iocom);
 }
 
+/*
+ * Thread localized, iocom->mtx not held by caller.
+ */
 void
-hammer2_iocom_flush(hammer2_iocom_t *iocom)
+hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 {
 	hammer2_ioq_t *ioq = &iocom->ioq_tx;
 	hammer2_msg_t *msg;
@@ -782,6 +956,11 @@ hammer2_iocom_flush(hammer2_iocom_t *iocom)
 	int hoff;
 	int aoff;
 	int n;
+
+	if (ioq->error) {
+		hammer2_iocom_drain(iocom);
+		return;
+	}
 
 	/*
 	 * Pump messages out the connection by building an iovec.
@@ -837,19 +1016,33 @@ hammer2_iocom_flush(hammer2_iocom_t *iocom)
 		if (errno != EINTR &&
 		    errno != EINPROGRESS &&
 		    errno != EAGAIN) {
+			/*
+			 * Fatal write error
+			 */
 			ioq->error = HAMMER2_IOQ_ERROR_SOCK;
 			hammer2_iocom_drain(iocom);
 		} else {
+			/*
+			 * Wait for socket buffer space
+			 */
 			iocom->flags |= HAMMER2_IOCOMF_WREQ;
 		}
 		return;
 	}
+
+	/*
+	 * Indicate bytes written successfully.  If we were unable to
+	 * write the entire iov array then set WREQ to wait for more
+	 * socket buffer space.
+	 */
 	hammer2_crypto_encrypt_wrote(iocom, ioq, nact);
-	if (nact == nmax)
-		iocom->flags &= ~HAMMER2_IOCOMF_WREQ;
-	else
+	if (nact != nmax)
 		iocom->flags |= HAMMER2_IOCOMF_WREQ;
 
+	/*
+	 * Clean out the transmit queue based on what we successfully
+	 * sent.
+	 */
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		hbytes = (msg->any.head.cmd & HAMMER2_MSGF_SIZE) *
 			 HAMMER2_MSG_ALIGN;
@@ -874,14 +1067,8 @@ hammer2_iocom_flush(hammer2_iocom_t *iocom)
 
 		hammer2_state_cleanuptx(iocom, msg);
 	}
-	if (msg == NULL) {
-		iocom->flags |= HAMMER2_IOCOMF_WIDLE;
-		iocom->flags &= ~HAMMER2_IOCOMF_WREQ;
-	}
 	if (ioq->error) {
-		iocom->flags |= HAMMER2_IOCOMF_EOF |
-				HAMMER2_IOCOMF_WIDLE;
-		iocom->flags &= ~HAMMER2_IOCOMF_WREQ;
+		hammer2_iocom_drain(iocom);
 	}
 }
 
@@ -890,6 +1077,8 @@ hammer2_iocom_flush(hammer2_iocom_t *iocom)
  * write events will occur.  We don't kill read msgs because we want
  * the caller to pull off our contrived terminal error msg to detect
  * the connection failure.
+ *
+ * Thread localized, iocom->mtx not held by caller.
  */
 void
 hammer2_iocom_drain(hammer2_iocom_t *iocom)
@@ -897,30 +1086,31 @@ hammer2_iocom_drain(hammer2_iocom_t *iocom)
 	hammer2_ioq_t *ioq = &iocom->ioq_tx;
 	hammer2_msg_t *msg;
 
+	iocom->flags &= ~(HAMMER2_IOCOMF_WREQ | HAMMER2_IOCOMF_WWORK);
+
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);
 		--ioq->msgcount;
-		hammer2_msg_free(iocom, msg);
+		hammer2_state_cleanuptx(iocom, msg);
 	}
-	iocom->flags |= HAMMER2_IOCOMF_WIDLE;
-	iocom->flags &= ~HAMMER2_IOCOMF_WREQ;
 }
 
 /*
  * Write a message to an iocom, with additional state processing.
- *
- * The iocom lock must be held by the caller. XXX
  */
 void
 hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
 		  void (*func)(hammer2_state_t *, hammer2_msg_t *),
-		  void *data)
+		  void *data,
+		  hammer2_state_t **statep)
 {
 	hammer2_state_t *state;
+	char dummy;
 
 	/*
 	 * Handle state processing, create state if necessary.
 	 */
+	pthread_mutex_lock(&iocom->mtx);
 	if ((state = msg->state) != NULL) {
 		/*
 		 * Existing transaction (could be reply).  It is also
@@ -933,12 +1123,11 @@ hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
 			state->func = func;
 			state->any.any = data;
 		}
+		assert(((state->txcmd ^ msg->any.head.cmd) &
+			HAMMER2_MSGF_REPLY) == 0);
 		if (msg->any.head.cmd & HAMMER2_MSGF_CREATE)
 			state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
-		fprintf(stderr, "MSGWRITE IN REPLY msgid %016jx\n",
-			(intmax_t)msg->any.head.msgid);
 	} else if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
-		fprintf(stderr, "MSGWRITE NEW MSG\n");
 		/*
 		 * No existing state and CREATE is set, create new
 		 * state for outgoing command.  This can't happen if
@@ -955,6 +1144,7 @@ hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
 		state->msgid = (uint64_t)(uintptr_t)state;
 		state->spanid = msg->any.head.spanid;
 		state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
+		state->rxcmd = HAMMER2_MSGF_REPLY;
 		state->func = func;
 		state->any.any = data;
 		RB_INSERT(hammer2_state_tree, &iocom->statewr_tree, state);
@@ -963,117 +1153,22 @@ hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
 		msg->any.head.msgid = state->msgid;
 		/* spanid set by caller */
 	} else {
-		fprintf(stderr, "MSGWRITE ONE-OFF\n");
 		msg->any.head.msgid = 0;
 		/* spanid set by caller */
 	}
 
+	if (statep)
+		*statep = state;
+
 	/*
-	 * Queue it for output
+	 * Queue it for output, wake up the I/O pthread.  Note that the
+	 * I/O thread is responsible for generating the CRCs and encryption.
 	 */
-	hammer2_ioq_write(iocom, msg);
+	TAILQ_INSERT_TAIL(&iocom->txmsgq, msg, qentry);
+	dummy = 0;
+	write(iocom->wakeupfds[1], &dummy, 1);	/* XXX optimize me */
+	pthread_mutex_unlock(&iocom->mtx);
 }
-
-#if 0
-
-	case HAMMER2_MSGF_DELETE:
-		/*
-		 * Sent ABORT+DELETE in case where msgid has already
-		 * been fully closed, ignore the message.
-		 */
-		if (state == NULL) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgtx: "
-					     "no state match for DELETE\n");
-				error = HAMMER2_IOQ_ERROR_TRANS;
-			}
-			break;
-		}
-
-		/*
-		 * Sent ABORT+DELETE in case where msgid has
-		 * already been reused for an unrelated message,
-		 * ignore the message.
-		 */
-		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgtx: "
-					     "state reused for DELETE\n");
-				error = HAMMER2_IOQ_ERROR_TRANS;
-			}
-			break;
-		}
-		error = 0;
-
-
-	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_DELETE:
-		/*
-		 * When transmitting a reply with DELETE set the original
-		 * persistent state message should already exist.
-		 *
-		 * This is very similar to the REPLY|CREATE|* case except
-		 * txcmd is already stored, so we just add the DELETE flag.
-		 *
-		 * Sent REPLY+ABORT+DELETE in case where msgid has
-		 * already been fully closed, ignore the message.
-		 */
-		if (state == NULL) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgtx: "
-					     "no state match for "
-					     "REPLY | DELETE\n");
-				error = HAMMER2_IOQ_ERROR_TRANS;
-			}
-			break;
-		}
-
-		/*
-		 * Sent REPLY+ABORT+DELETE in case where msgid has already
-		 * been reused for an unrelated message, ignore the message.
-		 */
-		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgtx: "
-					     "state reused for "
-					     "REPLY | DELETE\n");
-				error = HAMMER2_IOQ_ERROR_TRANS;
-			}
-			break;
-		}
-		error = 0;
-		break;
-	case HAMMER2_MSGF_REPLY:
-		/*
-		 * Check for mid-stream ABORT reply sent.
-		 *
-		 * One-off REPLY messages are allowed for e.g. status updates.
-		 */
-		if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
-			if (state == NULL ||
-			    (state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
-				break;
-			}
-		}
-		error = 0;
-		break;
-	}
-	/*lockmgr(&pmp->msglk, LK_RELEASE);*/
-	return (error);
-#endif
-
 
 /*
  * This is a shortcut to formulate a reply to msg with a simple error code,
@@ -1115,7 +1210,7 @@ hammer2_msg_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
 			return;
 		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
 			cmd |= HAMMER2_MSGF_CREATE;
-		if ((state->rxcmd & HAMMER2_MSGF_REPLY) == 0)
+		if (state->txcmd & HAMMER2_MSGF_REPLY)
 			cmd |= HAMMER2_MSGF_REPLY;
 		cmd |= HAMMER2_MSGF_DELETE;
 	} else {
@@ -1126,7 +1221,7 @@ hammer2_msg_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
 	nmsg = hammer2_msg_alloc(iocom, 0, cmd);
 	nmsg->any.head.error = error;
 	nmsg->state = msg->state;
-	hammer2_msg_write(iocom, nmsg, NULL, 0);
+	hammer2_msg_write(iocom, nmsg, NULL, NULL, NULL);
 }
 
 /*
@@ -1162,7 +1257,7 @@ hammer2_msg_result(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
 			return;
 		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
 			cmd |= HAMMER2_MSGF_CREATE;
-		if ((state->rxcmd & HAMMER2_MSGF_REPLY) == 0)
+		if (state->txcmd & HAMMER2_MSGF_REPLY)
 			cmd |= HAMMER2_MSGF_REPLY;
 		/* continuing transaction, do not set MSGF_DELETE */
 	} else {
@@ -1173,7 +1268,7 @@ hammer2_msg_result(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
 	nmsg = hammer2_msg_alloc(iocom, 0, cmd);
 	nmsg->any.head.error = error;
 	nmsg->state = state;
-	hammer2_msg_write(iocom, nmsg, NULL, 0);
+	hammer2_msg_write(iocom, nmsg, NULL, NULL, NULL);
 }
 
 /*
@@ -1202,13 +1297,13 @@ hammer2_state_reply(hammer2_state_t *state, uint32_t error)
 	 * Set REPLY if the other end initiated the command.  Otherwise
 	 * we are the command direction.
 	 */
-	if ((state->rxcmd & HAMMER2_MSGF_REPLY) == 0)
+	if (state->txcmd & HAMMER2_MSGF_REPLY)
 		cmd |= HAMMER2_MSGF_REPLY;
 
 	nmsg = hammer2_msg_alloc(state->iocom, 0, cmd);
 	nmsg->any.head.error = error;
 	nmsg->state = state;
-	hammer2_msg_write(state->iocom, nmsg, NULL, 0);
+	hammer2_msg_write(state->iocom, nmsg, NULL, NULL, NULL);
 }
 
 /************************************************************************
@@ -1299,7 +1394,6 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 	 * If received msg is a command state is on staterd_tree.
 	 * If received msg is a reply state is on statewr_tree.
 	 */
-	/*lockmgr(&pmp->msglk, LK_EXCLUSIVE);*/
 
 	dummy.msgid = msg->any.head.msgid;
 	dummy.spanid = msg->any.head.spanid;
@@ -1310,6 +1404,7 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		      (intmax_t)msg->any.head.msgid,
 		      (intmax_t)msg->any.head.spanid);
 #endif
+	pthread_mutex_lock(&iocom->mtx);
 	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
 		state = RB_FIND(hammer2_state_tree,
 				&iocom->statewr_tree, &dummy);
@@ -1318,13 +1413,13 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 				&iocom->staterd_tree, &dummy);
 	}
 	msg->state = state;
+	pthread_mutex_unlock(&iocom->mtx);
 
 	/*
 	 * Short-cut one-off or mid-stream messages (state may be NULL).
 	 */
 	if ((msg->any.head.cmd & (HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE |
 				  HAMMER2_MSGF_ABORT)) == 0) {
-		/*lockmgr(&pmp->msglk, LK_RELEASE);*/
 		return(0);
 	}
 
@@ -1351,8 +1446,11 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		state->iocom = iocom;
 		state->flags = HAMMER2_STATE_DYNAMIC;
 		state->msg = msg;
+		state->txcmd = HAMMER2_MSGF_REPLY;
 		state->rxcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
+		pthread_mutex_lock(&iocom->mtx);
 		RB_INSERT(hammer2_state_tree, &iocom->staterd_tree, state);
+		pthread_mutex_unlock(&iocom->mtx);
 		state->flags |= HAMMER2_STATE_INSERTED;
 		state->msgid = msg->any.head.msgid;
 		state->spanid = msg->any.head.spanid;
@@ -1421,6 +1519,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			error = HAMMER2_IOQ_ERROR_TRANS;
 			break;
 		}
+		assert(((state->rxcmd ^ msg->any.head.cmd) &
+			HAMMER2_MSGF_REPLY) == 0);
 		state->rxcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
 		error = 0;
 		break;
@@ -1474,7 +1574,6 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		error = 0;
 		break;
 	}
-	/*lockmgr(&pmp->msglk, LK_RELEASE);*/
 	return (error);
 }
 
@@ -1495,25 +1594,27 @@ hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		 * state, the original message, and this message (if it
 		 * isn't the original message due to a CREATE|DELETE).
 		 */
-		/*lockmgr(&pmp->msglk, LK_EXCLUSIVE);*/
+		pthread_mutex_lock(&iocom->mtx);
 		state->rxcmd |= HAMMER2_MSGF_DELETE;
 		if (state->txcmd & HAMMER2_MSGF_DELETE) {
 			if (state->msg == msg)
 				state->msg = NULL;
 			assert(state->flags & HAMMER2_STATE_INSERTED);
-			if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
+			if (state->rxcmd & HAMMER2_MSGF_REPLY) {
+				assert(msg->any.head.cmd & HAMMER2_MSGF_REPLY);
 				RB_REMOVE(hammer2_state_tree,
 					  &iocom->statewr_tree, state);
 			} else {
+				assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
 				RB_REMOVE(hammer2_state_tree,
 					  &iocom->staterd_tree, state);
 			}
 			state->flags &= ~HAMMER2_STATE_INSERTED;
-			/*lockmgr(&pmp->msglk, LK_RELEASE);*/
 			hammer2_state_free(state);
 		} else {
-			/*lockmgr(&pmp->msglk, LK_RELEASE);*/
+			;
 		}
+		pthread_mutex_unlock(&iocom->mtx);
 		hammer2_msg_free(iocom, msg);
 	} else if (state->msg != msg) {
 		/*
@@ -1532,42 +1633,67 @@ hammer2_state_cleanuptx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 	if ((state = msg->state) == NULL) {
 		hammer2_msg_free(iocom, msg);
 	} else if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
-		/*lockmgr(&pmp->msglk, LK_EXCLUSIVE);*/
+		pthread_mutex_lock(&iocom->mtx);
 		state->txcmd |= HAMMER2_MSGF_DELETE;
 		if (state->rxcmd & HAMMER2_MSGF_DELETE) {
 			if (state->msg == msg)
 				state->msg = NULL;
 			assert(state->flags & HAMMER2_STATE_INSERTED);
-			if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
+			if (state->txcmd & HAMMER2_MSGF_REPLY) {
+				assert(msg->any.head.cmd & HAMMER2_MSGF_REPLY);
 				RB_REMOVE(hammer2_state_tree,
 					  &iocom->staterd_tree, state);
 			} else {
+				assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
 				RB_REMOVE(hammer2_state_tree,
 					  &iocom->statewr_tree, state);
 			}
 			state->flags &= ~HAMMER2_STATE_INSERTED;
-			/*lockmgr(&pmp->msglk, LK_RELEASE);*/
 			hammer2_state_free(state);
 		} else {
-			/*lockmgr(&pmp->msglk, LK_RELEASE);*/
+			;
 		}
+		pthread_mutex_unlock(&iocom->mtx);
 		hammer2_msg_free(iocom, msg);
 	} else if (state->msg != msg) {
 		hammer2_msg_free(iocom, msg);
 	}
 }
 
+/*
+ * Called with iocom locked
+ */
 void
 hammer2_state_free(hammer2_state_t *state)
 {
 	hammer2_iocom_t *iocom = state->iocom;
 	hammer2_msg_t *msg;
+	char dummy;
 
+	fprintf(stderr, "STATE FREE %p\n", state);
+
+	assert(state->any.any == NULL);
 	msg = state->msg;
 	state->msg = NULL;
 	if (msg)
-		hammer2_msg_free(iocom, msg);
+		hammer2_msg_free_locked(iocom, msg);
 	free(state);
+
+	/*
+	 * When an iocom error is present we are trying to close down the
+	 * iocom, but we have to wait for all states to terminate before
+	 * we can do so.  The iocom rx code will terminate the receive side
+	 * for all transactions by simulating incoming DELETE messages,
+	 * but the state doesn't go away until both sides are terminated.
+	 *
+	 * We may have to wake up the rx code.
+	 */
+	if (iocom->ioq_rx.error &&
+	    RB_EMPTY(&iocom->staterd_tree) &&
+	    RB_EMPTY(&iocom->statewr_tree)) {
+		dummy = 0;
+		write(iocom->wakeupfds[1], &dummy, 1);
+	}
 }
 
 /*

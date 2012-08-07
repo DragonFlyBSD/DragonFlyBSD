@@ -102,6 +102,7 @@ int cmd_remote_connect(const char *sel_path, const char *url);
 int cmd_remote_disconnect(const char *sel_path, const char *url);
 int cmd_remote_status(const char *sel_path, int all_opt);
 
+int cmd_pfs_getid(const char *sel_path, const char *name, int privateid);
 int cmd_pfs_list(const char *sel_path);
 int cmd_pfs_create(const char *sel_path, const char *name,
 			uint8_t pfs_type, const char *uuid_str);
@@ -141,10 +142,11 @@ void hammer2_iocom_core(hammer2_iocom_t *iocom,
 hammer2_msg_t *hammer2_ioq_read(hammer2_iocom_t *iocom);
 void hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
 			void (*func)(hammer2_state_t *, hammer2_msg_t *),
-			void *data);
+			void *data, hammer2_state_t **statep);
 
 void hammer2_iocom_drain(hammer2_iocom_t *iocom);
-void hammer2_iocom_flush(hammer2_iocom_t *iocom);
+void hammer2_iocom_flush1(hammer2_iocom_t *iocom);
+void hammer2_iocom_flush2(hammer2_iocom_t *iocom);
 
 void hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 void hammer2_state_free(hammer2_state_t *state);

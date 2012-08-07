@@ -272,5 +272,5 @@ static
 void
 master_link_tx(hammer2_iocom_t *iocom)
 {
-	hammer2_iocom_flush(iocom);
+	hammer2_iocom_flush1(iocom);
 }

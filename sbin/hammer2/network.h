@@ -234,12 +234,15 @@ struct hammer2_iocom {
 	void	(*altmsg_callback)(struct hammer2_iocom *);
 	int	sock_fd;			/* comm socket or pipe */
 	int	alt_fd;				/* thread signal, tty, etc */
+	int	wakeupfds[2];			/* pipe wakes up iocom thread */
 	int	flags;
 	int	rxmisc;
 	int	txmisc;
 	char	sess[HAMMER2_AES_KEY_SIZE];	/* aes_256_cbc key */
 	struct hammer2_state_tree staterd_tree; /* active messages */
 	struct hammer2_state_tree statewr_tree; /* active messages */
+	hammer2_msg_queue_t txmsgq;		/* tx msgq from remote */
+	pthread_mutex_t mtx;			/* mutex for state*tree/rmsgq */
 };
 
 typedef struct hammer2_iocom hammer2_iocom_t;
@@ -247,6 +250,9 @@ typedef struct hammer2_iocom hammer2_iocom_t;
 #define HAMMER2_IOCOMF_EOF	0x00000001	/* EOF or ERROR on desc */
 #define HAMMER2_IOCOMF_RREQ	0x00000002	/* request read-data event */
 #define HAMMER2_IOCOMF_WREQ	0x00000004	/* request write-avail event */
-#define HAMMER2_IOCOMF_WIDLE	0x00000008	/* request write-avail event */
-#define HAMMER2_IOCOMF_SIGNAL	0x00000010
-#define HAMMER2_IOCOMF_CRYPTED	0x00000020	/* encrypt enabled */
+#define HAMMER2_IOCOMF_RWORK	0x00000008	/* immediate work pending */
+#define HAMMER2_IOCOMF_WWORK	0x00000010	/* immediate work pending */
+#define HAMMER2_IOCOMF_PWORK	0x00000020	/* immediate work pending */
+#define HAMMER2_IOCOMF_ARWORK	0x00000040	/* immediate work pending */
+#define HAMMER2_IOCOMF_AWWORK	0x00000080	/* immediate work pending */
+#define HAMMER2_IOCOMF_CRYPTED	0x00000100	/* encrypt enabled */

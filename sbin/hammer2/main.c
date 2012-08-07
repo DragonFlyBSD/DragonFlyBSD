@@ -54,6 +54,7 @@ main(int ac, char **av)
 	int ch;
 
 	srandomdev();
+	signal(SIGPIPE, SIG_IGN);
 
 	/*
 	 * Core options
@@ -153,6 +154,24 @@ main(int ac, char **av)
 		 * Get status of PFS and its connections (-a for all PFSs)
 		 */
 		ecode = cmd_remote_status(sel_path, all_opt);
+	} else if (strcmp(av[0], "pfs-clid") == 0) {
+		/*
+		 * Print cluster id (uuid) for specific PFS
+		 */
+		if (ac < 2) {
+			fprintf(stderr, "pfs-clid: requires name\n");
+			usage(1);
+		}
+		ecode = cmd_pfs_getid(sel_path, av[1], 0);
+	} else if (strcmp(av[0], "pfs-fsid") == 0) {
+		/*
+		 * Print private id (uuid) for specific PFS
+		 */
+		if (ac < 2) {
+			fprintf(stderr, "pfs-fsid: requires name\n");
+			usage(1);
+		}
+		ecode = cmd_pfs_getid(sel_path, av[1], 1);
 	} else if (strcmp(av[0], "pfs-list") == 0) {
 		/*
 		 * List all PFSs
@@ -309,6 +328,8 @@ usage(int code)
 		"    disconnect <target> Del cluster link\n"
 		"    status             Report cluster status\n"
 		"    pfs-list           List PFSs\n"
+		"    pfs-clid <label>   Print cluster id for specific PFS\n"
+		"    pfs-fsid <label>   Print private id for specific PFS\n"
 		"    pfs-create <label> Create a PFS\n"
 		"    pfs-delete <label> Destroy a PFS\n"
 		"    snapshot           Snapshot a PFS\n"
