@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/hptmv/entry.c,v 1.23 2010/06/19 13:42:14 mav Exp $
+ * $FreeBSD: src/sys/dev/hptmv/entry.c,v 1.26 2012/06/01 04:34:49 eadler Exp $
  */
 
 #include <sys/param.h>
@@ -100,6 +100,7 @@ static devclass_t	hpt_devclass;
 
 #define __DRIVER_MODULE(p1, p2, p3, p4, p5, p6) DRIVER_MODULE(p1, p2, p3, p4, p5, p6)
 __DRIVER_MODULE(PROC_DIR_NAME, pci, hpt_pci_driver, hpt_devclass, 0, 0);
+MODULE_DEPEND(PROC_DIR_NAME, cam, 1, 1, 1);
 
 #define ccb_ccb_ptr spriv_ptr0
 #define ccb_adapter ccb_h.spriv_ptr1
@@ -2315,27 +2316,9 @@ hpt_action(struct cam_sim *sim, union ccb *ccb)
 			break;
 
 		case XPT_CALC_GEOMETRY:
-		{
-			struct	  ccb_calc_geometry *ccg;
-			u_int32_t size_mb;
-			u_int32_t secs_per_cylinder;
-
-			ccg = &ccb->ccg;
-			size_mb = ccg->volume_size / ((1024L * 1024L) / ccg->block_size);
-
-			if (size_mb > 1024 ) {
-				ccg->heads = 255;
-				ccg->secs_per_track = 63;
-			} else {
-				ccg->heads = 64;
-				ccg->secs_per_track = 32;
-			}
-			secs_per_cylinder = ccg->heads * ccg->secs_per_track;
-			ccg->cylinders = ccg->volume_size / secs_per_cylinder;
-			ccb->ccb_h.status = CAM_REQ_CMP;
+			cam_calc_geometry(&ccb->ccg, 1);
 			xpt_done(ccb);
 			break;
-		}
 
 		case XPT_PATH_INQ:		/* Path routing inquiry */
 		{
