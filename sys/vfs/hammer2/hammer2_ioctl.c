@@ -50,6 +50,7 @@ static int hammer2_ioctl_remote_rep(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_socket_get(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data);
@@ -98,6 +99,10 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case HAMMER2IOC_PFS_GET:
 		if (error == 0)
 			error = hammer2_ioctl_pfs_get(ip, data);
+		break;
+	case HAMMER2IOC_PFS_LOOKUP:
+		if (error == 0)
+			error = hammer2_ioctl_pfs_lookup(ip, data);
 		break;
 	case HAMMER2IOC_PFS_CREATE:
 		if (error == 0)
@@ -345,6 +350,65 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		}
 	} else {
 		pfs->name_next = (hammer2_key_t)-1;
+		error = ENOENT;
+	}
+done:
+	hammer2_chain_unlock(hmp, parent);
+	return (error);
+}
+
+/*
+ * Find a specific PFS by name
+ */
+static int
+hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
+{
+	hammer2_mount_t *hmp = ip->hmp;
+	hammer2_ioc_pfs_t *pfs = data;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_inode_t *xip;
+	hammer2_key_t lhc;
+	int error = 0;
+	size_t len;
+
+	parent = hmp->schain;
+	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
+						HAMMER2_RESOLVE_SHARED);
+	if (error)
+		goto done;
+
+	pfs->name[sizeof(pfs->name) - 1] = 0;
+	len = strlen(pfs->name);
+	lhc = hammer2_dirhash(pfs->name, len);
+
+	chain = hammer2_chain_lookup(hmp, &parent,
+				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+				     HAMMER2_LOOKUP_SHARED);
+	while (chain) {
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		    chain->u.ip &&
+		    len == chain->data->ipdata.name_len &&
+		    bcmp(pfs->name, chain->data->ipdata.filename, len) == 0) {
+			break;
+		}
+		chain = hammer2_chain_next(hmp, &parent, chain,
+					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+					   HAMMER2_LOOKUP_SHARED);
+	}
+
+	/*
+	 * Load the data being returned by the ioctl.
+	 */
+	if (chain) {
+		xip = chain->u.ip;
+		pfs->name_key = xip->ip_data.name_key;
+		pfs->pfs_type = xip->ip_data.pfs_type;
+		pfs->pfs_clid = xip->ip_data.pfs_clid;
+		pfs->pfs_fsid = xip->ip_data.pfs_fsid;
+
+		hammer2_chain_unlock(hmp, chain);
+	} else {
 		error = ENOENT;
 	}
 done:
