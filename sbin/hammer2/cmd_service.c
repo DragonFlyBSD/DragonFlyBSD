@@ -37,10 +37,10 @@
 
 static void *master_accept(void *data);
 static void *master_service(void *data);
-static void master_auth_rx(hammer2_iocom_t *iocom);
-static void master_auth_tx(hammer2_iocom_t *iocom);
-static void master_link_rx(hammer2_iocom_t *iocom);
-static void master_link_tx(hammer2_iocom_t *iocom);
+static void master_auth_state(hammer2_iocom_t *iocom);
+static void master_auth_rxmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+static void master_link_state(hammer2_iocom_t *iocom);
+static void master_link_rxmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 
 /*
  * Start-up the master listener daemon for the machine.
@@ -163,8 +163,9 @@ master_service(void *data)
 	int fd;
 
 	fd = (int)(intptr_t)data;
-	hammer2_iocom_init(&iocom, fd, -1);
-	hammer2_iocom_core(&iocom, master_auth_rx, master_auth_tx, NULL);
+	hammer2_iocom_init(&iocom, fd, -1,
+			   master_auth_state, master_auth_rxmsg, NULL);
+	hammer2_iocom_core(&iocom);
 
 	fprintf(stderr,
 		"iocom on fd %d terminated error rx=%d, tx=%d\n",
@@ -184,22 +185,41 @@ master_service(void *data)
  * message operation.  The connection has already been encrypted at
  * this point.
  */
+static void master_auth_conn_rx(hammer2_state_t *state, hammer2_msg_t *msg);
+
 static
 void
-master_auth_rx(hammer2_iocom_t *iocom __unused)
+master_auth_state(hammer2_iocom_t *iocom __unused)
 {
-	printf("AUTHRX\n");
-	iocom->recvmsg_callback = master_link_rx;
-	iocom->sendmsg_callback = master_link_tx;
+	hammer2_msg_t *msg;
+
+	/*
+	 * Transmit LNK_CONN, enabling the SPAN protocol if both sides
+	 * agree.
+	 *
+	 * XXX put additional authentication states here
+	 */
+	msg = hammer2_msg_alloc(iocom, 0, HAMMER2_LNK_CONN |
+					  HAMMER2_MSGF_CREATE);
+	snprintf(msg->any.lnk_conn.label, sizeof(msg->any.lnk_conn.label), "*");
+	hammer2_msg_write(iocom, msg, master_auth_conn_rx, NULL, NULL);
+
+	hammer2_iocom_restate(iocom,
+			      master_link_state, master_link_rxmsg, NULL);
 }
 
 static
 void
-master_auth_tx(hammer2_iocom_t *iocom __unused)
+master_auth_conn_rx(hammer2_state_t *state, hammer2_msg_t *msg)
 {
-	printf("AUTHTX\n");
-	iocom->recvmsg_callback = master_link_rx;
-	iocom->sendmsg_callback = master_link_tx;
+	if (msg->any.head.cmd & HAMMER2_MSGF_DELETE)
+		hammer2_msg_reply(state->iocom, msg, 0);
+}
+
+static
+void
+master_auth_rxmsg(hammer2_iocom_t *iocom __unused, hammer2_msg_t *msg __unused)
+{
 }
 
 /************************************************************************
@@ -210,67 +230,53 @@ master_auth_tx(hammer2_iocom_t *iocom __unused)
  */
 static
 void
-master_link_rx(hammer2_iocom_t *iocom)
+master_link_state(hammer2_iocom_t *iocom __unused)
 {
-	hammer2_msg_t *msg;
+}
+
+static
+void
+master_link_rxmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+{
 	hammer2_state_t *state;
 	uint32_t cmd;
 
-	while ((iocom->flags & HAMMER2_IOCOMF_EOF) == 0 &&
-	       (msg = hammer2_ioq_read(iocom)) != NULL) {
-		/*
-		 * If the message state has a function established we just
-		 * call the function, otherwise we call the appropriate
-		 * link-level protocol related to the original command and
-		 * let it sort it out.
-		 *
-		 * Non-transactional one-off messages, on the otherhand,
-		 * might have REPLY set.
-		 */
-		state = msg->state;
-		if (state) {
-			cmd = state->msg->any.head.cmd;
-			fprintf(stderr,
-				"MSGRX persist=%08x cmd=%08x error %d\n",
-				cmd, msg->any.head.cmd, msg->any.head.error);
-		} else {
-			cmd = msg->any.head.cmd;
-			fprintf(stderr,
-				"MSGRX persist=-------- cmd=%08x error %d\n",
-				cmd, msg->any.head.error);
-		}
-		if (state && state->func) {
-			state->func(state, msg);
-		} else {
-			switch(cmd & HAMMER2_MSGF_PROTOS) {
-			case HAMMER2_MSG_PROTO_LNK:
-				hammer2_msg_lnk(iocom, msg);
-				break;
-			case HAMMER2_MSG_PROTO_DBG:
-				hammer2_msg_dbg(iocom, msg);
-				break;
-			default:
-				hammer2_msg_reply(iocom, msg,
-						  HAMMER2_MSG_ERR_UNKNOWN);
-				break;
-			}
-		}
-		hammer2_state_cleanuprx(iocom, msg);
-	}
-	if (iocom->ioq_rx.error) {
+	/*
+	 * If the message state has a function established we just
+	 * call the function, otherwise we call the appropriate
+	 * link-level protocol related to the original command and
+	 * let it sort it out.
+	 *
+	 * Non-transactional one-off messages, on the otherhand,
+	 * might have REPLY set.
+	 */
+	state = msg->state;
+	if (state) {
+		cmd = state->msg->any.head.cmd;
 		fprintf(stderr,
-			"master_recv: comm error %d\n",
-			iocom->ioq_rx.error);
+			"MSGRX persist=%08x cmd=%08x error %d\n",
+			cmd, msg->any.head.cmd, msg->any.head.error);
+	} else {
+		cmd = msg->any.head.cmd;
+		fprintf(stderr,
+			"MSGRX persist=-------- cmd=%08x error %d\n",
+			cmd, msg->any.head.error);
 	}
-}
-
-/*
- * Callback from hammer2_iocom_core() when messages might be transmittable
- * to the socket.
- */
-static
-void
-master_link_tx(hammer2_iocom_t *iocom)
-{
-	hammer2_iocom_flush1(iocom);
+	if (state && state->func) {
+		assert(state->func != NULL);
+		state->func(state, msg);
+	} else {
+		switch(cmd & HAMMER2_MSGF_PROTOS) {
+		case HAMMER2_MSG_PROTO_LNK:
+			hammer2_msg_lnk(iocom, msg);
+			break;
+		case HAMMER2_MSG_PROTO_DBG:
+			hammer2_msg_dbg(iocom, msg);
+			break;
+		default:
+			hammer2_msg_reply(iocom, msg,
+					  HAMMER2_MSG_ERR_UNKNOWN);
+			break;
+		}
+	}
 }

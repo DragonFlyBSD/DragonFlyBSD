@@ -123,7 +123,14 @@ int cmd_rsadec(const char **keys, int nkeys);
 void hammer2_bswap_head(hammer2_msg_hdr_t *head);
 void hammer2_ioq_init(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
 void hammer2_ioq_done(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
-void hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd);
+void hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
+			void (*state_func)(hammer2_iocom_t *),
+			void (*rcvmsg_func)(hammer2_iocom_t *, hammer2_msg_t *),
+			void (*altmsg_func)(hammer2_iocom_t *));
+void hammer2_iocom_restate(hammer2_iocom_t *iocom,
+			void (*state_func)(hammer2_iocom_t *),
+			void (*rcvmsg_func)(hammer2_iocom_t *, hammer2_msg_t *),
+			void (*altmsg_func)(hammer2_iocom_t *));
 void hammer2_iocom_done(hammer2_iocom_t *iocom);
 hammer2_msg_t *hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size,
 			uint32_t cmd);
@@ -135,10 +142,7 @@ void hammer2_state_reply(hammer2_state_t *state, uint32_t error);
 
 void hammer2_msg_free(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 
-void hammer2_iocom_core(hammer2_iocom_t *iocom,
-			void (*iocom_recvmsg)(hammer2_iocom_t *),
-			void (*iocom_sendmsg)(hammer2_iocom_t *),
-			void (*iocom_altmsg)(hammer2_iocom_t *));
+void hammer2_iocom_core(hammer2_iocom_t *iocom);
 hammer2_msg_t *hammer2_ioq_read(hammer2_iocom_t *iocom);
 void hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
 			void (*func)(hammer2_state_t *, hammer2_msg_t *),

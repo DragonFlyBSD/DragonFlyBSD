@@ -229,8 +229,9 @@ struct hammer2_iocom {
 	hammer2_msg_queue_t freeq;		/* free msgs hdr only */
 	hammer2_msg_queue_t freeq_aux;		/* free msgs w/aux_data */
 	struct hammer2_address_queue  addrq;	/* source/target addrs */
-	void	(*recvmsg_callback)(struct hammer2_iocom *);
-	void	(*sendmsg_callback)(struct hammer2_iocom *);
+	void	(*state_callback)(struct hammer2_iocom *);
+	void	(*rcvmsg_callback)(struct hammer2_iocom *,
+				   struct hammer2_msg *);
 	void	(*altmsg_callback)(struct hammer2_iocom *);
 	int	sock_fd;			/* comm socket or pipe */
 	int	alt_fd;				/* thread signal, tty, etc */
@@ -255,4 +256,5 @@ typedef struct hammer2_iocom hammer2_iocom_t;
 #define HAMMER2_IOCOMF_PWORK	0x00000020	/* immediate work pending */
 #define HAMMER2_IOCOMF_ARWORK	0x00000040	/* immediate work pending */
 #define HAMMER2_IOCOMF_AWWORK	0x00000080	/* immediate work pending */
-#define HAMMER2_IOCOMF_CRYPTED	0x00000100	/* encrypt enabled */
+#define HAMMER2_IOCOMF_SWORK	0x00000100	/* immediate work pending */
+#define HAMMER2_IOCOMF_CRYPTED	0x00000200	/* encrypt enabled */

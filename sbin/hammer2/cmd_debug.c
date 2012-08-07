@@ -37,9 +37,8 @@
 
 #define SHOW_TAB	2
 
-static void shell_recv(hammer2_iocom_t *iocom);
-static void shell_send(hammer2_iocom_t *iocom);
-static void shell_tty(hammer2_iocom_t *iocom);
+static void shell_rcvmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+static void shell_ttymsg(hammer2_iocom_t *iocom);
 static void hammer2_shell_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 
 /************************************************************************
@@ -94,13 +93,12 @@ cmd_shell(const char *hostname)
 	/*
 	 * Run the session.  The remote end transmits our prompt.
 	 */
-	hammer2_iocom_init(&iocom, fd, 0);
+	hammer2_iocom_init(&iocom, fd, 0, NULL, shell_rcvmsg, shell_ttymsg);
 	printf("debug: connected\n");
 
 	msg = hammer2_msg_alloc(&iocom, 0, HAMMER2_DBG_SHELL);
 	hammer2_msg_write(&iocom, msg, NULL, NULL, NULL);
-
-	hammer2_iocom_core(&iocom, shell_recv, shell_send, shell_tty);
+	hammer2_iocom_core(&iocom);
 	fprintf(stderr, "debug: disconnected\n");
 	close(fd);
 	return 0;
@@ -112,68 +110,46 @@ cmd_shell(const char *hostname)
  */
 static
 void
-shell_recv(hammer2_iocom_t *iocom)
+shell_rcvmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 {
-	hammer2_msg_t *msg;
-
-	while ((iocom->flags & HAMMER2_IOCOMF_EOF) == 0 &&
-	       (msg = hammer2_ioq_read(iocom)) != NULL) {
-
-		switch(msg->any.head.cmd & HAMMER2_MSGF_CMDSWMASK) {
-		case HAMMER2_LNK_ERROR:
-		case HAMMER2_LNK_ERROR | HAMMER2_MSGF_REPLY:
-			if (msg->any.head.error) {
-				fprintf(stderr,
-					"Link Error: %d\n",
-					msg->any.head.error);
-			} else {
-				write(1, "debug> ", 7);
-			}
-			break;
-		case HAMMER2_DBG_SHELL:
-			/*
-			 * We send the commands, not accept them.
-			 */
-			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
-			break;
-		case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
-			/*
-			 * A reply from the remote is data we copy to stdout.
-			 */
-			if (msg->aux_size) {
-				msg->aux_data[msg->aux_size - 1] = 0;
-				write(1, msg->aux_data, strlen(msg->aux_data));
-			}
-			break;
-		default:
-			fprintf(stderr, "Unknown message: %08x\n",
-				msg->any.head.cmd);
-			assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
-			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
-			break;
+	switch(msg->any.head.cmd & HAMMER2_MSGF_CMDSWMASK) {
+	case HAMMER2_LNK_ERROR:
+	case HAMMER2_LNK_ERROR | HAMMER2_MSGF_REPLY:
+		if (msg->any.head.error) {
+			fprintf(stderr,
+				"Link Error: %d\n",
+				msg->any.head.error);
+		} else {
+			write(1, "debug> ", 7);
 		}
-		hammer2_state_cleanuprx(iocom, msg);
-	}
-	if (iocom->ioq_rx.error) {
-		fprintf(stderr, "node_master_recv: comm error %d\n",
-			iocom->ioq_rx.error);
+		break;
+	case HAMMER2_DBG_SHELL:
+		/*
+		 * We send the commands, not accept them.
+		 */
+		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
+		break;
+	case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
+		/*
+		 * A reply from the remote is data we copy to stdout.
+		 */
+		if (msg->aux_size) {
+			msg->aux_data[msg->aux_size - 1] = 0;
+			write(1, msg->aux_data, strlen(msg->aux_data));
+		}
+		break;
+	default:
+		fprintf(stderr, "Unknown message: %08x\n",
+			msg->any.head.cmd);
+		assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
+		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
+		break;
 	}
 }
 
-/*
- * Callback from hammer2_iocom_core() when messages might be transmittable
- * to the socket.
- */
 static
 void
-shell_send(hammer2_iocom_t *iocom)
-{
-	hammer2_iocom_flush1(iocom);
-}
-
-static
-void
-shell_tty(hammer2_iocom_t *iocom)
+shell_ttymsg(hammer2_iocom_t *iocom)
 {
 	hammer2_msg_t *msg;
 	char buf[256];

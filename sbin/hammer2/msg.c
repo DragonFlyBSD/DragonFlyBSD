@@ -71,12 +71,22 @@ hammer2_ioq_done(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
 }
 
 /*
- * Initialize a low-level communications channel
+ * Initialize a low-level communications channel.
+ *
+ * NOTE: The state_func() is called at least once from the loop and can be
+ *	 re-armed via hammer2_iocom_restate().
  */
 void
-hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd)
+hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
+		   void (*state_func)(hammer2_iocom_t *),
+		   void (*rcvmsg_func)(hammer2_iocom_t *, hammer2_msg_t *msg),
+		   void (*altmsg_func)(hammer2_iocom_t *))
 {
 	bzero(iocom, sizeof(*iocom));
+
+	iocom->state_callback = state_func;
+	iocom->rcvmsg_callback = rcvmsg_func;
+	iocom->altmsg_callback = altmsg_func;
 
 	pthread_mutex_init(&iocom->mtx, NULL);
 	RB_INIT(&iocom->staterd_tree);
@@ -88,6 +98,8 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd)
 	iocom->sock_fd = sock_fd;
 	iocom->alt_fd = alt_fd;
 	iocom->flags = HAMMER2_IOCOMF_RREQ;
+	if (state_func)
+		iocom->flags |= HAMMER2_IOCOMF_SWORK;
 	hammer2_ioq_init(iocom, &iocom->ioq_rx);
 	hammer2_ioq_init(iocom, &iocom->ioq_tx);
 	if (pipe(iocom->wakeupfds) < 0)
@@ -111,6 +123,27 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd)
 	if (alt_fd >= 0)
 		fcntl(alt_fd, F_SETFL, O_NONBLOCK);
 #endif
+}
+
+/*
+ * May only be called from a callback from iocom_core.
+ *
+ * Adjust state machine functions, set flags to guarantee that both
+ * the recevmsg_func and the sendmsg_func is called at least once.
+ */
+void
+hammer2_iocom_restate(hammer2_iocom_t *iocom,
+		   void (*state_func)(hammer2_iocom_t *),
+		   void (*rcvmsg_func)(hammer2_iocom_t *, hammer2_msg_t *msg),
+		   void (*altmsg_func)(hammer2_iocom_t *))
+{
+	iocom->state_callback = state_func;
+	iocom->rcvmsg_callback = rcvmsg_func;
+	iocom->altmsg_callback = altmsg_func;
+	if (state_func)
+		iocom->flags |= HAMMER2_IOCOMF_SWORK;
+	else
+		iocom->flags &= ~HAMMER2_IOCOMF_SWORK;
 }
 
 /*
@@ -233,27 +266,22 @@ hammer2_msg_free(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
  * Thread localized, iocom->mtx not held.
  */
 void
-hammer2_iocom_core(hammer2_iocom_t *iocom,
-		   void (*recvmsg_func)(hammer2_iocom_t *),
-		   void (*sendmsg_func)(hammer2_iocom_t *),
-		   void (*altmsg_func)(hammer2_iocom_t *))
+hammer2_iocom_core(hammer2_iocom_t *iocom)
 {
 	struct pollfd fds[3];
 	char dummybuf[256];
+	hammer2_msg_t *msg;
 	int timeout;
 	int count;
 	int wi;	/* wakeup pipe */
 	int si;	/* socket */
 	int ai;	/* alt bulk path socket */
 
-	iocom->recvmsg_callback = recvmsg_func;
-	iocom->sendmsg_callback = sendmsg_func;
-	iocom->altmsg_callback = altmsg_func;
-
 	while ((iocom->flags & HAMMER2_IOCOMF_EOF) == 0) {
 		if ((iocom->flags & (HAMMER2_IOCOMF_RWORK |
 				     HAMMER2_IOCOMF_WWORK |
 				     HAMMER2_IOCOMF_PWORK |
+				     HAMMER2_IOCOMF_SWORK |
 				     HAMMER2_IOCOMF_ARWORK |
 				     HAMMER2_IOCOMF_AWWORK)) == 0) {
 			/*
@@ -322,6 +350,11 @@ hammer2_iocom_core(hammer2_iocom_t *iocom,
 			iocom->flags |= HAMMER2_IOCOMF_PWORK;
 		}
 
+		if (iocom->flags & HAMMER2_IOCOMF_SWORK) {
+			iocom->flags &= ~HAMMER2_IOCOMF_SWORK;
+			iocom->state_callback(iocom);
+		}
+
 		/*
 		 * Pending message queues from other threads wake us up
 		 * with a write to the wakeupfds[] pipe.  We have to clear
@@ -333,22 +366,31 @@ hammer2_iocom_core(hammer2_iocom_t *iocom,
 			iocom->flags |= HAMMER2_IOCOMF_RWORK;
 			iocom->flags |= HAMMER2_IOCOMF_WWORK;
 			if (TAILQ_FIRST(&iocom->txmsgq))
-				iocom->sendmsg_callback(iocom);
+				hammer2_iocom_flush1(iocom);
 		}
 
 		/*
 		 * Message write sequencing
 		 */
 		if (iocom->flags & HAMMER2_IOCOMF_WWORK)
-			iocom->sendmsg_callback(iocom);
+			hammer2_iocom_flush1(iocom);
 
 		/*
 		 * Message read sequencing.  Run this after the write
 		 * sequencing in case the write sequencing allowed another
 		 * auto-DELETE to occur on the read side.
 		 */
-		if (iocom->flags & HAMMER2_IOCOMF_RWORK)
-			iocom->recvmsg_callback(iocom);
+		if (iocom->flags & HAMMER2_IOCOMF_RWORK) {
+			while ((iocom->flags & HAMMER2_IOCOMF_EOF) == 0 &&
+			       (msg = hammer2_ioq_read(iocom)) != NULL) {
+				fprintf(stderr,
+					"receive msg cmd=%08x msgid=%016jx\n",
+					msg->any.head.cmd,
+					(intmax_t)msg->any.head.msgid);
+				iocom->rcvmsg_callback(iocom, msg);
+				hammer2_state_cleanuprx(iocom, msg);
+			}
+		}
 
 		if (iocom->flags & HAMMER2_IOCOMF_ARWORK)
 			iocom->altmsg_callback(iocom);
@@ -766,6 +808,7 @@ again:
 		msg->any.head.error = ioq->error;
 
 		pthread_mutex_lock(&iocom->mtx);
+		fprintf(stderr, "CHECK REMAINING RXMSGS\n");
 		if ((state = RB_ROOT(&iocom->staterd_tree)) != NULL) {
 			/*
 			 * Active remote transactions are still present.
@@ -790,7 +833,7 @@ again:
 			 * Simulate the other end sending us a DELETE.
 			 */
 			if (state->rxcmd & HAMMER2_MSGF_DELETE) {
-				fprintf(stderr, "SIMULATE DELETION WCONT\n");
+				fprintf(stderr, "SIMULATE DELETION WCONT STATE->txcmd = %08x rxcmd = %08x msgid=%016jx\n", state->txcmd, state->rxcmd, state->msgid );
 				hammer2_msg_free(iocom, msg);
 				msg = NULL;
 			} else {
@@ -1397,13 +1440,6 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 
 	dummy.msgid = msg->any.head.msgid;
 	dummy.spanid = msg->any.head.spanid;
-#if 0
-	iocom_printf(iocom, msg->any.head.cmd,
-		     "received msg %08x msgid %jx spanid=%jx\n",
-		      msg->any.head.cmd,
-		      (intmax_t)msg->any.head.msgid,
-		      (intmax_t)msg->any.head.spanid);
-#endif
 	pthread_mutex_lock(&iocom->mtx);
 	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
 		state = RB_FIND(hammer2_state_tree,
@@ -1435,9 +1471,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		 * New persistant command received.
 		 */
 		if (state) {
-			iocom_printf(iocom, msg->any.head.cmd,
-				     "hammer2_state_msgrx: "
-				     "duplicate transaction\n");
+			fprintf(stderr, "hammer2_state_msgrx: "
+				        "duplicate transaction\n");
 			error = HAMMER2_IOQ_ERROR_TRANS;
 			break;
 		}
@@ -1466,9 +1501,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
 				error = HAMMER2_IOQ_ERROR_EALREADY;
 			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgrx: "
-					     "no state for DELETE\n");
+				fprintf(stderr, "hammer2_state_msgrx: "
+					        "no state for DELETE\n");
 				error = HAMMER2_IOQ_ERROR_TRANS;
 			}
 			break;
@@ -1482,9 +1516,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
 				error = HAMMER2_IOQ_ERROR_EALREADY;
 			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgrx: "
-					     "state reused for DELETE\n");
+				fprintf(stderr, "hammer2_state_msgrx: "
+					        "state reused for DELETE\n");
 				error = HAMMER2_IOQ_ERROR_TRANS;
 			}
 			break;
@@ -1512,10 +1545,11 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		 * persistent state message should already exist.
 		 */
 		if (state == NULL) {
-			iocom_printf(iocom, msg->any.head.cmd,
-				     "hammer2_state_msgrx: "
-				     "no state match for REPLY cmd=%08x\n",
-				     msg->any.head.cmd);
+			fprintf(stderr,
+				"hammer2_state_msgrx: no state match for REPLY"
+				" cmd=%08x msgid=%016jx\n",
+				msg->any.head.cmd,
+				(intmax_t)msg->any.head.msgid);
 			error = HAMMER2_IOQ_ERROR_TRANS;
 			break;
 		}
@@ -1533,10 +1567,9 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
 				error = HAMMER2_IOQ_ERROR_EALREADY;
 			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgrx: "
-					     "no state match for "
-					     "REPLY|DELETE\n");
+				fprintf(stderr, "hammer2_state_msgrx: "
+					        "no state match for "
+					        "REPLY|DELETE\n");
 				error = HAMMER2_IOQ_ERROR_TRANS;
 			}
 			break;
@@ -1551,9 +1584,9 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
 				error = HAMMER2_IOQ_ERROR_EALREADY;
 			} else {
-				iocom_printf(iocom, msg->any.head.cmd,
-					     "hammer2_state_msgrx: "
-					     "state reused for REPLY|DELETE\n");
+				fprintf(stderr, "hammer2_state_msgrx: "
+					        "state reused for "
+						"REPLY|DELETE\n");
 				error = HAMMER2_IOQ_ERROR_TRANS;
 			}
 			break;
