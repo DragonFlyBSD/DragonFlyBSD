@@ -269,8 +269,8 @@ struct bnx_softc {
 };
 
 #define BNX_NSEG_NEW		40
-#define BNX_NSEG_SPARE		5
-#define BNX_NSEG_RSVD		16
+#define BNX_NSEG_SPARE		33	/* enough for 64K TSO segment */
+#define BNX_NSEG_RSVD		4
 
 /* RX coalesce ticks, unit: us */
 #define BNX_RX_COAL_TICKS_MIN	0
