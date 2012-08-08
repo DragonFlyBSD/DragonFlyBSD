@@ -366,6 +366,9 @@ dev/atm/hfa/fore_stats.c	optional nowerror hfa
 dev/atm/hfa/fore_timer.c	optional hfa
 dev/atm/hfa/fore_transmit.c	optional nowerror hfa
 dev/atm/hfa/fore_vcm.c		optional hfa
+dev/raid/hpt27xx/os_bsd.c	optional hpt27xx
+dev/raid/hpt27xx/osm_bsd.c	optional hpt27xx
+dev/raid/hpt27xx/hpt27xx_config.c optional hpt27xx
 dev/raid/hptiop/hptiop.c	optional hptiop scbus
 dev/raid/hptmv/entry.c		optional hptmv
 dev/raid/hptmv/mv.c		optional hptmv

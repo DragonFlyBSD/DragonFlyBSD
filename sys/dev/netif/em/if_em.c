@@ -870,7 +870,7 @@ em_detach(device_t dev)
 		lwkt_serialize_exit(ifp->if_serializer);
 
 		ether_ifdetach(ifp);
-	} else {
+	} else if (adapter->memory != NULL) {
 		em_rel_hw_control(adapter);
 	}
 	bus_generic_detach(dev);
@@ -895,6 +895,9 @@ em_detach(device_t dev)
 	/* Free sysctl tree */
 	if (adapter->sysctl_tree != NULL)
 		sysctl_ctx_free(&adapter->sysctl_ctx);
+
+	if (adapter->mta != NULL)
+		kfree(adapter->mta, M_DEVBUF);
 
 	return (0);
 }
