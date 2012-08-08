@@ -133,7 +133,8 @@ device		arcmsr		# Areca SATA II RAID
 device		asr		# DPT SmartRAID V, VI and Adaptec SCSI RAID
 device		ciss		# Compaq SmartRAID 5* series
 device		dpt		# DPT Smartcache - See LINT for options!
-device		hptiop		# Highpoint RocketRaid 3xxx series
+device		"hpt27xx"	# Highpoint RocketRAID 27xx series
+device		hptiop		# Highpoint RocketRAID 3xxx series
 device		hptmv		# Highpoint RocketRAID 182x
 device		hptrr		# Highpoint RocketRAID 17xx, 22xx, 23xx, 25xx
 device		iir		# Intel Integrated RAID

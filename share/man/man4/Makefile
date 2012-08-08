@@ -104,6 +104,7 @@ MAN=	aac.4 \
 	gre.4 \
 	gusc.4 \
 	hifn.4 \
+	hpt27xx.4 \
 	hptiop.4 \
 	hptmv.4 \
 	hptrr.4 \

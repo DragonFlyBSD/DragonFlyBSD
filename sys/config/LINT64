@@ -1059,6 +1059,10 @@ device		hptmv
 device		hptrr
 
 #
+# Highpoint RocketRAID 27xx.
+device		"hpt27xx"
+
+#
 # Highpoint RocketRaid 3xxx series SATA RAID
 device		hptiop
 
