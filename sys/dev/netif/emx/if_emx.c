@@ -1633,7 +1633,7 @@ emx_timer(void *xsc)
 	struct emx_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	ifnet_serialize_all(ifp);
+	lwkt_serialize_enter(&sc->main_serialize);
 
 	emx_update_link_status(sc);
 	emx_update_stats(sc);
@@ -1649,7 +1649,7 @@ emx_timer(void *xsc)
 
 	callout_reset(&sc->timer, hz, emx_timer, sc);
 
-	ifnet_deserialize_all(ifp);
+	lwkt_serialize_exit(&sc->main_serialize);
 }
 
 static void
