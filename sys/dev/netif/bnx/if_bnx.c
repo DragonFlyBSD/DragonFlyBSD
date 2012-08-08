@@ -3946,7 +3946,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		val = CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS);
 
 		if (bootverbose) {
-			if_printf(ifp, "tx_max_coal_bds -> %u\n",
+			if_printf(ifp, "tx_coal_bds -> %u\n",
 				  sc->bnx_tx_coal_bds);
 		}
 	}
