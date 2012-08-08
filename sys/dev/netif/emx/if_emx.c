@@ -788,7 +788,7 @@ emx_detach(device_t dev)
 		ifnet_deserialize_all(ifp);
 
 		ether_ifdetach(ifp);
-	} else {
+	} else if (sc->memory != NULL) {
 		emx_rel_hw_control(sc);
 	}
 	bus_generic_detach(dev);
@@ -811,6 +811,9 @@ emx_detach(device_t dev)
 	/* Free sysctl tree */
 	if (sc->sysctl_tree != NULL)
 		sysctl_ctx_free(&sc->sysctl_ctx);
+
+	if (sc->mta != NULL)
+		kfree(sc->mta, M_DEVBUF);
 
 	return (0);
 }
