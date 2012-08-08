@@ -82,37 +82,57 @@ static
 void
 shell_rcvmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 {
-	switch(msg->any.head.cmd & HAMMER2_MSGF_CMDSWMASK) {
+	switch(msg->any.head.cmd & HAMMER2_MSGF_TRANSMASK) {
 	case HAMMER2_LNK_ERROR:
 	case HAMMER2_LNK_ERROR | HAMMER2_MSGF_REPLY:
+		/*
+		 * One-way non-transactional LNK_ERROR messages typically
+		 * indicate a connection failure.  Error code 0 is used by
+		 * the debug shell to indicate no more results from last cmd.
+		 */
 		if (msg->any.head.error) {
-			fprintf(stderr,
-				"Link Error: %d\n",
-				msg->any.head.error);
+			fprintf(stderr, "Stream failure: %s\n",
+				hammer2_msg_str(msg));
 		} else {
 			write(1, "debug> ", 7);
 		}
 		break;
+	case HAMMER2_LNK_ERROR | HAMMER2_MSGF_DELETE:
+		/* ignore termination of LNK_CONN */
+		break;
 	case HAMMER2_DBG_SHELL:
 		/*
 		 * We send the commands, not accept them.
+		 * (one-way message, not transactional)
 		 */
-		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
+		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
 		break;
 	case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
 		/*
 		 * A reply from the remote is data we copy to stdout.
+		 * (one-way message, not transactional)
 		 */
 		if (msg->aux_size) {
 			msg->aux_data[msg->aux_size - 1] = 0;
 			write(1, msg->aux_data, strlen(msg->aux_data));
 		}
 		break;
+	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE:
+		fprintf(stderr, "Debug Shell is ignoring received LNK_CONN\n");
+		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
+		break;
+	case HAMMER2_LNK_CONN | HAMMER2_MSGF_DELETE:
+		break;
 	default:
-		fprintf(stderr, "Unknown message: %08x\n",
-			msg->any.head.cmd);
-		assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
-		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
+		/*
+		 * Ignore any unknown messages, Terminate any unknown
+		 * transactions with an error.
+		 */
+		fprintf(stderr, "Unknown message: %s\n", hammer2_msg_str(msg));
+		if (msg->any.head.cmd & HAMMER2_MSGF_CREATE)
+			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
+		if (msg->any.head.cmd & HAMMER2_MSGF_DELETE)
+			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
 		break;
 	}
 }
@@ -174,10 +194,13 @@ hammer2_msg_dbg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			write(2, msg->aux_data, strlen(msg->aux_data));
 		break;
 	default:
-		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_UNKNOWN);
+		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
 		break;
 	}
 }
+
+static void shell_span(hammer2_iocom_t *iocom, char *cmdbuf);
+/*static void shell_tree(hammer2_iocom_t *iocom, char *cmdbuf);*/
 
 static void
 hammer2_shell_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
@@ -188,36 +211,44 @@ hammer2_shell_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 	if (cmd == NULL || *cmd == 0) {
 		;
 	} else if (strcmp(cmd, "span") == 0) {
-		const char *hostname = strsep(&cmdbuf, " \t");
-		pthread_t thread;
-		int fd;
-
-		/*
-		 * Connect to the target
-		 */
-		if (hostname == NULL) {
-			fd = -1;
-		} else {
-			fd = hammer2_connect(hostname);
-		}
-
-		/*
-		 * Start master service
-		 */
-		if (fd < 0) {
-			iocom_printf(iocom, 0, "Connection to %s failed\n",
-				     hostname);
-		} else {
-			iocom_printf(iocom, 0, "Connected to %s\n", hostname);
-			pthread_create(&thread, NULL,
-				       master_service, (void *)(intptr_t)fd);
-			/*pthread_join(thread, &res);*/
-		}
+		shell_span(iocom, cmdbuf);
+	} else if (strcmp(cmd, "tree") == 0) {
+		shell_tree(iocom, cmdbuf);
 	} else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
-		iocom_printf(iocom, 0, "help        Command help\n");
-		iocom_printf(iocom, 0, "span <host> Span to target host\n");
+		iocom_printf(iocom, "help            Command help\n");
+		iocom_printf(iocom, "span <host>     Span to target host\n");
+		iocom_printf(iocom, "tree            Dump spanning tree\n");
 	} else {
-		iocom_printf(iocom, 0, "Unrecognized command: %s\n", cmd);
+		iocom_printf(iocom, "Unrecognized command: %s\n", cmd);
+	}
+}
+
+static void
+shell_span(hammer2_iocom_t *iocom, char *cmdbuf)
+{
+	const char *hostname = strsep(&cmdbuf, " \t");
+	pthread_t thread;
+	int fd;
+
+	/*
+	 * Connect to the target
+	 */
+	if (hostname == NULL) {
+		fd = -1;
+	} else {
+		fd = hammer2_connect(hostname);
+	}
+
+	/*
+	 * Start master service
+	 */
+	if (fd < 0) {
+		iocom_printf(iocom, "Connection to %s failed\n", hostname);
+	} else {
+		iocom_printf(iocom, "Connected to %s\n", hostname);
+		pthread_create(&thread, NULL,
+			       master_service, (void *)(intptr_t)fd);
+		/*pthread_join(thread, &res);*/
 	}
 }
 
@@ -230,15 +261,12 @@ hammer2_shell_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
  * to the iocom_printf().  We filter out DBG messages.
  */
 void
-iocom_printf(hammer2_iocom_t *iocom, uint32_t cmd, const char *ctl, ...)
+iocom_printf(hammer2_iocom_t *iocom, const char *ctl, ...)
 {
 	hammer2_msg_t *rmsg;
 	va_list va;
 	char buf[1024];
 	size_t len;
-
-	if ((cmd & HAMMER2_MSGF_PROTOS) == HAMMER2_MSG_PROTO_DBG)
-		return;
 
 	va_start(va, ctl);
 	vsnprintf(buf, sizeof(buf), ctl, va);

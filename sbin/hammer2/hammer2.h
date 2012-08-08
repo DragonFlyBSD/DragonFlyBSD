@@ -183,11 +183,15 @@ const char *hammer2_uuid_to_str(uuid_t *uuid, char **strp);
 const char *hammer2_iptype_to_str(uint8_t type);
 const char *hammer2_pfstype_to_str(uint8_t type);
 const char *sizetostr(hammer2_off_t size);
+const char * hammer2_basecmd_str(uint32_t cmd);
+const char *hammer2_msg_str(hammer2_msg_t *msg);
 int hammer2_connect(const char *hostname);
+
+void shell_tree(hammer2_iocom_t *iocom, char *cmdbuf);
 
 void *master_service(void *data);
 
 void hammer2_msg_debug(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
-void iocom_printf(hammer2_iocom_t *iocom, uint32_t cmd, const char *ctl, ...);
+void iocom_printf(hammer2_iocom_t *iocom, const char *ctl, ...);
 void *hammer2_alloc(size_t bytes);
 void hammer2_free(void *ptr);

@@ -61,7 +61,7 @@ hammer2_msg_dbg_rcvmsg(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 		/*
 		 * Execute shell command (not supported atm)
 		 */
-		hammer2_msg_reply(pmp, msg, HAMMER2_MSG_ERR_UNKNOWN);
+		hammer2_msg_reply(pmp, msg, HAMMER2_MSG_ERR_NOSUPP);
 		break;
 	case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
 		if (msg->aux_data) {
@@ -70,7 +70,7 @@ hammer2_msg_dbg_rcvmsg(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 		}
 		break;
 	default:
-		hammer2_msg_reply(pmp, msg, HAMMER2_MSG_ERR_UNKNOWN);
+		hammer2_msg_reply(pmp, msg, HAMMER2_MSG_ERR_NOSUPP);
 		break;
 	}
 	return(0);

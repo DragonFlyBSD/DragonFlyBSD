@@ -358,6 +358,11 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
  * not be executed on the connection, nor is this message a promise that the
  * sending end is a client or node of a cluster.
  */
+struct hammer2_lnk_auth {
+	hammer2_msg_hdr_t head;
+	char		dummy[64];
+};
+
 struct hammer2_lnk_conn {
 	hammer2_msg_hdr_t head;
 	uuid_t		pfs_clid;	/* rendezvous pfs uuid */
@@ -524,7 +529,7 @@ typedef struct hammer2_dbg_shell hammer2_dbg_shell_t;
  *	0x00 - 0x1F	Local iocomm errors
  *	0x20 - 0x2F	Global errors
  */
-#define HAMMER2_MSG_ERR_UNKNOWN		0x20
+#define HAMMER2_MSG_ERR_NOSUPP		0x20
 
 union hammer2_msg_any {
 	char			buf[HAMMER2_MSGHDR_MAX];

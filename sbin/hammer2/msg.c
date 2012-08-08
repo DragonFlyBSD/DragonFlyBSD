@@ -383,10 +383,10 @@ hammer2_iocom_core(hammer2_iocom_t *iocom)
 		if (iocom->flags & HAMMER2_IOCOMF_RWORK) {
 			while ((iocom->flags & HAMMER2_IOCOMF_EOF) == 0 &&
 			       (msg = hammer2_ioq_read(iocom)) != NULL) {
-				fprintf(stderr,
-					"receive msg cmd=%08x msgid=%016jx\n",
-					msg->any.head.cmd,
-					(intmax_t)msg->any.head.msgid);
+				if (DebugOpt) {
+					fprintf(stderr, "receive %s\n",
+						hammer2_msg_str(msg));
+				}
 				iocom->rcvmsg_callback(iocom, msg);
 				hammer2_state_cleanuprx(iocom, msg);
 			}
@@ -603,8 +603,9 @@ again:
 		head->hdr_crc = 0;
 		if (hammer2_icrc32(head, ioq->hbytes) != xcrc32) {
 			ioq->error = HAMMER2_IOQ_ERROR_XCRC;
-			fprintf(stderr, "XCRC FAILED %08x %08x\n",
-				xcrc32, hammer2_icrc32(head, ioq->hbytes));
+			fprintf(stderr, "BAD-XCRC(%08x,%08x) %s\n",
+				xcrc32, hammer2_icrc32(head, ioq->hbytes),
+				hammer2_msg_str(msg));
 			assert(0);
 			break;
 		}
@@ -800,18 +801,15 @@ again:
 		msg->any.head.error = ioq->error;
 
 		pthread_mutex_lock(&iocom->mtx);
-		fprintf(stderr, "CHECK REMAINING RXMSGS\n");
 		if ((state = RB_ROOT(&iocom->staterd_tree)) != NULL) {
 			/*
 			 * Active remote transactions are still present.
 			 * Simulate the other end sending us a DELETE.
 			 */
 			if (state->rxcmd & HAMMER2_MSGF_DELETE) {
-				fprintf(stderr, "SIMULATE DELETION RCONT %p\n", state);
 				hammer2_msg_free(iocom, msg);
 				msg = NULL;
 			} else {
-				fprintf(stderr, "SIMULATE DELETION %p RD RXCMD %08x\n", state, state->rxcmd);
 				/*state->txcmd |= HAMMER2_MSGF_DELETE;*/
 				msg->state = state;
 				msg->any.head.spanid = state->spanid;
@@ -825,12 +823,9 @@ again:
 			 * Simulate the other end sending us a DELETE.
 			 */
 			if (state->rxcmd & HAMMER2_MSGF_DELETE) {
-				fprintf(stderr, "SIMULATE DELETION WCONT STATE->txcmd = %08x rxcmd = %08x msgid=%016jx\n", state->txcmd, state->rxcmd, state->msgid );
 				hammer2_msg_free(iocom, msg);
 				msg = NULL;
 			} else {
-				fprintf(stderr, "SIMULATE DELETION WD RXCMD %08x\n", state->txcmd);
-				/*state->txcmd |= HAMMER2_MSGF_DELETE;*/
 				msg->state = state;
 				msg->any.head.spanid = state->spanid;
 				msg->any.head.msgid = state->msgid;
@@ -849,7 +844,7 @@ again:
 			 */
 			msg->state = NULL;
 			iocom->flags |= HAMMER2_IOCOMF_EOF;
-			fprintf(stderr, "EOF ON SOCKET\n");
+			fprintf(stderr, "EOF ON SOCKET %d\n", iocom->sock_fd);
 		}
 		pthread_mutex_unlock(&iocom->mtx);
 
@@ -1084,8 +1079,6 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 	hammer2_crypto_encrypt_wrote(iocom, ioq, nact);
 	if (nact != nmax)
 		iocom->flags |= HAMMER2_IOCOMF_WREQ;
-	else if (nmax != omax)
-		iocom->flags |= HAMMER2_IOCOMF_WWORK;
 
 	/*
 	 * Clean out the transmit queue based on what we successfully
@@ -1118,6 +1111,13 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 
 		hammer2_state_cleanuptx(iocom, msg);
 	}
+
+	/*
+	 * If more messages are pending on WREQ wasn't set we must
+	 * ensure that WWORK gets set.
+	 */
+	if (msg && (iocom->flags & HAMMER2_IOCOMF_WREQ) == 0)
+		iocom->flags |= HAMMER2_IOCOMF_WWORK;
 	assert(nact == 0);
 	if (ioq->error) {
 		hammer2_iocom_drain(iocom);
@@ -1482,8 +1482,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		 * New persistant command received.
 		 */
 		if (state) {
-			fprintf(stderr, "hammer2_state_msgrx: "
-				        "duplicate transaction\n");
+			fprintf(stderr, "duplicate-trans %s\n",
+				hammer2_msg_str(msg));
 			error = HAMMER2_IOQ_ERROR_TRANS;
 			break;
 		}
@@ -1512,8 +1512,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
 				error = HAMMER2_IOQ_ERROR_EALREADY;
 			} else {
-				fprintf(stderr, "hammer2_state_msgrx: "
-					        "no state for DELETE\n");
+				fprintf(stderr, "missing-state %s\n",
+					hammer2_msg_str(msg));
 				error = HAMMER2_IOQ_ERROR_TRANS;
 			}
 			break;
@@ -1527,8 +1527,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
 				error = HAMMER2_IOQ_ERROR_EALREADY;
 			} else {
-				fprintf(stderr, "hammer2_state_msgrx: "
-					        "state reused for DELETE\n");
+				fprintf(stderr, "reused-state %s\n",
+					hammer2_msg_str(msg));
 				error = HAMMER2_IOQ_ERROR_TRANS;
 			}
 			break;
@@ -1556,11 +1556,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		 * persistent state message should already exist.
 		 */
 		if (state == NULL) {
-			fprintf(stderr,
-				"hammer2_state_msgrx: no state match for REPLY"
-				" cmd=%08x msgid=%016jx\n",
-				msg->any.head.cmd,
-				(intmax_t)msg->any.head.msgid);
+			fprintf(stderr, "no-state(r) %s\n",
+				hammer2_msg_str(msg));
 			error = HAMMER2_IOQ_ERROR_TRANS;
 			break;
 		}
@@ -1578,9 +1575,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
 				error = HAMMER2_IOQ_ERROR_EALREADY;
 			} else {
-				fprintf(stderr, "hammer2_state_msgrx: "
-					        "no state match for "
-					        "REPLY|DELETE\n");
+				fprintf(stderr, "no-state(r,d) %s\n",
+					hammer2_msg_str(msg));
 				error = HAMMER2_IOQ_ERROR_TRANS;
 			}
 			break;
@@ -1595,9 +1591,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
 				error = HAMMER2_IOQ_ERROR_EALREADY;
 			} else {
-				fprintf(stderr, "hammer2_state_msgrx: "
-					        "state reused for "
-						"REPLY|DELETE\n");
+				fprintf(stderr, "reused-state(r,d) %s\n",
+					hammer2_msg_str(msg));
 				error = HAMMER2_IOQ_ERROR_TRANS;
 			}
 			break;
@@ -1714,8 +1709,10 @@ hammer2_state_free(hammer2_state_t *state)
 	hammer2_msg_t *msg;
 	char dummy;
 
-	fprintf(stderr, "STATE FREE %p\n", state);
-
+	if (DebugOpt) {
+		fprintf(stderr, "terminate state id=%08x\n",
+			(uint32_t)state->msgid);
+	}
 	assert(state->any.any == NULL);
 	msg = state->msg;
 	state->msg = NULL;
@@ -1756,4 +1753,216 @@ hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
 	if (state1->msgid > state2->msgid)
 		return(1);
 	return(0);
+}
+
+const char *
+hammer2_basecmd_str(uint32_t cmd)
+{
+	static char buf[64];
+	char protobuf[32];
+	char cmdbuf[32];
+	const char *protostr;
+	const char *cmdstr;
+
+	switch(cmd & HAMMER2_MSGF_PROTOS) {
+	case HAMMER2_MSG_PROTO_LNK:
+		protostr = "LNK_";
+		break;
+	case HAMMER2_MSG_PROTO_DBG:
+		protostr = "DBG_";
+		break;
+	case HAMMER2_MSG_PROTO_DOM:
+		protostr = "DOM_";
+		break;
+	case HAMMER2_MSG_PROTO_CAC:
+		protostr = "CAC_";
+		break;
+	case HAMMER2_MSG_PROTO_QRM:
+		protostr = "QRM_";
+		break;
+	case HAMMER2_MSG_PROTO_BLK:
+		protostr = "BLK_";
+		break;
+	case HAMMER2_MSG_PROTO_VOP:
+		protostr = "VOP_";
+		break;
+	default:
+		snprintf(protobuf, sizeof(protobuf), "%x_",
+			(cmd & HAMMER2_MSGF_PROTOS) >> 20);
+		protostr = protobuf;
+		break;
+	}
+
+	switch(cmd & (HAMMER2_MSGF_PROTOS |
+		      HAMMER2_MSGF_CMDS |
+		      HAMMER2_MSGF_SIZE)) {
+	case HAMMER2_LNK_PAD:
+		cmdstr = "PAD";
+		break;
+	case HAMMER2_LNK_PING:
+		cmdstr = "PING";
+		break;
+	case HAMMER2_LNK_AUTH:
+		cmdstr = "AUTH";
+		break;
+	case HAMMER2_LNK_CONN:
+		cmdstr = "CONN";
+		break;
+	case HAMMER2_LNK_SPAN:
+		cmdstr = "SPAN";
+		break;
+	case HAMMER2_LNK_ERROR:
+		if (cmd & HAMMER2_MSGF_DELETE)
+			cmdstr = "RETURN";
+		else
+			cmdstr = "RESULT";
+		break;
+	case HAMMER2_DBG_SHELL:
+		cmdstr = "SHELL";
+		break;
+	default:
+		snprintf(cmdbuf, sizeof(cmdbuf),
+			 "%06x", (cmd & (HAMMER2_MSGF_PROTOS |
+					 HAMMER2_MSGF_CMDS |
+					 HAMMER2_MSGF_SIZE)));
+		cmdstr = cmdbuf;
+		break;
+	}
+	snprintf(buf, sizeof(buf), "%s%s", protostr, cmdstr);
+	return (buf);
+}
+
+const char *
+hammer2_msg_str(hammer2_msg_t *msg)
+{
+	hammer2_state_t *state;
+	static char buf[256];
+	char errbuf[16];
+	char statebuf[64];
+	char flagbuf[64];
+	const char *statestr;
+	const char *errstr;
+	uint32_t basecmd;
+	int i;
+
+	/*
+	 * Parse the state
+	 */
+	if ((state = msg->state) != NULL) {
+		basecmd = (state->rxcmd & HAMMER2_MSGF_REPLY) ?
+			  state->txcmd : state->rxcmd;
+		snprintf(statebuf, sizeof(statebuf),
+			 " %s=%s,L=%s%s,R=%s%s",
+			 ((state->txcmd & HAMMER2_MSGF_REPLY) ?
+				"rcvcmd" : "sndcmd"),
+			 hammer2_basecmd_str(basecmd),
+			 ((state->txcmd & HAMMER2_MSGF_CREATE) ? "C" : ""),
+			 ((state->txcmd & HAMMER2_MSGF_DELETE) ? "D" : ""),
+			 ((state->rxcmd & HAMMER2_MSGF_CREATE) ? "C" : ""),
+			 ((state->rxcmd & HAMMER2_MSGF_DELETE) ? "D" : "")
+		);
+		statestr = statebuf;
+	} else {
+		statestr = "";
+	}
+
+	/*
+	 * Parse the error
+	 */
+	switch(msg->any.head.error) {
+	case 0:
+		errstr = "";
+		break;
+	case HAMMER2_IOQ_ERROR_SYNC:
+		errstr = "err=IOQ:NOSYNC";
+		break;
+	case HAMMER2_IOQ_ERROR_EOF:
+		errstr = "err=IOQ:STREAMEOF";
+		break;
+	case HAMMER2_IOQ_ERROR_SOCK:
+		errstr = "err=IOQ:SOCKERR";
+		break;
+	case HAMMER2_IOQ_ERROR_FIELD:
+		errstr = "err=IOQ:BADFIELD";
+		break;
+	case HAMMER2_IOQ_ERROR_HCRC:
+		errstr = "err=IOQ:BADHCRC";
+		break;
+	case HAMMER2_IOQ_ERROR_XCRC:
+		errstr = "err=IOQ:BADXCRC";
+		break;
+	case HAMMER2_IOQ_ERROR_ACRC:
+		errstr = "err=IOQ:BADACRC";
+		break;
+	case HAMMER2_IOQ_ERROR_STATE:
+		errstr = "err=IOQ:BADSTATE";
+		break;
+	case HAMMER2_IOQ_ERROR_NOPEER:
+		errstr = "err=IOQ:PEERCONFIG";
+		break;
+	case HAMMER2_IOQ_ERROR_NORKEY:
+		errstr = "err=IOQ:BADRKEY";
+		break;
+	case HAMMER2_IOQ_ERROR_NOLKEY:
+		errstr = "err=IOQ:BADLKEY";
+		break;
+	case HAMMER2_IOQ_ERROR_KEYXCHGFAIL:
+		errstr = "err=IOQ:BADKEYXCHG";
+		break;
+	case HAMMER2_IOQ_ERROR_KEYFMT:
+		errstr = "err=IOQ:BADFMT";
+		break;
+	case HAMMER2_IOQ_ERROR_BADURANDOM:
+		errstr = "err=IOQ:BADRANDOM";
+		break;
+	case HAMMER2_IOQ_ERROR_MSGSEQ:
+		errstr = "err=IOQ:BADSEQ";
+		break;
+	case HAMMER2_IOQ_ERROR_EALREADY:
+		errstr = "err=IOQ:DUPMSG";
+		break;
+	case HAMMER2_IOQ_ERROR_TRANS:
+		errstr = "err=IOQ:BADTRANS";
+		break;
+	case HAMMER2_MSG_ERR_NOSUPP:
+		errstr = "err=NOSUPPORT";
+		break;
+	default:
+		snprintf(errbuf, sizeof(errbuf),
+			 " err=%d", msg->any.head.error);
+		errstr = errbuf;
+		break;
+	}
+
+	/*
+	 * Message flags
+	 */
+	i = 0;
+	if (msg->any.head.cmd & (HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE |
+				 HAMMER2_MSGF_ABORT | HAMMER2_MSGF_REPLY)) {
+		flagbuf[i++] = '|';
+		if (msg->any.head.cmd & HAMMER2_MSGF_CREATE)
+			flagbuf[i++] = 'C';
+		if (msg->any.head.cmd & HAMMER2_MSGF_DELETE)
+			flagbuf[i++] = 'D';
+		if (msg->any.head.cmd & HAMMER2_MSGF_REPLY)
+			flagbuf[i++] = 'R';
+		if (msg->any.head.cmd & HAMMER2_MSGF_ABORT)
+			flagbuf[i++] = 'A';
+	}
+	flagbuf[i] = 0;
+
+	/*
+	 * Generate the buf
+	 */
+	snprintf(buf, sizeof(buf),
+		"msg=%s%s %s id=%08x span=%08x %s",
+		 hammer2_basecmd_str(msg->any.head.cmd),
+		 flagbuf,
+		 errstr,
+		 (uint32_t)(intmax_t)msg->any.head.msgid,   /* for brevity */
+		 (uint32_t)(intmax_t)msg->any.head.spanid,  /* for brevity */
+		 statestr);
+
+	return(buf);
 }

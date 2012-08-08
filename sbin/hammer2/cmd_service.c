@@ -251,17 +251,10 @@ master_link_rxmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 	 * might have REPLY set.
 	 */
 	state = msg->state;
-	if (state) {
-		cmd = state->msg->any.head.cmd;
-		fprintf(stderr,
-			"MSGRX persist=%08x cmd=%08x error %d\n",
-			cmd, msg->any.head.cmd, msg->any.head.error);
-	} else {
-		cmd = msg->any.head.cmd;
-		fprintf(stderr,
-			"MSGRX persist=-------- cmd=%08x error %d\n",
-			cmd, msg->any.head.error);
-	}
+	cmd = state ? state->msg->any.head.cmd : msg->any.head.cmd;
+
+	fprintf(stderr, "service-receive: %s\n", hammer2_msg_str(msg));
+
 	if (state && state->func) {
 		assert(state->func != NULL);
 		state->func(state, msg);
@@ -274,8 +267,7 @@ master_link_rxmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			hammer2_msg_dbg(iocom, msg);
 			break;
 		default:
-			hammer2_msg_reply(iocom, msg,
-					  HAMMER2_MSG_ERR_UNKNOWN);
+			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
 			break;
 		}
 	}
