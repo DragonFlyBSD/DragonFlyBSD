@@ -84,6 +84,9 @@ struct hammer2_handshake {
 
 typedef struct hammer2_handshake hammer2_handshake_t;
 
+/*
+ * NOTE: HAMMER2_MSG_ALIGN (64) must be a multiple of HAMMER2_AES_KEY_SIZE.
+ */
 #define HAMMER2_AES_KEY_SIZE	32
 #define HAMMER2_AES_KEY_MASK	(HAMMER2_AES_KEY_SIZE - 1)
 #define HAMMER2_AES_TYPE	aes_256_cbc

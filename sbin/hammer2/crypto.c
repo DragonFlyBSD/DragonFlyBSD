@@ -36,6 +36,41 @@
 #include "hammer2.h"
 
 /*
+ * Setup crypto for pthreads
+ */
+static pthread_mutex_t *crypto_locks;
+int crypto_count;
+
+static
+unsigned long
+hammer2_crypto_id_callback(void)
+{
+	return ((unsigned long)(uintptr_t)pthread_self());
+}
+
+static
+void
+hammer2_crypto_locking_callback(int mode, int type,
+				const char *file __unused, int line __unused)
+{
+	assert(type >= 0 && type < crypto_count);
+	if (mode & CRYPTO_LOCK) {
+		pthread_mutex_lock(&crypto_locks[type]);
+	} else {
+		pthread_mutex_unlock(&crypto_locks[type]);
+	}
+}
+
+void
+hammer2_crypto_setup(void)
+{
+	crypto_count = CRYPTO_num_locks();
+	crypto_locks = calloc(crypto_count, sizeof(crypto_locks[0]));
+	CRYPTO_set_id_callback(hammer2_crypto_id_callback);
+	CRYPTO_set_locking_callback(hammer2_crypto_locking_callback);
+}
+
+/*
  * Synchronously negotiate crypto for a new session.  This must occur
  * within 10 seconds or the connection is error'd out.
  *
@@ -484,7 +519,7 @@ hammer2_crypto_decrypt_aux(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
 
 int
 hammer2_crypto_encrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
-		       struct iovec *iov, int n)
+		       struct iovec *iov, int n, size_t *nmaxp)
 {
 	int p_len;
 	int i;
@@ -503,6 +538,7 @@ hammer2_crypto_encrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
 			continue;
 		}
 		p_len -= already;
+		p_len &= ~HAMMER2_AES_KEY_MASK;
 		if (p_len > nmax)
 			p_len = nmax;
 		EVP_EncryptUpdate(&ioq->ctx,
@@ -517,6 +553,7 @@ hammer2_crypto_encrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
 	}
 	iov[0].iov_base = ioq->buf + ioq->fifo_beg;
 	iov[0].iov_len = ioq->fifo_cdx - ioq->fifo_beg;
+	*nmaxp = (size_t)(ioq->fifo_cdx - ioq->fifo_beg);
 
 	return (1);
 }

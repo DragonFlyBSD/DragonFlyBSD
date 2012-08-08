@@ -36,7 +36,6 @@
 #include "hammer2.h"
 
 static void *master_accept(void *data);
-static void *master_service(void *data);
 static void master_auth_state(hammer2_iocom_t *iocom);
 static void master_auth_rxmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 static void master_link_state(hammer2_iocom_t *iocom);
@@ -154,8 +153,9 @@ master_accept(void *data)
 
 /*
  * Service an accepted connection (runs as a pthread)
+ *
+ * (also called from a couple of other places)
  */
-static
 void *
 master_service(void *data)
 {

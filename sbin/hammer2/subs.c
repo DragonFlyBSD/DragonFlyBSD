@@ -288,3 +288,48 @@ hammer2_free(void *ptr)
 {
 	free(ptr);
 }
+
+int
+hammer2_connect(const char *hostname)
+{
+	struct sockaddr_in lsin;
+	struct hostent *hen;
+	int fd;
+
+	/*
+	 * Acquire socket and set options
+	 */
+	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		fprintf(stderr, "cmd_debug: socket(): %s\n",
+			strerror(errno));
+		return -1;
+	}
+
+	/*
+	 * Connect to the target
+	 */
+	bzero(&lsin, sizeof(lsin));
+	lsin.sin_family = AF_INET;
+	lsin.sin_addr.s_addr = 0;
+	lsin.sin_port = htons(HAMMER2_LISTEN_PORT);
+
+	if (hostname) {
+		hen = gethostbyname2(hostname, AF_INET);
+		if (hen == NULL) {
+			if (inet_pton(AF_INET, hostname, &lsin.sin_addr) != 1) {
+				fprintf(stderr,
+					"Cannot resolve %s\n", hostname);
+				return -1;
+			}
+		} else {
+			bcopy(hen->h_addr, &lsin.sin_addr, hen->h_length);
+		}
+	}
+	if (connect(fd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {
+		close(fd);
+		fprintf(stderr, "debug: connect failed: %s\n",
+			strerror(errno));
+		return -1;
+	}
+	return (fd);
+}

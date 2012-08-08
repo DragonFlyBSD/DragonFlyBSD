@@ -112,6 +112,7 @@ int cmd_service(void);
 int cmd_stat(int ac, const char **av);
 int cmd_leaf(const char *sel_path);
 int cmd_shell(const char *hostname);
+int cmd_debugspan(const char *hostname);
 int cmd_show(const char *devpath);
 int cmd_rsainit(const char *dir_path);
 int cmd_rsaenc(const char **keys, int nkeys);
@@ -164,12 +165,13 @@ void hammer2_msg_dbg(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 /*
  * Crypto functions
  */
+void hammer2_crypto_setup(void);
 void hammer2_crypto_negotiate(hammer2_iocom_t *iocom);
 void hammer2_crypto_decrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
 void hammer2_crypto_decrypt_aux(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
 			hammer2_msg_t *msg, int already);
 int hammer2_crypto_encrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
-			struct iovec *iov, int n);
+			struct iovec *iov, int n, size_t *nmaxp);
 void hammer2_crypto_encrypt_wrote(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
 			int nact);
 
@@ -181,6 +183,9 @@ const char *hammer2_uuid_to_str(uuid_t *uuid, char **strp);
 const char *hammer2_iptype_to_str(uint8_t type);
 const char *hammer2_pfstype_to_str(uint8_t type);
 const char *sizetostr(hammer2_off_t size);
+int hammer2_connect(const char *hostname);
+
+void *master_service(void *data);
 
 void hammer2_msg_debug(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 void iocom_printf(hammer2_iocom_t *iocom, uint32_t cmd, const char *ctl, ...);

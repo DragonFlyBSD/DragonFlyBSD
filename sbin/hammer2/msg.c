@@ -392,8 +392,10 @@ hammer2_iocom_core(hammer2_iocom_t *iocom)
 			}
 		}
 
-		if (iocom->flags & HAMMER2_IOCOMF_ARWORK)
+		if (iocom->flags & HAMMER2_IOCOMF_ARWORK) {
+			iocom->flags &= ~HAMMER2_IOCOMF_ARWORK;
 			iocom->altmsg_callback(iocom);
+		}
 	}
 }
 
@@ -526,23 +528,10 @@ again:
 		}
 
 		/*
-		 * Finally allocate the message and copy the core header
-		 * to the embedded extended header.
-		 *
-		 * Initialize msg->aux_size to 0 and use it to track
-		 * the amount of data copied from the stream.
+		 * Allocate the message, the next state will fill it in.
 		 */
 		msg = hammer2_msg_alloc(iocom, ioq->abytes, 0);
 		ioq->msg = msg;
-
-		/*
-		 * We are either done or we fall-through
-		 */
-		if (ioq->hbytes == sizeof(msg->any.head) && ioq->abytes == 0) {
-			bcopy(head, &msg->any.head, sizeof(msg->any.head));
-			ioq->fifo_beg += ioq->hbytes;
-			break;
-		}
 
 		/*
 		 * Fall through to the next state.  Make sure that the
@@ -566,7 +555,7 @@ again:
 		assert(msg != NULL);
 		if (bytes < ioq->hbytes) {
 			n = read(iocom->sock_fd,
-				 msg->any.buf + ioq->fifo_end,
+				 ioq->buf + ioq->fifo_end,
 				 nmax);
 			if (n <= 0) {
 				if (n == 0) {
@@ -614,6 +603,9 @@ again:
 		head->hdr_crc = 0;
 		if (hammer2_icrc32(head, ioq->hbytes) != xcrc32) {
 			ioq->error = HAMMER2_IOQ_ERROR_XCRC;
+			fprintf(stderr, "XCRC FAILED %08x %08x\n",
+				xcrc32, hammer2_icrc32(head, ioq->hbytes));
+			assert(0);
 			break;
 		}
 		head->hdr_crc = xcrc32;
@@ -992,12 +984,13 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 	hammer2_ioq_t *ioq = &iocom->ioq_tx;
 	hammer2_msg_t *msg;
 	ssize_t nmax;
+	ssize_t omax;
 	ssize_t nact;
 	struct iovec iov[HAMMER2_IOQ_MAXIOVEC];
 	size_t hbytes;
 	size_t abytes;
-	int hoff;
-	int aoff;
+	size_t hoff;
+	size_t aoff;
 	int n;
 
 	if (ioq->error) {
@@ -1007,21 +1000,23 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 
 	/*
 	 * Pump messages out the connection by building an iovec.
+	 *
+	 * ioq->hbytes/ioq->abytes tracks how much of the first message
+	 * in the queue has been successfully written out, so we can
+	 * resume writing.
 	 */
 	n = 0;
 	nmax = 0;
+	hoff = ioq->hbytes;
+	aoff = ioq->abytes;
 
 	TAILQ_FOREACH(msg, &ioq->msgq, qentry) {
-		hoff = 0;
 		hbytes = (msg->any.head.cmd & HAMMER2_MSGF_SIZE) *
 			 HAMMER2_MSG_ALIGN;
-		aoff = 0;
 		abytes = msg->aux_size;
-		if (n == 0) {
-			hoff += ioq->hbytes;
-			aoff += ioq->abytes;
-		}
-		if (hbytes - hoff > 0) {
+		assert(hoff <= hbytes && aoff <= abytes);
+
+		if (hoff < hbytes) {
 			iov[n].iov_base = (char *)&msg->any.head + hoff;
 			iov[n].iov_len = hbytes - hoff;
 			nmax += hbytes - hoff;
@@ -1029,15 +1024,17 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 			if (n == HAMMER2_IOQ_MAXIOVEC)
 				break;
 		}
-		if (abytes - aoff > 0) {
+		if (aoff < abytes) {
 			assert(msg->aux_data != NULL);
-			iov[n].iov_base = msg->aux_data + aoff;
+			iov[n].iov_base = (char *)msg->aux_data + aoff;
 			iov[n].iov_len = abytes - aoff;
 			nmax += abytes - aoff;
 			++n;
 			if (n == HAMMER2_IOQ_MAXIOVEC)
 				break;
 		}
+		hoff = 0;
+		aoff = 0;
 	}
 	if (n == 0)
 		return;
@@ -1047,9 +1044,11 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 	 * data into the fifo and adjust the iov as necessary.  If
 	 * encryption is disabled the iov is left alone.
 	 *
-	 * hammer2_crypto_encrypt_wrote()
+	 * May return a smaller iov (thus a smaller n), with aggregated
+	 * chunks.  May reduce nmax to what fits in the FIFO.
 	 */
-	n = hammer2_crypto_encrypt(iocom, ioq, iov, n);
+	omax = nmax;
+	n = hammer2_crypto_encrypt(iocom, ioq, iov, n, &nmax);
 
 	/*
 	 * Execute the writev() then figure out what happened.
@@ -1074,17 +1073,24 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 	}
 
 	/*
-	 * Indicate bytes written successfully.  If we were unable to
-	 * write the entire iov array then set WREQ to wait for more
-	 * socket buffer space.
+	 * Indicate bytes written successfully.
+	 *
+	 * If we were unable to write the entire iov array then set WREQ
+	 * to wait for more socket buffer space.
+	 *
+	 * If the FIFO space was insufficient to fully drain all messages
+	 * set WWORK to cause the core to call us again for the next batch.
 	 */
 	hammer2_crypto_encrypt_wrote(iocom, ioq, nact);
 	if (nact != nmax)
 		iocom->flags |= HAMMER2_IOCOMF_WREQ;
+	else if (nmax != omax)
+		iocom->flags |= HAMMER2_IOCOMF_WWORK;
 
 	/*
 	 * Clean out the transmit queue based on what we successfully
-	 * sent.
+	 * sent.  ioq->hbytes/abytes represents the portion of the first
+	 * message previously sent.
 	 */
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		hbytes = (msg->any.head.cmd & HAMMER2_MSGF_SIZE) *
@@ -1093,12 +1099,14 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 
 		if ((size_t)nact < hbytes - ioq->hbytes) {
 			ioq->hbytes += nact;
+			/* nact = 0; */
 			break;
 		}
 		nact -= hbytes - ioq->hbytes;
 		ioq->hbytes = hbytes;
 		if ((size_t)nact < abytes - ioq->abytes) {
 			ioq->abytes += nact;
+			/* nact = 0; */
 			break;
 		}
 		nact -= abytes - ioq->abytes;
@@ -1110,6 +1118,7 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 
 		hammer2_state_cleanuptx(iocom, msg);
 	}
+	assert(nact == 0);
 	if (ioq->error) {
 		hammer2_iocom_drain(iocom);
 	}
@@ -1130,6 +1139,8 @@ hammer2_iocom_drain(hammer2_iocom_t *iocom)
 	hammer2_msg_t *msg;
 
 	iocom->flags &= ~(HAMMER2_IOCOMF_WREQ | HAMMER2_IOCOMF_WWORK);
+	ioq->hbytes = 0;
+	ioq->abytes = 0;
 
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);

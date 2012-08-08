@@ -324,7 +324,7 @@ static struct h2span_connect_queue connq = TAILQ_HEAD_INITIALIZER(connq);
 static void hammer2_lnk_span(hammer2_state_t *state, hammer2_msg_t *msg);
 static void hammer2_lnk_conn(hammer2_state_t *state, hammer2_msg_t *msg);
 static void hammer2_lnk_relay(hammer2_state_t *state, hammer2_msg_t *msg);
-static void hammer2_relay_scan(h2span_node_t *node);
+static void hammer2_relay_scan(h2span_connect_t *conn, h2span_node_t *node);
 static void hammer2_relay_delete(h2span_relay_t *relay);
 
 /*
@@ -383,6 +383,11 @@ hammer2_lnk_conn(hammer2_state_t *state, hammer2_msg_t *msg)
 		TAILQ_INSERT_TAIL(&connq, conn, entry);
 
 		hammer2_msg_result(state->iocom, msg, 0);
+
+		/*
+		 * Span-synchronize all nodes with the new connection
+		 */
+		hammer2_relay_scan(conn, NULL);
 	}
 
 	/*
@@ -478,7 +483,7 @@ hammer2_lnk_span(hammer2_state_t *state, hammer2_msg_t *msg)
 		state->any.link = slink;
 		RB_INSERT(h2span_link_tree, &node->tree, slink);
 
-		hammer2_relay_scan(node);
+		hammer2_relay_scan(NULL, node);
 	}
 
 	/*
@@ -530,7 +535,7 @@ hammer2_lnk_span(hammer2_state_t *state, hammer2_msg_t *msg)
 		 * removed and there's nothing left to do.
 		 */
 		if (node)
-			hammer2_relay_scan(node);
+			hammer2_relay_scan(NULL, node);
 	}
 
 	pthread_mutex_unlock(&cluster_mtx);
@@ -563,28 +568,27 @@ hammer2_lnk_relay(hammer2_state_t *state, hammer2_msg_t *msg)
  *
  * Called with cluster_mtx held.
  */
-static void hammer2_relay_scan_conn(h2span_node_t *node,
-				h2span_connect_t *conn);
+static void hammer2_relay_scan_specific(h2span_node_t *node,
+					h2span_connect_t *conn);
 
 static void
-hammer2_relay_scan(h2span_node_t *node)
+hammer2_relay_scan(h2span_connect_t *conn, h2span_node_t *node)
 {
 	h2span_cluster_t *cls;
-	h2span_connect_t *conn;
 
 	if (node) {
 		/*
 		 * Iterate specific node
 		 */
 		TAILQ_FOREACH(conn, &connq, entry)
-			hammer2_relay_scan_conn(node, conn);
+			hammer2_relay_scan_specific(node, conn);
 	} else {
 		/*
-		 * Full iteration (not currently implemented)
+		 * Full iteration.
 		 *
-		 * Iterate cluster ids
+		 * Iterate cluster ids, nodes, and either a specific connection
+		 * or all connections.
 		 */
-		assert(0);
 		RB_FOREACH(cls, h2span_cluster_tree, &cluster_tree) {
 			/*
 			 * Iterate node ids
@@ -594,8 +598,15 @@ hammer2_relay_scan(h2span_node_t *node)
 				 * Synchronize the node's link (received SPANs)
 				 * with each connection's relays.
 				 */
-				TAILQ_FOREACH(conn, &connq, entry)
-					hammer2_relay_scan_conn(node, conn);
+				if (conn) {
+					hammer2_relay_scan_specific(node, conn);
+				} else {
+					TAILQ_FOREACH(conn, &connq, entry) {
+					    hammer2_relay_scan_specific(node,
+									conn);
+					}
+					assert(conn == NULL);
+				}
 			}
 		}
 	}
@@ -637,7 +648,7 @@ hammer2_relay_scan_callback(h2span_relay_t *relay, void *arg)
 }
 
 static void
-hammer2_relay_scan_conn(h2span_node_t *node, h2span_connect_t *conn)
+hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 {
 	struct relay_scan_info info;
 	h2span_relay_t *relay;
@@ -680,7 +691,7 @@ hammer2_relay_scan_conn(h2span_node_t *node, h2span_connect_t *conn)
 			hammer2_msg_t *msg;
 
 			assert(relay == NULL ||
-			       slink->dist <= relay->link->dist);
+			       relay->link->dist <= slink->dist);
 			relay = hammer2_alloc(sizeof(*relay));
 			relay->conn = conn;
 			relay->link = slink;

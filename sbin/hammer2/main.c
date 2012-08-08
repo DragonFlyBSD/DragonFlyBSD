@@ -55,6 +55,7 @@ main(int ac, char **av)
 
 	srandomdev();
 	signal(SIGPIPE, SIG_IGN);
+	hammer2_crypto_setup();
 
 	/*
 	 * Core options
@@ -140,6 +141,16 @@ main(int ac, char **av)
 			usage(1);
 		}
 		ecode = cmd_remote_connect(sel_path, av[1]);
+	} else if (strcmp(av[0], "debugspan") == 0) {
+		/*
+		 * Debug connection to the target hammer2 service and run
+		 * the CONN/SPAN protocol.
+		 */
+		if (ac < 2) {
+			fprintf(stderr, "debugspan: requires hostname\n");
+			usage(1);
+		}
+		ecode = cmd_debugspan(av[1]);
 	} else if (strcmp(av[0], "disconnect") == 0) {
 		/*
 		 * Remove cluster connection
@@ -337,6 +348,7 @@ usage(int code)
 		"    stat [<path>]	Return inode quota & config\n"
 		"    leaf               Start pfs leaf daemon\n"
 		"    shell [<host>]     Connect to debug shell\n"
+		"    debugspan <target> Connect to target, run CONN/SPAN\n"
 		"    rsainit            Initialize rsa fields\n"
 		"    show devpath       Raw hammer2 media dump\n"
 	);

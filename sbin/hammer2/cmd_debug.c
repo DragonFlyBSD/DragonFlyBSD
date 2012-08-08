@@ -48,52 +48,22 @@ static void hammer2_shell_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 int
 cmd_shell(const char *hostname)
 {
-	struct sockaddr_in lsin;
 	struct hammer2_iocom iocom;
 	hammer2_msg_t *msg;
-	struct hostent *hen;
 	int fd;
-
-	/*
-	 * Acquire socket and set options
-	 */
-	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "cmd_debug: socket(): %s\n",
-			strerror(errno));
-		return 1;
-	}
 
 	/*
 	 * Connect to the target
 	 */
-	bzero(&lsin, sizeof(lsin));
-	lsin.sin_family = AF_INET;
-	lsin.sin_addr.s_addr = 0;
-	lsin.sin_port = htons(HAMMER2_LISTEN_PORT);
-
-	if (hostname) {
-		hen = gethostbyname2(hostname, AF_INET);
-		if (hen == NULL) {
-			if (inet_pton(AF_INET, hostname, &lsin.sin_addr) != 1) {
-				fprintf(stderr,
-					"Cannot resolve %s\n", hostname);
-				return 1;
-			}
-		} else {
-			bcopy(hen->h_addr, &lsin.sin_addr, hen->h_length);
-		}
-	}
-	if (connect(fd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {
-		close(fd);
-		fprintf(stderr, "debug: connect failed: %s\n",
-			strerror(errno));
-		return 0;
-	}
+	fd = hammer2_connect(hostname);
+	if (fd < 0)
+		return 1;
 
 	/*
 	 * Run the session.  The remote end transmits our prompt.
 	 */
 	hammer2_iocom_init(&iocom, fd, 0, NULL, shell_rcvmsg, shell_ttymsg);
+	fcntl(0, F_SETFL, O_NONBLOCK);
 	printf("debug: connected\n");
 
 	msg = hammer2_msg_alloc(&iocom, 0, HAMMER2_DBG_SHELL);
@@ -163,12 +133,14 @@ shell_ttymsg(hammer2_iocom_t *iocom)
 		msg = hammer2_msg_alloc(iocom, len, HAMMER2_DBG_SHELL);
 		bcopy(buf, msg->aux_data, len);
 		hammer2_msg_write(iocom, msg, NULL, NULL, NULL);
-	} else {
+	} else if (feof(stdin)) {
 		/*
 		 * Set EOF flag without setting any error code for normal
 		 * EOF.
 		 */
 		iocom->flags |= HAMMER2_IOCOMF_EOF;
+	} else {
+		clearerr(stdin);
 	}
 }
 
@@ -215,8 +187,35 @@ hammer2_shell_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 
 	if (cmd == NULL || *cmd == 0) {
 		;
+	} else if (strcmp(cmd, "span") == 0) {
+		const char *hostname = strsep(&cmdbuf, " \t");
+		pthread_t thread;
+		int fd;
+
+		/*
+		 * Connect to the target
+		 */
+		if (hostname == NULL) {
+			fd = -1;
+		} else {
+			fd = hammer2_connect(hostname);
+		}
+
+		/*
+		 * Start master service
+		 */
+		if (fd < 0) {
+			iocom_printf(iocom, 0, "Connection to %s failed\n",
+				     hostname);
+		} else {
+			iocom_printf(iocom, 0, "Connected to %s\n", hostname);
+			pthread_create(&thread, NULL,
+				       master_service, (void *)(intptr_t)fd);
+			/*pthread_join(thread, &res);*/
+		}
 	} else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
 		iocom_printf(iocom, 0, "help        Command help\n");
+		iocom_printf(iocom, 0, "span <host> Span to target host\n");
 	} else {
 		iocom_printf(iocom, 0, "Unrecognized command: %s\n", cmd);
 	}
@@ -251,6 +250,33 @@ iocom_printf(hammer2_iocom_t *iocom, uint32_t cmd, const char *ctl, ...)
 	bcopy(buf, rmsg->aux_data, len);
 
 	hammer2_msg_write(iocom, rmsg, NULL, NULL, NULL);
+}
+
+/************************************************************************
+ *				DEBUGSPAN				*
+ ************************************************************************
+ *
+ * Connect to the target manually (not via the cluster list embedded in
+ * a hammer2 filesystem) and initiate the SPAN protocol.
+ */
+int
+cmd_debugspan(const char *hostname)
+{
+	pthread_t thread;
+	int fd;
+	void *res;
+
+	/*
+	 * Connect to the target
+	 */
+	fd = hammer2_connect(hostname);
+	if (fd < 0)
+		return 1;
+
+	printf("debugspan: connected to %s, starting CONN/SPAN\n", hostname);
+	pthread_create(&thread, NULL, master_service, (void *)(intptr_t)fd);
+	pthread_join(thread, &res);
+	return(0);
 }
 
 /************************************************************************
