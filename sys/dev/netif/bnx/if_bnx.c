@@ -2955,45 +2955,21 @@ bnx_start(struct ifnet *ifp)
 
 	need_trans = 0;
 	while (sc->bnx_cdata.bnx_tx_chain[prodidx] == NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
-		if (m_head == NULL)
-			break;
-
-		/*
-		 * XXX
-		 * The code inside the if() block is never reached since we
-		 * must mark CSUM_IP_FRAGS in our if_hwassist to start getting
-		 * requests to checksum TCP/UDP in a fragmented packet.
-		 * 
-		 * XXX
-		 * safety overkill.  If this is a fragmented packet chain
-		 * with delayed TCP/UDP checksums, then only encapsulate
-		 * it if we have enough descriptors to handle the entire
-		 * chain at once.
-		 * (paranoia -- may not actually be needed)
-		 */
-		if ((m_head->m_flags & M_FIRSTFRAG) &&
-		    (m_head->m_pkthdr.csum_flags & CSUM_DELAY_DATA)) {
-			if ((BGE_TX_RING_CNT - sc->bnx_txcnt) <
-			    m_head->m_pkthdr.csum_data + BNX_NSEG_RSVD) {
-				ifp->if_flags |= IFF_OACTIVE;
-				ifq_prepend(&ifp->if_snd, m_head);
-				break;
-			}
-		}
-
 		/*
 		 * Sanity check: avoid coming within BGE_NSEG_RSVD
 		 * descriptors of the end of the ring.  Also make
 		 * sure there are BGE_NSEG_SPARE descriptors for
-		 * jumbo buffers' defragmentation.
+		 * jumbo buffers' or TSO segments' defragmentation.
 		 */
 		if ((BGE_TX_RING_CNT - sc->bnx_txcnt) <
 		    (BNX_NSEG_RSVD + BNX_NSEG_SPARE)) {
 			ifp->if_flags |= IFF_OACTIVE;
-			ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
+
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		if (m_head == NULL)
+			break;
 
 		/*
 		 * Pack the data into the transmit ring. If we
