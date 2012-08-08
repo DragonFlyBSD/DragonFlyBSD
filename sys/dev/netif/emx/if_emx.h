@@ -91,8 +91,8 @@
 /* One for TX csum offloading desc, the other 2 are reserved */
 #define EMX_TX_RESERVED			3
 
-/* Large enough for 16K jumbo frame */
-#define EMX_TX_SPARE			8
+/* Large enough for 64K TSO segment */
+#define EMX_TX_SPARE			33
 
 #define EMX_TX_OACTIVE_MAX		64
 
