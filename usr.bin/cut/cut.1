@@ -12,10 +12,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -33,15 +29,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)cut.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/cut/cut.1,v 1.9.2.5 2003/05/26 12:35:35 hmp Exp $
-.\" $DragonFly: src/usr.bin/cut/cut.1,v 1.4 2008/03/09 16:06:08 swildner Exp $
+.\" $FreeBSD$
 .\"
-.Dd June 6, 1993
+.Dd December 21, 2006
 .Dt CUT 1
 .Os
 .Sh NAME
 .Nm cut
-.Nd select portions of each line of a file
+.Nd cut out selected portions of each line of a file
 .Sh SYNOPSIS
 .Nm
 .Fl b Ar list
@@ -52,13 +47,13 @@
 .Op Ar
 .Nm
 .Fl f Ar list
-.Op Fl w | Fl d Ar delim
+.Op Fl d Ar delim
 .Op Fl s
 .Op Ar
 .Sh DESCRIPTION
 The
 .Nm
-utility selects portions of each line (as specified by
+utility cuts out selected portions of each line (as specified by
 .Ar list  )
 from each
 .Ar file
@@ -73,7 +68,7 @@ The items specified by
 .Ar list
 can be in terms of column position or in terms of fields delimited
 by a special character.
-Column numbering starts from 1.
+Column and field numbering start from 1.
 .Pp
 The
 .Ar list
@@ -83,14 +78,14 @@ number ranges.
 Number ranges consist of a number, a dash
 .Pq Sq \- ,
 and a second number
-and select the fields or columns from the first number to the second,
+and select the columns or fields from the first number to the second,
 inclusive.
 Numbers or number ranges may be preceded by a dash, which selects all
-fields or columns from 1 to the first number.
+columns or fields from 1 to the last number.
 Numbers or number ranges may be followed by a dash, which selects all
-fields or columns from the last number to the end of the line.
+columns or fields from the last number to the end of the line.
 Numbers and number ranges may be repeated, overlapping, and in any order.
-It is not an error to select fields or columns not present in the
+It is not an error to select columns or fields not present in the
 input line.
 .Pp
 The options are as follows:
@@ -104,31 +99,62 @@ The
 .Ar list
 specifies character positions.
 .It Fl d Ar delim
-Use the first character of
+Use
 .Ar delim
 as the field delimiter character instead of the tab character.
 .It Fl f Ar list
 The
 .Ar list
-specifies fields, delimited in the input by a single tab character.
-Output fields are separated by a single tab character.
+specifies fields, separated in the input by the field delimiter character
+(see the
+.Fl d
+option).
+Output fields are separated by a single occurrence of the field delimiter
+character.
 .It Fl n
 Do not split multi-byte characters.
+Characters will only be output if at least one byte is selected, and,
+after a prefix of zero or more unselected bytes, the rest of the bytes
+that form the character are selected.
 .It Fl s
 Suppress lines with no field delimiter characters.
 Unless specified, lines with no delimiters are passed through unmodified.
-.It Fl w
-Use whitespace (spaces and tabs) as the delimiter.
-Consecutive spaces and tabs count as one single field separator.
 .El
-.Pp
+.Sh ENVIRONMENT
 The
+.Ev LANG , LC_ALL
+and
+.Ev LC_CTYPE
+environment variables affect the execution of
 .Nm
-utility exits with 0 on success or 1 if an error occurred.
+as described in
+.Xr environ 7 .
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Extract users' login names and shells from the system
+.Xr passwd 5
+file as
+.Dq name:shell
+pairs:
+.Pp
+.Dl "cut -d : -f 1,7 /etc/passwd"
+.Pp
+Show the names and login times of the currently logged in users:
+.Pp
+.Dl "who | cut -c 1-16,26-38"
 .Sh SEE ALSO
+.Xr colrm 1 ,
 .Xr paste 1
 .Sh STANDARDS
 The
 .Nm
 utility conforms to
 .St -p1003.2-92 .
+.Sh HISTORY
+A
+.Nm
+command appeared in
+.Tn AT&T
+System III
+.Ux .
