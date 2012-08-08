@@ -4195,7 +4195,7 @@ igb_set_ring_inuse(struct igb_softc *sc, boolean_t polling)
 }
 
 static int
-igb_tso_pullup(struct igb_tx_ring *txr __unused, struct mbuf **mp)
+igb_tso_pullup(struct igb_tx_ring *txr, struct mbuf **mp)
 {
 	int hoff, iphlen, thoff;
 	struct mbuf *m;
@@ -4219,6 +4219,13 @@ igb_tso_pullup(struct igb_tx_ring *txr __unused, struct mbuf **mp)
 		}
 		*mp = m;
 	}
+	if (txr->sc->flags & IGB_FLAG_TSO_IPLEN0) {
+		struct ip *ip;
+
+		ip = mtodoff(m, struct ip *, hoff);
+		ip->ip_len = 0;
+	}
+
 	return 0;
 }
 
@@ -4232,13 +4239,6 @@ igb_tso_ctx(struct igb_tx_ring *txr, struct mbuf *m, uint32_t *hlen)
 	iphlen = m->m_pkthdr.csum_iphlen;
 	thoff = m->m_pkthdr.csum_thlen;
 	hoff = m->m_pkthdr.csum_lhlen;
-
-	if (txr->sc->flags & IGB_FLAG_TSO_IPLEN0) {
-		struct ip *ip;
-
-		ip = mtodoff(m, struct ip *, hoff);
-		ip->ip_len = 0;
-	}
 
 	vlan_macip_lens = type_tucmd_mlhl = mss_l4len_idx = 0;
 
