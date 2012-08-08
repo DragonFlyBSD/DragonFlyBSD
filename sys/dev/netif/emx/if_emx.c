@@ -3763,6 +3763,7 @@ emx_tso_pullup(struct emx_softc *sc, struct mbuf **mp)
 {
 	int iphlen, hoff, thoff, ex = 0;
 	struct mbuf *m;
+	struct ip *ip;
 
 	m = *mp;
 	KASSERT(M_WRITABLE(m), ("TSO mbuf not writable"));
@@ -3786,6 +3787,9 @@ emx_tso_pullup(struct emx_softc *sc, struct mbuf **mp)
 		}
 		*mp = m;
 	}
+	ip = mtodoff(m, struct ip *, hoff);
+	ip->ip_len = 0;
+
 	return 0;
 }
 
@@ -3796,7 +3800,6 @@ emx_tso_setup(struct emx_softc *sc, struct mbuf *mp,
 	struct e1000_context_desc *TXD;
 	int hoff, iphlen, thoff, hlen;
 	int mss, pktlen, curr_txd;
-	struct ip *ip;
 
 #ifdef EMX_TSO_DEBUG
 	sc->tso_segments++;
@@ -3807,9 +3810,6 @@ emx_tso_setup(struct emx_softc *sc, struct mbuf *mp,
 	hoff = mp->m_pkthdr.csum_lhlen;
 	mss = mp->m_pkthdr.tso_segsz;
 	pktlen = mp->m_pkthdr.len;
-
-	ip = mtodoff(mp, struct ip *, hoff);
-	ip->ip_len = 0;
 
 	if (sc->csum_flags == CSUM_TSO &&
 	    sc->csum_iphlen == iphlen &&
