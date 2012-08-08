@@ -284,12 +284,14 @@ struct bnx_softc {
 
 /* RX coalesce BDs */
 #define BNX_RX_COAL_BDS_MIN	0
-#define BNX_RX_COAL_BDS_DEF	80
+#define BNX_RX_COAL_BDS_DEF	0
+#define BNX_RX_COAL_BDS_INT_DEF	80
 #define BNX_RX_COAL_BDS_MAX	255
 
 /* TX coalesce BDs */
 #define BNX_TX_COAL_BDS_MIN	0
 #define BNX_TX_COAL_BDS_DEF	128
+#define BNX_TX_COAL_BDS_INT_DEF	128
 #define BNX_TX_COAL_BDS_MAX	255
 
 #endif	/* !_IF_BNXVAR_H_ */
