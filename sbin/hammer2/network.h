@@ -92,6 +92,10 @@ typedef struct hammer2_handshake hammer2_handshake_t;
 #define HAMMER2_AES_TYPE	aes_256_cbc
 #define HAMMER2_AES_TYPE_EVP	EVP_aes_256_cbc()
 #define HAMMER2_AES_TYPE_STR	#HAMMER2_AES_TYPE
+#define HAMMER2_CRYPTO_IV_SIZE	12
+#define HAMMER2_CRYPTO_IV_FIXED_SIZE	4
+#define HAMMER2_CRYPTO_CHUNK_SIZE	64
+#define HAMMER2_CRYPTO_TAG_SIZE		16
 
 /***************************************************************************
  *				LOW LEVEL MESSAGING			   *

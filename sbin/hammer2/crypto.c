@@ -4,6 +4,7 @@
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
  * by Venkatesh Srinivas <vsrinivas@dragonflybsd.org>
+ * by Alex Hornung <alexh@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -68,6 +69,248 @@ hammer2_crypto_setup(void)
 	crypto_locks = calloc(crypto_count, sizeof(crypto_locks[0]));
 	CRYPTO_set_id_callback(hammer2_crypto_id_callback);
 	CRYPTO_set_locking_callback(hammer2_crypto_locking_callback);
+}
+
+static
+int
+_gcm_init(hammer2_ioq_t *ioq, char *key, int klen, char *iv_fixed, int ivlen,
+	  int enc)
+{
+	int i, ok;
+
+	if (klen < 32 /* 256 bits */ || ivlen < 4 /* 32 bits */) {
+		if (DebugOpt)
+			fprintf(stderr, "Not enough key or iv material\n");
+		return -1;
+	}
+
+	printf("%s key: ", enc ? "Encryption" : "Decryption");
+	for (i = 0; i < HAMMER2_AES_KEY_SIZE; ++i)
+		printf("%02x", (unsigned char)key[i]);
+	printf("\n");
+
+	printf("%s iv:  ", enc ? "Encryption" : "Decryption");
+	for (i = 0; i < HAMMER2_CRYPTO_IV_FIXED_SIZE; ++i)
+		printf("%02x", (unsigned char)iv_fixed[i]);
+	printf(" (fixed part only)\n");
+
+
+	EVP_CIPHER_CTX_init(&ioq->ctx);
+
+	if (enc)
+		ok = EVP_EncryptInit_ex(&ioq->ctx, EVP_aes_256_gcm(), NULL,
+					key, NULL);
+	else
+		ok = EVP_DecryptInit_ex(&ioq->ctx, EVP_aes_256_gcm(), NULL,
+					key, NULL);
+	if (!ok)
+		goto fail;
+
+	/*
+	 * According to the original Galois/Counter Mode of Operation (GCM)
+	 * proposal, only IVs that are exactly 96 bits get used without any
+	 * further processing. Other IV sizes cause the GHASH() operation
+	 * to be applied to the IV, which is more costly.
+	 *
+	 * The NIST SP 800-38D also recommends using a 96 bit IV for the same
+	 * reasons. We actually follow the deterministic construction
+	 * recommended in NIST SP 800-38D with a 64 bit invocation field as an
+	 * integer counter and a random, session-specific fixed field.
+	 *
+	 * This means that we can essentially use the same session key and
+	 * IV fixed field for up to 2^64 invocations of the authenticated
+	 * encryption or decryption.
+	 *
+	 * With a chunk size of 64 bytes, this adds up to 1 zettabyte of
+	 * traffic.
+	 */
+	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_SET_IVLEN,
+				 HAMMER2_CRYPTO_IV_SIZE, NULL);
+	if (!ok)
+		goto fail;
+
+	memset(ioq->iv, 0, HAMMER2_CRYPTO_IV_SIZE);
+	memcpy(ioq->iv, iv_fixed, HAMMER2_CRYPTO_IV_FIXED_SIZE);
+
+	/*
+	 * Strictly speaking, padding is irrelevant with a counter mode
+	 * encryption.
+	 *
+	 * However, setting padding to 0, even if using a counter mode such
+	 * as GCM, will cause an error in _finish if the pt/ct size is not
+	 * a multiple of the cipher block size.
+	 */
+	EVP_CIPHER_CTX_set_padding(&ioq->ctx, 0);
+
+	return 0;
+
+fail:
+	if (DebugOpt)
+		fprintf(stderr, "Error during _gcm_init\n");
+	return -1;
+}
+
+static
+int
+_gcm_iv_increment(char *iv)
+{
+	/*
+	 * Deterministic construction according to NIST SP 800-38D, with
+	 * 64 bit invocation field as integer counter.
+	 *
+	 * In other words, our 96 bit IV consists of a 32 bit fixed field
+	 * unique to the session and a 64 bit integer counter.
+	 */
+
+	uint64_t *c = (uint64_t *)(&iv[HAMMER2_CRYPTO_IV_FIXED_SIZE]);
+
+	/* Increment invocation field integer counter */
+	/*
+	 * XXX: this should ideally be an atomic update, but we don't have
+	 * an atomic_fetchadd_64 for i386 yet
+	 */
+	*c = (*c)+1;
+
+	/*
+	 * Detect wrap-around, which means it is time to renegotiate
+	 * the session to get a new key and/or fixed field.
+	 */
+	return (c == 0) ? -1 : 0;
+}
+
+static
+int
+hammer2_crypto_encrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
+			     int in_size, int *out_size)
+{
+	int ok;
+#ifdef CRYPTO_DEBUG
+	int i;
+#endif
+	int u_len, f_len;
+
+	*out_size = 0;
+
+	/* Re-initialize with new IV (but without redoing the key schedule) */
+	ok = EVP_EncryptInit_ex(&ioq->ctx, NULL, NULL, NULL, ioq->iv);
+	if (!ok)
+		goto fail;
+
+	ok = EVP_EncryptUpdate(&ioq->ctx, ct, &u_len, pt, in_size);
+	if (!ok)
+		goto fail;
+
+	ok = EVP_EncryptFinal(&ioq->ctx, ct + u_len, &f_len);
+	if (!ok)
+		goto fail;
+
+	/* Retrieve auth tag */
+	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_GET_TAG,
+				 HAMMER2_CRYPTO_TAG_SIZE,
+				 ct + u_len + f_len);
+	if (!ok)
+		goto fail;
+
+#ifdef CRYPTO_DEBUG
+	printf("enc_chunk iv: ");
+	for (i = 0; i < HAMMER2_CRYPTO_IV_SIZE; i++)
+		printf("%02x", (unsigned char)ioq->iv[i]);
+	printf("\n");
+
+	printf("enc_chunk pt: ");
+	for (i = 0; i < in_size; i++)
+		printf("%02x", (unsigned char)pt[i]);
+	printf("\n");
+
+	printf("enc_chunk ct: ");
+	for (i = 0; i < in_size; i++)
+		printf("%02x", (unsigned char)ct[i]);
+	printf("\n");
+
+	printf("enc_chunk tag: ");
+	for (i = 0; i < HAMMER2_CRYPTO_TAG_SIZE; i++)
+		printf("%02x", (unsigned char)ct[i + u_len + f_len]);
+	printf("\n");
+#endif
+
+	_gcm_iv_increment(ioq->iv);
+
+	*out_size = u_len + f_len + HAMMER2_CRYPTO_TAG_SIZE;
+
+	return 0;
+
+fail:
+	if (DebugOpt)
+		fprintf(stderr, "error during encrypt_chunk\n");
+	return -1;
+}
+
+static
+int
+hammer2_crypto_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
+			     int out_size, int *consume_size)
+{
+	int ok;
+#ifdef CRYPTO_DEBUG
+	int i;
+#endif
+	int u_len, f_len;
+
+	*consume_size = 0;
+
+	/* Re-initialize with new IV (but without redoing the key schedule) */
+	ok = EVP_DecryptInit_ex(&ioq->ctx, NULL, NULL, NULL, ioq->iv);
+	if (!ok)
+		goto fail;
+
+#ifdef CRYPTO_DEBUG
+	printf("dec_chunk iv: ");
+	for (i = 0; i < HAMMER2_CRYPTO_IV_SIZE; i++)
+		printf("%02x", (unsigned char)ioq->iv[i]);
+	printf("\n");
+
+	printf("dec_chunk ct: ");
+	for (i = 0; i < out_size; i++)
+		printf("%02x", (unsigned char)ct[i]);
+	printf("\n");
+
+	printf("dec_chunk tag: ");
+	for (i = 0; i < HAMMER2_CRYPTO_TAG_SIZE; i++)
+		printf("%02x", (unsigned char)ct[out_size + i]);
+	printf("\n");
+#endif
+
+	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_SET_TAG,
+				 HAMMER2_CRYPTO_TAG_SIZE,
+				 ct + out_size);
+	if (!ok)
+		goto fail;
+
+	ok = EVP_DecryptUpdate(&ioq->ctx, pt, &u_len, ct, out_size);
+	if (!ok)
+		goto fail;
+
+	ok = EVP_DecryptFinal(&ioq->ctx, pt + u_len, &f_len);
+	if (!ok)
+		goto fail;
+
+	_gcm_iv_increment(ioq->iv);
+
+	*consume_size = u_len + f_len + HAMMER2_CRYPTO_TAG_SIZE;
+
+#ifdef CRYPTO_DEBUG
+	printf("dec_chunk pt: ");
+	for (i = 0; i < out_size; i++)
+		printf("%02x", (unsigned char)pt[i]);
+	printf("\n");
+#endif
+
+	return 0;
+
+fail:
+	if (DebugOpt)
+		fprintf(stderr, "error during decrypt_chunk (likely authentication error)\n");
+	return -1;
 }
 
 /*
@@ -135,6 +378,7 @@ hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
 	size_t blkmask;
 	ssize_t n;
 	int fd;
+	int error;
 
 	/*
 	 * Get the peer IP address for the connection as a string.
@@ -408,35 +652,24 @@ keyxchgfail:
 	if (n != 0)
 		goto keyxchgfail;
 
-	/*
-	 * Calculate the session key and initialize the iv[].
-	 */
 	assert(HAMMER2_AES_KEY_SIZE * 2 == sizeof(handrx.sess));
-	for (i = 0; i < HAMMER2_AES_KEY_SIZE; ++i) {
-		iocom->sess[i] = handrx.sess[i] ^ handtx.sess[i];
-		iocom->ioq_rx.iv[i] = handrx.sess[HAMMER2_AES_KEY_SIZE + i] ^
-				      handtx.sess[HAMMER2_AES_KEY_SIZE + i];
-		iocom->ioq_tx.iv[i] = handrx.sess[HAMMER2_AES_KEY_SIZE + i] ^
-				      handtx.sess[HAMMER2_AES_KEY_SIZE + i];
-	}
-	printf("sess: ");
-	for (i = 0; i < HAMMER2_AES_KEY_SIZE; ++i)
-		printf("%02x", (unsigned char)iocom->sess[i]);
-	printf("\n");
-	printf("iv: ");
-	for (i = 0; i < HAMMER2_AES_KEY_SIZE; ++i)
-		printf("%02x", (unsigned char)iocom->ioq_rx.iv[i]);
-	printf("\n");
+	/*
+	 * Use separate session keys and session fixed IVs for receive and
+	 * transmit.
+	 */
+	error = _gcm_init(&iocom->ioq_rx, handrx.sess, HAMMER2_AES_KEY_SIZE,
+	    handrx.sess + HAMMER2_AES_KEY_SIZE,
+	    sizeof(handrx.sess) - HAMMER2_AES_KEY_SIZE,
+	    0 /* decryption */);
+	if (error)
+		goto keyxchgfail;
 
-	EVP_CIPHER_CTX_init(&iocom->ioq_rx.ctx);
-	EVP_DecryptInit_ex(&iocom->ioq_rx.ctx, HAMMER2_AES_TYPE_EVP, NULL,
-			   iocom->sess, iocom->ioq_rx.iv);
-	EVP_CIPHER_CTX_set_padding(&iocom->ioq_rx.ctx, 0);
-
-	EVP_CIPHER_CTX_init(&iocom->ioq_tx.ctx);
-	EVP_EncryptInit_ex(&iocom->ioq_tx.ctx, HAMMER2_AES_TYPE_EVP, NULL,
-			   iocom->sess, iocom->ioq_tx.iv);
-	EVP_CIPHER_CTX_set_padding(&iocom->ioq_tx.ctx, 0);
+	error = _gcm_init(&iocom->ioq_tx, handtx.sess, HAMMER2_AES_KEY_SIZE,
+	    handtx.sess + HAMMER2_AES_KEY_SIZE,
+	    sizeof(handtx.sess) - HAMMER2_AES_KEY_SIZE,
+	    1 /* encryption */);
+	if (error)
+		goto keyxchgfail;
 
 	iocom->flags |= HAMMER2_IOCOMF_CRYPTED;
 
@@ -460,25 +693,38 @@ void
 hammer2_crypto_decrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
 {
 	int p_len;
-	int n;
-	int i;
+	int used;
+	int error;
 	char buf[512];
 
-	p_len = ioq->fifo_end - ioq->fifo_cdn;
-	p_len &= ~HAMMER2_AES_KEY_MASK;
+	/*
+	 * fifo_beg to fifo_cdx is data already decrypted.
+	 * fifo_cdn to fifo_end is data not yet decrypted.
+	 */
+	p_len = ioq->fifo_end - ioq->fifo_cdn; /* data not yet decrypted */
 
 	if (p_len == 0)
 		return;
-	for (i = 0; i < p_len; i += n) {
-		n = (p_len - i > (int)sizeof(buf)) ?
-			(int)sizeof(buf) : p_len - i;
-		bcopy(ioq->buf + ioq->fifo_cdx + i, buf, n);
-		EVP_DecryptUpdate(&ioq->ctx,
-				  ioq->buf + ioq->fifo_cdx + i, &n,
-				  buf, n);
+
+	while (p_len >= HAMMER2_CRYPTO_TAG_SIZE + HAMMER2_CRYPTO_CHUNK_SIZE) {
+		bcopy(ioq->buf + ioq->fifo_cdn, buf,
+		      HAMMER2_CRYPTO_TAG_SIZE + HAMMER2_CRYPTO_CHUNK_SIZE);
+		error = hammer2_crypto_decrypt_chunk(ioq, buf,
+						     ioq->buf + ioq->fifo_cdx,
+						     HAMMER2_CRYPTO_CHUNK_SIZE,
+						     &used);
+#ifdef CRYPTO_DEBUG
+		printf("dec: p_len: %d, used: %d, fifo_cdn: %ju, fifo_cdx: %ju\n",
+		       p_len, used, ioq->fifo_cdn, ioq->fifo_cdx);
+#endif
+		p_len -= used;
+		ioq->fifo_cdn += used;
+		ioq->fifo_cdx += HAMMER2_CRYPTO_CHUNK_SIZE;
+#ifdef CRYPTO_DEBUG
+		printf("dec: p_len: %d, used: %d, fifo_cdn: %ju, fifo_cdx: %ju\n",
+		       p_len, used, ioq->fifo_cdn, ioq->fifo_cdx);
+#endif
 	}
-	ioq->fifo_cdx += p_len;
-	ioq->fifo_cdn += p_len;
 }
 
 /*
@@ -489,29 +735,43 @@ int
 hammer2_crypto_encrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq,
 		       struct iovec *iov, int n, size_t *nactp)
 {
-	int p_len;
+	int p_len, used, ct_used;
 	int i;
+	int error;
 	size_t nmax;
 
 	nmax = sizeof(ioq->buf) - ioq->fifo_end;	/* max new bytes */
 
 	*nactp = 0;
 	for (i = 0; i < n && nmax; ++i) {
+		used = 0;
 		p_len = iov[i].iov_len;
 		assert((p_len & HAMMER2_AES_KEY_MASK) == 0);
-		if ((size_t)p_len > nmax)
-			p_len = (int)nmax;
-		*nactp += (size_t)p_len;	/* plaintext count */
-		EVP_EncryptUpdate(&ioq->ctx,
-				  ioq->buf + ioq->fifo_cdx, &p_len,
-				  (char *)iov[i].iov_base, p_len);
-		assert((size_t)p_len == iov[i].iov_len);
-		ioq->fifo_cdx += (size_t)p_len;	/* crypted count */
-		ioq->fifo_cdn += (size_t)p_len;	/* crypted count */
-		ioq->fifo_end += (size_t)p_len;
-		nmax -= (size_t)p_len;
-		if (nmax == 0)
-			break;
+
+		while (p_len >= HAMMER2_CRYPTO_CHUNK_SIZE &&
+		    nmax >= HAMMER2_CRYPTO_CHUNK_SIZE + HAMMER2_CRYPTO_TAG_SIZE) {
+			error = hammer2_crypto_encrypt_chunk(ioq,
+			    ioq->buf + ioq->fifo_cdx,
+			    (char *)iov[i].iov_base + used,
+			    HAMMER2_CRYPTO_CHUNK_SIZE, &ct_used);
+#ifdef CRYPTO_DEBUG
+			printf("nactp: %ju, p_len: %d, ct_used: %d, used: %d, nmax: %ju\n",
+			       *nactp, p_len, ct_used, used, nmax);
+#endif
+
+			*nactp += (size_t)HAMMER2_CRYPTO_CHUNK_SIZE;	/* plaintext count */
+			used += HAMMER2_CRYPTO_CHUNK_SIZE;
+			p_len -= HAMMER2_CRYPTO_CHUNK_SIZE;
+
+			ioq->fifo_cdx += (size_t)ct_used;	/* crypted count */
+			ioq->fifo_cdn += (size_t)ct_used;	/* crypted count */
+			ioq->fifo_end += (size_t)ct_used;
+			nmax -= (size_t)ct_used;
+#ifdef CRYPTO_DEBUG
+			printf("nactp: %ju, p_len: %d, ct_used: %d, used: %d, nmax: %ju\n",
+			       *nactp, p_len, ct_used, used, nmax);
+#endif
+		}
 	}
 	iov[0].iov_base = ioq->buf + ioq->fifo_beg;
 	iov[0].iov_len = ioq->fifo_cdx - ioq->fifo_beg;
