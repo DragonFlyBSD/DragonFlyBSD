@@ -31,7 +31,6 @@
 .\"
 .\"     @(#)atexit.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/atexit.3,v 1.11 2007/01/09 00:28:09 imp Exp $
-.\" $DragonFly: src/lib/libc/stdlib/atexit.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
 .Dd September 6, 2002
 .Dt ATEXIT 3
@@ -80,6 +79,7 @@ No memory was available to add the function to the list.
 The existing list of functions is unmodified.
 .El
 .Sh SEE ALSO
+.Xr at_quick_exit 3 ,
 .Xr exit 3
 .Sh STANDARDS
 The
