@@ -119,6 +119,12 @@
 #include "hammer2.h"
 
 /*
+ * Maximum spanning tree distance.  This has the practical effect of
+ * stopping tail-chasing closed loops when a feeder span is lost.
+ */
+#define HAMMER2_SPAN_MAXDIST	16
+
+/*
  * RED-BLACK TREE DEFINITIONS
  *
  * We need to track:
@@ -258,6 +264,10 @@ h2span_node_cmp(h2span_node_t *node1, h2span_node_t *node2)
 	return(uuid_compare(&node1->pfs_fsid, &node2->pfs_fsid, NULL));
 }
 
+/*
+ * NOTE: Sort/subsort must match h2span_relay_cmp() under any given
+ *	 node.
+ */
 static
 int
 h2span_link_cmp(h2span_link_t *link1, h2span_link_t *link2)
@@ -672,6 +682,9 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 	RB_SCAN(h2span_relay_tree, &conn->tree,
 		hammer2_relay_scan_cmp, hammer2_relay_scan_callback, &info);
 	relay = info.relay;
+	info.relay = NULL;
+	if (relay)
+		assert(relay->link->node == node);
 
 	if (DebugOpt > 8)
 		fprintf(stderr, "relay scan for connection %p\n", conn);
@@ -682,19 +695,35 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 	 */
 	RB_FOREACH(slink, h2span_link_tree, &node->tree) {
 		/*
-		 * PROPAGATE THE BEST RELAYS BY TRANSMITTING SPANs.
+		 * PROPAGATE THE BEST LINKS OVER THE SPECIFIED CONNECTION.
 		 *
-		 * Check for match against current best relay.
-		 *
-		 * A match failure means that the current best relay is not
-		 * as good as the link, create a new relay for the link.
+		 * Track relays while iterating the best links and construct
+		 * missing relays when necessary.
 		 *
 		 * (If some prior better link was removed it would have also
 		 *  removed the relay, so the relay can only match exactly or
 		 *  be worst).
 		 */
-		info.relay = relay;
-		if (relay == NULL || relay->link != slink) {
+		if (relay && relay->link == slink) {
+			/*
+			 * Match, get the next relay to match against the
+			 * next slink.
+			 */
+			relay = RB_NEXT(h2span_relay_tree, &conn->tree, relay);
+			if (--count == 0)
+				break;
+		} else if (slink->dist > HAMMER2_SPAN_MAXDIST) {
+			/*
+			 * No match but span distance is too great,
+			 * do not relay.  This prevents endless closed
+			 * loops with ever-incrementing distances when
+			 * the seed span is lost in the graph.
+			 */
+			/* no code needed */
+		} else {
+			/*
+			 * No match, distance is ok, construct a new relay.
+			 */
 			hammer2_msg_t *msg;
 
 			assert(relay == NULL ||
@@ -702,6 +731,9 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 			relay = hammer2_alloc(sizeof(*relay));
 			relay->conn = conn;
 			relay->link = slink;
+
+			RB_INSERT(h2span_relay_tree, &conn->tree, relay);
+			TAILQ_INSERT_TAIL(&slink->relayq, relay, entry);
 
 			msg = hammer2_msg_alloc(conn->state->iocom, 0,
 						HAMMER2_LNK_SPAN |
@@ -713,21 +745,18 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 					  hammer2_lnk_relay, relay,
 					  &relay->state);
 			fprintf(stderr,
-				"RELAY SPAN ON CLS=%p NODE=%p FD %d state %p\n",
-				node->cls, node,
+				"RELAY SPAN ON CLS=%p NODE=%p DIST=%d "
+				"FD %d state %p\n",
+				node->cls, node, slink->dist,
 				conn->state->iocom->sock_fd, relay->state);
 
-			RB_INSERT(h2span_relay_tree, &conn->tree, relay);
-			TAILQ_INSERT_TAIL(&slink->relayq, relay, entry);
-		}
-
-		/*
-		 * Iterate, figure out the next relay.
-		 */
-		relay = RB_NEXT(h2span_relay_tree, &conn->tree, relay);
-		if (--count == 0) {
-			break;
-			continue;
+			/*
+			 * Match (created new relay), get the next relay to
+			 * match against the next slink.
+			 */
+			relay = RB_NEXT(h2span_relay_tree, &conn->tree, relay);
+			if (--count == 0)
+				break;
 		}
 	}
 
@@ -748,10 +777,10 @@ void
 hammer2_relay_delete(h2span_relay_t *relay)
 {
 	fprintf(stderr,
-		"RELAY DELETE ON CLS=%p NODE=%p FD %d STATE %p\n",
+		"RELAY DELETE ON CLS=%p NODE=%p DIST=%d FD %d STATE %p\n",
 		relay->link->node->cls, relay->link->node,
+		relay->link->dist,
 		relay->conn->state->iocom->sock_fd, relay->state);
-	fprintf(stderr, "RELAY TX %08x RX %08x\n", relay->state->txcmd, relay->state->rxcmd);
 
 	RB_REMOVE(h2span_relay_tree, &relay->conn->tree, relay);
 	TAILQ_REMOVE(&relay->link->relayq, relay, entry);

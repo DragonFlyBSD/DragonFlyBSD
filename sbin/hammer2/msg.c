@@ -39,6 +39,26 @@ static int hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 static void hammer2_state_cleanuptx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 
 /*
+ * Indexed messages are stored in a red-black tree indexed by their
+ * msgid.  Only persistent messages are indexed.
+ */
+int
+hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
+{
+	if (state1->spanid < state2->spanid)
+		return(-1);
+	if (state1->spanid > state2->spanid)
+		return(1);
+	if (state1->msgid < state2->msgid)
+		return(-1);
+	if (state1->msgid > state2->msgid)
+		return(1);
+	return(0);
+}
+
+RB_GENERATE(hammer2_state_tree, hammer2_state, rbnode, hammer2_state_cmp);
+
+/*
  * Initialize a low-level ioq
  */
 void
@@ -436,6 +456,9 @@ again:
 		return (msg);
 	}
 
+	if (ioq->error)
+		goto skip;
+
 	/*
 	 * Message read in-progress (msg is NULL at the moment).  We don't
 	 * allocate a msg until we have its core header.
@@ -768,6 +791,7 @@ again:
 	 *	 to update them when breaking out.
 	 */
 	if (ioq->error) {
+skip:
 		/*
 		 * An unrecoverable error causes all active receive
 		 * transactions to be terminated with a LNK_ERROR message.
@@ -801,6 +825,7 @@ again:
 		msg->any.head.error = ioq->error;
 
 		pthread_mutex_lock(&iocom->mtx);
+		hammer2_iocom_drain(iocom);
 		if ((state = RB_ROOT(&iocom->staterd_tree)) != NULL) {
 			/*
 			 * Active remote transactions are still present.
@@ -1201,7 +1226,9 @@ hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
 		state->rxcmd = HAMMER2_MSGF_REPLY;
 		state->func = func;
 		state->any.any = data;
+		pthread_mutex_lock(&iocom->mtx);
 		RB_INSERT(hammer2_state_tree, &iocom->statewr_tree, state);
+		pthread_mutex_unlock(&iocom->mtx);
 		state->flags |= HAMMER2_STATE_INSERTED;
 		msg->state = state;
 		msg->any.head.msgid = state->msgid;
@@ -1366,8 +1393,6 @@ hammer2_state_reply(hammer2_state_t *state, uint32_t error)
  *
  */
 
-RB_GENERATE(hammer2_state_tree, hammer2_state, rbnode, hammer2_state_cmp);
-
 /*
  * Process state tracking for a message after reception, prior to
  * execution.
@@ -1485,6 +1510,7 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			fprintf(stderr, "duplicate-trans %s\n",
 				hammer2_msg_str(msg));
 			error = HAMMER2_IOQ_ERROR_TRANS;
+			assert(0);
 			break;
 		}
 		state = malloc(sizeof(*state));
@@ -1494,14 +1520,18 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		state->msg = msg;
 		state->txcmd = HAMMER2_MSGF_REPLY;
 		state->rxcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
-		pthread_mutex_lock(&iocom->mtx);
-		RB_INSERT(hammer2_state_tree, &iocom->staterd_tree, state);
-		pthread_mutex_unlock(&iocom->mtx);
 		state->flags |= HAMMER2_STATE_INSERTED;
 		state->msgid = msg->any.head.msgid;
 		state->spanid = msg->any.head.spanid;
 		msg->state = state;
+		pthread_mutex_lock(&iocom->mtx);
+		RB_INSERT(hammer2_state_tree, &iocom->staterd_tree, state);
+		pthread_mutex_unlock(&iocom->mtx);
 		error = 0;
+		if (DebugOpt) {
+			fprintf(stderr, "create state %p id=%08x on iocom staterd %p\n",
+				state, (uint32_t)state->msgid, iocom);
+		}
 		break;
 	case HAMMER2_MSGF_DELETE:
 		/*
@@ -1515,6 +1545,7 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 				fprintf(stderr, "missing-state %s\n",
 					hammer2_msg_str(msg));
 				error = HAMMER2_IOQ_ERROR_TRANS;
+			assert(0);
 			}
 			break;
 		}
@@ -1530,6 +1561,7 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 				fprintf(stderr, "reused-state %s\n",
 					hammer2_msg_str(msg));
 				error = HAMMER2_IOQ_ERROR_TRANS;
+			assert(0);
 			}
 			break;
 		}
@@ -1559,6 +1591,7 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			fprintf(stderr, "no-state(r) %s\n",
 				hammer2_msg_str(msg));
 			error = HAMMER2_IOQ_ERROR_TRANS;
+			assert(0);
 			break;
 		}
 		assert(((state->rxcmd ^ msg->any.head.cmd) &
@@ -1578,6 +1611,7 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 				fprintf(stderr, "no-state(r,d) %s\n",
 					hammer2_msg_str(msg));
 				error = HAMMER2_IOQ_ERROR_TRANS;
+			assert(0);
 			}
 			break;
 		}
@@ -1594,6 +1628,7 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 				fprintf(stderr, "reused-state(r,d) %s\n",
 					hammer2_msg_str(msg));
 				error = HAMMER2_IOQ_ERROR_TRANS;
+			assert(0);
 			}
 			break;
 		}
@@ -1710,8 +1745,8 @@ hammer2_state_free(hammer2_state_t *state)
 	char dummy;
 
 	if (DebugOpt) {
-		fprintf(stderr, "terminate state id=%08x\n",
-			(uint32_t)state->msgid);
+		fprintf(stderr, "terminate state %p id=%08x\n",
+			state, (uint32_t)state->msgid);
 	}
 	assert(state->any.any == NULL);
 	msg = state->msg;
@@ -1735,24 +1770,6 @@ hammer2_state_free(hammer2_state_t *state)
 		dummy = 0;
 		write(iocom->wakeupfds[1], &dummy, 1);
 	}
-}
-
-/*
- * Indexed messages are stored in a red-black tree indexed by their
- * msgid.  Only persistent messages are indexed.
- */
-int
-hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
-{
-	if (state1->spanid < state2->spanid)
-		return(-1);
-	if (state1->spanid > state2->spanid)
-		return(1);
-	if (state1->msgid < state2->msgid)
-		return(-1);
-	if (state1->msgid > state2->msgid)
-		return(1);
-	return(0);
 }
 
 const char *
