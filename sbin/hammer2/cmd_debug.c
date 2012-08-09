@@ -37,9 +37,9 @@
 
 #define SHOW_TAB	2
 
-static void shell_rcvmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+static void shell_rcvmsg(hammer2_msg_t *msg);
 static void shell_ttymsg(hammer2_iocom_t *iocom);
-static void hammer2_shell_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+static void hammer2_shell_parse(hammer2_msg_t *msg);
 
 /************************************************************************
  *				    SHELL				*
@@ -66,8 +66,9 @@ cmd_shell(const char *hostname)
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	printf("debug: connected\n");
 
-	msg = hammer2_msg_alloc(&iocom, 0, HAMMER2_DBG_SHELL);
-	hammer2_msg_write(&iocom, msg, NULL, NULL, NULL);
+	msg = hammer2_msg_alloc(&iocom.router, 0, HAMMER2_DBG_SHELL,
+				NULL, NULL);
+	hammer2_msg_write(msg);
 	hammer2_iocom_core(&iocom);
 	fprintf(stderr, "debug: disconnected\n");
 	close(fd);
@@ -80,7 +81,7 @@ cmd_shell(const char *hostname)
  */
 static
 void
-shell_rcvmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+shell_rcvmsg(hammer2_msg_t *msg)
 {
 	switch(msg->any.head.cmd & HAMMER2_MSGF_TRANSMASK) {
 	case HAMMER2_LNK_ERROR:
@@ -105,7 +106,7 @@ shell_rcvmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		 * We send the commands, not accept them.
 		 * (one-way message, not transactional)
 		 */
-		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
 		break;
 	case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
 		/*
@@ -119,7 +120,7 @@ shell_rcvmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		break;
 	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE:
 		fprintf(stderr, "Debug Shell is ignoring received LNK_CONN\n");
-		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
 		break;
 	case HAMMER2_LNK_CONN | HAMMER2_MSGF_DELETE:
 		break;
@@ -130,9 +131,9 @@ shell_rcvmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		 */
 		fprintf(stderr, "Unknown message: %s\n", hammer2_msg_str(msg));
 		if (msg->any.head.cmd & HAMMER2_MSGF_CREATE)
-			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
+			hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
 		if (msg->any.head.cmd & HAMMER2_MSGF_DELETE)
-			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
+			hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
 		break;
 	}
 }
@@ -150,9 +151,10 @@ shell_ttymsg(hammer2_iocom_t *iocom)
 		if (len && buf[len - 1] == '\n')
 			buf[--len] = 0;
 		++len;
-		msg = hammer2_msg_alloc(iocom, len, HAMMER2_DBG_SHELL);
+		msg = hammer2_msg_alloc(&iocom->router, len, HAMMER2_DBG_SHELL,
+					NULL, NULL);
 		bcopy(buf, msg->aux_data, len);
-		hammer2_msg_write(iocom, msg, NULL, NULL, NULL);
+		hammer2_msg_write(msg);
 	} else if (feof(stdin)) {
 		/*
 		 * Set EOF flag without setting any error code for normal
@@ -170,7 +172,7 @@ shell_ttymsg(hammer2_iocom_t *iocom)
  * then finish up by outputting another prompt.
  */
 void
-hammer2_msg_dbg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+hammer2_msg_dbg(hammer2_msg_t *msg)
 {
 	switch(msg->any.head.cmd & HAMMER2_MSGF_CMDSWMASK) {
 	case HAMMER2_DBG_SHELL:
@@ -180,8 +182,8 @@ hammer2_msg_dbg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		 */
 		if (msg->aux_data)
 			msg->aux_data[msg->aux_size - 1] = 0;
-		hammer2_shell_parse(iocom, msg);
-		hammer2_msg_reply(iocom, msg, 0);
+		hammer2_shell_parse(msg);
+		hammer2_msg_reply(msg, 0);
 		break;
 	case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
 		/*
@@ -194,37 +196,38 @@ hammer2_msg_dbg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			write(2, msg->aux_data, strlen(msg->aux_data));
 		break;
 	default:
-		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
 		break;
 	}
 }
 
-static void shell_span(hammer2_iocom_t *iocom, char *cmdbuf);
-/*static void shell_tree(hammer2_iocom_t *iocom, char *cmdbuf);*/
+static void shell_span(hammer2_router_t *router, char *cmdbuf);
+/*static void shell_tree(hammer2_router_t *router, char *cmdbuf);*/
 
 static void
-hammer2_shell_parse(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+hammer2_shell_parse(hammer2_msg_t *msg)
 {
+	hammer2_router_t *router = msg->router;
 	char *cmdbuf = msg->aux_data;
 	char *cmd = strsep(&cmdbuf, " \t");
 
 	if (cmd == NULL || *cmd == 0) {
 		;
 	} else if (strcmp(cmd, "span") == 0) {
-		shell_span(iocom, cmdbuf);
+		shell_span(router, cmdbuf);
 	} else if (strcmp(cmd, "tree") == 0) {
-		shell_tree(iocom, cmdbuf);
+		shell_tree(router, cmdbuf);
 	} else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
-		iocom_printf(iocom, "help            Command help\n");
-		iocom_printf(iocom, "span <host>     Span to target host\n");
-		iocom_printf(iocom, "tree            Dump spanning tree\n");
+		router_printf(router, "help            Command help\n");
+		router_printf(router, "span <host>     Span to target host\n");
+		router_printf(router, "tree            Dump spanning tree\n");
 	} else {
-		iocom_printf(iocom, "Unrecognized command: %s\n", cmd);
+		router_printf(router, "Unrecognized command: %s\n", cmd);
 	}
 }
 
 static void
-shell_span(hammer2_iocom_t *iocom, char *cmdbuf)
+shell_span(hammer2_router_t *router, char *cmdbuf)
 {
 	const char *hostname = strsep(&cmdbuf, " \t");
 	pthread_t thread;
@@ -243,9 +246,9 @@ shell_span(hammer2_iocom_t *iocom, char *cmdbuf)
 	 * Start master service
 	 */
 	if (fd < 0) {
-		iocom_printf(iocom, "Connection to %s failed\n", hostname);
+		router_printf(router, "Connection to %s failed\n", hostname);
 	} else {
-		iocom_printf(iocom, "Connected to %s\n", hostname);
+		router_printf(router, "Connected to %s\n", hostname);
 		pthread_create(&thread, NULL,
 			       master_service, (void *)(intptr_t)fd);
 		/*pthread_join(thread, &res);*/
@@ -257,11 +260,11 @@ shell_span(hammer2_iocom_t *iocom, char *cmdbuf)
  * not modified and stays intact.  We use a one-way message with REPLY set
  * to distinguish between a debug command and debug terminal output.
  *
- * To prevent loops iocom_printf() can filter the message (cmd) related
- * to the iocom_printf().  We filter out DBG messages.
+ * To prevent loops router_printf() can filter the message (cmd) related
+ * to the router_printf().  We filter out DBG messages.
  */
 void
-iocom_printf(hammer2_iocom_t *iocom, const char *ctl, ...)
+router_printf(hammer2_router_t *router, const char *ctl, ...)
 {
 	hammer2_msg_t *rmsg;
 	va_list va;
@@ -273,11 +276,12 @@ iocom_printf(hammer2_iocom_t *iocom, const char *ctl, ...)
 	va_end(va);
 	len = strlen(buf) + 1;
 
-	rmsg = hammer2_msg_alloc(iocom, len, HAMMER2_DBG_SHELL |
-					     HAMMER2_MSGF_REPLY);
+	rmsg = hammer2_msg_alloc(router, len, HAMMER2_DBG_SHELL |
+					      HAMMER2_MSGF_REPLY,
+				 NULL, NULL);
 	bcopy(buf, rmsg->aux_data, len);
 
-	hammer2_msg_write(iocom, rmsg, NULL, NULL, NULL);
+	hammer2_msg_write(rmsg);
 }
 
 /************************************************************************

@@ -82,43 +82,44 @@ hammer2_ioq_done(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		assert(0);	/* shouldn't happen */
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);
-		hammer2_msg_free(iocom, msg);
+		hammer2_msg_free(msg);
 	}
 	if ((msg = ioq->msg) != NULL) {
 		ioq->msg = NULL;
-		hammer2_msg_free(iocom, msg);
+		hammer2_msg_free(msg);
 	}
 }
 
 /*
  * Initialize a low-level communications channel.
  *
- * NOTE: The state_func() is called at least once from the loop and can be
+ * NOTE: The signal_func() is called at least once from the loop and can be
  *	 re-armed via hammer2_iocom_restate().
  */
 void
 hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
-		   void (*state_func)(hammer2_iocom_t *),
-		   void (*rcvmsg_func)(hammer2_iocom_t *, hammer2_msg_t *msg),
+		   void (*signal_func)(hammer2_router_t *),
+		   void (*rcvmsg_func)(hammer2_msg_t *),
 		   void (*altmsg_func)(hammer2_iocom_t *))
 {
 	bzero(iocom, sizeof(*iocom));
 
-	iocom->state_callback = state_func;
-	iocom->rcvmsg_callback = rcvmsg_func;
-	iocom->altmsg_callback = altmsg_func;
+	iocom->router.signal_callback = signal_func;
+	iocom->router.rcvmsg_callback = rcvmsg_func;
+	iocom->router.altmsg_callback = altmsg_func;
 
 	pthread_mutex_init(&iocom->mtx, NULL);
-	RB_INIT(&iocom->staterd_tree);
-	RB_INIT(&iocom->statewr_tree);
+	RB_INIT(&iocom->router.staterd_tree);
+	RB_INIT(&iocom->router.statewr_tree);
 	TAILQ_INIT(&iocom->freeq);
 	TAILQ_INIT(&iocom->freeq_aux);
 	TAILQ_INIT(&iocom->addrq);
-	TAILQ_INIT(&iocom->txmsgq);
+	TAILQ_INIT(&iocom->router.txmsgq);
+	iocom->router.iocom = iocom;
 	iocom->sock_fd = sock_fd;
 	iocom->alt_fd = alt_fd;
 	iocom->flags = HAMMER2_IOCOMF_RREQ;
-	if (state_func)
+	if (signal_func)
 		iocom->flags |= HAMMER2_IOCOMF_SWORK;
 	hammer2_ioq_init(iocom, &iocom->ioq_rx);
 	hammer2_ioq_init(iocom, &iocom->ioq_tx);
@@ -152,18 +153,25 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
  * the recevmsg_func and the sendmsg_func is called at least once.
  */
 void
-hammer2_iocom_restate(hammer2_iocom_t *iocom,
-		   void (*state_func)(hammer2_iocom_t *),
-		   void (*rcvmsg_func)(hammer2_iocom_t *, hammer2_msg_t *msg),
+hammer2_router_restate(hammer2_router_t *router,
+		   void (*signal_func)(hammer2_router_t *),
+		   void (*rcvmsg_func)(hammer2_msg_t *msg),
 		   void (*altmsg_func)(hammer2_iocom_t *))
 {
-	iocom->state_callback = state_func;
-	iocom->rcvmsg_callback = rcvmsg_func;
-	iocom->altmsg_callback = altmsg_func;
-	if (state_func)
-		iocom->flags |= HAMMER2_IOCOMF_SWORK;
+	router->signal_callback = signal_func;
+	router->rcvmsg_callback = rcvmsg_func;
+	router->altmsg_callback = altmsg_func;
+	if (signal_func)
+		router->iocom->flags |= HAMMER2_IOCOMF_SWORK;
 	else
-		iocom->flags &= ~HAMMER2_IOCOMF_SWORK;
+		router->iocom->flags &= ~HAMMER2_IOCOMF_SWORK;
+}
+
+void
+hammer2_router_signal(hammer2_router_t *router)
+{
+	if (router->signal_callback)
+		router->iocom->flags |= HAMMER2_IOCOMF_SWORK;
 }
 
 /*
@@ -212,8 +220,11 @@ hammer2_iocom_done(hammer2_iocom_t *iocom)
  * Allocate a new one-way message.
  */
 hammer2_msg_t *
-hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size, uint32_t cmd)
+hammer2_msg_alloc(hammer2_router_t *router, size_t aux_size, uint32_t cmd,
+		  void (*func)(hammer2_msg_t *), void *data)
 {
+	hammer2_state_t *state = NULL;
+	hammer2_iocom_t *iocom = router->iocom;
 	hammer2_msg_t *msg;
 	int hbytes;
 
@@ -226,6 +237,30 @@ hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size, uint32_t cmd)
 	} else {
 		if ((msg = TAILQ_FIRST(&iocom->freeq)) != NULL)
 			TAILQ_REMOVE(&iocom->freeq, msg, qentry);
+	}
+	if ((cmd & (HAMMER2_MSGF_CREATE | HAMMER2_MSGF_REPLY)) ==
+	    HAMMER2_MSGF_CREATE) {
+		/*
+		 * Create state when CREATE is set without REPLY.
+		 *
+		 * NOTE: CREATE in txcmd handled by hammer2_msg_write()
+		 * NOTE: DELETE in txcmd handled by hammer2_state_cleanuptx()
+		 */
+		state = malloc(sizeof(*state));
+		bzero(state, sizeof(*state));
+		state->iocom = iocom;
+		state->flags = HAMMER2_STATE_DYNAMIC;
+		state->msgid = (uint64_t)(uintptr_t)state;
+		/* XXX set state->spanid from router */
+		state->txcmd = cmd & ~(HAMMER2_MSGF_CREATE |
+				       HAMMER2_MSGF_DELETE);
+		state->rxcmd = HAMMER2_MSGF_REPLY;
+		state->func = func;
+		state->any.any = data;
+		pthread_mutex_lock(&iocom->mtx);
+		RB_INSERT(hammer2_state_tree, &iocom->router.statewr_tree, state);
+		pthread_mutex_unlock(&iocom->mtx);
+		state->flags |= HAMMER2_STATE_INSERTED;
 	}
 	pthread_mutex_unlock(&iocom->mtx);
 	if (msg == NULL) {
@@ -252,7 +287,12 @@ hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size, uint32_t cmd)
 	msg->any.head.cmd = cmd;
 	msg->any.head.aux_descr = 0;
 	msg->any.head.aux_crc = 0;
-
+	msg->router = router;
+	if (state) {
+		msg->state = state;
+		state->msg = msg;
+		msg->any.head.msgid = state->msgid;
+	}
 	return (msg);
 }
 
@@ -263,8 +303,10 @@ hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size, uint32_t cmd)
  */
 static
 void
-hammer2_msg_free_locked(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+hammer2_msg_free_locked(hammer2_msg_t *msg)
 {
+	hammer2_iocom_t *iocom = msg->router->iocom;
+
 	msg->state = NULL;
 	if (msg->aux_data)
 		TAILQ_INSERT_TAIL(&iocom->freeq_aux, msg, qentry);
@@ -273,10 +315,12 @@ hammer2_msg_free_locked(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 }
 
 void
-hammer2_msg_free(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+hammer2_msg_free(hammer2_msg_t *msg)
 {
+	hammer2_iocom_t *iocom = msg->router->iocom;
+
 	pthread_mutex_lock(&iocom->mtx);
-	hammer2_msg_free_locked(iocom, msg);
+	hammer2_msg_free_locked(msg);
 	pthread_mutex_unlock(&iocom->mtx);
 }
 
@@ -372,7 +416,7 @@ hammer2_iocom_core(hammer2_iocom_t *iocom)
 
 		if (iocom->flags & HAMMER2_IOCOMF_SWORK) {
 			iocom->flags &= ~HAMMER2_IOCOMF_SWORK;
-			iocom->state_callback(iocom);
+			iocom->router.signal_callback(&iocom->router);
 		}
 
 		/*
@@ -385,7 +429,7 @@ hammer2_iocom_core(hammer2_iocom_t *iocom)
 			read(iocom->wakeupfds[0], dummybuf, sizeof(dummybuf));
 			iocom->flags |= HAMMER2_IOCOMF_RWORK;
 			iocom->flags |= HAMMER2_IOCOMF_WWORK;
-			if (TAILQ_FIRST(&iocom->txmsgq))
+			if (TAILQ_FIRST(&iocom->router.txmsgq))
 				hammer2_iocom_flush1(iocom);
 		}
 
@@ -407,14 +451,14 @@ hammer2_iocom_core(hammer2_iocom_t *iocom)
 					fprintf(stderr, "receive %s\n",
 						hammer2_msg_str(msg));
 				}
-				iocom->rcvmsg_callback(iocom, msg);
+				iocom->router.rcvmsg_callback(msg);
 				hammer2_state_cleanuprx(iocom, msg);
 			}
 		}
 
 		if (iocom->flags & HAMMER2_IOCOMF_ARWORK) {
 			iocom->flags &= ~HAMMER2_IOCOMF_ARWORK;
-			iocom->altmsg_callback(iocom);
+			iocom->router.altmsg_callback(iocom);
 		}
 	}
 }
@@ -553,7 +597,8 @@ again:
 		/*
 		 * Allocate the message, the next state will fill it in.
 		 */
-		msg = hammer2_msg_alloc(iocom, ioq->abytes, 0);
+		msg = hammer2_msg_alloc(&iocom->router, ioq->abytes, 0,
+					NULL, NULL);
 		ioq->msg = msg;
 
 		/*
@@ -777,7 +822,7 @@ again:
 		error = hammer2_state_msgrx(iocom, msg);
 		if (error) {
 			if (error == HAMMER2_IOQ_ERROR_EALREADY) {
-				hammer2_msg_free(iocom, msg);
+				hammer2_msg_free(msg);
 				goto again;
 			}
 			ioq->error = error;
@@ -803,7 +848,7 @@ skip:
 		 */
 		assert(ioq->msg == msg);
 		if (msg) {
-			hammer2_msg_free(iocom, msg);
+			hammer2_msg_free(msg);
 			ioq->msg = NULL;
 		}
 
@@ -818,7 +863,7 @@ skip:
 		 * LNK_ERROR (that the session can detect) when no
 		 * transactions remain.
 		 */
-		msg = hammer2_msg_alloc(iocom, 0, 0);
+		msg = hammer2_msg_alloc(&iocom->router, 0, 0, NULL, NULL);
 		bzero(&msg->any.head, sizeof(msg->any.head));
 		msg->any.head.magic = HAMMER2_MSGHDR_MAGIC;
 		msg->any.head.cmd = HAMMER2_LNK_ERROR;
@@ -826,13 +871,13 @@ skip:
 
 		pthread_mutex_lock(&iocom->mtx);
 		hammer2_iocom_drain(iocom);
-		if ((state = RB_ROOT(&iocom->staterd_tree)) != NULL) {
+		if ((state = RB_ROOT(&iocom->router.staterd_tree)) != NULL) {
 			/*
 			 * Active remote transactions are still present.
 			 * Simulate the other end sending us a DELETE.
 			 */
 			if (state->rxcmd & HAMMER2_MSGF_DELETE) {
-				hammer2_msg_free(iocom, msg);
+				hammer2_msg_free(msg);
 				msg = NULL;
 			} else {
 				/*state->txcmd |= HAMMER2_MSGF_DELETE;*/
@@ -842,13 +887,13 @@ skip:
 				msg->any.head.cmd |= HAMMER2_MSGF_ABORT |
 						     HAMMER2_MSGF_DELETE;
 			}
-		} else if ((state = RB_ROOT(&iocom->statewr_tree)) != NULL) {
+		} else if ((state = RB_ROOT(&iocom->router.statewr_tree)) != NULL) {
 			/*
 			 * Active local transactions are still present.
 			 * Simulate the other end sending us a DELETE.
 			 */
 			if (state->rxcmd & HAMMER2_MSGF_DELETE) {
-				hammer2_msg_free(iocom, msg);
+				hammer2_msg_free(msg);
 				msg = NULL;
 			} else {
 				msg->state = state;
@@ -941,8 +986,8 @@ hammer2_iocom_flush1(hammer2_iocom_t *iocom)
 	iocom->flags &= ~(HAMMER2_IOCOMF_WREQ | HAMMER2_IOCOMF_WWORK);
 	TAILQ_INIT(&tmpq);
 	pthread_mutex_lock(&iocom->mtx);
-	while ((msg = TAILQ_FIRST(&iocom->txmsgq)) != NULL) {
-		TAILQ_REMOVE(&iocom->txmsgq, msg, qentry);
+	while ((msg = TAILQ_FIRST(&iocom->router.txmsgq)) != NULL) {
+		TAILQ_REMOVE(&iocom->router.txmsgq, msg, qentry);
 		TAILQ_INSERT_TAIL(&tmpq, msg, qentry);
 	}
 	pthread_mutex_unlock(&iocom->mtx);
@@ -1178,11 +1223,9 @@ hammer2_iocom_drain(hammer2_iocom_t *iocom)
  * Write a message to an iocom, with additional state processing.
  */
 void
-hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
-		  void (*func)(hammer2_state_t *, hammer2_msg_t *),
-		  void *data,
-		  hammer2_state_t **statep)
+hammer2_msg_write(hammer2_msg_t *msg)
 {
+	hammer2_iocom_t *iocom = msg->router->iocom;
 	hammer2_state_t *state;
 	char dummy;
 
@@ -1195,57 +1238,34 @@ hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
 		 * Existing transaction (could be reply).  It is also
 		 * possible for this to be the first reply (CREATE is set),
 		 * in which case we populate state->txcmd.
+		 *
+		 * state->txcmd is adjusted to hold the final message cmd,
+		 * and we also be sure to set the CREATE bit here.  We did
+		 * not set it in hammer2_msg_alloc() because that would have
+		 * not been serialized (state could have gotten ripped out
+		 * from under the message prior to it being transmitted).
 		 */
+		if ((msg->any.head.cmd & (HAMMER2_MSGF_CREATE |
+					  HAMMER2_MSGF_REPLY)) ==
+		    HAMMER2_MSGF_CREATE) {
+			state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
+		}
 		msg->any.head.msgid = state->msgid;
 		msg->any.head.spanid = state->spanid;
-		if (func) {
-			state->func = func;
-			state->any.any = data;
-		}
 		assert(((state->txcmd ^ msg->any.head.cmd) &
 			HAMMER2_MSGF_REPLY) == 0);
 		if (msg->any.head.cmd & HAMMER2_MSGF_CREATE)
 			state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
-	} else if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
-		/*
-		 * No existing state and CREATE is set, create new
-		 * state for outgoing command.  This can't happen if
-		 * REPLY is set as the state would already exist for
-		 * a transaction reply.
-		 */
-		assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
-
-		state = malloc(sizeof(*state));
-		bzero(state, sizeof(*state));
-		state->iocom = iocom;
-		state->flags = HAMMER2_STATE_DYNAMIC;
-		state->msg = msg;
-		state->msgid = (uint64_t)(uintptr_t)state;
-		state->spanid = msg->any.head.spanid;
-		state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
-		state->rxcmd = HAMMER2_MSGF_REPLY;
-		state->func = func;
-		state->any.any = data;
-		pthread_mutex_lock(&iocom->mtx);
-		RB_INSERT(hammer2_state_tree, &iocom->statewr_tree, state);
-		pthread_mutex_unlock(&iocom->mtx);
-		state->flags |= HAMMER2_STATE_INSERTED;
-		msg->state = state;
-		msg->any.head.msgid = state->msgid;
-		/* spanid set by caller */
 	} else {
 		msg->any.head.msgid = 0;
-		/* spanid set by caller */
+		/* XXX set spanid by router */
 	}
-
-	if (statep)
-		*statep = state;
 
 	/*
 	 * Queue it for output, wake up the I/O pthread.  Note that the
 	 * I/O thread is responsible for generating the CRCs and encryption.
 	 */
-	TAILQ_INSERT_TAIL(&iocom->txmsgq, msg, qentry);
+	TAILQ_INSERT_TAIL(&iocom->router.txmsgq, msg, qentry);
 	dummy = 0;
 	write(iocom->wakeupfds[1], &dummy, 1);	/* XXX optimize me */
 	pthread_mutex_unlock(&iocom->mtx);
@@ -1265,8 +1285,9 @@ hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
  * The reply contains no extended data.
  */
 void
-hammer2_msg_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
+hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error)
 {
+	hammer2_iocom_t *iocom = msg->router->iocom;
 	hammer2_state_t *state = msg->state;
 	hammer2_msg_t *nmsg;
 	uint32_t cmd;
@@ -1289,8 +1310,6 @@ hammer2_msg_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
 	if (state) {
 		if (state->txcmd & HAMMER2_MSGF_DELETE)
 			return;
-		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
-			cmd |= HAMMER2_MSGF_CREATE;
 		if (state->txcmd & HAMMER2_MSGF_REPLY)
 			cmd |= HAMMER2_MSGF_REPLY;
 		cmd |= HAMMER2_MSGF_DELETE;
@@ -1299,10 +1318,19 @@ hammer2_msg_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
 			cmd |= HAMMER2_MSGF_REPLY;
 	}
 
-	nmsg = hammer2_msg_alloc(iocom, 0, cmd);
+	/*
+	 * Allocate the message and associate it with the existing state.
+	 * We cannot pass MSGF_CREATE to msg_alloc() because that may
+	 * allocate new state.  We have our state already.
+	 */
+	nmsg = hammer2_msg_alloc(&iocom->router, 0, cmd, NULL, NULL);
+	if (state) {
+		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
+			nmsg->any.head.cmd |= HAMMER2_MSGF_CREATE;
+	}
 	nmsg->any.head.error = error;
-	nmsg->state = msg->state;
-	hammer2_msg_write(iocom, nmsg, NULL, NULL, NULL);
+	nmsg->state = state;
+	hammer2_msg_write(nmsg);
 }
 
 /*
@@ -1312,8 +1340,9 @@ hammer2_msg_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
  * later.
  */
 void
-hammer2_msg_result(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
+hammer2_msg_result(hammer2_msg_t *msg, uint32_t error)
 {
+	hammer2_iocom_t *iocom = msg->router->iocom;
 	hammer2_state_t *state = msg->state;
 	hammer2_msg_t *nmsg;
 	uint32_t cmd;
@@ -1336,8 +1365,6 @@ hammer2_msg_result(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
 	if (state) {
 		if (state->txcmd & HAMMER2_MSGF_DELETE)
 			return;
-		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
-			cmd |= HAMMER2_MSGF_CREATE;
 		if (state->txcmd & HAMMER2_MSGF_REPLY)
 			cmd |= HAMMER2_MSGF_REPLY;
 		/* continuing transaction, do not set MSGF_DELETE */
@@ -1346,10 +1373,14 @@ hammer2_msg_result(hammer2_iocom_t *iocom, hammer2_msg_t *msg, uint32_t error)
 			cmd |= HAMMER2_MSGF_REPLY;
 	}
 
-	nmsg = hammer2_msg_alloc(iocom, 0, cmd);
+	nmsg = hammer2_msg_alloc(&iocom->router, 0, cmd, NULL, NULL);
+	if (state) {
+		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
+			nmsg->any.head.cmd |= HAMMER2_MSGF_CREATE;
+	}
 	nmsg->any.head.error = error;
 	nmsg->state = state;
-	hammer2_msg_write(iocom, nmsg, NULL, NULL, NULL);
+	hammer2_msg_write(nmsg);
 }
 
 /*
@@ -1368,23 +1399,20 @@ hammer2_state_reply(hammer2_state_t *state, uint32_t error)
 		return;
 
 	/*
-	 * We must also set CREATE if this is our first response to a
-	 * remote command.
-	 */
-	if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
-		cmd |= HAMMER2_MSGF_CREATE;
-
-	/*
 	 * Set REPLY if the other end initiated the command.  Otherwise
 	 * we are the command direction.
 	 */
 	if (state->txcmd & HAMMER2_MSGF_REPLY)
 		cmd |= HAMMER2_MSGF_REPLY;
 
-	nmsg = hammer2_msg_alloc(state->iocom, 0, cmd);
+	nmsg = hammer2_msg_alloc(&state->iocom->router, 0, cmd, NULL, NULL);
+	if (state) {
+		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
+			nmsg->any.head.cmd |= HAMMER2_MSGF_CREATE;
+	}
 	nmsg->any.head.error = error;
 	nmsg->state = state;
-	hammer2_msg_write(state->iocom, nmsg, NULL, NULL, NULL);
+	hammer2_msg_write(nmsg);
 }
 
 /************************************************************************
@@ -1479,10 +1507,10 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 	pthread_mutex_lock(&iocom->mtx);
 	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
 		state = RB_FIND(hammer2_state_tree,
-				&iocom->statewr_tree, &dummy);
+				&iocom->router.statewr_tree, &dummy);
 	} else {
 		state = RB_FIND(hammer2_state_tree,
-				&iocom->staterd_tree, &dummy);
+				&iocom->router.staterd_tree, &dummy);
 	}
 	msg->state = state;
 	pthread_mutex_unlock(&iocom->mtx);
@@ -1525,7 +1553,8 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		state->spanid = msg->any.head.spanid;
 		msg->state = state;
 		pthread_mutex_lock(&iocom->mtx);
-		RB_INSERT(hammer2_state_tree, &iocom->staterd_tree, state);
+		RB_INSERT(hammer2_state_tree,
+			  &iocom->router.staterd_tree, state);
 		pthread_mutex_unlock(&iocom->mtx);
 		error = 0;
 		if (DebugOpt) {
@@ -1661,7 +1690,7 @@ hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		 * Free a non-transactional message, there is no state
 		 * to worry about.
 		 */
-		hammer2_msg_free(iocom, msg);
+		hammer2_msg_free(msg);
 	} else if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
 		/*
 		 * Message terminating transaction, destroy the related
@@ -1677,11 +1706,11 @@ hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			if (state->rxcmd & HAMMER2_MSGF_REPLY) {
 				assert(msg->any.head.cmd & HAMMER2_MSGF_REPLY);
 				RB_REMOVE(hammer2_state_tree,
-					  &iocom->statewr_tree, state);
+					  &iocom->router.statewr_tree, state);
 			} else {
 				assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
 				RB_REMOVE(hammer2_state_tree,
-					  &iocom->staterd_tree, state);
+					  &iocom->router.staterd_tree, state);
 			}
 			state->flags &= ~HAMMER2_STATE_INSERTED;
 			hammer2_state_free(state);
@@ -1689,13 +1718,13 @@ hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			;
 		}
 		pthread_mutex_unlock(&iocom->mtx);
-		hammer2_msg_free(iocom, msg);
+		hammer2_msg_free(msg);
 	} else if (state->msg != msg) {
 		/*
 		 * Message not terminating transaction, leave state intact
 		 * and free message if it isn't the CREATE message.
 		 */
-		hammer2_msg_free(iocom, msg);
+		hammer2_msg_free(msg);
 	}
 }
 
@@ -1705,7 +1734,7 @@ hammer2_state_cleanuptx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 	hammer2_state_t *state;
 
 	if ((state = msg->state) == NULL) {
-		hammer2_msg_free(iocom, msg);
+		hammer2_msg_free(msg);
 	} else if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
 		pthread_mutex_lock(&iocom->mtx);
 		state->txcmd |= HAMMER2_MSGF_DELETE;
@@ -1716,11 +1745,11 @@ hammer2_state_cleanuptx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			if (state->txcmd & HAMMER2_MSGF_REPLY) {
 				assert(msg->any.head.cmd & HAMMER2_MSGF_REPLY);
 				RB_REMOVE(hammer2_state_tree,
-					  &iocom->staterd_tree, state);
+					  &iocom->router.staterd_tree, state);
 			} else {
 				assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
 				RB_REMOVE(hammer2_state_tree,
-					  &iocom->statewr_tree, state);
+					  &iocom->router.statewr_tree, state);
 			}
 			state->flags &= ~HAMMER2_STATE_INSERTED;
 			hammer2_state_free(state);
@@ -1728,9 +1757,9 @@ hammer2_state_cleanuptx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 			;
 		}
 		pthread_mutex_unlock(&iocom->mtx);
-		hammer2_msg_free(iocom, msg);
+		hammer2_msg_free(msg);
 	} else if (state->msg != msg) {
-		hammer2_msg_free(iocom, msg);
+		hammer2_msg_free(msg);
 	}
 }
 
@@ -1752,7 +1781,7 @@ hammer2_state_free(hammer2_state_t *state)
 	msg = state->msg;
 	state->msg = NULL;
 	if (msg)
-		hammer2_msg_free_locked(iocom, msg);
+		hammer2_msg_free_locked(msg);
 	free(state);
 
 	/*
@@ -1765,8 +1794,8 @@ hammer2_state_free(hammer2_state_t *state)
 	 * We may have to wake up the rx code.
 	 */
 	if (iocom->ioq_rx.error &&
-	    RB_EMPTY(&iocom->staterd_tree) &&
-	    RB_EMPTY(&iocom->statewr_tree)) {
+	    RB_EMPTY(&iocom->router.staterd_tree) &&
+	    RB_EMPTY(&iocom->router.statewr_tree)) {
 		dummy = 0;
 		write(iocom->wakeupfds[1], &dummy, 1);
 	}

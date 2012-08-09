@@ -36,10 +36,10 @@
 #include "hammer2.h"
 
 static void *master_accept(void *data);
-static void master_auth_state(hammer2_iocom_t *iocom);
-static void master_auth_rxmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
-static void master_link_state(hammer2_iocom_t *iocom);
-static void master_link_rxmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+static void master_auth_signal(hammer2_router_t *router);
+static void master_auth_rxmsg(hammer2_msg_t *msg);
+static void master_link_signal(hammer2_router_t *router);
+static void master_link_rxmsg(hammer2_msg_t *msg);
 
 /*
  * Start-up the master listener daemon for the machine.
@@ -164,7 +164,9 @@ master_service(void *data)
 
 	fd = (int)(intptr_t)data;
 	hammer2_iocom_init(&iocom, fd, -1,
-			   master_auth_state, master_auth_rxmsg, NULL);
+			   master_auth_signal,
+			   master_auth_rxmsg,
+			   NULL);
 	hammer2_iocom_core(&iocom);
 
 	fprintf(stderr,
@@ -185,11 +187,11 @@ master_service(void *data)
  * message operation.  The connection has already been encrypted at
  * this point.
  */
-static void master_auth_conn_rx(hammer2_state_t *state, hammer2_msg_t *msg);
+static void master_auth_conn_rx(hammer2_msg_t *msg);
 
 static
 void
-master_auth_state(hammer2_iocom_t *iocom __unused)
+master_auth_signal(hammer2_router_t *router)
 {
 	hammer2_msg_t *msg;
 
@@ -199,26 +201,29 @@ master_auth_state(hammer2_iocom_t *iocom __unused)
 	 *
 	 * XXX put additional authentication states here
 	 */
-	msg = hammer2_msg_alloc(iocom, 0, HAMMER2_LNK_CONN |
-					  HAMMER2_MSGF_CREATE);
+	msg = hammer2_msg_alloc(router, 0, HAMMER2_LNK_CONN |
+						   HAMMER2_MSGF_CREATE,
+				master_auth_conn_rx, NULL);
 	snprintf(msg->any.lnk_conn.label, sizeof(msg->any.lnk_conn.label), "*");
-	hammer2_msg_write(iocom, msg, master_auth_conn_rx, NULL, NULL);
+	hammer2_msg_write(msg);
 
-	hammer2_iocom_restate(iocom,
-			      master_link_state, master_link_rxmsg, NULL);
+	hammer2_router_restate(router,
+			      master_link_signal,
+			      master_link_rxmsg,
+			      NULL);
 }
 
 static
 void
-master_auth_conn_rx(hammer2_state_t *state, hammer2_msg_t *msg)
+master_auth_conn_rx(hammer2_msg_t *msg)
 {
 	if (msg->any.head.cmd & HAMMER2_MSGF_DELETE)
-		hammer2_msg_reply(state->iocom, msg, 0);
+		hammer2_msg_reply(msg, 0);
 }
 
 static
 void
-master_auth_rxmsg(hammer2_iocom_t *iocom __unused, hammer2_msg_t *msg __unused)
+master_auth_rxmsg(hammer2_msg_t *msg __unused)
 {
 }
 
@@ -230,13 +235,14 @@ master_auth_rxmsg(hammer2_iocom_t *iocom __unused, hammer2_msg_t *msg __unused)
  */
 static
 void
-master_link_state(hammer2_iocom_t *iocom __unused)
+master_link_signal(hammer2_router_t *router)
 {
+	hammer2_msg_lnk_signal(router);
 }
 
 static
 void
-master_link_rxmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+master_link_rxmsg(hammer2_msg_t *msg)
 {
 	hammer2_state_t *state;
 	uint32_t cmd;
@@ -257,17 +263,17 @@ master_link_rxmsg(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 
 	if (state && state->func) {
 		assert(state->func != NULL);
-		state->func(state, msg);
+		state->func(msg);
 	} else {
 		switch(cmd & HAMMER2_MSGF_PROTOS) {
 		case HAMMER2_MSG_PROTO_LNK:
-			hammer2_msg_lnk(iocom, msg);
+			hammer2_msg_lnk(msg);
 			break;
 		case HAMMER2_MSG_PROTO_DBG:
-			hammer2_msg_dbg(iocom, msg);
+			hammer2_msg_dbg(msg);
 			break;
 		default:
-			hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
+			hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
 			break;
 		}
 	}

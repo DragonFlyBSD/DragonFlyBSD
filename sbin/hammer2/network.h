@@ -137,7 +137,7 @@ struct hammer2_state {
 	int		flags;
 	int		error;
 	struct hammer2_msg *msg;
-	void (*func)(struct hammer2_state *, struct hammer2_msg *);
+	void (*func)(struct hammer2_msg *);
 	union {
 		void *any;
 		struct h2span_link *link;
@@ -160,6 +160,7 @@ struct hammer2_address {
 
 struct hammer2_msg {
 	TAILQ_ENTRY(hammer2_msg) qentry;
+	struct hammer2_router *router;
 	struct hammer2_state *state;
 	size_t		hdr_size;
 	size_t		aux_size;
@@ -224,6 +225,27 @@ typedef struct hammer2_ioq hammer2_ioq_t;
 #define HAMMER2_IOQ_MAXIOVEC    16
 
 /*
+ * hammer2_router - governs the routing of a message.  Passed into
+ * 		    hammer2_msg_write.
+ *
+ * The router is either connected to an iocom (socket) directly, or
+ * connected to a SPAN transaction (h2span_link structure).
+ */
+struct hammer2_router {
+	struct hammer2_iocom *iocom;
+	struct h2span_link   *link;		/* non-NULL if indirect */
+	void	(*signal_callback)(struct hammer2_router *);
+	void	(*rcvmsg_callback)(struct hammer2_msg *);
+	void	(*altmsg_callback)(struct hammer2_iocom *);
+	struct hammer2_state_tree staterd_tree; /* active messages */
+	struct hammer2_state_tree statewr_tree; /* active messages */
+	hammer2_msg_queue_t txmsgq;		/* tx msgq from remote */
+	int	refs;				/* refs prevent destruction */
+};
+
+typedef struct hammer2_router hammer2_router_t;
+
+/*
  * hammer2_iocom - governs a messaging stream connection
  */
 struct hammer2_iocom {
@@ -232,10 +254,6 @@ struct hammer2_iocom {
 	hammer2_msg_queue_t freeq;		/* free msgs hdr only */
 	hammer2_msg_queue_t freeq_aux;		/* free msgs w/aux_data */
 	struct hammer2_address_queue  addrq;	/* source/target addrs */
-	void	(*state_callback)(struct hammer2_iocom *);
-	void	(*rcvmsg_callback)(struct hammer2_iocom *,
-				   struct hammer2_msg *);
-	void	(*altmsg_callback)(struct hammer2_iocom *);
 	int	sock_fd;			/* comm socket or pipe */
 	int	alt_fd;				/* thread signal, tty, etc */
 	int	wakeupfds[2];			/* pipe wakes up iocom thread */
@@ -243,9 +261,7 @@ struct hammer2_iocom {
 	int	rxmisc;
 	int	txmisc;
 	char	sess[HAMMER2_AES_KEY_SIZE];	/* aes_256_cbc key */
-	struct hammer2_state_tree staterd_tree; /* active messages */
-	struct hammer2_state_tree statewr_tree; /* active messages */
-	hammer2_msg_queue_t txmsgq;		/* tx msgq from remote */
+	struct hammer2_router router;
 	pthread_mutex_t mtx;			/* mutex for state*tree/rmsgq */
 };
 

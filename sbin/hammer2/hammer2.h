@@ -125,29 +125,27 @@ void hammer2_bswap_head(hammer2_msg_hdr_t *head);
 void hammer2_ioq_init(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
 void hammer2_ioq_done(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
 void hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
-			void (*state_func)(hammer2_iocom_t *),
-			void (*rcvmsg_func)(hammer2_iocom_t *, hammer2_msg_t *),
+			void (*state_func)(hammer2_router_t *),
+			void (*rcvmsg_func)(hammer2_msg_t *),
 			void (*altmsg_func)(hammer2_iocom_t *));
-void hammer2_iocom_restate(hammer2_iocom_t *iocom,
-			void (*state_func)(hammer2_iocom_t *),
-			void (*rcvmsg_func)(hammer2_iocom_t *, hammer2_msg_t *),
+void hammer2_router_restate(hammer2_router_t *router,
+			void (*state_func)(hammer2_router_t *),
+			void (*rcvmsg_func)(hammer2_msg_t *),
 			void (*altmsg_func)(hammer2_iocom_t *));
+void hammer2_router_signal(hammer2_router_t *router);
 void hammer2_iocom_done(hammer2_iocom_t *iocom);
-hammer2_msg_t *hammer2_msg_alloc(hammer2_iocom_t *iocom, size_t aux_size,
-			uint32_t cmd);
-void hammer2_msg_reply(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
-			uint32_t error);
-void hammer2_msg_result(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
-			uint32_t error);
+hammer2_msg_t *hammer2_msg_alloc(hammer2_router_t *router,
+			size_t aux_size, uint32_t cmd,
+			void (*func)(hammer2_msg_t *), void *data);
+void hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error);
+void hammer2_msg_result(hammer2_msg_t *msg, uint32_t error);
 void hammer2_state_reply(hammer2_state_t *state, uint32_t error);
 
-void hammer2_msg_free(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+void hammer2_msg_free(hammer2_msg_t *msg);
 
 void hammer2_iocom_core(hammer2_iocom_t *iocom);
 hammer2_msg_t *hammer2_ioq_read(hammer2_iocom_t *iocom);
-void hammer2_msg_write(hammer2_iocom_t *iocom, hammer2_msg_t *msg,
-			void (*func)(hammer2_state_t *, hammer2_msg_t *),
-			void *data, hammer2_state_t **statep);
+void hammer2_msg_write(hammer2_msg_t *msg);
 
 void hammer2_iocom_drain(hammer2_iocom_t *iocom);
 void hammer2_iocom_flush1(hammer2_iocom_t *iocom);
@@ -159,8 +157,9 @@ void hammer2_state_free(hammer2_state_t *state);
 /*
  * Msg protocol functions
  */
-void hammer2_msg_lnk(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
-void hammer2_msg_dbg(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+void hammer2_msg_lnk_signal(hammer2_router_t *router);
+void hammer2_msg_lnk(hammer2_msg_t *msg);
+void hammer2_msg_dbg(hammer2_msg_t *msg);
 
 /*
  * Crypto functions
@@ -187,11 +186,11 @@ const char * hammer2_basecmd_str(uint32_t cmd);
 const char *hammer2_msg_str(hammer2_msg_t *msg);
 int hammer2_connect(const char *hostname);
 
-void shell_tree(hammer2_iocom_t *iocom, char *cmdbuf);
+void shell_tree(hammer2_router_t *router, char *cmdbuf);
 
 void *master_service(void *data);
 
 void hammer2_msg_debug(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
-void iocom_printf(hammer2_iocom_t *iocom, const char *ctl, ...);
+void router_printf(hammer2_router_t *router, const char *ctl, ...);
 void *hammer2_alloc(size_t bytes);
 void hammer2_free(void *ptr);

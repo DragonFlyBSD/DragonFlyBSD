@@ -95,6 +95,11 @@
  * an active transaction is lost, the related messages will be fully aborted
  * and the higher protocol levels will retry as appropriate.
  *
+ * FULLY ABORTING A ROUTED MESSAGE is handled via link-failure propagation
+ * back to the originator.  Only the originator keeps tracks of a message.
+ * Routers just pass it through.  If a route is lost during transit the
+ * message is simply thrown away.
+ *
  * It is also important to note that several paths to the same PFS can be
  * propagated along the same link, which allows concurrency and even
  * redundancy over several network interfaces or via different routes through
@@ -222,6 +227,7 @@ struct h2span_link {
 	struct h2span_node *node;	/* related node */
 	int32_t	dist;
 	struct h2span_relay_queue relayq; /* relay out */
+	struct hammer2_router	router;
 };
 
 /*
@@ -276,9 +282,9 @@ h2span_link_cmp(h2span_link_t *link1, h2span_link_t *link2)
 		return(-1);
 	if (link1->dist > link2->dist)
 		return(1);
-	if ((intptr_t)link1 < (intptr_t)link2)
+	if (link1->state->msgid < link2->state->msgid)
 		return(-1);
-	if ((intptr_t)link1 > (intptr_t)link2)
+	if (link1->state->msgid > link2->state->msgid)
 		return(1);
 	return(0);
 }
@@ -292,17 +298,20 @@ static
 int
 h2span_relay_cmp(h2span_relay_t *relay1, h2span_relay_t *relay2)
 {
-	if ((intptr_t)relay1->link->node < (intptr_t)relay2->link->node)
+	h2span_link_t *link1 = relay1->link;
+	h2span_link_t *link2 = relay2->link;
+
+	if ((intptr_t)link1->node < (intptr_t)link2->node)
 		return(-1);
-	if ((intptr_t)relay1->link->node > (intptr_t)relay2->link->node)
+	if ((intptr_t)link1->node > (intptr_t)link2->node)
 		return(1);
-	if ((intptr_t)relay1->link->dist < (intptr_t)relay2->link->dist)
+	if (link1->dist < link2->dist)
 		return(-1);
-	if ((intptr_t)relay1->link->dist > (intptr_t)relay2->link->dist)
+	if (link1->dist > link2->dist)
 		return(1);
-	if ((intptr_t)relay1->link < (intptr_t)relay2->link)
+	if (link1->state->msgid < link2->state->msgid)
 		return(-1);
-	if ((intptr_t)relay1->link > (intptr_t)relay2->link)
+	if (link1->state->msgid > link2->state->msgid)
 		return(1);
 	return(0);
 }
@@ -332,11 +341,19 @@ static pthread_mutex_t cluster_mtx;
 static struct h2span_cluster_tree cluster_tree = RB_INITIALIZER(cluster_tree);
 static struct h2span_connect_queue connq = TAILQ_HEAD_INITIALIZER(connq);
 
-static void hammer2_lnk_span(hammer2_state_t *state, hammer2_msg_t *msg);
-static void hammer2_lnk_conn(hammer2_state_t *state, hammer2_msg_t *msg);
-static void hammer2_lnk_relay(hammer2_state_t *state, hammer2_msg_t *msg);
+static void hammer2_lnk_span(hammer2_msg_t *msg);
+static void hammer2_lnk_conn(hammer2_msg_t *msg);
+static void hammer2_lnk_relay(hammer2_msg_t *msg);
 static void hammer2_relay_scan(h2span_connect_t *conn, h2span_node_t *node);
 static void hammer2_relay_delete(h2span_relay_t *relay);
+
+void
+hammer2_msg_lnk_signal(hammer2_router_t *router __unused)
+{
+	pthread_mutex_lock(&cluster_mtx);
+	hammer2_relay_scan(NULL, NULL);
+	pthread_mutex_unlock(&cluster_mtx);
+}
 
 /*
  * Receive a HAMMER2_MSG_PROTO_LNK message.  This only called for
@@ -344,27 +361,28 @@ static void hammer2_relay_delete(h2span_relay_t *relay);
  * in all other cases.
  */
 void
-hammer2_msg_lnk(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+hammer2_msg_lnk(hammer2_msg_t *msg)
 {
 	switch(msg->any.head.cmd & HAMMER2_MSGF_BASECMDMASK) {
 	case HAMMER2_LNK_CONN:
-		hammer2_lnk_conn(msg->state, msg);
+		hammer2_lnk_conn(msg);
 		break;
 	case HAMMER2_LNK_SPAN:
-		hammer2_lnk_span(msg->state, msg);
+		hammer2_lnk_span(msg);
 		break;
 	default:
 		fprintf(stderr,
 			"MSG_PROTO_LNK: Unknown msg %08x\n", msg->any.head.cmd);
-		hammer2_msg_reply(iocom, msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
 		/* state invalid after reply */
 		break;
 	}
 }
 
 void
-hammer2_lnk_conn(hammer2_state_t *state, hammer2_msg_t *msg)
+hammer2_lnk_conn(hammer2_msg_t *msg)
 {
+	hammer2_state_t *state = msg->state;
 	h2span_connect_t *conn;
 	h2span_relay_t *relay;
 	char *alloc = NULL;
@@ -393,12 +411,15 @@ hammer2_lnk_conn(hammer2_state_t *state, hammer2_msg_t *msg)
 		state->any.conn = conn;
 		TAILQ_INSERT_TAIL(&connq, conn, entry);
 
-		hammer2_msg_result(state->iocom, msg, 0);
+		hammer2_msg_result(msg, 0);
 
+#if 0
 		/*
 		 * Span-synchronize all nodes with the new connection
 		 */
 		hammer2_relay_scan(conn, NULL);
+#endif
+		hammer2_router_signal(msg->router);
 	}
 
 	/*
@@ -426,15 +447,16 @@ hammer2_lnk_conn(hammer2_state_t *state, hammer2_msg_t *msg)
 		TAILQ_REMOVE(&connq, conn, entry);
 		hammer2_free(conn);
 
-		hammer2_msg_reply(state->iocom, msg, 0);
+		hammer2_msg_reply(msg, 0);
 		/* state invalid after reply */
 	}
 	pthread_mutex_unlock(&cluster_mtx);
 }
 
 void
-hammer2_lnk_span(hammer2_state_t *state, hammer2_msg_t *msg)
+hammer2_lnk_span(hammer2_msg_t *msg)
 {
+	hammer2_state_t *state = msg->state;
 	h2span_cluster_t dummy_cls;
 	h2span_node_t dummy_node;
 	h2span_cluster_t *cls;
@@ -443,22 +465,18 @@ hammer2_lnk_span(hammer2_state_t *state, hammer2_msg_t *msg)
 	h2span_relay_t *relay;
 	char *alloc = NULL;
 
+	assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
+
 	pthread_mutex_lock(&cluster_mtx);
 
 	/*
 	 * On transaction start we initialize the tracking infrastructure
 	 */
 	if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
+		assert(state->func == NULL);
 		state->func = hammer2_lnk_span;
 
 		msg->any.lnk_span.label[sizeof(msg->any.lnk_span.label)-1] = 0;
-
-		fprintf(stderr, "LNK_SPAN: %s/%s dist=%d\n",
-			hammer2_uuid_to_str(&msg->any.lnk_span.pfs_clid,
-					    &alloc),
-			msg->any.lnk_span.label,
-			msg->any.lnk_span.dist);
-		free(alloc);
 
 		/*
 		 * Find the cluster
@@ -497,9 +515,29 @@ hammer2_lnk_span(hammer2_state_t *state, hammer2_msg_t *msg)
 		slink->dist = msg->any.lnk_span.dist;
 		slink->state = state;
 		state->any.link = slink;
+
+		/*
+		 * Embedded router structure in link for message forwarding.
+		 */
+		TAILQ_INIT(&slink->router.txmsgq);
+		slink->router.iocom = state->iocom;
+		slink->router.link = slink;
+
 		RB_INSERT(h2span_link_tree, &node->tree, slink);
 
+		fprintf(stderr, "LNK_SPAN(thr %p): %p %s/%s dist=%d\n",
+			msg->router->iocom,
+			slink,
+			hammer2_uuid_to_str(&msg->any.lnk_span.pfs_clid,
+					    &alloc),
+			msg->any.lnk_span.label,
+			msg->any.lnk_span.dist);
+		free(alloc);
+
+#if 0
 		hammer2_relay_scan(NULL, node);
+#endif
+		hammer2_router_signal(msg->router);
 	}
 
 	/*
@@ -510,6 +548,14 @@ hammer2_lnk_span(hammer2_state_t *state, hammer2_msg_t *msg)
 		assert(slink != NULL);
 		node = slink->node;
 		cls = node->cls;
+
+		fprintf(stderr, "LNK_DELE(thr %p): %p %s/%s dist=%d\n",
+			msg->router->iocom,
+			slink,
+			hammer2_uuid_to_str(&cls->pfs_clid, &alloc),
+			state->msg->any.lnk_span.label,
+			state->msg->any.lnk_span.dist);
+		free(alloc);
 
 		/*
 		 * Clean out all relays.  This requires terminating each
@@ -550,8 +596,12 @@ hammer2_lnk_span(hammer2_state_t *state, hammer2_msg_t *msg)
 		 * it doesn't then all related relays have already been
 		 * removed and there's nothing left to do.
 		 */
+#if 0
 		if (node)
 			hammer2_relay_scan(NULL, node);
+#endif
+		if (node)
+			hammer2_router_signal(msg->router);
 	}
 
 	pthread_mutex_unlock(&cluster_mtx);
@@ -564,9 +614,12 @@ hammer2_lnk_span(hammer2_state_t *state, hammer2_msg_t *msg)
  * XXX MPRACE on state structure
  */
 static void
-hammer2_lnk_relay(hammer2_state_t *state, hammer2_msg_t *msg)
+hammer2_lnk_relay(hammer2_msg_t *msg)
 {
+	hammer2_state_t *state = msg->state;
 	h2span_relay_t *relay;
+
+	assert(msg->any.head.cmd & HAMMER2_MSGF_REPLY);
 
 	if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
 		pthread_mutex_lock(&cluster_mtx);
@@ -676,8 +729,8 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 	info.relay = NULL;
 
 	/*
-	 * Locate the first related relay for the connection.  relay will
-	 * be NULL if there were none.
+	 * Locate the first related relay for the node on this connection.
+	 * relay will be NULL if there were none.
 	 */
 	RB_SCAN(h2span_relay_tree, &conn->tree,
 		hammer2_relay_scan_cmp, hammer2_relay_scan_callback, &info);
@@ -693,7 +746,12 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 	 * Iterate the node's links (received SPANs) in distance order,
 	 * lowest (best) dist first.
 	 */
+	/* fprintf(stderr, "LOOP\n"); */
 	RB_FOREACH(slink, h2span_link_tree, &node->tree) {
+		/*
+		fprintf(stderr, "SLINK %p RELAY %p(%p)\n",
+			slink, relay, relay ? relay->link : NULL);
+		*/
 		/*
 		 * PROPAGATE THE BEST LINKS OVER THE SPECIFIED CONNECTION.
 		 *
@@ -702,12 +760,12 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 		 *
 		 * (If some prior better link was removed it would have also
 		 *  removed the relay, so the relay can only match exactly or
-		 *  be worst).
+		 *  be worse).
 		 */
 		if (relay && relay->link == slink) {
 			/*
-			 * Match, get the next relay to match against the
-			 * next slink.
+			 * Match, relay already in-place, get the next
+			 * relay to match against the next slink.
 			 */
 			relay = RB_NEXT(h2span_relay_tree, &conn->tree, relay);
 			if (--count == 0)
@@ -718,35 +776,43 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 			 * do not relay.  This prevents endless closed
 			 * loops with ever-incrementing distances when
 			 * the seed span is lost in the graph.
+			 *
+			 * All later spans will also be too far away so
+			 * we can break out of the loop.
 			 */
-			/* no code needed */
+			break;
 		} else {
 			/*
 			 * No match, distance is ok, construct a new relay.
+			 * (slink is better than relay).
 			 */
 			hammer2_msg_t *msg;
 
 			assert(relay == NULL ||
-			       relay->link->dist <= slink->dist);
+			       relay->link->node != slink->node ||
+			       relay->link->dist >= slink->dist);
 			relay = hammer2_alloc(sizeof(*relay));
 			relay->conn = conn;
 			relay->link = slink;
 
+			msg = hammer2_msg_alloc(&conn->state->iocom->router, 0,
+						HAMMER2_LNK_SPAN |
+						HAMMER2_MSGF_CREATE,
+						hammer2_lnk_relay, relay);
+			relay->state = msg->state;
+			msg->any.lnk_span = slink->state->msg->any.lnk_span;
+			msg->any.lnk_span.dist = slink->dist + 1;
+
 			RB_INSERT(h2span_relay_tree, &conn->tree, relay);
 			TAILQ_INSERT_TAIL(&slink->relayq, relay, entry);
 
-			msg = hammer2_msg_alloc(conn->state->iocom, 0,
-						HAMMER2_LNK_SPAN |
-						HAMMER2_MSGF_CREATE);
-			msg->any.lnk_span = slink->state->msg->any.lnk_span;
-			++msg->any.lnk_span.dist; /* XXX add weighting */
+			hammer2_msg_write(msg);
 
-			hammer2_msg_write(conn->state->iocom, msg,
-					  hammer2_lnk_relay, relay,
-					  &relay->state);
 			fprintf(stderr,
-				"RELAY SPAN ON CLS=%p NODE=%p DIST=%d "
+				"RELAY SPAN %p RELAY %p ON CLS=%p NODE=%p DIST=%d "
 				"FD %d state %p\n",
+				slink,
+				relay,
 				node->cls, node, slink->dist,
 				conn->state->iocom->sock_fd, relay->state);
 
@@ -777,7 +843,9 @@ void
 hammer2_relay_delete(h2span_relay_t *relay)
 {
 	fprintf(stderr,
-		"RELAY DELETE ON CLS=%p NODE=%p DIST=%d FD %d STATE %p\n",
+		"RELAY DELETE %p RELAY %p ON CLS=%p NODE=%p DIST=%d FD %d STATE %p\n",
+		relay->link,
+		relay,
 		relay->link->node->cls, relay->link->node,
 		relay->link->dist,
 		relay->conn->state->iocom->sock_fd, relay->state);
@@ -796,11 +864,38 @@ hammer2_relay_delete(h2span_relay_t *relay)
 	hammer2_free(relay);
 }
 
+/************************************************************************
+ *				ROUTER					*
+ ************************************************************************
+ *
+ * Provides route functions to msg.c
+ */
+
+#if 0
+/*
+ * Acquire a persistent router structure given the cluster and node ids.
+ * Messages can be transacted via this structure while held.  If the route
+ * is lost messages will return failure.
+ */
+hammer2_router_t *
+hammer2_router_get(uuid_t *pfs_clid, uuid_t *pfs_fsid)
+{
+}
+
+/*
+ * Release previously acquired router.
+ */
+void
+hammer2_router_put(hammer2_router_t *router)
+{
+}
+#endif
+
 /*
  * Dumps the spanning tree
  */
 void
-shell_tree(hammer2_iocom_t *iocom, char *cmdbuf __unused)
+shell_tree(hammer2_router_t *router, char *cmdbuf __unused)
 {
 	h2span_cluster_t *cls;
 	h2span_node_t *node;
@@ -809,14 +904,14 @@ shell_tree(hammer2_iocom_t *iocom, char *cmdbuf __unused)
 
 	pthread_mutex_lock(&cluster_mtx);
 	RB_FOREACH(cls, h2span_cluster_tree, &cluster_tree) {
-		iocom_printf(iocom, "Cluster %s\n",
+		router_printf(router, "Cluster %s\n",
 			     hammer2_uuid_to_str(&cls->pfs_clid, &uustr));
 		RB_FOREACH(node, h2span_node_tree, &cls->tree) {
-			iocom_printf(iocom, "    Node %s (%s)\n",
+			router_printf(router, "    Node %s (%s)\n",
 				 hammer2_uuid_to_str(&node->pfs_fsid, &uustr),
 				 node->label);
 			RB_FOREACH(slink, h2span_link_tree, &node->tree) {
-				iocom_printf(iocom, "\tLink dist=%d via %d\n",
+				router_printf(router, "\tLink dist=%d via %d\n",
 					     slink->dist,
 					     slink->state->iocom->sock_fd);
 			}

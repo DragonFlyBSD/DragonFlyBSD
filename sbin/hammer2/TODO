@@ -1,0 +1,9 @@
+
+TODO:
+	msg_lnk.c  msg_lnk_signal rescans all connections.  What we really
+		   need to do is queue the conn (when possible) or the node
+		   (when possible), or just flag it w/ a global, and then
+		   only scan a subset.
+
+	link->dist propagation is still a bit screwy when there are a
+	lot of parallel network links.
