@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD: src/sys/dev/ixgbe/ixgbe_osdep.h,v 1.12 2012/01/30 23:03:21 jfv Exp $*/
+/*$FreeBSD: src/sys/dev/ixgbe/ixgbe_osdep.h,v 1.13 2012/07/05 20:51:44 jfv Exp $*/
 
 #ifndef _IXGBE_OS_H_
 #define _IXGBE_OS_H_
@@ -53,20 +53,22 @@
 #include <bus/pci/pcireg.h>
 
 #define ASSERT(x) if(!(x)) panic("IXGBE: x")
+#define EWARN(H, W, S) kprintf(W)
 
 /* The happy-fun DELAY macro is defined in /usr/src/sys/i386/include/clock.h */
 #define usec_delay(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))
 
-#define DBG 0 
-#define MSGOUT(S, A, B)     printf(S "\n", A, B)
+#define DBG 0
+#define MSGOUT(S, A, B)     kprintf(S "\n", A, B)
 #define DEBUGFUNC(F)        DEBUGOUT(F);
 #if DBG
-	#define DEBUGOUT(S)         printf(S "\n")
-	#define DEBUGOUT1(S,A)      printf(S "\n",A)
-	#define DEBUGOUT2(S,A,B)    printf(S "\n",A,B)
-	#define DEBUGOUT3(S,A,B,C)  printf(S "\n",A,B,C)
-	#define DEBUGOUT7(S,A,B,C,D,E,F,G)  printf(S "\n",A,B,C,D,E,F,G)
+	#define DEBUGOUT(S)         kprintf(S "\n")
+	#define DEBUGOUT1(S,A)      kprintf(S "\n",A)
+	#define DEBUGOUT2(S,A,B)    kprintf(S "\n",A,B)
+	#define DEBUGOUT3(S,A,B,C)  kprintf(S "\n",A,B,C)
+	#define DEBUGOUT6(S,A,B,C,D,E,F)    kprintf(S "\n",A,B,C,D,E,F)
+	#define DEBUGOUT7(S,A,B,C,D,E,F,G)  kprintf(S "\n",A,B,C,D,E,F,G)
 #else
 	#define DEBUGOUT(S)
 	#define DEBUGOUT1(S,A)
@@ -107,6 +109,14 @@ typedef uint64_t	u64;
 #ifndef __bool_true_false_are_defined
 typedef boolean_t	bool;
 #endif
+
+/* shared code requires this */
+#define __le16  u16
+#define __le32  u32
+#define __le64  u64
+#define __be16  u16
+#define __be32  u32
+#define __be64  u64
 
 #define le16_to_cpu 
 

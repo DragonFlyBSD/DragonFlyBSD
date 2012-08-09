@@ -285,13 +285,6 @@ void	 srandomdev(void);
 long long
 	 strtonum(const char *, long long, long long, const char **);
 
-/*
- * C11 functions.
- */
-int 	at_quick_exit(void (*func)(void));
-void 	quick_exit(int);
-void	*aligned_alloc(size_t, size_t);
-
 /* Deprecated interfaces. */
 #if !defined(_KERNEL_VIRTUAL)
 __int64_t
@@ -302,6 +295,16 @@ __uint64_t
 
 extern char *suboptarg;			/* getsubopt(3) external variable */
 #endif /* __BSD_VISIBLE */
+
+/*
+ * C11 functions.
+ */
+#if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L || __BSD_VISIBLE
+int 	at_quick_exit(void (*func)(void));
+void 	quick_exit(int) __dead2;
+void	*aligned_alloc(size_t, size_t);
+#endif /* __ISO_C_VISIBLE >= 2011 */
+
 __END_DECLS
 
 #endif /* !_STDLIB_H_ */

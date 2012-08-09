@@ -23,3 +23,8 @@ The .h files copied into base where created using configure opts:
 
 The following files have been modified:
 	ncurses/tinfo/comp_scan.c
+	misc/terminfo.src [1]
+
+[1] smcup and rmcup were removed from xterm-basic to disable the
+    restoration of the console after less, more, man, and other
+    utilities are executed.  It was rendering them useless.

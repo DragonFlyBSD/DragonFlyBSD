@@ -27,11 +27,13 @@ MISRCS+= nmalloc.c
 .endif
 
 .if ${LIB} == "c"
-MAN+=	a64l.3 abort.3 abs.3 alloca.3 atexit.3 atof.3 atoi.3 atol.3 bsearch.3 \
+MAN+=	a64l.3 abort.3 abs.3 alloca.3 atexit.3 atof.3 atoi.3 atol.3 \
+	at_quick_exit.3 \
+	bsearch.3 \
 	div.3 exit.3 getenv.3 getopt.3 getopt_long.3 getsubopt.3 \
 	hcreate.3 imaxabs.3 imaxdiv.3 insque.3 labs.3 ldiv.3 llabs.3 lldiv.3 \
 	lsearch.3 malloc.3 memory.3 posix_memalign.3 posix_openpt.3 \
-	ptsname.3 qsort.3 \
+	ptsname.3 qsort.3 quick_exit.3 \
 	radixsort.3 rand.3 random.3 \
 	realpath.3 strfmon.3 strtod.3 strtol.3 strtonum.3 strtoul.3 system.3 \
 	tsearch.3

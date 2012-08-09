@@ -103,6 +103,8 @@
 .\" Definitions not (yet) in doc-syms
 .ds doc-str-St--p1003.1-2008   \*[doc-Tn-font-size]\%IEEE\*[doc-str-St] Std 1003.1-2008
 .as doc-str-St--p1003.1-2008   " (\*[Lq]\)\*[Px]\*[doc-str-St].1\*[Rq])
+.ds doc-str-St--isoC-2011      \*[doc-Tn-font-size]ISO/IEC\*[doc-str-St] 9899:2011
+.as doc-str-St--isoC-2011      " (\*[Lq]\*[doc-Tn-font-size]ISO\~C\^11\*[doc-str-St]\*[Rq])
 .
 .ec
 .

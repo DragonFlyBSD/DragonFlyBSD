@@ -3622,14 +3622,10 @@ emx_qpoll_status(struct ifnet *ifp, int pollhz __unused)
 
 	reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-		emx_serialize_skipmain(sc);
-
 		callout_stop(&sc->timer);
 		sc->hw.mac.get_link_status = 1;
 		emx_update_link_status(sc);
 		callout_reset(&sc->timer, hz, emx_timer, sc);
-
-		emx_deserialize_skipmain(sc);
 	}
 }
 
