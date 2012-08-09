@@ -52,6 +52,12 @@ or
 The
 .Fn at_quick_exit
 function returns the value 0 if successful and a non-zero value on failure.
+.Sh ERRORS
+The function is registered unless:
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+An allocation to register the function failed.
+.El
 .Sh SEE ALSO
 .Xr exit 3 ,
 .Xr quick_exit 3
