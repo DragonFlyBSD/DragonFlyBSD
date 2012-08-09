@@ -228,6 +228,9 @@ typedef struct hammer2_ioq hammer2_ioq_t;
 #define HAMMER2_IOQ_ERROR_MSGSEQ	15	/* message sequence error */
 #define HAMMER2_IOQ_ERROR_EALREADY	16	/* ignore this message */
 #define HAMMER2_IOQ_ERROR_TRANS		17	/* state transaction issue */
+#define HAMMER2_IOQ_ERROR_IVWRAP	18	/* IVs exhaused */
+#define HAMMER2_IOQ_ERROR_MACFAIL	19	/* MAC of encryption algorithm failed */
+#define HAMMER2_IOQ_ERROR_ALGO		20	/* Misc. encryption algorithm error */
 
 #define HAMMER2_IOQ_MAXIOVEC    16
 

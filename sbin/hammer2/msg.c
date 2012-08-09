@@ -2058,6 +2058,15 @@ hammer2_msg_str(hammer2_msg_t *msg)
 	case HAMMER2_IOQ_ERROR_TRANS:
 		errstr = "err=IOQ:BADTRANS";
 		break;
+	case HAMMER2_IOQ_ERROR_IVWRAP:
+		errstr = "err=IOQ:IVWRAP";
+		break;
+	case HAMMER2_IOQ_ERROR_MACFAIL:
+		errstr = "err=IOQ:MACFAIL";
+		break;
+	case HAMMER2_IOQ_ERROR_ALGO:
+		errstr = "err=IOQ:ALGOFAIL";
+		break;
 	case HAMMER2_MSG_ERR_NOSUPP:
 		errstr = "err=NOSUPPORT";
 		break;

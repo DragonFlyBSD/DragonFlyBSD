@@ -175,7 +175,7 @@ _gcm_iv_increment(char *iv)
 	 * Detect wrap-around, which means it is time to renegotiate
 	 * the session to get a new key and/or fixed field.
 	 */
-	return (c == 0) ? -1 : 0;
+	return (c == 0) ? 0 : 1;
 }
 
 static
@@ -233,13 +233,19 @@ hammer2_crypto_encrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 	printf("\n");
 #endif
 
-	_gcm_iv_increment(ioq->iv);
+	ok = _gcm_iv_increment(ioq->iv);
+	if (!ok) {
+		ioq->error = HAMMER2_IOQ_ERROR_IVWRAP;
+		goto fail_out;
+	}
 
 	*out_size = u_len + f_len + HAMMER2_CRYPTO_TAG_SIZE;
 
 	return 0;
 
 fail:
+	ioq->error = HAMMER2_IOQ_ERROR_ALGO;
+fail_out:
 	if (DebugOpt)
 		fprintf(stderr, "error during encrypt_chunk\n");
 	return -1;
@@ -260,8 +266,10 @@ hammer2_crypto_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 
 	/* Re-initialize with new IV (but without redoing the key schedule) */
 	ok = EVP_DecryptInit_ex(&ioq->ctx, NULL, NULL, NULL, ioq->iv);
-	if (!ok)
-		goto fail;
+	if (!ok) {
+		ioq->error = HAMMER2_IOQ_ERROR_ALGO;
+		goto fail_out;
+	}
 
 #ifdef CRYPTO_DEBUG
 	printf("dec_chunk iv: ");
@@ -283,8 +291,10 @@ hammer2_crypto_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_SET_TAG,
 				 HAMMER2_CRYPTO_TAG_SIZE,
 				 ct + out_size);
-	if (!ok)
-		goto fail;
+	if (!ok) {
+		ioq->error = HAMMER2_IOQ_ERROR_ALGO;
+		goto fail_out;
+	}
 
 	ok = EVP_DecryptUpdate(&ioq->ctx, pt, &u_len, ct, out_size);
 	if (!ok)
@@ -294,7 +304,11 @@ hammer2_crypto_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 	if (!ok)
 		goto fail;
 
-	_gcm_iv_increment(ioq->iv);
+	ok = _gcm_iv_increment(ioq->iv);
+	if (!ok) {
+		ioq->error = HAMMER2_IOQ_ERROR_IVWRAP;
+		goto fail_out;
+	}
 
 	*consume_size = u_len + f_len + HAMMER2_CRYPTO_TAG_SIZE;
 
@@ -308,6 +322,8 @@ hammer2_crypto_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 	return 0;
 
 fail:
+	ioq->error = HAMMER2_IOQ_ERROR_MACFAIL;
+fail_out:
 	if (DebugOpt)
 		fprintf(stderr, "error during decrypt_chunk (likely authentication error)\n");
 	return -1;
