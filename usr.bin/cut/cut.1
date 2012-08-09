@@ -29,9 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)cut.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD$
+.\" $FreeBSD: src/usr.bin/cut/cut.1,v 1.36 2012/06/11 03:10:15 kevlo Exp $
 .\"
-.Dd December 21, 2006
+.Dd August 8, 2012
 .Dt CUT 1
 .Os
 .Sh NAME
@@ -47,14 +47,14 @@
 .Op Ar
 .Nm
 .Fl f Ar list
-.Op Fl d Ar delim
+.Op Fl w | Fl d Ar delim
 .Op Fl s
 .Op Ar
 .Sh DESCRIPTION
 The
 .Nm
 utility cuts out selected portions of each line (as specified by
-.Ar list  )
+.Ar list )
 from each
 .Ar file
 and writes them to the standard output.
@@ -119,6 +119,9 @@ that form the character are selected.
 .It Fl s
 Suppress lines with no field delimiter characters.
 Unless specified, lines with no delimiters are passed through unmodified.
+.It Fl w
+Use whitespace (spaces and tabs) as the delimiter.
+Consecutive spaces and tabs count as one single field separator.
 .El
 .Sh ENVIRONMENT
 The
