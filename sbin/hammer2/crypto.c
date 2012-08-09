@@ -457,17 +457,16 @@ done:
  * Decrypt pending data in the ioq's fifo.  The data is decrypted in-place.
  */
 void
-hammer2_crypto_decrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq)
+hammer2_crypto_decrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
 {
 	int p_len;
 	int n;
 	int i;
 	char buf[512];
 
-	if ((iocom->flags & HAMMER2_IOCOMF_CRYPTED) == 0)
-		return;
-	p_len = ioq->fifo_end - ioq->fifo_cdx;
+	p_len = ioq->fifo_end - ioq->fifo_cdn;
 	p_len &= ~HAMMER2_AES_KEY_MASK;
+
 	if (p_len == 0)
 		return;
 	for (i = 0; i < p_len; i += n) {
@@ -479,97 +478,43 @@ hammer2_crypto_decrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq)
 				  buf, n);
 	}
 	ioq->fifo_cdx += p_len;
+	ioq->fifo_cdn += p_len;
 }
 
 /*
- * Decrypt data in the message's auxilary buffer.  The data is decrypted
- * in-place.
+ * *nactp is set to the number of ORIGINAL bytes consumed by the encrypter.
+ * The FIFO may contain more data.
  */
-void
-hammer2_crypto_decrypt_aux(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
-			   hammer2_msg_t *msg, int already)
-{
-	int p_len;
-	int n;
-	int i;
-	char buf[512];
-
-	if ((iocom->flags & HAMMER2_IOCOMF_CRYPTED) == 0)
-		return;
-	p_len = msg->aux_size;
-	assert((p_len & HAMMER2_AES_KEY_MASK) == 0);
-	if (p_len == 0)
-		return;
-	i = already;
-	while (i < p_len) {
-		n = (p_len - i > (int)sizeof(buf)) ?
-			(int)sizeof(buf) : p_len - i;
-		bcopy(msg->aux_data + i, buf, n);
-		EVP_DecryptUpdate(&ioq->ctx,
-				  msg->aux_data + i, &n,
-				  buf, n);
-		i += n;
-	}
-#if 0
-	EVP_DecryptUpdate(&iocom->ioq_rx.ctx,
-			  msg->aux_data, &p_len,
-			  msg->aux_data, p_len);
-#endif
-}
-
 int
-hammer2_crypto_encrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
-		       struct iovec *iov, int n, size_t *nmaxp)
+hammer2_crypto_encrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq,
+		       struct iovec *iov, int n, size_t *nactp)
 {
 	int p_len;
 	int i;
-	int already;
-	int nmax;
+	size_t nmax;
 
-	if ((iocom->flags & HAMMER2_IOCOMF_CRYPTED) == 0)
-		return (n);
-	nmax = sizeof(ioq->buf) - ioq->fifo_cdx;	/* max new bytes */
-	already = ioq->fifo_cdx - ioq->fifo_beg;	/* already encrypted */
+	nmax = sizeof(ioq->buf) - ioq->fifo_end;	/* max new bytes */
 
-	for (i = 0; i < n; ++i) {
+	*nactp = 0;
+	for (i = 0; i < n && nmax; ++i) {
 		p_len = iov[i].iov_len;
-		if (p_len <= already) {
-			already -= p_len;
-			continue;
-		}
-		p_len -= already;
-		p_len &= ~HAMMER2_AES_KEY_MASK;
-		if (p_len > nmax)
-			p_len = nmax;
+		assert((p_len & HAMMER2_AES_KEY_MASK) == 0);
+		if ((size_t)p_len > nmax)
+			p_len = (int)nmax;
+		*nactp += (size_t)p_len;	/* plaintext count */
 		EVP_EncryptUpdate(&ioq->ctx,
 				  ioq->buf + ioq->fifo_cdx, &p_len,
-				  (char *)iov[i].iov_base + already, p_len);
-		ioq->fifo_cdx += p_len;
-		ioq->fifo_end += p_len;
-		nmax -= p_len;
+				  (char *)iov[i].iov_base, p_len);
+		assert((size_t)p_len == iov[i].iov_len);
+		ioq->fifo_cdx += (size_t)p_len;	/* crypted count */
+		ioq->fifo_cdn += (size_t)p_len;	/* crypted count */
+		ioq->fifo_end += (size_t)p_len;
+		nmax -= (size_t)p_len;
 		if (nmax == 0)
 			break;
-		already = 0;
 	}
 	iov[0].iov_base = ioq->buf + ioq->fifo_beg;
 	iov[0].iov_len = ioq->fifo_cdx - ioq->fifo_beg;
-	*nmaxp = (size_t)(ioq->fifo_cdx - ioq->fifo_beg);
 
 	return (1);
-}
-
-void
-hammer2_crypto_encrypt_wrote(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
-			     int nact)
-{
-	if ((iocom->flags & HAMMER2_IOCOMF_CRYPTED) == 0)
-		return;
-	if (nact == 0)
-		return;
-	ioq->fifo_beg += nact;
-	if (ioq->fifo_beg == ioq->fifo_end) {
-		ioq->fifo_beg = 0;
-		ioq->fifo_cdx = 0;
-		ioq->fifo_end = 0;
-	}
 }

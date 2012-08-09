@@ -464,6 +464,42 @@ hammer2_iocom_core(hammer2_iocom_t *iocom)
 }
 
 /*
+ * Make sure there's enough room in the FIFO to hold the
+ * needed data.
+ *
+ * Assume worst case encrypted form is 2x the size of the
+ * plaintext equivalent.
+ */
+static
+size_t
+hammer2_ioq_makeroom(hammer2_ioq_t *ioq, size_t needed)
+{
+	size_t bytes;
+	size_t nmax;
+
+	bytes = ioq->fifo_cdx - ioq->fifo_beg;
+	nmax = sizeof(ioq->buf) - ioq->fifo_end;
+	if (bytes + nmax / 2 < needed) {
+		if (bytes) {
+			bcopy(ioq->buf + ioq->fifo_beg,
+			      ioq->buf,
+			      bytes);
+		}
+		ioq->fifo_cdx -= ioq->fifo_beg;
+		ioq->fifo_beg = 0;
+		if (ioq->fifo_cdn < ioq->fifo_end) {
+			bcopy(ioq->buf + ioq->fifo_cdn,
+			      ioq->buf + ioq->fifo_cdx,
+			      ioq->fifo_end - ioq->fifo_cdn);
+		}
+		ioq->fifo_end -= ioq->fifo_cdn - ioq->fifo_cdx;
+		ioq->fifo_cdn = ioq->fifo_cdx;
+		nmax = sizeof(ioq->buf) - ioq->fifo_end;
+	}
+	return(nmax);
+}
+
+/*
  * Read the next ready message from the ioq, issuing I/O if needed.
  * Caller should retry on a read-event when NULL is returned.
  *
@@ -507,8 +543,8 @@ again:
 	 * Message read in-progress (msg is NULL at the moment).  We don't
 	 * allocate a msg until we have its core header.
 	 */
-	bytes = ioq->fifo_end - ioq->fifo_beg;
 	nmax = sizeof(ioq->buf) - ioq->fifo_end;
+	bytes = ioq->fifo_cdx - ioq->fifo_beg;		/* already decrypted */
 	msg = ioq->msg;
 
 	switch(ioq->state) {
@@ -519,7 +555,8 @@ again:
 		 * size is the message alignment it will never straddle
 		 * the end of the buffer.
 		 */
-		if (bytes < (int)sizeof(msg->any.head)) {
+		nmax = hammer2_ioq_makeroom(ioq, sizeof(msg->any.head));
+		if (bytes < sizeof(msg->any.head)) {
 			n = read(iocom->sock_fd,
 				 ioq->buf + ioq->fifo_end,
 				 nmax);
@@ -537,30 +574,34 @@ again:
 				n = 0;
 				/* fall through */
 			}
-			ioq->fifo_end += n;
-			bytes += n;
-			nmax -= n;
+			ioq->fifo_end += (size_t)n;
+			nmax -= (size_t)n;
 		}
+
+		/*
+		 * Decrypt data received so far.  Data will be decrypted
+		 * in-place but might create gaps in the FIFO.  Partial
+		 * blocks are not immediately decrypted.
+		 *
+		 * WARNING!  The header might be in the wrong endian, we
+		 *	     do not fix it up until we get the entire
+		 *	     extended header.
+		 */
+		if (iocom->flags & HAMMER2_IOCOMF_CRYPTED) {
+			hammer2_crypto_decrypt(iocom, ioq);
+		} else {
+			ioq->fifo_cdx = ioq->fifo_end;
+			ioq->fifo_cdn = ioq->fifo_end;
+		}
+		bytes = ioq->fifo_cdx - ioq->fifo_beg;
 
 		/*
 		 * Insufficient data accumulated (msg is NULL, caller will
 		 * retry on event).
 		 */
 		assert(msg == NULL);
-		if (bytes < (int)sizeof(msg->any.head))
+		if (bytes < sizeof(msg->any.head))
 			break;
-
-		/*
-		 * Calculate the header, decrypt data received so far.
-		 * Data will be decrypted in-place.  Partial blocks are
-		 * not immediately decrypted.
-		 *
-		 * WARNING!  The header might be in the wrong endian, we
-		 *	     do not fix it up until we get the entire
-		 *	     extended header.
-		 */
-		hammer2_crypto_decrypt(iocom, ioq);
-		head = (void *)(ioq->buf + ioq->fifo_beg);
 
 		/*
 		 * Check and fixup the core header.  Note that the icrc
@@ -568,6 +609,7 @@ again:
 		 * fields in the msg may have to be swapped like everything
 		 * else.
 		 */
+		head = (void *)(ioq->buf + ioq->fifo_beg);
 		if (head->magic != HAMMER2_MSGHDR_MAGIC &&
 		    head->magic != HAMMER2_MSGHDR_MAGIC_REV) {
 			ioq->error = HAMMER2_IOQ_ERROR_SYNC;
@@ -606,14 +648,10 @@ again:
 		 * extended header does not straddle the end of the buffer.
 		 * We still want to issue larger reads into our buffer,
 		 * book-keeping is easier if we don't bcopy() yet.
+		 *
+		 * Make sure there is enough room for bloated encrypt data.
 		 */
-		if (bytes + nmax < ioq->hbytes) {
-			bcopy(ioq->buf + ioq->fifo_beg, ioq->buf, bytes);
-			ioq->fifo_cdx -= ioq->fifo_beg;
-			ioq->fifo_beg = 0;
-			ioq->fifo_end = bytes;
-			nmax = sizeof(ioq->buf) - ioq->fifo_end;
-		}
+		nmax = hammer2_ioq_makeroom(ioq, ioq->hbytes);
 		ioq->state = HAMMER2_MSGQ_STATE_HEADER2;
 		/* fall through */
 	case HAMMER2_MSGQ_STATE_HEADER2:
@@ -639,10 +677,17 @@ again:
 				n = 0;
 				/* fall through */
 			}
-			ioq->fifo_end += n;
-			bytes += n;
-			nmax -= n;
+			ioq->fifo_end += (size_t)n;
+			nmax -= (size_t)n;
 		}
+
+		if (iocom->flags & HAMMER2_IOCOMF_CRYPTED) {
+			hammer2_crypto_decrypt(iocom, ioq);
+		} else {
+			ioq->fifo_cdx = ioq->fifo_end;
+			ioq->fifo_cdn = ioq->fifo_end;
+		}
+		bytes = ioq->fifo_cdx - ioq->fifo_beg;
 
 		/*
 		 * Insufficient data accumulated (set msg NULL so caller will
@@ -658,7 +703,6 @@ again:
 		 * so far.  Handle endian-conversion for the entire extended
 		 * header.
 		 */
-		hammer2_crypto_decrypt(iocom, ioq);
 		head = (void *)(ioq->buf + ioq->fifo_beg);
 
 		/*
@@ -698,32 +742,29 @@ again:
 		}
 
 		/*
-		 * Must adjust nmax and bytes (and the state) when falling
-		 * through.
+		 * Must adjust bytes (and the state) when falling through.
+		 * nmax doesn't change.
 		 */
 		ioq->fifo_beg += ioq->hbytes;
-		nmax -= ioq->hbytes;
 		bytes -= ioq->hbytes;
 		ioq->state = HAMMER2_MSGQ_STATE_AUXDATA1;
 		/* fall through */
 	case HAMMER2_MSGQ_STATE_AUXDATA1:
 		/*
 		 * Copy the partial or complete payload from remaining
-		 * bytes in the FIFO.  We have to fall-through either
+		 * bytes in the FIFO in order to optimize the makeroom call
+		 * in the AUXDATA2 state.  We have to fall-through either
 		 * way so we can check the crc.
 		 *
-		 * Adjust msg->aux_size to the final actual value.
+		 * msg->aux_size tracks our aux data.
 		 */
-		ioq->already = ioq->fifo_cdx - ioq->fifo_beg;
-		if (ioq->already > ioq->abytes)
-			ioq->already = ioq->abytes;
 		if (bytes >= ioq->abytes) {
 			bcopy(ioq->buf + ioq->fifo_beg, msg->aux_data,
 			      ioq->abytes);
 			msg->aux_size = ioq->abytes;
 			ioq->fifo_beg += ioq->abytes;
-			if (ioq->fifo_cdx < ioq->fifo_beg)
-				ioq->fifo_cdx = ioq->fifo_beg;
+			assert(ioq->fifo_beg <= ioq->fifo_cdx);
+			assert(ioq->fifo_cdx <= ioq->fifo_cdn);
 			bytes -= ioq->abytes;
 		} else if (bytes) {
 			bcopy(ioq->buf + ioq->fifo_beg, msg->aux_data,
@@ -732,6 +773,8 @@ again:
 			ioq->fifo_beg += bytes;
 			if (ioq->fifo_cdx < ioq->fifo_beg)
 				ioq->fifo_cdx = ioq->fifo_beg;
+			assert(ioq->fifo_beg <= ioq->fifo_cdx);
+			assert(ioq->fifo_cdx <= ioq->fifo_cdn);
 			bytes = 0;
 		} else {
 			msg->aux_size = 0;
@@ -740,15 +783,19 @@ again:
 		/* fall through */
 	case HAMMER2_MSGQ_STATE_AUXDATA2:
 		/*
-		 * Read the remainder of the payload directly into the
-		 * msg->aux_data buffer.
+		 * Make sure there is enough room for more data.
 		 */
 		assert(msg);
+		nmax = hammer2_ioq_makeroom(ioq, ioq->abytes - msg->aux_size);
+
+		/*
+		 * Read and decrypt more of the payload.
+		 */
 		if (msg->aux_size < ioq->abytes) {
 			assert(bytes == 0);
 			n = read(iocom->sock_fd,
-				 msg->aux_data + msg->aux_size,
-				 ioq->abytes - msg->aux_size);
+				 ioq->buf + ioq->fifo_end,
+				 nmax);
 			if (n <= 0) {
 				if (n == 0) {
 					ioq->error = HAMMER2_IOQ_ERROR_EOF;
@@ -763,7 +810,27 @@ again:
 				n = 0;
 				/* fall through */
 			}
-			msg->aux_size += n;
+			ioq->fifo_end += (size_t)n;
+			nmax -= (size_t)n;
+		}
+
+		if (iocom->flags & HAMMER2_IOCOMF_CRYPTED) {
+			hammer2_crypto_decrypt(iocom, ioq);
+		} else {
+			ioq->fifo_cdx = ioq->fifo_end;
+			ioq->fifo_cdn = ioq->fifo_end;
+		}
+		bytes = ioq->fifo_cdx - ioq->fifo_beg;
+
+		if (bytes > ioq->abytes - msg->aux_size)
+			bytes = ioq->abytes - msg->aux_size;
+
+		if (bytes) {
+			bcopy(ioq->buf + ioq->fifo_beg,
+			      msg->aux_data + msg->aux_size,
+			      bytes);
+			msg->aux_size += bytes;
+			ioq->fifo_beg += bytes;
 		}
 
 		/*
@@ -775,7 +842,6 @@ again:
 			break;
 		}
 		assert(msg->aux_size == ioq->abytes);
-		hammer2_crypto_decrypt_aux(iocom, ioq, msg, ioq->already);
 
 		/*
 		 * Check aux_crc, then we are done.
@@ -950,9 +1016,11 @@ skip:
 		 * for more from the socket.  If the FIFO is not empty set
 		 * TWORK to bypass the poll so we loop immediately.
 		 */
-		if (ioq->fifo_beg == ioq->fifo_end) {
+		if (ioq->fifo_beg == ioq->fifo_cdx &&
+		    ioq->fifo_cdn == ioq->fifo_end) {
 			iocom->flags |= HAMMER2_IOCOMF_RREQ;
 			ioq->fifo_cdx = 0;
+			ioq->fifo_cdn = 0;
 			ioq->fifo_beg = 0;
 			ioq->fifo_end = 0;
 		} else {
@@ -1048,15 +1116,14 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 {
 	hammer2_ioq_t *ioq = &iocom->ioq_tx;
 	hammer2_msg_t *msg;
-	ssize_t nmax;
-	ssize_t omax;
-	ssize_t nact;
+	ssize_t n;
 	struct iovec iov[HAMMER2_IOQ_MAXIOVEC];
+	size_t nact;
 	size_t hbytes;
 	size_t abytes;
 	size_t hoff;
 	size_t aoff;
-	int n;
+	int iovcnt;
 
 	if (ioq->error) {
 		hammer2_iocom_drain(iocom);
@@ -1070,8 +1137,8 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 	 * in the queue has been successfully written out, so we can
 	 * resume writing.
 	 */
-	n = 0;
-	nmax = 0;
+	iovcnt = 0;
+	nact = 0;
 	hoff = ioq->hbytes;
 	aoff = ioq->abytes;
 
@@ -1082,26 +1149,26 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 		assert(hoff <= hbytes && aoff <= abytes);
 
 		if (hoff < hbytes) {
-			iov[n].iov_base = (char *)&msg->any.head + hoff;
-			iov[n].iov_len = hbytes - hoff;
-			nmax += hbytes - hoff;
-			++n;
-			if (n == HAMMER2_IOQ_MAXIOVEC)
+			iov[iovcnt].iov_base = (char *)&msg->any.head + hoff;
+			iov[iovcnt].iov_len = hbytes - hoff;
+			nact += hbytes - hoff;
+			++iovcnt;
+			if (iovcnt == HAMMER2_IOQ_MAXIOVEC)
 				break;
 		}
 		if (aoff < abytes) {
 			assert(msg->aux_data != NULL);
-			iov[n].iov_base = (char *)msg->aux_data + aoff;
-			iov[n].iov_len = abytes - aoff;
-			nmax += abytes - aoff;
-			++n;
-			if (n == HAMMER2_IOQ_MAXIOVEC)
+			iov[iovcnt].iov_base = (char *)msg->aux_data + aoff;
+			iov[iovcnt].iov_len = abytes - aoff;
+			nact += abytes - aoff;
+			++iovcnt;
+			if (iovcnt == HAMMER2_IOQ_MAXIOVEC)
 				break;
 		}
 		hoff = 0;
 		aoff = 0;
 	}
-	if (n == 0)
+	if (iovcnt == 0)
 		return;
 
 	/*
@@ -1111,49 +1178,55 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 	 *
 	 * May return a smaller iov (thus a smaller n), with aggregated
 	 * chunks.  May reduce nmax to what fits in the FIFO.
+	 *
+	 * This function sets nact to the number of original bytes now
+	 * encrypted, adding to the FIFO some number of bytes that might
+	 * be greater depending on the crypto mechanic.  iov[] is adjusted
+	 * to point at the FIFO if necessary.
+	 *
+	 * NOTE: The return value from the writev() is the post-encrypted
+	 *	 byte count, not the plaintext count.
 	 */
-	omax = nmax;
-	n = hammer2_crypto_encrypt(iocom, ioq, iov, n, &nmax);
-
-	/*
-	 * Execute the writev() then figure out what happened.
-	 */
-	nact = writev(iocom->sock_fd, iov, n);
-	if (nact < 0) {
-		if (errno != EINTR &&
-		    errno != EINPROGRESS &&
-		    errno != EAGAIN) {
-			/*
-			 * Fatal write error
-			 */
-			ioq->error = HAMMER2_IOQ_ERROR_SOCK;
-			hammer2_iocom_drain(iocom);
-		} else {
-			/*
-			 * Wait for socket buffer space
-			 */
-			iocom->flags |= HAMMER2_IOCOMF_WREQ;
+	if (iocom->flags & HAMMER2_IOCOMF_CRYPTED) {
+		/*
+		 * Make sure the FIFO has a reasonable amount of space
+		 * left (if not completely full).
+		 */
+		if (ioq->fifo_beg > sizeof(ioq->buf) / 2 &&
+		    sizeof(ioq->buf) - ioq->fifo_end >= HAMMER2_MSG_ALIGN * 2) {
+			bcopy(ioq->buf + ioq->fifo_beg, ioq->buf,
+			      ioq->fifo_end - ioq->fifo_beg);
+			ioq->fifo_cdx -= ioq->fifo_beg;
+			ioq->fifo_cdn -= ioq->fifo_beg;
+			ioq->fifo_end -= ioq->fifo_beg;
+			ioq->fifo_beg = 0;
 		}
-		return;
+
+		iovcnt = hammer2_crypto_encrypt(iocom, ioq, iov, iovcnt, &nact);
+		n = writev(iocom->sock_fd, iov, iovcnt);
+		if (n > 0) {
+			ioq->fifo_beg += n;
+			ioq->fifo_cdn += n;
+			ioq->fifo_cdx += n;
+			if (ioq->fifo_beg == ioq->fifo_end) {
+				ioq->fifo_beg = 0;
+				ioq->fifo_cdn = 0;
+				ioq->fifo_cdx = 0;
+				ioq->fifo_end = 0;
+			}
+		}
+	} else {
+		n = writev(iocom->sock_fd, iov, iovcnt);
+		if (n > 0)
+			nact = n;
+		else
+			nact = 0;
 	}
 
 	/*
-	 * Indicate bytes written successfully.
-	 *
-	 * If we were unable to write the entire iov array then set WREQ
-	 * to wait for more socket buffer space.
-	 *
-	 * If the FIFO space was insufficient to fully drain all messages
-	 * set WWORK to cause the core to call us again for the next batch.
-	 */
-	hammer2_crypto_encrypt_wrote(iocom, ioq, nact);
-	if (nact != nmax)
-		iocom->flags |= HAMMER2_IOCOMF_WREQ;
-
-	/*
 	 * Clean out the transmit queue based on what we successfully
-	 * sent.  ioq->hbytes/abytes represents the portion of the first
-	 * message previously sent.
+	 * sent (nact is the plaintext count).  ioq->hbytes/abytes
+	 * represents the portion of the first message previously sent.
 	 */
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		hbytes = (msg->any.head.cmd & HAMMER2_MSGF_SIZE) *
@@ -1181,14 +1254,29 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 
 		hammer2_state_cleanuptx(iocom, msg);
 	}
+	assert(nact == 0);
 
 	/*
-	 * If more messages are pending on WREQ wasn't set we must
-	 * ensure that WWORK gets set.
+	 * Process the return value from the write w/regards to blocking.
 	 */
-	if (msg && (iocom->flags & HAMMER2_IOCOMF_WREQ) == 0)
-		iocom->flags |= HAMMER2_IOCOMF_WWORK;
-	assert(nact == 0);
+	if (n < 0) {
+		if (errno != EINTR &&
+		    errno != EINPROGRESS &&
+		    errno != EAGAIN) {
+			/*
+			 * Fatal write error
+			 */
+			ioq->error = HAMMER2_IOQ_ERROR_SOCK;
+			hammer2_iocom_drain(iocom);
+		} else {
+			/*
+			 * Wait for socket buffer space
+			 */
+			iocom->flags |= HAMMER2_IOCOMF_WREQ;
+		}
+	} else {
+		iocom->flags |= HAMMER2_IOCOMF_WREQ;
+	}
 	if (ioq->error) {
 		hammer2_iocom_drain(iocom);
 	}

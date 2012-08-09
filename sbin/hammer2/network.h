@@ -179,6 +179,9 @@ RB_PROTOTYPE(hammer2_state_tree, hammer2_state, rbnode, hammer2_state_cmp);
 /*
  * hammer2_ioq - An embedded component of hammer2_connect, holds state
  * for the buffering and parsing of incoming and outgoing messages.
+ *
+ * cdx - beg  - processed buffer data, encrypted or decrypted
+ * end - cdn  - unprocessed buffer data not yet encrypted or decrypted
  */
 struct hammer2_ioq {
 	enum { HAMMER2_MSGQ_STATE_HEADER1,
@@ -186,12 +189,12 @@ struct hammer2_ioq {
 	       HAMMER2_MSGQ_STATE_AUXDATA1,
 	       HAMMER2_MSGQ_STATE_AUXDATA2,
 	       HAMMER2_MSGQ_STATE_ERROR } state;
-	int		fifo_beg;		/* buffered data */
-	int		fifo_cdx;		/* encrypt/decrypt index */
-	int		fifo_end;
+	size_t		fifo_beg;		/* buffered data */
+	size_t		fifo_cdx;		/* cdx-beg processed */
+	size_t		fifo_cdn;		/* end-cdn unprocessed */
+	size_t		fifo_end;
 	size_t		hbytes;			/* header size */
 	size_t		abytes;			/* aux_data size */
-	size_t		already;		/* aux_data already decrypted */
 	int		error;
 	int		seq;			/* salt sequencer */
 	int		msgcount;

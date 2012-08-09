@@ -167,12 +167,8 @@ void hammer2_msg_dbg(hammer2_msg_t *msg);
 void hammer2_crypto_setup(void);
 void hammer2_crypto_negotiate(hammer2_iocom_t *iocom);
 void hammer2_crypto_decrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
-void hammer2_crypto_decrypt_aux(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
-			hammer2_msg_t *msg, int already);
 int hammer2_crypto_encrypt(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
-			struct iovec *iov, int n, size_t *nmaxp);
-void hammer2_crypto_encrypt_wrote(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq,
-			int nact);
+			struct iovec *iov, int n, size_t *nactp);
 
 /*
  * Misc functions
