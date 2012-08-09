@@ -35,6 +35,7 @@
  */
 
 #include "hammer2.h"
+#include <sys/endian.h>
 
 /*
  * Setup crypto for pthreads
@@ -169,7 +170,7 @@ _gcm_iv_increment(char *iv)
 	 * XXX: this should ideally be an atomic update, but we don't have
 	 * an atomic_fetchadd_64 for i386 yet
 	 */
-	*c = (*c)+1;
+	*c = htobe64(be64toh(*c)+1);
 
 	/*
 	 * Detect wrap-around, which means it is time to renegotiate
