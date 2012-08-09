@@ -58,15 +58,16 @@
 #define usec_delay(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))
 
-#define DBG 0 
-#define MSGOUT(S, A, B)     printf(S "\n", A, B)
+#define DBG 0
+#define MSGOUT(S, A, B)     kprintf(S "\n", A, B)
 #define DEBUGFUNC(F)        DEBUGOUT(F);
 #if DBG
-	#define DEBUGOUT(S)         printf(S "\n")
-	#define DEBUGOUT1(S,A)      printf(S "\n",A)
-	#define DEBUGOUT2(S,A,B)    printf(S "\n",A,B)
-	#define DEBUGOUT3(S,A,B,C)  printf(S "\n",A,B,C)
-	#define DEBUGOUT7(S,A,B,C,D,E,F,G)  printf(S "\n",A,B,C,D,E,F,G)
+	#define DEBUGOUT(S)         kprintf(S "\n")
+	#define DEBUGOUT1(S,A)      kprintf(S "\n",A)
+	#define DEBUGOUT2(S,A,B)    kprintf(S "\n",A,B)
+	#define DEBUGOUT3(S,A,B,C)  kprintf(S "\n",A,B,C)
+	#define DEBUGOUT6(S,A,B,C,D,E,F)    kprintf(S "\n",A,B,C,D,E,F)
+	#define DEBUGOUT7(S,A,B,C,D,E,F,G)  kprintf(S "\n",A,B,C,D,E,F,G)
 #else
 	#define DEBUGOUT(S)
 	#define DEBUGOUT1(S,A)
