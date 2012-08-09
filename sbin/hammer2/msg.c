@@ -1235,14 +1235,14 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 
 		if ((size_t)nact < hbytes - ioq->hbytes) {
 			ioq->hbytes += nact;
-			/* nact = 0; */
+			nact = 0;
 			break;
 		}
 		nact -= hbytes - ioq->hbytes;
 		ioq->hbytes = hbytes;
 		if ((size_t)nact < abytes - ioq->abytes) {
 			ioq->abytes += nact;
-			/* nact = 0; */
+			nact = 0;
 			break;
 		}
 		nact -= abytes - ioq->abytes;
