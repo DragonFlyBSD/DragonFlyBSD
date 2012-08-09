@@ -47,6 +47,7 @@ MLINKS+=hcreate.3 hdestroy.3 hcreate.3 hsearch.3
 MLINKS+=insque.3 remque.3
 MLINKS+=lsearch.3 lfind.3
 MLINKS+=malloc.3 calloc.3 malloc.3 free.3 malloc.3 realloc.3 malloc.3 reallocf.3
+MLINKS+=posix_memalign.3 aligned_alloc.3
 MLINKS+=ptsname.3 grantpt.3 ptsname.3 unlockpt.3
 MLINKS+=qsort.3 heapsort.3 qsort.3 mergesort.3 qsort.3 qsort_r.3
 MLINKS+=radixsort.3 sradixsort.3
