@@ -5669,7 +5669,7 @@ struct l2_fhdr {
 #define TOTAL_TX_BD(sc)		(TOTAL_TX_BD_PER_PAGE * (sc)->tx_pages)
 #define USABLE_TX_BD(sc)	(USABLE_TX_BD_PER_PAGE * (sc)->tx_pages)
 #define MAX_TX_BD(sc)		(TOTAL_TX_BD((sc)) - 1)
-#define BCE_TX_SPARE_SPACE	5
+#define BCE_TX_SPARE_SPACE	33
 
 #define RX_PAGES_DEFAULT	2
 #define RX_PAGES_MAX		256
@@ -5800,7 +5800,7 @@ struct fw_info {
 
 #define BCE_TX_TIMEOUT		5
 
-#define BCE_MAX_SEGMENTS	32
+#define BCE_MAX_SEGMENTS	40
 #define BCE_DMA_ALIGN		8
 #define BCE_DMA_RX_ALIGN	16
 #define BCE_DMA_BOUNDARY	0
@@ -5819,16 +5819,16 @@ struct fw_info {
  * solution later.
  */
 #ifdef BCE_IP_CSUM
-#define BCE_IF_HWASSIST		(CSUM_IP | CSUM_TCP | CSUM_UDP)
+#define BCE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 #else
-#define BCE_IF_HWASSIST		(CSUM_TCP | CSUM_UDP)
+#define BCE_CSUM_FEATURES	(CSUM_TCP | CSUM_UDP)
 #endif
 
 /* NOTE: This hardware also can do VLAN csum offload */
 #define BCE_IF_CAPABILITIES	(IFCAP_VLAN_MTU |	\
 				 IFCAP_VLAN_HWTAGGING |	\
 				 IFCAP_HWCSUM |		\
-				 IFCAP_JUMBO_MTU)
+				 IFCAP_TSO)
 
 #define BCE_MIN_MTU			60
 #define BCE_MIN_ETHER_MTU		64

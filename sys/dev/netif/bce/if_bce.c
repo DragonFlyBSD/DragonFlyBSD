@@ -68,6 +68,9 @@
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -417,6 +420,8 @@ static void	bce_free_rx_chain(struct bce_softc *);
 static void	bce_free_tx_chain(struct bce_softc *);
 
 static int	bce_encap(struct bce_softc *, struct mbuf **);
+static int	bce_tso_setup(struct bce_softc *, struct mbuf **,
+		    uint16_t *, uint16_t *);
 static void	bce_start(struct ifnet *);
 static int	bce_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bce_watchdog(struct ifnet *);
@@ -952,7 +957,7 @@ bce_attach(device_t dev)
 	ifp->if_poll = bce_poll;
 #endif
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_hwassist = BCE_IF_HWASSIST;
+	ifp->if_hwassist = BCE_CSUM_FEATURES | CSUM_TSO;
 	ifp->if_capabilities = BCE_IF_CAPABILITIES;
 	ifp->if_capenable = ifp->if_capabilities;
 	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD(sc));
@@ -2436,8 +2441,8 @@ bce_dma_alloc(struct bce_softc *sc)
 	rc = bus_dma_tag_create(sc->parent_tag, 1, 0,
 				BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				NULL, NULL,
-				/* BCE_MAX_JUMBO_ETHER_MTU_VLAN */MCLBYTES,
-				BCE_MAX_SEGMENTS, MCLBYTES,
+				IP_MAXPACKET + sizeof(struct ether_vlan_header),
+				BCE_MAX_SEGMENTS, PAGE_SIZE,
 				BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
 				BUS_DMA_ONEBPAGE,
 				&sc->tx_mbuf_tag);
@@ -4845,13 +4850,18 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	bus_dmamap_t map, tmp_map;
 	struct mbuf *m0 = *m_head;
 	struct tx_bd *txbd = NULL;
-	uint16_t vlan_tag = 0, flags = 0;
+	uint16_t vlan_tag = 0, flags = 0, mss = 0;
 	uint16_t chain_prod, chain_prod_start, prod;
 	uint32_t prod_bseq;
 	int i, error, maxsegs, nsegs;
 
 	/* Transfer any checksum offload flags to the bd. */
-	if (m0->m_pkthdr.csum_flags) {
+	if (m0->m_pkthdr.csum_flags & CSUM_TSO) {
+		error = bce_tso_setup(sc, m_head, &flags, &mss);
+		if (error)
+			return ENOBUFS;
+		m0 = *m_head;
+	} else if (m0->m_pkthdr.csum_flags & BCE_CSUM_FEATURES) {
 		if (m0->m_pkthdr.csum_flags & CSUM_IP)
 			flags |= TX_BD_FLAGS_IP_CKSUM;
 		if (m0->m_pkthdr.csum_flags & (CSUM_TCP | CSUM_UDP))
@@ -4901,9 +4911,11 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 
 		txbd->tx_bd_haddr_lo = htole32(BCE_ADDR_LO(segs[i].ds_addr));
 		txbd->tx_bd_haddr_hi = htole32(BCE_ADDR_HI(segs[i].ds_addr));
-		txbd->tx_bd_mss_nbytes = htole16(segs[i].ds_len);
+		txbd->tx_bd_mss_nbytes = htole32(mss << 16) |
+		    htole16(segs[i].ds_len);
 		txbd->tx_bd_vlan_tag = htole16(vlan_tag);
 		txbd->tx_bd_flags = htole16(flags);
+
 		prod_bseq += segs[i].ds_len;
 		if (i == 0)
 			txbd->tx_bd_flags |= htole16(TX_BD_FLAGS_START);
@@ -5106,10 +5118,17 @@ bce_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 		if (mask & IFCAP_HWCSUM) {
 			ifp->if_capenable ^= (mask & IFCAP_HWCSUM);
-			if (IFCAP_HWCSUM & ifp->if_capenable)
-				ifp->if_hwassist = BCE_IF_HWASSIST;
+			if (ifp->if_capenable & IFCAP_TXCSUM)
+				ifp->if_hwassist |= BCE_CSUM_FEATURES;
 			else
-				ifp->if_hwassist = 0;
+				ifp->if_hwassist &= ~BCE_CSUM_FEATURES;
+		}
+		if (mask & IFCAP_TSO) {
+			ifp->if_capenable ^= IFCAP_TSO;
+			if (ifp->if_capenable & IFCAP_TSO)
+				ifp->if_hwassist |= CSUM_TSO;
+			else
+				ifp->if_hwassist &= ~CSUM_TSO;
 		}
 		break;
 
@@ -7912,4 +7931,48 @@ bce_coal_change(struct bce_softc *sc)
 	}
 
 	sc->bce_coalchg_mask = 0;
+}
+
+static int
+bce_tso_setup(struct bce_softc *sc, struct mbuf **mp,
+    uint16_t *flags0, uint16_t *mss0)
+{
+	struct mbuf *m;
+	uint16_t flags;
+	int thoff, iphlen, hoff;
+
+	m = *mp;
+	KASSERT(M_WRITABLE(m), ("TSO mbuf not writable"));
+
+	hoff = m->m_pkthdr.csum_lhlen;
+	iphlen = m->m_pkthdr.csum_iphlen;
+	thoff = m->m_pkthdr.csum_thlen;
+
+	KASSERT(hoff >= sizeof(struct ether_header),
+	    ("invalid ether header len %d", hoff));
+	KASSERT(iphlen >= sizeof(struct ip),
+	    ("invalid ip header len %d", iphlen));
+	KASSERT(thoff >= sizeof(struct tcphdr),
+	    ("invalid tcp header len %d", thoff));
+
+	if (__predict_false(m->m_len < hoff + iphlen + thoff)) {
+		m = m_pullup(m, hoff + iphlen + thoff);
+		if (m == NULL) {
+			*mp = NULL;
+			return ENOBUFS;
+		}
+		*mp = m;
+	}
+
+	/* Set the LSO flag in the TX BD */
+	flags = TX_BD_FLAGS_SW_LSO;
+
+	/* Set the length of IP + TCP options (in 32 bit words) */
+	flags |= (((iphlen + thoff -
+	    sizeof(struct ip) - sizeof(struct tcphdr)) >> 2) << 8);
+
+	*mss0 = htole16(m->m_pkthdr.tso_segsz);
+	*flags0 = flags;
+
+	return 0;
 }
