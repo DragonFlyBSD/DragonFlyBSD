@@ -41,10 +41,17 @@ main(int argc, char *argv[])
 				err(1, "open");
 			randomfill(fd[i]);
 		}
-
                 if ((fstat(fd[i], &st[i])) == -1)
-                        err(1, "fstat");
+			err(1, "fstat");
+		fprintf(stdout, "\rFile creation, random data filled [%d/%d] ", i+1, NFILES);
+		fflush(stdout);
+	}
 
+	printf("\n");
+
+        for (i = 0; i <  NFILES; i++) {
+		fflush(stdout);
+		fprintf(stdout, "\rDoing mmap() + msync() [%d/%d] ", i+1, NFILES);
                 size = st[i].st_size;
                 p[i] = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd[i], 0);
                 if (p[i] == MAP_FAILED)
