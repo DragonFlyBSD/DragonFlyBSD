@@ -5479,9 +5479,6 @@ bce_intr(struct bce_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	DBPRINT(sc, BCE_EXCESSIVE, "Entering %s()\n", __func__);
-	DBRUNIF(1, sc->interrupts_generated++);
-
 	sblk = sc->status_block;
 
 	/* Check if the hardware has finished any work. */
@@ -5493,11 +5490,6 @@ bce_intr(struct bce_softc *sc)
 		uint32_t status_attn_bits;
 
 		status_attn_bits = sblk->status_attn_bits;
-
-		DBRUNIF(DB_RANDOMTRUE(bce_debug_unexpected_attention),
-			if_printf(ifp,
-			"Simulating unexpected status attention bit set.");
-			status_attn_bits |= STATUS_ATTN_BITS_PARITY_ERROR);
 
 		/* Was it a link change interrupt? */
 		if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
@@ -5520,15 +5512,8 @@ bce_intr(struct bce_softc *sc)
 		if ((status_attn_bits & ~STATUS_ATTN_BITS_LINK_STATE) !=
 		     (sblk->status_attn_bits_ack &
 		      ~STATUS_ATTN_BITS_LINK_STATE)) {
-			DBRUN(1, sc->unexpected_attentions++);
-
 			if_printf(ifp, "Fatal attention detected: 0x%08X\n",
 				  sblk->status_attn_bits);
-
-			DBRUN(BCE_FATAL,
-			if (bce_debug_unexpected_attention == 0)
-				bce_breakpoint(sc));
-
 			bce_init(sc);
 			return;
 		}
