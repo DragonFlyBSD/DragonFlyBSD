@@ -429,8 +429,8 @@ static int	bce_init_ctx(struct bce_softc *);
 static void	bce_get_mac_addr(struct bce_softc *);
 static void	bce_set_mac_addr(struct bce_softc *);
 static void	bce_phy_intr(struct bce_softc *);
-static void	bce_rx_intr(struct bce_softc *, int);
-static void	bce_tx_intr(struct bce_softc *);
+static void	bce_rx_intr(struct bce_softc *, int, uint16_t);
+static void	bce_tx_intr(struct bce_softc *, uint16_t);
 static void	bce_disable_intr(struct bce_softc *);
 static void	bce_enable_intr(struct bce_softc *);
 static void	bce_reenable_intr(struct bce_softc *);
@@ -4375,25 +4375,18 @@ bce_get_hw_rx_cons(struct bce_softc *sc)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_rx_intr(struct bce_softc *sc, int count)
+bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint16_t hw_cons, sw_cons, sw_chain_cons, sw_prod, sw_chain_prod;
+	uint16_t sw_cons, sw_chain_cons, sw_prod, sw_chain_prod;
 	uint32_t sw_prod_bseq;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	/* Get the hardware's view of the RX consumer index. */
-	hw_cons = sc->hw_rx_cons = bce_get_hw_rx_cons(sc);
 
 	/* Get working copies of the driver's view of the RX indices. */
 	sw_cons = sc->rx_cons;
 	sw_prod = sc->rx_prod;
 	sw_prod_bseq = sc->rx_prod_bseq;
-
-	/* Prevent speculative reads from getting ahead of the status block. */
-	bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
-			  BUS_SPACE_BARRIER_READ);
 
 	/* Scan through the receive chain as long as there is work to do. */
 	while (sw_cons != hw_cons) {
@@ -4404,10 +4397,8 @@ bce_rx_intr(struct bce_softc *sc, int count)
 		uint32_t status = 0;
 
 #ifdef DEVICE_POLLING
-		if (count >= 0 && count-- == 0) {
-			sc->hw_rx_cons = sw_cons;
+		if (count >= 0 && count-- == 0)
 			break;
-		}
 #endif
 
 		/*
@@ -4558,24 +4549,6 @@ bce_rx_int_next_rx:
 			}
 			ifp->if_input(ifp, m);
 		}
-
-		/*
-		 * If polling(4) is not enabled, refresh hw_cons to see
-		 * whether there's new work.
-		 *
-		 * If polling(4) is enabled, i.e count >= 0, refreshing
-		 * should not be performed, so that we would not spend
-		 * too much time in RX processing.
-		 */
-		if (count < 0 && sw_cons == hw_cons)
-			hw_cons = sc->hw_rx_cons = bce_get_hw_rx_cons(sc);
-
-		/*
-		 * Prevent speculative reads from getting ahead
-		 * of the status block.
-		 */
-		bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
-				  BUS_SPACE_BARRIER_READ);
 	}
 
 	sc->rx_cons = sw_cons;
@@ -4614,20 +4587,15 @@ bce_get_hw_tx_cons(struct bce_softc *sc)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_tx_intr(struct bce_softc *sc)
+bce_tx_intr(struct bce_softc *sc, uint16_t hw_tx_cons)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint16_t hw_tx_cons, sw_tx_cons, sw_tx_chain_cons;
+	uint16_t sw_tx_cons, sw_tx_chain_cons;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* Get the hardware's view of the TX consumer index. */
-	hw_tx_cons = sc->hw_tx_cons = bce_get_hw_tx_cons(sc);
 	sw_tx_cons = sc->tx_cons;
-
-	/* Prevent speculative reads from getting ahead of the status block. */
-	bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
-			  BUS_SPACE_BARRIER_READ);
 
 	/* Cycle through any completed TX chain page entries. */
 	while (sw_tx_cons != hw_tx_cons) {
@@ -4652,18 +4620,6 @@ bce_tx_intr(struct bce_softc *sc)
 
 		sc->used_tx_bd--;
 		sw_tx_cons = NEXT_TX_BD(sw_tx_cons);
-
-		if (sw_tx_cons == hw_tx_cons) {
-			/* Refresh hw_cons to see if there's new work. */
-			hw_tx_cons = sc->hw_tx_cons = bce_get_hw_tx_cons(sc);
-		}
-
-		/*
-		 * Prevent speculative reads from getting
-		 * ahead of the status block.
-		 */
-		bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
-				  BUS_SPACE_BARRIER_READ);
 	}
 
 	if (sc->used_tx_bd == 0) {
@@ -5278,6 +5234,15 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		break;
 	}
 
+	/*
+	 * Save the status block index value for use when enabling
+	 * the interrupt.
+	 */
+	sc->last_status_idx = sblk->status_idx;
+
+	/* Make sure status index is extracted before rx/tx cons */
+	cpu_lfence();
+
 	if (cmd == POLL_AND_CHECK_STATUS) {
 		uint32_t status_attn_bits;
 
@@ -5323,12 +5288,12 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	hw_tx_cons = bce_get_hw_tx_cons(sc);
 
 	/* Check for any completed RX frames. */
-	if (hw_rx_cons != sc->hw_rx_cons)
-		bce_rx_intr(sc, count);
+	if (hw_rx_cons != sc->rx_cons)
+		bce_rx_intr(sc, count, hw_rx_cons);
 
 	/* Check for any completed TX frames. */
-	if (hw_tx_cons != sc->hw_tx_cons)
-		bce_tx_intr(sc);
+	if (hw_tx_cons != sc->tx_cons)
+		bce_tx_intr(sc, hw_tx_cons);
 
 	/* Check for new frames to transmit. */
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -5355,78 +5320,60 @@ bce_intr(struct bce_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct status_block *sblk;
 	uint16_t hw_rx_cons, hw_tx_cons;
+	uint32_t status_attn_bits;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	sblk = sc->status_block;
 
+	/*
+	 * Save the status block index value for use during
+	 * the next interrupt.
+	 */
+	sc->last_status_idx = sblk->status_idx;
+
+	/* Make sure status index is extracted before rx/tx cons */
+	cpu_lfence();
+
 	/* Check if the hardware has finished any work. */
 	hw_rx_cons = bce_get_hw_rx_cons(sc);
 	hw_tx_cons = bce_get_hw_tx_cons(sc);
 
-	/* Keep processing data as long as there is work to do. */
-	for (;;) {
-		uint32_t status_attn_bits;
+	status_attn_bits = sblk->status_attn_bits;
 
-		status_attn_bits = sblk->status_attn_bits;
-
-		/* Was it a link change interrupt? */
-		if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
-		    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE)) {
-			bce_phy_intr(sc);
-
-			/*
-			 * Clear any transient status updates during link state
-			 * change.
-			 */
-			REG_WR(sc, BCE_HC_COMMAND,
-			    sc->hc_command | BCE_HC_COMMAND_COAL_NOW_WO_INT);
-			REG_RD(sc, BCE_HC_COMMAND);
-		}
+	/* Was it a link change interrupt? */
+	if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
+	    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE)) {
+		bce_phy_intr(sc);
 
 		/*
-		 * If any other attention is asserted then
-		 * the chip is toast.
+		 * Clear any transient status updates during link state
+		 * change.
 		 */
-		if ((status_attn_bits & ~STATUS_ATTN_BITS_LINK_STATE) !=
-		     (sblk->status_attn_bits_ack &
-		      ~STATUS_ATTN_BITS_LINK_STATE)) {
-			if_printf(ifp, "Fatal attention detected: 0x%08X\n",
-				  sblk->status_attn_bits);
-			bce_init(sc);
-			return;
-		}
-
-		/* Check for any completed RX frames. */
-		if (hw_rx_cons != sc->hw_rx_cons)
-			bce_rx_intr(sc, -1);
-
-		/* Check for any completed TX frames. */
-		if (hw_tx_cons != sc->hw_tx_cons)
-			bce_tx_intr(sc);
-
-		/*
-		 * Save the status block index value
-		 * for use during the next interrupt.
-		 */
-		sc->last_status_idx = sblk->status_idx;
-
-		/*
-		 * Prevent speculative reads from getting
-		 * ahead of the status block.
-		 */
-		bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
-				  BUS_SPACE_BARRIER_READ);
-
-		/*
-		 * If there's no work left then exit the
-		 * interrupt service routine.
-		 */
-		hw_rx_cons = bce_get_hw_rx_cons(sc);
-		hw_tx_cons = bce_get_hw_tx_cons(sc);
-		if ((hw_rx_cons == sc->hw_rx_cons) && (hw_tx_cons == sc->hw_tx_cons))
-			break;
+		REG_WR(sc, BCE_HC_COMMAND,
+		    sc->hc_command | BCE_HC_COMMAND_COAL_NOW_WO_INT);
+		REG_RD(sc, BCE_HC_COMMAND);
 	}
+
+	/*
+	 * If any other attention is asserted then
+	 * the chip is toast.
+	 */
+	if ((status_attn_bits & ~STATUS_ATTN_BITS_LINK_STATE) !=
+	    (sblk->status_attn_bits_ack & ~STATUS_ATTN_BITS_LINK_STATE)) {
+		if_printf(ifp, "Fatal attention detected: 0x%08X\n",
+			  sblk->status_attn_bits);
+		bce_init(sc);
+		return;
+	}
+
+	/* Check for any completed RX frames. */
+	if (hw_rx_cons != sc->rx_cons)
+		bce_rx_intr(sc, -1, hw_rx_cons);
+
+	/* Check for any completed TX frames. */
+	if (hw_tx_cons != sc->tx_cons)
+		bce_tx_intr(sc, hw_tx_cons);
 
 	/* Re-enable interrupts. */
 	bce_reenable_intr(sc);
@@ -5866,9 +5813,9 @@ bce_pulse_check_msi(struct bce_softc *sc)
 {
 	int check = 0;
 
-	if (bce_get_hw_rx_cons(sc) != sc->hw_rx_cons) {
+	if (bce_get_hw_rx_cons(sc) != sc->rx_cons) {
 		check = 1;
-	} else if (bce_get_hw_tx_cons(sc) != sc->hw_tx_cons) {
+	} else if (bce_get_hw_tx_cons(sc) != sc->tx_cons) {
 		check = 1;
 	} else {
 		struct status_block *sblk = sc->status_block;

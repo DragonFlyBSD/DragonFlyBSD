@@ -6003,8 +6003,6 @@ struct bce_softc {
 	/* Driver maintained status block values. */
 	uint16_t		pulse_check_status_idx;
 	uint16_t		last_status_idx;
-	uint16_t		hw_rx_cons;
-	uint16_t		hw_tx_cons;
 
 	/* H/W maintained statistics block. */
 	bus_dma_tag_t		stats_tag;
