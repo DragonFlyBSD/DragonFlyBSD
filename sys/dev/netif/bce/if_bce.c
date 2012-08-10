@@ -475,8 +475,8 @@ static uint32_t	bce_tx_ticks_int = 1022;	/* bcm: 80 */
 static uint32_t	bce_tx_ticks = 1022;		/* bcm: 80 */
 static uint32_t	bce_rx_bds_int = 128;		/* bcm: 6 */
 static uint32_t	bce_rx_bds = 128;		/* bcm: 6 */
-static uint32_t	bce_rx_ticks_int = 125;		/* bcm: 18 */
-static uint32_t	bce_rx_ticks = 125;		/* bcm: 18 */
+static uint32_t	bce_rx_ticks_int = 150;		/* bcm: 18 */
+static uint32_t	bce_rx_ticks = 150;		/* bcm: 18 */
 
 static int	bce_msi_enable = 1;
 
