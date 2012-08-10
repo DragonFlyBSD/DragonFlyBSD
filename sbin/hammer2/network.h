@@ -84,18 +84,21 @@ struct hammer2_handshake {
 
 typedef struct hammer2_handshake hammer2_handshake_t;
 
-/*
- * NOTE: HAMMER2_MSG_ALIGN (64) must be a multiple of HAMMER2_AES_KEY_SIZE.
- */
-#define HAMMER2_AES_KEY_SIZE	32
-#define HAMMER2_AES_KEY_MASK	(HAMMER2_AES_KEY_SIZE - 1)
-#define HAMMER2_AES_TYPE	aes_256_cbc
-#define HAMMER2_AES_TYPE_EVP	EVP_aes_256_cbc()
-#define HAMMER2_AES_TYPE_STR	#HAMMER2_AES_TYPE
-#define HAMMER2_CRYPTO_IV_SIZE	12
-#define HAMMER2_CRYPTO_IV_FIXED_SIZE	4
-#define HAMMER2_CRYPTO_CHUNK_SIZE	64
-#define HAMMER2_CRYPTO_TAG_SIZE		16
+
+#define HAMMER2_CRYPTO_CHUNK_SIZE		HAMMER2_MSG_ALIGN
+#define HAMMER2_MAX_IV_SIZE			32
+
+#define HAMMER2_CRYPTO_GCM_IV_FIXED_SIZE	4
+#define HAMMER2_CRYPTO_GCM_IV_SIZE		12
+#define HAMMER2_CRYPTO_GCM_KEY_SIZE		32
+#define HAMMER2_CRYPTO_GCM_TAG_SIZE		16
+
+#define HAMMER2_CRYPTO_ALGO_GCM_IDX		0
+
+#define HAMMER2_CRYPTO_ALGO			HAMMER2_CRYPTO_ALGO_GCM_IDX
+
+
+
 
 /***************************************************************************
  *				LOW LEVEL MESSAGING			   *
@@ -206,7 +209,7 @@ struct hammer2_ioq {
 	int		seq;			/* salt sequencer */
 	int		msgcount;
 	EVP_CIPHER_CTX	ctx;
-	char		iv[HAMMER2_AES_KEY_SIZE]; /* encrypt or decrypt iv[] */
+	char		iv[HAMMER2_MAX_IV_SIZE]; /* encrypt or decrypt iv[] */
 	hammer2_msg_t	*msg;
 	hammer2_msg_queue_t msgq;
 	char		buf[HAMMER2_MSGBUF_SIZE]; /* staging buffer */
@@ -284,7 +287,6 @@ struct hammer2_iocom {
 	int	flags;
 	int	rxmisc;
 	int	txmisc;
-	char	sess[HAMMER2_AES_KEY_SIZE];	/* aes_256_cbc key */
 	struct hammer2_router *router;
 	pthread_mutex_t mtx;			/* mutex for state*tree/rmsgq */
 };
@@ -301,3 +303,26 @@ typedef struct hammer2_iocom hammer2_iocom_t;
 #define HAMMER2_IOCOMF_AWWORK	0x00000080	/* immediate work pending */
 #define HAMMER2_IOCOMF_SWORK	0x00000100	/* immediate work pending */
 #define HAMMER2_IOCOMF_CRYPTED	0x00000200	/* encrypt enabled */
+
+
+
+
+
+
+
+/*
+ * Crypto algorithm table and related typedefs.
+ */
+
+typedef int (*algo_init_fn)(hammer2_ioq_t *, char *, int, char *, int, int);
+typedef int (*algo_enc_fn)(hammer2_ioq_t *, char *, char *, int, int *);
+typedef int (*algo_dec_fn)(hammer2_ioq_t *, char *, char *, int, int *);
+
+struct crypto_algo {
+	const char	*name;
+	int		keylen;
+	int		taglen;
+	algo_init_fn	init;
+	algo_enc_fn	enc_chunk;
+	algo_dec_fn	dec_chunk;
+};

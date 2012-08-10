@@ -43,6 +43,26 @@
 static pthread_mutex_t *crypto_locks;
 int crypto_count;
 
+static int hammer2_crypto_gcm_init(hammer2_ioq_t *, char *, int, char *, int, int);
+static int hammer2_crypto_gcm_encrypt_chunk(hammer2_ioq_t *, char *, char *, int, int *);
+static int hammer2_crypto_gcm_decrypt_chunk(hammer2_ioq_t *, char *, char *, int, int *);
+
+/*
+ * NOTE: the order of this table needs to match the HAMMER2_CRYPTO_ALGO_*_IDX
+ *       defines in network.h.
+ */
+static struct crypto_algo crypto_algos[] = {
+	{
+		.name      = "aes-256-gcm",
+		.keylen    = HAMMER2_CRYPTO_GCM_KEY_SIZE,
+		.taglen    = HAMMER2_CRYPTO_GCM_TAG_SIZE,
+		.init      = hammer2_crypto_gcm_init,
+		.enc_chunk = hammer2_crypto_gcm_encrypt_chunk,
+		.dec_chunk = hammer2_crypto_gcm_decrypt_chunk
+	},
+	{ NULL, 0, 0, NULL, NULL, NULL }
+};
+
 static
 unsigned long
 hammer2_crypto_id_callback(void)
@@ -74,27 +94,27 @@ hammer2_crypto_setup(void)
 
 static
 int
-_gcm_init(hammer2_ioq_t *ioq, char *key, int klen, char *iv_fixed, int ivlen,
-	  int enc)
+hammer2_crypto_gcm_init(hammer2_ioq_t *ioq, char *key, int klen,
+			char *iv_fixed, int ivlen, int enc)
 {
 	int i, ok;
 
-	if (klen < 32 /* 256 bits */ || ivlen < 4 /* 32 bits */) {
+	if (klen < HAMMER2_CRYPTO_GCM_KEY_SIZE ||
+	    ivlen < HAMMER2_CRYPTO_GCM_IV_FIXED_SIZE) {
 		if (DebugOpt)
 			fprintf(stderr, "Not enough key or iv material\n");
 		return -1;
 	}
 
 	printf("%s key: ", enc ? "Encryption" : "Decryption");
-	for (i = 0; i < HAMMER2_AES_KEY_SIZE; ++i)
+	for (i = 0; i < HAMMER2_CRYPTO_GCM_KEY_SIZE; ++i)
 		printf("%02x", (unsigned char)key[i]);
 	printf("\n");
 
 	printf("%s iv:  ", enc ? "Encryption" : "Decryption");
-	for (i = 0; i < HAMMER2_CRYPTO_IV_FIXED_SIZE; ++i)
+	for (i = 0; i < HAMMER2_CRYPTO_GCM_IV_FIXED_SIZE; ++i)
 		printf("%02x", (unsigned char)iv_fixed[i]);
 	printf(" (fixed part only)\n");
-
 
 	EVP_CIPHER_CTX_init(&ioq->ctx);
 
@@ -126,12 +146,12 @@ _gcm_init(hammer2_ioq_t *ioq, char *key, int klen, char *iv_fixed, int ivlen,
 	 * traffic.
 	 */
 	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_SET_IVLEN,
-				 HAMMER2_CRYPTO_IV_SIZE, NULL);
+				 HAMMER2_CRYPTO_GCM_IV_SIZE, NULL);
 	if (!ok)
 		goto fail;
 
-	memset(ioq->iv, 0, HAMMER2_CRYPTO_IV_SIZE);
-	memcpy(ioq->iv, iv_fixed, HAMMER2_CRYPTO_IV_FIXED_SIZE);
+	memset(ioq->iv, 0, HAMMER2_CRYPTO_GCM_IV_SIZE);
+	memcpy(ioq->iv, iv_fixed, HAMMER2_CRYPTO_GCM_IV_FIXED_SIZE);
 
 	/*
 	 * Strictly speaking, padding is irrelevant with a counter mode
@@ -163,13 +183,9 @@ _gcm_iv_increment(char *iv)
 	 * unique to the session and a 64 bit integer counter.
 	 */
 
-	uint64_t *c = (uint64_t *)(&iv[HAMMER2_CRYPTO_IV_FIXED_SIZE]);
+	uint64_t *c = (uint64_t *)(&iv[HAMMER2_CRYPTO_GCM_IV_FIXED_SIZE]);
 
 	/* Increment invocation field integer counter */
-	/*
-	 * XXX: this should ideally be an atomic update, but we don't have
-	 * an atomic_fetchadd_64 for i386 yet
-	 */
 	*c = htobe64(be64toh(*c)+1);
 
 	/*
@@ -181,13 +197,10 @@ _gcm_iv_increment(char *iv)
 
 static
 int
-hammer2_crypto_encrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
-			     int in_size, int *out_size)
+hammer2_crypto_gcm_encrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
+				 int in_size, int *out_size)
 {
 	int ok;
-#ifdef CRYPTO_DEBUG
-	int i;
-#endif
 	int u_len, f_len;
 
 	*out_size = 0;
@@ -207,32 +220,10 @@ hammer2_crypto_encrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 
 	/* Retrieve auth tag */
 	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_GET_TAG,
-				 HAMMER2_CRYPTO_TAG_SIZE,
+				 HAMMER2_CRYPTO_GCM_TAG_SIZE,
 				 ct + u_len + f_len);
 	if (!ok)
 		goto fail;
-
-#ifdef CRYPTO_DEBUG
-	printf("enc_chunk iv: ");
-	for (i = 0; i < HAMMER2_CRYPTO_IV_SIZE; i++)
-		printf("%02x", (unsigned char)ioq->iv[i]);
-	printf("\n");
-
-	printf("enc_chunk pt: ");
-	for (i = 0; i < in_size; i++)
-		printf("%02x", (unsigned char)pt[i]);
-	printf("\n");
-
-	printf("enc_chunk ct: ");
-	for (i = 0; i < in_size; i++)
-		printf("%02x", (unsigned char)ct[i]);
-	printf("\n");
-
-	printf("enc_chunk tag: ");
-	for (i = 0; i < HAMMER2_CRYPTO_TAG_SIZE; i++)
-		printf("%02x", (unsigned char)ct[i + u_len + f_len]);
-	printf("\n");
-#endif
 
 	ok = _gcm_iv_increment(ioq->iv);
 	if (!ok) {
@@ -240,7 +231,7 @@ hammer2_crypto_encrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 		goto fail_out;
 	}
 
-	*out_size = u_len + f_len + HAMMER2_CRYPTO_TAG_SIZE;
+	*out_size = u_len + f_len + HAMMER2_CRYPTO_GCM_TAG_SIZE;
 
 	return 0;
 
@@ -254,13 +245,10 @@ fail_out:
 
 static
 int
-hammer2_crypto_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
-			     int out_size, int *consume_size)
+hammer2_crypto_gcm_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
+				 int out_size, int *consume_size)
 {
 	int ok;
-#ifdef CRYPTO_DEBUG
-	int i;
-#endif
 	int u_len, f_len;
 
 	*consume_size = 0;
@@ -272,25 +260,8 @@ hammer2_crypto_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 		goto fail_out;
 	}
 
-#ifdef CRYPTO_DEBUG
-	printf("dec_chunk iv: ");
-	for (i = 0; i < HAMMER2_CRYPTO_IV_SIZE; i++)
-		printf("%02x", (unsigned char)ioq->iv[i]);
-	printf("\n");
-
-	printf("dec_chunk ct: ");
-	for (i = 0; i < out_size; i++)
-		printf("%02x", (unsigned char)ct[i]);
-	printf("\n");
-
-	printf("dec_chunk tag: ");
-	for (i = 0; i < HAMMER2_CRYPTO_TAG_SIZE; i++)
-		printf("%02x", (unsigned char)ct[out_size + i]);
-	printf("\n");
-#endif
-
 	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_SET_TAG,
-				 HAMMER2_CRYPTO_TAG_SIZE,
+				 HAMMER2_CRYPTO_GCM_TAG_SIZE,
 				 ct + out_size);
 	if (!ok) {
 		ioq->error = HAMMER2_IOQ_ERROR_ALGO;
@@ -311,14 +282,7 @@ hammer2_crypto_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 		goto fail_out;
 	}
 
-	*consume_size = u_len + f_len + HAMMER2_CRYPTO_TAG_SIZE;
-
-#ifdef CRYPTO_DEBUG
-	printf("dec_chunk pt: ");
-	for (i = 0; i < out_size; i++)
-		printf("%02x", (unsigned char)pt[i]);
-	printf("\n");
-#endif
+	*consume_size = u_len + f_len + HAMMER2_CRYPTO_GCM_TAG_SIZE;
 
 	return 0;
 
@@ -669,21 +633,22 @@ keyxchgfail:
 	if (n != 0)
 		goto keyxchgfail;
 
-	assert(HAMMER2_AES_KEY_SIZE * 2 == sizeof(handrx.sess));
 	/*
 	 * Use separate session keys and session fixed IVs for receive and
 	 * transmit.
 	 */
-	error = _gcm_init(&iocom->ioq_rx, handrx.sess, HAMMER2_AES_KEY_SIZE,
-	    handrx.sess + HAMMER2_AES_KEY_SIZE,
-	    sizeof(handrx.sess) - HAMMER2_AES_KEY_SIZE,
+	error = crypto_algos[HAMMER2_CRYPTO_ALGO].init(&iocom->ioq_rx, handrx.sess,
+	    crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
+	    handrx.sess + crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
+	    sizeof(handrx.sess) - crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
 	    0 /* decryption */);
 	if (error)
 		goto keyxchgfail;
 
-	error = _gcm_init(&iocom->ioq_tx, handtx.sess, HAMMER2_AES_KEY_SIZE,
-	    handtx.sess + HAMMER2_AES_KEY_SIZE,
-	    sizeof(handtx.sess) - HAMMER2_AES_KEY_SIZE,
+	error = crypto_algos[HAMMER2_CRYPTO_ALGO].init(&iocom->ioq_tx, handtx.sess,
+	    crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
+	    handtx.sess + crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
+	    sizeof(handtx.sess) - crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
 	    1 /* encryption */);
 	if (error)
 		goto keyxchgfail;
@@ -723,13 +688,16 @@ hammer2_crypto_decrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
 	if (p_len == 0)
 		return;
 
-	while (p_len >= HAMMER2_CRYPTO_TAG_SIZE + HAMMER2_CRYPTO_CHUNK_SIZE) {
+	while (p_len >= crypto_algos[HAMMER2_CRYPTO_ALGO].taglen +
+	    HAMMER2_CRYPTO_CHUNK_SIZE) {
 		bcopy(ioq->buf + ioq->fifo_cdn, buf,
-		      HAMMER2_CRYPTO_TAG_SIZE + HAMMER2_CRYPTO_CHUNK_SIZE);
-		error = hammer2_crypto_decrypt_chunk(ioq, buf,
-						     ioq->buf + ioq->fifo_cdx,
-						     HAMMER2_CRYPTO_CHUNK_SIZE,
-						     &used);
+		      crypto_algos[HAMMER2_CRYPTO_ALGO].taglen +
+		      HAMMER2_CRYPTO_CHUNK_SIZE);
+		error = crypto_algos[HAMMER2_CRYPTO_ALGO].dec_chunk(
+		    ioq, buf,
+		    ioq->buf + ioq->fifo_cdx,
+		    HAMMER2_CRYPTO_CHUNK_SIZE,
+		    &used);
 #ifdef CRYPTO_DEBUG
 		printf("dec: p_len: %d, used: %d, fifo_cdn: %ju, fifo_cdx: %ju\n",
 		       p_len, used, ioq->fifo_cdn, ioq->fifo_cdx);
@@ -763,11 +731,13 @@ hammer2_crypto_encrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq,
 	for (i = 0; i < n && nmax; ++i) {
 		used = 0;
 		p_len = iov[i].iov_len;
-		assert((p_len & HAMMER2_AES_KEY_MASK) == 0);
+		assert((p_len & HAMMER2_MSG_ALIGNMASK) == 0);
 
 		while (p_len >= HAMMER2_CRYPTO_CHUNK_SIZE &&
-		    nmax >= HAMMER2_CRYPTO_CHUNK_SIZE + HAMMER2_CRYPTO_TAG_SIZE) {
-			error = hammer2_crypto_encrypt_chunk(ioq,
+		    nmax >= HAMMER2_CRYPTO_CHUNK_SIZE +
+		    (size_t)crypto_algos[HAMMER2_CRYPTO_ALGO].taglen) {
+			error = crypto_algos[HAMMER2_CRYPTO_ALGO].enc_chunk(
+			    ioq,
 			    ioq->buf + ioq->fifo_cdx,
 			    (char *)iov[i].iov_base + used,
 			    HAMMER2_CRYPTO_CHUNK_SIZE, &ct_used);
