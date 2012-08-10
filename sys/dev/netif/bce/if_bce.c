@@ -4849,9 +4849,6 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	uint16_t chain_prod, chain_prod_start, prod;
 	uint32_t prod_bseq;
 	int i, error, maxsegs, nsegs;
-#ifdef BCE_DEBUG
-	uint16_t debug_prod;
-#endif
 
 	/* Transfer any checksum offload flags to the bd. */
 	if (m0->m_pkthdr.csum_flags) {
@@ -4892,15 +4889,6 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	/* prod points to an empty tx_bd at this point. */
 	prod_bseq  = sc->tx_prod_bseq;
 
-#ifdef BCE_DEBUG
-	debug_prod = chain_prod;
-#endif
-
-	DBPRINT(sc, BCE_INFO_SEND,
-		"%s(): Start: prod = 0x%04X, chain_prod = %04X, "
-		"prod_bseq = 0x%08X\n",
-		__func__, prod, chain_prod, prod_bseq);
-
 	/*
 	 * Cycle through each mbuf segment that makes up
 	 * the outgoing frame, gathering the mapping info
@@ -4925,14 +4913,6 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	/* Set the END flag on the last TX buffer descriptor. */
 	txbd->tx_bd_flags |= htole16(TX_BD_FLAGS_END);
 
-	DBRUN(BCE_EXCESSIVE_SEND,
-	      bce_dump_tx_chain(sc, debug_prod, nsegs));
-
-	DBPRINT(sc, BCE_INFO_SEND,
-		"%s(): End: prod = 0x%04X, chain_prod = %04X, "
-		"prod_bseq = 0x%08X\n",
-		__func__, prod, chain_prod, prod_bseq);
-
 	/*
 	 * Ensure that the mbuf pointer for this transmission
 	 * is placed at the array index of the last
@@ -4949,15 +4929,6 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	sc->tx_mbuf_map[chain_prod_start] = tmp_map;
 
 	sc->used_tx_bd += nsegs;
-
-	/* Update some debug statistic counters */
-	DBRUNIF((sc->used_tx_bd > sc->tx_hi_watermark),
-		sc->tx_hi_watermark = sc->used_tx_bd);
-	DBRUNIF((sc->used_tx_bd == sc->max_tx_bd), sc->tx_full_count++);
-	DBRUNIF(1, sc->tx_mbuf_alloc++);
-
-	DBRUN(BCE_VERBOSE_SEND,
-	      bce_dump_tx_mbuf_chain(sc, chain_prod, nsegs));
 
 	/* prod points to the next free tx_bd at this point. */
 	sc->tx_prod = prod;
@@ -4993,12 +4964,6 @@ bce_start(struct ifnet *ifp)
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
-
-	DBPRINT(sc, BCE_INFO_SEND,
-		"%s(): Start: tx_prod = 0x%04X, tx_chain_prod = %04zX, "
-		"tx_prod_bseq = 0x%08X\n",
-		__func__,
-		sc->tx_prod, TX_CHAIN_IDX(sc, sc->tx_prod), sc->tx_prod_bseq);
 
 	for (;;) {
 		struct mbuf *m_head;
@@ -5041,23 +5006,17 @@ bce_start(struct ifnet *ifp)
 
 	if (count == 0) {
 		/* no packets were dequeued */
-		DBPRINT(sc, BCE_VERBOSE_SEND,
-			"%s(): No packets were dequeued\n", __func__);
 		return;
 	}
-
-	DBPRINT(sc, BCE_INFO_SEND,
-		"%s(): End: tx_prod = 0x%04X, tx_chain_prod = 0x%04zX, "
-		"tx_prod_bseq = 0x%08X\n",
-		__func__,
-		sc->tx_prod, TX_CHAIN_IDX(sc, sc->tx_prod), sc->tx_prod_bseq);
 
 	REG_WR(sc, BCE_MQ_COMMAND,
 	    REG_RD(sc, BCE_MQ_COMMAND) | BCE_MQ_COMMAND_NO_MAP_ERROR);
 
 	/* Start the transmit. */
-	REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX, sc->tx_prod);
-	REG_WR(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ, sc->tx_prod_bseq);
+	REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX,
+	    sc->tx_prod);
+	REG_WR(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ,
+	    sc->tx_prod_bseq);
 
 	/* Set the tx timeout. */
 	ifp->if_timer = BCE_TX_TIMEOUT;
