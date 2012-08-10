@@ -819,6 +819,13 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 			 * we can break out of the loop.
 			 */
 			break;
+		} else if (slink->state->iocom == conn->state->iocom) {
+			/*
+			 * No match but we would transmit a LNK_SPAN
+			 * out the same connection it came in on, which
+			 * can be trivially optimized out.
+			 */
+			break;
 		} else {
 			/*
 			 * No match, distance is ok, construct a new relay.
