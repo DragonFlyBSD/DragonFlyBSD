@@ -68,6 +68,9 @@
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -417,6 +420,8 @@ static void	bce_free_rx_chain(struct bce_softc *);
 static void	bce_free_tx_chain(struct bce_softc *);
 
 static int	bce_encap(struct bce_softc *, struct mbuf **);
+static int	bce_tso_setup(struct bce_softc *, struct mbuf **,
+		    uint16_t *, uint16_t *);
 static void	bce_start(struct ifnet *);
 static int	bce_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bce_watchdog(struct ifnet *);
@@ -429,8 +434,8 @@ static int	bce_init_ctx(struct bce_softc *);
 static void	bce_get_mac_addr(struct bce_softc *);
 static void	bce_set_mac_addr(struct bce_softc *);
 static void	bce_phy_intr(struct bce_softc *);
-static void	bce_rx_intr(struct bce_softc *, int);
-static void	bce_tx_intr(struct bce_softc *);
+static void	bce_rx_intr(struct bce_softc *, int, uint16_t);
+static void	bce_tx_intr(struct bce_softc *, uint16_t);
 static void	bce_disable_intr(struct bce_softc *);
 static void	bce_enable_intr(struct bce_softc *);
 static void	bce_reenable_intr(struct bce_softc *);
@@ -475,8 +480,8 @@ static uint32_t	bce_tx_ticks_int = 1022;	/* bcm: 80 */
 static uint32_t	bce_tx_ticks = 1022;		/* bcm: 80 */
 static uint32_t	bce_rx_bds_int = 128;		/* bcm: 6 */
 static uint32_t	bce_rx_bds = 128;		/* bcm: 6 */
-static uint32_t	bce_rx_ticks_int = 125;		/* bcm: 18 */
-static uint32_t	bce_rx_ticks = 125;		/* bcm: 18 */
+static uint32_t	bce_rx_ticks_int = 150;		/* bcm: 18 */
+static uint32_t	bce_rx_ticks = 150;		/* bcm: 18 */
 
 static int	bce_msi_enable = 1;
 
@@ -952,7 +957,7 @@ bce_attach(device_t dev)
 	ifp->if_poll = bce_poll;
 #endif
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_hwassist = BCE_IF_HWASSIST;
+	ifp->if_hwassist = BCE_CSUM_FEATURES | CSUM_TSO;
 	ifp->if_capabilities = BCE_IF_CAPABILITIES;
 	ifp->if_capenable = ifp->if_capabilities;
 	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD(sc));
@@ -2436,8 +2441,8 @@ bce_dma_alloc(struct bce_softc *sc)
 	rc = bus_dma_tag_create(sc->parent_tag, 1, 0,
 				BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				NULL, NULL,
-				/* BCE_MAX_JUMBO_ETHER_MTU_VLAN */MCLBYTES,
-				BCE_MAX_SEGMENTS, MCLBYTES,
+				IP_MAXPACKET + sizeof(struct ether_vlan_header),
+				BCE_MAX_SEGMENTS, PAGE_SIZE,
 				BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
 				BUS_DMA_ONEBPAGE,
 				&sc->tx_mbuf_tag);
@@ -4375,36 +4380,18 @@ bce_get_hw_rx_cons(struct bce_softc *sc)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_rx_intr(struct bce_softc *sc, int count)
+bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint16_t hw_cons, sw_cons, sw_chain_cons, sw_prod, sw_chain_prod;
+	uint16_t sw_cons, sw_chain_cons, sw_prod, sw_chain_prod;
 	uint32_t sw_prod_bseq;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	DBRUNIF(1, sc->rx_interrupts++);
-
-	/* Get the hardware's view of the RX consumer index. */
-	hw_cons = sc->hw_rx_cons = bce_get_hw_rx_cons(sc);
 
 	/* Get working copies of the driver's view of the RX indices. */
 	sw_cons = sc->rx_cons;
 	sw_prod = sc->rx_prod;
 	sw_prod_bseq = sc->rx_prod_bseq;
-
-	DBPRINT(sc, BCE_INFO_RECV, "%s(enter): sw_prod = 0x%04X, "
-		"sw_cons = 0x%04X, sw_prod_bseq = 0x%08X\n",
-		__func__, sw_prod, sw_cons, sw_prod_bseq);
-
-	/* Prevent speculative reads from getting ahead of the status block. */
-	bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
-			  BUS_SPACE_BARRIER_READ);
-
-	/* Update some debug statistics counters */
-	DBRUNIF((sc->free_rx_bd < sc->rx_low_watermark),
-		sc->rx_low_watermark = sc->free_rx_bd);
-	DBRUNIF((sc->free_rx_bd == 0), sc->rx_empty_count++);
 
 	/* Scan through the receive chain as long as there is work to do. */
 	while (sw_cons != hw_cons) {
@@ -4415,10 +4402,8 @@ bce_rx_intr(struct bce_softc *sc, int count)
 		uint32_t status = 0;
 
 #ifdef DEVICE_POLLING
-		if (count >= 0 && count-- == 0) {
-			sc->hw_rx_cons = sw_cons;
+		if (count >= 0 && count-- == 0)
 			break;
-		}
 #endif
 
 		/*
@@ -4433,19 +4418,8 @@ bce_rx_intr(struct bce_softc *sc, int count)
 				       [RX_IDX(sw_chain_cons)];
 		sc->free_rx_bd++;
 
-		DBRUN(BCE_VERBOSE_RECV,
-		      if_printf(ifp, "%s(): ", __func__);
-		      bce_dump_rxbd(sc, sw_chain_cons, rxbd));
-
 		/* The mbuf is stored with the last rx_bd entry of a packet. */
 		if (sc->rx_mbuf_ptr[sw_chain_cons] != NULL) {
-			/* Validate that this is the last rx_bd. */
-			DBRUNIF((!(rxbd->rx_bd_flags & RX_BD_FLAGS_END)),
-				if_printf(ifp, "%s(%d): "
-				"Unexpected mbuf found in rx_bd[0x%04X]!\n",
-				__FILE__, __LINE__, sw_chain_cons);
-				bce_breakpoint(sc));
-
 			if (sw_chain_cons != sw_chain_prod) {
 				if_printf(ifp, "RX cons(%d) != prod(%d), "
 					  "drop!\n", sw_chain_cons,
@@ -4489,23 +4463,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 			len = l2fhdr->l2_fhdr_pkt_len;
 			status = l2fhdr->l2_fhdr_status;
 
-			DBRUNIF(DB_RANDOMTRUE(bce_debug_l2fhdr_status_check),
-				if_printf(ifp,
-				"Simulating l2_fhdr status error.\n");
-				status = status | L2_FHDR_ERRORS_PHY_DECODE);
-
-			/* Watch for unusual sized frames. */
-			DBRUNIF((len < BCE_MIN_MTU ||
-				 len > BCE_MAX_JUMBO_ETHER_MTU_VLAN),
-				if_printf(ifp,
-				"%s(%d): Unusual frame size found. "
-				"Min(%d), Actual(%d), Max(%d)\n",
-				__FILE__, __LINE__,
-				(int)BCE_MIN_MTU, len,
-				(int)BCE_MAX_JUMBO_ETHER_MTU_VLAN);
-				bce_dump_mbuf(sc, m);
-		 		bce_breakpoint(sc));
-
 			len -= ETHER_CRC_LEN;
 
 			/* Check the received frame for errors. */
@@ -4515,7 +4472,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 				      L2_FHDR_ERRORS_TOO_SHORT |
 				      L2_FHDR_ERRORS_GIANT_FRAME)) {
 				ifp->if_ierrors++;
-				DBRUNIF(1, sc->l2fhdr_status_errors++);
 
 				/* Reuse the mbuf for a new frame. */
 				bce_setup_rxdesc_std(sc, sw_chain_prod,
@@ -4532,12 +4488,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 			 */
 			if (bce_newbuf_std(sc, &sw_prod, &sw_chain_prod,
 					   &sw_prod_bseq, 0)) {
-				DBRUN(BCE_WARN,
-				      if_printf(ifp,
-				      "%s(%d): Failed to allocate new mbuf, "
-				      "incoming frame dropped!\n",
-				      __FILE__, __LINE__));
-
 				ifp->if_ierrors++;
 
 				/* Try and reuse the exisitng mbuf. */
@@ -4556,15 +4506,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 			m->m_pkthdr.len = m->m_len = len;
 			m->m_pkthdr.rcvif = ifp;
 
-			DBRUN(BCE_VERBOSE_RECV,
-			      struct ether_header *eh;
-			      eh = mtod(m, struct ether_header *);
-			      if_printf(ifp, "%s(): to: %6D, from: %6D, "
-			      		"type: 0x%04X\n", __func__,
-					eh->ether_dhost, ":", 
-					eh->ether_shost, ":",
-					htons(eh->ether_type)));
-
 			/* Validate the checksum if offload enabled. */
 			if (ifp->if_capenable & IFCAP_RXCSUM) {
 				/* Check for an IP datagram. */
@@ -4577,10 +4518,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 					     0xffff) == 0) {
 						m->m_pkthdr.csum_flags |=
 							CSUM_IP_VALID;
-					} else {
-						DBPRINT(sc, BCE_WARN_RECV, 
-							"%s(): Invalid IP checksum = 0x%04X!\n",
-							__func__, l2fhdr->l2_fhdr_ip_xsum);
 					}
 				}
 
@@ -4597,10 +4534,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 						m->m_pkthdr.csum_flags |=
 							CSUM_DATA_VALID |
 							CSUM_PSEUDO_HDR;
-					} else {
-						DBPRINT(sc, BCE_WARN_RECV,
-							"%s(): Invalid TCP/UDP checksum = 0x%04X!\n",
-							__func__, l2fhdr->l2_fhdr_tcp_udp_xsum);
 					}
 				}
 			}
@@ -4614,36 +4547,13 @@ bce_rx_int_next_rx:
 
 		/* If we have a packet, pass it up the stack */
 		if (m) {
-			DBPRINT(sc, BCE_VERBOSE_RECV,
-				"%s(): Passing received frame up.\n", __func__);
-
 			if (status & L2_FHDR_STATUS_L2_VLAN_TAG) {
 				m->m_flags |= M_VLANTAG;
 				m->m_pkthdr.ether_vlantag =
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
 			ifp->if_input(ifp, m);
-
-			DBRUNIF(1, sc->rx_mbuf_alloc--);
 		}
-
-		/*
-		 * If polling(4) is not enabled, refresh hw_cons to see
-		 * whether there's new work.
-		 *
-		 * If polling(4) is enabled, i.e count >= 0, refreshing
-		 * should not be performed, so that we would not spend
-		 * too much time in RX processing.
-		 */
-		if (count < 0 && sw_cons == hw_cons)
-			hw_cons = sc->hw_rx_cons = bce_get_hw_rx_cons(sc);
-
-		/*
-		 * Prevent speculative reads from getting ahead
-		 * of the status block.
-		 */
-		bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
-				  BUS_SPACE_BARRIER_READ);
 	}
 
 	sc->rx_cons = sw_cons;
@@ -4654,10 +4564,6 @@ bce_rx_int_next_rx:
 	    sc->rx_prod);
 	REG_WR(sc, MB_GET_CID_ADDR(RX_CID) + BCE_L2MQ_RX_HOST_BSEQ,
 	    sc->rx_prod_bseq);
-
-	DBPRINT(sc, BCE_INFO_RECV, "%s(exit): rx_prod = 0x%04X, "
-		"rx_cons = 0x%04X, rx_prod_bseq = 0x%08X\n",
-		__func__, sc->rx_prod, sc->rx_cons, sc->rx_prod_bseq);
 }
 
 
@@ -4686,55 +4592,19 @@ bce_get_hw_tx_cons(struct bce_softc *sc)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_tx_intr(struct bce_softc *sc)
+bce_tx_intr(struct bce_softc *sc, uint16_t hw_tx_cons)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint16_t hw_tx_cons, sw_tx_cons, sw_tx_chain_cons;
+	uint16_t sw_tx_cons, sw_tx_chain_cons;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	DBRUNIF(1, sc->tx_interrupts++);
-
 	/* Get the hardware's view of the TX consumer index. */
-	hw_tx_cons = sc->hw_tx_cons = bce_get_hw_tx_cons(sc);
 	sw_tx_cons = sc->tx_cons;
-
-	/* Prevent speculative reads from getting ahead of the status block. */
-	bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
-			  BUS_SPACE_BARRIER_READ);
 
 	/* Cycle through any completed TX chain page entries. */
 	while (sw_tx_cons != hw_tx_cons) {
-#ifdef BCE_DEBUG
-		struct tx_bd *txbd = NULL;
-#endif
 		sw_tx_chain_cons = TX_CHAIN_IDX(sc, sw_tx_cons);
-
-		DBPRINT(sc, BCE_INFO_SEND,
-			"%s(): hw_tx_cons = 0x%04X, sw_tx_cons = 0x%04X, "
-			"sw_tx_chain_cons = 0x%04X\n",
-			__func__, hw_tx_cons, sw_tx_cons, sw_tx_chain_cons);
-
-		DBRUNIF((sw_tx_chain_cons > MAX_TX_BD(sc)),
-			if_printf(ifp, "%s(%d): "
-				  "TX chain consumer out of range! "
-				  " 0x%04X > 0x%04X\n",
-				  __FILE__, __LINE__, sw_tx_chain_cons,
-				  (int)MAX_TX_BD(sc));
-			bce_breakpoint(sc));
-
-		DBRUNIF(1, txbd = &sc->tx_bd_chain[TX_PAGE(sw_tx_chain_cons)]
-				[TX_IDX(sw_tx_chain_cons)]);
-
-		DBRUNIF((txbd == NULL),
-			if_printf(ifp, "%s(%d): "
-				  "Unexpected NULL tx_bd[0x%04X]!\n",
-				  __FILE__, __LINE__, sw_tx_chain_cons);
-			bce_breakpoint(sc));
-
-		DBRUN(BCE_INFO_SEND,
-		      if_printf(ifp, "%s(): ", __func__);
-		      bce_dump_txbd(sc, sw_tx_chain_cons, txbd));
 
 		/*
 		 * Free the associated mbuf. Remember
@@ -4742,18 +4612,6 @@ bce_tx_intr(struct bce_softc *sc)
 		 * has an mbuf pointer and DMA map.
 		 */
 		if (sc->tx_mbuf_ptr[sw_tx_chain_cons] != NULL) {
-			/* Validate that this is the last tx_bd. */
-			DBRUNIF((!(txbd->tx_bd_flags & TX_BD_FLAGS_END)),
-				if_printf(ifp, "%s(%d): "
-				"tx_bd END flag not set but "
-				"txmbuf == NULL!\n", __FILE__, __LINE__);
-				bce_breakpoint(sc));
-
-			DBRUN(BCE_INFO_SEND,
-			      if_printf(ifp, "%s(): Unloading map/freeing mbuf "
-			      		"from tx_bd[0x%04X]\n", __func__,
-					sw_tx_chain_cons));
-
 			/* Unmap the mbuf. */
 			bus_dmamap_unload(sc->tx_mbuf_tag,
 					  sc->tx_mbuf_map[sw_tx_chain_cons]);
@@ -4761,25 +4619,12 @@ bce_tx_intr(struct bce_softc *sc)
 			/* Free the mbuf. */
 			m_freem(sc->tx_mbuf_ptr[sw_tx_chain_cons]);
 			sc->tx_mbuf_ptr[sw_tx_chain_cons] = NULL;
-			DBRUNIF(1, sc->tx_mbuf_alloc--);
 
 			ifp->if_opackets++;
 		}
 
 		sc->used_tx_bd--;
 		sw_tx_cons = NEXT_TX_BD(sw_tx_cons);
-
-		if (sw_tx_cons == hw_tx_cons) {
-			/* Refresh hw_cons to see if there's new work. */
-			hw_tx_cons = sc->hw_tx_cons = bce_get_hw_tx_cons(sc);
-		}
-
-		/*
-		 * Prevent speculative reads from getting
-		 * ahead of the status block.
-		 */
-		bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
-				  BUS_SPACE_BARRIER_READ);
 	}
 
 	if (sc->used_tx_bd == 0) {
@@ -4788,13 +4633,8 @@ bce_tx_intr(struct bce_softc *sc)
 	}
 
 	/* Clear the tx hardware queue full flag. */
-	if (sc->max_tx_bd - sc->used_tx_bd >= BCE_TX_SPARE_SPACE) {
-		DBRUNIF((ifp->if_flags & IFF_OACTIVE),
-			DBPRINT(sc, BCE_WARN_SEND,
-				"%s(): Open TX chain! %d/%d (used/total)\n", 
-				__func__, sc->used_tx_bd, sc->max_tx_bd));
+	if (sc->max_tx_bd - sc->used_tx_bd >= BCE_TX_SPARE_SPACE)
 		ifp->if_flags &= ~IFF_OACTIVE;
-	}
 	sc->tx_cons = sw_tx_cons;
 }
 
@@ -5010,16 +4850,18 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	bus_dmamap_t map, tmp_map;
 	struct mbuf *m0 = *m_head;
 	struct tx_bd *txbd = NULL;
-	uint16_t vlan_tag = 0, flags = 0;
+	uint16_t vlan_tag = 0, flags = 0, mss = 0;
 	uint16_t chain_prod, chain_prod_start, prod;
 	uint32_t prod_bseq;
 	int i, error, maxsegs, nsegs;
-#ifdef BCE_DEBUG
-	uint16_t debug_prod;
-#endif
 
 	/* Transfer any checksum offload flags to the bd. */
-	if (m0->m_pkthdr.csum_flags) {
+	if (m0->m_pkthdr.csum_flags & CSUM_TSO) {
+		error = bce_tso_setup(sc, m_head, &flags, &mss);
+		if (error)
+			return ENOBUFS;
+		m0 = *m_head;
+	} else if (m0->m_pkthdr.csum_flags & BCE_CSUM_FEATURES) {
 		if (m0->m_pkthdr.csum_flags & CSUM_IP)
 			flags |= TX_BD_FLAGS_IP_CKSUM;
 		if (m0->m_pkthdr.csum_flags & (CSUM_TCP | CSUM_UDP))
@@ -5057,15 +4899,6 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	/* prod points to an empty tx_bd at this point. */
 	prod_bseq  = sc->tx_prod_bseq;
 
-#ifdef BCE_DEBUG
-	debug_prod = chain_prod;
-#endif
-
-	DBPRINT(sc, BCE_INFO_SEND,
-		"%s(): Start: prod = 0x%04X, chain_prod = %04X, "
-		"prod_bseq = 0x%08X\n",
-		__func__, prod, chain_prod, prod_bseq);
-
 	/*
 	 * Cycle through each mbuf segment that makes up
 	 * the outgoing frame, gathering the mapping info
@@ -5078,9 +4911,11 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 
 		txbd->tx_bd_haddr_lo = htole32(BCE_ADDR_LO(segs[i].ds_addr));
 		txbd->tx_bd_haddr_hi = htole32(BCE_ADDR_HI(segs[i].ds_addr));
-		txbd->tx_bd_mss_nbytes = htole16(segs[i].ds_len);
+		txbd->tx_bd_mss_nbytes = htole32(mss << 16) |
+		    htole16(segs[i].ds_len);
 		txbd->tx_bd_vlan_tag = htole16(vlan_tag);
 		txbd->tx_bd_flags = htole16(flags);
+
 		prod_bseq += segs[i].ds_len;
 		if (i == 0)
 			txbd->tx_bd_flags |= htole16(TX_BD_FLAGS_START);
@@ -5089,14 +4924,6 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 
 	/* Set the END flag on the last TX buffer descriptor. */
 	txbd->tx_bd_flags |= htole16(TX_BD_FLAGS_END);
-
-	DBRUN(BCE_EXCESSIVE_SEND,
-	      bce_dump_tx_chain(sc, debug_prod, nsegs));
-
-	DBPRINT(sc, BCE_INFO_SEND,
-		"%s(): End: prod = 0x%04X, chain_prod = %04X, "
-		"prod_bseq = 0x%08X\n",
-		__func__, prod, chain_prod, prod_bseq);
 
 	/*
 	 * Ensure that the mbuf pointer for this transmission
@@ -5114,15 +4941,6 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	sc->tx_mbuf_map[chain_prod_start] = tmp_map;
 
 	sc->used_tx_bd += nsegs;
-
-	/* Update some debug statistic counters */
-	DBRUNIF((sc->used_tx_bd > sc->tx_hi_watermark),
-		sc->tx_hi_watermark = sc->used_tx_bd);
-	DBRUNIF((sc->used_tx_bd == sc->max_tx_bd), sc->tx_full_count++);
-	DBRUNIF(1, sc->tx_mbuf_alloc++);
-
-	DBRUN(BCE_VERBOSE_SEND,
-	      bce_dump_tx_mbuf_chain(sc, chain_prod, nsegs));
 
 	/* prod points to the next free tx_bd at this point. */
 	sc->tx_prod = prod;
@@ -5158,12 +4976,6 @@ bce_start(struct ifnet *ifp)
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
-
-	DBPRINT(sc, BCE_INFO_SEND,
-		"%s(): Start: tx_prod = 0x%04X, tx_chain_prod = %04zX, "
-		"tx_prod_bseq = 0x%08X\n",
-		__func__,
-		sc->tx_prod, TX_CHAIN_IDX(sc, sc->tx_prod), sc->tx_prod_bseq);
 
 	for (;;) {
 		struct mbuf *m_head;
@@ -5206,23 +5018,17 @@ bce_start(struct ifnet *ifp)
 
 	if (count == 0) {
 		/* no packets were dequeued */
-		DBPRINT(sc, BCE_VERBOSE_SEND,
-			"%s(): No packets were dequeued\n", __func__);
 		return;
 	}
-
-	DBPRINT(sc, BCE_INFO_SEND,
-		"%s(): End: tx_prod = 0x%04X, tx_chain_prod = 0x%04zX, "
-		"tx_prod_bseq = 0x%08X\n",
-		__func__,
-		sc->tx_prod, TX_CHAIN_IDX(sc, sc->tx_prod), sc->tx_prod_bseq);
 
 	REG_WR(sc, BCE_MQ_COMMAND,
 	    REG_RD(sc, BCE_MQ_COMMAND) | BCE_MQ_COMMAND_NO_MAP_ERROR);
 
 	/* Start the transmit. */
-	REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX, sc->tx_prod);
-	REG_WR(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ, sc->tx_prod_bseq);
+	REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX,
+	    sc->tx_prod);
+	REG_WR(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ,
+	    sc->tx_prod_bseq);
 
 	/* Set the tx timeout. */
 	ifp->if_timer = BCE_TX_TIMEOUT;
@@ -5312,10 +5118,17 @@ bce_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 		if (mask & IFCAP_HWCSUM) {
 			ifp->if_capenable ^= (mask & IFCAP_HWCSUM);
-			if (IFCAP_HWCSUM & ifp->if_capenable)
-				ifp->if_hwassist = BCE_IF_HWASSIST;
+			if (ifp->if_capenable & IFCAP_TXCSUM)
+				ifp->if_hwassist |= BCE_CSUM_FEATURES;
 			else
-				ifp->if_hwassist = 0;
+				ifp->if_hwassist &= ~BCE_CSUM_FEATURES;
+		}
+		if (mask & IFCAP_TSO) {
+			ifp->if_capenable ^= IFCAP_TSO;
+			if (ifp->if_capenable & IFCAP_TSO)
+				ifp->if_hwassist |= CSUM_TSO;
+			else
+				ifp->if_hwassist &= ~CSUM_TSO;
 		}
 		break;
 
@@ -5399,15 +5212,19 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		break;
 	}
 
+	/*
+	 * Save the status block index value for use when enabling
+	 * the interrupt.
+	 */
+	sc->last_status_idx = sblk->status_idx;
+
+	/* Make sure status index is extracted before rx/tx cons */
+	cpu_lfence();
+
 	if (cmd == POLL_AND_CHECK_STATUS) {
 		uint32_t status_attn_bits;
 
 		status_attn_bits = sblk->status_attn_bits;
-
-		DBRUNIF(DB_RANDOMTRUE(bce_debug_unexpected_attention),
-			if_printf(ifp,
-			"Simulating unexpected status attention bit set.");
-			status_attn_bits |= STATUS_ATTN_BITS_PARITY_ERROR);
 
 		/* Was it a link change interrupt? */
 		if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
@@ -5426,15 +5243,8 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		if ((status_attn_bits & ~STATUS_ATTN_BITS_LINK_STATE) !=
 		     (sblk->status_attn_bits_ack &
 		      ~STATUS_ATTN_BITS_LINK_STATE)) {
-			DBRUN(1, sc->unexpected_attentions++);
-
 			if_printf(ifp, "Fatal attention detected: 0x%08X\n",
 				  sblk->status_attn_bits);
-
-			DBRUN(BCE_FATAL,
-			if (bce_debug_unexpected_attention == 0)
-				bce_breakpoint(sc));
-
 			bce_init(sc);
 			return;
 		}
@@ -5444,12 +5254,12 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	hw_tx_cons = bce_get_hw_tx_cons(sc);
 
 	/* Check for any completed RX frames. */
-	if (hw_rx_cons != sc->hw_rx_cons)
-		bce_rx_intr(sc, count);
+	if (hw_rx_cons != sc->rx_cons)
+		bce_rx_intr(sc, count, hw_rx_cons);
 
 	/* Check for any completed TX frames. */
-	if (hw_tx_cons != sc->hw_tx_cons)
-		bce_tx_intr(sc);
+	if (hw_tx_cons != sc->tx_cons)
+		bce_tx_intr(sc, hw_tx_cons);
 
 	/* Check for new frames to transmit. */
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -5476,93 +5286,60 @@ bce_intr(struct bce_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct status_block *sblk;
 	uint16_t hw_rx_cons, hw_tx_cons;
+	uint32_t status_attn_bits;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	DBPRINT(sc, BCE_EXCESSIVE, "Entering %s()\n", __func__);
-	DBRUNIF(1, sc->interrupts_generated++);
-
 	sblk = sc->status_block;
+
+	/*
+	 * Save the status block index value for use during
+	 * the next interrupt.
+	 */
+	sc->last_status_idx = sblk->status_idx;
+
+	/* Make sure status index is extracted before rx/tx cons */
+	cpu_lfence();
 
 	/* Check if the hardware has finished any work. */
 	hw_rx_cons = bce_get_hw_rx_cons(sc);
 	hw_tx_cons = bce_get_hw_tx_cons(sc);
 
-	/* Keep processing data as long as there is work to do. */
-	for (;;) {
-		uint32_t status_attn_bits;
+	status_attn_bits = sblk->status_attn_bits;
 
-		status_attn_bits = sblk->status_attn_bits;
-
-		DBRUNIF(DB_RANDOMTRUE(bce_debug_unexpected_attention),
-			if_printf(ifp,
-			"Simulating unexpected status attention bit set.");
-			status_attn_bits |= STATUS_ATTN_BITS_PARITY_ERROR);
-
-		/* Was it a link change interrupt? */
-		if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
-		    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE)) {
-			bce_phy_intr(sc);
-
-			/*
-			 * Clear any transient status updates during link state
-			 * change.
-			 */
-			REG_WR(sc, BCE_HC_COMMAND,
-			    sc->hc_command | BCE_HC_COMMAND_COAL_NOW_WO_INT);
-			REG_RD(sc, BCE_HC_COMMAND);
-		}
+	/* Was it a link change interrupt? */
+	if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
+	    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE)) {
+		bce_phy_intr(sc);
 
 		/*
-		 * If any other attention is asserted then
-		 * the chip is toast.
+		 * Clear any transient status updates during link state
+		 * change.
 		 */
-		if ((status_attn_bits & ~STATUS_ATTN_BITS_LINK_STATE) !=
-		     (sblk->status_attn_bits_ack &
-		      ~STATUS_ATTN_BITS_LINK_STATE)) {
-			DBRUN(1, sc->unexpected_attentions++);
-
-			if_printf(ifp, "Fatal attention detected: 0x%08X\n",
-				  sblk->status_attn_bits);
-
-			DBRUN(BCE_FATAL,
-			if (bce_debug_unexpected_attention == 0)
-				bce_breakpoint(sc));
-
-			bce_init(sc);
-			return;
-		}
-
-		/* Check for any completed RX frames. */
-		if (hw_rx_cons != sc->hw_rx_cons)
-			bce_rx_intr(sc, -1);
-
-		/* Check for any completed TX frames. */
-		if (hw_tx_cons != sc->hw_tx_cons)
-			bce_tx_intr(sc);
-
-		/*
-		 * Save the status block index value
-		 * for use during the next interrupt.
-		 */
-		sc->last_status_idx = sblk->status_idx;
-
-		/*
-		 * Prevent speculative reads from getting
-		 * ahead of the status block.
-		 */
-		bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
-				  BUS_SPACE_BARRIER_READ);
-
-		/*
-		 * If there's no work left then exit the
-		 * interrupt service routine.
-		 */
-		hw_rx_cons = bce_get_hw_rx_cons(sc);
-		hw_tx_cons = bce_get_hw_tx_cons(sc);
-		if ((hw_rx_cons == sc->hw_rx_cons) && (hw_tx_cons == sc->hw_tx_cons))
-			break;
+		REG_WR(sc, BCE_HC_COMMAND,
+		    sc->hc_command | BCE_HC_COMMAND_COAL_NOW_WO_INT);
+		REG_RD(sc, BCE_HC_COMMAND);
 	}
+
+	/*
+	 * If any other attention is asserted then
+	 * the chip is toast.
+	 */
+	if ((status_attn_bits & ~STATUS_ATTN_BITS_LINK_STATE) !=
+	    (sblk->status_attn_bits_ack & ~STATUS_ATTN_BITS_LINK_STATE)) {
+		if_printf(ifp, "Fatal attention detected: 0x%08X\n",
+			  sblk->status_attn_bits);
+		bce_init(sc);
+		return;
+	}
+
+	/* Check for any completed RX frames. */
+	if (hw_rx_cons != sc->rx_cons)
+		bce_rx_intr(sc, -1, hw_rx_cons);
+
+	/* Check for any completed TX frames. */
+	if (hw_tx_cons != sc->tx_cons)
+		bce_tx_intr(sc, hw_tx_cons);
 
 	/* Re-enable interrupts. */
 	bce_reenable_intr(sc);
@@ -6002,9 +5779,9 @@ bce_pulse_check_msi(struct bce_softc *sc)
 {
 	int check = 0;
 
-	if (bce_get_hw_rx_cons(sc) != sc->hw_rx_cons) {
+	if (bce_get_hw_rx_cons(sc) != sc->rx_cons) {
 		check = 1;
-	} else if (bce_get_hw_tx_cons(sc) != sc->hw_tx_cons) {
+	} else if (bce_get_hw_tx_cons(sc) != sc->tx_cons) {
 		check = 1;
 	} else {
 		struct status_block *sblk = sc->status_block;
@@ -8154,4 +7931,48 @@ bce_coal_change(struct bce_softc *sc)
 	}
 
 	sc->bce_coalchg_mask = 0;
+}
+
+static int
+bce_tso_setup(struct bce_softc *sc, struct mbuf **mp,
+    uint16_t *flags0, uint16_t *mss0)
+{
+	struct mbuf *m;
+	uint16_t flags;
+	int thoff, iphlen, hoff;
+
+	m = *mp;
+	KASSERT(M_WRITABLE(m), ("TSO mbuf not writable"));
+
+	hoff = m->m_pkthdr.csum_lhlen;
+	iphlen = m->m_pkthdr.csum_iphlen;
+	thoff = m->m_pkthdr.csum_thlen;
+
+	KASSERT(hoff >= sizeof(struct ether_header),
+	    ("invalid ether header len %d", hoff));
+	KASSERT(iphlen >= sizeof(struct ip),
+	    ("invalid ip header len %d", iphlen));
+	KASSERT(thoff >= sizeof(struct tcphdr),
+	    ("invalid tcp header len %d", thoff));
+
+	if (__predict_false(m->m_len < hoff + iphlen + thoff)) {
+		m = m_pullup(m, hoff + iphlen + thoff);
+		if (m == NULL) {
+			*mp = NULL;
+			return ENOBUFS;
+		}
+		*mp = m;
+	}
+
+	/* Set the LSO flag in the TX BD */
+	flags = TX_BD_FLAGS_SW_LSO;
+
+	/* Set the length of IP + TCP options (in 32 bit words) */
+	flags |= (((iphlen + thoff -
+	    sizeof(struct ip) - sizeof(struct tcphdr)) >> 2) << 8);
+
+	*mss0 = htole16(m->m_pkthdr.tso_segsz);
+	*flags0 = flags;
+
+	return 0;
 }
