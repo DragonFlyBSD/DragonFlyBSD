@@ -4383,8 +4383,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	DBRUNIF(1, sc->rx_interrupts++);
-
 	/* Get the hardware's view of the RX consumer index. */
 	hw_cons = sc->hw_rx_cons = bce_get_hw_rx_cons(sc);
 
@@ -4393,18 +4391,9 @@ bce_rx_intr(struct bce_softc *sc, int count)
 	sw_prod = sc->rx_prod;
 	sw_prod_bseq = sc->rx_prod_bseq;
 
-	DBPRINT(sc, BCE_INFO_RECV, "%s(enter): sw_prod = 0x%04X, "
-		"sw_cons = 0x%04X, sw_prod_bseq = 0x%08X\n",
-		__func__, sw_prod, sw_cons, sw_prod_bseq);
-
 	/* Prevent speculative reads from getting ahead of the status block. */
 	bus_space_barrier(sc->bce_btag, sc->bce_bhandle, 0, 0,
 			  BUS_SPACE_BARRIER_READ);
-
-	/* Update some debug statistics counters */
-	DBRUNIF((sc->free_rx_bd < sc->rx_low_watermark),
-		sc->rx_low_watermark = sc->free_rx_bd);
-	DBRUNIF((sc->free_rx_bd == 0), sc->rx_empty_count++);
 
 	/* Scan through the receive chain as long as there is work to do. */
 	while (sw_cons != hw_cons) {
@@ -4433,19 +4422,8 @@ bce_rx_intr(struct bce_softc *sc, int count)
 				       [RX_IDX(sw_chain_cons)];
 		sc->free_rx_bd++;
 
-		DBRUN(BCE_VERBOSE_RECV,
-		      if_printf(ifp, "%s(): ", __func__);
-		      bce_dump_rxbd(sc, sw_chain_cons, rxbd));
-
 		/* The mbuf is stored with the last rx_bd entry of a packet. */
 		if (sc->rx_mbuf_ptr[sw_chain_cons] != NULL) {
-			/* Validate that this is the last rx_bd. */
-			DBRUNIF((!(rxbd->rx_bd_flags & RX_BD_FLAGS_END)),
-				if_printf(ifp, "%s(%d): "
-				"Unexpected mbuf found in rx_bd[0x%04X]!\n",
-				__FILE__, __LINE__, sw_chain_cons);
-				bce_breakpoint(sc));
-
 			if (sw_chain_cons != sw_chain_prod) {
 				if_printf(ifp, "RX cons(%d) != prod(%d), "
 					  "drop!\n", sw_chain_cons,
@@ -4489,23 +4467,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 			len = l2fhdr->l2_fhdr_pkt_len;
 			status = l2fhdr->l2_fhdr_status;
 
-			DBRUNIF(DB_RANDOMTRUE(bce_debug_l2fhdr_status_check),
-				if_printf(ifp,
-				"Simulating l2_fhdr status error.\n");
-				status = status | L2_FHDR_ERRORS_PHY_DECODE);
-
-			/* Watch for unusual sized frames. */
-			DBRUNIF((len < BCE_MIN_MTU ||
-				 len > BCE_MAX_JUMBO_ETHER_MTU_VLAN),
-				if_printf(ifp,
-				"%s(%d): Unusual frame size found. "
-				"Min(%d), Actual(%d), Max(%d)\n",
-				__FILE__, __LINE__,
-				(int)BCE_MIN_MTU, len,
-				(int)BCE_MAX_JUMBO_ETHER_MTU_VLAN);
-				bce_dump_mbuf(sc, m);
-		 		bce_breakpoint(sc));
-
 			len -= ETHER_CRC_LEN;
 
 			/* Check the received frame for errors. */
@@ -4515,7 +4476,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 				      L2_FHDR_ERRORS_TOO_SHORT |
 				      L2_FHDR_ERRORS_GIANT_FRAME)) {
 				ifp->if_ierrors++;
-				DBRUNIF(1, sc->l2fhdr_status_errors++);
 
 				/* Reuse the mbuf for a new frame. */
 				bce_setup_rxdesc_std(sc, sw_chain_prod,
@@ -4532,12 +4492,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 			 */
 			if (bce_newbuf_std(sc, &sw_prod, &sw_chain_prod,
 					   &sw_prod_bseq, 0)) {
-				DBRUN(BCE_WARN,
-				      if_printf(ifp,
-				      "%s(%d): Failed to allocate new mbuf, "
-				      "incoming frame dropped!\n",
-				      __FILE__, __LINE__));
-
 				ifp->if_ierrors++;
 
 				/* Try and reuse the exisitng mbuf. */
@@ -4556,15 +4510,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 			m->m_pkthdr.len = m->m_len = len;
 			m->m_pkthdr.rcvif = ifp;
 
-			DBRUN(BCE_VERBOSE_RECV,
-			      struct ether_header *eh;
-			      eh = mtod(m, struct ether_header *);
-			      if_printf(ifp, "%s(): to: %6D, from: %6D, "
-			      		"type: 0x%04X\n", __func__,
-					eh->ether_dhost, ":", 
-					eh->ether_shost, ":",
-					htons(eh->ether_type)));
-
 			/* Validate the checksum if offload enabled. */
 			if (ifp->if_capenable & IFCAP_RXCSUM) {
 				/* Check for an IP datagram. */
@@ -4577,10 +4522,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 					     0xffff) == 0) {
 						m->m_pkthdr.csum_flags |=
 							CSUM_IP_VALID;
-					} else {
-						DBPRINT(sc, BCE_WARN_RECV, 
-							"%s(): Invalid IP checksum = 0x%04X!\n",
-							__func__, l2fhdr->l2_fhdr_ip_xsum);
 					}
 				}
 
@@ -4597,10 +4538,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 						m->m_pkthdr.csum_flags |=
 							CSUM_DATA_VALID |
 							CSUM_PSEUDO_HDR;
-					} else {
-						DBPRINT(sc, BCE_WARN_RECV,
-							"%s(): Invalid TCP/UDP checksum = 0x%04X!\n",
-							__func__, l2fhdr->l2_fhdr_tcp_udp_xsum);
 					}
 				}
 			}
@@ -4614,17 +4551,12 @@ bce_rx_int_next_rx:
 
 		/* If we have a packet, pass it up the stack */
 		if (m) {
-			DBPRINT(sc, BCE_VERBOSE_RECV,
-				"%s(): Passing received frame up.\n", __func__);
-
 			if (status & L2_FHDR_STATUS_L2_VLAN_TAG) {
 				m->m_flags |= M_VLANTAG;
 				m->m_pkthdr.ether_vlantag =
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
 			ifp->if_input(ifp, m);
-
-			DBRUNIF(1, sc->rx_mbuf_alloc--);
 		}
 
 		/*
@@ -4654,10 +4586,6 @@ bce_rx_int_next_rx:
 	    sc->rx_prod);
 	REG_WR(sc, MB_GET_CID_ADDR(RX_CID) + BCE_L2MQ_RX_HOST_BSEQ,
 	    sc->rx_prod_bseq);
-
-	DBPRINT(sc, BCE_INFO_RECV, "%s(exit): rx_prod = 0x%04X, "
-		"rx_cons = 0x%04X, rx_prod_bseq = 0x%08X\n",
-		__func__, sc->rx_prod, sc->rx_cons, sc->rx_prod_bseq);
 }
 
 
@@ -4693,8 +4621,6 @@ bce_tx_intr(struct bce_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	DBRUNIF(1, sc->tx_interrupts++);
-
 	/* Get the hardware's view of the TX consumer index. */
 	hw_tx_cons = sc->hw_tx_cons = bce_get_hw_tx_cons(sc);
 	sw_tx_cons = sc->tx_cons;
@@ -4705,36 +4631,7 @@ bce_tx_intr(struct bce_softc *sc)
 
 	/* Cycle through any completed TX chain page entries. */
 	while (sw_tx_cons != hw_tx_cons) {
-#ifdef BCE_DEBUG
-		struct tx_bd *txbd = NULL;
-#endif
 		sw_tx_chain_cons = TX_CHAIN_IDX(sc, sw_tx_cons);
-
-		DBPRINT(sc, BCE_INFO_SEND,
-			"%s(): hw_tx_cons = 0x%04X, sw_tx_cons = 0x%04X, "
-			"sw_tx_chain_cons = 0x%04X\n",
-			__func__, hw_tx_cons, sw_tx_cons, sw_tx_chain_cons);
-
-		DBRUNIF((sw_tx_chain_cons > MAX_TX_BD(sc)),
-			if_printf(ifp, "%s(%d): "
-				  "TX chain consumer out of range! "
-				  " 0x%04X > 0x%04X\n",
-				  __FILE__, __LINE__, sw_tx_chain_cons,
-				  (int)MAX_TX_BD(sc));
-			bce_breakpoint(sc));
-
-		DBRUNIF(1, txbd = &sc->tx_bd_chain[TX_PAGE(sw_tx_chain_cons)]
-				[TX_IDX(sw_tx_chain_cons)]);
-
-		DBRUNIF((txbd == NULL),
-			if_printf(ifp, "%s(%d): "
-				  "Unexpected NULL tx_bd[0x%04X]!\n",
-				  __FILE__, __LINE__, sw_tx_chain_cons);
-			bce_breakpoint(sc));
-
-		DBRUN(BCE_INFO_SEND,
-		      if_printf(ifp, "%s(): ", __func__);
-		      bce_dump_txbd(sc, sw_tx_chain_cons, txbd));
 
 		/*
 		 * Free the associated mbuf. Remember
@@ -4742,18 +4639,6 @@ bce_tx_intr(struct bce_softc *sc)
 		 * has an mbuf pointer and DMA map.
 		 */
 		if (sc->tx_mbuf_ptr[sw_tx_chain_cons] != NULL) {
-			/* Validate that this is the last tx_bd. */
-			DBRUNIF((!(txbd->tx_bd_flags & TX_BD_FLAGS_END)),
-				if_printf(ifp, "%s(%d): "
-				"tx_bd END flag not set but "
-				"txmbuf == NULL!\n", __FILE__, __LINE__);
-				bce_breakpoint(sc));
-
-			DBRUN(BCE_INFO_SEND,
-			      if_printf(ifp, "%s(): Unloading map/freeing mbuf "
-			      		"from tx_bd[0x%04X]\n", __func__,
-					sw_tx_chain_cons));
-
 			/* Unmap the mbuf. */
 			bus_dmamap_unload(sc->tx_mbuf_tag,
 					  sc->tx_mbuf_map[sw_tx_chain_cons]);
@@ -4761,7 +4646,6 @@ bce_tx_intr(struct bce_softc *sc)
 			/* Free the mbuf. */
 			m_freem(sc->tx_mbuf_ptr[sw_tx_chain_cons]);
 			sc->tx_mbuf_ptr[sw_tx_chain_cons] = NULL;
-			DBRUNIF(1, sc->tx_mbuf_alloc--);
 
 			ifp->if_opackets++;
 		}
@@ -4788,13 +4672,8 @@ bce_tx_intr(struct bce_softc *sc)
 	}
 
 	/* Clear the tx hardware queue full flag. */
-	if (sc->max_tx_bd - sc->used_tx_bd >= BCE_TX_SPARE_SPACE) {
-		DBRUNIF((ifp->if_flags & IFF_OACTIVE),
-			DBPRINT(sc, BCE_WARN_SEND,
-				"%s(): Open TX chain! %d/%d (used/total)\n", 
-				__func__, sc->used_tx_bd, sc->max_tx_bd));
+	if (sc->max_tx_bd - sc->used_tx_bd >= BCE_TX_SPARE_SPACE)
 		ifp->if_flags &= ~IFF_OACTIVE;
-	}
 	sc->tx_cons = sw_tx_cons;
 }
 
