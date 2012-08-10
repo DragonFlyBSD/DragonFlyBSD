@@ -74,6 +74,7 @@ struct hammer2_chain;
 struct hammer2_inode;
 struct hammer2_mount;
 struct hammer2_pfsmount;
+struct hammer2_span;
 struct hammer2_state;
 struct hammer2_msg;
 
@@ -277,6 +278,19 @@ struct hammer2_freecache {
 typedef struct hammer2_freecache hammer2_freecache_t;
 
 /*
+ * Structure used to represent a virtual circuit for a messaging
+ * route.  Typically associated from hammer2_state but the hammer2_pfsmount
+ * structure also has one to represent the point-to-point link.
+ */
+struct hammer2_router {
+	struct hammer2_pfsmount *pmp;
+	struct hammer2_state	*state;		/* received LNK_SPAN state */
+	uint64_t		target;		/* target */
+};
+
+typedef struct hammer2_router hammer2_router_t;
+
+/*
  * Global (per device) mount structure for device (aka vp->v_mount->hmp)
  */
 struct hammer2_mount {
@@ -328,6 +342,7 @@ struct hammer2_pfsmount {
 	struct hammer2_state	*freewr_state;	/* allocation cache */
 	struct hammer2_state_tree staterd_tree;	/* active messages */
 	struct hammer2_state_tree statewr_tree;	/* active messages */
+	struct hammer2_router	router;
 };
 
 typedef struct hammer2_pfsmount hammer2_pfsmount_t;
@@ -335,22 +350,16 @@ typedef struct hammer2_pfsmount hammer2_pfsmount_t;
 #define HAMMER2_CLUSTERCTL_KILL	0x0001
 
 /*
- * In-memory message structure for hammer2.
- *
- * Persistent cache state messages will be associated with a hammer2_chain.
- *
- * NOTE!  If REPLY is set then the source and target fields in the message
- *	  are swapped.  That is, source and target remain unchanged whether
- *	  the message is a command from side A or a reply from side B.
- *	  The message is routed based on target if REPLY is not set, and on
- *	  source if REPLY is set.
+ * Transactional state structure, representing an open transaction.  The
+ * transaction might represent a cache state (and thus have a chain
+ * association), or a VOP op, LNK_SPAN, or other things.
  */
 struct hammer2_state {
 	RB_ENTRY(hammer2_state) rbnode;		/* indexed by msgid */
 	struct hammer2_pfsmount	*pmp;
+	struct hammer2_router *router;		/* related LNK_SPAN route */
 	uint32_t	txcmd;			/* mostly for CMDF flags */
 	uint32_t	rxcmd;			/* mostly for CMDF flags */
-	uint64_t	spanid;			/* spanning tree routing */
 	uint64_t	msgid;			/* {spanid,msgid} uniq */
 	int		flags;
 	int		error;
@@ -368,6 +377,7 @@ struct hammer2_state {
 
 struct hammer2_msg {
 	TAILQ_ENTRY(hammer2_msg) qentry;	/* serialized queue */
+	struct hammer2_router *router;
 	struct hammer2_state *state;
 	size_t		hdr_size;
 	size_t		aux_size;
@@ -375,6 +385,7 @@ struct hammer2_msg {
 	hammer2_msg_any_t any;
 };
 
+typedef struct hammer2_link hammer2_link_t;
 typedef struct hammer2_state hammer2_state_t;
 typedef struct hammer2_msg hammer2_msg_t;
 
@@ -539,29 +550,25 @@ int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 /*
  * hammer2_msg.c
  */
-int hammer2_state_msgrx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
-int hammer2_state_msgtx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
-void hammer2_state_cleanuprx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
-void hammer2_state_cleanuptx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
-int hammer2_msg_execute(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
+int hammer2_state_msgrx(hammer2_msg_t *msg);
+int hammer2_state_msgtx(hammer2_msg_t *msg);
+void hammer2_state_cleanuprx(hammer2_msg_t *msg);
+void hammer2_state_cleanuptx(hammer2_msg_t *msg);
+int hammer2_msg_execute(hammer2_msg_t *msg);
 void hammer2_state_free(hammer2_state_t *state);
-void hammer2_msg_free(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
-hammer2_msg_t *hammer2_msg_alloc(hammer2_pfsmount_t *pmp, uint64_t spanid,
-				uint32_t cmd);
-void hammer2_msg_write(hammer2_pfsmount_t *pmp,
-				hammer2_msg_t *msg,
+void hammer2_msg_free(hammer2_msg_t *msg);
+hammer2_msg_t *hammer2_msg_alloc(hammer2_router_t *router, uint32_t cmd);
+void hammer2_msg_write(hammer2_msg_t *msg,
 				int (*func)(hammer2_state_t *, hammer2_msg_t *),
 				void *data);
-void hammer2_msg_reply(hammer2_pfsmount_t *pmp,
-				hammer2_msg_t *msg, uint32_t error);
-void hammer2_msg_result(hammer2_pfsmount_t *pmp,
-				hammer2_msg_t *msg, uint32_t error);
+void hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error);
+void hammer2_msg_result(hammer2_msg_t *msg, uint32_t error);
 
 /*
  * hammer2_msgops.c
  */
-int hammer2_msg_dbg_rcvmsg(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
-int hammer2_msg_adhoc_input(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
+int hammer2_msg_dbg_rcvmsg(hammer2_msg_t *msg);
+int hammer2_msg_adhoc_input(hammer2_msg_t *msg);
 
 /*
  * hammer2_freemap.c

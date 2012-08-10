@@ -42,64 +42,67 @@
 /*
  * Mesh network protocol structures.
  *
+ *				SPAN PROTOCOL
+ *
  * The mesh is constructed from point-to-point streaming links with varying
- * levels of interconnectedness, forming a graph.  The spanning tree protocol
- * running on each node transmits a LNK_SPAN transactional message to the
- * other end.  The protocol collects LNK_SPAN messages from all sources,
- * aggregates them using a shortest-distance-path algorithm, and transmits
- * them over each link as well, creating a multplication within the topology.
+ * levels of interconnectedness, forming a graph.  Terminii in the graph
+ * are entities such as a HAMMER2 PFS or a network mount or other types
+ * of nodes.
  *
- * Any node in the graph may transmit a message to any other node by using
- * the msgid of the LNK_SPAN open transaction as the message's 'linkid'.
- * This identifies both sides so there is no 'source' and 'target' per-say.
+ * The spanning tree protocol runs symmetrically on every node. Each node
+ * transmits a representitive LNK_SPAN out all available connections.  Nodes
+ * also receive LNK_SPANs from other nodes (obviously), and must aggregate,
+ * reduce, and relay those LNK_SPANs out all available connections, thus
+ * propagating the spanning tree.  Any connection failure or topology change
+ * causes changes in the LNK_SPAN propagation.
  *
- * Open transactions are recorded by the source and the target, but not by
- * intermediate nodes in the route.  Streaming protocols are used.  If a
- * span element is lost its transaction will be aborted automatically (even
- * if other routes to the same target are available), and any related
- * messages will be aborted.  If the span element was chosen for aggregation
- * this will propagate through the entire topology and thus ultimately reach
- * the target which used the aggregated span element, but does not
- * necessarily effect all paths in the topology.
+ * Each LNK_SPAN or LNK_SPAN relay represents a virtual circuit for routing
+ * purposes.  In addition, each relay is chained in one direction,
+ * representing a 1:N fan-out (i.e. one received LNK_SPAN can be relayed out
+ * multiple connections).  In order to be able to route a message via a
+ * LNK_SPAN over a deterministic route THE MESSAGE CAN ONLY FLOW FROM A
+ * REMOTE NODE TOWARDS OUR NODE (N:1 fan-in).
  *
- * When a link failure occurs all SPANs related to that link are
- * transactionally closed.  The SPANs are not deleted until closed in
- * both directions, thus the spanid serves as a placeholder allowing all
- * in-transit messages being routed over that spanid to be properly thrown
- * out.  Once completely closed the spanid can be reused.
+ * This supports the requirement that we have both message serialization
+ * and positive feedback if a topology change breaks the chain of VCs
+ * the message is flowing over.  A remote node sending a message to us
+ * will get positive feedback that the route was broken and can take suitable
+ * action to terminate the transaction with an error.
  *
- * NOTE: Multiple spans for the same physical {fsid,pfs_fsid} can be
- *	 forwarded, allowing concurrency within the topology.
+ *				TRANSACTIONAL REPLIES
  *
- * NOTE: It is important that messages in a lost route be aborted because
- *	 the messaging protocol expects serialization over any given route.
- *	 Only propagated spans are forwarded as spans to other nodes, so any
- *	 given open span transaction will represent a specific path.
+ * However, when we receive a command message from a remote node and we want
+ * to reply to it, we have a problem.  We want the remote node to have
+ * positive feedback if our reply fails to make it, but if we use a virtual
+ * circuit based on the remote node's LNK_SPAN to us it will be a DIFFERENT
+ * virtual circuit than the one the remote node used to message us.  That's
+ * a problem because it means we have no reliable way to notify the remote
+ * node if we get notified that our reply has failed.
  *
- *	 If a portion of the path in the middle of the topology is lost it
- *	 will propagate in both directions all the way to the ends that used
- *	 it.  Intermediate route nodes DO NOT silently re-route messages to
- *	 another span.  Messages in-flight will meet the updating SPAN and
- *	 simply be discarded by intermediate nodes.  Ultimately the updating
- *	 SPAN reaches all end-points and auto-aborts the open transaction.
+ * The solution is to first note the fact that the remote chose an optimal
+ * route to get to us, so the reverse should be true. The reason the VC
+ * might not exist over the same route in the reverse is because there may
+ * be multiple paths available with the same distance metric.
  *
- *	 If another path is available the transaction can be instantly
- *	 retried.
+ * But this also means that we can adjust the messaging protocols to
+ * propagate a LNK_SPAN from the remote to us WHILE the remote's command
+ * message is being sent to us, and it will not only likely be optimal but
+ * it might also already exist, and it will also guarantee that a reply
+ * failure will propagate back to both sides (because even though each
+ * direction is using a different VC chain, the two chains are still
+ * going along the same path).
  *
- * NOTE: It is possible to route messages virtually using the msgid of any
- *	 open transaction instead of the msgid of a SPAN transaction, but
- *	 not recommended and not currently coded.
+ * We communicate the return VC by having the relay adjust both the target
+ * and the source fields in the message, rather than just the target, on
+ * each relay.  As of when the message gets to us the 'source' field will
+ * represent the VC for the return direction (and of course also identify
+ * the node the message came from).
  *
- * NOTE: Both the msgid and the spanid are 64-bit fields and may be populated
- *	 with actual memory pointers (which simplifies the end-points).
- *	 However, all such identifiers must be indexed as appropriate by the
- *	 nodes and verified as being valid before any memory dereference
- *	 occurs, for obvious reasons.
- *
- * All message responses follow the SAME PATH that the original message
- * followed, but in reverse.  This is an absolute requirement since messages
- * expecting replies record persistent state at each hop.  Sequencing must
- * be preserved.
+ * This way both sides get positive feedback if a topology change disrupts
+ * the VC for the transaction.  We also get one additional guarantee, and
+ * that is no spurious messages.  Messages simply die when the VC they are
+ * traveling over is broken, in either direction, simple as that.
+ * It makes managing message transactional states very easy.
  *
  *			MESSAGE TRANSACTIONAL STATES
  *
@@ -192,18 +195,18 @@
  */
 struct hammer2_msg_hdr {
 	uint16_t	magic;		/* 00 sanity, synchro, endian */
-	uint16_t	reserved02;	/* 02 size of header in bytes */
+	uint16_t	reserved02;	/* 02 */
 	uint32_t	salt;		/* 04 random salt helps w/crypto */
 
 	uint64_t	msgid;		/* 08 message transaction id */
-	uint64_t	spanid;		/* 10 message routing id or 0 */
+	uint64_t	source;		/* 10 originator or 0	*/
+	uint64_t	target;		/* 18 destination or 0	*/
 
-	uint32_t	cmd;		/* 18 flags | cmd | hdr_size / ALIGN */
-	uint32_t	aux_crc;	/* 1C auxillary data crc */
-	uint32_t	aux_bytes;	/* 20 auxillary data length (bytes) */
-	uint32_t	error;		/* 24 error code or 0 */
-	uint64_t	aux_descr;	/* 28 negotiated OOB data descr */
-	uint64_t	reserved30;	/* 30 */
+	uint32_t	cmd;		/* 20 flags | cmd | hdr_size / ALIGN */
+	uint32_t	aux_crc;	/* 24 auxillary data crc */
+	uint32_t	aux_bytes;	/* 28 auxillary data length (bytes) */
+	uint32_t	error;		/* 2C error code or 0 */
+	uint64_t	aux_descr;	/* 30 negotiated OOB data descr */
 	uint32_t	reserved38;	/* 38 */
 	uint32_t	hdr_crc;	/* 3C (aligned) extended header crc */
 };

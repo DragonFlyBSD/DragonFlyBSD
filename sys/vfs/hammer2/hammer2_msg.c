@@ -104,10 +104,20 @@ RB_GENERATE(hammer2_state_tree, hammer2_state, rbnode, hammer2_state_cmp);
  * will typically just contain status updates.
  */
 int
-hammer2_state_msgrx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
+hammer2_state_msgrx(hammer2_msg_t *msg)
 {
+	hammer2_pfsmount_t *pmp;
 	hammer2_state_t *state;
 	int error;
+
+	pmp = msg->router->pmp;
+
+	/*
+	 * XXX resolve msg->any.head.source and msg->any.head.target
+	 *     into LNK_SPAN references.
+	 *
+	 * XXX replace msg->router
+	 */
 
 	/*
 	 * Make sure a state structure is ready to go in case we need a new
@@ -130,10 +140,12 @@ hammer2_state_msgrx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 	lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 
 	state->msgid = msg->any.head.msgid;
-	state->spanid = msg->any.head.spanid;
-	kprintf("received msg %08x msgid %jx spanid=%jx\n",
+	state->router = &pmp->router;
+	kprintf("received msg %08x msgid %jx source=%jx target=%jx\n",
 		msg->any.head.cmd,
-		(intmax_t)msg->any.head.msgid, (intmax_t)msg->any.head.spanid);
+		(intmax_t)msg->any.head.msgid,
+		(intmax_t)msg->any.head.source,
+		(intmax_t)msg->any.head.target);
 	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY)
 		state = RB_FIND(hammer2_state_tree, &pmp->statewr_tree, state);
 	else
@@ -168,6 +180,7 @@ hammer2_state_msgrx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 		state = pmp->freerd_state;
 		pmp->freerd_state = NULL;
 		msg->state = state;
+		state->router = msg->router;
 		state->msg = msg;
 		state->rxcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
 		state->txcmd = HAMMER2_MSGF_REPLY;
@@ -290,12 +303,13 @@ hammer2_state_msgrx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 }
 
 void
-hammer2_state_cleanuprx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
+hammer2_state_cleanuprx(hammer2_msg_t *msg)
 {
+	hammer2_pfsmount_t *pmp = msg->router->pmp;
 	hammer2_state_t *state;
 
 	if ((state = msg->state) == NULL) {
-		hammer2_msg_free(pmp, msg);
+		hammer2_msg_free(msg);
 	} else if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
 		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 		state->rxcmd |= HAMMER2_MSGF_DELETE;
@@ -320,9 +334,9 @@ hammer2_state_cleanuprx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 		} else {
 			lockmgr(&pmp->msglk, LK_RELEASE);
 		}
-		hammer2_msg_free(pmp, msg);
+		hammer2_msg_free(msg);
 	} else if (state->msg != msg) {
-		hammer2_msg_free(pmp, msg);
+		hammer2_msg_free(msg);
 	}
 }
 
@@ -340,8 +354,9 @@ hammer2_state_cleanuprx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
  * A NULL state may be returned in this case.
  */
 int
-hammer2_state_msgtx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
+hammer2_state_msgtx(hammer2_msg_t *msg)
 {
+	hammer2_pfsmount_t *pmp = msg->router->pmp;
 	hammer2_state_t *state;
 	int error;
 
@@ -519,12 +534,13 @@ hammer2_state_msgtx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 }
 
 void
-hammer2_state_cleanuptx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
+hammer2_state_cleanuptx(hammer2_msg_t *msg)
 {
+	hammer2_pfsmount_t *pmp = msg->router->pmp;
 	hammer2_state_t *state;
 
 	if ((state = msg->state) == NULL) {
-		hammer2_msg_free(pmp, msg);
+		hammer2_msg_free(msg);
 	} else if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
 		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 		state->txcmd |= HAMMER2_MSGF_DELETE;
@@ -549,9 +565,9 @@ hammer2_state_cleanuptx(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 		} else {
 			lockmgr(&pmp->msglk, LK_RELEASE);
 		}
-		hammer2_msg_free(pmp, msg);
+		hammer2_msg_free(msg);
 	} else if (state->msg != msg) {
-		hammer2_msg_free(pmp, msg);
+		hammer2_msg_free(msg);
 	}
 }
 
@@ -565,33 +581,39 @@ hammer2_state_free(hammer2_state_t *state)
 	state->msg = NULL;
 	kfree(state, pmp->mmsg);
 	if (msg)
-		hammer2_msg_free(pmp, msg);
+		hammer2_msg_free(msg);
 }
 
 hammer2_msg_t *
-hammer2_msg_alloc(hammer2_pfsmount_t *pmp, uint64_t spanid, uint32_t cmd)
+hammer2_msg_alloc(hammer2_router_t *router, uint32_t cmd)
 {
 	hammer2_msg_t *msg;
 	size_t hbytes;
 
 	hbytes = (cmd & HAMMER2_MSGF_SIZE) * HAMMER2_MSG_ALIGN;
 	msg = kmalloc(offsetof(struct hammer2_msg, any) + hbytes,
-		      pmp->mmsg, M_WAITOK | M_ZERO);
+		      router->pmp->mmsg, M_WAITOK | M_ZERO);
 	msg->hdr_size = hbytes;
+	msg->router = router;
+	KKASSERT(router != NULL);
 	msg->any.head.magic = HAMMER2_MSGHDR_MAGIC;
-	msg->any.head.spanid = spanid;
+	msg->any.head.source = 0;
+	msg->any.head.target = router->target;
 	msg->any.head.cmd = cmd;
 
 	return (msg);
 }
 
 void
-hammer2_msg_free(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
+hammer2_msg_free(hammer2_msg_t *msg)
 {
+	hammer2_pfsmount_t *pmp = msg->router->pmp;
+
 	if (msg->aux_data && msg->aux_size) {
 		kfree(msg->aux_data, pmp->mmsg);
 		msg->aux_data = NULL;
 		msg->aux_size = 0;
+		msg->router = NULL;
 	}
 	kfree(msg, pmp->mmsg);
 }
@@ -603,9 +625,9 @@ hammer2_msg_free(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
 int
 hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
 {
-	if (state1->spanid < state2->spanid)
+	if (state1->router < state2->router)
 		return(-1);
-	if (state1->spanid > state2->spanid)
+	if (state1->router > state2->router)
 		return(1);
 	if (state1->msgid < state2->msgid)
 		return(-1);
@@ -618,22 +640,23 @@ hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
  * Write a message.  All requisit command flags have been set.
  *
  * If msg->state is non-NULL the message is written to the existing
- * transaction.  Both msgid and spanid will be set accordingly.
+ * transaction.  msgid will be set accordingly.
  *
  * If msg->state is NULL and CREATE is set new state is allocated and
- * (func, data) is installed.
+ * (func, data) is installed.  A msgid is assigned.
  *
  * If msg->state is NULL and CREATE is not set the message is assumed
- * to be a one-way message.  The msgid and spanid must be set by the
- * caller (msgid is typically set to 0 for this case).
+ * to be a one-way message.  The originator must assign the msgid
+ * (or leave it 0, which is typical.
  *
  * This function merely queues the message to the management thread, it
  * does not write to the message socket/pipe.
  */
 void
-hammer2_msg_write(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg,
+hammer2_msg_write(hammer2_msg_t *msg,
 		  int (*func)(hammer2_state_t *, hammer2_msg_t *), void *data)
 {
+	hammer2_pfsmount_t *pmp = msg->router->pmp;
 	hammer2_state_t *state;
 
 	if (msg->state) {
@@ -644,12 +667,14 @@ hammer2_msg_write(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg,
 		 * (Function callback and aux data for the receive side can
 		 * be replaced or left alone).
 		 */
-		msg->any.head.msgid = msg->state->msgid;
-		msg->any.head.spanid = msg->state->spanid;
+		state = msg->state;
+		msg->any.head.msgid = state->msgid;
+		msg->any.head.source = 0;
+		msg->any.head.target = state->router->target;
 		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 		if (func) {
-			msg->state->func = func;
-			msg->state->any.any = data;
+			state->func = func;
+			state->any.any = data;
 		}
 	} else if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
 		/*
@@ -664,8 +689,11 @@ hammer2_msg_write(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg,
 		state->any.any = data;
 		state->msg = msg;
 		state->msgid = (uint64_t)(uintptr_t)state;
-		state->spanid = msg->any.head.spanid;
+		state->router = msg->router;
 		msg->state = state;
+		msg->any.head.source = 0;
+		msg->any.head.target = state->router->target;
+		msg->any.head.msgid = state->msgid;
 
 		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 		if (RB_INSERT(hammer2_state_tree, &pmp->statewr_tree, state))
@@ -678,6 +706,8 @@ hammer2_msg_write(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg,
 		 * competing aborts and a real one-off message?)
 		 */
 		msg->any.head.msgid = 0;
+		msg->any.head.source = 0;
+		msg->any.head.target = msg->router->target;
 		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 	}
 
@@ -700,9 +730,10 @@ hammer2_msg_write(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg,
  * If msg->state is non-NULL we are replying to a one-way message.
  */
 void
-hammer2_msg_reply(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
+hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error)
 {
 	hammer2_state_t *state = msg->state;
+	hammer2_msg_t *nmsg;
 	uint32_t cmd;
 
 	/*
@@ -721,7 +752,7 @@ hammer2_msg_reply(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
 	 */
 	if (state) {
 		if (state->txcmd & HAMMER2_MSGF_DELETE) {
-			hammer2_msg_free(pmp, msg);
+			hammer2_msg_free(msg);
 			return;
 		}
 		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
@@ -734,10 +765,10 @@ hammer2_msg_reply(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
 			cmd |= HAMMER2_MSGF_REPLY;
 	}
 
-	msg = hammer2_msg_alloc(pmp, 0, cmd);
-	msg->any.head.error = error;
-	msg->state = state;
-	hammer2_msg_write(pmp, msg, NULL, NULL);
+	nmsg = hammer2_msg_alloc(msg->router, cmd);
+	nmsg->any.head.error = error;
+	nmsg->state = state;
+	hammer2_msg_write(nmsg, NULL, NULL);
 }
 
 /*
@@ -747,9 +778,10 @@ hammer2_msg_reply(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
  * function degenerates into the same as hammer2_msg_reply().
  */
 void
-hammer2_msg_result(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
+hammer2_msg_result(hammer2_msg_t *msg, uint32_t error)
 {
 	hammer2_state_t *state = msg->state;
+	hammer2_msg_t *nmsg;
 	uint32_t cmd;
 
 	/*
@@ -768,7 +800,7 @@ hammer2_msg_result(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
 	 */
 	if (state) {
 		if (state->txcmd & HAMMER2_MSGF_DELETE) {
-			hammer2_msg_free(pmp, msg);
+			hammer2_msg_free(msg);
 			return;
 		}
 		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
@@ -781,8 +813,8 @@ hammer2_msg_result(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg, uint32_t error)
 			cmd |= HAMMER2_MSGF_REPLY;
 	}
 
-	msg = hammer2_msg_alloc(pmp, 0, cmd);
-	msg->any.head.error = error;
-	msg->state = state;
-	hammer2_msg_write(pmp, msg, NULL, NULL);
+	nmsg = hammer2_msg_alloc(msg->router, cmd);
+	nmsg->any.head.error = error;
+	nmsg->state = state;
+	hammer2_msg_write(nmsg, NULL, NULL);
 }

@@ -281,8 +281,12 @@ h2span_node_cmp(h2span_node_t *node1, h2span_node_t *node2)
 }
 
 /*
- * NOTE: Sort/subsort must match h2span_relay_cmp() under any given
- *	 node.
+ * Sort/subsort must match h2span_relay_cmp() under any given node
+ * to make the aggregation algorithm easier, so the best links are
+ * in the same sorted order as the best relays.
+ *
+ * NOTE: We cannot use link*->state->msgid because this msgid is created
+ *	 by each remote host and thus might wind up being the same.
  */
 static
 int
@@ -292,10 +296,17 @@ h2span_link_cmp(h2span_link_t *link1, h2span_link_t *link2)
 		return(-1);
 	if (link1->dist > link2->dist)
 		return(1);
+#if 1
+	if ((uintptr_t)link1->state < (uintptr_t)link2->state)
+		return(-1);
+	if ((uintptr_t)link1->state > (uintptr_t)link2->state)
+		return(1);
+#else
 	if (link1->state->msgid < link2->state->msgid)
 		return(-1);
 	if (link1->state->msgid > link2->state->msgid)
 		return(1);
+#endif
 	return(0);
 }
 
@@ -319,10 +330,17 @@ h2span_relay_cmp(h2span_relay_t *relay1, h2span_relay_t *relay2)
 		return(-1);
 	if (link1->dist > link2->dist)
 		return(1);
+#if 1
+	if ((uintptr_t)link1->state < (uintptr_t)link2->state)
+		return(-1);
+	if ((uintptr_t)link1->state > (uintptr_t)link2->state)
+		return(1);
+#else
 	if (link1->state->msgid < link2->state->msgid)
 		return(-1);
 	if (link1->state->msgid > link2->state->msgid)
 		return(1);
+#endif
 	return(0);
 }
 
@@ -536,7 +554,7 @@ hammer2_lnk_span(hammer2_msg_t *msg)
 		slink->router = hammer2_router_alloc();
 		slink->router->iocom = state->iocom;
 		slink->router->link = slink;
-		slink->router->spanid = state->msgid;
+		slink->router->target = state->msgid;
 		hammer2_router_connect(slink->router);
 
 		RB_INSERT(h2span_link_tree, &node->tree, slink);
@@ -823,7 +841,7 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 			relay->router = hammer2_router_alloc();
 			relay->router->iocom = relay->state->iocom;
 			relay->router->relay = relay;
-			relay->router->spanid = relay->state->msgid;
+			relay->router->target = relay->state->msgid;
 
 			msg->any.lnk_span = slink->state->msg->any.lnk_span;
 			msg->any.lnk_span.dist = slink->dist + 1;

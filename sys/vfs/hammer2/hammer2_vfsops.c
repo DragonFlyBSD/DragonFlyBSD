@@ -141,7 +141,7 @@ static void hammer2_cluster_thread_rd(void *arg);
 static void hammer2_cluster_thread_wr(void *arg);
 static int hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg);
 static int hammer2_msg_span_reply(hammer2_state_t *state, hammer2_msg_t *msg);
-static int hammer2_msg_lnk_rcvmsg(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg);
+static int hammer2_msg_lnk_rcvmsg(hammer2_msg_t *msg);
 
 /*
  * HAMMER2 vfs operations.
@@ -370,6 +370,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 	ccms_domain_init(&pmp->ccms_dom);
 	pmp->hmp = hmp;
+	pmp->router.pmp = pmp;
 	++hmp->pmp_count;
 	lockmgr(&hammer2_mntlk, LK_RELEASE);
 	kprintf("hammer2_mount hmp=%p pmpcnt=%d\n", hmp, hmp->pmp_count);
@@ -1042,8 +1043,7 @@ hammer2_cluster_thread_rd(void *arg)
 			error = EINVAL;
 			break;
 		}
-		msg = kmalloc(offsetof(struct hammer2_msg, any) + hbytes,
-			      pmp->mmsg, M_WAITOK | M_ZERO);
+		msg = hammer2_msg_alloc(&pmp->router, hdr.cmd);
 		msg->any.head = hdr;
 		msg->hdr_size = hbytes;
 		if (hbytes > sizeof(hdr)) {
@@ -1082,12 +1082,12 @@ hammer2_cluster_thread_rd(void *arg)
 		 * to the connection except for EALREADY which forces
 		 * a discard without execution.
 		 */
-		error = hammer2_state_msgrx(pmp, msg);
+		error = hammer2_state_msgrx(msg);
 		if (error) {
 			/*
 			 * Raw protocol or connection error
 			 */
-			hammer2_msg_free(pmp, msg);
+			hammer2_msg_free(msg);
 			if (error == EALREADY)
 				error = 0;
 		} else if (msg->state && msg->state->func) {
@@ -1096,27 +1096,27 @@ hammer2_cluster_thread_rd(void *arg)
 			 * handling function installed for it.
 			 */
 			error = msg->state->func(msg->state, msg);
-			hammer2_state_cleanuprx(pmp, msg);
+			hammer2_state_cleanuprx(msg);
 		} else if ((msg->any.head.cmd & HAMMER2_MSGF_PROTOS) ==
 			   HAMMER2_MSG_PROTO_LNK) {
 			/*
 			 * Message related to the LNK protocol set
 			 */
-			error = hammer2_msg_lnk_rcvmsg(pmp, msg);
-			hammer2_state_cleanuprx(pmp, msg);
+			error = hammer2_msg_lnk_rcvmsg(msg);
+			hammer2_state_cleanuprx(msg);
 		} else if ((msg->any.head.cmd & HAMMER2_MSGF_PROTOS) ==
 			   HAMMER2_MSG_PROTO_DBG) {
 			/*
 			 * Message related to the DBG protocol set
 			 */
-			error = hammer2_msg_dbg_rcvmsg(pmp, msg);
-			hammer2_state_cleanuprx(pmp, msg);
+			error = hammer2_msg_dbg_rcvmsg(msg);
+			hammer2_state_cleanuprx(msg);
 		} else {
 			/*
 			 * Other higher-level messages (e.g. vnops)
 			 */
-			error = hammer2_msg_adhoc_input(pmp, msg);
-			hammer2_state_cleanuprx(pmp, msg);
+			error = hammer2_msg_adhoc_input(msg);
+			hammer2_state_cleanuprx(msg);
 		}
 		msg = NULL;
 	}
@@ -1128,7 +1128,7 @@ hammer2_cluster_thread_rd(void *arg)
 	if (msg) {
 		if (msg->state && msg->state->msg == msg)
 			msg->state->msg = NULL;
-		hammer2_msg_free(pmp, msg);
+		hammer2_msg_free(msg);
 	}
 
 	if ((state = pmp->freerd_state) != NULL) {
@@ -1171,7 +1171,8 @@ hammer2_cluster_thread_wr(void *arg)
 	 * The transaction remains fully open for the duration of the
 	 * connection.
 	 */
-	msg = hammer2_msg_alloc(pmp, 0, HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE);
+	msg = hammer2_msg_alloc(&pmp->router, HAMMER2_LNK_CONN |
+					      HAMMER2_MSGF_CREATE);
 	msg->any.lnk_conn.pfs_clid = pmp->iroot->ip_data.pfs_clid;
 	msg->any.lnk_conn.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
 	msg->any.lnk_conn.pfs_type = pmp->iroot->ip_data.pfs_type;
@@ -1181,7 +1182,7 @@ hammer2_cluster_thread_wr(void *arg)
 		name_len = sizeof(msg->any.lnk_conn.label) - 1;
 	bcopy(pmp->iroot->ip_data.filename, msg->any.lnk_conn.label, name_len);
 	msg->any.lnk_conn.label[name_len] = 0;
-	hammer2_msg_write(pmp, msg, hammer2_msg_conn_reply, pmp);
+	hammer2_msg_write(msg, hammer2_msg_conn_reply, pmp);
 
 	/*
 	 * Transmit loop
@@ -1199,10 +1200,10 @@ hammer2_cluster_thread_wr(void *arg)
 			TAILQ_REMOVE(&pmp->msgq, msg, qentry);
 			lockmgr(&pmp->msglk, LK_RELEASE);
 
-			error = hammer2_state_msgtx(pmp, msg);
+			error = hammer2_state_msgtx(msg);
 			if (error == EALREADY) {
 				error = 0;
-				hammer2_msg_free(pmp, msg);
+				hammer2_msg_free(msg);
 				lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 				continue;
 			}
@@ -1233,7 +1234,7 @@ hammer2_cluster_thread_wr(void *arg)
 					break;
 				}
 			}
-			hammer2_state_cleanuptx(pmp, msg);
+			hammer2_state_cleanuptx(msg);
 			lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 		}
 	}
@@ -1247,14 +1248,14 @@ hammer2_cluster_thread_wr(void *arg)
 	if (msg) {
 		if (msg->state && msg->state->msg == msg)
 			msg->state->msg = NULL;
-		hammer2_msg_free(pmp, msg);
+		hammer2_msg_free(msg);
 	}
 
 	while ((msg = TAILQ_FIRST(&pmp->msgq)) != NULL) {
 		TAILQ_REMOVE(&pmp->msgq, msg, qentry);
 		if (msg->state && msg->state->msg == msg)
 			msg->state->msg = NULL;
-		hammer2_msg_free(pmp, msg);
+		hammer2_msg_free(msg);
 	}
 
 	if ((state = pmp->freewr_state) != NULL) {
@@ -1281,12 +1282,15 @@ hammer2_cluster_thread_wr(void *arg)
 }
 
 static int
-hammer2_msg_lnk_rcvmsg(hammer2_pfsmount_t *pmp, hammer2_msg_t *msg)
+hammer2_msg_lnk_rcvmsg(hammer2_msg_t *msg)
 {
 	switch(msg->any.head.cmd & HAMMER2_MSGF_TRANSMASK) {
 	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE:
+		/*
+		 * reply & leave trans open
+		 */
 		kprintf("CONN RECEIVE - (just ignore it)\n");
-		hammer2_msg_result(pmp, msg, 0); /* reply & leave trans open */
+		hammer2_msg_result(msg, 0);
 		break;
 	case HAMMER2_LNK_SPAN | HAMMER2_MSGF_CREATE:
 		kprintf("SPAN RECEIVE - ADDED FROM CLUSTER\n");
@@ -1315,8 +1319,8 @@ hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg)
 
 	if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
 		kprintf("LNK_CONN transaction replied to, initiate SPAN\n");
-		msg = hammer2_msg_alloc(pmp, 0, HAMMER2_LNK_SPAN |
-						HAMMER2_MSGF_CREATE);
+		msg = hammer2_msg_alloc(&pmp->router, HAMMER2_LNK_SPAN |
+						      HAMMER2_MSGF_CREATE);
 		msg->any.lnk_span.pfs_clid = pmp->iroot->ip_data.pfs_clid;
 		msg->any.lnk_span.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
 		msg->any.lnk_span.pfs_type = pmp->iroot->ip_data.pfs_type;
@@ -1328,11 +1332,11 @@ hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg)
 		      msg->any.lnk_span.label,
 		      name_len);
 		msg->any.lnk_span.label[name_len] = 0;
-		hammer2_msg_write(pmp, msg, hammer2_msg_span_reply, pmp);
+		hammer2_msg_write(msg, hammer2_msg_span_reply, pmp);
 	}
 	if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
 		kprintf("LNK_CONN transaction terminated by remote\n");
-		hammer2_msg_reply(pmp, msg, 0);
+		hammer2_msg_reply(msg, 0);
 	}
 	return(0);
 }

@@ -151,14 +151,14 @@ hammer2_bswap_head(hammer2_msg_hdr_t *head)
 	head->salt	= bswap32(head->salt);
 
 	head->msgid	= bswap64(head->msgid);
-	head->spanid	= bswap64(head->spanid);
+	head->source	= bswap64(head->source);
+	head->target	= bswap64(head->target);
 
 	head->cmd	= bswap32(head->cmd);
 	head->aux_crc	= bswap32(head->aux_crc);
 	head->aux_bytes	= bswap32(head->aux_bytes);
 	head->error	= bswap32(head->error);
 	head->aux_descr = bswap64(head->aux_descr);
-	head->reserved30= bswap64(head->reserved30);
 	head->reserved38= bswap32(head->reserved38);
 	head->hdr_crc	= bswap32(head->hdr_crc);
 }

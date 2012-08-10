@@ -35,8 +35,8 @@
 
 #include "hammer2.h"
 
-static int hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
-static void hammer2_state_cleanuptx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
+static int hammer2_state_msgrx(hammer2_msg_t *msg);
+static void hammer2_state_cleanuptx(hammer2_msg_t *msg);
 
 /*
  * ROUTER TREE - Represents available routes for message routing, indexed
@@ -46,9 +46,9 @@ static void hammer2_state_cleanuptx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 int
 hammer2_router_cmp(hammer2_router_t *router1, hammer2_router_t *router2)
 {
-	if (router1->spanid < router2->spanid)
+	if (router1->target < router2->target)
 		return(-1);
-	if (router1->spanid > router2->spanid)
+	if (router1->target > router2->target)
 		return(1);
 	return(0);
 }
@@ -61,17 +61,20 @@ static struct hammer2_router_tree router_rtree = RB_INITIALIZER(router_rtree);
 
 /*
  * STATE TREE - Represents open transactions which are indexed by their
- *		{spanid,msgid} relative to the governing iocom.  spanid
- *		will usually be 0 since a non-zero spanid would have been
- *		routed elsewhere.
+ *		{router,msgid} relative to the governing iocom.
+ *
+ *		router is usually iocom->router since state isn't stored
+ *		for relayed messages.
  */
 int
 hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
 {
-	if (state1->spanid < state2->spanid)
+#if 0
+	if (state1->router < state2->router)
 		return(-1);
-	if (state1->spanid > state2->spanid)
+	if (state1->router > state2->router)
 		return(1);
+#endif
 	if (state1->msgid < state2->msgid)
 		return(-1);
 	if (state1->msgid > state2->msgid)
@@ -138,7 +141,6 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
 	RB_INIT(&iocom->router->statewr_tree);
 	TAILQ_INIT(&iocom->freeq);
 	TAILQ_INIT(&iocom->freeq_aux);
-	TAILQ_INIT(&iocom->addrq);
 	TAILQ_INIT(&iocom->router->txmsgq);
 	iocom->router->iocom = iocom;
 	iocom->sock_fd = sock_fd;
@@ -276,8 +278,7 @@ hammer2_msg_alloc(hammer2_router_t *router, size_t aux_size, uint32_t cmd,
 		state->iocom = iocom;
 		state->flags = HAMMER2_STATE_DYNAMIC;
 		state->msgid = (uint64_t)(uintptr_t)state;
-		if (router->link)
-			state->spanid = router->spanid;
+		state->router = router;
 		state->txcmd = cmd & ~(HAMMER2_MSGF_CREATE |
 				       HAMMER2_MSGF_DELETE);
 		state->rxcmd = HAMMER2_MSGF_REPLY;
@@ -917,7 +918,7 @@ again:
 	 * Process transactional state for the message.
 	 */
 	if (msg && ioq->error == 0) {
-		error = hammer2_state_msgrx(iocom, msg);
+		error = hammer2_state_msgrx(msg);
 		if (error) {
 			if (error == HAMMER2_IOQ_ERROR_EALREADY) {
 				hammer2_msg_free(msg);
@@ -980,7 +981,7 @@ skip:
 			} else {
 				/*state->txcmd |= HAMMER2_MSGF_DELETE;*/
 				msg->state = state;
-				msg->any.head.spanid = state->spanid;
+				msg->router = state->router;
 				msg->any.head.msgid = state->msgid;
 				msg->any.head.cmd |= HAMMER2_MSGF_ABORT |
 						     HAMMER2_MSGF_DELETE;
@@ -996,7 +997,7 @@ skip:
 				msg = NULL;
 			} else {
 				msg->state = state;
-				msg->any.head.spanid = state->spanid;
+				msg->router = state->router;
 				msg->any.head.msgid = state->msgid;
 				msg->any.head.cmd |= HAMMER2_MSGF_ABORT |
 						     HAMMER2_MSGF_DELETE |
@@ -1285,7 +1286,7 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 		ioq->hbytes = 0;
 		ioq->abytes = 0;
 
-		hammer2_state_cleanuptx(iocom, msg);
+		hammer2_state_cleanuptx(msg);
 	}
 	assert(nact == 0);
 
@@ -1336,7 +1337,7 @@ hammer2_iocom_drain(hammer2_iocom_t *iocom)
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);
 		--ioq->msgcount;
-		hammer2_state_cleanuptx(iocom, msg);
+		hammer2_state_cleanuptx(msg);
 	}
 }
 
@@ -1372,7 +1373,6 @@ hammer2_msg_write(hammer2_msg_t *msg)
 			state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
 		}
 		msg->any.head.msgid = state->msgid;
-		msg->any.head.spanid = state->spanid;
 		assert(((state->txcmd ^ msg->any.head.cmd) &
 			HAMMER2_MSGF_REPLY) == 0);
 		if (msg->any.head.cmd & HAMMER2_MSGF_CREATE)
@@ -1381,6 +1381,8 @@ hammer2_msg_write(hammer2_msg_t *msg)
 		msg->any.head.msgid = 0;
 		/* XXX set spanid by router */
 	}
+	msg->any.head.source = 0;
+	msg->any.head.target = msg->router->target;
 
 	/*
 	 * Queue it for output, wake up the I/O pthread.  Note that the
@@ -1610,8 +1612,9 @@ hammer2_state_reply(hammer2_state_t *state, uint32_t error)
  * will typically just contain status updates.
  */
 static int
-hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+hammer2_state_msgrx(hammer2_msg_t *msg)
 {
+	hammer2_iocom_t *iocom = msg->router->iocom;
 	hammer2_state_t *state;
 	hammer2_state_t dummy;
 	int error;
@@ -1622,9 +1625,7 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 	 * If received msg is a command state is on staterd_tree.
 	 * If received msg is a reply state is on statewr_tree.
 	 */
-
 	dummy.msgid = msg->any.head.msgid;
-	dummy.spanid = msg->any.head.spanid;
 	pthread_mutex_lock(&iocom->mtx);
 	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY) {
 		state = RB_FIND(hammer2_state_tree,
@@ -1671,7 +1672,7 @@ hammer2_state_msgrx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		state->rxcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
 		state->flags |= HAMMER2_STATE_INSERTED;
 		state->msgid = msg->any.head.msgid;
-		state->spanid = msg->any.head.spanid;
+		state->router = msg->router;
 		msg->state = state;
 		pthread_mutex_lock(&iocom->mtx);
 		RB_INSERT(hammer2_state_tree,
@@ -1850,8 +1851,9 @@ hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 }
 
 static void
-hammer2_state_cleanuptx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+hammer2_state_cleanuptx(hammer2_msg_t *msg)
 {
+	hammer2_iocom_t *iocom = msg->router->iocom;
 	hammer2_state_t *state;
 
 	if ((state = msg->state) == NULL) {
@@ -2214,12 +2216,13 @@ hammer2_msg_str(hammer2_msg_t *msg)
 	 * Generate the buf
 	 */
 	snprintf(buf, sizeof(buf),
-		"msg=%s%s %s id=%08x span=%08x %s",
+		"msg=%s%s %s id=%08x src=%08x tgt=%08x %s",
 		 hammer2_basecmd_str(msg->any.head.cmd),
 		 flagbuf,
 		 errstr,
 		 (uint32_t)(intmax_t)msg->any.head.msgid,   /* for brevity */
-		 (uint32_t)(intmax_t)msg->any.head.spanid,  /* for brevity */
+		 (uint32_t)(intmax_t)msg->any.head.source,  /* for brevity */
+		 (uint32_t)(intmax_t)msg->any.head.target,  /* for brevity */
 		 statestr);
 
 	return(buf);

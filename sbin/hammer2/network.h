@@ -120,12 +120,10 @@ struct hammer2_iocom;
 struct hammer2_persist;
 struct hammer2_state;
 struct hammer2_router;
-struct hammer2_address;
 struct hammer2_msg;
 
 TAILQ_HEAD(hammer2_state_queue, hammer2_state);
 TAILQ_HEAD(hammer2_msg_queue, hammer2_msg);
-TAILQ_HEAD(hammer2_address_queue, hammer2_address);
 RB_HEAD(hammer2_state_tree, hammer2_state);
 RB_HEAD(hammer2_router_tree, hammer2_router);
 
@@ -135,14 +133,10 @@ struct h2span_connect;
 
 struct hammer2_state {
 	RB_ENTRY(hammer2_state) rbnode;		/* indexed by msgid */
-	TAILQ_ENTRY(hammer2_state) source_entry;/* if routed */
-	TAILQ_ENTRY(hammer2_state) target_entry;/* if routed */
 	struct hammer2_iocom *iocom;
-	struct hammer2_address_t *source_addr;	/* if routed */
-	struct hammer2_address_t *target_addr;	/* if routed */
+	struct hammer2_router *router;		/* if routed */
 	uint32_t	txcmd;			/* mostly for CMDF flags */
 	uint32_t	rxcmd;			/* mostly for CMDF flags */
-	uint64_t	spanid;			/* routing id */
 	uint64_t	msgid;			/* {spanid,msgid} uniq */
 	int		flags;
 	int		error;
@@ -154,14 +148,6 @@ struct hammer2_state {
 		struct h2span_connect *conn;
 		struct h2span_relay *relay;
 	} any;
-};
-
-struct hammer2_address {
-	TAILQ_ENTRY(hammer2_address) entry;	/* on-iocom */
-	struct hammer2_iocom *iocom;		/* related iocom */
-	struct hammer2_state_queue sourceq;	/* states on source queue */
-	struct hammer2_state_queue targetq;	/* states on target queue */
-	uint16_t	id;
 };
 
 #define HAMMER2_STATE_INSERTED	0x0001
@@ -179,7 +165,6 @@ struct hammer2_msg {
 };
 
 typedef struct hammer2_state hammer2_state_t;
-typedef struct hammer2_address hammer2_address_t;
 typedef struct hammer2_msg hammer2_msg_t;
 typedef struct hammer2_msg_queue hammer2_msg_queue_t;
 
@@ -249,7 +234,7 @@ typedef struct hammer2_ioq hammer2_ioq_t;
  * or to a SPAN transaction (h2span_relay structure for incoming).
  */
 struct hammer2_router {
-	RB_ENTRY(hammer2_router) rbnode;	/* indexed by spanid */
+	RB_ENTRY(hammer2_router) rbnode;	/* indexed by target */
 	struct hammer2_iocom *iocom;
 	struct h2span_link   *link;		/* may be NULL */
 	struct h2span_relay  *relay;		/* may be NULL */
@@ -259,7 +244,7 @@ struct hammer2_router {
 	struct hammer2_state_tree staterd_tree; /* active messages */
 	struct hammer2_state_tree statewr_tree; /* active messages */
 	hammer2_msg_queue_t txmsgq;		/* tx msgq from remote */
-	uint64_t	spanid;			/* for routing */
+	uint64_t	target;			/* for routing */
 	int	flags;
 	int	refs;				/* refs prevent destruction */
 };
@@ -280,7 +265,6 @@ struct hammer2_iocom {
 	hammer2_ioq_t	ioq_tx;
 	hammer2_msg_queue_t freeq;		/* free msgs hdr only */
 	hammer2_msg_queue_t freeq_aux;		/* free msgs w/aux_data */
-	struct hammer2_address_queue  addrq;	/* source/target addrs */
 	int	sock_fd;			/* comm socket or pipe */
 	int	alt_fd;				/* thread signal, tty, etc */
 	int	wakeupfds[2];			/* pipe wakes up iocom thread */
