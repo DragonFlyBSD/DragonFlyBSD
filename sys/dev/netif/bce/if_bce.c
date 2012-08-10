@@ -5207,11 +5207,6 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 
 		status_attn_bits = sblk->status_attn_bits;
 
-		DBRUNIF(DB_RANDOMTRUE(bce_debug_unexpected_attention),
-			if_printf(ifp,
-			"Simulating unexpected status attention bit set.");
-			status_attn_bits |= STATUS_ATTN_BITS_PARITY_ERROR);
-
 		/* Was it a link change interrupt? */
 		if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
 		    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE))
@@ -5229,15 +5224,8 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		if ((status_attn_bits & ~STATUS_ATTN_BITS_LINK_STATE) !=
 		     (sblk->status_attn_bits_ack &
 		      ~STATUS_ATTN_BITS_LINK_STATE)) {
-			DBRUN(1, sc->unexpected_attentions++);
-
 			if_printf(ifp, "Fatal attention detected: 0x%08X\n",
 				  sblk->status_attn_bits);
-
-			DBRUN(BCE_FATAL,
-			if (bce_debug_unexpected_attention == 0)
-				bce_breakpoint(sc));
-
 			bce_init(sc);
 			return;
 		}
