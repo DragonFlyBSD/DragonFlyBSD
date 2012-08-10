@@ -211,6 +211,7 @@ struct h2span_cluster {
 	RB_ENTRY(h2span_cluster) rbnode;
 	struct h2span_node_tree tree;
 	uuid_t	pfs_clid;		/* shared fsid */
+	int	refs;			/* prevents destruction */
 };
 
 struct h2span_node {
@@ -227,7 +228,7 @@ struct h2span_link {
 	struct h2span_node *node;	/* related node */
 	int32_t	dist;
 	struct h2span_relay_queue relayq; /* relay out */
-	struct hammer2_router	router;
+	struct hammer2_router *router;	/* route out this link */
 };
 
 /*
@@ -240,13 +241,22 @@ struct h2span_link {
  * address of the 'state' structure, which is why h2span_relay has to
  * be entered into a RB-TREE based at h2span_connect (so we can look
  * up the spanid to validate it).
+ *
+ * NOTE: Messages can be received via the LNK_SPAN transaction the
+ *	 relay maintains, and can be replied via relay->router, but
+ *	 messages are NOT initiated via a relay.  Messages are initiated
+ *	 via incoming links (h2span_link's).
+ *
+ *	 relay->link represents the link being relayed, NOT the LNK_SPAN
+ *	 transaction the relay is holding open.
  */
 struct h2span_relay {
 	RB_ENTRY(h2span_relay) rbnode;	/* from h2span_connect */
 	TAILQ_ENTRY(h2span_relay) entry; /* from link */
 	struct h2span_connect *conn;
 	hammer2_state_t	*state;		/* transmitted LNK_SPAN */
-	struct h2span_link *link;	/* received LNK_SPAN */
+	struct h2span_link *link;	/* LNK_SPAN being relayed */
+	struct hammer2_router	*router;/* route out this relay */
 };
 
 
@@ -518,10 +528,16 @@ hammer2_lnk_span(hammer2_msg_t *msg)
 
 		/*
 		 * Embedded router structure in link for message forwarding.
+		 *
+		 * The spanning id for the router is the message id of
+		 * the SPAN link it is embedded in, allowing messages to
+		 * be routed via &slink->router.
 		 */
-		TAILQ_INIT(&slink->router.txmsgq);
-		slink->router.iocom = state->iocom;
-		slink->router.link = slink;
+		slink->router = hammer2_router_alloc();
+		slink->router->iocom = state->iocom;
+		slink->router->link = slink;
+		slink->router->spanid = state->msgid;
+		hammer2_router_connect(slink->router);
 
 		RB_INSERT(h2span_link_tree, &node->tree, slink);
 
@@ -533,7 +549,6 @@ hammer2_lnk_span(hammer2_msg_t *msg)
 			msg->any.lnk_span.label,
 			msg->any.lnk_span.dist);
 		free(alloc);
-
 #if 0
 		hammer2_relay_scan(NULL, node);
 #endif
@@ -558,6 +573,11 @@ hammer2_lnk_span(hammer2_msg_t *msg)
 		free(alloc);
 
 		/*
+		 * Remove the router from consideration
+		 */
+		hammer2_router_disconnect(&slink->router);
+
+		/*
 		 * Clean out all relays.  This requires terminating each
 		 * relay transaction.
 		 */
@@ -571,7 +591,7 @@ hammer2_lnk_span(hammer2_msg_t *msg)
 		RB_REMOVE(h2span_link_tree, &node->tree, slink);
 		if (RB_EMPTY(&node->tree)) {
 			RB_REMOVE(h2span_node_tree, &cls->tree, node);
-			if (RB_EMPTY(&cls->tree)) {
+			if (RB_EMPTY(&cls->tree) && cls->refs == 0) {
 				RB_REMOVE(h2span_cluster_tree,
 					  &cluster_tree, cls);
 				hammer2_free(cls);
@@ -795,13 +815,20 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 			relay->conn = conn;
 			relay->link = slink;
 
-			msg = hammer2_msg_alloc(&conn->state->iocom->router, 0,
+			msg = hammer2_msg_alloc(conn->state->iocom->router, 0,
 						HAMMER2_LNK_SPAN |
 						HAMMER2_MSGF_CREATE,
 						hammer2_lnk_relay, relay);
 			relay->state = msg->state;
+			relay->router = hammer2_router_alloc();
+			relay->router->iocom = relay->state->iocom;
+			relay->router->relay = relay;
+			relay->router->spanid = relay->state->msgid;
+
 			msg->any.lnk_span = slink->state->msg->any.lnk_span;
 			msg->any.lnk_span.dist = slink->dist + 1;
+
+			hammer2_router_connect(relay->router);
 
 			RB_INSERT(h2span_relay_tree, &conn->tree, relay);
 			TAILQ_INSERT_TAIL(&slink->relayq, relay, entry);
@@ -850,6 +877,8 @@ hammer2_relay_delete(h2span_relay_t *relay)
 		relay->link->dist,
 		relay->conn->state->iocom->sock_fd, relay->state);
 
+	hammer2_router_disconnect(&relay->router);
+
 	RB_REMOVE(h2span_relay_tree, &relay->conn->tree, relay);
 	TAILQ_REMOVE(&relay->link->relayq, relay, entry);
 
@@ -865,11 +894,64 @@ hammer2_relay_delete(h2span_relay_t *relay)
 }
 
 /************************************************************************
- *				ROUTER					*
+ *			ROUTER AND MESSAGING HANDLES			*
  ************************************************************************
  *
- * Provides route functions to msg.c
+ * Basically the idea here is to provide a stable data structure which
+ * can be localized to the caller for higher level protocols to work with.
+ * Depends on the context, these hammer2_handle's can be pooled by use-case
+ * and remain persistent through a client (or mount point's) life.
  */
+
+#if 0
+/*
+ * Obtain a stable handle on a cluster given its uuid.  This ties directly
+ * into the global cluster topology, creating the structure if necessary
+ * (even if the uuid does not exist or does not exist yet), and preventing
+ * the structure from getting ripped out from under us while we hold a
+ * pointer to it.
+ */
+h2span_cluster_t *
+hammer2_cluster_get(uuid_t *pfs_clid)
+{
+	h2span_cluster_t dummy_cls;
+	h2span_cluster_t *cls;
+
+	dummy_cls.pfs_clid = *pfs_clid;
+	pthread_mutex_lock(&cluster_mtx);
+	cls = RB_FIND(h2span_cluster_tree, &cluster_tree, &dummy_cls);
+	if (cls)
+		++cls->refs;
+	pthread_mutex_unlock(&cluster_mtx);
+	return (cls);
+}
+
+void
+hammer2_cluster_put(h2span_cluster_t *cls)
+{
+	pthread_mutex_lock(&cluster_mtx);
+	assert(cls->refs > 0);
+	--cls->refs;
+	if (RB_EMPTY(&cls->tree) && cls->refs == 0) {
+		RB_REMOVE(h2span_cluster_tree,
+			  &cluster_tree, cls);
+		hammer2_free(cls);
+	}
+	pthread_mutex_unlock(&cluster_mtx);
+}
+
+/*
+ * Obtain a stable handle to a specific cluster node given its uuid.
+ * This handle does NOT lock in the route to the node and is typically
+ * used as part of the hammer2_handle_*() API to obtain a set of
+ * stable nodes.
+ */
+h2span_node_t *
+hammer2_node_get(h2span_cluster_t *cls, uuid_t *pfs_fsid)
+{
+}
+
+#endif
 
 #if 0
 /*
@@ -891,6 +973,9 @@ hammer2_router_put(hammer2_router_t *router)
 }
 #endif
 
+/************************************************************************
+ *				DEBUGGER				*
+ ************************************************************************/
 /*
  * Dumps the spanning tree
  */

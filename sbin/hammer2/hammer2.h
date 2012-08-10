@@ -154,6 +154,10 @@ void hammer2_iocom_flush2(hammer2_iocom_t *iocom);
 void hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg);
 void hammer2_state_free(hammer2_state_t *state);
 
+hammer2_router_t *hammer2_router_alloc(void);
+void hammer2_router_connect(hammer2_router_t *router);
+void hammer2_router_disconnect(hammer2_router_t **routerp);
+
 /*
  * Msg protocol functions
  */

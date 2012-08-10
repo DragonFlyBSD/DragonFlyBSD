@@ -66,7 +66,7 @@ cmd_shell(const char *hostname)
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	printf("debug: connected\n");
 
-	msg = hammer2_msg_alloc(&iocom.router, 0, HAMMER2_DBG_SHELL,
+	msg = hammer2_msg_alloc(iocom.router, 0, HAMMER2_DBG_SHELL,
 				NULL, NULL);
 	hammer2_msg_write(msg);
 	hammer2_iocom_core(&iocom);
@@ -151,7 +151,7 @@ shell_ttymsg(hammer2_iocom_t *iocom)
 		if (len && buf[len - 1] == '\n')
 			buf[--len] = 0;
 		++len;
-		msg = hammer2_msg_alloc(&iocom->router, len, HAMMER2_DBG_SHELL,
+		msg = hammer2_msg_alloc(iocom->router, len, HAMMER2_DBG_SHELL,
 					NULL, NULL);
 		bcopy(buf, msg->aux_data, len);
 		hammer2_msg_write(msg);
