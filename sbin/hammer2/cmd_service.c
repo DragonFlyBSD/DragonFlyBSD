@@ -178,6 +178,10 @@ master_accept(void *data)
  * This procedure attempts to [re]connect to existing mounts when
  * the service daemon is started up before going into its accept
  * loop.
+ *
+ * NOTE: A hammer2 mount point can only accomodate one connection at a time
+ *	 so this will disconnect any existing connection during the
+ *	 reconnect.
  */
 static
 void
