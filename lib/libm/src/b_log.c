@@ -426,11 +426,7 @@ log(x) double x;
  * log(x) = a+b to 63 bits, with a rounded to 26 bits.
  */
 struct Double
-#ifdef _ANSI_SOURCE
 __log__D(double x)
-#else
-__log__D(x) double x;
-#endif
 {
 	int m, j;
 	double F, f, g, q, u, v, u2;

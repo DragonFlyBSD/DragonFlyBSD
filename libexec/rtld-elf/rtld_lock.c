@@ -63,7 +63,7 @@ static sigset_t fullsigmask, oldsigmask;
 static int thread_flag;
 
 static void *
-def_lock_create()
+def_lock_create(void)
 {
     void *base;
     char *p;
@@ -265,7 +265,7 @@ lock_restart_for_upgrade(RtldLockState *lockstate)
 }
 
 void
-lockdflt_init()
+lockdflt_init(void)
 {
     int i;
 
