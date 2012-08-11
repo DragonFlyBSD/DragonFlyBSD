@@ -87,6 +87,13 @@ struct hammer2_idmap {
 
 typedef struct hammer2_idmap hammer2_idmap_t;
 
+struct hammer2_master_service_info {
+	int	fd;
+	int	detachme;
+};
+
+typedef struct hammer2_master_service_info hammer2_master_service_info_t;
+
 extern int DebugOpt;
 extern int VerboseOpt;
 extern int QuietOpt;

@@ -170,15 +170,26 @@ routehandler(void)
 	struct iaddr a;
 	ssize_t n;
 
+	/*
+	 * Read one message non-blocking, ignore signals.
+	 */
 	do {
 		n = read(routefd, &msg, sizeof(msg));
 	} while (n == -1 && errno == EINTR);
 
+	/*
+	 * No operation if no messages ready or the message is
+	 * not sized properly.
+	 */
 	rtm = (struct rt_msghdr *)msg;
 	if (n < sizeof(rtm->rtm_msglen) || n < rtm->rtm_msglen ||
-	    rtm->rtm_version != RTM_VERSION)
+	    rtm->rtm_version != RTM_VERSION) {
 		return;
+	}
 
+	/*
+	 * Process the message.
+	 */
 	switch (rtm->rtm_type) {
 	case RTM_NEWADDR:
 		ifam = (struct ifa_msghdr *)rtm;
@@ -187,8 +198,10 @@ routehandler(void)
 		if (findproto((char *)(ifam + 1), ifam->ifam_addrs) != AF_INET)
 			break;
 		sa = get_ifa((char *)(ifam + 1), ifam->ifam_addrs);
-		if (sa == NULL)
+		if (sa == NULL) {
+			warning("RTM_NEWADDR: No IFA");
 			goto die;
+		}
 
 		if ((a.len = sizeof(struct in_addr)) > sizeof(a.iabuf))
 			error("king bula sez: len mismatch");
@@ -205,6 +218,7 @@ routehandler(void)
 			/* new addr is the one we set */
 			break;
 
+		warning("RTM_NEWADDR: Our IFA not found");
 		goto die;
 	case RTM_DELADDR:
 		ifam = (struct ifa_msghdr *)rtm;
@@ -214,13 +228,16 @@ routehandler(void)
 			break;
 		if (scripttime == 0 || t < scripttime + 10)
 			break;
+		warning("RTM_DELADDR: Third-party %d", (int)(t - scripttime));
 		goto die;
 	case RTM_IFINFO:
 		ifm = (struct if_msghdr *)rtm;
 		if (ifm->ifm_index != ifi->index)
 			break;
-		if ((rtm->rtm_flags & RTF_UP) == 0)
+		if ((rtm->rtm_flags & RTF_UP) == 0) {
+			warning("RTM_IFINFO: Interface not up");
 			goto die;
+		}
 
 		linkstat =
 		    LINK_STATE_IS_UP(ifm->ifm_data.ifi_link_state) ? 1 : 0;
@@ -238,8 +255,10 @@ routehandler(void)
 	case RTM_IFANNOUNCE:
 		ifan = (struct if_announcemsghdr *)rtm;
 		if (ifan->ifan_what == IFAN_DEPARTURE &&
-		    ifan->ifan_index == ifi->index)
+		    ifan->ifan_index == ifi->index) {
+			warning("RTM_IFANNOUNCE: Interface departure");
 			goto die;
+		}
 		break;
 	default:
 		break;

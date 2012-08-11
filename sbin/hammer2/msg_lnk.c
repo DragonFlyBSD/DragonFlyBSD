@@ -1114,6 +1114,8 @@ static
 void
 hammer2_volconf_start(h2span_media_config_t *conf, const char *hostname)
 {
+	hammer2_master_service_info_t *info;
+
 	switch(conf->state) {
 	case H2MC_STOPPED:
 	case H2MC_CONNECT:
@@ -1122,10 +1124,13 @@ hammer2_volconf_start(h2span_media_config_t *conf, const char *hostname)
 			fprintf(stderr, "Unable to connect to %s\n", hostname);
 			conf->state = H2MC_CONNECT;
 		} else {
-			pthread_create(&conf->iocom_thread, NULL,
-				       master_service,
-				       (void *)(intptr_t)conf->fd);
+			info = malloc(sizeof(*info));
+			bzero(info, sizeof(*info));
+			info->fd = conf->fd;
+			info->detachme = 0;
 			conf->state = H2MC_RUNNING;
+			pthread_create(&conf->iocom_thread, NULL,
+				       master_service, info);
 		}
 		break;
 	case H2MC_RUNNING:

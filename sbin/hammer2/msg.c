@@ -128,6 +128,8 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
 		   void (*rcvmsg_func)(hammer2_msg_t *),
 		   void (*altmsg_func)(hammer2_iocom_t *))
 {
+	struct stat st;
+
 	bzero(iocom, sizeof(*iocom));
 
 	iocom->router = hammer2_router_alloc();
@@ -157,9 +159,14 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
 
 	/*
 	 * Negotiate session crypto synchronously.  This will mark the
-	 * connection as error'd if it fails.
+	 * connection as error'd if it fails.  If this is a pipe it's
+	 * a linkage that we set up ourselves to the filesystem and there
+	 * is no crypto.
 	 */
-	hammer2_crypto_negotiate(iocom);
+	if (fstat(sock_fd, &st) < 0)
+		assert(0);
+	if (S_ISSOCK(st.st_mode))
+		hammer2_crypto_negotiate(iocom);
 
 	/*
 	 * Make sure our fds are set to non-blocking for the iocom core.

@@ -122,8 +122,7 @@ static	u_int nmalloc[NBUCKETS];
 #define	ASSERT(p)   if (!(p)) botch("p")
 #include <stdio.h>
 static void
-botch(s)
-	char *s;
+botch(char *s)
 {
 	fprintf(stderr, "\r\nassertion botched: %s\r\n", s);
  	(void) fflush(stderr);		/* just in case user buffered it */
@@ -137,8 +136,7 @@ botch(s)
 #define TRACE()	rtld_printf("TRACE %s:%d\n", __FILE__, __LINE__)
 
 void *
-malloc(nbytes)
-	size_t nbytes;
+malloc(size_t nbytes)
 {
   	register union overhead *op;
   	register int bucket;
@@ -239,8 +237,7 @@ calloc(size_t num, size_t size)
  * Allocate more memory to the indicated bucket.
  */
 static void
-morecore(bucket)
-	int bucket;
+morecore(int bucket)
 {
   	register union overhead *op;
 	register int sz;		/* size of desired block */
@@ -283,8 +280,7 @@ morecore(bucket)
 }
 
 void
-free(cp)
-	void *cp;
+free(void *cp)
 {
   	register int size;
 	register union overhead *op;
@@ -325,9 +321,7 @@ free(cp)
 int realloc_srchlen = 4;	/* 4 should be plenty, -1 =>'s whole list */
 
 void *
-realloc(cp, nbytes)
-	void *cp;
-	size_t nbytes;
+realloc(void *cp, size_t nbytes)
 {
   	register u_int onb;
 	register int i;
@@ -396,9 +390,7 @@ realloc(cp, nbytes)
  * Return bucket number, or -1 if not found.
  */
 static int
-findbucket(freep, srchlen)
-	union overhead *freep;
-	int srchlen;
+findbucket(union overhead *freep, int srchlen)
 {
 	register union overhead *p;
 	register int i, j;
@@ -422,8 +414,8 @@ findbucket(freep, srchlen)
  * for each size category, the second showing the number of mallocs -
  * frees for each size category.
  */
-mstats(s)
-	char *s;
+void
+mstats(char *s)
 {
   	register int i, j;
   	register union overhead *p;
@@ -449,8 +441,7 @@ mstats(s)
 
 
 static int
-morepages(n)
-int	n;
+morepages(int n)
 {
 	int	fd = -1;
 	int	offset;

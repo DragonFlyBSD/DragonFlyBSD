@@ -40,6 +40,7 @@ static void master_auth_signal(hammer2_router_t *router);
 static void master_auth_rxmsg(hammer2_msg_t *msg);
 static void master_link_signal(hammer2_router_t *router);
 static void master_link_rxmsg(hammer2_msg_t *msg);
+static void master_reconnect(const char *mntpt);
 
 /*
  * Start-up the master listener daemon for the machine.
@@ -122,14 +123,29 @@ master_accept(void *data)
 	struct sockaddr_in asin;
 	socklen_t alen;
 	pthread_t thread;
+	hammer2_master_service_info_t *info;
 	int lfd = (int)(intptr_t)data;
 	int fd;
+	int i;
+	int count;
+	struct statfs *mntbuf = NULL;
+	struct statvfs *mntvbuf = NULL;
 
 	/*
 	 * Nobody waits for us
 	 */
 	setproctitle("hammer2 master listen");
 	pthread_detach(pthread_self());
+
+	/*
+	 * Scan existing hammer2 mounts and reconnect to them using
+	 * HAMMER2IOC_RECLUSTER.
+	 */
+	count = getmntvinfo(&mntbuf, &mntvbuf, MNT_NOWAIT);
+	for (i = 0; i < count; ++i) {
+		if (strcmp(mntbuf[i].f_fstypename, "hammer2") == 0)
+			master_reconnect(mntbuf[i].f_mntonname);
+	}
 
 	/*
 	 * Accept connections and create pthreads to handle them after
@@ -145,10 +161,59 @@ master_accept(void *data)
 		}
 		thread = NULL;
 		fprintf(stderr, "master_accept: accept fd %d\n", fd);
-		pthread_create(&thread, NULL,
-			       master_service, (void *)(intptr_t)fd);
+		info = malloc(sizeof(*info));
+		bzero(info, sizeof(*info));
+		info->fd = fd;
+		info->detachme = 1;
+		pthread_create(&thread, NULL, master_service, info);
 	}
 	return (NULL);
+}
+
+/*
+ * Normally the mount program supplies a cluster communications
+ * descriptor to the hammer2 vfs on mount, but if you kill the service
+ * daemon and restart it that link will be lost.
+ *
+ * This procedure attempts to [re]connect to existing mounts when
+ * the service daemon is started up before going into its accept
+ * loop.
+ */
+static
+void
+master_reconnect(const char *mntpt)
+{
+	struct hammer2_ioc_recluster recls;
+	hammer2_master_service_info_t *info;
+	pthread_t thread;
+	int fd;
+	int pipefds[2];
+
+	fd = open(mntpt, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "reconnect %s: no access to mount\n", mntpt);
+		return;
+	}
+	if (pipe(pipefds) < 0) {
+		fprintf(stderr, "reconnect %s: pipe() failed\n", mntpt);
+		return;
+	}
+	bzero(&recls, sizeof(recls));
+	recls.fd = pipefds[0];
+	if (ioctl(fd, HAMMER2IOC_RECLUSTER, &recls) < 0) {
+		fprintf(stderr, "reconnect %s: ioctl failed\n", mntpt);
+		close(pipefds[0]);
+		close(pipefds[1]);
+		close(fd);
+		return;
+	}
+	close(pipefds[0]);
+
+	info = malloc(sizeof(*info));
+	bzero(info, sizeof(*info));
+	info->fd = pipefds[1];
+	info->detachme = 1;
+	pthread_create(&thread, NULL, master_service, info);
 }
 
 /*
@@ -159,11 +224,13 @@ master_accept(void *data)
 void *
 master_service(void *data)
 {
+	hammer2_master_service_info_t *info = data;
 	hammer2_iocom_t iocom;
-	int fd;
 
-	fd = (int)(intptr_t)data;
-	hammer2_iocom_init(&iocom, fd, -1,
+	if (info->detachme)
+		pthread_detach(pthread_self());
+
+	hammer2_iocom_init(&iocom, info->fd, -1,
 			   master_auth_signal,
 			   master_auth_rxmsg,
 			   NULL);
@@ -171,8 +238,10 @@ master_service(void *data)
 
 	fprintf(stderr,
 		"iocom on fd %d terminated error rx=%d, tx=%d\n",
-		fd, iocom.ioq_rx.error, iocom.ioq_tx.error);
-	close(fd);
+		info->fd, iocom.ioq_rx.error, iocom.ioq_tx.error);
+	close(info->fd);
+	info->fd = -1;	/* safety */
+	free(info);
 
 	return (NULL);
 }
