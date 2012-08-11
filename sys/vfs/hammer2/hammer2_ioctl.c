@@ -43,7 +43,8 @@
 #include "hammer2.h"
 
 static int hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data);
-static int hammer2_ioctl_remote_get(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_remote_scan(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_remote_add(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_remote_del(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_remote_rep(hammer2_inode_t *ip, void *data);
@@ -72,9 +73,13 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case HAMMER2IOC_VERSION_GET:
 		error = hammer2_ioctl_version_get(ip, data);
 		break;
-	case HAMMER2IOC_REMOTE_GET:
+	case HAMMER2IOC_RECLUSTER:
 		if (error == 0)
-			error = hammer2_ioctl_remote_get(ip, data);
+			error = hammer2_ioctl_recluster(ip, data);
+		break;
+	case HAMMER2IOC_REMOTE_SCAN:
+		if (error == 0)
+			error = hammer2_ioctl_remote_scan(ip, data);
 		break;
 	case HAMMER2IOC_REMOTE_ADD:
 		if (error == 0)
@@ -139,11 +144,27 @@ hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data)
 	return 0;
 }
 
+static int
+hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data)
+{
+	hammer2_ioc_recluster_t *recl = data;
+	struct file *fp;
+
+	fp = holdfp(curproc->p_fd, recl->fd, -1);
+	if (fp) {
+		kprintf("reconnect to cluster\n");
+		hammer2_cluster_reconnect(ip->pmp, fp);
+		return 0;
+	} else {
+		return EINVAL;
+	}
+}
+
 /*
  * Retrieve information about a remote
  */
 static int
-hammer2_ioctl_remote_get(hammer2_inode_t *ip, void *data)
+hammer2_ioctl_remote_scan(hammer2_inode_t *ip, void *data)
 {
 	hammer2_mount_t *hmp = ip->hmp;
 	hammer2_ioc_remote_t *remote = data;
@@ -161,7 +182,7 @@ hammer2_ioctl_remote_get(hammer2_inode_t *ip, void *data)
 	 */
 	while (++copyid < HAMMER2_COPYID_COUNT &&
 	       hmp->voldata.copyinfo[copyid].copyid == 0) {
-		++copyid;
+		;
 	}
 	if (copyid == HAMMER2_COPYID_COUNT)
 		remote->nextid = -1;
@@ -178,6 +199,7 @@ static int
 hammer2_ioctl_remote_add(hammer2_inode_t *ip, void *data)
 {
 	hammer2_mount_t *hmp = ip->hmp;
+	hammer2_pfsmount_t *pmp = ip->pmp;
 	hammer2_ioc_remote_t *remote = data;
 	int copyid = remote->copyid;
 	int error = 0;
@@ -197,9 +219,9 @@ hammer2_ioctl_remote_add(hammer2_inode_t *ip, void *data)
 		}
 	}
 	hammer2_modify_volume(hmp);
-	kprintf("copyid %d\n", copyid);
 	remote->copy1.copyid = copyid;
 	hmp->voldata.copyinfo[copyid] = remote->copy1;
+	hammer2_volconf_update(pmp, copyid);
 failed:
 	hammer2_voldata_unlock(hmp);
 	return (error);
@@ -212,6 +234,7 @@ static int
 hammer2_ioctl_remote_del(hammer2_inode_t *ip, void *data)
 {
 	hammer2_mount_t *hmp = ip->hmp;
+	hammer2_pfsmount_t *pmp = ip->pmp;
 	hammer2_ioc_remote_t *remote = data;
 	int copyid = remote->copyid;
 	int error = 0;
@@ -236,6 +259,7 @@ hammer2_ioctl_remote_del(hammer2_inode_t *ip, void *data)
 	}
 	hammer2_modify_volume(hmp);
 	hmp->voldata.copyinfo[copyid].copyid = 0;
+	hammer2_volconf_update(pmp, copyid);
 failed:
 	hammer2_voldata_unlock(hmp);
 	return (error);
@@ -255,6 +279,7 @@ hammer2_ioctl_remote_rep(hammer2_inode_t *ip, void *data)
 		return (EINVAL);
 
 	hammer2_voldata_lock(hmp);
+	/*hammer2_volconf_update(pmp, copyid);*/
 	hammer2_voldata_unlock(hmp);
 
 	return(0);

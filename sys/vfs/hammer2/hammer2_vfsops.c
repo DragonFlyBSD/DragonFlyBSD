@@ -1007,6 +1007,26 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 }
 
 /*
+ * Reconnect using the passed file pointer.  The caller must ref the
+ * fp for us.
+ */
+void
+hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
+{
+	atomic_set_int(&pmp->msg_ctl, HAMMER2_CLUSTERCTL_KILL);
+	while (pmp->msgrd_td || pmp->msgwr_td) {
+	       wakeup(&pmp->msg_ctl);
+	       tsleep(pmp, 0, "clstrkl", hz);
+	}
+	atomic_clear_int(&pmp->msg_ctl, HAMMER2_CLUSTERCTL_KILL);
+	pmp->msg_fp = fp;
+	lwkt_create(hammer2_cluster_thread_rd, pmp, &pmp->msgrd_td,
+		    NULL, 0, -1, "hammer2-msgrd");
+	lwkt_create(hammer2_cluster_thread_wr, pmp, &pmp->msgwr_td,
+		    NULL, 0, -1, "hammer2-msgwr");
+}
+
+/*
  * Cluster controller thread.  Perform messaging functions.  We have one
  * thread for the reader and one for the writer.  The writer handles
  * shutdown requests (which should break the reader thread).
@@ -1043,7 +1063,10 @@ hammer2_cluster_thread_rd(void *arg)
 			error = EINVAL;
 			break;
 		}
-		msg = hammer2_msg_alloc(&pmp->router, hdr.cmd);
+		/* XXX messy: mask cmd to avoid allocating state */
+		msg = hammer2_msg_alloc(&pmp->router,
+					hdr.cmd & HAMMER2_MSGF_BASECMDMASK,
+					NULL, NULL);
 		msg->any.head = hdr;
 		msg->hdr_size = hbytes;
 		if (hbytes > sizeof(hdr)) {
@@ -1136,9 +1159,30 @@ hammer2_cluster_thread_rd(void *arg)
 		hammer2_state_free(state);
 	}
 
+	/*
+	 * XXX simulate MSGF_DELETEs
+	 */
 	while ((state = RB_ROOT(&pmp->staterd_tree)) != NULL) {
-		RB_REMOVE(hammer2_state_tree, &pmp->staterd_tree, state);
-		hammer2_state_free(state);
+		kprintf("y");
+		if (state->func &&
+		    (state->txcmd & HAMMER2_MSGF_DELETE) == 0 &&
+		    (state->rxcmd & HAMMER2_MSGF_DELETE) == 0) {
+			lockmgr(&pmp->msglk, LK_RELEASE);
+			msg = hammer2_msg_alloc(&pmp->router,
+						HAMMER2_LNK_ERROR,
+						NULL, NULL);
+			if ((state->rxcmd & HAMMER2_MSGF_CREATE) == 0)
+				msg->any.head.cmd |= HAMMER2_MSGF_CREATE;
+			msg->any.head.cmd |= HAMMER2_MSGF_DELETE;
+			msg->state = state;
+			msg->state->func(state, msg);
+			hammer2_state_cleanuprx(msg);
+			lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+		} else {
+			RB_REMOVE(hammer2_state_tree,
+				  &pmp->staterd_tree, state);
+			hammer2_state_free(state);
+		}
 	}
 	lockmgr(&pmp->msglk, LK_RELEASE);
 
@@ -1172,7 +1216,8 @@ hammer2_cluster_thread_wr(void *arg)
 	 * connection.
 	 */
 	msg = hammer2_msg_alloc(&pmp->router, HAMMER2_LNK_CONN |
-					      HAMMER2_MSGF_CREATE);
+					      HAMMER2_MSGF_CREATE,
+				hammer2_msg_conn_reply, pmp);
 	msg->any.lnk_conn.pfs_clid = pmp->iroot->ip_data.pfs_clid;
 	msg->any.lnk_conn.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
 	msg->any.lnk_conn.pfs_type = pmp->iroot->ip_data.pfs_type;
@@ -1181,8 +1226,9 @@ hammer2_cluster_thread_wr(void *arg)
 	if (name_len >= sizeof(msg->any.lnk_conn.label))
 		name_len = sizeof(msg->any.lnk_conn.label) - 1;
 	bcopy(pmp->iroot->ip_data.filename, msg->any.lnk_conn.label, name_len);
+	pmp->conn_state = msg->state;
 	msg->any.lnk_conn.label[name_len] = 0;
-	hammer2_msg_write(msg, hammer2_msg_conn_reply, pmp);
+	hammer2_msg_write(msg);
 
 	/*
 	 * Transmit loop
@@ -1191,7 +1237,18 @@ hammer2_cluster_thread_wr(void *arg)
 	lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 
 	while ((pmp->msg_ctl & HAMMER2_CLUSTERCTL_KILL) == 0 && error == 0) {
-		lksleep(&pmp->msg_ctl, &pmp->msglk, 0, "msgwr", hz);
+		/*
+		 * Sleep if no messages pending.  Interlock with flag while
+		 * holding msglk.
+		 */
+		if (TAILQ_EMPTY(&pmp->msgq)) {
+			atomic_set_int(&pmp->msg_ctl,
+				       HAMMER2_CLUSTERCTL_SLEEPING);
+			lksleep(&pmp->msg_ctl, &pmp->msglk, 0, "msgwr", hz);
+			atomic_clear_int(&pmp->msg_ctl,
+					 HAMMER2_CLUSTERCTL_SLEEPING);
+		}
+
 		while ((msg = TAILQ_FIRST(&pmp->msgq)) != NULL) {
 			/*
 			 * Remove msg from the transmit queue and do
@@ -1263,9 +1320,30 @@ hammer2_cluster_thread_wr(void *arg)
 		hammer2_state_free(state);
 	}
 
+	/*
+	 * XXX simulate MSGF_DELETEs
+	 */
 	while ((state = RB_ROOT(&pmp->statewr_tree)) != NULL) {
-		RB_REMOVE(hammer2_state_tree, &pmp->statewr_tree, state);
-		hammer2_state_free(state);
+		kprintf("x");
+		if (state->func &&
+		    (state->txcmd & HAMMER2_MSGF_DELETE) == 0 &&
+		    (state->rxcmd & HAMMER2_MSGF_DELETE) == 0) {
+			lockmgr(&pmp->msglk, LK_RELEASE);
+			msg = hammer2_msg_alloc(&pmp->router,
+						HAMMER2_LNK_ERROR,
+						NULL, NULL);
+			if ((state->rxcmd & HAMMER2_MSGF_CREATE) == 0)
+				msg->any.head.cmd |= HAMMER2_MSGF_CREATE;
+			msg->any.head.cmd |= HAMMER2_MSGF_DELETE;
+			msg->state = state;
+			msg->state->func(state, msg);
+			hammer2_state_cleanuprx(msg);
+			lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+		} else {
+			RB_REMOVE(hammer2_state_tree,
+				  &pmp->statewr_tree, state);
+			hammer2_state_free(state);
+		}
 	}
 	lockmgr(&pmp->msglk, LK_RELEASE);
 
@@ -1279,6 +1357,20 @@ hammer2_cluster_thread_wr(void *arg)
 	pmp->msgwr_td = NULL;
 	wakeup(pmp);
 	lwkt_exit();
+}
+
+/*
+ * Called with msglk held after queueing a new message, wakes up the
+ * transmit thread.  We use an interlock thread to avoid unnecessary
+ * wakeups.
+ */
+void
+hammer2_clusterctl_wakeup(hammer2_pfsmount_t *pmp)
+{
+	if (pmp->msg_ctl & HAMMER2_CLUSTERCTL_SLEEPING) {
+		atomic_clear_int(&pmp->msg_ctl, HAMMER2_CLUSTERCTL_SLEEPING);
+		wakeup(&pmp->msg_ctl);
+	}
 }
 
 static int
@@ -1315,12 +1407,15 @@ static int
 hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg)
 {
 	hammer2_pfsmount_t *pmp = state->any.pmp;
+	hammer2_mount_t *hmp = pmp->hmp;
 	size_t name_len;
+	int copyid;
 
 	if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
 		kprintf("LNK_CONN transaction replied to, initiate SPAN\n");
 		msg = hammer2_msg_alloc(&pmp->router, HAMMER2_LNK_SPAN |
-						      HAMMER2_MSGF_CREATE);
+						      HAMMER2_MSGF_CREATE,
+					hammer2_msg_span_reply, pmp);
 		msg->any.lnk_span.pfs_clid = pmp->iroot->ip_data.pfs_clid;
 		msg->any.lnk_span.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
 		msg->any.lnk_span.pfs_type = pmp->iroot->ip_data.pfs_type;
@@ -1332,10 +1427,22 @@ hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg)
 		      msg->any.lnk_span.label,
 		      name_len);
 		msg->any.lnk_span.label[name_len] = 0;
-		hammer2_msg_write(msg, hammer2_msg_span_reply, pmp);
+		hammer2_msg_write(msg);
+
+		/*
+		 * Dump the configuration stored in the volume header
+		 */
+		hammer2_voldata_lock(hmp);
+		for (copyid = 0; copyid < HAMMER2_COPYID_COUNT; ++copyid) {
+			if (hmp->voldata.copyinfo[copyid].copyid == 0)
+				continue;
+			hammer2_volconf_update(pmp, copyid);
+		}
+		hammer2_voldata_unlock(hmp);
 	}
 	if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
 		kprintf("LNK_CONN transaction terminated by remote\n");
+		pmp->conn_state = NULL;
 		hammer2_msg_reply(msg, 0);
 	}
 	return(0);
@@ -1348,4 +1455,28 @@ hammer2_msg_span_reply(hammer2_state_t *state, hammer2_msg_t *msg)
 
 	kprintf("SPAN REPLY - Our span was terminated? %p\n", pmp);
 	return(0);
+}
+
+/*
+ * Volume configuration updates are passed onto the userland service
+ * daemon via the open LNK_CONN transaction.
+ */
+void
+hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
+{
+	hammer2_mount_t *hmp = pmp->hmp;
+	hammer2_msg_t *msg;
+
+	/* XXX interlock against connection state termination */
+	kprintf("volconf update %p\n", pmp->conn_state);
+	if (pmp->conn_state) {
+		kprintf("TRANSMIT VOLCONF VIA OPEN CONN TRANSACTION\n");
+		msg = hammer2_msg_alloc(&pmp->router, HAMMER2_LNK_VOLCONF,
+					NULL, NULL);
+		msg->state = pmp->conn_state;
+		msg->any.lnk_volconf.copy = hmp->voldata.copyinfo[index];
+		msg->any.lnk_volconf.mediaid = hmp->voldata.fsid;
+		msg->any.lnk_volconf.index = index;
+		hammer2_msg_write(msg);
+	}
 }

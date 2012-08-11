@@ -100,7 +100,7 @@ cmd_remote_status(const char *sel_path, int all_opt __unused)
 	bzero(&remote, sizeof(remote));
 
 	while ((remote.copyid = remote.nextid) >= 0) {
-		if (ioctl(fd, HAMMER2IOC_REMOTE_GET, &remote) < 0) {
+		if (ioctl(fd, HAMMER2IOC_REMOTE_SCAN, &remote) < 0) {
 			perror("ioctl");
 			ecode = 1;
 			break;

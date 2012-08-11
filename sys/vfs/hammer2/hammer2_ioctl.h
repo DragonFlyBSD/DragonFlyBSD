@@ -55,6 +55,13 @@ struct hammer2_ioc_version {
 
 typedef struct hammer2_ioc_version hammer2_ioc_version_t;
 
+struct hammer2_ioc_recluster {
+	int			fd;
+	char			reserved[256 - 4];
+};
+
+typedef struct hammer2_ioc_recluster hammer2_ioc_recluster_t;
+
 /*
  * Ioctls to manage the volume->copyinfo[] array and to associate or
  * disassociate sockets
@@ -114,8 +121,9 @@ typedef struct hammer2_ioc_inode hammer2_ioc_inode_t;
  */
 
 #define HAMMER2IOC_VERSION_GET	_IOWR('h', 64, struct hammer2_ioc_version)
+#define HAMMER2IOC_RECLUSTER	_IOWR('h', 65, struct hammer2_ioc_recluster)
 
-#define HAMMER2IOC_REMOTE_GET	_IOWR('h', 68, struct hammer2_ioc_remote)
+#define HAMMER2IOC_REMOTE_SCAN	_IOWR('h', 68, struct hammer2_ioc_remote)
 #define HAMMER2IOC_REMOTE_ADD	_IOWR('h', 69, struct hammer2_ioc_remote)
 #define HAMMER2IOC_REMOTE_DEL	_IOWR('h', 70, struct hammer2_ioc_remote)
 #define HAMMER2IOC_REMOTE_REP	_IOWR('h', 71, struct hammer2_ioc_remote)

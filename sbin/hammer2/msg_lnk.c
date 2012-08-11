@@ -185,6 +185,7 @@
 
 struct h2span_link;
 struct h2span_relay;
+TAILQ_HEAD(h2span_media_queue, h2span_media);
 TAILQ_HEAD(h2span_connect_queue, h2span_connect);
 TAILQ_HEAD(h2span_relay_queue, h2span_relay);
 
@@ -194,12 +195,39 @@ RB_HEAD(h2span_link_tree, h2span_link);
 RB_HEAD(h2span_relay_tree, h2span_relay);
 
 /*
+ * This represents a media
+ */
+struct h2span_media {
+	TAILQ_ENTRY(h2span_media) entry;
+	uuid_t	mediaid;
+	int	refs;
+	struct h2span_media_config {
+		hammer2_copy_data_t	copy_run;
+		hammer2_copy_data_t	copy_pend;
+		pthread_t		thread;
+		pthread_cond_t		cond;
+		int			ctl;
+		int			fd;
+		hammer2_iocom_t		iocom;
+		pthread_t		iocom_thread;
+		enum { H2MC_STOPPED, H2MC_CONNECT, H2MC_RUNNING } state;
+	} config[HAMMER2_COPYID_COUNT];
+};
+
+typedef struct h2span_media_config h2span_media_config_t;
+
+#define H2CONFCTL_STOP		0x00000001
+#define H2CONFCTL_UPDATE	0x00000002
+
+/*
  * Received LNK_CONN transaction enables SPAN protocol over connection.
- * (may contain filter).
+ * (may contain filter).  Typically one for each mount and several may
+ * share the same media.
  */
 struct h2span_connect {
 	TAILQ_ENTRY(h2span_connect) entry;
 	struct h2span_relay_tree tree;
+	struct h2span_media *media;
 	hammer2_state_t *state;
 };
 
@@ -260,6 +288,7 @@ struct h2span_relay {
 };
 
 
+typedef struct h2span_media h2span_media_t;
 typedef struct h2span_connect h2span_connect_t;
 typedef struct h2span_cluster h2span_cluster_t;
 typedef struct h2span_node h2span_node_t;
@@ -363,17 +392,23 @@ RB_GENERATE_STATIC(h2span_relay_tree, h2span_relay,
 	     rbnode, h2span_relay_cmp);
 
 /*
- * Global mutex protects cluster_tree lookups.
+ * Global mutex protects cluster_tree lookups, connq, mediaq.
  */
 static pthread_mutex_t cluster_mtx;
 static struct h2span_cluster_tree cluster_tree = RB_INITIALIZER(cluster_tree);
 static struct h2span_connect_queue connq = TAILQ_HEAD_INITIALIZER(connq);
+static struct h2span_media_queue mediaq = TAILQ_HEAD_INITIALIZER(mediaq);
 
 static void hammer2_lnk_span(hammer2_msg_t *msg);
 static void hammer2_lnk_conn(hammer2_msg_t *msg);
 static void hammer2_lnk_relay(hammer2_msg_t *msg);
 static void hammer2_relay_scan(h2span_connect_t *conn, h2span_node_t *node);
 static void hammer2_relay_delete(h2span_relay_t *relay);
+
+static void *hammer2_volconf_thread(void *info);
+static void hammer2_volconf_stop(h2span_media_config_t *conf);
+static void hammer2_volconf_start(h2span_media_config_t *conf,
+				const char *hostname);
 
 void
 hammer2_msg_lnk_signal(hammer2_router_t *router __unused)
@@ -411,20 +446,23 @@ void
 hammer2_lnk_conn(hammer2_msg_t *msg)
 {
 	hammer2_state_t *state = msg->state;
+	h2span_media_t *media;
+	h2span_media_config_t *conf;
 	h2span_connect_t *conn;
 	h2span_relay_t *relay;
 	char *alloc = NULL;
+	int i;
 
 	pthread_mutex_lock(&cluster_mtx);
 
-	/*
-	 * On transaction start we allocate a new h2span_connect and
-	 * acknowledge the request, leaving the transaction open.
-	 * We then relay priority-selected SPANs.
-	 */
-	if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
-		state->func = hammer2_lnk_conn;
-
+	switch(msg->any.head.cmd & HAMMER2_MSGF_TRANSMASK) {
+	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE:
+	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE:
+		/*
+		 * On transaction start we allocate a new h2span_connect and
+		 * acknowledge the request, leaving the transaction open.
+		 * We then relay priority-selected SPANs.
+		 */
 		fprintf(stderr, "LNK_CONN(%08x): %s/%s\n",
 			(uint32_t)msg->any.head.msgid,
 			hammer2_uuid_to_str(&msg->any.lnk_conn.pfs_clid,
@@ -436,28 +474,75 @@ hammer2_lnk_conn(hammer2_msg_t *msg)
 
 		RB_INIT(&conn->tree);
 		conn->state = state;
+		state->func = hammer2_lnk_conn;
 		state->any.conn = conn;
 		TAILQ_INSERT_TAIL(&connq, conn, entry);
 
-		hammer2_msg_result(msg, 0);
-
-#if 0
 		/*
-		 * Span-synchronize all nodes with the new connection
+		 * Set up media
 		 */
-		hammer2_relay_scan(conn, NULL);
-#endif
-		hammer2_router_signal(msg->router);
-	}
+		TAILQ_FOREACH(media, &mediaq, entry) {
+			if (uuid_compare(&msg->any.lnk_conn.mediaid,
+					 &media->mediaid, NULL) == 0) {
+				break;
+			}
+		}
+		if (media == NULL) {
+			media = hammer2_alloc(sizeof(*media));
+			media->mediaid = msg->any.lnk_conn.mediaid;
+			TAILQ_INSERT_TAIL(&mediaq, media, entry);
+		}
+		conn->media = media;
+		++media->refs;
 
-	/*
-	 * On transaction terminate we clean out our h2span_connect
-	 * and acknowledge the request, closing the transaction.
-	 */
-	if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
+		if ((msg->any.head.cmd & HAMMER2_MSGF_DELETE) == 0) {
+			hammer2_msg_result(msg, 0);
+			hammer2_router_signal(msg->router);
+			break;
+		}
+		/* FALL THROUGH */
+	case HAMMER2_LNK_CONN | HAMMER2_MSGF_DELETE:
+	case HAMMER2_LNK_ERROR | HAMMER2_MSGF_DELETE:
+deleteconn:
+		/*
+		 * On transaction terminate we clean out our h2span_connect
+		 * and acknowledge the request, closing the transaction.
+		 */
 		fprintf(stderr, "LNK_CONN: Terminated\n");
 		conn = state->any.conn;
 		assert(conn);
+
+		/*
+		 * Clean out the media structure. If refs drops to zero we
+		 * also clean out the media config threads.  These threads
+		 * maintain span connections to other hammer2 service daemons.
+		 */
+		media = conn->media;
+		if (--media->refs == 0) {
+			fprintf(stderr, "Shutting down media spans\n");
+			for (i = 0; i < HAMMER2_COPYID_COUNT; ++i) {
+				conf = &media->config[i];
+
+				if (conf->thread == NULL)
+					continue;
+				conf->ctl = H2CONFCTL_STOP;
+				pthread_cond_signal(&conf->cond);
+			}
+			for (i = 0; i < HAMMER2_COPYID_COUNT; ++i) {
+				conf = &media->config[i];
+
+				if (conf->thread == NULL)
+					continue;
+				pthread_mutex_unlock(&cluster_mtx);
+				pthread_join(conf->thread, NULL);
+				pthread_mutex_lock(&cluster_mtx);
+				conf->thread = NULL;
+				pthread_cond_destroy(&conf->cond);
+			}
+			fprintf(stderr, "Media shutdown complete\n");
+			TAILQ_REMOVE(&mediaq, media, entry);
+			hammer2_free(media);
+		}
 
 		/*
 		 * Clean out all relays.  This requires terminating each
@@ -470,6 +555,7 @@ hammer2_lnk_conn(hammer2_msg_t *msg)
 		/*
 		 * Clean out conn
 		 */
+		conn->media = NULL;
 		conn->state = NULL;
 		msg->state->any.conn = NULL;
 		TAILQ_REMOVE(&connq, conn, entry);
@@ -477,6 +563,49 @@ hammer2_lnk_conn(hammer2_msg_t *msg)
 
 		hammer2_msg_reply(msg, 0);
 		/* state invalid after reply */
+		break;
+	case HAMMER2_LNK_VOLCONF:
+		/*
+		 * One-way volume-configuration message is transmitted
+		 * over the open LNK_CONN transaction.
+		 */
+		fprintf(stderr, "RECEIVED VOLCONF\n");
+		if (msg->any.lnk_volconf.index < 0 ||
+		    msg->any.lnk_volconf.index >= HAMMER2_COPYID_COUNT) {
+			fprintf(stderr, "VOLCONF: ILLEGAL INDEX %d\n",
+				msg->any.lnk_volconf.index);
+			break;
+		}
+		if (msg->any.lnk_volconf.copy.path[sizeof(msg->any.lnk_volconf.copy.path) - 1] != 0 ||
+		    msg->any.lnk_volconf.copy.path[0] == 0) {
+			fprintf(stderr, "VOLCONF: ILLEGAL PATH %d\n",
+				msg->any.lnk_volconf.index);
+			break;
+		}
+		conn = msg->state->any.conn;
+		if (conn == NULL) {
+			fprintf(stderr, "VOLCONF: LNK_CONN is missing\n");
+			break;
+		}
+		conf = &conn->media->config[msg->any.lnk_volconf.index];
+		conf->copy_pend = msg->any.lnk_volconf.copy;
+		conf->ctl |= H2CONFCTL_UPDATE;
+		if (conf->thread == NULL) {
+			fprintf(stderr, "VOLCONF THREAD STARTED\n");
+			pthread_cond_init(&conf->cond, NULL);
+			pthread_create(&conf->thread, NULL,
+				       hammer2_volconf_thread, (void *)conf);
+		}
+		pthread_cond_signal(&conf->cond);
+		break;
+	default:
+		/*
+		 * Failsafe
+		 */
+		if (msg->any.head.cmd & HAMMER2_MSGF_DELETE)
+			goto deleteconn;
+		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
+		break;
 	}
 	pthread_mutex_unlock(&cluster_mtx);
 }
@@ -916,6 +1045,92 @@ hammer2_relay_delete(h2span_relay_t *relay)
 	relay->conn = NULL;
 	relay->link = NULL;
 	hammer2_free(relay);
+}
+
+static void *
+hammer2_volconf_thread(void *info)
+{
+	h2span_media_config_t *conf = info;
+
+	pthread_mutex_lock(&cluster_mtx);
+	while ((conf->ctl & H2CONFCTL_STOP) == 0) {
+		if (conf->ctl & H2CONFCTL_UPDATE) {
+			fprintf(stderr, "VOLCONF UPDATE\n");
+			conf->ctl &= ~H2CONFCTL_UPDATE;
+			if (bcmp(&conf->copy_run, &conf->copy_pend,
+				 sizeof(conf->copy_run)) == 0) {
+				fprintf(stderr, "VOLCONF: no changes\n");
+				continue;
+			}
+			/*
+			 * XXX TODO - auto reconnect on lookup failure or
+			 *		connect failure or stream failure.
+			 */
+
+			pthread_mutex_unlock(&cluster_mtx);
+			hammer2_volconf_stop(conf);
+			conf->copy_run = conf->copy_pend;
+			if (conf->copy_run.copyid != 0 &&
+			    strncmp(conf->copy_run.path, "span:", 5) == 0) {
+				hammer2_volconf_start(conf,
+						      conf->copy_run.path + 5);
+			}
+			pthread_mutex_lock(&cluster_mtx);
+			fprintf(stderr, "VOLCONF UPDATE DONE state %d\n", conf->state);
+		}
+		if (conf->state == H2MC_CONNECT) {
+			hammer2_volconf_start(conf, conf->copy_run.path + 5);
+			pthread_mutex_unlock(&cluster_mtx);
+			sleep(5);
+			pthread_mutex_lock(&cluster_mtx);
+		} else {
+			pthread_cond_wait(&conf->cond, &cluster_mtx);
+		}
+	}
+	pthread_mutex_unlock(&cluster_mtx);
+	hammer2_volconf_stop(conf);
+	return(NULL);
+}
+
+static
+void
+hammer2_volconf_stop(h2span_media_config_t *conf)
+{
+	switch(conf->state) {
+	case H2MC_STOPPED:
+		break;
+	case H2MC_CONNECT:
+		conf->state = H2MC_STOPPED;
+		break;
+	case H2MC_RUNNING:
+		shutdown(conf->fd, SHUT_WR);
+		pthread_join(conf->iocom_thread, NULL);
+		conf->iocom_thread = NULL;
+		break;
+	}
+}
+
+static
+void
+hammer2_volconf_start(h2span_media_config_t *conf, const char *hostname)
+{
+	switch(conf->state) {
+	case H2MC_STOPPED:
+	case H2MC_CONNECT:
+		conf->fd = hammer2_connect(hostname);
+		if (conf->fd < 0) {
+			fprintf(stderr, "Unable to connect to %s\n", hostname);
+			conf->state = H2MC_CONNECT;
+		} else {
+			pthread_create(&conf->iocom_thread, NULL,
+				       master_service,
+				       (void *)(intptr_t)conf->fd);
+			conf->state = H2MC_RUNNING;
+		}
+		break;
+	case H2MC_RUNNING:
+		break;
+	}
 }
 
 /************************************************************************

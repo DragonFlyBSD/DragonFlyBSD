@@ -314,37 +314,44 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
  * Link layer ops basically talk to just the other side of a direct
  * connection.
  *
- * PAD		- One-way message on link-0, ignored by target.  Used to
+ * LNK_PAD	- One-way message on link-0, ignored by target.  Used to
  *		  pad message buffers on shared-memory transports.  Not
  *		  typically used with TCP.
  *
- * PING		- One-way message on link-0, keep-alive, run by both sides
+ * LNK_PING	- One-way message on link-0, keep-alive, run by both sides
  *		  typically 1/sec on idle link, link is lost after 10 seconds
  *		  of inactivity.
  *
- * AUTH		- Authenticate the connection, negotiate administrative
+ * LNK_AUTH	- Authenticate the connection, negotiate administrative
  *		  rights & encryption, protocol class, etc.  Only PAD and
  *		  AUTH messages (not even PING) are accepted until
  *		  authentication is complete.  This message also identifies
  *		  the host.
  *
- * CONN		- Enable the SPAN protocol on link-0, possibly also installing
+ * LNK_CONN	- Enable the SPAN protocol on link-0, possibly also installing
  *		  a PFS filter (by cluster id, unique id, and/or wildcarded
  *		  name).
  *
- * SPAN		- A SPAN transaction on link-0 enables messages to be relayed
+ * LNK_SPAN	- A SPAN transaction on link-0 enables messages to be relayed
  *		  to/from a particular cluster node.  SPANs are received,
  *		  sorted, aggregated, and retransmitted back out across all
  *		  applicable connections.
  *
  *		  The leaf protocol also uses this to make a PFS available
  *		  to the cluster (e.g. on-mount).
+ *
+ * LNK_VOLCONF	- Volume header configuration change.  All hammer2
+ *		  connections (hammer2 connect ...) stored in the volume
+ *		  header are spammed at the link level to the hammer2
+ *		  service daemon, and any live configuration change
+ *		  thereafter.
  */
 #define HAMMER2_LNK_PAD		HAMMER2_MSG_LNK(0x000, hammer2_msg_hdr)
 #define HAMMER2_LNK_PING	HAMMER2_MSG_LNK(0x001, hammer2_msg_hdr)
 #define HAMMER2_LNK_AUTH	HAMMER2_MSG_LNK(0x010, hammer2_lnk_auth)
 #define HAMMER2_LNK_CONN	HAMMER2_MSG_LNK(0x011, hammer2_lnk_conn)
 #define HAMMER2_LNK_SPAN	HAMMER2_MSG_LNK(0x012, hammer2_lnk_span)
+#define HAMMER2_LNK_VOLCONF	HAMMER2_MSG_LNK(0x020, hammer2_lnk_volconf)
 #define HAMMER2_LNK_ERROR	HAMMER2_MSG_LNK(0xFFF, hammer2_msg_hdr)
 
 /*
@@ -368,6 +375,7 @@ struct hammer2_lnk_auth {
 
 struct hammer2_lnk_conn {
 	hammer2_msg_hdr_t head;
+	uuid_t		mediaid;	/* media configuration id */
 	uuid_t		pfs_clid;	/* rendezvous pfs uuid */
 	uuid_t		pfs_fsid;	/* unique pfs uuid */
 	uint8_t		pfs_type;	/* peer type */
@@ -441,6 +449,20 @@ struct hammer2_lnk_span {
 typedef struct hammer2_lnk_span hammer2_lnk_span_t;
 
 #define HAMMER2_SPAN_PROTO_1	1
+
+/*
+ * LNK_VOLCONF
+ */
+struct hammer2_lnk_volconf {
+	hammer2_msg_hdr_t	head;
+	hammer2_copy_data_t     copy;	/* copy spec */
+	int32_t			index;
+	int32_t			unused01;
+	uuid_t			mediaid;
+	int64_t			reserved02[32];
+};
+
+typedef struct hammer2_lnk_volconf hammer2_lnk_volconf_t;
 
 /*
  * Debug layer ops operate on any link
@@ -539,6 +561,7 @@ union hammer2_msg_any {
 	hammer2_msg_hdr_t	head;
 	hammer2_lnk_span_t	lnk_span;
 	hammer2_lnk_conn_t	lnk_conn;
+	hammer2_lnk_volconf_t	lnk_volconf;
 };
 
 typedef union hammer2_msg_any hammer2_msg_any_t;

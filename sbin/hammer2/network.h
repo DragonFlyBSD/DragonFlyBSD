@@ -245,8 +245,8 @@ struct hammer2_router {
 	struct hammer2_state_tree statewr_tree; /* active messages */
 	hammer2_msg_queue_t txmsgq;		/* tx msgq from remote */
 	uint64_t	target;			/* for routing */
-	int	flags;
-	int	refs;				/* refs prevent destruction */
+	int		flags;
+	int		refs;			/* refs prevent destruction */
 };
 
 #define HAMMER2_ROUTER_CONNECTED	0x0001	/* on global RB tree */
@@ -287,12 +287,6 @@ typedef struct hammer2_iocom hammer2_iocom_t;
 #define HAMMER2_IOCOMF_AWWORK	0x00000080	/* immediate work pending */
 #define HAMMER2_IOCOMF_SWORK	0x00000100	/* immediate work pending */
 #define HAMMER2_IOCOMF_CRYPTED	0x00000200	/* encrypt enabled */
-
-
-
-
-
-
 
 /*
  * Crypto algorithm table and related typedefs.

@@ -585,14 +585,17 @@ hammer2_state_free(hammer2_state_t *state)
 }
 
 hammer2_msg_t *
-hammer2_msg_alloc(hammer2_router_t *router, uint32_t cmd)
+hammer2_msg_alloc(hammer2_router_t *router, uint32_t cmd,
+		  int (*func)(hammer2_state_t *, hammer2_msg_t *), void *data)
 {
+	hammer2_pfsmount_t *pmp = router->pmp;
 	hammer2_msg_t *msg;
+	hammer2_state_t *state;
 	size_t hbytes;
 
 	hbytes = (cmd & HAMMER2_MSGF_SIZE) * HAMMER2_MSG_ALIGN;
 	msg = kmalloc(offsetof(struct hammer2_msg, any) + hbytes,
-		      router->pmp->mmsg, M_WAITOK | M_ZERO);
+		      pmp->mmsg, M_WAITOK | M_ZERO);
 	msg->hdr_size = hbytes;
 	msg->router = router;
 	KKASSERT(router != NULL);
@@ -600,6 +603,32 @@ hammer2_msg_alloc(hammer2_router_t *router, uint32_t cmd)
 	msg->any.head.source = 0;
 	msg->any.head.target = router->target;
 	msg->any.head.cmd = cmd;
+
+	if (cmd & HAMMER2_MSGF_CREATE) {
+		/*
+		 * New transaction, requires tracking state and a unique
+		 * msgid to be allocated.
+		 */
+		KKASSERT(msg->state == NULL);
+		state = kmalloc(sizeof(*state), pmp->mmsg, M_WAITOK | M_ZERO);
+		state->pmp = pmp;
+		state->flags = HAMMER2_STATE_DYNAMIC;
+		state->func = func;
+		state->any.any = data;
+		state->msg = msg;
+		state->msgid = (uint64_t)(uintptr_t)state;
+		state->router = msg->router;
+		msg->state = state;
+		msg->any.head.source = 0;
+		msg->any.head.target = state->router->target;
+		msg->any.head.msgid = state->msgid;
+
+		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
+		if (RB_INSERT(hammer2_state_tree, &pmp->statewr_tree, state))
+			panic("duplicate msgid allocated");
+		msg->any.head.msgid = state->msgid;
+		lockmgr(&pmp->msglk, LK_RELEASE);
+	}
 
 	return (msg);
 }
@@ -653,8 +682,7 @@ hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
  * does not write to the message socket/pipe.
  */
 void
-hammer2_msg_write(hammer2_msg_t *msg,
-		  int (*func)(hammer2_state_t *, hammer2_msg_t *), void *data)
+hammer2_msg_write(hammer2_msg_t *msg)
 {
 	hammer2_pfsmount_t *pmp = msg->router->pmp;
 	hammer2_state_t *state;
@@ -672,33 +700,6 @@ hammer2_msg_write(hammer2_msg_t *msg,
 		msg->any.head.source = 0;
 		msg->any.head.target = state->router->target;
 		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
-		if (func) {
-			state->func = func;
-			state->any.any = data;
-		}
-	} else if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
-		/*
-		 * New transaction, requires tracking state and a unique
-		 * msgid to be allocated.
-		 */
-		KKASSERT(msg->state == NULL);
-		state = kmalloc(sizeof(*state), pmp->mmsg, M_WAITOK | M_ZERO);
-		state->pmp = pmp;
-		state->flags = HAMMER2_STATE_DYNAMIC;
-		state->func = func;
-		state->any.any = data;
-		state->msg = msg;
-		state->msgid = (uint64_t)(uintptr_t)state;
-		state->router = msg->router;
-		msg->state = state;
-		msg->any.head.source = 0;
-		msg->any.head.target = state->router->target;
-		msg->any.head.msgid = state->msgid;
-
-		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
-		if (RB_INSERT(hammer2_state_tree, &pmp->statewr_tree, state))
-			panic("duplicate msgid allocated");
-		msg->any.head.msgid = state->msgid;
 	} else {
 		/*
 		 * One-off message (always uses msgid 0 to distinguish
@@ -721,6 +722,7 @@ hammer2_msg_write(hammer2_msg_t *msg,
 	msg->any.head.hdr_crc = hammer2_icrc32(msg->any.buf, msg->hdr_size);
 
 	TAILQ_INSERT_TAIL(&pmp->msgq, msg, qentry);
+	hammer2_clusterctl_wakeup(pmp);
 	lockmgr(&pmp->msglk, LK_RELEASE);
 }
 
@@ -765,10 +767,13 @@ hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error)
 			cmd |= HAMMER2_MSGF_REPLY;
 	}
 
-	nmsg = hammer2_msg_alloc(msg->router, cmd);
+	/* XXX messy mask cmd to avoid allocating state */
+	nmsg = hammer2_msg_alloc(msg->router, cmd & HAMMER2_MSGF_BASECMDMASK,
+				 NULL, NULL);
+	nmsg->any.head.cmd = cmd;
 	nmsg->any.head.error = error;
 	nmsg->state = state;
-	hammer2_msg_write(nmsg, NULL, NULL);
+	hammer2_msg_write(nmsg);
 }
 
 /*
@@ -813,8 +818,11 @@ hammer2_msg_result(hammer2_msg_t *msg, uint32_t error)
 			cmd |= HAMMER2_MSGF_REPLY;
 	}
 
-	nmsg = hammer2_msg_alloc(msg->router, cmd);
+	/* XXX messy mask cmd to avoid allocating state */
+	nmsg = hammer2_msg_alloc(msg->router, cmd & HAMMER2_MSGF_BASECMDMASK,
+				 NULL, NULL);
+	nmsg->any.head.cmd = cmd;
 	nmsg->any.head.error = error;
 	nmsg->state = state;
-	hammer2_msg_write(nmsg, NULL, NULL);
+	hammer2_msg_write(nmsg);
 }

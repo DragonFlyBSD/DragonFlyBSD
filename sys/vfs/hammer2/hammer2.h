@@ -338,6 +338,7 @@ struct hammer2_pfsmount {
 	uint32_t		msgid_iterator;
 	struct lock		msglk;		/* lockmgr lock */
 	TAILQ_HEAD(, hammer2_msg) msgq;		/* transmit queue */
+	struct hammer2_state	*conn_state;	/* active LNK_CONN state */
 	struct hammer2_state	*freerd_state;	/* allocation cache */
 	struct hammer2_state	*freewr_state;	/* allocation cache */
 	struct hammer2_state_tree staterd_tree;	/* active messages */
@@ -347,7 +348,11 @@ struct hammer2_pfsmount {
 
 typedef struct hammer2_pfsmount hammer2_pfsmount_t;
 
-#define HAMMER2_CLUSTERCTL_KILL	0x0001
+/*
+ * msg_ctl flags (atomic)
+ */
+#define HAMMER2_CLUSTERCTL_KILL		0x00000001
+#define HAMMER2_CLUSTERCTL_SLEEPING	0x00000002 /* interlocked w/msglk */
 
 /*
  * Transactional state structure, representing an open transaction.  The
@@ -557,10 +562,10 @@ void hammer2_state_cleanuptx(hammer2_msg_t *msg);
 int hammer2_msg_execute(hammer2_msg_t *msg);
 void hammer2_state_free(hammer2_state_t *state);
 void hammer2_msg_free(hammer2_msg_t *msg);
-hammer2_msg_t *hammer2_msg_alloc(hammer2_router_t *router, uint32_t cmd);
-void hammer2_msg_write(hammer2_msg_t *msg,
+hammer2_msg_t *hammer2_msg_alloc(hammer2_router_t *router, uint32_t cmd,
 				int (*func)(hammer2_state_t *, hammer2_msg_t *),
 				void *data);
+void hammer2_msg_write(hammer2_msg_t *msg);
 void hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error);
 void hammer2_msg_result(hammer2_msg_t *msg, uint32_t error);
 
@@ -569,6 +574,13 @@ void hammer2_msg_result(hammer2_msg_t *msg, uint32_t error);
  */
 int hammer2_msg_dbg_rcvmsg(hammer2_msg_t *msg);
 int hammer2_msg_adhoc_input(hammer2_msg_t *msg);
+
+/*
+ * hammer2_vfsops.c
+ */
+void hammer2_clusterctl_wakeup(hammer2_pfsmount_t *pmp);
+void hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index);
+void hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp);
 
 /*
  * hammer2_freemap.c

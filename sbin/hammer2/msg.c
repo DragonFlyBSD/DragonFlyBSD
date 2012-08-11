@@ -2062,6 +2062,9 @@ hammer2_basecmd_str(uint32_t cmd)
 	case HAMMER2_LNK_SPAN:
 		cmdstr = "SPAN";
 		break;
+	case HAMMER2_LNK_VOLCONF:
+		cmdstr = "VOLCONF";
+		break;
 	case HAMMER2_LNK_ERROR:
 		if (cmd & HAMMER2_MSGF_DELETE)
 			cmdstr = "RETURN";
