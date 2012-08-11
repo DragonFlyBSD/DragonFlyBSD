@@ -335,7 +335,7 @@ struct hammer2_pfsmount {
 	thread_t		msgwr_td;	/* cluster thread */
 	int			msg_ctl;	/* wakeup flags */
 	int			msg_seq;	/* cluster msg sequence id */
-	uint32_t		msgid_iterator;
+	uint32_t		reserved01;
 	struct lock		msglk;		/* lockmgr lock */
 	TAILQ_HEAD(, hammer2_msg) msgq;		/* transmit queue */
 	struct hammer2_state	*conn_state;	/* active LNK_CONN state */
@@ -352,7 +352,9 @@ typedef struct hammer2_pfsmount hammer2_pfsmount_t;
  * msg_ctl flags (atomic)
  */
 #define HAMMER2_CLUSTERCTL_KILL		0x00000001
-#define HAMMER2_CLUSTERCTL_SLEEPING	0x00000002 /* interlocked w/msglk */
+#define HAMMER2_CLUSTERCTL_KILLRX	0x00000002 /* staged helper exit */
+#define HAMMER2_CLUSTERCTL_KILLTX	0x00000004 /* staged helper exit */
+#define HAMMER2_CLUSTERCTL_SLEEPING	0x00000008 /* interlocked w/msglk */
 
 /*
  * Transactional state structure, representing an open transaction.  The
@@ -379,6 +381,7 @@ struct hammer2_state {
 
 #define HAMMER2_STATE_INSERTED	0x0001
 #define HAMMER2_STATE_DYNAMIC	0x0002
+#define HAMMER2_STATE_DELPEND	0x0004		/* transmit delete pending */
 
 struct hammer2_msg {
 	TAILQ_ENTRY(hammer2_msg) qentry;	/* serialized queue */

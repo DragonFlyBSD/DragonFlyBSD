@@ -577,6 +577,7 @@ hammer2_state_free(hammer2_state_t *state)
 	hammer2_pfsmount_t *pmp = state->pmp;
 	hammer2_msg_t *msg;
 
+	KKASSERT((state->flags & HAMMER2_STATE_INSERTED) == 0);
 	msg = state->msg;
 	state->msg = NULL;
 	kfree(state, pmp->mmsg);
@@ -626,6 +627,7 @@ hammer2_msg_alloc(hammer2_router_t *router, uint32_t cmd,
 		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
 		if (RB_INSERT(hammer2_state_tree, &pmp->statewr_tree, state))
 			panic("duplicate msgid allocated");
+		state->flags |= HAMMER2_STATE_INSERTED;
 		msg->any.head.msgid = state->msgid;
 		lockmgr(&pmp->msglk, LK_RELEASE);
 	}
@@ -753,10 +755,8 @@ hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error)
 	 * doing anything.
 	 */
 	if (state) {
-		if (state->txcmd & HAMMER2_MSGF_DELETE) {
-			hammer2_msg_free(msg);
+		if (state->txcmd & HAMMER2_MSGF_DELETE)
 			return;
-		}
 		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
 			cmd |= HAMMER2_MSGF_CREATE;
 		if (state->txcmd & HAMMER2_MSGF_REPLY)
@@ -766,6 +766,7 @@ hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error)
 		if ((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0)
 			cmd |= HAMMER2_MSGF_REPLY;
 	}
+	kprintf("MSG_REPLY state=%p msg %08x\n", state, cmd);
 
 	/* XXX messy mask cmd to avoid allocating state */
 	nmsg = hammer2_msg_alloc(msg->router, cmd & HAMMER2_MSGF_BASECMDMASK,
@@ -804,10 +805,8 @@ hammer2_msg_result(hammer2_msg_t *msg, uint32_t error)
 	 * doing anything.
 	 */
 	if (state) {
-		if (state->txcmd & HAMMER2_MSGF_DELETE) {
-			hammer2_msg_free(msg);
+		if (state->txcmd & HAMMER2_MSGF_DELETE)
 			return;
-		}
 		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
 			cmd |= HAMMER2_MSGF_CREATE;
 		if (state->txcmd & HAMMER2_MSGF_REPLY)
