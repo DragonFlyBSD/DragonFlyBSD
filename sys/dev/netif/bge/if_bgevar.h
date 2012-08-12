@@ -211,6 +211,7 @@ struct bge_softc {
 #define BGE_FLAG_TBI		0x00000001
 #define BGE_FLAG_JUMBO		0x00000002
 #define BGE_FLAG_ONESHOT_MSI	0x00000004
+#define BGE_FLAG_TSO		0x00000008
 #define BGE_FLAG_MII_SERDES	0x00000010
 #define	BGE_FLAG_CPMU		0x00000020
 #define BGE_FLAG_PCIX		0x00000200
@@ -256,6 +257,8 @@ struct bge_softc {
 	int			bge_mbox_reorder;
 	int			bge_if_flags;
 	int			bge_txcnt;
+	int			bge_txspare;
+	int			bge_txrsvd;
 	int			bge_link;
 	int			bge_link_evt;
 	struct callout		bge_stat_timer;
@@ -278,9 +281,11 @@ struct bge_softc {
 	uint32_t		bge_link_chg;
 };
 
-#define BGE_NSEG_NEW		32
+#define BGE_NSEG_NEW		40
 #define BGE_NSEG_SPARE		5
+#define BGE_NSEG_SPARE_TSO	33
 #define BGE_NSEG_RSVD		16
+#define BGE_NSEG_RSVD_TSO	4
 
 /* RX coalesce ticks, unit: us */
 #define BGE_RX_COAL_TICKS_MIN	0
