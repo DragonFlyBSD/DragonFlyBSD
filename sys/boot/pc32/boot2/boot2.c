@@ -603,10 +603,10 @@ dskprobe(void)
      * Probe filesystem
      */
 #if defined(UFS) && defined(HAMMERFS)
-    if (boot2_hammer_api.fsinit() == 0) {
-	fsapi = &boot2_hammer_api;
-    } else if (boot2_ufs_api.fsinit() == 0) {
+    if (boot2_ufs_api.fsinit() == 0) {
 	fsapi = &boot2_ufs_api;
+    } else if (boot2_hammer_api.fsinit() == 0) {
+	fsapi = &boot2_hammer_api;
     } else {
 	printf("fs probe failed\n");
 	fsapi = &boot2_ufs_api;
