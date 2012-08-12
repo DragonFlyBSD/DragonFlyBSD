@@ -456,8 +456,6 @@ ixgbe_attach(device_t dev)
 			0, ixgbe_set_thermal_test, "I", "Thermal Test");
 
 	/* Set up the timer callout */
-	/* XXX: shouldn't this be a spin lock ? */
-	lockinit(&adapter->core_lock, "ixgbe core lock", 0, LK_CANRECURSE);
 	callout_init(&adapter->timer);
 
 	/* Determine hardware revision */
