@@ -2030,7 +2030,7 @@ ixgbe_local_timer(void *arg)
 	struct tx_ring	*txr = adapter->tx_rings;
 	int		hung, busy, paused;
 
-	lockmgr(&adapter->core_lock, LK_EXCLUSIVE);
+	IXGBE_CORE_LOCK(adapter);
 	KKASSERT(lockstatus(&adapter->core_lock, curthread) != 0);
 	hung = busy = paused = 0;
 
@@ -2076,7 +2076,7 @@ ixgbe_local_timer(void *arg)
 out:
 	ixgbe_rearm_queues(adapter, adapter->que_mask);
 	callout_reset(&adapter->timer, hz, ixgbe_local_timer, adapter);
-	lockmgr(&adapter->core_lock, LK_RELEASE);
+	IXGBE_CORE_UNLOCK(adapter);
 	return;
 
 watchdog:
@@ -2091,7 +2091,7 @@ watchdog:
 	adapter->watchdog_events++;
 	ixgbe_init_locked(adapter);
 
-	lockmgr(&adapter->core_lock, LK_RELEASE);
+	IXGBE_CORE_UNLOCK(adapter);
 }
 
 /*
