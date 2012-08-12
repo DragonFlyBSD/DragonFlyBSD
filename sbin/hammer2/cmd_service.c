@@ -200,6 +200,7 @@ master_reconnect(const char *mntpt)
 	}
 	if (pipe(pipefds) < 0) {
 		fprintf(stderr, "reconnect %s: pipe() failed\n", mntpt);
+		close(fd);
 		return;
 	}
 	bzero(&recls, sizeof(recls));
@@ -212,6 +213,7 @@ master_reconnect(const char *mntpt)
 		return;
 	}
 	close(pipefds[0]);
+	close(fd);
 
 	info = malloc(sizeof(*info));
 	bzero(info, sizeof(*info));
@@ -272,12 +274,14 @@ master_auth_signal(hammer2_router_t *router)
 	 * Transmit LNK_CONN, enabling the SPAN protocol if both sides
 	 * agree.
 	 *
-	 * XXX put additional authentication states here
+	 * XXX put additional authentication states here?
 	 */
 	msg = hammer2_msg_alloc(router, 0, HAMMER2_LNK_CONN |
-						   HAMMER2_MSGF_CREATE,
+					   HAMMER2_MSGF_CREATE,
 				master_auth_conn_rx, NULL);
-	snprintf(msg->any.lnk_conn.label, sizeof(msg->any.lnk_conn.label), "*");
+	msg->any.lnk_conn.peer_mask = (uint64_t)-1;
+	msg->any.lnk_conn.peer_type = HAMMER2_PEER_CLUSTER;
+
 	hammer2_msg_write(msg);
 
 	hammer2_router_restate(router,

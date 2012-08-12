@@ -129,7 +129,7 @@ RB_HEAD(hammer2_router_tree, hammer2_router);
 
 struct h2span_link;
 struct h2span_relay;
-struct h2span_connect;
+struct h2span_conn;
 
 struct hammer2_state {
 	RB_ENTRY(hammer2_state) rbnode;		/* indexed by msgid */
@@ -145,7 +145,7 @@ struct hammer2_state {
 	union {
 		void *any;
 		struct h2span_link *link;
-		struct h2span_connect *conn;
+		struct h2span_conn *conn;
 		struct h2span_relay *relay;
 	} any;
 };
@@ -172,7 +172,7 @@ int hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2);
 RB_PROTOTYPE(hammer2_state_tree, hammer2_state, rbnode, hammer2_state_cmp);
 
 /*
- * hammer2_ioq - An embedded component of hammer2_connect, holds state
+ * hammer2_ioq - An embedded component of hammer2_conn, holds state
  * for the buffering and parsing of incoming and outgoing messages.
  *
  * cdx - beg  - processed buffer data, encrypted or decrypted

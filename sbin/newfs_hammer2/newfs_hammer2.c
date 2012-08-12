@@ -622,6 +622,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	vol->fsid = Hammer2_FSId;
 	vol->fstype = Hammer2_FSType;
 
+	vol->peer_type = HAMMER2_PEER_HAMMER2;	/* LNK_CONN identification */
+
 	vol->allocator_size = free_space;
 	vol->allocator_free = free_space;
 	vol->allocator_beg = alloc_base;

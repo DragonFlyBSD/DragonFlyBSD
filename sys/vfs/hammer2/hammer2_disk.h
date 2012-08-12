@@ -507,6 +507,18 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_CHECK_NONE		0
 #define HAMMER2_CHECK_ICRC		1
 
+/*
+ * PEER types identify connections and help cluster controller filter
+ * out unwanted SPANs.
+ */
+#define HAMMER2_PEER_NONE		0
+#define HAMMER2_PEER_CLUSTER		1	/* a cluster controller */
+#define HAMMER2_PEER_BLOCK		2	/* block devices */
+#define HAMMER2_PEER_HAMMER2		3	/* hammer2-mounted volumes */
+
+/*
+ * PFS types identify a PFS on media and in LNK_SPAN messages.
+ */
 #define HAMMER2_PFSTYPE_NONE		0
 #define HAMMER2_PFSTYPE_ADMIN		1
 #define HAMMER2_PFSTYPE_CLIENT		2
@@ -703,7 +715,7 @@ struct hammer2_volume_data {
 	uint32_t	flags;			/* 0034 */
 	uint8_t		copyid;			/* 0038 copyid of phys vol */
 	uint8_t		freemap_version;	/* 0039 freemap algorithm */
-	uint8_t		pfs_type;		/* 003A local media pfstype */
+	uint8_t		peer_type;		/* 003A HAMMER2_PEER_xxx */
 	uint8_t		reserved003B;		/* 003B */
 	uint32_t	reserved003C;		/* 003C */
 

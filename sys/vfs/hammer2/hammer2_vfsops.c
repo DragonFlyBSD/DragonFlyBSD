@@ -1241,6 +1241,8 @@ hammer2_cluster_thread_wr(void *arg)
 	msg->any.lnk_conn.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
 	msg->any.lnk_conn.pfs_type = pmp->iroot->ip_data.pfs_type;
 	msg->any.lnk_conn.proto_version = HAMMER2_SPAN_PROTO_1;
+	msg->any.lnk_conn.peer_type = pmp->hmp->voldata.peer_type;
+	msg->any.lnk_conn.peer_mask = 1LLU << HAMMER2_PEER_HAMMER2;
 	name_len = pmp->iroot->ip_data.name_len;
 	if (name_len >= sizeof(msg->any.lnk_conn.label))
 		name_len = sizeof(msg->any.lnk_conn.label) - 1;
@@ -1537,6 +1539,7 @@ hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg)
 		rmsg->any.lnk_span.pfs_clid = pmp->iroot->ip_data.pfs_clid;
 		rmsg->any.lnk_span.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
 		rmsg->any.lnk_span.pfs_type = pmp->iroot->ip_data.pfs_type;
+		rmsg->any.lnk_span.peer_type = pmp->hmp->voldata.peer_type;
 		rmsg->any.lnk_span.proto_version = HAMMER2_SPAN_PROTO_1;
 		name_len = pmp->iroot->ip_data.name_len;
 		if (name_len >= sizeof(rmsg->any.lnk_span.label))

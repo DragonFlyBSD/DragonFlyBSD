@@ -373,18 +373,39 @@ struct hammer2_lnk_auth {
 	char		dummy[64];
 };
 
+/*
+ * LNK_CONN identifies a streaming connection into the cluster.  The other
+ * fields serve as a filter when supported for a particular peer and are
+ * not necessarily all used.
+ *
+ * peer_mask serves to filter the SPANs we receive by peer.  A cluster
+ * controller typically sets this to (uint64_t)-1, a block devfs
+ * interface might set it to 1 << HAMMER2_PEER_DISK, and a hammer2
+ * mount might set it to 1 << HAMMER2_PEER_HAMMER2.
+ *
+ * mediaid allows multiple (e.g. HAMMER2) connections belonging to the same
+ * media, in terms of LNK_VOLCONF updates.
+ *
+ * pfs_clid, pfs_fsid, pfs_type, and label are peer-specific and must be
+ * left empty (zero-fill) if not supported by a particular peer.
+ *
+ * HAMMER2_PEER_CLUSTER		filter: none
+ * HAMMER2_PEER_DISK		filter: label
+ * HAMMER2_PEER_HAMMER2		filter: pfs_clid if not empty, and label
+ */
 struct hammer2_lnk_conn {
 	hammer2_msg_hdr_t head;
 	uuid_t		mediaid;	/* media configuration id */
 	uuid_t		pfs_clid;	/* rendezvous pfs uuid */
 	uuid_t		pfs_fsid;	/* unique pfs uuid */
-	uint8_t		pfs_type;	/* peer type */
-	uint8_t		reserved01;
+	uint64_t	peer_mask;	/* PEER mask for SPAN filtering */
+	uint8_t		peer_type;	/* see HAMMER2_PEER_xxx */
+	uint8_t		pfs_type;	/* pfs type */
 	uint16_t	proto_version;	/* high level protocol support */
 	uint32_t	status;		/* status flags */
 	uint8_t		reserved02[8];
 	int32_t		dist;		/* span distance */
-	uint32_t	reserved03[15];
+	uint32_t	reserved03[14];
 	char		label[256];	/* PFS label (can be wildcard) */
 };
 
@@ -436,8 +457,8 @@ struct hammer2_lnk_span {
 	hammer2_msg_hdr_t head;
 	uuid_t		pfs_clid;	/* rendezvous pfs uuid */
 	uuid_t		pfs_fsid;	/* unique pfs uuid */
-	uint8_t		pfs_type;	/* peer type */
-	uint8_t		reserved01;
+	uint8_t		pfs_type;	/* PFS type */
+	uint8_t		peer_type;	/* PEER type */
 	uint16_t	proto_version;	/* high level protocol support */
 	uint32_t	status;		/* status flags */
 	uint8_t		reserved02[8];

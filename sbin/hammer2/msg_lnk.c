@@ -141,7 +141,7 @@
  * outgoing LNK_SPAN transactions on each of our connections representing
  * the aggregated state.
  *
- * h2span_connect	- list of iocom connections who wish to receive SPAN
+ * h2span_conn		- list of iocom connections who wish to receive SPAN
  *			  propagation from other connections.  Might contain
  *			  a filter string.  Only iocom's with an open
  *			  LNK_CONN transactions are applicable for SPAN
@@ -186,7 +186,7 @@
 struct h2span_link;
 struct h2span_relay;
 TAILQ_HEAD(h2span_media_queue, h2span_media);
-TAILQ_HEAD(h2span_connect_queue, h2span_connect);
+TAILQ_HEAD(h2span_conn_queue, h2span_conn);
 TAILQ_HEAD(h2span_relay_queue, h2span_relay);
 
 RB_HEAD(h2span_cluster_tree, h2span_cluster);
@@ -224,8 +224,8 @@ typedef struct h2span_media_config h2span_media_config_t;
  * (may contain filter).  Typically one for each mount and several may
  * share the same media.
  */
-struct h2span_connect {
-	TAILQ_ENTRY(h2span_connect) entry;
+struct h2span_conn {
+	TAILQ_ENTRY(h2span_conn) entry;
 	struct h2span_relay_tree tree;
 	struct h2span_media *media;
 	hammer2_state_t *state;
@@ -267,7 +267,7 @@ struct h2span_link {
  * In many respects this is the core of the protocol... actually figuring
  * out what LNK_SPANs to relay.  The spanid used for relaying is the
  * address of the 'state' structure, which is why h2span_relay has to
- * be entered into a RB-TREE based at h2span_connect (so we can look
+ * be entered into a RB-TREE based at h2span_conn (so we can look
  * up the spanid to validate it).
  *
  * NOTE: Messages can be received via the LNK_SPAN transaction the
@@ -279,9 +279,9 @@ struct h2span_link {
  *	 transaction the relay is holding open.
  */
 struct h2span_relay {
-	RB_ENTRY(h2span_relay) rbnode;	/* from h2span_connect */
+	RB_ENTRY(h2span_relay) rbnode;	/* from h2span_conn */
 	TAILQ_ENTRY(h2span_relay) entry; /* from link */
-	struct h2span_connect *conn;
+	struct h2span_conn *conn;
 	hammer2_state_t	*state;		/* transmitted LNK_SPAN */
 	struct h2span_link *link;	/* LNK_SPAN being relayed */
 	struct hammer2_router	*router;/* route out this relay */
@@ -289,7 +289,7 @@ struct h2span_relay {
 
 
 typedef struct h2span_media h2span_media_t;
-typedef struct h2span_connect h2span_connect_t;
+typedef struct h2span_conn h2span_conn_t;
 typedef struct h2span_cluster h2span_cluster_t;
 typedef struct h2span_node h2span_node_t;
 typedef struct h2span_link h2span_link_t;
@@ -396,13 +396,13 @@ RB_GENERATE_STATIC(h2span_relay_tree, h2span_relay,
  */
 static pthread_mutex_t cluster_mtx;
 static struct h2span_cluster_tree cluster_tree = RB_INITIALIZER(cluster_tree);
-static struct h2span_connect_queue connq = TAILQ_HEAD_INITIALIZER(connq);
+static struct h2span_conn_queue connq = TAILQ_HEAD_INITIALIZER(connq);
 static struct h2span_media_queue mediaq = TAILQ_HEAD_INITIALIZER(mediaq);
 
 static void hammer2_lnk_span(hammer2_msg_t *msg);
 static void hammer2_lnk_conn(hammer2_msg_t *msg);
 static void hammer2_lnk_relay(hammer2_msg_t *msg);
-static void hammer2_relay_scan(h2span_connect_t *conn, h2span_node_t *node);
+static void hammer2_relay_scan(h2span_conn_t *conn, h2span_node_t *node);
 static void hammer2_relay_delete(h2span_relay_t *relay);
 
 static void *hammer2_volconf_thread(void *info);
@@ -448,7 +448,7 @@ hammer2_lnk_conn(hammer2_msg_t *msg)
 	hammer2_state_t *state = msg->state;
 	h2span_media_t *media;
 	h2span_media_config_t *conf;
-	h2span_connect_t *conn;
+	h2span_conn_t *conn;
 	h2span_relay_t *relay;
 	char *alloc = NULL;
 	int i;
@@ -459,7 +459,7 @@ hammer2_lnk_conn(hammer2_msg_t *msg)
 	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE:
 	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE:
 		/*
-		 * On transaction start we allocate a new h2span_connect and
+		 * On transaction start we allocate a new h2span_conn and
 		 * acknowledge the request, leaving the transaction open.
 		 * We then relay priority-selected SPANs.
 		 */
@@ -505,7 +505,7 @@ hammer2_lnk_conn(hammer2_msg_t *msg)
 	case HAMMER2_LNK_ERROR | HAMMER2_MSGF_DELETE:
 deleteconn:
 		/*
-		 * On transaction terminate we clean out our h2span_connect
+		 * On transaction terminate we clean out our h2span_conn
 		 * and acknowledge the request, closing the transaction.
 		 */
 		fprintf(stderr, "LNK_CONN: Terminated\n");
@@ -805,10 +805,10 @@ hammer2_lnk_relay(hammer2_msg_t *msg)
  * Called with cluster_mtx held.
  */
 static void hammer2_relay_scan_specific(h2span_node_t *node,
-					h2span_connect_t *conn);
+					h2span_conn_t *conn);
 
 static void
-hammer2_relay_scan(h2span_connect_t *conn, h2span_node_t *node)
+hammer2_relay_scan(h2span_conn_t *conn, h2span_node_t *node)
 {
 	h2span_cluster_t *cls;
 
@@ -884,13 +884,16 @@ hammer2_relay_scan_callback(h2span_relay_t *relay, void *arg)
 }
 
 static void
-hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
+hammer2_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 {
 	struct relay_scan_info info;
 	h2span_relay_t *relay;
 	h2span_relay_t *next_relay;
 	h2span_link_t *slink;
+	hammer2_lnk_conn_t *lconn;
+	hammer2_msg_t *msg;
 	int count = 2;
+	uint8_t peer_type;
 
 	info.node = node;
 	info.relay = NULL;
@@ -912,99 +915,118 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_connect_t *conn)
 	/*
 	 * Iterate the node's links (received SPANs) in distance order,
 	 * lowest (best) dist first.
+	 *
+	 * PROPAGATE THE BEST LINKS OVER THE SPECIFIED CONNECTION.
+	 *
+	 * Track relays while iterating the best links and construct
+	 * missing relays when necessary.
+	 *
+	 * (If some prior better link was removed it would have also
+	 *  removed the relay, so the relay can only match exactly or
+	 *  be worse).
 	 */
-	/* fprintf(stderr, "LOOP\n"); */
 	RB_FOREACH(slink, h2span_link_tree, &node->tree) {
 		/*
-		fprintf(stderr, "SLINK %p RELAY %p(%p)\n",
-			slink, relay, relay ? relay->link : NULL);
-		*/
-		/*
-		 * PROPAGATE THE BEST LINKS OVER THE SPECIFIED CONNECTION.
-		 *
-		 * Track relays while iterating the best links and construct
-		 * missing relays when necessary.
-		 *
-		 * (If some prior better link was removed it would have also
-		 *  removed the relay, so the relay can only match exactly or
-		 *  be worse).
+		 * Match, relay already in-place, get the next
+		 * relay to match against the next slink.
 		 */
 		if (relay && relay->link == slink) {
-			/*
-			 * Match, relay already in-place, get the next
-			 * relay to match against the next slink.
-			 */
 			relay = RB_NEXT(h2span_relay_tree, &conn->tree, relay);
 			if (--count == 0)
 				break;
-		} else if (slink->dist > HAMMER2_SPAN_MAXDIST) {
-			/*
-			 * No match but span distance is too great,
-			 * do not relay.  This prevents endless closed
-			 * loops with ever-incrementing distances when
-			 * the seed span is lost in the graph.
-			 *
-			 * All later spans will also be too far away so
-			 * we can break out of the loop.
-			 */
-			break;
-		} else if (slink->state->iocom == conn->state->iocom) {
-			/*
-			 * No match but we would transmit a LNK_SPAN
-			 * out the same connection it came in on, which
-			 * can be trivially optimized out.
-			 */
-			break;
-		} else {
-			/*
-			 * No match, distance is ok, construct a new relay.
-			 * (slink is better than relay).
-			 */
-			hammer2_msg_t *msg;
-
-			assert(relay == NULL ||
-			       relay->link->node != slink->node ||
-			       relay->link->dist >= slink->dist);
-			relay = hammer2_alloc(sizeof(*relay));
-			relay->conn = conn;
-			relay->link = slink;
-
-			msg = hammer2_msg_alloc(conn->state->iocom->router, 0,
-						HAMMER2_LNK_SPAN |
-						HAMMER2_MSGF_CREATE,
-						hammer2_lnk_relay, relay);
-			relay->state = msg->state;
-			relay->router = hammer2_router_alloc();
-			relay->router->iocom = relay->state->iocom;
-			relay->router->relay = relay;
-			relay->router->target = relay->state->msgid;
-
-			msg->any.lnk_span = slink->state->msg->any.lnk_span;
-			msg->any.lnk_span.dist = slink->dist + 1;
-
-			hammer2_router_connect(relay->router);
-
-			RB_INSERT(h2span_relay_tree, &conn->tree, relay);
-			TAILQ_INSERT_TAIL(&slink->relayq, relay, entry);
-
-			hammer2_msg_write(msg);
-
-			fprintf(stderr,
-				"RELAY SPAN %p RELAY %p ON CLS=%p NODE=%p DIST=%d "
-				"FD %d state %p\n",
-				slink,
-				relay,
-				node->cls, node, slink->dist,
-				conn->state->iocom->sock_fd, relay->state);
-
-			/*
-			 * Match (created new relay), get the next relay to
-			 * match against the next slink.
-			 */
-			relay = RB_NEXT(h2span_relay_tree, &conn->tree, relay);
-			if (--count == 0)
-				break;
+			continue;
 		}
+
+		/*
+		 * We might want this SLINK, if it passes our filters.
+		 *
+		 * The spanning tree can cause closed loops so we have
+		 * to limit slink->dist.
+		 */
+		if (slink->dist > HAMMER2_SPAN_MAXDIST)
+			break;
+
+		/*
+		 * Don't bother transmitting a LNK_SPAN out the same
+		 * connection it came in on.  Trivial optimization.
+		 */
+		if (slink->state->iocom == conn->state->iocom)
+			break;
+
+		/*
+		 * NOTE ON FILTERS: The protocol spec allows non-requested
+		 * SPANs to be transmitted, the other end is expected to
+		 * leave their transactions open but otherwise ignore them.
+		 *
+		 * Don't bother transmitting if the remote connection
+		 * is not accepting this SPAN's peer_type.
+		 */
+		peer_type = slink->state->msg->any.lnk_span.peer_type;
+		lconn = &conn->state->msg->any.lnk_conn;
+		if (((1LLU << peer_type) & lconn->peer_mask) == 0)
+			break;
+
+		/*
+		 * Filter based on pfs_clid or label (XXX).  This typically
+		 * reduces the amount of SPAN traffic that a mount end-point
+		 * sees by only passing along SPANs related to the cluster id
+		 * (that is, it will see all PFS's associated with the
+		 * particular cluster it represents).
+		 */
+		if (peer_type == lconn->peer_type &&
+		    peer_type == HAMMER2_PEER_HAMMER2) {
+			if (!uuid_is_nil(&slink->node->cls->pfs_clid, NULL) &&
+			    uuid_compare(&slink->node->cls->pfs_clid,
+					 &lconn->pfs_clid, NULL) != 0) {
+				break;
+			}
+		}
+
+		/*
+		 * Ok, we've accepted this SPAN for relaying.
+		 */
+		assert(relay == NULL ||
+		       relay->link->node != slink->node ||
+		       relay->link->dist >= slink->dist);
+		relay = hammer2_alloc(sizeof(*relay));
+		relay->conn = conn;
+		relay->link = slink;
+
+		msg = hammer2_msg_alloc(conn->state->iocom->router, 0,
+					HAMMER2_LNK_SPAN |
+					HAMMER2_MSGF_CREATE,
+					hammer2_lnk_relay, relay);
+		relay->state = msg->state;
+		relay->router = hammer2_router_alloc();
+		relay->router->iocom = relay->state->iocom;
+		relay->router->relay = relay;
+		relay->router->target = relay->state->msgid;
+
+		msg->any.lnk_span = slink->state->msg->any.lnk_span;
+		msg->any.lnk_span.dist = slink->dist + 1;
+
+		hammer2_router_connect(relay->router);
+
+		RB_INSERT(h2span_relay_tree, &conn->tree, relay);
+		TAILQ_INSERT_TAIL(&slink->relayq, relay, entry);
+
+		hammer2_msg_write(msg);
+
+		fprintf(stderr,
+			"RELAY SPAN %p RELAY %p ON CLS=%p NODE=%p DIST=%d "
+			"FD %d state %p\n",
+			slink,
+			relay,
+			node->cls, node, slink->dist,
+			conn->state->iocom->sock_fd, relay->state);
+
+		/*
+		 * Match (created new relay), get the next relay to
+		 * match against the next slink.
+		 */
+		relay = RB_NEXT(h2span_relay_tree, &conn->tree, relay);
+		if (--count == 0)
+			break;
 	}
 
 	/*
