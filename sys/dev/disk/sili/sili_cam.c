@@ -1093,8 +1093,14 @@ sili_xpt_scsi_disk_io(struct sili_port *ap, struct ata_port *atx,
 		bzero(rdata, rdata_len);
 		if (cdb->generic.opcode == READ_CAPACITY) {
 			rdata_len = sizeof(rdata->read_capacity_data);
-			if (capacity > 0xFFFFFFFFU)
-				capacity = 0xFFFFFFFFU;
+			if (capacity > 0xFFFFFFFFU) {
+				/*
+				 * Set capacity to 0 so maxsector winds up
+				 * being 0xffffffff in CAM in order to trigger
+				 * DA_STATE_PROBE2.
+				 */
+				capacity = 0;
+			}
 			bzero(&rdata->read_capacity_data, rdata_len);
 			scsi_ulto4b((u_int32_t)capacity - 1,
 				    rdata->read_capacity_data.addr);
