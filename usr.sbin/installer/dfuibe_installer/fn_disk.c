@@ -587,6 +587,7 @@ int
 format_slice(struct i_fn_args *a)
 {
 	struct commands *cmds;
+	struct command *cmd;
 	int result;
 	int cyl, hd, sec;
 
@@ -627,9 +628,11 @@ format_slice(struct i_fn_args *a)
 	/*
 	 * Execute the fdisk script.
 	 */
-	command_add(cmds, "%s%s -v -f %snew.fdisk %s",
+	cmd = command_add(cmds, "%s%s -v -f %snew.fdisk %s",
 	    a->os_root, cmd_name(a, "FDISK"), a->tmp,
 	    disk_get_device_name(storage_get_selected_disk(a->s)));
+	if (slice_get_size(storage_get_selected_slice(a->s)) == 0xFFFFFFFFU)
+		command_set_failure_mode(cmd, COMMAND_FAILURE_IGNORE);
 
 	/*
 	 * If there is an old 'virgin' disklabel hanging around
