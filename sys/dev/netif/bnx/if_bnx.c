@@ -2584,7 +2584,6 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod)
 static void
 bnx_txeof(struct bnx_softc *sc, uint16_t tx_cons)
 {
-	struct bge_tx_bd *cur_tx = NULL;
 	struct ifnet *ifp;
 
 	ifp = &sc->arpcom.ac_if;
@@ -2597,10 +2596,8 @@ bnx_txeof(struct bnx_softc *sc, uint16_t tx_cons)
 		uint32_t idx = 0;
 
 		idx = sc->bnx_tx_saved_considx;
-		cur_tx = &sc->bnx_ldata.bnx_tx_ring[idx];
-		if (cur_tx->bge_flags & BGE_TXBDFLAG_END)
-			ifp->if_opackets++;
 		if (sc->bnx_cdata.bnx_tx_chain[idx] != NULL) {
+			ifp->if_opackets++;
 			bus_dmamap_unload(sc->bnx_cdata.bnx_tx_mtag,
 			    sc->bnx_cdata.bnx_tx_dmamap[idx]);
 			m_freem(sc->bnx_cdata.bnx_tx_chain[idx]);
@@ -2610,8 +2607,7 @@ bnx_txeof(struct bnx_softc *sc, uint16_t tx_cons)
 		BNX_INC(sc->bnx_tx_saved_considx, BGE_TX_RING_CNT);
 	}
 
-	if (cur_tx != NULL &&
-	    (BGE_TX_RING_CNT - sc->bnx_txcnt) >=
+	if ((BGE_TX_RING_CNT - sc->bnx_txcnt) >=
 	    (BNX_NSEG_RSVD + BNX_NSEG_SPARE))
 		ifp->if_flags &= ~IFF_OACTIVE;
 
