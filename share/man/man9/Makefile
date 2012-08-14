@@ -125,6 +125,7 @@ MAN=	accept_filter.9 \
 	MODULE_DEPEND.9 \
 	MODULE_VERSION.9 \
 	mpipe.9 \
+	msgport.9 \
 	mutex.9 \
 	nlookup.9 \
 	objcache.9 \
@@ -654,6 +655,26 @@ MLINKS+=mpipe.9 mpipe_alloc_nowait.9 \
 	mpipe.9 mpipe_done.9 \
 	mpipe.9 mpipe_free.9 \
 	mpipe.9 mpipe_init.9
+MLINKS+=msgport.9 lwkt_initport_thread.9 \
+	msgport.9 lwkt_initport_spin.9 \
+	msgport.9 lwkt_initport_serialize.9 \
+	msgport.9 lwkt_initport_panic.9 \
+	msgport.9 lwkt_initport_replyonly_null.9 \
+	msgport.9 lwkt_initport_replyonly.9 \
+	msgport.9 lwkt_initport_putonly.9 \
+	msgport.9 lwkt_sendmsg.9 \
+	msgport.9 lwkt_domsg.9 \
+	msgport.9 lwkt_forwardmsg.9 \
+	msgport.9 lwkt_abortmsg.9 \
+	msgport.9 lwkt_initmsg.9 \
+	msgport.9 lwkt_initmsg_abortable.9 \
+	msgport.9 lwkt_beginmsg.9 \
+	msgport.9 lwkt_replymsg.9 \
+	msgport.9 lwkt_getport.9 \
+	msgport.9 lwkt_waitport.9 \
+	msgport.9 lwkt_waitmsg.9 \
+	msgport.9 lwkt_checkmsg.9 \
+	msgport.9 lwkt_dropmsg.9
 MLINKS+=mutex.9 mtx_downgrade.9 \
 	mutex.9 mtx_drop.9 \
 	mutex.9 mtx_hold.9 \
