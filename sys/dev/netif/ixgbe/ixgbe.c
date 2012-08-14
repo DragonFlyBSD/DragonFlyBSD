@@ -2031,7 +2031,6 @@ ixgbe_local_timer(void *arg)
 	int		hung, busy, paused;
 
 	IXGBE_CORE_LOCK(adapter);
-	KKASSERT(lockstatus(&adapter->core_lock, curthread) != 0);
 	hung = busy = paused = 0;
 
 	/* Check for pluggable optics */
