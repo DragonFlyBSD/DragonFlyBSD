@@ -3007,7 +3007,6 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod)
 static void
 bge_txeof(struct bge_softc *sc, uint16_t tx_cons)
 {
-	struct bge_tx_bd *cur_tx = NULL;
 	struct ifnet *ifp;
 
 	ifp = &sc->arpcom.ac_if;
@@ -3020,10 +3019,8 @@ bge_txeof(struct bge_softc *sc, uint16_t tx_cons)
 		uint32_t idx = 0;
 
 		idx = sc->bge_tx_saved_considx;
-		cur_tx = &sc->bge_ldata.bge_tx_ring[idx];
-		if (cur_tx->bge_flags & BGE_TXBDFLAG_END)
-			ifp->if_opackets++;
 		if (sc->bge_cdata.bge_tx_chain[idx] != NULL) {
+			ifp->if_opackets++;
 			bus_dmamap_unload(sc->bge_cdata.bge_tx_mtag,
 			    sc->bge_cdata.bge_tx_dmamap[idx]);
 			m_freem(sc->bge_cdata.bge_tx_chain[idx]);
@@ -3034,8 +3031,7 @@ bge_txeof(struct bge_softc *sc, uint16_t tx_cons)
 		logif(tx_pkt);
 	}
 
-	if (cur_tx != NULL &&
-	    (BGE_TX_RING_CNT - sc->bge_txcnt) >=
+	if ((BGE_TX_RING_CNT - sc->bge_txcnt) >=
 	    (sc->bge_txrsvd + sc->bge_txspare))
 		ifp->if_flags &= ~IFF_OACTIVE;
 
