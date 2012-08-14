@@ -298,12 +298,12 @@ struct bge_softc {
 #define BGE_TX_COAL_TICKS_MAX	1023
 
 /* RX coalesce BDs */
-#define BGE_RX_COAL_BDS_MIN	1
+#define BGE_RX_COAL_BDS_MIN	0
 #define BGE_RX_COAL_BDS_DEF	80
 #define BGE_RX_COAL_BDS_MAX	255
 
 /* TX coalesce BDs */
-#define BGE_TX_COAL_BDS_MIN	1
+#define BGE_TX_COAL_BDS_MIN	0
 #define BGE_TX_COAL_BDS_DEF	128
 #define BGE_TX_COAL_BDS_MAX	255
 
