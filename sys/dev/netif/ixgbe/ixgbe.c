@@ -418,7 +418,6 @@ ixgbe_attach(device_t dev)
 
 	/* Core Lock Init*/
 	IXGBE_CORE_LOCK_INIT(adapter, device_get_nameunit(dev));
-	spin_init(&adapter->mcast_spin);
 
 	/* SYSCTL APIs */
 
@@ -709,7 +708,6 @@ ixgbe_detach(device_t dev)
 	kfree(adapter->mta, M_DEVBUF);
 	sysctl_ctx_free(&adapter->sysctl_ctx);
 	
-	spin_uninit(&adapter->mcast_spin);
 	IXGBE_CORE_LOCK_DESTROY(adapter);
 	return (0);
 }
@@ -1976,7 +1974,6 @@ ixgbe_set_multi(struct adapter *adapter)
 	
 	IXGBE_WRITE_REG(&adapter->hw, IXGBE_FCTRL, fctrl);
 
-	spin_lock(&adapter->mcast_spin);
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
@@ -1985,7 +1982,6 @@ ixgbe_set_multi(struct adapter *adapter)
 		    IXGBE_ETH_LENGTH_OF_ADDRESS);
 		mcnt++;
 	}
-	spin_unlock(&adapter->mcast_spin);
 
 	update_ptr = mta;
 	ixgbe_update_mc_addr_list(&adapter->hw,
