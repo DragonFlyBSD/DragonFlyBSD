@@ -233,8 +233,11 @@ struct emx_softc {
 	struct arpcom		arpcom;
 	struct e1000_hw		hw;
 	int			flags;
-#define EMX_FLAG_SHARED_INTR	0x1
-#define EMX_FLAG_TSO_PULLEX	0x2
+#define EMX_FLAG_SHARED_INTR	0x0001
+#define EMX_FLAG_TSO_PULLEX	0x0002
+#define EMX_FLAG_HAS_MGMT	0x0004
+#define EMX_FLAG_HAS_AMT	0x0008
+#define EMX_FLAG_HW_CTRL	0x0010
 
 	/* DragonFly operating-system-specific structures. */
 	struct e1000_osdep	osdep;
@@ -260,11 +263,8 @@ struct emx_softc {
 	int			max_frame_size;
 	int			min_frame_size;
 
-	/* Management and WOL features */
+	/* WOL register value */
 	int			wol;
-	int			has_manage;
-	int			has_amt;
-	int			control_hw;
 
 	/* Multicast array memory */
 	uint8_t			*mta;

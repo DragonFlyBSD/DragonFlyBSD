@@ -624,7 +624,8 @@ emx_attach(device_t dev)
 	}
 
 	/* Determine if we have to control management hardware */
-	sc->has_manage = e1000_enable_mng_pass_thru(&sc->hw);
+	if (e1000_enable_mng_pass_thru(&sc->hw))
+		sc->flags |= EMX_FLAG_HAS_MGMT;
 
 	/*
 	 * Setup Wake-on-Lan
@@ -633,7 +634,7 @@ emx_attach(device_t dev)
 	eeprom_data = 0;
 	switch (sc->hw.mac.type) {
 	case e1000_82573:
-		sc->has_amt = 1;
+		sc->flags |= EMX_FLAG_HAS_AMT;
 		/* FALL THROUGH */
 
 	case e1000_82571:
@@ -726,7 +727,8 @@ emx_attach(device_t dev)
 		sc->tx_int_nsegs = sc->oact_tx_desc;
 
 	/* Non-AMT based hardware can now take control from firmware */
-	if (sc->has_manage && !sc->has_amt)
+	if ((sc->flags & (EMX_FLAG_HAS_MGMT | EMX_FLAG_HAS_AMT)) ==
+	    EMX_FLAG_HAS_MGMT)
 		emx_get_hw_control(sc);
 
 	/*
@@ -1232,7 +1234,8 @@ emx_init(void *xsc)
 		emx_enable_intr(sc);
 
 	/* AMT based hardware can now take control from firmware */
-	if (sc->has_manage && sc->has_amt)
+	if ((sc->flags & (EMX_FLAG_HAS_MGMT | EMX_FLAG_HAS_AMT)) ==
+	    (EMX_FLAG_HAS_MGMT | EMX_FLAG_HAS_AMT))
 		emx_get_hw_control(sc);
 
 	/* Don't reset the phy next time init gets called */
@@ -2979,7 +2982,7 @@ static void
 emx_get_mgmt(struct emx_softc *sc)
 {
 	/* A shared code workaround */
-	if (sc->has_manage) {
+	if (sc->flags & EMX_FLAG_HAS_MGMT) {
 		int manc2h = E1000_READ_REG(&sc->hw, E1000_MANC2H);
 		int manc = E1000_READ_REG(&sc->hw, E1000_MANC);
 
@@ -3005,7 +3008,7 @@ emx_get_mgmt(struct emx_softc *sc)
 static void
 emx_rel_mgmt(struct emx_softc *sc)
 {
-	if (sc->has_manage) {
+	if (sc->flags & EMX_FLAG_HAS_MGMT) {
 		int manc = E1000_READ_REG(&sc->hw, E1000_MANC);
 
 		/* re-enable hardware interception of ARP */
@@ -3039,7 +3042,7 @@ emx_get_hw_control(struct emx_softc *sc)
 		E1000_WRITE_REG(&sc->hw, E1000_CTRL_EXT,
 		    ctrl_ext | E1000_CTRL_EXT_DRV_LOAD);
 	}
-	sc->control_hw = 1;
+	sc->flags |= EMX_FLAG_HW_CTRL;
 }
 
 /*
@@ -3051,9 +3054,9 @@ emx_get_hw_control(struct emx_softc *sc)
 static void
 emx_rel_hw_control(struct emx_softc *sc)
 {
-	if (!sc->control_hw)
+	if ((sc->flags & EMX_FLAG_HW_CTRL) == 0)
 		return;
-	sc->control_hw = 0;
+	sc->flags &= ~EMX_FLAG_HW_CTRL;
 
 	/* Let firmware taken over control of h/w */
 	if (sc->hw.mac.type == e1000_82573) {
