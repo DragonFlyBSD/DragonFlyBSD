@@ -932,11 +932,6 @@ igb_init(void *xsc)
 	callout_reset(&sc->timer, hz, igb_timer, sc);
 	e1000_clear_hw_cntrs_base_generic(&sc->hw);
 
-#if 0
-	if (adapter->msix > 1) /* Set up queue routing */
-		igb_configure_queues(adapter);
-#endif
-
 	/* This clears any pending interrupts */
 	E1000_READ_REG(&sc->hw, E1000_ICR);
 
