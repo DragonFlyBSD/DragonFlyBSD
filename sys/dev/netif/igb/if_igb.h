@@ -237,14 +237,6 @@ struct igb_tx_ring {
 
 	u_long			no_desc_avail;
 	u_long			tx_packets;
-
-	u_long			ctx_try_pullup;
-	u_long			ctx_drop1;
-	u_long			ctx_drop2;
-	u_long			ctx_pullup1;
-	u_long			ctx_pullup1_failed;
-	u_long			ctx_pullup2;
-	u_long			ctx_pullup2_failed;
 };
 
 /*
