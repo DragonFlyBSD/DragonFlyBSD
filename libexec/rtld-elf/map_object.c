@@ -153,7 +153,6 @@ map_object(int fd, const char *path, const struct stat *sb)
 		break;
 	    note_start = (Elf_Addr)(char *)hdr + phdr->p_offset;
 	    note_end = note_start + phdr->p_filesz;
-	    digest_notes(obj, note_start, note_end);
 	    break;
 	}
 
@@ -299,6 +298,8 @@ map_object(int fd, const char *path, const struct stat *sb)
         obj->relro_page = obj->relocbase + trunc_page(relro_page);
         obj->relro_size = round_page(relro_size);
     }
+    if (note_start < note_end)
+       digest_notes(obj, note_start, note_end);
     return obj;
 }
 
