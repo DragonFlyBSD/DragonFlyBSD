@@ -3102,23 +3102,14 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 
 	m_head = *m_headp;
 
-#if 0
 	/*
-	 * Set up the context descriptor:
-	 * used when any hardware offload is done.
-	 * This includes CSUM, VLAN, and TSO. It
-	 * will use the first descriptor.
+	 * Set up the TX context descriptor, if any hardware offloading is
+	 * needed.  This includes CSUM, VLAN, and TSO.  It will consume one
+	 * TX descriptor.
+	 *
+	 * Unlike these chips' predecessors (em/emx), TX context descriptor
+	 * will _not_ interfere TX data fetching pipelining.
 	 */
-	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
-		if (igb_tso_setup(txr, m_head, &hdrlen)) {
-			cmd_type_len |= E1000_ADVTXD_DCMD_TSE;
-			olinfo_status |= E1000_TXD_POPTS_IXSM << 8;
-			olinfo_status |= E1000_TXD_POPTS_TXSM << 8;
-		} else
-			return (ENXIO); 
-	} else if (igb_tx_ctx_setup(txr, m_head))
-		olinfo_status |= E1000_TXD_POPTS_TXSM << 8;
-#else
 	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
 		igb_tso_ctx(txr, m_head, &hdrlen);
 		cmd_type_len |= E1000_ADVTXD_DCMD_TSE;
@@ -3132,7 +3123,6 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 			olinfo_status |= (E1000_TXD_POPTS_TXSM << 8);
 		txr->tx_nsegs++;
 	}
-#endif
 
 	txr->tx_nsegs += nsegs;
 	if (txr->tx_nsegs >= txr->intr_nsegs) {
