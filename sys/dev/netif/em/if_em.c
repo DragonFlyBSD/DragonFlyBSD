@@ -1111,9 +1111,16 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	case SIOCSIFCAP:
 		reinit = 0;
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
-		if (mask & IFCAP_HWCSUM) {
-			ifp->if_capenable ^= (mask & IFCAP_HWCSUM);
+		if (mask & IFCAP_RXCSUM) {
+			ifp->if_capenable ^= IFCAP_RXCSUM;
 			reinit = 1;
+		}
+		if (mask & IFCAP_TXCSUM) {
+			ifp->if_capenable ^= IFCAP_TXCSUM;
+			if (ifp->if_capenable & IFCAP_TXCSUM)
+				ifp->if_hwassist |= EM_CSUM_FEATURES;
+			else
+				ifp->if_hwassist &= ~EM_CSUM_FEATURES;
 		}
 		if (mask & IFCAP_VLAN_HWTAGGING) {
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
@@ -1291,12 +1298,6 @@ em_init(void *xsc)
 		ctrl |= E1000_CTRL_VME;
 		E1000_WRITE_REG(&adapter->hw, E1000_CTRL, ctrl);
 	}
-
-	/* Set hardware offload abilities */
-	if (ifp->if_capenable & IFCAP_TXCSUM)
-		ifp->if_hwassist = EM_CSUM_FEATURES;
-	else
-		ifp->if_hwassist = 0;
 
 	/* Configure for OS presence */
 	em_get_mgmt(adapter);
