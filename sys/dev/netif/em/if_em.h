@@ -213,9 +213,6 @@
 #define ETH_ZLEN			60
 
 #define EM_CSUM_FEATURES		(CSUM_IP | CSUM_TCP | CSUM_UDP)
-#define EM_IPVHL_SIZE			1 /* sizeof(ip.ip_vhl) */
-#define EM_TXCSUM_MINHL			(ETHER_HDR_LEN + EVL_ENCAPLEN + \
-					 EM_IPVHL_SIZE)
 
 /*
  * 82574 has a nonstandard address for EIAC
@@ -314,7 +311,7 @@ struct adapter {
 
 	/* Saved csum offloading context information */
 	int			csum_flags;
-	int			csum_ehlen;
+	int			csum_lhlen;
 	int			csum_iphlen;
 	uint32_t		csum_txd_upper;
 	uint32_t		csum_txd_lower;
@@ -394,13 +391,6 @@ struct adapter {
 	unsigned long		rx_irq;
 	unsigned long		tx_irq;
 	unsigned long		link_irq;
-	unsigned long		tx_csum_try_pullup;
-	unsigned long		tx_csum_pullup1;
-	unsigned long		tx_csum_pullup1_failed;
-	unsigned long		tx_csum_pullup2;
-	unsigned long		tx_csum_pullup2_failed;
-	unsigned long		tx_csum_drop1;
-	unsigned long		tx_csum_drop2;
 
 	/* sysctl tree glue */
 	struct sysctl_ctx_list	sysctl_ctx;

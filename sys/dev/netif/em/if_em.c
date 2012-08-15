@@ -298,7 +298,6 @@ static int	em_newbuf(struct adapter *, int, int);
 static int	em_encap(struct adapter *, struct mbuf **);
 static void	em_rxcsum(struct adapter *, struct e1000_rx_desc *,
 		    struct mbuf *);
-static int	em_txcsum_pullup(struct adapter *, struct mbuf **);
 static int	em_txcsum(struct adapter *, struct mbuf *,
 		    uint32_t *, uint32_t *);
 
@@ -1599,21 +1598,6 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 	uint32_t txd_upper, txd_lower, txd_used, cmd = 0;
 	int maxsegs, nsegs, i, j, first, last = 0, error;
 
-	if (m_head->m_len < EM_TXCSUM_MINHL &&
-	    (m_head->m_flags & EM_CSUM_FEATURES)) {
-		/*
-		 * Make sure that ethernet header and ip.ip_hl are in
-		 * contiguous memory, since if TXCSUM is enabled, later
-		 * TX context descriptor's setup need to access ip.ip_hl.
-		 */
-		error = em_txcsum_pullup(adapter, m_headp);
-		if (error) {
-			KKASSERT(*m_headp == NULL);
-			return error;
-		}
-		m_head = *m_headp;
-	}
-
 	txd_upper = txd_lower = 0;
 	txd_used = 0;
 
@@ -2135,7 +2119,7 @@ em_stop(struct adapter *adapter)
 	adapter->lmp = NULL;
 
 	adapter->csum_flags = 0;
-	adapter->csum_ehlen = 0;
+	adapter->csum_lhlen = 0;
 	adapter->csum_iphlen = 0;
 
 	adapter->tx_dd_head = 0;
@@ -2720,48 +2704,14 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	  uint32_t *txd_upper, uint32_t *txd_lower)
 {
 	struct e1000_context_desc *TXD;
-	struct em_buffer *tx_buffer;
-	struct ether_vlan_header *eh;
-	struct ip *ip;
 	int curr_txd, ehdrlen, csum_flags;
 	uint32_t cmd, hdr_len, ip_hlen;
-	uint16_t etype;
-
-	/*
-	 * Determine where frame payload starts.
-	 * Jump over vlan headers if already present,
-	 * helpful for QinQ too.
-	 */
-	KASSERT(mp->m_len >= ETHER_HDR_LEN,
-		("em_txcsum_pullup is not called (eh)?"));
-	eh = mtod(mp, struct ether_vlan_header *);
-	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
-		KASSERT(mp->m_len >= ETHER_HDR_LEN + EVL_ENCAPLEN,
-			("em_txcsum_pullup is not called (evh)?"));
-		etype = ntohs(eh->evl_proto);
-		ehdrlen = ETHER_HDR_LEN + EVL_ENCAPLEN;
-	} else {
-		etype = ntohs(eh->evl_encap_proto);
-		ehdrlen = ETHER_HDR_LEN;
-	}
-
-	/*
-	 * We only support TCP/UDP for IPv4 for the moment.
-	 * TODO: Support SCTP too when it hits the tree.
-	 */
-	if (etype != ETHERTYPE_IP)
-		return 0;
-
-	KASSERT(mp->m_len >= ehdrlen + EM_IPVHL_SIZE,
-		("em_txcsum_pullup is not called (eh+ip_vhl)?"));
-
-	/* NOTE: We could only safely access ip.ip_vhl part */
-	ip = (struct ip *)(mp->m_data + ehdrlen);
-	ip_hlen = ip->ip_hl << 2;
 
 	csum_flags = mp->m_pkthdr.csum_flags & EM_CSUM_FEATURES;
+	ip_hlen = mp->m_pkthdr.csum_iphlen;
+	ehdrlen = mp->m_pkthdr.csum_lhlen;
 
-	if (adapter->csum_ehlen == ehdrlen &&
+	if (adapter->csum_lhlen == ehdrlen &&
 	    adapter->csum_iphlen == ip_hlen &&
 	    adapter->csum_flags == csum_flags) {
 		/*
@@ -2778,7 +2728,6 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	 */
 
 	curr_txd = adapter->next_avail_tx_desc;
-	tx_buffer = &adapter->tx_buffer_area[curr_txd];
 	TXD = (struct e1000_context_desc *)&adapter->tx_desc_base[curr_txd];
 
 	cmd = 0;
@@ -2829,7 +2778,7 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 		     E1000_TXD_DTYP_D;		/* Data descr */
 
 	/* Save the information for this csum offloading context */
-	adapter->csum_ehlen = ehdrlen;
+	adapter->csum_lhlen = ehdrlen;
 	adapter->csum_iphlen = ip_hlen;
 	adapter->csum_flags = csum_flags;
 	adapter->csum_txd_upper = *txd_upper;
@@ -2847,66 +2796,6 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 
 	adapter->next_avail_tx_desc = curr_txd;
 	return 1;
-}
-
-static int
-em_txcsum_pullup(struct adapter *adapter, struct mbuf **m0)
-{
-	struct mbuf *m = *m0;
-	struct ether_header *eh;
-	int len;
-
-	adapter->tx_csum_try_pullup++;
-
-	len = ETHER_HDR_LEN + EM_IPVHL_SIZE;
-
-	if (__predict_false(!M_WRITABLE(m))) {
-		if (__predict_false(m->m_len < ETHER_HDR_LEN)) {
-			adapter->tx_csum_drop1++;
-			m_freem(m);
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		eh = mtod(m, struct ether_header *);
-
-		if (eh->ether_type == htons(ETHERTYPE_VLAN))
-			len += EVL_ENCAPLEN;
-
-		if (m->m_len < len) {
-			adapter->tx_csum_drop2++;
-			m_freem(m);
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		return 0;
-	}
-
-	if (__predict_false(m->m_len < ETHER_HDR_LEN)) {
-		adapter->tx_csum_pullup1++;
-		m = m_pullup(m, ETHER_HDR_LEN);
-		if (m == NULL) {
-			adapter->tx_csum_pullup1_failed++;
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		*m0 = m;
-	}
-	eh = mtod(m, struct ether_header *);
-
-	if (eh->ether_type == htons(ETHERTYPE_VLAN))
-		len += EVL_ENCAPLEN;
-
-	if (m->m_len < len) {
-		adapter->tx_csum_pullup2++;
-		m = m_pullup(m, len);
-		if (m == NULL) {
-			adapter->tx_csum_pullup2_failed++;
-			*m0 = NULL;
-			return ENOBUFS;
-		}
-		*m0 = m;
-	}
-	return 0;
 }
 
 static void
@@ -3909,21 +3798,6 @@ em_print_debug_info(struct adapter *adapter)
 	    adapter->dropped_pkts);
 	device_printf(dev, "Driver tx dma failure in encap = %ld\n",
 	    adapter->no_tx_dma_setup);
-
-	device_printf(dev, "TXCSUM try pullup = %lu\n",
-	    adapter->tx_csum_try_pullup);
-	device_printf(dev, "TXCSUM m_pullup(eh) called = %lu\n",
-	    adapter->tx_csum_pullup1);
-	device_printf(dev, "TXCSUM m_pullup(eh) failed = %lu\n",
-	    adapter->tx_csum_pullup1_failed);
-	device_printf(dev, "TXCSUM m_pullup(eh+ip) called = %lu\n",
-	    adapter->tx_csum_pullup2);
-	device_printf(dev, "TXCSUM m_pullup(eh+ip) failed = %lu\n",
-	    adapter->tx_csum_pullup2_failed);
-	device_printf(dev, "TXCSUM non-writable(eh) droped = %lu\n",
-	    adapter->tx_csum_drop1);
-	device_printf(dev, "TXCSUM non-writable(eh+ip) droped = %lu\n",
-	    adapter->tx_csum_drop2);
 }
 
 static void
