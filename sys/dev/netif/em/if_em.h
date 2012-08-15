@@ -49,7 +49,7 @@
 #define EM_MIN_TXD			256
 #define EM_MAX_TXD_82543		EM_MIN_TXD
 #define EM_MAX_TXD			4096
-#define EM_DEFAULT_TXD			EM_MIN_TXD
+#define EM_DEFAULT_TXD			512
 
 /*
  * EM_RXD - Maximum number of receive Descriptors
@@ -67,7 +67,7 @@
 #define EM_MIN_RXD			256
 #define EM_MAX_RXD_82543		EM_MIN_RXD
 #define EM_MAX_RXD			4096
-#define EM_DEFAULT_RXD			EM_MIN_RXD
+#define EM_DEFAULT_RXD			512
 
 /*
  * EM_TIDV - Transmit Interrupt Delay Value
