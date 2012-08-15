@@ -248,7 +248,10 @@ struct adapter {
 	struct arpcom		arpcom;
 	struct e1000_hw		hw;
 	int			flags;
-#define EM_FLAG_SHARED_INTR	0x1
+#define EM_FLAG_SHARED_INTR	0x0001
+#define EM_FLAG_HAS_MGMT	0x0002
+#define EM_FLAG_HAS_AMT		0x0004
+#define EM_FLAG_HW_CTRL		0x0008
 
 	/* DragonFly operating-system-specific structures. */
 	struct e1000_osdep	osdep;
@@ -276,11 +279,8 @@ struct adapter {
 	int			max_frame_size;
 	int			min_frame_size;
 
-	/* Management and WOL features */
+	/* WOL register value */
 	int			wol;
-	int			has_manage;
-	int			has_amt;
-	int			control_hw;
 
 	/* Multicast array memory */
 	uint8_t			*mta;

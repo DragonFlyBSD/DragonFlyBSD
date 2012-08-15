@@ -661,7 +661,8 @@ em_attach(device_t dev)
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
 
 	/* Determine if we have to control management hardware */
-	adapter->has_manage = e1000_enable_mng_pass_thru(&adapter->hw);
+	if (e1000_enable_mng_pass_thru(&adapter->hw))
+		adapter->flags |= EM_FLAG_HAS_MGMT;
 
 	/*
 	 * Setup Wake-on-Lan
@@ -675,7 +676,7 @@ em_attach(device_t dev)
 
 	case e1000_82573:
 	case e1000_82583:
-		adapter->has_amt = 1;
+		adapter->flags |= EM_FLAG_HAS_AMT;
 		/* FALL THROUGH */
 
 	case e1000_82546:
@@ -698,7 +699,7 @@ em_attach(device_t dev)
 	case e1000_pchlan:
 	case e1000_pch2lan:
 		apme_mask = E1000_WUC_APME;
-		adapter->has_amt = TRUE;
+		adapter->flags |= EM_FLAG_HAS_AMT;
 		eeprom_data = E1000_READ_REG(&adapter->hw, E1000_WUC);
 		break;
 
@@ -803,8 +804,8 @@ em_attach(device_t dev)
 		adapter->tx_int_nsegs = adapter->oact_tx_desc;
 
 	/* Non-AMT based hardware can now take control from firmware */
-	if (adapter->has_manage && !adapter->has_amt &&
-	    adapter->hw.mac.type >= e1000_82571)
+	if ((adapter->flags & (EM_FLAG_HAS_MGMT | EM_FLAG_HAS_AMT)) ==
+	    EM_FLAG_HAS_MGMT && adapter->hw.mac.type >= e1000_82571)
 		em_get_hw_control(adapter);
 
 	/*
@@ -1354,7 +1355,8 @@ em_init(void *xsc)
 		em_enable_intr(adapter);
 
 	/* AMT based hardware can now take control from firmware */
-	if (adapter->has_manage && adapter->has_amt &&
+	if ((adapter->flags & (EM_FLAG_HAS_MGMT | EM_FLAG_HAS_AMT)) ==
+	    (EM_FLAG_HAS_MGMT | EM_FLAG_HAS_AMT) &&
 	    adapter->hw.mac.type >= e1000_82571)
 		em_get_hw_control(adapter);
 
@@ -3579,7 +3581,7 @@ em_get_mgmt(struct adapter *adapter)
 {
 	/* A shared code workaround */
 #define E1000_82542_MANC2H E1000_MANC2H
-	if (adapter->has_manage) {
+	if (adapter->flags & EM_FLAG_HAS_MGMT) {
 		int manc2h = E1000_READ_REG(&adapter->hw, E1000_MANC2H);
 		int manc = E1000_READ_REG(&adapter->hw, E1000_MANC);
 
@@ -3607,7 +3609,7 @@ em_get_mgmt(struct adapter *adapter)
 static void
 em_rel_mgmt(struct adapter *adapter)
 {
-	if (adapter->has_manage) {
+	if (adapter->flags & EM_FLAG_HAS_MGMT) {
 		int manc = E1000_READ_REG(&adapter->hw, E1000_MANC);
 
 		/* re-enable hardware interception of ARP */
@@ -3643,7 +3645,7 @@ em_get_hw_control(struct adapter *adapter)
 		E1000_WRITE_REG(&adapter->hw, E1000_CTRL_EXT,
 		    ctrl_ext | E1000_CTRL_EXT_DRV_LOAD);
 	}
-	adapter->control_hw = 1;
+	adapter->flags |= EM_FLAG_HW_CTRL;
 }
 
 /*
@@ -3655,9 +3657,9 @@ em_get_hw_control(struct adapter *adapter)
 static void
 em_rel_hw_control(struct adapter *adapter)
 {
-	if (!adapter->control_hw)
+	if ((adapter->flags & EM_FLAG_HW_CTRL) == 0)
 		return;
-	adapter->control_hw = 0;
+	adapter->flags &= ~EM_FLAG_HW_CTRL;
 
 	/* Let firmware taken over control of h/w */
 	if (adapter->hw.mac.type == e1000_82573) {
