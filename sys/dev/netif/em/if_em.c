@@ -121,8 +121,6 @@
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
 
-#include <netinet/in_systm.h>
-#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
@@ -299,6 +297,9 @@ static int	em_encap(struct adapter *, struct mbuf **);
 static void	em_rxcsum(struct adapter *, struct e1000_rx_desc *,
 		    struct mbuf *);
 static int	em_txcsum(struct adapter *, struct mbuf *,
+		    uint32_t *, uint32_t *);
+static int	em_tso_pullup(struct adapter *, struct mbuf **);
+static int	em_tso_setup(struct adapter *, struct mbuf *,
 		    uint32_t *, uint32_t *);
 
 static int	em_get_hw_info(struct adapter *);
@@ -481,6 +482,31 @@ em_attach(device_t dev)
 		 * XXX this goof is actually not used.
 		 */
 		adapter->hw.flash_address = (uint8_t *)adapter->flash;
+	}
+
+	switch (adapter->hw.mac.type) {
+	case e1000_82571:
+	case e1000_82572:
+		/*
+		 * Pullup extra 4bytes into the first data segment, see:
+		 * 82571/82572 specification update errata #7
+		 *
+		 * NOTE:
+		 * 4bytes instead of 2bytes, which are mentioned in the
+		 * errata, are pulled; mainly to keep rest of the data
+		 * properly aligned.
+		 */
+		adapter->flags |= EM_FLAG_TSO_PULLEX;
+		/* FALL THROUGH */
+
+	case e1000_82573:
+	case e1000_82574:
+	case e1000_80003es2lan:
+		adapter->flags |= EM_FLAG_TSO;
+		break;
+
+	default:
+		break;
 	}
 
 	/* Do Shared Code initialization */
@@ -785,6 +811,8 @@ em_attach(device_t dev)
 	} else {
 		adapter->spare_tx_desc = EM_TX_SPARE;
 	}
+	if (adapter->flags & EM_FLAG_TSO)
+		adapter->spare_tx_desc = EM_TX_SPARE_TSO;
 
 	/*
 	 * Keep following relationship between spare_tx_desc, oact_tx_desc
@@ -1120,6 +1148,13 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				ifp->if_hwassist |= EM_CSUM_FEATURES;
 			else
 				ifp->if_hwassist &= ~EM_CSUM_FEATURES;
+		}
+		if (mask & IFCAP_TSO) {
+			ifp->if_capenable ^= IFCAP_TSO;
+			if (ifp->if_capenable & IFCAP_TSO)
+				ifp->if_hwassist |= CSUM_TSO;
+			else
+				ifp->if_hwassist &= ~CSUM_TSO;
 		}
 		if (mask & IFCAP_VLAN_HWTAGGING) {
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
@@ -1598,6 +1633,13 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 	uint32_t txd_upper, txd_lower, txd_used, cmd = 0;
 	int maxsegs, nsegs, i, j, first, last = 0, error;
 
+	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
+		error = em_tso_pullup(adapter, m_headp);
+		if (error)
+			return error;
+		m_head = *m_headp;
+	}
+
 	txd_upper = txd_lower = 0;
 	txd_used = 0;
 
@@ -1638,7 +1680,11 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 	m_head = *m_headp;
 	adapter->tx_nsegs += nsegs;
 
-	if (m_head->m_pkthdr.csum_flags & EM_CSUM_FEATURES) {
+	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
+		/* TSO will consume one TX desc */
+		adapter->tx_nsegs += em_tso_setup(adapter, m_head,
+		    &txd_upper, &txd_lower);
+	} else if (m_head->m_pkthdr.csum_flags & EM_CSUM_FEATURES) {
 		/* TX csum offloading will consume one TX desc */
 		adapter->tx_nsegs += em_txcsum(adapter, m_head,
 					       &txd_upper, &txd_lower);
@@ -2121,6 +2167,9 @@ em_stop(struct adapter *adapter)
 	adapter->csum_flags = 0;
 	adapter->csum_lhlen = 0;
 	adapter->csum_iphlen = 0;
+	adapter->csum_thlen = 0;
+	adapter->csum_mss = 0;
+	adapter->csum_pktlen = 0;
 
 	adapter->tx_dd_head = 0;
 	adapter->tx_dd_tail = 0;
@@ -2391,14 +2440,17 @@ em_setup_ifp(struct adapter *adapter)
 
 	ether_ifattach(ifp, adapter->hw.mac.addr, NULL);
 
+	ifp->if_capabilities = IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
 	if (adapter->hw.mac.type >= e1000_82543)
-		ifp->if_capabilities = IFCAP_HWCSUM;
-
-	ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
+		ifp->if_capabilities |= IFCAP_HWCSUM;
+	if (adapter->flags & EM_FLAG_TSO)
+		ifp->if_capabilities |= IFCAP_TSO;
 	ifp->if_capenable = ifp->if_capabilities;
 
 	if (ifp->if_capenable & IFCAP_TXCSUM)
-		ifp->if_hwassist = EM_CSUM_FEATURES;
+		ifp->if_hwassist |= EM_CSUM_FEATURES;
+	if (ifp->if_capenable & IFCAP_TSO)
+		ifp->if_hwassist |= CSUM_TSO;
 
 	/*
 	 * Tell the upper layer(s) we support long frames.
@@ -2545,7 +2597,7 @@ em_create_tx_ring(struct adapter *adapter)
 			NULL, NULL,		/* filter, filterarg */
 			EM_TSO_SIZE,		/* maxsize */
 			EM_MAX_SCATTER,		/* nsegments */
-			EM_MAX_SEGSIZE,		/* maxsegsize */
+			PAGE_SIZE,		/* maxsegsize */
 			BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW |
 			BUS_DMA_ONEBPAGE,	/* flags */
 			&adapter->txtag);
@@ -4123,4 +4175,131 @@ em_disable_aspm(struct adapter *adapter)
 	link_ctrl = pci_read_config(dev, reg, 2);
 	link_ctrl &= ~disable;
 	pci_write_config(dev, reg, link_ctrl, 2);
+}
+
+static int
+em_tso_pullup(struct adapter *adapter, struct mbuf **mp)
+{
+	int iphlen, hoff, thoff, ex = 0;
+	struct mbuf *m;
+	struct ip *ip;
+
+	m = *mp;
+	KASSERT(M_WRITABLE(m), ("TSO mbuf not writable"));
+
+	iphlen = m->m_pkthdr.csum_iphlen;
+	thoff = m->m_pkthdr.csum_thlen;
+	hoff = m->m_pkthdr.csum_lhlen;
+
+	KASSERT(iphlen > 0, ("invalid ip hlen"));
+	KASSERT(thoff > 0, ("invalid tcp hlen"));
+	KASSERT(hoff > 0, ("invalid ether hlen"));
+
+	if (adapter->flags & EM_FLAG_TSO_PULLEX)
+		ex = 4;
+
+	if (m->m_len < hoff + iphlen + thoff + ex) {
+		m = m_pullup(m, hoff + iphlen + thoff + ex);
+		if (m == NULL) {
+			*mp = NULL;
+			return ENOBUFS;
+		}
+		*mp = m;
+	}
+	ip = mtodoff(m, struct ip *, hoff);
+	ip->ip_len = 0;
+
+	return 0;
+}
+
+static int
+em_tso_setup(struct adapter *adapter, struct mbuf *mp,
+    uint32_t *txd_upper, uint32_t *txd_lower)
+{
+	struct e1000_context_desc *TXD;
+	int hoff, iphlen, thoff, hlen;
+	int mss, pktlen, curr_txd;
+
+	iphlen = mp->m_pkthdr.csum_iphlen;
+	thoff = mp->m_pkthdr.csum_thlen;
+	hoff = mp->m_pkthdr.csum_lhlen;
+	mss = mp->m_pkthdr.tso_segsz;
+	pktlen = mp->m_pkthdr.len;
+
+	if (adapter->csum_flags == CSUM_TSO &&
+	    adapter->csum_iphlen == iphlen &&
+	    adapter->csum_lhlen == hoff &&
+	    adapter->csum_thlen == thoff &&
+	    adapter->csum_mss == mss &&
+	    adapter->csum_pktlen == pktlen) {
+		*txd_upper = adapter->csum_txd_upper;
+		*txd_lower = adapter->csum_txd_lower;
+		return 0;
+	}
+	hlen = hoff + iphlen + thoff;
+
+	/*
+	 * Setup a new TSO context.
+	 */
+
+	curr_txd = adapter->next_avail_tx_desc;
+	TXD = (struct e1000_context_desc *)&adapter->tx_desc_base[curr_txd];
+
+	*txd_lower = E1000_TXD_CMD_DEXT |	/* Extended descr type */
+		     E1000_TXD_DTYP_D |		/* Data descr type */
+		     E1000_TXD_CMD_TSE;		/* Do TSE on this packet */
+
+	/* IP and/or TCP header checksum calculation and insertion. */
+	*txd_upper = (E1000_TXD_POPTS_IXSM | E1000_TXD_POPTS_TXSM) << 8;
+
+	/*
+	 * Start offset for header checksum calculation.
+	 * End offset for header checksum calculation.
+	 * Offset of place put the checksum.
+	 */
+	TXD->lower_setup.ip_fields.ipcss = hoff;
+	TXD->lower_setup.ip_fields.ipcse = htole16(hoff + iphlen - 1);
+	TXD->lower_setup.ip_fields.ipcso = hoff + offsetof(struct ip, ip_sum);
+
+	/*
+	 * Start offset for payload checksum calculation.
+	 * End offset for payload checksum calculation.
+	 * Offset of place to put the checksum.
+	 */
+	TXD->upper_setup.tcp_fields.tucss = hoff + iphlen;
+	TXD->upper_setup.tcp_fields.tucse = 0;
+	TXD->upper_setup.tcp_fields.tucso =
+	    hoff + iphlen + offsetof(struct tcphdr, th_sum);
+
+	/*
+	 * Payload size per packet w/o any headers.
+	 * Length of all headers up to payload.
+	 */
+	TXD->tcp_seg_setup.fields.mss = htole16(mss);
+	TXD->tcp_seg_setup.fields.hdr_len = hlen;
+	TXD->cmd_and_length = htole32(E1000_TXD_CMD_IFCS |
+				E1000_TXD_CMD_DEXT |	/* Extended descr */
+				E1000_TXD_CMD_TSE |	/* TSE context */
+				E1000_TXD_CMD_IP |	/* Do IP csum */
+				E1000_TXD_CMD_TCP |	/* Do TCP checksum */
+				(pktlen - hlen));	/* Total len */
+
+	/* Save the information for this TSO context */
+	adapter->csum_flags = CSUM_TSO;
+	adapter->csum_lhlen = hoff;
+	adapter->csum_iphlen = iphlen;
+	adapter->csum_thlen = thoff;
+	adapter->csum_mss = mss;
+	adapter->csum_pktlen = pktlen;
+	adapter->csum_txd_upper = *txd_upper;
+	adapter->csum_txd_lower = *txd_lower;
+
+	if (++curr_txd == adapter->num_tx_desc)
+		curr_txd = 0;
+
+	KKASSERT(adapter->num_tx_desc_avail > 0);
+	adapter->num_tx_desc_avail--;
+
+	adapter->next_avail_tx_desc = curr_txd;
+	return 1;
 }

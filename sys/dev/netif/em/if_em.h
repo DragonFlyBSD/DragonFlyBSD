@@ -133,6 +133,8 @@
 
 /* Large enough for 16K jumbo frame */
 #define EM_TX_SPARE			8
+/* Large enough for 64K jumbo frame */
+#define EM_TX_SPARE_TSO			33
 
 #define EM_TX_OACTIVE_MAX		64
 
@@ -206,9 +208,8 @@
 #define EM_BAR_MEM_TYPE_64BIT		0x00000004
 
 #define EM_MAX_SCATTER			64
-#define EM_TSO_SIZE			(65535 + \
+#define EM_TSO_SIZE			(IP_MAXPACKET + \
 					 sizeof(struct ether_vlan_header))
-#define EM_MAX_SEGSIZE			4096
 #define EM_MSIX_MASK			0x01F00000 /* For 82574 use */
 #define ETH_ZLEN			60
 
@@ -249,6 +250,8 @@ struct adapter {
 #define EM_FLAG_HAS_MGMT	0x0002
 #define EM_FLAG_HAS_AMT		0x0004
 #define EM_FLAG_HW_CTRL		0x0008
+#define EM_FLAG_TSO		0x0010
+#define EM_FLAG_TSO_PULLEX	0x0020
 
 	/* DragonFly operating-system-specific structures. */
 	struct e1000_osdep	osdep;
@@ -313,6 +316,11 @@ struct adapter {
 	int			csum_flags;
 	int			csum_lhlen;
 	int			csum_iphlen;
+
+	int			csum_thlen;	/* TSO */
+	int			csum_mss;	/* TSO */
+	int			csum_pktlen;	/* TSO */
+
 	uint32_t		csum_txd_upper;
 	uint32_t		csum_txd_lower;
 
