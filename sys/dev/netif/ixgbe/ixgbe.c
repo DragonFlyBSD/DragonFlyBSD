@@ -455,7 +455,7 @@ ixgbe_attach(device_t dev)
 			0, ixgbe_set_thermal_test, "I", "Thermal Test");
 
 	/* Set up the timer callout */
-	callout_init(&adapter->timer);
+	callout_init_mp(&adapter->timer);
 
 	/* Determine hardware revision */
 	ixgbe_identify_hardware(adapter);
