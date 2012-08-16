@@ -285,7 +285,35 @@ pfs_pfind(pid_t pfs_pid)
 	 */
 	if (p) {
 		lwkt_gettoken(&p->p_token);
-		if (p->p_flags & P_WEXIT) {
+		if (p->p_flags & P_POSTEXIT) {
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
+			p = NULL;
+		}
+	}
+	return p;
+}
+
+struct proc *
+pfs_zpfind(pid_t pfs_pid)
+{
+	struct proc *p = NULL;
+
+	if (pfs_pid == 0) {
+		p = &proc0;
+		PHOLD(p);
+	} else {
+		p = zpfind(pfs_pid);
+	}
+
+	/*
+	 * Make sure the process is not in the middle of exiting (where
+	 * a lot of its structural members may wind up being NULL).  If it
+	 * is we give up on it.
+	 */
+	if (p) {
+		lwkt_gettoken(&p->p_token);
+		if (p->p_flags & P_POSTEXIT) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			p = NULL;

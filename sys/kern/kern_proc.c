@@ -175,6 +175,19 @@ pstall(struct proc *p, const char *wmesg, int count)
 			break;
 		n = o | PLOCK_WAITING;
 		tsleep_interlock(&p->p_lock, 0);
+
+		/*
+		 * If someone is trying to single-step the process they can
+		 * prevent us from going into zombie-land.
+		 */
+		if (p->p_step) {
+			spin_lock(&p->p_spin);
+			p->p_stops = 0;
+			p->p_step = 0;
+			spin_unlock(&p->p_spin);
+			wakeup(&p->p_step);
+		}
+
 		if (atomic_cmpset_int(&p->p_lock, o, n)) {
 			tsleep(&p->p_lock, PINTERLOCKED, wmesg, 0);
 		}

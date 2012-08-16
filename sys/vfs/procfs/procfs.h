@@ -154,6 +154,7 @@ int procfs_validmap (struct lwp *);
 int procfs_validtype (struct lwp *);
 
 struct proc *pfs_pfind(pid_t);
+struct proc *pfs_zpfind(pid_t);
 void pfs_pdone(struct proc *);
 
 #define PROCFS_LOCKED	0x01

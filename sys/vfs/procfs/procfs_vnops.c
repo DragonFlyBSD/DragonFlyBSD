@@ -248,13 +248,14 @@ procfs_close(struct vop_close_args *ap)
 		 */
 		p = NULL;
 		if ((ap->a_vp->v_opencount < 2)
-		    && (p = pfs_pfind(pfs->pfs_pid))
+		    && ((p = pfs_pfind(pfs->pfs_pid)) != NULL ||
+		        (p = pfs_zpfind(pfs->pfs_pid)) != NULL)
 		    && !(p->p_pfsflags & PF_LINGER)) {
 			spin_lock(&p->p_spin);
 			p->p_stops = 0;
 			p->p_step = 0;
 			spin_unlock(&p->p_spin);
-			wakeup(&p->p_step);
+			wakeup(&p->p_stype);
 		}
 		pfs_pdone(p);
 		break;
@@ -351,7 +352,20 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	  while (procp->p_step == 0) {
 	    tsleep_interlock(&procp->p_stype, PCATCH);
 	    spin_unlock(&procp->p_spin);
-	    error = tsleep(&procp->p_stype, PCATCH | PINTERLOCKED, "piocwait", 0);
+	    if (procp->p_stops == 0) {
+		error = EINVAL;
+		goto done;
+	    }
+	    if (procp->p_flags & P_POSTEXIT) {
+		error = EINVAL;
+		goto done;
+	    }
+	    if (procp->p_flags & P_INEXEC) {
+		error = EAGAIN;
+		goto done;
+	    }
+	    error = tsleep(&procp->p_stype, PCATCH | PINTERLOCKED,
+			   "piocwait", 0);
 	    if (error)
 	      goto done;
 	    spin_lock(&procp->p_spin);
