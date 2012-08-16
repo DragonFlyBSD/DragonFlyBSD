@@ -99,7 +99,7 @@
 
 static void	vm_object_qcollapse(vm_object_t object,
 				    vm_object_t backing_object);
-static int	vm_object_page_collect_flush(vm_object_t object, vm_page_t p,
+static void	vm_object_page_collect_flush(vm_object_t object, vm_page_t p,
 					     int pagerflags);
 static void	vm_object_lock_init(vm_object_t);
 
@@ -1241,7 +1241,7 @@ done:
  *
  * The caller must hold the object.
  */
-static int
+static void
 vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 {
 	int runlen;
@@ -1343,9 +1343,15 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 
 	vm_pageout_flush(ma, runlen, pagerflags);
 
+	/*
+	 * WARNING: Related pages are still held but the BUSY was inherited
+	 *	    by the pageout I/O, so the pages might not be busy any
+	 *	    more.  We cannot re-protect the page without waiting
+	 *	    for the I/O to complete and then busying it again.
+	 */
 	for (i = 0; i < runlen; i++) {
 		if (ma[i]->valid & ma[i]->dirty) {
-			vm_page_protect(ma[i], VM_PROT_READ);
+			/*vm_page_protect(ma[i], VM_PROT_READ);*/
 			vm_page_flag_set(ma[i], PG_CLEANCHK);
 
 			/*
@@ -1358,7 +1364,7 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 		}
 		vm_page_unhold(ma[i]);
 	}
-	return(maxf + 1);
+	/*return(maxf + 1);*/
 }
 
 /*
