@@ -418,7 +418,6 @@ ixgbe_attach(device_t dev)
 
 	/* Core Lock Init*/
 	IXGBE_CORE_LOCK_INIT(adapter, device_get_nameunit(dev));
-	spin_init(&adapter->mcast_spin);
 
 	/* SYSCTL APIs */
 
@@ -456,9 +455,7 @@ ixgbe_attach(device_t dev)
 			0, ixgbe_set_thermal_test, "I", "Thermal Test");
 
 	/* Set up the timer callout */
-	/* XXX: shouldn't this be a spin lock ? */
-	lockinit(&adapter->core_lock, "ixgbe core lock", 0, LK_CANRECURSE);
-	callout_init(&adapter->timer);
+	callout_init_mp(&adapter->timer);
 
 	/* Determine hardware revision */
 	ixgbe_identify_hardware(adapter);
@@ -711,7 +708,6 @@ ixgbe_detach(device_t dev)
 	kfree(adapter->mta, M_DEVBUF);
 	sysctl_ctx_free(&adapter->sysctl_ctx);
 	
-	spin_uninit(&adapter->mcast_spin);
 	IXGBE_CORE_LOCK_DESTROY(adapter);
 	return (0);
 }
@@ -1978,7 +1974,6 @@ ixgbe_set_multi(struct adapter *adapter)
 	
 	IXGBE_WRITE_REG(&adapter->hw, IXGBE_FCTRL, fctrl);
 
-	spin_lock(&adapter->mcast_spin);
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
@@ -1987,7 +1982,6 @@ ixgbe_set_multi(struct adapter *adapter)
 		    IXGBE_ETH_LENGTH_OF_ADDRESS);
 		mcnt++;
 	}
-	spin_unlock(&adapter->mcast_spin);
 
 	update_ptr = mta;
 	ixgbe_update_mc_addr_list(&adapter->hw,
@@ -2032,8 +2026,7 @@ ixgbe_local_timer(void *arg)
 	struct tx_ring	*txr = adapter->tx_rings;
 	int		hung, busy, paused;
 
-	lockmgr(&adapter->core_lock, LK_EXCLUSIVE);
-	KKASSERT(lockstatus(&adapter->core_lock, curthread) != 0);
+	IXGBE_CORE_LOCK(adapter);
 	hung = busy = paused = 0;
 
 	/* Check for pluggable optics */
@@ -2078,7 +2071,7 @@ ixgbe_local_timer(void *arg)
 out:
 	ixgbe_rearm_queues(adapter, adapter->que_mask);
 	callout_reset(&adapter->timer, hz, ixgbe_local_timer, adapter);
-	lockmgr(&adapter->core_lock, LK_RELEASE);
+	IXGBE_CORE_UNLOCK(adapter);
 	return;
 
 watchdog:
@@ -2093,7 +2086,7 @@ watchdog:
 	adapter->watchdog_events++;
 	ixgbe_init_locked(adapter);
 
-	lockmgr(&adapter->core_lock, LK_RELEASE);
+	IXGBE_CORE_UNLOCK(adapter);
 }
 
 /*

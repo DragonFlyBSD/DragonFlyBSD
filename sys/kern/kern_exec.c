@@ -502,6 +502,8 @@ interpret:
          */
 	KNOTE(&p->p_klist, NOTE_EXEC);
 	p->p_flags &= ~P_INEXEC;
+	if (p->p_stops)
+		wakeup(&p->p_stype);
 
 	/*
 	 * If tracing the process, trap to debugger so breakpoints
@@ -574,8 +576,11 @@ exec_fail:
 	 * raced another thread and that thread is responsible for
 	 * clearing it.
 	 */
-	if (imgp->vmspace_destroyed & 2)
+	if (imgp->vmspace_destroyed & 2) {
 		p->p_flags &= ~P_INEXEC;
+		if (p->p_stops)
+			wakeup(&p->p_stype);
+	}
 	lwkt_reltoken(&p->p_token);
 	if (imgp->vmspace_destroyed) {
 		/*
@@ -764,6 +769,13 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	}
 	imgp->vmspace_destroyed |= 2;	/* we are responsible for P_INEXEC */
 	p->p_flags |= P_INEXEC;
+
+	/*
+	 * Tell procfs to release its hold on the process.  It
+	 * will return EAGAIN.
+	 */
+	if (p->p_stops)
+		wakeup(&p->p_stype);
 
 	/*
 	 * After setting P_INEXEC wait for any remaining references to

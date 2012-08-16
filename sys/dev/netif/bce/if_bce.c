@@ -112,12 +112,6 @@ static uint32_t	bce_debug = BCE_WARN;
  *  536870912 = 1 in             4
  * 1073741824 = 1 in             2
  *
- * bce_debug_l2fhdr_status_check:
- *     How often the l2_fhdr frame error check will fail.
- *
- * bce_debug_unexpected_attention:
- *     How often the unexpected attention check will fail.
- *
  * bce_debug_mbuf_allocation_failure:
  *     How often to simulate an mbuf allocation failure.
  *
@@ -127,8 +121,6 @@ static uint32_t	bce_debug = BCE_WARN;
  * bce_debug_bootcode_running_failure:
  *     How often to simulate a bootcode failure.
  */
-static int	bce_debug_l2fhdr_status_check = 0;
-static int	bce_debug_unexpected_attention = 0;
 static int	bce_debug_mbuf_allocation_failure = 0;
 static int	bce_debug_dma_map_addr_failure = 0;
 static int	bce_debug_bootcode_running_failure = 0;
@@ -329,7 +321,6 @@ static void	bce_shutdown(device_t);
 /****************************************************************************/
 #ifdef BCE_DEBUG
 static void	bce_dump_mbuf(struct bce_softc *, struct mbuf *);
-static void	bce_dump_tx_mbuf_chain(struct bce_softc *, int, int);
 static void	bce_dump_rx_mbuf_chain(struct bce_softc *, int, int);
 static void	bce_dump_txbd(struct bce_softc *, int, struct tx_bd *);
 static void	bce_dump_rxbd(struct bce_softc *, int, struct rx_bd *);
@@ -6627,36 +6618,6 @@ bce_dump_mbuf(struct bce_softc *sc, struct mbuf *m)
 		}
 		mp = mp->m_next;
 	}
-}
-
-
-/****************************************************************************/
-/* Prints out the mbufs in the TX mbuf chain.                               */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_tx_mbuf_chain(struct bce_softc *sc, int chain_prod, int count)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i;
-
-	if_printf(ifp,
-	"----------------------------"
-	"  tx mbuf data  "
-	"----------------------------\n");
-
-	for (i = 0; i < count; i++) {
-		if_printf(ifp, "txmbuf[%d]\n", chain_prod);
-		bce_dump_mbuf(sc, sc->tx_mbuf_ptr[chain_prod]);
-		chain_prod = TX_CHAIN_IDX(sc, NEXT_TX_BD(chain_prod));
-	}
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
 }
 
 

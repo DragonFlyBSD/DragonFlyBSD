@@ -260,10 +260,11 @@ struct sema {
 	thread_t holder;
 	char	*name;
 	int	timo;
+	struct spinlock spin;
 };
 static	void sema_init(struct sema *, char *, int);
 static	int sema_get(struct sema *, struct lock *);
-static	void sema_release(struct sema *);
+static	void sema_release(struct sema *, struct lock *);
 
 #define NOHOLDER	((struct thread *) -1)
 
@@ -274,33 +275,69 @@ sema_init(struct sema *semap, char *name, int timo)
 	semap->value = 0;
 	semap->name = name;
 	semap->timo = timo;
+	spin_init(&semap->spin);
 }
 
+/*
+ * Obtain exclusive access, semaphore is protected by the interlock.
+ * If interlock is NULL we must protect the semaphore ourselves.
+ */
 static int
 sema_get(struct sema *semap, struct lock *interlock)
 {
-	if (semap->value++ > 0) {
-		if (interlock)
-			lksleep(semap, interlock, 0, semap->name, semap->timo);
-		else
-			tsleep(semap, 0, semap->name, semap->timo);
-		return (0);
+	int rv;
+
+	if (interlock) {
+		if (semap->value > 0) {
+			++semap->value;		/* serves as wakeup flag */
+			lksleep(semap, interlock, 0,
+				semap->name, semap->timo);
+			rv = 0;
+		} else {
+			semap->value = 1;	/* serves as owned flag */
+			semap->holder = curthread;
+			rv = 1;
+		}
+	} else {
+		spin_lock(&semap->spin);
+		if (semap->value > 0) {
+			++semap->value;		/* serves as wakeup flag */
+			ssleep(semap, &semap->spin, 0,
+				semap->name, semap->timo);
+			spin_unlock(&semap->spin);
+			rv = 0;
+		} else {
+			semap->value = 1;	/* serves as owned flag */
+			semap->holder = curthread;
+			spin_unlock(&semap->spin);
+			rv = 1;
+		}
 	}
-	semap->holder = curthread;
-	return (1);
+	return (rv);
 }
 
 static void
-sema_release(struct sema *semap)
+sema_release(struct sema *semap, struct lock *lk)
 {
-	if (semap->value <= 0 || semap->holder != curthread) {
+	if (semap->value <= 0 || semap->holder != curthread)
 		panic("sema_release: not held");
+	if (lk) {
+		semap->holder = NOHOLDER;
+		if (--semap->value > 0) {
+			semap->value = 0;
+			wakeup(semap);
+		}
+	} else {
+		spin_lock(&semap->spin);
+		semap->holder = NOHOLDER;
+		if (--semap->value > 0) {
+			semap->value = 0;
+			spin_unlock(&semap->spin);
+			wakeup(semap);
+		} else {
+			spin_unlock(&semap->spin);
+		}
 	}
-	if (--semap->value > 0) {
-		semap->value = 0;
-		wakeup(semap);
-	}
-	semap->holder = NOHOLDER;
 }
 
 /*
@@ -813,7 +850,7 @@ top:
 	ACQUIRE_LOCK(&lk);
 	if (pagedep_find(pagedephd, ip->i_number, lbn, mp)) {
 		kprintf("pagedep_lookup: blocking race avoided\n");
-		sema_release(&pagedep_in_progress);
+		sema_release(&pagedep_in_progress, &lk);
 		kfree(pagedep, M_PAGEDEP);
 		goto top;
 	}
@@ -827,7 +864,7 @@ top:
 	for (i = 0; i < DAHASHSZ; i++)
 		LIST_INIT(&pagedep->pd_diraddhd[i]);
 	LIST_INSERT_HEAD(pagedephd, pagedep, pd_hash);
-	sema_release(&pagedep_in_progress);
+	sema_release(&pagedep_in_progress, &lk);
 	*pagedeppp = pagedep;
 	return (0);
 }
@@ -900,7 +937,7 @@ top:
 	ACQUIRE_LOCK(&lk);
 	if (inodedep_find(inodedephd, fs, inum)) {
 		kprintf("inodedep_lookup: blocking race avoided\n");
-		sema_release(&inodedep_in_progress);
+		sema_release(&inodedep_in_progress, &lk);
 		kfree(inodedep, M_INODEDEP);
 		goto top;
 	}
@@ -919,7 +956,7 @@ top:
 	TAILQ_INIT(&inodedep->id_newinoupdt);
 	num_inodedep += 1;
 	LIST_INSERT_HEAD(inodedephd, inodedep, id_hash);
-	sema_release(&inodedep_in_progress);
+	sema_release(&inodedep_in_progress, &lk);
 	*inodedeppp = inodedep;
 	return (0);
 }
@@ -977,7 +1014,7 @@ top:
 
 	if (newblk_find(newblkhd, fs, newblkno)) {
 		kprintf("newblk_lookup: blocking race avoided\n");
-		sema_release(&pagedep_in_progress);
+		sema_release(&pagedep_in_progress, NULL);
 		kfree(newblk, M_NEWBLK);
 		goto top;
 	}
@@ -985,7 +1022,7 @@ top:
 	newblk->nb_fs = fs;
 	newblk->nb_newblkno = newblkno;
 	LIST_INSERT_HEAD(newblkhd, newblk, nb_hash);
-	sema_release(&newblk_in_progress);
+	sema_release(&newblk_in_progress, NULL);
 	*newblkpp = newblk;
 	return (0);
 }
@@ -4901,13 +4938,17 @@ out:
 }
 
 /*
- * getdirtybuf:
+ * Acquire exclusive access to a buffer. Requires softdep lock
+ * to be held on entry. If waitfor is MNT_WAIT, may release/reacquire
+ * softdep lock.
  *
- *	Acquire exclusive access to a buffer. Requires softdep lock
- *	to be held on entry. If waitfor is MNT_WAIT, may release/reacquire
- *	softdep lock.
+ * Returns 1 if the buffer was locked, 0 if it was not locked or
+ * if we had to block.
  *
- *	Returns 1 if the buffer was locked, 0 otherwise.
+ * NOTE!  In order to return 1 we must acquire the buffer lock prior
+ *	  to any release of &lk.  Once we release &lk it's all over.
+ *	  We may still have to block on the (type-stable) bp in that
+ *	  case, but we must then unlock it and return 0.
  */
 static int
 getdirtybuf(struct buf **bpp, int waitfor)
@@ -4915,44 +4956,56 @@ getdirtybuf(struct buf **bpp, int waitfor)
 	struct buf *bp;
 	int error;
 
+	/*
+	 * If the contents of *bpp is NULL the caller presumably lost a race.
+	 */
 	bp = *bpp;
 	if (bp == NULL)
 		return (0);
 
-	for (;;) {
-		/* Must acquire buffer lock with ffs_softdep lock held */
-		KKASSERT(lock_held(&lk) > 0);
-		error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
-		if (error == 0)
-			break;
-
-		if (waitfor != MNT_WAIT)
-			return (0);
-
-		/* 
-		 * Release ffs_softdep lock around sleep/wait for buffer lock.
-		 *
-		 * We must acquire buffer lock with softdep lock held, so
-		 * we must retry locking the buffer after we wake.
+	/*
+	 * Try to obtain the buffer lock without deadlocking on &lk.
+	 */
+	KKASSERT(lock_held(&lk) > 0);
+	error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
+	if (error == 0) {
+		/*
+		 * If the buffer is no longer dirty the OS already wrote it
+		 * out, return failure.
 		 */
-		FREE_LOCK(&lk);
-		error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL);
-		ACQUIRE_LOCK(&lk);
-		if (error == 0)
+		if ((bp->b_flags & B_DELWRI) == 0) {
 			BUF_UNLOCK(bp);
-		else if (error == ENOLCK)
-			;
-		else
-			panic("getdirtybuf: Inconsistent lock");
+			return (0);
+		}
+
+		/*
+		 * Finish nominal buffer locking sequence return success.
+		 */
+		bremfree(bp);
+		return (1);
 	}
 
-	/* Buffer wasn't dirty */
-	if ((bp->b_flags & B_DELWRI) == 0) {
-		BUF_UNLOCK(bp);
+	/*
+	 * Failure case.
+	 *
+	 * If we are not being asked to wait, return 0 immediately.
+	 */
+	if (waitfor != MNT_WAIT)
 		return (0);
-	}
-	bremfree(bp);
-	return (1);
+
+	/*
+	 * Once we release the softdep lock we can never return success,
+	 * but we still have to block on the type-stable buf for the caller
+	 * to be able to retry without livelocking the system.
+	 *
+	 * The caller will normally retry in this case.
+	 */
+	FREE_LOCK(&lk);
+	error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL);
+	ACQUIRE_LOCK(&lk);
+	if (error == 0)
+		BUF_UNLOCK(bp);
+	return (0);
 }
 
 /*

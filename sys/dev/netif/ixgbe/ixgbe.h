@@ -365,7 +365,6 @@ struct adapter {
 	int			if_flags;
 
 	struct lock		core_lock;
-	struct spinlock		mcast_spin;
 
 	eventhandler_tag 	vlan_attach;
 	eventhandler_tag 	vlan_detach;

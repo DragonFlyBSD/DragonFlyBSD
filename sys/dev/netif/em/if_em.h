@@ -49,7 +49,7 @@
 #define EM_MIN_TXD			256
 #define EM_MAX_TXD_82543		EM_MIN_TXD
 #define EM_MAX_TXD			4096
-#define EM_DEFAULT_TXD			EM_MIN_TXD
+#define EM_DEFAULT_TXD			512
 
 /*
  * EM_RXD - Maximum number of receive Descriptors
@@ -67,7 +67,7 @@
 #define EM_MIN_RXD			256
 #define EM_MAX_RXD_82543		EM_MIN_RXD
 #define EM_MAX_RXD			4096
-#define EM_DEFAULT_RXD			EM_MIN_RXD
+#define EM_DEFAULT_RXD			512
 
 /*
  * EM_TIDV - Transmit Interrupt Delay Value
@@ -133,6 +133,8 @@
 
 /* Large enough for 16K jumbo frame */
 #define EM_TX_SPARE			8
+/* Large enough for 64K jumbo frame */
+#define EM_TX_SPARE_TSO			33
 
 #define EM_TX_OACTIVE_MAX		64
 
@@ -206,16 +208,12 @@
 #define EM_BAR_MEM_TYPE_64BIT		0x00000004
 
 #define EM_MAX_SCATTER			64
-#define EM_TSO_SIZE			(65535 + \
+#define EM_TSO_SIZE			(IP_MAXPACKET + \
 					 sizeof(struct ether_vlan_header))
-#define EM_MAX_SEGSIZE			4096
 #define EM_MSIX_MASK			0x01F00000 /* For 82574 use */
 #define ETH_ZLEN			60
 
 #define EM_CSUM_FEATURES		(CSUM_IP | CSUM_TCP | CSUM_UDP)
-#define EM_IPVHL_SIZE			1 /* sizeof(ip.ip_vhl) */
-#define EM_TXCSUM_MINHL			(ETHER_HDR_LEN + EVL_ENCAPLEN + \
-					 EM_IPVHL_SIZE)
 
 /*
  * 82574 has a nonstandard address for EIAC
@@ -248,7 +246,12 @@ struct adapter {
 	struct arpcom		arpcom;
 	struct e1000_hw		hw;
 	int			flags;
-#define EM_FLAG_SHARED_INTR	0x1
+#define EM_FLAG_SHARED_INTR	0x0001
+#define EM_FLAG_HAS_MGMT	0x0002
+#define EM_FLAG_HAS_AMT		0x0004
+#define EM_FLAG_HW_CTRL		0x0008
+#define EM_FLAG_TSO		0x0010
+#define EM_FLAG_TSO_PULLEX	0x0020
 
 	/* DragonFly operating-system-specific structures. */
 	struct e1000_osdep	osdep;
@@ -276,11 +279,8 @@ struct adapter {
 	int			max_frame_size;
 	int			min_frame_size;
 
-	/* Management and WOL features */
+	/* WOL register value */
 	int			wol;
-	int			has_manage;
-	int			has_amt;
-	int			control_hw;
 
 	/* Multicast array memory */
 	uint8_t			*mta;
@@ -314,8 +314,13 @@ struct adapter {
 
 	/* Saved csum offloading context information */
 	int			csum_flags;
-	int			csum_ehlen;
+	int			csum_lhlen;
 	int			csum_iphlen;
+
+	int			csum_thlen;	/* TSO */
+	int			csum_mss;	/* TSO */
+	int			csum_pktlen;	/* TSO */
+
 	uint32_t		csum_txd_upper;
 	uint32_t		csum_txd_lower;
 
@@ -394,13 +399,6 @@ struct adapter {
 	unsigned long		rx_irq;
 	unsigned long		tx_irq;
 	unsigned long		link_irq;
-	unsigned long		tx_csum_try_pullup;
-	unsigned long		tx_csum_pullup1;
-	unsigned long		tx_csum_pullup1_failed;
-	unsigned long		tx_csum_pullup2;
-	unsigned long		tx_csum_pullup2_failed;
-	unsigned long		tx_csum_drop1;
-	unsigned long		tx_csum_drop2;
 
 	/* sysctl tree glue */
 	struct sysctl_ctx_list	sysctl_ctx;

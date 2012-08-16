@@ -116,6 +116,21 @@
 #include "hammer.h"
 
 /*
+ * Specify the way we want to handle stage2 errors.
+ *
+ * Following values are accepted:
+ *
+ * 0 - Run redo recovery normally and fail to mount if
+ *     the operation fails (default).
+ * 1 - Run redo recovery, but don't fail to mount if the
+ *     operation fails.
+ * 2 - Completely skip redo recovery (only for severe error
+ *     conditions and/or debugging.
+ */
+int hammer_skip_redo = 0;
+TUNABLE_INT("vfs.hammer.skip_redo", &hammer_skip_redo);
+
+/*
  * Each rterm entry has a list of fifo offsets indicating termination
  * points.  These are stripped as the scan progresses.
  */
@@ -529,6 +544,16 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 	KKASSERT(hmp->ronly == 0);
 	RB_INIT(&rterm_root);
 
+	if (hammer_skip_redo == 1)
+		kprintf("HAMMER(%s) recovery redo marked as optional\n",
+		    root_volume->ondisk->vol_name);
+
+	if (hammer_skip_redo == 2) {
+		kprintf("HAMMER(%s) recovery redo skipped.\n",
+		    root_volume->ondisk->vol_name);
+		return (0);
+	}
+
 	/*
 	 * Examine the UNDO FIFO.  If it is empty the filesystem is clean
 	 * and no action need be taken.
@@ -741,7 +766,13 @@ fatal:
 		kprintf("HAMMER(%s) End redo recovery\n",
 			root_volume->ondisk->vol_name);
 	}
-	return (error);
+
+	if (error && hammer_skip_redo == 1)
+		kprintf("HAMMER(%s) recovery redo error %d, "
+		    " skipping.\n", root_volume->ondisk->vol_name,
+		    error);
+
+	return (hammer_skip_redo ? 0 : error);
 }
 
 /*

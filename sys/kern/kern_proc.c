@@ -159,8 +159,9 @@ procinit(void)
  * The kernel waits for the hold count to drop to 0 (or 1 in some cases) at
  * various critical points in the fork/exec and exit paths before proceeding.
  */
+#define PLOCK_ZOMB	0x20000000
 #define PLOCK_WAITING	0x40000000
-#define PLOCK_MASK	0x3FFFFFFF
+#define PLOCK_MASK	0x1FFFFFFF
 
 void
 pstall(struct proc *p, const char *wmesg, int count)
@@ -175,6 +176,24 @@ pstall(struct proc *p, const char *wmesg, int count)
 			break;
 		n = o | PLOCK_WAITING;
 		tsleep_interlock(&p->p_lock, 0);
+
+		/*
+		 * If someone is trying to single-step the process during
+		 * an exec or an exit they can deadlock us because procfs
+		 * sleeps with the process held.
+		 */
+		if (p->p_stops) {
+			if (p->p_flags & P_INEXEC) {
+				wakeup(&p->p_stype);
+			} else if (p->p_flags & P_POSTEXIT) {
+				spin_lock(&p->p_spin);
+				p->p_stops = 0;
+				p->p_step = 0;
+				spin_unlock(&p->p_spin);
+				wakeup(&p->p_stype);
+			}
+		}
+
 		if (atomic_cmpset_int(&p->p_lock, o, n)) {
 			tsleep(&p->p_lock, PINTERLOCKED, wmesg, 0);
 		}
@@ -184,18 +203,13 @@ pstall(struct proc *p, const char *wmesg, int count)
 void
 phold(struct proc *p)
 {
-	int o;
-	int n;
-
-	for (;;) {
-		o = p->p_lock;
-		cpu_ccfence();
-		n = o + 1;
-		if (atomic_cmpset_int(&p->p_lock, o, n))
-			break;
-	}
+	atomic_add_int(&p->p_lock, 1);
 }
 
+/*
+ * WARNING!  On last release (p) can become instantly invalid due to
+ *	     MP races.
+ */
 void
 prele(struct proc *p)
 {
@@ -216,6 +230,89 @@ prele(struct proc *p)
 		KKASSERT((o & PLOCK_MASK) > 0);
 		cpu_ccfence();
 		n = (o - 1) & ~PLOCK_WAITING;
+		if (atomic_cmpset_int(&p->p_lock, o, n)) {
+			if (o & PLOCK_WAITING)
+				wakeup(&p->p_lock);
+			break;
+		}
+	}
+}
+
+/*
+ * Hold and flag serialized for zombie reaping purposes.
+ *
+ * This function will fail if it has to block, returning non-zero with
+ * neither the flag set or the hold count bumped.  Note that we must block
+ * without holding a ref, meaning that the caller must ensure that (p)
+ * remains valid through some other interlock (typically on its parent
+ * process's p_token).
+ *
+ * Zero is returned on success.  The hold count will be incremented and
+ * the serialization flag acquired.  Note that serialization is only against
+ * other pholdzomb() calls, not against phold() calls.
+ */
+int
+pholdzomb(struct proc *p)
+{
+	int o;
+	int n;
+
+	/*
+	 * Fast path
+	 */
+	if (atomic_cmpset_int(&p->p_lock, 0, PLOCK_ZOMB | 1))
+		return(0);
+
+	/*
+	 * Slow path
+	 */
+	for (;;) {
+		o = p->p_lock;
+		cpu_ccfence();
+		if ((o & PLOCK_ZOMB) == 0) {
+			n = (o + 1) | PLOCK_ZOMB;
+			if (atomic_cmpset_int(&p->p_lock, o, n))
+				return(0);
+		} else {
+			KKASSERT((o & PLOCK_MASK) > 0);
+			n = o | PLOCK_WAITING;
+			tsleep_interlock(&p->p_lock, 0);
+			if (atomic_cmpset_int(&p->p_lock, o, n)) {
+				tsleep(&p->p_lock, PINTERLOCKED, "phldz", 0);
+				/* (p) can be ripped out at this point */
+				return(1);
+			}
+		}
+	}
+}
+
+/*
+ * Release PLOCK_ZOMB and the hold count, waking up any waiters.
+ *
+ * WARNING!  On last release (p) can become instantly invalid due to
+ *	     MP races.
+ */
+void
+prelezomb(struct proc *p)
+{
+	int o;
+	int n;
+
+	/*
+	 * Fast path
+	 */
+	if (atomic_cmpset_int(&p->p_lock, PLOCK_ZOMB | 1, 0))
+		return;
+
+	/*
+	 * Slow path
+	 */
+	KKASSERT(p->p_lock & PLOCK_ZOMB);
+	for (;;) {
+		o = p->p_lock;
+		KKASSERT((o & PLOCK_MASK) > 0);
+		cpu_ccfence();
+		n = (o - 1) & ~(PLOCK_ZOMB | PLOCK_WAITING);
 		if (atomic_cmpset_int(&p->p_lock, o, n)) {
 			if (o & PLOCK_WAITING)
 				wakeup(&p->p_lock);
@@ -750,6 +847,7 @@ proc_remove_zombie(struct proc *p)
 	PSTALL(p, "reap2", 0);
 	LIST_REMOVE(p, p_list); /* off zombproc */
 	LIST_REMOVE(p, p_sibling);
+	p->p_pptr = NULL;
 	lwkt_reltoken(&proc_token);
 }
 

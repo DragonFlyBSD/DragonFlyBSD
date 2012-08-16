@@ -234,7 +234,7 @@ linprocfs_close(struct vop_close_args *ap)
 		    && !(p->p_pfsflags & PF_LINGER)) {
 			p->p_stops = 0;
 			p->p_step = 0;
-			wakeup(&p->p_step);
+			wakeup(&p->p_stype);
 		}
 		if (p)
 			PRELE(p);
@@ -303,10 +303,28 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 	  break;
 	case PIOCWAIT:
 	  psp = (struct procfs_status *)ap->a_data;
+	  spin_lock(&procp->p_spin);
 	  if (procp->p_step == 0) {
-	    error = tsleep(&procp->p_stype, PCATCH, "piocwait", 0);
+	    spin_unlock(&procp->p_spin);
+	    tsleep_interlock(&procp->p_stype, PCATCH);
+	    if (procp->p_stops == 0) {
+		error = EINVAL;
+		goto done;
+	    }
+	    if (procp->p_flags & P_POSTEXIT) {
+		error = EINVAL;
+		goto done;
+	    }
+	    if (procp->p_flags & P_INEXEC) {
+		error = EAGAIN;
+		goto done;
+	    }
+	    error = tsleep(&procp->p_stype, PCATCH | PINTERLOCKED,
+			   "piocwait", 0);
 	    if (error)
 	      goto done;
+	  } else {
+	    spin_unlock(&procp->p_spin);
 	  }
 	  psp->state = 1;	/* It stopped */
 	  psp->flags = procp->p_pfsflags;
