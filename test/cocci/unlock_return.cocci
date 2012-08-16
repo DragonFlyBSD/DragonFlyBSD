@@ -119,3 +119,21 @@ if (...) { ... when != spin_unlock(l)
 |
 spin_unlock(l);
 )
+
+// vm_object_hold(...) / vm_object_drop(...)
+//
+@@
+expression l;
+@@
+vm_object_hold(l);
+... when != vm_object_drop(l)
+    when any
+    when strict
+(
+if (...) { ... when != vm_object_drop(l)
++   vm_object_drop(l);
+    return ...;
+}
+|
+vm_object_drop(l);
+)
