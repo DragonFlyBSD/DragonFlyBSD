@@ -453,6 +453,8 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
  */
 #define PHOLD(p)	phold((p))
 #define PRELE(p)	prele((p))
+#define PHOLDZOMB(p)	pholdzomb((p))
+#define PRELEZOMB(p)	prelezomb((p))
 #define PSTALL(p, msg, n) \
 	do { if ((p)->p_lock > (n)) pstall((p), (msg), (n)); } while (0)
 
@@ -556,6 +558,8 @@ void	faultin (struct proc *p);
 void	swapin_request (void);
 void	phold (struct proc *);
 void	prele (struct proc *);
+int	pholdzomb (struct proc *);
+void	prelezomb (struct proc *);
 void	pstall (struct proc *, const char *, int);
 
 u_int32_t	procrunnable (void);
