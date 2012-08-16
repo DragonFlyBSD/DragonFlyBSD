@@ -419,7 +419,9 @@ ktr_begin_write_entry(struct ktr_info *info, const char *file, int line)
 
 	cpu = mycpu->gd_cpuid;
 	kcpu = &ktr_cpu[cpu].core;
-	if (kcpu->ktr_buf == NULL)
+	if (panicstr)			/* stop logging during panic */
+		return NULL;
+	if (kcpu->ktr_buf == NULL)	/* too early in boot */
 		return NULL;
 
 	crit_enter();
