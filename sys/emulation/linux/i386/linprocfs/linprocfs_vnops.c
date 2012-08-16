@@ -64,6 +64,7 @@
 #include <vm/vm_zone.h>
 #include "linprocfs.h"
 #include <sys/pioctl.h>
+#include <sys/spinlock2.h>
 
 #include <machine/limits.h>
 
