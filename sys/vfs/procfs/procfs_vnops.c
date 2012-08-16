@@ -302,10 +302,14 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 
 	switch (ap->a_command) {
 	case PIOCBIS:
+	  spin_lock(&procp->p_spin);
 	  procp->p_stops |= *(unsigned int*)ap->a_data;
+	  spin_unlock(&procp->p_spin);
 	  break;
 	case PIOCBIC:
+	  spin_lock(&procp->p_spin);
 	  procp->p_stops &= ~*(unsigned int*)ap->a_data;
+	  spin_unlock(&procp->p_spin);
 	  break;
 	case PIOCSFL:
 	  /*
