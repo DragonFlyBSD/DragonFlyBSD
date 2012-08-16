@@ -177,15 +177,20 @@ pstall(struct proc *p, const char *wmesg, int count)
 		tsleep_interlock(&p->p_lock, 0);
 
 		/*
-		 * If someone is trying to single-step the process they can
-		 * prevent us from going into zombie-land.
+		 * If someone is trying to single-step the process during
+		 * an exec or an exit they can deadlock us because procfs
+		 * sleeps with the process held.
 		 */
-		if (p->p_step) {
-			spin_lock(&p->p_spin);
-			p->p_stops = 0;
-			p->p_step = 0;
-			spin_unlock(&p->p_spin);
-			wakeup(&p->p_step);
+		if (p->p_stops) {
+			if (p->p_flags & P_INEXEC) {
+				wakeup(&p->p_stype);
+			} else if (p->p_flags & P_POSTEXIT) {
+				spin_lock(&p->p_spin);
+				p->p_stops = 0;
+				p->p_step = 0;
+				spin_unlock(&p->p_spin);
+				wakeup(&p->p_stype);
+			}
 		}
 
 		if (atomic_cmpset_int(&p->p_lock, o, n)) {
