@@ -500,12 +500,19 @@ exit1(int rv)
 	q = LIST_FIRST(&p->p_children);
 	if (q) {
 		lwkt_gettoken(&initproc->p_token);
-		while (q) {
-			nq = LIST_NEXT(q, p_sibling);
+		while ((q = LIST_FIRST(&p->p_children)) != NULL) {
+			PHOLD(q);
+			lwkt_gettoken(&q->p_token);
+			if (q != LIST_FIRST(&p->p_children)) {
+				lwkt_reltoken(&q->p_token);
+				PRELE(q);
+				continue;
+			}
 			LIST_REMOVE(q, p_sibling);
 			LIST_INSERT_HEAD(&initproc->p_children, q, p_sibling);
 			q->p_pptr = initproc;
 			q->p_sigparent = SIGCHLD;
+
 			/*
 			 * Traced processes are killed
 			 * since their existence means someone is screwing up.
@@ -514,7 +521,8 @@ exit1(int rv)
 				q->p_flags &= ~P_TRACED;
 				ksignal(q, SIGKILL);
 			}
-			q = nq;
+			lwkt_reltoken(&q->p_token);
+			PRELE(q);
 		}
 		lwkt_reltoken(&initproc->p_token);
 		wakeup(initproc);
@@ -878,8 +886,24 @@ loop:
 			 * We must wait for them to exit before we can reap
 			 * the master thread, otherwise we may race reaping
 			 * non-master threads.
+			 *
+			 * Only this routine can remove a process from
+			 * the zombie list and destroy it, use PACQUIREZOMB()
+			 * to serialize us and loop if it blocks (interlocked
+			 * by the parent's q->p_token).
+			 *
+			 * WARNING!  (p) can be invalid when PHOLDZOMB(p)
+			 *	     returns non-zero.  Be sure not to
+			 *	     mess with it.
 			 */
+			if (PHOLDZOMB(p))
+				goto loop;
 			lwkt_gettoken(&p->p_token);
+			if (p->p_pptr != q) {
+				lwkt_reltoken(&p->p_token);
+				PRELEZOMB(p);
+				goto loop;
+			}
 			while (p->p_nthreads > 0) {
 				tsleep(&p->p_nthreads, 0, "lwpzomb", hz);
 			}
@@ -910,6 +934,7 @@ loop:
 			 * put a hold on the process for short periods of
 			 * time.
 			 */
+			PRELE(p);
 			PSTALL(p, "reap3", 0);
 
 			/* Take care of our return values. */
@@ -925,6 +950,7 @@ loop:
 			 * we need to give it back to the old parent.
 			 */
 			if (p->p_oppid && (t = pfind(p->p_oppid)) != NULL) {
+				PHOLD(p);
 				p->p_oppid = 0;
 				proc_reparent(p, t);
 				ksignal(t, SIGCHLD);
@@ -932,6 +958,7 @@ loop:
 				error = 0;
 				PRELE(t);
 				lwkt_reltoken(&p->p_token);
+				PRELEZOMB(p);
 				goto done;
 			}
 
@@ -988,6 +1015,13 @@ loop:
 			vmspace_exitfree(p);
 			PSTALL(p, "reap5", 0);
 
+			/*
+			 * NOTE: We have to officially release ZOMB in order
+			 *	 to ensure that a racing thread in kern_wait()
+			 *	 which blocked on ZOMB is woken up.
+			 */
+			PHOLD(p);
+			PRELEZOMB(p);
 			kfree(p, M_PROC);
 			atomic_add_int(&nprocs, -1);
 			error = 0;
@@ -995,7 +1029,22 @@ loop:
 		}
 		if (p->p_stat == SSTOP && (p->p_flags & P_WAITED) == 0 &&
 		    ((p->p_flags & P_TRACED) || (options & WUNTRACED))) {
+			PHOLD(p);
 			lwkt_gettoken(&p->p_token);
+			if (p->p_pptr != q) {
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
+				goto loop;
+			}
+			if (p->p_stat != SSTOP ||
+			    (p->p_flags & P_WAITED) != 0 ||
+			    ((p->p_flags & P_TRACED) == 0 &&
+			     (options & WUNTRACED) == 0)) {
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
+				goto loop;
+			}
+
 			p->p_flags |= P_WAITED;
 
 			*res = p->p_pid;
@@ -1007,10 +1056,23 @@ loop:
 				bzero(rusage, sizeof(*rusage));
 			error = 0;
 			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			goto done;
 		}
 		if ((options & WCONTINUED) && (p->p_flags & P_CONTINUED)) {
+			PHOLD(p);
 			lwkt_gettoken(&p->p_token);
+			if (p->p_pptr != q) {
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
+				goto loop;
+			}
+			if ((p->p_flags & P_CONTINUED) == 0) {
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
+				goto loop;
+			}
+
 			*res = p->p_pid;
 			p->p_usched->heuristic_exiting(td->td_lwp, p);
 			p->p_flags &= ~P_CONTINUED;
@@ -1019,6 +1081,7 @@ loop:
 				*status = SIGCONT;
 			error = 0;
 			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			goto done;
 		}
 	}
