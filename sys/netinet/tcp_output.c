@@ -771,7 +771,8 @@ send:
 #endif
 
 	if (use_tso) {
-		KASSERT(len > segsz,
+		/* TSO segment length must be multiple of segment size */
+		KASSERT(len >= (2 * segsz) && (len % segsz == 0),
 		    ("invalid TSO len %ld, segsz %u", len, segsz));
 	} else {
 		KASSERT(len <= segsz,
