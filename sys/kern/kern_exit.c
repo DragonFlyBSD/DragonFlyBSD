@@ -328,7 +328,7 @@ exit1(int rv)
 	vmsizmon();
 #endif
 	STOPEVENT(p, S_EXIT, rv);
-	wakeup(&p->p_stype);	/* Wakeup anyone in procfs' PIOCWAIT */
+	p->p_flags |= P_POSTEXIT;	/* stop procfs stepping */
 
 	/* 
 	 * Check if any loadable modules need anything done at process exit.

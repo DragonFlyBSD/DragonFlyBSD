@@ -345,7 +345,7 @@ struct	proc {
 #define P_SYSVSEM	0x00008	/* Might have SysV semaphores */
 #define	P_PPWAIT	0x00010	/* Parent is waiting for child to exec/exit */
 #define	P_PROFIL	0x00020	/* Has started profiling */
-#define P_UNUSED5	0x00040 /* was: Selecting; wakeup/waiting danger */
+#define P_POSTEXIT	0x00040 /* Prevent procfs from stepping after this pt */
 #define	P_UNUSED4	0x00080	/* was: Sleep is interruptible */
 #define	P_SUGID		0x00100	/* Had set id privileges since last exec */
 #define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping */
