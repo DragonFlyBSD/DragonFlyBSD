@@ -139,6 +139,39 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 }
 
 /*
+ * This is the same as uiomove() except (cp, n) is within the bounds of
+ * the passed, locked buffer.  Under certain circumstances a VM fault
+ * occuring with a locked buffer held can result in a deadlock or an
+ * attempt to recursively lock the buffer.
+ *
+ * This procedure deals with these cases.
+ *
+ * If the buffer represents a regular file, is B_CACHE, but the last VM page
+ * is not fully valid we fix-up the last VM page.  This should handle the
+ * recursive lock issue.
+ *
+ * Deadlocks are another issue.  We are holding the vp and the bp locked
+ * and could deadlock against a different vp and/or bp if another thread is
+ * trying to access us while we accessing it.  The only solution here is
+ * to release the bp and vnode lock and do the uio to/from a system buffer,
+ * then regain the locks and copyback (if applicable).  XXX TODO.
+ */
+int
+uiomovebp(struct buf *bp, caddr_t cp, size_t n, struct uio *uio)
+{
+	int count;
+	vm_page_t m;
+
+	if (bp->b_vp && bp->b_vp->v_type == VREG &&
+	    (bp->b_flags & B_CACHE) &&
+	    (count = bp->b_xio.xio_npages) != 0 &&
+	    (m = bp->b_xio.xio_pages[count-1])->valid != VM_PAGE_BITS_ALL) {
+		vm_page_zero_invalid(m, TRUE);
+	}
+	return (uiomove(cp, n, uio));
+}
+
+/*
  * Like uiomove() but copies zero-fill.  Only allowed for UIO_READ,
  * for obvious reasons.
  */

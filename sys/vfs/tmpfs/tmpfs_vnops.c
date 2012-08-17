@@ -475,7 +475,7 @@ tmpfs_read (struct vop_read_args *ap)
 		if (len > node->tn_size - uio->uio_offset)
 			len = (size_t)(node->tn_size - uio->uio_offset);
 
-		error = uiomove((char *)bp->b_data + offset, len, uio);
+		error = uiomovebp(bp, (char *)bp->b_data + offset, len, uio);
 		bqrelse(bp);
 		if (error) {
 			kprintf("tmpfs_read uiomove error %d\n", error);
@@ -579,7 +579,7 @@ tmpfs_write (struct vop_write_args *ap)
 		 * So just use bread() to do the right thing.
 		 */
 		error = bread(vp, base_offset, BSIZE, &bp);
-		error = uiomove((char *)bp->b_data + offset, len, uio);
+		error = uiomovebp(bp, (char *)bp->b_data + offset, len, uio);
 		if (error) {
 			kprintf("tmpfs_write uiomove error %d\n", error);
 			brelse(bp);

@@ -176,7 +176,7 @@ ffs_read(struct vop_read_args *ap)
 		/*
 		 * otherwise use the general form
 		 */
-		error = uiomove(bp->b_data + blkoffset, (int)xfersize, uio);
+		error = uiomovebp(bp, bp->b_data + blkoffset, xfersize, uio);
 
 		if (error)
 			break;
@@ -372,7 +372,7 @@ ffs_write(struct vop_write_args *ap)
 		if (size < xfersize)
 			xfersize = size;
 
-		error = uiomove(bp->b_data + blkoffset, (int)xfersize, uio);
+		error = uiomovebp(bp, bp->b_data + blkoffset, xfersize, uio);
 		if ((ioflag & (IO_VMIO|IO_DIRECT)) && 
 		    (LIST_FIRST(&bp->b_dep) == NULL)) {
 			bp->b_flags |= B_RELBUF;

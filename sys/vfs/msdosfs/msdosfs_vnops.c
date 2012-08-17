@@ -572,7 +572,7 @@ msdosfs_read(struct vop_read_args *ap)
 		diff = blsize - bp->b_resid;
 		if (diff < n)
 			n = diff;
-		error = uiomove(bp->b_data + on, (size_t)n, uio);
+		error = uiomovebp(bp, bp->b_data + on, (size_t)n, uio);
 		brelse(bp);
 	} while (error == 0 && uio->uio_resid > 0 && n != 0);
 	if (!isadir && (error == 0 || uio->uio_resid != orig_resid) &&
@@ -755,7 +755,7 @@ msdosfs_write(struct vop_write_args *ap)
 		/*
 		 * Copy the data from user space into the buf header.
 		 */
-		error = uiomove(bp->b_data + croffset, (size_t)n, uio);
+		error = uiomovebp(bp, bp->b_data + croffset, (size_t)n, uio);
 		if (error) {
 			brelse(bp);
 			break;

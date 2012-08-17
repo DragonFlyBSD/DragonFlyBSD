@@ -398,11 +398,11 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 	    switch (vp->v_type) {
 	    case VREG:
 		if (n > 0)
-		    error = uiomove(bp->b_data + boff, n, uio);
+		    error = uiomovebp(bp, bp->b_data + boff, n, uio);
 		break;
 	    case VLNK:
 		if (n > 0)
-		    error = uiomove(bp->b_data + boff, n, uio);
+		    error = uiomovebp(bp, bp->b_data + boff, n, uio);
 		n = 0;
 		break;
 	    case VDIR:
@@ -722,7 +722,7 @@ again:
 			goto again;
 		}
 
-		error = uiomove(bp->b_data + boff, bytes, uio);
+		error = uiomovebp(bp, bp->b_data + boff, bytes, uio);
 
 		/*
 		 * Since this block is being modified, it must be written

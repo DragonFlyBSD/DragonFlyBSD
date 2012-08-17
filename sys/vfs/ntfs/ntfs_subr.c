@@ -1449,7 +1449,7 @@ ntfs_writentvattr_plain(struct ntfsmount *ntmp,	struct ntnode *ip,
 				}
 			}
 			if (uio)
-				uiomove(bp->b_data + off, tocopy, uio);
+				uiomovebp(bp, bp->b_data + off, tocopy, uio);
 			else
 				memcpy(bp->b_data + off, data, tocopy);
 			bawrite(bp);
@@ -1547,7 +1547,7 @@ ntfs_readntvattr_plain(struct ntfsmount *ntmp, struct ntnode *ip,
 						return (error);
 					}
 					if (uio) {
-						uiomove(bp->b_data + off,
+						uiomovebp(bp, bp->b_data + off,
 							tocopy, uio);
 					} else {
 						memcpy(data, bp->b_data + off,
