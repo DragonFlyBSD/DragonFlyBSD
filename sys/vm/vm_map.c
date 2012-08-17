@@ -1265,6 +1265,8 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 		vm_object_hold(object);
 	if (fitit) {
 		if (vm_map_findspace(map, start, length, align, 0, addr)) {
+			if (object)
+				vm_object_drop(object);
 			vm_map_unlock(map);
 			vm_map_entry_release(count);
 			return (KERN_NO_SPACE);

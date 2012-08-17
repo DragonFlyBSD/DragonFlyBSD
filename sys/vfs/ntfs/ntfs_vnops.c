@@ -169,7 +169,7 @@ ntfs_read(struct vop_read_args *ap)
 			break;
 		}
 
-		error = uiomove(bp->b_data + off, toread - off, uio);
+		error = uiomovebp(bp, bp->b_data + off, toread - off, uio);
 		if(error) {
 			brelse(bp);
 			break;
