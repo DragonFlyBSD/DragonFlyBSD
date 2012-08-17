@@ -695,7 +695,6 @@ ixgbe_detach(device_t dev)
 
 	ether_ifdetach(adapter->ifp);
 	callout_stop(&adapter->timer);
-	lockuninit(&adapter->core_lock);
 #ifdef DEV_NETMAP
 	netmap_detach(adapter->ifp);
 #endif /* DEV_NETMAP */

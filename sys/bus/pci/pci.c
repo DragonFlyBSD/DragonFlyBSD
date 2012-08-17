@@ -2455,6 +2455,7 @@ pci_add_map(device_t pcib, device_t bus, device_t dev,
     int prefetch)
 {
 	uint32_t map;
+	uint16_t old_cmd;
 	pci_addr_t base;
 	pci_addr_t start, end, count;
 	uint8_t ln2size;
@@ -2466,9 +2467,23 @@ pci_add_map(device_t pcib, device_t bus, device_t dev,
 	struct resource *res;
 
 	map = PCIB_READ_CONFIG(pcib, b, s, f, reg, 4);
+
+        /* Disable access to device memory */
+	old_cmd = 0;
+	if (PCI_BAR_MEM(map)) {
+		old_cmd = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_COMMAND, 2);
+		cmd = old_cmd & ~PCIM_CMD_MEMEN;
+		PCIB_WRITE_CONFIG(pcib, b, s, f, PCIR_COMMAND, cmd, 2);
+	}
+
 	PCIB_WRITE_CONFIG(pcib, b, s, f, reg, 0xffffffff, 4);
 	testval = PCIB_READ_CONFIG(pcib, b, s, f, reg, 4);
 	PCIB_WRITE_CONFIG(pcib, b, s, f, reg, map, 4);
+
+        /* Restore memory access mode */
+	if (PCI_BAR_MEM(map)) {
+		PCIB_WRITE_CONFIG(pcib, b, s, f, PCIR_COMMAND, old_cmd, 2);
+	}
 
 	if (PCI_BAR_MEM(map)) {
 		type = SYS_RES_MEMORY;
