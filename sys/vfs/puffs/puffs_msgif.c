@@ -868,7 +868,10 @@ puffsop_flush(struct puffs_mount *pmp, struct puffs_flush *pf)
 			rv = EINVAL;
 			break;
 		}
+#ifdef XXXDF
+		/* deadlocks, needs its own kernel thread */
 		cache_purge(vp);
+#endif
 		break;
 
 #ifdef XXXDF
