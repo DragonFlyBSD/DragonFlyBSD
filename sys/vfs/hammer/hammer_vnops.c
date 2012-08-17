@@ -451,10 +451,8 @@ skip:
 		 * read()s on mmap()'d spaces.
 		 */
 		bp->b_flags |= B_AGE;
-		bqhold(bp);
+		error = uiomovebp(bp, (char *)bp->b_data + offset, n, uio);
 		bqrelse(bp);
-		error = uiomove((char *)bp->b_data + offset, n, uio);
-		bqdrop(bp);
 
 		if (got_fstoken)
 			lwkt_gettoken(&hmp->fs_token);
@@ -747,7 +745,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		}
 		if (error == 0) {
 			lwkt_reltoken(&hmp->fs_token);
-			error = uiomove(bp->b_data + offset, n, uio);
+			error = uiomovebp(bp, bp->b_data + offset, n, uio);
 			lwkt_gettoken(&hmp->fs_token);
 		}
 
