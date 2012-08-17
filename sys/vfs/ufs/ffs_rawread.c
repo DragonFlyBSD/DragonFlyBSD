@@ -88,7 +88,6 @@ static int
 ffs_rawread_sync(struct vnode *vp)
 {
 	int error;
-	int upgraded;
 
 	/*
 	 * Check for dirty mmap, pending writes and dirty buffers
@@ -97,13 +96,6 @@ ffs_rawread_sync(struct vnode *vp)
 	if (bio_track_active(&vp->v_track_write) ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree) ||
 	    (vp->v_flag & VOBJDIRTY) != 0) {
-		if (vn_islocked(vp) != LK_EXCLUSIVE) {
-			upgraded = 1;
-			/* Upgrade to exclusive lock, this might block */
-			vn_lock(vp, LK_UPGRADE);
-		} else
-			upgraded = 0;
-		
 		/* Attempt to msync mmap() regions to clean dirty mmap */ 
 		if ((vp->v_flag & VOBJDIRTY) != 0) {
 			struct vm_object *obj;
@@ -114,23 +106,17 @@ ffs_rawread_sync(struct vnode *vp)
 		/* Wait for pending writes to complete */
 		error = bio_track_wait(&vp->v_track_write, 0, 0);
 		if (error != 0) {
-			if (upgraded != 0)
-				vn_lock(vp, LK_DOWNGRADE);
 			goto done;
 		}
 		/* Flush dirty buffers */
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
 			if ((error = VOP_FSYNC(vp, MNT_WAIT, 0)) != 0) {
-				if (upgraded != 0)
-					vn_lock(vp, LK_DOWNGRADE);
 				goto done;
 			}
 			if (bio_track_active(&vp->v_track_write) ||
 			    !RB_EMPTY(&vp->v_rbdirty_tree))
 				panic("ffs_rawread_sync: dirty bufs");
 		}
-		if (upgraded != 0)
-			vn_lock(vp, LK_DOWNGRADE);
 	} else {
 		error = 0;
 	}

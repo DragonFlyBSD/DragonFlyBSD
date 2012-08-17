@@ -234,13 +234,38 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			COUNT(td, 1);
 			break;
 		}
+
 		/*
-		 * We hold an exclusive lock, so downgrade it to shared.
-		 * An alternative would be to fail with EDEADLK.
+		 * If we already hold an exclusive lock we bump the
+		 * exclusive count instead of downgrading to a shared
+		 * lock.
+		 *
+		 * WARNING!  The old FreeBSD behavior was to downgrade,
+		 *	     but this creates a problem when recursions
+		 *	     return to the caller and the caller expects
+		 *	     its original exclusive lock to remain exclusively
+		 *	     locked.
+		 */
+		if (extflags & LK_CANRECURSE) {
+			lkp->lk_exclusivecount++;
+			COUNT(td, 1);
+			break;
+		}
+		if (extflags & LK_NOWAIT) {
+			error = EBUSY;
+			break;
+		}
+		spin_unlock(&lkp->lk_spinlock);
+		panic("lockmgr: locking against myself");
+#if 0
+		/*
+		 * old code queued a shared lock request fell into
+		 * a downgrade.
 		 */
 		sharelock(lkp, 1);
 		COUNT(td, 1);
 		/* fall into downgrade */
+#endif
 
 	case LK_DOWNGRADE:
 		if (lkp->lk_lockholder != td || lkp->lk_exclusivecount == 0) {
