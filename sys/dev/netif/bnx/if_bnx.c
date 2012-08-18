@@ -2440,6 +2440,10 @@ bnx_reset(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_SERDES_CFG, serdescfg);
 	}
 
+	CSR_WRITE_4(sc, BGE_MI_MODE,
+	    sc->bnx_mi_mode & ~BGE_MIMODE_AUTOPOLL);
+	DELAY(80);
+
 	/* XXX: Broadcom Linux driver. */
 	if (!BNX_IS_57765_PLUS(sc)) {
 		uint32_t v;
