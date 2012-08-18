@@ -243,8 +243,10 @@ manlint: ${page}lint
 ${page}lint: ${page}
 .if defined(MANFILTER)
 	@${MANFILTER} < ${.ALLSRC} | ${MROFF_CMD} -ww -z
+	@-${MANFILTER} < ${.ALLSRC} | mandoc -Tlint
 .else
 	@${MROFF_CMD} -ww -z ${.ALLSRC}
+	@-mandoc -Tlint ${.ALLSRC}
 .endif
 .endfor
 .endif
