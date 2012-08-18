@@ -1,5 +1,4 @@
 # $FreeBSD: src/share/mk/bsd.man.mk,v 1.31.2.11 2002/12/19 13:48:33 ru Exp $
-# $DragonFly: src/share/mk/bsd.man.mk,v 1.4 2005/12/10 00:15:01 swildner Exp $
 #
 # The include file <bsd.man.mk> handles installing manual pages and 
 # their links.
@@ -243,9 +242,9 @@ manlint:
 manlint: ${page}lint
 ${page}lint: ${page}
 .if defined(MANFILTER)
-	${MANFILTER} < ${.ALLSRC} | ${MROFF_CMD} -ww -z
+	@${MANFILTER} < ${.ALLSRC} | ${MROFF_CMD} -ww -z
 .else
-	${MROFF_CMD} -ww -z ${.ALLSRC}
+	@${MROFF_CMD} -ww -z ${.ALLSRC}
 .endif
 .endfor
 .endif
