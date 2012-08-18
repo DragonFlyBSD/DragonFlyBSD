@@ -1984,7 +1984,7 @@ bge_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	sc->bge_dev = dev;
-	callout_init(&sc->bge_stat_timer);
+	callout_init_mp(&sc->bge_stat_timer);
 	lwkt_serialize_init(&sc->bge_jslot_serializer);
 
 	product = pci_get_device(dev);
