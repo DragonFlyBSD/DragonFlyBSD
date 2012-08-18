@@ -4814,7 +4814,8 @@ bce_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	callout_reset(&sc->bce_tick_callout, hz, bce_tick, sc);
+	callout_reset_bycpu(&sc->bce_tick_callout, hz, bce_tick, sc,
+	    sc->bce_intr_cpuid);
 back:
 	if (error)
 		bce_stop(sc);
@@ -5779,7 +5780,8 @@ bce_pulse(void *xsc)
 	}
 
 	/* Schedule the next pulse. */
-	callout_reset(&sc->bce_pulse_callout, hz, bce_pulse, sc);
+	callout_reset_bycpu(&sc->bce_pulse_callout, hz, bce_pulse, sc,
+	    sc->bce_intr_cpuid);
 
 	lwkt_serialize_exit(ifp->if_serializer);
 }
@@ -5867,7 +5869,8 @@ bce_tick_serialized(struct bce_softc *sc)
 	bce_stats_update(sc);
 
 	/* Schedule the next tick. */
-	callout_reset(&sc->bce_tick_callout, hz, bce_tick, sc);
+	callout_reset_bycpu(&sc->bce_tick_callout, hz, bce_tick, sc,
+	    sc->bce_intr_cpuid);
 
 	/* If link is up already up then we're done. */
 	if (sc->bce_link)
