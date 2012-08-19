@@ -160,6 +160,8 @@ static void	jme_set_tx_coal(struct jme_softc *);
 static void	jme_set_rx_coal(struct jme_softc *);
 static void	jme_enable_rss(struct jme_softc *);
 static void	jme_disable_rss(struct jme_softc *);
+static void	jme_serialize_skipmain(struct jme_softc *);
+static void	jme_deserialize_skipmain(struct jme_softc *);
 
 static void	jme_sysctl_node(struct jme_softc *);
 static int	jme_sysctl_tx_coal_to(SYSCTL_HANDLER_ARGS);
@@ -342,24 +344,26 @@ jme_miibus_statchg(device_t dev)
 	bus_addr_t paddr;
 	int i, r;
 
+	if (sc->jme_in_tick)
+		jme_serialize_skipmain(sc);
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
-		return;
+		goto done;
 
 	mii = device_get_softc(sc->jme_miibus);
 
-	sc->jme_flags &= ~JME_FLAG_LINK;
+	sc->jme_has_link = FALSE;
 	if ((mii->mii_media_status & IFM_AVALID) != 0) {
 		switch (IFM_SUBTYPE(mii->mii_media_active)) {
 		case IFM_10_T:
 		case IFM_100_TX:
-			sc->jme_flags |= JME_FLAG_LINK;
+			sc->jme_has_link = TRUE;
 			break;
 		case IFM_1000_T:
 			if (sc->jme_caps & JME_CAP_FASTETH)
 				break;
-			sc->jme_flags |= JME_FLAG_LINK;
+			sc->jme_has_link = TRUE;
 			break;
 		default:
 			break;
@@ -433,7 +437,7 @@ jme_miibus_statchg(device_t dev)
 	jme_init_ssb(sc);
 
 	/* Program MAC with resolved speed/duplex/flow-control. */
-	if (sc->jme_flags & JME_FLAG_LINK) {
+	if (sc->jme_has_link) {
 		jme_mac_config(sc);
 
 		CSR_WRITE_4(sc, JME_TXCSR, sc->jme_txcsr);
@@ -468,6 +472,10 @@ jme_miibus_statchg(device_t dev)
 #endif
 	/* Reenable interrupts. */
 	CSR_WRITE_4(sc, JME_INTR_MASK_SET, JME_INTRS);
+
+done:
+	if (sc->jme_in_tick)
+		jme_deserialize_skipmain(sc);
 }
 
 /*
@@ -1649,7 +1657,7 @@ jme_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(&sc->jme_cdata.jme_tx_serialize);
 
-	if ((sc->jme_flags & JME_FLAG_LINK) == 0) {
+	if (!sc->jme_has_link) {
 		ifq_purge(&ifp->if_snd);
 		return;
 	}
@@ -1716,7 +1724,7 @@ jme_watchdog(struct ifnet *ifp)
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
-	if ((sc->jme_flags & JME_FLAG_LINK) == 0) {
+	if (!sc->jme_has_link) {
 		if_printf(ifp, "watchdog timeout (missed link)\n");
 		ifp->if_oerrors++;
 		jme_init(sc);
@@ -2390,15 +2398,17 @@ static void
 jme_tick(void *xsc)
 {
 	struct jme_softc *sc = xsc;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii = device_get_softc(sc->jme_miibus);
 
-	ifnet_serialize_all(ifp);
+	lwkt_serialize_enter(&sc->jme_serialize);
 
+	sc->jme_in_tick = TRUE;
 	mii_tick(mii);
+	sc->jme_in_tick = FALSE;
+
 	callout_reset(&sc->jme_tick_ch, hz, jme_tick, sc);
 
-	ifnet_deserialize_all(ifp);
+	lwkt_serialize_exit(&sc->jme_serialize);
 }
 
 static void
@@ -2701,7 +2711,7 @@ jme_init(void *xsc)
 	 * Enabling Tx/Rx DMA engines and Rx queue processing is
 	 * done after detection of valid link in jme_miibus_statchg.
 	 */
-	sc->jme_flags &= ~JME_FLAG_LINK;
+	sc->jme_has_link = FALSE;
 
 	/* Set the current media. */
 	mii = device_get_softc(sc->jme_miibus);
@@ -2731,7 +2741,7 @@ jme_stop(struct jme_softc *sc)
 	ifp->if_timer = 0;
 
 	callout_stop(&sc->jme_tick_ch);
-	sc->jme_flags &= ~JME_FLAG_LINK;
+	sc->jme_has_link = FALSE;
 
 	/*
 	 * Disable interrupts.
@@ -3721,4 +3731,18 @@ jme_msix_teardown(device_t dev, int msix_count)
 		bus_teardown_intr(dev, msix->jme_msix_res,
 		    msix->jme_msix_handle);
 	}
+}
+
+static void
+jme_serialize_skipmain(struct jme_softc *sc)
+{
+	lwkt_serialize_array_enter(sc->jme_serialize_arr,
+	    sc->jme_serialize_cnt, 1);
+}
+
+static void
+jme_deserialize_skipmain(struct jme_softc *sc)
+{
+	lwkt_serialize_array_exit(sc->jme_serialize_arr,
+	    sc->jme_serialize_cnt, 1);
 }

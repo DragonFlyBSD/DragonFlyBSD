@@ -261,11 +261,8 @@ struct jme_softc {
 #define JME_WA_EXTFIFO		0x0001
 #define JME_WA_HDX		0x0002
 
-	uint32_t		jme_flags;
-#define	JME_FLAG_MSI		0x0001
-#define	JME_FLAG_MSIX		0x0002
-#define	JME_FLAG_DETACH		0x0004
-#define	JME_FLAG_LINK		0x0008
+	boolean_t		jme_has_link;
+	boolean_t		jme_in_tick;
 
 	struct lwkt_serialize	jme_serialize;
 	struct lwkt_serialize	*jme_serialize_arr[JME_NSERIALIZE];
