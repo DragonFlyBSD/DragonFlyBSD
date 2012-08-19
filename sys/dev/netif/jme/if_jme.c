@@ -661,6 +661,9 @@ jme_attach(device_t dev)
 	int error = 0, i, j, rx_desc_cnt;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 
+	device_printf(dev, "rxdata %zu, chain_data %zu\n",
+	    sizeof(struct jme_rxdata), sizeof(struct jme_chain_data));
+
 	lwkt_serialize_init(&sc->jme_serialize);
 	lwkt_serialize_init(&sc->jme_cdata.jme_tx_serialize);
 	for (i = 0; i < JME_NRXRING_MAX; ++i) {

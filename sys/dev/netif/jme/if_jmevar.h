@@ -162,7 +162,7 @@ struct jme_rxdata {
 	struct mbuf		*jme_rxtail;
 
 	u_long			jme_rx_pkt;
-};
+} __cachealign;
 
 struct jme_chain_data {
 	/*
@@ -199,7 +199,7 @@ struct jme_chain_data {
 
 	int			jme_rx_ring_cnt;
 	struct jme_rxdata	jme_rx_data[JME_NRXRING_MAX];
-};
+} __cachealign;
 
 struct jme_msix_data {
 	int			jme_msix_rid;
