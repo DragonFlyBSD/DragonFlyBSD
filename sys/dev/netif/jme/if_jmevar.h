@@ -115,6 +115,7 @@
 #define	JME_RX_FIFO_SIZE	4000
 
 #define	JME_DESC_INC(x, y)	((x) = ((x) + 1) % (y))
+#define JME_DESC_ADD(x, d, y)	((x) = ((x) + (d)) % (y))
 
 struct jme_txdesc {
 	struct mbuf		*tx_m;

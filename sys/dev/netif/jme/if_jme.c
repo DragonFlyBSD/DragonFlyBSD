@@ -2003,9 +2003,7 @@ static void
 jme_txeof(struct jme_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct jme_txdesc *txd;
-	uint32_t status;
-	int cons, nsegs;
+	int cons;
 
 	cons = sc->jme_cdata.jme_tx_cons;
 	if (cons == sc->jme_cdata.jme_tx_prod)
@@ -2016,12 +2014,37 @@ jme_txeof(struct jme_softc *sc)
 	 * frames which have been transmitted.
 	 */
 	while (cons != sc->jme_cdata.jme_tx_prod) {
+		struct jme_txdesc *txd, *next_txd;
+		uint32_t status, next_status;
+		int next_cons, nsegs;
+
 		txd = &sc->jme_cdata.jme_txdesc[cons];
 		KASSERT(txd->tx_m != NULL,
 			("%s: freeing NULL mbuf!", __func__));
 
 		status = le32toh(txd->tx_desc->flags);
 		if ((status & JME_TD_OWN) == JME_TD_OWN)
+			break;
+
+		/*
+		 * NOTE:
+		 * This chip will always update the TX descriptor's
+		 * buflen field and this updating always happens
+		 * after clearing the OWN bit, so even if the OWN
+		 * bit is cleared by the chip, we still don't sure
+		 * about whether the buflen field has been updated
+		 * by the chip or not.  To avoid this race, we wait
+		 * for the next TX descriptor's OWN bit to be cleared
+		 * by the chip before reusing this TX descriptor.
+		 */
+		next_cons = cons;
+		JME_DESC_ADD(next_cons, txd->tx_ndesc,
+		    sc->jme_cdata.jme_tx_desc_cnt);
+		next_txd = &sc->jme_cdata.jme_txdesc[next_cons];
+		if (next_txd->tx_m == NULL)
+			break;
+		next_status = le32toh(next_txd->tx_desc->flags);
+		if ((next_status & JME_TD_OWN) == JME_TD_OWN)
 			break;
 
 		if (status & (JME_TD_TMOUT | JME_TD_RETRY_EXP)) {
@@ -2058,7 +2081,7 @@ jme_txeof(struct jme_softc *sc)
 	}
 	sc->jme_cdata.jme_tx_cons = cons;
 
-	if (sc->jme_cdata.jme_tx_cnt == 0)
+	if (sc->jme_cdata.jme_tx_cnt < JME_MAXTXSEGS + 1)
 		ifp->if_timer = 0;
 
 	if (sc->jme_cdata.jme_tx_cnt + sc->jme_txd_spare <=
