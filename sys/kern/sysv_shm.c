@@ -117,7 +117,7 @@ struct	shminfo shminfo = {
 	0
 };
 
-static int shm_use_phys;
+static int shm_use_phys = 1;
 
 TUNABLE_LONG("kern.ipc.shmmin", &shminfo.shmmin);
 TUNABLE_LONG("kern.ipc.shmmni", &shminfo.shmmni);
