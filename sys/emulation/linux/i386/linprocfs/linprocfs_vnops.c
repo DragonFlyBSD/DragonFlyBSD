@@ -177,7 +177,7 @@ linprocfs_open(struct vop_open_args *ap)
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *p2;
 
-	p2 = PFIND(pfs->pfs_pid);
+	p2 = linprocfs_pfind(pfs->pfs_pid);
 	if (p2 == NULL)
 		return (ENOENT);
 	if (pfs->pfs_pid && !PRISON_CHECK(ap->a_cred, p2->p_ucred))
@@ -231,7 +231,7 @@ linprocfs_close(struct vop_close_args *ap)
 		 */
 		p = NULL;
 		if ((ap->a_vp->v_opencount < 2)
-		    && (p = pfind(pfs->pfs_pid))
+		    && (p = linprocfs_pfind(pfs->pfs_pid))
 		    && !(p->p_pfsflags & PF_LINGER)) {
 			p->p_stops = 0;
 			p->p_step = 0;
@@ -260,7 +260,7 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 	struct procfs_status *psp;
 	unsigned char flags;
 
-	procp = pfind(pfs->pfs_pid);
+	procp = linprocfs_pfind(pfs->pfs_pid);
 	if (procp == NULL) {
 		return ENOTTY;
 	}
@@ -465,7 +465,7 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 		break;
 
 	default:
-		procp = PFIND(pfs->pfs_pid);
+		procp = linprocfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL)
 			return (ENOENT);
 	}
@@ -844,7 +844,7 @@ linprocfs_lookup(struct vop_old_lookup_args *ap)
 		if (pid == NO_PID)
 			break;
 
-		p = PFIND(pid);
+		p = linprocfs_pfind(pid);
 		if (p == NULL)
 			break;
 
@@ -864,7 +864,7 @@ linprocfs_lookup(struct vop_old_lookup_args *ap)
 			goto out;
 		}
 
-		p = PFIND(pfs->pfs_pid);
+		p = linprocfs_pfind(pfs->pfs_pid);
 		if (p == NULL)
 			break;
 
@@ -991,7 +991,7 @@ linprocfs_readdir_proc(struct vop_readdir_args *ap)
 	struct uio *uio = ap->a_uio;
 
 	pfs = VTOPFS(ap->a_vp);
-	p = PFIND(pfs->pfs_pid);
+	p = linprocfs_pfind(pfs->pfs_pid);
 	if (p == NULL)
 		return(0);
 	if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
@@ -1517,7 +1517,7 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 	 * from under us...
 	 */
 	case Pexe:
-		procp = PFIND(pfs->pfs_pid);
+		procp = linprocfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("linprocfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
@@ -1532,7 +1532,7 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 		kfree(freepath, M_TEMP);
 		return (error);
 	case Pcwd:
-		procp = PFIND(pfs->pfs_pid);
+		procp = linprocfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("linprocfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
@@ -1547,7 +1547,7 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 		kfree(freepath, M_TEMP);
 		return (error);
 	case Pprocroot:
-		procp = PFIND(pfs->pfs_pid);
+		procp = linprocfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("linprocfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
@@ -1563,7 +1563,7 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 		kfree(freepath, M_TEMP);
 		return (error);
 	case Pfd:
-		procp = PFIND(pfs->pfs_pid);
+		procp = linprocfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("linprocfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
