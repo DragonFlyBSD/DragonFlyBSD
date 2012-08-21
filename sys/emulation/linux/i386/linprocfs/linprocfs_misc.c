@@ -705,7 +705,6 @@ linprocfs_dopidmax(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 
 	ksnprintf(buf, sizeof(buf), "%d", PID_MAX);
 	return(uiomove_frombuf(buf, strlen(buf)+1, uio));
-	return 0;
 }
 
 int
