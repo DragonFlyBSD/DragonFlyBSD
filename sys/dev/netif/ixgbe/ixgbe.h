@@ -195,6 +195,9 @@
 /* Offload bits in mbuf flag */
 #define CSUM_OFFLOAD		(CSUM_IP|CSUM_TCP|CSUM_UDP)
 
+/* One for TX csum offloading desc, the other 2 are reserved */
+#define IXGBE_TX_RESERVED		3
+
 /*
  * Interrupt Moderation parameters 
  */
