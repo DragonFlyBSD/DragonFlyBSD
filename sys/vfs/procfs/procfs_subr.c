@@ -351,11 +351,11 @@ procfs_rw(struct vop_read_args *ap)
 	lwkt_gettoken(&proc_token);
 	p = pfs_pfind(pfs->pfs_pid);
 	if (p == NULL) {
-		rtval = (EINVAL);
+		rtval = EINVAL;
 		goto out;
 	}
 	if (p->p_pid == 1 && securelevel > 0 && uio->uio_rw == UIO_WRITE) {
-		rtval = (EACCES);
+		rtval = EACCES;
 		goto out;
 	}
 	/* XXX lwp */
