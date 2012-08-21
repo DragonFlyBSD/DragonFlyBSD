@@ -251,6 +251,26 @@ linprocfs_freevp(struct vnode *vp)
 	return (0);
 }
 
+/*
+ * Try to find the calling pid. Note that pfind()
+ * now references the proc structure to be returned
+ * and needs to be released later with PRELE().
+ */
+struct proc *
+linprocfs_pfind(pid_t pfs_pid)
+{
+	struct proc *p = NULL;
+
+	if (pfs_pid == 0) {
+		p = &proc0;
+		PHOLD(p);
+	} else {
+		p = pfind(pfs_pid);
+	}
+
+	return p;
+}
+
 int
 linprocfs_rw(struct vop_read_args *ap)
 {
@@ -266,12 +286,14 @@ linprocfs_rw(struct vop_read_args *ap)
 	curp = td->td_proc;
 	KKASSERT(curp);
 
-	p = pfind(pfs->pfs_pid);
-	if (p == NULL)
-		return (EINVAL);
+	p = linprocfs_pfind(pfs->pfs_pid);
+	if (p == NULL) {
+		rtval = EINVAL;
+		goto out;
+	}
 	if (p->p_pid == 1 && securelevel > 0 && uio->uio_rw == UIO_WRITE) {
-		PRELE(p);
-		return (EACCES);
+		rtval = EACCES;
+		goto out;
 	}
 	lp = FIRST_LWP_IN_PROC(p);
 	LWPHOLD(lp);
@@ -340,12 +362,14 @@ linprocfs_rw(struct vop_read_args *ap)
 		break;
 	}
 	LWPRELE(lp);
-	PRELE(p);
 
 	lwkt_gettoken(&pfs_token);
 	pfs->pfs_lockowner = NULL;
 	wakeup(&pfs->pfs_lockowner);
 	lwkt_reltoken(&pfs_token);
+out:
+	if (p)
+		PRELE(p);
 
 	return rtval;
 }
