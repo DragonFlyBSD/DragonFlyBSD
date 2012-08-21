@@ -136,6 +136,7 @@ int linprocfs_freevp (struct vnode *);
 int linprocfs_allocvp (struct mount *, struct vnode **, long, pfstype);
 int linprocfs_sstep (struct proc *);
 void linprocfs_fix_sstep (struct proc *);
+struct proc *linprocfs_pfind(pid_t pfs_pid);
 #if 0
 int linprocfs_read_regs (struct proc *, struct reg *);
 int linprocfs_write_regs (struct proc *, struct reg *);
