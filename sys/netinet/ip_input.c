@@ -74,6 +74,7 @@
 #include "opt_ipdivert.h"
 #include "opt_ipstealth.h"
 #include "opt_ipsec.h"
+#include "opt_rss.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -200,20 +201,23 @@ static int ip_checkinterface = 0;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, check_interface, CTLFLAG_RW,
     &ip_checkinterface, 0, "Verify packet arrives on correct interface");
 
-static int ip_dispatch_fast = 0;
-static int ip_dispatch_slow = 0;
-static int ip_dispatch_recheck = 0;
-static int ip_dispatch_software = 0;
-SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_fast_count, CTLFLAG_RD,
-    &ip_dispatch_fast, 0,
-    "Number of IP dispatches handled on current CPU");
-SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_slow_count, CTLFLAG_RD,
-    &ip_dispatch_slow, 0,
-    "Number of IP dispatches messaged to another CPU");
-SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_software_count, CTLFLAG_RD,
-    &ip_dispatch_software, 0, "");
-SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_recheck_count, CTLFLAG_RD,
-    &ip_dispatch_recheck, 0, "");
+static u_long ip_hash_count = 0;
+SYSCTL_ULONG(_net_inet_ip, OID_AUTO, hash_count, CTLFLAG_RD,
+    &ip_hash_count, 0, "Number of packets hashed by IP");
+
+#ifdef RSS_DEBUG
+static u_long ip_rehash_count = 0;
+SYSCTL_ULONG(_net_inet_ip, OID_AUTO, rehash_count, CTLFLAG_RD,
+    &ip_rehash_count, 0, "Number of packets rehashed by IP");
+
+static u_long ip_dispatch_fast = 0;
+SYSCTL_ULONG(_net_inet_ip, OID_AUTO, dispatch_fast_count, CTLFLAG_RD,
+    &ip_dispatch_fast, 0, "Number of packets handled on current CPU");
+
+static u_long ip_dispatch_slow = 0;
+SYSCTL_ULONG(_net_inet_ip, OID_AUTO, dispatch_slow_count, CTLFLAG_RD,
+    &ip_dispatch_slow, 0, "Number of packets messaged to another CPU");
+#endif
 
 static struct lwkt_token ipq_token = LWKT_TOKEN_INITIALIZER(ipq_token);
 
@@ -447,7 +451,7 @@ ip_input(struct mbuf *m)
 	 * characterized the packet.
 	 */
 	if ((m->m_flags & M_HASH) == 0) {
-		++ip_dispatch_software;
+		atomic_add_long(&ip_hash_count, 1);
 		ip_cpufn(&m, 0, IP_MPORT_IN);
 		if (m == NULL)
 			return;
@@ -928,7 +932,9 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 	ipstat.ips_delivered++;
 
 	if ((m->m_flags & M_HASH) == 0) {
-		++ip_dispatch_recheck;
+#ifdef RSS_DEBUG
+		atomic_add_long(&ip_rehash_count, 1);
+#endif
 		ip->ip_len = htons(ip->ip_len + hlen);
 		ip->ip_off = htons(ip->ip_off);
 
@@ -946,7 +952,9 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 	if (port != &curthread->td_msgport) {
 		struct netmsg_packet *pmsg;
 
-		++ip_dispatch_slow;
+#ifdef RSS_DEBUG
+		atomic_add_long(&ip_dispatch_slow, 1);
+#endif
 
 		pmsg = &m->m_hdr.mh_netmsg;
 		netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
@@ -955,7 +963,9 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		pmsg->base.lmsg.u.ms_result = hlen;
 		lwkt_sendmsg(port, &pmsg->base.lmsg);
 	} else {
-		++ip_dispatch_fast;
+#ifdef RSS_DEBUG
+		atomic_add_long(&ip_dispatch_fast, 1);
+#endif
 		transport_processing_oncpu(m, hlen, ip);
 	}
 	return;
