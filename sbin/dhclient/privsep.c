@@ -1,5 +1,4 @@
-/*	$OpenBSD: privsep.c,v 1.14 2007/02/15 15:22:27 stevesk Exp $ */
-/*	$DragonFly: src/sbin/dhclient/privsep.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/privsep.c,v 1.16 2011/04/04 11:14:52 krw Exp $	*/
 
 /*
  * Copyright (c) 2004 Henning Brauer <henning@openbsd.org>
@@ -78,7 +77,9 @@ buf_read(int sock, void *buf, size_t nbytes)
 	do {
 		n = read(sock, buf, nbytes);
 		if (n == 0) {			/* connection closed */
+#ifdef DEBUG
 			debug("buf_read (connection closed)");
+#endif
 			exit(1);
 		}
 		if (n != -1 && n < nbytes)
@@ -93,9 +94,9 @@ void
 dispatch_imsg(int fd)
 {
 	struct imsg_hdr		 hdr;
-	char			*medium, *reason, *filename,
+	char			*reason, *filename,
 				*servername, *prefix;
-	size_t			 medium_len, reason_len, filename_len,
+	size_t			 reason_len, filename_len,
 				 servername_len, prefix_len, totlen;
 	struct client_lease	 lease;
 	int			 ret, i, optlen;
@@ -107,19 +108,8 @@ dispatch_imsg(int fd)
 	case IMSG_SCRIPT_INIT:
 		if (hdr.len < sizeof(hdr) + sizeof(size_t))
 			error("corrupted message received");
-		buf_read(fd, &medium_len, sizeof(medium_len));
-		if (hdr.len < medium_len + sizeof(size_t) + sizeof(hdr)
-		    + sizeof(size_t) || medium_len == SIZE_T_MAX)
-			error("corrupted message received");
-		if (medium_len > 0) {
-			if ((medium = calloc(1, medium_len + 1)) == NULL)
-				error("%m");
-			buf_read(fd, medium, medium_len);
-		} else
-			medium = NULL;
-
 		buf_read(fd, &reason_len, sizeof(reason_len));
-		if (hdr.len < medium_len + reason_len + sizeof(hdr) ||
+		if (hdr.len < reason_len + sizeof(hdr) + sizeof(size_t) ||
 		    reason_len == SIZE_T_MAX)
 			error("corrupted message received");
 		if (reason_len > 0) {
@@ -129,9 +119,8 @@ dispatch_imsg(int fd)
 		} else
 			reason = NULL;
 
-		priv_script_init(reason, medium);
+		priv_script_init(reason);
 		free(reason);
-		free(medium);
 		break;
 	case IMSG_SCRIPT_WRITE_PARAMS:
 		bzero(&lease, sizeof lease);

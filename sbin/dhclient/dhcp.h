@@ -1,5 +1,4 @@
-/*	$OpenBSD: dhcp.h,v 1.7 2007/02/01 22:39:43 krw Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/dhcp.h,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhcp.h,v 1.9 2011/05/11 14:38:36 krw Exp $	*/
 
 /* Protocol structures... */
 
@@ -87,7 +86,8 @@ struct dhcp_packet {
 
 /* Magic cookie validating dhcp options field (and bootp vendor
    extensions field). */
-#define DHCP_OPTIONS_COOKIE	"\143\202\123\143"
+#define DHCP_OPTIONS_COOKIE		"\143\202\123\143"
+#define DHCP_OPTIONS_MESSAGE_TYPE	"\065\001\000"
 
 /* DHCP Option codes: */
 
@@ -153,6 +153,7 @@ struct dhcp_packet {
 #define DHO_DHCP_REBINDING_TIME		59
 #define DHO_DHCP_CLASS_IDENTIFIER	60
 #define DHO_DHCP_CLIENT_IDENTIFIER	61
+#define DHO_TFTP_SERVER			66
 #define DHO_DHCP_USER_CLASS_ID		77
 #define DHO_END				255
 

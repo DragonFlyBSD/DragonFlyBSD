@@ -5873,6 +5873,7 @@ struct bce_softc {
 	uint32_t		bce_flags;
 #define BCE_PCIX_FLAG		0x00000001
 #define BCE_PCI_32BIT_FLAG 	0x00000002
+#define BCE_CHECK_MSI_FLAG	0x00000004
 #define BCE_NO_WOL_FLAG		0x00000008
 #define BCE_USING_DAC_FLAG	0x00000010
 #define BCE_MFW_ENABLE_FLAG	0x00000040	/* Management F/W is enabled */
@@ -5968,9 +5969,16 @@ struct bce_softc {
 	uint16_t		tx_cons;
 	uint32_t		tx_prod_bseq;	/* Counts the bytes used.  */
 
+	int			bce_intr_cpuid;
 	int			bce_link;
 	struct callout		bce_tick_callout;
 	struct callout		bce_pulse_callout;
+
+	boolean_t		bce_msi_maylose;
+	uint16_t		bce_check_rx_cons;
+	uint16_t		bce_check_tx_cons;
+	uint16_t		bce_check_status_idx;
+	struct callout		bce_ckmsi_callout;
 
 	/* Frame size and mbuf allocation size for RX frames. */
 	uint32_t		max_frame_size;
@@ -6001,7 +6009,6 @@ struct bce_softc {
 	bus_addr_t		status_block_paddr;	/* Physical address */
 
 	/* Driver maintained status block values. */
-	uint16_t		pulse_check_status_idx;
 	uint16_t		last_status_idx;
 
 	/* H/W maintained statistics block. */

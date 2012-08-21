@@ -1,5 +1,4 @@
-/*	$OpenBSD: options.c,v 1.36 2007/06/02 01:29:11 pvalchev Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/options.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/options.c,v 1.41 2012/06/26 14:46:42 krw Exp $	*/
 
 /* DHCP options parsing and reassembly. */
 
@@ -69,24 +68,39 @@ parse_option_buffer(struct option_data *options, unsigned char *buffer,
 		}
 
 		/*
-		 * All options other than DHO_PAD and DHO_END have a
-		 * one-byte length field.
+		 * All options other than DHO_PAD and DHO_END have a one-byte
+		 * length field. It could be 0! Make sure that the length byte
+		 * is present, and all the data is available.
 		 */
-		if (s + 2 > end)
-			len = 0;
-		else
+		if (s + 1 < end) {
 			len = s[1];
-
-		/*
-		 * If the option claims to extend beyond the end of the buffer
-		 * then mark the options buffer bad.
-		 */
-		if (s + len + 2 > end) {
-			warning("option %s (%d) larger than buffer.",
-			    dhcp_options[code].name, len);
+			if (s + 1 + len < end) {
+				; /* option data is all there. */
+			} else {
+				warning("option %s (%d) larger than buffer.",
+				    dhcp_options[code].name, len);
+				warning("rejecting bogus offer.");
+				return (0);
+			}
+		} else {
+			warning("option %s has no length field.",
+			    dhcp_options[code].name);
 			warning("rejecting bogus offer.");
 			return (0);
 		}
+
+		/*
+		 * Strip trailing NULs from ascii ('t') options. They
+		 * will be treated as DHO_PAD options. i.e. ignored. RFC 2132
+		 * says "Options containing NVT ASCII data SHOULD NOT include
+		 * a trailing NULL; however, the receiver of such options
+		 * MUST be prepared to delete trailing nulls if they exist."
+		 */
+		if (dhcp_options[code].format[0] == 't') {
+			while (len > 0 && s[len + 1] == '\0')
+				len--;
+		}
+
 		/*
 		 * If we haven't seen this option before, just make
 		 * space for it and copy it there.
@@ -132,18 +146,24 @@ parse_option_buffer(struct option_data *options, unsigned char *buffer,
  * to see if it's DHO_END to decide if all the options were copied.
  */
 int
-cons_options(unsigned char *buf, const int buflen, struct option_data *options)
+cons_options(struct option_data *options)
 {
+	unsigned char *buf = client->packet.options;
+	int buflen = 576 - DHCP_FIXED_LEN;
 	int ix, incr, length, bufix, code, lastopt = -1;
 
 	bzero(buf, buflen);
 
-	if (buflen > 3)
-		memcpy(buf, DHCP_OPTIONS_COOKIE, 4);
-	bufix = 4;
+	memcpy(buf, DHCP_OPTIONS_COOKIE, 4);
+	if (options[DHO_DHCP_MESSAGE_TYPE].data) {
+		memcpy(&buf[4], DHCP_OPTIONS_MESSAGE_TYPE, 3);
+		buf[6] = options[DHO_DHCP_MESSAGE_TYPE].data[0];
+		bufix = 7;
+	} else
+		bufix = 4;
 
 	for (code = DHO_SUBNET_MASK; code < DHO_END; code++) {
-		if (!options[code].data)
+		if (!options[code].data || code == DHO_DHCP_MESSAGE_TYPE)
 			continue;
 
 		length = options[code].len;
@@ -213,6 +233,13 @@ pretty_print_option(unsigned int code, unsigned char *data, int len,
 			--numelem;
 			fmtbuf[i] = 0;
 			numhunk = 0;
+			if (hunksize == 0) {
+				warning("%s: no size indicator before A"
+				    " in format string: %s",
+				    dhcp_options[code].name,
+				    dhcp_options[code].format);
+				return ("<fmt error>");
+			}
 			break;
 		case 'X':
 			for (k = 0; k < len; k++)
@@ -490,6 +517,15 @@ do_packet(int len, unsigned int from_port, struct iaddr from,
 		handler = dhcpoffer;
 		type = "BOOTREPLY";
 	}
+
+	if (handler && client->xid == client->packet.xid) {
+		if (hfrom->hlen == 6)
+			note("%s from %s (%s)", type, piaddr(from),
+			    ether_ntoa((struct ether_addr *)hfrom->haddr));
+		else
+			note("%s from %s", type, piaddr(from));
+	} else
+		handler = NULL;
 
 	for (ap = config->reject_list; ap && handler; ap = ap->next)
 		if (addr_eq(from, ap->addr)) {

@@ -8,7 +8,7 @@
 .Os
 .Sh NAME
 .Nm rpc_svc_create ,
-.Nm svc_control ,
+.\".Nm svc_control ,
 .Nm svc_create ,
 .Nm svc_destroy ,
 .Nm svc_dg_create ,
@@ -22,8 +22,8 @@
 .Lb libc
 .Sh SYNOPSIS
 .In rpc/rpc.h
-.Ft bool_t
-.Fn svc_control "SVCXPRT *svc" "const u_int req" "void *info"
+.\".Ft bool_t
+.\".Fn svc_control "SVCXPRT *svc" "const u_int req" "void *info"
 .Ft int
 .Fn svc_create "void (*dispatch)(struct svc_req *, SVCXPRT *)" "const rpcprog_t prognum" "const rpcvers_t versnum" "const char *nettype"
 .Ft SVCXPRT *
@@ -54,65 +54,65 @@ for the definition of the
 .Vt SVCXPRT
 data structure.
 .Bl -tag -width XXXXX
-.It Fn svc_control
-A function to change or retrieve various information
-about a service object.
-The
-.Fa req
-argument
-indicates the type of operation and
-.Fa info
-is a pointer to the information.
-The supported values of
-.Fa req ,
-their argument types, and what they do are:
-.Bl -tag -width SVCGET_XID
-.It Dv SVCGET_VERSQUIET
-If a request is received for a program number
-served by this server but the version number
-is outside the range registered with the server,
-an
-.Dv RPC_PROGVERSMISMATCH
-error will normally
-be returned.
-The
-.Fa info
-argument
-should be a pointer to an
-integer.
-Upon successful completion of the
-.Dv SVCGET_VERSQUIET
-request,
-.Fa *info
-contains an
-integer which describes the server's current
-behavior: 0 indicates normal server behavior
-(that is, an
-.Dv RPC_PROGVERSMISMATCH
-error
-will be returned); 1 indicates that the out of
-range request will be silently ignored.
-.It Dv SVCSET_VERSQUIET
-If a request is received for a program number
-served by this server but the version number
-is outside the range registered with the server,
-an
-.Dv RPC_PROGVERSMISMATCH
-error will normally
-be returned.
-It is sometimes desirable to
-change this behavior.
-The
-.Fa info
-argument
-should be a
-pointer to an integer which is either 0
-(indicating normal server behavior - an
-.Dv RPC_PROGVERSMISMATCH
-error will be returned),
-or 1 (indicating that the out of range request
-should be silently ignored).
-.El
+.\".It Fn svc_control
+.\"A function to change or retrieve various information
+.\"about a service object.
+.\"The
+.\".Fa req
+.\"argument
+.\"indicates the type of operation and
+.\".Fa info
+.\"is a pointer to the information.
+.\"The supported values of
+.\".Fa req ,
+.\"their argument types, and what they do are:
+.\".Bl -tag -width SVCGET_XID
+.\".It Dv SVCGET_VERSQUIET
+.\"If a request is received for a program number
+.\"served by this server but the version number
+.\"is outside the range registered with the server,
+.\"an
+.\".Dv RPC_PROGVERSMISMATCH
+.\"error will normally
+.\"be returned.
+.\"The
+.\".Fa info
+.\"argument
+.\"should be a pointer to an
+.\"integer.
+.\"Upon successful completion of the
+.\".Dv SVCGET_VERSQUIET
+.\"request,
+.\".Fa *info
+.\"contains an
+.\"integer which describes the server's current
+.\"behavior: 0 indicates normal server behavior
+.\"(that is, an
+.\".Dv RPC_PROGVERSMISMATCH
+.\"error
+.\"will be returned); 1 indicates that the out of
+.\"range request will be silently ignored.
+.\".It Dv SVCSET_VERSQUIET
+.\"If a request is received for a program number
+.\"served by this server but the version number
+.\"is outside the range registered with the server,
+.\"an
+.\".Dv RPC_PROGVERSMISMATCH
+.\"error will normally
+.\"be returned.
+.\"It is sometimes desirable to
+.\"change this behavior.
+.\"The
+.\".Fa info
+.\"argument
+.\"should be a
+.\"pointer to an integer which is either 0
+.\"(indicating normal server behavior - an
+.\".Dv RPC_PROGVERSMISMATCH
+.\"error will be returned),
+.\"or 1 (indicating that the out of range request
+.\"should be silently ignored).
+.\".El
 .It Fn svc_create
 The
 .Fn svc_create

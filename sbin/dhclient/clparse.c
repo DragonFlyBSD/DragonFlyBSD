@@ -1,5 +1,4 @@
-/*	$OpenBSD: clparse.c,v 1.34 2007/02/14 23:19:26 deraadt Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/clparse.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/clparse.c,v 1.38 2011/12/10 17:15:27 krw Exp $	*/
 
 /* Parser for dhclient config and lease files... */
 
@@ -54,7 +53,6 @@ int
 read_client_conf(void)
 {
 	FILE *cfile;
-	char *val;
 	int token;
 
 	new_parse(path_dhclient_conf);
@@ -86,12 +84,12 @@ read_client_conf(void)
 
 	if ((cfile = fopen(path_dhclient_conf, "r")) != NULL) {
 		do {
-			token = peek_token(&val, cfile);
+			token = peek_token(NULL, cfile);
 			if (token == EOF)
 				break;
 			parse_client_statement(cfile);
 		} while (1);
-		token = next_token(&val, cfile); /* Clear the peek buffer */
+		token = next_token(NULL, cfile); /* Clear the peek buffer */
 		fclose(cfile);
 	}
 
@@ -107,7 +105,6 @@ void
 read_client_leases(void)
 {
 	FILE	*cfile;
-	char	*val;
 	int	 token;
 
 	new_parse(path_dhclient_db);
@@ -117,7 +114,7 @@ read_client_leases(void)
 	if ((cfile = fopen(path_dhclient_db, "r")) == NULL)
 		return;
 	do {
-		token = next_token(&val, cfile);
+		token = next_token(NULL, cfile);
 		if (token == EOF)
 			break;
 		if (token != TOK_LEASE) {
@@ -157,10 +154,9 @@ read_client_leases(void)
 void
 parse_client_statement(FILE *cfile)
 {
-	char *val;
 	int token, code;
 
-	switch (next_token(&val, cfile)) {
+	switch (next_token(NULL, cfile)) {
 	case TOK_SEND:
 		parse_option_decl(cfile, &config->send_options[0]);
 		return;
@@ -185,7 +181,7 @@ parse_client_statement(FILE *cfile)
 			config->default_actions[code] = ACTION_PREPEND;
 		return;
 	case TOK_MEDIA:
-		parse_string_list(cfile, &config->media, 1);
+		skip_to_semi(cfile);
 		return;
 	case TOK_HARDWARE:
 		parse_hardware_param(cfile, &ifi->hw_address);
@@ -230,7 +226,7 @@ parse_client_statement(FILE *cfile)
 		parse_client_lease_statement(cfile, 1);
 		return;
 	case TOK_ALIAS:
-		parse_client_lease_statement(cfile, 2);
+		skip_to_semi(cfile);
 		return;
 	case TOK_REJECT:
 		parse_reject_statement(cfile);
@@ -240,7 +236,7 @@ parse_client_statement(FILE *cfile)
 		skip_to_semi(cfile);
 		break;
 	}
-	token = next_token(&val, cfile);
+	token = next_token(NULL, cfile);
 	if (token != ';') {
 		parse_warn("semicolon expected.");
 		skip_to_semi(cfile);
@@ -392,9 +388,8 @@ parse_client_lease_statement(FILE *cfile, int is_static)
 {
 	struct client_lease	*lease, *lp, *pl;
 	int			 token;
-	char			*val;
 
-	token = next_token(&val, cfile);
+	token = next_token(NULL, cfile);
 	if (token != '{') {
 		parse_warn("expecting left brace.");
 		skip_to_semi(cfile);
@@ -408,7 +403,7 @@ parse_client_lease_statement(FILE *cfile, int is_static)
 	lease->is_static = is_static;
 
 	do {
-		token = peek_token(&val, cfile);
+		token = peek_token(NULL, cfile);
 		if (token == EOF) {
 			parse_warn("unterminated lease declaration.");
 			return;
@@ -417,19 +412,13 @@ parse_client_lease_statement(FILE *cfile, int is_static)
 			break;
 		parse_client_lease_declaration(cfile, lease);
 	} while (1);
-	token = next_token(&val, cfile);
+	token = next_token(NULL, cfile);
 
 	/* If the lease declaration didn't include an interface
 	 * declaration that we recognized, it's of no use to us.
 	 */
 	if (!ifi) {
 		free_client_lease(lease);
-		return;
-	}
-
-	/* If this is an alias lease, it doesn't need to be sorted in. */
-	if (is_static == 2) {
-		client->alias = lease;
 		return;
 	}
 
@@ -441,16 +430,15 @@ parse_client_lease_statement(FILE *cfile, int is_static)
 	 */
 	pl = NULL;
 	for (lp = client->leases; lp; lp = lp->next) {
-		if (lp->address.len == lease->address.len &&
-		    !memcmp(lp->address.iabuf, lease->address.iabuf,
-		    lease->address.len)) {
+		if (addr_eq(lp->address, lease->address)) {
 			if (pl)
 				pl->next = lp->next;
 			else
 				client->leases = lp->next;
 			free_client_lease(lp);
 			break;
-		}
+		} else
+			pl = lp;
 	}
 
 	/*
@@ -480,10 +468,7 @@ parse_client_lease_statement(FILE *cfile, int is_static)
 	if (client->active) {
 		if (client->active->expiry < cur_time)
 			free_client_lease(client->active);
-		else if (client->active->address.len ==
-		    lease->address.len &&
-		    !memcmp(client->active->address.iabuf,
-		    lease->address.iabuf, lease->address.len))
+		else if (addr_eq(client->active->address, lease->address))
 			free_client_lease(client->active);
 		else {
 			client->active->next = client->leases;
@@ -536,7 +521,7 @@ parse_client_lease_declaration(FILE *cfile, struct client_lease *lease)
 			return;
 		break;
 	case TOK_MEDIUM:
-		parse_string_list(cfile, &lease->medium, 0);
+		skip_to_semi(cfile);
 		return;
 	case TOK_FILENAME:
 		lease->filename = parse_string(cfile);
@@ -725,55 +710,10 @@ bad_flag:
 }
 
 void
-parse_string_list(FILE *cfile, struct string_list **lp, int multiple)
-{
-	int			 token;
-	char			*val;
-	struct string_list	*cur, *tmp;
-
-	/* Find the last medium in the media list. */
-	if (*lp)
-		for (cur = *lp; cur->next; cur = cur->next)
-			;	/* nothing */
-	else
-		cur = NULL;
-
-	do {
-		token = next_token(&val, cfile);
-		if (token != TOK_STRING) {
-			parse_warn("Expecting media options.");
-			skip_to_semi(cfile);
-			return;
-		}
-
-		tmp = malloc(sizeof(struct string_list) + strlen(val));
-		if (tmp == NULL)
-			error("no memory for string list entry.");
-		strlcpy(tmp->string, val, strlen(val) + 1);
-		tmp->next = NULL;
-
-		/* Store this medium at the end of the media list. */
-		if (cur)
-			cur->next = tmp;
-		else
-			*lp = tmp;
-		cur = tmp;
-
-		token = next_token(&val, cfile);
-	} while (multiple && token == ',');
-
-	if (token != ';') {
-		parse_warn("expecting semicolon.");
-		skip_to_semi(cfile);
-	}
-}
-
-void
 parse_reject_statement(FILE *cfile)
 {
 	struct iaddrlist *list;
 	struct iaddr addr;
-	char *val;
 	int token;
 
 	do {
@@ -791,7 +731,7 @@ parse_reject_statement(FILE *cfile)
 		list->next = config->reject_list;
 		config->reject_list = list;
 
-		token = next_token(&val, cfile);
+		token = next_token(NULL, cfile);
 	} while (token == ',');
 
 	if (token != ';') {

@@ -1,5 +1,4 @@
-/*	$OpenBSD: errwarn.c,v 1.15 2007/03/02 11:31:17 henning Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/errwarn.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/errwarn.c,v 1.17 2009/11/26 23:14:29 krw Exp $	*/
 
 /* Errors and warnings... */
 
@@ -80,9 +79,7 @@ error(char *fmt, ...)
 		write(STDERR_FILENO, "\n", 1);
 	}
 
-	syslog(LOG_CRIT, "exiting.");
 	if (log_perror) {
-		fprintf(stderr, "exiting.\n");
 		fflush(stderr);
 	}
 	exit(1);
@@ -140,6 +137,7 @@ note(char *fmt, ...)
 	return (0);
 }
 
+#ifdef DEBUG
 /*
  * Log a debug message...
  */
@@ -154,9 +152,7 @@ debug(char *fmt, ...)
 	vsnprintf(mbuf, sizeof(mbuf), fbuf, list);
 	va_end(list);
 
-#ifndef DEBUG
 	syslog(LOG_DEBUG, "%s", mbuf);
-#endif
 
 	if (log_perror) {
 		write(STDERR_FILENO, mbuf, strlen(mbuf));
@@ -165,7 +161,7 @@ debug(char *fmt, ...)
 
 	return (0);
 }
-
+#endif
 /*
  * Find %m in the input string and substitute an error message string.
  */

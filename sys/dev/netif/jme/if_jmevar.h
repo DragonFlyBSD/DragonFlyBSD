@@ -115,6 +115,7 @@
 #define	JME_RX_FIFO_SIZE	4000
 
 #define	JME_DESC_INC(x, y)	((x) = ((x) + 1) % (y))
+#define JME_DESC_ADD(x, d, y)	((x) = ((x) + (d)) % (y))
 
 struct jme_txdesc {
 	struct mbuf		*tx_m;
@@ -161,7 +162,7 @@ struct jme_rxdata {
 	struct mbuf		*jme_rxtail;
 
 	u_long			jme_rx_pkt;
-};
+} __cachealign;
 
 struct jme_chain_data {
 	/*
@@ -198,7 +199,7 @@ struct jme_chain_data {
 
 	int			jme_rx_ring_cnt;
 	struct jme_rxdata	jme_rx_data[JME_NRXRING_MAX];
-};
+} __cachealign;
 
 struct jme_msix_data {
 	int			jme_msix_rid;
@@ -260,11 +261,8 @@ struct jme_softc {
 #define JME_WA_EXTFIFO		0x0001
 #define JME_WA_HDX		0x0002
 
-	uint32_t		jme_flags;
-#define	JME_FLAG_MSI		0x0001
-#define	JME_FLAG_MSIX		0x0002
-#define	JME_FLAG_DETACH		0x0004
-#define	JME_FLAG_LINK		0x0008
+	boolean_t		jme_has_link;
+	boolean_t		jme_in_tick;
 
 	struct lwkt_serialize	jme_serialize;
 	struct lwkt_serialize	*jme_serialize_arr[JME_NSERIALIZE];

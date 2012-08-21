@@ -1,5 +1,4 @@
-/*	$OpenBSD: dhcpd.h,v 1.66 2008/05/09 05:19:14 reyk Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/dhcpd.h,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhcpd.h,v 1.76 2012/07/09 16:21:21 krw Exp $	*/
 
 /*
  * Copyright (c) 2004 Henning Brauer <henning@openbsd.org>
@@ -52,6 +51,7 @@
 #include <net/if_dl.h>
 #include <net/route.h>
 #include <netinet/in.h>
+#include <netinet/if_ether.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -109,7 +109,6 @@ struct client_lease {
 	struct iaddr		 address;
 	char			*server_name;
 	char			*filename;
-	struct string_list	*medium;
 	unsigned int		 is_static : 1;
 	unsigned int		 is_bootp : 1;
 	struct option_data	 options[256];
@@ -146,11 +145,9 @@ struct client_config {
 	time_t			 select_interval;
 	time_t			 reboot_timeout;
 	time_t			 backoff_cutoff;
-	struct string_list	*media;
 	char			*script_name;
 	enum { IGNORE, ACCEPT, PREFER }
 				 bootp_policy;
-	struct string_list	*medium;
 	struct iaddrlist	*reject_list;
 };
 
@@ -159,14 +156,12 @@ struct client_state {
 	struct client_lease	 *new;
 	struct client_lease	 *offered_leases;
 	struct client_lease	 *leases;
-	struct client_lease	 *alias;
 	enum dhcp_state		  state;
 	struct iaddr		  destination;
 	u_int32_t		  xid;
 	u_int16_t		  secs;
 	time_t			  first_sending;
 	time_t			  interval;
-	struct string_list	 *medium;
 	struct dhcp_packet	  packet;
 	int			  packet_length;
 	struct iaddr		  requested_address;
@@ -210,7 +205,7 @@ extern struct client_state *client;
 extern struct client_config *config;
 
 /* options.c */
-int cons_options(unsigned char *, const int, struct option_data *);
+int cons_options(struct option_data *);
 char *pretty_print_option(unsigned int, unsigned char *, int, int, int);
 void do_packet(int, unsigned int, struct iaddr, struct hardware *);
 
@@ -219,7 +214,9 @@ extern int warnings_occurred;
 void error(char *, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
 int warning(char *, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
 int note(char *, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
+#ifdef DEBUG
 int debug(char *, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
+#endif
 int parse_warn(char *, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
 
 /* conflex.c */
@@ -252,12 +249,10 @@ void discover_interface(void);
 void reinitialize_interface(void);
 void dispatch(void);
 void got_one(void);
-void add_timeout(time_t, void (*)(void));
-void cancel_timeout(void (*)(void));
+void set_timeout(time_t, void (*)(void));
+void cancel_timeout(void);
 int interface_status(char *);
-int interface_link_status(char *);
 int interface_link_forceup(char *);
-void interface_link_forcedown(char *);
 
 /* tables.c */
 extern const struct option dhcp_options[256];
@@ -307,13 +302,13 @@ void make_decline(struct client_lease *);
 
 void free_client_lease(struct client_lease *);
 void rewrite_client_leases(void);
-void write_client_lease(struct client_lease *, int);
+void write_client_lease(struct client_lease *);
 
-void	 priv_script_init(char *, char *);
+void	 priv_script_init(char *);
 void	 priv_script_write_params(char *, struct client_lease *);
 int	 priv_script_go(void);
 
-void script_init(char *, struct string_list *);
+void script_init(char *);
 void script_write_params(char *, struct client_lease *);
 int script_go(void);
 void script_set_env(const char *, const char *, const char *);

@@ -149,7 +149,6 @@ MLINKS+=	bindresvport.3 bindresvport_sa.3 \
 		rpc_svc_calls.3 svc_pollset.3 \
 		rpc_svc_calls.3 svc_run.3 \
 		rpc_svc_calls.3 svc_sendreply.3 \
-		rpc_svc_create.3 svc_control.3 \
 		rpc_svc_create.3 svc_create.3 \
 		rpc_svc_create.3 svc_destroy.3 \
 		rpc_svc_create.3 svc_dg_create.3 \
@@ -177,4 +176,5 @@ MLINKS+=	bindresvport.3 bindresvport_sa.3 \
 		rpcbind.3 rpcb_rmtcall.3 \
 		rpcbind.3 rpcb_set.3 \
 		rpcbind.3 rpcb_unset.3
+#		rpc_svc_create.3 svc_control.3 \
 .endif
