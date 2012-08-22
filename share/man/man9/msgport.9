@@ -100,8 +100,9 @@
 .Ft void
 .Fn lwkt_dropmsg "lwkt_msg_t msg"
 .Sh DESCRIPTION
-Light weight kernel threads in DragonFly may use a message passing interface to
-communicate with each other.
+Light weight kernel threads in
+.Dx
+may use a message passing interface to communicate with each other.
 Messages are sent to message ports.
 All light weight kernel threads have a built-in message port, but you may create
 additional ports if necessary.
@@ -298,8 +299,8 @@ function initializes a
 .Fa port
 which will panic the system if any of its handlers are called.
 This function is sometimes used to initialize a reply-only port which does not
-expect the messages to be replied to, e.g. when the messages should be consumed
-by the receiving thread and never replied back.
+expect the messages to be replied to, e.g.\& when the messages should be
+consumed by the receiving thread and never replied back.
 .Sh INTERNAL MESSAGE FUNCTIONS
 The following functions are used only by the infrastructure, you should not
 need to use them directly unless in very rare cases.
@@ -540,7 +541,7 @@ mod_load(void)
 .Ed
 .Sh NOTES
 All the default putport handlers (used when a message is sent) currently
-implement asynchronous putports only, i.e.  all *_putport() handlers return
+implement asynchronous putports only, i.e.\& all *_putport() handlers return
 .Er EASYNC .
 You can still have synchronous putport handlers (which are run in the sender's
 context) but you have to implement the function yourself and then override the
@@ -553,7 +554,7 @@ initializer, or by manipulating the mp_putport handler pointer directly on the
 lwkt_port structure.
 .Pp
 There is one such case where the putport handler is overridden in
-.Pa sys/kern/netisr.c.
+.Pa sys/kern/netisr.c .
 In that case, the putport handler is overridden to detect a loopback message
 (when the target port belongs to the sending thread).
 This special putport handler turns the sent message into a direct function call
@@ -561,9 +562,11 @@ instead of queueing it to the port.
 .Pp
 The
 .Fn lwkt_replymsg
-function works differently depending on the original message request.  If the
+function works differently depending on the original message request.
+If the
 message was originally an asynchronous request, the reply will be queued to the
-sender's reply port. If the message was originally a synchronous request, then
+sender's reply port.
+If the message was originally a synchronous request, then
 this function will just write the error response on the message and wake up the
 waiter without queueing the message to the reply port.
 There is no need to queue in the synchronous request case because the original
