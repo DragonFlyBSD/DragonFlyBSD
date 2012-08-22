@@ -705,7 +705,6 @@ linprocfs_dopidmax(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 
 	ksnprintf(buf, sizeof(buf), "%d", PID_MAX);
 	return(uiomove_frombuf(buf, strlen(buf)+1, uio));
-	return 0;
 }
 
 int
@@ -754,7 +753,8 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		 * if they happen to be the same).
 		 */
 		obj = entry->object.vm_object;
-                vm_object_hold(obj);
+		if (obj)
+			vm_object_hold(obj);
 
                 lobj = obj;
                 while (lobj && (tobj = lobj->backing_object) != NULL) {
@@ -798,7 +798,8 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 
 		if (lobj != obj)
 			vm_object_drop(lobj);
-		vm_object_drop(obj);
+		if (obj)
+			vm_object_drop(obj);
 
 		/*
 		 * We cannot safely hold the map locked while accessing

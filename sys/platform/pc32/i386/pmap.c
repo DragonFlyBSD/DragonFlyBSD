@@ -203,8 +203,8 @@ static void pmap_remove_page (struct pmap *pmap,
 static int pmap_remove_entry (struct pmap *pmap, vm_page_t m,
 				vm_offset_t va, pmap_inval_info_t info);
 static boolean_t pmap_testbit (vm_page_t m, int bit);
-static void pmap_insert_entry (pmap_t pmap, vm_offset_t va,
-		vm_page_t mpte, vm_page_t m);
+static void pmap_insert_entry (pmap_t pmap, pv_entry_t pv,
+				vm_offset_t va, vm_page_t mpte, vm_page_t m);
 
 static vm_page_t pmap_allocpte (pmap_t pmap, vm_offset_t va);
 
@@ -1647,23 +1647,35 @@ pmap_reference(pmap_t pmap)
 static PMAP_INLINE void
 free_pv_entry(pv_entry_t pv)
 {
+	struct mdglobaldata *gd;
+
 #ifdef PMAP_DEBUG
 	KKASSERT(pv->pv_m != NULL);
 	pv->pv_m = NULL;
 #endif
+	gd = mdcpu;
 	pv_entry_count--;
-	zfree(pvzone, pv);
+	if (gd->gd_freepv == NULL)
+		gd->gd_freepv = pv;
+	else
+		zfree(pvzone, pv);
 }
 
 /*
  * get a new pv_entry, allocating a block from the system
- * when needed.  This function may be called from an interrupt.
+ * when needed.  This function may be called from an interrupt thread.
+ *
+ * THIS FUNCTION CAN BLOCK ON THE ZALLOC TOKEN, serialization of other
+ * tokens (aka vm_token) to be temporarily lost.
  *
  * The caller must hold vm_token.
  */
 static pv_entry_t
 get_pv_entry(void)
 {
+	struct mdglobaldata *gd;
+	pv_entry_t pv;
+
 	pv_entry_count++;
 	if (pv_entry_high_water &&
 	    (pv_entry_count > pv_entry_high_water) &&
@@ -1671,7 +1683,12 @@ get_pv_entry(void)
 		pmap_pagedaemon_waken = 1;
 		wakeup (&vm_pages_needed);
 	}
-	return zalloc(pvzone);
+	gd = mdcpu;
+	if ((pv = gd->gd_freepv) != NULL)
+		gd->gd_freepv = NULL;
+	else
+		pv = zalloc(pvzone);
+	return pv;
 }
 
 /*
@@ -1769,11 +1786,9 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
  * The caller must hold vm_token.
  */
 static void
-pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
+pmap_insert_entry(pmap_t pmap, pv_entry_t pv, vm_offset_t va,
+		  vm_page_t mpte, vm_page_t m)
 {
-	pv_entry_t pv;
-
-	pv = get_pv_entry();
 #ifdef PMAP_DEBUG
 	KKASSERT(pv->pv_m == NULL);
 	pv->pv_m = m;
@@ -2026,6 +2041,7 @@ pmap_remove_all(vm_page_t m)
 #ifdef PMAP_DEBUG
 		KKASSERT(pv->pv_m == m);
 #endif
+		KKASSERT(pv == TAILQ_FIRST(&m->md.pv_list));
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
 		++pv->pv_pmap->pm_generation;
@@ -2161,6 +2177,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	vm_offset_t origpte, newpte;
 	vm_page_t mpte;
 	pmap_inval_info info;
+	pv_entry_t pv;
 
 	if (pmap == NULL)
 		return;
@@ -2185,6 +2202,16 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 
 	vm_object_hold(pmap->pm_pteobj);
 	lwkt_gettoken(&vm_token);
+
+	/*
+	 * This can block, get it before we do anything important.
+	 */
+	if (pmap_initialized &&
+	    (m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
+		pv = get_pv_entry();
+	} else {
+		pv = NULL;
+	}
 
 	/*
 	 * In the case that a page table page is not
@@ -2238,17 +2265,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 #endif
 
 		/*
-		 * Remove the extra pte reference.  Note that we cannot
-		 * optimize the RO->RW case because we have adjusted the
-		 * wiring count above and may need to adjust the wiring
-		 * bits below.
-		 */
-		if (mpte) {
-			if (vm_page_unwire_quick(mpte))
-				panic("pmap_enter: Insufficient wire_count");
-		}
-
-		/*
 		 * We might be turning off write access to the page,
 		 * so we go ahead and sense modify status.
 		 */
@@ -2299,7 +2315,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 */
 	if (pmap_initialized && 
 	    (m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
-		pmap_insert_entry(pmap, va, mpte, m);
+		pmap_insert_entry(pmap, pv, va, mpte, m);
+		pv = NULL;
 		ptbase_assert(pmap);
 		pa |= PG_MANAGED;
 		vm_page_flag_set(m, PG_MAPPED);
@@ -2328,8 +2345,10 @@ validate:
 		newpte |= pgeflag;
 
 	/*
-	 * if the mapping or permission bits are different, we need
-	 * to update the pte.
+	 * If the mapping or permission bits are different, we need
+	 * to update the pte.  If the pte is already present we have
+	 * to get rid of the extra wire-count on mpte we had obtained
+	 * above.
 	 */
 	if ((origpte & ~(PG_M|PG_A)) != newpte) {
 		if (prot & VM_PROT_NOSYNC)
@@ -2337,8 +2356,13 @@ validate:
 		else
 			pmap_inval_interlock(&info, pmap, va);
 		ptbase_assert(pmap);
-		KKASSERT(*pte == 0 ||
-			 (*pte & PG_FRAME) == (newpte & PG_FRAME));
+
+		if (*pte) {
+			KKASSERT((*pte & PG_FRAME) == (newpte & PG_FRAME));
+			if (vm_page_unwire_quick(mpte))
+				panic("pmap_enter: Insufficient wire_count");
+		}
+
 		*pte = newpte | PG_A;
 		if ((prot & VM_PROT_NOSYNC) == 0)
 			pmap_inval_deinterlock(&info, pmap);
@@ -2348,6 +2372,8 @@ validate:
 	KKASSERT((newpte & PG_MANAGED) == 0 || (m->flags & PG_MAPPED));
 	if ((prot & VM_PROT_NOSYNC) == 0)
 		pmap_inval_done(&info);
+	if (pv)
+		free_pv_entry(pv);
 	lwkt_reltoken(&vm_token);
 	vm_object_drop(pmap->pm_pteobj);
 }
@@ -2370,9 +2396,21 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	unsigned ptepindex;
 	vm_offset_t ptepa;
 	pmap_inval_info info;
+	pv_entry_t pv;
 
 	vm_object_hold(pmap->pm_pteobj);
 	lwkt_gettoken(&vm_token);
+
+	/*
+	 * This can block, get it before we do anything important.
+	 */
+	if (pmap_initialized &&
+	    (m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
+		pv = get_pv_entry();
+	} else {
+		pv = NULL;
+	}
+
 	pmap_inval_init(&info);
 
 	if (va < UPT_MAX_ADDRESS && pmap == &kernel_pmap) {
@@ -2414,13 +2452,14 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 				if (pmap->pm_ptphint &&
 				    (pmap->pm_ptphint->pindex == ptepindex)) {
 					mpte = pmap->pm_ptphint;
+					vm_page_wire_quick(mpte);
 				} else {
-					mpte = pmap_page_lookup(pmap->pm_pteobj, ptepindex);
+					mpte = pmap_page_lookup(pmap->pm_pteobj,
+								ptepindex);
 					pmap->pm_ptphint = mpte;
+					vm_page_wire_quick(mpte);
 					vm_page_wakeup(mpte);
 				}
-				if (mpte)
-					vm_page_wire_quick(mpte);
 			} else {
 				mpte = _pmap_allocpte(pmap, ptepindex);
 			}
@@ -2444,14 +2483,18 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 		pmap_inval_done(&info);
 		lwkt_reltoken(&vm_token);
 		vm_object_drop(pmap->pm_pteobj);
+		if (pv)
+			free_pv_entry(pv);
 		return;
 	}
 
 	/*
 	 * Enter on the PV list if part of our managed memory
 	 */
-	if ((m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
-		pmap_insert_entry(pmap, va, mpte, m);
+	if (pmap_initialized &&
+	    (m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
+		pmap_insert_entry(pmap, pv, va, mpte, m);
+		pv = NULL;
 		vm_page_flag_set(m, PG_MAPPED);
 	}
 
@@ -2471,6 +2514,8 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 		*pte = pa | PG_V | PG_U | PG_MANAGED;
 /*	pmap_inval_add(&info, pmap, va); shouldn't be needed inval->valid */
 	pmap_inval_done(&info);
+	if (pv)
+		free_pv_entry(pv);
 	lwkt_reltoken(&vm_token);
 	vm_object_drop(pmap->pm_pteobj);
 }

@@ -74,6 +74,24 @@ int	cpu_send_ipiq_passive	(int);
 /* global data in init_smp.c */
 extern cpumask_t		smp_active_mask;
 
+/* Detect CPU topology bits */
+void detect_cpu_topology(void);
+
+/* Interface functions for IDs calculation */
+int get_chip_ID(int cpuid);
+int get_core_number_within_chip(int cpuid);
+int get_logical_CPU_number_within_core(int cpuid);
+
+#include <machine_base/apic/lapic.h>
+static __inline
+int get_apicid_from_cpuid(int cpuid) {
+	return CPUID_TO_APICID(cpuid);
+}
+static __inline
+int get_cpuid_from_apicid(int cpuid) {
+	return APICID_TO_CPUID(cpuid);
+}
+
 #endif /* !LOCORE */
 #else	/* !SMP */
 

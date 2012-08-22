@@ -51,6 +51,8 @@ void	bootMP			(void);
 /* global data in apic_vector.s */
 extern volatile cpumask_t	stopped_cpus;
 extern int			optcpus;	/* from main() */
+extern int			vkernel_b_arg;	/* arg from main() */
+extern int			vkernel_B_arg;	/* arg from main() */
 
 #if 0
 extern volatile cpumask_t	started_cpus;
@@ -164,6 +166,18 @@ int	cpu_send_ipiq_passive	(int);
 
 /* global data in init_smp.c */
 extern cpumask_t		smp_active_mask;
+
+/* Detect CPU topology bits */
+void detect_cpu_topology(void);
+
+/* Interface functions for IDs calculation */
+int get_chip_ID(int cpuid);
+int get_core_number_within_chip(int cpuid);
+int get_logical_CPU_number_within_core(int cpuid);
+
+/* Assume that APICID = CPUID for virtual processors */
+#define get_cpuid_from_apicid(cpuid) cpuid
+#define get_apicid_from_cpuid(cpuid) cpuid
 
 #endif /* !LOCORE */
 #else	/* !SMP */

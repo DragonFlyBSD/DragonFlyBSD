@@ -60,6 +60,8 @@
  * Note: the embedded globaldata and/or the mdglobaldata structure
  * may exceed the size of a page.
  */
+struct pv_entry;
+
 struct mdglobaldata {
 	struct globaldata mi;
 	struct segment_descriptor gd_common_tssd;
@@ -74,7 +76,7 @@ struct mdglobaldata {
 	int		gd_sdelayed;	/* delayed software ints */
 	int		gd_currentldt;
 	int		gd_private_tss;
-	u_int		unused002;
+	struct pv_entry	*gd_freepv;
 	u_int		unused003;
 	u_int		gd_ss_eflags;
 	pt_entry_t	*gd_CMAP1;

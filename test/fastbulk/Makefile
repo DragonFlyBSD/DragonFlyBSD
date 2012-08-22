@@ -10,6 +10,7 @@ SYSPKGSRC=/usr/pkgsrc
 SYSROOT=/
 CHROOTENV=chroot ${BUILDROOT} /bin/sh -c
 NPARALLEL?= 8
+# -DNOTMPFS
 
 all:
 	@echo "fastbulk build options"
@@ -30,6 +31,9 @@ all:
 	@echo "NOTE: ${BUILDBASE}/{distfiles,packages} are normally retained"
 	@echo "      to avoid having to re-pull and for incremental operation"
 	@echo ""
+	@echo "NOTE: When building with 'make build' the current progress"
+	@echo "      is in ${BUILDROOT}/tmp/logs/{run,good,bad}, each build"
+	@echo "      has its own log file named after the pkgsrc path"
 
 scratch: cleanup
 	rm -rf ${BUILDBASE}/var.db
@@ -64,6 +68,7 @@ setup: cleanup
 	mkdir -p ${BUILDBASE}/tmp/logs/bad
 	mkdir -p ${BUILDBASE}/etc
 	mkdir -p ${BUILDBASE}/usr.pkg
+	mkdir -p ${BUILDBASE}/usr.pkgsrc
 	mkdir -p ${BUILDBASE}/usr.obj
 	mkdir -p ${BUILDBASE}/var.db
 	mkdir -p ${BUILDBASE}/var.db/pkg
@@ -80,17 +85,28 @@ setup: cleanup
 	mount_null ${BUILDBASE}/track ${BUILDROOT}/tmp/track
 	mount_null ${BUILDBASE}/etc ${BUILDROOT}/etc
 	mount_null ${BUILDBASE}/usr.pkg ${BUILDROOT}/usr/pkg
+	mount_null ${BUILDBASE}/usr.pkgsrc ${BUILDROOT}/usr/pkgsrc
+.if defined(NOTMPFS)
 	mount_null ${BUILDBASE}/usr.obj ${BUILDROOT}/usr/obj
+.else
+	mount_tmpfs dummy ${BUILDROOT}/usr/obj
+.endif
 	mount_null ${BUILDBASE}/var.db ${BUILDROOT}/var/db
 	mount_null ${BUILDBASE}/var.db.pkg ${BUILDROOT}/var/db/pkg
 	mount_null ${BUILDBASE}/var.db.pkg.refcount \
 			${BUILDROOT}/var/db/pkg.refcount
 	mount_null ${SYSROOT}/dev ${BUILDROOT}/dev
-	mount_null ${SYSPKGSRC} ${BUILDROOT}/usr/pkgsrc
+	cpdup -s0 -i0 -X ${.CURDIR}/pkgsrc.ign \
+			${SYSPKGSRC} ${BUILDROOT}/usr/pkgsrc
+	find ${BUILDROOT}/usr/pkgsrc -name work | xargs rm -rf
+	mkdir -p ${BUILDROOT}/usr/pkgsrc/packages
+	mkdir -p ${BUILDROOT}/usr/pkgsrc/distfiles
 	mount_null ${BUILDBASE}/packages ${BUILDROOT}/usr/pkgsrc/packages
 	mount_null ${BUILDBASE}/distfiles ${BUILDROOT}/usr/pkgsrc/distfiles
+	echo "finding and removing work directories"
 
 cleanup:
+	-resident -d ${BUILDROOT}/usr/pkg/bin/bmake
 	-umount ${BUILDROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
 	-umount ${BUILDROOT}/usr/pkgsrc/packages > /dev/null 2>&1
 	-umount ${BUILDROOT}/usr/pkgsrc > /dev/null 2>&1
@@ -115,6 +131,7 @@ realclean: cleanup
 	rm -rf ${BUILDBASE}/tmp
 	rm -rf ${BUILDBASE}/track
 	rm -rf ${BUILDBASE}/usr.pkg
+	rm -rf ${BUILDBASE}/usr.pkgsrc
 	rm -rf ${BUILDBASE}/usr.obj
 	rm -rf ${BUILDBASE}/var.db.pkg
 	rm -rf ${BUILDBASE}/var.db.pkg.refcount
@@ -124,6 +141,8 @@ realclean: cleanup
 bootstrap:
 	rm -rf ${BUILDBASE}/usr.obj/work
 	${CHROOTENV} "cd /usr/pkgsrc/bootstrap; ./bootstrap --workdir=/usr/obj/work"
+	resident ${BUILDROOT}/usr/pkg/bin/bmake
+	cat mk.conf.add >> ${BUILDROOT}/usr/pkg/etc/mk.conf
 
 # Figure out what has changed and deinstall the related packages
 #
@@ -154,6 +173,11 @@ changes: ${PRESTAGE}
 build: ${PRESTAGE}
 	rm -rf ${BUILDBASE}/usr.obj/work
 	mkdir -p ${BUILDBASE}/usr.obj/work
+	-rm ${BUILDROOT}/tmp/logs/run/*
+	find ${BUILDROOT}/var/db/pkg -name '*.core' -delete
+	find ${BUILDROOT}/var/db/pkg -type d -depth 1 -delete
+	#${CHROOTENV} "pkg_admin -K /var/db/pkg fetch-pkg-vulnerabilities"
+	#${CHROOTENV} "pkg_admin rebuild"
 	${CHROOTENV} "cd /tmp/track; ./fastbulk -j ${NPARALLEL} /usr/pkgsrc"
 
 ${BUILDBASE}/bin/getpkgsrcdir: getpkgsrcdir.c

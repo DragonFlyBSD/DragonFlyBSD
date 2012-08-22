@@ -186,12 +186,35 @@
 #define	CPUID_BRAND_INDEX	0x000000ff
 #define	CPUID_CLFUSH_SIZE	0x0000ff00
 #define	CPUID_HTT_CORES		0x00ff0000
+#define	CPUID_HTT_CORE_SHIFT	16
 #define	CPUID_LOCAL_APIC_ID	0xff000000
 
 /*
  * AMD extended function 8000_0008h ecx info
  */
 #define	AMDID_CMP_CORES		0x000000ff
+#define	AMDID_COREID_SIZE	0x0000f000
+#define	AMDID_COREID_SIZE_SHIFT	12
+
+/*
+ * INTEL Deterministic Cache Parameters
+ * (Function 04h)
+ */
+#define	FUNC_4_MAX_CORE_NO(eax)	((((eax) >> 26) & 0x3f))
+
+/*
+ * INTEL x2APIC Features / Processor topology
+ * (Function 0Bh) 
+ */
+#define	FUNC_B_THREAD_LEVEL	0
+
+#define	FUNC_B_INVALID_TYPE	0
+#define	FUNC_B_THREAD_TYPE	1
+#define	FUNC_B_CORE_TYPE	2
+
+#define	FUNC_B_TYPE(ecx)	(((ecx) >> 8) & 0xff)
+#define	FUNC_B_BITS_SHIFT_NEXT_LEVEL(eax)	((eax) & 0x1f)
+#define	FUNC_B_LEVEL_MAX_SIBLINGS(ebx)	((ebx) & 0xffff)
 
 /*
  * CPUID manufacturers identifiers

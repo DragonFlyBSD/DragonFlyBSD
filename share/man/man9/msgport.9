@@ -1,0 +1,601 @@
+.\"
+.\" Copyright (c) 2012 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Nuno Antunes <nuno.antunes@gmail.com>.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd August 12, 2012
+.Dt MSGPORT 9
+.Os
+.Sh NAME
+.Nm lwkt_initport_thread ,
+.Nm lwkt_initport_spin ,
+.Nm lwkt_initport_serialize ,
+.Nm lwkt_initport_panic ,
+.Nm lwkt_initport_replyonly_null ,
+.Nm lwkt_initport_replyonly ,
+.Nm lwkt_initport_putonly ,
+.Nm lwkt_sendmsg ,
+.Nm lwkt_domsg ,
+.Nm lwkt_forwardmsg ,
+.Nm lwkt_abortmsg ,
+.Nm lwkt_initmsg ,
+.Nm lwkt_initmsg_abortable ,
+.Nm lwkt_beginmsg ,
+.Nm lwkt_replymsg ,
+.Nm lwkt_getport ,
+.Nm lwkt_waitport ,
+.Nm lwkt_waitmsg ,
+.Nm lwkt_checkmsg ,
+.Nm lwkt_dropmsg
+.Nd LWKT message passing interface
+.Sh SYNOPSIS
+.In sys/msgport.h
+.Ft void
+.Fn lwkt_initport_thread "lwkt_port_t port" "struct thread *td"
+.Ft void
+.Fn lwkt_initport_spin "lwkt_port_t port"
+.Ft void
+.Fn lwkt_initport_serialize "lwkt_port_t port" "struct lwkt_serialize *slz"
+.Ft void
+.Fn lwkt_initport_panic "lwkt_port_t port"
+.Ft void
+.Fn lwkt_initport_replyonly_null "lwkt_port_t port"
+.Ft void
+.Fn lwkt_initport_replyonly "lwkt_port_t port" "void (*rportfn)(lwkt_port_t, lwkt_msg_t)"
+.Ft void
+.Fn lwkt_initport_putonly "lwkt_port_t port" "int (*pportfn)(lwkt_port_t, lwkt_msg_t)"
+.Ft void
+.Fn lwkt_sendmsg "lwkt_port_t port" "lwkt_msg_t msg"
+.Ft int
+.Fn lwkt_domsg "lwkt_port_t port" "lwkt_msg_t msg" "int flags"
+.Ft int
+.Fn lwkt_forwardmsg "lwkt_port_t port" "lwkt_msg_t msg"
+.Ft void
+.Fn lwkt_abortmsg "lwkt_msg_t msg"
+.In sys/msgport2.h
+.Ft void
+.Fn lwkt_initmsg "lwkt_msg_t msg" "lwkt_port_t rport" "int flags"
+.Ft void
+.Fn lwkt_initmsg_abortable "lwkt_msg_t msg" "lwkt_port_t rport" "int flags" "void (*abortfn)(lwkt_msg_t)"
+.Ft int
+.Fn lwkt_beginmsg "lwkt_port_t port" "lwkt_msg_t msg"
+.Ft void
+.Fn lwkt_replymsg "lwkt_msg_t msg" "int error"
+.Ft void *
+.Fn lwkt_getport "lwkt_port_t port"
+.Ft void *
+.Fn lwkt_waitport "lwkt_port_t port" "int flags"
+.Ft int
+.Fn lwkt_waitmsg "lwkt_msg_t msg" "int flags"
+.Ft int
+.Fn lwkt_checkmsg "lwkt_msg_t msg"
+.Ft void
+.Fn lwkt_dropmsg "lwkt_msg_t msg"
+.Sh DESCRIPTION
+Light weight kernel threads in
+.Dx
+may use a message passing interface to communicate with each other.
+Messages are sent to message ports.
+All light weight kernel threads have a built-in message port, but you may create
+additional ports if necessary.
+The following types of message ports are available:
+.Bl -bullet
+.It
+thread ports
+.It
+spin ports
+.It
+serializer ports
+.El
+.Pp
+Ports of type 'thread' are owned by a single light weight kernel thread.
+When a message is sent to a port of type 'thread', only the owner of that port
+is allowed to retrieve the message from it.
+When a message is sent to a port of type 'spin' or to a port of
+type 'serializer', multiple threads are allowed to check that port for new
+messages and compete to retrieve them.
+You define the port type when you initialize the port.
+By default, the built-in port of every light weight kernel thread is
+automatically initialized to type 'thread'.
+.Pp
+When a message is sent, the receiver should normally send back a reply.
+The reply is sent to the reply port that is registered on the original message.
+Messages can be replied to synchronously or asynchronously.
+The sender may request a synchronous or asynchronous reply to the message,
+however the target port will ultimately decide how the message will be treated.
+.Sh MESSAGE FUNCTIONS
+Messages must be initialized before being used.
+The
+.Fn lwkt_initmsg
+function initializes a message.
+The
+.Fa rport
+argument identifies the reply port which will be used for asynchronous replies.
+The
+.Fa flags
+argument sets any required flags for this message.
+Flags passed this way will simply be or'ed to any already existing flags on the
+message.
+.Pp
+The
+.Fn lwkt_initmsg_abortable
+function is similar to
+.Fn lwkt_initmsg
+but it takes an additional parameter
+.Fa abortfn
+which defines the abort function for this message.
+.Pp
+The
+.Fn lwkt_sendmsg
+function requests an asynchronous reply, sends the message and returns
+immediately.
+Under normal circumstances, users of this function may always expect the reply
+to be queued to the reply port registered on the message.
+The
+.Fa port
+argument defines the target port to which the
+.Fa msg
+message will be sent to.
+.Pp
+The
+.Fn lwkt_domsg
+function requests a synchronous reply, sends the message and does not return
+until the message has been replied to.
+If the target port supports synchronous reply, this function will return that
+reply immediately.
+If not, and this is the most common case, this function will block and wait for the
+reply to arrive and then return it.
+The
+.Fa port
+argument defines the target port to which the
+.Fa msg
+message will be sent to.
+.Pp
+The
+.Fn lwkt_replymsg
+function replies to a message that was processed asynchronously by the target
+port.
+This function is used by the thread on the receiving side.
+The
+.Fa msg
+argument is the message being replied to and the
+.Fa error
+argument is the actual response to send back.
+.Pp
+The
+.Fn lwkt_forwardmsg
+simply forwards a message to another port.
+The
+.Fa port
+argument defines the target port to which the
+.Fa msg
+message will be sent to.
+.Pp
+If a message has been initialized as abortable, you can use the
+.Fn lwkt_abortmsg
+function to try to abort it.
+The
+.Fa abortfn
+passed upon the initialisation with
+.Fn lwkt_initmsg_abortable
+will be called by this function.
+.Pp
+The
+.Fn lwkt_dropmsg
+will dequeue the specified message from the target port it was sent to and makes
+it look like it was never sent.
+.Sh PORT FUNCTIONS
+The
+.Fn lwkt_initport_thread
+initializes the specified
+.Fa port
+with the default 'thread' port type handlers.
+The
+.Fa td
+argument defines the owner thread of the port and only that thread is allowed to
+receive messages on it.
+.Pp
+The
+.Fn lwkt_initport_spin
+initializes the specified
+.Fa port
+with the default 'spin' port type handlers.
+It will also initialize the embedded spinlock within the
+lwkt_port structure which will protect subsequent port access.
+.Pp
+The
+.Fn lwkt_initport_serialize
+function initializes the specified
+.Fa port
+with the default 'serializer' port type handlers.
+The subsequent port access will be protected by the passed
+.Fa slz
+serializer lock.
+.Pp
+The
+.Fn lwkt_getport
+function checks the specified
+.Fa port
+for available messages, dequeues the first one and returns it.
+If no messages are available then
+.Dv NULL
+is returned instead.
+This function is used by threads on the receiving side.
+.Pp
+The
+.Fn lwkt_waitport
+function checks the specified
+.Fa port
+for available messages, dequeues the first one and returns it.
+If no messages are available then the caller thread will sleep until a message
+arrives on the specified port.
+The
+.Fa flags
+argument defines the flags used for the sleep.
+This function is used by threads on the receiving side.
+.Sh SPECIAL PORT INITIALIZERS
+The
+.Fn lwkt_initport_replyonly
+function initializes a
+.Fa port
+which is used only as reply port and may have a custom reply port handler.
+The reply port handler is specified with the
+.Fa rportfn
+argument.
+All the other handlers will panic the system if they are called.
+This initializer is normally used on ports for freeing resources after the
+messages have fulfilled their purpose.
+.Pp
+The
+.Fn lwkt_initport_replyonly_null
+function initializes a
+.Fa port
+which is used only as reply port.
+The reply port handler will simply mark the message as being done and will not
+attempt to queue it.
+All the other handlers will panic the system if they are called.
+.Pp
+The
+.Fn lwkt_initport_putonly
+function initializes a
+.Fa port
+which is used only as target port.
+The putport handler is specified with the
+.Fa pportfn
+argument.
+All the other handlers will panic the system if they are called.
+.Pp
+The
+.Fn lwkt_initport_panic
+function initializes a
+.Fa port
+which will panic the system if any of its handlers are called.
+This function is sometimes used to initialize a reply-only port which does not
+expect the messages to be replied to, e.g.\& when the messages should be
+consumed by the receiving thread and never replied back.
+.Sh INTERNAL MESSAGE FUNCTIONS
+The following functions are used only by the infrastructure, you should not
+need to use them directly unless in very rare cases.
+.Pp
+The
+.Fn lwkt_beginmsg
+function simply calls the target port's putport handler.
+This function is only called by the
+.Fn lwkt_sendmsg
+and
+.Fn lwkt_replymsg
+functions.
+The putport handler returns
+.Er EASYNC
+for messages processed asynchronously or any other value for messages processed
+synchronously.
+That return value of the putport handler is propagated by this function.
+The
+.Fa port
+argument defines the target port to which the
+.Fa msg
+message will be sent to.
+.Pp
+The
+.Fn lwkt_waitmsg
+function puts the caller to sleep until the specified
+.Fa msg
+message has been replied to.
+The
+.Fa flags
+argument defines the flags used for the sleep.
+.Sh FILES
+The LWKT msgport implementation resides in
+.Pa sys/kern/lwkt_msgport.c .
+.Sh EXAMPLES
+.Bd -literal
+/*
+ * Example 1: per CPU threads.
+ *
+ */
+
+#include <sys/thread.h>
+#include <sys/msgport.h>
+#include <sys/msgport2.h>
+
+static void my_service_loop(void *dummy);
+lwkt_port_t my_service_portfn(int cpu);
+void my_service_sendmsg(lwkt_msg_t lmsg, int cpu);
+int my_service_domsg(lwkt_msg_t lmsg, int cpu);
+
+/* Array of per-CPU target ports */
+struct lwkt_port *my_service_ports[MAXCPU];
+
+/*
+ * Create per-cpu threads for handling msg processing.  Remember that built-in
+ * lwkt ports are automatically initialized to type 'thread' so we don't need
+ * to initialize them explicitly.
+ */
+static void
+my_per_cpu_service_init(void)
+{
+	int i;
+	thread_t td;
+
+	for (i = 0; i < ncpus; ++i) {
+		lwkt_create(my_service_loop, NULL, &td,
+			    NULL, 0, i, "myservice_cpu %d", i);
+		my_service_ports[i] = &td->td_msgport;
+	}
+}
+
+/*
+ * This is the routine executed by the service threads on each CPU.
+ */
+static void
+my_service_loop(void *dummy __unused)
+{
+	lwkt_msg_t msg;
+	thread_t td = curthread;
+	int cpu = curthread->td_gd->gd_cpuid;
+
+	while ((msg = lwkt_waitport(&td->td_msgport, 0)) != NULL) {
+		/* Do some work in the receiver thread context. */
+		kprintf("Received message on CPU %d.\en", cpu);
+
+		/* And finally reply to the message. */
+		lwkt_replymsg(msg, 0);
+	}
+}
+
+/*
+ * Given a CPU id, return our respective service port.
+ */
+__inline lwkt_port_t
+my_service_portfn(int cpu)
+{
+	return my_service_ports[cpu];
+}
+
+/*
+ * Send an asynchronous message to the service thread on a specific CPU.
+ */
+void
+my_service_sendmsg(lwkt_msg_t lmsg, int cpu)
+{
+	KKASSERT(cpu < ncpus);
+	lwkt_sendmsg(my_service_portfn(cpu), lmsg);
+}
+
+/*
+ * Send a synchronous message to the service thread on a specific CPU.
+ */
+int
+my_service_domsg(lwkt_msg_t lmsg, int cpu)
+{
+	KKASSERT(cpu < ncpus);
+	return lwkt_domsg(my_service_portfn(cpu), lmsg, 0);
+}
+
+/*
+ * Example use case. Initialize the service threads and send each one a
+ * message.
+ */
+static void
+mod_load(void)
+{
+	lwkt_msg	lmsg;
+	lwkt_port_t	builtin_port = &curthread->td_msgport;
+	int		i;
+
+	my_per_cpu_service_init();
+	for (i=0; i<ncpus; ++i) {
+		kprintf("Sending msg to CPU %d.\en", i);
+		lwkt_initmsg(&lmsg, builtin_port, 0);
+		my_service_domsg(&lmsg, i);
+	}
+}
+
+/*
+ * Example 2: Dynamic allocated message passing with automatic free.
+ *
+ * This scenario is used when resources need to be freed after the message
+ * has been replied to. Features:
+ * - An argument is passed within the message.
+ * - Messages are allocated with kmalloc(). Replying to the msg, kfree()s it.
+ */
+
+#include <sys/thread.h>
+#include <sys/msgport.h>
+#include <sys/msgport2.h>
+
+void my_service_queue(void *arg);
+
+lwkt_port my_autofree_rport;
+lwkt_port_t my_service_port;
+
+/*
+ * Use this function to send messages with a void * argument to our
+ * service thread.
+ */
+void
+my_service_queue(void *arg)
+{
+	lwkt_msg_t msg;
+
+	msg = kmalloc(sizeof(*msg), M_TEMP, M_WAITOK);
+
+	/* Set reply port to autofree. */
+	lwkt_initmsg(msg, &my_autofree_rport, 0);
+
+	/* Attach the argument to the message. */
+	msg->u.ms_resultp = arg;
+
+	/* Send it. */
+	lwkt_sendmsg(my_service_port, msg);
+}
+
+/*
+ * This is the routine executed by our service thread.
+ */
+static void
+my_service_loop(void *dummy __unused)
+{
+	lwkt_msg_t msg;
+	thread_t td = curthread;
+
+	while ((msg = lwkt_waitport(&td->td_msgport, 0)) != NULL) {
+		/*
+		 * Do some work in the receiver thread context.  In this
+		 * example, the sender wrote his name in the argument he
+		 * sent us.  We print it here.
+		 */
+		char *arg = msg->u.ms_resultp;
+		kprintf("%s: Hi %s! Got your msg.\en", curthread->td_comm, arg);
+
+		/* And finally reply to the message. */
+		lwkt_replymsg(msg, 0);
+	}
+}
+
+static void
+my_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
+{
+	kfree(msg->u.ms_resultp, M_TEMP);
+	kfree(msg, M_TEMP);
+}
+
+static void
+my_service_init(void)
+{
+	thread_t tdp;
+
+	/* Initialize our auto free reply port. */
+	lwkt_initport_replyonly(&my_autofree_rport, my_autofree_reply);
+
+	/* Create our service thread on CPU 0. */
+	lwkt_create(my_service_loop, NULL, &tdp, NULL, 0, 0, "myservice");
+	my_service_port = &tdp->td_msgport;
+}
+
+/*
+ * Example use case. Initialize the service and send the current thread name
+ * to the service thread.
+ */
+static void
+mod_load(void)
+{
+	void *arg;
+	int len;
+
+	my_service_init();
+	len = strlen(curthread->td_comm);
+	arg = kmalloc(len + 1, M_TEMP, M_WAITOK);
+	bcopy(curthread->td_comm, arg, len + 1);
+	kprintf("%s: Sending message.\en", curthread->td_comm);
+	my_service_queue(arg);
+}
+.Ed
+.Sh NOTES
+All the default putport handlers (used when a message is sent) currently
+implement asynchronous putports only, i.e.\& all *_putport() handlers return
+.Er EASYNC .
+You can still have synchronous putport handlers (which are run in the sender's
+context) but you have to implement the function yourself and then override the
+default.
+.Pp
+Port handler functions can be overridden with custom functions if required.
+You can override the default putport handler by either using the
+.Fn lwkt_initport_putonly
+initializer, or by manipulating the mp_putport handler pointer directly on the
+lwkt_port structure.
+.Pp
+There is one such case where the putport handler is overridden in
+.Pa sys/kern/netisr.c .
+In that case, the putport handler is overridden to detect a loopback message
+(when the target port belongs to the sending thread).
+This special putport handler turns the sent message into a direct function call
+instead of queueing it to the port.
+.Pp
+The
+.Fn lwkt_replymsg
+function works differently depending on the original message request.
+If the
+message was originally an asynchronous request, the reply will be queued to the
+sender's reply port.
+If the message was originally a synchronous request, then
+this function will just write the error response on the message and wake up the
+waiter without queueing the message to the reply port.
+There is no need to queue in the synchronous request case because the original
+sender had blocked waiting on this specific message with
+.Fn lwkt_domsg .
+.Pp
+As is the case with putport handler, the replyport handler can also be
+overridden.
+You override the default replyport handler by using the
+.Fn lwkt_initport_replyonly
+or the
+.Fn lwkt_initport_replyonly_null
+port initializers, or by manipulating the mp_replyport handler pointer directly
+on the lwkt_port structure.
+.Pp
+The sent message structure is reused for replies.
+When a message is replied to, the error response is written on the message
+which is subsequently sent to the reply port.
+.Sh SEE ALSO
+.Xr serializer 9 ,
+.Xr spinlock 9
+.Sh HISTORY
+The LWKT msgport interface first appeared in
+.Dx 1.0 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm msgport
+message passing interface implementation was written by
+.An Matthew Dillon .
+This manual page was written by
+.An Nuno Antunes .

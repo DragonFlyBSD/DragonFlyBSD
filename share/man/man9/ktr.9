@@ -24,14 +24,15 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/ktr.9,v 1.8 2005/03/08 01:37:36 hmp Exp $
 .\"
-.Dd January 2, 2012
+.Dd August 22, 2012
 .Dt KTR 9
 .Os
 .Sh NAME
 .Nm KTR_INFO_MASTER ,
 .Nm KTR_INFO_MASTER_EXTERN ,
 .Nm KTR_INFO ,
-.Nm KTR_LOG
+.Nm KTR_LOG ,
+.Nm KTR_COND_LOG
 .Nd kernel tracing facility
 .Sh SYNOPSIS
 .In sys/ktr.h
@@ -42,6 +43,7 @@
 .Fn KTR_INFO_MASTER_EXTERN "master"
 .Fn KTR_INFO "compile" "master" "name" "maskbit" "format" "type name" "..."
 .Fn KTR_LOG "info" "arg ..."
+.Fn KTR_COND_LOG "info" "cond" "arg ..."
 .Sh DESCRIPTION
 The
 .Nm ktr
@@ -104,6 +106,14 @@ string passed to the associated
 call.
 .Pp
 The
+.Fn KTR_COND_LOG
+macro is equivalent to
+.Fn KTR_LOG
+except it logs only when the condition specified in
+.Fa cond
+evaluates to true.
+.Pp
+The
 .Va ktr_entries
 variable contains the number of entries in the
 .Va ktr_buf
@@ -129,6 +139,7 @@ This example demonstrates a simple usage of the KTR facility:
 KTR_INFO_MASTER(foo);
 KTR_INFO(KTR_FOO, foo, func1, 0, "func1()");
 KTR_INFO(KTR_FOO, foo, func2, 1, "func2(%d)", int arg);
+KTR_INFO(KTR_FOO, foo, func3, 2, "func3: arg positive: %d", int arg);
 
 \&...
 
@@ -143,6 +154,13 @@ void
 func2(int arg)
 {
 	KTR_LOG(foo_func2, arg);
+	...
+}
+
+void
+func3(int arg)
+{
+	KTR_COND_LOG(foo_func3, arg >= 0, arg);
 	...
 }
 .Ed

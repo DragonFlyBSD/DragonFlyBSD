@@ -1744,10 +1744,10 @@ ixgbe_xmit(struct tx_ring *txr, struct mbuf **m_headp)
 	struct adapter  *adapter = txr->adapter;
 	u32		olinfo_status = 0, cmd_type_len;
 	u32		paylen = 0;
-	int             i, j, error, nsegs;
+	int             i, j, error, nsegs, maxsegs;
 	int		first, last = 0;
 	struct mbuf	*m_head;
-	bus_dma_segment_t segs[1];
+	bus_dma_segment_t segs[adapter->num_segs];
 	bus_dmamap_t	map;
 	struct ixgbe_tx_buf *txbuf;
 	union ixgbe_adv_tx_desc *txd = NULL;
@@ -1773,39 +1773,18 @@ ixgbe_xmit(struct tx_ring *txr, struct mbuf **m_headp)
 	/*
 	 * Map the packet for DMA.
 	 */
-	error = bus_dmamap_load_mbuf_segment(txr->txtag, map,
-	    *m_headp, segs, 1, &nsegs, BUS_DMA_NOWAIT);
+	maxsegs = txr->tx_avail - IXGBE_TX_RESERVED;
+	if (maxsegs > adapter->num_segs)
+		maxsegs = adapter->num_segs;
 
-	if (error == EFBIG) {
-		struct mbuf *m;
-
-		m = m_defrag(*m_headp, MB_DONTWAIT);
-		if (m == NULL) {
+	error = bus_dmamap_load_mbuf_defrag(txr->txtag, map, m_headp,
+	    segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+	if (error) {
+		if (error == ENOBUFS)
 			adapter->mbuf_defrag_failed++;
-			m_freem(*m_headp);
-			*m_headp = NULL;
-			return (ENOBUFS);
-		}
-		*m_headp = m;
-
-		/* Try it again */
-		error = bus_dmamap_load_mbuf_segment(txr->txtag, map,
-		    *m_headp, segs, 1, &nsegs, BUS_DMA_NOWAIT);
-
-		if (error == ENOMEM) {
+		else
 			adapter->no_tx_dma_setup++;
-			return (error);
-		} else if (error != 0) {
-			adapter->no_tx_dma_setup++;
-			m_freem(*m_headp);
-			*m_headp = NULL;
-			return (error);
-		}
-	} else if (error == ENOMEM) {
-		adapter->no_tx_dma_setup++;
-		return (error);
-	} else if (error != 0) {
-		adapter->no_tx_dma_setup++;
+
 		m_freem(*m_headp);
 		*m_headp = NULL;
 		return (error);

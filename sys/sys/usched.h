@@ -84,6 +84,7 @@ union usched_data {
 extern struct usched	usched_bsd4;
 extern struct usched	usched_dummy;
 extern cpumask_t usched_mastermask;
+extern int sched_ticks; /* From sys/kern/kern_clock.c */
 
 int usched_ctl(struct usched *, int);
 struct usched *usched_init(void);

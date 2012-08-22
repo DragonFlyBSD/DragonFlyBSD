@@ -2290,8 +2290,9 @@ jme_rxpkt(struct jme_rxdata *rdata)
 				pi = NULL;
 
 			if (pi != NULL &&
-			    (hashinfo & JME_RD_HASH_FN_MASK) != 0) {
-				m->m_flags |= M_HASH;
+			    (hashinfo & JME_RD_HASH_FN_MASK) ==
+			    JME_RD_HASH_FN_TOEPLITZ) {
+				m->m_flags |= (M_HASH | M_CKHASH);
 				m->m_pkthdr.hash = toeplitz_hash(hash);
 			}
 

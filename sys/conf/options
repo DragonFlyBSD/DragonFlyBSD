@@ -601,6 +601,7 @@ KTR_TOKENS			opt_ktr.h
 KTR_TSLEEP			opt_ktr.h
 KTR_USB_MEMORY			opt_ktr.h
 KTR_VERBOSE			opt_ktr.h
+KTR_USCHED_BSD4			opt_ktr.h
 
 # NTFS options
 NTFS_DEBUG			opt_ntfs.h

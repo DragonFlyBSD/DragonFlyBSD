@@ -199,6 +199,7 @@ struct lwp {
 	sysclock_t	lwp_cpbase;	/* Measurement base */
 	fixpt_t		lwp_pctcpu;	/* %cpu for this process */
 	u_int		lwp_slptime;	/* Time since last blocked. */
+	u_int		lwp_setrunqueue_ticks;	/* Tick count - lwp set on runqueue */
 
 	int		lwp_traceflag;	/* Kernel trace points. */
 
