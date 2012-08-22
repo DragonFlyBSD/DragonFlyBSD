@@ -55,6 +55,7 @@
 .Cd options KTR_TOKENS
 .Cd options KTR_TSLEEP
 .Cd options KTR_USB_MEMORY
+.Cd options KTR_USCHED_BSD4
 .Sh DESCRIPTION
 The
 .Nm
@@ -133,6 +134,8 @@ and
 .Xr wakeup 9
 .It Dv KTR_USB_MEMORY
 USB memory allocation
+.It Dv KTR_USCHED_BSD4
+usched_bsd4 scheduling decisions
 .El
 .Ss Verbose Mode
 By default, events are only logged to the internal buffer for examination
