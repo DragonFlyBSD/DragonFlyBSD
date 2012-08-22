@@ -11,15 +11,23 @@
 if ( $#argv == 1 ) then
 	set pkgwild = "`bmake show-var VARNAME=PKGWILDCARD`.lck"
 	mkdir -p /tmp/track/locks
-	lockf "/tmp/track/locks/$pkgwild" /tmp/track/dobuild $argv[1] locked
-	exit $status
+	echo "FASTBULK START ${argv[1]}: `date`"
+	lockf "/tmp/track/locks/$pkgwild" /tmp/track/dobuild ${argv[1]} "$pkgwild"
+	if ( $status == 0 ) then
+		echo "FASTBULK SUCCESS ${argv[1]}: `date`"
+		exit 0
+	else
+		echo "FASTBULK FAILURE ${argv[1]}: `date`"
+		exit 1
+	endif
 endif
 
 # Get the package name and clean up any garbage that might
 # interfere with the build.
 #
 set pkgname = "`bmake show-var VARNAME=PKGNAME`"
-set logname = $argv[1]
+set logname = "$argv[1]"
+set pkgwild = "$argv[2]"
 unsetenv PKG_PATH
 
 # Check if already installed, prevent overwrite of
@@ -34,6 +42,10 @@ if ( $status == 0 ) then
     echo "(already installed from previous run)"
     exit 0
 endif
+
+# Delete potential conflicts
+#
+pkg_delete -r "$pkgwild"
 
 # If we already have a binary package just install
 # it.
@@ -56,6 +68,20 @@ foreach i ( `bmake show-var VARNAME=CONFLICTS` )
     echo "DELETING CONFLICTING PACKAGE: $i"
     pkg_delete -r "$i"
 end
+
+# If the dist file checksum fails and the dist file is over
+# 4 hours old we re-download it.
+#
+
+set dollar = '$'
+set distfiles = "`bmake -V '${dollar}{DISTFILES}'`"
+bmake checksum SKIP_LICENSE_CHECK=yes
+if ( $status != 0 ) then
+    echo "Deleting distfiles ( $distfiles ) if over 4h old"
+    foreach dfile ( $distfiles )
+	find /usr/pkgsrc/distfiles -name "$dfile" -mtime +4h -delete
+    end
+endif
 
 # To ensure a clean build deinstall anything that
 # may cause our build repackage to fail.
