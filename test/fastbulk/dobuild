@@ -2,17 +2,29 @@
 #
 # This is run from the chroot via fastbulk, which has CDd
 # into a particular pkgsrc directory and wants us to build it.
+# The script is run as /tmp/track/dobuild
 
-# Nothing to do if the package already exists.  Remove the run log
-# to prevent fastbulk from replacing the log from a previous run
+# We do not want to interfere with builds of other versions
+# of the same package, use a temporary lock file to prevent a
+# conflict.
+#
+if ( $#argv == 1 ) then
+	set pkgwild = "`bmake show-var VARNAME=PKGWILDCARD`.lck"
+	mkdir -p /tmp/track/locks
+	lockf "/tmp/track/locks/$pkgwild" /tmp/track/dobuild $argv[1] locked
+	exit $status
+endif
+
+# Get the package name and clean up any garbage that might
+# interfere with the build.
 #
 set pkgname = "`bmake show-var VARNAME=PKGNAME`"
 set logname = $argv[1]
 unsetenv PKG_PATH
 
 # Check if already installed, prevent overwrite of
-# previous run's logfile if it exists, else put in
-# a simple logfile.
+# previous run's logfile if it exists, by deleting
+# the current run file.  Else put in a simple logfile.
 #
 pkg_info -q -e $pkgname
 if ( $status == 0 ) then
@@ -23,6 +35,9 @@ if ( $status == 0 ) then
     exit 0
 endif
 
+# If we already have a binary package just install
+# it.
+#
 if ( -f /usr/pkgsrc/packages/All/${pkgname}.tgz ) then
     echo "(found in /usr/pkgsrc/packages)"
     bmake deinstall DEINSTALLDEPENDS=ALL SKIP_LICENSE_CHECK=yes
@@ -32,9 +47,10 @@ if ( -f /usr/pkgsrc/packages/All/${pkgname}.tgz ) then
     exit $status
 endif
 
-# We have to remove any conflicting packages or the one we
-# are trying to build will refuse to build.  Note that we
-# leave the related packages intact.
+# We need to build the package.
+#
+# Delete any conflicting installed packages or the one we want to build
+# will refuse to build.  The binary package files are left intact.
 #
 foreach i ( `bmake show-var VARNAME=CONFLICTS` )
     echo "DELETING CONFLICTING PACKAGE: $i"
@@ -44,16 +60,22 @@ end
 # To ensure a clean build deinstall anything that
 # may cause our build repackage to fail.
 #
-# Clean after repackaging (if it succeeded) to keep the
-# work topology footprint small.  The work topology is
-# left intact for failed builds.
+# Clean after repackaging to keep the work topology footprint small.
+#
+# We create a binary package and then pkg_add it.
 #
 bmake deinstall DEINSTALLDEPENDS=ALL SKIP_LICENSE_CHECK=yes
-bmake repackage clean SKIP_LICENSE_CHECK=yes
+bmake repackage SKIP_LICENSE_CHECK=yes
 if ( $status == 0 ) then
+    bmake clean SKIP_LICENSE_CHECK=yes
     setenv PKG_PATH /usr/pkgsrc/packages/All
     echo "pkg_add -f ${pkgname}"
     pkg_add -f ${pkgname}
     exit $status
 endif
+
+# comment this bmake out if you want to keep the work dir
+# for failed builds.
+#
+bmake clean SKIP_LICENSE_CHECK=yes
 exit 1

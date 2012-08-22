@@ -171,9 +171,11 @@ changes: ${PRESTAGE}
 	${CHROOTENV} "cd /tmp/track; ./dochanges"
 
 build: ${PRESTAGE}
-	rm -rf ${BUILDBASE}/usr.obj/work
-	mkdir -p ${BUILDBASE}/usr.obj/work
+	# note: work dir might be either tmpfs or null mount
+	rm -rf ${BUILDROOT}/usr/obj/work
+	mkdir -p ${BUILDROOT}/usr/obj/work
 	-rm ${BUILDROOT}/tmp/logs/run/*
+	-rm ${BUILDROOT}/tmp/logs/bad/*
 	find ${BUILDROOT}/var/db/pkg -name '*.core' -delete
 	find ${BUILDROOT}/var/db/pkg -type d -depth 1 -delete
 	#${CHROOTENV} "pkg_admin -K /var/db/pkg fetch-pkg-vulnerabilities"
