@@ -10,6 +10,7 @@ SYSPKGSRC=/usr/pkgsrc
 SYSROOT=/
 CHROOTENV=chroot ${BUILDROOT} /bin/sh -c
 NPARALLEL?= 8
+# -DNOTMPFS
 
 all:
 	@echo "fastbulk build options"
@@ -30,6 +31,9 @@ all:
 	@echo "NOTE: ${BUILDBASE}/{distfiles,packages} are normally retained"
 	@echo "      to avoid having to re-pull and for incremental operation"
 	@echo ""
+	@echo "NOTE: When building with 'make build' the current progress"
+	@echo "      is in ${BUILDROOT}/tmp/logs/{run,good,bad}, each build"
+	@echo "      has its own log file named after the pkgsrc path"
 
 scratch: cleanup
 	rm -rf ${BUILDBASE}/var.db
@@ -82,13 +86,17 @@ setup: cleanup
 	mount_null ${BUILDBASE}/etc ${BUILDROOT}/etc
 	mount_null ${BUILDBASE}/usr.pkg ${BUILDROOT}/usr/pkg
 	mount_null ${BUILDBASE}/usr.pkgsrc ${BUILDROOT}/usr/pkgsrc
+.if defined(NOTMPFS)
 	mount_null ${BUILDBASE}/usr.obj ${BUILDROOT}/usr/obj
+.else
+	mount_tmpfs dummy ${BUILDROOT}/usr/obj
+.endif
 	mount_null ${BUILDBASE}/var.db ${BUILDROOT}/var/db
 	mount_null ${BUILDBASE}/var.db.pkg ${BUILDROOT}/var/db/pkg
 	mount_null ${BUILDBASE}/var.db.pkg.refcount \
 			${BUILDROOT}/var/db/pkg.refcount
 	mount_null ${SYSROOT}/dev ${BUILDROOT}/dev
-	cpdup -v -s0 -i0 -X ${.CURDIR}/pkgsrc.ign \
+	cpdup -s0 -i0 -X ${.CURDIR}/pkgsrc.ign \
 			${SYSPKGSRC} ${BUILDROOT}/usr/pkgsrc
 	find ${BUILDROOT}/usr/pkgsrc -name work | xargs rm -rf
 	mkdir -p ${BUILDROOT}/usr/pkgsrc/packages
@@ -134,6 +142,7 @@ bootstrap:
 	rm -rf ${BUILDBASE}/usr.obj/work
 	${CHROOTENV} "cd /usr/pkgsrc/bootstrap; ./bootstrap --workdir=/usr/obj/work"
 	resident ${BUILDROOT}/usr/pkg/bin/bmake
+	cat mk.conf.add >> ${BUILDROOT}/usr/pkg/etc/mk.conf
 
 # Figure out what has changed and deinstall the related packages
 #
@@ -164,6 +173,7 @@ changes: ${PRESTAGE}
 build: ${PRESTAGE}
 	rm -rf ${BUILDBASE}/usr.obj/work
 	mkdir -p ${BUILDBASE}/usr.obj/work
+	-rm ${BUILDROOT}/tmp/logs/run/*
 	${CHROOTENV} "cd /tmp/track; ./fastbulk -j ${NPARALLEL} /usr/pkgsrc"
 
 ${BUILDBASE}/bin/getpkgsrcdir: getpkgsrcdir.c

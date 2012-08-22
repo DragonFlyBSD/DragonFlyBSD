@@ -8,9 +8,28 @@
 #
 set pkgname = "`bmake show-var VARNAME=PKGNAME`"
 set logname = $argv[1]
-if ( -f /usr/pkgsrc/packages/All/${pkgname}.tgz ) then
-    rm -f /tmp/logs/run/$logname
+unsetenv PKG_PATH
+
+# Check if already installed, prevent overwrite of
+# previous run's logfile if it exists, else put in
+# a simple logfile.
+#
+pkg_info -q -e $pkgname
+if ( $status == 0 ) then
+    if ( -f /tmp/logs/good/$logname ) then
+	rm -f /tmp/logs/run/$logname
+    endif
+    echo "(already installed from previous run)"
     exit 0
+endif
+
+if ( -f /usr/pkgsrc/packages/All/${pkgname}.tgz ) then
+    echo "(found in /usr/pkgsrc/packages)"
+    bmake deinstall DEINSTALLDEPENDS=ALL SKIP_LICENSE_CHECK=yes
+    setenv PKG_PATH /usr/pkgsrc/packages/All
+    echo "pkg_add -f ${pkgname}"
+    pkg_add -f ${pkgname}
+    exit $status
 endif
 
 # We have to remove any conflicting packages or the one we
@@ -31,5 +50,10 @@ end
 #
 bmake deinstall DEINSTALLDEPENDS=ALL SKIP_LICENSE_CHECK=yes
 bmake repackage clean SKIP_LICENSE_CHECK=yes
-bmake bin-install
-exit $status
+if ( $status == 0 ) then
+    setenv PKG_PATH /usr/pkgsrc/packages/All
+    echo "pkg_add -f ${pkgname}"
+    pkg_add -f ${pkgname}
+    exit $status
+endif
+exit 1

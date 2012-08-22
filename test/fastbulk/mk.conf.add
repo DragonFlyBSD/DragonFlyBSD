@@ -1,0 +1,8 @@
+
+# Fastbulk additions to /usr/pkg/etc/mk.conf
+#
+.ifdef BSD_PKG_MK
+
+WRKOBJDIR=	/usr/obj/work
+
+.endif
