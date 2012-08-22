@@ -581,7 +581,8 @@ MLINKS+=kprintf.9 krateprintf.9 \
 	kprintf.9 uprintf.9
 MLINKS+=ksignal.9 gsignal.9 \
 	ksignal.9 pgsignal.9
-MLINKS+=ktr.9 KTR_INFO.9 \
+MLINKS+=ktr.9 KTR_COND_LOG.9 \
+	ktr.9 KTR_INFO.9 \
 	ktr.9 KTR_INFO_MASTER.9 \
 	ktr.9 KTR_INFO_MASTER_EXTERN.9 \
 	ktr.9 KTR_LOG.9
@@ -655,26 +656,26 @@ MLINKS+=mpipe.9 mpipe_alloc_nowait.9 \
 	mpipe.9 mpipe_done.9 \
 	mpipe.9 mpipe_free.9 \
 	mpipe.9 mpipe_init.9
-MLINKS+=msgport.9 lwkt_initport_thread.9 \
-	msgport.9 lwkt_initport_spin.9 \
-	msgport.9 lwkt_initport_serialize.9 \
-	msgport.9 lwkt_initport_panic.9 \
-	msgport.9 lwkt_initport_replyonly_null.9 \
-	msgport.9 lwkt_initport_replyonly.9 \
-	msgport.9 lwkt_initport_putonly.9 \
-	msgport.9 lwkt_sendmsg.9 \
+MLINKS+=msgport.9 lwkt_abortmsg.9 \
+	msgport.9 lwkt_beginmsg.9 \
+	msgport.9 lwkt_checkmsg.9 \
 	msgport.9 lwkt_domsg.9 \
+	msgport.9 lwkt_dropmsg.9 \
 	msgport.9 lwkt_forwardmsg.9 \
-	msgport.9 lwkt_abortmsg.9 \
+	msgport.9 lwkt_getport.9 \
 	msgport.9 lwkt_initmsg.9 \
 	msgport.9 lwkt_initmsg_abortable.9 \
-	msgport.9 lwkt_beginmsg.9 \
+	msgport.9 lwkt_initport_panic.9 \
+	msgport.9 lwkt_initport_putonly.9 \
+	msgport.9 lwkt_initport_replyonly.9 \
+	msgport.9 lwkt_initport_replyonly_null.9 \
+	msgport.9 lwkt_initport_serialize.9 \
+	msgport.9 lwkt_initport_spin.9 \
+	msgport.9 lwkt_initport_thread.9 \
 	msgport.9 lwkt_replymsg.9 \
-	msgport.9 lwkt_getport.9 \
-	msgport.9 lwkt_waitport.9 \
+	msgport.9 lwkt_sendmsg.9 \
 	msgport.9 lwkt_waitmsg.9 \
-	msgport.9 lwkt_checkmsg.9 \
-	msgport.9 lwkt_dropmsg.9
+	msgport.9 lwkt_waitport.9
 MLINKS+=mutex.9 mtx_downgrade.9 \
 	mutex.9 mtx_drop.9 \
 	mutex.9 mtx_hold.9 \
