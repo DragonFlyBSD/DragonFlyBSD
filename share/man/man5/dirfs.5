@@ -1,0 +1,103 @@
+.\"
+.\" Copyright (c) 2013 Antonio Huete Jimenez <tuxillo@quantumachine.net>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. The name of the author may not be used to endorse or promote products
+.\"    derived from this software without specific prior written permission
+.\"
+.\" THIS DOCUMENTATION IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\"
+.Dd September 5, 2013
+.Dt DIRFS 5
+.Os
+.Sh NAME
+.Nm dirfs
+.Nd "pseudo-filesystem for vkernel"
+.Sh SYNOPSIS
+To compile this driver into the vkernel,
+place the following line in your
+vkernel configuration file:
+.Bd -ragged -offset indent
+.Cd "options DIRFS"
+.Ed
+.Pp
+Actually this driver does not provide a loadable module.
+.Pp
+In
+.Xr fstab 5 :
+.Bd -literal -compact
+/usr/src     /mnt dirfs rw 0 0
+.Sh DESCRIPTION
+.Nm
+was born from the idea of providing an easy way for
+.Xr vkernel 7
+to access host's directories without any sort of configuration as it would be
+needed by NFS for example.
+.Pp
+It runs directly in the vkernel's
+.Xr VFS 9
+code, as any other regular filesystem but it uses syscalls to retrieve the
+information needed for every operation requested.
+.Pp
+It should be noted that when the vkernel is run by a regular user, the
+operations
+.Nm
+can perform on the mounted host directory are bound to the permissions of
+the aforementioned user.
+.Pp
+Multiple
+.Nm
+mounts are allowed.
+.Sh EXAMPLES
+To mount a
+.Nm
+memory file system:
+.Pp
+.Dl "mount -t dirfs /usr/src /mnt"
+.Sh SEE ALSO
+.Xr fstab 5 ,
+.Xr mount_dirfs 8 ,
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Dx 3.5 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+vkernel implementation was written from the scratch by
+.An Antonio Huete Jimenez Aq Mt tuxillo@quantumachine.net
+.Pp
+Numerous fixes and pointers by
+.An Matthew Dillon Aq Mt dillon@apollo.backplane.com
+.Pp
+This manual page was written by
+.An Antonio Huete Jimenez Aq Mt tuxillo@quantumachine.net
+.Sh BUGS
+Currently there is no locking on file descriptors between the host
+and the vkernel.
+This means that there might be problems with concurrent accesses to the same
+file.
+.Pp
+There is no support for hardlinks in
+.Nm
+yet.

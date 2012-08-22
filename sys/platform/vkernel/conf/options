@@ -4,3 +4,9 @@ I586_CPU                opt_global.h
 I686_CPU                opt_global.h
 
 COMPAT_DF12		opt_compatdf12.h
+
+# Static filesystems
+DIRFS           opt_dontuse.h
+
+# KTR options
+KTR_DIRFS       opt_ktr.h

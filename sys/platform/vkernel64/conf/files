@@ -44,6 +44,9 @@ kern/subr_diskgpt.c			standard
 dev/virtual/vkernel/cdrom/vcd.c		optional	vcd
 dev/virtual/vkernel/disk/vdisk.c	optional	vkd
 dev/virtual/vkernel/net/if_vke.c	optional	vke
+vfs/dirfs/dirfs_vnops.c			optional        dirfs
+vfs/dirfs/dirfs_vfsops.c		optional        dirfs
+vfs/dirfs/dirfs_subr.c		optional        dirfs
 
 # PLATFORM FILES
 #

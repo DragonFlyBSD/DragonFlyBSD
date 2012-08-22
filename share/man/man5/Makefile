@@ -10,6 +10,7 @@ MAN=	acct.5 \
 	devfs.5 \
 	devtab.5 \
 	dir.5 \
+	dirfs.5 \
 	disktab.5 \
 	elf.5 \
 	ethers.5 \

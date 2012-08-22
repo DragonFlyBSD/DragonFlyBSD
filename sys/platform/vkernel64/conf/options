@@ -1,3 +1,9 @@
 # The cpu type
 #
 HAMMER_CPU              opt_global.h
+
+# Static filesystems
+DIRFS           opt_dontuse.h
+
+# KTR options
+KTR_DIRFS	opt_ktr.h
