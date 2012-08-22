@@ -197,6 +197,25 @@ SYSCTL_DECL(_debug_ktr);
 		}							\
 	}  while(0)
 
+#define KTR_COND_LOG(name, cond, ...)					\
+	do {								\
+		__ktr_info_ ## name ## _fmtcheck (__ktr_ ## name ## _fmt, ##__VA_ARGS__);	\
+		if ((cond) &&						\
+		    ktr_ ## name ## _enable &&				\
+		    (ktr_ ## name ## _mask & *ktr_info_ ## name .kf_master_enable)) { \
+			struct ktr_entry *entry;			\
+			entry = ktr_begin_write_entry(&ktr_info_ ## name, __FILE__, __LINE__); \
+			if (!entry)					\
+				break;					\
+			*(struct ktr_info_  ## name ## _args *)&entry->ktr_data[0] = \
+				(struct ktr_info_  ## name ## _args){ __VA_ARGS__}; \
+			if (ktr_finish_write_entry(&ktr_info_ ## name, entry)) { \
+				kprintf(ktr_info_ ## name .kf_format, ##__VA_ARGS__); \
+				kprintf("\n");				\
+			}						\
+		}							\
+	}  while(0)
+
 #else
 
 #define KTR_INFO_MASTER(master)						\
@@ -210,6 +229,8 @@ SYSCTL_DECL(_debug_ktr);
 		    (1 << maskbit)
 
 #define KTR_LOG(info, args...)
+
+#define KTR_COND_LOG(info, args...)
 
 #endif
 
