@@ -54,6 +54,7 @@
 #include <machine_base/apic/apicreg.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
+#include <machine/cputypes.h>
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine/psl.h>
@@ -171,6 +172,11 @@ static cpumask_t smp_lapic_mask = 1;	/* which cpus have lapic been inited */
 cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 static u_int	bootMP_size;
+
+/* Local data for detecting CPU TOPOLOGY */
+static int core_bits = 0;
+static int logical_CPU_bits = 0;
+
 
 /*
  * Calculate usable address in base memory for AP trampoline code.
@@ -1110,4 +1116,181 @@ mp_bsp_simple_setup(void)
 
 	if (cpu_feature & CPUID_TSC)
 		tsc0_offset = rdtsc();
+}
+
+
+/*
+ * CPU TOPOLOGY DETECTION FUNCTIONS
+ */
+
+/* Detect intel topology using CPUID 
+ * Ref: http://www.intel.com/Assets/PDF/appnote/241618.pdf, pg 41
+ */
+static void
+detect_intel_topology(int count_htt_cores)
+{
+	int shift = 0;
+	int ecx_index = 0;
+	int core_plus_logical_bits = 0;
+	int cores_per_package;
+	int logical_per_package;
+	int logical_per_core;
+	unsigned int p[4];
+
+	if (cpu_high >= 0xb) {
+		goto FUNC_B;
+
+	} else if (cpu_high >= 0x4) {
+		goto FUNC_4;
+
+	} else {
+		core_bits = 0;
+		for (shift = 0; (1 << shift) < count_htt_cores; ++shift)
+			;
+		logical_CPU_bits = 1 << shift;
+		return;
+	}
+
+FUNC_B:
+	cpuid_count(0xb, FUNC_B_THREAD_LEVEL, p);
+
+	/* if 0xb not supported - fallback to 0x4 */
+	if (p[1] == 0 || (FUNC_B_TYPE(p[2]) != FUNC_B_THREAD_TYPE)) {
+		goto FUNC_4;
+	}
+
+	logical_CPU_bits = FUNC_B_BITS_SHIFT_NEXT_LEVEL(p[0]);
+
+	ecx_index = FUNC_B_THREAD_LEVEL + 1;
+	do {
+		cpuid_count(0xb, ecx_index, p);
+
+		/* Check for the Core type in the implemented sub leaves. */
+		if (FUNC_B_TYPE(p[2]) == FUNC_B_CORE_TYPE) {
+			core_plus_logical_bits = FUNC_B_BITS_SHIFT_NEXT_LEVEL(p[0]);
+			break;
+		}
+
+		ecx_index++;
+
+	} while (FUNC_B_TYPE(p[2]) != FUNC_B_INVALID_TYPE);
+
+	core_bits = core_plus_logical_bits - logical_CPU_bits;
+
+	return;
+
+FUNC_4:
+	cpuid_count(0x4, 0, p);
+	cores_per_package = FUNC_4_MAX_CORE_NO(p[0]) + 1;
+
+	logical_per_package = count_htt_cores;
+	logical_per_core = logical_per_package / cores_per_package;
+	
+	for (shift = 0; (1 << shift) < logical_per_core; ++shift)
+		;
+	logical_CPU_bits = shift;
+
+	for (shift = 0; (1 << shift) < cores_per_package; ++shift)
+		;
+	core_bits = shift;
+
+	return;
+}
+
+/* Detect AMD topology using CPUID
+ * Ref: http://support.amd.com/us/Embedded_TechDocs/25481.pdf, last page
+ */
+static void
+detect_amd_topology(int count_htt_cores)
+{
+	int shift = 0;
+	if ((cpu_feature & CPUID_HTT)
+			&& (amd_feature2 & AMDID2_CMP)) {
+		
+		if (cpu_procinfo2 & AMDID_COREID_SIZE) {
+			core_bits = (cpu_procinfo2 & AMDID_COREID_SIZE)
+			    >> AMDID_COREID_SIZE_SHIFT;
+		} else {
+			core_bits = (cpu_procinfo2 & AMDID_CMP_CORES) + 1;
+			for (shift = 0; (1 << shift) < core_bits; ++shift)
+				;
+			core_bits = shift;
+		}
+
+		logical_CPU_bits = count_htt_cores >> core_bits;
+		for (shift = 0; (1 << shift) < logical_CPU_bits; ++shift)
+			;
+		logical_CPU_bits = shift;
+	} else {
+		for (shift = 0; (1 << shift) < count_htt_cores; ++shift)
+			;
+		core_bits = shift;
+		logical_CPU_bits = 0;
+	}
+}
+
+/* Calculate
+ * - logical_CPU_bits
+ * - core_bits
+ * With the values above (for AMD or INTEL) we are able to generally
+ * detect the CPU topology (number of cores for each level):
+ * Ref: http://wiki.osdev.org/Detecting_CPU_Topology_(80x86)
+ * Ref: http://www.multicoreinfo.com/research/papers/whitepapers/Intel-detect-topology.pdf
+ */
+void
+detect_cpu_topology(void)
+{
+	static int topology_detected = 0;
+	int count = 0;
+	
+	if (topology_detected) {
+		goto OUT;
+	}
+	
+	if ((cpu_feature & CPUID_HTT) == 0) {
+		core_bits = 0;
+		logical_CPU_bits = 0;
+		goto OUT;
+	} else {
+		count = (cpu_procinfo & CPUID_HTT_CORES)
+		    >> CPUID_HTT_CORE_SHIFT;
+	}	
+
+	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
+		detect_intel_topology(count);	
+	} else if (cpu_vendor_id == CPU_VENDOR_AMD) {
+		detect_amd_topology(count);
+	}
+
+OUT:
+	if (bootverbose)
+		kprintf("BITS within APICID: logical_CPU_bits: %d; core_bits: %d\n",
+		    logical_CPU_bits, core_bits);
+
+	topology_detected = 1;
+}
+
+/* Interface functions to calculate chip_ID,
+ * core_number and logical_number
+ * Ref: http://wiki.osdev.org/Detecting_CPU_Topology_(80x86)
+ */
+int
+get_chip_ID(int cpuid)
+{
+	return get_apicid_from_cpuid(cpuid) >>
+	    (logical_CPU_bits + core_bits);
+}
+
+int
+get_core_number_within_chip(int cpuid)
+{
+	return (get_apicid_from_cpuid(cpuid) >> logical_CPU_bits) &
+	    ( (1 << core_bits) -1);
+}
+
+int
+get_logical_CPU_number_within_core(int cpuid)
+{
+	return get_apicid_from_cpuid(cpuid) &
+	    ( (1 << logical_CPU_bits) -1);
 }
