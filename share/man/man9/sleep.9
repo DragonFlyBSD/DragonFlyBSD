@@ -143,8 +143,9 @@ contains the
 flag, signals are checked before and after sleeping, else signals are
 ignored.
 .Pp
-.Fn Tsleep_interlock
-is similar to
+The
+.Fn tsleep_interlock
+function is similar to
 .Fn tsleep ,
 in that it queues a thread on a sleep queue, but it does not actually put the
 thread to sleep.
@@ -161,10 +162,10 @@ tsleep(..., PINTERLOCK)
 For example, to implement
 .Fn ssleep :
 .Bd -literal
-spin_lock_wr(&important_lock);
+spin_lock(&important_lock);
 if (important_condition == 0) {
 	tsleep_interlock(ident, flags);
-	spin_unlock_wr(&important_lock);
+	spin_unlock(&important_lock);
 	tsleep(..., PINTERLOCK);
 }
 .Ed
@@ -173,7 +174,7 @@ The
 .Fn ssleep
 function works like
 .Fn tsleep
-while at the same time releasing the exclusive (write) spinlock
+while at the same time releasing the exclusive spinlock
 .Fa spin
 before sleeping and reacquiring it before
 .Fn ssleep
