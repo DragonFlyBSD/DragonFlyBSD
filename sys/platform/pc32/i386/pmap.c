@@ -1118,9 +1118,10 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 
 	if (mpte == NULL) {
 		ptepindex = (va >> PDRSHIFT);
-		if (pmap->pm_ptphint &&
-			(pmap->pm_ptphint->pindex == ptepindex)) {
-			mpte = pmap->pm_ptphint;
+		if ((mpte = pmap->pm_ptphint) != NULL &&
+		    mpte->pindex == ptepindex &&
+		    (mpte->flags & PG_BUSY) == 0) {
+			; /* use mpte */
 		} else {
 			mpte = pmap_page_lookup(pmap->pm_pteobj, ptepindex);
 			pmap->pm_ptphint = mpte;
@@ -1296,18 +1297,30 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		return 0;
 	}
 
+	KKASSERT(pmap->pm_stats.resident_count > 0);
+	KKASSERT(pde[p->pindex]);
+
+	/*
+	 * page table page's wire_count must be 1.  Caller is the pmap
+	 * termination code which holds the pm_pteobj, there is a race
+	 * if someone else is trying to hold the VM object in order to
+	 * clean up a wire_count.
+	 */
+	if (p->wire_count != 1)  {
+		if (pmap->pm_pteobj->hold_count <= 1)
+			panic("pmap_release: freeing wired page table page");
+		kprintf("pmap_release_free_page: unwire race detected\n");
+		vm_page_wakeup(p);
+		tsleep(p, 0, "pmapx", 1);
+		return 0;
+	}
+
 	/*
 	 * Remove the page table page from the processes address space.
 	 */
-	KKASSERT(pmap->pm_stats.resident_count > 0);
-	KKASSERT(pde[p->pindex]);
+	pmap->pm_cached = 0;
 	pde[p->pindex] = 0;
 	--pmap->pm_stats.resident_count;
-	pmap->pm_cached = 0;
-
-	if (p->wire_count != 1)  {
-		panic("pmap_release: freeing wired page table page");
-	}
 	if (pmap->pm_ptphint && (pmap->pm_ptphint->pindex == p->pindex))
 		pmap->pm_ptphint = NULL;
 
@@ -1409,7 +1422,7 @@ pmap_allocpte(pmap_t pmap, vm_offset_t va)
 {
 	unsigned ptepindex;
 	vm_offset_t ptepa;
-	vm_page_t m;
+	vm_page_t mpte;
 
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(pmap->pm_pteobj));
 
@@ -1443,16 +1456,17 @@ pmap_allocpte(pmap_t pmap, vm_offset_t va)
 		 * In order to get the page table page, try the
 		 * hint first.
 		 */
-		if (pmap->pm_ptphint &&
-			(pmap->pm_ptphint->pindex == ptepindex)) {
-			m = pmap->pm_ptphint;
+		if ((mpte = pmap->pm_ptphint) != NULL &&
+		    (mpte->pindex == ptepindex) &&
+		    (mpte->flags & PG_BUSY) == 0) {
+			vm_page_wire_quick(mpte);
 		} else {
-			m = pmap_page_lookup(pmap->pm_pteobj, ptepindex);
-			pmap->pm_ptphint = m;
-			vm_page_wakeup(m);
+			mpte = pmap_page_lookup(pmap->pm_pteobj, ptepindex);
+			pmap->pm_ptphint = mpte;
+			vm_page_wire_quick(mpte);
+			vm_page_wakeup(mpte);
 		}
-		vm_page_wire_quick(m);
-		return m;
+		return mpte;
 	}
 	/*
 	 * Here if the pte page isn't mapped, or if it has been deallocated.
@@ -1731,10 +1745,8 @@ pmap_collect(void)
 	
 
 /*
- * If it is the first entry on the list, it is actually
- * in the header and we must copy the following entry up
- * to the header.  Otherwise we must search the list for
- * the entry.  In either case we free the now unused entry.
+ * Remove the pv entry and unwire the page table page related to the
+ * pte the caller has cleared from the page table.
  *
  * The caller must hold vm_token.
  */
@@ -1745,6 +1757,9 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	pv_entry_t pv;
 	int rtval;
 
+	/*
+	 * Cannot block
+	 */
 	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	if (m->md.pv_list_count < pmap->pm_stats.resident_count) {
 		TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
@@ -1762,6 +1777,9 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	}
 	KKASSERT(pv);
 
+	/*
+	 * Cannot block
+	 */
 	rtval = 0;
 	test_m_maps_pv(m, pv);
 	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
@@ -1772,6 +1790,10 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 	TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
 	++pmap->pm_generation;
+
+	/*
+	 * This can block.
+	 */
 	vm_object_hold(pmap->pm_pteobj);
 	rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem, info);
 	vm_object_drop(pmap->pm_pteobj);
@@ -2349,6 +2371,11 @@ validate:
 	 * to update the pte.  If the pte is already present we have
 	 * to get rid of the extra wire-count on mpte we had obtained
 	 * above.
+	 *
+	 * mpte has a new wire_count, which also serves to prevent the
+	 * page table page from getting ripped out while we work.  If we
+	 * are modifying an existing pte instead of installing a new one
+	 * we have to drop it.
 	 */
 	if ((origpte & ~(PG_M|PG_A)) != newpte) {
 		if (prot & VM_PROT_NOSYNC)
@@ -2368,7 +2395,17 @@ validate:
 			pmap_inval_deinterlock(&info, pmap);
 		if (newpte & PG_RW)
 			vm_page_flag_set(m, PG_WRITEABLE);
+	} else {
+		if (*pte) {
+			KKASSERT((*pte & PG_FRAME) == (newpte & PG_FRAME));
+			if (vm_page_unwire_quick(mpte))
+				panic("pmap_enter: Insufficient wire_count");
+		}
 	}
+
+	/*
+	 * NOTE: mpte invalid after this point if we block.
+	 */
 	KKASSERT((newpte & PG_MANAGED) == 0 || (m->flags & PG_MAPPED));
 	if ((prot & VM_PROT_NOSYNC) == 0)
 		pmap_inval_done(&info);
@@ -2449,9 +2486,9 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 			if (ptepa) {
 				if (ptepa & PG_PS)
 					panic("pmap_enter_quick: unexpected mapping into 4MB page");
-				if (pmap->pm_ptphint &&
-				    (pmap->pm_ptphint->pindex == ptepindex)) {
-					mpte = pmap->pm_ptphint;
+				if ((mpte = pmap->pm_ptphint) != NULL &&
+				    (mpte->pindex == ptepindex) &&
+				    (mpte->flags & PG_BUSY) == 0) {
 					vm_page_wire_quick(mpte);
 				} else {
 					mpte = pmap_page_lookup(pmap->pm_pteobj,
@@ -2476,15 +2513,17 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	 */
 	pte = (unsigned *)vtopte(va);
 	if (*pte & PG_V) {
-		if (mpte)
-			pmap_unwire_pte(pmap, mpte, &info);
 		pa = VM_PAGE_TO_PHYS(m);
 		KKASSERT(((*pte ^ pa) & PG_FRAME) == 0);
 		pmap_inval_done(&info);
+		if (mpte)
+			pmap_unwire_pte(pmap, mpte, &info);
 		lwkt_reltoken(&vm_token);
 		vm_object_drop(pmap->pm_pteobj);
-		if (pv)
+		if (pv) {
 			free_pv_entry(pv);
+			/* pv = NULL; */
+		}
 		return;
 	}
 
@@ -2514,8 +2553,10 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 		*pte = pa | PG_V | PG_U | PG_MANAGED;
 /*	pmap_inval_add(&info, pmap, va); shouldn't be needed inval->valid */
 	pmap_inval_done(&info);
-	if (pv)
+	if (pv) {
 		free_pv_entry(pv);
+		/* pv = NULL; */
+	}
 	lwkt_reltoken(&vm_token);
 	vm_object_drop(pmap->pm_pteobj);
 }
