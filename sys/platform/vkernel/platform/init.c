@@ -112,6 +112,8 @@ int optcpus;		/* number of cpus - see mp_start() */
 int lwp_cpu_lock;	/* if/how to lock virtual CPUs to real CPUs */
 int real_ncpus;		/* number of real CPUs */
 int next_cpu;		/* next real CPU to lock a virtual CPU to */
+int vkernel_b_arg;	/* -b argument - no of logical CPU bits - only SMP */
+int vkernel_B_arg;	/* -B argument - no of core bits - only SMP */
 
 int via_feature_xcrypt = 0;	/* XXX */
 int via_feature_rng = 0;	/* XXX */
@@ -149,6 +151,7 @@ main(int ac, char **av)
 	char *suffix;
 	char *endp;
 	char *tmp;
+	char *tok;
 	int netifFileNum = 0;
 	int diskFileNum = 0;
 	int cdFileNum = 0;
@@ -178,6 +181,8 @@ main(int ac, char **av)
 	kernel_mem_readonly = 1;
 #ifdef SMP
 	optcpus = 2;
+	vkernel_b_arg = 0;
+	vkernel_B_arg = 0;
 #endif
 	lwp_cpu_lock = LCL_NONE;
 
@@ -197,7 +202,7 @@ main(int ac, char **av)
 	if (ac < 2)
 		usage_help(false);
 
-	while ((c = getopt(ac, av, "c:hsvl:m:n:r:e:i:p:I:U")) != -1) {
+	while ((c = getopt(ac, av, "c:hsvl:m:n:r:e:i:p:I:Ub:B:")) != -1) {
 		switch(c) {
 		case 'e':
 			/*
@@ -317,19 +322,46 @@ main(int ac, char **av)
 			 * This value is set up by mp_start(), don't just
 			 * set ncpus here.
 			 */
+			tok = strtok(optarg, ":");
 #ifdef SMP
-			optcpus = strtol(optarg, NULL, 0);
+			optcpus = strtol(tok, NULL, 0);
 			if (optcpus < 1 || optcpus > MAXCPU)
 				usage_err("Bad ncpus, valid range is 1-%d", MAXCPU);
+			
+			/* :core_bits argument */
+			tok = strtok(NULL, ":");
+			if (tok != NULL) {
+				vkernel_b_arg = strtol(tok, NULL, 0);
+
+				/* :logical_CPU_bits argument */
+				tok = strtok(NULL, ":");
+				if (tok != NULL) {
+					vkernel_B_arg = strtol(tok, NULL, 0);
+				}
+
+			}
+
 #else
-			if (strtol(optarg, NULL, 0) != 1) {
+			if (strtol(tok, NULL, 0) != 1) {
 				usage_err("You built a UP vkernel, only 1 cpu!");
+			}
+
+			/* :logical_CPU_bits argument */
+			tok = strtok(NULL, ":");
+			if (tok != NULL) {
+				usage_err("You built a UP vkernel. No CPU topology available");
+
+				/* :core_bits argument */
+				tok = strtok(NULL, ":");
+				if (tok != NULL) {
+					usage_err("You built a UP vkernel. No CPU topology available");
+				}
 			}
 #endif
 			
 			break;
 		case 'p':
-			pid_file = optarg;	
+			pid_file = optarg;
 			break;
 		case 'U':
 			kernel_mem_readonly = 0;
@@ -1310,7 +1342,8 @@ usage_help(_Bool help)
 {
 	fprintf(stderr, "Usage: %s [-hsUv] [-c file] [-e name=value:name=value:...]\n"
 	    "\t[-i file] [-I interface[:address1[:address2][/netmask]]] [-l cpulock]\n"
-	    "\t[-m size] [-n numcpus] [-p file] [-r file]\n", save_av[0]);
+	    "\t[-m size] [-n numcpus[:lbits[:cbits]]]\n"
+	    "\t[-p file] [-r file]\n", save_av[0]);
 
 	if (help)
 		fprintf(stderr, "\nArguments:\n"
@@ -1321,7 +1354,12 @@ usage_help(_Bool help)
 		    "\t-I\tCreate a virtual network device.\n"
 		    "\t-l\tSpecify which, if any, real CPUs to lock virtual CPUs to.\n"
 		    "\t-m\tSpecify the amount of memory to be used by the kernel in bytes.\n"
-		    "\t-n\tSpecify the number of CPUs you wish to emulate.\n"
+		    "\t-n\tSpecify the number of CPUs and the topology you wish to emulate:\n"
+		    "\t  \t- numcpus - number of cpus\n"
+		    "\t  \t- :lbits - specify the number of bits within APICID(=CPUID) needed for representing\n"
+		    "\t  \tthe logical ID. Controls the number of threads/core (0bits - 1 thread, 1bit - 2 threads).\n"
+		    "\t  \t- :cbits - specify the number of bits within APICID(=CPUID) needed for representing\n"
+		    "\t  \tthe core ID. Controls the number of core/package (0bits - 1 core, 1bit - 2 cores).\n"
 		    "\t-p\tSpecify a file in which to store the process ID.\n"
 		    "\t-r\tSpecify a R/W disk image file to be used by the kernel.\n"
 		    "\t-s\tBoot into single-user mode.\n"

@@ -68,6 +68,10 @@ static cpumask_t smp_startup_mask = 1;  /* which cpus have been started */
 int		mp_naps;                /* # of Applications processors */
 static int  mp_finish;
 
+/* Local data for detecting CPU TOPOLOGY */
+static int core_bits = 0;
+static int logical_CPU_bits = 0;
+
 /* function prototypes XXX these should go elsewhere */
 void bootstrap_idle(void);
 void single_cpu_ipi(int, int, int);
@@ -454,4 +458,36 @@ start_all_aps(u_int boot_addr)
 	vm_object_drop(&kernel_object);
 
 	return(ncpus - 1);
+}
+
+/*
+ * CPU TOPOLOGY DETECTION FUNCTIONS.
+ */
+
+void
+detect_cpu_topology(void)
+{
+	logical_CPU_bits = vkernel_b_arg;
+	core_bits = vkernel_B_arg;
+}
+
+int
+get_chip_ID(int cpuid)
+{
+	return get_apicid_from_cpuid(cpuid) >>
+	    (logical_CPU_bits + core_bits);
+}
+
+int
+get_core_number_within_chip(int cpuid)
+{
+	return (get_apicid_from_cpuid(cpuid) >> logical_CPU_bits) &
+	    ( (1 << core_bits) -1);
+}
+
+int
+get_logical_CPU_number_within_core(int cpuid)
+{
+	return get_apicid_from_cpuid(cpuid) &
+	    ( (1 << logical_CPU_bits) -1);
 }
