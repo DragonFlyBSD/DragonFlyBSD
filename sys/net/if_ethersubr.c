@@ -115,6 +115,7 @@ static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 static void ether_restore_header(struct mbuf **, const struct ether_header *,
 				 const struct ether_header *);
 static int ether_characterize(struct mbuf **);
+static void ether_dispatch(int, struct mbuf *);
 
 /*
  * if_bridge support
@@ -150,6 +151,8 @@ static u_long ether_pktinfo_hit;
 static u_long ether_rss_nopi;
 static u_long ether_rss_nohash;
 static u_long ether_input_requeue;
+static u_long ether_input_wronghwhash;
+static int ether_input_ckhash;
 #endif
 
 SYSCTL_DECL(_net_link);
@@ -178,6 +181,10 @@ SYSCTL_ULONG(_net_link_ether, OID_AUTO, pktinfo_hit, CTLFLAG_RW,
     "# of packets whose msgport are found using pktinfo");
 SYSCTL_ULONG(_net_link_ether, OID_AUTO, input_requeue, CTLFLAG_RW,
     &ether_input_requeue, 0, "# of input packets gets requeued");
+SYSCTL_ULONG(_net_link_ether, OID_AUTO, input_wronghwhash, CTLFLAG_RW,
+    &ether_input_wronghwhash, 0, "# of input packets with wrong hw hash");
+SYSCTL_INT(_net_link_ether, OID_AUTO, always_ckhash, CTLFLAG_RW,
+    &ether_input_ckhash, 0, "always check hash");
 #endif
 
 #define ETHER_KTR_STR		"ifp=%p"
@@ -1347,6 +1354,41 @@ ether_input_handler(netmsg_t nmsg)
 
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
+
+	if ((m->m_flags & M_ETHER_VLANCHECKED) == 0) {
+		if (!ether_vlancheck(&m)) {
+			KKASSERT(m == NULL);
+			return;
+		}
+	}
+	if ((m->m_flags & (M_HASH | M_CKHASH)) == (M_HASH | M_CKHASH)
+#ifdef RSS_DEBUG
+	    || ether_input_ckhash
+#endif
+	    ) {
+		int isr;
+
+		/*
+		 * Need to verify the hash supplied by the hardware
+		 * which could be wrong.
+		 */
+		m->m_flags &= ~(M_HASH | M_CKHASH);
+		isr = ether_characterize(&m);
+		if (m == NULL)
+			return;
+		KKASSERT(m->m_flags & M_HASH);
+
+		if (m->m_pkthdr.hash != mycpuid) {
+			/*
+			 * Wrong hardware supplied hash; redispatch
+			 */
+			ether_dispatch(isr, m);
+#ifdef RSS_DEBUG
+			atomic_add_long(&ether_input_wronghwhash, 1);
+#endif
+			return;
+		}
+	}
 	ifp = m->m_pkthdr.rcvif;
 
 	eh = mtod(m, struct ether_header *);
@@ -1357,13 +1399,6 @@ ether_input_handler(netmsg_t nmsg)
 		else
 			m->m_flags |= M_MCAST;
 		ifp->if_imcasts++;
-	}
-
-	if ((m->m_flags & M_ETHER_VLANCHECKED) == 0) {
-		if (!ether_vlancheck(&m)) {
-			KKASSERT(m == NULL);
-			return;
-		}
 	}
 
 	ether_input_oncpu(ifp, m);
@@ -1470,12 +1505,12 @@ ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi)
 #endif
 
 	/*
-	 * Packet hash will be recalculated by software,
-	 * so clear the M_HASH flag set by the driver;
-	 * the hash value calculated by the hardware may
-	 * not be exactly what we want.
+	 * Packet hash will be recalculated by software, so clear
+	 * the M_HASH and M_CKHASH flag set by the driver; the hash
+	 * value calculated by the hardware may not be exactly what
+	 * we want.
 	 */
-	m->m_flags &= ~M_HASH;
+	m->m_flags &= ~(M_HASH | M_CKHASH);
 
 	if (!ether_vlancheck(&m)) {
 		KKASSERT(m == NULL);
