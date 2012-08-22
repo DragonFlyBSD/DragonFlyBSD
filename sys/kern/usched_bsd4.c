@@ -604,7 +604,7 @@ batchy_looser_pri_test(struct lwp* lp)
 			    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 			    lp->lwp_proc->p_pid,
 			    lp->lwp_thread->td_gd->gd_cpuid,
-			    mask);
+			    (unsigned long)mask);
 
 			return 0;
 		}
@@ -615,7 +615,7 @@ batchy_looser_pri_test(struct lwp* lp)
 	    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 	    lp->lwp_proc->p_pid,
 	    lp->lwp_thread->td_gd->gd_cpuid,
-	    mask);
+	    (unsigned long)mask);
 
 	return 1;
 }
@@ -740,7 +740,7 @@ bsd4_setrunqueue(struct lwp *lp)
 		    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 		    lp->lwp_proc->p_pid,
 		    lp->lwp_thread->td_gd->gd_cpuid,
-		    mask,
+		    (unsigned long)mask,
 		    mycpu->gd_cpuid);
 
 		while (mask) {
@@ -759,7 +759,7 @@ bsd4_setrunqueue(struct lwp *lp)
 					    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 					    lp->lwp_proc->p_pid,
 					    lp->lwp_thread->td_gd->gd_cpuid,
-					    mask,
+					    (unsigned long)mask,
 					    cpuid,
 					    mycpu->gd_cpuid);
 
@@ -785,7 +785,7 @@ bsd4_setrunqueue(struct lwp *lp)
 			    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 			    lp->lwp_proc->p_pid,
 			    lp->lwp_thread->td_gd->gd_cpuid,
-			    mask,
+			    (unsigned long)mask,
 			    cpuid,
 			    mycpu->gd_cpuid);
 
@@ -801,7 +801,7 @@ bsd4_setrunqueue(struct lwp *lp)
 		    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 		    lp->lwp_proc->p_pid,
 		    lp->lwp_thread->td_gd->gd_cpuid,
-		    mask,
+		    (unsigned long)mask,
 		    mycpu->gd_cpuid);
 
 		while (mask) {
@@ -819,7 +819,7 @@ bsd4_setrunqueue(struct lwp *lp)
 				    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 				    lp->lwp_proc->p_pid,
 				    lp->lwp_thread->td_gd->gd_cpuid,
-				    mask,
+				    (unsigned long)mask,
 				    cpuid,
 				    mycpu->gd_cpuid);
 
@@ -839,7 +839,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 	    lp->lwp_proc->p_pid,
 	    lp->lwp_thread->td_gd->gd_cpuid,
-	    mask,
+	    (unsigned long)mask,
 	    mycpu->gd_cpuid);
 
 	while (mask) {
@@ -857,7 +857,7 @@ bsd4_setrunqueue(struct lwp *lp)
 			    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 			    lp->lwp_proc->p_pid,
 			    lp->lwp_thread->td_gd->gd_cpuid,
-			    mask,
+			    (unsigned long)mask,
 			    cpuid,
 			    mycpu->gd_cpuid);
 
@@ -1501,9 +1501,9 @@ again:
 			KTR_COND_LOG(usched_chooseproc_cc_not_good,
 			    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 			    lp->lwp_proc->p_pid,
-			    lp->lwp_thread->td_gd->gd_cpumask,
-			    siblings,
-			    cpumask);
+			    (unsigned long)lp->lwp_thread->td_gd->gd_cpumask,
+			    (unsigned long)siblings,
+			    (unsigned long)cpumask);
 
 			cpunode = bsd4_pcpu[lp->lwp_thread->td_gd->gd_cpuid].cpunode;
 			level = 0;
@@ -1531,9 +1531,9 @@ again:
 			KTR_COND_LOG(usched_chooseproc_cc_elected,
 			    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 			    lp->lwp_proc->p_pid,
-			    lp->lwp_thread->td_gd->gd_cpumask,
-			    siblings,
-			    cpumask);
+			    (unsigned long)lp->lwp_thread->td_gd->gd_cpumask,
+			    (unsigned long)siblings,
+			    (unsigned long)cpumask);
 
 			goto found;
 		}
@@ -1816,7 +1816,7 @@ sched_thread(void *dummy)
 
 			KTR_LOG(usched_sched_thread_no_process_found,
 			    gd->gd_cpuid,
-			    tmpmask);
+			    (unsigned long)tmpmask);
 		}
 	} else {
 		/*
