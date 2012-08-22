@@ -31,4 +31,5 @@ end
 #
 bmake deinstall DEINSTALLDEPENDS=ALL SKIP_LICENSE_CHECK=yes
 bmake repackage clean SKIP_LICENSE_CHECK=yes
+bmake bin-install
 exit $status

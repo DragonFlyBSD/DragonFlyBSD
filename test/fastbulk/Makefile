@@ -64,6 +64,7 @@ setup: cleanup
 	mkdir -p ${BUILDBASE}/tmp/logs/bad
 	mkdir -p ${BUILDBASE}/etc
 	mkdir -p ${BUILDBASE}/usr.pkg
+	mkdir -p ${BUILDBASE}/usr.pkgsrc
 	mkdir -p ${BUILDBASE}/usr.obj
 	mkdir -p ${BUILDBASE}/var.db
 	mkdir -p ${BUILDBASE}/var.db/pkg
@@ -80,17 +81,24 @@ setup: cleanup
 	mount_null ${BUILDBASE}/track ${BUILDROOT}/tmp/track
 	mount_null ${BUILDBASE}/etc ${BUILDROOT}/etc
 	mount_null ${BUILDBASE}/usr.pkg ${BUILDROOT}/usr/pkg
+	mount_null ${BUILDBASE}/usr.pkgsrc ${BUILDROOT}/usr/pkgsrc
 	mount_null ${BUILDBASE}/usr.obj ${BUILDROOT}/usr/obj
 	mount_null ${BUILDBASE}/var.db ${BUILDROOT}/var/db
 	mount_null ${BUILDBASE}/var.db.pkg ${BUILDROOT}/var/db/pkg
 	mount_null ${BUILDBASE}/var.db.pkg.refcount \
 			${BUILDROOT}/var/db/pkg.refcount
 	mount_null ${SYSROOT}/dev ${BUILDROOT}/dev
-	mount_null ${SYSPKGSRC} ${BUILDROOT}/usr/pkgsrc
+	cpdup -v -s0 -i0 -X ${.CURDIR}/pkgsrc.ign \
+			${SYSPKGSRC} ${BUILDROOT}/usr/pkgsrc
+	find ${BUILDROOT}/usr/pkgsrc -name work | xargs rm -rf
+	mkdir -p ${BUILDROOT}/usr/pkgsrc/packages
+	mkdir -p ${BUILDROOT}/usr/pkgsrc/distfiles
 	mount_null ${BUILDBASE}/packages ${BUILDROOT}/usr/pkgsrc/packages
 	mount_null ${BUILDBASE}/distfiles ${BUILDROOT}/usr/pkgsrc/distfiles
+	echo "finding and removing work directories"
 
 cleanup:
+	-resident -d ${BUILDROOT}/usr/pkg/bin/bmake
 	-umount ${BUILDROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
 	-umount ${BUILDROOT}/usr/pkgsrc/packages > /dev/null 2>&1
 	-umount ${BUILDROOT}/usr/pkgsrc > /dev/null 2>&1
@@ -115,6 +123,7 @@ realclean: cleanup
 	rm -rf ${BUILDBASE}/tmp
 	rm -rf ${BUILDBASE}/track
 	rm -rf ${BUILDBASE}/usr.pkg
+	rm -rf ${BUILDBASE}/usr.pkgsrc
 	rm -rf ${BUILDBASE}/usr.obj
 	rm -rf ${BUILDBASE}/var.db.pkg
 	rm -rf ${BUILDBASE}/var.db.pkg.refcount
@@ -124,6 +133,7 @@ realclean: cleanup
 bootstrap:
 	rm -rf ${BUILDBASE}/usr.obj/work
 	${CHROOTENV} "cd /usr/pkgsrc/bootstrap; ./bootstrap --workdir=/usr/obj/work"
+	resident ${BUILDROOT}/usr/pkg/bin/bmake
 
 # Figure out what has changed and deinstall the related packages
 #

@@ -10,4 +10,5 @@ foreach pkgsrcdir ( `cat /tmp/track/changes.txt` )
 	bmake deinstall DEINSTALLDEPENDS=ALL
 	bmake package-eat-cookie
 	rm -f /usr/pkgsrc/packages/*/${pkgname}.tgz )
+	popd
 end
