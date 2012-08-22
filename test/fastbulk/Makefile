@@ -174,6 +174,10 @@ build: ${PRESTAGE}
 	rm -rf ${BUILDBASE}/usr.obj/work
 	mkdir -p ${BUILDBASE}/usr.obj/work
 	-rm ${BUILDROOT}/tmp/logs/run/*
+	find ${BUILDROOT}/var/db/pkg -name '*.core' -delete
+	find ${BUILDROOT}/var/db/pkg -type d -depth 1 -delete
+	#${CHROOTENV} "pkg_admin -K /var/db/pkg fetch-pkg-vulnerabilities"
+	#${CHROOTENV} "pkg_admin rebuild"
 	${CHROOTENV} "cd /tmp/track; ./fastbulk -j ${NPARALLEL} /usr/pkgsrc"
 
 ${BUILDBASE}/bin/getpkgsrcdir: getpkgsrcdir.c
