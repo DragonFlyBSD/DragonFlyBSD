@@ -244,6 +244,7 @@ int	ticks;			/* system master ticks at hz */
 int	clocks_running;		/* tsleep/timeout clocks operational */
 int64_t	nsec_adj;		/* ntpd per-tick adjustment in nsec << 32 */
 int64_t	nsec_acc;		/* accumulator */
+int	sched_ticks;		/* global schedule clock ticks */
 
 /* NTPD time correction fields */
 int64_t	ntp_tick_permanent;	/* per-tick adjustment in nsec << 32 */
@@ -800,6 +801,9 @@ schedclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 			}
 		}
 	}
+	/* Increment the global sched_ticks */
+	if (mycpu->gd_cpuid == 0)
+		++sched_ticks;
 }
 
 /*
