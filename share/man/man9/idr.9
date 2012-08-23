@@ -1,0 +1,138 @@
+.\" Copyright (c) 2012 Vishesh Yadav
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. The name of the author may not be used to endorse or promote products
+.\"    derived from this software without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\"
+.Dd August 15, 2012
+.Dt IDR 9
+.Os
+.Sh NAME
+.Nm idr ,
+.Nm idr_destroy ,
+.Nm idr_find ,
+.Nm idr_for_each ,
+.Nm idr_get_new ,
+.Nm idr_get_new_above ,
+.Nm idr_init ,
+.Nm idr_init1 ,
+.Nm idr_pre_get ,
+.Nm idr_remove ,
+.Nm idr_remove_all ,
+.Nm idr_replace
+.Nd Integer ID management library
+.Sh SYNOPSIS
+.In sys/idr.h
+.Ft void
+.Fn idr_destroy "struct idr *idp"
+.Ft void *
+.Fn idr_find "struct idr *idp" "int id"
+.Ft int
+.Fn idr_for_each "struct idr *idp" "int (*fn)(int id, void *p, void *data)" "void *data"
+.Ft int
+.Fn idr_get_new "struct idr *idp" "void *ptr" "int *id"
+.Ft int
+.Fn idr_get_new_above "struct idr *idp" "void *ptr" "int sid" "int *id"
+.Ft void
+.Fn idr_init "struct idr *idp"
+.Ft void
+.Fn idr_init1 "struct idr *idp" "int size"
+.Ft int
+.Fn idr_pre_get "struct idr *idp"
+.Ft void
+.Fn idr_remove "struct idr *idp" "int id"
+.Ft void
+.Fn idr_remove_all "struct idr *idp"
+.Ft void *
+.Fn idr_replace "struct idr *idp" "void *ptr" "int id"
+.
+.Sh DESCRIPTION
+.Pp
+.Fn idr_destroy "struct idr *idp"
+.Pp
+Free all resources taken by given idr handle.
+.
+.Pp
+.Fn idr_find "struct idr *idp" "int id"
+.Pp
+Return data pointer mapped with given id.
+.
+.Pp
+.Fn idr_for_each "struct idr *idp" "int (*fn)(int id, void *p, void *data)" "void *data"
+.Pp
+Iterate through all pointers registered with given idr handle and call the
+callback function 'fn' for each pointer. It is not safe to modify the idr tree
+through the callback function.
+.Pp
+If the callback function returns a non-zero integer, we stop and return the
+value.
+.
+.Pp
+.Fn idr_get_new "struct idr *idp" "void *ptr" "int *id",
+.Fn idr_get_new_above "struct idr *idp" "void *ptr" "int sid" "int *id"
+.Pp
+Allocates a new integer mapped with pointer 'ptr'. The new id will be stored
+in 'id'. If the tree get full, function will return EAGAIN.
+.Fn idr_pre_get
+should be called to grow the tree.
+.
+.Pp
+.Fn idr_init "struct idr *idp",
+.Fn idr_init1 "struct idr *idp" "int size"
+.Pp
+Initialize idr handle that will be used by other functions of the API.
+.Fn idr_init
+initializes tree with hard coded default initial capacity (32).
+.Fn idr_init1
+takes additional parameter 'size' to set the initial capacity manually.
+.
+.Pp
+.Fn idr_pre_get "struct idr *idp"
+.Pp
+This function should be called prior to calling the idr_get_new* functions. It
+preallocates enough memory for subsequent calls to idr_get_new* functions. This 
+function should be called without any locks held.
+.Pp
+This function returns 0 if enough memory couldn't be allocated, otherwise 1.
+.Pp
+This function lacks 'gfp_t gfp_mask' parameter that is found in Linux version of
+this API.
+.
+.Pp
+.Fn idr_remove "struct idr *idp" "int id",
+.Pp
+Remove the given id from tree.
+.
+.Pp
+.Fn idr_remove_all "struct idr *idp"
+.Pp
+Remove all entries in the idr tree.
+.
+.Pp
+.Fn idr_replace "struct idr *idp" "void *ptr" "int id"
+.Pp
+Replace pointer for given id with new pointer.
+.Pp
+NULL is returned if pointer is not found. This behavior is different from the
+Linux API.
+.
