@@ -205,27 +205,27 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	node->gid = DEVFS_DEFAULT_GID;
 
 	switch (devfsnodetype) {
-	case Proot:
+	case Nroot:
 		/*
 		 * Ensure that we don't recycle the root vnode by marking it as
 		 * linked into the topology.
 		 */
 		node->flags |= DEVFS_NODE_LINKED;
-	case Pdir:
+	case Ndir:
 		TAILQ_INIT(DEVFS_DENODE_HEAD(node));
 		node->d_dir.d_type = DT_DIR;
 		node->nchildren = 2;
 		break;
 
-	case Plink:
+	case Nlink:
 		node->d_dir.d_type = DT_LNK;
 		break;
 
-	case Preg:
+	case Nreg:
 		node->d_dir.d_type = DT_REG;
 		break;
 
-	case Pdev:
+	case Ndev:
 		if (dev != NULL) {
 			node->d_dir.d_type = DT_CHR;
 			node->d_dev = dev;
@@ -263,7 +263,7 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	 * reference.
 	 */
 	if ((parent != NULL) &&
-	    ((parent->node_type == Proot) || (parent->node_type == Pdir))) {
+	    ((parent->node_type == Nroot) || (parent->node_type == Ndir))) {
 		parent->nchildren++;
 		node->cookie = parent->cookie_jar++;
 		node->flags |= DEVFS_NODE_LINKED;
@@ -320,22 +320,22 @@ try_again:
 	node->v_node = vp;
 
 	switch (node->node_type) {
-	case Proot:
+	case Nroot:
 		vsetflags(vp, VROOT);
 		/* fall through */
-	case Pdir:
+	case Ndir:
 		vp->v_type = VDIR;
 		break;
 
-	case Plink:
+	case Nlink:
 		vp->v_type = VLNK;
 		break;
 
-	case Preg:
+	case Nreg:
 		vp->v_type = VREG;
 		break;
 
-	case Pdev:
+	case Ndev:
 		vp->v_type = VCHR;
 		KKASSERT(node->d_dev);
 
@@ -393,7 +393,7 @@ devfs_freep(struct devfs_node *node)
 
 	KKASSERT(node);
 	KKASSERT(((node->flags & DEVFS_NODE_LINKED) == 0) ||
-		 (node->node_type == Proot));
+		 (node->node_type == Nroot));
 
 	/*
 	 * Protect against double frees
@@ -495,7 +495,7 @@ devfs_iterate_topology(struct devfs_node *node,
 	struct devfs_node *node1, *node2;
 	void *ret = NULL;
 
-	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
+	if ((node->node_type == Nroot) || (node->node_type == Ndir)) {
 		if (node->nchildren > 2) {
 			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node),
 							link, node2) {
@@ -525,7 +525,7 @@ devfs_reaperp_callback(struct devfs_node *node, void *unused)
 static void *
 devfs_gc_dirs_callback(struct devfs_node *node, void *unused)
 {
-	if (node->node_type == Pdir) {
+	if (node->node_type == Ndir) {
 		if ((node->nchildren == 2) &&
 		    !(node->flags & DEVFS_USER_CREATED)) {
 			devfs_unlinkp(node);
@@ -539,7 +539,7 @@ devfs_gc_dirs_callback(struct devfs_node *node, void *unused)
 static void *
 devfs_gc_links_callback(struct devfs_node *node, struct devfs_node *target)
 {
-	if ((node->node_type == Plink) && (node->link_target == target)) {
+	if ((node->node_type == Nlink) && (node->link_target == target)) {
 		devfs_unlinkp(node);
 		devfs_freep(node);
 	}
@@ -1633,7 +1633,7 @@ devfs_alias_apply(struct devfs_node *node, struct devfs_alias *alias)
 
 	KKASSERT(alias != NULL);
 
-	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
+	if ((node->node_type == Nroot) || (node->node_type == Ndir)) {
 		if (node->nchildren > 2) {
 			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2) {
 				devfs_alias_apply(node1, alias);
@@ -1696,7 +1696,7 @@ devfs_alias_create(char *name_orig, struct devfs_node *target, int rule_based)
 		goto done;
 	}
 
-	linknode = devfs_allocp(Plink, name, parent, mp, NULL);
+	linknode = devfs_allocp(Nlink, name, parent, mp, NULL);
 	if (linknode == NULL) {
 		result = 1;
 		goto done;
@@ -1782,7 +1782,7 @@ devfs_resolve_or_create_dir(struct devfs_node *parent, char *dir_name,
 	}
 
 	if ((found == NULL) && (create)) {
-		found = devfs_allocp(Pdir, dir_name, parent, parent->mp, NULL);
+		found = devfs_allocp(Ndir, dir_name, parent, parent->mp, NULL);
 	}
 
 	return found;
@@ -1909,7 +1909,7 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 		goto out;
 	}
 
-	node = devfs_allocp(Pdev, name, parent, parent->mp, dev);
+	node = devfs_allocp(Ndev, name, parent, parent->mp, dev);
 	nanotime(&parent->mtime);
 
 	/*
@@ -1953,7 +1953,7 @@ out:
 void *
 devfs_find_device_node_callback(struct devfs_node *node, cdev_t target)
 {
-	if ((node->node_type == Pdev) && (node->d_dev == target)) {
+	if ((node->node_type == Ndev) && (node->d_dev == target)) {
 		return node;
 	}
 

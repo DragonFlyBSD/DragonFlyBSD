@@ -60,11 +60,11 @@
 
 
 typedef enum {
-	Proot,		/* the filesystem root */
-	Plink,
-	Preg,
-	Pdir,
-	Pdev
+	Nroot,		/* the filesystem root */
+	Nlink,
+	Nreg,
+	Ndir,
+	Ndev
 } devfs_nodetype;
 
 struct devfs_dirent {

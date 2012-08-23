@@ -220,12 +220,12 @@ devfs_rule_reset_node(struct devfs_node *node, void *unused)
 	if (node->flags & DEVFS_RULE_HIDDEN)
 		node->flags &= ~(DEVFS_HIDDEN | DEVFS_RULE_HIDDEN);
 
-	if ((node->node_type == Plink) && (node->flags & DEVFS_RULE_CREATED)) {
+	if ((node->node_type == Nlink) && (node->flags & DEVFS_RULE_CREATED)) {
 		KKASSERT(node->link_target);
 		node->flags &= ~DEVFS_RULE_CREATED;
 		--node->link_target->nlinks;
 		devfs_gc(node);
-	} else if ((node->node_type == Pdev) && (node->d_dev)) {
+	} else if ((node->node_type == Ndev) && (node->d_dev)) {
 		node->uid = node->d_dev->si_uid;
 		node->gid = node->d_dev->si_gid;
 		node->mode = node->d_dev->si_perms;
