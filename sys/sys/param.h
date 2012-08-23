@@ -91,9 +91,10 @@
  * 300101 - i4b (ISDN) removal
  * 300102 - <sys/ata.h> is now just a link of <sys/nata.h>
  * 300103 - if SIG_IGN is set on SIGCHLD, do not keep zombie children
+ * 300003 - bugfix release
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300000	/* propagated to newvers */
+#define __DragonFly_version 300003	/* propagated to newvers */
 
 #include <sys/_null.h>
 
