@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/make_dev.9,v 1.2.2.3 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd September 11, 2009
+.Dd August 24, 2012
 .Dt MAKE_DEV 9
 .Os
 .Sh NAME
@@ -51,7 +51,7 @@
 .Ft void
 .Fn destroy_only_dev "cdev_t dev"
 .Ft int
-.Fn devfs_scan_callback "devfs_scan_t *callback"
+.Fn devfs_scan_callback "devfs_scan_t *callback" "void *arg"
 .Ft struct dev_ops *
 .Fn dev_ops_intercept "cdev_t dev" "struct dev_ops *iops"
 .Ft int
@@ -312,7 +312,7 @@ function has the following form:
 devfs_scan_t mydev_scan_callback;
 
 void
-mydev_scan_callback(cdev_t dev)
+mydev_scan_callback(cdev_t dev, void *arg)
 {
 };
 .Ed
