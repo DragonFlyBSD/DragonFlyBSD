@@ -82,11 +82,11 @@ struct devfs_fid {
 };
 
 struct devfs_node {
-	cdev_t		d_dev;		/* device assoicated with this node */
+	cdev_t		d_dev;		/* device associated with this node */
 
 	struct mount 	*mp;		/* mount point of this node */
 	struct devfs_dirent d_dir;	/* dirent data (name, inode, ...) */
-	struct vnode 	*v_node;	/* assoicated vnode */
+	struct vnode 	*v_node;	/* associated vnode */
 	struct devfs_node *parent;	/* parent of this node */
 	devfs_nodetype	node_type;	/* devfs node type */
 
