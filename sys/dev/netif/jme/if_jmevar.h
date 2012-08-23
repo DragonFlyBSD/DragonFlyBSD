@@ -64,8 +64,8 @@
 #define	JME_TX_RING_ALIGN	__VM_CACHELINE_SIZE
 #define	JME_RX_RING_ALIGN	__VM_CACHELINE_SIZE
 #define	JME_MAXSEGSIZE		4096
-#define	JME_TSO_MAXSIZE		(65535 + sizeof(struct ether_vlan_header))
-#define	JME_MAXTXSEGS		32
+#define	JME_TSO_MAXSIZE		(IP_MAXPACKET + sizeof(struct ether_vlan_header))
+#define	JME_MAXTXSEGS		40
 #define	JME_RX_BUF_ALIGN	sizeof(uint64_t)
 #define	JME_SSB_ALIGN		__VM_CACHELINE_SIZE
 
@@ -274,8 +274,6 @@ struct jme_softc {
 	uint32_t		jme_txcsr;
 	uint32_t		jme_rxcsr;
 
-	int			jme_txd_spare;
-
 	struct sysctl_ctx_list	jme_sysctl_ctx;
 	struct sysctl_oid	*jme_sysctl_tree;
 
@@ -310,6 +308,8 @@ do {					\
 #define JME_EEPROM_TIMEOUT	1000
 
 #define JME_TXD_RSVD		1
+/* Large enough to cooperate 64K TSO segment and one spare TX descriptor */
+#define JME_TXD_SPARE		34
 
 #define JME_ENABLE_HWRSS(sc)	\
 	((sc)->jme_cdata.jme_rx_ring_cnt > JME_NRXRING_MIN)

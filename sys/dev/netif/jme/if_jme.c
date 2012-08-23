@@ -56,7 +56,8 @@
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
 
-#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
 
 #include <dev/netif/mii_layer/miivar.h>
 #include <dev/netif/mii_layer/jmphyreg.h>
@@ -912,6 +913,7 @@ jme_attach(device_t dev)
 
 	/* JMC250 supports Tx/Rx checksum offload and hardware vlan tagging. */
 	ifp->if_capabilities = IFCAP_HWCSUM |
+			       IFCAP_TSO |
 			       IFCAP_VLAN_MTU |
 			       IFCAP_VLAN_HWTAGGING;
 	if (sc->jme_cdata.jme_rx_ring_cnt > JME_NRXRING_MIN)
@@ -925,7 +927,8 @@ jme_attach(device_t dev)
 	ifp->if_capenable &= ~IFCAP_TXCSUM;
 
 	if (ifp->if_capenable & IFCAP_TXCSUM)
-		ifp->if_hwassist = JME_CSUM_FEATURES;
+		ifp->if_hwassist |= JME_CSUM_FEATURES;
+	ifp->if_hwassist |= CSUM_TSO;
 
 	/* Set up MII bus. */
 	error = mii_phy_probe(dev, &sc->jme_miibus,
@@ -1212,7 +1215,7 @@ jme_dma_alloc(struct jme_softc *sc)
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
-	    JME_JUMBO_FRAMELEN,		/* maxsize */
+	    JME_TSO_MAXSIZE,		/* maxsize */
 	    JME_MAXTXSEGS,		/* nsegments */
 	    JME_MAXSEGSIZE,		/* maxsegsize */
 	    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,/* flags */
@@ -1528,6 +1531,34 @@ jme_resume(device_t dev)
 	return (0);
 }
 
+static __inline int
+jme_tso_pullup(struct mbuf **mp)
+{
+	int hoff, iphlen, thoff;
+	struct mbuf *m;
+
+	m = *mp;
+	KASSERT(M_WRITABLE(m), ("TSO mbuf not writable"));
+
+	iphlen = m->m_pkthdr.csum_iphlen;
+	thoff = m->m_pkthdr.csum_thlen;
+	hoff = m->m_pkthdr.csum_lhlen;
+
+	KASSERT(iphlen > 0, ("invalid ip hlen"));
+	KASSERT(thoff > 0, ("invalid tcp hlen"));
+	KASSERT(hoff > 0, ("invalid ether hlen"));
+
+	if (__predict_false(m->m_len < hoff + iphlen + thoff)) {
+		m = m_pullup(m, hoff + iphlen + thoff);
+		if (m == NULL) {
+			*mp = NULL;
+			return ENOBUFS;
+		}
+		*mp = m;
+	}
+	return 0;
+}
+
 static int
 jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 {
@@ -1537,9 +1568,16 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	bus_dma_segment_t txsegs[JME_MAXTXSEGS];
 	int maxsegs, nsegs;
 	int error, i, prod, symbol_desc;
-	uint32_t cflags, flag64;
+	uint32_t cflags, flag64, mss;
 
 	M_ASSERTPKTHDR((*m_head));
+
+	if ((*m_head)->m_pkthdr.csum_flags & CSUM_TSO) {
+		/* XXX Is this necessary? */
+		error = jme_tso_pullup(m_head);
+		if (error)
+			return error;
+	}
 
 	prod = sc->jme_cdata.jme_tx_prod;
 	txd = &sc->jme_cdata.jme_txdesc[prod];
@@ -1553,7 +1591,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 		  (JME_TXD_RSVD + symbol_desc);
 	if (maxsegs > JME_MAXTXSEGS)
 		maxsegs = JME_MAXTXSEGS;
-	KASSERT(maxsegs >= (sc->jme_txd_spare - symbol_desc),
+	KASSERT(maxsegs >= (JME_TXD_SPARE - symbol_desc),
 		("not enough segments %d", maxsegs));
 
 	error = bus_dmamap_load_mbuf_defrag(sc->jme_cdata.jme_tx_tag,
@@ -1567,14 +1605,20 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 
 	m = *m_head;
 	cflags = 0;
+	mss = 0;
 
 	/* Configure checksum offload. */
-	if (m->m_pkthdr.csum_flags & CSUM_IP)
-		cflags |= JME_TD_IPCSUM;
-	if (m->m_pkthdr.csum_flags & CSUM_TCP)
-		cflags |= JME_TD_TCPCSUM;
-	if (m->m_pkthdr.csum_flags & CSUM_UDP)
-		cflags |= JME_TD_UDPCSUM;
+	if (m->m_pkthdr.csum_flags & CSUM_TSO) {
+		mss = (uint32_t)m->m_pkthdr.tso_segsz << JME_TD_MSS_SHIFT;
+		cflags |= JME_TD_TSO;
+	} else if (m->m_pkthdr.csum_flags & JME_CSUM_FEATURES) {
+		if (m->m_pkthdr.csum_flags & CSUM_IP)
+			cflags |= JME_TD_IPCSUM;
+		if (m->m_pkthdr.csum_flags & CSUM_TCP)
+			cflags |= JME_TD_TCPCSUM;
+		if (m->m_pkthdr.csum_flags & CSUM_UDP)
+			cflags |= JME_TD_UDPCSUM;
+	}
 
 	/* Configure VLAN. */
 	if (m->m_flags & M_VLANTAG) {
@@ -1593,7 +1637,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 		 * is just a symbol TX desc carrying no payload.
 		 */
 		flag64 = JME_TD_64BIT;
-		desc->buflen = 0;
+		desc->buflen = htole32(mss);
 		desc->addr_lo = 0;
 
 		/* No effective TX desc is consumed */
@@ -1607,7 +1651,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 		 * the mbuf chain.
 		 */
 		flag64 = 0;
-		desc->buflen = htole32(txsegs[0].ds_len);
+		desc->buflen = htole32(mss | txsegs[0].ds_len);
 		desc->addr_lo = htole32(JME_ADDR_LO(txsegs[0].ds_addr));
 
 		/* One effective TX desc is consumed */
@@ -1676,7 +1720,7 @@ jme_start(struct ifnet *ifp)
 		 * Check number of available TX descs, always
 		 * leave JME_TXD_RSVD free TX descs.
 		 */
-		if (sc->jme_cdata.jme_tx_cnt + sc->jme_txd_spare >
+		if (sc->jme_cdata.jme_tx_cnt + JME_TXD_SPARE >
 		    sc->jme_cdata.jme_tx_desc_cnt - JME_TXD_RSVD) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
@@ -1777,8 +1821,10 @@ jme_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			 * FIFO size is just 2K.
 			 */
 			if (ifr->ifr_mtu >= JME_TX_FIFO_SIZE) {
-				ifp->if_capenable &= ~IFCAP_TXCSUM;
-				ifp->if_hwassist &= ~JME_CSUM_FEATURES;
+				ifp->if_capenable &=
+				    ~(IFCAP_TXCSUM | IFCAP_TSO);
+				ifp->if_hwassist &=
+				    ~(JME_CSUM_FEATURES | CSUM_TSO);
 			}
 			ifp->if_mtu = ifr->ifr_mtu;
 			if (ifp->if_flags & IFF_RUNNING)
@@ -1818,7 +1864,7 @@ jme_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 		if ((mask & IFCAP_TXCSUM) && ifp->if_mtu < JME_TX_FIFO_SIZE) {
 			ifp->if_capenable ^= IFCAP_TXCSUM;
-			if (IFCAP_TXCSUM & ifp->if_capenable)
+			if (ifp->if_capenable & IFCAP_TXCSUM)
 				ifp->if_hwassist |= JME_CSUM_FEATURES;
 			else
 				ifp->if_hwassist &= ~JME_CSUM_FEATURES;
@@ -1837,6 +1883,14 @@ jme_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		if (mask & IFCAP_VLAN_HWTAGGING) {
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
 			jme_set_vlan(sc);
+		}
+
+		if ((mask & IFCAP_TSO) && ifp->if_mtu < JME_TX_FIFO_SIZE) {
+			ifp->if_capenable ^= IFCAP_TSO;
+			if (ifp->if_capenable & IFCAP_TSO)
+				ifp->if_hwassist |= CSUM_TSO;
+			else
+				ifp->if_hwassist &= ~CSUM_TSO;
 		}
 
 		if (mask & IFCAP_RSS)
@@ -2092,10 +2146,11 @@ jme_txeof(struct jme_softc *sc)
 	}
 	sc->jme_cdata.jme_tx_cons = cons;
 
-	if (sc->jme_cdata.jme_tx_cnt < JME_MAXTXSEGS + 1)
+	/* 1 for symbol TX descriptor */
+	if (sc->jme_cdata.jme_tx_cnt <= JME_MAXTXSEGS + 1)
 		ifp->if_timer = 0;
 
-	if (sc->jme_cdata.jme_tx_cnt + sc->jme_txd_spare <=
+	if (sc->jme_cdata.jme_tx_cnt + JME_TXD_SPARE <=
 	    sc->jme_cdata.jme_tx_desc_cnt - JME_TXD_RSVD)
 		ifp->if_flags &= ~IFF_OACTIVE;
 }
@@ -2514,17 +2569,6 @@ jme_init(void *xsc)
 	 * Setup MSI/MSI-X vectors to interrupts mapping
 	 */
 	jme_set_msinum(sc);
-
-	sc->jme_txd_spare =
-	howmany(ifp->if_mtu + sizeof(struct ether_vlan_header), MCLBYTES);
-	KKASSERT(sc->jme_txd_spare >= 1);
-
-	/*
-	 * If we use 64bit address mode for transmitting, each Tx request
-	 * needs one more symbol descriptor.
-	 */
-	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT)
-		sc->jme_txd_spare += 1;
 
 	if (JME_ENABLE_HWRSS(sc))
 		jme_enable_rss(sc);
