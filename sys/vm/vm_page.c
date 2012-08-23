@@ -124,6 +124,9 @@ SYSCTL_ULONG(_vm, OID_AUTO, dma_reserved, CTLFLAG_RD, &vm_dma_reserved, 0,
 SYSCTL_UINT(_vm, OID_AUTO, dma_free_pages, CTLFLAG_RD,
 	    &vm_contig_alist.bl_free, 0, "Memory reserved for DMA");
 
+static int vm_contig_verbose = 0;
+TUNABLE_INT("vm.contig_verbose", &vm_contig_verbose);
+
 RB_GENERATE2(vm_page_rb_tree, vm_page, rb_entry, rb_vm_page_compare,
 	     vm_pindex_t, pindex);
 
@@ -1726,7 +1729,7 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 		return(NULL);
 	}
 	spin_unlock(&vm_contig_spin);
-	if (bootverbose) {
+	if (vm_contig_verbose) {
 		kprintf("vm_page_alloc_contig: %016jx/%ldk\n",
 			(intmax_t)(vm_paddr_t)blk << PAGE_SHIFT,
 			(size + PAGE_MASK) * (PAGE_SIZE / 1024));
@@ -1745,7 +1748,7 @@ vm_page_free_contig(vm_page_t m, unsigned long size)
 	vm_pindex_t start = pa >> PAGE_SHIFT;
 	vm_pindex_t pages = (size + PAGE_MASK) >> PAGE_SHIFT;
 
-	if (bootverbose) {
+	if (vm_contig_verbose) {
 		kprintf("vm_page_free_contig:  %016jx/%ldk\n",
 			(intmax_t)pa, size / 1024);
 	}
