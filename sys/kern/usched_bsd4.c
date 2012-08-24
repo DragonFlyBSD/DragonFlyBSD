@@ -896,7 +896,7 @@ found:
 		spin_unlock(&bsd4_spin);
 		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
 			if (dd->uschedcp == NULL) {
-				wakeup(&dd->helper_thread);
+				wakeup_mycpu(&dd->helper_thread);
 			} else {
 				need_user_resched();
 			}
@@ -1582,7 +1582,9 @@ need_user_resched_remote(void *dummy)
 	bsd4_pcpu_t  dd = &bsd4_pcpu[gd->gd_cpuid];
 
 	need_user_resched();
-	wakeup(&dd->helper_thread);
+
+	/* Call wakeup_mycpu to avoid sending IPIs to other CPUs */
+	wakeup_mycpu(&dd->helper_thread);
 }
 
 #endif
