@@ -2,7 +2,7 @@
 # $DragonFly: src/test/sysperf/Makefile,v 1.17 2008/05/09 15:49:42 dillon Exp $
 #
 
-TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 \
+TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 /tmp/sc6 /tmp/sc7 \
 	/tmp/loop1 /tmp/loop2 /tmp/loop3 /tmp/loop4 \
 	/tmp/call1 /tmp/call2 /tmp/call3 /tmp/cmp \
 	/tmp/mt2 /tmp/mt3 /tmp/mt4 \
@@ -42,6 +42,12 @@ all:	$(TARGETS)
 
 /tmp/sc5: syscall5.c blib.c
 	$(CC) $(CFLAGS) syscall5.c blib.c -o /tmp/sc5
+
+/tmp/sc6: syscall6.c blib.c
+	$(CC) $(CFLAGS) syscall6.c blib.c -o /tmp/sc6
+
+/tmp/sc7: syscall7.c blib.c
+	$(CC) $(CFLAGS) syscall7.c blib.c -o /tmp/sc7
 
 /tmp/fork1: fork1.c blib.c
 	$(CC) $(CFLAGS) fork1.c blib.c -o /tmp/fork1
