@@ -1731,7 +1731,7 @@ sched_thread(void *dummy)
      */
     lwkt_setpri_self(TDPRI_USER_SCHEDULER);
 
-    tsleep(&dd->helper_thread, PINTERLOCKED, "sched_thread_sleep", 0);
+    tsleep(&dd->helper_thread, 0, "sched_thread_sleep", 0);
 
     for (;;) {
 //again:
