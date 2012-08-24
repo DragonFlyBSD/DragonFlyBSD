@@ -167,6 +167,8 @@ int linprocfs_validfile (struct proc *);
 #define PROCFS_LOCKED	0x01
 #define PROCFS_WANT	0x02
 
+#define PFS_DEAD        0x80000000	/* or'd with pid */
+
 int	linprocfs_root (struct mount *, struct vnode **);
 int	linprocfs_rw (struct vop_read_args *);
 #endif /* _KERNEL */

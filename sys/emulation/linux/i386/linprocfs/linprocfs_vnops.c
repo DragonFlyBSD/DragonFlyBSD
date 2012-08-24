@@ -244,8 +244,10 @@ linprocfs_close(struct vop_close_args *ap)
 		if ((ap->a_vp->v_opencount < 2)
 		    && (p = linprocfs_pfind(pfs->pfs_pid))
 		    && !(p->p_pfsflags & PF_LINGER)) {
+			spin_lock(&p->p_spin);
 			p->p_stops = 0;
 			p->p_step = 0;
+			spin_unlock(&p->p_spin);
 			wakeup(&p->p_stype);
 		}
 		if (p)
@@ -302,22 +304,27 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 	  *(unsigned int*)ap->a_data = (unsigned int)procp->p_pfsflags;
 	case PIOCSTATUS:
 	  psp = (struct procfs_status *)ap->a_data;
-	  psp->state = (procp->p_step == 0);
 	  psp->flags = procp->p_pfsflags;
 	  psp->events = procp->p_stops;
+	  spin_lock(&procp->p_spin);
 	  if (procp->p_step) {
+	    psp->state = 0;
 	    psp->why = procp->p_stype;
 	    psp->val = procp->p_xstat;
+	    spin_unlock(&procp->p_spin);
 	  } else {
-	    psp->why = psp->val = 0;	/* Not defined values */
+	    psp->state = 1;
+	    spin_unlock(&procp->p_spin);
+	    psp->why = 0;	/* Not defined values */
+	    psp->val = 0;	/* Not defined values */
 	  }
 	  break;
 	case PIOCWAIT:
 	  psp = (struct procfs_status *)ap->a_data;
 	  spin_lock(&procp->p_spin);
 	  if (procp->p_step == 0) {
-	    spin_unlock(&procp->p_spin);
 	    tsleep_interlock(&procp->p_stype, PCATCH);
+	    spin_unlock(&procp->p_spin);
 	    if (procp->p_stops == 0) {
 		error = EINVAL;
 		goto done;
@@ -404,8 +411,10 @@ linprocfs_bmap(struct vop_bmap_args *ap)
 static int
 linprocfs_inactive(struct vop_inactive_args *ap)
 {
-	/*struct vnode *vp = ap->a_vp;*/
+	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 
+	if (pfs->pfs_pid & PFS_DEAD)
+		vrecycle(ap->a_vp);
 	return (0);
 }
 

@@ -456,7 +456,7 @@ restart:
 		if (pfs->pfs_pid == pid) {
 			vp = PFSTOV(pfs);
 			vx_get(vp);
-			vgone_vxlocked(vp);
+			pfs->pfs_pid |= PFS_DEAD;
 			vx_put(vp);
 			goto restart;
 		}
