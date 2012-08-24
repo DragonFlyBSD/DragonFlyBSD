@@ -195,12 +195,12 @@ static pv_entry_t get_pv_entry (void);
 static void	i386_protection_init (void);
 static __inline void	pmap_clearbit (vm_page_t m, int bit);
 
-static void	pmap_remove_all (vm_page_t m);
-static int pmap_remove_pte (struct pmap *pmap, unsigned *ptq, 
+static void pmap_remove_all (vm_page_t m);
+static void pmap_remove_pte (struct pmap *pmap, unsigned *ptq,
 				vm_offset_t sva, pmap_inval_info_t info);
 static void pmap_remove_page (struct pmap *pmap, 
 				vm_offset_t va, pmap_inval_info_t info);
-static int pmap_remove_entry (struct pmap *pmap, vm_page_t m,
+static void pmap_remove_entry (struct pmap *pmap, vm_page_t m,
 				vm_offset_t va, pmap_inval_info_t info);
 static boolean_t pmap_testbit (vm_page_t m, int bit);
 static void pmap_insert_entry (pmap_t pmap, pv_entry_t pv,
@@ -212,7 +212,7 @@ static int pmap_release_free_page (pmap_t pmap, vm_page_t p);
 static vm_page_t _pmap_allocpte (pmap_t pmap, unsigned ptepindex);
 static unsigned * pmap_pte_quick (pmap_t pmap, vm_offset_t va);
 static vm_page_t pmap_page_lookup (vm_object_t object, vm_pindex_t pindex);
-static int pmap_unuse_pt (pmap_t, vm_offset_t, vm_page_t, pmap_inval_info_t);
+static void pmap_unuse_pt (pmap_t, vm_offset_t, vm_page_t, pmap_inval_info_t);
 static vm_offset_t pmap_kmem_choose(vm_offset_t addr);
 
 static unsigned pdir4mb;
@@ -1105,7 +1105,7 @@ pmap_unwire_pte(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
  * The caller must hold vm_token.
  * This function can block regardless.
  */
-static int
+static void
 pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 	      pmap_inval_info_t info)
 {
@@ -1114,7 +1114,7 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(pmap->pm_pteobj));
 
 	if (va >= UPT_MIN_ADDRESS)
-		return 0;
+		return;
 
 	if (mpte == NULL) {
 		ptepindex = (va >> PDRSHIFT);
@@ -1128,8 +1128,7 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 			vm_page_wakeup(mpte);
 		}
 	}
-
-	return pmap_unwire_pte(pmap, mpte, info);
+	pmap_unwire_pte(pmap, mpte, info);
 }
 
 /*
@@ -1750,12 +1749,11 @@ pmap_collect(void)
  *
  * The caller must hold vm_token.
  */
-static int
+static void
 pmap_remove_entry(struct pmap *pmap, vm_page_t m, 
 		  vm_offset_t va, pmap_inval_info_t info)
 {
 	pv_entry_t pv;
-	int rtval;
 
 	/*
 	 * Cannot block
@@ -1780,7 +1778,6 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	/*
 	 * Cannot block
 	 */
-	rtval = 0;
 	test_m_maps_pv(m, pv);
 	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 	m->md.pv_list_count--;
@@ -1795,11 +1792,9 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	 * This can block.
 	 */
 	vm_object_hold(pmap->pm_pteobj);
-	rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem, info);
+	pmap_unuse_pt(pmap, va, pv->pv_ptem, info);
 	vm_object_drop(pmap->pm_pteobj);
 	free_pv_entry(pv);
-
-	return rtval;
 }
 
 /*
@@ -1836,7 +1831,7 @@ pmap_insert_entry(pmap_t pmap, pv_entry_t pv, vm_offset_t va,
  *	    callers using temporary page table mappings must reload
  *	    them.
  */
-static int
+static void
 pmap_remove_pte(struct pmap *pmap, unsigned *ptq, vm_offset_t va,
 		pmap_inval_info_t info)
 {
@@ -1875,12 +1870,10 @@ pmap_remove_pte(struct pmap *pmap, unsigned *ptq, vm_offset_t va,
 		}
 		if (oldpte & PG_A)
 			vm_page_flag_set(m, PG_REFERENCED);
-		return pmap_remove_entry(pmap, m, va, info);
+		pmap_remove_entry(pmap, m, va, info);
 	} else {
-		return pmap_unuse_pt(pmap, va, NULL, info);
+		pmap_unuse_pt(pmap, va, NULL, info);
 	}
-
-	return 0;
 }
 
 /*
@@ -1957,23 +1950,31 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	sindex = i386_btop(sva);
 	eindex = i386_btop(eva);
 
-	for (; sindex < eindex; sindex = pdnxt) {
+	while (sindex < eindex) {
 		unsigned pdirindex;
 
 		/*
-		 * Calculate index for next page table.
+		 * Stop scanning if no pages are left
 		 */
-		pdnxt = ((sindex + NPTEPG) & ~(NPTEPG - 1));
 		if (pmap->pm_stats.resident_count == 0)
 			break;
 
+		/*
+		 * Calculate index for next page table, limited by eindex.
+		 */
+		pdnxt = ((sindex + NPTEPG) & ~(NPTEPG - 1));
+		if (pdnxt > eindex)
+			pdnxt = eindex;
+
 		pdirindex = sindex / NPDEPG;
-		if (((ptpaddr = (unsigned) pmap->pm_pdir[pdirindex]) & PG_PS) != 0) {
+		ptpaddr = (unsigned)pmap->pm_pdir[pdirindex];
+		if (ptpaddr & PG_PS) {
 			pmap_inval_interlock(&info, pmap, -1);
 			pmap->pm_pdir[pdirindex] = 0;
 			pmap->pm_stats.resident_count -= NBPDR / PAGE_SIZE;
 			pmap->pm_cached = 0;
 			pmap_inval_deinterlock(&info, pmap);
+			sindex = pdnxt;
 			continue;
 		}
 
@@ -1981,31 +1982,31 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 		 * Weed out invalid mappings. Note: we assume that the page
 		 * directory table is always allocated, and in kernel virtual.
 		 */
-		if (ptpaddr == 0)
+		if (ptpaddr == 0) {
+			sindex = pdnxt;
 			continue;
-
-		/*
-		 * Limit our scan to either the end of the va represented
-		 * by the current page table page, or to the end of the
-		 * range being removed.
-		 */
-		if (pdnxt > eindex) {
-			pdnxt = eindex;
 		}
 
 		/*
-		 * NOTE: pmap_remove_pte() can block and wipe the temporary
-		 *	 ptbase.
+		 * Sub-scan the page table page.  pmap_remove_pte() can
+		 * block on us, invalidating ptbase, so we must reload
+		 * ptbase and we must also check whether the page directory
+		 * page is still present.
 		 */
-		for (; sindex != pdnxt; sindex++) {
+		while (sindex < pdnxt) {
 			vm_offset_t va;
 
 			ptbase = get_ptbase(pmap);
-			if (ptbase[sindex] == 0)
-				continue;
-			va = i386_ptob(sindex);
-			if (pmap_remove_pte(pmap, ptbase + sindex, va, &info))
+			if (ptbase[sindex]) {
+				va = i386_ptob(sindex);
+				pmap_remove_pte(pmap, ptbase + sindex,
+						va, &info);
+			}
+			if (pmap->pm_pdir[pdirindex] == 0 ||
+			    (pmap->pm_pdir[pdirindex] & PG_PS)) {
 				break;
+			}
+			++sindex;
 		}
 	}
 	pmap_inval_done(&info);
@@ -2042,9 +2043,7 @@ pmap_remove_all(vm_page_t m)
 		pmap_inval_deinterlock(&info, pv->pv_pmap);
 		if (tpte & PG_A)
 			vm_page_flag_set(m, PG_REFERENCED);
-#ifdef PMAP_DEBUG
 		KKASSERT(PHYS_TO_VM_PAGE(tpte) == m);
-#endif
 
 		/*
 		 * Update the vm_page_t clean and reference bits.
@@ -2314,13 +2313,9 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 *	 that case too.
 	 */
 	while (opa) {
-		int err;
-
 		KKASSERT((origpte & PG_FRAME) ==
 			 (*(vm_offset_t *)pte & PG_FRAME));
-		err = pmap_remove_pte(pmap, pte, va, &info);
-		if (err)
-			panic("pmap_enter: pte vanished, va: %p", (void *)va);
+		pmap_remove_pte(pmap, pte, va, &info);
 		pte = pmap_pte(pmap, va);
 		origpte = *(vm_offset_t *)pte;
 		opa = origpte & PG_FRAME;
@@ -2512,18 +2507,19 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	 * we do not disturb it.
 	 */
 	pte = (unsigned *)vtopte(va);
-	if (*pte & PG_V) {
+	if (*pte) {
+		KKASSERT(*pte & PG_V);
 		pa = VM_PAGE_TO_PHYS(m);
 		KKASSERT(((*pte ^ pa) & PG_FRAME) == 0);
 		pmap_inval_done(&info);
 		if (mpte)
 			pmap_unwire_pte(pmap, mpte, &info);
-		lwkt_reltoken(&vm_token);
-		vm_object_drop(pmap->pm_pteobj);
 		if (pv) {
 			free_pv_entry(pv);
 			/* pv = NULL; */
 		}
+		lwkt_reltoken(&vm_token);
+		vm_object_drop(pmap->pm_pteobj);
 		return;
 	}
 
