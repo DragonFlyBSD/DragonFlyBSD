@@ -2032,6 +2032,10 @@ TO_REMOVE+=/etc/pam.d/kde
 TO_REMOVE+=/etc/rc.d/vfs_accounting
 TO_REMOVE+=/usr/share/man/cat3/svc_control.3.gz
 TO_REMOVE+=/usr/share/man/man3/svc_control.3.gz
+TO_REMOVE+=/usr/share/man/cat9/mtx_spinlock_ex.9.gz
+TO_REMOVE+=/usr/share/man/man9/mtx_spinlock_ex.9.gz
+TO_REMOVE+=/usr/share/man/cat9/mtx_spinlock_sh.9.gz
+TO_REMOVE+=/usr/share/man/man9/mtx_spinlock_sh.9.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys

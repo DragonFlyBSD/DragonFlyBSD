@@ -682,6 +682,7 @@ MLINKS+=mutex.9 mtx_downgrade.9 \
 	mutex.9 mtx_init.9 \
 	mutex.9 mtx_islocked.9 \
 	mutex.9 mtx_islocked_ex.9 \
+	mutex.9 mtx_lock.9 \
 	mutex.9 mtx_lock_ex.9 \
 	mutex.9 mtx_lock_ex_quick.9 \
 	mutex.9 mtx_lock_ex_try.9 \
@@ -693,8 +694,9 @@ MLINKS+=mutex.9 mtx_downgrade.9 \
 	mutex.9 mtx_notlocked_ex.9 \
 	mutex.9 mtx_notowned.9 \
 	mutex.9 mtx_owned.9 \
-	mutex.9 mtx_spinlock_ex.9 \
-	mutex.9 mtx_spinlock_sh.9 \
+	mutex.9 mtx_spinlock.9 \
+	mutex.9 mtx_spinlock_try.9 \
+	mutex.9 mtx_spinunlock.9 \
 	mutex.9 mtx_uninit.9 \
 	mutex.9 mtx_unlock.9 \
 	mutex.9 mtx_unlock_ex.9 \
