@@ -429,12 +429,19 @@ sys_settimeofday(struct settimeofday_args *uap)
 
 	if ((error = priv_check(td, PRIV_SETTIMEOFDAY)))
 		return (error);
-	/* Verify all parameters before changing time. */
+	/*
+	 * Verify all parameters before changing time.
+	 *
+	 * NOTE: We do not allow the time to be set to 0.0, which also by
+	 *	 happy coincidence works around a pkgsrc bulk build bug.
+	 */
 	if (uap->tv) {
 		if ((error = copyin((caddr_t)uap->tv, (caddr_t)&atv,
 		    sizeof(atv))))
 			return (error);
 		if (atv.tv_usec < 0 || atv.tv_usec >= 1000000)
+			return (EINVAL);
+		if (atv.tv_sec == 0 && atv.tv_usec == 0)
 			return (EINVAL);
 	}
 	if (uap->tzp &&
