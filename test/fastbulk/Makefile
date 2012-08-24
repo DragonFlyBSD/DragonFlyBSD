@@ -14,13 +14,15 @@ NPARALLEL?= 8
 
 all:
 	@echo "fastbulk build options"
-	@echo "    make scratch      - cleanup, setup, cpdup /etc, bootstrap"
-	@echo "    make build        - iterate all dirs / build package"
-	@echo "    make setup        - setup/mount the build environment"
-	@echo "    make cleanup      - unmount the build environment"
-	@echo "    make realclean    - rm -rf the build env except for"
-	@echo "                        packages and distfiles"
+	@echo "    make init         - create/initialize topology"
+	@echo "    make build        - build all packages from sources"
+	@echo "    make quick        - incremental build restart"
+	@echo "    make umount       - umount the build environment"
+	@echo "    make cleanup      - umount, rm binpkgs and pkgs"
+	@echo ""
 	@echo "    make changes      - deinstall modified packages"
+	@echo "    make destroy      - destroy the fastbulk setup"
+	@echo ""
 	@echo "make variables (defaults shown):"
 	@echo ""
 	@echo "    BUILDBASE=/build/fastbulk     all fastbulk-generated files"
@@ -29,54 +31,58 @@ all:
 	@echo "    NPARALLEL=8                   maximum concurrency"
 	@echo ""
 	@echo "NOTE: ${BUILDBASE}/{distfiles,packages} are normally retained"
-	@echo "      to avoid having to re-pull and for incremental operation"
+	@echo "      to avoid having to re-pull and for incremental operation."
+	@echo "      'build' will delete all packages, 'quick' will not."
 	@echo ""
-	@echo "NOTE: When building with 'make build' the current progress"
-	@echo "      is in ${BUILDROOT}/tmp/logs/{run,good,bad}, each build"
-	@echo "      has its own log file named after the pkgsrc path"
+	@echo "NOTE: When building, the current progress is in "
+	@echo "      ${BUILDROOT}/tmp/logs/{run,good,bad}.  Each build"
+	@echo "      has its own log file named after the pkgsrc path."
 
-scratch: cleanup
-	rm -rf ${BUILDBASE}/var.db
-	rm -rf ${BUILDBASE}/var.db.pkg
-	rm -rf ${BUILDBASE}/var.db.pkg.refcount
-	rm -rf ${BUILDBASE}/etc
-	rm -rf ${BUILDBASE}/usr.pkg
+init:	umount initialize mount
+
+build:	umount mount bootstrap
+	${CHROOTENV} "cd /tmp/track; ./fastbulk -j ${NPARALLEL} /usr/pkgsrc"
+
+quick:	umount mount quickstrap
+	${CHROOTENV} "cd /tmp/track; ./fastbulk -j ${NPARALLEL} /usr/pkgsrc"
+
+cleanup: umount
+	cpdup -i0 -s0 -o ${BUILDBASE}/packages ${BUILDBASE}/packages.save
+	find -x ${BUILDBASE}/packages -depth -depth +0 -delete
+	find -x ${BUILDBASE}/track -depth -depth +0 -delete
+	find -x ${BUILDBASE}/bin -depth -depth +0 -delete
+	find -x ${BUILDBASE}/tmp/logs -depth -depth +0 -delete
+	find -x ${BUILDBASE}/var.db.pkg -depth -depth +0 -delete
+	find -x ${BUILDBASE}/var.db.pkg.refcount -depth -depth +0 -delete
+	find -x ${BUILDBASE}/usr.pkg -depth -depth +0 -delete
 	rm -rf ${BUILDBASE}/usr.obj/work
-	rm -rf ${BUILDBASE}/tmp/logs
-	rm -rf ${BUILDBASE}/tmp/track
-	cpdup ${SYSROOT}/etc ${BUILDBASE}/etc
-	cpdup ${SYSROOT}/var/db ${BUILDBASE}/var.db
-	rm -rf ${BUILDBASE}/var.db/pkg
-	rm -rf ${BUILDBASE}/var.db/pkg.refcount
-	${MAKE} setup bootstrap
-	#${MAKE} build
-
-setup: cleanup
-	mkdir -p ${SYSROOT}/var/db/pkg
-	mkdir -p ${SYSROOT}/var/db/pkg.refcount
-	mkdir -p ${SYSROOT}/usr/pkgsrc
-	mkdir -p ${SYSROOT}/usr/pkg
-	mkdir -p ${BUILDBASE}
-	mkdir -p ${BUILDBASE}/packages
-	mkdir -p ${BUILDBASE}/distfiles
-	mkdir -p ${BUILDBASE}/bin
-	mkdir -p ${BUILDBASE}/tmp
-	mkdir -p ${BUILDBASE}/tmp/track
-	mkdir -p ${BUILDBASE}/tmp/logs
 	mkdir -p ${BUILDBASE}/tmp/logs/run
 	mkdir -p ${BUILDBASE}/tmp/logs/good
 	mkdir -p ${BUILDBASE}/tmp/logs/bad
-	mkdir -p ${BUILDBASE}/etc
-	mkdir -p ${BUILDBASE}/usr.pkg
-	mkdir -p ${BUILDBASE}/usr.pkgsrc
-	mkdir -p ${BUILDBASE}/usr.obj
-	mkdir -p ${BUILDBASE}/var.db
-	mkdir -p ${BUILDBASE}/var.db/pkg
-	mkdir -p ${BUILDBASE}/var.db/pkg.refcount
-	mkdir -p ${BUILDBASE}/var.db.pkg
-	mkdir -p ${BUILDBASE}/var.db.pkg.refcount
-	mkdir -p ${BUILDBASE}/track
-	mkdir -p ${BUILDROOT}
+
+destroy: umount
+	rm -rf ${BUILDBASE}
+
+umount:
+	-resident -d ${BUILDROOT}/usr/pkg/bin/bmake
+	-umount ${BUILDROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
+	-umount ${BUILDROOT}/usr/pkgsrc/packages > /dev/null 2>&1
+	-umount ${BUILDROOT}/usr/pkgsrc > /dev/null 2>&1
+	-umount ${BUILDROOT}/dev > /dev/null 2>&1
+	-umount ${BUILDROOT}/var/db/pkg.refcount > /dev/null 2>&1
+	-umount ${BUILDROOT}/var/db/pkg > /dev/null 2>&1
+	-umount ${BUILDROOT}/var/db > /dev/null 2>&1
+	-umount ${BUILDROOT}/usr/obj > /dev/null 2>&1
+	-umount ${BUILDROOT}/usr/pkg > /dev/null 2>&1
+	-umount ${BUILDROOT}/etc > /dev/null 2>&1
+	-umount ${BUILDROOT}/var/tmp > /dev/null 2>&1
+	-umount ${BUILDROOT}/tmp/track > /dev/null 2>&1
+	-umount ${BUILDROOT}/tmp > /dev/null 2>&1
+	-umount ${BUILDROOT}/var > /dev/null 2>&1
+	-umount ${BUILDROOT}/usr > /dev/null 2>&1
+	-umount ${BUILDROOT} > /dev/null 2>&1
+
+mount:
 	mount_null -o ro ${SYSROOT} ${BUILDROOT}
 	mount_null -o ro ${SYSROOT}/usr ${BUILDROOT}/usr
 	mount_null -o ro ${SYSROOT}/var ${BUILDROOT}/var
@@ -96,52 +102,92 @@ setup: cleanup
 	mount_null ${BUILDBASE}/var.db.pkg.refcount \
 			${BUILDROOT}/var/db/pkg.refcount
 	mount_null ${SYSROOT}/dev ${BUILDROOT}/dev
-	cpdup -s0 -i0 -X ${.CURDIR}/pkgsrc.ign \
-			${SYSPKGSRC} ${BUILDROOT}/usr/pkgsrc
-	find ${BUILDROOT}/usr/pkgsrc -name work | xargs rm -rf
-	mkdir -p ${BUILDROOT}/usr/pkgsrc/packages
-	mkdir -p ${BUILDROOT}/usr/pkgsrc/distfiles
 	mount_null ${BUILDBASE}/packages ${BUILDROOT}/usr/pkgsrc/packages
 	mount_null ${BUILDBASE}/distfiles ${BUILDROOT}/usr/pkgsrc/distfiles
-	echo "finding and removing work directories"
+	-resident ${BUILDROOT}/usr/pkg/bin/bmake > /dev/null 2>&1
 
-cleanup:
-	-resident -d ${BUILDROOT}/usr/pkg/bin/bmake
-	-umount ${BUILDROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
-	-umount ${BUILDROOT}/usr/pkgsrc/packages > /dev/null 2>&1
-	-umount ${BUILDROOT}/usr/pkgsrc > /dev/null 2>&1
-	-umount ${BUILDROOT}/dev > /dev/null 2>&1
-	-umount ${BUILDROOT}/var/db/pkg.refcount > /dev/null 2>&1
-	-umount ${BUILDROOT}/var/db/pkg > /dev/null 2>&1
-	-umount ${BUILDROOT}/var/db > /dev/null 2>&1
-	-umount ${BUILDROOT}/usr/obj > /dev/null 2>&1
-	-umount ${BUILDROOT}/usr/pkg > /dev/null 2>&1
-	-umount ${BUILDROOT}/etc > /dev/null 2>&1
-	-umount ${BUILDROOT}/var/tmp > /dev/null 2>&1
-	-umount ${BUILDROOT}/tmp/track > /dev/null 2>&1
-	-umount ${BUILDROOT}/tmp > /dev/null 2>&1
-	-umount ${BUILDROOT}/var > /dev/null 2>&1
-	-umount ${BUILDROOT}/usr > /dev/null 2>&1
-	-umount ${BUILDROOT} > /dev/null 2>&1
+initialize:
+	#
+	# The real root must contain these directories so
+	# we can do NULL mounts on them.
+	#
+	mkdir -p ${SYSROOT}/var/db/pkg
+	mkdir -p ${SYSROOT}/var/db/pkg.refcount
+	mkdir -p ${SYSROOT}/usr/pkgsrc
+	mkdir -p ${SYSROOT}/usr/pkg
+	mkdir -p ${BUILDBASE}
+	#
+	# buildbase directory structure (this is not the chroot topology)
+	#
+	mkdir -p ${BUILDBASE}
+	mkdir -p ${BUILDBASE}/packages
+	mkdir -p ${BUILDBASE}/packages.save
+	mkdir -p ${BUILDBASE}/distfiles
+	mkdir -p ${BUILDBASE}/bin
+	mkdir -p ${BUILDBASE}/tmp
+	mkdir -p ${BUILDBASE}/tmp/track
+	mkdir -p ${BUILDBASE}/tmp/logs
+	mkdir -p ${BUILDBASE}/tmp/logs/run
+	mkdir -p ${BUILDBASE}/tmp/logs/good
+	mkdir -p ${BUILDBASE}/tmp/logs/bad
+	mkdir -p ${BUILDBASE}/etc
+	mkdir -p ${BUILDBASE}/usr.pkg
+	mkdir -p ${BUILDBASE}/usr.pkgsrc
+	mkdir -p ${BUILDBASE}/usr.obj
+	mkdir -p ${BUILDBASE}/var.db
+	mkdir -p ${BUILDBASE}/var.db/pkg
+	mkdir -p ${BUILDBASE}/var.db/pkg.refcount
+	mkdir -p ${BUILDBASE}/var.db.pkg
+	mkdir -p ${BUILDBASE}/var.db.pkg.refcount
+	mkdir -p ${BUILDBASE}/track
+	#
+	# Copy stuff we need, make sure the pkgsrc copy we
+	# make has the needed mount points for packages and distfiles.
+	#
+	cpdup -s0 -i0 ${SYSROOT}/etc ${BUILDBASE}/etc
+	cpdup -s0 -i0 -X ${.CURDIR}/vardb.ign \
+			${SYSROOT}/var/db ${BUILDBASE}/var.db
+	cpdup -s0 -i0 -X ${.CURDIR}/pkgsrc.ign \
+			${SYSPKGSRC} ${BUILDBASE}/usr.pkgsrc
+	mkdir -p ${BUILDBASE}/usr.pkgsrc/packages
+	mkdir -p ${BUILDBASE}/usr.pkgsrc/distfiles
+	mkdir -p ${BUILDROOT}
+	#find -x -X ${BUILDROOT}/usr/pkgsrc -name work | xargs rm -rf
 
-# Cleans everything except packages and distfiles
+# quickstrap - get ready to start a fastbulk build
 #
-realclean: cleanup
-	rm -rf ${BUILDBASE}/bin
-	rm -rf ${BUILDBASE}/tmp
-	rm -rf ${BUILDBASE}/track
-	rm -rf ${BUILDBASE}/usr.pkg
-	rm -rf ${BUILDBASE}/usr.pkgsrc
-	rm -rf ${BUILDBASE}/usr.obj
-	rm -rf ${BUILDBASE}/var.db.pkg
-	rm -rf ${BUILDBASE}/var.db.pkg.refcount
-
-# Bootstrap an empty chroot setup
+# NOTE: ${BUILDROOT}/usr/obj might be mounted from a tmpfs and not
+#	from ${BUILDBASE}/usr.obj
 #
-bootstrap:
+quickstrap: prestage
 	rm -rf ${BUILDBASE}/usr.obj/work
+	rm -rf ${BUILDROOT}/usr/obj/work
+	rm -rf ${BUILDROOT}/tmp/logs/run
+	rm -rf ${BUILDROOT}/tmp/logs/bad
+	mkdir -p ${BUILDROOT}/tmp/logs/run
+	mkdir -p ${BUILDROOT}/tmp/logs/bad
+	mkdir -p ${BUILDROOT}/usr/obj/work
+	#
+	# Sometimes we get blah.core files in /var/db/pkg, which
+	# interferes with pkg_add.  Make sure they are gone.
+	#
+	find ${BUILDROOT}/var/db/pkg -name '*.core' -delete
+	find ${BUILDROOT}/var/db/pkg -type d -depth 1 -delete
+
+bootstrap: quickstrap
+	-resident -d ${BUILDROOT}/usr/pkg/bin/bmake
+	cpdup -i0 -s0 -o ${BUILDBASE}/packages ${BUILDBASE}/packages.save
+	find -x ${BUILDBASE}/packages -depth -depth +0 -delete
+	find -x ${BUILDBASE}/usr.pkgsrc/packages -depth -depth +0 -delete
+	find -x ${BUILDBASE}/var.db.pkg -depth -depth +0 -delete
+	find -x ${BUILDBASE}/var.db.pkg.refcount -depth -depth +0 -delete
+	find -x ${BUILDBASE}/usr.pkg -depth -depth +0 -delete
+	# note: work dir might be either tmpfs or null mount
+	#${CHROOTENV} "pkg_admin -K /var/db/pkg fetch-pkg-vulnerabilities"
+	#${CHROOTENV} "pkg_admin rebuild"
+	rm -rf ${BUILDROOT}/usr/obj/work
 	${CHROOTENV} "cd /usr/pkgsrc/bootstrap; ./bootstrap --workdir=/usr/obj/work"
-	resident ${BUILDROOT}/usr/pkg/bin/bmake
+	-resident ${BUILDROOT}/usr/pkg/bin/bmake > /dev/null 2>&1
 	cat mk.conf.add >> ${BUILDROOT}/usr/pkg/etc/mk.conf
 
 # Figure out what has changed and deinstall the related packages
@@ -153,6 +199,8 @@ PRESTAGE+= ${BUILDBASE}/track/Makefile
 PRESTAGE+= ${BUILDBASE}/track/dochanges
 PRESTAGE+= ${BUILDBASE}/track/dobuild
 PRESTAGE+= ${BUILDBASE}/track/fastbulk
+
+prestage: ${PRESTAGE}
 
 changes: ${PRESTAGE}
 	@if [ ! -f ${BUILDBASE}/track/dochanges ]; then \
@@ -170,17 +218,6 @@ changes: ${PRESTAGE}
 	cp Makefile ${BUILDBASE}/track/Makefile
 	${CHROOTENV} "cd /tmp/track; ./dochanges"
 
-build: ${PRESTAGE}
-	# note: work dir might be either tmpfs or null mount
-	rm -rf ${BUILDROOT}/usr/obj/work
-	mkdir -p ${BUILDROOT}/usr/obj/work
-	-rm ${BUILDROOT}/tmp/logs/run/*
-	-rm ${BUILDROOT}/tmp/logs/bad/*
-	find ${BUILDROOT}/var/db/pkg -name '*.core' -delete
-	find ${BUILDROOT}/var/db/pkg -type d -depth 1 -delete
-	#${CHROOTENV} "pkg_admin -K /var/db/pkg fetch-pkg-vulnerabilities"
-	#${CHROOTENV} "pkg_admin rebuild"
-	${CHROOTENV} "cd /tmp/track; ./fastbulk -j ${NPARALLEL} /usr/pkgsrc"
 
 ${BUILDBASE}/bin/getpkgsrcdir: getpkgsrcdir.c
 	cc getpkgsrcdir.c -o ${BUILDBASE}/bin/getpkgsrcdir

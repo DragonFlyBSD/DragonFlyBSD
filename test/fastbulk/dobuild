@@ -10,6 +10,7 @@
 #
 if ( $#argv == 1 ) then
 	set pkgwild = "`bmake show-var VARNAME=PKGWILDCARD`.lck"
+	set pkgname = "`bmake show-var VARNAME=PKGNAME`"
 	mkdir -p /tmp/track/locks
 	echo "FASTBULK START ${argv[1]}: `date`"
 	lockf "/tmp/track/locks/$pkgwild" /tmp/track/dobuild ${argv[1]} "$pkgwild"
@@ -18,6 +19,8 @@ if ( $#argv == 1 ) then
 		exit 0
 	else
 		echo "FASTBULK FAILURE ${argv[1]}: `date`"
+		find /var/db/pkg/$pkgname -name '*.core' -delete
+		rmdir /var/db/pkg/$pkgname >& /dev/null
 		exit 1
 	endif
 endif
@@ -29,6 +32,12 @@ set pkgname = "`bmake show-var VARNAME=PKGNAME`"
 set logname = "$argv[1]"
 set pkgwild = "$argv[2]"
 unsetenv PKG_PATH
+
+# Make sure /var/db/pkg/ does not have any .core files messing it up,
+# remove the recorded installation if it becomes empty.
+#
+find /var/db/pkg/$pkgname -name '*.core' -delete
+rmdir /var/db/pkg/$pkgname >& /dev/null
 
 # Check if already installed, prevent overwrite of
 # previous run's logfile if it exists, by deleting
