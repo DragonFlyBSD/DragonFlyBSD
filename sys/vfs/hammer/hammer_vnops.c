@@ -3539,8 +3539,10 @@ retry:
 		}
 		hammer_done_cursor(&cursor);
 		if (error == 0) {
-			cache_setunresolved(nch);
-			cache_setvp(nch, NULL);
+			/*
+			 * Tell the namecache that we are now unlinked.
+			 */
+			cache_unlink(nch);
 
 			/*
 			 * NOTE: ip->vp, if non-NULL, cannot be directly
