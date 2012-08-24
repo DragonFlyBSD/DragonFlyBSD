@@ -636,6 +636,8 @@ init_686_amd(void)
 void
 initializecpu(void)
 {
+	uint64_t msr;
+
 	switch (cpu) {
 #ifdef I486_CPU
 	case CPU_BLUE:
@@ -696,6 +698,28 @@ initializecpu(void)
 		break;
 	}
 	enable_sse();
+
+	if (cpu_vendor_id == CPU_VENDOR_AMD) {
+		switch((cpu_id & 0xFF0000)) {
+		case 0x100000:
+		case 0x120000:
+			/*
+			 * Errata 721 is the cpu bug found by your's truly
+			 * (Matthew Dillon).  It is a bug where a sequence
+			 * of 5 or more popq's + a retq, under involved
+			 * deep recursion circumstances, can cause the %rsp
+			 * to not be properly updated, almost always
+			 * resulting in a seg-fault soon after.
+			 */
+			msr = rdmsr(0xc0011029);
+			if ((msr & 1) == 0) {
+				kprintf("Errata 721 workaround installed\n");
+				msr |= 1;
+				wrmsr(0xc0011029, msr);
+			}
+			break;
+		}
+	}
 
 	if (cpu_feature2 & CPUID2_VMM)
 		vmm_guest = 1;
