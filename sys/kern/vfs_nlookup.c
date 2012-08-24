@@ -556,13 +556,17 @@ nlookup(struct nlookupdata *nd)
 	} else {
 	    /*
 	     * Must unlock nl_nch when traversing down the path.
+	     *
+	     * If we race an unlink or rename the ncp might be marked
+	     * DESTROYED after resolution, requiring a retry.
 	     */
 	    cache_unlock(&nd->nl_nch);
 	    nd->nl_flags &= ~NLC_NCPISLOCKED;
 	    nch = cache_nlookup(&nd->nl_nch, &nlc);
 	    if (nch.ncp->nc_flag & NCF_UNRESOLVED)
 		hit = 0;
-	    while ((error = cache_resolve(&nch, nd->nl_cred)) == EAGAIN) {
+	    while ((error = cache_resolve(&nch, nd->nl_cred)) == EAGAIN ||
+		(nch.ncp->nc_flag & NCF_DESTROYED)) {
 		kprintf("[diagnostic] nlookup: relookup %*.*s\n", 
 			nch.ncp->nc_nlen, nch.ncp->nc_nlen, nch.ncp->nc_name);
 		cache_put(&nch);

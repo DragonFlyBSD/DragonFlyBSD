@@ -840,11 +840,8 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 	if (error == 0) {
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_REMOVE(dvp, vp, &cnp);
-		if (error == 0) {
-			cache_setunresolved(nch);
-			cache_setvp(nch, NULL);
-			cache_inval_vp(vp, CINV_DESTROY);
-		}
+		if (error == 0)
+			cache_unlink(nch);
 	}
 	if (vp) {
 		if (dvp == vp)
