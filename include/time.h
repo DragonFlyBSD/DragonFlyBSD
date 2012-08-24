@@ -95,12 +95,21 @@ typedef	__timer_t	timer_t;
 
 /* These macros are also in sys/time.h. */
 #if !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 200112
-#define CLOCK_REALTIME  0
+#define CLOCK_REALTIME		0
 #ifdef __BSD_VISIBLE
-#define CLOCK_VIRTUAL	1
-#define CLOCK_PROF	2
+#define CLOCK_VIRTUAL		1
+#define CLOCK_PROF		2
 #endif
-#define CLOCK_MONOTONIC	4
+#define CLOCK_MONOTONIC		4	/* from freebsd */
+#define CLOCK_UPTIME		5	/* from freebsd */
+#define CLOCK_UPTIME_PRECISE	7	/* from freebsd */
+#define CLOCK_UPTIME_FAST	8	/* from freebsd */
+#define CLOCK_REALTIME_PRECISE	9	/* from freebsd */
+#define CLOCK_REALTIME_FAST	10	/* from freebsd */
+#define CLOCK_MONOTONIC_PRECISE	11	/* from freebsd */
+#define CLOCK_MONOTONIC_FAST	12	/* from freebsd */
+#define CLOCK_SECOND		13	/* from freebsd */
+
 #endif /* !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 200112 */
 
 #if !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 200112

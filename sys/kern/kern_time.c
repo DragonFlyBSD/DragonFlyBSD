@@ -159,13 +159,41 @@ int
 kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 {
 	int error = 0;
+	struct proc *p;
 
 	switch(clock_id) {
 	case CLOCK_REALTIME:
+	case CLOCK_REALTIME_PRECISE:
 		nanotime(ats);
 		break;
+	case CLOCK_REALTIME_FAST:
+		getnanotime(ats);
+		break;
 	case CLOCK_MONOTONIC:
+	case CLOCK_MONOTONIC_PRECISE:
+	case CLOCK_UPTIME:
+	case CLOCK_UPTIME_PRECISE:
 		nanouptime(ats);
+		break;
+	case CLOCK_MONOTONIC_FAST:
+	case CLOCK_UPTIME_FAST:
+		getnanouptime(ats);
+		break;
+	case CLOCK_VIRTUAL:
+		p = curproc;
+		ats->tv_sec = p->p_timer[ITIMER_VIRTUAL].it_value.tv_sec;
+		ats->tv_nsec = p->p_timer[ITIMER_VIRTUAL].it_value.tv_usec *
+			       1000;
+		break;
+	case CLOCK_PROF:
+		p = curproc;
+		ats->tv_sec = p->p_timer[ITIMER_PROF].it_value.tv_sec;
+		ats->tv_nsec = p->p_timer[ITIMER_PROF].it_value.tv_usec *
+			       1000;
+		break;
+	case CLOCK_SECOND:
+		ats->tv_sec = time_second;
+		ats->tv_nsec = 0;
 		break;
 	default:
 		error = EINVAL;
@@ -237,7 +265,14 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 
 	switch(clock_id) {
 	case CLOCK_REALTIME:
+	case CLOCK_REALTIME_FAST:
+	case CLOCK_REALTIME_PRECISE:
 	case CLOCK_MONOTONIC:
+	case CLOCK_MONOTONIC_FAST:
+	case CLOCK_MONOTONIC_PRECISE:
+	case CLOCK_UPTIME:
+	case CLOCK_UPTIME_FAST:
+	case CLOCK_UPTIME_PRECISE:
 		/*
 		 * Round up the result of the division cheaply
 		 * by adding 1.  Rounding up is especially important
@@ -246,6 +281,18 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 		 */
 		ts->tv_sec = 0;
 		ts->tv_nsec = 1000000000 / sys_cputimer->freq + 1;
+		error = 0;
+		break;
+	case CLOCK_VIRTUAL:
+	case CLOCK_PROF:
+		/* Accurately round up here because we can do so cheaply. */
+		ts->tv_sec = 0;
+		ts->tv_nsec = (1000000000 + hz - 1) / hz;
+		error = 0;
+		break;
+	case CLOCK_SECOND:
+		ts->tv_sec = 1;
+		ts->tv_nsec = 0;
 		error = 0;
 		break;
 	default:
