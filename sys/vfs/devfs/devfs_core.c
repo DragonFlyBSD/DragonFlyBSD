@@ -896,7 +896,7 @@ devfs_scan_callback(devfs_scan_t *callback, void *arg)
 {
 	devfs_msg_t msg;
 
-	KKASSERT(sizeof(callback) == sizeof(void *));
+	KKASSERT(callback);
 
 	msg = devfs_msg_get();
 	msg->mdv_load = callback;
