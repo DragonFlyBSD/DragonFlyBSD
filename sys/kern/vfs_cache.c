@@ -186,16 +186,17 @@ static void _cache_setunresolved(struct namecache *ncp);
 static void _cache_cleanneg(int count);
 static void _cache_cleanpos(int count);
 static void _cache_cleandefered(void);
+static void _cache_unlink(struct namecache *ncp);
 
 /*
  * The new name cache statistics
  */
 SYSCTL_NODE(_vfs, OID_AUTO, cache, CTLFLAG_RW, 0, "Name cache statistics");
 static int numneg;
-SYSCTL_ULONG(_vfs_cache, OID_AUTO, numneg, CTLFLAG_RD, &numneg, 0,
+SYSCTL_INT(_vfs_cache, OID_AUTO, numneg, CTLFLAG_RD, &numneg, 0,
     "Number of negative namecache entries");
 static int numcache;
-SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcache, CTLFLAG_RD, &numcache, 0,
+SYSCTL_INT(_vfs_cache, OID_AUTO, numcache, CTLFLAG_RD, &numcache, 0,
     "Number of namecaches entries");
 static u_long numcalls;
 SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcalls, CTLFLAG_RD, &numcalls, 0,
@@ -1372,14 +1373,26 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 	struct nchash_head *nchpp;
 	u_int32_t hash;
 	char *oname;
+	char *nname;
+
+	if (tncp->nc_nlen) {
+		nname = kmalloc(tncp->nc_nlen + 1, M_VFSCACHE, M_WAITOK);
+		bcopy(tncp->nc_name, nname, tncp->nc_nlen);
+		nname[tncp->nc_nlen] = 0;
+	} else {
+		nname = NULL;
+	}
 
 	/*
 	 * Rename fncp (unlink)
 	 */
 	_cache_unlink_parent(fncp);
 	oname = fncp->nc_name;
-	fncp->nc_name = tncp->nc_name;
+	fncp->nc_name = nname;
 	fncp->nc_nlen = tncp->nc_nlen;
+	if (oname)
+		kfree(oname, M_VFSCACHE);
+
 	tncp_par = tncp->nc_parent;
 	_cache_hold(tncp_par);
 	_cache_lock(tncp_par);
@@ -1400,13 +1413,24 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 	/*
 	 * Get rid of the overwritten tncp (unlink)
 	 */
-	_cache_setunresolved(tncp);
-	_cache_unlink_parent(tncp);
-	tncp->nc_name = NULL;
-	tncp->nc_nlen = 0;
+	_cache_unlink(tncp);
+}
 
-	if (oname)
-		kfree(oname, M_VFSCACHE);
+/*
+ * Perform actions consistent with unlinking a file.  The namecache
+ * entry is marked DESTROYED so it no longer shows up in searches,
+ * and will be physically deleted when the vnode goes away.
+ */
+void
+cache_unlink(struct nchandle *nch)
+{
+	_cache_unlink(nch->ncp);
+}
+
+static void
+_cache_unlink(struct namecache *ncp)
+{
+	ncp->nc_flag |= NCF_DESTROYED;
 }
 
 /*

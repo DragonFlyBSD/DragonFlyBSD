@@ -444,7 +444,7 @@ in_ifadown(struct ifaddr *ifa, int delete)
 	 * doing this the inconsistancy could trigger a panic.
 	 */
 	origcpu = mycpuid;
-	for (cpu = 0; cpu < ncpus2; cpu++) {
+	for (cpu = 0; cpu < ncpus; cpu++) {
 		lwkt_migratecpu(cpu);
 
 		arg.rnh = rnh = rt_tables[cpu][AF_INET];

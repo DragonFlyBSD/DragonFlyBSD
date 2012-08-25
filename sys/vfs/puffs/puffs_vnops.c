@@ -969,10 +969,8 @@ puffs_vnop_remove(struct vop_nremove_args *ap)
  out:
 	vput(dvp);
 	vn_unlock(vp);
-	if (!error) {
-		cache_setunresolved(nch);
-		cache_setvp(nch, NULL);
-	}
+	if (error == 0)
+		cache_unlink(nch);
 	vrele(vp);
 	return error;
 }
@@ -1099,10 +1097,8 @@ puffs_vnop_rmdir(struct vop_nrmdir_args *ap)
  out:
 	vput(dvp);
 	vn_unlock(vp);
-	if (!error) {
-		cache_setunresolved(nch);
-		cache_setvp(nch, NULL);
-	}
+	if (error == 0)
+		cache_unlink(nch);
 	vrele(vp);
 	return error;
 }

@@ -433,8 +433,8 @@ struct tmpfs_fid {
  */
 
 int	tmpfs_alloc_node(struct tmpfs_mount *, enum vtype,
-	    uid_t uid, gid_t gid, mode_t mode, struct tmpfs_node *,
-	    char *, int, int, struct tmpfs_node **);
+	    uid_t uid, gid_t gid, mode_t mode, char *, int, int,
+	    struct tmpfs_node **);
 void	tmpfs_free_node(struct tmpfs_mount *, struct tmpfs_node *);
 int	tmpfs_alloc_dirent(struct tmpfs_mount *, struct tmpfs_node *,
 	    const char *, uint16_t, struct tmpfs_dirent **);

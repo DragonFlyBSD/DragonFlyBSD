@@ -167,11 +167,20 @@ struct clockinfo {
 /* CLOCK_REALTIME and TIMER_ABSTIME are supposed to be in time.h */
 
 #ifndef CLOCK_REALTIME
-#define CLOCK_REALTIME	0
+#define CLOCK_REALTIME		0
 #endif
-#define CLOCK_VIRTUAL	1
-#define CLOCK_PROF	2
-#define CLOCK_MONOTONIC	4
+#define CLOCK_VIRTUAL		1
+#define CLOCK_PROF		2
+#define CLOCK_MONOTONIC		4
+
+#define CLOCK_UPTIME		5	/* from freebsd */
+#define CLOCK_UPTIME_PRECISE	7	/* from freebsd */
+#define CLOCK_UPTIME_FAST	8	/* from freebsd */
+#define CLOCK_REALTIME_PRECISE	9	/* from freebsd */
+#define CLOCK_REALTIME_FAST	10	/* from freebsd */
+#define CLOCK_MONOTONIC_PRECISE	11	/* from freebsd */
+#define CLOCK_MONOTONIC_FAST	12	/* from freebsd */
+#define CLOCK_SECOND		13	/* from freebsd */
 
 #define TIMER_RELTIME	0x0	/* relative timer */
 #ifndef TIMER_ABSTIME

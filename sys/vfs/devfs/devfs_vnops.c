@@ -783,9 +783,7 @@ devfs_vop_nrmdir(struct vop_nrmdir_args *ap)
 		}
 	}
 
-	cache_setunresolved(ap->a_nch);
-	cache_setvp(ap->a_nch, NULL);
-
+	cache_unlink(ap->a_nch);
 out:
 	lockmgr(&devfs_lock, LK_RELEASE);
 	return error;
@@ -833,9 +831,7 @@ devfs_vop_nremove(struct vop_nremove_args *ap)
 		}
 	}
 
-	cache_setunresolved(ap->a_nch);
-	cache_setvp(ap->a_nch, NULL);
-
+	cache_unlink(ap->a_nch);
 out:
 	lockmgr(&devfs_lock, LK_RELEASE);
 	return error;

@@ -255,7 +255,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	/* Allocate the root node. */
 	error = tmpfs_alloc_node(tmp, VDIR, root_uid, root_gid,
-				 root_mode & ALLPERMS, NULL, NULL,
+				 root_mode & ALLPERMS, NULL,
 				 VNOVAL, VNOVAL, &root);
 
 	/*
@@ -271,6 +271,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	    return error;
 	}
 	KASSERT(root->tn_id >= 0, ("tmpfs root with invalid ino: %d", (int)root->tn_id));
+	++root->tn_links;	/* prevent destruction */
 	tmp->tm_root = root;
 
 	mp->mnt_flag |= MNT_LOCAL;
@@ -308,7 +309,6 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 {
 	int error;
 	int flags = 0;
-	int found;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
 
@@ -340,8 +340,9 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 
 	/*
 	 * First pass get rid of all the directory entries and
-	 * vnode associations.  The directory structure will
-	 * remain via the extra link count representing tn_dir.tn_parent.
+	 * vnode associations.  This will also destroy the
+	 * directory topology and should drop all link counts
+	 * to 0 except for the root.
 	 *
 	 * No vnodes should remain after the vflush above.
 	 */
@@ -351,11 +352,9 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 		if (node->tn_type == VDIR) {
 			struct tmpfs_dirent *de;
 
-			while (!RB_EMPTY(&node->tn_dir.tn_dirtree)) {
-				de = RB_FIRST(tmpfs_dirtree, &node->tn_dir.tn_dirtree);
+			while ((de = RB_ROOT(&node->tn_dir.tn_dirtree)) != NULL) {
 				tmpfs_dir_detach(node, de);
 				tmpfs_free_dirent(tmp, de);
-				node->tn_size -= sizeof(struct tmpfs_dirent);
 			}
 		}
 		KKASSERT(node->tn_vnode == NULL);
@@ -372,34 +371,23 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	}
 
 	/*
-	 * Now get rid of all nodes.  We can remove any node with a
-	 * link count of 0 or any directory node with a link count of
-	 * 1.  The parents will not be destroyed until all their children
-	 * have been destroyed.
-	 *
-	 * Recursion in tmpfs_free_node() can further modify the list so
-	 * we cannot use a next pointer here.
-	 *
-	 * The root node will be destroyed by this loop (it will be last).
+	 * Allow the root node to be destroyed by dropping the link count
+	 * we bumped in the mount code.
 	 */
-	while (!LIST_EMPTY(&tmp->tm_nodes_used)) {
-		found = 0;
-		LIST_FOREACH(node, &tmp->tm_nodes_used, tn_entries) {
-			if (node->tn_links == 0 ||
-			    (node->tn_links == 1 && node->tn_type == VDIR)) {
-				TMPFS_NODE_LOCK(node);
-				tmpfs_free_node(tmp, node);
-				/* eats lock */
-				found = 1;
-				break;
-			}
-		}
-		if (found == 0) {
-			kprintf("tmpfs: Cannot free entire node tree!");
-			break;
-		}
-	}
+	KKASSERT(tmp->tm_root);
+	--tmp->tm_root->tn_links;
 
+	/*
+	 * At this point all nodes, including the root node, should have a
+	 * link count of 0.  The root is not necessarily going to be last.
+	 */
+	while ((node = LIST_FIRST(&tmp->tm_nodes_used)) != NULL) {
+		if (node->tn_links)
+			panic("tmpfs: Dangling nodes during umount (%p)!\n", node);
+		TMPFS_NODE_LOCK(node);
+		tmpfs_free_node(tmp, node);
+		/* eats lock */
+	}
 	KKASSERT(tmp->tm_root == NULL);
 
 	objcache_destroy(tmp->tm_dirent_pool);

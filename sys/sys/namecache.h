@@ -211,6 +211,7 @@ void	cache_put(struct nchandle *nch);
 void	cache_drop(struct nchandle *nch);
 void	cache_zero(struct nchandle *nch);
 void	cache_rename(struct nchandle *fnch, struct nchandle *tnch);
+void	cache_unlink(struct nchandle *nch);
 int	cache_vget(struct nchandle *, struct ucred *, int, struct vnode **);
 int	cache_vref(struct nchandle *, struct ucred *, struct vnode **);
 int	cache_fromdvp(struct vnode *, struct ucred *, int, struct nchandle *);

@@ -87,16 +87,13 @@ RB_GENERATE(tmpfs_dirtree, tmpfs_dirent, rb_node, tmpfs_dirtree_compare);
  */
 int
 tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
-    uid_t uid, gid_t gid, mode_t mode, struct tmpfs_node *parent,
-    char *target, int rmajor, int rminor, struct tmpfs_node **node)
+		 uid_t uid, gid_t gid, mode_t mode,
+		 char *target, int rmajor, int rminor,
+		 struct tmpfs_node **node)
 {
 	struct tmpfs_node *nnode;
 	struct timespec ts;
 	udev_t rdev;
-
-	/* If the root directory of the 'tmp' file system is not yet
-	 * allocated, this must be the request to do it. */
-	KKASSERT(IMPLIES(tmp->tm_root == NULL, parent == NULL && type == VDIR));
 
 	KKASSERT(IFF(type == VLNK, target != NULL));
 	KKASSERT(IFF(type == VBLK || type == VCHR, rmajor != VNOVAL));
@@ -120,6 +117,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	nnode->tn_mode = mode;
 	nnode->tn_id = tmpfs_fetch_ino(tmp);
 	nnode->tn_advlock.init_done = 0;
+	KKASSERT(nnode->tn_links == 0);
 
 	/* Type-specific initialization. */
 	switch (nnode->tn_type) {
@@ -135,18 +133,9 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 
 	case VDIR:
 		RB_INIT(&nnode->tn_dir.tn_dirtree);
-		KKASSERT(parent != nnode);
-		KKASSERT(IMPLIES(parent == NULL, tmp->tm_root == NULL));
-		nnode->tn_dir.tn_parent = parent;
 		nnode->tn_dir.tn_readdir_lastn = 0;
 		nnode->tn_dir.tn_readdir_lastp = NULL;
-		nnode->tn_links++;
 		nnode->tn_size = 0;
-		if (parent) {
-			TMPFS_NODE_LOCK(parent);
-			parent->tn_links++;
-			TMPFS_NODE_UNLOCK(parent);
-		}
 		break;
 
 	case VFIFO:
@@ -238,29 +227,13 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 	case VDIR:
 		/*
 		 * The parent link can be NULL if this is the root
-		 * node.
+		 * node or if it is a directory node that was rmdir'd.
+		 *
+		 * XXX what if node is a directory which still contains
+		 * directory entries (e.g. due to a forced umount) ?
 		 */
-		node->tn_links--;
 		node->tn_size = 0;
-		KKASSERT(node->tn_dir.tn_parent || node == tmp->tm_root);
-		if (node->tn_dir.tn_parent) {
-			TMPFS_NODE_LOCK(node->tn_dir.tn_parent);
-			node->tn_dir.tn_parent->tn_links--;
-
-			/*
-			 * If the parent directory has no more links and
-			 * no vnode ref nothing is going to come along
-			 * and clean it up unless we do it here.
-			 */
-			if (node->tn_dir.tn_parent->tn_links == 0 &&
-			    node->tn_dir.tn_parent->tn_vnode == NULL) {
-				tmpfs_free_node(tmp, node->tn_dir.tn_parent);
-				/* eats parent lock */
-			} else {
-				TMPFS_NODE_UNLOCK(node->tn_dir.tn_parent);
-			}
-			node->tn_dir.tn_parent = NULL;
-		}
+		KKASSERT(node->tn_dir.tn_parent == NULL);
 
 		/*
 		 * If the root node is being destroyed don't leave a
@@ -548,31 +521,30 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *dnode;
 	struct tmpfs_node *node;
-	struct tmpfs_node *parent;
 
 	tmp = VFS_TO_TMPFS(dvp->v_mount);
 	dnode = VP_TO_TMPFS_DIR(dvp);
 	*vpp = NULL;
 
-	/* If the entry we are creating is a directory, we cannot overflow
-	 * the number of links of its parent, because it will get a new
-	 * link. */
-	if (vap->va_type == VDIR) {
-		/* Ensure that we do not overflow the maximum number of links
-		 * imposed by the system. */
-		KKASSERT(dnode->tn_links <= LINK_MAX);
-		if (dnode->tn_links == LINK_MAX) {
-			return EMLINK;
-		}
+	/*
+	 * If the directory was removed but a process was CD'd into it,
+	 * we do not allow any more file/dir creation within it.  Otherwise
+	 * we will lose track of it.
+	 */
+	KKASSERT(dnode->tn_type == VDIR);
+	if (dnode != tmp->tm_root && dnode->tn_dir.tn_parent == NULL)
+		return ENOENT;
 
-		parent = dnode;
-		KKASSERT(parent != NULL);
-	} else
-		parent = NULL;
+	/*
+	 * Make sure the link count does not overflow.
+	 */
+	if (vap->va_type == VDIR && dnode->tn_links >= LINK_MAX)
+		return EMLINK;
 
 	/* Allocate a node that represents the new file. */
 	error = tmpfs_alloc_node(tmp, vap->va_type, cred->cr_uid,
-	    dnode->tn_gid, vap->va_mode, parent, target, vap->va_rmajor, vap->va_rminor, &node);
+				 dnode->tn_gid, vap->va_mode, target,
+				 vap->va_rmajor, vap->va_rminor, &node);
 	if (error != 0)
 		return error;
 	TMPFS_NODE_LOCK(node);
@@ -594,9 +566,11 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 		return error;
 	}
 
-	/* Now that all required items are allocated, we can proceed to
+	/*
+	 * Now that all required items are allocated, we can proceed to
 	 * insert the new node into the directory, an operation that
-	 * cannot fail. */
+	 * cannot fail.
+	 */
 	tmpfs_dir_attach(dnode, de);
 	TMPFS_NODE_UNLOCK(node);
 
@@ -613,10 +587,18 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 void
 tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 {
-	TMPFS_NODE_LOCK(dnode);
-	RB_INSERT(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
+	struct tmpfs_node *node = de->td_node;
 
-	TMPFS_ASSERT_ELOCKED(dnode);
+	TMPFS_NODE_LOCK(dnode);
+	if (node && node->tn_type == VDIR) {
+		TMPFS_NODE_LOCK(node);
+		++node->tn_links;
+		node->tn_status |= TMPFS_NODE_CHANGED;
+		node->tn_dir.tn_parent = dnode;
+		++dnode->tn_links;
+		TMPFS_NODE_UNLOCK(node);
+	}
+	RB_INSERT(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
 	dnode->tn_size += sizeof(struct tmpfs_dirent);
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;
@@ -633,18 +615,40 @@ tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 void
 tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 {
+	struct tmpfs_node *node = de->td_node;
+
 	TMPFS_NODE_LOCK(dnode);
 	if (dnode->tn_dir.tn_readdir_lastp == de) {
 		dnode->tn_dir.tn_readdir_lastn = 0;
 		dnode->tn_dir.tn_readdir_lastp = NULL;
 	}
 	RB_REMOVE(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
-
-	TMPFS_ASSERT_ELOCKED(dnode);
 	dnode->tn_size -= sizeof(struct tmpfs_dirent);
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;
 	TMPFS_NODE_UNLOCK(dnode);
+
+	/*
+	 * Clean out the tn_parent pointer immediately when removing a
+	 * directory.
+	 *
+	 * Removal of the parent linkage also cleans out the extra tn_links
+	 * count we had on both node and dnode.
+	 *
+	 * node can be NULL (typ during a forced umount), in which case
+	 * the mount code is dealing with the linkages from a linked list
+	 * scan.
+	 */
+	if (node && node->tn_type == VDIR && node->tn_dir.tn_parent) {
+		TMPFS_NODE_LOCK(dnode);
+		TMPFS_NODE_LOCK(node);
+		KKASSERT(node->tn_dir.tn_parent == dnode);
+		dnode->tn_links--;
+		node->tn_links--;
+		node->tn_dir.tn_parent = NULL;
+		TMPFS_NODE_UNLOCK(node);
+		TMPFS_NODE_UNLOCK(dnode);
+	}
 }
 
 /* --------------------------------------------------------------------- */
@@ -659,7 +663,7 @@ tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
  */
 struct tmpfs_dirent *
 tmpfs_dir_lookup(struct tmpfs_node *node, struct tmpfs_node *f,
-    struct namecache *ncp)
+		 struct namecache *ncp)
 {
 	struct tmpfs_dirent *de;
 	int len = ncp->nc_nlen;

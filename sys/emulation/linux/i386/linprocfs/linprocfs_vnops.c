@@ -176,31 +176,42 @@ linprocfs_open(struct vop_open_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *p2;
+	int error;
 
 	p2 = linprocfs_pfind(pfs->pfs_pid);
-	if (p2 == NULL)
-		return (ENOENT);
-	if (pfs->pfs_pid && !PRISON_CHECK(ap->a_cred, p2->p_ucred))
-		return (ENOENT);
+	if (p2 == NULL) {
+		error = ENOENT;
+	} else if (pfs->pfs_pid && !PRISON_CHECK(ap->a_cred, p2->p_ucred)) {
+		error = ENOENT;
+	} else {
+		error = 0;
 
-	switch (pfs->pfs_type) {
-	case Pmem:
-		if (((pfs->pfs_flags & FWRITE) && (ap->a_mode & O_EXCL)) ||
-		    ((pfs->pfs_flags & O_EXCL) && (ap->a_mode & FWRITE)))
-			return (EBUSY);
+		switch (pfs->pfs_type) {
+		case Pmem:
+			if (((pfs->pfs_flags & FWRITE) &&
+			     (ap->a_mode & O_EXCL)) ||
+			    ((pfs->pfs_flags & O_EXCL) &&
+			     (ap->a_mode & FWRITE))) {
+				error = EBUSY;
+				break;
+			}
 
-		if (p_trespass(ap->a_cred, p2->p_ucred))
-			return (EPERM);
-
-		if (ap->a_mode & FWRITE)
-			pfs->pfs_flags = ap->a_mode & (FWRITE|O_EXCL);
-
-		break;
-	default:
-		break;
+			if (p_trespass(ap->a_cred, p2->p_ucred)) {
+				error = EPERM;
+				break;
+			}
+			if (ap->a_mode & FWRITE)
+				pfs->pfs_flags = ap->a_mode & (FWRITE|O_EXCL);
+			break;
+		default:
+			break;
+		}
 	}
-
-	return (vop_stdopen(ap));
+	if (error == 0)
+		error = vop_stdopen(ap);
+	if (p2)
+		PRELE(p2);
+	return error;
 }
 
 /*
@@ -233,8 +244,10 @@ linprocfs_close(struct vop_close_args *ap)
 		if ((ap->a_vp->v_opencount < 2)
 		    && (p = linprocfs_pfind(pfs->pfs_pid))
 		    && !(p->p_pfsflags & PF_LINGER)) {
+			spin_lock(&p->p_spin);
 			p->p_stops = 0;
 			p->p_step = 0;
+			spin_unlock(&p->p_spin);
 			wakeup(&p->p_stype);
 		}
 		if (p)
@@ -261,9 +274,8 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 	unsigned char flags;
 
 	procp = linprocfs_pfind(pfs->pfs_pid);
-	if (procp == NULL) {
+	if (procp == NULL)
 		return ENOTTY;
-	}
 
 	if (p_trespass(ap->a_cred, procp->p_ucred)) {
 		error = EPERM;
@@ -292,22 +304,27 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 	  *(unsigned int*)ap->a_data = (unsigned int)procp->p_pfsflags;
 	case PIOCSTATUS:
 	  psp = (struct procfs_status *)ap->a_data;
-	  psp->state = (procp->p_step == 0);
 	  psp->flags = procp->p_pfsflags;
 	  psp->events = procp->p_stops;
+	  spin_lock(&procp->p_spin);
 	  if (procp->p_step) {
+	    psp->state = 0;
 	    psp->why = procp->p_stype;
 	    psp->val = procp->p_xstat;
+	    spin_unlock(&procp->p_spin);
 	  } else {
-	    psp->why = psp->val = 0;	/* Not defined values */
+	    psp->state = 1;
+	    spin_unlock(&procp->p_spin);
+	    psp->why = 0;	/* Not defined values */
+	    psp->val = 0;	/* Not defined values */
 	  }
 	  break;
 	case PIOCWAIT:
 	  psp = (struct procfs_status *)ap->a_data;
 	  spin_lock(&procp->p_spin);
 	  if (procp->p_step == 0) {
-	    spin_unlock(&procp->p_spin);
 	    tsleep_interlock(&procp->p_stype, PCATCH);
+	    spin_unlock(&procp->p_spin);
 	    if (procp->p_stops == 0) {
 		error = EINVAL;
 		goto done;
@@ -394,8 +411,10 @@ linprocfs_bmap(struct vop_bmap_args *ap)
 static int
 linprocfs_inactive(struct vop_inactive_args *ap)
 {
-	/*struct vnode *vp = ap->a_vp;*/
+	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 
+	if (pfs->pfs_pid & PFS_DEAD)
+		vrecycle(ap->a_vp);
 	return (0);
 }
 
@@ -466,8 +485,10 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 
 	default:
 		procp = linprocfs_pfind(pfs->pfs_pid);
-		if (procp == NULL || procp->p_ucred == NULL)
-			return (ENOENT);
+		if (procp == NULL || procp->p_ucred == NULL) {
+			error = ENOENT;
+			goto done;
+		}
 	}
 
 	error = 0;
@@ -635,7 +656,9 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 	default:
 		panic("linprocfs_getattr");
 	}
-
+done:
+	if (procp)
+		PRELE(procp);
 	return (error);
 }
 
@@ -734,6 +757,7 @@ linprocfs_lookup(struct vop_old_lookup_args *ap)
 	int error;
 
 	*vpp = NULL;
+	p = NULL;
 
 	if (cnp->cn_nameiop == NAMEI_DELETE || 
 	    cnp->cn_nameiop == NAMEI_RENAME ||
@@ -904,6 +928,8 @@ linprocfs_lookup(struct vop_old_lookup_args *ap)
 	 * so if dvp != *vpp and CNP_LOCKPARENT is not set, unlock dvp.
 	 */
 out:
+	if (p)
+		PRELE(p);
 	if (error == 0) {
 		if (*vpp != dvp && (cnp->cn_flags & CNP_LOCKPARENT) == 0) {
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
@@ -994,8 +1020,10 @@ linprocfs_readdir_proc(struct vop_readdir_args *ap)
 	p = linprocfs_pfind(pfs->pfs_pid);
 	if (p == NULL)
 		return(0);
-	if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
+	if (!PRISON_CHECK(ap->a_cred, p->p_ucred)) {
+		PRELE(p);
 		return(0);
+	}
 
 	error = 0;
 	i = uio->uio_offset;
@@ -1013,6 +1041,7 @@ linprocfs_readdir_proc(struct vop_readdir_args *ap)
 	}
 
 	uio->uio_offset = i;
+	PRELE(p);
 
 	return(error);
 }
@@ -1504,6 +1533,9 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 	char *fullpath, *freepath;
 	int error, len;
 
+	error = 0;
+	procp = NULL;
+
 	switch (pfs->pfs_type) {
 	case Pself:
 		if (pfs->pfs_fileno != PROCFS_FILENO(0, Pself))
@@ -1511,7 +1543,8 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 
 		len = ksnprintf(buf, sizeof(buf), "%ld", (long)curproc->p_pid);
 
-		return (uiomove(buf, len, ap->a_uio));
+		error = uiomove(buf, len, ap->a_uio);
+		break;
 	/*
 	 * There _should_ be no way for an entire process to disappear
 	 * from under us...
@@ -1521,67 +1554,84 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("linprocfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
-			return (uiomove("unknown", sizeof("unknown") - 1,
-			    ap->a_uio));
+			error = uiomove("unknown", sizeof("unknown") - 1,
+					ap->a_uio);
+			break;
 		}
 		error = cache_fullpath(procp, &procp->p_textnch, &fullpath, &freepath, 0);
-		if (error != 0)
-			return (uiomove("unknown", sizeof("unknown") - 1,
-			    ap->a_uio));
+		if (error != 0) {
+			error = uiomove("unknown", sizeof("unknown") - 1,
+					ap->a_uio);
+			break;
+		}
 		error = uiomove(fullpath, strlen(fullpath), ap->a_uio);
 		kfree(freepath, M_TEMP);
-		return (error);
+		break;
 	case Pcwd:
 		procp = linprocfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("linprocfs_readlink: pid %d disappeared\n",
-			    pfs->pfs_pid);
-			return (uiomove("unknown", sizeof("unknown") - 1,
-			    ap->a_uio));
+				pfs->pfs_pid);
+			error = uiomove("unknown", sizeof("unknown") - 1,
+					ap->a_uio);
+			break;
 		}
-		error = cache_fullpath(procp, &procp->p_fd->fd_ncdir, &fullpath, &freepath, 0);
-		if (error != 0)
-			return (uiomove("unknown", sizeof("unknown") - 1,
-			    ap->a_uio));
+		error = cache_fullpath(procp, &procp->p_fd->fd_ncdir,
+				       &fullpath, &freepath, 0);
+		if (error != 0) {
+			error = uiomove("unknown", sizeof("unknown") - 1,
+					ap->a_uio);
+			break;
+		}
 		error = uiomove(fullpath, strlen(fullpath), ap->a_uio);
 		kfree(freepath, M_TEMP);
-		return (error);
+		break;
 	case Pprocroot:
 		procp = linprocfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("linprocfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
-			return (uiomove("unknown", sizeof("unknown") - 1,
-			    ap->a_uio));
+			error = uiomove("unknown", sizeof("unknown") - 1,
+					ap->a_uio);
+			break;
 		}
 		nchp = jailed(procp->p_ucred) ? &procp->p_fd->fd_njdir : &procp->p_fd->fd_nrdir;
 		error = cache_fullpath(procp, nchp, &fullpath, &freepath, 0);
-		if (error != 0)
-			return (uiomove("unknown", sizeof("unknown") - 1,
-			    ap->a_uio));
+		if (error != 0) {
+			error = uiomove("unknown", sizeof("unknown") - 1,
+					ap->a_uio);
+			break;
+		}
 		error = uiomove(fullpath, strlen(fullpath), ap->a_uio);
 		kfree(freepath, M_TEMP);
-		return (error);
+		break;
 	case Pfd:
 		procp = linprocfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("linprocfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
-			return (uiomove("unknown", sizeof("unknown") - 1,
-			    ap->a_uio));
+			error = uiomove("unknown", sizeof("unknown") - 1,
+					ap->a_uio);
+			break;
 		}
 		if (procp == curproc) {
-			return (uiomove("/dev/fd", sizeof("/dev/fd") - 1,
-			    ap->a_uio));
+			error = uiomove("/dev/fd", sizeof("/dev/fd") - 1,
+					ap->a_uio);
+			break;
 		} else {
-			return (uiomove("unknown", sizeof("unknown") - 1,
-			    ap->a_uio));
+			error = uiomove("unknown", sizeof("unknown") - 1,
+					ap->a_uio);
+			break;
 		}
 		/* notreached */
 		break;
 	default:
-		return (EINVAL);
+		error = EINVAL;
+		break;
 	}
+	if (procp)
+		PRELE(procp);
+	return error;
 }
 
 /*

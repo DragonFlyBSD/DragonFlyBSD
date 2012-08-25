@@ -746,7 +746,7 @@ if_detach(struct ifnet *ifp)
 	 * to this interface...oh well...
 	 */
 	origcpu = mycpuid;
-	for (cpu = 0; cpu < ncpus2; cpu++) {
+	for (cpu = 0; cpu < ncpus; cpu++) {
 		lwkt_migratecpu(cpu);
 		for (i = 1; i <= AF_MAX; i++) {
 			if ((rnh = rt_tables[cpu][i]) == NULL)

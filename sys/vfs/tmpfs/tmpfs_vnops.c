@@ -211,11 +211,13 @@ tmpfs_open(struct vop_open_args *v)
 
 	node = VP_TO_TMPFS_NODE(vp);
 
+#if 0
 	/* The file is still active but all its names have been removed
 	 * (e.g. by a "rmdir $(pwd)").  It cannot be opened any more as
 	 * it is about to die. */
 	if (node->tn_links < 1)
 		return (ENOENT);
+#endif
 
 	/* If the file is marked append-only, deny write requests. */
 	if ((node->tn_flags & APPEND) &&
@@ -238,8 +240,10 @@ tmpfs_close(struct vop_close_args *v)
 	node = VP_TO_TMPFS_NODE(vp);
 
 	if (node->tn_links > 0) {
-		/* Update node times.  No need to do it if the node has
-		 * been deleted, because it will vanish after we return. */
+		/*
+		 * Update node times.  No need to do it if the node has
+		 * been deleted, because it will vanish after we return.
+		 */
 		tmpfs_update(vp);
 	}
 
@@ -828,10 +832,8 @@ tmpfs_nremove(struct vop_nremove_args *v)
 	        TMPFS_NODE_UNLOCK(node);
 	}
 
-	cache_setunresolved(v->a_nch);
-	cache_setvp(v->a_nch, NULL);
+	cache_unlink(v->a_nch);
 	tmpfs_knote(vp, NOTE_DELETE);
-	/*cache_inval_vp(vp, CINV_DESTROY);*/
 	tmpfs_knote(dvp, NOTE_WRITE);
 	error = 0;
 
@@ -1037,9 +1039,9 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	 * already checked for illegal recursion cases (renaming a directory
 	 * into a subdirectory of itself).
 	 */
-	if (fdnode != tdnode)
+	if (fdnode != tdnode) {
 		tmpfs_dir_detach(fdnode, de);
-	else {
+	} else {
 		RB_REMOVE(tmpfs_dirtree, &fdnode->tn_dir.tn_dirtree, de);
 	}
 
@@ -1086,21 +1088,6 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	if (fdnode != tdnode) {
 		if (de->td_node->tn_type == VDIR) {
 			TMPFS_VALIDATE_DIR(fnode);
-
-			TMPFS_NODE_LOCK(tdnode);
-			tdnode->tn_links++;
-			tdnode->tn_status |= TMPFS_NODE_MODIFIED;
-			TMPFS_NODE_UNLOCK(tdnode);
-
-			TMPFS_NODE_LOCK(fnode);
-			fnode->tn_dir.tn_parent = tdnode;
-			fnode->tn_status |= TMPFS_NODE_CHANGED;
-			TMPFS_NODE_UNLOCK(fnode);
-
-			TMPFS_NODE_LOCK(fdnode);
-			fdnode->tn_links--;
-			fdnode->tn_status |= TMPFS_NODE_MODIFIED;
-			TMPFS_NODE_UNLOCK(fdnode);
 		}
 		tmpfs_dir_attach(tdnode, de);
 	} else {
@@ -1238,20 +1225,13 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	TMPFS_NODE_LOCK(dnode);
 	TMPFS_ASSERT_ELOCKED(dnode);
 
-#if 0
-	/* handled by tmpfs_free_node */
-	KKASSERT(node->tn_links > 0);
-	node->tn_links--;
-	node->tn_dir.tn_parent = NULL;
-#endif
+	/*
+	 * Must set parent linkage to NULL (tested by ncreate to disallow
+	 * the creation of new files/dirs in a deleted directory)
+	 */
 	node->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED | \
 	    TMPFS_NODE_MODIFIED;
 
-#if 0
-	/* handled by tmpfs_free_node */
-	KKASSERT(dnode->tn_links > 0);
-	dnode->tn_links--;
-#endif
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | \
 	    TMPFS_NODE_CHANGED | TMPFS_NODE_MODIFIED;
 
@@ -1271,9 +1251,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	TMPFS_NODE_UNLOCK(dnode);
 	tmpfs_update(dvp);
 
-	cache_setunresolved(v->a_nch);
-	cache_setvp(v->a_nch, NULL);
-	/*cache_inval_vp(vp, CINV_DESTROY);*/
+	cache_unlink(v->a_nch);
 	tmpfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
 	error = 0;
 
@@ -1447,9 +1425,7 @@ tmpfs_inactive(struct vop_inactive_args *v)
 	 */
 	TMPFS_NODE_LOCK(node);
 	if ((node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0 &&
-	    (node->tn_links == 0 ||
-	     (node->tn_links == 1 && node->tn_type == VDIR &&
-	      node->tn_dir.tn_parent)))
+	    node->tn_links == 0)
 	{
 		node->tn_vpstate = TMPFS_VNODE_DOOMED;
 		TMPFS_NODE_UNLOCK(node);
@@ -1486,10 +1462,7 @@ tmpfs_reclaim(struct vop_reclaim_args *v)
 	 */
 	TMPFS_NODE_LOCK(node);
 	if ((node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0 &&
-	    (node->tn_links == 0 ||
-	     (node->tn_links == 1 && node->tn_type == VDIR &&
-	      node->tn_dir.tn_parent)))
-	{
+	    node->tn_links == 0) {
 		node->tn_vpstate = TMPFS_VNODE_DOOMED;
 		tmpfs_free_node(tmp, node);
 		/* eats the lock */
