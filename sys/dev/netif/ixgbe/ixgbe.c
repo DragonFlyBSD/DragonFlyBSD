@@ -650,13 +650,11 @@ ixgbe_detach(device_t dev)
 
 	INIT_DEBUGOUT("ixgbe_detach: begin");
 
-#ifdef NET_VLAN
 	/* Make sure VLANS are not using driver */
-	if (adapter->ifp->if_vlantrunk != NULL) {
+	if (adapter->ifp->if_vlantrunks != NULL) {
 		device_printf(dev,"Vlan in use, detach first\n");
 		return (EBUSY);
 	}
-#endif
 
 	IXGBE_CORE_LOCK(adapter);
 	ixgbe_stop(adapter);
@@ -686,12 +684,10 @@ ixgbe_detach(device_t dev)
 	IXGBE_WRITE_REG(&adapter->hw, IXGBE_CTRL_EXT, ctrl_ext);
 
 	/* Unregister VLAN events */
-#ifdef NET_VLAN
 	if (adapter->vlan_attach != NULL)
 		EVENTHANDLER_DEREGISTER(vlan_config, adapter->vlan_attach);
 	if (adapter->vlan_detach != NULL)
 		EVENTHANDLER_DEREGISTER(vlan_unconfig, adapter->vlan_detach);
-#endif
 
 	ether_ifdetach(adapter->ifp);
 	callout_stop(&adapter->timer);
@@ -3237,9 +3233,7 @@ ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf *mp)
 	u8	ipproto = 0;
 	bool	offload = TRUE;
 	int ctxd = txr->next_avail_desc;
-#ifdef NET_VLAN
 	u16 vtag = 0;
-#endif
 
 
 	if ((mp->m_pkthdr.csum_flags & CSUM_OFFLOAD) == 0)
@@ -3252,13 +3246,11 @@ ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf *mp)
 	** In advanced descriptors the vlan tag must 
 	** be placed into the descriptor itself.
 	*/
-#ifdef NET_VLAN
 	if (mp->m_flags & M_VLANTAG) {
-		vtag = htole16(mp->m_pkthdr.ether_vtag);
+		vtag = htole16(mp->m_pkthdr.ether_vlantag);
 		vlan_macip_lens |= (vtag << IXGBE_ADVTXD_VLAN_SHIFT);
 	} else if (offload == FALSE)
 		return FALSE;
-#endif
 
 	/*
 	 * Determine where frame payload starts.
@@ -3353,13 +3345,8 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
 	struct adapter *adapter = txr->adapter;
 	struct ixgbe_adv_tx_context_desc *TXD;
 	struct ixgbe_tx_buf        *tx_buffer;
-#ifdef NET_VLAN
 	u32 vlan_macip_lens = 0, type_tucmd_mlhl = 0;
 	u16 vtag = 0, eh_type;
-#else
-	u16 eh_type;
-	u32 type_tucmd_mlhl = 0;
-#endif
 	u32 mss_l4len_idx = 0, len;
 	int ctxd, ehdrlen, ip_hlen, tcp_hlen;
 	struct ether_vlan_header *eh;
@@ -3435,16 +3422,14 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
 	*paylen = mp->m_pkthdr.len - ehdrlen - ip_hlen - tcp_hlen;
 
 	/* VLAN MACLEN IPLEN */
-#ifdef NET_VLAN
 	if (mp->m_flags & M_VLANTAG) {
-		vtag = htole16(mp->m_pkthdr.ether_vtag);
+		vtag = htole16(mp->m_pkthdr.ether_vlantag);
                 vlan_macip_lens |= (vtag << IXGBE_ADVTXD_VLAN_SHIFT);
 	}
 
 	vlan_macip_lens |= ehdrlen << IXGBE_ADVTXD_MACLEN_SHIFT;
 	vlan_macip_lens |= ip_hlen;
 	TXD->vlan_macip_lens |= htole32(vlan_macip_lens);
-#endif
 
 	/* ADV DTYPE TUCMD */
 	type_tucmd_mlhl |= IXGBE_ADVTXD_DCMD_DEXT | IXGBE_ADVTXD_DTYP_CTXT;
@@ -4513,9 +4498,7 @@ ixgbe_rxeof(struct ix_queue *que, int count)
 		struct mbuf	*sendmp, *mh, *mp;
 		u32		rsc, ptype;
 		u16		hlen, plen, hdr;
-#ifdef NET_VLAN
 		u16		vtag = 0;
-#endif
 		bool		eop;
  
 		/* Sync the ring. */
@@ -4546,10 +4529,8 @@ ixgbe_rxeof(struct ix_queue *que, int count)
 		eop = ((staterr & IXGBE_RXD_STAT_EOP) != 0);
 
 		/* Process vlan info */
-#ifdef NET_VLAN
 		if ((rxr->vtag_strip) && (staterr & IXGBE_RXD_STAT_VP))
 			vtag = le16toh(cur->wb.upper.vlan);
-#endif
 
 		/* Make sure bad packets are discarded */
 		if (((staterr & IXGBE_RXDADV_ERR_FRAME_ERR_MASK) != 0) ||
@@ -4652,12 +4633,10 @@ ixgbe_rxeof(struct ix_queue *que, int count)
 				/* Singlet, prepare to send */
                                 sendmp = mh;
 				/* If hardware handled vtag */
-#ifdef NET_VLAN
                                 if (vtag) {
-                                        sendmp->m_pkthdr.ether_vtag = vtag;
+                                        sendmp->m_pkthdr.ether_vlantag = vtag;
                                         sendmp->m_flags |= M_VLANTAG;
                                 }
-#endif
                         }
 		} else {
 			/*
@@ -4681,12 +4660,10 @@ ixgbe_rxeof(struct ix_queue *que, int count)
 				sendmp = mp;
 				sendmp->m_flags |= M_PKTHDR;
 				sendmp->m_pkthdr.len = mp->m_len;
-#ifdef NET_VLAN
 				if (staterr & IXGBE_RXD_STAT_VP) {
-					sendmp->m_pkthdr.ether_vtag = vtag;
+					sendmp->m_pkthdr.ether_vlantag = vtag;
 					sendmp->m_flags |= M_VLANTAG;
 				}
-#endif
                         }
 			/* Pass the head pointer on */
 			if (eop == 0) {
@@ -4865,7 +4842,6 @@ ixgbe_unregister_vlan(void *arg, struct ifnet *ifp, u16 vtag)
 static void
 ixgbe_setup_vlan_hw_support(struct adapter *adapter)
 {
-#ifdef NET_VLAN
 	struct ifnet 	*ifp = adapter->ifp;
 	struct ixgbe_hw *hw = &adapter->hw;
 	struct rx_ring	*rxr;
@@ -4910,7 +4886,6 @@ ixgbe_setup_vlan_hw_support(struct adapter *adapter)
 		}
 		rxr->vtag_strip = TRUE;
 	}
-#endif
 }
 
 static void
