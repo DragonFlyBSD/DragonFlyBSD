@@ -167,6 +167,7 @@ static void	ixgbe_add_rx_process_limit(struct adapter *, const char *,
 		    const char *, int *, int);
 static bool	ixgbe_tx_ctx_setup(struct tx_ring *, struct mbuf *);
 static bool	ixgbe_tso_setup(struct tx_ring *, struct mbuf *, u32 *, u32 *);
+static int	ixgbe_tso_pullup(struct tx_ring *, struct mbuf **);
 static void	ixgbe_set_ivar(struct adapter *, u8, u8, s8);
 static void	ixgbe_configure_ivars(struct adapter *);
 static u8 *	ixgbe_mc_array_itr(struct ixgbe_hw *, u8 **, u32 *);
@@ -1743,6 +1744,13 @@ ixgbe_xmit(struct tx_ring *txr, struct mbuf **m_headp)
 	union ixgbe_adv_tx_desc *txd = NULL;
 
 	m_head = *m_headp;
+
+	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
+		error = ixgbe_tso_pullup(txr, m_headp);
+		if (error)
+			return error;
+		m_head = *m_headp;
+	}
 
 	/* Basic descriptor defines */
         cmd_type_len = (IXGBE_ADVTXD_DTYP_DATA |
@@ -5796,4 +5804,34 @@ ixgbe_set_thermal_test(SYSCTL_HANDLER_ARGS)
 	}
 
 	return (0);
+}
+
+/* rearrange mbuf chain to get contiguous bytes */
+static int
+ixgbe_tso_pullup(struct tx_ring *txr, struct mbuf **mp)
+{
+	int hoff, iphlen, thoff;
+	struct mbuf *m;
+
+	m = *mp;
+	KASSERT(M_WRITABLE(m), ("TSO mbuf not writable"));
+
+	iphlen = m->m_pkthdr.csum_iphlen;
+	thoff = m->m_pkthdr.csum_thlen;
+	hoff = m->m_pkthdr.csum_lhlen;
+
+	KASSERT(iphlen > 0, ("invalid ip hlen"));
+	KASSERT(thoff > 0, ("invalid tcp hlen"));
+	KASSERT(hoff > 0, ("invalid ether hlen"));
+
+	if (__predict_false(m->m_len < hoff + iphlen + thoff)) {
+		m = m_pullup(m, hoff + iphlen + thoff);
+		if (m == NULL) {
+			*mp = NULL;
+			return ENOBUFS;
+		}
+		*mp = m;
+	}
+
+	return 0;
 }
