@@ -166,9 +166,7 @@ static void     ixgbe_dma_free(struct adapter *, struct ixgbe_dma_alloc *);
 static void	ixgbe_add_rx_process_limit(struct adapter *, const char *,
 		    const char *, int *, int);
 static bool	ixgbe_tx_ctx_setup(struct tx_ring *, struct mbuf *);
-#if 0	/* NET_TSO */
 static bool	ixgbe_tso_setup(struct tx_ring *, struct mbuf *, u32 *, u32 *);
-#endif
 static void	ixgbe_set_ivar(struct adapter *, u8, u8, s8);
 static void	ixgbe_configure_ivars(struct adapter *);
 static u8 *	ixgbe_mc_array_itr(struct ixgbe_hw *, u8 **, u32 *);
@@ -1007,12 +1005,10 @@ ixgbe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		IOCTL_DEBUGOUT("ioctl: SIOCSIFCAP (Set Capabilities)");
 		if (mask & IFCAP_HWCSUM)
 			ifp->if_capenable ^= IFCAP_HWCSUM;
-#if 0 /* NET_TSO */
 		if (mask & IFCAP_TSO4)
 			ifp->if_capenable ^= IFCAP_TSO4;
 		if (mask & IFCAP_TSO6)
 			ifp->if_capenable ^= IFCAP_TSO6;
-#endif
 #if 0 /* NET_LRO */
 		if (mask & IFCAP_LRO)
 			ifp->if_capenable ^= IFCAP_LRO;
@@ -1083,10 +1079,8 @@ ixgbe_init_locked(struct adapter *adapter)
 
 	/* Set the various hardware offload abilities */
 	ifp->if_hwassist = 0;
-#if 0 /* NET_TSO */
 	if (ifp->if_capenable & IFCAP_TSO)
 		ifp->if_hwassist |= CSUM_TSO;
-#endif
 	if (ifp->if_capenable & IFCAP_TXCSUM) {
 		ifp->if_hwassist |= (CSUM_TCP | CSUM_UDP);
 #if 0
@@ -1799,7 +1793,6 @@ ixgbe_xmit(struct tx_ring *txr, struct mbuf **m_headp)
 	** this becomes the first descriptor of 
 	** a packet.
 	*/
-#if 0 /* NET_TSO */
 	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
 		if (ixgbe_tso_setup(txr, m_head, &paylen, &olinfo_status)) {
 			cmd_type_len |= IXGBE_ADVTXD_DCMD_TSE;
@@ -1809,8 +1802,6 @@ ixgbe_xmit(struct tx_ring *txr, struct mbuf **m_headp)
 		} else
 			return (ENXIO);
 	} else if (ixgbe_tx_ctx_setup(txr, m_head))
-#endif
-	if (ixgbe_tx_ctx_setup(txr, m_head))
 		olinfo_status |= IXGBE_TXD_POPTS_TXSM << 8;
 
 #ifdef IXGBE_IEEE1588
@@ -2604,10 +2595,7 @@ ixgbe_setup_interface(device_t dev, struct adapter *adapter)
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
-#if 0 /* NET_TSO */
 	ifp->if_capabilities |= IFCAP_HWCSUM | IFCAP_TSO | IFCAP_VLAN_HWCSUM;
-#endif
-	ifp->if_capabilities |= IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM;
 	ifp->if_capabilities |= IFCAP_JUMBO_MTU;
 	ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING
 #if 0 /* NET_TSO */
@@ -3337,7 +3325,6 @@ ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf *mp)
  *  adapters using advanced tx descriptors
  *
  **********************************************************************/
-#if 0	/* NET_TSO */
 static bool
 ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
     u32 *olinfo_status)
@@ -3350,8 +3337,10 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
 	u32 mss_l4len_idx = 0, len;
 	int ctxd, ehdrlen, ip_hlen, tcp_hlen;
 	struct ether_vlan_header *eh;
+#if 0 /* IPv6 TSO */
 #ifdef INET6
 	struct ip6_hdr *ip6;
+#endif
 #endif
 #ifdef INET
 	struct ip *ip;
@@ -3375,6 +3364,7 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
         /* Ensure we have at least the IP+TCP header in the first mbuf. */
 	len = ehdrlen + sizeof(struct tcphdr);
 	switch (ntohs(eh_type)) {
+#if 0 /* IPv6 TSO */
 #ifdef INET6
 	case ETHERTYPE_IPV6:
 		if (mp->m_len < len + sizeof(struct ip6_hdr))
@@ -3388,6 +3378,7 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
 		th->th_sum = in6_cksum_pseudo(ip6, 0, IPPROTO_TCP, 0);
 		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV6;
 		break;
+#endif
 #endif
 #ifdef INET
 	case ETHERTYPE_IP:
@@ -3452,7 +3443,6 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
 	txr->next_avail_desc = ctxd;
 	return TRUE;
 }
-#endif
 
 #ifdef IXGBE_FDIR
 /*
@@ -5442,11 +5432,9 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "watchdog_events",
 			CTLFLAG_RD, &adapter->watchdog_events,
 			"Watchdog timeouts");
-#if 0	/* NET_TSO */
 	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "tso_tx",
 			CTLFLAG_RD, &adapter->tso_tx,
 			"TSO");
-#endif
 	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "link_irq",
 			CTLFLAG_RD, &adapter->link_irq,
 			"Link MSIX IRQ Handled");
