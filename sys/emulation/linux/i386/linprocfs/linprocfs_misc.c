@@ -64,6 +64,7 @@
 #include <vm/swap_pager.h>
 #include <sys/vmmeter.h>
 #include <sys/exec.h>
+#include <sys/devfs.h>
 
 #include <machine/clock.h>
 #include <machine/cputypes.h>
@@ -670,11 +671,29 @@ linprocfs_donetdev(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	return (error);
 }
 
+static void
+linprocfs_dodevices_callback(char *name, cdev_t dev, bool is_alias, void *arg)
+{
+	struct sbuf *sb = arg;
+
+	sbuf_printf(sb, "%3d %s\n", dev->si_umajor, name);
+}
+
 int
 linprocfs_dodevices(struct proc *curp, struct proc *p, struct pfsnode *pfs,
-		   struct uio *uio)
+    struct uio *uio)
 {
-	return 0;
+	struct sbuf *sb;
+	int error;
+
+	sb = sbuf_new_auto();
+	sbuf_printf(sb, "Character devices:\n");
+	devfs_scan_callback(linprocfs_dodevices_callback, sb);
+	sbuf_printf(sb, "\nBlock devices:\n");
+	sbuf_finish(sb);
+	error = uiomove_frombuf(sbuf_data(sb), sbuf_len(sb), uio);
+	sbuf_delete(sb);
+	return (error);
 }
 
 int

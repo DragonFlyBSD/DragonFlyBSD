@@ -863,6 +863,10 @@ linprocfs_lookup(struct vop_old_lookup_args *ap)
 			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Psys);
 			goto out;
 		}
+		if (CNEQ(cnp, "devices", 7)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pdevices);
+			goto out;
+		}
 
 		pid = atopid(pname, cnp->cn_namelen);
 		if (pid == NO_PID)
@@ -1072,7 +1076,7 @@ linprocfs_readdir_root(struct vop_readdir_args *ap)
 	info.uio = uio;
 	info.cred = ap->a_cred;
 
-	while (info.pcnt < 12) {
+	while (info.pcnt < 13) {
 		res = linprocfs_readdir_root_callback(NULL, &info);
 		if (res < 0)
 			break;
@@ -1176,14 +1180,12 @@ linprocfs_readdir_root_callback(struct proc *p, void *data)
 		d_name = "mounts";
 		d_type = DT_DIR;
 		break;
-#if 0
-	case 11:
+	case 12:
 		d_ino = PROCFS_FILENO(0, Pdevices);
 		d_namlen = 7;
 		d_name = "devices";
 		d_type = DT_REG;
 		break;		
-#endif
 	default:
 		/*
 		 * Ignore processes that aren't in our prison
