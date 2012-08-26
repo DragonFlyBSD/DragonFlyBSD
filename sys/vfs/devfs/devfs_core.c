@@ -340,7 +340,7 @@ try_again:
 		KKASSERT(node->d_dev);
 
 		vp->v_uminor = node->d_dev->si_uminor;
-		vp->v_umajor = 0;
+		vp->v_umajor = node->d_dev->si_umajor;
 
 		v_associate_rdev(vp, node->d_dev);
 		vp->v_ops = &node->mp->mnt_vn_spec_ops;
@@ -2242,7 +2242,6 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 	dev->si_parent = NULL;
 	dev->si_ops = ops;
 	dev->si_flags = 0;
-	dev->si_umajor = 0;
 	dev->si_uminor = minor;
 	dev->si_bops = bops;
 
@@ -2261,6 +2260,7 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 	dev->si_inode = makeudev(
 		    devfs_reference_ops((bops)?(bops):(ops)),
 		    minor );
+	dev->si_umajor = umajor(dev->si_inode);
 
 	return dev;
 }

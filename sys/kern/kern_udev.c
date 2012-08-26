@@ -369,7 +369,7 @@ udev_init_dict(cdev_t dev)
 	if ((error = _udev_dict_set_int(dict, "mode", dev->si_perms)))
 		goto error_out;
 
-	if ((error = _udev_dict_set_int(dict, "major", umajor(dev->si_inode))))
+	if ((error = _udev_dict_set_int(dict, "major", dev->si_umajor)))
 		goto error_out;
 	if ((error = _udev_dict_set_int(dict, "minor", dev->si_uminor)))
 		goto error_out;
