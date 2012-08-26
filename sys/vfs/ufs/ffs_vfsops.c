@@ -315,23 +315,20 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 	if (mp->mnt_flag & MNT_UPDATE) {
 		/*
 		 * UPDATE - make sure the resolved vnode represents the same
-		 * device.  Note that devvp->v_rdev may be NULL since we 
-		 * haven't opened it, so compare udev instead.
+		 * device. Since devfs, devvp->v_rdev can be used directly as
+		 * it is always associated as long as the vnode exists.
 		 *
 		 * Our current open/writecount state is associated with
 		 * um_devvp, so continue using um_devvp and throw away devvp.
 		 */
 		if (devvp != ump->um_devvp) {
-			if (devvp->v_umajor == ump->um_devvp->v_umajor &&
-			    devvp->v_uminor == ump->um_devvp->v_uminor) {
+			if (devvp->v_rdev == ump->um_devvp->v_rdev) {
 				vrele(devvp);
 				devvp = ump->um_devvp;
 			} else {
-				kprintf("cannot update mount, udev does"
-					" not match %08x:%08x vs %08x:%08x\n",
-					devvp->v_umajor, devvp->v_uminor,
-					ump->um_devvp->v_umajor,
-					ump->um_devvp->v_uminor);
+				kprintf("cannot update mount, v_rdev does"
+					" not match (%p vs %p)\n",
+					devvp->v_rdev, ump->um_devvp->v_rdev);
 				error = EINVAL;	/* needs translation */
 			}
 		} else {
