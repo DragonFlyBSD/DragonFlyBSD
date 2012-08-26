@@ -1753,9 +1753,13 @@ static int
 devfs_scan_callback_worker(devfs_scan_t *callback, void *arg)
 {
 	cdev_t dev, dev1;
+	struct devfs_alias *alias, *alias1;
 
 	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
-		callback(dev, arg);
+		callback(dev->si_name, dev, false, arg);
+	}
+	TAILQ_FOREACH_MUTABLE(alias, &devfs_alias_list, link, alias1) {
+		callback(alias->name, alias->dev_target, true, arg);
 	}
 
 	return 0;

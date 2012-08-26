@@ -490,10 +490,11 @@ end:
 
 
 static void
-vfs_mountroot_ask_callback(cdev_t dev, void *arg __unused)
+vfs_mountroot_ask_callback(char *name, cdev_t dev, bool is_alias,
+    void *arg __unused)
 {
-	if (dev_is_good(dev) && (dev_dflags(dev) & D_DISK))
-		kprintf(" \"%s\" ", dev->si_name);
+	if (!is_alias && dev_is_good(dev) && (dev_dflags(dev) & D_DISK))
+		kprintf(" \"%s\" ", name);
 }
 
 

@@ -69,7 +69,7 @@ static void udev_event_insert(int, prop_dictionary_t);
 static struct udev_event_kernel *udev_event_remove(void);
 static void udev_event_free(struct udev_event_kernel *);
 static char *udev_event_externalize(struct udev_event_kernel *);
-static void udev_getdevs_scan_callback(cdev_t, void *);
+static void udev_getdevs_scan_callback(char *, cdev_t, bool, void *);
 static int udev_getdevs_ioctl(struct plistref *, u_long, prop_dictionary_t);
 static void udev_dev_filter_detach(struct knote *);
 static int udev_dev_filter_read(struct knote *, long);
@@ -726,7 +726,7 @@ udev_dev_ioctl(struct dev_ioctl_args *ap)
 }
 
 static void
-udev_getdevs_scan_callback(cdev_t cdev, void *arg)
+udev_getdevs_scan_callback(char *name, cdev_t cdev, bool is_alias, void *arg)
 {
 	struct udev_prop_ctx *ctx = arg;
 
@@ -755,7 +755,6 @@ udev_getdevs_ioctl(struct plistref *pref, u_long cmd, prop_dictionary_t dict)
 		return EINVAL;
 	}
 
-	/* XXX: need devfs_scan_alias_callback() */
 	devfs_scan_callback(udev_getdevs_scan_callback, &ctx);
 
 	if (ctx.error != 0) {

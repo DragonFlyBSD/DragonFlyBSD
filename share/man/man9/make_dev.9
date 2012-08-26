@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/make_dev.9,v 1.2.2.3 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd August 24, 2012
+.Dd August 26, 2012
 .Dt MAKE_DEV 9
 .Os
 .Sh NAME
@@ -312,10 +312,21 @@ function has the following form:
 devfs_scan_t mydev_scan_callback;
 
 void
-mydev_scan_callback(cdev_t dev, void *arg)
+mydev_scan_callback(char *name, cdev_t dev, bool is_alias, void *arg)
 {
 };
 .Ed
+.Pp
+The
+.Fa name
+argument is the alias' name (if
+.Fa is_alias
+is
+.Dv true )
+or he
+.Vt cdev Ap s
+.Fa si_name
+field.
 .Sh HISTORY
 The
 .Fn make_dev

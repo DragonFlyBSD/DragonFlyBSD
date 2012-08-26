@@ -244,7 +244,7 @@ TAILQ_HEAD(devfs_chandler_head, devfs_clone_handler);
 TAILQ_HEAD(devfs_alias_head, devfs_alias);
 TAILQ_HEAD(devfs_dev_ops_head, devfs_dev_ops);
 
-typedef void (devfs_scan_t)(cdev_t, void *);
+typedef void (devfs_scan_t)(char *, cdev_t, bool, void *);
 typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 
 #define DEVFS_NODE(x)		((struct devfs_node *)((x)->v_data))
