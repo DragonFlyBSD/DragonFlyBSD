@@ -96,7 +96,6 @@ static void	dump_whole_inode(ino_t, int, int);
 void
 rdfs(daddr_t bno, size_t size, void *bf, int fsi)
 {
-	DBG_FUNC("rdfs")
 	ssize_t	n;
 
 	DBG_ENTER;
@@ -129,7 +128,6 @@ rdfs(daddr_t bno, size_t size, void *bf, int fsi)
 int
 main(int argc, char **argv)
 {
-	DBG_FUNC("main")
 	char	*device, *special, *cp;
 	char	ch;
 	size_t	len;
@@ -405,7 +403,6 @@ main(int argc, char **argv)
 void
 dump_whole_inode(ino_t inode, int fsi, int level)
 {
-	DBG_FUNC("dump_whole_inode")
 	struct ufs1_dinode	*ino;
 	int	rb;
 	unsigned int	ind2ctr, ind3ctr;
@@ -544,8 +541,6 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 void
 usage(void)
 {
-	DBG_FUNC("usage")	
-
 	DBG_ENTER;
 
 	fprintf(stderr,
@@ -568,7 +563,6 @@ usage(void)
 struct ufs1_dinode *
 ginode(ino_t inumber, int fsi)
 {
-	DBG_FUNC("ginode")
 	ufs_daddr_t	iblk;
 	static ino_t	startinum=0;	/* first inode in cached block */
 	struct ufs1_dinode	*pi;

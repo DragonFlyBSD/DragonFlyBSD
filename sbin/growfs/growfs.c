@@ -148,7 +148,6 @@ static void	updrefs(int, ino_t, struct gfs_bpp *, int, int, unsigned int);
 static void
 growfs(int fsi, int fso, unsigned int Nflag)
 {
-	DBG_FUNC("growfs")
 	int	i;
 	int	cylno, j;
 	time_t	utime;
@@ -346,7 +345,6 @@ growfs(int fsi, int fso, unsigned int Nflag)
 static void
 initcg(int cylno, time_t utime, int fso, unsigned int Nflag)
 {
-	DBG_FUNC("initcg")
 	daddr_t cbase, d, dlower, dupper, dmax, blkno;
 	int i;
 	struct csum *cs;
@@ -520,7 +518,6 @@ initcg(int cylno, time_t utime, int fso, unsigned int Nflag)
 static void
 frag_adjust(daddr_t frag, int sign)
 {
-	DBG_FUNC("frag_adjust")
 	int fragsize;
 	int f;
 
@@ -582,7 +579,6 @@ static void
 cond_bl_upd(ufs_daddr_t *block, struct gfs_bpp *field,
     enum pointer_source source, int fso, unsigned int Nflag)
 {
-	DBG_FUNC("cond_bl_upd")
 	struct gfs_bpp	*f;
 	char *src;
 	daddr_t dst=0;
@@ -661,7 +657,6 @@ cond_bl_upd(ufs_daddr_t *block, struct gfs_bpp *field,
 static void
 updjcg(int cylno, time_t utime, int fsi, int fso, unsigned int Nflag)
 {
-	DBG_FUNC("updjcg")
 	daddr_t	cbase, dmax, dupper;
 	struct csum	*cs;
 	int	i,k;
@@ -914,7 +909,6 @@ updjcg(int cylno, time_t utime, int fsi, int fso, unsigned int Nflag)
 static void
 updcsloc(time_t utime, int fsi, int fso, unsigned int Nflag)
 {
-	DBG_FUNC("updcsloc")
 	struct csum	*cs;
 	int	ocscg, ncscg;
 	int	blocks;
@@ -1549,7 +1543,6 @@ updcsloc(time_t utime, int fsi, int fso, unsigned int Nflag)
 static void
 rdfs(daddr_t bno, size_t size, void *bf, int fsi)
 {
-	DBG_FUNC("rdfs")
 	ssize_t	n;
 
 	DBG_ENTER;
@@ -1573,7 +1566,6 @@ rdfs(daddr_t bno, size_t size, void *bf, int fsi)
 static void
 wtfs(daddr_t bno, size_t size, void *bf, int fso, unsigned int Nflag)
 {
-	DBG_FUNC("wtfs")
 	ssize_t	n;
 
 	DBG_ENTER;
@@ -1603,7 +1595,6 @@ wtfs(daddr_t bno, size_t size, void *bf, int fso, unsigned int Nflag)
 static daddr_t
 alloc(void)
 {
-	DBG_FUNC("alloc")
 	daddr_t	d, blkno;
 	int	lcs1, lcs2;
 	int	l;
@@ -1739,7 +1730,6 @@ alloc(void)
 static int
 isblock(struct fs *fs, unsigned char *cp, int h)
 {
-	DBG_FUNC("isblock")
 	unsigned char	mask;
 
 	DBG_ENTER;
@@ -1776,8 +1766,6 @@ isblock(struct fs *fs, unsigned char *cp, int h)
 static void
 clrblock(struct fs *fs, unsigned char *cp, int h)
 {
-	DBG_FUNC("clrblock")
-
 	DBG_ENTER;
 
 	switch ((fs)->fs_frag) {
@@ -1811,8 +1799,6 @@ clrblock(struct fs *fs, unsigned char *cp, int h)
 static void
 setblock(struct fs *fs, unsigned char *cp, int h)
 {
-	DBG_FUNC("setblock")
-
 	DBG_ENTER;
 
 	switch (fs->fs_frag) {
@@ -1848,7 +1834,6 @@ setblock(struct fs *fs, unsigned char *cp, int h)
 static struct ufs1_dinode *
 ginode(ino_t inumber, int fsi, int cg)
 {
-	DBG_FUNC("ginode")
 	ufs_daddr_t	iblk;
 	static ino_t	startinum=0;	/* first inode in cached block */
 	struct ufs1_dinode	*pi;
@@ -1882,7 +1867,6 @@ ginode(ino_t inumber, int fsi, int cg)
 static int
 charsperline(void)
 {
-	DBG_FUNC("charsperline")
 	int	columns;
 	char	*cp;
 	struct winsize	ws;
@@ -1930,7 +1914,6 @@ charsperline(void)
 int
 main(int argc, char **argv)
 {
-	DBG_FUNC("main")
 	struct partinfo pinfo;
 	char	*device, *special, *cp;
 	char	ch;
@@ -2208,8 +2191,6 @@ main(int argc, char **argv)
 static void
 usage(void)
 {	
-	DBG_FUNC("usage")
-
 	DBG_ENTER;
 
 	fprintf(stderr, "usage: growfs [-Ny] [-s size] special\n");
@@ -2226,7 +2207,6 @@ usage(void)
 static void
 updclst(int block)
 {	
-	DBG_FUNC("updclst")
 	static int	lcs=0;
 
 	DBG_ENTER;
@@ -2274,7 +2254,6 @@ static void
 updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
     Nflag)
 {	
-	DBG_FUNC("updrefs")
 	unsigned int	ictr, ind2ctr, ind3ctr;
 	ufs_daddr_t	*iptr, *ind2ptr, *ind3ptr;
 	struct ufs1_dinode	*ino;
