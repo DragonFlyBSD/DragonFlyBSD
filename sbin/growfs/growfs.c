@@ -2304,8 +2304,8 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 		DBG_LEAVE;
 		return;	/* skip empty swiss cheesy file or old fastlink */
 	}
-	DBG_PRINT2("scg checking inode (%d in %d)\n",
-	    in,
+	DBG_PRINT2("scg checking inode (%ju in %d)\n",
+	    (uintmax_t)in,
 	    cg);
 
 	/*
