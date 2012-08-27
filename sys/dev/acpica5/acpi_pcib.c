@@ -241,8 +241,8 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
     }
 
     /*
-     * If source is empty/NULL, the source index is a global IRQ number
-     * and it's hard-wired so we're done.
+     * If source is empty/NULL, the source index is a GSI and it's hard-wired
+     * so we're done.
      *
      * XXX: If the source index is non-zero, ignore the source device and
      * assume that this is a hard-wired entry.
