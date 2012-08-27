@@ -102,7 +102,10 @@ char		*rootdevnames[2] = {NULL, NULL};
 static int	setrootbyname(char *name);
 
 SYSINIT(mountroot, SI_SUB_MOUNT_ROOT, SI_ORDER_SECOND, vfs_mountroot, NULL);
-	
+
+static int wakedelay = 2;	/* delay before mounting root in seconds */
+TUNABLE_INT("vfs.root.wakedelay", &wakedelay);
+
 /*
  * Find and mount the root filesystem
  */
@@ -121,12 +124,12 @@ vfs_mountroot(void *junk)
 	 * Messages can fly around here so get good synchronization
 	 * coverage.
 	 *
-	 * XXX - Delay an additional 2 seconds to help drivers which pickup
+	 * XXX - Delay some more (default: 2s) to help drivers which pickup
 	 *       devices asynchronously and are not caught by CAM's initial
 	 *	 probe.
 	 */
 	sync_devs();
-	tsleep(&dummy, 0, "syncer", hz*2);
+	tsleep(&dummy, 0, "syncer", hz * wakedelay);
 
 
 	/* 
