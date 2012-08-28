@@ -32,6 +32,7 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/machintr.h>
 #include <machine/smp.h>
 
 #include "acpi.h"
@@ -241,25 +242,35 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
     }
 
     /*
-     * If source is empty/NULL, the source index is a GSI and it's hard-wired
+     * If source is empty/NULL, the source index is a GSI and it's hardwired
      * so we're done.
      *
      * XXX: If the source index is non-zero, ignore the source device and
-     * assume that this is a hard-wired entry.
+     * assume that this is a hardwired entry.
      */
     if (prt->Source == NULL || prt->Source[0] == '\0' ||
 	prt->SourceIndex != 0) {
-	if (bootverbose)
-	    device_printf(pcib, "slot %d INT%c hardwired to IRQ %d\n",
-		pci_get_slot(dev), 'A' + pin, prt->SourceIndex);
 	if (prt->SourceIndex) {
-	    interrupt = prt->SourceIndex;
+	    interrupt = machintr_legacy_intr_find_bygsi(prt->SourceIndex,
+	        INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
+	    if (interrupt < 0) {
+		device_printf(pcib, "slot %d INT%c hardwired to "
+		    "invalid GSI %d\n", pci_get_slot(dev), 'A' + pin,
+		    prt->SourceIndex);
+		interrupt = PCI_INVALID_IRQ;
+		goto out;
+	    }
+	    if (bootverbose) {
+		device_printf(pcib, "slot %d INT%c hardwired to "
+		    "GSI %d, IRQ %d\n", pci_get_slot(dev), 'A' + pin,
+		    prt->SourceIndex, interrupt);
+	    }
 
-	    /* TODO MachIntr.intr_find */
 	    BUS_CONFIG_INTR(device_get_parent(dev), dev, interrupt,
 		INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
-	} else
-	    device_printf(pcib, "error: invalid hard-wired IRQ of 0\n");
+	} else {
+	    device_printf(pcib, "invalid hardwired GSI 0\n");
+	}
 	goto out;
     }
 
