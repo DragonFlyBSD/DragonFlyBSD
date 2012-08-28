@@ -85,6 +85,7 @@ static struct icu_irqmap {
 	int			im_type;	/* ICU_IMT_ */
 	enum intr_trigger	im_trig;
 	int			im_msi_base;
+	uint32_t		im_flags;	/* ICU_IMF_ */
 } icu_irqmaps[MAXCPU][IDT_HWI_VECTORS];
 
 static struct lwkt_token icu_irqmap_tok =
@@ -100,6 +101,8 @@ static struct lwkt_token icu_irqmap_tok =
 #define ICU_IMT_ISHWI(map)	((map)->im_type != ICU_IMT_RESERVED && \
 				 (map)->im_type != ICU_IMT_SYSCALL)
 
+#define ICU_IMF_CONF		0x1
+
 extern void	ICU_INTREN(int);
 extern void	ICU_INTRDIS(int);
 
@@ -113,6 +116,10 @@ static void	icu_abi_intr_teardown(int);
 static void	icu_abi_legacy_intr_config(int, enum intr_trigger,
 		    enum intr_polarity);
 static int	icu_abi_legacy_intr_cpuid(int);
+static int	icu_abi_legacy_intr_find(int, enum intr_trigger,
+		    enum intr_polarity);
+static int	icu_abi_legacy_intr_find_bygsi(int, enum intr_trigger,
+		    enum intr_polarity);
 
 static int	icu_abi_msi_alloc(int [], int, int);
 static void	icu_abi_msi_release(const int [], int, int);
@@ -141,6 +148,8 @@ struct machintr_abi MachIntrABI_ICU = {
 
 	.legacy_intr_config = icu_abi_legacy_intr_config,
 	.legacy_intr_cpuid = icu_abi_legacy_intr_cpuid,
+	.legacy_intr_find = icu_abi_legacy_intr_find,
+	.legacy_intr_find_bygsi = icu_abi_legacy_intr_find_bygsi,
 
 	.msi_alloc	= icu_abi_msi_alloc,
 	.msi_release	= icu_abi_msi_release,
@@ -368,6 +377,7 @@ icu_abi_legacy_intr_config(int irq, enum intr_trigger trig,
 	KKASSERT(map->im_type == ICU_IMT_LEGACY);
 
 	/* TODO: Check whether it is configured or not */
+	map->im_flags |= ICU_IMF_CONF;
 
 	if (trig == map->im_trig)
 		return;
@@ -634,4 +644,44 @@ icu_abi_msi_map(int intr, uint64_t *addr, uint32_t *data, int cpuid)
 	}
 
 	lwkt_reltoken(&icu_irqmap_tok);
+}
+
+static int
+icu_abi_legacy_intr_find(int irq, enum intr_trigger trig,
+    enum intr_polarity pola __unused)
+{
+	const struct icu_irqmap *map;
+
+#ifdef INVARIANTS
+	if (trig == INTR_TRIGGER_CONFORM) {
+		KKASSERT(pola == INTR_POLARITY_CONFORM);
+	} else {
+		KKASSERT(trig == INTR_TRIGGER_EDGE ||
+		    trig == INTR_TRIGGER_LEVEL);
+		KKASSERT(pola == INTR_POLARITY_HIGH ||
+		    pola == INTR_POLARITY_LOW);
+	}
+#endif
+
+	if (irq < 0 || irq >= ICU_HWI_VECTORS)
+		return -1;
+
+	map = &icu_irqmaps[0][irq];
+	if (map->im_type == ICU_IMT_LEGACY) {
+		if ((map->im_flags & ICU_IMF_CONF) &&
+		    trig != INTR_TRIGGER_CONFORM) {
+			if (map->im_trig != trig)
+				return -1;
+		}
+		return irq;
+	}
+	return -1;
+}
+
+static int
+icu_abi_legacy_intr_find_bygsi(int gsi, enum intr_trigger trig,
+    enum intr_polarity pola)
+{
+	/* GSI and IRQ has 1:1 mapping */
+	return icu_abi_legacy_intr_find(gsi, trig, pola);
 }

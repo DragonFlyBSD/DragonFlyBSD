@@ -69,7 +69,4 @@ void	ioapic_set_legacy_irqmap(int, int, enum intr_trigger,
 	    enum intr_polarity);
 void	ioapic_fixup_legacy_irqmaps(void);
 
-int	ioapic_find_legacy_by_gsi(int, enum intr_trigger, enum intr_polarity);
-int	ioapic_find_legacy_by_irq(int, enum intr_trigger, enum intr_polarity);
-
 #endif	/* !_ARCH_APIC_IOAPIC_ABI_H_ */
