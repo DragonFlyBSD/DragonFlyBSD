@@ -184,6 +184,14 @@ acpi_sci_config(void)
 
 	KKASSERT(mycpuid == 0);
 
+	if (machintr_legacy_intr_find(acpi_sci_irq,
+	    INTR_TRIGGER_CONFORM, INTR_POLARITY_CONFORM) < 0) {
+		kprintf("ACPI FADT: SCI irq %d is invalid, disable\n",
+		    acpi_sci_irq);
+		acpi_sci_irq = -1;
+		return;
+	}
+
 	if (acpi_sci_irq < 0)
 		return;
 
