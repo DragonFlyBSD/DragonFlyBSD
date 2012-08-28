@@ -210,13 +210,13 @@ static int tcp_force_sackrxt = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, force_sackrxt, CTLFLAG_RW,
     &tcp_force_sackrxt, 0, "Allowed forced SACK retransmit burst");
 
-int tcp_do_rfc3517bis = 1;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3517bis, CTLFLAG_RW,
-    &tcp_do_rfc3517bis, 0, "Enable RFC3517 update");
+int tcp_do_rfc6675 = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc6675, CTLFLAG_RW,
+    &tcp_do_rfc6675, 0, "Enable RFC6675");
 
-int tcp_rfc3517bis_rxt = 0;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3517bis_rxt, CTLFLAG_RW,
-    &tcp_rfc3517bis_rxt, 0, "Enable RFC3517 retransmit update");
+int tcp_rfc6675_rxt = 0;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc6675_rxt, CTLFLAG_RW,
+    &tcp_rfc6675_rxt, 0, "Enable RFC6675 retransmit");
 
 SYSCTL_NODE(_net_inet_tcp, OID_AUTO, reass, CTLFLAG_RW, 0,
     "TCP Segment Reassembly Queue");
@@ -2045,7 +2045,7 @@ do { \
 	to_flags = to.to_flags; \
 } while (0)
 			if (maynotdup) {
-				if (!tcp_do_rfc3517bis ||
+				if (!tcp_do_rfc6675 ||
 				    !TCP_DO_SACK(tp) ||
 				    (to.to_flags &
 				     (TOF_SACK | TOF_SACK_REDUNDANT))
@@ -3563,9 +3563,9 @@ fastretransmit:
 			tp->snd_cwnd += tp->t_maxseg *
 			    (tp->t_dupacks - tp->snd_limited);
 		}
-	} else if ((tcp_do_rfc3517bis && TCP_DO_SACK(tp)) || TCP_DO_NCR(tp)) {
+	} else if ((tcp_do_rfc6675 && TCP_DO_SACK(tp)) || TCP_DO_NCR(tp)) {
 		/*
-		 * The RFC3517bis recommends to reduce the byte threshold,
+		 * The RFC6675 recommends to reduce the byte threshold,
 		 * and enter fast retransmit if IsLost(snd_una).  However,
 		 * if we use IsLost(snd_una) based fast retransmit here,
 		 * segments reordering will cause spurious retransmit.  So
@@ -3573,7 +3573,7 @@ fastretransmit:
 		 * the extended limited transmit can't send any segments and
 		 * early retransmit can't be done.
 		 */
-		if (tcp_rfc3517bis_rxt && tcp_do_rfc3517bis &&
+		if (tcp_rfc6675_rxt && tcp_do_rfc6675 &&
 		    tcp_sack_islost(&tp->scb, tp->snd_una))
 			goto fastretransmit;
 
@@ -3586,7 +3586,7 @@ fastretransmit:
 					++tcpstat.tcps_sndearlyrexmit;
 					tp->rxt_flags |= TRXT_F_EARLYREXMT;
 					goto fastretransmit;
-				} else if (tcp_do_rfc3517bis &&
+				} else if (tcp_do_rfc6675 &&
 				    tcp_sack_islost(&tp->scb, tp->snd_una)) {
 					fast_sack_rexmt = FALSE;
 					goto fastretransmit;
