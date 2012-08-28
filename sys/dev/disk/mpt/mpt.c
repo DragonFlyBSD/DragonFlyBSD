@@ -285,10 +285,6 @@ mpt_modevent(module_t mod, int type, void *data)
 	}
 	case MOD_SHUTDOWN:
 		break;
-#if __FreeBSD_version >= 500000
-	case MOD_QUIESCE:
-		break;
-#endif
 	case MOD_UNLOAD:
 		error = pers->unload(pers);
 		mpt_personalities[pers->id] = NULL;
