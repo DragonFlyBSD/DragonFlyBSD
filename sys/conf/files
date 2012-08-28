@@ -1989,6 +1989,7 @@ ${OSACPI_MI_DIR}/acpi_pcib_acpi.c	optional acpi pci
 ${OSACPI_MI_DIR}/acpi_pcib_pci.c	optional acpi pci
 ${OSACPI_MI_DIR}/acpi_powerres.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_resource.c	optional acpi
+${OSACPI_MI_DIR}/acpi_smbat.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_thermal.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_timer.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_wmi_if.m		optional acpi
