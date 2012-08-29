@@ -662,9 +662,6 @@ jme_attach(device_t dev)
 	int error = 0, i, j, rx_desc_cnt;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 
-	device_printf(dev, "rxdata %zu, chain_data %zu\n",
-	    sizeof(struct jme_rxdata), sizeof(struct jme_chain_data));
-
 	lwkt_serialize_init(&sc->jme_serialize);
 	lwkt_serialize_init(&sc->jme_cdata.jme_tx_serialize);
 	for (i = 0; i < JME_NRXRING_MAX; ++i) {
@@ -3473,6 +3470,7 @@ jme_msix_try_alloc(device_t dev)
 	struct jme_softc *sc = device_get_softc(dev);
 	struct jme_msix_data *msix;
 	int error, i, r, msix_enable, msix_count;
+	int offset, offset_def;
 
 	msix_count = 1 + sc->jme_cdata.jme_rx_ring_cnt;
 	KKASSERT(msix_count <= JME_NMSIX);
@@ -3491,8 +3489,21 @@ jme_msix_try_alloc(device_t dev)
 
 	i = 0;
 
+	/*
+	 * Setup TX MSI-X
+	 */
+
+	offset_def = device_get_unit(dev) % ncpus2;
+	offset = device_getenv_int(dev, "msix.txoff", offset_def);
+	if (offset >= ncpus2) {
+		device_printf(dev, "invalid msix.txoff %d, use %d\n",
+		    offset, offset_def);
+		offset = offset_def;
+	}
+
 	msix = &sc->jme_msix[i++];
-	msix->jme_msix_cpuid = 0;		/* XXX Put TX to cpu0 */
+	msix->jme_msix_cpuid = offset;
+	sc->jme_tx_cpuid = msix->jme_msix_cpuid;
 	msix->jme_msix_arg = &sc->jme_cdata;
 	msix->jme_msix_func = jme_msix_tx;
 	msix->jme_msix_intrs = INTR_TXQ_COAL | INTR_TXQ_COAL_TO;
@@ -3500,11 +3511,31 @@ jme_msix_try_alloc(device_t dev)
 	ksnprintf(msix->jme_msix_desc, sizeof(msix->jme_msix_desc), "%s tx",
 	    device_get_nameunit(dev));
 
+	/*
+	 * Setup RX MSI-X
+	 */
+
+	if (sc->jme_cdata.jme_rx_ring_cnt == ncpus2) {
+		offset = 0;
+	} else {
+		offset_def = (sc->jme_cdata.jme_rx_ring_cnt *
+		    device_get_unit(dev)) % ncpus2;
+
+		offset = device_getenv_int(dev, "msix.rxoff", offset_def);
+		if (offset >= ncpus2 ||
+		    offset % sc->jme_cdata.jme_rx_ring_cnt != 0) {
+			device_printf(dev, "invalid msix.rxoff %d, use %d\n",
+			    offset, offset_def);
+			offset = offset_def;
+		}
+	}
+
 	for (r = 0; r < sc->jme_cdata.jme_rx_ring_cnt; ++r) {
 		struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[r];
 
 		msix = &sc->jme_msix[i++];
-		msix->jme_msix_cpuid = r;	/* XXX Put RX to cpuX */
+		msix->jme_msix_cpuid = r + offset;
+		KKASSERT(msix->jme_msix_cpuid < ncpus2);
 		msix->jme_msix_arg = rdata;
 		msix->jme_msix_func = jme_msix_rx;
 		msix->jme_msix_intrs = rdata->jme_rx_coal | rdata->jme_rx_empty;
@@ -3763,7 +3794,7 @@ jme_msix_setup(device_t dev)
 			return error;
 		}
 	}
-	ifp->if_cpuid = 0; /* XXX */
+	ifp->if_cpuid = sc->jme_tx_cpuid;
 	return 0;
 }
 
