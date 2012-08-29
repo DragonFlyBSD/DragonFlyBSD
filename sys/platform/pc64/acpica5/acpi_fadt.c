@@ -74,6 +74,7 @@ struct acpi_sci_mode {
 static int			acpi_sci_irq = -1;
 static enum intr_trigger	acpi_sci_trig = INTR_TRIGGER_CONFORM;
 static enum intr_polarity	acpi_sci_pola = INTR_POLARITY_CONFORM;
+static const struct acpi_sci_mode *acpi_sci_mode1 = NULL;
 
 static const struct acpi_sci_mode acpi_sci_modes[] = {
 	/*
@@ -177,6 +178,42 @@ acpi_sci_dummy_intr(void *dummy __unused, void *frame __unused)
 {
 }
 
+static boolean_t
+acpi_sci_test(const struct acpi_sci_mode *mode)
+{
+	void *sci_desc;
+	long last_cnt;
+
+	FADT_VPRINTF("SCI testing %s/%s\n",
+	    intr_str_trigger(mode->sci_trig),
+	    intr_str_polarity(mode->sci_pola));
+
+	last_cnt = get_interrupt_counter(acpi_sci_irq, 0);
+
+	machintr_legacy_intr_config(acpi_sci_irq,
+	    mode->sci_trig, mode->sci_pola);
+
+	sci_desc = register_int(acpi_sci_irq,
+	    acpi_sci_dummy_intr, NULL, "sci", NULL,
+	    INTR_EXCL | INTR_CLOCK |
+	    INTR_NOPOLL | INTR_MPSAFE | INTR_NOENTROPY, 0);
+
+	DELAY(100 * 1000);
+
+	unregister_int(sci_desc, 0);
+
+	if (get_interrupt_counter(acpi_sci_irq, 0) - last_cnt < 20) {
+		acpi_sci_trig = mode->sci_trig;
+		acpi_sci_pola = mode->sci_pola;
+
+		kprintf("ACPI FADT: SCI select %s/%s\n",
+		    intr_str_trigger(acpi_sci_trig),
+		    intr_str_polarity(acpi_sci_pola));
+		return TRUE;
+	}
+	return FALSE;
+}
+
 void
 acpi_sci_config(void)
 {
@@ -203,38 +240,16 @@ acpi_sci_config(void)
 	}
 
 	kprintf("ACPI FADT: SCI testing interrupt mode ...\n");
+	if (acpi_sci_mode1 != NULL) {
+		if (acpi_sci_test(acpi_sci_mode1))
+			return;
+	}
 	for (mode = acpi_sci_modes; mode->sci_trig != INTR_TRIGGER_CONFORM;
 	     ++mode) {
-		void *sci_desc;
-		long last_cnt;
-
-		FADT_VPRINTF("SCI testing %s/%s\n",
-		    intr_str_trigger(mode->sci_trig),
-		    intr_str_polarity(mode->sci_pola));
-
-		last_cnt = get_interrupt_counter(acpi_sci_irq, 0);
-
-		machintr_legacy_intr_config(acpi_sci_irq,
-		    mode->sci_trig, mode->sci_pola);
-
-		sci_desc = register_int(acpi_sci_irq,
-		    acpi_sci_dummy_intr, NULL, "sci", NULL,
-		    INTR_EXCL | INTR_CLOCK |
-		    INTR_NOPOLL | INTR_MPSAFE | INTR_NOENTROPY, 0);
-
-		DELAY(100 * 1000);
-
-		unregister_int(sci_desc, 0);
-
-		if (get_interrupt_counter(acpi_sci_irq, 0) - last_cnt < 20) {
-			acpi_sci_trig = mode->sci_trig;
-			acpi_sci_pola = mode->sci_pola;
-
-			kprintf("ACPI FADT: SCI select %s/%s\n",
-			    intr_str_trigger(acpi_sci_trig),
-			    intr_str_polarity(acpi_sci_pola));
+		if (mode == acpi_sci_mode1)
+			continue;
+		if (acpi_sci_test(mode))
 			return;
-		}
 	}
 
 	kprintf("ACPI FADT: no suitable interrupt mode for SCI, disable\n");
@@ -265,4 +280,18 @@ int
 acpi_sci_irqno(void)
 {
 	return acpi_sci_irq;
+}
+
+void
+acpi_sci_setmode1(enum intr_trigger trig, enum intr_polarity pola)
+{
+	const struct acpi_sci_mode *mode;
+
+	for (mode = acpi_sci_modes; mode->sci_trig != INTR_TRIGGER_CONFORM;
+	     ++mode) {
+		if (mode->sci_trig == trig && mode->sci_pola == pola) {
+			acpi_sci_mode1 = mode;
+			return;
+		}
+	}
 }
