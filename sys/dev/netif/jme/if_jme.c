@@ -1107,11 +1107,11 @@ jme_sysctl_node(struct jme_softc *sc)
 	 * NOTE: coal_max will not be zero, since number of descs
 	 * must aligned by JME_NDESC_ALIGN (16 currently)
 	 */
-	coal_max = sc->jme_cdata.jme_tx_desc_cnt / 6;
+	coal_max = sc->jme_cdata.jme_tx_desc_cnt / 2;
 	if (coal_max < sc->jme_tx_coal_pkt)
 		sc->jme_tx_coal_pkt = coal_max;
 
-	coal_max = sc->jme_cdata.jme_rx_data[0].jme_rx_desc_cnt / 4;
+	coal_max = sc->jme_cdata.jme_rx_data[0].jme_rx_desc_cnt / 2;
 	if (coal_max < sc->jme_rx_coal_pkt)
 		sc->jme_rx_coal_pkt = coal_max;
 }
