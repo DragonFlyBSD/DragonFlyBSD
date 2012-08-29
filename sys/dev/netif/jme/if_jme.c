@@ -1073,13 +1073,22 @@ jme_sysctl_node(struct jme_softc *sc)
 		       "rss_debug", CTLFLAG_RW, &sc->jme_rss_debug,
 		       0, "RSS debug level");
 	for (r = 0; r < sc->jme_cdata.jme_rx_ring_cnt; ++r) {
-		char rx_ring_pkt[32];
+		char rx_ring_desc[32];
 
-		ksnprintf(rx_ring_pkt, sizeof(rx_ring_pkt), "rx_ring%d_pkt", r);
+		ksnprintf(rx_ring_desc, sizeof(rx_ring_desc),
+		    "rx_ring%d_pkt", r);
 		SYSCTL_ADD_ULONG(&sc->jme_sysctl_ctx,
 		    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
-		    rx_ring_pkt, CTLFLAG_RW,
+		    rx_ring_desc, CTLFLAG_RW,
 		    &sc->jme_cdata.jme_rx_data[r].jme_rx_pkt, "RXed packets");
+
+		ksnprintf(rx_ring_desc, sizeof(rx_ring_desc),
+		    "rx_ring%d_emp", r);
+		SYSCTL_ADD_ULONG(&sc->jme_sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+		    rx_ring_desc, CTLFLAG_RW,
+		    &sc->jme_cdata.jme_rx_data[r].jme_rx_emp,
+		    "# of time RX ring empty");
 	}
 #endif
 
@@ -3723,6 +3732,7 @@ jme_msix_rx(void *xrdata)
 		if (status & rdata->jme_rx_empty) {
 			CSR_WRITE_4(sc, JME_RXCSR, sc->jme_rxcsr |
 			    RXCSR_RX_ENB | RXCSR_RXQ_START);
+			rdata->jme_rx_emp++;
 		}
 	}
 

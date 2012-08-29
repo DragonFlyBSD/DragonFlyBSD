@@ -162,6 +162,7 @@ struct jme_rxdata {
 	struct mbuf		*jme_rxtail;
 
 	u_long			jme_rx_pkt;
+	u_long			jme_rx_emp;
 } __cachealign;
 
 struct jme_chain_data {
