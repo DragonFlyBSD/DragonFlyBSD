@@ -473,6 +473,9 @@ int	soopt_from_mbuf (struct sockopt *sopt, struct mbuf *m);
 int	soreceive (struct socket *so, struct sockaddr **paddr,
 		       struct uio *uio, struct sockbuf *sio,
 		       struct mbuf **controlp, int *flagsp);
+int	sorecvtcp (struct socket *so, struct sockaddr **paddr,
+		       struct uio *uio, struct sockbuf *sio,
+		       struct mbuf **controlp, int *flagsp);
 int	soreserve (struct socket *so, u_long sndcc, u_long rcvcc,
 		   struct rlimit *rl);
 void	sorflush (struct socket *so);

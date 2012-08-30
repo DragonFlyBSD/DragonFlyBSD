@@ -909,7 +909,7 @@ struct pr_usrreqs tcp_usrreqs = {
 	.pru_shutdown = tcp_usr_shutdown,
 	.pru_sockaddr = in_setsockaddr_dispatch,
 	.pru_sosend = sosendtcp,
-	.pru_soreceive = soreceive,
+	.pru_soreceive = sorecvtcp,
 	.pru_savefaddr = tcp_usr_savefaddr
 };
 
@@ -933,7 +933,7 @@ struct pr_usrreqs tcp6_usrreqs = {
 	.pru_shutdown = tcp_usr_shutdown,
 	.pru_sockaddr = in6_mapped_sockaddr_dispatch,
 	.pru_sosend = sosendtcp,
-	.pru_soreceive = soreceive,
+	.pru_soreceive = sorecvtcp,
 	.pru_savefaddr = tcp6_usr_savefaddr
 };
 #endif /* INET6 */
