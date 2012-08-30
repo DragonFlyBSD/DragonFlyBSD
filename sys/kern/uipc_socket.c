@@ -1510,7 +1510,7 @@ sorecvtcp(struct socket *so, struct sockaddr **psa, struct uio *uio,
 	struct mbuf *free_chain = NULL;
 	int flags, len, error, offset;
 	struct protosw *pr = so->so_proto;
-	int moff, type = 0;
+	int moff;
 	size_t resid, orig_resid;
 
 	if (uio)
@@ -1555,8 +1555,6 @@ bad:
 			m_freem(m);
 		return (error);
 	}
-	if ((so->so_state & SS_ISCONFIRMING) && resid)
-		so_pru_rcvd(so, 0);
 
 	/*
 	 * The token interlocks against the protocol thread while
@@ -1583,8 +1581,7 @@ restart:
 	if (m == NULL || (((flags & MSG_DONTWAIT) == 0 &&
 	    (size_t)so->so_rcv.ssb_cc < resid) &&
 	    (so->so_rcv.ssb_cc < so->so_rcv.ssb_lowat ||
-	    ((flags & MSG_WAITALL) && resid <= (size_t)so->so_rcv.ssb_hiwat)) &&
-	    m->m_nextpkt == 0 && (pr->pr_flags & PR_ATOMIC) == 0)) {
+	   ((flags & MSG_WAITALL) && resid <= (size_t)so->so_rcv.ssb_hiwat)))) {
 		KASSERT(m != NULL || !so->so_rcv.ssb_cc, ("receive 1"));
 		if (so->so_error) {
 			if (m)
@@ -1599,12 +1596,6 @@ restart:
 				goto dontblock;
 			else
 				goto release;
-		}
-		for (; m; m = m->m_next) {
-			if (m->m_type == MT_OOBDATA  || (m->m_flags & M_EOR)) {
-				m = so->so_rcv.ssb_mb;
-				goto dontblock;
-			}
 		}
 		if ((so->so_state & (SS_ISCONNECTED|SS_ISCONNECTING)) == 0 &&
 		    (pr->pr_flags & PR_CONNREQUIRED)) {
@@ -1635,86 +1626,14 @@ dontblock:
 	KKASSERT(m == so->so_rcv.ssb_mb);
 
 	/*
-	 * Skip any address mbufs prepending the record.
-	 */
-	if (pr->pr_flags & PR_ADDR) {
-		KASSERT(m->m_type == MT_SONAME, ("receive 1a"));
-		orig_resid = 0;
-		if (psa)
-			*psa = dup_sockaddr(mtod(m, struct sockaddr *));
-		if (flags & MSG_PEEK)
-			m = m->m_next;
-		else
-			m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
-	}
-
-	/*
-	 * Skip any control mbufs prepending the record.
-	 */
-#ifdef SCTP
-	if (pr->pr_flags & PR_ADDR_OPT) {
-		/*
-		 * For SCTP we may be getting a
-		 * whole message OR a partial delivery.
-		 */
-		if (m && m->m_type == MT_SONAME) {
-			orig_resid = 0;
-			if (psa)
-				*psa = dup_sockaddr(mtod(m, struct sockaddr *));
-			if (flags & MSG_PEEK)
-				m = m->m_next;
-			else
-				m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
-		}
-	}
-#endif /* SCTP */
-	while (m && m->m_type == MT_CONTROL && error == 0) {
-		if (flags & MSG_PEEK) {
-			if (controlp)
-				*controlp = m_copy(m, 0, m->m_len);
-			m = m->m_next;	/* XXX race */
-		} else {
-			if (controlp) {
-				n = sbunlinkmbuf(&so->so_rcv.sb, m, NULL);
-				if (pr->pr_domain->dom_externalize &&
-				    mtod(m, struct cmsghdr *)->cmsg_type ==
-				    SCM_RIGHTS)
-				   error = (*pr->pr_domain->dom_externalize)(m);
-				*controlp = m;
-				m = n;
-			} else {
-				m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
-			}
-		}
-		if (controlp && *controlp) {
-			orig_resid = 0;
-			controlp = &(*controlp)->m_next;
-		}
-	}
-
-	/*
-	 * flag OOB data.
-	 */
-	if (m) {
-		type = m->m_type;
-		if (type == MT_OOBDATA)
-			flags |= MSG_OOB;
-	}
-
-	/*
 	 * Copy to the UIO or mbuf return chain (*mp).
 	 */
 	moff = 0;
 	offset = 0;
 	while (m && resid > 0 && error == 0) {
-		if (m->m_type == MT_OOBDATA) {
-			if (type != MT_OOBDATA)
-				break;
-		} else if (type == MT_OOBDATA)
-			break;
-		else
-		    KASSERT(m->m_type == MT_DATA || m->m_type == MT_HEADER,
-			("receive 3"));
+		KASSERT(m->m_type == MT_DATA || m->m_type == MT_HEADER,
+		    ("receive 3"));
+
 		soclrstate(so, SS_RCVATMARK);
 		len = (resid > INT_MAX) ? INT_MAX : resid;
 		if (so->so_oobmark && len > so->so_oobmark - offset)
@@ -1741,12 +1660,6 @@ dontblock:
 		 * Eat the entire mbuf or just a piece of it
 		 */
 		if (len == m->m_len - moff) {
-			if (m->m_flags & M_EOR)
-				flags |= MSG_EOR;
-#ifdef SCTP
-			if (m->m_flags & M_NOTIFICATION)
-				flags |= MSG_NOTIFICATION;
-#endif /* SCTP */
 			if (flags & MSG_PEEK) {
 				m = m->m_next;
 				moff = 0;
@@ -1786,8 +1699,6 @@ dontblock:
 					break;
 			}
 		}
-		if (flags & MSG_EOR)
-			break;
 		/*
 		 * If the MSG_WAITALL flag is set (for non-atomic socket),
 		 * we must not quit until resid == 0 or an error
@@ -1806,7 +1717,7 @@ dontblock:
 			 * the buffer or we might end up blocking until
 			 * the idle takes over (5 seconds).
 			 */
-			if (pr->pr_flags & PR_WANTRCVD && so->so_pcb)
+			if (so->so_pcb)
 				so_pru_rcvd(so, flags);
 			error = ssb_wait(&so->so_rcv);
 			if (error) {
@@ -1819,24 +1730,15 @@ dontblock:
 	}
 
 	/*
-	 * If an atomic read was requested but unread data still remains
-	 * in the record, set MSG_TRUNC.
-	 */
-	if (m && pr->pr_flags & PR_ATOMIC)
-		flags |= MSG_TRUNC;
-
-	/*
 	 * Cleanup.  If an atomic read was requested drop any unread data.
 	 */
 	if ((flags & MSG_PEEK) == 0) {
-		if (m && (pr->pr_flags & PR_ATOMIC))
-			sbdroprecord(&so->so_rcv.sb);
-		if ((pr->pr_flags & PR_WANTRCVD) && so->so_pcb)
+		if (so->so_pcb)
 			so_pru_rcvd(so, flags);
 	}
 
 	if (orig_resid == resid && orig_resid &&
-	    (flags & MSG_EOR) == 0 && (so->so_state & SS_CANTRCVMORE) == 0) {
+	    (so->so_state & SS_CANTRCVMORE) == 0) {
 		ssb_unlock(&so->so_rcv);
 		goto restart;
 	}
