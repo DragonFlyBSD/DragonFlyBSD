@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *
- *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.37 2010/07/28 16:24:11 mdf Exp $
+ *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.39 2012/08/31 09:42:46 scottl Exp $
  */
 
 #include <sys/buf2.h>
@@ -261,7 +261,6 @@ struct amr_softc
     device_t			amr_pass;
     int				(*amr_cam_command)(struct amr_softc *sc, struct amr_command **acp);
     struct intr_config_hook	amr_ich;		/* wait-for-interrupts probe hook */
-    struct callout		amr_timeout;		/* periodic status check */
     int				amr_allow_vol_config;
     int				amr_linux_no_adapters;
     int				amr_ld_del_supported;
