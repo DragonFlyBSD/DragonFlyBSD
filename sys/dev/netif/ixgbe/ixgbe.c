@@ -459,6 +459,9 @@ ixgbe_attach(device_t dev)
 	/* Determine hardware revision */
 	ixgbe_identify_hardware(adapter);
 
+	/* Enable bus mastering */
+	pci_enable_busmaster(dev);
+
 	/* Do base PCI setup - map BAR0 */
 	if (ixgbe_allocate_pci_resources(adapter)) {
 		device_printf(dev, "Allocation of PCI resources failed\n");
