@@ -174,6 +174,7 @@ MAN=	accept_filter.9 \
 	VFS_MOUNT.9 \
 	VFS_QUOTACTL.9 \
 	VFS_ROOT.9 \
+	VFS_SET.9 \
 	VFS_START.9 \
 	VFS_STATFS.9 \
 	VFS_SYNC.9 \
