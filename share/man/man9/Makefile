@@ -897,6 +897,9 @@ MLINKS+=taskqueue.9 TASK_INIT.9 \
 	taskqueue.9 taskqueue_run.9 \
 	taskqueue.9 taskqueue_start_threads.9 \
 	taskqueue.9 taskqueue_unblock.9
+MLINKS+=tbridge.9 tbridge_printf.9 \
+	tbridge.9 TBRIDGE_TESTCASE_MODULE.9 \
+	tbridge.9 tbridge_test_done.9
 MLINKS+=time.9 boottime.9 \
 	time.9 time_second.9
 MLINKS+=token.9 lwkt_getpooltoken.9 \
