@@ -87,6 +87,7 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/socket.h>
+#include <sys/socketops.h>
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
 #include <sys/random.h>
@@ -1007,6 +1008,8 @@ no_valid_rt:
 
 	if (tp->t_flags & TF_LISTEN)
 		syncache_destroy(tp);
+
+	so_async_rcvd_drop(so);
 
 	/*
 	 * NOTE:

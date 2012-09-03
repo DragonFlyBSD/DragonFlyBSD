@@ -95,6 +95,7 @@
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/limits.h>
 
@@ -161,7 +162,7 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, sendfile_async, CTLFLAG_RW,
  * the protocols can be easily modified to do this.
  */
 struct socket *
-soalloc(int waitok)
+soalloc(int waitok, struct protosw *pr)
 {
 	struct socket *so;
 	unsigned waitmask;
@@ -170,11 +171,16 @@ soalloc(int waitok)
 	so = kmalloc(sizeof(struct socket), M_SOCKET, M_ZERO|waitmask);
 	if (so) {
 		/* XXX race condition for reentrant kernel */
+		so->so_proto = pr;
 		TAILQ_INIT(&so->so_aiojobq);
 		TAILQ_INIT(&so->so_rcv.ssb_kq.ki_mlist);
 		TAILQ_INIT(&so->so_snd.ssb_kq.ki_mlist);
 		lwkt_token_init(&so->so_rcv.ssb_token, "rcvtok");
 		lwkt_token_init(&so->so_snd.ssb_token, "sndtok");
+		spin_init(&so->so_rcvd_spin);
+		netmsg_init(&so->so_rcvd_msg.base, so, &netisr_adone_rport,
+		    MSGF_DROPABLE, so->so_proto->pr_usrreqs->pru_rcvd);
+		so->so_rcvd_msg.nm_pru_flags |= PRUR_ASYNC;
 		so->so_state = SS_NOFDREF;
 		so->so_refs = 1;
 	}
@@ -209,7 +215,7 @@ socreate(int dom, struct socket **aso, int type,
 
 	if (prp->pr_type != type)
 		return (EPROTOTYPE);
-	so = soalloc(p != NULL);
+	so = soalloc(p != NULL, prp);
 	if (so == NULL)
 		return (ENOBUFS);
 
@@ -239,7 +245,6 @@ socreate(int dom, struct socket **aso, int type,
 	TAILQ_INIT(&so->so_comp);
 	so->so_type = type;
 	so->so_cred = crhold(p->p_ucred);
-	so->so_proto = prp;
 	ai.sb_rlimit = &p->p_rlimit[RLIMIT_SBSIZE];
 	ai.p_ucred = p->p_ucred;
 	ai.fd_rdir = p->p_fd->fd_rdir;
@@ -1718,7 +1723,7 @@ dontblock:
 			 * the idle takes over (5 seconds).
 			 */
 			if (so->so_pcb)
-				so_pru_rcvd(so, flags);
+				so_pru_rcvd_async(so);
 			error = ssb_wait(&so->so_rcv);
 			if (error) {
 				ssb_unlock(&so->so_rcv);
@@ -1734,7 +1739,7 @@ dontblock:
 	 */
 	if ((flags & MSG_PEEK) == 0) {
 		if (so->so_pcb)
-			so_pru_rcvd(so, flags);
+			so_pru_rcvd_async(so);
 	}
 
 	if (orig_resid == resid && orig_resid &&

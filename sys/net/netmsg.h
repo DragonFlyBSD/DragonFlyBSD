@@ -170,7 +170,10 @@ struct netmsg_pru_peeraddr {
 struct netmsg_pru_rcvd {
 	struct netmsg_base	base;
 	int			nm_flags;
+	int			nm_pru_flags;	/* PRUR_xxx */
 };
+
+#define PRUR_ASYNC		0x1
 
 struct netmsg_pru_rcvoob {
 	struct netmsg_base	base;

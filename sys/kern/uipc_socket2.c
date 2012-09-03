@@ -336,7 +336,7 @@ sonewconn_faddr(struct socket *head, int connstatus,
 
 	if (head->so_qlen > 3 * head->so_qlimit / 2)
 		return (NULL);
-	so = soalloc(1);
+	so = soalloc(1, head->so_proto);
 	if (so == NULL)
 		return (NULL);
 
@@ -360,7 +360,6 @@ sonewconn_faddr(struct socket *head, int connstatus,
 	 *	 soreference().
 	 */
 	so->so_state = head->so_state | SS_NOFDREF | SS_ASSERTINPROG;
-	so->so_proto = head->so_proto;
 	so->so_cred = crhold(head->so_cred);
 	ai.sb_rlimit = NULL;
 	ai.p_ucred = NULL;

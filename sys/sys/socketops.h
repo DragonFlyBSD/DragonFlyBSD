@@ -93,6 +93,9 @@ void so_pru_disconnect_direct (struct socket *so);
 int so_pru_listen (struct socket *so, struct thread *td);
 int so_pru_peeraddr (struct socket *so, struct sockaddr **nam);
 int so_pru_rcvd (struct socket *so, int flags);
+void so_pru_rcvd_async (struct socket *so);
+void so_async_rcvd_reply (struct socket *so);
+void so_async_rcvd_drop (struct socket *so);
 int so_pru_rcvoob (struct socket *so, struct mbuf *m, int flags);
 void so_pru_sync (struct socket *so);
 int so_pru_send (struct socket *so, int flags, struct mbuf *m,

@@ -86,6 +86,7 @@
 #endif /* INET6 */
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/protosw.h>
 
 #include <sys/thread2.h>
@@ -719,13 +720,19 @@ static void
 tcp_usr_rcvd(netmsg_t msg)
 {
 	struct socket *so = msg->rcvd.base.nm_so;
-	int error = 0;
+	int error = 0, noreply = 0;
 	struct inpcb *inp;
 	struct tcpcb *tp;
 
 	COMMON_START(so, inp, 0);
+
+	if (msg->rcvd.nm_pru_flags & PRUR_ASYNC) {
+		noreply = 1;
+		so_async_rcvd_reply(so);
+	}
 	tcp_output(tp);
-	COMMON_END(PRU_RCVD);
+
+	COMMON_END1(PRU_RCVD, noreply);
 }
 
 /*

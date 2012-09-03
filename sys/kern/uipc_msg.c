@@ -42,6 +42,7 @@
 #include <sys/thread.h>
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/spinlock2.h>
 #include <sys/mbuf.h>
 #include <vm/pmap.h>
 #include <net/netmsg2.h>
@@ -296,8 +297,23 @@ so_pru_rcvd(struct socket *so, int flags)
 	netmsg_init(&msg.base, so, &curthread->td_msgport,
 		    0, so->so_proto->pr_usrreqs->pru_rcvd);
 	msg.nm_flags = flags;
+	msg.nm_pru_flags = 0;
 	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
+}
+
+void
+so_pru_rcvd_async(struct socket *so)
+{
+	lwkt_msg_t lmsg = &so->so_rcvd_msg.base.lmsg;
+
+	KASSERT(so->so_proto->pr_flags & PR_ASYNC_RCVD,
+	    ("async pru_rcvd is not supported"));
+
+	spin_lock(&so->so_rcvd_spin);
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg(so->so_port, lmsg);
+	spin_unlock(&so->so_rcvd_spin);
 }
 
 int
@@ -565,4 +581,23 @@ netmsg_so_notify_abort(netmsg_t msg)
 	 * Reply to the abort message
 	 */
 	lwkt_replymsg(&abrtmsg->base.lmsg, 0);
+}
+
+void
+so_async_rcvd_reply(struct socket *so)
+{
+	spin_lock(&so->so_rcvd_spin);
+	lwkt_replymsg(&so->so_rcvd_msg.base.lmsg, 0);
+	spin_unlock(&so->so_rcvd_spin);
+}
+
+void
+so_async_rcvd_drop(struct socket *so)
+{
+	lwkt_msg_t lmsg = &so->so_rcvd_msg.base.lmsg;
+
+	spin_lock(&so->so_rcvd_spin);
+	if ((lmsg->ms_flags & MSGF_DONE) == 0)
+		lwkt_dropmsg(lmsg);
+	spin_unlock(&so->so_rcvd_spin);
 }
