@@ -554,7 +554,7 @@ initializer, or by manipulating the mp_putport handler pointer directly on the
 lwkt_port structure.
 .Pp
 There is one such case where the putport handler is overridden in
-.Pa sys/kern/netisr.c .
+.Pa sys/net/netisr.c .
 In that case, the putport handler is overridden to detect a loopback message
 (when the target port belongs to the sending thread).
 This special putport handler turns the sent message into a direct function call
