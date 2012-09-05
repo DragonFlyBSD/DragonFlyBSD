@@ -1,5 +1,4 @@
 #! /usr/bin/awk -f
-#	$DragonFly: src/sys/bus/pci/devlist2h.awk,v 1.2 2004/02/19 20:47:56 joerg Exp $
 #	$NetBSD: devlist2h.awk,v 1.7 2003/12/05 04:33:27 grant Exp $
 #
 # Copyright (c) 1995, 1996 Christopher G. Demetriou
@@ -31,16 +30,10 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 BEGIN {
-	nproducts = nvendors = blanklines = 0
-	dfile="pcidevs_data.h"
+	nproducts = nvendors = 0
 	hfile="pcidevs.h"
 }
 NR == 1 {
-	printf("/*\n") > dfile
-	printf(" * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.\n") \
-	    > dfile
-	printf(" */\n") > dfile
-
 	printf("/*\n") > hfile
 	printf(" * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.\n") \
 	    > hfile
@@ -139,75 +132,8 @@ NF > 0 && $1 == "product" {
 	next
 }
 {
-	if ($0 == "")
-		blanklines++
 	print $0 > hfile
-	if (blanklines < 2)
-		print $0 > dfile
 }
 END {
-	# print out the match tables
-
-	printf("\n") > dfile
-
-	printf("const struct pci_knowndev pci_knowndevs[] = {\n") > dfile
-	for (i = 1; i <= nproducts; i++) {
-		printf("\t{\n") > dfile
-		printf("\t    PCI_VENDOR_%s, PCI_PRODUCT_%s_%s,\n",
-		    products[i, 1], products[i, 1], products[i, 2]) \
-		    > dfile
-		printf("\t    ") > dfile
-		printf("0") > dfile
-		printf(",\n") > dfile
-
-		vendi = vendorindex[products[i, 1]];
-		printf("\t    \"") > dfile
-		j = 3;
-		needspace = 0;
-		while ((vendi, j) in vendors) {
-			if (needspace)
-				printf(" ") > dfile
-			printf("%s", vendors[vendi, j]) > dfile
-			needspace = 1
-			j++
-		}
-		printf("\",\n") > dfile
-
-		printf("\t    \"") > dfile
-		j = 4;
-		needspace = 0;
-		while ((i, j) in products) {
-			if (needspace)
-				printf(" ") > dfile
-			printf("%s", products[i, j]) > dfile
-			needspace = 1
-			j++
-		}
-		printf("\",\n") > dfile
-		printf("\t},\n") > dfile
-	}
-	for (i = 1; i <= nvendors; i++) {
-		printf("\t{\n") > dfile
-		printf("\t    PCI_VENDOR_%s, 0,\n", vendors[i, 1]) \
-		    > dfile
-		printf("\t    PCI_KNOWNDEV_NOPROD,\n") \
-		    > dfile
-		printf("\t    \"") > dfile
-		j = 3;
-		needspace = 0;
-		while ((i, j) in vendors) {
-			if (needspace)
-				printf(" ") > dfile
-			printf("%s", vendors[i, j]) > dfile
-			needspace = 1
-			j++
-		}
-		printf("\",\n") > dfile
-		printf("\t    NULL,\n") > dfile
-		printf("\t},\n") > dfile
-	}
-	printf("\t{ 0, 0, 0, NULL, NULL, }\n") > dfile
-	printf("};\n") > dfile
-	close(dfile)
 	close(hfile)
 }
