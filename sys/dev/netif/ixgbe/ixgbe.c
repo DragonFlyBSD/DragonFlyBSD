@@ -166,6 +166,7 @@ static void	ixgbe_add_rx_process_limit(struct adapter *, const char *,
 static bool	ixgbe_tx_ctx_setup(struct tx_ring *, struct mbuf *);
 static bool	ixgbe_tso_setup(struct tx_ring *, struct mbuf *, u32 *, u32 *);
 static int	ixgbe_tso_pullup(struct tx_ring *, struct mbuf **);
+static void	ixgbe_add_sysctl(struct adapter *);
 static void	ixgbe_set_ivar(struct adapter *, u8, u8, s8);
 static void	ixgbe_configure_ivars(struct adapter *);
 static u8 *	ixgbe_mc_array_itr(struct ixgbe_hw *, u8 **, u32 *);
@@ -416,41 +417,6 @@ ixgbe_attach(device_t dev)
 	/* Core Lock Init*/
 	IXGBE_CORE_LOCK_INIT(adapter, device_get_nameunit(dev));
 
-	/* SYSCTL APIs */
-
-	sysctl_ctx_init(&adapter->sysctl_ctx);
-	adapter->sysctl_tree = SYSCTL_ADD_NODE(&adapter->sysctl_ctx,
-	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	    device_get_nameunit(adapter->dev), CTLFLAG_RD, 0, "");
-	if (adapter->sysctl_tree == NULL) {
-		device_printf(adapter->dev, "can't add sysctl node\n");
-		return (EINVAL);
-	}
-	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-			SYSCTL_CHILDREN(adapter->sysctl_tree),
-			OID_AUTO, "fc", CTLTYPE_INT | CTLFLAG_RW,
-			adapter, 0, ixgbe_set_flowcntl, "I", "Flow Control");
-
-        SYSCTL_ADD_INT(&adapter->sysctl_ctx,
-			SYSCTL_CHILDREN(adapter->sysctl_tree),
-			OID_AUTO, "enable_aim", CTLTYPE_INT|CTLFLAG_RW,
-			&ixgbe_enable_aim, 1, "Interrupt Moderation");
-
-	/*
-	** Allow a kind of speed control by forcing the autoneg
-	** advertised speed list to only a certain value, this
-	** supports 1G on 82599 devices, and 100Mb on x540.
-	*/
-	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-			SYSCTL_CHILDREN(adapter->sysctl_tree),
-			OID_AUTO, "advertise_speed", CTLTYPE_INT | CTLFLAG_RW,
-			adapter, 0, ixgbe_set_advertise, "I", "Link Speed");
-
-	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-			SYSCTL_CHILDREN(adapter->sysctl_tree),
-			OID_AUTO, "ts", CTLTYPE_INT | CTLFLAG_RW, adapter,
-			0, ixgbe_set_thermal_test, "I", "Thermal Test");
-
 	/* Set up the timer callout */
 	callout_init_mp(&adapter->timer);
 
@@ -574,10 +540,8 @@ ixgbe_attach(device_t dev)
 	if (ixgbe_setup_interface(dev, adapter) != 0)
 		goto err_late;
 
-	/* Sysctl for limiting the amount of work done in the taskqueue */
-	ixgbe_add_rx_process_limit(adapter, "rx_processing_limit",
-	    "max number of rx packets to process", &adapter->rx_process_limit,
-	    ixgbe_rx_process_limit);
+	/* Add sysctl tree */
+	ixgbe_add_sysctl(adapter);
 
 	/* Initialize statistics */
 	ixgbe_update_stats_counters(adapter);
@@ -4451,6 +4415,47 @@ ixgbe_rx_discard(struct rx_ring *rxr, int i)
 	return;
 }
 
+static void
+ixgbe_add_sysctl(struct adapter *adapter)
+{
+	sysctl_ctx_init(&adapter->sysctl_ctx);
+	adapter->sysctl_tree = SYSCTL_ADD_NODE(&adapter->sysctl_ctx,
+	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
+	    device_get_nameunit(adapter->dev), CTLFLAG_RD, 0, "");
+	if (adapter->sysctl_tree == NULL) {
+		device_printf(adapter->dev, "can't add sysctl node\n");
+		return;
+	}
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree),
+			OID_AUTO, "fc", CTLTYPE_INT | CTLFLAG_RW,
+			adapter, 0, ixgbe_set_flowcntl, "I", "Flow Control");
+
+        SYSCTL_ADD_INT(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree),
+			OID_AUTO, "enable_aim", CTLTYPE_INT|CTLFLAG_RW,
+			&ixgbe_enable_aim, 1, "Interrupt Moderation");
+
+	/*
+	** Allow a kind of speed control by forcing the autoneg
+	** advertised speed list to only a certain value, this
+	** supports 1G on 82599 devices, and 100Mb on x540.
+	*/
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree),
+			OID_AUTO, "advertise_speed", CTLTYPE_INT | CTLFLAG_RW,
+			adapter, 0, ixgbe_set_advertise, "I", "Link Speed");
+
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree),
+			OID_AUTO, "ts", CTLTYPE_INT | CTLFLAG_RW, adapter,
+			0, ixgbe_set_thermal_test, "I", "Thermal Test");
+
+	/* Sysctl for limiting the amount of work done in the taskqueue */
+	ixgbe_add_rx_process_limit(adapter, "rx_processing_limit",
+	    "max number of rx packets to process", &adapter->rx_process_limit,
+	    ixgbe_rx_process_limit);
+}
 
 /*********************************************************************
  *
