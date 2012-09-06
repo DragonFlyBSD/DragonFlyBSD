@@ -121,9 +121,7 @@ static int      ixgbe_allocate_pci_resources(struct adapter *);
 static int      ixgbe_allocate_msix(struct adapter *);
 static int      ixgbe_allocate_legacy(struct adapter *);
 static int	ixgbe_allocate_queues(struct adapter *);
-#if 0	/* HAVE_MSIX */
 static int	ixgbe_setup_msix(struct adapter *);
-#endif
 static void	ixgbe_free_pci_resources(struct adapter *);
 static void	ixgbe_local_timer(void *);
 static int	ixgbe_setup_interface(device_t, struct adapter *);
@@ -2309,9 +2307,27 @@ ixgbe_allocate_msix(struct adapter *adapter)
 	device_t        dev = adapter->dev;
 	struct 		ix_queue *que = adapter->queues;
 	int 		error, rid, vector = 0;
+	char		desc[16];
+
+	error = pci_setup_msix(dev);
+	if (error) {
+		device_printf(dev, "MSI-X setup failed\n");
+		return (error);
+	}
 
 	for (int i = 0; i < adapter->num_queues; i++, vector++, que++) {
 		rid = vector + 1;
+
+		/*
+		** Bind the msix vector, and thus the
+		** ring to the corresponding cpu.
+		*/
+		error = pci_alloc_msix_vector(dev, vector, &rid, i);
+		if (error) {
+			device_printf(dev, "pci_alloc_msix_vector failed\n");
+			return (error);
+		}
+
 		que->res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 		    RF_SHAREABLE | RF_ACTIVE);
 		if (que->res == NULL) {
@@ -2320,26 +2336,17 @@ ixgbe_allocate_msix(struct adapter *adapter)
 			return (ENXIO);
 		}
 		/* Set the handler function */
-		error = bus_setup_intr(dev, que->res, INTR_MPSAFE,
-		    ixgbe_msix_que, que, &que->tag, &que->serializer);
+		ksnprintf(desc, sizeof(desc), "%s que %d",
+		    device_get_nameunit(dev), i);
+		error = bus_setup_intr_descr(dev, que->res, INTR_MPSAFE,
+		    ixgbe_msix_que, que, &que->tag, &que->serializer, desc);
 		if (error) {
 			que->res = NULL;
 			device_printf(dev, "Failed to register QUE handler");
 			return (error);
 		}
-#if 0 /* __FreeBSD_version >= 800504 */
-		bus_describe_intr(dev, que->res, que->tag, "que %d", i);
-#endif
 		que->msix = vector;
         	adapter->que_mask |= (u64)(1 << que->msix);
-		/*
-		** Bind the msix vector, and thus the
-		** ring to the corresponding cpu.
-		*/
-#if 0 /* XXX */
-		if (adapter->num_queues > 1)
-			bus_bind_intr(dev, que->res, i);
-#endif
 
 		TASK_INIT(&que->que_task, 0, ixgbe_handle_que, que);
 		que->tq = taskqueue_create("ixgbe_que", M_NOWAIT,
@@ -2348,8 +2355,13 @@ ixgbe_allocate_msix(struct adapter *adapter)
 		    device_get_nameunit(adapter->dev));
 	}
 
-	/* and Link */
+	/* and Link, bind vector to cpu #0 */
 	rid = vector + 1;
+	error = pci_alloc_msix_vector(dev, vector, &rid, 0);
+	if (error) {
+		device_printf(dev, "pci_alloc_msix_vector failed\n");
+		return (error);
+	}
 	adapter->res = bus_alloc_resource_any(dev,
     	    SYS_RES_IRQ, &rid, RF_SHAREABLE | RF_ACTIVE);
 	if (!adapter->res) {
@@ -2358,16 +2370,16 @@ ixgbe_allocate_msix(struct adapter *adapter)
 		return (ENXIO);
 	}
 	/* Set the link handler function */
-	error = bus_setup_intr(dev, adapter->res, INTR_MPSAFE,
-	    ixgbe_msix_link, adapter, &adapter->tag, &adapter->serializer);
+	error = bus_setup_intr_descr(dev, adapter->res, INTR_MPSAFE,
+	    ixgbe_msix_link, adapter, &adapter->tag, &adapter->serializer,
+	    "link");
 	if (error) {
 		adapter->res = NULL;
 		device_printf(dev, "Failed to register LINK handler");
 		return (error);
 	}
-#if 0 /* __FreeBSD_version >= 800504 */
-	bus_describe_intr(dev, adapter->res, adapter->tag, "link");
-#endif
+	pci_enable_msix(dev);
+
 	adapter->linkvec = vector;
 	/* Tasklets for Link, SFP and Multispeed Fiber */
 	TASK_INIT(&adapter->link_task, 0, ixgbe_handle_link, adapter);
@@ -2384,7 +2396,6 @@ ixgbe_allocate_msix(struct adapter *adapter)
 	return (0);
 }
 
-#if 0	/* HAVE_MSIX */
 /*
  * Setup Either MSI/X or MSI
  */
@@ -2423,7 +2434,7 @@ ixgbe_setup_msix(struct adapter *adapter)
 	}
 
 	/* Figure out a reasonable auto config value */
-	queues = (mp_ncpus > (msgs-1)) ? (msgs-1) : mp_ncpus;
+	queues = (ncpus > (msgs-1)) ? (msgs-1) : ncpus;
 
 	if (ixgbe_num_queues != 0)
 		queues = ixgbe_num_queues;
@@ -2445,7 +2456,7 @@ ixgbe_setup_msix(struct adapter *adapter)
 		    msgs, want);
 		return (0); /* Will go to Legacy setup */
 	}
-	if ((msgs) && pci_alloc_msix(dev, &msgs) == 0) {
+	if (msgs) {
                	device_printf(adapter->dev,
 		    "Using MSIX interrupts with %d vectors\n", msgs);
 		adapter->num_queues = queues;
@@ -2453,13 +2464,8 @@ ixgbe_setup_msix(struct adapter *adapter)
 	}
 msi:
        	msgs = pci_msi_count(dev);
-       	if (msgs == 1 && pci_alloc_msi(dev, &msgs) == 0)
-               	device_printf(adapter->dev,"Using an MSI interrupt\n");
-	else
-               	device_printf(adapter->dev,"Using a Legacy interrupt\n");
 	return (msgs);
 }
-#endif
 
 
 static int
@@ -2492,9 +2498,7 @@ ixgbe_allocate_pci_resources(struct adapter *adapter)
 	** return us the number of supported
 	** vectors. (Will be 1 for MSI)
 	*/
-#if 0	/* HAVE_MSIX */
 	adapter->msix = ixgbe_setup_msix(adapter);
-#endif
 	return (0);
 }
 
