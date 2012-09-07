@@ -34,7 +34,6 @@
  *	@(#)ipx_usrreq.c
  *
  * $FreeBSD: src/sys/netipx/ipx_usrreq.c,v 1.26.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.13 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include "opt_ipx.h"
@@ -409,6 +408,7 @@ ipx_ctloutput(netmsg_t msg)
 
 		case SO_IPX_CHECKSUM:
 			mask = IPXP_CHECKSUM;
+			goto set_head;
 
 		case SO_HEADERS_ON_OUTPUT:
 			mask = IPXP_RAWOUT;
