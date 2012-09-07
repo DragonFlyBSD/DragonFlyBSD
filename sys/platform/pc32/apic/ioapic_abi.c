@@ -496,6 +496,10 @@ static void	ioapic_abi_intr_teardown(int);
 static void	ioapic_abi_legacy_intr_config(int,
 		    enum intr_trigger, enum intr_polarity);
 static int	ioapic_abi_legacy_intr_cpuid(int);
+static int	ioapic_abi_legacy_intr_find(int,
+		    enum intr_trigger, enum intr_polarity);
+static int	ioapic_abi_legacy_intr_find_bygsi(int,
+		    enum intr_trigger, enum intr_polarity);
 
 static int	ioapic_abi_msi_alloc(int [], int, int);
 static void	ioapic_abi_msi_release(const int [], int, int);
@@ -527,6 +531,8 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 
 	.legacy_intr_config = ioapic_abi_legacy_intr_config,
 	.legacy_intr_cpuid = ioapic_abi_legacy_intr_cpuid,
+	.legacy_intr_find = ioapic_abi_legacy_intr_find,
+	.legacy_intr_find_bygsi = ioapic_abi_legacy_intr_find_bygsi,
 
 	.msi_alloc	= ioapic_abi_msi_alloc,
 	.msi_release	= ioapic_abi_msi_release,
@@ -842,14 +848,22 @@ ioapic_fixup_legacy_irqmaps(void)
 	}
 }
 
-int
-ioapic_find_legacy_by_gsi(int gsi, enum intr_trigger trig,
+static int
+ioapic_abi_legacy_intr_find_bygsi(int gsi, enum intr_trigger trig,
     enum intr_polarity pola)
 {
 	int cpu;
 
-	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
-	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
+#ifdef INVARIANTS
+	if (trig == INTR_TRIGGER_CONFORM) {
+		KKASSERT(pola == INTR_POLARITY_CONFORM);
+	} else {
+		KKASSERT(trig == INTR_TRIGGER_EDGE ||
+		    trig == INTR_TRIGGER_LEVEL);
+		KKASSERT(pola == INTR_POLARITY_HIGH ||
+		    pola == INTR_POLARITY_LOW);
+	}
+#endif
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		int irq;
@@ -861,7 +875,9 @@ ioapic_find_legacy_by_gsi(int gsi, enum intr_trigger trig,
 			if (map->im_gsi == gsi) {
 				KKASSERT(map->im_type == IOAPIC_IMT_LEGACY);
 
-				if (map->im_flags & IOAPIC_IMF_CONF) {
+				if ((map->im_flags & IOAPIC_IMF_CONF) &&
+				    trig != INTR_TRIGGER_CONFORM &&
+				    pola != INTR_POLARITY_CONFORM) {
 					if (map->im_trig != trig ||
 					    map->im_pola != pola)
 						return -1;
@@ -873,14 +889,22 @@ ioapic_find_legacy_by_gsi(int gsi, enum intr_trigger trig,
 	return -1;
 }
 
-int
-ioapic_find_legacy_by_irq(int irq, enum intr_trigger trig,
+static int
+ioapic_abi_legacy_intr_find(int irq, enum intr_trigger trig,
     enum intr_polarity pola)
 {
 	int cpu;
 
-	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
-	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
+#ifdef INVARIANTS
+	if (trig == INTR_TRIGGER_CONFORM) {
+		KKASSERT(pola == INTR_POLARITY_CONFORM);
+	} else {
+		KKASSERT(trig == INTR_TRIGGER_EDGE ||
+		    trig == INTR_TRIGGER_LEVEL);
+		KKASSERT(pola == INTR_POLARITY_HIGH ||
+		    pola == INTR_POLARITY_LOW);
+	}
+#endif
 
 	if (irq < 0 || irq >= ioapic_abi_legacy_irq_max)
 		return -1;
@@ -889,7 +913,9 @@ ioapic_find_legacy_by_irq(int irq, enum intr_trigger trig,
 		const struct ioapic_irqmap *map = &ioapic_irqmaps[cpu][irq];
 
 		if (map->im_type == IOAPIC_IMT_LEGACY) {
-			if (map->im_flags & IOAPIC_IMF_CONF) {
+			if ((map->im_flags & IOAPIC_IMF_CONF) &&
+			    trig != INTR_TRIGGER_CONFORM &&
+			    pola != INTR_POLARITY_CONFORM) {
 				if (map->im_trig != trig ||
 				    map->im_pola != pola)
 					return -1;

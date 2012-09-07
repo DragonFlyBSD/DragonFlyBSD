@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
 .\"
-.Dd October 16, 2011
+.Dd August 27, 2012
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -723,6 +723,9 @@ Overrides the compile-time set value of
 .Va TCBHASHSIZE
 or the preset default of 512.
 Must be a power of 2.
+.It Va vfs.root.wakedelay
+Specify an additional delay (default is 2 seconds if unspecified)
+before trying to mount root.
 .It Va vfs.root.mountfrom
 Specify root file system.
 A semicolon separated list of file systems to try

@@ -59,6 +59,7 @@ MAN=	accept_filter.9 \
 	device_get_devclass.9 \
 	device_get_driver.9 \
 	device_get_ivars.9 \
+	device_get_name.9 \
 	device_get_parent.9 \
 	device_get_softc.9 \
 	device_get_state.9 \
@@ -173,6 +174,7 @@ MAN=	accept_filter.9 \
 	VFS_MOUNT.9 \
 	VFS_QUOTACTL.9 \
 	VFS_ROOT.9 \
+	VFS_SET.9 \
 	VFS_START.9 \
 	VFS_STATFS.9 \
 	VFS_SYNC.9 \
@@ -408,6 +410,7 @@ MLINKS+=devclass_add_driver.9 devclass_delete_driver.9 \
 MLINKS+=device_add_child.9 device_add_child_ordered.9
 MLINKS+=device_enable.9 device_disable.9 \
 	device_enable.9 device_is_enabled.9
+MLINKS+=device_get_name.9 device_get_nameunit.9
 MLINKS+=device_get_state.9 device_busy.9 \
 	device_get_state.9 device_is_alive.9 \
 	device_get_state.9 device_unbusy.9
@@ -894,6 +897,9 @@ MLINKS+=taskqueue.9 TASK_INIT.9 \
 	taskqueue.9 taskqueue_run.9 \
 	taskqueue.9 taskqueue_start_threads.9 \
 	taskqueue.9 taskqueue_unblock.9
+MLINKS+=tbridge.9 tbridge_printf.9 \
+	tbridge.9 TBRIDGE_TESTCASE_MODULE.9 \
+	tbridge.9 tbridge_test_done.9
 MLINKS+=time.9 boottime.9 \
 	time.9 time_second.9
 MLINKS+=token.9 lwkt_getpooltoken.9 \

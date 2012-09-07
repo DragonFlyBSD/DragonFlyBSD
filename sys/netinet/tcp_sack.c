@@ -61,6 +61,7 @@
  * RFC 2018
  * RFC 2883
  * RFC 3517
+ * RFC 6675
  */
 
 struct sackblock {
@@ -491,7 +492,7 @@ tcp_sack_update_lostseq(struct scoreboard *scb, tcp_seq snd_una, u_int maxseg,
 	int bytes_sacked = 0;
 	int rxtthresh_bytes;
 
-	if (tcp_do_rfc3517bis)
+	if (tcp_do_rfc6675)
 		rxtthresh_bytes = (rxtthresh - 1) * maxseg;
 	else
 		rxtthresh_bytes = rxtthresh * maxseg;
@@ -630,7 +631,7 @@ sendunsacked:
 		goto sendunsacked;
 
 	/* Rescue retransmission */
-	if (tcp_do_rescuesack || tcp_do_rfc3517bis) {
+	if (tcp_do_rescuesack || tcp_do_rfc6675) {
 		tcpstat.tcps_sackrescue_try++;
 		if (tp->sack_flags & TSACK_F_SACKRESCUED) {
 			if (!tcp_aggressive_rescuesack)

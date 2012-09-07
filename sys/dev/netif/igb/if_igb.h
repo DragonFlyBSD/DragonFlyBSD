@@ -87,7 +87,7 @@
  *      (num_tx_desc * sizeof(struct e1000_tx_desc)) % 128 == 0
  */
 #define IGB_MIN_RXD		256
-#define IGB_DEFAULT_RXD		1024
+#define IGB_DEFAULT_RXD		512
 #define IGB_MAX_RXD		4096
 
 /*

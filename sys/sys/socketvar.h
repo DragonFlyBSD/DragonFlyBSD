@@ -60,6 +60,10 @@
 #include <net/netmsg.h>
 #endif
 
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
+
 struct accept_filter;
 
 /*
@@ -157,6 +161,9 @@ struct socket {
 
 	struct netmsg_base so_clomsg;
 	struct sockaddr *so_faddr;
+
+	struct spinlock so_rcvd_spin;
+	struct netmsg_pru_rcvd so_rcvd_msg;
 };
 
 #endif
@@ -431,7 +438,7 @@ void	soaborta (struct socket *so);
 void	soabort_oncpu (struct socket *so);
 int	soaccept (struct socket *so, struct sockaddr **nam);
 void	soaccept_generic (struct socket *so);
-struct	socket *soalloc (int waitok);
+struct	socket *soalloc (int waitok, struct protosw *);
 int	sobind (struct socket *so, struct sockaddr *nam, struct thread *td);
 void	socantrcvmore (struct socket *so);
 void	socantsendmore (struct socket *so);
@@ -471,6 +478,9 @@ int	soopt_mcopyout (struct sockopt *sopt, struct mbuf *m);
 int	soopt_from_mbuf (struct sockopt *sopt, struct mbuf *m);
 
 int	soreceive (struct socket *so, struct sockaddr **paddr,
+		       struct uio *uio, struct sockbuf *sio,
+		       struct mbuf **controlp, int *flagsp);
+int	sorecvtcp (struct socket *so, struct sockaddr **paddr,
 		       struct uio *uio, struct sockbuf *sio,
 		       struct mbuf **controlp, int *flagsp);
 int	soreserve (struct socket *so, u_long sndcc, u_long rcvcc,

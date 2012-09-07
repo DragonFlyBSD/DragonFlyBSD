@@ -2596,6 +2596,20 @@ restart:
 	}
 
 	/*
+	 * If the ncp was destroyed it will never resolve again.  This
+	 * can basically only happen when someone is chdir'd into an
+	 * empty directory which is then rmdir'd.  We want to catch this
+	 * here and not dive the VFS because the VFS might actually
+	 * have a way to re-resolve the disconnected ncp, which will
+	 * result in inconsistencies in the cdir/nch for proc->p_fd.
+	 */
+	if (ncp->nc_flag & NCF_DESTROYED) {
+		kprintf("Warning: cache_resolve: ncp '%s' was unlinked\n",
+			ncp->nc_name);
+		return(EINVAL);
+	}
+
+	/*
 	 * Mount points need special handling because the parent does not
 	 * belong to the same filesystem as the ncp.
 	 */

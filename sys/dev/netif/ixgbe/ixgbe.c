@@ -166,9 +166,8 @@ static void     ixgbe_dma_free(struct adapter *, struct ixgbe_dma_alloc *);
 static void	ixgbe_add_rx_process_limit(struct adapter *, const char *,
 		    const char *, int *, int);
 static bool	ixgbe_tx_ctx_setup(struct tx_ring *, struct mbuf *);
-#if 0	/* NET_TSO */
 static bool	ixgbe_tso_setup(struct tx_ring *, struct mbuf *, u32 *, u32 *);
-#endif
+static int	ixgbe_tso_pullup(struct tx_ring *, struct mbuf **);
 static void	ixgbe_set_ivar(struct adapter *, u8, u8, s8);
 static void	ixgbe_configure_ivars(struct adapter *);
 static u8 *	ixgbe_mc_array_itr(struct ixgbe_hw *, u8 **, u32 *);
@@ -460,6 +459,9 @@ ixgbe_attach(device_t dev)
 	/* Determine hardware revision */
 	ixgbe_identify_hardware(adapter);
 
+	/* Enable bus mastering */
+	pci_enable_busmaster(dev);
+
 	/* Do base PCI setup - map BAR0 */
 	if (ixgbe_allocate_pci_resources(adapter)) {
 		device_printf(dev, "Allocation of PCI resources failed\n");
@@ -650,13 +652,11 @@ ixgbe_detach(device_t dev)
 
 	INIT_DEBUGOUT("ixgbe_detach: begin");
 
-#ifdef NET_VLAN
 	/* Make sure VLANS are not using driver */
-	if (adapter->ifp->if_vlantrunk != NULL) {
+	if (adapter->ifp->if_vlantrunks != NULL) {
 		device_printf(dev,"Vlan in use, detach first\n");
 		return (EBUSY);
 	}
-#endif
 
 	IXGBE_CORE_LOCK(adapter);
 	ixgbe_stop(adapter);
@@ -686,12 +686,10 @@ ixgbe_detach(device_t dev)
 	IXGBE_WRITE_REG(&adapter->hw, IXGBE_CTRL_EXT, ctrl_ext);
 
 	/* Unregister VLAN events */
-#ifdef NET_VLAN
 	if (adapter->vlan_attach != NULL)
 		EVENTHANDLER_DEREGISTER(vlan_config, adapter->vlan_attach);
 	if (adapter->vlan_detach != NULL)
 		EVENTHANDLER_DEREGISTER(vlan_unconfig, adapter->vlan_detach);
-#endif
 
 	ether_ifdetach(adapter->ifp);
 	callout_stop(&adapter->timer);
@@ -1011,12 +1009,10 @@ ixgbe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		IOCTL_DEBUGOUT("ioctl: SIOCSIFCAP (Set Capabilities)");
 		if (mask & IFCAP_HWCSUM)
 			ifp->if_capenable ^= IFCAP_HWCSUM;
-#if 0 /* NET_TSO */
 		if (mask & IFCAP_TSO4)
 			ifp->if_capenable ^= IFCAP_TSO4;
 		if (mask & IFCAP_TSO6)
 			ifp->if_capenable ^= IFCAP_TSO6;
-#endif
 #if 0 /* NET_LRO */
 		if (mask & IFCAP_LRO)
 			ifp->if_capenable ^= IFCAP_LRO;
@@ -1087,10 +1083,8 @@ ixgbe_init_locked(struct adapter *adapter)
 
 	/* Set the various hardware offload abilities */
 	ifp->if_hwassist = 0;
-#if 0 /* NET_TSO */
 	if (ifp->if_capenable & IFCAP_TSO)
 		ifp->if_hwassist |= CSUM_TSO;
-#endif
 	if (ifp->if_capenable & IFCAP_TXCSUM) {
 		ifp->if_hwassist |= (CSUM_TCP | CSUM_UDP);
 #if 0
@@ -1754,6 +1748,13 @@ ixgbe_xmit(struct tx_ring *txr, struct mbuf **m_headp)
 
 	m_head = *m_headp;
 
+	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
+		error = ixgbe_tso_pullup(txr, m_headp);
+		if (error)
+			return error;
+		m_head = *m_headp;
+	}
+
 	/* Basic descriptor defines */
         cmd_type_len = (IXGBE_ADVTXD_DTYP_DATA |
 	    IXGBE_ADVTXD_DCMD_IFCS | IXGBE_ADVTXD_DCMD_DEXT);
@@ -1803,7 +1804,6 @@ ixgbe_xmit(struct tx_ring *txr, struct mbuf **m_headp)
 	** this becomes the first descriptor of 
 	** a packet.
 	*/
-#if 0 /* NET_TSO */
 	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
 		if (ixgbe_tso_setup(txr, m_head, &paylen, &olinfo_status)) {
 			cmd_type_len |= IXGBE_ADVTXD_DCMD_TSE;
@@ -1813,8 +1813,6 @@ ixgbe_xmit(struct tx_ring *txr, struct mbuf **m_headp)
 		} else
 			return (ENXIO);
 	} else if (ixgbe_tx_ctx_setup(txr, m_head))
-#endif
-	if (ixgbe_tx_ctx_setup(txr, m_head))
 		olinfo_status |= IXGBE_TXD_POPTS_TXSM << 8;
 
 #ifdef IXGBE_IEEE1588
@@ -2608,10 +2606,7 @@ ixgbe_setup_interface(device_t dev, struct adapter *adapter)
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
-#if 0 /* NET_TSO */
 	ifp->if_capabilities |= IFCAP_HWCSUM | IFCAP_TSO | IFCAP_VLAN_HWCSUM;
-#endif
-	ifp->if_capabilities |= IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM;
 	ifp->if_capabilities |= IFCAP_JUMBO_MTU;
 	ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING
 #if 0 /* NET_TSO */
@@ -3237,9 +3232,7 @@ ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf *mp)
 	u8	ipproto = 0;
 	bool	offload = TRUE;
 	int ctxd = txr->next_avail_desc;
-#ifdef NET_VLAN
 	u16 vtag = 0;
-#endif
 
 
 	if ((mp->m_pkthdr.csum_flags & CSUM_OFFLOAD) == 0)
@@ -3252,13 +3245,11 @@ ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf *mp)
 	** In advanced descriptors the vlan tag must 
 	** be placed into the descriptor itself.
 	*/
-#ifdef NET_VLAN
 	if (mp->m_flags & M_VLANTAG) {
-		vtag = htole16(mp->m_pkthdr.ether_vtag);
+		vtag = htole16(mp->m_pkthdr.ether_vlantag);
 		vlan_macip_lens |= (vtag << IXGBE_ADVTXD_VLAN_SHIFT);
 	} else if (offload == FALSE)
 		return FALSE;
-#endif
 
 	/*
 	 * Determine where frame payload starts.
@@ -3345,7 +3336,6 @@ ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf *mp)
  *  adapters using advanced tx descriptors
  *
  **********************************************************************/
-#if 0	/* NET_TSO */
 static bool
 ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
     u32 *olinfo_status)
@@ -3353,18 +3343,15 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
 	struct adapter *adapter = txr->adapter;
 	struct ixgbe_adv_tx_context_desc *TXD;
 	struct ixgbe_tx_buf        *tx_buffer;
-#ifdef NET_VLAN
 	u32 vlan_macip_lens = 0, type_tucmd_mlhl = 0;
 	u16 vtag = 0, eh_type;
-#else
-	u16 eh_type;
-	u32 type_tucmd_mlhl = 0;
-#endif
 	u32 mss_l4len_idx = 0, len;
 	int ctxd, ehdrlen, ip_hlen, tcp_hlen;
 	struct ether_vlan_header *eh;
+#if 0 /* IPv6 TSO */
 #ifdef INET6
 	struct ip6_hdr *ip6;
+#endif
 #endif
 #ifdef INET
 	struct ip *ip;
@@ -3388,6 +3375,7 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
         /* Ensure we have at least the IP+TCP header in the first mbuf. */
 	len = ehdrlen + sizeof(struct tcphdr);
 	switch (ntohs(eh_type)) {
+#if 0 /* IPv6 TSO */
 #ifdef INET6
 	case ETHERTYPE_IPV6:
 		if (mp->m_len < len + sizeof(struct ip6_hdr))
@@ -3401,6 +3389,7 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
 		th->th_sum = in6_cksum_pseudo(ip6, 0, IPPROTO_TCP, 0);
 		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV6;
 		break;
+#endif
 #endif
 #ifdef INET
 	case ETHERTYPE_IP:
@@ -3435,16 +3424,14 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
 	*paylen = mp->m_pkthdr.len - ehdrlen - ip_hlen - tcp_hlen;
 
 	/* VLAN MACLEN IPLEN */
-#ifdef NET_VLAN
 	if (mp->m_flags & M_VLANTAG) {
-		vtag = htole16(mp->m_pkthdr.ether_vtag);
+		vtag = htole16(mp->m_pkthdr.ether_vlantag);
                 vlan_macip_lens |= (vtag << IXGBE_ADVTXD_VLAN_SHIFT);
 	}
 
 	vlan_macip_lens |= ehdrlen << IXGBE_ADVTXD_MACLEN_SHIFT;
 	vlan_macip_lens |= ip_hlen;
 	TXD->vlan_macip_lens |= htole32(vlan_macip_lens);
-#endif
 
 	/* ADV DTYPE TUCMD */
 	type_tucmd_mlhl |= IXGBE_ADVTXD_DCMD_DEXT | IXGBE_ADVTXD_DTYP_CTXT;
@@ -3467,7 +3454,6 @@ ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp, u32 *paylen,
 	txr->next_avail_desc = ctxd;
 	return TRUE;
 }
-#endif
 
 #ifdef IXGBE_FDIR
 /*
@@ -4513,9 +4499,7 @@ ixgbe_rxeof(struct ix_queue *que, int count)
 		struct mbuf	*sendmp, *mh, *mp;
 		u32		rsc, ptype;
 		u16		hlen, plen, hdr;
-#ifdef NET_VLAN
 		u16		vtag = 0;
-#endif
 		bool		eop;
  
 		/* Sync the ring. */
@@ -4546,10 +4530,8 @@ ixgbe_rxeof(struct ix_queue *que, int count)
 		eop = ((staterr & IXGBE_RXD_STAT_EOP) != 0);
 
 		/* Process vlan info */
-#ifdef NET_VLAN
 		if ((rxr->vtag_strip) && (staterr & IXGBE_RXD_STAT_VP))
 			vtag = le16toh(cur->wb.upper.vlan);
-#endif
 
 		/* Make sure bad packets are discarded */
 		if (((staterr & IXGBE_RXDADV_ERR_FRAME_ERR_MASK) != 0) ||
@@ -4652,12 +4634,10 @@ ixgbe_rxeof(struct ix_queue *que, int count)
 				/* Singlet, prepare to send */
                                 sendmp = mh;
 				/* If hardware handled vtag */
-#ifdef NET_VLAN
                                 if (vtag) {
-                                        sendmp->m_pkthdr.ether_vtag = vtag;
+                                        sendmp->m_pkthdr.ether_vlantag = vtag;
                                         sendmp->m_flags |= M_VLANTAG;
                                 }
-#endif
                         }
 		} else {
 			/*
@@ -4681,12 +4661,10 @@ ixgbe_rxeof(struct ix_queue *que, int count)
 				sendmp = mp;
 				sendmp->m_flags |= M_PKTHDR;
 				sendmp->m_pkthdr.len = mp->m_len;
-#ifdef NET_VLAN
 				if (staterr & IXGBE_RXD_STAT_VP) {
-					sendmp->m_pkthdr.ether_vtag = vtag;
+					sendmp->m_pkthdr.ether_vlantag = vtag;
 					sendmp->m_flags |= M_VLANTAG;
 				}
-#endif
                         }
 			/* Pass the head pointer on */
 			if (eop == 0) {
@@ -4865,7 +4843,6 @@ ixgbe_unregister_vlan(void *arg, struct ifnet *ifp, u16 vtag)
 static void
 ixgbe_setup_vlan_hw_support(struct adapter *adapter)
 {
-#ifdef NET_VLAN
 	struct ifnet 	*ifp = adapter->ifp;
 	struct ixgbe_hw *hw = &adapter->hw;
 	struct rx_ring	*rxr;
@@ -4910,7 +4887,6 @@ ixgbe_setup_vlan_hw_support(struct adapter *adapter)
 		}
 		rxr->vtag_strip = TRUE;
 	}
-#endif
 }
 
 static void
@@ -5467,11 +5443,9 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "watchdog_events",
 			CTLFLAG_RD, &adapter->watchdog_events,
 			"Watchdog timeouts");
-#if 0	/* NET_TSO */
 	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "tso_tx",
 			CTLFLAG_RD, &adapter->tso_tx,
 			"TSO");
-#endif
 	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "link_irq",
 			CTLFLAG_RD, &adapter->link_irq,
 			"Link MSIX IRQ Handled");
@@ -5833,4 +5807,34 @@ ixgbe_set_thermal_test(SYSCTL_HANDLER_ARGS)
 	}
 
 	return (0);
+}
+
+/* rearrange mbuf chain to get contiguous bytes */
+static int
+ixgbe_tso_pullup(struct tx_ring *txr, struct mbuf **mp)
+{
+	int hoff, iphlen, thoff;
+	struct mbuf *m;
+
+	m = *mp;
+	KASSERT(M_WRITABLE(m), ("TSO mbuf not writable"));
+
+	iphlen = m->m_pkthdr.csum_iphlen;
+	thoff = m->m_pkthdr.csum_thlen;
+	hoff = m->m_pkthdr.csum_lhlen;
+
+	KASSERT(iphlen > 0, ("invalid ip hlen"));
+	KASSERT(thoff > 0, ("invalid tcp hlen"));
+	KASSERT(hoff > 0, ("invalid ether hlen"));
+
+	if (__predict_false(m->m_len < hoff + iphlen + thoff)) {
+		m = m_pullup(m, hoff + iphlen + thoff);
+		if (m == NULL) {
+			*mp = NULL;
+			return ENOBUFS;
+		}
+		*mp = m;
+	}
+
+	return 0;
 }

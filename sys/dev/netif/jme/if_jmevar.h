@@ -162,6 +162,7 @@ struct jme_rxdata {
 	struct mbuf		*jme_rxtail;
 
 	u_long			jme_rx_pkt;
+	u_long			jme_rx_emp;
 } __cachealign;
 
 struct jme_chain_data {
@@ -240,6 +241,7 @@ struct jme_softc {
 	struct jme_msix_data	jme_msix[JME_NMSIX];
 	int			jme_msix_cnt;
 	uint32_t		jme_msinum[JME_MSINUM_CNT];
+	int			jme_tx_cpuid;
 
 	device_t		jme_miibus;
 	int			jme_phyaddr;

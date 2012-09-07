@@ -32,7 +32,6 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.71 2008/11/22 04:00:53 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -325,8 +324,8 @@ typedef void if_init_f_t (void *);
 #define	IF_QEMPTY(ifq)		(IF_QLEN(ifq) == 0)
 
 #define	IF_ENQUEUE(ifq, m) do {						\
-	(m)->m_nextpkt = 0;						\
-	if ((ifq)->ifq_tail == 0)					\
+	(m)->m_nextpkt = NULL;						\
+	if ((ifq)->ifq_tail == NULL)					\
 		(ifq)->ifq_head = m;					\
 	else								\
 		(ifq)->ifq_tail->m_nextpkt = m;				\
@@ -336,7 +335,7 @@ typedef void if_init_f_t (void *);
 
 #define	IF_PREPEND(ifq, m) do {						\
 	(m)->m_nextpkt = (ifq)->ifq_head;				\
-	if ((ifq)->ifq_tail == 0)					\
+	if ((ifq)->ifq_tail == NULL)					\
 		(ifq)->ifq_tail = (m);					\
 	(ifq)->ifq_head = (m);						\
 	(ifq)->ifq_len++;						\
@@ -345,9 +344,9 @@ typedef void if_init_f_t (void *);
 #define	IF_DEQUEUE(ifq, m) do {						\
 	(m) = (ifq)->ifq_head;						\
 	if (m) {							\
-		if (((ifq)->ifq_head = (m)->m_nextpkt) == 0)		\
-			(ifq)->ifq_tail = 0;				\
-		(m)->m_nextpkt = 0;					\
+		if (((ifq)->ifq_head = (m)->m_nextpkt) == NULL)		\
+			(ifq)->ifq_tail = NULL;				\
+		(m)->m_nextpkt = NULL;					\
 		(ifq)->ifq_len--;					\
 	}								\
 } while (0)

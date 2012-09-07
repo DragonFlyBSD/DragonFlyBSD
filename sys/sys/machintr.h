@@ -69,6 +69,10 @@ struct machintr_abi {
     void	(*legacy_intr_config)		/* config legacy intr */
     		(int intr, enum intr_trigger trig, enum intr_polarity pola);
     int		(*legacy_intr_cpuid)(int intr);	/* legacy intr target cpu */
+    int		(*legacy_intr_find)		/* find legacy intr */
+    		(int intr, enum intr_trigger trig, enum intr_polarity pola);
+    int		(*legacy_intr_find_bygsi)	/* find legacy intr by GSI */
+    		(int gsi, enum intr_trigger trig, enum intr_polarity pola);
 
     int		(*msi_alloc)			/* alloc count MSIs on cpu */
     		(int intrs[], int count, int cpuid);
@@ -100,6 +104,11 @@ struct machintr_abi {
 	    MachIntrABI.legacy_intr_config((intr), (trig), (pola))
 #define machintr_legacy_intr_cpuid(intr) \
 	    MachIntrABI.legacy_intr_cpuid((intr))
+
+#define machintr_legacy_intr_find(intr, trig, pola) \
+	    MachIntrABI.legacy_intr_find((intr), (trig), (pola))
+#define machintr_legacy_intr_find_bygsi(gsi, trig, pola) \
+	    MachIntrABI.legacy_intr_find_bygsi((gsi), (trig), (pola))
 
 extern struct machintr_abi MachIntrABI;
 

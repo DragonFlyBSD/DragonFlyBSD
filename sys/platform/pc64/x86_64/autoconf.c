@@ -82,7 +82,7 @@
 #if NISA > 0
 #include <bus/isa/isavar.h>
 
-device_t isa_bus_device = 0;
+device_t isa_bus_device = NULL;
 #endif
 
 static void	configure_first (void *);

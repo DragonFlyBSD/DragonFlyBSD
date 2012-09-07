@@ -116,7 +116,7 @@ devfs_vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	mnt->file_count = 0;
 	mnt->mp = mp;
 	TAILQ_INIT(&mnt->orphan_list);
-	mnt->root_node = devfs_allocp(Proot, "", NULL, mp, NULL);
+	mnt->root_node = devfs_allocp(Nroot, "", NULL, mp, NULL);
 	KKASSERT(mnt->root_node);
 	lockmgr(&devfs_lock, LK_RELEASE);
 

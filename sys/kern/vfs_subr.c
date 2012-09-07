@@ -179,7 +179,7 @@ vfs_subr_init(void)
 	 * Desiredvnodes is kern.maxvnodes.  We want to scale it 
 	 * according to available system memory but we may also have
 	 * to limit it based on available KVM, which is capped on 32 bit
-	 * systems.
+	 * systems, to ~80K vnodes or so.
 	 *
 	 * WARNING!  For machines with 64-256M of ram we have to be sure
 	 *	     that the default limit scales down well due to HAMMER
@@ -187,7 +187,7 @@ vfs_subr_init(void)
 	 *	     We want around ~5800 on a 128M machine.
 	 */
 	factor1 = 20 * (sizeof(struct vm_object) + sizeof(struct vnode));
-	factor2 = 22 * (sizeof(struct vm_object) + sizeof(struct vnode));
+	factor2 = 25 * (sizeof(struct vm_object) + sizeof(struct vnode));
 	desiredvnodes =
 		imin((int64_t)vmstats.v_page_count * PAGE_SIZE / factor1,
 		     KvaSize / factor2);

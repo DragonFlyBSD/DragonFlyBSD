@@ -54,7 +54,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/amr/amr.c,v 1.97 2012/04/20 20:27:31 jhb Exp $
+ * $FreeBSD: src/sys/dev/amr/amr.c,v 1.99 2012/08/31 09:42:46 scottl Exp $
  */
 
 /*
@@ -135,13 +135,6 @@ static void	amr_setup_sg(void *arg, bus_dma_segment_t *segs, int nsegments, int 
 static void	amr_setup_data(void *arg, bus_dma_segment_t *segs, int nsegments, int error);
 static void	amr_setup_ccb(void *arg, bus_dma_segment_t *segs, int nsegments, int error);
 static void	amr_abort_load(struct amr_command *ac);
-
-#if 0
-/*
- * Status monitoring
- */
-static void	amr_periodic(void *data);
-#endif
 
 /*
  * Interface-specific shims
@@ -315,7 +308,6 @@ amr_startup(void *arg)
     int			i, error;
     
     debug_called(1);
-    callout_init(&sc->amr_timeout);
 
     /* pull ourselves off the intrhook chain */
     if (sc->amr_ich.ich_func)
@@ -358,13 +350,6 @@ amr_startup(void *arg)
     /* interrupts will be enabled before we do anything more */
     sc->amr_state |= AMR_STATE_INTEN;
 
-#if 0
-    /*
-     * Start the timeout routine.
-     */
-    sc->amr_timeout = timeout(amr_periodic, sc, hz);
-#endif
-
     return;
 }
 
@@ -403,9 +388,6 @@ amr_free(struct amr_softc *sc)
     if (sc->amr_pass != NULL)
 	device_delete_child(sc->amr_dev, sc->amr_pass);
 
-    /* cancel status timeout */
-    callout_stop(&sc->amr_timeout);
-    
     /* throw away any command buffers */
     while ((acc = TAILQ_FIRST(&sc->amr_cmd_clusters)) != NULL) {
 	TAILQ_REMOVE(&sc->amr_cmd_clusters, acc, acc_link);
@@ -935,33 +917,6 @@ out:
 
     return(error);
 }
-
-#if 0
-/********************************************************************************
- ********************************************************************************
-                                                                Status Monitoring
- ********************************************************************************
- ********************************************************************************/
-
-/********************************************************************************
- * Perform a periodic check of the controller status
- */
-static void
-amr_periodic(void *data)
-{
-    struct amr_softc	*sc = (struct amr_softc *)data;
-
-    debug_called(2);
-
-    /* XXX perform periodic status checks here */
-
-    /* compensate for missed interrupts */
-    amr_done(sc);
-
-    /* reschedule */
-    callout_reset(&sc->amr_timeout, hz, amr_periodic, sc);
-}
-#endif
 
 /********************************************************************************
  ********************************************************************************

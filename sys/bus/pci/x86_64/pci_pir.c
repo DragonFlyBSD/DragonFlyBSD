@@ -36,6 +36,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
+#include <sys/machintr.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <vm/vm_param.h>
@@ -537,6 +538,12 @@ pci_pir_route_interrupt(int bus, int device, int func, int pin)
 
 	/* Ask the BIOS to route this IRQ if we haven't done so already. */
 	if (!pci_link->pl_routed) {
+		if (machintr_legacy_intr_find(pci_link->pl_irq,
+		    INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW) < 0) {
+			kprintf("$PIR: can't find irq %d\n", pci_link->pl_irq);
+			return PCI_INVALID_IRQ;
+		}
+
 		error = pci_pir_biosroute(bus, device, func, pin - 1,
 		    pci_link->pl_irq);
 

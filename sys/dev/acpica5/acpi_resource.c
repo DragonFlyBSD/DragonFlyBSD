@@ -112,6 +112,9 @@ acpi_config_intr(device_t dev, ACPI_RESOURCE *res)
 {
     u_int irq;
     int pol, trig;
+    enum intr_trigger trigger;
+    enum intr_polarity polarity;
+
     switch (res->Type) {
     case ACPI_RESOURCE_TYPE_IRQ:
 	KASSERT(res->Data.Irq.InterruptCount == 1,
@@ -131,15 +134,22 @@ acpi_config_intr(device_t dev, ACPI_RESOURCE *res)
 	panic("%s: bad resource type %u", __func__, res->Type);
     }
 
-    if (irq == AcpiGbl_FADT.SciInterrupt) {
-	if (bootverbose)
-		kprintf("acpi_config_intr: Skip SCI config\n");
-	return;
-    }
+    if (trig == ACPI_EDGE_SENSITIVE)
+    	trigger = INTR_TRIGGER_EDGE;
+    else
+    	trigger = INTR_TRIGGER_LEVEL;
 
-    BUS_CONFIG_INTR(dev, dev, irq, (trig == ACPI_EDGE_SENSITIVE) ?
-	INTR_TRIGGER_EDGE : INTR_TRIGGER_LEVEL, (pol == ACPI_ACTIVE_HIGH) ?
-	INTR_POLARITY_HIGH : INTR_POLARITY_LOW);
+    if (pol == ACPI_ACTIVE_HIGH)
+	polarity = INTR_POLARITY_HIGH;
+    else
+    	polarity = INTR_POLARITY_LOW;
+
+    if (machintr_legacy_intr_find(irq, trigger, polarity) < 0) {
+	if (bootverbose)
+		kprintf("acpi_config_intr: Skip irq %d config\n", irq);
+    } else {
+	BUS_CONFIG_INTR(dev, dev, irq, trigger, polarity);
+    }
 }
 
 /*

@@ -393,7 +393,7 @@ devfs_vop_readdir(struct vop_readdir_args *ap)
 		 * sure that the target isn't hidden. If it is, we don't
 		 * show the link in the directory listing.
 		 */
-		if ((node->node_type == Plink) && (node->link_target != NULL) &&
+		if ((node->node_type == Nlink) && (node->link_target != NULL) &&
 			(node->link_target->flags & DEVFS_HIDDEN))
 			continue;
 
@@ -459,7 +459,7 @@ devfs_vop_nresolve(struct vop_nresolve_args *ap)
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
-	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir)) {
+	if ((dnode->node_type != Nroot) && (dnode->node_type != Ndir)) {
 		error = ENOENT;
 		cache_setvp(ap->a_nch, NULL);
 		goto out;
@@ -476,7 +476,7 @@ devfs_vop_nresolve(struct vop_nresolve_args *ap)
 
 	if (found) {
 		depth = 0;
-		while ((found->node_type == Plink) && (found->link_target)) {
+		while ((found->node_type == Nlink) && (found->link_target)) {
 			if (depth >= 8) {
 				devfs_debug(DEVFS_DEBUG_SHOW, "Recursive link or depth >= 8");
 				break;
@@ -568,7 +568,7 @@ devfs_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
 
-	if ((node->node_type == Pdev) && node->d_dev)  {
+	if ((node->node_type == Ndev) && node->d_dev)  {
 		reference_dev(node->d_dev);
 		vap->va_rminor = node->d_dev->si_uminor;
 		release_dev(node->d_dev);
@@ -685,11 +685,11 @@ devfs_vop_nmkdir(struct vop_nmkdir_args *ap)
 	if (!devfs_node_is_accessible(dnode))
 		return ENOENT;
 
-	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir))
+	if ((dnode->node_type != Nroot) && (dnode->node_type != Ndir))
 		goto out;
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
-	devfs_allocvp(ap->a_dvp->v_mount, ap->a_vpp, Pdir,
+	devfs_allocvp(ap->a_dvp->v_mount, ap->a_vpp, Ndir,
 		      ap->a_nch->ncp->nc_name, dnode, NULL);
 
 	if (*ap->a_vpp) {
@@ -715,11 +715,11 @@ devfs_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 	ap->a_vap->va_type = VLNK;
 
-	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir))
+	if ((dnode->node_type != Nroot) && (dnode->node_type != Ndir))
 		goto out;
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
-	devfs_allocvp(ap->a_dvp->v_mount, ap->a_vpp, Plink,
+	devfs_allocvp(ap->a_dvp->v_mount, ap->a_vpp, Nlink,
 		      ap->a_nch->ncp->nc_name, dnode, NULL);
 
 	targetlen = strlen(ap->a_target);
@@ -753,7 +753,7 @@ devfs_vop_nrmdir(struct vop_nrmdir_args *ap)
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
-	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir))
+	if ((dnode->node_type != Nroot) && (dnode->node_type != Ndir))
 		goto out;
 
 	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(dnode), link) {
@@ -768,7 +768,7 @@ devfs_vop_nrmdir(struct vop_nrmdir_args *ap)
 		if ((node->flags & DEVFS_USER_CREATED) == 0) {
 			error = EPERM;
 			goto out;
-		} else if (node->node_type != Pdir) {
+		} else if (node->node_type != Ndir) {
 			error = ENOTDIR;
 			goto out;
 		} else if (node->nchildren > 2) {
@@ -804,7 +804,7 @@ devfs_vop_nremove(struct vop_nremove_args *ap)
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
-	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir))
+	if ((dnode->node_type != Nroot) && (dnode->node_type != Ndir))
 		goto out;
 
 	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(dnode), link) {
@@ -819,7 +819,7 @@ devfs_vop_nremove(struct vop_nremove_args *ap)
 		if ((node->flags & DEVFS_USER_CREATED) == 0) {
 			error = EPERM;
 			goto out;
-		} else if (node->node_type == Pdir) {
+		} else if (node->node_type == Ndir) {
 			error = EISDIR;
 			goto out;
 		} else {
@@ -876,7 +876,7 @@ devfs_spec_open(struct vop_open_args *ap)
 
 				devfs_debug(DEVFS_DEBUG_DEBUG,
 						"parent here is: %s, node is: |%s|\n",
-						((node->parent->node_type == Proot) ?
+						((node->parent->node_type == Nroot) ?
 						"ROOT!" : node->parent->d_dir.d_name),
 						newnode->d_dir.d_name);
 				devfs_debug(DEVFS_DEBUG_DEBUG,

@@ -662,9 +662,6 @@ jme_attach(device_t dev)
 	int error = 0, i, j, rx_desc_cnt;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 
-	device_printf(dev, "rxdata %zu, chain_data %zu\n",
-	    sizeof(struct jme_rxdata), sizeof(struct jme_chain_data));
-
 	lwkt_serialize_init(&sc->jme_serialize);
 	lwkt_serialize_init(&sc->jme_cdata.jme_tx_serialize);
 	for (i = 0; i < JME_NRXRING_MAX; ++i) {
@@ -1076,13 +1073,22 @@ jme_sysctl_node(struct jme_softc *sc)
 		       "rss_debug", CTLFLAG_RW, &sc->jme_rss_debug,
 		       0, "RSS debug level");
 	for (r = 0; r < sc->jme_cdata.jme_rx_ring_cnt; ++r) {
-		char rx_ring_pkt[32];
+		char rx_ring_desc[32];
 
-		ksnprintf(rx_ring_pkt, sizeof(rx_ring_pkt), "rx_ring%d_pkt", r);
+		ksnprintf(rx_ring_desc, sizeof(rx_ring_desc),
+		    "rx_ring%d_pkt", r);
 		SYSCTL_ADD_ULONG(&sc->jme_sysctl_ctx,
 		    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
-		    rx_ring_pkt, CTLFLAG_RW,
+		    rx_ring_desc, CTLFLAG_RW,
 		    &sc->jme_cdata.jme_rx_data[r].jme_rx_pkt, "RXed packets");
+
+		ksnprintf(rx_ring_desc, sizeof(rx_ring_desc),
+		    "rx_ring%d_emp", r);
+		SYSCTL_ADD_ULONG(&sc->jme_sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+		    rx_ring_desc, CTLFLAG_RW,
+		    &sc->jme_cdata.jme_rx_data[r].jme_rx_emp,
+		    "# of time RX ring empty");
 	}
 #endif
 
@@ -1101,11 +1107,11 @@ jme_sysctl_node(struct jme_softc *sc)
 	 * NOTE: coal_max will not be zero, since number of descs
 	 * must aligned by JME_NDESC_ALIGN (16 currently)
 	 */
-	coal_max = sc->jme_cdata.jme_tx_desc_cnt / 6;
+	coal_max = sc->jme_cdata.jme_tx_desc_cnt / 2;
 	if (coal_max < sc->jme_tx_coal_pkt)
 		sc->jme_tx_coal_pkt = coal_max;
 
-	coal_max = sc->jme_cdata.jme_rx_data[0].jme_rx_desc_cnt / 4;
+	coal_max = sc->jme_cdata.jme_rx_data[0].jme_rx_desc_cnt / 2;
 	if (coal_max < sc->jme_rx_coal_pkt)
 		sc->jme_rx_coal_pkt = coal_max;
 }
@@ -3473,6 +3479,7 @@ jme_msix_try_alloc(device_t dev)
 	struct jme_softc *sc = device_get_softc(dev);
 	struct jme_msix_data *msix;
 	int error, i, r, msix_enable, msix_count;
+	int offset, offset_def;
 
 	msix_count = 1 + sc->jme_cdata.jme_rx_ring_cnt;
 	KKASSERT(msix_count <= JME_NMSIX);
@@ -3491,8 +3498,21 @@ jme_msix_try_alloc(device_t dev)
 
 	i = 0;
 
+	/*
+	 * Setup TX MSI-X
+	 */
+
+	offset_def = device_get_unit(dev) % ncpus2;
+	offset = device_getenv_int(dev, "msix.txoff", offset_def);
+	if (offset >= ncpus2) {
+		device_printf(dev, "invalid msix.txoff %d, use %d\n",
+		    offset, offset_def);
+		offset = offset_def;
+	}
+
 	msix = &sc->jme_msix[i++];
-	msix->jme_msix_cpuid = 0;		/* XXX Put TX to cpu0 */
+	msix->jme_msix_cpuid = offset;
+	sc->jme_tx_cpuid = msix->jme_msix_cpuid;
 	msix->jme_msix_arg = &sc->jme_cdata;
 	msix->jme_msix_func = jme_msix_tx;
 	msix->jme_msix_intrs = INTR_TXQ_COAL | INTR_TXQ_COAL_TO;
@@ -3500,11 +3520,31 @@ jme_msix_try_alloc(device_t dev)
 	ksnprintf(msix->jme_msix_desc, sizeof(msix->jme_msix_desc), "%s tx",
 	    device_get_nameunit(dev));
 
+	/*
+	 * Setup RX MSI-X
+	 */
+
+	if (sc->jme_cdata.jme_rx_ring_cnt == ncpus2) {
+		offset = 0;
+	} else {
+		offset_def = (sc->jme_cdata.jme_rx_ring_cnt *
+		    device_get_unit(dev)) % ncpus2;
+
+		offset = device_getenv_int(dev, "msix.rxoff", offset_def);
+		if (offset >= ncpus2 ||
+		    offset % sc->jme_cdata.jme_rx_ring_cnt != 0) {
+			device_printf(dev, "invalid msix.rxoff %d, use %d\n",
+			    offset, offset_def);
+			offset = offset_def;
+		}
+	}
+
 	for (r = 0; r < sc->jme_cdata.jme_rx_ring_cnt; ++r) {
 		struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[r];
 
 		msix = &sc->jme_msix[i++];
-		msix->jme_msix_cpuid = r;	/* XXX Put RX to cpuX */
+		msix->jme_msix_cpuid = r + offset;
+		KKASSERT(msix->jme_msix_cpuid < ncpus2);
 		msix->jme_msix_arg = rdata;
 		msix->jme_msix_func = jme_msix_rx;
 		msix->jme_msix_intrs = rdata->jme_rx_coal | rdata->jme_rx_empty;
@@ -3692,6 +3732,7 @@ jme_msix_rx(void *xrdata)
 		if (status & rdata->jme_rx_empty) {
 			CSR_WRITE_4(sc, JME_RXCSR, sc->jme_rxcsr |
 			    RXCSR_RX_ENB | RXCSR_RXQ_START);
+			rdata->jme_rx_emp++;
 		}
 	}
 
@@ -3763,7 +3804,7 @@ jme_msix_setup(device_t dev)
 			return error;
 		}
 	}
-	ifp->if_cpuid = 0; /* XXX */
+	ifp->if_cpuid = sc->jme_tx_cpuid;
 	return 0;
 }
 

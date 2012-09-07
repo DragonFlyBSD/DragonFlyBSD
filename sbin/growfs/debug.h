@@ -37,8 +37,6 @@
  *
  * $TSHeader: src/sbin/growfs/debug.h,v 1.2 2000/11/16 18:43:50 tom Exp $
  * $FreeBSD: src/sbin/growfs/debug.h,v 1.1.2.1 2001/07/16 15:02:13 tomsoft Exp $
- * $DragonFly: src/sbin/growfs/debug.h,v 1.4 2006/04/03 01:58:49 dillon Exp $
- *
  */
 
 #ifdef FS_DEBUG
@@ -81,15 +79,14 @@ void dbg_dump_sptbl(struct fs *, const char *, struct cg *);
 #define DL_INFO	0x02
 extern int _dbg_lvl_;
 
-#define DBG_FUNC(N) char __FKT__[] = (N);
 #define DBG_ENTER if(_dbg_lvl_ & DL_TRC) {                                    \
-	fprintf(stderr, "~>%s: %s\n", __FILE__, __FKT__ );                    \
+	fprintf(stderr, "~>%s: %s\n", __FILE__, __func__ );                   \
 	}
 #define DBG_LEAVE if(_dbg_lvl_ & DL_TRC) {                                    \
-	fprintf(stderr, "~<%s[%d]: %s\n", __FILE__, __LINE__, __FKT__ );      \
+	fprintf(stderr, "~<%s[%d]: %s\n", __FILE__, __LINE__, __func__ );     \
 	}
 #define DBG_TRC if(_dbg_lvl_ & DL_TRC) {                                      \
-	fprintf(stderr, "~=%s[%d]: %s\n", __FILE__, __LINE__, __FKT__ );      \
+	fprintf(stderr, "~=%s[%d]: %s\n", __FILE__, __LINE__, __func__ );     \
 	}
 #define DBG_PRINT0(A) if(_dbg_lvl_ & DL_INFO) {                               \
 	fprintf(stderr, "~ %s", (A));                                         \
@@ -125,7 +122,6 @@ extern int _dbg_lvl_;
 #define DBG_DUMP_CLMAP(F,C,M)
 #define DBG_DUMP_CLSUM(F,C,M)
 #define DBG_DUMP_SPTBL(F,C,M)
-#define DBG_FUNC(N)
 #define DBG_ENTER
 #define DBG_TRC
 #define DBG_LEAVE

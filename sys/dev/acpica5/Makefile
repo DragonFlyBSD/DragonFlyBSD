@@ -62,7 +62,7 @@ SRCS+=	utresrc.c utstate.c utxface.c utdecode.c utids.c utosi.c utxferror.c
 # OSD layer
 #
 SRCS+=  acpi.c acpi_acad.c acpi_battery.c acpi_button.c acpi_cmbat.c
-SRCS+=	acpi_cpu.c acpi_cpu_cstate.c acpi_cpu_pstate.c
+SRCS+=	acpi_cpu.c acpi_cpu_cstate.c acpi_cpu_pstate.c acpi_smbat.c
 SRCS+=  acpi_ec.c acpi_isab.c acpi_lid.c
 SRCS+=  acpi_package.c
 # The PCI part of ACPI5 doesn't work with the current infrastructure

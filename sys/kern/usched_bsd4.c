@@ -1913,8 +1913,12 @@ sched_thread_cpu_init(void)
 						    "Package Siblings: ", i);
 					break;
 				default:
+					/* Let's go for safe defaults here */
+					smt_not_supported = 1;
+					cache_coherent_not_supported = 1;
 					if (bootverbose)
-						kprintf ("\tcpu%d - Unknown cpunode->type. Siblings: ", i);
+						kprintf ("\tcpu%d - Unknown cpunode->type=%u. Siblings: ",
+						    i, (unsigned int)dd->cpunode->type);
 					break;
 			}
 

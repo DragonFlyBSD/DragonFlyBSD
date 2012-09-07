@@ -44,6 +44,7 @@
 
 #include "acpi_sdt.h"
 #include "acpi_sdt_var.h"
+#include "acpi_sci_var.h"
 
 extern int naps;
 
@@ -608,9 +609,7 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 		const struct acpi_madt_intsrc *intsrc_ent;
 		enum intr_trigger trig;
 		enum intr_polarity pola;
-#ifdef foo
 		int ent_trig, ent_pola;
-#endif
 
 		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
 
@@ -618,7 +617,6 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 		if (intsrc_ent->mint_bus != MADT_INT_BUS_ISA)
 			return 0;
 
-#ifdef foo
 		ent_trig = (intsrc_ent->mint_flags & MADT_INT_TRIG_MASK) >>
 		    MADT_INT_TRIG_SHIFT;
 		if (ent_trig == MADT_INT_TRIG_RSVD)
@@ -636,7 +634,14 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 			pola = INTR_POLARITY_LOW;
 		else
 			pola = INTR_POLARITY_HIGH;
-#else
+
+		if (intsrc_ent->mint_src == acpi_sci_irqno()) {
+			acpi_sci_setmode1(trig, pola);
+			MADT_VPRINTF("SCI irq %d, first test %s/%s\n",
+			    intsrc_ent->mint_src,
+			    intr_str_trigger(trig), intr_str_polarity(pola));
+		}
+
 		/*
 		 * We ignore the polarity and trigger changes, since
 		 * most of them are wrong or useless at best.
@@ -647,7 +652,6 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 		}
 		trig = INTR_TRIGGER_EDGE;
 		pola = INTR_POLARITY_HIGH;
-#endif
 
 		MADT_VPRINTF("INTSRC irq %d -> gsi %u %s/%s\n",
 			     intsrc_ent->mint_src, intsrc_ent->mint_gsi,
