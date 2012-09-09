@@ -2039,6 +2039,8 @@ TO_REMOVE+=/usr/share/man/man9/mtx_spinlock_sh.9.gz
 TO_REMOVE+=/usr/include/machine/mtpr.h
 TO_REMOVE+=/usr/include/machine/ultrasound.h
 TO_REMOVE+=/usr/include/bus/pci/pcidevs_data.h
+TO_REMOVE+=/usr/share/man/cat4/i386/apm.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/apm.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
