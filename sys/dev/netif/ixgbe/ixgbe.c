@@ -167,6 +167,8 @@ static bool	ixgbe_tx_ctx_setup(struct tx_ring *, struct mbuf *);
 static bool	ixgbe_tso_setup(struct tx_ring *, struct mbuf *, u32 *, u32 *);
 static int	ixgbe_tso_pullup(struct tx_ring *, struct mbuf **);
 static void	ixgbe_add_sysctl(struct adapter *);
+static void	ixgbe_set_eitr(struct adapter *, int, int);
+static int	ixgbe_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static void	ixgbe_set_ivar(struct adapter *, u8, u8, s8);
 static void	ixgbe_configure_ivars(struct adapter *);
 static u8 *	ixgbe_mc_array_itr(struct ixgbe_hw *, u8 **, u32 *);
@@ -229,18 +231,6 @@ MODULE_DEPEND(ixgbe, ether, 1, 1, 1);
 /*
 ** TUNEABLE PARAMETERS:
 */
-
-/*
-** AIM: Adaptive Interrupt Moderation
-** which means that the interrupt rate
-** is varied over time based on the
-** traffic for that interrupt vector
-*/
-static int ixgbe_enable_aim = TRUE;
-TUNABLE_INT("hw.ixgbe.enable_aim", &ixgbe_enable_aim);
-
-static int ixgbe_max_interrupt_rate = (4000000 / IXGBE_LOW_LATENCY);
-TUNABLE_INT("hw.ixgbe.max_interrupt_rate", &ixgbe_max_interrupt_rate);
 
 /* How many packets rxeof tries to clean at a time */
 static int ixgbe_rx_process_limit = 128;
@@ -529,10 +519,12 @@ ixgbe_attach(device_t dev)
 	/* Detect and set physical type */
 	ixgbe_setup_optics(adapter);
 
-	if ((adapter->msix > 1) && (ixgbe_enable_msix))
+	if ((adapter->msix > 1) && (ixgbe_enable_msix)) {
+		adapter->intr_type = PCI_INTR_TYPE_MSIX;
 		error = ixgbe_allocate_msix(adapter); 
-	else
+	} else {
 		error = ixgbe_allocate_legacy(adapter); 
+	}
 	if (error) 
 		goto err_late;
 
@@ -1239,7 +1231,7 @@ ixgbe_init_locked(struct adapter *adapter)
 	}
 
 	/* Set moderation on the Link interrupt */
-	IXGBE_WRITE_REG(hw, IXGBE_EITR(adapter->linkvec), IXGBE_LINK_ITR);
+	ixgbe_set_eitr(adapter, adapter->linkvec, IXGBE_LINK_ITR);
 
 	/* Config/Enable Link */
 	ixgbe_config_link(adapter);
@@ -1455,9 +1447,7 @@ ixgbe_msix_que(void *arg)
 	struct ix_queue	*que = arg;
 	struct adapter  *adapter = que->adapter;
 	struct tx_ring	*txr = que->txr;
-	struct rx_ring	*rxr = que->rxr;
 	bool		more_tx, more_rx;
-	u32		newitr = 0;
 
 	ixgbe_disable_queue(adapter, que->msix);
 	++que->irqs;
@@ -1482,57 +1472,6 @@ ixgbe_msix_que(void *arg)
 		more_tx = 1;
 	IXGBE_TX_UNLOCK(txr);
 
-	/* Do AIM now? */
-
-	if (ixgbe_enable_aim == FALSE)
-		goto no_calc;
-	/*
-	** Do Adaptive Interrupt Moderation:
-        **  - Write out last calculated setting
-	**  - Calculate based on average size over
-	**    the last interval.
-	*/
-        if (que->eitr_setting)
-                IXGBE_WRITE_REG(&adapter->hw,
-                    IXGBE_EITR(que->msix), que->eitr_setting);
- 
-        que->eitr_setting = 0;
-
-        /* Idle, do nothing */
-        if ((txr->bytes == 0) && (rxr->bytes == 0))
-                goto no_calc;
-                                
-	if ((txr->bytes) && (txr->packets))
-               	newitr = txr->bytes/txr->packets;
-	if ((rxr->bytes) && (rxr->packets))
-		newitr = max(newitr,
-		    (rxr->bytes / rxr->packets));
-	newitr += 24; /* account for hardware frame, crc */
-
-	/* set an upper boundary */
-	newitr = min(newitr, 3000);
-
-	/* Be nice to the mid range */
-	if ((newitr > 300) && (newitr < 1200))
-		newitr = (newitr / 3);
-	else
-		newitr = (newitr / 2);
-
-        if (adapter->hw.mac.type == ixgbe_mac_82598EB)
-                newitr |= newitr << 16;
-        else
-                newitr |= IXGBE_EITR_CNT_WDIS;
-                 
-        /* save for next interrupt */
-        que->eitr_setting = newitr;
-
-        /* Reset state */
-        txr->bytes = 0;
-        txr->packets = 0;
-        rxr->bytes = 0;
-        rxr->packets = 0;
-
-no_calc:
 	if (more_tx || more_rx)
 		taskqueue_enqueue(que->tq, &que->que_task);
 	else /* Reenable this interrupt */
@@ -4431,10 +4370,10 @@ ixgbe_add_sysctl(struct adapter *adapter)
 			OID_AUTO, "fc", CTLTYPE_INT | CTLFLAG_RW,
 			adapter, 0, ixgbe_set_flowcntl, "I", "Flow Control");
 
-        SYSCTL_ADD_INT(&adapter->sysctl_ctx,
-			SYSCTL_CHILDREN(adapter->sysctl_tree),
-			OID_AUTO, "enable_aim", CTLTYPE_INT|CTLFLAG_RW,
-			&ixgbe_enable_aim, 1, "Interrupt Moderation");
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+	    SYSCTL_CHILDREN(adapter->sysctl_tree),
+	    OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
+	    adapter, 0, ixgbe_sysctl_intr_rate, "I", "interrupt rate");
 
 	/*
 	** Allow a kind of speed control by forcing the autoneg
@@ -5033,12 +4972,6 @@ static void
 ixgbe_configure_ivars(struct adapter *adapter)
 {
 	struct  ix_queue *que = adapter->queues;
-	u32 newitr;
-
-	if (ixgbe_max_interrupt_rate > 0)
-		newitr = (4000000 / ixgbe_max_interrupt_rate) & 0x0FF8;
-	else
-		newitr = 0;
 
         for (int i = 0; i < adapter->num_queues; i++, que++) {
 		/* First the RX queue entry */
@@ -5046,8 +4979,7 @@ ixgbe_configure_ivars(struct adapter *adapter)
 		/* ... and the TX */
 		ixgbe_set_ivar(adapter, i, que->msix, 1);
 		/* Set an Initial EITR value */
-                IXGBE_WRITE_REG(&adapter->hw,
-                    IXGBE_EITR(que->msix), newitr);
+		ixgbe_set_eitr(adapter, que->msix, IXGBE_INTR_RATE);
 	}
 
 	/* For the Link interrupt */
@@ -5391,34 +5323,6 @@ ixgbe_sysctl_rdt_handler(SYSCTL_HANDLER_ARGS)
 	return 0;
 }
 
-static int
-ixgbe_sysctl_interrupt_rate_handler(SYSCTL_HANDLER_ARGS)
-{
-	int error;
-	struct ix_queue *que = ((struct ix_queue *)oidp->oid_arg1);
-	unsigned int reg, usec, rate;
-
-	reg = IXGBE_READ_REG(&que->adapter->hw, IXGBE_EITR(que->msix));
-	usec = ((reg & 0x0FF8) >> 3);
-	if (usec > 0)
-		rate = 500000 / usec;
-	else
-		rate = 0;
-	error = sysctl_handle_int(oidp, &rate, 0, req);
-	if (error || !req->newptr)
-		return error;
-	reg &= ~0xfff; /* default, no limitation */
-	ixgbe_max_interrupt_rate = 0;
-	if (rate > 0 && rate < 500000) {
-		if (rate < 1000)
-			rate = 1000;
-		ixgbe_max_interrupt_rate = rate;
-		reg |= ((4000000/rate) & 0xff8 );
-	}
-	IXGBE_WRITE_REG(&que->adapter->hw, IXGBE_EITR(que->msix), reg);
-	return 0;
-}
-
 /*
  * Add sysctl variables, one per statistic, to the system.
  */
@@ -5464,12 +5368,6 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 		queue_node = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, namebuf,
 					    CTLFLAG_RD, NULL, "Queue Name");
 		queue_list = SYSCTL_CHILDREN(queue_node);
-
-		SYSCTL_ADD_PROC(ctx, queue_list, OID_AUTO, "interrupt_rate",
-				CTLTYPE_UINT | CTLFLAG_RW, &adapter->queues[i],
-				sizeof(&adapter->queues[i]),
-				ixgbe_sysctl_interrupt_rate_handler, "IU",
-				"Interrupt Rate");
 		SYSCTL_ADD_UQUAD(ctx, queue_list, OID_AUTO, "irqs",
 				CTLFLAG_RD, &(adapter->queues[i].irqs), 0,
 				"irqs on this queue");
@@ -5816,6 +5714,62 @@ ixgbe_set_thermal_test(SYSCTL_HANDLER_ARGS)
 	}
 
 	return (0);
+}
+
+static void
+ixgbe_set_eitr(struct adapter *sc, int idx, int rate)
+{
+	uint32_t eitr = 0;
+
+	/* convert rate in intr/s to hw representation */
+	if (rate > 0) {
+		eitr = 1000000 / rate;
+		eitr <<= IXGBE_EITR_INTVL_SHIFT;
+
+		if (eitr == 0) {
+			/* Don't disable it */
+			eitr = 1 << IXGBE_EITR_INTVL_SHIFT;
+		} else if (eitr > IXGBE_EITR_INTVL_MASK) {
+			/* Don't allow it to be too large */
+			eitr = IXGBE_EITR_INTVL_MASK;
+		}
+	}
+	IXGBE_WRITE_REG(&sc->hw, IXGBE_EITR(idx), eitr);
+}
+
+static int
+ixgbe_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
+{
+	struct adapter *sc = (void *)arg1;
+	struct ifnet *ifp = sc->ifp;
+	int error, intr_rate, running;
+	struct ix_queue *que = sc->queues;
+
+	intr_rate = sc->intr_rate;
+	error = sysctl_handle_int(oidp, &intr_rate, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (intr_rate < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+
+	sc->intr_rate = intr_rate;
+	running = ifp->if_flags & IFF_RUNNING;
+	if (running)
+		ixgbe_set_eitr(sc, 0, sc->intr_rate);
+
+	if (running && (sc->intr_type == PCI_INTR_TYPE_MSIX)) {
+	        for (int i = 0; i < sc->num_queues; i++, que++)
+			ixgbe_set_eitr(sc, que->msix, sc->intr_rate);
+	}
+
+	if (bootverbose)
+		if_printf(ifp, "interrupt rate set to %d/sec\n", sc->intr_rate);
+
+	ifnet_deserialize_all(ifp);
+
+	return 0;
 }
 
 /* rearrange mbuf chain to get contiguous bytes */

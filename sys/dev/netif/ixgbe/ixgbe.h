@@ -206,6 +206,10 @@
 #define IXGBE_BULK_LATENCY	1200
 #define IXGBE_LINK_ITR		2000
 
+#define IXGBE_INTR_RATE		8000
+#define IXGBE_EITR_INTVL_MASK	0x7ffc
+#define IXGBE_EITR_INTVL_SHIFT	2
+
 /*
  *****************************************************************************
  * vendor_info_array
@@ -434,6 +438,8 @@ struct adapter {
 
 	/* Multicast array memory */
 	u8			*mta;
+
+	int			intr_rate;
 
 	/* Misc stats maintained by the driver */
 	unsigned long   	dropped_pkts;
