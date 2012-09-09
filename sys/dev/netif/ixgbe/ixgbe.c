@@ -2642,9 +2642,7 @@ ixgbe_allocate_queues(struct adapter *adapter)
 		txr->me = i;
 
 		/* Initialize the TX side lock */
-		ksnprintf(txr->lock_name, sizeof(txr->lock_name), "%s:tx(%d)",
-		    device_get_nameunit(dev), txr->me);
-		lockinit(&txr->tx_lock, txr->lock_name, 0, LK_CANRECURSE);
+		IXGBE_TX_LOCK_INIT(txr);
 
 		if (ixgbe_dma_malloc(adapter, tsize,
 			&txr->txdma, BUS_DMA_NOWAIT)) {
@@ -3370,7 +3368,7 @@ ixgbe_txeof(struct tx_ring *txr)
 	struct ixgbe_tx_buf *tx_buffer;
 	struct ixgbe_legacy_tx_desc *tx_desc, *eop_desc;
 
-	KKASSERT(lockstatus(&txr->tx_lock, curthread) != 0);
+	IXGBE_TX_LOCK_ASSERT(txr);
 
 #ifdef DEV_NETMAP
 	if (ifp->if_capenable & IFCAP_NETMAP) {
