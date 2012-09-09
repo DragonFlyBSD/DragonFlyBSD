@@ -7789,7 +7789,7 @@ bce_dump_rxp_state(struct bce_softc *sc)
 
 	for (i = BCE_RXP_CPU_MODE; i < 0xe8fff; i += 0x10) {
 		/* Skip the big blank sapces */
-		if (i < 0xc5400 && i > 0xdffff) {
+		if (i < 0xc5400 || i > 0xdffff) {
 			if_printf(ifp, "0x%04X: "
 				  "0x%08X 0x%08X 0x%08X 0x%08X\n", i,
 				  REG_RD_IND(sc, i),
