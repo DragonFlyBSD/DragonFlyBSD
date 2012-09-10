@@ -40,6 +40,7 @@
 
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>
+#include <dev/acpica5/acpi_sci_var.h>
 
 /* Hooks for the ACPI CA debugging infrastructure */
 #define _COMPONENT	ACPI_BUS
