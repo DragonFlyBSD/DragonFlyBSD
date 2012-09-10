@@ -147,8 +147,8 @@ static void	ixgbe_setup_hw_rsc(struct rx_ring *);
 static void     ixgbe_enable_intr(struct adapter *);
 static void     ixgbe_disable_intr(struct adapter *);
 static void     ixgbe_update_stats_counters(struct adapter *);
-static bool	ixgbe_txeof(struct tx_ring *);
-static bool	ixgbe_rxeof(struct ix_queue *, int);
+static void	ixgbe_txeof(struct tx_ring *);
+static void	ixgbe_rxeof(struct ix_queue *, int);
 static void	ixgbe_rx_checksum(u32, struct mbuf *, u32);
 static void     ixgbe_set_promisc(struct adapter *);
 static void     ixgbe_set_multi(struct adapter *);
@@ -195,7 +195,6 @@ static void	ixgbe_msix_que(void *);
 static void	ixgbe_msix_link(void *);
 
 /* Deferred interrupt tasklets */
-static void	ixgbe_handle_que(void *, int);
 static void	ixgbe_handle_link(void *, int);
 static void	ixgbe_handle_msf(void *, int);
 static void	ixgbe_handle_mod(void *, int);
@@ -601,7 +600,6 @@ static int
 ixgbe_detach(device_t dev)
 {
 	struct adapter *adapter = device_get_softc(dev);
-	struct ix_queue *que = adapter->queues;
 	u32	ctrl_ext;
 
 	INIT_DEBUGOUT("ixgbe_detach: begin");
@@ -615,13 +613,6 @@ ixgbe_detach(device_t dev)
 	IXGBE_CORE_LOCK(adapter);
 	ixgbe_stop(adapter);
 	IXGBE_CORE_UNLOCK(adapter);
-
-	for (int i = 0; i < adapter->num_queues; i++, que++) {
-		if (que->tq) {
-			taskqueue_drain(que->tq, &que->que_task);
-			taskqueue_free(que->tq);
-		}
-	}
 
 	/* Drain the Link queue */
 	if (adapter->tq) {
@@ -1349,40 +1340,6 @@ ixgbe_rearm_queues(struct adapter *adapter, u64 queues)
 	}
 }
 
-
-static void
-ixgbe_handle_que(void *context, int pending)
-{
-	struct ix_queue *que = context;
-	struct adapter  *adapter = que->adapter;
-	struct tx_ring  *txr = que->txr;
-	struct ifnet    *ifp = adapter->ifp;
-	bool		more;
-
-	if (ifp->if_flags & IFF_RUNNING) {
-		more = ixgbe_rxeof(que, adapter->rx_process_limit);
-		IXGBE_TX_LOCK(txr);
-		ixgbe_txeof(txr);
-#if 0 /*__FreeBSD_version >= 800000*/
-		if (!drbr_empty(ifp, txr->br))
-			ixgbe_mq_start_locked(ifp, txr, NULL);
-#else
-		if (!ifq_is_empty(&ifp->if_snd))
-			ixgbe_start_locked(txr, ifp);
-#endif
-		IXGBE_TX_UNLOCK(txr);
-		if (more) {
-			taskqueue_enqueue(que->tq, &que->que_task);
-			return;
-		}
-	}
-
-	/* Reenable this interrupt */
-	ixgbe_enable_queue(adapter, que->msix);
-	return;
-}
-
-
 /*********************************************************************
  *
  *  Legacy Interrupt Service routine
@@ -1396,8 +1353,7 @@ ixgbe_legacy_irq(void *arg)
 	struct adapter	*adapter = que->adapter;
 	struct ixgbe_hw	*hw = &adapter->hw;
 	struct 		tx_ring *txr = adapter->tx_rings;
-	bool		more_tx, more_rx;
-	u32       	reg_eicr, loop = MAX_LOOP;
+	u32       	reg_eicr;
 
 
 	reg_eicr = IXGBE_READ_REG(hw, IXGBE_EICR);
@@ -1408,16 +1364,13 @@ ixgbe_legacy_irq(void *arg)
 		return;
 	}
 
-	more_rx = ixgbe_rxeof(que, adapter->rx_process_limit);
+	ixgbe_rxeof(que, adapter->rx_process_limit);
 
 	IXGBE_TX_LOCK(txr);
-	do {
-		more_tx = ixgbe_txeof(txr);
-	} while (loop-- && more_tx);
+	ixgbe_txeof(txr);
+	if (!ifq_is_empty(&adapter->ifp->if_snd))
+		ixgbe_start_locked(txr, adapter->ifp);
 	IXGBE_TX_UNLOCK(txr);
-
-	if (more_rx || more_tx)
-		taskqueue_enqueue(que->tq, &que->que_task);
 
 	/* Check for fan failure */
 	if ((hw->phy.media_type == ixgbe_media_type_copper) &&
@@ -1432,7 +1385,6 @@ ixgbe_legacy_irq(void *arg)
 		taskqueue_enqueue(adapter->tq, &adapter->link_task);
 
 	ixgbe_enable_intr(adapter);
-	return;
 }
 
 
@@ -1447,36 +1399,20 @@ ixgbe_msix_que(void *arg)
 	struct ix_queue	*que = arg;
 	struct adapter  *adapter = que->adapter;
 	struct tx_ring	*txr = que->txr;
-	bool		more_tx, more_rx;
 
 	ixgbe_disable_queue(adapter, que->msix);
 	++que->irqs;
 
-	more_rx = ixgbe_rxeof(que, adapter->rx_process_limit);
+	ixgbe_rxeof(que, adapter->rx_process_limit);
 
 	IXGBE_TX_LOCK(txr);
-	more_tx = ixgbe_txeof(txr);
-	/*
-	** Make certain that if the stack 
-	** has anything queued the task gets
-	** scheduled to handle it.
-	*/
-#if 0
-#if __FreeBSD_version < 800000
-	if (!IFQ_DRV_IS_EMPTY(&adapter->ifp->if_snd))
-#else
-	if (!drbr_empty(adapter->ifp, txr->br))
-#endif
-#endif
+	ixgbe_txeof(txr);
 	if (!ifq_is_empty(&adapter->ifp->if_snd))
-		more_tx = 1;
+		ixgbe_start_locked(txr, adapter->ifp);
 	IXGBE_TX_UNLOCK(txr);
 
-	if (more_tx || more_rx)
-		taskqueue_enqueue(que->tq, &que->que_task);
-	else /* Reenable this interrupt */
-		ixgbe_enable_queue(adapter, que->msix);
-	return;
+	/* Reenable this interrupt */
+	ixgbe_enable_queue(adapter, que->msix);
 }
 
 
@@ -1932,8 +1868,6 @@ ixgbe_local_timer(void *arg)
 			++hung;
 		if (txr->queue_status & IXGBE_QUEUE_DEPLETED)
 			++busy;
-		if ((txr->queue_status & IXGBE_QUEUE_IDLE) == 0)
-			taskqueue_enqueue(que->tq, &que->que_task);
         }
 	/* Only truely watchdog if all queues show hung */
         if (hung == adapter->num_queues)
@@ -2160,16 +2094,6 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 		return (ENXIO);
 	}
 
-	/*
-	 * Try allocating a fast interrupt and the associated deferred
-	 * processing contexts.
-	 */
-	TASK_INIT(&que->que_task, 0, ixgbe_handle_que, que);
-	que->tq = taskqueue_create("ixgbe_que", M_NOWAIT,
-            taskqueue_thread_enqueue, &que->tq);
-	taskqueue_start_threads(&que->tq, 1, PI_NET, -1, "%s ixq",
-            device_get_nameunit(adapter->dev));
-
 	/* Tasklets for Link, SFP and Multispeed Fiber */
 	TASK_INIT(&adapter->link_task, 0, ixgbe_handle_link, adapter);
 	TASK_INIT(&adapter->mod_task, 0, ixgbe_handle_mod, adapter);
@@ -2186,9 +2110,7 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 	    ixgbe_legacy_irq, que, &adapter->tag, &adapter->serializer)) != 0) {
 		device_printf(dev, "Failed to register fast interrupt "
 		    "handler: %d\n", error);
-		taskqueue_free(que->tq);
 		taskqueue_free(adapter->tq);
-		que->tq = NULL;
 		adapter->tq = NULL;
 		return (error);
 	}
@@ -2250,12 +2172,6 @@ ixgbe_allocate_msix(struct adapter *adapter)
 		}
 		que->msix = vector;
         	adapter->que_mask |= (u64)(1 << que->msix);
-
-		TASK_INIT(&que->que_task, 0, ixgbe_handle_que, que);
-		que->tq = taskqueue_create("ixgbe_que", M_NOWAIT,
-		    taskqueue_thread_enqueue, &que->tq);
-		taskqueue_start_threads(&que->tq, 1, PI_NET, -1, "%s que",
-		    device_get_nameunit(adapter->dev));
 	}
 
 	/* and Link, bind vector to cpu #0 */
@@ -3445,7 +3361,7 @@ ixgbe_atr(struct tx_ring *txr, struct mbuf *mp)
  *  tx_buffer is put back on the free queue.
  *
  **********************************************************************/
-static bool
+static void
 ixgbe_txeof(struct tx_ring *txr)
 {
 	struct adapter	*adapter = txr->adapter;
@@ -3500,7 +3416,7 @@ ixgbe_txeof(struct tx_ring *txr)
 
 	if (txr->tx_avail == adapter->num_tx_desc) {
 		txr->queue_status = IXGBE_QUEUE_IDLE;
-		return FALSE;
+		return;
 	}
 
 	processed = 0;
@@ -3510,7 +3426,7 @@ ixgbe_txeof(struct tx_ring *txr)
 	tx_desc = (struct ixgbe_legacy_tx_desc *)&txr->tx_base[first];
 	last = tx_buffer->eop_index;
 	if (last == -1)
-		return FALSE;
+		return;
 	eop_desc = (struct ixgbe_legacy_tx_desc *)&txr->tx_base[last];
 
 	/*
@@ -3592,10 +3508,7 @@ ixgbe_txeof(struct tx_ring *txr)
 
 	if (txr->tx_avail == adapter->num_tx_desc) {
 		txr->queue_status = IXGBE_QUEUE_IDLE;
-		return (FALSE);
 	}
-
-	return TRUE;
 }
 
 /*********************************************************************
@@ -4407,7 +4320,7 @@ ixgbe_add_sysctl(struct adapter *adapter)
  *
  *  Return TRUE for more work, FALSE for all clean.
  *********************************************************************/
-static bool
+static void
 ixgbe_rxeof(struct ix_queue *que, int count)
 {
 	struct adapter		*adapter = que->adapter;
@@ -4683,10 +4596,7 @@ next_desc:
 	*/
 	if ((staterr & IXGBE_RXD_STAT_DD) != 0) {
 		ixgbe_rearm_queues(adapter, (u64)(1 << que->msix));
-		return (TRUE);
 	}
-
-	return (FALSE);
 }
 
 

@@ -268,8 +268,6 @@ struct ix_queue {
 	void			*tag;
 	struct tx_ring		*txr;
 	struct rx_ring		*rxr;
-	struct task		que_task;
-	struct taskqueue	*tq;
 	u64			irqs;
 	struct lwkt_serialize	serializer;
 };
