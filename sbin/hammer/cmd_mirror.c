@@ -860,7 +860,8 @@ again:
 	    mrec->head.rec_size != sizeof(mrec->sync)) {
 		fprintf(stderr, "Mirror-write %s: Did not get termination "
 				"sync record, or rec_size is wrong rt=%d\n",
-				filesystem, mrec->head.type);
+				filesystem,
+				(mrec ? mrec->head.type : -1));
 		exit(1);
 	}
 
