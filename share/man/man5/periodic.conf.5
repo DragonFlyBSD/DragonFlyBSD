@@ -258,6 +258,15 @@ file systems to be snapshot, pruned and reblocked.
 Set to
 .Dq YES
 if you wish more verbose output.
+.It Va daily_clean_hammer_pfslist
+.Pq Vt str
+Set to a list of
+.Xr HAMMER 5
+filesytems and pseudo-filesystems to clean.
+If this variable is left blank, the default
+.Xr hammer 8
+.Ic cleanup
+actions occur.
 .It Va daily_backup_passwd_enable
 .Pq Vt bool
 Set to
