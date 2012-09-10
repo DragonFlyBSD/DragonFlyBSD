@@ -400,7 +400,7 @@ proc0_init(void *dummy __unused)
 	p->p_rtprio.prio = 0;
 	lp->lwp_rtprio = p->p_rtprio;
 
-	p->p_peers = 0;
+	p->p_peers = NULL;
 	p->p_leader = p;
 
 	bcopy("swapper", p->p_comm, sizeof ("swapper"));

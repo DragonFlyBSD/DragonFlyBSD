@@ -600,7 +600,7 @@ ip6_fw_chk(struct ip6_hdr **pip6,
 
 #define PULLUP_TO(len)	do {						\
 			    if ((*m)->m_len < (len)			\
-				&& (*m = m_pullup(*m, (len))) == 0) {	\
+				&& (*m = m_pullup(*m, (len))) == NULL) {\
 				    goto dropit;			\
 			    }						\
 			    *pip6 = ip6 = mtod(*m, struct ip6_hdr *);	\

@@ -275,7 +275,7 @@ ntfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
 		/* if not updating name...*/
-		if (args.fspec == 0) {
+		if (args.fspec == NULL) {
 			/*
 			 * Process export requests.  Jumping to "success"
 			 * will return the vfs_export() error code.

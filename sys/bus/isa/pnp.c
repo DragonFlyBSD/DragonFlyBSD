@@ -442,7 +442,7 @@ pnp_create_devices(device_t parent, pnp_id *p, int csn,
 	u_char tag, *resp, *resinfo, *startres = NULL;
 	int large_len, scanning = len, retval = FALSE;
 	u_int32_t logical_id;
-	device_t dev = 0;
+	device_t dev = NULL;
 	int ldn = 0;
 	struct pnp_set_config_arg *csnldn;
 	char buf[100];
@@ -507,7 +507,7 @@ pnp_create_devices(device_t parent, pnp_id *p, int csn,
 			if (startres) {
 				pnp_parse_resources(dev, startres,
 					    resinfo - startres - 1, ldn);
-				dev = 0;
+				dev = NULL;
 				startres = NULL;
 			}
 
@@ -542,7 +542,7 @@ pnp_create_devices(device_t parent, pnp_id *p, int csn,
 			}
 			pnp_parse_resources(dev, startres,
 					    resinfo - startres - 1, ldn);
-			dev = 0;
+			dev = NULL;
 			startres = NULL;
 			scanning = 0;
 			break;

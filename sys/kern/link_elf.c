@@ -149,9 +149,9 @@ link_elf_init(void* arg)
     dp = (Elf_Dyn*) &_DYNAMIC;
     if (dp) {
 	ef = kmalloc(sizeof(struct elf_file), M_LINKER, M_INTWAIT | M_ZERO);
-	ef->address = 0;
+	ef->address = NULL;
 #ifdef SPARSE_MAPPING
-	ef->object = 0;
+	ef->object = NULL;
 #endif
 	ef->dynamic = dp;
 	modname = NULL;
@@ -363,7 +363,7 @@ link_elf_preload_file(const char *filename, linker_file_t *result)
     ef->modptr = modptr;
     ef->address = *(caddr_t *)baseptr;
 #ifdef SPARSE_MAPPING
-    ef->object = 0;
+    ef->object = NULL;
 #endif
     dp = (vm_offset_t)ef->address + *(vm_offset_t *)dynptr;
     ef->dynamic = (Elf_Dyn *)dp;
@@ -1016,7 +1016,7 @@ link_elf_lookup_set(linker_file_t lf, const char *name,
     if (error)
 	goto out;
     link_elf_symbol_values(lf, sym, &symval);
-    if (symval.value == 0) {
+    if (symval.value == NULL) {
 	error = ESRCH;
 	goto out;
     }
@@ -1028,7 +1028,7 @@ link_elf_lookup_set(linker_file_t lf, const char *name,
     if (error)
 	goto out;
     link_elf_symbol_values(lf, sym, &symval);
-    if (symval.value == 0) {
+    if (symval.value == NULL) {
 	error = ESRCH;
 	goto out;
     }

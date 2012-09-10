@@ -432,7 +432,7 @@ execsigs(struct proc *p)
 	 */
 	lp->lwp_sigstk.ss_flags = SS_DISABLE;
 	lp->lwp_sigstk.ss_size = 0;
-	lp->lwp_sigstk.ss_sp = 0;
+	lp->lwp_sigstk.ss_sp = NULL;
 	lp->lwp_flags &= ~LWP_ALTSTACK;
 	/*
 	 * Reset no zombies if child dies flag as Solaris does.

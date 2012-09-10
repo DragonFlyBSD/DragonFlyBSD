@@ -1,5 +1,4 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.52 2008/09/17 21:44:24 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -226,7 +225,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			vn_unlock(devvp);
 			pmp->pm_flags &= ~MSDOSFSMNT_RONLY;
 		}
-		if (args.fspec == 0) {
+		if (args.fspec == NULL) {
 #ifdef	__notyet__		/* doesn't work correctly with current mountd	XXX */
 			if (args.flags & MSDOSFSMNT_MNTOPT) {
 				pmp->pm_flags &= ~MSDOSFSMNT_MNTOPT;

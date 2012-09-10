@@ -242,7 +242,7 @@ void HPTLIBAPI fFixRAID01Stripe(_VBUS_ARG PVDevice pStripe);
 #endif
 
 #define mArGetArrayTable(pVArray) \
-	if((pVArray = _vbus_(pFreeArrayLink)) != 0) { \
+	if((pVArray = _vbus_(pFreeArrayLink)) != NULL) { \
 	_vbus_(pFreeArrayLink) = (PVDevice)_vbus_(pFreeArrayLink)->pVBus; \
 	ZeroMemory(pVArray, ARRAY_VDEV_SIZE); \
 		_SET_ARRAY_BUS_(pVArray) \

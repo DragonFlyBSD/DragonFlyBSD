@@ -355,7 +355,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			VOP_CLOSE(devvp, FREAD);
 			vn_unlock(devvp);
 		}
-		if (args.fspec == 0) {
+		if (args.fspec == NULL) {
 			/*
 			 * Process export requests.
 			 */

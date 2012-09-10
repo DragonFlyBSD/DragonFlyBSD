@@ -87,7 +87,7 @@ ipx_pcbbind(struct ipxpcb *ipxp, struct sockaddr *nam, struct thread *td)
 		int tport = sipx->sipx_port;
 
 		sipx->sipx_port = 0;		/* yech... */
-		if (ifa_ifwithaddr((struct sockaddr *)sipx) == 0)
+		if (ifa_ifwithaddr((struct sockaddr *)sipx) == NULL)
 			return (EADDRNOTAVAIL);
 		sipx->sipx_port = tport;
 	}

@@ -130,7 +130,7 @@ fdesc_unmount(struct mount *mp, int mntflags)
 	 * Finally, throw away the fdescmount structure
 	 */
 	kfree(mp->mnt_data, M_FDESCMNT);	/* XXX */
-	mp->mnt_data = 0;
+	mp->mnt_data = NULL;
 
 	return (0);
 }

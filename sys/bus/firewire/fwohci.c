@@ -33,7 +33,6 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.19 2008/07/18 03:51:28 dillon Exp $
  */
 
 #define ATRQ_CH 0
@@ -1725,7 +1724,7 @@ fwohci_stop(struct fwohci_softc *sc, device_t dev)
 			| OHCI_INT_DMA_ARRQ | OHCI_INT_DMA_ARRS 
 			| OHCI_INT_PHY_BUS_R);
 
-	if (sc->fc.arq !=0 && sc->fc.arq->maxq > 0)
+	if (sc->fc.arq != NULL && sc->fc.arq->maxq > 0)
 		fw_drain_txq(&sc->fc);
 
 /* XXX Link down?  Bus reset? */
@@ -2528,7 +2527,7 @@ fwohci_add_tx_buf(struct fwohci_dbch *dbch, struct fwohcidb_tr *db_tr,
 	int err = 0;
 
 	it = &dbch->xferq;
-	if(it->buf == 0){
+	if(it->buf == NULL) {
 		err = EINVAL;
 		return err;
 	}

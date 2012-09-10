@@ -144,7 +144,7 @@ hpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 		hpmp = VFSTOHPFS(mp);
 
-		if (args.fspec == 0) {
+		if (args.fspec == NULL) {
 			dprintf(("export 0x%x\n",args.export.ex_flags));
 			error = vfs_export(mp, &hpmp->hpm_export, &args.export);
 			if (error) {
