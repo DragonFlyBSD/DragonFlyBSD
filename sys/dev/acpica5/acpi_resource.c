@@ -144,7 +144,17 @@ acpi_config_intr(device_t dev, ACPI_RESOURCE *res)
     else
     	polarity = INTR_POLARITY_LOW;
 
-    if (machintr_legacy_intr_find(irq, trigger, polarity) < 0) {
+#if 0
+    /*
+     * This causes interrupt storm on certain systems, on which
+     * certain IRQs are configured into different mode but the
+     * configured IRQs are actually never used.
+     */
+    if (machintr_legacy_intr_find(irq, trigger, polarity) < 0)
+#else
+    if (irq == acpi_sci_irqno())
+#endif
+    {
 	if (bootverbose)
 		kprintf("acpi_config_intr: Skip irq %d config\n", irq);
     } else {
