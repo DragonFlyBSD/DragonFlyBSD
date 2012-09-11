@@ -401,7 +401,6 @@ struct adapter {
 
 	/* Support for pluggable optics */
 	bool			sfp_probe;
-	struct task     	link_task;  /* Link tasklet */
 	struct task     	mod_task;   /* SFP tasklet */
 	struct task     	msf_task;   /* Multispeed Fiber */
 #ifdef IXGBE_FDIR
