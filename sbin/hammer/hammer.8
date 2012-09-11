@@ -44,6 +44,7 @@
 .Op Fl b Ar bandwidth
 .Op Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
 .Op Fl c Ar cyclefile
+.Op Fl e Ar scoreboardfile
 .Op Fl f Ar blkdevs
 .\" .Op Fl s Ar linkpath
 .Op Fl i Ar delay
@@ -134,6 +135,8 @@ If
 .Nm
 runs to completion it will delete
 .Ar cyclefile .
+.It Fl e Ar scoreboardfile
+Update scoreboard file with progress, primarily used by mirror-stream.
 .It Fl F
 Force operation.
 E.g.\&

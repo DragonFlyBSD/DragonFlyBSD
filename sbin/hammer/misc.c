@@ -36,6 +36,8 @@
 
 #include "hammer.h"
 
+const char *ScoreBoardFile;
+
 /*
  * (taken from /usr/src/sys/vfs/hammer/hammer_btree.c)
  *
@@ -130,3 +132,38 @@ hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf)
 	return (leaf->data_crc == crc);
 }
 
+void
+score_printf(size_t i, size_t w, const char *ctl, ...)
+{
+	va_list va;
+	size_t n;
+	static size_t SSize;
+	static int SFd = -1;
+	static char ScoreBuf[1024];
+
+	if (ScoreBoardFile == NULL)
+		return;
+	assert(i + w < sizeof(ScoreBuf));
+	if (SFd < 0) {
+		SFd = open(ScoreBoardFile, O_RDWR|O_CREAT|O_TRUNC, 0644);
+		if (SFd < 0)
+			return;
+		SSize = 0;
+	}
+	for (n = 0; n < i; ++n) {
+		if (ScoreBuf[n] == 0)
+			ScoreBuf[n] = ' ';
+	}
+	va_start(va, ctl);
+	vsnprintf(ScoreBuf + i, w - 1, ctl, va);
+	va_end(va);
+	n = strlen(ScoreBuf + i);
+	while (n < w - 1) {
+		ScoreBuf[i + n] = ' ';
+		++n;
+	}
+	ScoreBuf[i + n] = '\n';
+	if (SSize < i + w)
+		SSize = i + w;
+	pwrite(SFd, ScoreBuf, SSize, 0);
+}

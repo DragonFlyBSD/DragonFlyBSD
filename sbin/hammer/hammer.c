@@ -74,7 +74,8 @@ main(int ac, char **av)
 	int ch;
 	int cacheSize = 0;
 
-	while ((ch = getopt(ac, av, "b:c:dhf:i:m:p:qrs:t:v2yBC:FS:X")) != -1) {
+	while ((ch = getopt(ac, av,
+			    "b:c:de:hf:i:m:p:qrs:t:v2yBC:FS:X")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -132,6 +133,9 @@ main(int ac, char **av)
 			break;
 		case 'd':
 			++DebugOpt;
+			break;
+		case 'e':
+			ScoreBoardFile = optarg;
 			break;
 		case 'h':
 			usage(0);
