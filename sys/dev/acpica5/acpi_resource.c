@@ -153,11 +153,12 @@ acpi_config_intr(device_t dev, ACPI_RESOURCE *res)
      */
     if (machintr_legacy_intr_find(irq, trigger, polarity) < 0)
 #else
-    if (irq == acpi_sci_irqno())
+    if (machintr_legacy_intr_find(irq,
+    	INTR_TRIGGER_CONFORM, INTR_POLARITY_CONFORM) < 0 ||
+        irq == acpi_sci_irqno())
 #endif
     {
-	if (bootverbose)
-		kprintf("acpi_config_intr: Skip irq %d config\n", irq);
+	kprintf("acpi_config_intr: Skip irq %d config\n", irq);
     } else {
 	BUS_CONFIG_INTR(dev, dev, irq, trigger, polarity);
     }
