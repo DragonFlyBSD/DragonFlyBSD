@@ -108,6 +108,7 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	if (ac == 0 || ac > 2)
 		mirror_usage(1);
 	filesystem = av[0];
+	hammer_check_restrict(filesystem);
 
 	pickup.signature = 0;
 	pickup.type = 0;
@@ -771,6 +772,7 @@ hammer_cmd_mirror_write(char **av, int ac)
 	if (ac != 1)
 		mirror_usage(1);
 	filesystem = av[0];
+	hammer_check_restrict(filesystem);
 
 	pickup.signature = 0;
 	pickup.type = 0;

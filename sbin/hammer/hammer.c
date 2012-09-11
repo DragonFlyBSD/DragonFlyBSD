@@ -64,18 +64,20 @@ u_int64_t MemoryLimit = 1024LLU * 1024 * 1024;
 const char *SplitupOptStr;
 const char *CyclePath;
 const char *LinkPath;
+const char *RestrictTarget;
 
 int
 main(int ac, char **av)
 {
 	char *blkdevs = NULL;
 	char *ptr;
+	char *restrictcmd = NULL;
 	u_int32_t status;
 	int ch;
 	int cacheSize = 0;
 
 	while ((ch = getopt(ac, av,
-			    "b:c:de:hf:i:m:p:qrs:t:v2yBC:FS:X")) != -1) {
+			    "b:c:de:hf:i:m:p:qrs:t:v2yBC:FR:S:T:X")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -236,6 +238,14 @@ main(int ac, char **av)
 		case 'F':
 			ForceOpt = 1;
 			break;
+		case 'R':
+			if (restrictcmd == NULL)
+				restrictcmd = optarg;
+			break;
+		case 'T':
+			if (RestrictTarget == NULL)
+				RestrictTarget = optarg;
+			break;
 		case 'X':
 			CompressOpt = 1;
 			break;
@@ -254,6 +264,29 @@ main(int ac, char **av)
 	signal(SIGALRM, sigalrm);
 	signal(SIGINT, sigintr);
 
+	/*
+	 * Check command restriction (used by hammer ssh-remote).  Several
+	 * commands may be iterated with a comma.
+	 */
+	if (restrictcmd) {
+		char *elm;
+
+		ptr = strdup(restrictcmd);
+		while ((elm = strsep(&ptr, ",")) != NULL) {
+			if (strcmp(av[0], elm) == 0)
+				break;
+		}
+		if (elm == NULL) {
+			fprintf(stderr, "hammer-remote: request does not match "
+					"restricted command\n");
+			exit(1);
+		}
+		free(ptr);
+	}
+
+	/*
+	 * Parse commands
+	 */
 	if (strcmp(av[0], "synctid") == 0) {
 		hammer_cmd_synctid(av + 1, ac - 1);
 		exit(0);
@@ -373,6 +406,12 @@ main(int ac, char **av)
 	}
 	if (strcmp(av[0], "prune-everything") == 0) {
 		hammer_cmd_softprune(av + 1, ac - 1, 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "ssh-remote") == 0) {
+		if (ac != 3)
+			usage(1);
+		hammer_cmd_sshremote(av[1], av[2]);
 		exit(0);
 	}
 	if (strcmp(av[0], "snap") == 0) {
@@ -611,6 +650,7 @@ usage(int exit_code)
 				  " [[user@]host:]<filesystem>\n"
 		"hammer mirror-stream [[user@]host:]<filesystem>"
 				    " [[user@]host:]<filesystem>\n"
+		"hammer ssh-remote command filesystem\n"
 		"hammer version <filesystem>\n"
 		"hammer version-upgrade <filesystem> <version> [force]\n"
 		"hammer volume-add <device> <filesystem>\n"

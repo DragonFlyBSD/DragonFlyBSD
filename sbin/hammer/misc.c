@@ -167,3 +167,32 @@ score_printf(size_t i, size_t w, const char *ctl, ...)
 		SSize = i + w;
 	pwrite(SFd, ScoreBuf, SSize, 0);
 }
+
+void
+hammer_check_restrict(const char *filesystem)
+{
+	size_t rlen;
+	int atslash;
+
+	if (RestrictTarget == NULL)
+		return;
+	rlen = strlen(RestrictTarget);
+	if (strncmp(filesystem, RestrictTarget, rlen) != 0) {
+		fprintf(stderr, "hammer-remote: restricted target\n");
+		exit(1);
+	}
+	atslash = 1;
+	while (filesystem[rlen]) {
+		if (atslash &&
+		    filesystem[rlen] == '.' &&
+		    filesystem[rlen+1] == '.') {
+			fprintf(stderr, "hammer-remote: '..' not allowed\n");
+			exit(1);
+		}
+		if (filesystem[rlen] == '/')
+			atslash = 1;
+		else
+			atslash = 0;
+		++rlen;
+	}
+}
