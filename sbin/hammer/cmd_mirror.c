@@ -861,7 +861,7 @@ again:
 		fprintf(stderr, "Mirror-write %s: Did not get termination "
 				"sync record, or rec_size is wrong rt=%d\n",
 				filesystem,
-				(mrec ? mrec->head.type : -1));
+				(mrec ? (int)mrec->head.type : -1));
 		exit(1);
 	}
 
