@@ -157,9 +157,7 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 	struct inpcb *inp;
 	struct inpcb *last = NULL;
 	struct mbuf *opts = NULL;
-	int off;
 
-	off = *offp;
 	*mp = NULL;
 
 	ripsrc.sin_addr = ip->ip_src;

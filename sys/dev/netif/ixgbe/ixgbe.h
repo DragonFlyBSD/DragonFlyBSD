@@ -206,6 +206,10 @@
 #define IXGBE_BULK_LATENCY	1200
 #define IXGBE_LINK_ITR		2000
 
+#define IXGBE_INTR_RATE		8000
+#define IXGBE_EITR_INTVL_MASK	0x7ffc
+#define IXGBE_EITR_INTVL_SHIFT	2
+
 /*
  *****************************************************************************
  * vendor_info_array
@@ -264,8 +268,6 @@ struct ix_queue {
 	void			*tag;
 	struct tx_ring		*txr;
 	struct rx_ring		*rxr;
-	struct task		que_task;
-	struct taskqueue	*tq;
 	u64			irqs;
 	struct lwkt_serialize	serializer;
 };
@@ -275,7 +277,7 @@ struct ix_queue {
  */
 struct tx_ring {
         struct adapter		*adapter;
-	struct lock		tx_lock;
+	struct lwkt_serialize	tx_serialize;
 	u32			me;
 	int			queue_status;
 	int			watchdog_time;
@@ -435,6 +437,8 @@ struct adapter {
 	/* Multicast array memory */
 	u8			*mta;
 
+	int			intr_rate;
+
 	/* Misc stats maintained by the driver */
 	unsigned long   	dropped_pkts;
 	unsigned long   	mbuf_defrag_failed;
@@ -462,18 +466,19 @@ struct adapter {
 
 #define IXGBE_CORE_LOCK_INIT(_sc, _name) \
         lockinit(&(_sc)->core_lock, _name, 0, LK_CANRECURSE)
+#define IXGBE_TX_LOCK_INIT(_sc)		  lwkt_serialize_init(&(_sc)->tx_serialize)
 #define IXGBE_CORE_LOCK_DESTROY(_sc)      lockuninit(&(_sc)->core_lock)
-#define IXGBE_TX_LOCK_DESTROY(_sc)        lockuninit(&(_sc)->tx_lock)
+#define IXGBE_TX_LOCK_DESTROY(_sc)
 #define IXGBE_RX_LOCK_DESTROY(_sc)        lockuninit(&(_sc)->rx_lock)
 #define IXGBE_CORE_LOCK(_sc)              lockmgr(&(_sc)->core_lock, LK_EXCLUSIVE)
-#define IXGBE_TX_LOCK(_sc)                lockmgr(&(_sc)->tx_lock, LK_EXCLUSIVE)
-#define IXGBE_TX_TRYLOCK(_sc)             lockmgr(&(_sc)->tx_mtx, LK_EXCLUSIVE|LK_NOWAIT)
+#define IXGBE_TX_LOCK(_sc)                lwkt_serialize_enter(&(_sc)->tx_serialize)
+#define IXGBE_TX_TRYLOCK(_sc)             lwkt_serialize_try(&(_sc)->tx_serialize)
 #define IXGBE_RX_LOCK(_sc)                lockmgr(&(_sc)->rx_lock, LK_EXCLUSIVE)
 #define IXGBE_CORE_UNLOCK(_sc)            lockmgr(&(_sc)->core_lock, LK_RELEASE)
-#define IXGBE_TX_UNLOCK(_sc)              lockmgr(&(_sc)->tx_lock, LK_RELEASE)
+#define IXGBE_TX_UNLOCK(_sc)              lwkt_serialize_exit(&(_sc)->tx_serialize)
 #define IXGBE_RX_UNLOCK(_sc)              lockmgr(&(_sc)->rx_lock, LK_RELEASE)
 #define IXGBE_CORE_LOCK_ASSERT(_sc)       KKASSERT(lockstatus(&(_sc)->core_lock, curthread) !=0)
-#define IXGBE_TX_LOCK_ASSERT(_sc)         KKASSERT(lockstatus(&(_sc)->tx_lock, curthread) != 0)
+#define IXGBE_TX_LOCK_ASSERT(_sc)         ASSERT_SERIALIZED(&(_sc)->tx_serialize)
 
 
 static inline bool

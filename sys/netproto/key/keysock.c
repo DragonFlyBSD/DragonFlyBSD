@@ -396,7 +396,7 @@ key_attach(netmsg_t msg)
 	struct netmsg_pru_attach smsg;
 	int error;
 
-	if (sotorawcb(so) != 0) {
+	if (sotorawcb(so) != NULL) {
 		error = EISCONN;	/* XXX panic? */
 		goto out;
 	}

@@ -594,7 +594,7 @@ udp6_attach(netmsg_t msg)
 	if (error)
 		goto out;
 
-	sosetport(so, cpu_portfn(0));
+	sosetport(so, netisr_portfn(0));
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_vflag |= INP_IPV6;
 	if (!ip6_v6only)

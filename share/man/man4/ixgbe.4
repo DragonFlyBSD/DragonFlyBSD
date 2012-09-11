@@ -87,6 +87,12 @@ Intel(R) 82598EB 10 Gigabit AF Network Connection
 .It
 Intel(R) 82598EB 10 Gigabit AT CX4 Network Connection
 .El
+.Sh PERFORMANCE
+The default DragonFly configuration may not give the best possible
+performance with single streams TCP connections.
+Increasing the value of the
+.Va net.inet.tcp.sosend_agglim
+sysctl to 12 or more will increase sending speeds.
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "ix%d: Unable to allocate bus resource: memory"

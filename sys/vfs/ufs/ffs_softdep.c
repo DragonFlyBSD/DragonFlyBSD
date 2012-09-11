@@ -3360,7 +3360,7 @@ softdep_disk_write_complete(struct buf *bp)
 			}
 			bcopy(indirdep->ir_saveddata, bp->b_data, bp->b_bcount);
 			kfree(indirdep->ir_saveddata, M_INDIRDEP);
-			indirdep->ir_saveddata = 0;
+			indirdep->ir_saveddata = NULL;
 			indirdep->ir_state &= ~UNDONE;
 			indirdep->ir_state |= ATTACHED;
 			while ((aip = LIST_FIRST(&indirdep->ir_donehd)) != NULL) {
@@ -3651,7 +3651,7 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 	/*
 	 * If no outstanding dependencies, free it.
 	 */
-	if (free_inodedep(inodedep) || TAILQ_FIRST(&inodedep->id_inoupdt) == 0)
+	if (free_inodedep(inodedep) || TAILQ_FIRST(&inodedep->id_inoupdt) == NULL)
 		return (0);
 	return (hadchanges);
 }
@@ -3783,7 +3783,7 @@ handle_written_filepage(struct pagedep *pagedep, struct buf *bp)
 	 * Otherwise it will remain to update the page before it
 	 * is written back to disk.
 	 */
-	if (LIST_FIRST(&pagedep->pd_pendinghd) == 0) {
+	if (LIST_FIRST(&pagedep->pd_pendinghd) == NULL) {
 		for (i = 0; i < DAHASHSZ; i++)
 			if (LIST_FIRST(&pagedep->pd_diraddhd[i]) != NULL)
 				break;
@@ -4350,7 +4350,7 @@ softdep_sync_metadata_bp(struct buf *bp, void *data)
 			 */
 			pagedep = WK_PAGEDEP(wk);
 			for (i = 0; i < DAHASHSZ; i++) {
-				if (LIST_FIRST(&pagedep->pd_diraddhd[i]) == 0)
+				if (LIST_FIRST(&pagedep->pd_diraddhd[i]) == NULL)
 					continue;
 				if ((error =
 				    flush_pagedep_deps(info->vp,

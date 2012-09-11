@@ -107,6 +107,8 @@ extern int64_t BootAreaSize;
 extern int64_t MemAreaSize;
 extern int64_t UndoBufferSize;
 extern int DebugOpt;
+extern const char *ScoreBoardFile;
+extern const char *RestrictTarget;
 extern int NumVolumes;
 extern int RootVolNo;
 extern struct volume_list VolList;
@@ -158,6 +160,8 @@ void hammer_cache_add(struct cache_info *cache, enum cache_type type);
 void hammer_cache_del(struct cache_info *cache);
 void hammer_cache_used(struct cache_info *cache);
 void hammer_cache_flush(void);
+
+void score_printf(size_t i, size_t w, const char *ctl, ...);
 
 void panic(const char *ctl, ...) __printflike(1, 2);
 

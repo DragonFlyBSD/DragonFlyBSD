@@ -2172,7 +2172,7 @@ init386(int first)
 	/* setup proc 0's pcb */
 	thread0.td_pcb->pcb_flags = 0;
 	thread0.td_pcb->pcb_cr3 = (int)IdlePTD;	/* should already be setup */
-	thread0.td_pcb->pcb_ext = 0;
+	thread0.td_pcb->pcb_ext = NULL;
 	lwp0.lwp_md.md_regs = &proc0_tf;
 }
 

@@ -165,10 +165,10 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	/*
 	 * XXX don't copy the i/o pages.  this should probably be fixed.
 	 */
-	pcb2->pcb_ext = 0;
+	pcb2->pcb_ext = NULL;
 
         /* Copy the LDT, if necessary. */
-        if (pcb2->pcb_ldt != 0) {
+        if (pcb2->pcb_ldt != NULL) {
 		if (flags & RFMEM) {
 			pcb2->pcb_ldt->ldt_refcnt++;
 		} else {

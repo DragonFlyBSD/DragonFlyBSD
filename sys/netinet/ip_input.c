@@ -947,7 +947,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		ip->ip_off = ntohs(ip->ip_off);
 		KKASSERT(m->m_flags & M_HASH);
 	}
-	port = cpu_portfn(m->m_pkthdr.hash);
+	port = netisr_portfn(m->m_pkthdr.hash);
 
 	if (port != &curthread->td_msgport) {
 		struct netmsg_packet *pmsg;
@@ -2249,9 +2249,7 @@ int
 rsvp_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct mbuf *m = *mp;
-	int off;
 
-	off = *offp;
 	*mp = NULL;
 
 	if (rsvp_input_p) { /* call the real one if loaded */

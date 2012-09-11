@@ -540,7 +540,7 @@ swcr_authcompute(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 	union authctx ctx;
 	int err;
 
-	if (sw->sw_ictx == 0)
+	if (sw->sw_ictx == NULL)
 		return EINVAL;
 
 	axf = sw->sw_axf;
@@ -638,7 +638,7 @@ swcr_combined(struct cryptop *crp)
 			swa = sw;
 			crda = crd;
 			axf = swa->sw_axf;
-			if (swa->sw_ictx == 0)
+			if (swa->sw_ictx == NULL)
 				return (EINVAL);
 			bcopy(swa->sw_ictx, &ctx, axf->ctxsize);
 			blksz = axf->blocksize;

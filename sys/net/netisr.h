@@ -165,7 +165,7 @@ extern lwkt_port netisr_afree_free_so_rport;
 extern lwkt_port netisr_apanic_rport;
 extern lwkt_port netisr_sync_port;
 
-lwkt_port_t	cpu_portfn(int cpu);
+lwkt_port_t	netisr_portfn(int cpu);
 lwkt_port_t	cur_netport(void);
 
 void		netisr_register(int, netisr_fn_t, netisr_cpufn_t);

@@ -34,6 +34,10 @@
 
 #include "hammer.h"
 
+#define LINE1	0,20
+#define LINE2	20,78
+#define LINE3	90,70
+
 #define SERIALBUF_SIZE	(512 * 1024)
 
 typedef struct histogram {
@@ -104,6 +108,7 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	if (ac == 0 || ac > 2)
 		mirror_usage(1);
 	filesystem = av[0];
+	hammer_check_restrict(filesystem);
 
 	pickup.signature = 0;
 	pickup.type = 0;
@@ -119,6 +124,9 @@ again:
 	hammer_key_end_init(&mirror.key_end);
 
 	fd = getpfs(&pfs, filesystem);
+
+	if (streaming >= 0)
+		score_printf(LINE1, "Running");
 
 	if (streaming >= 0 && VerboseOpt && VerboseOpt < 2) {
 		fprintf(stderr, "%cRunning  \b\b", (sameline ? '\r' : '\n'));
@@ -273,11 +281,15 @@ again:
 		mirror.pfs_id = pfs.pfs_id;
 		mirror.shared_uuid = pfs.ondisk->shared_uuid;
 		if (ioctl(fd, HAMMERIOC_MIRROR_READ, &mirror) < 0) {
+			score_printf(LINE3, "Mirror-read %s failed: %s",
+				     filesystem, strerror(errno));
 			fprintf(stderr, "Mirror-read %s failed: %s\n",
 				filesystem, strerror(errno));
 			exit(1);
 		}
 		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR) {
+			score_printf(LINE3, "Mirror-read %s fatal error %d",
+				     filesystem, mirror.head.error);
 			fprintf(stderr,
 				"Mirror-read %s fatal error %d\n",
 				filesystem, mirror.head.error);
@@ -291,8 +303,13 @@ again:
 				n = write(1, mirror.ubuf, mirror.count);
 			}
 			if (n != mirror.count) {
-				fprintf(stderr, "Mirror-read %s failed: "
-						"short write\n",
+				score_printf(LINE3,
+					     "Mirror-read %s failed: "
+					     "short write",
+					     filesystem);
+				fprintf(stderr,
+					"Mirror-read %s failed: "
+					"short write\n",
 				filesystem);
 				exit(1);
 			}
@@ -307,6 +324,13 @@ again:
 				(intmax_t)total_bytes);
 			fflush(stderr);
 			sameline = 0;
+		} else if (streaming) {
+			score_printf(LINE2,
+				"obj=%016jx tids=%016jx:%016jx %11jd",
+				(uintmax_t)mirror.key_cur.obj_id,
+				(uintmax_t)mirror.tid_beg,
+				(uintmax_t)mirror.tid_end,
+				(intmax_t)total_bytes);
 		}
 		mirror.key_beg = mirror.key_cur;
 
@@ -315,6 +339,11 @@ again:
 		 */
 		if (TimeoutOpt &&
 		    (unsigned)(time(NULL) - base_t) > (unsigned)TimeoutOpt) {
+			score_printf(LINE3,
+				"Mirror-read %s interrupted by timer at"
+				" %016jx",
+				filesystem,
+				(uintmax_t)mirror.key_cur.obj_id);
 			fprintf(stderr,
 				"Mirror-read %s interrupted by timer at"
 				" %016jx\n",
@@ -406,6 +435,8 @@ done:
 		if (VerboseOpt && streaming >= 0) {
 			fprintf(stderr, " W");
 			fflush(stderr);
+		} else if (streaming >= 0) {
+			score_printf(LINE1, "Waiting");
 		}
 		pfs.ondisk->sync_end_tid = mirror.tid_end;
 		if (streaming < 0) {
@@ -415,7 +446,11 @@ done:
 			 */
 			streaming = 0;
 		} else if (ioctl(fd, HAMMERIOC_WAI_PSEUDOFS, &pfs) < 0) {
-			fprintf(stderr, "Mirror-read %s: cannot stream: %s\n",
+			score_printf(LINE3,
+				     "Mirror-read %s: cannot stream: %s\n",
+				     filesystem, strerror(errno));
+			fprintf(stderr,
+				"Mirror-read %s: cannot stream: %s\n",
 				filesystem, strerror(errno));
 		} else {
 			t2 = time(NULL) - t1;
@@ -472,6 +507,7 @@ generate_histogram(int fd, const char *filesystem,
 	u_int64_t *tid_bytes;
 	u_int64_t total;
 	u_int64_t accum;
+	int chunkno;
 	int i;
 	int res;
 	int off;
@@ -509,6 +545,7 @@ generate_histogram(int fd, const char *filesystem,
 	 */
 	total = 0;
 	accum = 0;
+	chunkno = 0;
 	for (;;) {
 		mirror.count = 0;
 		if (ioctl(fd, HAMMERIOC_MIRROR_READ, &mirror) < 0) {
@@ -590,12 +627,14 @@ generate_histogram(int fd, const char *filesystem,
 				accum += len;
 			}
 		}
-		if (VerboseOpt > 1) {
-			if (*repeatp == 0 && accum > SplitupOpt) {
+		if (*repeatp == 0 && accum > SplitupOpt) {
+			if (VerboseOpt > 1) {
 				fprintf(stderr, ".");
 				fflush(stderr);
-				accum = 0;
 			}
+			++chunkno;
+			score_printf(LINE2, "Prescan chunk %d", chunkno);
+			accum = 0;
 		}
 		if (mirror.count == 0)
 			break;
@@ -631,6 +670,8 @@ generate_histogram(int fd, const char *filesystem,
 	if (*repeatp == 0) {
 		if (VerboseOpt > 1)
 			fprintf(stderr, "\n");	/* newline after ... */
+		score_printf(LINE3, "Prescan %d chunks, total %ju MBytes",
+			res, (uintmax_t)total / (1024 * 1024));
 		fprintf(stderr, "Prescan %d chunks, total %ju MBytes (",
 			res, (uintmax_t)total / (1024 * 1024));
 		for (i = 0; i < res && i < 3; ++i) {
@@ -731,6 +772,7 @@ hammer_cmd_mirror_write(char **av, int ac)
 	if (ac != 1)
 		mirror_usage(1);
 	filesystem = av[0];
+	hammer_check_restrict(filesystem);
 
 	pickup.signature = 0;
 	pickup.type = 0;
@@ -860,7 +902,8 @@ again:
 	    mrec->head.rec_size != sizeof(mrec->sync)) {
 		fprintf(stderr, "Mirror-write %s: Did not get termination "
 				"sync record, or rec_size is wrong rt=%d\n",
-				filesystem, mrec->head.type);
+				filesystem,
+				(mrec ? (int)mrec->head.type : -1));
 		exit(1);
 	}
 

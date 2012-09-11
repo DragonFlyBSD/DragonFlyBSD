@@ -794,7 +794,7 @@ purgeaddr:
 	}
 
 	default:
-		if (ifp == NULL || ifp->if_ioctl == 0)
+		if (ifp == NULL || ifp->if_ioctl == NULL)
 			return (EOPNOTSUPP);
 		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
@@ -1708,7 +1708,7 @@ in6_addmulti(struct in6_addr *maddr6, struct ifnet *ifp, int *errorp)
 	 * If ifma->ifma_protospec is null, then if_addmulti() created
 	 * a new record.  Otherwise, we are done.
 	 */
-	if (ifma->ifma_protospec != 0) {
+	if (ifma->ifma_protospec != NULL) {
 		crit_exit();
 		return ifma->ifma_protospec;
 	}
@@ -1753,7 +1753,7 @@ in6_delmulti(struct in6_multi *in6m)
 		 * that we are leaving the multicast group.
 		 */
 		mld6_stop_listening(in6m);
-		ifma->ifma_protospec = 0;
+		ifma->ifma_protospec = NULL;
 		LIST_REMOVE(in6m, in6m_entry);
 		kfree(in6m, M_IPMADDR);
 	}

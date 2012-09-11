@@ -48,15 +48,20 @@
  * Only one attempt is made to build any given package, no matter how many
  * other packages depend on it.
  */
+#include <sys/types.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <sys/ioctl.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <dirent.h>
 #include <assert.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
 
 struct item;
 
@@ -369,6 +374,7 @@ addBuild(struct item *item)
 static void
 runBuilds(const char *bpath)
 {
+	struct rlimit rlm;
 	struct item *item;
 	char *logpath;
 	FILE *fp;
@@ -405,6 +411,10 @@ runBuilds(const char *bpath)
 			if (chdir(item->rpath) < 0)
 				_exit(99);
 
+			/*
+			 * Connect log file up, disconnect tty (in case a
+			 * 'patch' command tries to ask for help).
+			 */
 			fd = open(logpath, O_RDWR|O_CREAT|O_TRUNC, 0666);
 			if (fd != 1)
 				dup2(fd, 1);
@@ -417,6 +427,53 @@ runBuilds(const char *bpath)
 				dup2(fd, 0);
 				close(fd);
 			}
+
+			/*
+			 * Set resource limits:
+			 *
+			 *	~2 hours cpu	- prevent runaways from stalling
+			 *			  the build.
+			 *
+			 *	~2GB file size	- prevent endless growing log files.
+			 *
+			 *	~5GB footprint	- prevent processes w/ out of
+			 *			  control memory usage.
+			 *
+			 *	~0 core		- No core dumps cluttering
+			 *			  directories, please.
+			 */
+			if (getrlimit(RLIMIT_CPU, &rlm) == 0 &&
+			    rlm.rlim_cur > 2 * 60 * 60) {
+				rlm.rlim_cur = 2 * 60 * 60;
+				setrlimit(RLIMIT_CPU, &rlm);
+			}
+			if (getrlimit(RLIMIT_FSIZE, &rlm) == 0 &&
+			    rlm.rlim_cur > 2LL * 1024 * 1024 * 1024) {
+				rlm.rlim_cur = 2LL * 1024 * 1024 * 1024;
+				setrlimit(RLIMIT_FSIZE, &rlm);
+			}
+			if (getrlimit(RLIMIT_AS, &rlm) == 0 &&
+			    rlm.rlim_cur > 5LL * 1024 * 1024 * 1024) {
+				rlm.rlim_cur = 5LL * 1024 * 1024 * 1024;
+				setrlimit(RLIMIT_AS, &rlm);
+			}
+			if (getrlimit(RLIMIT_CORE, &rlm) == 0 &&
+			    rlm.rlim_cur > 0) {
+				rlm.rlim_cur = 0;
+				setrlimit(RLIMIT_CORE, &rlm);
+			}
+
+			/*
+			 * Disconnect tty so utilities which try to ask
+			 * for help (like patch) or Y/N answers on /dev/tty
+			 * do not stall.
+			 */
+			fd = open("/dev/tty", O_RDWR);
+			if (fd >= 0) {
+				ioctl(fd, TIOCNOTTY, 0);
+				close(fd);
+			}
+			setsid();
 
 			/*
 			 * we tack a 'clean' on to the repackage to clean

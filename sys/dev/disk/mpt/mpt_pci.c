@@ -760,7 +760,7 @@ mpt_dma_mem_free(struct mpt_softc *mpt)
 {
 
         /* Make sure we aren't double destroying */
-        if (mpt->reply_dmat == 0) {
+        if (mpt->reply_dmat == NULL) {
 		mpt_lprt(mpt, MPT_PRT_DEBUG, "already released dma memory\n");
 		return;
         }

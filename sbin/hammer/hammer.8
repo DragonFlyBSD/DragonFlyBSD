@@ -43,7 +43,10 @@
 .Op Fl 2BFqrvXy
 .Op Fl b Ar bandwidth
 .Op Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
+.Op Fl R Ar restrictcmd
+.Op Fl T Ar restrictpath
 .Op Fl c Ar cyclefile
+.Op Fl e Ar scoreboardfile
 .Op Fl f Ar blkdevs
 .\" .Op Fl s Ar linkpath
 .Op Fl i Ar delay
@@ -118,6 +121,13 @@ blocks.
 .Pp
 This option is typically only used with diagnostic commands
 as kernel-supported commands will use the kernel's buffer cache.
+.It Fl R Ar restrictcmd
+This option is used by hammer ssh-remote to restrict the command later
+on in the argument list.  Multiple commands may be specified, separated
+by a comma (all one argument).
+.It Fl T Ar restrictpath
+This option is used by hammer ssh-remote to restrict the filesystem path
+specified later on in the argument list.
 .It Fl c Ar cyclefile
 When pruning, rebalancing or reblocking you can tell the utility
 to start at the object id stored in the specified file.
@@ -134,6 +144,8 @@ If
 .Nm
 runs to completion it will delete
 .Ar cyclefile .
+.It Fl e Ar scoreboardfile
+Update scoreboard file with progress, primarily used by mirror-stream.
 .It Fl F
 Force operation.
 E.g.\&
@@ -394,6 +406,22 @@ option.
 .\" .It Ar blockmap
 .\" Dump the B-Tree, record, large-data, and small-data blockmaps, showing
 .\" physical block assignments and free space percentages.
+.\" ==== ssh-remote ====
+.It Cm ssh-remote Ar command Ar targetdir
+Used in a ssh authorized_keys line such as
+command="/sbin/hammer ssh-remote mirror-read /fubarmount" ... to allow
+mirror-read or mirror-write access to a particular subdirectory tree.
+This way you do not have to give shell access to the remote box.
+.Nm
+will obtain the original command line from the SSH_ORIGINAL_COMMAND
+environment variable, validate it against the restriction, and then
+re-exec hammer with the validated arguments.
+.Pp
+The remote hammer command does not allow the
+.Fl c
+or
+.Fl f
+options to be passed in.
 .\" ==== recover ====
 .It Cm recover Ar targetdir
 Recover data from a corrupted

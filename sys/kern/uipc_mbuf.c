@@ -1953,7 +1953,7 @@ m_split(struct mbuf *m0, int len0, int wait)
 			MH_ALIGN(n, remain);
 	} else if (remain == 0) {
 		n = m->m_next;
-		m->m_next = 0;
+		m->m_next = NULL;
 		return (n);
 	} else {
 		n = m_get(wait, m->m_type);
@@ -1974,7 +1974,7 @@ extpacket:
 	n->m_len = remain;
 	m->m_len = len;
 	n->m_next = m->m_next;
-	m->m_next = 0;
+	m->m_next = NULL;
 	return (n);
 }
 

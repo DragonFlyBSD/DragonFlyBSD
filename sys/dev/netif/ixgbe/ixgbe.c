@@ -121,9 +121,7 @@ static int      ixgbe_allocate_pci_resources(struct adapter *);
 static int      ixgbe_allocate_msix(struct adapter *);
 static int      ixgbe_allocate_legacy(struct adapter *);
 static int	ixgbe_allocate_queues(struct adapter *);
-#if 0	/* HAVE_MSIX */
 static int	ixgbe_setup_msix(struct adapter *);
-#endif
 static void	ixgbe_free_pci_resources(struct adapter *);
 static void	ixgbe_local_timer(void *);
 static int	ixgbe_setup_interface(device_t, struct adapter *);
@@ -149,8 +147,8 @@ static void	ixgbe_setup_hw_rsc(struct rx_ring *);
 static void     ixgbe_enable_intr(struct adapter *);
 static void     ixgbe_disable_intr(struct adapter *);
 static void     ixgbe_update_stats_counters(struct adapter *);
-static bool	ixgbe_txeof(struct tx_ring *);
-static bool	ixgbe_rxeof(struct ix_queue *, int);
+static void	ixgbe_txeof(struct tx_ring *);
+static void	ixgbe_rxeof(struct ix_queue *, int);
 static void	ixgbe_rx_checksum(u32, struct mbuf *, u32);
 static void     ixgbe_set_promisc(struct adapter *);
 static void     ixgbe_set_multi(struct adapter *);
@@ -168,6 +166,9 @@ static void	ixgbe_add_rx_process_limit(struct adapter *, const char *,
 static bool	ixgbe_tx_ctx_setup(struct tx_ring *, struct mbuf *);
 static bool	ixgbe_tso_setup(struct tx_ring *, struct mbuf *, u32 *, u32 *);
 static int	ixgbe_tso_pullup(struct tx_ring *, struct mbuf **);
+static void	ixgbe_add_sysctl(struct adapter *);
+static void	ixgbe_set_eitr(struct adapter *, int, int);
+static int	ixgbe_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static void	ixgbe_set_ivar(struct adapter *, u8, u8, s8);
 static void	ixgbe_configure_ivars(struct adapter *);
 static u8 *	ixgbe_mc_array_itr(struct ixgbe_hw *, u8 **, u32 *);
@@ -194,7 +195,6 @@ static void	ixgbe_msix_que(void *);
 static void	ixgbe_msix_link(void *);
 
 /* Deferred interrupt tasklets */
-static void	ixgbe_handle_que(void *, int);
 static void	ixgbe_handle_link(void *, int);
 static void	ixgbe_handle_msf(void *, int);
 static void	ixgbe_handle_mod(void *, int);
@@ -230,18 +230,6 @@ MODULE_DEPEND(ixgbe, ether, 1, 1, 1);
 /*
 ** TUNEABLE PARAMETERS:
 */
-
-/*
-** AIM: Adaptive Interrupt Moderation
-** which means that the interrupt rate
-** is varied over time based on the
-** traffic for that interrupt vector
-*/
-static int ixgbe_enable_aim = TRUE;
-TUNABLE_INT("hw.ixgbe.enable_aim", &ixgbe_enable_aim);
-
-static int ixgbe_max_interrupt_rate = (4000000 / IXGBE_LOW_LATENCY);
-TUNABLE_INT("hw.ixgbe.max_interrupt_rate", &ixgbe_max_interrupt_rate);
 
 /* How many packets rxeof tries to clean at a time */
 static int ixgbe_rx_process_limit = 128;
@@ -418,41 +406,6 @@ ixgbe_attach(device_t dev)
 	/* Core Lock Init*/
 	IXGBE_CORE_LOCK_INIT(adapter, device_get_nameunit(dev));
 
-	/* SYSCTL APIs */
-
-	sysctl_ctx_init(&adapter->sysctl_ctx);
-	adapter->sysctl_tree = SYSCTL_ADD_NODE(&adapter->sysctl_ctx,
-	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	    device_get_nameunit(adapter->dev), CTLFLAG_RD, 0, "");
-	if (adapter->sysctl_tree == NULL) {
-		device_printf(adapter->dev, "can't add sysctl node\n");
-		return (EINVAL);
-	}
-	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-			SYSCTL_CHILDREN(adapter->sysctl_tree),
-			OID_AUTO, "fc", CTLTYPE_INT | CTLFLAG_RW,
-			adapter, 0, ixgbe_set_flowcntl, "I", "Flow Control");
-
-        SYSCTL_ADD_INT(&adapter->sysctl_ctx,
-			SYSCTL_CHILDREN(adapter->sysctl_tree),
-			OID_AUTO, "enable_aim", CTLTYPE_INT|CTLFLAG_RW,
-			&ixgbe_enable_aim, 1, "Interrupt Moderation");
-
-	/*
-	** Allow a kind of speed control by forcing the autoneg
-	** advertised speed list to only a certain value, this
-	** supports 1G on 82599 devices, and 100Mb on x540.
-	*/
-	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-			SYSCTL_CHILDREN(adapter->sysctl_tree),
-			OID_AUTO, "advertise_speed", CTLTYPE_INT | CTLFLAG_RW,
-			adapter, 0, ixgbe_set_advertise, "I", "Link Speed");
-
-	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-			SYSCTL_CHILDREN(adapter->sysctl_tree),
-			OID_AUTO, "ts", CTLTYPE_INT | CTLFLAG_RW, adapter,
-			0, ixgbe_set_thermal_test, "I", "Thermal Test");
-
 	/* Set up the timer callout */
 	callout_init_mp(&adapter->timer);
 
@@ -565,10 +518,12 @@ ixgbe_attach(device_t dev)
 	/* Detect and set physical type */
 	ixgbe_setup_optics(adapter);
 
-	if ((adapter->msix > 1) && (ixgbe_enable_msix))
+	if ((adapter->msix > 1) && (ixgbe_enable_msix)) {
+		adapter->intr_type = PCI_INTR_TYPE_MSIX;
 		error = ixgbe_allocate_msix(adapter); 
-	else
+	} else {
 		error = ixgbe_allocate_legacy(adapter); 
+	}
 	if (error) 
 		goto err_late;
 
@@ -576,10 +531,8 @@ ixgbe_attach(device_t dev)
 	if (ixgbe_setup_interface(dev, adapter) != 0)
 		goto err_late;
 
-	/* Sysctl for limiting the amount of work done in the taskqueue */
-	ixgbe_add_rx_process_limit(adapter, "rx_processing_limit",
-	    "max number of rx packets to process", &adapter->rx_process_limit,
-	    ixgbe_rx_process_limit);
+	/* Add sysctl tree */
+	ixgbe_add_sysctl(adapter);
 
 	/* Initialize statistics */
 	ixgbe_update_stats_counters(adapter);
@@ -647,7 +600,6 @@ static int
 ixgbe_detach(device_t dev)
 {
 	struct adapter *adapter = device_get_softc(dev);
-	struct ix_queue *que = adapter->queues;
 	u32	ctrl_ext;
 
 	INIT_DEBUGOUT("ixgbe_detach: begin");
@@ -661,13 +613,6 @@ ixgbe_detach(device_t dev)
 	IXGBE_CORE_LOCK(adapter);
 	ixgbe_stop(adapter);
 	IXGBE_CORE_UNLOCK(adapter);
-
-	for (int i = 0; i < adapter->num_queues; i++, que++) {
-		if (que->tq) {
-			taskqueue_drain(que->tq, &que->que_task);
-			taskqueue_free(que->tq);
-		}
-	}
 
 	/* Drain the Link queue */
 	if (adapter->tq) {
@@ -1277,7 +1222,7 @@ ixgbe_init_locked(struct adapter *adapter)
 	}
 
 	/* Set moderation on the Link interrupt */
-	IXGBE_WRITE_REG(hw, IXGBE_EITR(adapter->linkvec), IXGBE_LINK_ITR);
+	ixgbe_set_eitr(adapter, adapter->linkvec, IXGBE_LINK_ITR);
 
 	/* Config/Enable Link */
 	ixgbe_config_link(adapter);
@@ -1395,40 +1340,6 @@ ixgbe_rearm_queues(struct adapter *adapter, u64 queues)
 	}
 }
 
-
-static void
-ixgbe_handle_que(void *context, int pending)
-{
-	struct ix_queue *que = context;
-	struct adapter  *adapter = que->adapter;
-	struct tx_ring  *txr = que->txr;
-	struct ifnet    *ifp = adapter->ifp;
-	bool		more;
-
-	if (ifp->if_flags & IFF_RUNNING) {
-		more = ixgbe_rxeof(que, adapter->rx_process_limit);
-		IXGBE_TX_LOCK(txr);
-		ixgbe_txeof(txr);
-#if 0 /*__FreeBSD_version >= 800000*/
-		if (!drbr_empty(ifp, txr->br))
-			ixgbe_mq_start_locked(ifp, txr, NULL);
-#else
-		if (!ifq_is_empty(&ifp->if_snd))
-			ixgbe_start_locked(txr, ifp);
-#endif
-		IXGBE_TX_UNLOCK(txr);
-		if (more) {
-			taskqueue_enqueue(que->tq, &que->que_task);
-			return;
-		}
-	}
-
-	/* Reenable this interrupt */
-	ixgbe_enable_queue(adapter, que->msix);
-	return;
-}
-
-
 /*********************************************************************
  *
  *  Legacy Interrupt Service routine
@@ -1442,8 +1353,7 @@ ixgbe_legacy_irq(void *arg)
 	struct adapter	*adapter = que->adapter;
 	struct ixgbe_hw	*hw = &adapter->hw;
 	struct 		tx_ring *txr = adapter->tx_rings;
-	bool		more_tx, more_rx;
-	u32       	reg_eicr, loop = MAX_LOOP;
+	u32       	reg_eicr;
 
 
 	reg_eicr = IXGBE_READ_REG(hw, IXGBE_EICR);
@@ -1454,16 +1364,13 @@ ixgbe_legacy_irq(void *arg)
 		return;
 	}
 
-	more_rx = ixgbe_rxeof(que, adapter->rx_process_limit);
+	ixgbe_rxeof(que, adapter->rx_process_limit);
 
 	IXGBE_TX_LOCK(txr);
-	do {
-		more_tx = ixgbe_txeof(txr);
-	} while (loop-- && more_tx);
+	ixgbe_txeof(txr);
+	if (!ifq_is_empty(&adapter->ifp->if_snd))
+		ixgbe_start_locked(txr, adapter->ifp);
 	IXGBE_TX_UNLOCK(txr);
-
-	if (more_rx || more_tx)
-		taskqueue_enqueue(que->tq, &que->que_task);
 
 	/* Check for fan failure */
 	if ((hw->phy.media_type == ixgbe_media_type_copper) &&
@@ -1478,7 +1385,6 @@ ixgbe_legacy_irq(void *arg)
 		taskqueue_enqueue(adapter->tq, &adapter->link_task);
 
 	ixgbe_enable_intr(adapter);
-	return;
 }
 
 
@@ -1493,89 +1399,20 @@ ixgbe_msix_que(void *arg)
 	struct ix_queue	*que = arg;
 	struct adapter  *adapter = que->adapter;
 	struct tx_ring	*txr = que->txr;
-	struct rx_ring	*rxr = que->rxr;
-	bool		more_tx, more_rx;
-	u32		newitr = 0;
 
 	ixgbe_disable_queue(adapter, que->msix);
 	++que->irqs;
 
-	more_rx = ixgbe_rxeof(que, adapter->rx_process_limit);
+	ixgbe_rxeof(que, adapter->rx_process_limit);
 
 	IXGBE_TX_LOCK(txr);
-	more_tx = ixgbe_txeof(txr);
-	/*
-	** Make certain that if the stack 
-	** has anything queued the task gets
-	** scheduled to handle it.
-	*/
-#if 0
-#if __FreeBSD_version < 800000
-	if (!IFQ_DRV_IS_EMPTY(&adapter->ifp->if_snd))
-#else
-	if (!drbr_empty(adapter->ifp, txr->br))
-#endif
-#endif
+	ixgbe_txeof(txr);
 	if (!ifq_is_empty(&adapter->ifp->if_snd))
-		more_tx = 1;
+		ixgbe_start_locked(txr, adapter->ifp);
 	IXGBE_TX_UNLOCK(txr);
 
-	/* Do AIM now? */
-
-	if (ixgbe_enable_aim == FALSE)
-		goto no_calc;
-	/*
-	** Do Adaptive Interrupt Moderation:
-        **  - Write out last calculated setting
-	**  - Calculate based on average size over
-	**    the last interval.
-	*/
-        if (que->eitr_setting)
-                IXGBE_WRITE_REG(&adapter->hw,
-                    IXGBE_EITR(que->msix), que->eitr_setting);
- 
-        que->eitr_setting = 0;
-
-        /* Idle, do nothing */
-        if ((txr->bytes == 0) && (rxr->bytes == 0))
-                goto no_calc;
-                                
-	if ((txr->bytes) && (txr->packets))
-               	newitr = txr->bytes/txr->packets;
-	if ((rxr->bytes) && (rxr->packets))
-		newitr = max(newitr,
-		    (rxr->bytes / rxr->packets));
-	newitr += 24; /* account for hardware frame, crc */
-
-	/* set an upper boundary */
-	newitr = min(newitr, 3000);
-
-	/* Be nice to the mid range */
-	if ((newitr > 300) && (newitr < 1200))
-		newitr = (newitr / 3);
-	else
-		newitr = (newitr / 2);
-
-        if (adapter->hw.mac.type == ixgbe_mac_82598EB)
-                newitr |= newitr << 16;
-        else
-                newitr |= IXGBE_EITR_CNT_WDIS;
-                 
-        /* save for next interrupt */
-        que->eitr_setting = newitr;
-
-        /* Reset state */
-        txr->bytes = 0;
-        txr->packets = 0;
-        rxr->bytes = 0;
-        rxr->packets = 0;
-
-no_calc:
-	if (more_tx || more_rx)
-		taskqueue_enqueue(que->tq, &que->que_task);
-	else /* Reenable this interrupt */
-		ixgbe_enable_queue(adapter, que->msix);
-	return;
+	/* Reenable this interrupt */
+	ixgbe_enable_queue(adapter, que->msix);
 }
 
 
@@ -2031,8 +1868,6 @@ ixgbe_local_timer(void *arg)
 			++hung;
 		if (txr->queue_status & IXGBE_QUEUE_DEPLETED)
 			++busy;
-		if ((txr->queue_status & IXGBE_QUEUE_IDLE) == 0)
-			taskqueue_enqueue(que->tq, &que->que_task);
         }
 	/* Only truely watchdog if all queues show hung */
         if (hung == adapter->num_queues)
@@ -2259,16 +2094,6 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 		return (ENXIO);
 	}
 
-	/*
-	 * Try allocating a fast interrupt and the associated deferred
-	 * processing contexts.
-	 */
-	TASK_INIT(&que->que_task, 0, ixgbe_handle_que, que);
-	que->tq = taskqueue_create("ixgbe_que", M_NOWAIT,
-            taskqueue_thread_enqueue, &que->tq);
-	taskqueue_start_threads(&que->tq, 1, PI_NET, -1, "%s ixq",
-            device_get_nameunit(adapter->dev));
-
 	/* Tasklets for Link, SFP and Multispeed Fiber */
 	TASK_INIT(&adapter->link_task, 0, ixgbe_handle_link, adapter);
 	TASK_INIT(&adapter->mod_task, 0, ixgbe_handle_mod, adapter);
@@ -2285,9 +2110,7 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 	    ixgbe_legacy_irq, que, &adapter->tag, &adapter->serializer)) != 0) {
 		device_printf(dev, "Failed to register fast interrupt "
 		    "handler: %d\n", error);
-		taskqueue_free(que->tq);
 		taskqueue_free(adapter->tq);
-		que->tq = NULL;
 		adapter->tq = NULL;
 		return (error);
 	}
@@ -2309,9 +2132,27 @@ ixgbe_allocate_msix(struct adapter *adapter)
 	device_t        dev = adapter->dev;
 	struct 		ix_queue *que = adapter->queues;
 	int 		error, rid, vector = 0;
+	char		desc[16];
+
+	error = pci_setup_msix(dev);
+	if (error) {
+		device_printf(dev, "MSI-X setup failed\n");
+		return (error);
+	}
 
 	for (int i = 0; i < adapter->num_queues; i++, vector++, que++) {
 		rid = vector + 1;
+
+		/*
+		** Bind the msix vector, and thus the
+		** ring to the corresponding cpu.
+		*/
+		error = pci_alloc_msix_vector(dev, vector, &rid, i);
+		if (error) {
+			device_printf(dev, "pci_alloc_msix_vector failed\n");
+			return (error);
+		}
+
 		que->res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 		    RF_SHAREABLE | RF_ACTIVE);
 		if (que->res == NULL) {
@@ -2320,36 +2161,26 @@ ixgbe_allocate_msix(struct adapter *adapter)
 			return (ENXIO);
 		}
 		/* Set the handler function */
-		error = bus_setup_intr(dev, que->res, INTR_MPSAFE,
-		    ixgbe_msix_que, que, &que->tag, &que->serializer);
+		ksnprintf(desc, sizeof(desc), "%s que %d",
+		    device_get_nameunit(dev), i);
+		error = bus_setup_intr_descr(dev, que->res, INTR_MPSAFE,
+		    ixgbe_msix_que, que, &que->tag, &que->serializer, desc);
 		if (error) {
 			que->res = NULL;
 			device_printf(dev, "Failed to register QUE handler");
 			return (error);
 		}
-#if 0 /* __FreeBSD_version >= 800504 */
-		bus_describe_intr(dev, que->res, que->tag, "que %d", i);
-#endif
 		que->msix = vector;
         	adapter->que_mask |= (u64)(1 << que->msix);
-		/*
-		** Bind the msix vector, and thus the
-		** ring to the corresponding cpu.
-		*/
-#if 0 /* XXX */
-		if (adapter->num_queues > 1)
-			bus_bind_intr(dev, que->res, i);
-#endif
-
-		TASK_INIT(&que->que_task, 0, ixgbe_handle_que, que);
-		que->tq = taskqueue_create("ixgbe_que", M_NOWAIT,
-		    taskqueue_thread_enqueue, &que->tq);
-		taskqueue_start_threads(&que->tq, 1, PI_NET, -1, "%s que",
-		    device_get_nameunit(adapter->dev));
 	}
 
-	/* and Link */
+	/* and Link, bind vector to cpu #0 */
 	rid = vector + 1;
+	error = pci_alloc_msix_vector(dev, vector, &rid, 0);
+	if (error) {
+		device_printf(dev, "pci_alloc_msix_vector failed\n");
+		return (error);
+	}
 	adapter->res = bus_alloc_resource_any(dev,
     	    SYS_RES_IRQ, &rid, RF_SHAREABLE | RF_ACTIVE);
 	if (!adapter->res) {
@@ -2358,16 +2189,16 @@ ixgbe_allocate_msix(struct adapter *adapter)
 		return (ENXIO);
 	}
 	/* Set the link handler function */
-	error = bus_setup_intr(dev, adapter->res, INTR_MPSAFE,
-	    ixgbe_msix_link, adapter, &adapter->tag, &adapter->serializer);
+	error = bus_setup_intr_descr(dev, adapter->res, INTR_MPSAFE,
+	    ixgbe_msix_link, adapter, &adapter->tag, &adapter->serializer,
+	    "link");
 	if (error) {
 		adapter->res = NULL;
 		device_printf(dev, "Failed to register LINK handler");
 		return (error);
 	}
-#if 0 /* __FreeBSD_version >= 800504 */
-	bus_describe_intr(dev, adapter->res, adapter->tag, "link");
-#endif
+	pci_enable_msix(dev);
+
 	adapter->linkvec = vector;
 	/* Tasklets for Link, SFP and Multispeed Fiber */
 	TASK_INIT(&adapter->link_task, 0, ixgbe_handle_link, adapter);
@@ -2384,7 +2215,6 @@ ixgbe_allocate_msix(struct adapter *adapter)
 	return (0);
 }
 
-#if 0	/* HAVE_MSIX */
 /*
  * Setup Either MSI/X or MSI
  */
@@ -2423,7 +2253,7 @@ ixgbe_setup_msix(struct adapter *adapter)
 	}
 
 	/* Figure out a reasonable auto config value */
-	queues = (mp_ncpus > (msgs-1)) ? (msgs-1) : mp_ncpus;
+	queues = (ncpus > (msgs-1)) ? (msgs-1) : ncpus;
 
 	if (ixgbe_num_queues != 0)
 		queues = ixgbe_num_queues;
@@ -2445,7 +2275,7 @@ ixgbe_setup_msix(struct adapter *adapter)
 		    msgs, want);
 		return (0); /* Will go to Legacy setup */
 	}
-	if ((msgs) && pci_alloc_msix(dev, &msgs) == 0) {
+	if (msgs) {
                	device_printf(adapter->dev,
 		    "Using MSIX interrupts with %d vectors\n", msgs);
 		adapter->num_queues = queues;
@@ -2453,13 +2283,8 @@ ixgbe_setup_msix(struct adapter *adapter)
 	}
 msi:
        	msgs = pci_msi_count(dev);
-       	if (msgs == 1 && pci_alloc_msi(dev, &msgs) == 0)
-               	device_printf(adapter->dev,"Using an MSI interrupt\n");
-	else
-               	device_printf(adapter->dev,"Using a Legacy interrupt\n");
 	return (msgs);
 }
-#endif
 
 
 static int
@@ -2492,9 +2317,7 @@ ixgbe_allocate_pci_resources(struct adapter *adapter)
 	** return us the number of supported
 	** vectors. (Will be 1 for MSI)
 	*/
-#if 0	/* HAVE_MSIX */
 	adapter->msix = ixgbe_setup_msix(adapter);
-#endif
 	return (0);
 }
 
@@ -2819,9 +2642,7 @@ ixgbe_allocate_queues(struct adapter *adapter)
 		txr->me = i;
 
 		/* Initialize the TX side lock */
-		ksnprintf(txr->lock_name, sizeof(txr->lock_name), "%s:tx(%d)",
-		    device_get_nameunit(dev), txr->me);
-		lockinit(&txr->tx_lock, txr->lock_name, 0, LK_CANRECURSE);
+		IXGBE_TX_LOCK_INIT(txr);
 
 		if (ixgbe_dma_malloc(adapter, tsize,
 			&txr->txdma, BUS_DMA_NOWAIT)) {
@@ -3538,7 +3359,7 @@ ixgbe_atr(struct tx_ring *txr, struct mbuf *mp)
  *  tx_buffer is put back on the free queue.
  *
  **********************************************************************/
-static bool
+static void
 ixgbe_txeof(struct tx_ring *txr)
 {
 	struct adapter	*adapter = txr->adapter;
@@ -3547,7 +3368,7 @@ ixgbe_txeof(struct tx_ring *txr)
 	struct ixgbe_tx_buf *tx_buffer;
 	struct ixgbe_legacy_tx_desc *tx_desc, *eop_desc;
 
-	KKASSERT(lockstatus(&txr->tx_lock, curthread) != 0);
+	IXGBE_TX_LOCK_ASSERT(txr);
 
 #ifdef DEV_NETMAP
 	if (ifp->if_capenable & IFCAP_NETMAP) {
@@ -3593,7 +3414,7 @@ ixgbe_txeof(struct tx_ring *txr)
 
 	if (txr->tx_avail == adapter->num_tx_desc) {
 		txr->queue_status = IXGBE_QUEUE_IDLE;
-		return FALSE;
+		return;
 	}
 
 	processed = 0;
@@ -3603,7 +3424,7 @@ ixgbe_txeof(struct tx_ring *txr)
 	tx_desc = (struct ixgbe_legacy_tx_desc *)&txr->tx_base[first];
 	last = tx_buffer->eop_index;
 	if (last == -1)
-		return FALSE;
+		return;
 	eop_desc = (struct ixgbe_legacy_tx_desc *)&txr->tx_base[last];
 
 	/*
@@ -3685,10 +3506,7 @@ ixgbe_txeof(struct tx_ring *txr)
 
 	if (txr->tx_avail == adapter->num_tx_desc) {
 		txr->queue_status = IXGBE_QUEUE_IDLE;
-		return (FALSE);
 	}
-
-	return TRUE;
 }
 
 /*********************************************************************
@@ -4447,6 +4265,47 @@ ixgbe_rx_discard(struct rx_ring *rxr, int i)
 	return;
 }
 
+static void
+ixgbe_add_sysctl(struct adapter *adapter)
+{
+	sysctl_ctx_init(&adapter->sysctl_ctx);
+	adapter->sysctl_tree = SYSCTL_ADD_NODE(&adapter->sysctl_ctx,
+	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
+	    device_get_nameunit(adapter->dev), CTLFLAG_RD, 0, "");
+	if (adapter->sysctl_tree == NULL) {
+		device_printf(adapter->dev, "can't add sysctl node\n");
+		return;
+	}
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree),
+			OID_AUTO, "fc", CTLTYPE_INT | CTLFLAG_RW,
+			adapter, 0, ixgbe_set_flowcntl, "I", "Flow Control");
+
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+	    SYSCTL_CHILDREN(adapter->sysctl_tree),
+	    OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
+	    adapter, 0, ixgbe_sysctl_intr_rate, "I", "interrupt rate");
+
+	/*
+	** Allow a kind of speed control by forcing the autoneg
+	** advertised speed list to only a certain value, this
+	** supports 1G on 82599 devices, and 100Mb on x540.
+	*/
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree),
+			OID_AUTO, "advertise_speed", CTLTYPE_INT | CTLFLAG_RW,
+			adapter, 0, ixgbe_set_advertise, "I", "Link Speed");
+
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree),
+			OID_AUTO, "ts", CTLTYPE_INT | CTLFLAG_RW, adapter,
+			0, ixgbe_set_thermal_test, "I", "Thermal Test");
+
+	/* Sysctl for limiting the amount of work done in the taskqueue */
+	ixgbe_add_rx_process_limit(adapter, "rx_processing_limit",
+	    "max number of rx packets to process", &adapter->rx_process_limit,
+	    ixgbe_rx_process_limit);
+}
 
 /*********************************************************************
  *
@@ -4459,7 +4318,7 @@ ixgbe_rx_discard(struct rx_ring *rxr, int i)
  *
  *  Return TRUE for more work, FALSE for all clean.
  *********************************************************************/
-static bool
+static void
 ixgbe_rxeof(struct ix_queue *que, int count)
 {
 	struct adapter		*adapter = que->adapter;
@@ -4735,10 +4594,7 @@ next_desc:
 	*/
 	if ((staterr & IXGBE_RXD_STAT_DD) != 0) {
 		ixgbe_rearm_queues(adapter, (u64)(1 << que->msix));
-		return (TRUE);
 	}
-
-	return (FALSE);
 }
 
 
@@ -5024,12 +4880,6 @@ static void
 ixgbe_configure_ivars(struct adapter *adapter)
 {
 	struct  ix_queue *que = adapter->queues;
-	u32 newitr;
-
-	if (ixgbe_max_interrupt_rate > 0)
-		newitr = (4000000 / ixgbe_max_interrupt_rate) & 0x0FF8;
-	else
-		newitr = 0;
 
         for (int i = 0; i < adapter->num_queues; i++, que++) {
 		/* First the RX queue entry */
@@ -5037,8 +4887,7 @@ ixgbe_configure_ivars(struct adapter *adapter)
 		/* ... and the TX */
 		ixgbe_set_ivar(adapter, i, que->msix, 1);
 		/* Set an Initial EITR value */
-                IXGBE_WRITE_REG(&adapter->hw,
-                    IXGBE_EITR(que->msix), newitr);
+		ixgbe_set_eitr(adapter, que->msix, IXGBE_INTR_RATE);
 	}
 
 	/* For the Link interrupt */
@@ -5382,34 +5231,6 @@ ixgbe_sysctl_rdt_handler(SYSCTL_HANDLER_ARGS)
 	return 0;
 }
 
-static int
-ixgbe_sysctl_interrupt_rate_handler(SYSCTL_HANDLER_ARGS)
-{
-	int error;
-	struct ix_queue *que = ((struct ix_queue *)oidp->oid_arg1);
-	unsigned int reg, usec, rate;
-
-	reg = IXGBE_READ_REG(&que->adapter->hw, IXGBE_EITR(que->msix));
-	usec = ((reg & 0x0FF8) >> 3);
-	if (usec > 0)
-		rate = 500000 / usec;
-	else
-		rate = 0;
-	error = sysctl_handle_int(oidp, &rate, 0, req);
-	if (error || !req->newptr)
-		return error;
-	reg &= ~0xfff; /* default, no limitation */
-	ixgbe_max_interrupt_rate = 0;
-	if (rate > 0 && rate < 500000) {
-		if (rate < 1000)
-			rate = 1000;
-		ixgbe_max_interrupt_rate = rate;
-		reg |= ((4000000/rate) & 0xff8 );
-	}
-	IXGBE_WRITE_REG(&que->adapter->hw, IXGBE_EITR(que->msix), reg);
-	return 0;
-}
-
 /*
  * Add sysctl variables, one per statistic, to the system.
  */
@@ -5455,12 +5276,6 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 		queue_node = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, namebuf,
 					    CTLFLAG_RD, NULL, "Queue Name");
 		queue_list = SYSCTL_CHILDREN(queue_node);
-
-		SYSCTL_ADD_PROC(ctx, queue_list, OID_AUTO, "interrupt_rate",
-				CTLTYPE_UINT | CTLFLAG_RW, &adapter->queues[i],
-				sizeof(&adapter->queues[i]),
-				ixgbe_sysctl_interrupt_rate_handler, "IU",
-				"Interrupt Rate");
 		SYSCTL_ADD_UQUAD(ctx, queue_list, OID_AUTO, "irqs",
 				CTLFLAG_RD, &(adapter->queues[i].irqs), 0,
 				"irqs on this queue");
@@ -5807,6 +5622,62 @@ ixgbe_set_thermal_test(SYSCTL_HANDLER_ARGS)
 	}
 
 	return (0);
+}
+
+static void
+ixgbe_set_eitr(struct adapter *sc, int idx, int rate)
+{
+	uint32_t eitr = 0;
+
+	/* convert rate in intr/s to hw representation */
+	if (rate > 0) {
+		eitr = 1000000 / rate;
+		eitr <<= IXGBE_EITR_INTVL_SHIFT;
+
+		if (eitr == 0) {
+			/* Don't disable it */
+			eitr = 1 << IXGBE_EITR_INTVL_SHIFT;
+		} else if (eitr > IXGBE_EITR_INTVL_MASK) {
+			/* Don't allow it to be too large */
+			eitr = IXGBE_EITR_INTVL_MASK;
+		}
+	}
+	IXGBE_WRITE_REG(&sc->hw, IXGBE_EITR(idx), eitr);
+}
+
+static int
+ixgbe_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
+{
+	struct adapter *sc = (void *)arg1;
+	struct ifnet *ifp = sc->ifp;
+	int error, intr_rate, running;
+	struct ix_queue *que = sc->queues;
+
+	intr_rate = sc->intr_rate;
+	error = sysctl_handle_int(oidp, &intr_rate, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (intr_rate < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+
+	sc->intr_rate = intr_rate;
+	running = ifp->if_flags & IFF_RUNNING;
+	if (running)
+		ixgbe_set_eitr(sc, 0, sc->intr_rate);
+
+	if (running && (sc->intr_type == PCI_INTR_TYPE_MSIX)) {
+	        for (int i = 0; i < sc->num_queues; i++, que++)
+			ixgbe_set_eitr(sc, que->msix, sc->intr_rate);
+	}
+
+	if (bootverbose)
+		if_printf(ifp, "interrupt rate set to %d/sec\n", sc->intr_rate);
+
+	ifnet_deserialize_all(ifp);
+
+	return 0;
 }
 
 /* rearrange mbuf chain to get contiguous bytes */

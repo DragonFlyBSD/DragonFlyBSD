@@ -1029,7 +1029,7 @@ acpi_pst_check_csr(struct acpi_pst_softc *sc)
 	msg.ctrl = &sc->pst_creg;
 	msg.status = &sc->pst_sreg;
 
-	return lwkt_domsg(cpu_portfn(sc->pst_cpuid), &msg.base.lmsg, 0);
+	return lwkt_domsg(netisr_portfn(sc->pst_cpuid), &msg.base.lmsg, 0);
 }
 
 static void
@@ -1052,7 +1052,7 @@ acpi_pst_check_pstates(struct acpi_pst_softc *sc)
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
 		    MSGF_PRIORITY, acpi_pst_check_pstates_handler);
 
-	return lwkt_domsg(cpu_portfn(sc->pst_cpuid), &msg.lmsg, 0);
+	return lwkt_domsg(netisr_portfn(sc->pst_cpuid), &msg.lmsg, 0);
 }
 
 static void
@@ -1078,7 +1078,7 @@ acpi_pst_init(struct acpi_pst_softc *sc)
 	msg.ctrl = &sc->pst_creg;
 	msg.status = &sc->pst_sreg;
 
-	return lwkt_domsg(cpu_portfn(sc->pst_cpuid), &msg.base.lmsg, 0);
+	return lwkt_domsg(netisr_portfn(sc->pst_cpuid), &msg.base.lmsg, 0);
 }
 
 static void
@@ -1105,7 +1105,7 @@ acpi_pst_set_pstate(struct acpi_pst_softc *sc, const struct acpi_pstate *pstate)
 	msg.ctrl = &sc->pst_creg;
 	msg.status = &sc->pst_sreg;
 
-	return lwkt_domsg(cpu_portfn(sc->pst_cpuid), &msg.base.lmsg, 0);
+	return lwkt_domsg(netisr_portfn(sc->pst_cpuid), &msg.base.lmsg, 0);
 }
 
 static void
@@ -1132,7 +1132,7 @@ acpi_pst_get_pstate(struct acpi_pst_softc *sc)
 		    MSGF_PRIORITY, acpi_pst_get_pstate_handler);
 	msg.status = &sc->pst_sreg;
 
-	lwkt_domsg(cpu_portfn(sc->pst_cpuid), &msg.base.lmsg, 0);
+	lwkt_domsg(netisr_portfn(sc->pst_cpuid), &msg.base.lmsg, 0);
 	return msg.base.lmsg.u.ms_resultp;
 }
 

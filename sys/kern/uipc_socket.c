@@ -239,7 +239,7 @@ socreate(int dom, struct socket **aso, int type,
 	if (prp->pr_flags & PR_SYNC_PORT)
 		so->so_port = &netisr_sync_port;
 	else
-		so->so_port = cpu_portfn(0);
+		so->so_port = netisr_portfn(0);
 
 	TAILQ_INIT(&so->so_incomp);
 	TAILQ_INIT(&so->so_comp);

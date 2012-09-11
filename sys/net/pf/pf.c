@@ -2974,7 +2974,7 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 	case AF_INET:
 #ifdef SMP
 		if (msg != NULL) {
-			lwkt_domsg(cpu_portfn(pi_cpu),
+			lwkt_domsg(netisr_portfn(pi_cpu),
 				     &msg->base.lmsg, 0);
 		} else
 #endif /* SMP */

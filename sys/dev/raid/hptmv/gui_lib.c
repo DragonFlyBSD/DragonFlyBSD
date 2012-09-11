@@ -943,7 +943,7 @@ int hpt_add_disk_to_array(_VBUS_ARG DEVICEID idArray, DEVICEID idDisk)
 	if (pArray->pVBus!=_vbus_p) { HPT_ASSERT(0); return -1;}
 
 	for(i = 0; i < pArray->u.array.bArnMember; i++)
-		if((pArray->u.array.pMember[i] == 0) || !pArray->u.array.pMember[i]->vf_online)
+		if((pArray->u.array.pMember[i] == NULL) || !pArray->u.array.pMember[i]->vf_online)
 		{
 			if(pArray->u.array.pMember[i] != NULL)
 				pArray->u.array.pMember[i]->pParent = NULL;
@@ -1311,7 +1311,7 @@ int hpt_default_ioctl(_VBUS_ARG
 
 			if (nInBufferSize!=sizeof(DEVICEID)) return -1;
 			id = *(DEVICEID *)lpInBuffer;
-			while(pAdapter != 0)
+			while(pAdapter != NULL)
 			{
 				pVBus = &pAdapter->VBus;
 				for(i = 0; i < MAX_VDEVICE_PER_VBUS; i++)

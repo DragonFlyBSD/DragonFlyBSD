@@ -2351,7 +2351,7 @@ trm_Disconnect(PACB pACB)
 	target_id  = pSRB->pccb->ccb_h.target_id;
 	target_lun = pSRB->pccb->ccb_h.target_lun;
 	TRM_DPRINTF(":pDCB->pActiveSRB= %8x \n ",(u_int) pDCB->pActiveSRB);
-	pACB->pActiveDCB = 0;
+	pACB->pActiveDCB = NULL;
 	pSRB->ScsiPhase = PH_BUS_FREE; 
 	/* SCSI bus free Phase */
 	trm_reg_write16((DO_CLRFIFO | DO_HWRESELECT), TRMREG_SCSI_CONTROL);
@@ -2369,7 +2369,7 @@ trm_Disconnect(PACB pACB)
 			pACB->pFreeSRB = pSRB;
 			pSRB = psrb;
 		}
-		pDCB->pGoingSRB = 0;
+		pDCB->pGoingSRB = NULL;
 		trm_DoWaitingSRB(pACB);
 	} else {
 		if ((pSRB->SRBState & (SRB_START_+SRB_MSGOUT)) || 
@@ -2394,7 +2394,7 @@ disc1:
 		  /*
 		   * SRB_COMPLETED
 		   */
-			pDCB->pActiveSRB = 0;
+			pDCB->pActiveSRB = NULL;
 			pSRB->SRBState = SRB_FREE;
 			trm_SRBdone(pACB, pDCB, pSRB);
 		}
@@ -2885,7 +2885,7 @@ trm_initDCB(PACB pACB, PDCB pDCB, u_int16_t unit,u_int32_t i,u_int32_t j)
 		bcopy(&pACB->DCBarray[target_id][0], pDCB,
 		    sizeof(TRM_DCB));
 	crit_enter();
-	if (pACB->pLinkDCB == 0) {
+	if (pACB->pLinkDCB == NULL) {
 		pACB->pLinkDCB = pDCB;
 		/* 
 		 * RunRobin impersonate the role 
@@ -3547,7 +3547,7 @@ trm_attach(device_t dev)
 {
 	struct	cam_devq *device_Q;
 	u_long	device_id;
-	PACB	pACB = 0;
+	PACB	pACB = NULL;
 	int	rid = 0;
 	int unit = device_get_unit(dev);
 	

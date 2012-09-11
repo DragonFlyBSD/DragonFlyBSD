@@ -1876,7 +1876,7 @@ dummynet_clock(systimer_t info __unused, int in_ipi __unused,
 
     crit_enter();
     if (DUMMYNET_LOADED && (dn_netmsg.lmsg.ms_flags & MSGF_DONE))
-	lwkt_sendmsg(cpu_portfn(mycpuid), &dn_netmsg.lmsg);
+	lwkt_sendmsg(netisr_portfn(mycpuid), &dn_netmsg.lmsg);
     crit_exit();
 }
 
@@ -1961,7 +1961,7 @@ ip_dn_init(void)
 
     netmsg_init(&smsg, NULL, &curthread->td_msgport,
 		0, ip_dn_init_dispatch);
-    lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.lmsg, 0);
+    lwkt_domsg(netisr_portfn(ip_dn_cpu), &smsg.lmsg, 0);
     return smsg.lmsg.ms_error;
 }
 
@@ -1991,7 +1991,7 @@ ip_dn_stop(void)
 
     netmsg_init(&smsg, NULL, &curthread->td_msgport,
 		0, ip_dn_stop_dispatch);
-    lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.lmsg, 0);
+    lwkt_domsg(netisr_portfn(ip_dn_cpu), &smsg.lmsg, 0);
 
     netmsg_service_sync();
 }

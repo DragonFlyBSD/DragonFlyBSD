@@ -271,7 +271,6 @@ ip_cpufn(struct mbuf **mptr, int hoff, int dir)
 	struct tcphdr *th;
 	struct udphdr *uh;
 	struct mbuf *m;
-	int thoff;				/* TCP data offset */
 	int cpu;
 
 	if (!ip_lengthcheck(mptr, hoff))
@@ -292,7 +291,6 @@ ip_cpufn(struct mbuf **mptr, int hoff, int dir)
 	switch (ip->ip_p) {
 	case IPPROTO_TCP:
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
-		thoff = th->th_off << 2;
 		cpu = INP_MPORT_HASH_TCP(ip->ip_src.s_addr,
 					 ip->ip_dst.s_addr,
 					 th->th_sport,
@@ -414,25 +412,25 @@ tcp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 		cpu = tcp_addrcpu(faddr.s_addr, th->th_dport,
 				  ip->ip_src.s_addr, th->th_sport);
 	}
-	return(cpu_portfn(cpu));
+	return(netisr_portfn(cpu));
 }
 
 lwkt_port_t
 tcp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	return(cpu_portfn(tcp_addrcpu(faddr, fport, laddr, lport)));
+	return(netisr_portfn(tcp_addrcpu(faddr, fport, laddr, lport)));
 }
 
 lwkt_port_t
 tcp_addrport0(void)
 {
-	return(cpu_portfn(0));
+	return(netisr_portfn(0));
 }
 
 lwkt_port_t
 udp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	return(cpu_portfn(udp_addrcpu(faddr, fport, laddr, lport)));
+	return(netisr_portfn(udp_addrcpu(faddr, fport, laddr, lport)));
 }
 
 /*
@@ -469,5 +467,5 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 		cpu = udp_addrcpu(faddr.s_addr, ip->ip_src.s_addr,
 				  uh->uh_dport, uh->uh_sport);
 	}
-	return (cpu_portfn(cpu));
+	return (netisr_portfn(cpu));
 }

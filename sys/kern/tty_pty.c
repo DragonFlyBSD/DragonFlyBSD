@@ -548,7 +548,7 @@ ptswrite(struct dev_write_args *ap)
 
 	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
-	if (tp->t_oproc == 0) {
+	if (tp->t_oproc == NULL) {
 		lwkt_reltoken(&tty_token);
 		return (EIO);
 	}

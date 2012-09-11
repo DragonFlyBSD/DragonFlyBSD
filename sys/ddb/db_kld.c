@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_kld.c,v 1.9 2000/01/11 13:25:12 peter Exp $
- * $DragonFly: src/sys/ddb/db_kld.c,v 1.5 2008/07/23 16:39:32 dillon Exp $
  *	from db_aout.c,v 1.20 1998/06/07 17:09:36 dfr Exp
  */
 
@@ -88,7 +87,7 @@ X_db_symbol_values(db_symtab_t *symtab, c_db_sym_t dbsym, const char **namep,
 	linker_symval_t symval;
 
 	symval.name = NULL;
-	symval.value = 0;
+	symval.value = NULL;
 	linker_ddb_symbol_values(sym, &symval);
 	if (namep)
 	    *namep = (const char*) symval.name;

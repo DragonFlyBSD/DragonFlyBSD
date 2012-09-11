@@ -374,7 +374,7 @@ in_pcbinswildcardhash_handler(netmsg_t msg)
 
 	nextcpu = cpu + 1;
 	if (nextcpu < ncpus2)
-		lwkt_forwardmsg(cpu_portfn(nextcpu), &nm->base.lmsg);
+		lwkt_forwardmsg(netisr_portfn(nextcpu), &nm->base.lmsg);
 	else
 		lwkt_replymsg(&nm->base.lmsg, 0);
 }
@@ -425,14 +425,14 @@ tcp_usr_listen(netmsg_t msg)
 			("already on MP wildcardhash"));
 		inp->inp_flags |= INP_WILDCARD_MP;
 
-		KKASSERT(so->so_port == cpu_portfn(0));
-		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+		KKASSERT(so->so_port == netisr_portfn(0));
+		KKASSERT(&curthread->td_msgport == netisr_portfn(0));
 		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 
 		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
 			    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
 		nm.nm_inp = inp;
-		lwkt_domsg(cpu_portfn(1), &nm.base.lmsg, 0);
+		lwkt_domsg(netisr_portfn(1), &nm.base.lmsg, 0);
 	}
 #endif
 	in_pcbinswildcardhash(inp);
@@ -486,14 +486,14 @@ tcp6_usr_listen(netmsg_t msg)
 			("already on MP wildcardhash"));
 		inp->inp_flags |= INP_WILDCARD_MP;
 
-		KKASSERT(so->so_port == cpu_portfn(0));
-		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+		KKASSERT(so->so_port == netisr_portfn(0));
+		KKASSERT(&curthread->td_msgport == netisr_portfn(0));
 		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 
 		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
 			    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
 		nm.nm_inp = inp;
-		lwkt_domsg(cpu_portfn(1), &nm.base.lmsg, 0);
+		lwkt_domsg(netisr_portfn(1), &nm.base.lmsg, 0);
 	}
 #endif
 	in_pcbinswildcardhash(inp);

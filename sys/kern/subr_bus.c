@@ -1203,10 +1203,10 @@ static int
 device_probe_child(device_t dev, device_t child)
 {
 	devclass_t dc;
-	driverlink_t best = 0;
+	driverlink_t best = NULL;
 	driverlink_t dl;
 	int result, pri = 0;
-	int hasclass = (child->devclass != 0);
+	int hasclass = (child->devclass != NULL);
 
 	dc = dev->devclass;
 	if (!dc)
@@ -1250,7 +1250,7 @@ device_probe_child(device_t dev, device_t child)
 			 * best matching driver. Initialise the value
 			 * of pri for the first match.
 			 */
-			if (best == 0 || result > pri) {
+			if (best == NULL || result > pri) {
 				best = dl;
 				pri = result;
 				continue;
@@ -1369,7 +1369,7 @@ device_print_prettyname(device_t dev)
 {
 	const char *name = device_get_name(dev);
 
-	if (name == 0)
+	if (name == NULL)
 		return kprintf("unknown: ");
 	else
 		return kprintf("%s%d: ", name, device_get_unit(dev));
@@ -1704,7 +1704,7 @@ static int
 device_doattach(device_t dev)
 {
 	device_t bus = dev->parent;
-	int hasclass = (dev->devclass != 0);
+	int hasclass = (dev->devclass != NULL);
 	int error;
 
 	error = DEVICE_ATTACH(dev);
@@ -2837,7 +2837,7 @@ struct resource *
 bus_alloc_resource(device_t dev, int type, int *rid, u_long start, u_long end,
 		   u_long count, u_int flags)
 {
-	if (dev->parent == 0)
+	if (dev->parent == NULL)
 		return(0);
 	return(BUS_ALLOC_RESOURCE(dev->parent, dev, type, rid, start, end,
 				  count, flags, -1));
@@ -2846,7 +2846,7 @@ bus_alloc_resource(device_t dev, int type, int *rid, u_long start, u_long end,
 struct resource *
 bus_alloc_legacy_irq_resource(device_t dev, int *rid, u_long irq, u_int flags)
 {
-	if (dev->parent == 0)
+	if (dev->parent == NULL)
 		return(0);
 	return BUS_ALLOC_RESOURCE(dev->parent, dev, SYS_RES_IRQ, rid,
 	    irq, irq, 1, flags, machintr_legacy_intr_cpuid(irq));
@@ -2855,7 +2855,7 @@ bus_alloc_legacy_irq_resource(device_t dev, int *rid, u_long irq, u_int flags)
 int
 bus_activate_resource(device_t dev, int type, int rid, struct resource *r)
 {
-	if (dev->parent == 0)
+	if (dev->parent == NULL)
 		return(EINVAL);
 	return(BUS_ACTIVATE_RESOURCE(dev->parent, dev, type, rid, r));
 }
@@ -2863,7 +2863,7 @@ bus_activate_resource(device_t dev, int type, int rid, struct resource *r)
 int
 bus_deactivate_resource(device_t dev, int type, int rid, struct resource *r)
 {
-	if (dev->parent == 0)
+	if (dev->parent == NULL)
 		return(EINVAL);
 	return(BUS_DEACTIVATE_RESOURCE(dev->parent, dev, type, rid, r));
 }
@@ -2871,7 +2871,7 @@ bus_deactivate_resource(device_t dev, int type, int rid, struct resource *r)
 int
 bus_release_resource(device_t dev, int type, int rid, struct resource *r)
 {
-	if (dev->parent == 0)
+	if (dev->parent == NULL)
 		return(EINVAL);
 	return(BUS_RELEASE_RESOURCE(dev->parent, dev, type, rid, r));
 }
@@ -2881,7 +2881,7 @@ bus_setup_intr_descr(device_t dev, struct resource *r, int flags,
     driver_intr_t handler, void *arg, void **cookiep,
     lwkt_serialize_t serializer, const char *desc)
 {
-	if (dev->parent == 0)
+	if (dev->parent == NULL)
 		return EINVAL;
 	return BUS_SETUP_INTR(dev->parent, dev, r, flags, handler, arg,
 	    cookiep, serializer, desc);
@@ -2899,7 +2899,7 @@ bus_setup_intr(device_t dev, struct resource *r, int flags,
 int
 bus_teardown_intr(device_t dev, struct resource *r, void *cookie)
 {
-	if (dev->parent == 0)
+	if (dev->parent == NULL)
 		return(EINVAL);
 	return(BUS_TEARDOWN_INTR(dev->parent, dev, r, cookie));
 }

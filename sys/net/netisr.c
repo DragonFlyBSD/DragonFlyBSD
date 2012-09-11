@@ -367,7 +367,7 @@ netisr_queue(int num, struct mbuf *m)
 	 * Get the protocol port based on the packet hash, initialize
 	 * the netmsg, and send it off.
 	 */
-	port = cpu_portfn(m->m_pkthdr.hash);
+	port = netisr_portfn(m->m_pkthdr.hash);
 	pmsg = &m->m_hdr.mh_netmsg;
 	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
 		    0, ni->ni_handler);
@@ -394,7 +394,7 @@ netisr_handle(int num, struct mbuf *m)
 	 * Get the protocol port based on the packet hash
 	 */
 	KASSERT((m->m_flags & M_HASH), ("packet not characterized"));
-	port = cpu_portfn(m->m_pkthdr.hash);
+	port = netisr_portfn(m->m_pkthdr.hash);
 	KASSERT(&curthread->td_msgport == port, ("wrong msgport"));
 
 	KASSERT((num > 0 && num <= NELEM(netisrs)), ("bad isr %d", num));
@@ -515,7 +515,7 @@ netisr_register_rollup(netisr_ru_t ru_func)
  * thread for a particular cpu.
  */
 lwkt_port_t
-cpu_portfn(int cpu)
+netisr_portfn(int cpu)
 {
 	KKASSERT(cpu >= 0 && cpu < ncpus);
 	return (&netisr_cpu[cpu].td_msgport);
@@ -527,7 +527,7 @@ cpu_portfn(int cpu)
 lwkt_port_t
 cur_netport(void)
 {
-	return(cpu_portfn(mycpu->gd_cpuid));
+	return(netisr_portfn(mycpu->gd_cpuid));
 }
 
 /*
@@ -651,7 +651,7 @@ netisr_barrier_set(struct netisr_barrier *br)
 	volatile cpumask_t other_cpumask;
 	int i, cur_cpuid;
 
-	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
 	KKASSERT(!br->br_isset);
 
 	other_cpumask = mycpu->gd_other_cpus & smp_active_mask;
@@ -677,7 +677,7 @@ netisr_barrier_set(struct netisr_barrier *br)
 	for (i = 0; i < ncpus; ++i) {
 		if (i == cur_cpuid)
 			continue;
-		lwkt_sendmsg(cpu_portfn(i), &br->br_msgs[i]->base.lmsg);
+		lwkt_sendmsg(netisr_portfn(i), &br->br_msgs[i]->base.lmsg);
 	}
 
 	while (other_cpumask != 0) {
@@ -695,7 +695,7 @@ netisr_barrier_rem(struct netisr_barrier *br)
 #ifdef SMP
 	int i, cur_cpuid;
 
-	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
 	KKASSERT(br->br_isset);
 
 	cur_cpuid = mycpuid;

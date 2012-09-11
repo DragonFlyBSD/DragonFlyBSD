@@ -569,17 +569,17 @@ cs_release_resources(device_t dev)
         if (sc->port_res) {
                 bus_release_resource(dev, SYS_RES_IOPORT,
                                      sc->port_rid, sc->port_res);
-                sc->port_res = 0;
+                sc->port_res = NULL;
         }
         if (sc->mem_res) {
                 bus_release_resource(dev, SYS_RES_MEMORY,
                                      sc->mem_rid, sc->mem_res);
-                sc->mem_res = 0;
+                sc->mem_res = NULL;
         }
         if (sc->irq_res) {
                 bus_release_resource(dev, SYS_RES_IRQ,
                                      sc->irq_rid, sc->irq_res);
-                sc->irq_res = 0;
+                sc->irq_res = NULL;
         }
 }
 

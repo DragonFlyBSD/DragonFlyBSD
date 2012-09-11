@@ -3038,7 +3038,7 @@ key_setsaval(struct secasvar *sav, struct mbuf *m,
 		if (sav->ivlen == 0)
 			break;
 		KMALLOC(sav->iv, caddr_t, sav->ivlen);
-		if (sav->iv == 0) {
+		if (sav->iv == NULL) {
 			ipseclog((LOG_DEBUG, "key_setsaval: No more memory.\n"));
 			error = ENOBUFS;
 			goto fail;

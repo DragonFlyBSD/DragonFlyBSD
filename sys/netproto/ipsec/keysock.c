@@ -369,7 +369,7 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	struct keycb *kp;
 	int error;
 
-	if (sotorawcb(so) != 0)
+	if (sotorawcb(so) != NULL)
 		return EISCONN;	/* XXX panic? */
 	kp = (struct keycb *)kmalloc(sizeof *kp, M_PCB, M_WAITOK|M_ZERO); /* XXX */
 

@@ -269,6 +269,7 @@ MLINKS+=bus_dma.9 busdma.9 \
 MLINKS+=bus_generic_read_ivar.9 bus_generic_write_ivar.9
 MLINKS+=BUS_READ_IVAR.9 BUS_WRITE_IVAR.9
 MLINKS+=BUS_SETUP_INTR.9 bus_setup_intr.9 \
+	BUS_SETUP_INTR.9 bus_setup_intr_descr.9 \
 	BUS_SETUP_INTR.9 BUS_TEARDOWN_INTR.9 \
 	BUS_SETUP_INTR.9 bus_teardown_intr.9
 MLINKS+=bus_space.9 bus_space_barrier.9 \

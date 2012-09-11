@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-lowlevel.c,v 1.77 2006/07/04 20:36:03 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-lowlevel.c,v 1.2 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -375,7 +374,6 @@ ata_end_transaction(struct ata_request *request)
 			      "%s trying to write on read buffer\n",
 			   ata_cmd2str(request));
 		goto end_finished;
-		break;
 	    }
 	    ata_pio_write(request, length);
 	    request->donecount += length;

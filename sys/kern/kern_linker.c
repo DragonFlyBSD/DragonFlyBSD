@@ -371,7 +371,7 @@ out:
 linker_file_t
 linker_find_file_by_name(const char* filename)
 {
-    linker_file_t lf = 0;
+    linker_file_t lf = NULL;
     char *koname;
     int i;
 
@@ -399,7 +399,7 @@ linker_find_file_by_name(const char* filename)
 linker_file_t
 linker_find_file_by_id(int fileid)
 {
-    linker_file_t lf = 0;
+    linker_file_t lf = NULL;
 
     lockmgr(&lock, LK_SHARED);
     TAILQ_FOREACH(lf, &linker_files, link)
@@ -429,7 +429,7 @@ linker_file_foreach(linker_predicate_t *predicate, void *context)
 linker_file_t
 linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
 {
-    linker_file_t lf = 0;
+    linker_file_t lf = NULL;
     const char *filename;
 
     filename = rindex(pathname, '/');
@@ -602,7 +602,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 	 * XXX Assume a common symbol if its value is 0 and it has a non-zero
 	 * size, otherwise it could be an absolute symbol with a value of 0.
 	 */
-	if (symval.value == 0 && symval.size != 0) {
+	if (symval.value == NULL && symval.size != 0) {
 	    /*
 	     * For commons, first look them up in the dependancies and
 	     * only allocate space if not found there.
@@ -718,12 +718,12 @@ linker_ddb_search_symbol(caddr_t value, c_linker_sym_t *sym, long *diffp)
     c_linker_sym_t best;
     c_linker_sym_t es;
 
-    best = 0;
+    best = NULL;
     bestdiff = off;
     TAILQ_FOREACH(lf, &linker_files, link) {
 	if (lf->ops->search_symbol(lf, value, &es, &diff) != 0)
 	    continue;
-	if (es != 0 && diff < bestdiff) {
+	if (es != NULL && diff < bestdiff) {
 	    best = es;
 	    bestdiff = diff;
 	}
@@ -735,7 +735,7 @@ linker_ddb_search_symbol(caddr_t value, c_linker_sym_t *sym, long *diffp)
 	*diffp = bestdiff;
 	return 0;
     } else {
-	*sym = 0;
+	*sym = NULL;
 	*diffp = off;
 	return ENOENT;
     }

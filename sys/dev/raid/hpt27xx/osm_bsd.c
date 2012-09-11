@@ -337,7 +337,7 @@ static void hpt_shutdown_vbus(PVBUS_EXT vbus_ext, int howto)
 
 	/* stop all ctl tasks and disable the worker taskqueue */
 	hpt_stop_tasks(vbus_ext);
-	vbus_ext->worker.ta_context = 0;
+	vbus_ext->worker.ta_context = NULL;
 
 	/* flush devices */
 	for (i=0; i<osm_max_targets; i++) {
@@ -374,12 +374,12 @@ static void __hpt_do_tasks(PVBUS_EXT vbus_ext)
 	OSM_TASK *tasks;
 
 	tasks = vbus_ext->tasks;
-	vbus_ext->tasks = 0;
+	vbus_ext->tasks = NULL;
 
 	while (tasks) {
 		OSM_TASK *t = tasks;
 		tasks = t->next;
-		t->next = 0;
+		t->next = NULL;
 		t->func(vbus_ext->vbus, t->data);
 	}
 }
@@ -864,7 +864,7 @@ static int hpt_detach(device_t dev)
 
 static void hpt_ioctl_done(struct _IOCTL_ARG *arg)
 {
-	arg->ioctl_cmnd = 0;
+	arg->ioctl_cmnd = NULL;
 	wakeup(arg);
 }
 
@@ -908,7 +908,7 @@ static void hpt_do_ioctl(IOCTL_ARG *ioctl_args)
 	arg.lpOutBuffer = outbuf;\
 	arg.nInBufferSize = insize;\
 	arg.nOutBufferSize = outsize;\
-	arg.lpBytesReturned = 0;\
+	arg.lpBytesReturned = NULL;\
 	hpt_do_ioctl(&arg);\
 	arg.result;\
 })
