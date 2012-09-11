@@ -425,7 +425,7 @@ vlan_ifdetach(void *arg __unused, struct ifnet *ifp)
 		    0, vlan_ifdetach_dispatch);
 	vmsg.nv_ifp_p = ifp;
 
-	lwkt_domsg(cpu_portfn(0), &vmsg.base.lmsg, 0);
+	lwkt_domsg(netisr_portfn(0), &vmsg.base.lmsg, 0);
 }
 
 static int
@@ -551,7 +551,7 @@ vlan_start(struct ifnet *ifp)
 		nmp->nm_packet = m;
 		nmp->base.lmsg.u.ms_resultp = ifp_p;
 
-		port = cpu_portfn(ifp_p->if_index % ncpus /* XXX */);
+		port = netisr_portfn(ifp_p->if_index % ncpus /* XXX */);
 		lwkt_sendmsg(port, &nmp->base.lmsg);
 		ifp->if_opackets++;
 	}
@@ -766,7 +766,7 @@ vlan_config(struct ifvlan *ifv, const char *parent_name, uint16_t vlantag)
 	vmsg.nv_parent_name = parent_name;
 	vmsg.nv_vlantag = vlantag;
 
-	return lwkt_domsg(cpu_portfn(0), &vmsg.base.lmsg, 0);
+	return lwkt_domsg(netisr_portfn(0), &vmsg.base.lmsg, 0);
 }
 
 static void
@@ -904,7 +904,7 @@ vlan_unconfig(struct ifvlan *ifv)
 		    0, vlan_unconfig_dispatch);
 	vmsg.nv_ifv = ifv;
 
-	return lwkt_domsg(cpu_portfn(0), &vmsg.base.lmsg, 0);
+	return lwkt_domsg(netisr_portfn(0), &vmsg.base.lmsg, 0);
 }
 
 static int
@@ -1046,7 +1046,7 @@ vlan_config_multi(struct ifvlan *ifv)
 		    0, vlan_multi_dispatch);
 	vmsg.nv_ifv = ifv;
 
-	return lwkt_domsg(cpu_portfn(0), &vmsg.base.lmsg, 0);
+	return lwkt_domsg(netisr_portfn(0), &vmsg.base.lmsg, 0);
 }
 
 static void
@@ -1078,5 +1078,5 @@ vlan_config_flags(struct ifvlan *ifv)
 		    0, vlan_flags_dispatch);
 	vmsg.nv_ifv = ifv;
 
-	return lwkt_domsg(cpu_portfn(0), &vmsg.base.lmsg, 0);
+	return lwkt_domsg(netisr_portfn(0), &vmsg.base.lmsg, 0);
 }

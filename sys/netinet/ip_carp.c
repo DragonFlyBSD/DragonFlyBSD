@@ -693,7 +693,7 @@ carp_clone_destroy(struct ifnet *ifp)
 	    carp_clone_destroy_dispatch);
 	cmsg.nc_softc = sc;
 
-	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+	lwkt_domsg(netisr_portfn(0), &cmsg.base.lmsg, 0);
 
 	lwkt_gettoken(&carp_listtok);
 	LIST_REMOVE(sc, sc_next);
@@ -898,7 +898,7 @@ carp_ifdetach(void *arg __unused, struct ifnet *ifp)
 	    carp_ifdetach_dispatch);
 	cmsg.nc_carpdev = ifp;
 
-	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+	lwkt_domsg(netisr_portfn(0), &cmsg.base.lmsg, 0);
 }
 
 /*
@@ -1279,7 +1279,7 @@ carp_send_ad_timeout(void *xsc)
 
 	crit_enter();
 	if (cmsg->base.lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(cpu_portfn(0), &cmsg->base.lmsg);
+		lwkt_sendmsg(netisr_portfn(0), &cmsg->base.lmsg);
 	crit_exit();
 }
 
@@ -1585,7 +1585,7 @@ carp_iamatch(const struct in_ifaddr *ia)
 {
 	const struct carp_softc *sc = ia->ia_ifp->if_softc;
 
-	KASSERT(&curthread->td_msgport == cpu_portfn(0),
+	KASSERT(&curthread->td_msgport == netisr_portfn(0),
 	    ("not in netisr0"));
 
 #ifdef notyet
@@ -1695,7 +1695,7 @@ carp_master_down_timeout(void *xsc)
 
 	crit_enter();
 	if (cmsg->base.lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(cpu_portfn(0), &cmsg->base.lmsg);
+		lwkt_sendmsg(netisr_portfn(0), &cmsg->base.lmsg);
 	crit_exit();
 }
 
@@ -1927,7 +1927,7 @@ carp_ioctl_getvhaddr(struct carp_softc *sc, struct ifdrv *ifd)
 	cmsg.nc_softc = sc;
 	cmsg.nc_datalen = ifd->ifd_len;
 
-	error = lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+	error = lwkt_domsg(netisr_portfn(0), &cmsg.base.lmsg, 0);
 
 	if (!error) {
 		if (cmsg.nc_data != NULL) {
@@ -2355,7 +2355,7 @@ carp_ioctl_stop(struct carp_softc *sc)
 	    carp_ioctl_stop_dispatch);
 	cmsg.nc_softc = sc;
 
-	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+	lwkt_domsg(netisr_portfn(0), &cmsg.base.lmsg, 0);
 
 	ifnet_serialize_all(ifp);
 }
@@ -2466,7 +2466,7 @@ carp_ioctl_setvh(struct carp_softc *sc, void *udata, struct ucred *cr)
 	cmsg.nc_softc = sc;
 	cmsg.nc_data = &carpr;
 
-	error = lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+	error = lwkt_domsg(netisr_portfn(0), &cmsg.base.lmsg, 0);
 
 back:
 	ifnet_serialize_all(ifp);
@@ -2506,7 +2506,7 @@ carp_ioctl_getvh(struct carp_softc *sc, void *udata, struct ucred *cr)
 	cmsg.nc_softc = sc;
 	cmsg.nc_data = &carpr;
 
-	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+	lwkt_domsg(netisr_portfn(0), &cmsg.base.lmsg, 0);
 
 	error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 	if (error)
@@ -2553,7 +2553,7 @@ carp_ioctl_getdevname(struct carp_softc *sc, struct ifdrv *ifd)
 	cmsg.nc_softc = sc;
 	cmsg.nc_data = devname;
 
-	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+	lwkt_domsg(netisr_portfn(0), &cmsg.base.lmsg, 0);
 
 	error = copyout(devname, ifd->ifd_data, sizeof(devname));
 
@@ -2591,7 +2591,7 @@ carp_init(void *xsc)
 	    carp_init_dispatch);
 	cmsg.nc_softc = sc;
 
-	lwkt_domsg(cpu_portfn(0), &cmsg.base.lmsg, 0);
+	lwkt_domsg(netisr_portfn(0), &cmsg.base.lmsg, 0);
 
 	ifnet_serialize_all(ifp);
 }
@@ -2971,7 +2971,7 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 	if (ifa->ifa_addr->sa_family != AF_INET)
 		return;
 
-	KASSERT(&curthread->td_msgport == cpu_portfn(0),
+	KASSERT(&curthread->td_msgport == netisr_portfn(0),
 	    ("not in netisr0"));
 
 	if (ifp->if_type == IFT_CARP) {

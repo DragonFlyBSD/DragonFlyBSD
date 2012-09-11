@@ -1168,7 +1168,7 @@ post_stats:
 	}
 
 	if (m->m_flags & M_HASH) {
-		if (&curthread->td_msgport == cpu_portfn(m->m_pkthdr.hash)) {
+		if (&curthread->td_msgport == netisr_portfn(m->m_pkthdr.hash)) {
 			netisr_handle(isr, m);
 			return;
 		} else {
@@ -1423,7 +1423,7 @@ ether_dispatch(int isr, struct mbuf *m)
 	pmsg->base.lmsg.u.ms_result = isr;
 
 	logether(disp_beg, NULL);
-	lwkt_sendmsg(cpu_portfn(m->m_pkthdr.hash), &pmsg->base.lmsg);
+	lwkt_sendmsg(netisr_portfn(m->m_pkthdr.hash), &pmsg->base.lmsg);
 	logether(disp_end, NULL);
 }
 
@@ -1629,7 +1629,7 @@ ether_demux(struct mbuf *m)
 	pmsg->nm_packet = m;
 	pmsg->base.lmsg.u.ms_result = isr;
 
-	lwkt_sendmsg(cpu_portfn(m->m_pkthdr.hash), &pmsg->base.lmsg);
+	lwkt_sendmsg(netisr_portfn(m->m_pkthdr.hash), &pmsg->base.lmsg);
 }
 
 boolean_t

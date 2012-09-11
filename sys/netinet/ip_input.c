@@ -947,7 +947,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		ip->ip_off = ntohs(ip->ip_off);
 		KKASSERT(m->m_flags & M_HASH);
 	}
-	port = cpu_portfn(m->m_pkthdr.hash);
+	port = netisr_portfn(m->m_pkthdr.hash);
 
 	if (port != &curthread->td_msgport) {
 		struct netmsg_packet *pmsg;

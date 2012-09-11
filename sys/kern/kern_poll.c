@@ -301,7 +301,7 @@ static void
 schedpoll_oncpu(netmsg_t msg)
 {
 	if (msg->lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(cpu_portfn(mycpuid), &msg->lmsg);
+		lwkt_sendmsg(netisr_portfn(mycpuid), &msg->lmsg);
 }
 
 static __inline void
@@ -342,7 +342,7 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 		    0, poll_sysctl_pollhz);
 	msg.lmsg.u.ms_result = phz;
 
-	port = cpu_portfn(pctx->poll_cpuid);
+	port = netisr_portfn(pctx->poll_cpuid);
 	lwkt_domsg(port, &msg.lmsg, 0);
 	return 0;
 }
@@ -367,7 +367,7 @@ sysctl_polling(SYSCTL_HANDLER_ARGS)
 		    0, poll_sysctl_polling);
 	msg.lmsg.u.ms_result = enabled;
 
-	port = cpu_portfn(pctx->poll_cpuid);
+	port = netisr_portfn(pctx->poll_cpuid);
 	lwkt_domsg(port, &msg.lmsg, 0);
 	return 0;
 }
@@ -390,7 +390,7 @@ sysctl_regfrac(SYSCTL_HANDLER_ARGS)
 		    0, poll_sysctl_regfrac);
 	msg.lmsg.u.ms_result = reg_frac;
 
-	port = cpu_portfn(pctx->poll_cpuid);
+	port = netisr_portfn(pctx->poll_cpuid);
 	lwkt_domsg(port, &msg.lmsg, 0);
 	return 0;
 }
@@ -417,7 +417,7 @@ sysctl_burstmax(SYSCTL_HANDLER_ARGS)
 		    0, poll_sysctl_burstmax);
 	msg.lmsg.u.ms_result = burst_max;
 
-	port = cpu_portfn(pctx->poll_cpuid);
+	port = netisr_portfn(pctx->poll_cpuid);
 	lwkt_domsg(port, &msg.lmsg, 0);
 	return 0;
 }
@@ -440,7 +440,7 @@ sysctl_eachburst(SYSCTL_HANDLER_ARGS)
 		    0, poll_sysctl_eachburst);
 	msg.lmsg.u.ms_result = each_burst;
 
-	port = cpu_portfn(pctx->poll_cpuid);
+	port = netisr_portfn(pctx->poll_cpuid);
 	lwkt_domsg(port, &msg.lmsg, 0);
 	return 0;
 }
@@ -768,7 +768,7 @@ ether_pollcpu_register(struct ifnet *ifp, int cpuid)
 		    0, poll_register);
 	msg.lmsg.u.ms_resultp = ifp;
 
-	port = cpu_portfn(cpuid);
+	port = netisr_portfn(cpuid);
 	lwkt_domsg(port, &msg.lmsg, 0);
 
 	if (msg.lmsg.ms_error) {
@@ -862,7 +862,7 @@ ether_poll_deregister(struct ifnet *ifp)
 		    0, poll_deregister);
 	msg.lmsg.u.ms_resultp = ifp;
 
-	port = cpu_portfn(cpuid);
+	port = netisr_portfn(cpuid);
 	lwkt_domsg(port, &msg.lmsg, 0);
 
 	if (!msg.lmsg.ms_error) {

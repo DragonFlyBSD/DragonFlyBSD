@@ -591,7 +591,7 @@ bpfwrite(struct dev_write_args *ap)
 	bmsg.nm_ifp = ifp;
 	bmsg.nm_dst = &dst;
 
-	return lwkt_domsg(cpu_portfn(0), &bmsg.base.lmsg, 0);
+	return lwkt_domsg(netisr_portfn(0), &bmsg.base.lmsg, 0);
 }
 
 /*
