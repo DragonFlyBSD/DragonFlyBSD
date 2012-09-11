@@ -2249,9 +2249,7 @@ int
 rsvp_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct mbuf *m = *mp;
-	int off;
 
-	off = *offp;
 	*mp = NULL;
 
 	if (rsvp_input_p) { /* call the real one if loaded */

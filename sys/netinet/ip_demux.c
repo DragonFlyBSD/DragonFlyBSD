@@ -271,7 +271,6 @@ ip_cpufn(struct mbuf **mptr, int hoff, int dir)
 	struct tcphdr *th;
 	struct udphdr *uh;
 	struct mbuf *m;
-	int thoff;				/* TCP data offset */
 	int cpu;
 
 	if (!ip_lengthcheck(mptr, hoff))
@@ -292,7 +291,6 @@ ip_cpufn(struct mbuf **mptr, int hoff, int dir)
 	switch (ip->ip_p) {
 	case IPPROTO_TCP:
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
-		thoff = th->th_off << 2;
 		cpu = INP_MPORT_HASH_TCP(ip->ip_src.s_addr,
 					 ip->ip_dst.s_addr,
 					 th->th_sport,

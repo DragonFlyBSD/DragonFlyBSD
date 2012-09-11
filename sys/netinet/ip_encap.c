@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.c,v 1.1.2.5 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.15 2006/09/05 00:55:48 dillon Exp $	*/
 /*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
 
 /*
@@ -308,22 +307,15 @@ encap_attach(int af, int proto, const struct sockaddr *sp,
 	     const struct sockaddr *dm, const struct protosw *psw, void *arg)
 {
 	struct encaptab *ep;
-	int error;
 
 	crit_enter();
 	/* sanity check on args */
-	if (sp->sa_len > sizeof ep->src || dp->sa_len > sizeof ep->dst) {
-		error = EINVAL;
+	if (sp->sa_len > sizeof ep->src || dp->sa_len > sizeof ep->dst)
 		goto fail;
-	}
-	if (sp->sa_len != dp->sa_len) {
-		error = EINVAL;
+	if (sp->sa_len != dp->sa_len)
 		goto fail;
-	}
-	if (af != sp->sa_family || af != dp->sa_family) {
-		error = EINVAL;
+	if (af != sp->sa_family || af != dp->sa_family)
 		goto fail;
-	}
 
 	/* check if anyone have already attached with exactly same config */
 	for (ep = LIST_FIRST(&encaptab); ep; ep = LIST_NEXT(ep, chain)) {
@@ -340,15 +332,12 @@ encap_attach(int af, int proto, const struct sockaddr *sp,
 		    bcmp(&ep->dstmask, dm, dp->sa_len) != 0)
 			continue;
 
-		error = EEXIST;
 		goto fail;
 	}
 
 	ep = kmalloc(sizeof *ep, M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
-	if (ep == NULL) {
-		error = ENOBUFS;
+	if (ep == NULL)
 		goto fail;
-	}
 
 	ep->af = af;
 	ep->proto = proto;
@@ -361,7 +350,6 @@ encap_attach(int af, int proto, const struct sockaddr *sp,
 
 	encap_add(ep);
 
-	error = 0;
 	crit_exit();
 	return ep;
 
@@ -376,20 +364,15 @@ encap_attach_func(int af, int proto,
 		  const struct protosw *psw, void *arg)
 {
 	struct encaptab *ep;
-	int error;
 
 	crit_enter();
 	/* sanity check on args */
-	if (!func) {
-		error = EINVAL;
+	if (!func)
 		goto fail;
-	}
 
 	ep = kmalloc(sizeof *ep, M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
-	if (ep == NULL) {
-		error = ENOBUFS;
+	if (ep == NULL)
 		goto fail;
-	}
 
 	ep->af = af;
 	ep->proto = proto;
@@ -399,7 +382,6 @@ encap_attach_func(int af, int proto,
 
 	encap_add(ep);
 
-	error = 0;
 	crit_exit();
 	return ep;
 
