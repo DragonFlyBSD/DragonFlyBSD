@@ -723,23 +723,20 @@ lwkt_switch(void)
 	 * Hotpath - pull the head of the run queue and attempt to schedule
 	 * it.
 	 */
-	for (;;) {
-	    ntd = TAILQ_FIRST(&gd->gd_tdrunq);
+	ntd = TAILQ_FIRST(&gd->gd_tdrunq);
 
-	    if (ntd == NULL) {
-		/*
-		 * Runq is empty, switch to idle to allow it to halt.
-		 */
-		ntd = &gd->gd_idlethread;
+	if (ntd == NULL) {
+	    /*
+	     * Runq is empty, switch to idle to allow it to halt.
+	     */
+	    ntd = &gd->gd_idlethread;
 #ifdef SMP
-		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
-		    ASSERT_NO_TOKENS_HELD(ntd);
+	    if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
+		ASSERT_NO_TOKENS_HELD(ntd);
 #endif
-		cpu_time.cp_msg[0] = 0;
-		cpu_time.cp_stallpc = 0;
-		goto haveidle;
-	    }
-	    break;
+	    cpu_time.cp_msg[0] = 0;
+	    cpu_time.cp_stallpc = 0;
+	    goto haveidle;
 	}
 
 	/*
