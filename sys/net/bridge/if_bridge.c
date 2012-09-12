@@ -2521,7 +2521,6 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	struct ifnet *bifp, *new_ifp;
 	struct ether_header *eh;
 	struct mbuf *mc, *mc2;
-	int from_blocking;
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 	mbuftrackid(m, 67);
@@ -2769,16 +2768,12 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	 *	 case (hence we only do it in LINK2), but it isn't quite as
 	 *	 bad as a broadcast packet looping.
 	 */
-	from_blocking = 0;
 	if (bif->bif_flags & IFBIF_STP) {
 		switch (bif->bif_state) {
 		case BSTP_IFSTATE_L1BLOCKING:
 		case BSTP_IFSTATE_LISTENING:
 		case BSTP_IFSTATE_DISABLED:
 			goto out;
-		case BSTP_IFSTATE_BLOCKING:
-			from_blocking = 1;
-			/* fall through */
 		default:
 			/* blocking, bonded, forwarding, learning */
 			break;

@@ -984,11 +984,9 @@ tapkqfilter(struct dev_kqfilter_args *ap)
 	struct knote *kn = ap->a_kn;
 	struct tap_softc *tp;
 	struct klist *list;
-	struct ifnet *ifp;
 
 	tp = dev->si_drv1;
 	list = &tp->tap_rkq.ki_note;
-	ifp = &tp->tap_if;
 	ap->a_result =0;
 
 	switch(kn->kn_filter) {
