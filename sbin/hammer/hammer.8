@@ -1360,7 +1360,9 @@ command to a
 command.
 If a remote host specification is made the program forks a
 .Xr ssh 1
-and execs the
+(or other program as specified by the
+.Ev HAMMER_RSH
+environment variable) and execs the
 .Cm mirror-read
 and/or
 .Cm mirror-write
@@ -1800,18 +1802,31 @@ important directories/files can be
 .Nm null
 mounted to the new PFS.
 .Sh ENVIRONMENT
-If the following environment variables exist, they will be used by:
+The following environment variables affect the execution of
+.Nm :
 .Bl -tag -width ".Ev EDITOR"
 .It Ev EDITOR
 The editor program specified in the variable
 .Ev EDITOR
 will be invoked instead of the default editor, which is
 .Xr vi 1 .
+.It Ev HAMMER_RSH
+The command specified in the variable
+.Ev HAMMER_RSH
+will be used to initiate remote operations for the mirror-copy and
+mirror-stream commands instead of the default command, which is
+.Xr ssh 1 .
+The program will be invoked via
+.Xr execvp 3
+using a typical
+.Xr rsh 1
+style
+.Cm -l user host <remote-command>
+command line.
 .It Ev VISUAL
 Same effect as
 .Ev EDITOR
 variable.
-.El
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/var/slaves/<name>" -compact
 .It Pa <pfs>/snapshots
