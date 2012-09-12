@@ -1053,7 +1053,7 @@ hammer_cmd_mirror_copy(char **av, int ac, int streaming)
 	int fds[2];
 	const char *xav[32];
 	char tbuf[16];
-	char *ptr;
+	char *sh, *user, *host, *rfs;
 	int xac;
 
 	if (ac != 2)
@@ -1077,17 +1077,38 @@ again:
 		dup2(fds[0], 1);
 		close(fds[0]);
 		close(fds[1]);
-		if ((ptr = strchr(av[0], ':')) != NULL) {
-			*ptr++ = 0;
+		if ((rfs = strchr(av[0], ':')) != NULL) {
 			xac = 0;
-			xav[xac++] = "ssh";
+
+			if((sh = getenv("HAMMER_RSH")) == NULL)
+				xav[xac++] = "ssh";
+			else
+				xav[xac++] = sh;
+
 			if (CompressOpt)
 				xav[xac++] = "-C";
+
+			user = strndup(av[0], (rfs - av[0]));
+
+			if ((host = strchr(av[0], '@')) != NULL) {
+				user = strndup( av[0], (host++ - av[0]));
+				host = strndup( host, (rfs++ - host));
+				xav[xac++] = "-l";
+				xav[xac++] = user;
+				xav[xac++] = host;
+			}
+			else {
+				host = strndup( av[0], (rfs++ - av[0]));
+				user = NULL;
+				xav[xac++] = host;
+			}
+
+
 			if (SshPort) {
 				xav[xac++] = "-p";
 				xav[xac++] = SshPort;
 			}
-			xav[xac++] = av[0];
+
 			xav[xac++] = "hammer";
 
 			switch(VerboseOpt) {
@@ -1120,9 +1141,9 @@ again:
 				xav[xac++] = "mirror-read-stream";
 			else
 				xav[xac++] = "mirror-read";
-			xav[xac++] = ptr;
+			xav[xac++] = rfs;
 			xav[xac++] = NULL;
-			execv("/usr/bin/ssh", (void *)xav);
+			execvp(*xav, (void *)xav);
 		} else {
 			hammer_cmd_mirror_read(av, 1, streaming);
 			fflush(stdout);
@@ -1140,17 +1161,37 @@ again:
 		dup2(fds[1], 1);
 		close(fds[0]);
 		close(fds[1]);
-		if ((ptr = strchr(av[1], ':')) != NULL) {
-			*ptr++ = 0;
+		if ((rfs = strchr(av[1], ':')) != NULL) {
 			xac = 0;
-			xav[xac++] = "ssh";
+
+			if((sh = getenv("HAMMER_RSH")) == NULL)
+				xav[xac++] = "ssh";
+			else
+				xav[xac++] = sh;
+
 			if (CompressOpt)
 				xav[xac++] = "-C";
+
+			user = strndup(av[1], (rfs - av[1]));
+
+			if ((host = strchr(av[1], '@')) != NULL) {
+				user = strndup( av[1], (host++ - av[1]));
+				host = strndup( host, (rfs++ - host));
+				xav[xac++] = "-l";
+				xav[xac++] = user;
+				xav[xac++] = host;
+			}
+			else {
+				host = strndup( av[1], (rfs++ - av[1]));
+				user = NULL;
+				xav[xac++] = host;
+			}
+
 			if (SshPort) {
 				xav[xac++] = "-p";
 				xav[xac++] = SshPort;
 			}
-			xav[xac++] = av[1];
+
 			xav[xac++] = "hammer";
 
 			switch(VerboseOpt) {
@@ -1171,9 +1212,9 @@ again:
 			}
 			xav[xac++] = "-2";
 			xav[xac++] = "mirror-write";
-			xav[xac++] = ptr;
+			xav[xac++] = rfs;
 			xav[xac++] = NULL;
-			execv("/usr/bin/ssh", (void *)xav);
+			execvp(*xav, (void *)xav);
 		} else {
 			hammer_cmd_mirror_write(av + 1, 1);
 			fflush(stdout);
