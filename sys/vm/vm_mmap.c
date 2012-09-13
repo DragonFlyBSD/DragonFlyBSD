@@ -1236,12 +1236,19 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		return (EINVAL);
 	}
 
+	/*
+	 * Handle alignment.  For large memory maps it is possible
+	 * that the MMU can optimize the page table so align anything
+	 * that is a multiple of SEG_SIZE to SEG_SIZE.
+	 */
 	if (flags & MAP_SIZEALIGN) {
 		align = size;
 		if ((align ^ (align - 1)) != (align << 1) - 1) {
 			lwkt_reltoken(&map->token);
 			return (EINVAL);
 		}
+	} else if ((flags & MAP_FIXED) == 0 && (size & SEG_MASK) == 0) {
+		align = SEG_SIZE;
 	} else {
 		align = PAGE_SIZE;
 	}

@@ -259,6 +259,7 @@ sys_shmat(struct shmat_args *uap)
 	vm_offset_t attach_va;
 	vm_prot_t prot;
 	vm_size_t size;
+	vm_size_t align;
 	int rv;
 
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
@@ -319,8 +320,19 @@ again:
 		/*
 		 * This is just a hint to vm_map_find() about where to put it.
 		 */
-		attach_va = round_page((vm_offset_t)p->p_vmspace->vm_taddr + maxtsiz + maxdsiz);
+		attach_va = round_page((vm_offset_t)p->p_vmspace->vm_taddr +
+				       maxtsiz + maxdsiz);
 	}
+
+	/*
+	 * Handle alignment.  For large memory maps it is possible
+	 * that the MMU can optimize the page table so align anything
+	 * that is a multiple of SEG_SIZE to SEG_SIZE.
+	 */
+	if ((flags & MAP_FIXED) == 0 && (size & SEG_MASK) == 0)
+		align = SEG_SIZE;
+	else
+		align = PAGE_SIZE;
 
 	shm_handle = shmseg->shm_internal;
 	vm_object_hold(shm_handle->shm_object);
@@ -329,7 +341,7 @@ again:
 	rv = vm_map_find(&p->p_vmspace->vm_map, 
 			 shm_handle->shm_object, 0,
 			 &attach_va,
-			 size, PAGE_SIZE,
+			 size, align,
 			 ((flags & MAP_FIXED) ? 0 : 1), 
 			 VM_MAPTYPE_NORMAL,
 			 prot, prot,
