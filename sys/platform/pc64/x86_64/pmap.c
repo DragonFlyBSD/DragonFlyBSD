@@ -1797,6 +1797,21 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	pt = pv_pte_lookup(proc_pd_pv, pmap_pt_index(b));
 	npte = VM_PAGE_TO_PHYS(xpv->pv_m) |
 	       (PG_U | PG_RW | PG_V | PG_A | PG_M);
+
+	/*
+	 * Dispose of previous entry if it was local to the process pmap.
+	 * (This should zero-out *pt)
+	 */
+	if (proc_pt_pv) {
+		pmap_release_pv(proc_pt_pv);
+		proc_pt_pv = NULL;
+		/* relookup */
+		pt = pv_pte_lookup(proc_pd_pv, pmap_pt_index(b));
+	}
+
+	/*
+	 * Handle remaining cases.
+	 */
 	if (*pt == 0) {
 		*pt = npte;
 		vm_page_wire_quick(xpv->pv_m);
@@ -1805,40 +1820,36 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	} else if (*pt != npte) {
 		pmap_inval_init(&info);
 		pmap_inval_interlock(&info, pmap, (vm_offset_t)-1);
-		if (*pt != npte) {
-			opte = pte_load_clear(pt);
-			*pt = npte;
-			vm_page_wire_quick(xpv->pv_m);
 
-			/*
-			 * Clean up opte, bump the wire_count for the process
-			 * PD page representing the new entry if it was
-			 * previously empty.
-			 *
-			 * If the entry was not previously empty and we have
-			 * a PT in the proc pmap then opte must match that
-			 * pt.  The proc pt must be retired (this is done
-			 * later on in this procedure).
-			 */
-			if (opte & PG_V) {
-				m = PHYS_TO_VM_PAGE(opte & PG_FRAME);
-				if (proc_pt_pv) {
-					KKASSERT(proc_pt_pv->pv_m == m);
-				} else {
-					if (vm_page_unwire_quick(m)) {
-						panic("pmap_allocpte_seg: "
-						      "bad wire count %p",
-						      m);
-					}
-				}
-			} else {
-				vm_page_wire_quick(proc_pd_pv->pv_m);
-			}
+		opte = pte_load_clear(pt);
+		KKASSERT(opte && opte != npte);
+
+		*pt = npte;
+		vm_page_wire_quick(xpv->pv_m);	/* pgtable pg that is npte */
+
+		/*
+		 * Clean up opte, bump the wire_count for the process
+		 * PD page representing the new entry if it was
+		 * previously empty.
+		 *
+		 * If the entry was not previously empty and we have
+		 * a PT in the proc pmap then opte must match that
+		 * pt.  The proc pt must be retired (this is done
+		 * later on in this procedure).
+		 *
+		 * NOTE: replacing valid pte, wire_count on proc_pd_pv
+		 * stays the same.
+		 */
+		KKASSERT(opte & PG_V);
+		m = PHYS_TO_VM_PAGE(opte & PG_FRAME);
+		if (vm_page_unwire_quick(m)) {
+			panic("pmap_allocpte_seg: "
+			      "bad wire count %p",
+			      m);
 		}
+
 		pmap_inval_deinterlock(&info, pmap);
 		pmap_inval_done(&info);
-	} else {
-		KKASSERT(proc_pt_pv == NULL);
 	}
 
 	/*
@@ -1847,8 +1858,6 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	 */
 	if (proc_pd_pv)
 		pv_put(proc_pd_pv);
-	if (proc_pt_pv)
-		pmap_release_pv(proc_pt_pv);
 	if (pvpp)
 		*pvpp = pt_pv;
 	else
