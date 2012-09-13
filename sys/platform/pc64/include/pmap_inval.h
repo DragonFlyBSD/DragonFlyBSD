@@ -61,6 +61,7 @@ typedef pmap_inval_info *pmap_inval_info_t;
 
 void pmap_inval_init(pmap_inval_info_t);
 void pmap_inval_interlock(pmap_inval_info_t, pmap_t, vm_offset_t);
+void pmap_inval_invltlb(pmap_inval_info_t);
 void pmap_inval_deinterlock(pmap_inval_info_t, pmap_t);
 void pmap_inval_done(pmap_inval_info_t);
 

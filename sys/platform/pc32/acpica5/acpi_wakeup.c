@@ -223,7 +223,8 @@ acpi_sleep_machdep(struct acpi_softc *sc, int state)
 		opage = PHYS_TO_VM_PAGE(oldphys);
 	page = PHYS_TO_VM_PAGE(sc->acpi_wakephys);
 	pmap_enter(pm, sc->acpi_wakephys, page,
-		   VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE, 1);
+		   VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE,
+		   1, NULL);
 
 	ret_addr = 0;
 	if (acpi_savecpu()) {
@@ -294,7 +295,8 @@ out:
 	vm_page_unlock_queues();
 	if (opage) {
 		pmap_enter(pm, sc->acpi_wakephys, page,
-			   VM_PROT_READ | VM_PROT_WRITE, 0);
+			   VM_PROT_READ | VM_PROT_WRITE,
+			   0, NULL);
 	}
 
 	if (pteobj_allocated) {

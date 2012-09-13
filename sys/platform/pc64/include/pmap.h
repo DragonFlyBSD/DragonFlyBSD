@@ -209,13 +209,27 @@ pte_store(pt_entry_t *ptep, pt_entry_t pte)
 /*
  * Pmap stuff
  */
+struct pmap;
 struct pv_entry;
 struct vm_page;
 struct vm_object;
 struct vmspace;
 
+/*
+ * vm_page structures embed a list of related pv_entry's
+ */
 struct md_page {
 	TAILQ_HEAD(,pv_entry)	pv_list;
+};
+
+/*
+ * vm_object's representing large mappings can contain embedded pmaps
+ * to organize sharing at higher page table levels for PROT_READ and
+ * PROT_READ|PROT_WRITE maps.
+ */
+struct md_object {
+	struct pmap *pmap_rw;
+	struct pmap *pmap_ro;
 };
 
 /*
@@ -244,7 +258,7 @@ struct pmap {
 	RB_HEAD(pv_entry_rb_tree, pv_entry) pm_pvroot;
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */
-	int			pm_filler02;	/* (filler sync w/vkernel) */
+	int			pm_flags;
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct pv_entry		*pm_pvhint;	/* pv_entry lookup hint */
 	int			pm_generation;	/* detect pvlist deletions */
@@ -254,6 +268,8 @@ struct pmap {
 
 #define CPUMASK_LOCK		CPUMASK(SMP_MAXCPU)
 #define CPUMASK_BIT		SMP_MAXCPU	/* for 1LLU << SMP_MAXCPU */
+
+#define PMAP_FLAG_SIMPLE	0x00000001
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
 
@@ -274,17 +290,19 @@ typedef struct pv_entry {
 	RB_ENTRY(pv_entry)	pv_entry;
 	struct vm_page	*pv_m;		/* page being mapped */
 	u_int		pv_hold;	/* interlock action */
-	u_int		pv_unused01;
+	u_int		pv_flags;
 #ifdef PMAP_DEBUG
 	const char	*pv_func;
 	int		pv_line;
 #endif
 } *pv_entry_t;
 
-#define PV_HOLD_LOCKED	0x80000000U
-#define PV_HOLD_WAITING	0x40000000U
-#define PV_HOLD_DELETED	0x20000000U
-#define PV_HOLD_MASK	0x1FFFFFFFU
+#define PV_HOLD_LOCKED		0x80000000U
+#define PV_HOLD_WAITING		0x40000000U
+#define PV_HOLD_DELETED		0x20000000U
+#define PV_HOLD_MASK		0x1FFFFFFFU
+
+#define PV_FLAG_VMOBJECT	0x00000001U	/* shared pt in VM obj */
 
 #ifdef	_KERNEL
 

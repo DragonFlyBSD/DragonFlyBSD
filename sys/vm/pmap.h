@@ -97,6 +97,7 @@ struct thread;
 struct vm_page;
 struct vmspace;
 struct vmspace_entry;
+struct vm_map_entry;
 
 /*
  * Most of these variables represent parameters set up by low level MD kernel
@@ -143,7 +144,8 @@ kva_p(const void *addr)
 #endif
 }
 
-void		 pmap_change_wiring (pmap_t, vm_offset_t, boolean_t);
+void		 pmap_change_wiring (pmap_t, vm_offset_t, boolean_t,
+			vm_map_entry_t);
 void		 pmap_clear_modify (struct vm_page *m);
 void		 pmap_clear_reference (struct vm_page *m);
 void		 pmap_collect (void);
@@ -151,9 +153,8 @@ void		 pmap_copy (pmap_t, pmap_t, vm_offset_t, vm_size_t,
 			vm_offset_t);
 void		 pmap_copy_page (vm_paddr_t, vm_paddr_t);
 void		 pmap_copy_page_frag (vm_paddr_t, vm_paddr_t, size_t bytes);
-void		 pmap_destroy (pmap_t);
 void		 pmap_enter (pmap_t, vm_offset_t, struct vm_page *,
-			vm_prot_t, boolean_t);
+			vm_prot_t, boolean_t, struct vm_map_entry *);
 void		 pmap_enter_quick (pmap_t, vm_offset_t, struct vm_page *);
 vm_paddr_t	 pmap_extract (pmap_t pmap, vm_offset_t va);
 void		 pmap_growkernel (vm_offset_t, vm_offset_t);
@@ -183,6 +184,7 @@ void		 pmap_kmodify_nc(vm_offset_t va);
 void		 pmap_kremove (vm_offset_t);
 void		 pmap_kremove_quick (vm_offset_t);
 void		 pmap_reference (pmap_t);
+void		 pmap_drop (pmap_t);
 void		 pmap_remove (pmap_t, vm_offset_t, vm_offset_t);
 void		 pmap_remove_pages (pmap_t, vm_offset_t, vm_offset_t);
 void		 pmap_zero_page (vm_paddr_t);
@@ -199,6 +201,9 @@ vm_offset_t	 pmap_addr_hint (vm_object_t obj, vm_offset_t addr, vm_size_t size);
 void		*pmap_kenter_temporary (vm_paddr_t pa, long i);
 void		 pmap_init2 (void);
 struct vm_page	*pmap_kvtom(vm_offset_t va);
+void		 pmap_object_init(vm_object_t object);
+void		 pmap_object_free(vm_object_t object);
+
 
 #endif /* _KERNEL */
 

@@ -113,6 +113,9 @@ struct md_page {
 	TAILQ_HEAD(,pv_entry)	pv_list;
 };
 
+struct md_object {
+};
+
 /*
  * Each machine dependent implementation is expected to
  * keep certain statistics.  They may do this anyway they
