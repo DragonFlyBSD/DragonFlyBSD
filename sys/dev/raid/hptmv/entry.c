@@ -1361,7 +1361,7 @@ unregister:
 
 	/* setup command blocks */
 	KdPrint(("Allocate command blocks\n"));
-	_vbus_(pFreeCommands) = 0;
+	_vbus_(pFreeCommands) = NULL;
 	pAdapter->pCommandBlocks =
 		kmalloc(sizeof(struct _Command) * MAX_COMMAND_BLOCKS_FOR_EACH_VBUS, M_DEVBUF, M_NOWAIT);
 	KdPrint(("pCommandBlocks:%p\n",pAdapter->pCommandBlocks));
@@ -1715,7 +1715,7 @@ CommandCompletionCB(MV_SATA_ADAPTER *pMvSataAdapter,
 void
 fDeviceSendCommand(_VBUS_ARG PCommand pCmd)
 {
-	MV_SATA_EDMA_PRD_ENTRY  *pPRDTable = 0;
+	MV_SATA_EDMA_PRD_ENTRY  *pPRDTable = NULL;
 	MV_SATA_ADAPTER *pMvSataAdapter;
 	MV_SATA_CHANNEL *pMvSataChannel;
 	PVDevice pVDevice = pCmd->pVDevice;

@@ -1102,7 +1102,7 @@ ipsec_init_policy(struct socket *so, struct inpcbpolicy **pcb_sp)
 	}
 	bzero(new, sizeof(*new));
 
-	if (so->so_cred != 0 && so->so_cred->cr_uid == 0)
+	if (so->so_cred != NULL && so->so_cred->cr_uid == 0)
 		new->priv = 1;
 	else
 		new->priv = 0;
@@ -2597,13 +2597,13 @@ ipsec4_output(struct ipsec_output_state *state, struct secpolicy *sp, int flags)
 				RTFREE(state->ro->ro_rt);
 				state->ro->ro_rt = NULL;
 			}
-			if (state->ro->ro_rt == 0) {
+			if (state->ro->ro_rt == NULL) {
 				dst4->sin_family = AF_INET;
 				dst4->sin_len = sizeof(*dst4);
 				dst4->sin_addr = ip->ip_dst;
 				rtalloc(state->ro);
 			}
-			if (state->ro->ro_rt == 0) {
+			if (state->ro->ro_rt == NULL) {
 				ipstat.ips_noroute++;
 				error = EHOSTUNREACH;
 				goto bad;
@@ -2658,7 +2658,7 @@ ipsec4_output(struct ipsec_output_state *state, struct secpolicy *sp, int flags)
 			goto bad;
 		}
 
-		if (state->m == 0) {
+		if (state->m == NULL) {
 			error = ENOMEM;
 			goto bad;
 		}
@@ -2990,7 +2990,7 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp,
 			error = ipsec6_encapsulate(state->m, isr->sav);
 			crit_exit();
 			if (error) {
-				state->m = 0;
+				state->m = NULL;
 				goto bad;
 			}
 			ip6 = mtod(state->m, struct ip6_hdr *);
@@ -3004,14 +3004,14 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp,
 				RTFREE(state->ro->ro_rt);
 				state->ro->ro_rt = NULL;
 			}
-			if (state->ro->ro_rt == 0) {
+			if (state->ro->ro_rt == NULL) {
 				bzero(dst6, sizeof(*dst6));
 				dst6->sin6_family = AF_INET6;
 				dst6->sin6_len = sizeof(*dst6);
 				dst6->sin6_addr = ip6->ip6_dst;
 				rtalloc(state->ro);
 			}
-			if (state->ro->ro_rt == 0) {
+			if (state->ro->ro_rt == NULL) {
 				ip6stat.ip6s_noroute++;
 				ipsec6stat.out_noroute++;
 				error = EHOSTUNREACH;
