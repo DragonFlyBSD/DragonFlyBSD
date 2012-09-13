@@ -2760,7 +2760,7 @@ pmap_collect(void)
  * The callback must dispose of pte_pv, whos PTE entry is at *ptep in
  * its parent page table.
  *
- * pte_pv will be NULL if the page is unmanaged.
+ * pte_pv will be NULL if the page or page table is unmanaged.
  * pt_pv will point to the page table page containing the pte for the page.
  *
  * NOTE! If we come across an unmanaged page TABLE (verses an unmanaged page),
@@ -2770,22 +2770,35 @@ pmap_collect(void)
  *	 table page is simply aliased by the pmap and not owned by it.
  *
  * It is assumed that the start and end are properly rounded to the page size.
+ *
+ * It is assumed that PD pages and above are managed and thus in the RB tree,
+ * allowing us to use RB_SCAN from the PD pages down for ranged scans.
  */
+struct pmap_scan_info {
+	struct pmap *pmap;
+	vm_offset_t sva;
+	vm_offset_t eva;
+	vm_pindex_t sva_pd_pindex;
+	vm_pindex_t eva_pd_pindex;
+	void (*func)(pmap_t, struct pmap_inval_info *,
+		     pv_entry_t, pv_entry_t, int, vm_offset_t,
+		     pt_entry_t *, void *);
+	void *arg;
+	struct pmap_inval_info inval;
+};
+
+static int pmap_scan_cmp(pv_entry_t pv, void *data);
+static int pmap_scan_callback(pv_entry_t pv, void *data);
+
 static void
-pmap_scan(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva,
-	  void (*func)(pmap_t, struct pmap_inval_info *,
-		       pv_entry_t, pv_entry_t, int, vm_offset_t,
-		       pt_entry_t *, void *),
-	  void *arg)
+pmap_scan(struct pmap_scan_info *info)
 {
-	pv_entry_t pdp_pv;	/* A page directory page PV */
+	struct pmap *pmap = info->pmap;
 	pv_entry_t pd_pv;	/* A page directory PV */
 	pv_entry_t pt_pv;	/* A page table PV */
 	pv_entry_t pte_pv;	/* A page table entry PV */
 	pt_entry_t *ptep;
-	vm_offset_t va_next;
-	struct pmap_inval_info info;
-	int error;
+	struct pv_entry dummy_pv;
 
 	if (pmap == NULL)
 		return;
@@ -2802,22 +2815,24 @@ pmap_scan(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva,
 	}
 #endif
 
-	pmap_inval_init(&info);
+	pmap_inval_init(&info->inval);
 
 	/*
-	 * Special handling for removing one page, which is a very common
+	 * Special handling for scanning one page, which is a very common
 	 * operation (it is?).
+	 *
 	 * NOTE: Locks must be ordered bottom-up. pte,pt,pd,pdp,pml4
 	 */
-	if (sva + PAGE_SIZE == eva) {
-		if (sva >= VM_MAX_USER_ADDRESS) {
+	if (info->sva + PAGE_SIZE == info->eva) {
+		if (info->sva >= VM_MAX_USER_ADDRESS) {
 			/*
 			 * Kernel mappings do not track wire counts on
-			 * page table pages.
+			 * page table pages and only maintain pd_pv and
+			 * pte_pv levels so pmap_scan() works.
 			 */
 			pt_pv = NULL;
-			pte_pv = pv_get(pmap, pmap_pte_pindex(sva));
-			ptep = vtopte(sva);
+			pte_pv = pv_get(pmap, pmap_pte_pindex(info->sva));
+			ptep = vtopte(info->sva);
 		} else {
 			/*
 			 * User pages which are unmanaged will not have a
@@ -2826,24 +2841,25 @@ pmap_scan(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva,
 			 * The func() callback will pass both pte_pv and pt_pv
 			 * as NULL in that case.
 			 */
-			pte_pv = pv_get(pmap, pmap_pte_pindex(sva));
-			pt_pv = pv_get(pmap, pmap_pt_pindex(sva));
+			pte_pv = pv_get(pmap, pmap_pte_pindex(info->sva));
+			pt_pv = pv_get(pmap, pmap_pt_pindex(info->sva));
 			if (pt_pv == NULL) {
 				KKASSERT(pte_pv == NULL);
-				pd_pv = pv_get(pmap, pmap_pd_pindex(sva));
+				pd_pv = pv_get(pmap, pmap_pd_pindex(info->sva));
 				if (pd_pv) {
 					ptep = pv_pte_lookup(pd_pv,
-							pmap_pt_index(sva));
+						    pmap_pt_index(info->sva));
 					if (*ptep) {
-						func(pmap, &info,
+						info->func(pmap, &info->inval,
 						     NULL, pd_pv, 1,
-						     sva, ptep, arg);
+						     info->sva, ptep,
+						     info->arg);
 					}
 					pv_put(pd_pv);
 				}
 				goto fast_skip;
 			}
-			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(sva));
+			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(info->sva));
 		}
 		if (*ptep == 0) {
 			/*
@@ -2857,21 +2873,118 @@ pmap_scan(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva,
 			KASSERT((*ptep & (PG_MANAGED|PG_V)) == (PG_MANAGED|
 								PG_V),
 				("bad *ptep %016lx sva %016lx pte_pv %p",
-				*ptep, sva, pte_pv));
-			func(pmap, &info, pte_pv, pt_pv, 0, sva, ptep, arg);
+				*ptep, info->sva, pte_pv));
+			info->func(pmap, &info->inval, pte_pv, pt_pv, 0,
+				   info->sva, ptep, info->arg);
 		} else {
 			KASSERT((*ptep & (PG_MANAGED|PG_V)) == PG_V,
 				("bad *ptep %016lx sva %016lx pte_pv NULL",
-				*ptep, sva));
-			func(pmap, &info, NULL, pt_pv, 0, sva, ptep, arg);
+				*ptep, info->sva));
+			info->func(pmap, &info->inval, NULL, pt_pv, 0,
+				   info->sva, ptep, info->arg);
 		}
 		if (pt_pv)
 			pv_put(pt_pv);
 fast_skip:
-		pmap_inval_done(&info);
+		pmap_inval_done(&info->inval);
 		lwkt_reltoken(&pmap->pm_token);
 		return;
 	}
+
+	/*
+	 * Nominal scan case, RB_SCAN() for PD pages and iterate from
+	 * there.
+	 */
+	info->sva_pd_pindex = pmap_pd_pindex(info->sva);
+	info->eva_pd_pindex = pmap_pd_pindex(info->eva + NBPDP - 1);
+
+	if (info->sva >= VM_MAX_USER_ADDRESS) {
+		/*
+		 * The kernel does not currently maintain any pv_entry's for
+		 * higher-level page tables.
+		 */
+		bzero(&dummy_pv, sizeof(dummy_pv));
+		dummy_pv.pv_pindex = info->sva_pd_pindex;
+		spin_lock(&pmap->pm_spin);
+		while (dummy_pv.pv_pindex < info->eva_pd_pindex) {
+			pmap_scan_callback(&dummy_pv, info);
+			++dummy_pv.pv_pindex;
+		}
+		spin_unlock(&pmap->pm_spin);
+	} else {
+		/*
+		 * User page tables maintain local PML4, PDP, and PD
+		 * pv_entry's at the very least.  PT pv's might be
+		 * unmanaged and thus not exist.  PTE pv's might be
+		 * unmanaged and thus not exist.
+		 */
+		spin_lock(&pmap->pm_spin);
+		pv_entry_rb_tree_RB_SCAN(&pmap->pm_pvroot,
+			pmap_scan_cmp, pmap_scan_callback, info);
+		spin_unlock(&pmap->pm_spin);
+	}
+	pmap_inval_done(&info->inval);
+	lwkt_reltoken(&pmap->pm_token);
+}
+
+/*
+ * WARNING! pmap->pm_spin held
+ */
+static int
+pmap_scan_cmp(pv_entry_t pv, void *data)
+{
+	struct pmap_scan_info *info = data;
+	if (pv->pv_pindex < info->sva_pd_pindex)
+		return(-1);
+	if (pv->pv_pindex >= info->eva_pd_pindex)
+		return(1);
+	return(0);
+}
+
+/*
+ * WARNING! pmap->pm_spin held
+ */
+static int
+pmap_scan_callback(pv_entry_t pv, void *data)
+{
+	struct pmap_scan_info *info = data;
+	struct pmap *pmap = info->pmap;
+	pv_entry_t pd_pv;	/* A page directory PV */
+	pv_entry_t pt_pv;	/* A page table PV */
+	pv_entry_t pte_pv;	/* A page table entry PV */
+	pt_entry_t *ptep;
+	vm_offset_t sva;
+	vm_offset_t eva;
+	vm_offset_t va_next;
+	vm_pindex_t pd_pindex;
+	int error;
+
+	/*
+	 * Pull the PD pindex from the pv before releasing the spinlock.
+	 *
+	 * WARNING: pv is faked for kernel pmap scans.
+	 */
+	pd_pindex = pv->pv_pindex;
+	spin_unlock(&pmap->pm_spin);
+	pv = NULL;	/* invalid after spinlock unlocked */
+
+	/*
+	 * Calculate the page range within the PD.  SIMPLE pmaps are
+	 * direct-mapped for the entire 2^64 address space.  Normal pmaps
+	 * reflect the user and kernel address space which requires
+	 * cannonicalization w/regards to converting pd_pindex's back
+	 * into addresses.
+	 */
+	sva = (pd_pindex - NUPTE_TOTAL - NUPT_TOTAL) << PDPSHIFT;
+	if ((pmap->pm_flags & PMAP_FLAG_SIMPLE) == 0 &&
+	    (sva & PML4_SIGNMASK)) {
+		sva |= PML4_SIGNMASK;
+	}
+	eva = sva + NBPDP;	/* can overflow */
+	if (sva < info->sva)
+		sva = info->sva;
+	if (eva < info->sva || eva > info->eva)
+		eva = info->eva;
 
 	/*
 	 * NOTE: kernel mappings do not track page table pages, only
@@ -2881,7 +2994,6 @@ fast_skip:
 	 *	 However, for the scan to be efficient we try to
 	 *	 cache items top-down.
 	 */
-	pdp_pv = NULL;
 	pd_pv = NULL;
 	pt_pv = NULL;
 
@@ -2896,36 +3008,13 @@ fast_skip:
 		}
 
 		/*
-		 * PDP cache
-		 */
-		if (pdp_pv == NULL) {
-			pdp_pv = pv_get(pmap, pmap_pdp_pindex(sva));
-		} else if (pdp_pv->pv_pindex != pmap_pdp_pindex(sva)) {
-			pv_put(pdp_pv);
-			pdp_pv = pv_get(pmap, pmap_pdp_pindex(sva));
-		}
-		if (pdp_pv == NULL) {
-			va_next = (sva + NBPML4) & ~PML4MASK;
-			if (va_next < sva)
-				va_next = eva;
-			continue;
-		}
-
-		/*
-		 * PD cache
+		 * PD cache (degenerate case if we skip).  It is possible
+		 * for the PD to not exist due to races.  This is ok.
 		 */
 		if (pd_pv == NULL) {
-			if (pdp_pv) {
-				pv_put(pdp_pv);
-				pdp_pv = NULL;
-			}
 			pd_pv = pv_get(pmap, pmap_pd_pindex(sva));
 		} else if (pd_pv->pv_pindex != pmap_pd_pindex(sva)) {
 			pv_put(pd_pv);
-			if (pdp_pv) {
-				pv_put(pdp_pv);
-				pdp_pv = NULL;
-			}
 			pd_pv = pv_get(pmap, pmap_pd_pindex(sva));
 		}
 		if (pd_pv == NULL) {
@@ -2939,20 +3028,12 @@ fast_skip:
 		 * PT cache
 		 */
 		if (pt_pv == NULL) {
-			if (pdp_pv) {
-				pv_put(pdp_pv);
-				pdp_pv = NULL;
-			}
 			if (pd_pv) {
 				pv_put(pd_pv);
 				pd_pv = NULL;
 			}
 			pt_pv = pv_get(pmap, pmap_pt_pindex(sva));
 		} else if (pt_pv->pv_pindex != pmap_pt_pindex(sva)) {
-			if (pdp_pv) {
-				pv_put(pdp_pv);
-				pdp_pv = NULL;
-			}
 			if (pd_pv) {
 				pv_put(pd_pv);
 				pd_pv = NULL;
@@ -2978,8 +3059,8 @@ fast_skip:
 			KKASSERT(pd_pv != NULL);
 			ptep = pv_pte_lookup(pd_pv, pmap_pt_index(sva));
 			if (*ptep & PG_V) {
-				func(pmap, &info, NULL, pd_pv, 1,
-				     sva, ptep, arg);
+				info->func(pmap, &info->inval, NULL, pd_pv, 1,
+					   sva, ptep, info->arg);
 			}
 
 			/*
@@ -2994,17 +3075,19 @@ fast_skip:
 		/*
 		 * From this point in the loop testing pt_pv for non-NULL
 		 * means we are in UVM, else if it is NULL we are in KVM.
+		 *
+		 * Limit our scan to either the end of the va represented
+		 * by the current page table page, or to the end of the
+		 * range being removed.
 		 */
 kernel_skip:
 		va_next = (sva + NBPDR) & ~PDRMASK;
 		if (va_next < sva)
 			va_next = eva;
+		if (va_next > eva)
+			va_next = eva;
 
 		/*
-		 * Limit our scan to either the end of the va represented
-		 * by the current page table page, or to the end of the
-		 * range being removed.
-		 *
 		 * Scan the page table for pages.  Some pages may not be
 		 * managed (might not have a pv_entry).
 		 *
@@ -3012,8 +3095,6 @@ kernel_skip:
 		 * pt_pv will be NULL in that case, but otherwise pt_pv
 		 * is non-NULL, locked, and referenced.
 		 */
-		if (va_next > eva)
-			va_next = eva;
 
 		/*
 		 * At this point a non-NULL pt_pv means a UVA, and a NULL
@@ -3042,10 +3123,6 @@ kernel_skip:
 				pte_pv = pv_get_try(pmap, pmap_pte_pindex(sva),
 						    &error);
 				if (error) {
-					if (pdp_pv) {
-						pv_put(pdp_pv);
-						pdp_pv = NULL;
-					}
 					if (pd_pv) {
 						pv_put(pd_pv);
 						pd_pv = NULL;
@@ -3096,25 +3173,21 @@ kernel_skip:
 					("bad *ptep %016lx sva %016lx "
 					 "pte_pv %p",
 					 *ptep, sva, pte_pv));
-				func(pmap, &info, pte_pv, pt_pv, 0,
-				     sva, ptep, arg);
+				info->func(pmap, &info->inval, pte_pv, pt_pv, 0,
+					   sva, ptep, info->arg);
 			} else {
 				KASSERT((*ptep & (PG_MANAGED|PG_V)) ==
 					 PG_V,
 					("bad *ptep %016lx sva %016lx "
 					 "pte_pv NULL",
 					 *ptep, sva));
-				func(pmap, &info, NULL, pt_pv, 0,
-				     sva, ptep, arg);
+				info->func(pmap, &info->inval, NULL, pt_pv, 0,
+					   sva, ptep, info->arg);
 			}
 			pte_pv = NULL;
 			sva += PAGE_SIZE;
 			++ptep;
 		}
-	}
-	if (pdp_pv) {
-		pv_put(pdp_pv);
-		pdp_pv = NULL;
 	}
 	if (pd_pv) {
 		pv_put(pd_pv);
@@ -3124,14 +3197,25 @@ kernel_skip:
 		pv_put(pt_pv);
 		pt_pv = NULL;
 	}
-	pmap_inval_done(&info);
-	lwkt_reltoken(&pmap->pm_token);
+
+	/*
+	 * Relock before returning.
+	 */
+	spin_lock(&pmap->pm_spin);
+	return (0);
 }
 
 void
 pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 {
-	pmap_scan(pmap, sva, eva, pmap_remove_callback, NULL);
+	struct pmap_scan_info info;
+
+	info.pmap = pmap;
+	info.sva = sva;
+	info.eva = eva;
+	info.func = pmap_remove_callback;
+	info.arg = NULL;
+	pmap_scan(&info);
 }
 
 static void
@@ -3240,6 +3324,7 @@ pmap_remove_all(vm_page_t m)
 void
 pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 {
+	struct pmap_scan_info info;
 	/* JG review for NX */
 
 	if (pmap == NULL)
@@ -3250,7 +3335,12 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 	}
 	if (prot & VM_PROT_WRITE)
 		return;
-	pmap_scan(pmap, sva, eva, pmap_protect_callback, &prot);
+	info.pmap = pmap;
+	info.sva = sva;
+	info.eva = eva;
+	info.func = pmap_protect_callback;
+	info.arg = &prot;
+	pmap_scan(&info);
 }
 
 static

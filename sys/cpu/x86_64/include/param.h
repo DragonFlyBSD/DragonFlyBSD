@@ -128,6 +128,12 @@
 #define PML4MASK	(NPML4-1)
 #define NPML4EPG	(PAGE_SIZE/(sizeof (pml4_entry_t)))
 
+/*
+ * Virtual address sign-extension and mask.  If bit 47 is set then
+ * set all higher bits.
+ */
+#define PML4_SIGNMASK  0xFFFF800000000000LU
+
 /* for vkernel */
 #define SEG_SHIFT	21
 #define SEG_SIZE	(1<<SEG_SHIFT)	/* bytes per mmu segment (level 1) */
