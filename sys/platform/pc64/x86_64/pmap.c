@@ -198,7 +198,7 @@ static struct pv_entry *pvinit;
  * All those kernel PT submaps that BSD is so fond of
  */
 pt_entry_t *CMAP1 = NULL, *ptmmap;
-caddr_t CADDR1 = 0, ptvmmap = 0;
+caddr_t CADDR1 = NULL, ptvmmap = NULL;
 static pt_entry_t *msgbufmap;
 struct msgbuf *msgbufp=NULL;
 

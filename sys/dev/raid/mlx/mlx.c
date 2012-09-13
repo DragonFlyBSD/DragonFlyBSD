@@ -507,7 +507,7 @@ mlx_startup(struct mlx_softc *sc)
 	 (i < MLX_MAXDRIVES) && (mes[i].sd_size != 0xffffffff);
 	 i++, dr++) {
 	/* are we already attached to this drive? */
-    	if (dr->ms_disk == 0) {
+	if (dr->ms_disk == NULL) {
 	    /* pick up drive information */
 	    dr->ms_size = mes[i].sd_size;
 	    dr->ms_raidlevel = mes[i].sd_raidlevel & 0xf;
@@ -524,7 +524,7 @@ mlx_startup(struct mlx_softc *sc)
 		dr->ms_cylinders = dr->ms_size / (255 * 63);
 	    }
 	    dr->ms_disk =  device_add_child(sc->mlx_dev, /*"mlxd"*/NULL, -1);
-	    if (dr->ms_disk == 0)
+	    if (dr->ms_disk == NULL)
 		device_printf(sc->mlx_dev, "device_add_child failed\n");
 	    device_set_ivars(dr->ms_disk, dr);
 	}
@@ -558,7 +558,7 @@ mlx_detach(device_t dev)
 	goto out;
 
     for (i = 0; i < MLX_MAXDRIVES; i++) {
-	if (sc->mlx_sysdrive[i].ms_disk != 0) {
+	if (sc->mlx_sysdrive[i].ms_disk != NULL) {
 	    mlxd = device_get_softc(sc->mlx_sysdrive[i].ms_disk);
 	    if (mlxd->mlxd_flags & MLXD_OPEN) {		/* drive is mounted, abort detach */
 		device_printf(sc->mlx_sysdrive[i].ms_disk, "still open, can't detach\n");
@@ -611,10 +611,10 @@ mlx_shutdown(device_t dev)
     
     /* delete all our child devices */
     for (i = 0; i < MLX_MAXDRIVES; i++) {
-	if (sc->mlx_sysdrive[i].ms_disk != 0) {
+	if (sc->mlx_sysdrive[i].ms_disk != NULL) {
 	    if ((error = device_delete_child(sc->mlx_dev, sc->mlx_sysdrive[i].ms_disk)) != 0)
 		goto out;
-	    sc->mlx_sysdrive[i].ms_disk = 0;
+	    sc->mlx_sysdrive[i].ms_disk = NULL;
 	}
     }
 
@@ -749,7 +749,7 @@ mlx_ioctl(struct dev_ioctl_args *ap)
 	/* search system drives */
 	for (i = 0; i < MLX_MAXDRIVES; i++) {
 	    /* is this one attached? */
-	    if (sc->mlx_sysdrive[i].ms_disk != 0) {
+	    if (sc->mlx_sysdrive[i].ms_disk != NULL) {
 		/* looking for the next one we come across? */
 		if (*arg == -1) {
 		    *arg = device_get_unit(sc->mlx_sysdrive[0].ms_disk);
@@ -795,7 +795,7 @@ mlx_ioctl(struct dev_ioctl_args *ap)
 	/* nuke drive */
 	if ((error = device_delete_child(sc->mlx_dev, dr->ms_disk)) != 0)
 	    goto detach_out;
-	dr->ms_disk = 0;
+	dr->ms_disk = NULL;
 
     detach_out:
 	if (error) {
@@ -2907,7 +2907,7 @@ mlx_findunit(struct mlx_softc *sc, int unit)
     /* search system drives */
     for (i = 0; i < MLX_MAXDRIVES; i++) {
 	/* is this one attached? */
-	if (sc->mlx_sysdrive[i].ms_disk != 0) {
+	if (sc->mlx_sysdrive[i].ms_disk != NULL) {
 	    /* is this the one? */
 	    if (unit == device_get_unit(sc->mlx_sysdrive[i].ms_disk))
 		return(&sc->mlx_sysdrive[i]);

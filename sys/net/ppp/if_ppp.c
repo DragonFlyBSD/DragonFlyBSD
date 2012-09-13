@@ -350,21 +350,21 @@ pppdealloc(struct ppp_softc *sc)
     sc->sc_rc_state = NULL;
 #endif /* PPP_COMPRESS */
 #ifdef PPP_FILTER
-    if (sc->sc_pass_filt.bf_insns != 0) {
+    if (sc->sc_pass_filt.bf_insns != NULL) {
 	kfree(sc->sc_pass_filt.bf_insns, M_DEVBUF);
-	sc->sc_pass_filt.bf_insns = 0;
+	sc->sc_pass_filt.bf_insns = NULL;
 	sc->sc_pass_filt.bf_len = 0;
     }
-    if (sc->sc_active_filt.bf_insns != 0) {
+    if (sc->sc_active_filt.bf_insns != NULL) {
 	kfree(sc->sc_active_filt.bf_insns, M_DEVBUF);
-	sc->sc_active_filt.bf_insns = 0;
+	sc->sc_active_filt.bf_insns = NULL;
 	sc->sc_active_filt.bf_len = 0;
     }
 #endif /* PPP_FILTER */
 #ifdef VJC
-    if (sc->sc_comp != 0) {
+    if (sc->sc_comp != NULL) {
 	kfree(sc->sc_comp, M_DEVBUF);
-	sc->sc_comp = 0;
+	sc->sc_comp = NULL;
     }
 #endif
 }
@@ -827,7 +827,7 @@ pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	 * but only if it is a data packet.
 	 */
 	*mtod(m0, u_char *) = 1;	/* indicates outbound */
-	if (sc->sc_pass_filt.bf_insns != 0
+	if (sc->sc_pass_filt.bf_insns != NULL
 	    && bpf_filter(sc->sc_pass_filt.bf_insns, (u_char *) m0,
 			  len, 0) == 0) {
 	    error = 0;		/* drop this packet */
@@ -837,7 +837,7 @@ pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	/*
 	 * Update the time we sent the most recent packet.
 	 */
-	if (sc->sc_active_filt.bf_insns == 0
+	if (sc->sc_active_filt.bf_insns == NULL
 	    || bpf_filter(sc->sc_active_filt.bf_insns, (u_char *) m0, len, 0))
 	    sc->sc_last_sent = time_second;
 
@@ -1359,7 +1359,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
      * See if we have a VJ-compressed packet to uncompress.
      */
     if (proto == PPP_VJC_COMP) {
-	if ((sc->sc_flags & SC_REJ_COMP_TCP) || sc->sc_comp == 0)
+	if ((sc->sc_flags & SC_REJ_COMP_TCP) || sc->sc_comp == NULL)
 	    goto bad;
 
 	xlen = sl_uncompress_tcp_core(cp + PPP_HDRLEN, m->m_len - PPP_HDRLEN,
@@ -1412,7 +1412,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
 	ilen += hlen - xlen;
 
     } else if (proto == PPP_VJC_UNCOMP) {
-	if ((sc->sc_flags & SC_REJ_COMP_TCP) || sc->sc_comp == 0)
+	if ((sc->sc_flags & SC_REJ_COMP_TCP) || sc->sc_comp == NULL)
 	    goto bad;
 
 	xlen = sl_uncompress_tcp_core(cp + PPP_HDRLEN, m->m_len - PPP_HDRLEN,
@@ -1455,14 +1455,14 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
 	 */
 	adrs = *mtod(m, u_char *);	/* save address field */
 	*mtod(m, u_char *) = 0;		/* indicate inbound */
-	if (sc->sc_pass_filt.bf_insns != 0
+	if (sc->sc_pass_filt.bf_insns != NULL
 	    && bpf_filter(sc->sc_pass_filt.bf_insns, (u_char *) m,
 			  ilen, 0) == 0) {
 	    /* drop this packet */
 	    m_freem(m);
 	    return;
 	}
-	if (sc->sc_active_filt.bf_insns == 0
+	if (sc->sc_active_filt.bf_insns == NULL
 	    || bpf_filter(sc->sc_active_filt.bf_insns, (u_char *) m, ilen, 0))
 	    sc->sc_last_recv = time_second;
 
