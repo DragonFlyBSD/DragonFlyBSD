@@ -774,7 +774,9 @@ lwkt_switch(void)
 		/*
 		 * Never schedule threads returning to userland or the
 		 * user thread scheduler helper thread when higher priority
-		 * threads are present.
+		 * threads are present.  The runq is sorted by priority
+		 * so we can give up traversing it when we find the first
+		 * low priority thread.
 		 */
 		if (ntd->td_pri < TDPRI_KERN_LPSCHED) {
 			ntd = NULL;
