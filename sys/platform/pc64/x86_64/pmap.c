@@ -240,7 +240,7 @@ static pv_entry_t pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex,
 static void pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp,
 		      struct pmap_inval_info *info);
 static vm_page_t pmap_remove_pv_page(pv_entry_t pv);
-static int pmap_release_pv(pv_entry_t pv);
+static int pmap_release_pv(pv_entry_t pv, pv_entry_t pvp);
 
 static void pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
 		      pv_entry_t pte_pv, pv_entry_t pt_pv, int sharept,
@@ -1819,7 +1819,7 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	 * (This should zero-out *pt)
 	 */
 	if (proc_pt_pv) {
-		pmap_release_pv(proc_pt_pv);
+		pmap_release_pv(proc_pt_pv, proc_pd_pv);
 		proc_pt_pv = NULL;
 		/* relookup */
 		pt = pv_pte_lookup(proc_pd_pv, pmap_pt_index(b));
@@ -1952,7 +1952,7 @@ pmap_release_callback(pv_entry_t pv, void *data)
 			return(-1);
 		}
 	}
-	r = pmap_release_pv(pv);
+	r = pmap_release_pv(pv, NULL);
 	spin_lock(&pmap->pm_spin);
 	return(r);
 }
@@ -1960,9 +1960,13 @@ pmap_release_callback(pv_entry_t pv, void *data)
 /*
  * Called with held (i.e. also locked) pv.  This function will dispose of
  * the lock along with the pv.
+ *
+ * If the caller already holds the locked parent page table for pv it
+ * must pass it as pvp, allowing us to avoid a deadlock, else it can
+ * pass NULL for pvp.
  */
 static int
-pmap_release_pv(pv_entry_t pv)
+pmap_release_pv(pv_entry_t pv, pv_entry_t pvp)
 {
 	vm_page_t p;
 
@@ -1971,7 +1975,7 @@ pmap_release_pv(pv_entry_t pv)
 	 * Remove the pv's page from its parent's page table.  The
 	 * parent's page table page's wire_count will be decremented.
 	 */
-	pmap_remove_pv_pte(pv, NULL, NULL);
+	pmap_remove_pv_pte(pv, pvp, NULL);
 
 	/*
 	 * Terminal pvs are unhooked from their vm_pages.  Because
