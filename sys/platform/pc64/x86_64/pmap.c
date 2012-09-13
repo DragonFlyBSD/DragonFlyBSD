@@ -432,17 +432,17 @@ pmap_pdp(pmap_t pmap, vm_offset_t va)
  */
 static __inline
 pdp_entry_t *
-pmap_pdp_to_pd(pml4_entry_t *pdp, vm_offset_t va)
+pmap_pdp_to_pd(pml4_entry_t pdp_pte, vm_offset_t va)
 {
 	pdp_entry_t *pd;
 
-	pd = (pdp_entry_t *)PHYS_TO_DMAP(*pdp & PG_FRAME);
+	pd = (pdp_entry_t *)PHYS_TO_DMAP(pdp_pte & PG_FRAME);
 	return (&pd[pmap_pd_index(va)]);
 }
 
 /*
- * Return pointer to PD slot in the PDP
- **/
+ * Return pointer to PD slot in the PDP.
+ */
 static __inline
 pdp_entry_t *
 pmap_pd(pmap_t pmap, vm_offset_t va)
@@ -452,7 +452,7 @@ pmap_pd(pmap_t pmap, vm_offset_t va)
 	pdp = pmap_pdp(pmap, va);
 	if ((*pdp & PG_V) == 0)
 		return NULL;
-	return (pmap_pdp_to_pd(pdp, va));
+	return (pmap_pdp_to_pd(*pdp, va));
 }
 
 /*
@@ -460,27 +460,43 @@ pmap_pd(pmap_t pmap, vm_offset_t va)
  */
 static __inline
 pd_entry_t *
-pmap_pd_to_pt(pdp_entry_t *pd, vm_offset_t va)
+pmap_pd_to_pt(pdp_entry_t pd_pte, vm_offset_t va)
 {
 	pd_entry_t *pt;
 
-	pt = (pd_entry_t *)PHYS_TO_DMAP(*pd & PG_FRAME);
+	pt = (pd_entry_t *)PHYS_TO_DMAP(pd_pte & PG_FRAME);
 	return (&pt[pmap_pt_index(va)]);
 }
 
 /*
  * Return pointer to PT slot in the PD
+ *
+ * SIMPLE PMAP NOTE: Simple pmaps (embedded in objects) do not have PDPs,
+ *		     so we cannot lookup the PD via the PDP.  Instead we
+ *		     must look it up via the pmap.
  */
 static __inline
 pd_entry_t *
 pmap_pt(pmap_t pmap, vm_offset_t va)
 {
 	pdp_entry_t *pd;
+	pv_entry_t pv;
+	vm_pindex_t pd_pindex;
 
-	pd = pmap_pd(pmap, va);
-	if (pd == NULL || (*pd & PG_V) == 0)
-		 return NULL;
-	return (pmap_pd_to_pt(pd, va));
+	if (pmap->pm_flags & PMAP_FLAG_SIMPLE) {
+		pd_pindex = pmap_pd_pindex(va);
+		spin_lock(&pmap->pm_spin);
+		pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot, pd_pindex);
+		spin_unlock(&pmap->pm_spin);
+		if (pv == NULL || pv->pv_m == NULL)
+			return NULL;
+		return (pmap_pd_to_pt(VM_PAGE_TO_PHYS(pv->pv_m), va));
+	} else {
+		pd = pmap_pd(pmap, va);
+		if (pd == NULL || (*pd & PG_V) == 0)
+			 return NULL;
+		return (pmap_pd_to_pt(*pd, va));
+	}
 }
 
 /*
@@ -488,11 +504,11 @@ pmap_pt(pmap_t pmap, vm_offset_t va)
  */
 static __inline
 pt_entry_t *
-pmap_pt_to_pte(pd_entry_t *pt, vm_offset_t va)
+pmap_pt_to_pte(pd_entry_t pt_pte, vm_offset_t va)
 {
 	pt_entry_t *pte;
 
-	pte = (pt_entry_t *)PHYS_TO_DMAP(*pt & PG_FRAME);
+	pte = (pt_entry_t *)PHYS_TO_DMAP(pt_pte & PG_FRAME);
 	return (&pte[pmap_pte_index(va)]);
 }
 
@@ -510,7 +526,7 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
 		 return NULL;
 	if ((*pt & PG_PS) != 0)
 		return ((pt_entry_t *)pt);
-	return (pmap_pt_to_pte(pt, va));
+	return (pmap_pt_to_pte(*pt, va));
 }
 
 /*
@@ -1019,7 +1035,7 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 				rtval = *pt & PG_PS_FRAME;
 				rtval |= va & PDRMASK;
 			} else {
-				ptep = pmap_pt_to_pte(pt, va);
+				ptep = pmap_pt_to_pte(*pt, va);
 				if (*pt & PG_V) {
 					rtval = *ptep & PG_FRAME;
 					rtval |= va & PAGE_MASK;
@@ -1069,7 +1085,7 @@ pmap_kextract(vm_offset_t va)
 			 * because the page table page is preserved by the
 			 * promotion.
 			 */
-			pa = *pmap_pt_to_pte(&pt, va);
+			pa = *pmap_pt_to_pte(pt, va);
 			pa = (pa & PG_FRAME) | (va & PAGE_MASK);
 		}
 	}
