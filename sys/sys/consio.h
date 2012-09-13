@@ -319,4 +319,11 @@ typedef struct vt_mode vtmode_t;
 /* prevent switching vtys */
 #define VT_LOCKSWITCH	_IOW('v', 9, int)
 
+#ifdef _KERNEL
+
+extern int break_to_debugger;
+extern int alt_break_to_debugger;
+
+#endif
+
 #endif /* !_SYS_CONSIO_H_ */

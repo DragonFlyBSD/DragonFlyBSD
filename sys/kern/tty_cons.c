@@ -40,6 +40,7 @@
  */
 
 #include "opt_ddb.h"
+#include "opt_comconsole.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -95,6 +96,24 @@ SYSCTL_OPAQUE(_machdep, CPU_CONSDEV, consdev, CTLFLAG_RD,
 #endif
 
 static int cn_mute;
+
+#ifdef BREAK_TO_DEBUGGER
+int	break_to_debugger = 1;
+#else
+int	break_to_debugger = 0;
+#endif
+TUNABLE_INT("kern.break_to_debugger", &break_to_debugger);
+SYSCTL_INT(_kern, OID_AUTO, break_to_debugger, CTLFLAG_RW,
+	&break_to_debugger, 0, "");
+
+#ifdef ALT_BREAK_TO_DEBUGGER
+int	alt_break_to_debugger = 1;
+#else
+int	alt_break_to_debugger = 0;
+#endif
+TUNABLE_INT("kern.alt_break_to_debugger", &alt_break_to_debugger);
+SYSCTL_INT(_kern, OID_AUTO, alt_break_to_debugger, CTLFLAG_RW,
+	&alt_break_to_debugger, 0, "");
 
 int	cons_unavail = 0;	/* XXX:
 				 * physical console not available for

@@ -73,6 +73,7 @@
 #include <sys/timepps.h>
 #include <sys/thread2.h>
 #include <sys/devfs.h>
+#include <sys/consio.h>
 
 #include <machine/limits.h>
 
@@ -1219,15 +1220,16 @@ determined_type: ;
 				     &com->cookie, NULL, NULL);
 		if (ret)
 			device_printf(dev, "could not activate interrupt\n");
-#if defined(DDB) && (defined(BREAK_TO_DEBUGGER) || \
-    defined(ALT_BREAK_TO_DEBUGGER))
+#if defined(DDB)
 		/*
 		 * Enable interrupts for early break-to-debugger support
 		 * on the console.
 		 */
-		if (ret == 0 && unit == comconsole)
+		if (ret == 0 && unit == comconsole &&
+		    (break_to_debugger || alt_break_to_debugger)) {
 			outb(siocniobase + com_ier, IER_ERXRDY | IER_ERLS |
 			    IER_EMSC);
+		}
 #endif
 	}
 
@@ -1478,14 +1480,14 @@ comhardclose(struct com_s *com)
 	sio_setreg(com, com_cfcr, com->cfcr_image &= ~CFCR_SBREAK);
 	tp = com->tp;
 
-#if defined(DDB) && (defined(BREAK_TO_DEBUGGER) || \
-    defined(ALT_BREAK_TO_DEBUGGER))
+#if defined(DDB)
 	/*
 	 * Leave interrupts enabled and don't clear DTR if this is the
 	 * console. This allows us to detect break-to-debugger events
 	 * while the console device is closed.
 	 */
-	if (com->unit != comconsole)
+	if (com->unit != comconsole ||
+	    (break_to_debugger == 0 && alt_break_to_debugger == 0))
 #endif
 	{
 		sio_setreg(com, com_ier, 0);
@@ -1815,7 +1817,7 @@ siointr1(struct com_s *com)
 				recv_data = 0;
 			else
 				recv_data = inb(com->data_port);
-#if defined(DDB) && defined(ALT_BREAK_TO_DEBUGGER)
+#if defined(DDB)
 			/*
 			 * Solaris implements a new BREAK which is initiated
 			 * by a character sequence CR ~ ^b which is similar
@@ -1826,7 +1828,7 @@ siointr1(struct com_s *com)
 #define	KEY_CR		13	/* CR '\r' */
 #define	KEY_TILDE	126	/* ~ */
 
-			if (com->unit == comconsole) {
+			if (com->unit == comconsole && alt_break_to_debugger) {
 				static int brk_state1 = 0, brk_state2 = 0;
 				if (recv_data == KEY_CR) {
 					brk_state1 = recv_data;
@@ -1860,8 +1862,9 @@ siointr1(struct com_s *com)
 				 * Note: BI together with FE/PE means just BI.
 				 */
 				if (line_status & LSR_BI) {
-#if defined(DDB) && defined(BREAK_TO_DEBUGGER)
-					if (com->unit == comconsole) {
+#if defined(DDB)
+					if (com->unit == comconsole &&
+					    break_to_debugger) {
 						com_unlock();
 						breakpoint();
 						com_lock();
@@ -2841,7 +2844,9 @@ struct siocnstate {
 };
 
 static speed_t siocngetspeed (Port_t, u_long rclk);
+#if 0
 static void siocnclose	(struct siocnstate *sp, Port_t iobase);
+#endif
 static void siocnopen	(struct siocnstate *sp, Port_t iobase, int speed);
 static void siocntxwait	(Port_t iobase);
 
@@ -2955,6 +2960,7 @@ siocnopen(struct siocnstate *sp, Port_t iobase, int speed)
 	outb(iobase + com_mcr, (sp->mcr & MCR_IENABLE) | MCR_DTR | MCR_RTS);
 }
 
+#if 0
 static void
 siocnclose(struct siocnstate *sp, Port_t iobase)
 {
@@ -2974,6 +2980,7 @@ siocnclose(struct siocnstate *sp, Port_t iobase)
 	outb(iobase + com_mcr, sp->mcr | MCR_DTR | MCR_RTS);
 	outb(iobase + com_ier, sp->ier);
 }
+#endif
 
 static void
 siocnprobe(struct consdev *cp)
@@ -3120,7 +3127,9 @@ siocncheckc(void *private)
 	int	c;
 	int	unit = (int)(intptr_t)private;
 	Port_t	iobase;
+#if 0
 	struct siocnstate	sp;
+#endif
 
 	if (unit == siogdbunit)
 		iobase = siogdbiobase;
@@ -3128,12 +3137,16 @@ siocncheckc(void *private)
 		iobase = siocniobase;
 	com_lock();
 	crit_enter();
+#if 0
 	siocnopen(&sp, iobase, comdefaultrate);
+#endif
 	if (inb(iobase + com_lsr) & LSR_RXRDY)
 		c = inb(iobase + com_data);
 	else
 		c = -1;
+#if 0
 	siocnclose(&sp, iobase);
+#endif
 	crit_exit();
 	com_unlock();
 	return (c);
@@ -3146,7 +3159,9 @@ siocngetc(void *private)
 	int	c;
 	int	unit = (int)(intptr_t)private;
 	Port_t	iobase;
+#if 0
 	struct siocnstate	sp;
+#endif
 
 	if (unit == siogdbunit)
 		iobase = siogdbiobase;
@@ -3154,11 +3169,15 @@ siocngetc(void *private)
 		iobase = siocniobase;
 	com_lock();
 	crit_enter();
+#if 0
 	siocnopen(&sp, iobase, comdefaultrate);
+#endif
 	while (!(inb(iobase + com_lsr) & LSR_RXRDY))
 		;
 	c = inb(iobase + com_data);
+#if 0
 	siocnclose(&sp, iobase);
+#endif
 	crit_exit();
 	com_unlock();
 	return (c);
@@ -3168,7 +3187,9 @@ void
 siocnputc(void *private, int c)
 {
 	int	unit = (int)(intptr_t)private;
+#if 0
 	struct siocnstate	sp;
+#endif
 	Port_t	iobase;
 
 	if (unit == siogdbunit)
@@ -3177,10 +3198,14 @@ siocnputc(void *private, int c)
 		iobase = siocniobase;
 	com_lock();
 	crit_enter();
+#if 0
 	siocnopen(&sp, iobase, comdefaultrate);
+#endif
 	siocntxwait(iobase);
 	outb(iobase + com_data, c);
+#if 0
 	siocnclose(&sp, iobase);
+#endif
 	crit_exit();
 	com_unlock();
 }
