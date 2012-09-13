@@ -485,7 +485,7 @@ cngetc(void)
 	int c;
 	if ((cn_tab == NULL) || cn_mute)
 		return (-1);
-	c = (*cn_tab->cn_getc)(cn_tab->cn_dev);
+	c = (*cn_tab->cn_getc)(cn_tab->cn_private);
 	if (c == '\r') c = '\n'; /* console input is always ICRNL */
 	return (c);
 }
@@ -495,7 +495,7 @@ cncheckc(void)
 {
 	if ((cn_tab == NULL) || cn_mute)
 		return (-1);
-	return ((*cn_tab->cn_checkc)(cn_tab->cn_dev));
+	return ((*cn_tab->cn_checkc)(cn_tab->cn_private));
 }
 
 void
@@ -507,21 +507,21 @@ cnputc(int c)
 		return;
 	if (c) {
 		if (c == '\n')
-			(*cn_tab->cn_putc)(cn_tab->cn_dev, '\r');
-		(*cn_tab->cn_putc)(cn_tab->cn_dev, c);
+			(*cn_tab->cn_putc)(cn_tab->cn_private, '\r');
+		(*cn_tab->cn_putc)(cn_tab->cn_private, c);
 #ifdef DDB
 		if (console_pausing && !db_active && (c == '\n')) {
 #else
 		if (console_pausing && (c == '\n')) {
 #endif
 			for(cp=console_pausestr; *cp != '\0'; cp++)
-			    (*cn_tab->cn_putc)(cn_tab->cn_dev, *cp);
+			    (*cn_tab->cn_putc)(cn_tab->cn_private, *cp);
 			if (cngetc() == '.')
 				console_pausing = 0;
-			(*cn_tab->cn_putc)(cn_tab->cn_dev, '\r');
+			(*cn_tab->cn_putc)(cn_tab->cn_private, '\r');
 			for(cp=console_pausestr; *cp != '\0'; cp++)
-			    (*cn_tab->cn_putc)(cn_tab->cn_dev, ' ');
-			(*cn_tab->cn_putc)(cn_tab->cn_dev, '\r');
+			    (*cn_tab->cn_putc)(cn_tab->cn_private, ' ');
+			(*cn_tab->cn_putc)(cn_tab->cn_private, '\r');
 		}
 	}
 }
@@ -536,7 +536,7 @@ cndbctl(int on)
 	if (!on)
 		refcount--;
 	if (refcount == 0 && cn_tab->cn_dbctl != NULL)
-		(*cn_tab->cn_dbctl)(cn_tab->cn_dev, on);
+		(*cn_tab->cn_dbctl)(cn_tab->cn_private, on);
 	if (on)
 		refcount++;
 }
