@@ -61,6 +61,23 @@ mptable_pci_route_interrupt(device_t pcib, device_t dev, int pin)
 	slot = pci_get_slot(dev);
 	irq = pci_get_irq(dev);
 
+	line = mptable_pci_int_route(bus, slot, pin, -1);
+	if (line >= 0)
+		goto done;
+
+	/*
+	 * MPTABLE does not provide interrupt routing
+	 * for bus:slot:pin, ask parent about it then,
+	 * i.e. PCI-PCI bridge interrupt pin swizzle.
+	 */
+	line = pcib_route_interrupt(pcib, dev, pin);
+	if (line != PCI_INVALID_IRQ)
+		return line;
+
+	/*
+	 * No luck, try using the intline ...
+	 * XXX this probably is broken
+	 */
 	line = mptable_pci_int_route(bus, slot, pin, irq);
 	if (line >= 0)
 		goto done;
