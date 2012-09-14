@@ -1146,8 +1146,8 @@ unp_disconnect(struct unpcb *unp)
 		break;
 	}
 	lwkt_relpooltoken(unp2);
-	lwkt_relpooltoken(unp);
 done:
+	lwkt_relpooltoken(unp);
 	lwkt_reltoken(&unp_token);
 }
 
