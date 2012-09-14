@@ -165,12 +165,14 @@ main(int argc, char *argv[])
 			termwidth = atoi(p);
 	}
 
-	/* Root is -A automatically. */
-	if (!getuid())
+	/*
+	 * Root is -A automatically.  Turn off if -I specified.
+	 */
+	if (getuid() == 0)
 		f_listdot = 1;
 
 	fts_options = FTS_PHYSICAL;
- 	while ((ch = getopt(argc, argv, "1ABCFGHLPSRTWabcdfghiklmnopqrstuwxy"))
+	while ((ch = getopt(argc, argv, "1ABCFGHILPSRTWabcdfghiklmnopqrstuwxy"))
 	    != -1) {
 		switch (ch) {
 		/*
@@ -220,6 +222,9 @@ main(int argc, char *argv[])
 			break;
 		case 'H':
 			fts_options |= FTS_COMFOLLOW;
+			break;
+		case 'I':
+			f_listdot = 0;
 			break;
 		case 'G':
 			if (setenv("CLICOLOR", "", 1) != 0)

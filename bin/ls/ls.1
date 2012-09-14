@@ -40,7 +40,7 @@
 .Nd list directory contents
 .Sh SYNOPSIS
 .Nm
-.Op Fl ABCFGHLPRTWabcdfghiklmnopqrstuwxy1
+.Op Fl ABCFGHILPRTWabcdfghiklmnopqrstuwxy1
 .Op Ar
 .Sh DESCRIPTION
 For each operand that names a
@@ -68,11 +68,10 @@ lexicographical order.
 The following options are available:
 .Bl -tag -width indent
 .It Fl A
-List all entries except for
-.Pa \&.
-and
-.Pa .. .
-Always set for the super-user.
+List all entries, including dot files, except for dot and dot-dot.
+Always set for the super-user, but may be turned
+off with
+.Fl I .
 .It Fl B
 Force printing of non-printable characters (as defined by
 .Xr ctype 3
@@ -117,6 +116,16 @@ none of the
 or
 .Fl l
 options are specified.
+.It Fl I
+This turns off the listing of dot files.
+Dot files are listed by default when
+.Nm
+is run as root.
+Note that the
+.Fl I
+and
+.Fl A
+options will override each other.
 .It Fl L
 If argument is a symbolic link, list the file or directory the link references
 rather than the link itself.
