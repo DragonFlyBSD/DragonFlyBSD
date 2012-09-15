@@ -86,7 +86,7 @@ struct sem_undo {
 
 /* shouldn't need tuning */
 #ifndef SEMMAP
-#define SEMMAP	30		/* # of entries in semaphore map */
+#define SEMMAP	128		/* # of entries in semaphore map */
 #endif
 #ifndef SEMMSL
 #define SEMMSL	SEMMNS		/* max # of semaphores per id */
