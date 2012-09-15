@@ -145,6 +145,7 @@ struct vkernel_proc;
 struct vkernel_lwp;
 struct vmspace_entry;
 struct ktrace_node;
+struct sem_undo;
 
 enum lwpstat {
 	LSRUN = 1,
@@ -332,6 +333,7 @@ struct	proc {
 
 	struct spinlock p_spin;		/* Spinlock for LWP access to proc */
 	struct lwkt_token p_token;	/* Token for LWP access to proc */
+	struct sem_undo	*p_sem_undo;	/* Fast semaphore tracking lookup */
 };
 
 #define lwp_wchan	lwp_thread->td_wchan
