@@ -242,10 +242,11 @@ static void pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp,
 static vm_page_t pmap_remove_pv_page(pv_entry_t pv);
 static int pmap_release_pv(pv_entry_t pv, pv_entry_t pvp);
 
-static void pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
+struct pmap_scan_info;
+static void pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		      pv_entry_t pte_pv, pv_entry_t pt_pv, int sharept,
 		      vm_offset_t va, pt_entry_t *ptep, void *arg __unused);
-static void pmap_protect_callback(pmap_t pmap, struct pmap_inval_info *info,
+static void pmap_protect_callback(pmap_t pmap, struct pmap_scan_info *info,
 		      pv_entry_t pte_pv, pv_entry_t pt_pv, int sharept,
 		      vm_offset_t va, pt_entry_t *ptep, void *arg __unused);
 
@@ -2800,10 +2801,11 @@ struct pmap_scan_info {
 	vm_offset_t eva;
 	vm_pindex_t sva_pd_pindex;
 	vm_pindex_t eva_pd_pindex;
-	void (*func)(pmap_t, struct pmap_inval_info *,
+	void (*func)(pmap_t, struct pmap_scan_info *,
 		     pv_entry_t, pv_entry_t, int, vm_offset_t,
 		     pt_entry_t *, void *);
 	void *arg;
+	int doinval;
 	struct pmap_inval_info inval;
 };
 
@@ -2870,7 +2872,7 @@ pmap_scan(struct pmap_scan_info *info)
 					ptep = pv_pte_lookup(pd_pv,
 						    pmap_pt_index(info->sva));
 					if (*ptep) {
-						info->func(pmap, &info->inval,
+						info->func(pmap, info,
 						     NULL, pd_pv, 1,
 						     info->sva, ptep,
 						     info->arg);
@@ -2894,13 +2896,13 @@ pmap_scan(struct pmap_scan_info *info)
 								PG_V),
 				("bad *ptep %016lx sva %016lx pte_pv %p",
 				*ptep, info->sva, pte_pv));
-			info->func(pmap, &info->inval, pte_pv, pt_pv, 0,
+			info->func(pmap, info, pte_pv, pt_pv, 0,
 				   info->sva, ptep, info->arg);
 		} else {
 			KASSERT((*ptep & (PG_MANAGED|PG_V)) == PG_V,
 				("bad *ptep %016lx sva %016lx pte_pv NULL",
 				*ptep, info->sva));
-			info->func(pmap, &info->inval, NULL, pt_pv, 0,
+			info->func(pmap, info, NULL, pt_pv, 0,
 				   info->sva, ptep, info->arg);
 		}
 		if (pt_pv)
@@ -3018,7 +3020,6 @@ pmap_scan_callback(pv_entry_t pv, void *data)
 	pt_pv = NULL;
 
 	for (; sva < eva; sva = va_next) {
-		lwkt_yield();
 		if (sva >= VM_MAX_USER_ADDRESS) {
 			if (pt_pv) {
 				pv_put(pt_pv);
@@ -3079,7 +3080,7 @@ pmap_scan_callback(pv_entry_t pv, void *data)
 			KKASSERT(pd_pv != NULL);
 			ptep = pv_pte_lookup(pd_pv, pmap_pt_index(sva));
 			if (*ptep & PG_V) {
-				info->func(pmap, &info->inval, NULL, pd_pv, 1,
+				info->func(pmap, info, NULL, pd_pv, 1,
 					   sva, ptep, info->arg);
 			}
 
@@ -3138,7 +3139,6 @@ kernel_skip:
 			 * backwards, so we have to be careful in aquiring
 			 * a properly locked pte_pv.
 			 */
-			lwkt_yield();
 			if (pt_pv) {
 				pte_pv = pv_get_try(pmap, pmap_pte_pindex(sva),
 						    &error);
@@ -3193,7 +3193,7 @@ kernel_skip:
 					("bad *ptep %016lx sva %016lx "
 					 "pte_pv %p",
 					 *ptep, sva, pte_pv));
-				info->func(pmap, &info->inval, pte_pv, pt_pv, 0,
+				info->func(pmap, info, pte_pv, pt_pv, 0,
 					   sva, ptep, info->arg);
 			} else {
 				KASSERT((*ptep & (PG_MANAGED|PG_V)) ==
@@ -3201,13 +3201,14 @@ kernel_skip:
 					("bad *ptep %016lx sva %016lx "
 					 "pte_pv NULL",
 					 *ptep, sva));
-				info->func(pmap, &info->inval, NULL, pt_pv, 0,
+				info->func(pmap, info, NULL, pt_pv, 0,
 					   sva, ptep, info->arg);
 			}
 			pte_pv = NULL;
 			sva += PAGE_SIZE;
 			++ptep;
 		}
+		lwkt_yield();
 	}
 	if (pd_pv) {
 		pv_put(pd_pv);
@@ -3217,6 +3218,7 @@ kernel_skip:
 		pv_put(pt_pv);
 		pt_pv = NULL;
 	}
+	lwkt_yield();
 
 	/*
 	 * Relock before returning.
@@ -3235,11 +3237,26 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	info.eva = eva;
 	info.func = pmap_remove_callback;
 	info.arg = NULL;
+	info.doinval = 1;	/* normal remove requires pmap inval */
 	pmap_scan(&info);
 }
 
 static void
-pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
+pmap_remove_noinval(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
+{
+	struct pmap_scan_info info;
+
+	info.pmap = pmap;
+	info.sva = sva;
+	info.eva = eva;
+	info.func = pmap_remove_callback;
+	info.arg = NULL;
+	info.doinval = 0;	/* normal remove requires pmap inval */
+	pmap_scan(&info);
+}
+
+static void
+pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		     pv_entry_t pte_pv, pv_entry_t pt_pv, int sharept,
 		     vm_offset_t va, pt_entry_t *ptep, void *arg __unused)
 {
@@ -3250,7 +3267,10 @@ pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
 		 * This will also drop pt_pv's wire_count. Note that
 		 * terminal pages are not wired based on mmu presence.
 		 */
-		pmap_remove_pv_pte(pte_pv, pt_pv, info);
+		if (info->doinval)
+			pmap_remove_pv_pte(pte_pv, pt_pv, &info->inval);
+		else
+			pmap_remove_pv_pte(pte_pv, pt_pv, NULL);
 		pmap_remove_pv_page(pte_pv);
 		pv_free(pte_pv);
 	} else if (sharept == 0) {
@@ -3260,9 +3280,11 @@ pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
 		 * pt_pv's wire_count is still bumped by unmanaged pages
 		 * so we must decrement it manually.
 		 */
-		pmap_inval_interlock(info, pmap, va);
+		if (info->doinval)
+			pmap_inval_interlock(&info->inval, pmap, va);
 		pte = pte_load_clear(ptep);
-		pmap_inval_deinterlock(info, pmap);
+		if (info->doinval)
+			pmap_inval_deinterlock(&info->inval, pmap);
 		if (pte & PG_W)
 			atomic_add_long(&pmap->pm_stats.wired_count, -1);
 		atomic_add_long(&pmap->pm_stats.resident_count, -1);
@@ -3276,9 +3298,11 @@ pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
 		 * We have to unwire the target page table page and we
 		 * have to unwire our page directory page.
 		 */
-		pmap_inval_interlock(info, pmap, va);
+		if (info->doinval)
+			pmap_inval_interlock(&info->inval, pmap, va);
 		pte = pte_load_clear(ptep);
-		pmap_inval_deinterlock(info, pmap);
+		if (info->doinval)
+			pmap_inval_deinterlock(&info->inval, pmap);
 		atomic_add_long(&pmap->pm_stats.resident_count, -1);
 		if (vm_page_unwire_quick(PHYS_TO_VM_PAGE(pte & PG_FRAME)))
 			panic("pmap_remove: shared pgtable1 bad wirecount");
@@ -3360,12 +3384,13 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 	info.eva = eva;
 	info.func = pmap_protect_callback;
 	info.arg = &prot;
+	info.doinval = 1;
 	pmap_scan(&info);
 }
 
 static
 void
-pmap_protect_callback(pmap_t pmap, struct pmap_inval_info *info,
+pmap_protect_callback(pmap_t pmap, struct pmap_scan_info *info,
 		      pv_entry_t pte_pv, pv_entry_t pt_pv, int sharept,
 		      vm_offset_t va, pt_entry_t *ptep, void *arg __unused)
 {
@@ -3377,7 +3402,7 @@ pmap_protect_callback(pmap_t pmap, struct pmap_inval_info *info,
 	/*
 	 * XXX non-optimal.
 	 */
-	pmap_inval_interlock(info, pmap, va);
+	pmap_inval_interlock(&info->inval, pmap, va);
 again:
 	pbits = *ptep;
 	cbits = pbits;
@@ -3407,7 +3432,7 @@ again:
 		 * invalidate the tlb in this situation.
 		 */
 		pte = pte_load_clear(ptep);
-		pmap_inval_invltlb(info);
+		pmap_inval_invltlb(&info->inval);
 		if (vm_page_unwire_quick(PHYS_TO_VM_PAGE(pte & PG_FRAME)))
 			panic("pmap_protect: pgtable1 pg bad wirecount");
 		if (vm_page_unwire_quick(pt_pv->pv_m))
@@ -3422,7 +3447,7 @@ again:
 			goto again;
 		}
 	}
-	pmap_inval_deinterlock(info, pmap);
+	pmap_inval_deinterlock(&info->inval, pmap);
 	if (pte_pv)
 		pv_put(pte_pv);
 }
@@ -4038,7 +4063,8 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 void
 pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 {
-	pmap_remove(pmap, sva, eva);
+	pmap_remove_noinval(pmap, sva, eva);
+	cpu_invltlb();
 }
 
 /*
@@ -4636,7 +4662,7 @@ pmap_object_free(vm_object_t object)
 		object->md.pmap_rw = NULL;
 		kprintf("pmap_object_free: destroying pmap %p in obj %p\n",
 			pmap, object);
-		pmap_remove_pages(pmap,
+		pmap_remove_noinval(pmap,
 				  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 		pmap->pm_active = 0;
 		pmap_release(pmap);
@@ -4647,7 +4673,7 @@ pmap_object_free(vm_object_t object)
 		object->md.pmap_ro = NULL;
 		kprintf("pmap_object_free: destroying pmap %p in obj %p\n",
 			pmap, object);
-		pmap_remove_pages(pmap,
+		pmap_remove_noinval(pmap,
 				  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 		pmap->pm_active = 0;
 		pmap_release(pmap);
