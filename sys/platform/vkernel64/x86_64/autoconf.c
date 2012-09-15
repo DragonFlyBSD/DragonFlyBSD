@@ -143,7 +143,7 @@ cpu_startup(void *dummy)
 	}
 	if (nbuf > (virtual_end - virtual_start) / (BKVASIZE * 2)) {
 		nbuf = (virtual_end - virtual_start) / (BKVASIZE * 2);
-		kprintf("Warning: nbufs capped at %d\n", nbuf);
+		kprintf("Warning: nbufs capped at %ld\n", nbuf);
 	}
 
 	nswbuf = lmax(lmin(nbuf / 4, 256), 16);

@@ -313,7 +313,7 @@ again:
 	 */
 	if (nbuf > (virtual_end - virtual_start) / (BKVASIZE * 2)) {
 		nbuf = (virtual_end - virtual_start) / (BKVASIZE * 2);
-		kprintf("Warning: nbufs capped at %d\n", nbuf);
+		kprintf("Warning: nbufs capped at %ld\n", nbuf);
 	}
 
 	/* limit to 128 on i386 */
