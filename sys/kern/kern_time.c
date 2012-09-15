@@ -82,10 +82,13 @@ static void	timevalfix(struct timeval *);
  */
 static int     nanosleep_min_us = 10;
 static int     nanosleep_hard_us = 100;
+static int     gettimeofday_quick = 0;
 SYSCTL_INT(_kern, OID_AUTO, nanosleep_min_us, CTLFLAG_RW,
 	   &nanosleep_min_us, 0, "")
 SYSCTL_INT(_kern, OID_AUTO, nanosleep_hard_us, CTLFLAG_RW,
 	   &nanosleep_hard_us, 0, "")
+SYSCTL_INT(_kern, OID_AUTO, gettimeofday_quick, CTLFLAG_RW,
+	   &gettimeofday_quick, 0, "")
 
 static int
 settime(struct timeval *tv)
@@ -443,7 +446,12 @@ sys_nanosleep(struct nanosleep_args *uap)
 }
 
 /*
- * MPSAFE
+ * The gettimeofday() system call is supposed to return a fine-grained
+ * realtime stamp.  However, acquiring a fine-grained stamp can create a
+ * bottleneck when multiple cpu cores are trying to accessing e.g. the
+ * HPET hardware timer all at the same time, so we have a sysctl that
+ * allows its behavior to be changed to a more coarse-grained timestamp
+ * which does not have to access a hardware timer.
  */
 int
 sys_gettimeofday(struct gettimeofday_args *uap)
@@ -452,7 +460,10 @@ sys_gettimeofday(struct gettimeofday_args *uap)
 	int error = 0;
 
 	if (uap->tp) {
-		microtime(&atv);
+		if (gettimeofday_quick)
+			getmicrotime(&atv);
+		else
+			microtime(&atv);
 		if ((error = copyout((caddr_t)&atv, (caddr_t)uap->tp,
 		    sizeof (atv))))
 			return (error);
