@@ -92,7 +92,7 @@ struct pagerops vnodepagerops = {
 static struct krate vbadrate = { 1 };
 static struct krate vresrate = { 1 };
 
-int vnode_pbuf_freecnt = -1;	/* start out unlimited */
+long vnode_pbuf_freecnt = -1;	/* start out unlimited */
 
 /*
  * Allocate a VM object for a vnode, typically a regular file vnode.

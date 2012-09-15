@@ -173,11 +173,11 @@
  * the VM page cache is not effected), can be changed via
  * kern.maxbcache /boot/loader.conf variable.
  *
- * On x86_64 boxes this can also improve HAMMER's flushing and cache
- * performance so use a much higher value than i386.
+ * This value is unbounded on 64-bit boxes, boot code will limit the
+ * buffer cache size to a portion of available physical memory.
  */
 #ifndef VM_BCACHE_SIZE_MAX
-#define VM_BCACHE_SIZE_MAX	(1000L * 1024 * 1024)
+#define VM_BCACHE_SIZE_MAX	0
 #endif
 
 /*

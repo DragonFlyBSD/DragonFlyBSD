@@ -125,17 +125,17 @@ long bufspace;			/* locked by buffer_map */
 long maxbufspace;
 static long bufmallocspace;	/* atomic ops */
 long maxbufmallocspace, lobufspace, hibufspace;
-static int bufreusecnt, bufdefragcnt, buffreekvacnt;
+static long bufreusecnt, bufdefragcnt, buffreekvacnt;
 static long lorunningspace;
 static long hirunningspace;
-static int runningbufreq;		/* locked by bufcspin */
+static long runningbufreq;		/* locked by bufcspin */
 static long dirtykvaspace;		/* locked by bufcspin */
 static long dirtybufspace;		/* locked by bufcspin */
-static int dirtybufcount;		/* locked by bufcspin */
+static long dirtybufcount;		/* locked by bufcspin */
 static long dirtybufspacehw;		/* locked by bufcspin */
-static int dirtybufcounthw;		/* locked by bufcspin */
+static long dirtybufcounthw;		/* locked by bufcspin */
 static long runningbufspace;		/* locked by bufcspin */
-static int runningbufcount;		/* locked by bufcspin */
+static long runningbufcount;		/* locked by bufcspin */
 long lodirtybufspace;
 long hidirtybufspace;
 static int getnewbufcalls;
@@ -174,7 +174,7 @@ SYSCTL_UINT(_vfs, OID_AUTO, vm_cycle_point, CTLFLAG_RW, &vm_cycle_point, 0,
 /*
  * Sysctls determining current state of the buffer cache.
  */
-SYSCTL_INT(_vfs, OID_AUTO, nbuf, CTLFLAG_RD, &nbuf, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, nbuf, CTLFLAG_RD, &nbuf, 0,
 	"Total number of buffers in buffer cache");
 SYSCTL_LONG(_vfs, OID_AUTO, dirtykvaspace, CTLFLAG_RD, &dirtykvaspace, 0,
 	"KVA reserved by dirty buffers (all)");
@@ -182,13 +182,13 @@ SYSCTL_LONG(_vfs, OID_AUTO, dirtybufspace, CTLFLAG_RD, &dirtybufspace, 0,
 	"Pending bytes of dirty buffers (all)");
 SYSCTL_LONG(_vfs, OID_AUTO, dirtybufspacehw, CTLFLAG_RD, &dirtybufspacehw, 0,
 	"Pending bytes of dirty buffers (heavy weight)");
-SYSCTL_INT(_vfs, OID_AUTO, dirtybufcount, CTLFLAG_RD, &dirtybufcount, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, dirtybufcount, CTLFLAG_RD, &dirtybufcount, 0,
 	"Pending number of dirty buffers");
-SYSCTL_INT(_vfs, OID_AUTO, dirtybufcounthw, CTLFLAG_RD, &dirtybufcounthw, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, dirtybufcounthw, CTLFLAG_RD, &dirtybufcounthw, 0,
 	"Pending number of dirty buffers (heavy weight)");
 SYSCTL_LONG(_vfs, OID_AUTO, runningbufspace, CTLFLAG_RD, &runningbufspace, 0,
 	"I/O bytes currently in progress due to asynchronous writes");
-SYSCTL_INT(_vfs, OID_AUTO, runningbufcount, CTLFLAG_RD, &runningbufcount, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, runningbufcount, CTLFLAG_RD, &runningbufcount, 0,
 	"I/O buffers currently in progress due to asynchronous writes");
 SYSCTL_LONG(_vfs, OID_AUTO, maxbufspace, CTLFLAG_RD, &maxbufspace, 0,
 	"Hard limit on maximum amount of memory usable for buffer space");
@@ -619,7 +619,7 @@ bufinit(void)
 {
 	struct buf *bp;
 	vm_offset_t bogus_offset;
-	int i;
+	long i;
 
 	/* next, make a null set of free lists */
 	for (i = 0; i < BUFFER_QUEUES; i++)
@@ -650,8 +650,8 @@ bufinit(void)
 	 * this may result in KVM fragmentation which is not handled optimally
 	 * by the system.
 	 */
-	maxbufspace = (long)nbuf * BKVASIZE;
-	hibufspace = imax(3 * maxbufspace / 4, maxbufspace - MAXBSIZE * 10);
+	maxbufspace = nbuf * BKVASIZE;
+	hibufspace = lmax(3 * maxbufspace / 4, maxbufspace - MAXBSIZE * 10);
 	lobufspace = hibufspace - MAXBSIZE;
 
 	lorunningspace = 512 * 1024;
@@ -4730,7 +4730,7 @@ scan_all_buffers(int (*callback)(struct buf *, void *), void *info)
 {
 	int count = 0;
 	int error;
-	int n;
+	long n;
 
 	for (n = 0; n < nbuf; ++n) {
 		if ((error = callback(&buf[n], info)) < 0) {

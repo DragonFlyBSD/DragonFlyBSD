@@ -376,7 +376,7 @@ struct cluster_save {
 #define B_SYNC		0x02		/* Do all allocations synchronously. */
 
 #ifdef _KERNEL
-extern int	nbuf;			/* The number of buffer headers */
+extern long	nbuf;			/* The number of buffer headers */
 extern long	maxswzone;		/* Max KVA for swap structures */
 extern long	maxbcache;		/* Max KVA for buffer cache */
 extern long	hidirtybufspace;
@@ -385,7 +385,7 @@ extern struct buf *buf;			/* The buffer headers. */
 extern char	*buffers;		/* The buffer contents. */
 extern int	bufpages;		/* Number of memory pages in the buffer pool. */
 extern struct	buf *swbuf;		/* Swap I/O buffer headers. */
-extern int	nswbuf;			/* Number of swap I/O buffer headers. */
+extern long	nswbuf;			/* Number of swap I/O buffer headers. */
 extern int	bioq_reorder_burst_interval;
 extern int	bioq_reorder_burst_bytes;
 extern int	bioq_reorder_minor_interval;

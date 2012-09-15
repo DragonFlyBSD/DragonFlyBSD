@@ -148,7 +148,7 @@ cpu_startup(void *dummy)
 		kprintf("Warning: nbufs capped at %d\n", nbuf);
 	}
 
-	nswbuf = max(min(nbuf/4, 256), 16);
+	nswbuf = lmax(lmin(nbuf / 4, 256), 16);
 #ifdef NSWBUF_MIN
 	if (nswbuf < NSWBUF_MIN)
 		nswbuf = NSWBUF_MIN;
