@@ -50,7 +50,7 @@
 #include <sys/shm.h>
 #include <sys/msg.h>
 
-struct semid_ds	*sema;
+struct semid_pool *sema;
 struct seminfo	seminfo;
 struct msginfo	msginfo;
 struct msqid_ds	*msqids;
@@ -418,7 +418,7 @@ main(int argc, char **argv)
 		}
 	if ((display & (SEMINFO | SEMTOTAL)) &&
 	    kvm_read(kd, symbols[X_SEMINFO].n_value, &seminfo, sizeof(seminfo))) {
-		struct semid_ds *xsema;
+		struct semid_pool *xsema;
 
 		if (display & SEMTOTAL) {
 			printf("seminfo:\n");
@@ -445,8 +445,8 @@ main(int argc, char **argv)
 		}
 		if (display & SEMINFO) {
 			kvm_read(kd, symbols[X_SEMA].n_value, &sema, sizeof(sema));
-			xsema = malloc(sizeof(struct semid_ds) * seminfo.semmni);
-			kvm_read(kd, (u_long) sema, xsema, sizeof(struct semid_ds) * seminfo.semmni);
+			xsema = malloc(sizeof(struct semid_pool) * seminfo.semmni);
+			kvm_read(kd, (u_long) sema, xsema, sizeof(struct semid_pool) * seminfo.semmni);
 
 			printf("Semaphores:\n");
 			printf("T     ID     KEY        MODE       OWNER    GROUP");
@@ -458,9 +458,9 @@ main(int argc, char **argv)
 				printf("   OTIME    CTIME");
 			printf("\n");
 			for (i = 0; i < seminfo.semmni; i += 1) {
-				if ((xsema[i].sem_perm.mode & SEM_ALLOC) != 0) {
+				if ((xsema[i].ds.sem_perm.mode & SEM_ALLOC) != 0) {
 					char    ctime_buf[100], otime_buf[100];
-					struct semid_ds *semaptr = &xsema[i];
+					struct semid_ds *semaptr = &xsema[i].ds;
 
 					if (user && useruid != semaptr->sem_perm.uid)
 						continue;
