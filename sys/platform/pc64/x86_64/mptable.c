@@ -1446,12 +1446,9 @@ mptable_pci_int_route(int bus, int dev, int pin, int intline)
 		}
 	}
 
-	if (irq < 0) {
-		if (bootverbose) {
-			kprintf("MPTABLE: fixed interrupt routing "
-				"for %d:%d INT%c\n", bus, dev, pin + 'A');
-		}
-
+	if (irq < 0 && intline >= 0) {
+		kprintf("MPTABLE: fixed interrupt routing "
+		    "for %d:%d INT%c\n", bus, dev, pin + 'A');
 		irq = machintr_legacy_intr_find(intline,
 			INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
 	}

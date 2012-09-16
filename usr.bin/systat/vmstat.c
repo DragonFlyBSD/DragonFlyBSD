@@ -74,11 +74,11 @@ static struct Info {
 	long	nchcount;
 	long	nchpathcount;
 	long	*intrcnt;
-	int	bufspace;
+	long	bufspace;
 	int	desiredvnodes;
 	int	numvnodes;
 	int	freevnodes;
-	int	dirtybufspace;
+	long	dirtybufspace;
 } s, s1, s2, z;
 
 struct kinfo_cputime cp_time, old_cp_time;

@@ -2119,7 +2119,6 @@ X_rsvp_input(struct mbuf **mp, int *offp, int proto)
     struct ip *ip = mtod(m, struct ip *);
     struct sockaddr_in rsvp_src = { sizeof rsvp_src, AF_INET };
     struct ifnet *ifp;
-    int off;
 #ifdef ALTQ
     /* support IP_RECVIF used by rsvpd rel4.2a1 */
     struct inpcb *inp;
@@ -2127,7 +2126,6 @@ X_rsvp_input(struct mbuf **mp, int *offp, int proto)
     struct mbuf *opts;
 #endif
 
-    off = *offp;
     *mp = NULL;
 
     if (rsvpdebug)

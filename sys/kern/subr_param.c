@@ -84,8 +84,8 @@ int	maxfilesperuser;		/* per-user open files limit */
 int	maxposixlocksperuid;		/* max # POSIX locks per uid */
 int	ncallout;			/* maximum # of timer events */
 int	mbuf_wait = 32;			/* mbuf sleep time in ticks */
-int	nbuf;
-int	nswbuf;
+long	nbuf;
+long	nswbuf;
 long	maxswzone;			/* max swmeta KVA storage */
 long	maxbcache;			/* max buffer cache KVA storage */
 int	vmm_guest = 0; 			/* Running as virtual machine guest? */
@@ -222,7 +222,7 @@ init_param2(int physpages)
 	 * Unless overriden, NBUF is typically 0 (auto-sized later).
 	 */
 	nbuf = NBUF;
-	TUNABLE_INT_FETCH("kern.nbuf", &nbuf);
+	TUNABLE_LONG_FETCH("kern.nbuf", &nbuf);
 
 	ncallout = 16 + maxproc + maxfiles;
 	TUNABLE_INT_FETCH("kern.ncallout", &ncallout);

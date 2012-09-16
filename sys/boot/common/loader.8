@@ -698,7 +698,8 @@ Modifies
 .It Va kern.maxbcache
 Limits the amount of KVM reserved for use by the
 buffer cache, specified in bytes.
-The default maximum is 200MB.
+The default maximum is 200MB on 32-bit and
+unspecified on 64-bit.
 This parameter is used to
 prevent the buffer cache from eating too much
 .Tn KVM

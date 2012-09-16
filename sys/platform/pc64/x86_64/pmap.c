@@ -6,7 +6,7 @@
  * Copyright (c) 2005-2008 Alan L. Cox <alc@cs.rice.edu>
  * Copyright (c) 2008, 2009 The DragonFly Project.
  * Copyright (c) 2008, 2009 Jordan Gordeev.
- * Copyright (c) 2011 Matthew Dillon
+ * Copyright (c) 2011-2012 Matthew Dillon
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -154,6 +154,8 @@ static int protection_codes[8];
 struct pmap kernel_pmap;
 static TAILQ_HEAD(,pmap)	pmap_list = TAILQ_HEAD_INITIALIZER(pmap_list);
 
+MALLOC_DEFINE(M_OBJPMAP, "objpmap", "pmaps associated with VM objects");
+
 vm_paddr_t avail_start;		/* PA of first available physical page */
 vm_paddr_t avail_end;		/* PA of last available physical page */
 vm_offset_t virtual2_start;	/* cutout free area prior to kernel start */
@@ -196,7 +198,7 @@ static struct pv_entry *pvinit;
  * All those kernel PT submaps that BSD is so fond of
  */
 pt_entry_t *CMAP1 = NULL, *ptmmap;
-caddr_t CADDR1 = 0, ptvmmap = 0;
+caddr_t CADDR1 = NULL, ptvmmap = NULL;
 static pt_entry_t *msgbufmap;
 struct msgbuf *msgbufp=NULL;
 
@@ -209,6 +211,9 @@ static caddr_t crashdumpmap;
 static int pmap_yield_count = 64;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_yield_count, CTLFLAG_RW,
     &pmap_yield_count, 0, "Yield during init_pt/release");
+static int pmap_mmu_optimize = 0;
+SYSCTL_INT(_machdep, OID_AUTO, pmap_mmu_optimize, CTLFLAG_RW,
+    &pmap_mmu_optimize, 0, "Share page table pages when possible");
 
 #define DISABLE_PSE
 
@@ -230,16 +235,20 @@ static void pv_free(pv_entry_t pv);
 static void *pv_pte_lookup(pv_entry_t pv, vm_pindex_t pindex);
 static pv_entry_t pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex,
 		      pv_entry_t *pvpp);
+static pv_entry_t pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex,
+		      pv_entry_t *pvpp, vm_map_entry_t entry, vm_offset_t va);
 static void pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp,
 		      struct pmap_inval_info *info);
 static vm_page_t pmap_remove_pv_page(pv_entry_t pv);
+static int pmap_release_pv(pv_entry_t pv, pv_entry_t pvp);
 
-static void pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
-		      pv_entry_t pte_pv, pv_entry_t pt_pv, vm_offset_t va,
-		      pt_entry_t *ptep, void *arg __unused);
-static void pmap_protect_callback(pmap_t pmap, struct pmap_inval_info *info,
-		      pv_entry_t pte_pv, pv_entry_t pt_pv, vm_offset_t va,
-		      pt_entry_t *ptep, void *arg __unused);
+struct pmap_scan_info;
+static void pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
+		      pv_entry_t pte_pv, pv_entry_t pt_pv, int sharept,
+		      vm_offset_t va, pt_entry_t *ptep, void *arg __unused);
+static void pmap_protect_callback(pmap_t pmap, struct pmap_scan_info *info,
+		      pv_entry_t pte_pv, pv_entry_t pt_pv, int sharept,
+		      vm_offset_t va, pt_entry_t *ptep, void *arg __unused);
 
 static void i386_protection_init (void);
 static void create_pagetables(vm_paddr_t *firstaddr);
@@ -395,6 +404,9 @@ pmap_pdp_index(vm_offset_t va)
 
 /*
  * Generic procedure to index a pte from a pt, pd, or pdp.
+ *
+ * NOTE: Normally passed pindex as pmap_xx_index().  pmap_xx_pindex() is NOT
+ *	 a page table page index but is instead of PV lookup index.
  */
 static
 void *
@@ -421,17 +433,17 @@ pmap_pdp(pmap_t pmap, vm_offset_t va)
  */
 static __inline
 pdp_entry_t *
-pmap_pdp_to_pd(pml4_entry_t *pdp, vm_offset_t va)
+pmap_pdp_to_pd(pml4_entry_t pdp_pte, vm_offset_t va)
 {
 	pdp_entry_t *pd;
 
-	pd = (pdp_entry_t *)PHYS_TO_DMAP(*pdp & PG_FRAME);
+	pd = (pdp_entry_t *)PHYS_TO_DMAP(pdp_pte & PG_FRAME);
 	return (&pd[pmap_pd_index(va)]);
 }
 
 /*
- * Return pointer to PD slot in the PDP
- **/
+ * Return pointer to PD slot in the PDP.
+ */
 static __inline
 pdp_entry_t *
 pmap_pd(pmap_t pmap, vm_offset_t va)
@@ -441,7 +453,7 @@ pmap_pd(pmap_t pmap, vm_offset_t va)
 	pdp = pmap_pdp(pmap, va);
 	if ((*pdp & PG_V) == 0)
 		return NULL;
-	return (pmap_pdp_to_pd(pdp, va));
+	return (pmap_pdp_to_pd(*pdp, va));
 }
 
 /*
@@ -449,27 +461,43 @@ pmap_pd(pmap_t pmap, vm_offset_t va)
  */
 static __inline
 pd_entry_t *
-pmap_pd_to_pt(pdp_entry_t *pd, vm_offset_t va)
+pmap_pd_to_pt(pdp_entry_t pd_pte, vm_offset_t va)
 {
 	pd_entry_t *pt;
 
-	pt = (pd_entry_t *)PHYS_TO_DMAP(*pd & PG_FRAME);
+	pt = (pd_entry_t *)PHYS_TO_DMAP(pd_pte & PG_FRAME);
 	return (&pt[pmap_pt_index(va)]);
 }
 
 /*
  * Return pointer to PT slot in the PD
+ *
+ * SIMPLE PMAP NOTE: Simple pmaps (embedded in objects) do not have PDPs,
+ *		     so we cannot lookup the PD via the PDP.  Instead we
+ *		     must look it up via the pmap.
  */
 static __inline
 pd_entry_t *
 pmap_pt(pmap_t pmap, vm_offset_t va)
 {
 	pdp_entry_t *pd;
+	pv_entry_t pv;
+	vm_pindex_t pd_pindex;
 
-	pd = pmap_pd(pmap, va);
-	if (pd == NULL || (*pd & PG_V) == 0)
-		 return NULL;
-	return (pmap_pd_to_pt(pd, va));
+	if (pmap->pm_flags & PMAP_FLAG_SIMPLE) {
+		pd_pindex = pmap_pd_pindex(va);
+		spin_lock(&pmap->pm_spin);
+		pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot, pd_pindex);
+		spin_unlock(&pmap->pm_spin);
+		if (pv == NULL || pv->pv_m == NULL)
+			return NULL;
+		return (pmap_pd_to_pt(VM_PAGE_TO_PHYS(pv->pv_m), va));
+	} else {
+		pd = pmap_pd(pmap, va);
+		if (pd == NULL || (*pd & PG_V) == 0)
+			 return NULL;
+		return (pmap_pd_to_pt(*pd, va));
+	}
 }
 
 /*
@@ -477,11 +505,11 @@ pmap_pt(pmap_t pmap, vm_offset_t va)
  */
 static __inline
 pt_entry_t *
-pmap_pt_to_pte(pd_entry_t *pt, vm_offset_t va)
+pmap_pt_to_pte(pd_entry_t pt_pte, vm_offset_t va)
 {
 	pt_entry_t *pte;
 
-	pte = (pt_entry_t *)PHYS_TO_DMAP(*pt & PG_FRAME);
+	pte = (pt_entry_t *)PHYS_TO_DMAP(pt_pte & PG_FRAME);
 	return (&pte[pmap_pte_index(va)]);
 }
 
@@ -499,7 +527,7 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
 		 return NULL;
 	if ((*pt & PG_PS) != 0)
 		return ((pt_entry_t *)pt);
-	return (pmap_pt_to_pte(pt, va));
+	return (pmap_pt_to_pte(*pt, va));
 }
 
 /*
@@ -1008,7 +1036,7 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 				rtval = *pt & PG_PS_FRAME;
 				rtval |= va & PDRMASK;
 			} else {
-				ptep = pmap_pt_to_pte(pt, va);
+				ptep = pmap_pt_to_pte(*pt, va);
 				if (*pt & PG_V) {
 					rtval = *ptep & PG_FRAME;
 					rtval |= va & PAGE_MASK;
@@ -1058,7 +1086,7 @@ pmap_kextract(vm_offset_t va)
 			 * because the page table page is preserved by the
 			 * promotion.
 			 */
-			pa = *pmap_pt_to_pte(&pt, va);
+			pa = *pmap_pt_to_pte(pt, va);
 			pa = (pa & PG_FRAME) | (va & PAGE_MASK);
 		}
 	}
@@ -1301,24 +1329,37 @@ pmap_pinit0(struct pmap *pmap)
  * Initialize a preallocated and zeroed pmap structure,
  * such as one in a vmspace structure.
  */
-void
-pmap_pinit(struct pmap *pmap)
+static void
+pmap_pinit_simple(struct pmap *pmap)
 {
-	pv_entry_t pv;
-	int j;
-
 	/*
 	 * Misc initialization
 	 */
 	pmap->pm_count = 1;
 	pmap->pm_active = 0;
 	pmap->pm_pvhint = NULL;
+	pmap->pm_flags = PMAP_FLAG_SIMPLE;
+
+	/*
+	 * Don't blow up locks/tokens on re-use (XXX fix/use drop code
+	 * for this).
+	 */
 	if (pmap->pm_pmlpv == NULL) {
 		RB_INIT(&pmap->pm_pvroot);
 		bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
 		spin_init(&pmap->pm_spin);
 		lwkt_token_init(&pmap->pm_token, "pmap_tok");
 	}
+}
+
+void
+pmap_pinit(struct pmap *pmap)
+{
+	pv_entry_t pv;
+	int j;
+
+	pmap_pinit_simple(pmap);
+	pmap->pm_flags &= ~PMAP_FLAG_SIMPLE;
 
 	/*
 	 * No need to allocate page table space yet but we do need a valid
@@ -1416,9 +1457,6 @@ pmap_puninit(pmap_t pmap)
 void
 pmap_pinit2(struct pmap *pmap)
 {
-	/*
-	 * XXX copies current process, does not fill in MPPTDI
-	 */
 	spin_lock(&pmap_spin);
 	TAILQ_INSERT_TAIL(&pmap_list, pmap, pm_pmnode);
 	spin_unlock(&pmap_spin);
@@ -1443,12 +1481,14 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	vm_pindex_t pt_pindex;
 	vm_page_t m;
 	int isnew;
+	int ispt;
 
 	/*
 	 * If the pv already exists and we aren't being asked for the
 	 * parent page table page we can just return it.  A locked+held pv
 	 * is returned.
 	 */
+	ispt = 0;
 	pv = pv_alloc(pmap, ptepindex, &isnew);
 	if (isnew == 0 && pvpp == NULL)
 		return(pv);
@@ -1505,13 +1545,23 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 		 */
 		ptepindex = pv->pv_pindex - pmap_pt_pindex(0);
 		ptepindex &= ((1ul << NPDEPGSHIFT) - 1);
+		ispt = 1;
 	} else if (ptepindex < pmap_pdp_pindex(0)) {
 		/*
 		 * pv is PD, pvp is PDP
+		 *
+		 * SIMPLE PMAP NOTE: Simple pmaps do not allocate above
+		 *		     the PD.
 		 */
 		ptepindex = (ptepindex - pmap_pd_pindex(0)) >> NPDPEPGSHIFT;
 		ptepindex += NUPTE_TOTAL + NUPT_TOTAL + NUPD_TOTAL;
-		pvp = pmap_allocpte(pmap, ptepindex, NULL);
+
+		if (pmap->pm_flags & PMAP_FLAG_SIMPLE) {
+			KKASSERT(pvpp == NULL);
+			pvp = NULL;
+		} else {
+			pvp = pmap_allocpte(pmap, ptepindex, NULL);
+		}
 		if (!isnew)
 			goto notnew;
 
@@ -1585,11 +1635,33 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	 * we just put it away.
 	 *
 	 * No interlock is needed for pte 0 -> non-zero.
+	 *
+	 * In the situation where *ptep is valid we might have an unmanaged
+	 * page table page shared from another page table which we need to
+	 * unshare before installing our private page table page.
 	 */
 	if (pvp) {
-		vm_page_wire_quick(pvp->pv_m);
 		ptep = pv_pte_lookup(pvp, ptepindex);
-		KKASSERT((*ptep & PG_V) == 0);
+		if (*ptep & PG_V) {
+			pt_entry_t pte;
+			pmap_inval_info info;
+
+			kprintf("pmap_allocpte: restate shared pg table pg\n");
+
+			if (ispt == 0) {
+				panic("pmap_allocpte: unexpected pte %p/%d",
+				      pvp, (int)ptepindex);
+			}
+			pmap_inval_init(&info);
+			pmap_inval_interlock(&info, pmap, (vm_offset_t)-1);
+			pte = pte_load_clear(ptep);
+			pmap_inval_deinterlock(&info, pmap);
+			pmap_inval_done(&info);
+			if (vm_page_unwire_quick(PHYS_TO_VM_PAGE(pte & PG_FRAME)))
+				panic("pmap_allocpte: shared pgtable pg bad wirecount");
+		} else {
+			vm_page_wire_quick(pvp->pv_m);
+		}
 		*ptep = VM_PAGE_TO_PHYS(m) | (PG_U | PG_RW | PG_V |
 					      PG_A | PG_M);
 	}
@@ -1600,6 +1672,215 @@ notnew:
 	else if (pvp)
 		pv_put(pvp);
 	return (pv);
+}
+
+/*
+ * This version of pmap_allocpte() checks for possible segment optimizations
+ * that would allow page-table sharing.  It can be called for terminal
+ * page or page table page ptepindex's.
+ *
+ * The function is called with page table page ptepindex's for fictitious
+ * and unmanaged terminal pages.  That is, we don't want to allocate a
+ * terminal pv, we just want the pt_pv.  pvpp is usually passed as NULL
+ * for this case.
+ *
+ * This function can return a pv and *pvpp associated with the passed in pmap
+ * OR a pv and *pvpp associated with the shared pmap.  In the latter case
+ * an unmanaged page table page will be entered into the pass in pmap.
+ */
+static
+pv_entry_t
+pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
+		  vm_map_entry_t entry, vm_offset_t va)
+{
+	struct pmap_inval_info info;
+	vm_object_t object;
+	pmap_t obpmap;
+	pmap_t *obpmapp;
+	vm_offset_t b;
+	pv_entry_t pte_pv;	/* in original or shared pmap */
+	pv_entry_t pt_pv;	/* in original or shared pmap */
+	pv_entry_t proc_pd_pv;	/* in original pmap */
+	pv_entry_t proc_pt_pv;	/* in original pmap */
+	pv_entry_t xpv;		/* PT in shared pmap */
+	pd_entry_t *pt;		/* PT entry in PD of original pmap */
+	pd_entry_t opte;	/* contents of *pt */
+	pd_entry_t npte;	/* contents of *pt */
+	vm_page_t m;
+
+	/*
+	 * Basic tests, require a non-NULL vm_map_entry, require proper
+	 * alignment and type for the vm_map_entry, require that the
+	 * underlying object already be allocated.
+	 *
+	 * We currently allow any type of object to use this optimization.
+	 * The object itself does NOT have to be sized to a multiple of the
+	 * segment size, but the memory mapping does.
+	 */
+	if (entry == NULL ||
+	    pmap_mmu_optimize == 0 ||			/* not enabled */
+	    ptepindex >= pmap_pd_pindex(0) ||		/* not terminal */
+	    entry->inheritance != VM_INHERIT_SHARE ||	/* not shared */
+	    entry->maptype != VM_MAPTYPE_NORMAL ||	/* weird map type */
+	    entry->object.vm_object == NULL ||		/* needs VM object */
+	    (entry->offset & SEG_MASK) ||		/* must be aligned */
+	    (entry->start & SEG_MASK)) {
+		return(pmap_allocpte(pmap, ptepindex, pvpp));
+	}
+
+	/*
+	 * Make sure the full segment can be represented.
+	 */
+	b = va & ~(vm_offset_t)SEG_MASK;
+	if (b < entry->start && b + SEG_SIZE > entry->end)
+		return(pmap_allocpte(pmap, ptepindex, pvpp));
+
+	/*
+	 * If the full segment can be represented dive the VM object's
+	 * shared pmap, allocating as required.
+	 */
+	object = entry->object.vm_object;
+
+	if (entry->protection & VM_PROT_WRITE)
+		obpmapp = &object->md.pmap_rw;
+	else
+		obpmapp = &object->md.pmap_ro;
+
+	/*
+	 * We allocate what appears to be a normal pmap but because portions
+	 * of this pmap are shared with other unrelated pmaps we have to
+	 * set pm_active to point to all cpus.
+	 *
+	 * XXX Currently using pmap_spin to interlock the update, can't use
+	 *     vm_object_hold/drop because the token might already be held
+	 *     shared OR exclusive and we don't know.
+	 */
+	while ((obpmap = *obpmapp) == NULL) {
+		obpmap = kmalloc(sizeof(*obpmap), M_OBJPMAP, M_WAITOK|M_ZERO);
+		pmap_pinit_simple(obpmap);
+		pmap_pinit2(obpmap);
+		spin_lock(&pmap_spin);
+		if (*obpmapp != NULL) {
+			/*
+			 * Handle race
+			 */
+			spin_unlock(&pmap_spin);
+			pmap_release(obpmap);
+			pmap_puninit(obpmap);
+			kfree(obpmap, M_OBJPMAP);
+		} else {
+			obpmap->pm_active = smp_active_mask;
+			*obpmapp = obpmap;
+			spin_unlock(&pmap_spin);
+		}
+	}
+
+	/*
+	 * Layering is: PTE, PT, PD, PDP, PML4.  We have to return the
+	 * pte/pt using the shared pmap from the object but also adjust
+	 * the process pmap's page table page as a side effect.
+	 */
+
+	/*
+	 * Resolve the terminal PTE and PT in the shared pmap.  This is what
+	 * we will return.  This is true if ptepindex represents a terminal
+	 * page, otherwise pte_pv is actually the PT and pt_pv is actually
+	 * the PD.
+	 */
+	pt_pv = NULL;
+	pte_pv = pmap_allocpte(obpmap, ptepindex, &pt_pv);
+	if (ptepindex >= pmap_pt_pindex(0))
+		xpv = pte_pv;
+	else
+		xpv = pt_pv;
+
+	/*
+	 * Resolve the PD in the process pmap so we can properly share the
+	 * page table page.  Lock order is bottom-up (leaf first)!
+	 *
+	 * NOTE: proc_pt_pv can be NULL.
+	 */
+	proc_pt_pv = pv_get(pmap, pmap_pt_pindex(b));
+	proc_pd_pv = pmap_allocpte(pmap, pmap_pd_pindex(b), NULL);
+
+	/*
+	 * xpv is the page table page pv from the shared object
+	 * (for convenience).
+	 *
+	 * Calculate the pte value for the PT to load into the process PD.
+	 * If we have to change it we must properly dispose of the previous
+	 * entry.
+	 */
+	pt = pv_pte_lookup(proc_pd_pv, pmap_pt_index(b));
+	npte = VM_PAGE_TO_PHYS(xpv->pv_m) |
+	       (PG_U | PG_RW | PG_V | PG_A | PG_M);
+
+	/*
+	 * Dispose of previous entry if it was local to the process pmap.
+	 * (This should zero-out *pt)
+	 */
+	if (proc_pt_pv) {
+		pmap_release_pv(proc_pt_pv, proc_pd_pv);
+		proc_pt_pv = NULL;
+		/* relookup */
+		pt = pv_pte_lookup(proc_pd_pv, pmap_pt_index(b));
+	}
+
+	/*
+	 * Handle remaining cases.
+	 */
+	if (*pt == 0) {
+		*pt = npte;
+		vm_page_wire_quick(xpv->pv_m);
+		vm_page_wire_quick(proc_pd_pv->pv_m);
+		atomic_add_long(&pmap->pm_stats.resident_count, 1);
+	} else if (*pt != npte) {
+		pmap_inval_init(&info);
+		pmap_inval_interlock(&info, pmap, (vm_offset_t)-1);
+
+		opte = pte_load_clear(pt);
+		KKASSERT(opte && opte != npte);
+
+		*pt = npte;
+		vm_page_wire_quick(xpv->pv_m);	/* pgtable pg that is npte */
+
+		/*
+		 * Clean up opte, bump the wire_count for the process
+		 * PD page representing the new entry if it was
+		 * previously empty.
+		 *
+		 * If the entry was not previously empty and we have
+		 * a PT in the proc pmap then opte must match that
+		 * pt.  The proc pt must be retired (this is done
+		 * later on in this procedure).
+		 *
+		 * NOTE: replacing valid pte, wire_count on proc_pd_pv
+		 * stays the same.
+		 */
+		KKASSERT(opte & PG_V);
+		m = PHYS_TO_VM_PAGE(opte & PG_FRAME);
+		if (vm_page_unwire_quick(m)) {
+			panic("pmap_allocpte_seg: "
+			      "bad wire count %p",
+			      m);
+		}
+
+		pmap_inval_deinterlock(&info, pmap);
+		pmap_inval_done(&info);
+	}
+
+	/*
+	 * The existing process page table was replaced and must be destroyed
+	 * here.
+	 */
+	if (proc_pd_pv)
+		pv_put(proc_pd_pv);
+	if (pvpp)
+		*pvpp = pt_pv;
+	else
+		pv_put(pt_pv);
+
+	return (pte_pv);
 }
 
 /*
@@ -1647,7 +1928,9 @@ pmap_release(struct pmap *pmap)
 	 * One resident page (the pml4 page) should remain.
 	 * No wired pages should remain.
 	 */
-	KKASSERT(pmap->pm_stats.resident_count == 1);
+	KKASSERT(pmap->pm_stats.resident_count ==
+		 ((pmap->pm_flags & PMAP_FLAG_SIMPLE) ? 0 : 1));
+
 	KKASSERT(pmap->pm_stats.wired_count == 0);
 }
 
@@ -1656,7 +1939,7 @@ pmap_release_callback(pv_entry_t pv, void *data)
 {
 	struct pmap_release_info *info = data;
 	pmap_t pmap = info->pmap;
-	vm_page_t p;
+	int r;
 
 	if (pv_hold_try(pv)) {
 		spin_unlock(&pmap->pm_spin);
@@ -1670,13 +1953,30 @@ pmap_release_callback(pv_entry_t pv, void *data)
 			return(-1);
 		}
 	}
+	r = pmap_release_pv(pv, NULL);
+	spin_lock(&pmap->pm_spin);
+	return(r);
+}
+
+/*
+ * Called with held (i.e. also locked) pv.  This function will dispose of
+ * the lock along with the pv.
+ *
+ * If the caller already holds the locked parent page table for pv it
+ * must pass it as pvp, allowing us to avoid a deadlock, else it can
+ * pass NULL for pvp.
+ */
+static int
+pmap_release_pv(pv_entry_t pv, pv_entry_t pvp)
+{
+	vm_page_t p;
 
 	/*
 	 * The pmap is currently not spinlocked, pv is held+locked.
 	 * Remove the pv's page from its parent's page table.  The
 	 * parent's page table page's wire_count will be decremented.
 	 */
-	pmap_remove_pv_pte(pv, NULL, NULL);
+	pmap_remove_pv_pte(pv, pvp, NULL);
 
 	/*
 	 * Terminal pvs are unhooked from their vm_pages.  Because
@@ -1698,7 +1998,6 @@ pmap_release_callback(pv_entry_t pv, void *data)
 	 */
 	if (pv->pv_pindex == pmap_pml4_pindex()) {
 		pv_put(pv);
-		spin_lock(&pmap->pm_spin);
 		return(-1);
 	}
 
@@ -1719,12 +2018,16 @@ pmap_release_callback(pv_entry_t pv, void *data)
 
 	vm_page_unwire(p, 0);
 	KKASSERT(p->wire_count == 0);
-	/* JG eventually revert to using vm_page_free_zero() */
+
+	/*
+	 * Theoretically this page, if not the pml4 page, should contain
+	 * all-zeros.  But its just too dangerous to mark it PG_ZERO.  Free
+	 * normally.
+	 */
 	vm_page_free(p);
 skip:
 	pv_free(pv);
-	spin_lock(&pmap->pm_spin);
-	return(0);
+	return 0;
 }
 
 /*
@@ -1776,6 +2079,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 		if (pvp == NULL) {
 			pml4_pindex = pmap_pml4_pindex();
 			pvp = pv_get(pv->pv_pmap, pml4_pindex);
+			KKASSERT(pvp);
 			gotpvp = 1;
 		}
 		pdp = &pmap->pm_pml4[pdp_index & ((1ul << NPML4EPGSHIFT) - 1)];
@@ -1785,7 +2089,11 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 		KKASSERT(info == NULL);
 	} else if (ptepindex >= pmap_pd_pindex(0)) {
 		/*
-		 *  Remove a PD page from the pdp
+		 * Remove a PD page from the pdp
+		 *
+		 * SIMPLE PMAP NOTE: Non-existant pvp's are ok in the case
+		 *		     of a simple pmap because it stops at
+		 *		     the PD page.
 		 */
 		vm_pindex_t pdp_pindex;
 		vm_pindex_t pd_index;
@@ -1797,12 +2105,19 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 			pdp_pindex = NUPTE_TOTAL + NUPT_TOTAL + NUPD_TOTAL +
 				     (pd_index >> NPML4EPGSHIFT);
 			pvp = pv_get(pv->pv_pmap, pdp_pindex);
-			gotpvp = 1;
+			if (pvp)
+				gotpvp = 1;
 		}
-		pd = pv_pte_lookup(pvp, pd_index & ((1ul << NPDPEPGSHIFT) - 1));
-		KKASSERT((*pd & PG_V) != 0);
-		p = PHYS_TO_VM_PAGE(*pd & PG_FRAME);
-		*pd = 0;
+		if (pvp) {
+			pd = pv_pte_lookup(pvp, pd_index &
+						((1ul << NPDPEPGSHIFT) - 1));
+			KKASSERT((*pd & PG_V) != 0);
+			p = PHYS_TO_VM_PAGE(*pd & PG_FRAME);
+			*pd = 0;
+		} else {
+			KKASSERT(pmap->pm_flags & PMAP_FLAG_SIMPLE);
+			p = pv->pv_m;		/* degenerate test later */
+		}
 		KKASSERT(info == NULL);
 	} else if (ptepindex >= pmap_pt_pindex(0)) {
 		/*
@@ -1818,6 +2133,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 			pd_pindex = NUPTE_TOTAL + NUPT_TOTAL +
 				    (pt_index >> NPDPEPGSHIFT);
 			pvp = pv_get(pv->pv_pmap, pd_pindex);
+			KKASSERT(pvp);
 			gotpvp = 1;
 		}
 		pt = pv_pte_lookup(pvp, pt_index & ((1ul << NPDPEPGSHIFT) - 1));
@@ -1848,6 +2164,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 				pt_pindex = NUPTE_TOTAL +
 					    (ptepindex >> NPDPEPGSHIFT);
 				pvp = pv_get(pv->pv_pmap, pt_pindex);
+				KKASSERT(pvp);
 				gotpvp = 1;
 			}
 			ptep = pv_pte_lookup(pvp, ptepindex &
@@ -2042,28 +2359,6 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 }
 
 /*
- *	Retire the given physical map from service.
- *	Should only be called if the map contains
- *	no valid mappings.
- */
-void
-pmap_destroy(pmap_t pmap)
-{
-	int count;
-
-	if (pmap == NULL)
-		return;
-
-	lwkt_gettoken(&pmap->pm_token);
-	count = --pmap->pm_count;
-	if (count == 0) {
-		pmap_release(pmap);	/* eats pm_token */
-		panic("destroying a pmap is not yet implemented");
-	}
-	lwkt_reltoken(&pmap->pm_token);
-}
-
-/*
  *	Add a reference to the specified pmap.
  */
 void
@@ -2071,7 +2366,17 @@ pmap_reference(pmap_t pmap)
 {
 	if (pmap != NULL) {
 		lwkt_gettoken(&pmap->pm_token);
-		pmap->pm_count++;
+		++pmap->pm_count;
+		lwkt_reltoken(&pmap->pm_token);
+	}
+}
+
+void
+pmap_drop(pmap_t pmap)
+{
+	if (pmap != NULL) {
+		lwkt_gettoken(&pmap->pm_token);
+		--pmap->pm_count;
 		lwkt_reltoken(&pmap->pm_token);
 	}
 }
@@ -2473,30 +2778,49 @@ pmap_collect(void)
 
 /*
  * Scan the pmap for active page table entries and issue a callback.
- * The callback must dispose of pte_pv.
+ * The callback must dispose of pte_pv, whos PTE entry is at *ptep in
+ * its parent page table.
  *
- * NOTE: Unmanaged page table entries will not have a pte_pv
+ * pte_pv will be NULL if the page or page table is unmanaged.
+ * pt_pv will point to the page table page containing the pte for the page.
  *
- * NOTE: Kernel page table entries will not have a pt_pv.  That is, wiring
- *	 counts are not tracked in kernel page table pages.
+ * NOTE! If we come across an unmanaged page TABLE (verses an unmanaged page),
+ *	 we pass a NULL pte_pv and we pass a pt_pv pointing to the passed
+ *	 process pmap's PD and page to the callback function.  This can be
+ *	 confusing because the pt_pv is really a pd_pv, and the target page
+ *	 table page is simply aliased by the pmap and not owned by it.
  *
  * It is assumed that the start and end are properly rounded to the page size.
+ *
+ * It is assumed that PD pages and above are managed and thus in the RB tree,
+ * allowing us to use RB_SCAN from the PD pages down for ranged scans.
  */
+struct pmap_scan_info {
+	struct pmap *pmap;
+	vm_offset_t sva;
+	vm_offset_t eva;
+	vm_pindex_t sva_pd_pindex;
+	vm_pindex_t eva_pd_pindex;
+	void (*func)(pmap_t, struct pmap_scan_info *,
+		     pv_entry_t, pv_entry_t, int, vm_offset_t,
+		     pt_entry_t *, void *);
+	void *arg;
+	int doinval;
+	struct pmap_inval_info inval;
+};
+
+static int pmap_scan_cmp(pv_entry_t pv, void *data);
+static int pmap_scan_callback(pv_entry_t pv, void *data);
+
 static void
-pmap_scan(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva,
-	  void (*func)(pmap_t, struct pmap_inval_info *,
-		       pv_entry_t, pv_entry_t, vm_offset_t,
-		       pt_entry_t *, void *),
-	  void *arg)
+pmap_scan(struct pmap_scan_info *info)
 {
-	pv_entry_t pdp_pv;	/* A page directory page PV */
+	struct pmap *pmap = info->pmap;
 	pv_entry_t pd_pv;	/* A page directory PV */
 	pv_entry_t pt_pv;	/* A page table PV */
 	pv_entry_t pte_pv;	/* A page table entry PV */
 	pt_entry_t *ptep;
-	vm_offset_t va_next;
-	struct pmap_inval_info info;
-	int error;
+	struct pv_entry dummy_pv;
 
 	if (pmap == NULL)
 		return;
@@ -2513,34 +2837,51 @@ pmap_scan(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva,
 	}
 #endif
 
-	pmap_inval_init(&info);
+	pmap_inval_init(&info->inval);
 
 	/*
-	 * Special handling for removing one page, which is a very common
+	 * Special handling for scanning one page, which is a very common
 	 * operation (it is?).
+	 *
 	 * NOTE: Locks must be ordered bottom-up. pte,pt,pd,pdp,pml4
 	 */
-	if (sva + PAGE_SIZE == eva) {
-		if (sva >= VM_MAX_USER_ADDRESS) {
+	if (info->sva + PAGE_SIZE == info->eva) {
+		if (info->sva >= VM_MAX_USER_ADDRESS) {
 			/*
 			 * Kernel mappings do not track wire counts on
-			 * page table pages.
+			 * page table pages and only maintain pd_pv and
+			 * pte_pv levels so pmap_scan() works.
 			 */
 			pt_pv = NULL;
-			pte_pv = pv_get(pmap, pmap_pte_pindex(sva));
-			ptep = vtopte(sva);
+			pte_pv = pv_get(pmap, pmap_pte_pindex(info->sva));
+			ptep = vtopte(info->sva);
 		} else {
 			/*
-			 * User mappings may or may not have a pte_pv but
-			 * will always have a pt_pv if the page is present.
+			 * User pages which are unmanaged will not have a
+			 * pte_pv.  User page table pages which are unmanaged
+			 * (shared from elsewhere) will also not have a pt_pv.
+			 * The func() callback will pass both pte_pv and pt_pv
+			 * as NULL in that case.
 			 */
-			pte_pv = pv_get(pmap, pmap_pte_pindex(sva));
-			pt_pv = pv_get(pmap, pmap_pt_pindex(sva));
+			pte_pv = pv_get(pmap, pmap_pte_pindex(info->sva));
+			pt_pv = pv_get(pmap, pmap_pt_pindex(info->sva));
 			if (pt_pv == NULL) {
 				KKASSERT(pte_pv == NULL);
+				pd_pv = pv_get(pmap, pmap_pd_pindex(info->sva));
+				if (pd_pv) {
+					ptep = pv_pte_lookup(pd_pv,
+						    pmap_pt_index(info->sva));
+					if (*ptep) {
+						info->func(pmap, info,
+						     NULL, pd_pv, 1,
+						     info->sva, ptep,
+						     info->arg);
+					}
+					pv_put(pd_pv);
+				}
 				goto fast_skip;
 			}
-			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(sva));
+			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(info->sva));
 		}
 		if (*ptep == 0) {
 			/*
@@ -2554,21 +2895,118 @@ pmap_scan(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva,
 			KASSERT((*ptep & (PG_MANAGED|PG_V)) == (PG_MANAGED|
 								PG_V),
 				("bad *ptep %016lx sva %016lx pte_pv %p",
-				*ptep, sva, pte_pv));
-			func(pmap, &info, pte_pv, pt_pv, sva, ptep, arg);
+				*ptep, info->sva, pte_pv));
+			info->func(pmap, info, pte_pv, pt_pv, 0,
+				   info->sva, ptep, info->arg);
 		} else {
 			KASSERT((*ptep & (PG_MANAGED|PG_V)) == PG_V,
 				("bad *ptep %016lx sva %016lx pte_pv NULL",
-				*ptep, sva));
-			func(pmap, &info, pte_pv, pt_pv, sva, ptep, arg);
+				*ptep, info->sva));
+			info->func(pmap, info, NULL, pt_pv, 0,
+				   info->sva, ptep, info->arg);
 		}
 		if (pt_pv)
 			pv_put(pt_pv);
 fast_skip:
-		pmap_inval_done(&info);
+		pmap_inval_done(&info->inval);
 		lwkt_reltoken(&pmap->pm_token);
 		return;
 	}
+
+	/*
+	 * Nominal scan case, RB_SCAN() for PD pages and iterate from
+	 * there.
+	 */
+	info->sva_pd_pindex = pmap_pd_pindex(info->sva);
+	info->eva_pd_pindex = pmap_pd_pindex(info->eva + NBPDP - 1);
+
+	if (info->sva >= VM_MAX_USER_ADDRESS) {
+		/*
+		 * The kernel does not currently maintain any pv_entry's for
+		 * higher-level page tables.
+		 */
+		bzero(&dummy_pv, sizeof(dummy_pv));
+		dummy_pv.pv_pindex = info->sva_pd_pindex;
+		spin_lock(&pmap->pm_spin);
+		while (dummy_pv.pv_pindex < info->eva_pd_pindex) {
+			pmap_scan_callback(&dummy_pv, info);
+			++dummy_pv.pv_pindex;
+		}
+		spin_unlock(&pmap->pm_spin);
+	} else {
+		/*
+		 * User page tables maintain local PML4, PDP, and PD
+		 * pv_entry's at the very least.  PT pv's might be
+		 * unmanaged and thus not exist.  PTE pv's might be
+		 * unmanaged and thus not exist.
+		 */
+		spin_lock(&pmap->pm_spin);
+		pv_entry_rb_tree_RB_SCAN(&pmap->pm_pvroot,
+			pmap_scan_cmp, pmap_scan_callback, info);
+		spin_unlock(&pmap->pm_spin);
+	}
+	pmap_inval_done(&info->inval);
+	lwkt_reltoken(&pmap->pm_token);
+}
+
+/*
+ * WARNING! pmap->pm_spin held
+ */
+static int
+pmap_scan_cmp(pv_entry_t pv, void *data)
+{
+	struct pmap_scan_info *info = data;
+	if (pv->pv_pindex < info->sva_pd_pindex)
+		return(-1);
+	if (pv->pv_pindex >= info->eva_pd_pindex)
+		return(1);
+	return(0);
+}
+
+/*
+ * WARNING! pmap->pm_spin held
+ */
+static int
+pmap_scan_callback(pv_entry_t pv, void *data)
+{
+	struct pmap_scan_info *info = data;
+	struct pmap *pmap = info->pmap;
+	pv_entry_t pd_pv;	/* A page directory PV */
+	pv_entry_t pt_pv;	/* A page table PV */
+	pv_entry_t pte_pv;	/* A page table entry PV */
+	pt_entry_t *ptep;
+	vm_offset_t sva;
+	vm_offset_t eva;
+	vm_offset_t va_next;
+	vm_pindex_t pd_pindex;
+	int error;
+
+	/*
+	 * Pull the PD pindex from the pv before releasing the spinlock.
+	 *
+	 * WARNING: pv is faked for kernel pmap scans.
+	 */
+	pd_pindex = pv->pv_pindex;
+	spin_unlock(&pmap->pm_spin);
+	pv = NULL;	/* invalid after spinlock unlocked */
+
+	/*
+	 * Calculate the page range within the PD.  SIMPLE pmaps are
+	 * direct-mapped for the entire 2^64 address space.  Normal pmaps
+	 * reflect the user and kernel address space which requires
+	 * cannonicalization w/regards to converting pd_pindex's back
+	 * into addresses.
+	 */
+	sva = (pd_pindex - NUPTE_TOTAL - NUPT_TOTAL) << PDPSHIFT;
+	if ((pmap->pm_flags & PMAP_FLAG_SIMPLE) == 0 &&
+	    (sva & PML4_SIGNMASK)) {
+		sva |= PML4_SIGNMASK;
+	}
+	eva = sva + NBPDP;	/* can overflow */
+	if (sva < info->sva)
+		sva = info->sva;
+	if (eva < info->sva || eva > info->eva)
+		eva = info->eva;
 
 	/*
 	 * NOTE: kernel mappings do not track page table pages, only
@@ -2578,12 +3016,10 @@ fast_skip:
 	 *	 However, for the scan to be efficient we try to
 	 *	 cache items top-down.
 	 */
-	pdp_pv = NULL;
 	pd_pv = NULL;
 	pt_pv = NULL;
 
 	for (; sva < eva; sva = va_next) {
-		lwkt_yield();
 		if (sva >= VM_MAX_USER_ADDRESS) {
 			if (pt_pv) {
 				pv_put(pt_pv);
@@ -2593,36 +3029,13 @@ fast_skip:
 		}
 
 		/*
-		 * PDP cache
-		 */
-		if (pdp_pv == NULL) {
-			pdp_pv = pv_get(pmap, pmap_pdp_pindex(sva));
-		} else if (pdp_pv->pv_pindex != pmap_pdp_pindex(sva)) {
-			pv_put(pdp_pv);
-			pdp_pv = pv_get(pmap, pmap_pdp_pindex(sva));
-		}
-		if (pdp_pv == NULL) {
-			va_next = (sva + NBPML4) & ~PML4MASK;
-			if (va_next < sva)
-				va_next = eva;
-			continue;
-		}
-
-		/*
-		 * PD cache
+		 * PD cache (degenerate case if we skip).  It is possible
+		 * for the PD to not exist due to races.  This is ok.
 		 */
 		if (pd_pv == NULL) {
-			if (pdp_pv) {
-				pv_put(pdp_pv);
-				pdp_pv = NULL;
-			}
 			pd_pv = pv_get(pmap, pmap_pd_pindex(sva));
 		} else if (pd_pv->pv_pindex != pmap_pd_pindex(sva)) {
 			pv_put(pd_pv);
-			if (pdp_pv) {
-				pv_put(pdp_pv);
-				pdp_pv = NULL;
-			}
 			pd_pv = pv_get(pmap, pmap_pd_pindex(sva));
 		}
 		if (pd_pv == NULL) {
@@ -2636,20 +3049,12 @@ fast_skip:
 		 * PT cache
 		 */
 		if (pt_pv == NULL) {
-			if (pdp_pv) {
-				pv_put(pdp_pv);
-				pdp_pv = NULL;
-			}
 			if (pd_pv) {
 				pv_put(pd_pv);
 				pd_pv = NULL;
 			}
 			pt_pv = pv_get(pmap, pmap_pt_pindex(sva));
 		} else if (pt_pv->pv_pindex != pmap_pt_pindex(sva)) {
-			if (pdp_pv) {
-				pv_put(pdp_pv);
-				pdp_pv = NULL;
-			}
 			if (pd_pv) {
 				pv_put(pd_pv);
 				pd_pv = NULL;
@@ -2659,10 +3064,29 @@ fast_skip:
 		}
 
 		/*
-		 * We will scan or skip a page table page so adjust va_next
-		 * either way.
+		 * If pt_pv is NULL we either have an shared page table
+		 * page and must issue a callback specific to that case,
+		 * or there is no page table page.
+		 *
+		 * Either way we can skip the page table page.
 		 */
 		if (pt_pv == NULL) {
+			/*
+			 * Possible unmanaged (shared from another pmap)
+			 * page table page.
+			 */
+			if (pd_pv == NULL)
+				pd_pv = pv_get(pmap, pmap_pd_pindex(sva));
+			KKASSERT(pd_pv != NULL);
+			ptep = pv_pte_lookup(pd_pv, pmap_pt_index(sva));
+			if (*ptep & PG_V) {
+				info->func(pmap, info, NULL, pd_pv, 1,
+					   sva, ptep, info->arg);
+			}
+
+			/*
+			 * Done, move to next page table page.
+			 */
 			va_next = (sva + NBPDR) & ~PDRMASK;
 			if (va_next < sva)
 				va_next = eva;
@@ -2672,17 +3096,19 @@ fast_skip:
 		/*
 		 * From this point in the loop testing pt_pv for non-NULL
 		 * means we are in UVM, else if it is NULL we are in KVM.
+		 *
+		 * Limit our scan to either the end of the va represented
+		 * by the current page table page, or to the end of the
+		 * range being removed.
 		 */
 kernel_skip:
 		va_next = (sva + NBPDR) & ~PDRMASK;
 		if (va_next < sva)
 			va_next = eva;
+		if (va_next > eva)
+			va_next = eva;
 
 		/*
-		 * Limit our scan to either the end of the va represented
-		 * by the current page table page, or to the end of the
-		 * range being removed.
-		 *
 		 * Scan the page table for pages.  Some pages may not be
 		 * managed (might not have a pv_entry).
 		 *
@@ -2690,8 +3116,6 @@ kernel_skip:
 		 * pt_pv will be NULL in that case, but otherwise pt_pv
 		 * is non-NULL, locked, and referenced.
 		 */
-		if (va_next > eva)
-			va_next = eva;
 
 		/*
 		 * At this point a non-NULL pt_pv means a UVA, and a NULL
@@ -2715,15 +3139,10 @@ kernel_skip:
 			 * backwards, so we have to be careful in aquiring
 			 * a properly locked pte_pv.
 			 */
-			lwkt_yield();
 			if (pt_pv) {
 				pte_pv = pv_get_try(pmap, pmap_pte_pindex(sva),
 						    &error);
 				if (error) {
-					if (pdp_pv) {
-						pv_put(pdp_pv);
-						pdp_pv = NULL;
-					}
 					if (pd_pv) {
 						pv_put(pd_pv);
 						pd_pv = NULL;
@@ -2735,6 +3154,12 @@ kernel_skip:
 					pte_pv = NULL;
 					pt_pv = pv_get(pmap,
 						       pmap_pt_pindex(sva));
+					/*
+					 * pt_pv reloaded, need new ptep
+					 */
+					KKASSERT(pt_pv != NULL);
+					ptep = pv_pte_lookup(pt_pv,
+							pmap_pte_index(sva));
 					continue;
 				}
 			} else {
@@ -2768,25 +3193,22 @@ kernel_skip:
 					("bad *ptep %016lx sva %016lx "
 					 "pte_pv %p",
 					 *ptep, sva, pte_pv));
-				func(pmap, &info, pte_pv, pt_pv, sva,
-				     ptep, arg);
+				info->func(pmap, info, pte_pv, pt_pv, 0,
+					   sva, ptep, info->arg);
 			} else {
 				KASSERT((*ptep & (PG_MANAGED|PG_V)) ==
 					 PG_V,
 					("bad *ptep %016lx sva %016lx "
 					 "pte_pv NULL",
 					 *ptep, sva));
-				func(pmap, &info, pte_pv, pt_pv, sva,
-				     ptep, arg);
+				info->func(pmap, info, NULL, pt_pv, 0,
+					   sva, ptep, info->arg);
 			}
 			pte_pv = NULL;
 			sva += PAGE_SIZE;
 			++ptep;
 		}
-	}
-	if (pdp_pv) {
-		pv_put(pdp_pv);
-		pdp_pv = NULL;
+		lwkt_yield();
 	}
 	if (pd_pv) {
 		pv_put(pd_pv);
@@ -2796,20 +3218,47 @@ kernel_skip:
 		pv_put(pt_pv);
 		pt_pv = NULL;
 	}
-	pmap_inval_done(&info);
-	lwkt_reltoken(&pmap->pm_token);
+	lwkt_yield();
+
+	/*
+	 * Relock before returning.
+	 */
+	spin_lock(&pmap->pm_spin);
+	return (0);
 }
 
 void
 pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 {
-	pmap_scan(pmap, sva, eva, pmap_remove_callback, NULL);
+	struct pmap_scan_info info;
+
+	info.pmap = pmap;
+	info.sva = sva;
+	info.eva = eva;
+	info.func = pmap_remove_callback;
+	info.arg = NULL;
+	info.doinval = 1;	/* normal remove requires pmap inval */
+	pmap_scan(&info);
 }
 
 static void
-pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
-		     pv_entry_t pte_pv, pv_entry_t pt_pv, vm_offset_t va,
-		     pt_entry_t *ptep, void *arg __unused)
+pmap_remove_noinval(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
+{
+	struct pmap_scan_info info;
+
+	info.pmap = pmap;
+	info.sva = sva;
+	info.eva = eva;
+	info.func = pmap_remove_callback;
+	info.arg = NULL;
+	info.doinval = 0;	/* normal remove requires pmap inval */
+	pmap_scan(&info);
+}
+
+static void
+pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
+		     pv_entry_t pte_pv, pv_entry_t pt_pv, int sharept,
+		     vm_offset_t va, pt_entry_t *ptep, void *arg __unused)
 {
 	pt_entry_t pte;
 
@@ -2818,22 +3267,47 @@ pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
 		 * This will also drop pt_pv's wire_count. Note that
 		 * terminal pages are not wired based on mmu presence.
 		 */
-		pmap_remove_pv_pte(pte_pv, pt_pv, info);
+		if (info->doinval)
+			pmap_remove_pv_pte(pte_pv, pt_pv, &info->inval);
+		else
+			pmap_remove_pv_pte(pte_pv, pt_pv, NULL);
 		pmap_remove_pv_page(pte_pv);
 		pv_free(pte_pv);
-	} else {
+	} else if (sharept == 0) {
 		/*
+		 * Unmanaged page
+		 *
 		 * pt_pv's wire_count is still bumped by unmanaged pages
 		 * so we must decrement it manually.
 		 */
-		pmap_inval_interlock(info, pmap, va);
+		if (info->doinval)
+			pmap_inval_interlock(&info->inval, pmap, va);
 		pte = pte_load_clear(ptep);
-		pmap_inval_deinterlock(info, pmap);
+		if (info->doinval)
+			pmap_inval_deinterlock(&info->inval, pmap);
 		if (pte & PG_W)
 			atomic_add_long(&pmap->pm_stats.wired_count, -1);
 		atomic_add_long(&pmap->pm_stats.resident_count, -1);
-		if (pt_pv && vm_page_unwire_quick(pt_pv->pv_m))
+		if (vm_page_unwire_quick(pt_pv->pv_m))
 			panic("pmap_remove: insufficient wirecount");
+	} else {
+		/*
+		 * Unmanaged page table, pt_pv is actually the pd_pv
+		 * for our pmap (not the share object pmap).
+		 *
+		 * We have to unwire the target page table page and we
+		 * have to unwire our page directory page.
+		 */
+		if (info->doinval)
+			pmap_inval_interlock(&info->inval, pmap, va);
+		pte = pte_load_clear(ptep);
+		if (info->doinval)
+			pmap_inval_deinterlock(&info->inval, pmap);
+		atomic_add_long(&pmap->pm_stats.resident_count, -1);
+		if (vm_page_unwire_quick(PHYS_TO_VM_PAGE(pte & PG_FRAME)))
+			panic("pmap_remove: shared pgtable1 bad wirecount");
+		if (vm_page_unwire_quick(pt_pv->pv_m))
+			panic("pmap_remove: shared pgtable2 bad wirecount");
 	}
 }
 
@@ -2882,17 +3356,19 @@ pmap_remove_all(vm_page_t m)
 }
 
 /*
- * pmap_protect:
+ * Set the physical protection on the specified range of this map
+ * as requested.  This function is typically only used for debug watchpoints
+ * and COW pages.
  *
- *	Set the physical protection on the specified range of this map
- *	as requested.
+ * This function may not be called from an interrupt if the map is
+ * not the kernel_pmap.
  *
- *	This function may not be called from an interrupt if the map is
- *	not the kernel_pmap.
+ * NOTE!  For shared page table pages we just unmap the page.
  */
 void
 pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 {
+	struct pmap_scan_info info;
 	/* JG review for NX */
 
 	if (pmap == NULL)
@@ -2903,23 +3379,30 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 	}
 	if (prot & VM_PROT_WRITE)
 		return;
-	pmap_scan(pmap, sva, eva, pmap_protect_callback, &prot);
+	info.pmap = pmap;
+	info.sva = sva;
+	info.eva = eva;
+	info.func = pmap_protect_callback;
+	info.arg = &prot;
+	info.doinval = 1;
+	pmap_scan(&info);
 }
 
 static
 void
-pmap_protect_callback(pmap_t pmap, struct pmap_inval_info *info,
-		      pv_entry_t pte_pv, pv_entry_t pt_pv, vm_offset_t va,
-		      pt_entry_t *ptep, void *arg __unused)
+pmap_protect_callback(pmap_t pmap, struct pmap_scan_info *info,
+		      pv_entry_t pte_pv, pv_entry_t pt_pv, int sharept,
+		      vm_offset_t va, pt_entry_t *ptep, void *arg __unused)
 {
 	pt_entry_t pbits;
 	pt_entry_t cbits;
+	pt_entry_t pte;
 	vm_page_t m;
 
 	/*
 	 * XXX non-optimal.
 	 */
-	pmap_inval_interlock(info, pmap, va);
+	pmap_inval_interlock(&info->inval, pmap, va);
 again:
 	pbits = *ptep;
 	cbits = pbits;
@@ -2939,12 +3422,32 @@ again:
 				cbits &= ~PG_M;
 			}
 		}
+	} else if (sharept) {
+		/*
+		 * Unmanaged page table, pt_pv is actually the pd_pv
+		 * for our pmap (not the share object pmap).
+		 *
+		 * When asked to protect something in a shared page table
+		 * page we just unmap the page table page.  We have to
+		 * invalidate the tlb in this situation.
+		 */
+		pte = pte_load_clear(ptep);
+		pmap_inval_invltlb(&info->inval);
+		if (vm_page_unwire_quick(PHYS_TO_VM_PAGE(pte & PG_FRAME)))
+			panic("pmap_protect: pgtable1 pg bad wirecount");
+		if (vm_page_unwire_quick(pt_pv->pv_m))
+			panic("pmap_protect: pgtable2 pg bad wirecount");
+		ptep = NULL;
 	}
-	cbits &= ~PG_RW;
-	if (pbits != cbits && !atomic_cmpset_long(ptep, pbits, cbits)) {
-		goto again;
+	/* else unmanaged page, adjust bits, no wire changes */
+
+	if (ptep) {
+		cbits &= ~PG_RW;
+		if (pbits != cbits && !atomic_cmpset_long(ptep, pbits, cbits)) {
+			goto again;
+		}
 	}
-	pmap_inval_deinterlock(info, pmap);
+	pmap_inval_deinterlock(&info->inval, pmap);
 	if (pte_pv)
 		pv_put(pte_pv);
 }
@@ -2953,12 +3456,17 @@ again:
  * Insert the vm_page (m) at the virtual address (va), replacing any prior
  * mapping at that address.  Set protection and wiring as requested.
  *
+ * If entry is non-NULL we check to see if the SEG_SIZE optimization is
+ * possible.  If it is we enter the page into the appropriate shared pmap
+ * hanging off the related VM object instead of the passed pmap, then we
+ * share the page table page from the VM object's pmap into the current pmap.
+ *
  * NOTE: This routine MUST insert the page into the pmap now, it cannot
  *	 lazy-evaluate.
  */
 void
 pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
-	   boolean_t wired)
+	   boolean_t wired, vm_map_entry_t entry __unused)
 {
 	pmap_inval_info info;
 	pv_entry_t pt_pv;	/* page table */
@@ -3015,24 +3523,31 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		pte_pv = NULL;
 		pt_pv = NULL;
 		ptep = vtopte(va);
-	} else if (m->flags & (PG_FICTITIOUS | PG_UNMANAGED)) {
+	} else if (m->flags & (PG_FICTITIOUS | PG_UNMANAGED)) { /* XXX */
 		pte_pv = NULL;
 		if (va >= VM_MAX_USER_ADDRESS) {
 			pt_pv = NULL;
 			ptep = vtopte(va);
 		} else {
-			pt_pv = pmap_allocpte(pmap, pmap_pt_pindex(va), NULL);
+			pt_pv = pmap_allocpte_seg(pmap, pmap_pt_pindex(va),
+						  NULL, entry, va);
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(va));
 		}
 		KKASSERT(*ptep == 0 || (*ptep & PG_MANAGED) == 0);
 	} else {
 		if (va >= VM_MAX_USER_ADDRESS) {
+			/*
+			 * Kernel map, pv_entry-tracked.
+			 */
 			pt_pv = NULL;
 			pte_pv = pmap_allocpte(pmap, pmap_pte_pindex(va), NULL);
 			ptep = vtopte(va);
 		} else {
-			pte_pv = pmap_allocpte(pmap, pmap_pte_pindex(va),
-					       &pt_pv);
+			/*
+			 * User map
+			 */
+			pte_pv = pmap_allocpte_seg(pmap, pmap_pte_pindex(va),
+						   &pt_pv, entry, va);
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(va));
 		}
 		KKASSERT(*ptep == 0 || (*ptep & PG_MANAGED));
@@ -3090,12 +3605,20 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			if (pte_pv->pv_m)
 				pmap_remove_pv_page(pte_pv);
 		} else if (prot & VM_PROT_NOSYNC) {
-			/* leave wire count on PT page intact */
+			/*
+			 * Unmanaged page, NOSYNC (no mmu sync) requested.
+			 *
+			 * Leave wire count on PT page intact.
+			 */
 			(void)pte_load_clear(ptep);
 			cpu_invlpg((void *)va);
 			atomic_add_long(&pmap->pm_stats.resident_count, -1);
 		} else {
-			/* leave wire count on PT page intact */
+			/*
+			 * Unmanaged page, normal enter.
+			 *
+			 * Leave wire count on PT page intact.
+			 */
 			pmap_inval_interlock(&info, pmap, va);
 			(void)pte_load_clear(ptep);
 			pmap_inval_deinterlock(&info, pmap);
@@ -3129,9 +3652,10 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	}
 
 	/*
-	 * Ok, for UVM (pt_pv != NULL) we don't need to interlock or
-	 * invalidate anything, the TLB won't have any stale entries to
-	 * remove.
+	 * Kernel VMAs (pt_pv == NULL) require pmap invalidation interlocks.
+	 *
+	 * User VMAs do not because those will be zero->non-zero, so no
+	 * stale entries to worry about at this point.
 	 *
 	 * For KVM there appear to still be issues.  Theoretically we
 	 * should be able to scrap the interlocks entirely but we
@@ -3139,6 +3663,10 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 */
 	if ((prot & VM_PROT_NOSYNC) == 0 && pt_pv == NULL)
 		pmap_inval_interlock(&info, pmap, va);
+
+	/*
+	 * Set the pte
+	 */
 	*(volatile pt_entry_t *)ptep = newpte;
 
 	if ((prot & VM_PROT_NOSYNC) == 0 && pt_pv == NULL)
@@ -3146,12 +3674,22 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	else if (pt_pv == NULL)
 		cpu_invlpg((void *)va);
 
-	if (wired)
-		atomic_add_long(&pmap->pm_stats.wired_count, 1);
+	if (wired) {
+		if (pte_pv) {
+			atomic_add_long(&pte_pv->pv_pmap->pm_stats.wired_count,
+					1);
+		} else {
+			atomic_add_long(&pmap->pm_stats.wired_count, 1);
+		}
+	}
 	if (newpte & PG_RW)
 		vm_page_flag_set(m, PG_WRITEABLE);
-	if (pte_pv == NULL)
-		atomic_add_long(&pmap->pm_stats.resident_count, 1);
+
+	/*
+	 * Unmanaged pages need manual resident_count tracking.
+	 */
+	if (pte_pv == NULL && pt_pv)
+		atomic_add_long(&pt_pv->pv_pmap->pm_stats.resident_count, 1);
 
 	/*
 	 * Cleanup
@@ -3180,7 +3718,7 @@ done:
 void
 pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 {
-	pmap_enter(pmap, va, m, VM_PROT_READ, FALSE);
+	pmap_enter(pmap, va, m, VM_PROT_READ, FALSE, NULL);
 }
 
 /*
@@ -3228,6 +3766,9 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	if (lp == NULL || pmap != vmspace_pmap(lp->lwp_vmspace))
 		return;
 
+	/*
+	 * Misc additional checks
+	 */
 	psize = x86_64_btop(size);
 
 	if ((object->type != OBJT_VNODE) ||
@@ -3244,6 +3785,18 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 
 	if (psize == 0)
 		return;
+
+	/*
+	 * If everything is segment-aligned do not pre-init here.  Instead
+	 * allow the normal vm_fault path to pass a segment hint to
+	 * pmap_enter() which will then use an object-referenced shared
+	 * page table page.
+	 */
+	if ((addr & SEG_MASK) == 0 &&
+	    (ctob(psize) & SEG_MASK) == 0 &&
+	    (ctob(pindex) & SEG_MASK) == 0) {
+		return;
+	}
 
 	/*
 	 * Use a red-black scan to traverse the requested range and load
@@ -3332,7 +3885,8 @@ pmap_prefault_ok(pmap_t pmap, vm_offset_t addr)
  * exist in the pmap.  The mapping may or may not be managed.
  */
 void
-pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired)
+pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired,
+		   vm_map_entry_t entry)
 {
 	pt_entry_t *ptep;
 	pv_entry_t pv;
@@ -3340,13 +3894,13 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired)
 	if (pmap == NULL)
 		return;
 	lwkt_gettoken(&pmap->pm_token);
-	pv = pmap_allocpte(pmap, pmap_pt_pindex(va), NULL);
+	pv = pmap_allocpte_seg(pmap, pmap_pt_pindex(va), NULL, entry, va);
 	ptep = pv_pte_lookup(pv, pmap_pte_index(va));
 
 	if (wired && !pmap_pte_w(ptep))
-		atomic_add_long(&pmap->pm_stats.wired_count, 1);
+		atomic_add_long(&pv->pv_pmap->pm_stats.wired_count, 1);
 	else if (!wired && pmap_pte_w(ptep))
-		atomic_add_long(&pmap->pm_stats.wired_count, -1);
+		atomic_add_long(&pv->pv_pmap->pm_stats.wired_count, -1);
 
 	/*
 	 * Wiring is not a hardware characteristic so there is no need to
@@ -3509,7 +4063,8 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 void
 pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 {
-	pmap_remove(pmap, sva, eva);
+	pmap_remove_noinval(pmap, sva, eva);
+	cpu_invltlb();
 }
 
 /*
@@ -4081,4 +4636,48 @@ vm_page_t
 pmap_kvtom(vm_offset_t va)
 {
 	return(PHYS_TO_VM_PAGE(*vtopte(va) & PG_FRAME));
+}
+
+/*
+ * Initialize machine-specific shared page directory support.  This
+ * is executed when a VM object is created.
+ */
+void
+pmap_object_init(vm_object_t object)
+{
+	object->md.pmap_rw = NULL;
+	object->md.pmap_ro = NULL;
+}
+
+/*
+ * Clean up machine-specific shared page directory support.  This
+ * is executed when a VM object is destroyed.
+ */
+void
+pmap_object_free(vm_object_t object)
+{
+	pmap_t pmap;
+
+	if ((pmap = object->md.pmap_rw) != NULL) {
+		object->md.pmap_rw = NULL;
+		kprintf("pmap_object_free: destroying pmap %p in obj %p\n",
+			pmap, object);
+		pmap_remove_noinval(pmap,
+				  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
+		pmap->pm_active = 0;
+		pmap_release(pmap);
+		pmap_puninit(pmap);
+		kfree(pmap, M_OBJPMAP);
+	}
+	if ((pmap = object->md.pmap_ro) != NULL) {
+		object->md.pmap_ro = NULL;
+		kprintf("pmap_object_free: destroying pmap %p in obj %p\n",
+			pmap, object);
+		pmap_remove_noinval(pmap,
+				  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
+		pmap->pm_active = 0;
+		pmap_release(pmap);
+		pmap_puninit(pmap);
+		kfree(pmap, M_OBJPMAP);
+	}
 }

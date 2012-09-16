@@ -1536,7 +1536,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	 */
 	m->valid = VM_PAGE_BITS_ALL;
 	vm_page_wire(m);
-	pmap_enter(&kernel_pmap, addr + i, m, VM_PROT_ALL | VM_PROT_NOSYNC, 1);
+	pmap_enter(&kernel_pmap, addr + i, m, VM_PROT_ALL | VM_PROT_NOSYNC,
+		   1, NULL);
 	if ((m->flags & PG_ZERO) == 0 && (flags & M_ZERO))
 	    bzero((char *)addr + i, PAGE_SIZE);
 	vm_page_flag_clear(m, PG_ZERO);

@@ -313,11 +313,11 @@ again:
 	 */
 	if (nbuf > (virtual_end - virtual_start) / (BKVASIZE * 2)) {
 		nbuf = (virtual_end - virtual_start) / (BKVASIZE * 2);
-		kprintf("Warning: nbufs capped at %d\n", nbuf);
+		kprintf("Warning: nbufs capped at %ld\n", nbuf);
 	}
 
 	/* limit to 128 on i386 */
-	nswbuf = max(min(nbuf/4, 128), 16);
+	nswbuf = lmax(lmin(nbuf / 4, 128), 16);
 #ifdef NSWBUF_MIN
 	if (nswbuf < NSWBUF_MIN)
 		nswbuf = NSWBUF_MIN;

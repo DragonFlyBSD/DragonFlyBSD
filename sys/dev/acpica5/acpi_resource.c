@@ -40,7 +40,6 @@
 
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>
-#include <dev/acpica5/acpi_sci_var.h>
 
 /* Hooks for the ACPI CA debugging infrastructure */
 #define _COMPONENT	ACPI_BUS
@@ -145,23 +144,10 @@ acpi_config_intr(device_t dev, ACPI_RESOURCE *res)
     else
     	polarity = INTR_POLARITY_LOW;
 
-#if 0
-    /*
-     * This causes interrupt storm on certain systems, on which
-     * certain IRQs are configured into different mode but the
-     * configured IRQs are actually never used.
-     */
     if (machintr_legacy_intr_find(irq, trigger, polarity) < 0)
-#else
-    if (machintr_legacy_intr_find(irq,
-    	INTR_TRIGGER_CONFORM, INTR_POLARITY_CONFORM) < 0 ||
-        irq == acpi_sci_irqno())
-#endif
-    {
 	kprintf("acpi_config_intr: Skip irq %d config\n", irq);
-    } else {
+    else
 	BUS_CONFIG_INTR(dev, dev, irq, trigger, polarity);
-    }
 }
 
 /*

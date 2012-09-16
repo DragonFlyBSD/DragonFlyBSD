@@ -117,6 +117,12 @@ pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
 }
 
 void
+pmap_inval_invltlb(pmap_inval_info_t info)
+{
+	info->pir_va = (vm_offset_t)-1;
+}
+
+void
 pmap_inval_deinterlock(pmap_inval_info_t info, pmap_t pmap)
 {
     KKASSERT(info->pir_flags & PIRF_CPUSYNC);

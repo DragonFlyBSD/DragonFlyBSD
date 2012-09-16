@@ -82,7 +82,12 @@
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
+#ifndef _MACHINE_PMAP_H_
+#include <machine/pmap.h>
+#endif
+#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
+#endif
 #ifndef _VM_VM_H_
 #include <vm/vm.h>
 #endif
@@ -186,6 +191,7 @@ struct vm_object {
 	RB_HEAD(swblock_rb_tree, swblock) swblock_root;
 	int	swblock_count;
 	struct	lwkt_token	token;
+	struct md_object	md;	/* machine specific (typ pmap) */
 };
 
 /*

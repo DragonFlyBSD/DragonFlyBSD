@@ -430,6 +430,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	object->swblock_count = 0;
 	RB_INIT(&object->swblock_root);
 	vm_object_lock_init(object);
+	pmap_object_init(object);
 
 	vm_object_hold(object);
 	lwkt_gettoken(&vmobj_token);
@@ -928,6 +929,11 @@ vm_object_terminate(vm_object_t object)
 		panic("vm_object_terminate: object with references, "
 		      "ref_count=%d", object->ref_count);
 	}
+
+	/*
+	 * Cleanup any shared pmaps associated with this object.
+	 */
+	pmap_object_free(object);
 
 	/*
 	 * Now free any remaining pages. For internal objects, this also

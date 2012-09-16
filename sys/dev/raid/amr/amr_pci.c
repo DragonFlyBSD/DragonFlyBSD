@@ -406,10 +406,10 @@ amr_pci_shutdown(device_t dev)
 
     /* delete all our child devices */
     for(i = 0 ; i < AMR_MAXLD; i++) {
-	if( sc->amr_drive[i].al_disk != 0) {
+	if( sc->amr_drive[i].al_disk != NULL) {
 	    if((error = device_delete_child(sc->amr_dev,sc->amr_drive[i].al_disk)) != 0)
 		goto shutdown_out;
-	    sc->amr_drive[i].al_disk = 0;
+	    sc->amr_drive[i].al_disk = NULL;
 	}
     }
 

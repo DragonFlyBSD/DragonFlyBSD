@@ -177,7 +177,7 @@ SYSCTL_INT(_vm, OID_AUTO, dreadful_invltlb,
  * All those kernel PT submaps that BSD is so fond of
  */
 pt_entry_t *CMAP1 = NULL, *ptmmap;
-caddr_t CADDR1 = 0, ptvmmap = 0;
+caddr_t CADDR1 = NULL, ptvmmap = NULL;
 static pt_entry_t *msgbufmap;
 struct msgbuf *msgbufp=NULL;
 
@@ -1612,27 +1612,6 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 }
 
 /*
- * Retire the given physical map from service.
- *
- * Should only be called if the map contains no valid mappings.
- *
- * No requirements.
- */
-void
-pmap_destroy(pmap_t pmap)
-{
-	if (pmap == NULL)
-		return;
-
-	lwkt_gettoken(&vm_token);
-	if (--pmap->pm_count == 0) {
-		pmap_release(pmap);
-		panic("destroying a pmap is not yet implemented");
-	}
-	lwkt_reltoken(&vm_token);
-}
-
-/*
  * Add a reference to the specified pmap.
  *
  * No requirements.
@@ -2190,7 +2169,7 @@ again:
  */
 void
 pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
-	   boolean_t wired)
+	   boolean_t wired, vm_map_entry_t entry __unused)
 {
 	vm_paddr_t pa;
 	unsigned *pte;
@@ -2714,7 +2693,8 @@ pmap_prefault_ok(pmap_t pmap, vm_offset_t addr)
  * No requirements.
  */
 void
-pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired)
+pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired,
+		   vm_map_entry_t entry __unused)
 {
 	unsigned *pte;
 
@@ -3620,4 +3600,16 @@ vm_page_t
 pmap_kvtom(vm_offset_t va)
 {
 	return(PHYS_TO_VM_PAGE(*vtopte(va) & PG_FRAME));
+}
+
+void
+pmap_object_init(vm_object_t object)
+{
+	/* empty */
+}
+
+void
+pmap_object_free(vm_object_t object)
+{
+	/* empty */
 }

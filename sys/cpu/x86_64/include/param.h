@@ -128,6 +128,12 @@
 #define PML4MASK	(NPML4-1)
 #define NPML4EPG	(PAGE_SIZE/(sizeof (pml4_entry_t)))
 
+/*
+ * Virtual address sign-extension and mask.  If bit 47 is set then
+ * set all higher bits.
+ */
+#define PML4_SIGNMASK  0xFFFF800000000000LU
+
 /* for vkernel */
 #define SEG_SHIFT	21
 #define SEG_SIZE	(1<<SEG_SHIFT)	/* bytes per mmu segment (level 1) */
@@ -167,11 +173,11 @@
  * the VM page cache is not effected), can be changed via
  * kern.maxbcache /boot/loader.conf variable.
  *
- * On x86_64 boxes this can also improve HAMMER's flushing and cache
- * performance so use a much higher value than i386.
+ * This value is unbounded on 64-bit boxes, boot code will limit the
+ * buffer cache size to a portion of available physical memory.
  */
 #ifndef VM_BCACHE_SIZE_MAX
-#define VM_BCACHE_SIZE_MAX	(1000L * 1024 * 1024)
+#define VM_BCACHE_SIZE_MAX	0
 #endif
 
 /*

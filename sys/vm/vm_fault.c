@@ -511,7 +511,7 @@ quick:
 	 * Enter the page into the pmap and do pmap-related adjustments.
 	 */
 	vm_page_flag_set(fs.m, PG_REFERENCED);
-	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
+	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired, fs.entry);
 	mycpu->gd_cnt.v_vm_faults++;
 	if (curthread->td_lwp)
 		++curthread->td_lwp->lwp_ru.ru_minflt;
@@ -770,7 +770,7 @@ RetryFault:
 	 */
 	vm_page_flag_set(fs.m, PG_REFERENCED);
 #if 0
-	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
+	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired, NULL);
 	mycpu->gd_cnt.v_vm_faults++;
 	if (curthread->td_lwp)
 		++curthread->td_lwp->lwp_ru.ru_minflt;
@@ -1830,7 +1830,7 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 				va -= PAGE_SIZE;
 				if ((pa = pmap_extract(pmap, va)) == 0)
 					continue;
-				pmap_change_wiring(pmap, va, FALSE);
+				pmap_change_wiring(pmap, va, FALSE, entry);
 				if (!fictitious) {
 					m = PHYS_TO_VM_PAGE(pa);
 					vm_page_busy_wait(m, FALSE, "vmwrpg");
@@ -1880,7 +1880,7 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 	for (va = start; va < end; va += PAGE_SIZE) {
 		pa = pmap_extract(pmap, va);
 		if (pa != 0) {
-			pmap_change_wiring(pmap, va, FALSE);
+			pmap_change_wiring(pmap, va, FALSE, entry);
 			if (!fictitious) {
 				m = PHYS_TO_VM_PAGE(pa);
 				vm_page_busy_wait(m, FALSE, "vmwupg");
@@ -1901,6 +1901,8 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
  * entry corresponding to a main map entry that is wired down).
  *
  * No other requirements.
+ *
+ * XXX do segment optimization
  */
 void
 vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
@@ -1968,7 +1970,7 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 		 */
 
 		vm_page_flag_clear(dst_m, PG_ZERO);
-		pmap_enter(dst_map->pmap, vaddr, dst_m, prot, FALSE);
+		pmap_enter(dst_map->pmap, vaddr, dst_m, prot, FALSE, dst_entry);
 
 		/*
 		 * Mark it no longer busy, and put it on the active list.
@@ -2427,7 +2429,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 			 */
 			if (pprot & VM_PROT_WRITE)
 				vm_set_nosync(m, entry);
-			pmap_enter(pmap, addr, m, pprot, 0);
+			pmap_enter(pmap, addr, m, pprot, 0, entry);
 			mycpu->gd_cnt.v_vm_faults++;
 			if (curthread->td_lwp)
 				++curthread->td_lwp->lwp_ru.ru_minflt;
@@ -2464,7 +2466,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 			}
 			if (pprot & VM_PROT_WRITE)
 				vm_set_nosync(m, entry);
-			pmap_enter(pmap, addr, m, pprot, 0);
+			pmap_enter(pmap, addr, m, pprot, 0, entry);
 			mycpu->gd_cnt.v_vm_faults++;
 			if (curthread->td_lwp)
 				++curthread->td_lwp->lwp_ru.ru_minflt;
@@ -2599,7 +2601,7 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 					swap_pager_unswapped(m);
 				}
 			}
-			pmap_enter(pmap, addr, m, prot, 0);
+			pmap_enter(pmap, addr, m, prot, 0, entry);
 			mycpu->gd_cnt.v_vm_faults++;
 			if (curthread->td_lwp)
 				++curthread->td_lwp->lwp_ru.ru_minflt;

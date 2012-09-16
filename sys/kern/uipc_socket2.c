@@ -347,7 +347,10 @@ sonewconn_faddr(struct socket *head, int connstatus,
 	 * which occur to our cpu allowing us to complete the attachment
 	 * without racing anything.
 	 */
-	sosetport(so, netisr_portfn(mycpu->gd_cpuid));
+	if (head->so_proto->pr_flags & PR_SYNC_PORT)
+		sosetport(so, &netisr_sync_port);
+	else
+		sosetport(so, netisr_portfn(mycpu->gd_cpuid));
 	if ((head->so_options & SO_ACCEPTFILTER) != 0)
 		connstatus = 0;
 	so->so_head = head;

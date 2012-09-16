@@ -28,6 +28,18 @@ struct semid_ds {
 	long	sem_pad3[4];	/* SVABI/386 says I need this here */
 };
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#include <sys/lock.h>
+
+struct semid_pool {
+	struct lock lk;
+	struct semid_ds ds;
+	long gen;
+};
+
+#endif
+
 /*
  * semop's sops parameter structure
  */

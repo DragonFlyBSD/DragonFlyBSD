@@ -318,8 +318,8 @@ again:
 	 * factor represents the 1/4 x ram conversion.
 	 */
 	if (nbuf == 0) {
-		int factor = 4 * BKVASIZE / 1024;
-		int kbytes = physmem * (PAGE_SIZE / 1024);
+		long factor = 4 * BKVASIZE / 1024;
+		long kbytes = physmem * (PAGE_SIZE / 1024);
 
 		nbuf = 50;
 		if (kbytes > 4096)
@@ -334,12 +334,37 @@ again:
 	 * Do not allow the buffer_map to be more then 1/2 the size of the
 	 * kernel_map.
 	 */
-	if (nbuf > (virtual_end - virtual_start) / (BKVASIZE * 2)) {
-		nbuf = (virtual_end - virtual_start) / (BKVASIZE * 2);
-		kprintf("Warning: nbufs capped at %d\n", nbuf);
+	if (nbuf > (virtual_end - virtual_start +
+		    virtual2_end - virtual2_start) / (BKVASIZE * 2)) {
+		nbuf = (virtual_end - virtual_start +
+			virtual2_end - virtual2_start) / (BKVASIZE * 2);
+		kprintf("Warning: nbufs capped at %ld due to kvm\n", nbuf);
 	}
 
-	nswbuf = max(min(nbuf/4, 256), 16);
+	/*
+	 * Do not allow the buffer_map to use more than 50% of available
+	 * physical-equivalent memory.  Since the VM pages which back
+	 * individual buffers are typically wired, having too many bufs
+	 * can prevent the system from paging properly.
+	 */
+	if (nbuf > physmem * PAGE_SIZE / (BKVASIZE * 2)) {
+		nbuf = physmem * PAGE_SIZE / (BKVASIZE * 2);
+		kprintf("Warning: nbufs capped at %ld due to physmem\n", nbuf);
+	}
+
+	/*
+	 * Do not allow the sizeof(struct buf) * nbuf to exceed half of
+	 * the valloc space which is just the virtual_end - virtual_start
+	 * section.  We use valloc() to allocate the buf header array.
+	 */
+	if (nbuf > (virtual_end - virtual_start) / sizeof(struct buf) / 2) {
+		nbuf = (virtual_end - virtual_start) /
+		       sizeof(struct buf) / 2;
+		kprintf("Warning: nbufs capped at %ld due to valloc "
+			"considerations", nbuf);
+	}
+
+	nswbuf = lmax(lmin(nbuf / 4, 256), 16);
 #ifdef NSWBUF_MIN
 	if (nswbuf < NSWBUF_MIN)
 		nswbuf = NSWBUF_MIN;
@@ -364,17 +389,20 @@ again:
 
 	/*
 	 * End of second pass, addresses have been assigned
+	 *
+	 * nbuf is an int, make sure we don't overflow the field.
 	 */
 	if ((vm_size_t)(v - firstaddr) != size)
 		panic("startup: table size inconsistency");
 
 	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
-		      (nbuf*BKVASIZE) + (nswbuf*MAXPHYS) + pager_map_size);
+		      ((vm_offset_t)nbuf * BKVASIZE) +
+		      (nswbuf * MAXPHYS) + pager_map_size);
 	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
-		      (nbuf*BKVASIZE));
+		      ((vm_offset_t)nbuf * BKVASIZE));
 	buffer_map.system_map = 1;
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
-		      (nswbuf*MAXPHYS) + pager_map_size);
+		      ((vm_offset_t)nswbuf * MAXPHYS) + pager_map_size);
 	pager_map.system_map = 1;
 
 #if defined(USERCONFIG)

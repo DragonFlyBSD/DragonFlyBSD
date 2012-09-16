@@ -855,7 +855,6 @@ altq_etherclassify(struct ifaltq *ifq, struct mbuf *m,
 	struct ether_header *eh;
 	uint16_t ether_type;
 	int hlen, af, hdrsize;
-	caddr_t hdr;
 
 	hlen = sizeof(struct ether_header);
 	eh = mtod(m, struct ether_header *);
@@ -890,7 +889,6 @@ altq_etherclassify(struct ifaltq *ifq, struct mbuf *m,
 		hlen -= m->m_len;
 		m = m->m_next;
 	}
-	hdr = m->m_data + hlen;
 	if (m->m_len < hlen + hdrsize) {
 		/*
 		 * ip header is not in a single mbuf.  this should not

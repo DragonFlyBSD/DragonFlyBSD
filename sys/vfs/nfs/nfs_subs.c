@@ -105,7 +105,7 @@ int nfs_ticks;
  */
 struct lwkt_token nfs_token = LWKT_TOKEN_INITIALIZER(unp_token);
 
-static int nfs_pbuf_freecnt = -1;	/* start out unlimited */
+static long nfs_pbuf_freecnt = -1;	/* start out unlimited */
 
 struct nfsmount_head nfs_mountq = TAILQ_HEAD_INITIALIZER(nfs_mountq);
 struct nfssvc_sockhead nfssvc_sockhead;

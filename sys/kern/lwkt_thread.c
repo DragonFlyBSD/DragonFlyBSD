@@ -723,23 +723,20 @@ lwkt_switch(void)
 	 * Hotpath - pull the head of the run queue and attempt to schedule
 	 * it.
 	 */
-	for (;;) {
-	    ntd = TAILQ_FIRST(&gd->gd_tdrunq);
+	ntd = TAILQ_FIRST(&gd->gd_tdrunq);
 
-	    if (ntd == NULL) {
-		/*
-		 * Runq is empty, switch to idle to allow it to halt.
-		 */
-		ntd = &gd->gd_idlethread;
+	if (ntd == NULL) {
+	    /*
+	     * Runq is empty, switch to idle to allow it to halt.
+	     */
+	    ntd = &gd->gd_idlethread;
 #ifdef SMP
-		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
-		    ASSERT_NO_TOKENS_HELD(ntd);
+	    if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
+		ASSERT_NO_TOKENS_HELD(ntd);
 #endif
-		cpu_time.cp_msg[0] = 0;
-		cpu_time.cp_stallpc = 0;
-		goto haveidle;
-	    }
-	    break;
+	    cpu_time.cp_msg[0] = 0;
+	    cpu_time.cp_stallpc = 0;
+	    goto haveidle;
 	}
 
 	/*
@@ -777,7 +774,9 @@ lwkt_switch(void)
 		/*
 		 * Never schedule threads returning to userland or the
 		 * user thread scheduler helper thread when higher priority
-		 * threads are present.
+		 * threads are present.  The runq is sorted by priority
+		 * so we can give up traversing it when we find the first
+		 * low priority thread.
 		 */
 		if (ntd->td_pri < TDPRI_KERN_LPSCHED) {
 			ntd = NULL;

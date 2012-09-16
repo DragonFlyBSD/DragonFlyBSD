@@ -185,7 +185,7 @@ struct vm_map pager_map;
 
 static int bswneeded_raw;
 static int bswneeded_kva;
-static int nswbuf_raw;
+static long nswbuf_raw;
 static struct buf *swbuf_raw;
 static vm_offset_t swapbkva;		/* swap buffers kva */
 static struct swqueue bswlist_raw;	/* without kva */
@@ -219,7 +219,7 @@ void
 vm_pager_bufferinit(void)
 {
 	struct buf *bp;
-	int i;
+	long i;
 
 	/*
 	 * Reserve KVM space for pbuf data.
