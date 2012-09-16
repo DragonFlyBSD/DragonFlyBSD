@@ -93,6 +93,9 @@ lwbuf_free(struct lwbuf *lwb)
 
 #define lwbuf_set_global(lwb)
 
+/* tell the kernel that lwbufs are cheap */
+#define LWBUF_IS_OPTIMAL
+
 #if defined(_KERNEL)
 
 #endif
