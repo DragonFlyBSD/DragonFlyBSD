@@ -116,25 +116,17 @@ spx_trace(int act, int ostate, struct spxpcb *sp, struct spx *si, int req)
 			alo = ntohs(alo);
 			len = ntohs(len);
 		}
-#ifndef lint
 #define p1(f)  { kprintf("%s = %x, ", "f", f); }
 		p1(seq); p1(ack); p1(alo); p1(len);
-#endif
 		flags = si->si_cc;
 		if (flags) {
 			char *cp = "<";
-#ifndef lint
 #define pf(f) { if (flags & SPX_ ## f) { kprintf("%s%s", cp, "f"); cp = ","; } }
 			pf(SP); pf(SA); pf(OB); pf(EM);
-#else
-			cp = cp;
-#endif
 			kprintf(">");
 		}
-#ifndef lint
 #define p2(f)  { kprintf("%s = %x, ", "f", si->si_ ## f); }
 		p2(sid);p2(did);p2(dt);p2(pt);
-#endif
 		ipx_printhost(&si->si_sna);
 		ipx_printhost(&si->si_dna);
 
@@ -156,10 +148,8 @@ spx_trace(int act, int ostate, struct spxpcb *sp, struct spx *si, int req)
 	kprintf("\n");
 	if (sp == NULL)
 		return;
-#ifndef lint
 #define p3(f)  { kprintf("%s = %x, ", "f", sp->s_ ## f); }
 	kprintf("\t"); p3(rack);p3(ralo);p3(smax);p3(flags); kprintf("\n");
-#endif
-#endif
-#endif
+#endif /* TCPDEBUG */
+#endif /* INET */
 }
