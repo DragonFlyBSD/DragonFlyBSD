@@ -942,7 +942,6 @@ sta_auth_shared(struct ieee80211_node *ni, struct ieee80211_frame *wh,
 {
 	struct ieee80211vap *vap = ni->ni_vap;
 	uint8_t *challenge;
-	int estatus;
 
 	/*
 	 * NB: this can happen as we allow pre-shared key
@@ -956,7 +955,6 @@ sta_auth_shared(struct ieee80211_node *ni, struct ieee80211_frame *wh,
 		IEEE80211_DISCARD_MAC(vap, IEEE80211_MSG_AUTH,
 		    ni->ni_macaddr, "shared key auth",
 		    "%s", " PRIVACY is disabled");
-		estatus = IEEE80211_STATUS_ALG;
 		goto bad;
 	}
 	/*
@@ -970,7 +968,6 @@ sta_auth_shared(struct ieee80211_node *ni, struct ieee80211_frame *wh,
 		    ni->ni_macaddr, "shared key auth",
 		    "bad sta auth mode %u", ni->ni_authmode);
 		vap->iv_stats.is_rx_bad_auth++;	/* XXX maybe a unique error? */
-		estatus = IEEE80211_STATUS_ALG;
 		goto bad;
 	}
 
@@ -982,7 +979,6 @@ sta_auth_shared(struct ieee80211_node *ni, struct ieee80211_frame *wh,
 			    "ie %d/%d too long",
 			    frm[0], (int)((frm[1] + 2) - (efrm - frm)));
 			vap->iv_stats.is_rx_bad_auth++;
-			estatus = IEEE80211_STATUS_CHALLENGE;
 			goto bad;
 		}
 		if (*frm == IEEE80211_ELEMID_CHALLENGE)
@@ -997,7 +993,6 @@ sta_auth_shared(struct ieee80211_node *ni, struct ieee80211_frame *wh,
 			    ni->ni_macaddr, "shared key auth",
 			    "%s", "no challenge");
 			vap->iv_stats.is_rx_bad_auth++;
-			estatus = IEEE80211_STATUS_CHALLENGE;
 			goto bad;
 		}
 		if (challenge[1] != IEEE80211_CHALLENGE_LEN) {
@@ -1005,7 +1000,6 @@ sta_auth_shared(struct ieee80211_node *ni, struct ieee80211_frame *wh,
 			    ni->ni_macaddr, "shared key auth",
 			    "bad challenge len %d", challenge[1]);
 			vap->iv_stats.is_rx_bad_auth++;
-			estatus = IEEE80211_STATUS_CHALLENGE;
 			goto bad;
 		}
 	default:

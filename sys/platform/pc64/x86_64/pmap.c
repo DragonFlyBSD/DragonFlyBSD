@@ -755,8 +755,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 {
 	vm_offset_t va;
 	pt_entry_t *pte;
-	struct mdglobaldata *gd;
-	int pg;
 
 	KvaStart = VM_MIN_KERNEL_ADDRESS;
 	KvaEnd = VM_MAX_KERNEL_ADDRESS;
@@ -891,15 +889,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 #endif
 	}
 #endif
-
-	/*
-	 * We need to finish setting up the globaldata page for the BSP.
-	 * locore has already populated the page table for the mdglobaldata
-	 * portion.
-	 */
-	pg = MDGLOBALDATA_BASEALLOC_PAGES;
-	gd = &CPU_prvspace[0].mdglobaldata;
-
 	cpu_invltlb();
 }
 
