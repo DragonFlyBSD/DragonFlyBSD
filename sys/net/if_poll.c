@@ -249,14 +249,12 @@ static int	sysctl_stfrac(SYSCTL_HANDLER_ARGS);
 static int	sysctl_txfrac(SYSCTL_HANDLER_ARGS);
 
 static struct stpoll_ctx	stpoll_context;
-static struct poll_comm		*poll_common[IFPOLL_CTX_MAX];
-static struct iopoll_ctx	*rxpoll_context[IFPOLL_CTX_MAX];
-static struct iopoll_ctx	*txpoll_context[IFPOLL_CTX_MAX];
+static struct poll_comm		*poll_common[MAXCPU];
+static struct iopoll_ctx	*rxpoll_context[MAXCPU];
+static struct iopoll_ctx	*txpoll_context[MAXCPU];
 
 SYSCTL_NODE(_net, OID_AUTO, ifpoll, CTLFLAG_RW, 0,
 	    "Network device polling parameters");
-
-static int	ifpoll_ncpus = IFPOLL_CTX_MAX;
 
 static int	iopoll_burst_max = IOPOLL_BURST_MAX;
 static int	iopoll_each_burst = IOPOLL_EACH_BURST;
@@ -323,15 +321,8 @@ ifpoll_time_diff(const union ifpoll_time *s, const union ifpoll_time *e)
 void
 ifpoll_init_pcpu(int cpuid)
 {
-	if (cpuid >= IFPOLL_CTX_MAX)
+	if (cpuid >= ncpus2)
 		return;
-
-	if (cpuid == 0) {
-		if (ifpoll_ncpus > ncpus)
-			ifpoll_ncpus = ncpus;
-		if (bootverbose)
-			kprintf("ifpoll_ncpus %d\n", ifpoll_ncpus);
-	}
 
 	poll_comm_init(cpuid);
 
@@ -345,7 +336,7 @@ ifpoll_init_pcpu(int cpuid)
 int
 ifpoll_register(struct ifnet *ifp)
 {
-	struct ifpoll_info info;
+	struct ifpoll_info *info;
 	struct netmsg_base nmsg;
 	int error;
 
@@ -353,6 +344,8 @@ ifpoll_register(struct ifnet *ifp)
 		/* Device does not support polling */
 		return EOPNOTSUPP;
 	}
+
+	info = kmalloc(sizeof(*info), M_TEMP, M_WAITOK | M_ZERO);
 
 	/*
 	 * Attempt to register.  Interlock with IFF_NPOLLING.
@@ -363,20 +356,20 @@ ifpoll_register(struct ifnet *ifp)
 	if (ifp->if_flags & IFF_NPOLLING) {
 		/* Already polling */
 		ifnet_deserialize_all(ifp);
+		kfree(info, M_TEMP);
 		return EBUSY;
 	}
 
-	bzero(&info, sizeof(info));
-	info.ifpi_ifp = ifp;
+	info->ifpi_ifp = ifp;
 
 	ifp->if_flags |= IFF_NPOLLING;
-	ifp->if_qpoll(ifp, &info);
+	ifp->if_qpoll(ifp, info);
 
 	ifnet_deserialize_all(ifp);
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
 		    0, ifpoll_register_handler);
-	nmsg.lmsg.u.ms_resultp = &info;
+	nmsg.lmsg.u.ms_resultp = info;
 
 	error = lwkt_domsg(netisr_portfn(0), &nmsg.lmsg, 0);
 	if (error) {
@@ -385,6 +378,8 @@ ifpoll_register(struct ifnet *ifp)
 				  "ifpoll_deregister failed!\n");
 		}
 	}
+
+	kfree(info, M_TEMP);
 	return error;
 }
 
@@ -427,7 +422,7 @@ ifpoll_register_handler(netmsg_t nmsg)
 	int cpuid = mycpuid, nextcpu;
 	int error;
 
-	KKASSERT(cpuid < ifpoll_ncpus);
+	KKASSERT(cpuid < ncpus2);
 	KKASSERT(&curthread->td_msgport == netisr_portfn(cpuid));
 
 	if (cpuid == 0) {
@@ -450,7 +445,7 @@ ifpoll_register_handler(netmsg_t nmsg)
 	poll_comm_adjust_pollhz(poll_common[cpuid]);
 
 	nextcpu = cpuid + 1;
-	if (nextcpu < ifpoll_ncpus)
+	if (nextcpu < ncpus2)
 		lwkt_forwardmsg(netisr_portfn(nextcpu), &nmsg->lmsg);
 	else
 		lwkt_replymsg(&nmsg->lmsg, 0);
@@ -465,7 +460,7 @@ ifpoll_deregister_handler(netmsg_t nmsg)
 	struct ifnet *ifp = nmsg->lmsg.u.ms_resultp;
 	int cpuid = mycpuid, nextcpu;
 
-	KKASSERT(cpuid < ifpoll_ncpus);
+	KKASSERT(cpuid < ncpus2);
 	KKASSERT(&curthread->td_msgport == netisr_portfn(cpuid));
 
 	/* Ignore errors */
@@ -478,7 +473,7 @@ ifpoll_deregister_handler(netmsg_t nmsg)
 	poll_comm_adjust_pollhz(poll_common[cpuid]);
 
 	nextcpu = cpuid + 1;
-	if (nextcpu < ifpoll_ncpus)
+	if (nextcpu < ncpus2)
 		lwkt_forwardmsg(netisr_portfn(nextcpu), &nmsg->lmsg);
 	else
 		lwkt_replymsg(&nmsg->lmsg, 0);
@@ -647,7 +642,7 @@ iopoll_reset_state(struct iopoll_ctx *io_ctx)
 static void
 iopoll_init(int cpuid)
 {
-	KKASSERT(cpuid < IFPOLL_CTX_MAX);
+	KKASSERT(cpuid < ncpus2);
 
 	rxpoll_context[cpuid] = iopoll_ctx_create(cpuid, IFPOLL_RX);
 	txpoll_context[cpuid] = iopoll_ctx_create(cpuid, IFPOLL_TX);
