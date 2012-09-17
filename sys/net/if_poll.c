@@ -53,7 +53,7 @@
  *
  * Drivers which support this feature try to register one status polling
  * handler and several TX/RX polling handlers with the polling code.
- * If interface's if_qpoll is called with non-NULL second argument, then
+ * If interface's if_npoll is called with non-NULL second argument, then
  * a register operation is requested, else a deregister operation is
  * requested.  If the requested operation is "register", driver should
  * setup the ifpoll_info passed in accoding its own needs:
@@ -72,7 +72,7 @@
  *
  * All of the registered polling handlers are called only if the interface
  * is marked as 'IFF_RUNNING and IFF_NPOLLING'.  However, the interface's
- * register and deregister function (ifnet.if_qpoll) will be called even
+ * register and deregister function (ifnet.if_npoll) will be called even
  * if interface is not marked with 'IFF_RUNNING'.
  *
  * If registration is successful, the driver must disable interrupts,
@@ -340,7 +340,7 @@ ifpoll_register(struct ifnet *ifp)
 	struct netmsg_base nmsg;
 	int error;
 
-	if (ifp->if_qpoll == NULL) {
+	if (ifp->if_npoll == NULL) {
 		/* Device does not support polling */
 		return EOPNOTSUPP;
 	}
@@ -363,7 +363,7 @@ ifpoll_register(struct ifnet *ifp)
 	info->ifpi_ifp = ifp;
 
 	ifp->if_flags |= IFF_NPOLLING;
-	ifp->if_qpoll(ifp, info);
+	ifp->if_npoll(ifp, info);
 
 	ifnet_deserialize_all(ifp);
 
@@ -389,7 +389,7 @@ ifpoll_deregister(struct ifnet *ifp)
 	struct netmsg_base nmsg;
 	int error;
 
-	if (ifp->if_qpoll == NULL)
+	if (ifp->if_npoll == NULL)
 		return EOPNOTSUPP;
 
 	ifnet_serialize_all(ifp);
@@ -409,7 +409,7 @@ ifpoll_deregister(struct ifnet *ifp)
 	error = lwkt_domsg(netisr_portfn(0), &nmsg.lmsg, 0);
 	if (!error) {
 		ifnet_serialize_all(ifp);
-		ifp->if_qpoll(ifp, NULL);
+		ifp->if_npoll(ifp, NULL);
 		ifnet_deserialize_all(ifp);
 	}
 	return error;

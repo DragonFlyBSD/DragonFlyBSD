@@ -260,11 +260,11 @@ struct ifnet {
 	void	(*if_serialize_unused)(void);
 #endif
 #ifdef IFPOLL_ENABLE
-	void	(*if_qpoll)
+	void	(*if_npoll)
 		(struct ifnet *, struct ifpoll_info *);
 #else
 	/* Place holders */
-	void	(*if_qpoll_unused)(void);
+	void	(*if_npoll_unused)(void);
 #endif
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */

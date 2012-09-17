@@ -178,7 +178,7 @@ static void	emx_stop(struct emx_softc *);
 static int	emx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	emx_start(struct ifnet *);
 #ifdef IFPOLL_ENABLE
-static void	emx_qpoll(struct ifnet *, struct ifpoll_info *);
+static void	emx_npoll(struct ifnet *, struct ifpoll_info *);
 #endif
 static void	emx_watchdog(struct ifnet *);
 static void	emx_media_status(struct ifnet *, struct ifmediareq *);
@@ -1865,7 +1865,7 @@ emx_setup_ifp(struct emx_softc *sc)
 	ifp->if_ioctl = emx_ioctl;
 	ifp->if_start = emx_start;
 #ifdef IFPOLL_ENABLE
-	ifp->if_qpoll = emx_qpoll;
+	ifp->if_npoll = emx_npoll;
 #endif
 	ifp->if_watchdog = emx_watchdog;
 	ifp->if_serialize = emx_serialize;
@@ -3616,7 +3616,7 @@ emx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 #ifdef IFPOLL_ENABLE
 
 static void
-emx_qpoll_status(struct ifnet *ifp, int pollhz __unused)
+emx_npoll_status(struct ifnet *ifp, int pollhz __unused)
 {
 	struct emx_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
@@ -3633,7 +3633,7 @@ emx_qpoll_status(struct ifnet *ifp, int pollhz __unused)
 }
 
 static void
-emx_qpoll_tx(struct ifnet *ifp, void *arg __unused, int cycle __unused)
+emx_npoll_tx(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 {
 	struct emx_softc *sc = ifp->if_softc;
 
@@ -3645,7 +3645,7 @@ emx_qpoll_tx(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 }
 
 static void
-emx_qpoll_rx(struct ifnet *ifp, void *arg, int cycle)
+emx_npoll_rx(struct ifnet *ifp, void *arg, int cycle)
 {
 	struct emx_softc *sc = ifp->if_softc;
 	struct emx_rxdata *rdata = arg;
@@ -3656,7 +3656,7 @@ emx_qpoll_rx(struct ifnet *ifp, void *arg, int cycle)
 }
 
 static void
-emx_qpoll(struct ifnet *ifp, struct ifpoll_info *info)
+emx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 {
 	struct emx_softc *sc = ifp->if_softc;
 
@@ -3665,15 +3665,15 @@ emx_qpoll(struct ifnet *ifp, struct ifpoll_info *info)
 	if (info) {
 		int i;
 
-		info->ifpi_status.status_func = emx_qpoll_status;
+		info->ifpi_status.status_func = emx_npoll_status;
 		info->ifpi_status.serializer = &sc->main_serialize;
 
-		info->ifpi_tx[0].poll_func = emx_qpoll_tx;
+		info->ifpi_tx[0].poll_func = emx_npoll_tx;
 		info->ifpi_tx[0].arg = NULL;
 		info->ifpi_tx[0].serializer = &sc->tx_serialize;
 
 		for (i = 0; i < sc->rx_ring_cnt; ++i) {
-			info->ifpi_rx[i].poll_func = emx_qpoll_rx;
+			info->ifpi_rx[i].poll_func = emx_npoll_rx;
 			info->ifpi_rx[i].arg = &sc->rx_data[i];
 			info->ifpi_rx[i].serializer =
 				&sc->rx_data[i].rx_serialize;
