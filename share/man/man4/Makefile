@@ -425,7 +425,9 @@ MLINKS+=drm.4 i915drm.4 \
 MLINKS+=dsched.4 dsched_fq.4
 MLINKS+=ed.4 if_ed.4
 MLINKS+=ef.4 if_ef.4
-MLINKS+=em.4 if_em.4
+MLINKS+=em.4 emx.4 \
+	em.4 if_em.4 \
+	em.4 if_emx.4
 MLINKS+=et.4 if_et.4
 MLINKS+=faith.4 if_faith.4
 MLINKS+=fd.4 stderr.4 \
