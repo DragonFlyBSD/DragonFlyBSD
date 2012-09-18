@@ -41,6 +41,7 @@ struct usched {
     void (*resetpriority)(struct lwp *);
     void (*heuristic_forking)(struct lwp *, struct lwp *);
     void (*heuristic_exiting)(struct lwp *, struct proc *);
+    void (*uload_update)(struct lwp *);
     void (*setcpumask)(struct usched *, cpumask_t);
     void (*yield)(struct lwp *);
 };
@@ -58,6 +59,15 @@ union usched_data {
 	u_short rqtype;		/* protected copy of rtprio type */
 	u_short	unused02;
     } bsd4;
+    struct {
+	short	priority;	/* lower is better */
+	char	unused01;	/* (currently not used) */
+	char	rqindex;
+	int	batch;		/* batch mode heuristic */
+	int	estcpu;		/* dynamic priority modification */
+	u_short rqtype;		/* protected copy of rtprio type */
+	u_short	qcpu;		/* which cpu are we enqueued on? */
+    } dfly;
 
     int		pad[4];		/* PAD for future expansion */
 };
@@ -82,6 +92,7 @@ union usched_data {
 #ifdef _KERNEL
 
 extern struct usched	usched_bsd4;
+extern struct usched	usched_dfly;
 extern struct usched	usched_dummy;
 extern cpumask_t usched_mastermask;
 extern int sched_ticks; /* From sys/kern/kern_clock.c */

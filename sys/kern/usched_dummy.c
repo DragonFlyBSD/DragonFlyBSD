@@ -72,6 +72,7 @@ static void dummy_recalculate_estcpu(struct lwp *lp);
 static void dummy_resetpriority(struct lwp *lp);
 static void dummy_forking(struct lwp *plp, struct lwp *lp);
 static void dummy_exiting(struct lwp *plp, struct proc *child);
+static void dummy_uload_update(struct lwp *lp);
 static void dummy_yield(struct lwp *lp);
 
 struct usched usched_dummy = {
@@ -87,6 +88,7 @@ struct usched usched_dummy = {
 	dummy_resetpriority,
 	dummy_forking,
 	dummy_exiting,
+	dummy_uload_update,
 	NULL,			/* setcpumask not supported */
 	dummy_yield
 };
@@ -426,18 +428,16 @@ dummy_forking(struct lwp *plp, struct lwp *lp)
 }
 
 /*
- * DUMMY_EXITING
- *
- * Called when the parent reaps a child.   Typically used to propogate cpu
- * use by the child back to the parent as part of a batch detection
- * heuristic.  
- *
- * NOTE: cpu use is not normally back-propogated to PID 1.
- *
- * MPSAFE
+ * Called when a lwp is being removed from this scheduler, typically
+ * during lwp_exit().
  */
 static void
 dummy_exiting(struct lwp *plp, struct proc *child)
+{
+}
+
+static void
+dummy_uload_update(struct lwp *lp)
 {
 }
 

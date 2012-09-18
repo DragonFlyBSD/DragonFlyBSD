@@ -602,7 +602,9 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		if (lp->lwp_stat != LSSTOP)
 			lp->lwp_stat = LSSLEEP;
 		lp->lwp_ru.ru_nvcsw++;
+		p->p_usched->uload_update(lp);
 		lwkt_switch();
+		p->p_usched->uload_update(lp);
 
 		/*
 		 * And when we are woken up, put us back in LSRUN.  If we

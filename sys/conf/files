@@ -871,6 +871,7 @@ kern/kern_subr.c	standard
 kern/kern_iosched.c	standard
 kern/kern_usched.c	standard
 kern/usched_bsd4.c	standard
+kern/usched_dfly.c	standard
 kern/usched_dummy.c	standard
 kern/kern_umtx.c	standard
 kern/kern_mutex.c	standard

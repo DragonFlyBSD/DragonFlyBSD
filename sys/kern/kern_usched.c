@@ -66,11 +66,14 @@ usched_init(void)
 	 * Add various userland schedulers to the system.
 	 */
 	usched_ctl(&usched_bsd4, USCH_ADD);
+	usched_ctl(&usched_dfly, USCH_ADD);
 	usched_ctl(&usched_dummy, USCH_ADD);
 	if (defsched == NULL )
-		return(&usched_bsd4);
+		return(&usched_dfly);
 	if (strcmp(defsched, "bsd4") == 0)
 		return(&usched_bsd4);
+	if (strcmp(defsched, "dfly") == 0)
+		return(&usched_dfly);
 	kprintf("WARNING: Running dummy userland scheduler\n");
 	return(&usched_dummy);
 }
@@ -202,6 +205,7 @@ sys_usched_set(struct usched_set_args *uap)
 		if (item && item != p->p_usched) {
 			/* XXX lwp */
 			p->p_usched->release_curproc(ONLY_LWP_IN_PROC(p));
+			p->p_usched->heuristic_exiting(ONLY_LWP_IN_PROC(p), p);
 			p->p_usched = item;
 		} else if (item == NULL) {
 			error = EINVAL;

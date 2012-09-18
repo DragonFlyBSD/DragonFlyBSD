@@ -1,6 +1,11 @@
 /*
- * Copyright (c) 1999 Peter Wemm <peter@FreeBSD.org>
- * All rights reserved.
+ * Copyright (c) 2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 1999 Peter Wemm <peter@FreeBSD.org>.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>,
+ * by Mihai Carabas <mihai.carabas@gmail.com>
+ * and many others.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -94,17 +99,18 @@ static void bsd4_recalculate_estcpu(struct lwp *lp);
 static void bsd4_resetpriority(struct lwp *lp);
 static void bsd4_forking(struct lwp *plp, struct lwp *lp);
 static void bsd4_exiting(struct lwp *lp, struct proc *);
+static void bsd4_uload_update(struct lwp *lp);
 static void bsd4_yield(struct lwp *lp);
 
 #ifdef SMP
-static void need_user_resched_remote(void *dummy);
-static int batchy_looser_pri_test(struct lwp* lp);
-static struct lwp *chooseproc_locked_cache_coherent(struct lwp *chklp);
+static void bsd4_need_user_resched_remote(void *dummy);
+static int bsd4_batchy_looser_pri_test(struct lwp* lp);
+static struct lwp *bsd4_chooseproc_locked_cache_coherent(struct lwp *chklp);
 #endif
-static struct lwp *chooseproc_locked(struct lwp *chklp);
+static struct lwp *bsd4_chooseproc_locked(struct lwp *chklp);
 static void bsd4_remrunqueue_locked(struct lwp *lp);
 static void bsd4_setrunqueue_locked(struct lwp *lp);
-static void kick_helper(struct lwp *lp);
+static void bsd4_kick_helper(struct lwp *lp);
 
 struct usched usched_bsd4 = {
 	{ NULL },
@@ -119,6 +125,7 @@ struct usched usched_bsd4 = {
 	bsd4_resetpriority,
 	bsd4_forking,
 	bsd4_exiting,
+	bsd4_uload_update,
 	NULL,			/* setcpumask not supported */
 	bsd4_yield
 };
@@ -167,36 +174,19 @@ static struct sysctl_oid *usched_bsd4_sysctl_tree;
 
 /* Debug info exposed through debug.* sysctl */
 
-SYSCTL_INT(_debug, OID_AUTO, bsd4_runqcount, CTLFLAG_RD, &bsd4_runqcount, 0,
-    "Number of run queues");
-#ifdef INVARIANTS
-static int usched_nonoptimal;
-SYSCTL_INT(_debug, OID_AUTO, usched_nonoptimal, CTLFLAG_RW,
-        &usched_nonoptimal, 0, "acquire_curproc() was not optimal");
-static int usched_optimal;
-SYSCTL_INT(_debug, OID_AUTO, usched_optimal, CTLFLAG_RW,
-        &usched_optimal, 0, "acquire_curproc() was optimal");
-#endif
+SYSCTL_INT(_debug, OID_AUTO, bsd4_runqcount, CTLFLAG_RD,
+	   &bsd4_runqcount, 0,
+	   "Number of run queues");
 
 static int usched_bsd4_debug = -1;
-SYSCTL_INT(_debug, OID_AUTO, scdebug, CTLFLAG_RW, &usched_bsd4_debug, 0,
-    "Print debug information for this pid");
+SYSCTL_INT(_debug, OID_AUTO, bsd4_scdebug, CTLFLAG_RW,
+	   &usched_bsd4_debug, 0,
+	   "Print debug information for this pid");
+
 static int usched_bsd4_pid_debug = -1;
-SYSCTL_INT(_debug, OID_AUTO, pid_debug, CTLFLAG_RW, &usched_bsd4_pid_debug, 0,
-    "Print KTR debug information for this pid");
-
-#ifdef SMP
-static int remote_resched_nonaffinity;
-static int remote_resched_affinity;
-static int choose_affinity;
-SYSCTL_INT(_debug, OID_AUTO, remote_resched_nonaffinity, CTLFLAG_RD,
-        &remote_resched_nonaffinity, 0, "Number of remote rescheds");
-SYSCTL_INT(_debug, OID_AUTO, remote_resched_affinity, CTLFLAG_RD,
-        &remote_resched_affinity, 0, "Number of remote rescheds");
-SYSCTL_INT(_debug, OID_AUTO, choose_affinity, CTLFLAG_RD,
-        &choose_affinity, 0, "chooseproc() was smart");
-#endif
-
+SYSCTL_INT(_debug, OID_AUTO, bsd4_pid_debug, CTLFLAG_RW,
+	   &usched_bsd4_pid_debug, 0,
+	   "Print KTR debug information for this pid");
 
 /* Tunning usched_bsd4 - configurable through kern.usched_bsd4.* */
 #ifdef SMP
@@ -313,7 +303,7 @@ KTR_INFO(KTR_USCHED_BSD4, usched, sched_thread_no_process_found, 0,
  * Initialize the run queues at boot time.
  */
 static void
-rqinit(void *dummy)
+bsd4_rqinit(void *dummy)
 {
 	int i;
 
@@ -325,7 +315,7 @@ rqinit(void *dummy)
 	}
 	atomic_clear_cpumask(&bsd4_curprocmask, 1);
 }
-SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, rqinit, NULL)
+SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, bsd4_rqinit, NULL)
 
 /*
  * BSD4_ACQUIRE_CURPROC
@@ -542,10 +532,10 @@ bsd4_select_curproc(globaldata_t gd)
 	spin_lock(&bsd4_spin);
 #ifdef SMP
 	if(usched_bsd4_cache_coherent)
-		nlp = chooseproc_locked_cache_coherent(dd->uschedcp);
+		nlp = bsd4_chooseproc_locked_cache_coherent(dd->uschedcp);
 	else
 #endif
-		nlp = chooseproc_locked(dd->uschedcp);
+		nlp = bsd4_chooseproc_locked(dd->uschedcp);
 
 	if (nlp) {
 
@@ -588,7 +578,7 @@ bsd4_select_curproc(globaldata_t gd)
  * relative to the other processes running in the system
  */
 static int
-batchy_looser_pri_test(struct lwp* lp)
+bsd4_batchy_looser_pri_test(struct lwp* lp)
 {
 	cpumask_t mask;
 	bsd4_pcpu_t other_dd;
@@ -710,7 +700,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	 */
 	spin_lock(&bsd4_spin);
 	bsd4_setrunqueue_locked(lp);
-	lp->lwp_setrunqueue_ticks = sched_ticks;
+	lp->lwp_rebal_ticks = sched_ticks;
 
 #ifdef SMP
 	/*
@@ -909,7 +899,7 @@ found:
 		atomic_clear_cpumask(&bsd4_rdyprocmask, CPUMASK(cpuid));
 		spin_unlock(&bsd4_spin);
 		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK))
-			lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
+			lwkt_send_ipiq(gd, bsd4_need_user_resched_remote, NULL);
 		else
 			wakeup(&dd->helper_thread);
 	}
@@ -1232,7 +1222,8 @@ bsd4_resetpriority(struct lwp *lp)
 				atomic_clear_cpumask(&bsd4_rdyprocmask,
 						     CPUMASK(reschedcpu));
 				lwkt_send_ipiq(lp->lwp_thread->td_gd,
-					       need_user_resched_remote, NULL);
+					       bsd4_need_user_resched_remote,
+					       NULL);
 			}
 #else
 			spin_unlock(&bsd4_spin);
@@ -1304,12 +1295,16 @@ bsd4_forking(struct lwp *plp, struct lwp *lp)
 }
 
 /*
- * Called when a parent waits for a child.
- *
- * MPSAFE
+ * Called when a lwp is being removed from this scheduler, typically
+ * during lwp_exit().
  */
 static void
 bsd4_exiting(struct lwp *lp, struct proc *child_proc)
+{
+}
+
+static void
+bsd4_uload_update(struct lwp *lp)
 {
 }
 
@@ -1327,7 +1322,7 @@ bsd4_exiting(struct lwp *lp, struct proc *child_proc)
  */
 static
 struct lwp *
-chooseproc_locked(struct lwp *chklp)
+bsd4_chooseproc_locked(struct lwp *chklp)
 {
 	struct lwp *lp;
 	struct rq *q;
@@ -1401,7 +1396,6 @@ again:
 	    (chklp = TAILQ_NEXT(lp, lwp_procq)) != NULL
 	) {
 		if (chklp->lwp_thread->td_gd == mycpu) {
-			++choose_affinity;
 			lp = chklp;
 		}
 	}
@@ -1434,7 +1428,7 @@ again:
  */
 static
 struct lwp *
-chooseproc_locked_cache_coherent(struct lwp *chklp)
+bsd4_chooseproc_locked_cache_coherent(struct lwp *chklp)
 {
 	struct lwp *lp;
 	struct rq *q;
@@ -1491,7 +1485,7 @@ again:
 		/*
 		 * No more left and we didn't reach the checks limit.
 		 */
-		kick_helper(min_level_lwp);
+		bsd4_kick_helper(min_level_lwp);
 		return NULL;
 	}
 	lp = TAILQ_FIRST(q);
@@ -1504,9 +1498,9 @@ again:
 	while (checks < usched_bsd4_queue_checks) {
 		if ((lp->lwp_cpumask & cpumask) == 0 ||
 		    ((siblings & lp->lwp_thread->td_gd->gd_cpumask) == 0 &&
-		      (lp->lwp_setrunqueue_ticks == sched_ticks ||
-		       lp->lwp_setrunqueue_ticks == (int)(sched_ticks - 1)) &&
-		      batchy_looser_pri_test(lp))) {
+		      (lp->lwp_rebal_ticks == sched_ticks ||
+		       lp->lwp_rebal_ticks == (int)(sched_ticks - 1)) &&
+		      bsd4_batchy_looser_pri_test(lp))) {
 
 			KTR_COND_LOG(usched_chooseproc_cc_not_good,
 			    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
@@ -1526,14 +1520,14 @@ again:
 			if (level < min_level ||
 			    (level == min_level && min_level_lwp &&
 			     lp->lwp_priority < min_level_lwp->lwp_priority)) {
-				kick_helper(min_level_lwp);
+				bsd4_kick_helper(min_level_lwp);
 				min_level_lwp = lp;
 				min_level = level;
 				min_q = q;
 				min_which = which;
 				min_pri = pri;
 			} else {
-				kick_helper(lp);
+				bsd4_kick_helper(lp);
 			}
 			lp = TAILQ_NEXT(lp, lwp_procq);
 			if (lp == NULL) {
@@ -1574,7 +1568,7 @@ found:
 	 */
 	if (chklp) {
 		if (chklp->lwp_priority < lp->lwp_priority + PPQ) {
-			kick_helper(lp);
+			bsd4_kick_helper(lp);
 			return(NULL);
 		}
 	}
@@ -1603,7 +1597,7 @@ found:
  */
 static
 void
-kick_helper(struct lwp *lp)
+bsd4_kick_helper(struct lwp *lp)
 {
 	globaldata_t gd;
 	bsd4_pcpu_t dd;
@@ -1619,7 +1613,7 @@ kick_helper(struct lwp *lp)
 	++usched_bsd4_kicks;
 	atomic_clear_cpumask(&bsd4_rdyprocmask, gd->gd_cpumask);
 	if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
-		lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
+		lwkt_send_ipiq(gd, bsd4_need_user_resched_remote, NULL);
 	} else {
 		wakeup(&dd->helper_thread);
 	}
@@ -1627,7 +1621,7 @@ kick_helper(struct lwp *lp)
 
 static
 void
-need_user_resched_remote(void *dummy)
+bsd4_need_user_resched_remote(void *dummy)
 {
 	globaldata_t gd = mycpu;
 	bsd4_pcpu_t  dd = &bsd4_pcpu[gd->gd_cpuid];
@@ -1805,7 +1799,7 @@ sched_thread(void *dummy)
 		 * No thread is currently scheduled.
 		 */
 		KKASSERT(dd->uschedcp == NULL);
-		if ((nlp = chooseproc_locked(NULL)) != NULL) {
+		if ((nlp = bsd4_chooseproc_locked(NULL)) != NULL) {
 			KTR_COND_LOG(usched_sched_thread_no_process,
 			    nlp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 			    gd->gd_cpuid,
@@ -1825,7 +1819,7 @@ sched_thread(void *dummy)
 			spin_unlock(&bsd4_spin);
 		}
 	} else if (bsd4_runqcount) {
-		if ((nlp = chooseproc_locked(dd->uschedcp)) != NULL) {
+		if ((nlp = bsd4_chooseproc_locked(dd->uschedcp)) != NULL) {
 			KTR_COND_LOG(usched_sched_thread_process,
 			    nlp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 			    gd->gd_cpuid,

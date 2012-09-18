@@ -696,6 +696,12 @@ lwp_exit(int masterexit)
 	lwkt_reltoken(&p->p_token);
 	if (dowake)
 		wakeup(&p->p_nthreads);
+
+	/*
+	 * Tell the userland scheduler that we are going away
+	 */
+	p->p_usched->heuristic_exiting(lp, p);
+
 	cpu_lwp_exit();
 }
 
@@ -939,7 +945,6 @@ loop:
 
 			/* Take care of our return values. */
 			*res = p->p_pid;
-			p->p_usched->heuristic_exiting(td->td_lwp, p);
 
 			if (status)
 				*status = p->p_xstat;
@@ -1048,7 +1053,6 @@ loop:
 			p->p_flags |= P_WAITED;
 
 			*res = p->p_pid;
-			p->p_usched->heuristic_exiting(td->td_lwp, p);
 			if (status)
 				*status = W_STOPCODE(p->p_xstat);
 			/* Zero rusage so we get something consistent. */
@@ -1074,7 +1078,6 @@ loop:
 			}
 
 			*res = p->p_pid;
-			p->p_usched->heuristic_exiting(td->td_lwp, p);
 			p->p_flags &= ~P_CONTINUED;
 
 			if (status)
