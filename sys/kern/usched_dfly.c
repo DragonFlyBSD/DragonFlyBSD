@@ -1376,10 +1376,6 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 				load += dfly_pcpu[cpuid].uload;
 				if (dfly_pcpu[cpuid].uload)
 					uloadok = 1;
-				if (dfly_pcpu[cpuid].uschedcp) {
-					load += (dfly_pcpu[cpuid].upri &
-						 ~PPQMASK) & PRIMASK;
-				}
 				mask &= ~CPUMASK(cpuid);
 			}
 
