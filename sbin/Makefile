@@ -96,6 +96,7 @@ SUBDIR=	adjkerntz \
 	tunefs \
 	udevd \
 	umount \
+	usched \
 	vinum \
 	vquota
 
