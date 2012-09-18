@@ -3681,8 +3681,11 @@ emx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			emx_disable_intr(sc);
-	} else if (ifp->if_flags & IFF_RUNNING) {
-		emx_enable_intr(sc);
+		ifp->if_npoll_cpuid = 0; /* XXX */
+	} else {
+		if (ifp->if_flags & IFF_RUNNING)
+			emx_enable_intr(sc);
+		ifp->if_npoll_cpuid = -1;
 	}
 }
 

@@ -224,6 +224,19 @@ if_start_cpuid_poll(struct ifnet *ifp)
 }
 #endif
 
+#ifdef IFPOLL_ENABLE
+static int
+if_start_cpuid_npoll(struct ifnet *ifp)
+{
+	int poll_cpuid = ifp->if_npoll_cpuid;
+
+	if (poll_cpuid >= 0)
+		return poll_cpuid;
+	else
+		return ifp->if_cpuid;
+}
+#endif
+
 static void
 if_start_ipifunc(void *arg)
 {
@@ -477,6 +490,12 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifp->if_poll_cpuid = -1;
 	if (ifp->if_poll != NULL)
 		ifp->if_start_cpuid = if_start_cpuid_poll;
+#endif
+#ifdef IFPOLL_ENABLE
+	/* Device is not in polling mode by default */
+	ifp->if_npoll_cpuid = -1;
+	if (ifp->if_npoll != NULL)
+		ifp->if_start_cpuid = if_start_cpuid_npoll;
 #endif
 
 	ifp->if_start_nmsg = kmalloc(ncpus * sizeof(*ifp->if_start_nmsg),

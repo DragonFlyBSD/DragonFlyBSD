@@ -262,9 +262,11 @@ struct ifnet {
 #ifdef IFPOLL_ENABLE
 	void	(*if_npoll)
 		(struct ifnet *, struct ifpoll_info *);
+	int	if_npoll_cpuid;
 #else
 	/* Place holders */
 	void	(*if_npoll_unused)(void);
+	int	if_npoll_cpuid_unused;
 #endif
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
