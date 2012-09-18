@@ -106,11 +106,11 @@ static void bsd4_yield(struct lwp *lp);
 static void bsd4_need_user_resched_remote(void *dummy);
 static int bsd4_batchy_looser_pri_test(struct lwp* lp);
 static struct lwp *bsd4_chooseproc_locked_cache_coherent(struct lwp *chklp);
+static void bsd4_kick_helper(struct lwp *lp);
 #endif
 static struct lwp *bsd4_chooseproc_locked(struct lwp *chklp);
 static void bsd4_remrunqueue_locked(struct lwp *lp);
 static void bsd4_setrunqueue_locked(struct lwp *lp);
-static void bsd4_kick_helper(struct lwp *lp);
 
 struct usched usched_bsd4 = {
 	{ NULL },
@@ -195,11 +195,11 @@ static int usched_bsd4_cache_coherent = 0;
 static int usched_bsd4_upri_affinity = 16; /* 32 queues - half-way */
 static int usched_bsd4_queue_checks = 5;
 static int usched_bsd4_stick_to_level = 0;
+static long usched_bsd4_kicks;
 #endif
 static int usched_bsd4_rrinterval = (ESTCPUFREQ + 9) / 10;
 static int usched_bsd4_decay = 8;
 static int usched_bsd4_batch_time = 10;
-static long usched_bsd4_kicks;
 
 /* KTR debug printings */
 
@@ -1762,10 +1762,8 @@ sched_thread(void *dummy)
     struct lwp *nlp;
     cpumask_t mask;
     int cpuid;
-#ifdef SMP
     cpumask_t tmpmask;
     int tmpid;
-#endif
 
     gd = mycpu;
     cpuid = gd->gd_cpuid;	/* doesn't change */
@@ -1811,9 +1809,7 @@ sched_thread(void *dummy)
 			dd->uschedcp = nlp;
 			dd->rrcount = 0;	/* reset round robin */
 			spin_unlock(&bsd4_spin);
-#ifdef SMP
 			lwkt_acquire(nlp->lwp_thread);
-#endif
 			lwkt_schedule(nlp->lwp_thread);
 		} else {
 			spin_unlock(&bsd4_spin);
@@ -1830,9 +1826,7 @@ sched_thread(void *dummy)
 			dd->uschedcp = nlp;
 			dd->rrcount = 0;	/* reset round robin */
 			spin_unlock(&bsd4_spin);
-#ifdef SMP
 			lwkt_acquire(nlp->lwp_thread);
-#endif
 			lwkt_schedule(nlp->lwp_thread);
 		} else {
 			/*
@@ -2034,23 +2028,19 @@ sched_thread_cpu_init(void)
 	 * if supported
 	 */
 	if (cache_coherent_not_supported) {
-#ifdef SMP
 		usched_bsd4_cache_coherent = 0;
 		SYSCTL_ADD_STRING(&usched_bsd4_sysctl_ctx,
 				  SYSCTL_CHILDREN(usched_bsd4_sysctl_tree),
 				  OID_AUTO, "cache_coherent", CTLFLAG_RD,
 				  "NOT SUPPORTED", 0,
 				  "Cache coherence NOT SUPPORTED");
-#endif
 	} else {
-#ifdef SMP
 		usched_bsd4_cache_coherent = 1;
 		SYSCTL_ADD_INT(&usched_bsd4_sysctl_ctx,
 			       SYSCTL_CHILDREN(usched_bsd4_sysctl_tree),
 			       OID_AUTO, "cache_coherent", CTLFLAG_RW,
 			       &usched_bsd4_cache_coherent, 0,
 			       "Enable/Disable cache coherent scheduling");
-#endif
 
 		SYSCTL_ADD_INT(&usched_bsd4_sysctl_ctx,
 			       SYSCTL_CHILDREN(usched_bsd4_sysctl_tree),
@@ -2105,4 +2095,3 @@ sched_sysctl_tree_init(void)
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
 	sched_sysctl_tree_init, NULL)
 #endif
-

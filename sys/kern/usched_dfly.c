@@ -213,7 +213,6 @@ static int usched_dfly_stick_to_level = 0;
 static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
 static int usched_dfly_decay = 8;
 static int usched_dfly_batch_time = 10;
-static long usched_dfly_kicks;
 
 /* KTR debug printings */
 
@@ -558,7 +557,7 @@ dfly_setrunqueue(struct lwp *lp)
 	if (rdd->uschedcp == NULL) {
 		spin_lock(&rdd->spin);
 		if (rdd->uschedcp == NULL) {
-			atomic_set_cpumask(&dfly_curprocmask, gd->gd_cpumask);
+			atomic_set_cpumask(&dfly_curprocmask, rgd->gd_cpumask);
 			rdd->uschedcp = lp;
 			rdd->upri = lp->lwp_priority;
 			spin_unlock(&rdd->spin);
@@ -1092,7 +1091,9 @@ static
 struct lwp *
 dfly_chooseproc_locked(dfly_pcpu_t dd, struct lwp *chklp, int isremote)
 {
+#ifdef SMP
 	dfly_pcpu_t xdd;
+#endif
 	struct lwp *lp;
 	struct rq *q;
 	u_int32_t *which, *which2;
@@ -1683,9 +1684,7 @@ dfly_helper_thread(void *dummy)
 			dd->rrcount = 0;	/* reset round robin */
 			spin_unlock(&dd->spin);
 			/*spin_unlock(&dfly_spin);*/
-#ifdef SMP
 			lwkt_acquire(nlp->lwp_thread);
-#endif
 			lwkt_schedule(nlp->lwp_thread);
 		} else {
 			spin_unlock(&dd->spin);
@@ -1708,9 +1707,7 @@ dfly_helper_thread(void *dummy)
 			dd->rrcount = 0;	/* reset round robin */
 			spin_unlock(&dd->spin);
 			/*spin_unlock(&dfly_spin);*/
-#ifdef SMP
 			lwkt_acquire(nlp->lwp_thread);
-#endif
 			lwkt_schedule(nlp->lwp_thread);
 		} else {
 			/*
@@ -1878,10 +1875,6 @@ dfly_helper_thread_cpu_init(void)
 		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
 		       OID_AUTO, "batch_time", CTLFLAG_RW,
 		       &usched_dfly_batch_time, 0, "Min batch counter value");
-	SYSCTL_ADD_LONG(&usched_dfly_sysctl_ctx,
-		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
-		       OID_AUTO, "kicks", CTLFLAG_RW,
-		       &usched_dfly_kicks, "Number of kickstarts");
 
 	/* Add enable/disable option for SMT scheduling if supported */
 	if (smt_not_supported) {
@@ -1903,23 +1896,19 @@ dfly_helper_thread_cpu_init(void)
 	 * if supported
 	 */
 	if (cache_coherent_not_supported) {
-#ifdef SMP
 		usched_dfly_cache_coherent = 0;
 		SYSCTL_ADD_STRING(&usched_dfly_sysctl_ctx,
 				  SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
 				  OID_AUTO, "cache_coherent", CTLFLAG_RD,
 				  "NOT SUPPORTED", 0,
 				  "Cache coherence NOT SUPPORTED");
-#endif
 	} else {
-#ifdef SMP
 		usched_dfly_cache_coherent = 1;
 		SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
 			       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
 			       OID_AUTO, "cache_coherent", CTLFLAG_RW,
 			       &usched_dfly_cache_coherent, 0,
 			       "Enable/Disable cache coherent scheduling");
-#endif
 
 		SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
 			       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
