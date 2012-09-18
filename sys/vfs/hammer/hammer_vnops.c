@@ -329,6 +329,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	int blksize;
 	int bigread;
 	int got_fstoken;
+	size_t resid;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
@@ -342,7 +343,9 @@ hammer_vop_read(struct vop_read_args *ap)
 	 * Attempt to shortcut directly to the VM object using lwbufs.
 	 * This is much faster than instantiating buffer cache buffers.
 	 */
+	resid = uio->uio_resid;
 	error = vop_helper_read_shortcut(ap);
+	hammer_stats_file_read += resid - uio->uio_resid;
 	if (error)
 		return (error);
 	if (uio->uio_resid == 0)
