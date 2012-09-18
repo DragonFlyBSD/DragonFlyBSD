@@ -222,6 +222,7 @@ KTR_INFO_MASTER(usched);
 #define	KTR_USCHED_DFLY	KTR_ALL
 #endif
 
+#if 0
 KTR_INFO(KTR_USCHED_DFLY, usched, dfly_acquire_curproc_urw, 0,
     "USCHED_DFLY(dfly_acquire_curproc in user_reseched_wanted "
     "after release: pid %d, cpuid %d, curr_cpuid %d)",
@@ -284,11 +285,13 @@ KTR_INFO(KTR_USCHED_DFLY, usched, dfly_setrunqueue_found_best_cpuid, 0,
     "mask %lu, found_cpuid %d, curr_cpuid %d)",
     pid_t pid, int cpuid, cpumask_t mask, int found_cpuid, int curr);
 #endif
+#endif
 
 KTR_INFO(KTR_USCHED_DFLY, usched, chooseproc, 0,
     "USCHED_DFLY(chooseproc: pid %d, old_cpuid %d, curr_cpuid %d)",
     pid_t pid, int old_cpuid, int curr);
 #ifdef SMP
+#if 0
 KTR_INFO(KTR_USCHED_DFLY, usched, chooseproc_cc, 0,
     "USCHED_DFLY(chooseproc_cc: pid %d, old_cpuid %d, curr_cpuid %d)",
     pid_t pid, int old_cpuid, int curr);
@@ -300,6 +303,7 @@ KTR_INFO(KTR_USCHED_DFLY, usched, chooseproc_cc_elected, 0,
     "USCHED_DFLY(chooseproc_cc elected: pid %d, old_cpumask %lu, "
     "sibling_mask %lu, curr_cpumask: %lu)",
     pid_t pid, cpumask_t old_cpumask, cpumask_t sibling_mask, cpumask_t curr);
+#endif
 
 KTR_INFO(KTR_USCHED_DFLY, usched, sched_thread_no_process, 0,
     "USCHED_DFLY(sched_thread %d no process scheduled: pid %d, old_cpuid %d)",
@@ -307,9 +311,11 @@ KTR_INFO(KTR_USCHED_DFLY, usched, sched_thread_no_process, 0,
 KTR_INFO(KTR_USCHED_DFLY, usched, sched_thread_process, 0,
     "USCHED_DFLY(sched_thread %d process scheduled: pid %d, old_cpuid %d)",
     int id, pid_t pid, int cpuid);
+#if 0
 KTR_INFO(KTR_USCHED_DFLY, usched, sched_thread_no_process_found, 0,
     "USCHED_DFLY(sched_thread %d no process found; tmpmask %lu)",
     int id, cpumask_t tmpmask);
+#endif
 #endif
 
 /*
