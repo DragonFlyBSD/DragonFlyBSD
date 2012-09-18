@@ -953,7 +953,7 @@ cpu_halt(void)
 static int	cpu_idle_hlt = 2;
 static int	cpu_idle_hltcnt;
 static int	cpu_idle_spincnt;
-static u_int	cpu_idle_repeat = 4;
+static u_int	cpu_idle_repeat = 750;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hltcnt, CTLFLAG_RW,
