@@ -525,7 +525,9 @@ dfly_select_curproc(globaldata_t gd)
 static void
 dfly_setrunqueue(struct lwp *lp)
 {
+#ifdef SMP
 	globaldata_t rgd;
+#endif
 	dfly_pcpu_t rdd;
 
 	/*
