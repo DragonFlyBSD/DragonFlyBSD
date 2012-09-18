@@ -481,6 +481,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	logtsleep2(tsleep_beg, ident);
 	gd = td->td_gd;
 	KKASSERT(td != &gd->gd_idlethread);	/* you must be kidding! */
+	td->td_wakefromcpu = gd->gd_cpuid;      /* overwritten by _wakeup */
 
 	/*
 	 * NOTE: all of this occurs on the current cpu, including any
@@ -545,6 +546,9 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 * Make sure the current process has been untangled from
 	 * the userland scheduler and initialize slptime to start
 	 * counting.
+	 *
+	 * NOTE: td->td_wakefromcpu is pre-set by the release function
+	 *	 for the dfly scheduler, and then adjusted by _wakeup()
 	 */
 	if (lp) {
 		p->p_usched->release_curproc(lp);
@@ -854,8 +858,8 @@ endtsleep(void *arg)
  * Make all processes sleeping on the specified identifier runnable.
  * count may be zero or one only.
  *
- * The domain encodes the sleep/wakeup domain AND the first cpu to check
- * (which is always the current cpu).  As we iterate across cpus
+ * The domain encodes the sleep/wakeup domain, flags, plus the originating
+ * cpu.
  *
  * This call may run without the MP lock held.  We can only manipulate thread
  * state on the cpu owning the thread.  We CANNOT manipulate process state
@@ -889,6 +893,7 @@ restart:
 		) {
 			KKASSERT(td->td_gd == gd);
 			_tsleep_remove(td);
+			td->td_wakefromcpu = PWAKEUP_DECODE(domain);
 			if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
 				lwkt_schedule(td);
 				if (domain & PWAKEUP_ONE)
@@ -943,7 +948,8 @@ void
 wakeup_one(const volatile void *ident)
 {
     /* XXX potentially round-robin the first responding cpu */
-    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid) | PWAKEUP_ONE);
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid) |
+			    PWAKEUP_ONE);
 }
 
 /*
@@ -953,7 +959,8 @@ wakeup_one(const volatile void *ident)
 void
 wakeup_mycpu(const volatile void *ident)
 {
-    _wakeup(__DEALL(ident), PWAKEUP_MYCPU);
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid) |
+			    PWAKEUP_MYCPU);
 }
 
 /*
@@ -964,7 +971,8 @@ void
 wakeup_mycpu_one(const volatile void *ident)
 {
     /* XXX potentially round-robin the first responding cpu */
-    _wakeup(__DEALL(ident), PWAKEUP_MYCPU|PWAKEUP_ONE);
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid) |
+			    PWAKEUP_MYCPU | PWAKEUP_ONE);
 }
 
 /*
@@ -975,10 +983,14 @@ void
 wakeup_oncpu(globaldata_t gd, const volatile void *ident)
 {
 #ifdef SMP
+    globaldata_t mygd = mycpu;
     if (gd == mycpu) {
-	_wakeup(__DEALL(ident), PWAKEUP_MYCPU);
+	_wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
+				PWAKEUP_MYCPU);
     } else {
-	lwkt_send_ipiq2(gd, _wakeup, __DEALL(ident), PWAKEUP_MYCPU);
+	lwkt_send_ipiq2(gd, _wakeup, __DEALL(ident),
+			PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
+			PWAKEUP_MYCPU);
     }
 #else
     _wakeup(__DEALL(ident), PWAKEUP_MYCPU);
@@ -993,10 +1005,13 @@ void
 wakeup_oncpu_one(globaldata_t gd, const volatile void *ident)
 {
 #ifdef SMP
-    if (gd == mycpu) {
-	_wakeup(__DEALL(ident), PWAKEUP_MYCPU | PWAKEUP_ONE);
+    globaldata_t mygd = mycpu;
+    if (gd == mygd) {
+	_wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
+				PWAKEUP_MYCPU | PWAKEUP_ONE);
     } else {
 	lwkt_send_ipiq2(gd, _wakeup, __DEALL(ident),
+			PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
 			PWAKEUP_MYCPU | PWAKEUP_ONE);
     }
 #else

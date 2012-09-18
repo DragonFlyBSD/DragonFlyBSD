@@ -284,7 +284,8 @@ struct thread {
 #else
     int		td_cscount_unused;
 #endif
-    int		td_unused02[4];	/* for future fields */
+    int		td_wakefromcpu;	/* who woke me up? */
+    int		td_unused02[3];	/* for future fields */
     int		td_unused03[4];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
