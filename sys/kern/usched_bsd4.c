@@ -203,7 +203,7 @@ static int usched_bsd4_batch_time = 10;
 
 /* KTR debug printings */
 
-KTR_INFO_MASTER(usched);
+KTR_INFO_MASTER_EXTERN(usched);
 
 #if !defined(KTR_USCHED_BSD4)
 #define	KTR_USCHED_BSD4	KTR_ALL
