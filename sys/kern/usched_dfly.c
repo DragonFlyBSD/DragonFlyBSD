@@ -90,6 +90,7 @@ int dfly_rebalanced;
 TAILQ_HEAD(rq, lwp);
 
 #define lwp_priority	lwp_usdata.dfly.priority
+#define lwp_forked	lwp_usdata.dfly.forked
 #define lwp_rqindex	lwp_usdata.dfly.rqindex
 #define lwp_estcpu	lwp_usdata.dfly.estcpu
 #define lwp_batch	lwp_usdata.dfly.batch
@@ -135,6 +136,9 @@ static void dfly_yield(struct lwp *lp);
 static dfly_pcpu_t dfly_choose_best_queue(struct lwp *lp);
 static dfly_pcpu_t dfly_choose_worst_queue(dfly_pcpu_t dd);
 static dfly_pcpu_t dfly_choose_queue_simple(dfly_pcpu_t dd, struct lwp *lp);
+#if 0
+static void dfly_wakeup_random_helper(dfly_pcpu_t notdd);
+#endif
 #endif
 
 #ifdef SMP
@@ -600,9 +604,25 @@ dfly_setrunqueue(struct lwp *lp)
 	 * target even if the current cpu has no running user thread (for
 	 * example, because the current cpu might be a hyperthread and its
 	 * sibling has a thread assigned).
+	 *
+	 * If we just forked it is most optimal to run the child on the same
+	 * cpu just in case the parent decides to wait for it (thus getting
+	 * off that cpu).  As long as there is nothing else runnable on the
+	 * cpu, that is.  If we did this unconditionally a parent forking
+	 * multiple children before waiting (e.g. make -j N) leaves other
+	 * cpus idle that could be working.
 	 */
 	/*spin_lock(&dfly_spin);*/
-	rdd = dfly_choose_best_queue(lp);
+	if (lp->lwp_forked) {
+		lp->lwp_forked = 0;
+		if (dfly_pcpu[lp->lwp_qcpu].runqcount)
+			rdd = dfly_choose_best_queue(lp);
+		else
+			rdd = &dfly_pcpu[lp->lwp_qcpu];
+		/* dfly_wakeup_random_helper(rdd); */
+	} else {
+		rdd = dfly_choose_best_queue(lp);
+	}
 	rgd = globaldata_find(rdd->cpuid);
 
 	/*
@@ -653,6 +673,50 @@ dfly_setrunqueue(struct lwp *lp)
 #endif
 	crit_exit();
 }
+
+#if 0
+
+/*
+ * This wakes up a random helper that might have no work on its cpu to do.
+ * The idea is to improve fork/fork-exec/fork-wait/exec and similar
+ * process-spawning sequences by first scheduling the forked process
+ * on the same cpu as the parent, in case the parent is just going to
+ * wait*().  But if the parent does not wait we want another cpu to pick
+ * the forked process up ASAP.
+ *
+ * The ipi/helper-scheduling sequence typically takes a lot longer to run
+ * than a return-from-procedure-call and the parent then entering a
+ * wait*().  There's a race here that we want the parent to win ONLY if
+ * it is going to wait*().
+ *
+ * If a process sticks around for long enough normal scheduling action
+ * will move it to the right place.
+ */
+static
+void
+dfly_wakeup_random_helper(dfly_pcpu_t notdd)
+{
+	cpumask_t tmpmask;
+	cpumask_t mask;
+	int cpuid;
+
+	mask = dfly_rdyprocmask & ~dfly_curprocmask & smp_active_mask &
+	       usched_global_cpumask & ~notdd->cpumask;
+	++dfly_scancpu;
+	cpuid = (dfly_scancpu & 0xFFFF) % ncpus;
+
+	if (mask) {
+		tmpmask = ~(CPUMASK(cpuid) - 1);
+		if (mask & tmpmask)
+			cpuid = BSFCPUMASK(mask & tmpmask);
+		else
+			cpuid = BSFCPUMASK(mask);
+		atomic_clear_cpumask(&dfly_rdyprocmask, CPUMASK(cpuid));
+		wakeup(&dfly_pcpu[cpuid].helper_thread);
+	}
+}
+
+#endif
 
 /*
  * This routine is called from a systimer IPI.  It MUST be MP-safe and
@@ -1032,6 +1096,7 @@ dfly_forking(struct lwp *plp, struct lwp *lp)
 	 * (less desireable than the parent).
 	 */
 	lp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + ESTCPUPPQ * 4);
+	lp->lwp_forked = 1;
 
 	/*
 	 * The batch status of children always starts out centerline
@@ -1442,6 +1507,7 @@ dfly_choose_queue_simple(dfly_pcpu_t dd, struct lwp *lp)
 	 * Fallback to the original heuristic, select random cpu,
 	 * first checking cpus not currently running a user thread.
 	 */
+	++dfly_scancpu;
 	cpuid = (dfly_scancpu & 0xFFFF) % ncpus;
 	mask = ~dfly_curprocmask & dfly_rdyprocmask & lp->lwp_cpumask &
 	       smp_active_mask & usched_global_cpumask;

@@ -61,7 +61,7 @@ union usched_data {
     } bsd4;
     struct {
 	short	priority;	/* lower is better */
-	char	unused01;	/* (currently not used) */
+	char	forked;		/* lock cpu during fork */
 	char	rqindex;
 	int	batch;		/* batch mode heuristic */
 	int	estcpu;		/* dynamic priority modification */
