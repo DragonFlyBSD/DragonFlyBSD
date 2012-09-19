@@ -211,7 +211,8 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_chooser, CTLFLAG_RW,
 static int usched_dfly_smt = 0;
 static int usched_dfly_cache_coherent = 0;
 static int usched_dfly_weight1 = 25;	/* thread's current cpu */
-static int usched_dfly_weight2 = 15;	/* synchronous peer's current cpu */
+static int usched_dfly_weight2 = 0;	/* synchronous peer's current cpu */
+					/* XXX can cause cpu flapping */
 static int usched_dfly_weight3 = 10;	/* number of threads on queue */
 static int usched_dfly_pull_enable = 1;	/* allow pulls */
 #endif
@@ -402,13 +403,18 @@ dfly_acquire_curproc(struct lwp *lp)
 			dd->uschedcp = lp;
 			dd->upri = lp->lwp_priority;
 			KKASSERT(lp->lwp_qcpu == dd->cpuid);
-		} else if (dd->uschedcp && dd->upri > lp->lwp_priority) {
+		} else if (dd->uschedcp && (dd->upri & ~PPQMASK) >
+					   (lp->lwp_priority & ~PPQMASK)) {
 			/*
 			 * We can steal the current cpu's lwp designation
 			 * away simply by replacing it.  The other thread
 			 * will stall when it tries to return to userland,
 			 * possibly rescheduling elsewhere when it calls
 			 * setrunqueue.
+			 *
+			 * It is important to do a masked test to avoid the
+			 * edge case where two near-equal-priority threads
+			 * are constantly interrupting each other.
 			 */
 			dd->uschedcp = lp;
 			dd->upri = lp->lwp_priority;
