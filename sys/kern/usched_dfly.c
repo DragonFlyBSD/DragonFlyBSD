@@ -146,7 +146,7 @@ static void dfly_wakeup_random_helper(dfly_pcpu_t notdd);
 static void dfly_need_user_resched_remote(void *dummy);
 #endif
 static struct lwp *dfly_chooseproc_locked(dfly_pcpu_t dd, struct lwp *chklp,
-					int isremote);
+					int foreign, int worst);
 static void dfly_remrunqueue_locked(dfly_pcpu_t dd, struct lwp *lp);
 static void dfly_setrunqueue_locked(dfly_pcpu_t dd, struct lwp *lp);
 
@@ -211,10 +211,9 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_chooser, CTLFLAG_RW,
 static int usched_dfly_smt = 0;
 static int usched_dfly_cache_coherent = 0;
 static int usched_dfly_weight1 = 25;	/* thread's current cpu */
-static int usched_dfly_weight2 = 0;	/* synchronous peer's current cpu */
-					/* XXX can cause cpu flapping */
+static int usched_dfly_weight2 = 15;	/* synchronous peer's current cpu */
 static int usched_dfly_weight3 = 10;	/* number of threads on queue */
-static int usched_dfly_pull_enable = 1;	/* allow pulls */
+static int usched_dfly_pull_enable = 7;	/* allow pulls */
 #endif
 static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
 static int usched_dfly_decay = 8;
@@ -509,7 +508,7 @@ dfly_select_curproc(globaldata_t gd)
 	crit_enter_gd(gd);
 
 	spin_lock(&dd->spin);
-	nlp = dfly_chooseproc_locked(dd, dd->uschedcp, 1);
+	nlp = dfly_chooseproc_locked(dd, dd->uschedcp, 0, 0);
 
 	if (nlp) {
 		atomic_set_cpumask(&dfly_curprocmask, CPUMASK(cpuid));
@@ -743,6 +742,12 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	dfly_pcpu_t dd = &dfly_pcpu[gd->gd_cpuid];
 
 	/*
+	 * Spinlocks also hold a critical section so there should not be
+	 * any active.
+	 */
+	KKASSERT(gd->gd_spinlocks_wr == 0);
+
+	/*
 	 * Do we need to round-robin?  We round-robin 10 times a second.
 	 * This should only occur for cpu-bound batch processes.
 	 */
@@ -752,17 +757,49 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	}
 
 	/*
-	 * Adjust estcpu upward using a real time equivalent calculation.
+	 * Adjust estcpu upward using a real time equivalent calculation,
+	 * and recalculate lp's priority.
 	 */
 	lp->lwp_estcpu = ESTCPULIM(lp->lwp_estcpu + ESTCPUMAX / ESTCPUFREQ + 1);
+	dfly_resetpriority(lp);
 
 	/*
-	 * Spinlocks also hold a critical section so there should not be
-	 * any active.
+	 * On each tick one cpu is selected and allowed to pull in a
+	 * higher-priority thread from a foreign cpu.  This serves two
+	 * purposes: (1) To load balance available cpus when the normal
+	 * setrunqueue 'push' is not sufficient, and (2) to allow excess
+	 * processes responsible for unbalancing the load to 'rove'.
+	 *
+	 * When queues are unbalanced
 	 */
-	KKASSERT(gd->gd_spinlocks_wr == 0);
+#ifdef SMP
+	if ((usched_dfly_pull_enable & 4) &&
+	    ((uint16_t)sched_ticks / usched_dfly_rrinterval) % ncpus ==
+	    gd->gd_cpuid) {
+		/*
+		 * Our cpu is up.
+		 */
+		struct lwp *nlp;
 
-	dfly_resetpriority(lp);
+		spin_lock(&dd->spin);
+		nlp = dfly_chooseproc_locked(dd, dd->uschedcp, 1, 1);
+		if (nlp) {
+			atomic_set_cpumask(&dfly_curprocmask, dd->cpumask);
+			dd->upri = nlp->lwp_priority;
+			dd->uschedcp = nlp;
+			dd->rrcount = 0;	/* reset round robin */
+			spin_unlock(&dd->spin);
+			lwkt_acquire(nlp->lwp_thread);
+			lwkt_schedule(nlp->lwp_thread);
+		} else {
+			/*
+			 * Our current thread (if any) is still the best
+			 * choice.
+			 */
+			spin_unlock(&dd->spin);
+		}
+	}
+#endif
 }
 
 /*
@@ -1139,6 +1176,17 @@ dfly_exiting(struct lwp *lp, struct proc *child_proc)
 		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_ULOAD);
 		atomic_add_int(&dd->uload,
 			       -((lp->lwp_priority & ~PPQMASK) & PRIMASK));
+
+		/*
+		 * The uload might have stopped the scheduler helper from
+		 * pulling in a process from another cpu, so kick it now
+		 * if we have to.
+		 */
+		if (dd->uschedcp == NULL &&
+		    (dfly_rdyprocmask & dd->cpumask)) {
+			atomic_clear_cpumask(&dfly_rdyprocmask, dd->cpumask);
+			wakeup(&dd->helper_thread);
+		}
 	}
 }
 
@@ -1177,16 +1225,17 @@ dfly_uload_update(struct lwp *lp)
  * Must be called with dd->spin locked.  The spinlock is left intact through
  * the entire routine.
  *
- * if chklp is NULL this function will dive other cpu's queues looking
- * for work if the current queue is empty.
+ * If foreign is non-null this function dives cpu queues that are NOT the
+ * current cpu's queue.
+ *
+ * If worst is non-zero this function finds the worst thread instead of the
+ * best thread (used by the schedulerclock-based rover).
  */
 static
 struct lwp *
-dfly_chooseproc_locked(dfly_pcpu_t dd, struct lwp *chklp, int isremote)
+dfly_chooseproc_locked(dfly_pcpu_t dd, struct lwp *chklp,
+		       int foreign, int worst)
 {
-#ifdef SMP
-	dfly_pcpu_t xdd;
-#endif
 	struct lwp *lp;
 	struct rq *q;
 	u_int32_t *which, *which2;
@@ -1195,44 +1244,22 @@ dfly_chooseproc_locked(dfly_pcpu_t dd, struct lwp *chklp, int isremote)
 	u_int32_t tsqbits;
 	u_int32_t idqbits;
 
-	rtqbits = dd->rtqueuebits;
-	tsqbits = dd->queuebits;
-	idqbits = dd->idqueuebits;
-
-	if (rtqbits) {
-		pri = bsfl(rtqbits);
-		q = &dd->rtqueues[pri];
-		which = &dd->rtqueuebits;
-		which2 = &rtqbits;
-	} else if (tsqbits) {
-		pri = bsfl(tsqbits);
-		q = &dd->queues[pri];
-		which = &dd->queuebits;
-		which2 = &tsqbits;
-	} else if (idqbits) {
-		pri = bsfl(idqbits);
-		q = &dd->idqueues[pri];
-		which = &dd->idqueuebits;
-		which2 = &idqbits;
-	} else
 #ifdef SMP
-	if (isremote || usched_dfly_pull_enable == 0) {
+	if (foreign) {
 		/*
-		 * Queue is empty, disallow remote->remote recursion and
-		 * do not pull if threads are active.
+		 * Pull a runnable thread from any cpu, adjust qcpu and
+		 * uload to account for the switch.  If we miss here we
+		 * will have to wait for another cpu to shove a process
+		 * our way.
 		 */
-		return (NULL);
-	} else {
-		/*
-		 * Pull a runnable thread from a remote run queue.  We have
-		 * to adjust qcpu and uload manually because the lp we return
-		 * might be assigned directly to uschedcp (setrunqueue might
-		 * not be called).
-		 */
+		dfly_pcpu_t xdd;
+
 		xdd = dfly_choose_worst_queue(dd);
 		if (xdd && xdd != dd && spin_trylock(&xdd->spin)) {
-			lp = dfly_chooseproc_locked(xdd, NULL, 1);
+			lp = dfly_chooseproc_locked(xdd, NULL, 0, worst);
 			if (lp) {
+				if (usched_dfly_pull_enable & 8)
+					kprintf("v");
 				if (lp->lwp_mpflags & LWP_MP_ULOAD) {
 					atomic_add_int(&xdd->uload,
 					    -((lp->lwp_priority & ~PPQMASK) &
@@ -1249,12 +1276,52 @@ dfly_chooseproc_locked(dfly_pcpu_t dd, struct lwp *chklp, int isremote)
 		}
 		return (lp);
 	}
-#else
-	{
-		return NULL;
-	}
 #endif
-	lp = TAILQ_FIRST(q);
+	rtqbits = dd->rtqueuebits;
+	tsqbits = dd->queuebits;
+	idqbits = dd->idqueuebits;
+
+	if (worst) {
+		if (idqbits) {
+			pri = bsfl(idqbits);
+			q = &dd->idqueues[pri];
+			which = &dd->idqueuebits;
+			which2 = &idqbits;
+		} else if (tsqbits) {
+			pri = bsfl(tsqbits);
+			q = &dd->queues[pri];
+			which = &dd->queuebits;
+			which2 = &tsqbits;
+		} else if (rtqbits) {
+			pri = bsfl(rtqbits);
+			q = &dd->rtqueues[pri];
+			which = &dd->rtqueuebits;
+			which2 = &rtqbits;
+		} else {
+			return (NULL);
+		}
+		lp = TAILQ_LAST(q, rq);
+	} else {
+		if (rtqbits) {
+			pri = bsfl(rtqbits);
+			q = &dd->rtqueues[pri];
+			which = &dd->rtqueuebits;
+			which2 = &rtqbits;
+		} else if (tsqbits) {
+			pri = bsfl(tsqbits);
+			q = &dd->queues[pri];
+			which = &dd->queuebits;
+			which2 = &tsqbits;
+		} else if (idqbits) {
+			pri = bsfl(idqbits);
+			q = &dd->idqueues[pri];
+			which = &dd->idqueuebits;
+			which2 = &idqbits;
+		} else {
+			return (NULL);
+		}
+		lp = TAILQ_FIRST(q);
+	}
 	KASSERT(lp, ("chooseproc: no lwp on busy queue"));
 
 	/*
@@ -1424,7 +1491,8 @@ dfly_choose_best_queue(struct lwp *lp)
 /*
  * USED TO PULL RUNNABLE LWPS FROM THE MOST LOADED CPU.
  *
- * Choose the worst queue close to dd's cpu node with a non-empty runq.
+ * Choose the worst queue close to dd's cpu node with a non-empty runq
+ * that is NOT dd.
  *
  * This is used by the thread chooser when the current cpu's queues are
  * empty to steal a thread from another cpu's queue.  We want to offload
@@ -1522,6 +1590,8 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 		}
 		cpup = cpub;
 	}
+	if (rdd == dd)		/* if dd was the worse, return NULL */
+		rdd = NULL;
 	return (rdd);
 }
 
@@ -1768,7 +1838,7 @@ dfly_helper_thread(void *dummy)
      */
     lwkt_setpri_self(TDPRI_USER_SCHEDULER);
 
-    tsleep(&dd->helper_thread, 0, "schslp", hz);
+    tsleep(&dd->helper_thread, 0, "schslp", 0);
 
     for (;;) {
 	/*
@@ -1785,18 +1855,14 @@ dfly_helper_thread(void *dummy)
 	clear_user_resched();	/* This satisfied the reschedule request */
 	dd->rrcount = 0;	/* Reset the round-robin counter */
 
-	if ((dfly_curprocmask & mask) == 0) {
+	if (dd->runqcount || dd->uschedcp != NULL) {
 		/*
-		 * No thread is currently scheduled.
+		 * Threads are available.  A thread may or may not be
+		 * currently scheduled.  Get the best thread already queued
+		 * to this cpu.
 		 */
-		KKASSERT(dd->uschedcp == NULL);
-		if ((nlp = dfly_chooseproc_locked(dd, NULL, 0)) != NULL) {
-			KTR_COND_LOG(usched_sched_thread_no_process,
-			    nlp->lwp_proc->p_pid == usched_dfly_pid_debug,
-			    gd->gd_cpuid,
-			    nlp->lwp_proc->p_pid,
-			    nlp->lwp_thread->td_gd->gd_cpuid);
-
+		nlp = dfly_chooseproc_locked(dd, dd->uschedcp, 0, 0);
+		if (nlp) {
 			atomic_set_cpumask(&dfly_curprocmask, mask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
@@ -1805,20 +1871,22 @@ dfly_helper_thread(void *dummy)
 			lwkt_acquire(nlp->lwp_thread);
 			lwkt_schedule(nlp->lwp_thread);
 		} else {
+			/*
+			 * This situation should not occur because we had
+			 * at least one thread available.
+			 */
 			spin_unlock(&dd->spin);
 		}
-	} else if (dd->runqcount) {
+	} else if ((usched_dfly_pull_enable & 1) &&
+		   ((usched_dfly_pull_enable & 2) == 0 ||
+		    dd->uload < MAXPRI / 4)) {
 		/*
-		 * Possibly find a better process to schedule.
+		 * This cpu is devoid of runnable threads, steal a thread
+		 * from another cpu.
 		 */
-		nlp = dfly_chooseproc_locked(dd, dd->uschedcp, 0);
+		nlp = dfly_chooseproc_locked(dd, NULL, 1, 0);
 		if (nlp) {
-			KTR_COND_LOG(usched_sched_thread_process,
-			    nlp->lwp_proc->p_pid == usched_dfly_pid_debug,
-			    gd->gd_cpuid,
-			    nlp->lwp_proc->p_pid,
-			    nlp->lwp_thread->td_gd->gd_cpuid);
-
+			atomic_set_cpumask(&dfly_curprocmask, mask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 			dd->rrcount = 0;	/* reset round robin */
@@ -1834,7 +1902,8 @@ dfly_helper_thread(void *dummy)
 		}
 	} else {
 		/*
-		 * The runq is empty.
+		 * devoid of runnable threads and not allowed to steal
+		 * any.
 		 */
 		spin_unlock(&dd->spin);
 	}
@@ -1845,7 +1914,7 @@ dfly_helper_thread(void *dummy)
 	 * for us if interrupts and such are pending.
 	 */
 	crit_exit_gd(gd);
-	tsleep(&dd->helper_thread, PINTERLOCKED, "schslp", hz);
+	tsleep(&dd->helper_thread, PINTERLOCKED, "schslp", 0);
     }
 }
 
