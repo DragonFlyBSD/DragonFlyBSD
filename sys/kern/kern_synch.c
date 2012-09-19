@@ -600,14 +600,19 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		 * Ok, we are sleeping.  Place us in the SSLEEP state.
 		 */
 		KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
+
 		/*
 		 * tstop() sets LSSTOP, so don't fiddle with that.
 		 */
 		if (lp->lwp_stat != LSSTOP)
 			lp->lwp_stat = LSSLEEP;
 		lp->lwp_ru.ru_nvcsw++;
-		p->p_usched->uload_update(lp);
+		if (gd->gd_sleeping_lwp)
+			p->p_usched->uload_update(gd->gd_sleeping_lwp);
+		gd->gd_sleeping_lwp = lp;
 		lwkt_switch();
+		if (gd->gd_sleeping_lwp == lp)
+			gd->gd_sleeping_lwp = NULL;
 		p->p_usched->uload_update(lp);
 
 		/*

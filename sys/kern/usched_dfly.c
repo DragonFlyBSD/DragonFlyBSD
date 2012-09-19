@@ -124,6 +124,7 @@ static void dfly_acquire_curproc(struct lwp *lp);
 static void dfly_release_curproc(struct lwp *lp);
 static void dfly_select_curproc(globaldata_t gd);
 static void dfly_setrunqueue(struct lwp *lp);
+static void dfly_setrunqueue_dd(dfly_pcpu_t rdd, struct lwp *lp);
 static void dfly_schedulerclock(struct lwp *lp, sysclock_t period,
 				sysclock_t cpstamp);
 static void dfly_recalculate_estcpu(struct lwp *lp);
@@ -183,7 +184,6 @@ static cpumask_t dfly_curprocmask = -1;	/* currently running a user process */
 static cpumask_t dfly_rdyprocmask;	/* ready to accept a user process */
 #ifdef SMP
 static volatile int dfly_scancpu;
-/*static struct spinlock dfly_spin = SPINLOCK_INITIALIZER(dfly_spin);*/
 #endif
 static struct usched_dfly_pcpu dfly_pcpu[MAXCPU];
 static struct sysctl_ctx_list usched_dfly_sysctl_ctx;
@@ -210,9 +210,10 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_chooser, CTLFLAG_RW,
 #ifdef SMP
 static int usched_dfly_smt = 0;
 static int usched_dfly_cache_coherent = 0;
-static int usched_dfly_weight1 = 10;
-static int usched_dfly_weight2 = 5;
-static int usched_dfly_stick_to_level = 0;
+static int usched_dfly_weight1 = 25;	/* thread's current cpu */
+static int usched_dfly_weight2 = 15;	/* synchronous peer's current cpu */
+static int usched_dfly_weight3 = 10;	/* number of threads on queue */
+static int usched_dfly_pull_enable = 1;	/* allow pulls */
 #endif
 static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
 static int usched_dfly_decay = 8;
@@ -341,6 +342,7 @@ dfly_acquire_curproc(struct lwp *lp)
 {
 	globaldata_t gd;
 	dfly_pcpu_t dd;
+	dfly_pcpu_t rdd;
 	thread_t td;
 
 	/*
@@ -386,6 +388,12 @@ dfly_acquire_curproc(struct lwp *lp)
 			 * We are already the current lwp (hot path).
 			 */
 			dd->upri = lp->lwp_priority;
+		} else if ((rdd = dfly_choose_best_queue(lp)) != dd) {
+			lwkt_deschedule(lp->lwp_thread);
+			dfly_setrunqueue_dd(rdd, lp);
+			lwkt_switch();
+			gd = mycpu;
+			dd = &dfly_pcpu[gd->gd_cpuid];
 		} else if (dd->uschedcp == NULL) {
 			/*
 			 * We can trivially become the current lwp.
@@ -413,14 +421,12 @@ dfly_acquire_curproc(struct lwp *lp)
 			 *
 			 * When we are reactivated we will have another
 			 * chance.
-			 */
-			lwkt_deschedule(lp->lwp_thread);
-			dfly_setrunqueue(lp);
-
-			/*
+			 *
 			 * Reload after a switch or setrunqueue/switch possibly
 			 * moved us to another cpu.
 			 */
+			lwkt_deschedule(lp->lwp_thread);
+			dfly_setrunqueue_dd(dd, lp);
 			lwkt_switch();
 			gd = mycpu;
 			dd = &dfly_pcpu[gd->gd_cpuid];
@@ -449,7 +455,6 @@ dfly_acquire_curproc(struct lwp *lp)
  * Additionally, note that we may already be on a run queue if releasing
  * via the lwkt_switch() in dfly_setrunqueue().
  */
-
 static void
 dfly_release_curproc(struct lwp *lp)
 {
@@ -463,14 +468,14 @@ dfly_release_curproc(struct lwp *lp)
 	lp->lwp_thread->td_wakefromcpu = gd->gd_cpuid;
 
 	if (dd->uschedcp == lp) {
-		crit_enter();
+		spin_lock(&dd->spin);
 		KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
 
 		dd->uschedcp = NULL;	/* don't let lp be selected */
 		dd->upri = PRIBASE_NULL;
 		atomic_clear_cpumask(&dfly_curprocmask, gd->gd_cpumask);
+		spin_unlock(&dd->spin);
 		dfly_select_curproc(gd);
-		crit_exit();
 	}
 }
 
@@ -497,9 +502,8 @@ dfly_select_curproc(globaldata_t gd)
 
 	crit_enter_gd(gd);
 
-	/*spin_lock(&dfly_spin);*/
 	spin_lock(&dd->spin);
-	nlp = dfly_chooseproc_locked(dd, dd->uschedcp, 0);
+	nlp = dfly_chooseproc_locked(dd, dd->uschedcp, 1);
 
 	if (nlp) {
 		atomic_set_cpumask(&dfly_curprocmask, CPUMASK(cpuid));
@@ -507,14 +511,12 @@ dfly_select_curproc(globaldata_t gd)
 		dd->uschedcp = nlp;
 		dd->rrcount = 0;		/* reset round robin */
 		spin_unlock(&dd->spin);
-		/*spin_unlock(&dfly_spin);*/
 #ifdef SMP
 		lwkt_acquire(nlp->lwp_thread);
 #endif
 		lwkt_schedule(nlp->lwp_thread);
 	} else {
 		spin_unlock(&dd->spin);
-		/*spin_unlock(&dfly_spin);*/
 	}
 	crit_exit_gd(gd);
 }
@@ -529,15 +531,11 @@ dfly_select_curproc(globaldata_t gd)
 static void
 dfly_setrunqueue(struct lwp *lp)
 {
-#ifdef SMP
-	globaldata_t rgd;
-#endif
 	dfly_pcpu_t rdd;
 
 	/*
 	 * First validate the process LWKT state.
 	 */
-	crit_enter();
 	KASSERT(lp->lwp_stat == LSRUN, ("setrunqueue: lwp not LSRUN"));
 	KASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0,
 	    ("lwp %d/%d already on runq! flag %08x/%08x", lp->lwp_proc->p_pid,
@@ -578,21 +576,10 @@ dfly_setrunqueue(struct lwp *lp)
 			rdd->upri = lp->lwp_priority;
 			spin_unlock(&rdd->spin);
 			lwkt_schedule(lp->lwp_thread);
-			crit_exit();
 			return;
 		}
 		spin_unlock(&rdd->spin);
 	}
-#endif
-
-#ifdef SMP
-	/*
-	 * XXX fixme.  Could be part of a remrunqueue/setrunqueue
-	 * operation when the priority is recalculated, so TDF_MIGRATING
-	 * may already be set.
-	 */
-	if ((lp->lwp_thread->td_flags & TDF_MIGRATING) == 0)
-		lwkt_giveaway(lp->lwp_thread);
 #endif
 
 #ifdef SMP
@@ -612,7 +599,6 @@ dfly_setrunqueue(struct lwp *lp)
 	 * multiple children before waiting (e.g. make -j N) leaves other
 	 * cpus idle that could be working.
 	 */
-	/*spin_lock(&dfly_spin);*/
 	if (lp->lwp_forked) {
 		lp->lwp_forked = 0;
 		if (dfly_pcpu[lp->lwp_qcpu].runqcount)
@@ -622,20 +608,41 @@ dfly_setrunqueue(struct lwp *lp)
 		/* dfly_wakeup_random_helper(rdd); */
 	} else {
 		rdd = dfly_choose_best_queue(lp);
+		/* rdd = &dfly_pcpu[lp->lwp_qcpu]; */
 	}
+#endif
+	dfly_setrunqueue_dd(rdd, lp);
+}
+
+static void
+dfly_setrunqueue_dd(dfly_pcpu_t rdd, struct lwp *lp)
+{
+#ifdef SMP
+	globaldata_t rgd;
+
+	/*
+	 * We might be moving the lp to another cpu's run queue, and once
+	 * on the runqueue (even if it is our cpu's), another cpu can rip
+	 * it away from us.
+	 *
+	 * TDF_MIGRATING might already be set if this is part of a
+	 * remrunqueue+setrunqueue sequence.
+	 */
+	if ((lp->lwp_thread->td_flags & TDF_MIGRATING) == 0)
+		lwkt_giveaway(lp->lwp_thread);
+
 	rgd = globaldata_find(rdd->cpuid);
 
 	/*
-	 * We lose control of lp the moment we release the spinlock after
-	 * having placed lp on the queue.  i.e. another cpu could pick it
-	 * up and it could exit, or its priority could be further adjusted,
-	 * or something like that.
+	 * We lose control of the lp the moment we release the spinlock
+	 * after having placed it on the queue.  i.e. another cpu could pick
+	 * it up, or it could exit, or its priority could be further
+	 * adjusted, or something like that.
 	 *
-	 * WARNING! dd can point to a foreign cpu!
+	 * WARNING! rdd can point to a foreign cpu!
 	 */
 	spin_lock(&rdd->spin);
 	dfly_setrunqueue_locked(rdd, lp);
-	/*spin_unlock(&dfly_spin);*/
 
 	if (rgd == mycpu) {
 		if ((rdd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
@@ -671,7 +678,6 @@ dfly_setrunqueue(struct lwp *lp)
 		need_user_resched();
 	}
 #endif
-	crit_exit();
 }
 
 #if 0
@@ -922,6 +928,7 @@ dfly_resetpriority(struct lwp *lp)
 	 */
 	for (;;) {
 		rcpu = lp->lwp_qcpu;
+		cpu_ccfence();
 		rdd = &dfly_pcpu[rcpu];
 		spin_lock(&rdd->spin);
 		if (rcpu == lp->lwp_qcpu)
@@ -1129,6 +1136,9 @@ dfly_exiting(struct lwp *lp, struct proc *child_proc)
 	}
 }
 
+/*
+ * This function cannot block in any way
+ */
 static void
 dfly_uload_update(struct lwp *lp)
 {
@@ -1158,8 +1168,8 @@ dfly_uload_update(struct lwp *lp)
  * Until we fix the RUNQ code the chklp test has to be strict or we may
  * bounce between processes trying to acquire the current process designation.
  *
- * Must be called with dfly_spin exclusive held.  The spinlock is
- * left intact through the entire routine.
+ * Must be called with dd->spin locked.  The spinlock is left intact through
+ * the entire routine.
  *
  * if chklp is NULL this function will dive other cpu's queues looking
  * for work if the current queue is empty.
@@ -1200,9 +1210,10 @@ dfly_chooseproc_locked(dfly_pcpu_t dd, struct lwp *chklp, int isremote)
 		which2 = &idqbits;
 	} else
 #ifdef SMP
-	if (isremote) {
+	if (isremote || usched_dfly_pull_enable == 0) {
 		/*
-		 * Disallow remote->remote recursion
+		 * Queue is empty, disallow remote->remote recursion and
+		 * do not pull if threads are active.
 		 */
 		return (NULL);
 	} else {
@@ -1302,9 +1313,9 @@ dfly_choose_best_queue(struct lwp *lp)
 	dfly_pcpu_t rdd;
 	int cpuid;
 	int n;
+	int count;
 	int load;
 	int lowest_load;
-	int level;
 
 	/*
 	 * When the topology is unknown choose a random cpu that is hopefully
@@ -1319,7 +1330,6 @@ dfly_choose_best_queue(struct lwp *lp)
 	 */
 	cpup = root_cpu_node;
 	rdd = dd1;
-	level = cpu_topology_levels_number;
 
 	while (cpup) {
 		/*
@@ -1327,7 +1337,6 @@ dfly_choose_best_queue(struct lwp *lp)
 		 */
 		if (cpup->child_node && cpup->child_no == 1) {
 			cpup = cpup->child_node;
-			--level;
 			continue;
 		}
 
@@ -1352,20 +1361,40 @@ dfly_choose_best_queue(struct lwp *lp)
 			       smp_active_mask & lp->lwp_cpumask;
 			if (mask == 0)
 				continue;
-			load = 0;
+
+			/*
+			 * Compensate if the lp is already accounted for in
+			 * the aggregate uload for this mask set.  We want
+			 * to calculate the loads as if lp was not present.
+			 */
+			if ((lp->lwp_mpflags & LWP_MP_ULOAD) &&
+			    CPUMASK(lp->lwp_qcpu) & mask) {
+				load = -((lp->lwp_priority & ~PPQMASK) &
+				         PRIMASK);
+			} else {
+				load = 0;
+			}
+
+			count = 0;
 			while (mask) {
 				cpuid = BSFCPUMASK(mask);
 				load += dfly_pcpu[cpuid].uload;
+				load += dfly_pcpu[cpuid].runqcount *
+					usched_dfly_weight3;
 				mask &= ~CPUMASK(cpuid);
+				++count;
 			}
+			load /= count;
 
 			/*
-			 * Give a slight advantage to nearby cpus.
+			 * Give a slight advantage to the cpu groups (lp)
+			 * belongs to, and a very slight advantage to the
+			 * cpu groups our synchronous partner belongs to.
 			 */
 			if (cpun->members & dd1->cpumask)
-				load -= PPQ * level * usched_dfly_weight1 / 10;
+				load -= usched_dfly_weight1;
 			else if (cpun->members & dd2->cpumask)
-				load -= PPQ * level * usched_dfly_weight2 / 10;
+				load -= usched_dfly_weight2;
 
 			/*
 			 * Calculate the best load
@@ -1379,7 +1408,6 @@ dfly_choose_best_queue(struct lwp *lp)
 			}
 		}
 		cpup = cpub;
-		--level;
 	}
 	if (usched_dfly_chooser)
 		kprintf("lp %02d->%02d %s\n",
@@ -1407,10 +1435,9 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 	dfly_pcpu_t rdd;
 	int cpuid;
 	int n;
+	int count;
 	int load;
 	int highest_load;
-	int uloadok;
-	int level;
 
 	/*
 	 * When the topology is unknown choose a random cpu that is hopefully
@@ -1426,14 +1453,12 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 	 */
 	cpup = root_cpu_node;
 	rdd = dd;
-	level = cpu_topology_levels_number;
 	while (cpup) {
 		/*
 		 * Degenerate case super-root
 		 */
 		if (cpup->child_node && cpup->child_no == 1) {
 			cpup = cpup->child_node;
-			--level;
 			continue;
 		}
 
@@ -1458,38 +1483,38 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 			       smp_active_mask;
 			if (mask == 0)
 				continue;
+			count = 0;
 			load = 0;
-			uloadok = 0;
 			while (mask) {
 				cpuid = BSFCPUMASK(mask);
 				load += dfly_pcpu[cpuid].uload;
-				if (dfly_pcpu[cpuid].uload)
-					uloadok = 1;
+				load += dfly_pcpu[cpuid].runqcount *
+					usched_dfly_weight3;
 				mask &= ~CPUMASK(cpuid);
+				++count;
 			}
+			load /= count;
 
 			/*
 			 * Give a slight advantage to nearby cpus.
 			 */
 			if (cpun->members & dd->cpumask)
-				load += PPQ * level;
+				load += usched_dfly_weight1;
 
 			/*
 			 * The best candidate is the one with the worst
 			 * (highest) load.  Prefer candiates that are
 			 * closer to our cpu.
 			 */
-			if (uloadok &&
-			    (cpub == NULL || highest_load < load ||
+			if (cpub == NULL || highest_load < load ||
 			     (highest_load == load &&
-			      (cpun->members & dd->cpumask)))
+			      (cpun->members & dd->cpumask))
 			) {
 				highest_load = load;
 				cpub = cpun;
 			}
 		}
 		cpup = cpub;
-		--level;
 	}
 	return (rdd);
 }
@@ -1737,7 +1762,7 @@ dfly_helper_thread(void *dummy)
      */
     lwkt_setpri_self(TDPRI_USER_SCHEDULER);
 
-    tsleep(&dd->helper_thread, 0, "schslp", 0);
+    tsleep(&dd->helper_thread, 0, "schslp", hz);
 
     for (;;) {
 	/*
@@ -1748,7 +1773,6 @@ dfly_helper_thread(void *dummy)
 	crit_enter_gd(gd);
 	tsleep_interlock(&dd->helper_thread, 0);
 
-	/*spin_lock(&dfly_spin);*/
 	spin_lock(&dd->spin);
 
 	atomic_set_cpumask(&dfly_rdyprocmask, mask);
@@ -1772,12 +1796,10 @@ dfly_helper_thread(void *dummy)
 			dd->uschedcp = nlp;
 			dd->rrcount = 0;	/* reset round robin */
 			spin_unlock(&dd->spin);
-			/*spin_unlock(&dfly_spin);*/
 			lwkt_acquire(nlp->lwp_thread);
 			lwkt_schedule(nlp->lwp_thread);
 		} else {
 			spin_unlock(&dd->spin);
-			/*spin_unlock(&dfly_spin);*/
 		}
 	} else if (dd->runqcount) {
 		/*
@@ -1795,7 +1817,6 @@ dfly_helper_thread(void *dummy)
 			dd->uschedcp = nlp;
 			dd->rrcount = 0;	/* reset round robin */
 			spin_unlock(&dd->spin);
-			/*spin_unlock(&dfly_spin);*/
 			lwkt_acquire(nlp->lwp_thread);
 			lwkt_schedule(nlp->lwp_thread);
 		} else {
@@ -1804,14 +1825,12 @@ dfly_helper_thread(void *dummy)
 			 * scheduler will try to pull it later.
 			 */
 			spin_unlock(&dd->spin);
-			/*spin_unlock(&dfly_spin);*/
 		}
 	} else {
 		/*
 		 * The runq is empty.
 		 */
 		spin_unlock(&dd->spin);
-		/*spin_unlock(&dfly_spin);*/
 	}
 
 	/*
@@ -1820,11 +1839,11 @@ dfly_helper_thread(void *dummy)
 	 * for us if interrupts and such are pending.
 	 */
 	crit_exit_gd(gd);
-	tsleep(&dd->helper_thread, PINTERLOCKED, "schslp", 0);
+	tsleep(&dd->helper_thread, PINTERLOCKED, "schslp", hz);
     }
 }
 
-/* sysctl stick_to_level parameter */
+#if 0
 static int
 sysctl_usched_dfly_stick_to_level(SYSCTL_HANDLER_ARGS)
 {
@@ -1840,6 +1859,7 @@ sysctl_usched_dfly_stick_to_level(SYSCTL_HANDLER_ARGS)
 	usched_dfly_stick_to_level = new_val;
 	return (0);
 }
+#endif
 
 /*
  * Setup our scheduler helpers.  Note that curprocmask bit 0 has already
@@ -2011,6 +2031,20 @@ dfly_helper_thread_cpu_init(void)
 			       &usched_dfly_weight2, 5,
 			       "Weight selection for wakefrom cpu");
 
+		SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
+			       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
+			       OID_AUTO, "weight3", CTLFLAG_RW,
+			       &usched_dfly_weight3, 50,
+			       "Weight selection for num threads on queue");
+
+		SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
+			       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
+			       OID_AUTO, "pull_enable", CTLFLAG_RW,
+			       &usched_dfly_pull_enable, 1,
+			       "Allow pulls into empty queues");
+
+
+#if 0
 		SYSCTL_ADD_PROC(&usched_dfly_sysctl_ctx,
 				SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
 				OID_AUTO, "stick_to_level",
@@ -2019,6 +2053,7 @@ dfly_helper_thread_cpu_init(void)
 				sysctl_usched_dfly_stick_to_level, "I",
 				"Stick a process to this level. See sysctl"
 				"paremter hw.cpu_topology.level_description");
+#endif
 	}
 }
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
