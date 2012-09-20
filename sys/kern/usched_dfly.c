@@ -226,18 +226,32 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_chooser, CTLFLAG_RW,
  *	     For heavier loads, '35' is a good setting which will still
  *	     be fairly optimal at lighter loads.
  *
- *	     For extreme loads, '55' is a good setting because you want to
- *	     force the pairs together.
+ *	     For extreme loads you can try a higher value like '55', or you
+ *	     can actually force dispersal by setting a small negative value
+ *	     like -15.
  *
  *	     15: Fewer threads.
  *	     35: Heavily loaded.	(default)
- *	     50: Very heavily loaded.
+ *	     50: Very heavily loaded.	(not recommended)
+ *	     -15: Extreme loads
  *
  * weight3 - Weighting based on the number of runnable threads on the
  *	     userland scheduling queue and ignoring their loads.
  *	     A nominal value here prevents high-priority (low-load)
  *	     threads from accumulating on one cpu core when other
  *	     cores are available.
+ *
+ * features - These flags can be set or cleared to enable or disable various
+ *	      features.
+ *
+ *	      0x01	Pull when cpu becomes idle		(default)
+ *	      0x02
+ *	      0x04	Enable rebalancing rover		(default)
+ *	      0x08
+ *	      0x10
+ *	      0x20	choose best cpu for forked process
+ *	      0x40	choose current cpu for forked process
+ *	      0x80	choose random cpu for forked process	(default)
  */
 #ifdef SMP
 static int usched_dfly_smt = 0;
@@ -245,7 +259,7 @@ static int usched_dfly_cache_coherent = 0;
 static int usched_dfly_weight1 = 50;	/* keep thread on current cpu */
 static int usched_dfly_weight2 = 35;	/* synchronous peer's current cpu */
 static int usched_dfly_weight3 = 10;	/* number of threads on queue */
-static int usched_dfly_features = 15;	/* allow pulls */
+static int usched_dfly_features = 0x8F;	/* allow pulls */
 #endif
 static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
 static int usched_dfly_decay = 8;
@@ -685,11 +699,16 @@ dfly_setrunqueue(struct lwp *lp)
 	 */
 	if (lp->lwp_forked) {
 		lp->lwp_forked = 0;
-		if (dfly_pcpu[lp->lwp_qcpu].runqcount)
+		if (usched_dfly_features & 0x20)
+			rdd = dfly_choose_best_queue(lp);
+		else if (usched_dfly_features & 0x40)
+			rdd = &dfly_pcpu[lp->lwp_qcpu];
+		else if (usched_dfly_features & 0x80)
+			rdd = dfly_choose_queue_simple(rdd, lp);
+		else if (dfly_pcpu[lp->lwp_qcpu].runqcount)
 			rdd = dfly_choose_best_queue(lp);
 		else
 			rdd = &dfly_pcpu[lp->lwp_qcpu];
-		/* dfly_wakeup_random_helper(rdd); */
 	} else {
 		rdd = dfly_choose_best_queue(lp);
 		/* rdd = &dfly_pcpu[lp->lwp_qcpu]; */
