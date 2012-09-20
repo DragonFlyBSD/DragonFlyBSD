@@ -36,6 +36,7 @@
  */
 
 #include <sys/user.h>
+#include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/queue.h>
@@ -202,7 +203,7 @@ static const VAR var[] = {
 	{"user", "USER", NULL, LJUST|DSIZ, uname, s_uname, USERLEN, 0, 0, NULL, NULL},
 	{"vsize", "", "vsz", 0, 0, NULL, 0, 0, 0, NULL, NULL},
 	{"vsz", "VSZ", NULL, 0, vsize, NULL, 6, 0, 0, NULL, NULL},
-	{"wchan", "WCHAN", NULL, LJUST, wchan, NULL, 6, 0, 0, NULL, NULL},
+	{"wchan", "WCHAN", NULL, LJUST, wchan, NULL, WMESGLEN, 0, 0, NULL, NULL},
 	{"xstat", "XSTAT", NULL, 0, pvar, NULL, 7, POFF(exitstat), USHORT, "x", NULL},
 	{"", NULL, NULL, 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 };

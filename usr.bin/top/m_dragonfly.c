@@ -90,16 +90,16 @@ struct handle {
  */
 
 static char smp_header[] =
-"  PID %-*.*s NICE  SIZE   PRES   STATE CPU  TIME   CTIME    CPU COMMAND";
+"  PID %-*.*s NICE  SIZE   PRES    STATE CPU  TIME   CTIME    CPU COMMAND";
 
 #define smp_Proc_format \
-	"%5d %-*.*s %3d%7s %6s %7.7s %2d %6s %7s %5.2f%% %.*s"
+	"%5d %-*.*s %3d%7s %6s %8.8s %2d %6s %7s %5.2f%% %.*s"
 
 static char up_header[] =
-"  PID %-*.*s NICE  SIZE   PRES   STATE    TIME   CTIME    CPU COMMAND";
+"  PID %-*.*s NICE  SIZE   PRES    STATE    TIME   CTIME    CPU COMMAND";
 
 #define up_Proc_format \
-	"%5d %-*.*s %3d%7s %6s %7.7s%.0d %7s %7s %5.2f%% %.*s"
+	"%5d %-*.*s %3d%7s %6s %8.8s%.0d %7s %7s %5.2f%% %.*s"
 
 
 /* process state names for the "STATE" column of the display */
@@ -577,7 +577,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 		break;
 	case LSSLEEP:
 		if (LP(pp, wmesg) != NULL) {
-			sprintf(status, "%.6s", LP(pp, wmesg));
+			sprintf(status, "%.8s", LP(pp, wmesg)); /* WMESGLEN */
 			break;
 		}
 		/* fall through */
