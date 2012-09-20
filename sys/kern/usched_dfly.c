@@ -741,14 +741,17 @@ dfly_setrunqueue_dd(dfly_pcpu_t rdd, struct lwp *lp)
 			spin_unlock(&rdd->spin);
 		}
 	} else {
-		atomic_clear_cpumask(&dfly_rdyprocmask, rgd->gd_cpumask);
 		if ((rdd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
 			spin_unlock(&rdd->spin);
 			lwkt_send_ipiq(rgd, dfly_need_user_resched_remote,
 				       NULL);
-		} else {
+		} else if (dfly_rdyprocmask & rgd->gd_cpumask) {
+			atomic_clear_cpumask(&dfly_rdyprocmask,
+					     rgd->gd_cpumask);
 			spin_unlock(&rdd->spin);
 			wakeup(&rdd->helper_thread);
+		} else {
+			spin_unlock(&rdd->spin);
 		}
 	}
 #else
@@ -1212,7 +1215,12 @@ dfly_forking(struct lwp *plp, struct lwp *lp)
 
 /*
  * Called when a lwp is being removed from this scheduler, typically
- * during lwp_exit().
+ * during lwp_exit().  We have to clean out any ULOAD accounting before
+ * we can let the lp go.  The dd->spin lock is not needed for uload
+ * updates.
+ *
+ * Scheduler dequeueing has already occurred, no further action in that
+ * regard is needed.
  */
 static void
 dfly_exiting(struct lwp *lp, struct proc *child_proc)
@@ -1223,26 +1231,16 @@ dfly_exiting(struct lwp *lp, struct proc *child_proc)
 		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_ULOAD);
 		atomic_add_int(&dd->uload,
 			       -((lp->lwp_priority & ~PPQMASK) & PRIMASK));
-
-		/*
-		 * The uload might have stopped the scheduler helper from
-		 * pulling in a process from another cpu, so kick it now
-		 * if we have to.
-		 */
-		if (dd->uschedcp == NULL &&
-		    (dfly_rdyprocmask & dd->cpumask) &&
-		    (usched_dfly_features & 0x01) &&
-		    ((usched_dfly_features & 0x02) == 0 ||
-		     dd->uload < MAXPRI / 4))
-		{
-			atomic_clear_cpumask(&dfly_rdyprocmask, dd->cpumask);
-			wakeup(&dd->helper_thread);
-		}
 	}
 }
 
 /*
- * This function cannot block in any way
+ * This function cannot block in any way.
+ *
+ * Update the uload based on the state of the thread (whether it is going
+ * to sleep or running again).  Keep a one-entry cache of retained uload
+ * for the last thread that had gone to sleep.  This cache prevents uload
+ * from dropping when threads block for extremely short periods of time.
  */
 static void
 dfly_uload_update(struct lwp *lp)
@@ -1913,9 +1911,7 @@ dfly_helper_thread(void *dummy)
 			 */
 			spin_unlock(&dd->spin);
 		}
-	} else if ((usched_dfly_features & 0x01) &&
-		   ((usched_dfly_features & 0x02) == 0 ||
-		    dd->uload < MAXPRI / 4)) {
+	} else if (usched_dfly_features & 0x01) {
 		/*
 		 * This cpu is devoid of runnable threads, steal a thread
 		 * from another cpu.  Since we're stealing, might as well
