@@ -1200,6 +1200,28 @@ lwkt_yield(void)
 }
 
 /*
+ * The quick version processes pending interrupts and higher-priority
+ * LWKT threads but will not round-robin same-priority LWKT threads.
+ */
+void
+lwkt_yield_quick(void)
+{
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
+
+    if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2)
+	splz();
+    if (lwkt_resched_wanted()) {
+	if (TAILQ_FIRST(&gd->gd_tdrunq) == td) {
+	    clear_lwkt_resched();
+	} else {
+	    lwkt_schedule_self(curthread);
+	    lwkt_switch();
+	}
+    }
+}
+
+/*
  * This yield is designed for kernel threads with a user context.
  *
  * The kernel acting on behalf of the user is potentially cpu-bound,
