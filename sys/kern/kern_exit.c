@@ -711,7 +711,9 @@ lwp_exit(int masterexit)
  * switchout.
  *
  * At the point TDF_EXITING is set a complete exit is accomplished when
- * TDF_RUNNING and TDF_PREEMPT_LOCK are both clear.
+ * TDF_RUNNING and TDF_PREEMPT_LOCK are both clear.  td_mpflags has two
+ * post-switch interlock flags that can be used to wait for the TDF_
+ * flags to clear.
  *
  * Returns non-zero on success, and zero if the caller needs to retry
  * the lwp_wait().
@@ -720,47 +722,59 @@ static int
 lwp_wait(struct lwp *lp)
 {
 	struct thread *td = lp->lwp_thread;;
+	u_int mpflags;
 
 	KKASSERT(lwkt_preempted_proc() != lp);
 
 	/*
-	 * Wait until the lp has entered its low level exit and wait
-	 * until other cores with refs on the lp (e.g. for ps or signaling)
-	 * release them.
+	 * This bit of code uses the thread destruction interlock
+	 * managed by lwkt_switch_return() to wait for the lwp's
+	 * thread to completely disengage.
+	 *
+	 * It is possible for us to race another cpu core so we
+	 * have to do this correctly.
+	 */
+	for (;;) {
+		mpflags = td->td_mpflags;
+		cpu_ccfence();
+		if (mpflags & TDF_MP_EXITSIG)
+			break;
+		tsleep_interlock(td, 0);
+		if (atomic_cmpset_int(&td->td_mpflags, mpflags,
+				      mpflags | TDF_MP_EXITWAIT)) {
+			tsleep(td, PINTERLOCKED, "lwpxt", 0);
+		}
+	}
+
+	/*
+	 * We've already waited for the core exit but there can still
+	 * be other refs from e.g. process scans and such.
 	 */
 	if (lp->lwp_lock > 0) {
 		tsleep(lp, 0, "lwpwait1", 1);
 		return(0);
 	}
-
-	/*
-	 * Wait until the thread is no longer references and no longer
-	 * runnable or preempted (i.e. finishes its low level exit).
-	 */
 	if (td->td_refs) {
 		tsleep(td, 0, "lwpwait2", 1);
 		return(0);
 	}
 
 	/*
-	 * The lwp's thread may still be in the middle
-	 * of switching away, we can't rip its stack out from
-	 * under it until TDF_EXITING is set and both
-	 * TDF_RUNNING and TDF_PREEMPT_LOCK are clear.
-	 * TDF_PREEMPT_LOCK must be checked because TDF_RUNNING
-	 * will be cleared temporarily if a thread gets
-	 * preempted.
+	 * Now that we have the thread destruction interlock these flags
+	 * really should already be cleaned up, keep a check for safety.
 	 *
-	 * YYY no wakeup occurs, so we simply return failure
-	 * and let the caller deal with sleeping and calling
-	 * us again.
+	 * We can't rip its stack out from under it until TDF_EXITING is
+	 * set and both TDF_RUNNING and TDF_PREEMPT_LOCK are clear.
+	 * TDF_PREEMPT_LOCK must be checked because TDF_RUNNING
+	 * will be cleared temporarily if a thread gets preempted.
 	 */
-	if ((td->td_flags & (TDF_RUNNING |
-			     TDF_PREEMPT_LOCK |
-			     TDF_EXITING)) != TDF_EXITING) {
-		tsleep(lp, 0, "lwpwait2", 1);
+	while ((td->td_flags & (TDF_RUNNING |
+			        TDF_PREEMPT_LOCK |
+			        TDF_EXITING)) != TDF_EXITING) {
+		tsleep(lp, 0, "lwpwait3", 1);
 		return (0);
 	}
+
 	KASSERT((td->td_flags & (TDF_RUNQ|TDF_TSLEEPQ)) == 0,
 		("lwp_wait: td %p (%s) still on run or sleep queue",
 		td, td->td_comm));

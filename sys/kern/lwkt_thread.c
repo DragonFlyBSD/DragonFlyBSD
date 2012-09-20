@@ -977,6 +977,31 @@ lwkt_switch_return(thread_t otd)
 #else
 	otd->td_flags &= ~TDF_RUNNING;
 #endif
+
+	/*
+	 * Final exit validations (see lwp_wait()).  Note that otd becomes
+	 * invalid the *instant* we set TDF_MP_EXITSIG.
+	 */
+	while (otd->td_flags & TDF_EXITING) {
+		u_int mpflags;
+
+		mpflags = otd->td_mpflags;
+		cpu_ccfence();
+
+		if (mpflags & TDF_MP_EXITWAIT) {
+			if (atomic_cmpset_int(&otd->td_mpflags, mpflags,
+					      mpflags | TDF_MP_EXITSIG)) {
+				wakeup(otd);
+				break;
+			}
+		} else {
+			if (atomic_cmpset_int(&otd->td_mpflags, mpflags,
+					      mpflags | TDF_MP_EXITSIG)) {
+				wakeup(otd);
+				break;
+			}
+		}
+	}
 }
 
 /*
