@@ -84,10 +84,13 @@ struct ktr_header {
 	lwpid_t ktr_tid;		/* lwp id */
 	char	ktr_comm[MAXCOMLEN+1];	/* command name */
 	struct	timeval ktr_time;	/* timestamp */
-	caddr_t	ktr_buf;
+	caddr_t ktr_buf;
 };
 
 #define KTRH_THREADED	0x0001		/* multiple threads present */
+
+#define KTRH_CPUID_ENCODE(cpuid)	(((cpuid) & 0xFF) << 8)
+#define KTRH_CPUID_DECODE(flags)	(((flags) >> 8) & 0xFF)
 
 /*
  * Test for kernel trace point (MP SAFE)
@@ -110,9 +113,9 @@ struct ktr_syscall {
 	short	ktr_code;		/* syscall number */
 	short	ktr_narg;		/* number of arguments */
 	/*
-	 * followed by ktr_narg register_t
+	 * Followed by ktr_narg register_t (can be more than 8)
 	 */
-	register_t	ktr_args[1];
+	register_t	ktr_args[8];
 };
 
 /*
