@@ -41,7 +41,7 @@
 .Nd display kernel trace data
 .Sh SYNOPSIS
 .Nm
-.Op Fl djnlRT
+.Op Fl acdjnlRT
 .Op Fl f Ar file
 .Op Fl m Ar maxdata
 .Op Fl t Op cnisuw
@@ -58,6 +58,14 @@ in the current directory is displayed.
 .Pp
 The options are as follows:
 .Bl -tag -width Fl
+.It Fl a
+Display full human readable output.
+This option turns on
+.Fl c
+and
+.Fl R .
+.It Fl c
+Display the cpu the thread is executing on.
 .It Fl d
 Display all numbers in decimal.
 .It Fl j
