@@ -137,7 +137,7 @@ struct globaldata {
 	struct lwkt_ipiq *gd_ipiq;		/* array[ncpu] of ipiq's */
 	struct lwkt_ipiq gd_cpusyncq;		/* ipiq for cpu synchro */
 	u_int		gd_npoll;		/* ipiq synchronization */
-	int		gd_unused01;
+	int		gd_tdrunqcount;
 	struct thread	gd_unused02B;
 	struct thread	gd_idlethread;
 	SLGlobalData	gd_slab;		/* slab allocator */
@@ -166,8 +166,7 @@ struct globaldata {
 	int		gd_ireserved[7];
 	const char	*gd_infomsg;		/* debugging */
 	struct lwkt_tokref gd_handoff;		/* hand-off tokref */
-	struct lwp	*gd_sleeping_lwp;
-	void		*gd_preserved[7];	/* future fields */
+	void		*gd_preserved[8];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 

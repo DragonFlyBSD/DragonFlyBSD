@@ -144,6 +144,24 @@ usched_ctl(struct usched *usched, int action)
 }
 
 /*
+ * Called from the scheduler clock on each cpu independently at the
+ * common scheduling rate.  If th scheduler clock interrupted a running
+ * lwp the lp will be non-NULL.
+ */
+void
+usched_schedulerclock(struct lwp *lp, sysclock_t periodic, sysclock_t time)
+{
+	struct usched *item;
+
+	TAILQ_FOREACH(item, &usched_list, entry) {
+		if (lp && lp->lwp_proc->p_usched == item)
+			item->schedulerclock(lp, periodic, time);
+		else
+			item->schedulerclock(NULL, periodic, time);
+	}
+}
+
+/*
  * USCHED_SET(syscall)
  *
  * SYNOPSIS:

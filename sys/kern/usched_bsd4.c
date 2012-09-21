@@ -920,6 +920,10 @@ found:
  * the BGL IS NOT HELD ON ENTRY.  This routine is called at ESTCPUFREQ on
  * each cpu.
  *
+ * This routine is called on every sched tick.  If the currently running
+ * thread belongs to this scheduler it will be called with a non-NULL lp,
+ * otherwise it will be called with a NULL lp.
+ *
  * MPSAFE
  */
 static
@@ -928,6 +932,12 @@ bsd4_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 {
 	globaldata_t gd = mycpu;
 	bsd4_pcpu_t dd = &bsd4_pcpu[gd->gd_cpuid];
+
+	/*
+	 * No impl if no lp running.
+	 */
+	if (lp == NULL)
+		return;
 
 	/*
 	 * Do we need to round-robin?  We round-robin 10 times a second.
@@ -950,13 +960,6 @@ bsd4_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	KKASSERT(gd->gd_spinlocks_wr == 0);
 
 	bsd4_resetpriority(lp);
-#if 0
-	/*
-	* if we can't call bsd4_resetpriority for some reason we must call
-	 * need user_resched().
-	 */
-	need_user_resched();
-#endif
 }
 
 /*

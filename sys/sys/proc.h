@@ -401,6 +401,7 @@ struct	proc {
 #define LWP_MP_WEXIT	0x0000002 /* working on exiting */
 #define	LWP_MP_WSTOP	0x0000004 /* working on stopping */
 #define	LWP_MP_ULOAD	0x0000008 /* uload accounting for current cpu */
+#define	LWP_MP_RRFORCE	0x0000010 /* forced resched due to rrcount */
 
 #define	FIRST_LWP_IN_PROC(p)		RB_FIRST(lwp_rb_tree, &(p)->p_lwp_tree)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\

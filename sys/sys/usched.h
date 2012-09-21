@@ -99,6 +99,7 @@ extern int sched_ticks; /* From sys/kern/kern_clock.c */
 
 int usched_ctl(struct usched *, int);
 struct usched *usched_init(void);
+void usched_schedulerclock(struct lwp *, sysclock_t, sysclock_t);
 
 #endif
 

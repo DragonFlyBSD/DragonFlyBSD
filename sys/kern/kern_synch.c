@@ -216,8 +216,11 @@ schedcpu_stats(struct proc *p, void *data __unused)
 
 	p->p_swtime++;
 	FOREACH_LWP_IN_PROC(lp, p) {
-		if (lp->lwp_stat == LSSLEEP)
-			lp->lwp_slptime++;
+		if (lp->lwp_stat == LSSLEEP) {
+			++lp->lwp_slptime;
+			if (lp->lwp_slptime == 1)
+				p->p_usched->uload_update(lp);
+		}
 
 		/*
 		 * Only recalculate processes that are active or have slept
@@ -481,7 +484,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	logtsleep2(tsleep_beg, ident);
 	gd = td->td_gd;
 	KKASSERT(td != &gd->gd_idlethread);	/* you must be kidding! */
-	td->td_wakefromcpu = gd->gd_cpuid;      /* overwritten by _wakeup */
+	td->td_wakefromcpu = -1;		/* overwritten by _wakeup */
 
 	/*
 	 * NOTE: all of this occurs on the current cpu, including any
@@ -607,21 +610,18 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		if (lp->lwp_stat != LSSTOP)
 			lp->lwp_stat = LSSLEEP;
 		lp->lwp_ru.ru_nvcsw++;
-		if (gd->gd_sleeping_lwp)
-			p->p_usched->uload_update(gd->gd_sleeping_lwp);
-		gd->gd_sleeping_lwp = lp;
-		lwkt_switch();
-		if (gd->gd_sleeping_lwp == lp)
-			gd->gd_sleeping_lwp = NULL;
 		p->p_usched->uload_update(lp);
+		lwkt_switch();
 
 		/*
 		 * And when we are woken up, put us back in LSRUN.  If we
 		 * slept for over a second, recalculate our estcpu.
 		 */
 		lp->lwp_stat = LSRUN;
-		if (lp->lwp_slptime)
+		if (lp->lwp_slptime) {
+			p->p_usched->uload_update(lp);
 			p->p_usched->recalculate(lp);
+		}
 		lp->lwp_slptime = 0;
 	} else {
 		lwkt_switch();

@@ -316,23 +316,15 @@ dummy_setrunqueue(struct lwp *lp)
 }
 
 /*
- * This routine is called from a systimer IPI.  Thus it is called with 
- * a critical section held.  Any spinlocks we get here that are also
- * obtained in other procedures must be proected by a critical section
- * in those other procedures to avoid a deadlock.
- *
- * The MP lock may or may not be held on entry and cannot be obtained
- * by this routine (because it is called from a systimer IPI).  Additionally,
- * because this is equivalent to a FAST interrupt, spinlocks cannot be used
- * (or at least, you have to check that gd_spin* counts are 0 before you
- * can).
+ * This routine is called from a systimer IPI.  It must NEVER block.
+ * If a lwp compatible with this scheduler is the currently running
+ * thread this function is called with a non-NULL lp, otherwise it
+ * will be called with a NULL lp.
  *
  * This routine is called at ESTCPUFREQ on each cpu independantly.
  *
  * This routine typically queues a reschedule request, which will cause
  * the scheduler's BLAH_select_curproc() to be called as soon as possible.
- *
- * MPSAFE
  */
 static
 void
@@ -340,6 +332,9 @@ dummy_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 {
 	globaldata_t gd = mycpu;
 	dummy_pcpu_t dd = &dummy_pcpu[gd->gd_cpuid];
+
+	if (lp == NULL)
+		return;
 
 	if (++dd->rrcount >= usched_dummy_rrinterval) {
 		dd->rrcount = 0;

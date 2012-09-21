@@ -781,8 +781,9 @@ schedclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 		 * HERE.
 		 */
 		++lp->lwp_cpticks;
-		lp->lwp_proc->p_usched->schedulerclock(lp, info->periodic,
-						       info->time);
+		usched_schedulerclock(lp, info->periodic, info->time);
+	} else {
+		usched_schedulerclock(NULL, info->periodic, info->time);
 	}
 	if ((lp = curthread->td_lwp) != NULL) {
 		/*

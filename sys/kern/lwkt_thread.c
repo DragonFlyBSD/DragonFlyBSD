@@ -238,6 +238,7 @@ _lwkt_dequeue(thread_t td)
 
 	td->td_flags &= ~TDF_RUNQ;
 	TAILQ_REMOVE(&gd->gd_tdrunq, td, td_threadq);
+	--gd->gd_tdrunqcount;
 	if (TAILQ_FIRST(&gd->gd_tdrunq) == NULL)
 		atomic_clear_int(&gd->gd_reqflags, RQF_RUNNING);
     }
@@ -271,6 +272,7 @@ _lwkt_enqueue(thread_t td)
 	    else
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
 	}
+	++gd->gd_tdrunqcount;
 
 	/*
 	 * Request a LWKT reschedule if we are now at the head of the queue.
@@ -1227,6 +1229,10 @@ lwkt_yield(void)
 /*
  * The quick version processes pending interrupts and higher-priority
  * LWKT threads but will not round-robin same-priority LWKT threads.
+ *
+ * When called while attempting to return to userland the only same-pri
+ * threads are the ones which have already tried to become the current
+ * user process.
  */
 void
 lwkt_yield_quick(void)
