@@ -210,11 +210,16 @@ state(const KINFO *k, const struct varent *vent)
 				*cp = 'D';	/* uninterruptable wait */
 			else
 				*cp = 'B';	/* uninterruptable lwkt wait */
-			break;
+			/*break;*/
 
 		case LSRUN:
-			*cp = 'R';
-			if (KI_LWP(k, tdflags) & (TDF_RUNNING | TDF_RUNQ)) {
+			if (KI_LWP(k, stat) == LSRUN) {
+				*cp = 'R';
+				if (!(KI_LWP(k, tdflags) &
+				    (TDF_RUNNING | TDF_RUNQ)))
+					*++cp = 'Q';
+			}
+			/*if (KI_LWP(k, tdflags) & (TDF_RUNNING | TDF_RUNQ))*/ {
 			    ++cp;
 			    sprintf(cp, "%d", KI_LWP(k, cpuid));
 			    while (cp[1])
