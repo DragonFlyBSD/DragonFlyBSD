@@ -247,7 +247,7 @@ dumpheader(struct ktr_header *kth)
 	else
 		col = printf("%5d", kth->ktr_pid);
 	if (cpustamp)
-		col += printf(" %d", KTRH_CPUID_DECODE(kth->ktr_flags));
+		col += printf(" %2d", KTRH_CPUID_DECODE(kth->ktr_flags));
 	col += printf(" %-8.*s ", MAXCOMLEN, kth->ktr_comm);
 	if (timestamp) {
 		if (timestamp == 2) {
