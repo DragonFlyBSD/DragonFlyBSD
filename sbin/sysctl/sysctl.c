@@ -552,7 +552,15 @@ set_IK(const char *str, int *val)
 			temp = (temp - 32) * 5 / 9;
 		kelv = temp * 10 + 2732;
 	} else {
-		kelv = (int)strtol(str, &endptr, 10);
+		/*
+		 * I would like to just use, 0 but it would make numbers
+		 * like '023' which were interpreted as decimal before
+		 * suddenly interpreted as octal.
+		 */
+		if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X'))
+			kelv = (int)strtol(str, &endptr, 0);
+		else
+			kelv = (int)strtol(str, &endptr, 10);
 		if (endptr == str || *endptr != '\0')
 			return 0;
 	}
