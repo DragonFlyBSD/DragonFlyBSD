@@ -90,7 +90,6 @@ static __int64_t switch_count = 0;
 static __int64_t preempt_hit = 0;
 static __int64_t preempt_miss = 0;
 static __int64_t preempt_weird = 0;
-static __int64_t token_contention_count[TDPRI_MAX+1] __debugvar;
 static int lwkt_use_spin_port;
 static struct objcache *thread_cache;
 
@@ -122,72 +121,6 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0,
     "Failed preemption events");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0,
     "Number of preempted threads.");
-#ifdef	INVARIANTS
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_00, CTLFLAG_RW,
-	&token_contention_count[0], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_01, CTLFLAG_RW,
-	&token_contention_count[1], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_02, CTLFLAG_RW,
-	&token_contention_count[2], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_03, CTLFLAG_RW,
-	&token_contention_count[3], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_04, CTLFLAG_RW,
-	&token_contention_count[4], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_05, CTLFLAG_RW,
-	&token_contention_count[5], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_06, CTLFLAG_RW,
-	&token_contention_count[6], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_07, CTLFLAG_RW,
-	&token_contention_count[7], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_08, CTLFLAG_RW,
-	&token_contention_count[8], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_09, CTLFLAG_RW,
-	&token_contention_count[9], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_10, CTLFLAG_RW,
-	&token_contention_count[10], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_11, CTLFLAG_RW,
-	&token_contention_count[11], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_12, CTLFLAG_RW,
-	&token_contention_count[12], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_13, CTLFLAG_RW,
-	&token_contention_count[13], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_14, CTLFLAG_RW,
-	&token_contention_count[14], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_15, CTLFLAG_RW,
-	&token_contention_count[15], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_16, CTLFLAG_RW,
-	&token_contention_count[16], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_17, CTLFLAG_RW,
-	&token_contention_count[17], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_18, CTLFLAG_RW,
-	&token_contention_count[18], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_19, CTLFLAG_RW,
-	&token_contention_count[19], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_20, CTLFLAG_RW,
-	&token_contention_count[20], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_21, CTLFLAG_RW,
-	&token_contention_count[21], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_22, CTLFLAG_RW,
-	&token_contention_count[22], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_23, CTLFLAG_RW,
-	&token_contention_count[23], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_24, CTLFLAG_RW,
-	&token_contention_count[24], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_25, CTLFLAG_RW,
-	&token_contention_count[25], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_26, CTLFLAG_RW,
-	&token_contention_count[26], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_27, CTLFLAG_RW,
-	&token_contention_count[27], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_28, CTLFLAG_RW,
-	&token_contention_count[28], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_29, CTLFLAG_RW,
-	&token_contention_count[29], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_30, CTLFLAG_RW,
-	&token_contention_count[30], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_31, CTLFLAG_RW,
-	&token_contention_count[31], 0, "spinning due to token contention");
-#endif
 static int fairq_enable = 0;
 SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW,
 	&fairq_enable, 0, "Turn on fairq priority accumulators");
@@ -765,9 +698,9 @@ lwkt_switch(void)
 	 * the next tick whenever the current head is not the current thread.
 	 */
 #ifdef	INVARIANTS
-	++token_contention_count[ntd->td_pri];
 	++ntd->td_contended;
 #endif
+	++gd->gd_cnt.v_token_colls;
 
 	if (fairq_bypass > 0)
 		goto skip;
@@ -793,9 +726,9 @@ lwkt_switch(void)
 			goto havethread;
 		}
 #ifdef	INVARIANTS
-		++token_contention_count[ntd->td_pri];
 		++ntd->td_contended;
 #endif
+		++gd->gd_cnt.v_token_colls;
 	}
 
 skip:

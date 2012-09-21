@@ -84,8 +84,6 @@ showvmm(void)
 		DRAW_ROW(n, CPU_START + i, 8, "%*u", D(i, v_ipi));
 		DRAW_ROW(n, CPU_START + i, 8, "%*u", D(i, v_intr));
 
-#undef D
-
 #define CPUD(dif, idx, field) \
 do { \
 	dif.cp_##field = vmm_cptime_cur[idx].cp_##field - \
@@ -110,7 +108,9 @@ do { \
 		DRAW_ROW(n, CPU_START + i, 7, "%*.1f", CPUV(d, sys));
 		DRAW_ROW(n, CPU_START + i, 7, "%*.1f", CPUV(d, intr));
 		DRAW_ROW(n, CPU_START + i, 7, "%*.1f", CPUV(d, idle));
+		DRAW_ROW(n, CPU_START + i, 8, "%*u", D(i, v_token_colls));
 
+#undef D
 #undef CPUV
 #undef CPUD
 #define CPUC(idx, field) vmm_cptime_cur[idx].cp_##field
@@ -155,6 +155,7 @@ labelvmm(void)
 	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "sys%");
 	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "intr%");
 	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "idle%");
+	DRAW_ROW(n, CPU_START - 1, 8, "%*s", "tokcol");
 
 	for (i = 0; i < vmm_ncpus; ++i)
 		mvprintw(CPU_START + i, X_START, "cpu%d", i);
