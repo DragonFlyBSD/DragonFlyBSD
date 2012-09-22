@@ -370,6 +370,8 @@ void	wakeup_oncpu (struct globaldata *gd, const volatile void *chan);
 void	wakeup_oncpu_one (struct globaldata *gd, const volatile void *chan);
 void	wakeup_domain (const volatile void *chan, int domain);
 void	wakeup_domain_one (const volatile void *chan, int domain);
+void	wakeup_start_delayed(void);
+void	wakeup_end_delayed(void);
 
 /*
  * Common `cdev_t' stuff are declared here to avoid #include poisoning

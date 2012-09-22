@@ -166,7 +166,8 @@ struct globaldata {
 	int		gd_ireserved[7];
 	const char	*gd_infomsg;		/* debugging */
 	struct lwkt_tokref gd_handoff;		/* hand-off tokref */
-	void		*gd_preserved[8];	/* future fields */
+	void		*gd_delayed_wakeup[2];
+	void		*gd_preserved[6];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 

@@ -453,6 +453,8 @@ uipc_send(netmsg_t msg)
 		goto release;
 	}
 
+	wakeup_start_delayed();
+
 	if (control && (error = unp_internalize(control, msg->send.nm_td)))
 		goto release;
 
@@ -582,9 +584,9 @@ uipc_send(netmsg_t msg)
 
 	if (control && error != 0)
 		unp_dispose(control);
-
 release:
 	lwkt_relpooltoken(unp);
+	wakeup_end_delayed();
 done:
 
 	if (control)

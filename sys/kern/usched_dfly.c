@@ -252,10 +252,10 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_chooser, CTLFLAG_RW,
 #ifdef SMP
 static int usched_dfly_smt = 0;
 static int usched_dfly_cache_coherent = 0;
-static int usched_dfly_weight1 = 30;	/* keep thread on current cpu */
-static int usched_dfly_weight2 = 15;	/* synchronous peer's current cpu */
+static int usched_dfly_weight1 = 50;	/* keep thread on current cpu */
+static int usched_dfly_weight2 = 30;	/* synchronous peer's current cpu */
 static int usched_dfly_weight3 = 10;	/* number of threads on queue */
-static int usched_dfly_weight4 = 50;	/* availability of idle cores */
+static int usched_dfly_weight4 = 40;	/* availability of idle cores */
 static int usched_dfly_features = 0x8F;	/* allow pulls */
 #endif
 static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;

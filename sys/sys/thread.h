@@ -371,7 +371,7 @@ struct thread {
 #define TDF_EXITING		0x00400000	/* thread exiting */
 #define TDF_USINGFP		0x00800000	/* thread using fp coproc */
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */
-#define TDF_UNUSED02000000	0x02000000
+#define TDF_DELAYED_WAKEUP	0x02000000
 #define TDF_CRYPTO		0x04000000	/* crypto thread */
 
 #define TDF_MP_STOPREQ		0x00000001	/* suspend_kproc */

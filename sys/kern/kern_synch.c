@@ -463,6 +463,14 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	struct callout thandle;
 
 	/*
+	 * Currently a severe hack.  Make sure any delayed wakeups
+	 * are flushed before we sleep or we might deadlock on whatever
+	 * event we are sleeping on.
+	 */
+	if (td->td_flags & TDF_DELAYED_WAKEUP)
+		wakeup_end_delayed();
+
+	/*
 	 * NOTE: removed KTRPOINT, it could cause races due to blocking
 	 * even in stable.  Just scrap it for now.
 	 */
@@ -943,7 +951,17 @@ done:
 void
 wakeup(const volatile void *ident)
 {
-    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid));
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
+
+    if (td && (td->td_flags & TDF_DELAYED_WAKEUP)) {
+	if (!atomic_cmpset_ptr(&gd->gd_delayed_wakeup[0], NULL, ident)) {
+	    if (!atomic_cmpset_ptr(&gd->gd_delayed_wakeup[1], NULL, ident))
+		_wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, gd->gd_cpuid));
+	}
+	return;
+    }
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, gd->gd_cpuid));
 }
 
 /*
@@ -1044,6 +1062,38 @@ wakeup_domain_one(const volatile void *ident, int domain)
     /* XXX potentially round-robin the first responding cpu */
     _wakeup(__DEALL(ident),
 	    PWAKEUP_ENCODE(domain, mycpu->gd_cpuid) | PWAKEUP_ONE);
+}
+
+void
+wakeup_start_delayed(void)
+{
+    globaldata_t gd = mycpu;
+
+    crit_enter();
+    gd->gd_curthread->td_flags |= TDF_DELAYED_WAKEUP;
+    crit_exit();
+}
+
+void
+wakeup_end_delayed(void)
+{
+    globaldata_t gd = mycpu;
+
+    if (gd->gd_curthread->td_flags & TDF_DELAYED_WAKEUP) {
+	crit_enter();
+	gd->gd_curthread->td_flags &= ~TDF_DELAYED_WAKEUP;
+	if (gd->gd_delayed_wakeup[0] || gd->gd_delayed_wakeup[1]) {
+	    if (gd->gd_delayed_wakeup[0]) {
+		    wakeup(gd->gd_delayed_wakeup[0]);
+		    gd->gd_delayed_wakeup[0] = NULL;
+	    }
+	    if (gd->gd_delayed_wakeup[1]) {
+		    wakeup(gd->gd_delayed_wakeup[1]);
+		    gd->gd_delayed_wakeup[1] = NULL;
+	    }
+	}
+	crit_exit();
+    }
 }
 
 /*
