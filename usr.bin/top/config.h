@@ -5,7 +5,7 @@
 /* #undef DEBUG */
 
 /* Default delay */
-#define DEFAULT_DELAY 5
+#define DEFAULT_DELAY 2
 
 /* Default number of processes to display */
 #define DEFAULT_TOPN 30
