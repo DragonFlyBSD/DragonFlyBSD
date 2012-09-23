@@ -469,7 +469,7 @@ lgue_start_ipifunc(void *arg)
 	lmsg = &ifp->if_start_nmsg[mycpuid].lmsg;
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(ifnet_portfn(mycpuid), lmsg);
+		lwkt_sendmsg(netisr_portfn(mycpuid), lmsg);
 	crit_exit();
 }
 
