@@ -140,6 +140,7 @@ struct iopoll_ctx {
 	uint32_t		pending_polls;		/* state */
 
 	struct netmsg_base	poll_netmsg;
+	struct netmsg_base	poll_more_netmsg;
 
 	int			poll_cpuid;
 	int			pollhz;
@@ -148,15 +149,13 @@ struct iopoll_ctx {
 	uint32_t		poll_each_burst;	/* tunable */
 	union ifpoll_time	poll_start_t;		/* state */
 
-	uint32_t		poll_handlers; /* next free entry in pr[]. */
-	struct iopoll_rec	pr[IFPOLL_LIST_LEN];
-
-	struct netmsg_base	poll_more_netmsg;
-
 	uint32_t		poll_burst;		/* state */
 	uint32_t		poll_burst_max;		/* tunable */
 	uint32_t		user_frac;		/* tunable */
 	uint32_t		kern_frac;		/* state */
+
+	uint32_t		poll_handlers; /* next free entry in pr[]. */
+	struct iopoll_rec	pr[IFPOLL_LIST_LEN];
 
 	struct sysctl_ctx_list	poll_sysctl_ctx;
 	struct sysctl_oid	*poll_sysctl_tree;
@@ -299,7 +298,7 @@ sched_iopollmore(struct iopoll_ctx *io_ctx)
 static __inline void
 ifpoll_time_get(union ifpoll_time *t)
 {
-	if (tsc_present)
+	if (__predict_true(tsc_present))
 		t->tsc = rdtsc();
 	else
 		microuptime(&t->tv);
@@ -309,7 +308,7 @@ ifpoll_time_get(union ifpoll_time *t)
 static __inline int
 ifpoll_time_diff(const union ifpoll_time *s, const union ifpoll_time *e)
 {
-	if (tsc_present) {
+	if (__predict_true(tsc_present)) {
 		return (((e->tsc - s->tsc) * 1000000) / tsc_frequency);
 	} else {
 		return ((e->tv.tv_usec - s->tv.tv_usec) +
