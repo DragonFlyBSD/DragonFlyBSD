@@ -245,7 +245,7 @@ if_start_ipifunc(void *arg)
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(ifnet_portfn(mycpuid), lmsg);
+		lwkt_sendmsg(netisr_portfn(mycpuid), lmsg);
 	crit_exit();
 }
 
@@ -351,7 +351,7 @@ check:
 		crit_enter();
 		if (lmsg->ms_flags & MSGF_DONE)	{ /* XXX necessary? */
 			logifstart(sched, ifp);
-			lwkt_sendmsg(ifnet_portfn(mycpuid), lmsg);
+			lwkt_sendmsg(netisr_portfn(mycpuid), lmsg);
 		}
 		crit_exit();
 	}
