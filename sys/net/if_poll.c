@@ -133,10 +133,10 @@ struct iopoll_rec {
 
 struct iopoll_ctx {
 	union ifpoll_time	prev_t;
-	uint32_t		short_ticks;		/* statistics */
-	uint32_t		lost_polls;		/* statistics */
-	uint32_t		suspect;		/* statistics */
-	uint32_t		stalled;		/* statistics */
+	u_long			short_ticks;		/* statistics */
+	u_long			lost_polls;		/* statistics */
+	u_long			suspect;		/* statistics */
+	u_long			stalled;		/* statistics */
 	uint32_t		pending_polls;		/* state */
 
 	struct netmsg_base	poll_netmsg;
@@ -1039,28 +1039,27 @@ iopoll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 	}
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "phase", CTLFLAG_RD,
-			&io_ctx->phase, 0, "Polling phase");
+	    &io_ctx->phase, 0, "Polling phase");
 
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "suspect", CTLFLAG_RW,
-			&io_ctx->suspect, 0, "suspect event");
+	SYSCTL_ADD_ULONG(ctx, parent, OID_AUTO, "suspect", CTLFLAG_RW,
+	    &io_ctx->suspect, "Suspected events");
 
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "stalled", CTLFLAG_RW,
-			&io_ctx->stalled, 0, "potential stalls");
+	SYSCTL_ADD_ULONG(ctx, parent, OID_AUTO, "stalled", CTLFLAG_RW,
+	    &io_ctx->stalled, "Potential stalls");
 
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "short_ticks", CTLFLAG_RW,
-			&io_ctx->short_ticks, 0,
-			"Hardclock ticks shorter than they should be");
+	SYSCTL_ADD_ULONG(ctx, parent, OID_AUTO, "short_ticks", CTLFLAG_RW,
+	    &io_ctx->short_ticks,
+	    "Hardclock ticks shorter than they should be");
 
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "lost_polls", CTLFLAG_RW,
-			&io_ctx->lost_polls, 0,
-			"How many times we would have lost a poll tick");
+	SYSCTL_ADD_ULONG(ctx, parent, OID_AUTO, "lost_polls", CTLFLAG_RW,
+	    &io_ctx->lost_polls,
+	    "How many times we would have lost a poll tick");
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "pending_polls", CTLFLAG_RD,
-			&io_ctx->pending_polls, 0, "Do we need to poll again");
+	    &io_ctx->pending_polls, 0, "Do we need to poll again");
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "handlers", CTLFLAG_RD,
-			&io_ctx->poll_handlers, 0,
-			"Number of registered poll handlers");
+	    &io_ctx->poll_handlers, 0, "Number of registered poll handlers");
 }
 
 static void
