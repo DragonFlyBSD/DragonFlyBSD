@@ -219,15 +219,17 @@ static int	stpoll_deregister(struct ifnet *);
  */
 static struct iopoll_ctx *iopoll_ctx_create(int, int);
 static void	iopoll_init(int);
-static void	iopoll_handler(netmsg_t);
-static void	iopollmore_handler(netmsg_t);
+static void	rxpoll_handler(netmsg_t);
+static void	txpoll_handler(netmsg_t);
+static void	rxpollmore_handler(netmsg_t);
+static void	txpollmore_handler(netmsg_t);
 static void	iopoll_clock(struct iopoll_ctx *);
 static int	iopoll_register(struct ifnet *, struct iopoll_ctx *,
 		    const struct ifpoll_io *);
 static int	iopoll_deregister(struct ifnet *, struct iopoll_ctx *);
 
 static void	iopoll_add_sysctl(struct sysctl_ctx_list *,
-		    struct sysctl_oid_list *, struct iopoll_ctx *);
+		    struct sysctl_oid_list *, struct iopoll_ctx *, int);
 static void	sysctl_burstmax_handler(netmsg_t);
 static int	sysctl_burstmax(SYSCTL_HANDLER_ARGS);
 static void	sysctl_eachburst_handler(netmsg_t);
@@ -656,6 +658,7 @@ iopoll_ctx_create(int cpuid, int poll_type)
 	struct poll_comm *comm;
 	struct iopoll_ctx *io_ctx;
 	const char *poll_type_str;
+	netisr_fn_t handler, more_handler;
 
 	KKASSERT(poll_type == IFPOLL_RX || poll_type == IFPOLL_TX);
 
@@ -687,12 +690,20 @@ iopoll_ctx_create(int cpuid, int poll_type)
 	io_ctx->poll_cpuid = cpuid;
 	iopoll_reset_state(io_ctx);
 
+	if (poll_type == IFPOLL_RX) {
+		handler = rxpoll_handler;
+		more_handler = rxpollmore_handler;
+	} else {
+		handler = txpoll_handler;
+		more_handler = txpollmore_handler;
+	}
+
 	netmsg_init(&io_ctx->poll_netmsg, NULL, &netisr_adone_rport,
-		    0, iopoll_handler);
+	    0, handler);
 	io_ctx->poll_netmsg.lmsg.u.ms_resultp = io_ctx;
 
 	netmsg_init(&io_ctx->poll_more_netmsg, NULL, &netisr_adone_rport,
-		    0, iopollmore_handler);
+	    0, more_handler);
 	io_ctx->poll_more_netmsg.lmsg.u.ms_resultp = io_ctx;
 
 	/*
@@ -708,7 +719,7 @@ iopoll_ctx_create(int cpuid, int poll_type)
 				   SYSCTL_CHILDREN(comm->sysctl_tree),
 				   OID_AUTO, poll_type_str, CTLFLAG_RD, 0, "");
 	iopoll_add_sysctl(&io_ctx->poll_sysctl_ctx,
-			  SYSCTL_CHILDREN(io_ctx->poll_sysctl_tree), io_ctx);
+	    SYSCTL_CHILDREN(io_ctx->poll_sysctl_tree), io_ctx, poll_type);
 
 	return io_ctx;
 }
@@ -769,14 +780,14 @@ iopoll_clock(struct iopoll_ctx *io_ctx)
 }
 
 /*
- * iopoll_handler is scheduled by sched_iopoll when appropriate, typically
- * once per polling systimer tick.
+ * rxpoll_handler and txpoll_handler are scheduled by sched_iopoll when
+ * appropriate, typically once per polling systimer tick.
  *
  * Note that the message is replied immediately in order to allow a new
  * ISR to be scheduled in the handler.
  */
 static void
-iopoll_handler(netmsg_t msg)
+rxpoll_handler(netmsg_t msg)
 {
 	struct iopoll_ctx *io_ctx;
 	struct thread *td = curthread;
@@ -832,9 +843,59 @@ iopoll_handler(netmsg_t msg)
 	crit_exit_quick(td);
 }
 
+static void
+txpoll_handler(netmsg_t msg)
+{
+	struct iopoll_ctx *io_ctx;
+	struct thread *td = curthread;
+	int i;
+
+	io_ctx = msg->lmsg.u.ms_resultp;
+	KKASSERT(&td->td_msgport == netisr_portfn(io_ctx->poll_cpuid));
+
+	crit_enter_quick(td);
+
+	/* Reply ASAP */
+	lwkt_replymsg(&msg->lmsg, 0);
+
+	if (io_ctx->poll_handlers == 0) {
+		crit_exit_quick(td);
+		return;
+	}
+
+	io_ctx->phase = 3;
+
+	for (i = 0; i < io_ctx->poll_handlers; i++) {
+		const struct iopoll_rec *rec = &io_ctx->pr[i];
+		struct ifnet *ifp = rec->ifp;
+
+		if (!lwkt_serialize_try(rec->serializer))
+			continue;
+
+		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
+		    (IFF_RUNNING | IFF_NPOLLING))
+			rec->poll_func(ifp, rec->arg, -1);
+
+		lwkt_serialize_exit(rec->serializer);
+	}
+
+	/*
+	 * Do a quick exit/enter to catch any higher-priority
+	 * interrupt sources.
+	 */
+	crit_exit_quick(td);
+	crit_enter_quick(td);
+
+	sched_iopollmore(io_ctx);
+	io_ctx->phase = 4;
+
+	crit_exit_quick(td);
+}
+
 /*
- * iopollmore_handler is called after other netisr's, possibly scheduling
- * another iopoll_handler call, or adapting the burst size for the next cycle.
+ * rxpollmore_handler and txpollmore_handler are called after other netisr's,
+ * possibly scheduling another rxpoll_handler or txpoll_handler call, or
+ * adapting the burst size for the next cycle.
  *
  * It is very bad to fetch large bursts of packets from a single card at once,
  * because the burst could take a long time to be completely processed leading
@@ -845,7 +906,7 @@ iopoll_handler(netmsg_t msg)
  * work performed in low level handling.
  */
 static void
-iopollmore_handler(netmsg_t msg)
+rxpollmore_handler(netmsg_t msg)
 {
 	struct thread *td = curthread;
 	struct iopoll_ctx *io_ctx;
@@ -912,16 +973,71 @@ iopollmore_handler(netmsg_t msg)
 }
 
 static void
-iopoll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
-		  struct iopoll_ctx *io_ctx)
+txpollmore_handler(netmsg_t msg)
 {
-	SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "burst_max",
-			CTLTYPE_UINT | CTLFLAG_RW, io_ctx, 0, sysctl_burstmax,
-			"IU", "Max Polling burst size");
+	struct thread *td = curthread;
+	struct iopoll_ctx *io_ctx;
+	uint32_t pending_polls;
 
-	SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "each_burst",
-			CTLTYPE_UINT | CTLFLAG_RW, io_ctx, 0, sysctl_eachburst,
-			"IU", "Max size of each burst");
+	io_ctx = msg->lmsg.u.ms_resultp;
+	KKASSERT(&td->td_msgport == netisr_portfn(io_ctx->poll_cpuid));
+
+	crit_enter_quick(td);
+
+	/* Replay ASAP */
+	lwkt_replymsg(&msg->lmsg, 0);
+
+	if (io_ctx->poll_handlers == 0) {
+		crit_exit_quick(td);
+		return;
+	}
+
+	io_ctx->phase = 5;
+
+	io_ctx->pending_polls--;
+	pending_polls = io_ctx->pending_polls;
+
+	if (pending_polls == 0) {
+		/* We are done */
+		io_ctx->phase = 0;
+	} else {
+		/*
+		 * Last cycle was long and caused us to miss one or more
+		 * hardclock ticks.  Restart processing again.
+		 */
+		sched_iopoll(io_ctx);
+		io_ctx->phase = 6;
+	}
+
+	crit_exit_quick(td);
+}
+
+static void
+iopoll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
+    struct iopoll_ctx *io_ctx, int poll_type)
+{
+	if (poll_type == IFPOLL_RX) {
+		SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "burst_max",
+		    CTLTYPE_UINT | CTLFLAG_RW, io_ctx, 0, sysctl_burstmax,
+		    "IU", "Max Polling burst size");
+
+		SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "each_burst",
+		    CTLTYPE_UINT | CTLFLAG_RW, io_ctx, 0, sysctl_eachburst,
+		    "IU", "Max size of each burst");
+
+		SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "burst", CTLFLAG_RD,
+		    &io_ctx->poll_burst, 0, "Current polling burst size");
+
+		SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "user_frac", CTLFLAG_RW,
+		    &io_ctx->user_frac, 0, "Desired user fraction of cpu time");
+
+		SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "kern_frac", CTLFLAG_RD,
+		    &io_ctx->kern_frac, 0, "Kernel fraction of cpu time");
+
+		SYSCTL_ADD_INT(ctx, parent, OID_AUTO, "residual_burst", CTLFLAG_RD,
+		    &io_ctx->residual_burst, 0,
+		    "# of residual cycles in burst");
+	}
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "phase", CTLFLAG_RD,
 			&io_ctx->phase, 0, "Polling phase");
@@ -931,17 +1047,6 @@ iopoll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "stalled", CTLFLAG_RW,
 			&io_ctx->stalled, 0, "potential stalls");
-
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "burst", CTLFLAG_RD,
-			&io_ctx->poll_burst, 0, "Current polling burst size");
-
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "user_frac", CTLFLAG_RW,
-			&io_ctx->user_frac, 0,
-			"Desired user fraction of cpu time");
-
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "kern_frac", CTLFLAG_RD,
-			&io_ctx->kern_frac, 0,
-			"Kernel fraction of cpu time");
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "short_ticks", CTLFLAG_RW,
 			&io_ctx->short_ticks, 0,
@@ -953,10 +1058,6 @@ iopoll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "pending_polls", CTLFLAG_RD,
 			&io_ctx->pending_polls, 0, "Do we need to poll again");
-
-	SYSCTL_ADD_INT(ctx, parent, OID_AUTO, "residual_burst", CTLFLAG_RD,
-		       &io_ctx->residual_burst, 0,
-		       "# of residual cycles in burst");
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "handlers", CTLFLAG_RD,
 			&io_ctx->poll_handlers, 0,
