@@ -515,7 +515,6 @@ vlan_start(struct ifnet *ifp)
 
 	for (;;) {
 		struct netmsg_packet *nmp;
-		struct lwkt_port *port;
 
 		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
@@ -551,8 +550,8 @@ vlan_start(struct ifnet *ifp)
 		nmp->nm_packet = m;
 		nmp->base.lmsg.u.ms_resultp = ifp_p;
 
-		port = netisr_portfn(ifp_p->if_index % ncpus /* XXX */);
-		lwkt_sendmsg(port, &nmp->base.lmsg);
+		lwkt_sendmsg(netisr_portfn(ifp_p->if_start_cpuid(ifp_p)),
+		    &nmp->base.lmsg);
 		ifp->if_opackets++;
 	}
 }
