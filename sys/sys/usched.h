@@ -63,7 +63,8 @@ union usched_data {
 	short	priority;	/* lower is better */
 	char	forked;		/* lock cpu during fork */
 	char	rqindex;
-	int	batch;		/* batch mode heuristic */
+	short	estfast;	/* fast estcpu collapse mode */
+	short	unused01;
 	int	estcpu;		/* dynamic priority modification */
 	u_short rqtype;		/* protected copy of rtprio type */
 	u_short	qcpu;		/* which cpu are we enqueued on? */

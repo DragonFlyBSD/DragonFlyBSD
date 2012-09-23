@@ -93,7 +93,7 @@ TAILQ_HEAD(rq, lwp);
 #define lwp_forked	lwp_usdata.dfly.forked
 #define lwp_rqindex	lwp_usdata.dfly.rqindex
 #define lwp_estcpu	lwp_usdata.dfly.estcpu
-#define lwp_batch	lwp_usdata.dfly.batch
+#define lwp_estfast	lwp_usdata.dfly.estfast
 #define lwp_rqtype	lwp_usdata.dfly.rqtype
 #define lwp_qcpu	lwp_usdata.dfly.qcpu
 
@@ -185,6 +185,7 @@ static cpumask_t dfly_rdyprocmask;	/* ready to accept a user process */
 #ifdef SMP
 static volatile int dfly_scancpu;
 #endif
+static volatile int dfly_ucount;	/* total running on whole system */
 static struct usched_dfly_pcpu dfly_pcpu[MAXCPU];
 static struct sysctl_ctx_list usched_dfly_sysctl_ctx;
 static struct sysctl_oid *usched_dfly_sysctl_tree;
@@ -260,7 +261,6 @@ static int usched_dfly_features = 0x8F;	/* allow pulls */
 #endif
 static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
 static int usched_dfly_decay = 8;
-static int usched_dfly_batch_time = 10;
 
 /* KTR debug printings */
 
@@ -644,6 +644,7 @@ dfly_changeqcpu_locked(struct lwp *lp, dfly_pcpu_t dd, dfly_pcpu_t rdd)
 			atomic_add_int(&dd->uload,
 				   -((lp->lwp_priority & ~PPQMASK) & PRIMASK));
 			atomic_add_int(&dd->ucount, -1);
+			atomic_add_int(&dfly_ucount, -1);
 		}
 		lp->lwp_qcpu = rdd->cpuid;
 	}
@@ -824,11 +825,8 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
  * Called from acquire and from kern_synch's one-second timer (one of the
  * callout helper threads) with a critical section held.
  *
- * Decay p_estcpu based on the number of ticks we haven't been running
- * and our p_nice.  As the load increases each process observes a larger
- * number of idle ticks (because other processes are running in them).
- * This observation leads to a larger correction which tends to make the
- * system more 'batchy'.
+ * Adjust p_estcpu based on our single-cpu load, p_nice, and compensate for
+ * overall system load.
  *
  * Note that no recalculation occurs for a process which sleeps and wakes
  * up in the same tick.  That is, a system doing thousands of context
@@ -840,11 +838,11 @@ void
 dfly_recalculate_estcpu(struct lwp *lp)
 {
 	globaldata_t gd = mycpu;
-	dfly_pcpu_t dd = &dfly_pcpu[gd->gd_cpuid];
 	sysclock_t cpbase;
 	sysclock_t ttlticks;
 	int estcpu;
 	int decay_factor;
+	int ucount;
 
 	/*
 	 * We have to subtract periodic to get the last schedclock
@@ -863,9 +861,7 @@ dfly_recalculate_estcpu(struct lwp *lp)
 		dfly_resetpriority(lp);
 		lp->lwp_cpbase = cpbase;
 		lp->lwp_cpticks = 0;
-		lp->lwp_batch -= ESTCPUFREQ;
-		if (lp->lwp_batch < 0)
-			lp->lwp_batch = 0;
+		lp->lwp_estfast = 0;
 	} else if (lp->lwp_cpbase != cpbase) {
 		/*
 		 * Adjust estcpu if we are in a different tick.  Don't waste
@@ -887,51 +883,41 @@ dfly_recalculate_estcpu(struct lwp *lp)
 		updatepcpu(lp, lp->lwp_cpticks, ttlticks);
 
 		/*
-		 * Calculate the percentage of one cpu used factoring in ncpus
-		 * and the load and adjust estcpu.  Handle degenerate cases
-		 * by adding 1 to runqcount.
+		 * Calculate the percentage of one cpu being used then
+		 * compensate for any system load in excess of ncpus.
 		 *
-		 * estcpu is scaled by ESTCPUMAX.
+		 * For example, if we have 8 cores and 16 running cpu-bound
+		 * processes then all things being equal each process will
+		 * get 50% of one cpu.  We need to pump this value back
+		 * up to 100% so the estcpu calculation properly adjusts
+		 * the process's dynamic priority.
 		 *
-		 * runqcount is the excess number of user processes
-		 * that cannot be immediately scheduled to cpus.  We want
-		 * to count these as running to avoid range compression
-		 * in the base calculation (which is the actual percentage
-		 * of one cpu used).
+		 * estcpu is scaled by ESTCPUMAX, pctcpu is scaled by FSCALE.
 		 */
-		estcpu = (lp->lwp_cpticks * ESTCPUMAX) *
-			 (dd->runqcount + ncpus) / (ncpus * ttlticks);
-
-		/*
-		 * If estcpu is > 50% we become more batch-like
-		 * If estcpu is <= 50% we become less batch-like
-		 *
-		 * It takes 30 cpu seconds to traverse the entire range.
-		 */
-		if (estcpu > ESTCPUMAX / 2) {
-			lp->lwp_batch += ttlticks;
-			if (lp->lwp_batch > BATCHMAX)
-				lp->lwp_batch = BATCHMAX;
-		} else {
-			lp->lwp_batch -= ttlticks;
-			if (lp->lwp_batch < 0)
-				lp->lwp_batch = 0;
+		estcpu = (lp->lwp_pctcpu * ESTCPUMAX) >> FSHIFT;
+		ucount = dfly_ucount;
+		if (ucount > ncpus) {
+			estcpu += estcpu * (ucount - ncpus) / ncpus;
 		}
 
 		if (usched_dfly_debug == lp->lwp_proc->p_pid) {
-			kprintf("pid %d lwp %p estcpu %3d %3d bat %d cp %d/%d",
+			kprintf("pid %d lwp %p estcpu %3d %3d cp %d/%d",
 				lp->lwp_proc->p_pid, lp,
 				estcpu, lp->lwp_estcpu,
-				lp->lwp_batch,
 				lp->lwp_cpticks, ttlticks);
 		}
 
 		/*
 		 * Adjust lp->lwp_esetcpu.  The decay factor determines how
 		 * quickly lwp_estcpu collapses to its realtime calculation.
-		 * A slower collapse gives us a more accurate number but
-		 * can cause a cpu hog to eat too much cpu before the
-		 * scheduler decides to downgrade it.
+		 * A slower collapse gives us a more accurate number over
+		 * the long term but can create problems with bursty threads
+		 * or threads which become cpu hogs.
+		 *
+		 * To solve this problem, newly started lwps and lwps which
+		 * are restarting after having been asleep for a while are
+		 * given a much, much faster decay in order to quickly
+		 * detect whether they become cpu-bound.
 		 *
 		 * NOTE: p_nice is accounted for in dfly_resetpriority(),
 		 *	 and not here, but we must still ensure that a
@@ -947,9 +933,16 @@ dfly_recalculate_estcpu(struct lwp *lp)
 		if (decay_factor > 1024)
 			decay_factor = 1024;
 
-		lp->lwp_estcpu = ESTCPULIM(
-			(lp->lwp_estcpu * decay_factor + estcpu) /
-			(decay_factor + 1));
+		if (lp->lwp_estfast < usched_dfly_decay) {
+			++lp->lwp_estfast;
+			lp->lwp_estcpu = ESTCPULIM(
+				(lp->lwp_estcpu * lp->lwp_estfast + estcpu) /
+				(lp->lwp_estfast + 1));
+		} else {
+			lp->lwp_estcpu = ESTCPULIM(
+				(lp->lwp_estcpu * decay_factor + estcpu) /
+				(decay_factor + 1));
+		}
 
 		if (usched_dfly_debug == lp->lwp_proc->p_pid)
 			kprintf(" finalestcpu %d\n", lp->lwp_estcpu);
@@ -1010,12 +1003,9 @@ dfly_resetpriority(struct lwp *lp)
 		break;
 	case RTP_PRIO_NORMAL:
 		/*
-		 * Detune estcpu based on batchiness.  lwp_batch ranges
-		 * from 0 to  BATCHMAX.  Limit estcpu for the sake of
-		 * the priority calculation to between 50% and 100%.
+		 *
 		 */
-		estcpu = lp->lwp_estcpu * (lp->lwp_batch + BATCHMAX) /
-			 (BATCHMAX * 2);
+		estcpu = lp->lwp_estcpu;
 
 		/*
 		 * p_nice piece		Adds (0-40) * 2		0-80
@@ -1152,8 +1142,9 @@ dfly_yield(struct lwp *lp)
  *
  * Give the child process an initial estcpu that is more batch then
  * its parent and dock the parent for the fork (but do not
- * reschedule the parent).   This comprises the main part of our batch
- * detection heuristic for both parallel forking and sequential execs.
+ * reschedule the parent).
+ *
+ * fast
  *
  * XXX lwp should be "spawning" instead of "forking"
  */
@@ -1166,13 +1157,7 @@ dfly_forking(struct lwp *plp, struct lwp *lp)
 	 */
 	lp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + ESTCPUPPQ * 4);
 	lp->lwp_forked = 1;
-
-	/*
-	 * The batch status of children always starts out centerline
-	 * and will inch-up or inch-down as appropriate.  It takes roughly
-	 * ~15 seconds of >50% cpu to hit the limit.
-	 */
-	lp->lwp_batch = BATCHMAX / 2;
+	lp->lwp_estfast = 0;
 
 	/*
 	 * Dock the parent a cost for the fork, protecting us from fork
@@ -1201,6 +1186,7 @@ dfly_exiting(struct lwp *lp, struct proc *child_proc)
 		atomic_add_int(&dd->uload,
 			       -((lp->lwp_priority & ~PPQMASK) & PRIMASK));
 		atomic_add_int(&dd->ucount, -1);
+		atomic_add_int(&dfly_ucount, -1);
 	}
 }
 
@@ -1225,6 +1211,7 @@ dfly_uload_update(struct lwp *lp)
 				atomic_add_int(&dd->uload,
 				   ((lp->lwp_priority & ~PPQMASK) & PRIMASK));
 				atomic_add_int(&dd->ucount, 1);
+				atomic_add_int(&dfly_ucount, 1);
 			}
 			spin_unlock(&dd->spin);
 		}
@@ -1237,6 +1224,7 @@ dfly_uload_update(struct lwp *lp)
 				atomic_add_int(&dd->uload,
 				   -((lp->lwp_priority & ~PPQMASK) & PRIMASK));
 				atomic_add_int(&dd->ucount, -1);
+				atomic_add_int(&dfly_ucount, -1);
 			}
 			spin_unlock(&dd->spin);
 		}
@@ -1353,11 +1341,13 @@ dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 			atomic_add_int(&rdd->uload,
 			    -((lp->lwp_priority & ~PPQMASK) & PRIMASK));
 			atomic_add_int(&rdd->ucount, -1);
+			atomic_add_int(&dfly_ucount, -1);
 		}
 		lp->lwp_qcpu = dd->cpuid;
 		atomic_add_int(&dd->uload,
 		    ((lp->lwp_priority & ~PPQMASK) & PRIMASK));
 		atomic_add_int(&dd->ucount, 1);
+		atomic_add_int(&dfly_ucount, 1);
 		atomic_set_int(&lp->lwp_mpflags, LWP_MP_ULOAD);
 	}
 	return lp;
@@ -1851,6 +1841,7 @@ dfly_setrunqueue_locked(dfly_pcpu_t rdd, struct lwp *lp)
 		atomic_add_int(&dfly_pcpu[lp->lwp_qcpu].uload,
 			       (lp->lwp_priority & ~PPQMASK) & PRIMASK);
 		atomic_add_int(&dfly_pcpu[lp->lwp_qcpu].ucount, 1);
+		atomic_add_int(&dfly_ucount, 1);
 	}
 
 	pri = lp->lwp_rqindex;
@@ -2152,10 +2143,6 @@ dfly_helper_thread_cpu_init(void)
 		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
 		       OID_AUTO, "decay", CTLFLAG_RW,
 		       &usched_dfly_decay, 0, "Extra decay when not running");
-	SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
-		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
-		       OID_AUTO, "batch_time", CTLFLAG_RW,
-		       &usched_dfly_batch_time, 0, "Min batch counter value");
 
 	/* Add enable/disable option for SMT scheduling if supported */
 	if (smt_not_supported) {
@@ -2257,10 +2244,6 @@ sched_sysctl_tree_init(void)
 		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
 		       OID_AUTO, "decay", CTLFLAG_RW,
 		       &usched_dfly_decay, 0, "Extra decay when not running");
-	SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
-		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
-		       OID_AUTO, "batch_time", CTLFLAG_RW,
-		       &usched_dfly_batch_time, 0, "Min batch counter value");
 }
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
 	sched_sysctl_tree_init, NULL)

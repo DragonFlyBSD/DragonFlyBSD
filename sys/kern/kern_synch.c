@@ -141,24 +141,8 @@ sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_kern, OID_AUTO, quantum, CTLTYPE_INT|CTLFLAG_RW,
 	0, sizeof sched_quantum, sysctl_kern_quantum, "I", "");
 
-/*
- * If `ccpu' is not equal to `exp(-1/20)' and you still want to use the
- * faster/more-accurate formula, you'll have to estimate CCPU_SHIFT below
- * and possibly adjust FSHIFT in "param.h" so that (FSHIFT >= CCPU_SHIFT).
- *
- * To estimate CCPU_SHIFT for exp(-1/20), the following formula was used:
- *     1 - exp(-1/20) ~= 0.0487 ~= 0.0488 == 1 (fixed pt, *11* bits).
- *
- * If you don't want to bother with the faster/more-accurate formula, you
- * can set CCPU_SHIFT to (FSHIFT + 1) which will use a slower/less-accurate
- * (more general) method of calculating the %age of CPU used by a process.
- *
- * decay 95% of `lwp_pctcpu' in 60 seconds; see CCPU_SHIFT before changing
- */
-#define CCPU_SHIFT	11
-
-static fixpt_t ccpu = 0.95122942450071400909 * FSCALE; /* exp(-1/20) */
-SYSCTL_INT(_kern, OID_AUTO, ccpu, CTLFLAG_RD, &ccpu, 0, "");
+static int pctcpu_decay = 10;
+SYSCTL_INT(_kern, OID_AUTO, pctcpu_decay, CTLFLAG_RW, &pctcpu_decay, 0, "");
 
 /*
  * kernel uses `FSCALE', userland (SHOULD) use kern.fscale 
@@ -225,11 +209,20 @@ schedcpu_stats(struct proc *p, void *data __unused)
 		/*
 		 * Only recalculate processes that are active or have slept
 		 * less then 2 seconds.  The schedulers understand this.
+		 * Otherwise decay by 50% per second.
 		 */
 		if (lp->lwp_slptime <= 1) {
 			p->p_usched->recalculate(lp);
 		} else {
-			lp->lwp_pctcpu = (lp->lwp_pctcpu * ccpu) >> FSHIFT;
+			int decay;
+
+			decay = pctcpu_decay;
+			cpu_ccfence();
+			if (decay <= 1)
+				decay = 1;
+			if (decay > 100)
+				decay = 100;
+			lp->lwp_pctcpu = (lp->lwp_pctcpu * (decay - 1)) / decay;
 		}
 	}
 	lwkt_reltoken(&p->p_token);
@@ -298,8 +291,6 @@ schedcpu_resource(struct proc *p, void *data __unused)
 /*
  * This is only used by ps.  Generate a cpu percentage use over
  * a period of one second.
- *
- * MPSAFE
  */
 void
 updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
