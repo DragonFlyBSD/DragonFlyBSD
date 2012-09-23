@@ -483,7 +483,7 @@ get_process_info(struct system_info *si, struct process_select *sel,
 		 * status field.  Processes with P_SYSTEM set are system
 		 * processes---these get ignored unless show_sysprocs is set.
 		 */
-		if ((show_threads && (LP(pp, pid) == -1)) ||
+		if ((show_system && (LP(pp, pid) == -1)) ||
 		    (show_system || ((PP(pp, flags) & P_SYSTEM) == 0))) {
 			int pstate = LP(pp, stat);
 
@@ -492,7 +492,7 @@ get_process_info(struct system_info *si, struct process_select *sel,
 				process_states[0]++;
 			if (pstate >= 0 && pstate < MAXPSTATES)
 				process_states[pstate]++;
-			if ((show_threads && (LP(pp, pid) == -1)) ||
+			if ((show_system && (LP(pp, pid) == -1)) ||
 			    (show_idle || (LP(pp, pctcpu) != 0) ||
 			    (pstate == LSRUN)) &&
 			    (!show_uid || PP(pp, ruid) == (uid_t) sel->uid)) {
