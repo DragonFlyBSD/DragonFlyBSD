@@ -44,7 +44,6 @@
 
 #include "ps.h"
 
-fixpt_t	ccpu;				/* kernel _ccpu variable */
 int	nlistread;			/* if nlist already read. */
 int	mempages;			/* number of pages of phys. memory */
 int	fscale;				/* kernel _fscale variable */
@@ -54,9 +53,6 @@ donlist(void)
 {
 	size_t oldlen;
 
-	oldlen = sizeof(ccpu);
-	if (sysctlbyname("kern.ccpu", &ccpu, &oldlen, NULL, 0) < 0)
-		return (1);
 	oldlen = sizeof(fscale);
 	if (sysctlbyname("kern.fscale", &fscale, &oldlen, NULL, 0) < 0)
 		return (1);

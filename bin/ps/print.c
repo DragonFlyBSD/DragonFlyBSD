@@ -516,10 +516,7 @@ getpcpu(const KINFO *k)
 	/* XXX - I don't like this */
 	if (KI_PROC(k, swtime) == 0 || (KI_PROC(k, flags) & P_SWAPPEDOUT))
 		return (0.0);
-	if (rawcpu)
-		return (100.0 * fxtofl(KI_LWP(k, pctcpu)));
-	return (100.0 * fxtofl(KI_LWP(k, pctcpu)) /
-		(1.0 - exp(KI_PROC(k, swtime) * log(fxtofl(ccpu)))));
+	return (100.0 * fxtofl(KI_LWP(k, pctcpu)));
 }
 
 void

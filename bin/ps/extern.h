@@ -40,7 +40,6 @@ struct nlist;
 struct var;
 struct varent;
 
-extern fixpt_t ccpu;
 extern int eval, fscale, mempages, nlistread, rawcpu, cflag;
 extern int sumrusage, termwidth, totwidth;
 extern int numcpus;
