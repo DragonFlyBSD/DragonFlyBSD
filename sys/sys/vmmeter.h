@@ -102,11 +102,8 @@ struct vmmeter {
 	u_int v_waitsys;	/* calls to waitsys() */
 	u_int v_smpinvltlb;	/* nasty global invltlbs */
 	u_int v_ppwakeups;	/* wakeups on processes stalled on VM */
-	u_int v_token_colls;
-	u_int v_reserved2;
-	u_int v_reserved3;
-	u_int v_reserved4;
-	u_int v_reserved5;
+	u_int v_token_colls;	/* # of token collisions */
+	char  v_token_name[16];	/* last-colliding token name */
 	u_int v_reserved6;
 	u_int v_reserved7;
 #define vmmeter_uint_end	v_reserved7
