@@ -103,12 +103,23 @@ do { \
 		if (cp_total == 0)
 			cp_total = 1;
 
-		DRAW_ROW(n, CPU_START + i, 7, "%*.1f", CPUV(d, user));
-		DRAW_ROW(n, CPU_START + i, 7, "%*.1f", CPUV(d, nice));
-		DRAW_ROW(n, CPU_START + i, 7, "%*.1f", CPUV(d, sys));
-		DRAW_ROW(n, CPU_START + i, 7, "%*.1f", CPUV(d, intr));
-		DRAW_ROW(n, CPU_START + i, 7, "%*.1f", CPUV(d, idle));
+		DRAW_ROW(n, CPU_START + i, 6, "%*.1f", CPUV(d, user));
+		DRAW_ROW(n, CPU_START + i, 6, "%*.1f", CPUV(d, nice));
+		DRAW_ROW(n, CPU_START + i, 6, "%*.1f", CPUV(d, sys));
+		DRAW_ROW(n, CPU_START + i, 6, "%*.1f", CPUV(d, intr));
+		DRAW_ROW(n, CPU_START + i, 6, "%*.1f", CPUV(d, idle));
+
+		/*
+		 * Display token collision count and the last-colliding
+		 * token name.
+		 */
 		DRAW_ROW(n, CPU_START + i, 8, "%*u", D(i, v_token_colls));
+		if (D(i, v_token_colls) == 0) {
+			DRAW_ROW(n, CPU_START + i, 8, "%*s", "");
+		} else {
+			DRAW_ROW(n, CPU_START + i, 8, "%*s",
+				 vmm_cur[i].v_token_name);
+		}
 
 #undef D
 #undef CPUV
@@ -150,12 +161,13 @@ labelvmm(void)
 	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "timer");
 	DRAW_ROW(n, CPU_START - 1, 8, "%*s", "ipi");
 	DRAW_ROW(n, CPU_START - 1, 8, "%*s", "extint");
-	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "user%");
-	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "nice%");
-	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "sys%");
-	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "intr%");
-	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "idle%");
+	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "user%");
+	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "nice%");
+	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "sys%");
+	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "intr%");
+	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "idle%");
 	DRAW_ROW(n, CPU_START - 1, 8, "%*s", "tokcol");
+	DRAW_ROW(n, CPU_START - 1, 8, "%*s", "token");
 
 	for (i = 0; i < vmm_ncpus; ++i)
 		mvprintw(CPU_START + i, X_START, "cpu%d", i);
