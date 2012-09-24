@@ -243,6 +243,9 @@ struct jme_softc {
 	uint32_t		jme_msinum[JME_MSINUM_CNT];
 	int			jme_tx_cpuid;
 
+	int			jme_npoll_rxoff;
+	int			jme_npoll_txoff;
+
 	device_t		jme_miibus;
 	int			jme_phyaddr;
 	bus_addr_t		jme_lowaddr;
