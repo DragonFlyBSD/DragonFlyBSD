@@ -21,7 +21,13 @@
 
 #define DRAW_ROW(n, y, w, fmt, args...) \
 do { \
-	mvprintw(y, n, fmt, w, args); \
+	mvprintw(y, n, fmt, w - 1, args); \
+	n += w; \
+} while (0)
+
+#define DRAW_ROW2(n, y, w, fmt, args...) \
+do { \
+	mvprintw(y, n, fmt, w - 1, w - 1, args); \
 	n += w; \
 } while (0)
 
@@ -113,12 +119,17 @@ do { \
 		 * Display token collision count and the last-colliding
 		 * token name.
 		 */
-		DRAW_ROW(n, CPU_START + i, 8, "%*u", D(i, v_token_colls));
+		if (D(i, v_token_colls) > 9999999)
+			DRAW_ROW(n, CPU_START + i, 8, "%*u", 9999999);
+		else
+			DRAW_ROW(n, CPU_START + i, 8, "%*u",
+				 D(i, v_token_colls));
+
 		if (D(i, v_token_colls) == 0) {
-			DRAW_ROW(n, CPU_START + i, 8, "%*s", "");
+			DRAW_ROW2(n, CPU_START + i, 8, "%*.*s", "");
 		} else {
-			DRAW_ROW(n, CPU_START + i, 8, "%*s",
-				 vmm_cur[i].v_token_name);
+			DRAW_ROW2(n, CPU_START + i, 8, "%*.*s",
+				  vmm_cur[i].v_token_name);
 		}
 
 #undef D
