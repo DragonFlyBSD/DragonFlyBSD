@@ -3,7 +3,6 @@
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
-# XXX MISSING:		mkproto
 SUBDIR= 802_11 \
 	IPXrouted \
 	ac \
