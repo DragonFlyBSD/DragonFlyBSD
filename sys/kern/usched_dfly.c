@@ -255,7 +255,7 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_chooser, CTLFLAG_RW,
 static int usched_dfly_smt = 0;
 static int usched_dfly_cache_coherent = 0;
 static int usched_dfly_weight1 = 200;	/* keep thread on current cpu */
-static int usched_dfly_weight2 = 1200;	/* synchronous peer's current cpu */
+static int usched_dfly_weight2 = 120;	/* synchronous peer's current cpu */
 static int usched_dfly_weight3 = 40;	/* number of threads on queue */
 static int usched_dfly_weight4 = 160;	/* availability of idle cores */
 static int usched_dfly_features = 0x8F;	/* allow pulls */
