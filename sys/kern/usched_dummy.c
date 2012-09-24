@@ -401,6 +401,12 @@ dummy_resetpriority(struct lwp *lp)
 		lp->lwp_priority = PRIBASE_THREAD + lp->lwp_rtprio.prio;
 		return;
 	}
+
+	/*
+	 * td_upri has normal sense (higher numbers are more desireable),
+	 * so negate it.
+	 */
+	lp->lwp_thread->td_upri = -lp->lwp_priority;
 	/* XXX spinlock usually needed */
 }
 

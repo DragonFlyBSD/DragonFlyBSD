@@ -64,7 +64,7 @@ union usched_data {
 	char	forked;		/* lock cpu during fork */
 	char	rqindex;
 	short	estfast;	/* fast estcpu collapse mode */
-	short	unused01;
+	short	uload;		/* for delta uload adjustments */
 	int	estcpu;		/* dynamic priority modification */
 	u_short rqtype;		/* protected copy of rtprio type */
 	u_short	qcpu;		/* which cpu are we enqueued on? */

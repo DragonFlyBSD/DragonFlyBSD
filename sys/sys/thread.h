@@ -285,7 +285,8 @@ struct thread {
     int		td_cscount_unused;
 #endif
     int		td_wakefromcpu;	/* who woke me up? */
-    int		td_unused02[3];	/* for future fields */
+    int		td_upri;	/* user priority (sub-priority under td_pri) */
+    int		td_unused02[2];	/* for future fields */
     int		td_unused03[4];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
@@ -373,6 +374,7 @@ struct thread {
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */
 #define TDF_DELAYED_WAKEUP	0x02000000
 #define TDF_CRYPTO		0x04000000	/* crypto thread */
+#define TDF_USERMODE		0x08000000	/* in or entering user mode */
 
 #define TDF_MP_STOPREQ		0x00000001	/* suspend_kproc */
 #define TDF_MP_WAKEREQ		0x00000002	/* resume_kproc */

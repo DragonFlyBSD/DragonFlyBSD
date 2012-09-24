@@ -673,7 +673,11 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	td->td_proc = destproc;
 	td->td_lwp = lp;
 	td->td_switch = cpu_heavy_switch;
+#ifdef LWKT_SPLIT_USERPRI
 	lwkt_setpri(td, TDPRI_KERN_USER);
+#else
+	lwkt_setpri(td, TDPRI_USER_NORM);
+#endif
 	lwkt_set_comm(td, "%s", destproc->p_comm);
 
 	/*

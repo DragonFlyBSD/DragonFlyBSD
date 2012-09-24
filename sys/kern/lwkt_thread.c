@@ -180,8 +180,17 @@ _lwkt_dequeue(thread_t td)
 /*
  * Priority enqueue.
  *
- * NOTE: There are a limited number of lwkt threads runnable since user
- *	 processes only schedule one at a time per cpu.
+ * There are a limited number of lwkt threads runnable since user
+ * processes only schedule one at a time per cpu.  However, there can
+ * be many user processes in kernel mode exiting from a tsleep() which
+ * become runnable.  We do a secondary comparison using td_upri to try
+ * to order these in the situation where several wake up at the same time
+ * to avoid excessive switching.
+ *
+ * NOTE: lwkt_schedulerclock() will force a round-robin based on td_pri and
+ *	 will ignore user priority.  This is to ensure that user threads in
+ *	 kernel mode get cpu at some point regardless of what the user
+ *	 scheduler thinks.
  */
 static __inline
 void
@@ -198,8 +207,12 @@ _lwkt_enqueue(thread_t td)
 	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
 	    atomic_set_int(&gd->gd_reqflags, RQF_RUNNING);
 	} else {
-	    while (xtd && xtd->td_pri >= td->td_pri)
+	    while (xtd &&
+		   (xtd->td_pri > td->td_pri ||
+		    (xtd->td_pri == td->td_pri &&
+		     xtd->td_upri >= td->td_pri))) {
 		xtd = TAILQ_NEXT(xtd, td_threadq);
+	    }
 	    if (xtd)
 		TAILQ_INSERT_BEFORE(xtd, td, td_threadq);
 	    else
@@ -706,6 +719,7 @@ lwkt_switch(void)
 		goto skip;
 
 	while ((ntd = TAILQ_NEXT(ntd, td_threadq)) != NULL) {
+#ifdef LWKT_SPLIT_USERPRI
 		/*
 		 * Never schedule threads returning to userland or the
 		 * user thread scheduler helper thread when higher priority
@@ -717,6 +731,7 @@ lwkt_switch(void)
 			ntd = NULL;
 			break;
 		}
+#endif
 
 		/*
 		 * Try this one.
@@ -1129,8 +1144,11 @@ lwkt_passive_release(struct thread *td)
 {
     struct lwp *lp = td->td_lwp;
 
+#ifdef LWKT_SPLIT_USERPRI
     td->td_release = NULL;
     lwkt_setpri_self(TDPRI_KERN_USER);
+#endif
+
     lp->lwp_proc->p_usched->release_curproc(lp);
 }
 
@@ -1497,6 +1515,10 @@ lwkt_schedulerclock(thread_t td)
 	 * If the current thread is at the head of the runq shift it to the
 	 * end of any equal-priority threads and request a LWKT reschedule
 	 * if it moved.
+	 *
+	 * Ignore upri in this situation.  There will only be one user thread
+	 * in user mode, all others will be user threads running in kernel
+	 * mode and we have to make sure they get some cpu.
 	 */
 	xtd = TAILQ_NEXT(td, td_threadq);
 	if (xtd && xtd->td_pri == td->td_pri) {

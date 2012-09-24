@@ -1173,7 +1173,11 @@ bsd4_resetpriority(struct lwp *lp)
 	 * The newpriority incorporates the queue type so do a simple masked
 	 * check to determine if the process has moved to another queue.  If
 	 * it has, and it is currently on a run queue, then move it.
+	 *
+	 * td_upri has normal sense (higher values are more desireable), so
+	 * negate it.
 	 */
+	lp->lwp_thread->td_upri = -(newpriority & ~PPQMASK);
 	if ((lp->lwp_priority ^ newpriority) & ~PPQMASK) {
 		lp->lwp_priority = newpriority;
 		if (lp->lwp_mpflags & LWP_MP_ONRUNQ) {
