@@ -466,7 +466,7 @@ DRIVERSLEEP(int usec)
 {
 	globaldata_t gd = mycpu;
 
-	if (gd->gd_intr_nesting_level || gd->gd_spinlocks_wr) {
+	if (gd->gd_intr_nesting_level || gd->gd_spinlocks) {
 		DODELAY(usec, 0);
 	} else {
 		DODELAY(usec, 1);

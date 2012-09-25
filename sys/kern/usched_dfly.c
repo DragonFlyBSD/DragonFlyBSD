@@ -744,7 +744,7 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	 * Spinlocks also hold a critical section so there should not be
 	 * any active.
 	 */
-	KKASSERT(gd->gd_spinlocks_wr == 0);
+	KKASSERT(gd->gd_spinlocks == 0);
 
 	if (lp == NULL)
 		return;
@@ -1089,9 +1089,18 @@ dfly_resetpriority(struct lwp *lp)
 	}
 
 	/*
-	 * Adjust effective load
+	 * Adjust effective load.
+	 *
+	 * Calculate load then scale up or down geometrically based on p_nice.
+	 * Processes niced up (positive) are less important, and processes
+	 * niced downard (negative) are more important.  The higher the uload,
+	 * the more important the thread.
 	 */
-	delta_uload = lp->lwp_estcpu / NQS;	/* 0-511, 0-100% cpu */
+	/* 0-511, 0-100% cpu */
+	delta_uload = lp->lwp_estcpu / NQS;
+	delta_uload -= delta_uload * lp->lwp_proc->p_nice / (PRIO_MAX + 1);
+
+
 	delta_uload -= lp->lwp_uload;
 	lp->lwp_uload += delta_uload;
 	if (lp->lwp_mpflags & LWP_MP_ULOAD)

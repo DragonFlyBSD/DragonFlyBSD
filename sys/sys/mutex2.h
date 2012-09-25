@@ -168,7 +168,7 @@ mtx_spinlock(mtx_t mtx)
 	 */
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
-	++gd->gd_spinlocks_wr;
+	++gd->gd_spinlocks;
 
 	/*
 	 * If we cannot get it trivially get it the hard way.
@@ -192,7 +192,7 @@ mtx_spinlock_try(mtx_t mtx)
 	 */
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
-	++gd->gd_spinlocks_wr;
+	++gd->gd_spinlocks;
 
 	/*
 	 * If we cannot get it trivially call _mtx_spinlock_try().  This
@@ -325,7 +325,7 @@ mtx_spinunlock(mtx_t mtx)
 
 	mtx_unlock(mtx);
 
-	--gd->gd_spinlocks_wr;
+	--gd->gd_spinlocks;
 	cpu_ccfence();
 	--gd->gd_curthread->td_critcount;
 }

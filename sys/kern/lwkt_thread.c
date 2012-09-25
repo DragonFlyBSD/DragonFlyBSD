@@ -615,9 +615,9 @@ lwkt_switch(void)
      * We had better not be holding any spin locks, but don't get into an
      * endless panic loop.
      */
-    KASSERT(gd->gd_spinlocks_wr == 0 || panicstr != NULL, 
+    KASSERT(gd->gd_spinlocks == 0 || panicstr != NULL,
 	    ("lwkt_switch: still holding %d exclusive spinlocks!",
-	     gd->gd_spinlocks_wr));
+	     gd->gd_spinlocks));
 
 
 #ifdef SMP
@@ -1028,7 +1028,7 @@ lwkt_preempt(thread_t ntd, int critcount)
      * We could try to acquire the tokens but this case is so rare there
      * is no need to support it.
      */
-    KKASSERT(gd->gd_spinlocks_wr == 0);
+    KKASSERT(gd->gd_spinlocks == 0);
 
     if (TD_TOKS_HELD(ntd)) {
 	++preempt_miss;
@@ -1102,7 +1102,7 @@ splz_check(void)
  * We only want to execute the splz() on the 1->0 transition of
  * critcount and not in a hard code section or if too deeply nested.
  *
- * NOTE: gd->gd_spinlocks_wr is implied to be 0 when td_critcount is 0.
+ * NOTE: gd->gd_spinlocks is implied to be 0 when td_critcount is 0.
  */
 void
 lwkt_maybe_splz(thread_t td)

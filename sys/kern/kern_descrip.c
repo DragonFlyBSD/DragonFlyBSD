@@ -1561,12 +1561,12 @@ checkfdclosed(struct filedesc *fdp, int fd, struct file *fp)
 {
 	int error;
 
-	spin_lock(&fdp->fd_spin);
+	spin_lock_shared(&fdp->fd_spin);
 	if ((unsigned)fd >= fdp->fd_nfiles || fp != fdp->fd_files[fd].fp)
 		error = EBADF;
 	else
 		error = 0;
-	spin_unlock(&fdp->fd_spin);
+	spin_unlock_shared(&fdp->fd_spin);
 	return (error);
 }
 
@@ -2120,7 +2120,7 @@ holdfp(struct filedesc *fdp, int fd, int flag)
 {
 	struct file* fp;
 
-	spin_lock(&fdp->fd_spin);
+	spin_lock_shared(&fdp->fd_spin);
 	if (((u_int)fd) >= fdp->fd_nfiles) {
 		fp = NULL;
 		goto done;
@@ -2133,7 +2133,7 @@ holdfp(struct filedesc *fdp, int fd, int flag)
 	}
 	fhold(fp);
 done:
-	spin_unlock(&fdp->fd_spin);
+	spin_unlock_shared(&fdp->fd_spin);
 	return (fp);
 }
 
@@ -2150,7 +2150,7 @@ holdsock(struct filedesc *fdp, int fd, struct file **fpp)
 	struct file *fp;
 	int error;
 
-	spin_lock(&fdp->fd_spin);
+	spin_lock_shared(&fdp->fd_spin);
 	if ((unsigned)fd >= fdp->fd_nfiles) {
 		error = EBADF;
 		fp = NULL;
@@ -2167,7 +2167,7 @@ holdsock(struct filedesc *fdp, int fd, struct file **fpp)
 	fhold(fp);
 	error = 0;
 done:
-	spin_unlock(&fdp->fd_spin);
+	spin_unlock_shared(&fdp->fd_spin);
 	*fpp = fp;
 	return (error);
 }
@@ -2183,7 +2183,7 @@ holdvnode(struct filedesc *fdp, int fd, struct file **fpp)
 	struct file *fp;
 	int error;
 
-	spin_lock(&fdp->fd_spin);
+	spin_lock_shared(&fdp->fd_spin);
 	if ((unsigned)fd >= fdp->fd_nfiles) {
 		error = EBADF;
 		fp = NULL;
@@ -2201,7 +2201,7 @@ holdvnode(struct filedesc *fdp, int fd, struct file **fpp)
 	fhold(fp);
 	error = 0;
 done:
-	spin_unlock(&fdp->fd_spin);
+	spin_unlock_shared(&fdp->fd_spin);
 	*fpp = fp;
 	return (error);
 }
@@ -2779,7 +2779,7 @@ sysctl_kern_file_callback(struct proc *p, void *data)
 	 * The fdp's own spinlock prevents the contents from being
 	 * modified.
 	 */
-	spin_lock(&fdp->fd_spin);
+	spin_lock_shared(&fdp->fd_spin);
 	for (n = 0; n < fdp->fd_nfiles; ++n) {
 		if ((fp = fdp->fd_files[n].fp) == NULL)
 			continue;
@@ -2788,14 +2788,14 @@ sysctl_kern_file_callback(struct proc *p, void *data)
 		} else {
 			uid = p->p_ucred ? p->p_ucred->cr_uid : -1;
 			kcore_make_file(&kf, fp, p->p_pid, uid, n);
-			spin_unlock(&fdp->fd_spin);
+			spin_unlock_shared(&fdp->fd_spin);
 			info->error = SYSCTL_OUT(info->req, &kf, sizeof(kf));
-			spin_lock(&fdp->fd_spin);
+			spin_lock_shared(&fdp->fd_spin);
 			if (info->error)
 				break;
 		}
 	}
-	spin_unlock(&fdp->fd_spin);
+	spin_unlock_shared(&fdp->fd_spin);
 	atomic_subtract_int(&fdp->fd_softrefs, 1);
 	if (info->error)
 		return(-1);

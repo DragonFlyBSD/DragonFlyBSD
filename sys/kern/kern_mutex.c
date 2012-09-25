@@ -318,7 +318,7 @@ _mtx_spinlock(mtx_t mtx)
 
 /*
  * Attempt to acquire a spinlock, if we fail we must undo the
- * gd->gd_spinlocks_wr/gd->gd_curthead->td_critcount predisposition.
+ * gd->gd_spinlocks/gd->gd_curthead->td_critcount predisposition.
  *
  * Returns 0 on success, EAGAIN on failure.
  */
@@ -345,7 +345,7 @@ _mtx_spinlock_try(mtx_t mtx)
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
 				break;
 		} else {
-			--gd->gd_spinlocks_wr;
+			--gd->gd_spinlocks;
 			cpu_ccfence();
 			--gd->gd_curthread->td_critcount;
 			res = EAGAIN;

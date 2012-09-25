@@ -159,7 +159,7 @@ struct globaldata {
 
 	struct tslpque	*gd_tsleep_hash;	/* tsleep/wakeup support */
 	long		gd_processing_ipiq;
-	int		gd_spinlocks_wr;	/* Exclusive spinlocks held */
+	int		gd_spinlocks;		/* Exclusive spinlocks held */
 	struct systimer	*gd_systimer_inprog;	/* in-progress systimer */
 	int		gd_timer_running;
 	u_int		gd_idle_repeat;		/* repeated switches to idle */

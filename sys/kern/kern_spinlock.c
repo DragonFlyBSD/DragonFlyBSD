@@ -29,12 +29,25 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-/*
- * The spinlock code utilizes two counters to form a virtual FIFO, allowing
- * a spinlock to allocate a slot and then only issue memory read operations
- * until it is handed the lock (if it is not the next owner for the lock).
- */
 
+/*
+ * The implementation is designed to avoid looping when compatible operations
+ * are executed.
+ *
+ * To acquire a spinlock we first increment counta.  Then we check if counta
+ * meets our requirements.  For an exclusive spinlock it must be 1, of a
+ * shared spinlock it must either be 1 or the SHARED_SPINLOCK bit must be set.
+ *
+ * Shared spinlock failure case: Decrement the count, loop until we can
+ * transition from 0 to SHARED_SPINLOCK|1, or until we find SHARED_SPINLOCK
+ * is set and increment the count.
+ *
+ * Exclusive spinlock failure case: While maintaining the count, clear the
+ * SHARED_SPINLOCK flag unconditionally.  Then use an atomic add to transfer
+ * the count from the low bits to the high bits of counta.  Then loop until
+ * all low bits are 0.  Once the low bits drop to 0 we can transfer the
+ * count back with an atomic_cmpset_int(), atomically, and return.
+ */
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
@@ -132,7 +145,8 @@ spin_trylock_contested(struct spinlock *spin)
 	globaldata_t gd = mycpu;
 
 	/*++spinlocks_contested1;*/
-	--gd->gd_spinlocks_wr;
+	/*atomic_add_int(&spin->counta, -1);*/
+	--gd->gd_spinlocks;
 	--gd->gd_curthread->td_critcount;
 	return (FALSE);
 }
@@ -144,6 +158,10 @@ spin_trylock_contested(struct spinlock *spin)
  * least on multi-socket systems.  All instructions seem to be about
  * the same on single-socket multi-core systems.  However, atomic_swap_int()
  * does not result in an even distribution of successful acquisitions.
+ *
+ * UNFORTUNATELY we cannot really use atomic_swap_int() when also implementing
+ * shared spin locks, so as we do a better job removing contention we've
+ * moved to atomic_cmpset_int() to be able handle multiple states.
  *
  * Another problem we have is that (at least on the 48-core opteron we test
  * with) having all 48 cores contesting the same spin lock reduces
@@ -177,11 +195,82 @@ spin_lock_contested(struct spinlock *spin)
 	struct indefinite_info info = { 0, 0 };
 	int i;
 
+	/*
+	 * Force any existing shared locks to exclusive so no new shared
+	 * locks can occur.  Transfer our count to the high bits, then
+	 * loop until we can acquire the low counter (== 1).
+	 */
+	atomic_clear_int(&spin->counta, SPINLOCK_SHARED);
+	atomic_add_int(&spin->counta, SPINLOCK_EXCLWAIT - 1);
+
 #ifdef DEBUG_LOCKS_LATENCY
 	long j;
 	for (j = spinlocks_add_latency; j > 0; --j)
 		cpu_ccfence();
 #endif
+	if (spin_lock_test_mode > 10 &&
+	    spin->countb > spin_lock_test_mode &&
+	    (spin_lock_test_mode & 0xFF) == mycpu->gd_cpuid) {
+		spin->countb = 0;
+		print_backtrace(-1);
+	}
+
+	i = 0;
+	++spin->countb;
+
+	/*logspin(beg, spin, 'w');*/
+	for (;;) {
+		/*
+		 * If the low bits are zero, try to acquire the exclusive lock
+		 * by transfering our high bit counter to the low bits.
+		 *
+		 * NOTE: Reading spin->counta prior to the swap is extremely
+		 *	 important on multi-chip/many-core boxes.  On 48-core
+		 *	 this one change improves fully concurrent all-cores
+		 *	 compiles by 100% or better.
+		 *
+		 *	 I can't emphasize enough how important the pre-read
+		 *	 is in preventing hw cache bus armageddon on
+		 *	 multi-chip systems.  And on single-chip/multi-core
+		 *	 systems it just doesn't hurt.
+		 */
+		uint32_t ovalue = spin->counta;
+		cpu_ccfence();
+		if ((ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0 &&
+		    atomic_cmpset_int(&spin->counta, ovalue,
+				      (ovalue - SPINLOCK_EXCLWAIT) | 1)) {
+			break;
+		}
+		if ((++i & 0x7F) == 0x7F) {
+			++spin->countb;
+			if (spin_indefinite_check(spin, &info))
+				break;
+		}
+	}
+	/*logspin(end, spin, 'w');*/
+}
+
+/*
+ * Shared spinlocks
+ */
+void
+spin_lock_shared_contested(struct spinlock *spin)
+{
+	struct indefinite_info info = { 0, 0 };
+	int i;
+
+	atomic_add_int(&spin->counta, -1);
+#ifdef DEBUG_LOCKS_LATENCY
+	long j;
+	for (j = spinlocks_add_latency; j > 0; --j)
+		cpu_ccfence();
+#endif
+	if (spin_lock_test_mode > 10 &&
+	    spin->countb > spin_lock_test_mode &&
+	    (spin_lock_test_mode & 0xFF) == mycpu->gd_cpuid) {
+		spin->countb = 0;
+		print_backtrace(-1);
+	}
 
 	i = 0;
 	++spin->countb;
@@ -194,12 +283,23 @@ spin_lock_contested(struct spinlock *spin)
 		 *	 this one change improves fully concurrent all-cores
 		 *	 compiles by 100% or better.
 		 *
-		 *	 I can't emphasize enough how important the pre-read is in
-		 *	 preventing hw cache bus armageddon on multi-chip systems.
-		 *	 And on single-chip/multi-core systems it just doesn't hurt.
+		 *	 I can't emphasize enough how important the pre-read
+		 *	 is in preventing hw cache bus armageddon on
+		 *	 multi-chip systems.  And on single-chip/multi-core
+		 *	 systems it just doesn't hurt.
 		 */
-		if (spin->counta == 0 && atomic_swap_int(&spin->counta, 1) == 0)
-			break;
+		uint32_t ovalue = spin->counta;
+
+		cpu_ccfence();
+		if (ovalue == 0) {
+			if (atomic_cmpset_int(&spin->counta, 0,
+					      SPINLOCK_SHARED | 1))
+				break;
+		} else if (ovalue & SPINLOCK_SHARED) {
+			if (atomic_cmpset_int(&spin->counta, ovalue,
+					      ovalue + 1))
+				break;
+		}
 		if ((++i & 0x7F) == 0x7F) {
 			++spin->countb;
 			if (spin_indefinite_check(spin, &info))
@@ -209,6 +309,9 @@ spin_lock_contested(struct spinlock *spin)
 	/*logspin(end, spin, 'w');*/
 }
 
+/*
+ * Pool functions (SHARED SPINLOCKS NOT SUPPORTED)
+ */
 static __inline int
 _spin_pool_hash(void *ptr)
 {

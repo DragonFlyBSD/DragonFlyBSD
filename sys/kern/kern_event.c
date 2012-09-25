@@ -663,7 +663,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		struct timespec ats;
 
 		if (tsp->tv_sec || tsp->tv_nsec) {
-			nanouptime(&ats);
+			getnanouptime(&ats);
 			timespecadd(tsp, &ats);		/* tsp = target time */
 		}
 	}
@@ -1018,7 +1018,7 @@ kqueue_sleep(struct kqueue *kq, struct timespec *tsp)
 		struct timespec atx = *tsp;
 		int timeout;
 
-		nanouptime(&ats);
+		getnanouptime(&ats);
 		timespecsub(&atx, &ats);
 		if (ats.tv_sec < 0) {
 			error = EWOULDBLOCK;
