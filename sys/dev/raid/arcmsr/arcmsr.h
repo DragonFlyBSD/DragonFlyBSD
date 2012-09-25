@@ -35,7 +35,7 @@
 **(INCLUDING NEGLIGENCE OR OTHERWISE)ARISING IN ANY WAY OUT OF THE USE OF
 ** THIS SOFTWARE,EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **************************************************************************
-* $FreeBSD: src/sys/dev/arcmsr/arcmsr.h,v 1.9 2011/04/06 20:54:26 delphij Exp $
+* $FreeBSD: src/sys/dev/arcmsr/arcmsr.h,v 1.10 2012/09/04 05:15:54 delphij Exp $
 */
 
 #include <sys/ioccom.h>
@@ -55,6 +55,7 @@
 #define ARCMSR_MAX_ADAPTER                                                      4
 #define ARCMSR_RELEASE_SIMQ_LEVEL                                             230
 #define ARCMSR_MAX_HBB_POSTQUEUE                                              264 /* (ARCMSR_MAX_OUTSTANDING_CMD+8) */
+#define	ARCMSR_TIMEOUT_DELAY				60 /* in sec */
 /*
 *********************************************************************
 */
@@ -100,28 +101,38 @@
 #define PCI_DEVICE_ID_ARECA_1681                                           0x1681 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1880        0x1880 /* Device ID	*/
 
-#define PCIDevVenIDARC1110                                           0x111017D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1120                                           0x112017D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1130                                           0x113017D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1160                                           0x116017D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1170                                           0x117017D3 /* Vendor Device ID	*/
+#define ARECA_SUB_DEV_ID_1880	0x1880 /* Subsystem Device ID	*/
+#define ARECA_SUB_DEV_ID_1882	0x1882 /* Subsystem Device ID	*/
+#define ARECA_SUB_DEV_ID_1212	0x1212 /* Subsystem Device ID	*/
+#define ARECA_SUB_DEV_ID_1213	0x1213 /* Subsystem Device ID	*/
+#define ARECA_SUB_DEV_ID_1222	0x1222 /* Subsystem Device ID	*/
+#define ARECA_SUB_DEV_ID_1223	0x1223 /* Subsystem Device ID	*/
+
+#define PCIDevVenIDARC1110              0x111017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1120              0x112017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1130              0x113017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1160              0x116017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1170              0x117017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1200              0x120017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1201              0x120117D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1210                                           0x121017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1210              0x121017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1212              0x121217D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1220                                           0x122017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1213              0x121317D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1220              0x122017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1222              0x122217D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1230                                           0x123017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1223              0x122317D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1230              0x123017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1231              0x123117D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1260                                           0x126017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1260              0x126017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1261              0x126117D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1270                                           0x127017D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1280                                           0x128017D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1380                                           0x138017D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1381                                           0x138117D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1680                                           0x168017D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1681                                           0x168117D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1270              0x127017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1280              0x128017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1380              0x138017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1381              0x138117D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1680              0x168017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1681              0x168117D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1880              0x188017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1882              0x188217D3 /* Vendor Device ID	*/
 
 #ifndef PCIR_BARS
 	#define PCIR_BARS	0x10
@@ -830,6 +841,8 @@ struct AdapterControlBlock {
 	u_int32_t					pktRequestCount;
 	u_int32_t					pktReturnCount;
 #endif
+	u_int32_t					vendor_device_id;
+	u_int32_t					adapter_bus_speed;
 };/* HW_DEVICE_EXTENSION */
 /* acb_flags */
 #define ACB_F_SCSISTOPADAPTER           0x0001
@@ -848,6 +861,10 @@ struct AdapterControlBlock {
 /* devstate */
 #define ARECA_RAID_GONE         		0x55
 #define ARECA_RAID_GOOD         		0xaa
+/* adapter_bus_speed */
+#define	ACB_BUS_SPEED_3G	0
+#define	ACB_BUS_SPEED_6G	1
+#define	ACB_BUS_SPEED_12G	2
 /*
 *********************************************************************
 ** Message Unit structure
