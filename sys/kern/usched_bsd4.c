@@ -324,8 +324,11 @@ SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, bsd4_rqinit, NULL)
  * It is responsible for making the thread the current designated userland
  * thread for this cpu, blocking if necessary.
  *
- * The kernel has already depressed our LWKT priority so we must not switch
- * until we have either assigned or disposed of the thread.
+ * The kernel will not depress our LWKT priority until after we return,
+ * in case we have to shove over to another cpu.
+ *
+ * We must determine our thread's disposition before we switch away.  This
+ * is very sensitive code.
  *
  * WARNING! THIS FUNCTION IS ALLOWED TO CAUSE THE CURRENT THREAD TO MIGRATE
  * TO ANOTHER CPU!  Because most of the kernel assumes that no migration will

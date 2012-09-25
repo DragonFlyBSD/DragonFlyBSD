@@ -356,19 +356,19 @@ userexit(struct lwp *lp)
 	}
 
 	/*
-	 * Reduce our priority in preparation for a return to userland.  If
-	 * our passive release function was still in place, our priority was
-	 * never raised and does not need to be reduced.
-	 */
-	lwkt_passive_recover(td);
-
-	/*
 	 * Become the current user scheduled process if we aren't already,
 	 * and deal with reschedule requests and other factors.
 	 */
 	lp->lwp_proc->p_usched->acquire_curproc(lp);
 	/* WARNING: we may have migrated cpu's */
 	/* gd = td->td_gd; */
+
+	/*
+	 * Reduce our priority in preparation for a return to userland.  If
+	 * our passive release function was still in place, our priority was
+	 * never raised and does not need to be reduced.
+	 */
+	lwkt_passive_recover(td);
 }
 
 #if !defined(KTR_KERNENTRY)

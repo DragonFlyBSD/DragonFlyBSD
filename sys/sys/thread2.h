@@ -261,7 +261,7 @@ lwkt_getpri_self(void)
 static __inline void
 lwkt_passive_recover(thread_t td)
 {
-#ifdef LWKT_SPLIT_USERPRI
+#ifndef NO_LWKT_SPLIT_USERPRI
     if (td->td_release == NULL)
 	lwkt_setpri_self(TDPRI_USER_NORM);
     td->td_release = NULL;

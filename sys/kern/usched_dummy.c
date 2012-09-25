@@ -132,6 +132,12 @@ SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, dummyinit, NULL)
  * It is responsible for making the thread the current designated userland
  * thread for this cpu, blocking if necessary.
  *
+ * The kernel will not depress our LWKT priority until after we return,
+ * in case we have to shove over to another cpu.
+ *
+ * We must determine our thread's disposition before we switch away.  This
+ * is very sensitive code.
+ *
  * We are expected to handle userland reschedule requests here too.
  *
  * WARNING! THIS FUNCTION IS ALLOWED TO CAUSE THE CURRENT THREAD TO MIGRATE

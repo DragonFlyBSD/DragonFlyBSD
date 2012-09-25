@@ -68,9 +68,13 @@ union usched_data {
 	int	estcpu;		/* dynamic priority modification */
 	u_short rqtype;		/* protected copy of rtprio type */
 	u_short	qcpu;		/* which cpu are we enqueued on? */
+	u_short rrcount;	/* reset when moved to runq tail */
+	u_short unused01;
+	u_short unused02;
+	u_short unused03;
     } dfly;
 
-    int		pad[4];		/* PAD for future expansion */
+    int		pad[6];		/* PAD for future expansion */
 };
 
 /*

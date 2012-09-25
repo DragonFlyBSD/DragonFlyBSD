@@ -97,11 +97,12 @@ TAILQ_HEAD(rq, lwp);
 #define lwp_uload	lwp_usdata.dfly.uload
 #define lwp_rqtype	lwp_usdata.dfly.rqtype
 #define lwp_qcpu	lwp_usdata.dfly.qcpu
+#define lwp_rrcount	lwp_usdata.dfly.rrcount
 
 struct usched_dfly_pcpu {
 	struct spinlock spin;
 	struct thread	helper_thread;
-	short		rrcount;
+	short		unusde01;
 	short		upri;
 	int		uload;
 	int		ucount;
@@ -255,7 +256,7 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_chooser, CTLFLAG_RW,
 static int usched_dfly_smt = 0;
 static int usched_dfly_cache_coherent = 0;
 static int usched_dfly_weight1 = 200;	/* keep thread on current cpu */
-static int usched_dfly_weight2 = 120;	/* synchronous peer's current cpu */
+static int usched_dfly_weight2 = 180;	/* synchronous peer's current cpu */
 static int usched_dfly_weight3 = 40;	/* number of threads on queue */
 static int usched_dfly_weight4 = 160;	/* availability of idle cores */
 static int usched_dfly_features = 0x8F;	/* allow pulls */
@@ -281,8 +282,11 @@ KTR_INFO(KTR_USCHED_DFLY, usched, chooseproc, 0,
  * It is responsible for making the thread the current designated userland
  * thread for this cpu, blocking if necessary.
  *
- * The kernel has already depressed our LWKT priority so we must not switch
- * until we have either assigned or disposed of the thread.
+ * The kernel will not depress our LWKT priority until after we return,
+ * in case we have to shove over to another cpu.
+ *
+ * We must determine our thread's disposition before we switch away.  This
+ * is very sensitive code.
  *
  * WARNING! THIS FUNCTION IS ALLOWED TO CAUSE THE CURRENT THREAD TO MIGRATE
  * TO ANOTHER CPU!  Because most of the kernel assumes that no migration will
@@ -382,12 +386,17 @@ dfly_acquire_curproc(struct lwp *lp)
 		 *
 		 * It is important to do a masked test to avoid the edge
 		 * case where two near-equal-priority threads are constantly
-		 * interrupting each other.  Since our context is the one
-		 * that is active NOW, we WANT to steal the uschedcp
-		 * designation and not switch-flap.
+		 * interrupting each other.
+		 *
+		 * In the exact match case another thread has already gained
+		 * uschedcp and lowered its priority, if we steal it the
+		 * other thread will stay stuck on the LWKT runq and not
+		 * push to another cpu.  So don't steal on equal-priority even
+		 * though it might appear to be more beneficial due to not
+		 * having to switch back to the other thread's context.
 		 */
 		if (dd->uschedcp &&
-		   (dd->upri & ~PPQMASK) >=
+		   (dd->upri & ~PPQMASK) >
 		   (lp->lwp_priority & ~PPQMASK)) {
 			dd->uschedcp = lp;
 			dd->upri = lp->lwp_priority;
@@ -516,7 +525,9 @@ dfly_select_curproc(globaldata_t gd)
 		atomic_set_cpumask(&dfly_curprocmask, CPUMASK(cpuid));
 		dd->upri = nlp->lwp_priority;
 		dd->uschedcp = nlp;
+#if 0
 		dd->rrcount = 0;		/* reset round robin */
+#endif
 		spin_unlock(&dd->spin);
 #ifdef SMP
 		lwkt_acquire(nlp->lwp_thread);
@@ -753,9 +764,8 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	 * Do we need to round-robin?  We round-robin 10 times a second.
 	 * This should only occur for cpu-bound batch processes.
 	 */
-	if (++dd->rrcount >= usched_dfly_rrinterval) {
+	if (++lp->lwp_rrcount >= usched_dfly_rrinterval) {
 		lp->lwp_thread->td_wakefromcpu = -1;
-		dd->rrcount = 0;
 		need_user_resched();
 	}
 
@@ -823,7 +833,9 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 			atomic_set_cpumask(&dfly_curprocmask, dd->cpumask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
+#if 0
 			dd->rrcount = 0;	/* reset round robin */
+#endif
 			spin_unlock(&dd->spin);
 			lwkt_acquire(nlp->lwp_thread);
 			lwkt_schedule(nlp->lwp_thread);
@@ -1488,11 +1500,16 @@ dfly_choose_best_queue(struct lwp *lp)
 				load += rdd->ucount * usched_dfly_weight3;
 
 				if (rdd->uschedcp == NULL &&
-				    rdd->runqcount == 0) {
+				    rdd->runqcount == 0 &&
+				    globaldata_find(cpuid)->gd_tdrunqcount == 0
+				) {
 					load -= usched_dfly_weight4;
-				} else if (rdd->upri > lp->lwp_priority + PPQ) {
+				}
+#if 0
+				else if (rdd->upri > lp->lwp_priority + PPQ) {
 					load -= usched_dfly_weight4 / 2;
 				}
+#endif
 				mask &= ~CPUMASK(cpuid);
 				++count;
 			}
@@ -1652,9 +1669,12 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 				    globaldata_find(cpuid)->gd_tdrunqcount == 0
 				) {
 					load -= usched_dfly_weight4;
-				} else if (rdd->upri > dd->upri + PPQ) {
+				}
+#if 0
+				else if (rdd->upri > dd->upri + PPQ) {
 					load -= usched_dfly_weight4 / 2;
 				}
+#endif
 				mask &= ~CPUMASK(cpuid);
 				++count;
 			}
@@ -1901,11 +1921,24 @@ dfly_setrunqueue_locked(dfly_pcpu_t rdd, struct lwp *lp)
 	 * we want a reschedule, calculate the best cpu for the job.
 	 *
 	 * Always run reschedules on the LWPs original cpu.
+	 *
+	 * If the lp's rrcount has not been exhausted we want to resume with
+	 * it when this queue is reached the next time, instead of resuming
+	 * with a different lp.  This improves cache effects and also avoids
+	 * leaving interrupted MP servers out in the cold holding internal
+	 * locks while trying to run a different thread.
 	 */
 	KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
 	atomic_set_int(&lp->lwp_mpflags, LWP_MP_ONRUNQ);
 	++rdd->runqcount;
-	TAILQ_INSERT_TAIL(q, lp, lwp_procq);
+	if (lp->lwp_rrcount >= usched_dfly_rrinterval) {
+		lp->lwp_rrcount = 0;
+		TAILQ_INSERT_TAIL(q, lp, lwp_procq);
+	} else {
+		TAILQ_INSERT_HEAD(q, lp, lwp_procq);
+		if (TAILQ_NEXT(lp, lwp_procq) == NULL)
+			lp->lwp_rrcount = 0;
+	}
 	*which |= 1 << pri;
 }
 
@@ -1958,7 +1991,9 @@ dfly_helper_thread(void *dummy)
 
 	atomic_set_cpumask(&dfly_rdyprocmask, mask);
 	clear_user_resched();	/* This satisfied the reschedule request */
+#if 0
 	dd->rrcount = 0;	/* Reset the round-robin counter */
+#endif
 
 	if (dd->runqcount || dd->uschedcp != NULL) {
 		/*
@@ -1971,7 +2006,9 @@ dfly_helper_thread(void *dummy)
 			atomic_set_cpumask(&dfly_curprocmask, mask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
+#if 0
 			dd->rrcount = 0;	/* reset round robin */
+#endif
 			spin_unlock(&dd->spin);
 			lwkt_acquire(nlp->lwp_thread);
 			lwkt_schedule(nlp->lwp_thread);
@@ -2009,7 +2046,9 @@ dfly_helper_thread(void *dummy)
 			atomic_set_cpumask(&dfly_curprocmask, mask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
+#if 0
 			dd->rrcount = 0;	/* reset round robin */
+#endif
 			spin_unlock(&dd->spin);
 			lwkt_acquire(nlp->lwp_thread);
 			lwkt_schedule(nlp->lwp_thread);

@@ -183,9 +183,7 @@ _lwkt_dequeue(thread_t td)
  * There are a limited number of lwkt threads runnable since user
  * processes only schedule one at a time per cpu.  However, there can
  * be many user processes in kernel mode exiting from a tsleep() which
- * become runnable.  We do a secondary comparison using td_upri to try
- * to order these in the situation where several wake up at the same time
- * to avoid excessive switching.
+ * become runnable.
  *
  * NOTE: lwkt_schedulerclock() will force a round-robin based on td_pri and
  *	 will ignore user priority.  This is to ensure that user threads in
@@ -207,10 +205,23 @@ _lwkt_enqueue(thread_t td)
 	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
 	    atomic_set_int(&gd->gd_reqflags, RQF_RUNNING);
 	} else {
+	    /*
+	     * NOTE: td_upri - higher numbers more desireable, same sense
+	     *	     as td_pri (typically reversed from lwp_upri).
+	     *
+	     *	     In the equal priority case we want the best selection
+	     *	     at the beginning so the less desireable selections know
+	     *	     that they have to setrunqueue/go-to-another-cpu, even
+	     *	     though it means switching back to the 'best' selection.
+	     *	     This also avoids degenerate situations when many threads
+	     *	     are runnable or waking up at the same time.
+	     *
+	     *	     If upri matches exactly place at end/round-robin.
+	     */
 	    while (xtd &&
-		   (xtd->td_pri > td->td_pri ||
+		   (xtd->td_pri >= td->td_pri ||
 		    (xtd->td_pri == td->td_pri &&
-		     xtd->td_upri >= td->td_pri))) {
+		     xtd->td_upri >= td->td_upri))) {
 		xtd = TAILQ_NEXT(xtd, td_threadq);
 	    }
 	    if (xtd)
@@ -719,7 +730,7 @@ lwkt_switch(void)
 		goto skip;
 
 	while ((ntd = TAILQ_NEXT(ntd, td_threadq)) != NULL) {
-#ifdef LWKT_SPLIT_USERPRI
+#ifndef NO_LWKT_SPLIT_USERPRI
 		/*
 		 * Never schedule threads returning to userland or the
 		 * user thread scheduler helper thread when higher priority
@@ -1144,7 +1155,7 @@ lwkt_passive_release(struct thread *td)
 {
     struct lwp *lp = td->td_lwp;
 
-#ifdef LWKT_SPLIT_USERPRI
+#ifndef NO_LWKT_SPLIT_USERPRI
     td->td_release = NULL;
     lwkt_setpri_self(TDPRI_KERN_USER);
 #endif
