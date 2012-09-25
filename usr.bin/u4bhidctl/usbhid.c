@@ -40,7 +40,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <usbhid.h>
-#include <bus/usb/usbhid.h>
+#include <bus/u4b/usbhid.h>
 
 static struct variable {
 	char *name;

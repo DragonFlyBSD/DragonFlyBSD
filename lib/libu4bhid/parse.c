@@ -26,16 +26,13 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbhid.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbhid.h>
 
 #include "usbhid.h"
 #include "usbvar.h"

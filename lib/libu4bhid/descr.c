@@ -26,9 +26,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 #include <sys/types.h>
 
 #include <assert.h>
@@ -38,7 +35,7 @@ __FBSDID("$FreeBSD$");
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
-#include <dev/usb/usb_ioctl.h>
+#include <bus/u4b/usb_ioctl.h>
 
 #include "usbhid.h"
 #include "usbvar.h"
