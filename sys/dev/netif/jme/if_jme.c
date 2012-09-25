@@ -666,7 +666,7 @@ jme_attach(device_t dev)
 	uint32_t reg;
 	uint16_t did;
 	uint8_t pcie_ptr, rev;
-	int error = 0, i, j, rx_desc_cnt;
+	int error = 0, i, j, rx_desc_cnt, coal_max;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
@@ -922,6 +922,29 @@ jme_attach(device_t dev)
 #endif
 
 	/*
+	 * Set default coalesce valves
+	 */
+	sc->jme_tx_coal_to = PCCTX_COAL_TO_DEFAULT;
+	sc->jme_tx_coal_pkt = PCCTX_COAL_PKT_DEFAULT;
+	sc->jme_rx_coal_to = PCCRX_COAL_TO_DEFAULT;
+	sc->jme_rx_coal_pkt = PCCRX_COAL_PKT_DEFAULT;
+
+	/*
+	 * Adjust coalesce valves, in case that the number of TX/RX
+	 * descs are set to small values by users.
+	 *
+	 * NOTE: coal_max will not be zero, since number of descs
+	 * must aligned by JME_NDESC_ALIGN (16 currently)
+	 */
+	coal_max = sc->jme_cdata.jme_tx_desc_cnt / 2;
+	if (coal_max < sc->jme_tx_coal_pkt)
+		sc->jme_tx_coal_pkt = coal_max;
+
+	coal_max = sc->jme_cdata.jme_rx_data[0].jme_rx_desc_cnt / 2;
+	if (coal_max < sc->jme_rx_coal_pkt)
+		sc->jme_rx_coal_pkt = coal_max;
+
+	/*
 	 * Create sysctl tree
 	 */
 	jme_sysctl_node(sc);
@@ -1059,7 +1082,6 @@ jme_detach(device_t dev)
 static void
 jme_sysctl_node(struct jme_softc *sc)
 {
-	int coal_max;
 #ifdef JME_RSS_DEBUG
 	int r;
 #endif
@@ -1145,29 +1167,6 @@ jme_sysctl_node(struct jme_softc *sc)
 	    "npoll_txoff", CTLTYPE_INT|CTLFLAG_RW, sc, 0,
 	    jme_sysctl_npoll_txoff, "I", "NPOLLING TX cpu offset");
 #endif
-
-	/*
-	 * Set default coalesce valves
-	 */
-	sc->jme_tx_coal_to = PCCTX_COAL_TO_DEFAULT;
-	sc->jme_tx_coal_pkt = PCCTX_COAL_PKT_DEFAULT;
-	sc->jme_rx_coal_to = PCCRX_COAL_TO_DEFAULT;
-	sc->jme_rx_coal_pkt = PCCRX_COAL_PKT_DEFAULT;
-
-	/*
-	 * Adjust coalesce valves, in case that the number of TX/RX
-	 * descs are set to small values by users.
-	 *
-	 * NOTE: coal_max will not be zero, since number of descs
-	 * must aligned by JME_NDESC_ALIGN (16 currently)
-	 */
-	coal_max = sc->jme_cdata.jme_tx_desc_cnt / 2;
-	if (coal_max < sc->jme_tx_coal_pkt)
-		sc->jme_tx_coal_pkt = coal_max;
-
-	coal_max = sc->jme_cdata.jme_rx_data[0].jme_rx_desc_cnt / 2;
-	if (coal_max < sc->jme_rx_coal_pkt)
-		sc->jme_rx_coal_pkt = coal_max;
 }
 
 static int
