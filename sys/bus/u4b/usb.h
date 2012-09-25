@@ -54,8 +54,8 @@ MALLOC_DECLARE(M_USBDEV);
 MALLOC_DECLARE(M_USBHC);
 #endif /* _KERNEL */
 
-#include <dev/usb/usb_endian.h>
-#include <dev/usb/usb_freebsd.h>
+#include <bus/u4b/usb_endian.h>
+#include <bus/u4b/usb_freebsd.h>
 
 #define	USB_STACK_VERSION 2000		/* 2.0 */
 

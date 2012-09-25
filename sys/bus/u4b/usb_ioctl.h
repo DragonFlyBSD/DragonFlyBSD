@@ -33,8 +33,8 @@
 
 /* Building "kdump" depends on these includes */
 
-#include <dev/usb/usb_endian.h>
-#include <dev/usb/usb.h>
+#include <bus/u4b/usb_endian.h>
+#include <bus/u4b/usb.h>
 
 #define	USB_DEVICE_NAME "usbctl"
 #define	USB_DEVICE_DIR "usb"
