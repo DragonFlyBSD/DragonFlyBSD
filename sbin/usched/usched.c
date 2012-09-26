@@ -1,17 +1,19 @@
 /*
- * Copyright (c) 2005 Jeffrey M. Hsu.  All rights reserved.
+ * Copyright (c) 2012 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Jeffrey M. Hsu.
+ * by Matthew Dillon <dillon@backplane.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
@@ -28,34 +30,63 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/spinlock.h,v 1.5 2006/05/26 02:26:26 dillon Exp $
  */
 
-#ifndef _SYS_SPINLOCK_H_
-#define _SYS_SPINLOCK_H_
+#include <sys/types.h>
+#include <sys/usched.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
-/*
- * Note that the spinlock structure is retained whether we are SMP or not,
- * so structures using embedded spinlocks do not change size for SMP vs UP
- * builds.
- *
- * DragonFly spinlocks use a chasing counter.  A core desiring a spinlock
- * does a atomic_fetchadd_int() on countb and then waits for counta to
- * reach its value using MWAIT.  Releasing the spinlock involves an
- * atomic_add_int() on counta.  If no MWAIT is available the core can spin
- * waiting for the value to change which is still represented by a shared+ro
- * cache entry.
- */
-struct spinlock {
-	int counta;
-	int countb;
-};
+static void usage(void);
 
-#define SPINLOCK_INITIALIZER(head)	{ 0, 0 }
+int VerboseOpt;
 
-#define SPINLOCK_SHARED			0x80000000
-#define SPINLOCK_EXCLWAIT		0x00100000 /* high bits counter */
+int
+main(int ac, char **av)
+{
+	int ch;
+	int res;
+	char *sched = NULL;
+	char *cpustr = NULL;
+	cpumask_t cpumask = 0;
 
-#endif
+	while ((ch = getopt(ac, av, "v")) != -1) {
+		switch(ch) {
+		case 'v':
+			VerboseOpt = 1;
+			break;
+		default:
+			usage();
+			break;	/* NOT REACHED */
+		}
+	}
+	ac -= optind;
+	av += optind;
 
+	if (ac < 2)
+		usage();
+	sched = strtok(strdup(av[0]), ":");
+	cpustr = strtok(NULL, "");
+	if (cpustr == NULL)
+		cpumask = -1;
+	else
+		cpumask = strtoul(cpustr, NULL, 0);
+
+	res = usched_set(getpid(), USCHED_SET_SCHEDULER, sched, strlen(sched));
+	if (res != 0) {
+		perror("usched_set");
+		exit(1);
+	}
+	execvp(av[1], av + 1);
+	exit(1);
+}
+
+static
+void
+usage(void)
+{
+	fprintf(stderr, "usched scheduler[:cpumask] program args...\n");
+	exit(1);
+}

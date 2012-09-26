@@ -637,8 +637,6 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
  * we don't need to lock access to the vp.
  *
  * f_offset updates are not guaranteed against multiple readers
- *
- * MPSAFE
  */
 static int
 vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)

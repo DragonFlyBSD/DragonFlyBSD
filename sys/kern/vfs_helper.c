@@ -57,6 +57,24 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/jail.h>
+#include <sys/sysctl.h>
+#include <sys/sfbuf.h>
+#include <vm/vm_extern.h>
+#include <vm/vm_object.h>
+
+#ifdef LWBUF_IS_OPTIMAL
+
+static int vm_read_shortcut_enable = 0;
+static long vm_read_shortcut_count;
+static long vm_read_shortcut_failed;
+SYSCTL_INT(_vm, OID_AUTO, read_shortcut_enable, CTLFLAG_RW,
+	  &vm_read_shortcut_enable, 0, "Direct vm_object vop_read shortcut");
+SYSCTL_LONG(_vm, OID_AUTO, read_shortcut_count, CTLFLAG_RW,
+	  &vm_read_shortcut_count, 0, "Statistics");
+SYSCTL_LONG(_vm, OID_AUTO, read_shortcut_failed, CTLFLAG_RW,
+	  &vm_read_shortcut_failed, 0, "Statistics");
+
+#endif
 
 /*
  * vop_helper_access()
@@ -276,3 +294,107 @@ vop_helper_chown(struct vnode *vp, uid_t new_uid, gid_t new_gid,
 	return(0);
 }
 
+#ifdef LWBUF_IS_OPTIMAL
+
+/*
+ * A VFS can call this function to try to dispose of a read request
+ * directly from the VM system, pretty much bypassing almost all VFS
+ * overhead except for atime updates.
+ *
+ * If 0 is returned some or all of the uio was handled.  The caller must
+ * check the uio and handle the remainder.
+ *
+ * The caller must fail on a non-zero error.
+ */
+int
+vop_helper_read_shortcut(struct vop_read_args *ap)
+{
+	struct vnode *vp;
+	struct uio *uio;
+	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
+	vm_object_t obj;
+	vm_page_t m;
+	int offset;
+	int n;
+	int error;
+
+	vp = ap->a_vp;
+	uio = ap->a_uio;
+
+	/*
+	 * We can't short-cut if there is no VM object or this is a special
+	 * UIO_NOCOPY read (typically from VOP_STRATEGY()).  We also can't
+	 * do this if we cannot extract the filesize from the vnode.
+	 */
+	if (vm_read_shortcut_enable == 0)
+		return(0);
+	if (vp->v_object == NULL || uio->uio_segflg == UIO_NOCOPY)
+		return(0);
+	if (vp->v_filesize == NOOFFSET)
+		return(0);
+	if (uio->uio_resid == 0)
+		return(0);
+
+	/*
+	 * Iterate the uio on a page-by-page basis
+	 *
+	 * XXX can we leave the object held shared during the uiomove()?
+	 */
+	++vm_read_shortcut_count;
+	obj = vp->v_object;
+	vm_object_hold_shared(obj);
+
+	error = 0;
+	while (uio->uio_resid && error == 0) {
+		offset = (int)uio->uio_offset & PAGE_MASK;
+		n = PAGE_SIZE - offset;
+		if (n > uio->uio_resid)
+			n = uio->uio_resid;
+		if (vp->v_filesize < uio->uio_offset)
+			break;
+		if (uio->uio_offset + n > vp->v_filesize)
+			n = vp->v_filesize - uio->uio_offset;
+		if (n == 0)
+			break;	/* hit EOF */
+
+		m = vm_page_lookup(obj, OFF_TO_IDX(uio->uio_offset));
+		if (m == NULL) {
+			++vm_read_shortcut_failed;
+			break;
+		}
+		vm_page_hold(m);
+		if (m->flags & PG_BUSY) {
+			++vm_read_shortcut_failed;
+			vm_page_unhold(m);
+			break;
+		}
+		if ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
+			++vm_read_shortcut_failed;
+			vm_page_unhold(m);
+			break;
+		}
+		lwb = lwbuf_alloc(m, &lwb_cache);
+		error = uiomove((char *)lwbuf_kva(lwb) + offset, n, uio);
+		vm_page_flag_set(m, PG_REFERENCED);
+		lwbuf_free(lwb);
+		vm_page_unhold(m);
+	}
+	vm_object_drop(obj);
+
+	return (error);
+}
+
+#else
+
+/*
+ * If lwbuf's aren't optimal then it's best to just use the buffer
+ * cache.
+ */
+int
+vop_helper_read_shortcut(struct vop_read_args *ap)
+{
+	return(0);
+}
+
+#endif

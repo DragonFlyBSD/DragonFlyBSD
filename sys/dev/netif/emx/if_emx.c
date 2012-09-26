@@ -178,7 +178,7 @@ static void	emx_stop(struct emx_softc *);
 static int	emx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	emx_start(struct ifnet *);
 #ifdef IFPOLL_ENABLE
-static void	emx_qpoll(struct ifnet *, struct ifpoll_info *);
+static void	emx_npoll(struct ifnet *, struct ifpoll_info *);
 #endif
 static void	emx_watchdog(struct ifnet *);
 static void	emx_media_status(struct ifnet *, struct ifmediareq *);
@@ -242,6 +242,10 @@ static int	emx_sysctl_stats(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS);
+#ifdef IFPOLL_ENABLE
+static int	emx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
+static int	emx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
+#endif
 static void	emx_add_sysctl(struct emx_softc *);
 
 static void	emx_serialize_skipmain(struct emx_softc *);
@@ -413,6 +417,9 @@ emx_attach(device_t dev)
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
 	driver_intr_t *intr_func;
+#ifdef IFPOLL_ENABLE
+	int offset, offset_def;
+#endif
 
 	lwkt_serialize_init(&sc->main_serialize);
 	lwkt_serialize_init(&sc->tx_serialize);
@@ -688,6 +695,37 @@ emx_attach(device_t dev)
 
 	/* XXX disable wol */
 	sc->wol = 0;
+
+#ifdef IFPOLL_ENABLE
+	/*
+	 * NPOLLING RX CPU offset
+	 */
+	if (sc->rx_ring_cnt == ncpus2) {
+		offset = 0;
+	} else {
+		offset_def = (sc->rx_ring_cnt * device_get_unit(dev)) % ncpus2;
+		offset = device_getenv_int(dev, "npoll.rxoff", offset_def);
+		if (offset >= ncpus2 ||
+		    offset % sc->rx_ring_cnt != 0) {
+			device_printf(dev, "invalid npoll.rxoff %d, use %d\n",
+			    offset, offset_def);
+			offset = offset_def;
+		}
+	}
+	sc->rx_npoll_off = offset;
+
+	/*
+	 * NPOLLING TX CPU offset
+	 */
+	offset_def = sc->rx_npoll_off;
+	offset = device_getenv_int(dev, "npoll.txoff", offset_def);
+	if (offset >= ncpus2) {
+		device_printf(dev, "invalid npoll.txoff %d, use %d\n",
+		    offset, offset_def);
+		offset = offset_def;
+	}
+	sc->tx_npoll_off = offset;
+#endif
 
 	/* Setup OS specific network interface */
 	emx_setup_ifp(sc);
@@ -1865,7 +1903,7 @@ emx_setup_ifp(struct emx_softc *sc)
 	ifp->if_ioctl = emx_ioctl;
 	ifp->if_start = emx_start;
 #ifdef IFPOLL_ENABLE
-	ifp->if_qpoll = emx_qpoll;
+	ifp->if_npoll = emx_npoll;
 #endif
 	ifp->if_watchdog = emx_watchdog;
 	ifp->if_serialize = emx_serialize;
@@ -3406,6 +3444,17 @@ emx_add_sysctl(struct emx_softc *sc)
 		       OID_AUTO, "rx_ring_cnt", CTLFLAG_RD,
 		       &sc->rx_ring_cnt, 0, "RX ring count");
 
+#ifdef IFPOLL_ENABLE
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+			OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
+			sc, 0, emx_sysctl_npoll_rxoff, "I",
+			"NPOLLING RX cpu offset");
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+			OID_AUTO, "npoll_txoff", CTLTYPE_INT|CTLFLAG_RW,
+			sc, 0, emx_sysctl_npoll_txoff, "I",
+			"NPOLLING TX cpu offset");
+#endif
+
 #ifdef EMX_RSS_DEBUG
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 		       OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug,
@@ -3501,6 +3550,62 @@ emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
 
 	return error;
 }
+
+#ifdef IFPOLL_ENABLE
+
+static int
+emx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS)
+{
+	struct emx_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, off;
+
+	off = sc->rx_npoll_off;
+	error = sysctl_handle_int(oidp, &off, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (off < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+	if (off >= ncpus2 || off % sc->rx_ring_cnt != 0) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		sc->rx_npoll_off = off;
+	}
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+static int
+emx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS)
+{
+	struct emx_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, off;
+
+	off = sc->tx_npoll_off;
+	error = sysctl_handle_int(oidp, &off, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (off < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+	if (off >= ncpus2) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		sc->tx_npoll_off = off;
+	}
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+#endif	/* IFPOLL_ENABLE */
 
 static int
 emx_dma_alloc(struct emx_softc *sc)
@@ -3616,7 +3721,7 @@ emx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 #ifdef IFPOLL_ENABLE
 
 static void
-emx_qpoll_status(struct ifnet *ifp, int pollhz __unused)
+emx_npoll_status(struct ifnet *ifp, int pollhz __unused)
 {
 	struct emx_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
@@ -3633,7 +3738,7 @@ emx_qpoll_status(struct ifnet *ifp, int pollhz __unused)
 }
 
 static void
-emx_qpoll_tx(struct ifnet *ifp, void *arg __unused, int cycle __unused)
+emx_npoll_tx(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 {
 	struct emx_softc *sc = ifp->if_softc;
 
@@ -3645,7 +3750,7 @@ emx_qpoll_tx(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 }
 
 static void
-emx_qpoll_rx(struct ifnet *ifp, void *arg, int cycle)
+emx_npoll_rx(struct ifnet *ifp, void *arg, int cycle)
 {
 	struct emx_softc *sc = ifp->if_softc;
 	struct emx_rxdata *rdata = arg;
@@ -3656,33 +3761,42 @@ emx_qpoll_rx(struct ifnet *ifp, void *arg, int cycle)
 }
 
 static void
-emx_qpoll(struct ifnet *ifp, struct ifpoll_info *info)
+emx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 {
 	struct emx_softc *sc = ifp->if_softc;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (info) {
-		int i;
+		int i, off;
 
-		info->ifpi_status.status_func = emx_qpoll_status;
+		info->ifpi_status.status_func = emx_npoll_status;
 		info->ifpi_status.serializer = &sc->main_serialize;
 
-		info->ifpi_tx[0].poll_func = emx_qpoll_tx;
-		info->ifpi_tx[0].arg = NULL;
-		info->ifpi_tx[0].serializer = &sc->tx_serialize;
+		off = sc->tx_npoll_off;
+		KKASSERT(off < ncpus2);
+		info->ifpi_tx[off].poll_func = emx_npoll_tx;
+		info->ifpi_tx[off].arg = NULL;
+		info->ifpi_tx[off].serializer = &sc->tx_serialize;
 
+		off = sc->rx_npoll_off;
 		for (i = 0; i < sc->rx_ring_cnt; ++i) {
-			info->ifpi_rx[i].poll_func = emx_qpoll_rx;
-			info->ifpi_rx[i].arg = &sc->rx_data[i];
-			info->ifpi_rx[i].serializer =
-				&sc->rx_data[i].rx_serialize;
+			struct emx_rxdata *rdata = &sc->rx_data[i];
+			int idx = i + off;
+
+			KKASSERT(idx < ncpus2);
+			info->ifpi_rx[idx].poll_func = emx_npoll_rx;
+			info->ifpi_rx[idx].arg = rdata;
+			info->ifpi_rx[idx].serializer = &rdata->rx_serialize;
 		}
 
 		if (ifp->if_flags & IFF_RUNNING)
 			emx_disable_intr(sc);
-	} else if (ifp->if_flags & IFF_RUNNING) {
-		emx_enable_intr(sc);
+		ifp->if_npoll_cpuid = sc->tx_npoll_off;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING)
+			emx_enable_intr(sc);
+		ifp->if_npoll_cpuid = -1;
 	}
 }
 

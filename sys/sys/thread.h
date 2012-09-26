@@ -284,7 +284,9 @@ struct thread {
 #else
     int		td_cscount_unused;
 #endif
-    int		td_unused02[4];	/* for future fields */
+    int		td_wakefromcpu;	/* who woke me up? */
+    int		td_upri;	/* user priority (sub-priority under td_pri) */
+    int		td_unused02[2];	/* for future fields */
     int		td_unused03[4];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
@@ -370,11 +372,15 @@ struct thread {
 #define TDF_EXITING		0x00400000	/* thread exiting */
 #define TDF_USINGFP		0x00800000	/* thread using fp coproc */
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */
-#define TDF_UNUSED02000000	0x02000000
+#define TDF_DELAYED_WAKEUP	0x02000000
 #define TDF_CRYPTO		0x04000000	/* crypto thread */
+#define TDF_USERMODE		0x08000000	/* in or entering user mode */
 
 #define TDF_MP_STOPREQ		0x00000001	/* suspend_kproc */
 #define TDF_MP_WAKEREQ		0x00000002	/* resume_kproc */
+#define TDF_MP_EXITWAIT		0x00000004	/* reaper, see lwp_wait() */
+#define TDF_MP_EXITSIG		0x00000008	/* reaper, see lwp_wait() */
+#define TDF_MP_BATCH_DEMARC	0x00000010	/* batch mode handling */
 
 /*
  * Thread priorities.  Typically only one thread from any given
@@ -443,6 +449,7 @@ extern void lwkt_schedule_self(thread_t);
 extern void lwkt_deschedule(thread_t);
 extern void lwkt_deschedule_self(thread_t);
 extern void lwkt_yield(void);
+extern void lwkt_yield_quick(void);
 extern void lwkt_user_yield(void);
 extern void lwkt_token_wait(void);
 extern void lwkt_hold(thread_t);

@@ -82,6 +82,7 @@
 	.globl	gd_cnt, gd_private_tss
 	.globl	gd_scratch_rsp
 	.globl	gd_user_fs, gd_user_gs
+	.globl	gd_sample_pc
 
 	.set    gd_cpuid,globaldata + GD_CPUID
 	.set    gd_cpumask,globaldata + GD_CPUMASK
@@ -95,4 +96,5 @@
 	.set	gd_scratch_rsp,globaldata + GD_SCRATCH_RSP
 	.set	gd_user_fs,globaldata + GD_USER_FS
 	.set	gd_user_gs,globaldata + GD_USER_GS
+	.set	gd_sample_pc,globaldata + GD_SAMPLE_PC
 

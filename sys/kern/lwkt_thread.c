@@ -90,7 +90,6 @@ static __int64_t switch_count = 0;
 static __int64_t preempt_hit = 0;
 static __int64_t preempt_miss = 0;
 static __int64_t preempt_weird = 0;
-static __int64_t token_contention_count[TDPRI_MAX+1] __debugvar;
 static int lwkt_use_spin_port;
 static struct objcache *thread_cache;
 
@@ -122,72 +121,6 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0,
     "Failed preemption events");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0,
     "Number of preempted threads.");
-#ifdef	INVARIANTS
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_00, CTLFLAG_RW,
-	&token_contention_count[0], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_01, CTLFLAG_RW,
-	&token_contention_count[1], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_02, CTLFLAG_RW,
-	&token_contention_count[2], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_03, CTLFLAG_RW,
-	&token_contention_count[3], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_04, CTLFLAG_RW,
-	&token_contention_count[4], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_05, CTLFLAG_RW,
-	&token_contention_count[5], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_06, CTLFLAG_RW,
-	&token_contention_count[6], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_07, CTLFLAG_RW,
-	&token_contention_count[7], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_08, CTLFLAG_RW,
-	&token_contention_count[8], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_09, CTLFLAG_RW,
-	&token_contention_count[9], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_10, CTLFLAG_RW,
-	&token_contention_count[10], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_11, CTLFLAG_RW,
-	&token_contention_count[11], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_12, CTLFLAG_RW,
-	&token_contention_count[12], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_13, CTLFLAG_RW,
-	&token_contention_count[13], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_14, CTLFLAG_RW,
-	&token_contention_count[14], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_15, CTLFLAG_RW,
-	&token_contention_count[15], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_16, CTLFLAG_RW,
-	&token_contention_count[16], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_17, CTLFLAG_RW,
-	&token_contention_count[17], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_18, CTLFLAG_RW,
-	&token_contention_count[18], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_19, CTLFLAG_RW,
-	&token_contention_count[19], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_20, CTLFLAG_RW,
-	&token_contention_count[20], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_21, CTLFLAG_RW,
-	&token_contention_count[21], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_22, CTLFLAG_RW,
-	&token_contention_count[22], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_23, CTLFLAG_RW,
-	&token_contention_count[23], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_24, CTLFLAG_RW,
-	&token_contention_count[24], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_25, CTLFLAG_RW,
-	&token_contention_count[25], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_26, CTLFLAG_RW,
-	&token_contention_count[26], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_27, CTLFLAG_RW,
-	&token_contention_count[27], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_28, CTLFLAG_RW,
-	&token_contention_count[28], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_29, CTLFLAG_RW,
-	&token_contention_count[29], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_30, CTLFLAG_RW,
-	&token_contention_count[30], 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_31, CTLFLAG_RW,
-	&token_contention_count[31], 0, "spinning due to token contention");
-#endif
 static int fairq_enable = 0;
 SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW,
 	&fairq_enable, 0, "Turn on fairq priority accumulators");
@@ -238,6 +171,7 @@ _lwkt_dequeue(thread_t td)
 
 	td->td_flags &= ~TDF_RUNQ;
 	TAILQ_REMOVE(&gd->gd_tdrunq, td, td_threadq);
+	--gd->gd_tdrunqcount;
 	if (TAILQ_FIRST(&gd->gd_tdrunq) == NULL)
 		atomic_clear_int(&gd->gd_reqflags, RQF_RUNNING);
     }
@@ -246,8 +180,15 @@ _lwkt_dequeue(thread_t td)
 /*
  * Priority enqueue.
  *
- * NOTE: There are a limited number of lwkt threads runnable since user
- *	 processes only schedule one at a time per cpu.
+ * There are a limited number of lwkt threads runnable since user
+ * processes only schedule one at a time per cpu.  However, there can
+ * be many user processes in kernel mode exiting from a tsleep() which
+ * become runnable.
+ *
+ * NOTE: lwkt_schedulerclock() will force a round-robin based on td_pri and
+ *	 will ignore user priority.  This is to ensure that user threads in
+ *	 kernel mode get cpu at some point regardless of what the user
+ *	 scheduler thinks.
  */
 static __inline
 void
@@ -264,13 +205,31 @@ _lwkt_enqueue(thread_t td)
 	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
 	    atomic_set_int(&gd->gd_reqflags, RQF_RUNNING);
 	} else {
-	    while (xtd && xtd->td_pri >= td->td_pri)
+	    /*
+	     * NOTE: td_upri - higher numbers more desireable, same sense
+	     *	     as td_pri (typically reversed from lwp_upri).
+	     *
+	     *	     In the equal priority case we want the best selection
+	     *	     at the beginning so the less desireable selections know
+	     *	     that they have to setrunqueue/go-to-another-cpu, even
+	     *	     though it means switching back to the 'best' selection.
+	     *	     This also avoids degenerate situations when many threads
+	     *	     are runnable or waking up at the same time.
+	     *
+	     *	     If upri matches exactly place at end/round-robin.
+	     */
+	    while (xtd &&
+		   (xtd->td_pri >= td->td_pri ||
+		    (xtd->td_pri == td->td_pri &&
+		     xtd->td_upri >= td->td_upri))) {
 		xtd = TAILQ_NEXT(xtd, td_threadq);
+	    }
 	    if (xtd)
 		TAILQ_INSERT_BEFORE(xtd, td, td_threadq);
 	    else
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
 	}
+	++gd->gd_tdrunqcount;
 
 	/*
 	 * Request a LWKT reschedule if we are now at the head of the queue.
@@ -485,7 +444,7 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     td->td_toks_have = NULL;
     td->td_toks_stop = &td->td_toks_base;
     if (lwkt_use_spin_port || (flags & TDF_FORCE_SPINPORT))
-	lwkt_initport_spin(&td->td_msgport);
+	lwkt_initport_spin(&td->td_msgport, td);
     else
 	lwkt_initport_thread(&td->td_msgport, td);
     pmap_init_thread(td);
@@ -667,9 +626,9 @@ lwkt_switch(void)
      * We had better not be holding any spin locks, but don't get into an
      * endless panic loop.
      */
-    KASSERT(gd->gd_spinlocks_wr == 0 || panicstr != NULL, 
+    KASSERT(gd->gd_spinlocks == 0 || panicstr != NULL,
 	    ("lwkt_switch: still holding %d exclusive spinlocks!",
-	     gd->gd_spinlocks_wr));
+	     gd->gd_spinlocks));
 
 
 #ifdef SMP
@@ -763,14 +722,15 @@ lwkt_switch(void)
 	 * the next tick whenever the current head is not the current thread.
 	 */
 #ifdef	INVARIANTS
-	++token_contention_count[ntd->td_pri];
 	++ntd->td_contended;
 #endif
+	++gd->gd_cnt.v_token_colls;
 
 	if (fairq_bypass > 0)
 		goto skip;
 
 	while ((ntd = TAILQ_NEXT(ntd, td_threadq)) != NULL) {
+#ifndef NO_LWKT_SPLIT_USERPRI
 		/*
 		 * Never schedule threads returning to userland or the
 		 * user thread scheduler helper thread when higher priority
@@ -782,6 +742,7 @@ lwkt_switch(void)
 			ntd = NULL;
 			break;
 		}
+#endif
 
 		/*
 		 * Try this one.
@@ -791,9 +752,9 @@ lwkt_switch(void)
 			goto havethread;
 		}
 #ifdef	INVARIANTS
-		++token_contention_count[ntd->td_pri];
 		++ntd->td_contended;
 #endif
+		++gd->gd_cnt.v_token_colls;
 	}
 
 skip:
@@ -977,6 +938,31 @@ lwkt_switch_return(thread_t otd)
 #else
 	otd->td_flags &= ~TDF_RUNNING;
 #endif
+
+	/*
+	 * Final exit validations (see lwp_wait()).  Note that otd becomes
+	 * invalid the *instant* we set TDF_MP_EXITSIG.
+	 */
+	while (otd->td_flags & TDF_EXITING) {
+		u_int mpflags;
+
+		mpflags = otd->td_mpflags;
+		cpu_ccfence();
+
+		if (mpflags & TDF_MP_EXITWAIT) {
+			if (atomic_cmpset_int(&otd->td_mpflags, mpflags,
+					      mpflags | TDF_MP_EXITSIG)) {
+				wakeup(otd);
+				break;
+			}
+		} else {
+			if (atomic_cmpset_int(&otd->td_mpflags, mpflags,
+					      mpflags | TDF_MP_EXITSIG)) {
+				wakeup(otd);
+				break;
+			}
+		}
+	}
 }
 
 /*
@@ -1053,7 +1039,7 @@ lwkt_preempt(thread_t ntd, int critcount)
      * We could try to acquire the tokens but this case is so rare there
      * is no need to support it.
      */
-    KKASSERT(gd->gd_spinlocks_wr == 0);
+    KKASSERT(gd->gd_spinlocks == 0);
 
     if (TD_TOKS_HELD(ntd)) {
 	++preempt_miss;
@@ -1127,7 +1113,7 @@ splz_check(void)
  * We only want to execute the splz() on the 1->0 transition of
  * critcount and not in a hard code section or if too deeply nested.
  *
- * NOTE: gd->gd_spinlocks_wr is implied to be 0 when td_critcount is 0.
+ * NOTE: gd->gd_spinlocks is implied to be 0 when td_critcount is 0.
  */
 void
 lwkt_maybe_splz(thread_t td)
@@ -1169,8 +1155,11 @@ lwkt_passive_release(struct thread *td)
 {
     struct lwp *lp = td->td_lwp;
 
+#ifndef NO_LWKT_SPLIT_USERPRI
     td->td_release = NULL;
     lwkt_setpri_self(TDPRI_KERN_USER);
+#endif
+
     lp->lwp_proc->p_usched->release_curproc(lp);
 }
 
@@ -1196,6 +1185,32 @@ lwkt_yield(void)
     if (lwkt_resched_wanted()) {
 	lwkt_schedule_self(curthread);
 	lwkt_switch();
+    }
+}
+
+/*
+ * The quick version processes pending interrupts and higher-priority
+ * LWKT threads but will not round-robin same-priority LWKT threads.
+ *
+ * When called while attempting to return to userland the only same-pri
+ * threads are the ones which have already tried to become the current
+ * user process.
+ */
+void
+lwkt_yield_quick(void)
+{
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
+
+    if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2)
+	splz();
+    if (lwkt_resched_wanted()) {
+	if (TAILQ_FIRST(&gd->gd_tdrunq) == td) {
+	    clear_lwkt_resched();
+	} else {
+	    lwkt_schedule_self(curthread);
+	    lwkt_switch();
+	}
     }
 }
 
@@ -1511,6 +1526,10 @@ lwkt_schedulerclock(thread_t td)
 	 * If the current thread is at the head of the runq shift it to the
 	 * end of any equal-priority threads and request a LWKT reschedule
 	 * if it moved.
+	 *
+	 * Ignore upri in this situation.  There will only be one user thread
+	 * in user mode, all others will be user threads running in kernel
+	 * mode and we have to make sure they get some cpu.
 	 */
 	xtd = TAILQ_NEXT(td, td_threadq);
 	if (xtd && xtd->td_pri == td->td_pri) {

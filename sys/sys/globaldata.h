@@ -137,7 +137,7 @@ struct globaldata {
 	struct lwkt_ipiq *gd_ipiq;		/* array[ncpu] of ipiq's */
 	struct lwkt_ipiq gd_cpusyncq;		/* ipiq for cpu synchro */
 	u_int		gd_npoll;		/* ipiq synchronization */
-	int		gd_unused01;
+	int		gd_tdrunqcount;
 	struct thread	gd_unused02B;
 	struct thread	gd_idlethread;
 	SLGlobalData	gd_slab;		/* slab allocator */
@@ -159,14 +159,16 @@ struct globaldata {
 
 	struct tslpque	*gd_tsleep_hash;	/* tsleep/wakeup support */
 	long		gd_processing_ipiq;
-	int		gd_spinlocks_wr;	/* Exclusive spinlocks held */
+	int		gd_spinlocks;		/* Exclusive spinlocks held */
 	struct systimer	*gd_systimer_inprog;	/* in-progress systimer */
 	int		gd_timer_running;
 	u_int		gd_idle_repeat;		/* repeated switches to idle */
 	int		gd_ireserved[7];
 	const char	*gd_infomsg;		/* debugging */
 	struct lwkt_tokref gd_handoff;		/* hand-off tokref */
-	void		*gd_preserved[8];	/* future fields */
+	void		*gd_delayed_wakeup[2];
+	void		*gd_sample_pc;		/* sample program ctr/tr */
+	void		*gd_preserved[5];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 

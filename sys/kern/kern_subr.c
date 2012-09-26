@@ -78,6 +78,7 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 	thread_t td = curthread;
 	struct iovec *iov;
 	size_t cnt;
+	size_t tot;
 	int error = 0;
 	int save = 0;
 
@@ -91,6 +92,8 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 	td->td_flags |= TDF_DEADLKTREAT;
 	crit_exit();
 
+	tot = 0;
+
 	while (n > 0 && uio->uio_resid) {
 		iov = uio->uio_iov;
 		cnt = iov->iov_len;
@@ -101,11 +104,12 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 		}
 		if (cnt > n)
 			cnt = n;
+		tot += cnt;
 
 		switch (uio->uio_segflg) {
-
 		case UIO_USERSPACE:
-			lwkt_user_yield();
+			if (tot > 1024*1024)
+				lwkt_user_yield();
 			if (uio->uio_rw == UIO_READ)
 				error = copyout(cp, iov->iov_base, cnt);
 			else

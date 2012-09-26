@@ -322,6 +322,8 @@ Xtimer:
 	addq	$8,%rsp			/* turn into trapframe */
 
 	incl    PCPU(cnt) + V_TIMER
+	movq	TF_RIP(%rsp),%rbx	/* sample addr before checking crit */
+	movq	%rbx,PCPU(sample_pc)
 	movq	PCPU(curthread),%rbx
 	testl	$-1,TD_CRITCOUNT(%rbx)
 	jne	1f

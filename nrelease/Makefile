@@ -71,7 +71,7 @@ PKGSRC_OPTIONS+=	MAKE_JOBS=${MAKE_JOBS}
 PKGSRC_OPTIONS+=	WRKOBJDIR=/usr/pkgobj
 PKGSRC_OPTIONS+=	PKG_DEFAULT_OPTIONS='dri inet6'
 .if !make(gui)
-PKGSRC_OPTIONS+=	PKG_OPTIONS.scmgit='-python -scmgit-gui'
+PKGSRC_OPTIONS+=	PKG_OPTIONS.scmgit='-python'
 .endif
 
 # Even though buildiso wipes the packages, our check target has to run
@@ -147,7 +147,8 @@ PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-libs \
 			fonts/terminus-font \
 			net/rsync \
 			time/asclock \
-			misc/screen
+			misc/screen \
+			devel/scmgit-gitk
 .endif
 
 ROOTSKELS+=		${.CURDIR}/gui

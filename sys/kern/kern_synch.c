@@ -141,24 +141,8 @@ sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_kern, OID_AUTO, quantum, CTLTYPE_INT|CTLFLAG_RW,
 	0, sizeof sched_quantum, sysctl_kern_quantum, "I", "");
 
-/*
- * If `ccpu' is not equal to `exp(-1/20)' and you still want to use the
- * faster/more-accurate formula, you'll have to estimate CCPU_SHIFT below
- * and possibly adjust FSHIFT in "param.h" so that (FSHIFT >= CCPU_SHIFT).
- *
- * To estimate CCPU_SHIFT for exp(-1/20), the following formula was used:
- *     1 - exp(-1/20) ~= 0.0487 ~= 0.0488 == 1 (fixed pt, *11* bits).
- *
- * If you don't want to bother with the faster/more-accurate formula, you
- * can set CCPU_SHIFT to (FSHIFT + 1) which will use a slower/less-accurate
- * (more general) method of calculating the %age of CPU used by a process.
- *
- * decay 95% of `lwp_pctcpu' in 60 seconds; see CCPU_SHIFT before changing
- */
-#define CCPU_SHIFT	11
-
-static fixpt_t ccpu = 0.95122942450071400909 * FSCALE; /* exp(-1/20) */
-SYSCTL_INT(_kern, OID_AUTO, ccpu, CTLFLAG_RD, &ccpu, 0, "");
+static int pctcpu_decay = 10;
+SYSCTL_INT(_kern, OID_AUTO, pctcpu_decay, CTLFLAG_RW, &pctcpu_decay, 0, "");
 
 /*
  * kernel uses `FSCALE', userland (SHOULD) use kern.fscale 
@@ -216,17 +200,29 @@ schedcpu_stats(struct proc *p, void *data __unused)
 
 	p->p_swtime++;
 	FOREACH_LWP_IN_PROC(lp, p) {
-		if (lp->lwp_stat == LSSLEEP)
-			lp->lwp_slptime++;
+		if (lp->lwp_stat == LSSLEEP) {
+			++lp->lwp_slptime;
+			if (lp->lwp_slptime == 1)
+				p->p_usched->uload_update(lp);
+		}
 
 		/*
 		 * Only recalculate processes that are active or have slept
 		 * less then 2 seconds.  The schedulers understand this.
+		 * Otherwise decay by 50% per second.
 		 */
 		if (lp->lwp_slptime <= 1) {
 			p->p_usched->recalculate(lp);
 		} else {
-			lp->lwp_pctcpu = (lp->lwp_pctcpu * ccpu) >> FSHIFT;
+			int decay;
+
+			decay = pctcpu_decay;
+			cpu_ccfence();
+			if (decay <= 1)
+				decay = 1;
+			if (decay > 100)
+				decay = 100;
+			lp->lwp_pctcpu = (lp->lwp_pctcpu * (decay - 1)) / decay;
 		}
 	}
 	lwkt_reltoken(&p->p_token);
@@ -295,8 +291,6 @@ schedcpu_resource(struct proc *p, void *data __unused)
 /*
  * This is only used by ps.  Generate a cpu percentage use over
  * a period of one second.
- *
- * MPSAFE
  */
 void
 updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
@@ -460,6 +454,14 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	struct callout thandle;
 
 	/*
+	 * Currently a severe hack.  Make sure any delayed wakeups
+	 * are flushed before we sleep or we might deadlock on whatever
+	 * event we are sleeping on.
+	 */
+	if (td->td_flags & TDF_DELAYED_WAKEUP)
+		wakeup_end_delayed();
+
+	/*
 	 * NOTE: removed KTRPOINT, it could cause races due to blocking
 	 * even in stable.  Just scrap it for now.
 	 */
@@ -481,6 +483,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	logtsleep2(tsleep_beg, ident);
 	gd = td->td_gd;
 	KKASSERT(td != &gd->gd_idlethread);	/* you must be kidding! */
+	td->td_wakefromcpu = -1;		/* overwritten by _wakeup */
 
 	/*
 	 * NOTE: all of this occurs on the current cpu, including any
@@ -545,6 +548,9 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 * Make sure the current process has been untangled from
 	 * the userland scheduler and initialize slptime to start
 	 * counting.
+	 *
+	 * NOTE: td->td_wakefromcpu is pre-set by the release function
+	 *	 for the dfly scheduler, and then adjusted by _wakeup()
 	 */
 	if (lp) {
 		p->p_usched->release_curproc(lp);
@@ -596,12 +602,14 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		 * Ok, we are sleeping.  Place us in the SSLEEP state.
 		 */
 		KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
+
 		/*
 		 * tstop() sets LSSTOP, so don't fiddle with that.
 		 */
 		if (lp->lwp_stat != LSSTOP)
 			lp->lwp_stat = LSSLEEP;
 		lp->lwp_ru.ru_nvcsw++;
+		p->p_usched->uload_update(lp);
 		lwkt_switch();
 
 		/*
@@ -609,8 +617,10 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		 * slept for over a second, recalculate our estcpu.
 		 */
 		lp->lwp_stat = LSRUN;
-		if (lp->lwp_slptime)
+		if (lp->lwp_slptime) {
+			p->p_usched->uload_update(lp);
 			p->p_usched->recalculate(lp);
+		}
 		lp->lwp_slptime = 0;
 	} else {
 		lwkt_switch();
@@ -852,8 +862,8 @@ endtsleep(void *arg)
  * Make all processes sleeping on the specified identifier runnable.
  * count may be zero or one only.
  *
- * The domain encodes the sleep/wakeup domain AND the first cpu to check
- * (which is always the current cpu).  As we iterate across cpus
+ * The domain encodes the sleep/wakeup domain, flags, plus the originating
+ * cpu.
  *
  * This call may run without the MP lock held.  We can only manipulate thread
  * state on the cpu owning the thread.  We CANNOT manipulate process state
@@ -887,6 +897,7 @@ restart:
 		) {
 			KKASSERT(td->td_gd == gd);
 			_tsleep_remove(td);
+			td->td_wakefromcpu = PWAKEUP_DECODE(domain);
 			if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
 				lwkt_schedule(td);
 				if (domain & PWAKEUP_ONE)
@@ -931,7 +942,17 @@ done:
 void
 wakeup(const volatile void *ident)
 {
-    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid));
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
+
+    if (td && (td->td_flags & TDF_DELAYED_WAKEUP)) {
+	if (!atomic_cmpset_ptr(&gd->gd_delayed_wakeup[0], NULL, ident)) {
+	    if (!atomic_cmpset_ptr(&gd->gd_delayed_wakeup[1], NULL, ident))
+		_wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, gd->gd_cpuid));
+	}
+	return;
+    }
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, gd->gd_cpuid));
 }
 
 /*
@@ -941,7 +962,8 @@ void
 wakeup_one(const volatile void *ident)
 {
     /* XXX potentially round-robin the first responding cpu */
-    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid) | PWAKEUP_ONE);
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid) |
+			    PWAKEUP_ONE);
 }
 
 /*
@@ -951,7 +973,8 @@ wakeup_one(const volatile void *ident)
 void
 wakeup_mycpu(const volatile void *ident)
 {
-    _wakeup(__DEALL(ident), PWAKEUP_MYCPU);
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid) |
+			    PWAKEUP_MYCPU);
 }
 
 /*
@@ -962,7 +985,8 @@ void
 wakeup_mycpu_one(const volatile void *ident)
 {
     /* XXX potentially round-robin the first responding cpu */
-    _wakeup(__DEALL(ident), PWAKEUP_MYCPU|PWAKEUP_ONE);
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid) |
+			    PWAKEUP_MYCPU | PWAKEUP_ONE);
 }
 
 /*
@@ -973,10 +997,14 @@ void
 wakeup_oncpu(globaldata_t gd, const volatile void *ident)
 {
 #ifdef SMP
+    globaldata_t mygd = mycpu;
     if (gd == mycpu) {
-	_wakeup(__DEALL(ident), PWAKEUP_MYCPU);
+	_wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
+				PWAKEUP_MYCPU);
     } else {
-	lwkt_send_ipiq2(gd, _wakeup, __DEALL(ident), PWAKEUP_MYCPU);
+	lwkt_send_ipiq2(gd, _wakeup, __DEALL(ident),
+			PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
+			PWAKEUP_MYCPU);
     }
 #else
     _wakeup(__DEALL(ident), PWAKEUP_MYCPU);
@@ -991,10 +1019,13 @@ void
 wakeup_oncpu_one(globaldata_t gd, const volatile void *ident)
 {
 #ifdef SMP
-    if (gd == mycpu) {
-	_wakeup(__DEALL(ident), PWAKEUP_MYCPU | PWAKEUP_ONE);
+    globaldata_t mygd = mycpu;
+    if (gd == mygd) {
+	_wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
+				PWAKEUP_MYCPU | PWAKEUP_ONE);
     } else {
 	lwkt_send_ipiq2(gd, _wakeup, __DEALL(ident),
+			PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
 			PWAKEUP_MYCPU | PWAKEUP_ONE);
     }
 #else
@@ -1022,6 +1053,38 @@ wakeup_domain_one(const volatile void *ident, int domain)
     /* XXX potentially round-robin the first responding cpu */
     _wakeup(__DEALL(ident),
 	    PWAKEUP_ENCODE(domain, mycpu->gd_cpuid) | PWAKEUP_ONE);
+}
+
+void
+wakeup_start_delayed(void)
+{
+    globaldata_t gd = mycpu;
+
+    crit_enter();
+    gd->gd_curthread->td_flags |= TDF_DELAYED_WAKEUP;
+    crit_exit();
+}
+
+void
+wakeup_end_delayed(void)
+{
+    globaldata_t gd = mycpu;
+
+    if (gd->gd_curthread->td_flags & TDF_DELAYED_WAKEUP) {
+	crit_enter();
+	gd->gd_curthread->td_flags &= ~TDF_DELAYED_WAKEUP;
+	if (gd->gd_delayed_wakeup[0] || gd->gd_delayed_wakeup[1]) {
+	    if (gd->gd_delayed_wakeup[0]) {
+		    wakeup(gd->gd_delayed_wakeup[0]);
+		    gd->gd_delayed_wakeup[0] = NULL;
+	    }
+	    if (gd->gd_delayed_wakeup[1]) {
+		    wakeup(gd->gd_delayed_wakeup[1]);
+		    gd->gd_delayed_wakeup[1] = NULL;
+	    }
+	}
+	crit_exit();
+    }
 }
 
 /*

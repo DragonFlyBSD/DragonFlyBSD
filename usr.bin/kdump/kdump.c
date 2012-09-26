@@ -74,6 +74,7 @@ static void	usage(void);
 
 int timestamp, decimal, fancy = 1, tail, maxdata = 64;
 int fixedformat;
+int cpustamp;
 const char *tracefile = DEF_TRACEFILE;
 struct ktr_header ktr_header;
 
@@ -90,13 +91,20 @@ main(int argc, char **argv)
 
 	(void) setlocale(LC_CTYPE, "");
 
-	while ((ch = getopt(argc,argv,"f:djlm:np:RTt:")) != -1)
+	while ((ch = getopt(argc,argv,"acf:djlm:np:RTt:")) != -1)
 		switch((char)ch) {
 		case 'f':
 			tracefile = optarg;
 			break;
 		case 'j':
 			fixedformat = 1;
+			break;
+		case 'c':
+			cpustamp = 1;
+			break;
+		case 'a':
+			timestamp = 2;	/* relative timestamp */
+			cpustamp = 1;
 			break;
 		case 'd':
 			decimal = 1;
@@ -238,6 +246,8 @@ dumpheader(struct ktr_header *kth)
 		col = printf("%5d:%-4d", kth->ktr_pid, kth->ktr_tid);
 	else
 		col = printf("%5d", kth->ktr_pid);
+	if (cpustamp)
+		col += printf(" %2d", KTRH_CPUID_DECODE(kth->ktr_flags));
 	col += printf(" %-8.*s ", MAXCOMLEN, kth->ktr_comm);
 	if (timestamp) {
 		if (timestamp == 2) {

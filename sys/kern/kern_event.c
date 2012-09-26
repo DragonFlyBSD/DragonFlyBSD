@@ -609,6 +609,10 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	struct knote marker;
 	struct lwkt_token *tok;
 
+	if (tsp_in == NULL || tsp_in->tv_sec || tsp_in->tv_nsec)
+		atomic_set_int(&curthread->td_mpflags, TDF_MP_BATCH_DEMARC);
+
+
 	tsp = tsp_in;
 	*res = 0;
 
@@ -663,7 +667,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		struct timespec ats;
 
 		if (tsp->tv_sec || tsp->tv_nsec) {
-			nanouptime(&ats);
+			getnanouptime(&ats);
 			timespecadd(tsp, &ats);		/* tsp = target time */
 		}
 	}
@@ -784,7 +788,6 @@ sys_kevent(struct kevent_args *uap)
 	} else {
 		tsp = NULL;
 	}
-
 	fp = holdfp(p->p_fd, uap->fd, -1);
 	if (fp == NULL)
 		return (EBADF);
@@ -1018,7 +1021,7 @@ kqueue_sleep(struct kqueue *kq, struct timespec *tsp)
 		struct timespec atx = *tsp;
 		int timeout;
 
-		nanouptime(&ats);
+		getnanouptime(&ats);
 		timespecsub(&atx, &ats);
 		if (ats.tv_sec < 0) {
 			error = EWOULDBLOCK;

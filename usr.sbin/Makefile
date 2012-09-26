@@ -3,7 +3,6 @@
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
-# XXX MISSING:		mkproto
 SUBDIR= 802_11 \
 	IPXrouted \
 	ac \
@@ -77,7 +76,6 @@ SUBDIR= 802_11 \
 	periodic \
 	pfctl \
 	pflogd \
-	pnpinfo \
 	powerd \
 	ppp \
 	pppctl \
@@ -174,6 +172,7 @@ SUBDIR+=apm \
 
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR+=kgzip \
+	pnpinfo \
 	stallion
 .endif
 

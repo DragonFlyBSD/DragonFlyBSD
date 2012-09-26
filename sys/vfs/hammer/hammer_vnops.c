@@ -329,13 +329,27 @@ hammer_vop_read(struct vop_read_args *ap)
 	int blksize;
 	int bigread;
 	int got_fstoken;
+	size_t resid;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
 	ip = VTOI(ap->a_vp);
 	hmp = ip->hmp;
 	error = 0;
+	got_fstoken = 0;
 	uio = ap->a_uio;
+
+	/*
+	 * Attempt to shortcut directly to the VM object using lwbufs.
+	 * This is much faster than instantiating buffer cache buffers.
+	 */
+	resid = uio->uio_resid;
+	error = vop_helper_read_shortcut(ap);
+	hammer_stats_file_read += resid - uio->uio_resid;
+	if (error)
+		return (error);
+	if (uio->uio_resid == 0)
+		goto finished;
 
 	/*
 	 * Allow the UIO's size to override the sequential heuristic.
@@ -352,7 +366,6 @@ hammer_vop_read(struct vop_read_args *ap)
 	 * or it can DOS the machine.
 	 */
 	bigread = (uio->uio_resid > 100 * 1024 * 1024);
-	got_fstoken = 0;
 
 	/*
 	 * Access the data typically in HAMMER_BUFSIZE blocks via the
@@ -461,6 +474,8 @@ skip:
 			break;
 		hammer_stats_file_read += n;
 	}
+
+finished:
 
 	/*
 	 * Try to update the atime with just the inode lock for maximum

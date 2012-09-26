@@ -41,6 +41,7 @@ struct usched {
     void (*resetpriority)(struct lwp *);
     void (*heuristic_forking)(struct lwp *, struct lwp *);
     void (*heuristic_exiting)(struct lwp *, struct proc *);
+    void (*uload_update)(struct lwp *);
     void (*setcpumask)(struct usched *, cpumask_t);
     void (*yield)(struct lwp *);
 };
@@ -58,8 +59,22 @@ union usched_data {
 	u_short rqtype;		/* protected copy of rtprio type */
 	u_short	unused02;
     } bsd4;
+    struct {
+	short	priority;	/* lower is better */
+	char	forked;		/* lock cpu during fork */
+	char	rqindex;
+	short	estfast;	/* fast estcpu collapse mode */
+	short	uload;		/* for delta uload adjustments */
+	int	estcpu;		/* dynamic priority modification */
+	u_short rqtype;		/* protected copy of rtprio type */
+	u_short	qcpu;		/* which cpu are we enqueued on? */
+	u_short rrcount;	/* reset when moved to runq tail */
+	u_short unused01;
+	u_short unused02;
+	u_short unused03;
+    } dfly;
 
-    int		pad[4];		/* PAD for future expansion */
+    int		pad[6];		/* PAD for future expansion */
 };
 
 /*
@@ -82,12 +97,14 @@ union usched_data {
 #ifdef _KERNEL
 
 extern struct usched	usched_bsd4;
+extern struct usched	usched_dfly;
 extern struct usched	usched_dummy;
 extern cpumask_t usched_mastermask;
 extern int sched_ticks; /* From sys/kern/kern_clock.c */
 
 int usched_ctl(struct usched *, int);
 struct usched *usched_init(void);
+void usched_schedulerclock(struct lwp *, sysclock_t, sysclock_t);
 
 #endif
 

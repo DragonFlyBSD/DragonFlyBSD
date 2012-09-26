@@ -2061,6 +2061,9 @@ TO_REMOVE+=/usr/share/man/man4/i386/stli.4.gz
 TO_REMOVE+=/usr/sbin/kgzip
 TO_REMOVE+=/usr/share/man/cat8/kgzip.8.gz
 TO_REMOVE+=/usr/share/man/man8/kgzip.8.gz
+TO_REMOVE+=/usr/sbin/pnpinfo
+TO_REMOVE+=/usr/share/man/cat8/pnpinfo.8.gz
+TO_REMOVE+=/usr/share/man/man8/pnpinfo.8.gz
 .endif
 
 # XXX Remove when pfsync(4) has been fixed

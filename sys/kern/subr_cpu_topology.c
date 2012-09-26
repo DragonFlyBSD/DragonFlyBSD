@@ -69,6 +69,7 @@ static char cpu_topology_members[8*MAXCPU];
 static per_cpu_sysctl_info_t pcpu_sysctl[MAXCPU];
 
 int cpu_topology_levels_number = 1;
+cpu_node_t *root_cpu_node;
 
 /* Get the next valid apicid starting
  * from current apicid (curr_apicid
@@ -120,9 +121,10 @@ build_topology_tree(int *children_no_per_level,
 
 	node->child_node = *last_free_node;
 	(*last_free_node) += node->child_no;
+	if (node->parent_node == NULL)
+		root_cpu_node = node;
 	
 	for (i = 0; i < node->child_no; i++) {
-
 		node->child_node[i].parent_node = node;
 
 		build_topology_tree(children_no_per_level,

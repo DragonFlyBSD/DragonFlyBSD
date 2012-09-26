@@ -57,6 +57,7 @@ extern struct spinlock pmap_spin;
 
 int spin_trylock_contested(struct spinlock *spin);
 void spin_lock_contested(struct spinlock *spin);
+void spin_lock_shared_contested(struct spinlock *spin);
 void _spin_pool_lock(void *chan);
 void _spin_pool_unlock(void *chan);
 
@@ -75,8 +76,8 @@ spin_trylock(struct spinlock *spin)
 
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
-	++gd->gd_spinlocks_wr;
-	if (atomic_swap_int(&spin->counta, 1))
+	++gd->gd_spinlocks;
+	if (atomic_cmpset_int(&spin->counta, 0, 1) == 0)
 		return (spin_trylock_contested(spin));
 #ifdef DEBUG_LOCKS
 	int i;
@@ -85,7 +86,7 @@ spin_trylock(struct spinlock *spin)
 			gd->gd_curthread->td_spinlock_stack_id[i] = 1;
 			gd->gd_curthread->td_spinlock_stack[i] = spin;
 			gd->gd_curthread->td_spinlock_caller_pc[i] =
-						__builtin_return_address(0);
+				__builtin_return_address(0);
 			break;
 		}
 	}
@@ -102,7 +103,7 @@ spin_trylock(struct spinlock *spin)
 
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
-	++gd->gd_spinlocks_wr;
+	++gd->gd_spinlocks;
 	return (TRUE);
 }
 
@@ -125,9 +126,10 @@ spin_lock_quick(globaldata_t gd, struct spinlock *spin)
 {
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
-	++gd->gd_spinlocks_wr;
+	++gd->gd_spinlocks;
 #ifdef SMP
-	if (atomic_swap_int(&spin->counta, 1))
+	atomic_add_int(&spin->counta, 1);
+	if (spin->counta != 1)
 		spin_lock_contested(spin);
 #ifdef DEBUG_LOCKS
 	int i;
@@ -179,26 +181,104 @@ spin_unlock_quick(globaldata_t gd, struct spinlock *spin)
 	KKASSERT(spin->counta != 0);
 #endif
 	cpu_sfence();
-	spin->counta = 0;
+	atomic_add_int(&spin->counta, -1);
 	cpu_sfence();
 #endif
 #ifdef DEBUG_LOCKS
-	KKASSERT(gd->gd_spinlocks_wr > 0);
+	KKASSERT(gd->gd_spinlocks > 0);
 #endif
-	--gd->gd_spinlocks_wr;
+	--gd->gd_spinlocks;
 	cpu_ccfence();
 	--gd->gd_curthread->td_critcount;
-#if 0
-	/* FUTURE */
-	if (__predict_false(gd->gd_reqflags & RQF_IDLECHECK_MASK))
-		lwkt_maybe_splz(gd->gd_curthread);
-#endif
 }
 
 static __inline void
 spin_unlock(struct spinlock *spin)
 {
 	spin_unlock_quick(mycpu, spin);
+}
+
+/*
+ * Shared spinlocks
+ */
+static __inline void
+spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin)
+{
+	++gd->gd_curthread->td_critcount;
+	cpu_ccfence();
+	++gd->gd_spinlocks;
+#ifdef SMP
+	atomic_add_int(&spin->counta, 1);
+	if (spin->counta == 1)
+		atomic_set_int(&spin->counta, SPINLOCK_SHARED);
+	if ((spin->counta & SPINLOCK_SHARED) == 0)
+		spin_lock_shared_contested(spin);
+#ifdef DEBUG_LOCKS
+	int i;
+	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
+		if (gd->gd_curthread->td_spinlock_stack_id[i] == 0) {
+			gd->gd_curthread->td_spinlock_stack_id[i] = 1;
+			gd->gd_curthread->td_spinlock_stack[i] = spin;
+			gd->gd_curthread->td_spinlock_caller_pc[i] =
+				__builtin_return_address(0);
+			break;
+		}
+	}
+#endif
+#endif
+}
+
+static __inline void
+spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)
+{
+#ifdef SMP
+#ifdef DEBUG_LOCKS
+	int i;
+	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
+		if ((gd->gd_curthread->td_spinlock_stack_id[i] == 1) &&
+		    (gd->gd_curthread->td_spinlock_stack[i] == spin)) {
+			gd->gd_curthread->td_spinlock_stack_id[i] = 0;
+			gd->gd_curthread->td_spinlock_stack[i] = NULL;
+			gd->gd_curthread->td_spinlock_caller_pc[i] = NULL;
+			break;
+		}
+	}
+#endif
+#ifdef DEBUG_LOCKS
+	KKASSERT(spin->counta != 0);
+#endif
+	cpu_sfence();
+	atomic_add_int(&spin->counta, -1);
+
+	/*
+	 * Make sure SPINLOCK_SHARED is cleared.  If another cpu tries to
+	 * get a shared or exclusive lock this loop will break out.  We're
+	 * only talking about a very trivial edge case here.
+	 */
+	while (spin->counta == SPINLOCK_SHARED) {
+		if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED, 0))
+			break;
+	}
+	cpu_sfence();
+#endif
+#ifdef DEBUG_LOCKS
+	KKASSERT(gd->gd_spinlocks > 0);
+#endif
+	--gd->gd_spinlocks;
+	cpu_ccfence();
+	--gd->gd_curthread->td_critcount;
+}
+
+static __inline void
+spin_lock_shared(struct spinlock *spin)
+{
+	spin_lock_shared_quick(mycpu, spin);
+}
+
+static __inline void
+spin_unlock_shared(struct spinlock *spin)
+{
+	spin_unlock_shared_quick(mycpu, spin);
 }
 
 static __inline void

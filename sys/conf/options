@@ -464,6 +464,7 @@ DONTPROBE_1284		opt_ppb_1284.h
 ENABLE_ALART		opt_intpm.h
 
 # These cause changes all over the kernel
+NO_LWKT_SPLIT_USERPRI	opt_global.h
 BLKDEV_IOSIZE		opt_global.h
 DEBUG			opt_global.h
 DEBUG_LOCKS		opt_global.h

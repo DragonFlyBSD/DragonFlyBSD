@@ -57,73 +57,97 @@
 static MALLOC_DEFINE(M_KTRACE, "KTRACE", "KTRACE");
 
 #ifdef KTRACE
-static struct ktr_header *ktrgetheader (int type);
+static void ktrgetheader (struct ktr_header *kth, int type);
+static struct ktr_syscall *ktrgetsyscall(struct ktr_header *kth,
+				struct ktr_syscall *ktp_cache, int narg);
+static void ktrputsyscall(struct ktr_syscall *ktp_cache,
+				struct ktr_syscall *ktp);
 static void ktrwrite (struct lwp *, struct ktr_header *, struct uio *);
 static int ktrcanset (struct thread *,struct proc *);
-static int ktrsetchildren (struct thread *,struct proc *,int,int, ktrace_node_t);
+static int ktrsetchildren (struct thread *, struct proc *,
+				int, int, ktrace_node_t);
 static int ktrops (struct thread *,struct proc *,int,int, ktrace_node_t);
 
 /*
  * MPSAFE
  */
-static struct ktr_header *
-ktrgetheader(int type)
+static
+void
+ktrgetheader(struct ktr_header *kth, int type)
 {
-	struct ktr_header *kth;
-	struct proc *p = curproc;	/* XXX */
-	struct lwp *lp = curthread->td_lwp;
+	thread_t td = curthread;
+	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 
-	kth = kmalloc(sizeof(struct ktr_header), M_KTRACE, M_WAITOK);
 	kth->ktr_type = type;
 	/* XXX threaded flag is a hack at the moment */
 	kth->ktr_flags = (p->p_nthreads > 1) ? KTRH_THREADED : 0;
-	microtime(&kth->ktr_time);
+	kth->ktr_flags |= KTRH_CPUID_ENCODE(td->td_gd->gd_cpuid);
+	/*microtime(&kth->ktr_time); set in ktrwrite */
 	kth->ktr_pid = p->p_pid;
 	kth->ktr_tid = lp->lwp_tid;
 	bcopy(p->p_comm, kth->ktr_comm, MAXCOMLEN + 1);
-	return (kth);
+}
+
+static
+struct ktr_syscall *
+ktrgetsyscall(struct ktr_header *kth, struct ktr_syscall *ktp_cache, int narg)
+{
+	size_t len;
+
+	len = offsetof(struct ktr_syscall, ktr_args[narg]);
+	if (len > sizeof(*ktp_cache))
+		ktp_cache = kmalloc(len, M_KTRACE, M_WAITOK);
+	kth->ktr_buf = (caddr_t)ktp_cache;
+	kth->ktr_len = (int)len;
+	return (ktp_cache);
+}
+
+static
+void
+ktrputsyscall(struct ktr_syscall *ktp_cache, struct ktr_syscall *ktp)
+{
+	if (ktp != ktp_cache)
+		kfree(ktp, M_KTRACE);
 }
 
 void
 ktrsyscall(struct lwp *lp, int code, int narg, register_t args[])
 {
-	struct	ktr_header *kth;
-	struct	ktr_syscall *ktp;
-	int len;
+	struct ktr_header kth;
+	struct ktr_syscall ktp_cache;
+	struct ktr_syscall *ktp;
 	register_t *argp;
 	int i;
-
-	len = offsetof(struct ktr_syscall, ktr_args) +
-	      (narg * sizeof(register_t));
 
 	/*
 	 * Setting the active bit prevents a ktrace recursion from the
 	 * ktracing op itself.
 	 */
 	lp->lwp_traceflag |= KTRFAC_ACTIVE;
-	kth = ktrgetheader(KTR_SYSCALL);
-	ktp = kmalloc(len, M_KTRACE, M_WAITOK);
+	ktrgetheader(&kth, KTR_SYSCALL);
+
+	ktp = ktrgetsyscall(&kth, &ktp_cache, narg);
 	ktp->ktr_code = code;
 	ktp->ktr_narg = narg;
 	argp = &ktp->ktr_args[0];
 	for (i = 0; i < narg; i++)
 		*argp++ = args[i];
-	kth->ktr_buf = (caddr_t)ktp;
-	kth->ktr_len = len;
-	ktrwrite(lp, kth, NULL);
-	kfree(ktp, M_KTRACE);
-	kfree(kth, M_KTRACE);
+	ktrwrite(lp, &kth, NULL);
+
+	ktrputsyscall(&ktp_cache, ktp);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 
 void
 ktrsysret(struct lwp *lp, int code, int error, register_t retval)
 {
-	struct ktr_header *kth;
+	struct ktr_header kth;
 	struct ktr_sysret ktp;
 
 	lp->lwp_traceflag |= KTRFAC_ACTIVE;
-	kth = ktrgetheader(KTR_SYSRET);
+	ktrgetheader(&kth, KTR_SYSRET);
+
 	ktp.ktr_code = code;
 	ktp.ktr_error = error;
 	if (error == 0)
@@ -131,86 +155,85 @@ ktrsysret(struct lwp *lp, int code, int error, register_t retval)
 	else
 		ktp.ktr_retval = 0;
 
-	kth->ktr_buf = (caddr_t)&ktp;
-	kth->ktr_len = sizeof(struct ktr_sysret);
+	kth.ktr_buf = (caddr_t)&ktp;
+	kth.ktr_len = (int)sizeof(struct ktr_sysret);
 
-	ktrwrite(lp, kth, NULL);
-	kfree(kth, M_KTRACE);
+	ktrwrite(lp, &kth, NULL);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 
 void
 ktrnamei(struct lwp *lp, char *path)
 {
-	struct ktr_header *kth;
+	struct ktr_header kth;
 
 	lp->lwp_traceflag |= KTRFAC_ACTIVE;
-	kth = ktrgetheader(KTR_NAMEI);
-	kth->ktr_len = strlen(path);
-	kth->ktr_buf = path;
+	ktrgetheader(&kth, KTR_NAMEI);
 
-	ktrwrite(lp, kth, NULL);
-	kfree(kth, M_KTRACE);
+	kth.ktr_len = (int)strlen(path);
+	kth.ktr_buf = path;
+
+	ktrwrite(lp, &kth, NULL);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 
 void
 ktrgenio(struct lwp *lp, int fd, enum uio_rw rw, struct uio *uio, int error)
 {
-	struct ktr_header *kth;
+	struct ktr_header kth;
 	struct ktr_genio ktg;
 
 	if (error)
 		return;
 	lp->lwp_traceflag |= KTRFAC_ACTIVE;
-	kth = ktrgetheader(KTR_GENIO);
+	ktrgetheader(&kth, KTR_GENIO);
+
 	ktg.ktr_fd = fd;
 	ktg.ktr_rw = rw;
-	kth->ktr_buf = (caddr_t)&ktg;
-	kth->ktr_len = sizeof(struct ktr_genio);
+	kth.ktr_buf = (caddr_t)&ktg;
+	kth.ktr_len = (int)sizeof(struct ktr_genio);
 	uio->uio_offset = 0;
 	uio->uio_rw = UIO_WRITE;
 
-	ktrwrite(lp, kth, uio);
-	kfree(kth, M_KTRACE);
+	ktrwrite(lp, &kth, uio);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 
 void
 ktrpsig(struct lwp *lp, int sig, sig_t action, sigset_t *mask, int code)
 {
-	struct ktr_header *kth;
+	struct ktr_header kth;
 	struct ktr_psig	kp;
 
 	lp->lwp_traceflag |= KTRFAC_ACTIVE;
-	kth = ktrgetheader(KTR_PSIG);
+	ktrgetheader(&kth, KTR_PSIG);
+
 	kp.signo = (char)sig;
 	kp.action = action;
 	kp.mask = *mask;
 	kp.code = code;
-	kth->ktr_buf = (caddr_t)&kp;
-	kth->ktr_len = sizeof (struct ktr_psig);
+	kth.ktr_buf = (caddr_t)&kp;
+	kth.ktr_len = (int)sizeof(struct ktr_psig);
 
-	ktrwrite(lp, kth, NULL);
-	kfree(kth, M_KTRACE);
+	ktrwrite(lp, &kth, NULL);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 
 void
 ktrcsw(struct lwp *lp, int out, int user)
 {
-	struct ktr_header *kth;
-	struct	ktr_csw kc;
+	struct ktr_header kth;
+	struct ktr_csw kc;
 
 	lp->lwp_traceflag |= KTRFAC_ACTIVE;
-	kth = ktrgetheader(KTR_CSW);
+	ktrgetheader(&kth, KTR_CSW);
+
 	kc.out = out;
 	kc.user = user;
-	kth->ktr_buf = (caddr_t)&kc;
-	kth->ktr_len = sizeof (struct ktr_csw);
+	kth.ktr_buf = (caddr_t)&kc;
+	kth.ktr_len = (int)sizeof(struct ktr_csw);
 
-	ktrwrite(lp, kth, NULL);
-	kfree(kth, M_KTRACE);
+	ktrwrite(lp, &kth, NULL);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 #endif
@@ -388,8 +411,9 @@ int
 sys_utrace(struct utrace_args *uap)
 {
 #ifdef KTRACE
-	struct ktr_header *kth;
+	struct ktr_header kth;
 	struct thread *td = curthread;	/* XXX */
+	char cp_cache[64];
 	caddr_t cp;
 
 	if (!KTRPOINT(td, KTR_USER))
@@ -397,15 +421,19 @@ sys_utrace(struct utrace_args *uap)
 	if (uap->len > KTR_USER_MAXLEN)
 		return (EINVAL);
 	td->td_lwp->lwp_traceflag |= KTRFAC_ACTIVE;
-	kth = ktrgetheader(KTR_USER);
-	cp = kmalloc(uap->len, M_KTRACE, M_WAITOK);
+	ktrgetheader(&kth, KTR_USER);
+	if (uap->len <= sizeof(cp_cache))
+		cp = cp_cache;
+	else
+		cp = kmalloc(uap->len, M_KTRACE, M_WAITOK);
+
 	if (!copyin(uap->addr, cp, uap->len)) {
-		kth->ktr_buf = cp;
-		kth->ktr_len = uap->len;
-		ktrwrite(td->td_lwp, kth, NULL);
+		kth.ktr_buf = cp;
+		kth.ktr_len = uap->len;
+		ktrwrite(td->td_lwp, &kth, NULL);
 	}
-	kfree(kth, M_KTRACE);
-	kfree(cp, M_KTRACE);
+	if (cp != cp_cache)
+		kfree(cp, M_KTRACE);
 	td->td_lwp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 
 	return (0);
@@ -568,7 +596,13 @@ ktrwrite(struct lwp *lp, struct ktr_header *kth, struct uio *uio)
 		if (uio != NULL)
 			kth->ktr_len += uio->uio_resid;
 	}
+
+	/*
+	 * NOTE: Must set timestamp after obtaining lock to ensure no
+	 * 	 timestamp reversals in the output file.
+	 */
 	vn_lock(tracenode->kn_vp, LK_EXCLUSIVE | LK_RETRY);
+	microtime(&kth->ktr_time);
 	error = VOP_WRITE(tracenode->kn_vp, &auio,
 			  IO_UNIT | IO_APPEND, lp->lwp_thread->td_ucred);
 	if (error == 0 && uio != NULL) {

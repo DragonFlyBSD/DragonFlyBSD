@@ -6,8 +6,6 @@
 struct lwkt_serialize;
 struct ifnet;
 
-#define IFPOLL_CTX_MAX		32
-
 typedef	void	(*ifpoll_iofn_t)(struct ifnet *, void *, int);
 typedef	void	(*ifpoll_stfn_t)(struct ifnet *, int);
 
@@ -25,8 +23,8 @@ struct ifpoll_io {
 struct ifpoll_info {
 	struct ifnet		*ifpi_ifp;
 	struct ifpoll_status	ifpi_status;
-	struct ifpoll_io	ifpi_rx[IFPOLL_CTX_MAX];
-	struct ifpoll_io	ifpi_tx[IFPOLL_CTX_MAX];
+	struct ifpoll_io	ifpi_rx[MAXCPU];
+	struct ifpoll_io	ifpi_tx[MAXCPU];
 };
 
 #endif	/* _KERNEL */

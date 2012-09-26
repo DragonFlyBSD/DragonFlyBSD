@@ -351,13 +351,14 @@ userexit(struct lwp *lp)
 	 */
 	lwkt_passive_recover(td);
 
+	/* WARNING: we may have migrated cpu's */
+	/* gd = td->td_gd; */
+
 	/*
 	 * Become the current user scheduled process if we aren't already,
 	 * and deal with reschedule requests and other factors.
 	 */
 	lp->lwp_proc->p_usched->acquire_curproc(lp);
-	/* WARNING: we may have migrated cpu's */
-	/* gd = td->td_gd; */
 }
 
 #if !defined(KTR_KERNENTRY)

@@ -37,40 +37,45 @@
 **************************************************************************
 ** History
 **
-**        REV#         DATE	            NAME	         DESCRIPTION
-**     1.00.00.00	03/31/2004		Erich Chen			 First release
-**     1.20.00.02	11/29/2004		Erich Chen			 bug fix with arcmsr_bus_reset when PHY error
-**     1.20.00.03	04/19/2005		Erich Chen			 add SATA 24 Ports adapter type support
+**        REV#         DATE             NAME             DESCRIPTION
+**     1.00.00.00   03/31/2004      Erich Chen           First release
+**     1.20.00.02   11/29/2004      Erich Chen           bug fix with arcmsr_bus_reset when PHY error
+**     1.20.00.03   04/19/2005      Erich Chen           add SATA 24 Ports adapter type support
 **                                                       clean unused function
-**     1.20.00.12	09/12/2005		Erich Chen        	 bug fix with abort command handling,
+**     1.20.00.12   09/12/2005      Erich Chen           bug fix with abort command handling,
 **                                                       firmware version check
 **                                                       and firmware update notify for hardware bug fix
 **                                                       handling if none zero high part physical address
 **                                                       of srb resource
-**     1.20.00.13	08/18/2006		Erich Chen			 remove pending srb and report busy
+**     1.20.00.13   08/18/2006      Erich Chen           remove pending srb and report busy
 **                                                       add iop message xfer
 **                                                       with scsi pass-through command
 **                                                       add new device id of sas raid adapters
 **                                                       code fit for SPARC64 & PPC
-**     1.20.00.14	02/05/2007		Erich Chen			 bug fix for incorrect ccb_h.status report
+**     1.20.00.14   02/05/2007      Erich Chen           bug fix for incorrect ccb_h.status report
 **                                                       and cause g_vfs_done() read write error
-**     1.20.00.15	10/10/2007		Erich Chen			 support new RAID adapter type ARC120x
-**     1.20.00.16	10/10/2009		Erich Chen			 Bug fix for RAID adapter type ARC120x
+**     1.20.00.15   10/10/2007      Erich Chen           support new RAID adapter type ARC120x
+**     1.20.00.16   10/10/2009      Erich Chen           Bug fix for RAID adapter type ARC120x
 **                                                       bus_dmamem_alloc() with BUS_DMA_ZERO
-**     1.20.00.17   07/15/2010         Ching Huang       Added support ARC1880
-**							 report CAM_DEV_NOT_THERE instead of CAM_SEL_TIMEOUT when device failed,
-**							 prevent cam_periph_error removing all LUN devices of one Target id
-**							 for any one LUN device failed
-**     1.20.00.18	10/14/2010		Ching Huang			 Fixed "inquiry data fails comparion at DV1 step"
-**               	10/25/2010		Ching Huang			 Fixed bad range input in bus_alloc_resource for ADAPTER_TYPE_B
-**     1.20.00.19	11/11/2010		Ching Huang			 Fixed arcmsr driver prevent arcsas support for Areca SAS HBA ARC13x0
-**     1.20.00.20	12/08/2010		Ching Huang			 Avoid calling atomic_set_int function
-**     1.20.00.21	02/08/2011		Ching Huang			 Implement I/O request timeout
-**               	02/14/2011		Ching Huang			 Modified pktRequestCount
-**     1.20.00.21	03/03/2011		Ching Huang			 if a command timeout, then wait its ccb back before free it
-**     1.20.00.22	07/04/2011		Ching Huang			 Fixed multiple MTX panic
+**     1.20.00.17   07/15/2010      Ching Huang          Added support ARC1880
+**                                                       report CAM_DEV_NOT_THERE instead of CAM_SEL_TIMEOUT when device failed,
+**                                                       prevent cam_periph_error removing all LUN devices of one Target id
+**                                                       for any one LUN device failed
+**     1.20.00.18   10/14/2010      Ching Huang          Fixed "inquiry data fails comparion at DV1 step"
+**                  10/25/2010      Ching Huang          Fixed bad range input in bus_alloc_resource for ADAPTER_TYPE_B
+**     1.20.00.19   11/11/2010      Ching Huang          Fixed arcmsr driver prevent arcsas support for Areca SAS HBA ARC13x0
+**     1.20.00.20   12/08/2010      Ching Huang          Avoid calling atomic_set_int function
+**     1.20.00.21   02/08/2011      Ching Huang          Implement I/O request timeout
+**                  02/14/2011      Ching Huang          Modified pktRequestCount
+**     1.20.00.21   03/03/2011      Ching Huang          if a command timeout, then wait its ccb back before free it
+**     1.20.00.22   07/04/2011      Ching Huang          Fixed multiple MTX panic
+**     1.20.00.23   10/28/2011      Ching Huang          Added TIMEOUT_DELAY in case of too many HDDs need to start
+**     1.20.00.23   11/08/2011      Ching Huang          Added report device transfer speed
+**     1.20.00.23   01/30/2012      Ching Huang          Fixed Request requeued and Retrying command
+**     1.20.00.24   06/11/2012      Ching Huang          Fixed return sense data condition
+**     1.20.00.25   08/17/2012      Ching Huang          Fixed hotplug device no function on type A adapter
 ******************************************************************************************
-* $FreeBSD: src/sys/dev/arcmsr/arcmsr.c,v 1.38 2011/08/16 08:41:37 delphij Exp $
+* $FreeBSD: src/sys/dev/arcmsr/arcmsr.c,v 1.43 2012/09/04 05:15:54 delphij Exp $
 */
 #if 0
 #define ARCMSR_DEBUG1			1
@@ -129,7 +134,7 @@ typedef struct lock		arcmsr_lock_t;
 
 #define arcmsr_callout_init(a)	callout_init_mp(a);
 
-#define ARCMSR_DRIVER_VERSION			"Driver Version 1.20.00.22 2011-07-04"
+#define ARCMSR_DRIVER_VERSION			"Driver Version 1.20.00.25 2012-08-17"
 #include <dev/raid/arcmsr/arcmsr.h>
 #define	SRB_SIZE						((sizeof(struct CommandControlBlock)+0x1f) & 0xffe0)
 #define ARCMSR_SRBS_POOL_SIZE           (SRB_SIZE * ARCMSR_MAX_FREESRB_NUM)
@@ -244,7 +249,7 @@ arcmsr_open(struct dev_open_args *ap)
 	if(acb==NULL) {
 		return ENXIO;
 	}
-	return 0;
+	return (0);
 }
 
 /*
@@ -280,7 +285,7 @@ arcmsr_ioctl(struct dev_ioctl_args *ap)
 	if(acb==NULL) {
 		return ENXIO;
 	}
-	return(arcmsr_iop_ioctlcmd(acb, ioctl_cmd, arg));
+	return (arcmsr_iop_ioctlcmd(acb, ioctl_cmd, arg));
 }
 
 /*
@@ -312,7 +317,7 @@ static u_int32_t arcmsr_disable_allintr( struct AdapterControlBlock *acb)
 		}
 		break;
 	}
-	return(intmask_org);
+	return (intmask_org);
 }
 /*
 **********************************************************************
@@ -345,7 +350,6 @@ static void arcmsr_enable_allintr( struct AdapterControlBlock *acb, u_int32_t in
 		}
 		break;
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -365,7 +369,7 @@ static u_int8_t arcmsr_hba_wait_msgint_ready(struct AdapterControlBlock *acb)
 			UDELAY(10000);
 		}/*max 1 seconds*/
 	}while(Retries++ < 20);/*max 20 sec*/
-	return FALSE;
+	return (FALSE);
 }
 /*
 **********************************************************************
@@ -386,7 +390,7 @@ static u_int8_t arcmsr_hbb_wait_msgint_ready(struct AdapterControlBlock *acb)
 			UDELAY(10000);
 		}/*max 1 seconds*/
 	}while(Retries++ < 20);/*max 20 sec*/
-	return FALSE;
+	return (FALSE);
 }
 /*
 **********************************************************************
@@ -406,7 +410,7 @@ static u_int8_t arcmsr_hbc_wait_msgint_ready(struct AdapterControlBlock *acb)
 			UDELAY(10000);
 		}/*max 1 seconds*/
 	}while(Retries++ < 20);/*max 20 sec*/
-	return FALSE;
+	return (FALSE);
 }
 /*
 ************************************************************************
@@ -424,7 +428,6 @@ static void arcmsr_flush_hba_cache(struct AdapterControlBlock *acb)
 			retry_count--;
 		}
 	}while(retry_count!=0);
-	return;
 }
 /*
 ************************************************************************
@@ -443,7 +446,6 @@ static void arcmsr_flush_hbb_cache(struct AdapterControlBlock *acb)
 			retry_count--;
 		}
 	}while(retry_count!=0);
-	return;
 }
 /*
 ************************************************************************
@@ -462,7 +464,6 @@ static void arcmsr_flush_hbc_cache(struct AdapterControlBlock *acb)
 			retry_count--;
 		}
 	}while(retry_count!=0);
-	return;
 }
 /*
 ************************************************************************
@@ -484,7 +485,6 @@ static void arcmsr_flush_adapter_cache(struct AdapterControlBlock *acb)
 		}
 		break;
 	}
-	return;
 }
 /*
 *******************************************************************************
@@ -530,7 +530,7 @@ static void arcmsr_async(void *cb_arg, u_int32_t code, struct cam_path *path, vo
 		if((target_id > ARCMSR_MAX_TARGETID) || (target_lun > ARCMSR_MAX_TARGETLUN)) {
 			break;
 		}
-		kprintf("%s:scsi id=%d lun=%d device lost \n", device_get_name(acb->pci_dev), target_id, target_lun);
+	//	kprintf("%s:scsi id=%d lun=%d device lost \n", device_get_name(acb->pci_dev), target_id, target_lun);
 		break;
 	default:
 		break;
@@ -591,7 +591,6 @@ static void arcmsr_report_sense_info(struct CommandControlBlock *srb)
 		((u_int8_t *)&pccb->csio.sense_data)[0] = (0x1 << 7 | 0x70); /* Valid,ErrorCode */
 		pccb->ccb_h.status |= CAM_AUTOSNS_VALID;
 	}
-	return;
 }
 /*
 *********************************************************************
@@ -603,7 +602,6 @@ static void arcmsr_abort_hba_allcmd(struct AdapterControlBlock *acb)
 	if(!arcmsr_hba_wait_msgint_ready(acb)) {
 		kprintf("arcmsr%d: wait 'abort all outstanding command' timeout \n", acb->pci_unit);
 	}
-	return;
 }
 /*
 *********************************************************************
@@ -615,7 +613,6 @@ static void arcmsr_abort_hbb_allcmd(struct AdapterControlBlock *acb)
 	if(!arcmsr_hbb_wait_msgint_ready(acb)) {
 		kprintf("arcmsr%d: wait 'abort all outstanding command' timeout \n", acb->pci_unit);
 	}
-	return;
 }
 /*
 *********************************************************************
@@ -628,7 +625,6 @@ static void arcmsr_abort_hbc_allcmd(struct AdapterControlBlock *acb)
 	if(!arcmsr_hbc_wait_msgint_ready(acb)) {
 		kprintf("arcmsr%d: wait 'abort all outstanding command' timeout \n", acb->pci_unit);
 	}
-	return;
 }
 /*
 *********************************************************************
@@ -650,7 +646,6 @@ static void arcmsr_abort_allcmd(struct AdapterControlBlock *acb)
 		}
 		break;
 	}
-	return;
 }
 /*
 **************************************************************************
@@ -702,7 +697,6 @@ static void arcmsr_report_srb_state(struct AdapterControlBlock *acb, struct Comm
 			break;
 		}
 	}
-	return;
 }
 /*
 **************************************************************************
@@ -735,7 +729,6 @@ static void arcmsr_drain_donequeue(struct AdapterControlBlock *acb, u_int32_t fl
 		return;
 	}
 	arcmsr_report_srb_state(acb, srb, error);
-	return;
 }
 /*
 **************************************************************************
@@ -817,7 +810,6 @@ static void arcmsr_done4abort_postqueue(struct AdapterControlBlock *acb)
 		}
 		break;
 	}
-	return;
 }
 /*
 ****************************************************************************
@@ -857,7 +849,6 @@ static void arcmsr_iop_reset(struct AdapterControlBlock *acb)
 	acb->pktRequestCount = 0;
 	acb->pktReturnCount = 0;
 #endif
-	return;
 }
 /*
 **********************************************************************
@@ -944,8 +935,7 @@ static void arcmsr_build_srb(struct CommandControlBlock *srb,
 	} else {
 		arcmsr_cdb->DataLength = 0;
 	}
-    srb->arc_cdb_size=arccdbsize;
-	return;
+	srb->arc_cdb_size=arccdbsize;
 }
 /*
 **************************************************************************
@@ -1006,7 +996,6 @@ static void arcmsr_post_srb(struct AdapterControlBlock *acb, struct CommandContr
         }
         break;
 	}
-	return;
 }
 /*
 ************************************************************************
@@ -1090,7 +1079,6 @@ static void arcmsr_iop_message_read(struct AdapterControlBlock *acb)
 			CHIP_REG_WRITE32(HBC_MessageUnit, 0, inbound_doorbell, ARCMSR_HBCMU_DRV2IOP_DATA_READ_OK);
 		}
 	}
-	return;
 }
 /*
 **************************************************************************
@@ -1155,7 +1143,6 @@ static void arcmsr_post_ioctldata2iop(struct AdapterControlBlock *acb)
 		*/
 		arcmsr_iop_message_wrote(acb);
 	}
-	return;
 }
 /*
 ************************************************************************
@@ -1185,7 +1172,6 @@ static void arcmsr_stop_hbb_bgrb(struct AdapterControlBlock *acb)
 		kprintf( "arcmsr%d: wait 'stop adapter background rebulid' timeout \n"
 			, acb->pci_unit);
 	}
-	return;
 }
 /*
 ************************************************************************
@@ -1199,7 +1185,6 @@ static void arcmsr_stop_hbc_bgrb(struct AdapterControlBlock *acb)
 	if(!arcmsr_hbc_wait_msgint_ready(acb)) {
 		kprintf("arcmsr%d: wait 'stop adapter background rebulid' timeout \n", acb->pci_unit);
 	}
-	return;
 }
 /*
 ************************************************************************
@@ -1221,7 +1206,6 @@ static void arcmsr_stop_adapter_bgrb(struct AdapterControlBlock *acb)
 		}
 		break;
 	}
-	return;
 }
 /*
 ************************************************************************
@@ -1239,7 +1223,6 @@ static void arcmsr_poll(struct cam_sim * psim)
 	arcmsr_interrupt(acb);
 	if( mutex == 0 )
 		ARCMSR_LOCK_RELEASE(&acb->qbuffer_lock);
-	return;
 }
 /*
 **************************************************************************
@@ -1274,7 +1257,6 @@ static void arcmsr_iop2drv_data_wrote_handle(struct AdapterControlBlock *acb)
 	} else {
 		acb->acb_flags|=ACB_F_IOPDATA_OVERFLOW;
 	}
-	return;
 }
 /*
 **************************************************************************
@@ -1317,7 +1299,6 @@ static void arcmsr_iop2drv_data_read_handle(struct AdapterControlBlock *acb)
 	if(acb->wqbuf_firstindex==acb->wqbuf_lastindex) {
 		acb->acb_flags |= ACB_F_MESSAGE_WQBUFFER_CLEARED;
 	}
-	return;
 }
 
 static void arcmsr_rescanLun_cb(struct cam_periph *periph, union ccb *ccb)
@@ -1345,7 +1326,6 @@ static void	arcmsr_rescan_lun(struct AdapterControlBlock *acb, int target, int l
 	ccb.ccb_h.cbfcnp = arcmsr_rescanLun_cb;
 	ccb.crcn.flags = CAM_FLAG_NONE;
 	xpt_action(&ccb);
-	return;
 }
 
 
@@ -1416,6 +1396,7 @@ static void arcmsr_dr_handle(struct AdapterControlBlock *acb) {
 			}
 			break;
 	}
+
 		if(acb->acb_flags & ACB_F_BUS_HANG_ON)
 		{
 			acb->acb_flags &= ~ACB_F_BUS_HANG_ON;
@@ -1520,7 +1501,6 @@ static void arcmsr_hba_doorbell_isr(struct AdapterControlBlock *acb)
 	if(outbound_doorbell & ARCMSR_OUTBOUND_IOP331_DATA_READ_OK) {
 		arcmsr_iop2drv_data_read_handle(acb);
 	}
-	return;
 }
 /*
 **************************************************************************
@@ -1548,7 +1528,6 @@ static void arcmsr_hbc_doorbell_isr(struct AdapterControlBlock *acb)
 	if(outbound_doorbell & ARCMSR_HBCMU_IOP2DRV_MESSAGE_CMD_DONE) {
 		arcmsr_hbc_message_isr(acb);    /* messenger of "driver to iop commands" */
 	}
-	return;
 }
 /*
 **************************************************************************
@@ -1572,7 +1551,6 @@ static void arcmsr_hba_postqueue_isr(struct AdapterControlBlock *acb)
         error=(flag_srb & ARCMSR_SRBREPLY_FLAG_ERROR_MODE0)?TRUE:FALSE;
 		arcmsr_drain_donequeue(acb, flag_srb, error);
 	}	/*drain reply FIFO*/
-	return;
 }
 /*
 **************************************************************************
@@ -1602,7 +1580,6 @@ static void arcmsr_hbb_postqueue_isr(struct AdapterControlBlock *acb)
         error=(flag_srb & ARCMSR_SRBREPLY_FLAG_ERROR_MODE0)?TRUE:FALSE;
 		arcmsr_drain_donequeue(acb, flag_srb, error);
 	}	/*drain reply FIFO*/
-	return;
 }
 /*
 **************************************************************************
@@ -1632,7 +1609,6 @@ static void arcmsr_hbc_postqueue_isr(struct AdapterControlBlock *acb)
         }
         throttling++;
 	}	/*drain reply FIFO*/
-	return;
 }
 /*
 **********************************************************************
@@ -1640,30 +1616,29 @@ static void arcmsr_hbc_postqueue_isr(struct AdapterControlBlock *acb)
 */
 static void arcmsr_handle_hba_isr( struct AdapterControlBlock *acb)
 {
-	u_int32_t outbound_intstatus;
+	u_int32_t outbound_intStatus;
 	/*
 	*********************************************
 	**   check outbound intstatus
 	*********************************************
 	*/
-	outbound_intstatus=CHIP_REG_READ32(HBA_MessageUnit, 0, outbound_intstatus) & acb->outbound_int_enable;
-	if(!outbound_intstatus) {
+	outbound_intStatus=CHIP_REG_READ32(HBA_MessageUnit, 0, outbound_intstatus) & acb->outbound_int_enable;
+	if(!outbound_intStatus) {
 		/*it must be share irq*/
 		return;
 	}
-	CHIP_REG_WRITE32(HBA_MessageUnit, 0, outbound_intstatus, outbound_intstatus);/*clear interrupt*/
+	CHIP_REG_WRITE32(HBA_MessageUnit, 0, outbound_intstatus, outbound_intStatus);/*clear interrupt*/
 	/* MU doorbell interrupts*/
-	if(outbound_intstatus & ARCMSR_MU_OUTBOUND_DOORBELL_INT) {
+	if(outbound_intStatus & ARCMSR_MU_OUTBOUND_DOORBELL_INT) {
 		arcmsr_hba_doorbell_isr(acb);
 	}
 	/* MU post queue interrupts*/
-	if(outbound_intstatus & ARCMSR_MU_OUTBOUND_POSTQUEUE_INT) {
+	if(outbound_intStatus & ARCMSR_MU_OUTBOUND_POSTQUEUE_INT) {
 		arcmsr_hba_postqueue_isr(acb);
 	}
-	if(outbound_intstatus & ARCMSR_MU_OUTBOUND_MESSAGE0_INT) {
+	if(outbound_intStatus & ARCMSR_MU_OUTBOUND_MESSAGE0_INT) {
 		arcmsr_hba_message_isr(acb);
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -1699,7 +1674,6 @@ static void arcmsr_handle_hbb_isr( struct AdapterControlBlock *acb)
 	if(outbound_doorbell & ARCMSR_IOP2DRV_MESSAGE_CMD_DONE) {
 		arcmsr_hbb_message_isr(acb);
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -1726,7 +1700,6 @@ static void arcmsr_handle_hbc_isr( struct AdapterControlBlock *acb)
 	if(host_interrupt_status & ARCMSR_HBCMU_OUTBOUND_POSTQUEUE_ISR) {
 		arcmsr_hbc_postqueue_isr(acb);
 	}
-	return;
 }
 /*
 ******************************************************************************
@@ -1749,7 +1722,6 @@ static void arcmsr_interrupt(struct AdapterControlBlock *acb)
 		" unknow adapter type =%d\n", acb->pci_unit, acb->adapter_type);
 		break;
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -1772,7 +1744,7 @@ static void	arcmsr_polling_devmap(void* arg)
 	struct AdapterControlBlock *acb = (struct AdapterControlBlock *)arg;
 	switch (acb->adapter_type) {
 	case ACB_ADAPTER_TYPE_A:
-			CHIP_REG_WRITE32(HBC_MessageUnit, 0, inbound_msgaddr0, ARCMSR_INBOUND_MESG0_GET_CONFIG);
+			CHIP_REG_WRITE32(HBA_MessageUnit, 0, inbound_msgaddr0, ARCMSR_INBOUND_MESG0_GET_CONFIG);
 		break;
 
 	case ACB_ADAPTER_TYPE_B:
@@ -1993,7 +1965,7 @@ u_int32_t arcmsr_iop_ioctlcmd(struct AdapterControlBlock *acb, u_int32_t ioctl_c
 		break;
 	}
 	ARCMSR_LOCK_RELEASE(&acb->qbuffer_lock);
-	return retvalue;
+	return (retvalue);
 }
 /*
 **************************************************************************
@@ -2240,7 +2212,7 @@ static int arcmsr_iop_message_xfer(struct AdapterControlBlock *acb, union ccb * 
 		retvalue = ARCMSR_MESSAGE_FAIL;
 	}
 message_out:
-	return retvalue;
+	return (retvalue);
 }
 /*
 *********************************************************************
@@ -2303,7 +2275,7 @@ static void arcmsr_execute_srb(void *arg, bus_dma_segment_t *dm_segs, int nseg, 
 		arcmsr_srb_complete(srb, 0);
 		return;
 	}
-	if(acb->srboutstandingcount >= ARCMSR_MAX_OUTSTANDING_CMD) {
+	if(acb->srboutstandingcount > ARCMSR_MAX_OUTSTANDING_CMD) {
 		xpt_freeze_simq(acb->psim, 1);
 		pccb->ccb_h.status = CAM_REQUEUE_REQ;
 		acb->acb_flags |= ACB_F_CAM_DEV_QFRZN;
@@ -2316,10 +2288,9 @@ static void arcmsr_execute_srb(void *arg, bus_dma_segment_t *dm_segs, int nseg, 
 	if (pccb->ccb_h.timeout != CAM_TIME_INFINITY)
 	{
 		arcmsr_callout_init(&srb->ccb_callout);
-		callout_reset(&srb->ccb_callout, (pccb->ccb_h.timeout * hz ) / 1000, arcmsr_srb_timeout, srb);
+		callout_reset(&srb->ccb_callout, ((pccb->ccb_h.timeout + (ARCMSR_TIMEOUT_DELAY * 1000)) * hz) / 1000, arcmsr_srb_timeout, srb);
 		srb->srb_flags |= SRB_FLAG_TIMER_START;
 	}
-	return;
 }
 /*
 *****************************************************************************************
@@ -2383,7 +2354,6 @@ static void arcmsr_bus_reset(struct AdapterControlBlock *acb)
 	}
 	arcmsr_iop_reset(acb);
 	acb->acb_flags &= ~ACB_F_BUS_RESET;
-	return;
 }
 /*
 **************************************************************************
@@ -2531,10 +2501,24 @@ static void arcmsr_action(struct cam_sim * psim, union ccb * pccb)
 			strncpy(cpi->dev_name, cam_sim_name(psim), DEV_IDLEN);
 			cpi->unit_number=cam_sim_unit(psim);
 		#ifdef	CAM_NEW_TRAN_CODE
-			cpi->transport = XPORT_SPI;
-			cpi->transport_version = 2;
+			if(acb->adapter_bus_speed == ACB_BUS_SPEED_6G)
+				cpi->base_transfer_speed = 600000;
+			else
+				cpi->base_transfer_speed = 300000;
+			if((acb->vendor_device_id == PCIDevVenIDARC1880) ||
+			   (acb->vendor_device_id == PCIDevVenIDARC1680))
+			{
+				cpi->transport = XPORT_SAS;
+				cpi->transport_version = 0;
+				cpi->protocol_version = SCSI_REV_SPC2;
+			}
+			else
+			{
+				cpi->transport = XPORT_SPI;
+				cpi->transport_version = 2;
+				cpi->protocol_version = SCSI_REV_2;
+			}
 			cpi->protocol = PROTO_SCSI;
-			cpi->protocol_version = SCSI_REV_2;
 		#endif
 			cpi->ccb_h.status |= CAM_REQ_CMP;
 			xpt_done(pccb);
@@ -2598,28 +2582,46 @@ static void arcmsr_action(struct cam_sim * psim, union ccb * pccb)
 			{
 				struct ccb_trans_settings_scsi *scsi;
 				struct ccb_trans_settings_spi *spi;
+				struct ccb_trans_settings_sas *sas;
 
 				scsi = &cts->proto_specific.scsi;
-				spi = &cts->xport_specific.spi;
-				cts->protocol = PROTO_SCSI;
-				cts->protocol_version = SCSI_REV_2;
-				cts->transport = XPORT_SPI;
-				cts->transport_version = 2;
-				spi->flags = CTS_SPI_FLAGS_DISC_ENB;
-				spi->sync_period=3;
-				spi->sync_offset=32;
-				spi->bus_width=MSG_EXT_WDTR_BUS_16_BIT;
 				scsi->flags = CTS_SCSI_FLAGS_TAG_ENB;
-				spi->valid = CTS_SPI_VALID_DISC
-					| CTS_SPI_VALID_SYNC_RATE
-					| CTS_SPI_VALID_SYNC_OFFSET
-					| CTS_SPI_VALID_BUS_WIDTH;
 				scsi->valid = CTS_SCSI_VALID_TQ;
+				cts->protocol = PROTO_SCSI;
+
+				if((acb->vendor_device_id == PCIDevVenIDARC1880) ||
+				   (acb->vendor_device_id == PCIDevVenIDARC1680))
+				{
+					cts->protocol_version = SCSI_REV_SPC2;
+					cts->transport_version = 0;
+					cts->transport = XPORT_SAS;
+					sas = &cts->xport_specific.sas;
+					sas->valid = CTS_SAS_VALID_SPEED;
+					if(acb->vendor_device_id == PCIDevVenIDARC1880)
+						sas->bitrate = 600000;
+					else if(acb->vendor_device_id == PCIDevVenIDARC1680)
+						sas->bitrate = 300000;
+				}
+				else
+				{
+					cts->protocol_version = SCSI_REV_2;
+					cts->transport_version = 2;
+					cts->transport = XPORT_SPI;
+					spi = &cts->xport_specific.spi;
+					spi->flags = CTS_SPI_FLAGS_DISC_ENB;
+					spi->sync_period=2;
+					spi->sync_offset=32;
+					spi->bus_width=MSG_EXT_WDTR_BUS_16_BIT;
+					spi->valid = CTS_SPI_VALID_DISC
+						| CTS_SPI_VALID_SYNC_RATE
+						| CTS_SPI_VALID_SYNC_OFFSET
+						| CTS_SPI_VALID_BUS_WIDTH;
+				}
 			}
 		#else
 			{
 				cts->flags=(CCB_TRANS_DISC_ENB | CCB_TRANS_TAG_ENB);
-				cts->sync_period=3;
+				cts->sync_period=2;
 				cts->sync_offset=32;
 				cts->bus_width=MSG_EXT_WDTR_BUS_16_BIT;
 				cts->valid=CCB_TRANS_SYNC_RATE_VALID |
@@ -2652,7 +2654,6 @@ static void arcmsr_action(struct cam_sim * psim, union ccb * pccb)
 		xpt_done(pccb);
 		break;
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -2665,7 +2666,6 @@ static void arcmsr_start_hba_bgrb(struct AdapterControlBlock *acb)
 	if(!arcmsr_hba_wait_msgint_ready(acb)) {
 		kprintf("arcmsr%d: wait 'start adapter background rebulid' timeout \n", acb->pci_unit);
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -2678,7 +2678,6 @@ static void arcmsr_start_hbb_bgrb(struct AdapterControlBlock *acb)
 	if(!arcmsr_hbb_wait_msgint_ready(acb)) {
 		kprintf( "arcmsr%d: wait 'start adapter background rebulid' timeout \n", acb->pci_unit);
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -2692,7 +2691,6 @@ static void arcmsr_start_hbc_bgrb(struct AdapterControlBlock *acb)
 	if(!arcmsr_hbc_wait_msgint_ready(acb)) {
 		kprintf("arcmsr%d: wait 'start adapter background rebulid' timeout \n", acb->pci_unit);
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -2711,7 +2709,6 @@ static void arcmsr_start_adapter_bgrb(struct AdapterControlBlock *acb)
 		arcmsr_start_hbc_bgrb(acb);
 		break;
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -2766,7 +2763,6 @@ polling_ccb_retry:
 		}
 		arcmsr_report_srb_state(acb, srb, error);
 	}	/*drain reply FIFO*/
-	return;
 }
 /*
 **********************************************************************
@@ -2827,7 +2823,6 @@ polling_ccb_retry:
 		}
 		arcmsr_report_srb_state(acb, srb, error);
 	}	/*drain reply FIFO*/
-	return;
 }
 /*
 **********************************************************************
@@ -2878,7 +2873,6 @@ polling_ccb_retry:
 		}
 		arcmsr_report_srb_state(acb, srb, error);
 	}	/*drain reply FIFO*/
-	return;
 }
 /*
 **********************************************************************
@@ -2946,7 +2940,6 @@ static void arcmsr_get_hba_config(struct AdapterControlBlock *acb)
 	acb->firm_sdram_size=CHIP_REG_READ32(HBA_MessageUnit, 0, msgcode_rwbuffer[3]);    /*firm_sdram_size, 3, 12-15*/
 	acb->firm_ide_channels=CHIP_REG_READ32(HBA_MessageUnit, 0, msgcode_rwbuffer[4]);  /*firm_ide_channels, 4, 16-19*/
 	acb->firm_cfg_version=CHIP_REG_READ32(HBA_MessageUnit, 0, msgcode_rwbuffer[ARCMSR_FW_CFGVER_OFFSET]);	/*firm_cfg_version,  25,	  */
-	return;
 }
 /*
 **********************************************************************
@@ -2993,7 +2986,6 @@ static void arcmsr_get_hbb_config(struct AdapterControlBlock *acb)
 	acb->firm_sdram_size=CHIP_REG_READ32(HBB_RWBUFFER, 1, msgcode_rwbuffer[3]);    /*firm_sdram_size, 3, 12-15*/
 	acb->firm_ide_channels=CHIP_REG_READ32(HBB_RWBUFFER, 1, msgcode_rwbuffer[4]);  /*firm_ide_channels, 4, 16-19*/
 	acb->firm_cfg_version=CHIP_REG_READ32(HBB_RWBUFFER, 1, msgcode_rwbuffer[ARCMSR_FW_CFGVER_OFFSET]);	/*firm_cfg_version,  25,	  */
-	return;
 }
 /*
 **********************************************************************
@@ -3041,7 +3033,6 @@ static void arcmsr_get_hbc_config(struct AdapterControlBlock *acb)
 	acb->firm_sdram_size	=CHIP_REG_READ32(HBC_MessageUnit, 0, msgcode_rwbuffer[3]);	/*firm_sdram_size,    3, 12-15*/
 	acb->firm_ide_channels	=CHIP_REG_READ32(HBC_MessageUnit, 0, msgcode_rwbuffer[4]);	/*firm_ide_channels,  4, 16-19*/
 	acb->firm_cfg_version	=CHIP_REG_READ32(HBC_MessageUnit, 0, msgcode_rwbuffer[ARCMSR_FW_CFGVER_OFFSET]);	/*firm_cfg_version,  25,	  */
-	return;
 }
 /*
 **********************************************************************
@@ -3063,7 +3054,6 @@ static void arcmsr_get_firmware_spec(struct AdapterControlBlock *acb)
 		}
 		break;
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -3112,7 +3102,6 @@ static void arcmsr_wait_firmware_ready( struct AdapterControlBlock *acb)
 		}
 		break;
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -3146,7 +3135,6 @@ static void arcmsr_clear_doorbell_queue_buffer( struct AdapterControlBlock *acb)
 		}
 		break;
 	}
-	return;
 }
 /*
 ************************************************************************
@@ -3229,7 +3217,7 @@ static u_int32_t arcmsr_iop_confirm(struct AdapterControlBlock *acb)
 		}
 		break;
 	}
-	return TRUE;
+	return (TRUE);
 }
 /*
 ************************************************************************
@@ -3252,7 +3240,6 @@ static void arcmsr_enable_eoi_mode(struct AdapterControlBlock *acb)
 		}
 		break;
 	}
-	return;
 }
 /*
 **********************************************************************
@@ -3275,7 +3262,6 @@ static void arcmsr_iop_init(struct AdapterControlBlock *acb)
 	/* enable outbound Post Queue, outbound doorbell Interrupt */
 	arcmsr_enable_allintr(acb, intmask_org);
 	acb->acb_flags |=ACB_F_IOP_INITED;
-	return;
 }
 /*
 **********************************************************************
@@ -3307,7 +3293,6 @@ static void arcmsr_map_free_srb(void *arg, bus_dma_segment_t *segs, int nseg, in
 		srb_tmp = (struct CommandControlBlock *)((unsigned long)srb_tmp+SRB_SIZE);
 	}
 	acb->vir2phy_offset=(unsigned long)srb_tmp-srb_phyaddr;
-	return;
 }
 /*
 ************************************************************************
@@ -3326,7 +3311,6 @@ static void arcmsr_free_resource(struct AdapterControlBlock *acb)
 	bus_dma_tag_destroy(acb->srb_dmat);
 	bus_dma_tag_destroy(acb->dm_segs_dmat);
 	bus_dma_tag_destroy(acb->parent_dmat);
-	return;
 }
 /*
 ************************************************************************
@@ -3337,16 +3321,24 @@ static u_int32_t arcmsr_initialize(device_t dev)
 	struct AdapterControlBlock *acb=device_get_softc(dev);
 	u_int16_t pci_command;
 	int i, j,max_coherent_size;
+	u_int32_t vendor_dev_id;
 
-	switch (pci_get_devid(dev)) {
-	case PCIDevVenIDARC1880: {
+	vendor_dev_id = pci_get_devid(dev);
+	acb->vendor_device_id = vendor_dev_id;
+	switch (vendor_dev_id) {
+	case PCIDevVenIDARC1880:
+	case PCIDevVenIDARC1882:
+	case PCIDevVenIDARC1213:
+	case PCIDevVenIDARC1223: {
 			acb->adapter_type=ACB_ADAPTER_TYPE_C;
+			acb->adapter_bus_speed = ACB_BUS_SPEED_6G;
 			max_coherent_size=ARCMSR_SRBS_POOL_SIZE;
 		}
 		break;
 	case PCIDevVenIDARC1200:
 	case PCIDevVenIDARC1201: {
 			acb->adapter_type=ACB_ADAPTER_TYPE_B;
+			acb->adapter_bus_speed = ACB_BUS_SPEED_3G;
 			max_coherent_size=ARCMSR_SRBS_POOL_SIZE+(sizeof(struct HBB_MessageUnit));
 		}
 		break;
@@ -3370,6 +3362,7 @@ static u_int32_t arcmsr_initialize(device_t dev)
 	case PCIDevVenIDARC1680:
 	case PCIDevVenIDARC1681: {
 			acb->adapter_type=ACB_ADAPTER_TYPE_A;
+			acb->adapter_bus_speed = ACB_BUS_SPEED_3G;
 			max_coherent_size=ARCMSR_SRBS_POOL_SIZE;
 		}
 		break;
@@ -3675,7 +3668,7 @@ static int arcmsr_attach(device_t dev)
 	(void)make_dev_alias(acb->ioctl_dev, "arc%d", unit);
 	arcmsr_callout_init(&acb->devmap_callout);
 	callout_reset(&acb->devmap_callout, 60 * hz, arcmsr_polling_devmap, acb);
-	return 0;
+	return (0);
 }
 
 /*
@@ -3722,6 +3715,9 @@ static int arcmsr_probe(device_t dev)
 		type = "SAS 3G";
 		break;
 	case PCIDevVenIDARC1880:
+	case PCIDevVenIDARC1882:
+	case PCIDevVenIDARC1213:
+	case PCIDevVenIDARC1223:
 		type = "SAS 6G";
 		arcmsr_msi_enable = 0;
 		break;
@@ -3733,7 +3729,7 @@ static int arcmsr_probe(device_t dev)
 		return(ENXIO);
 	ksprintf(buf, "Areca %s Host Adapter RAID Controller%s", type, raid6 ? " (RAID6 capable)" : "");
 	device_set_desc_copy(dev, buf);
-	return 0;
+	return (BUS_PROBE_DEFAULT);
 }
 /*
 ************************************************************************

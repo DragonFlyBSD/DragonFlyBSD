@@ -93,13 +93,13 @@ static int max_installed_hard_intr[MAXCPU];
 
 #define TD_INVARIANTS_GET(td)                                   \
         do {                                                    \
-                spincount = (td)->td_gd->gd_spinlocks_wr;       \
+                spincount = (td)->td_gd->gd_spinlocks;		\
                 curstop = (td)->td_toks_stop;                   \
         } while(0)
 
 #define TD_INVARIANTS_TEST(td, name)                                    \
         do {                                                            \
-                KASSERT(spincount == (td)->td_gd->gd_spinlocks_wr,      \
+                KASSERT(spincount == (td)->td_gd->gd_spinlocks,		\
                         ("spincount mismatch after interrupt handler %s", \
                         name));                                         \
                 KASSERT(curstop == (td)->td_toks_stop,                  \

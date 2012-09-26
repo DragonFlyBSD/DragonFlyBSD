@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 12, 2012
+.Dd September 17, 2012
 .Dt MSGPORT 9
 .Os
 .Sh NAME
@@ -61,7 +61,7 @@
 .Ft void
 .Fn lwkt_initport_thread "lwkt_port_t port" "struct thread *td"
 .Ft void
-.Fn lwkt_initport_spin "lwkt_port_t port"
+.Fn lwkt_initport_spin "lwkt_port_t port" "struct thread *td"
 .Ft void
 .Fn lwkt_initport_serialize "lwkt_port_t port" "struct lwkt_serialize *slz"
 .Ft void
@@ -116,15 +116,22 @@ spin ports
 serializer ports
 .El
 .Pp
-Ports of type 'thread' are owned by a single light weight kernel thread.
-When a message is sent to a port of type 'thread', only the owner of that port
-is allowed to retrieve the message from it.
-When a message is sent to a port of type 'spin' or to a port of
-type 'serializer', multiple threads are allowed to check that port for new
+Ports of type
+.Sq thread
+are owned by a single light weight kernel thread.
+When a message is sent to a port of type
+.Sq thread ,
+only the owner of that port is allowed to retrieve the message from it.
+When a message is sent to a port of type
+.Sq spin
+or to a port of type
+.Sq serializer ,
+multiple threads are allowed to check that port for new
 messages and compete to retrieve them.
 You define the port type when you initialize the port.
 By default, the built-in port of every light weight kernel thread is
-automatically initialized to type 'thread'.
+automatically initialized to type
+.Sq thread .
 .Pp
 When a message is sent, the receiver should normally send back a reply.
 The reply is sent to the reply port that is registered on the original message.
@@ -163,7 +170,7 @@ The
 .Fa port
 argument defines the target port to which the
 .Fa msg
-message will be sent to.
+message will be sent.
 .Pp
 The
 .Fn lwkt_domsg
@@ -177,7 +184,7 @@ The
 .Fa port
 argument defines the target port to which the
 .Fa msg
-message will be sent to.
+message will be sent.
 .Pp
 The
 .Fn lwkt_replymsg
@@ -197,7 +204,7 @@ The
 .Fa port
 argument defines the target port to which the
 .Fa msg
-message will be sent to.
+message will be sent.
 .Pp
 If a message has been initialized as abortable, you can use the
 .Fn lwkt_abortmsg
@@ -212,12 +219,15 @@ The
 .Fn lwkt_dropmsg
 will dequeue the specified message from the target port it was sent to and makes
 it look like it was never sent.
+This function can only be used by the thread that owns the target port.
 .Sh PORT FUNCTIONS
 The
 .Fn lwkt_initport_thread
 initializes the specified
 .Fa port
-with the default 'thread' port type handlers.
+with the default
+.Sq thread
+port type handlers.
 The
 .Fa td
 argument defines the owner thread of the port and only that thread is allowed to
@@ -227,15 +237,31 @@ The
 .Fn lwkt_initport_spin
 initializes the specified
 .Fa port
-with the default 'spin' port type handlers.
-It will also initialize the embedded spinlock within the
-lwkt_port structure which will protect subsequent port access.
+with the default
+.Sq spin
+port type handlers.
+The
+.Fa td
+argument defines the owner thread of the port, for cases where thread built-in
+ports are initialized as
+.Sq spin
+ports.
+If
+.Dv NULL
+is passed, then the port will not have a defined owner, so functions like
+.Fn lwkt_dropmsg
+will not be available for this port.
+This function will also initialize the embedded spinlock within the
+.Vt lwkt_port
+structure which will protect subsequent port access.
 .Pp
 The
 .Fn lwkt_initport_serialize
 function initializes the specified
 .Fa port
-with the default 'serializer' port type handlers.
+with the default
+.Sq serializer
+port type handlers.
 The subsequent port access will be protected by the passed
 .Fa slz
 serializer lock.
@@ -322,7 +348,7 @@ The
 .Fa port
 argument defines the target port to which the
 .Fa msg
-message will be sent to.
+message will be sent.
 .Pp
 The
 .Fn lwkt_waitmsg
@@ -541,7 +567,9 @@ mod_load(void)
 .Ed
 .Sh NOTES
 All the default putport handlers (used when a message is sent) currently
-implement asynchronous putports only, i.e.\& all *_putport() handlers return
+implement asynchronous putports only, i.e.\& all
+.Fn *_putport
+handlers return
 .Er EASYNC .
 You can still have synchronous putport handlers (which are run in the sender's
 context) but you have to implement the function yourself and then override the
@@ -551,7 +579,8 @@ Port handler functions can be overridden with custom functions if required.
 You can override the default putport handler by either using the
 .Fn lwkt_initport_putonly
 initializer, or by manipulating the mp_putport handler pointer directly on the
-lwkt_port structure.
+.Vt lwkt_port
+structure.
 .Pp
 There is one such case where the putport handler is overridden in
 .Pa sys/net/netisr.c .
@@ -580,7 +609,9 @@ You override the default replyport handler by using the
 or the
 .Fn lwkt_initport_replyonly_null
 port initializers, or by manipulating the mp_replyport handler pointer directly
-on the lwkt_port structure.
+on the
+.Vt lwkt_port
+structure.
 .Pp
 The sent message structure is reused for replies.
 When a message is replied to, the error response is written on the message

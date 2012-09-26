@@ -330,7 +330,7 @@ MODULE_VERSION(hammer, 1);
 static int
 hammer_vfs_init(struct vfsconf *conf)
 {
-	int n;
+	long n;
 
 	/*
 	 * Wait up to this long for an exclusive deadlock to clear
@@ -341,18 +341,24 @@ hammer_vfs_init(struct vfsconf *conf)
 		hammer_tdmux_ticks = hz / 5;
 
 	/*
-	 * Autosize
+	 * Autosize, but be careful because a hammer filesystem's
+	 * reserve is partially calculated based on dirtybufspace,
+	 * so we simply cannot allow it to get too large.
 	 */
 	if (hammer_limit_recs == 0) {
-		hammer_limit_recs = nbuf * 25;
-		n = kmalloc_limit(M_HAMMER) / 512;
-		if (hammer_limit_recs > n)
-			hammer_limit_recs = n;
+		n = nbuf * 25;
+		if (n > kmalloc_limit(M_HAMMER) / 512)
+			n = kmalloc_limit(M_HAMMER) / 512;
+		if (n > 2 * 1024 * 1024)
+			n = 2 * 1024 * 1024;
+		hammer_limit_recs = (int)n;
 	}
 	if (hammer_limit_dirtybufspace == 0) {
 		hammer_limit_dirtybufspace = hidirtybufspace / 2;
-		if (hammer_limit_dirtybufspace < 100)
-			hammer_limit_dirtybufspace = 100;
+		if (hammer_limit_dirtybufspace < 1L * 1024 * 1024)
+			hammer_limit_dirtybufspace = 1024L * 1024;
+		if (hammer_limit_dirtybufspace > 1024L * 1024 * 1024)
+			hammer_limit_dirtybufspace = 1024L * 1024 * 1024;
 	}
 
 	/*

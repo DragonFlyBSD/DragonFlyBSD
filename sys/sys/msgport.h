@@ -140,11 +140,18 @@ MALLOC_DECLARE(M_LWKTMSG);
  *	  is not queued to the port and the reply code wakes up the waiter
  *	  directly.
  *
- * The use of mp_u.td and mp_u.spin is specific to the port callback function
+ * mp_dropmsg():
+ *	- drop a specific message from the specified port.  Currently only
+ *	  threads' embedded ports (thread ports or spin ports) support this
+ *        function and must be used in the port's owner thread.
+ *
+ * The use of mpu_td and mp_u.spin is specific to the port callback function
  * set.  Default ports are tied to specific threads and use cpu locality
- * of reference and mp_u.td (and not mp_u.spin at all).  Descriptor ports
+ * of reference and mpu_td (and not mp_u.spin at all).  Descriptor ports
  * assume access via descriptors, signal interruption, etc.  Such ports use
- * mp_u.spin (and not mp_u.td at all) and may be accessed by multiple threads.
+ * mp_u.spin (and not mpu_td at all) and may be accessed by multiple threads.
+ *
+ * Threads' embedded ports always have mpu_td back pointing to themselves.
  */
 typedef struct lwkt_port {
     lwkt_msg_queue	mp_msgq;
@@ -152,10 +159,10 @@ typedef struct lwkt_port {
     int			mp_flags;
     union {
 	struct spinlock	spin;
-	struct thread	*td;
 	struct lwkt_serialize *serialize;
 	void		*data;
     } mp_u;
+    struct thread	*mpu_td;
     void *		(*mp_getport)(lwkt_port_t);
     int			(*mp_putport)(lwkt_port_t, lwkt_msg_t);
     int			(*mp_waitmsg)(lwkt_msg_t, int flags);
@@ -166,7 +173,6 @@ typedef struct lwkt_port {
 
 #ifdef _KERNEL
 
-#define mpu_td		mp_u.td
 #define mpu_spin	mp_u.spin
 #define mpu_serialize	mp_u.serialize
 #define mpu_data	mp_u.data
@@ -189,7 +195,7 @@ typedef struct lwkt_port {
  */
 
 void lwkt_initport_thread(lwkt_port_t, struct thread *);
-void lwkt_initport_spin(lwkt_port_t);
+void lwkt_initport_spin(lwkt_port_t, struct thread *);
 void lwkt_initport_serialize(lwkt_port_t, struct lwkt_serialize *);
 void lwkt_initport_panic(lwkt_port_t);
 void lwkt_initport_replyonly_null(lwkt_port_t);

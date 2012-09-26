@@ -31,11 +31,12 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/em.4,v 1.30 2008/10/06 21:55:53 simon Exp $
 .\"
-.Dd April 7, 2012
+.Dd September 17, 2012
 .Dt EM 4
 .Os
 .Sh NAME
-.Nm em
+.Nm em ,
+.Nm emx
 .Nd "Intel(R) PRO/1000 Gigabit Ethernet adapter driver"
 .Sh SYNOPSIS
 To compile this driver into the kernel,
@@ -43,7 +44,8 @@ place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device ig_hal"
-.Cd "device em"
+.Cd "device em  # for em(4)"
+.Cd "device emx # for emx(4)"
 .Ed
 .Pp
 Alternatively, to load the driver as a
@@ -51,7 +53,8 @@ module at boot time, place the following lines in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
 ig_hal_load="YES"
-if_em_load="YES"
+if_em_load="YES"  # for em(4)
+if_emx_load="YES" # for emx(4)
 .Ed
 .Sh DESCRIPTION
 The
@@ -62,11 +65,18 @@ the Intel 82540, 82541ER, 82541PI, 82542, 82543, 82544, 82545, 82546,
 controller chips.
 The driver supports Transmit/Receive checksum offload
 and Jumbo Frames on all but 82542-based adapters.
-.\" Furthermore it supports TCP segmentation offload (TSO) on all adapters but
-.\" those based on the 82543, 82544 and 82547 controller chips.
+Furthermore it supports TCP segmentation offload (TSO) on adapters
+based on the 82571, 82572, 82573 and 82574 controller chips.
 For further hardware information, see the
 .Pa README
 included with the driver.
+.Pp
+The
+.Nm emx
+is a version of the
+.Nm em
+driver for 82571, 82572, 82573, and 82574 Ethernet controller chips that
+additionally supports RSS (Receive Side Scaling).
 .Pp
 For questions related to hardware requirements,
 refer to the documentation supplied with your Intel PRO/1000 adapter.
@@ -82,7 +92,9 @@ The maximum MTU size for Jumbo Frames is 16114.
 This driver version supports VLANs.
 The
 .Nm
-driver supports the following media types:
+and
+.Nm emx
+drivers support the following media types:
 .Bl -tag -width ".Cm 10baseT/UTP"
 .It Cm autoselect
 Enables auto-negotiation for speed and duplex.
@@ -114,7 +126,9 @@ mode is supported at this speed.
 .Pp
 The
 .Nm
-driver supports the following media options:
+and
+.Nm emx
+drivers support the following media options:
 .Bl -tag -width ".Cm full-duplex"
 .It Cm full-duplex
 Forces full-duplex operation
@@ -133,9 +147,12 @@ is not specified, the driver defaults to
 .Pp
 For more information on configuring this device, see
 .Xr ifconfig 8 .
+.Pp
 The
 .Nm
-driver supports
+and
+.Nm emx
+drivers support
 .Xr polling 4 .
 .Sh HARDWARE
 The
@@ -192,6 +209,11 @@ Intel PRO/1000 XF Server Adapter (82544)
 .It
 Intel PRO/1000 XT Server Adapter (82544)
 .El
+.Pp
+The
+.Nm emx
+driver supports Gigabit Ethernet adapters based on the Intel
+82571, 82572, 82573, and 82574 controller chips.
 .Sh LOADER TUNABLES
 Tunables can be set at the
 .Xr loader 8
@@ -224,6 +246,8 @@ this value could safely be set to 1/2 of the number of transmit descriptors.
 By default, the driver will use MSI if it is supported.
 This behavior can be turned off by setting this tunable to 0.
 .El
+.\".Pp
+.\" XXX emx(4) tunables
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "em%d: Unable to allocate bus resource: memory"
@@ -255,9 +279,21 @@ issue to
 The
 .Nm
 device driver first appeared in
-.Fx 4.4 .
+.Fx 4.4
+and the
+.Nm emx
+driver first appeared in
+.Dx 2.3 .
 .Sh AUTHORS
+.An -nosplit
 The
 .Nm
 driver was written by
 .An Intel Corporation Aq freebsdnic@mailbox.intel.com .
+.Pp
+The
+.Nm emx
+driver was written by
+.An Sepherosa Ziehau
+(in parts based on
+.Tn Intel Ap s ) .

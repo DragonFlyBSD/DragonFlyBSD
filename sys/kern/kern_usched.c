@@ -66,11 +66,14 @@ usched_init(void)
 	 * Add various userland schedulers to the system.
 	 */
 	usched_ctl(&usched_bsd4, USCH_ADD);
+	usched_ctl(&usched_dfly, USCH_ADD);
 	usched_ctl(&usched_dummy, USCH_ADD);
 	if (defsched == NULL )
-		return(&usched_bsd4);
+		return(&usched_dfly);
 	if (strcmp(defsched, "bsd4") == 0)
 		return(&usched_bsd4);
+	if (strcmp(defsched, "dfly") == 0)
+		return(&usched_dfly);
 	kprintf("WARNING: Running dummy userland scheduler\n");
 	return(&usched_dummy);
 }
@@ -141,6 +144,24 @@ usched_ctl(struct usched *usched, int action)
 }
 
 /*
+ * Called from the scheduler clock on each cpu independently at the
+ * common scheduling rate.  If th scheduler clock interrupted a running
+ * lwp the lp will be non-NULL.
+ */
+void
+usched_schedulerclock(struct lwp *lp, sysclock_t periodic, sysclock_t time)
+{
+	struct usched *item;
+
+	TAILQ_FOREACH(item, &usched_list, entry) {
+		if (lp && lp->lwp_proc->p_usched == item)
+			item->schedulerclock(lp, periodic, time);
+		else
+			item->schedulerclock(NULL, periodic, time);
+	}
+}
+
+/*
  * USCHED_SET(syscall)
  *
  * SYNOPSIS:
@@ -202,6 +223,7 @@ sys_usched_set(struct usched_set_args *uap)
 		if (item && item != p->p_usched) {
 			/* XXX lwp */
 			p->p_usched->release_curproc(ONLY_LWP_IN_PROC(p));
+			p->p_usched->heuristic_exiting(ONLY_LWP_IN_PROC(p), p);
 			p->p_usched = item;
 		} else if (item == NULL) {
 			error = EINVAL;

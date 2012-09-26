@@ -184,7 +184,6 @@ void		 pmap_kmodify_nc(vm_offset_t va);
 void		 pmap_kremove (vm_offset_t);
 void		 pmap_kremove_quick (vm_offset_t);
 void		 pmap_reference (pmap_t);
-void		 pmap_drop (pmap_t);
 void		 pmap_remove (pmap_t, vm_offset_t, vm_offset_t);
 void		 pmap_remove_pages (pmap_t, vm_offset_t, vm_offset_t);
 void		 pmap_zero_page (vm_paddr_t);

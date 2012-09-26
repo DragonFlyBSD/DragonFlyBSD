@@ -603,7 +603,7 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
 	kprintf("cpu %d ipiq maxed cscount %d spin %d\n",
 		mygd->gd_cpuid,
 		mygd->gd_curthread->td_cscount,
-		mygd->gd_spinlocks_wr);
+		mygd->gd_spinlocks);
 	iqcount[mygd->gd_cpuid] = 0;
 #if 0
 	if (++iqterm[mygd->gd_cpuid] > 10)

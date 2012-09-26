@@ -72,6 +72,7 @@ static void dummy_recalculate_estcpu(struct lwp *lp);
 static void dummy_resetpriority(struct lwp *lp);
 static void dummy_forking(struct lwp *plp, struct lwp *lp);
 static void dummy_exiting(struct lwp *plp, struct proc *child);
+static void dummy_uload_update(struct lwp *lp);
 static void dummy_yield(struct lwp *lp);
 
 struct usched usched_dummy = {
@@ -87,6 +88,7 @@ struct usched usched_dummy = {
 	dummy_resetpriority,
 	dummy_forking,
 	dummy_exiting,
+	dummy_uload_update,
 	NULL,			/* setcpumask not supported */
 	dummy_yield
 };
@@ -129,6 +131,12 @@ SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, dummyinit, NULL)
  * This function is called when the kernel intends to return to userland.
  * It is responsible for making the thread the current designated userland
  * thread for this cpu, blocking if necessary.
+ *
+ * The kernel will not depress our LWKT priority until after we return,
+ * in case we have to shove over to another cpu.
+ *
+ * We must determine our thread's disposition before we switch away.  This
+ * is very sensitive code.
  *
  * We are expected to handle userland reschedule requests here too.
  *
@@ -314,23 +322,15 @@ dummy_setrunqueue(struct lwp *lp)
 }
 
 /*
- * This routine is called from a systimer IPI.  Thus it is called with 
- * a critical section held.  Any spinlocks we get here that are also
- * obtained in other procedures must be proected by a critical section
- * in those other procedures to avoid a deadlock.
- *
- * The MP lock may or may not be held on entry and cannot be obtained
- * by this routine (because it is called from a systimer IPI).  Additionally,
- * because this is equivalent to a FAST interrupt, spinlocks cannot be used
- * (or at least, you have to check that gd_spin* counts are 0 before you
- * can).
+ * This routine is called from a systimer IPI.  It must NEVER block.
+ * If a lwp compatible with this scheduler is the currently running
+ * thread this function is called with a non-NULL lp, otherwise it
+ * will be called with a NULL lp.
  *
  * This routine is called at ESTCPUFREQ on each cpu independantly.
  *
  * This routine typically queues a reschedule request, which will cause
  * the scheduler's BLAH_select_curproc() to be called as soon as possible.
- *
- * MPSAFE
  */
 static
 void
@@ -338,6 +338,9 @@ dummy_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 {
 	globaldata_t gd = mycpu;
 	dummy_pcpu_t dd = &dummy_pcpu[gd->gd_cpuid];
+
+	if (lp == NULL)
+		return;
 
 	if (++dd->rrcount >= usched_dummy_rrinterval) {
 		dd->rrcount = 0;
@@ -404,6 +407,12 @@ dummy_resetpriority(struct lwp *lp)
 		lp->lwp_priority = PRIBASE_THREAD + lp->lwp_rtprio.prio;
 		return;
 	}
+
+	/*
+	 * td_upri has normal sense (higher numbers are more desireable),
+	 * so negate it.
+	 */
+	lp->lwp_thread->td_upri = -lp->lwp_priority;
 	/* XXX spinlock usually needed */
 }
 
@@ -426,18 +435,16 @@ dummy_forking(struct lwp *plp, struct lwp *lp)
 }
 
 /*
- * DUMMY_EXITING
- *
- * Called when the parent reaps a child.   Typically used to propogate cpu
- * use by the child back to the parent as part of a batch detection
- * heuristic.  
- *
- * NOTE: cpu use is not normally back-propogated to PID 1.
- *
- * MPSAFE
+ * Called when a lwp is being removed from this scheduler, typically
+ * during lwp_exit().
  */
 static void
 dummy_exiting(struct lwp *plp, struct proc *child)
+{
+}
+
+static void
+dummy_uload_update(struct lwp *lp)
 {
 }
 

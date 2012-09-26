@@ -537,6 +537,14 @@ to determine if you can legally use IDEA.
 .It Va WANT_INSTALLER
 .Pq Vt bool
 Set to build the installer.
+.It Va WANT_NETGRAPH7
+.Pq Vt bool
+Set to build a newer, experimental
+.Xr netgraph 4
+userland.
+It has to be accompanied by
+.Dv NETGRAPH7*
+options in the kernel.
 .El
 .Pp
 The following list provides a name and short description for variables

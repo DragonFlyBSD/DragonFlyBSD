@@ -762,6 +762,7 @@ int vop_helper_chmod(struct vnode *vp, mode_t new_mode, struct ucred *cred,
 int vop_helper_chown(struct vnode *vp, uid_t new_uid, gid_t new_gid,
 			struct ucred *cred,
 			uid_t *cur_uidp, gid_t *cur_gidp, mode_t *cur_modep);
+int vop_helper_read_shortcut(struct vop_read_args *ap);
 
 void	add_bio_ops(struct bio_ops *ops);
 void	rem_bio_ops(struct bio_ops *ops);

@@ -195,7 +195,6 @@ static void	ixgbe_msix_que(void *);
 static void	ixgbe_msix_link(void *);
 
 /* Deferred interrupt tasklets */
-static void	ixgbe_handle_link(void *, int);
 static void	ixgbe_handle_msf(void *, int);
 static void	ixgbe_handle_mod(void *, int);
 
@@ -616,7 +615,6 @@ ixgbe_detach(device_t dev)
 
 	/* Drain the Link queue */
 	if (adapter->tq) {
-		taskqueue_drain(adapter->tq, &adapter->link_task);
 		taskqueue_drain(adapter->tq, &adapter->mod_task);
 		taskqueue_drain(adapter->tq, &adapter->msf_task);
 #ifdef IXGBE_FDIR
@@ -1381,8 +1379,11 @@ ixgbe_legacy_irq(void *arg)
 	}
 
 	/* Link status change */
-	if (reg_eicr & IXGBE_EICR_LSC)
-		taskqueue_enqueue(adapter->tq, &adapter->link_task);
+	if (reg_eicr & IXGBE_EICR_LSC) {
+		ixgbe_check_link(&adapter->hw,
+		    &adapter->link_speed, &adapter->link_up, 0);
+		ixgbe_update_link_status(adapter);
+	}
 
 	ixgbe_enable_intr(adapter);
 }
@@ -1431,8 +1432,11 @@ ixgbe_msix_link(void *arg)
 	IXGBE_WRITE_REG(hw, IXGBE_EICR, reg_eicr);
 
 	/* Link status change */
-	if (reg_eicr & IXGBE_EICR_LSC)
-		taskqueue_enqueue(adapter->tq, &adapter->link_task);
+	if (reg_eicr & IXGBE_EICR_LSC) {
+		ixgbe_check_link(&adapter->hw,
+		    &adapter->link_speed, &adapter->link_up, 0);
+		ixgbe_update_link_status(adapter);
+	}
 
 	if (adapter->hw.mac.type != ixgbe_mac_82598EB) {
 #ifdef IXGBE_FDIR
@@ -2095,7 +2099,6 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 	}
 
 	/* Tasklets for Link, SFP and Multispeed Fiber */
-	TASK_INIT(&adapter->link_task, 0, ixgbe_handle_link, adapter);
 	TASK_INIT(&adapter->mod_task, 0, ixgbe_handle_mod, adapter);
 	TASK_INIT(&adapter->msf_task, 0, ixgbe_handle_msf, adapter);
 #ifdef IXGBE_FDIR
@@ -2201,7 +2204,6 @@ ixgbe_allocate_msix(struct adapter *adapter)
 
 	adapter->linkvec = vector;
 	/* Tasklets for Link, SFP and Multispeed Fiber */
-	TASK_INIT(&adapter->link_task, 0, ixgbe_handle_link, adapter);
 	TASK_INIT(&adapter->mod_task, 0, ixgbe_handle_mod, adapter);
 	TASK_INIT(&adapter->msf_task, 0, ixgbe_handle_msf, adapter);
 #ifdef IXGBE_FDIR
@@ -4925,20 +4927,6 @@ static bool ixgbe_sfp_probe(struct adapter *adapter)
 	}
 out:
 	return (result);
-}
-
-/*
-** Tasklet handler for MSIX Link interrupts
-**  - do outside interrupt since it might sleep
-*/
-static void
-ixgbe_handle_link(void *context, int pending)
-{
-	struct adapter  *adapter = context;
-
-	ixgbe_check_link(&adapter->hw,
-	    &adapter->link_speed, &adapter->link_up, 0);
-       	ixgbe_update_link_status(adapter);
 }
 
 /*

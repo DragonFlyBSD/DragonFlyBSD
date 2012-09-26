@@ -468,6 +468,10 @@ lwkt_getalltokens(thread_t td, int spinning)
 			 * Otherwise we failed to acquire all the tokens.
 			 * Release whatever we did get.
 			 */
+			strncpy(td->td_gd->gd_cnt.v_token_name,
+				tok->t_desc,
+				sizeof(td->td_gd->gd_cnt.v_token_name) - 1);
+
 			if (lwkt_sched_debug > 0) {
 				--lwkt_sched_debug;
 				kprintf("toka %p %s %s\n",

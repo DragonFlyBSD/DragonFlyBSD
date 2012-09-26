@@ -78,10 +78,6 @@ struct handle {
 #define LP(pp, field) ((pp)->kp_lwp.kl_ ## field)
 #define VP(pp, field) ((pp)->kp_vm_ ## field)
 
-/* define what weighted cpu is.  */
-#define weighted_cpu(pct, pp) (PP((pp), swtime) == 0 ? 0.0 : \
-			 ((pct) / (1.0 - exp(PP((pp), swtime) * logcpu))))
-
 /* what we consider to be process size: */
 #define PROCSIZE(pp) (VP((pp), map_size) / 1024)
 
@@ -90,16 +86,16 @@ struct handle {
  */
 
 static char smp_header[] =
-"  PID %-*.*s NICE  SIZE   PRES   STATE CPU  TIME   CTIME    CPU COMMAND";
+"  PID %-*.*s NICE  SIZE   PRES    STATE CPU  TIME   CTIME    CPU COMMAND";
 
 #define smp_Proc_format \
-	"%5d %-*.*s %3d%7s %6s %7.7s %2d %6s %7s %5.2f%% %.*s"
+	"%5d %-*.*s %3d%7s %6s %8.8s %2d %6s %7s %5.2f%% %.*s"
 
 static char up_header[] =
-"  PID %-*.*s NICE  SIZE   PRES   STATE    TIME   CTIME    CPU COMMAND";
+"  PID %-*.*s NICE  SIZE   PRES    STATE    TIME   CTIME    CPU COMMAND";
 
 #define up_Proc_format \
-	"%5d %-*.*s %3d%7s %6s %7.7s%.0d %7s %7s %5.2f%% %.*s"
+	"%5d %-*.*s %3d%7s %6s %8.8s%.0d %7s %7s %5.2f%% %.*s"
 
 
 /* process state names for the "STATE" column of the display */
@@ -117,10 +113,7 @@ static kvm_t *kd;
 
 /* values that we stash away in _init and use in later routines */
 
-static double logcpu;
-
 static long lastpid;
-static int ccpu;
 
 /* these are for calculating cpu state percentages */
 
@@ -128,7 +121,10 @@ static struct kinfo_cputime *cp_time, *cp_old;
 
 /* these are for detailing the process states */
 
-int process_states[6];
+#define MAXPSTATES	6
+
+int process_states[MAXPSTATES];
+
 char *procstatenames[] = {
 	" running, ", " idle, ", " active, ", " stopped, ", " zombie, ",
 	NULL
@@ -276,13 +272,6 @@ machine_init(struct statics *statics)
 
 	if ((kd = kvm_open(NULL, NULL, NULL, O_RDONLY, NULL)) == NULL)
 		return -1;
-
-	if (kinfo_get_sched_ccpu(&ccpu)) {
-		fprintf(stderr, "top: kinfo_get_sched_ccpu failed\n");
-		return (-1);
-	}
-	/* this is used in calculating WCPU -- calculate it ahead of time */
-	logcpu = log(loaddouble(ccpu));
 
 	pbase = NULL;
 	pref = NULL;
@@ -494,15 +483,18 @@ get_process_info(struct system_info *si, struct process_select *sel,
 		 * status field.  Processes with P_SYSTEM set are system
 		 * processes---these get ignored unless show_sysprocs is set.
 		 */
-		if ((show_threads && (LP(pp, pid) == -1)) ||
+		if ((show_system && (LP(pp, pid) == -1)) ||
 		    (show_system || ((PP(pp, flags) & P_SYSTEM) == 0))) {
+			int pstate = LP(pp, stat);
+
 			total_procs++;
-			if (LP(pp, stat) == LSRUN)
+			if (pstate == LSRUN)
 				process_states[0]++;
-			process_states[PP(pp, stat)]++;
-			if ((show_threads && (LP(pp, pid) == -1)) ||
+			if (pstate >= 0 && pstate < MAXPSTATES)
+				process_states[pstate]++;
+			if ((show_system && (LP(pp, pid) == -1)) ||
 			    (show_idle || (LP(pp, pctcpu) != 0) ||
-			    (LP(pp, stat) == LSRUN)) &&
+			    (pstate == LSRUN)) &&
 			    (!show_uid || PP(pp, ruid) == (uid_t) sel->uid)) {
 				*prefp++ = pp;
 				active_procs++;
@@ -577,7 +569,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 		break;
 	case LSSLEEP:
 		if (LP(pp, wmesg) != NULL) {
-			sprintf(status, "%.6s", LP(pp, wmesg));
+			sprintf(status, "%.8s", LP(pp, wmesg)); /* WMESGLEN */
 			break;
 		}
 		/* fall through */

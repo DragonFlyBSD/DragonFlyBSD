@@ -215,6 +215,10 @@ static vm_page_t pmap_page_lookup (vm_object_t object, vm_pindex_t pindex);
 static void pmap_unuse_pt (pmap_t, vm_offset_t, vm_page_t, pmap_inval_info_t);
 static vm_offset_t pmap_kmem_choose(vm_offset_t addr);
 
+static void pmap_hold(pmap_t pmap);
+static void pmap_drop(pmap_t pmap);
+static void pmap_wait(pmap_t pmap, int count);
+
 static unsigned pdir4mb;
 
 /*
@@ -1231,6 +1235,7 @@ pmap_puninit(pmap_t pmap)
 {
 	vm_page_t p;
 
+	pmap_wait(pmap, -1);
 	KKASSERT(pmap->pm_active == 0);
 	if ((p = pmap->pm_pdirm) != NULL) {
 		KKASSERT(pmap->pm_pdir != NULL);
@@ -1626,6 +1631,45 @@ pmap_reference(pmap_t pmap)
 	}
 }
 
+/*
+ * vm_token must be held
+ */
+static
+void
+pmap_hold(pmap_t pmap)
+{
+	++pmap->pm_count;
+}
+
+/*
+ * vm_token must be held
+ */
+static
+void
+pmap_drop(pmap_t pmap)
+{
+	--pmap->pm_count;
+	if (pmap->pm_count == (int)0x80000000)
+		wakeup(pmap);
+}
+
+static
+void
+pmap_wait(pmap_t pmap, int count)
+{
+	lwkt_gettoken(&vm_token);
+	pmap->pm_count += count;
+	if (pmap->pm_count & 0x7FFFFFFF) {
+		while (pmap->pm_count & 0x7FFFFFFF) {
+			pmap->pm_count |= 0x80000000;
+			tsleep(pmap, 0, "pmapd", 0);
+			pmap->pm_count &= ~0x80000000;
+			kprintf("pmap_wait: race averted\n");
+		}
+	}
+	lwkt_reltoken(&vm_token);
+}
+
 /***************************************************
  * page management routines.
  ***************************************************/
@@ -1997,7 +2041,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
  * Removes this physical page from all physical maps in which it resides.
  * Reflects back modify bits to the pager.
  *
- * No requirements.
+ * vm_token must be held by caller.
  */
 static void
 pmap_remove_all(vm_page_t m)
@@ -2005,21 +2049,24 @@ pmap_remove_all(vm_page_t m)
 	struct pmap_inval_info info;
 	unsigned *pte, tpte;
 	pv_entry_t pv;
+	pmap_t pmap;
 
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return;
 
 	pmap_inval_init(&info);
 	while ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
-		KKASSERT(pv->pv_pmap->pm_stats.resident_count > 0);
-		--pv->pv_pmap->pm_stats.resident_count;
+		pmap = pv->pv_pmap;
+		KKASSERT(pmap->pm_stats.resident_count > 0);
+		--pmap->pm_stats.resident_count;
+		pmap_hold(pmap);
 
-		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_va);
-		pmap_inval_interlock(&info, pv->pv_pmap, pv->pv_va);
+		pte = pmap_pte_quick(pmap, pv->pv_va);
+		pmap_inval_interlock(&info, pmap, pv->pv_va);
 		tpte = loadandclear(pte);
 		if (tpte & PG_W)
-			pv->pv_pmap->pm_stats.wired_count--;
-		pmap_inval_deinterlock(&info, pv->pv_pmap);
+			pmap->pm_stats.wired_count--;
+		pmap_inval_deinterlock(&info, pmap);
 		if (tpte & PG_A)
 			vm_page_flag_set(m, PG_REFERENCED);
 		KKASSERT(PHYS_TO_VM_PAGE(tpte) == m);
@@ -2043,17 +2090,18 @@ pmap_remove_all(vm_page_t m)
 #endif
 		KKASSERT(pv == TAILQ_FIRST(&m->md.pv_list));
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
-		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
-		++pv->pv_pmap->pm_generation;
+		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
+		++pmap->pm_generation;
 		m->md.pv_list_count--;
 		if (m->object)
 			atomic_add_int(&m->object->agg_pv_list_count, -1);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-		vm_object_hold(pv->pv_pmap->pm_pteobj);
-		pmap_unuse_pt(pv->pv_pmap, pv->pv_va, pv->pv_ptem, &info);
-		vm_object_drop(pv->pv_pmap->pm_pteobj);
+		vm_object_hold(pmap->pm_pteobj);
+		pmap_unuse_pt(pmap, pv->pv_va, pv->pv_ptem, &info);
+		vm_object_drop(pmap->pm_pteobj);
 		free_pv_entry(pv);
+		pmap_drop(pmap);
 	}
 	KKASSERT((m->flags & (PG_MAPPED|PG_WRITEABLE)) == 0);
 	pmap_inval_done(&info);

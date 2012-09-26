@@ -282,16 +282,24 @@ lwkt_initport_thread(lwkt_port_t port, thread_t td)
  *	overhead then thread ports.
  */
 void
-lwkt_initport_spin(lwkt_port_t port)
+lwkt_initport_spin(lwkt_port_t port, thread_t td)
 {
+    void (*dmsgfn)(lwkt_port_t, lwkt_msg_t);
+
+    if (td == NULL)
+	dmsgfn = lwkt_panic_dropmsg;
+    else
+	dmsgfn = lwkt_spin_dropmsg;
+
     _lwkt_initport(port,
 		   lwkt_spin_getport,
 		   lwkt_spin_putport,
 		   lwkt_spin_waitmsg,
 		   lwkt_spin_waitport,
 		   lwkt_spin_replyport,
-		   lwkt_spin_dropmsg);
+		   dmsgfn);
     spin_init(&port->mpu_spin);
+    port->mpu_td = td;
 }
 
 /*

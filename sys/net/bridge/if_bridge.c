@@ -1936,7 +1936,7 @@ bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 	nmp->nm_packet = m;
 	nmp->base.lmsg.u.ms_resultp = dst_ifp;
 
-	lwkt_sendmsg(ifnet_portfn(mycpu->gd_cpuid), &nmp->base.lmsg);
+	lwkt_sendmsg(netisr_portfn(mycpu->gd_cpuid), &nmp->base.lmsg);
 }
 
 /*

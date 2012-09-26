@@ -140,7 +140,7 @@ struct kinfo_lwp {
 
 	sigset_t	kl_siglist;	/* pending signals */
 	sigset_t	kl_sigmask;	/* masked signals */
-#define WMESGLEN 7
+#define WMESGLEN 8
 	uintptr_t	kl_wchan;	/* waiting channel */
 	char		kl_wmesg[WMESGLEN+1];	/* waiting message */
 };

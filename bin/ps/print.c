@@ -210,11 +210,16 @@ state(const KINFO *k, const struct varent *vent)
 				*cp = 'D';	/* uninterruptable wait */
 			else
 				*cp = 'B';	/* uninterruptable lwkt wait */
-			break;
+			/*break;*/
 
 		case LSRUN:
-			*cp = 'R';
-			if (KI_LWP(k, tdflags) & (TDF_RUNNING | TDF_RUNQ)) {
+			if (KI_LWP(k, stat) == LSRUN) {
+				*cp = 'R';
+				if (!(KI_LWP(k, tdflags) &
+				    (TDF_RUNNING | TDF_RUNQ)))
+					*++cp = 'Q';
+			}
+			/*if (KI_LWP(k, tdflags) & (TDF_RUNNING | TDF_RUNQ))*/ {
 			    ++cp;
 			    sprintf(cp, "%d", KI_LWP(k, cpuid));
 			    while (cp[1])
@@ -511,10 +516,7 @@ getpcpu(const KINFO *k)
 	/* XXX - I don't like this */
 	if (KI_PROC(k, swtime) == 0 || (KI_PROC(k, flags) & P_SWAPPEDOUT))
 		return (0.0);
-	if (rawcpu)
-		return (100.0 * fxtofl(KI_LWP(k, pctcpu)));
-	return (100.0 * fxtofl(KI_LWP(k, pctcpu)) /
-		(1.0 - exp(KI_PROC(k, swtime) * log(fxtofl(ccpu)))));
+	return (100.0 * fxtofl(KI_LWP(k, pctcpu)));
 }
 
 void

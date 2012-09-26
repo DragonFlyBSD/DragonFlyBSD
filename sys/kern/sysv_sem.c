@@ -773,7 +773,6 @@ sys_semop(struct semop_args *uap)
 #ifdef SEM_DEBUG
 	kprintf("call to semop(%d, 0x%x, %u)\n", semid, sops, nsops);
 #endif
-
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
@@ -783,8 +782,11 @@ sys_semop(struct semop_args *uap)
 		eval = EINVAL;
 		goto done2;
 	}
+
+	wakeup_start_delayed();
 	semaptr = &sema[semid];
 	lockmgr(&semaptr->lk, LK_SHARED);
+
 	if ((semaptr->ds.sem_perm.mode & SEM_ALLOC) == 0) {
 		eval = EINVAL;
 		goto done;
@@ -948,7 +950,7 @@ sys_semop(struct semop_args *uap)
 #endif
 		gen = semaptr->gen;
 		lockmgr(&semaptr->lk, LK_RELEASE);
-		eval = tsleep(semptr, PCATCH | PINTERLOCKED, "semwait", 0);
+		eval = tsleep(semptr, PCATCH | PINTERLOCKED, "semwait", hz);
 		lockmgr(&semaptr->lk, LK_SHARED);
 #ifdef SEM_DEBUG
 		kprintf("semop:  good morning (eval=%d)!\n", eval);
@@ -1073,6 +1075,7 @@ donex:
 	eval = 0;
 done:
 	lockmgr(&semaptr->lk, LK_RELEASE);
+	wakeup_end_delayed();
 done2:
 	return(eval);
 }

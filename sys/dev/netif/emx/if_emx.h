@@ -276,6 +276,9 @@ struct emx_softc {
 	uint32_t		smartspeed;
 	int			int_throttle_ceil;
 
+	int			rx_npoll_off;
+	int			tx_npoll_off;
+
 	struct lwkt_serialize	main_serialize;
 	struct lwkt_serialize	tx_serialize;
 	struct lwkt_serialize	*serializes[EMX_NSERIALIZE];

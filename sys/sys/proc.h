@@ -200,7 +200,7 @@ struct lwp {
 	sysclock_t	lwp_cpbase;	/* Measurement base */
 	fixpt_t		lwp_pctcpu;	/* %cpu for this process */
 	u_int		lwp_slptime;	/* Time since last blocked. */
-	u_int		lwp_setrunqueue_ticks;	/* Tick count - lwp set on runqueue */
+	u_int		lwp_rebal_ticks; /* Timestamp sched on current cpu */
 
 	int		lwp_traceflag;	/* Kernel trace points. */
 
@@ -400,6 +400,8 @@ struct	proc {
 #define	LWP_MP_ONRUNQ	0x0000001 /* on a user scheduling run queue */
 #define LWP_MP_WEXIT	0x0000002 /* working on exiting */
 #define	LWP_MP_WSTOP	0x0000004 /* working on stopping */
+#define	LWP_MP_ULOAD	0x0000008 /* uload accounting for current cpu */
+#define	LWP_MP_RRFORCE	0x0000010 /* forced resched due to rrcount */
 
 #define	FIRST_LWP_IN_PROC(p)		RB_FIRST(lwp_rb_tree, &(p)->p_lwp_tree)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\

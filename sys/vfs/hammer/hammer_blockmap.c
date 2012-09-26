@@ -1516,7 +1516,7 @@ _hammer_checkspace(hammer_mount_t hmp, int slop, int64_t *resp)
 		    hmp->rsv_recs * rec_size +
 		    hmp->rsv_databytes +
 		    ((int64_t)hmp->rsv_fromdelay << HAMMER_LARGEBLOCK_BITS) +
-		    ((int64_t)hidirtybufspace << 2) +
+		    ((int64_t)hammer_limit_dirtybufspace) +
 		    (slop << HAMMER_LARGEBLOCK_BITS);
 
 	hammer_count_extra_space_used = usedbytes;	/* debugging */

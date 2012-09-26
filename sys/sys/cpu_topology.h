@@ -14,12 +14,10 @@ struct cpu_node {
 typedef struct cpu_node cpu_node_t;
 
 extern int cpu_topology_levels_number;
+extern cpu_node_t *root_cpu_node;
 
-cpumask_t get_cpumask_from_level(int cpuid,
-			uint8_t level_type);
-
-cpu_node_t *
-get_cpu_node_by_cpuid(int cpuid);
+cpumask_t get_cpumask_from_level(int cpuid, uint8_t level_type);
+cpu_node_t *get_cpu_node_by_cpuid(int cpuid);
 
 #define LEVEL_NO 4
 
