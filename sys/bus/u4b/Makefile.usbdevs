@@ -1,4 +1,3 @@
-#       $DragonFly: src/sys/bus/pci/Makefile.pcidevs,v 1.1 2004/02/19 20:46:15 joerg Exp $
 #       $NetBSD: Makefile.pcidevs,v 1.2 1999/03/16 22:41:56 mjacob Exp $
 #
 # Update procedure:
