@@ -2360,16 +2360,6 @@ pmap_reference(pmap_t pmap)
 	}
 }
 
-void
-pmap_drop(pmap_t pmap)
-{
-	if (pmap != NULL) {
-		lwkt_gettoken(&pmap->pm_token);
-		--pmap->pm_count;
-		lwkt_reltoken(&pmap->pm_token);
-	}
-}
-
 /***************************************************
  * page management routines.
  ***************************************************/
