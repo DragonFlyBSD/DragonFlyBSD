@@ -213,7 +213,7 @@ SUBDIR=	alias \
 	uniq \
 	units \
 	unvis \
-	usbhidctl \
+	${_usbhidctl} \
 	users \
 	uudecode \
 	uuencode \
@@ -248,6 +248,12 @@ SUBDIR=	alias \
 
 .if defined(WANT_HESIOD)
 SUBDIR+=hesinfo
+.endif
+
+.if defined(WANT_USB4BSD)
+_usbhidctl=	u4bhidctl
+.else
+_usbhidctl=	usbhidctl
 .endif
 
 .if !defined(NO_OPENSSL)
