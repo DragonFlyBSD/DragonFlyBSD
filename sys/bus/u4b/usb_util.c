@@ -25,7 +25,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -37,25 +36,24 @@
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_util.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_request.h>
-#include <dev/usb/usb_busdma.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_util.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_request.h>
+#include <bus/u4b/usb_busdma.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
 
 /*------------------------------------------------------------------------*
  *	device_set_usb_desc
@@ -118,20 +116,19 @@ device_set_usb_desc(device_t dev)
  * "mtx" is different from NULL.
  *------------------------------------------------------------------------*/
 void
-usb_pause_mtx(struct mtx *mtx, int timo)
+usb_pause_mtx(struct lock *lock, int timo)
 {
-	if (mtx != NULL)
-		mtx_unlock(mtx);
-
 	/*
 	 * Add one tick to the timeout so that we don't return too
 	 * early! Note that pause() will assert that the passed
 	 * timeout is positive and non-zero!
 	 */
-	pause("USBWAIT", timo + 1);
-
-	if (mtx != NULL)
-		mtx_lock(mtx);
+	if (lock != NULL) {
+        lksleep(&usb_pause_mtx, lock, 0, "USBSLP", timo + 1);
+    } else {
+        KKASSERT(timo + 1 > 0);
+        tsleep(&usb_pause_mtx, PINTERLOCKED, "USBSLP", timo + 1);
+    }
 }
 
 /*------------------------------------------------------------------------*
@@ -144,7 +141,7 @@ usb_pause_mtx(struct mtx *mtx, int timo)
 void
 usb_printbcd(char *p, uint16_t p_len, uint16_t bcd)
 {
-	if (snprintf(p, p_len, "%x.%02x", bcd >> 8, bcd & 0xff)) {
+	if (ksnprintf(p, p_len, "%x.%02x", bcd >> 8, bcd & 0xff)) {
 		/* ignore any errors */
 	}
 }
@@ -208,4 +205,39 @@ usb_make_str_desc(void *ptr, uint16_t max_len, const char *s)
 		USETW2(p->bString[max_len], 0, s[max_len]);
 	}
 	return (totlen);
+}
+
+void 
+usb_callout_timeout_wrapper(void *arg)
+{
+    struct usb_callout *uco = (struct usb_callout *)arg;
+
+    KKASSERT(uco != NULL);
+
+    /* Simulate FreeBSD's callout behaviour which allows
+     * a lock to be acquired before the function is called
+     */
+
+    lockmgr(uco->uco_lock, LK_EXCLUSIVE);
+    uco->uco_func(uco->uco_arg);
+    lockmgr(uco->uco_lock, LK_RELEASE);
+    /* XXX Have to introduce flags and release lock? */
+}
+
+void 
+usb_callout_init_mtx_dfly(struct usb_callout *uco, struct lock *lock, int flags)
+{
+    callout_init(&uco->co);
+    uco->uco_lock = lock;
+    uco->uco_flags = flags;    
+}
+
+void
+usb_callout_reset_dfly(struct usb_callout *uco, int ticks, timeout_t *func, void *arg)
+{
+    KKASSERT(uco != NULL);
+    uco->uco_func = func;
+    uco->uco_arg = arg;
+
+    callout_reset(&uco->co, ticks, &usb_callout_timeout_wrapper, uco);
 }

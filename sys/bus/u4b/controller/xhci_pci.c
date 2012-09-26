@@ -24,10 +24,8 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -39,25 +37,24 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_util.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_util.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
-#include <dev/usb/usb_pci.h>
-#include <dev/usb/controller/xhci.h>
-#include <dev/usb/controller/xhcireg.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
+#include <bus/u4b/usb_pci.h>
+#include <bus/u4b/controller/xhci.h>
+#include <bus/u4b/controller/xhcireg.h>
 #include "usb_if.h"
 
 static device_probe_t xhci_pci_probe;
@@ -75,7 +72,7 @@ static device_method_t xhci_device_methods[] = {
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
 	DEVMETHOD(usb_take_controller, xhci_pci_take_controller),
 
-	DEVMETHOD_END
+    { 0, 0 }
 };
 
 static driver_t xhci_driver = {
@@ -155,15 +152,10 @@ xhci_pci_attach(device_t self)
 	}
 	device_set_ivars(sc->sc_bus.bdev, &sc->sc_bus);
 
-	sprintf(sc->sc_vendor, "0x%04x", pci_get_vendor(self));
+	ksprintf(sc->sc_vendor, "0x%04x", pci_get_vendor(self));
 
-#if (__FreeBSD_version >= 700031)
-	err = bus_setup_intr(self, sc->sc_irq_res, INTR_TYPE_BIO | INTR_MPSAFE,
-	    NULL, (driver_intr_t *)xhci_interrupt, sc, &sc->sc_intr_hdl);
-#else
-	err = bus_setup_intr(self, sc->sc_irq_res, INTR_TYPE_BIO | INTR_MPSAFE,
-	    (driver_intr_t *)xhci_interrupt, sc, &sc->sc_intr_hdl);
-#endif
+	err = bus_setup_intr(self, sc->sc_irq_res, INTR_MPSAFE,
+	    (driver_intr_t *)xhci_interrupt, sc, &sc->sc_intr_hdl, NULL);
 	if (err) {
 		device_printf(self, "Could not setup IRQ, err=%d\n", err);
 		sc->sc_intr_hdl = NULL;
@@ -202,8 +194,9 @@ xhci_pci_detach(device_t self)
 		device_delete_child(self, bdev);
 	}
 	/* during module unload there are lots of children leftover */
+    /* XXX
 	device_delete_children(self);
-
+    */
 	pci_disable_busmaster(self);
 
 	if (sc->sc_irq_res && sc->sc_intr_hdl) {

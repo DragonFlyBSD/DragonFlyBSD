@@ -30,66 +30,66 @@
 struct usb_process;
 
 usb_error_t usbd_req_clear_hub_feature(struct usb_device *udev,
-		    struct mtx *mtx, uint16_t sel);
+		    struct lock *lock, uint16_t sel);
 usb_error_t usbd_req_clear_port_feature(struct usb_device *udev,
-		    struct mtx *mtx, uint8_t port, uint16_t sel);
+		    struct lock *lock, uint8_t port, uint16_t sel);
 usb_error_t usbd_req_get_alt_interface_no(struct usb_device *udev,
-		    struct mtx *mtx, uint8_t *alt_iface_no,
+		    struct lock *lock, uint8_t *alt_iface_no,
 		    uint8_t iface_index);
-usb_error_t usbd_req_get_config(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_get_config(struct usb_device *udev, struct lock *lock,
 		    uint8_t *pconf);
 usb_error_t usbd_req_get_descriptor_ptr(struct usb_device *udev,
 		    struct usb_config_descriptor **ppcd, uint16_t wValue);
-usb_error_t usbd_req_get_config_desc(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_get_config_desc(struct usb_device *udev, struct lock *lock,
 		    struct usb_config_descriptor *d, uint8_t conf_index);
 usb_error_t usbd_req_get_config_desc_full(struct usb_device *udev,
-		    struct mtx *mtx, struct usb_config_descriptor **ppcd,
+		    struct lock *lock, struct usb_config_descriptor **ppcd,
 		    struct malloc_type *mtype, uint8_t conf_index);
-usb_error_t usbd_req_get_desc(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_get_desc(struct usb_device *udev, struct lock *lock,
 		    uint16_t *actlen, void *desc, uint16_t min_len,
 		    uint16_t max_len, uint16_t id, uint8_t type,
 		    uint8_t index, uint8_t retries);
-usb_error_t usbd_req_get_device_desc(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_get_device_desc(struct usb_device *udev, struct lock *lock,
 		    struct usb_device_descriptor *d);
 usb_error_t usbd_req_get_device_status(struct usb_device *udev,
-		    struct mtx *mtx, struct usb_status *st);
+		    struct lock *lock, struct usb_status *st);
 usb_error_t usbd_req_get_hub_descriptor(struct usb_device *udev,
-		    struct mtx *mtx, struct usb_hub_descriptor *hd,
+		    struct lock *lock, struct usb_hub_descriptor *hd,
 		    uint8_t nports);
 usb_error_t usbd_req_get_ss_hub_descriptor(struct usb_device *udev,
-		    struct mtx *mtx, struct usb_hub_ss_descriptor *hd,
+		    struct lock *lock, struct usb_hub_ss_descriptor *hd,
 		    uint8_t nports);
-usb_error_t usbd_req_get_hub_status(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_get_hub_status(struct usb_device *udev, struct lock *lock,
 		    struct usb_hub_status *st);
-usb_error_t usbd_req_get_port_status(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_get_port_status(struct usb_device *udev, struct lock *lock,
 		    struct usb_port_status *ps, uint8_t port);
-usb_error_t usbd_req_reset_port(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_reset_port(struct usb_device *udev, struct lock *lock,
 		    uint8_t port);
 usb_error_t usbd_req_warm_reset_port(struct usb_device *udev,
-		    struct mtx *mtx, uint8_t port);
-usb_error_t usbd_req_set_address(struct usb_device *udev, struct mtx *mtx,
+		    struct lock *lock, uint8_t port);
+usb_error_t usbd_req_set_address(struct usb_device *udev, struct lock *lock,
 		    uint16_t addr);
-usb_error_t usbd_req_set_hub_feature(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_set_hub_feature(struct usb_device *udev, struct lock *lock,
 		    uint16_t sel);
 usb_error_t usbd_req_set_port_feature(struct usb_device *udev,
-		    struct mtx *mtx, uint8_t port, uint16_t sel);
-usb_error_t usbd_setup_device_desc(struct usb_device *udev, struct mtx *mtx);
-usb_error_t usbd_req_re_enumerate(struct usb_device *udev, struct mtx *mtx);
+		    struct lock *lock, uint8_t port, uint16_t sel);
+usb_error_t usbd_setup_device_desc(struct usb_device *udev, struct lock *lock);
+usb_error_t usbd_req_re_enumerate(struct usb_device *udev, struct lock *lock);
 usb_error_t usbd_req_clear_device_feature(struct usb_device *udev,
-		    struct mtx *mtx, uint16_t sel);
+		    struct lock *lock, uint16_t sel);
 usb_error_t usbd_req_set_device_feature(struct usb_device *udev,
-		    struct mtx *mtx, uint16_t sel);
+		    struct lock *lock, uint16_t sel);
 usb_error_t usbd_req_set_hub_u1_timeout(struct usb_device *udev,
-		    struct mtx *mtx, uint8_t port, uint8_t timeout);
+		    struct lock *lock, uint8_t port, uint8_t timeout);
 usb_error_t usbd_req_set_hub_u2_timeout(struct usb_device *udev,
-		    struct mtx *mtx, uint8_t port, uint8_t timeout);
+		    struct lock *lock, uint8_t port, uint8_t timeout);
 usb_error_t usbd_req_set_hub_depth(struct usb_device *udev,
-		    struct mtx *mtx, uint16_t depth);
-usb_error_t usbd_req_reset_tt(struct usb_device *udev, struct mtx *mtx,
+		    struct lock *lock, uint16_t depth);
+usb_error_t usbd_req_reset_tt(struct usb_device *udev, struct lock *lock,
 		    uint8_t port);
-usb_error_t usbd_req_clear_tt_buffer(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_clear_tt_buffer(struct usb_device *udev, struct lock *lock,
 		    uint8_t port, uint8_t addr, uint8_t type, uint8_t endpoint);
 usb_error_t usbd_req_set_port_link_state(struct usb_device *udev,
-		    struct mtx *mtx, uint8_t port, uint8_t link_state);
+		    struct lock *lock, uint8_t port, uint8_t link_state);
 
 #endif					/* _USB_REQUEST_H_ */

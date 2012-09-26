@@ -27,7 +27,6 @@
 #include "opt_ddb.h"
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -36,31 +35,29 @@
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
 
 #define	USB_DEBUG_VAR usb_ctrl_debug
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_dynamic.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_hub.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_dynamic.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_hub.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
-#include <dev/usb/usb_pf.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
+#include <bus/u4b/usb_pf.h>
 #include "usb_if.h"
 
 /* function prototypes  */
@@ -86,12 +83,13 @@ SYSCTL_INT(_hw_usb_ctrl, OID_AUTO, debug, CTLFLAG_RW, &usb_ctrl_debug, 0,
 
 static int usb_no_boot_wait = 0;
 TUNABLE_INT("hw.usb.no_boot_wait", &usb_no_boot_wait);
-SYSCTL_INT(_hw_usb, OID_AUTO, no_boot_wait, CTLFLAG_RDTUN, &usb_no_boot_wait, 0,
+/* XXX freebsd uses CTLFLAG_RDTUN here */
+SYSCTL_INT(_hw_usb, OID_AUTO, no_boot_wait, CTLFLAG_RW, &usb_no_boot_wait, 0,
     "No USB device enumerate waiting at boot.");
 
 static int usb_no_shutdown_wait = 0;
 TUNABLE_INT("hw.usb.no_shutdown_wait", &usb_no_shutdown_wait);
-SYSCTL_INT(_hw_usb, OID_AUTO, no_shutdown_wait, CTLFLAG_RW|CTLFLAG_TUN, &usb_no_shutdown_wait, 0,
+SYSCTL_INT(_hw_usb, OID_AUTO, no_shutdown_wait, CTLFLAG_RW, &usb_no_shutdown_wait, 0,
     "No USB device waiting at system shutdown.");
 
 static devclass_t usb_devclass;
@@ -141,7 +139,8 @@ usb_root_mount_rel(struct usb_bus *bus)
 {
 	if (bus->bus_roothold != NULL) {
 		DPRINTF("Releasing root mount hold %p\n", bus->bus_roothold);
-		root_mount_rel(bus->bus_roothold);
+        /* XXX Dragonflybsd seems to not have this? */
+		/*root_mount_rel(bus->bus_roothold);*/
 		bus->bus_roothold = NULL;
 	}
 }
@@ -163,7 +162,10 @@ usb_attach(device_t dev)
 
 	if (usb_no_boot_wait == 0) {
 		/* delay vfs_mountroot until the bus is explored */
+        /* XXX: Dragonfly does not seem to have this mechanism? */
+        /*
 		bus->bus_roothold = root_mount_hold(device_get_nameunit(dev));
+        */
 	}
 
 	usb_attach_sub(dev, bus);
@@ -190,7 +192,7 @@ usb_detach(device_t dev)
 
 	/* Let the USB explore process detach all devices. */
 	usb_root_mount_rel(bus);
-
+    
 	USB_BUS_LOCK(bus);
 
 	/* Queue detach job */
@@ -373,9 +375,7 @@ usb_bus_detach(struct usb_proc_msg *pm)
 	USB_BUS_UNLOCK(bus);
 
 	/* detach children first */
-	mtx_lock(&Giant);
 	bus_generic_detach(dev);
-	mtx_unlock(&Giant);
 
 	/*
 	 * Free USB device and all subdevices, if any.
@@ -538,8 +538,7 @@ static void
 usb_power_wdog(void *arg)
 {
 	struct usb_bus *bus = arg;
-
-	USB_BUS_LOCK_ASSERT(bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(bus);
 
 	usb_callout_reset(&bus->power_wdog,
 	    4 * hz, usb_power_wdog, arg);
@@ -670,10 +669,8 @@ usb_attach_sub(device_t dev, struct usb_bus *bus)
 {
 	const char *pname = device_get_nameunit(dev);
 
-	mtx_lock(&Giant);
 	if (usb_devclass_ptr == NULL)
 		usb_devclass_ptr = devclass_find("usbus");
-	mtx_unlock(&Giant);
 
 #if USB_HAVE_PF
 	usbpf_attach(bus);
@@ -712,19 +709,19 @@ usb_attach_sub(device_t dev, struct usb_bus *bus)
 	/* Create USB explore and callback processes */
 
 	if (usb_proc_create(&bus->giant_callback_proc,
-	    &bus->bus_mtx, pname, USB_PRI_MED)) {
+	    &bus->bus_lock, pname, USB_PRI_MED)) {
 		device_printf(dev, "WARNING: Creation of USB Giant "
 		    "callback process failed.\n");
 	} else if (usb_proc_create(&bus->non_giant_callback_proc,
-	    &bus->bus_mtx, pname, USB_PRI_HIGH)) {
+	    &bus->bus_lock, pname, USB_PRI_HIGH)) {
 		device_printf(dev, "WARNING: Creation of USB non-Giant "
 		    "callback process failed.\n");
 	} else if (usb_proc_create(&bus->explore_proc,
-	    &bus->bus_mtx, pname, USB_PRI_MED)) {
+	    &bus->bus_lock, pname, USB_PRI_MED)) {
 		device_printf(dev, "WARNING: Creation of USB explore "
 		    "process failed.\n");
 	} else if (usb_proc_create(&bus->control_xfer_proc,
-	    &bus->bus_mtx, pname, USB_PRI_MED)) {
+	    &bus->bus_lock, pname, USB_PRI_MED)) {
 		device_printf(dev, "WARNING: Creation of USB control transfer "
 		    "process failed.\n");
 	} else {
@@ -739,7 +736,7 @@ usb_attach_sub(device_t dev, struct usb_bus *bus)
 	}
 }
 
-SYSUNINIT(usb_bus_unload, SI_SUB_KLD, SI_ORDER_ANY, usb_bus_unload, NULL);
+SYSUNINIT(usb_bus_unload, SI_SUB_CONFIGURE, SI_ORDER_ANY, usb_bus_unload, NULL);
 
 /*------------------------------------------------------------------------*
  *	usb_bus_mem_flush_all_cb
@@ -795,18 +792,21 @@ usb_bus_mem_alloc_all(struct usb_bus *bus, bus_dma_tag_t dmat,
     usb_bus_mem_cb_t *cb)
 {
 	bus->alloc_failed = 0;
-
-	mtx_init(&bus->bus_mtx, device_get_nameunit(bus->parent),
-	    NULL, MTX_DEF | MTX_RECURSE);
+    /* XXX: Type mismatch, device_get_nameunit gives
+     * const char*, lockinit wants char *
+     */
+    const char *pname = device_get_nameunit(bus->parent);
+    kprintf("usb_bus_mem_alloc_all %s\n", pname);
+	lockinit(&bus->bus_lock, "USB bus mem", 0, LK_CANRECURSE);
 
 	usb_callout_init_mtx(&bus->power_wdog,
-	    &bus->bus_mtx, 0);
+	    &bus->bus_lock, 0);
 
 	TAILQ_INIT(&bus->intr_q.head);
 
 #if USB_HAVE_BUSDMA
 	usb_dma_tag_setup(bus->dma_parent_tag, bus->dma_tags,
-	    dmat, &bus->bus_mtx, NULL, 32, USB_BUS_DMA_TAG_MAX);
+	    dmat, &bus->bus_lock, NULL, 32, USB_BUS_DMA_TAG_MAX);
 #endif
 	if ((bus->devices_max > USB_MAX_DEVICES) ||
 	    (bus->devices_max < USB_MIN_DEVICES) ||
@@ -851,5 +851,5 @@ usb_bus_mem_free_all(struct usb_bus *bus, usb_bus_mem_cb_t *cb)
 	usb_dma_tag_unsetup(bus->dma_parent_tag);
 #endif
 
-	mtx_destroy(&bus->bus_mtx);
+    lockuninit(&bus->bus_lock);
 }

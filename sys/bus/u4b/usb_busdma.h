@@ -30,17 +30,15 @@
 #include <sys/uio.h>
 #include <sys/mbuf.h>
 
-#include <machine/bus.h>
+#include <sys/bus.h>
+
+#define USB_HAVE_BUSDMA 1
 
 /* defines */
 
 #define	USB_PAGE_SIZE PAGE_SIZE		/* use system PAGE_SIZE */
 
-#if (__FreeBSD_version >= 700020)
-#define	USB_GET_DMA_TAG(dev) bus_get_dma_tag(dev)
-#else
 #define	USB_GET_DMA_TAG(dev) NULL	/* XXX */
-#endif
 
 /* structure prototypes */
 
@@ -109,7 +107,7 @@ struct usb_dma_parent_tag {
 	struct cv cv[1];		/* internal condition variable */
 	bus_dma_tag_t tag;		/* always set */
 
-	struct mtx *mtx;		/* private mutex, always set */
+	struct lock *lock;		/* private mutex, always set */
 	usb_dma_callback_t *func;	/* load complete callback function */
 	struct usb_dma_tag *utag_first;/* pointer to first USB DMA tag */
 	uint8_t	dma_error;		/* set if DMA load operation failed */
@@ -150,7 +148,7 @@ void	usb_bdma_post_sync(struct usb_xfer *xfer);
 void	usb_bdma_pre_sync(struct usb_xfer *xfer);
 void	usb_bdma_work_loop(struct usb_xfer_queue *pq);
 void	usb_dma_tag_setup(struct usb_dma_parent_tag *udpt,
-	    struct usb_dma_tag *udt, bus_dma_tag_t dmat, struct mtx *mtx,
+	    struct usb_dma_tag *udt, bus_dma_tag_t dmat, struct lock *lock,
 	    usb_dma_callback_t *func, uint8_t ndmabits, uint8_t nudt);
 void	usb_dma_tag_unsetup(struct usb_dma_parent_tag *udpt);
 void	usb_pc_cpu_flush(struct usb_page_cache *pc);

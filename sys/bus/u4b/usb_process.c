@@ -27,7 +27,6 @@
 #define	USB_DEBUG_VAR usb_proc_debug
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -39,48 +38,29 @@
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_util.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_util.h>
 
 #include <sys/proc.h>
 #include <sys/kthread.h>
 #include <sys/sched.h>
 
-#if (__FreeBSD_version < 700000)
-#define	thread_lock(td) mtx_lock_spin(&sched_lock)
-#define	thread_unlock(td) mtx_unlock_spin(&sched_lock)
-#endif
 
-#if (__FreeBSD_version >= 800000)
-static struct proc *usbproc;
 static int usb_pcount;
 #define	USB_THREAD_CREATE(f, s, p, ...) \
-		kproc_kthread_add((f), (s), &usbproc, (p), RFHIGHPID, \
-		    0, "usb", __VA_ARGS__)
-#if (__FreeBSD_version >= 900000)
-#define	USB_THREAD_SUSPEND_CHECK() kthread_suspend_check()
-#else
-#define	USB_THREAD_SUSPEND_CHECK() kthread_suspend_check(curthread)
-#endif
-#define	USB_THREAD_SUSPEND(p)   kthread_suspend(p,0)
-#define	USB_THREAD_EXIT(err)	kthread_exit()
-#else
-#define	USB_THREAD_CREATE(f, s, p, ...) \
-		kthread_create((f), (s), (p), RFHIGHPID, 0, __VA_ARGS__)
+		kthread_create((f), (s), (p), __VA_ARGS__)
 #define	USB_THREAD_SUSPEND_CHECK() kthread_suspend_check(curproc)
-#define	USB_THREAD_SUSPEND(p)   kthread_suspend(p,0)
-#define	USB_THREAD_EXIT(err)	kthread_exit(err)
-#endif
+#define	USB_THREAD_SUSPEND(p)   suspend_kproc(p,0)
+#define	USB_THREAD_EXIT(err)	kthread_exit()
 
 #ifdef USB_DEBUG
 static int usb_proc_debug;
@@ -105,15 +85,14 @@ usb_process(void *arg)
 	struct thread *td;
 
 	/* in case of attach error, check for suspended */
-	USB_THREAD_SUSPEND_CHECK();
+	/* XXX Suspend here?
+    *  USB_THREAD_SUSPEND_CHECK();
+    */
 
 	/* adjust priority */
-	td = curthread;
-	thread_lock(td);
-	sched_prio(td, up->up_prio);
-	thread_unlock(td);
-
-	mtx_lock(up->up_mtx);
+    td = curthread;
+    lwkt_setpri(td, up->up_prio);
+	lockmgr(up->up_lock, LK_EXCLUSIVE);
 
 	up->up_curtd = td;
 
@@ -188,18 +167,17 @@ usb_process(void *arg)
 			cv_broadcast(&up->up_drain);
 		}
 		up->up_msleep = 1;
-		cv_wait(&up->up_cv, up->up_mtx);
+		cv_wait(&up->up_cv, up->up_lock);
 	}
 
 	up->up_ptr = NULL;
 	cv_signal(&up->up_cv);
-	mtx_unlock(up->up_mtx);
-#if (__FreeBSD_version >= 800000)
+	lockmgr(up->up_lock, LK_RELEASE);
 	/* Clear the proc pointer if this is the last thread. */
+/*
 	if (--usb_pcount == 0)
 		usbproc = NULL;
-#endif
-
+*/
 	USB_THREAD_EXIT(0);
 }
 
@@ -217,10 +195,12 @@ usb_process(void *arg)
  * Else: failure
  *------------------------------------------------------------------------*/
 int
-usb_proc_create(struct usb_process *up, struct mtx *p_mtx,
+usb_proc_create(struct usb_process *up, struct lock *p_lock,
     const char *pmesg, uint8_t prio)
 {
-	up->up_mtx = p_mtx;
+    kprintf("Creating usb_proc: %s\n", pmesg);
+
+	up->up_lock = p_lock;
 	up->up_prio = prio;
 
 	TAILQ_INIT(&up->up_qhead);
@@ -234,9 +214,7 @@ usb_proc_create(struct usb_process *up, struct mtx *p_mtx,
 		up->up_ptr = NULL;
 		goto error;
 	}
-#if (__FreeBSD_version >= 800000)
 	usb_pcount++;
-#endif
 	return (0);
 
 error:
@@ -257,7 +235,7 @@ void
 usb_proc_free(struct usb_process *up)
 {
 	/* check if not initialised */
-	if (up->up_mtx == NULL)
+	if (up->up_lock == NULL)
 		return;
 
 	usb_proc_drain(up);
@@ -266,7 +244,7 @@ usb_proc_free(struct usb_process *up)
 	cv_destroy(&up->up_drain);
 
 	/* make sure that we do not enter here again */
-	up->up_mtx = NULL;
+	up->up_lock = NULL;
 }
 
 /*------------------------------------------------------------------------*
@@ -293,7 +271,7 @@ usb_proc_msignal(struct usb_process *up, void *_pm0, void *_pm1)
 	if (up->up_gone)
 		return (_pm0);
 
-	mtx_assert(up->up_mtx, MA_OWNED);
+    KKASSERT(lockstatus(up->up_lock, curthread) != 0);
 
 	t = 0;
 
@@ -373,8 +351,9 @@ usb_proc_is_gone(struct usb_process *up)
 	 * Allow calls when up_mtx is NULL, before the USB process
 	 * structure is initialised.
 	 */
-	if (up->up_mtx != NULL)
-		mtx_assert(up->up_mtx, MA_OWNED);
+	if (up->up_lock != NULL)
+        KKASSERT(lockstatus(up->up_lock, curthread)!=0);
+
 	return (0);
 }
 
@@ -395,7 +374,7 @@ usb_proc_mwait(struct usb_process *up, void *_pm0, void *_pm1)
 	if (up->up_gone)
 		return;
 
-	mtx_assert(up->up_mtx, MA_OWNED);
+    KKASSERT(lockstatus(up->up_lock, curthread) != 0);
 
 	if (up->up_curtd == curthread) {
 		/* Just remove the messages from the queue. */
@@ -414,7 +393,7 @@ usb_proc_mwait(struct usb_process *up, void *_pm0, void *_pm1)
 			if (up->up_gone)
 				break;
 			up->up_dsleep = 1;
-			cv_wait(&up->up_drain, up->up_mtx);
+			cv_wait(&up->up_drain, up->up_lock);
 		}
 }
 
@@ -431,13 +410,15 @@ void
 usb_proc_drain(struct usb_process *up)
 {
 	/* check if not initialised */
-	if (up->up_mtx == NULL)
+	if (up->up_lock == NULL)
 		return;
 	/* handle special case with Giant */
+    /* XXX
 	if (up->up_mtx != &Giant)
 		mtx_assert(up->up_mtx, MA_NOTOWNED);
-
-	mtx_lock(up->up_mtx);
+    */
+    KKASSERT(lockstatus(up->up_lock, curthread) == 0);
+	lockmgr(up->up_lock, LK_EXCLUSIVE);
 
 	/* Set the gone flag */
 
@@ -456,11 +437,11 @@ usb_proc_drain(struct usb_process *up)
 
 		if (cold) {
 			USB_THREAD_SUSPEND(up->up_ptr);
-			printf("WARNING: A USB process has "
+			kprintf("WARNING: A USB process has "
 			    "been left suspended\n");
 			break;
 		}
-		cv_wait(&up->up_cv, up->up_mtx);
+		cv_wait(&up->up_cv, up->up_lock);
 	}
 	/* Check if someone is waiting - should not happen */
 
@@ -470,7 +451,7 @@ usb_proc_drain(struct usb_process *up)
 		DPRINTF("WARNING: Someone is waiting "
 		    "for USB process drain!\n");
 	}
-	mtx_unlock(up->up_mtx);
+    lockmgr(up->up_lock, LK_RELEASE);
 }
 
 /*------------------------------------------------------------------------*
@@ -479,19 +460,18 @@ usb_proc_drain(struct usb_process *up)
  * This function is called to re-wakeup the given USB
  * process. This usually happens after that the USB system has been in
  * polling mode, like during a panic. This function must be called
- * having "up->up_mtx" locked.
+ * having "up->up_lock" locked.
  *------------------------------------------------------------------------*/
 void
 usb_proc_rewakeup(struct usb_process *up)
 {
 	/* check if not initialised */
-	if (up->up_mtx == NULL)
+	if (up->up_lock == NULL)
 		return;
 	/* check if gone */
 	if (up->up_gone)
 		return;
-
-	mtx_assert(up->up_mtx, MA_OWNED);
+	KKASSERT(lockstatus(up->up_lock, curthread) != 0);
 
 	if (up->up_msleep == 0) {
 		/* re-wakeup */

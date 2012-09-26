@@ -25,7 +25,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -37,16 +36,15 @@
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usb_dev.h>
-#include <dev/usb/usb_mbuf.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usb_dev.h>
+#include <bus/u4b/usb_mbuf.h>
 
 /*------------------------------------------------------------------------*
  *      usb_alloc_mbufs - allocate mbufs to an usbd interface queue
@@ -71,7 +69,7 @@ usb_alloc_mbufs(struct malloc_type *type, struct usb_ifqueue *ifq,
 
 		alloc_size = (block_size + sizeof(struct usb_mbuf)) * nblocks;
 
-		free_ptr = malloc(alloc_size, type, M_WAITOK | M_ZERO);
+		free_ptr = kmalloc(alloc_size, type, M_WAITOK | M_ZERO);
 
 		if (free_ptr == NULL) {
 			goto done;

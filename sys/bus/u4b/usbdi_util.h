@@ -59,26 +59,26 @@ uint8_t usbd_get_no_descriptors(struct usb_config_descriptor *cd,
 uint8_t usbd_get_no_alts(struct usb_config_descriptor *cd,
 	    struct usb_interface_descriptor *id);
 
-usb_error_t usbd_req_get_report(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_get_report(struct usb_device *udev, struct lock *lock,
 		    void *data, uint16_t len, uint8_t iface_index, uint8_t type,
 		    uint8_t id);
 usb_error_t usbd_req_get_report_descriptor(struct usb_device *udev,
-		    struct mtx *mtx, void *d, uint16_t size,
+		    struct lock *lock, void *d, uint16_t size,
 		    uint8_t iface_index);
-usb_error_t usbd_req_get_string_any(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_get_string_any(struct usb_device *udev, struct lock *lock,
 		    char *buf, uint16_t len, uint8_t string_index);
-usb_error_t usbd_req_get_string_desc(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_get_string_desc(struct usb_device *udev, struct lock *lock,
 		    void *sdesc, uint16_t max_len, uint16_t lang_id,
 		    uint8_t string_index);
-usb_error_t usbd_req_set_config(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_set_config(struct usb_device *udev, struct lock *lock,
 		    uint8_t conf);
 usb_error_t usbd_req_set_alt_interface_no(struct usb_device *udev,
-		    struct mtx *mtx, uint8_t iface_index, uint8_t alt_no);
-usb_error_t usbd_req_set_idle(struct usb_device *udev, struct mtx *mtx,
+		    struct lock *lock, uint8_t iface_index, uint8_t alt_no);
+usb_error_t usbd_req_set_idle(struct usb_device *udev, struct lock *lock,
 		    uint8_t iface_index, uint8_t duration, uint8_t id);
-usb_error_t usbd_req_set_protocol(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_set_protocol(struct usb_device *udev, struct lock *lock,
 		    uint8_t iface_index, uint16_t report);
-usb_error_t usbd_req_set_report(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_set_report(struct usb_device *udev, struct lock *lock,
 		    void *data, uint16_t len, uint8_t iface_index,
 		    uint8_t type, uint8_t id);
 

@@ -39,10 +39,8 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -51,33 +49,31 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
 
 #define	USB_DEBUG_VAR xhcidebug
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_transfer.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_hub.h>
-#include <dev/usb/usb_util.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_transfer.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_hub.h>
+#include <bus/u4b/usb_util.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
-#include <dev/usb/controller/xhci.h>
-#include <dev/usb/controller/xhcireg.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
+#include <bus/u4b/controller/xhci.h>
+#include <bus/u4b/controller/xhcireg.h>
 
 #define	XHCI_BUS2SC(bus) \
    ((struct xhci_softc *)(((uint8_t *)(bus)) - \
@@ -518,7 +514,7 @@ xhci_init(struct xhci_softc *sc, device_t self)
 
 	/* setup command queue mutex and condition varible */
 	cv_init(&sc->sc_cmd_cv, "CMDQ");
-	sx_init(&sc->sc_cmd_sx, "CMDQ lock");
+    lockinit(&sc->sc_cmd_lock, "CMDQ lock", 0, 0);
 
 	/* get all DMA memory */
 	if (usb_bus_mem_alloc_all(&sc->sc_bus,
@@ -532,8 +528,8 @@ xhci_init(struct xhci_softc *sc, device_t self)
         sc->sc_config_msg[1].bus = &sc->sc_bus;
 
 	if (usb_proc_create(&sc->sc_config_proc,
-	    &sc->sc_bus.bus_mtx, device_get_nameunit(self), USB_PRI_MED)) {
-                printf("WARNING: Creation of XHCI configure "
+	    &sc->sc_bus.bus_lock, device_get_nameunit(self), USB_PRI_MED)) {
+                kprintf("WARNING: Creation of XHCI configure "
                     "callback process failed.\n");
         }
 	return (0);
@@ -547,7 +543,7 @@ xhci_uninit(struct xhci_softc *sc)
 	usb_bus_mem_free_all(&sc->sc_bus, &xhci_iterate_hw_softc);
 
 	cv_destroy(&sc->sc_cmd_cv);
-	sx_destroy(&sc->sc_cmd_sx);
+	lockuninit(&sc->sc_cmd_lock);
 }
 
 static void
@@ -1076,7 +1072,7 @@ xhci_do_command(struct xhci_softc *sc, struct xhci_trb *trb,
 
 	XWRITE4(sc, door, XHCI_DOORBELL(0), 0);
 
-	err = cv_timedwait(&sc->sc_cmd_cv, &sc->sc_bus.bus_mtx,
+	err = cv_timedwait(&sc->sc_cmd_cv, &sc->sc_bus.bus_lock,
 	    USB_MS_TO_TICKS(timeout_ms));
 
 	if (err) {
@@ -1183,7 +1179,7 @@ xhci_cmd_set_address(struct xhci_softc *sc, uint64_t input_ctx,
 }
 
 static usb_error_t
-xhci_set_address(struct usb_device *udev, struct mtx *mtx, uint16_t address)
+xhci_set_address(struct usb_device *udev, struct lock *lock, uint16_t address)
 {
 	struct usb_page_search buf_inp;
 	struct usb_page_search buf_dev;
@@ -1204,8 +1200,8 @@ xhci_set_address(struct usb_device *udev, struct mtx *mtx, uint16_t address)
 
 	hdev = 	&sc->sc_hw.devs[index];
 
-	if (mtx != NULL)
-		mtx_unlock(mtx);
+	if (lock != NULL)
+		lockmgr(lock, LK_RELEASE);
 
 	XHCI_CMD_LOCK(sc);
 
@@ -1288,8 +1284,8 @@ xhci_set_address(struct usb_device *udev, struct mtx *mtx, uint16_t address)
 	}
 	XHCI_CMD_UNLOCK(sc);
 
-	if (mtx != NULL)
-		mtx_lock(mtx);
+	if (lock != NULL)
+		lockmgr(lock, LK_EXCLUSIVE);
 
 	return (err);
 }
@@ -1452,17 +1448,17 @@ xhci_interrupt(struct xhci_softc *sc)
 		}
 
 		if (status & XHCI_STS_HCH) {
-			printf("%s: host controller halted\n",
+			kprintf("%s: host controller halted\n",
 			    __FUNCTION__);
 		}
 
 		if (status & XHCI_STS_HSE) {
-			printf("%s: host system error\n",
+			kprintf("%s: host system error\n",
 			    __FUNCTION__);
 		}
 
 		if (status & XHCI_STS_HCE) {
-			printf("%s: host controller error\n",
+			kprintf("%s: host controller error\n",
 			   __FUNCTION__);
 		}
 	}
@@ -1482,7 +1478,7 @@ xhci_timeout(void *arg)
 
 	DPRINTF("xfer=%p\n", xfer);
 
-	USB_BUS_LOCK_ASSERT(xfer->xroot->bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
 
 	/* transfer is transferred */
 	xhci_device_done(xfer, USB_ERR_TIMEOUT);
@@ -2651,7 +2647,7 @@ xhci_root_intr(struct xhci_softc *sc)
 {
 	uint16_t i;
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 	/* clear any old interrupt data */
 	memset(sc->sc_hub_idata, 0, sizeof(sc->sc_hub_idata));
@@ -2918,7 +2914,7 @@ xhci_roothub_exec(struct usb_device *udev,
 	uint8_t j;
 	usb_error_t err;
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 	/* buffer reset */
 	ptr = (const void *)&sc->sc_hub_desc;
@@ -3101,7 +3097,7 @@ xhci_roothub_exec(struct usb_device *udev,
 			}
 
 			/* wait 20ms for resume sequence to complete */
-			usb_pause_mtx(&sc->sc_bus.bus_mtx, hz / 50);
+			usb_pause_mtx(&sc->sc_bus.bus_lock, hz / 50);
 
 			/* U0 */
 			XWRITE4(sc, oper, port, v |
@@ -3274,7 +3270,7 @@ xhci_roothub_exec(struct usb_device *udev,
 			XWRITE4(sc, oper, port, v |
 			    XHCI_PS_PLS_SET(i) | XHCI_PS_LWS);
 			/* 4ms settle time */
-			usb_pause_mtx(&sc->sc_bus.bus_mtx, hz / 250);
+			usb_pause_mtx(&sc->sc_bus.bus_lock, hz / 250);
 			break;
 		case UHF_PORT_ENABLE:
 			DPRINTFN(3, "set port enable %d\n", index);

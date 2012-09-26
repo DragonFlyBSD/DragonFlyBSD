@@ -239,7 +239,7 @@ int	hid_is_collection(const void *desc, usb_size_t size, uint32_t usage);
 struct usb_hid_descriptor *hid_get_descriptor_from_usb(
 	    struct usb_config_descriptor *cd,
 	    struct usb_interface_descriptor *id);
-usb_error_t usbd_req_get_hid_desc(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_req_get_hid_desc(struct usb_device *udev, struct lock *lock,
 	    void **descp, uint16_t *sizep, struct malloc_type *mem,
 	    uint8_t iface_index);
 #endif					/* _KERNEL */

@@ -28,12 +28,14 @@
 #define	_USB_PROCESS_H_
 
 #include <sys/interrupt.h>
-#include <sys/priority.h>
-#include <sys/runq.h>
+#include <sys/signalvar.h>
+#include <sys/thread.h>
+//#include <sys/priority.h>
+//#include <sys/runq.h>
 
 /* defines */
-#define	USB_PRI_HIGH	PI_SWI(SWI_NET)
-#define	USB_PRI_MED	PI_SWI(SWI_CAMBIO)
+#define	USB_PRI_HIGH	TDPRI_INT_HIGH
+#define	USB_PRI_MED TDPRI_INT_MED
 
 #define	USB_PROC_WAIT_TIMEOUT 2
 #define	USB_PROC_WAIT_DRAIN   1
@@ -51,13 +53,9 @@ struct usb_process {
 	struct cv up_cv;
 	struct cv up_drain;
 
-#if (__FreeBSD_version >= 800000)
 	struct thread *up_ptr;
-#else
-	struct proc *up_ptr;
-#endif
 	struct thread *up_curtd;
-	struct mtx *up_mtx;
+	struct lock *up_lock;
 
 	usb_size_t up_msg_num;
 
@@ -71,7 +69,7 @@ struct usb_process {
 /* prototypes */
 
 uint8_t	usb_proc_is_gone(struct usb_process *up);
-int	usb_proc_create(struct usb_process *up, struct mtx *p_mtx,
+int	usb_proc_create(struct usb_process *up, struct lock *p_lock,
 	    const char *pmesg, uint8_t prio);
 void	usb_proc_drain(struct usb_process *up);
 void	usb_proc_mwait(struct usb_process *up, void *pm0, void *pm1);

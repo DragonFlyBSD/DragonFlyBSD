@@ -33,7 +33,7 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+//__FBSDID("$FreeBSD$");
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
@@ -46,17 +46,18 @@ __FBSDID("$FreeBSD$");
 #include <net/if_types.h>
 #include <net/bpf.h>
 #include <sys/sysctl.h>
+#include <sys/condvar.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_bus.h>
-#include <dev/usb/usb_pf.h>
-#include <dev/usb/usb_transfer.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_bus.h>
+#include <bus/u4b/usb_pf.h>
+#include <bus/u4b/usb_transfer.h>
 
 static int usb_no_pf;
 

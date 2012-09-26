@@ -2,7 +2,7 @@
 
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+// __FBSDID("$FreeBSD$");
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -34,7 +34,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -46,24 +45,23 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbhid.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbhid.h>
 
 #define	USB_DEBUG_VAR usb_debug
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_request.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_request.h>
 
 static void hid_clear_local(struct hid_item *);
 static uint8_t hid_get_byte(struct hid_data *s, const uint16_t wSize);
@@ -185,7 +183,7 @@ hid_start_parse(const void *d, usb_size_t len, int kindset)
 		return (NULL);
 	}
 
-	s = malloc(sizeof *s, M_TEMP, M_WAITOK | M_ZERO);
+	s = kmalloc(sizeof *s, M_TEMP, M_WAITOK | M_ZERO);
 	s->start = s->p = d;
 	s->end = ((const uint8_t *)d) + len;
 	s->kindset = kindset;
@@ -201,7 +199,7 @@ hid_end_parse(struct hid_data *s)
 	if (s == NULL)
 		return;
 
-	free(s, M_TEMP);
+	kfree(s, M_TEMP);
 }
 
 /*------------------------------------------------------------------------*
@@ -803,7 +801,7 @@ hid_get_descriptor_from_usb(struct usb_config_descriptor *cd,
  * Else: Success. The pointer should eventually be passed to free().
  *------------------------------------------------------------------------*/
 usb_error_t
-usbd_req_get_hid_desc(struct usb_device *udev, struct mtx *mtx,
+usbd_req_get_hid_desc(struct usb_device *udev, struct lock *lock,
     void **descp, uint16_t *sizep,
     struct malloc_type *mem, uint8_t iface_index)
 {
@@ -824,22 +822,22 @@ usbd_req_get_hid_desc(struct usb_device *udev, struct mtx *mtx,
 	if (*sizep == 0) {
 		return (USB_ERR_IOERROR);
 	}
-	if (mtx)
-		mtx_unlock(mtx);
+	if (lock)
+		lockmgr(lock, LK_RELEASE);
 
-	*descp = malloc(*sizep, mem, M_ZERO | M_WAITOK);
+	*descp = kmalloc(*sizep, mem, M_ZERO | M_WAITOK);
 
-	if (mtx)
-		mtx_lock(mtx);
+	if (lock)
+		lockmgr(lock, LK_EXCLUSIVE);
 
 	if (*descp == NULL) {
 		return (USB_ERR_NOMEM);
 	}
 	err = usbd_req_get_report_descriptor
-	    (udev, mtx, *descp, *sizep, iface_index);
+	    (udev, lock, *descp, *sizep, iface_index);
 
 	if (err) {
-		free(*descp, mem);
+		kfree(*descp, mem);
 		*descp = NULL;
 		return (err);
 	}

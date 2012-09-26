@@ -26,7 +26,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -38,29 +37,29 @@
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
+//#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usb_ioctl.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usb_ioctl.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 
 #define	USB_DEBUG_VAR usb_debug
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_compat_linux.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_util.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_transfer.h>
-#include <dev/usb/usb_hub.h>
-#include <dev/usb/usb_request.h>
-#include <dev/usb/usb_debug.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_compat_linux.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_util.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_transfer.h>
+#include <bus/u4b/usb_hub.h>
+#include <bus/u4b/usb_request.h>
+#include <bus/u4b/usb_debug.h>
 
 struct usb_linux_softc {
 	LIST_ENTRY(usb_linux_softc) sc_attached_list;
