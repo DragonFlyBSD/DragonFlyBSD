@@ -171,7 +171,7 @@ struct usb_xfer_root {
 
 	struct usb_process *done_p;	/* pointer to callback process */
 	void   *memory_base;
-	struct mtx *xfer_mtx;	/* cannot be changed during operation */
+	struct lock *xfer_lock;	/* cannot be changed during operation */
 #if USB_HAVE_BUSDMA
 	struct usb_page_cache *dma_page_cache_start;
 	struct usb_page_cache *dma_page_cache_end;

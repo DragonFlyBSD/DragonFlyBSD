@@ -142,7 +142,7 @@ struct usb_bus_methods {
 
 	/* Optional for host mode */
 
-	usb_error_t	(*set_address) (struct usb_device *, struct mtx *, uint16_t);
+	usb_error_t	(*set_address) (struct usb_device *, struct lock *, uint16_t);
 };
 
 /*

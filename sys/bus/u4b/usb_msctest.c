@@ -33,7 +33,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -45,27 +44,26 @@
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 
 #define	USB_DEBUG_VAR usb_debug
 
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_transfer.h>
-#include <dev/usb/usb_msctest.h>
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_request.h>
-#include <dev/usb/usb_util.h>
-#include <dev/usb/quirk/usb_quirk.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_transfer.h>
+#include <bus/u4b/usb_msctest.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_request.h>
+#include <bus/u4b/usb_util.h>
+#include <bus/u4b/quirk/usb_quirk.h>
 
 enum {
 	ST_COMMAND,
@@ -135,7 +133,7 @@ struct bbb_csw {
 } __packed;
 
 struct bbb_transfer {
-	struct mtx mtx;
+	struct lock lock;
 	struct cv cv;
 	struct bbb_cbw cbw;
 	struct bbb_csw csw;
@@ -479,13 +477,13 @@ bbb_command_start(struct bbb_transfer *sc, uint8_t dir, uint8_t lun,
 	memcpy(&sc->cbw.CBWCDB, cmd_ptr, cmd_len);
 	DPRINTFN(1, "SCSI cmd = %*D\n", (int)cmd_len, (char *)sc->cbw.CBWCDB, ":");
 
-	mtx_lock(&sc->mtx);
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	usbd_transfer_start(sc->xfer[sc->state]);
 
 	while (usbd_transfer_pending(sc->xfer[sc->state])) {
-		cv_wait(&sc->cv, &sc->mtx);
+		cv_wait(&sc->cv, &sc->lock);
 	}
-	mtx_unlock(&sc->mtx);
+	lockmgr(&sc->lock, LK_RELEASE);
 	return (sc->error);
 }
 
@@ -541,12 +539,13 @@ bbb_attach(struct usb_device *udev, uint8_t iface_index)
 		return (NULL);
 	}
 
-	sc = malloc(sizeof(*sc), M_USB, M_WAITOK | M_ZERO);
-	mtx_init(&sc->mtx, "USB autoinstall", NULL, MTX_DEF);
+	sc = kmalloc(sizeof(*sc), M_USB, M_WAITOK | M_ZERO);
+	lockinit(&sc->lock, "USB autoinstall", 0, 0);
+
 	cv_init(&sc->cv, "WBBB");
 
 	err = usbd_transfer_setup(udev, &iface_index, sc->xfer, bbb_config,
-	    ST_MAX, sc, &sc->mtx);
+	    ST_MAX, sc, &sc->lock);
 	if (err) {
 		bbb_detach(sc);
 		return (NULL);
@@ -558,9 +557,9 @@ static void
 bbb_detach(struct bbb_transfer *sc)
 {
 	usbd_transfer_unsetup(sc->xfer, ST_MAX);
-	mtx_destroy(&sc->mtx);
+	lockuninit(&sc->lock);
 	cv_destroy(&sc->cv);
-	free(sc, M_USB);
+	kfree(sc, M_USB);
 }
 
 /*------------------------------------------------------------------------*
@@ -790,7 +789,7 @@ usb_msc_eject(struct usb_device *udev, uint8_t iface_index, int method)
 		    sizeof(scsi_tct_eject), USB_MS_HZ);
 		break;
 	default:
-		printf("usb_msc_eject: unknown eject method (%d)\n", method);
+		kprintf("usb_msc_eject: unknown eject method (%d)\n", method);
 		break;
 	}
 	DPRINTF("Eject CD command status: %s\n", usbd_errstr(err));

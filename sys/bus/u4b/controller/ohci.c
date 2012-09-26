@@ -26,7 +26,6 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 /*
  * USB Open Host Controller driver.
@@ -36,7 +35,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -48,30 +46,29 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
 
 #define	USB_DEBUG_VAR ohcidebug
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_transfer.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_hub.h>
-#include <dev/usb/usb_util.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_transfer.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_hub.h>
+#include <bus/u4b/usb_util.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
-#include <dev/usb/controller/ohci.h>
-#include <dev/usb/controller/ohcireg.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
+#include <bus/u4b/controller/ohci.h>
+#include <bus/u4b/controller/ohcireg.h>
 
 #define	OHCI_BUS2SC(bus) \
    ((ohci_softc_t *)(((uint8_t *)(bus)) - \
@@ -405,15 +402,15 @@ ohci_init(ohci_softc_t *sc)
 	/* set up the bus struct */
 	sc->sc_bus.methods = &ohci_bus_methods;
 
-	usb_callout_init_mtx(&sc->sc_tmo_rhsc, &sc->sc_bus.bus_mtx, 0);
+	usb_callout_init_mtx(&sc->sc_tmo_rhsc, &sc->sc_bus.bus_lock, 0);
 
 #ifdef USB_DEBUG
 	if (ohcidebug > 15) {
 		for (i = 0; i != OHCI_NO_EDS; i++) {
-			printf("ed#%d ", i);
+			kprintf("ed#%d ", i);
 			ohci_dump_ed(sc->sc_intr_p_last[i]);
 		}
-		printf("iso ");
+		kprintf("iso ");
 		ohci_dump_ed(sc->sc_isoc_p_last);
 	}
 #endif
@@ -545,7 +542,7 @@ ohci_dump_td(ohci_td_t *std)
 	td_flags = le32toh(std->td_flags);
 	temp = (std->td_next == 0);
 
-	printf("TD(%p) at 0x%08x: %s%s%s%s%s delay=%d ec=%d "
+	kprintf("TD(%p) at 0x%08x: %s%s%s%s%s delay=%d ec=%d "
 	    "cc=%d\ncbp=0x%08x next=0x%08x be=0x%08x\n",
 	    std, le32toh(std->td_self),
 	    (td_flags & OHCI_TD_R) ? "-R" : "",
@@ -575,7 +572,7 @@ ohci_dump_itd(ohci_itd_t *sitd)
 	itd_flags = le32toh(sitd->itd_flags);
 	temp = (sitd->itd_next == 0);
 
-	printf("ITD(%p) at 0x%08x: sf=%d di=%d fc=%d cc=%d\n"
+	kprintf("ITD(%p) at 0x%08x: sf=%d di=%d fc=%d cc=%d\n"
 	    "bp0=0x%08x next=0x%08x be=0x%08x\n",
 	    sitd, le32toh(sitd->itd_self),
 	    OHCI_ITD_GET_SF(itd_flags),
@@ -586,10 +583,10 @@ ohci_dump_itd(ohci_itd_t *sitd)
 	    le32toh(sitd->itd_next),
 	    le32toh(sitd->itd_be));
 	for (i = 0; i < OHCI_ITD_NOFFSET; i++) {
-		printf("offs[%d]=0x%04x ", i,
+		kprintf("offs[%d]=0x%04x ", i,
 		    (uint32_t)le16toh(sitd->itd_offset[i]));
 	}
-	printf("\n");
+	kprintf("\n");
 
 	return (temp);
 }
@@ -615,7 +612,7 @@ ohci_dump_ed(ohci_ed_t *sed)
 	ed_flags = le32toh(sed->ed_flags);
 	ed_headp = le32toh(sed->ed_headp);
 
-	printf("ED(%p) at 0x%08x: addr=%d endpt=%d maxp=%d flags=%s%s%s%s%s\n"
+	kprintf("ED(%p) at 0x%08x: addr=%d endpt=%d maxp=%d flags=%s%s%s%s%s\n"
 	    "tailp=0x%08x headflags=%s%s headp=0x%08x nexted=0x%08x\n",
 	    sed, le32toh(sed->ed_self),
 	    OHCI_ED_GET_FA(ed_flags),
@@ -662,7 +659,7 @@ _ohci_append_qh(ohci_ed_t *sed, ohci_ed_t *last)
 		DPRINTFN(0, "ED already linked!\n");
 		return (last);
 	}
-	/* (sc->sc_bus.bus_mtx) must be locked */
+	/* (sc->sc_bus.bus_lock) must be locked */
 
 	sed->next = last->next;
 	sed->ed_next = last->ed_next;
@@ -690,7 +687,7 @@ _ohci_remove_qh(ohci_ed_t *sed, ohci_ed_t *last)
 {
 	DPRINTFN(11, "%p from %p\n", sed, last);
 
-	/* (sc->sc_bus.bus_mtx) must be locked */
+	/* (sc->sc_bus.bus_lock) must be locked */
 
 	/* only remove if not removed from a queue */
 	if (sed->prev) {
@@ -1073,7 +1070,7 @@ ohci_rhsc_enable(ohci_softc_t *sc)
 {
 	DPRINTFN(5, "\n");
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 	sc->sc_eintrs |= OHCI_RHSC;
 	OWRITE4(sc, OHCI_INTERRUPT_ENABLE, OHCI_RHSC);
@@ -1178,11 +1175,11 @@ ohci_interrupt(ohci_softc_t *sc)
 		}
 #endif
 		if (status & OHCI_RD) {
-			printf("%s: resume detect\n", __FUNCTION__);
+			kprintf("%s: resume detect\n", __FUNCTION__);
 			/* XXX process resume detect */
 		}
 		if (status & OHCI_UE) {
-			printf("%s: unrecoverable error, "
+			kprintf("%s: unrecoverable error, "
 			    "controller halted\n", __FUNCTION__);
 			OWRITE4(sc, OHCI_CONTROL, OHCI_HCFS_RESET);
 			/* XXX what else */
@@ -1207,7 +1204,7 @@ ohci_interrupt(ohci_softc_t *sc)
 		/* Block unprocessed interrupts. XXX */
 		OWRITE4(sc, OHCI_INTERRUPT_DISABLE, status);
 		sc->sc_eintrs &= ~status;
-		printf("%s: blocking intrs 0x%x\n",
+		kprintf("%s: blocking intrs 0x%x\n",
 		    __FUNCTION__, status);
 	}
 	/* poll all the USB transfers */
@@ -1227,7 +1224,7 @@ ohci_timeout(void *arg)
 
 	DPRINTF("xfer=%p\n", xfer);
 
-	USB_BUS_LOCK_ASSERT(xfer->xroot->bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
 
 	/* transfer is transferred */
 	ohci_device_done(xfer, USB_ERR_TIMEOUT);
@@ -1598,7 +1595,7 @@ ohci_root_intr(ohci_softc_t *sc)
 	uint16_t i;
 	uint16_t m;
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 	/* clear any old interrupt data */
 	memset(sc->sc_hub_idata, 0, sizeof(sc->sc_hub_idata));
@@ -1634,7 +1631,7 @@ ohci_device_done(struct usb_xfer *xfer, usb_error_t error)
 	ohci_softc_t *sc = OHCI_BUS2SC(xfer->xroot->bus);
 	ohci_ed_t *ed;
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 
 	DPRINTFN(2, "xfer=%p, endpoint=%p, error=%d\n",
@@ -2104,7 +2101,7 @@ ohci_roothub_exec(struct usb_device *udev,
 	uint8_t l;
 	usb_error_t err;
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 	/* buffer reset */
 	ptr = (const void *)&sc->sc_hub_desc.temp;
@@ -2348,7 +2345,7 @@ ohci_roothub_exec(struct usb_device *udev,
 			OWRITE4(sc, port, UPS_RESET);
 			for (v = 0;; v++) {
 				if (v < 12) {
-					usb_pause_mtx(&sc->sc_bus.bus_mtx,
+					usb_pause_mtx(&sc->sc_bus.bus_lock,
 					    USB_MS_TO_TICKS(USB_PORT_ROOT_RESET_DELAY));
 
 					if ((OREAD4(sc, port) & UPS_RESET) == 0) {

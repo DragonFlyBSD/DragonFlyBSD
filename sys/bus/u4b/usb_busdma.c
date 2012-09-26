@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $fREEbSD$ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -25,7 +25,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -35,35 +34,35 @@
 #include <sys/module.h>
 #include <sys/lock.h>
 #include <sys/mutex.h>
+#include <sys/mutex2.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 
 #define	USB_DEBUG_VAR usb_debug
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_transfer.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_util.h>
-#include <dev/usb/usb_debug.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_transfer.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_util.h>
+#include <bus/u4b/usb_debug.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
 
 #if USB_HAVE_BUSDMA
 static void	usb_dma_tag_create(struct usb_dma_tag *, usb_size_t, usb_size_t);
 static void	usb_dma_tag_destroy(struct usb_dma_tag *);
-static void	usb_dma_lock_cb(void *, bus_dma_lock_op_t);
+//static void	usb_dma_lock_cb(void *); //, bus_dma_lock_op_t);
 static void	usb_pc_alloc_mem_cb(void *, bus_dma_segment_t *, int, int);
 static void	usb_pc_load_mem_cb(void *, bus_dma_segment_t *, int, int);
 static void	usb_pc_common_mem_cb(void *, bus_dma_segment_t *, int, int,
@@ -337,11 +336,11 @@ usbd_frame_zero(struct usb_page_cache *cache, usb_frlength_t offset,
 /*------------------------------------------------------------------------*
  *	usb_dma_lock_cb - dummy callback
  *------------------------------------------------------------------------*/
-static void
-usb_dma_lock_cb(void *arg, bus_dma_lock_op_t op)
-{
-	/* we use "mtx_owned()" instead of this function */
-}
+// static void
+//usb_dma_lock_cb(void *arg) // , bus_dma_lock_op_t op)
+//{
+//	/* we use "mtx_owned()" instead of this function */
+//}
 
 /*------------------------------------------------------------------------*
  *	usb_dma_tag_create - allocate a DMA tag
@@ -369,9 +368,7 @@ usb_dma_tag_create(struct usb_dma_tag *udt,
 	    (2 + (size / USB_PAGE_SIZE)) : 1,
 	     /* maxsegsz  */ (align == 1 && size > USB_PAGE_SIZE) ?
 	    USB_PAGE_SIZE : size,
-	     /* flags     */ BUS_DMA_KEEP_PG_OFFSET,
-	     /* lockfn    */ &usb_dma_lock_cb,
-	     /* lockarg   */ NULL,
+	     /* flags     */ BUS_DMA_ALIGNED | BUS_DMA_KEEP_PG_OFFSET, /* XXX: Find out what this is supposed to do! */
 	    &tag)) {
 		tag = NULL;
 	}
@@ -457,9 +454,9 @@ usb_pc_common_mem_cb(void *arg, bus_dma_segment_t *segs,
 	}
 
 done:
-	owned = mtx_owned(uptag->mtx);
+	owned = (lockstatus(uptag->lock, curthread) == LK_EXCLUSIVE);
 	if (!owned)
-		mtx_lock(uptag->mtx);
+		lockmgr(uptag->lock, LK_EXCLUSIVE);
 
 	uptag->dma_error = (error ? 1 : 0);
 	if (isload) {
@@ -468,7 +465,7 @@ done:
 		cv_broadcast(uptag->cv);
 	}
 	if (!owned)
-		mtx_unlock(uptag->mtx);
+		lockmgr(uptag->lock, LK_RELEASE);
 }
 
 /*------------------------------------------------------------------------*
@@ -543,7 +540,7 @@ usb_pc_alloc_mem(struct usb_page_cache *pc, struct usb_page *pg,
 	pc->tag = utag->tag;
 	pc->ismultiseg = (align == 1);
 
-	mtx_lock(uptag->mtx);
+	lockmgr(uptag->lock, LK_EXCLUSIVE);
 
 	/* load memory into DMA */
 	err = bus_dmamap_load(
@@ -551,10 +548,10 @@ usb_pc_alloc_mem(struct usb_page_cache *pc, struct usb_page *pg,
 	    pc, (BUS_DMA_WAITOK | BUS_DMA_COHERENT));
 
 	if (err == EINPROGRESS) {
-		cv_wait(uptag->cv, uptag->mtx);
+		cv_wait(uptag->cv, uptag->lock);
 		err = 0;
 	}
-	mtx_unlock(uptag->mtx);
+	lockmgr(uptag->lock, LK_RELEASE);
 
 	if (err || uptag->dma_error) {
 		bus_dmamem_free(utag->tag, ptr, map);
@@ -610,7 +607,8 @@ usb_pc_load_mem(struct usb_page_cache *pc, usb_size_t size, uint8_t sync)
 	pc->page_offset_end = size;
 	pc->ismultiseg = 1;
 
-	mtx_assert(pc->tag_parent->mtx, MA_OWNED);
+	// mtx_assert(pc->tag_parent->mtx, MA_OWNED);
+    KKASSERT(lockstatus(pc->tag_parent->lock, curthread) != 0);
 
 	if (size > 0) {
 		if (sync) {
@@ -632,7 +630,7 @@ usb_pc_load_mem(struct usb_page_cache *pc, usb_size_t size, uint8_t sync)
 			    pc->tag, pc->map, pc->buffer, size,
 			    &usb_pc_alloc_mem_cb, pc, BUS_DMA_WAITOK);
 			if (err == EINPROGRESS) {
-				cv_wait(uptag->cv, uptag->mtx);
+				cv_wait(uptag->cv, uptag->lock);
 				err = 0;
 			}
 			if (err || uptag->dma_error) {
@@ -794,7 +792,7 @@ usb_dma_tag_find(struct usb_dma_parent_tag *udpt,
 void
 usb_dma_tag_setup(struct usb_dma_parent_tag *udpt,
     struct usb_dma_tag *udt, bus_dma_tag_t dmat,
-    struct mtx *mtx, usb_dma_callback_t *func,
+    struct lock *lock, usb_dma_callback_t *func,
     uint8_t ndmabits, uint8_t nudt)
 {
 	memset(udpt, 0, sizeof(*udpt));
@@ -802,7 +800,7 @@ usb_dma_tag_setup(struct usb_dma_parent_tag *udpt,
 	/* sanity checking */
 	if ((nudt == 0) ||
 	    (ndmabits == 0) ||
-	    (mtx == NULL)) {
+	    (lock == NULL)) {
 		/* something is corrupt */
 		return;
 	}
@@ -810,7 +808,7 @@ usb_dma_tag_setup(struct usb_dma_parent_tag *udpt,
 	cv_init(udpt->cv, "USB DMA CV");
 
 	/* store some information */
-	udpt->mtx = mtx;
+	udpt->lock = lock;
 	udpt->func = func;
 	udpt->tag = dmat;
 	udpt->utag_first = udt;
@@ -868,7 +866,7 @@ usb_bdma_work_loop(struct usb_xfer_queue *pq)
 	xfer = pq->curr;
 	info = xfer->xroot;
 
-	mtx_assert(info->xfer_mtx, MA_OWNED);
+    KKASSERT(lockstatus(info->xfer_lock, curthread) != 0);
 
 	if (xfer->error) {
 		/* some error happened */
@@ -992,7 +990,8 @@ usb_bdma_done_event(struct usb_dma_parent_tag *udpt)
 
 	info = USB_DMATAG_TO_XROOT(udpt);
 
-	mtx_assert(info->xfer_mtx, MA_OWNED);
+	// mtx_assert(info->xfer_mtx, MA_OWNED);
+    KKASSERT(lockstatus(info->xfer_lock, curthread) != 0);
 
 	/* copy error */
 	info->dma_error = udpt->dma_error;

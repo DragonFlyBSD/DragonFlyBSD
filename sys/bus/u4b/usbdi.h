@@ -387,12 +387,22 @@ struct usb_attach_arg {
  * porting the code to other platforms.
  */
 struct usb_callout {
-	struct callout co;
+	struct callout co; 
+    struct lock *uco_lock;
+    void (*uco_func)(void *);
+    void *uco_arg;
+    int uco_flags;
 };
-#define	usb_callout_init_mtx(c,m,f) callout_init_mtx(&(c)->co,m,f)
-#define	usb_callout_reset(c,t,f,d) callout_reset(&(c)->co,t,f,d)
+/* XXX what is supposed to happen with that mutex? */
+
+void usb_callout_timeout_wrapper(void *arg);
+void usb_callout_init_mtx_dfly(struct usb_callout *uco, struct lock *lock, int flags); 
+void usb_callout_reset_dfly(struct usb_callout *uco, int ticks, timeout_t *func, void *arg);    
+
+#define	usb_callout_init_mtx(c,m,f) usb_callout_init_mtx_dfly(c,m,f) 
+#define	usb_callout_reset(c,t,f,d) usb_callout_reset_dfly(c,t,f,d)
 #define	usb_callout_stop(c) callout_stop(&(c)->co)
-#define	usb_callout_drain(c) callout_drain(&(c)->co)
+#define	usb_callout_drain(c) callout_stop_sync(&(c)->co)
 #define	usb_callout_pending(c) callout_pending(&(c)->co)
 
 /* USB transfer states */
@@ -472,7 +482,7 @@ usb_error_t	usbd_interface_count(struct usb_device *udev, uint8_t *count);
 enum usb_hc_mode usbd_get_mode(struct usb_device *udev);
 enum usb_dev_speed usbd_get_speed(struct usb_device *udev);
 void	device_set_usb_desc(device_t dev);
-void	usb_pause_mtx(struct mtx *mtx, int _ticks);
+void	usb_pause_mtx(struct lock *lock, int _ticks);
 usb_error_t	usbd_set_pnpinfo(struct usb_device *udev,
 			uint8_t iface_index, const char *pnpinfo);
 usb_error_t	usbd_add_dynamic_quirk(struct usb_device *udev,
@@ -484,7 +494,7 @@ const struct usb_device_id *usbd_lookup_id_by_info(
 int	usbd_lookup_id_by_uaa(const struct usb_device_id *id,
 	    usb_size_t sizeof_id, struct usb_attach_arg *uaa);
 
-usb_error_t usbd_do_request_flags(struct usb_device *udev, struct mtx *mtx,
+usb_error_t usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 		    struct usb_device_request *req, void *data, uint16_t flags,
 		    uint16_t *actlen, usb_timeout_t timeout);
 #define	usbd_do_request(u,m,r,d) \
@@ -499,7 +509,7 @@ uint32_t usbd_get_isoc_fps(struct usb_device *udev);
 usb_error_t usbd_transfer_setup(struct usb_device *udev,
 	    const uint8_t *ifaces, struct usb_xfer **pxfer,
 	    const struct usb_config *setup_start, uint16_t n_setup,
-	    void *priv_sc, struct mtx *priv_mtx);
+	    void *priv_sc, struct lock *priv_lock);
 void	usbd_transfer_submit(struct usb_xfer *xfer);
 void	usbd_transfer_clear_stall(struct usb_xfer *xfer);
 void	usbd_transfer_drain(struct usb_xfer *xfer);
@@ -566,7 +576,7 @@ void	usbd_frame_zero(struct usb_page_cache *cache, usb_frlength_t offset,
 void	usbd_start_re_enumerate(struct usb_device *udev);
 
 int	usb_fifo_attach(struct usb_device *udev, void *priv_sc,
-	    struct mtx *priv_mtx, struct usb_fifo_methods *pm,
+	    struct lock *priv_lock, struct usb_fifo_methods *pm,
 	    struct usb_fifo_sc *f_sc, uint16_t unit, uint16_t subunit,
 	    uint8_t iface_index, uid_t uid, gid_t gid, int mode);
 void	usb_fifo_detach(struct usb_fifo_sc *f_sc);

@@ -31,7 +31,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -43,32 +42,31 @@
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usb_ioctl.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usb_ioctl.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 
 #define	USB_DEBUG_VAR uhub_debug
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_request.h>
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_hub.h>
-#include <dev/usb/usb_util.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_transfer.h>
-#include <dev/usb/usb_dynamic.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_request.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_hub.h>
+#include <bus/u4b/usb_util.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_transfer.h>
+#include <bus/u4b/usb_dynamic.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
 
 #define	UHUB_INTR_INTERVAL 250		/* ms */
 #define	UHUB_N_TRANSFER 1
@@ -98,7 +96,7 @@ struct uhub_current_state {
 struct uhub_softc {
 	struct uhub_current_state sc_st;/* current state */
 	device_t sc_dev;		/* base device */
-	struct mtx sc_mtx;		/* our mutex */
+	struct lock sc_lock;		/* our mutex */
 	struct usb_device *sc_udev;	/* USB device */
 	struct usb_xfer *sc_xfer[UHUB_N_TRANSFER];	/* interrupt xfer */
 	uint8_t	sc_flags;
@@ -669,7 +667,7 @@ done:
 void
 uhub_root_intr(struct usb_bus *bus, const uint8_t *ptr, uint8_t len)
 {
-	USB_BUS_LOCK_ASSERT(bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(bus);
 
 	usb_needs_explore(bus, 0);
 }
@@ -921,9 +919,10 @@ uhub_attach(device_t dev)
 	sc->sc_udev = udev;
 	sc->sc_dev = dev;
 
-	mtx_init(&sc->sc_mtx, "USB HUB mutex", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "USB HUB mutex", 0, 0);
 
-	snprintf(sc->sc_name, sizeof(sc->sc_name), "%s",
+
+	ksnprintf(sc->sc_name, sizeof(sc->sc_name), "%s",
 	    device_get_nameunit(dev));
 
 	device_set_usb_desc(dev);
@@ -1049,7 +1048,7 @@ uhub_attach(device_t dev)
 		DPRINTFN(0, "portless HUB\n");
 		goto error;
 	}
-	hub = malloc(sizeof(hub[0]) + (sizeof(hub->ports[0]) * nports),
+	hub = kmalloc(sizeof(hub[0]) + (sizeof(hub->ports[0]) * nports),
 	    M_USBDEV, M_WAITOK | M_ZERO);
 
 	if (hub == NULL) {
@@ -1082,7 +1081,7 @@ uhub_attach(device_t dev)
 	} else {
 		/* normal HUB */
 		err = usbd_transfer_setup(udev, &iface_index, sc->sc_xfer,
-		    uhub_config, UHUB_N_TRANSFER, sc, &sc->sc_mtx);
+		    uhub_config, UHUB_N_TRANSFER, sc, &sc->sc_lock);
 	}
 	if (err) {
 		DPRINTFN(0, "cannot setup interrupt transfer, "
@@ -1169,9 +1168,9 @@ uhub_attach(device_t dev)
 	/* Start the interrupt endpoint, if any */
 
 	if (sc->sc_xfer[0] != NULL) {
-		mtx_lock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 		usbd_transfer_start(sc->sc_xfer[0]);
-		mtx_unlock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_RELEASE);
 	}
 
 	/* Enable automatic power save on all USB HUBs */
@@ -1184,11 +1183,11 @@ error:
 	usbd_transfer_unsetup(sc->sc_xfer, UHUB_N_TRANSFER);
 
 	if (udev->hub) {
-		free(udev->hub, M_USBDEV);
+		kfree(udev->hub, M_USBDEV);
 		udev->hub = NULL;
 	}
 
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (ENXIO);
 }
@@ -1226,10 +1225,10 @@ uhub_detach(device_t dev)
 		usb_free_device(child, 0);
 	}
 
-	free(hub, M_USBDEV);
+	kfree(hub, M_USBDEV);
 	sc->sc_udev->hub = NULL;
 
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }
@@ -1312,7 +1311,9 @@ uhub_child_location_string(device_t parent, device_t child,
 	sc = device_get_softc(parent);
 	hub = sc->sc_udev->hub;
 
-	mtx_lock(&Giant);
+	/* XXX 
+     * mtx_lock(&Giant);
+     */
 	uhub_find_iface_index(hub, child, &res);
 	if (!res.udev) {
 		DPRINTF("device not on hub\n");
@@ -1321,12 +1322,14 @@ uhub_child_location_string(device_t parent, device_t child,
 		}
 		goto done;
 	}
-	snprintf(buf, buflen, "bus=%u hubaddr=%u port=%u devaddr=%u interface=%u",
+	ksnprintf(buf, buflen, "bus=%u hubaddr=%u port=%u devaddr=%u interface=%u",
 	    (res.udev->parent_hub != NULL) ? res.udev->parent_hub->device_index : 0,
 	    res.portno, device_get_unit(res.udev->bus->bdev),
 	    res.udev->device_index, res.iface_index);
 done:
-	mtx_unlock(&Giant);
+	/* XXX
+     * mtx_unlock(&Giant);
+     */
 
 	return (0);
 }
@@ -1349,7 +1352,9 @@ uhub_child_pnpinfo_string(device_t parent, device_t child,
 	sc = device_get_softc(parent);
 	hub = sc->sc_udev->hub;
 
+    /* XXX
 	mtx_lock(&Giant);
+    */
 	uhub_find_iface_index(hub, child, &res);
 	if (!res.udev) {
 		DPRINTF("device not on hub\n");
@@ -1360,7 +1365,7 @@ uhub_child_pnpinfo_string(device_t parent, device_t child,
 	}
 	iface = usbd_get_iface(res.udev, res.iface_index);
 	if (iface && iface->idesc) {
-		snprintf(buf, buflen, "vendor=0x%04x product=0x%04x "
+		ksnprintf(buf, buflen, "vendor=0x%04x product=0x%04x "
 		    "devclass=0x%02x devsubclass=0x%02x "
 		    "sernum=\"%s\" "
 		    "release=0x%04x "
@@ -1386,8 +1391,9 @@ uhub_child_pnpinfo_string(device_t parent, device_t child,
 		goto done;
 	}
 done:
+    /* XXX
 	mtx_unlock(&Giant);
-
+    */
 	return (0);
 }
 
@@ -1484,9 +1490,8 @@ usb_hs_bandwidth_adjust(struct usb_device *udev, int16_t len,
 	struct usb_hub *hub;
 	enum usb_dev_speed speed;
 	uint8_t x;
-
-	USB_BUS_LOCK_ASSERT(bus, MA_OWNED);
-
+    
+	USB_BUS_LOCK_ASSERT(bus);
 	speed = usbd_get_speed(udev);
 
 	switch (speed) {
@@ -1704,7 +1709,7 @@ usb_isoc_time_expand(struct usb_bus *bus, uint16_t isoc_time_curr)
 {
 	uint16_t rem;
 
-	USB_BUS_LOCK_ASSERT(bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(bus);
 
 	rem = bus->isoc_time_last & (USB_ISOC_TIME_MAX - 1);
 
@@ -1883,11 +1888,11 @@ usb_bus_port_set_device(struct usb_bus *bus, struct usb_port *up,
 	 */
 	if (device_index != 0) {
 #if USB_HAVE_UGEN
-		mtx_lock(&usb_ref_lock);
+		lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 #endif
 		bus->devices[device_index] = udev;
 #if USB_HAVE_UGEN
-		mtx_unlock(&usb_ref_lock);
+		lockmgr(&usb_ref_lock, LK_RELEASE);
 #endif
 	}
 	/*
@@ -1917,7 +1922,7 @@ usb_needs_explore(struct usb_bus *bus, uint8_t do_probe)
 		DPRINTF("No root HUB\n");
 		return;
 	}
-	if (mtx_owned(&bus->bus_mtx)) {
+	if (lockstatus(&bus->bus_lock, curthread) != 0) {
 		do_unlock = 0;
 	} else {
 		USB_BUS_LOCK(bus);

@@ -28,7 +28,7 @@
 #define	_USB_DEV_H_
 
 #include <sys/file.h>
-#include <sys/selinfo.h>
+//#include <sys/selinfo.h>
 #include <sys/poll.h>
 #include <sys/signalvar.h>
 #include <sys/proc.h>
@@ -102,7 +102,9 @@ struct usb_fs_privdata {
 struct usb_fifo {
 	struct usb_ifqueue free_q;
 	struct usb_ifqueue used_q;
+#ifdef XXXDF
 	struct selinfo selinfo;
+#endif
 	struct cv cv_io;
 	struct cv cv_drain;
 	struct usb_fifo_methods *methods;
@@ -112,7 +114,7 @@ struct usb_fifo {
 	struct usb_device *udev;
 	struct usb_xfer *xfer[2];
 	struct usb_xfer **fs_xfer;
-	struct mtx *priv_mtx;		/* client data */
+	struct lock *priv_lock;		/* client data */
 	/* set if FIFO is opened by a FILE: */
 	struct usb_cdev_privdata *curr_cpd;
 	void   *priv_sc0;		/* client data */
@@ -141,7 +143,7 @@ struct usb_fifo {
 #define	USB_FIFO_REF_MAX 0xFF
 };
 
-extern struct cdevsw usb_devsw;
+extern struct dev_ops usb_devsw;
 
 int	usb_fifo_wait(struct usb_fifo *fifo);
 void	usb_fifo_signal(struct usb_fifo *fifo);

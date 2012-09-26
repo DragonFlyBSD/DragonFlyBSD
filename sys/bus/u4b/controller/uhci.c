@@ -26,11 +26,10 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 /*
  * USB Universal Host Controller driver.
- * Handles e.g. PIIX3 and PIIX4.
+ * hANDLES e.g. PIIX3 and PIIX4.
  *
  * UHCI spec: http://developer.intel.com/design/USB/UHCI11D.htm
  * USB spec:  http://www.usb.org/developers/docs/usbspec.zip
@@ -39,7 +38,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -48,33 +46,31 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
 
 #define	USB_DEBUG_VAR uhcidebug
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_transfer.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_hub.h>
-#include <dev/usb/usb_util.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_transfer.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_hub.h>
+#include <bus/u4b/usb_util.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
-#include <dev/usb/controller/uhci.h>
-#include <dev/usb/controller/uhcireg.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
+#include <bus/u4b/controller/uhci.h>
+#include <bus/u4b/controller/uhcireg.h>
 
 #define	alt_next next
 #define	UHCI_BUS2SC(bus) \
@@ -280,7 +276,7 @@ uhci_restart(uhci_softc_t *sc)
 {
 	struct usb_page_search buf_res;
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
   	if (UREAD2(sc, UHCI_CMD) & UHCI_CMD_RS) {
 		DPRINTFN(2, "Already started\n");
@@ -301,7 +297,7 @@ uhci_restart(uhci_softc_t *sc)
 
 	/* wait 10 milliseconds */
 
-	usb_pause_mtx(&sc->sc_bus.bus_mtx, hz / 100);
+	usb_pause_mtx(&sc->sc_bus.bus_lock, hz / 100);
 
 	/* check that controller has started */
 
@@ -317,7 +313,7 @@ uhci_reset(uhci_softc_t *sc)
 {
 	uint16_t n;
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 	DPRINTF("resetting the HC\n");
 
@@ -331,7 +327,7 @@ uhci_reset(uhci_softc_t *sc)
 
 	/* wait */
 
-	usb_pause_mtx(&sc->sc_bus.bus_mtx,
+	usb_pause_mtx(&sc->sc_bus.bus_lock,
 	    USB_MS_TO_TICKS(USB_BUS_RESET_DELAY));
 
 	/* terminate all transfers */
@@ -344,7 +340,7 @@ uhci_reset(uhci_softc_t *sc)
 	while (n--) {
 		/* wait one millisecond */
 
-		usb_pause_mtx(&sc->sc_bus.bus_mtx, hz / 1000);
+		usb_pause_mtx(&sc->sc_bus.bus_lock, hz / 1000);
 
 		if (!(UREAD2(sc, UHCI_CMD) & UHCI_CMD_HCRESET)) {
 			goto done_1;
@@ -360,7 +356,7 @@ done_1:
 	while (n--) {
 		/* wait one millisecond */
 
-		usb_pause_mtx(&sc->sc_bus.bus_mtx, hz / 1000);
+		usb_pause_mtx(&sc->sc_bus.bus_lock, hz / 1000);
 
 		/* check if HC is stopped */
 		if (UREAD2(sc, UHCI_STS) & UHCI_STS_HCH) {
@@ -389,7 +385,7 @@ done_2:
 static void
 uhci_start(uhci_softc_t *sc)
 {
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 	DPRINTFN(2, "enabling\n");
 
@@ -457,7 +453,7 @@ uhci_init(uhci_softc_t *sc)
 
 	DPRINTF("start\n");
 
-	usb_callout_init_mtx(&sc->sc_root_intr, &sc->sc_bus.bus_mtx, 0);
+	usb_callout_init_mtx(&sc->sc_root_intr, &sc->sc_bus.bus_lock, 0);
 
 #ifdef USB_DEBUG
 	if (uhcidebug > 2) {
@@ -743,7 +739,7 @@ uhci_dump_td(uhci_td_t *p)
 	 */
 	temp = ((td_next & UHCI_PTR_T) || (td_next == 0));
 
-	printf("TD(%p) at 0x%08x = link=0x%08x status=0x%08x "
+	kprintf("TD(%p) at 0x%08x = link=0x%08x status=0x%08x "
 	    "token=0x%08x buffer=0x%08x\n",
 	    p,
 	    le32toh(p->td_self),
@@ -752,7 +748,7 @@ uhci_dump_td(uhci_td_t *p)
 	    td_token,
 	    le32toh(p->td_buffer));
 
-	printf("TD(%p) td_next=%s%s%s td_status=%s%s%s%s%s%s%s%s%s%s%s, errcnt=%d, actlen=%d pid=%02x,"
+	kprintf("TD(%p) td_next=%s%s%s td_status=%s%s%s%s%s%s%s%s%s%s%s, errcnt=%d, actlen=%d pid=%02x,"
 	    "addr=%d,endpt=%d,D=%d,maxlen=%d\n",
 	    p,
 	    (td_next & 1) ? "-T" : "",
@@ -896,7 +892,7 @@ _uhci_append_td(uhci_td_t *std, uhci_td_t *last)
 {
 	DPRINTFN(11, "%p to %p\n", std, last);
 
-	/* (sc->sc_bus.mtx) must be locked */
+	/* (sc->sc_bus.lock) must be locked */
 
 	std->next = last->next;
 	std->td_next = last->td_next;
@@ -927,7 +923,7 @@ _uhci_append_qh(uhci_qh_t *sqh, uhci_qh_t *last)
 		DPRINTFN(0, "QH already linked!\n");
 		return (last);
 	}
-	/* (sc->sc_bus.mtx) must be locked */
+	/* (sc->sc_bus.lock) must be locked */
 
 	sqh->h_next = last->h_next;
 	sqh->qh_h_next = last->qh_h_next;
@@ -958,7 +954,7 @@ _uhci_remove_td(uhci_td_t *std, uhci_td_t *last)
 {
 	DPRINTFN(11, "%p from %p\n", std, last);
 
-	/* (sc->sc_bus.mtx) must be locked */
+	/* (sc->sc_bus.lock) must be locked */
 
 	std->prev->next = std->next;
 	std->prev->td_next = std->td_next;
@@ -978,7 +974,7 @@ _uhci_remove_qh(uhci_qh_t *sqh, uhci_qh_t *last)
 {
 	DPRINTFN(11, "%p from %p\n", sqh, last);
 
-	/* (sc->sc_bus.mtx) must be locked */
+	/* (sc->sc_bus.lock) must be locked */
 
 	/* only remove if not removed from a queue */
 	if (sqh->h_prev) {
@@ -1443,16 +1439,16 @@ uhci_interrupt(uhci_softc_t *sc)
 
 		if (status & UHCI_STS_RD) {
 #ifdef USB_DEBUG
-			printf("%s: resume detect\n",
+			kprintf("%s: resume detect\n",
 			    __FUNCTION__);
 #endif
 		}
 		if (status & UHCI_STS_HSE) {
-			printf("%s: host system error\n",
+			kprintf("%s: host system error\n",
 			    __FUNCTION__);
 		}
 		if (status & UHCI_STS_HCPE) {
-			printf("%s: host controller process error\n",
+			kprintf("%s: host controller process error\n",
 			    __FUNCTION__);
 		}
 		if (status & UHCI_STS_HCH) {
@@ -1497,7 +1493,7 @@ uhci_timeout(void *arg)
 
 	DPRINTF("xfer=%p\n", xfer);
 
-	USB_BUS_LOCK_ASSERT(xfer->xroot->bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
 
 	/* transfer is transferred */
 	uhci_device_done(xfer, USB_ERR_TIMEOUT);
@@ -1842,7 +1838,7 @@ uhci_device_done(struct usb_xfer *xfer, usb_error_t error)
 	uhci_softc_t *sc = UHCI_BUS2SC(xfer->xroot->bus);
 	uhci_qh_t *qh;
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 	DPRINTFN(2, "xfer=%p, endpoint=%p, error=%d\n",
 	    xfer, xfer->endpoint, error);
@@ -2212,7 +2208,7 @@ uhci_device_isoc_enter(struct usb_xfer *xfer)
 #ifdef USB_DEBUG
 			if (once) {
 				once = 0;
-				printf("%s: frame length(%d) exceeds %d "
+				kprintf("%s: frame length(%d) exceeds %d "
 				    "bytes (frame truncated)\n",
 				    __FUNCTION__, *plen,
 				    xfer->max_frame_size);
@@ -2394,7 +2390,7 @@ uhci_portreset(uhci_softc_t *sc, uint16_t index)
 	x = URWMASK(UREAD2(sc, port));
 	UWRITE2(sc, port, x | UHCI_PORTSC_PR);
 
-	usb_pause_mtx(&sc->sc_bus.bus_mtx,
+	usb_pause_mtx(&sc->sc_bus.bus_lock,
 	    USB_MS_TO_TICKS(USB_PORT_ROOT_RESET_DELAY));
 
 	DPRINTFN(4, "uhci port %d reset, status0 = 0x%04x\n",
@@ -2404,7 +2400,7 @@ uhci_portreset(uhci_softc_t *sc, uint16_t index)
 	UWRITE2(sc, port, x & ~UHCI_PORTSC_PR);
 
 
-	mtx_unlock(&sc->sc_bus.bus_mtx);
+	lockmgr(&sc->sc_bus.bus_lock, LK_RELEASE);
 
 	/* 
 	 * This delay needs to be exactly 100us, else some USB devices
@@ -2412,7 +2408,7 @@ uhci_portreset(uhci_softc_t *sc, uint16_t index)
 	 */
 	DELAY(100);
 
-	mtx_lock(&sc->sc_bus.bus_mtx);
+	lockmgr(&sc->sc_bus.bus_lock, LK_EXCLUSIVE);
 
 	DPRINTFN(4, "uhci port %d reset, status1 = 0x%04x\n",
 	    index, UREAD2(sc, port));
@@ -2422,7 +2418,7 @@ uhci_portreset(uhci_softc_t *sc, uint16_t index)
 
 	for (lim = 0; lim < 12; lim++) {
 
-		usb_pause_mtx(&sc->sc_bus.bus_mtx,
+		usb_pause_mtx(&sc->sc_bus.bus_lock,
 		    USB_MS_TO_TICKS(USB_PORT_RESET_DELAY));
 
 		x = UREAD2(sc, port);
@@ -2488,7 +2484,7 @@ uhci_roothub_exec(struct usb_device *udev,
 	uint16_t len;
 	usb_error_t err;
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 	/* buffer reset */
 	ptr = (const void *)&sc->sc_hub_desc.temp;
@@ -2717,14 +2713,14 @@ uhci_roothub_exec(struct usb_device *udev,
 			UWRITE2(sc, port, URWMASK(x));
 
 			/* wait 20ms for resume sequence to complete */
-			usb_pause_mtx(&sc->sc_bus.bus_mtx, hz / 50);
+			usb_pause_mtx(&sc->sc_bus.bus_lock, hz / 50);
 
 			/* clear suspend and resume detect */
 			UWRITE2(sc, port, URWMASK(x) & ~(UHCI_PORTSC_RD |
 			    UHCI_PORTSC_SUSP));
 
 			/* wait a little bit */
-			usb_pause_mtx(&sc->sc_bus.bus_mtx, hz / 500);
+			usb_pause_mtx(&sc->sc_bus.bus_lock, hz / 500);
 
 			sc->sc_isresumed |= (1 << index);
 
@@ -2802,7 +2798,7 @@ uhci_root_intr(uhci_softc_t *sc)
 {
 	DPRINTFN(21, "\n");
 
-	USB_BUS_LOCK_ASSERT(&sc->sc_bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
 
 	sc->sc_hub_idata[0] = 0;
 

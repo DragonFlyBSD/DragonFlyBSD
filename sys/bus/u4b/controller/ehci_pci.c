@@ -29,7 +29,6 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 /*
  * USB Enhanced Host Controller Driver, a.k.a. USB 2.0 controller.
@@ -46,7 +45,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -55,28 +53,26 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_util.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_util.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
-#include <dev/usb/usb_pci.h>
-#include <dev/usb/controller/ehci.h>
-#include <dev/usb/controller/ehcireg.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
+#include <bus/u4b/usb_pci.h>
+#include <bus/u4b/controller/ehci.h>
+#include <bus/u4b/controller/ehcireg.h>
 #include "usb_if.h"
 
 #define	PCI_EHCI_VENDORID_ACERLABS	0x10b9
@@ -320,56 +316,53 @@ ehci_pci_attach(device_t self)
 	device_set_desc(sc->sc_bus.bdev, ehci_pci_match(self));
 	switch (pci_get_vendor(self)) {
 	case PCI_EHCI_VENDORID_ACERLABS:
-		sprintf(sc->sc_vendor, "AcerLabs");
+		ksprintf(sc->sc_vendor, "AcerLabs");
 		break;
 	case PCI_EHCI_VENDORID_AMD:
-		sprintf(sc->sc_vendor, "AMD");
+		ksprintf(sc->sc_vendor, "AMD");
 		break;
 	case PCI_EHCI_VENDORID_APPLE:
-		sprintf(sc->sc_vendor, "Apple");
+		ksprintf(sc->sc_vendor, "Apple");
 		break;
 	case PCI_EHCI_VENDORID_ATI:
-		sprintf(sc->sc_vendor, "ATI");
+		ksprintf(sc->sc_vendor, "ATI");
 		break;
 	case PCI_EHCI_VENDORID_CMDTECH:
-		sprintf(sc->sc_vendor, "CMDTECH");
+		ksprintf(sc->sc_vendor, "CMDTECH");
 		break;
 	case PCI_EHCI_VENDORID_INTEL:
-		sprintf(sc->sc_vendor, "Intel");
+		ksprintf(sc->sc_vendor, "Intel");
 		break;
 	case PCI_EHCI_VENDORID_NEC:
-		sprintf(sc->sc_vendor, "NEC");
+		ksprintf(sc->sc_vendor, "NEC");
 		break;
 	case PCI_EHCI_VENDORID_OPTI:
-		sprintf(sc->sc_vendor, "OPTi");
+		ksprintf(sc->sc_vendor, "OPTi");
 		break;
 	case PCI_EHCI_VENDORID_PHILIPS:
-		sprintf(sc->sc_vendor, "Philips");
+		ksprintf(sc->sc_vendor, "Philips");
 		break;
 	case PCI_EHCI_VENDORID_SIS:
-		sprintf(sc->sc_vendor, "SiS");
+		ksprintf(sc->sc_vendor, "SiS");
 		break;
 	case PCI_EHCI_VENDORID_NVIDIA:
 	case PCI_EHCI_VENDORID_NVIDIA2:
-		sprintf(sc->sc_vendor, "nVidia");
+		ksprintf(sc->sc_vendor, "nVidia");
 		break;
 	case PCI_EHCI_VENDORID_VIA:
-		sprintf(sc->sc_vendor, "VIA");
+		ksprintf(sc->sc_vendor, "VIA");
 		break;
 	default:
 		if (bootverbose)
 			device_printf(self, "(New EHCI DeviceId=0x%08x)\n",
 			    pci_get_devid(self));
-		sprintf(sc->sc_vendor, "(0x%04x)", pci_get_vendor(self));
+		ksprintf(sc->sc_vendor, "(0x%04x)", pci_get_vendor(self));
 	}
 
-#if (__FreeBSD_version >= 700031)
-	err = bus_setup_intr(self, sc->sc_irq_res, INTR_TYPE_BIO | INTR_MPSAFE,
-	    NULL, (driver_intr_t *)ehci_interrupt, sc, &sc->sc_intr_hdl);
-#else
-	err = bus_setup_intr(self, sc->sc_irq_res, INTR_TYPE_BIO | INTR_MPSAFE,
-	    (driver_intr_t *)ehci_interrupt, sc, &sc->sc_intr_hdl);
-#endif
+    /* XXX Can we make good use of the serialiser? */
+	err = bus_setup_intr(self, sc->sc_irq_res, INTR_MPSAFE,
+	    (driver_intr_t *)ehci_interrupt, sc, &sc->sc_intr_hdl, NULL);
+
 	if (err) {
 		device_printf(self, "Could not setup irq, %d\n", err);
 		sc->sc_intr_hdl = NULL;
@@ -455,7 +448,9 @@ ehci_pci_detach(device_t self)
 		device_delete_child(self, bdev);
 	}
 	/* during module unload there are lots of children leftover */
+    /* XXX
 	device_delete_children(self);
+    */
 
 	pci_disable_busmaster(self);
 
@@ -543,7 +538,7 @@ static device_method_t ehci_pci_methods[] = {
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
 	DEVMETHOD(usb_take_controller, ehci_pci_take_controller),
 
-	DEVMETHOD_END
+    { 0, 0 }
 };
 
 static driver_t ehci_driver = {

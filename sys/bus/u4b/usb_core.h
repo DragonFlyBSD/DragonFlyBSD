@@ -41,12 +41,14 @@
 
 /* macros */
 
-#define	USB_BUS_LOCK(_b)		mtx_lock(&(_b)->bus_mtx)
-#define	USB_BUS_UNLOCK(_b)		mtx_unlock(&(_b)->bus_mtx)
-#define	USB_BUS_LOCK_ASSERT(_b, _t)	mtx_assert(&(_b)->bus_mtx, _t)
-#define	USB_XFER_LOCK(_x)		mtx_lock((_x)->xroot->xfer_mtx)
-#define	USB_XFER_UNLOCK(_x)		mtx_unlock((_x)->xroot->xfer_mtx)
-#define	USB_XFER_LOCK_ASSERT(_x, _t)	mtx_assert((_x)->xroot->xfer_mtx, _t)
+#define	USB_BUS_LOCK(_b)		lockmgr(&(_b)->bus_lock, LK_EXCLUSIVE)
+#define	USB_BUS_UNLOCK(_b)		lockmgr(&(_b)->bus_lock, LK_RELEASE)
+#define	USB_BUS_LOCK_ASSERT(_b) KKASSERT(lockowned(&(_b)->bus_lock))
+#define USB_BUS_LOCK_ASSERT_NOTOWNED(_b) KKASSERT(!lockowned(&(_b)->bus_lock))
+#define	USB_XFER_LOCK(_x)		lockmgr((_x)->xroot->xfer_lock, LK_EXCLUSIVE)
+#define	USB_XFER_UNLOCK(_x)		lockmgr((_x)->xroot->xfer_lock, LK_RELEASE)
+#define	USB_XFER_LOCK_ASSERT(_x)	KKASSERT(lockstatus((_x)->xroot->xfer_lock, curthread) != 0)
+#define USB_XFER_LOCK_ASSERT_NOTOWNED(_x)   KKASSERT(lockstatus((_x)->xroot->xfer_lock, curthread) == 0)
 
 /* helper for converting pointers to integers */
 #define	USB_P2U(ptr) \
@@ -172,7 +174,7 @@ struct usb_xfer {
 
 /* external variables */
 
-extern struct mtx usb_ref_lock;
+extern struct lock usb_ref_lock;
 
 /* typedefs */
 

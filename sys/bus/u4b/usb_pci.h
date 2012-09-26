@@ -31,8 +31,8 @@
  * We don't want the following files included everywhere, that's why
  * they are in a separate file.
  */
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <sys/rman.h>
 

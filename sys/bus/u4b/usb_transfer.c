@@ -25,7 +25,6 @@
  */ 
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -37,30 +36,29 @@
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 #include <sys/proc.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 
 #define	USB_DEBUG_VAR usb_debug
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_transfer.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_util.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_transfer.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_util.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
-#include <dev/usb/usb_pf.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
+#include <bus/u4b/usb_pf.h>
 
 struct usb_std_packet_size {
 	struct {
@@ -200,11 +198,12 @@ usbd_transfer_setup_sub_malloc(struct usb_setup_params *parm,
 	usb_size_t y;
 	usb_size_t r;
 	usb_size_t z;
-
+    
+    /*
 	USB_ASSERT(align > 1, ("Invalid alignment, 0x%08x\n",
 	    align));
 	USB_ASSERT(size > 0, ("Invalid size = 0\n"));
-
+    */
 	if (count == 0) {
 		return (0);		/* nothing to allocate */
 	}
@@ -283,12 +282,12 @@ usbd_transfer_setup_sub_malloc(struct usb_setup_params *parm,
 			pc->buffer = USB_ADD_BYTES(buf, y * size);
 			pc->page_start = pg;
 
-			mtx_lock(pc->tag_parent->mtx);
+            lockmgr(pc->tag_parent->lock, LK_EXCLUSIVE);
 			if (usb_pc_load_mem(pc, size, 1 /* synchronous */ )) {
-				mtx_unlock(pc->tag_parent->mtx);
+                lockmgr(pc->tag_parent->lock, LK_RELEASE);
 				return (1);	/* failure */
 			}
-			mtx_unlock(pc->tag_parent->mtx);
+            lockmgr(pc->tag_parent->lock, LK_RELEASE);
 		}
 	}
 
@@ -808,7 +807,7 @@ usb_error_t
 usbd_transfer_setup(struct usb_device *udev,
     const uint8_t *ifaces, struct usb_xfer **ppxfer,
     const struct usb_config *setup_start, uint16_t n_setup,
-    void *priv_sc, struct mtx *xfer_mtx)
+    void *priv_sc, struct lock *xfer_lock)
 {
 	struct usb_xfer dummy;
 	struct usb_setup_params parm;
@@ -825,9 +824,10 @@ usbd_transfer_setup(struct usb_device *udev,
 	refcount = 0;
 	info = NULL;
 
+    /*   
 	WITNESS_WARN(WARN_GIANTOK | WARN_SLEEPOK, NULL,
 	    "usbd_transfer_setup can sleep!");
-
+    */
 	/* do some checking first */
 
 	if (n_setup == 0) {
@@ -838,9 +838,8 @@ usbd_transfer_setup(struct usb_device *udev,
 		DPRINTFN(6, "ifaces array is NULL!\n");
 		return (USB_ERR_INVAL);
 	}
-	if (xfer_mtx == NULL) {
+	if (xfer_lock == NULL) {
 		DPRINTFN(6, "using global lock\n");
-		xfer_mtx = &Giant;
 	}
 	/* sanity checks */
 	for (setup = setup_start, n = 0;
@@ -892,11 +891,11 @@ usbd_transfer_setup(struct usb_device *udev,
 
 			cv_init(&info->cv_drain, "WDRAIN");
 
-			info->xfer_mtx = xfer_mtx;
+			info->xfer_lock = xfer_lock;
 #if USB_HAVE_BUSDMA
 			usb_dma_tag_setup(&info->dma_parent_tag,
 			    parm.dma_tag_p, udev->bus->dma_parent_tag[0].tag,
-			    xfer_mtx, &usb_bdma_done_event, 32, parm.dma_tag_max);
+			    xfer_lock, &usb_bdma_done_event, 32, parm.dma_tag_max);
 #endif
 
 			info->bus = udev->bus;
@@ -922,9 +921,6 @@ usbd_transfer_setup(struct usb_device *udev,
 			if (setup_start == usb_control_ep_cfg)
 				info->done_p = 
 				    &udev->bus->control_xfer_proc;
-			else if (xfer_mtx == &Giant)
-				info->done_p = 
-				    &udev->bus->giant_callback_proc;
 			else
 				info->done_p = 
 				    &udev->bus->non_giant_callback_proc;
@@ -973,7 +969,7 @@ usbd_transfer_setup(struct usb_device *udev,
 				xfer->xroot = info;
 
 				usb_callout_init_mtx(&xfer->timeout_handle,
-				    &udev->bus->bus_mtx, 0);
+				    &udev->bus->bus_lock, 0);
 			} else {
 				/*
 				 * Setup a dummy xfer, hence we are
@@ -1114,7 +1110,7 @@ usbd_transfer_setup(struct usb_device *udev,
 		parm.size[0] += ((-parm.size[0]) & (USB_HOST_ALIGN - 1));
 
 		/* allocate zeroed memory */
-		buf = malloc(parm.size[0], M_USB, M_WAITOK | M_ZERO);
+		buf = kmalloc(parm.size[0], M_USB, M_WAITOK | M_ZERO);
 
 		if (buf == NULL) {
 			parm.err = USB_ERR_NOMEM;
@@ -1159,7 +1155,7 @@ usbd_transfer_unsetup_sub(struct usb_xfer_root *info, uint8_t needs_delay)
 	struct usb_page_cache *pc;
 #endif
 
-	USB_BUS_LOCK_ASSERT(info->bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(info->bus);
 
 	/* wait for any outstanding DMA operations */
 
@@ -1167,7 +1163,7 @@ usbd_transfer_unsetup_sub(struct usb_xfer_root *info, uint8_t needs_delay)
 		usb_timeout_t temp;
 		temp = usbd_get_dma_delay(info->udev);
 		if (temp != 0) {
-			usb_pause_mtx(&info->bus->bus_mtx,
+			usb_pause_mtx(&info->bus->bus_lock,
 			    USB_MS_TO_TICKS(temp));
 		}
 	}
@@ -1202,7 +1198,7 @@ usbd_transfer_unsetup_sub(struct usb_xfer_root *info, uint8_t needs_delay)
 	 * free the "memory_base" last, hence the "info" structure is
 	 * contained within the "memory_base"!
 	 */
-	free(info->memory_base, M_USB);
+	kfree(info->memory_base, M_USB);
 }
 
 /*------------------------------------------------------------------------*
@@ -1219,8 +1215,10 @@ usbd_transfer_unsetup(struct usb_xfer **pxfer, uint16_t n_setup)
 	struct usb_xfer_root *info;
 	uint8_t needs_delay = 0;
 
+    /*
 	WITNESS_WARN(WARN_GIANTOK | WARN_SLEEPOK, NULL,
 	    "usbd_transfer_unsetup can sleep!");
+    */
 
 	while (n_setup--) {
 		xfer = pxfer[n_setup];
@@ -1271,10 +1269,10 @@ usbd_transfer_unsetup(struct usb_xfer **pxfer, uint16_t n_setup)
 		usb_callout_drain(&xfer->timeout_handle);
 
 		USB_BUS_LOCK(info->bus);
-
+        /*
 		USB_ASSERT(info->setup_refcount != 0, ("Invalid setup "
 		    "reference count\n"));
-
+        */
 		info->setup_refcount--;
 
 		if (info->setup_refcount == 0) {
@@ -1500,10 +1498,10 @@ usbd_transfer_submit(struct usb_xfer *xfer)
 		USB_BUS_UNLOCK(bus);
 	}
 #endif
-
-	USB_XFER_LOCK_ASSERT(xfer, MA_OWNED);
-	USB_BUS_LOCK_ASSERT(bus, MA_NOTOWNED);
-
+    
+	USB_XFER_LOCK_ASSERT(xfer);
+	USB_BUS_LOCK_ASSERT_NOTOWNED(bus);
+    
 	/* Only open the USB transfer once! */
 	if (!xfer->flags_int.open) {
 		xfer->flags_int.open = 1;
@@ -1673,8 +1671,9 @@ usbd_pipe_enter(struct usb_xfer *xfer)
 {
 	struct usb_endpoint *ep;
 
+/*
 	USB_XFER_LOCK_ASSERT(xfer, MA_OWNED);
-
+*/
 	USB_BUS_LOCK(xfer->xroot->bus);
 
 	ep = xfer->endpoint;
@@ -1713,8 +1712,9 @@ usbd_transfer_start(struct usb_xfer *xfer)
 		/* transfer is gone */
 		return;
 	}
+    /*
 	USB_XFER_LOCK_ASSERT(xfer, MA_OWNED);
-
+    */
 	/* mark the USB transfer started */
 
 	if (!xfer->flags_int.started) {
@@ -1751,8 +1751,9 @@ usbd_transfer_stop(struct usb_xfer *xfer)
 		/* transfer is gone */
 		return;
 	}
+    /*
 	USB_XFER_LOCK_ASSERT(xfer, MA_OWNED);
-
+    */
 	/* check if the USB transfer was ever opened */
 
 	if (!xfer->flags_int.open) {
@@ -1843,8 +1844,9 @@ usbd_transfer_pending(struct usb_xfer *xfer)
 		/* transfer is gone */
 		return (0);
 	}
+    /*
 	USB_XFER_LOCK_ASSERT(xfer, MA_OWNED);
-
+    */
 	if (xfer->flags_int.transferring) {
 		/* trivial case */
 		return (1);
@@ -1879,16 +1881,15 @@ usbd_transfer_pending(struct usb_xfer *xfer)
 void
 usbd_transfer_drain(struct usb_xfer *xfer)
 {
+    /*
 	WITNESS_WARN(WARN_GIANTOK | WARN_SLEEPOK, NULL,
 	    "usbd_transfer_drain can sleep!");
-
+    */
 	if (xfer == NULL) {
 		/* transfer is gone */
 		return;
 	}
-	if (xfer->xroot->xfer_mtx != &Giant) {
-		USB_XFER_LOCK_ASSERT(xfer, MA_NOTOWNED);
-	}
+	USB_XFER_LOCK_ASSERT_NOTOWNED(xfer);
 	USB_XFER_LOCK(xfer);
 
 	usbd_transfer_stop(xfer);
@@ -1909,7 +1910,7 @@ usbd_transfer_drain(struct usb_xfer *xfer)
 		 * Wait until the current outstanding USB
 		 * transfer is complete !
 		 */
-		cv_wait(&xfer->xroot->cv_drain, xfer->xroot->xfer_mtx);
+		cv_wait(&xfer->xroot->cv_drain, xfer->xroot->xfer_lock);
 	}
 	USB_XFER_UNLOCK(xfer);
 }
@@ -2090,14 +2091,15 @@ usb_callback_proc(struct usb_proc_msg *_pm)
 	 * We exploit the fact that the mutex is the same for all
 	 * callbacks that will be called from this thread:
 	 */
-	mtx_lock(info->xfer_mtx);
+    lockmgr(info->xfer_lock, LK_EXCLUSIVE);
 	USB_BUS_LOCK(info->bus);
 
 	/* Continue where we lost track */
 	usb_command_wrapper(&info->done_q,
 	    info->done_q.curr);
 
-	mtx_unlock(info->xfer_mtx);
+
+    lockmgr(info->xfer_lock, LK_RELEASE);
 }
 
 /*------------------------------------------------------------------------*
@@ -2112,8 +2114,9 @@ usbd_callback_ss_done_defer(struct usb_xfer *xfer)
 	struct usb_xfer_root *info = xfer->xroot;
 	struct usb_xfer_queue *pq = &info->done_q;
 
-	USB_BUS_LOCK_ASSERT(xfer->xroot->bus, MA_OWNED);
-
+    
+	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
+   
 	if (pq->curr != xfer) {
 		usbd_transfer_enqueue(pq, xfer);
 	}
@@ -2149,9 +2152,12 @@ usbd_callback_wrapper(struct usb_xfer_queue *pq)
 {
 	struct usb_xfer *xfer = pq->curr;
 	struct usb_xfer_root *info = xfer->xroot;
-
-	USB_BUS_LOCK_ASSERT(info->bus, MA_OWNED);
-	if (!mtx_owned(info->xfer_mtx) && !SCHEDULER_STOPPED()) {
+    
+	USB_BUS_LOCK_ASSERT(info->bus);
+    /* XXX: This is probably to prevent deadlocks    
+	if (!lockstatus(info->xfer_mtx, curthread) && !SCHEDULER_STOPPED()) {
+    */
+    if (!lockstatus(info->xfer_lock, curthread)) {
 		/*
 	       	 * Cases that end up here:
 		 *
@@ -2186,8 +2192,8 @@ usbd_callback_wrapper(struct usb_xfer_queue *pq)
 	xfer->flags_int.doing_callback = 1;
 
 	USB_BUS_UNLOCK(info->bus);
-	USB_BUS_LOCK_ASSERT(info->bus, MA_NOTOWNED);
-
+	USB_BUS_LOCK_ASSERT_NOTOWNED(info->bus);
+    
 	/* set correct USB state for callback */
 	if (!xfer->flags_int.transferring) {
 		xfer->usb_state = USB_ST_SETUP;
@@ -2278,8 +2284,8 @@ done:
 void
 usb_dma_delay_done_cb(struct usb_xfer *xfer)
 {
-	USB_BUS_LOCK_ASSERT(xfer->xroot->bus, MA_OWNED);
-
+	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
+    
 	DPRINTFN(3, "Completed %p\n", xfer);
 
 	/* queue callback for execution, again */
@@ -2341,7 +2347,7 @@ usbd_transfer_enqueue(struct usb_xfer_queue *pq, struct usb_xfer *xfer)
 void
 usbd_transfer_done(struct usb_xfer *xfer, usb_error_t error)
 {
-	USB_BUS_LOCK_ASSERT(xfer->xroot->bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
 
 	DPRINTF("err=%s\n", usbd_errstr(error));
 
@@ -2370,7 +2376,7 @@ usbd_transfer_done(struct usb_xfer *xfer, usb_error_t error)
 	usbd_transfer_dequeue(xfer);
 
 #if USB_HAVE_BUSDMA
-	if (mtx_owned(xfer->xroot->xfer_mtx)) {
+	if (lockstatus(xfer->xroot->xfer_lock, curthread)) {
 		struct usb_xfer_queue *pq;
 
 		/*
@@ -2410,8 +2416,8 @@ usbd_transfer_start_cb(void *arg)
 {
 	struct usb_xfer *xfer = arg;
 	struct usb_endpoint *ep = xfer->endpoint;
-
-	USB_BUS_LOCK_ASSERT(xfer->xroot->bus, MA_OWNED);
+    
+	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
 
 	DPRINTF("start\n");
 
@@ -2444,8 +2450,9 @@ usbd_xfer_set_stall(struct usb_xfer *xfer)
 		/* tearing down */
 		return;
 	}
-	USB_XFER_LOCK_ASSERT(xfer, MA_OWNED);
-
+    
+	USB_XFER_LOCK_ASSERT(xfer);
+    
 	/* avoid any races by locking the USB mutex */
 	USB_BUS_LOCK(xfer->xroot->bus);
 	xfer->flags.stall_pipe = 1;
@@ -2471,8 +2478,9 @@ usbd_transfer_clear_stall(struct usb_xfer *xfer)
 		/* tearing down */
 		return;
 	}
-	USB_XFER_LOCK_ASSERT(xfer, MA_OWNED);
-
+    
+	USB_XFER_LOCK_ASSERT(xfer);
+    
 	/* avoid any races by locking the USB mutex */
 	USB_BUS_LOCK(xfer->xroot->bus);
 
@@ -2496,7 +2504,7 @@ usbd_pipe_start(struct usb_xfer_queue *pq)
 	xfer = pq->curr;
 	ep = xfer->endpoint;
 
-	USB_BUS_LOCK_ASSERT(xfer->xroot->bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
 
 	/*
 	 * If the endpoint is already stalled we do nothing !
@@ -2623,8 +2631,7 @@ void
 usbd_transfer_timeout_ms(struct usb_xfer *xfer,
     void (*cb) (void *arg), usb_timeout_t ms)
 {
-	USB_BUS_LOCK_ASSERT(xfer->xroot->bus, MA_OWNED);
-
+	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
 	/* defer delay */
 	usb_callout_reset(&xfer->timeout_handle,
 	    USB_MS_TO_TICKS(ms), cb, xfer);
@@ -2942,7 +2949,7 @@ repeat:
 	iface_index = 0;
 	if (usbd_transfer_setup(udev, &iface_index,
 	    udev->ctrl_xfer, usb_control_ep_cfg, USB_CTRL_XFER_MAX, NULL,
-	    &udev->device_mtx)) {
+	    &udev->device_lock)) {
 		DPRINTFN(0, "could not setup default "
 		    "USB transfer\n");
 	} else {
@@ -2959,8 +2966,9 @@ repeat:
 void
 usbd_clear_stall_locked(struct usb_device *udev, struct usb_endpoint *ep)
 {
-	USB_BUS_LOCK_ASSERT(udev->bus, MA_OWNED);
-
+    
+	USB_BUS_LOCK_ASSERT(udev->bus);
+    
 	/* check that we have a valid case */
 	if (udev->flags.usb_mode == USB_MODE_HOST &&
 	    udev->parent_hub != NULL &&
@@ -3028,9 +3036,10 @@ usbd_clear_stall_callback(struct usb_xfer *xfer1,
 		DPRINTF("NULL input parameter\n");
 		return (0);
 	}
-	USB_XFER_LOCK_ASSERT(xfer1, MA_OWNED);
-	USB_XFER_LOCK_ASSERT(xfer2, MA_OWNED);
-
+    
+	USB_XFER_LOCK_ASSERT(xfer1);
+	USB_XFER_LOCK_ASSERT(xfer2);
+    
 	switch (USB_GET_STATE(xfer1)) {
 	case USB_ST_SETUP:
 
@@ -3120,15 +3129,21 @@ usbd_transfer_poll(struct usb_xfer **ppxfer, uint16_t max)
 
 		/* make sure that the BUS mutex is not locked */
 		drop_bus = 0;
-		while (mtx_owned(&xroot->udev->bus->bus_mtx) && !SCHEDULER_STOPPED()) {
-			mtx_unlock(&xroot->udev->bus->bus_mtx);
+        /* XXX 
+		while (lockstatus(&xroot->udev->bus->bus_lock, curthread) && !SCHEDULER_STOPPED()) {
+        */
+		while (lockstatus(&xroot->udev->bus->bus_lock, curthread)) {
+			lockmgr(&xroot->udev->bus->bus_lock, LK_RELEASE);
 			drop_bus++;
 		}
 
 		/* make sure that the transfer mutex is not locked */
 		drop_xfer = 0;
-		while (mtx_owned(xroot->xfer_mtx) && !SCHEDULER_STOPPED()) {
-			mtx_unlock(xroot->xfer_mtx);
+        /* XXX
+		while (lockstatus(xroot->xfer_lock, curthread) && !SCHEDULER_STOPPED()) {
+        */
+		while (lockstatus(xroot->xfer_lock, curthread)) {
+            lockmgr(xroot->xfer_lock, LK_RELEASE);
 			drop_xfer++;
 		}
 
@@ -3163,11 +3178,11 @@ usbd_transfer_poll(struct usb_xfer **ppxfer, uint16_t max)
 
 		/* restore transfer mutex */
 		while (drop_xfer--)
-			mtx_lock(xroot->xfer_mtx);
+            lockmgr(xroot->xfer_lock, LK_EXCLUSIVE);
 
 		/* restore BUS mutex */
 		while (drop_bus--)
-			mtx_lock(&xroot->udev->bus->bus_mtx);
+            lockmgr(&xroot->udev->bus->bus_lock, LK_EXCLUSIVE);
 	}
 }
 

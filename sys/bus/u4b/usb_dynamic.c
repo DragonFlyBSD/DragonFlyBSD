@@ -25,7 +25,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -37,19 +36,18 @@
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
 
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_device.h>
-#include <dev/usb/usb_dynamic.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_device.h>
+#include <bus/u4b/usb_dynamic.h>
 
 /* function prototypes */
 static usb_handle_req_t usb_temp_get_desc_w;
@@ -96,7 +94,7 @@ usb_temp_unsetup_w(struct usb_device *udev)
 {
 	if (udev->usb_template_ptr) {
 
-		free(udev->usb_template_ptr, M_USB);
+		kfree(udev->usb_template_ptr, M_USB);
 
 		udev->usb_template_ptr = NULL;
 	}
@@ -113,8 +111,9 @@ usb_quirk_unload(void *arg)
 	/* wait for CPU to exit the loaded functions, if any */
 
 	/* XXX this is a tradeoff */
-
-	pause("WAIT", hz);
+    /* XXX tsleep? */
+    tsleep(usb_quirk_unload, 0, "WAIT", hz);
+	/* pause("WAIT", hz); */
 }
 
 void
@@ -129,8 +128,10 @@ usb_temp_unload(void *arg)
 	/* wait for CPU to exit the loaded functions, if any */
 
 	/* XXX this is a tradeoff */
+    /* XXX tsleep? */
+	/* pause("WAIT", hz); */
 
-	pause("WAIT", hz);
+    tsleep(usb_quirk_unload, 0, "WAIT", hz);
 }
 
 void
@@ -144,5 +145,6 @@ usb_bus_unload(void *arg)
 
 	/* XXX this is a tradeoff */
 
-	pause("WAIT", hz);
+   /* 	pause("WAIT", hz); */
+    tsleep(usb_quirk_unload, 0, "WAIT", hz);
 }

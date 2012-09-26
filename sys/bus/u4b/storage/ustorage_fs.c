@@ -37,7 +37,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -49,19 +48,18 @@
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdevs.h>
 #include "usb_if.h"
 
 #define	USB_DEBUG_VAR ustorage_fs_debug
-#include <dev/usb/usb_debug.h>
+#include <bus/u4b/usb_debug.h>
 
 #ifdef USB_DEBUG
 static int ustorage_fs_debug = 0;
@@ -179,7 +177,7 @@ struct ustorage_fs_softc {
 	ustorage_fs_bbb_cbw_t sc_cbw;	/* Command Wrapper Block */
 	ustorage_fs_bbb_csw_t sc_csw;	/* Command Status Block */
 
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	struct ustorage_fs_lun sc_lun[USTORAGE_FS_MAX_LUN];
 
@@ -374,7 +372,7 @@ ustorage_fs_attach(device_t dev)
 			 * further
 			 */
 			ustorage_fs_ramdisk =
-			    malloc(USTORAGE_FS_RAM_SECT << 9, M_USB,
+			    kmalloc(USTORAGE_FS_RAM_SECT << 9, M_USB,
 			    M_ZERO | M_WAITOK);
 
 			if (ustorage_fs_ramdisk == NULL) {
@@ -388,9 +386,7 @@ ustorage_fs_attach(device_t dev)
 
 	device_set_usb_desc(dev);
 
-	mtx_init(&sc->sc_mtx, "USTORAGE_FS lock",
-	    NULL, (MTX_DEF | MTX_RECURSE));
-
+    lockinit(&sc->sc_lock, "USTORAGE_FS lock", 0, LK_CANRECURSE);
 	/* get interface index */
 
 	id = usbd_get_interface_descriptor(uaa->iface);
@@ -403,7 +399,7 @@ ustorage_fs_attach(device_t dev)
 
 	err = usbd_transfer_setup(uaa->device,
 	    &uaa->info.bIfaceIndex, sc->sc_xfer, ustorage_fs_bbb_config,
-	    USTORAGE_FS_T_BBB_MAX, sc, &sc->sc_mtx);
+	    USTORAGE_FS_T_BBB_MAX, sc, &sc->sc_lock);
 	if (err) {
 		device_printf(dev, "could not setup required "
 		    "transfers, %s\n", usbd_errstr(err));
@@ -411,9 +407,9 @@ ustorage_fs_attach(device_t dev)
 	}
 	/* start Mass Storage State Machine */
 
-	mtx_lock(&sc->sc_mtx);
+    lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	ustorage_fs_transfer_start(sc, USTORAGE_FS_T_BBB_COMMAND);
-	mtx_unlock(&sc->sc_mtx);
+    lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	return (0);			/* success */
 
@@ -431,7 +427,7 @@ ustorage_fs_detach(device_t dev)
 
 	usbd_transfer_unsetup(sc->sc_xfer, USTORAGE_FS_T_BBB_MAX);
 
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);			/* success */
 }
@@ -467,9 +463,9 @@ static void
 ustorage_fs_transfer_stop(struct ustorage_fs_softc *sc)
 {
 	usbd_transfer_stop(sc->sc_xfer[sc->sc_last_xfer_index]);
-	mtx_unlock(&sc->sc_mtx);
+    lockmgr(&sc->sc_lock, LK_RELEASE);
 	usbd_transfer_drain(sc->sc_xfer[sc->sc_last_xfer_index]);
-	mtx_lock(&sc->sc_mtx);
+    lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 }
 
 static int
@@ -485,12 +481,12 @@ ustorage_fs_handle_request(device_t dev,
 		if ((req->bmRequestType == UT_WRITE_CLASS_INTERFACE) &&
 		    (req->bRequest == UR_BBB_RESET)) {
 			*plen = 0;
-			mtx_lock(&sc->sc_mtx);
+            lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 			ustorage_fs_transfer_stop(sc);
 			sc->sc_transfer.data_error = 1;
 			ustorage_fs_transfer_start(sc,
 			    USTORAGE_FS_T_BBB_COMMAND);
-			mtx_unlock(&sc->sc_mtx);
+            lockmgr(&sc->sc_lock, LK_RELEASE);
 			return (0);
 		} else if ((req->bmRequestType == UT_READ_CLASS_INTERFACE) &&
 			   (req->bRequest == UR_BBB_GET_MAX_LUN)) {

@@ -35,13 +35,17 @@
 #define	USB_HAVE_UGEN 1
 #define	USB_HAVE_DEVCTL 1
 #define	USB_HAVE_BUSDMA 1
+/* XXX
 #define	USB_HAVE_COMPAT_LINUX 1
+*/
 #define	USB_HAVE_USER_IO 1
 #define	USB_HAVE_MBUF 1
 #define	USB_HAVE_TT_SUPPORT 1
 #define	USB_HAVE_POWERD 1
 #define	USB_HAVE_MSCTEST 1
+/* XXX
 #define	USB_HAVE_PF 1
+*/
 
 #define	USB_TD_GET_PROC(td) (td)->td_proc
 #define	USB_PROC_GET_GID(td) (td)->p_pgid

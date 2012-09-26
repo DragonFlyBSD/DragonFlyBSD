@@ -432,7 +432,7 @@ struct xhci_softc {
 	union xhci_hub_desc	sc_hub_desc;
 
 	struct cv		sc_cmd_cv;
-	struct sx		sc_cmd_sx;
+	struct lock		sc_cmd_lock;
 
 	struct usb_device	*sc_devices[XHCI_MAX_DEVICES];
 	struct resource		*sc_io_res;
@@ -484,9 +484,9 @@ struct xhci_softc {
 	char			sc_vendor[16];
 };
 
-#define	XHCI_CMD_LOCK(sc)	sx_xlock(&(sc)->sc_cmd_sx)
-#define	XHCI_CMD_UNLOCK(sc)	sx_xunlock(&(sc)->sc_cmd_sx)
-#define	XHCI_CMD_ASSERT_LOCKED(sc) sx_assert(&(sc)->sc_cmd_sx, SA_LOCKED)
+#define	XHCI_CMD_LOCK(sc)	lockmgr(&(sc)->sc_cmd_lock, LK_EXCLUSIVE)
+#define	XHCI_CMD_UNLOCK(sc)	lockmgr(&(sc)->sc_cmd_lock, LK_RELEASE)
+#define	XHCI_CMD_ASSERT_LOCKED(sc) KKASSERT(lockstatus(&(sc)->sc_cmd_lock, curthread) == LK_EXCLUSIVE)
 
 /* prototypes */
 
