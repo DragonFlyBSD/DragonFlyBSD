@@ -609,6 +609,10 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	struct knote marker;
 	struct lwkt_token *tok;
 
+	if (tsp_in == NULL || tsp_in->tv_sec || tsp_in->tv_nsec)
+		atomic_set_int(&curthread->td_mpflags, TDF_MP_BATCH_DEMARC);
+
+
 	tsp = tsp_in;
 	*res = 0;
 
@@ -784,7 +788,6 @@ sys_kevent(struct kevent_args *uap)
 	} else {
 		tsp = NULL;
 	}
-
 	fp = holdfp(p->p_fd, uap->fd, -1);
 	if (fp == NULL)
 		return (EBADF);

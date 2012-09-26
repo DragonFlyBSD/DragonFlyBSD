@@ -394,6 +394,8 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	int bigread;
 	int bigcount;
 
+	atomic_set_int(&curthread->td_mpflags, TDF_MP_BATCH_DEMARC);
+
 	if (uio->uio_resid == 0)
 		return(0);
 
