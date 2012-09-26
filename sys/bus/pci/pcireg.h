@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pci/pcireg.h,v 1.64.2.4.2.1 2009/04/15 03:14:26 kensmith Exp $
- *
  */
 
 #ifndef _PCIREG_H_
@@ -360,6 +359,7 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIP_SERIALBUS_USB_UHCI		0x00
 #define	PCIP_SERIALBUS_USB_OHCI		0x10
 #define	PCIP_SERIALBUS_USB_EHCI		0x20
+#define	PCIP_SERIALBUS_USB_XHCI		0x30
 #define	PCIP_SERIALBUS_USB_DEVICE	0xfe
 #define	PCIS_SERIALBUS_FC	0x04
 #define	PCIS_SERIALBUS_SMBUS	0x05
