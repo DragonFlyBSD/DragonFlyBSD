@@ -380,6 +380,7 @@ struct thread {
 #define TDF_MP_WAKEREQ		0x00000002	/* resume_kproc */
 #define TDF_MP_EXITWAIT		0x00000004	/* reaper, see lwp_wait() */
 #define TDF_MP_EXITSIG		0x00000008	/* reaper, see lwp_wait() */
+#define TDF_MP_BATCH_DEMARC	0x00000010	/* batch mode handling */
 
 /*
  * Thread priorities.  Typically only one thread from any given

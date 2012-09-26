@@ -76,6 +76,8 @@ soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	int error;
 	int msgflags;
 
+	atomic_set_int(&curthread->td_mpflags, TDF_MP_BATCH_DEMARC);
+
 	so = (struct socket *)fp->f_data;
 
 	if (fflags & O_FBLOCKING)
