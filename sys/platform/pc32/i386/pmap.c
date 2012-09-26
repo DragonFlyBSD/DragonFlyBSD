@@ -1649,7 +1649,7 @@ void
 pmap_drop(pmap_t pmap)
 {
 	--pmap->pm_count;
-	if ((pmap->pm_count & 0x7FFFFFFF) == 0)
+	if (pmap->pm_count == (int)0x80000000)
 		wakeup(pmap);
 }
 
