@@ -101,8 +101,8 @@
  * continuous packet loss unrelated to congestion, such as on a wireless
  * network.
  */
-#define	TCPTV_MIN	( hz )			/* minimum allowable value */
-#define TCPTV_CPU_VAR	( hz/5 )		/* cpu variance (200ms) */
+#define	TCPTV_MIN	( hz/2 )		/* minimum allowable value */
+#define TCPTV_CPU_VAR	( hz/10)		/* cpu variance (100ms) */
 #define	TCPTV_REXMTMAX	( 64*hz)		/* max allowable REXMT value */
 
 #define TCPTV_TWTRUNC	8			/* RTO factor to truncate TW */
