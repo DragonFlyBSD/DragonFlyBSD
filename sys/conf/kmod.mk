@@ -303,12 +303,18 @@ MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
     bus/iicbus/iicbus_if.m bus/isa/isa_if.m dev/netif/mii_layer/miibus_if.m \
     bus/pccard/card_if.m bus/pccard/power_if.m bus/pci/pci_if.m \
     bus/pci/pcib_if.m \
-    bus/ppbus/ppbus_if.m bus/smbus/smbus_if.m bus/usb/usb_if.m \
+    bus/ppbus/ppbus_if.m bus/smbus/smbus_if.m \
     dev/acpica5/acpi_if.m dev/acpica5/acpi_wmi_if.m dev/disk/nata/ata_if.m \
     dev/sound/pcm/ac97_if.m dev/sound/pcm/channel_if.m \
     dev/sound/pcm/feeder_if.m dev/sound/pcm/mixer_if.m \
     libiconv/iconv_converter_if.m dev/agp/agp_if.m opencrypto/cryptodev_if.m \
     bus/mmc/mmcbus_if.m bus/mmc/mmcbr_if.m
+
+.if defined(WANT_USB4BSD)
+MFILES+=bus/u4b/usb_if.m
+.else
+MFILES+=bus/usb/usb_if.m
+.endif
 
 .for _srcsrc in ${MFILES}
 .for _ext in c h
