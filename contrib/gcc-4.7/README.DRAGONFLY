@@ -1,0 +1,37 @@
+GCC-4.7.2 RELEASE
+=================
+
+Original source can be downloaded from:
+http://ftp.gnu.org/gnu/gcc
+
+file = gcc-4.7.2.tar.bz2
+date = 20 September 2012
+size = 82884636
+sha1 = a464ba0f26eef24c29bcd1e7489421117fb9ee35
+
+The file README.DELETED contains a list of deleted files and directories.
+
+
+The following files have been added:
+==============================================================
+gcc/config/dragonfly-stdint.h
+gcc/config/dragonfly.h
+gcc/config/i386/dragonfly.h
+libgcc/config/i386/dragonfly-unwind.h
+libgcc/enable-execute-stack-freebsd.c
+libstdc++-v3/config/locale/dragonfly/c_locale.cc
+libstdc++-v3/config/locale/dragonfly/ctype_members.cc
+libstdc++-v3/config/os/bsd/dragonfly/ctype_base.h
+libstdc++-v3/config/os/bsd/dragonfly/ctype_configure_char.cc
+libstdc++-v3/config/os/bsd/dragonfly/ctype_inline.h
+libstdc++-v3/config/os/bsd/dragonfly/os_defines.h
+
+The following files have been patched:
+==============================================================
+gcc/c-family/c-format.c
+gcc/gcc.c
+gcc/ginclude/stddef.h
+gcc/tree-inline.c
+include/libiberty.h
+libgcc/crtstuff.c
+libgcc/unwind-dw2-fde-dip.c
