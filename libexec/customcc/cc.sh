@@ -73,14 +73,6 @@ elif [ "${CCVER}" = "gcc46" ]; then
 	    -iwithprefixbefore /usr/include \
 	    -isystem /usr/pkg/include/c++/${GCC46VER} \
 	    -isystem /usr/pkg/include/c++/${GCC46VER}/${GCC46MAC}"
-elif [ "${CCVER}" = "gcc47" ]; then
-	GCC47VER=`/usr/pkg/gcc-aux/bin/c++ -dumpversion`
-	GCC47MAC=`/usr/pkg/gcc-aux/bin/c++ -dumpmachine`
-	INCOPT="-nostdinc \
-	    -iprefix @@INCPREFIX@@ \
-	    -iwithprefixbefore /usr/include \
-	    -isystem /usr/pkg/gcc-aux/include/c++/${GCC47VER} \
-	    -isystem /usr/pkg/gcc-aux/include/c++/${GCC47VER}/${GCC47MAC}"
 fi
 
 . /etc/defaults/compilers.conf

@@ -17,13 +17,21 @@ SUBDIR+= ${BU_PRIMARY}
 SUBDIR+= ${BU_BACKUP}
 .endif
 
-.if !defined(NO_GCC41)
-SUBDIR+= cc41
-.ORDER: ${BU_PRIMARY} cc41
+SUBDIR+= gmp
+SUBDIR+= mpfr
+
+.if !defined(NO_GCC47)
+SUBDIR+= mpc
 .endif
 
-SUBDIR+= gmp mpfr cc44
+SUBDIR+= cc44
+
+.if !defined(NO_GCC47)
+SUBDIR+= cc47
+.ORDER: ${BU_PRIMARY} gmp mpfr mpc cc44 cc47
+.else
 .ORDER: ${BU_PRIMARY} gmp mpfr cc44
+.endif
 
 # maximum parallelism
 #

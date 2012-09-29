@@ -805,24 +805,25 @@ bstrap-${_tool}!
 _share=	share/syscons/scrnmaps
 .endif
 
-.if !defined(NO_GCC41)
-_gcc41_cross= gnu/usr.bin/cc41
-_gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
-.endif
-_gcc44_cross= gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/cc44
+_gcc_common_cross= gnu/usr.bin/gmp gnu/usr.bin/mpfr
+_gcc44_cross= gnu/usr.bin/cc44
 _gcc44_tools= gnu/usr.bin/cc44/cc_prep gnu/usr.bin/cc44/cc_tools
+.if !defined(NO_GCC47)
+_gcc47_cross= lib/libz gnu/usr.bin/mpc gnu/lib/gcc47/csu gnu/usr.bin/cc47
+_gcc47_tools= gnu/usr.bin/cc47/cc_prep gnu/usr.bin/cc47/cc_tools
+.endif
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 
-BTOOLSDIRS= ${_gcc41_tools} ${_gcc44_tools} ${_share}
+BTOOLSDIRS= ${_gcc44_tools} ${_gcc47_tools} ${_share}
 
 build-tools: build-tools-targets
 	touch ${BTOOLSDEST}/.build_done
 
 build-tools-targets: ${BTOOLSDIRS:S/^/btools-/}
 
-.ORDER: ${_gcc41_tools:S/^/btools-/}
 .ORDER: ${_gcc44_tools:S/^/btools-/}
+.ORDER: ${_gcc47_tools:S/^/btools-/}
 
 .for _tool in ${BTOOLSDIRS}
 btools-${_tool}!
@@ -841,8 +842,8 @@ btools-${_tool}!
 _btxld=	usr.sbin/btxld
 .endif
 
-CTOOLSDIRS= ${_btxld} ${_binutils} usr.bin/objformat \
-		${_gcc41_cross} ${_gcc44_cross} ${_custom_cross}
+CTOOLSDIRS= ${_btxld} ${_binutils} usr.bin/objformat ${_gcc_common_cross} \
+		${_gcc44_cross} ${_gcc47_cross} ${_custom_cross}
 
 cross-tools: cross-tools-targets
 	touch ${CTOOLSDEST}/.cross_done
@@ -876,10 +877,10 @@ hierarchy:
 # to specify the correct CCVER or 'cc' will not exec the correct compiler.
 #
 libraries:
-.if !defined(NO_GCC41)
+.if !defined(NO_GCC47)
 	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc41 \
-		${MAKE} -f Makefile.inc1 _startup_libs41;
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
+		${MAKE} -f Makefile.inc1 _startup_libs47;
 .endif
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc44 \
@@ -896,7 +897,10 @@ libraries:
 # shared libraries for ELF.  The target for _startup_libsXX is
 # specifically built using gccXX.
 #
-_startup_libs41=	gnu/lib/gcc41/csu gnu/lib/gcc41/libgcc
+_startup_libs47=	gnu/lib/gcc47/csu \
+			gnu/lib/gcc47/libgcc \
+			gnu/lib/gcc47/libgcc_eh \
+			gnu/lib/gcc47/libgcc_pic
 _startup_libs44=	gnu/lib/gcc44/csu gnu/lib/gcc44/libgcc
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 
@@ -928,7 +932,7 @@ _generic_libs+=	secure/lib
 
 _generic_libs+=	usr.bin/lex/lib
 
-.for _lib in ${_startup_libs41} ${_startup_libs44} \
+.for _lib in ${_startup_libs44} ${_startup_libs47} \
 		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
 ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
@@ -941,7 +945,7 @@ ${_lib}__L: .PHONY
 .endfor
 
 _startup_libs: ${_startup_libs:S/$/__L/}
-_startup_libs41: ${_startup_libs41:S/$/__L/}
+_startup_libs47: ${_startup_libs47:S/$/__L/}
 _startup_libs44: ${_startup_libs44:S/$/__L/}
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
 _generic_libs: ${_generic_libs:S/$/__L/}
@@ -949,7 +953,7 @@ _generic_libs: ${_generic_libs:S/$/__L/}
 # library targets must be ordered because there are inter-library
 # races (e.g. generation of tconfig.h)
 #
-.ORDER: ${_startup_libs41:S/$/__L/}
+.ORDER: ${_startup_libs47:S/$/__L/}
 .ORDER: ${_startup_libs44:S/$/__L/}
 .ORDER: ${_startup_libs:S/$/__L/}
 .ORDER: ${_prebuild_libs:S/$/__L/}
@@ -1002,4 +1006,3 @@ xmakeenv:
 	@echo '${XMAKEENV} /bin/sh'
 
 .include <bsd.subdir.mk>
-
