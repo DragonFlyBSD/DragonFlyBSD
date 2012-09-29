@@ -1500,17 +1500,16 @@ ixgbe_media_status(struct ifnet * ifp, struct ifmediareq * ifmr)
 {
 	struct adapter *adapter = ifp->if_softc;
 
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
 	INIT_DEBUGOUT("ixgbe_media_status: begin");
-	IXGBE_CORE_LOCK(adapter);
 	ixgbe_update_link_status(adapter);
 
 	ifmr->ifm_status = IFM_AVALID;
 	ifmr->ifm_active = IFM_ETHER;
 
-	if (!adapter->link_active) {
-		IXGBE_CORE_UNLOCK(adapter);
+	if (!adapter->link_active)
 		return;
-	}
 
 	ifmr->ifm_status |= IFM_ACTIVE;
 
@@ -1525,8 +1524,6 @@ ixgbe_media_status(struct ifnet * ifp, struct ifmediareq * ifmr)
 			ifmr->ifm_active |= adapter->optics | IFM_FDX;
 			break;
 	}
-
-	IXGBE_CORE_UNLOCK(adapter);
 
 	return;
 }
