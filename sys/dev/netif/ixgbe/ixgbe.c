@@ -2104,10 +2104,6 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 #ifdef IXGBE_FDIR
 	TASK_INIT(&adapter->fdir_task, 0, ixgbe_reinit_fdir, adapter);
 #endif
-	adapter->tq = taskqueue_create("ixgbe_link", M_NOWAIT,
-	    taskqueue_thread_enqueue, &adapter->tq);
-	taskqueue_start_threads(&adapter->tq, 1, PI_NET, -1, "%s linkq",
-	    device_get_nameunit(adapter->dev));
 
 	if ((error = bus_setup_intr(dev, adapter->res, INTR_MPSAFE,
 	    ixgbe_legacy_irq, que, &adapter->tag, &adapter->serializer)) != 0) {
@@ -2209,10 +2205,6 @@ ixgbe_allocate_msix(struct adapter *adapter)
 #ifdef IXGBE_FDIR
 	TASK_INIT(&adapter->fdir_task, 0, ixgbe_reinit_fdir, adapter);
 #endif
-	adapter->tq = taskqueue_create("ixgbe_link", M_NOWAIT,
-	    taskqueue_thread_enqueue, &adapter->tq);
-	taskqueue_start_threads(&adapter->tq, 1, PI_NET, -1, "%s linkq",
-	    device_get_nameunit(adapter->dev));
 
 	return (0);
 }
