@@ -3854,7 +3854,8 @@ expand_call_inline (basic_block bb, gimple stmt, copy_body_data *id)
 	       /* Do not warn about not inlined recursive calls.  */
 	       && !cgraph_edge_recursive_p (cg_edge)
 	       /* Avoid warnings during early inline pass. */
-	       && cgraph_global_info_ready)
+	       && cgraph_global_info_ready
+	       && reason != CIF_UNLIKELY_CALL)
 	{
 	  warning (OPT_Winline, "inlining failed in call to %q+F: %s",
 		   fn, _(cgraph_inline_failed_string (reason)));
