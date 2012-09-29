@@ -809,7 +809,7 @@ _share=	share/syscons/scrnmaps
 _gcc41_cross= gnu/usr.bin/cc41
 _gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
 .endif
-_gcc44_cross= gnu/usr.bin/cc44
+_gcc44_cross= gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/cc44
 _gcc44_tools= gnu/usr.bin/cc44/cc_prep gnu/usr.bin/cc44/cc_tools
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}

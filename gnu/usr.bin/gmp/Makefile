@@ -1,7 +1,7 @@
 LIB=	gmp
 INTERNALLIB=	# yes
 
-CONTRIBDIR=	${.CURDIR}/../../../../contrib/gmp
+CONTRIBDIR=	${.CURDIR}/../../../contrib/gmp
 .PATH:	${CONTRIBDIR}
 
 .include "${.CURDIR}/Makefile.${MACHINE_ARCH}"

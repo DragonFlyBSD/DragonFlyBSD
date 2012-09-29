@@ -18,8 +18,8 @@ SUBDIR+= ${BU_BACKUP}
 .endif
 
 .if !defined(NO_GCC41)
-SUBDIR+= cc41
-.ORDER: ${BU_PRIMARY} cc41
+SUBDIR+= gmp mpfr cc41
+.ORDER: ${BU_PRIMARY} gmp mpfr cc41
 .endif
 
 SUBDIR+= cc44
