@@ -689,8 +689,11 @@ ixgbe_start_locked(struct tx_ring *txr, struct ifnet * ifp)
 
 	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
 		return;
-	if (!adapter->link_active)
+
+	if (!adapter->link_active) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		if (txr->tx_avail <= IXGBE_QUEUE_MIN_FREE) {
