@@ -118,6 +118,7 @@ static void	jme_serialize_assert(struct ifnet *, enum ifnet_serialize,
 static void	jme_intr(void *);
 static void	jme_msix_tx(void *);
 static void	jme_msix_rx(void *);
+static void	jme_msix_status(void *);
 static void	jme_txeof(struct jme_softc *);
 static void	jme_rxeof(struct jme_rxdata *, int);
 static void	jme_rx_intr(struct jme_softc *, uint32_t);
@@ -3634,7 +3635,7 @@ jme_msix_try_alloc(device_t dev)
 	int error, i, r, msix_enable, msix_count;
 	int offset, offset_def;
 
-	msix_count = 1 + sc->jme_cdata.jme_rx_ring_cnt;
+	msix_count = JME_MSIXCNT(sc->jme_cdata.jme_rx_ring_cnt);
 	KKASSERT(msix_count <= JME_NMSIX);
 
 	msix_enable = device_getenv_int(dev, "msix.enable", jme_msix_enable);
@@ -3650,6 +3651,22 @@ jme_msix_try_alloc(device_t dev)
 		sc->jme_msix[i].jme_msix_rid = -1;
 
 	i = 0;
+
+	/*
+	 * Setup status MSI-X
+	 */
+
+	msix = &sc->jme_msix[i++];
+	msix->jme_msix_cpuid = 0;
+	msix->jme_msix_arg = sc;
+	msix->jme_msix_func = jme_msix_status;
+	for (r = 0; r < sc->jme_cdata.jme_rx_ring_cnt; ++r) {
+		msix->jme_msix_intrs |=
+		    sc->jme_cdata.jme_rx_data[r].jme_rx_empty;
+	}
+	msix->jme_msix_serialize = &sc->jme_serialize;
+	ksnprintf(msix->jme_msix_desc, sizeof(msix->jme_msix_desc), "%s sts",
+	    device_get_nameunit(dev));
 
 	/*
 	 * Setup TX MSI-X
@@ -3700,7 +3717,7 @@ jme_msix_try_alloc(device_t dev)
 		KKASSERT(msix->jme_msix_cpuid < ncpus2);
 		msix->jme_msix_arg = rdata;
 		msix->jme_msix_func = jme_msix_rx;
-		msix->jme_msix_intrs = rdata->jme_rx_coal | rdata->jme_rx_empty;
+		msix->jme_msix_intrs = rdata->jme_rx_coal;
 		msix->jme_msix_serialize = &rdata->jme_rx_serialize;
 		ksnprintf(msix->jme_msix_desc, sizeof(msix->jme_msix_desc),
 		    "%s rx%d", device_get_nameunit(dev), r);
@@ -3864,35 +3881,58 @@ jme_msix_rx(void *xrdata)
 	struct jme_rxdata *rdata = xrdata;
 	struct jme_softc *sc = rdata->jme_sc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t status;
 
 	ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
 
-	CSR_WRITE_4(sc, JME_INTR_MASK_CLR,
-	    (rdata->jme_rx_coal | rdata->jme_rx_empty));
+	CSR_WRITE_4(sc, JME_INTR_MASK_CLR, rdata->jme_rx_coal);
+
+	CSR_WRITE_4(sc, JME_INTR_STATUS,
+	    rdata->jme_rx_coal | rdata->jme_rx_comp);
+
+	if (ifp->if_flags & IFF_RUNNING)
+		jme_rxeof(rdata, -1);
+
+	CSR_WRITE_4(sc, JME_INTR_MASK_SET, rdata->jme_rx_coal);
+}
+
+static void
+jme_msix_status(void *xsc)
+{
+	struct jme_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	uint32_t status;
+
+	ASSERT_SERIALIZED(&sc->jme_serialize);
+
+	CSR_WRITE_4(sc, JME_INTR_MASK_CLR, INTR_RXQ_DESC_EMPTY);
 
 	status = CSR_READ_4(sc, JME_INTR_STATUS);
-	status &= (rdata->jme_rx_coal | rdata->jme_rx_empty);
+	status &= INTR_RXQ_DESC_EMPTY;
 
-	if (status & rdata->jme_rx_coal)
-		status |= (rdata->jme_rx_coal | rdata->jme_rx_comp);
-	CSR_WRITE_4(sc, JME_INTR_STATUS, status);
+	if (status)
+		CSR_WRITE_4(sc, JME_INTR_STATUS, status);
 
-	if (ifp->if_flags & IFF_RUNNING) {
-		if (status & rdata->jme_rx_coal)
-			jme_rxeof(rdata, -1);
+	if ((ifp->if_flags & IFF_RUNNING) && status) {
+		int i;
 
-		if (status & rdata->jme_rx_empty) {
-			CSR_WRITE_4(sc, JME_RXCSR, sc->jme_rxcsr |
-			    RXCSR_RX_ENB | RXCSR_RXQ_START);
+		for (i = 0; i < sc->jme_cdata.jme_rx_ring_cnt; ++i) {
+			struct jme_rxdata *rdata =
+			    &sc->jme_cdata.jme_rx_data[i];
+
+			if (status & rdata->jme_rx_empty) {
+				lwkt_serialize_enter(&rdata->jme_rx_serialize);
+				jme_rxeof(rdata, -1);
 #ifdef JME_RSS_DEBUG
-			rdata->jme_rx_emp++;
+				rdata->jme_rx_emp++;
 #endif
+				lwkt_serialize_exit(&rdata->jme_rx_serialize);
+			}
 		}
+		CSR_WRITE_4(sc, JME_RXCSR, sc->jme_rxcsr |
+		    RXCSR_RX_ENB | RXCSR_RXQ_START);
 	}
 
-	CSR_WRITE_4(sc, JME_INTR_MASK_SET,
-	    (rdata->jme_rx_coal | rdata->jme_rx_empty));
+	CSR_WRITE_4(sc, JME_INTR_MASK_SET, INTR_RXQ_DESC_EMPTY);
 }
 
 static void

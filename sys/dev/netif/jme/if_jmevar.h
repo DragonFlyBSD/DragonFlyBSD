@@ -52,9 +52,12 @@
 #define JME_NRXRING_MIN		JME_NRXRING_1
 #define JME_NRXRING_MAX		JME_NRXRING_4
 
-#define JME_NSERIALIZE		(JME_NRXRING_MAX + 2)
+/* RX rings + TX ring + status */
+#define JME_NSERIALIZE		(JME_NRXRING_MAX + 1 + 1)
 
-#define JME_NMSIX		(JME_NRXRING_MAX + 1)
+/* RX rings + TX ring + status */
+#define JME_MSIXCNT(nrx)	((nrx) + 1 + 1)
+#define JME_NMSIX		JME_MSIXCNT(JME_NRXRING_MAX)
 
 /*
  * Tx/Rx descriptor queue base should be 16bytes aligned and
