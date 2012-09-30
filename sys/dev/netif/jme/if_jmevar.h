@@ -78,9 +78,6 @@
 #define	JME_ADDR_LO(x)		((uint64_t) (x) & 0xFFFFFFFF)
 #define	JME_ADDR_HI(x)		((uint64_t) (x) >> 32)
 
-#define	JME_MSI_MESSAGES	8
-#define	JME_MSIX_MESSAGES	8
-
 /* Water mark to kick reclaiming Tx buffers. */
 #define	JME_TX_DESC_HIWAT(sc)	\
 	((sc)->jme_cdata.jme_tx_desc_cnt - \
