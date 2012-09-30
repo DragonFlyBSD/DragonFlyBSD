@@ -3287,7 +3287,7 @@ jme_npoll_status(struct ifnet *ifp, int pollhz __unused)
 				lwkt_serialize_exit(&rdata->jme_rx_serialize);
 			}
 		}
-		CSR_WRITE_4(sc, JME_INTR_STATUS, status);
+		CSR_WRITE_4(sc, JME_INTR_STATUS, status & INTR_RXQ_DESC_EMPTY);
 		CSR_WRITE_4(sc, JME_RXCSR, sc->jme_rxcsr |
 		    RXCSR_RX_ENB | RXCSR_RXQ_START);
 	}
