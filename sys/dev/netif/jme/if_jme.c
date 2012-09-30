@@ -124,6 +124,7 @@ static void	jme_rxeof(struct jme_rxdata *, int);
 static void	jme_rx_intr(struct jme_softc *, uint32_t);
 static void	jme_enable_intr(struct jme_softc *);
 static void	jme_disable_intr(struct jme_softc *);
+static void	jme_rx_restart(struct jme_softc *, uint32_t);
 
 static int	jme_msix_setup(device_t);
 static void	jme_msix_teardown(device_t, int);
@@ -3273,24 +3274,8 @@ jme_npoll_status(struct ifnet *ifp, int pollhz __unused)
 
 	status = CSR_READ_4(sc, JME_INTR_STATUS);
 	if (status & INTR_RXQ_DESC_EMPTY) {
-		int i;
-
-		for (i = 0; i < sc->jme_cdata.jme_rx_ring_cnt; ++i) {
-			struct jme_rxdata *rdata =
-			    &sc->jme_cdata.jme_rx_data[i];
-
-			if (status & rdata->jme_rx_empty) {
-				lwkt_serialize_enter(&rdata->jme_rx_serialize);
-				jme_rxeof(rdata, -1);
-#ifdef JME_RSS_DEBUG
-				rdata->jme_rx_emp++;
-#endif
-				lwkt_serialize_exit(&rdata->jme_rx_serialize);
-			}
-		}
 		CSR_WRITE_4(sc, JME_INTR_STATUS, status & INTR_RXQ_DESC_EMPTY);
-		CSR_WRITE_4(sc, JME_RXCSR, sc->jme_rxcsr |
-		    RXCSR_RX_ENB | RXCSR_RXQ_START);
+		jme_rx_restart(sc, status);
 	}
 }
 
@@ -3907,32 +3892,35 @@ jme_msix_status(void *xsc)
 	CSR_WRITE_4(sc, JME_INTR_MASK_CLR, INTR_RXQ_DESC_EMPTY);
 
 	status = CSR_READ_4(sc, JME_INTR_STATUS);
-	status &= INTR_RXQ_DESC_EMPTY;
 
-	if (status)
-		CSR_WRITE_4(sc, JME_INTR_STATUS, status);
-
-	if ((ifp->if_flags & IFF_RUNNING) && status) {
-		int i;
-
-		for (i = 0; i < sc->jme_cdata.jme_rx_ring_cnt; ++i) {
-			struct jme_rxdata *rdata =
-			    &sc->jme_cdata.jme_rx_data[i];
-
-			if (status & rdata->jme_rx_empty) {
-				lwkt_serialize_enter(&rdata->jme_rx_serialize);
-				jme_rxeof(rdata, -1);
-#ifdef JME_RSS_DEBUG
-				rdata->jme_rx_emp++;
-#endif
-				lwkt_serialize_exit(&rdata->jme_rx_serialize);
-			}
-		}
-		CSR_WRITE_4(sc, JME_RXCSR, sc->jme_rxcsr |
-		    RXCSR_RX_ENB | RXCSR_RXQ_START);
+	if (status & INTR_RXQ_DESC_EMPTY) {
+		CSR_WRITE_4(sc, JME_INTR_STATUS, status & INTR_RXQ_DESC_EMPTY);
+		if (ifp->if_flags & IFF_RUNNING)
+			jme_rx_restart(sc, status);
 	}
 
 	CSR_WRITE_4(sc, JME_INTR_MASK_SET, INTR_RXQ_DESC_EMPTY);
+}
+
+static void
+jme_rx_restart(struct jme_softc *sc, uint32_t status)
+{
+	int i;
+
+	for (i = 0; i < sc->jme_cdata.jme_rx_ring_cnt; ++i) {
+		struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[i];
+
+		if (status & rdata->jme_rx_empty) {
+			lwkt_serialize_enter(&rdata->jme_rx_serialize);
+			jme_rxeof(rdata, -1);
+#ifdef JME_RSS_DEBUG
+			rdata->jme_rx_emp++;
+#endif
+			lwkt_serialize_exit(&rdata->jme_rx_serialize);
+		}
+	}
+	CSR_WRITE_4(sc, JME_RXCSR, sc->jme_rxcsr | RXCSR_RX_ENB |
+	    RXCSR_RXQ_START);
 }
 
 static void
