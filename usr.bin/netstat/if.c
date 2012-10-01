@@ -118,7 +118,6 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 	u_long ifaddraddr;
 	u_long ifaddrcont_addr;
 	u_long ifaddrfound;
-	u_long ifnetfound;
 	u_long opackets;
 	u_long ipackets;
 	u_long obytes;
@@ -177,7 +176,6 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 		if (ifaddraddr == 0) {
 			struct ifaddrhead head;
 
-			ifnetfound = ifnetaddr;
 			if (kread(ifnetaddr, (char *)&ifnet, sizeof ifnet))
 				return;
 			strlcpy(name, ifnet.if_xname, sizeof(name));
