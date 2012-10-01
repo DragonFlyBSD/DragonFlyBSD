@@ -50,7 +50,7 @@ main(int ac, char **av)
 	int res;
 	char *sched = NULL;
 	char *cpustr = NULL;
-	cpumask_t cpumask = 0;
+	cpumask_t __unused cpumask = 0;
 
 	while ((ch = getopt(ac, av, "v")) != -1) {
 		switch(ch) {

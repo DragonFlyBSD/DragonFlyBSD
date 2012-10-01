@@ -414,7 +414,7 @@ static sig_atomic_t volatile heldsignal, holdlevel;
 	char const *filename;
 	unsigned char const *p;
     {
-	unsigned char volatile t;
+	unsigned char volatile __unused t;
 	accessName = filename;
 	t = *p;
 	accessName = 0;

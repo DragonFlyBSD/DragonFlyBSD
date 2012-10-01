@@ -12,6 +12,8 @@ GENSRCS= builtins.c init.c nodes.c syntax.c
 GENHDRS= builtins.h nodes.h syntax.h token.h
 SRCS= ${SHSRCS} ${GENSRCS} ${GENHDRS}
 
+WARNS?= 3
+
 # MLINKS for Shell built in commands for which there are no userland
 # utilities of the same name are handled with the associated manpage,
 # builtin.1 in share/man/man1/.

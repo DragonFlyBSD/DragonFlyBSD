@@ -205,7 +205,7 @@ doit(union sockunion *fromp)
 	char cmdbuf[NCARGS+1], locuser[16], remuser[16];
 	char fromhost[2 * MAXHOSTNAMELEN + 1];
 	char numericname[INET6_ADDRSTRLEN];
-	int af = fromp->su_family, err;
+	int af = fromp->su_family, __unused err;
 #ifdef	CRYPT
 	int rc;
 	int pv1[2], pv2[2];

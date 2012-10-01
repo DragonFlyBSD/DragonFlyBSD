@@ -4,4 +4,6 @@ INCS=	libdm.h
 
 NOMAN=
 
+WARNS=	3
+
 .include <bsd.lib.mk>

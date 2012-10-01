@@ -389,7 +389,7 @@ rc_getbool(struct rcfile *rcp,char *section, char *key,int *value) {
 int
 ncp_open_rcfile(void) {
 	char *home, *fn;
-	int error;
+	int __unused error;
 
 	home = getenv("HOME");
 	if (home) {

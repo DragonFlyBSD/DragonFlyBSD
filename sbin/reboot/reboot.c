@@ -60,7 +60,8 @@ int
 main(int argc, char *argv[])
 {
 	struct passwd *pw;
-	int ch, howto, i, fd, kflag, lflag, nflag, qflag, pflag, sverrno;
+	int ch, howto, i, fd, kflag, lflag, nflag, qflag, sverrno;
+	int __unused pflag;
 	u_int pageins;
 	char *kernel = NULL, *p;
 	const char *user;

@@ -128,7 +128,7 @@ rdfs(daddr_t bno, size_t size, void *bf, int fsi)
 int
 main(int argc, char **argv)
 {
-	char	*device, *special, *cp;
+	char	*device, *special, __unused *cp;
 	char	ch;
 	size_t	len;
 	struct stat	st;

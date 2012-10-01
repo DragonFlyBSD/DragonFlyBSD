@@ -1140,7 +1140,7 @@ iput(struct ufs1_dinode *ip, ino_t ino)
 {
 	struct ufs1_dinode inobuf[MAXINOPB];
 	daddr_t d;
-	int c;
+	int __unused c;
 
 #ifdef FSIRAND
 	ip->di_gen = random();

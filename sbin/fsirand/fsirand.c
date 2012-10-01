@@ -106,7 +106,7 @@ fsirand(char *device)
 	static ssize_t oldibufsize = 0;
 	ssize_t ibufsize;
 	struct fs *sblock;
-	ino_t inumber, maxino;
+	ino_t inumber, __unused maxino;
 	daddr_t dblk;
 	char sbuf[SBSIZE], sbuftmp[SBSIZE];
 	int devfd, n, cg;

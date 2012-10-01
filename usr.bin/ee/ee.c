@@ -3275,7 +3275,6 @@ menu_op(struct menu_entries *menu_list)
 	int temp = 0;
 	int list_size;
 	int top_offset;		/* offset from top where menu items start */
-	int vert_pos;		/* vertical position			  */
 	int vert_size;		/* vertical size for menu list item display */
 	int off_start = 1;	/* offset from start of menu items to start display */
 
@@ -3345,7 +3344,6 @@ menu_op(struct menu_entries *menu_list)
 	paint_menu(menu_list, max_width, max_height, list_size, top_offset, temp_win, off_start, vert_size);
 
 	counter = 1;
-	vert_pos = 0;
 	do
 	{
 		if (off_start > 2)

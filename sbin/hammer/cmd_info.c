@@ -75,16 +75,13 @@ show_info(char *path)
 	int64_t	    usedbigblocks;
 	int64_t	    usedbytes, rsvbytes;
 	int64_t	    totalbytes, freebytes;
-	int         error;
 	char	    *fsid;
 	char	    buf[6];
-	u_int32_t   sc;
 
 	fsid = NULL;
 	usedbigblocks = 0;
 
 	usedbytes = totalbytes = rsvbytes = freebytes = 0;
-	sc = error = 0;
 
 	hvi = libhammer_get_volinfo(path);
 	if (hvi == NULL) {

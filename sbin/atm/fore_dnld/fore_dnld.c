@@ -1136,7 +1136,7 @@ main( int argc, char **argv )
 
 				if ( ns ) {
 					int	c1;
-					int	nr;
+					int	__unused nr;
 
 					nr = read ( fileno(stdin), &c1, 1 );
 					c1 &= 0xff;

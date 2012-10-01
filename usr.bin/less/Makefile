@@ -8,6 +8,7 @@ SRCS=	main.c screen.c brac.c ch.c charset.c cmdbuf.c \
 	output.c pattern.c position.c prompt.c search.c signal.c \
 	tags.c ttyin.c version.c
 CFLAGS+=	-I${.CURDIR} -DSYSDIR=\"/etc\"
+CFLAGS+=	-Wno-unused-but-set-variable
 DPADD=	${LIBTERMCAP}
 LDADD=	-ltermcap
 

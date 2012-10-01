@@ -92,12 +92,10 @@ static const char *help_string=
 void
 HLP(int u __unused)
 {
-	char c;
-
 	string_print(enter_string);
 	string_print(help_string);
 	flush();
-	c=getchar();
+	getchar();
 	RD(0);
 	return;
 }

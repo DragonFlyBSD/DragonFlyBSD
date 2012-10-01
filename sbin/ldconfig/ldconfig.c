@@ -64,7 +64,8 @@ int
 main(int argc, char **argv)
 {
 	static const char *hints_file;
-	int c, nostd = 0, justread = 0, merge = 0, rescan = 0;
+	int c, justread = 0, merge = 0, rescan = 0;
+	int __unused nostd = 0;
 
 	if (argc > 1 && strcmp(argv[1], "-elf") == 0) {
 		/* skip over legacy -elf arg */

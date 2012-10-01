@@ -800,7 +800,7 @@ static void
 parse_oids ( Snmp_Header *h, u_char **bp )
 {
 	int		len = h->varlen;
-	int		sublen;
+	int		__unused sublen;
 	Variable	*var;
 	u_char		*bufp = *bp;
 
@@ -2106,7 +2106,7 @@ ilmi_do_state (void)
 	 * Loop forever
 	 */
 	for ( ; ; ) {
-	    int		count;
+	    int		__unused count;
 	    int		n;
 	    u_char	*bpp;
 	    Snmp_Header	*Hdr;

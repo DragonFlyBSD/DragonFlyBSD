@@ -2762,7 +2762,7 @@ ratecontrol(struct cam_device *device, int retry_count, int timeout,
 
 		if (spi && syncrate != -1) {
 			int prelim_sync_period;
-			u_int freq;
+			u_int __unused freq;
 
 			if ((cpi.hba_inquiry & PI_SDTR_ABLE) == 0) {
 				warnx("HBA at %s%d is not cable of changing "
@@ -3377,7 +3377,8 @@ retry:
 					RPL_LUNDATA_LUN_LUN_MASK);
 				break;
 			case RPL_LUNDATA_ATYP_EXTLUN: {
-				int field_len, field_len_code, eam_code;
+				int __unused field_len;
+				int field_len_code, eam_code;
 
 				eam_code = lundata->luns[i].lundata[j] &
 					RPL_LUNDATA_EXT_EAM_MASK;

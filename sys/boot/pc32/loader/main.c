@@ -276,7 +276,7 @@ static void
 extract_currdev(void)
 {
     struct i386_devdesc	new_currdev;
-    int			major, biosdev = -1;
+    int	__unused major, biosdev = -1;
 
     /* Assume we are booting from a BIOS disk by default */
     new_currdev.d_dev = &biosdisk;

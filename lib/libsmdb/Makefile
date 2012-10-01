@@ -6,6 +6,7 @@ SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.14
 
 CFLAGS+=-I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
 CFLAGS+=-DNEWDB -DNOT_SENDMAIL
+CFLAGS+=-Wno-unused-but-set-variable
 
 # User customizations to the sendmail build environment
 CFLAGS+=${SENDMAIL_CFLAGS}

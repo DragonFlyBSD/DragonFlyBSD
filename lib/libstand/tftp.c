@@ -406,7 +406,7 @@ tftp_write(struct open_file *f, void *start, size_t size, size_t *resid)
 static int 
 tftp_stat(struct open_file *f, struct stat *sb)
 {
-	struct tftp_handle *tftpfile;
+	struct tftp_handle __unused *tftpfile;
 	tftpfile = (struct tftp_handle *) f->f_fsdata;
 
 	sb->st_mode = 0444 | S_IFREG;

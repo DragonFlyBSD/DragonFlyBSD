@@ -381,7 +381,7 @@ get_dir(char *dirname, char *fmask, DirList **dir, int *n)
 	struct dirent	**dire;
 	struct stat	status;
 	int		i, j, nb;
-	long		d;
+	long		__unused d;
 
 
 	getcwd(cwd, MAXPATHLEN);
