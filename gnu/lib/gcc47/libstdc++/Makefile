@@ -278,4 +278,6 @@ CLEANFILES+=	atomicity.cc basic_file.cc c++locale.cc \
 		ctype_configure_char.cc unwind.h \
 		cp-demangle.c debug-cxx.cc tree-cxx.cc
 
+depend all: bits/c++config.h
+
 .include <bsd.lib.mk>
