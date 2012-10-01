@@ -28,8 +28,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-
 /*
  * USB Enhanced Host Controller Driver, a.k.a. USB 2.0 controller.
  *
@@ -359,7 +357,7 @@ ehci_pci_attach(device_t self)
 		ksprintf(sc->sc_vendor, "(0x%04x)", pci_get_vendor(self));
 	}
 
-    /* XXX Can we make good use of the serialiser? */
+	/* XXX Can we make good use of the serializer? */
 	err = bus_setup_intr(self, sc->sc_irq_res, INTR_MPSAFE,
 	    (driver_intr_t *)ehci_interrupt, sc, &sc->sc_intr_hdl, NULL);
 
@@ -447,10 +445,10 @@ ehci_pci_detach(device_t self)
 		device_detach(bdev);
 		device_delete_child(self, bdev);
 	}
+#if 0 /* XXX */
 	/* during module unload there are lots of children leftover */
-    /* XXX
 	device_delete_children(self);
-    */
+#endif
 
 	pci_disable_busmaster(self);
 
@@ -538,7 +536,7 @@ static device_method_t ehci_pci_methods[] = {
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
 	DEVMETHOD(usb_take_controller, ehci_pci_take_controller),
 
-    { 0, 0 }
+	{ 0, 0 }
 };
 
 static driver_t ehci_driver = {

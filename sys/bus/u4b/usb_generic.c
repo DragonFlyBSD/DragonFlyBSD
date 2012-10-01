@@ -143,7 +143,7 @@ ugen_transfer_setup(struct usb_fifo *f,
 	uint8_t iface_index = ep->iface_index;
 	int error;
 
-    lockmgr(f->priv_lock, LK_RELEASE);
+	lockmgr(f->priv_lock, LK_RELEASE);
 
 	/*
 	 * "usbd_transfer_setup()" can sleep so one needs to make a wrapper,
@@ -165,7 +165,7 @@ ugen_transfer_setup(struct usb_fifo *f,
 			usbd_transfer_unsetup(f->xfer, n_setup);
 		}
 	}
-    lockmgr(f->priv_lock, LK_EXCLUSIVE);
+	lockmgr(f->priv_lock, LK_EXCLUSIVE);
 
 	return (error);
 }
@@ -179,7 +179,7 @@ ugen_open(struct usb_fifo *f, int fflags)
 
 	DPRINTFN(6, "flag=0x%x\n", fflags);
 
-    lockmgr(f->priv_lock, LK_EXCLUSIVE);
+	lockmgr(f->priv_lock, LK_EXCLUSIVE);
 	switch (usbd_get_speed(f->udev)) {
 	case USB_SPEED_LOW:
 	case USB_SPEED_FULL:
@@ -199,7 +199,7 @@ ugen_open(struct usb_fifo *f, int fflags)
 	f->timeout = USB_NO_TIMEOUT;
 	f->flag_short = 0;
 	f->fifo_zlp = 0;
-    lockmgr(f->priv_lock, LK_RELEASE);
+	lockmgr(f->priv_lock, LK_RELEASE);
 
 	return (0);
 }
@@ -211,10 +211,10 @@ ugen_close(struct usb_fifo *f, int fflags)
 
 	/* cleanup */
 
-    lockmgr(f->priv_lock, LK_EXCLUSIVE);
+	lockmgr(f->priv_lock, LK_EXCLUSIVE);
 	usbd_transfer_stop(f->xfer[0]);
 	usbd_transfer_stop(f->xfer[1]);
-    lockmgr(f->priv_lock, LK_RELEASE);
+	lockmgr(f->priv_lock, LK_RELEASE);
 
 	usbd_transfer_unsetup(f->xfer, 2);
 	usb_fifo_free_buffer(f);
@@ -232,7 +232,7 @@ ugen_open_pipe_write(struct usb_fifo *f)
 	struct usb_endpoint *ep = usb_fifo_softc(f);
 	struct usb_endpoint_descriptor *ed = ep->edesc;
 
-    KKASSERT(lockstatus(f->priv_lock, curthread) != 0);
+	KKASSERT(lockstatus(f->priv_lock, curthread) != 0);
 
 	if (f->xfer[0] || f->xfer[1]) {
 		/* transfers are already opened */
@@ -300,7 +300,7 @@ ugen_open_pipe_read(struct usb_fifo *f)
 	struct usb_endpoint *ep = usb_fifo_softc(f);
 	struct usb_endpoint_descriptor *ed = ep->edesc;
 
-    KKASSERT(lockstatus(f->priv_lock, curthread) != 0);
+	KKASSERT(lockstatus(f->priv_lock, curthread) != 0);
 
 	if (f->xfer[0] || f->xfer[1]) {
 		/* transfers are already opened */
@@ -1052,12 +1052,12 @@ ugen_fs_copy_in(struct usb_fifo *f, uint8_t ep_index)
 	if (xfer == NULL) {
 		return (EINVAL);
 	}
-    lockmgr(f->priv_lock, LK_EXCLUSIVE);
+	lockmgr(f->priv_lock, LK_EXCLUSIVE);
 	if (usbd_transfer_pending(xfer)) {
-        lockmgr(f->priv_lock, LK_RELEASE);
+		lockmgr(f->priv_lock, LK_RELEASE);
 		return (EBUSY);		/* should not happen */
 	}
-    lockmgr(f->priv_lock, LK_RELEASE);
+	lockmgr(f->priv_lock, LK_RELEASE);
 
 	error = copyin(f->fs_ep_ptr +
 	    ep_index, &fs_ep, sizeof(fs_ep));
@@ -1200,9 +1200,9 @@ ugen_fs_copy_in(struct usb_fifo *f, uint8_t ep_index)
 	return (error);
 
 complete:
-    lockmgr(f->priv_lock, LK_EXCLUSIVE);
+	lockmgr(f->priv_lock, LK_EXCLUSIVE);
 	ugen_fs_set_complete(f, ep_index);
-    lockmgr(f->priv_lock, LK_RELEASE);
+	lockmgr(f->priv_lock, LK_RELEASE);
 	return (0);
 }
 
@@ -1229,13 +1229,13 @@ ugen_fs_copy_out(struct usb_fifo *f, uint8_t ep_index)
 	xfer = f->fs_xfer[ep_index];
 	if (xfer == NULL)
 		return (EINVAL);
-    
-    lockmgr(f->priv_lock, LK_EXCLUSIVE);
+
+	lockmgr(f->priv_lock, LK_EXCLUSIVE);
 	if (usbd_transfer_pending(xfer)) {
-        lockmgr(f->priv_lock, LK_RELEASE);
+		lockmgr(f->priv_lock, LK_RELEASE);
 		return (EBUSY);		/* should not happen */
 	}
-    lockmgr(f->priv_lock, LK_RELEASE);
+	lockmgr(f->priv_lock, LK_RELEASE);
 
 	fs_ep_uptr = f->fs_ep_ptr + ep_index;
 	error = copyin(fs_ep_uptr, &fs_ep, sizeof(fs_ep));
@@ -1408,9 +1408,9 @@ ugen_ioctl(struct usb_fifo *f, u_long cmd, void *addr, int fflags)
 
 	switch (cmd) {
 	case USB_FS_COMPLETE:
-        lockmgr(f->priv_lock, LK_EXCLUSIVE);
+		lockmgr(f->priv_lock, LK_EXCLUSIVE);
 		error = ugen_fs_get_complete(f, &ep_index);
-        lockmgr(f->priv_lock, LK_RELEASE);
+		lockmgr(f->priv_lock, LK_RELEASE);
 
 		if (error) {
 			error = EBUSY;
@@ -1424,10 +1424,10 @@ ugen_ioctl(struct usb_fifo *f, u_long cmd, void *addr, int fflags)
 		error = ugen_fs_copy_in(f, u.pstart->ep_index);
 		if (error)
 			break;
-        lockmgr(f->priv_lock, LK_EXCLUSIVE);
+		lockmgr(f->priv_lock, LK_EXCLUSIVE);
 		xfer = f->fs_xfer[u.pstart->ep_index];
 		usbd_transfer_start(xfer);
-        lockmgr(f->priv_lock, LK_RELEASE);
+		lockmgr(f->priv_lock, LK_RELEASE);
 		break;
 
 	case USB_FS_STOP:
@@ -1435,7 +1435,7 @@ ugen_ioctl(struct usb_fifo *f, u_long cmd, void *addr, int fflags)
 			error = EINVAL;
 			break;
 		}
-        lockmgr(f->priv_lock, LK_EXCLUSIVE);
+		lockmgr(f->priv_lock, LK_EXCLUSIVE);
 		xfer = f->fs_xfer[u.pstart->ep_index];
 		if (usbd_transfer_pending(xfer)) {
 			usbd_transfer_stop(xfer);
@@ -1449,7 +1449,7 @@ ugen_ioctl(struct usb_fifo *f, u_long cmd, void *addr, int fflags)
 				    USB_P2U(xfer->priv_fifo));
 			}
 		}
-        lockmgr(f->priv_lock, LK_RELEASE);
+		lockmgr(f->priv_lock, LK_RELEASE);
 		break;
 
 	case USB_FS_OPEN:
@@ -1576,9 +1576,9 @@ ugen_ioctl(struct usb_fifo *f, u_long cmd, void *addr, int fflags)
 			error = EINVAL;
 			break;
 		}
-        lockmgr(f->priv_lock, LK_EXCLUSIVE);
+		lockmgr(f->priv_lock, LK_EXCLUSIVE);
 		error = usbd_transfer_pending(f->fs_xfer[u.pstall->ep_index]);
-        lockmgr(f->priv_lock, LK_RELEASE);
+		lockmgr(f->priv_lock, LK_RELEASE);
 
 		if (error) {
 			return (EBUSY);
@@ -2235,9 +2235,9 @@ ugen_ioctl_post(struct usb_fifo *f, u_long cmd, void *addr, int fflags)
 		break;
 
 	default:
-        lockmgr(f->priv_lock, LK_EXCLUSIVE);
+		lockmgr(f->priv_lock, LK_EXCLUSIVE);
 		error = ugen_iface_ioctl(f, cmd, addr, fflags);
-        lockmgr(f->priv_lock, LK_RELEASE);
+		lockmgr(f->priv_lock, LK_RELEASE);
 		break;
 	}
 	DPRINTFN(6, "error=%d\n", error);

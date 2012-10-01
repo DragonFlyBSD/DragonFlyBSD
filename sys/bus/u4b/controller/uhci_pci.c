@@ -28,8 +28,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-
 /* Universal Host Controller Interface
  *
  * UHCI spec: http://www.intel.com/
@@ -377,10 +375,11 @@ uhci_pci_detach(device_t self)
 		device_detach(bdev);
 		device_delete_child(self, bdev);
 	}
+#if 0 /* XXX */
 	/* during module unload there are lots of children leftover */
-/* XXX */
-/*	device_delete_children(self);
-*/
+	device_delete_children(self);
+#endif
+
 	/*
 	 * disable interrupts that might have been switched on in
 	 * uhci_init.
@@ -429,7 +428,7 @@ static device_method_t uhci_pci_methods[] = {
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
 	DEVMETHOD(usb_take_controller, uhci_pci_take_controller),
 
-    { 0, 0 }
+	{ 0, 0 }
 };
 
 static driver_t uhci_driver = {

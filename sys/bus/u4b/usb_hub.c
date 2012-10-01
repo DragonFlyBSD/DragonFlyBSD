@@ -921,7 +921,6 @@ uhub_attach(device_t dev)
 
 	lockinit(&sc->sc_lock, "USB HUB mutex", 0, 0);
 
-
 	ksnprintf(sc->sc_name, sizeof(sc->sc_name), "%s",
 	    device_get_nameunit(dev));
 
@@ -1311,9 +1310,9 @@ uhub_child_location_string(device_t parent, device_t child,
 	sc = device_get_softc(parent);
 	hub = sc->sc_udev->hub;
 
-	/* XXX 
-     * mtx_lock(&Giant);
-     */
+#if 0
+	mtx_lock(&Giant);
+#endif
 	uhub_find_iface_index(hub, child, &res);
 	if (!res.udev) {
 		DPRINTF("device not on hub\n");
@@ -1327,9 +1326,9 @@ uhub_child_location_string(device_t parent, device_t child,
 	    res.portno, device_get_unit(res.udev->bus->bdev),
 	    res.udev->device_index, res.iface_index);
 done:
-	/* XXX
-     * mtx_unlock(&Giant);
-     */
+#if 0
+	mtx_unlock(&Giant);
+#endif
 
 	return (0);
 }
@@ -1352,9 +1351,9 @@ uhub_child_pnpinfo_string(device_t parent, device_t child,
 	sc = device_get_softc(parent);
 	hub = sc->sc_udev->hub;
 
-    /* XXX
+#if 0
 	mtx_lock(&Giant);
-    */
+#endif
 	uhub_find_iface_index(hub, child, &res);
 	if (!res.udev) {
 		DPRINTF("device not on hub\n");
@@ -1391,9 +1390,10 @@ uhub_child_pnpinfo_string(device_t parent, device_t child,
 		goto done;
 	}
 done:
-    /* XXX
+#if 0
 	mtx_unlock(&Giant);
-    */
+#endif
+
 	return (0);
 }
 
@@ -1490,8 +1490,9 @@ usb_hs_bandwidth_adjust(struct usb_device *udev, int16_t len,
 	struct usb_hub *hub;
 	enum usb_dev_speed speed;
 	uint8_t x;
-    
+
 	USB_BUS_LOCK_ASSERT(bus);
+
 	speed = usbd_get_speed(udev);
 
 	switch (speed) {

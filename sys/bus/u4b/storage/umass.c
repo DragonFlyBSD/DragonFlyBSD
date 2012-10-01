@@ -119,9 +119,7 @@
 #include <bus/u4b/usbdi.h>
 #include <bus/u4b/usbdi_util.h>
 #include <bus/u4b/usbdevs.h>
-/*
-#include "usbdevs.h"
-*/
+
 #include <bus/u4b/quirk/usb_quirk.h>
 
 #include <bus/cam/cam.h>
@@ -1051,8 +1049,8 @@ umass_detach(device_t dev)
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	umass_cam_detach_sim(sc);
 
-    lockmgr(&sc->sc_lock, LK_RELEASE);
-    lockuninit(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
+	lockuninit(&sc->sc_lock);
 
 	return (0);			/* success */
 }
@@ -1115,8 +1113,10 @@ umass_cancel_ccb(struct umass_softc *sc)
 {
 	union ccb *ccb;
 
-/*    KKASSERT(lockstatus(&sc->sc_lock, curthread) != 0);
-*/
+#if 0
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) != 0);
+#endif
+
 	ccb = sc->sc_transfer.ccb;
 	sc->sc_transfer.ccb = NULL;
 	sc->sc_last_xfer_index = 0;
@@ -2122,7 +2122,7 @@ umass_cam_attach_sim(struct umass_softc *sc)
 		return (ENOMEM);
 	}
 
-    lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 
 	if (xpt_bus_register(sc->sc_sim, sc->sc_unit) != CAM_SUCCESS) {
 		lockmgr(&sc->sc_lock, LK_RELEASE);
@@ -2323,7 +2323,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 					if ((sc->sc_quirks & (NO_INQUIRY_EVPD | NO_INQUIRY)) &&
 					    (sc->sc_transfer.cmd_data[1] & SI_EVPD)) {
 
-#ifdef XXXDF
+#if 0 /* XXXDF */
 						scsi_set_sense_data(&ccb->csio.sense_data,
 							/*sense_format*/ SSD_TYPE_NONE,
 							/*current_error*/ 1,
@@ -2389,12 +2389,10 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 			strlcpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
 			cpi->unit_number = cam_sim_unit(sim);
 			cpi->bus_id = sc->sc_unit;
-//#if (__FreeBSD_version >= 700025)
 			cpi->protocol = PROTO_SCSI;
 			cpi->protocol_version = SCSI_REV_2;
 			cpi->transport = XPORT_USB;
 			cpi->transport_version = 0;
-//#endif
 			if (sc == NULL) {
 				cpi->base_transfer_speed = 0;
 				cpi->max_lun = 0;
@@ -2407,9 +2405,9 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 					case USB_SPEED_SUPER:
 						cpi->base_transfer_speed =
 						    UMASS_SUPER_TRANSFER_SPEED;
-                        /* XXX
+#if 0 /* XXX */
 						cpi->maxio = MAXPHYS;
-                        */
+#endif
 						break;
 					case USB_SPEED_HIGH:
 						cpi->base_transfer_speed =
@@ -2610,17 +2608,19 @@ umass_cam_sense_cb(struct umass_softc *sc, union ccb *ccb, uint32_t residue,
 	switch (status) {
 	case STATUS_CMD_OK:
 	case STATUS_CMD_UNKNOWN:
-	case STATUS_CMD_FAILED: {
+	case STATUS_CMD_FAILED:
+	{
 		int error, key, asc, ascq;
 
-		/* XXX
-       ccb->csio.sense_resid = residue;
+#if 0 /* XXX */
+		ccb->csio.sense_resid = residue;
 		sense_len = ccb->csio.sense_len - ccb->csio.sense_resid;
 		key = scsi_get_sense_key(&ccb->csio.sense_data, sense_len,
-					 1);
-        */
-        scsi_extract_sense(&ccb->csio.sense_data, &error, &key, 
-                            &asc, &ascq);
+					 /*show_errors*/ 1);
+#endif
+
+		scsi_extract_sense(&ccb->csio.sense_data, &error, &key, 
+		    &asc, &ascq);
 		if (ccb->csio.ccb_h.flags & CAM_CDB_POINTER) {
 			cmd = (uint8_t *)(ccb->csio.cdb_io.cdb_ptr);
 		} else {

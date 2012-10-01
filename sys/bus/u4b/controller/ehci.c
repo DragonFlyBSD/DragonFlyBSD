@@ -43,9 +43,6 @@
  * 1) command failures are not recovered correctly
  */
 
-#include <sys/cdefs.h>
-//__FBSDID("$FreeBSD$");
-
 #include <sys/stdint.h>
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -1405,6 +1402,7 @@ static void
 ehci_pcd_enable(ehci_softc_t *sc)
 {
 	USB_BUS_LOCK_ASSERT(&sc->sc_bus);
+
 	sc->sc_eintrs |= EHCI_STS_PCD;
 	EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
 

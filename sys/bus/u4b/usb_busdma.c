@@ -1,4 +1,4 @@
-/* $fREEbSD$ */
+/* $FreeBSD$ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -62,7 +62,9 @@
 #if USB_HAVE_BUSDMA
 static void	usb_dma_tag_create(struct usb_dma_tag *, usb_size_t, usb_size_t);
 static void	usb_dma_tag_destroy(struct usb_dma_tag *);
-//static void	usb_dma_lock_cb(void *); //, bus_dma_lock_op_t);
+#if 0
+static void	usb_dma_lock_cb(void *, bus_dma_lock_op_t);
+#endif
 static void	usb_pc_alloc_mem_cb(void *, bus_dma_segment_t *, int, int);
 static void	usb_pc_load_mem_cb(void *, bus_dma_segment_t *, int, int);
 static void	usb_pc_common_mem_cb(void *, bus_dma_segment_t *, int, int,
@@ -336,11 +338,13 @@ usbd_frame_zero(struct usb_page_cache *cache, usb_frlength_t offset,
 /*------------------------------------------------------------------------*
  *	usb_dma_lock_cb - dummy callback
  *------------------------------------------------------------------------*/
-// static void
-//usb_dma_lock_cb(void *arg) // , bus_dma_lock_op_t op)
-//{
-//	/* we use "mtx_owned()" instead of this function */
-//}
+#if 0
+static void
+usb_dma_lock_cb(void *arg, bus_dma_lock_op_t op)
+{
+	/* we use "mtx_owned()" instead of this function */
+}
+#endif
 
 /*------------------------------------------------------------------------*
  *	usb_dma_tag_create - allocate a DMA tag
@@ -607,8 +611,7 @@ usb_pc_load_mem(struct usb_page_cache *pc, usb_size_t size, uint8_t sync)
 	pc->page_offset_end = size;
 	pc->ismultiseg = 1;
 
-	// mtx_assert(pc->tag_parent->mtx, MA_OWNED);
-    KKASSERT(lockstatus(pc->tag_parent->lock, curthread) != 0);
+	KKASSERT(lockstatus(pc->tag_parent->lock, curthread) != 0);
 
 	if (size > 0) {
 		if (sync) {
@@ -866,7 +869,7 @@ usb_bdma_work_loop(struct usb_xfer_queue *pq)
 	xfer = pq->curr;
 	info = xfer->xroot;
 
-    KKASSERT(lockstatus(info->xfer_lock, curthread) != 0);
+	KKASSERT(lockstatus(info->xfer_lock, curthread) != 0);
 
 	if (xfer->error) {
 		/* some error happened */
@@ -990,8 +993,7 @@ usb_bdma_done_event(struct usb_dma_parent_tag *udpt)
 
 	info = USB_DMATAG_TO_XROOT(udpt);
 
-	// mtx_assert(info->xfer_mtx, MA_OWNED);
-    KKASSERT(lockstatus(info->xfer_lock, curthread) != 0);
+	KKASSERT(lockstatus(info->xfer_lock, curthread) != 0);
 
 	/* copy error */
 	info->dma_error = udpt->dma_error;

@@ -28,7 +28,6 @@
 #define	_USB_DEV_H_
 
 #include <sys/file.h>
-//#include <sys/selinfo.h>
 #include <sys/poll.h>
 #include <sys/signalvar.h>
 #include <sys/proc.h>
@@ -102,7 +101,7 @@ struct usb_fs_privdata {
 struct usb_fifo {
 	struct usb_ifqueue free_q;
 	struct usb_ifqueue used_q;
-#ifdef XXXDF
+#if 0 /* XXXDF */
 	struct selinfo selinfo;
 #endif
 	struct cv cv_io;
@@ -143,7 +142,7 @@ struct usb_fifo {
 #define	USB_FIFO_REF_MAX 0xFF
 };
 
-extern struct dev_ops usb_devsw;
+extern struct dev_ops usb_ops;
 
 int	usb_fifo_wait(struct usb_fifo *fifo);
 void	usb_fifo_signal(struct usb_fifo *fifo);

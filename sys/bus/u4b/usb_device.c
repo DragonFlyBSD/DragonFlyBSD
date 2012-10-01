@@ -681,6 +681,7 @@ usb_config_parse(struct usb_device *udev, uint8_t iface_index, uint8_t cmd)
 
 	if (cmd == USB_CFG_INIT) {
 		KKASSERT(lockstatus(&udev->enum_lock, curthread) == LK_EXCLUSIVE);
+
 		/* check for in-use endpoints */
 
 		ep = udev->endpoints;
@@ -1099,9 +1100,9 @@ usb_detach_device(struct usb_device *udev, uint8_t iface_index,
 	}
 	DPRINTFN(4, "udev=%p\n", udev);
 
-	/*
-     *  sx_assert(&udev->enum_sx, SA_LOCKED);
-     */
+#if 0
+	sx_assert(&udev->enum_sx, SA_LOCKED);
+#endif
 
 	/*
 	 * First detach the child to give the child's detach routine a
@@ -1425,9 +1426,9 @@ usb_suspend_resume(struct usb_device *udev, uint8_t do_suspend)
 	}
 	DPRINTFN(4, "udev=%p do_suspend=%d\n", udev, do_suspend);
 
-	/*
-     *  sx_assert(&udev->sr_sx, SA_LOCKED);
-    */
+#if 0
+	sx_assert(&udev->sr_sx, SA_LOCKED);
+#endif
 
 	USB_BUS_LOCK(udev->bus);
 	/* filter the suspend events */
@@ -1537,16 +1538,19 @@ usb_alloc_device(device_t parent_dev, struct usb_bus *bus,
 	if (udev == NULL) {
 		return (NULL);
 	}
+#if 0
 	/* initialise our SX-lock */
-	/* sx_init_flags(&udev->ctrl_sx, "USB device SX lock", SX_DUPOK); */
-    lockinit(&udev->ctrl_lock, "USB device SX lock", 0, 0);
+	sx_init_flags(&udev->ctrl_sx, "USB device SX lock", SX_DUPOK);
+#endif
+	lockinit(&udev->ctrl_lock, "USB device SX lock", 0, 0);
 
+#if 0
 	/* initialise our SX-lock */
-	/* sx_init_flags(&udev->enum_sx, "USB config SX lock", SX_DUPOK);
+	sx_init_flags(&udev->enum_sx, "USB config SX lock", SX_DUPOK);
 	sx_init_flags(&udev->sr_sx, "USB suspend and resume SX lock", SX_NOWITNESS);
-    */
-    lockinit(&udev->enum_lock, "USB config SX lock", 0, 0);
-    lockinit(&udev->sr_lock, "USB suspend and resume SX lock", 0, 0);
+#endif
+	lockinit(&udev->enum_lock, "USB config SX lock", 0, 0);
+	lockinit(&udev->sr_lock, "USB suspend and resume SX lock", 0, 0);
 
 	cv_init(&udev->ctrlreq_cv, "WCTRL");
 	cv_init(&udev->ref_cv, "UGONE");
@@ -1928,7 +1932,7 @@ usb_make_dev(struct usb_device *udev, const char *devname, int ep,
 		    pd->bus_index, pd->dev_index, pd->ep_addr);
 	}
 
-	pd->cdev = make_dev(&usb_devsw, 0, uid, gid, mode, "%s", devname);
+	pd->cdev = make_dev(&usb_ops, 0, uid, gid, mode, "%s", devname);
 
 	if (pd->cdev == NULL) {
 		DPRINTFN(0, "Failed to create device %s\n", devname);
@@ -2440,9 +2444,11 @@ usbd_get_device_index(struct usb_device *udev)
 static void
 usb_notify_addq(const char *type, struct usb_device *udev)
 {
+#if 0
 	struct usb_interface *iface;
-	struct sbuf *sb;
 	int i;
+#endif
+	struct sbuf *sb;
 
 	/* announce the device */
 	sb = sbuf_new(NULL, NULL, 4096, SBUF_AUTOEXTEND);
@@ -2485,17 +2491,17 @@ usb_notify_addq(const char *type, struct usb_device *udev)
 	devctl_notify("USB", "DEVICE", type, sbuf_data(sb));
 	sbuf_delete(sb);
 
+#if 0
 	/* announce each interface */
 	for (i = 0; i < USB_IFACE_MAX; i++) {
-        break;
-        iface = usbd_get_iface(udev, i);
+		iface = usbd_get_iface(udev, i);
 		if (iface == NULL)
 			break;		/* end of interfaces */
 		if (iface->idesc == NULL)
 			continue;	/* no interface descriptor */
 		
-        sb = 0;
-        sb = sbuf_new(NULL, NULL, 4096, SBUF_AUTOEXTEND);
+		sb = 0;
+		sb = sbuf_new(NULL, NULL, 4096, SBUF_AUTOEXTEND);
 		sbuf_printf(sb,
 #if USB_HAVE_UGEN
 		    "ugen=%s "
@@ -2533,6 +2539,7 @@ usb_notify_addq(const char *type, struct usb_device *udev)
 		devctl_notify("USB", "INTERFACE", type, sbuf_data(sb));
 		sbuf_delete(sb);
 	}
+#endif
 }
 #endif
 
@@ -2648,14 +2655,16 @@ usbd_device_attached(struct usb_device *udev)
 void
 usbd_enum_lock(struct usb_device *udev)
 {
-    lockmgr(&udev->enum_lock, LK_EXCLUSIVE);
-    lockmgr(&udev->sr_lock, LK_EXCLUSIVE);
+	lockmgr(&udev->enum_lock, LK_EXCLUSIVE);
+	lockmgr(&udev->sr_lock, LK_EXCLUSIVE);
 	/* 
 	 * NEWBUS LOCK NOTE: We should check if any parent SX locks
 	 * are locked before locking Giant. Else the lock can be
 	 * locked multiple times.
 	 */
-	/* mtx_lock(&Giant); */
+#if 0
+	mtx_lock(&Giant);
+#endif
 }
 
 /* The following function unlocks enumerating the given USB device. */
@@ -2663,11 +2672,11 @@ usbd_enum_lock(struct usb_device *udev)
 void
 usbd_enum_unlock(struct usb_device *udev)
 {
-	/* mtx_unlock(&Giant); */
-	/* sx_xunlock(&udev->enum_sx);
-	sx_xunlock(&udev->sr_sx); */
-    lockmgr(&udev->enum_lock, LK_RELEASE);
-    lockmgr(&udev->sr_lock, LK_RELEASE);
+#if 0
+	mtx_unlock(&Giant);
+#endif
+	lockmgr(&udev->enum_lock, LK_RELEASE);
+	lockmgr(&udev->sr_lock, LK_RELEASE);
 }
 
 /* The following function locks suspend and resume. */
@@ -2675,13 +2684,15 @@ usbd_enum_unlock(struct usb_device *udev)
 void
 usbd_sr_lock(struct usb_device *udev)
 {
-    lockmgr(&udev->sr_lock, LK_EXCLUSIVE);
+	lockmgr(&udev->sr_lock, LK_EXCLUSIVE);
 	/* 
 	 * NEWBUS LOCK NOTE: We should check if any parent SX locks
 	 * are locked before locking Giant. Else the lock can be
 	 * locked multiple times.
 	 */
-	/* mtx_lock(&Giant); */
+#if 0
+	mtx_lock(&Giant);
+#endif
 }
 
 /* The following function unlocks suspend and resume. */
@@ -2689,9 +2700,10 @@ usbd_sr_lock(struct usb_device *udev)
 void
 usbd_sr_unlock(struct usb_device *udev)
 {
-/* 	mtx_unlock(&Giant);*/
-/*	sx_xunlock(&udev->sr_sx);*/
-    lockmgr(&udev->sr_lock, LK_RELEASE);
+#if 0
+	mtx_unlock(&Giant);
+#endif
+	lockmgr(&udev->sr_lock, LK_RELEASE);
 }
 
 /*
@@ -2702,7 +2714,7 @@ usbd_sr_unlock(struct usb_device *udev)
 uint8_t
 usbd_enum_is_locked(struct usb_device *udev)
 {
-    /* XXX: Make sure that we return a correct value here */
+	/* XXX: Make sure that we return a correct value here */
 	return (lockstatus(&udev->enum_lock, curthread) == LK_EXCLUSIVE);
 }
 

@@ -541,7 +541,6 @@ bbb_attach(struct usb_device *udev, uint8_t iface_index)
 
 	sc = kmalloc(sizeof(*sc), M_USB, M_WAITOK | M_ZERO);
 	lockinit(&sc->lock, "USB autoinstall", 0, 0);
-
 	cv_init(&sc->cv, "WBBB");
 
 	err = usbd_transfer_setup(udev, &iface_index, sc->xfer, bbb_config,

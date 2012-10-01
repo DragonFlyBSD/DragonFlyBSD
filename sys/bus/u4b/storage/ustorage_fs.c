@@ -386,7 +386,8 @@ ustorage_fs_attach(device_t dev)
 
 	device_set_usb_desc(dev);
 
-    lockinit(&sc->sc_lock, "USTORAGE_FS lock", 0, LK_CANRECURSE);
+	lockinit(&sc->sc_lock, "USTORAGE_FS lock", 0, LK_CANRECURSE);
+
 	/* get interface index */
 
 	id = usbd_get_interface_descriptor(uaa->iface);
@@ -407,9 +408,9 @@ ustorage_fs_attach(device_t dev)
 	}
 	/* start Mass Storage State Machine */
 
-    lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	ustorage_fs_transfer_start(sc, USTORAGE_FS_T_BBB_COMMAND);
-    lockmgr(&sc->sc_lock, LK_RELEASE);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	return (0);			/* success */
 
@@ -463,9 +464,9 @@ static void
 ustorage_fs_transfer_stop(struct ustorage_fs_softc *sc)
 {
 	usbd_transfer_stop(sc->sc_xfer[sc->sc_last_xfer_index]);
-    lockmgr(&sc->sc_lock, LK_RELEASE);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 	usbd_transfer_drain(sc->sc_xfer[sc->sc_last_xfer_index]);
-    lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 }
 
 static int
@@ -481,12 +482,12 @@ ustorage_fs_handle_request(device_t dev,
 		if ((req->bmRequestType == UT_WRITE_CLASS_INTERFACE) &&
 		    (req->bRequest == UR_BBB_RESET)) {
 			*plen = 0;
-            lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
+			lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 			ustorage_fs_transfer_stop(sc);
 			sc->sc_transfer.data_error = 1;
 			ustorage_fs_transfer_start(sc,
 			    USTORAGE_FS_T_BBB_COMMAND);
-            lockmgr(&sc->sc_lock, LK_RELEASE);
+			lockmgr(&sc->sc_lock, LK_RELEASE);
 			return (0);
 		} else if ((req->bmRequestType == UT_READ_CLASS_INTERFACE) &&
 			   (req->bRequest == UR_BBB_GET_MAX_LUN)) {

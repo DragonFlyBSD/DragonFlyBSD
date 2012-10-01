@@ -23,8 +23,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-
 #include <sys/stdint.h>
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -72,7 +70,7 @@ static device_method_t xhci_device_methods[] = {
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
 	DEVMETHOD(usb_take_controller, xhci_pci_take_controller),
 
-    { 0, 0 }
+	{ 0, 0 }
 };
 
 static driver_t xhci_driver = {
@@ -193,10 +191,11 @@ xhci_pci_detach(device_t self)
 		device_detach(bdev);
 		device_delete_child(self, bdev);
 	}
+#if 0 /* XXX */
 	/* during module unload there are lots of children leftover */
-    /* XXX
 	device_delete_children(self);
-    */
+#endif
+
 	pci_disable_busmaster(self);
 
 	if (sc->sc_irq_res && sc->sc_intr_hdl) {
