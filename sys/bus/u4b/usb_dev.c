@@ -127,23 +127,21 @@ static usb_fifo_ioctl_t usb_fifo_dummy_ioctl;
 static usb_fifo_cmd_t usb_fifo_dummy_cmd;
 
 /* character device structure used for devices (/dev/ugenX.Y and /dev/uXXX) */
-struct dev_ops usb_devsw = {
-/*	.d_version = D_VERSION, */
-    { "usbdev", 0, D_MEM },
+struct dev_ops usb_ops = {
+	{ "usbdev", 0, D_MEM },
 	.d_open = usb_open,
-    .d_close = usb_close,
-    .d_ioctl = usb_ioctl,
+	.d_close = usb_close,
+	.d_ioctl = usb_ioctl,
 	.d_read = usb_read,
 	.d_write = usb_write,
-    .d_kqfilter = usb_kqfilter
+	.d_kqfilter = usb_kqfilter
 };
 
 static struct cdev* usb_dev = NULL;
 
 /* character device structure used for /bus/u4b */
-static struct dev_ops usb_static_devsw = {
-    { "usb", 0, D_MEM },
-/*	.d_version = D_VERSION, */
+static struct dev_ops usb_static_ops = {
+	{ "usb", 0, D_MEM },
 	.d_ioctl = usb_static_ioctl,
 };
 
@@ -190,7 +188,7 @@ usb_ref_device(struct usb_cdev_privdata *cpd,
 	/* clear all refs */
 	memset(crd, 0, sizeof(*crd));
 
-    lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 	cpd->bus = devclass_get_softc(usb_devclass_ptr, cpd->bus_index);
 	if (cpd->bus == NULL) {
 		DPRINTFN(2, "no bus at %u\n", cpd->bus_index);
@@ -217,7 +215,7 @@ usb_ref_device(struct usb_cdev_privdata *cpd,
 		 */
 		usbd_enum_lock(cpd->udev);
 
-        lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+		lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 
 		/* 
 		 * Set "is_uref" after grabbing the default SX lock
@@ -271,7 +269,7 @@ usb_ref_device(struct usb_cdev_privdata *cpd,
 		DPRINTFN(2, "ref read\n");
 		crd->rxfifo->refcount++;
 	}
-    lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 
 	return (0);
 
@@ -283,7 +281,7 @@ error:
 			cv_signal(&cpd->udev->ref_cv);
 		}
 	}
-    lockmgr(&usb_ref_lock, LK_RELEASE);
+	lockmgr(&usb_ref_lock, LK_RELEASE);
 	DPRINTFN(2, "fail\n");
 	return (USB_ERR_INVAL);
 }
@@ -333,7 +331,7 @@ usb_unref_device(struct usb_cdev_privdata *cpd,
 	if (crd->is_uref)
 		usbd_enum_unlock(cpd->udev);
 
-    lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 	if (crd->is_read) {
 		if (--(crd->rxfifo->refcount) == 0) {
 			cv_signal(&crd->rxfifo->cv_drain);
@@ -352,7 +350,7 @@ usb_unref_device(struct usb_cdev_privdata *cpd,
 		}
 		crd->is_uref = 0;
 	}
-    lockmgr(&usb_ref_lock, LK_RELEASE);
+	lockmgr(&usb_ref_lock, LK_RELEASE);
 }
 
 static struct usb_fifo *
@@ -501,7 +499,7 @@ usb_fifo_create(struct usb_cdev_privdata *cpd,
 		f->methods = &usb_ugen_methods;
 		f->iface_index = ep->iface_index;
 		f->udev = udev;
-        lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+		lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 		udev->fifo[n + USB_FIFO_TX] = f;
 		lockmgr(&usb_ref_lock, LK_RELEASE);
 	}
@@ -563,7 +561,7 @@ usb_fifo_free(struct usb_fifo *f)
 			f->symlink[n] = NULL;
 		}
 	}
-    lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 
 	/* delink ourselves to stop calls from userland */
 	if ((f->fifo_index < USB_FIFO_MAX) &&
@@ -580,20 +578,20 @@ usb_fifo_free(struct usb_fifo *f)
 	f->flag_iserror = 1;
 	/* need to wait until all callers have exited */
 	while (f->refcount != 0) {
-        lockmgr(&usb_ref_lock, LK_RELEASE); /* avoid LOR */
-        lockmgr(f->priv_lock, LK_EXCLUSIVE);
+		lockmgr(&usb_ref_lock, LK_RELEASE);	/* avoid LOR */
+		lockmgr(f->priv_lock, LK_EXCLUSIVE);
 		/* get I/O thread out of any sleep state */
 		if (f->flag_sleeping) {
 			f->flag_sleeping = 0;
 			cv_broadcast(&f->cv_io);
 		}
-        lockmgr(f->priv_lock, LK_RELEASE);
-        lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+		lockmgr(f->priv_lock, LK_RELEASE);
+		lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 
 		/* wait for sync */
 		cv_wait(&f->cv_drain, &usb_ref_lock);
 	}
-    lockmgr(&usb_ref_lock, LK_RELEASE);
+	lockmgr(&usb_ref_lock, LK_RELEASE);
 
 	/* take care of closing the device here, if any */
 	usb_fifo_close(f, 0);
@@ -759,7 +757,7 @@ usb_fifo_close(struct usb_fifo *f, int fflags)
 
 	/* check if we are selected */
 	if (f->flag_isselect) {
-#ifdef XXXDF
+#if 0 /* XXXDF */
 		selwakeup(&f->selinfo);
 #endif
 		f->flag_isselect = 0;
@@ -767,7 +765,7 @@ usb_fifo_close(struct usb_fifo *f, int fflags)
 	/* check if a thread wants SIGIO */
 	if (f->async_p != NULL && lwkt_trytoken(&f->async_p->p_token)) {
 		ksignal(f->async_p, SIGIO);
-        lwkt_reltoken(&f->async_p->p_token);
+		lwkt_reltoken(&f->async_p->p_token);
 		f->async_p = NULL;
 	}
 	/* remove FWRITE and FREAD flags */
@@ -834,11 +832,9 @@ usb_fifo_close(struct usb_fifo *f, int fflags)
  *------------------------------------------------------------------------*/
 static int
 usb_open(struct dev_open_args *ap)
-/*struct cdev *dev, int fflags, int devtype, struct thread *td)
-*/
 {
-    struct cdev *dev = ap->a_head.a_dev;
-    int fflags = ap->a_oflags;
+	struct cdev *dev = ap->a_head.a_dev;
+	int fflags = ap->a_oflags;
 	struct usb_fs_privdata* pd = (struct usb_fs_privdata*)dev->si_drv1;
 	struct usb_cdev_refdata refs;
 	struct usb_cdev_privdata *cpd;
@@ -896,10 +892,10 @@ usb_open(struct dev_open_args *ap)
 		}
 	}
 	usb_unref_device(cpd, &refs);
-    /* XXX: markusp: which privs? 
+#if 0 /* XXX: markusp: which privs? */
 	devfs_set_cdevpriv(cpd, usb_close);
-    */
-    /* XXX: This might not work as I expect! */
+#endif
+	/* XXX: This might not work as I expect! */
 	dev->si_drv2 = (void *)cpd;
 	return (0);
 }
@@ -910,7 +906,7 @@ usb_open(struct dev_open_args *ap)
 static int
 usb_close(struct dev_close_args *ap)
 {
-    struct cdev *dev = ap->a_head.a_dev;
+	struct cdev *dev = ap->a_head.a_dev;
 	struct usb_cdev_refdata refs;
 	struct usb_cdev_privdata *cpd = (struct usb_cdev_privdata *)dev->si_drv2;
 	int err;
@@ -944,14 +940,14 @@ usb_close(struct dev_close_args *ap)
 	usb_unref_device(cpd, &refs);
 done:
 	kfree(cpd, M_USBDEV);
-    return 0;
+	return 0;
 }
 
 static void
 usb_dev_init(void *arg)
 {
 	lockinit(&usb_ref_lock, "USB ref mutex", 0, 0);
-    lockinit(&usb_sym_lock, "USB sym mutex", 0, 0);
+	lockinit(&usb_sym_lock, "USB sym mutex", 0, 0);
 	TAILQ_INIT(&usb_sym_head);
 
 	/* check the UGEN methods */
@@ -965,10 +961,10 @@ static void
 usb_dev_init_post(void *arg)
 {
 	/*
-	 * Create /bus/u4b - this is needed for usbconfig(8), which
+	 * Create /dev/usb - this is needed for usbconfig(8), which
 	 * needs a well-known device name to access.
 	 */
-	usb_dev = make_dev(&usb_static_devsw, 0, UID_ROOT, GID_OPERATOR,
+	usb_dev = make_dev(&usb_static_ops, 0, UID_ROOT, GID_OPERATOR,
 	    0644, USB_DEVICE_NAME);
 	if (usb_dev == NULL) {
 		DPRINTFN(0, "Could not create usb bus device\n");
@@ -991,7 +987,8 @@ usb_dev_uninit(void *arg)
 SYSUNINIT(usb_dev_uninit, SI_SUB_KICK_SCHEDULER, SI_ORDER_ANY, usb_dev_uninit, NULL);
 
 static int
-usb_ioctl_f_sub(struct usb_fifo *f, u_long cmd, void *addr, struct thread *td)
+usb_ioctl_f_sub(struct usb_fifo *f, u_long cmd, void *addr,
+    struct thread *td)
 {
 	int error = 0;
 
@@ -1039,14 +1036,12 @@ usb_ioctl_f_sub(struct usb_fifo *f, u_long cmd, void *addr, struct thread *td)
  *------------------------------------------------------------------------*/
 static int
 usb_ioctl(struct dev_ioctl_args *ap)
-/*usb_ioctl(struct cdev *dev, u_long cmd, caddr_t addr, int fflag, struct thread* td)
-*/
 {
-    struct cdev *dev = ap->a_head.a_dev;
-    u_long cmd = ap->a_cmd;
-    caddr_t addr = ap->a_data;
-    /* XXX: What is this thread and where is it supposed to come from */
-    struct thread *td = curthread;
+	struct cdev *dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t addr = ap->a_data;
+	/* XXX: What is this thread and where is it supposed to come from */
+	struct thread *td = curthread;
 	struct usb_cdev_refdata refs;
 	struct usb_cdev_privdata* cpd;
 	struct usb_fifo *f;
@@ -1055,18 +1050,21 @@ usb_ioctl(struct dev_ioctl_args *ap)
 
 	DPRINTFN(2, "cmd=0x%lx\n", cmd);
 
-    /* XXX: cdev?
+#if 0 /* XXX: cdev? */
 	err = devfs_get_cdevpriv((void **)&cpd);
 	if (err != 0)
 		return (err);
-    */
-    /* XXX: This might not work as I would like it to
-     * also I need a proper return value if it does */
-    if(dev->si_drv2 == NULL)
-        return(-1);
-    
-    cpd = (struct usb_cdev_privdata *)dev->si_drv2;
-    
+#endif
+
+	/*
+	 * XXX: This might not work as I would like it to
+	 * also I need a proper return value if it does
+	 */
+	if(dev->si_drv2 == NULL)
+		return(-1);
+
+	cpd = (struct usb_cdev_privdata *)dev->si_drv2;
+
 	/* 
 	 * Performance optimisation: We try to check for IOCTL's that
 	 * don't need the USB reference first. Then we grab the USB
@@ -1134,21 +1132,18 @@ done:
 	return (err);
 }
 
-
 static int
 usb_kqfilter(struct dev_kqfilter_args *ap)
 {
-    usb_close(NULL);
-    return 0;
+	usb_close(NULL);
+	return 0;
 }
 
-/* XXX implement using kqfilter */
-#if XXXDF
+#if 0 /* XXX implement using kqfilter */
 /* ARGSUSED */
 static int
 usb_poll(struct cdev* dev, int events, struct thread* td)
 {
-
 	struct usb_cdev_refdata refs;
 	struct usb_cdev_privdata* cpd;
 	struct usb_fifo *f;
@@ -1251,13 +1246,13 @@ usb_poll(struct cdev* dev, int events, struct thread* td)
 	return (revents);
 }
 #endif
+
 static int
-/*usb_read(struct cdev *dev, struct uio *uio, int ioflag)*/
 usb_read(struct dev_read_args *ap)
 {
-    struct cdev *dev = ap->a_head.a_dev;
-    struct uio *uio = ap->a_uio;
-    int ioflag = ap->a_ioflag;
+	struct cdev *dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
+	int ioflag = ap->a_ioflag;
 	struct usb_cdev_refdata refs;
 	struct usb_cdev_privdata* cpd;
 	struct usb_fifo *f;
@@ -1268,16 +1263,16 @@ usb_read(struct dev_read_args *ap)
 	int err;
 	uint8_t tr_data = 0;
 
-    /*
+#if 0
 	err = devfs_get_cdevpriv((void **)&cpd);
 	if (err != 0)
 		return (err);
-    */
+#endif
 
-    if(dev->si_drv2 == NULL)
-        return(-1);
+	if(dev->si_drv2 == NULL)
+		return(-1);
     
-    cpd = (struct usb_cdev_privdata *)dev->si_drv2;
+	cpd = (struct usb_cdev_privdata *)dev->si_drv2;
   
 	err = usb_ref_device(cpd, &refs, 0 /* no uref */ );
 	if (err) {
@@ -1386,12 +1381,11 @@ done:
 }
 
 static int
-/* usb_write(struct cdev *dev, struct uio *uio, int ioflag) */
 usb_write(struct dev_write_args *ap)
 {
-    struct cdev *dev = ap->a_head.a_dev;
-    struct uio *uio = ap->a_uio;
-    int ioflag = ap->a_ioflag;
+	struct cdev *dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
+	int ioflag = ap->a_ioflag;
 	struct usb_cdev_refdata refs;
 	struct usb_cdev_privdata* cpd;
 	struct usb_fifo *f;
@@ -1405,15 +1399,16 @@ usb_write(struct dev_write_args *ap)
 
 	DPRINTFN(2, "\n");
 
-#ifdef XXXDF
+#if 0 /* XXXDF */
 	err = devfs_get_cdevpriv((void **)&cpd);
 	if (err != 0)
 		return (err);
 #endif
-    if(dev->si_drv2 == NULL)
-        return(-1);
+
+	if(dev->si_drv2 == NULL)
+		return(-1);
     
-    cpd = (struct usb_cdev_privdata *)dev->si_drv2;
+	cpd = (struct usb_cdev_privdata *)dev->si_drv2;
   
 	err = usb_ref_device(cpd, &refs, 0 /* no uref */ );
 	if (err) {
@@ -1538,18 +1533,15 @@ done:
 
 int
 usb_static_ioctl(struct dev_ioctl_args *ap)
-/*
-usb_static_ioctl(struct cdev *dev, u_long cmd, caddr_t data, int fflag,
-    struct thread *td)
-*/
 {
-    u_long cmd = ap->a_cmd;
-    caddr_t data = ap->a_data;
-    /* XXX: what is this thread descriptor and where is it
-     * supposed to come  from? 
-     */
-    struct thread *td = NULL;
-    int fflag = ap->a_fflag;
+	u_long cmd = ap->a_cmd;
+	caddr_t data = ap->a_data;
+	/*
+	 * XXX: what is this thread descriptor and where is it
+	 * supposed to come from? 
+	 */
+	struct thread *td = NULL;
+	int fflag = ap->a_fflag;
 	union {
 		struct usb_read_dir *urd;
 		void* data;
@@ -1641,14 +1633,14 @@ usb_fifo_wakeup(struct usb_fifo *f)
 	usb_fifo_signal(f);
 
 	if (f->flag_isselect) {
-#ifdef XXXDF
+#if 0 /* XXXDF */
 		selwakeup(&f->selinfo);
 #endif
 		f->flag_isselect = 0;
 	}
 	if (f->async_p != NULL && lwkt_trytoken(&f->async_p->p_token)) {
 		ksignal(f->async_p, SIGIO);
-        lwkt_reltoken(&f->async_p->p_token);
+		lwkt_reltoken(&f->async_p->p_token);
 	}
 }
 

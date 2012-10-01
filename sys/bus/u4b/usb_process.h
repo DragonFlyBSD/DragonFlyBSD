@@ -30,12 +30,10 @@
 #include <sys/interrupt.h>
 #include <sys/signalvar.h>
 #include <sys/thread.h>
-//#include <sys/priority.h>
-//#include <sys/runq.h>
 
 /* defines */
 #define	USB_PRI_HIGH	TDPRI_INT_HIGH
-#define	USB_PRI_MED TDPRI_INT_MED
+#define	USB_PRI_MED	TDPRI_INT_MED
 
 #define	USB_PROC_WAIT_TIMEOUT 2
 #define	USB_PROC_WAIT_DRAIN   1

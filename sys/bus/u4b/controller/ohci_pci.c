@@ -28,8 +28,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-
 /*
  * USB Open Host Controller driver.
  *
@@ -290,7 +288,6 @@ ohci_pci_attach(device_t self)
 
 	err = bus_setup_intr(self, sc->sc_irq_res, INTR_MPSAFE,
 	    (driver_intr_t *)ohci_interrupt, sc, &sc->sc_intr_hdl, NULL);
-
 	if (err) {
 		device_printf(self, "Could not setup irq, %d\n", err);
 		sc->sc_intr_hdl = NULL;
@@ -322,10 +319,10 @@ ohci_pci_detach(device_t self)
 		device_detach(bdev);
 		device_delete_child(self, bdev);
 	}
-	/* during module unload there are lots of children leftover */
-    /* XXX Implement this
+#if 0 /* XXX Implement this */
+ 	/* during module unload there are lots of children leftover */
 	device_delete_children(self);
-    */
+#endif
 
 	pci_disable_busmaster(self);
 
@@ -368,7 +365,7 @@ static device_method_t ohci_pci_methods[] = {
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
 	DEVMETHOD(usb_take_controller, ohci_pci_take_controller),
 
-    { 0, 0 }
+	{ 0, 0 }
 };
 
 static driver_t ohci_driver = {

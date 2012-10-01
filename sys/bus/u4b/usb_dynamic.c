@@ -111,9 +111,8 @@ usb_quirk_unload(void *arg)
 	/* wait for CPU to exit the loaded functions, if any */
 
 	/* XXX this is a tradeoff */
-    /* XXX tsleep? */
-    tsleep(usb_quirk_unload, 0, "WAIT", hz);
-	/* pause("WAIT", hz); */
+
+	tsleep(usb_quirk_unload, 0, "WAIT", hz);
 }
 
 void
@@ -128,10 +127,8 @@ usb_temp_unload(void *arg)
 	/* wait for CPU to exit the loaded functions, if any */
 
 	/* XXX this is a tradeoff */
-    /* XXX tsleep? */
-	/* pause("WAIT", hz); */
 
-    tsleep(usb_quirk_unload, 0, "WAIT", hz);
+	tsleep(usb_quirk_unload, 0, "WAIT", hz);
 }
 
 void
@@ -145,6 +142,5 @@ usb_bus_unload(void *arg)
 
 	/* XXX this is a tradeoff */
 
-   /* 	pause("WAIT", hz); */
-    tsleep(usb_quirk_unload, 0, "WAIT", hz);
+	tsleep(usb_quirk_unload, 0, "WAIT", hz);
 }

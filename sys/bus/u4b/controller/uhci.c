@@ -25,11 +25,9 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-
 /*
  * USB Universal Host Controller driver.
- * hANDLES e.g. PIIX3 and PIIX4.
+ * Handles e.g. PIIX3 and PIIX4.
  *
  * UHCI spec: http://developer.intel.com/design/USB/UHCI11D.htm
  * USB spec:  http://www.usb.org/developers/docs/usbspec.zip

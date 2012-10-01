@@ -139,8 +139,9 @@ usb_root_mount_rel(struct usb_bus *bus)
 {
 	if (bus->bus_roothold != NULL) {
 		DPRINTF("Releasing root mount hold %p\n", bus->bus_roothold);
-        /* XXX Dragonflybsd seems to not have this? */
-		/*root_mount_rel(bus->bus_roothold);*/
+#if 0 /* XXX Dragonflybsd seems to not have this? */
+		root_mount_rel(bus->bus_roothold);
+#endif
 		bus->bus_roothold = NULL;
 	}
 }
@@ -160,13 +161,12 @@ usb_attach(device_t dev)
 		return (ENXIO);
 	}
 
+#if 0 /* XXX: Dragonfly does not seem to have this mechanism? */
 	if (usb_no_boot_wait == 0) {
 		/* delay vfs_mountroot until the bus is explored */
-        /* XXX: Dragonfly does not seem to have this mechanism? */
-        /*
 		bus->bus_roothold = root_mount_hold(device_get_nameunit(dev));
-        */
 	}
+#endif
 
 	usb_attach_sub(dev, bus);
 
@@ -192,7 +192,7 @@ usb_detach(device_t dev)
 
 	/* Let the USB explore process detach all devices. */
 	usb_root_mount_rel(bus);
-    
+
 	USB_BUS_LOCK(bus);
 
 	/* Queue detach job */
@@ -792,11 +792,7 @@ usb_bus_mem_alloc_all(struct usb_bus *bus, bus_dma_tag_t dmat,
     usb_bus_mem_cb_t *cb)
 {
 	bus->alloc_failed = 0;
-    /* XXX: Type mismatch, device_get_nameunit gives
-     * const char*, lockinit wants char *
-     */
-    const char *pname = device_get_nameunit(bus->parent);
-    kprintf("usb_bus_mem_alloc_all %s\n", pname);
+
 	lockinit(&bus->bus_lock, "USB bus mem", 0, LK_CANRECURSE);
 
 	usb_callout_init_mtx(&bus->power_wdog,
@@ -851,5 +847,5 @@ usb_bus_mem_free_all(struct usb_bus *bus, usb_bus_mem_cb_t *cb)
 	usb_dma_tag_unsetup(bus->dma_parent_tag);
 #endif
 
-    lockuninit(&bus->bus_lock);
+	lockuninit(&bus->bus_lock);
 }

@@ -38,8 +38,6 @@
  * way we avoid too much diveration among USB drivers.
  */
 
-#include <sys/cdefs.h>
-
 #include <sys/stdint.h>
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -514,7 +512,7 @@ xhci_init(struct xhci_softc *sc, device_t self)
 
 	/* setup command queue mutex and condition varible */
 	cv_init(&sc->sc_cmd_cv, "CMDQ");
-    lockinit(&sc->sc_cmd_lock, "CMDQ lock", 0, 0);
+	lockinit(&sc->sc_cmd_lock, "CMDQ lock", 0, 0);
 
 	/* get all DMA memory */
 	if (usb_bus_mem_alloc_all(&sc->sc_bus,

@@ -38,7 +38,6 @@
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-//#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
@@ -453,12 +452,12 @@ usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 	if (flags & USB_USER_DATA_PTR)
 		return (USB_ERR_INVAL);
 #endif
-    /*
+#if 0
 	if ((mtx != NULL) && (mtx != &Giant)) {
-    */
-    if (lock != NULL) {
+#endif
+	if (lock != NULL) {
 		lockmgr(lock, LK_RELEASE);
-        KKASSERT(lockstatus(lock, curthread) == 0);
+		KKASSERT(lockstatus(lock, curthread) == 0);
 	}
 
 	/*
@@ -472,7 +471,7 @@ usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 	 * Grab the default sx-lock so that serialisation
 	 * is achieved when multiple threads are involved:
 	 */
-    lockmgr(&udev->ctrl_lock, LK_EXCLUSIVE);
+	lockmgr(&udev->ctrl_lock, LK_EXCLUSIVE);
 
 	hr_func = usbd_get_hr_func(udev);
 
@@ -716,15 +715,15 @@ usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 	USB_XFER_UNLOCK(xfer);
 
 done:
-    lockmgr(&udev->ctrl_lock, LK_RELEASE);
+	lockmgr(&udev->ctrl_lock, LK_RELEASE);
 
 	if (enum_locked)
 		usbd_sr_lock(udev);
 
-/*
+#if 0
 	if ((mtx != NULL) && (mtx != &Giant))
-*/
-    if (lock != NULL)
+#endif
+	if (lock != NULL)
 		lockmgr(lock, LK_EXCLUSIVE);
 
 	return ((usb_error_t)err);

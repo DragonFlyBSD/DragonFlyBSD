@@ -54,7 +54,6 @@
 #include <sys/kthread.h>
 #include <sys/sched.h>
 
-
 static int usb_pcount;
 #define	USB_THREAD_CREATE(f, s, p, ...) \
 		kthread_create((f), (s), (p), __VA_ARGS__)
@@ -84,14 +83,14 @@ usb_process(void *arg)
 	struct usb_proc_msg *pm;
 	struct thread *td;
 
+#if 0 /* XXX Suspend here? */
 	/* in case of attach error, check for suspended */
-	/* XXX Suspend here?
-    *  USB_THREAD_SUSPEND_CHECK();
-    */
+	USB_THREAD_SUSPEND_CHECK();
+#endif
 
 	/* adjust priority */
-    td = curthread;
-    lwkt_setpri(td, up->up_prio);
+	td = curthread;
+	lwkt_setpri(td, up->up_prio);
 	lockmgr(up->up_lock, LK_EXCLUSIVE);
 
 	up->up_curtd = td;
@@ -173,11 +172,12 @@ usb_process(void *arg)
 	up->up_ptr = NULL;
 	cv_signal(&up->up_cv);
 	lockmgr(up->up_lock, LK_RELEASE);
+#if 0
 	/* Clear the proc pointer if this is the last thread. */
-/*
 	if (--usb_pcount == 0)
 		usbproc = NULL;
-*/
+#endif
+
 	USB_THREAD_EXIT(0);
 }
 
@@ -198,8 +198,6 @@ int
 usb_proc_create(struct usb_process *up, struct lock *p_lock,
     const char *pmesg, uint8_t prio)
 {
-    kprintf("Creating usb_proc: %s\n", pmesg);
-
 	up->up_lock = p_lock;
 	up->up_prio = prio;
 
@@ -271,7 +269,7 @@ usb_proc_msignal(struct usb_process *up, void *_pm0, void *_pm1)
 	if (up->up_gone)
 		return (_pm0);
 
-    KKASSERT(lockstatus(up->up_lock, curthread) != 0);
+	KKASSERT(lockstatus(up->up_lock, curthread) != 0);
 
 	t = 0;
 
@@ -352,8 +350,7 @@ usb_proc_is_gone(struct usb_process *up)
 	 * structure is initialised.
 	 */
 	if (up->up_lock != NULL)
-        KKASSERT(lockstatus(up->up_lock, curthread)!=0);
-
+		KKASSERT(lockstatus(up->up_lock, curthread)!=0);
 	return (0);
 }
 
@@ -374,7 +371,7 @@ usb_proc_mwait(struct usb_process *up, void *_pm0, void *_pm1)
 	if (up->up_gone)
 		return;
 
-    KKASSERT(lockstatus(up->up_lock, curthread) != 0);
+	KKASSERT(lockstatus(up->up_lock, curthread) != 0);
 
 	if (up->up_curtd == curthread) {
 		/* Just remove the messages from the queue. */
@@ -412,13 +409,14 @@ usb_proc_drain(struct usb_process *up)
 	/* check if not initialised */
 	if (up->up_lock == NULL)
 		return;
+#if 0 /* XXX */
 	/* handle special case with Giant */
-    /* XXX
 	if (up->up_mtx != &Giant)
 		mtx_assert(up->up_mtx, MA_NOTOWNED);
-    */
-    KKASSERT(lockstatus(up->up_lock, curthread) == 0);
+#else
+	KKASSERT(lockstatus(up->up_lock, curthread) == 0);
 	lockmgr(up->up_lock, LK_EXCLUSIVE);
+#endif
 
 	/* Set the gone flag */
 
@@ -451,7 +449,7 @@ usb_proc_drain(struct usb_process *up)
 		DPRINTF("WARNING: Someone is waiting "
 		    "for USB process drain!\n");
 	}
-    lockmgr(up->up_lock, LK_RELEASE);
+	lockmgr(up->up_lock, LK_RELEASE);
 }
 
 /*------------------------------------------------------------------------*
@@ -471,6 +469,7 @@ usb_proc_rewakeup(struct usb_process *up)
 	/* check if gone */
 	if (up->up_gone)
 		return;
+
 	KKASSERT(lockstatus(up->up_lock, curthread) != 0);
 
 	if (up->up_msleep == 0) {

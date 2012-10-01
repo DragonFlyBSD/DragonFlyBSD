@@ -124,11 +124,11 @@ usb_pause_mtx(struct lock *lock, int timo)
 	 * timeout is positive and non-zero!
 	 */
 	if (lock != NULL) {
-        lksleep(&usb_pause_mtx, lock, 0, "USBSLP", timo + 1);
-    } else {
-        KKASSERT(timo + 1 > 0);
-        tsleep(&usb_pause_mtx, PINTERLOCKED, "USBSLP", timo + 1);
-    }
+		lksleep(&usb_pause_mtx, lock, 0, "USBSLP", timo + 1);
+	} else {
+		KKASSERT(timo + 1 > 0);
+		tsleep(&usb_pause_mtx, PINTERLOCKED, "USBSLP", timo + 1);
+	}
 }
 
 /*------------------------------------------------------------------------*
@@ -210,34 +210,37 @@ usb_make_str_desc(void *ptr, uint16_t max_len, const char *s)
 void 
 usb_callout_timeout_wrapper(void *arg)
 {
-    struct usb_callout *uco = (struct usb_callout *)arg;
+	struct usb_callout *uco = (struct usb_callout *)arg;
 
-    KKASSERT(uco != NULL);
+	KKASSERT(uco != NULL);
 
-    /* Simulate FreeBSD's callout behaviour which allows
-     * a lock to be acquired before the function is called
-     */
+	/*
+	 * Simulate FreeBSD's callout behaviour which allows
+	 * a lock to be acquired before the function is called
+	 */
 
-    lockmgr(uco->uco_lock, LK_EXCLUSIVE);
-    uco->uco_func(uco->uco_arg);
-    lockmgr(uco->uco_lock, LK_RELEASE);
-    /* XXX Have to introduce flags and release lock? */
+	lockmgr(uco->uco_lock, LK_EXCLUSIVE);
+	uco->uco_func(uco->uco_arg);
+	lockmgr(uco->uco_lock, LK_RELEASE);
+	/* XXX Have to introduce flags and release lock? */
 }
 
 void 
-usb_callout_init_mtx_dfly(struct usb_callout *uco, struct lock *lock, int flags)
+usb_callout_init_mtx_dfly(struct usb_callout *uco, struct lock *lock,
+    int flags)
 {
-    callout_init(&uco->co);
-    uco->uco_lock = lock;
-    uco->uco_flags = flags;    
+	callout_init(&uco->co);
+	uco->uco_lock = lock;
+	uco->uco_flags = flags;    
 }
 
 void
-usb_callout_reset_dfly(struct usb_callout *uco, int ticks, timeout_t *func, void *arg)
+usb_callout_reset_dfly(struct usb_callout *uco, int ticks, timeout_t *func,
+    void *arg)
 {
-    KKASSERT(uco != NULL);
-    uco->uco_func = func;
-    uco->uco_arg = arg;
+	KKASSERT(uco != NULL);
+	uco->uco_func = func;
+	uco->uco_arg = arg;
 
-    callout_reset(&uco->co, ticks, &usb_callout_timeout_wrapper, uco);
+	callout_reset(&uco->co, ticks, &usb_callout_timeout_wrapper, uco);
 }
