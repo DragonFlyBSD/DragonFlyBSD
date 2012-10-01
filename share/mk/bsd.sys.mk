@@ -24,7 +24,7 @@ CFLAGS		+= -std=${CSTD}
 . if defined(WARNS)
 .  if ${WARNS} >= 1
 CWARNFLAGS	+=	-Wsystem-headers
-.   if !defined(NO_WERROR) && (${CCVER} == "gcc47" || ${CCVER} == "gcc44")
+.   if !defined(NO_WERROR) && ${CCVER} == "gcc44"
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
