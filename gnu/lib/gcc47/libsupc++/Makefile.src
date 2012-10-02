@@ -1,3 +1,5 @@
+#note vec.cc has been replaced by vec-cxx.cc due to object filename clash
+
 SUPCXX=	\
 	array_type_info.cc \
 	atexit_arm.cc \
@@ -44,7 +46,7 @@ SUPCXX=	\
 	si_class_type_info.cc \
 	tinfo.cc \
 	tinfo2.cc \
-	vec.cc \
+	vec-cxx.cc \
 	vmi_class_type_info.cc \
 	vterminate.cc
 

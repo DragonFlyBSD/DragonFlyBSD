@@ -31,6 +31,7 @@ CFLAGS+=	-I${SRCDIR}/include/std
 CFLAGS+=	-I${SRCDIR}/include/c_std
 CFLAGS+=	-I${SRCDIR}/include/c_global
 CFLAGS+=	-I${SRCDIR}/include/backward
+CFLAGS+=	-I${SRCDIR}/libsupc++
 CXXFLAGS+=	-fno-implicit-templates
 CXXFLAGS+=	-fdiagnostics-show-location=once
 CXXFLAGS+=	-ffunction-sections -fdata-sections
@@ -266,17 +267,20 @@ ${F:T}: copybits
 cp-demangle.c: ${GCCDIR}/libiberty/${.TARGET}
 	cp ${.ALLSRC} ${.TARGET}
 
-# debug.cc and tree.cc are also getting pre-empted by gcc/ versions
+# debug.cc, tree.cc and vec.cc are also getting pre-empted by gcc/ versions
 debug-cxx.cc: ${SRCDIR}/src/c++11/debug.cc
 	cp ${.ALLSRC} ${.TARGET}
 
 tree-cxx.cc: ${SRCDIR}/src/c++98/tree.cc
 	cp ${.ALLSRC} ${.TARGET}
 
+vec-cxx.cc: ${SRCDIR}/libsupc++/vec.cc
+	cp ${.ALLSRC} ${.TARGET}
+
 CLEANDIRS+=	bits
 CLEANFILES+=	atomicity.cc basic_file.cc c++locale.cc \
 		ctype_configure_char.cc unwind.h \
-		cp-demangle.c debug-cxx.cc tree-cxx.cc
+		cp-demangle.c debug-cxx.cc tree-cxx.cc vec-cxx.cc
 
 depend all: bits/c++config.h
 
