@@ -774,7 +774,7 @@ msk_jumbo_newbuf(struct msk_if_softc *sc_if, int idx)
 	int nsegs;
 	void *buf;
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return (ENOBUFS);
 	buf = msk_jalloc(sc_if);

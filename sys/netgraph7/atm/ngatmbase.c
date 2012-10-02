@@ -29,8 +29,6 @@
  * In-kernel UNI stack message functions.
  *
  * $FreeBSD: src/sys/netgraph/atm/ngatmbase.c,v 1.3 2005/01/07 01:45:40 imp Exp $
- * $DragonFly: src/sys/netgraph7/atm/ngatmbase.c,v 1.2 2008/06/26 23:05:37 dillon Exp $
- * $DragonFly: src/sys/netgraph7/atm/ngatmbase.c,v 1.2 2008/06/26 23:05:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -95,7 +93,7 @@ uni_msg_extend(struct uni_msg *m, size_t s)
 	lead = uni_msg_leading(m);
 	len = uni_msg_len(m);
 	s += lead + len + EXTRA;
-	if ((b = kmalloc(s, M_UNIMSG, MB_DONTWAIT)) == NULL) {
+	if ((b = kmalloc(s, M_UNIMSG, M_NOWAIT)) == NULL) {
 		uni_msg_destroy(m);
 		return (ENOMEM);
 	}
