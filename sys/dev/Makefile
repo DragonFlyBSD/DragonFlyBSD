@@ -13,9 +13,12 @@ SUBDIR=	\
 	raid \
 	serial \
 	sound \
-	usbmisc \
 	video \
 	virtual
+
+.if !defined(WANT_USB4BSD)
+SUBDIR+=usbmisc
+.endif
 
 .for dir in ${SUBDIR}
 .if empty(DEV_SUPPORT:M${dir}) && empty(DEV_SUPPORT:M${dir}/*)
