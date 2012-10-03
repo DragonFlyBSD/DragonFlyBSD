@@ -1056,6 +1056,7 @@ ixgbe_init_locked(struct adapter *adapter)
 	** Determine the correct mbuf pool
 	** for doing jumbo/headersplit
 	*/
+#if 0 /* XXX */
 	if (adapter->max_frame_size <= 2048)
 		adapter->rx_mbuf_sz = MCLBYTES;
 	else if (adapter->max_frame_size <= 4096)
@@ -1064,6 +1065,9 @@ ixgbe_init_locked(struct adapter *adapter)
 		adapter->rx_mbuf_sz = MJUM9BYTES;
 	else
 		adapter->rx_mbuf_sz = MJUM16BYTES;
+#else
+	adapter->rx_mbuf_sz = MCLBYTES;
+#endif
 
 	/* Prepare receive descriptors and buffers */
 	if (ixgbe_setup_receive_structures(adapter)) {
