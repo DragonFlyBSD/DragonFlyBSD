@@ -809,7 +809,7 @@ _gcc_common_cross= gnu/usr.bin/gmp gnu/usr.bin/mpfr
 _gcc44_cross= gnu/usr.bin/cc44
 _gcc44_tools= gnu/usr.bin/cc44/cc_prep gnu/usr.bin/cc44/cc_tools
 .if !defined(NO_GCC47)
-_gcc47_cross= lib/libz gnu/usr.bin/mpc gnu/lib/gcc47/csu gnu/usr.bin/cc47
+_gcc47_cross= lib/libz gnu/usr.bin/mpc gnu/usr.bin/cc47
 _gcc47_tools= gnu/usr.bin/cc47/cc_prep gnu/usr.bin/cc47/cc_tools
 .endif
 _custom_cross= libexec/customcc
