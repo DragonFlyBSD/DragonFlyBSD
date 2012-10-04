@@ -1705,7 +1705,7 @@
 
 /* Define to PREFIX/include if cpp should also search that directory. */
 #ifndef USED_FOR_TARGET
-#define PREFIX_INCLUDE_DIR "/usr/pkg/gcc-aux/include"
+/* #undef PREFIX_INCLUDE_DIR */
 #endif
 
 
