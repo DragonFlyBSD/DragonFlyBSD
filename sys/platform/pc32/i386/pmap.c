@@ -1513,6 +1513,7 @@ pmap_release(struct pmap *pmap)
 	spin_unlock(&pmap_spin);
 
 	vm_object_hold(object);
+	/*lwkt_gettoken(&vm_token);*/
 	do {
 		info.error = 0;
 		info.mpte = NULL;
@@ -1525,6 +1526,7 @@ pmap_release(struct pmap *pmap)
 				info.error = 1;
 		}
 	} while (info.error);
+	/*lwkt_reltoken(&vm_token);*/
 	vm_object_drop(object);
 
 	pmap->pm_cached = 0;
@@ -2056,13 +2058,21 @@ pmap_remove_all(vm_page_t m)
 	if (TAILQ_EMPTY(&m->md.pv_list))
 		return;
 
-	lwkt_gettoken(&vm_token);
 	pmap_inval_init(&info);
 	while ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
 		pmap = pv->pv_pmap;
 		KKASSERT(pmap->pm_stats.resident_count > 0);
 		--pmap->pm_stats.resident_count;
 		pmap_hold(pmap);
+		vm_object_hold(pmap->pm_pteobj);
+
+		if (pv != TAILQ_FIRST(&m->md.pv_list)) {
+			kprintf("pmap_remove_all: %p pv %p went away\n",
+				pmap, pv);
+			vm_object_drop(pmap->pm_pteobj);
+			pmap_drop(pmap);
+			continue;
+		}
 
 		pte = pmap_pte_quick(pmap, pv->pv_va);
 		pmap_inval_interlock(&info, pmap, pv->pv_va);
@@ -2100,7 +2110,6 @@ pmap_remove_all(vm_page_t m)
 			atomic_add_int(&m->object->agg_pv_list_count, -1);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-		vm_object_hold(pmap->pm_pteobj);
 		pmap_unuse_pt(pmap, pv->pv_va, pv->pv_ptem, &info);
 		vm_object_drop(pmap->pm_pteobj);
 		free_pv_entry(pv);
@@ -2108,7 +2117,6 @@ pmap_remove_all(vm_page_t m)
 	}
 	KKASSERT((m->flags & (PG_MAPPED|PG_WRITEABLE)) == 0);
 	pmap_inval_done(&info);
-	lwkt_reltoken(&vm_token);
 }
 
 /*
