@@ -2056,7 +2056,7 @@ pmap_remove_all(vm_page_t m)
 	if (TAILQ_EMPTY(&m->md.pv_list))
 		return;
 
-	lwkt_getoken(&vm_token);
+	lwkt_gettoken(&vm_token);
 	pmap_inval_init(&info);
 	while ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
 		pmap = pv->pv_pmap;
@@ -2108,7 +2108,7 @@ pmap_remove_all(vm_page_t m)
 	}
 	KKASSERT((m->flags & (PG_MAPPED|PG_WRITEABLE)) == 0);
 	pmap_inval_done(&info);
-	lwkt_reloken(&vm_token);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
