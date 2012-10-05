@@ -2062,7 +2062,6 @@ pmap_remove_all(vm_page_t m)
 	while ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
 		pmap = pv->pv_pmap;
 		KKASSERT(pmap->pm_stats.resident_count > 0);
-		--pmap->pm_stats.resident_count;
 		pmap_hold(pmap);
 		vm_object_hold(pmap->pm_pteobj);
 
@@ -2074,6 +2073,7 @@ pmap_remove_all(vm_page_t m)
 			continue;
 		}
 
+		--pmap->pm_stats.resident_count;
 		pte = pmap_pte_quick(pmap, pv->pv_va);
 		pmap_inval_interlock(&info, pmap, pv->pv_va);
 		tpte = loadandclear(pte);
