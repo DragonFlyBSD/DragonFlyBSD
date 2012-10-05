@@ -2050,6 +2050,15 @@ TO_REMOVE+=/usr/share/man/man1/g++41.1.gz
 TO_REMOVE+=/usr/share/man/man1/gcc41.1.gz
 TO_REMOVE+=/usr/share/man/man1/gcov41.1.gz
 TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc41.mk
+TO_REMOVE+=/usr/include/objc/runtime.h
+TO_REMOVE+=/usr/share/info/cpp41.info.gz
+TO_REMOVE+=/usr/share/info/cppinternals41.info.gz
+TO_REMOVE+=/usr/share/info/gcc41.info.gz
+TO_REMOVE+=/usr/share/info/gccint41.info.gz
+TO_REMOVE+=/usr/share/man/cat1/cpp41.1.gz
+TO_REMOVE+=/usr/share/man/cat1/g++41.1.gz
+TO_REMOVE+=/usr/share/man/cat1/gcc41.1.gz
+TO_REMOVE+=/usr/share/man/cat1/gcov41.1.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
