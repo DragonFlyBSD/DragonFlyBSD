@@ -1635,8 +1635,6 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 			pt_entry_t pte;
 			pmap_inval_info info;
 
-			kprintf("pmap_allocpte: restate shared pg table pg\n");
-
 			if (ispt == 0) {
 				panic("pmap_allocpte: unexpected pte %p/%d",
 				      pvp, (int)ptepindex);
@@ -1646,8 +1644,12 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 			pte = pte_load_clear(ptep);
 			pmap_inval_deinterlock(&info, pmap);
 			pmap_inval_done(&info);
-			if (vm_page_unwire_quick(PHYS_TO_VM_PAGE(pte & PG_FRAME)))
-				panic("pmap_allocpte: shared pgtable pg bad wirecount");
+			if (vm_page_unwire_quick(
+					PHYS_TO_VM_PAGE(pte & PG_FRAME))) {
+				panic("pmap_allocpte: shared pgtable "
+				      "pg bad wirecount");
+			}
+			atomic_add_long(&pmap->pm_stats.resident_count, -1);
 		} else {
 			vm_page_wire_quick(pvp->pv_m);
 		}
@@ -1697,6 +1699,7 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	pd_entry_t npte;	/* contents of *pt */
 	vm_page_t m;
 
+retry:
 	/*
 	 * Basic tests, require a non-NULL vm_map_entry, require proper
 	 * alignment and type for the vm_map_entry, require that the
@@ -1805,10 +1808,22 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	       (PG_U | PG_RW | PG_V | PG_A | PG_M);
 
 	/*
-	 * Dispose of previous entry if it was local to the process pmap.
-	 * (This should zero-out *pt)
+	 * Dispose of previous page table page if it was local to the
+	 * process pmap.  If the old pt is not empty we cannot dispose of it
+	 * until we clean it out.  This case should not arise very often so
+	 * it is not optimized.
 	 */
 	if (proc_pt_pv) {
+		if (proc_pt_pv->pv_m->wire_count != 1) {
+			pv_put(proc_pd_pv);
+			pv_put(proc_pt_pv);
+			pv_put(pt_pv);
+			pv_put(pte_pv);
+			pmap_remove(pmap,
+				    va & ~(vm_offset_t)SEG_MASK,
+				    (va + SEG_SIZE) & ~(vm_offset_t)SEG_MASK);
+			goto retry;
+		}
 		pmap_release_pv(proc_pt_pv, proc_pd_pv);
 		proc_pt_pv = NULL;
 		/* relookup */
@@ -4639,8 +4654,6 @@ pmap_object_free(vm_object_t object)
 
 	if ((pmap = object->md.pmap_rw) != NULL) {
 		object->md.pmap_rw = NULL;
-		kprintf("pmap_object_free: destroying pmap %p in obj %p\n",
-			pmap, object);
 		pmap_remove_noinval(pmap,
 				  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 		pmap->pm_active = 0;
@@ -4650,8 +4663,6 @@ pmap_object_free(vm_object_t object)
 	}
 	if ((pmap = object->md.pmap_ro) != NULL) {
 		object->md.pmap_ro = NULL;
-		kprintf("pmap_object_free: destroying pmap %p in obj %p\n",
-			pmap, object);
 		pmap_remove_noinval(pmap,
 				  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 		pmap->pm_active = 0;
