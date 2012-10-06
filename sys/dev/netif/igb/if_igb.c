@@ -367,6 +367,8 @@ igb_attach(device_t dev)
 	callout_init_mp(&sc->timer);
 	lwkt_serialize_init(&sc->main_serialize);
 
+	if_initname(&sc->arpcom.ac_if, device_get_name(dev),
+	    device_get_unit(dev));
 	sc->dev = sc->osdep.dev = dev;
 
 	/*
@@ -1384,7 +1386,6 @@ igb_setup_ifp(struct igb_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	if_initname(ifp, device_get_name(sc->dev), device_get_unit(sc->dev));
 	ifp->if_softc = sc;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_init = igb_init;
@@ -3705,8 +3706,10 @@ igb_set_intr_mask(struct igb_softc *sc)
 		sc->intr_mask |= sc->rx_rings[i].rx_intr_mask;
 	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		sc->intr_mask |= sc->tx_rings[i].tx_intr_mask;
-	if (bootverbose)
-		device_printf(sc->dev, "intr mask 0x%08x\n", sc->intr_mask);
+	if (bootverbose) {
+		if_printf(&sc->arpcom.ac_if, "intr mask 0x%08x\n",
+		    sc->intr_mask);
+	}
 }
 
 static int
@@ -4174,7 +4177,7 @@ igb_set_ring_inuse(struct igb_softc *sc, boolean_t polling)
 	else
 		sc->rx_ring_inuse = sc->rx_ring_msix;
 	if (bootverbose) {
-		device_printf(sc->dev, "RX rings %d/%d\n",
+		if_printf(&sc->arpcom.ac_if, "RX rings %d/%d\n",
 		    sc->rx_ring_inuse, sc->rx_ring_cnt);
 	}
 }
