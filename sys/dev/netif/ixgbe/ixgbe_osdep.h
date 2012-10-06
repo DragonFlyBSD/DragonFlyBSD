@@ -70,7 +70,6 @@
 	#define DEBUGOUT4(S,A,B,C,D)  kprintf(S "\n",A,B,C,D)
 	#define DEBUGOUT5(S,A,B,C,D,E)  kprintf(S "\n",A,B,C,D,E)
 	#define DEBUGOUT6(S,A,B,C,D,E,F)  kprintf(S "\n",A,B,C,D,E,F)
-	#define DEBUGOUT6(S,A,B,C,D,E,F)    kprintf(S "\n",A,B,C,D,E,F)
 	#define DEBUGOUT7(S,A,B,C,D,E,F,G)  kprintf(S "\n",A,B,C,D,E,F,G)
 #else
 	#define DEBUGOUT(S)
