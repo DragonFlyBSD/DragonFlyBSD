@@ -127,7 +127,7 @@
  * 2 - Completely skip redo recovery (only for severe error
  *     conditions and/or debugging.
  */
-int hammer_skip_redo = 0;
+static int hammer_skip_redo = 0;
 TUNABLE_INT("vfs.hammer.skip_redo", &hammer_skip_redo);
 
 /*

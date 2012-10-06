@@ -998,7 +998,6 @@ extern struct vop_ops hammer_spec_vops;
 extern struct vop_ops hammer_fifo_vops;
 extern struct bio_ops hammer_bioops;
 
-extern int hammer_skip_redo;
 extern int hammer_debug_io;
 extern int hammer_debug_general;
 extern int hammer_debug_debug;
