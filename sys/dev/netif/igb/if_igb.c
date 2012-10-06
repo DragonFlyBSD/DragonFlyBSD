@@ -362,12 +362,6 @@ igb_attach(device_t dev)
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
 	    OID_AUTO, "nvm", CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
 	    igb_sysctl_nvm_info, "I", "NVM Information");
-
-	SYSCTL_ADD_INT(device_get_sysctl_ctx(dev),
-	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
-	    OID_AUTO, "enable_aim", CTLTYPE_INT|CTLFLAG_RW,
-	    &igb_enable_aim, 1, "Interrupt Moderation");
-
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
 	    OID_AUTO, "flow_control", CTLTYPE_INT|CTLFLAG_RW,
@@ -599,18 +593,6 @@ igb_attach(device_t dev)
 		error = EIO;
 		goto failed;
 	}
-
-#ifdef notyet
-	/* 
-	** Configure Interrupts
-	*/
-	if ((adapter->msix > 1) && (igb_enable_msix))
-		error = igb_allocate_msix(adapter);
-	else /* MSI or Legacy */
-		error = igb_allocate_legacy(adapter);
-	if (error)
-		goto err_late;
-#endif
 
 	/* Setup OS specific network interface */
 	igb_setup_ifp(sc);
