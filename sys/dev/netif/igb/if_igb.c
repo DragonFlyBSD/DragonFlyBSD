@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 #include "opt_igb.h"
 
 #include <sys/param.h>
@@ -143,6 +143,10 @@ static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
 static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
+#ifdef IFPOLL_ENABLE
+static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
+static int	igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
+#endif
 
 static void	igb_vf_init_stats(struct igb_softc *);
 static void	igb_reset(struct igb_softc *);
@@ -178,8 +182,11 @@ static int	igb_media_change(struct ifnet *);
 static void	igb_timer(void *);
 static void	igb_watchdog(struct ifnet *);
 static void	igb_start(struct ifnet *);
-#ifdef DEVICE_POLLING
-static void	igb_poll(struct ifnet *, enum poll_cmd, int);
+#ifdef IFPOLL_ENABLE
+static void	igb_npoll(struct ifnet *, struct ifpoll_info *);
+static void	igb_npoll_rx(struct ifnet *, void *, int);
+static void	igb_npoll_tx(struct ifnet *, void *, int);
+static void	igb_npoll_status(struct ifnet *, int);
 #endif
 static void	igb_serialize(struct ifnet *, enum ifnet_serialize);
 static void	igb_deserialize(struct ifnet *, enum ifnet_serialize);
@@ -345,6 +352,9 @@ igb_attach(device_t dev)
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
 	int error = 0, i, j, ring_max;
+#ifdef IFPOLL_ENABLE
+	int offset, offset_def;
+#endif
 
 #ifdef notyet
 	/* SYSCTL stuff */
@@ -471,6 +481,37 @@ igb_attach(device_t dev)
 	error = igb_alloc_rings(sc);
 	if (error)
 		goto failed;
+
+#ifdef IFPOLL_ENABLE
+	/*
+	 * NPOLLING RX CPU offset
+	 */
+	if (sc->rx_ring_cnt == ncpus2) {
+		offset = 0;
+	} else {
+		offset_def = (sc->rx_ring_cnt * device_get_unit(dev)) % ncpus2;
+		offset = device_getenv_int(dev, "npoll.rxoff", offset_def);
+		if (offset >= ncpus2 ||
+		    offset % sc->rx_ring_cnt != 0) {
+			device_printf(dev, "invalid npoll.rxoff %d, use %d\n",
+			    offset, offset_def);
+			offset = offset_def;
+		}
+	}
+	sc->rx_npoll_off = offset;
+
+	/*
+	 * NPOLLING TX CPU offset
+	 */
+	offset_def = sc->rx_npoll_off;
+	offset = device_getenv_int(dev, "npoll.txoff", offset_def);
+	if (offset >= ncpus2) {
+		device_printf(dev, "invalid npoll.txoff %d, use %d\n",
+		    offset, offset_def);
+		offset = offset_def;
+	}
+	sc->tx_npoll_off = offset;
+#endif
 
 	/* Allocate interrupt */
 	error = igb_alloc_intr(sc);
@@ -785,8 +826,8 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		if (ifp->if_flags & IFF_RUNNING) {
 			igb_disable_intr(sc);
 			igb_set_multi(sc);
-#ifdef DEVICE_POLLING
-			if (!(ifp->if_flags & IFF_POLLING))
+#ifdef IFPOLL_ENABLE
+			if (!(ifp->if_flags & IFF_NPOLLING))
 #endif
 				igb_enable_intr(sc);
 		}
@@ -876,8 +917,8 @@ igb_init(void *xsc)
 	igb_get_mgmt(sc);
 
 	polling = FALSE;
-#ifdef DEVICE_POLLING
-	if (ifp->if_flags & IFF_POLLING)
+#ifdef IFPOLL_ENABLE
+	if (ifp->if_flags & IFF_NPOLLING)
 		polling = TRUE;
 #endif
 
@@ -1397,8 +1438,8 @@ igb_setup_ifp(struct igb_softc *sc)
 #ifdef INVARIANTS
 	ifp->if_serialize_assert = igb_serialize_assert;
 #endif
-#ifdef DEVICE_POLLING
-	ifp->if_poll = igb_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = igb_npoll;
 #endif
 	ifp->if_watchdog = igb_watchdog;
 
@@ -1496,6 +1537,15 @@ igb_add_sysctl(struct igb_softc *sc)
 	    OID_AUTO, "tx_intr_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, igb_sysctl_tx_intr_nsegs, "I",
 	    "# of segments per TX interrupt");
+
+#ifdef IFPOLL_ENABLE
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
+	    sc, 0, igb_sysctl_npoll_rxoff, "I", "NPOLLING RX cpu offset");
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "npoll_txoff", CTLTYPE_INT|CTLFLAG_RW,
+	    sc, 0, igb_sysctl_npoll_txoff, "I", "NPOLLING TX cpu offset");
+#endif
 
 #ifdef IGB_RSS_DEBUG
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
@@ -2883,55 +2933,96 @@ igb_update_vf_stats_counters(struct igb_softc *sc)
 	UPDATE_VF_REG(E1000_VFMPRC, stats->last_mprc, stats->mprc);
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-igb_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+igb_npoll_status(struct ifnet *ifp, int pollhz __unused)
 {
 	struct igb_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
 
-	switch (cmd) {
-	case POLL_REGISTER:
-	case POLL_DEREGISTER:
-		ASSERT_IFNET_SERIALIZED_ALL(ifp);
-		igb_init(sc);
-		break;
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
-	case POLL_AND_CHECK_STATUS:
-		ASSERT_SERIALIZED(&sc->main_serialize);
-		reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
-		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-			sc->hw.mac.get_link_status = 1;
-			igb_update_link_status(sc);
-		}
-		/* FALL THROUGH */
-	case POLL_ONLY:
-		ASSERT_SERIALIZED(&sc->main_serialize);
-		if (ifp->if_flags & IFF_RUNNING) {
-			struct igb_tx_ring *txr;
-			int i;
-
-			for (i = 0; i < sc->rx_ring_inuse; ++i) {
-				struct igb_rx_ring *rxr = &sc->rx_rings[i];
-
-				lwkt_serialize_enter(&rxr->rx_serialize);
-				igb_rxeof(rxr, count);
-				lwkt_serialize_exit(&rxr->rx_serialize);
-			}
-
-			txr = &sc->tx_rings[0];
-			lwkt_serialize_enter(&txr->tx_serialize);
-			igb_txeof(txr);
-			if (!ifq_is_empty(&ifp->if_snd))
-				if_devstart(ifp);
-			lwkt_serialize_exit(&txr->tx_serialize);
-		}
-		break;
+	reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
+	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+		sc->hw.mac.get_link_status = 1;
+		igb_update_link_status(sc);
 	}
 }
 
-#endif /* DEVICE_POLLING */
+static void
+igb_npoll_tx(struct ifnet *ifp, void *arg, int cycle __unused)
+{
+	struct igb_tx_ring *txr = arg;
+
+	ASSERT_SERIALIZED(&txr->tx_serialize);
+
+	igb_txeof(txr);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+}
+
+static void
+igb_npoll_rx(struct ifnet *ifp __unused, void *arg, int cycle)
+{
+	struct igb_rx_ring *rxr = arg;
+
+	ASSERT_SERIALIZED(&rxr->rx_serialize);
+
+	igb_rxeof(rxr, cycle);
+}
+
+static void
+igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct igb_softc *sc = ifp->if_softc;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	if (info) {
+		struct igb_tx_ring *txr;
+		int i, off;
+
+		info->ifpi_status.status_func = igb_npoll_status;
+		info->ifpi_status.serializer = &sc->main_serialize;
+
+		off = sc->tx_npoll_off;
+		KKASSERT(off < ncpus2);
+		txr = &sc->tx_rings[0];
+		info->ifpi_tx[off].poll_func = igb_npoll_tx;
+		info->ifpi_tx[off].arg = txr;
+		info->ifpi_tx[off].serializer = &txr->tx_serialize;
+
+		off = sc->rx_npoll_off;
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			struct igb_rx_ring *rxr = &sc->rx_rings[i];
+			int idx = i + off;
+
+			KKASSERT(idx < ncpus2);
+			info->ifpi_rx[idx].poll_func = igb_npoll_rx;
+			info->ifpi_rx[idx].arg = rxr;
+			info->ifpi_rx[idx].serializer = &rxr->rx_serialize;
+		}
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			if (sc->rx_ring_inuse == sc->rx_ring_cnt)
+				igb_disable_intr(sc);
+			else
+				igb_init(sc);
+		}
+		ifp->if_npoll_cpuid = sc->tx_npoll_off;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING) {
+			if (sc->rx_ring_inuse == sc->rx_ring_cnt)
+				igb_enable_intr(sc);
+			else
+				igb_init(sc);
+		}
+		ifp->if_npoll_cpuid = -1;
+	}
+}
+
+#endif /* IFPOLL_ENABLE */
 
 static void
 igb_intr(void *xsc)
@@ -3377,6 +3468,62 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 
 	return error;
 }
+
+#ifdef IFPOLL_ENABLE
+
+static int
+igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS)
+{
+	struct igb_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, off;
+
+	off = sc->rx_npoll_off;
+	error = sysctl_handle_int(oidp, &off, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (off < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+	if (off >= ncpus2 || off % sc->rx_ring_cnt != 0) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		sc->rx_npoll_off = off;
+	}
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+static int
+igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS)
+{
+	struct igb_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, off;
+
+	off = sc->tx_npoll_off;
+	error = sysctl_handle_int(oidp, &off, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (off < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+	if (off >= ncpus2) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		sc->tx_npoll_off = off;
+	}
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+#endif	/* IFPOLL_ENABLE */
 
 static void
 igb_init_intr(struct igb_softc *sc)
@@ -4172,7 +4319,9 @@ igb_set_ring_inuse(struct igb_softc *sc, boolean_t polling)
 	if (!IGB_ENABLE_HWRSS(sc))
 		return;
 
-	if (sc->intr_type != PCI_INTR_TYPE_MSIX || polling)
+	if (polling)
+		sc->rx_ring_inuse = sc->rx_ring_cnt;
+	else if (sc->intr_type != PCI_INTR_TYPE_MSIX)
 		sc->rx_ring_inuse = IGB_MIN_RING_RSS;
 	else
 		sc->rx_ring_inuse = sc->rx_ring_msix;

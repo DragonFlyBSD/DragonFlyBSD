@@ -331,6 +331,8 @@ struct igb_softc {
 	/* Multicast array pointer */
 	uint8_t			*mta;
 
+	int			rx_npoll_off;
+	int			tx_npoll_off;
 	int			serialize_cnt;
 	int			tx_serialize;
 	int			rx_serialize;
