@@ -14,6 +14,8 @@ CFLAGS+=	-I../csu
 CFLAGS+=	-fbuilding-libgcc
 CFLAGS+=	-fno-stack-protector
 CFLAGS+=	-fvisibility=hidden
+CFLAGS+=	-fpic
+CFLAGS+=	-DPIC
 CFLAGS+=	-DIN_GCC
 CFLAGS+=	-DIN_LIBGCC2
 CFLAGS+=	-DHAVE_CC_TLS
