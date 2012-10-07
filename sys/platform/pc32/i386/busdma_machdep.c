@@ -573,13 +573,8 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void **vaddr, int flags,
 		 */
 		maxsize = check_kmalloc(dmat, *vaddr, 0);
 		if (maxsize) {
-			size_t size;
-
 			kfree(*vaddr, M_DEVBUF);
-			/* XXX check for overflow? */
-			for (size = 1; size <= maxsize; size <<= 1)
-				;
-			*vaddr = kmalloc(size, M_DEVBUF, mflags);
+			*vaddr = kmalloc_powerof2(maxsize, M_DEVBUF, mflags);
 			check_kmalloc(dmat, *vaddr, 1);
 		}
 	} else {
