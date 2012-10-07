@@ -1566,3 +1566,21 @@ kmem_slab_free(void *ptr, vm_size_t size)
     crit_exit();
 }
 
+void *
+kmalloc_powerof2(unsigned long size_alloc, struct malloc_type *type, int flags)
+{
+	unsigned long size;
+
+	for (size = 1; size < size_alloc; size <<= 1)
+		; /* EMPTY */
+	return kmalloc(size, type, flags);
+}
+
+void *
+kmalloc_cachealign(unsigned long size_alloc, struct malloc_type *type,
+    int flags)
+{
+	if (size_alloc < __VM_CACHELINE_SIZE)
+		size_alloc = __VM_CACHELINE_SIZE;
+	return kmalloc_powerof2(size_alloc, type, flags);
+}

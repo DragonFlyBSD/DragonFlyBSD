@@ -204,6 +204,10 @@ char	*kstrdup (const char *, struct malloc_type *);
 #define kstrdup_debug(str, type, file, line)			\
 	kstrdup(str, type)
 #endif
+void	*kmalloc_powerof2 (unsigned long size, struct malloc_type *type,
+			   int flags);
+void	*kmalloc_cachealign (unsigned long size, struct malloc_type *type,
+			   int flags);
 void	kfree (void *addr, struct malloc_type *type);
 long	kmalloc_limit (struct malloc_type *type);
 
