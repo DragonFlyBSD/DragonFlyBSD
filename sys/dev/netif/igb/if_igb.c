@@ -1562,7 +1562,8 @@ igb_alloc_rings(struct igb_softc *sc)
 	/*
 	 * Allocate TX descriptor rings and buffers
 	 */
-	sc->tx_rings = kmalloc(sizeof(struct igb_tx_ring) * sc->tx_ring_cnt,
+	sc->tx_rings = kmalloc_cachealign(
+	    sizeof(struct igb_tx_ring) * sc->tx_ring_cnt,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		struct igb_tx_ring *txr = &sc->tx_rings[i];
@@ -1580,7 +1581,8 @@ igb_alloc_rings(struct igb_softc *sc)
 	/*
 	 * Allocate RX descriptor rings and buffers
 	 */ 
-	sc->rx_rings = kmalloc(sizeof(struct igb_rx_ring) * sc->rx_ring_cnt,
+	sc->rx_rings = kmalloc_cachealign(
+	    sizeof(struct igb_rx_ring) * sc->rx_ring_cnt,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
@@ -4042,7 +4044,8 @@ igb_msix_try_alloc(struct igb_softc *sc)
 	}
 
 	sc->msix_cnt = alloc_cnt;
-	sc->msix_data = kmalloc(sizeof(struct igb_msix_data) * sc->msix_cnt,
+	sc->msix_data = kmalloc_cachealign(
+	    sizeof(struct igb_msix_data) * sc->msix_cnt,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 	for (x = 0; x < sc->msix_cnt; ++x) {
 		msix = &sc->msix_data[x];
