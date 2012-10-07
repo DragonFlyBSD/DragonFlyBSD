@@ -116,7 +116,7 @@ typedef volatile int	__atomic_intr_t;
 /*
  * Its convenient to put these here rather then create another header file.
  */
-#if __GNUC_PREREQ__(4, 1)
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
 #define __offsetof(type, field) __builtin_offsetof(type, field)
 #else
 #ifndef __cplusplus
