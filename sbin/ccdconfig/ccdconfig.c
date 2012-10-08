@@ -410,19 +410,24 @@ pathtounit(char *path, int *unitp)
 static char *
 resolve_ccdname(char *name)
 {
-	char c, *path;
+	char *path;
+#if 0
+	char c;
 	size_t len;
+#endif
 
 	if (name[0] == '/' || name[0] == '.') {
 		/* Assume they gave the correct pathname. */
 		return (strdup(name));
 	}
 
+#if 0
 	len = strlen(name);
 	if (len > 0)
 		c = name[len - 1];
 	else
 		c = '\0';
+#endif
 
 	asprintf(&path, "%s%s", _PATH_DEV, name);
 

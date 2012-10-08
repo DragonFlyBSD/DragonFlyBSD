@@ -184,6 +184,8 @@ struct re_softc {
 	int			rxcycles;
 	int			re_rxbuf_size;
 	int			(*re_newbuf)(struct re_softc *, int, int);
+	int			re_irq_type;
+	int			re_irq_rid;
 
 	uint32_t		re_flags;	/* see RE_F_ */
 	int			re_if_flags;	/* saved ifnet.if_flags */

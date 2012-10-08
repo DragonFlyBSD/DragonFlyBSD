@@ -2290,6 +2290,7 @@ options 	KEY
 options 	LOCKF_DEBUG
 #options	MAXFILES=xxx
 options		MBUF_DEBUG
+options		NO_LWKT_SPLIT_USERPRI
 options 	PANIC_DEBUG
 options 	PMAP_DEBUG
 options 	PSM_DEBUG=4

@@ -40,9 +40,6 @@ struct tls_tcb *
 _tcb_ctor(struct pthread *thread, int initial)
 {
 	struct tls_tcb *tcb;
-	int flags;
-
-	flags = 0;
 
 	if (initial)
 		tcb = tls_get_tcb();

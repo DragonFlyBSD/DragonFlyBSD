@@ -122,7 +122,7 @@ monitor_add(const char *path)
 {
 	monitor_elm_t elm;
 	struct kevent kev;
-	int n;
+	int __unused n;
 
 	elm = malloc(sizeof(*elm));
 	bzero(elm, sizeof(*elm));

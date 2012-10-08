@@ -689,8 +689,11 @@ ixgbe_start_locked(struct tx_ring *txr, struct ifnet * ifp)
 
 	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
 		return;
-	if (!adapter->link_active)
+
+	if (!adapter->link_active) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		if (txr->tx_avail <= IXGBE_QUEUE_MIN_FREE) {
@@ -1053,6 +1056,7 @@ ixgbe_init_locked(struct adapter *adapter)
 	** Determine the correct mbuf pool
 	** for doing jumbo/headersplit
 	*/
+#if 0 /* XXX */
 	if (adapter->max_frame_size <= 2048)
 		adapter->rx_mbuf_sz = MCLBYTES;
 	else if (adapter->max_frame_size <= 4096)
@@ -1061,6 +1065,9 @@ ixgbe_init_locked(struct adapter *adapter)
 		adapter->rx_mbuf_sz = MJUM9BYTES;
 	else
 		adapter->rx_mbuf_sz = MJUM16BYTES;
+#else
+	adapter->rx_mbuf_sz = MCLBYTES;
+#endif
 
 	/* Prepare receive descriptors and buffers */
 	if (ixgbe_setup_receive_structures(adapter)) {
@@ -1500,17 +1507,16 @@ ixgbe_media_status(struct ifnet * ifp, struct ifmediareq * ifmr)
 {
 	struct adapter *adapter = ifp->if_softc;
 
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
 	INIT_DEBUGOUT("ixgbe_media_status: begin");
-	IXGBE_CORE_LOCK(adapter);
 	ixgbe_update_link_status(adapter);
 
 	ifmr->ifm_status = IFM_AVALID;
 	ifmr->ifm_active = IFM_ETHER;
 
-	if (!adapter->link_active) {
-		IXGBE_CORE_UNLOCK(adapter);
+	if (!adapter->link_active)
 		return;
-	}
 
 	ifmr->ifm_status |= IFM_ACTIVE;
 
@@ -1525,8 +1531,6 @@ ixgbe_media_status(struct ifnet * ifp, struct ifmediareq * ifmr)
 			ifmr->ifm_active |= adapter->optics | IFM_FDX;
 			break;
 	}
-
-	IXGBE_CORE_UNLOCK(adapter);
 
 	return;
 }
@@ -2104,10 +2108,6 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 #ifdef IXGBE_FDIR
 	TASK_INIT(&adapter->fdir_task, 0, ixgbe_reinit_fdir, adapter);
 #endif
-	adapter->tq = taskqueue_create("ixgbe_link", M_NOWAIT,
-	    taskqueue_thread_enqueue, &adapter->tq);
-	taskqueue_start_threads(&adapter->tq, 1, PI_NET, -1, "%s linkq",
-	    device_get_nameunit(adapter->dev));
 
 	if ((error = bus_setup_intr(dev, adapter->res, INTR_MPSAFE,
 	    ixgbe_legacy_irq, que, &adapter->tag, &adapter->serializer)) != 0) {
@@ -2209,10 +2209,6 @@ ixgbe_allocate_msix(struct adapter *adapter)
 #ifdef IXGBE_FDIR
 	TASK_INIT(&adapter->fdir_task, 0, ixgbe_reinit_fdir, adapter);
 #endif
-	adapter->tq = taskqueue_create("ixgbe_link", M_NOWAIT,
-	    taskqueue_thread_enqueue, &adapter->tq);
-	taskqueue_start_threads(&adapter->tq, 1, PI_NET, -1, "%s linkq",
-	    device_get_nameunit(adapter->dev));
 
 	return (0);
 }
@@ -3855,7 +3851,7 @@ ixgbe_setup_receive_ring(struct rx_ring *rxr)
 			goto skip_head;
 
 		/* First the header */
-		rxbuf->m_head = m_gethdr(M_NOWAIT, MT_DATA);
+		rxbuf->m_head = m_gethdr(MB_DONTWAIT, MT_DATA);
 		if (rxbuf->m_head == NULL) {
 			error = ENOBUFS;
 			goto fail;
@@ -3878,7 +3874,7 @@ ixgbe_setup_receive_ring(struct rx_ring *rxr)
 
 skip_head:
 		/* Now the payload cluster */
-		rxbuf->m_pack = m_getjcl(M_NOWAIT, MT_DATA,
+		rxbuf->m_pack = m_getjcl(MB_DONTWAIT, MT_DATA,
 		    M_PKTHDR, adapter->rx_mbuf_sz);
 		if (rxbuf->m_pack == NULL) {
 			error = ENOBUFS;

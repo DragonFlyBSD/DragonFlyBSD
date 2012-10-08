@@ -474,7 +474,7 @@ prmount(struct statfs *sfp)
 {
 	struct passwd *pw;
 	char *buf;
-	int error;
+	int __unused error;
 	int len;
 
 	error = 0;

@@ -510,7 +510,7 @@ cd9660_readdir(struct open_file *f, struct dirent *d)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 	struct iso_directory_record *ep;
-	size_t buf_size, reclen, namelen;
+	size_t buf_size, namelen;
 	int error = 0;
 	int lenskip;
 	char *buf, *name;
@@ -552,7 +552,6 @@ again:
 			}
 		}
 	}
-	reclen = _DIRENT_RECLEN(namelen);
 
 	d->d_ino = isonum_733(ep->extent);
 	if (isonum_711(ep->flags) & 2)

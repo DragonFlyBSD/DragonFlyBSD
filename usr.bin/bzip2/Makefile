@@ -9,6 +9,7 @@ PROG=	bzip2
 WARNS?=	2
 
 CFLAGS+= -D_FILE_OFFSET_BITS=64
+CFLAGS+= -Wno-unused-but-set-variable
 
 DPADD=	${LIBBZ2}
 LDADD=	-lbz2

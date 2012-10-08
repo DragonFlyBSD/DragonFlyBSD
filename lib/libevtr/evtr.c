@@ -1755,7 +1755,7 @@ int
 _evtr_next_event(evtr_t evtr, evtr_event_t ev, struct evtr_query *q)
 {
 	char buf[MAX_EVHDR_SIZE];
-	int ret, err, ntried, nmatched;
+	int ret, err;
 	struct trace_event_header *evhdr = (struct trace_event_header *)buf;
 
 	for (ret = 0; !ret;) {
@@ -1792,8 +1792,6 @@ _evtr_next_event(evtr_t evtr, evtr_event_t ev, struct evtr_query *q)
 			return feof(evtr->f) ? -1 : !0;
 		switch (evhdr->type) {
 		case EVTR_TYPE_PROBE:
-			ntried = q->ntried;
-			nmatched = q->nmatched;
 			if ((err = evtr_load_probe(evtr, ev, buf, q))) {
 				if (err == -1) {
 					/* no match */

@@ -562,7 +562,7 @@ static void print_page(WINDOW *win, int height, int width)
  */
 static void print_line(WINDOW *win, int row, int width)
 {
-  int i, y, x;
+  int i, __unused y, x;
   unsigned char *line;
 
   line = get_line();

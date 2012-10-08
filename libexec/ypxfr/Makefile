@@ -14,6 +14,7 @@ WARNS?=	3
 MAN=	ypxfr.8
 
 CFLAGS+= -I.
+CFLAGS+= -Wno-enum-compare
 DPADD=	${LIBRPCSVC}
 LDADD=	-lrpcsvc
 

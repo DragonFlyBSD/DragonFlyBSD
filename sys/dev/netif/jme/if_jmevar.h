@@ -52,9 +52,12 @@
 #define JME_NRXRING_MIN		JME_NRXRING_1
 #define JME_NRXRING_MAX		JME_NRXRING_4
 
-#define JME_NSERIALIZE		(JME_NRXRING_MAX + 2)
+/* RX rings + TX ring + status */
+#define JME_NSERIALIZE		(JME_NRXRING_MAX + 1 + 1)
 
-#define JME_NMSIX		(JME_NRXRING_MAX + 1)
+/* RX rings + TX ring + status */
+#define JME_MSIXCNT(nrx)	((nrx) + 1 + 1)
+#define JME_NMSIX		JME_MSIXCNT(JME_NRXRING_MAX)
 
 /*
  * Tx/Rx descriptor queue base should be 16bytes aligned and
@@ -77,9 +80,6 @@
 
 #define	JME_ADDR_LO(x)		((uint64_t) (x) & 0xFFFFFFFF)
 #define	JME_ADDR_HI(x)		((uint64_t) (x) >> 32)
-
-#define	JME_MSI_MESSAGES	8
-#define	JME_MSIX_MESSAGES	8
 
 /* Water mark to kick reclaiming Tx buffers. */
 #define	JME_TX_DESC_HIWAT(sc)	\
@@ -242,6 +242,9 @@ struct jme_softc {
 	int			jme_msix_cnt;
 	uint32_t		jme_msinum[JME_MSINUM_CNT];
 	int			jme_tx_cpuid;
+
+	int			jme_npoll_rxoff;
+	int			jme_npoll_txoff;
 
 	device_t		jme_miibus;
 	int			jme_phyaddr;

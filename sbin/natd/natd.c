@@ -1061,7 +1061,7 @@ ParseOption(const char *option, const char *parms)
 	struct OptionInfo*	info;
 	int			yesNoValue;
 	int			aliasValue;
-	int			numValue;
+	int			__unused numValue;
 	u_short			uNumValue;
 	const char*		strValue;
 	struct in_addr		addrValue;

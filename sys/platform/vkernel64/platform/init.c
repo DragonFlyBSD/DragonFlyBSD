@@ -131,6 +131,7 @@ static void cleanpid(void);
 static int unix_connect(const char *path);
 static void usage_err(const char *ctl, ...);
 static void usage_help(_Bool);
+static void init_locks(void);
 
 static int save_ac;
 static char **save_av;
@@ -675,6 +676,28 @@ init_globaldata(void)
 	tls_set_gs(&CPU_prvspace[0], sizeof(struct privatespace));
 }
 
+
+/*
+ * Initialize pool tokens and other necessary locks
+ */
+static void
+init_locks(void)
+{
+
+#ifdef SMP
+        /*
+         * Get the initial mplock with a count of 1 for the BSP.
+         * This uses a LOGICAL cpu ID, ie BSP == 0.
+         */
+        cpu_get_initial_mplock();
+#endif
+
+        /* our token pool needs to work early */
+        lwkt_token_pool_init();
+
+}
+
+
 /*
  * Initialize very low level systems including thread0, proc0, etc.
  */
@@ -700,14 +723,7 @@ init_vkernel(void)
 	mi_proc0init(&gd->mi, proc0paddr);
 	lwp0.lwp_md.md_regs = &proc0_tf;
 
-	/*init_locks();*/
-#ifdef SMP
-	/*
-	 * Get the initial mplock with a count of 1 for the BSP.
-	 * This uses a LOGICAL cpu ID, ie BSP == 0.
-	 */
-	cpu_get_initial_mplock();
-#endif
+	init_locks();
 	cninit();
 	rand_initialize();
 #if 0	/* #ifdef DDB */

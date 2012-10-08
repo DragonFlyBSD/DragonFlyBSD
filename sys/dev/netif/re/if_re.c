@@ -387,9 +387,11 @@ DRIVER_MODULE(miibus, re, miibus_driver, miibus_devclass, NULL, NULL);
 
 static int	re_rx_desc_count = RE_RX_DESC_CNT_DEF;
 static int	re_tx_desc_count = RE_TX_DESC_CNT_DEF;
+static int	re_msi_enable = 0;
 
 TUNABLE_INT("hw.re.rx_desc_count", &re_rx_desc_count);
 TUNABLE_INT("hw.re.tx_desc_count", &re_tx_desc_count);
+TUNABLE_INT("hw.re.msi.enable", &re_msi_enable);
 
 #define EE_SET(x)	\
 	CSR_WRITE_1(sc, RE_EECMD, CSR_READ_1(sc, RE_EECMD) | (x))
@@ -1306,6 +1308,7 @@ re_attach(device_t dev)
 	struct ifnet *ifp;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	int error = 0, rid, qlen;
+	u_int irq_flags;
 
 	callout_init(&sc->re_timer);
 	sc->re_dev = dev;
@@ -1436,10 +1439,11 @@ re_attach(device_t dev)
 	sc->re_bhandle = rman_get_bushandle(sc->re_res);
 
 	/* Allocate interrupt */
-	rid = 0;
-	sc->re_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
-					    RF_SHAREABLE | RF_ACTIVE);
+	sc->re_irq_type = pci_alloc_1intr(dev, re_msi_enable,
+					   &sc->re_irq_rid, &irq_flags);
 
+	sc->re_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->re_irq_rid,
+					    irq_flags);
 	if (sc->re_irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;
@@ -1659,7 +1663,12 @@ re_detach(device_t dev)
 		sysctl_ctx_free(&sc->re_sysctl_ctx);
 
 	if (sc->re_irq)
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->re_irq);
+		bus_release_resource(dev, SYS_RES_IRQ, sc->re_irq_rid,
+				     sc->re_irq);
+
+	if (sc->re_irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(dev);
+
 	if (sc->re_res) {
 		bus_release_resource(dev, SYS_RES_IOPORT, RE_PCI_LOIO,
 				     sc->re_res);

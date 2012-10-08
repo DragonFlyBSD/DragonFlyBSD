@@ -63,6 +63,7 @@
 #define M_PASSIVE_ZERO	0x0800	/* (internal to the slab code only) */
 #define M_USE_INTERRUPT_RESERVE \
 			0x1000	/* can exhaust free list entirely */
+#define M_POWEROF2	0x2000	/* roundup size to the nearest power of 2 */
 
 /*
  * M_NOWAIT has to be a set of flags for equivalence to prior use. 
@@ -204,6 +205,8 @@ char	*kstrdup (const char *, struct malloc_type *);
 #define kstrdup_debug(str, type, file, line)			\
 	kstrdup(str, type)
 #endif
+void	*kmalloc_cachealign (unsigned long size, struct malloc_type *type,
+			   int flags);
 void	kfree (void *addr, struct malloc_type *type);
 long	kmalloc_limit (struct malloc_type *type);
 

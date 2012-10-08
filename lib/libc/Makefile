@@ -13,10 +13,6 @@ AINC=	-I${.OBJDIR} -I${.CURDIR}/${MACHINE_ARCH}
 CLEANFILES+=tags
 PRECIOUSLIB=	yes
 
-.if ${CCVER} == "gcc41" || ${CCVER} == "gcc44"
-DPADD+=	${LIBGCC}
-LDADD+=	-lgcc
-.endif
 LDFLAGS+= -nodefaultlibs
 
 #

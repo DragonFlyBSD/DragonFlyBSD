@@ -430,8 +430,8 @@ initsd(int sdno, int dowait)
 
     /* Variables for use by children */
     int sdfh;						    /* and for subdisk */
-    int initsize;					    /* actual size to write */
-    int64_t sdsize;					    /* size of subdisk */
+    int __unused initsize;				    /* actual size to write */
+    int64_t __unused sdsize;				    /* size of subdisk */
 
     if (dowait == 0) {
 	pid = fork();					    /* into the background with you */

@@ -149,7 +149,7 @@ check_and_purge_safe_mem(void)
 {
 	struct safe_mem_hdr *hdr;
 	char *mem;
-	int ok;
+	int __unused ok;
 
 	if (safe_mem_hdr_first == NULL)
 		return;

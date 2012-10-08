@@ -237,7 +237,7 @@ struct igb_tx_ring {
 
 	u_long			no_desc_avail;
 	u_long			tx_packets;
-};
+} __cachealign;
 
 /*
  * Receive ring: one per queue
@@ -266,7 +266,7 @@ struct igb_rx_ring {
 
 	/* Soft stats */
 	u_long			rx_packets;
-};
+} __cachealign;
 
 struct igb_msix_data {
 	struct lwkt_serialize	*msix_serialize;
@@ -287,7 +287,7 @@ struct igb_msix_data {
 	u_int			msix_vector;
 	int			msix_rate;
 	char			msix_rate_desc[32];
-};
+} __cachealign;
 
 struct igb_softc {
 	struct arpcom		arpcom;
@@ -331,6 +331,8 @@ struct igb_softc {
 	/* Multicast array pointer */
 	uint8_t			*mta;
 
+	int			rx_npoll_off;
+	int			tx_npoll_off;
 	int			serialize_cnt;
 	int			tx_serialize;
 	int			rx_serialize;

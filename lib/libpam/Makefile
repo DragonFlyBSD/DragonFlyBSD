@@ -8,6 +8,8 @@ CFLAGS+= -DHAVE_CONFIG_H
 CFLAGS+= -DOPENPAM_MODULES_DIR='"${MODULE_DIR}/"'
 CFLAGS+= -I${SRCDIR}/lib -I${SRCDIR}/include -I${.CURDIR}
 
+WARNS=	3
+
 # Dist files
 SRCS=	openpam_borrow_cred.c \
 	openpam_check_owner_perms.c \

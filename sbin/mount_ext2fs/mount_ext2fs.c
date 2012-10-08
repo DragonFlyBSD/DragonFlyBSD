@@ -63,11 +63,10 @@ main(int argc, char **argv)
 {
 	struct ufs_args args;
 	int ch, mntflags;
-	char *fs_name, *options, mntpath[MAXPATHLEN];
+	char *fs_name, mntpath[MAXPATHLEN];
 	struct vfsconf vfc;
 	int error;
 
-	options = NULL;
 	mntflags = 0;
 	while ((ch = getopt(argc, argv, "o:")) != -1)
 		switch (ch) {

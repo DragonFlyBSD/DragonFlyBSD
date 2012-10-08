@@ -31,8 +31,9 @@ CFLAGS+=	-I${GCCDIR}/gcc -I${GCCDIR}/gcc/config -I${GCCDIR}/include
 CFLAGS+=	-I${GCCDIR}/libcpp/include
 CFLAGS+=	-I${GCCDIR}/libdecnumber -I${GCCDIR}/libdecnumber/dpd
 CFLAGS+=	-I${OTOPDIR}/libdecnumber
-CFLAGS+=	-I${STOPDIR}/gmp
-CFLAGS+=	-I${.CURDIR}/${TOP_PREFIX}/../../../../contrib/mpfr/src -I${STOPDIR}/mpfr
+CFLAGS+=	-I${STOPDIR}/../gmp
+CFLAGS+=	-I${.CURDIR}/${TOP_PREFIX}/../../../../contrib/mpfr/src
+CFLAGS+=	-I${STOPDIR}/../mpfr
 CFLAGS+=	-I${GCCDIR}/gcc/config/${GCC_CPU} -I${TOOLDIR}
 
 CFLAGS+=	-DIN_GCC -DHAVE_CONFIG_H
@@ -59,8 +60,8 @@ LIBBACKEND=	${OTOPDIR}/libbackend/libbackend.a
 LIBCPP=		${OTOPDIR}/libcpp/libcpp.a
 LIBDECNUMBER=	${OTOPDIR}/libdecnumber/libdecnumber.a
 
-LIBGMP=		${OTOPDIR}/gmp/libgmp.a
-LIBMPFR=	${OTOPDIR}/mpfr/libmpfr.a
+LIBGMP=		${OTOPDIR}/../gmp/libgmp.a
+LIBMPFR=	${OTOPDIR}/../mpfr/libmpfr.a
 
 GMPLIBS=	${LIBMPFR} ${LIBGMP}
 STDLIBS=	${LIBCPP} ${LIBIBERTY} ${LIBDECNUMBER} 

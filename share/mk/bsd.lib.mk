@@ -47,12 +47,14 @@ PICFLAG=-fpic
 .endif
 
 PO_FLAG=-pg
+PO_CFLAGS=${CFLAGS:N-ffunction-sections}
+PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
 
 .c.o:
 	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .c.po:
-	${CC} ${_${.IMPSRC:T}_FLAGS} ${PO_FLAG} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${PO_FLAG} ${PO_CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .c.So:
 	${CC} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
@@ -61,7 +63,7 @@ PO_FLAG=-pg
 	${CXX} ${_${.IMPSRC:T}_FLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .cc.po .C.po .cpp.po .cxx.po:
-	${CXX} ${_${.IMPSRC:T}_FLAGS} ${PO_FLAG} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${CXX} ${_${.IMPSRC:T}_FLAGS} ${PO_FLAG} ${PO_CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .cc.So .C.So .cpp.So .cxx.So:
 	${CXX} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
@@ -70,7 +72,7 @@ PO_FLAG=-pg
 	${FC} ${_${.IMPSRC:T}_FLAGS} ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC} 
 
 .f.po:
-	${FC} ${_${.IMPSRC:T}_FLAGS} -pg ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC} 
+	${FC} ${_${.IMPSRC:T}_FLAGS} ${PO_FLAG} ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC}
 
 .f.So:
 	${FC} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC}
@@ -79,7 +81,7 @@ PO_FLAG=-pg
 	${OBJC} ${_${.IMPSRC:T}_FLAGS} ${OBJCFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .m.po:
-	${OBJC} ${_${.IMPSRC:T}_FLAGS} ${OBJCFLAGS} -pg -c ${.IMPSRC} -o ${.TARGET}
+	${OBJC} ${_${.IMPSRC:T}_FLAGS} ${OBJCFLAGS} ${PO_FLAG} -c ${.IMPSRC} -o ${.TARGET}
 
 .m.So:
 	${OBJC} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${OBJCFLAGS} -c ${.IMPSRC} -o ${.TARGET}

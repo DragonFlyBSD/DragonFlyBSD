@@ -18,13 +18,11 @@
         ..
         engines
         ..
-        gcc41
-            debug
-            ..
+        gcc44
             profile
             ..
         ..
-        gcc44
+        gcc47
             profile
             ..
         ..
@@ -44,9 +42,9 @@
         ..
     ..
     libdata
-        gcc41
-        ..
         gcc44
+        ..
+        gcc47
         ..
         lint
         ..
@@ -68,9 +66,9 @@
         ..
         custom
         ..
-        gcc41
-        ..
         gcc44
+        ..
+        gcc47
         ..
         lpr
             ru

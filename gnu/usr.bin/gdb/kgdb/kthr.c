@@ -250,6 +250,7 @@ kgdb_thr_select(struct kthr *kt)
 char *
 kgdb_thr_extra_thread_info(int tid)
 {
+#if 0  /* XXX: Doesn't do anything, obsolete? */
 	struct kthr *kt;
 	static char buf[64];
 
@@ -258,7 +259,7 @@ kgdb_thr_extra_thread_info(int tid)
 		return (NULL);
 
 	buf[0] = 0;
-
+#endif
 	return (NULL);
 }
 

@@ -110,7 +110,7 @@ struct udev_monitor *
 udev_monitor_init(struct client_info *cli, prop_array_t filters)
 {
 	struct udev_monitor *udm;
-	int error;
+	int __unused error;
 
 	udm = malloc(sizeof(struct udev_monitor));
 	if (udm == NULL)

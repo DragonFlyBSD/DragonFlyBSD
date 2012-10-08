@@ -4916,7 +4916,7 @@ sctp_sendall (struct sctp_inpcb *inp, struct uio *uio, struct mbuf *m, struct sc
 {
 	int ret;
 	struct sctp_copy_all *ca;
-	ca = kmalloc(sizeof(struct sctp_copy_all), M_PCB, MB_WAIT);
+	ca = kmalloc(sizeof(struct sctp_copy_all), M_PCB, M_NOWAIT);
 	if (ca == NULL) {
 		m_freem(m);
 		return (ENOMEM);
@@ -7505,7 +7505,7 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 				asoc->strmout = NULL;
 				asoc->streamoutcnt = asoc->pre_open_streams;
 				asoc->strmout = kmalloc(asoc->streamoutcnt * sizeof(struct sctp_stream_out),
-							M_PCB, MB_WAIT);
+							M_PCB, M_WAITOK);
 				for (i = 0; i < asoc->streamoutcnt; i++) {
 					/*
 					 * inbound side must be set to 0xffff,
@@ -10287,7 +10287,7 @@ sctp_sosend(struct socket *so,
 					asoc->strmout =
 					    kmalloc(asoc->streamoutcnt *
 						sizeof(struct sctp_stream_out),
-						M_PCB, MB_WAIT);
+						M_PCB, M_WAITOK);
 					for (i = 0; i < asoc->streamoutcnt; i++) {
 						/*
 						 * inbound side must be set to 0xffff,

@@ -36,7 +36,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/_stdint.h,v 1.1 2002/07/29 17:41:07 mike Exp $
- * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.8 2007/07/29 22:20:10 pavalos Exp $
  */
 
 #ifndef _CPU_STDINT_H_
@@ -117,16 +116,18 @@ typedef volatile int	__atomic_intr_t;
 /*
  * Its convenient to put these here rather then create another header file.
  */
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+#define __offsetof(type, field) __builtin_offsetof(type, field)
+#else
 #ifndef __cplusplus
 #define __offsetof(type, field) ((__size_t)(&((type *)0)->field))
-#elif (__GNUC__ >= 4)
-#define __offsetof(type, field) __builtin_offsetof(type, field)
-#else   
+#else
 #define __offsetof(type, field)					\
 	(__offsetof__ (reinterpret_cast <__size_t>		\
 		 (&reinterpret_cast <const volatile char &>	\
 		  (static_cast<type *> (0)->field))))
-#endif  
+#endif
+#endif
 
 #define __arysize(ary)         (sizeof(ary)/sizeof((ary)[0]))
 

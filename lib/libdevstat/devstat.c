@@ -230,7 +230,6 @@ getdevs(struct statinfo *stats)
 {
 	int error;
 	size_t dssize;
-	int oldnumdevs;
 	long oldgeneration;
 	int retval = 0;
 	struct devinfo *dinfo;
@@ -243,7 +242,6 @@ getdevs(struct statinfo *stats)
 		return(-1);
 	}
 
-	oldnumdevs = dinfo->numdevs;
 	oldgeneration = dinfo->generation;
 
 	/*

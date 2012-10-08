@@ -1,5 +1,4 @@
 SUBDIR=		cc_prep
-SUBDIR+=	gmp mpfr
 SUBDIR+=	libiberty libdecnumber
 SUBDIR+=	cc_tools libbackend libcpp cc1 cc doc
 SUBDIR+=	cpp

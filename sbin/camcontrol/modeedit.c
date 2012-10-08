@@ -864,7 +864,7 @@ mode_list(struct cam_device *device, int page_control, int dbd,
 	  int retry_count, int timeout)
 {
 	u_int8_t data[MAX_COMMAND_SIZE];/* Buffer to hold sense data. */
-	u_int8_t *mode_pars;		/* Pointer to modepage params. */
+	u_int8_t __unused *mode_pars;	/* Pointer to modepage params. */
 	struct scsi_mode_header_6 *mh;	/* Location of mode header. */
 	struct scsi_mode_page_header *mph;
 	struct pagename *nameentry;

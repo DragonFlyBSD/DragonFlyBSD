@@ -1915,7 +1915,7 @@ int
 main(int argc, char **argv)
 {
 	struct partinfo pinfo;
-	char	*device, *special, *cp;
+	char	*device, *special, __unused *cp;
 	char	ch;
 	unsigned int	size=0;
 	size_t	len;

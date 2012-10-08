@@ -639,7 +639,7 @@ terminaltypeok(char *s)
 void
 doit(struct sockaddr *who)
 {
-	int err_; /* XXX */
+	int __unused err_; /* XXX */
 	int ptynum;
 
 	/*

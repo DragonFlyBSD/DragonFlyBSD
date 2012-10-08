@@ -710,7 +710,8 @@ keep_ok(filenode *fnode)
 void
 do_file(filenode *fnode)
 {
-	f_reqnode *r, *r_tmp;
+	f_reqnode *r;
+     /* f_reqnode *r_tmp; */
 	f_provnode *p, *p_tmp;
 	provnode *pnode;
 	int was_set;	
@@ -737,7 +738,7 @@ do_file(filenode *fnode)
 	 */
 	r = fnode->req_list;
 	while (r != NULL) {
-		r_tmp = r;
+		/*r_tmp = r;*/
 		satisfy_req(r, fnode->filename);
 		r = r->next;
 		/*free(r_tmp);*/

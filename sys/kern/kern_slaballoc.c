@@ -492,6 +492,22 @@ slab_record_source(SLZone *z, const char *file, int line)
 
 #endif
 
+static __inline unsigned long
+powerof2_size(unsigned long size)
+{
+	int i, wt;
+
+	if (size == 0)
+		return 0;
+
+	i = flsl(size);
+	wt = (size & ~(1 << (i - 1)));
+	if (!wt)
+		--i;
+
+	return (1UL << i);
+}
+
 /*
  * kmalloc()	(SLAB ALLOCATOR)
  *
@@ -505,6 +521,7 @@ slab_record_source(SLZone *z, const char *file, int line)
  *	M_ZERO		- zero the returned memory.
  *	M_USE_RESERVE	- allow greater drawdown of the free list
  *	M_USE_INTERRUPT_RESERVE - allow the freelist to be exhausted
+ *	M_POWEROF2	- roundup size to the nearest power of 2
  *
  * MPSAFE
  */
@@ -544,6 +561,9 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	crit_exit();
     }
     ++type->ks_calls;
+
+    if (flags & M_POWEROF2)
+	size = powerof2_size(size);
 
     /*
      * Handle the case where the limit is reached.  Panic if we can't return
@@ -1566,3 +1586,11 @@ kmem_slab_free(void *ptr, vm_size_t size)
     crit_exit();
 }
 
+void *
+kmalloc_cachealign(unsigned long size_alloc, struct malloc_type *type,
+    int flags)
+{
+	if (size_alloc < __VM_CACHELINE_SIZE)
+		size_alloc = __VM_CACHELINE_SIZE;
+	return kmalloc(size_alloc, type, flags | M_POWEROF2);
+}

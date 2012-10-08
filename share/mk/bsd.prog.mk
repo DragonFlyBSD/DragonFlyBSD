@@ -32,11 +32,13 @@ LDADD+=	${OBJCLIBS}
 
 OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
 
+.if !target(${PROG})
 ${PROG}: ${OBJS}
 .if defined(PROG_CXX)
 	${CXX_LINK} ${CXXFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
 .else
 	${CC_LINK} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
+.endif
 .endif
 
 .else # !defined(SRCS)

@@ -3,7 +3,7 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/8/93
 
 FILES=	bsd.README
-FILES+=	bsd.cpu.mk bsd.cpu.gcc41.mk bsd.cpu.custom.mk
+FILES+=	bsd.cpu.mk bsd.cpu.gcc47.mk bsd.cpu.custom.mk
 FILES+=	bsd.cpu.gcc44.mk
 FILES+=	bsd.dep.mk bsd.doc.mk bsd.files.mk bsd.patch.mk
 FILES+=	bsd.incs.mk bsd.info.mk bsd.init.mk
