@@ -574,7 +574,8 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void **vaddr, int flags,
 		maxsize = check_kmalloc(dmat, *vaddr, 0);
 		if (maxsize) {
 			kfree(*vaddr, M_DEVBUF);
-			*vaddr = kmalloc_powerof2(maxsize, M_DEVBUF, mflags);
+			*vaddr = kmalloc(maxsize, M_DEVBUF,
+			    mflags | M_POWEROF2);
 			check_kmalloc(dmat, *vaddr, 1);
 		}
 	} else {
