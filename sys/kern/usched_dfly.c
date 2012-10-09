@@ -259,10 +259,10 @@ static int usched_dfly_weight1 = 200;	/* keep thread on current cpu */
 static int usched_dfly_weight2 = 180;	/* synchronous peer's current cpu */
 static int usched_dfly_weight3 = 40;	/* number of threads on queue */
 static int usched_dfly_weight4 = 160;	/* availability of idle cores */
-static int usched_dfly_fast_resched = 0;/* delta priority / resched */
 static int usched_dfly_features = 0x8F;	/* allow pulls */
-static int usched_dfly_swmask = ~PPQMASK; /* allow pulls */
 #endif
+static int usched_dfly_fast_resched = 0;/* delta priority / resched */
+static int usched_dfly_swmask = ~PPQMASK; /* allow pulls */
 static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
 static int usched_dfly_decay = 8;
 
@@ -775,7 +775,9 @@ void
 dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 {
 	globaldata_t gd = mycpu;
+#ifdef SMP
 	dfly_pcpu_t dd = &dfly_pcpu[gd->gd_cpuid];
+#endif
 
 	/*
 	 * Spinlocks also hold a critical section so there should not be
