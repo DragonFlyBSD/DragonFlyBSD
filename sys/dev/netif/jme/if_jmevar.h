@@ -150,10 +150,6 @@ struct jme_rxdata {
 	struct jme_rxdesc	*jme_rxdesc;
 
 	struct jme_desc		*jme_rx_ring;
-	bus_addr_t		jme_rx_ring_paddr;
-	bus_dma_tag_t		jme_rx_ring_tag;
-	bus_dmamap_t		jme_rx_ring_map;
-
 	int			jme_rx_cons;
 	int			jme_rx_desc_cnt;
 
@@ -163,9 +159,35 @@ struct jme_rxdata {
 
 	u_long			jme_rx_pkt;
 	u_long			jme_rx_emp;
+
+	bus_addr_t		jme_rx_ring_paddr;
+	bus_dma_tag_t		jme_rx_ring_tag;
+	bus_dmamap_t		jme_rx_ring_map;
 } __cachealign;
 
 struct jme_chain_data {
+	/*
+	 * TX ring/descs
+	 */
+	struct lwkt_serialize	jme_tx_serialize;
+	struct jme_softc	*jme_sc;
+	bus_dma_tag_t		jme_tx_tag;	/* TX mbuf tag */
+	struct jme_txdesc	*jme_txdesc;
+
+	struct jme_desc		*jme_tx_ring;
+
+	int			jme_tx_prod;
+	int			jme_tx_cons;
+	int			jme_tx_cnt;
+	int			jme_tx_desc_cnt;
+
+	bus_addr_t		jme_tx_ring_paddr;
+	bus_dma_tag_t		jme_tx_ring_tag;
+	bus_dmamap_t		jme_tx_ring_map;
+
+	int			jme_rx_ring_cnt;
+	struct jme_rxdata	jme_rx_data[JME_NRXRING_MAX];
+
 	/*
 	 * Top level tags
 	 */
@@ -179,27 +201,6 @@ struct jme_chain_data {
 	bus_addr_t		jme_ssb_block_paddr;
 	bus_dma_tag_t		jme_ssb_tag;
 	bus_dmamap_t		jme_ssb_map;
-
-	/*
-	 * TX ring/descs
-	 */
-	struct lwkt_serialize	jme_tx_serialize;
-	struct jme_softc	*jme_sc;
-	bus_dma_tag_t		jme_tx_tag;	/* TX mbuf tag */
-	struct jme_txdesc	*jme_txdesc;
-
-	struct jme_desc		*jme_tx_ring;
-	bus_addr_t		jme_tx_ring_paddr;
-	bus_dma_tag_t		jme_tx_ring_tag;
-	bus_dmamap_t		jme_tx_ring_map;
-
-	int			jme_tx_prod;
-	int			jme_tx_cons;
-	int			jme_tx_cnt;
-	int			jme_tx_desc_cnt;
-
-	int			jme_rx_ring_cnt;
-	struct jme_rxdata	jme_rx_data[JME_NRXRING_MAX];
 } __cachealign;
 
 struct jme_msix_data {
