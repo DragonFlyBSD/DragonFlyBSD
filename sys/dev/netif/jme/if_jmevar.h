@@ -82,9 +82,8 @@
 #define	JME_ADDR_HI(x)		((uint64_t) (x) >> 32)
 
 /* Water mark to kick reclaiming Tx buffers. */
-#define	JME_TX_DESC_HIWAT(sc)	\
-	((sc)->jme_cdata.jme_tx_desc_cnt - \
-	 (((sc)->jme_cdata.jme_tx_desc_cnt * 3) / 10))
+#define	JME_TX_DESC_HIWAT(tdata)	\
+	((tdata)->jme_tx_desc_cnt - (((tdata)->jme_tx_desc_cnt * 3) / 10))
 
 /*
  * JMC250 can send 9K jumbo frame on Tx path and can receive
@@ -165,12 +164,10 @@ struct jme_rxdata {
 	bus_dmamap_t		jme_rx_ring_map;
 } __cachealign;
 
-struct jme_chain_data {
-	/*
-	 * TX ring/descs
-	 */
+struct jme_txdata {
 	struct lwkt_serialize	jme_tx_serialize;
 	struct jme_softc	*jme_sc;
+
 	bus_dma_tag_t		jme_tx_tag;	/* TX mbuf tag */
 	struct jme_txdesc	*jme_txdesc;
 
@@ -184,7 +181,17 @@ struct jme_chain_data {
 	bus_addr_t		jme_tx_ring_paddr;
 	bus_dma_tag_t		jme_tx_ring_tag;
 	bus_dmamap_t		jme_tx_ring_map;
+} __cachealign;
 
+struct jme_chain_data {
+	/*
+	 * TX ring
+	 */
+	struct jme_txdata	jme_tx_data;
+
+	/*
+	 * RX rings
+	 */
 	int			jme_rx_ring_cnt;
 	struct jme_rxdata	jme_rx_data[JME_NRXRING_MAX];
 
@@ -195,7 +202,7 @@ struct jme_chain_data {
 	bus_dma_tag_t		jme_buffer_tag;	/* parent mbuf/ssb tag */
 
 	/*
-	 * Shadow status block
+	 * Shadow status block (unused)
 	 */
 	struct jme_ssb		*jme_ssb_block;
 	bus_addr_t		jme_ssb_block_paddr;
@@ -217,8 +224,8 @@ struct jme_msix_data {
 	void			*jme_msix_arg;
 };
 
-#define JME_TX_RING_SIZE(sc)	\
-    (sizeof(struct jme_desc) * (sc)->jme_cdata.jme_tx_desc_cnt)
+#define JME_TX_RING_SIZE(tdata)	\
+    (sizeof(struct jme_desc) * (tdata)->jme_tx_desc_cnt)
 #define JME_RX_RING_SIZE(rdata)	\
     (sizeof(struct jme_desc) * (rdata)->jme_rx_desc_cnt)
 #define	JME_SSB_SIZE		sizeof(struct jme_ssb)
