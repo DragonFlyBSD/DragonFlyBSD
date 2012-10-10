@@ -829,9 +829,9 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	 * Otherwise properly align the data according to the chunk size.
 	 */
 	if (powerof2(size))
-	    off = (off + size - 1) & ~(size - 1);
-	else
-	    off = (off + align - 1) & ~(align - 1);
+	    align = size;
+	off = (off + align - 1) & ~(align - 1);
+
 	z->z_Magic = ZALLOC_SLAB_MAGIC;
 	z->z_ZoneIndex = zi;
 	z->z_NMax = (ZoneSize - off) / size;
