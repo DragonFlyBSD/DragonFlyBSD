@@ -130,7 +130,6 @@ struct dbreg;
 
 #define PFIND(pid) ((pid) ? pfindn(pid) : &proc0) /* pfindn() not MPSAFE XXX */
 
-void linprocfs_init (void);
 void linprocfs_exit (struct thread *);
 int linprocfs_freevp (struct vnode *);
 int linprocfs_allocvp (struct mount *, struct vnode **, long, pfstype);

@@ -43,6 +43,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
@@ -431,11 +432,13 @@ vfs_findname(vfs_namemap_t *nm, char *buf, int buflen)
 }
 #endif
 
-void
-linprocfs_init(void)
+static void
+linprocfs_init(void *arg __unused)
 {
 	lwkt_token_init(&pfs_token, "linprocfs");
 } 
+SYSINIT(linprocfs_init, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST,
+	linprocfs_init, NULL);
 
 void
 linprocfs_exit(struct thread *td)
