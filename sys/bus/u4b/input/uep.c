@@ -41,18 +41,18 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbhid.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbhid.h>
+#include <bus/u4b/usbdevs.h>
 
 #include <sys/ioccom.h>
 #include <sys/fcntl.h>
 #include <sys/tty.h>
 
 #define USB_DEBUG_VAR uep_debug
-#include <dev/usb/usb_debug.h>
+#include <bus/u4b/usb_debug.h>
 
 #ifdef USB_DEBUG
 static int uep_debug = 0;
@@ -85,7 +85,7 @@ enum {
 };
 
 struct uep_softc {
-	struct mtx mtx;
+	struct lock lock;
 
 	struct usb_xfer *xfer[UEP_N_TRANSFER];
 	struct usb_fifo_sc fifo;
@@ -318,17 +318,17 @@ uep_attach(device_t dev)
 
 	device_set_usb_desc(dev);
 
-	mtx_init(&sc->mtx, "uep lock", NULL, MTX_DEF);
+	lockinit(&sc->lock, "uep lock", 0, 0);
 
 	error = usbd_transfer_setup(uaa->device, &uaa->info.bIfaceIndex,
-	    sc->xfer, uep_config, UEP_N_TRANSFER, sc, &sc->mtx);
+	    sc->xfer, uep_config, UEP_N_TRANSFER, sc, &sc->lock);
 
 	if (error) {
 		DPRINTF("usbd_transfer_setup error=%s\n", usbd_errstr(error));
 		goto detach;
 	}
 
-	error = usb_fifo_attach(uaa->device, sc, &sc->mtx, &uep_fifo_methods,
+	error = usb_fifo_attach(uaa->device, sc, &sc->lock, &uep_fifo_methods,
 	    &sc->fifo, device_get_unit(dev), 0 - 1, uaa->info.bIfaceIndex,
 	    UID_ROOT, GID_OPERATOR, 0644);
 
@@ -356,7 +356,7 @@ uep_detach(device_t dev)
 
 	usbd_transfer_unsetup(sc->xfer, UEP_N_TRANSFER);
 
-	mtx_destroy(&sc->mtx);
+	lockuninit(&sc->lock);
 
 	return (0);
 }
