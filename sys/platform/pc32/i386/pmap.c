@@ -2066,8 +2066,6 @@ pmap_remove_all(vm_page_t m)
 		vm_object_hold(pmap->pm_pteobj);
 
 		if (pv != TAILQ_FIRST(&m->md.pv_list)) {
-			kprintf("pmap_remove_all: %p pv %p went away\n",
-				pmap, pv);
 			vm_object_drop(pmap->pm_pteobj);
 			pmap_drop(pmap);
 			continue;
