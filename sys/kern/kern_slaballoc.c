@@ -1602,7 +1602,28 @@ void *
 kmalloc_cachealign(unsigned long size_alloc, struct malloc_type *type,
     int flags)
 {
+#if (__VM_CACHELINE_SIZE == 32)
+#define CAN_CACHEALIGN(sz)	((sz) >= 256)
+#elif (__VM_CACHELINE_SIZE == 64)
+#define CAN_CACHEALIGN(sz)	((sz) >= 512)
+#elif (__VM_CACHELINE_SIZE == 128)
+#define CAN_CACHEALIGN(sz)	((sz) >= 1024)
+#else
+#error "unsupported cacheline size"
+#endif
+
+	void *ret;
+
 	if (size_alloc < __VM_CACHELINE_SIZE)
 		size_alloc = __VM_CACHELINE_SIZE;
-	return kmalloc(size_alloc, type, flags | M_POWEROF2);
+	else if (!CAN_CACHEALIGN(size_alloc))
+		flags |= M_POWEROF2;
+
+	ret = kmalloc(size_alloc, type, flags);
+	KASSERT(((uintptr_t)ret & (__VM_CACHELINE_SIZE - 1)) == 0,
+	    ("%p(%lu) not cacheline %d aligned",
+	     ret, size_alloc, __VM_CACHELINE_SIZE));
+	return ret;
+
+#undef CAN_CACHEALIGN
 }
