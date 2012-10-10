@@ -1,7 +1,3 @@
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
-
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -42,7 +38,6 @@ __FBSDID("$FreeBSD$");
 #include "opt_ukbd.h"
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -51,34 +46,32 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 #include <sys/proc.h>
 #include <sys/sched.h>
-#include <sys/kdb.h>
+#include <sys/thread2.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbhid.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbhid.h>
 
 #define	USB_DEBUG_VAR ukbd_debug
-#include <dev/usb/usb_debug.h>
+#include <bus/u4b/usb_debug.h>
 
-#include <dev/usb/quirk/usb_quirk.h>
+#include <bus/u4b/quirk/usb_quirk.h>
 
 #include <sys/ioccom.h>
 #include <sys/filio.h>
 #include <sys/tty.h>
 #include <sys/kbio.h>
 
-#include <dev/kbd/kbdreg.h>
+#include <dev/misc/kbd/kbdreg.h>
 
 /* the initial key map, accent map and fkey strings */
 #if defined(UKBD_DFLT_KEYMAP) && !defined(KLD_MODULE)
@@ -87,7 +80,7 @@ __FBSDID("$FreeBSD$");
 #endif
 
 /* the following file must be included after "ukbdmap.h" */
-#include <dev/kbd/kbdtables.h>
+#include <dev/misc/kbd/kbdtables.h>
 
 #ifdef USB_DEBUG
 static int ukbd_debug = 0;
@@ -135,9 +128,12 @@ enum {
 };
 
 struct ukbd_softc {
+    device_t sc_dev;
+    struct lock sc_lock;
 	keyboard_t sc_kbd;
 	keymap_t sc_keymap;
 	accentmap_t sc_accmap;
+
 	fkeytab_t sc_fkeymap[UKBD_NFKEY];
 	struct hid_location sc_loc_apple_eject;
 	struct hid_location sc_loc_apple_fn;
@@ -245,8 +241,8 @@ struct ukbd_softc {
 			 SCAN_PREFIX_CTL | SCAN_PREFIX_SHIFT)
 #define	SCAN_CHAR(c)	((c) & 0x7f)
 
-#define	UKBD_LOCK()	mtx_lock(&Giant)
-#define	UKBD_UNLOCK()	mtx_unlock(&Giant)
+#define	UKBD_LOCK(sc)	lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE)	
+#define	UKBD_UNLOCK(sc)	lockmgr(&(sc)->sc_lock, LK_RELEASE)
 
 #ifdef	INVARIANTS
 
@@ -254,17 +250,13 @@ struct ukbd_softc {
  * Assert that the lock is held in all contexts
  * where the code can be executed.
  */
-#define	UKBD_LOCK_ASSERT()	mtx_assert(&Giant, MA_OWNED)
+#define	UKBD_LOCK_ASSERT()
 
 /*
  * Assert that the lock is held in the contexts
  * where it really has to be so.
  */
-#define	UKBD_CTX_LOCK_ASSERT()			 	\
-	do {						\
-		if (!kdb_active && panicstr == NULL)	\
-			mtx_assert(&Giant, MA_OWNED);	\
-	} while (0)
+#define	UKBD_CTX_LOCK_ASSERT()
 #else
 
 #define UKBD_LOCK_ASSERT()	(void)0
@@ -419,8 +411,9 @@ ukbd_do_poll(struct ukbd_softc *sc, uint8_t wait)
 	KASSERT((sc->sc_flags & UKBD_FLAG_POLLING) != 0,
 	    ("ukbd_do_poll called when not polling\n"));
 	DPRINTFN(2, "polling\n");
-
+#if 0 /* XXX */
 	if (!kdb_active && !SCHEDULER_STOPPED()) {
+#endif
 		/*
 		 * In this context the kernel is polling for input,
 		 * but the USB subsystem works in normal interrupt-driven
@@ -433,12 +426,14 @@ ukbd_do_poll(struct ukbd_softc *sc, uint8_t wait)
 			 * Give USB threads a chance to run.  Note that
 			 * kern_yield performs DROP_GIANT + PICKUP_GIANT.
 			 */
-			kern_yield(PRI_UNCHANGED);
+			lwkt_yield();
 			if (!wait)
 				break;
 		}
 		return;
+#if 0
 	}
+#endif
 
 	while (sc->sc_inputs == 0) {
 
@@ -466,9 +461,11 @@ ukbd_get_key(struct ukbd_softc *sc, uint8_t wait)
 	int32_t c;
 
 	UKBD_CTX_LOCK_ASSERT();
+#if 0
 	KASSERT((!kdb_active && !SCHEDULER_STOPPED())
 	    || (sc->sc_flags & UKBD_FLAG_POLLING) != 0,
 	    ("not polling in kdb or panic\n"));
+#endif
 
 	if (sc->sc_inputs == 0) {
 		/* start transfer, if not already started */
@@ -983,7 +980,6 @@ ukbd_probe(device_t dev)
 	int error;
 	uint16_t d_len;
 
-	UKBD_LOCK_ASSERT();
 	DPRINTFN(11, "\n");
 
 	if (sw == NULL) {
@@ -1027,7 +1023,7 @@ ukbd_probe(device_t dev)
 	} else
 		error = ENXIO;
 
-	free(d_ptr, M_TEMP);
+	kfree(d_ptr, M_TEMP);
 	return (error);
 }
 
@@ -1177,9 +1173,9 @@ ukbd_attach(device_t dev)
 	uint16_t n;
 	uint16_t hid_len;
 
-	UKBD_LOCK_ASSERT();
-
-	kbd_init_struct(kbd, UKBD_DRIVER_NAME, KB_OTHER, unit, 0, 0, 0);
+	lockinit(&sc->sc_lock, "ukbd", 0, 0);
+	kbd_init_struct(kbd, UKBD_DRIVER_NAME, KB_OTHER,
+            unit, 0, KB_PRI_USB, 0, 0);
 
 	kbd->kb_data = (void *)sc;
 
@@ -1191,11 +1187,11 @@ ukbd_attach(device_t dev)
 	sc->sc_iface_no = uaa->info.bIfaceNum;
 	sc->sc_mode = K_XLATE;
 
-	usb_callout_init_mtx(&sc->sc_callout, &Giant, 0);
+	usb_callout_init_mtx(&sc->sc_callout, &sc->sc_lock, 0);
 
 	err = usbd_transfer_setup(uaa->device,
 	    &uaa->info.bIfaceIndex, sc->sc_xfer, ukbd_config,
-	    UKBD_N_TRANSFER, sc, &Giant);
+	    UKBD_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (err) {
 		DPRINTF("error=%s\n", usbd_errstr(err));
@@ -1232,7 +1228,7 @@ ukbd_attach(device_t dev)
 
 		ukbd_parse_hid(sc, hid_ptr, hid_len);
 
-		free(hid_ptr, M_TEMP);
+		kfree(hid_ptr, M_TEMP);
 	}
 
 	/* check if we should use the boot protocol */
@@ -1278,7 +1274,9 @@ ukbd_attach(device_t dev)
 	}
 
 	/* start the keyboard */
+	UKBD_LOCK(sc);
 	usbd_transfer_start(sc->sc_xfer[UKBD_INTR_DT]);
+	UKBD_UNLOCK(sc);
 
 	return (0);			/* success */
 
@@ -1292,8 +1290,6 @@ ukbd_detach(device_t dev)
 {
 	struct ukbd_softc *sc = device_get_softc(dev);
 	int error;
-
-	UKBD_LOCK_ASSERT();
 
 	DPRINTF("\n");
 
@@ -1337,8 +1333,6 @@ static int
 ukbd_resume(device_t dev)
 {
 	struct ukbd_softc *sc = device_get_softc(dev);
-
-	UKBD_LOCK_ASSERT();
 
 	ukbd_clear_state(&sc->sc_kbd);
 
@@ -1401,10 +1395,11 @@ ukbd_lock(keyboard_t *kbd, int lock)
 static int
 ukbd_enable(keyboard_t *kbd)
 {
+	struct ukbd_softc *sc = kbd->kb_data;
 
-	UKBD_LOCK();
+	UKBD_LOCK(sc);
 	KBD_ACTIVATE(kbd);
-	UKBD_UNLOCK();
+	UKBD_UNLOCK(sc);
 
 	return (0);
 }
@@ -1413,10 +1408,11 @@ ukbd_enable(keyboard_t *kbd)
 static int
 ukbd_disable(keyboard_t *kbd)
 {
+	struct ukbd_softc *sc = kbd->kb_data;
 
-	UKBD_LOCK();
+	UKBD_LOCK(sc);
 	KBD_DEACTIVATE(kbd);
-	UKBD_UNLOCK();
+	UKBD_UNLOCK(sc);
 
 	return (0);
 }
@@ -1427,8 +1423,6 @@ static int
 ukbd_check(keyboard_t *kbd)
 {
 	struct ukbd_softc *sc = kbd->kb_data;
-
-	UKBD_CTX_LOCK_ASSERT();
 
 	if (!KBD_IS_ACTIVE(kbd))
 		return (0);
@@ -1453,8 +1447,6 @@ ukbd_check_char_locked(keyboard_t *kbd)
 {
 	struct ukbd_softc *sc = kbd->kb_data;
 
-	UKBD_CTX_LOCK_ASSERT();
-
 	if (!KBD_IS_ACTIVE(kbd))
 		return (0);
 
@@ -1469,10 +1461,15 @@ static int
 ukbd_check_char(keyboard_t *kbd)
 {
 	int result;
+#if 0
+	struct ukbd_softc *sc = kbd->kb_data;
 
-	UKBD_LOCK();
+	UKBD_LOCK(sc);
+#endif
 	result = ukbd_check_char_locked(kbd);
-	UKBD_UNLOCK();
+#if 0
+	UKBD_UNLOCK(sc);
+#endif
 
 	return (result);
 }
@@ -1489,8 +1486,6 @@ ukbd_read(keyboard_t *kbd, int wait)
 	uint32_t scancode;
 
 #endif
-
-	UKBD_CTX_LOCK_ASSERT();
 
 	if (!KBD_IS_ACTIVE(kbd))
 		return (-1);
@@ -1538,8 +1533,6 @@ ukbd_read_char_locked(keyboard_t *kbd, int wait)
 #ifdef UKBD_EMULATE_ATSCANCODE
 	uint32_t scancode;
 #endif
-
-	UKBD_CTX_LOCK_ASSERT();
 
 	if (!KBD_IS_ACTIVE(kbd))
 		return (NOKEY);
@@ -1723,10 +1716,15 @@ static uint32_t
 ukbd_read_char(keyboard_t *kbd, int wait)
 {
 	uint32_t keycode;
+#if 0
+	struct ukbd_softc *sc = kbd->kb_data;
 
-	UKBD_LOCK();
+	UKBD_LOCK(sc);
+#endif
 	keycode = ukbd_read_char_locked(kbd, wait);
-	UKBD_UNLOCK();
+#if 0
+	UKBD_UNLOCK(sc);
+#endif
 
 	return (keycode);
 }
@@ -1743,18 +1741,18 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 
 #endif
 
-	UKBD_LOCK_ASSERT();
-
 	switch (cmd) {
 	case KDGKBMODE:		/* get keyboard mode */
 		*(int *)arg = sc->sc_mode;
 		break;
+#if 0 /* XXX */
 #if defined(COMPAT_FREEBSD6) || defined(COMPAT_FREEBSD5) || \
     defined(COMPAT_FREEBSD4) || defined(COMPAT_43)
 	case _IO('K', 7):
 		ival = IOCPARM_IVAL(arg);
 		arg = (caddr_t)&ival;
 		/* FALLTHROUGH */
+#endif
 #endif
 	case KDSKBMODE:		/* set keyboard mode */
 		switch (*(int *)arg) {
@@ -1781,12 +1779,14 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDGETLED:			/* get keyboard LED */
 		*(int *)arg = KBD_LED_VAL(kbd);
 		break;
+#if 0 /* XXX */
 #if defined(COMPAT_FREEBSD6) || defined(COMPAT_FREEBSD5) || \
     defined(COMPAT_FREEBSD4) || defined(COMPAT_43)
 	case _IO('K', 66):
 		ival = IOCPARM_IVAL(arg);
 		arg = (caddr_t)&ival;
 		/* FALLTHROUGH */
+#endif
 #endif
 	case KDSETLED:			/* set keyboard LED */
 		/* NOTE: lock key state in "sc_state" won't be changed */
@@ -1811,12 +1811,14 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDGKBSTATE:		/* get lock key state */
 		*(int *)arg = sc->sc_state & LOCK_MASK;
 		break;
+#if 0 /* XXX */
 #if defined(COMPAT_FREEBSD6) || defined(COMPAT_FREEBSD5) || \
     defined(COMPAT_FREEBSD4) || defined(COMPAT_43)
 	case _IO('K', 20):
 		ival = IOCPARM_IVAL(arg);
 		arg = (caddr_t)&ival;
 		/* FALLTHROUGH */
+#endif
 #endif
 	case KDSKBSTATE:		/* set lock key state */
 		if (*(int *)arg & ~LOCK_MASK) {
@@ -1846,6 +1848,7 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		kbd->kb_delay2 = ((int *)arg)[1];
 		return (0);
 
+#if 0 /* XXX */
 #if defined(COMPAT_FREEBSD6) || defined(COMPAT_FREEBSD5) || \
     defined(COMPAT_FREEBSD4) || defined(COMPAT_43)
 	case _IO('K', 67):
@@ -1853,13 +1856,12 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		arg = (caddr_t)&ival;
 		/* FALLTHROUGH */
 #endif
+#endif
 	case KDSETRAD:			/* set keyboard repeat rate (old
 					 * interface) */
 		return (ukbd_set_typematic(kbd, *(int *)arg));
 
 	case PIO_KEYMAP:		/* set keyboard translation table */
-	case OPIO_KEYMAP:		/* set keyboard translation table
-					 * (compat) */
 	case PIO_KEYMAPENT:		/* set keyboard translation table
 					 * entry */
 	case PIO_DEADKEYMAP:		/* set accent key translation table */
@@ -1876,6 +1878,7 @@ static int
 ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 {
 	int result;
+	struct ukbd_softc *sc = kbd->kb_data;
 
 	/*
 	 * XXX KDGKBSTATE, KDSKBSTATE and KDSETLED can be called from any
@@ -1891,13 +1894,12 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDGKBSTATE:
 	case KDSKBSTATE:
 	case KDSETLED:
-		if (!mtx_owned(&Giant) && !SCHEDULER_STOPPED())
-			return (EDEADLK);	/* best I could come up with */
+		return (EDEADLK);	/* best I could come up with */
 		/* FALLTHROUGH */
 	default:
-		UKBD_LOCK();
+		UKBD_LOCK(sc);
 		result = ukbd_ioctl_locked(kbd, cmd, arg);
-		UKBD_UNLOCK();
+		UKBD_UNLOCK(sc);
 		return (result);
 	}
 }
@@ -1908,8 +1910,6 @@ static void
 ukbd_clear_state(keyboard_t *kbd)
 {
 	struct ukbd_softc *sc = kbd->kb_data;
-
-	UKBD_CTX_LOCK_ASSERT();
 
 	sc->sc_flags &= ~(UKBD_FLAG_COMPOSE | UKBD_FLAG_POLLING);
 	sc->sc_state &= LOCK_MASK;	/* preserve locking key state */
@@ -1944,7 +1944,7 @@ ukbd_poll(keyboard_t *kbd, int on)
 {
 	struct ukbd_softc *sc = kbd->kb_data;
 
-	UKBD_LOCK();
+	UKBD_LOCK(sc);
 	if (on) {
 		sc->sc_flags |= UKBD_FLAG_POLLING;
 		sc->sc_poll_thread = curthread;
@@ -1952,7 +1952,7 @@ ukbd_poll(keyboard_t *kbd, int on)
 		sc->sc_flags &= ~UKBD_FLAG_POLLING;
 		ukbd_start_timer(sc);	/* start timer */
 	}
-	UKBD_UNLOCK();
+	UKBD_UNLOCK(sc);
 
 	return (0);
 }
@@ -1963,7 +1963,6 @@ static void
 ukbd_set_leds(struct ukbd_softc *sc, uint8_t leds)
 {
 
-	UKBD_LOCK_ASSERT();
 	DPRINTF("leds=0x%02x\n", leds);
 
 	sc->sc_leds = leds;

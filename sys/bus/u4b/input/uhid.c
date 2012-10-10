@@ -4,9 +4,6 @@
  *	$NetBSD: uhid.c,v 1.54 2002/09/23 05:51:21 simonb Exp $
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -42,7 +39,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -51,10 +47,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
@@ -62,18 +56,18 @@ __FBSDID("$FreeBSD$");
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 
-#include "usbdevs.h"
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbhid.h>
-#include <dev/usb/usb_ioctl.h>
+#include <bus/u4b/usbdevs.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbhid.h>
+#include <bus/u4b/usb_ioctl.h>
 
 #define	USB_DEBUG_VAR uhid_debug
-#include <dev/usb/usb_debug.h>
+#include <bus/u4b/usb_debug.h>
 
-#include <dev/usb/input/usb_rdesc.h>
-#include <dev/usb/quirk/usb_quirk.h>
+#include <bus/u4b/input/usb_rdesc.h>
+#include <bus/u4b/quirk/usb_quirk.h>
 
 #ifdef USB_DEBUG
 static int uhid_debug = 0;
@@ -95,7 +89,7 @@ enum {
 
 struct uhid_softc {
 	struct usb_fifo_sc sc_fifo;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	struct usb_xfer *sc_xfer[UHID_N_TRANSFER];
 	struct usb_device *sc_udev;
@@ -401,7 +395,7 @@ uhid_get_report(struct uhid_softc *sc, uint8_t type,
 	uint8_t free_data = 0;
 
 	if (kern_data == NULL) {
-		kern_data = malloc(len, M_USBDEV, M_WAITOK);
+		kern_data = kmalloc(len, M_USBDEV, M_WAITOK);
 		if (kern_data == NULL) {
 			err = ENOMEM;
 			goto done;
@@ -423,7 +417,7 @@ uhid_get_report(struct uhid_softc *sc, uint8_t type,
 	}
 done:
 	if (free_data) {
-		free(kern_data, M_USBDEV);
+		kfree(kern_data, M_USBDEV);
 	}
 	return (err);
 }
@@ -437,7 +431,7 @@ uhid_set_report(struct uhid_softc *sc, uint8_t type,
 	uint8_t free_data = 0;
 
 	if (kern_data == NULL) {
-		kern_data = malloc(len, M_USBDEV, M_WAITOK);
+		kern_data = kmalloc(len, M_USBDEV, M_WAITOK);
 		if (kern_data == NULL) {
 			err = ENOMEM;
 			goto done;
@@ -456,7 +450,7 @@ uhid_set_report(struct uhid_softc *sc, uint8_t type,
 	}
 done:
 	if (free_data) {
-		free(kern_data, M_USBDEV);
+		kfree(kern_data, M_USBDEV);
 	}
 	return (err);
 }
@@ -534,13 +528,13 @@ uhid_ioctl(struct usb_fifo *fifo, u_long cmd, void *addr,
 			if (error) {
 				break;
 			}
-			mtx_lock(&sc->sc_mtx);
+			lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 			sc->sc_flags |= UHID_FLAG_IMMED;
-			mtx_unlock(&sc->sc_mtx);
+			lockmgr(&sc->sc_lock, LK_RELEASE);
 		} else {
-			mtx_lock(&sc->sc_mtx);
+			lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 			sc->sc_flags &= ~UHID_FLAG_IMMED;
-			mtx_unlock(&sc->sc_mtx);
+			lockmgr(&sc->sc_lock, LK_RELEASE);
 		}
 		break;
 
@@ -665,7 +659,7 @@ uhid_attach(device_t dev)
 
 	device_set_usb_desc(dev);
 
-	mtx_init(&sc->sc_mtx, "uhid lock", NULL, MTX_DEF | MTX_RECURSE);
+	lockinit(&sc->sc_lock, "uhid lock", 0, LK_CANRECURSE);
 
 	sc->sc_udev = uaa->device;
 
@@ -674,7 +668,7 @@ uhid_attach(device_t dev)
 
 	error = usbd_transfer_setup(uaa->device,
 	    &uaa->info.bIfaceIndex, sc->sc_xfer, uhid_config,
-	    UHID_N_TRANSFER, sc, &sc->sc_mtx);
+	    UHID_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (error) {
 		DPRINTF("error=%s\n", usbd_errstr(error));
@@ -766,7 +760,7 @@ uhid_attach(device_t dev)
 		sc->sc_fsize = UHID_BSIZE;
 	}
 
-	error = usb_fifo_attach(uaa->device, sc, &sc->sc_mtx,
+	error = usb_fifo_attach(uaa->device, sc, &sc->sc_lock,
 	    &uhid_fifo_methods, &sc->sc_fifo,
 	    unit, 0 - 1, uaa->info.bIfaceIndex,
 	    UID_ROOT, GID_OPERATOR, 0644);
@@ -791,10 +785,10 @@ uhid_detach(device_t dev)
 
 	if (sc->sc_repdesc_ptr) {
 		if (!(sc->sc_flags & UHID_FLAG_STATIC_DESC)) {
-			free(sc->sc_repdesc_ptr, M_USBDEV);
+			kfree(sc->sc_repdesc_ptr, M_USBDEV);
 		}
 	}
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

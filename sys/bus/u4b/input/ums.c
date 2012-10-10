@@ -28,15 +28,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*
  * HID spec: http://www.usb.org/developers/devclass_docs/HID1_11.pdf
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -45,10 +41,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
@@ -57,16 +51,16 @@ __FBSDID("$FreeBSD$");
 #include <sys/fcntl.h>
 #include <sys/sbuf.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbhid.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbhid.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR ums_debug
-#include <dev/usb/usb_debug.h>
+#include <bus/u4b/usb_debug.h>
 
-#include <dev/usb/quirk/usb_quirk.h>
+#include <bus/u4b/quirk/usb_quirk.h>
 
 #include <sys/ioccom.h>
 #include <sys/filio.h>
@@ -123,7 +117,7 @@ struct ums_info {
 
 struct ums_softc {
 	struct usb_fifo_sc sc_fifo;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 	struct usb_callout sc_callout;
 	struct ums_info sc_info[UMS_INFO_MAX];
 
@@ -172,7 +166,7 @@ ums_put_queue_timeout(void *__sc)
 {
 	struct ums_softc *sc = __sc;
 
-	mtx_assert(&sc->sc_mtx, MA_OWNED);
+	KKASSERT(lockowned(&sc->sc_lock));
 
 	ums_put_queue(sc, 0, 0, 0, 0, 0);
 }
@@ -426,7 +420,7 @@ ums_probe(device_t dev)
 		}
 	}
 	hid_end_parse(hd);
-	free(d_ptr, M_TEMP);
+	kfree(d_ptr, M_TEMP);
 	return (found ? BUS_PROBE_DEFAULT : ENXIO);
 }
 
@@ -564,9 +558,9 @@ ums_attach(device_t dev)
 
 	device_set_usb_desc(dev);
 
-	mtx_init(&sc->sc_mtx, "ums lock", NULL, MTX_DEF | MTX_RECURSE);
+	lockinit(&sc->sc_lock, "ums lock", 0, LK_CANRECURSE);
 
-	usb_callout_init_mtx(&sc->sc_callout, &sc->sc_mtx, 0);
+	usb_callout_init_mtx(&sc->sc_callout, &sc->sc_lock, 0);
 
 	/*
          * Force the report (non-boot) protocol.
@@ -579,7 +573,7 @@ ums_attach(device_t dev)
 
 	err = usbd_transfer_setup(uaa->device,
 	    &uaa->info.bIfaceIndex, sc->sc_xfer, ums_config,
-	    UMS_N_TRANSFER, sc, &sc->sc_mtx);
+	    UMS_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (err) {
 		DPRINTF("error=%s\n", usbd_errstr(err));
@@ -649,7 +643,7 @@ ums_attach(device_t dev)
 		    "than interrupt size, %d bytes!\n", isize,
 		    usbd_xfer_max_framelen(sc->sc_xfer[UMS_INTR_DT]));
 	}
-	free(d_ptr, M_TEMP);
+	kfree(d_ptr, M_TEMP);
 	d_ptr = NULL;
 
 #ifdef USB_DEBUG
@@ -696,24 +690,26 @@ ums_attach(device_t dev)
 	sc->sc_mode.syncmask[0] = MOUSE_MSC_SYNCMASK;
 	sc->sc_mode.syncmask[1] = MOUSE_MSC_SYNC;
 
-	err = usb_fifo_attach(uaa->device, sc, &sc->sc_mtx,
+	err = usb_fifo_attach(uaa->device, sc, &sc->sc_lock,
 	    &ums_fifo_methods, &sc->sc_fifo,
 	    device_get_unit(dev), 0 - 1, uaa->info.bIfaceIndex,
   	    UID_ROOT, GID_OPERATOR, 0644);
 	if (err) {
 		goto detach;
 	}
+#if 0 /* XXXDF */
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
 	    OID_AUTO, "parseinfo", CTLTYPE_STRING|CTLFLAG_RD,
 	    sc, 0, ums_sysctl_handler_parseinfo,
 	    "", "Dump of parsed HID report descriptor");
+#endif
 
 	return (0);
 
 detach:
 	if (d_ptr) {
-		free(d_ptr, M_TEMP);
+		kfree(d_ptr, M_TEMP);
 	}
 	ums_detach(dev);
 	return (ENOMEM);
@@ -732,7 +728,7 @@ ums_detach(device_t self)
 
 	usb_callout_drain(&sc->sc_callout);
 
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }
@@ -873,7 +869,7 @@ ums_ioctl(struct usb_fifo *fifo, u_long cmd, void *addr, int fflags)
 
 	DPRINTFN(2, "\n");
 
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 
 	switch (cmd) {
 	case MOUSE_GETHWINFO:
@@ -978,7 +974,7 @@ ums_ioctl(struct usb_fifo *fifo, u_long cmd, void *addr, int fflags)
 	}
 
 done:
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 	return (error);
 }
 
