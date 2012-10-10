@@ -457,7 +457,7 @@ usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 #endif
 	if (lock != NULL) {
 		lockmgr(lock, LK_RELEASE);
-		KKASSERT(lockstatus(lock, curthread) == 0);
+		KKASSERT(!lockowned(lock));
 	}
 
 	/*

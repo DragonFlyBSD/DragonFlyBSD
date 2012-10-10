@@ -269,7 +269,7 @@ usb_proc_msignal(struct usb_process *up, void *_pm0, void *_pm1)
 	if (up->up_gone)
 		return (_pm0);
 
-	KKASSERT(lockstatus(up->up_lock, curthread) != 0);
+	KKASSERT(lockowned(up->up_lock));
 
 	t = 0;
 
@@ -350,7 +350,7 @@ usb_proc_is_gone(struct usb_process *up)
 	 * structure is initialised.
 	 */
 	if (up->up_lock != NULL)
-		KKASSERT(lockstatus(up->up_lock, curthread)!=0);
+		KKASSERT(lockowned(up->up_lock));
 	return (0);
 }
 
@@ -371,7 +371,7 @@ usb_proc_mwait(struct usb_process *up, void *_pm0, void *_pm1)
 	if (up->up_gone)
 		return;
 
-	KKASSERT(lockstatus(up->up_lock, curthread) != 0);
+	KKASSERT(lockowned(up->up_lock));
 
 	if (up->up_curtd == curthread) {
 		/* Just remove the messages from the queue. */
@@ -414,7 +414,7 @@ usb_proc_drain(struct usb_process *up)
 	if (up->up_mtx != &Giant)
 		mtx_assert(up->up_mtx, MA_NOTOWNED);
 #else
-	KKASSERT(lockstatus(up->up_lock, curthread) == 0);
+	KKASSERT(!lockowned(up->up_lock));
 	lockmgr(up->up_lock, LK_EXCLUSIVE);
 #endif
 
@@ -470,7 +470,7 @@ usb_proc_rewakeup(struct usb_process *up)
 	if (up->up_gone)
 		return;
 
-	KKASSERT(lockstatus(up->up_lock, curthread) != 0);
+	KKASSERT(lockowned(up->up_lock));
 
 	if (up->up_msleep == 0) {
 		/* re-wakeup */

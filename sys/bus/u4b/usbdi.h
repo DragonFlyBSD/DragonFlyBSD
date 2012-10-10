@@ -393,7 +393,6 @@ struct usb_callout {
 	void *uco_arg;
 	int uco_flags;
 };
-/* XXX what is supposed to happen with that mutex? */
 
 void usb_callout_timeout_wrapper(void *arg);
 void usb_callout_init_mtx_dfly(struct usb_callout *uco, struct lock *lock,

@@ -680,7 +680,7 @@ usb_config_parse(struct usb_device *udev, uint8_t iface_index, uint8_t cmd)
 		goto cleanup;
 
 	if (cmd == USB_CFG_INIT) {
-		KKASSERT(lockstatus(&udev->enum_lock, curthread) == LK_EXCLUSIVE);
+		KKASSERT(lockowned(&udev->enum_lock));
 
 		/* check for in-use endpoints */
 
@@ -1467,13 +1467,13 @@ usbd_clear_stall_proc(struct usb_proc_msg *_pm)
 
 	/* Change lock */
 	USB_BUS_UNLOCK(udev->bus);
-	lockmgr(&udev->mtx_lock, LK_EXCLUSIVE);
+	lockmgr(&udev->device_lock, LK_EXCLUSIVE);
 
 	/* Start clear stall callback */
 	usbd_transfer_start(udev->ctrl_xfer[1]);
 
 	/* Change lock */
-	lockmgr(&udev->mtx_lock, LK_RELEASE);
+	lockmgr(&udev->device_lock, LK_RELEASE);
 	USB_BUS_LOCK(udev->bus);
 }
 
@@ -1541,14 +1541,11 @@ usb_alloc_device(device_t parent_dev, struct usb_bus *bus,
 #if 0
 	/* initialise our SX-lock */
 	sx_init_flags(&udev->ctrl_sx, "USB device SX lock", SX_DUPOK);
-#endif
-	lockinit(&udev->ctrl_lock, "USB device SX lock", 0, 0);
-
-#if 0
 	/* initialise our SX-lock */
 	sx_init_flags(&udev->enum_sx, "USB config SX lock", SX_DUPOK);
 	sx_init_flags(&udev->sr_sx, "USB suspend and resume SX lock", SX_NOWITNESS);
 #endif
+	lockinit(&udev->ctrl_lock, "USB device SX lock", 0, 0);
 	lockinit(&udev->enum_lock, "USB config SX lock", 0, 0);
 	lockinit(&udev->sr_lock, "USB suspend and resume SX lock", 0, 0);
 
@@ -1556,7 +1553,7 @@ usb_alloc_device(device_t parent_dev, struct usb_bus *bus,
 	cv_init(&udev->ref_cv, "UGONE");
 
 	/* initialise our mutex */
-	lockinit(&udev->mtx_lock, "USB device mutex", 0, 0);
+	lockinit(&udev->device_lock, "USB device mutex", 0, 0);
 
 	/* initialise generic clear stall */
 	udev->cs_msg[0].hdr.pm_callback = &usbd_clear_stall_proc;
@@ -2120,7 +2117,7 @@ usb_free_device(struct usb_device *udev, uint8_t flag)
 	cv_destroy(&udev->ctrlreq_cv);
 	cv_destroy(&udev->ref_cv);
 
-	lockuninit(&udev->mtx_lock);
+	lockuninit(&udev->device_lock);
 #if USB_HAVE_UGEN
 	KASSERT(LIST_FIRST(&udev->pd_list) == NULL, ("leaked cdev entries"));
 #endif
@@ -2130,9 +2127,12 @@ usb_free_device(struct usb_device *udev, uint8_t flag)
 		(bus->methods->device_uninit) (udev);
 
 	/* free device */
-	kfree(udev->serial, M_USB);
-	kfree(udev->manufacturer, M_USB);
-	kfree(udev->product, M_USB);
+	if(udev->serial)
+		kfree(udev->serial, M_USB);
+	if(udev->manufacturer)
+		kfree(udev->manufacturer, M_USB);
+	if(udev->product)
+		kfree(udev->product, M_USB);
 	kfree(udev, M_USB);
 }
 
@@ -2715,7 +2715,7 @@ uint8_t
 usbd_enum_is_locked(struct usb_device *udev)
 {
 	/* XXX: Make sure that we return a correct value here */
-	return (lockstatus(&udev->enum_lock, curthread) == LK_EXCLUSIVE);
+	return (lockowned(&udev->enum_lock));
 }
 
 /*

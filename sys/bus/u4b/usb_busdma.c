@@ -372,7 +372,7 @@ usb_dma_tag_create(struct usb_dma_tag *udt,
 	    (2 + (size / USB_PAGE_SIZE)) : 1,
 	     /* maxsegsz  */ (align == 1 && size > USB_PAGE_SIZE) ?
 	    USB_PAGE_SIZE : size,
-	     /* flags     */ BUS_DMA_ALIGNED | BUS_DMA_KEEP_PG_OFFSET, /* XXX: Find out what this is supposed to do! */
+	     /* flags     */ BUS_DMA_KEEP_PG_OFFSET, /* XXX: Find out what this is supposed to do! */
 	    &tag)) {
 		tag = NULL;
 	}
@@ -458,7 +458,7 @@ usb_pc_common_mem_cb(void *arg, bus_dma_segment_t *segs,
 	}
 
 done:
-	owned = (lockstatus(uptag->lock, curthread) == LK_EXCLUSIVE);
+	owned = lockowned(uptag->lock);
 	if (!owned)
 		lockmgr(uptag->lock, LK_EXCLUSIVE);
 
@@ -611,7 +611,7 @@ usb_pc_load_mem(struct usb_page_cache *pc, usb_size_t size, uint8_t sync)
 	pc->page_offset_end = size;
 	pc->ismultiseg = 1;
 
-	KKASSERT(lockstatus(pc->tag_parent->lock, curthread) != 0);
+	KKASSERT(lockowned(pc->tag_parent->lock));
 
 	if (size > 0) {
 		if (sync) {
@@ -869,7 +869,7 @@ usb_bdma_work_loop(struct usb_xfer_queue *pq)
 	xfer = pq->curr;
 	info = xfer->xroot;
 
-	KKASSERT(lockstatus(info->xfer_lock, curthread) != 0);
+	KKASSERT(lockowned(info->xfer_lock));
 
 	if (xfer->error) {
 		/* some error happened */
@@ -993,7 +993,7 @@ usb_bdma_done_event(struct usb_dma_parent_tag *udpt)
 
 	info = USB_DMATAG_TO_XROOT(udpt);
 
-	KKASSERT(lockstatus(info->xfer_lock, curthread) != 0);
+	KKASSERT(lockowned(info->xfer_lock));
 
 	/* copy error */
 	info->dma_error = udpt->dma_error;
