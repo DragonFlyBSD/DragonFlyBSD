@@ -826,7 +826,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 
 	/*
 	 * Guarentee power-of-2 alignment for power-of-2-sized chunks.
-	 * Otherwise just 8-byte align the data.
+	 * Otherwise properly align the data according to the chunk size.
 	 */
 	if (powerof2(size))
 	    off = (off + size - 1) & ~(size - 1);
