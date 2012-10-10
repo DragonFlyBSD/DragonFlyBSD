@@ -505,16 +505,12 @@ slab_record_source(SLZone *z, const char *file, int line)
 static __inline unsigned long
 powerof2_size(unsigned long size)
 {
-	int i, wt;
+	int i;
 
-	if (size == 0)
-		return 0;
+	if (size == 0 || powerof2(size))
+		return size;
 
 	i = flsl(size);
-	wt = (size & ~(1 << (i - 1)));
-	if (!wt)
-		--i;
-
 	return (1UL << i);
 }
 
