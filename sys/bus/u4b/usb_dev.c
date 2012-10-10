@@ -33,6 +33,7 @@
 #include <sys/types.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
@@ -86,12 +87,7 @@ SYSCTL_INT(_hw_usb_dev, OID_AUTO, debug, CTLFLAG_RW,
 TUNABLE_INT("hw.usb.dev.debug", &usb_fifo_debug);
 #endif
 
-#if ((__FreeBSD_version >= 700001) || (__FreeBSD_version == 0) || \
-     ((__FreeBSD_version >= 600034) && (__FreeBSD_version < 700000)))
 #define	USB_UCRED struct ucred *ucred,
-#else
-#define	USB_UCRED
-#endif
 
 /* prototypes */
 
@@ -113,12 +109,18 @@ static usb_error_t usb_ref_device(struct usb_cdev_privdata *, struct usb_cdev_re
 static usb_error_t usb_usb_ref_device(struct usb_cdev_privdata *, struct usb_cdev_refdata *);
 static void	usb_unref_device(struct usb_cdev_privdata *, struct usb_cdev_refdata *);
 
+static void usb_filter_detach(struct knote *kn);
+static int usb_filter_read(struct knote *kn, long hint);
+static int usb_filter_write(struct knote *kn, long hint);
+
 static d_open_t usb_open;
 static d_close_t usb_close;
 static d_ioctl_t usb_ioctl;
 static d_read_t usb_read;
 static d_write_t usb_write;
 static d_kqfilter_t usb_kqfilter;
+static d_open_t usb_static_open;
+static d_close_t usb_static_close;
 static d_ioctl_t usb_static_ioctl;
 
 static usb_fifo_open_t usb_fifo_dummy_open;
@@ -142,6 +144,8 @@ static struct cdev* usb_dev = NULL;
 /* character device structure used for /bus/u4b */
 static struct dev_ops usb_static_ops = {
 	{ "usb", 0, D_MEM },
+	.d_open = usb_static_open,
+	.d_close = usb_static_close,
 	.d_ioctl = usb_static_ioctl,
 };
 
@@ -149,6 +153,11 @@ static TAILQ_HEAD(, usb_symlink) usb_sym_head;
 static struct lock usb_sym_lock;
 
 struct lock usb_ref_lock;
+
+#if 0
+static int usb_nevents = 0;
+static struct kqinfo usb_kqevent;
+#endif
 
 /*------------------------------------------------------------------------*
  *	usb_loc_fill
@@ -269,7 +278,7 @@ usb_ref_device(struct usb_cdev_privdata *cpd,
 		DPRINTFN(2, "ref read\n");
 		crd->rxfifo->refcount++;
 	}
-	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+	lockmgr(&usb_ref_lock, LK_RELEASE);
 
 	return (0);
 
@@ -955,7 +964,7 @@ usb_dev_init(void *arg)
 }
 
 /* XXX SI_SUB_KLD? */
-SYSINIT(usb_dev_init, SI_SUB_CONFIGURE, SI_ORDER_FIRST, usb_dev_init, NULL);
+SYSINIT(usb_dev_init, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, usb_dev_init, NULL);
 
 static void
 usb_dev_init_post(void *arg)
@@ -971,7 +980,8 @@ usb_dev_init_post(void *arg)
 	}
 }
 
-SYSINIT(usb_dev_init_post, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, usb_dev_init_post, NULL);
+SYSINIT(usb_dev_init_post, SI_SUB_DRIVERS, SI_ORDER_FIRST, usb_dev_init_post,
+    NULL);
 
 static void
 usb_dev_uninit(void *arg)
@@ -1132,11 +1142,58 @@ done:
 	return (err);
 }
 
+static struct filterops usb_filtops_read = 
+    { FILTEROP_ISFD, NULL, usb_filter_detach, usb_filter_read };
+
+static struct filterops usb_filtops_write = 
+    { FILTEROP_ISFD, NULL, usb_filter_detach, usb_filter_write };
+
 static int
 usb_kqfilter(struct dev_kqfilter_args *ap)
 {
-	usb_close(NULL);
-	return 0;
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+
+	ap->a_result = 0;
+
+	switch(kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &usb_filtops_read;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &usb_filtops_write;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return(0);
+	}
+
+	return(0);
+}
+
+static void
+usb_filter_detach(struct knote *kn)
+{
+#if 0
+	struct klist *klist;
+
+	klist = &usb_kqevent.ki_note; 
+	knote_remove(klist, kn);
+#endif
+}
+
+static int
+usb_filter_read(struct knote *kn, long hint)
+{
+	return(0);
+}
+
+static int
+usb_filter_write(struct knote *kn, long hint)
+{
+		return(0);
 }
 
 #if 0 /* XXX implement using kqfilter */
@@ -1531,16 +1588,25 @@ done:
 	return (err);
 }
 
+
+static int
+usb_static_open(struct dev_open_args *ap)
+{
+	return(0);
+}
+
+static int
+usb_static_close(struct dev_close_args *ap)
+{
+	return(0);
+}
+
 int
 usb_static_ioctl(struct dev_ioctl_args *ap)
 {
 	u_long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
-	/*
-	 * XXX: what is this thread descriptor and where is it
-	 * supposed to come from? 
-	 */
-	struct thread *td = NULL;
+	struct thread *td = curthread; /* XXX: curthread the correct choice? */
 	int fflag = ap->a_fflag;
 	union {
 		struct usb_read_dir *urd;
@@ -1601,7 +1667,7 @@ usb_fifo_wait(struct usb_fifo *f)
 {
 	int err;
 
-	KKASSERT(lockstatus(f->priv_lock, curthread) != 0);
+	KKASSERT(lockowned(f->priv_lock));
 
 	if (f->flag_iserror) {
 		/* we are gone */

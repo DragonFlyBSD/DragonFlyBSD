@@ -1923,7 +1923,7 @@ usb_needs_explore(struct usb_bus *bus, uint8_t do_probe)
 		DPRINTF("No root HUB\n");
 		return;
 	}
-	if (lockstatus(&bus->bus_lock, curthread) != 0) {
+	if (lockowned(&bus->bus_lock) != 0) {
 		do_unlock = 0;
 	} else {
 		USB_BUS_LOCK(bus);

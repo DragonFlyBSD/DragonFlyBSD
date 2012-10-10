@@ -117,7 +117,6 @@ struct usb_device {
 	struct lock ctrl_lock;
 	struct lock enum_lock;
 	struct lock sr_lock;
-	struct lock mtx_lock;
 	struct lock device_lock;
 	struct cv ctrlreq_cv;
 	struct cv ref_cv;

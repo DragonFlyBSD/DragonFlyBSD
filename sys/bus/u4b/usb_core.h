@@ -47,8 +47,8 @@
 #define	USB_BUS_LOCK_ASSERT_NOTOWNED(_b) KKASSERT(!lockowned(&(_b)->bus_lock))
 #define	USB_XFER_LOCK(_x)		lockmgr((_x)->xroot->xfer_lock, LK_EXCLUSIVE)
 #define	USB_XFER_UNLOCK(_x)		lockmgr((_x)->xroot->xfer_lock, LK_RELEASE)
-#define	USB_XFER_LOCK_ASSERT(_x)	KKASSERT(lockstatus((_x)->xroot->xfer_lock, curthread) != 0)
-#define	USB_XFER_LOCK_ASSERT_NOTOWNED(_x) KKASSERT(lockstatus((_x)->xroot->xfer_lock, curthread) == 0)
+#define	USB_XFER_LOCK_ASSERT(_x)	KKASSERT(lockowned((_x)->xroot->xfer_lock))
+#define	USB_XFER_LOCK_ASSERT_NOTOWNED(_x) KKASSERT(!lockowned((_x)->xroot->xfer_lock))
 
 /* helper for converting pointers to integers */
 #define	USB_P2U(ptr) \

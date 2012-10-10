@@ -841,6 +841,7 @@ usbd_transfer_setup(struct usb_device *udev,
 		return (USB_ERR_INVAL);
 	}
 	if (xfer_lock == NULL) {
+		panic("xfer without lock!\n");
 		DPRINTFN(6, "using global lock\n");
 	}
 	/* sanity checks */
@@ -1675,9 +1676,7 @@ usbd_pipe_enter(struct usb_xfer *xfer)
 {
 	struct usb_endpoint *ep;
 
-#if 0
-	USB_XFER_LOCK_ASSERT(xfer, MA_OWNED);
-#endif
+	USB_XFER_LOCK_ASSERT(xfer);
 
 	USB_BUS_LOCK(xfer->xroot->bus);
 
@@ -1717,9 +1716,7 @@ usbd_transfer_start(struct usb_xfer *xfer)
 		/* transfer is gone */
 		return;
 	}
-#if 0
-	USB_XFER_LOCK_ASSERT(xfer, MA_OWNED);
-#endif
+	USB_XFER_LOCK_ASSERT(xfer);
 
 	/* mark the USB transfer started */
 
@@ -2161,10 +2158,7 @@ usbd_callback_wrapper(struct usb_xfer_queue *pq)
 	struct usb_xfer_root *info = xfer->xroot;
 
 	USB_BUS_LOCK_ASSERT(info->bus);
-#if 0 /* XXX: This is probably to prevent deadlocks */
-	if (!lockstatus(info->xfer_mtx, curthread) && !SCHEDULER_STOPPED()) {
-#endif
-	if (!lockstatus(info->xfer_lock, curthread)) {
+	if (!lockowned(info->xfer_lock)) {
 		/*
 	       	 * Cases that end up here:
 		 *
@@ -2241,6 +2235,7 @@ usbd_callback_wrapper(struct usb_xfer_queue *pq)
 	if (xfer->usb_state != USB_ST_SETUP)
 		usbpf_xfertap(xfer, USBPF_XFERTAP_DONE);
 #endif
+	USB_XFER_LOCK_ASSERT(xfer);
 	/* call processing routine */
 	(xfer->callback) (xfer, xfer->error);
 
@@ -2383,7 +2378,7 @@ usbd_transfer_done(struct usb_xfer *xfer, usb_error_t error)
 	usbd_transfer_dequeue(xfer);
 
 #if USB_HAVE_BUSDMA
-	if (lockstatus(xfer->xroot->xfer_lock, curthread)) {
+	if (lockowned(xfer->xroot->xfer_lock)) {
 		struct usb_xfer_queue *pq;
 
 		/*
@@ -3133,20 +3128,14 @@ usbd_transfer_poll(struct usb_xfer **ppxfer, uint16_t max)
 
 		/* make sure that the BUS mutex is not locked */
 		drop_bus = 0;
-#if 0 /* XXX */
-		while (lockstatus(&xroot->udev->bus->bus_lock, curthread) && !SCHEDULER_STOPPED()) {
-#endif
-		while (lockstatus(&xroot->udev->bus->bus_lock, curthread)) {
+		while (lockowned(&xroot->udev->bus->bus_lock)) {
 			lockmgr(&xroot->udev->bus->bus_lock, LK_RELEASE);
 			drop_bus++;
 		}
 
 		/* make sure that the transfer mutex is not locked */
 		drop_xfer = 0;
-#if 0 /* XXX */
-		while (lockstatus(xroot->xfer_lock, curthread) && !SCHEDULER_STOPPED()) {
-#endif
-		while (lockstatus(xroot->xfer_lock, curthread)) {
+		while (lockowned(xroot->xfer_lock)) {
 			lockmgr(xroot->xfer_lock, LK_RELEASE);
 			drop_xfer++;
 		}

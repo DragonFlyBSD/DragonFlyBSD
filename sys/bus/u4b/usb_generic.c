@@ -232,7 +232,7 @@ ugen_open_pipe_write(struct usb_fifo *f)
 	struct usb_endpoint *ep = usb_fifo_softc(f);
 	struct usb_endpoint_descriptor *ed = ep->edesc;
 
-	KKASSERT(lockstatus(f->priv_lock, curthread) != 0);
+	KKASSERT(lockowned(f->priv_lock));
 
 	if (f->xfer[0] || f->xfer[1]) {
 		/* transfers are already opened */
@@ -300,7 +300,7 @@ ugen_open_pipe_read(struct usb_fifo *f)
 	struct usb_endpoint *ep = usb_fifo_softc(f);
 	struct usb_endpoint_descriptor *ed = ep->edesc;
 
-	KKASSERT(lockstatus(f->priv_lock, curthread) != 0);
+	KKASSERT(lockowned(f->priv_lock));
 
 	if (f->xfer[0] || f->xfer[1]) {
 		/* transfers are already opened */
