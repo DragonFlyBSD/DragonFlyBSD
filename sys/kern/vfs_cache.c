@@ -3228,7 +3228,7 @@ SYSCTL_UINT(_vfs_cache, OID_AUTO, numfullpathfound, CTLFLAG_RD,
     "Number of full path resolution successes");
 
 int
-cache_fullpath(struct proc *p, struct nchandle *nchp,
+cache_fullpath(struct proc *p, struct nchandle *nchp, struct nchandle *nchbase,
 	       char **retbuf, char **freebuf, int guess)
 {
 	struct nchandle fd_nrdir;
@@ -3248,7 +3248,9 @@ cache_fullpath(struct proc *p, struct nchandle *nchp,
 	buf = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	bp = buf + MAXPATHLEN - 1;
 	*bp = '\0';
-	if (p != NULL)
+	if (nchbase)
+		fd_nrdir = *nchbase;
+	else if (p != NULL)
 		fd_nrdir = p->p_fd->fd_nrdir;
 	else
 		fd_nrdir = rootnch;
@@ -3265,7 +3267,8 @@ cache_fullpath(struct proc *p, struct nchandle *nchp,
 		/*
 		 * If we are asked to guess the upwards path, we do so whenever
 		 * we encounter an ncp marked as a mountpoint. We try to find
-		 * the actual mountpoint by finding the mountpoint with this ncp.
+		 * the actual mountpoint by finding the mountpoint with this
+		 * ncp.
 		 */
 		if (guess && (ncp->nc_flag & NCF_ISMOUNTPT)) {
 			new_mp = mount_get_by_nc(ncp);
@@ -3389,7 +3392,7 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf,
 	atomic_add_int(&numfullpathcalls, -1);
 	nch.ncp = ncp;;
 	nch.mount = vn->v_mount;
-	error = cache_fullpath(p, &nch, retbuf, freebuf, guess);
+	error = cache_fullpath(p, &nch, NULL, retbuf, freebuf, guess);
 	_cache_drop(ncp);
 	return (error);
 }

@@ -822,7 +822,8 @@ mount_warning(struct mount *mp, const char *ctl, ...)
 	__va_list va;
 
 	__va_start(va, ctl);
-	if (cache_fullpath(NULL, &mp->mnt_ncmounton, &ptr, &buf, 0) == 0) {
+	if (cache_fullpath(NULL, &mp->mnt_ncmounton, NULL,
+			   &ptr, &buf, 0) == 0) {
 		kprintf("unmount(%s): ", ptr);
 		kvprintf(ctl, va);
 		kprintf("\n");
@@ -855,7 +856,7 @@ mount_path(struct proc *p, struct mount *mp, char **rb, char **fb)
 		nch = &p->p_fd->fd_nrdir;
 	else
 		nch = &mp->mnt_ncmountpt;
-	return(cache_fullpath(p, nch, rb, fb, 0));
+	return(cache_fullpath(p, nch, NULL, rb, fb, 0));
 }
 
 /*

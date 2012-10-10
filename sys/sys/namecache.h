@@ -215,7 +215,8 @@ void	cache_unlink(struct nchandle *nch);
 int	cache_vget(struct nchandle *, struct ucred *, int, struct vnode **);
 int	cache_vref(struct nchandle *, struct ucred *, struct vnode **);
 int	cache_fromdvp(struct vnode *, struct ucred *, int, struct nchandle *);
-int	cache_fullpath(struct proc *, struct nchandle *, char **, char **, int);
+int	cache_fullpath(struct proc *, struct nchandle *, struct nchandle *,
+			char **, char **, int);
 
 #endif
 
