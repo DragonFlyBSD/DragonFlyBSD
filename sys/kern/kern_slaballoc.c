@@ -78,13 +78,18 @@
  *
  *	Allocations >= ZoneLimit go directly to kmem.
  *
+ * Alignment properties:
+ * - All power-of-2 sized allocations are power-of-2 aligned.
+ * - Allocations with M_POWEROF2 are power-of-2 aligned on the nearest
+ *   power-of-2 round up of 'size'.
+ * - Non-power-of-2 sized allocations are zone chunk size aligned (see the
+ *   above table 'Chunking' column).
+ *
  *			API REQUIREMENTS AND SIDE EFFECTS
  *
  *    To operate as a drop-in replacement to the FreeBSD-4.x malloc() we
  *    have remained compatible with the following API requirements:
  *
- *    + small power-of-2 sized allocations are power-of-2 aligned (kern_tty)
- *    + all power-of-2 sized allocations are power-of-2 aligned (twe)
  *    + malloc(0) is allowed and returns non-NULL (ahc driver)
  *    + ability to allocate arbitrarily large chunks of memory
  */
