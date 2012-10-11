@@ -218,6 +218,7 @@ ENTRY(copyout)
 	movq	PCPU(curthread),%rax
 	movq	TD_PCB(%rax), %rax
 	movq	$copyout_fault,PCB_ONFAULT(%rax)
+	movq	%rsp,PCB_ONFAULT_SP(%rax)
 	testq	%rdx,%rdx			/* anything to do? */
 	jz	done_copyout
 
@@ -280,6 +281,7 @@ ENTRY(copyin)
 	movq	PCPU(curthread),%rax
 	movq	TD_PCB(%rax), %rax
 	movq	$copyin_fault,PCB_ONFAULT(%rax)
+	movq	%rsp,PCB_ONFAULT_SP(%rax)
 	testq	%rdx,%rdx			/* anything to do? */
 	jz	done_copyin
 
@@ -328,6 +330,7 @@ ENTRY(casuword32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
@@ -358,6 +361,7 @@ ENTRY(casuword)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
@@ -377,7 +381,6 @@ ENTRY(casuword)
 
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
-	movq	$fusufault,PCB_ONFAULT(%rcx)
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
 
@@ -392,6 +395,7 @@ ENTRY(fuword)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS-8,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
@@ -405,6 +409,7 @@ ENTRY(fuword32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
@@ -430,6 +435,7 @@ ENTRY(fuword16)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS-2,%rax
 	cmpq	%rax,%rdi
@@ -443,6 +449,7 @@ ENTRY(fubyte)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS-1,%rax
 	cmpq	%rax,%rdi
@@ -474,6 +481,7 @@ ENTRY(suword)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS-8,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
@@ -493,6 +501,7 @@ ENTRY(suword32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
@@ -509,6 +518,7 @@ ENTRY(suword16)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS-2,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
@@ -525,6 +535,7 @@ ENTRY(subyte)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS-1,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
@@ -554,6 +565,7 @@ ENTRY(copyinstr)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$cpystrflt,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
 	movq	$VM_MAX_USER_ADDRESS,%rax
 
@@ -711,6 +723,7 @@ ENTRY(rdmsr_safe)
 	movq	PCPU(curthread),%r8
 	movq	TD_PCB(%r8), %r8
 	movq	$msr_onfault,PCB_ONFAULT(%r8)
+	movq	%rsp,PCB_ONFAULT_SP(%r8)
 	movl	%edi,%ecx
 	rdmsr			/* Read MSR pointed by %ecx. Returns
 				   hi byte in edx, lo in %eax */

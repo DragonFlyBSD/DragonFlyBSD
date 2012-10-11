@@ -171,8 +171,9 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	/*
 	 * pcb2->pcb_ldt:	duplicated below, if necessary.
 	 * pcb2->pcb_savefpu:	cloned above.
-	 * pcb2->pcb_flags:	cloned above (always 0 here?).
-	 * pcb2->pcb_onfault:	cloned above (always NULL here?).
+	 * pcb2->pcb_flags:	cloned above (always 0 here).
+	 * pcb2->pcb_onfault:	cloned above (always NULL here).
+	 * pcb2->pcb_onfault_sp:cloned above (don't care)
 	 */
 
 	/*

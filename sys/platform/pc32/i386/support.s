@@ -169,6 +169,9 @@ ENTRY(copyout)
 	pushl	%ebx
 	pushl	$copyout_fault2
 	movl	$stack_onfault,PCB_ONFAULT(%eax)
+	movl	%esp,PCB_ONFAULT_SP(%eax)
+	subl	$12,PCB_ONFAULT_SP(%eax)	/* call,ebx,stackedfault */
+						/* for *memcpy_vector */
 	movl	4+16(%esp),%esi
 	movl	8+16(%esp),%edi
 	movl	12+16(%esp),%ebx
@@ -241,6 +244,9 @@ ENTRY(copyin)
 	pushl	%edi
 	pushl	$copyin_fault2
 	movl	$stack_onfault,PCB_ONFAULT(%eax)
+	movl	%esp,PCB_ONFAULT_SP(%eax)
+	subl	$12,PCB_ONFAULT_SP(%eax)	/* call,ebx,stackedfault */
+						/* for *memcpy_vector */
 	movl	4+12(%esp),%esi			/* caddr_t from */
 	movl	8+12(%esp),%edi			/* caddr_t to */
 	movl	12+12(%esp),%ecx		/* size_t  len */
@@ -294,6 +300,7 @@ ENTRY(casuword)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	%esp,PCB_ONFAULT_SP(%ecx)
 	movl	4(%esp),%edx			/* dst */
 	movl	8(%esp),%eax			/* old */
 	movl	12(%esp),%ecx			/* new */
@@ -314,7 +321,6 @@ ENTRY(casuword)
 
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
-	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	$0,PCB_ONFAULT(%ecx)
 	ret
 END(casuword)
@@ -328,6 +334,7 @@ ENTRY(fuword)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	%esp,PCB_ONFAULT_SP(%ecx)
 	movl	4(%esp),%edx			/* from */
 
 	cmpl	$VM_MAX_USER_ADDRESS-4,%edx	/* verify address is valid */
@@ -344,6 +351,7 @@ ENTRY(fusword)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	%esp,PCB_ONFAULT_SP(%ecx)
 	movl	4(%esp),%edx
 
 	cmpl	$VM_MAX_USER_ADDRESS-2,%edx
@@ -360,6 +368,7 @@ ENTRY(fubyte)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	%esp,PCB_ONFAULT_SP(%ecx)
 	movl	4(%esp),%edx
 
 	cmpl	$VM_MAX_USER_ADDRESS-1,%edx
@@ -387,6 +396,7 @@ ENTRY(suword)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	%esp,PCB_ONFAULT_SP(%ecx)
 	movl	4(%esp),%edx
 
 	cmpl	$VM_MAX_USER_ADDRESS-4,%edx	/* verify address validity */
@@ -407,6 +417,7 @@ ENTRY(suword32)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	%esp,PCB_ONFAULT_SP(%ecx)
 	movl	4(%esp),%edx
 
 	cmpl	$VM_MAX_USER_ADDRESS-4,%edx	/* verify address validity */
@@ -427,6 +438,7 @@ ENTRY(susword)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	%esp,PCB_ONFAULT_SP(%ecx)
 	movl	4(%esp),%edx
 
 	cmpl	$VM_MAX_USER_ADDRESS-2,%edx	/* verify address validity */
@@ -447,6 +459,7 @@ ENTRY(subyte)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	%esp,PCB_ONFAULT_SP(%ecx)
 	movl	4(%esp),%edx
 
 	cmpl	$VM_MAX_USER_ADDRESS-1,%edx	/* verify address validity */
@@ -474,6 +487,7 @@ ENTRY(copyinstr)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$cpystrflt,PCB_ONFAULT(%ecx)
+	movl	%esp,PCB_ONFAULT_SP(%ecx)
 
 	movl	12(%esp),%esi			/* %esi = from */
 	movl	16(%esp),%edi			/* %edi = to */
@@ -760,6 +774,7 @@ ENTRY(rdmsr_safe)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx), %ecx
 	movl	$msr_onfault,PCB_ONFAULT(%ecx)
+	movl	%esp,PCB_ONFAULT_SP(%ecx)
 
 	movl	4(%esp),%ecx
 	rdmsr

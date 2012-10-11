@@ -116,19 +116,19 @@ generic_onfault:
 	/*
 	 * GENERIC BCOPY() - COPY DIRECTION CHECK AND FORWARDS COPY
 	 *
-	 *	Reasonably optimal on all modern machines.
+	 * Reasonably optimal on all modern machines.
 	 */
 
 	SUPERALIGN_TEXT
 ENTRY(asm_generic_memcpy)	/* memcpy() entry point use optimal copy */
-	pushl	%ebx
-	pushl	$generic_onfault
+	pushl	%ebx		/* WARNING COPYIN/OUT EXPECTS THIS FRAME */
+	pushl	$generic_onfault/* WARNING COPYIN/OUT EXPECTS THIS FRAME */
 	jmp	2f
 
 	SUPERALIGN_TEXT
 ENTRY(asm_generic_bcopy)
-	pushl	%ebx
-	pushl	$generic_onfault
+	pushl	%ebx		/* WARNING COPYIN/OUT EXPECTS THIS FRAME */
+	pushl	$generic_onfault/* WARNING COPYIN/OUT EXPECTS THIS FRAME */
 	cmpl	%esi,%edi	/* if (edi < esi) fwd copy ok */
 	jb	2f
 	addl	%ecx,%esi
@@ -286,6 +286,9 @@ ENTRY(asm_generic_bcopy)
 	 *
 	 *  MMX+XMM (SSE2): Typical on Athlons, later P4s. 128 bit media insn.
 	 *  MMX: Typical on XPs and P3s.  64 bit media insn.
+	 *
+	 * WARNING!  copyin/copyout expects a push %ebx/onfault frame ONLY,
+	 *	     we can't mess with the stack any more than that.
 	 */
 
 #define MMX_SAVE_BLOCK(missfunc)					\

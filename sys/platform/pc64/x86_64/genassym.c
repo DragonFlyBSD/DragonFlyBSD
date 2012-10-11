@@ -135,6 +135,7 @@ ASSYM(PCB_DBREGS, PCB_DBREGS);
 ASSYM(PCB_EXT, offsetof(struct pcb, pcb_ext));
 ASSYM(PCB_FLAGS, offsetof(struct pcb, pcb_flags));
 ASSYM(PCB_ONFAULT, offsetof(struct pcb, pcb_onfault));
+ASSYM(PCB_ONFAULT_SP, offsetof(struct pcb, pcb_onfault_sp));
 ASSYM(PCB_FSBASE, offsetof(struct pcb, pcb_fsbase));
 ASSYM(PCB_GSBASE, offsetof(struct pcb, pcb_gsbase));
 ASSYM(PCB_SAVEFPU, offsetof(struct pcb, pcb_save));

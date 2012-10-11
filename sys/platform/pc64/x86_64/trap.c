@@ -653,7 +653,13 @@ trap(struct trapframe *frame)
 			 * them.
 			 */
 			if (mycpu->gd_intr_nesting_level == 0) {
-				if (td->td_pcb->pcb_onfault) {
+				/*
+				 * NOTE: in 64-bit mode traps push rsp/ss
+				 *	 even if no ring change occurs.
+				 */
+				if (td->td_pcb->pcb_onfault &&
+				    td->td_pcb->pcb_onfault_sp ==
+				    frame->tf_rsp) {
 					frame->tf_rip = (register_t)
 						td->td_pcb->pcb_onfault;
 					goto out2;
@@ -857,7 +863,8 @@ trap_pfault(struct trapframe *frame, int usermode)
 		 * Debugging, try to catch kernel faults on the user address space when not inside
 		 * on onfault (e.g. copyin/copyout) routine.
 		 */
-		if (usermode == 0 && (td->td_pcb == NULL || td->td_pcb->pcb_onfault == NULL)) {
+		if (usermode == 0 && (td->td_pcb == NULL ||
+		    td->td_pcb->pcb_onfault == NULL)) {
 #ifdef DDB
 			if (freeze_on_seg_fault) {
 				kprintf("trap_pfault: user address fault from kernel mode "
@@ -915,8 +922,13 @@ trap_pfault(struct trapframe *frame, int usermode)
 		return (0);
 nogo:
 	if (!usermode) {
-		if (td->td_gd->gd_intr_nesting_level == 0 &&
-		    td->td_pcb->pcb_onfault) {
+		/*
+		 * NOTE: in 64-bit mode traps push rsp/ss
+		 *	 even if no ring change occurs.
+		 */
+		if (td->td_pcb->pcb_onfault &&
+		    td->td_pcb->pcb_onfault_sp == frame->tf_rsp &&
+		    td->td_gd->gd_intr_nesting_level == 0) {
 			frame->tf_rip = (register_t)td->td_pcb->pcb_onfault;
 			return (0);
 		}
@@ -992,8 +1004,12 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 		ss = frame->tf_ss & 0xffff;
 		rsp = frame->tf_rsp;
 	} else {
+		/*
+		 * NOTE: in 64-bit mode traps push rsp/ss even if no ring
+		 *	 change occurs.
+		 */
 		ss = GSEL(GDATA_SEL, SEL_KPL);
-		rsp = (long)&frame->tf_rsp;
+		rsp = frame->tf_rsp;
 	}
 	kprintf("stack pointer	        = 0x%x:0x%lx\n", ss, rsp);
 	kprintf("frame pointer	        = 0x%x:0x%lx\n", ss, frame->tf_rbp);

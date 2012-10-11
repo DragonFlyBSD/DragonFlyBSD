@@ -770,7 +770,13 @@ kernel_trap:
 						   doreti_popl_fs_fault);
 				MAYBE_DORETI_FAULT(doreti_popl_gs,
 						   doreti_popl_gs_fault);
-				if (td->td_pcb->pcb_onfault) {
+
+				/*
+				 * NOTE: cpu doesn't push esp on kernel trap
+				 */
+				if (td->td_pcb->pcb_onfault &&
+				    td->td_pcb->pcb_onfault_sp ==
+				    (int)&frame->tf_esp) {
 					frame->tf_eip = 
 					    (register_t)td->td_pcb->pcb_onfault;
 					goto out2;
@@ -1022,10 +1028,19 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		return (0);
 nogo:
 	if (!usermode) {
+		/*
+		 * NOTE: cpu doesn't push esp on kernel trap
+		 */
 		if (td->td_gd->gd_intr_nesting_level == 0 &&
-		    td->td_pcb->pcb_onfault) {
+		    td->td_pcb->pcb_onfault &&
+		    td->td_pcb->pcb_onfault_sp == (int)&frame->tf_esp) {
 			frame->tf_eip = (register_t)td->td_pcb->pcb_onfault;
 			return (0);
+		}
+		if (td->td_gd->gd_intr_nesting_level == 0 &&
+		    td->td_pcb->pcb_onfault) {
+			kprintf("ESP mismatch %p %08x\n",
+				&frame->tf_esp, td->td_pcb->pcb_onfault_sp);
 		}
 		trap_fatal(frame, eva);
 		return (-1);
