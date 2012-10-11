@@ -124,8 +124,8 @@ SUBDIR= 802_11 \
 	traceroute6 \
 	trpt \
 	tzsetup \
-	usbd \
-	usbdevs \
+	${_usbd} \
+	${_usbdevs} \
 	vidcontrol \
 	vipw \
 	vknetd \
@@ -140,6 +140,11 @@ SUBDIR= 802_11 \
 	ypserv \
 	ypset \
 	zic
+
+.if !defined(WANT_USB4BSD)
+_usbd=	usbd
+_usbdevs=usbdevs
+.endif
 
 .if !defined(NO_LPR)
 SUBDIR+=lpr

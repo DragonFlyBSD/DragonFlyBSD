@@ -85,7 +85,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libstand \
 	libtcplay \
 	libtelnet \
-	libusbhid \
+	${_libusbhid} \
 	libvgl \
 	libwrap \
 	libxpg4 \
@@ -113,6 +113,12 @@ _libsmutil=	libsmutil
 _libnetgraph=	libnetgraph7
 .else
 _libnetgraph=	libnetgraph
+.endif
+
+.if defined(WANT_USB4BSD)
+_libusbhid=	libu4bhid
+.else
+_libusbhid=	libusbhid
 .endif
 
 .include <bsd.subdir.mk>

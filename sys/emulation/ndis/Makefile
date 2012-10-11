@@ -2,9 +2,8 @@
 
 KMOD=	ndis
 SRCS=	subr_pe.c subr_ndis.c subr_hal.c subr_ntoskrnl.c kern_ndis.c
-SRCS+=	kern_windrv.c subr_usbd.c
+SRCS+=	kern_windrv.c
 SRCS+=	device_if.h bus_if.h pci_if.h
-SRCS+=	opt_usb.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	winx64_wrap.S
@@ -12,6 +11,10 @@ SRCS+=	winx64_wrap.S
 
 .if ${MACHINE_ARCH} == "i386"
 SRCS+=	winx32_wrap.S
+.endif
+
+.if !defined(WANT_USB4BSD)
+SRCS+=	subr_usbd.c opt_usb.h
 .endif
 
 .include <bsd.kmod.mk>

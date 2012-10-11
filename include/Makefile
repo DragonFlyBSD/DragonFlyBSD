@@ -75,7 +75,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netgraph7/mppc netgraph7/one2many netgraph7/ppp netgraph7/pppoe \
 	netgraph7/pptpgre netgraph7/rfc1490 netgraph7/socket \
 	netgraph7/tcpmss netgraph7/tee netgraph7/tty netgraph7/vjc \
-	bus/cam bus/usb bus/pccard bus/pci bus/isa bus/ppbus bus/smbus \
+	bus/cam bus/pccard bus/pci bus/isa bus/ppbus bus/smbus \
 	netproto/atm netproto/ipsec netproto/ipx \
 	netproto/key netproto/natm netproto/ncp netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
@@ -87,6 +87,12 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	dev/netif/wi \
 	dev/raid/ciss dev/raid/mfi \
 	dev/video/bktr dev/video/meteor libprop
+
+.if defined(WANT_USB4BSD)
+LSUBDIRS+=	bus/u4b
+.else
+LSUBDIRS+=	bus/usb
+.endif
 
 # For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi
 # and netproto/atm/* are taken care of
