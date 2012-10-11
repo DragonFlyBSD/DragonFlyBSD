@@ -2241,4 +2241,4 @@ bus/u4b/audio/uaudio.c			optional snd_uaudio usb4bsd
 bus/u4b/audio/uaudio_pcm.c		optional snd_uaudio usb4bsd
 bus/u4b/net/usb_ethernet.c		optional uether usb4bsd
 bus/u4b/net/if_axe.c			optional axe uether usb4bsd
-bus/u4b/net/if_udav.c			optional udav usb4bsd
+bus/u4b/net/if_udav.c			optional udav uether usb4bsd
