@@ -67,7 +67,7 @@ static device_method_t truephy_methods[] = {
 };
 
 static const struct mii_phydesc truephys[] = {
-	MII_PHYDESC(AGERE,  ET1011),
+	MII_PHYDESC(AGERE,	ET1011),
 	MII_PHYDESC(AGERE,	ET1011C),
 	MII_PHYDESC_NULL
 };
