@@ -150,7 +150,9 @@ static usb_fifo_ioctl_t ums_ioctl;
 
 static void	ums_put_queue(struct ums_softc *, int32_t, int32_t,
 		    int32_t, int32_t, int32_t);
+#if 0 /* XXX */
 static int	ums_sysctl_handler_parseinfo(SYSCTL_HANDLER_ARGS);
+#endif
 
 static struct usb_fifo_methods ums_fifo_methods = {
 	.f_open = &ums_open,
@@ -978,6 +980,7 @@ done:
 	return (error);
 }
 
+#if 0 /* XXX */
 static int
 ums_sysctl_handler_parseinfo(SYSCTL_HANDLER_ARGS)
 {
@@ -1040,6 +1043,7 @@ ums_sysctl_handler_parseinfo(SYSCTL_HANDLER_ARGS)
 
 	return (err);
 }
+#endif
 
 static devclass_t ums_devclass;
 
