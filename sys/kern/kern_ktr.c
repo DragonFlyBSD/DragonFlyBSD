@@ -164,7 +164,7 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, testspincnt, CTLFLAG_RW, &ktr_testspincnt, 0, "
  */
 static struct	ktr_entry ktr_buf0[KTR_ENTRIES];
 
-__cachealign struct ktr_cpu ktr_cpu[MAXCPU] = {
+struct ktr_cpu ktr_cpu[MAXCPU] = {
 	{ .core.ktr_buf = &ktr_buf0[0] }
 };
 

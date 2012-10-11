@@ -1202,15 +1202,18 @@ jme_dma_alloc(struct jme_softc *sc)
 	bus_dmamem_t dmem;
 	int error, i, asize;
 
-	tdata->jme_txdesc =
-	kmalloc(tdata->jme_tx_desc_cnt * sizeof(struct jme_txdesc),
-		M_DEVBUF, M_WAITOK | M_ZERO);
+	asize = __VM_CACHELINE_ALIGN(
+	    tdata->jme_tx_desc_cnt * sizeof(struct jme_txdesc));
+	tdata->jme_txdesc = kmalloc_cachealign(asize, M_DEVBUF,
+	    M_WAITOK | M_ZERO);
+
 	for (i = 0; i < sc->jme_cdata.jme_rx_ring_cnt; ++i) {
 		struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[i];
 
-		rdata->jme_rxdesc =
-		kmalloc(rdata->jme_rx_desc_cnt * sizeof(struct jme_rxdesc),
-			M_DEVBUF, M_WAITOK | M_ZERO);
+		asize = __VM_CACHELINE_ALIGN(
+		    rdata->jme_rx_desc_cnt * sizeof(struct jme_rxdesc));
+		rdata->jme_rxdesc = kmalloc_cachealign(asize, M_DEVBUF,
+		    M_WAITOK | M_ZERO);
 	}
 
 	/* Create parent ring tag. */
