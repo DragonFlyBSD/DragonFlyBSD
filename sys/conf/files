@@ -163,7 +163,7 @@ dev/disk/nata/ata-lowlevel.c	optional nata
 dev/disk/nata/ata-pci.c			optional nata pci
 dev/disk/nata/ata-queue.c		optional nata
 dev/disk/nata/ata-raid.c		optional nataraid
-dev/disk/nata/ata-usb.c			optional natausb
+dev/disk/nata/ata-usb.c			optional natausb usb
 dev/disk/nata/atapi-cam.c		optional natapicam
 dev/disk/nata/atapi-cd.c		optional natapicd
 dev/disk/nata/atapi-fd.c		optional natapifd
@@ -1691,15 +1691,15 @@ vm/vm_zone.c			standard
 #
 # USB support
 bus/usb/usb_if.m		optional usb
-bus/usb/uhci.c			optional uhci
-bus/usb/uhci_pci.c		optional uhci
-bus/usb/ohci.c			optional ohci
-bus/usb/ohci_pci.c		optional ohci
-bus/usb/ehci.c			optional ehci
-bus/usb/ehci_pci.c		optional ehci
-dev/usbmisc/ucom/ucom.c		optional ucom
-dev/usbmisc/uvisor/uvisor.c	optional uvisor ucom
-dev/usbmisc/uvscom/uvscom.c	optional uvscom ucom
+bus/usb/uhci.c			optional uhci usb
+bus/usb/uhci_pci.c		optional uhci usb
+bus/usb/ohci.c			optional ohci usb
+bus/usb/ohci_pci.c		optional ohci usb
+bus/usb/ehci.c			optional ehci usb
+bus/usb/ehci_pci.c		optional ehci usb
+dev/usbmisc/ucom/ucom.c		optional ucom usb
+dev/usbmisc/uvisor/uvisor.c	optional uvisor ucom usb
+dev/usbmisc/uvscom/uvscom.c	optional uvscom ucom usb
 bus/usb/usb.c			optional usb
 bus/usb/usbdi.c			optional usb
 bus/usb/usbdi_util.c		optional usb
@@ -1710,34 +1710,34 @@ bus/usb/usb_subr.c		optional usb
 bus/usb/usb_quirks.c		optional usb
 bus/usb/hid.c			optional usb
 bus/usb/uhub.c			optional usb
-dev/usbmisc/moscom/moscom.c	optional moscom ucom
-dev/usbmisc/ubt/ubt.c		optional ubt
-dev/usbmisc/uark/uark.c		optional uark ucom
-dev/usbmisc/uchcom/uchcom.c	optional uchcom ucom
-dev/usbmisc/ufm/ufm.c		optional ufm
-dev/usbmisc/ubsa/ubsa.c		optional ubsa ucom
-dev/usbmisc/uftdi/uftdi.c	optional uftdi ucom
-dev/usbmisc/ugen/ugen.c		optional ugen
-dev/usbmisc/ugen/ugenbuf.c	optional ugen
-dev/usbmisc/ugensa/ugensa.c	optional ugensa ucom
-dev/usbmisc/uhid/uhid.c		optional uhid
-dev/usbmisc/umct/umct.c		optional umct ucom
-dev/usbmisc/ums/ums.c		optional ums
-dev/usbmisc/uplcom/uplcom.c	optional uplcom ucom
-dev/usbmisc/urio/urio.c		optional urio
-dev/usbmisc/uslcom/uslcom.c	optional uslcom ucom
-dev/usbmisc/uticom/uticom.c	optional uticom ucom
-dev/usbmisc/ulpt/ulpt.c		optional ulpt
-dev/usbmisc/ukbd/ukbd.c		optional ukbd
-dev/usbmisc/umass/umass.c	optional umass
-dev/usbmisc/umodem/umodem.c	optional umodem
-dev/usbmisc/uscanner/uscanner.c	optional uscanner
-dev/netif/aue/if_aue.c		optional aue
-dev/netif/axe/if_axe.c		optional axe
-dev/netif/cue/if_cue.c		optional cue
-dev/netif/kue/if_kue.c		optional kue
-dev/netif/lgue/if_lgue.c	optional lgue
-dev/netif/rue/if_rue.c		optional rue
+dev/usbmisc/moscom/moscom.c	optional moscom ucom usb
+dev/usbmisc/ubt/ubt.c		optional ubt usb
+dev/usbmisc/uark/uark.c		optional uark ucom usb
+dev/usbmisc/uchcom/uchcom.c	optional uchcom ucom usb
+dev/usbmisc/ufm/ufm.c		optional ufm usb
+dev/usbmisc/ubsa/ubsa.c		optional ubsa ucom usb
+dev/usbmisc/uftdi/uftdi.c	optional uftdi ucom usb
+dev/usbmisc/ugen/ugen.c		optional ugen usb
+dev/usbmisc/ugen/ugenbuf.c	optional ugen usb
+dev/usbmisc/ugensa/ugensa.c	optional ugensa ucom usb
+dev/usbmisc/uhid/uhid.c		optional uhid usb
+dev/usbmisc/umct/umct.c		optional umct ucom usb
+dev/usbmisc/ums/ums.c		optional ums usb
+dev/usbmisc/uplcom/uplcom.c	optional uplcom ucom usb
+dev/usbmisc/urio/urio.c		optional urio usb
+dev/usbmisc/uslcom/uslcom.c	optional uslcom ucom usb
+dev/usbmisc/uticom/uticom.c	optional uticom ucom usb
+dev/usbmisc/ulpt/ulpt.c		optional ulpt usb
+dev/usbmisc/ukbd/ukbd.c		optional ukbd usb
+dev/usbmisc/umass/umass.c	optional umass usb
+dev/usbmisc/umodem/umodem.c	optional umodem usb
+dev/usbmisc/uscanner/uscanner.c	optional uscanner usb
+dev/netif/aue/if_aue.c		optional aue usb
+dev/netif/axe/if_axe.c		optional axe usb
+dev/netif/cue/if_cue.c		optional cue usb
+dev/netif/kue/if_kue.c		optional kue usb
+dev/netif/lgue/if_lgue.c	optional lgue usb
+dev/netif/rue/if_rue.c		optional rue usb
 dev/netif/lnc/am7990.c		optional lnc
 dev/netif/lnc/am79900.c		optional lnc
 dev/netif/lnc/if_lnc_isa.c	optional lnc isa
@@ -2171,3 +2171,60 @@ ${ACPICA_DIR}/utilities/utresrc.c		optional acpi
 ${ACPICA_DIR}/utilities/utstate.c		optional acpi
 ${ACPICA_DIR}/utilities/utxface.c		optional acpi
 ${ACPICA_DIR}/utilities/utxferror.c		optional acpi
+
+#
+# experimental new USB stack from recent FreeBSD
+#
+usbdevs.h			optional u4b \
+	dependency		"$S/tools/usbdevs2h.awk $S/bus/u4b/usbdevs" \
+	compile-with		"${AWK} -f $S/tools/usbdevs2h.awk $S/bus/u4b/usbdevs -h" \
+	no-obj no-implicit-rule before-depend \
+	clean "usbdevs.h"
+usbdevs_data.h			optional u4b \
+	dependency		"$S/tools/usbdevs2h.awk $S/bus/u4b/usbdevs" \
+	compile-with		"${AWK} -f $S/tools/usbdevs2h.awk $S/bus/u4b/usbdevs -d" \
+	no-obj no-implicit-rule before-depend \
+	clean "usbdevs_data.h"
+#
+# USB core
+#
+bus/u4b/usb_busdma.c			optional usb4bsd
+bus/u4b/usb_core.c			optional usb4bsd
+bus/u4b/usb_debug.c			optional usb4bsd
+bus/u4b/usb_dev.c			optional usb4bsd
+bus/u4b/usb_device.c			optional usb4bsd
+bus/u4b/usb_dynamic.c			optional usb4bsd
+bus/u4b/usb_error.c			optional usb4bsd
+bus/u4b/usb_generic.c			optional usb4bsd
+bus/u4b/usb_handle_request.c		optional usb4bsd
+bus/u4b/usb_hid.c			optional usb4bsd
+bus/u4b/usb_hub.c			optional usb4bsd
+bus/u4b/usb_lookup.c			optional usb4bsd
+bus/u4b/usb_mbuf.c			optional usb4bsd
+bus/u4b/usb_msctest.c			optional usb4bsd
+bus/u4b/usb_parse.c			optional usb4bsd
+#bus/u4b/usb_pf.c			optional usb4bsd
+bus/u4b/usb_process.c			optional usb4bsd
+bus/u4b/usb_request.c			optional usb4bsd
+bus/u4b/usb_transfer.c			optional usb4bsd
+bus/u4b/usb_util.c			optional usb4bsd
+bus/u4b/usb_if.m			optional usb4bsd
+#
+# USB controller drivers
+#
+bus/u4b/controller/at91dci.c            optional at91dci usb4bsd
+bus/u4b/controller/at91dci_atmelarm.c   optional at91dci at91rm9200 usb4bsd
+bus/u4b/controller/musb_otg.c           optional musb usb4bsd
+bus/u4b/controller/musb_otg_atmelarm.c  optional musb at91rm9200 usb4bsd
+bus/u4b/controller/ehci.c               optional ehci usb4bsd
+bus/u4b/controller/ehci_pci.c           optional ehci pci usb4bsd
+bus/u4b/controller/ohci.c               optional ohci usb4bsd
+bus/u4b/controller/ohci_atmelarm.c      optional ohci at91rm9200 usb4bsd
+bus/u4b/controller/ohci_pci.c           optional ohci pci usb4bsd
+bus/u4b/controller/uhci.c               optional uhci usb4bsd
+bus/u4b/controller/uhci_pci.c           optional uhci pci usb4bsd
+bus/u4b/controller/xhci.c               optional xhci usb4bsd
+bus/u4b/controller/xhci_pci.c           optional xhci pci usb4bsd
+bus/u4b/controller/uss820dci.c          optional uss820dci usb4bsd
+bus/u4b/controller/uss820dci_atmelarm.c optional uss820dci at91rm9200 usb4bsd
+bus/u4b/controller/usb_controller.c     optional usb4bsd
