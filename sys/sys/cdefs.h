@@ -76,8 +76,9 @@
  * header, but currently, we do need such a hierarchy.
  */
 #define	__VM_CACHELINE_SIZE	64
+#define __VM_CACHELINE_MASK	(__VM_CACHELINE_SIZE - 1)
 #define	__VM_CACHELINE_ALIGN(n)	\
-			(((n) + __VM_CACHELINE_SIZE - 1) / __VM_CACHELINE_SIZE)
+	(((n) + __VM_CACHELINE_MASK) & ~__VM_CACHELINE_MASK)
 
 /*
  * The __CONCAT macro is used to concatenate parts of symbol names, e.g.
