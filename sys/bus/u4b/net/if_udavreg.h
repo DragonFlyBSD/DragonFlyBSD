@@ -153,7 +153,7 @@ enum {
 
 struct udav_softc {
 	struct usb_ether	sc_ue;
-	struct mtx		sc_mtx;
+	struct lock		sc_lock;
 	struct usb_xfer	*sc_xfer[UDAV_N_TRANSFER];
 
 	int			sc_flags;
@@ -161,6 +161,6 @@ struct udav_softc {
 #define	UDAV_FLAG_EXT_PHY	0x0040
 };
 
-#define	UDAV_LOCK(_sc)			mtx_lock(&(_sc)->sc_mtx)
-#define	UDAV_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#define	UDAV_LOCK_ASSERT(_sc, t)	mtx_assert(&(_sc)->sc_mtx, t)
+#define	UDAV_LOCK(_sc)			lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
+#define	UDAV_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)
+#define	UDAV_LOCK_ASSERT(_sc)	KKASSERT(lockowned(&(_sc)->sc_lock))

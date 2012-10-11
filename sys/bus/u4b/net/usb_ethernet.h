@@ -48,8 +48,8 @@
 
 #include "miibus_if.h"
 
-#include <dev/mii/mii.h>
-#include <dev/mii/miivar.h>
+#include <dev/netif/mii_layer/mii.h>
+#include <dev/netif/mii_layer/miivar.h>
 
 struct usb_ether;
 struct usb_device_request;
@@ -79,7 +79,7 @@ struct usb_ether_cfg_task {
 struct usb_ether {
 	/* NOTE: the "ue_ifp" pointer must be first --hps */
 	struct ifnet		*ue_ifp;
-	struct mtx		*ue_mtx;
+	struct lock		*ue_lock;
 	const struct usb_ether_methods *ue_methods;
 	struct sysctl_oid	*ue_sysctl_oid;
 	void			*ue_sc;
@@ -114,7 +114,7 @@ int		uether_ifattach(struct usb_ether *);
 void		uether_ifdetach(struct usb_ether *);
 int		uether_ifmedia_upd(struct ifnet *);
 void		uether_init(void *);
-int		uether_ioctl(struct ifnet *, u_long, caddr_t);
+int		uether_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 struct mbuf	*uether_newbuf(void);
 int		uether_rxmbuf(struct usb_ether *, struct mbuf *, 
 		    unsigned int);
