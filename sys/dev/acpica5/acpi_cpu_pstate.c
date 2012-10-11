@@ -357,7 +357,15 @@ acpi_pst_attach(device_t dev)
 		device_printf(dev, "Domain%u already contains %d P-States, "
 			      "invalid _PSD package\n",
 			      dom->pd_dom, dom->pd_nproc);
+#if 0
+		/*
+		 * Some stupid BIOSes will set wrong "# of processors",
+		 * e.g. 1 for CPU w/ hyperthreading; Be lenient here.
+		 */
 		return ENXIO;
+#else
+		dom->pd_nproc++;
+#endif
 	}
 	KKASSERT(i < dom->pd_nproc);
 
@@ -622,10 +630,18 @@ acpi_pst_domain_create_pkg(device_t dev, ACPI_OBJECT *obj)
 			    "Package _PSD\n");
 			return NULL;
 		}
-		if (dom->pd_coord != coord || dom->pd_nproc != nproc) {
-			device_printf(dev, "Inconsistent _PSD information "
-				      "cross Processor objects\n");
+		if (dom->pd_coord != coord) {
+			device_printf(dev, "Inconsistent _PSD coord "
+			    "information cross Processor objects\n");
 			return NULL;
+		}
+		if (dom->pd_nproc != nproc) {
+			device_printf(dev, "Inconsistent _PSD nproc "
+			    "information cross Processor objects\n");
+			/*
+			 * Some stupid BIOSes will set wrong "# of processors",
+			 * e.g. 1 for CPU w/ hyperthreading; Be lenient here.
+			 */
 		}
 		return dom;
 	}
