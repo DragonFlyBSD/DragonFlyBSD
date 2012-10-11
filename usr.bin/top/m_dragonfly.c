@@ -86,13 +86,13 @@ struct handle {
  */
 
 static char smp_header[] =
-"  PID %-*.*s NICE  SIZE   PRES    STATE CPU  TIME   CTIME    CPU COMMAND";
+"  PID %-*.*s NICE  SIZE    RES    STATE CPU  TIME   CTIME    CPU COMMAND";
 
 #define smp_Proc_format \
 	"%5d %-*.*s %3d%7s %6s %8.8s %2d %6s %7s %5.2f%% %.*s"
 
 static char up_header[] =
-"  PID %-*.*s NICE  SIZE   PRES    STATE    TIME   CTIME    CPU COMMAND";
+"  PID %-*.*s NICE  SIZE    RES    STATE    TIME   CTIME    CPU COMMAND";
 
 #define up_Proc_format \
 	"%5d %-*.*s %3d%7s %6s %8.8s%.0d %7s %7s %5.2f%% %.*s"
@@ -614,7 +614,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	    get_userid(PP(pp, ruid)),
 	    (int)xnice,
 	    format_k(PROCSIZE(pp)),
-	    format_k(pagetok(VP(pp, prssize))),
+	    format_k(pagetok(VP(pp, rssize))),
 	    status,
 	    (int)(smpmode ? LP(pp, cpuid) : 0),
 	    cputime_fmt,

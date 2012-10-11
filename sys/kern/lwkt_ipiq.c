@@ -888,6 +888,7 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 	if (cs->cs_func)
 		cs->cs_func(cs->cs_data);
 	atomic_set_cpumask(&cs->cs_mack, gd->gd_cpumask);
+	/* cs can be ripped out at this point */
     } else {
 	lwkt_ipiq_t ip;
 	int wi;

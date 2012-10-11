@@ -69,7 +69,7 @@ struct pcb {
 #define	PCB_DBREGS	0x02	/* process using debug registers */
 #define FP_VIRTFP	0x04	/* virtual kernel wants exception */
 	caddr_t	pcb_onfault;	/* copyin/out fault recovery */
-	int	pcb_unused;
+	int	pcb_onfault_sp;	/* validate onfault state */
 	struct	pcb_ext	*pcb_ext;	/* optional pcb extension */
 	u_long	__pcb_spare[3];	/* adjust to avoid core dump size changes */
 };
