@@ -93,8 +93,7 @@ struct ktr_cpu_core {
 
 struct ktr_cpu {
 	struct ktr_cpu_core core;
-	char pad[__VM_CACHELINE_ALIGN(sizeof(struct ktr_cpu_core))];
-};
+} __cachealign;
 
 #ifdef _KERNEL
 
