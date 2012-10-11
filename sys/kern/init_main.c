@@ -719,6 +719,6 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
 	sleep_gdinit(gd);
-	usched_global_cpumask |= CPUMASK(cpuid);
+	atomic_set_cpumask(&usched_global_cpumask, CPUMASK(cpuid));
 }
 
