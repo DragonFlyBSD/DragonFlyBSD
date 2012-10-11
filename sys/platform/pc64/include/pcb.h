@@ -78,14 +78,16 @@ struct pcb {
 
 	struct pcb_ldt *pcb_ldt;
 	union savefpu	pcb_save;
+	caddr_t		pcb_onfault;	/* copyin/out fault recovery */
+	register_t	pcb_onfault_sp; /* validate onfault */
+	register_t	pcb_unused[4];	/* kgdb compatibility expansion */
+	struct  pcb_ext *pcb_ext;	/* optional pcb extension */
+};
+
 #define	PCB_DBREGS	0x02	/* process using debug registers */
 #define	PCB_FPUINITDONE	0x08	/* fpu state is initialized */
 #define FP_SOFTFP       0x01    /* process using software fltng pnt emulator */
 #define	FP_VIRTFP	0x04	/* virtual kernel wants exception */
-	caddr_t	pcb_onfault;	/* copyin/out fault recovery */
-	int	pcb_unused; 
-	struct  pcb_ext *pcb_ext;	/* optional pcb extension */
-};
 
 #ifdef _KERNEL
 void	savectx(struct pcb *);
