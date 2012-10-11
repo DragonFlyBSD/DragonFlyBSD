@@ -821,6 +821,7 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
     mask = cs->cs_mack;
     cpu_ccfence();
     cs->cs_mack = 0;
+    cpu_ccfence();
     if (cs->cs_func && (cs->cs_mask & gd->gd_cpumask))
 	    cs->cs_func(cs->cs_data);
     if (mask) {
