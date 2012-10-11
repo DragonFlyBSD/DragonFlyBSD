@@ -2422,7 +2422,7 @@ validate:
 
 		if (*pte) {
 			KKASSERT((*pte & PG_FRAME) == (newpte & PG_FRAME));
-			if (vm_page_unwire_quick(mpte))
+			if (mpte && vm_page_unwire_quick(mpte))
 				panic("pmap_enter: Insufficient wire_count");
 		}
 
@@ -2434,7 +2434,7 @@ validate:
 	} else {
 		if (*pte) {
 			KKASSERT((*pte & PG_FRAME) == (newpte & PG_FRAME));
-			if (vm_page_unwire_quick(mpte))
+			if (mpte && vm_page_unwire_quick(mpte))
 				panic("pmap_enter: Insufficient wire_count");
 		}
 	}
