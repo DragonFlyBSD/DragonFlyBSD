@@ -1735,10 +1735,12 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 {
 	struct ukbd_softc *sc = kbd->kb_data;
 	int i;
+#if 0 /* XXX */
 #if defined(COMPAT_FREEBSD6) || defined(COMPAT_FREEBSD5) || \
     defined(COMPAT_FREEBSD4) || defined(COMPAT_43)
 	int ival;
 
+#endif
 #endif
 
 	switch (cmd) {
