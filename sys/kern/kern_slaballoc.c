@@ -78,13 +78,18 @@
  *
  *	Allocations >= ZoneLimit go directly to kmem.
  *
+ * Alignment properties:
+ * - All power-of-2 sized allocations are power-of-2 aligned.
+ * - Allocations with M_POWEROF2 are power-of-2 aligned on the nearest
+ *   power-of-2 round up of 'size'.
+ * - Non-power-of-2 sized allocations are zone chunk size aligned (see the
+ *   above table 'Chunking' column).
+ *
  *			API REQUIREMENTS AND SIDE EFFECTS
  *
  *    To operate as a drop-in replacement to the FreeBSD-4.x malloc() we
  *    have remained compatible with the following API requirements:
  *
- *    + small power-of-2 sized allocations are power-of-2 aligned (kern_tty)
- *    + all power-of-2 sized allocations are power-of-2 aligned (twe)
  *    + malloc(0) is allowed and returns non-NULL (ahc driver)
  *    + ability to allocate arbitrarily large chunks of memory
  */
@@ -171,12 +176,8 @@ static void chunk_mark_free(SLZone *z, void *chunk);
 /*
  * Misc constants.  Note that allocations that are exact multiples of 
  * PAGE_SIZE, or exceed the zone limit, fall through to the kmem module.
- * IN_SAME_PAGE_MASK is used to sanity-check the per-page free lists.
  */
-#define MIN_CHUNK_SIZE		8		/* in bytes */
-#define MIN_CHUNK_MASK		(MIN_CHUNK_SIZE - 1)
 #define ZONE_RELS_THRESH	32		/* threshold number of zones */
-#define IN_SAME_PAGE_MASK	(~(intptr_t)PAGE_MASK | MIN_CHUNK_MASK)
 
 /*
  * The WEIRD_ADDR is used as known text to copy into free objects to
@@ -419,46 +420,55 @@ kmalloc_destroy(struct malloc_type **typep)
  * allocation request size to that particular zone's chunk size.
  */
 static __inline int
-zoneindex(unsigned long *bytes)
+zoneindex(unsigned long *bytes, unsigned long *align)
 {
     unsigned int n = (unsigned int)*bytes;	/* unsigned for shift opt */
     if (n < 128) {
 	*bytes = n = (n + 7) & ~7;
+	*align = 8;
 	return(n / 8 - 1);		/* 8 byte chunks, 16 zones */
     }
     if (n < 256) {
 	*bytes = n = (n + 15) & ~15;
+	*align = 16;
 	return(n / 16 + 7);
     }
     if (n < 8192) {
 	if (n < 512) {
 	    *bytes = n = (n + 31) & ~31;
+	    *align = 32;
 	    return(n / 32 + 15);
 	}
 	if (n < 1024) {
 	    *bytes = n = (n + 63) & ~63;
+	    *align = 64;
 	    return(n / 64 + 23);
 	} 
 	if (n < 2048) {
 	    *bytes = n = (n + 127) & ~127;
+	    *align = 128;
 	    return(n / 128 + 31);
 	}
 	if (n < 4096) {
 	    *bytes = n = (n + 255) & ~255;
+	    *align = 256;
 	    return(n / 256 + 39);
 	}
 	*bytes = n = (n + 511) & ~511;
+	*align = 512;
 	return(n / 512 + 47);
     }
 #if ZALLOC_ZONE_LIMIT > 8192
     if (n < 16384) {
 	*bytes = n = (n + 1023) & ~1023;
+	*align = 1024;
 	return(n / 1024 + 55);
     }
 #endif
 #if ZALLOC_ZONE_LIMIT > 16384
     if (n < 32768) {
 	*bytes = n = (n + 2047) & ~2047;
+	*align = 2048;
 	return(n / 2048 + 63);
     }
 #endif
@@ -495,16 +505,12 @@ slab_record_source(SLZone *z, const char *file, int line)
 static __inline unsigned long
 powerof2_size(unsigned long size)
 {
-	int i, wt;
+	int i;
 
-	if (size == 0)
-		return 0;
+	if (size == 0 || powerof2(size))
+		return size;
 
 	i = flsl(size);
-	wt = (size & ~(1 << (i - 1)));
-	if (!wt)
-		--i;
-
 	return (1UL << i);
 }
 
@@ -542,6 +548,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 #endif
     SLGlobalData *slgd;
     struct globaldata *gd;
+    unsigned long align;
     int zi;
 #ifdef INVARIANTS
     int i;
@@ -680,7 +687,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
      *
      * Note: zoneindex() will panic of size is too large.
      */
-    zi = zoneindex(&size);
+    zi = zoneindex(&size, &align);
     KKASSERT(zi < NZONES);
     crit_enter();
 
@@ -819,12 +826,12 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 
 	/*
 	 * Guarentee power-of-2 alignment for power-of-2-sized chunks.
-	 * Otherwise just 8-byte align the data.
+	 * Otherwise properly align the data according to the chunk size.
 	 */
-	if ((size | (size - 1)) + 1 == (size << 1))
-	    off = (off + size - 1) & ~(size - 1);
-	else
-	    off = (off + MIN_CHUNK_MASK) & ~MIN_CHUNK_MASK;
+	if (powerof2(size))
+	    align = size;
+	off = (off + align - 1) & ~(align - 1);
+
 	z->z_Magic = ZALLOC_SLAB_MAGIC;
 	z->z_ZoneIndex = zi;
 	z->z_NMax = (ZoneSize - off) / size;
@@ -906,6 +913,7 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 #endif
 {
     unsigned long osize;
+    unsigned long align;
     SLZone *z;
     void *nptr;
     int *kup;
@@ -956,7 +964,7 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
      * size is not too large.
      */
     if (size < ZoneLimit) {
-	zoneindex(&size);
+	zoneindex(&size, &align);
 	if (z->z_ChunkSize == size)
 	    return(ptr);
     }
@@ -1590,7 +1598,28 @@ void *
 kmalloc_cachealign(unsigned long size_alloc, struct malloc_type *type,
     int flags)
 {
+#if (__VM_CACHELINE_SIZE == 32)
+#define CAN_CACHEALIGN(sz)	((sz) >= 256)
+#elif (__VM_CACHELINE_SIZE == 64)
+#define CAN_CACHEALIGN(sz)	((sz) >= 512)
+#elif (__VM_CACHELINE_SIZE == 128)
+#define CAN_CACHEALIGN(sz)	((sz) >= 1024)
+#else
+#error "unsupported cacheline size"
+#endif
+
+	void *ret;
+
 	if (size_alloc < __VM_CACHELINE_SIZE)
 		size_alloc = __VM_CACHELINE_SIZE;
-	return kmalloc(size_alloc, type, flags | M_POWEROF2);
+	else if (!CAN_CACHEALIGN(size_alloc))
+		flags |= M_POWEROF2;
+
+	ret = kmalloc(size_alloc, type, flags);
+	KASSERT(((uintptr_t)ret & (__VM_CACHELINE_SIZE - 1)) == 0,
+	    ("%p(%lu) not cacheline %d aligned",
+	     ret, size_alloc, __VM_CACHELINE_SIZE));
+	return ret;
+
+#undef CAN_CACHEALIGN
 }

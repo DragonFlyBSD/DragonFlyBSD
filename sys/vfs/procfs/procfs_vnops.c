@@ -638,7 +638,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 			struct nchandle nch;
 
 			cache_copy(&procp->p_textnch, &nch);
-			error = cache_fullpath(procp, &nch,
+			error = cache_fullpath(procp, &nch, NULL,
 					       &fullpath, &freepath, 0);
 			cache_drop(&nch);
 		} else {
@@ -1121,7 +1121,7 @@ procfs_readlink(struct vop_readlink_args *ap)
 			struct nchandle nch;
 
 			cache_copy(&procp->p_textnch, &nch);
-			error = cache_fullpath(procp, &nch,
+			error = cache_fullpath(procp, &nch, NULL,
 					       &fullpath, &freepath, 0);
 			cache_drop(&nch);
 		} else {

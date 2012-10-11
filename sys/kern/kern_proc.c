@@ -1345,7 +1345,8 @@ sysctl_kern_proc_cwd(SYSCTL_HANDLER_ARGS)
 		struct nchandle nch;
 
 		cache_copy(&p->p_fd->fd_ncdir, &nch);
-		error = cache_fullpath(p, &nch, &fullpath, &freepath, 0);
+		error = cache_fullpath(p, &nch, NULL,
+				       &fullpath, &freepath, 0);
 		cache_drop(&nch);
 		if (error)
 			goto done;

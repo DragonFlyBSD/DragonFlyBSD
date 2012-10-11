@@ -160,8 +160,6 @@ aesni_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	 */
 	ses = TAILQ_FIRST(&sc->sessions);
 	if (ses == NULL || ses->used) {
-		size_t size;
-
 		/*
 		 * Release the spinlock here, since the following
 		 * kmalloc(M_WAITOK) may block.  kmalloc(M_NOWAIT)
@@ -170,13 +168,11 @@ aesni_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 		spin_unlock(&sc->lock);
 
 		/*
-		 * NOTE:
-		 * If the allocation size is 2^n, then the memory returned
-		 * by kmalloc(9) will be 2^n aligned.
+		 * aesni_session must be at least AESNI_ALIGN aligned.  To
+		 * make sure about that we always do a power-of-2 allocation.
 		 */
-		for (size = AESNI_ALIGN; size < sizeof(*ses); size <<= 1)
-			;
-		ses = kmalloc(size, M_AESNI, M_WAITOK | M_ZERO);
+		ses = kmalloc(sizeof(*ses), M_AESNI,
+		    M_WAITOK | M_ZERO | M_POWEROF2);
 		if ((uintptr_t)ses & (AESNI_ALIGN - 1)) {
 			panic("aesni: ses %p is not %d aligned",
 			    ses, AESNI_ALIGN);

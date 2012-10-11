@@ -562,7 +562,8 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 
 	case Pexe: {
 		char *fullpath, *freepath;
-		error = cache_fullpath(procp, &procp->p_textnch, &fullpath, &freepath, 0);
+		error = cache_fullpath(procp, &procp->p_textnch, NULL,
+				       &fullpath, &freepath, 0);
 		/* error = vn_fullpath(procp, NULL, &fullpath, &freepath); */
 		if (error == 0) {
 			vap->va_size = strlen(fullpath);
@@ -576,7 +577,8 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 	}
 	case Pcwd: {
 		char *fullpath, *freepath;
-		error = cache_fullpath(procp, &procp->p_fd->fd_ncdir, &fullpath, &freepath, 0);
+		error = cache_fullpath(procp, &procp->p_fd->fd_ncdir, NULL,
+				       &fullpath, &freepath, 0);
 		if (error == 0) {
 			vap->va_size = strlen(fullpath);
 			kfree(freepath, M_TEMP);
@@ -591,7 +593,8 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 		struct nchandle *nchp;
 		char *fullpath, *freepath;
 		nchp = jailed(procp->p_ucred) ? &procp->p_fd->fd_njdir : &procp->p_fd->fd_nrdir;
-		error = cache_fullpath(procp, nchp, &fullpath, &freepath, 0);
+		error = cache_fullpath(procp, nchp, NULL,
+				       &fullpath, &freepath, 0);
 		if (error == 0) {
 			vap->va_size = strlen(fullpath);
 			kfree(freepath, M_TEMP);
@@ -1560,7 +1563,8 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 					ap->a_uio);
 			break;
 		}
-		error = cache_fullpath(procp, &procp->p_textnch, &fullpath, &freepath, 0);
+		error = cache_fullpath(procp, &procp->p_textnch, NULL,
+				       &fullpath, &freepath, 0);
 		if (error != 0) {
 			error = uiomove("unknown", sizeof("unknown") - 1,
 					ap->a_uio);
@@ -1578,7 +1582,7 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 					ap->a_uio);
 			break;
 		}
-		error = cache_fullpath(procp, &procp->p_fd->fd_ncdir,
+		error = cache_fullpath(procp, &procp->p_fd->fd_ncdir, NULL,
 				       &fullpath, &freepath, 0);
 		if (error != 0) {
 			error = uiomove("unknown", sizeof("unknown") - 1,
@@ -1598,7 +1602,8 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 			break;
 		}
 		nchp = jailed(procp->p_ucred) ? &procp->p_fd->fd_njdir : &procp->p_fd->fd_nrdir;
-		error = cache_fullpath(procp, nchp, &fullpath, &freepath, 0);
+		error = cache_fullpath(procp, nchp, NULL,
+				       &fullpath, &freepath, 0);
 		if (error != 0) {
 			error = uiomove("unknown", sizeof("unknown") - 1,
 					ap->a_uio);

@@ -2066,8 +2066,6 @@ pmap_remove_all(vm_page_t m)
 		vm_object_hold(pmap->pm_pteobj);
 
 		if (pv != TAILQ_FIRST(&m->md.pv_list)) {
-			kprintf("pmap_remove_all: %p pv %p went away\n",
-				pmap, pv);
 			vm_object_drop(pmap->pm_pteobj);
 			pmap_drop(pmap);
 			continue;
@@ -2354,6 +2352,10 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	while (opa) {
 		KKASSERT((origpte & PG_FRAME) ==
 			 (*(vm_offset_t *)pte & PG_FRAME));
+		if (prot & VM_PROT_NOSYNC) {
+			prot &= ~VM_PROT_NOSYNC;
+			pmap_inval_init(&info);
+		}
 		pmap_remove_pte(pmap, pte, va, &info);
 		pte = pmap_pte(pmap, va);
 		origpte = *(vm_offset_t *)pte;
