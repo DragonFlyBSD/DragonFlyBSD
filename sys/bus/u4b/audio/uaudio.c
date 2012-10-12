@@ -2632,7 +2632,7 @@ uaudio_mixer_feature_name(const struct uaudio_terminal_node *iot,
 	return (uat->feature);
 }
 
-const static struct uaudio_terminal_node *
+static const struct uaudio_terminal_node *
 uaudio_mixer_get_input(const struct uaudio_terminal_node *iot, uint8_t index)
 {
 	struct uaudio_terminal_node *root = iot->root;
@@ -2650,7 +2650,7 @@ uaudio_mixer_get_input(const struct uaudio_terminal_node *iot, uint8_t index)
 	return (NULL);
 }
 
-const static struct uaudio_terminal_node *
+static const struct uaudio_terminal_node *
 uaudio_mixer_get_output(const struct uaudio_terminal_node *iot, uint8_t index)
 {
 	struct uaudio_terminal_node *root = iot->root;
