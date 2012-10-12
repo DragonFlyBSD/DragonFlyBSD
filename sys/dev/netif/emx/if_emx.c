@@ -424,14 +424,24 @@ emx_attach(device_t dev)
 	int offset, offset_def;
 #endif
 
+	/*
+	 * Initialize serializers
+	 */
 	lwkt_serialize_init(&sc->main_serialize);
 	lwkt_serialize_init(&sc->tx_serialize);
 	for (i = 0; i < EMX_NRX_RING; ++i)
 		lwkt_serialize_init(&sc->rx_data[i].rx_serialize);
 
+	/*
+	 * Initialize serializer array
+	 */
 	i = 0;
 	sc->serializes[i++] = &sc->main_serialize;
+
+	KKASSERT(i == EMX_TX_SERIALIZE);
 	sc->serializes[i++] = &sc->tx_serialize;
+
+	KKASSERT(i == EMX_RX_SERIALIZE);
 	sc->serializes[i++] = &sc->rx_data[0].rx_serialize;
 	sc->serializes[i++] = &sc->rx_data[1].rx_serialize;
 	KKASSERT(i == EMX_NSERIALIZE);
