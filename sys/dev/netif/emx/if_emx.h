@@ -195,8 +195,12 @@ typedef union e1000_rx_desc_extended	emx_rxdesc_t;
 #define EMX_RXDMRQ_IPV6_TCP	3
 #define EMX_RXDMRQ_IPV6		5
 
+struct emx_softc;
+
 struct emx_rxdata {
 	struct lwkt_serialize	rx_serialize;
+	struct emx_softc	*sc;
+	int			idx;
 
 	/*
 	 * Receive definitions

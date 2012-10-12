@@ -198,7 +198,7 @@ static void	emx_serialize_assert(struct ifnet *, enum ifnet_serialize,
 static void	emx_intr(void *);
 static void	emx_intr_mask(void *);
 static void	emx_intr_body(struct emx_softc *, boolean_t);
-static void	emx_rxeof(struct emx_softc *, int, int);
+static void	emx_rxeof(struct emx_rxdata *, int);
 static void	emx_txeof(struct emx_softc *);
 static void	emx_tx_collect(struct emx_softc *);
 static void	emx_tx_purge(struct emx_softc *);
@@ -208,14 +208,13 @@ static void	emx_disable_intr(struct emx_softc *);
 static int	emx_dma_alloc(struct emx_softc *);
 static void	emx_dma_free(struct emx_softc *);
 static void	emx_init_tx_ring(struct emx_softc *);
-static int	emx_init_rx_ring(struct emx_softc *, struct emx_rxdata *);
-static void	emx_free_rx_ring(struct emx_softc *, struct emx_rxdata *);
+static int	emx_init_rx_ring(struct emx_rxdata *);
+static void	emx_free_rx_ring(struct emx_rxdata *);
 static int	emx_create_tx_ring(struct emx_softc *);
-static int	emx_create_rx_ring(struct emx_softc *, struct emx_rxdata *);
+static int	emx_create_rx_ring(struct emx_rxdata *);
 static void	emx_destroy_tx_ring(struct emx_softc *, int);
-static void	emx_destroy_rx_ring(struct emx_softc *,
-		    struct emx_rxdata *, int);
-static int	emx_newbuf(struct emx_softc *, struct emx_rxdata *, int, int);
+static void	emx_destroy_rx_ring(struct emx_rxdata *, int);
+static int	emx_newbuf(struct emx_rxdata *, int, int);
 static int	emx_encap(struct emx_softc *, struct mbuf **);
 static int	emx_txcsum(struct emx_softc *, struct mbuf *,
 		    uint32_t *, uint32_t *);
@@ -423,6 +422,14 @@ emx_attach(device_t dev)
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
 #endif
+
+	/*
+	 * Setup RX rings
+	 */
+	for (i = 0; i < EMX_NRX_RING; ++i) {
+		sc->rx_data[i].sc = sc;
+		sc->rx_data[i].idx = i;
+	}
 
 	/*
 	 * Initialize serializers
@@ -1235,7 +1242,7 @@ emx_init(void *xsc)
 
 	/* Prepare receive descriptors and buffers */
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
-		if (emx_init_rx_ring(sc, &sc->rx_data[i])) {
+		if (emx_init_rx_ring(&sc->rx_data[i])) {
 			device_printf(dev,
 			    "Could not setup receive structures\n");
 			emx_stop(sc);
@@ -1332,7 +1339,7 @@ emx_intr_body(struct emx_softc *sc, boolean_t chk_asserted)
 			for (i = 0; i < sc->rx_ring_cnt; ++i) {
 				lwkt_serialize_enter(
 				&sc->rx_data[i].rx_serialize);
-				emx_rxeof(sc, i, -1);
+				emx_rxeof(&sc->rx_data[i], -1);
 				lwkt_serialize_exit(
 				&sc->rx_data[i].rx_serialize);
 			}
@@ -1818,7 +1825,7 @@ emx_stop(struct emx_softc *sc)
 	}
 
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
-		emx_free_rx_ring(sc, &sc->rx_data[i]);
+		emx_free_rx_ring(&sc->rx_data[i]);
 
 	sc->csum_flags = 0;
 	sc->csum_lhlen = 0;
@@ -2473,7 +2480,7 @@ emx_tx_purge(struct emx_softc *sc)
 }
 
 static int
-emx_newbuf(struct emx_softc *sc, struct emx_rxdata *rdata, int i, int init)
+emx_newbuf(struct emx_rxdata *rdata, int i, int init)
 {
 	struct mbuf *m;
 	bus_dma_segment_t seg;
@@ -2484,14 +2491,14 @@ emx_newbuf(struct emx_softc *sc, struct emx_rxdata *rdata, int i, int init)
 	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
 		if (init) {
-			if_printf(&sc->arpcom.ac_if,
+			if_printf(&rdata->sc->arpcom.ac_if,
 				  "Unable to allocate RX mbuf\n");
 		}
 		return (ENOBUFS);
 	}
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
 
-	if (sc->max_frame_size <= MCLBYTES - ETHER_ALIGN)
+	if (rdata->sc->max_frame_size <= MCLBYTES - ETHER_ALIGN)
 		m_adj(m, ETHER_ALIGN);
 
 	error = bus_dmamap_load_mbuf_segment(rdata->rxtag,
@@ -2500,7 +2507,7 @@ emx_newbuf(struct emx_softc *sc, struct emx_rxdata *rdata, int i, int init)
 	if (error) {
 		m_freem(m);
 		if (init) {
-			if_printf(&sc->arpcom.ac_if,
+			if_printf(&rdata->sc->arpcom.ac_if,
 				  "Unable to load RX mbuf\n");
 		}
 		return (error);
@@ -2522,9 +2529,9 @@ emx_newbuf(struct emx_softc *sc, struct emx_rxdata *rdata, int i, int init)
 }
 
 static int
-emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
+emx_create_rx_ring(struct emx_rxdata *rdata)
 {
-	device_t dev = sc->dev;
+	device_t dev = rdata->sc->dev;
 	struct emx_rxbuf *rx_buffer;
 	int i, error, rsize, nrxd;
 
@@ -2547,7 +2554,7 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 	 */
 	rsize = roundup2(rdata->num_rx_desc * sizeof(emx_rxdesc_t),
 			 EMX_DBA_ALIGN);
-	rdata->rx_desc = bus_dmamem_coherent_any(sc->parent_dtag,
+	rdata->rx_desc = bus_dmamem_coherent_any(rdata->sc->parent_dtag,
 				EMX_DBA_ALIGN, rsize, BUS_DMA_WAITOK,
 				&rdata->rx_desc_dtag, &rdata->rx_desc_dmap,
 				&rdata->rx_desc_paddr);
@@ -2562,7 +2569,7 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 	/*
 	 * Create DMA tag for rx buffers
 	 */
-	error = bus_dma_tag_create(sc->parent_dtag, /* parent */
+	error = bus_dma_tag_create(rdata->sc->parent_dtag, /* parent */
 			1, 0,			/* alignment, bounds */
 			BUS_SPACE_MAXADDR,	/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
@@ -2602,7 +2609,7 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 					  &rx_buffer->map);
 		if (error) {
 			device_printf(dev, "Unable to create RX DMA map\n");
-			emx_destroy_rx_ring(sc, rdata, i);
+			emx_destroy_rx_ring(rdata, i);
 			return error;
 		}
 	}
@@ -2610,7 +2617,7 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 }
 
 static void
-emx_free_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
+emx_free_rx_ring(struct emx_rxdata *rdata)
 {
 	int i;
 
@@ -2631,7 +2638,7 @@ emx_free_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 }
 
 static int
-emx_init_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
+emx_init_rx_ring(struct emx_rxdata *rdata)
 {
 	int i, error;
 
@@ -2640,7 +2647,7 @@ emx_init_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 
 	/* Allocate new ones. */
 	for (i = 0; i < rdata->num_rx_desc; i++) {
-		error = emx_newbuf(sc, rdata, i, 1);
+		error = emx_newbuf(rdata, i, 1);
 		if (error)
 			return (error);
 	}
@@ -2824,7 +2831,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 }
 
 static void
-emx_destroy_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata, int ndesc)
+emx_destroy_rx_ring(struct emx_rxdata *rdata, int ndesc)
 {
 	struct emx_rxbuf *rx_buffer;
 	int i;
@@ -2856,10 +2863,9 @@ emx_destroy_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata, int ndesc)
 }
 
 static void
-emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
+emx_rxeof(struct emx_rxdata *rdata, int count)
 {
-	struct emx_rxdata *rdata = &sc->rx_data[ring_idx];
-	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct ifnet *ifp = &rdata->sc->arpcom.ac_if;
 	uint32_t staterr;
 	emx_rxdesc_t *current_desc;
 	struct mbuf *mp;
@@ -2911,11 +2917,11 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 			mrq = le32toh(current_desc->rxd_mrq);
 			rss_hash = le32toh(current_desc->rxd_rss);
 
-			EMX_RSS_DPRINTF(sc, 10,
+			EMX_RSS_DPRINTF(rdata->sc, 10,
 			    "ring%d, mrq 0x%08x, rss_hash 0x%08x\n",
-			    ring_idx, mrq, rss_hash);
+			    rdata->idx, mrq, rss_hash);
 
-			if (emx_newbuf(sc, rdata, i, 0) != 0) {
+			if (emx_newbuf(rdata, i, 0) != 0) {
 				ifp->if_iqdrops++;
 				goto discard;
 			}
@@ -2987,7 +2993,7 @@ discard:
 	/* Advance the E1000's Receive Queue "Tail Pointer". */
 	if (--i < 0)
 		i = rdata->num_rx_desc - 1;
-	E1000_WRITE_REG(&sc->hw, E1000_RDT(ring_idx), i);
+	E1000_WRITE_REG(&rdata->sc->hw, E1000_RDT(rdata->idx), i);
 }
 
 static void
@@ -3628,7 +3634,7 @@ emx_dma_alloc(struct emx_softc *sc)
 	 * Allocate receive descriptors ring and buffers
 	 */
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
-		error = emx_create_rx_ring(sc, &sc->rx_data[i]);
+		error = emx_create_rx_ring(&sc->rx_data[i]);
 		if (error) {
 			device_printf(sc->dev,
 			    "Could not setup receive structures\n");
@@ -3646,7 +3652,7 @@ emx_dma_free(struct emx_softc *sc)
 	emx_destroy_tx_ring(sc, sc->num_tx_desc);
 
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
-		emx_destroy_rx_ring(sc, &sc->rx_data[i],
+		emx_destroy_rx_ring(&sc->rx_data[i],
 				    sc->rx_data[i].num_rx_desc);
 	}
 
@@ -3740,14 +3746,13 @@ emx_npoll_tx(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 }
 
 static void
-emx_npoll_rx(struct ifnet *ifp, void *arg, int cycle)
+emx_npoll_rx(struct ifnet *ifp __unused, void *arg, int cycle)
 {
-	struct emx_softc *sc = ifp->if_softc;
 	struct emx_rxdata *rdata = arg;
 
 	ASSERT_SERIALIZED(&rdata->rx_serialize);
 
-	emx_rxeof(sc, rdata - sc->rx_data, cycle);
+	emx_rxeof(rdata, cycle);
 }
 
 static void
