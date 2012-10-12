@@ -33,7 +33,7 @@
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/chip.h>
-#include <dev/sound/usb/uaudio.h>
+#include <bus/u4b/audio/uaudio.h>
 
 #include "mixer_if.h"
 
@@ -115,11 +115,15 @@ static kobj_method_t ua_chan_methods[] = {
 	KOBJMETHOD(channel_setformat, ua_chan_setformat),
 	KOBJMETHOD(channel_setspeed, ua_chan_setspeed),
 	KOBJMETHOD(channel_setblocksize, ua_chan_setblocksize),
+#if 0
 	KOBJMETHOD(channel_setfragments, ua_chan_setfragments),
+#endif
 	KOBJMETHOD(channel_trigger, ua_chan_trigger),
 	KOBJMETHOD(channel_getptr, ua_chan_getptr),
 	KOBJMETHOD(channel_getcaps, ua_chan_getcaps),
+#if 0
 	KOBJMETHOD(channel_getmatrix, ua_chan_getmatrix),
+#endif
 	KOBJMETHOD_END
 };
 
@@ -135,18 +139,18 @@ ua_mixer_init(struct snd_mixer *m)
 static int
 ua_mixer_set(struct snd_mixer *m, unsigned type, unsigned left, unsigned right)
 {
-	struct mtx *mtx = mixer_get_lock(m);
+	struct lock *lock = mixer_get_lock(m);
 	uint8_t do_unlock;
 
-	if (mtx_owned(mtx)) {
+	if (lockstatus(lock, curthread)) {
 		do_unlock = 0;
 	} else {
 		do_unlock = 1;
-		mtx_lock(mtx);
+		lockmgr(lock, LK_EXCLUSIVE);
 	}
 	uaudio_mixer_set(mix_getdevinfo(m), type, left, right);
 	if (do_unlock) {
-		mtx_unlock(mtx);
+		lockmgr(lock, LK_RELEASE);
 	}
 	return (left | (right << 8));
 }
@@ -154,19 +158,19 @@ ua_mixer_set(struct snd_mixer *m, unsigned type, unsigned left, unsigned right)
 static uint32_t
 ua_mixer_setrecsrc(struct snd_mixer *m, uint32_t src)
 {
-	struct mtx *mtx = mixer_get_lock(m);
+	struct lock *lock = mixer_get_lock(m);
 	int retval;
 	uint8_t do_unlock;
 
-	if (mtx_owned(mtx)) {
+	if (lockstatus(lock, curthread)) {
 		do_unlock = 0;
 	} else {
 		do_unlock = 1;
-		mtx_lock(mtx);
+		lockmgr(lock, LK_EXCLUSIVE);
 	}
 	retval = uaudio_mixer_setrecsrc(mix_getdevinfo(m), src);
 	if (do_unlock) {
-		mtx_unlock(mtx);
+		lockmgr(lock, LK_RELEASE);
 	}
 	return (retval);
 }
