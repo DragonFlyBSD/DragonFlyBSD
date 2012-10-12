@@ -222,7 +222,6 @@ struct emx_rxdata {
 
 	/* RX statistics */
 	unsigned long		rx_pkts;
-	unsigned long		mbuf_cluster_failed;
 
 	bus_dma_tag_t		rx_desc_dtag;
 	bus_dmamap_t		rx_desc_dmap;
@@ -357,17 +356,7 @@ struct emx_softc {
 	struct emx_rxdata	rx_data[EMX_NRX_RING];
 
 	/* Misc stats maintained by the driver */
-	unsigned long		dropped_pkts;
-	unsigned long		mbuf_alloc_failed;
-	unsigned long		no_tx_desc_avail1;
-	unsigned long		no_tx_desc_avail2;
-	unsigned long		no_tx_map_avail;
-	unsigned long		no_tx_dma_setup;
-	unsigned long		watchdog_events;
 	unsigned long		rx_overruns;
-	unsigned long		rx_irq;
-	unsigned long		tx_irq;
-	unsigned long		link_irq;
 	unsigned long		tso_segments;
 	unsigned long		tso_ctx_reused;
 

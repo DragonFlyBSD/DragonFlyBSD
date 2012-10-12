@@ -930,7 +930,6 @@ emx_start(struct ifnet *ifp)
 			emx_tx_collect(sc);
 			if (EMX_IS_OACTIVE(sc)) {
 				ifp->if_flags |= IFF_OACTIVE;
-				sc->no_tx_desc_avail1++;
 				break;
 			}
 		}
@@ -1127,7 +1126,6 @@ emx_watchdog(struct ifnet *ifp)
 		if_printf(ifp, "watchdog timeout -- resetting\n");
 
 	ifp->if_oerrors++;
-	sc->watchdog_events++;
 
 	emx_init(sc);
 
@@ -1511,11 +1509,6 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	error = bus_dmamap_load_mbuf_defrag(sc->txtag, map, m_headp,
 			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error) {
-		if (error == ENOBUFS)
-			sc->mbuf_alloc_failed++;
-		else
-			sc->no_tx_dma_setup++;
-
 		m_freem(*m_headp);
 		*m_headp = NULL;
 		return error;
@@ -2480,7 +2473,6 @@ emx_newbuf(struct emx_softc *sc, struct emx_rxdata *rdata, int i, int init)
 
 	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
-		rdata->mbuf_cluster_failed++;
 		if (init) {
 			if_printf(&sc->arpcom.ac_if,
 				  "Unable to allocate RX mbuf\n");
@@ -3225,14 +3217,13 @@ emx_update_stats(struct emx_softc *sc)
 	ifp->if_collisions = sc->stats.colc;
 
 	/* Rx Errors */
-	ifp->if_ierrors = sc->dropped_pkts + sc->stats.rxerrc +
+	ifp->if_ierrors = sc->stats.rxerrc +
 			  sc->stats.crcerrs + sc->stats.algnerrc +
 			  sc->stats.ruc + sc->stats.roc +
 			  sc->stats.mpc + sc->stats.cexterr;
 
 	/* Tx Errors */
-	ifp->if_oerrors = sc->stats.ecol + sc->stats.latecol +
-			  sc->watchdog_events;
+	ifp->if_oerrors = sc->stats.ecol + sc->stats.latecol;
 }
 
 static void
@@ -3264,18 +3255,6 @@ emx_print_debug_info(struct emx_softc *sc)
 	    E1000_READ_REG(&sc->hw, E1000_RDT(0)));
 	device_printf(dev, "Num Tx descriptors avail = %d\n",
 	    sc->num_tx_desc_avail);
-	device_printf(dev, "Tx Descriptors not avail1 = %ld\n",
-	    sc->no_tx_desc_avail1);
-	device_printf(dev, "Tx Descriptors not avail2 = %ld\n",
-	    sc->no_tx_desc_avail2);
-	device_printf(dev, "Std mbuf failed = %ld\n",
-	    sc->mbuf_alloc_failed);
-	device_printf(dev, "Std mbuf cluster failed = %ld\n",
-	    sc->rx_data[0].mbuf_cluster_failed);
-	device_printf(dev, "Driver dropped packets = %ld\n",
-	    sc->dropped_pkts);
-	device_printf(dev, "Driver tx dma failure in encap = %ld\n",
-	    sc->no_tx_dma_setup);
 
 	device_printf(dev, "TSO segments %lu\n", sc->tso_segments);
 	device_printf(dev, "TSO ctx reused %lu\n", sc->tso_ctx_reused);
@@ -3312,8 +3291,6 @@ emx_print_hw_stats(struct emx_softc *sc)
 	device_printf(dev, "Collision/Carrier extension errors = %lld\n",
 	    (long long)sc->stats.cexterr);
 	device_printf(dev, "RX overruns = %ld\n", sc->rx_overruns);
-	device_printf(dev, "watchdog timeouts = %ld\n",
-	    sc->watchdog_events);
 	device_printf(dev, "XON Rcvd = %lld\n",
 	    (long long)sc->stats.xonrxc);
 	device_printf(dev, "XON Xmtd = %lld\n",
