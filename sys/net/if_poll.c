@@ -611,7 +611,6 @@ stpoll_deregister(struct ifnet *ifp)
 			break;
 	}
 	if (i == st_ctx->poll_handlers) {
-		kprintf("stpoll_deregister: ifp not found!!!\n");
 		error = ENOENT;
 	} else {
 		st_ctx->poll_handlers--;
