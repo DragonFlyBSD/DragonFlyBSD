@@ -709,7 +709,7 @@ static driver_t umass_driver = {
 	.size = sizeof(struct umass_softc),
 };
 
-DRIVER_MODULE(umass, uhub, umass_driver, umass_devclass, NULL, 0);
+DRIVER_MODULE(umass, uhub, umass_driver, umass_devclass, NULL, NULL);
 MODULE_DEPEND(umass, usb, 1, 1, 1);
 MODULE_DEPEND(umass, cam, 1, 1, 1);
 MODULE_VERSION(umass, 1);

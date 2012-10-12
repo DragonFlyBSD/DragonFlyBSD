@@ -547,5 +547,5 @@ static driver_t ehci_driver = {
 
 static devclass_t ehci_devclass;
 
-DRIVER_MODULE(ehci, pci, ehci_driver, ehci_devclass, 0, 0);
+DRIVER_MODULE(ehci, pci, ehci_driver, ehci_devclass, NULL, NULL);
 MODULE_DEPEND(ehci, usb, 1, 1, 1);
