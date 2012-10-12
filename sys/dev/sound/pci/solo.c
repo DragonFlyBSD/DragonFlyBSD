@@ -637,7 +637,7 @@ static kobj_method_t esschan_methods[] = {
     	KOBJMETHOD(channel_trigger,		esschan_trigger),
     	KOBJMETHOD(channel_getptr,		esschan_getptr),
     	KOBJMETHOD(channel_getcaps,		esschan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(esschan);
 
@@ -755,7 +755,7 @@ static kobj_method_t solomixer_methods[] = {
     	KOBJMETHOD(mixer_init,		essmix_init),
     	KOBJMETHOD(mixer_set,		essmix_set),
     	KOBJMETHOD(mixer_setrecsrc,	essmix_setrecsrc),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 MIXER_DECLARE(solomixer);
 

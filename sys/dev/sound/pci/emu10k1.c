@@ -304,7 +304,7 @@ emu_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 static kobj_method_t emu_ac97_methods[] = {
 	KOBJMETHOD(ac97_read,		emu_rdcd),
 	KOBJMETHOD(ac97_write,		emu_wrcd),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(emu_ac97);
 
@@ -845,7 +845,7 @@ static kobj_method_t emupchan_methods[] = {
 	KOBJMETHOD(channel_trigger,		emupchan_trigger),
 	KOBJMETHOD(channel_getptr,		emupchan_getptr),
 	KOBJMETHOD(channel_getcaps,		emupchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(emupchan);
 
@@ -1057,7 +1057,7 @@ static kobj_method_t emurchan_methods[] = {
 	KOBJMETHOD(channel_trigger,		emurchan_trigger),
 	KOBJMETHOD(channel_getptr,		emurchan_getptr),
 	KOBJMETHOD(channel_getcaps,		emurchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(emurchan);
 

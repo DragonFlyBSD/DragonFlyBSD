@@ -309,7 +309,7 @@ via_read_codec(kobj_t obj, void *addr, int reg)
 static kobj_method_t via_ac97_methods[] = {
     	KOBJMETHOD(ac97_read,		via_read_codec),
     	KOBJMETHOD(ac97_write,		via_write_codec),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(via_ac97);
 
@@ -680,7 +680,7 @@ static kobj_method_t via8233wr_methods[] = {
     	KOBJMETHOD(channel_setblocksize,	via8233chan_setblocksize),
     	KOBJMETHOD(channel_trigger,		via8233chan_trigger),
     	KOBJMETHOD(channel_getptr,		via8233chan_getptr),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(via8233wr);
 
@@ -692,7 +692,7 @@ static kobj_method_t via8233dxs_methods[] = {
     	KOBJMETHOD(channel_setblocksize,	via8233chan_setblocksize),
     	KOBJMETHOD(channel_trigger,		via8233chan_trigger),
     	KOBJMETHOD(channel_getptr,		via8233chan_getptr),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(via8233dxs);
 
@@ -704,7 +704,7 @@ static kobj_method_t via8233msgd_methods[] = {
     	KOBJMETHOD(channel_setblocksize,	via8233chan_setblocksize),
     	KOBJMETHOD(channel_trigger,		via8233chan_trigger),
     	KOBJMETHOD(channel_getptr,		via8233chan_getptr),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(via8233msgd);
 

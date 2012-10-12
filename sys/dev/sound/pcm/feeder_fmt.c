@@ -25,8 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/feeder_fmt.c,v 1.14.2.2 2006/01/29 02:27:28 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder_fmt.c,v 1.4 2007/01/04 21:47:03 corecode Exp $
- *
  *
  * *New* and rewritten soft format converter, supporting 24/32bit pcm data,
  * simplified and optimized.
@@ -251,7 +249,7 @@ static struct pcm_feederdesc feeder_ulawtou8_desc[] = {
 };
 static kobj_method_t feeder_ulawtou8_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_table_u8),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_ulawtou8, 0, ulaw_to_s8_tbl);
 
@@ -262,7 +260,7 @@ static struct pcm_feederdesc feeder_alawtou8_desc[] = {
 };
 static kobj_method_t feeder_alawtou8_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_table_u8),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_alawtou8, 0, alaw_to_s8_tbl);
 
@@ -273,7 +271,7 @@ static struct pcm_feederdesc feeder_ulawtos16le_desc[] = {
 };
 static kobj_method_t feeder_ulawtos16le_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_table_s16le),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_ulawtos16le, 0, ulaw_to_s8_tbl);
 
@@ -284,7 +282,7 @@ static struct pcm_feederdesc feeder_alawtos16le_desc[] = {
 };
 static kobj_method_t feeder_alawtos16le_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_table_s16le),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_alawtos16le, 0, alaw_to_s8_tbl);
 
@@ -295,7 +293,7 @@ static struct pcm_feederdesc feeder_u8toulaw_desc[] = {
 };
 static kobj_method_t feeder_u8toulaw_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_table_xlaw),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_u8toulaw, 0, u8_to_ulaw_tbl);
 
@@ -306,7 +304,7 @@ static struct pcm_feederdesc feeder_u8toalaw_desc[] = {
 };
 static kobj_method_t feeder_u8toalaw_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_table_xlaw),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_u8toalaw, 0, u8_to_alaw_tbl);
 
@@ -364,7 +362,7 @@ static struct pcm_feederdesc feeder_8to16le_desc[] = {
 };
 static kobj_method_t feeder_8to16le_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_8to16le),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_8to16le, 0, NULL);
 
@@ -403,7 +401,7 @@ static kobj_method_t feeder_16leto8_methods[] = {
 	KOBJMETHOD(feeder_init, feed_common_init),
 	KOBJMETHOD(feeder_free, feed_common_free),
 	KOBJMETHOD(feeder_feed, feed_16leto8),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_16leto8, 0, NULL);
 
@@ -441,7 +439,7 @@ static struct pcm_feederdesc feeder_16leto24le_desc[] = {
 };
 static kobj_method_t feeder_16leto24le_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_16leto24le),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_16leto24le, 0, NULL);
 
@@ -481,7 +479,7 @@ static kobj_method_t feeder_24leto16le_methods[] = {
 	KOBJMETHOD(feeder_init, feed_common_init),
 	KOBJMETHOD(feeder_free, feed_common_free),
 	KOBJMETHOD(feeder_feed, feed_24leto16le),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_24leto16le, 1, NULL);
 
@@ -517,7 +515,7 @@ static struct pcm_feederdesc feeder_16leto32le_desc[] = {
 };
 static kobj_method_t feeder_16leto32le_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_16leto32le),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_16leto32le, 0, NULL);
 
@@ -558,7 +556,7 @@ static kobj_method_t feeder_32leto16le_methods[] = {
 	KOBJMETHOD(feeder_init, feed_common_init),
 	KOBJMETHOD(feeder_free, feed_common_free),
 	KOBJMETHOD(feeder_feed, feed_32leto16le),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_32leto16le, 1, NULL);
 /*
@@ -589,7 +587,7 @@ static struct pcm_feederdesc feeder_monotostereo8_desc[] = {
 };
 static kobj_method_t feeder_monotostereo8_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_monotostereo8),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_monotostereo8, 0, NULL);
 
@@ -628,7 +626,7 @@ static struct pcm_feederdesc feeder_monotostereo16_desc[] = {
 };
 static kobj_method_t feeder_monotostereo16_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_monotostereo16),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_monotostereo16, 0, NULL);
 
@@ -670,7 +668,7 @@ static struct pcm_feederdesc feeder_monotostereo24_desc[] = {
 };
 static kobj_method_t feeder_monotostereo24_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_monotostereo24),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_monotostereo24, 0, NULL);
 
@@ -715,7 +713,7 @@ static struct pcm_feederdesc feeder_monotostereo32_desc[] = {
 };
 static kobj_method_t feeder_monotostereo32_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_monotostereo32),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_monotostereo32, 0, NULL);
 /*
@@ -758,7 +756,7 @@ static kobj_method_t feeder_stereotomono8_methods[] = {
 	KOBJMETHOD(feeder_init,	feed_common_init),
 	KOBJMETHOD(feeder_free,	feed_common_free),
 	KOBJMETHOD(feeder_feed,	feed_stereotomono8),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_stereotomono8, 0, NULL);
 
@@ -798,7 +796,7 @@ static kobj_method_t feeder_stereotomono16_methods[] = {
 	KOBJMETHOD(feeder_init,	feed_common_init),
 	KOBJMETHOD(feeder_free,	feed_common_free),
 	KOBJMETHOD(feeder_feed,	feed_stereotomono16),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_stereotomono16, 0, NULL);
 
@@ -839,7 +837,7 @@ static kobj_method_t feeder_stereotomono24_methods[] = {
 	KOBJMETHOD(feeder_init,	feed_common_init),
 	KOBJMETHOD(feeder_free,	feed_common_free),
 	KOBJMETHOD(feeder_feed,	feed_stereotomono24),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_stereotomono24, 0, NULL);
 
@@ -881,7 +879,7 @@ static kobj_method_t feeder_stereotomono32_methods[] = {
 	KOBJMETHOD(feeder_init,	feed_common_init),
 	KOBJMETHOD(feeder_free,	feed_common_free),
 	KOBJMETHOD(feeder_feed,	feed_stereotomono32),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_stereotomono32, 0, NULL);
 /*
@@ -911,7 +909,7 @@ static struct pcm_feederdesc feeder_sign8_desc[] = {
 };
 static kobj_method_t feeder_sign8_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_sign8),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_sign8, 0, NULL);
 
@@ -944,7 +942,7 @@ static struct pcm_feederdesc feeder_sign16le_desc[] = {
 };
 static kobj_method_t feeder_sign16le_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_sign16le),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_sign16le, 0, NULL);
 
@@ -977,7 +975,7 @@ static struct pcm_feederdesc feeder_sign24le_desc[] = {
 };
 static kobj_method_t feeder_sign24le_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_sign24le),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_sign24le, 0, NULL);
 
@@ -1010,7 +1008,7 @@ static struct pcm_feederdesc feeder_sign32le_desc[] = {
 };
 static kobj_method_t feeder_sign32le_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_sign32le),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_sign32le, 0, NULL);
 /*
@@ -1055,7 +1053,7 @@ static struct pcm_feederdesc feeder_endian16_desc[] = {
 };
 static kobj_method_t feeder_endian16_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_endian16),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_endian16, 0, NULL);
 
@@ -1094,7 +1092,7 @@ static struct pcm_feederdesc feeder_endian24_desc[] = {
 };
 static kobj_method_t feeder_endian24_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_endian24),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_endian24, 0, NULL);
 
@@ -1136,7 +1134,7 @@ static struct pcm_feederdesc feeder_endian32_desc[] = {
 };
 static kobj_method_t feeder_endian32_methods[] = {
 	KOBJMETHOD(feeder_feed, feed_endian32),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_endian32, 0, NULL);
 /*

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.53.2.6 2007/10/31 04:00:07 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.26 2007/11/30 07:59:56 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -1018,7 +1017,7 @@ static kobj_method_t ac97mixer_methods[] = {
     	KOBJMETHOD(mixer_reinit,	ac97mix_reinit),
     	KOBJMETHOD(mixer_set,		ac97mix_set),
     	KOBJMETHOD(mixer_setrecsrc,	ac97mix_setrecsrc),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 MIXER_DECLARE(ac97mixer);
 

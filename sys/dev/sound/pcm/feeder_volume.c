@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/feeder_volume.c,v 1.2.2.1 2005/12/30 19:55:54 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder_volume.c,v 1.1 2007/01/04 21:47:03 corecode Exp $
- *
  *
  * feeder_volume, a long 'Lost Technology' rather than a new feature.
  */
@@ -77,6 +75,6 @@ static struct pcm_feederdesc feeder_volume_s16_desc[] = {
 };
 static kobj_method_t feeder_volume_s16_methods[] = {
     	KOBJMETHOD(feeder_feed, feed_volume_s16),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_volume_s16, 2, NULL);

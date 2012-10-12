@@ -240,7 +240,7 @@ static kobj_method_t iconv_xlat16_methods[] = {
 	KOBJMETHOD(iconv_converter_done,	iconv_xlat16_done),
 #endif
 	KOBJMETHOD(iconv_converter_name,	iconv_xlat16_name),
-	{0, 0}
+	KOBJMETHOD_END
 };
 
 KICONV_CONVERTER(xlat16, sizeof(struct iconv_xlat16));

@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/iconv_xlat.c,v 1.5.30.1 2009/04/15 03:14:26 kensmith Exp $
- * $DragonFly: src/sys/libiconv/iconv_xlat.c,v 1.3 2004/03/18 18:27:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -126,7 +125,7 @@ static kobj_method_t iconv_xlat_methods[] = {
 	KOBJMETHOD(iconv_converter_done,	iconv_xlat_done),
 #endif
 	KOBJMETHOD(iconv_converter_name,	iconv_xlat_name),
-	{0, 0}
+	KOBJMETHOD_END
 };
 
 KICONV_CONVERTER(xlat, sizeof(struct iconv_xlat));

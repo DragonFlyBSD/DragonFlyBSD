@@ -209,7 +209,7 @@ via_read_codec(kobj_t obj, void *addr, int reg)
 static kobj_method_t via_ac97_methods[] = {
     	KOBJMETHOD(ac97_read,		via_read_codec),
     	KOBJMETHOD(ac97_write,		via_write_codec),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(via_ac97);
 
@@ -419,7 +419,7 @@ static kobj_method_t viachan_methods[] = {
     	KOBJMETHOD(channel_trigger,		viachan_trigger),
     	KOBJMETHOD(channel_getptr,		viachan_getptr),
     	KOBJMETHOD(channel_getcaps,		viachan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(viachan);
 

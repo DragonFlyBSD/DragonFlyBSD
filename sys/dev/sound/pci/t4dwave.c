@@ -291,7 +291,7 @@ tr_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 static kobj_method_t tr_ac97_methods[] = {
     	KOBJMETHOD(ac97_read,		tr_rdcd),
     	KOBJMETHOD(ac97_write,		tr_wrcd),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(tr_ac97);
 
@@ -586,7 +586,7 @@ static kobj_method_t trpchan_methods[] = {
     	KOBJMETHOD(channel_trigger,		trpchan_trigger),
     	KOBJMETHOD(channel_getptr,		trpchan_getptr),
     	KOBJMETHOD(channel_getcaps,		trpchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(trpchan);
 
@@ -709,7 +709,7 @@ static kobj_method_t trrchan_methods[] = {
     	KOBJMETHOD(channel_trigger,		trrchan_trigger),
     	KOBJMETHOD(channel_getptr,		trrchan_getptr),
     	KOBJMETHOD(channel_getcaps,		trrchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(trrchan);
 

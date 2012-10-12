@@ -169,7 +169,7 @@ au_wrcd(kobj_t obj, void *arg, int regno, u_int32_t data)
 static kobj_method_t au_ac97_methods[] = {
     	KOBJMETHOD(ac97_read,		au_rdcd),
     	KOBJMETHOD(ac97_write,		au_wrcd),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(au_ac97);
 
@@ -384,7 +384,7 @@ static kobj_method_t auchan_methods[] = {
     	KOBJMETHOD(channel_trigger,		auchan_trigger),
     	KOBJMETHOD(channel_getptr,		auchan_getptr),
     	KOBJMETHOD(channel_getcaps,		auchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(auchan);
 

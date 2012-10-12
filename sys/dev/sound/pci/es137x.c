@@ -372,7 +372,7 @@ static kobj_method_t es1370_mixer_methods[] = {
     	KOBJMETHOD(mixer_init,		es1370_mixinit),
     	KOBJMETHOD(mixer_set,		es1370_mixset),
     	KOBJMETHOD(mixer_setrecsrc,	es1370_mixsetrecsrc),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 MIXER_DECLARE(es1370_mixer);
 
@@ -689,7 +689,7 @@ static kobj_method_t eschan1370_methods[] = {
     	KOBJMETHOD(channel_trigger,		eschan_trigger),
     	KOBJMETHOD(channel_getptr,		eschan_getptr),
     	KOBJMETHOD(channel_getcaps,		eschan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(eschan1370);
 
@@ -701,7 +701,7 @@ static kobj_method_t eschan1371_methods[] = {
     	KOBJMETHOD(channel_trigger,		eschan_trigger),
     	KOBJMETHOD(channel_getptr,		eschan_getptr),
     	KOBJMETHOD(channel_getcaps,		eschan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(eschan1371);
 
@@ -962,7 +962,7 @@ es1371_rdcd(kobj_t obj, void *s, int addr)
 static kobj_method_t es1371_ac97_methods[] = {
     	KOBJMETHOD(ac97_read,		es1371_rdcd),
     	KOBJMETHOD(ac97_write,		es1371_wrcd),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(es1371_ac97);
 

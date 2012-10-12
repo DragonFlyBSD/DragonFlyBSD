@@ -206,7 +206,7 @@ static kobj_method_t m3_codec_methods[] = {
 	KOBJMETHOD(ac97_init,	m3_initcd),
 	KOBJMETHOD(ac97_read,	m3_rdcd),
 	KOBJMETHOD(ac97_write,	m3_wrcd),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(m3_codec);
 
@@ -231,7 +231,7 @@ static kobj_method_t m3_pch_methods[] = {
 	KOBJMETHOD(channel_getptr,		m3_pchan_getptr),
 	KOBJMETHOD(channel_getcaps,		m3_pchan_getcaps),
 	KOBJMETHOD(channel_free,		m3_pchan_free),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(m3_pch);
 
@@ -253,7 +253,7 @@ static kobj_method_t m3_rch_methods[] = {
 	KOBJMETHOD(channel_getptr,		m3_rchan_getptr),
 	KOBJMETHOD(channel_getcaps,		m3_rchan_getcaps),
 	KOBJMETHOD(channel_free,		m3_rchan_free),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(m3_rch);
 

@@ -165,7 +165,7 @@ csa_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 static kobj_method_t csa_ac97_methods[] = {
     	KOBJMETHOD(ac97_read,		csa_rdcd),
     	KOBJMETHOD(ac97_write,		csa_wrcd),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(csa_ac97);
 
@@ -629,7 +629,7 @@ static kobj_method_t csachan_methods[] = {
     	KOBJMETHOD(channel_trigger,		csachan_trigger),
     	KOBJMETHOD(channel_getptr,		csachan_getptr),
     	KOBJMETHOD(channel_getcaps,		csachan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(csachan);
 

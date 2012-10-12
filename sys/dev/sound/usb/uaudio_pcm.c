@@ -223,7 +223,7 @@ static kobj_method_t ua_chan_methods[] = {
 	KOBJMETHOD(channel_trigger,		ua_chan_trigger),
 	KOBJMETHOD(channel_getptr,		ua_chan_getptr),
 	KOBJMETHOD(channel_getcaps,		ua_chan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 
 CHANNEL_DECLARE(ua_chan);
@@ -291,7 +291,7 @@ static kobj_method_t ua_mixer_methods[] = {
 	KOBJMETHOD(mixer_set,		ua_mixer_set),
 	KOBJMETHOD(mixer_setrecsrc,	ua_mixer_setrecsrc),
 
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 MIXER_DECLARE(ua_mixer);
 /************************************************************/
