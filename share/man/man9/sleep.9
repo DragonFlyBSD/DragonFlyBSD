@@ -166,7 +166,7 @@ spin_lock(&important_lock);
 if (important_condition == 0) {
 	tsleep_interlock(ident, flags);
 	spin_unlock(&important_lock);
-	tsleep(..., PINTERLOCK, ...);
+	tsleep(..., PINTERLOCKED, ...);
 }
 .Ed
 .Pp
