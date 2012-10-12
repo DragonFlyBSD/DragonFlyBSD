@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/vchan.c,v 1.17.2.5 2007/02/04 06:17:14 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.8 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -161,7 +160,7 @@ static struct pcm_feederdesc feeder_vchan_s16_desc[] = {
 };
 static kobj_method_t feeder_vchan_s16_methods[] = {
     	KOBJMETHOD(feeder_feed,		feed_vchan_s16),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_vchan_s16, 2, NULL);
 
@@ -297,7 +296,7 @@ static kobj_method_t vchan_methods[] = {
     	KOBJMETHOD(channel_setblocksize,	vchan_setblocksize),
     	KOBJMETHOD(channel_trigger,		vchan_trigger),
     	KOBJMETHOD(channel_getcaps,		vchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(vchan);
 

@@ -300,7 +300,7 @@ cs4281_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 static kobj_method_t cs4281_ac97_methods[] = {
         KOBJMETHOD(ac97_read,           cs4281_rdcd),
         KOBJMETHOD(ac97_write,          cs4281_wrcd),
-        { 0, 0 }
+        KOBJMETHOD_END
 };
 AC97_DECLARE(cs4281_ac97);
 
@@ -450,7 +450,7 @@ static kobj_method_t cs4281chan_methods[] = {
     	KOBJMETHOD(channel_trigger,		cs4281chan_trigger),
     	KOBJMETHOD(channel_getptr,		cs4281chan_getptr),
     	KOBJMETHOD(channel_getcaps,		cs4281chan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(cs4281chan);
 

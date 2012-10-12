@@ -101,6 +101,7 @@ struct kobjop_desc {
  * Shorthand for constructing method tables.
  */
 #define KOBJMETHOD(NAME, FUNC) { &NAME##_desc, (kobjop_t) FUNC }
+#define KOBJMETHOD_END	{ NULL, NULL }
 
 /*
  * Declare a class (which should be defined in another file.

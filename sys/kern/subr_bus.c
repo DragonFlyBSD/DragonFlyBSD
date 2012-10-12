@@ -3046,7 +3046,7 @@ static kobj_method_t root_methods[] = {
 	KOBJMETHOD(bus_setup_intr,	root_setup_intr),
 	KOBJMETHOD(bus_child_present,   root_child_present),
 
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 
 static driver_t root_driver = {

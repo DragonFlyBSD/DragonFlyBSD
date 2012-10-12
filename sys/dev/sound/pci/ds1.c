@@ -325,7 +325,7 @@ static kobj_method_t ds_ac97_methods[] = {
     	KOBJMETHOD(ac97_init,		ds_initcd),
     	KOBJMETHOD(ac97_read,		ds_rdcd),
     	KOBJMETHOD(ac97_write,		ds_wrcd),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(ds_ac97);
 
@@ -601,7 +601,7 @@ static kobj_method_t ds1pchan_methods[] = {
     	KOBJMETHOD(channel_trigger,		ds1pchan_trigger),
     	KOBJMETHOD(channel_getptr,		ds1pchan_getptr),
     	KOBJMETHOD(channel_getcaps,		ds1pchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(ds1pchan);
 
@@ -721,7 +721,7 @@ static kobj_method_t ds1rchan_methods[] = {
     	KOBJMETHOD(channel_trigger,		ds1rchan_trigger),
     	KOBJMETHOD(channel_getptr,		ds1rchan_getptr),
     	KOBJMETHOD(channel_getcaps,		ds1rchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(ds1rchan);
 

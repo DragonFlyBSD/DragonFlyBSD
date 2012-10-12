@@ -791,7 +791,7 @@ envy24ht_wrcd(kobj_t obj, void *devinfo, int regno, u_int16_t data)
 static kobj_method_t envy24ht_ac97_methods[] = {
 	KOBJMETHOD(ac97_read,	envy24ht_rdcd),
 	KOBJMETHOD(ac97_write,	envy24ht_wrcd),
-	{0, 0}
+	KOBJMETHOD_END
 };
 AC97_DECLARE(envy24ht_ac97);
 #endif
@@ -1809,7 +1809,7 @@ static kobj_method_t envy24htchan_methods[] = {
 	KOBJMETHOD(channel_trigger,		envy24htchan_trigger),
 	KOBJMETHOD(channel_getptr,		envy24htchan_getptr),
 	KOBJMETHOD(channel_getcaps,		envy24htchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(envy24htchan);
 
@@ -1934,7 +1934,7 @@ static kobj_method_t envy24htmixer_methods[] = {
 	KOBJMETHOD(mixer_uninit,	envy24htmixer_uninit),
 	KOBJMETHOD(mixer_set,		envy24htmixer_set),
 	KOBJMETHOD(mixer_setrecsrc,	envy24htmixer_setrecsrc),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 MIXER_DECLARE(envy24htmixer);
 

@@ -279,7 +279,7 @@ static kobj_method_t nm_ac97_methods[] = {
     	KOBJMETHOD(ac97_init,		nm_initcd),
     	KOBJMETHOD(ac97_read,		nm_rdcd),
     	KOBJMETHOD(ac97_write,		nm_wrcd),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(nm_ac97);
 
@@ -476,7 +476,7 @@ static kobj_method_t nmchan_methods[] = {
     	KOBJMETHOD(channel_trigger,		nmchan_trigger),
     	KOBJMETHOD(channel_getptr,		nmchan_getptr),
     	KOBJMETHOD(channel_getcaps,		nmchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(nmchan);
 

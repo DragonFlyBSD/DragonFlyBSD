@@ -823,6 +823,6 @@ static kobj_method_t feeder_rate_methods[] = {
     	KOBJMETHOD(feeder_set,		feed_rate_set),
     	KOBJMETHOD(feeder_get,		feed_rate_get),
     	KOBJMETHOD(feeder_feed,		feed_rate),
-	{0, 0}
+	KOBJMETHOD_END
 };
 FEEDER_DECLARE(feeder_rate, 2, NULL);

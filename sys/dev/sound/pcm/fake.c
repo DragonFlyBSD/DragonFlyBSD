@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/fake.c,v 1.14.2.1 2005/12/30 19:55:54 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pcm/fake.c,v 1.5 2007/01/04 21:47:03 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -129,7 +128,7 @@ static kobj_method_t fkchan_methods[] = {
     	KOBJMETHOD(channel_trigger,		fkchan_trigger),
     	KOBJMETHOD(channel_getptr,		fkchan_getptr),
     	KOBJMETHOD(channel_getcaps,		fkchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(fkchan);
 

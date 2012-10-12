@@ -540,7 +540,7 @@ feed_root(struct pcm_feeder *feeder, struct pcm_channel *ch, u_int8_t *buffer, u
 
 static kobj_method_t feeder_root_methods[] = {
     	KOBJMETHOD(feeder_feed,		feed_root),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 static struct feeder_class feeder_root_class = {
 	.name =		"feeder_root",

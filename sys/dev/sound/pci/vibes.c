@@ -369,7 +369,7 @@ static kobj_method_t svrchan_methods[] = {
         KOBJMETHOD(channel_trigger,             svrchan_trigger),
         KOBJMETHOD(channel_getptr,              svrchan_getptr),
         KOBJMETHOD(channel_getcaps,             svchan_getcaps),
-        { 0, 0 }
+        KOBJMETHOD_END
 };
 CHANNEL_DECLARE(svrchan);
 
@@ -445,7 +445,7 @@ static kobj_method_t svpchan_methods[] = {
         KOBJMETHOD(channel_trigger,             svpchan_trigger),
         KOBJMETHOD(channel_getptr,              svpchan_getptr),
         KOBJMETHOD(channel_getcaps,             svchan_getcaps),
-        { 0, 0 }
+        KOBJMETHOD_END
 };
 CHANNEL_DECLARE(svpchan);
 
@@ -557,7 +557,7 @@ static kobj_method_t sv_mixer_methods[] = {
         KOBJMETHOD(mixer_init,		sv_mix_init),
         KOBJMETHOD(mixer_set,		sv_mix_set),
         KOBJMETHOD(mixer_setrecsrc,	sv_mix_setrecsrc),
-        { 0, 0 }
+        KOBJMETHOD_END
 };
 MIXER_DECLARE(sv_mixer);
 

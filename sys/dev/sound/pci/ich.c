@@ -298,7 +298,7 @@ ich_wrcd(kobj_t obj, void *devinfo, int regno, uint16_t data)
 static kobj_method_t ich_ac97_methods[] = {
 	KOBJMETHOD(ac97_read,		ich_rdcd),
 	KOBJMETHOD(ac97_write,		ich_wrcd),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(ich_ac97);
 
@@ -616,7 +616,7 @@ static kobj_method_t ichchan_methods[] = {
 	KOBJMETHOD(channel_trigger,		ichchan_trigger),
 	KOBJMETHOD(channel_getptr,		ichchan_getptr),
 	KOBJMETHOD(channel_getcaps,		ichchan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(ichchan);
 

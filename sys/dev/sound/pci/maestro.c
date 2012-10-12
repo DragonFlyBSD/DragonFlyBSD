@@ -1266,7 +1266,7 @@ static kobj_method_t agg_ac97_methods[] = {
     	KOBJMETHOD(ac97_init,		agg_ac97_init),
     	KOBJMETHOD(ac97_read,		agg_ac97_read),
     	KOBJMETHOD(ac97_write,		agg_ac97_write),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(agg_ac97);
 
@@ -1471,7 +1471,7 @@ static kobj_method_t aggpch_methods[] = {
     	KOBJMETHOD(channel_trigger,		aggpch_trigger),
     	KOBJMETHOD(channel_getptr,		aggpch_getptr),
     	KOBJMETHOD(channel_getcaps,		aggpch_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(aggpch);
 
@@ -1607,7 +1607,7 @@ static kobj_method_t aggrch_methods[] = {
 	KOBJMETHOD(channel_trigger,		aggrch_trigger),
 	KOBJMETHOD(channel_getptr,		aggrch_getptr),
 	KOBJMETHOD(channel_getcaps,		aggrch_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(aggrch);
 
