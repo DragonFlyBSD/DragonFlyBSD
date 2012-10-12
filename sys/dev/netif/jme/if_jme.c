@@ -108,7 +108,7 @@ static void	jme_mediastatus(struct ifnet *, struct ifmediareq *);
 static int	jme_mediachange(struct ifnet *);
 #ifdef IFPOLL_ENABLE
 static void	jme_npoll(struct ifnet *, struct ifpoll_info *);
-static void	jme_npoll_status(struct ifnet *, int);
+static void	jme_npoll_status(struct ifnet *);
 static void	jme_npoll_rx(struct ifnet *, void *, int);
 static void	jme_npoll_tx(struct ifnet *, void *, int);
 #endif
@@ -3297,7 +3297,7 @@ jme_set_rx_coal(struct jme_softc *sc)
 #ifdef IFPOLL_ENABLE
 
 static void
-jme_npoll_status(struct ifnet *ifp, int pollhz __unused)
+jme_npoll_status(struct ifnet *ifp)
 {
 	struct jme_softc *sc = ifp->if_softc;
 	uint32_t status;

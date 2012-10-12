@@ -186,8 +186,6 @@ struct stpoll_rec {
 struct stpoll_ctx {
 	struct netmsg_base	poll_netmsg;
 
-	int			pollhz;
-
 	uint32_t		poll_handlers; /* next free entry in pr[]. */
 	struct stpoll_rec	pr[IFPOLL_LIST_LEN];
 
@@ -488,8 +486,6 @@ stpoll_init(void)
 	struct stpoll_ctx *st_ctx = &stpoll_context;
 	const struct poll_comm *comm = poll_common[0];
 
-	st_ctx->pollhz = comm->pollhz / (comm->poll_stfrac + 1);
-
 	sysctl_ctx_init(&st_ctx->poll_sysctl_ctx);
 	st_ctx->poll_sysctl_tree = SYSCTL_ADD_NODE(&st_ctx->poll_sysctl_ctx,
 				   SYSCTL_CHILDREN(comm->sysctl_tree),
@@ -537,7 +533,7 @@ stpoll_handler(netmsg_t msg)
 
 		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
 		    (IFF_RUNNING | IFF_NPOLLING))
-			rec->status_func(ifp, st_ctx->pollhz);
+			rec->status_func(ifp);
 
 		lwkt_serialize_exit(rec->serializer);
 	}
@@ -1387,8 +1383,6 @@ sysctl_pollhz_handler(netmsg_t nmsg)
 	rxpoll_context[mycpuid]->pollhz = comm->pollhz;
 	txpoll_context[mycpuid]->pollhz =
 	    comm->pollhz / (comm->poll_txfrac + 1);
-	if (mycpuid == 0)
-		stpoll_context.pollhz = comm->pollhz / (comm->poll_stfrac + 1);
 
 	/*
 	 * Adjust polling frequency

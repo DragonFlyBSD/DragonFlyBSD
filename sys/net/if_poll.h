@@ -7,7 +7,7 @@ struct lwkt_serialize;
 struct ifnet;
 
 typedef	void	(*ifpoll_iofn_t)(struct ifnet *, void *, int);
-typedef	void	(*ifpoll_stfn_t)(struct ifnet *, int);
+typedef	void	(*ifpoll_stfn_t)(struct ifnet *);
 
 struct ifpoll_status {
 	struct lwkt_serialize	*serializer;

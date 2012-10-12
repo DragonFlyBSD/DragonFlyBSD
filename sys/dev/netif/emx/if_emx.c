@@ -179,6 +179,9 @@ static int	emx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	emx_start(struct ifnet *);
 #ifdef IFPOLL_ENABLE
 static void	emx_npoll(struct ifnet *, struct ifpoll_info *);
+static void	emx_npoll_status(struct ifnet *);
+static void	emx_npoll_tx(struct ifnet *, void *, int);
+static void	emx_npoll_rx(struct ifnet *, void *, int);
 #endif
 static void	emx_watchdog(struct ifnet *);
 static void	emx_media_status(struct ifnet *, struct ifmediareq *);
@@ -3721,7 +3724,7 @@ emx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 #ifdef IFPOLL_ENABLE
 
 static void
-emx_npoll_status(struct ifnet *ifp, int pollhz __unused)
+emx_npoll_status(struct ifnet *ifp)
 {
 	struct emx_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
