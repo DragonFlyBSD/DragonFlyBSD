@@ -158,8 +158,8 @@ static driver_t udav_driver = {
 
 static devclass_t udav_devclass;
 
-DRIVER_MODULE(udav, uhub, udav_driver, udav_devclass, NULL, 0);
-DRIVER_MODULE(miibus, udav, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(udav, uhub, udav_driver, udav_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, udav, miibus_driver, miibus_devclass, NULL, NULL);
 MODULE_DEPEND(udav, uether, 1, 1, 1);
 MODULE_DEPEND(udav, usb, 1, 1, 1);
 MODULE_DEPEND(udav, ether, 1, 1, 1);
