@@ -703,13 +703,15 @@ static void
 udav_stop(struct usb_ether *ue)
 {
 	struct udav_softc *sc = ue->ue_sc;
+#if 0 /* XXX */
 	struct ifnet *ifp = uether_getifp(&sc->sc_ue);
+#endif
 
 	UDAV_LOCK_ASSERT(sc);
 
-	/* XXX
+#if 0 /* XXX */
 	ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
-	*/
+#endif
 	sc->sc_flags &= ~UDAV_FLAG_LINK;
 
 	/*
