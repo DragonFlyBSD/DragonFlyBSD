@@ -72,6 +72,8 @@
 
 #include "miibus_if.h"
 
+#define JME_TICK_CPUID		0	/* DO NOT CHANGE THIS */
+
 #define JME_TX_SERIALIZE	1
 #define JME_RX_SERIALIZE	2
 
@@ -478,7 +480,8 @@ jme_miibus_statchg(device_t dev)
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
-	callout_reset(&sc->jme_tick_ch, hz, jme_tick, sc);
+	callout_reset_bycpu(&sc->jme_tick_ch, hz, jme_tick, sc,
+	    JME_TICK_CPUID);
 
 #ifdef IFPOLL_ENABLE
 	if (!(ifp->if_flags & IFF_NPOLLING))
@@ -2550,6 +2553,8 @@ jme_tick(void *xsc)
 
 	lwkt_serialize_enter(&sc->jme_serialize);
 
+	KKASSERT(mycpuid == JME_TICK_CPUID);
+
 	sc->jme_in_tick = TRUE;
 	mii_tick(mii);
 	sc->jme_in_tick = FALSE;
@@ -2854,7 +2859,8 @@ jme_init(void *xsc)
 	mii = device_get_softc(sc->jme_miibus);
 	mii_mediachg(mii);
 
-	callout_reset(&sc->jme_tick_ch, hz, jme_tick, sc);
+	callout_reset_bycpu(&sc->jme_tick_ch, hz, jme_tick, sc,
+	    JME_TICK_CPUID);
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
