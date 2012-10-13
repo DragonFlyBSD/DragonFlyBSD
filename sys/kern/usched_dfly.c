@@ -928,7 +928,7 @@ dfly_recalculate_estcpu(struct lwp *lp)
 		 */
 		ttlticks = (cpbase - lp->lwp_cpbase) /
 			   gd->gd_schedclock.periodic;
-		if (ttlticks < 0) {
+		if ((ssysclock_t)ttlticks < 0) {
 			ttlticks = 0;
 			lp->lwp_cpbase = cpbase;
 		}
