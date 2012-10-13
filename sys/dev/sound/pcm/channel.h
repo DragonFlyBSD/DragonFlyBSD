@@ -125,6 +125,10 @@ int fmtvalid(u_int32_t fmt, u_int32_t *fmtlist);
 #define PCMTRIG_STOP 0
 #define PCMTRIG_ABORT -1
 
+#define PCMTRIG_COMMON(x)	((x) == PCMTRIG_START ||		\
+				 (x) == PCMTRIG_STOP ||			\
+				 (x) == PCMTRIG_ABORT)
+
 #define CHN_F_CLOSING           0x00000004  /* a pending close */
 #define CHN_F_ABORTING          0x00000008  /* a pending abort */
 #define CHN_F_RUNNING		0x00000010  /* dma is running */

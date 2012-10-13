@@ -32,6 +32,15 @@ DOSCMD(1) REMOVED
 doscmd(1) has been removed. It was i386 only. The doscmd(1) specific
 NO_X make.conf option was removed too.
 
+GCC 4.7
+-------
+
+GCC 4.7 has been brought in and replaces GCC 4.1 as DragonFly's non-
+default compiler in base (default is still GCC 4.4).
+
+Users who wish to build only GCC 4.4 have to replace NO_GCC41 with
+NO_GCC47 in /etc/make.conf.
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 2.10 to later versions               +
 +-----------------------------------------------------------------------+

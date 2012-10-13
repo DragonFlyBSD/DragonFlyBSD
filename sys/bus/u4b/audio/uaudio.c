@@ -2632,7 +2632,7 @@ uaudio_mixer_feature_name(const struct uaudio_terminal_node *iot,
 	return (uat->feature);
 }
 
-const static struct uaudio_terminal_node *
+static const struct uaudio_terminal_node *
 uaudio_mixer_get_input(const struct uaudio_terminal_node *iot, uint8_t index)
 {
 	struct uaudio_terminal_node *root = iot->root;
@@ -2650,7 +2650,7 @@ uaudio_mixer_get_input(const struct uaudio_terminal_node *iot, uint8_t index)
 	return (NULL);
 }
 
-const static struct uaudio_terminal_node *
+static const struct uaudio_terminal_node *
 uaudio_mixer_get_output(const struct uaudio_terminal_node *iot, uint8_t index)
 {
 	struct uaudio_terminal_node *root = iot->root;
@@ -3887,7 +3887,7 @@ umidi_detach(device_t dev)
 	return (0);
 }
 
-DRIVER_MODULE(uaudio, uhub, uaudio_driver, uaudio_devclass, NULL, 0);
+DRIVER_MODULE(uaudio, uhub, uaudio_driver, uaudio_devclass, NULL, NULL);
 MODULE_DEPEND(uaudio, usb, 1, 1, 1);
 MODULE_DEPEND(uaudio, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(uaudio, 1);

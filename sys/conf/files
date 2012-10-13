@@ -2212,21 +2212,14 @@ bus/u4b/usb_if.m			optional usb4bsd
 #
 # USB controller drivers
 #
-bus/u4b/controller/at91dci.c            optional at91dci usb4bsd
-bus/u4b/controller/at91dci_atmelarm.c   optional at91dci at91rm9200 usb4bsd
-bus/u4b/controller/musb_otg.c           optional musb usb4bsd
-bus/u4b/controller/musb_otg_atmelarm.c  optional musb at91rm9200 usb4bsd
 bus/u4b/controller/ehci.c               optional ehci usb4bsd
 bus/u4b/controller/ehci_pci.c           optional ehci pci usb4bsd
 bus/u4b/controller/ohci.c               optional ohci usb4bsd
-bus/u4b/controller/ohci_atmelarm.c      optional ohci at91rm9200 usb4bsd
 bus/u4b/controller/ohci_pci.c           optional ohci pci usb4bsd
 bus/u4b/controller/uhci.c               optional uhci usb4bsd
 bus/u4b/controller/uhci_pci.c           optional uhci pci usb4bsd
 bus/u4b/controller/xhci.c               optional xhci usb4bsd
 bus/u4b/controller/xhci_pci.c           optional xhci pci usb4bsd
-bus/u4b/controller/uss820dci.c          optional uss820dci usb4bsd
-bus/u4b/controller/uss820dci_atmelarm.c optional uss820dci at91rm9200 usb4bsd
 bus/u4b/controller/usb_controller.c     optional usb4bsd
 #
 # Other drivers
@@ -2238,7 +2231,7 @@ bus/u4b/input/ums.c			optional ums usb4bsd
 bus/u4b/input/uep.c			optional uep usb4bsd
 bus/u4b/input/uhid.c			optional uhid usb4bsd
 bus/u4b/audio/uaudio.c			optional snd_uaudio usb4bsd
-bus/u4b/audio/uaudio_pcm.c		optional snd_uaudio usb4bsd
+#bus/u4b/audio/uaudio_pcm.c		optional snd_uaudio usb4bsd
 bus/u4b/net/usb_ethernet.c		optional uether usb4bsd
 bus/u4b/net/if_axe.c			optional axe uether usb4bsd
 bus/u4b/net/if_udav.c			optional udav uether usb4bsd

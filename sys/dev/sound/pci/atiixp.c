@@ -401,7 +401,7 @@ atiixp_wrcd(kobj_t obj, void *devinfo, int reg, uint32_t data)
 static kobj_method_t atiixp_ac97_methods[] = {
     	KOBJMETHOD(ac97_read,		atiixp_rdcd),
     	KOBJMETHOD(ac97_write,		atiixp_wrcd),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(atiixp_ac97);
 
@@ -634,7 +634,7 @@ static kobj_method_t atiixp_chan_methods[] = {
 	KOBJMETHOD(channel_trigger,		atiixp_chan_trigger),
 	KOBJMETHOD(channel_getptr,		atiixp_chan_getptr),
 	KOBJMETHOD(channel_getcaps,		atiixp_chan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(atiixp_chan);
 

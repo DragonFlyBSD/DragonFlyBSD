@@ -67,7 +67,8 @@ struct usb_ether_methods {
 	int			(*ue_mii_upd)(struct ifnet *);
 	void			(*ue_mii_sts)(struct ifnet *,
 				    struct ifmediareq *);
-	int			(*ue_ioctl)(struct ifnet *, u_long, caddr_t);
+	int			(*ue_ioctl)(struct ifnet *, u_long, caddr_t,
+				    struct ucred *);
 	int			(*ue_attach_post_sub)(struct usb_ether *);
 };
 

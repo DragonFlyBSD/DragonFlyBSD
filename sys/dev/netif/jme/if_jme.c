@@ -72,6 +72,8 @@
 
 #include "miibus_if.h"
 
+#define JME_TICK_CPUID		0	/* DO NOT CHANGE THIS */
+
 #define JME_TX_SERIALIZE	1
 #define JME_RX_SERIALIZE	2
 
@@ -106,7 +108,7 @@ static void	jme_mediastatus(struct ifnet *, struct ifmediareq *);
 static int	jme_mediachange(struct ifnet *);
 #ifdef IFPOLL_ENABLE
 static void	jme_npoll(struct ifnet *, struct ifpoll_info *);
-static void	jme_npoll_status(struct ifnet *, int);
+static void	jme_npoll_status(struct ifnet *);
 static void	jme_npoll_rx(struct ifnet *, void *, int);
 static void	jme_npoll_tx(struct ifnet *, void *, int);
 #endif
@@ -478,7 +480,8 @@ jme_miibus_statchg(device_t dev)
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
-	callout_reset(&sc->jme_tick_ch, hz, jme_tick, sc);
+	callout_reset_bycpu(&sc->jme_tick_ch, hz, jme_tick, sc,
+	    JME_TICK_CPUID);
 
 #ifdef IFPOLL_ENABLE
 	if (!(ifp->if_flags & IFF_NPOLLING))
@@ -2550,6 +2553,8 @@ jme_tick(void *xsc)
 
 	lwkt_serialize_enter(&sc->jme_serialize);
 
+	KKASSERT(mycpuid == JME_TICK_CPUID);
+
 	sc->jme_in_tick = TRUE;
 	mii_tick(mii);
 	sc->jme_in_tick = FALSE;
@@ -2854,7 +2859,8 @@ jme_init(void *xsc)
 	mii = device_get_softc(sc->jme_miibus);
 	mii_mediachg(mii);
 
-	callout_reset(&sc->jme_tick_ch, hz, jme_tick, sc);
+	callout_reset_bycpu(&sc->jme_tick_ch, hz, jme_tick, sc,
+	    JME_TICK_CPUID);
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
@@ -3291,7 +3297,7 @@ jme_set_rx_coal(struct jme_softc *sc)
 #ifdef IFPOLL_ENABLE
 
 static void
-jme_npoll_status(struct ifnet *ifp, int pollhz __unused)
+jme_npoll_status(struct ifnet *ifp)
 {
 	struct jme_softc *sc = ifp->if_softc;
 	uint32_t status;

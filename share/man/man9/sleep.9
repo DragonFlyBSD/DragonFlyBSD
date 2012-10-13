@@ -57,7 +57,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/sleep.9,v 1.18.2.5 2001/12/17 11:30:19 ru Exp $
 .\"
-.Dd April 12, 2010
+.Dd October 12, 2012
 .Dt SLEEP 9
 .Os
 .Sh NAME
@@ -156,7 +156,7 @@ The pattern is:
 (test condition of interest)
 tsleep_interlock(ident, flags)
 (release high level synchronization primitive)
-tsleep(..., PINTERLOCK)
+tsleep(..., PINTERLOCKED, ...)
 .Ed
 .Pp
 For example, to implement
@@ -166,7 +166,7 @@ spin_lock(&important_lock);
 if (important_condition == 0) {
 	tsleep_interlock(ident, flags);
 	spin_unlock(&important_lock);
-	tsleep(..., PINTERLOCK);
+	tsleep(..., PINTERLOCKED, ...);
 }
 .Ed
 .Pp

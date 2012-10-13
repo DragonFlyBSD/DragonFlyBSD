@@ -569,7 +569,7 @@ static kobj_method_t cmichan_methods[] = {
     	KOBJMETHOD(channel_trigger,		cmichan_trigger),
     	KOBJMETHOD(channel_getptr,		cmichan_getptr),
     	KOBJMETHOD(channel_getcaps,		cmichan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(cmichan);
 
@@ -743,7 +743,7 @@ static kobj_method_t cmi_mixer_methods[] = {
 	KOBJMETHOD(mixer_init,	cmimix_init),
 	KOBJMETHOD(mixer_set,	cmimix_set),
 	KOBJMETHOD(mixer_setrecsrc,	cmimix_setrecsrc),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 MIXER_DECLARE(cmi_mixer);
 

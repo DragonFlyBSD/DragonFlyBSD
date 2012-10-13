@@ -422,7 +422,7 @@ static kobj_method_t sb16mix_mixer_methods[] = {
     	KOBJMETHOD(mixer_init,		sb16mix_init),
     	KOBJMETHOD(mixer_set,		sb16mix_set),
     	KOBJMETHOD(mixer_setrecsrc,	sb16mix_setrecsrc),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 MIXER_DECLARE(sb16mix_mixer);
 
@@ -779,7 +779,7 @@ static kobj_method_t sb16chan_methods[] = {
     	KOBJMETHOD(channel_trigger,		sb16chan_trigger),
     	KOBJMETHOD(channel_getptr,		sb16chan_getptr),
     	KOBJMETHOD(channel_getcaps,		sb16chan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(sb16chan);
 

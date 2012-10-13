@@ -3327,7 +3327,7 @@ static kobj_method_t hdac_channel_methods[] = {
 	KOBJMETHOD(channel_trigger,		hdac_channel_trigger),
 	KOBJMETHOD(channel_getptr,		hdac_channel_getptr),
 	KOBJMETHOD(channel_getcaps,		hdac_channel_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(hdac_channel);
 
@@ -3690,7 +3690,7 @@ static kobj_method_t hdac_audio_ctl_ossmixer_methods[] = {
 	KOBJMETHOD(mixer_init,		hdac_audio_ctl_ossmixer_init),
 	KOBJMETHOD(mixer_set,		hdac_audio_ctl_ossmixer_set),
 	KOBJMETHOD(mixer_setrecsrc,	hdac_audio_ctl_ossmixer_setrecsrc),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 MIXER_DECLARE(hdac_audio_ctl_ossmixer);
 

@@ -308,7 +308,7 @@ au88x0_codec_write(kobj_t obj, void *arg, int reg, uint32_t data)
 static kobj_method_t au88x0_ac97_methods[] = {
 	KOBJMETHOD(ac97_read, au88x0_codec_read),
 	KOBJMETHOD(ac97_write, au88x0_codec_write),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 AC97_DECLARE(au88x0_ac97);
 
@@ -425,7 +425,7 @@ static kobj_method_t au88x0_chan_methods[] = {
 	KOBJMETHOD(channel_trigger,		au88x0_chan_trigger),
 	KOBJMETHOD(channel_getptr,		au88x0_chan_getptr),
 	KOBJMETHOD(channel_getcaps,		au88x0_chan_getcaps),
-	{ 0, 0 }
+	KOBJMETHOD_END
 };
 CHANNEL_DECLARE(au88x0_chan);
 

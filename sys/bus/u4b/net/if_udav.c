@@ -158,8 +158,8 @@ static driver_t udav_driver = {
 
 static devclass_t udav_devclass;
 
-DRIVER_MODULE(udav, uhub, udav_driver, udav_devclass, NULL, 0);
-DRIVER_MODULE(miibus, udav, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(udav, uhub, udav_driver, udav_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, udav, miibus_driver, miibus_devclass, NULL, NULL);
 MODULE_DEPEND(udav, uether, 1, 1, 1);
 MODULE_DEPEND(udav, usb, 1, 1, 1);
 MODULE_DEPEND(udav, ether, 1, 1, 1);
@@ -703,13 +703,15 @@ static void
 udav_stop(struct usb_ether *ue)
 {
 	struct udav_softc *sc = ue->ue_sc;
+#if 0 /* XXX */
 	struct ifnet *ifp = uether_getifp(&sc->sc_ue);
+#endif
 
 	UDAV_LOCK_ASSERT(sc);
 
-	/* XXX
+#if 0 /* XXX */
 	ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
-	*/
+#endif
 	sc->sc_flags &= ~UDAV_FLAG_LINK;
 
 	/*

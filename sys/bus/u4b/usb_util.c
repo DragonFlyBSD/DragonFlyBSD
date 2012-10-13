@@ -127,7 +127,7 @@ usb_pause_mtx(struct lock *lock, int timo)
 		lksleep(&usb_pause_mtx, lock, 0, "USBSLP", timo + 1);
 	} else {
 		KKASSERT(timo + 1 > 0);
-		tsleep(&usb_pause_mtx, PINTERLOCKED, "USBSLP", timo + 1);
+		tsleep(&usb_pause_mtx, 0, "USBSLP", timo + 1);
 	}
 }
 

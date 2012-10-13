@@ -186,7 +186,7 @@ static void	igb_start(struct ifnet *);
 static void	igb_npoll(struct ifnet *, struct ifpoll_info *);
 static void	igb_npoll_rx(struct ifnet *, void *, int);
 static void	igb_npoll_tx(struct ifnet *, void *, int);
-static void	igb_npoll_status(struct ifnet *, int);
+static void	igb_npoll_status(struct ifnet *);
 #endif
 static void	igb_serialize(struct ifnet *, enum ifnet_serialize);
 static void	igb_deserialize(struct ifnet *, enum ifnet_serialize);
@@ -2920,7 +2920,7 @@ igb_update_vf_stats_counters(struct igb_softc *sc)
 #ifdef IFPOLL_ENABLE
 
 static void
-igb_npoll_status(struct ifnet *ifp, int pollhz __unused)
+igb_npoll_status(struct ifnet *ifp)
 {
 	struct igb_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
