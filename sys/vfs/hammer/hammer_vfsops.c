@@ -112,6 +112,7 @@ int hammer_verify_zone;
 int hammer_verify_data = 1;
 int hammer_write_mode;
 int hammer_double_buffer;
+int hammer_btree_full_undo = 1;
 int hammer_yield_check = 16;
 int hammer_fsync_mode = 3;
 int64_t hammer_contention_count;
@@ -157,6 +158,9 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, cluster_enable, CTLFLAG_RW,
  * 0 - live dedup is disabled
  * 1 - dedup cache is populated on reads only
  * 2 - dedup cache is populated on both reads and writes
+ *
+ * LIVE_DEDUP IS DISABLED PERMANENTLY!  This feature appears to cause
+ * blockmap corruption over time so we've turned it off permanently.
  */
 SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup, CTLFLAG_RD,
 	   &hammer_live_dedup, 0, "Enable live dedup (experimental)");
@@ -277,6 +281,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, write_mode, CTLFLAG_RW,
 	   &hammer_write_mode, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, double_buffer, CTLFLAG_RW,
 	   &hammer_double_buffer, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, btree_full_undo, CTLFLAG_RW,
+	   &hammer_btree_full_undo, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, yield_check, CTLFLAG_RW,
 	   &hammer_yield_check, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, fsync_mode, CTLFLAG_RW,
