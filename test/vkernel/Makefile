@@ -3,8 +3,8 @@
 
 # require it to be specified
 SRCDIR ?= ${.CURDIR}/../..
-ROOTSIZE ?= 512M
-PHYSMEM ?= 128m
+ROOTSIZE ?= 2048M
+PHYSMEM ?= 256m
 NCPUS ?= 2
 
 all: help
@@ -155,6 +155,8 @@ sysloader: mount
 # (check does this for us)
 #
 run: check
+	mkdir -p /var/vkernel
+	sysctl vm.vkernel_enable=1
 	cd ${VKDIR} && ./vkernel -m ${PHYSMEM} -n ${NCPUS} \
 			-r root.img -U -v \
 			-I /var/run/vknet
