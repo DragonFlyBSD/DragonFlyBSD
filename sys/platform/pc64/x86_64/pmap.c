@@ -211,7 +211,7 @@ static caddr_t crashdumpmap;
 static int pmap_yield_count = 64;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_yield_count, CTLFLAG_RW,
     &pmap_yield_count, 0, "Yield during init_pt/release");
-static int pmap_mmu_optimize = 0;
+static int pmap_mmu_optimize = 1;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_mmu_optimize, CTLFLAG_RW,
     &pmap_mmu_optimize, 0, "Share page table pages when possible");
 
