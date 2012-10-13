@@ -1057,6 +1057,7 @@ extern int hammer_verify_zone;
 extern int hammer_verify_data;
 extern int hammer_write_mode;
 extern int hammer_double_buffer;
+extern int hammer_btree_full_undo;
 extern int hammer_yield_check;
 extern int hammer_fsync_mode;
 extern int hammer_autoflush;
@@ -1575,10 +1576,16 @@ hammer_modify_node(hammer_transaction_t trans, hammer_node_t node,
 		 (char *)base + len <=
 		    (char *)node->ondisk + sizeof(*node->ondisk));
 	KKASSERT((node->flags & HAMMER_NODE_CRCBAD) == 0);
-	hammer_modify_buffer(trans, node->buffer, base, len);
-	crcptr = &node->ondisk->crc;
-	hammer_modify_buffer(trans, node->buffer, crcptr, sizeof(hammer_crc_t));
-	--node->buffer->io.modify_refs;	/* only want one ref */
+
+	if (hammer_btree_full_undo) {
+		hammer_modify_node_all(trans, node);
+	} else {
+		hammer_modify_buffer(trans, node->buffer, base, len);
+		crcptr = &node->ondisk->crc;
+		hammer_modify_buffer(trans, node->buffer,
+				     crcptr, sizeof(hammer_crc_t));
+		--node->buffer->io.modify_refs;	/* only want one ref */
+	}
 }
 
 /*

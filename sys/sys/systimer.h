@@ -57,6 +57,7 @@ typedef	__boolean_t	boolean_t;
 struct intrframe;
 
 typedef __uint32_t	sysclock_t;
+typedef int32_t		ssysclock_t;
 typedef TAILQ_HEAD(systimerq, systimer) *systimerq_t;
 typedef void (*systimer_func_t)(struct systimer *, int, struct intrframe *);
 
