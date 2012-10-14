@@ -124,6 +124,7 @@ SUBDIR= 802_11 \
 	traceroute6 \
 	trpt \
 	tzsetup \
+	${_usbconfig} \
 	${_usbd} \
 	${_usbdevs} \
 	vidcontrol \
@@ -142,8 +143,10 @@ SUBDIR= 802_11 \
 	zic
 
 .if !defined(WANT_USB4BSD)
-_usbd=	usbd
-_usbdevs=usbdevs
+_usbd=		usbd
+_usbdevs=	usbdevs
+.else
+_usbconfig=	usbconfig
 .endif
 
 .if !defined(NO_LPR)
