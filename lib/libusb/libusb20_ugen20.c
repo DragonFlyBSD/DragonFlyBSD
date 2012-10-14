@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: src/lib/libusb/libusb20_ugen20.c,v 1.13 2012/04/20 14:29:45 hselasky Exp $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -104,7 +104,7 @@ ugen20_path_convert_one(const char **pp)
 		temp += (*ptr - '0');
 		if (temp >= 1000000) {
 			/* catch overflow early */
-			return (0 - 1);
+			return (0xFFFFFFFF);
 		}
 		ptr++;
 	}

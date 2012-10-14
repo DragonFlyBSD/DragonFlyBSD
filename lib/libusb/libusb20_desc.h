@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: src/lib/libusb/libusb20_desc.h,v 1.2 2011/11/09 19:03:26 hselasky Exp $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  * Copyright (c) 2007-2008 Daniel Drake.  All rights reserved.

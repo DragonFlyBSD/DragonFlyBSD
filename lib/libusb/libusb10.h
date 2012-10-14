@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: src/lib/libusb/libusb10.h,v 1.4 2009/11/20 08:57:25 thompsa Exp $ */
 /*-
  * Copyright (c) 2009 Sylvestre Gallon. All rights reserved.
  *

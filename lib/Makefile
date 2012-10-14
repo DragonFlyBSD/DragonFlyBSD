@@ -120,7 +120,6 @@ _libnetgraph=	libnetgraph
 _libusb=	libusb
 _libusbhid=	libu4bhid
 .else
-_libusb=	
 _libusbhid=	libusbhid
 .endif
 

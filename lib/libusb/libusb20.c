@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: src/lib/libusb/libusb20.c,v 1.15 2012/04/20 14:29:45 hselasky Exp $ */
 /*-
  * Copyright (c) 2008-2009 Hans Petter Selasky. All rights reserved.
  *
@@ -948,9 +948,8 @@ libusb20_dev_get_config_index(struct libusb20_device *pdev)
 	}
 
 	error = pdev->methods->get_config_index(pdev, &cfg_index);
-	if (error) {
-		cfg_index = 0 - 1;	/* current config index */
-	}
+	if (error)
+		cfg_index = 0xFF;	/* current config index */
 	if (do_close) {
 		if (libusb20_dev_close(pdev)) {
 			/* ignore */
