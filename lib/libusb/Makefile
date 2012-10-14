@@ -1,5 +1,5 @@
 #
-# $FreeBSD$
+# $FreeBSD: src/lib/libusb/Makefile,v 1.18 2012/06/12 07:28:25 hselasky Exp $
 #
 # Makefile for the FreeBSD specific LibUSB 2.0
 #
@@ -17,6 +17,9 @@ MKLINT=		no
 NOGCCERROR=
 
 WARNS?=		2
+
+DPADD=		${LIBPTHREAD}
+LDADD=		-lpthread
 
 MLINKS+=	libusb.3 usb.3
 
@@ -48,6 +51,7 @@ MLINKS += libusb.3 libusb_get_bus_number.3
 MLINKS += libusb.3 libusb_get_device_address.3
 MLINKS += libusb.3 libusb_get_device_speed.3
 MLINKS += libusb.3 libusb_get_max_packet_size.3
+MLINKS += libusb.3 libusb_get_max_iso_packet_size.3
 MLINKS += libusb.3 libusb_ref_device.3
 MLINKS += libusb.3 libusb_unref_device.3
 MLINKS += libusb.3 libusb_open.3
@@ -69,10 +73,11 @@ MLINKS += libusb.3 libusb_detach_kernel_driver.3
 MLINKS += libusb.3 libusb_detach_kernel_driver_np.3
 MLINKS += libusb.3 libusb_attach_kernel_driver.3
 MLINKS += libusb.3 libusb_get_device_descriptor.3
-MLINKS += libusb.3 libsub_get_active_config_descriptor.3
+MLINKS += libusb.3 libusb_get_active_config_descriptor.3
 MLINKS += libusb.3 libusb_get_config_descriptor.3
 MLINKS += libusb.3 libusb_get_config_descriptor_by_value.3
 MLINKS += libusb.3 libusb_free_config_descriptor.3
+MLINKS += libusb.3 libusb_get_string_descriptor.3
 MLINKS += libusb.3 libusb_get_string_descriptor_ascii.3
 MLINKS += libusb.3 libusb_parse_ss_endpoint_comp.3
 MLINKS += libusb.3 libusb_free_ss_endpoint_comp.3
