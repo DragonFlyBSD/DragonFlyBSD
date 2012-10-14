@@ -2240,6 +2240,10 @@ bus/u4b/input/ums.c			optional ums usb4bsd
 bus/u4b/input/uep.c			optional uep usb4bsd
 bus/u4b/input/uhid.c			optional uhid usb4bsd
 #
+# USB quirks
+#
+bus/u4b/quirk/usb_quirk.c		optional usb4bsd
+#
 # Other drivers
 #
 bus/u4b/audio/uaudio.c			optional snd_uaudio usb4bsd

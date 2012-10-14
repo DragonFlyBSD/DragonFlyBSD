@@ -2151,6 +2151,7 @@ TO_REMOVE+=/boot/kernel/uaudio.ko
 TO_REMOVE+=/boot/kernel/uep.ko
 TO_REMOVE+=/boot/kernel/uether.ko
 TO_REMOVE+=/boot/kernel/uhci.ko
+TO_REMOVE+=/boot/kernel/usb_quirk.ko
 TO_REMOVE+=/boot/kernel/usfs.ko
 TO_REMOVE+=/boot/kernel/xhci.ko
 TO_REMOVE+=/usr/lib/libusb.a
