@@ -1659,8 +1659,9 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	txr->tx_base = txr->txdma.dma_vaddr;
 	bzero(txr->tx_base, tsize);
 
-	txr->tx_buf = kmalloc(sizeof(struct igb_tx_buf) * txr->num_tx_desc,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
+	tsize = __VM_CACHELINE_ALIGN(
+	    sizeof(struct igb_tx_buf) * txr->num_tx_desc);
+	txr->tx_buf = kmalloc_cachealign(tsize, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * Allocate TX head write-back buffer
@@ -2017,8 +2018,9 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 	rxr->rx_base = rxr->rxdma.dma_vaddr;
 	bzero(rxr->rx_base, rsize);
 
-	rxr->rx_buf = kmalloc(sizeof(struct igb_rx_buf) * rxr->num_rx_desc,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
+	rsize = __VM_CACHELINE_ALIGN(
+	    sizeof(struct igb_rx_buf) * rxr->num_rx_desc);
+	rxr->rx_buf = kmalloc_cachealign(rsize, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * Create DMA tag for RX buffers
