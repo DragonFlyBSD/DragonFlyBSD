@@ -215,10 +215,6 @@ struct igb_tx_ring {
 	struct lwkt_serialize	tx_serialize;
 	struct igb_softc	*sc;
 	uint32_t		me;
-	struct igb_dma		txdma;
-	bus_dma_tag_t		tx_hdr_dtag;
-	bus_dmamap_t		tx_hdr_dmap;
-	bus_addr_t		tx_hdr_paddr;
 	struct e1000_tx_desc	*tx_base;
 	int			num_tx_desc;
 	uint32_t		next_avail_desc;
@@ -235,8 +231,14 @@ struct igb_tx_ring {
 	int			tx_intr_bit;
 	uint32_t		tx_intr_mask;
 
+	/* Soft stats */
 	u_long			no_desc_avail;
 	u_long			tx_packets;
+
+	struct igb_dma		txdma;
+	bus_dma_tag_t		tx_hdr_dtag;
+	bus_dmamap_t		tx_hdr_dmap;
+	bus_addr_t		tx_hdr_paddr;
 } __cachealign;
 
 /*
@@ -246,7 +248,6 @@ struct igb_rx_ring {
 	struct lwkt_serialize	rx_serialize;
 	struct igb_softc	*sc;
 	uint32_t		me;
-	struct igb_dma		rxdma;
 	union e1000_adv_rx_desc	*rx_base;
 	boolean_t		discard;
 	int			num_rx_desc;
@@ -266,6 +267,8 @@ struct igb_rx_ring {
 
 	/* Soft stats */
 	u_long			rx_packets;
+
+	struct igb_dma		rxdma;
 } __cachealign;
 
 struct igb_msix_data {
