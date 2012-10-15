@@ -1627,20 +1627,21 @@ igb_free_rings(struct igb_softc *sc)
 static int
 igb_create_tx_ring(struct igb_tx_ring *txr)
 {
-	int tsize, error, i;
+	int tsize, error, i, ntxd;
 
 	/*
 	 * Validate number of transmit descriptors. It must not exceed
 	 * hardware maximum, and must be multiple of IGB_DBA_ALIGN.
 	 */
-	if (((igb_txd * sizeof(struct e1000_tx_desc)) % IGB_DBA_ALIGN) != 0 ||
-	    (igb_txd > IGB_MAX_TXD) || (igb_txd < IGB_MIN_TXD)) {
+	ntxd = device_getenv_int(txr->sc->dev, "txd", igb_txd);
+	if ((ntxd * sizeof(struct e1000_tx_desc)) % IGB_DBA_ALIGN != 0 ||
+	    ntxd > IGB_MAX_TXD || ntxd < IGB_MIN_TXD) {
 		device_printf(txr->sc->dev,
 		    "Using %d TX descriptors instead of %d!\n",
-		    IGB_DEFAULT_TXD, igb_txd);
+		    IGB_DEFAULT_TXD, ntxd);
 		txr->num_tx_desc = IGB_DEFAULT_TXD;
 	} else {
-		txr->num_tx_desc = igb_txd;
+		txr->num_tx_desc = ntxd;
 	}
 
 	/*
@@ -1985,20 +1986,21 @@ igb_txeof(struct igb_tx_ring *txr)
 static int
 igb_create_rx_ring(struct igb_rx_ring *rxr)
 {
-	int rsize, i, error;
+	int rsize, i, error, nrxd;
 
 	/*
 	 * Validate number of receive descriptors. It must not exceed
 	 * hardware maximum, and must be multiple of IGB_DBA_ALIGN.
 	 */
-	if (((igb_rxd * sizeof(struct e1000_rx_desc)) % IGB_DBA_ALIGN) != 0 ||
-	    (igb_rxd > IGB_MAX_RXD) || (igb_rxd < IGB_MIN_RXD)) {
+	nrxd = device_getenv_int(rxr->sc->dev, "rxd", igb_rxd);
+	if ((nrxd * sizeof(struct e1000_rx_desc)) % IGB_DBA_ALIGN != 0 ||
+	    nrxd > IGB_MAX_RXD || nrxd < IGB_MIN_RXD) {
 		device_printf(rxr->sc->dev,
 		    "Using %d RX descriptors instead of %d!\n",
-		    IGB_DEFAULT_RXD, igb_rxd);
+		    IGB_DEFAULT_RXD, nrxd);
 		rxr->num_rx_desc = IGB_DEFAULT_RXD;
 	} else {
-		rxr->num_rx_desc = igb_rxd;
+		rxr->num_rx_desc = nrxd;
 	}
 
 	/*
