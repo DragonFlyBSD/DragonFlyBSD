@@ -106,15 +106,15 @@
 #define IFPOLL_FREQ_MAX		30000
 
 #define MIN_IOPOLL_BURST_MAX	10
-#define MAX_IOPOLL_BURST_MAX	1000
-#define IOPOLL_BURST_MAX	150	/* good for 100Mbit net and HZ=1000 */
+#define MAX_IOPOLL_BURST_MAX	5000
+#define IOPOLL_BURST_MAX	375	/* good for 1000Mbit net and HZ=4000 */
 
-#define IOPOLL_EACH_BURST	5
+#define IOPOLL_EACH_BURST	15
 
-#define IFPOLL_FREQ_DEFAULT	2000
+#define IFPOLL_FREQ_DEFAULT	4000
 
-#define IFPOLL_TXFRAC_DEFAULT	1	/* 1/2 of the pollhz */
-#define IFPOLL_STFRAC_DEFAULT	19	/* 1/20 of the pollhz */
+#define IFPOLL_TXFRAC_DEFAULT	0	/* 1/1 of the pollhz */
+#define IFPOLL_STFRAC_DEFAULT	39	/* 1/40 of the pollhz */
 
 #define IFPOLL_RX		0x1
 #define IFPOLL_TX		0x2
@@ -627,7 +627,7 @@ static __inline void
 iopoll_reset_state(struct iopoll_ctx *io_ctx)
 {
 	crit_enter();
-	io_ctx->poll_burst = 5;
+	io_ctx->poll_burst = io_ctx->poll_each_burst;
 	io_ctx->pending_polls = 0;
 	io_ctx->residual_burst = 0;
 	io_ctx->phase = 0;
