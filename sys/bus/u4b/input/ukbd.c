@@ -1298,7 +1298,8 @@ ukbd_detach(device_t dev)
 
 	ukbd_disable(&sc->sc_kbd);
  
-	/* XXX make sure this is in the correct place here,
+	/*
+	 * XXX make sure this is in the correct place here,
 	 * it was taken from below the second if()
 	 */
 	usbd_transfer_unsetup(sc->sc_xfer, UKBD_N_TRANSFER);
@@ -1315,9 +1316,10 @@ ukbd_detach(device_t dev)
 	}
 #endif
 	if (KBD_IS_CONFIGURED(&sc->sc_kbd)) {
-		/* kbd_unregister requires kb_lock to be held
-		   but lockuninits it then 
-		*/
+		/*
+		 * kbd_unregister requires kb_lock to be held
+		 * but lockuninits it then
+		 */
 		UKBD_LOCK(sc);
 		error = kbd_unregister(&sc->sc_kbd);
 		if (error) {
