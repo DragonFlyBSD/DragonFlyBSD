@@ -31,7 +31,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *	$NetBSD: rcorder.c,v 1.7 2000/08/04 07:33:55 enami Exp $
- *	$DragonFly: src/sbin/rcorder/rcorder.c,v 1.7 2005/02/20 19:47:17 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -711,7 +710,7 @@ void
 do_file(filenode *fnode)
 {
 	f_reqnode *r;
-     /* f_reqnode *r_tmp; */
+	/*f_reqnode *r_tmp;*/
 	f_provnode *p, *p_tmp;
 	provnode *pnode;
 	int was_set;	
