@@ -150,13 +150,16 @@ check_and_purge_safe_mem(void)
 {
 	struct safe_mem_hdr *hdr;
 	char *mem;
-	int __unused ok;
+#ifdef DEBUG
+	int ok;
+#endif
 
 	if (safe_mem_hdr_first == NULL)
 		return;
 
 	hdr = safe_mem_hdr_first;
 	while ((hdr = safe_mem_hdr_first) != NULL) {
+#ifdef DEBUG
 		if ((hdr->alloc_sz > 0) &&
 		    (memcmp(hdr->sig, "SAFEMEM\0", 8) == 0) &&
 		    (memcmp(hdr->tail->sig, "SAFEMEM\0", 8) == 0))
@@ -164,7 +167,6 @@ check_and_purge_safe_mem(void)
 		else
 			ok = 0;
 
-#ifdef DEBUG
 		fprintf(stderr, "un-freed safe_mem: %#lx (%s:%d) [integrity=%s]\n",
 		    (unsigned long)(void *)hdr, hdr->file, hdr->line,
 		    ok? "ok" : "failed");
