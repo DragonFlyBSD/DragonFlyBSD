@@ -49,8 +49,10 @@ main(int ac, char **av)
 	int ch;
 	int res;
 	char *sched = NULL;
+#if 0 /* XXX cpumask */
 	char *cpustr = NULL;
-	cpumask_t __unused cpumask = 0;
+	cpumask_t cpumask = 0;
+#endif
 
 	while ((ch = getopt(ac, av, "v")) != -1) {
 		switch(ch) {
@@ -68,11 +70,13 @@ main(int ac, char **av)
 	if (ac < 2)
 		usage();
 	sched = strtok(strdup(av[0]), ":");
+#if 0 /* XXX cpumask */
 	cpustr = strtok(NULL, "");
 	if (cpustr == NULL)
 		cpumask = -1;
 	else
 		cpumask = strtoul(cpustr, NULL, 0);
+#endif
 
 	res = usched_set(getpid(), USCHED_SET_SCHEDULER, sched, strlen(sched));
 	if (res != 0) {
@@ -87,6 +91,10 @@ static
 void
 usage(void)
 {
+#if 0
 	fprintf(stderr, "usched scheduler[:cpumask] program args...\n");
+#else
+	fprintf(stderr, "usched scheduler program args...\n");
+#endif
 	exit(1);
 }
