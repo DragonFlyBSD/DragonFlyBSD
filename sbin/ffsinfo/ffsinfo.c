@@ -128,7 +128,7 @@ rdfs(daddr_t bno, size_t size, void *bf, int fsi)
 int
 main(int argc, char **argv)
 {
-	char	*device, *special, __unused *cp;
+	char	*device, *special;
 	char	ch;
 	size_t	len;
 	struct stat	st;
@@ -250,7 +250,6 @@ main(int argc, char **argv)
 		 * the user user with the task of specifying the option -v on
 		 * vinum volumes.
 		 */
-		cp = device+strlen(device)-1;
 		if (ioctl(fsi, DIOCGPART, &pinfo) < 0) {
 			pinfo.media_size = st.st_size;
 			pinfo.media_blksize = DEV_BSIZE;
