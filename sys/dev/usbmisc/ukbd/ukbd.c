@@ -1214,7 +1214,7 @@ ukbd_check_char(keyboard_t *kbd)
 static int
 ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 {
-	/* trasnlate LED_XXX bits into the device specific bits */
+	/* translate LED_XXX bits into the device specific bits */
 	static u_char ledmap[8] = {
 		0, 2, 1, 3, 4, 6, 5, 7,
 	};
