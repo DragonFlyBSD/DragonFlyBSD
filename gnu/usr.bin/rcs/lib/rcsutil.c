@@ -32,7 +32,6 @@ Report problems and direct all questions to:
 
 /*
  * $FreeBSD: src/gnu/usr.bin/rcs/lib/rcsutil.c,v 1.8 1999/08/27 23:36:49 peter Exp $
- * $DragonFly: src/gnu/usr.bin/rcs/lib/rcsutil.c,v 1.2 2003/06/17 04:25:47 dillon Exp $
  *
  * Revision 5.20  1995/06/16 06:19:24  eggert
  * (catchsig): Remove `return'.
@@ -414,9 +413,6 @@ static sig_atomic_t volatile heldsignal, holdlevel;
 	char const *filename;
 	unsigned char const *p;
     {
-	unsigned char volatile __unused t;
-	accessName = filename;
-	t = *p;
 	accessName = 0;
     }
 #else
