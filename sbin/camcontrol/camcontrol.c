@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.c,v 1.21.2.13 2003/01/08 17:55:02 njl Exp $
- * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.13 2008/04/20 13:44:24 swildner Exp $
  */
 
 #include <sys/ioctl.h>
@@ -2762,7 +2761,6 @@ ratecontrol(struct cam_device *device, int retry_count, int timeout,
 
 		if (spi && syncrate != -1) {
 			int prelim_sync_period;
-			u_int __unused freq;
 
 			if ((cpi.hba_inquiry & PI_SDTR_ABLE) == 0) {
 				warnx("HBA at %s%d is not cable of changing "
@@ -2793,7 +2791,6 @@ ratecontrol(struct cam_device *device, int retry_count, int timeout,
 			spi->sync_period =
 				scsi_calc_syncparam(prelim_sync_period);
 
-			freq = scsi_calc_syncsrate(spi->sync_period);
 			didsettings++;
 		}
 
@@ -3377,14 +3374,12 @@ retry:
 					RPL_LUNDATA_LUN_LUN_MASK);
 				break;
 			case RPL_LUNDATA_ATYP_EXTLUN: {
-				int __unused field_len;
 				int field_len_code, eam_code;
 
 				eam_code = lundata->luns[i].lundata[j] &
 					RPL_LUNDATA_EXT_EAM_MASK;
 				field_len_code = (lundata->luns[i].lundata[j] &
 					RPL_LUNDATA_EXT_LEN_MASK) >> 4;
-				field_len = field_len_code * 2;
 		
 				if ((eam_code == RPL_LUNDATA_EXT_EAM_WK)
 				 && (field_len_code == 0x00)) {

@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/modeedit.c,v 1.5.2.2 2003/01/08 17:55:02 njl Exp $
- * $DragonFly: src/sbin/camcontrol/modeedit.c,v 1.3 2005/01/11 23:58:55 cpressey Exp $
  */
 
 #include <sys/queue.h>
@@ -864,7 +863,6 @@ mode_list(struct cam_device *device, int page_control, int dbd,
 	  int retry_count, int timeout)
 {
 	u_int8_t data[MAX_COMMAND_SIZE];/* Buffer to hold sense data. */
-	u_int8_t __unused *mode_pars;	/* Pointer to modepage params. */
 	struct scsi_mode_header_6 *mh;	/* Location of mode header. */
 	struct scsi_mode_page_header *mph;
 	struct pagename *nameentry;
@@ -890,7 +888,6 @@ mode_list(struct cam_device *device, int page_control, int dbd,
 		/* Locate the next mode page header. */
 		mph = (struct scsi_mode_page_header *)
 		    ((intptr_t)mh + sizeof(*mh) + len);
-		mode_pars = MODE_PAGE_DATA(mph);
 
 		mph->page_code &= SMS_PAGE_CODE;
 		nameentry = nameentry_lookup(mph->page_code);
