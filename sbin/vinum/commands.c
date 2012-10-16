@@ -34,7 +34,6 @@
  *
  * $Id: commands.c,v 1.14 2000/11/14 20:01:23 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/commands.c,v 1.31.2.6 2003/06/06 05:13:29 grog Exp $
- * $DragonFly: src/sbin/vinum/commands.c,v 1.10 2008/06/05 18:06:31 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -430,8 +429,6 @@ initsd(int sdno, int dowait)
 
     /* Variables for use by children */
     int sdfh;						    /* and for subdisk */
-    int __unused initsize;				    /* actual size to write */
-    int64_t __unused sdsize;				    /* size of subdisk */
 
     if (dowait == 0) {
 	pid = fork();					    /* into the background with you */
@@ -445,12 +442,9 @@ initsd(int sdno, int dowait)
     if (SSize != 0) {					    /* specified a size for init */
 	if (SSize < 512)
 	    SSize <<= DEV_BSHIFT;
-	initsize = min(SSize, MAXPLEXINITSIZE);
-    } else
-	initsize = PLEXINITSIZE;
+    }
     openlog("vinum", LOG_CONS | LOG_PERROR | LOG_PID, LOG_KERN);
     get_sd_info(&sd, sdno);
-    sdsize = sd.sectors * DEV_BSIZE;			    /* size of subdisk in bytes */
     sprintf(filename, VINUM_DIR "/sd/%s", sd.name);
     setproctitle("initializing %s", filename);		    /* show what we're doing */
     syslog(LOG_INFO | LOG_KERN, "initializing subdisk %s", filename);
