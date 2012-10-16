@@ -128,8 +128,7 @@ enum {
 };
 
 struct ukbd_softc {
-    device_t sc_dev;
-    struct lock sc_lock;
+	device_t sc_dev;
 	keyboard_t sc_kbd;
 	keymap_t sc_keymap;
 	accentmap_t sc_accmap;
@@ -241,8 +240,8 @@ struct ukbd_softc {
 			 SCAN_PREFIX_CTL | SCAN_PREFIX_SHIFT)
 #define	SCAN_CHAR(c)	((c) & 0x7f)
 
-#define	UKBD_LOCK(sc)	lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE)	
-#define	UKBD_UNLOCK(sc)	lockmgr(&(sc)->sc_lock, LK_RELEASE)
+#define	UKBD_LOCK(sc)	lockmgr(&(sc)->sc_kbd.kb_lock, LK_EXCLUSIVE)	
+#define	UKBD_UNLOCK(sc)	lockmgr(&(sc)->sc_kbd.kb_lock, LK_RELEASE)
 
 #ifdef	INVARIANTS
 
@@ -1173,7 +1172,6 @@ ukbd_attach(device_t dev)
 	uint16_t n;
 	uint16_t hid_len;
 
-	lockinit(&sc->sc_lock, "ukbd", 0, 0);
 	kbd_init_struct(kbd, UKBD_DRIVER_NAME, KB_OTHER,
             unit, 0, KB_PRI_USB, 0, 0);
 
@@ -1187,11 +1185,11 @@ ukbd_attach(device_t dev)
 	sc->sc_iface_no = uaa->info.bIfaceNum;
 	sc->sc_mode = K_XLATE;
 
-	usb_callout_init_mtx(&sc->sc_callout, &sc->sc_lock, 0);
+	usb_callout_init_mtx(&sc->sc_callout, &kbd->kb_lock, 0);
 
 	err = usbd_transfer_setup(uaa->device,
 	    &uaa->info.bIfaceIndex, sc->sc_xfer, ukbd_config,
-	    UKBD_N_TRANSFER, sc, &sc->sc_lock);
+	    UKBD_N_TRANSFER, sc, &sc->sc_kbd.kb_lock);
 
 	if (err) {
 		DPRINTF("error=%s\n", usbd_errstr(err));
@@ -1293,12 +1291,19 @@ ukbd_detach(device_t dev)
 
 	DPRINTF("\n");
 
+	crit_enter();
 	sc->sc_flags |= UKBD_FLAG_GONE;
 
 	usb_callout_stop(&sc->sc_callout);
 
 	ukbd_disable(&sc->sc_kbd);
-
+ 
+	/* XXX make sure this is in the correct place here,
+	 * it was taken from below the second if()
+	 */
+	usbd_transfer_unsetup(sc->sc_xfer, UKBD_N_TRANSFER);
+	usb_callout_drain(&sc->sc_callout);
+	
 #ifdef KBD_INSTALL_CDEV
 	if (sc->sc_flags & UKBD_FLAG_ATTACHED) {
 		error = kbd_detach(&sc->sc_kbd);
@@ -1310,6 +1315,10 @@ ukbd_detach(device_t dev)
 	}
 #endif
 	if (KBD_IS_CONFIGURED(&sc->sc_kbd)) {
+		/* kbd_unregister requires kb_lock to be held
+		   but lockuninits it then 
+		*/
+		UKBD_LOCK(sc);
 		error = kbd_unregister(&sc->sc_kbd);
 		if (error) {
 			/* usb attach cannot return an error */
@@ -1318,10 +1327,9 @@ ukbd_detach(device_t dev)
 		}
 	}
 	sc->sc_kbd.kb_flags = 0;
-
-	usbd_transfer_unsetup(sc->sc_xfer, UKBD_N_TRANSFER);
-
-	usb_callout_drain(&sc->sc_callout);
+	
+   
+	crit_exit();
 
 	DPRINTF("%s: disconnected\n",
 	    device_get_nameunit(dev));
@@ -1395,11 +1403,9 @@ ukbd_lock(keyboard_t *kbd, int lock)
 static int
 ukbd_enable(keyboard_t *kbd)
 {
-	struct ukbd_softc *sc = kbd->kb_data;
-
-	UKBD_LOCK(sc);
+	crit_enter();
 	KBD_ACTIVATE(kbd);
-	UKBD_UNLOCK(sc);
+	crit_exit();
 
 	return (0);
 }
@@ -1408,11 +1414,9 @@ ukbd_enable(keyboard_t *kbd)
 static int
 ukbd_disable(keyboard_t *kbd)
 {
-	struct ukbd_softc *sc = kbd->kb_data;
-
-	UKBD_LOCK(sc);
+	crit_enter();
 	KBD_DEACTIVATE(kbd);
-	UKBD_UNLOCK(sc);
+	crit_exit();
 
 	return (0);
 }
@@ -1473,6 +1477,7 @@ ukbd_check_char(keyboard_t *kbd)
 
 	return (result);
 }
+
 
 /* read one byte from the keyboard if it's allowed */
 /* Currently unused. */
@@ -1896,7 +1901,9 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDGKBSTATE:
 	case KDSKBSTATE:
 	case KDSETLED:
-		return (EDEADLK);	/* best I could come up with */
+		if(!lockowned(&kbd->kb_lock)) {
+			return (EDEADLK);	/* best I could come up with */
+		}
 		/* FALLTHROUGH */
 	default:
 		UKBD_LOCK(sc);
@@ -1964,7 +1971,7 @@ ukbd_poll(keyboard_t *kbd, int on)
 static void
 ukbd_set_leds(struct ukbd_softc *sc, uint8_t leds)
 {
-
+	UKBD_LOCK_ASSERT();
 	DPRINTF("leds=0x%02x\n", leds);
 
 	sc->sc_leds = leds;
