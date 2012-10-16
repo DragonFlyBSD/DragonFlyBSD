@@ -30,7 +30,6 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $
- * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.10 2007/05/20 23:21:36 dillon Exp $
  */
 
 #include <sys/diskslice.h>
@@ -106,7 +105,7 @@ fsirand(char *device)
 	static ssize_t oldibufsize = 0;
 	ssize_t ibufsize;
 	struct fs *sblock;
-	ino_t inumber, __unused maxino;
+	ino_t inumber;
 	daddr_t dblk;
 	char sbuf[SBSIZE], sbuftmp[SBSIZE];
 	int devfd, n, cg;
@@ -143,7 +142,6 @@ fsirand(char *device)
 		    (n < SBSIZE) ? "short read" : strerror(errno));
 		return (1);
 	}
-	maxino = sblock->fs_ncg * sblock->fs_ipg;
 
 	/* Simple sanity checks on the superblock */
 	if (sblock->fs_magic != FS_MAGIC) {
