@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ldconfig/ldconfig.c,v 1.31.2.3 2001/07/11 23:59:10 obrien Exp $
- * $DragonFly: src/sbin/ldconfig/ldconfig.c,v 1.6 2004/11/04 13:14:11 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -65,7 +64,6 @@ main(int argc, char **argv)
 {
 	static const char *hints_file;
 	int c, justread = 0, merge = 0, rescan = 0;
-	int __unused nostd = 0;
 
 	if (argc > 1 && strcmp(argv[1], "-elf") == 0) {
 		/* skip over legacy -elf arg */
@@ -94,7 +92,7 @@ main(int argc, char **argv)
 			justread = 1;
 			break;
 		case 's':
-			nostd = 1;
+			/* does nothing */
 			break;
 		default:
 			usage();
