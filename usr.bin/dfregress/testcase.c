@@ -264,10 +264,12 @@ uid_t
 testcase_get_runas_uid(prop_dictionary_t testcase)
 {
 	uint32_t uid = 0;
-	int __unused r;
+	int r;
 
 	r = prop_dictionary_get_uint32(
 	    prop_dictionary_get(testcase, "opts"), "runas_uid", &uid);
+	if (r == 0)
+		err(1, "prop_dictionary operation failed");
 
 	return (uid_t)uid;
 }
