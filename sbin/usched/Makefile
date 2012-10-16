@@ -2,7 +2,6 @@
 #
 PROG=	usched
 SRCS=	usched.c
-#MAN=	usched.8
-NOMAN=TRUE
+MAN=	usched.8
 
 .include <bsd.prog.mk>
