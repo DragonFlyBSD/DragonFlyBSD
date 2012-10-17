@@ -95,7 +95,6 @@ zt_parse(struct zonetab *head) {
 	struct zonetab *c;
 	struct zt_parse zp;
 	char *file;
-	int i;
 
 	zone_tab = fopen(ZONETAB_FILE, "r");
 	stat(ZONETAB_FILE, &sb);
@@ -104,7 +103,6 @@ zt_parse(struct zonetab *head) {
 	zp.buf = file;
 
 	zp.state = ZT_CC;
-	i = 0;
 	c = head;
 
 	do {

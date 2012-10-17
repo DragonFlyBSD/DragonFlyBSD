@@ -212,10 +212,8 @@ pfkey_sadump(struct sadb_msg *m)
 	struct sadb_sa *m_sa;
 	struct sadb_x_sa2 *m_sa2;
 	struct sadb_lifetime *m_lftc, *m_lfth, *m_lfts;
-	struct sadb_address *m_saddr, *m_daddr, *m_paddr;
+	struct sadb_address *m_saddr, *m_daddr;
 	struct sadb_key *m_auth, *m_enc;
-	struct sadb_ident *m_sid, *m_did;
-	struct sadb_sens *m_sens;
 
 	/* check pfkey message. */
 	if (pfkey_align(m, mhp)) {
@@ -234,12 +232,8 @@ pfkey_sadump(struct sadb_msg *m)
 	m_lfts = (struct sadb_lifetime *)mhp[SADB_EXT_LIFETIME_SOFT];
 	m_saddr = (struct sadb_address *)mhp[SADB_EXT_ADDRESS_SRC];
 	m_daddr = (struct sadb_address *)mhp[SADB_EXT_ADDRESS_DST];
-	m_paddr = (struct sadb_address *)mhp[SADB_EXT_ADDRESS_PROXY];
 	m_auth = (struct sadb_key *)mhp[SADB_EXT_KEY_AUTH];
 	m_enc = (struct sadb_key *)mhp[SADB_EXT_KEY_ENCRYPT];
-	m_sid = (struct sadb_ident *)mhp[SADB_EXT_IDENTITY_SRC];
-	m_did = (struct sadb_ident *)mhp[SADB_EXT_IDENTITY_DST];
-	m_sens = (struct sadb_sens *)mhp[SADB_EXT_SENSITIVITY];
 
 	/* source address */
 	if (m_saddr == NULL) {

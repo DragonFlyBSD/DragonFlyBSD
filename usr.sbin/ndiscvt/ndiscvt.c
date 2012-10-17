@@ -97,7 +97,7 @@ insert_padding(void **imgbase, int *imglen)
         image_dos_header	*dos_hdr;
         image_nt_header		*nt_hdr;
 	image_optional_header	opt_hdr;
-        int			i = 0, sections, curlen = 0;
+        int			i = 0, sections;
 	int			offaccum = 0, oldraddr, oldrlen;
 	uint8_t			*newimg, *tmp;
 

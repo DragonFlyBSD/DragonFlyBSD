@@ -148,7 +148,6 @@ main(int argc, char **argv)
 	int done = 0;
 	char msgtype;
 	int opt;
-	int last_amount = 0;
 	char last_message[80];
 	int is_streaming = 0;
 	int ch;
@@ -264,7 +263,6 @@ main(int argc, char **argv)
 			if (pf != NULL)
 				curses_form_free(pf);
 			is_streaming = dfui_progress_get_streaming(pr);
-			last_amount = dfui_progress_get_amount(pr);
 			strncpy(last_message, dfui_info_get_short_desc(
 			    dfui_progress_get_info(pr)), 79);
 			pf = curses_form_construct_from_dfui_progress(pr,

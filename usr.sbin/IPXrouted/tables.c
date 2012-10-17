@@ -170,7 +170,6 @@ rtadd_clone(struct rt_entry *ort, struct sockaddr *dst, struct sockaddr *gate,
 {
 	struct afhash h;
 	struct rt_entry *rt;
-	struct rthash *rh;
 	int af = dst->sa_family, flags;
 	u_int hash;
 
@@ -181,7 +180,6 @@ rtadd_clone(struct rt_entry *ort, struct sockaddr *dst, struct sockaddr *gate,
 	(*afswitch[af].af_hash)(dst, &h);
 	flags = (*afswitch[af].af_ishost)(dst) ? RTF_HOST : 0;
 	hash = h.afh_nethash;
-	rh = &nethash[hash & ROUTEHASHMASK];
 	rt = (struct rt_entry *)malloc(sizeof (*rt));
 	if (rt == NULL)
 		return;

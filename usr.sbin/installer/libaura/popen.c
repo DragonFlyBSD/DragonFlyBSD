@@ -35,7 +35,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/popen.c,v 1.14 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/contrib/bsdinstaller-1.1.6/src/lib/libaura/popen.c,v 1.1.1.1 2008/03/12 22:15:54 dave Exp $
  * $Id: popen.c,v 1.6 2005/02/06 06:57:30 cpressey Exp $
  *
  * @(#)popen.c	8.3 (Berkeley) 5/3/95
@@ -219,10 +218,10 @@ aura_pclose(FILE *iop)
 pid_t
 aura_pgetpid(FILE *iop)
 {
-	struct pid *cur, *last;
+	struct pid *cur;
 
 	/* Find the appropriate file pointer. */
-	for (last = NULL, cur = pidlist; cur; last = cur, cur = cur->next)
+	for (cur = pidlist; cur; cur = cur->next)
 		if (cur->fp == iop)
 			break;
 	if (cur == NULL)

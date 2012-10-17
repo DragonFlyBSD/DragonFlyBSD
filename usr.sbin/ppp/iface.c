@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/iface.c,v 1.13.2.9 2003/04/29 16:04:41 ume Exp $
- * $DragonFly: src/usr.sbin/ppp/iface.c,v 1.3 2004/02/03 07:11:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -374,12 +373,11 @@ iface_addr_Add(const char *name, struct iface_addr *addr, int s)
 void
 iface_Clear(struct iface *iface, struct ncp *ncp, int family, int how)
 {
-  int addrs, af, inskip, in6skip, s4 = -1, s6 = -1, *s;
+  int af, inskip, in6skip, s4 = -1, s6 = -1, *s;
   unsigned n;
 
   if (iface->addrs) {
     inskip = in6skip = how == IFACE_CLEAR_ALL ? 0 : 1;
-    addrs = 0;
 
     for (n = 0; n < iface->addrs; n++) {
       af = ncprange_family(&iface->addr[n].ifa);

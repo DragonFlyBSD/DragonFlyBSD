@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_output.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_output.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 /*
@@ -563,13 +562,11 @@ static int
 scsp_format_csu(Scsp_csu_msg *csup, char *buff, int blen)
 {
 	int			i, len, proc_len;
-	struct scsp_ncsu_msg	*scsup;
 	Scsp_csa		*csap;
 
 	/*
 	 * Format the mandatory common part of the message
 	 */
-	scsup = (struct scsp_ncsu_msg *)buff;
 	len = scsp_format_mcp(&csup->csu_mcp, buff);
 	if (len == 0)
 		goto csu_invalid;

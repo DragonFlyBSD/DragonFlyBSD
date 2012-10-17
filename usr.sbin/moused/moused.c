@@ -3002,7 +3002,7 @@ kidspad(u_char rxc, mousestatus_t *act)
     static int buf[5];
     static int buflen = 0, b_prev = 0 , x_prev = -1, y_prev = -1 ;
     static k_status status = S_IDLE ;
-    static struct timeval old, now ;
+    static struct timeval now ;
 
     int x, y ;
 
@@ -3040,7 +3040,6 @@ kidspad(u_char rxc, mousestatus_t *act)
 	x_prev = x ;
 	y_prev = y ;
     }
-    old = now ;
     act->dx = x - x_prev ;
     act->dy = y - y_prev ;
     if (act->dx || act->dy)

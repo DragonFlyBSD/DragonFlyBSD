@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)split.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/split/split.c,v 1.6.2.2 2002/07/25 12:46:36 tjr Exp $
- * $DragonFly: src/usr.bin/split/split.c,v 1.6 2005/08/30 21:19:13 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -302,17 +301,14 @@ newfile(void)
 {
 	long i, maxfiles, tfnum;
 	static long fnum;
-	static int defname;
 	static char *fpnt;
 
 	if (ofd == -1) {
 		if (fname[0] == '\0') {
 			fname[0] = 'x';
 			fpnt = fname + 1;
-			defname = 1;
 		} else {
 			fpnt = fname + strlen(fname);
-			defname = 0;
 		}
 		ofd = fileno(stdout);
 	}

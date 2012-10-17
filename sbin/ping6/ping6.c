@@ -1694,7 +1694,7 @@ pr_ip6opt(void *extbuf, size_t bufsize)
 	struct ip6_hbh *ext;
 	int currentlen;
 	u_int8_t type;
-	socklen_t extlen, len, __unused origextlen;
+	socklen_t extlen, len;
 	void *databuf;
 	size_t offset;
 	u_int16_t value2;
@@ -1710,7 +1710,6 @@ pr_ip6opt(void *extbuf, size_t bufsize)
 	 *     subtract the size of a cmsg structure from the buffer size.
 	 */
 	if (bufsize < (extlen  + CMSG_SPACE(0))) {
-		origextlen = extlen;
 		extlen = bufsize - CMSG_SPACE(0);
 		warnx("options truncated, showing only %u (total=%u)",
 		    (unsigned int)(extlen / 8 - 1),
