@@ -34,7 +34,7 @@
  */
 
 #include "opt_bnx.h"
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -59,6 +59,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
@@ -138,8 +139,9 @@ static int	bnx_miibus_readreg(device_t, int, int);
 static int	bnx_miibus_writereg(device_t, int, int, int);
 static void	bnx_miibus_statchg(device_t);
 
-#ifdef DEVICE_POLLING
-static void	bnx_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
+#ifdef IFPOLL_ENABLE
+static void	bnx_npoll(struct ifnet *, struct ifpoll_info *);
+static void	bnx_npoll_compat(struct ifnet *, void *, int);
 #endif
 static void	bnx_intr_legacy(void *);
 static void	bnx_msi(void *);
@@ -228,6 +230,10 @@ static int	bnx_sysctl_rx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_tx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *,
 		    int, int, uint32_t);
+#ifdef IFPOLL_ENABLE
+static int	bnx_sysctl_npoll_stfrac(SYSCTL_HANDLER_ARGS);
+static int	bnx_sysctl_npoll_cpuid(SYSCTL_HANDLER_ARGS);
+#endif
 
 static int	bnx_msi_enable = 1;
 TUNABLE_INT("hw.bnx.msi.enable", &bnx_msi_enable);
@@ -1972,8 +1978,8 @@ bnx_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = bnx_ioctl;
 	ifp->if_start = bnx_start;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = bnx_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = bnx_npoll;
 #endif
 	ifp->if_watchdog = bnx_watchdog;
 	ifp->if_init = bnx_init;
@@ -2095,6 +2101,11 @@ bnx_attach(device_t dev)
 		}
 	}
 
+#ifdef IFPOLL_ENABLE
+	sc->bnx_npoll_stfrac = 39;	/* 1/40 polling freq */
+	sc->bnx_npoll_cpuid = device_get_unit(dev) % ncpus2;
+#endif
+
 	/*
 	 * Create sysctl nodes.
 	 */
@@ -2154,6 +2165,17 @@ bnx_attach(device_t dev)
 	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
 	    "force_defrag", CTLFLAG_RW, &sc->bnx_force_defrag, 0,
 	    "Force defragment on TX path");
+
+#ifdef IFPOLL_ENABLE
+	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	    "npoll_stfrac", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, bnx_sysctl_npoll_stfrac, "I", "polling status frac");
+	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	    "npoll_cpuid", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, bnx_sysctl_npoll_cpuid, "I", "polling cpuid");
+#endif
 
 	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
@@ -2622,52 +2644,70 @@ bnx_txeof(struct bnx_softc *sc, uint16_t tx_cons)
 		if_devstart(ifp);
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-bnx_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct bnx_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->bnx_npoll_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = bnx_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING)
+			bnx_disable_intr(sc);
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING)
+			bnx_enable_intr(sc);
+		ifp->if_npoll_cpuid = -1;
+	}
+}
+
+static void
+bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 {
 	struct bnx_softc *sc = ifp->if_softc;
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
 	uint16_t rx_prod, tx_cons;
 
-	switch(cmd) {
-	case POLL_REGISTER:
-		bnx_disable_intr(sc);
-		break;
-	case POLL_DEREGISTER:
-		bnx_enable_intr(sc);
-		break;
-	case POLL_AND_CHECK_STATUS:
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (sc->bnx_npoll_stcount-- == 0) {
+		sc->bnx_npoll_stcount = sc->bnx_npoll_stfrac;
 		/*
 		 * Process link state changes.
 		 */
 		bnx_link_poll(sc);
-		/* Fall through */
-	case POLL_ONLY:
-		sc->bnx_status_tag = sblk->bge_status_tag;
-		/*
-		 * Use a load fence to ensure that status_tag
-		 * is saved  before rx_prod and tx_cons.
-		 */
-		cpu_lfence();
-
-		rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
-		tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
-		if (ifp->if_flags & IFF_RUNNING) {
-			rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
-			if (sc->bnx_rx_saved_considx != rx_prod)
-				bnx_rxeof(sc, rx_prod);
-
-			tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
-			if (sc->bnx_tx_saved_considx != tx_cons)
-				bnx_txeof(sc, tx_cons);
-		}
-		break;
 	}
+
+	sc->bnx_status_tag = sblk->bge_status_tag;
+
+	/*
+	 * Use a load fence to ensure that status_tag is saved
+	 * before rx_prod and tx_cons.
+	 */
+	cpu_lfence();
+
+	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
+	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
+
+	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
+	if (sc->bnx_rx_saved_considx != rx_prod)
+		bnx_rxeof(sc, rx_prod);
+
+	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
+	if (sc->bnx_tx_saved_considx != tx_cons)
+		bnx_txeof(sc, tx_cons);
 }
 
-#endif
+#endif	/* IFPOLL_ENABLE */
 
 static void
 bnx_intr_legacy(void *xsc)
@@ -3099,8 +3139,8 @@ bnx_init(void *xsc)
 
 	/* Enable host interrupts if polling(4) is not enabled. */
 	PCI_SETBIT(sc->bnx_dev, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_CLEAR_INTA, 4);
-#ifdef DEVICE_POLLING
-	if (ifp->if_flags & IFF_POLLING)
+#ifdef IFPOLL_ENABLE
+	if (ifp->if_flags & IFF_NPOLLING)
 		bnx_disable_intr(sc);
 	else
 #endif
@@ -3895,6 +3935,57 @@ bnx_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *coal,
 	return error;
 }
 
+#ifdef IFPOLL_ENABLE
+
+static int
+bnx_sysctl_npoll_stfrac(SYSCTL_HANDLER_ARGS)
+{
+	struct bnx_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error = 0, stfrac;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	stfrac = sc->bnx_npoll_stfrac;
+	error = sysctl_handle_int(oidp, &stfrac, 0, req);
+	if (!error && req->newptr != NULL) {
+		if (stfrac < 0) {
+			error = EINVAL;
+		} else {
+			sc->bnx_npoll_stfrac = stfrac;
+			if (sc->bnx_npoll_stcount > sc->bnx_npoll_stfrac)
+				sc->bnx_npoll_stcount = sc->bnx_npoll_stfrac;
+		}
+	}
+
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+static int
+bnx_sysctl_npoll_cpuid(SYSCTL_HANDLER_ARGS)
+{
+	struct bnx_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error = 0, cpuid;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	cpuid = sc->bnx_npoll_cpuid;
+	error = sysctl_handle_int(oidp, &cpuid, 0, req);
+	if (!error && req->newptr != NULL) {
+		if (cpuid < 0 || cpuid >= ncpus2)
+			error = EINVAL;
+		else
+			sc->bnx_npoll_cpuid = cpuid;
+	}
+
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+#endif	/* IFPOLL_ENABLE */
+
 static void
 bnx_coal_change(struct bnx_softc *sc)
 {
@@ -3989,7 +4080,7 @@ bnx_intr_check(void *xsc)
 
 	KKASSERT(mycpuid == sc->bnx_intr_cpuid);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_POLLING)) != IFF_RUNNING) {
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) != IFF_RUNNING) {
 		lwkt_serialize_exit(ifp->if_serializer);
 		return;
 	}
@@ -4080,6 +4171,8 @@ bnx_disable_intr(struct bnx_softc *sc)
 	sc->bnx_intr_maylose = FALSE;
 	sc->bnx_rx_check_considx = 0;
 	sc->bnx_tx_check_considx = 0;
+
+	sc->bnx_npoll_stcount = 0;
 
 	lwkt_serialize_handler_disable(ifp->if_serializer);
 }
