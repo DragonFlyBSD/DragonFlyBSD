@@ -107,7 +107,6 @@ insert_padding(void **imgbase, int *imglen)
 		return(ENOMEM);
 
 	bcopy(*imgbase, newimg, *imglen);
-	curlen = *imglen;
 
 	if (pe_get_optional_header((vm_offset_t)newimg, &opt_hdr))
 		return(0);
