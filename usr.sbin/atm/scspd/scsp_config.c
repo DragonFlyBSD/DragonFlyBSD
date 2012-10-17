@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_config.c,v 1.3 1999/08/28 01:15:32 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_config.c,v 1.4 2003/11/15 20:33:43 eirikn Exp $
  */
 
 /*
@@ -210,7 +209,6 @@ finish_dcs(void)
 {
 	int		rc = 0;
 	Scsp_dcs	*dcsp;
-	Scsp_server	*ssp;
 
 	/*
 	 * Make sure we have a current server block and DCS block
@@ -224,7 +222,6 @@ finish_dcs(void)
 		parse_error("server not found");
 		return(1);
 	}
-	ssp = current_server;
 	dcsp = current_dcs;
 
 	/*

@@ -443,7 +443,7 @@ static void
 donames(int fd, struct fs *super, char *name)
 {
 	int c;
-	ino_t inode, inode1;
+	ino_t inode;
 	ino_t maxino;
 	struct ufs1_dinode *ip;
 	
@@ -452,7 +452,6 @@ donames(int fd, struct fs *super, char *name)
 	while ((c = getchar()) != EOF && (c < '0' || c > '9'))
 		while ((c = getchar()) != EOF && c != '\n');
 	ungetc(c,stdin);
-	inode1 = -1;
 	while (scanf("%"SCNuMAX,&inode) == 1) {
 		if (inode > maxino) {
 			warnx("illegal inode %ju",(uintmax_t)inode);
@@ -470,7 +469,6 @@ donames(int fd, struct fs *super, char *name)
 				c = getchar();
 			}
 			putchar('\n');
-			inode1 = inode;
 		} else {
 			if (errno) {
 				err(1, "%s", name);

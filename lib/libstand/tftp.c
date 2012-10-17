@@ -31,7 +31,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/tftp.c,v 1.2.6.4 2001/07/14 14:00:03 mikeh Exp $
- * $DragonFly: src/lib/libstand/tftp.c,v 1.5 2005/12/11 02:27:26 swildner Exp $
  */
 
 /*
@@ -406,9 +405,6 @@ tftp_write(struct open_file *f, void *start, size_t size, size_t *resid)
 static int 
 tftp_stat(struct open_file *f, struct stat *sb)
 {
-	struct tftp_handle __unused *tftpfile;
-	tftpfile = (struct tftp_handle *) f->f_fsdata;
-
 	sb->st_mode = 0444 | S_IFREG;
 	sb->st_nlink = 1;
 	sb->st_uid = 0;

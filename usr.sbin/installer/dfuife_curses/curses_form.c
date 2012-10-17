@@ -719,9 +719,8 @@ curses_form_refocus_after_scroll(struct curses_form *cf, int dx, int dy)
 int
 curses_form_widget_is_visible(struct curses_widget *w)
 {
-	unsigned int wx, wy;
+	unsigned int wy;
 
-	wx = w->x + 1 - w->form->x_offset;
 	wy = w->y + 1 - w->form->y_offset;
 
 	if (wy < 1 || wy > w->form->height)
@@ -733,7 +732,7 @@ curses_form_widget_is_visible(struct curses_widget *w)
 void
 curses_form_widget_ensure_visible(struct curses_widget *w)
 {
-	unsigned int wx, wy;
+	unsigned int wy;
 	int dx = 0, dy = 0;
 
 	/*
@@ -750,7 +749,6 @@ curses_form_widget_ensure_visible(struct curses_widget *w)
 	if (curses_form_widget_is_visible(w))
 		return;
 
-	wx = w->x + 1 - w->form->x_offset;
 	wy = w->y + 1 - w->form->y_offset;
 
 	if (wy < 1)

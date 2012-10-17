@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ypwhich/ypwhich.c,v 1.16 2004/04/04 19:17:38 charnier Exp $
- * $DragonFly: src/usr.bin/ypwhich/ypwhich.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -142,11 +141,11 @@ main(int argc, char **argv)
 	struct ypmaplist *ypml, *y;
 	struct hostent *hent;
 	struct sockaddr_in lsin;
-	int notrans, mode, getmap;
+	int notrans, mode;
 	int c, r;
 	u_int i;
 
-	getmap = notrans = mode = 0;
+	notrans = mode = 0;
 	while ((c = getopt(argc, argv, "xd:mt")) != -1)
 		switch (c) {
 		case 'x':

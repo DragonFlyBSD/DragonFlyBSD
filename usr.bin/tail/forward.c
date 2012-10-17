@@ -35,7 +35,6 @@
  *
  * @(#)forward.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/forward.c,v 1.11.6.7 2003/01/07 05:26:22 tjr Exp $
- * $DragonFly: src/usr.bin/tail/forward.c,v 1.6 2005/03/01 21:37:33 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -306,12 +305,9 @@ void
 follow(file_info_t *files, enum STYLE style, off_t off)
 {
 	int active, i, n;
-	long spin;
 	file_info_t *file;
 	struct stat sb2;
 	struct timespec ts;
-
-	spin = 1;
 
 	/* Position each of the files */
 	file = files;

@@ -15,7 +15,6 @@
  *
  * @(#) Copyright (c) 1990, 1991, 1992, 1993, 1996 The Regents of the University of California.  All rights reserved.
  * $FreeBSD: src/usr.sbin/rarpd/rarpd.c,v 1.41 2004/08/07 04:28:54 imp Exp $
- * $DragonFly: src/usr.sbin/rarpd/rarpd.c,v 1.4 2004/12/18 22:48:05 swildner Exp $
  */
 
 /*
@@ -116,7 +115,7 @@ int
 main(int argc, char *argv[])
 {
 	int op;
-	char *ifname, *hostname, *name;
+	char *ifname, *name;
 
 	int aflag = 0;		/* listen on "all" interfaces  */
 	int fflag = 0;		/* don't fork */
@@ -168,7 +167,6 @@ main(int argc, char *argv[])
 	argv += optind;
 
 	ifname = (aflag == 0) ? argv[0] : NULL;
-	hostname = ifname ? argv[1] : argv[0];
 
 	if ((aflag && ifname) || (!aflag && ifname == NULL))
 		usage();
