@@ -3814,7 +3814,6 @@ hdac_attach(device_t dev)
 	sc->flags &= ~HDAC_F_DMA_NOCACHE;
 #endif
 
-#if 0
 		/*
 		 * Try to enable PCIe snoop to avoid messing around with
 		 * uncacheable DMA attribute. Since PCIe snoop register
@@ -3852,7 +3851,6 @@ hdac_attach(device_t dev)
 			}
 			break;
 		}
-#endif
 
 		if (pci_is_pcie(dev)) {
 			int pcie_cap = pci_get_pciecap_ptr(dev);
