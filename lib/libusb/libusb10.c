@@ -990,7 +990,6 @@ libusb10_isoc_proxy(struct libusb20_transfer *pxfer)
 	uint16_t iso_packets;
 	uint16_t i;
 	uint8_t status;
-	uint8_t flags;
 
 	status = libusb20_tr_get_status(pxfer);
 	sxfer = libusb20_tr_get_priv_sc1(pxfer);
@@ -1011,8 +1010,6 @@ libusb10_isoc_proxy(struct libusb20_transfer *pxfer)
 
 	/* make sure that the number of ISOCHRONOUS packets is valid */
 	uxfer->num_iso_packets = iso_packets;
-
-	flags = uxfer->flags;
 
 	switch (status) {
 	case LIBUSB20_TRANSFER_COMPLETED:
