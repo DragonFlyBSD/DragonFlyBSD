@@ -54,6 +54,8 @@ struct rthash {
 	struct	rt_entry *rt_back;
 };
 
+#define rtentry ortentry
+
 struct rt_entry {
 	struct	rt_entry *rt_forw;
 	struct	rt_entry *rt_back;
