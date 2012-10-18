@@ -2026,6 +2026,8 @@ device		ohci
 device 		ehci
 # General USB code (mandatory for USB)
 device		usb
+# Use this instead of usb for the new stack
+#device		"usb4bsd"
 #
 # USB Bluetooth
 device		ubt
