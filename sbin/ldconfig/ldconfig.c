@@ -112,6 +112,6 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	"usage: ldconfig [-elf] [-Rimrs] [-f hints_file] [dir | file ...]\n");
+	"usage: ldconfig [-elf] [-Rimr] [-f hints_file] [dir | file ...]\n");
 	exit(1);
 }
