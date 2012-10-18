@@ -48,9 +48,8 @@ usage(void)
 
 /* ARGSUSED */
 void
-sighdlr(int signum)
+sighdlr(__unused int signum)
 {
-	signum = 0; /* Silence warnings */
 	quit = 1;
 }
 
