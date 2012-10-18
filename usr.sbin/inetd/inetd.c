@@ -1680,7 +1680,7 @@ more:
                     strlen(sep->se_proto) + 1 - 4);
                 sep->se_rpc = 1;
                 sep->se_rpc_prog = sep->se_rpc_lowvers =
-			sep->se_rpc_lowvers = 0;
+			sep->se_rpc_highvers = 0;
 		memcpy(&sep->se_ctrladdr4, bind_sa4,
 		       sizeof(sep->se_ctrladdr4));
                 if ((versp = strrchr(sep->se_service, '/'))) {
