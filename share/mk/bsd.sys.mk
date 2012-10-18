@@ -32,7 +32,7 @@ CWARNFLAGS	+=	-Werror
 CWARNFLAGS	+=	-Wall -Wno-pointer-sign
 .  endif
 .  if ${WARNS} >= 3
-CWARNFLAGS	+=	-W -Wno-unused-parameter -Wstrict-prototypes\
+CWARNFLAGS	+=	-Wextra -Wno-unused-parameter -Wstrict-prototypes\
 			-Wmissing-prototypes -Wpointer-arith\
 			-Wold-style-definition
 .  endif
@@ -41,7 +41,8 @@ CWARNFLAGS	+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch\
 			-Wshadow -Wcast-align -Wunused-parameter
 .  endif
 .  if ${WARNS} >= 6
-CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs -Wredundant-decls
+CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs\
+			-Wredundant-decls
 .  endif
 .  if ${WARNS} >= 2 && ${WARNS} <= 4
 # XXX Delete -Wuninitialized by default for now -- the compiler doesn't
