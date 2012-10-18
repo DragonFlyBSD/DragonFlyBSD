@@ -255,13 +255,16 @@ dvsend(int d, char *filename, char ich, int count)
 	struct dvdbc *dv;
 	struct fw_pkt *pkt;
 	int len, tlen, header, fd, frames, packets, vec, offset, nhdr, i;
-	int systype=-1, pad_acc, cycle_acc=0, cycle=0, f_cycle, f_frac;
+	int systype=-1, pad_acc, cycle_acc=0, cycle=0, f_frac;
 	struct iovec wbuf[TNBUF*2 + NEMPTY];
 	char *pbuf;
 	u_int32_t iso_data, iso_empty, hdr[TNBUF + NEMPTY][3];
 	struct ciphdr *ciph;
 	struct timeval start, end;
 	double rtime;
+#if 0
+	int f_cycle;
+#endif
 
 	fd = open(filename, O_RDONLY);
 	pbuf = (char *)malloc(DSIZE * TNBUF);
@@ -355,7 +358,9 @@ next:
 			if (frames % frame_rate[systype] == 0)
 				fprintf(stderr, "\n");
 			fflush(stderr);
+#if 0
 			f_cycle = (cycle_acc / frame_cycle[systype].d) & 0xf;
+#endif
 			f_frac = (cycle_acc % frame_cycle[systype].d
 					* CYCLE_FRAC) / frame_cycle[systype].d;
 #if 0
