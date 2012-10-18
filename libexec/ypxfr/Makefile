@@ -1,5 +1,4 @@
 # $FreeBSD: src/libexec/ypxfr/Makefile,v 1.8.2.1 2001/04/25 10:41:06 ru Exp $
-# $DragonFly: src/libexec/ypxfr/Makefile,v 1.2 2003/06/17 04:27:08 dillon Exp $
 
 PROG=	ypxfr
 SRCS=	yp_dblookup.c yp_dbwrite.c yp_error.c \
@@ -14,7 +13,6 @@ WARNS?=	3
 MAN=	ypxfr.8
 
 CFLAGS+= -I.
-CFLAGS+= -Wno-enum-compare
 DPADD=	${LIBRPCSVC}
 LDADD=	-lrpcsvc
 
