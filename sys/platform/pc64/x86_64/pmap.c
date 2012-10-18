@@ -3460,7 +3460,7 @@ again:
  */
 void
 pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
-	   boolean_t wired, vm_map_entry_t entry __unused)
+	   boolean_t wired, vm_map_entry_t entry)
 {
 	pmap_inval_info info;
 	pv_entry_t pt_pv;	/* page table */
