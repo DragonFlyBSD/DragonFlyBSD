@@ -232,59 +232,10 @@ struct emx_rxdata {
 	bus_addr_t		rx_desc_paddr;
 } __cachealign;
 
-struct emx_softc {
-	struct arpcom		arpcom;
-	struct e1000_hw		hw;
-	int			flags;
-#define EMX_FLAG_SHARED_INTR	0x0001
-#define EMX_FLAG_TSO_PULLEX	0x0002
-#define EMX_FLAG_HAS_MGMT	0x0004
-#define EMX_FLAG_HAS_AMT	0x0008
-#define EMX_FLAG_HW_CTRL	0x0010
-
-	/* DragonFly operating-system-specific structures. */
-	struct e1000_osdep	osdep;
-	device_t		dev;
-
-	bus_dma_tag_t		parent_dtag;
-
-	bus_dma_tag_t		tx_desc_dtag;
-	bus_dmamap_t		tx_desc_dmap;
-	bus_addr_t		tx_desc_paddr;
-
-	struct resource		*memory;
-	int			memory_rid;
-
-	struct resource		*intr_res;
-	void			*intr_tag;
-	int			intr_rid;
-	int			intr_type;
-
-	struct ifmedia		media;
-	struct callout		timer;
-	int			if_flags;
-	int			max_frame_size;
-	int			min_frame_size;
-
-	/* WOL register value */
-	int			wol;
-
-	/* Multicast array memory */
-	uint8_t			*mta;
-
-	/* Info about the board itself */
-	uint8_t			link_active;
-	uint16_t		link_speed;
-	uint16_t		link_duplex;
-	uint32_t		smartspeed;
-	int			int_throttle_ceil;
-
-	int			rx_npoll_off;
-	int			tx_npoll_off;
-
-	struct lwkt_serialize	main_serialize;
+struct emx_txdata {
 	struct lwkt_serialize	tx_serialize;
-	struct lwkt_serialize	*serializes[EMX_NSERIALIZE];
+	struct emx_softc	*sc;
+	int			idx;
 
 	/*
 	 * Transmit definitions
@@ -355,14 +306,72 @@ struct emx_softc {
 #define EMX_TXDD_SAFE	48 /* 48 <= val < EMX_TXDD_MAX */
 	int			tx_dd[EMX_TXDD_MAX];
 
+	/* TX statistics */
+	unsigned long		tso_segments;
+	unsigned long		tso_ctx_reused;
+
+	bus_dma_tag_t		tx_desc_dtag;
+	bus_dmamap_t		tx_desc_dmap;
+	bus_addr_t		tx_desc_paddr;
+} __cachealign;
+
+struct emx_softc {
+	struct arpcom		arpcom;
+	struct e1000_hw		hw;
+	int			flags;
+#define EMX_FLAG_SHARED_INTR	0x0001
+#define EMX_FLAG_TSO_PULLEX	0x0002
+#define EMX_FLAG_HAS_MGMT	0x0004
+#define EMX_FLAG_HAS_AMT	0x0008
+#define EMX_FLAG_HW_CTRL	0x0010
+
+	/* DragonFly operating-system-specific structures. */
+	struct e1000_osdep	osdep;
+	device_t		dev;
+
+	bus_dma_tag_t		parent_dtag;
+
+	struct resource		*memory;
+	int			memory_rid;
+
+	struct resource		*intr_res;
+	void			*intr_tag;
+	int			intr_rid;
+	int			intr_type;
+
+	struct ifmedia		media;
+	struct callout		timer;
+	int			if_flags;
+	int			max_frame_size;
+	int			min_frame_size;
+
+	/* WOL register value */
+	int			wol;
+
+	/* Multicast array memory */
+	uint8_t			*mta;
+
+	/* Info about the board itself */
+	uint8_t			link_active;
+	uint16_t		link_speed;
+	uint16_t		link_duplex;
+	uint32_t		smartspeed;
+	int			int_throttle_ceil;
+
+	int			rx_npoll_off;
+	int			tx_npoll_off;
+
+	struct lwkt_serialize	main_serialize;
+	struct lwkt_serialize	*serializes[EMX_NSERIALIZE];
+
+	struct emx_txdata	tx_data;
+
 	int			rss_debug;
 	int			rx_ring_cnt;
 	struct emx_rxdata	rx_data[EMX_NRX_RING];
 
 	/* Misc stats maintained by the driver */
 	unsigned long		rx_overruns;
-	unsigned long		tso_segments;
-	unsigned long		tso_ctx_reused;
 
 	/* sysctl tree glue */
 	struct sysctl_ctx_list	sysctl_ctx;
@@ -382,7 +391,8 @@ struct emx_rxbuf {
 	bus_addr_t	paddr;
 };
 
-#define EMX_IS_OACTIVE(sc)	((sc)->num_tx_desc_avail <= (sc)->oact_tx_desc)
+#define EMX_IS_OACTIVE(tdata) \
+	((tdata)->num_tx_desc_avail <= (tdata)->oact_tx_desc)
 
 #define EMX_INC_TXDD_IDX(idx) \
 do { \

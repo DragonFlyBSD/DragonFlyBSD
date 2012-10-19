@@ -3,7 +3,7 @@
 
 FILES=	ascii birthtoken bsd-family-tree eqnchar flowers gdbinit init.ee \
 	iso639 latin1 man.template mdoc.template operator pci_vendors \
-	scsi_modes usb_hid_usages dragonfly.el indent.pro
+	scsi_modes usb_hid_usages dragonfly.el dragonfly.vim indent.pro
 NOOBJ=	noobj
 FILESDIR=	${BINDIR}/misc
 

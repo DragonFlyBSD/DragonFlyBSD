@@ -2222,16 +2222,29 @@ bus/u4b/controller/xhci.c               optional xhci usb4bsd
 bus/u4b/controller/xhci_pci.c           optional xhci pci usb4bsd
 bus/u4b/controller/usb_controller.c     optional usb4bsd
 #
-# Other drivers
+# USB storage drivers
 #
 bus/u4b/storage/umass.c			optional umass usb4bsd
 bus/u4b/storage/ustorage_fs.c		optional usfs usb4bsd
+#
+# USB network drivers
+#
+bus/u4b/net/usb_ethernet.c		optional uether usb4bsd
+bus/u4b/net/if_axe.c			optional axe uether usb4bsd
+bus/u4b/net/if_udav.c			optional udav uether usb4bsd
+#
+# USB input drivers
+#
 bus/u4b/input/ukbd.c			optional ukbd usb4bsd
 bus/u4b/input/ums.c			optional ums usb4bsd
 bus/u4b/input/uep.c			optional uep usb4bsd
 bus/u4b/input/uhid.c			optional uhid usb4bsd
+#
+# USB quirks
+#
+bus/u4b/quirk/usb_quirk.c		optional usb4bsd
+#
+# Other drivers
+#
 bus/u4b/audio/uaudio.c			optional snd_uaudio usb4bsd
 #bus/u4b/audio/uaudio_pcm.c		optional snd_uaudio usb4bsd
-bus/u4b/net/usb_ethernet.c		optional uether usb4bsd
-bus/u4b/net/if_axe.c			optional axe uether usb4bsd
-bus/u4b/net/if_udav.c			optional udav uether usb4bsd

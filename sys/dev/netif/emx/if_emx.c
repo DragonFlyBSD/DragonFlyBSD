@@ -199,27 +199,27 @@ static void	emx_intr(void *);
 static void	emx_intr_mask(void *);
 static void	emx_intr_body(struct emx_softc *, boolean_t);
 static void	emx_rxeof(struct emx_rxdata *, int);
-static void	emx_txeof(struct emx_softc *);
-static void	emx_tx_collect(struct emx_softc *);
+static void	emx_txeof(struct emx_txdata *);
+static void	emx_tx_collect(struct emx_txdata *);
 static void	emx_tx_purge(struct emx_softc *);
 static void	emx_enable_intr(struct emx_softc *);
 static void	emx_disable_intr(struct emx_softc *);
 
 static int	emx_dma_alloc(struct emx_softc *);
 static void	emx_dma_free(struct emx_softc *);
-static void	emx_init_tx_ring(struct emx_softc *);
+static void	emx_init_tx_ring(struct emx_txdata *);
 static int	emx_init_rx_ring(struct emx_rxdata *);
 static void	emx_free_rx_ring(struct emx_rxdata *);
-static int	emx_create_tx_ring(struct emx_softc *);
+static int	emx_create_tx_ring(struct emx_txdata *);
 static int	emx_create_rx_ring(struct emx_rxdata *);
-static void	emx_destroy_tx_ring(struct emx_softc *, int);
+static void	emx_destroy_tx_ring(struct emx_txdata *, int);
 static void	emx_destroy_rx_ring(struct emx_rxdata *, int);
 static int	emx_newbuf(struct emx_rxdata *, int, int);
-static int	emx_encap(struct emx_softc *, struct mbuf **);
-static int	emx_txcsum(struct emx_softc *, struct mbuf *,
+static int	emx_encap(struct emx_txdata *, struct mbuf **);
+static int	emx_txcsum(struct emx_txdata *, struct mbuf *,
 		    uint32_t *, uint32_t *);
-static int	emx_tso_pullup(struct emx_softc *, struct mbuf **);
-static int	emx_tso_setup(struct emx_softc *, struct mbuf *,
+static int	emx_tso_pullup(struct emx_txdata *, struct mbuf **);
+static int	emx_tso_setup(struct emx_txdata *, struct mbuf *,
 		    uint32_t *, uint32_t *);
 
 static int 	emx_is_valid_eaddr(const uint8_t *);
@@ -432,10 +432,16 @@ emx_attach(device_t dev)
 	}
 
 	/*
+	 * Setup TX ring
+	 */
+	sc->tx_data.sc = sc;
+	sc->tx_data.idx = 0;
+
+	/*
 	 * Initialize serializers
 	 */
 	lwkt_serialize_init(&sc->main_serialize);
-	lwkt_serialize_init(&sc->tx_serialize);
+	lwkt_serialize_init(&sc->tx_data.tx_serialize);
 	for (i = 0; i < EMX_NRX_RING; ++i)
 		lwkt_serialize_init(&sc->rx_data[i].rx_serialize);
 
@@ -446,7 +452,7 @@ emx_attach(device_t dev)
 	sc->serializes[i++] = &sc->main_serialize;
 
 	KKASSERT(i == EMX_TX_SERIALIZE);
-	sc->serializes[i++] = &sc->tx_serialize;
+	sc->serializes[i++] = &sc->tx_data.tx_serialize;
 
 	KKASSERT(i == EMX_RX_SERIALIZE);
 	sc->serializes[i++] = &sc->rx_data[0].rx_serialize;
@@ -766,7 +772,7 @@ emx_attach(device_t dev)
 	sc->hw.mac.get_link_status = 1;
 	emx_update_link_status(sc);
 
-	sc->spare_tx_desc = EMX_TX_SPARE;
+	sc->tx_data.spare_tx_desc = EMX_TX_SPARE;
 
 	/*
 	 * Keep following relationship between spare_tx_desc, oact_tx_desc
@@ -774,15 +780,18 @@ emx_attach(device_t dev)
 	 * (spare_tx_desc + EMX_TX_RESERVED) <=
 	 * oact_tx_desc <= EMX_TX_OACTIVE_MAX <= tx_int_nsegs
 	 */
-	sc->oact_tx_desc = sc->num_tx_desc / 8;
-	if (sc->oact_tx_desc > EMX_TX_OACTIVE_MAX)
-		sc->oact_tx_desc = EMX_TX_OACTIVE_MAX;
-	if (sc->oact_tx_desc < sc->spare_tx_desc + EMX_TX_RESERVED)
-		sc->oact_tx_desc = sc->spare_tx_desc + EMX_TX_RESERVED;
+	sc->tx_data.oact_tx_desc = sc->tx_data.num_tx_desc / 8;
+	if (sc->tx_data.oact_tx_desc > EMX_TX_OACTIVE_MAX)
+		sc->tx_data.oact_tx_desc = EMX_TX_OACTIVE_MAX;
+	if (sc->tx_data.oact_tx_desc <
+	    sc->tx_data.spare_tx_desc + EMX_TX_RESERVED) {
+		sc->tx_data.oact_tx_desc = sc->tx_data.spare_tx_desc +
+		    EMX_TX_RESERVED;
+	}
 
-	sc->tx_int_nsegs = sc->num_tx_desc / 16;
-	if (sc->tx_int_nsegs < sc->oact_tx_desc)
-		sc->tx_int_nsegs = sc->oact_tx_desc;
+	sc->tx_data.tx_int_nsegs = sc->tx_data.num_tx_desc / 16;
+	if (sc->tx_data.tx_int_nsegs < sc->tx_data.oact_tx_desc)
+		sc->tx_data.tx_int_nsegs = sc->tx_data.oact_tx_desc;
 
 	/* Non-AMT based hardware can now take control from firmware */
 	if ((sc->flags & (EMX_FLAG_HAS_MGMT | EMX_FLAG_HAS_AMT)) ==
@@ -929,9 +938,10 @@ static void
 emx_start(struct ifnet *ifp)
 {
 	struct emx_softc *sc = ifp->if_softc;
+	struct emx_txdata *tdata = &sc->tx_data;
 	struct mbuf *m_head;
 
-	ASSERT_SERIALIZED(&sc->tx_serialize);
+	ASSERT_SERIALIZED(&sc->tx_data.tx_serialize);
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
@@ -943,9 +953,9 @@ emx_start(struct ifnet *ifp)
 
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		/* Now do we at least have a minimal? */
-		if (EMX_IS_OACTIVE(sc)) {
-			emx_tx_collect(sc);
-			if (EMX_IS_OACTIVE(sc)) {
+		if (EMX_IS_OACTIVE(tdata)) {
+			emx_tx_collect(tdata);
+			if (EMX_IS_OACTIVE(tdata)) {
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
@@ -956,9 +966,9 @@ emx_start(struct ifnet *ifp)
 		if (m_head == NULL)
 			break;
 
-		if (emx_encap(sc, &m_head)) {
+		if (emx_encap(tdata, &m_head)) {
 			ifp->if_oerrors++;
-			emx_tx_collect(sc);
+			emx_tx_collect(tdata);
 			continue;
 		}
 
@@ -1234,7 +1244,7 @@ emx_init(void *xsc)
 	emx_get_mgmt(sc);
 
 	/* Prepare transmit descriptors and buffers */
-	emx_init_tx_ring(sc);
+	emx_init_tx_ring(&sc->tx_data);
 	emx_init_tx_unit(sc);
 
 	/* Setup Multicast table */
@@ -1345,11 +1355,11 @@ emx_intr_body(struct emx_softc *sc, boolean_t chk_asserted)
 			}
 		}
 		if (reg_icr & E1000_ICR_TXDW) {
-			lwkt_serialize_enter(&sc->tx_serialize);
-			emx_txeof(sc);
+			lwkt_serialize_enter(&sc->tx_data.tx_serialize);
+			emx_txeof(&sc->tx_data);
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
-			lwkt_serialize_exit(&sc->tx_serialize);
+			lwkt_serialize_exit(&sc->tx_data.tx_serialize);
 		}
 	}
 
@@ -1489,7 +1499,7 @@ emx_media_change(struct ifnet *ifp)
 }
 
 static int
-emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
+emx_encap(struct emx_txdata *tdata, struct mbuf **m_headp)
 {
 	bus_dma_segment_t segs[EMX_MAX_SCATTER];
 	bus_dmamap_t map;
@@ -1500,7 +1510,7 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	int maxsegs, nsegs, i, j, first, last = 0, error;
 
 	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
-		error = emx_tso_pullup(sc, m_headp);
+		error = emx_tso_pullup(tdata, m_headp);
 		if (error)
 			return error;
 		m_head = *m_headp;
@@ -1513,42 +1523,43 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	 * will have the index of the EOP which is the only one
 	 * that now gets a DONE bit writeback.
 	 */
-	first = sc->next_avail_tx_desc;
-	tx_buffer = &sc->tx_buf[first];
+	first = tdata->next_avail_tx_desc;
+	tx_buffer = &tdata->tx_buf[first];
 	tx_buffer_mapped = tx_buffer;
 	map = tx_buffer->map;
 
-	maxsegs = sc->num_tx_desc_avail - EMX_TX_RESERVED;
-	KASSERT(maxsegs >= sc->spare_tx_desc, ("not enough spare TX desc"));
+	maxsegs = tdata->num_tx_desc_avail - EMX_TX_RESERVED;
+	KASSERT(maxsegs >= tdata->spare_tx_desc, ("not enough spare TX desc"));
 	if (maxsegs > EMX_MAX_SCATTER)
 		maxsegs = EMX_MAX_SCATTER;
 
-	error = bus_dmamap_load_mbuf_defrag(sc->txtag, map, m_headp,
+	error = bus_dmamap_load_mbuf_defrag(tdata->txtag, map, m_headp,
 			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error) {
 		m_freem(*m_headp);
 		*m_headp = NULL;
 		return error;
 	}
-        bus_dmamap_sync(sc->txtag, map, BUS_DMASYNC_PREWRITE);
+        bus_dmamap_sync(tdata->txtag, map, BUS_DMASYNC_PREWRITE);
 
 	m_head = *m_headp;
-	sc->tx_nsegs += nsegs;
+	tdata->tx_nsegs += nsegs;
 
 	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
 		/* TSO will consume one TX desc */
-		sc->tx_nsegs += emx_tso_setup(sc, m_head,
+		tdata->tx_nsegs += emx_tso_setup(tdata, m_head,
 		    &txd_upper, &txd_lower);
 	} else if (m_head->m_pkthdr.csum_flags & EMX_CSUM_FEATURES) {
 		/* TX csum offloading will consume one TX desc */
-		sc->tx_nsegs += emx_txcsum(sc, m_head, &txd_upper, &txd_lower);
+		tdata->tx_nsegs += emx_txcsum(tdata, m_head,
+		    &txd_upper, &txd_lower);
 	}
-	i = sc->next_avail_tx_desc;
+	i = tdata->next_avail_tx_desc;
 
 	/* Set up our transmit descriptors */
 	for (j = 0; j < nsegs; j++) {
-		tx_buffer = &sc->tx_buf[i];
-		ctxd = &sc->tx_desc_base[i];
+		tx_buffer = &tdata->tx_buf[i];
+		ctxd = &tdata->tx_desc_base[i];
 
 		ctxd->buffer_addr = htole64(segs[j].ds_addr);
 		ctxd->lower.data = htole32(E1000_TXD_CMD_IFCS |
@@ -1556,14 +1567,14 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 		ctxd->upper.data = htole32(txd_upper);
 
 		last = i;
-		if (++i == sc->num_tx_desc)
+		if (++i == tdata->num_tx_desc)
 			i = 0;
 	}
 
-	sc->next_avail_tx_desc = i;
+	tdata->next_avail_tx_desc = i;
 
-	KKASSERT(sc->num_tx_desc_avail > nsegs);
-	sc->num_tx_desc_avail -= nsegs;
+	KKASSERT(tdata->num_tx_desc_avail > nsegs);
+	tdata->num_tx_desc_avail -= nsegs;
 
         /* Handle VLAN tag */
 	if (m_head->m_flags & M_VLANTAG) {
@@ -1579,8 +1590,8 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	tx_buffer_mapped->map = tx_buffer->map;
 	tx_buffer->map = map;
 
-	if (sc->tx_nsegs >= sc->tx_int_nsegs) {
-		sc->tx_nsegs = 0;
+	if (tdata->tx_nsegs >= tdata->tx_int_nsegs) {
+		tdata->tx_nsegs = 0;
 
 		/*
 		 * Report Status (RS) is turned on
@@ -1592,9 +1603,9 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 		 * Keep track of the descriptor, which will
 		 * be written back by hardware.
 		 */
-		sc->tx_dd[sc->tx_dd_tail] = last;
-		EMX_INC_TXDD_IDX(sc->tx_dd_tail);
-		KKASSERT(sc->tx_dd_tail != sc->tx_dd_head);
+		tdata->tx_dd[tdata->tx_dd_tail] = last;
+		EMX_INC_TXDD_IDX(tdata->tx_dd_tail);
+		KKASSERT(tdata->tx_dd_tail != tdata->tx_dd_head);
 	}
 
 	/*
@@ -1606,7 +1617,7 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	 * Advance the Transmit Descriptor Tail (TDT), this tells
 	 * the E1000 that this frame is available to transmit.
 	 */
-	E1000_WRITE_REG(&sc->hw, E1000_TDT(0), i);
+	E1000_WRITE_REG(&tdata->sc->hw, E1000_TDT(0), i);
 
 	return (0);
 }
@@ -1791,6 +1802,7 @@ static void
 emx_stop(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct emx_txdata *tdata = &sc->tx_data;
 	int i;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
@@ -1814,11 +1826,11 @@ emx_stop(struct emx_softc *sc)
 	e1000_reset_hw(&sc->hw);
 	E1000_WRITE_REG(&sc->hw, E1000_WUC, 0);
 
-	for (i = 0; i < sc->num_tx_desc; i++) {
-		struct emx_txbuf *tx_buffer = &sc->tx_buf[i];
+	for (i = 0; i < tdata->num_tx_desc; i++) {
+		struct emx_txbuf *tx_buffer = &tdata->tx_buf[i];
 
 		if (tx_buffer->m_head != NULL) {
-			bus_dmamap_unload(sc->txtag, tx_buffer->map);
+			bus_dmamap_unload(tdata->txtag, tx_buffer->map);
 			m_freem(tx_buffer->m_head);
 			tx_buffer->m_head = NULL;
 		}
@@ -1827,16 +1839,16 @@ emx_stop(struct emx_softc *sc)
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		emx_free_rx_ring(&sc->rx_data[i]);
 
-	sc->csum_flags = 0;
-	sc->csum_lhlen = 0;
-	sc->csum_iphlen = 0;
-	sc->csum_thlen = 0;
-	sc->csum_mss = 0;
-	sc->csum_pktlen = 0;
+	tdata->csum_flags = 0;
+	tdata->csum_lhlen = 0;
+	tdata->csum_iphlen = 0;
+	tdata->csum_thlen = 0;
+	tdata->csum_mss = 0;
+	tdata->csum_pktlen = 0;
 
-	sc->tx_dd_head = 0;
-	sc->tx_dd_tail = 0;
-	sc->tx_nsegs = 0;
+	tdata->tx_dd_head = 0;
+	tdata->tx_dd_tail = 0;
+	tdata->tx_nsegs = 0;
 }
 
 static int
@@ -1925,7 +1937,7 @@ emx_setup_ifp(struct emx_softc *sc)
 #ifdef INVARIANTS
 	ifp->if_serialize_assert = emx_serialize_assert;
 #endif
-	ifq_set_maxlen(&ifp->if_snd, sc->num_tx_desc - 1);
+	ifq_set_maxlen(&ifp->if_snd, sc->tx_data.num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 
 	ether_ifattach(ifp, sc->hw.mac.addr, NULL);
@@ -2034,9 +2046,9 @@ emx_smartspeed(struct emx_softc *sc)
 }
 
 static int
-emx_create_tx_ring(struct emx_softc *sc)
+emx_create_tx_ring(struct emx_txdata *tdata)
 {
-	device_t dev = sc->dev;
+	device_t dev = tdata->sc->dev;
 	struct emx_txbuf *tx_buffer;
 	int error, i, tsize, ntxd;
 
@@ -2049,32 +2061,33 @@ emx_create_tx_ring(struct emx_softc *sc)
 	    ntxd > EMX_MAX_TXD || ntxd < EMX_MIN_TXD) {
 		device_printf(dev, "Using %d TX descriptors instead of %d!\n",
 		    EMX_DEFAULT_TXD, ntxd);
-		sc->num_tx_desc = EMX_DEFAULT_TXD;
+		tdata->num_tx_desc = EMX_DEFAULT_TXD;
 	} else {
-		sc->num_tx_desc = ntxd;
+		tdata->num_tx_desc = ntxd;
 	}
 
 	/*
 	 * Allocate Transmit Descriptor ring
 	 */
-	tsize = roundup2(sc->num_tx_desc * sizeof(struct e1000_tx_desc),
+	tsize = roundup2(tdata->num_tx_desc * sizeof(struct e1000_tx_desc),
 			 EMX_DBA_ALIGN);
-	sc->tx_desc_base = bus_dmamem_coherent_any(sc->parent_dtag,
+	tdata->tx_desc_base = bus_dmamem_coherent_any(tdata->sc->parent_dtag,
 				EMX_DBA_ALIGN, tsize, BUS_DMA_WAITOK,
-				&sc->tx_desc_dtag, &sc->tx_desc_dmap,
-				&sc->tx_desc_paddr);
-	if (sc->tx_desc_base == NULL) {
+				&tdata->tx_desc_dtag, &tdata->tx_desc_dmap,
+				&tdata->tx_desc_paddr);
+	if (tdata->tx_desc_base == NULL) {
 		device_printf(dev, "Unable to allocate tx_desc memory\n");
 		return ENOMEM;
 	}
 
-	sc->tx_buf = kmalloc(sizeof(struct emx_txbuf) * sc->num_tx_desc,
-			     M_DEVBUF, M_WAITOK | M_ZERO);
+	tsize = __VM_CACHELINE_ALIGN(
+	    sizeof(struct emx_txbuf) * tdata->num_tx_desc);
+	tdata->tx_buf = kmalloc_cachealign(tsize, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * Create DMA tags for tx buffers
 	 */
-	error = bus_dma_tag_create(sc->parent_dtag, /* parent */
+	error = bus_dma_tag_create(tdata->sc->parent_dtag, /* parent */
 			1, 0,			/* alignment, bounds */
 			BUS_SPACE_MAXADDR,	/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
@@ -2084,26 +2097,26 @@ emx_create_tx_ring(struct emx_softc *sc)
 			EMX_MAX_SEGSIZE,	/* maxsegsize */
 			BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW |
 			BUS_DMA_ONEBPAGE,	/* flags */
-			&sc->txtag);
+			&tdata->txtag);
 	if (error) {
 		device_printf(dev, "Unable to allocate TX DMA tag\n");
-		kfree(sc->tx_buf, M_DEVBUF);
-		sc->tx_buf = NULL;
+		kfree(tdata->tx_buf, M_DEVBUF);
+		tdata->tx_buf = NULL;
 		return error;
 	}
 
 	/*
 	 * Create DMA maps for tx buffers
 	 */
-	for (i = 0; i < sc->num_tx_desc; i++) {
-		tx_buffer = &sc->tx_buf[i];
+	for (i = 0; i < tdata->num_tx_desc; i++) {
+		tx_buffer = &tdata->tx_buf[i];
 
-		error = bus_dmamap_create(sc->txtag,
+		error = bus_dmamap_create(tdata->txtag,
 					  BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 					  &tx_buffer->map);
 		if (error) {
 			device_printf(dev, "Unable to create TX DMA map\n");
-			emx_destroy_tx_ring(sc, i);
+			emx_destroy_tx_ring(tdata, i);
 			return error;
 		}
 	}
@@ -2111,16 +2124,16 @@ emx_create_tx_ring(struct emx_softc *sc)
 }
 
 static void
-emx_init_tx_ring(struct emx_softc *sc)
+emx_init_tx_ring(struct emx_txdata *tdata)
 {
 	/* Clear the old ring contents */
-	bzero(sc->tx_desc_base,
-	      sizeof(struct e1000_tx_desc) * sc->num_tx_desc);
+	bzero(tdata->tx_desc_base,
+	      sizeof(struct e1000_tx_desc) * tdata->num_tx_desc);
 
 	/* Reset state */
-	sc->next_avail_tx_desc = 0;
-	sc->next_tx_to_clean = 0;
-	sc->num_tx_desc_avail = sc->num_tx_desc;
+	tdata->next_avail_tx_desc = 0;
+	tdata->next_tx_to_clean = 0;
+	tdata->num_tx_desc_avail = tdata->num_tx_desc;
 }
 
 static void
@@ -2130,9 +2143,9 @@ emx_init_tx_unit(struct emx_softc *sc)
 	uint64_t bus_addr;
 
 	/* Setup the Base and Length of the Tx Descriptor Ring */
-	bus_addr = sc->tx_desc_paddr;
+	bus_addr = sc->tx_data.tx_desc_paddr;
 	E1000_WRITE_REG(&sc->hw, E1000_TDLEN(0),
-	    sc->num_tx_desc * sizeof(struct e1000_tx_desc));
+	    sc->tx_data.num_tx_desc * sizeof(struct e1000_tx_desc));
 	E1000_WRITE_REG(&sc->hw, E1000_TDBAH(0),
 	    (uint32_t)(bus_addr >> 32));
 	E1000_WRITE_REG(&sc->hw, E1000_TDBAL(0),
@@ -2192,34 +2205,34 @@ emx_init_tx_unit(struct emx_softc *sc)
 }
 
 static void
-emx_destroy_tx_ring(struct emx_softc *sc, int ndesc)
+emx_destroy_tx_ring(struct emx_txdata *tdata, int ndesc)
 {
 	struct emx_txbuf *tx_buffer;
 	int i;
 
 	/* Free Transmit Descriptor ring */
-	if (sc->tx_desc_base) {
-		bus_dmamap_unload(sc->tx_desc_dtag, sc->tx_desc_dmap);
-		bus_dmamem_free(sc->tx_desc_dtag, sc->tx_desc_base,
-				sc->tx_desc_dmap);
-		bus_dma_tag_destroy(sc->tx_desc_dtag);
+	if (tdata->tx_desc_base) {
+		bus_dmamap_unload(tdata->tx_desc_dtag, tdata->tx_desc_dmap);
+		bus_dmamem_free(tdata->tx_desc_dtag, tdata->tx_desc_base,
+				tdata->tx_desc_dmap);
+		bus_dma_tag_destroy(tdata->tx_desc_dtag);
 
-		sc->tx_desc_base = NULL;
+		tdata->tx_desc_base = NULL;
 	}
 
-	if (sc->tx_buf == NULL)
+	if (tdata->tx_buf == NULL)
 		return;
 
 	for (i = 0; i < ndesc; i++) {
-		tx_buffer = &sc->tx_buf[i];
+		tx_buffer = &tdata->tx_buf[i];
 
 		KKASSERT(tx_buffer->m_head == NULL);
-		bus_dmamap_destroy(sc->txtag, tx_buffer->map);
+		bus_dmamap_destroy(tdata->txtag, tx_buffer->map);
 	}
-	bus_dma_tag_destroy(sc->txtag);
+	bus_dma_tag_destroy(tdata->txtag);
 
-	kfree(sc->tx_buf, M_DEVBUF);
-	sc->tx_buf = NULL;
+	kfree(tdata->tx_buf, M_DEVBUF);
+	tdata->tx_buf = NULL;
 }
 
 /*
@@ -2236,7 +2249,7 @@ emx_destroy_tx_ring(struct emx_softc *sc, int ndesc)
  * csum context.
  */
 static int
-emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
+emx_txcsum(struct emx_txdata *tdata, struct mbuf *mp,
 	   uint32_t *txd_upper, uint32_t *txd_lower)
 {
 	struct e1000_context_desc *TXD;
@@ -2247,14 +2260,14 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 	ip_hlen = mp->m_pkthdr.csum_iphlen;
 	ehdrlen = mp->m_pkthdr.csum_lhlen;
 
-	if (sc->csum_lhlen == ehdrlen && sc->csum_iphlen == ip_hlen &&
-	    sc->csum_flags == csum_flags) {
+	if (tdata->csum_lhlen == ehdrlen && tdata->csum_iphlen == ip_hlen &&
+	    tdata->csum_flags == csum_flags) {
 		/*
 		 * Same csum offload context as the previous packets;
 		 * just return.
 		 */
-		*txd_upper = sc->csum_txd_upper;
-		*txd_lower = sc->csum_txd_lower;
+		*txd_upper = tdata->csum_txd_upper;
+		*txd_lower = tdata->csum_txd_lower;
 		return 0;
 	}
 
@@ -2262,8 +2275,8 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 	 * Setup a new csum offload context.
 	 */
 
-	curr_txd = sc->next_avail_tx_desc;
-	TXD = (struct e1000_context_desc *)&sc->tx_desc_base[curr_txd];
+	curr_txd = tdata->next_avail_tx_desc;
+	TXD = (struct e1000_context_desc *)&tdata->tx_desc_base[curr_txd];
 
 	cmd = 0;
 
@@ -2313,51 +2326,51 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 		     E1000_TXD_DTYP_D;		/* Data descr */
 
 	/* Save the information for this csum offloading context */
-	sc->csum_lhlen = ehdrlen;
-	sc->csum_iphlen = ip_hlen;
-	sc->csum_flags = csum_flags;
-	sc->csum_txd_upper = *txd_upper;
-	sc->csum_txd_lower = *txd_lower;
+	tdata->csum_lhlen = ehdrlen;
+	tdata->csum_iphlen = ip_hlen;
+	tdata->csum_flags = csum_flags;
+	tdata->csum_txd_upper = *txd_upper;
+	tdata->csum_txd_lower = *txd_lower;
 
 	TXD->tcp_seg_setup.data = htole32(0);
 	TXD->cmd_and_length =
 	    htole32(E1000_TXD_CMD_IFCS | E1000_TXD_CMD_DEXT | cmd);
 
-	if (++curr_txd == sc->num_tx_desc)
+	if (++curr_txd == tdata->num_tx_desc)
 		curr_txd = 0;
 
-	KKASSERT(sc->num_tx_desc_avail > 0);
-	sc->num_tx_desc_avail--;
+	KKASSERT(tdata->num_tx_desc_avail > 0);
+	tdata->num_tx_desc_avail--;
 
-	sc->next_avail_tx_desc = curr_txd;
+	tdata->next_avail_tx_desc = curr_txd;
 	return 1;
 }
 
 static void
-emx_txeof(struct emx_softc *sc)
+emx_txeof(struct emx_txdata *tdata)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct ifnet *ifp = &tdata->sc->arpcom.ac_if;
 	struct emx_txbuf *tx_buffer;
 	int first, num_avail;
 
-	if (sc->tx_dd_head == sc->tx_dd_tail)
+	if (tdata->tx_dd_head == tdata->tx_dd_tail)
 		return;
 
-	if (sc->num_tx_desc_avail == sc->num_tx_desc)
+	if (tdata->num_tx_desc_avail == tdata->num_tx_desc)
 		return;
 
-	num_avail = sc->num_tx_desc_avail;
-	first = sc->next_tx_to_clean;
+	num_avail = tdata->num_tx_desc_avail;
+	first = tdata->next_tx_to_clean;
 
-	while (sc->tx_dd_head != sc->tx_dd_tail) {
-		int dd_idx = sc->tx_dd[sc->tx_dd_head];
+	while (tdata->tx_dd_head != tdata->tx_dd_tail) {
+		int dd_idx = tdata->tx_dd[tdata->tx_dd_head];
 		struct e1000_tx_desc *tx_desc;
 
-		tx_desc = &sc->tx_desc_base[dd_idx];
+		tx_desc = &tdata->tx_desc_base[dd_idx];
 		if (tx_desc->upper.fields.status & E1000_TXD_STAT_DD) {
-			EMX_INC_TXDD_IDX(sc->tx_dd_head);
+			EMX_INC_TXDD_IDX(tdata->tx_dd_head);
 
-			if (++dd_idx == sc->num_tx_desc)
+			if (++dd_idx == tdata->num_tx_desc)
 				dd_idx = 0;
 
 			while (first != dd_idx) {
@@ -2365,95 +2378,95 @@ emx_txeof(struct emx_softc *sc)
 
 				num_avail++;
 
-				tx_buffer = &sc->tx_buf[first];
+				tx_buffer = &tdata->tx_buf[first];
 				if (tx_buffer->m_head) {
 					ifp->if_opackets++;
-					bus_dmamap_unload(sc->txtag,
+					bus_dmamap_unload(tdata->txtag,
 							  tx_buffer->map);
 					m_freem(tx_buffer->m_head);
 					tx_buffer->m_head = NULL;
 				}
 
-				if (++first == sc->num_tx_desc)
+				if (++first == tdata->num_tx_desc)
 					first = 0;
 			}
 		} else {
 			break;
 		}
 	}
-	sc->next_tx_to_clean = first;
-	sc->num_tx_desc_avail = num_avail;
+	tdata->next_tx_to_clean = first;
+	tdata->num_tx_desc_avail = num_avail;
 
-	if (sc->tx_dd_head == sc->tx_dd_tail) {
-		sc->tx_dd_head = 0;
-		sc->tx_dd_tail = 0;
+	if (tdata->tx_dd_head == tdata->tx_dd_tail) {
+		tdata->tx_dd_head = 0;
+		tdata->tx_dd_tail = 0;
 	}
 
-	if (!EMX_IS_OACTIVE(sc)) {
+	if (!EMX_IS_OACTIVE(tdata)) {
 		ifp->if_flags &= ~IFF_OACTIVE;
 
 		/* All clean, turn off the timer */
-		if (sc->num_tx_desc_avail == sc->num_tx_desc)
+		if (tdata->num_tx_desc_avail == tdata->num_tx_desc)
 			ifp->if_timer = 0;
 	}
 }
 
 static void
-emx_tx_collect(struct emx_softc *sc)
+emx_tx_collect(struct emx_txdata *tdata)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct ifnet *ifp = &tdata->sc->arpcom.ac_if;
 	struct emx_txbuf *tx_buffer;
 	int tdh, first, num_avail, dd_idx = -1;
 
-	if (sc->num_tx_desc_avail == sc->num_tx_desc)
+	if (tdata->num_tx_desc_avail == tdata->num_tx_desc)
 		return;
 
-	tdh = E1000_READ_REG(&sc->hw, E1000_TDH(0));
-	if (tdh == sc->next_tx_to_clean)
+	tdh = E1000_READ_REG(&tdata->sc->hw, E1000_TDH(0));
+	if (tdh == tdata->next_tx_to_clean)
 		return;
 
-	if (sc->tx_dd_head != sc->tx_dd_tail)
-		dd_idx = sc->tx_dd[sc->tx_dd_head];
+	if (tdata->tx_dd_head != tdata->tx_dd_tail)
+		dd_idx = tdata->tx_dd[tdata->tx_dd_head];
 
-	num_avail = sc->num_tx_desc_avail;
-	first = sc->next_tx_to_clean;
+	num_avail = tdata->num_tx_desc_avail;
+	first = tdata->next_tx_to_clean;
 
 	while (first != tdh) {
 		logif(pkt_txclean);
 
 		num_avail++;
 
-		tx_buffer = &sc->tx_buf[first];
+		tx_buffer = &tdata->tx_buf[first];
 		if (tx_buffer->m_head) {
 			ifp->if_opackets++;
-			bus_dmamap_unload(sc->txtag,
+			bus_dmamap_unload(tdata->txtag,
 					  tx_buffer->map);
 			m_freem(tx_buffer->m_head);
 			tx_buffer->m_head = NULL;
 		}
 
 		if (first == dd_idx) {
-			EMX_INC_TXDD_IDX(sc->tx_dd_head);
-			if (sc->tx_dd_head == sc->tx_dd_tail) {
-				sc->tx_dd_head = 0;
-				sc->tx_dd_tail = 0;
+			EMX_INC_TXDD_IDX(tdata->tx_dd_head);
+			if (tdata->tx_dd_head == tdata->tx_dd_tail) {
+				tdata->tx_dd_head = 0;
+				tdata->tx_dd_tail = 0;
 				dd_idx = -1;
 			} else {
-				dd_idx = sc->tx_dd[sc->tx_dd_head];
+				dd_idx = tdata->tx_dd[tdata->tx_dd_head];
 			}
 		}
 
-		if (++first == sc->num_tx_desc)
+		if (++first == tdata->num_tx_desc)
 			first = 0;
 	}
-	sc->next_tx_to_clean = first;
-	sc->num_tx_desc_avail = num_avail;
+	tdata->next_tx_to_clean = first;
+	tdata->num_tx_desc_avail = num_avail;
 
-	if (!EMX_IS_OACTIVE(sc)) {
+	if (!EMX_IS_OACTIVE(tdata)) {
 		ifp->if_flags &= ~IFF_OACTIVE;
 
 		/* All clean, turn off the timer */
-		if (sc->num_tx_desc_avail == sc->num_tx_desc)
+		if (tdata->num_tx_desc_avail == tdata->num_tx_desc)
 			ifp->if_timer = 0;
 	}
 }
@@ -2470,7 +2483,7 @@ emx_tx_purge(struct emx_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	if (!sc->link_active && ifp->if_timer) {
-		emx_tx_collect(sc);
+		emx_tx_collect(&sc->tx_data);
 		if (ifp->if_timer) {
 			if_printf(ifp, "Link lost, TX pending, reinit\n");
 			ifp->if_timer = 0;
@@ -2563,8 +2576,9 @@ emx_create_rx_ring(struct emx_rxdata *rdata)
 		return ENOMEM;
 	}
 
-	rdata->rx_buf = kmalloc(sizeof(struct emx_rxbuf) * rdata->num_rx_desc,
-				M_DEVBUF, M_WAITOK | M_ZERO);
+	rsize = __VM_CACHELINE_ALIGN(
+	    sizeof(struct emx_rxbuf) * rdata->num_rx_desc);
+	rdata->rx_buf = kmalloc_cachealign(rsize, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * Create DMA tag for rx buffers
@@ -3270,10 +3284,10 @@ emx_print_debug_info(struct emx_softc *sc)
 	    E1000_READ_REG(&sc->hw, E1000_RDH(0)),
 	    E1000_READ_REG(&sc->hw, E1000_RDT(0)));
 	device_printf(dev, "Num Tx descriptors avail = %d\n",
-	    sc->num_tx_desc_avail);
+	    sc->tx_data.num_tx_desc_avail);
 
-	device_printf(dev, "TSO segments %lu\n", sc->tso_segments);
-	device_printf(dev, "TSO ctx reused %lu\n", sc->tso_ctx_reused);
+	device_printf(dev, "TSO segments %lu\n", sc->tx_data.tso_segments);
+	device_printf(dev, "TSO ctx reused %lu\n", sc->tx_data.tso_ctx_reused);
 }
 
 static void
@@ -3425,7 +3439,7 @@ emx_add_sysctl(struct emx_softc *sc)
 		       OID_AUTO, "rxd", CTLFLAG_RD,
 		       &sc->rx_data[0].num_rx_desc, 0, NULL);
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-		       OID_AUTO, "txd", CTLFLAG_RD, &sc->num_tx_desc, 0, NULL);
+	    OID_AUTO, "txd", CTLFLAG_RD, &sc->tx_data.num_tx_desc, 0, NULL);
 
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 			OID_AUTO, "int_throttle_ceil", CTLTYPE_INT|CTLFLAG_RW,
@@ -3517,7 +3531,7 @@ emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error, segs;
 
-	segs = sc->tx_int_nsegs;
+	segs = sc->tx_data.tx_int_nsegs;
 	error = sysctl_handle_int(oidp, &segs, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
@@ -3533,13 +3547,13 @@ emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
 	 *    be generated (OACTIVE will never recover)
 	 * o  Too small that will cause tx_dd[] overflow
 	 */
-	if (segs < sc->oact_tx_desc ||
-	    segs >= sc->num_tx_desc - sc->oact_tx_desc ||
-	    segs < sc->num_tx_desc / EMX_TXDD_SAFE) {
+	if (segs < sc->tx_data.oact_tx_desc ||
+	    segs >= sc->tx_data.num_tx_desc - sc->tx_data.oact_tx_desc ||
+	    segs < sc->tx_data.num_tx_desc / EMX_TXDD_SAFE) {
 		error = EINVAL;
 	} else {
 		error = 0;
-		sc->tx_int_nsegs = segs;
+		sc->tx_data.tx_int_nsegs = segs;
 	}
 
 	ifnet_deserialize_all(ifp);
@@ -3624,7 +3638,7 @@ emx_dma_alloc(struct emx_softc *sc)
 	/*
 	 * Allocate transmit descriptors ring and buffers
 	 */
-	error = emx_create_tx_ring(sc);
+	error = emx_create_tx_ring(&sc->tx_data);
 	if (error) {
 		device_printf(sc->dev, "Could not setup transmit structures\n");
 		return error;
@@ -3649,7 +3663,7 @@ emx_dma_free(struct emx_softc *sc)
 {
 	int i;
 
-	emx_destroy_tx_ring(sc, sc->num_tx_desc);
+	emx_destroy_tx_ring(&sc->tx_data, sc->tx_data.num_tx_desc);
 
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		emx_destroy_rx_ring(&sc->rx_data[i],
@@ -3734,13 +3748,13 @@ emx_npoll_status(struct ifnet *ifp)
 }
 
 static void
-emx_npoll_tx(struct ifnet *ifp, void *arg __unused, int cycle __unused)
+emx_npoll_tx(struct ifnet *ifp, void *arg, int cycle __unused)
 {
-	struct emx_softc *sc = ifp->if_softc;
+	struct emx_txdata *tdata = arg;
 
-	ASSERT_SERIALIZED(&sc->tx_serialize);
+	ASSERT_SERIALIZED(&tdata->tx_serialize);
 
-	emx_txeof(sc);
+	emx_txeof(tdata);
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
 }
@@ -3771,8 +3785,8 @@ emx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		off = sc->tx_npoll_off;
 		KKASSERT(off < ncpus2);
 		info->ifpi_tx[off].poll_func = emx_npoll_tx;
-		info->ifpi_tx[off].arg = NULL;
-		info->ifpi_tx[off].serializer = &sc->tx_serialize;
+		info->ifpi_tx[off].arg = &sc->tx_data;
+		info->ifpi_tx[off].serializer = &sc->tx_data.tx_serialize;
 
 		off = sc->rx_npoll_off;
 		for (i = 0; i < sc->rx_ring_cnt; ++i) {
@@ -3870,7 +3884,7 @@ emx_disable_aspm(struct emx_softc *sc)
 }
 
 static int
-emx_tso_pullup(struct emx_softc *sc, struct mbuf **mp)
+emx_tso_pullup(struct emx_txdata *tdata, struct mbuf **mp)
 {
 	int iphlen, hoff, thoff, ex = 0;
 	struct mbuf *m;
@@ -3887,7 +3901,7 @@ emx_tso_pullup(struct emx_softc *sc, struct mbuf **mp)
 	KASSERT(thoff > 0, ("invalid tcp hlen"));
 	KASSERT(hoff > 0, ("invalid ether hlen"));
 
-	if (sc->flags & EMX_FLAG_TSO_PULLEX)
+	if (tdata->sc->flags & EMX_FLAG_TSO_PULLEX)
 		ex = 4;
 
 	if (m->m_len < hoff + iphlen + thoff + ex) {
@@ -3905,7 +3919,7 @@ emx_tso_pullup(struct emx_softc *sc, struct mbuf **mp)
 }
 
 static int
-emx_tso_setup(struct emx_softc *sc, struct mbuf *mp,
+emx_tso_setup(struct emx_txdata *tdata, struct mbuf *mp,
     uint32_t *txd_upper, uint32_t *txd_lower)
 {
 	struct e1000_context_desc *TXD;
@@ -3913,7 +3927,7 @@ emx_tso_setup(struct emx_softc *sc, struct mbuf *mp,
 	int mss, pktlen, curr_txd;
 
 #ifdef EMX_TSO_DEBUG
-	sc->tso_segments++;
+	tdata->tso_segments++;
 #endif
 
 	iphlen = mp->m_pkthdr.csum_iphlen;
@@ -3922,16 +3936,16 @@ emx_tso_setup(struct emx_softc *sc, struct mbuf *mp,
 	mss = mp->m_pkthdr.tso_segsz;
 	pktlen = mp->m_pkthdr.len;
 
-	if (sc->csum_flags == CSUM_TSO &&
-	    sc->csum_iphlen == iphlen &&
-	    sc->csum_lhlen == hoff &&
-	    sc->csum_thlen == thoff &&
-	    sc->csum_mss == mss &&
-	    sc->csum_pktlen == pktlen) {
-		*txd_upper = sc->csum_txd_upper;
-		*txd_lower = sc->csum_txd_lower;
+	if (tdata->csum_flags == CSUM_TSO &&
+	    tdata->csum_iphlen == iphlen &&
+	    tdata->csum_lhlen == hoff &&
+	    tdata->csum_thlen == thoff &&
+	    tdata->csum_mss == mss &&
+	    tdata->csum_pktlen == pktlen) {
+		*txd_upper = tdata->csum_txd_upper;
+		*txd_lower = tdata->csum_txd_lower;
 #ifdef EMX_TSO_DEBUG
-		sc->tso_ctx_reused++;
+		tdata->tso_ctx_reused++;
 #endif
 		return 0;
 	}
@@ -3941,8 +3955,8 @@ emx_tso_setup(struct emx_softc *sc, struct mbuf *mp,
 	 * Setup a new TSO context.
 	 */
 
-	curr_txd = sc->next_avail_tx_desc;
-	TXD = (struct e1000_context_desc *)&sc->tx_desc_base[curr_txd];
+	curr_txd = tdata->next_avail_tx_desc;
+	TXD = (struct e1000_context_desc *)&tdata->tx_desc_base[curr_txd];
 
 	*txd_lower = E1000_TXD_CMD_DEXT |	/* Extended descr type */
 		     E1000_TXD_DTYP_D |		/* Data descr type */
@@ -3984,21 +3998,21 @@ emx_tso_setup(struct emx_softc *sc, struct mbuf *mp,
 				(pktlen - hlen));	/* Total len */
 
 	/* Save the information for this TSO context */
-	sc->csum_flags = CSUM_TSO;
-	sc->csum_lhlen = hoff;
-	sc->csum_iphlen = iphlen;
-	sc->csum_thlen = thoff;
-	sc->csum_mss = mss;
-	sc->csum_pktlen = pktlen;
-	sc->csum_txd_upper = *txd_upper;
-	sc->csum_txd_lower = *txd_lower;
+	tdata->csum_flags = CSUM_TSO;
+	tdata->csum_lhlen = hoff;
+	tdata->csum_iphlen = iphlen;
+	tdata->csum_thlen = thoff;
+	tdata->csum_mss = mss;
+	tdata->csum_pktlen = pktlen;
+	tdata->csum_txd_upper = *txd_upper;
+	tdata->csum_txd_lower = *txd_lower;
 
-	if (++curr_txd == sc->num_tx_desc)
+	if (++curr_txd == tdata->num_tx_desc)
 		curr_txd = 0;
 
-	KKASSERT(sc->num_tx_desc_avail > 0);
-	sc->num_tx_desc_avail--;
+	KKASSERT(tdata->num_tx_desc_avail > 0);
+	tdata->num_tx_desc_avail--;
 
-	sc->next_avail_tx_desc = curr_txd;
+	tdata->next_avail_tx_desc = curr_txd;
 	return 1;
 }

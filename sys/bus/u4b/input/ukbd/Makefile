@@ -2,7 +2,8 @@
 
 KMOD=	ukbd
 
-SRCS=	opt_bus.h opt_usb.h device_if.h bus_if.h usb_if.h \
+SRCS=	bus_if.h device_if.h usb_if.h \
+	opt_bus.h opt_compat.h opt_kbd.h opt_ukbd.h opt_usb.h \
 	ukbd.c
 
 .include <bsd.kmod.mk>

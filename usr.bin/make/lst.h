@@ -161,7 +161,7 @@ void		*Lst_DeQueue(Lst *);
  * LstValid (L) --
  *	Return true if the list L is valid
  */
-#define Lst_Valid(L)	(((L) == NULL) ? false : true)
+static inline int Lst_Valid(const void *L) { return (L != NULL); }
 
 /*
  * LstNodeValid (LN, L) --

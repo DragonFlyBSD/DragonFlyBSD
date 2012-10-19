@@ -30,9 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/usched_set.2,v 1.4 2007/12/23 15:31:28 swildner Exp $
-.\"
-.Dd February 26, 2009
+.Dd October 16, 2012
 .Dt USCHED_SET 2
 .Os
 .Sh NAME
@@ -103,7 +101,8 @@ The specified cpuid is not a valid cpuid for the system.
 .It Bq Er EPERM
 Deleting the specified cpuid leaves the LWP without a CPU to run on.
 .El
-.\".Sh SEE ALSO
+.Sh SEE ALSO
+.Xr usched 8
 .Sh HISTORY
 The
 .Fn usched_set

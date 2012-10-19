@@ -308,6 +308,7 @@ pseudo-device	crypto		# core crypto support, used by wlan
 device		uhci		# UHCI PCI->USB interface
 device		ohci		# OHCI PCI->USB interface
 device		usb		# USB Bus (required)
+#device		"usb4bsd"	# use this instead of usb for the new stack
 device		ugen		# Generic
 device		uhid		# "Human Interface Devices"
 device		ukbd		# Keyboard

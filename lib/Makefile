@@ -85,6 +85,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libstand \
 	libtcplay \
 	libtelnet \
+	${_libusb} \
 	${_libusbhid} \
 	libvgl \
 	libwrap \
@@ -116,6 +117,7 @@ _libnetgraph=	libnetgraph
 .endif
 
 .if defined(WANT_USB4BSD)
+_libusb=	libusb
 _libusbhid=	libu4bhid
 .else
 _libusbhid=	libusbhid

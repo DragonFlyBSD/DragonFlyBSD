@@ -27,7 +27,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -36,25 +35,24 @@
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
+#include <sys/thread2.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usb_ioctl.h>
-#include <dev/usb/usbdi.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usb_ioctl.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR usb_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_dynamic.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_dynamic.h>
 
-#include <dev/usb/quirk/usb_quirk.h>
+#include <bus/u4b/quirk/usb_quirk.h>
 
 MODULE_DEPEND(usb_quirk, usb, 1, 1, 1);
 MODULE_VERSION(usb_quirk, 1);
@@ -70,7 +68,7 @@ struct usb_quirk_entry {
 	uint16_t quirks[USB_SUB_QUIRKS_MAX];
 };
 
-static struct mtx usb_quirk_mtx;
+static struct lock usb_quirk_lock;
 
 #define	USB_QUIRK_VP(v,p,l,h,...) \
   { .vid = (v), .pid = (p), .lo_rev = (l), .hi_rev = (h), \
@@ -561,7 +559,7 @@ usb_test_quirk_by_info(const struct usbd_lookup_info *info, uint16_t quirk)
 	if (quirk == UQ_NONE)
 		goto done;
 
-	mtx_lock(&usb_quirk_mtx);
+	lockmgr(&usb_quirk_lock, LK_EXCLUSIVE);
 
 	for (x = 0; x != USB_DEV_QUIRKS_MAX; x++) {
 		/* see if quirk information does not match */
@@ -585,7 +583,7 @@ usb_test_quirk_by_info(const struct usbd_lookup_info *info, uint16_t quirk)
 		/* lookup quirk */
 		for (y = 0; y != USB_SUB_QUIRKS_MAX; y++) {
 			if (usb_quirks[x].quirks[y] == quirk) {
-				mtx_unlock(&usb_quirk_mtx);
+				lockmgr(&usb_quirk_lock, LK_RELEASE);
 				DPRINTF("Found quirk '%s'.\n", usb_quirkstr(quirk));
 				return (1);
 			}
@@ -593,7 +591,7 @@ usb_test_quirk_by_info(const struct usbd_lookup_info *info, uint16_t quirk)
 		/* no quirk found */
 		break;
 	}
-	mtx_unlock(&usb_quirk_mtx);
+	lockmgr(&usb_quirk_lock, LK_RELEASE);
 done:
 	return (0);			/* no quirk match */
 }
@@ -604,7 +602,7 @@ usb_quirk_get_entry(uint16_t vid, uint16_t pid,
 {
 	uint16_t x;
 
-	mtx_assert(&usb_quirk_mtx, MA_OWNED);
+	KKASSERT(lockowned(&usb_quirk_lock));
 
 	if ((vid | pid | lo_rev | hi_rev) == 0) {
 		/* all zero - special case */
@@ -672,7 +670,7 @@ usb_quirk_ioctl(unsigned long cmd, caddr_t data,
 		if (y >= USB_DEV_QUIRKS_MAX) {
 			return (EINVAL);
 		}
-		mtx_lock(&usb_quirk_mtx);
+		lockmgr(&usb_quirk_lock, LK_EXCLUSIVE);
 		/* copy out data */
 		pgq->vid = usb_quirks[y].vid;
 		pgq->pid = usb_quirks[y].pid;
@@ -681,7 +679,7 @@ usb_quirk_ioctl(unsigned long cmd, caddr_t data,
 		strlcpy(pgq->quirkname,
 		    usb_quirkstr(usb_quirks[y].quirks[x]),
 		    sizeof(pgq->quirkname));
-		mtx_unlock(&usb_quirk_mtx);
+		lockmgr(&usb_quirk_lock, LK_RELEASE);
 		return (0);		/* success */
 
 	case USB_QUIRK_NAME_GET:
@@ -714,11 +712,11 @@ usb_quirk_ioctl(unsigned long cmd, caddr_t data,
 		if (y == UQ_NONE) {
 			return (EINVAL);
 		}
-		mtx_lock(&usb_quirk_mtx);
+		lockmgr(&usb_quirk_lock, LK_EXCLUSIVE);
 		pqe = usb_quirk_get_entry(pgq->vid, pgq->pid,
 		    pgq->bcdDeviceLow, pgq->bcdDeviceHigh, 1);
 		if (pqe == NULL) {
-			mtx_unlock(&usb_quirk_mtx);
+			lockmgr(&usb_quirk_lock, LK_RELEASE);
 			return (EINVAL);
 		}
 		for (x = 0; x != USB_SUB_QUIRKS_MAX; x++) {
@@ -727,7 +725,7 @@ usb_quirk_ioctl(unsigned long cmd, caddr_t data,
 				break;
 			}
 		}
-		mtx_unlock(&usb_quirk_mtx);
+		lockmgr(&usb_quirk_lock, LK_RELEASE);
 		if (x == USB_SUB_QUIRKS_MAX) {
 			return (ENOMEM);
 		}
@@ -752,11 +750,11 @@ usb_quirk_ioctl(unsigned long cmd, caddr_t data,
 		if (y == UQ_NONE) {
 			return (EINVAL);
 		}
-		mtx_lock(&usb_quirk_mtx);
+		lockmgr(&usb_quirk_lock, LK_EXCLUSIVE);
 		pqe = usb_quirk_get_entry(pgq->vid, pgq->pid,
 		    pgq->bcdDeviceLow, pgq->bcdDeviceHigh, 0);
 		if (pqe == NULL) {
-			mtx_unlock(&usb_quirk_mtx);
+			lockmgr(&usb_quirk_lock, LK_RELEASE);
 			return (EINVAL);
 		}
 		for (x = 0; x != USB_SUB_QUIRKS_MAX; x++) {
@@ -766,7 +764,7 @@ usb_quirk_ioctl(unsigned long cmd, caddr_t data,
 			}
 		}
 		if (x == USB_SUB_QUIRKS_MAX) {
-			mtx_unlock(&usb_quirk_mtx);
+			lockmgr(&usb_quirk_lock, LK_RELEASE);
 			return (ENOMEM);
 		}
 		for (x = 0; x != USB_SUB_QUIRKS_MAX; x++) {
@@ -778,7 +776,7 @@ usb_quirk_ioctl(unsigned long cmd, caddr_t data,
 			/* all quirk entries are unused - release */
 			memset(pqe, 0, sizeof(pqe));
 		}
-		mtx_unlock(&usb_quirk_mtx);
+		lockmgr(&usb_quirk_lock, LK_RELEASE);
 		return (0);		/* success */
 
 	default:
@@ -791,7 +789,7 @@ static void
 usb_quirk_init(void *arg)
 {
 	/* initialize mutex */
-	mtx_init(&usb_quirk_mtx, "USB quirk", NULL, MTX_DEF);
+	lockinit(&usb_quirk_lock, "USB quirk", 0, 0);
 
 	/* register our function */
 	usb_test_quirk_p = &usb_test_quirk_by_info;
@@ -804,8 +802,8 @@ usb_quirk_uninit(void *arg)
 	usb_quirk_unload(arg);
 
 	/* destroy mutex */
-	mtx_destroy(&usb_quirk_mtx);
+	lockuninit(&usb_quirk_lock);
 }
 
-SYSINIT(usb_quirk_init, SI_SUB_LOCK, SI_ORDER_FIRST, usb_quirk_init, NULL);
-SYSUNINIT(usb_quirk_uninit, SI_SUB_LOCK, SI_ORDER_ANY, usb_quirk_uninit, NULL);
+SYSINIT(usb_quirk_init, SI_SUB_DRIVERS, SI_ORDER_FIRST, usb_quirk_init, NULL);
+SYSUNINIT(usb_quirk_uninit, SI_SUB_DRIVERS, SI_ORDER_ANY, usb_quirk_uninit, NULL);

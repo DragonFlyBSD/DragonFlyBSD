@@ -704,7 +704,7 @@ tail(char *fn)
 static void
 do_rules(FILE *f)
 {
-	char *cp, *np, och, *tp;
+	char *cp, *np, och;
 	struct file_list *ftp;
 	char *special;
 
@@ -735,7 +735,6 @@ do_rules(FILE *f)
 				fprintf(f, "%so: $S/%s%c\n", tail(np),
 					np, och);
 		}
-		tp = tail(np);
 		special = ftp->f_special;
 		if (special == NULL) {
 			const char *ftype = NULL;

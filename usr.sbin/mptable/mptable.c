@@ -650,7 +650,7 @@ MPConfigTableHeader( uint32_t pap )
     vm_offset_t paddr;
     mpcth_t	cth;
     int		x;
-    int		totalSize, t;
+    int		totalSize;
     int		count, c;
     int		type;
 
@@ -717,7 +717,7 @@ MPConfigTableHeader( uint32_t pap )
     /* process all the CPUs */
     printf( "--\nProcessors:\tAPIC ID\tVersion\tState"
 	    "\t\tFamily\tModel\tStep\tFlags\n" );
-    for ( t = totalSize, c = count; c; c-- ) {
+    for ( c = count; c; c-- ) {
 	if ( readType() == 0 )
 	    processorEntry();
         totalSize -= basetableEntryTypes[ 0 ].length;
@@ -725,7 +725,7 @@ MPConfigTableHeader( uint32_t pap )
 
     /* process all the busses */
     printf( "--\nBus:\t\tBus ID\tType\n" );
-    for ( t = totalSize, c = count; c; c-- ) {
+    for ( c = count; c; c-- ) {
 	if ( readType() == 1 )
 	    busEntry();
         totalSize -= basetableEntryTypes[ 1 ].length;
@@ -733,7 +733,7 @@ MPConfigTableHeader( uint32_t pap )
 
     /* process all the apics */
     printf( "--\nI/O APICs:\tAPIC ID\tVersion\tState\t\tAddress\n" );
-    for ( t = totalSize, c = count; c; c-- ) {
+    for ( c = count; c; c-- ) {
 	if ( readType() == 2 )
 	    ioApicEntry();
         totalSize -= basetableEntryTypes[ 2 ].length;
@@ -741,7 +741,7 @@ MPConfigTableHeader( uint32_t pap )
 
     /* process all the I/O Ints */
     printf( "--\nI/O Ints:\tType\tPolarity    Trigger\tBus ID\t IRQ\tAPIC ID\tPIN#\n" );
-    for ( t = totalSize, c = count; c; c-- ) {
+    for ( c = count; c; c-- ) {
 	if ( readType() == 3 )
 	    intEntry();
         totalSize -= basetableEntryTypes[ 3 ].length;
@@ -749,7 +749,7 @@ MPConfigTableHeader( uint32_t pap )
 
     /* process all the Local Ints */
     printf( "--\nLocal Ints:\tType\tPolarity    Trigger\tBus ID\t IRQ\tAPIC ID\tPIN#\n" );
-    for ( t = totalSize, c = count; c; c-- ) {
+    for ( c = count; c; c-- ) {
 	if ( readType() == 4 )
 	    intEntry();
         totalSize -= basetableEntryTypes[ 4 ].length;

@@ -170,7 +170,6 @@ rtadd_clone(struct rt_entry *ort, struct sockaddr *dst, struct sockaddr *gate,
 {
 	struct afhash h;
 	struct rt_entry *rt;
-	struct rthash *rh;
 	int af = dst->sa_family, flags;
 	u_int hash;
 
@@ -181,7 +180,6 @@ rtadd_clone(struct rt_entry *ort, struct sockaddr *dst, struct sockaddr *gate,
 	(*afswitch[af].af_hash)(dst, &h);
 	flags = (*afswitch[af].af_ishost)(dst) ? RTF_HOST : 0;
 	hash = h.afh_nethash;
-	rh = &nethash[hash & ROUTEHASHMASK];
 	rt = (struct rt_entry *)malloc(sizeof (*rt));
 	if (rt == NULL)
 		return;
@@ -210,7 +208,6 @@ void
 rtchange(struct rt_entry *rt, struct sockaddr *gate, short metric, short ticks)
 {
 	int doioctl = 0, metricchanged = 0;
-	struct rtuentry oldroute;
 
 	FIXLEN(gate);
 	/*
@@ -277,10 +274,8 @@ rtchange(struct rt_entry *rt, struct sockaddr *gate, short metric, short ticks)
 		metricchanged++;
 	if (doioctl || metricchanged) {
 		TRACE_ACTION("CHANGE FROM", rt);
-		if (doioctl) {
-			oldroute = rt->rt_rt;
+		if (doioctl)
 			rt->rt_router = *gate;
-		}
 		rt->rt_metric = metric;
 		rt->rt_ticks = ticks;
 		if ((rt->rt_state & RTS_INTERFACE) && metric) {
@@ -302,14 +297,6 @@ rtchange(struct rt_entry *rt, struct sockaddr *gate, short metric, short ticks)
 		TRACE_ACTION("CHANGE TO", rt);
 	}
 	if (doioctl && install) {
-#ifndef RTM_ADD
-		if (rtioctl(ADD, &rt->rt_rt) < 0)
-		  syslog(LOG_ERR, "rtioctl ADD dst %s, gw %s: %m",
-		   ipx_ntoa(&((struct sockaddr_ipx *)&rt->rt_dst)->sipx_addr),
-		   ipx_ntoa(&((struct sockaddr_ipx *)&rt->rt_router)->sipx_addr));
-		if (delete && rtioctl(DELETE, &oldroute) < 0)
-			perror("rtioctl DELETE");
-#else
 		if (delete == 0) {
 			if (rtioctl(ADD, &rt->rt_rt) >= 0)
 				return;
@@ -320,7 +307,6 @@ rtchange(struct rt_entry *rt, struct sockaddr *gate, short metric, short ticks)
 	        syslog(LOG_ERR, "rtioctl ADD dst %s, gw %s: %m",
 		   ipxdp_ntoa(&((struct sockaddr_ipx *)&rt->rt_dst)->sipx_addr),
 		   ipxdp_ntoa(&((struct sockaddr_ipx *)&rt->rt_router)->sipx_addr));
-#endif
 	}
 }
 
@@ -369,24 +355,6 @@ int seqno;
 int
 rtioctl(int action, struct rtuentry *ort)
 {
-#ifndef RTM_ADD
-	if (install == 0)
-		return (errno = 0);
-
-	ort->rtu_rtflags = ort->rtu_flags;
-
-	switch (action) {
-
-	case ADD:
-		return (ioctl(s, SIOCADDRT, (char *)ort));
-
-	case DELETE:
-		return (ioctl(s, SIOCDELRT, (char *)ort));
-
-	default:
-		return (-1);
-	}
-#else /* RTM_ADD */
 	struct {
 		struct rt_msghdr w_rtm;
 		struct sockaddr w_dst;
@@ -416,5 +384,4 @@ rtioctl(int action, struct rtuentry *ort)
 	}
 	errno = 0;
 	return write(r, (char *)&w, rtm.rtm_msglen);
-#endif  /* RTM_ADD */
 }

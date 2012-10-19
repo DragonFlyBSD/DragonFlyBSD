@@ -31,7 +31,6 @@
  *
  * $NetBSD: ccdconfig.c,v 1.2.2.1 1995/11/11 02:43:35 thorpej Exp $
  * $FreeBSD: src/sbin/ccdconfig/ccdconfig.c,v 1.16.2.2 2000/12/11 01:03:25 obrien Exp $
- * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.9 2007/05/20 23:21:33 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -411,23 +410,11 @@ static char *
 resolve_ccdname(char *name)
 {
 	char *path;
-#if 0
-	char c;
-	size_t len;
-#endif
 
 	if (name[0] == '/' || name[0] == '.') {
 		/* Assume they gave the correct pathname. */
 		return (strdup(name));
 	}
-
-#if 0
-	len = strlen(name);
-	if (len > 0)
-		c = name[len - 1];
-	else
-		c = '\0';
-#endif
 
 	asprintf(&path, "%s%s", _PATH_DEV, name);
 

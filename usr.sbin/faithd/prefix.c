@@ -1,6 +1,5 @@
 /*	$KAME: prefix.c,v 1.9 2001/07/02 14:36:49 itojun Exp $	*/
 /*	$FreeBSD: src/usr.sbin/faithd/prefix.c,v 1.1.2.2 2002/04/28 05:40:29 suz Exp $	*/
-/*	$DragonFly: src/usr.sbin/faithd/prefix.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2000 WIDE Project.
@@ -68,7 +67,6 @@ prefix_set(const char *s, struct prefix *prefix, int slash)
 	char *p, *q, *r;
 	struct addrinfo hints, *res = NULL;
 	int max;
-	char *a;
 
 	p = strdup(s);
 	q = strchr(p, '/');
@@ -91,14 +89,11 @@ prefix_set(const char *s, struct prefix *prefix, int slash)
 	switch (prefix->a.ss_family) {
 	case AF_INET:
 		max = 32;
-		a = (char *)&((struct sockaddr_in *)&prefix->a)->sin_addr;
 		break;
 	case AF_INET6:
 		max = 128;
-		a = (char *)&((struct sockaddr_in6 *)&prefix->a)->sin6_addr;
 		break;
 	default:
-		a = NULL;
 		max = -1;
 		break;
 	}

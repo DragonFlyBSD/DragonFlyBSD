@@ -1915,7 +1915,7 @@ int
 main(int argc, char **argv)
 {
 	struct partinfo pinfo;
-	char	*device, *special, __unused *cp;
+	char	*device, *special;
 	char	ch;
 	unsigned int	size=0;
 	size_t	len;
@@ -2020,8 +2020,6 @@ main(int argc, char **argv)
 	 * code  should guess the right thing and avaid to bother the  user
 	 * user with the task of specifying the option -v on vinum volumes.
 	 */
-	cp=device+strlen(device)-1;
-
 	if (ioctl(fsi, DIOCGPART, &pinfo) < 0) {
 		if (fstat(fsi, &st) < 0)
 			err(1, "unable to figure out the partition size");

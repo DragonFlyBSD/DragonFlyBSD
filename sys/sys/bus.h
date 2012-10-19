@@ -351,6 +351,7 @@ device_t	device_add_child_ordered(device_t dev, int order,
 					 const char *name, int unit);
 void	device_busy(device_t dev);
 int	device_delete_child(device_t dev, device_t child);
+int	device_delete_children(device_t dev);
 int	device_detach(device_t dev);
 void	device_disable(device_t dev);
 void	device_enable(device_t dev);

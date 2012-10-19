@@ -122,7 +122,7 @@ monitor_add(const char *path)
 {
 	monitor_elm_t elm;
 	struct kevent kev;
-	int __unused n;
+	int n;
 
 	elm = malloc(sizeof(*elm));
 	bzero(elm, sizeof(*elm));
@@ -137,6 +137,10 @@ monitor_add(const char *path)
 	       NOTE_LINK|NOTE_RENAME|NOTE_REVOKE,
 	       0, NULL);
 	n = kevent(KQueueFd, &kev, 1, NULL, 0, NULL);
+	if (n < 0) {
+		perror("kqueue");
+		exit(1);
+	}
 
 	if (elm->fd >= NumFiles) {
 		MaxFiles = (elm->fd + 16) * 3 / 2;

@@ -26,7 +26,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/brandelf/brandelf.1,v 1.17 2007/03/09 14:36:18 ru Exp $
-.\" $DragonFly: src/usr.bin/brandelf/brandelf.1,v 1.6 2007/09/22 20:50:26 pavalos Exp $
 .\"
 .Dd February 6, 1997
 .Dt BRANDELF 1
@@ -36,7 +35,7 @@
 .Nd mark an ELF binary for a specific ABI
 .Sh SYNOPSIS
 .Nm
-.Op Fl lv
+.Op Fl l
 .Op Fl f Ar ELF_ABI_number
 .Op Fl t Ar string
 .Ar
@@ -56,8 +55,6 @@ option.
 These values are assigned by SCO/USL.
 .It Fl l
 Writes the list of all known ELF types to the standard error.
-.It Fl v
-Turns on verbose output.
 .It Fl t Ar string
 Brands the given ELF binaries to be of the
 .Ar string
