@@ -1327,7 +1327,7 @@ ssh_session2_setup(int id, int success, void *arg)
 {
 	extern char **environ;
 	const char *display;
-	int __unused interactive = tty_flag;
+	int interactive = tty_flag;
 
 	if (!success)
 		return; /* No need for error message, channels code sens one */
