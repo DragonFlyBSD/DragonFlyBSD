@@ -260,6 +260,9 @@ int		nmbclusters;
 static int	nmbjclusters;
 int		nmbufs;
 
+static int	mclph_cachefrac;
+static int	mcl_cachefrac;
+
 SYSCTL_INT(_kern_ipc, KIPC_MAX_LINKHDR, max_linkhdr, CTLFLAG_RW,
 	&max_linkhdr, 0, "Max size of a link-level header");
 SYSCTL_INT(_kern_ipc, KIPC_MAX_PROTOHDR, max_protohdr, CTLFLAG_RW,
@@ -342,9 +345,14 @@ do_mbtypes(SYSCTL_HANDLER_ARGS)
 SYSCTL_INT(_kern_ipc, KIPC_NMBCLUSTERS, nmbclusters, CTLFLAG_RD,
 	   &nmbclusters, 0, "Maximum number of mbuf clusters available");
 SYSCTL_INT(_kern_ipc, OID_AUTO, nmbufs, CTLFLAG_RD, &nmbufs, 0,
-	   "Maximum number of mbufs available"); 
+	   "Maximum number of mbufs available");
 SYSCTL_INT(_kern_ipc, OID_AUTO, nmbjclusters, CTLFLAG_RD, &nmbjclusters, 0,
-	   "Maximum number of mbuf jclusters available"); 
+	   "Maximum number of mbuf jclusters available");
+SYSCTL_INT(_kern_ipc, OID_AUTO, mclph_cachefrac, CTLFLAG_RD,
+    	   &mclph_cachefrac, 0,
+	   "Fraction of cacheable mbuf clusters w/ pkthdr");
+SYSCTL_INT(_kern_ipc, OID_AUTO, mcl_cachefrac, CTLFLAG_RD,
+    	   &mcl_cachefrac, 0, "Fraction of cacheable mbuf clusters");
 
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragpackets, CTLFLAG_RD,
 	   &m_defragpackets, 0, "Number of defragment packets");
@@ -374,6 +382,12 @@ static void m_mclfree(void *arg);
 #ifndef NMBCLUSTERS
 #define NMBCLUSTERS	(512 + maxusers * 16)
 #endif
+#ifndef MCLPH_CACHEFRAC
+#define MCLPH_CACHEFRAC	16
+#endif
+#ifndef MCL_CACHEFRAC
+#define MCL_CACHEFRAC	4
+#endif
 #ifndef NMBJCLUSTERS
 #define NMBJCLUSTERS	2048
 #endif
@@ -392,10 +406,17 @@ tunable_mbinit(void *dummy)
 	 */
 	nmbclusters = NMBCLUSTERS;
 	TUNABLE_INT_FETCH("kern.ipc.nmbclusters", &nmbclusters);
+	mclph_cachefrac = MCLPH_CACHEFRAC;
+	TUNABLE_INT_FETCH("kern.ipc.mclph_cachefrac", &mclph_cachefrac);
+	mcl_cachefrac = MCL_CACHEFRAC;
+	TUNABLE_INT_FETCH("kern.ipc.mcl_cachefrac", &mcl_cachefrac);
+
 	nmbjclusters = NMBJCLUSTERS;
 	TUNABLE_INT_FETCH("kern.ipc.nmbjclusters", &nmbjclusters);
+
 	nmbufs = NMBUFS;
 	TUNABLE_INT_FETCH("kern.ipc.nmbufs", &nmbufs);
+
 	/* Sanity checks */
 	if (nmbufs < nmbclusters * 2)
 		nmbufs = nmbclusters * 2;
@@ -672,14 +693,14 @@ mbinit(void *dummy)
 
 	limit = nmbclusters;
 	mbufcluster_cache = objcache_create("mbuf + cluster",
-	    &limit, 0,
+	    &limit, nmbclusters / mcl_cachefrac,
 	    mbufcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	limit = nmbclusters;
 	mbufphdrcluster_cache = objcache_create("mbuf pkt hdr + cluster",
-	    &limit, nmbclusters / 16,
+	    &limit, nmbclusters / mclph_cachefrac,
 	    mbufphdrcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
