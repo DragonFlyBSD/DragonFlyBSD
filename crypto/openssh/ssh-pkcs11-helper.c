@@ -168,8 +168,7 @@ process_sign(void)
 {
 	u_char *blob, *data, *signature = NULL;
 	u_int blen, dlen, slen = 0;
-	int ok = -1, ret;
-	int __unused flags;
+	int ok = -1, flags, ret;
 	Key *key, *found;
 	Buffer msg;
 
