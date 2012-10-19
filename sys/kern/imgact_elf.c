@@ -1677,9 +1677,34 @@ __elfN(check_note)(struct image_params *imgp, Elf_Brandnote *checknote,
 	return valid_note_found;
 }
 
+/*
+ * Be careful not to create new overflow conditions when checking
+ * for overflow.
+ */
+static boolean_t
+note_overflow(const Elf_Note *note, size_t maxsize)
+{
+	if (sizeof(*note) > maxsize)
+		return TRUE;
+	if (note->n_namesz > maxsize - sizeof(*note))
+		return TRUE;
+	return FALSE;
+}
+
+static boolean_t
+hdr_overflow(__ElfN(Off) off_beg, __ElfN(Size) size)
+{
+	__ElfN(Off) off_end;
+
+	off_end = off_beg + size;
+	if (off_end < off_beg)
+		return TRUE;
+	return FALSE;
+}
+
 static boolean_t
 check_PT_NOTE(struct image_params *imgp, Elf_Brandnote *checknote,
-    int32_t *osrel, const Elf_Phdr * pnote)
+	      int32_t *osrel, const Elf_Phdr * pnote)
 {
 	boolean_t limited_to_first_page;
 	boolean_t found = FALSE;
@@ -1693,6 +1718,8 @@ check_PT_NOTE(struct image_params *imgp, Elf_Brandnote *checknote,
 	char *data = NULL;
 	int n;
 
+	if (hdr_overflow(pnote->p_offset, pnote->p_filesz))
+		return (FALSE);
 	notesz = pnote->p_filesz;
 	noteloc = pnote->p_offset;
 	endbyte = noteloc + notesz;
@@ -1735,6 +1762,10 @@ check_PT_NOTE(struct image_params *imgp, Elf_Brandnote *checknote,
 	for (n = 0; n < 100 && note >= note0 && note < note_end; n++) {
 		if (!aligned(note, Elf32_Addr))
 			break;
+		if (note_overflow(note, (const char *)note_end -
+					(const char *)note)) {
+			break;
+		}
 		note_name = (const char *)(note + 1);
 
 		if (note->n_namesz == checknote->hdr.n_namesz
@@ -1770,7 +1801,7 @@ check_PT_NOTE(struct image_params *imgp, Elf_Brandnote *checknote,
  */
 static boolean_t
 extract_interpreter(struct image_params *imgp, const Elf_Phdr *pinterpreter,
-    char *data)
+		    char *data)
 {
 	boolean_t limited_to_first_page;
 	const boolean_t result_success = FALSE;
@@ -1781,6 +1812,8 @@ extract_interpreter(struct image_params *imgp, const Elf_Phdr *pinterpreter,
 	struct lwbuf lwb_cache;
 	const char *page;
 
+	if (hdr_overflow(pinterpreter->p_offset, pinterpreter->p_filesz))
+		return (result_failure);
 	pathsz  = pinterpreter->p_filesz;
 	pathloc = pinterpreter->p_offset;
 	endbyte = pathloc + pathsz;
