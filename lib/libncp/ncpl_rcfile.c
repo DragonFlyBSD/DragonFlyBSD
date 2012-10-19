@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ncpl_rcfile.c,v 1.1 1999/10/12 11:56:40 bp Exp $
- * $DragonFly: src/lib/libncp/ncpl_rcfile.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
  */
 #include <sys/types.h>
 #include <sys/queue.h>
@@ -389,7 +388,7 @@ rc_getbool(struct rcfile *rcp,char *section, char *key,int *value) {
 int
 ncp_open_rcfile(void) {
 	char *home, *fn;
-	int __unused error;
+	int error;
 
 	home = getenv("HOME");
 	if (home) {

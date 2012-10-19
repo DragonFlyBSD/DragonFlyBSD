@@ -671,6 +671,7 @@ nfs_readdir(struct open_file *f, struct dirent *d)
 	struct nfs_readdir_off  *roff = NULL;
 	static char *buf;
 	static n_long cookie = 0;
+	size_t cc;
 	n_long eof;
 	
 	struct {
@@ -691,7 +692,7 @@ nfs_readdir(struct open_file *f, struct dirent *d)
 		args->cookie = htonl(cookie);
 		args->count  = htonl(NFS_READDIRSIZE);
 		
-		rpc_call(fp->iodesc, NFS_PROG, NFS_VER2, NFSPROC_READDIR,
+		cc = rpc_call(fp->iodesc, NFS_PROG, NFS_VER2, NFSPROC_READDIR,
 			      args, sizeof(*args),
 			      rdata.d, sizeof(rdata.d));
 		buf  = rdata.d;
