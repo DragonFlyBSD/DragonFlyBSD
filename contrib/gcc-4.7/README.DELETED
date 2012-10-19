@@ -617,7 +617,13 @@ libobjc/aclocal.m4
 libobjc/configure
 libobjc/configure.ac
 libquadmath/
-libssp/
+libssp/ChangeLog
+libssp/Makefile.am
+libssp/Makefile.in
+libssp/aclocal.m4
+libssp/configure
+libssp/configure.ac
+libssp/libtool-version
 libstdc++-v3/ChangeLog
 libstdc++-v3/ChangeLog-1998
 libstdc++-v3/ChangeLog-1999
