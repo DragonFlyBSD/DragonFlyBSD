@@ -358,9 +358,7 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragrandomfailures, CTLFLAG_RW,
 
 static MALLOC_DEFINE(M_MBUF, "mbuf", "mbuf");
 static MALLOC_DEFINE(M_MBUFCL, "mbufcl", "mbufcl");
-static MALLOC_DEFINE(M_MJBUFCL, "mbufcl", "mbufcl");
 static MALLOC_DEFINE(M_MCLMETA, "mclmeta", "mclmeta");
-static MALLOC_DEFINE(M_MJCLMETA, "mjclmeta", "mjclmeta");
 
 static void m_reclaim (void);
 static void m_mclref(void *arg);
