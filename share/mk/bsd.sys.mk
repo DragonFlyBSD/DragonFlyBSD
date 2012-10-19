@@ -49,6 +49,15 @@ CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs\
 # XXX always get it right.
 CWARNFLAGS	+=	-Wno-uninitialized
 .  endif
+# Activate gcc47's -Wunused-but-set-variable (which is in -Wall) and
+# -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4
+# (which is the level when also -Wunused-parameter comes into play).
+.  if ${WARNS} >= 2 && ${WARNS} <= 3 && ${CCVER} == "gcc47"
+CWARNFLAGS	+=	-Wno-unused-but-set-variable
+.  endif
+.  if ${WARNS} == 3 && ${CCVER} == "gcc47"
+CWARNFLAGS	+=	-Wno-unused-but-set-parameter
+.  endif
 . endif
 
 . if defined(FORMAT_AUDIT)
