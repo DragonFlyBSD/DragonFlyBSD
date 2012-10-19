@@ -876,25 +876,14 @@ m_getclr(int how, int type)
 	return (m);
 }
 
-struct mbuf *
-m_getjcl(int how, short type, int flags, size_t size)
+static struct mbuf *
+m_getcl_cache(int how, short type, int flags, struct objcache *mbclc,
+    struct objcache *mbphclc)
 {
 	struct mbuf *m = NULL;
-	struct objcache *mbclc, *mbphclc;
 	int ocflags = MBTOM(how);
 	int ntries = 0;
 
-	switch (size) {
-		case MCLBYTES:
-			mbclc = mbufcluster_cache;
-			mbphclc = mbufphdrcluster_cache;
-			break;
-		default:
-			mbclc = mbufjcluster_cache;
-			mbphclc = mbufphdrjcluster_cache;
-			break;
-	}
-			
 retryonce:
 
 	if (flags & M_PKTHDR)
@@ -933,6 +922,25 @@ retryonce:
 	return (m);
 }
 
+struct mbuf *
+m_getjcl(int how, short type, int flags, size_t size)
+{
+	struct objcache *mbclc, *mbphclc;
+
+	switch (size) {
+	case MCLBYTES:
+		mbclc = mbufcluster_cache;
+		mbphclc = mbufphdrcluster_cache;
+		break;
+
+	default:
+		mbclc = mbufjcluster_cache;
+		mbphclc = mbufphdrjcluster_cache;
+		break;
+	}
+	return m_getcl_cache(how, type, flags, mbclc, mbphclc);
+}
+
 /*
  * Returns an mbuf with an attached cluster.
  * Because many network drivers use this kind of buffers a lot, it is
@@ -943,7 +951,8 @@ retryonce:
 struct mbuf *
 m_getcl(int how, short type, int flags)
 {
-	return (m_getjcl(how, type, flags, MCLBYTES));
+	return m_getcl_cache(how, type, flags,
+	    mbufcluster_cache, mbufphdrcluster_cache);
 }
 
 /*
