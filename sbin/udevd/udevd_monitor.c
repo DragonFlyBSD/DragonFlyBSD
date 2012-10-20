@@ -110,7 +110,6 @@ struct udev_monitor *
 udev_monitor_init(struct client_info *cli, prop_array_t filters)
 {
 	struct udev_monitor *udm;
-	int __unused error;
 
 	udm = malloc(sizeof(struct udev_monitor));
 	if (udm == NULL)
@@ -124,7 +123,7 @@ udev_monitor_init(struct client_info *cli, prop_array_t filters)
 	udm->cli = cli;
 
 	if (filters != NULL) {
-		error = _parse_filter_prop(udm, filters);
+		__unused int error = _parse_filter_prop(udm, filters);
 		/* XXX: ignore error for now */
 	}
 
