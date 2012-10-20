@@ -33,6 +33,8 @@ options 	PROCFS			#Process filesystem
 options 	SCSI_DELAY=5000		#Delay (in ms) before probing SCSI
 options		DEVICE_POLLING		# Support mixed interrupt-polling
 					# handling of network device drivers
+options		IFPOLL_ENABLE		# Support mixed interrupt-polling
+					# handling of network device drivers
 options 	UCONSOLE		#Allow users to grab the console
 options 	KTRACE			#ktrace(1) support
 options 	SYSVSHM			#SYSV-style shared memory
