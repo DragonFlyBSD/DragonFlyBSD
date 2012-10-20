@@ -129,8 +129,8 @@ unblock, their calling threads are made runnable.
 and
 .Fn cv_timedwait_sig
 wait for at most
-.Fa timo
-seconds before being unblocked and returning
+.Fa timo 
+/ hz seconds before being unblocked and returning
 .Er EWOULDBLOCK ;
 otherwise, they return 0.
 .Fn cv_wait_sig
@@ -148,7 +148,8 @@ or
 Condition variables exist primarily for code imported from other systems; for
 .Dx
 code, the
-.Fn tsleep /
+.Fn tsleep 
+/
 .Fn wakeup
 family of functions should be used instead.
 .Pp
