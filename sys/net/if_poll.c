@@ -113,8 +113,8 @@
 
 #define IFPOLL_FREQ_DEFAULT	4000
 
-#define IFPOLL_TXFRAC_DEFAULT	0	/* 1/1 of the pollhz */
-#define IFPOLL_STFRAC_DEFAULT	39	/* 1/40 of the pollhz */
+#define IFPOLL_TXFRAC_DEFAULT	1	/* 1/1 of the pollhz */
+#define IFPOLL_STFRAC_DEFAULT	40	/* 1/40 of the pollhz */
 
 #define IFPOLL_RX		0x1
 #define IFPOLL_TX		0x2
@@ -1222,15 +1222,15 @@ poll_comm_init(int cpuid)
 
 	comm = kmalloc_cachealign(sizeof(*comm), M_DEVBUF, M_WAITOK | M_ZERO);
 
-	if (ifpoll_stfrac < 0)
+	if (ifpoll_stfrac < 1)
 		ifpoll_stfrac = IFPOLL_STFRAC_DEFAULT;
-	if (ifpoll_txfrac < 0)
+	if (ifpoll_txfrac < 1)
 		ifpoll_txfrac = IFPOLL_TXFRAC_DEFAULT;
 
 	comm->pollhz = ifpoll_pollhz;
 	comm->poll_cpuid = cpuid;
-	comm->poll_stfrac = ifpoll_stfrac;
-	comm->poll_txfrac = ifpoll_txfrac;
+	comm->poll_stfrac = ifpoll_stfrac - 1;
+	comm->poll_txfrac = ifpoll_txfrac - 1;
 
 	ksnprintf(cpuid_str, sizeof(cpuid_str), "%d", cpuid);
 
@@ -1400,16 +1400,16 @@ sysctl_stfrac(SYSCTL_HANDLER_ARGS)
 
 	KKASSERT(comm->poll_cpuid == 0);
 
-	stfrac = comm->poll_stfrac;
+	stfrac = comm->poll_stfrac + 1;
 	error = sysctl_handle_int(oidp, &stfrac, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
-	if (stfrac < 0)
+	if (stfrac < 1)
 		return EINVAL;
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
 		    0, sysctl_stfrac_handler);
-	nmsg.lmsg.u.ms_result = stfrac;
+	nmsg.lmsg.u.ms_result = stfrac - 1;
 
 	return lwkt_domsg(netisr_portfn(comm->poll_cpuid), &nmsg.lmsg, 0);
 }
@@ -1438,16 +1438,16 @@ sysctl_txfrac(SYSCTL_HANDLER_ARGS)
 	struct netmsg_base nmsg;
 	int error, txfrac;
 
-	txfrac = comm->poll_txfrac;
+	txfrac = comm->poll_txfrac + 1;
 	error = sysctl_handle_int(oidp, &txfrac, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
-	if (txfrac < 0)
+	if (txfrac < 1)
 		return EINVAL;
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
 		    0, sysctl_txfrac_handler);
-	nmsg.lmsg.u.ms_result = txfrac;
+	nmsg.lmsg.u.ms_result = txfrac - 1;
 
 	return lwkt_domsg(netisr_portfn(comm->poll_cpuid), &nmsg.lmsg, 0);
 }

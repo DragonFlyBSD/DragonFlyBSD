@@ -2102,7 +2102,7 @@ bnx_attach(device_t dev)
 	}
 
 #ifdef IFPOLL_ENABLE
-	sc->bnx_npoll_stfrac = 39;	/* 1/40 polling freq */
+	sc->bnx_npoll_stfrac = 40 - 1;	/* 1/40 polling freq */
 	sc->bnx_npoll_cpuid = device_get_unit(dev) % ncpus2;
 #endif
 
@@ -3946,13 +3946,13 @@ bnx_sysctl_npoll_stfrac(SYSCTL_HANDLER_ARGS)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-	stfrac = sc->bnx_npoll_stfrac;
+	stfrac = sc->bnx_npoll_stfrac + 1;
 	error = sysctl_handle_int(oidp, &stfrac, 0, req);
 	if (!error && req->newptr != NULL) {
-		if (stfrac < 0) {
+		if (stfrac < 1) {
 			error = EINVAL;
 		} else {
-			sc->bnx_npoll_stfrac = stfrac;
+			sc->bnx_npoll_stfrac = stfrac - 1;
 			if (sc->bnx_npoll_stcount > sc->bnx_npoll_stfrac)
 				sc->bnx_npoll_stcount = sc->bnx_npoll_stfrac;
 		}
