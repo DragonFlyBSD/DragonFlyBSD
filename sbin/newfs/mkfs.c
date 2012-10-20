@@ -32,7 +32,6 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.14 2007/05/20 19:29:21 dillon Exp $
  */
 
 #include "defs.h"
@@ -1140,12 +1139,10 @@ iput(struct ufs1_dinode *ip, ino_t ino)
 {
 	struct ufs1_dinode inobuf[MAXINOPB];
 	daddr_t d;
-	int __unused c;
 
 #ifdef FSIRAND
 	ip->di_gen = random();
 #endif
-	c = ino_to_cg(&sblock, ino);
 	rdfs(fsbtodb(&sblock, cgtod(&sblock, 0)), sblock.fs_cgsize,
 	    (char *)&acg);
 	if (acg.cg_magic != CG_MAGIC) {
