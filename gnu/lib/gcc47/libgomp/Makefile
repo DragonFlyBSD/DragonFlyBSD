@@ -16,6 +16,10 @@ LDFLAGS+=	-Wl,--version-script=${GCCDIR}/libgomp/libgomp.map
 LIB=		gomp
 SHLIB_MAJOR=	1
 
+THRLIB= 	${.OBJDIR}/../../../../lib/libpthread/libpthread.so
+LDADD+= 	${THRLIB}
+DPADD+= 	${THRLIB}
+
 # From libgomp Makefile
 libgomp_la_SOURCES = alloc.c barrier.c critical.c env.c error.c iter.c \
 	iter_ull.c loop.c loop_ull.c ordered.c parallel.c sections.c single.c \
