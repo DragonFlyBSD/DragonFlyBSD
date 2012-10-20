@@ -484,7 +484,7 @@ prmount(struct statfs *sfp)
 {
 	struct passwd *pw;
 	char *buf;
-	int __unused error;
+	int error;
 	int len;
 
 	error = 0;
@@ -508,7 +508,7 @@ prmount(struct statfs *sfp)
 			printf("%d", sfp->f_owner);
 	}
 
-	if (strlen(buf))
+	if (error == 0 && strlen(buf))
 		printf(", %s", buf);
 
 	if (verbose) {
