@@ -85,7 +85,7 @@ struct magazinedepot {
 						 * return a full magazine to
 						 * the depot */
 	int			contested;	/* depot contention count */
-};
+} __cachealign;
 
 /*
  * per-cpu object cache
@@ -104,7 +104,7 @@ struct percpu_objcache {
 	/* infrequently used fields */
 	int		waiting;	/* waiting for a thread on this cpu to
 					 * return an obj to the per-cpu cache */
-};
+} __cachealign;
 
 /* only until we have NUMA cluster topology information XXX */
 #define MAXCLUSTERS 1
