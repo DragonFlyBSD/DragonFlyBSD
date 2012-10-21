@@ -1,5 +1,7 @@
 .include "Makefile.inc"
 
+COMPVERSION=	gcc44
+
 .if !defined(NO_CXX)
 lang_tree_files=	cp/cp-tree.def
 .endif
