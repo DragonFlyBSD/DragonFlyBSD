@@ -50,8 +50,9 @@ usfs, uether, if_axe, if_udav, ukbd, ums, uep, uhid, usb_quirk,
 and uaudio.
 
 It is not yet the default. To activate it, WANT_USB4BSD=yes has to
-be put in loader.conf and device "usb4bsd" (quotes needed) has to
-replace device usb in the kernel config.
+be put in make.conf and device "usb4bsd" (quotes needed) has to
+replace device usb in the kernel config. After that, a full
+build/install/upgrade cycle is needed.
 
 Note that this is experimental and incomplete, but we are interested
 in hearing about issues with it, of course.
