@@ -59,6 +59,10 @@ struct magazine {
 
 SLIST_HEAD(magazinelist, magazine);
 
+#define MAGAZINE_HDRSIZE	__offsetof(struct magazine, objects[0])
+#define MAGAZINE_CAPACITY_MAX	128
+#define MAGAZINE_CAPACITY_MIN	4
+
 /*
  * per-cluster cache of magazines
  *
@@ -140,17 +144,35 @@ struct objcache {
 
 static struct spinlock objcachelist_spin;
 static LIST_HEAD(objcachelist, objcache) allobjcaches;
+static int magazine_capmin;
+static int magazine_capmax;
 
 static struct magazine *
 mag_alloc(int capacity)
 {
 	struct magazine *mag;
+	int size;
 
-	mag = kmalloc(__offsetof(struct magazine, objects[capacity]),
-			M_OBJMAG, M_INTWAIT | M_ZERO);
+	size = __offsetof(struct magazine, objects[capacity]);
+	KASSERT(size > 0 && (size & __VM_CACHELINE_MASK) == 0,
+	    ("magazine size is not multiple cache line size"));
+
+	mag = kmalloc_cachealign(size, M_OBJMAG, M_INTWAIT | M_ZERO);
 	mag->capacity = capacity;
 	mag->rounds = 0;
 	return (mag);
+}
+
+static int
+mag_capacity_align(int mag_capacity)
+{
+	int mag_size;
+
+	mag_size = __VM_CACHELINE_ALIGN(
+	    __offsetof(struct magazine, objects[mag_capacity]));
+	mag_capacity = (mag_size - MAGAZINE_HDRSIZE) / sizeof(void *);
+
+	return mag_capacity;
 }
 
 /*
@@ -223,13 +245,13 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 
 	/*
 	 * Magazine capacity for 2 active magazines per cpu plus 2
-	 * magazines in the depot.  Minimum capacity is 4 objects.
+	 * magazines in the depot.
 	 */
-	mag_capacity = nom_cache / (ncpus + 1) / 2 + 1;
-	if (mag_capacity > 128)
-		mag_capacity = 128;
-	if (mag_capacity < 4)
-		mag_capacity = 4;
+	mag_capacity = mag_capacity_align(nom_cache / (ncpus + 1) / 2 + 1);
+	if (mag_capacity > magazine_capmax)
+		mag_capacity = magazine_capmax;
+	else if (mag_capacity < magazine_capmin)
+		mag_capacity = magazine_capmin;
 	depot->magcapacity = mag_capacity;
 
 	/*
@@ -972,6 +994,14 @@ static void
 objcache_init(void)
 {
 	spin_init(&objcachelist_spin);
+
+	magazine_capmin = mag_capacity_align(MAGAZINE_CAPACITY_MIN);
+	magazine_capmax = mag_capacity_align(MAGAZINE_CAPACITY_MAX);
+	if (bootverbose) {
+		kprintf("objcache: magazine cap [%d, %d]\n",
+		    magazine_capmin, magazine_capmax);
+	}
+
 #if 0
 	callout_init_mp(&objcache_callout);
 	objcache_rebalance_period = 60 * hz;
