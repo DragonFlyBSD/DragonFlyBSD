@@ -144,7 +144,7 @@ sysref_alloc(struct sysref_class *srclass)
 		KKASSERT(srclass->mtype != NULL);
 		srclass->oc = objcache_create_mbacked(
 				srclass->mtype, srclass->objsize, 
-				NULL, srclass->nom_cache,
+				0, srclass->nom_cache,
 				sysref_ctor, sysref_dtor, srclass);
 	}
 

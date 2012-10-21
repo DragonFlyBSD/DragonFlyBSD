@@ -173,7 +173,7 @@ null_ctor(void *obj, void *privdata, int ocflags)
  * Create an object cache.
  */
 struct objcache *
-objcache_create(const char *name, int *cluster_limit0, int nom_cache,
+objcache_create(const char *name, int cluster_limit, int nom_cache,
 		objcache_ctor_fn *ctor, objcache_dtor_fn *dtor, void *privdata,
 		objcache_alloc_fn *alloc, objcache_free_fn *free,
 		void *allocator_args)
@@ -184,12 +184,6 @@ objcache_create(const char *name, int *cluster_limit0, int nom_cache,
 	int nmagdepot;
 	int mag_capacity;
 	int i;
-	int cluster_limit;
-
-	if (cluster_limit0 == NULL)
-		cluster_limit = 0;
-	else
-		cluster_limit = *cluster_limit0;
 
 	/*
 	 * Allocate object cache structure
@@ -291,8 +285,6 @@ objcache_create(const char *name, int *cluster_limit0, int nom_cache,
 	LIST_INSERT_HEAD(&allobjcaches, oc, oc_next);
 	spin_unlock(&objcachelist_spin);
 
-	if (cluster_limit0 != NULL)
-		*cluster_limit0 = cluster_limit;
 	return (oc);
 }
 
@@ -305,7 +297,7 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 	margs = kmalloc(sizeof(*margs), M_OBJCACHE, M_WAITOK|M_ZERO);
 	margs->objsize = objsize;
 	margs->mtype = mtype;
-	oc = objcache_create(mtype->ks_shortdesc, NULL, 0,
+	oc = objcache_create(mtype->ks_shortdesc, 0, 0,
 			     NULL, NULL, NULL,
 			     objcache_malloc_alloc, objcache_malloc_free,
 			     margs);
@@ -314,7 +306,7 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 
 struct objcache *
 objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
-			int *cluster_limit, int nom_cache,
+			int cluster_limit, int nom_cache,
 			objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
 			void *privdata)
 {

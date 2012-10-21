@@ -283,7 +283,7 @@ lwkt_init(void)
     }
     thread_cache = objcache_create_mbacked(
 				M_THREAD, sizeof(struct thread),
-				NULL, lwkt_cache_threads,
+				0, lwkt_cache_threads,
 				_lwkt_thread_ctor, _lwkt_thread_dtor, NULL);
 }
 

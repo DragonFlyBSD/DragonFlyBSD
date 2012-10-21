@@ -665,56 +665,56 @@ mbinit(void *dummy)
 
 	limit = nmbufs;
 	mbuf_cache = objcache_create("mbuf",
-	    &limit, 0,
+	    limit, 0,
 	    mbuf_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	limit = nmbufs;
 	mbufphdr_cache = objcache_create("mbuf pkt hdr",
-	    &limit, nmbufs / 4,
+	    limit, nmbufs / 4,
 	    mbufphdr_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	ncl_limit = nmbclusters;
 	mclmeta_cache = objcache_create("cluster mbuf",
-	    &ncl_limit, 0,
+	    ncl_limit, 0,
 	    mclmeta_ctor, mclmeta_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
 	cl_limit += ncl_limit;
 
 	jcl_limit = nmbjclusters;
 	mjclmeta_cache = objcache_create("jcluster mbuf",
-	    &jcl_limit, 0,
+	    jcl_limit, 0,
 	    mjclmeta_ctor, mclmeta_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
 	cl_limit += jcl_limit;
 
 	limit = nmbclusters;
 	mbufcluster_cache = objcache_create("mbuf + cluster",
-	    &limit, nmbclusters / mcl_cachefrac,
+	    limit, nmbclusters / mcl_cachefrac,
 	    mbufcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	limit = nmbclusters;
 	mbufphdrcluster_cache = objcache_create("mbuf pkt hdr + cluster",
-	    &limit, nmbclusters / mclph_cachefrac,
+	    limit, nmbclusters / mclph_cachefrac,
 	    mbufphdrcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	limit = nmbjclusters / 4; /* XXX really rarely used */
 	mbufjcluster_cache = objcache_create("mbuf + jcluster",
-	    &limit, 0,
+	    limit, 0,
 	    mbufjcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	limit = nmbjclusters;
 	mbufphdrjcluster_cache = objcache_create("mbuf pkt hdr + jcluster",
-	    &limit, nmbjclusters / 16,
+	    limit, nmbjclusters / 16,
 	    mbufphdrjcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;

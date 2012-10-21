@@ -111,7 +111,7 @@ puffs_msgif_init(void)
 {
 
 	parkpc = objcache_create_mbacked(M_PUFFS, sizeof(struct puffs_msgpark),
-	    NULL, 0, makepark, nukepark, NULL);
+	    0, 0, makepark, nukepark, NULL);
 }
 
 void

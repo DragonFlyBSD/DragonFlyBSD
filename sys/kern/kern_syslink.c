@@ -148,13 +148,13 @@ syslinkinit(void *dummy __unused)
 {
 	size_t n = sizeof(struct slmsg);
 
-	sl_objcache_none = objcache_create_mbacked(M_SYSLINK, n, NULL, 64,
+	sl_objcache_none = objcache_create_mbacked(M_SYSLINK, n, 0, 64,
 						   slmsg_ctor, slmsg_dtor,
 						   &sl_objcache_none);
-	sl_objcache_small= objcache_create_mbacked(M_SYSLINK, n, NULL, 64,
+	sl_objcache_small= objcache_create_mbacked(M_SYSLINK, n, 0, 64,
 						   slmsg_ctor, slmsg_dtor,
 						   &sl_objcache_small);
-	sl_objcache_big  = objcache_create_mbacked(M_SYSLINK, n, NULL, 16,
+	sl_objcache_big  = objcache_create_mbacked(M_SYSLINK, n, 0, 16,
 						   slmsg_ctor, slmsg_dtor,
 						   &sl_objcache_big);
 }
