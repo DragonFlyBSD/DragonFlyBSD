@@ -1,0 +1,15 @@
+BMAKE 2012-10-10
+================
+
+Original source can be downloaded from:
+http://www.crufty.net/ftp/pub/sjg
+
+file = bmake-20121010.tar.gz
+date = 13 October 2012
+size = 438070
+sha1 = 1a23e034d77459bc82e5259dea029514403ce484
+
+The file README.DELETED contains a list of deleted files and directories.
+
+The following files have been patched:
+meta.c
