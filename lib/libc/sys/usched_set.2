@@ -59,27 +59,29 @@ The
 .Fa cmd
 argument specifies the action for
 .Fn usched_set
-to take.
-.Dv USCHED_SET_SCHEDULER
-sets the user scheduler where
+to take:
+.Bl -tag -width ".Dv USCHED_SET_SCHEDULER"
+.It Dv USCHED_SET_SCHEDULER
+set the user scheduler where
 .Fa data
 is a
 .Vt char *
 that contains the name of the user scheduler.
-.Dv USCHED_SET_CPU
-assigns the LWP to the cpuid pointed to by
+.It Dv USCHED_SET_CPU
+assign the LWP to the cpuid pointed to by
 .Fa data .
-.Dv USCHED_GET_CPU
-copies the LWP's CPU ID to the cpuid pointed to by
+.It Dv USCHED_GET_CPU
+copy the LWP's CPU ID to the cpuid pointed to by
 .Fa data .
-.Dv USCHED_ADD_CPU
-adds the cpuid specified by
+.It Dv USCHED_ADD_CPU
+add the cpuid specified by
 .Fa data
 to the list of available CPUs for the LWP.
-.Dv USCHED_DEL_CPU
-removes the cpuid specified by
+.It Dv USCHED_DEL_CPU
+remove the cpuid specified by
 .Fa data
 from the list of available CPUs for the LWP.
+.El
 .Sh RETURN VALUES
 .Rv -std
 .Sh ERRORS
@@ -115,3 +117,7 @@ was written by
 .An Matt Dillon .
 This manual page was written by
 .An Joe Talbott .
+.Sh BUGS
+Only
+.Fa pid
+equals current LWP PID is implemented.
