@@ -188,8 +188,9 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 	/*
 	 * Allocate object cache structure
 	 */
-	oc = kmalloc(__offsetof(struct objcache, cache_percpu[ncpus]),
-		    M_OBJCACHE, M_WAITOK | M_ZERO);
+	oc = kmalloc_cachealign(
+	    __offsetof(struct objcache, cache_percpu[ncpus]),
+	    M_OBJCACHE, M_WAITOK | M_ZERO);
 	oc->name = kstrdup(name, M_TEMP);
 	oc->ctor = ctor ? ctor : null_ctor;
 	oc->dtor = dtor ? dtor : null_dtor;
