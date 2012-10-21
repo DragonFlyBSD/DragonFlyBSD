@@ -357,7 +357,7 @@ main(int ac, char **av)
 			}
 #endif
 
-		
+			break;
 		case 'p':
 			pid_file = optarg;
 			break;
