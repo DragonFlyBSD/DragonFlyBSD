@@ -473,6 +473,11 @@
 		cannot be set below the default determined when the kernel
 		was compiled.
 
+	set kern.user_scheduler=<value>
+
+		Set the default userland scheduler.  <value> can be "bsd4"
+		or "dfly" (default).
+
 	set kern.vm.kmem.size=<value>
 
 		Sets the size of kernel memory (bytes).  This overrides
