@@ -41,6 +41,21 @@ default compiler in base (default is still GCC 4.4).
 Users who wish to build only GCC 4.4 have to replace NO_GCC41 with
 NO_GCC47 in /etc/make.conf.
 
+USB4BSD
+-------
+
+A new USB stack (from FreeBSD) has been brought in. The following
+modules have been ported so far: usb, uhci, ohci, ehci, xhci, umass,
+usfs, uether, if_axe, if_udav, ukbd, ums, uep, uhid, usb_quirk,
+and uaudio.
+
+It is not yet the default. To activate it, WANT_USB4BSD=yes has to
+be put in loader.conf and device "usb4bsd" (quotes needed) has to
+replace device usb in the kernel config.
+
+Note that this is experimental and incomplete, but we are interested
+in hearing about issues with it, of course.
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 2.10 to later versions               +
 +-----------------------------------------------------------------------+
