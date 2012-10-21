@@ -1,19 +1,20 @@
 .include "../Makefile.inc"
 .include "../Makefile.langs"
+.include "../../Makefile.cco"
 
 PROG=	gcov
-MAN=	gcov${GCCSHORTVER}.1
-MLINKS=	gcov${GCCSHORTVER}.1 gcov.1
-
-.if ${GCCDOCSUFFIX} != ${GCCSHORTVER}
-MLINKS+=gcov${GCCSHORTVER}.1 gcov${GCCDOCSUFFIX}.1
-.endif
+MFILE=	gcov${GCCSHORTVER}.1
+MAN=	${MFILE}
 
 SRCS=	gcov.c intl.c errors.c version.c
 
-gcov${GCCSHORTVER}.1: ${GCCDIR}/gcc/doc/gcov.1
+${MFILE}: ${GCCDIR}/gcc/doc/gcov.1
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANFILES+=	gcov${GCCSHORTVER}.1
+CLEANFILES+=	${MFILE}
+
+.if defined(IS_PRIMARY)
+MLINKS+= ${MFILE} gcov.1
+.endif
 
 .include <bsd.prog.mk>

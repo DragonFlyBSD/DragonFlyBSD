@@ -15,7 +15,7 @@ INFOENTRY_gcint=	"* GCC-internals.			The GNU Compiler Collection's internals."
 
 # Install as nameVER for the time being
 .for _i in ${ORIGINFO}
-.for docsfx in ${GCCSHORTVER} ${GCCDOCSUFFIX}
+.for docsfx in ${GCCSHORTVER}
 .if empty(INFO:M${_i}${docsfx})
 INFO+=	${_i}${docsfx}
 INFOENTRY_${_i}${docsfx}= ${INFOENTRY_${_i}:C/\./${docsfx}./1}
@@ -30,9 +30,6 @@ CLEANFILES+=	${_i}${docsufx}.info
 .endfor
 .endfor
 # End magic rewriting
-.if ${GCCDOCSUFFIX} == ""
-INFO+=	${ORIGINFO}
-.endif
 
 cpp.info: cpp.texi fdl.texi cppenv.texi cppopts.texi		\
 	 gcc-common.texi gcc-vers.texi
