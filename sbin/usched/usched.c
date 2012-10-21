@@ -2,7 +2,8 @@
  * Copyright (c) 2012 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Matthew Dillon <dillon@backplane.com>
+ * by Matthew Dillon <dillon@backplane.com> and Thomas Nikolajsen
+ * <thomas.nikolajsen@mail.dk>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,7 +42,7 @@
 
 static void usage(void);
 
-int VerboseOpt;
+int DebugOpt;
 
 int
 main(int ac, char **av)
@@ -49,39 +50,78 @@ main(int ac, char **av)
 	int ch;
 	int res;
 	char *sched = NULL;
-#if 0 /* XXX cpumask */
 	char *cpustr = NULL;
+	char *sched_cpustr = NULL;
 	cpumask_t cpumask = 0;
-#endif
+	int cpuid = -1;
 
-	while ((ch = getopt(ac, av, "v")) != -1) {
-		switch(ch) {
-		case 'v':
-			VerboseOpt = 1;
+	while ((ch = getopt(ac, av, "d")) != -1) {
+		switch (ch) {
+		case 'd':
+			DebugOpt = 1;
 			break;
 		default:
 			usage();
-			break;	/* NOT REACHED */
+			/* NOTREACHED */
 		}
 	}
 	ac -= optind;
 	av += optind;
 
-	if (ac < 2)
+	if (ac < 2) {
 		usage();
-	sched = strtok(strdup(av[0]), ":");
-#if 0 /* XXX cpumask */
-	cpustr = strtok(NULL, "");
-	if (cpustr == NULL)
-		cpumask = -1;
-	else
+		/* NOTREACHED */
+	}
+	sched_cpustr = strdup(av[0]);
+	sched = strsep(&sched_cpustr, ":");
+	if (strcmp(sched, "default") == 0)
+		fprintf(stderr, "Ignoring scheduler == \"default\": not implemented\n");
+	cpustr = strsep(&sched_cpustr, "");
+	if (strlen(sched) == 0 && cpustr == NULL) {
+		usage();
+		/* NOTREACHED */
+	}
+	if (cpustr != NULL)
 		cpumask = strtoul(cpustr, NULL, 0);
-#endif
 
-	res = usched_set(getpid(), USCHED_SET_SCHEDULER, sched, strlen(sched));
-	if (res != 0) {
-		perror("usched_set");
-		exit(1);
+	if (strlen(sched) != 0) {
+		if (DebugOpt)
+			fprintf(stderr, "DEBUG: USCHED_SET_SCHEDULER: scheduler: %s\n", sched);
+		res = usched_set(getpid(), USCHED_SET_SCHEDULER, sched, strlen(sched));
+		if (res != 0) {
+			perror("usched_set(,USCHED_SET_SCHEDULER,,)");
+			exit(1);
+		}
+	}
+	if (cpumask != 0) {
+		while ((cpumask & 1) == 0) {
+			cpuid++;
+			cpumask >>= 1;
+		}
+		cpuid++;
+		cpumask >>= 1;
+		if (DebugOpt)
+			fprintf(stderr, "DEBUG: USCHED_SET_CPU: cpuid: %d\n", cpuid);
+		res = usched_set(getpid(), USCHED_SET_CPU, &cpuid, sizeof(int));
+		if (res != 0) {
+			perror("usched_set(,USCHED_SET_CPU,,)");
+			exit(1);
+		}
+		while (cpumask != 0) {
+			while ((cpumask & 1) == 0) {
+				cpuid++;
+				cpumask >>= 1;
+			}
+			cpuid++;
+			cpumask >>= 1;
+			if (DebugOpt)
+				fprintf(stderr, "DEBUG: USCHED_ADD_CPU: cpuid: %d\n", cpuid);
+			res = usched_set(getpid(), USCHED_ADD_CPU, &cpuid, sizeof(int));
+			if (res != 0) {
+				perror("usched_set(,USCHED_ADD_CPU,,)");
+				exit(1);
+			}
+		}
 	}
 	execvp(av[1], av + 1);
 	exit(1);
@@ -91,10 +131,6 @@ static
 void
 usage(void)
 {
-#if 0
-	fprintf(stderr, "usched scheduler[:cpumask] program args...\n");
-#else
-	fprintf(stderr, "usched scheduler program args...\n");
-#endif
+	fprintf(stderr, "usage: usched [-d] {scheduler[:cpumask] | :cpumask} program [argument ...]\n");
 	exit(1);
 }
