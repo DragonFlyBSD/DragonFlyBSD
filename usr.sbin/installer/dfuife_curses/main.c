@@ -122,7 +122,7 @@ static void
 usage(char **argv)
 {
 	fprintf(stderr, _("Usage: %s "
-	    "[-b backdrop] [-r rendezvous] [-t caps|npipe|tcp]\n"),
+	    "[-b backdrop] [-r rendezvous] [-t npipe|tcp]\n"),
 	    argv[0]);
 	exit(1);
 }

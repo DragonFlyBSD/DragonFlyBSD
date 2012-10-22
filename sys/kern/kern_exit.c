@@ -64,7 +64,6 @@
 #include <sys/jail.h>
 #include <sys/kern_syscall.h>
 #include <sys/upcall.h>
-#include <sys/caps.h>
 #include <sys/unistd.h>
 #include <sys/eventhandler.h>
 #include <sys/dsched.h>
@@ -301,8 +300,6 @@ exit1(int rv)
 		lwp_exit(0);
 		/* NOT REACHED */
 	}
-
-	caps_exit(lp->lwp_thread);
 
 	/* are we a task leader? */
 	if (p == p->p_leader) {

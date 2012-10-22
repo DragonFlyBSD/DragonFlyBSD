@@ -38,7 +38,6 @@
 .ds doc-str-Lb-libbsdxml        eXpat XML parser library (libbsdxml, \-lbsdxml)
 .ds doc-str-Lb-libcalendar      Calendar Arithmetic Library (libcalendar, \-lcalendar)
 .ds doc-str-Lb-libcam           Common Access Method User Library (libcam, \-lcam)
-.ds doc-str-Lb-libcaps          CAPS IPC Library (libcaps, \-lcaps)
 .ds doc-str-Lb-libcipher        FreeSec Crypt Library (libcipher, \-lcipher)
 .ds doc-str-Lb-libdevattr       Device attribute and event library (libdevattr \-ldevattr)
 .ds doc-str-Lb-libdevinfo       Device and Resource Information Utility Library (libdevinfo, \-ldevinfo)

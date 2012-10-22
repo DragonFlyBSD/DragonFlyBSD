@@ -135,6 +135,6 @@ static void
 usage(char **argv)
 {
 	fprintf(stderr, _("Usage: %s [-o rootdir] [-r rendezvous] "
-			  "[-t caps|npipe|tcp]\n"), argv[0]);
+			  "[-t npipe|tcp]\n"), argv[0]);
 	exit(1);
 }

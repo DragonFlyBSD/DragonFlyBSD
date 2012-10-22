@@ -1745,90 +1745,6 @@ struct	upc_control_args {
 	int	upcid;	char upcid_[PAD_(int)];
 	void *	data;	char data_[PAD_(void *)];
 };
-struct	caps_sys_service_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	const char *	name;	char name_[PAD_(const char *)];
-	uid_t	uid;	char uid_[PAD_(uid_t)];
-	gid_t	gid;	char gid_[PAD_(gid_t)];
-	int	upcid;	char upcid_[PAD_(int)];
-	int	flags;	char flags_[PAD_(int)];
-};
-struct	caps_sys_client_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	const char *	name;	char name_[PAD_(const char *)];
-	uid_t	uid;	char uid_[PAD_(uid_t)];
-	gid_t	gid;	char gid_[PAD_(gid_t)];
-	int	upcid;	char upcid_[PAD_(int)];
-	int	flags;	char flags_[PAD_(int)];
-};
-struct	caps_sys_close_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	portid;	char portid_[PAD_(int)];
-};
-struct	caps_sys_put_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	portid;	char portid_[PAD_(int)];
-	void *	msg;	char msg_[PAD_(void *)];
-	int	msgsize;	char msgsize_[PAD_(int)];
-};
-struct	caps_sys_reply_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	portid;	char portid_[PAD_(int)];
-	void *	msg;	char msg_[PAD_(void *)];
-	int	msgsize;	char msgsize_[PAD_(int)];
-	off_t	msgcid;	char msgcid_[PAD_(off_t)];
-};
-struct	caps_sys_get_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	portid;	char portid_[PAD_(int)];
-	void *	msg;	char msg_[PAD_(void *)];
-	int	maxsize;	char maxsize_[PAD_(int)];
-	struct caps_msgid *	msgid;	char msgid_[PAD_(struct caps_msgid *)];
-	struct caps_cred *	ccr;	char ccr_[PAD_(struct caps_cred *)];
-};
-struct	caps_sys_wait_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	portid;	char portid_[PAD_(int)];
-	void *	msg;	char msg_[PAD_(void *)];
-	int	maxsize;	char maxsize_[PAD_(int)];
-	struct caps_msgid *	msgid;	char msgid_[PAD_(struct caps_msgid *)];
-	struct caps_cred *	ccr;	char ccr_[PAD_(struct caps_cred *)];
-};
-struct	caps_sys_abort_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	portid;	char portid_[PAD_(int)];
-	off_t	msgcid;	char msgcid_[PAD_(off_t)];
-	int	flags;	char flags_[PAD_(int)];
-};
-struct	caps_sys_getgen_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	portid;	char portid_[PAD_(int)];
-};
-struct	caps_sys_setgen_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	portid;	char portid_[PAD_(int)];
-	off_t	gen;	char gen_[PAD_(off_t)];
-};
 struct	exec_sys_register_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2916,16 +2832,6 @@ int	sys_varsym_get (struct varsym_get_args *);
 int	sys_varsym_list (struct varsym_list_args *);
 int	sys_upc_register (struct upc_register_args *);
 int	sys_upc_control (struct upc_control_args *);
-int	sys_caps_sys_service (struct caps_sys_service_args *);
-int	sys_caps_sys_client (struct caps_sys_client_args *);
-int	sys_caps_sys_close (struct caps_sys_close_args *);
-int	sys_caps_sys_put (struct caps_sys_put_args *);
-int	sys_caps_sys_reply (struct caps_sys_reply_args *);
-int	sys_caps_sys_get (struct caps_sys_get_args *);
-int	sys_caps_sys_wait (struct caps_sys_wait_args *);
-int	sys_caps_sys_abort (struct caps_sys_abort_args *);
-int	sys_caps_sys_getgen (struct caps_sys_getgen_args *);
-int	sys_caps_sys_setgen (struct caps_sys_setgen_args *);
 int	sys_exec_sys_register (struct exec_sys_register_args *);
 int	sys_exec_sys_unregister (struct exec_sys_unregister_args *);
 int	sys_sys_checkpoint (struct sys_checkpoint_args *);

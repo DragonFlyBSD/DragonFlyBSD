@@ -247,7 +247,6 @@ typedef struct lwkt_cpu_msg {
  *	 threads.
  */
 struct md_intr_info;
-struct caps_kinfo;
 
 struct thread {
     TAILQ_ENTRY(thread) td_threadq;
@@ -293,7 +292,7 @@ struct thread {
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
     struct ucred *td_ucred;		/* synchronized from p_ucred */
-    struct caps_kinfo *td_caps;	/* list of client and server registrations */
+    void	 *td_unused04;	/* for future fields */
     lwkt_tokref_t td_toks_have;		/* tokens we own */
     lwkt_tokref_t td_toks_stop;		/* tokens we want */
     struct lwkt_tokref td_toks_array[LWKT_MAXTOKENS];

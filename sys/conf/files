@@ -881,7 +881,6 @@ kern/lwkt_ipiq.c	standard
 kern/lwkt_token.c	standard
 kern/lwkt_msgport.c	standard
 kern/lwkt_serialize.c	standard
-kern/lwkt_caps.c	standard
 kern/kern_dsched.c	standard
 kern/kern_sensors.c	standard
 kern/kern_spinlock.c	standard

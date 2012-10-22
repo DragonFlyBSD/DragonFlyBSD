@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.18 2008/10/04 14:22:44 swildner Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -59,7 +57,6 @@
 #include <machine/cpufunc.h>
 #include <machine/specialreg.h>
 #include <sys/lock.h>
-#include <sys/caps.h>
 
 struct exp_backoff {
 	int backoff;

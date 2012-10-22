@@ -68,9 +68,8 @@ typedef	int		dfui_err_t;
  * Transports.
  */
 
-#define DFUI_TRANSPORT_CAPS	1
-#define DFUI_TRANSPORT_NPIPE	2
-#define DFUI_TRANSPORT_TCP	3
+#define DFUI_TRANSPORT_NPIPE	1
+#define DFUI_TRANSPORT_TCP	2
 
 /*
  * Message types.
@@ -119,7 +118,7 @@ struct dfui_progress;
 /* Connections */
 
 struct dfui_connection {
-	int transport;		  /* transport layer: CAPS, NPIPE, or TCP */
+	int transport;		  /* transport layer: NPIPE or TCP */
 	char *rendezvous;	  /* rendezvous point */
 	struct aura_buffer *ebuf; /* last message recvd */
 	int is_connected;	  /* was a connection actually established? */

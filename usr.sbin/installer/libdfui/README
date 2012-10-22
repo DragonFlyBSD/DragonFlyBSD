@@ -10,8 +10,8 @@ libdfui is a LIBrary for DragonFly User Interfaces.  It provides a highly
 abstract user interaction interface with which an application program
 (termed the backend) can communicate with a user via a concreate user
 interface terminal program (termed the frontend.)  The frontend and the
-backend can communicate over several kinds of transport layers (TCP,
-CAPS, and Named Pipes.)  The protocol is abstract enough so that the
+backend can communicate over several kinds of transport layers (TCP
+and Named Pipes.)  The protocol is abstract enough so that the
 frontend can occupy nearly any medium (GUI, addressable text console,
 teletype, voice synthesis/recognition, etc) with little to no `fudging'
 of the semantics (i.e. the structure and nature of the information that

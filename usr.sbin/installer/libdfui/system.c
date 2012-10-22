@@ -31,15 +31,6 @@ ostype(void)
 }
 
 int
-has_caps(void)
-{
-#ifdef HAS_CAPS
-	return 1;
-#endif
-	return 0;
-}
-
-int
 has_npipe(void)
 {
 #ifdef HAS_NPIPE
@@ -68,11 +59,7 @@ has_tcp(void)
 int
 get_transport(const char *transport_name)
 {
-	if (strcmp(transport_name, "caps") == 0) {
-		if (has_caps())
-			return DFUI_TRANSPORT_CAPS;
-		return(0);
-	} else if (strcmp(transport_name, "npipe") == 0) {
+	if (strcmp(transport_name, "npipe") == 0) {
 		if (has_npipe())
 			return DFUI_TRANSPORT_NPIPE;
 		return(0);

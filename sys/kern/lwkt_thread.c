@@ -50,7 +50,6 @@
 #include <sys/kthread.h>
 #include <machine/cpu.h>
 #include <sys/lock.h>
-#include <sys/caps.h>
 #include <sys/spinlock.h>
 #include <sys/ktr.h>
 
@@ -1709,7 +1708,6 @@ lwkt_exit(void)
      */
     if (td->td_flags & TDF_VERBOSE)
 	kprintf("kthread %p %s has exited\n", td, td->td_comm);
-    caps_exit(td);
     biosched_done(td);
     dsched_exit_thread(td);
 

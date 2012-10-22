@@ -37,7 +37,6 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.77 2008/05/18 20:02:02 nth Exp $
  */
 
 #include "opt_ktrace.h"
@@ -56,7 +55,6 @@
 #include <sys/ktrace.h>
 #include <sys/unistd.h>
 #include <sys/jail.h>
-#include <sys/caps.h>
 
 #include <vm/vm.h>
 #include <sys/lock.h>
@@ -685,7 +683,6 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	 * and make the child ready to run.
 	 */
 	cpu_fork(origlp, lp, flags);
-	caps_fork(origlp->lwp_thread, lp->lwp_thread);
 	kqueue_init(&lp->lwp_kqueue, destproc->p_fd);
 
 	/*

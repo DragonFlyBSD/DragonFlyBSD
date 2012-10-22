@@ -25,12 +25,6 @@
         ..
     ..
 /set mode=0755
-    caps
-        root
-        ..
-        users
-        ..
-    ..
     db
     ..
     empty               mode=0555 flags=schg

@@ -341,16 +341,6 @@ union sysunion {
 	struct	varsym_list_args varsym_list;
 	struct	upc_register_args upc_register;
 	struct	upc_control_args upc_control;
-	struct	caps_sys_service_args caps_sys_service;
-	struct	caps_sys_client_args caps_sys_client;
-	struct	caps_sys_close_args caps_sys_close;
-	struct	caps_sys_put_args caps_sys_put;
-	struct	caps_sys_reply_args caps_sys_reply;
-	struct	caps_sys_get_args caps_sys_get;
-	struct	caps_sys_wait_args caps_sys_wait;
-	struct	caps_sys_abort_args caps_sys_abort;
-	struct	caps_sys_getgen_args caps_sys_getgen;
-	struct	caps_sys_setgen_args caps_sys_setgen;
 	struct	exec_sys_register_args exec_sys_register;
 	struct	exec_sys_unregister_args exec_sys_unregister;
 	struct	sys_checkpoint_args sys_checkpoint;
