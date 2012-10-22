@@ -31,8 +31,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.17 2008/01/07 23:41:55 dillon Exp $
  */
 
 /*
@@ -207,7 +205,7 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 			kl->kl_stat = LSSLEEP;
 		}
 	}
-#ifdef SMP
+#if defined(_KERNEL) && defined(SMP)
 	kl->kl_mpcount = get_mplock_count(lwp->lwp_thread);
 #else
 	kl->kl_mpcount = 0;
@@ -260,11 +258,11 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 	kp->kp_lwp.kl_pid = -1;
 	kp->kp_lwp.kl_tid = -1;
 	kp->kp_lwp.kl_tdflags = td->td_flags;
-#ifdef SMP
+#if defined(_KERNEL) && defined(SMP)
 	kp->kp_lwp.kl_mpcount = get_mplock_count(td);
-#else /* !SMP */
+#else
 	kp->kp_lwp.kl_mpcount = 0;
-#endif /* SMP */
+#endif
 
 	kp->kp_lwp.kl_tdprio = td->td_pri;
 	kp->kp_lwp.kl_rtprio.type = RTP_PRIO_THREAD;
