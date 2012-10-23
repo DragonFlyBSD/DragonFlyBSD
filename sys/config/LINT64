@@ -1187,7 +1187,6 @@ device		puc
 # ed: Western Digital and SMC 80xx; Novell NE1000 and NE2000; 3Com 3C503
 # ep: 3Com 3C509
 # ex: Intel EtherExpress Pro/10 and other i82595-based adapters
-# fe: Fujitsu MB86960A/MB86965A Ethernet
 # lnc: Lance/PCnet cards (Isolan, Novell NE2100, NE32-VL, AMD Am7990 & Am79C960)
 # sbsh: Granch SBNI16 SHDSL modem PCI adapters
 # wi: Lucent WaveLAN/IEEE 802.11 PCMCIA adapters. Note: this supports both
