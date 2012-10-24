@@ -163,11 +163,7 @@ struct privatespace CPU_prvspace[MAXCPU] __aligned(4096); /* XXX */
 
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
-#ifdef SMP
 int64_t tsc_offsets[MAXCPU];
-#else
-int64_t tsc_offsets[1];
-#endif
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;
@@ -1050,8 +1046,6 @@ cpu_idle(void)
 	}
 }
 
-#ifdef SMP
-
 /*
  * This routine is called if a spinlock has been held through the
  * exponential backoff period and is seriously contested.  On a real cpu
@@ -1062,8 +1056,6 @@ cpu_spinlock_contested(void)
 {
 	cpu_pause();
 }
-
-#endif
 
 /*
  * Clear registers on exec
@@ -1492,10 +1484,8 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	}
 
 	base_memory = physmap[1] / 1024;
-#ifdef SMP
 	/* make hole for AP bootstrap code */
 	physmap[1] = mp_bootaddress(base_memory);
-#endif
 
 	/* Save EBDA address, if any */
 	ebda_addr = (u_long)(*(u_short *)(KERNBASE + 0x40e));
@@ -2457,13 +2447,11 @@ struct spinlock_deprecated clock_spinlock;
 static void
 init_locks(void)
 {
-#ifdef SMP
 	/*
 	 * Get the initial mplock with a count of 1 for the BSP.
 	 * This uses a LOGICAL cpu ID, ie BSP == 0.
 	 */
 	cpu_get_initial_mplock();
-#endif
 	/* DEPRECATED */
 	spin_lock_init(&mcount_spinlock);
 	spin_lock_init(&intr_spinlock);

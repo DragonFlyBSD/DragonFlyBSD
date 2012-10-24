@@ -96,19 +96,11 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
-#ifdef SMP
-
 #define MAKEMPSAFE(have_mplock)			\
 	if (have_mplock == 0) {			\
 		get_mplock();			\
 		have_mplock = 1;		\
 	}
-
-#else
-
-#define MAKEMPSAFE(have_mplock)
-
-#endif
 
 int (*pmath_emulate) (struct trapframe *);
 
@@ -389,9 +381,7 @@ user_trap(struct trapframe *frame)
 	struct proc *p;
 	int sticks = 0;
 	int i = 0, ucode = 0, type, code;
-#ifdef SMP
 	int have_mplock = 0;
-#endif
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
 	lwkt_tokref_t curstop = td->td_toks_stop;
@@ -650,10 +640,8 @@ out:
 	userret(lp, frame, sticks);
 	userexit(lp);
 out2:	;
-#ifdef SMP
 	if (have_mplock)
 		rel_mplock();
-#endif
 	KTR_LOG(kernentry_trap_ret, lp->lwp_proc->p_pid, lp->lwp_tid);
 #ifdef INVARIANTS
 	KASSERT(crit_count == td->td_critcount,
@@ -674,9 +662,7 @@ kern_trap(struct trapframe *frame)
 	struct lwp *lp;
 	struct proc *p;
 	int i = 0, ucode = 0, type, code;
-#ifdef SMP
 	int have_mplock = 0;
-#endif
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
 	lwkt_tokref_t curstop = td->td_toks_stop;
@@ -858,10 +844,8 @@ kernel_trap:
 
 out2:	
 	;
-#ifdef SMP
 	if (have_mplock)
 		rel_mplock();
-#endif
 #ifdef INVARIANTS
 	KASSERT(crit_count == td->td_critcount,
 		("trap: critical section count mismatch! %d/%d",
@@ -964,10 +948,8 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 			type, trap_msg[type],
 			(usermode ? "user" : "kernel"));
 	}
-#ifdef SMP
 	/* two separate prints in case of a trap on an unmapped page */
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);
-#endif
 	if (type == T_PAGEFLT) {
 		kprintf("fault virtual address	= %p\n", (void *)eva);
 		kprintf("fault code		= %s %s, %s\n",
@@ -1012,14 +994,12 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 	if (curthread->td_critcount)
 		kprintf("(CRIT)");
 	kprintf("\n");
-#ifdef SMP
 /**
  *  XXX FIXME:
  *	we probably SHOULD have stopped the other CPUs before now!
  *	another CPU COULD have been touching cpl at this moment...
  */
 	kprintf(" <- SMP: XXX");
-#endif
 	kprintf("\n");
 
 #ifdef KDB
@@ -1058,10 +1038,8 @@ dblfault_handler(void)
 	kprintf("eip = 0x%x\n", gd->gd_common_tss.tss_eip);
 	kprintf("esp = 0x%x\n", gd->gd_common_tss.tss_esp);
 	kprintf("ebp = 0x%x\n", gd->gd_common_tss.tss_ebp);
-#ifdef SMP
 	/* two separate prints in case of a trap on an unmapped page */
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);
-#endif
 	panic("double fault");
 }
 
@@ -1090,9 +1068,7 @@ syscall2(struct trapframe *frame)
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
 #endif
-#ifdef SMP
 	int have_mplock = 0;
-#endif
 	u_int code;
 	union sysunion args;
 
@@ -1280,13 +1256,11 @@ bad:
 	STOPEVENT(p, S_SCX, code);
 
 	userexit(lp);
-#ifdef SMP
 	/*
 	 * Release the MP lock if we had to get it
 	 */
 	if (have_mplock)
 		rel_mplock();
-#endif
 	KTR_LOG(kernentry_syscall_ret, lp->lwp_proc->p_pid, lp->lwp_tid, error);
 #ifdef INVARIANTS
 	KASSERT(crit_count == td->td_critcount,

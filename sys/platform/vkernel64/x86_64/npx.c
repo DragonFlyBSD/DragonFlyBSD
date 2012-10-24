@@ -55,17 +55,11 @@
 #include <sys/signalvar.h>
 #include <sys/thread2.h>
 
-#ifndef SMP
-#include <machine/asmacros.h>
-#endif
 #include <machine/cputypes.h>
 #include <machine/frame.h>
 #include <machine/md_var.h>
 #include <machine/pcb.h>
 #include <machine/psl.h>
-#ifndef SMP
-#include <machine/clock.h>
-#endif
 #include <machine/specialreg.h>
 #include <machine/segments.h>
 #include <machine/globaldata.h>

@@ -646,7 +646,6 @@ udp_notifyall_oncpu(netmsg_t msg)
 static void
 udp_rtchange(struct inpcb *inp, int err)
 {
-#ifdef SMP
 	/* XXX Nuke this, once UDP inpcbs are CPU localized */
 	if (inp->inp_route.ro_rt && inp->inp_route.ro_rt->rt_cpuid == mycpuid) {
 		rtfree(inp->inp_route.ro_rt);
@@ -656,9 +655,6 @@ udp_rtchange(struct inpcb *inp, int err)
 		 * output is attempted.
 		 */
 	}
-#else
-	in_rtchange(inp, err);
-#endif
 }
 
 void
@@ -1102,7 +1098,6 @@ udp_connect(netmsg_t msg)
 
 	port = udp_addrport(sin->sin_addr.s_addr, sin->sin_port,
 			    inp->inp_laddr.s_addr, inp->inp_lport);
-#ifdef SMP
 	if (port != &curthread->td_msgport) {
 #ifdef notyet
 		struct route *ro = &inp->inp_route;
@@ -1134,7 +1129,6 @@ udp_connect(netmsg_t msg)
 		panic("UDP activity should only be in netisr0");
 #endif
 	}
-#endif
 	KKASSERT(port == &curthread->td_msgport);
 	error = udp_connect_oncpu(so, td, sin, if_sin);
 out:

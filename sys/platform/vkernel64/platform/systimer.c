@@ -202,13 +202,10 @@ vktimer_intr(void *dummy, struct intrframe *frame)
 {
 	static sysclock_t sysclock_count;
 	struct globaldata *gd = mycpu;
-#ifdef SMP
         struct globaldata *gscan;
 	int n;
-#endif
 
 	sysclock_count = sys_cputimer->count();
-#ifdef SMP
 	for (n = 0; n < ncpus; ++n) {
 		gscan = globaldata_find(n);
 		if (TAILQ_FIRST(&gscan->gd_systimerq) == NULL)
@@ -220,10 +217,6 @@ vktimer_intr(void *dummy, struct intrframe *frame)
 			systimer_intr(&sysclock_count, 0, frame);
 		}
 	}
-#else
-	if (TAILQ_FIRST(&gd->gd_systimerq) != NULL)
-		systimer_intr(&sysclock_count, 0, frame);
-#endif
 }
 
 /*

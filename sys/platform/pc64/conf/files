@@ -153,7 +153,7 @@ vfs/smbfs/smbfs_vnops.c		optional	smbfs
 cpu/x86_64/misc/atomic.c		standard			\
         compile-with    "${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 platform/pc64/x86_64/autoconf.c	standard
-platform/pc64/x86_64/mpboot.S		optional	smp
+platform/pc64/x86_64/mpboot.S	standard
 
 # DDB XXX
 cpu/x86_64/misc/x86_64-gdbstub.c	optional	ddb
@@ -232,7 +232,7 @@ platform/pc64/x86_64/busdma_machdep.c standard
 platform/pc64/x86_64/sysarch.c	standard
 platform/pc64/x86_64/ipl_funcs.c	standard
 kern/syscalls.c			standard
-platform/pc64/x86_64/mp_machdep.c		optional	smp
+platform/pc64/x86_64/mp_machdep.c	standard
 platform/pc64/x86_64/mptable.c		standard
 platform/pc64/acpica5/acpi_sdt.c	standard
 platform/pc64/acpica5/acpi_fadt.c	standard

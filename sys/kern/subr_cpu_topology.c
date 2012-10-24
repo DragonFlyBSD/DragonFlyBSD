@@ -39,8 +39,6 @@
 
 #include <machine/smp.h>
 
-#ifdef SMP
-
 #ifndef NAPICID
 #define NAPICID 256
 #endif
@@ -569,4 +567,3 @@ init_cpu_topology(void)
 }
 SYSINIT(cpu_topology, SI_BOOT2_CPU_TOPOLOGY, SI_ORDER_FIRST,
     init_cpu_topology, NULL)
-#endif

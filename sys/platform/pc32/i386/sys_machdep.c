@@ -255,23 +255,17 @@ set_user_TLS(void)
 {
 	struct thread *td = curthread;
 	int i;
-#ifdef SMP
 	int off = GTLS_START + mycpu->gd_cpuid * NGDT;
-#else
-	const int off = GTLS_START;
-#endif
 	for (i = 0; i < NGTLS; ++i)
 		gdt[off + i].sd = td->td_tls.tls[i];
 }
 
-#ifdef SMP
 static
 void
 set_user_ldt_cpusync(void *arg)
 {
 	set_user_ldt(arg);
 }
-#endif
 
 /*
  * Update the GDT entry pointing to the LDT to point to the LDT of the
@@ -289,11 +283,7 @@ set_user_ldt(struct pcb *pcb)
 		return;
 
 	pcb_ldt = pcb->pcb_ldt;
-#ifdef SMP
 	gdt[mycpu->gd_cpuid * NGDT + GUSERLDT_SEL].sd = pcb_ldt->ldt_sd;
-#else
-	gdt[GUSERLDT_SEL].sd = pcb_ldt->ldt_sd;
-#endif
 	lldt(GSEL(GUSERLDT_SEL, SEL_KPL));
 	mdcpu->gd_currentldt = GSEL(GUSERLDT_SEL, SEL_KPL);
 }
@@ -448,11 +438,7 @@ ki386_set_ldt(struct lwp *lp, char *args, int *res)
 		 * reload it.  XXX we need to track which cpus might be
 		 * using the shared ldt and only signal those.
 		 */
-#ifdef SMP
 		lwkt_cpusync_simple(-1, set_user_ldt_cpusync, pcb);
-#else
-		set_user_ldt(pcb);
-#endif
 	}
 
 	descs_size = uap->num * sizeof(union descriptor);

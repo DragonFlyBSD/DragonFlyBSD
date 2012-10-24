@@ -56,27 +56,15 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
-#ifndef SMP
-#include <machine/asmacros.h>
-#endif
 #include <machine/cputypes.h>
 #include <machine/frame.h>
 #include <machine/ipl.h>
 #include <machine/md_var.h>
 #include <machine/pcb.h>
 #include <machine/psl.h>
-#ifndef SMP
-#include <machine/clock.h>
-#endif
 #include <machine/specialreg.h>
 #include <machine/segments.h>
 #include <machine/globaldata.h>
-
-#ifndef SMP
-#include <machine_base/icu/icu.h>
-#include <machine/intr_machdep.h>
-#include <bus/isa/isa.h>
-#endif
 
 /*
  * 387 and 287 Numeric Coprocessor Extension (NPX) Driver.
@@ -151,55 +139,10 @@ SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
 	"MMX/XMM optimized bcopy/copyin/copyout support");
 #endif
 
-#ifndef SMP
-static	u_int			npx0_imask;
-static	struct gate_descriptor	npx_idt_probeintr;
-static	int			npx_intrno;
-static	volatile u_int		npx_intrs_while_probing;
-static	volatile u_int		npx_traps_while_probing;
-#endif
-
 static	bool_t			npx_ex16;
 static	bool_t			npx_exists;
 static	bool_t			npx_irq13;
 static	int			npx_irq;	/* irq number */
-
-#ifndef SMP
-/*
- * Special interrupt handlers.  Someday intr0-intr15 will be used to count
- * interrupts.  We'll still need a special exception 16 handler.  The busy
- * latch stuff in probeintr() can be moved to npxprobe().
- */
-inthand_t probeintr;
-__asm("								\n\
-	.text							\n\
-	.p2align 2,0x90						\n\
-	.type	" __XSTRING(CNAME(probeintr)) ",@function	\n\
-" __XSTRING(CNAME(probeintr)) ":				\n\
-	ss							\n\
-	incl	" __XSTRING(CNAME(npx_intrs_while_probing)) "	\n\
-	pushl	%eax						\n\
-	movb	$0x20,%al	# EOI (asm in strings loses cpp features) \n\
-	outb	%al,$0xa0	# IO_ICU2			\n\
-	outb	%al,$0x20	# IO_ICU1			\n\
-	movb	$0,%al						\n\
-	outb	%al,$0xf0	# clear BUSY# latch		\n\
-	popl	%eax						\n\
-	iret							\n\
-");
-
-inthand_t probetrap;
-__asm("								\n\
-	.text							\n\
-	.p2align 2,0x90						\n\
-	.type	" __XSTRING(CNAME(probetrap)) ",@function	\n\
-" __XSTRING(CNAME(probetrap)) ":				\n\
-	ss							\n\
-	incl	" __XSTRING(CNAME(npx_traps_while_probing)) "	\n\
-	fnclex							\n\
-	iret							\n\
-");
-#endif /* SMP */
 
 static struct krate badfprate = { 1 };
 
@@ -212,62 +155,14 @@ static struct krate badfprate = { 1 };
 static int
 npx_probe(device_t dev)
 {
-#ifdef SMP
-
 	if (resource_int_value("npx", 0, "irq", &npx_irq) != 0)
 		npx_irq = 13;
 	return npx_probe1(dev);
-
-#else /* SMP */
-
-	int	result;
-	u_long	save_eflags;
-	u_char	save_icu1_mask;
-	u_char	save_icu2_mask;
-	struct	gate_descriptor save_idt_npxintr;
-	struct	gate_descriptor save_idt_npxtrap;
-	/*
-	 * This routine is now just a wrapper for npxprobe1(), to install
-	 * special npx interrupt and trap handlers, to enable npx interrupts
-	 * and to disable other interrupts.  Someday isa_configure() will
-	 * install suitable handlers and run with interrupts enabled so we
-	 * won't need to do so much here.
-	 */
-	if (resource_int_value("npx", 0, "irq", &npx_irq) != 0)
-		npx_irq = 13;
-	npx_intrno = IDT_OFFSET + npx_irq;
-	save_eflags = read_eflags();
-	cpu_disable_intr();
-	save_icu1_mask = inb(IO_ICU1 + 1);
-	save_icu2_mask = inb(IO_ICU2 + 1);
-	save_idt_npxintr = idt[npx_intrno];
-	save_idt_npxtrap = idt[16];
-	outb(IO_ICU1 + 1, ~(1 << ICU_IRQ_SLAVE));
-	outb(IO_ICU2 + 1, ~(1 << (npx_irq - 8)));
-	setidt(16, probetrap, SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	setidt(npx_intrno, probeintr, SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	npx_idt_probeintr = idt[npx_intrno];
-	cpu_enable_intr();
-	result = npx_probe1(dev);
-	cpu_disable_intr();
-	outb(IO_ICU1 + 1, save_icu1_mask);
-	outb(IO_ICU2 + 1, save_icu2_mask);
-	idt[npx_intrno] = save_idt_npxintr;
-	idt[16] = save_idt_npxtrap;
-	write_eflags(save_eflags);
-	return (result);
-
-#endif /* SMP */
 }
 
 static int
 npx_probe1(device_t dev)
 {
-#ifndef SMP
-	u_short control;
-	u_short status;
-#endif
-
 	/*
 	 * Partially reset the coprocessor, if any.  Some BIOS's don't reset
 	 * it after a warm boot.
@@ -313,90 +208,6 @@ npx_probe1(device_t dev)
 		return (0);
 	}
 
-#ifndef SMP
-	/*
-	 * Don't use fwait here because it might hang.
-	 * Don't use fnop here because it usually hangs if there is no FPU.
-	 */
-	DELAY(1000);		/* wait for any IRQ13 */
-#ifdef DIAGNOSTIC
-	if (npx_intrs_while_probing != 0)
-		kprintf("fninit caused %u bogus npx interrupt(s)\n",
-		       npx_intrs_while_probing);
-	if (npx_traps_while_probing != 0)
-		kprintf("fninit caused %u bogus npx trap(s)\n",
-		       npx_traps_while_probing);
-#endif
-	/*
-	 * Check for a status of mostly zero.
-	 */
-	status = 0x5a5a;
-	fnstsw(&status);
-	if ((status & 0xb8ff) == 0) {
-		/*
-		 * Good, now check for a proper control word.
-		 */
-		control = 0x5a5a;
-		fnstcw(&control);
-		if ((control & 0x1f3f) == 0x033f) {
-			hw_float = npx_exists = 1;
-			/*
-			 * We have an npx, now divide by 0 to see if exception
-			 * 16 works.
-			 */
-			control &= ~(1 << 2);	/* enable divide by 0 trap */
-			fldcw(&control);
-			npx_traps_while_probing = npx_intrs_while_probing = 0;
-			fp_divide_by_0();
-			if (npx_traps_while_probing != 0) {
-				/*
-				 * Good, exception 16 works.
-				 */
-				npx_ex16 = 1;
-				return (0);
-			}
-			if (npx_intrs_while_probing != 0) {
-				int	rid;
-				struct	resource *r;
-				void	*intr;
-				/*
-				 * Bad, we are stuck with IRQ13.
-				 */
-				npx_irq13 = 1;
-				/*
-				 * npxattach would be too late to set npx0_imask
-				 */
-				npx0_imask |= (1 << npx_irq);
-
-				/*
-				 * We allocate these resources permanently,
-				 * so there is no need to keep track of them.
-				 */
-				rid = 0;
-				r = bus_alloc_resource(dev, SYS_RES_IOPORT,
-						       &rid, IO_NPX, IO_NPX,
-						       IO_NPXSIZE, RF_ACTIVE);
-				if (r == NULL)
-					panic("npx: can't get ports");
-				rid = 0;
-				r = bus_alloc_legacy_irq_resource(dev, &rid,
-				    npx_irq, RF_ACTIVE);
-				if (r == NULL)
-					panic("npx: can't get IRQ");
-				BUS_SETUP_INTR(device_get_parent(dev),
-					       dev, r, 0,
-					       npx_intr, 0, &intr, NULL, NULL);
-				if (intr == NULL)
-					panic("npx: can't create intr");
-
-				return (0);
-			}
-			/*
-			 * Worse, even IRQ13 is broken.  Use emulator.
-			 */
-		}
-	}
-#endif /* SMP */
 	/*
 	 * Probe failed, but we want to get to npxattach to initialize the
 	 * emulator and say that it has been installed.  XXX handle devices
@@ -916,8 +727,6 @@ npxdna(void)
 void
 npxsave(union savefpu *addr)
 {
-#if defined(SMP) || !defined(CPU_DISABLE_SSE)
-
 	crit_enter();
 	stop_emulating();
 	fpusave(addr);
@@ -925,42 +734,6 @@ npxsave(union savefpu *addr)
 	fninit();
 	start_emulating();
 	crit_exit();
-
-#else /* !SMP and CPU_DISABLE_SSE */
-
-	u_char	icu1_mask;
-	u_char	icu2_mask;
-	u_char	old_icu1_mask;
-	u_char	old_icu2_mask;
-	struct gate_descriptor	save_idt_npxintr;
-	u_long	save_eflags;
-
-	save_eflags = read_eflags();
-	cpu_disable_intr();
-	old_icu1_mask = inb(IO_ICU1 + 1);
-	old_icu2_mask = inb(IO_ICU2 + 1);
-	save_idt_npxintr = idt[npx_intrno];
-	outb(IO_ICU1 + 1, old_icu1_mask & ~((1 << ICU_IRQ_SLAVE) | npx0_imask));
-	outb(IO_ICU2 + 1, old_icu2_mask & ~(npx0_imask >> 8));
-	idt[npx_intrno] = npx_idt_probeintr;
-	cpu_enable_intr();
-	stop_emulating();
-	fnsave(addr);
-	fnop();
-	cpu_disable_intr();
-	mdcpu->gd_npxthread = NULL;
-	start_emulating();
-	icu1_mask = inb(IO_ICU1 + 1);	/* masks may have changed */
-	icu2_mask = inb(IO_ICU2 + 1);
-	outb(IO_ICU1 + 1,
-	     (icu1_mask & ~npx0_imask) | (old_icu1_mask & npx0_imask));
-	outb(IO_ICU2 + 1,
-	     (icu2_mask & ~(npx0_imask >> 8))
-	     | (old_icu2_mask & (npx0_imask >> 8)));
-	idt[npx_intrno] = save_idt_npxintr;
-	write_eflags(save_eflags); 	/* back to usual state */
-
-#endif /* SMP */
 }
 
 static void

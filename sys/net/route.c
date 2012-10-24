@@ -96,11 +96,7 @@
 #endif
 
 static struct rtstatistics rtstatistics_percpu[MAXCPU];
-#ifdef SMP
 #define rtstat	rtstatistics_percpu[mycpuid]
-#else
-#define rtstat	rtstatistics_percpu[0]
-#endif
 
 struct radix_node_head *rt_tables[MAXCPU][AF_MAX+1];
 struct lwkt_port *rt_ports[MAXCPU];
@@ -112,10 +108,8 @@ static void rtable_service_loop(void *dummy);
 static void rtinit_rtrequest_callback(int, int, struct rt_addrinfo *,
 				      struct rtentry *, void *);
 
-#ifdef SMP
 static void rtredirect_msghandler(netmsg_t msg);
 static void rtrequest1_msghandler(netmsg_t msg);
-#endif
 static void rtsearch_msghandler(netmsg_t msg);
 static void rtmask_add_msghandler(netmsg_t msg);
 
@@ -208,7 +202,6 @@ rtable_service_loop(void *dummy __unused)
 /*
  * Routing statistics.
  */
-#ifdef SMP
 static int
 sysctl_rtstatistics(SYSCTL_HANDLER_ARGS)
 {
@@ -227,10 +220,6 @@ sysctl_rtstatistics(SYSCTL_HANDLER_ARGS)
 }
 SYSCTL_PROC(_net_route, OID_AUTO, stats, (CTLTYPE_OPAQUE|CTLFLAG_RW),
 	0, 0, sysctl_rtstatistics, "S,rtstatistics", "Routing statistics");
-#else
-SYSCTL_STRUCT(_net_route, OID_AUTO, stats, CTLFLAG_RW, &rtstat, rtstatistics,
-"Routing statistics");
-#endif
 
 /*
  * Packet routing routines.
@@ -499,8 +488,6 @@ out:
 	return error;
 }
 
-#ifdef SMP
-
 struct netmsg_rtredirect {
 	struct netmsg_base base;
 	struct sockaddr *dst;
@@ -509,8 +496,6 @@ struct netmsg_rtredirect {
 	int		flags;
 	struct sockaddr *src;
 };
-
-#endif
 
 /*
  * Force a routing table entry to the specified
@@ -526,7 +511,6 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 {
 	struct rt_addrinfo rtinfo;
 	int error;
-#ifdef SMP
 	struct netmsg_rtredirect msg;
 
 	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
@@ -537,9 +521,6 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 	msg.flags = flags;
 	msg.src = src;
 	error = lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
-#else
-	error = rtredirect_oncpu(dst, gateway, netmask, flags, src);
-#endif
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
 	rtinfo.rti_info[RTAX_DST] = dst;
 	rtinfo.rti_info[RTAX_GATEWAY] = gateway;
@@ -547,8 +528,6 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 	rtinfo.rti_info[RTAX_AUTHOR] = src;
 	rt_missmsg(RTM_REDIRECT, &rtinfo, flags, error);
 }
-
-#ifdef SMP
 
 static void
 rtredirect_msghandler(netmsg_t msg)
@@ -564,8 +543,6 @@ rtredirect_msghandler(netmsg_t msg)
 	else
 		lwkt_replymsg(&msg->lmsg, 0);
 }
-
-#endif
 
 /*
 * Routing table ioctl interface.
@@ -729,8 +706,6 @@ rtrequest_global(
 	return rtrequest1_global(req, &rtinfo, NULL, NULL);
 }
 
-#ifdef SMP
-
 struct netmsg_rtq {
 	struct netmsg_base	base;
 	int			req;
@@ -739,14 +714,11 @@ struct netmsg_rtq {
 	void			*arg;
 };
 
-#endif
-
 int
 rtrequest1_global(int req, struct rt_addrinfo *rtinfo, 
 		  rtrequest1_callback_func_t callback, void *arg)
 {
 	int error;
-#ifdef SMP
 	struct netmsg_rtq msg;
 
 	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
@@ -757,15 +729,6 @@ rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
 	msg.callback = callback;
 	msg.arg = arg;
 	error = lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
-#else
-	struct rtentry *rt = NULL;
-
-	error = rtrequest1(req, rtinfo, &rt);
-	if (rt)
-		--rt->rt_refcnt;
-	if (callback)
-		callback(req, error, rtinfo, rt, arg);
-#endif
 	return (error);
 }
 
@@ -774,8 +737,6 @@ rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
  * are supposed to be identical on each cpu, an error occuring later in the
  * message chain is considered system-fatal.
  */
-#ifdef SMP
-
 static void
 rtrequest1_msghandler(netmsg_t msg)
 {
@@ -821,8 +782,6 @@ rtrequest1_msghandler(netmsg_t msg)
 		lwkt_replymsg(&rmsg->base.lmsg, rmsg->base.lmsg.ms_error);
 	}
 }
-
-#endif
 
 int
 rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)

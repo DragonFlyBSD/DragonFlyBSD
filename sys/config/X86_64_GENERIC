@@ -61,12 +61,6 @@ options		ALTQ_FAIRQ	#fair queueing
 #options	ALTQ_NOPCC	#don't use processor cycle counter
 #options	ALTQ_DEBUG	#for debugging
 
-
-# Kernels configured with 'options SMP' should generally boot on both
-# SMP and UP boxes.
-#
-options		SMP			# Symmetric MultiProcessor Kernel
-
 # Debugging for Development
 options 	DDB
 options 	DDB_TRACE

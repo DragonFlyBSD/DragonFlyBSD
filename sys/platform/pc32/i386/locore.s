@@ -35,7 +35,6 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.13 2007/01/08 03:33:42 dillon Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -718,12 +717,6 @@ no_kernend:
 #endif
 	xorl	%edx,%edx
 
-#if !defined(SMP)
-	testl	$CPUID_PGE, R(cpu_feature)
-	jz	2f
-	orl	$PG_G,%edx
-#endif
-	
 2:	movl	$R(etext),%ecx
 	addl	$PAGE_MASK,%ecx
 	shrl	$PAGE_SHIFT,%ecx
@@ -735,12 +728,7 @@ no_kernend:
 	andl	$~PAGE_MASK, %eax
 map_read_write:
 	movl	$PG_RW,%edx
-#if !defined(SMP)
-	testl	$CPUID_PGE, R(cpu_feature)
-	jz	1f
-	orl	$PG_G,%edx
-#endif
-	
+
 1:	movl	R(KERNend),%ecx
 	subl	%eax,%ecx
 	shrl	$PAGE_SHIFT,%ecx

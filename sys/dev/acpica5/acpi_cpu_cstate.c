@@ -1119,16 +1119,9 @@ acpi_cpu_c1(void)
     ia64_call_pal_static(PAL_HALT_LIGHT, 0, 0, 0);
 #else
     splz();
-#ifdef SMP
     if ((mycpu->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0)
         __asm __volatile("sti; hlt");
     else
         __asm __volatile("sti; pause");
-#else
-    if ((mycpu->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0)
-        __asm __volatile("sti; hlt");
-    else
-        __asm __volatile("sti");
-#endif
 #endif /* !__ia64__ */
 }

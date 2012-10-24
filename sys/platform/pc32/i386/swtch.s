@@ -66,7 +66,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.47 2007/06/29 21:54:10 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -82,11 +81,7 @@
 
 #include "assym.s"
 
-#if defined(SMP)
 #define MPLOCKED        lock ;
-#else
-#define MPLOCKED
-#endif
 
 	.data
 
@@ -309,7 +304,6 @@ ENTRY(cpu_heavy_restore)
 	 * wait for it to complete before we can continue.
 	 */
 	movl	LWP_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
-#ifdef SMP
 	pushl	%eax				/* save curthread */
 1:
 	movl	VM_PMAP+PM_ACTIVE(%ecx),%eax	/* old value for cmpxchgl */
@@ -336,10 +330,6 @@ ENTRY(cpu_heavy_restore)
 	jmp	2f
 1:
 	popl	%eax
-#else
-	movl	PCPU(cpumask), %esi
-	orl	%esi, VM_PMAP+PM_ACTIVE(%ecx)
-#endif
 
 	/*
 	 * Restore the MMU address space.  If it is the same as the last
@@ -559,12 +549,10 @@ ENTRY(cpu_idle_restore)
 	movl	%ecx,%cr3
 	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
 	orl	$TDF_RUNNING,TD_FLAGS(%eax)	/* manual, no switch_return */
-#ifdef SMP
 	cmpl	$0,PCPU(cpuid)
 	je	1f
 	call	ap_init
 1:
-#endif
 	/*
 	 * ap_init can decide to enable interrupts early, but otherwise, or if
 	 * we are UP, do it here.

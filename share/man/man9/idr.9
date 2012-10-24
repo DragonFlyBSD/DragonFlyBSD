@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\"
-.Dd August 15, 2012
+.Dd October 23, 2012
 .Dt IDR 9
 .Os
 .Sh NAME
@@ -40,7 +40,7 @@
 .Nm idr_remove ,
 .Nm idr_remove_all ,
 .Nm idr_replace
-.Nd Integer ID management library
+.Nd integer ID management library
 .Sh SYNOPSIS
 .In sys/idr.h
 .Ft void
@@ -65,74 +65,95 @@
 .Fn idr_remove_all "struct idr *idp"
 .Ft void *
 .Fn idr_replace "struct idr *idp" "void *ptr" "int id"
-.
 .Sh DESCRIPTION
+The
+.Fn idr_destroy
+function frees all resources taken by the specified
+.Nm
+handle
+.Fa idp .
 .Pp
-.Fn idr_destroy "struct idr *idp"
+The
+.Fn idr_find
+function returns the data pointer that is mapped with the specified
+.Fa id .
 .Pp
-Free all resources taken by given idr handle.
-.
-.Pp
-.Fn idr_find "struct idr *idp" "int id"
-.Pp
-Return data pointer mapped with given id.
-.
-.Pp
-.Fn idr_for_each "struct idr *idp" "int (*fn)(int id, void *p, void *data)" "void *data"
-.Pp
-Iterate through all pointers registered with given idr handle and call the
-callback function 'fn' for each pointer. It is not safe to modify the idr tree
-through the callback function.
-.Pp
-If the callback function returns a non-zero integer, we stop and return the
+The
+.Fn idr_for_each
+function iterates through all pointers registered with the specified
+.Nm
+handle
+.Fa idp
+and calls the callback function
+.Fn fn
+for each pointer.
+It is not safe to modify the
+.Nm
+tree through the callback function.
+If the callback function returns a non-zero integer, it stops and returns the
 value.
-.
 .Pp
-.Fn idr_get_new "struct idr *idp" "void *ptr" "int *id",
-.Fn idr_get_new_above "struct idr *idp" "void *ptr" "int sid" "int *id"
-.Pp
-Allocates a new integer mapped with pointer 'ptr'. The new id will be stored
-in 'id'. If the tree get full, function will return EAGAIN.
+The
+.Fn idr_get_new
+and
+.Fn idr_get_new_above
+functions allocate a new integer mapped with the specified pointer
+.Fa ptr .
+The new ID will be stored in
+.Fa id .
+If the tree becomes full, the functions function will return
+.Er EAGAIN .
+In this case,
 .Fn idr_pre_get
 should be called to grow the tree.
-.
 .Pp
-.Fn idr_init "struct idr *idp",
-.Fn idr_init1 "struct idr *idp" "int size"
-.Pp
-Initialize idr handle that will be used by other functions of the API.
+The
 .Fn idr_init
-initializes tree with hard coded default initial capacity (32).
+and
 .Fn idr_init1
-takes additional parameter 'size' to set the initial capacity manually.
-.
+functions initialize an
+.Nm
+handle that will be used by other functions of the API.
+.Fn idr_init
+initializes a tree with a hard coded default initial capacity (32).
+.Fn idr_init1
+takes additional parameter
+.Fa size
+to set the initial capacity manually.
+The
+.Fn idr_pre_get
+function should be called prior to calling the
+.Fn idr_get_new*
+functions.
+It preallocates enough memory for subsequent calls to
+.Fn idr_get_new*
+functions.
+This function should be called without any locks held.
+It returns 0 if enough memory couldn't be allocated, otherwise 1.
+This function lacks the
+.Sq Vt gfp_t Va gfp_mask
+parameter that is found in Linux version of this API.
 .Pp
-.Fn idr_pre_get "struct idr *idp"
+The
+.Fn idr_remove
+function removes the specified
+.Fa id
+from the tree.
 .Pp
-This function should be called prior to calling the idr_get_new* functions. It
-preallocates enough memory for subsequent calls to idr_get_new* functions. This 
-function should be called without any locks held.
+The
+.Fn idr_remove_all
+function removes all entries in the
+.Nm
+tree
+.Fa idp .
 .Pp
-This function returns 0 if enough memory couldn't be allocated, otherwise 1.
-.Pp
-This function lacks 'gfp_t gfp_mask' parameter that is found in Linux version of
-this API.
-.
-.Pp
-.Fn idr_remove "struct idr *idp" "int id",
-.Pp
-Remove the given id from tree.
-.
-.Pp
-.Fn idr_remove_all "struct idr *idp"
-.Pp
-Remove all entries in the idr tree.
-.
-.Pp
-.Fn idr_replace "struct idr *idp" "void *ptr" "int id"
-.Pp
-Replace pointer for given id with new pointer.
-.Pp
-NULL is returned if pointer is not found. This behavior is different from the
-Linux API.
-.
+The
+.Fn idr_replace
+function replaces the pointer for the specified
+.Fa id
+with the new pointer
+.Fa ptr .
+It returns
+.Dv NULL
+if the pointer is not found.
+This behavior is different from the Linux API.

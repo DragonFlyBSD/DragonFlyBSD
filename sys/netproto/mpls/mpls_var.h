@@ -27,8 +27,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/netproto/mpls/mpls_var.h,v 1.2 2008/08/05 15:11:32 nant Exp $
  */
 
 #ifndef _NETMPLS_MPLS_VAR_H_
@@ -51,11 +49,7 @@ struct mpls_stats {
 
 #ifdef _KERNEL
 
-#if defined(SMP)
 #define mplsstat mplsstats_percpu[mycpuid]
-#else /* !SMP */
-#define mplsstat mplsstats_percpu[0]
-#endif
 
 extern struct mpls_stats  mplsstats_percpu[MAXCPU];
 

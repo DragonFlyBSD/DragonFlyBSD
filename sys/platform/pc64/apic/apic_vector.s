@@ -32,11 +32,7 @@
 /* convert an absolute IRQ# into gd_ipending index */
 #define IRQ_LIDX(irq_num)	((irq_num) >> 6)
 
-#ifdef SMP
 #define MPLOCKED     lock ;
-#else
-#define MPLOCKED
-#endif
 
 #define APIC_PUSH_FRAME							\
 	PUSH_FRAME ;		/* 15 regs + space for 5 extras */	\
@@ -182,8 +178,6 @@ Xspuriousint:
 	APIC_POP_FRAME
 	jmp	doreti_iret
 
-#ifdef SMP
-
 /*
  * Handle TLB shootdowns.
  *
@@ -304,8 +298,6 @@ Xipiq:
 	MEXITCOUNT
 	APIC_POP_FRAME
 	jmp	doreti_iret
-
-#endif	/* SMP */
 
 	.text
 	SUPERALIGN_TEXT

@@ -511,15 +511,11 @@ next_registered_randintr(int intr)
  * We are NOT in a critical section, which will allow the scheduled
  * interrupt to preempt us.  The MP lock might *NOT* be held here.
  */
-#ifdef SMP
-
 static void
 sched_ithd_remote(void *arg)
 {
     sched_ithd_intern(arg);
 }
-
-#endif
 
 static void
 sched_ithd_intern(struct intr_info *info)
@@ -529,7 +525,6 @@ sched_ithd_intern(struct intr_info *info)
 	if (info->i_reclist == NULL) {
 	    report_stray_interrupt(info, "sched_ithd");
 	} else {
-#ifdef SMP
 	    if (info->i_thread.td_gd == mycpu) {
 		if (info->i_running == 0) {
 		    info->i_running = 1;
@@ -539,13 +534,6 @@ sched_ithd_intern(struct intr_info *info)
 	    } else {
 		lwkt_send_ipiq(info->i_thread.td_gd, sched_ithd_remote, info);
 	    }
-#else
-	    if (info->i_running == 0) {
-		info->i_running = 1;
-		if (info->i_state != ISTATE_LIVELOCKED)
-		    lwkt_schedule(&info->i_thread); /* MIGHT PREEMPT */
-	    }
-#endif
 	}
     } else {
 	report_stray_interrupt(info, "sched_ithd");
@@ -671,9 +659,7 @@ ithread_fast_handler(struct intrframe *frame)
     struct intr_info *info;
     struct intrec **list;
     int must_schedule;
-#ifdef SMP
     int got_mplock;
-#endif
     TD_INVARIANTS_DECLARE;
     intrec_t rec, nrec;
     globaldata_t gd;
@@ -715,9 +701,7 @@ ithread_fast_handler(struct intrframe *frame)
     ++gd->gd_intr_nesting_level;
     ++gd->gd_cnt.v_intr;
     must_schedule = info->i_slow;
-#ifdef SMP
     got_mplock = 0;
-#endif
 
     TD_INVARIANTS_GET(td);
     list = &info->i_reclist;
@@ -727,7 +711,6 @@ ithread_fast_handler(struct intrframe *frame)
 	nrec = rec->next;
 
 	if (rec->intr_flags & INTR_CLOCK) {
-#ifdef SMP
 	    if ((rec->intr_flags & INTR_MPSAFE) == 0 && got_mplock == 0) {
 		if (try_mplock() == 0) {
 		    /* Couldn't get the MP lock; just schedule it. */
@@ -736,7 +719,6 @@ ithread_fast_handler(struct intrframe *frame)
 		}
 		got_mplock = 1;
 	    }
-#endif
 	    if (rec->serializer) {
 		must_schedule += lwkt_serialize_handler_try(
 					rec->serializer, rec->handler,
@@ -752,10 +734,8 @@ ithread_fast_handler(struct intrframe *frame)
      * Cleanup
      */
     --gd->gd_intr_nesting_level;
-#ifdef SMP
     if (got_mplock)
 	rel_mplock();
-#endif
 
     /*
      * If we had a problem, or mixed fast and slow interrupt handlers are
@@ -824,7 +804,6 @@ ithread_handler(void *arg)
 	 * are MPSAFE.  However, if intr_mpsafe has been turned off we
 	 * always operate with the BGL.
 	 */
-#ifdef SMP
 	if (info->i_mplock_required != mpheld) {
 	    if (info->i_mplock_required) {
 		KKASSERT(mpheld == 0);
@@ -836,7 +815,6 @@ ithread_handler(void *arg)
 		mpheld = 0;
 	    }
 	}
-#endif
 
 	TD_INVARIANTS_GET(gd->gd_curthread);
 

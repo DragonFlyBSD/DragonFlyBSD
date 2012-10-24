@@ -84,11 +84,7 @@
 
 #include "assym.s"
 
-#if defined(SMP)
 #define MPLOCKED        lock ;
-#else
-#define MPLOCKED
-#endif
 
 	.data
 
@@ -562,12 +558,10 @@ ENTRY(cpu_idle_restore)
 	pushq	$0
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
 	orl	$TDF_RUNNING,TD_FLAGS(%rax)	/* manual, no switch_return */
-#ifdef SMP
 	cmpl	$0,PCPU(cpuid)
 	je	1f
 	call	ap_init
 1:
-#endif
 	/* sti */
 	jmp	cpu_idle
 

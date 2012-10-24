@@ -203,14 +203,12 @@ vm_add_new_page(vm_paddr_t pa)
 	m->phys_addr = pa;
 	m->flags = 0;
 	m->pc = (pa >> PAGE_SHIFT) & PQ_L2_MASK;
-#ifdef SMP
 	/*
 	 * Twist for cpu localization in addition to page coloring, so
 	 * different cpus selecting by m->queue get different page colors.
 	 */
 	m->pc ^= ((pa >> PAGE_SHIFT) / PQ_L2_SIZE) & PQ_L2_MASK;
 	m->pc ^= ((pa >> PAGE_SHIFT) / (PQ_L2_SIZE * PQ_L2_SIZE)) & PQ_L2_MASK;
-#endif
 	/*
 	 * Reserve a certain number of contiguous low memory pages for
 	 * contigmalloc() to use.
@@ -1493,9 +1491,7 @@ vm_page_pcpu_cache(void)
 vm_page_t
 vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 {
-#ifdef SMP
 	globaldata_t gd = mycpu;
-#endif
 	vm_object_t obj;
 	vm_page_t m;
 	u_short pg_color;
@@ -1517,7 +1513,6 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 #endif
 	m = NULL;
 
-#ifdef SMP
 	/*
 	 * Cpu twist - cpu localization algorithm
 	 */
@@ -1527,16 +1522,6 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	} else {
 		pg_color = gd->gd_cpuid + (pindex & ~ncpus_fit_mask);
 	}
-#else
-	/*
-	 * Normal page coloring algorithm
-	 */
-	if (object) {
-		pg_color = object->pg_color + pindex;
-	} else {
-		pg_color = pindex;
-	}
-#endif
 	KKASSERT(page_req & 
 		(VM_ALLOC_NORMAL|VM_ALLOC_QUICK|
 		 VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));

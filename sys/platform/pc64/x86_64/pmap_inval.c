@@ -90,7 +90,6 @@ void
 pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
 {
     cpumask_t oactive;
-#ifdef SMP
     cpumask_t nactive;
 
     DEBUG_PUSH_INFO("pmap_inval_interlock");
@@ -106,9 +105,6 @@ pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
 	cpu_pause();
     }
     DEBUG_POP_INFO();
-#else
-    oactive = pmap->pm_active & ~CPUMASK_LOCK;
-#endif
     KKASSERT((info->pir_flags & PIRF_CPUSYNC) == 0);
     info->pir_va = va;
     info->pir_flags = PIRF_CPUSYNC;
@@ -126,9 +122,7 @@ void
 pmap_inval_deinterlock(pmap_inval_info_t info, pmap_t pmap)
 {
     KKASSERT(info->pir_flags & PIRF_CPUSYNC);
-#ifdef SMP
     atomic_clear_cpumask(&pmap->pm_active, CPUMASK_LOCK);
-#endif
     lwkt_cpusync_deinterlock(&info->pir_cpusync);
     info->pir_flags = 0;
 }

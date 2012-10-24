@@ -37,7 +37,6 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.58 2008/06/28 17:59:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -529,7 +528,7 @@ vn_set_fpf_offset(struct file *fp, off_t offset)
 static __inline off_t
 vn_poll_fpf_offset(struct file *fp)
 {
-#if defined(__x86_64__) || !defined(SMP)
+#if defined(__x86_64__)
 	return(fp->f_offset);
 #else
 	off_t off = vn_get_fpf_offset(fp);

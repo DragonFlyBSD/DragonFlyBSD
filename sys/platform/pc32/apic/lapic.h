@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/mpapic.h,v 1.14.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.h,v 1.12 2008/06/07 11:37:23 mneumann Exp $
  */
 
 #ifndef _ARCH_APIC_LAPIC_H_
@@ -70,8 +69,6 @@ void	lapic_map(vm_paddr_t);
 int	lapic_unused_apic_id(int);
 void	lapic_fixup_noioapic(void);
 
-#ifdef SMP
-
 #ifndef _MACHINE_SMP_H_
 #include <machine/smp.h>
 #endif
@@ -91,7 +88,5 @@ all_but_self_ipi(int vector)
 		return 0;
 	return apic_ipi(APIC_DEST_ALLESELF, vector, APIC_DELMODE_FIXED);
 }
-
-#endif	/* SMP */
 
 #endif /* _ARCH_APIC_LAPIC_H_ */

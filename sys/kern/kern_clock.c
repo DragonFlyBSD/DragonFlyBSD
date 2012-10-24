@@ -70,7 +70,6 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.62 2008/09/09 04:06:13 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -136,7 +135,6 @@ struct kinfo_pcheader cputime_pcheader = { PCTRACK_SIZE, PCTRACK_ARYSIZE };
 struct kinfo_pctrack cputime_pctrack[MAXCPU][PCTRACK_SIZE];
 #endif
 
-#ifdef SMP
 static int
 sysctl_cputime(SYSCTL_HANDLER_ARGS)
 {
@@ -152,10 +150,6 @@ sysctl_cputime(SYSCTL_HANDLER_ARGS)
 }
 SYSCTL_PROC(_kern, OID_AUTO, cputime, (CTLTYPE_OPAQUE|CTLFLAG_RD), 0, 0,
 	sysctl_cputime, "S,kinfo_cputime", "CPU time statistics");
-#else
-SYSCTL_STRUCT(_kern, OID_AUTO, cputime, CTLFLAG_RD, &cpu_time, kinfo_cputime,
-    "CPU time statistics");
-#endif
 
 static int
 sysctl_cp_time(SYSCTL_HANDLER_ARGS)

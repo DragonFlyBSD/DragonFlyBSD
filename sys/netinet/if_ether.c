@@ -64,7 +64,6 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.59 2008/11/22 11:03:35 sephe Exp $
  */
 
 /*
@@ -822,8 +821,6 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 	}
 }
 
-#ifdef SMP
-
 struct netmsg_arp_update {
 	struct netmsg_base base;
 	struct mbuf	*m;
@@ -832,8 +829,6 @@ struct netmsg_arp_update {
 };
 
 static void arp_update_msghandler(netmsg_t msg);
-
-#endif
 
 /*
  * Called from arpintr() - this routine is run from a single cpu.
@@ -850,9 +845,7 @@ in_arpinput(struct mbuf *m)
 	struct in_ifaddr *ia = NULL;
 	struct sockaddr sa;
 	struct in_addr isaddr, itaddr, myaddr;
-#ifdef SMP
 	struct netmsg_arp_update msg;
-#endif
 	uint8_t *enaddr = NULL;
 	int op;
 	int req_len;
@@ -1036,17 +1029,12 @@ match:
 		return;
 	}
 
-#ifdef SMP
 	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, arp_update_msghandler);
 	msg.m = m;
 	msg.saddr = isaddr.s_addr;
 	msg.create = (itaddr.s_addr == myaddr.s_addr);
 	lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
-#else
-	arp_update_oncpu(m, isaddr.s_addr, (itaddr.s_addr == myaddr.s_addr),
-			 RTL_REPORTMSG, TRUE);
-#endif
 reply:
 	if (op != ARPOP_REQUEST) {
 		m_freem(m);
@@ -1124,8 +1112,6 @@ reply:
 	ifp->if_output(ifp, m, &sa, NULL);
 }
 
-#ifdef SMP
-
 static void
 arp_update_msghandler(netmsg_t msg)
 {
@@ -1146,8 +1132,6 @@ arp_update_msghandler(netmsg_t msg)
 	else
 		lwkt_replymsg(&rmsg->base.lmsg, 0);
 }
-
-#endif	/* SMP */
 
 #endif	/* INET */
 

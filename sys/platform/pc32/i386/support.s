@@ -308,9 +308,7 @@ ENTRY(casuword)
 	cmpl	$VM_MAX_USER_ADDRESS-4,%edx	/* verify address is valid */
 	ja	fusufault
 
-#ifdef SMP
 	lock
-#endif
 	cmpxchgl %ecx,(%edx)			/* Compare and set. */
 
 	/*

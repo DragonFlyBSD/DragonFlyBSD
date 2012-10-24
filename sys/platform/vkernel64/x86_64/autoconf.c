@@ -178,10 +178,8 @@ cpu_startup(void *dummy)
 		ptoa(vmstats.v_free_count) / 1024);
 	bufinit();
 	vm_pager_bufferinit();
-#ifdef SMP
 	mp_start();
 	mp_announce();
-#endif
 	cpu_setregs();
 }
 

@@ -411,12 +411,8 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	object->resident_page_count = 0;
 	object->agg_pv_list_count = 0;
 	object->shadow_count = 0;
-#ifdef SMP
 	/* cpu localization twist */
 	object->pg_color = (int)(intptr_t)curthread;
-#else
-	object->pg_color = next_index;
-#endif
 	if ( size > (PQ_L2_SIZE / 3 + PQ_PRIME1))
 		incr = PQ_L2_SIZE / 3 + PQ_PRIME1;
 	else
@@ -1663,13 +1659,8 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 		LIST_INSERT_HEAD(&source->shadow_head, result, shadow_list);
 		source->shadow_count++;
 		source->generation++;
-#ifdef SMP
 		/* cpu localization twist */
 		result->pg_color = (int)(intptr_t)curthread;
-#else
-		result->pg_color = (source->pg_color + OFF_TO_IDX(*offset)) &
-				   PQ_L2_MASK;
-#endif
 	}
 
 	/*

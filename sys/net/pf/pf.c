@@ -2812,7 +2812,6 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 	return (r);
 }
 
-#ifdef SMP
 struct netmsg_hashlookup {
 	struct netmsg_base	base;
 	struct inpcb		**nm_pinp;
@@ -2844,8 +2843,6 @@ in_pcblookup_hash_handler(netmsg_t msg)
 }
 #endif	/* PF_SOCKET_LOOKUP_DOMSG */
 
-#endif /* SMP */
-
 int
 pf_socket_lookup(int direction, struct pf_pdesc *pd)
 {
@@ -2853,11 +2850,9 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 	u_int16_t		 sport, dport;
 	struct inpcbinfo	*pi;
 	struct inpcb		*inp;
-#ifdef SMP
 	struct netmsg_hashlookup *msg = NULL;
 #ifdef PF_SOCKET_LOOKUP_DOMSG
 	struct netmsg_hashlookup msg0;
-#endif
 #endif
 	int			 pi_cpu = 0;
 
@@ -2882,7 +2877,6 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 
 		pi_cpu = tcp_addrcpu(saddr->v4.s_addr, sport, daddr->v4.s_addr, dport);
 		pi = &tcbinfo[pi_cpu];
-#ifdef SMP
 		/*
 		 * Our netstack runs lockless on MP systems
 		 * (only for TCP connections at the moment).
@@ -2927,7 +2921,6 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 			return -1;
 #endif	/* PF_SOCKET_LOOKUP_DOMSG */
 		}
-#endif /* SMP */
 		break;
 	case IPPROTO_UDP:
 		if (pd->hdr.udp == NULL)
@@ -2949,7 +2942,6 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 	switch (pd->af) {
 #ifdef INET6
 	case AF_INET6:
-#ifdef SMP
 		/*
 		 * Query other CPU, second part
 		 * 
@@ -2959,9 +2951,7 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 		 *
 		 * Use some switch/case magic to avoid code duplication.
 		 */
-		if (msg == NULL)
-#endif /* SMP */
-		{
+		if (msg == NULL) {
 			inp = in6_pcblookup_hash(pi, &saddr->v6, sport,
 			    &daddr->v6, dport, INPLOOKUP_WILDCARD, NULL);
 
@@ -2972,12 +2962,10 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 		/* FALLTHROUGH if SMP and on other CPU */
 #endif /* INET6 */
 	case AF_INET:
-#ifdef SMP
 		if (msg != NULL) {
 			lwkt_domsg(netisr_portfn(pi_cpu),
 				     &msg->base.lmsg, 0);
 		} else
-#endif /* SMP */
 		{
 			inp = in_pcblookup_hash(pi, saddr->v4, sport, daddr->v4,
 			    dport, INPLOOKUP_WILDCARD, NULL);

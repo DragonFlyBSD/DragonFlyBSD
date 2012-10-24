@@ -278,7 +278,7 @@ static void tcp_willblock(void);
 static void tcp_notify (struct inpcb *, int);
 
 struct tcp_stats tcpstats_percpu[MAXCPU];
-#ifdef SMP
+
 static int
 sysctl_tcpstats(SYSCTL_HANDLER_ARGS)
 {
@@ -297,10 +297,6 @@ sysctl_tcpstats(SYSCTL_HANDLER_ARGS)
 }
 SYSCTL_PROC(_net_inet_tcp, TCPCTL_STATS, stats, (CTLTYPE_OPAQUE | CTLFLAG_RW),
     0, 0, sysctl_tcpstats, "S,tcp_stats", "TCP statistics");
-#else
-SYSCTL_STRUCT(_net_inet_tcp, TCPCTL_STATS, stats, CTLFLAG_RW,
-    &tcpstat, tcp_stats, "TCP statistics");
-#endif
 
 /*
  * Target size of TCP PCB hash tables. Must be a power of two.
@@ -410,13 +406,9 @@ tcp_init(void)
 	/*
 	 * Initialize TCP statistics counters for each CPU.
 	 */
-#ifdef SMP
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		bzero(&tcpstats_percpu[cpu], sizeof(struct tcp_stats));
 	}
-#else
-	bzero(&tcpstat, sizeof(struct tcp_stats));
-#endif
 
 	syncache_init();
 	netisr_register_rollup(tcp_willblock);
@@ -786,8 +778,6 @@ tcp_drop(struct tcpcb *tp, int error)
 	return (tcp_close(tp));
 }
 
-#ifdef SMP
-
 struct netmsg_listen_detach {
 	struct netmsg_base	base;
 	struct tcpcb		*nm_tp;
@@ -812,8 +802,6 @@ tcp_listen_detach_handler(netmsg_t msg)
 		lwkt_replymsg(&nmsg->base.lmsg, 0);
 }
 
-#endif
-
 /*
  * Close a TCP control block:
  *	discard all space held by the tcp
@@ -835,7 +823,6 @@ tcp_close(struct tcpcb *tp)
 	const boolean_t isipv6 = FALSE;
 #endif
 
-#ifdef SMP
 	/*
 	 * INP_WILDCARD_MP indicates that listen(2) has been called on
 	 * this socket.  This implies:
@@ -868,7 +855,6 @@ tcp_close(struct tcpcb *tp)
 
 		inp->inp_flags &= ~INP_WILDCARD_MP;
 	}
-#endif
 
 	KKASSERT(tp->t_state != TCPS_TERMINATING);
 	tp->t_state = TCPS_TERMINATING;
@@ -1061,7 +1047,6 @@ tcp_drain_oncpu(struct inpcbhead *head)
 	kfree(marker, M_TEMP);
 }
 
-#ifdef SMP
 struct netmsg_tcp_drain {
 	struct netmsg_base	base;
 	struct inpcbhead	*nm_head;
@@ -1075,14 +1060,11 @@ tcp_drain_handler(netmsg_t msg)
 	tcp_drain_oncpu(nm->nm_head);
 	lwkt_replymsg(&nm->base.lmsg, 0);
 }
-#endif
 
 void
 tcp_drain(void)
 {
-#ifdef SMP
 	int cpu;
-#endif
 
 	if (!do_tcpdrain)
 		return;
@@ -1095,7 +1077,6 @@ tcp_drain(void)
 	 *	where we're really low on mbufs, this is potentially
 	 *	useful.
 	 */
-#ifdef SMP
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		struct netmsg_tcp_drain *nm;
 
@@ -1112,9 +1093,6 @@ tcp_drain(void)
 			lwkt_sendmsg(netisr_portfn(cpu), &nm->base.lmsg);
 		}
 	}
-#else
-	tcp_drain_oncpu(&tcbinfo[0].pcblisthead);
-#endif
 }
 
 /*

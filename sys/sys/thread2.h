@@ -281,8 +281,6 @@ lwkt_cpusync_init(lwkt_cpusync_t cs, cpumask_t mask,
 	cs->cs_data = data;
 }
 
-#ifdef SMP
-
 /*
  * IPIQ messaging wrappers.  IPIQ remote functions are passed three arguments:
  * a void * pointer, an integer, and a pointer to the trap frame (or NULL if
@@ -352,7 +350,6 @@ lwkt_send_ipiq2_bycpu(int dcpu, ipifunc2_t func, void *arg1, int arg2)
     return(lwkt_send_ipiq3_bycpu(dcpu, (ipifunc3_t)func, arg1, arg2));
 }
 
-#endif	/* SMP */
 #endif	/* _KERNEL */
 #endif	/* _SYS_THREAD2_H_ */
 

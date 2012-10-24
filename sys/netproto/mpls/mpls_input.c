@@ -27,8 +27,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/netproto/mpls/mpls_input.c,v 1.4 2008/09/24 14:26:39 sephe Exp $
  */
 
 #include <sys/globaldata.h>
@@ -63,21 +61,15 @@ static void	mpls_forward(struct mbuf *);
 void
 mpls_init(void)
 {
-#ifdef SMP
 	int cpu;
-#endif
 
 	/*
 	 * Initialize MPLS statistics counters for each CPU.
 	 *
 	 */
-#ifdef SMP
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		bzero(&mplsstats_percpu[cpu], sizeof(struct mpls_stats));
 	}
-#else
-	bzero(&mplsstat, sizeof(struct mpls_stats));
-#endif
 
 	netisr_register(NETISR_MPLS, mpls_input_handler, mpls_cpufn);
 }

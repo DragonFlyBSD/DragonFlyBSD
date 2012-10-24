@@ -153,7 +153,6 @@ lapic_init(boolean_t bsp)
 		setidt(XTIMER_OFFSET, Xtimer,
 		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 
-#ifdef SMP
 		/* Install an inter-CPU IPI for TLB invalidation */
 		setidt(XINVLTLB_OFFSET, Xinvltlb,
 		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
@@ -165,7 +164,6 @@ lapic_init(boolean_t bsp)
 		/* Install an inter-CPU IPI for CPU stop/restart */
 		setidt(XCPUSTOP_OFFSET, Xcpustop,
 		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-#endif
 	}
 
 	/*
@@ -447,22 +445,14 @@ lapic_timer_restart_handler(void *dummy __unused)
 static void
 lapic_timer_intr_pmfixup(struct cputimer_intr *cti __unused)
 {
-#ifdef SMP
 	lwkt_send_ipiq_mask(smp_active_mask,
 			    lapic_timer_fixup_handler, NULL);
-#else
-	lapic_timer_fixup_handler(NULL);
-#endif
 }
 
 static void
 lapic_timer_intr_restart(struct cputimer_intr *cti __unused)
 {
-#ifdef SMP
 	lwkt_send_ipiq_mask(smp_active_mask, lapic_timer_restart_handler, NULL);
-#else
-	lapic_timer_restart_handler(NULL);
-#endif
 }
 
 
@@ -476,8 +466,6 @@ apic_dump(char* str)
 	kprintf("     lint0: 0x%08x lint1: 0x%08x TPR: 0x%08x SVR: 0x%08x\n",
 		lapic->lvt_lint0, lapic->lvt_lint1, lapic->tpr, lapic->svr);
 }
-
-#ifdef SMP
 
 /*
  * Inter Processor Interrupt functions.
@@ -604,8 +592,6 @@ selected_apic_ipi(cpumask_t target, int vector, int delivery_mode)
 	}
 	crit_exit();
 }
-
-#endif	/* SMP */
 
 /*
  * Timer code, in development...

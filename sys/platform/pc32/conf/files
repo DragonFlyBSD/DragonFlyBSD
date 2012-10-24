@@ -228,9 +228,9 @@ platform/pc32/apic/ioapic.c		standard
 platform/pc32/apic/ioapic_abi.c		standard
 platform/pc32/apic/ioapic_ipl.s		standard
 platform/pc32/apic/apic_vector.s	standard
-platform/pc32/i386/mpboot.s		optional	smp
-platform/pc32/i386/mp_clock.c		optional	smp
-platform/pc32/i386/mp_machdep.c		optional	smp
+platform/pc32/i386/mpboot.s		standard
+platform/pc32/i386/mp_clock.c		standard
+platform/pc32/i386/mp_machdep.c		standard
 platform/pc32/i386/mptable.c		standard
 platform/pc32/i386/nexus.c		standard
 platform/pc32/i386/p4tcc.c		optional	cpu_enable_tcc

@@ -519,9 +519,7 @@ pcie_cfgregopen(uint64_t base, uint8_t minbus, uint8_t maxbus)
 #ifdef PCIE_CFG_MECH
 	struct pcie_cfg_list *pcielist;
 	struct pcie_cfg_elem *pcie_array, *elem;
-#ifdef SMP
 	struct pcpu *pc;
-#endif
 	vm_offset_t va;
 	uint32_t val1, val2;
 	int i, slot;
@@ -544,9 +542,7 @@ pcie_cfgregopen(uint64_t base, uint8_t minbus, uint8_t maxbus)
 		kprintf("PCIe: Memory Mapped configuration base @ 0x%jx\n",
 			(uintmax_t)base);
 
-#ifdef SMP
 	SLIST_FOREACH(pc, &cpuhead, pc_allcpu)
-#endif
 	{
 
 		pcie_array = kmalloc(sizeof(struct pcie_cfg_elem) * PCIE_CACHE,
@@ -561,11 +557,7 @@ pcie_cfgregopen(uint64_t base, uint8_t minbus, uint8_t maxbus)
 			return (0);
 		}
 
-#ifdef SMP
 		pcielist = &pcie_list[pc->pc_cpuid];
-#else
-		pcielist = &pcie_list[0];
-#endif
 		TAILQ_INIT(pcielist);
 		for (i = 0; i < PCIE_CACHE; i++) {
 			elem = &pcie_array[i];

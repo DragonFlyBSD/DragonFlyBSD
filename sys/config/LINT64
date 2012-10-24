@@ -105,21 +105,6 @@ options 	INCLUDE_CONFIG_FILE     # Include this file in kernel
 options 	ROOTDEVNAME=\"ufs:da0s2e\"
 
 #####################################################################
-# SMP OPTIONS:
-#
-# SMP enables building of a Symmetric MultiProcessor Kernel. It will
-# boot on both SMP and UP boxes.
-#
-# Notes:
-#
-#  An SMP kernel will ONLY run on an Intel MP spec. qualified motherboard.
-#
-#  Check the 'Rogue SMP hardware' section to see if additional options
-#   are required by your hardware.
-#
-#options 	SMP			# Symmetric MultiProcessor Kernel
-
-#####################################################################
 # CPU OPTIONS
 
 cpu		HAMMER_CPU

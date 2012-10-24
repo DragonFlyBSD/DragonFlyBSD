@@ -278,11 +278,7 @@ struct thread {
     int		td_nest_count;	/* prevent splz nesting */
     int		td_contended;	/* token contention count */
     u_int	td_mpflags;	/* flags can be set by foreign cpus */
-#ifdef SMP
     int		td_cscount;	/* cpu synchronization master */
-#else
-    int		td_cscount_unused;
-#endif
     int		td_wakefromcpu;	/* who woke me up? */
     int		td_upri;	/* user priority (sub-priority under td_pri) */
     int		td_unused02[2];	/* for future fields */
@@ -483,8 +479,6 @@ extern void lwkt_schedulerclock(thread_t td);
 extern void lwkt_setcpu_self(struct globaldata *);
 extern void lwkt_migratecpu(int);
 
-#ifdef SMP
-
 extern void lwkt_giveaway(struct thread *);
 extern void lwkt_acquire(struct thread *);
 extern int  lwkt_send_ipiq3(struct globaldata *, ipifunc3_t, void *, int);
@@ -500,8 +494,6 @@ extern void lwkt_process_ipiq(void);
 extern void lwkt_process_ipiq_frame(struct intrframe *);
 extern void lwkt_smp_stopped(void);
 extern void lwkt_synchronize_ipiqs(const char *);
-
-#endif /* SMP */
 
 /* lwkt_cpusync_init() - inline function in sys/thread2.h */
 extern void lwkt_cpusync_simple(cpumask_t, cpusync_func_t, void *);

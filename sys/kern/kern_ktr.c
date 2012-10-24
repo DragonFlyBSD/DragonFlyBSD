@@ -114,14 +114,12 @@ KTR_INFO(KTR_TESTLOG, testlog, test3, 2, "test3 %d %d %d %d", int dummy1, int du
 KTR_INFO(KTR_TESTLOG, testlog, test4, 3, "test4");
 KTR_INFO(KTR_TESTLOG, testlog, test5, 4, "test5");
 KTR_INFO(KTR_TESTLOG, testlog, test6, 5, "test6");
-#ifdef SMP
 KTR_INFO(KTR_TESTLOG, testlog, pingpong, 6, "pingpong");
 KTR_INFO(KTR_TESTLOG, testlog, pipeline, 7, "pipeline");
 KTR_INFO(KTR_TESTLOG, testlog, crit_beg, 8, "crit_beg");
 KTR_INFO(KTR_TESTLOG, testlog, crit_end, 9, "crit_end");
 KTR_INFO(KTR_TESTLOG, testlog, spin_beg, 10, "spin_beg");
 KTR_INFO(KTR_TESTLOG, testlog, spin_end, 11, "spin_end");
-#endif
 #define logtest(name)	KTR_LOG(testlog_ ## name, 0, 0, 0, 0)
 #define logtest_noargs(name)	KTR_LOG(testlog_ ## name)
 #endif
@@ -148,9 +146,7 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, resynchronize, CTLFLAG_RW,
 static int	ktr_testlogcnt = 0;
 SYSCTL_INT(_debug_ktr, OID_AUTO, testlogcnt, CTLFLAG_RW, &ktr_testlogcnt, 0, "");
 static int	ktr_testipicnt = 0;
-#ifdef SMP
 static int	ktr_testipicnt_remainder;
-#endif
 SYSCTL_INT(_debug_ktr, OID_AUTO, testipicnt, CTLFLAG_RW, &ktr_testipicnt, 0, "");
 static int	ktr_testcritcnt = 0;
 SYSCTL_INT(_debug_ktr, OID_AUTO, testcritcnt, CTLFLAG_RW, &ktr_testcritcnt, 0, "");
@@ -168,9 +164,7 @@ struct ktr_cpu ktr_cpu[MAXCPU] = {
 	{ .core.ktr_buf = &ktr_buf0[0] }
 };
 
-#ifdef SMP
 static int64_t	ktr_sync_tsc;
-#endif
 struct callout	ktr_resync_callout;
 
 #ifdef KTR_VERBOSE
@@ -210,13 +204,11 @@ SYSINIT(ktr_sysinit, SI_BOOT2_KLD, SI_ORDER_ANY, ktr_sysinit, NULL);
  * This callback occurs on cpu0.
  */
 #if KTR_TESTLOG
-#ifdef SMP
 static void ktr_pingpong_remote(void *dummy);
 static void ktr_pipeline_remote(void *dummy);
 #endif
-#endif
 
-#if defined(SMP) && defined(_RDTSC_SUPPORTED_)
+#ifdef _RDTSC_SUPPORTED_
 
 static void ktr_resync_remote(void *dummy);
 extern cpumask_t smp_active_mask;
@@ -374,7 +366,7 @@ ktr_pipeline_remote(void *dummy __unused)
 
 #endif
 
-#else	/* !SMP */
+#else	/* !_RDTSC_SUPPORTED_ */
 
 /*
  * The resync callback for UP doesn't do anything other then run the test
@@ -429,11 +421,7 @@ ktr_begin_write_entry(struct ktr_info *info, const char *file, int line)
 	++kcpu->ktr_idx;
 #ifdef _RDTSC_SUPPORTED_
 	if (cpu_feature & CPUID_TSC) {
-#ifdef SMP
 		entry->ktr_timestamp = rdtsc() - tsc_offsets[cpu];
-#else
-		entry->ktr_timestamp = rdtsc();
-#endif
 	} else
 #endif
 	{
@@ -453,9 +441,7 @@ ktr_finish_write_entry(struct ktr_info *info, struct ktr_entry *entry)
 		cpu_ktr_caller(entry);
 #ifdef KTR_VERBOSE
 	if (ktr_verbose && info->kf_format) {
-#ifdef SMP
 		kprintf("cpu%d ", mycpu->gd_cpuid);
-#endif
 		if (ktr_verbose > 1) {
 			kprintf("%s.%d\t", entry->ktr_file, entry->ktr_line);
 		}
@@ -585,9 +571,7 @@ db_mach_vtrace(int cpu, struct ktr_entry *kp, int idx)
 {
 	if (kp->ktr_info == NULL)
 		return(0);
-#ifdef SMP
 	db_printf("cpu%d ", cpu);
-#endif
 	db_printf("%d: ", idx);
 	if (db_ktr_verbose) {
 		db_printf("%10.10lld %s.%d\t", (long long)kp->ktr_timestamp,

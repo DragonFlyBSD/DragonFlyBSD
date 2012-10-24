@@ -177,11 +177,9 @@ main(int ac, char **av)
 	 * Process options
 	 */
 	kernel_mem_readonly = 1;
-#ifdef SMP
 	optcpus = 2;
 	vkernel_b_arg = 0;
 	vkernel_B_arg = 0;
-#endif
 	lwp_cpu_lock = LCL_NONE;
 
 	real_vkernel_enable = 0;
@@ -321,7 +319,6 @@ main(int ac, char **av)
 			 * set ncpus here.
 			 */
 			tok = strtok(optarg, ":");
-#ifdef SMP
 			optcpus = strtol(tok, NULL, 0);
 			if (optcpus < 1 || optcpus > MAXCPU)
 				usage_err("Bad ncpus, valid range is 1-%d", MAXCPU);
@@ -338,25 +335,6 @@ main(int ac, char **av)
 				}
 
 			}
-
-#else
-			if (strtol(tok, NULL, 0) != 1) {
-				usage_err("You built a UP vkernel, only 1 cpu!");
-			}
-
-			/* :lbits argument */
-			tok = strtok(NULL, ":");
-			if (tok != NULL) {
-				usage_err("You built a UP vkernel. No CPU topology available");
-
-				/* :cbits argument */
-				tok = strtok(NULL, ":");
-				if (tok != NULL) {
-					usage_err("You built a UP vkernel. No CPU topology available");
-				}
-			}
-#endif
-
 			break;
 		case 'p':
 			pid_file = optarg;
@@ -684,13 +662,11 @@ static void
 init_locks(void)
 {
 
-#ifdef SMP
         /*
          * Get the initial mplock with a count of 1 for the BSP.
          * This uses a LOGICAL cpu ID, ie BSP == 0.
          */
         cpu_get_initial_mplock();
-#endif
 
         /* our token pool needs to work early */
         lwkt_token_pool_init();

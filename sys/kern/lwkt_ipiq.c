@@ -66,7 +66,6 @@
 #include <machine/smp.h>
 #include <machine/atomic.h>
 
-#ifdef SMP
 static __int64_t ipiq_count;	/* total calls to lwkt_send_ipiq*() */
 static __int64_t ipiq_fifofull;	/* number of fifo full conditions detected */
 static __int64_t ipiq_avoided;	/* interlock with target avoids cpu ipi */
@@ -77,9 +76,7 @@ static int ipiq_debug;		/* set to 1 for debug */
 static int	panic_ipiq_cpu = -1;
 static int	panic_ipiq_count = 100;
 #endif
-#endif
 
-#ifdef SMP
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_count, CTLFLAG_RW, &ipiq_count, 0,
     "Number of IPI's sent");
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_fifofull, CTLFLAG_RW, &ipiq_fifofull, 0,
@@ -118,10 +115,6 @@ KTR_INFO(KTR_IPIQ, ipiq, send_end, 8, IPIQ_STRING, IPIQ_ARGS);
 	KTR_LOG(ipiq_ ## name, func, arg1, arg2, sgd->gd_cpuid, dgd->gd_cpuid)
 #define logipiq2(name, arg)	\
 	KTR_LOG(ipiq_ ## name, arg)
-
-#endif	/* SMP */
-
-#ifdef SMP
 
 static int lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip, 
 				  struct intrframe *frame);
@@ -726,8 +719,6 @@ lwkt_synchronize_ipiqs(const char *wmesg)
     }
 }
 
-#endif
-
 /*
  * CPU Synchronization Support
  *
@@ -752,7 +743,6 @@ lwkt_cpusync_simple(cpumask_t mask, cpusync_func_t func, void *arg)
 void
 lwkt_cpusync_interlock(lwkt_cpusync_t cs)
 {
-#ifdef SMP
 #if 0
     const char *smsg = "SMPSYNL";
 #endif
@@ -787,9 +777,6 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
 #endif
 	DEBUG_POP_INFO();
     }
-#else
-    cs->cs_mack = 0;
-#endif
 }
 
 /*
@@ -802,7 +789,6 @@ void
 lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 {
     globaldata_t gd = mycpu;
-#ifdef SMP
 #if 0
     const char *smsg = "SMPSYNU";
 #endif
@@ -848,13 +834,7 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 	logipiq2(sync_end, (long)mask);
     }
     crit_exit_id("cpusync");
-#else
-    if (cs->cs_func && (cs->cs_mask & gd->gd_cpumask))
-	cs->cs_func(cs->cs_data);
-#endif
 }
-
-#ifdef SMP
 
 /*
  * helper IPI remote messaging function.
@@ -908,5 +888,3 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 	}
     }
 }
-
-#endif

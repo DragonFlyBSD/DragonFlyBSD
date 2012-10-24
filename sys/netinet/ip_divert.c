@@ -259,8 +259,6 @@ div_packet(struct mbuf *m, int incoming, int port)
 	lwkt_reltoken(&div_token);
 }
 
-#ifdef SMP
-
 static void
 div_packet_handler(netmsg_t msg)
 {
@@ -275,8 +273,6 @@ div_packet_handler(netmsg_t msg)
 	div_packet(m, incoming, port);
 	/* no reply, msg embedded in mbuf */
 }
-
-#endif	/* SMP */
 
 static void
 divert_packet(struct mbuf *m, int incoming)
@@ -299,7 +295,6 @@ divert_packet(struct mbuf *m, int incoming)
 	port = divinfo->port;
 	KASSERT(port != 0, ("%s: port=0", __func__));
 
-#ifdef SMP
 	if (mycpuid != 0) {
 		struct netmsg_packet *nmp;
 
@@ -318,9 +313,6 @@ divert_packet(struct mbuf *m, int incoming)
 	} else {
 		div_packet(m, incoming, port);
 	}
-#else
-	div_packet(m, incoming, port);
-#endif
 }
 
 /*

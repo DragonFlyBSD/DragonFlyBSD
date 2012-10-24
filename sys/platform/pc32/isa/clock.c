@@ -57,9 +57,6 @@
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#ifndef SMP
-#include <sys/lock.h>
-#endif
 #include <sys/sysctl.h>
 #include <sys/cons.h>
 #include <sys/systimer.h>
@@ -184,10 +181,8 @@ clkintr(void *dummy, void *frame_arg)
 {
 	static sysclock_t sysclock_count;	/* NOTE! Must be static */
 	struct globaldata *gd = mycpu;
-#ifdef SMP
 	struct globaldata *gscan;
 	int n;
-#endif
 
 	/*
 	 * SWSTROBE mode is a one-shot, the timer is no longer running
@@ -200,7 +195,6 @@ clkintr(void *dummy, void *frame_arg)
 	 * usually *ALL* of them.  We need to use the LAPIC timer for this.
 	 */
 	sysclock_count = sys_cputimer->count();
-#ifdef SMP
 	for (n = 0; n < ncpus; ++n) {
 	    gscan = globaldata_find(n);
 	    if (TAILQ_FIRST(&gscan->gd_systimerq) == NULL)
@@ -212,10 +206,6 @@ clkintr(void *dummy, void *frame_arg)
 		systimer_intr(&sysclock_count, 0, frame_arg);
 	    }
 	}
-#else
-	if (TAILQ_FIRST(&gd->gd_systimerq) != NULL)
-	    systimer_intr(&sysclock_count, 0, frame_arg);
-#endif
 }
 
 
@@ -826,30 +816,6 @@ startrtclock(void)
 	}
 
 	EVENTHANDLER_REGISTER(shutdown_post_sync, resettodr_on_shutdown, NULL, SHUTDOWN_PRI_LAST);
-
-#if !defined(SMP)
-	/*
-	 * We can not use the TSC in SMP mode, until we figure out a
-	 * cheap (impossible), reliable and precise (yeah right!)  way
-	 * to synchronize the TSCs of all the CPUs.
-	 * Curse Intel for leaving the counter out of the I/O APIC.
-	 */
-
-#if NAPM > 0
-	/*
-	 * We can not use the TSC if we support APM. Precise timekeeping
-	 * on an APM'ed machine is at best a fools pursuit, since 
-	 * any and all of the time spent in various SMM code can't 
-	 * be reliably accounted for.  Reading the RTC is your only
-	 * source of reliable time info.  The i8254 looses too of course
-	 * but we need to have some kind of time...
-	 * We don't know at this point whether APM is going to be used
-	 * or not, nor when it might be activated.  Play it safe.
-	 */
-	return;
-#endif /* NAPM > 0 */
-
-#endif /* !defined(SMP) */
 }
 
 /*

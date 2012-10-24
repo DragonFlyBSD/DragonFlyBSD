@@ -92,10 +92,8 @@ static __int64_t preempt_weird = 0;
 static int lwkt_use_spin_port;
 static struct objcache *thread_cache;
 
-#ifdef SMP
 static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
 static void lwkt_setcpu_remote(void *arg);
-#endif
 
 extern void cpu_heavy_restore(void);
 extern void cpu_lwkt_restore(void);
@@ -406,8 +404,6 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
  * NOTE! we have to be careful in regards to creating threads for other cpus
  * if SMP has not yet been activated.
  */
-#ifdef SMP
-
 static void
 lwkt_init_thread_remote(void *arg)
 {
@@ -418,8 +414,6 @@ lwkt_init_thread_remote(void *arg)
      */
     TAILQ_INSERT_TAIL(&td->td_gd->gd_tdallq, td, td_allq);
 }
-
-#endif
 
 /*
  * lwkt core thread structural initialization.
@@ -447,7 +441,6 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     else
 	lwkt_initport_thread(&td->td_msgport, td);
     pmap_init_thread(td);
-#ifdef SMP
     /*
      * Normally initializing a thread for a remote cpu requires sending an
      * IPI.  However, the idlethread is setup before the other cpus are
@@ -461,12 +454,6 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     } else {
 	lwkt_send_ipiq(gd, lwkt_init_thread_remote, td);
     }
-#else
-    crit_enter_gd(mygd);
-    TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
-    crit_exit_gd(mygd);
-#endif
-
     dsched_new_thread(td);
 }
 
@@ -630,7 +617,6 @@ lwkt_switch(void)
 	     gd->gd_spinlocks));
 
 
-#ifdef SMP
 #ifdef	INVARIANTS
     if (td->td_cscount) {
 	kprintf("Diagnostic: attempt to switch while mastering cpusync: %p\n",
@@ -638,7 +624,6 @@ lwkt_switch(void)
 	if (panic_on_cscount)
 	    panic("switching while mastering cpusync");
     }
-#endif
 #endif
 
     /*
@@ -688,10 +673,8 @@ lwkt_switch(void)
 	     * Runq is empty, switch to idle to allow it to halt.
 	     */
 	    ntd = &gd->gd_idlethread;
-#ifdef SMP
 	    if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 		ASSERT_NO_TOKENS_HELD(ntd);
-#endif
 	    cpu_time.cp_msg[0] = 0;
 	    cpu_time.cp_stallpc = 0;
 	    goto haveidle;
@@ -763,11 +746,9 @@ skip:
 	 */
 	cpu_pause();
 	ntd = &gd->gd_idlethread;
-#ifdef SMP
 	if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 	    ASSERT_NO_TOKENS_HELD(ntd);
 	/* contention case, do not clear contention mask */
-#endif
 
 	/*
 	 * We are going to have to retry but if the current thread is not
@@ -797,7 +778,6 @@ skip:
 	if (spinning < 0x7FFFFFFF)
 	    ++spinning;
 
-#ifdef SMP
 	/*
 	 * lwkt_getalltokens() failed in sorted token mode, we can use
 	 * monitor/mwait in this case.
@@ -810,7 +790,6 @@ skip:
 			      (gd->gd_reqflags | RQF_SPINNING) &
 			      ~RQF_IDLECHECK_WK_MASK);
 	}
-#endif
 
 	/*
 	 * We already checked that td is still scheduled so this should be
@@ -909,7 +888,6 @@ haveidle:
 void
 lwkt_switch_return(thread_t otd)
 {
-#ifdef SMP
 	globaldata_t rgd;
 
 	/*
@@ -934,9 +912,6 @@ lwkt_switch_return(thread_t otd)
 	} else {
 		otd->td_flags &= ~TDF_RUNNING;
 	}
-#else
-	otd->td_flags &= ~TDF_RUNNING;
-#endif
 
 	/*
 	 * Final exit validations (see lwp_wait()).  Note that otd becomes
@@ -1020,7 +995,6 @@ lwkt_preempt(thread_t ntd, int critcount)
 	++preempt_miss;
 	return;
     }
-#ifdef SMP
     if (td->td_cscount) {
 	++preempt_miss;
 	return;
@@ -1029,7 +1003,6 @@ lwkt_preempt(thread_t ntd, int critcount)
 	++preempt_miss;
 	return;
     }
-#endif
     /*
      * We don't have to check spinlocks here as they will also bump
      * td_critcount.
@@ -1307,17 +1280,12 @@ _lwkt_schedule(thread_t td)
 	 * critical section).  If we do not own the thread there might
 	 * be a race but the target cpu will deal with it.
 	 */
-#ifdef SMP
 	if (td->td_gd == mygd) {
 	    _lwkt_enqueue(td);
 	    _lwkt_schedule_post(mygd, td, 1);
 	} else {
 	    lwkt_send_ipiq3(td->td_gd, lwkt_schedule_remote, td, 0);
 	}
-#else
-	_lwkt_enqueue(td);
-	_lwkt_schedule_post(mygd, td, 1);
-#endif
     }
     crit_exit_gd(mygd);
 }
@@ -1333,8 +1301,6 @@ lwkt_schedule_noresched(thread_t td)	/* XXX not impl */
 {
     _lwkt_schedule(td);
 }
-
-#ifdef SMP
 
 /*
  * When scheduled remotely if frame != NULL the IPIQ is being
@@ -1401,9 +1367,7 @@ lwkt_acquire(thread_t td)
 	crit_enter_gd(mygd);
 	DEBUG_PUSH_INFO("lwkt_acquire");
 	while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) {
-#ifdef SMP
 	    lwkt_process_ipiq();
-#endif
 	    cpu_lfence();
 	    if (--retry == 0) {
 		kprintf("lwkt_acquire: stuck: td %p td->td_flags %08x\n",
@@ -1425,8 +1389,6 @@ lwkt_acquire(thread_t td)
     }
 }
 
-#endif
-
 /*
  * Generic deschedule.  Descheduling threads other then your own should be
  * done only in carefully controlled circumstances.  Descheduling is 
@@ -1438,7 +1400,6 @@ void
 lwkt_deschedule(thread_t td)
 {
     crit_enter();
-#ifdef SMP
     if (td == curthread) {
 	_lwkt_dequeue(td);
     } else {
@@ -1448,9 +1409,6 @@ lwkt_deschedule(thread_t td)
 	    lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_deschedule, td);
 	}
     }
-#else
-    _lwkt_dequeue(td);
-#endif
     crit_exit();
 }
 
@@ -1572,7 +1530,6 @@ lwkt_schedulerclock(thread_t td)
 void
 lwkt_setcpu_self(globaldata_t rgd)
 {
-#ifdef SMP
     thread_t td = curthread;
 
     if (td->td_gd != rgd) {
@@ -1602,21 +1559,17 @@ lwkt_setcpu_self(globaldata_t rgd)
 	TAILQ_INSERT_TAIL(&rgd->gd_tdallq, td, td_allq);
 	crit_exit_quick(td);
     }
-#endif
 }
 
 void
 lwkt_migratecpu(int cpuid)
 {
-#ifdef SMP
 	globaldata_t rgd;
 
 	rgd = globaldata_find(cpuid);
 	lwkt_setcpu_self(rgd);
-#endif
 }
 
-#ifdef SMP
 /*
  * Remote IPI for cpu migration (called while in a critical section so we
  * do not have to enter another one).
@@ -1642,7 +1595,6 @@ lwkt_setcpu_remote(void *arg)
 	    (td->td_lwp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
     _lwkt_enqueue(td);
 }
-#endif
 
 struct lwp *
 lwkt_preempted_proc(void)
@@ -1797,8 +1749,6 @@ crit_panic(void)
     /* NOT REACHED */
 }
 
-#ifdef SMP
-
 /*
  * Called from debugger/panic on cpus which have been stopped.  We must still
  * process the IPIQ while stopped, even if we were stopped while in a critical
@@ -1822,5 +1772,3 @@ lwkt_smp_stopped(void)
     }
     crit_exit_gd(gd);
 }
-
-#endif

@@ -357,8 +357,6 @@ tcp6_usr_bind(netmsg_t msg)
 }
 #endif /* INET6 */
 
-#ifdef SMP
-
 struct netmsg_inswildcard {
 	struct netmsg_base	base;
 	struct inpcb		*nm_inp;
@@ -379,8 +377,6 @@ in_pcbinswildcardhash_handler(netmsg_t msg)
 		lwkt_replymsg(&nm->base.lmsg, 0);
 }
 
-#endif
-
 /*
  * Prepare to accept connections.
  */
@@ -392,9 +388,7 @@ tcp_usr_listen(netmsg_t msg)
 	int error = 0;
 	struct inpcb *inp;
 	struct tcpcb *tp;
-#ifdef SMP
 	struct netmsg_inswildcard nm;
-#endif
 
 	COMMON_START(so, inp, 0);
 
@@ -411,7 +405,6 @@ tcp_usr_listen(netmsg_t msg)
 	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
-#ifdef SMP
 	if (ncpus > 1) {
 		/*
 		 * We have to set the flag because we can't have other cpus
@@ -434,7 +427,6 @@ tcp_usr_listen(netmsg_t msg)
 		nm.nm_inp = inp;
 		lwkt_domsg(netisr_portfn(1), &nm.base.lmsg, 0);
 	}
-#endif
 	in_pcbinswildcardhash(inp);
 	COMMON_END(PRU_LISTEN);
 }
@@ -449,9 +441,7 @@ tcp6_usr_listen(netmsg_t msg)
 	int error = 0;
 	struct inpcb *inp;
 	struct tcpcb *tp;
-#ifdef SMP
 	struct netmsg_inswildcard nm;
-#endif
 
 	COMMON_START(so, inp, 0);
 
@@ -472,7 +462,6 @@ tcp6_usr_listen(netmsg_t msg)
 	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
-#ifdef SMP
 	if (ncpus > 1) {
 		/*
 		 * We have to set the flag because we can't have other cpus
@@ -495,7 +484,6 @@ tcp6_usr_listen(netmsg_t msg)
 		nm.nm_inp = inp;
 		lwkt_domsg(netisr_portfn(1), &nm.base.lmsg, 0);
 	}
-#endif
 	in_pcbinswildcardhash(inp);
 	COMMON_END(PRU_LISTEN);
 }
@@ -1050,9 +1038,7 @@ tcp_connect(netmsg_t msg)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 	int error, calc_laddr = 1;
-#ifdef SMP
 	lwkt_port_t port;
-#endif
 
 	COMMON_START(so, inp, 0);
 
@@ -1101,7 +1087,6 @@ tcp_connect(netmsg_t msg)
 	}
 	KKASSERT(inp->inp_socket == so);
 
-#ifdef SMP
 	port = tcp_addrport(sin->sin_addr.s_addr, sin->sin_port,
 			    (inp->inp_laddr.s_addr ?
 			     inp->inp_laddr.s_addr : if_sin->sin_addr.s_addr),
@@ -1133,9 +1118,6 @@ tcp_connect(netmsg_t msg)
 		/* msg invalid now */
 		return;
 	}
-#else
-	KKASSERT(so->so_port == &curthread->td_msgport);
-#endif
 	error = tcp_connect_oncpu(tp, msg->connect.nm_flags,
 				  msg->connect.nm_m, sin, if_sin);
 	msg->connect.nm_m = NULL;
@@ -1164,9 +1146,7 @@ tcp6_connect(netmsg_t msg)
 	struct inpcb *inp;
 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
 	struct in6_addr *addr6;
-#ifdef SMP
 	lwkt_port_t port;
-#endif
 	int error;
 
 	COMMON_START(so, inp, 0);
@@ -1197,7 +1177,6 @@ tcp6_connect(netmsg_t msg)
 	if (error)
 		goto out;
 
-#ifdef SMP
 	port = tcp6_addrport();	/* XXX hack for now, always cpu0 */
 
 	if (port != &curthread->td_msgport) {
@@ -1221,7 +1200,6 @@ tcp6_connect(netmsg_t msg)
 		/* msg invalid now */
 		return;
 	}
-#endif
 	error = tcp6_connect_oncpu(tp, msg->connect.nm_flags,
 				   &msg->connect.nm_m, sin6, addr6);
 	/* nm_m may still be intact */

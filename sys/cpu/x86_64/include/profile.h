@@ -63,17 +63,12 @@
 #define	PC_TO_I(p, pc)	((uintfptr_t)(pc) - (uintfptr_t)(p)->lowpc)
 #else
 #define	MCOUNT_DECL(s)	u_long s;
-#ifdef SMP
 extern int	mcount_lock;
 #define	MCOUNT_ENTER(s)	{ s = read_rflags(); disable_intr(); \
  			  while (!atomic_cmpset_acq_int(&mcount_lock, 0, 1)) \
 			  	/* nothing */ ; }
 #define	MCOUNT_EXIT(s)	{ atomic_store_rel_int(&mcount_lock, 0); \
 			  write_rflags(s); }
-#else
-#define	MCOUNT_ENTER(s)	{ s = read_rflags(); disable_intr(); }
-#define	MCOUNT_EXIT(s)	(write_rflags(s))
-#endif
 #endif /* GUPROF */
 
 #else /* !_KERNEL */

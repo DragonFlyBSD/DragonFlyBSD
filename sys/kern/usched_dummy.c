@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/usched_dummy.c,v 1.9 2008/04/21 15:24:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -252,9 +250,7 @@ dummy_select_curproc(globaldata_t gd)
 		dd->uschedcp = lp;
 		atomic_set_cpumask(&dummy_curprocmask, gd->gd_cpumask);
 		spin_unlock(&dummy_spin);
-#ifdef SMP
 		lwkt_acquire(lp->lwp_thread);
-#endif
 		lwkt_schedule(lp->lwp_thread);
 	}
 }
@@ -293,9 +289,7 @@ dummy_setrunqueue(struct lwp *lp)
 		++dummy_runqcount;
 		TAILQ_INSERT_TAIL(&dummy_runq, lp, lwp_procq);
 		atomic_set_int(&lp->lwp_mpflags, LWP_MP_ONRUNQ);
-#ifdef SMP
 		lwkt_giveaway(lp->lwp_thread);
-#endif
 
 		/* lp = TAILQ_FIRST(&dummy_runq); */
 
@@ -459,8 +453,6 @@ dummy_uload_update(struct lwp *lp)
  *
  * MPSAFE
  */
-#ifdef SMP
-
 static void
 dummy_sched_thread(void *dummy)
 {
@@ -504,9 +496,7 @@ dummy_sched_thread(void *dummy)
 		dd->uschedcp = lp;
 		atomic_set_cpumask(&dummy_curprocmask, cpumask);
 		spin_unlock(&dummy_spin);
-#ifdef SMP
 		lwkt_acquire(lp->lwp_thread);
-#endif
 		lwkt_schedule(lp->lwp_thread);
 	} else {
 		spin_unlock(&dummy_spin);
@@ -553,6 +543,3 @@ dummy_sched_thread_cpu_init(void)
 }
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
 	dummy_sched_thread_cpu_init, NULL)
-
-#endif
-

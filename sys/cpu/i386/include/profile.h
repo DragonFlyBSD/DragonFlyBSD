@@ -32,7 +32,6 @@
  *
  *	@(#)profile.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/profile.h,v 1.20 1999/12/29 04:33:05 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/profile.h,v 1.9 2006/11/07 17:51:21 dillon Exp $
  */
 
 #ifndef _CPU_PROFILE_H_
@@ -71,7 +70,6 @@
 #define	PC_TO_I(p, pc)	((uintfptr_t)(pc) - (uintfptr_t)(p)->lowpc)
 #else
 #define	MCOUNT_DECL(s)	u_long s;
-#ifdef SMP
 struct spinlock_deprecated;
 extern struct spinlock_deprecated mcount_spinlock;
 void spin_lock_np(struct spinlock_deprecated *sp);
@@ -80,10 +78,6 @@ void spin_unlock_np(struct spinlock_deprecated *sp);
  			  __asm __volatile("cli" : : : "memory"); \
 			  spin_lock_np(&mcount_spinlock); }
 #define	MCOUNT_EXIT(s)	{ spin_unlock_np(&mcount_spinlock); write_eflags(s); }
-#else
-#define	MCOUNT_ENTER(s)	{ s = read_eflags(); cpu_disable_intr(); }
-#define	MCOUNT_EXIT(s)	(write_eflags(s))
-#endif
 #endif /* GUPROF */
 
 #else /* !_KERNEL */

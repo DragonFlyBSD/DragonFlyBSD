@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.25 2008/06/26 23:06:50 dillon Exp $
  */
 #ifndef _CPU_ATOMIC_H_
 #define _CPU_ATOMIC_H_
@@ -73,11 +72,7 @@
 	extern void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v); \
 	extern void atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v);
 #else /* !KLD_MODULE */
-#if defined(SMP) || !defined(_KERNEL)
 #define MPLOCKED	"lock ; "
-#else
-#define MPLOCKED
-#endif
 
 /*
  * The assembly is volatilized to demark potential before-and-after side
@@ -463,30 +458,6 @@ extern void	atomic_store_rel_##TYPE(volatile u_##TYPE *p, u_##TYPE v);
 
 #else /* !KLD_MODULE */
 
-#if defined(_KERNEL) && !defined(SMP)
-/*
- * We assume that a = b will do atomic loads and stores.  However, on a
- * PentiumPro or higher, reads may pass writes, so for that case we have
- * to use a serializing instruction (i.e. with LOCK) to do the load in
- * SMP kernels.  For UP kernels, however, the cache of the single processor
- * is always consistent, so we don't need any memory barriers.
- */
-#define ATOMIC_STORE_LOAD(TYPE, LOP, SOP)		\
-static __inline u_##TYPE				\
-atomic_load_acq_##TYPE(volatile u_##TYPE *p)		\
-{							\
-	return (*p);					\
-}							\
-							\
-static __inline void					\
-atomic_store_rel_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
-{							\
-	*p = v;						\
-}							\
-struct __hack
-
-#else /* !(_KERNEL && !SMP) */
-
 #define ATOMIC_STORE_LOAD(TYPE, LOP, SOP)		\
 static __inline u_##TYPE				\
 atomic_load_acq_##TYPE(volatile u_##TYPE *p)		\
@@ -514,8 +485,6 @@ atomic_store_rel_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
 	: "m" (*p));			/* 2 */		\
 }							\
 struct __hack
-
-#endif /* _KERNEL && !SMP */
 
 #endif /* !KLD_MODULE */
 

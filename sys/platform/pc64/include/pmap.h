@@ -45,7 +45,6 @@
  * from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  * from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/pmap.h,v 1.1 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -330,9 +329,7 @@ void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	*pmap_mapdev_uncacheable(vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
-#ifdef SMP
 void	pmap_set_opt (void);
-#endif
 vm_paddr_t pmap_kextract(vm_offset_t);
 
 #endif /* _KERNEL */

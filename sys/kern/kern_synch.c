@@ -37,7 +37,6 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.91 2008/09/09 04:06:13 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -879,9 +878,7 @@ _wakeup(void *ident, int domain)
 	struct thread *td;
 	struct thread *ntd;
 	globaldata_t gd;
-#ifdef SMP
 	cpumask_t mask;
-#endif
 	int id;
 
 	crit_enter();
@@ -907,7 +904,6 @@ restart:
 		}
 	}
 
-#ifdef SMP
 	/*
 	 * We finished checking the current cpu but there still may be
 	 * more work to do.  Either wakeup_one was requested and no matching
@@ -930,7 +926,6 @@ restart:
 		lwkt_send_ipiq2_mask(mask, _wakeup, ident,
 				     domain | PWAKEUP_MYCPU);
 	}
-#endif
 done:
 	logtsleep1(wakeup_end);
 	crit_exit();
@@ -996,7 +991,6 @@ wakeup_mycpu_one(const volatile void *ident)
 void
 wakeup_oncpu(globaldata_t gd, const volatile void *ident)
 {
-#ifdef SMP
     globaldata_t mygd = mycpu;
     if (gd == mycpu) {
 	_wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
@@ -1006,9 +1000,6 @@ wakeup_oncpu(globaldata_t gd, const volatile void *ident)
 			PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
 			PWAKEUP_MYCPU);
     }
-#else
-    _wakeup(__DEALL(ident), PWAKEUP_MYCPU);
-#endif
 }
 
 /*
@@ -1018,7 +1009,6 @@ wakeup_oncpu(globaldata_t gd, const volatile void *ident)
 void
 wakeup_oncpu_one(globaldata_t gd, const volatile void *ident)
 {
-#ifdef SMP
     globaldata_t mygd = mycpu;
     if (gd == mygd) {
 	_wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
@@ -1028,9 +1018,6 @@ wakeup_oncpu_one(globaldata_t gd, const volatile void *ident)
 			PWAKEUP_ENCODE(0, mygd->gd_cpuid) |
 			PWAKEUP_MYCPU | PWAKEUP_ONE);
     }
-#else
-    _wakeup(__DEALL(ident), PWAKEUP_MYCPU | PWAKEUP_ONE);
-#endif
 }
 
 /*

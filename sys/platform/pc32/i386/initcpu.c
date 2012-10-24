@@ -475,16 +475,6 @@ init_6x86MX(void)
 static void
 init_ppro(void)
 {
-#ifndef SMP
-	u_int64_t	apicbase;
-
-	/*
-	 * Local APIC should be diabled in UP kernel.
-	 */
-	apicbase = rdmsr(0x1b);
-	apicbase &= ~0x800LL;
-	wrmsr(0x1b, apicbase);
-#endif
 }
 
 /*

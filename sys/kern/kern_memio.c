@@ -477,14 +477,12 @@ mem_range_attr_set(struct mem_range_desc *mrd, int *arg)
 	return (mem_range_softc.mr_op->set(&mem_range_softc, mrd, arg));
 }
 
-#ifdef SMP
 void
 mem_range_AP_init(void)
 {
 	if (mem_range_softc.mr_op && mem_range_softc.mr_op->initAP)
 		return (mem_range_softc.mr_op->initAP(&mem_range_softc));
 }
-#endif
 
 static int 
 random_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)

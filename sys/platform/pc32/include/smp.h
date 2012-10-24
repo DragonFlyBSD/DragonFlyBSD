@@ -7,16 +7,12 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.20 2006/11/07 06:43:24 dillon Exp $
- *
  */
 
 #ifndef _MACHINE_SMP_H_
 #define _MACHINE_SMP_H_
 
 #ifdef _KERNEL
-
-#if defined(SMP)
 
 #ifndef LOCORE
 
@@ -93,11 +89,6 @@ int get_cpuid_from_apicid(int cpuid) {
 }
 
 #endif /* !LOCORE */
-#else	/* !SMP */
-
-#define	smp_active_mask	1	/* smp_active_mask always 1 on UP machines */
-
-#endif
 
 #endif /* _KERNEL */
 #endif /* _MACHINE_SMP_H_ */

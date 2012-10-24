@@ -205,7 +205,7 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 			kl->kl_stat = LSSLEEP;
 		}
 	}
-#if defined(_KERNEL) && defined(SMP)
+#ifdef _KERNEL
 	kl->kl_mpcount = get_mplock_count(lwp->lwp_thread);
 #else
 	kl->kl_mpcount = 0;
@@ -258,7 +258,7 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 	kp->kp_lwp.kl_pid = -1;
 	kp->kp_lwp.kl_tid = -1;
 	kp->kp_lwp.kl_tdflags = td->td_flags;
-#if defined(_KERNEL) && defined(SMP)
+#ifdef _KERNEL
 	kp->kp_lwp.kl_mpcount = get_mplock_count(td);
 #else
 	kp->kp_lwp.kl_mpcount = 0;

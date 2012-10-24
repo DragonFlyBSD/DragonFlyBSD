@@ -237,10 +237,8 @@ ASSYM(MSR_FSBASE, MSR_FSBASE);
 ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intr_enable));
 
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
-#ifdef SMP
 ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
 ASSYM(CPUMASK_BIT, CPUMASK_BIT);
-#endif
 
 ASSYM(IOAPIC_IRQI_ADDR, offsetof(struct ioapic_irqinfo, io_addr));
 ASSYM(IOAPIC_IRQI_IDX, offsetof(struct ioapic_irqinfo, io_idx));

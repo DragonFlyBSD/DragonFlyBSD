@@ -90,19 +90,11 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
-#ifdef SMP
-
 #define MAKEMPSAFE(have_mplock)			\
 	if (have_mplock == 0) {			\
 		get_mplock();			\
 		have_mplock = 1;		\
 	}
-
-#else
-
-#define MAKEMPSAFE(have_mplock)
-
-#endif
 
 extern void trap(struct trapframe *frame);
 
@@ -405,9 +397,7 @@ trap(struct trapframe *frame)
 	struct proc *p;
 	int sticks = 0;
 	int i = 0, ucode = 0, type, code;
-#ifdef SMP
 	int have_mplock = 0;
-#endif
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
 	lwkt_tokref_t curstop = td->td_toks_stop;
@@ -802,10 +792,8 @@ out:
 	userret(lp, frame, sticks);
 	userexit(lp);
 out2:	;
-#ifdef SMP
 	if (have_mplock)
 		rel_mplock();
-#endif
 	if (p != NULL && lp != NULL)
 		KTR_LOG(kernentry_trap_ret, p->p_pid, lp->lwp_tid);
 #ifdef INVARIANTS
@@ -985,11 +973,9 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 		msg = "UNKNOWN";
 	kprintf("\n\nFatal trap %d: %s while in %s mode\n", type, msg,
 	    ISPL(frame->tf_cs) == SEL_UPL ? "user" : "kernel");
-#ifdef SMP
 	/* three separate prints in case of a trap on an unmapped page */
 	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
 	kprintf("lapic->id = %08x\n", lapic->id);
-#endif
 	if (type == T_PAGEFLT) {
 		kprintf("fault virtual address	= 0x%lx\n", eva);
 		kprintf("fault code		= %s %s %s, %s\n",
@@ -1088,11 +1074,9 @@ dblfault_handler(struct trapframe *frame)
 	kprintf("rip = 0x%lx\n", frame->tf_rip);
 	kprintf("rsp = 0x%lx\n", frame->tf_rsp);
 	kprintf("rbp = 0x%lx\n", frame->tf_rbp);
-#ifdef SMP
 	/* three separate prints in case of a trap on an unmapped page */
 	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
 	kprintf("lapic->id = %08x\n", lapic->id);
-#endif
 	panic("double fault");
 }
 
@@ -1121,9 +1105,7 @@ syscall2(struct trapframe *frame)
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
 #endif
-#ifdef SMP
 	int have_mplock = 0;
-#endif
 	register_t *argp;
 	u_int code;
 	int reg, regcnt;
@@ -1343,13 +1325,11 @@ bad:
 	STOPEVENT(p, S_SCX, code);
 
 	userexit(lp);
-#ifdef SMP
 	/*
 	 * Release the MP lock if we had to get it
 	 */
 	if (have_mplock)
 		rel_mplock();
-#endif
 	KTR_LOG(kernentry_syscall_ret, p->p_pid, lp->lwp_tid, error);
 #ifdef INVARIANTS
 	KASSERT(crit_count == td->td_critcount,

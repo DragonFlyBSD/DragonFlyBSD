@@ -115,11 +115,7 @@ static void fill_fpregs_xmm (struct savexmm *, struct save87 *);
 extern void ffs_rawread_setup(void);
 #endif /* DIRECTIO */
 
-#ifdef SMP
 int64_t tsc_offsets[MAXCPU];
-#else
-int64_t tsc_offsets[1];
-#endif
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;
@@ -735,15 +731,11 @@ cpu_idle(void)
 			++cpu_idle_hltcnt;
 		} else {
 			splz();
-#ifdef SMP
 			__asm __volatile("pause");
-#endif
 			++cpu_idle_spincnt;
 		}
 	}
 }
-
-#ifdef SMP
 
 /*
  * Called by the spinlock code with or without a critical section held
@@ -757,8 +749,6 @@ cpu_spinlock_contested(void)
 {
 	cpu_pause();
 }
-
-#endif
 
 /*
  * Clear registers on exec

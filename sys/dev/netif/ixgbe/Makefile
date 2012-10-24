@@ -9,7 +9,7 @@ SRCS    += ixgbe.c #ixv.c
 # Shared source
 SRCS    += ixgbe_common.c ixgbe_api.c ixgbe_phy.c ixgbe_mbx.c ixgbe_vf.c
 SRCS    += ixgbe_82599.c ixgbe_82598.c ixgbe_x540.c
-CFLAGS+= -DSMP #-DIXGBE_FDIR
+#CFLAGS+=-DIXGBE_FDIR
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:

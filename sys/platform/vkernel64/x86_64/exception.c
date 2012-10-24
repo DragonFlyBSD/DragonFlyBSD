@@ -31,8 +31,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.11 2008/04/28 07:05:09 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -64,8 +62,6 @@ static void exc_segfault(int signo, siginfo_t *info, void *ctx);
 #ifdef DDB
 static void exc_debugger(int signo, siginfo_t *info, void *ctx);
 #endif
-
-#ifdef SMP
 
 /*
  * IPIs are 'fast' interrupts, so we deal with them directly from our
@@ -130,8 +126,6 @@ stopsig(int nada, siginfo_t *info, void *ctxp)
 	--td->td_critcount;
 }
 
-#endif
-
 #if 0
 
 /*
@@ -180,12 +174,10 @@ init_exceptions(void)
 	sa.sa_sigaction = exc_debugger;
 	sigaction(SIGQUIT, &sa, NULL);
 #endif
-#ifdef SMP
 	sa.sa_sigaction = ipisig;
 	sigaction(SIGUSR1, &sa, NULL);
 	sa.sa_sigaction = stopsig;
 	sigaction(SIGXCPU, &sa, NULL);
-#endif
 #if 0
 	sa.sa_sigaction = iosig;
 	sigaction(SIGIO, &sa, NULL);

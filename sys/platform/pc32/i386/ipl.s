@@ -116,10 +116,8 @@ doreti_next:
 	cli				/* re-assert cli on loop */
 	movl	%eax,%ecx		/* irq mask unavailable due to BGL */
 	notl	%ecx
-#ifdef SMP
 	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	doreti_ipiq
-#endif
 	testl	$RQF_TIMER,PCPU(reqflags)
 	jnz	doreti_timer
 	/*
@@ -302,7 +300,6 @@ doreti_ast:
 	movl	%esi,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
-#ifdef SMP
 	/*
 	 * IPIQ message pending.  We clear RQF_IPIQ automatically.
 	 */
@@ -318,7 +315,6 @@ doreti_ipiq:
 	decl	PCPU(intr_nesting_level)
 	movl	%esi,%eax		/* restore cpl for loop */
 	jmp	doreti_next
-#endif
 
 doreti_timer:
 	movl	%eax,%esi		/* save cpl (can't use stack) */
@@ -354,10 +350,8 @@ splz_next:
 	cli
 	movl	%eax,%ecx		/* ecx = ~CPL */
 	notl	%ecx
-#ifdef SMP
 	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	splz_ipiq
-#endif
 	testl	$RQF_TIMER,PCPU(reqflags)
 	jnz	splz_timer
 
@@ -452,7 +446,6 @@ splz_soft:
 	popl	%eax
 	jmp	splz_next
 
-#ifdef SMP
 splz_ipiq:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
 	sti
@@ -460,7 +453,6 @@ splz_ipiq:
 	call	lwkt_process_ipiq
 	popl	%eax
 	jmp	splz_next
-#endif
 
 splz_timer:
 	andl	$~RQF_TIMER,PCPU(reqflags)

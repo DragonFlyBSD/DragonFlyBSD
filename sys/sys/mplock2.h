@@ -14,8 +14,6 @@
 #include <sys/globaldata.h>
 #endif
 
-#ifdef SMP
-
 /*
  * NOTE: try_mplock()/lwkt_trytoken() return non-zero on success.
  */
@@ -28,19 +26,5 @@ void cpu_get_initial_mplock(void);
 
 #define MP_LOCK_HELD()		LWKT_TOKEN_HELD_EXCL(&mp_token)
 #define ASSERT_MP_LOCK_HELD()	ASSERT_LWKT_TOKEN_HELD_EXCL(&mp_token)
-
-#else
-
-/*
- * UNI-PROCESSOR BUILD - Degenerate case macros
- */
-#define	get_mplock()
-#define	rel_mplock()
-#define try_mplock()		1
-#define owner_mplock()		0
-#define MP_LOCK_HELD(gd)	1
-#define ASSERT_MP_LOCK_HELD(td)
-
-#endif
 
 #endif
