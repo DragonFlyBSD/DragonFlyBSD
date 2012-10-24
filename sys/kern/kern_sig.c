@@ -80,9 +80,7 @@ static int	dokillpg(int sig, int pgid, int all);
 static int	sig_ffs(sigset_t *set);
 static int	sigprop(int sig);
 static void	lwp_signotify(struct lwp *lp);
-#ifdef SMP
 static void	lwp_signotify_remote(void *arg);
-#endif
 static int	kern_sigtimedwait(sigset_t set, siginfo_t *info,
 		    struct timespec *timeout);
 
@@ -1417,7 +1415,6 @@ lwp_signotify(struct lwp *lp)
 		/*
 		 * lwp is sitting in tsleep() with PCATCH set
 		 */
-#ifdef SMP
 		if (lp->lwp_thread->td_gd == mycpu) {
 			setrunnable(lp);
 		} else {
@@ -1431,14 +1428,10 @@ lwp_signotify(struct lwp *lp)
 			lwkt_send_ipiq(lp->lwp_thread->td_gd,
 				       lwp_signotify_remote, lp);
 		}
-#else
-		setrunnable(lp);
-#endif
 	} else if (lp->lwp_thread->td_flags & TDF_SINTR) {
 		/*
 		 * lwp is sitting in lwkt_sleep() with PCATCH set.
 		 */
-#ifdef SMP
 		if (lp->lwp_thread->td_gd == mycpu) {
 			setrunnable(lp);
 		} else {
@@ -1452,9 +1445,6 @@ lwp_signotify(struct lwp *lp)
 			lwkt_send_ipiq(lp->lwp_thread->td_gd,
 				       lwp_signotify_remote, lp);
 		}
-#else
-		setrunnable(lp);
-#endif
 	} else {
 		/*
 		 * Otherwise the lwp is either in some uninterruptable state
@@ -1464,8 +1454,6 @@ lwp_signotify(struct lwp *lp)
 	}
 	crit_exit();
 }
-
-#ifdef SMP
 
 /*
  * This function is called via an IPI so we cannot call setrunnable() here
@@ -1496,8 +1484,6 @@ lwp_signotify_remote(void *arg)
 		/* LWPHOLD() is forwarded to the target cpu */
 	}
 }
-
-#endif
 
 /*
  * Caller must hold p->p_token

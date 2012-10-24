@@ -84,11 +84,7 @@
 
 #include "assym.s"
 
-#if defined(SMP)
 #define MPLOCKED        lock ;
-#else
-#define MPLOCKED
-#endif
 
 	.data
 
@@ -327,7 +323,6 @@ ENTRY(cpu_heavy_restore)
 	 */
 	movq	TD_LWP(%rax),%rcx
 	movq	LWP_VMSPACE(%rcx),%rcx		/* RCX = vmspace */
-#ifdef SMP
 	movq	%rax,%r12			/* save newthread ptr */
 1:
 	movq	VM_PMAP+PM_ACTIVE(%rcx),%rax	/* old contents */
@@ -360,10 +355,6 @@ ENTRY(cpu_heavy_restore)
 	jmp	2f			/* unconditional reload */
 1:
 	movq	%r12,%rax		/* restore RAX = newthread */
-#else
-	movq	PCPU(cpumask),%rsi
-	orq	%rsi,VM_PMAP+PM_ACTIVE(%rcx)
-#endif
 	/*
 	 * Restore the MMU address space.  If it is the same as the last
 	 * thread we don't have to invalidate the tlb (i.e. reload cr3).
@@ -635,12 +626,10 @@ ENTRY(cpu_idle_restore)
 	movq	%rcx,%cr3
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
 	orl	$TDF_RUNNING,TD_FLAGS(%rax)	/* manual, no switch_return */
-#ifdef SMP
 	cmpl	$0,PCPU(cpuid)
 	je	1f
 	call	ap_init
 1:
-#endif
 	/*
 	 * ap_init can decide to enable interrupts early, but otherwise, or if
 	 * we are UP, do it here.

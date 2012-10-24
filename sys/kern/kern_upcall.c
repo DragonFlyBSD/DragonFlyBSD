@@ -59,8 +59,6 @@
 
 MALLOC_DEFINE(M_UPCALL, "upcalls", "upcall registration structures");
 
-#ifdef SMP
-
 static void
 sigupcall_remote(void *arg)
 {
@@ -68,8 +66,6 @@ sigupcall_remote(void *arg)
 	if (lp == lwkt_preempted_proc())
 		sigupcall();
 }
-
-#endif
 
 /*
  * upc_register:
@@ -157,14 +153,10 @@ sys_upc_control(struct upc_control_args *uap)
 		targlp->lwp_proc->p_flags |= P_UPCALLPEND; /* XXX lwp flags */
 		if (targlp->lwp_proc->p_flags & P_UPCALLWAIT)
 		    wakeup(&targlp->lwp_upcall);
-#ifdef SMP
 		if (targlp->lwp_thread->td_gd != mycpu)
 		    lwkt_send_ipiq(targlp->lwp_thread->td_gd, sigupcall_remote, targlp);
 		else
 		    sigupcall();
-#else
-		sigupcall();
-#endif
 		break;
 	    }
 	}

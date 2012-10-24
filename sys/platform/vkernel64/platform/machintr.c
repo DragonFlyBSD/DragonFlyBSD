@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.17 2008/04/30 16:59:45 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -127,12 +125,10 @@ splz(void)
 
 	while (gd->mi.gd_reqflags & (RQF_IPIQ|RQF_INTPEND)) {
 		crit_enter_quick(td);
-#ifdef SMP
 		if (gd->mi.gd_reqflags & RQF_IPIQ) {
 			atomic_clear_int(&gd->mi.gd_reqflags, RQF_IPIQ);
 			lwkt_process_ipiq();
 		}
-#endif
 		if (gd->mi.gd_reqflags & RQF_INTPEND) {
 			atomic_clear_int(&gd->mi.gd_reqflags, RQF_INTPEND);
 			while ((irq = ffs(gd->gd_spending)) != 0) {

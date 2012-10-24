@@ -97,11 +97,7 @@ struct bounce_zone {
 	STAILQ_ENTRY(bounce_zone) links;
 	STAILQ_HEAD(bp_list, bounce_page) bounce_page_list;
 	STAILQ_HEAD(, bus_dmamap) bounce_map_waitinglist;
-#ifdef SMP
 	struct spinlock	spin;
-#else
-	int		unused0;
-#endif
 	int		total_bpages;
 	int		free_bpages;
 	int		reserved_bpages;
@@ -117,13 +113,8 @@ struct bounce_zone {
 	struct sysctl_oid *sysctl_tree;
 };
 
-#ifdef SMP
 #define BZ_LOCK(bz)	spin_lock(&(bz)->spin)
 #define BZ_UNLOCK(bz)	spin_unlock(&(bz)->spin)
-#else
-#define BZ_LOCK(bz)	crit_enter()
-#define BZ_UNLOCK(bz)	crit_exit()
-#endif
 
 static struct lwkt_token bounce_zone_tok =
 	LWKT_TOKEN_INITIALIZER(bounce_zone_token);
@@ -1012,9 +1003,7 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 	}
 	bz = new_bz;
 
-#ifdef SMP
 	spin_init(&bz->spin);
-#endif
 	STAILQ_INIT(&bz->bounce_page_list);
 	STAILQ_INIT(&bz->bounce_map_waitinglist);
 	bz->free_bpages = 0;

@@ -82,11 +82,9 @@
 #include <bus/isa/isa.h>
 
 static void	cpu_reset_real (void);
-#ifdef SMP
 static void	cpu_reset_proxy (void);
 static u_int	cpu_reset_proxyid;
 static volatile u_int	cpu_reset_proxy_active;
-#endif
 extern int	_ucodesel, _udatasel;
 
 
@@ -357,7 +355,6 @@ kvtop(void *addr)
  * Force reset the processor by invalidating the entire address space!
  */
 
-#ifdef SMP
 static void
 cpu_reset_proxy(void)
 {
@@ -373,12 +370,10 @@ cpu_reset_proxy(void)
 	DELAY(1000000);
 	cpu_reset_real();
 }
-#endif
 
 void
 cpu_reset(void)
 {
-#ifdef SMP
 	if (smp_active_mask == 1) {
 		cpu_reset_real();
 		/* NOTREACHED */
@@ -426,9 +421,6 @@ cpu_reset(void)
 			/* NOTREACHED */
 		}
 	}
-#else
-	cpu_reset_real();
-#endif
 }
 
 static void

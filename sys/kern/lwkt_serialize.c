@@ -81,22 +81,16 @@ KTR_INFO(KTR_SERIALIZER, slz, wakeup_end, 5, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 KTR_INFO(KTR_SERIALIZER, slz, try, 6, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 KTR_INFO(KTR_SERIALIZER, slz, tryfail, 7, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 KTR_INFO(KTR_SERIALIZER, slz, tryok, 8, SLZ_KTR_STRING, SLZ_KTR_ARGS);
-#ifdef SMP
 KTR_INFO(KTR_SERIALIZER, slz, spinbo, 9,
 	 "slz=%p bo1=%d bo=%d", lwkt_serialize_t slz, int backoff1, int backoff);
-#endif
 KTR_INFO(KTR_SERIALIZER, slz, enter_end, 10, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 KTR_INFO(KTR_SERIALIZER, slz, exit_beg, 11, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 
 #define logslz(name, slz)		KTR_LOG(slz_ ## name, slz)
-#ifdef SMP
 #define logslz_spinbo(slz, bo1, bo)	KTR_LOG(slz_spinbo, slz, bo1, bo)
-#endif
 
 static void lwkt_serialize_sleep(void *info);
 static void lwkt_serialize_wakeup(void *info);
-
-#ifdef SMP
 static void lwkt_serialize_adaptive_sleep(void *bo);
 
 static int slz_backoff_limit = 128;
@@ -112,7 +106,6 @@ TUNABLE_INT("debug.serialize_boround", &slz_backoff_round);
 SYSCTL_INT(_debug, OID_AUTO, serialize_boround, CTLFLAG_RW,
     &slz_backoff_round, 0,
     "Backoff rounding");
-#endif	/* SMP */
 
 void
 lwkt_serialize_init(lwkt_serialize_t s)
@@ -123,7 +116,6 @@ lwkt_serialize_init(lwkt_serialize_t s)
 #endif
 }
 
-#ifdef SMP
 void
 lwkt_serialize_adaptive_enter(lwkt_serialize_t s)
 {
@@ -142,7 +134,6 @@ lwkt_serialize_adaptive_enter(lwkt_serialize_t s)
     s->last_td = curthread;
 #endif
 }
-#endif	/* SMP */
 
 void
 lwkt_serialize_enter(lwkt_serialize_t s)
@@ -293,8 +284,6 @@ lwkt_serialize_sleep(void *info)
     }
 }
 
-#ifdef SMP
-
 static void
 lwkt_serialize_adaptive_sleep(void *arg)
 {
@@ -341,8 +330,6 @@ lwkt_serialize_adaptive_sleep(void *arg)
     }
 }
 
-#endif	/* SMP */
-
 static void
 lwkt_serialize_wakeup(void *info)
 {
@@ -351,7 +338,6 @@ lwkt_serialize_wakeup(void *info)
     logslz(wakeup_end, info);
 }
 
-#ifdef SMP
 static void
 lwkt_serialize_sysinit(void *dummy __unused)
 {
@@ -360,4 +346,3 @@ lwkt_serialize_sysinit(void *dummy __unused)
 }
 SYSINIT(lwkt_serialize, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND,
 	lwkt_serialize_sysinit, NULL);
-#endif

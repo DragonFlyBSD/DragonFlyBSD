@@ -590,7 +590,6 @@ schednetisr(int num)
 	KASSERT((num > 0 && num <= NELEM(netisrs)),
 		("schednetisr: bad isr %d", num));
 	KKASSERT(netisrs[num].ni_handler != NULL);
-#ifdef SMP
 	if (mycpu->gd_cpuid != 0) {
 		lwkt_send_ipiq(globaldata_find(0),
 			       schednetisr_remote, (void *)(intptr_t)num);
@@ -599,14 +598,7 @@ schednetisr(int num)
 		schednetisr_remote((void *)(intptr_t)num);
 		crit_exit();
 	}
-#else
-	crit_enter();
-	schednetisr_remote((void *)(intptr_t)num);
-	crit_exit();
-#endif
 }
-
-#ifdef SMP
 
 static void
 netisr_barrier_dispatch(netmsg_t nmsg)
@@ -633,8 +625,6 @@ netisr_barrier_dispatch(netmsg_t nmsg)
 	lwkt_replymsg(&nmsg->lmsg, 0);
 }
 
-#endif
-
 struct netisr_barrier *
 netisr_barrier_create(void)
 {
@@ -647,7 +637,6 @@ netisr_barrier_create(void)
 void
 netisr_barrier_set(struct netisr_barrier *br)
 {
-#ifdef SMP
 	volatile cpumask_t other_cpumask;
 	int i, cur_cpuid;
 
@@ -685,14 +674,12 @@ netisr_barrier_set(struct netisr_barrier *br)
 		if (other_cpumask != 0)
 			tsleep(&other_cpumask, PINTERLOCKED, "nbrset", 0);
 	}
-#endif
 	br->br_isset = 1;
 }
 
 void
 netisr_barrier_rem(struct netisr_barrier *br)
 {
-#ifdef SMP
 	int i, cur_cpuid;
 
 	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
@@ -713,7 +700,6 @@ netisr_barrier_rem(struct netisr_barrier *br)
 		if (done & NETISR_BR_WAITDONE)
 			wakeup(&msg->br_done);
 	}
-#endif
 	br->br_isset = 0;
 }
 

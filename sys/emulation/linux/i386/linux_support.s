@@ -84,9 +84,7 @@ ENTRY(futex_addl)
 	movl	12(%esp),%edx
 	cmpl    $VM_MAX_USER_ADDRESS-4,%edx
 	ja     	futex_fault_pop
-#ifdef SMP
 	lock
-#endif
 	xaddl	%eax,(%edx)
 	movl	16(%esp),%edx
 	movl	%eax,(%edx)
@@ -105,9 +103,7 @@ ENTRY(futex_orl)
 	movl	(%edx),%eax
 1:	movl	%eax,%ecx
 	orl	8(%esp),%ecx
-#ifdef SMP
 	lock
-#endif
 	cmpxchgl %ecx,(%edx)
 	jnz	1b
 futex_tail:
@@ -130,9 +126,7 @@ ENTRY(futex_andl)
 	movl	(%edx),%eax
 1:	movl	%eax,%ecx
 	andl	8(%esp),%ecx
-#ifdef SMP
 	lock
-#endif
 	cmpxchgl %ecx,(%edx)
 	jnz	1b
 	jmp	futex_tail
@@ -148,9 +142,7 @@ ENTRY(futex_xorl)
 	movl	(%edx),%eax
 1:	movl	%eax,%ecx
 	xorl	8(%esp),%ecx
-#ifdef SMP
 	lock
-#endif
 	cmpxchgl %ecx,(%edx)
 	jnz	1b
 	jmp	futex_tail

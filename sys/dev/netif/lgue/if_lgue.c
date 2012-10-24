@@ -479,14 +479,12 @@ lgue_start_ipifunc(void *arg)
 static void
 lgue_start_schedule(struct ifnet *ifp)
 {
-#ifdef SMP
 	int cpu;
 
 	cpu = ifp->if_start_cpuid(ifp);
 	if (cpu != mycpuid)
 		lwkt_send_ipiq(globaldata_find(cpu), lgue_start_ipifunc, ifp);
 	else
-#endif
 		lgue_start_ipifunc(ifp);
 }
 

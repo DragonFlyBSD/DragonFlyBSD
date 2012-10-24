@@ -35,7 +35,6 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.15 2008/08/25 17:01:35 dillon Exp $
  */
 
 #ifndef _CPU_PARAM_H_
@@ -95,11 +94,7 @@
 #ifndef SMP_MAXCPU
 #define SMP_MAXCPU	16
 #endif
-#ifdef SMP
 #define MAXCPU		SMP_MAXCPU
-#else
-#define MAXCPU		1
-#endif /* SMP */
 
 #define ALIGNBYTES	_ALIGNBYTES
 #define ALIGN(p)	_ALIGN(p)

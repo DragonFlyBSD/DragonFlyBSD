@@ -101,13 +101,10 @@ static void bsd4_forking(struct lwp *plp, struct lwp *lp);
 static void bsd4_exiting(struct lwp *lp, struct proc *);
 static void bsd4_uload_update(struct lwp *lp);
 static void bsd4_yield(struct lwp *lp);
-
-#ifdef SMP
 static void bsd4_need_user_resched_remote(void *dummy);
 static int bsd4_batchy_looser_pri_test(struct lwp* lp);
 static struct lwp *bsd4_chooseproc_locked_cache_coherent(struct lwp *chklp);
 static void bsd4_kick_helper(struct lwp *lp);
-#endif
 static struct lwp *bsd4_chooseproc_locked(struct lwp *chklp);
 static void bsd4_remrunqueue_locked(struct lwp *lp);
 static void bsd4_setrunqueue_locked(struct lwp *lp);
@@ -136,9 +133,7 @@ struct usched_bsd4_pcpu {
 	short		upri;
 	struct lwp	*uschedcp;
 	struct lwp	*old_uschedcp;
-#ifdef SMP
 	cpu_node_t	*cpunode;
-#endif
 };
 
 typedef struct usched_bsd4_pcpu	*bsd4_pcpu_t;
@@ -164,9 +159,7 @@ static u_int32_t bsd4_idqueuebits;
 static cpumask_t bsd4_curprocmask = -1;	/* currently running a user process */
 static cpumask_t bsd4_rdyprocmask;	/* ready to accept a user process */
 static int	 bsd4_runqcount;
-#ifdef SMP
 static volatile int bsd4_scancpu;
-#endif
 static struct spinlock bsd4_spin;
 static struct usched_bsd4_pcpu bsd4_pcpu[MAXCPU];
 static struct sysctl_ctx_list usched_bsd4_sysctl_ctx;
@@ -189,14 +182,12 @@ SYSCTL_INT(_debug, OID_AUTO, bsd4_pid_debug, CTLFLAG_RW,
 	   "Print KTR debug information for this pid");
 
 /* Tunning usched_bsd4 - configurable through kern.usched_bsd4.* */
-#ifdef SMP
 static int usched_bsd4_smt = 0;
 static int usched_bsd4_cache_coherent = 0;
 static int usched_bsd4_upri_affinity = 16; /* 32 queues - half-way */
 static int usched_bsd4_queue_checks = 5;
 static int usched_bsd4_stick_to_level = 0;
 static long usched_bsd4_kicks;
-#endif
 static int usched_bsd4_rrinterval = (ESTCPUFREQ + 9) / 10;
 static int usched_bsd4_decay = 8;
 static int usched_bsd4_batch_time = 10;
@@ -236,7 +227,6 @@ KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_select_curproc, 0,
     "cpuid %d, old_pid %d, old_cpuid %d, curr_cpuid %d)",
     pid_t pid, int cpuid, pid_t old_pid, int old_cpuid, int curr);
 
-#ifdef SMP
 KTR_INFO(KTR_USCHED_BSD4, usched, batchy_test_false, 0,
     "USCHED_BSD4(batchy_looser_pri_test false: pid %d, "
     "cpuid %d, verify_mask %lu)",
@@ -270,12 +260,10 @@ KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_setrunqueue_found_best_cpuid, 0,
     "USCHED_BSD4(bsd4_setrunqueue found cpu: pid %d, cpuid %d, "
     "mask %lu, found_cpuid %d, curr_cpuid %d)",
     pid_t pid, int cpuid, cpumask_t mask, int found_cpuid, int curr);
-#endif
 
 KTR_INFO(KTR_USCHED_BSD4, usched, chooseproc, 0,
     "USCHED_BSD4(chooseproc: pid %d, old_cpuid %d, curr_cpuid %d)",
     pid_t pid, int old_cpuid, int curr);
-#ifdef SMP
 KTR_INFO(KTR_USCHED_BSD4, usched, chooseproc_cc, 0,
     "USCHED_BSD4(chooseproc_cc: pid %d, old_cpuid %d, curr_cpuid %d)",
     pid_t pid, int old_cpuid, int curr);
@@ -297,7 +285,6 @@ KTR_INFO(KTR_USCHED_BSD4, usched, sched_thread_process, 0,
 KTR_INFO(KTR_USCHED_BSD4, usched, sched_thread_no_process_found, 0,
     "USCHED_BSD4(sched_thread %d no process found; tmpmask %lu)",
     int id, cpumask_t tmpmask);
-#endif
 
 /*
  * Initialize the run queues at boot time.
@@ -533,11 +520,9 @@ bsd4_select_curproc(globaldata_t gd)
 	crit_enter_gd(gd);
 
 	spin_lock(&bsd4_spin);
-#ifdef SMP
 	if(usched_bsd4_cache_coherent)
 		nlp = bsd4_chooseproc_locked_cache_coherent(dd->uschedcp);
 	else
-#endif
 		nlp = bsd4_chooseproc_locked(dd->uschedcp);
 
 	if (nlp) {
@@ -555,9 +540,7 @@ bsd4_select_curproc(globaldata_t gd)
 		dd->uschedcp = nlp;
 		dd->rrcount = 0;		/* reset round robin */
 		spin_unlock(&bsd4_spin);
-#ifdef SMP
 		lwkt_acquire(nlp->lwp_thread);
-#endif
 		lwkt_schedule(nlp->lwp_thread);
 	} else {
 		spin_unlock(&bsd4_spin);
@@ -574,7 +557,6 @@ bsd4_select_curproc(globaldata_t gd)
 #endif
 	crit_exit_gd(gd);
 }
-#ifdef SMP
 
 /*
  * batchy_looser_pri_test() - determine if a process is batchy or not
@@ -616,7 +598,6 @@ bsd4_batchy_looser_pri_test(struct lwp* lp)
 	return 1;
 }
 
-#endif
 /*
  *
  * BSD4_SETRUNQUEUE
@@ -633,11 +614,9 @@ bsd4_setrunqueue(struct lwp *lp)
 {
 	globaldata_t gd;
 	bsd4_pcpu_t dd;
-#ifdef SMP
 	int cpuid;
 	cpumask_t mask;
 	cpumask_t tmpmask;
-#endif
 
 	/*
 	 * First validate the process state relative to the current cpu.
@@ -664,28 +643,6 @@ bsd4_setrunqueue(struct lwp *lp)
 	 */
 	KKASSERT(dd->uschedcp != lp);
 
-#ifndef SMP
-	/*
-	 * If we are not SMP we do not have a scheduler helper to kick
-	 * and must directly activate the process if none are scheduled.
-	 *
-	 * This is really only an issue when bootstrapping init since
-	 * the caller in all other cases will be a user process, and
-	 * even if released (dd->uschedcp == NULL), that process will
-	 * kickstart the scheduler when it returns to user mode from
-	 * the kernel.
-	 */
-	if (dd->uschedcp == NULL) {
-		atomic_set_cpumask(&bsd4_curprocmask, gd->gd_cpumask);
-		dd->uschedcp = lp;
-		dd->upri = lp->lwp_priority;
-		lwkt_schedule(lp->lwp_thread);
-		crit_exit();
-		return;
-	}
-#endif
-
-#ifdef SMP
 	/*
 	 * XXX fixme.  Could be part of a remrunqueue/setrunqueue
 	 * operation when the priority is recalculated, so TDF_MIGRATING
@@ -693,7 +650,6 @@ bsd4_setrunqueue(struct lwp *lp)
 	 */
 	if ((lp->lwp_thread->td_flags & TDF_MIGRATING) == 0)
 		lwkt_giveaway(lp->lwp_thread);
-#endif
 
 	/*
 	 * We lose control of lp the moment we release the spinlock after
@@ -705,7 +661,6 @@ bsd4_setrunqueue(struct lwp *lp)
 	bsd4_setrunqueue_locked(lp);
 	lp->lwp_rebal_ticks = sched_ticks;
 
-#ifdef SMP
 	/*
 	 * Kick the scheduler helper on one of the other cpu's
 	 * and request a reschedule if appropriate.
@@ -906,15 +861,6 @@ found:
 		else
 			wakeup(&dd->helper_thread);
 	}
-#else
-	/*
-	 * Request a reschedule if appropriate.
-	 */
-	spin_unlock(&bsd4_spin);
-	if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
-		need_user_resched();
-	}
-#endif
 	crit_exit();
 }
 
@@ -1223,7 +1169,6 @@ bsd4_resetpriority(struct lwp *lp)
 		if ((bsd4_rdyprocmask & CPUMASK(reschedcpu)) &&
 		    (checkpri == 0 ||
 		     (dd->upri & ~PRIMASK) > (lp->lwp_priority & ~PRIMASK))) {
-#ifdef SMP
 			if (reschedcpu == mycpu->gd_cpuid) {
 				spin_unlock(&bsd4_spin);
 				need_user_resched();
@@ -1235,10 +1180,6 @@ bsd4_resetpriority(struct lwp *lp)
 					       bsd4_need_user_resched_remote,
 					       NULL);
 			}
-#else
-			spin_unlock(&bsd4_spin);
-			need_user_resched();
-#endif
 		} else {
 			spin_unlock(&bsd4_spin);
 		}
@@ -1349,9 +1290,7 @@ bsd4_chooseproc_locked(struct lwp *chklp)
 	cpumask = mycpu->gd_cpumask;
 
 
-#ifdef SMP
 again:
-#endif
 	if (rtqbits) {
 		pri = bsfl(rtqbits);
 		q = &bsd4_rtqueues[pri];
@@ -1373,7 +1312,6 @@ again:
 	lp = TAILQ_FIRST(q);
 	KASSERT(lp, ("chooseproc: no lwp on busy queue"));
 
-#ifdef SMP
 	while ((lp->lwp_cpumask & cpumask) == 0) {
 		lp = TAILQ_NEXT(lp, lwp_procq);
 		if (lp == NULL) {
@@ -1381,7 +1319,6 @@ again:
 			goto again;
 		}
 	}
-#endif
 
 	/*
 	 * If the passed lwp <chklp> is reasonably close to the selected
@@ -1395,7 +1332,6 @@ again:
 			return(NULL);
 	}
 
-#ifdef SMP
 	/*
 	 * If the chosen lwp does not reside on this cpu spend a few
 	 * cycles looking for a better candidate at the same priority level.
@@ -1409,7 +1345,6 @@ again:
 			lp = chklp;
 		}
 	}
-#endif
 
 	KTR_COND_LOG(usched_chooseproc,
 	    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
@@ -1427,7 +1362,6 @@ again:
 	return lp;
 }
 
-#ifdef SMP
 /*
  * chooseproc() - with a cache coherence heuristic. Try to pull a process that
  * has its home on the current CPU> If the process doesn't have its home here
@@ -1642,8 +1576,6 @@ bsd4_need_user_resched_remote(void *dummy)
 	wakeup_mycpu(&dd->helper_thread);
 }
 
-#endif
-
 /*
  * bsd4_remrunqueue_locked() removes a given process from the run queue
  * that it is on, clearing the queue busy bit if it becomes empty.
@@ -1747,8 +1679,6 @@ bsd4_setrunqueue_locked(struct lwp *lp)
 	TAILQ_INSERT_TAIL(q, lp, lwp_procq);
 	*which |= 1 << pri;
 }
-
-#ifdef SMP
 
 /*
  * For SMP systems a user scheduler helper thread is created for each
@@ -2076,32 +2006,3 @@ sched_thread_cpu_init(void)
 }
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
 	sched_thread_cpu_init, NULL)
-
-#else /* No SMP options - just add the configurable parameters to sysctl */
-
-static void
-sched_sysctl_tree_init(void)
-{
-	sysctl_ctx_init(&usched_bsd4_sysctl_ctx);
-	usched_bsd4_sysctl_tree =
-		SYSCTL_ADD_NODE(&usched_bsd4_sysctl_ctx,
-				SYSCTL_STATIC_CHILDREN(_kern), OID_AUTO,
-				"usched_bsd4", CTLFLAG_RD, 0, "");
-
-	/* usched_bsd4 sysctl configurable parameters */
-	SYSCTL_ADD_INT(&usched_bsd4_sysctl_ctx,
-		       SYSCTL_CHILDREN(usched_bsd4_sysctl_tree),
-		       OID_AUTO, "rrinterval", CTLFLAG_RW,
-		       &usched_bsd4_rrinterval, 0, "");
-	SYSCTL_ADD_INT(&usched_bsd4_sysctl_ctx,
-		       SYSCTL_CHILDREN(usched_bsd4_sysctl_tree),
-		       OID_AUTO, "decay", CTLFLAG_RW,
-		       &usched_bsd4_decay, 0, "Extra decay when not running");
-	SYSCTL_ADD_INT(&usched_bsd4_sysctl_ctx,
-		       SYSCTL_CHILDREN(usched_bsd4_sysctl_tree),
-		       OID_AUTO, "batch_time", CTLFLAG_RW,
-		       &usched_bsd4_batch_time, 0, "Min batch counter value");
-}
-SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
-	sched_sysctl_tree_init, NULL)
-#endif

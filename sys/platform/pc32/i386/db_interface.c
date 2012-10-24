@@ -133,7 +133,6 @@ kdb_trap(int type, int code, struct i386_saved_state *regs)
 	}
 
 	crit_enter();
-#ifdef SMP
 	db_printf("\nCPU%d stopping CPUs: 0x%08x\n", 
 	    mycpu->gd_cpuid, mycpu->gd_other_cpus);
 
@@ -141,7 +140,6 @@ kdb_trap(int type, int code, struct i386_saved_state *regs)
 	stop_cpus(mycpu->gd_other_cpus);
 
 	db_printf(" stopped\n");
-#endif /* SMP */
 
 	setjmp(db_global_jmpbuf);
 	db_global_jmpbuf_valid = TRUE;
@@ -155,7 +153,6 @@ kdb_trap(int type, int code, struct i386_saved_state *regs)
 	db_active--;
 	db_global_jmpbuf_valid = FALSE;
 
-#ifdef SMP
 	db_printf("\nCPU%d restarting CPUs: 0x%08x\n",
 	    mycpu->gd_cpuid, stopped_cpus);
 
@@ -168,7 +165,6 @@ kdb_trap(int type, int code, struct i386_saved_state *regs)
 	restart_cpus(stopped_cpus);
 
 	db_printf(" restarted\n");
-#endif /* SMP */
 	crit_exit();
 
 	regs->tf_eip    = ddb_regs.tf_eip;

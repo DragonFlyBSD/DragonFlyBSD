@@ -151,11 +151,7 @@ struct	ip_stats {
 
 #ifdef _KERNEL
 
-#if defined(SMP)
 #define ipstat	ipstats_percpu[mycpuid]
-#else /* !SMP */
-#define ipstat	ipstats_percpu[0]
-#endif
 
 extern struct ip_stats	ipstats_percpu[MAXCPU];
 

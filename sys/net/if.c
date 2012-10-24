@@ -171,10 +171,8 @@ KTR_INFO(KTR_IF_START, if_start, avoid, 2,
 	 IF_START_KTR_STRING, IF_START_KTR_ARGS);
 KTR_INFO(KTR_IF_START, if_start, contend_sched, 3,
 	 IF_START_KTR_STRING, IF_START_KTR_ARGS);
-#ifdef SMP
 KTR_INFO(KTR_IF_START, if_start, chase_sched, 4,
 	 IF_START_KTR_STRING, IF_START_KTR_ARGS);
-#endif
 #define logifstart(name, arg)	KTR_LOG(if_start_ ## name, arg)
 
 TAILQ_HEAD(, ifg_group) ifg_head = TAILQ_HEAD_INITIALIZER(ifg_head);
@@ -255,14 +253,12 @@ if_start_ipifunc(void *arg)
 static void
 if_start_schedule(struct ifnet *ifp)
 {
-#ifdef SMP
 	int cpu;
 
 	cpu = ifp->if_start_cpuid(ifp);
 	if (cpu != mycpuid)
 		lwkt_send_ipiq(globaldata_find(cpu), if_start_ipifunc, ifp);
 	else
-#endif
 	if_start_ipifunc(ifp);
 }
 
@@ -317,7 +313,6 @@ if_start_dispatch(netmsg_t msg)
 	lwkt_replymsg(lmsg, 0);	/* reply ASAP */
 	crit_exit();
 
-#ifdef SMP
 	if (mycpuid != ifp->if_start_cpuid(ifp)) {
 		/*
 		 * If the ifnet is still up, we need to
@@ -331,7 +326,6 @@ if_start_dispatch(netmsg_t msg)
 			goto check;
 		}
 	}
-#endif
 
 	if (ifp->if_flags & IFF_UP) {
 		ifnet_serialize_tx(ifp); /* XXX try? */
@@ -344,9 +338,7 @@ if_start_dispatch(netmsg_t msg)
 		}
 		ifnet_deserialize_tx(ifp);
 	}
-#ifdef SMP
 check:
-#endif
 	if (if_start_need_schedule(ifq, running)) {
 		crit_enter();
 		if (lmsg->ms_flags & MSGF_DONE)	{ /* XXX necessary? */

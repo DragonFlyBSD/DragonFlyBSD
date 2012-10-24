@@ -36,7 +36,6 @@
  * 
  * from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.8 2008/01/29 19:54:56 dillon Exp $
  */
 
 #include "opt_debug_npx.h"
@@ -58,17 +57,11 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
-#ifndef SMP
-#include <machine/asmacros.h>
-#endif
 #include <machine/cputypes.h>
 #include <machine/frame.h>
 #include <machine/md_var.h>
 #include <machine/pcb.h>
 #include <machine/psl.h>
-#ifndef SMP
-#include <machine/clock.h>
-#endif
 #include <machine/specialreg.h>
 #include <machine/segments.h>
 #include <machine/globaldata.h>

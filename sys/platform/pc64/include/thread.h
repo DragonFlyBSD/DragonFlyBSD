@@ -71,12 +71,7 @@ _get_mycpu(void)
 }
 
 #define mycpu	_get_mycpu()
-
-#ifdef SMP
 #define mycpuid (_get_mycpu()->gd_cpuid)
-#else
-#define mycpuid 0
-#endif
 
 /*
  * note: curthread is never NULL, but curproc can be.  Also note that

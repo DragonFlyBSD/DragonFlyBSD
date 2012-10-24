@@ -3050,11 +3050,7 @@ pmap_ts_referenced(vm_page_t m)
 			pte = pmap_pte(pv->pv_pmap, pv->pv_va);
 
 			if (pte && (*pte & VPTE_A)) {
-#ifdef SMP
 				atomic_clear_long(pte, VPTE_A);
-#else
-				atomic_clear_long_nonlocked(pte, VPTE_A);
-#endif
 				rtval++;
 				if (rtval > 4) {
 					break;
@@ -3232,21 +3228,13 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		lp->lwp_vmspace = newvm;
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
-#if defined(SMP)
 			atomic_set_cpumask(&pmap->pm_active, CPUMASK(mycpu->gd_cpuid));
-#else
-			pmap->pm_active |= 1;
-#endif
 #if defined(SWTCH_OPTIM_STATS)
 			tlb_flush_count++;
 #endif
 			pmap = vmspace_pmap(oldvm);
-#if defined(SMP)
 			atomic_clear_cpumask(&pmap->pm_active,
 					     CPUMASK(mycpu->gd_cpuid));
-#else
-			pmap->pm_active &= ~(cpumask_t)1;
-#endif
 		}
 	}
 	crit_exit();

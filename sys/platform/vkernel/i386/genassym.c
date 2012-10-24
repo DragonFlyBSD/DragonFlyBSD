@@ -35,7 +35,6 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.58 2007/06/29 21:54:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -93,10 +92,8 @@ ASSYM(TDF_RUNNING, TDF_RUNNING);
 ASSYM(TD_SAVEFPU, offsetof(struct thread, td_mach) + offsetof(struct md_thread, mtd_savefpu));
 
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
-#ifdef SMP
 ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
 ASSYM(CPUMASK_BIT, CPUMASK_BIT);
-#endif
 
 ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
 ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));

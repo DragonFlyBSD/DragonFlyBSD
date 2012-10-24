@@ -66,7 +66,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/swtch.s,v 1.8 2007/07/01 02:51:43 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -81,11 +80,7 @@
 
 #include "assym.s"
 
-#if defined(SMP)
 #define MPLOCKED        lock ;
-#else
-#define MPLOCKED
-#endif
 
 	.data
 
@@ -503,12 +498,10 @@ ENTRY(cpu_idle_restore)
 	pushl	$0
 	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
 	orl	$TDF_RUNNING,TD_FLAGS(%eax)	/* manual, no switch_return */
-#ifdef SMP
 	cmpl	$0,PCPU(cpuid)
 	je	1f
 	call	ap_init
 1:
-#endif
 	/* sti */
 	jmp	cpu_idle
 

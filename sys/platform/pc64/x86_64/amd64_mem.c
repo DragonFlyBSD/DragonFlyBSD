@@ -280,7 +280,6 @@ amd64_mrt2mtrr(int flags, int oldval)
 static void
 amd64_mrstore(struct mem_range_softc *sc)
 {
-#ifdef SMP
 	/*
 	 * We should use ipi_all_but_self() to call other CPUs into a
 	 * locking gate, then call a target function to do this work.
@@ -288,11 +287,6 @@ amd64_mrstore(struct mem_range_softc *sc)
 	 * implementation, not ready yet.
 	 */
 	lwkt_send_ipiq_mask(smp_active_mask, (void *)amd64_mrstoreone, sc);
-#else
-	crit_enter();
-	amd64_mrstoreone(sc);
-	crit_exit();
-#endif
 }
 
 /*
@@ -723,7 +717,6 @@ amd64_mrAPinit(struct mem_range_softc *sc)
 static void
 amd64_mrreinit(struct mem_range_softc *sc)
 {
-#ifdef SMP
 	/*
 	 * We should use ipi_all_but_self() to call other CPUs into a
 	 * locking gate, then call a target function to do this work.
@@ -731,11 +724,6 @@ amd64_mrreinit(struct mem_range_softc *sc)
 	 * implementation, not ready yet.
 	 */
 	lwkt_send_ipiq_mask(smp_active_mask, (void *)amd64_mrAPinit, sc);
-#else
-	crit_enter();
-	amd64_mrAPinit(sc);
-	crit_exit();
-#endif
 }
 
 static void

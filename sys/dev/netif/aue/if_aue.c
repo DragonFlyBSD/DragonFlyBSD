@@ -981,15 +981,13 @@ aue_start_ipifunc(void *arg)
 static void
 aue_start_schedule(struct ifnet *ifp)
 {
-#ifdef SMP
         int cpu;
 
 	cpu = ifp->if_start_cpuid(ifp);
 	if (cpu != mycpuid)
 		lwkt_send_ipiq(globaldata_find(cpu), aue_start_ipifunc, ifp);
 	else
-#endif
-	aue_start_ipifunc(ifp);
+		aue_start_ipifunc(ifp);
 }
 
 /*

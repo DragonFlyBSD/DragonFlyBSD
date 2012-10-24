@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.13 2007/02/18 16:17:09 corecode Exp $
  */
 
 #ifndef _SYS_KINFO_H_
@@ -226,11 +224,7 @@ void fill_kinfo_proc_kthread(struct thread *, struct kinfo_proc *);
 #define KINFO_END(kp)	(kp->gen.type == KINFO_TYPE_END)
 
 #if defined(_KERNEL)
-#ifdef SMP
 #define cpu_time	cputime_percpu[mycpuid]
-#else
-#define cpu_time	cputime_percpu[0]
-#endif
 #endif
 
 #if defined(_KERNEL)

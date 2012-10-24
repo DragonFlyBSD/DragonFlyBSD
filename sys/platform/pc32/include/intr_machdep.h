@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.25 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifndef _ARCH_ISA_INTR_MACHDEP_H_
@@ -144,12 +143,10 @@ inthand_t
 	Xspuriousint,	/* handle APIC "spurious INTs" */
 	Xtimer;		/* handle LAPIC timer INT */
 
-#ifdef SMP
 inthand_t
 	Xcpustop,	/* CPU stops & waits for another CPU to restart it */
 	Xinvltlb,	/* TLB shootdowns */
 	Xipiq;		/* handle lwkt_send_ipiq() requests */
-#endif
 
 #endif /* LOCORE */
 

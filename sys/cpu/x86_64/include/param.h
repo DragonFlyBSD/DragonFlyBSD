@@ -89,11 +89,7 @@
  * remain compatible between UP and SMP builds.
  */
 #define SMP_MAXCPU	63
-#ifdef SMP
 #define MAXCPU		SMP_MAXCPU
-#else
-#define MAXCPU		1
-#endif /* SMP */
 
 #define ALIGNBYTES	_ALIGNBYTES
 #define ALIGN(p)	_ALIGN(p)

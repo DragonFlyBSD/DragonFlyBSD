@@ -53,17 +53,11 @@
 
 extern struct spinlock pmap_spin;
 
-#ifdef SMP
-
 int spin_trylock_contested(struct spinlock *spin);
 void spin_lock_contested(struct spinlock *spin);
 void spin_lock_shared_contested(struct spinlock *spin);
 void _spin_pool_lock(void *chan);
 void _spin_pool_unlock(void *chan);
-
-#endif
-
-#ifdef SMP
 
 /*
  * Attempt to obtain an exclusive spinlock.  Returns FALSE on failure,
@@ -94,21 +88,6 @@ spin_trylock(struct spinlock *spin)
 	return (TRUE);
 }
 
-#else
-
-static __inline boolean_t
-spin_trylock(struct spinlock *spin)
-{
-	globaldata_t gd = mycpu;
-
-	++gd->gd_curthread->td_critcount;
-	cpu_ccfence();
-	++gd->gd_spinlocks;
-	return (TRUE);
-}
-
-#endif
-
 /*
  * Return TRUE if the spinlock is held (we can't tell by whom, though)
  */
@@ -127,7 +106,6 @@ spin_lock_quick(globaldata_t gd, struct spinlock *spin)
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
 	++gd->gd_spinlocks;
-#ifdef SMP
 	atomic_add_int(&spin->counta, 1);
 	if (spin->counta != 1)
 		spin_lock_contested(spin);
@@ -142,7 +120,6 @@ spin_lock_quick(globaldata_t gd, struct spinlock *spin)
 			break;
 		}
 	}
-#endif
 #endif
 }
 
@@ -160,7 +137,6 @@ spin_lock(struct spinlock *spin)
 static __inline void
 spin_unlock_quick(globaldata_t gd, struct spinlock *spin)
 {
-#ifdef SMP
 #ifdef DEBUG_LOCKS
 	int i;
 	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
@@ -183,7 +159,6 @@ spin_unlock_quick(globaldata_t gd, struct spinlock *spin)
 	cpu_sfence();
 	atomic_add_int(&spin->counta, -1);
 	cpu_sfence();
-#endif
 #ifdef DEBUG_LOCKS
 	KKASSERT(gd->gd_spinlocks > 0);
 #endif
@@ -207,7 +182,6 @@ spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin)
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
 	++gd->gd_spinlocks;
-#ifdef SMP
 	atomic_add_int(&spin->counta, 1);
 	if (spin->counta == 1)
 		atomic_set_int(&spin->counta, SPINLOCK_SHARED);
@@ -225,13 +199,11 @@ spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin)
 		}
 	}
 #endif
-#endif
 }
 
 static __inline void
 spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)
 {
-#ifdef SMP
 #ifdef DEBUG_LOCKS
 	int i;
 	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
@@ -260,7 +232,6 @@ spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)
 			break;
 	}
 	cpu_sfence();
-#endif
 #ifdef DEBUG_LOCKS
 	KKASSERT(gd->gd_spinlocks > 0);
 #endif
@@ -284,21 +255,13 @@ spin_unlock_shared(struct spinlock *spin)
 static __inline void
 spin_pool_lock(void *chan)
 {
-#ifdef SMP
 	_spin_pool_lock(chan);
-#else
-	spin_lock(NULL);
-#endif
 }
 
 static __inline void
 spin_pool_unlock(void *chan)
 {
-#ifdef SMP
 	_spin_pool_unlock(chan);
-#else
-	spin_unlock(NULL);
-#endif
 }
 
 static __inline void

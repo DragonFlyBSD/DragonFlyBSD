@@ -234,7 +234,7 @@ struct	in_ifaddrhashhead *in_ifaddrhashtbls[MAXCPU];
 u_long	in_ifaddrhmask;				/* mask for hash table */
 
 struct ip_stats ipstats_percpu[MAXCPU];
-#ifdef SMP
+
 static int
 sysctl_ipstats(SYSCTL_HANDLER_ARGS)
 {
@@ -253,10 +253,6 @@ sysctl_ipstats(SYSCTL_HANDLER_ARGS)
 }
 SYSCTL_PROC(_net_inet_ip, IPCTL_STATS, stats, (CTLTYPE_OPAQUE | CTLFLAG_RW),
     0, 0, sysctl_ipstats, "S,ip_stats", "IP statistics");
-#else
-SYSCTL_STRUCT(_net_inet_ip, IPCTL_STATS, stats, CTLFLAG_RW,
-    &ipstat, ip_stats, "IP statistics");
-#endif
 
 /* Packet reassembly stuff */
 #define	IPREASS_NHASH_LOG2	6
@@ -326,9 +322,7 @@ ip_init(void)
 {
 	struct protosw *pr;
 	int i;
-#ifdef SMP
 	int cpu;
-#endif
 
 	/*
 	 * Make sure we can handle a reasonable number of fragments but
@@ -373,13 +367,9 @@ ip_init(void)
 	 * Initialize IP statistics counters for each CPU.
 	 *
 	 */
-#ifdef SMP
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		bzero(&ipstats_percpu[cpu], sizeof(struct ip_stats));
 	}
-#else
-	bzero(&ipstat, sizeof(struct ip_stats));
-#endif
 
 	netisr_register(NETISR_IP, ip_input_handler, ip_cpufn_in);
 	netisr_register_hashcheck(NETISR_IP, ip_hashcheck);

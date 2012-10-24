@@ -337,9 +337,7 @@ ENTRY(casuword32)
 	ja	fusufault
 
 	movl	%esi,%eax			/* old */
-#ifdef SMP
 	lock
-#endif
 	cmpxchgl %edx,(%rdi)			/* new = %edx */
 
 	/*
@@ -368,9 +366,7 @@ ENTRY(casuword)
 	ja	fusufault
 
 	movq	%rsi,%rax			/* old */
-#ifdef SMP
 	lock
-#endif
 	cmpxchgq %rdx,(%rdi)			/* new = %rdx */
 
 	/*

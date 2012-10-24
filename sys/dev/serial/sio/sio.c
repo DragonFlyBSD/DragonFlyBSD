@@ -89,9 +89,6 @@
 #include <machine/lock.h>
 
 #include <machine/clock.h>
-#ifndef SMP
-#include <machine/lock.h>
-#endif
 
 #include "sioreg.h"
 #include "sio_private.h"

@@ -43,7 +43,6 @@
  * from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  * from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pmap.h,v 1.7 2007/06/08 00:57:04 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -304,9 +303,7 @@ void	pmap_unmapdev (vm_offset_t, vm_size_t);
 unsigned *pmap_kernel_pte (vm_offset_t) __pure2;
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 int	pmap_get_pgeflag(void);
-#ifdef SMP
 void	pmap_set_opt (void);
-#endif
 
 #endif /* _KERNEL */
 

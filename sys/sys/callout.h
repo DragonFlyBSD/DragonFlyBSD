@@ -37,7 +37,6 @@
  *
  *	@(#)callout.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/callout.h,v 1.15.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/sys/callout.h,v 1.5 2004/09/17 09:34:54 dillon Exp $
  */
 
 #ifndef _SYS_CALLOUT_H_
@@ -57,11 +56,7 @@ struct callout {
 	void	*c_arg;			/* function argument */
 	void	(*c_func) (void *);	/* function to call */
 	int	c_flags;		/* state of this entry */
-#ifdef SMP
 	struct globaldata *c_gd;
-#else
-	void	*c_gd_reserved;
-#endif
 };
 
 #define CALLOUT_LOCAL_ALLOC	0x0001 /* was allocated from callfree */

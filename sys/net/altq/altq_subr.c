@@ -802,7 +802,7 @@ init_machclk(void)
 
 #if !defined(__i386__) || defined(ALTQ_NOPCC)
 	machclk_usepcc = 0;
-#elif defined(__DragonFly__) && defined(SMP)
+#elif defined(__DragonFly__)
 	machclk_usepcc = 0;
 #elif defined(__i386__)
 	/* check if TSC is available */

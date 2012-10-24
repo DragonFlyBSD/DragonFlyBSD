@@ -355,10 +355,6 @@ nwfs_root(struct mount *mp, struct vnode **vpp)
 int
 nwfs_init(struct vfsconf *vfsp)
 {
-#ifndef SMP
-	if (ncpus > 1)
-		kprintf("warning: nwfs module compiled without SMP support.");
-#endif
 	nwfs_hash_init();
 	nwfs_pbuf_freecnt = nswbuf / 2 + 1;
 	NCPVODEBUG("always happy to load!\n");

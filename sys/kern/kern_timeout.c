@@ -245,9 +245,7 @@ softclock_handler(void *arg)
 	struct callout_tailq *bucket;
 	void (*c_func)(void *);
 	void *c_arg;
-#ifdef SMP
 	int mpsafe = 1;
-#endif
 
 	/*
 	 * Run the callout thread at the same priority as other kernel
@@ -266,7 +264,6 @@ loop:
 				sc->next = TAILQ_NEXT(c, c_links.tqe);
 				continue;
 			}
-#ifdef SMP
 			if (c->c_flags & CALLOUT_MPSAFE) {
 				if (mpsafe == 0) {
 					mpsafe = 1;
@@ -287,7 +284,6 @@ loop:
 						continue;
 				}
 			}
-#endif
 			sc->next = TAILQ_NEXT(c, c_links.tqe);
 			TAILQ_REMOVE(bucket, c, c_links.tqe);
 
@@ -371,16 +367,12 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *),
 	c->c_flags |= (CALLOUT_ACTIVE | CALLOUT_PENDING);
 	c->c_func = ftn;
 	c->c_time = sc->curticks + to_ticks;
-#ifdef SMP
 	c->c_gd = gd;
-#endif
 
 	TAILQ_INSERT_TAIL(&sc->callwheel[c->c_time & callwheelmask], 
 			  c, c_links.tqe);
 	crit_exit_gd(gd);
 }
-
-#ifdef SMP
 
 struct callout_remote_arg {
 	struct callout	*c;
@@ -397,17 +389,12 @@ callout_reset_ipi(void *arg)
 	callout_reset(rmt->c, rmt->to_ticks, rmt->ftn, rmt->arg);
 }
 
-#endif
-
 void
 callout_reset_bycpu(struct callout *c, int to_ticks, void (*ftn)(void *),
     void *arg, int cpuid)
 {
 	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid cpuid %d", cpuid));
 
-#ifndef SMP
-	callout_reset(c, to_ticks, ftn, arg);
-#else
 	if (cpuid == mycpuid) {
 		callout_reset(c, to_ticks, ftn, arg);
 	} else {
@@ -425,7 +412,6 @@ callout_reset_bycpu(struct callout *c, int to_ticks, void (*ftn)(void *),
 		seq = lwkt_send_ipiq(target_gd, callout_reset_ipi, &rmt);
 		lwkt_wait_ipiq(target_gd, seq);
 	}
-#endif
 }
 
 /*
@@ -450,9 +436,7 @@ int
 callout_stop(struct callout *c)
 {
 	globaldata_t gd = mycpu;
-#ifdef SMP
 	globaldata_t tgd;
-#endif
 	softclock_pcpu_t sc;
 
 #ifdef INVARIANTS
@@ -482,7 +466,6 @@ callout_stop(struct callout *c)
 	 * cpu.
 	 */
 	if ((c->c_flags & CALLOUT_PENDING) == 0) {
-#ifdef SMP
 		if ((c->c_flags & CALLOUT_ACTIVE) == 0) {
 			crit_exit_gd(gd);
 			return (0);
@@ -492,14 +475,7 @@ callout_stop(struct callout *c)
 			crit_exit_gd(gd);
 			return (0);
 		}
-		/* fall-through to the cpu-localization code. */
-#else
-		c->c_flags &= ~CALLOUT_ACTIVE;
-		crit_exit_gd(gd);
-		return (0);
-#endif
 	}
-#ifdef SMP
 	if ((tgd = c->c_gd) != gd) {
 		/*
 		 * If the callout is owned by a different CPU we have to
@@ -510,9 +486,7 @@ callout_stop(struct callout *c)
 		cpu_ccfence();	/* don't let tgd alias c_gd */
 		seq = lwkt_send_ipiq(tgd, (void *)callout_stop, c);
 		lwkt_wait_ipiq(tgd, seq);
-	} else 
-#endif
-	{
+	} else {
 		/*
 		 * If the callout is owned by the same CPU we can
 		 * process it directly, but if we are racing our helper
@@ -544,7 +518,6 @@ callout_stop_sync(struct callout *c)
 
 	while (c->c_flags & CALLOUT_DID_INIT) {
 		callout_stop(c);
-#ifdef SMP
 		if (c->c_gd) {
 			sc = &softclock_pcpu_ary[c->c_gd->gd_cpuid];
 			if (sc->running == c) {
@@ -552,13 +525,6 @@ callout_stop_sync(struct callout *c)
 					tsleep(&sc->running, 0, "crace", 1);
 			}
 		}
-#else
-		sc = &softclock_pcpu_ary[0];
-		if (sc->running == c) {
-			while (sc->running == c)
-				tsleep(&sc->running, 0, "crace", 1);
-		}
-#endif
 		if ((c->c_flags & (CALLOUT_PENDING | CALLOUT_ACTIVE)) == 0)
 			break;
 		kprintf("Warning: %s: callout race\n", curthread->td_comm);
@@ -585,11 +551,7 @@ callout_terminate(struct callout *c)
 
 	if (c->c_flags & CALLOUT_DID_INIT) {
 		callout_stop(c);
-#ifdef SMP
 		sc = &softclock_pcpu_ary[c->c_gd->gd_cpuid];
-#else
-		sc = &softclock_pcpu_ary[0];
-#endif
 		if (sc->running == c) {
 			while (sc->running == c)
 				tsleep(&sc->running, 0, "crace", 1);

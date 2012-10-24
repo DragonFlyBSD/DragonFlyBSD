@@ -25,11 +25,7 @@
 /* convert an absolute IRQ# into ipending index */
 #define IRQ_LIDX(irq_num)	((irq_num) >> 5)
 
-#ifdef SMP
 #define MPLOCKED     lock ;
-#else
-#define MPLOCKED
-#endif
 
 /*
  * Push an interrupt frame in a format acceptable to doreti, reload
@@ -183,8 +179,6 @@ Xspuriousint:
 
 	iret
 
-#ifdef SMP
-
 /*
  * Handle TLB shootdowns.
  *
@@ -323,8 +317,6 @@ Xipiq:
 	orl	$RQF_IPIQ,PCPU(reqflags)
 	MEXITCOUNT
 	jmp	doreti_syscall_ret
-
-#endif	/* SMP */
 
 	.text
 	SUPERALIGN_TEXT

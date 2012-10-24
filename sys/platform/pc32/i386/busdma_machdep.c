@@ -76,11 +76,7 @@ struct bus_dma_tag {
 	int		map_count;
 	bus_dma_segment_t *segments;
 	struct bounce_zone *bounce_zone;
-#ifdef SMP
 	struct spinlock	spin;
-#else
-	int		unused0;
-#endif
 };
 
 /*
@@ -109,11 +105,7 @@ struct bounce_zone {
 	STAILQ_ENTRY(bounce_zone) links;
 	STAILQ_HEAD(bp_list, bounce_page) bounce_page_list;
 	STAILQ_HEAD(, bus_dmamap) bounce_map_waitinglist;
-#ifdef SMP
 	struct spinlock	spin;
-#else
-	int		unused0;
-#endif
 	int		total_bpages;
 	int		free_bpages;
 	int		reserved_bpages;
@@ -129,13 +121,8 @@ struct bounce_zone {
 	struct sysctl_oid *sysctl_tree;
 };
 
-#ifdef SMP
 #define BZ_LOCK(bz)	spin_lock(&(bz)->spin)
 #define BZ_UNLOCK(bz)	spin_unlock(&(bz)->spin)
-#else
-#define BZ_LOCK(bz)	crit_enter()
-#define BZ_UNLOCK(bz)	crit_exit()
-#endif
 
 static struct lwkt_token bounce_zone_tok =
 	LWKT_TOKEN_INITIALIZER(bounce_zone_tok);
@@ -220,9 +207,7 @@ bus_dma_tag_lock(bus_dma_tag_t tag, bus_dma_segment_t *cache)
 
 	if (tag->nsegments <= BUS_DMA_CACHE_SEGMENTS)
 		return(cache);
-#ifdef SMP
 	spin_lock(&tag->spin);
-#endif
 	return(tag->segments);
 }
 
@@ -230,13 +215,11 @@ static __inline
 void
 bus_dma_tag_unlock(bus_dma_tag_t tag)
 {
-#ifdef SMP
 	if (tag->flags & BUS_DMA_PROTECTED)
 		return;
 
 	if (tag->nsegments > BUS_DMA_CACHE_SEGMENTS)
 		spin_unlock(&tag->spin);
-#endif
 }
 
 /*
@@ -276,9 +259,7 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 
 	newtag = kmalloc(sizeof(*newtag), M_DEVBUF, M_INTWAIT | M_ZERO);
 
-#ifdef SMP
 	spin_init(&newtag->spin);
-#endif
 	newtag->parent = parent;
 	newtag->alignment = alignment;
 	newtag->boundary = boundary;
@@ -1123,9 +1104,7 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 	}
 	bz = new_bz;
 
-#ifdef SMP
 	spin_init(&bz->spin);
-#endif
 	STAILQ_INIT(&bz->bounce_page_list);
 	STAILQ_INIT(&bz->bounce_map_waitinglist);
 	bz->free_bpages = 0;

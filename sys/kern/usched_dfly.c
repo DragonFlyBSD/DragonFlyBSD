@@ -101,11 +101,7 @@ TAILQ_HEAD(rq, lwp);
 
 struct usched_dfly_pcpu {
 	struct spinlock spin;
-#ifdef SMP
 	struct thread	helper_thread;
-#else
-	struct thread	helper_thread_UNUSED;	/* field unused */
-#endif
 	short		unusde01;
 	short		upri;
 	int		uload;
@@ -120,9 +116,7 @@ struct usched_dfly_pcpu {
 	int		runqcount;
 	int		cpuid;
 	cpumask_t	cpumask;
-#ifdef SMP
 	cpu_node_t	*cpunode;
-#endif
 };
 
 typedef struct usched_dfly_pcpu	*dfly_pcpu_t;
@@ -140,17 +134,12 @@ static void dfly_forking(struct lwp *plp, struct lwp *lp);
 static void dfly_exiting(struct lwp *lp, struct proc *);
 static void dfly_uload_update(struct lwp *lp);
 static void dfly_yield(struct lwp *lp);
-#ifdef SMP
 static void dfly_changeqcpu_locked(struct lwp *lp,
 				dfly_pcpu_t dd, dfly_pcpu_t rdd);
 static dfly_pcpu_t dfly_choose_best_queue(struct lwp *lp);
 static dfly_pcpu_t dfly_choose_worst_queue(dfly_pcpu_t dd);
 static dfly_pcpu_t dfly_choose_queue_simple(dfly_pcpu_t dd, struct lwp *lp);
-#endif
-
-#ifdef SMP
 static void dfly_need_user_resched_remote(void *dummy);
-#endif
 static struct lwp *dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 					  struct lwp *chklp, int worst);
 static void dfly_remrunqueue_locked(dfly_pcpu_t dd, struct lwp *lp);
@@ -188,9 +177,7 @@ struct usched usched_dfly = {
  */
 static cpumask_t dfly_curprocmask = -1;	/* currently running a user process */
 static cpumask_t dfly_rdyprocmask;	/* ready to accept a user process */
-#ifdef SMP
 static volatile int dfly_scancpu;
-#endif
 static volatile int dfly_ucount;	/* total running on whole system */
 static struct usched_dfly_pcpu dfly_pcpu[MAXCPU];
 static struct sysctl_ctx_list usched_dfly_sysctl_ctx;
@@ -256,7 +243,6 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_chooser, CTLFLAG_RW,
  *	      0x40	choose current cpu for forked process
  *	      0x80	choose random cpu for forked process	(default)
  */
-#ifdef SMP
 static int usched_dfly_smt = 0;
 static int usched_dfly_cache_coherent = 0;
 static int usched_dfly_weight1 = 200;	/* keep thread on current cpu */
@@ -264,7 +250,6 @@ static int usched_dfly_weight2 = 180;	/* synchronous peer's current cpu */
 static int usched_dfly_weight3 = 40;	/* number of threads on queue */
 static int usched_dfly_weight4 = 160;	/* availability of idle cores */
 static int usched_dfly_features = 0x8F;	/* allow pulls */
-#endif
 static int usched_dfly_fast_resched = 0;/* delta priority / resched */
 static int usched_dfly_swmask = ~PPQMASK; /* allow pulls */
 static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
@@ -302,9 +287,7 @@ dfly_acquire_curproc(struct lwp *lp)
 {
 	globaldata_t gd;
 	dfly_pcpu_t dd;
-#ifdef SMP
 	dfly_pcpu_t rdd;
-#endif
 	thread_t td;
 	int force_resched;
 
@@ -359,7 +342,6 @@ dfly_acquire_curproc(struct lwp *lp)
 		 * (if a reschedule was not requested we want to move this
 		 *  step after the uschedcp tests).
 		 */
-#ifdef SMP
 		if (force_resched &&
 		    (usched_dfly_features & 0x08) &&
 		    (rdd = dfly_choose_best_queue(lp)) != dd) {
@@ -372,7 +354,6 @@ dfly_acquire_curproc(struct lwp *lp)
 			dd = &dfly_pcpu[gd->gd_cpuid];
 			continue;
 		}
-#endif
 
 		/*
 		 * Either no reschedule was requested or the best queue was
@@ -420,7 +401,6 @@ dfly_acquire_curproc(struct lwp *lp)
 			spin_unlock(&dd->spin);
 			break;
 		}
-#ifdef SMP
 		/*
 		 * We are not the current lwp, figure out the best cpu
 		 * to run on (our current cpu will be given significant
@@ -438,7 +418,6 @@ dfly_acquire_curproc(struct lwp *lp)
 			dd = &dfly_pcpu[gd->gd_cpuid];
 			continue;
 		}
-#endif
 
 		/*
 		 * We cannot become the current lwp, place the lp on the
@@ -544,9 +523,7 @@ dfly_select_curproc(globaldata_t gd)
 		dd->rrcount = 0;		/* reset round robin */
 #endif
 		spin_unlock(&dd->spin);
-#ifdef SMP
 		lwkt_acquire(nlp->lwp_thread);
-#endif
 		lwkt_schedule(nlp->lwp_thread);
 	} else {
 		spin_unlock(&dd->spin);
@@ -590,34 +567,6 @@ dfly_setrunqueue(struct lwp *lp)
 	 */
 	KKASSERT(rdd->uschedcp != lp);
 
-#ifndef SMP
-	/*
-	 * If we are not SMP we do not have a scheduler helper to kick
-	 * and must directly activate the process if none are scheduled.
-	 *
-	 * This is really only an issue when bootstrapping init since
-	 * the caller in all other cases will be a user process, and
-	 * even if released (rdd->uschedcp == NULL), that process will
-	 * kickstart the scheduler when it returns to user mode from
-	 * the kernel.
-	 *
-	 * NOTE: On SMP we can't just set some other cpu's uschedcp.
-	 */
-	if (rdd->uschedcp == NULL) {
-		spin_lock(&rdd->spin);
-		if (rdd->uschedcp == NULL) {
-			atomic_set_cpumask(&dfly_curprocmask, 1);
-			rdd->uschedcp = lp;
-			rdd->upri = lp->lwp_priority;
-			spin_unlock(&rdd->spin);
-			lwkt_schedule(lp->lwp_thread);
-			return;
-		}
-		spin_unlock(&rdd->spin);
-	}
-#endif
-
-#ifdef SMP
 	/*
 	 * Ok, we have to setrunqueue some target cpu and request a reschedule
 	 * if necessary.
@@ -655,11 +604,8 @@ dfly_setrunqueue(struct lwp *lp)
 		dfly_changeqcpu_locked(lp, dd, rdd);
 		spin_unlock(&dd->spin);
 	}
-#endif
 	dfly_setrunqueue_dd(rdd, lp);
 }
-
-#ifdef SMP
 
 /*
  * Change qcpu to rdd->cpuid.  The dd the lp is CURRENTLY on must be
@@ -679,8 +625,6 @@ dfly_changeqcpu_locked(struct lwp *lp, dfly_pcpu_t dd, dfly_pcpu_t rdd)
 	}
 }
 
-#endif
-
 /*
  * Place lp on rdd's runqueue.  Nothing is locked on call.  This function
  * also performs all necessary ancillary notification actions.
@@ -688,7 +632,6 @@ dfly_changeqcpu_locked(struct lwp *lp, dfly_pcpu_t dd, dfly_pcpu_t rdd)
 static void
 dfly_setrunqueue_dd(dfly_pcpu_t rdd, struct lwp *lp)
 {
-#ifdef SMP
 	globaldata_t rgd;
 
 	/*
@@ -756,17 +699,6 @@ dfly_setrunqueue_dd(dfly_pcpu_t rdd, struct lwp *lp)
 		spin_unlock(&rdd->spin);
 		lwkt_send_ipiq(rgd, dfly_need_user_resched_remote, NULL);
 	}
-#else
-	/*
-	 * Request a reschedule if appropriate.
-	 */
-	spin_lock(&rdd->spin);
-	dfly_setrunqueue_locked(rdd, lp);
-	spin_unlock(&rdd->spin);
-	if ((rdd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
-		need_user_resched();
-	}
-#endif
 }
 
 /*
@@ -779,9 +711,7 @@ void
 dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 {
 	globaldata_t gd = mycpu;
-#ifdef SMP
 	dfly_pcpu_t dd = &dfly_pcpu[gd->gd_cpuid];
-#endif
 
 	/*
 	 * Spinlocks also hold a critical section so there should not be
@@ -830,7 +760,6 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	 * likely to be able to remain in place.  Hopefully then any pairings,
 	 * if applicable, migrate to where these threads are.
 	 */
-#ifdef SMP
 	if ((usched_dfly_features & 0x04) &&
 	    ((u_int)sched_ticks & 7) == 0 &&
 	    (u_int)sched_ticks / 8 % ncpus == gd->gd_cpuid) {
@@ -876,7 +805,6 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 			spin_unlock(&dd->spin);
 		}
 	}
-#endif
 }
 
 /*
@@ -1172,7 +1100,6 @@ dfly_resetpriority(struct lwp *lp)
 		    (checkpri == 0 ||
 		     (rdd->upri & ~PRIMASK) >
 		     (lp->lwp_priority & ~PRIMASK))) {
-#ifdef SMP
 			if (rcpu == mycpu->gd_cpuid) {
 				spin_unlock(&rdd->spin);
 				need_user_resched();
@@ -1182,10 +1109,6 @@ dfly_resetpriority(struct lwp *lp)
 					       dfly_need_user_resched_remote,
 					       NULL);
 			}
-#else
-			spin_unlock(&rdd->spin);
-			need_user_resched();
-#endif
 		} else {
 			spin_unlock(&rdd->spin);
 		}
@@ -1422,8 +1345,6 @@ dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 	}
 	return lp;
 }
-
-#ifdef SMP
 
 /*
  * USED TO PUSH RUNNABLE LWPS TO THE LEAST LOADED CPU.
@@ -1853,8 +1774,6 @@ dfly_need_user_resched_remote(void *dummy)
 	}
 }
 
-#endif
-
 /*
  * dfly_remrunqueue_locked() removes a given process from the run queue
  * that it is on, clearing the queue busy bit if it becomes empty.
@@ -1990,8 +1909,6 @@ dfly_setrunqueue_locked(dfly_pcpu_t rdd, struct lwp *lp)
 	}
 	*which |= 1 << pri;
 }
-
-#ifdef SMP
 
 /*
  * For SMP systems a user scheduler helper thread is created for each
@@ -2144,8 +2061,6 @@ sysctl_usched_dfly_stick_to_level(SYSCTL_HANDLER_ARGS)
 }
 #endif
 
-#endif
-
 /*
  * Setup the queues and scheduler helpers (scheduler helpers are SMP only).
  * Note that curprocmask bit 0 has already been cleared by rqinit() and
@@ -2156,11 +2071,9 @@ usched_dfly_cpu_init(void)
 {
 	int i;
 	int j;
-#ifdef SMP
 	int cpuid;
 	int smt_not_supported = 0;
 	int cache_coherent_not_supported = 0;
-#endif
 
 	if (bootverbose)
 		kprintf("Start scheduler helpers on cpus:\n");
@@ -2179,9 +2092,7 @@ usched_dfly_cpu_init(void)
 		    continue;
 
 		spin_init(&dd->spin);
-#ifdef SMP
 		dd->cpunode = get_cpu_node_by_cpuid(i);
-#endif
 		dd->cpuid = i;
 		dd->cpumask = CPUMASK(i);
 		for (j = 0; j < NQS; j++) {
@@ -2191,7 +2102,6 @@ usched_dfly_cpu_init(void)
 		}
 		atomic_clear_cpumask(&dfly_curprocmask, 1);
 
-#ifdef SMP
 		if (dd->cpunode == NULL) {
 			smt_not_supported = 1;
 			cache_coherent_not_supported = 1;
@@ -2249,7 +2159,6 @@ usched_dfly_cpu_init(void)
 
 		lwkt_create(dfly_helper_thread, NULL, NULL, &dd->helper_thread,
 			    0, i, "usched %d", i);
-#endif
 
 		/*
 		 * Allow user scheduling on the target cpu.  cpu #0 has already
@@ -2273,7 +2182,6 @@ usched_dfly_cpu_init(void)
 		       OID_AUTO, "decay", CTLFLAG_RW,
 		       &usched_dfly_decay, 0, "Extra decay when not running");
 
-#ifdef SMP
 	/* Add enable/disable option for SMT scheduling if supported */
 	if (smt_not_supported) {
 		usched_dfly_smt = 0;
@@ -2361,7 +2269,6 @@ usched_dfly_cpu_init(void)
 				"paremter hw.cpu_topology.level_description");
 #endif
 	}
-#endif /* SMP */
 }
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
 	usched_dfly_cpu_init, NULL)

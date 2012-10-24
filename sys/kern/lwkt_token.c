@@ -175,7 +175,6 @@ SYSCTL_LONG(_debug, OID_AUTO, tokens_add_latency, CTLFLAG_RW,
 
 static int _lwkt_getalltokens_sorted(thread_t td);
 
-#ifdef SMP
 /*
  * Acquire the initial mplock
  *
@@ -188,7 +187,6 @@ cpu_get_initial_mplock(void)
 	if (lwkt_trytoken(&mp_token) == FALSE)
 		panic("cpu_get_initial_mplock");
 }
-#endif
 
 /*
  * Return a pool token given an address.  Use a prime number to reduce

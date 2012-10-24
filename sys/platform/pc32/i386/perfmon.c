@@ -37,25 +37,15 @@
 #include <sys/fcntl.h>
 #include <sys/lock.h>
 
-#ifndef SMP
-#include <machine/cputypes.h>
-#endif
 #include <machine/clock.h>
 #include <machine/perfmon.h>
 
 static int perfmon_inuse;
 static int perfmon_cpuok;
-#ifndef SMP
-static int msr_ctl[NPMC];
-#endif
 static int msr_pmc[NPMC];
 static unsigned int ctl_shadow[NPMC];
 static quad_t pmc_shadow[NPMC];	/* used when ctr is stopped on P5 */
 static int (*writectl)(int);
-#ifndef SMP
-static int writectl5(int);
-static int writectl6(int);
-#endif
 
 static d_close_t	perfmon_close;
 static d_open_t		perfmon_open;
@@ -89,30 +79,6 @@ SYSINIT(perfmondrv, SI_SUB_DRIVERS, SI_ORDER_ANY, perfmon_driver_init, NULL)
 void
 perfmon_init(void)
 {
-#ifndef SMP
-	switch(cpu_class) {
-	case CPUCLASS_586:
-		perfmon_cpuok = 1;
-		msr_ctl[0] = 0x11;
-		msr_ctl[1] = 0x11;
-		msr_pmc[0] = 0x12;
-		msr_pmc[1] = 0x13;
-		writectl = writectl5;
-		break;
-	case CPUCLASS_686:
-		perfmon_cpuok = 1;
-		msr_ctl[0] = 0x186;
-		msr_ctl[1] = 0x187;
-		msr_pmc[0] = 0xc1;
-		msr_pmc[1] = 0xc2;
-		writectl = writectl6;
-		break;
-
-	default:
-		perfmon_cpuok = 0;
-		break;
-	}
-#endif /* SMP */
 }
 
 int
@@ -228,59 +194,6 @@ perfmon_reset(int pmc)
 	}
 	return EBUSY;
 }
-
-#ifndef SMP
-/*
- * Unfortunately, the performance-monitoring registers are laid out
- * differently in the P5 and P6.  We keep everything in P6 format
- * internally (except for the event code), and convert to P5
- * format as needed on those CPUs.  The writectl function pointer
- * is set up to point to one of these functions by perfmon_init().
- */
-int
-writectl6(int pmc)
-{
-	if (pmc > 0 && !(ctl_shadow[pmc] & (PMCF_EN << 16))) {
-		wrmsr(msr_ctl[pmc], 0);
-	} else {
-		wrmsr(msr_ctl[pmc], ctl_shadow[pmc]);
-	}
-	return 0;
-}
-
-#define	P5FLAG_P	0x200
-#define	P5FLAG_E	0x100
-#define	P5FLAG_USR	0x80
-#define	P5FLAG_OS	0x40
-
-int
-writectl5(int pmc)
-{
-	quad_t newval = 0;
-
-	if (ctl_shadow[1] & (PMCF_EN << 16)) {
-		if (ctl_shadow[1] & (PMCF_USR << 16))
-			newval |= P5FLAG_USR << 16;
-		if (ctl_shadow[1] & (PMCF_OS << 16))
-			newval |= P5FLAG_OS << 16;
-		if (!(ctl_shadow[1] & (PMCF_E << 16)))
-			newval |= P5FLAG_E << 16;
-		newval |= (ctl_shadow[1] & 0x3f) << 16;
-	}
-	if (ctl_shadow[0] & (PMCF_EN << 16)) {
-		if (ctl_shadow[0] & (PMCF_USR << 16))
-			newval |= P5FLAG_USR;
-		if (ctl_shadow[0] & (PMCF_OS << 16))
-			newval |= P5FLAG_OS;
-		if (!(ctl_shadow[0] & (PMCF_E << 16)))
-			newval |= P5FLAG_E;
-		newval |= ctl_shadow[0] & 0x3f;
-	}
-
-	wrmsr(msr_ctl[0], newval);
-	return 0;		/* XXX should check for unimplemented bits */
-}
-#endif /* !SMP */
 
 /*
  * Now the user-mode interface, called from a subdevice of mem.c.

@@ -67,8 +67,6 @@ options 	P1003_1B		#Posix P1003_1B real-time extensions
 options 	_KPOSIX_PRIORITY_SCHEDULING
 options 	ICMP_BANDLIM		#Rate limit bad replies
 
-options 	SMP			# Symmetric MultiProcessor Kernel
-
 # Debugging for Development
 options 	DDB
 options 	DDB_TRACE

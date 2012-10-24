@@ -838,13 +838,8 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 * cases rather then invl1pg.  Actually, I don't even know why it
 	 * works under UP because self-referential page table mappings
 	 */
-#ifdef SMP
 	pgeflag = 0;
-#else
-	if (cpu_feature & CPUID_PGE)
-		pgeflag = PG_G;
-#endif
-	
+
 /*
  * Initialize the 4MB page size flag
  */
@@ -866,33 +861,11 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 		ptditmp &= ~(NBPDR - 1);
 		ptditmp |= PG_V | PG_RW | PG_PS | PG_U | pgeflag;
 		pdir4mb = ptditmp;
-
-#ifndef SMP
-		/*
-		 * Enable the PSE mode.  If we are SMP we can't do this
-		 * now because the APs will not be able to use it when
-		 * they boot up.
-		 */
-		load_cr4(rcr4() | CR4_PSE);
-
-		/*
-		 * We can do the mapping here for the single processor
-		 * case.  We simply ignore the old page table page from
-		 * now on.
-		 */
-		/*
-		 * For SMP, we still need 4K pages to bootstrap APs,
-		 * PSE will be enabled as soon as all APs are up.
-		 */
-		PTD[KPTDI] = (pd_entry_t)ptditmp;
-		cpu_invltlb();
-#endif
 	}
 #endif
 	cpu_invltlb();
 }
 
-#ifdef SMP
 /*
  * Set 4mb pdir for mp startup
  */
@@ -906,7 +879,6 @@ pmap_set_opt(void)
 		}
 	}
 }
-#endif
 
 /*
  *	Initialize the pmap module.
@@ -3903,17 +3875,10 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired,
 	 * the pmap_inval_*() API that is)... it's ok to do this for simple
 	 * wiring changes.
 	 */
-#ifdef SMP
 	if (wired)
 		atomic_set_long(ptep, PG_W);
 	else
 		atomic_clear_long(ptep, PG_W);
-#else
-	if (wired)
-		atomic_set_long_nonlocked(ptep, PG_W);
-	else
-		atomic_clear_long_nonlocked(ptep, PG_W);
-#endif
 	pv_put(pv);
 	lwkt_reltoken(&pmap->pm_token);
 }
@@ -4292,11 +4257,7 @@ pmap_ts_referenced(vm_page_t m)
 			continue;
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
 		if (pte && (*pte & PG_A)) {
-#ifdef SMP
 			atomic_clear_long(pte, PG_A);
-#else
-			atomic_clear_long_nonlocked(pte, PG_A);
-#endif
 			rtval++;
 			if (rtval > 4)
 				break;
@@ -4554,13 +4515,9 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		lp->lwp_vmspace = newvm;
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
-#if defined(SMP)
 			atomic_set_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
 			if (pmap->pm_active & CPUMASK_LOCK)
 				pmap_interlock_wait(newvm);
-#else
-			pmap->pm_active |= 1;
-#endif
 #if defined(SWTCH_OPTIM_STATS)
 			tlb_flush_count++;
 #endif
@@ -4568,17 +4525,11 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			curthread->td_pcb->pcb_cr3 |= PG_RW | PG_U | PG_V;
 			load_cr3(curthread->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
-#if defined(SMP)
 			atomic_clear_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
-#else
-			pmap->pm_active &= ~(cpumask_t)1;
-#endif
 		}
 		crit_exit();
 	}
 }
-
-#ifdef SMP
 
 /*
  * Called when switching to a locked pmap, used to interlock against pmaps
@@ -4608,8 +4559,6 @@ pmap_interlock_wait(struct vmspace *vm)
 		crit_exit();
 	}
 }
-
-#endif
 
 vm_offset_t
 pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)

@@ -68,8 +68,6 @@
 
 struct spinlock pmap_spin = SPINLOCK_INITIALIZER(pmap_spin);
 
-#ifdef SMP
-
 struct indefinite_info {
 	sysclock_t	base;
 	int		secs;
@@ -437,4 +435,3 @@ SYSCTL_PROC(_debug, KERN_PROC_ALL, spin_lock_test, CTLFLAG_RW|CTLTYPE_INT,
         0, 0, sysctl_spin_lock_test, "I", "Test spinlock wait code");
 
 #endif	/* INVARIANTS */
-#endif	/* SMP */

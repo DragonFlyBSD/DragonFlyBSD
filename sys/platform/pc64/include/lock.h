@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.17 2008/06/19 21:32:55 aggelos Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -52,9 +51,6 @@
  * Under UP the spinlock routines still serve to disable/restore 
  * interrupts.
  */
-
-
-#ifdef SMP
 
 #define SPIN_INIT(mem)						\
 	movq	$0,mem ;					\
@@ -101,29 +97,6 @@
 
 #define SPIN_UNLOCK_NOREG(mem)					\
 	SPIN_UNLOCK(mem) ;					\
-
-#else /* !SMP */
-
-#define SPIN_LOCK(mem)						\
-	pushfq ;						\
-	cli ;							\
-	orq	$PSL_C,(%rsp) ;					\
-	popq	mem ;						\
-
-#define SPIN_LOCK_PUSH_RESG
-#define SPIN_LOCK_POP_REGS
-#define SPIN_LOCK_FRAME_SIZE	0
-
-#define SPIN_UNLOCK(mem)					\
-	pushq	mem ;						\
-	movq	$0,mem ;					\
-	popfq ;							\
-
-#define SPIN_UNLOCK_PUSH_REGS
-#define SPIN_UNLOCK_POP_REGS
-#define SPIN_UNLOCK_FRAME_SIZE	0
-
-#endif	/* SMP */
 
 #else	/* !LOCORE */
 

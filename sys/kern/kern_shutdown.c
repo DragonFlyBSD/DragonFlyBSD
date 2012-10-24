@@ -261,7 +261,6 @@ boot(int howto)
 	/* collect extra flags that shutdown_nice might have set */
 	howto |= shutdown_howto;
 
-#ifdef SMP
 	/*
 	 * We really want to shutdown on the BSP.  Subsystems such as ACPI
 	 * can't power-down the box otherwise.
@@ -273,7 +272,6 @@ boot(int howto)
 		kprintf("Switching to cpu #0 for shutdown\n");
 		lwkt_setcpu_self(globaldata_find(0));
 	}
-#endif
 	/*
 	 * Do any callouts that should be done BEFORE syncing the filesystems.
 	 */
@@ -706,7 +704,6 @@ panic(const char *fmt, ...)
 	__va_list ap;
 	static char buf[256];
 
-#ifdef SMP
 	/*
 	 * If a panic occurs on multiple cpus before the first is able to
 	 * halt the other cpus, only one cpu is allowed to take the panic.
@@ -759,9 +756,6 @@ panic(const char *fmt, ...)
 		if (atomic_cmpset_ptr(&panic_cpu_gd, NULL, gd))
 			break;
 	}
-#else
-	panic_cpu_gd = gd;
-#endif
 	/*
 	 * Try to get the system into a working state.  Save information
 	 * we are about to destroy.
@@ -797,10 +791,8 @@ panic(const char *fmt, ...)
 		panicstr = buf;
 	__va_end(ap);
 	kprintf("panic: %s\n", buf);
-#ifdef SMP
 	/* two separate prints in case of an unmapped page and trap */
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);
-#endif
 
 #if (NGPIO > 0) && defined(ERROR_LED_ON_PANIC)
 	led_switch("error", 1);
@@ -822,12 +814,8 @@ panic(const char *fmt, ...)
 		Debugger("panic");
 	else
 #endif
-#ifdef SMP
 	if (newpanic)
 		stop_cpus(mycpu->gd_other_cpus);
-#else
-	;
-#endif
 	boot(bootopt);
 }
 
@@ -928,28 +916,23 @@ dumpsys(void)
 
 int dump_stop_usertds = 0;
 
-#ifdef SMP
 static
 void
 need_user_resched_remote(void *dummy)
 {
 	need_user_resched();
 }
-#endif
 
 void
 dump_reactivate_cpus(void)
 {
-#ifdef SMP
 	globaldata_t gd;
 	int cpu, seq;
-#endif
 
 	dump_stop_usertds = 1;
 
 	need_user_resched();
 
-#ifdef SMP
 	for (cpu = 0; cpu < ncpus; cpu++) {
 		gd = globaldata_find(cpu);
 		seq = lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
@@ -957,5 +940,4 @@ dump_reactivate_cpus(void)
 	}
 
 	restart_cpus(stopped_cpus);
-#endif
 }

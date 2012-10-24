@@ -9,6 +9,17 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 3.2 to later versions                +
++-----------------------------------------------------------------------+
+
+SMP OPTION REMOVED
+------------------
+
+The SMP kernel option has been removed. All kernels now feature SMP
+support. If you have 'options SMP' in your kernel config, you'll have
+to remove it.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.0 to later versions                +
 +-----------------------------------------------------------------------+
 

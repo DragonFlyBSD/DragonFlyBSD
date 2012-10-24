@@ -90,19 +90,11 @@ fixwsc_natoma(device_t dev)
     int		pmccfg;
 
     pmccfg = pci_read_config(dev, 0x50, 2);
-#if defined(SMP)
     if (pmccfg & 0x8000) {
 	kprintf("Correcting Natoma config for SMP\n");
 	pmccfg &= ~0x8000;
 	pci_write_config(dev, 0x50, pmccfg, 2);
     }
-#else
-    if ((pmccfg & 0x8000) == 0) {
-	kprintf("Correcting Natoma config for non-SMP\n");
-	pmccfg |= 0x8000;
-	pci_write_config(dev, 0x50, pmccfg, 2);
-    }
-#endif
 }
 
 /*

@@ -24,7 +24,7 @@ vfs/smbfs/smbfs_vnops.c		optional	smbfs
 cpu/x86_64/misc/atomic.c	standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 platform/vkernel64/x86_64/autoconf.c	standard
-platform/vkernel64/x86_64/mp.c		optional	smp		\
+platform/vkernel64/x86_64/mp.c		standard			\
 	compile-with	"${CC} -c -pthread ${CFLAGS} -I/usr/include ${.IMPSRC}"
 #
 # DDB XXX

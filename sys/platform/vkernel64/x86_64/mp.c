@@ -208,8 +208,6 @@ cpu_send_ipiq(int dcpu)
 void
 smp_invltlb(void)
 {
-#ifdef SMP
-#endif
 }
 
 void

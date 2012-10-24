@@ -137,11 +137,9 @@ KTR_INFO(KTR_MEMORY, memory, free_zero, 2, MEMORY_STRING, MEMORY_ARGS);
 KTR_INFO(KTR_MEMORY, memory, free_ovsz, 3, MEMORY_STRING, MEMORY_ARGS);
 KTR_INFO(KTR_MEMORY, memory, free_ovsz_delayed, 4, MEMORY_STRING, MEMORY_ARGS);
 KTR_INFO(KTR_MEMORY, memory, free_chunk, 5, MEMORY_STRING, MEMORY_ARGS);
-#ifdef SMP
 KTR_INFO(KTR_MEMORY, memory, free_request, 6, MEMORY_STRING, MEMORY_ARGS);
 KTR_INFO(KTR_MEMORY, memory, free_rem_beg, 7, MEMORY_STRING, MEMORY_ARGS);
 KTR_INFO(KTR_MEMORY, memory, free_rem_end, 8, MEMORY_STRING, MEMORY_ARGS);
-#endif
 KTR_INFO(KTR_MEMORY, memory, free_beg, 9, "free begin");
 KTR_INFO(KTR_MEMORY, memory, free_end, 10, "free end");
 
@@ -336,10 +334,8 @@ malloc_uninit(void *data)
     if (type->ks_limit == 0)
 	panic("malloc_uninit on uninitialized type");
 
-#ifdef SMP
     /* Make sure that all pending kfree()s are finished. */
     lwkt_synchronize_ipiqs("muninit");
-#endif
 
 #ifdef INVARIANTS
     /*
@@ -543,9 +539,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 {
     SLZone *z;
     SLChunk *chunk;
-#ifdef SMP
     SLChunk *bchunk;
-#endif
     SLGlobalData *slgd;
     struct globaldata *gd;
     unsigned long align;
@@ -701,7 +695,6 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	if (--z->z_NFree <= 0) {
 	    KKASSERT(z->z_NFree == 0);
 
-#ifdef SMP
 	    /*
 	     * WARNING! This code competes with other cpus.  It is ok
 	     * for us to not drain RChunks here but we might as well, and
@@ -728,7 +721,6 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 		    break;
 		}
 	    }
-#endif
 	    /*
 	     * Remove from the zone list if no free chunks remain.
 	     * Clear RSignal
@@ -1015,7 +1007,6 @@ kstrdup(const char *str, struct malloc_type *type)
     return(nstr);
 }
 
-#ifdef SMP
 /*
  * Notify our cpu that a remote cpu has freed some chunks in a zone that
  * we own.  RCount will be bumped so the memory should be good, but validate
@@ -1108,8 +1099,6 @@ kfree_remote(void *ptr)
     logmemory(free_rem_end, z, bchunk, 0L, 0);
 }
 
-#endif
-
 /*
  * free (SLAB ALLOCATOR)
  *
@@ -1128,10 +1117,8 @@ kfree(void *ptr, struct malloc_type *type)
     struct globaldata *gd;
     int *kup;
     unsigned long size;
-#ifdef SMP
     SLChunk *bchunk;
     int rsignal;
-#endif
 
     logmemory_quick(free_beg);
     gd = mycpu;
@@ -1223,7 +1210,6 @@ kfree(void *ptr, struct malloc_type *type)
      * (no critical section needed)
      */
     if (z->z_CpuGd != gd) {
-#ifdef SMP
 	/*
 	 * Making these adjustments now allow us to avoid passing (type)
 	 * to the remote cpu.  Note that ks_inuse/ks_memuse is being
@@ -1279,9 +1265,6 @@ kfree(void *ptr, struct malloc_type *type)
 	    atomic_subtract_int(&z->z_RCount, 1);
 	    /* z can get ripped out from under us from this point on */
 	}
-#else
-	panic("Corrupt SLZone");
-#endif
 	logmemory_quick(free_end);
 	return;
     }

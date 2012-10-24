@@ -184,36 +184,8 @@ cputime(void)
 {
 	u_int count;
 	int delta;
-#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(SMP) && \
-    defined(PERFMON) && defined(I586_PMC_GUPROF)
-	u_quad_t event_count;
-#endif
 	u_char high, low;
 	static u_int prev_count;
-
-#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(SMP)
-	if (cputime_clock == CPUTIME_CLOCK_TSC) {
-		count = (u_int)rdtsc();
-		delta = (int)(count - prev_count);
-		prev_count = count;
-		return (delta);
-	}
-#if defined(PERFMON) && defined(I586_PMC_GUPROF)
-	if (cputime_clock == CPUTIME_CLOCK_I586_PMC) {
-		/*
-		 * XXX permon_read() should be inlined so that the
-		 * perfmon module doesn't need to be compiled with
-		 * profiling disabled and so that it is fast.
-		 */
-		perfmon_read(0, &event_count);
-
-		count = (u_int)event_count;
-		delta = (int)(count - prev_count);
-		prev_count = count;
-		return (delta);
-	}
-#endif /* PERFMON && I586_PMC_GUPROF */
-#endif /* (I586_CPU || I686_CPU) && !SMP */
 
 	/*
 	 * Read the current value of the 8254 timer counter 0.
@@ -292,44 +264,9 @@ SYSCTL_PROC(_machdep, OID_AUTO, cputime_clock, CTLTYPE_INT | CTLFLAG_RW,
 void
 startguprof(struct gmonparam *gp)
 {
-	if (cputime_clock == CPUTIME_CLOCK_UNINITIALIZED) {
+	if (cputime_clock == CPUTIME_CLOCK_UNINITIALIZED)
 		cputime_clock = CPUTIME_CLOCK_I8254;
-#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(SMP)
-		if (tsc_frequency != 0)
-			cputime_clock = CPUTIME_CLOCK_TSC;
-#endif
-	}
 	gp->profrate = timer_freq << CPUTIME_CLOCK_I8254_SHIFT;
-#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(SMP)
-	if (cputime_clock == CPUTIME_CLOCK_TSC)
-		gp->profrate = (u_int)tsc_frequency;	/* XXX */
-#if defined(PERFMON) && defined(I586_PMC_GUPROF)
-	else if (cputime_clock == CPUTIME_CLOCK_I586_PMC) {
-		if (perfmon_avail() &&
-		    perfmon_setup(0, cputime_clock_pmc_conf) == 0) {
-			if (perfmon_start(0) != 0)
-				perfmon_fini(0);
-			else {
-				/* XXX 1 event == 1 us. */
-				gp->profrate = 1000000;
-
-				saved_gmp = *gp;
-
-				/* Zap overheads.  They are invalid. */
-				gp->cputime_overhead = 0;
-				gp->mcount_overhead = 0;
-				gp->mcount_post_overhead = 0;
-				gp->mcount_pre_overhead = 0;
-				gp->mexitcount_overhead = 0;
-				gp->mexitcount_post_overhead = 0;
-				gp->mexitcount_pre_overhead = 0;
-
-				cputime_clock_pmc_init = TRUE;
-			}
-		}
-	}
-#endif /* PERFMON && I586_PMC_GUPROF */
-#endif /* (I586_CPU || I686_CPU) && !SMP */
 	cputime_bias = 0;
 	cputime();
 }

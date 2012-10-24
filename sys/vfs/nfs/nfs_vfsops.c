@@ -1144,7 +1144,6 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	TAILQ_INSERT_TAIL(&nfs_mountq, nmp, nm_entry);
 	lwkt_reltoken(&nfs_token);
 
-#ifdef SMP
 	switch(ncpus) {
 	case 0:
 	case 1:
@@ -1160,10 +1159,6 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		txcpu = -1;
 		break;
 	}
-#else
-	rxcpu = 0;
-	txcpu = 0;
-#endif
 
 	/*
 	 * Start the reader and writer threads.

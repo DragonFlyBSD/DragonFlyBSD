@@ -17,7 +17,6 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.50 2008/09/09 04:06:13 dillon Exp $
  */
 
 /*
@@ -136,11 +135,9 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, maxcache,
         CTLFLAG_RW, &pipe_maxcache, 0, "max pipes cached per-cpu");
 SYSCTL_INT(_kern_pipe, OID_AUTO, maxbig,
         CTLFLAG_RW, &pipe_maxbig, 0, "max number of big pipes");
-#ifdef SMP
 static int pipe_delay = 5000;	/* 5uS default */
 SYSCTL_INT(_kern_pipe, OID_AUTO, delay,
         CTLFLAG_RW, &pipe_delay, 0, "SMP delay optimization in ns");
-#endif
 #if !defined(NO_PIPE_SYSCTL_STATS)
 SYSCTL_INT(_kern_pipe, OID_AUTO, bcache_alloc,
         CTLFLAG_RW, &pipe_bcache_alloc, 0, "pipe buffer from pcpu cache");
@@ -519,7 +516,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		if (rpipe->pipe_buffer.windex != rpipe->pipe_buffer.rindex)
 			continue;
 
-#if defined(SMP) && defined(_RDTSC_SUPPORTED_)
+#ifdef _RDTSC_SUPPORTED_
 		if (pipe_delay) {
 			int64_t tsc_target;
 			int good = 0;
@@ -798,7 +795,6 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			if (segsize > space)
 				segsize = space;
 
-#ifdef SMP
 			/*
 			 * If this is the first loop and the reader is
 			 * blocked, do a preemptive wakeup of the reader.
@@ -813,7 +809,6 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			 */
 			if ((wpipe->pipe_state & PIPE_WANTR))
 				wakeup(wpipe);
-#endif
 
 			/*
 			 * Transfer segment, which may include a wrap-around.

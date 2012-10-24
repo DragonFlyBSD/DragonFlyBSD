@@ -1,5 +1,4 @@
 /*	$KAME: if_altq.h,v 1.11 2003/07/10 12:07:50 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/if_altq.h,v 1.4 2008/05/14 11:59:23 sephe Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -70,17 +69,10 @@ struct	ifaltq {
 	int	altq_started;		/* ifnet.if_start interlock */
 };
 
-#ifdef SMP
 #define ALTQ_ASSERT_LOCKED(ifq)	ASSERT_SERIALIZED(&(ifq)->altq_lock)
 #define ALTQ_LOCK_INIT(ifq)	lwkt_serialize_init(&(ifq)->altq_lock)
 #define ALTQ_LOCK(ifq)		lwkt_serialize_adaptive_enter(&(ifq)->altq_lock)
 #define ALTQ_UNLOCK(ifq)	lwkt_serialize_exit(&(ifq)->altq_lock)
-#else
-#define ALTQ_ASSERT_LOCKED(ifq)	((void)0) /* XXX */
-#define ALTQ_LOCK_INIT(ifq)	((void)0)
-#define ALTQ_LOCK(ifq)		crit_enter()
-#define ALTQ_UNLOCK(ifq)	crit_exit()
-#endif
 
 #ifdef _KERNEL
 

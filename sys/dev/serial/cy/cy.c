@@ -83,22 +83,14 @@
 #include <sys/syslog.h>
 #include <sys/thread2.h>
 #include <machine/clock.h>
-#ifndef SMP
-#include <machine/lock.h>
-#endif
 #include <machine/psl.h>
 
 #include <bus/isa/isa_device.h>
 #include "cyreg.h"
 #include <machine_base/isa/ic/cd1400.h>
 
-#ifdef SMP
 #define disable_intr()	com_lock()
 #define enable_intr()	com_unlock()
-#else
-#define disable_intr()	((void)0)
-#define enable_intr()	((void)0)
-#endif /* SMP */
 
 /*
  * Dictionary so that I can name everything *sio* or *com* to compare with

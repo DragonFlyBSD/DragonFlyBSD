@@ -38,9 +38,7 @@ typedef struct lwkt_serialize *lwkt_serialize_t;
 
 void lwkt_serialize_init(lwkt_serialize_t);
 void lwkt_serialize_enter(lwkt_serialize_t);
-#ifdef SMP
 void lwkt_serialize_adaptive_enter(lwkt_serialize_t);
-#endif
 int lwkt_serialize_try(lwkt_serialize_t);
 void lwkt_serialize_exit(lwkt_serialize_t);
 void lwkt_serialize_handler_disable(lwkt_serialize_t);
