@@ -15,9 +15,9 @@
 SMP OPTION REMOVED
 ------------------
 
-The SMP kernel option has been removed. All kernels now feature SMP
-support. If you have 'options SMP' in your kernel config, you'll have
-to remove it.
+The SMP kernel option has been made a no-op. All kernels now feature SMP
+support. If you have 'options SMP' in your kernel config, you can as well
+remove it.
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.0 to later versions                +
