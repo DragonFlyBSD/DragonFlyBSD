@@ -349,9 +349,10 @@ dumpbufs(kvm_t *kd, void *bufp, const char *id)
 	struct buf buf;
 
 	kkread(kd, (u_long)bufp, &buf, sizeof(buf));
-	printf("\t    %-8s %p loffset %012llx foffset %08llx",
+	printf("\t    %-8s %p loffset %012llx/%05x foffset %08llx",
 		id, bufp,
 		buf.b_bio1.bio_offset,
+		buf.b_bufsize,
 		buf.b_bio2.bio_offset);
 	printf(" q=%d lck=%d/%d flags=%08x refs=%d dep=%p",
 		buf.b_qindex, buf.b_lock.lk_sharecount,
