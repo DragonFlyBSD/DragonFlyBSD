@@ -53,7 +53,6 @@
 #include "encoding.h"
 #include "dump.h"
 
-#include "conn_caps.h"
 #include "conn_npipe.h"
 #include "conn_tcp.h"
 
@@ -63,9 +62,6 @@ dfui_connection_new(int transport, const char *rendezvous)
 	struct dfui_connection *c = NULL;
 
 	if (
-#ifdef HAS_CAPS
-	    transport == DFUI_TRANSPORT_CAPS ||
-#endif
 #ifdef HAS_NPIPE
 	    transport == DFUI_TRANSPORT_NPIPE ||
 #endif
@@ -92,38 +88,6 @@ dfui_connection_new(int transport, const char *rendezvous)
 	c->t_data = NULL;
 
 	switch (transport) {
-#ifdef HAS_CAPS
-	case DFUI_TRANSPORT_CAPS:
-		AURA_MALLOC(c->t_data, dfui_conn_caps);
-		T_CAPS(c)->cid = 0;
-		bzero(&T_CAPS(c)->msgid, sizeof(T_CAPS(c)->msgid));
-
-		/*
-		 * XXX Ideally, this value should grow as needed.
-		 * However, CAPS currently has a size limit of
-		 * 128K internally.
-		 */
-		T_CAPS(c)->size = 128 * 1024;
-		if ((T_CAPS(c)->buf = aura_malloc(T_CAPS(c)->size, "CAPS buffer")) == NULL) {
-			AURA_FREE(T_CAPS(c), dfui_conn_caps);
-			aura_free(c->rendezvous, "rendezvous string");
-			AURA_FREE(c, dfui_connection);
-			return(NULL);
-		}
-
-		/*
-		 * Set up dispatch functions.
-		 */
-		c->be_start = dfui_caps_be_start;
-		c->be_stop = dfui_caps_be_stop;
-		c->be_ll_exchange = dfui_caps_be_ll_exchange;
-
-		c->fe_connect = dfui_caps_fe_connect;
-		c->fe_disconnect = dfui_caps_fe_disconnect;
-		c->fe_ll_request = dfui_caps_fe_ll_request;
-		break;
-#endif /* HAS_CAPS */
-
 #ifdef HAS_NPIPE
 	case DFUI_TRANSPORT_NPIPE:
 		AURA_MALLOC(c->t_data, dfui_conn_npipe);
@@ -176,15 +140,6 @@ dfui_connection_free(struct dfui_connection *c)
 		return;
 
 	switch (c->transport) {
-#ifdef HAS_CAPS
-	case DFUI_TRANSPORT_CAPS:
-		if (T_CAPS(c) != NULL) {
-			if (T_CAPS(c)->buf != NULL)
-				aura_free(T_CAPS(c)->buf, "CAPS buffer");
-			AURA_FREE(T_CAPS(c), dfui_conn_caps);
-		}
-		break;
-#endif
 #ifdef HAS_NPIPE
 	case DFUI_TRANSPORT_NPIPE:
 		if (T_NPIPE(c) != NULL) {

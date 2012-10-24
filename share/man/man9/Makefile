@@ -86,6 +86,7 @@ MAN=	accept_filter.9 \
 	hash.9 \
 	hashinit.9 \
 	hexdump.9 \
+	idr.9 \
 	ieee80211.9 \
 	ieee80211_beacon.9 \
 	ieee80211_bmiss.9 \
@@ -469,6 +470,17 @@ MLINKS+=hashinit.9 hashdestroy.9 \
 	hashinit.9 hashinit_ext.9 \
 	hashinit.9 phashinit.9 \
 	hashinit.9 phashinit_ext.9
+MLINKS+=idr.9 idr_destroy.9 \
+	idr.9 idr_find.9 \
+	idr.9 idr_for_each.9 \
+	idr.9 idr_get_new.9 \
+	idr.9 idr_get_new_above.9 \
+	idr.9 idr_init.9 \
+	idr.9 idr_init1.9 \
+	idr.9 idr_pre_get.9 \
+	idr.9 idr_remove.9 \
+	idr.9 idr_remove_all.9 \
+	idr.9 idr_replace.9
 MLINKS+=ioctl.9 _IOR.9 \
 	ioctl.9 _IOW.9 \
 	ioctl.9 _IOWR.9 \

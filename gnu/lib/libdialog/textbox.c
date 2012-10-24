@@ -18,7 +18,6 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * $FreeBSD: src/gnu/lib/libdialog/textbox.c,v 1.18.6.2 2002/06/18 07:59:59 dougb Exp $
- * $DragonFly: src/gnu/lib/libdialog/textbox.c,v 1.2 2003/06/17 04:25:43 dillon Exp $
  */
 
 #include <dialog.h>
@@ -562,7 +561,7 @@ static void print_page(WINDOW *win, int height, int width)
  */
 static void print_line(WINDOW *win, int row, int width)
 {
-  int i, __unused y, x;
+  int i, y, x;
   unsigned char *line;
 
   line = get_line();

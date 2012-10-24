@@ -50,14 +50,14 @@ SUPCXX=	\
 	vmi_class_type_info.cc \
 	vterminate.cc
 
-bits/gthr.h: copybits ${GCCDIR}/libgcc/gthr.h
+gthr.h: ${GCCDIR}/libgcc/gthr.h
 	sed -e '/^#pragma/b' \
     	-e '/^#/s/\([ABCDEFGHIJKLMNOPQRSTUVWXYZ_][ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*\)/_GLIBCXX_\1/g' \
     	-e 's/_GLIBCXX_SUPPORTS_WEAK/__GXX_WEAK__/g' \
     	-e 's,^#include "\(.*\)",#include <bits/\1>,g' \
     	< ${GCCDIR}/libgcc/gthr.h > ${.TARGET}
 
-bits/gthr-default.h: copybits ${GCCDIR}/libgcc/gthr-posix.h
+gthr-default.h: ${GCCDIR}/libgcc/gthr-posix.h
 	sed -e 's/\(UNUSED\)/_GLIBCXX_\1/g' \
 	    -e 's/\(GCC[ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*_H\)/_GLIBCXX_\1/g' \
 	    -e 's/SUPPORTS_WEAK/__GXX_WEAK__/g' \
@@ -73,7 +73,7 @@ SUBST2='s,define _GLIBCXX_INLINE_VERSION, define _GLIBCXX_INLINE_VERSION ${ns_ve
 SUBST3='s,define _GLIBCXX_HAVE_ATTRIBUTE_VISIBILITY, define _GLIBCXX_HAVE_ATTRIBUTE_VISIBILITY ${visibility},'
 SUBST4='s,define _GLIBCXX_EXTERN_TEMPLATE$$, define _GLIBCXX_EXTERN_TEMPLATE ${externtemplate},'
 
-bits/c++config.h: copybits ${CXX_CONFIG_H}
+c++config.h: ${CXX_CONFIG_H}
 	sed -e ${SUBST1} -e ${SUBST2} -e ${SUBST3} -e ${SUBST4} \
 	    < ${GCCDIR}/libstdc++-v3/include/bits/c++config > ${.TARGET}
 	sed -e 's/HAVE_/_GLIBCXX_HAVE_/g' \

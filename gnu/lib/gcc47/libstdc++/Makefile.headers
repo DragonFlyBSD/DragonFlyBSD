@@ -53,14 +53,14 @@ host_builddir = bits
 supc_builddir = .
 host_headers_extra = \
 	${glibcxx_srcdir}/config/io/basic_file_stdio.h \
-	bits/c++config.h \
+	c++config.h \
 	${glibcxx_srcdir}/config/allocator/new_allocator_base.h \
 	${glibcxx_srcdir}/config/io/c_io_stdio.h \
 	${glibcxx_srcdir}/config/locale/generic/c_locale.h \
 	${glibcxx_srcdir}/config/locale/generic/messages_members.h \
 	${glibcxx_srcdir}/config/locale/generic/time_members.h \
-	bits/gthr.h \
-	bits/gthr-default.h
+	gthr.h \
+	gthr-default.h
 supc_headers = \
 	${glibcxx_srcdir}/libsupc++/cxxabi.h \
 	${glibcxx_srcdir}/libsupc++/exception \

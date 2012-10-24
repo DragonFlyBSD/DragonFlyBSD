@@ -60,9 +60,6 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	aio_cancel.2 aio_error.2 aio_read.2 aio_return.2 \
 	aio_suspend.2 aio_waitcomplete.2 aio_write.2 \
 	bind.2 brk.2 \
-	caps_sys_abort.2 caps_sys_client.2 caps_sys_close.2 caps_sys_get.2 \
-	caps_sys_getgen.2 caps_sys_put.2 caps_sys_reply.2 caps_sys_service.2 \
-	caps_sys_setgen.2 \
 	sys_checkpoint.2 chdir.2 chflags.2 \
 	chmod.2 chown.2 chroot.2 clock_gettime.2 close.2 closefrom.2 \
 	connect.2 dup.2 execve.2 extattr.2 extexit.2 \
@@ -101,7 +98,6 @@ MAN+=	sched_get_priority_max.2 sched_setparam.2 \
 
 MLINKS+=access.2 faccessat.2
 MLINKS+=brk.2 sbrk.2
-MLINKS+=caps_sys_get.2 caps_sys_wait.2
 MLINKS+=chdir.2 fchdir.2
 MLINKS+=chflags.2 fchflags.2 chflags.2 lchflags.2
 MLINKS+=chmod.2 fchmod.2 chmod.2 lchmod.2 chmod.2 fchmodat.2

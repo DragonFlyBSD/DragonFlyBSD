@@ -59,6 +59,10 @@ struct magazine {
 
 SLIST_HEAD(magazinelist, magazine);
 
+#define MAGAZINE_HDRSIZE	__offsetof(struct magazine, objects[0])
+#define MAGAZINE_CAPACITY_MAX	128
+#define MAGAZINE_CAPACITY_MIN	4
+
 /*
  * per-cluster cache of magazines
  *
@@ -85,7 +89,7 @@ struct magazinedepot {
 						 * return a full magazine to
 						 * the depot */
 	int			contested;	/* depot contention count */
-};
+} __cachealign;
 
 /*
  * per-cpu object cache
@@ -104,7 +108,7 @@ struct percpu_objcache {
 	/* infrequently used fields */
 	int		waiting;	/* waiting for a thread on this cpu to
 					 * return an obj to the per-cpu cache */
-};
+} __cachealign;
 
 /* only until we have NUMA cluster topology information XXX */
 #define MAXCLUSTERS 1
@@ -140,17 +144,35 @@ struct objcache {
 
 static struct spinlock objcachelist_spin;
 static LIST_HEAD(objcachelist, objcache) allobjcaches;
+static int magazine_capmin;
+static int magazine_capmax;
 
 static struct magazine *
 mag_alloc(int capacity)
 {
 	struct magazine *mag;
+	int size;
 
-	mag = kmalloc(__offsetof(struct magazine, objects[capacity]),
-			M_OBJMAG, M_INTWAIT | M_ZERO);
+	size = __offsetof(struct magazine, objects[capacity]);
+	KASSERT(size > 0 && (size & __VM_CACHELINE_MASK) == 0,
+	    ("magazine size is not multiple cache line size"));
+
+	mag = kmalloc_cachealign(size, M_OBJMAG, M_INTWAIT | M_ZERO);
 	mag->capacity = capacity;
 	mag->rounds = 0;
 	return (mag);
+}
+
+static int
+mag_capacity_align(int mag_capacity)
+{
+	int mag_size;
+
+	mag_size = __VM_CACHELINE_ALIGN(
+	    __offsetof(struct magazine, objects[mag_capacity]));
+	mag_capacity = (mag_size - MAGAZINE_HDRSIZE) / sizeof(void *);
+
+	return mag_capacity;
 }
 
 /*
@@ -173,7 +195,7 @@ null_ctor(void *obj, void *privdata, int ocflags)
  * Create an object cache.
  */
 struct objcache *
-objcache_create(const char *name, int *cluster_limit0, int nom_cache,
+objcache_create(const char *name, int cluster_limit, int nom_cache,
 		objcache_ctor_fn *ctor, objcache_dtor_fn *dtor, void *privdata,
 		objcache_alloc_fn *alloc, objcache_free_fn *free,
 		void *allocator_args)
@@ -184,18 +206,13 @@ objcache_create(const char *name, int *cluster_limit0, int nom_cache,
 	int nmagdepot;
 	int mag_capacity;
 	int i;
-	int cluster_limit;
-
-	if (cluster_limit0 == NULL)
-		cluster_limit = 0;
-	else
-		cluster_limit = *cluster_limit0;
 
 	/*
 	 * Allocate object cache structure
 	 */
-	oc = kmalloc(__offsetof(struct objcache, cache_percpu[ncpus]),
-		    M_OBJCACHE, M_WAITOK | M_ZERO);
+	oc = kmalloc_cachealign(
+	    __offsetof(struct objcache, cache_percpu[ncpus]),
+	    M_OBJCACHE, M_WAITOK | M_ZERO);
 	oc->name = kstrdup(name, M_TEMP);
 	oc->ctor = ctor ? ctor : null_ctor;
 	oc->dtor = dtor ? dtor : null_dtor;
@@ -228,13 +245,13 @@ objcache_create(const char *name, int *cluster_limit0, int nom_cache,
 
 	/*
 	 * Magazine capacity for 2 active magazines per cpu plus 2
-	 * magazines in the depot.  Minimum capacity is 4 objects.
+	 * magazines in the depot.
 	 */
-	mag_capacity = nom_cache / (ncpus + 1) / 2 + 1;
-	if (mag_capacity > 128)
-		mag_capacity = 128;
-	if (mag_capacity < 4)
-		mag_capacity = 4;
+	mag_capacity = mag_capacity_align(nom_cache / (ncpus + 1) / 2 + 1);
+	if (mag_capacity > magazine_capmax)
+		mag_capacity = magazine_capmax;
+	else if (mag_capacity < magazine_capmin)
+		mag_capacity = magazine_capmin;
 	depot->magcapacity = mag_capacity;
 
 	/*
@@ -291,8 +308,6 @@ objcache_create(const char *name, int *cluster_limit0, int nom_cache,
 	LIST_INSERT_HEAD(&allobjcaches, oc, oc_next);
 	spin_unlock(&objcachelist_spin);
 
-	if (cluster_limit0 != NULL)
-		*cluster_limit0 = cluster_limit;
 	return (oc);
 }
 
@@ -305,7 +320,7 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 	margs = kmalloc(sizeof(*margs), M_OBJCACHE, M_WAITOK|M_ZERO);
 	margs->objsize = objsize;
 	margs->mtype = mtype;
-	oc = objcache_create(mtype->ks_shortdesc, NULL, 0,
+	oc = objcache_create(mtype->ks_shortdesc, 0, 0,
 			     NULL, NULL, NULL,
 			     objcache_malloc_alloc, objcache_malloc_free,
 			     margs);
@@ -314,7 +329,7 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 
 struct objcache *
 objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
-			int *cluster_limit, int nom_cache,
+			int cluster_limit, int nom_cache,
 			objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
 			void *privdata)
 {
@@ -979,6 +994,14 @@ static void
 objcache_init(void)
 {
 	spin_init(&objcachelist_spin);
+
+	magazine_capmin = mag_capacity_align(MAGAZINE_CAPACITY_MIN);
+	magazine_capmax = mag_capacity_align(MAGAZINE_CAPACITY_MAX);
+	if (bootverbose) {
+		kprintf("objcache: magazine cap [%d, %d]\n",
+		    magazine_capmin, magazine_capmax);
+	}
+
 #if 0
 	callout_init_mp(&objcache_callout);
 	objcache_rebalance_period = 60 * hz;

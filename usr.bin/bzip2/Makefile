@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.bin/bzip2/Makefile,v 1.5.2.2 2001/08/02 01:09:06 obrien Exp $
-# $DragonFly: src/usr.bin/bzip2/Makefile,v 1.8 2007/08/27 16:50:51 pavalos Exp $
 
 BZ2DIR=	${.CURDIR}/../../contrib/bzip2
 
@@ -9,7 +8,6 @@ PROG=	bzip2
 WARNS?=	2
 
 CFLAGS+= -D_FILE_OFFSET_BITS=64
-CFLAGS+= -Wno-unused-but-set-variable
 
 DPADD=	${LIBBZ2}
 LDADD=	-lbz2

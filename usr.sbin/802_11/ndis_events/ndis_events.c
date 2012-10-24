@@ -324,6 +324,10 @@ main(int argc, char *argv[])
 
 	while (1) {
 		n = read(r, msg, NDIS_INDICATION_LEN);
+		if (n < 0) {
+			dbgmsg("read failed");
+			exit(1);
+		}
 		rtm = (struct rt_msghdr *)msg;
 		if (rtm->rtm_type != RTM_IFINFO)
 			continue;

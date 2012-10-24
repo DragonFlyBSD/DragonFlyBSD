@@ -51,7 +51,6 @@
 #include <sys/kthread.h>
 #include <machine/cpu.h>
 #include <sys/lock.h>
-#include <sys/caps.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>

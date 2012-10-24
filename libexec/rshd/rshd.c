@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1988, 1989, 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rshd.c	8.2 (Berkeley) 4/6/94
  * $FreeBSD: src/libexec/rshd/rshd.c,v 1.30.2.5 2002/05/14 22:27:21 des Exp $
- * $DragonFly: src/libexec/rshd/rshd.c,v 1.5 2007/05/18 17:05:12 dillon Exp $
  */
 
 /*
@@ -205,7 +204,7 @@ doit(union sockunion *fromp)
 	char cmdbuf[NCARGS+1], locuser[16], remuser[16];
 	char fromhost[2 * MAXHOSTNAMELEN + 1];
 	char numericname[INET6_ADDRSTRLEN];
-	int af = fromp->su_family, __unused err;
+	int af = fromp->su_family, gaierror;
 #ifdef	CRYPT
 	int rc;
 	int pv1[2], pv2[2];
@@ -226,10 +225,14 @@ doit(union sockunion *fromp)
 		syslog(LOG_ERR, "malformed \"from\" address (af %d)\n", af);
 		exit(1);
 	}
-	err = getnameinfo((struct sockaddr *)fromp, fromp->su_len, numericname,
-			  sizeof(numericname), NULL, 0,
-			  NI_NUMERICHOST|NI_WITHSCOPEID);
-	/* XXX: do 'err' check */
+	gaierror = getnameinfo((struct sockaddr *)fromp, fromp->su_len,
+	    numericname, sizeof(numericname), NULL, 0,
+	    NI_NUMERICHOST|NI_WITHSCOPEID);
+	if (gaierror != 0) {
+		syslog(LOG_ERR, "malformed \"from\" address (af %d): %s", af,
+		    gai_strerror(gaierror));
+		exit(1);
+	}
 #ifdef IP_OPTIONS
       if (af == AF_INET) {
 	u_char optbuf[BUFSIZ/3];

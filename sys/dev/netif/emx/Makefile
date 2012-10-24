@@ -6,7 +6,7 @@ SRCS+=	opt_ifpoll.h opt_ktr.h opt_emx.h
 .ifndef BUILDING_WITH_KERNEL
 
 opt_ifpoll.h:
-	touch ${.OBJDIR}/${.TARGET}
+	echo '#define IFPOLL_ENABLE 1' > ${.OBJDIR}/${.TARGET}
 
 opt_emx.h:
 	touch ${.OBJDIR}/${.TARGET}

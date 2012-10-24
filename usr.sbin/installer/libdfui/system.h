@@ -41,7 +41,6 @@
 
 #define HAS_TCP
 #define HAS_NPIPE
-#define HAS_CAPS
 
 #define OPERATING_SYSTEM_NAME	"DragonFly BSD"
 #define OPERATING_SYSTEM_URL	"http://www.dragonflybsd.org"
@@ -49,7 +48,6 @@
 char *ostype(void);
 int has_tcp(void);
 int has_npipe(void);
-int has_caps(void);
 int get_transport(const char *);
 int user_get_transport(const char *);
 

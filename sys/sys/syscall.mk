@@ -234,16 +234,6 @@ MIASM =  \
 	varsym_list.o \
 	upc_register.o \
 	upc_control.o \
-	caps_sys_service.o \
-	caps_sys_client.o \
-	caps_sys_close.o \
-	caps_sys_put.o \
-	caps_sys_reply.o \
-	caps_sys_get.o \
-	caps_sys_wait.o \
-	caps_sys_abort.o \
-	caps_sys_getgen.o \
-	caps_sys_setgen.o \
 	exec_sys_register.o \
 	exec_sys_unregister.o \
 	sys_checkpoint.o \

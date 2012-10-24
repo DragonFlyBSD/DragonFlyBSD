@@ -21,7 +21,6 @@ SRCS+=		b32_ntop.c b32_pton.c b64_ntop.c b64_pton.c
 .PATH:		${LDNS} ${LDNS}/compat
 
 CFLAGS+= 	-I${.CURDIR} -I${LDNS}
-CFLAGS+=	-Wno-unused-but-set-variable
 #CLEANFILES=	bsdxml.h bsdxml_external.h
 
 WARNS?=		2

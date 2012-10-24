@@ -3,6 +3,9 @@ SUBDIR+=	libgcc
 SUBDIR+=	libgcc_eh
 SUBDIR+=	libgcc_pic
 SUBDIR+=	libgcov
+SUBDIR+=	libssp
+SUBDIR+=	libssp_nonshared
+SUBDIR+=	libgomp
 
 .if !defined(NO_CXX)
 SUBDIR+=	libstdc++

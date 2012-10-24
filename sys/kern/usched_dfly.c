@@ -101,7 +101,11 @@ TAILQ_HEAD(rq, lwp);
 
 struct usched_dfly_pcpu {
 	struct spinlock spin;
+#ifdef SMP
 	struct thread	helper_thread;
+#else
+	struct thread	helper_thread_UNUSED;	/* field unused */
+#endif
 	short		unusde01;
 	short		upri;
 	int		uload;
@@ -2140,18 +2144,23 @@ sysctl_usched_dfly_stick_to_level(SYSCTL_HANDLER_ARGS)
 }
 #endif
 
+#endif
+
 /*
- * Setup our scheduler helpers.  Note that curprocmask bit 0 has already
- * been cleared by rqinit() and we should not mess with it further.
+ * Setup the queues and scheduler helpers (scheduler helpers are SMP only).
+ * Note that curprocmask bit 0 has already been cleared by rqinit() and
+ * we should not mess with it further.
  */
 static void
-dfly_helper_thread_cpu_init(void)
+usched_dfly_cpu_init(void)
 {
 	int i;
 	int j;
+#ifdef SMP
 	int cpuid;
 	int smt_not_supported = 0;
 	int cache_coherent_not_supported = 0;
+#endif
 
 	if (bootverbose)
 		kprintf("Start scheduler helpers on cpus:\n");
@@ -2170,7 +2179,9 @@ dfly_helper_thread_cpu_init(void)
 		    continue;
 
 		spin_init(&dd->spin);
+#ifdef SMP
 		dd->cpunode = get_cpu_node_by_cpuid(i);
+#endif
 		dd->cpuid = i;
 		dd->cpumask = CPUMASK(i);
 		for (j = 0; j < NQS; j++) {
@@ -2180,6 +2191,7 @@ dfly_helper_thread_cpu_init(void)
 		}
 		atomic_clear_cpumask(&dfly_curprocmask, 1);
 
+#ifdef SMP
 		if (dd->cpunode == NULL) {
 			smt_not_supported = 1;
 			cache_coherent_not_supported = 1;
@@ -2237,6 +2249,7 @@ dfly_helper_thread_cpu_init(void)
 
 		lwkt_create(dfly_helper_thread, NULL, NULL, &dd->helper_thread,
 			    0, i, "usched %d", i);
+#endif
 
 		/*
 		 * Allow user scheduling on the target cpu.  cpu #0 has already
@@ -2260,6 +2273,7 @@ dfly_helper_thread_cpu_init(void)
 		       OID_AUTO, "decay", CTLFLAG_RW,
 		       &usched_dfly_decay, 0, "Extra decay when not running");
 
+#ifdef SMP
 	/* Add enable/disable option for SMT scheduling if supported */
 	if (smt_not_supported) {
 		usched_dfly_smt = 0;
@@ -2336,7 +2350,6 @@ dfly_helper_thread_cpu_init(void)
 			       &usched_dfly_swmask, ~PPQMASK,
 			       "Queue mask to force thread switch");
 
-
 #if 0
 		SYSCTL_ADD_PROC(&usched_dfly_sysctl_ctx,
 				SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
@@ -2348,31 +2361,7 @@ dfly_helper_thread_cpu_init(void)
 				"paremter hw.cpu_topology.level_description");
 #endif
 	}
+#endif /* SMP */
 }
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
-	dfly_helper_thread_cpu_init, NULL)
-
-#else /* No SMP options - just add the configurable parameters to sysctl */
-
-static void
-sched_sysctl_tree_init(void)
-{
-	sysctl_ctx_init(&usched_dfly_sysctl_ctx);
-	usched_dfly_sysctl_tree =
-		SYSCTL_ADD_NODE(&usched_dfly_sysctl_ctx,
-				SYSCTL_STATIC_CHILDREN(_kern), OID_AUTO,
-				"usched_dfly", CTLFLAG_RD, 0, "");
-
-	/* usched_dfly sysctl configurable parameters */
-	SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
-		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
-		       OID_AUTO, "rrinterval", CTLFLAG_RW,
-		       &usched_dfly_rrinterval, 0, "");
-	SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
-		       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
-		       OID_AUTO, "decay", CTLFLAG_RW,
-		       &usched_dfly_decay, 0, "Extra decay when not running");
-}
-SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
-	sched_sysctl_tree_init, NULL)
-#endif
+	usched_dfly_cpu_init, NULL)

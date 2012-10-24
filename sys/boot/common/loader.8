@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
 .\"
-.Dd August 27, 2012
+.Dd October 21, 2012
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -669,6 +669,14 @@ Modifies
 .Va NMBCLUSTERS .
 .It Va kern.mmxopt
 Toggles the mmx optimizations for the bcopy/copyin/copyout routines
+.It Va kern.user_scheduler
+Default userland scheduler (usched).
+If set, values can be
+.Dq bsd4
+or
+.Dq dfly .
+Default is
+.Dq dfly .
 .It Va kern.vm.kmem.size
 Sets the size of kernel memory (bytes).
 This overrides the value determined when the kernel was compiled.

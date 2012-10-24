@@ -186,10 +186,7 @@ gnu11_FLAGS_FILES=	chrono.cc \
 
 #generated sources
 SRCS+=	unwind.h \
-	${CONF_HEADERS:T} \
-	bits/gthr.h \
-	bits/gthr-default.h \
-	bits/c++config.h
+	${CONF_HEADERS:T}
 
 HD=	${INCLUDEDIR}/c++/${GCCPOINTVER}
 
@@ -280,8 +277,7 @@ vec-cxx.cc: ${SRCDIR}/libsupc++/vec.cc
 CLEANDIRS+=	bits
 CLEANFILES+=	atomicity.cc basic_file.cc c++locale.cc \
 		ctype_configure_char.cc unwind.h \
-		cp-demangle.c debug-cxx.cc tree-cxx.cc vec-cxx.cc
-
-depend all: bits/c++config.h
+		cp-demangle.c debug-cxx.cc tree-cxx.cc vec-cxx.cc \
+		c++config.h gthr.h gthr-default.h
 
 .include <bsd.lib.mk>

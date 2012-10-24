@@ -881,7 +881,6 @@ kern/lwkt_ipiq.c	standard
 kern/lwkt_token.c	standard
 kern/lwkt_msgport.c	standard
 kern/lwkt_serialize.c	standard
-kern/lwkt_caps.c	standard
 kern/kern_dsched.c	standard
 kern/kern_sensors.c	standard
 kern/kern_spinlock.c	standard
@@ -1827,6 +1826,7 @@ libkern/bsearch.c			standard
 libkern/crc32.c				standard
 libkern/cmpdi2.c			standard
 libkern/ucmpdi2.c			standard
+libkern/idr.c				standard
 libkern/index.c				standard
 libkern/inet_ntoa.c			standard
 libkern/mcount.c			optional	profiling-routine
