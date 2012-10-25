@@ -38,6 +38,7 @@
  */
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <sys/queue.h>
 #include <sys/mount.h>
 #include <sys/file.h>
 #include <sys/socket.h>
@@ -47,6 +48,7 @@
 #include <sys/endian.h>
 #include <sys/sysctl.h>
 #include <sys/udev.h>
+#include <sys/diskslice.h>
 #include <dmsg.h>
 
 #include <netinet/in.h>

@@ -746,7 +746,6 @@ struct kdmsg_iocom {
 	struct lock		msglk;		/* lockmgr lock */
 	TAILQ_HEAD(, kdmsg_msg) msgq;		/* transmit queue */
 	void			*handle;
-	void			(*clusterctl_wakeup)(struct kdmsg_iocom *);
 	int			(*lnk_rcvmsg)(kdmsg_msg_t *msg);
 	int			(*dbg_rcvmsg)(kdmsg_msg_t *msg);
 	int			(*misc_rcvmsg)(kdmsg_msg_t *msg);
@@ -769,13 +768,12 @@ uint32_t kdmsg_icrc32c(const void *buf, size_t size, uint32_t crc);
 void kdmsg_iocom_init(kdmsg_iocom_t *iocom,
 			void *handle,
 			struct malloc_type *mmsg,
-			void (*cctl_wakeup)(kdmsg_iocom_t *),
 			int (*lnk_rcvmsg)(kdmsg_msg_t *msg),
 			int (*dbg_rcvmsg)(kdmsg_msg_t *msg),
 			int (*misc_rcvmsg)(kdmsg_msg_t *msg));
-
 void kdmsg_iocom_reconnect(kdmsg_iocom_t *iocom, struct file *fp,
 			const char *subsysname);
+void kdmsg_iocom_uninit(kdmsg_iocom_t *iocom);
 void kdmsg_drain_msgq(kdmsg_iocom_t *iocom);
 
 int kdmsg_state_msgrx(kdmsg_msg_t *msg);

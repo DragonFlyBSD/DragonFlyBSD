@@ -899,6 +899,7 @@ kern/subr_bus.c		standard
 kern/subr_busdma.c	standard
 kern/subr_devstat.c	standard
 kern/subr_disk.c	standard
+kern/subr_diskiocom.c	standard
 kern/subr_disklabel32.c	standard
 kern/subr_disklabel64.c	standard
 kern/subr_diskslice.c	standard

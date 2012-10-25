@@ -183,9 +183,8 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	int sno;
 	u_int i;
 
-	disk_debug(2,
-		    "disk_probe_slice (begin): %s (%s)\n",
-			dev->si_name, dp->d_cdev->si_name);
+	disk_debug(2, "disk_probe_slice (begin): %s (%s)\n",
+		   dev->si_name, dp->d_cdev->si_name);
 
 	sno = slice ? slice - 1 : 0;
 
@@ -475,6 +474,7 @@ disk_msg_core(void *arg)
 			disk_debug(1,
 				    "DISK_DISK_PROBE: %s\n",
 					dp->d_cdev->si_name);
+			disk_iocom_update(dp);
 			disk_probe(dp, 0);
 			break;
 		case DISK_DISK_DESTROY:
@@ -482,6 +482,7 @@ disk_msg_core(void *arg)
 			disk_debug(1,
 				    "DISK_DISK_DESTROY: %s\n",
 					dp->d_cdev->si_name);
+			disk_iocom_uninit(dp);
 			devfs_destroy_related(dp->d_cdev);
 			destroy_dev(dp->d_cdev);
 			destroy_only_dev(dp->d_rawdev);
@@ -691,8 +692,10 @@ _disk_create_named(const char *name, int unit, struct disk *dp,
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
 	lwkt_reltoken(&disklist_token);
 
+	disk_iocom_init(dp);
+
 	disk_debug(1, "disk_create (end): %s%d\n",
-	    (name != NULL)?(name):(raw_ops->head.name), unit);
+		   (name != NULL)?(name):(raw_ops->head.name), unit);
 
 	return (dp->d_rawdev);
 }
@@ -1063,6 +1066,12 @@ diskioctl(struct dev_ioctl_args *ap)
 	if (ap->a_cmd == DIOCGKERNELDUMP) {
 		u = *(u_int *)ap->a_data;
 		return disk_dumpconf(dev, u);
+	}
+
+	if (ap->a_cmd == DIOCRECLUSTER && dev == dp->d_cdev) {
+		kprintf("RECLUSTER\n");
+		error = disk_iocom_ioctl(dp, ap->a_cmd, ap->a_data);
+		return error;
 	}
 
 	if (&dp->d_slice == NULL || dp->d_slice == NULL ||

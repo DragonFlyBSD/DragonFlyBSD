@@ -66,6 +66,8 @@ dmsg_master_service(void *data)
 		info->fd, iocom.ioq_rx.error, iocom.ioq_tx.error);
 	close(info->fd);
 	info->fd = -1;	/* safety */
+	if (info->exit_callback)
+		info->exit_callback(info->handle);
 	free(info);
 
 	return (NULL);

@@ -58,6 +58,9 @@
 #ifndef _SYS_MSGPORT_H_
 #include <sys/msgport.h>
 #endif
+#ifndef _SYS_DMSG_H_
+#include <sys/dmsg.h>
+#endif
 
 /*
  * Media information structure - filled in by the media driver.
@@ -142,6 +145,7 @@ struct disk {
 	struct dsched_policy	*d_sched_policy;/* I/O scheduler policy */
 	const char		*d_disktype;	/* Disk type information */
 	LIST_ENTRY(disk)	d_list;
+	kdmsg_iocom_t		d_iocom;	/* cluster import/export */
 };
 
 /*
@@ -173,6 +177,15 @@ void disk_config(void *);
 
 int bounds_check_with_mediasize(struct bio *bio, int secsize, uint64_t mediasize);
 
+void disk_iocom_init(struct disk *dp);
+void disk_iocom_update(struct disk *dp);
+void disk_iocom_uninit(struct disk *dp);
+int disk_iocom_ioctl(struct disk *dp, int cmd, void *data);
+void disk_clusterctl_wakeup(kdmsg_iocom_t *iocom);
+int disk_lnk_rcvmsg(kdmsg_msg_t *msg);
+int disk_dbg_rcvmsg(kdmsg_msg_t *msg);
+int disk_adhoc_input(kdmsg_msg_t *msg);
+
 typedef struct disk_msg {
 	struct lwkt_msg hdr;
 	void	*load;
@@ -184,7 +197,7 @@ typedef struct disk_msg {
 #define DISK_SLICE_REPROBE	0x03
 #define DISK_DISK_REPROBE	0x04
 #define DISK_UNPROBE		0x05
-#define DISK_SYNC			0x99
+#define DISK_SYNC		0x99
 
 
 #endif /* _KERNEL */

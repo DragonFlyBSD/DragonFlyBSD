@@ -94,7 +94,8 @@
 #define DIOCWLABEL		_IOW('d', 109, int)
 #define	DIOCGSLICEINFO		_IOR('d', 111, struct diskslices)
 #define	DIOCSYNCSLICEINFO	_IOW('d', 112, int)
-#define DIOCGKERNELDUMP		_IOW('d', 133, u_int)   /* Set/Clear kernel dumps */
+#define DIOCGKERNELDUMP		_IOW('d', 133, u_int)   /* Set/Clear dumps */
+#define DIOCRECLUSTER		_IOWR('d', 134, struct disk_ioc_recluster)
 #define	MAX_SLICES		16
 
 /*
@@ -165,6 +166,10 @@ struct diskslices {
 	int	dss_secsize;		/* sector size */
 	struct diskslice
 		dss_slices[MAX_SLICES];	/* actually usually less */
+};
+
+struct disk_ioc_recluster {
+	int	fd;
 };
 
 /*

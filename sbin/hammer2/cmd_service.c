@@ -35,9 +35,21 @@
 
 #include "hammer2.h"
 
+struct diskcon {
+	TAILQ_ENTRY(diskcon) entry;
+	char	*disk;
+};
+
+#define WS " \r\n"
+
+TAILQ_HEAD(, diskcon) diskconq = TAILQ_HEAD_INITIALIZER(diskconq);
+pthread_mutex_t diskmtx;
+
 static void *service_thread(void *data);
 static void *udev_thread(void *data);
 static void master_reconnect(const char *mntpt);
+static void disk_reconnect(const char *disk);
+static void disk_disconnect(void *handle);
 static void udev_check_disks(void);
 
 /*
@@ -210,6 +222,7 @@ udev_check_disks(void)
 {
 	char tmpbuf[1024];
 	char *buf = NULL;
+	char *disk;
 	int error;
 	size_t n;
 
@@ -236,6 +249,9 @@ udev_check_disks(void)
 	}
 	if (buf) {
 		fprintf(stderr, "DISKS: %s\n", buf);
+		for (disk = strtok(buf, WS); disk; disk = strtok(NULL, WS)) {
+			disk_reconnect(disk);
+		}
 		if (buf != tmpbuf)
 			free(buf);
 	}
@@ -292,4 +308,99 @@ master_reconnect(const char *mntpt)
 	info->detachme = 1;
 	info->dbgmsg_callback = hammer2_shell_parse;
 	pthread_create(&thread, NULL, dmsg_master_service, info);
+}
+
+/*
+ * Reconnect a physical disk to the mesh.
+ */
+static
+void
+disk_reconnect(const char *disk)
+{
+	struct disk_ioc_recluster recls;
+	struct diskcon *dc;
+	dmsg_master_service_info_t *info;
+	pthread_t thread;
+	int fd;
+	int pipefds[2];
+	char *path;
+
+	/*
+	 * Urm, this will auto-create mdX+1, just ignore for now.
+	 * This mechanic needs to be fixed.  It might actually be nice
+	 * to be able to export md disks.
+	 */
+	if (strncmp(disk, "md", 2) == 0)
+		return;
+
+	/*
+	 * Check if already connected
+	 */
+	pthread_mutex_lock(&diskmtx);
+	TAILQ_FOREACH(dc, &diskconq, entry) {
+		if (strcmp(dc->disk, disk) == 0)
+			break;
+	}
+	pthread_mutex_unlock(&diskmtx);
+	if (dc)
+		return;
+
+	/*
+	 * Not already connected, create a connection to the kernel
+	 * disk driver.
+	 */
+	asprintf(&path, "/dev/%s", disk);
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "reconnect %s: no access to disk\n", disk);
+		free(path);
+		return;
+	}
+	free(path);
+	if (pipe(pipefds) < 0) {
+		fprintf(stderr, "reconnect %s: pipe() failed\n", disk);
+		close(fd);
+		return;
+	}
+	bzero(&recls, sizeof(recls));
+	recls.fd = pipefds[0];
+	if (ioctl(fd, DIOCRECLUSTER, &recls) < 0) {
+		fprintf(stderr, "reconnect %s: ioctl failed\n", disk);
+		close(pipefds[0]);
+		close(pipefds[1]);
+		close(fd);
+		return;
+	}
+	close(pipefds[0]);
+	close(fd);
+
+	dc = malloc(sizeof(*dc));
+	dc->disk = strdup(disk);
+	pthread_mutex_lock(&diskmtx);
+	TAILQ_INSERT_TAIL(&diskconq, dc, entry);
+	pthread_mutex_unlock(&diskmtx);
+
+	info = malloc(sizeof(*info));
+	bzero(info, sizeof(*info));
+	info->fd = pipefds[1];
+	info->detachme = 1;
+	info->dbgmsg_callback = hammer2_shell_parse;
+	info->exit_callback = disk_disconnect;
+	info->handle = dc;
+	pthread_create(&thread, NULL, dmsg_master_service, info);
+}
+
+static
+void
+disk_disconnect(void *handle)
+{
+	struct diskcon *dc = handle;
+
+	fprintf(stderr, "DISK_DISCONNECT %s\n", dc->disk);
+
+	pthread_mutex_lock(&diskmtx);
+	TAILQ_REMOVE(&diskconq, dc, entry);
+	pthread_mutex_unlock(&diskmtx);
+	free(dc->disk);
+	free(dc);
 }

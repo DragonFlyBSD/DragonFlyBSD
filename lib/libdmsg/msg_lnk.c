@@ -246,8 +246,9 @@ struct h2span_node {
 	RB_ENTRY(h2span_node) rbnode;
 	struct h2span_link_tree tree;
 	struct h2span_cluster *cls;
+	uint8_t	peer_type;
 	uuid_t	pfs_fsid;		/* unique fsid */
-	char label[64];
+	char	label[64];
 };
 
 struct h2span_link {
@@ -306,7 +307,16 @@ static
 int
 h2span_node_cmp(h2span_node_t *node1, h2span_node_t *node2)
 {
-	return(uuid_compare(&node1->pfs_fsid, &node2->pfs_fsid, NULL));
+	int r;
+
+	if (node1->peer_type < node2->peer_type)
+		return(-1);
+	if (node1->peer_type > node2->peer_type)
+		return(1);
+	r = uuid_compare(&node1->pfs_fsid, &node2->pfs_fsid, NULL);
+	if (r == 0 && node1->peer_type == DMSG_PEER_BLOCK)
+		r = strcmp(node1->label, node2->label);
+	return (r);
 }
 
 /*
@@ -651,15 +661,19 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		 * Find the node
 		 */
 		dummy_node.pfs_fsid = msg->any.lnk_span.pfs_fsid;
+		dummy_node.peer_type = msg->any.lnk_span.peer_type;
+		snprintf(dummy_node.label, sizeof(dummy_node.label),
+			 "%s", msg->any.lnk_span.label);
 		node = RB_FIND(h2span_node_tree, &cls->tree, &dummy_node);
 		if (node == NULL) {
 			node = dmsg_alloc(sizeof(*node));
 			node->pfs_fsid = msg->any.lnk_span.pfs_fsid;
+			node->peer_type = msg->any.lnk_span.peer_type;
+			snprintf(node->label, sizeof(node->label),
+				 "%s", msg->any.lnk_span.label);
 			node->cls = cls;
 			RB_INIT(&node->tree);
 			RB_INSERT(h2span_node_tree, &cls->tree, node);
-			snprintf(node->label, sizeof(node->label),
-				 "%s", msg->any.lnk_span.label);
 		}
 
 		/*

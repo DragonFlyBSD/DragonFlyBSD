@@ -63,7 +63,6 @@ static void kdmsg_iocom_thread_wr(void *arg);
 void
 kdmsg_iocom_init(kdmsg_iocom_t *iocom, void *handle,
 		 struct malloc_type *mmsg,
-		 void (*cctl_wakeup)(kdmsg_iocom_t *),
 		 int (*lnk_rcvmsg)(kdmsg_msg_t *msg),
 		 int (*dbg_rcvmsg)(kdmsg_msg_t *msg),
 		 int (*misc_rcvmsg)(kdmsg_msg_t *msg))
@@ -71,7 +70,6 @@ kdmsg_iocom_init(kdmsg_iocom_t *iocom, void *handle,
 	bzero(iocom, sizeof(*iocom));
 	iocom->handle = handle;
 	iocom->mmsg = mmsg;
-	iocom->clusterctl_wakeup = cctl_wakeup;
 	iocom->lnk_rcvmsg = lnk_rcvmsg;
 	iocom->dbg_rcvmsg = dbg_rcvmsg;
 	iocom->misc_rcvmsg = misc_rcvmsg;
@@ -119,6 +117,31 @@ kdmsg_iocom_reconnect(kdmsg_iocom_t *iocom, struct file *fp,
 		    NULL, 0, -1, "%s-msgrd", subsysname);
 	lwkt_create(kdmsg_iocom_thread_wr, iocom, &iocom->msgwr_td,
 		    NULL, 0, -1, "%s-msgwr", subsysname);
+}
+
+/*
+ * Disconnect and clean up
+ */
+void
+kdmsg_iocom_uninit(kdmsg_iocom_t *iocom)
+{
+	/*
+	 * Ask the cluster controller to go away
+	 */
+	atomic_set_int(&iocom->msg_ctl, KDMSG_CLUSTERCTL_KILL);
+
+	while (iocom->msgrd_td || iocom->msgwr_td) {
+		wakeup(&iocom->msg_ctl);
+		tsleep(iocom, 0, "clstrkl", hz);
+	}
+
+	/*
+	 * Drop communications descriptor
+	 */
+	if (iocom->msg_fp) {
+		fdrop(iocom->msg_fp);
+		iocom->msg_fp = NULL;
+	}
 }
 
 /*
@@ -1221,7 +1244,13 @@ kdmsg_msg_write(kdmsg_msg_t *msg)
 	msg->any.head.hdr_crc = iscsi_crc32(msg->any.buf, msg->hdr_size);
 
 	TAILQ_INSERT_TAIL(&iocom->msgq, msg, qentry);
-	iocom->clusterctl_wakeup(iocom);
+
+	if (iocom->msg_ctl & KDMSG_CLUSTERCTL_SLEEPING) {
+		atomic_clear_int(&iocom->msg_ctl,
+				 KDMSG_CLUSTERCTL_SLEEPING);
+		wakeup(&iocom->msg_ctl);
+	}
+
 	lockmgr(&iocom->msglk, LK_RELEASE);
 }
 

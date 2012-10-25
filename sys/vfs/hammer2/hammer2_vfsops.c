@@ -355,7 +355,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
 	kdmsg_iocom_init(&pmp->iocom, pmp, pmp->mmsg,
-			 hammer2_clusterctl_wakeup,
 			 hammer2_msg_lnk_rcvmsg,
 			 hammer2_msg_dbg_rcvmsg,
 			 hammer2_msg_adhoc_input);
@@ -593,21 +592,9 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	ccms_domain_uninit(&pmp->ccms_dom);
 
 	/*
-	 * Ask the cluster controller to go away
+	 * Kill cluster controller
 	 */
-	atomic_set_int(&pmp->iocom.msg_ctl, KDMSG_CLUSTERCTL_KILL);
-	while (pmp->iocom.msgrd_td || pmp->iocom.msgwr_td) {
-		wakeup(&pmp->iocom.msg_ctl);
-		tsleep(pmp, 0, "clstrkl", hz);
-	}
-
-	/*
-	 * Drop communications descriptor
-	 */
-	if (pmp->iocom.msg_fp) {
-		fdrop(pmp->iocom.msg_fp);
-		pmp->iocom.msg_fp = NULL;
-	}
+	kdmsg_iocom_uninit(&pmp->iocom);
 
 	/*
 	 * If no PFS's left drop the master hammer2_mount for the device.
@@ -1045,23 +1032,6 @@ hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 	pmp->iocom.conn_state = msg->state;
 	msg->any.lnk_conn.label[name_len] = 0;
 	kdmsg_msg_write(msg);
-}
-
-/*
- * Called with msglk held after queueing a new message, wakes up the
- * transmit thread.  We use an interlock thread to avoid unnecessary
- * wakeups.
- */
-void
-hammer2_clusterctl_wakeup(kdmsg_iocom_t *iocom)
-{
-	hammer2_pfsmount_t *pmp = iocom->handle;
-
-	if (pmp->iocom.msg_ctl & KDMSG_CLUSTERCTL_SLEEPING) {
-		atomic_clear_int(&pmp->iocom.msg_ctl,
-				 KDMSG_CLUSTERCTL_SLEEPING);
-		wakeup(&pmp->iocom.msg_ctl);
-	}
 }
 
 static int
