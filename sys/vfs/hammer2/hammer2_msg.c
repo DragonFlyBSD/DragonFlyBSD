@@ -146,7 +146,7 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		(intmax_t)msg->any.head.msgid,
 		(intmax_t)msg->any.head.source,
 		(intmax_t)msg->any.head.target);
-	if (msg->any.head.cmd & HAMMER2_MSGF_REPLY)
+	if (msg->any.head.cmd & DMSGF_REPLY)
 		state = RB_FIND(hammer2_state_tree, &pmp->statewr_tree, state);
 	else
 		state = RB_FIND(hammer2_state_tree, &pmp->staterd_tree, state);
@@ -155,8 +155,8 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 	/*
 	 * Short-cut one-off or mid-stream messages (state may be NULL).
 	 */
-	if ((msg->any.head.cmd & (HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE |
-				  HAMMER2_MSGF_ABORT)) == 0) {
+	if ((msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE |
+				  DMSGF_ABORT)) == 0) {
 		lockmgr(&pmp->msglk, LK_RELEASE);
 		return(0);
 	}
@@ -165,10 +165,9 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 	 * Switch on CREATE, DELETE, REPLY, and also handle ABORT from
 	 * inside the case statements.
 	 */
-	switch(msg->any.head.cmd & (HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE |
-				    HAMMER2_MSGF_REPLY)) {
-	case HAMMER2_MSGF_CREATE:
-	case HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE:
+	switch(msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY)) {
+	case DMSGF_CREATE:
+	case DMSGF_CREATE | DMSGF_DELETE:
 		/*
 		 * New persistant command received.
 		 */
@@ -182,19 +181,19 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		msg->state = state;
 		state->router = msg->router;
 		state->msg = msg;
-		state->rxcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
-		state->txcmd = HAMMER2_MSGF_REPLY;
+		state->rxcmd = msg->any.head.cmd & ~DMSGF_DELETE;
+		state->txcmd = DMSGF_REPLY;
 		RB_INSERT(hammer2_state_tree, &pmp->staterd_tree, state);
 		state->flags |= HAMMER2_STATE_INSERTED;
 		error = 0;
 		break;
-	case HAMMER2_MSGF_DELETE:
+	case DMSGF_DELETE:
 		/*
 		 * Persistent state is expected but might not exist if an
 		 * ABORT+DELETE races the close.
 		 */
 		if (state == NULL) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = EALREADY;
 			} else {
 				kprintf("hammer2_state_msgrx: no state "
@@ -208,8 +207,8 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		 * Handle another ABORT+DELETE case if the msgid has already
 		 * been reused.
 		 */
-		if ((state->rxcmd & HAMMER2_MSGF_CREATE) == 0) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+		if ((state->rxcmd & DMSGF_CREATE) == 0) {
+			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = EALREADY;
 			} else {
 				kprintf("hammer2_state_msgrx: state reused "
@@ -225,17 +224,17 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		 * Check for mid-stream ABORT command received, otherwise
 		 * allow.
 		 */
-		if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+		if (msg->any.head.cmd & DMSGF_ABORT) {
 			if (state == NULL ||
-			    (state->rxcmd & HAMMER2_MSGF_CREATE) == 0) {
+			    (state->rxcmd & DMSGF_CREATE) == 0) {
 				error = EALREADY;
 				break;
 			}
 		}
 		error = 0;
 		break;
-	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_CREATE:
-	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE:
+	case DMSGF_REPLY | DMSGF_CREATE:
+	case DMSGF_REPLY | DMSGF_CREATE | DMSGF_DELETE:
 		/*
 		 * When receiving a reply with CREATE set the original
 		 * persistent state message should already exist.
@@ -248,16 +247,16 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 			error = EINVAL;
 			break;
 		}
-		state->rxcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
+		state->rxcmd = msg->any.head.cmd & ~DMSGF_DELETE;
 		error = 0;
 		break;
-	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_DELETE:
+	case DMSGF_REPLY | DMSGF_DELETE:
 		/*
 		 * Received REPLY+ABORT+DELETE in case where msgid has
 		 * already been fully closed, ignore the message.
 		 */
 		if (state == NULL) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = EALREADY;
 			} else {
 				kprintf("hammer2_state_msgrx: no state match "
@@ -272,8 +271,8 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		 * already been reused for an unrelated message,
 		 * ignore the message.
 		 */
-		if ((state->rxcmd & HAMMER2_MSGF_CREATE) == 0) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+		if ((state->rxcmd & DMSGF_CREATE) == 0) {
+			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = EALREADY;
 			} else {
 				kprintf("hammer2_state_msgrx: state reused "
@@ -284,13 +283,13 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		}
 		error = 0;
 		break;
-	case HAMMER2_MSGF_REPLY:
+	case DMSGF_REPLY:
 		/*
 		 * Check for mid-stream ABORT reply received to sent command.
 		 */
-		if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+		if (msg->any.head.cmd & DMSGF_ABORT) {
 			if (state == NULL ||
-			    (state->rxcmd & HAMMER2_MSGF_CREATE) == 0) {
+			    (state->rxcmd & DMSGF_CREATE) == 0) {
 				error = EALREADY;
 				break;
 			}
@@ -310,21 +309,21 @@ hammer2_state_cleanuprx(hammer2_msg_t *msg)
 
 	if ((state = msg->state) == NULL) {
 		hammer2_msg_free(msg);
-	} else if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
+	} else if (msg->any.head.cmd & DMSGF_DELETE) {
 		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
-		state->rxcmd |= HAMMER2_MSGF_DELETE;
-		if (state->txcmd & HAMMER2_MSGF_DELETE) {
+		state->rxcmd |= DMSGF_DELETE;
+		if (state->txcmd & DMSGF_DELETE) {
 			if (state->msg == msg)
 				state->msg = NULL;
 			KKASSERT(state->flags & HAMMER2_STATE_INSERTED);
-			if (state->rxcmd & HAMMER2_MSGF_REPLY) {
+			if (state->rxcmd & DMSGF_REPLY) {
 				KKASSERT(msg->any.head.cmd &
-					 HAMMER2_MSGF_REPLY);
+					 DMSGF_REPLY);
 				RB_REMOVE(hammer2_state_tree,
 					  &pmp->statewr_tree, state);
 			} else {
 				KKASSERT((msg->any.head.cmd &
-					  HAMMER2_MSGF_REPLY) == 0);
+					  DMSGF_REPLY) == 0);
 				RB_REMOVE(hammer2_state_tree,
 					  &pmp->staterd_tree, state);
 			}
@@ -382,8 +381,8 @@ hammer2_state_msgtx(hammer2_msg_t *msg)
 	/*
 	 * Short-cut one-off or mid-stream messages (state may be NULL).
 	 */
-	if ((msg->any.head.cmd & (HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE |
-				  HAMMER2_MSGF_ABORT)) == 0) {
+	if ((msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE |
+				  DMSGF_ABORT)) == 0) {
 		lockmgr(&pmp->msglk, LK_RELEASE);
 		return(0);
 	}
@@ -393,10 +392,10 @@ hammer2_state_msgtx(hammer2_msg_t *msg)
 	 * Switch on CREATE, DELETE, REPLY, and also handle ABORT from
 	 * inside the case statements.
 	 */
-	switch(msg->any.head.cmd & (HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE |
-				    HAMMER2_MSGF_REPLY)) {
-	case HAMMER2_MSGF_CREATE:
-	case HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE:
+	switch(msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE |
+				    DMSGF_REPLY)) {
+	case DMSGF_CREATE:
+	case DMSGF_CREATE | DMSGF_DELETE:
 		/*
 		 * Insert the new persistent message state and mark
 		 * half-closed if DELETE is set.  Since this is a new
@@ -408,17 +407,17 @@ hammer2_state_msgtx(hammer2_msg_t *msg)
 		 *     on-transmit.
 		 */
 		KKASSERT(state != NULL);
-		state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
-		state->rxcmd = HAMMER2_MSGF_REPLY;
+		state->txcmd = msg->any.head.cmd & ~DMSGF_DELETE;
+		state->rxcmd = DMSGF_REPLY;
 		error = 0;
 		break;
-	case HAMMER2_MSGF_DELETE:
+	case DMSGF_DELETE:
 		/*
 		 * Sent ABORT+DELETE in case where msgid has already
 		 * been fully closed, ignore the message.
 		 */
 		if (state == NULL) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = EALREADY;
 			} else {
 				kprintf("hammer2_state_msgtx: no state match "
@@ -435,8 +434,8 @@ hammer2_state_msgtx(hammer2_msg_t *msg)
 		 * already been reused for an unrelated message,
 		 * ignore the message.
 		 */
-		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+		if ((state->txcmd & DMSGF_CREATE) == 0) {
+			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = EALREADY;
 			} else {
 				kprintf("hammer2_state_msgtx: state reused "
@@ -451,17 +450,17 @@ hammer2_state_msgtx(hammer2_msg_t *msg)
 		/*
 		 * Check for mid-stream ABORT command sent
 		 */
-		if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+		if (msg->any.head.cmd & DMSGF_ABORT) {
 			if (state == NULL ||
-			    (state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
+			    (state->txcmd & DMSGF_CREATE) == 0) {
 				error = EALREADY;
 				break;
 			}
 		}
 		error = 0;
 		break;
-	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_CREATE:
-	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE:
+	case DMSGF_REPLY | DMSGF_CREATE:
+	case DMSGF_REPLY | DMSGF_CREATE | DMSGF_DELETE:
 		/*
 		 * When transmitting a reply with CREATE set the original
 		 * persistent state message should already exist.
@@ -472,10 +471,10 @@ hammer2_state_msgtx(hammer2_msg_t *msg)
 			error = EINVAL;
 			break;
 		}
-		state->txcmd = msg->any.head.cmd & ~HAMMER2_MSGF_DELETE;
+		state->txcmd = msg->any.head.cmd & ~DMSGF_DELETE;
 		error = 0;
 		break;
-	case HAMMER2_MSGF_REPLY | HAMMER2_MSGF_DELETE:
+	case DMSGF_REPLY | DMSGF_DELETE:
 		/*
 		 * When transmitting a reply with DELETE set the original
 		 * persistent state message should already exist.
@@ -487,7 +486,7 @@ hammer2_state_msgtx(hammer2_msg_t *msg)
 		 * already been fully closed, ignore the message.
 		 */
 		if (state == NULL) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = EALREADY;
 			} else {
 				kprintf("hammer2_state_msgtx: no state match "
@@ -501,8 +500,8 @@ hammer2_state_msgtx(hammer2_msg_t *msg)
 		 * Sent REPLY+ABORT+DELETE in case where msgid has already
 		 * been reused for an unrelated message, ignore the message.
 		 */
-		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
-			if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+		if ((state->txcmd & DMSGF_CREATE) == 0) {
+			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = EALREADY;
 			} else {
 				kprintf("hammer2_state_msgtx: state reused "
@@ -513,15 +512,15 @@ hammer2_state_msgtx(hammer2_msg_t *msg)
 		}
 		error = 0;
 		break;
-	case HAMMER2_MSGF_REPLY:
+	case DMSGF_REPLY:
 		/*
 		 * Check for mid-stream ABORT reply sent.
 		 *
 		 * One-off REPLY messages are allowed for e.g. status updates.
 		 */
-		if (msg->any.head.cmd & HAMMER2_MSGF_ABORT) {
+		if (msg->any.head.cmd & DMSGF_ABORT) {
 			if (state == NULL ||
-			    (state->txcmd & HAMMER2_MSGF_CREATE) == 0) {
+			    (state->txcmd & DMSGF_CREATE) == 0) {
 				error = EALREADY;
 				break;
 			}
@@ -541,21 +540,21 @@ hammer2_state_cleanuptx(hammer2_msg_t *msg)
 
 	if ((state = msg->state) == NULL) {
 		hammer2_msg_free(msg);
-	} else if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
+	} else if (msg->any.head.cmd & DMSGF_DELETE) {
 		lockmgr(&pmp->msglk, LK_EXCLUSIVE);
-		state->txcmd |= HAMMER2_MSGF_DELETE;
-		if (state->rxcmd & HAMMER2_MSGF_DELETE) {
+		state->txcmd |= DMSGF_DELETE;
+		if (state->rxcmd & DMSGF_DELETE) {
 			if (state->msg == msg)
 				state->msg = NULL;
 			KKASSERT(state->flags & HAMMER2_STATE_INSERTED);
-			if (state->txcmd & HAMMER2_MSGF_REPLY) {
+			if (state->txcmd & DMSGF_REPLY) {
 				KKASSERT(msg->any.head.cmd &
-					 HAMMER2_MSGF_REPLY);
+					 DMSGF_REPLY);
 				RB_REMOVE(hammer2_state_tree,
 					  &pmp->staterd_tree, state);
 			} else {
 				KKASSERT((msg->any.head.cmd &
-					  HAMMER2_MSGF_REPLY) == 0);
+					  DMSGF_REPLY) == 0);
 				RB_REMOVE(hammer2_state_tree,
 					  &pmp->statewr_tree, state);
 			}
@@ -594,18 +593,18 @@ hammer2_msg_alloc(hammer2_router_t *router, uint32_t cmd,
 	hammer2_state_t *state;
 	size_t hbytes;
 
-	hbytes = (cmd & HAMMER2_MSGF_SIZE) * HAMMER2_MSG_ALIGN;
+	hbytes = (cmd & DMSGF_SIZE) * DMSG_ALIGN;
 	msg = kmalloc(offsetof(struct hammer2_msg, any) + hbytes,
 		      pmp->mmsg, M_WAITOK | M_ZERO);
 	msg->hdr_size = hbytes;
 	msg->router = router;
 	KKASSERT(router != NULL);
-	msg->any.head.magic = HAMMER2_MSGHDR_MAGIC;
+	msg->any.head.magic = DMSG_HDR_MAGIC;
 	msg->any.head.source = 0;
 	msg->any.head.target = router->target;
 	msg->any.head.cmd = cmd;
 
-	if (cmd & HAMMER2_MSGF_CREATE) {
+	if (cmd & DMSGF_CREATE) {
 		/*
 		 * New transaction, requires tracking state and a unique
 		 * msgid to be allocated.
@@ -743,7 +742,7 @@ hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error)
 	/*
 	 * Reply with a simple error code and terminate the transaction.
 	 */
-	cmd = HAMMER2_LNK_ERROR;
+	cmd = DMSG_LNK_ERROR;
 
 	/*
 	 * Check if our direction has even been initiated yet, set CREATE.
@@ -755,21 +754,21 @@ hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error)
 	 * doing anything.
 	 */
 	if (state) {
-		if (state->txcmd & HAMMER2_MSGF_DELETE)
+		if (state->txcmd & DMSGF_DELETE)
 			return;
-		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
-			cmd |= HAMMER2_MSGF_CREATE;
-		if (state->txcmd & HAMMER2_MSGF_REPLY)
-			cmd |= HAMMER2_MSGF_REPLY;
-		cmd |= HAMMER2_MSGF_DELETE;
+		if ((state->txcmd & DMSGF_CREATE) == 0)
+			cmd |= DMSGF_CREATE;
+		if (state->txcmd & DMSGF_REPLY)
+			cmd |= DMSGF_REPLY;
+		cmd |= DMSGF_DELETE;
 	} else {
-		if ((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0)
-			cmd |= HAMMER2_MSGF_REPLY;
+		if ((msg->any.head.cmd & DMSGF_REPLY) == 0)
+			cmd |= DMSGF_REPLY;
 	}
 	kprintf("MSG_REPLY state=%p msg %08x\n", state, cmd);
 
 	/* XXX messy mask cmd to avoid allocating state */
-	nmsg = hammer2_msg_alloc(msg->router, cmd & HAMMER2_MSGF_BASECMDMASK,
+	nmsg = hammer2_msg_alloc(msg->router, cmd & DMSGF_BASECMDMASK,
 				 NULL, NULL);
 	nmsg->any.head.cmd = cmd;
 	nmsg->any.head.error = error;
@@ -793,7 +792,7 @@ hammer2_msg_result(hammer2_msg_t *msg, uint32_t error)
 	/*
 	 * Return a simple result code, do NOT terminate the transaction.
 	 */
-	cmd = HAMMER2_LNK_ERROR;
+	cmd = DMSG_LNK_ERROR;
 
 	/*
 	 * Check if our direction has even been initiated yet, set CREATE.
@@ -805,20 +804,20 @@ hammer2_msg_result(hammer2_msg_t *msg, uint32_t error)
 	 * doing anything.
 	 */
 	if (state) {
-		if (state->txcmd & HAMMER2_MSGF_DELETE)
+		if (state->txcmd & DMSGF_DELETE)
 			return;
-		if ((state->txcmd & HAMMER2_MSGF_CREATE) == 0)
-			cmd |= HAMMER2_MSGF_CREATE;
-		if (state->txcmd & HAMMER2_MSGF_REPLY)
-			cmd |= HAMMER2_MSGF_REPLY;
+		if ((state->txcmd & DMSGF_CREATE) == 0)
+			cmd |= DMSGF_CREATE;
+		if (state->txcmd & DMSGF_REPLY)
+			cmd |= DMSGF_REPLY;
 		/* continuing transaction, do not set MSGF_DELETE */
 	} else {
-		if ((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0)
-			cmd |= HAMMER2_MSGF_REPLY;
+		if ((msg->any.head.cmd & DMSGF_REPLY) == 0)
+			cmd |= DMSGF_REPLY;
 	}
 
 	/* XXX messy mask cmd to avoid allocating state */
-	nmsg = hammer2_msg_alloc(msg->router, cmd & HAMMER2_MSGF_BASECMDMASK,
+	nmsg = hammer2_msg_alloc(msg->router, cmd & DMSGF_BASECMDMASK,
 				 NULL, NULL);
 	nmsg->any.head.cmd = cmd;
 	nmsg->any.head.error = error;

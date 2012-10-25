@@ -202,8 +202,8 @@ struct h2span_media {
 	uuid_t	mediaid;
 	int	refs;
 	struct h2span_media_config {
-		hammer2_copy_data_t	copy_run;
-		hammer2_copy_data_t	copy_pend;
+		dmsg_vol_data_t		copy_run;
+		dmsg_vol_data_t		copy_pend;
 		pthread_t		thread;
 		pthread_cond_t		cond;
 		int			ctl;
@@ -426,17 +426,17 @@ hammer2_msg_lnk_signal(hammer2_router_t *router __unused)
 void
 hammer2_msg_lnk(hammer2_msg_t *msg)
 {
-	switch(msg->any.head.cmd & HAMMER2_MSGF_BASECMDMASK) {
-	case HAMMER2_LNK_CONN:
+	switch(msg->any.head.cmd & DMSGF_BASECMDMASK) {
+	case DMSG_LNK_CONN:
 		hammer2_lnk_conn(msg);
 		break;
-	case HAMMER2_LNK_SPAN:
+	case DMSG_LNK_SPAN:
 		hammer2_lnk_span(msg);
 		break;
 	default:
 		fprintf(stderr,
 			"MSG_PROTO_LNK: Unknown msg %08x\n", msg->any.head.cmd);
-		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
 		/* state invalid after reply */
 		break;
 	}
@@ -455,9 +455,9 @@ hammer2_lnk_conn(hammer2_msg_t *msg)
 
 	pthread_mutex_lock(&cluster_mtx);
 
-	switch(msg->any.head.cmd & HAMMER2_MSGF_TRANSMASK) {
-	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE:
-	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE | HAMMER2_MSGF_DELETE:
+	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
+	case DMSG_LNK_CONN | DMSGF_CREATE:
+	case DMSG_LNK_CONN | DMSGF_CREATE | DMSGF_DELETE:
 		/*
 		 * On transaction start we allocate a new h2span_conn and
 		 * acknowledge the request, leaving the transaction open.
@@ -495,14 +495,14 @@ hammer2_lnk_conn(hammer2_msg_t *msg)
 		conn->media = media;
 		++media->refs;
 
-		if ((msg->any.head.cmd & HAMMER2_MSGF_DELETE) == 0) {
+		if ((msg->any.head.cmd & DMSGF_DELETE) == 0) {
 			hammer2_msg_result(msg, 0);
 			hammer2_router_signal(msg->router);
 			break;
 		}
 		/* FALL THROUGH */
-	case HAMMER2_LNK_CONN | HAMMER2_MSGF_DELETE:
-	case HAMMER2_LNK_ERROR | HAMMER2_MSGF_DELETE:
+	case DMSG_LNK_CONN | DMSGF_DELETE:
+	case DMSG_LNK_ERROR | DMSGF_DELETE:
 deleteconn:
 		/*
 		 * On transaction terminate we clean out our h2span_conn
@@ -564,7 +564,7 @@ deleteconn:
 		hammer2_msg_reply(msg, 0);
 		/* state invalid after reply */
 		break;
-	case HAMMER2_LNK_VOLCONF:
+	case DMSG_LNK_VOLCONF:
 		/*
 		 * One-way volume-configuration message is transmitted
 		 * over the open LNK_CONN transaction.
@@ -602,9 +602,9 @@ deleteconn:
 		/*
 		 * Failsafe
 		 */
-		if (msg->any.head.cmd & HAMMER2_MSGF_DELETE)
+		if (msg->any.head.cmd & DMSGF_DELETE)
 			goto deleteconn;
-		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	}
 	pthread_mutex_unlock(&cluster_mtx);
@@ -622,14 +622,14 @@ hammer2_lnk_span(hammer2_msg_t *msg)
 	h2span_relay_t *relay;
 	char *alloc = NULL;
 
-	assert((msg->any.head.cmd & HAMMER2_MSGF_REPLY) == 0);
+	assert((msg->any.head.cmd & DMSGF_REPLY) == 0);
 
 	pthread_mutex_lock(&cluster_mtx);
 
 	/*
 	 * On transaction start we initialize the tracking infrastructure
 	 */
-	if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
+	if (msg->any.head.cmd & DMSGF_CREATE) {
 		assert(state->func == NULL);
 		state->func = hammer2_lnk_span;
 
@@ -705,7 +705,7 @@ hammer2_lnk_span(hammer2_msg_t *msg)
 	/*
 	 * On transaction terminate we remove the tracking infrastructure.
 	 */
-	if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
+	if (msg->any.head.cmd & DMSGF_DELETE) {
 		slink = state->any.link;
 		assert(slink != NULL);
 		node = slink->node;
@@ -786,9 +786,9 @@ hammer2_lnk_relay(hammer2_msg_t *msg)
 	hammer2_state_t *state = msg->state;
 	h2span_relay_t *relay;
 
-	assert(msg->any.head.cmd & HAMMER2_MSGF_REPLY);
+	assert(msg->any.head.cmd & DMSGF_REPLY);
 
-	if (msg->any.head.cmd & HAMMER2_MSGF_DELETE) {
+	if (msg->any.head.cmd & DMSGF_DELETE) {
 		pthread_mutex_lock(&cluster_mtx);
 		if ((relay = state->any.relay) != NULL) {
 			hammer2_relay_delete(relay);
@@ -890,7 +890,7 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 	h2span_relay_t *relay;
 	h2span_relay_t *next_relay;
 	h2span_link_t *slink;
-	hammer2_lnk_conn_t *lconn;
+	dmsg_lnk_conn_t *lconn;
 	hammer2_msg_t *msg;
 	int count = 2;
 	uint8_t peer_type;
@@ -993,8 +993,8 @@ hammer2_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		relay->link = slink;
 
 		msg = hammer2_msg_alloc(conn->state->iocom->router, 0,
-					HAMMER2_LNK_SPAN |
-					HAMMER2_MSGF_CREATE,
+					DMSG_LNK_SPAN |
+					DMSGF_CREATE,
 					hammer2_lnk_relay, relay);
 		relay->state = msg->state;
 		relay->router = hammer2_router_alloc();

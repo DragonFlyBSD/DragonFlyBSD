@@ -45,6 +45,9 @@
 #include <sys/wait.h>
 #include <sys/tty.h>
 #include <sys/endian.h>
+#include <sys/sysctl.h>
+#include <sys/udev.h>
+#include <sys/dmsg.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -54,7 +57,6 @@
 #include <vfs/hammer2/hammer2_disk.h>
 #include <vfs/hammer2/hammer2_mount.h>
 #include <vfs/hammer2/hammer2_ioctl.h>
-#include <vfs/hammer2/hammer2_network.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,6 +80,9 @@
 
 #define HAMMER2_DEFAULT_DIR	"/etc/hammer2"
 #define HAMMER2_PATH_REMOTE	HAMMER2_DEFAULT_DIR "/remote"
+#ifndef UDEV_DEVICE_PATH
+#define UDEV_DEVICE_PATH	"/dev/udev"
+#endif
 
 struct hammer2_idmap {
 	struct hammer2_idmap *next;
@@ -128,7 +133,7 @@ int cmd_rsadec(const char **keys, int nkeys);
 /*
  * Msg support functions
  */
-void hammer2_bswap_head(hammer2_msg_hdr_t *head);
+void hammer2_bswap_head(dmsg_hdr_t *head);
 void hammer2_ioq_init(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
 void hammer2_ioq_done(hammer2_iocom_t *iocom, hammer2_ioq_t *ioq);
 void hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,

@@ -66,8 +66,7 @@ cmd_shell(const char *hostname)
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	printf("debug: connected\n");
 
-	msg = hammer2_msg_alloc(iocom.router, 0, HAMMER2_DBG_SHELL,
-				NULL, NULL);
+	msg = hammer2_msg_alloc(iocom.router, 0, DMSG_DBG_SHELL, NULL, NULL);
 	hammer2_msg_write(msg);
 	hammer2_iocom_core(&iocom);
 	fprintf(stderr, "debug: disconnected\n");
@@ -83,9 +82,9 @@ static
 void
 shell_rcvmsg(hammer2_msg_t *msg)
 {
-	switch(msg->any.head.cmd & HAMMER2_MSGF_TRANSMASK) {
-	case HAMMER2_LNK_ERROR:
-	case HAMMER2_LNK_ERROR | HAMMER2_MSGF_REPLY:
+	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
+	case DMSG_LNK_ERROR:
+	case DMSG_LNK_ERROR | DMSGF_REPLY:
 		/*
 		 * One-way non-transactional LNK_ERROR messages typically
 		 * indicate a connection failure.  Error code 0 is used by
@@ -98,17 +97,17 @@ shell_rcvmsg(hammer2_msg_t *msg)
 			write(1, "debug> ", 7);
 		}
 		break;
-	case HAMMER2_LNK_ERROR | HAMMER2_MSGF_DELETE:
+	case DMSG_LNK_ERROR | DMSGF_DELETE:
 		/* ignore termination of LNK_CONN */
 		break;
-	case HAMMER2_DBG_SHELL:
+	case DMSG_DBG_SHELL:
 		/*
 		 * We send the commands, not accept them.
 		 * (one-way message, not transactional)
 		 */
-		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
-	case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
+	case DMSG_DBG_SHELL | DMSGF_REPLY:
 		/*
 		 * A reply from the remote is data we copy to stdout.
 		 * (one-way message, not transactional)
@@ -118,11 +117,11 @@ shell_rcvmsg(hammer2_msg_t *msg)
 			write(1, msg->aux_data, strlen(msg->aux_data));
 		}
 		break;
-	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE:
+	case DMSG_LNK_CONN | DMSGF_CREATE:
 		fprintf(stderr, "Debug Shell is ignoring received LNK_CONN\n");
-		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
-	case HAMMER2_LNK_CONN | HAMMER2_MSGF_DELETE:
+	case DMSG_LNK_CONN | DMSGF_DELETE:
 		break;
 	default:
 		/*
@@ -130,10 +129,10 @@ shell_rcvmsg(hammer2_msg_t *msg)
 		 * transactions with an error.
 		 */
 		fprintf(stderr, "Unknown message: %s\n", hammer2_msg_str(msg));
-		if (msg->any.head.cmd & HAMMER2_MSGF_CREATE)
-			hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
-		if (msg->any.head.cmd & HAMMER2_MSGF_DELETE)
-			hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
+		if (msg->any.head.cmd & DMSGF_CREATE)
+			hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
+		if (msg->any.head.cmd & DMSGF_DELETE)
+			hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	}
 }
@@ -151,7 +150,7 @@ shell_ttymsg(hammer2_iocom_t *iocom)
 		if (len && buf[len - 1] == '\n')
 			buf[--len] = 0;
 		++len;
-		msg = hammer2_msg_alloc(iocom->router, len, HAMMER2_DBG_SHELL,
+		msg = hammer2_msg_alloc(iocom->router, len, DMSG_DBG_SHELL,
 					NULL, NULL);
 		bcopy(buf, msg->aux_data, len);
 		hammer2_msg_write(msg);
@@ -174,8 +173,8 @@ shell_ttymsg(hammer2_iocom_t *iocom)
 void
 hammer2_msg_dbg(hammer2_msg_t *msg)
 {
-	switch(msg->any.head.cmd & HAMMER2_MSGF_CMDSWMASK) {
-	case HAMMER2_DBG_SHELL:
+	switch(msg->any.head.cmd & DMSGF_CMDSWMASK) {
+	case DMSG_DBG_SHELL:
 		/*
 		 * This is a command which we must process.
 		 * When we are finished we generate a final reply.
@@ -185,7 +184,7 @@ hammer2_msg_dbg(hammer2_msg_t *msg)
 		hammer2_shell_parse(msg);
 		hammer2_msg_reply(msg, 0);
 		break;
-	case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
+	case DMSG_DBG_SHELL | DMSGF_REPLY:
 		/*
 		 * A reply just prints out the string.  No newline is added
 		 * (it is expected to be embedded if desired).
@@ -196,7 +195,7 @@ hammer2_msg_dbg(hammer2_msg_t *msg)
 			write(2, msg->aux_data, strlen(msg->aux_data));
 		break;
 	default:
-		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	}
 }
@@ -276,8 +275,7 @@ router_printf(hammer2_router_t *router, const char *ctl, ...)
 	va_end(va);
 	len = strlen(buf) + 1;
 
-	rmsg = hammer2_msg_alloc(router, len, HAMMER2_DBG_SHELL |
-					      HAMMER2_MSGF_REPLY,
+	rmsg = hammer2_msg_alloc(router, len, DMSG_DBG_SHELL | DMSGF_REPLY,
 				 NULL, NULL);
 	bcopy(buf, rmsg->aux_data, len);
 

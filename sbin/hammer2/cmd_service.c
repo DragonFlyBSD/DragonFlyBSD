@@ -35,12 +35,14 @@
 
 #include "hammer2.h"
 
-static void *master_accept(void *data);
+static void *service_thread(void *data);
+static void *udev_thread(void *data);
 static void master_auth_signal(hammer2_router_t *router);
 static void master_auth_rxmsg(hammer2_msg_t *msg);
 static void master_link_signal(hammer2_router_t *router);
 static void master_link_rxmsg(hammer2_msg_t *msg);
 static void master_reconnect(const char *mntpt);
+static void udev_check_disks(void);
 
 /*
  * Start-up the master listener daemon for the machine.
@@ -106,7 +108,7 @@ cmd_service(void)
 	 * In debug mode this call will create the pthread without forking
 	 * and set NormalExit to 0, instead of fork.
 	 */
-	hammer2_demon(master_accept, (void *)(intptr_t)lfd);
+	hammer2_demon(service_thread, (void *)(intptr_t)lfd);
 	if (NormalExit)
 		close(lfd);
 	return 0;
@@ -118,7 +120,7 @@ cmd_service(void)
  */
 static
 void *
-master_accept(void *data)
+service_thread(void *data)
 {
 	struct sockaddr_in asin;
 	socklen_t alen;
@@ -136,6 +138,12 @@ master_accept(void *data)
 	 */
 	setproctitle("hammer2 master listen");
 	pthread_detach(pthread_self());
+
+	/*
+	 * Start up a thread to handle block device monitoring
+	 */
+	thread = NULL;
+	pthread_create(&thread, NULL, udev_thread, NULL);
 
 	/*
 	 * Scan existing hammer2 mounts and reconnect to them using
@@ -160,7 +168,7 @@ master_accept(void *data)
 			break;
 		}
 		thread = NULL;
-		fprintf(stderr, "master_accept: accept fd %d\n", fd);
+		fprintf(stderr, "service_thread: accept fd %d\n", fd);
 		info = malloc(sizeof(*info));
 		bzero(info, sizeof(*info));
 		info->fd = fd;
@@ -168,6 +176,72 @@ master_accept(void *data)
 		pthread_create(&thread, NULL, master_service, info);
 	}
 	return (NULL);
+}
+
+/*
+ * Monitor block devices.  Currently polls every ~10 seconds or so.
+ */
+static
+void *
+udev_thread(void *data __unused)
+{
+	int	fd;
+	int	seq = 0;
+
+	pthread_detach(pthread_self());
+
+	if ((fd = open(UDEV_DEVICE_PATH, O_RDWR)) < 0) {
+		fprintf(stderr, "udev_thread: unable to open \"%s\"\n",
+			UDEV_DEVICE_PATH);
+		pthread_exit(NULL);
+	}
+	udev_check_disks();
+	while (ioctl(fd, UDEVWAIT, &seq) == 0) {
+		udev_check_disks();
+		sleep(1);
+	}
+	return (NULL);
+}
+
+/*
+ * Retrieve the list of disk attachments and attempt to export
+ * them.
+ */
+static
+void
+udev_check_disks(void)
+{
+	char tmpbuf[1024];
+	char *buf = NULL;
+	int error;
+	size_t n;
+
+	for (;;) {
+		n = 0;
+		error = sysctlbyname("kern.disks", NULL, &n, NULL, 0);
+		if (error < 0 || n == 0)
+			break;
+		if (n >= sizeof(tmpbuf))
+			buf = malloc(n + 1);
+		else
+			buf = tmpbuf;
+		error = sysctlbyname("kern.disks", buf, &n, NULL, 0);
+		if (error == 0) {
+			buf[n] = 0;
+			break;
+		}
+		if (buf != tmpbuf) {
+			free(buf);
+			buf = NULL;
+		}
+		if (errno != ENOMEM)
+			break;
+	}
+	if (buf) {
+		fprintf(stderr, "DISKS: %s\n", buf);
+		if (buf != tmpbuf)
+			free(buf);
+	}
 }
 
 /*
@@ -276,8 +350,8 @@ master_auth_signal(hammer2_router_t *router)
 	 *
 	 * XXX put additional authentication states here?
 	 */
-	msg = hammer2_msg_alloc(router, 0, HAMMER2_LNK_CONN |
-					   HAMMER2_MSGF_CREATE,
+	msg = hammer2_msg_alloc(router, 0, DMSG_LNK_CONN |
+					   DMSGF_CREATE,
 				master_auth_conn_rx, NULL);
 	msg->any.lnk_conn.peer_mask = (uint64_t)-1;
 	msg->any.lnk_conn.peer_type = HAMMER2_PEER_CLUSTER;
@@ -294,7 +368,7 @@ static
 void
 master_auth_conn_rx(hammer2_msg_t *msg)
 {
-	if (msg->any.head.cmd & HAMMER2_MSGF_DELETE)
+	if (msg->any.head.cmd & DMSGF_DELETE)
 		hammer2_msg_reply(msg, 0);
 }
 
@@ -342,15 +416,15 @@ master_link_rxmsg(hammer2_msg_t *msg)
 		assert(state->func != NULL);
 		state->func(msg);
 	} else {
-		switch(cmd & HAMMER2_MSGF_PROTOS) {
-		case HAMMER2_MSG_PROTO_LNK:
+		switch(cmd & DMSGF_PROTOS) {
+		case DMSG_PROTO_LNK:
 			hammer2_msg_lnk(msg);
 			break;
-		case HAMMER2_MSG_PROTO_DBG:
+		case DMSG_PROTO_DBG:
 			hammer2_msg_dbg(msg);
 			break;
 		default:
-			hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
+			hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
 			break;
 		}
 	}

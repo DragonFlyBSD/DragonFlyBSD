@@ -63,12 +63,12 @@
 #include <sys/buf2.h>
 #include <sys/signal2.h>
 #include <sys/tree.h>
+#include <sys/dmsg.h>
 
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
 #include "hammer2_ioctl.h"
 #include "hammer2_ccms.h"
-#include "hammer2_network.h"
 
 struct hammer2_chain;
 struct hammer2_inode;
@@ -390,7 +390,7 @@ struct hammer2_msg {
 	size_t		hdr_size;
 	size_t		aux_size;
 	char		*aux_data;
-	hammer2_msg_any_t any;
+	dmsg_any_t	any;
 };
 
 typedef struct hammer2_link hammer2_link_t;

@@ -522,7 +522,7 @@ urandfail:
 	 * zero.  To be safe make sure that bit 7 and bit 6 is zero.
 	 */
 	snprintf(handtx.quickmsg, sizeof(handtx.quickmsg), "Testing 1 2 3");
-	handtx.magic = HAMMER2_MSGHDR_MAGIC;
+	handtx.magic = DMSG_HDR_MAGIC;
 	handtx.version = 1;
 	handtx.flags = 0;
 	assert(sizeof(handtx.verf) * 4 == sizeof(handtx.sess));
@@ -619,7 +619,7 @@ keyxchgfail:
 		goto done;
 	}
 
-	if (handrx.magic == HAMMER2_MSGHDR_MAGIC_REV) {
+	if (handrx.magic == DMSG_HDR_MAGIC_REV) {
 		handrx.version = bswap16(handrx.version);
 		handrx.flags = bswap32(handrx.flags);
 	}
@@ -731,7 +731,7 @@ hammer2_crypto_encrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq,
 	for (i = 0; i < n && nmax; ++i) {
 		used = 0;
 		p_len = iov[i].iov_len;
-		assert((p_len & HAMMER2_MSG_ALIGNMASK) == 0);
+		assert((p_len & DMSG_ALIGNMASK) == 0);
 
 		while (p_len >= HAMMER2_CRYPTO_CHUNK_SIZE &&
 		    nmax >= HAMMER2_CRYPTO_CHUNK_SIZE +

@@ -71,7 +71,7 @@
  */
 struct hammer2_handshake {
 	char pad1[8];		/* 000 */
-	uint16_t magic;		/* 008 HAMMER2_MSGHDR_MAGIC for endian detect */
+	uint16_t magic;		/* 008 DMSG_HDR_MAGIC for endian detect */
 	uint16_t version;	/* 00A hammer2 protocol version */
 	uint32_t flags;		/* 00C protocol extension flags */
 	uint8_t sess[64];	/* 010 512-bit session key */
@@ -85,7 +85,7 @@ struct hammer2_handshake {
 typedef struct hammer2_handshake hammer2_handshake_t;
 
 
-#define HAMMER2_CRYPTO_CHUNK_SIZE		HAMMER2_MSG_ALIGN
+#define HAMMER2_CRYPTO_CHUNK_SIZE		DMSG_ALIGN
 #define HAMMER2_MAX_IV_SIZE			32
 
 #define HAMMER2_CRYPTO_GCM_IV_FIXED_SIZE	4
@@ -161,7 +161,7 @@ struct hammer2_msg {
 	size_t		hdr_size;
 	size_t		aux_size;
 	char		*aux_data;
-	hammer2_msg_any_t any;
+	dmsg_any_t 	any;
 };
 
 typedef struct hammer2_state hammer2_state_t;
@@ -197,7 +197,7 @@ struct hammer2_ioq {
 	char		iv[HAMMER2_MAX_IV_SIZE]; /* encrypt or decrypt iv[] */
 	hammer2_msg_t	*msg;
 	hammer2_msg_queue_t msgq;
-	char		buf[HAMMER2_MSGBUF_SIZE]; /* staging buffer */
+	char		buf[DMSG_BUF_SIZE];	/* staging buffer */
 };
 
 typedef struct hammer2_ioq hammer2_ioq_t;

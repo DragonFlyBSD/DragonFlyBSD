@@ -47,7 +47,6 @@
 #include "hammer2.h"
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
-#include "hammer2_network.h"
 
 struct hammer2_sync_info {
 	int error;
@@ -1054,7 +1053,7 @@ void
 hammer2_cluster_thread_rd(void *arg)
 {
 	hammer2_pfsmount_t *pmp = arg;
-	hammer2_msg_hdr_t hdr;
+	dmsg_hdr_t hdr;
 	hammer2_msg_t *msg;
 	hammer2_state_t *state;
 	size_t hbytes;
@@ -1068,14 +1067,14 @@ hammer2_cluster_thread_rd(void *arg)
 				NULL, 1, UIO_SYSSPACE);
 		if (error)
 			break;
-		if (hdr.magic != HAMMER2_MSGHDR_MAGIC) {
+		if (hdr.magic != DMSG_HDR_MAGIC) {
 			kprintf("hammer2: msgrd: bad magic: %04x\n",
 				hdr.magic);
 			error = EINVAL;
 			break;
 		}
-		hbytes = (hdr.cmd & HAMMER2_MSGF_SIZE) * HAMMER2_MSG_ALIGN;
-		if (hbytes < sizeof(hdr) || hbytes > HAMMER2_MSGAUX_MAX) {
+		hbytes = (hdr.cmd & DMSGF_SIZE) * DMSG_ALIGN;
+		if (hbytes < sizeof(hdr) || hbytes > DMSG_AUX_MAX) {
 			kprintf("hammer2: msgrd: bad header size %zd\n",
 				hbytes);
 			error = EINVAL;
@@ -1083,7 +1082,7 @@ hammer2_cluster_thread_rd(void *arg)
 		}
 		/* XXX messy: mask cmd to avoid allocating state */
 		msg = hammer2_msg_alloc(&pmp->router,
-					hdr.cmd & HAMMER2_MSGF_BASECMDMASK,
+					hdr.cmd & DMSGF_BASECMDMASK,
 					NULL, NULL);
 		msg->any.head = hdr;
 		msg->hdr_size = hbytes;
@@ -1097,8 +1096,8 @@ hammer2_cluster_thread_rd(void *arg)
 				break;
 			}
 		}
-		msg->aux_size = hdr.aux_bytes * HAMMER2_MSG_ALIGN;
-		if (msg->aux_size > HAMMER2_MSGAUX_MAX) {
+		msg->aux_size = hdr.aux_bytes * DMSG_ALIGN;
+		if (msg->aux_size > DMSG_AUX_MAX) {
 			kprintf("hammer2: illegal msg payload size %zd\n",
 				msg->aux_size);
 			error = EINVAL;
@@ -1138,15 +1137,15 @@ hammer2_cluster_thread_rd(void *arg)
 			 */
 			error = msg->state->func(msg->state, msg);
 			hammer2_state_cleanuprx(msg);
-		} else if ((msg->any.head.cmd & HAMMER2_MSGF_PROTOS) ==
-			   HAMMER2_MSG_PROTO_LNK) {
+		} else if ((msg->any.head.cmd & DMSGF_PROTOS) ==
+			   DMSG_PROTO_LNK) {
 			/*
 			 * Message related to the LNK protocol set
 			 */
 			error = hammer2_msg_lnk_rcvmsg(msg);
 			hammer2_state_cleanuprx(msg);
-		} else if ((msg->any.head.cmd & HAMMER2_MSGF_PROTOS) ==
-			   HAMMER2_MSG_PROTO_DBG) {
+		} else if ((msg->any.head.cmd & DMSGF_PROTOS) ==
+			   DMSG_PROTO_DBG) {
 			/*
 			 * Message related to the DBG protocol set
 			 */
@@ -1234,13 +1233,12 @@ hammer2_cluster_thread_wr(void *arg)
 	 * The transaction remains fully open for the duration of the
 	 * connection.
 	 */
-	msg = hammer2_msg_alloc(&pmp->router, HAMMER2_LNK_CONN |
-					      HAMMER2_MSGF_CREATE,
+	msg = hammer2_msg_alloc(&pmp->router, DMSG_LNK_CONN | DMSGF_CREATE,
 				hammer2_msg_conn_reply, pmp);
 	msg->any.lnk_conn.pfs_clid = pmp->iroot->ip_data.pfs_clid;
 	msg->any.lnk_conn.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
 	msg->any.lnk_conn.pfs_type = pmp->iroot->ip_data.pfs_type;
-	msg->any.lnk_conn.proto_version = HAMMER2_SPAN_PROTO_1;
+	msg->any.lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
 	msg->any.lnk_conn.peer_type = pmp->hmp->voldata.peer_type;
 	msg->any.lnk_conn.peer_mask = 1LLU << HAMMER2_PEER_HAMMER2;
 	name_len = pmp->iroot->ip_data.name_len;
@@ -1356,17 +1354,16 @@ hammer2_cluster_thread_wr(void *arg)
 cleanuprd:
 	RB_FOREACH(state, hammer2_state_tree, &pmp->staterd_tree) {
 		if (state->func &&
-		    (state->rxcmd & HAMMER2_MSGF_DELETE) == 0) {
+		    (state->rxcmd & DMSGF_DELETE) == 0) {
 			lockmgr(&pmp->msglk, LK_RELEASE);
-			msg = hammer2_msg_alloc(&pmp->router,
-						HAMMER2_LNK_ERROR,
+			msg = hammer2_msg_alloc(&pmp->router, DMSG_LNK_ERROR,
 						NULL, NULL);
-			if ((state->rxcmd & HAMMER2_MSGF_CREATE) == 0)
-				msg->any.head.cmd |= HAMMER2_MSGF_CREATE;
-			msg->any.head.cmd |= HAMMER2_MSGF_DELETE;
+			if ((state->rxcmd & DMSGF_CREATE) == 0)
+				msg->any.head.cmd |= DMSGF_CREATE;
+			msg->any.head.cmd |= DMSGF_DELETE;
 			msg->state = state;
 			state->rxcmd = msg->any.head.cmd &
-				       ~HAMMER2_MSGF_DELETE;
+				       ~DMSGF_DELETE;
 			msg->state->func(state, msg);
 			hammer2_state_cleanuprx(msg);
 			lockmgr(&pmp->msglk, LK_EXCLUSIVE);
@@ -1391,18 +1388,18 @@ cleanupwr:
 	hammer2_drain_msgq(pmp);
 	RB_FOREACH(state, hammer2_state_tree, &pmp->statewr_tree) {
 		if (state->func &&
-		    (state->rxcmd & HAMMER2_MSGF_DELETE) == 0) {
+		    (state->rxcmd & DMSGF_DELETE) == 0) {
 			lockmgr(&pmp->msglk, LK_RELEASE);
 			msg = hammer2_msg_alloc(&pmp->router,
-						HAMMER2_LNK_ERROR,
+						DMSG_LNK_ERROR,
 						NULL, NULL);
-			if ((state->rxcmd & HAMMER2_MSGF_CREATE) == 0)
-				msg->any.head.cmd |= HAMMER2_MSGF_CREATE;
-			msg->any.head.cmd |= HAMMER2_MSGF_DELETE |
-					     HAMMER2_MSGF_REPLY;
+			if ((state->rxcmd & DMSGF_CREATE) == 0)
+				msg->any.head.cmd |= DMSGF_CREATE;
+			msg->any.head.cmd |= DMSGF_DELETE |
+					     DMSGF_REPLY;
 			msg->state = state;
 			state->rxcmd = msg->any.head.cmd &
-				       ~HAMMER2_MSGF_DELETE;
+				       ~DMSGF_DELETE;
 			msg->state->func(state, msg);
 			hammer2_state_cleanuprx(msg);
 			lockmgr(&pmp->msglk, LK_EXCLUSIVE);
@@ -1493,18 +1490,18 @@ hammer2_clusterctl_wakeup(hammer2_pfsmount_t *pmp)
 static int
 hammer2_msg_lnk_rcvmsg(hammer2_msg_t *msg)
 {
-	switch(msg->any.head.cmd & HAMMER2_MSGF_TRANSMASK) {
-	case HAMMER2_LNK_CONN | HAMMER2_MSGF_CREATE:
+	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
+	case DMSG_LNK_CONN | DMSGF_CREATE:
 		/*
 		 * reply & leave trans open
 		 */
 		kprintf("CONN RECEIVE - (just ignore it)\n");
 		hammer2_msg_result(msg, 0);
 		break;
-	case HAMMER2_LNK_SPAN | HAMMER2_MSGF_CREATE:
+	case DMSG_LNK_SPAN | DMSGF_CREATE:
 		kprintf("SPAN RECEIVE - ADDED FROM CLUSTER\n");
 		break;
-	case HAMMER2_LNK_SPAN | HAMMER2_MSGF_DELETE:
+	case DMSG_LNK_SPAN | DMSGF_DELETE:
 		kprintf("SPAN RECEIVE - DELETED FROM CLUSTER\n");
 		break;
 	default:
@@ -1531,16 +1528,16 @@ hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg)
 
 	kprintf("LNK_CONN REPLY RECEIVED CMD %08x\n", msg->any.head.cmd);
 
-	if (msg->any.head.cmd & HAMMER2_MSGF_CREATE) {
+	if (msg->any.head.cmd & DMSGF_CREATE) {
 		kprintf("LNK_CONN transaction replied to, initiate SPAN\n");
-		rmsg = hammer2_msg_alloc(&pmp->router, HAMMER2_LNK_SPAN |
-						       HAMMER2_MSGF_CREATE,
+		rmsg = hammer2_msg_alloc(&pmp->router, DMSG_LNK_SPAN |
+						       DMSGF_CREATE,
 					hammer2_msg_span_reply, pmp);
 		rmsg->any.lnk_span.pfs_clid = pmp->iroot->ip_data.pfs_clid;
 		rmsg->any.lnk_span.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
 		rmsg->any.lnk_span.pfs_type = pmp->iroot->ip_data.pfs_type;
 		rmsg->any.lnk_span.peer_type = pmp->hmp->voldata.peer_type;
-		rmsg->any.lnk_span.proto_version = HAMMER2_SPAN_PROTO_1;
+		rmsg->any.lnk_span.proto_version = DMSG_SPAN_PROTO_1;
 		name_len = pmp->iroot->ip_data.name_len;
 		if (name_len >= sizeof(rmsg->any.lnk_span.label))
 			name_len = sizeof(rmsg->any.lnk_span.label) - 1;
@@ -1561,8 +1558,8 @@ hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg)
 		}
 		hammer2_voldata_unlock(hmp);
 	}
-	if ((state->txcmd & HAMMER2_MSGF_DELETE) == 0 &&
-	    (msg->any.head.cmd & HAMMER2_MSGF_DELETE)) {
+	if ((state->txcmd & DMSGF_DELETE) == 0 &&
+	    (msg->any.head.cmd & DMSGF_DELETE)) {
 		kprintf("LNK_CONN transaction terminated by remote\n");
 		pmp->conn_state = NULL;
 		hammer2_msg_reply(msg, 0);
@@ -1576,11 +1573,12 @@ hammer2_msg_conn_reply(hammer2_state_t *state, hammer2_msg_t *msg)
 static int
 hammer2_msg_span_reply(hammer2_state_t *state, hammer2_msg_t *msg)
 {
-	hammer2_pfsmount_t *pmp = state->any.pmp;
+	/*hammer2_pfsmount_t *pmp = state->any.pmp;*/
 
-	kprintf("SPAN REPLY - Our sent span was terminated by the remote %08x state %p\n", msg->any.head.cmd, state);
-	if ((state->txcmd & HAMMER2_MSGF_DELETE) == 0 &&
-	    (msg->any.head.cmd & HAMMER2_MSGF_DELETE)) {
+	kprintf("SPAN REPLY - Our sent span was terminated by the "
+		"remote %08x state %p\n", msg->any.head.cmd, state);
+	if ((state->txcmd & DMSGF_DELETE) == 0 &&
+	    (msg->any.head.cmd & DMSGF_DELETE)) {
 		hammer2_msg_reply(msg, 0);
 	}
 	return(0);
@@ -1600,7 +1598,7 @@ hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 	kprintf("volconf update %p\n", pmp->conn_state);
 	if (pmp->conn_state) {
 		kprintf("TRANSMIT VOLCONF VIA OPEN CONN TRANSACTION\n");
-		msg = hammer2_msg_alloc(&pmp->router, HAMMER2_LNK_VOLCONF,
+		msg = hammer2_msg_alloc(&pmp->router, DMSG_LNK_VOLCONF,
 					NULL, NULL);
 		msg->state = pmp->conn_state;
 		msg->any.lnk_volconf.copy = hmp->voldata.copyinfo[index];

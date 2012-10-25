@@ -3,7 +3,6 @@
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
- * by Venkatesh Srinivas <vsrinivas@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,11 +31,18 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef VFS_HAMMER2_NETWORK_H_
-#define VFS_HAMMER2_NETWORK_H_
 
-#ifndef _VFS_HAMMER2_DISK_H_
-#include "hammer2_disk.h"
+#ifndef _SYS_DMSG_H_
+#define _SYS_DMSG_H_
+
+#ifndef _SYS_MALLOC_H_
+#include <sys/malloc.h>
+#endif
+#ifndef _SYS_TREE_H_
+#include <sys/tree.h>
+#endif
+#ifndef _SYS_UUID_H_
+#include <sys/uuid.h>
 #endif
 
 /*
@@ -147,7 +153,7 @@
  * --
  *
  * All base and extended message headers are 64-byte aligned, and all
- * transports must support extended message headers up to HAMMER2_MSGHDR_MAX.
+ * transports must support extended message headers up to DMSG_HDR_MAX.
  * Currently we allow extended message headers up to 2048 bytes.  Note
  * that the extended header size is encoded in the 'cmd' field of the header.
  *
@@ -193,7 +199,7 @@
  * multiple copies of one-way messages in higher protocol layers (potentially
  * out of order, too).
  */
-struct hammer2_msg_hdr {
+struct dmsg_hdr {
 	uint16_t	magic;		/* 00 sanity, synchro, endian */
 	uint16_t	reserved02;	/* 02 */
 	uint32_t	salt;		/* 04 random salt helps w/crypto */
@@ -211,21 +217,20 @@ struct hammer2_msg_hdr {
 	uint32_t	hdr_crc;	/* 3C (aligned) extended header crc */
 };
 
-typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
+typedef struct dmsg_hdr dmsg_hdr_t;
 
-#define HAMMER2_MSGHDR_MAGIC		0x4832
-#define HAMMER2_MSGHDR_MAGIC_REV	0x3248
-#define HAMMER2_MSGHDR_CRCOFF		offsetof(hammer2_msg_hdr_t, salt)
-#define HAMMER2_MSGHDR_CRCBYTES		(sizeof(hammer2_msg_hdr_t) - 	\
-					 HAMMER2_MSGHDR_CRCOFF)
+#define DMSG_HDR_MAGIC		0x4832
+#define DMSG_HDR_MAGIC_REV	0x3248
+#define DMSG_HDR_CRCOFF		offsetof(dmsg_hdr_t, salt)
+#define DMSG_HDR_CRCBYTES	(sizeof(dmsg_hdr_t) - DMSG_HDR_CRCOFF)
 
 /*
  * Administrative protocol limits.
  */
-#define HAMMER2_MSGHDR_MAX		2048	/* <= 65535 */
-#define HAMMER2_MSGAUX_MAX		65536	/* <= 1MB */
-#define HAMMER2_MSGBUF_SIZE		(HAMMER2_MSGHDR_MAX * 4)
-#define HAMMER2_MSGBUF_MASK		(HAMMER2_MSGBUF_SIZE - 1)
+#define DMSG_HDR_MAX		2048	/* <= 65535 */
+#define DMSG_AUX_MAX		65536	/* <= 1MB */
+#define DMSG_BUF_SIZE		(DMSG_HDR_MAX * 4)
+#define DMSG_BUF_MASK		(DMSG_BUF_SIZE - 1)
 
 /*
  * The message (cmd) field also encodes various flags and the total size
@@ -233,82 +238,83 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
  * persistency and structural settings for every command simply by
  * switch()ing on the (cmd) field.
  */
-#define HAMMER2_MSGF_CREATE		0x80000000U	/* msg start */
-#define HAMMER2_MSGF_DELETE		0x40000000U	/* msg end */
-#define HAMMER2_MSGF_REPLY		0x20000000U	/* reply path */
-#define HAMMER2_MSGF_ABORT		0x10000000U	/* abort req */
-#define HAMMER2_MSGF_AUXOOB		0x08000000U	/* aux-data is OOB */
-#define HAMMER2_MSGF_FLAG2		0x04000000U
-#define HAMMER2_MSGF_FLAG1		0x02000000U
-#define HAMMER2_MSGF_FLAG0		0x01000000U
+#define DMSGF_CREATE		0x80000000U	/* msg start */
+#define DMSGF_DELETE		0x40000000U	/* msg end */
+#define DMSGF_REPLY		0x20000000U	/* reply path */
+#define DMSGF_ABORT		0x10000000U	/* abort req */
+#define DMSGF_AUXOOB		0x08000000U	/* aux-data is OOB */
+#define DMSGF_FLAG2		0x04000000U
+#define DMSGF_FLAG1		0x02000000U
+#define DMSGF_FLAG0		0x01000000U
 
-#define HAMMER2_MSGF_FLAGS		0xFF000000U	/* all flags */
-#define HAMMER2_MSGF_PROTOS		0x00F00000U	/* all protos */
-#define HAMMER2_MSGF_CMDS		0x000FFF00U	/* all cmds */
-#define HAMMER2_MSGF_SIZE		0x000000FFU	/* N*32 */
+#define DMSGF_FLAGS		0xFF000000U	/* all flags */
+#define DMSGF_PROTOS		0x00F00000U	/* all protos */
+#define DMSGF_CMDS		0x000FFF00U	/* all cmds */
+#define DMSGF_SIZE		0x000000FFU	/* N*32 */
 
-#define HAMMER2_MSGF_CMDSWMASK		(HAMMER2_MSGF_CMDS |	\
-					 HAMMER2_MSGF_SIZE |	\
-					 HAMMER2_MSGF_PROTOS |	\
-					 HAMMER2_MSGF_REPLY)
+#define DMSGF_CMDSWMASK		(DMSGF_CMDS |	\
+					 DMSGF_SIZE |	\
+					 DMSGF_PROTOS |	\
+					 DMSGF_REPLY)
 
-#define HAMMER2_MSGF_BASECMDMASK	(HAMMER2_MSGF_CMDS |	\
-					 HAMMER2_MSGF_SIZE |	\
-					 HAMMER2_MSGF_PROTOS)
+#define DMSGF_BASECMDMASK	(DMSGF_CMDS |	\
+					 DMSGF_SIZE |	\
+					 DMSGF_PROTOS)
 
-#define HAMMER2_MSGF_TRANSMASK		(HAMMER2_MSGF_CMDS |	\
-					 HAMMER2_MSGF_SIZE |	\
-					 HAMMER2_MSGF_PROTOS |	\
-					 HAMMER2_MSGF_REPLY |	\
-					 HAMMER2_MSGF_CREATE |	\
-					 HAMMER2_MSGF_DELETE)
+#define DMSGF_TRANSMASK		(DMSGF_CMDS |	\
+					 DMSGF_SIZE |	\
+					 DMSGF_PROTOS |	\
+					 DMSGF_REPLY |	\
+					 DMSGF_CREATE |	\
+					 DMSGF_DELETE)
 
-#define HAMMER2_MSG_PROTO_LNK		0x00000000U
-#define HAMMER2_MSG_PROTO_DBG		0x00100000U
-#define HAMMER2_MSG_PROTO_DOM		0x00200000U
-#define HAMMER2_MSG_PROTO_CAC		0x00300000U
-#define HAMMER2_MSG_PROTO_QRM		0x00400000U
-#define HAMMER2_MSG_PROTO_BLK		0x00500000U
-#define HAMMER2_MSG_PROTO_VOP		0x00600000U
+#define DMSG_PROTO_LNK		0x00000000U
+#define DMSG_PROTO_DBG		0x00100000U
+#define DMSG_PROTO_DOM		0x00200000U
+#define DMSG_PROTO_CAC		0x00300000U
+#define DMSG_PROTO_QRM		0x00400000U
+#define DMSG_PROTO_BLK		0x00500000U
+#define DMSG_PROTO_VOP		0x00600000U
 
 /*
  * Message command constructors, sans flags
  */
-#define HAMMER2_MSG_ALIGN		64
-#define HAMMER2_MSG_ALIGNMASK		(HAMMER2_MSG_ALIGN - 1)
-#define HAMMER2_MSG_DOALIGN(bytes)	(((bytes) + HAMMER2_MSG_ALIGNMASK) & \
-					 ~HAMMER2_MSG_ALIGNMASK)
-#define HAMMER2_MSG_HDR_ENCODE(elm)	(((uint32_t)sizeof(struct elm) + \
-					  HAMMER2_MSG_ALIGNMASK) /	\
-				         HAMMER2_MSG_ALIGN)
+#define DMSG_ALIGN		64
+#define DMSG_ALIGNMASK		(DMSG_ALIGN - 1)
+#define DMSG_DOALIGN(bytes)	(((bytes) + DMSG_ALIGNMASK) &		\
+				 ~DMSG_ALIGNMASK)
 
-#define HAMMER2_MSG_LNK(cmd, elm)	(HAMMER2_MSG_PROTO_LNK |	\
-					 ((cmd) << 8) | 		\
-					 HAMMER2_MSG_HDR_ENCODE(elm))
+#define DMSG_HDR_ENCODE(elm)	(((uint32_t)sizeof(struct elm) +	\
+				  DMSG_ALIGNMASK) /			\
+				 DMSG_ALIGN)
 
-#define HAMMER2_MSG_DBG(cmd, elm)	(HAMMER2_MSG_PROTO_DBG |	\
+#define DMSG_LNK(cmd, elm)	(DMSG_PROTO_LNK |			\
 					 ((cmd) << 8) | 		\
-					 HAMMER2_MSG_HDR_ENCODE(elm))
+					 DMSG_HDR_ENCODE(elm))
 
-#define HAMMER2_MSG_DOM(cmd, elm)	(HAMMER2_MSG_PROTO_DOM |	\
+#define DMSG_DBG(cmd, elm)	(DMSG_PROTO_DBG |			\
 					 ((cmd) << 8) | 		\
-					 HAMMER2_MSG_HDR_ENCODE(elm))
+					 DMSG_HDR_ENCODE(elm))
 
-#define HAMMER2_MSG_CAC(cmd, elm)	(HAMMER2_MSG_PROTO_CAC |	\
+#define DMSG_DOM(cmd, elm)	(DMSG_PROTO_DOM |			\
 					 ((cmd) << 8) | 		\
-					 HAMMER2_MSG_HDR_ENCODE(elm))
+					 DMSG_HDR_ENCODE(elm))
 
-#define HAMMER2_MSG_QRM(cmd, elm)	(HAMMER2_MSG_PROTO_QRM |	\
+#define DMSG_CAC(cmd, elm)	(DMSG_PROTO_CAC |			\
 					 ((cmd) << 8) | 		\
-					 HAMMER2_MSG_HDR_ENCODE(elm))
+					 DMSG_HDR_ENCODE(elm))
 
-#define HAMMER2_MSG_BLK(cmd, elm)	(HAMMER2_MSG_PROTO_BLK |	\
+#define DMSG_QRM(cmd, elm)	(DMSG_PROTO_QRM |			\
 					 ((cmd) << 8) | 		\
-					 HAMMER2_MSG_HDR_ENCODE(elm))
+					 DMSG_HDR_ENCODE(elm))
 
-#define HAMMER2_MSG_VOP(cmd, elm)	(HAMMER2_MSG_PROTO_VOP |	\
+#define DMSG_BLK(cmd, elm)	(DMSG_PROTO_BLK |			\
 					 ((cmd) << 8) | 		\
-					 HAMMER2_MSG_HDR_ENCODE(elm))
+					 DMSG_HDR_ENCODE(elm))
+
+#define DMSG_VOP(cmd, elm)	(DMSG_PROTO_VOP |			\
+					 ((cmd) << 8) | 		\
+					 DMSG_HDR_ENCODE(elm))
 
 /*
  * Link layer ops basically talk to just the other side of a direct
@@ -346,13 +352,13 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
  *		  service daemon, and any live configuration change
  *		  thereafter.
  */
-#define HAMMER2_LNK_PAD		HAMMER2_MSG_LNK(0x000, hammer2_msg_hdr)
-#define HAMMER2_LNK_PING	HAMMER2_MSG_LNK(0x001, hammer2_msg_hdr)
-#define HAMMER2_LNK_AUTH	HAMMER2_MSG_LNK(0x010, hammer2_lnk_auth)
-#define HAMMER2_LNK_CONN	HAMMER2_MSG_LNK(0x011, hammer2_lnk_conn)
-#define HAMMER2_LNK_SPAN	HAMMER2_MSG_LNK(0x012, hammer2_lnk_span)
-#define HAMMER2_LNK_VOLCONF	HAMMER2_MSG_LNK(0x020, hammer2_lnk_volconf)
-#define HAMMER2_LNK_ERROR	HAMMER2_MSG_LNK(0xFFF, hammer2_msg_hdr)
+#define DMSG_LNK_PAD		DMSG_LNK(0x000, dmsg_hdr)
+#define DMSG_LNK_PING		DMSG_LNK(0x001, dmsg_hdr)
+#define DMSG_LNK_AUTH		DMSG_LNK(0x010, dmsg_lnk_auth)
+#define DMSG_LNK_CONN		DMSG_LNK(0x011, dmsg_lnk_conn)
+#define DMSG_LNK_SPAN		DMSG_LNK(0x012, dmsg_lnk_span)
+#define DMSG_LNK_VOLCONF	DMSG_LNK(0x020, dmsg_lnk_volconf)
+#define DMSG_LNK_ERROR		DMSG_LNK(0xFFF, dmsg_hdr)
 
 /*
  * LNK_CONN - Register connection for SPAN (transaction, left open)
@@ -368,8 +374,8 @@ typedef struct hammer2_msg_hdr hammer2_msg_hdr_t;
  * not be executed on the connection, nor is this message a promise that the
  * sending end is a client or node of a cluster.
  */
-struct hammer2_lnk_auth {
-	hammer2_msg_hdr_t head;
+struct dmsg_lnk_auth {
+	dmsg_hdr_t	head;
 	char		dummy[64];
 };
 
@@ -380,8 +386,8 @@ struct hammer2_lnk_auth {
  *
  * peer_mask serves to filter the SPANs we receive by peer.  A cluster
  * controller typically sets this to (uint64_t)-1, a block devfs
- * interface might set it to 1 << HAMMER2_PEER_DISK, and a hammer2
- * mount might set it to 1 << HAMMER2_PEER_HAMMER2.
+ * interface might set it to 1 << DMSG_PEER_DISK, and a hammer2
+ * mount might set it to 1 << DMSG_PEER_HAMMER2.
  *
  * mediaid allows multiple (e.g. HAMMER2) connections belonging to the same
  * media, in terms of LNK_VOLCONF updates.
@@ -389,17 +395,17 @@ struct hammer2_lnk_auth {
  * pfs_clid, pfs_fsid, pfs_type, and label are peer-specific and must be
  * left empty (zero-fill) if not supported by a particular peer.
  *
- * HAMMER2_PEER_CLUSTER		filter: none
- * HAMMER2_PEER_DISK		filter: label
- * HAMMER2_PEER_HAMMER2		filter: pfs_clid if not empty, and label
+ * DMSG_PEER_CLUSTER		filter: none
+ * DMSG_PEER_DISK		filter: label
+ * DMSG_PEER_HAMMER2		filter: pfs_clid if not empty, and label
  */
-struct hammer2_lnk_conn {
-	hammer2_msg_hdr_t head;
+struct dmsg_lnk_conn {
+	dmsg_hdr_t	head;
 	uuid_t		mediaid;	/* media configuration id */
 	uuid_t		pfs_clid;	/* rendezvous pfs uuid */
 	uuid_t		pfs_fsid;	/* unique pfs uuid */
 	uint64_t	peer_mask;	/* PEER mask for SPAN filtering */
-	uint8_t		peer_type;	/* see HAMMER2_PEER_xxx */
+	uint8_t		peer_type;	/* see DMSG_PEER_xxx */
 	uint8_t		pfs_type;	/* pfs type */
 	uint16_t	proto_version;	/* high level protocol support */
 	uint32_t	status;		/* status flags */
@@ -409,7 +415,7 @@ struct hammer2_lnk_conn {
 	char		label[256];	/* PFS label (can be wildcard) */
 };
 
-typedef struct hammer2_lnk_conn hammer2_lnk_conn_t;
+typedef struct dmsg_lnk_conn dmsg_lnk_conn_t;
 
 /*
  * LNK_SPAN - Relay a SPAN (transaction, left open)
@@ -453,8 +459,8 @@ typedef struct hammer2_lnk_conn hammer2_lnk_conn_t;
  *		   only contain incremental changes to pfs_type, with the
  *		   label field containing a text status.
  */
-struct hammer2_lnk_span {
-	hammer2_msg_hdr_t head;
+struct dmsg_lnk_span {
+	dmsg_hdr_t	head;
 	uuid_t		pfs_clid;	/* rendezvous pfs uuid */
 	uuid_t		pfs_fsid;	/* unique pfs uuid */
 	uint8_t		pfs_type;	/* PFS type */
@@ -467,23 +473,74 @@ struct hammer2_lnk_span {
 	char		label[256];	/* PFS label (can be wildcard) */
 };
 
-typedef struct hammer2_lnk_span hammer2_lnk_span_t;
+typedef struct dmsg_lnk_span dmsg_lnk_span_t;
 
-#define HAMMER2_SPAN_PROTO_1	1
+#define DMSG_SPAN_PROTO_1	1
 
 /*
  * LNK_VOLCONF
  */
-struct hammer2_lnk_volconf {
-	hammer2_msg_hdr_t	head;
-	hammer2_copy_data_t     copy;	/* copy spec */
+
+/*
+ * All HAMMER2 directories directly under the super-root on your local
+ * media can be mounted separately, even if they share the same physical
+ * device.
+ *
+ * When you do a HAMMER2 mount you are effectively tying into a HAMMER2
+ * cluster via local media.  The local media does not have to participate
+ * in the cluster, other than to provide the hammer2_copy_data[] array and
+ * root inode for the mount.
+ *
+ * This is important: The mount device path you specify serves to bootstrap
+ * your entry into the cluster, but your mount will make active connections
+ * to ALL copy elements in the hammer2_copy_data[] array which match the
+ * PFSID of the directory in the super-root that you specified.  The local
+ * media path does not have to be mentioned in this array but becomes part
+ * of the cluster based on its type and access rights.  ALL ELEMENTS ARE
+ * TREATED ACCORDING TO TYPE NO MATTER WHICH ONE YOU MOUNT FROM.
+ *
+ * The actual cluster may be far larger than the elements you list in the
+ * hammer2_copy_data[] array.  You list only the elements you wish to
+ * directly connect to and you are able to access the rest of the cluster
+ * indirectly through those connections.
+ *
+ * This structure must be exactly 128 bytes long.
+ *
+ * WARNING!  dmsg_vol_data is embedded in the hammer2 media volume header
+ */
+struct dmsg_vol_data {
+	uint8_t	copyid;		/* 00	 copyid 0-255 (must match slot) */
+	uint8_t inprog;		/* 01	 operation in progress, or 0 */
+	uint8_t chain_to;	/* 02	 operation chaining to, or 0 */
+	uint8_t chain_from;	/* 03	 operation chaining from, or 0 */
+	uint16_t flags;		/* 04-05 flags field */
+	uint8_t error;		/* 06	 last operational error */
+	uint8_t priority;	/* 07	 priority and round-robin flag */
+	uint8_t remote_pfs_type;/* 08	 probed direct remote PFS type */
+	uint8_t reserved08[23];	/* 09-1F */
+	uuid_t	pfs_clid;	/* 20-2F copy target must match this uuid */
+	uint8_t label[16];	/* 30-3F import/export label */
+	uint8_t path[64];	/* 40-7F target specification string or key */
+};
+
+typedef struct dmsg_vol_data dmsg_vol_data_t;
+
+#define DMSG_VOLF_ENABLED	0x0001
+#define DMSG_VOLF_INPROG	0x0002
+#define DMSG_VOLF_CONN_RR	0x80	/* round-robin at same priority */
+#define DMSG_VOLF_CONN_EF	0x40	/* media errors flagged */
+#define DMSG_VOLF_CONN_PRI	0x0F	/* select priority 0-15 (15=best) */
+
+struct dmsg_lnk_volconf {
+	dmsg_hdr_t		head;
+	dmsg_vol_data_t		copy;	/* copy spec */
 	int32_t			index;
 	int32_t			unused01;
 	uuid_t			mediaid;
 	int64_t			reserved02[32];
 };
 
-typedef struct hammer2_lnk_volconf hammer2_lnk_volconf_t;
+typedef struct dmsg_lnk_volconf dmsg_lnk_volconf_t;
 
 /*
  * Debug layer ops operate on any link
@@ -491,12 +548,12 @@ typedef struct hammer2_lnk_volconf hammer2_lnk_volconf_t;
  * SHELL	- Persist stream, access the debug shell on the target
  *		  registration.  Multiple shells can be operational.
  */
-#define HAMMER2_DBG_SHELL	HAMMER2_MSG_DBG(0x001, hammer2_dbg_shell)
+#define DMSG_DBG_SHELL		DMSG_DBG(0x001, dmsg_dbg_shell)
 
-struct hammer2_dbg_shell {
-	hammer2_msg_hdr_t	head;
+struct dmsg_dbg_shell {
+	dmsg_hdr_t	head;
 };
-typedef struct hammer2_dbg_shell hammer2_dbg_shell_t;
+typedef struct dmsg_dbg_shell dmsg_dbg_shell_t;
 
 /*
  * Domain layer ops operate on any link, link-0 may be used when the
@@ -553,7 +610,7 @@ typedef struct hammer2_dbg_shell hammer2_dbg_shell_t;
  *		  The cache state includes transaction id information which
  *		  can be used to resolve data requests.
  */
-#define HAMMER2_CAC_LOCK	HAMMER2_MSG_CAC(0x001, hammer2_cac_lock)
+#define DMSG_CAC_LOCK		DMSG_CAC(0x001, dmsg_cac_lock)
 
 /*
  * Quorum layer ops operate on any link, link-0 may be used when the
@@ -565,7 +622,7 @@ typedef struct hammer2_dbg_shell hammer2_dbg_shell_t;
  *		  the operation to proceed to phase-2.  Message-update to
  *		  proceed to phase-2.
  */
-#define HAMMER2_QRM_COMMIT	HAMMER2_MSG_QRM(0x001, hammer2_qrm_commit)
+#define DMSG_QRM_COMMIT		DMSG_QRM(0x001, dmsg_qrm_commit)
 
 /*
  * NOTE!!!! ALL EXTENDED HEADER STRUCTURES MUST BE 64-BYTE ALIGNED!!!
@@ -575,16 +632,16 @@ typedef struct hammer2_dbg_shell hammer2_dbg_shell_t;
  *	0x00 - 0x1F	Local iocomm errors
  *	0x20 - 0x2F	Global errors
  */
-#define HAMMER2_MSG_ERR_NOSUPP		0x20
+#define DMSG_ERR_NOSUPP		0x20
 
-union hammer2_msg_any {
-	char			buf[HAMMER2_MSGHDR_MAX];
-	hammer2_msg_hdr_t	head;
-	hammer2_lnk_span_t	lnk_span;
-	hammer2_lnk_conn_t	lnk_conn;
-	hammer2_lnk_volconf_t	lnk_volconf;
+union dmsg_any {
+	char			buf[DMSG_HDR_MAX];
+	dmsg_hdr_t		head;
+	dmsg_lnk_span_t		lnk_span;
+	dmsg_lnk_conn_t		lnk_conn;
+	dmsg_lnk_volconf_t	lnk_volconf;
 };
 
-typedef union hammer2_msg_any hammer2_msg_any_t;
+typedef union dmsg_any dmsg_any_t;
 
 #endif

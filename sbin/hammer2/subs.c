@@ -144,7 +144,7 @@ hammer2_demon(void *(*func)(void *), void *arg)
  * header is not adjusted, just the core header.
  */
 void
-hammer2_bswap_head(hammer2_msg_hdr_t *head)
+hammer2_bswap_head(dmsg_hdr_t *head)
 {
 	head->magic	= bswap16(head->magic);
 	head->reserved02 = bswap16(head->reserved02);

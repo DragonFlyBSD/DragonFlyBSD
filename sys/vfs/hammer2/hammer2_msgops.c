@@ -56,21 +56,21 @@ hammer2_msg_adhoc_input(hammer2_msg_t *msg)
 int
 hammer2_msg_dbg_rcvmsg(hammer2_msg_t *msg)
 {
-	switch(msg->any.head.cmd & HAMMER2_MSGF_CMDSWMASK) {
-	case HAMMER2_DBG_SHELL:
+	switch(msg->any.head.cmd & DMSGF_CMDSWMASK) {
+	case DMSG_DBG_SHELL:
 		/*
 		 * Execute shell command (not supported atm)
 		 */
-		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
-	case HAMMER2_DBG_SHELL | HAMMER2_MSGF_REPLY:
+	case DMSG_DBG_SHELL | DMSGF_REPLY:
 		if (msg->aux_data) {
 			msg->aux_data[msg->aux_size - 1] = 0;
 			kprintf("DEBUGMSG: %s\n", msg->aux_data);
 		}
 		break;
 	default:
-		hammer2_msg_reply(msg, HAMMER2_MSG_ERR_NOSUPP);
+		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	}
 	return(0);

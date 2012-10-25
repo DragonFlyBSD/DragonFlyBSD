@@ -38,6 +38,9 @@
 #ifndef _SYS_UUID_H_
 #include <sys/uuid.h>
 #endif
+#ifndef _SYS_DMSG_H_
+#include <sys/dmsg.h>
+#endif
 
 /*
  * The structures below represent the on-disk media structures for the HAMMER2
@@ -602,54 +605,6 @@ typedef struct hammer2_allocref hammer2_allocref_t;
 #define HAMMER2_ALLOCREF_LEAF		0x0004
 
 /*
- * All HAMMER2 directories directly under the super-root on your local
- * media can be mounted separately, even if they share the same physical
- * device.
- *
- * When you do a HAMMER2 mount you are effectively tying into a HAMMER2
- * cluster via local media.  The local media does not have to participate
- * in the cluster, other than to provide the hammer2_copy_data[] array and
- * root inode for the mount.
- *
- * This is important: The mount device path you specify serves to bootstrap
- * your entry into the cluster, but your mount will make active connections
- * to ALL copy elements in the hammer2_copy_data[] array which match the
- * PFSID of the directory in the super-root that you specified.  The local
- * media path does not have to be mentioned in this array but becomes part
- * of the cluster based on its type and access rights.  ALL ELEMENTS ARE
- * TREATED ACCORDING TO TYPE NO MATTER WHICH ONE YOU MOUNT FROM.
- *
- * The actual cluster may be far larger than the elements you list in the
- * hammer2_copy_data[] array.  You list only the elements you wish to
- * directly connect to and you are able to access the rest of the cluster
- * indirectly through those connections.
- *
- * This structure must be exactly 128 bytes long.
- */
-struct hammer2_copy_data {
-	uint8_t	copyid;		/* 00	 copyid 0-255 (must match slot) */
-	uint8_t inprog;		/* 01	 operation in progress, or 0 */
-	uint8_t chain_to;	/* 02	 operation chaining to, or 0 */
-	uint8_t chain_from;	/* 03	 operation chaining from, or 0 */
-	uint16_t flags;		/* 04-05 flags field */
-	uint8_t error;		/* 06	 last operational error */
-	uint8_t priority;	/* 07	 priority and round-robin flag */
-	uint8_t remote_pfs_type;/* 08	 probed direct remote PFS type */
-	uint8_t reserved08[23];	/* 09-1F */
-	uuid_t	pfs_clid;	/* 20-2F copy target must match this uuid */
-	uint8_t label[16];	/* 30-3F import/export label */
-	uint8_t path[64];	/* 40-7F target specification string or key */
-};
-
-typedef struct hammer2_copy_data hammer2_copy_data_t;
-
-#define COPYDATAF_ENABLED	0x0001
-#define COPYDATAF_INPROG	0x0002
-#define COPYDATAF_CONN_RR	0x80	/* round-robin at same priority */
-#define COPYDATAF_CONN_EF	0x40	/* media errors flagged */
-#define COPYDATAF_CONN_PRI	0x0F	/* select priority 0-15 (15=best) */
-
-/*
  * The volume header eats a 64K block.  There is currently an issue where
  * we want to try to fit all nominal filesystem updates in a 512-byte section
  * but it may be a lost cause due to the need for a blockset.
@@ -789,11 +744,7 @@ struct hammer2_volume_data {
 	 * indexes into this array.
 	 */
 						/* 1000-8FFF copyinfo config */
-	struct hammer2_copy_data copyinfo[HAMMER2_COPYID_COUNT];
-
-	/*
-	 *
-	 */
+	dmsg_vol_data_t	copyinfo[HAMMER2_COPYID_COUNT];
 
 	/*
 	 * Remaining sections are reserved for future use.
