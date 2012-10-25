@@ -110,16 +110,6 @@ typedef struct dmsg_handshake dmsg_handshake_t;
 
 #define DMSG_CRYPTO_ALGO		DMSG_CRYPTO_ALGO_GCM_IDX
 
-/*
- * master service thread info
- */
-struct dmsg_master_service_info {
-	int	fd;
-	int	detachme;
-};
-
-typedef struct dmsg_master_service_info dmsg_master_service_info_t;
-
 /***************************************************************************
  *				LOW LEVEL MESSAGING			   *
  ***************************************************************************
@@ -312,7 +302,6 @@ typedef struct dmsg_iocom dmsg_iocom_t;
 /*
  * Crypto algorithm table and related typedefs.
  */
-
 typedef int (*algo_init_fn)(dmsg_ioq_t *, char *, int, char *, int, int);
 typedef int (*algo_enc_fn)(dmsg_ioq_t *, char *, char *, int, int *);
 typedef int (*algo_dec_fn)(dmsg_ioq_t *, char *, char *, int, int *);
@@ -325,6 +314,18 @@ struct crypto_algo {
 	algo_enc_fn	enc_chunk;
 	algo_dec_fn	dec_chunk;
 };
+
+/*
+ * Master service thread info
+ */
+struct dmsg_master_service_info {
+	int	fd;
+	int	detachme;
+	void	(*dbgmsg_callback)(dmsg_msg_t *msg);
+};
+
+typedef struct dmsg_master_service_info dmsg_master_service_info_t;
+
 
 /*
  * icrc
@@ -355,6 +356,7 @@ void dmsg_ioq_done(dmsg_iocom_t *iocom, dmsg_ioq_t *ioq);
 void dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 			void (*state_func)(dmsg_router_t *),
 			void (*rcvmsg_func)(dmsg_msg_t *),
+			void (*dbgmsg_func)(dmsg_msg_t *),
 			void (*altmsg_func)(dmsg_iocom_t *));
 void dmsg_router_restate(dmsg_router_t *router,
 			void (*state_func)(dmsg_router_t *),

@@ -169,6 +169,7 @@ service_thread(void *data)
 		bzero(info, sizeof(*info));
 		info->fd = fd;
 		info->detachme = 1;
+		info->dbgmsg_callback = hammer2_shell_parse;
 		pthread_create(&thread, NULL, dmsg_master_service, info);
 	}
 	return (NULL);
@@ -289,5 +290,6 @@ master_reconnect(const char *mntpt)
 	bzero(info, sizeof(*info));
 	info->fd = pipefds[1];
 	info->detachme = 1;
+	info->dbgmsg_callback = hammer2_shell_parse;
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 }

@@ -39,7 +39,6 @@
 
 static void shell_rcvmsg(dmsg_msg_t *msg);
 static void shell_ttymsg(dmsg_iocom_t *iocom);
-static void hammer2_shell_parse(dmsg_msg_t *msg);
 
 /************************************************************************
  *				    SHELL				*
@@ -62,8 +61,11 @@ cmd_shell(const char *hostname)
 	/*
 	 * Run the session.  The remote end transmits our prompt.
 	 */
-	dmsg_iocom_init(&iocom, fd, 0, NULL, shell_rcvmsg, shell_ttymsg);
-	iocom.router->dbgmsg_callback = hammer2_shell_parse;
+	dmsg_iocom_init(&iocom, fd, 0,
+			NULL,
+			shell_rcvmsg,
+			hammer2_shell_parse,
+			shell_ttymsg);
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	printf("debug: connected\n");
 
@@ -168,7 +170,7 @@ shell_ttymsg(dmsg_iocom_t *iocom)
 
 static void shell_span(dmsg_router_t *router, char *cmdbuf);
 
-static void
+void
 hammer2_shell_parse(dmsg_msg_t *msg)
 {
 	dmsg_router_t *router = msg->router;

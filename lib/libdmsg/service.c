@@ -57,6 +57,7 @@ dmsg_master_service(void *data)
 	dmsg_iocom_init(&iocom, info->fd, -1,
 			   master_auth_signal,
 			   master_auth_rxmsg,
+			   info->dbgmsg_callback,
 			   NULL);
 	dmsg_iocom_core(&iocom);
 

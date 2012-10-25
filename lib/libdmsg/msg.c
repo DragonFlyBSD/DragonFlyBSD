@@ -128,6 +128,7 @@ void
 dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 		   void (*signal_func)(dmsg_router_t *),
 		   void (*rcvmsg_func)(dmsg_msg_t *),
+		   void (*dbgmsg_func)(dmsg_msg_t *),
 		   void (*altmsg_func)(dmsg_iocom_t *))
 {
 	struct stat st;
@@ -138,6 +139,7 @@ dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 	iocom->router->signal_callback = signal_func;
 	iocom->router->rcvmsg_callback = rcvmsg_func;
 	iocom->router->altmsg_callback = altmsg_func;
+	iocom->router->dbgmsg_callback = dbgmsg_func;
 	/* we do not call dmsg_router_connect() for iocom routers */
 
 	pthread_mutex_init(&iocom->mtx, NULL);
