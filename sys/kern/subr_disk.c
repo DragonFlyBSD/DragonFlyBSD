@@ -606,25 +606,29 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 }
 
 cdev_t
-disk_create_clone(int unit, struct disk *dp, struct dev_ops *raw_ops)
+disk_create_clone(int unit, struct disk *dp,
+		  struct dev_ops *raw_ops)
 {
 	return _disk_create_named(NULL, unit, dp, raw_ops, 1);
 }
 
 cdev_t
-disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops)
+disk_create_named(const char *name, int unit, struct disk *dp,
+		  struct dev_ops *raw_ops)
 {
 	return _disk_create_named(name, unit, dp, raw_ops, 0);
 }
 
 cdev_t
-disk_create_named_clone(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops)
+disk_create_named_clone(const char *name, int unit, struct disk *dp,
+			struct dev_ops *raw_ops)
 {
 	return _disk_create_named(name, unit, dp, raw_ops, 1);
 }
 
 static cdev_t
-_disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops, int clone)
+_disk_create_named(const char *name, int unit, struct disk *dp,
+		   struct dev_ops *raw_ops, int clone)
 {
 	cdev_t rawdev;
 
@@ -647,25 +651,31 @@ _disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *
 
 	if (name) {
 		if (clone) {
-			dp->d_cdev = make_only_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
-			    dkmakewholedisk(unit), UID_ROOT, GID_OPERATOR, 0640,
-			    "%s", name);
+			dp->d_cdev = make_only_dev_covering(
+					&disk_ops, dp->d_rawdev->si_ops,
+					dkmakewholedisk(unit),
+					UID_ROOT, GID_OPERATOR, 0640,
+					"%s", name);
 		} else {
-			dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
-			    dkmakewholedisk(unit), UID_ROOT, GID_OPERATOR, 0640,
-			    "%s", name);
+			dp->d_cdev = make_dev_covering(
+					&disk_ops, dp->d_rawdev->si_ops,
+					dkmakewholedisk(unit),
+					UID_ROOT, GID_OPERATOR, 0640,
+					"%s", name);
 		}
 	} else {
 		if (clone) {
-			dp->d_cdev = make_only_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
-			    dkmakewholedisk(unit),
-			    UID_ROOT, GID_OPERATOR, 0640,
-			    "%s%d", raw_ops->head.name, unit);
+			dp->d_cdev = make_only_dev_covering(
+					&disk_ops, dp->d_rawdev->si_ops,
+					dkmakewholedisk(unit),
+					UID_ROOT, GID_OPERATOR, 0640,
+					"%s%d", raw_ops->head.name, unit);
 		} else {
-			dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
-			    dkmakewholedisk(unit),
-			    UID_ROOT, GID_OPERATOR, 0640,
-			    "%s%d", raw_ops->head.name, unit);
+			dp->d_cdev = make_dev_covering(
+					&disk_ops, dp->d_rawdev->si_ops,
+					dkmakewholedisk(unit),
+					UID_ROOT, GID_OPERATOR, 0640,
+					"%s%d", raw_ops->head.name, unit);
 		}
 	}
 
@@ -690,10 +700,14 @@ _disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *
 int
 disk_setdisktype(struct disk *disk, const char *type)
 {
+	int error;
+
 	KKASSERT(disk != NULL);
 
 	disk->d_disktype = type;
-	return udev_dict_set_cstr(disk->d_cdev, "disk-type", __DECONST(char *, type));
+	error = udev_dict_set_cstr(disk->d_cdev, "disk-type",
+				   __DECONST(char *, type));
+	return error;
 }
 
 int
@@ -711,9 +725,7 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 	bcopy(info, &disk->d_info, sizeof(disk->d_info));
 	info = &disk->d_info;
 
-	disk_debug(1,
-		    "_setdiskinfo: %s\n",
-			disk->d_cdev->si_name);
+	disk_debug(1, "_setdiskinfo: %s\n", disk->d_cdev->si_name);
 
 	/*
 	 * The serial number is duplicated so the caller can throw
@@ -725,7 +737,7 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 		disk_cleanserial(info->d_serialno);
 		if (disk->d_cdev) {
 			make_dev_alias(disk->d_cdev, "serno/%s",
-					info->d_serialno);
+				       info->d_serialno);
 		}
 	} else {
 		info->d_serialno = NULL;
@@ -776,9 +788,8 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 {
 	_setdiskinfo(disk, info);
 	disk_msg_send(DISK_DISK_PROBE, disk, NULL);
-	disk_debug(1,
-		    "disk_setdiskinfo: sent probe for %s\n",
-			disk->d_cdev->si_name);
+	disk_debug(1, "disk_setdiskinfo: sent probe for %s\n",
+		   disk->d_cdev->si_name);
 }
 
 void
@@ -786,9 +797,8 @@ disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info)
 {
 	_setdiskinfo(disk, info);
 	disk_msg_send_sync(DISK_DISK_PROBE, disk, NULL);
-	disk_debug(1,
-		    "disk_setdiskinfo_sync: sent probe for %s\n",
-			disk->d_cdev->si_name);
+	disk_debug(1, "disk_setdiskinfo_sync: sent probe for %s\n",
+		   disk->d_cdev->si_name);
 }
 
 /*
@@ -805,7 +815,8 @@ disk_destroy(struct disk *disk)
 }
 
 int
-disk_dumpcheck(cdev_t dev, u_int64_t *size, u_int64_t *blkno, u_int32_t *secsize)
+disk_dumpcheck(cdev_t dev, u_int64_t *size,
+	       u_int64_t *blkno, u_int32_t *secsize)
 {
 	struct partinfo pinfo;
 	int error;
@@ -1148,7 +1159,8 @@ diskdump(struct dev_dump_args *ap)
 		offset = ap->a_blkno * DEV_BSIZE;
 		if ((ap->a_offset < offset) ||
 		    (ap->a_offset + ap->a_length - offset > size)) {
-			kprintf("Attempt to write outside dump device boundaries.\n");
+			kprintf("Attempt to write outside dump "
+				"device boundaries.\n");
 			error = ENOSPC;
 		}
 	}
@@ -1163,10 +1175,10 @@ diskdump(struct dev_dump_args *ap)
 
 
 SYSCTL_INT(_debug_sizeof, OID_AUTO, diskslices, CTLFLAG_RD,
-    0, sizeof(struct diskslices), "sizeof(struct diskslices)");
+	   0, sizeof(struct diskslices), "sizeof(struct diskslices)");
 
 SYSCTL_INT(_debug_sizeof, OID_AUTO, disk, CTLFLAG_RD,
-    0, sizeof(struct disk), "sizeof(struct disk)");
+	   0, sizeof(struct disk), "sizeof(struct disk)");
 
 /*
  * Reorder interval for burst write allowance and minor write
@@ -1447,7 +1459,7 @@ disk_cleanserial(char *serno)
 
 TUNABLE_INT("kern.disk_debug", &disk_debug_enable);
 SYSCTL_INT(_kern, OID_AUTO, disk_debug, CTLFLAG_RW, &disk_debug_enable,
-		0, "Enable subr_disk debugging");
+	   0, "Enable subr_disk debugging");
 
 SYSINIT(disk_register, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, disk_init, NULL);
 SYSUNINIT(disk_register, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, disk_uninit, NULL);
