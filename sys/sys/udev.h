@@ -53,6 +53,12 @@ int	udev_dict_delete_key(cdev_t dev, const char *key);
 int	udev_event_attach(cdev_t dev, char *name, int alias);
 int	udev_event_detach(cdev_t dev, char *name, int alias);
 
+#else
+
+#ifndef _PROPLIB_PROPLIB_H_
+#include <libprop/proplib.h>
+#endif
+
 #endif /* _KERNEL */
 
 #define UDEVPROP		_IOWR('U', 0xBA, struct plistref)
