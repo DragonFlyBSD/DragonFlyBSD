@@ -55,7 +55,8 @@ int	udev_event_detach(cdev_t dev, char *name, int alias);
 
 #endif /* _KERNEL */
 
-#define UDEVPROP _IOWR('U', 0xBA, struct plistref)
+#define UDEVPROP		_IOWR('U', 0xBA, struct plistref)
+#define UDEVWAIT		_IOWR('U', 0xC0, int)
 #define UDEV_EVENT_NONE		0x00
 #define UDEV_EVENT_ATTACH	0x01
 #define	UDEV_EVENT_DETACH	0x02

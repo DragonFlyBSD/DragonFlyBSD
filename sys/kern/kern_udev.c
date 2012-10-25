@@ -38,6 +38,7 @@
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/event.h>
+#include <sys/vnode.h>
 #include <sys/malloc.h>
 #include <sys/ctype.h>
 #include <sys/syslog.h>
@@ -124,6 +125,9 @@ static struct kqinfo udev_kq;
 static struct lock udev_lk;
 static int udev_evqlen;
 static int udev_initiated_count;
+static int udev_open_count;
+static int udev_seqwait;
+static int udev_seq;
 
 static int
 _udev_dict_set_cstr(prop_dictionary_t dict, const char *key, char *str)
@@ -418,25 +422,33 @@ udev_event_insert(int ev_type, prop_dictionary_t dict)
 	struct udev_event_kernel *ev;
 
 	/* Only start queing events after client has initiated properly */
-	if (udev_initiated_count == 0)
-		return;
+	if (udev_initiated_count) {
+		/* XXX: use objcache eventually */
+		ev = kmalloc(sizeof(*ev), M_UDEV, M_WAITOK);
+		ev->ev.ev_dict = prop_dictionary_copy(dict);
+		if (ev->ev.ev_dict == NULL) {
+			kfree(ev, M_UDEV);
+			return;
+		}
+		ev->ev.ev_type = ev_type;
 
-	/* XXX: use objcache eventually */
-	ev = kmalloc(sizeof(*ev), M_UDEV, M_WAITOK);
-	ev->ev.ev_dict = prop_dictionary_copy(dict);
-	if (ev->ev.ev_dict == NULL) {
-		kfree(ev, M_UDEV);
-		return;
+		lockmgr(&udev_lk, LK_EXCLUSIVE);
+		TAILQ_INSERT_TAIL(&udev_evq, ev, link);
+		++udev_evqlen;
+		++udev_seq;
+		if (udev_seqwait)
+			wakeup(&udev_seqwait);
+		lockmgr(&udev_lk, LK_RELEASE);
+		wakeup(&udev_evq);
+		KNOTE(&udev_kq.ki_note, 0);
+	} else if (udev_open_count) {
+		lockmgr(&udev_lk, LK_EXCLUSIVE);
+		++udev_seq;
+		if (udev_seqwait)
+			wakeup(&udev_seqwait);
+		lockmgr(&udev_lk, LK_RELEASE);
+		KNOTE(&udev_kq.ki_note, 0);
 	}
-	ev->ev.ev_type = ev_type;
-
-	lockmgr(&udev_lk, LK_EXCLUSIVE);
-	TAILQ_INSERT_TAIL(&udev_evq, ev, link);
-	++udev_evqlen;
-	lockmgr(&udev_lk, LK_RELEASE);
-
-	wakeup(&udev_evq);
-	KNOTE(&udev_kq.ki_note, 0);
 }
 
 static void
@@ -597,6 +609,7 @@ udev_dev_open(struct dev_open_args *ap)
 		return EBUSY;
 	}
 	softc->opened = 1;
+	++udev_open_count;
 	lockmgr(&udev_lk, LK_RELEASE);
 
 	return 0;
@@ -623,6 +636,7 @@ udev_dev_close(struct dev_close_args *ap)
 	softc->opened = 0;
 	softc->dev = NULL;
 	ap->a_head.a_dev->si_drv1 = NULL;
+	--udev_open_count;
 	lockmgr(&udev_lk, LK_RELEASE);
 
 	destroy_dev(ap->a_head.a_dev);
@@ -749,6 +763,10 @@ udev_dev_read(struct dev_read_args *ap)
 				break;
 			}
 		}
+		if (ap->a_ioflag & IO_NDELAY) {
+			error = EWOULDBLOCK;
+			break;
+		}
 		if ((error = lksleep(&udev_evq, &udev_lk, PCATCH, "udevq", 0)))
 			break;
 	}
@@ -766,6 +784,7 @@ udev_dev_ioctl(struct dev_ioctl_args *ap)
 	prop_string_t	ps;
 	struct plistref *pref;
 	int i, error;
+	int seq;
 
 	error = 0;
 
@@ -799,6 +818,24 @@ udev_dev_ioctl(struct dev_ioctl_args *ap)
 
 		//prop_object_release(po);
 		prop_object_release(dict);
+		break;
+	case UDEVWAIT:
+		/*
+		 * Wait for events based on sequence number.  Updates
+		 * sequence number for loop.
+		 */
+		lockmgr(&udev_lk, LK_EXCLUSIVE);
+		seq = *(int *)ap->a_data;
+		++udev_seqwait;
+		while (seq == udev_seq) {
+			error = lksleep(&udev_seqwait, &udev_lk,
+					PCATCH, "udevw", 0);
+			if (error)
+				break;
+		}
+		--udev_seqwait;
+		*(int *)ap->a_data = udev_seq;
+		lockmgr(&udev_lk, LK_RELEASE);
 		break;
 	default:
 		error = ENOTTY; /* Inappropriate ioctl for device */
