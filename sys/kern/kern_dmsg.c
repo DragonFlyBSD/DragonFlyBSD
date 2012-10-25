@@ -857,6 +857,7 @@ kdmsg_state_msgtx(kdmsg_msg_t *msg)
 	if ((state = iocom->freewr_state) == NULL) {
 		state = kmalloc(sizeof(*state), iocom->mmsg, M_WAITOK | M_ZERO);
 		state->flags = KDMSG_STATE_DYNAMIC;
+		state->router = &iocom->router;
 		iocom->freewr_state = state;
 	}
 
