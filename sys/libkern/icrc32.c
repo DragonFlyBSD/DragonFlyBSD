@@ -29,7 +29,18 @@
  | $Id: isc_subr.c 560 2009-05-07 07:37:49Z danny $
  */
 
-#include "hammer2.h"
+#ifdef _KERNEL
+#include <sys/param.h>
+#include <sys/systm.h>
+#else
+#include <sys/types.h>
+#endif
+
+#ifndef _KERNEL
+/* prototypes for the kernel are in <sys/systm.h> */
+uint32_t iscsi_crc32(const void *buf, size_t size);
+uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
+#endif
 
 /*****************************************************************/
 /*                                                               */
@@ -51,7 +62,7 @@
 /*                                                               */
 /*****************************************************************/
 
-static uint32_t crc32Table[256] = {
+static uint32_t iscsiCrc32Table[256] = {
     0x00000000L, 0xF26B8303L, 0xE13B70F7L, 0x1350F3F4L,
     0xC79A971FL, 0x35F1141CL, 0x26A1E7E8L, 0xD4CA64EBL,
     0x8AD958CFL, 0x78B2DBCCL, 0x6BE22838L, 0x9989AB3BL,
@@ -119,26 +130,26 @@ static uint32_t crc32Table[256] = {
 };
 
 uint32_t
-hammer2_icrc32(const void *buf, size_t size)
+iscsi_crc32(const void *buf, size_t size)
 {
      const uint8_t *p = buf;
      uint32_t crc = 0;
 
      crc = crc ^ 0xffffffff;
      while (size--)
-	  crc = crc32Table[(crc ^ *p++) & 0xff] ^ (crc >> 8);
+	  crc = iscsiCrc32Table[(crc ^ *p++) & 0xff] ^ (crc >> 8);
      crc = crc ^ 0xffffffff;
      return crc;
 }
 
 uint32_t
-hammer2_icrc32c(const void *buf, size_t size, uint32_t crc)
+iscsi_crc32_ext(const void *buf, size_t size, uint32_t crc)
 {
      const uint8_t *p = buf;
 
      crc = crc ^ 0xffffffff;
      while (size--)
-	  crc = crc32Table[(crc ^ *p++) & 0xff] ^ (crc >> 8);
+	  crc = iscsiCrc32Table[(crc ^ *p++) & 0xff] ^ (crc >> 8);
      crc = crc ^ 0xffffffff;
      return crc;
 }

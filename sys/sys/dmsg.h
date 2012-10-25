@@ -41,6 +41,9 @@
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
 #endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 #ifndef _SYS_UUID_H_
 #include <sys/uuid.h>
 #endif
@@ -493,19 +496,19 @@ typedef struct dmsg_lnk_span dmsg_lnk_span_t;
  *
  * When you do a HAMMER2 mount you are effectively tying into a HAMMER2
  * cluster via local media.  The local media does not have to participate
- * in the cluster, other than to provide the hammer2_copy_data[] array and
+ * in the cluster, other than to provide the dmsg_vol_data[] array and
  * root inode for the mount.
  *
  * This is important: The mount device path you specify serves to bootstrap
  * your entry into the cluster, but your mount will make active connections
- * to ALL copy elements in the hammer2_copy_data[] array which match the
+ * to ALL copy elements in the dmsg_vol_data[] array which match the
  * PFSID of the directory in the super-root that you specified.  The local
  * media path does not have to be mentioned in this array but becomes part
  * of the cluster based on its type and access rights.  ALL ELEMENTS ARE
  * TREATED ACCORDING TO TYPE NO MATTER WHICH ONE YOU MOUNT FROM.
  *
  * The actual cluster may be far larger than the elements you list in the
- * hammer2_copy_data[] array.  You list only the elements you wish to
+ * dmsg_vol_data[] array.  You list only the elements you wish to
  * directly connect to and you are able to access the rest of the cluster
  * indirectly through those connections.
  *
@@ -650,5 +653,145 @@ union dmsg_any {
 };
 
 typedef union dmsg_any dmsg_any_t;
+
+/*
+ * Kernel iocom structures and prototypes for kern/kern_dmsg.c
+ */
+#ifdef _KERNEL
+
+struct hammer2_pfsmount;
+struct kdmsg_router;
+struct kdmsg_iocom;
+struct kdmsg_state;
+struct kdmsg_msg;
+
+/*
+ * Structure used to represent a virtual circuit for a messaging
+ * route.  Typically associated from hammer2_state but the hammer2_pfsmount
+ * structure also has one to represent the point-to-point link.
+ */
+struct kdmsg_router {
+	struct kdmsg_iocom	*iocom;
+	struct kdmsg_state	*state;		/* received LNK_SPAN state */
+	uint64_t		target;		/* target */
+};
+
+typedef struct kdmsg_router kdmsg_router_t;
+
+/*
+ * msg_ctl flags (atomic)
+ */
+#define KDMSG_CLUSTERCTL_KILL		0x00000001
+#define KDMSG_CLUSTERCTL_KILLRX		0x00000002 /* staged helper exit */
+#define KDMSG_CLUSTERCTL_KILLTX		0x00000004 /* staged helper exit */
+#define KDMSG_CLUSTERCTL_SLEEPING	0x00000008 /* interlocked w/msglk */
+
+/*
+ * Transactional state structure, representing an open transaction.  The
+ * transaction might represent a cache state (and thus have a chain
+ * association), or a VOP op, LNK_SPAN, or other things.
+ */
+struct kdmsg_state {
+	RB_ENTRY(kdmsg_state) rbnode;		/* indexed by msgid */
+	struct kdmsg_router *router;		/* related LNK_SPAN route */
+	uint32_t	txcmd;			/* mostly for CMDF flags */
+	uint32_t	rxcmd;			/* mostly for CMDF flags */
+	uint64_t	msgid;			/* {spanid,msgid} uniq */
+	int		flags;
+	int		error;
+	void		*chain;			/* (caller's state) */
+	struct kdmsg_msg *msg;
+	int (*func)(struct kdmsg_state *, struct kdmsg_msg *);
+	union {
+		void *any;
+		struct hammer2_pfsmount *pmp;
+	} any;
+};
+
+#define KDMSG_STATE_INSERTED	0x0001
+#define KDMSG_STATE_DYNAMIC	0x0002
+#define KDMSG_STATE_DELPEND	0x0004		/* transmit delete pending */
+
+struct kdmsg_msg {
+	TAILQ_ENTRY(kdmsg_msg) qentry;		/* serialized queue */
+	struct kdmsg_router *router;
+	struct kdmsg_state *state;
+	size_t		hdr_size;
+	size_t		aux_size;
+	char		*aux_data;
+	dmsg_any_t	any;
+};
+
+typedef struct kdmsg_link kdmsg_link_t;
+typedef struct kdmsg_state kdmsg_state_t;
+typedef struct kdmsg_msg kdmsg_msg_t;
+
+struct kdmsg_state_tree;
+RB_HEAD(kdmsg_state_tree, kdmsg_state);
+int kdmsg_state_cmp(kdmsg_state_t *state1, kdmsg_state_t *state2);
+RB_PROTOTYPE(kdmsg_state_tree, kdmsg_state, rbnode, kdmsg_state_cmp);
+
+/*
+ * Structure embedded in e.g. mount, master control structure for
+ * DMSG stream handling.
+ */
+struct kdmsg_iocom {
+	struct malloc_type	*mmsg;
+	struct file		*msg_fp;	/* cluster pipe->userland */
+	thread_t		msgrd_td;	/* cluster thread */
+	thread_t		msgwr_td;	/* cluster thread */
+	int			msg_ctl;	/* wakeup flags */
+	int			msg_seq;	/* cluster msg sequence id */
+	uint32_t		reserved01;
+	struct lock		msglk;		/* lockmgr lock */
+	TAILQ_HEAD(, kdmsg_msg) msgq;		/* transmit queue */
+	void			*handle;
+	void			(*clusterctl_wakeup)(struct kdmsg_iocom *);
+	int			(*lnk_rcvmsg)(kdmsg_msg_t *msg);
+	int			(*dbg_rcvmsg)(kdmsg_msg_t *msg);
+	int			(*misc_rcvmsg)(kdmsg_msg_t *msg);
+	struct kdmsg_state	*conn_state;	/* active LNK_CONN state */
+	struct kdmsg_state	*freerd_state;	/* allocation cache */
+	struct kdmsg_state	*freewr_state;	/* allocation cache */
+	struct kdmsg_state_tree staterd_tree;	/* active messages */
+	struct kdmsg_state_tree statewr_tree;	/* active messages */
+	struct kdmsg_router	router;
+};
+
+typedef struct kdmsg_iocom	kdmsg_iocom_t;
+
+uint32_t kdmsg_icrc32(const void *buf, size_t size);
+uint32_t kdmsg_icrc32c(const void *buf, size_t size, uint32_t crc);
+
+/*
+ * kern_dmsg.c
+ */
+void kdmsg_iocom_init(kdmsg_iocom_t *iocom,
+			void *handle,
+			struct malloc_type *mmsg,
+			void (*cctl_wakeup)(kdmsg_iocom_t *),
+			int (*lnk_rcvmsg)(kdmsg_msg_t *msg),
+			int (*dbg_rcvmsg)(kdmsg_msg_t *msg),
+			int (*misc_rcvmsg)(kdmsg_msg_t *msg));
+
+void kdmsg_iocom_reconnect(kdmsg_iocom_t *iocom, struct file *fp,
+			const char *subsysname);
+void kdmsg_drain_msgq(kdmsg_iocom_t *iocom);
+
+int kdmsg_state_msgrx(kdmsg_msg_t *msg);
+int kdmsg_state_msgtx(kdmsg_msg_t *msg);
+void kdmsg_state_cleanuprx(kdmsg_msg_t *msg);
+void kdmsg_state_cleanuptx(kdmsg_msg_t *msg);
+int kdmsg_msg_execute(kdmsg_msg_t *msg);
+void kdmsg_state_free(kdmsg_state_t *state);
+void kdmsg_msg_free(kdmsg_msg_t *msg);
+kdmsg_msg_t *kdmsg_msg_alloc(kdmsg_router_t *router, uint32_t cmd,
+				int (*func)(kdmsg_state_t *, kdmsg_msg_t *),
+				void *data);
+void kdmsg_msg_write(kdmsg_msg_t *msg);
+void kdmsg_msg_reply(kdmsg_msg_t *msg, uint32_t error);
+void kdmsg_msg_result(kdmsg_msg_t *msg, uint32_t error);
+
+#endif
 
 #endif

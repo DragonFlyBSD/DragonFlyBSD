@@ -833,6 +833,7 @@ kern/kern_conf.c	standard
 kern/kern_debug.c	standard
 kern/kern_device.c	standard
 kern/kern_descrip.c	standard
+kern/kern_dmsg.c	standard
 kern/kern_fp.c		standard
 kern/kern_environment.c	standard
 kern/kern_event.c	standard
@@ -1824,6 +1825,7 @@ libkern/arc4random.c			standard
 libkern/bcd.c				standard
 libkern/bsearch.c			standard
 libkern/crc32.c				standard
+libkern/icrc32.c			standard
 libkern/cmpdi2.c			standard
 libkern/ucmpdi2.c			standard
 libkern/idr.c				standard

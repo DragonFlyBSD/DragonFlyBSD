@@ -47,21 +47,21 @@
 #include "hammer2.h"
 
 int
-hammer2_msg_adhoc_input(hammer2_msg_t *msg)
+hammer2_msg_adhoc_input(kdmsg_msg_t *msg)
 {
 	kprintf("ADHOC INPUT MSG %08x\n", msg->any.head.cmd);
 	return(0);
 }
 
 int
-hammer2_msg_dbg_rcvmsg(hammer2_msg_t *msg)
+hammer2_msg_dbg_rcvmsg(kdmsg_msg_t *msg)
 {
 	switch(msg->any.head.cmd & DMSGF_CMDSWMASK) {
 	case DMSG_DBG_SHELL:
 		/*
 		 * Execute shell command (not supported atm)
 		 */
-		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
+		kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
 		if (msg->aux_data) {
@@ -70,7 +70,7 @@ hammer2_msg_dbg_rcvmsg(hammer2_msg_t *msg)
 		}
 		break;
 	default:
-		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
+		kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	}
 	return(0);

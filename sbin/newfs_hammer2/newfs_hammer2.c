@@ -52,6 +52,11 @@
 #include <err.h>
 #include <uuid.h>
 
+#define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
+#define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
+uint32_t iscsi_crc32(const void *buf, size_t size);
+uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
+
 static hammer2_off_t check_volume(const char *path, int *fdp);
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(hammer2_off_t size);
@@ -534,7 +539,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	root_blockref.copyid = HAMMER2_COPYID_LOCAL;
 	root_blockref.keybits = 0;
 	root_blockref.check.iscsi32.value =
-					hammer2_icrc32(rawip, sizeof(*rawip));
+			hammer2_icrc32(rawip, sizeof(*rawip));
 	root_blockref.type = HAMMER2_BREF_TYPE_INODE;
 	root_blockref.methods = HAMMER2_ENC_CHECKMETHOD(HAMMER2_CHECK_ICRC) |
 				HAMMER2_ENC_COMPMETHOD(HAMMER2_COMP_AUTOZERO);

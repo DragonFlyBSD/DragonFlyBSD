@@ -102,7 +102,6 @@ struct hammer2_msg;
  * not match the blockref at (parent, index).
  */
 RB_HEAD(hammer2_chain_tree, hammer2_chain);
-RB_HEAD(hammer2_state_tree, hammer2_state);
 TAILQ_HEAD(flush_deferral_list, hammer2_chain);
 
 struct hammer2_chain {
@@ -278,19 +277,6 @@ struct hammer2_freecache {
 typedef struct hammer2_freecache hammer2_freecache_t;
 
 /*
- * Structure used to represent a virtual circuit for a messaging
- * route.  Typically associated from hammer2_state but the hammer2_pfsmount
- * structure also has one to represent the point-to-point link.
- */
-struct hammer2_router {
-	struct hammer2_pfsmount *pmp;
-	struct hammer2_state	*state;		/* received LNK_SPAN state */
-	uint64_t		target;		/* target */
-};
-
-typedef struct hammer2_router hammer2_router_t;
-
-/*
  * Global (per device) mount structure for device (aka vp->v_mount->hmp)
  */
 struct hammer2_mount {
@@ -326,80 +312,14 @@ struct hammer2_pfsmount {
 	struct hammer2_mount	*hmp;		/* device global mount */
 	hammer2_chain_t 	*rchain;	/* PFS root chain */
 	hammer2_inode_t		*iroot;		/* PFS root inode */
-	struct malloc_type	*mmsg;
 	ccms_domain_t		ccms_dom;
 	struct netexport	export;		/* nfs export */
 	int			ronly;		/* read-only mount */
-	struct file		*msg_fp;	/* cluster pipe->userland */
-	thread_t		msgrd_td;	/* cluster thread */
-	thread_t		msgwr_td;	/* cluster thread */
-	int			msg_ctl;	/* wakeup flags */
-	int			msg_seq;	/* cluster msg sequence id */
-	uint32_t		reserved01;
-	struct lock		msglk;		/* lockmgr lock */
-	TAILQ_HEAD(, hammer2_msg) msgq;		/* transmit queue */
-	struct hammer2_state	*conn_state;	/* active LNK_CONN state */
-	struct hammer2_state	*freerd_state;	/* allocation cache */
-	struct hammer2_state	*freewr_state;	/* allocation cache */
-	struct hammer2_state_tree staterd_tree;	/* active messages */
-	struct hammer2_state_tree statewr_tree;	/* active messages */
-	struct hammer2_router	router;
+	struct malloc_type	*mmsg;
+	kdmsg_iocom_t		iocom;
 };
 
 typedef struct hammer2_pfsmount hammer2_pfsmount_t;
-
-/*
- * msg_ctl flags (atomic)
- */
-#define HAMMER2_CLUSTERCTL_KILL		0x00000001
-#define HAMMER2_CLUSTERCTL_KILLRX	0x00000002 /* staged helper exit */
-#define HAMMER2_CLUSTERCTL_KILLTX	0x00000004 /* staged helper exit */
-#define HAMMER2_CLUSTERCTL_SLEEPING	0x00000008 /* interlocked w/msglk */
-
-/*
- * Transactional state structure, representing an open transaction.  The
- * transaction might represent a cache state (and thus have a chain
- * association), or a VOP op, LNK_SPAN, or other things.
- */
-struct hammer2_state {
-	RB_ENTRY(hammer2_state) rbnode;		/* indexed by msgid */
-	struct hammer2_pfsmount	*pmp;
-	struct hammer2_router *router;		/* related LNK_SPAN route */
-	uint32_t	txcmd;			/* mostly for CMDF flags */
-	uint32_t	rxcmd;			/* mostly for CMDF flags */
-	uint64_t	msgid;			/* {spanid,msgid} uniq */
-	int		flags;
-	int		error;
-	struct hammer2_chain *chain;		/* msg associated w/chain */
-	struct hammer2_msg *msg;
-	int (*func)(struct hammer2_state *, struct hammer2_msg *);
-	union {
-		void *any;
-		hammer2_pfsmount_t *pmp;
-	} any;
-};
-
-#define HAMMER2_STATE_INSERTED	0x0001
-#define HAMMER2_STATE_DYNAMIC	0x0002
-#define HAMMER2_STATE_DELPEND	0x0004		/* transmit delete pending */
-
-struct hammer2_msg {
-	TAILQ_ENTRY(hammer2_msg) qentry;	/* serialized queue */
-	struct hammer2_router *router;
-	struct hammer2_state *state;
-	size_t		hdr_size;
-	size_t		aux_size;
-	char		*aux_data;
-	dmsg_any_t	any;
-};
-
-typedef struct hammer2_link hammer2_link_t;
-typedef struct hammer2_state hammer2_state_t;
-typedef struct hammer2_msg hammer2_msg_t;
-
-int hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2);
-RB_PROTOTYPE(hammer2_state_tree, hammer2_state, rbnode, hammer2_state_cmp);
-
 
 #if defined(_KERNEL)
 
@@ -447,8 +367,8 @@ extern long hammer2_ioa_volu_write;
 /*
  * hammer2_subr.c
  */
-uint32_t hammer2_icrc32(const void *buf, size_t size);
-uint32_t hammer2_icrc32c(const void *buf, size_t size, uint32_t crc);
+#define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
+#define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
 
 void hammer2_inode_lock_ex(hammer2_inode_t *ip);
 void hammer2_inode_unlock_ex(hammer2_inode_t *ip);
@@ -559,32 +479,15 @@ int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 				int fflag, struct ucred *cred);
 
 /*
- * hammer2_msg.c
- */
-int hammer2_state_msgrx(hammer2_msg_t *msg);
-int hammer2_state_msgtx(hammer2_msg_t *msg);
-void hammer2_state_cleanuprx(hammer2_msg_t *msg);
-void hammer2_state_cleanuptx(hammer2_msg_t *msg);
-int hammer2_msg_execute(hammer2_msg_t *msg);
-void hammer2_state_free(hammer2_state_t *state);
-void hammer2_msg_free(hammer2_msg_t *msg);
-hammer2_msg_t *hammer2_msg_alloc(hammer2_router_t *router, uint32_t cmd,
-				int (*func)(hammer2_state_t *, hammer2_msg_t *),
-				void *data);
-void hammer2_msg_write(hammer2_msg_t *msg);
-void hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error);
-void hammer2_msg_result(hammer2_msg_t *msg, uint32_t error);
-
-/*
  * hammer2_msgops.c
  */
-int hammer2_msg_dbg_rcvmsg(hammer2_msg_t *msg);
-int hammer2_msg_adhoc_input(hammer2_msg_t *msg);
+int hammer2_msg_dbg_rcvmsg(kdmsg_msg_t *msg);
+int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
 
 /*
  * hammer2_vfsops.c
  */
-void hammer2_clusterctl_wakeup(hammer2_pfsmount_t *pmp);
+void hammer2_clusterctl_wakeup(kdmsg_iocom_t *iocom);
 void hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index);
 void hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp);
 

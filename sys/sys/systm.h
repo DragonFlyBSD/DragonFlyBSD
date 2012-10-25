@@ -177,6 +177,8 @@ vm_paddr_t kvtop(void *addr);
 extern uint32_t crc32_tab[];
 uint32_t crc32(const void *buf, size_t size);
 uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
+uint32_t iscsi_crc32(const void *buf, size_t size);
+uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 void	init_param1 (void);
 void	init_param2 (int physpages);
 void	tablefull (const char *);
