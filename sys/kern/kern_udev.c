@@ -57,27 +57,7 @@ static d_close_t	udev_dev_close;
 static d_read_t		udev_dev_read;
 static d_kqfilter_t	udev_dev_kqfilter;
 static d_ioctl_t	udev_dev_ioctl;
-
-static int _udev_dict_set_cstr(prop_dictionary_t, const char *, char *);
-static int _udev_dict_set_int(prop_dictionary_t, const char *, int64_t);
-static int _udev_dict_set_uint(prop_dictionary_t, const char *, uint64_t);
-static int _udev_dict_delete_key(prop_dictionary_t, const char *);
-static prop_dictionary_t udev_init_dict_event(cdev_t, const char *);
-static int udev_init_dict(cdev_t);
-static int udev_destroy_dict(cdev_t);
-static void udev_event_insert(int, prop_dictionary_t);
-static struct udev_event_kernel *udev_event_remove(void);
-static void udev_event_free(struct udev_event_kernel *);
-static char *udev_event_externalize(struct udev_event_kernel *);
-static void udev_getdevs_scan_callback(char *, cdev_t, bool, void *);
-static int udev_getdevs_ioctl(struct plistref *, u_long, prop_dictionary_t);
-static void udev_dev_filter_detach(struct knote *);
-static int udev_dev_filter_read(struct knote *, long);
-
-struct cmd_function {
-	const char *cmd;
-	int  (*fn)(struct plistref *, u_long, prop_dictionary_t);
-};
+static d_clone_t	udev_dev_clone;
 
 struct udev_prop_ctx {
 	prop_array_t cdevs;
@@ -90,15 +70,37 @@ struct udev_event_kernel {
 };
 
 struct udev_softc {
+	TAILQ_ENTRY(udev_softc) entry;
 	int opened;
 	int initiated;
+	int unit;
+	cdev_t dev;
 
-	struct kqinfo kq;
+	struct udev_event_kernel marker;	/* udev_evq marker */
+};
 
-	int qlen;
-	struct lock lock;
-	TAILQ_HEAD(, udev_event_kernel) ev_queue;	/* list of thread_io */
-} udevctx;
+struct cmd_function {
+	const char *cmd;
+	int  (*fn)(struct udev_softc *, struct plistref *,
+		   u_long, prop_dictionary_t);
+};
+
+
+static int _udev_dict_set_cstr(prop_dictionary_t, const char *, char *);
+static int _udev_dict_set_int(prop_dictionary_t, const char *, int64_t);
+static int _udev_dict_set_uint(prop_dictionary_t, const char *, uint64_t);
+static int _udev_dict_delete_key(prop_dictionary_t, const char *);
+static prop_dictionary_t udev_init_dict_event(cdev_t, const char *);
+static int udev_init_dict(cdev_t);
+static int udev_destroy_dict(cdev_t);
+static void udev_event_insert(int, prop_dictionary_t);
+static void udev_clean_events_locked(void);
+static char *udev_event_externalize(struct udev_event_kernel *);
+static void udev_getdevs_scan_callback(char *, cdev_t, bool, void *);
+static int udev_getdevs_ioctl(struct udev_softc *, struct plistref *,
+					u_long, prop_dictionary_t);
+static void udev_dev_filter_detach(struct knote *);
+static int udev_dev_filter_read(struct knote *, long);
 
 static struct dev_ops udev_dev_ops = {
 	{ "udev", 0, 0 },
@@ -113,6 +115,15 @@ static struct cmd_function cmd_fn[] = {
 		{ .cmd = "getdevs", .fn = udev_getdevs_ioctl},
 		{NULL, NULL}
 };
+
+DEVFS_DECLARE_CLONE_BITMAP(udev);
+
+static TAILQ_HEAD(, udev_softc) udevq;
+static TAILQ_HEAD(, udev_event_kernel) udev_evq;
+static struct kqinfo udev_kq;
+static struct lock udev_lk;
+static int udev_evqlen;
+static int udev_initiated_count;
 
 static int
 _udev_dict_set_cstr(prop_dictionary_t dict, const char *key, char *str)
@@ -407,7 +418,7 @@ udev_event_insert(int ev_type, prop_dictionary_t dict)
 	struct udev_event_kernel *ev;
 
 	/* Only start queing events after client has initiated properly */
-	if (!udevctx.initiated)
+	if (udev_initiated_count == 0)
 		return;
 
 	/* XXX: use objcache eventually */
@@ -419,39 +430,26 @@ udev_event_insert(int ev_type, prop_dictionary_t dict)
 	}
 	ev->ev.ev_type = ev_type;
 
-	lockmgr(&udevctx.lock, LK_EXCLUSIVE);
-	TAILQ_INSERT_TAIL(&udevctx.ev_queue, ev, link);
-	++udevctx.qlen;
-	lockmgr(&udevctx.lock, LK_RELEASE);
+	lockmgr(&udev_lk, LK_EXCLUSIVE);
+	TAILQ_INSERT_TAIL(&udev_evq, ev, link);
+	++udev_evqlen;
+	lockmgr(&udev_lk, LK_RELEASE);
 
-	wakeup(&udevctx);
-	KNOTE(&udevctx.kq.ki_note, 0);
-}
-
-static struct udev_event_kernel *
-udev_event_remove(void)
-{
-	struct udev_event_kernel *ev;
-
-	lockmgr(&udevctx.lock, LK_EXCLUSIVE);
-	if (TAILQ_EMPTY(&udevctx.ev_queue)) {
-		lockmgr(&udevctx.lock, LK_RELEASE);
-		return NULL;
-	}
-
-	ev = TAILQ_FIRST(&udevctx.ev_queue);
-	TAILQ_REMOVE(&udevctx.ev_queue, ev, link);
-	--udevctx.qlen;
-	lockmgr(&udevctx.lock, LK_RELEASE);
-
-	return ev;
+	wakeup(&udev_evq);
+	KNOTE(&udev_kq.ki_note, 0);
 }
 
 static void
-udev_event_free(struct udev_event_kernel *ev)
+udev_clean_events_locked(void)
 {
-	/* XXX: use objcache eventually */
-	kfree(ev, M_UDEV);
+	struct udev_event_kernel *ev;
+
+	while ((ev = TAILQ_FIRST(&udev_evq)) &&
+	       ev->ev.ev_dict != NULL) {
+		TAILQ_REMOVE(&udev_evq, ev, link);
+		kfree(ev, M_UDEV);
+		--udev_evqlen;
+	}
 }
 
 static char *
@@ -464,7 +462,8 @@ udev_event_externalize(struct udev_event_kernel *ev)
 
 	dict = prop_dictionary_create();
 	if (dict == NULL) {
-		log(LOG_DEBUG, "udev_event_externalize: prop_dictionary_create() failed\n");
+		log(LOG_DEBUG,
+		    "udev_event_externalize: prop_dictionary_create() failed\n");
 		return NULL;
 	}
 
@@ -556,15 +555,49 @@ error_out:
 }
 
 /*
+ * Allow multiple opens.  Each opener gets a different device.
+ * Messages are replicated to all devices using a marker system.
+ */
+static int
+udev_dev_clone(struct dev_clone_args *ap)
+{
+	struct udev_softc *softc;
+	int unit;
+
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(udev), 1000);
+	if (unit < 0) {
+		ap->a_dev = NULL;
+		return 1;
+	}
+
+	softc = kmalloc(sizeof(*softc), M_UDEV, M_WAITOK | M_ZERO);
+	softc->unit = unit;
+	lockmgr(&udev_lk, LK_EXCLUSIVE);
+	TAILQ_INSERT_TAIL(&udevq, softc, entry);
+	lockmgr(&udev_lk, LK_RELEASE);
+
+	softc->dev = make_only_dev(&udev_dev_ops, unit, ap->a_cred->cr_ruid,
+				   0, 0600, "udev/%d", unit);
+	softc->dev->si_drv1 = softc;
+	ap->a_dev = softc->dev;
+	return 0;
+}
+
+/*
  * dev stuff
  */
 static int
 udev_dev_open(struct dev_open_args *ap)
 {
-	if (udevctx.opened)
-		return EBUSY;
+	struct udev_softc *softc = ap->a_head.a_dev->si_drv1;
 
-	udevctx.opened = 1;
+	lockmgr(&udev_lk, LK_EXCLUSIVE);
+	if (softc == NULL || softc->opened) {
+		lockmgr(&udev_lk, LK_RELEASE);
+		return EBUSY;
+	}
+	softc->opened = 1;
+	lockmgr(&udev_lk, LK_RELEASE);
 
 	return 0;
 }
@@ -572,9 +605,30 @@ udev_dev_open(struct dev_open_args *ap)
 static int
 udev_dev_close(struct dev_close_args *ap)
 {
-	udevctx.opened = 0;
-	udevctx.initiated = 0;
-	wakeup(&udevctx);
+	struct udev_softc *softc = ap->a_head.a_dev->si_drv1;
+
+	KKASSERT(softc->dev == ap->a_head.a_dev);
+	KKASSERT(softc->opened == 1);
+
+	lockmgr(&udev_lk, LK_EXCLUSIVE);
+	TAILQ_REMOVE(&udevq, softc, entry);
+	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(udev), softc->unit);
+
+	if (softc->initiated) {
+		TAILQ_REMOVE(&udev_evq, &softc->marker, link);
+		softc->initiated = 0;
+		--udev_initiated_count;
+		udev_clean_events_locked();
+	}
+	softc->opened = 0;
+	softc->dev = NULL;
+	ap->a_head.a_dev->si_drv1 = NULL;
+	lockmgr(&udev_lk, LK_RELEASE);
+
+	destroy_dev(ap->a_head.a_dev);
+	wakeup(&udev_evq);
+
+	kfree(softc, M_UDEV);
 
 	return 0;
 }
@@ -585,26 +639,28 @@ static struct filterops udev_dev_read_filtops =
 static int
 udev_dev_kqfilter(struct dev_kqfilter_args *ap)
 {
+	struct udev_softc *softc = ap->a_head.a_dev->si_drv1;
 	struct knote *kn = ap->a_kn;
 	struct klist *klist;
 
 	ap->a_result = 0;
-	lockmgr(&udevctx.lock, LK_EXCLUSIVE);
+	lockmgr(&udev_lk, LK_EXCLUSIVE);
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
 		kn->kn_fop = &udev_dev_read_filtops;
+		kn->kn_hook = (caddr_t)softc;
 		break;
 	default:
 		ap->a_result = EOPNOTSUPP;
-	        lockmgr(&udevctx.lock, LK_RELEASE);
+	        lockmgr(&udev_lk, LK_RELEASE);
 		return (0);
 	}
 
-	klist = &udevctx.kq.ki_note;
+	klist = &udev_kq.ki_note;
 	knote_insert(klist, kn);
 
-        lockmgr(&udevctx.lock, LK_RELEASE);
+        lockmgr(&udev_lk, LK_RELEASE);
 
 	return (0);
 }
@@ -614,21 +670,28 @@ udev_dev_filter_detach(struct knote *kn)
 {
 	struct klist *klist;
 
-	lockmgr(&udevctx.lock, LK_EXCLUSIVE);
-	klist = &udevctx.kq.ki_note;
+	lockmgr(&udev_lk, LK_EXCLUSIVE);
+	klist = &udev_kq.ki_note;
 	knote_remove(klist, kn);
-	lockmgr(&udevctx.lock, LK_RELEASE);
+	lockmgr(&udev_lk, LK_RELEASE);
 }
 
 static int
 udev_dev_filter_read(struct knote *kn, long hint)
 {
+	struct udev_softc *softc = (void *)kn->kn_hook;
+	struct udev_event_kernel *ev;
 	int ready = 0;
 
-	lockmgr(&udevctx.lock, LK_EXCLUSIVE);
-	if (!TAILQ_EMPTY(&udevctx.ev_queue))
-		ready = 1;
-	lockmgr(&udevctx.lock, LK_RELEASE);
+	lockmgr(&udev_lk, LK_EXCLUSIVE);
+	if (softc->initiated) {
+		ev = TAILQ_NEXT(&softc->marker, link);
+		while (ev && ev->ev.ev_dict == NULL)
+			ev = TAILQ_NEXT(ev, link);
+		if (ev)
+			ready = 1;
+	}
+	lockmgr(&udev_lk, LK_RELEASE);
 
 	return (ready);
 }
@@ -636,48 +699,55 @@ udev_dev_filter_read(struct knote *kn, long hint)
 static int
 udev_dev_read(struct dev_read_args *ap)
 {
+	struct udev_softc *softc = ap->a_head.a_dev->si_drv1;
 	struct udev_event_kernel *ev;
 	struct uio *uio = ap->a_uio;
 	char	*xml;
 	size_t	len;
 	int	error;
 
+	lockmgr(&udev_lk, LK_EXCLUSIVE);
 
-	lockmgr(&udevctx.lock, LK_EXCLUSIVE);
-
+	error = 0;
 	for (;;) {
-		if ((ev = udev_event_remove()) != NULL) {
-			if ((xml = udev_event_externalize(ev)) == NULL) {
-				lockmgr(&udevctx.lock, LK_RELEASE);
-				return ENOMEM;
+		if (softc->initiated) {
+			ev = TAILQ_NEXT(&softc->marker, link);
+			while (ev && ev->ev.ev_dict == NULL)
+				ev = TAILQ_NEXT(ev, link);
+			if (ev) {
+				if ((xml = udev_event_externalize(ev)) == NULL) {
+					error = ENOMEM;
+					break;
+				}
+				len = strlen(xml) + 1; /* include terminator */
+				if (uio->uio_resid < len)
+					error = ENOMEM;
+				else
+					error = uiomove((caddr_t)xml, len, uio);
+				kfree(xml, M_TEMP);
+
+				/*
+				 * Move the marker
+				 */
+				TAILQ_REMOVE(&udev_evq, &softc->marker, link);
+				TAILQ_INSERT_AFTER(&udev_evq,
+						   ev, &softc->marker, link);
+				udev_clean_events_locked();
+				break;
 			}
-
-			len = strlen(xml) + 1; /* account for NULL-termination */
-			if (uio->uio_resid < len) {
-				error = ENOMEM;
-			} else {
-				error = uiomove((caddr_t)xml, len, uio);
-			}
-
-			kfree(xml, M_TEMP);
-			udev_event_free(ev);
-			lockmgr(&udevctx.lock, LK_RELEASE);
-			return error;
 		}
-
-		if ((error = lksleep(&udevctx, &udevctx.lock, 0, "udevq", 0))) {
-			lockmgr(&udevctx.lock, LK_RELEASE);
-			return error;
-		}
+		if ((error = lksleep(&udev_evq, &udev_lk, PCATCH, "udevq", 0)))
+			break;
 	}
 
-	lockmgr(&udevctx.lock, LK_RELEASE);
-
+	lockmgr(&udev_lk, LK_RELEASE);
+	return error;
 }
 
 static int
 udev_dev_ioctl(struct dev_ioctl_args *ap)
 {
+	struct udev_softc *softc = ap->a_head.a_dev->si_drv1;
 	prop_dictionary_t dict;
 	prop_object_t	po;
 	prop_string_t	ps;
@@ -709,7 +779,7 @@ udev_dev_ioctl(struct dev_ioctl_args *ap)
 		}
 
 		if (cmd_fn[i].cmd != NULL) {
-			error = cmd_fn[i].fn(pref, ap->a_cmd, dict);
+			error = cmd_fn[i].fn(softc, pref, ap->a_cmd, dict);
 		} else {
 			error = EINVAL;
 		}
@@ -742,7 +812,8 @@ udev_getdevs_scan_callback(char *name, cdev_t cdev, bool is_alias, void *arg)
 }
 
 static int
-udev_getdevs_ioctl(struct plistref *pref, u_long cmd, prop_dictionary_t dict)
+udev_getdevs_ioctl(struct udev_softc *softc, struct plistref *pref,
+		   u_long cmd, prop_dictionary_t dict)
 {
 	prop_dictionary_t odict;
 	struct udev_prop_ctx ctx;
@@ -751,7 +822,8 @@ udev_getdevs_ioctl(struct plistref *pref, u_long cmd, prop_dictionary_t dict)
 	ctx.error = 0;
 	ctx.cdevs = prop_array_create();
 	if (ctx.cdevs == NULL) {
-		log(LOG_DEBUG, "udev_getdevs_ioctl: prop_array_create() failed\n");
+		log(LOG_DEBUG,
+		    "udev_getdevs_ioctl: prop_array_create() failed\n");
 		return EINVAL;
 	}
 
@@ -761,7 +833,13 @@ udev_getdevs_ioctl(struct plistref *pref, u_long cmd, prop_dictionary_t dict)
 		prop_object_release(ctx.cdevs);
 		return (ctx.error);
 	}
-	udevctx.initiated = 1;
+	lockmgr(&udev_lk, LK_EXCLUSIVE);
+	if (softc->initiated == 0) {
+		softc->initiated = 1;
+		++udev_initiated_count;
+		TAILQ_INSERT_HEAD(&udev_evq, &softc->marker, link);
+	}
+	lockmgr(&udev_lk, LK_RELEASE);
 
 	odict = prop_dictionary_create();
 	if (odict == NULL) {
@@ -769,7 +847,8 @@ udev_getdevs_ioctl(struct plistref *pref, u_long cmd, prop_dictionary_t dict)
 	}
 
 	if ((prop_dictionary_set(odict, "array", ctx.cdevs)) == 0) {
-		log(LOG_DEBUG, "udev_getdevs_ioctl: prop_dictionary_set failed\n");
+		log(LOG_DEBUG,
+		    "udev_getdevs_ioctl: prop_dictionary_set failed\n");
 		prop_object_release(odict);
 		return ENOMEM;
 	}
@@ -787,8 +866,9 @@ udev_getdevs_ioctl(struct plistref *pref, u_long cmd, prop_dictionary_t dict)
 static void
 udev_init(void)
 {
-	lockinit(&udevctx.lock, "udevevq", 0, LK_CANRECURSE);
-	TAILQ_INIT(&udevctx.ev_queue);
+	lockinit(&udev_lk, "udevlk", 0, LK_CANRECURSE);
+	TAILQ_INIT(&udevq);
+	TAILQ_INIT(&udev_evq);
 }
 
 static void
@@ -799,12 +879,9 @@ udev_uninit(void)
 static void
 udev_dev_init(void)
 {
-	udev_dev = make_dev(&udev_dev_ops,
-            0,
-            UID_ROOT,
-            GID_WHEEL,
-            0600,
-            "udev");
+	udev_dev = make_autoclone_dev(&udev_dev_ops, &DEVFS_CLONE_BITMAP(udev),
+				      udev_dev_clone,
+				      UID_ROOT, GID_WHEEL, 0600, "udev");
 }
 
 static void
@@ -813,7 +890,11 @@ udev_dev_uninit(void)
 	destroy_dev(udev_dev);
 }
 
-SYSINIT(subr_udev_register, SI_SUB_CREATE_INIT, SI_ORDER_ANY, udev_init, NULL);
-SYSUNINIT(subr_udev_register, SI_SUB_CREATE_INIT, SI_ORDER_ANY, udev_uninit, NULL);
-SYSINIT(subr_udev_dev_register, SI_SUB_DRIVERS, SI_ORDER_ANY, udev_dev_init, NULL);
-SYSUNINIT(subr_udev_dev_register, SI_SUB_DRIVERS, SI_ORDER_ANY, udev_dev_uninit, NULL);
+SYSINIT(subr_udev_register, SI_SUB_CREATE_INIT, SI_ORDER_ANY,
+	udev_init, NULL);
+SYSUNINIT(subr_udev_register, SI_SUB_CREATE_INIT, SI_ORDER_ANY,
+	udev_uninit, NULL);
+SYSINIT(subr_udev_dev_register, SI_SUB_DRIVERS, SI_ORDER_ANY,
+	udev_dev_init, NULL);
+SYSUNINIT(subr_udev_dev_register, SI_SUB_DRIVERS, SI_ORDER_ANY,
+	udev_dev_uninit, NULL);
