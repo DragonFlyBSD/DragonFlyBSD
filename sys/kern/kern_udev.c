@@ -708,6 +708,19 @@ udev_dev_read(struct dev_read_args *ap)
 
 	lockmgr(&udev_lk, LK_EXCLUSIVE);
 
+	/*
+	 * Automatically enable message collection if it has not already
+	 * been enabled.
+	 */
+	if (softc->initiated == 0) {
+		softc->initiated = 1;
+		++udev_initiated_count;
+		TAILQ_INSERT_HEAD(&udev_evq, &softc->marker, link);
+	}
+
+	/*
+	 * Loop, sleep interruptably until we get an event or signal.
+	 */
 	error = 0;
 	for (;;) {
 		if (softc->initiated) {
@@ -819,6 +832,21 @@ udev_getdevs_ioctl(struct udev_softc *softc, struct plistref *pref,
 	struct udev_prop_ctx ctx;
 	int error;
 
+	/*
+	 * Ensure event notification is enabled before doing the devfs
+	 * scan so nothing gets missed.
+	 */
+	lockmgr(&udev_lk, LK_EXCLUSIVE);
+	if (softc->initiated == 0) {
+		softc->initiated = 1;
+		++udev_initiated_count;
+		TAILQ_INSERT_HEAD(&udev_evq, &softc->marker, link);
+	}
+	lockmgr(&udev_lk, LK_RELEASE);
+
+	/*
+	 * Devfs scan to build full dictionary.
+	 */
 	ctx.error = 0;
 	ctx.cdevs = prop_array_create();
 	if (ctx.cdevs == NULL) {
@@ -833,13 +861,6 @@ udev_getdevs_ioctl(struct udev_softc *softc, struct plistref *pref,
 		prop_object_release(ctx.cdevs);
 		return (ctx.error);
 	}
-	lockmgr(&udev_lk, LK_EXCLUSIVE);
-	if (softc->initiated == 0) {
-		softc->initiated = 1;
-		++udev_initiated_count;
-		TAILQ_INSERT_HEAD(&udev_evq, &softc->marker, link);
-	}
-	lockmgr(&udev_lk, LK_RELEASE);
 
 	odict = prop_dictionary_create();
 	if (odict == NULL) {
