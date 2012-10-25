@@ -51,6 +51,8 @@ struct sl_entry {
 	SLIST_ENTRY(sl_entry) entries;
 } *ent;
 
+static int MonitorOpt;
+
 static void
 usage(const char *name)
 {
@@ -61,6 +63,8 @@ usage(const char *name)
 	    "	Don't display aliases.\n"
 	    " -h\n"
 	    "	Print this help message.\n\n"
+	    " -M\n"
+	    "   Continue monitoring after initial scan.\n\n"
 	    "Valid options with their arguments are:\n"
 	    " -p <property>\n"
 	    "	Only display property; can be specified multiple times and\n"
@@ -93,7 +97,7 @@ parse_args(int argc, char *argv[], struct udev_enumerate *enumerate)
 	/* d = devices to list (defaults to all) */
 	/* m = display only devices in d that match these prop values */
 	/* r = display only devices in d that match these prop values (regex) */
-	while ((ch = getopt(argc, argv, "Ap:d:m:r:h")) != -1) {
+	while ((ch = getopt(argc, argv, "AMp:d:m:r:h")) != -1) {
 		invert = false;
 
 		switch (ch) {
@@ -105,6 +109,9 @@ parse_args(int argc, char *argv[], struct udev_enumerate *enumerate)
 			ent = malloc(sizeof(struct sl_entry));
 			ent->val = optarg;
 			SLIST_INSERT_HEAD(&props, ent, entries);
+			break;
+		case 'M':
+			MonitorOpt = 1;
 			break;
 		case 'd':
 			udev_enumerate_add_match_expr(enumerate, "name",
@@ -185,6 +192,7 @@ main(int argc, char* argv[])
 {
 	struct udev *ctx;
 	struct udev_enumerate *enumerate;
+	struct udev_monitor *mon;
 	struct udev_list_entry *current;
 	struct udev_device *dev;
 	prop_object_t key_val;
@@ -206,6 +214,16 @@ main(int argc, char* argv[])
 		err(EX_UNAVAILABLE, "udev_enumerate_new");
 
 	parse_args(argc, argv, enumerate);
+
+	/*
+	 * Don't lose any races, start monitor before scanning devices.
+	 */
+	if (MonitorOpt) {
+		mon = udev_monitor_new(ctx);
+		udev_monitor_enable_receiving(mon);
+	} else {
+		mon = NULL;
+	}
 
 	ret = udev_enumerate_scan_devices(enumerate);
 	if (ret != 0)
@@ -251,6 +269,40 @@ main(int argc, char* argv[])
 	}
 
 	udev_enumerate_unref(enumerate);
+
+	if (mon) {
+		while ((dev = udev_monitor_receive_device(mon)) != NULL) {
+			dict = udev_device_get_dictionary(dev);
+			if (dict == NULL)
+				continue;
+			iter = prop_dictionary_iterator(dict);
+			cur_key =NULL;
+
+			dev_name = prop_string_cstring(prop_dictionary_get(dict, "name"));
+			printf("Device %s:\n", dev_name);
+			free(dev_name);
+
+			if (!SLIST_EMPTY(&props)) {
+				SLIST_FOREACH(ent, &props, entries) {
+					key_val = prop_dictionary_get(dict,
+					    ent->val);
+					if (key_val != NULL)
+						print_prop(ent->val, key_val);
+				}
+			} else {
+				while ((cur_key = (prop_dictionary_keysym_t)prop_object_iterator_next(iter)) != NULL) {
+					key_str = prop_dictionary_keysym_cstring_nocopy(cur_key);
+					key_val = prop_dictionary_get_keysym(dict,
+					    cur_key);
+					print_prop(key_str, key_val);
+				}
+			}
+
+			printf("\n");
+		}
+		udev_monitor_unref(mon);
+	}
+
 	udev_unref(ctx);
 
 	return (0);

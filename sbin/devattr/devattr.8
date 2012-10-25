@@ -39,7 +39,7 @@
 .Nd tool for displaying devices and their associated properties
 .Sh SYNOPSIS
 .Nm
-.Op Fl Ah
+.Op Fl AhM
 .Op Fl p Ar property
 .Op Fl d Ar device
 .Op Fl m Ar key:value
@@ -61,6 +61,10 @@ Excludes aliases from the listing.
 .It Fl h
 Displays a help message.
 .\"
+.It Fl M
+Continue monitoring after initial scan.
+Program continues monitoring for changes and
+does not exit until killed.
 .It Fl p
 Only display the specified
 .Ar property .
