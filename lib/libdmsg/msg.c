@@ -33,10 +33,12 @@
  * SUCH DAMAGE.
  */
 
-#include "hammer2.h"
+#include "dmsg_local.h"
 
-static int hammer2_state_msgrx(hammer2_msg_t *msg);
-static void hammer2_state_cleanuptx(hammer2_msg_t *msg);
+int DMsgDebugOpt;
+
+static int dmsg_state_msgrx(dmsg_msg_t *msg);
+static void dmsg_state_cleanuptx(dmsg_msg_t *msg);
 
 /*
  * ROUTER TREE - Represents available routes for message routing, indexed
@@ -44,7 +46,7 @@ static void hammer2_state_cleanuptx(hammer2_msg_t *msg);
  *		 either an iocom, h2span_link, or h2span_relay (see msg_lnk.c).
  */
 int
-hammer2_router_cmp(hammer2_router_t *router1, hammer2_router_t *router2)
+dmsg_router_cmp(dmsg_router_t *router1, dmsg_router_t *router2)
 {
 	if (router1->target < router2->target)
 		return(-1);
@@ -53,11 +55,11 @@ hammer2_router_cmp(hammer2_router_t *router1, hammer2_router_t *router2)
 	return(0);
 }
 
-RB_GENERATE(hammer2_router_tree, hammer2_router, rbnode, hammer2_router_cmp);
+RB_GENERATE(dmsg_router_tree, dmsg_router, rbnode, dmsg_router_cmp);
 
 static pthread_mutex_t router_mtx;
-static struct hammer2_router_tree router_ltree = RB_INITIALIZER(router_ltree);
-static struct hammer2_router_tree router_rtree = RB_INITIALIZER(router_rtree);
+static struct dmsg_router_tree router_ltree = RB_INITIALIZER(router_ltree);
+static struct dmsg_router_tree router_rtree = RB_INITIALIZER(router_rtree);
 
 /*
  * STATE TREE - Represents open transactions which are indexed by their
@@ -67,7 +69,7 @@ static struct hammer2_router_tree router_rtree = RB_INITIALIZER(router_rtree);
  *		for relayed messages.
  */
 int
-hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
+dmsg_state_cmp(dmsg_state_t *state1, dmsg_state_t *state2)
 {
 #if 0
 	if (state1->router < state2->router)
@@ -82,16 +84,16 @@ hammer2_state_cmp(hammer2_state_t *state1, hammer2_state_t *state2)
 	return(0);
 }
 
-RB_GENERATE(hammer2_state_tree, hammer2_state, rbnode, hammer2_state_cmp);
+RB_GENERATE(dmsg_state_tree, dmsg_state, rbnode, dmsg_state_cmp);
 
 /*
  * Initialize a low-level ioq
  */
 void
-hammer2_ioq_init(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
+dmsg_ioq_init(dmsg_iocom_t *iocom __unused, dmsg_ioq_t *ioq)
 {
 	bzero(ioq, sizeof(*ioq));
-	ioq->state = HAMMER2_MSGQ_STATE_HEADER1;
+	ioq->state = DMSG_MSGQ_STATE_HEADER1;
 	TAILQ_INIT(&ioq->msgq);
 }
 
@@ -101,18 +103,18 @@ hammer2_ioq_init(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
  * caller holds iocom->mtx.
  */
 void
-hammer2_ioq_done(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
+dmsg_ioq_done(dmsg_iocom_t *iocom __unused, dmsg_ioq_t *ioq)
 {
-	hammer2_msg_t *msg;
+	dmsg_msg_t *msg;
 
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		assert(0);	/* shouldn't happen */
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);
-		hammer2_msg_free(msg);
+		dmsg_msg_free(msg);
 	}
 	if ((msg = ioq->msg) != NULL) {
 		ioq->msg = NULL;
-		hammer2_msg_free(msg);
+		dmsg_msg_free(msg);
 	}
 }
 
@@ -120,23 +122,23 @@ hammer2_ioq_done(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
  * Initialize a low-level communications channel.
  *
  * NOTE: The signal_func() is called at least once from the loop and can be
- *	 re-armed via hammer2_iocom_restate().
+ *	 re-armed via dmsg_iocom_restate().
  */
 void
-hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
-		   void (*signal_func)(hammer2_router_t *),
-		   void (*rcvmsg_func)(hammer2_msg_t *),
-		   void (*altmsg_func)(hammer2_iocom_t *))
+dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
+		   void (*signal_func)(dmsg_router_t *),
+		   void (*rcvmsg_func)(dmsg_msg_t *),
+		   void (*altmsg_func)(dmsg_iocom_t *))
 {
 	struct stat st;
 
 	bzero(iocom, sizeof(*iocom));
 
-	iocom->router = hammer2_router_alloc();
+	iocom->router = dmsg_router_alloc();
 	iocom->router->signal_callback = signal_func;
 	iocom->router->rcvmsg_callback = rcvmsg_func;
 	iocom->router->altmsg_callback = altmsg_func;
-	/* we do not call hammer2_router_connect() for iocom routers */
+	/* we do not call dmsg_router_connect() for iocom routers */
 
 	pthread_mutex_init(&iocom->mtx, NULL);
 	RB_INIT(&iocom->router->staterd_tree);
@@ -147,11 +149,11 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
 	iocom->router->iocom = iocom;
 	iocom->sock_fd = sock_fd;
 	iocom->alt_fd = alt_fd;
-	iocom->flags = HAMMER2_IOCOMF_RREQ;
+	iocom->flags = DMSG_IOCOMF_RREQ;
 	if (signal_func)
-		iocom->flags |= HAMMER2_IOCOMF_SWORK;
-	hammer2_ioq_init(iocom, &iocom->ioq_rx);
-	hammer2_ioq_init(iocom, &iocom->ioq_tx);
+		iocom->flags |= DMSG_IOCOMF_SWORK;
+	dmsg_ioq_init(iocom, &iocom->ioq_rx);
+	dmsg_ioq_init(iocom, &iocom->ioq_tx);
 	if (pipe(iocom->wakeupfds) < 0)
 		assert(0);
 	fcntl(iocom->wakeupfds[0], F_SETFL, O_NONBLOCK);
@@ -166,7 +168,7 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
 	if (fstat(sock_fd, &st) < 0)
 		assert(0);
 	if (S_ISSOCK(st.st_mode))
-		hammer2_crypto_negotiate(iocom);
+		dmsg_crypto_negotiate(iocom);
 
 	/*
 	 * Make sure our fds are set to non-blocking for the iocom core.
@@ -187,25 +189,25 @@ hammer2_iocom_init(hammer2_iocom_t *iocom, int sock_fd, int alt_fd,
  * the recevmsg_func and the sendmsg_func is called at least once.
  */
 void
-hammer2_router_restate(hammer2_router_t *router,
-		   void (*signal_func)(hammer2_router_t *),
-		   void (*rcvmsg_func)(hammer2_msg_t *msg),
-		   void (*altmsg_func)(hammer2_iocom_t *))
+dmsg_router_restate(dmsg_router_t *router,
+		   void (*signal_func)(dmsg_router_t *),
+		   void (*rcvmsg_func)(dmsg_msg_t *msg),
+		   void (*altmsg_func)(dmsg_iocom_t *))
 {
 	router->signal_callback = signal_func;
 	router->rcvmsg_callback = rcvmsg_func;
 	router->altmsg_callback = altmsg_func;
 	if (signal_func)
-		router->iocom->flags |= HAMMER2_IOCOMF_SWORK;
+		router->iocom->flags |= DMSG_IOCOMF_SWORK;
 	else
-		router->iocom->flags &= ~HAMMER2_IOCOMF_SWORK;
+		router->iocom->flags &= ~DMSG_IOCOMF_SWORK;
 }
 
 void
-hammer2_router_signal(hammer2_router_t *router)
+dmsg_router_signal(dmsg_router_t *router)
 {
 	if (router->signal_callback)
-		router->iocom->flags |= HAMMER2_IOCOMF_SWORK;
+		router->iocom->flags |= DMSG_IOCOMF_SWORK;
 }
 
 /*
@@ -215,9 +217,9 @@ hammer2_router_signal(hammer2_router_t *router)
  * from all possible references to it.
  */
 void
-hammer2_iocom_done(hammer2_iocom_t *iocom)
+dmsg_iocom_done(dmsg_iocom_t *iocom)
 {
-	hammer2_msg_t *msg;
+	dmsg_msg_t *msg;
 
 	if (iocom->sock_fd >= 0) {
 		close(iocom->sock_fd);
@@ -227,8 +229,8 @@ hammer2_iocom_done(hammer2_iocom_t *iocom)
 		close(iocom->alt_fd);
 		iocom->alt_fd = -1;
 	}
-	hammer2_ioq_done(iocom, &iocom->ioq_rx);
-	hammer2_ioq_done(iocom, &iocom->ioq_tx);
+	dmsg_ioq_done(iocom, &iocom->ioq_rx);
+	dmsg_ioq_done(iocom, &iocom->ioq_tx);
 	if ((msg = TAILQ_FIRST(&iocom->freeq)) != NULL) {
 		TAILQ_REMOVE(&iocom->freeq, msg, qentry);
 		free(msg);
@@ -253,13 +255,13 @@ hammer2_iocom_done(hammer2_iocom_t *iocom)
 /*
  * Allocate a new one-way message.
  */
-hammer2_msg_t *
-hammer2_msg_alloc(hammer2_router_t *router, size_t aux_size, uint32_t cmd,
-		  void (*func)(hammer2_msg_t *), void *data)
+dmsg_msg_t *
+dmsg_msg_alloc(dmsg_router_t *router, size_t aux_size, uint32_t cmd,
+		  void (*func)(dmsg_msg_t *), void *data)
 {
-	hammer2_state_t *state = NULL;
-	hammer2_iocom_t *iocom = router->iocom;
-	hammer2_msg_t *msg;
+	dmsg_state_t *state = NULL;
+	dmsg_iocom_t *iocom = router->iocom;
+	dmsg_msg_t *msg;
 	int hbytes;
 
 	pthread_mutex_lock(&iocom->mtx);
@@ -276,13 +278,13 @@ hammer2_msg_alloc(hammer2_router_t *router, size_t aux_size, uint32_t cmd,
 		/*
 		 * Create state when CREATE is set without REPLY.
 		 *
-		 * NOTE: CREATE in txcmd handled by hammer2_msg_write()
-		 * NOTE: DELETE in txcmd handled by hammer2_state_cleanuptx()
+		 * NOTE: CREATE in txcmd handled by dmsg_msg_write()
+		 * NOTE: DELETE in txcmd handled by dmsg_state_cleanuptx()
 		 */
 		state = malloc(sizeof(*state));
 		bzero(state, sizeof(*state));
 		state->iocom = iocom;
-		state->flags = HAMMER2_STATE_DYNAMIC;
+		state->flags = DMSG_STATE_DYNAMIC;
 		state->msgid = (uint64_t)(uintptr_t)state;
 		state->router = router;
 		state->txcmd = cmd & ~(DMSGF_CREATE | DMSGF_DELETE);
@@ -290,11 +292,11 @@ hammer2_msg_alloc(hammer2_router_t *router, size_t aux_size, uint32_t cmd,
 		state->func = func;
 		state->any.any = data;
 		pthread_mutex_lock(&iocom->mtx);
-		RB_INSERT(hammer2_state_tree,
+		RB_INSERT(dmsg_state_tree,
 			  &iocom->router->statewr_tree,
 			  state);
 		pthread_mutex_unlock(&iocom->mtx);
-		state->flags |= HAMMER2_STATE_INSERTED;
+		state->flags |= DMSG_STATE_INSERTED;
 	}
 	pthread_mutex_unlock(&iocom->mtx);
 	if (msg == NULL) {
@@ -337,9 +339,9 @@ hammer2_msg_alloc(hammer2_router_t *router, size_t aux_size, uint32_t cmd,
  */
 static
 void
-hammer2_msg_free_locked(hammer2_msg_t *msg)
+dmsg_msg_free_locked(dmsg_msg_t *msg)
 {
-	hammer2_iocom_t *iocom = msg->router->iocom;
+	dmsg_iocom_t *iocom = msg->router->iocom;
 
 	msg->state = NULL;
 	if (msg->aux_data)
@@ -349,12 +351,12 @@ hammer2_msg_free_locked(hammer2_msg_t *msg)
 }
 
 void
-hammer2_msg_free(hammer2_msg_t *msg)
+dmsg_msg_free(dmsg_msg_t *msg)
 {
-	hammer2_iocom_t *iocom = msg->router->iocom;
+	dmsg_iocom_t *iocom = msg->router->iocom;
 
 	pthread_mutex_lock(&iocom->mtx);
-	hammer2_msg_free_locked(msg);
+	dmsg_msg_free_locked(msg);
 	pthread_mutex_unlock(&iocom->mtx);
 }
 
@@ -364,24 +366,24 @@ hammer2_msg_free(hammer2_msg_t *msg)
  * Thread localized, iocom->mtx not held.
  */
 void
-hammer2_iocom_core(hammer2_iocom_t *iocom)
+dmsg_iocom_core(dmsg_iocom_t *iocom)
 {
 	struct pollfd fds[3];
 	char dummybuf[256];
-	hammer2_msg_t *msg;
+	dmsg_msg_t *msg;
 	int timeout;
 	int count;
 	int wi;	/* wakeup pipe */
 	int si;	/* socket */
 	int ai;	/* alt bulk path socket */
 
-	while ((iocom->flags & HAMMER2_IOCOMF_EOF) == 0) {
-		if ((iocom->flags & (HAMMER2_IOCOMF_RWORK |
-				     HAMMER2_IOCOMF_WWORK |
-				     HAMMER2_IOCOMF_PWORK |
-				     HAMMER2_IOCOMF_SWORK |
-				     HAMMER2_IOCOMF_ARWORK |
-				     HAMMER2_IOCOMF_AWWORK)) == 0) {
+	while ((iocom->flags & DMSG_IOCOMF_EOF) == 0) {
+		if ((iocom->flags & (DMSG_IOCOMF_RWORK |
+				     DMSG_IOCOMF_WWORK |
+				     DMSG_IOCOMF_PWORK |
+				     DMSG_IOCOMF_SWORK |
+				     DMSG_IOCOMF_ARWORK |
+				     DMSG_IOCOMF_AWWORK)) == 0) {
 			/*
 			 * Only poll if no immediate work is pending.
 			 * Otherwise we are just wasting our time calling
@@ -407,16 +409,16 @@ hammer2_iocom_core(hammer2_iocom_t *iocom)
 			 * Check the socket input/output direction as
 			 * requested
 			 */
-			if (iocom->flags & (HAMMER2_IOCOMF_RREQ |
-					    HAMMER2_IOCOMF_WREQ)) {
+			if (iocom->flags & (DMSG_IOCOMF_RREQ |
+					    DMSG_IOCOMF_WREQ)) {
 				si = count++;
 				fds[si].fd = iocom->sock_fd;
 				fds[si].events = 0;
 				fds[si].revents = 0;
 
-				if (iocom->flags & HAMMER2_IOCOMF_RREQ)
+				if (iocom->flags & DMSG_IOCOMF_RREQ)
 					fds[si].events |= POLLIN;
-				if (iocom->flags & HAMMER2_IOCOMF_WREQ)
+				if (iocom->flags & DMSG_IOCOMF_WREQ)
 					fds[si].events |= POLLOUT;
 			}
 
@@ -432,24 +434,24 @@ hammer2_iocom_core(hammer2_iocom_t *iocom)
 			poll(fds, count, timeout);
 
 			if (wi >= 0 && (fds[wi].revents & POLLIN))
-				iocom->flags |= HAMMER2_IOCOMF_PWORK;
+				iocom->flags |= DMSG_IOCOMF_PWORK;
 			if (si >= 0 && (fds[si].revents & POLLIN))
-				iocom->flags |= HAMMER2_IOCOMF_RWORK;
+				iocom->flags |= DMSG_IOCOMF_RWORK;
 			if (si >= 0 && (fds[si].revents & POLLOUT))
-				iocom->flags |= HAMMER2_IOCOMF_WWORK;
+				iocom->flags |= DMSG_IOCOMF_WWORK;
 			if (wi >= 0 && (fds[wi].revents & POLLOUT))
-				iocom->flags |= HAMMER2_IOCOMF_WWORK;
+				iocom->flags |= DMSG_IOCOMF_WWORK;
 			if (ai >= 0 && (fds[ai].revents & POLLIN))
-				iocom->flags |= HAMMER2_IOCOMF_ARWORK;
+				iocom->flags |= DMSG_IOCOMF_ARWORK;
 		} else {
 			/*
 			 * Always check the pipe
 			 */
-			iocom->flags |= HAMMER2_IOCOMF_PWORK;
+			iocom->flags |= DMSG_IOCOMF_PWORK;
 		}
 
-		if (iocom->flags & HAMMER2_IOCOMF_SWORK) {
-			iocom->flags &= ~HAMMER2_IOCOMF_SWORK;
+		if (iocom->flags & DMSG_IOCOMF_SWORK) {
+			iocom->flags &= ~DMSG_IOCOMF_SWORK;
 			iocom->router->signal_callback(iocom->router);
 		}
 
@@ -458,40 +460,40 @@ hammer2_iocom_core(hammer2_iocom_t *iocom)
 		 * with a write to the wakeupfds[] pipe.  We have to clear
 		 * the pipe with a dummy read.
 		 */
-		if (iocom->flags & HAMMER2_IOCOMF_PWORK) {
-			iocom->flags &= ~HAMMER2_IOCOMF_PWORK;
+		if (iocom->flags & DMSG_IOCOMF_PWORK) {
+			iocom->flags &= ~DMSG_IOCOMF_PWORK;
 			read(iocom->wakeupfds[0], dummybuf, sizeof(dummybuf));
-			iocom->flags |= HAMMER2_IOCOMF_RWORK;
-			iocom->flags |= HAMMER2_IOCOMF_WWORK;
+			iocom->flags |= DMSG_IOCOMF_RWORK;
+			iocom->flags |= DMSG_IOCOMF_WWORK;
 			if (TAILQ_FIRST(&iocom->router->txmsgq))
-				hammer2_iocom_flush1(iocom);
+				dmsg_iocom_flush1(iocom);
 		}
 
 		/*
 		 * Message write sequencing
 		 */
-		if (iocom->flags & HAMMER2_IOCOMF_WWORK)
-			hammer2_iocom_flush1(iocom);
+		if (iocom->flags & DMSG_IOCOMF_WWORK)
+			dmsg_iocom_flush1(iocom);
 
 		/*
 		 * Message read sequencing.  Run this after the write
 		 * sequencing in case the write sequencing allowed another
 		 * auto-DELETE to occur on the read side.
 		 */
-		if (iocom->flags & HAMMER2_IOCOMF_RWORK) {
-			while ((iocom->flags & HAMMER2_IOCOMF_EOF) == 0 &&
-			       (msg = hammer2_ioq_read(iocom)) != NULL) {
-				if (DebugOpt) {
+		if (iocom->flags & DMSG_IOCOMF_RWORK) {
+			while ((iocom->flags & DMSG_IOCOMF_EOF) == 0 &&
+			       (msg = dmsg_ioq_read(iocom)) != NULL) {
+				if (DMsgDebugOpt) {
 					fprintf(stderr, "receive %s\n",
-						hammer2_msg_str(msg));
+						dmsg_msg_str(msg));
 				}
 				iocom->router->rcvmsg_callback(msg);
-				hammer2_state_cleanuprx(iocom, msg);
+				dmsg_state_cleanuprx(iocom, msg);
 			}
 		}
 
-		if (iocom->flags & HAMMER2_IOCOMF_ARWORK) {
-			iocom->flags &= ~HAMMER2_IOCOMF_ARWORK;
+		if (iocom->flags & DMSG_IOCOMF_ARWORK) {
+			iocom->flags &= ~DMSG_IOCOMF_ARWORK;
 			iocom->router->altmsg_callback(iocom);
 		}
 	}
@@ -506,7 +508,7 @@ hammer2_iocom_core(hammer2_iocom_t *iocom)
  */
 static
 size_t
-hammer2_ioq_makeroom(hammer2_ioq_t *ioq, size_t needed)
+dmsg_ioq_makeroom(dmsg_ioq_t *ioq, size_t needed)
 {
 	size_t bytes;
 	size_t nmax;
@@ -545,12 +547,12 @@ hammer2_ioq_makeroom(hammer2_ioq_t *ioq, size_t needed)
  *
  * Thread localized, iocom->mtx not held.
  */
-hammer2_msg_t *
-hammer2_ioq_read(hammer2_iocom_t *iocom)
+dmsg_msg_t *
+dmsg_ioq_read(dmsg_iocom_t *iocom)
 {
-	hammer2_ioq_t *ioq = &iocom->ioq_rx;
-	hammer2_msg_t *msg;
-	hammer2_state_t *state;
+	dmsg_ioq_t *ioq = &iocom->ioq_rx;
+	dmsg_msg_t *msg;
+	dmsg_state_t *state;
 	dmsg_hdr_t *head;
 	ssize_t n;
 	size_t bytes;
@@ -559,7 +561,7 @@ hammer2_ioq_read(hammer2_iocom_t *iocom)
 	int error;
 
 again:
-	iocom->flags &= ~(HAMMER2_IOCOMF_RREQ | HAMMER2_IOCOMF_RWORK);
+	iocom->flags &= ~(DMSG_IOCOMF_RREQ | DMSG_IOCOMF_RWORK);
 
 	/*
 	 * If a message is already pending we can just remove and
@@ -586,27 +588,27 @@ again:
 	msg = ioq->msg;
 
 	switch(ioq->state) {
-	case HAMMER2_MSGQ_STATE_HEADER1:
+	case DMSG_MSGQ_STATE_HEADER1:
 		/*
 		 * Load the primary header, fail on any non-trivial read
 		 * error or on EOF.  Since the primary header is the same
 		 * size is the message alignment it will never straddle
 		 * the end of the buffer.
 		 */
-		nmax = hammer2_ioq_makeroom(ioq, sizeof(msg->any.head));
+		nmax = dmsg_ioq_makeroom(ioq, sizeof(msg->any.head));
 		if (bytes < sizeof(msg->any.head)) {
 			n = read(iocom->sock_fd,
 				 ioq->buf + ioq->fifo_end,
 				 nmax);
 			if (n <= 0) {
 				if (n == 0) {
-					ioq->error = HAMMER2_IOQ_ERROR_EOF;
+					ioq->error = DMSG_IOQ_ERROR_EOF;
 					break;
 				}
 				if (errno != EINTR &&
 				    errno != EINPROGRESS &&
 				    errno != EAGAIN) {
-					ioq->error = HAMMER2_IOQ_ERROR_SOCK;
+					ioq->error = DMSG_IOQ_ERROR_SOCK;
 					break;
 				}
 				n = 0;
@@ -625,8 +627,8 @@ again:
 		 *	     do not fix it up until we get the entire
 		 *	     extended header.
 		 */
-		if (iocom->flags & HAMMER2_IOCOMF_CRYPTED) {
-			hammer2_crypto_decrypt(iocom, ioq);
+		if (iocom->flags & DMSG_IOCOMF_CRYPTED) {
+			dmsg_crypto_decrypt(iocom, ioq);
 		} else {
 			ioq->fifo_cdx = ioq->fifo_end;
 			ioq->fifo_cdn = ioq->fifo_end;
@@ -650,7 +652,7 @@ again:
 		head = (void *)(ioq->buf + ioq->fifo_beg);
 		if (head->magic != DMSG_HDR_MAGIC &&
 		    head->magic != DMSG_HDR_MAGIC_REV) {
-			ioq->error = HAMMER2_IOQ_ERROR_SYNC;
+			ioq->error = DMSG_IOQ_ERROR_SYNC;
 			break;
 		}
 
@@ -670,14 +672,14 @@ again:
 		if (ioq->hbytes < sizeof(msg->any.head) ||
 		    ioq->hbytes > sizeof(msg->any) ||
 		    ioq->abytes > DMSG_AUX_MAX) {
-			ioq->error = HAMMER2_IOQ_ERROR_FIELD;
+			ioq->error = DMSG_IOQ_ERROR_FIELD;
 			break;
 		}
 
 		/*
 		 * Allocate the message, the next state will fill it in.
 		 */
-		msg = hammer2_msg_alloc(iocom->router, ioq->abytes, 0,
+		msg = dmsg_msg_alloc(iocom->router, ioq->abytes, 0,
 					NULL, NULL);
 		ioq->msg = msg;
 
@@ -689,10 +691,10 @@ again:
 		 *
 		 * Make sure there is enough room for bloated encrypt data.
 		 */
-		nmax = hammer2_ioq_makeroom(ioq, ioq->hbytes);
-		ioq->state = HAMMER2_MSGQ_STATE_HEADER2;
+		nmax = dmsg_ioq_makeroom(ioq, ioq->hbytes);
+		ioq->state = DMSG_MSGQ_STATE_HEADER2;
 		/* fall through */
-	case HAMMER2_MSGQ_STATE_HEADER2:
+	case DMSG_MSGQ_STATE_HEADER2:
 		/*
 		 * Fill out the extended header.
 		 */
@@ -703,13 +705,13 @@ again:
 				 nmax);
 			if (n <= 0) {
 				if (n == 0) {
-					ioq->error = HAMMER2_IOQ_ERROR_EOF;
+					ioq->error = DMSG_IOQ_ERROR_EOF;
 					break;
 				}
 				if (errno != EINTR &&
 				    errno != EINPROGRESS &&
 				    errno != EAGAIN) {
-					ioq->error = HAMMER2_IOQ_ERROR_SOCK;
+					ioq->error = DMSG_IOQ_ERROR_SOCK;
 					break;
 				}
 				n = 0;
@@ -719,8 +721,8 @@ again:
 			nmax -= (size_t)n;
 		}
 
-		if (iocom->flags & HAMMER2_IOCOMF_CRYPTED) {
-			hammer2_crypto_decrypt(iocom, ioq);
+		if (iocom->flags & DMSG_IOCOMF_CRYPTED) {
+			dmsg_crypto_decrypt(iocom, ioq);
 		} else {
 			ioq->fifo_cdx = ioq->fifo_end;
 			ioq->fifo_cdn = ioq->fifo_end;
@@ -751,18 +753,18 @@ again:
 		else
 			xcrc32 = head->hdr_crc;
 		head->hdr_crc = 0;
-		if (hammer2_icrc32(head, ioq->hbytes) != xcrc32) {
-			ioq->error = HAMMER2_IOQ_ERROR_XCRC;
+		if (dmsg_icrc32(head, ioq->hbytes) != xcrc32) {
+			ioq->error = DMSG_IOQ_ERROR_XCRC;
 			fprintf(stderr, "BAD-XCRC(%08x,%08x) %s\n",
-				xcrc32, hammer2_icrc32(head, ioq->hbytes),
-				hammer2_msg_str(msg));
+				xcrc32, dmsg_icrc32(head, ioq->hbytes),
+				dmsg_msg_str(msg));
 			assert(0);
 			break;
 		}
 		head->hdr_crc = xcrc32;
 
 		if (head->magic == DMSG_HDR_MAGIC_REV) {
-			hammer2_bswap_head(head);
+			dmsg_bswap_head(head);
 		}
 
 		/*
@@ -785,9 +787,9 @@ again:
 		 */
 		ioq->fifo_beg += ioq->hbytes;
 		bytes -= ioq->hbytes;
-		ioq->state = HAMMER2_MSGQ_STATE_AUXDATA1;
+		ioq->state = DMSG_MSGQ_STATE_AUXDATA1;
 		/* fall through */
-	case HAMMER2_MSGQ_STATE_AUXDATA1:
+	case DMSG_MSGQ_STATE_AUXDATA1:
 		/*
 		 * Copy the partial or complete payload from remaining
 		 * bytes in the FIFO in order to optimize the makeroom call
@@ -817,14 +819,14 @@ again:
 		} else {
 			msg->aux_size = 0;
 		}
-		ioq->state = HAMMER2_MSGQ_STATE_AUXDATA2;
+		ioq->state = DMSG_MSGQ_STATE_AUXDATA2;
 		/* fall through */
-	case HAMMER2_MSGQ_STATE_AUXDATA2:
+	case DMSG_MSGQ_STATE_AUXDATA2:
 		/*
 		 * Make sure there is enough room for more data.
 		 */
 		assert(msg);
-		nmax = hammer2_ioq_makeroom(ioq, ioq->abytes - msg->aux_size);
+		nmax = dmsg_ioq_makeroom(ioq, ioq->abytes - msg->aux_size);
 
 		/*
 		 * Read and decrypt more of the payload.
@@ -836,13 +838,13 @@ again:
 				 nmax);
 			if (n <= 0) {
 				if (n == 0) {
-					ioq->error = HAMMER2_IOQ_ERROR_EOF;
+					ioq->error = DMSG_IOQ_ERROR_EOF;
 					break;
 				}
 				if (errno != EINTR &&
 				    errno != EINPROGRESS &&
 				    errno != EAGAIN) {
-					ioq->error = HAMMER2_IOQ_ERROR_SOCK;
+					ioq->error = DMSG_IOQ_ERROR_SOCK;
 					break;
 				}
 				n = 0;
@@ -852,8 +854,8 @@ again:
 			nmax -= (size_t)n;
 		}
 
-		if (iocom->flags & HAMMER2_IOCOMF_CRYPTED) {
-			hammer2_crypto_decrypt(iocom, ioq);
+		if (iocom->flags & DMSG_IOCOMF_CRYPTED) {
+			dmsg_crypto_decrypt(iocom, ioq);
 		} else {
 			ioq->fifo_cdx = ioq->fifo_end;
 			ioq->fifo_cdn = ioq->fifo_end;
@@ -884,13 +886,13 @@ again:
 		/*
 		 * Check aux_crc, then we are done.
 		 */
-		xcrc32 = hammer2_icrc32(msg->aux_data, msg->aux_size);
+		xcrc32 = dmsg_icrc32(msg->aux_data, msg->aux_size);
 		if (xcrc32 != msg->any.head.aux_crc) {
-			ioq->error = HAMMER2_IOQ_ERROR_ACRC;
+			ioq->error = DMSG_IOQ_ERROR_ACRC;
 			break;
 		}
 		break;
-	case HAMMER2_MSGQ_STATE_ERROR:
+	case DMSG_MSGQ_STATE_ERROR:
 		/*
 		 * Continued calls to drain recorded transactions (returning
 		 * a LNK_ERROR for each one), before we return the final
@@ -913,7 +915,7 @@ again:
 	 */
 	if (msg && ioq->error == 0) {
 		if ((msg->any.head.salt & 255) != (ioq->seq & 255)) {
-			ioq->error = HAMMER2_IOQ_ERROR_MSGSEQ;
+			ioq->error = DMSG_IOQ_ERROR_MSGSEQ;
 		} else {
 			++ioq->seq;
 		}
@@ -923,10 +925,10 @@ again:
 	 * Process transactional state for the message.
 	 */
 	if (msg && ioq->error == 0) {
-		error = hammer2_state_msgrx(msg);
+		error = dmsg_state_msgrx(msg);
 		if (error) {
-			if (error == HAMMER2_IOQ_ERROR_EALREADY) {
-				hammer2_msg_free(msg);
+			if (error == DMSG_IOQ_ERROR_EALREADY) {
+				dmsg_msg_free(msg);
 				goto again;
 			}
 			ioq->error = error;
@@ -952,14 +954,14 @@ skip:
 		 */
 		assert(ioq->msg == msg);
 		if (msg) {
-			hammer2_msg_free(msg);
+			dmsg_msg_free(msg);
 			ioq->msg = NULL;
 		}
 
 		/*
 		 * No more I/O read processing
 		 */
-		ioq->state = HAMMER2_MSGQ_STATE_ERROR;
+		ioq->state = DMSG_MSGQ_STATE_ERROR;
 
 		/*
 		 * Simulate a remote LNK_ERROR DELETE msg for any open
@@ -967,21 +969,21 @@ skip:
 		 * LNK_ERROR (that the session can detect) when no
 		 * transactions remain.
 		 */
-		msg = hammer2_msg_alloc(iocom->router, 0, 0, NULL, NULL);
+		msg = dmsg_msg_alloc(iocom->router, 0, 0, NULL, NULL);
 		bzero(&msg->any.head, sizeof(msg->any.head));
 		msg->any.head.magic = DMSG_HDR_MAGIC;
 		msg->any.head.cmd = DMSG_LNK_ERROR;
 		msg->any.head.error = ioq->error;
 
 		pthread_mutex_lock(&iocom->mtx);
-		hammer2_iocom_drain(iocom);
+		dmsg_iocom_drain(iocom);
 		if ((state = RB_ROOT(&iocom->router->staterd_tree)) != NULL) {
 			/*
 			 * Active remote transactions are still present.
 			 * Simulate the other end sending us a DELETE.
 			 */
 			if (state->rxcmd & DMSGF_DELETE) {
-				hammer2_msg_free(msg);
+				dmsg_msg_free(msg);
 				msg = NULL;
 			} else {
 				/*state->txcmd |= DMSGF_DELETE;*/
@@ -998,7 +1000,7 @@ skip:
 			 * Simulate the other end sending us a DELETE.
 			 */
 			if (state->rxcmd & DMSGF_DELETE) {
-				hammer2_msg_free(msg);
+				dmsg_msg_free(msg);
 				msg = NULL;
 			} else {
 				msg->state = state;
@@ -1018,7 +1020,7 @@ skip:
 			 * Generate a final LNK_ERROR and flag EOF.
 			 */
 			msg->state = NULL;
-			iocom->flags |= HAMMER2_IOCOMF_EOF;
+			iocom->flags |= DMSG_IOCOMF_EOF;
 			fprintf(stderr, "EOF ON SOCKET %d\n", iocom->sock_fd);
 		}
 		pthread_mutex_unlock(&iocom->mtx);
@@ -1034,7 +1036,7 @@ skip:
 		 * re-set RWORK.
 		 */
 		if (msg)
-			iocom->flags |= HAMMER2_IOCOMF_RWORK;
+			iocom->flags |= DMSG_IOCOMF_RWORK;
 	} else if (msg == NULL) {
 		/*
 		 * Insufficient data received to finish building the message,
@@ -1043,7 +1045,7 @@ skip:
 		 * Leave ioq->msg intact.
 		 * Leave the FIFO intact.
 		 */
-		iocom->flags |= HAMMER2_IOCOMF_RREQ;
+		iocom->flags |= DMSG_IOCOMF_RREQ;
 	} else {
 		/*
 		 * Return msg.
@@ -1057,15 +1059,15 @@ skip:
 		 */
 		if (ioq->fifo_beg == ioq->fifo_cdx &&
 		    ioq->fifo_cdn == ioq->fifo_end) {
-			iocom->flags |= HAMMER2_IOCOMF_RREQ;
+			iocom->flags |= DMSG_IOCOMF_RREQ;
 			ioq->fifo_cdx = 0;
 			ioq->fifo_cdn = 0;
 			ioq->fifo_beg = 0;
 			ioq->fifo_end = 0;
 		} else {
-			iocom->flags |= HAMMER2_IOCOMF_RWORK;
+			iocom->flags |= DMSG_IOCOMF_RWORK;
 		}
-		ioq->state = HAMMER2_MSGQ_STATE_HEADER1;
+		ioq->state = DMSG_MSGQ_STATE_HEADER1;
 		ioq->msg = NULL;
 	}
 	return (msg);
@@ -1082,15 +1084,15 @@ skip:
  * Caller must hold iocom->mtx.
  */
 void
-hammer2_iocom_flush1(hammer2_iocom_t *iocom)
+dmsg_iocom_flush1(dmsg_iocom_t *iocom)
 {
-	hammer2_ioq_t *ioq = &iocom->ioq_tx;
-	hammer2_msg_t *msg;
+	dmsg_ioq_t *ioq = &iocom->ioq_tx;
+	dmsg_msg_t *msg;
 	uint32_t xcrc32;
 	int hbytes;
-	hammer2_msg_queue_t tmpq;
+	dmsg_msg_queue_t tmpq;
 
-	iocom->flags &= ~(HAMMER2_IOCOMF_WREQ | HAMMER2_IOCOMF_WWORK);
+	iocom->flags &= ~(DMSG_IOCOMF_WREQ | DMSG_IOCOMF_WWORK);
 	TAILQ_INIT(&tmpq);
 	pthread_mutex_lock(&iocom->mtx);
 	while ((msg = TAILQ_FIRST(&iocom->router->txmsgq)) != NULL) {
@@ -1126,7 +1128,7 @@ hammer2_iocom_flush1(hammer2_iocom_t *iocom)
 		 */
 		if (msg->aux_size && msg->any.head.aux_crc == 0) {
 			assert((msg->aux_size & DMSG_ALIGNMASK) == 0);
-			xcrc32 = hammer2_icrc32(msg->aux_data, msg->aux_size);
+			xcrc32 = dmsg_icrc32(msg->aux_data, msg->aux_size);
 			msg->any.head.aux_crc = xcrc32;
 		}
 		msg->any.head.aux_bytes = msg->aux_size / DMSG_ALIGN;
@@ -1135,7 +1137,7 @@ hammer2_iocom_flush1(hammer2_iocom_t *iocom)
 		hbytes = (msg->any.head.cmd & DMSGF_SIZE) *
 			 DMSG_ALIGN;
 		msg->any.head.hdr_crc = 0;
-		msg->any.head.hdr_crc = hammer2_icrc32(&msg->any.head, hbytes);
+		msg->any.head.hdr_crc = dmsg_icrc32(&msg->any.head, hbytes);
 
 		/*
 		 * Enqueue the message (the flush codes handles stream
@@ -1144,19 +1146,19 @@ hammer2_iocom_flush1(hammer2_iocom_t *iocom)
 		TAILQ_INSERT_TAIL(&ioq->msgq, msg, qentry);
 		++ioq->msgcount;
 	}
-	hammer2_iocom_flush2(iocom);
+	dmsg_iocom_flush2(iocom);
 }
 
 /*
  * Thread localized, iocom->mtx not held by caller.
  */
 void
-hammer2_iocom_flush2(hammer2_iocom_t *iocom)
+dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 {
-	hammer2_ioq_t *ioq = &iocom->ioq_tx;
-	hammer2_msg_t *msg;
+	dmsg_ioq_t *ioq = &iocom->ioq_tx;
+	dmsg_msg_t *msg;
 	ssize_t n;
-	struct iovec iov[HAMMER2_IOQ_MAXIOVEC];
+	struct iovec iov[DMSG_IOQ_MAXIOVEC];
 	size_t nact;
 	size_t hbytes;
 	size_t abytes;
@@ -1165,7 +1167,7 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 	int iovcnt;
 
 	if (ioq->error) {
-		hammer2_iocom_drain(iocom);
+		dmsg_iocom_drain(iocom);
 		return;
 	}
 
@@ -1192,7 +1194,7 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 			iov[iovcnt].iov_len = hbytes - hoff;
 			nact += hbytes - hoff;
 			++iovcnt;
-			if (iovcnt == HAMMER2_IOQ_MAXIOVEC)
+			if (iovcnt == DMSG_IOQ_MAXIOVEC)
 				break;
 		}
 		if (aoff < abytes) {
@@ -1201,7 +1203,7 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 			iov[iovcnt].iov_len = abytes - aoff;
 			nact += abytes - aoff;
 			++iovcnt;
-			if (iovcnt == HAMMER2_IOQ_MAXIOVEC)
+			if (iovcnt == DMSG_IOQ_MAXIOVEC)
 				break;
 		}
 		hoff = 0;
@@ -1226,7 +1228,7 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 	 * NOTE: The return value from the writev() is the post-encrypted
 	 *	 byte count, not the plaintext count.
 	 */
-	if (iocom->flags & HAMMER2_IOCOMF_CRYPTED) {
+	if (iocom->flags & DMSG_IOCOMF_CRYPTED) {
 		/*
 		 * Make sure the FIFO has a reasonable amount of space
 		 * left (if not completely full).
@@ -1241,7 +1243,7 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 			ioq->fifo_beg = 0;
 		}
 
-		iovcnt = hammer2_crypto_encrypt(iocom, ioq, iov, iovcnt, &nact);
+		iovcnt = dmsg_crypto_encrypt(iocom, ioq, iov, iovcnt, &nact);
 		n = writev(iocom->sock_fd, iov, iovcnt);
 		if (n > 0) {
 			ioq->fifo_beg += n;
@@ -1291,7 +1293,7 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 		ioq->hbytes = 0;
 		ioq->abytes = 0;
 
-		hammer2_state_cleanuptx(msg);
+		dmsg_state_cleanuptx(msg);
 	}
 	assert(nact == 0);
 
@@ -1305,19 +1307,19 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
 			/*
 			 * Fatal write error
 			 */
-			ioq->error = HAMMER2_IOQ_ERROR_SOCK;
-			hammer2_iocom_drain(iocom);
+			ioq->error = DMSG_IOQ_ERROR_SOCK;
+			dmsg_iocom_drain(iocom);
 		} else {
 			/*
 			 * Wait for socket buffer space
 			 */
-			iocom->flags |= HAMMER2_IOCOMF_WREQ;
+			iocom->flags |= DMSG_IOCOMF_WREQ;
 		}
 	} else {
-		iocom->flags |= HAMMER2_IOCOMF_WREQ;
+		iocom->flags |= DMSG_IOCOMF_WREQ;
 	}
 	if (ioq->error) {
-		hammer2_iocom_drain(iocom);
+		dmsg_iocom_drain(iocom);
 	}
 }
 
@@ -1330,19 +1332,19 @@ hammer2_iocom_flush2(hammer2_iocom_t *iocom)
  * Thread localized, iocom->mtx not held by caller.
  */
 void
-hammer2_iocom_drain(hammer2_iocom_t *iocom)
+dmsg_iocom_drain(dmsg_iocom_t *iocom)
 {
-	hammer2_ioq_t *ioq = &iocom->ioq_tx;
-	hammer2_msg_t *msg;
+	dmsg_ioq_t *ioq = &iocom->ioq_tx;
+	dmsg_msg_t *msg;
 
-	iocom->flags &= ~(HAMMER2_IOCOMF_WREQ | HAMMER2_IOCOMF_WWORK);
+	iocom->flags &= ~(DMSG_IOCOMF_WREQ | DMSG_IOCOMF_WWORK);
 	ioq->hbytes = 0;
 	ioq->abytes = 0;
 
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);
 		--ioq->msgcount;
-		hammer2_state_cleanuptx(msg);
+		dmsg_state_cleanuptx(msg);
 	}
 }
 
@@ -1350,10 +1352,10 @@ hammer2_iocom_drain(hammer2_iocom_t *iocom)
  * Write a message to an iocom, with additional state processing.
  */
 void
-hammer2_msg_write(hammer2_msg_t *msg)
+dmsg_msg_write(dmsg_msg_t *msg)
 {
-	hammer2_iocom_t *iocom = msg->router->iocom;
-	hammer2_state_t *state;
+	dmsg_iocom_t *iocom = msg->router->iocom;
+	dmsg_state_t *state;
 	char dummy;
 
 	/*
@@ -1368,7 +1370,7 @@ hammer2_msg_write(hammer2_msg_t *msg)
 		 *
 		 * state->txcmd is adjusted to hold the final message cmd,
 		 * and we also be sure to set the CREATE bit here.  We did
-		 * not set it in hammer2_msg_alloc() because that would have
+		 * not set it in dmsg_msg_alloc() because that would have
 		 * not been serialized (state could have gotten ripped out
 		 * from under the message prior to it being transmitted).
 		 */
@@ -1411,11 +1413,11 @@ hammer2_msg_write(hammer2_msg_t *msg)
  * The reply contains no extended data.
  */
 void
-hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error)
+dmsg_msg_reply(dmsg_msg_t *msg, uint32_t error)
 {
-	hammer2_iocom_t *iocom = msg->router->iocom;
-	hammer2_state_t *state = msg->state;
-	hammer2_msg_t *nmsg;
+	dmsg_iocom_t *iocom = msg->router->iocom;
+	dmsg_state_t *state = msg->state;
+	dmsg_msg_t *nmsg;
 	uint32_t cmd;
 
 
@@ -1449,28 +1451,28 @@ hammer2_msg_reply(hammer2_msg_t *msg, uint32_t error)
 	 * We cannot pass MSGF_CREATE to msg_alloc() because that may
 	 * allocate new state.  We have our state already.
 	 */
-	nmsg = hammer2_msg_alloc(iocom->router, 0, cmd, NULL, NULL);
+	nmsg = dmsg_msg_alloc(iocom->router, 0, cmd, NULL, NULL);
 	if (state) {
 		if ((state->txcmd & DMSGF_CREATE) == 0)
 			nmsg->any.head.cmd |= DMSGF_CREATE;
 	}
 	nmsg->any.head.error = error;
 	nmsg->state = state;
-	hammer2_msg_write(nmsg);
+	dmsg_msg_write(nmsg);
 }
 
 /*
- * Similar to hammer2_msg_reply() but leave the transaction open.  That is,
+ * Similar to dmsg_msg_reply() but leave the transaction open.  That is,
  * we are generating a streaming reply or an intermediate acknowledgement
  * of some sort as part of the higher level protocol, with more to come
  * later.
  */
 void
-hammer2_msg_result(hammer2_msg_t *msg, uint32_t error)
+dmsg_msg_result(dmsg_msg_t *msg, uint32_t error)
 {
-	hammer2_iocom_t *iocom = msg->router->iocom;
-	hammer2_state_t *state = msg->state;
-	hammer2_msg_t *nmsg;
+	dmsg_iocom_t *iocom = msg->router->iocom;
+	dmsg_state_t *state = msg->state;
+	dmsg_msg_t *nmsg;
 	uint32_t cmd;
 
 
@@ -1499,23 +1501,23 @@ hammer2_msg_result(hammer2_msg_t *msg, uint32_t error)
 			cmd |= DMSGF_REPLY;
 	}
 
-	nmsg = hammer2_msg_alloc(iocom->router, 0, cmd, NULL, NULL);
+	nmsg = dmsg_msg_alloc(iocom->router, 0, cmd, NULL, NULL);
 	if (state) {
 		if ((state->txcmd & DMSGF_CREATE) == 0)
 			nmsg->any.head.cmd |= DMSGF_CREATE;
 	}
 	nmsg->any.head.error = error;
 	nmsg->state = state;
-	hammer2_msg_write(nmsg);
+	dmsg_msg_write(nmsg);
 }
 
 /*
  * Terminate a transaction given a state structure by issuing a DELETE.
  */
 void
-hammer2_state_reply(hammer2_state_t *state, uint32_t error)
+dmsg_state_reply(dmsg_state_t *state, uint32_t error)
 {
-	hammer2_msg_t *nmsg;
+	dmsg_msg_t *nmsg;
 	uint32_t cmd = DMSG_LNK_ERROR | DMSGF_DELETE;
 
 	/*
@@ -1531,14 +1533,14 @@ hammer2_state_reply(hammer2_state_t *state, uint32_t error)
 	if (state->txcmd & DMSGF_REPLY)
 		cmd |= DMSGF_REPLY;
 
-	nmsg = hammer2_msg_alloc(state->iocom->router, 0, cmd, NULL, NULL);
+	nmsg = dmsg_msg_alloc(state->iocom->router, 0, cmd, NULL, NULL);
 	if (state) {
 		if ((state->txcmd & DMSGF_CREATE) == 0)
 			nmsg->any.head.cmd |= DMSGF_CREATE;
 	}
 	nmsg->any.head.error = error;
 	nmsg->state = state;
-	hammer2_msg_write(nmsg);
+	dmsg_msg_write(nmsg);
 }
 
 /************************************************************************
@@ -1615,11 +1617,11 @@ hammer2_state_reply(hammer2_state_t *state, uint32_t error)
  * will typically just contain status updates.
  */
 static int
-hammer2_state_msgrx(hammer2_msg_t *msg)
+dmsg_state_msgrx(dmsg_msg_t *msg)
 {
-	hammer2_iocom_t *iocom = msg->router->iocom;
-	hammer2_state_t *state;
-	hammer2_state_t dummy;
+	dmsg_iocom_t *iocom = msg->router->iocom;
+	dmsg_state_t *state;
+	dmsg_state_t dummy;
 	int error;
 
 	/*
@@ -1631,10 +1633,10 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 	dummy.msgid = msg->any.head.msgid;
 	pthread_mutex_lock(&iocom->mtx);
 	if (msg->any.head.cmd & DMSGF_REPLY) {
-		state = RB_FIND(hammer2_state_tree,
+		state = RB_FIND(dmsg_state_tree,
 				&iocom->router->statewr_tree, &dummy);
 	} else {
-		state = RB_FIND(hammer2_state_tree,
+		state = RB_FIND(dmsg_state_tree,
 				&iocom->router->staterd_tree, &dummy);
 	}
 	msg->state = state;
@@ -1661,28 +1663,28 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		 */
 		if (state) {
 			fprintf(stderr, "duplicate-trans %s\n",
-				hammer2_msg_str(msg));
-			error = HAMMER2_IOQ_ERROR_TRANS;
+				dmsg_msg_str(msg));
+			error = DMSG_IOQ_ERROR_TRANS;
 			assert(0);
 			break;
 		}
 		state = malloc(sizeof(*state));
 		bzero(state, sizeof(*state));
 		state->iocom = iocom;
-		state->flags = HAMMER2_STATE_DYNAMIC;
+		state->flags = DMSG_STATE_DYNAMIC;
 		state->msg = msg;
 		state->txcmd = DMSGF_REPLY;
 		state->rxcmd = msg->any.head.cmd & ~DMSGF_DELETE;
-		state->flags |= HAMMER2_STATE_INSERTED;
+		state->flags |= DMSG_STATE_INSERTED;
 		state->msgid = msg->any.head.msgid;
 		state->router = msg->router;
 		msg->state = state;
 		pthread_mutex_lock(&iocom->mtx);
-		RB_INSERT(hammer2_state_tree,
+		RB_INSERT(dmsg_state_tree,
 			  &iocom->router->staterd_tree, state);
 		pthread_mutex_unlock(&iocom->mtx);
 		error = 0;
-		if (DebugOpt) {
+		if (DMsgDebugOpt) {
 			fprintf(stderr, "create state %p id=%08x on iocom staterd %p\n",
 				state, (uint32_t)state->msgid, iocom);
 		}
@@ -1694,11 +1696,11 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		 */
 		if (state == NULL) {
 			if (msg->any.head.cmd & DMSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
+				error = DMSG_IOQ_ERROR_EALREADY;
 			} else {
 				fprintf(stderr, "missing-state %s\n",
-					hammer2_msg_str(msg));
-				error = HAMMER2_IOQ_ERROR_TRANS;
+					dmsg_msg_str(msg));
+				error = DMSG_IOQ_ERROR_TRANS;
 			assert(0);
 			}
 			break;
@@ -1710,11 +1712,11 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		 */
 		if ((state->rxcmd & DMSGF_CREATE) == 0) {
 			if (msg->any.head.cmd & DMSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
+				error = DMSG_IOQ_ERROR_EALREADY;
 			} else {
 				fprintf(stderr, "reused-state %s\n",
-					hammer2_msg_str(msg));
-				error = HAMMER2_IOQ_ERROR_TRANS;
+					dmsg_msg_str(msg));
+				error = DMSG_IOQ_ERROR_TRANS;
 			assert(0);
 			}
 			break;
@@ -1729,7 +1731,7 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		if (msg->any.head.cmd & DMSGF_ABORT) {
 			if (state == NULL ||
 			    (state->rxcmd & DMSGF_CREATE) == 0) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
+				error = DMSG_IOQ_ERROR_EALREADY;
 				break;
 			}
 		}
@@ -1743,8 +1745,8 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		 */
 		if (state == NULL) {
 			fprintf(stderr, "no-state(r) %s\n",
-				hammer2_msg_str(msg));
-			error = HAMMER2_IOQ_ERROR_TRANS;
+				dmsg_msg_str(msg));
+			error = DMSG_IOQ_ERROR_TRANS;
 			assert(0);
 			break;
 		}
@@ -1760,11 +1762,11 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		 */
 		if (state == NULL) {
 			if (msg->any.head.cmd & DMSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
+				error = DMSG_IOQ_ERROR_EALREADY;
 			} else {
 				fprintf(stderr, "no-state(r,d) %s\n",
-					hammer2_msg_str(msg));
-				error = HAMMER2_IOQ_ERROR_TRANS;
+					dmsg_msg_str(msg));
+				error = DMSG_IOQ_ERROR_TRANS;
 			assert(0);
 			}
 			break;
@@ -1777,11 +1779,11 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		 */
 		if ((state->rxcmd & DMSGF_CREATE) == 0) {
 			if (msg->any.head.cmd & DMSGF_ABORT) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
+				error = DMSG_IOQ_ERROR_EALREADY;
 			} else {
 				fprintf(stderr, "reused-state(r,d) %s\n",
-					hammer2_msg_str(msg));
-				error = HAMMER2_IOQ_ERROR_TRANS;
+					dmsg_msg_str(msg));
+				error = DMSG_IOQ_ERROR_TRANS;
 			assert(0);
 			}
 			break;
@@ -1795,7 +1797,7 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 		if (msg->any.head.cmd & DMSGF_ABORT) {
 			if (state == NULL ||
 			    (state->rxcmd & DMSGF_CREATE) == 0) {
-				error = HAMMER2_IOQ_ERROR_EALREADY;
+				error = DMSG_IOQ_ERROR_EALREADY;
 				break;
 			}
 		}
@@ -1806,16 +1808,16 @@ hammer2_state_msgrx(hammer2_msg_t *msg)
 }
 
 void
-hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
+dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 {
-	hammer2_state_t *state;
+	dmsg_state_t *state;
 
 	if ((state = msg->state) == NULL) {
 		/*
 		 * Free a non-transactional message, there is no state
 		 * to worry about.
 		 */
-		hammer2_msg_free(msg);
+		dmsg_msg_free(msg);
 	} else if (msg->any.head.cmd & DMSGF_DELETE) {
 		/*
 		 * Message terminating transaction, destroy the related
@@ -1827,65 +1829,65 @@ hammer2_state_cleanuprx(hammer2_iocom_t *iocom, hammer2_msg_t *msg)
 		if (state->txcmd & DMSGF_DELETE) {
 			if (state->msg == msg)
 				state->msg = NULL;
-			assert(state->flags & HAMMER2_STATE_INSERTED);
+			assert(state->flags & DMSG_STATE_INSERTED);
 			if (state->rxcmd & DMSGF_REPLY) {
 				assert(msg->any.head.cmd & DMSGF_REPLY);
-				RB_REMOVE(hammer2_state_tree,
+				RB_REMOVE(dmsg_state_tree,
 					  &iocom->router->statewr_tree, state);
 			} else {
 				assert((msg->any.head.cmd & DMSGF_REPLY) == 0);
-				RB_REMOVE(hammer2_state_tree,
+				RB_REMOVE(dmsg_state_tree,
 					  &iocom->router->staterd_tree, state);
 			}
-			state->flags &= ~HAMMER2_STATE_INSERTED;
-			hammer2_state_free(state);
+			state->flags &= ~DMSG_STATE_INSERTED;
+			dmsg_state_free(state);
 		} else {
 			;
 		}
 		pthread_mutex_unlock(&iocom->mtx);
-		hammer2_msg_free(msg);
+		dmsg_msg_free(msg);
 	} else if (state->msg != msg) {
 		/*
 		 * Message not terminating transaction, leave state intact
 		 * and free message if it isn't the CREATE message.
 		 */
-		hammer2_msg_free(msg);
+		dmsg_msg_free(msg);
 	}
 }
 
 static void
-hammer2_state_cleanuptx(hammer2_msg_t *msg)
+dmsg_state_cleanuptx(dmsg_msg_t *msg)
 {
-	hammer2_iocom_t *iocom = msg->router->iocom;
-	hammer2_state_t *state;
+	dmsg_iocom_t *iocom = msg->router->iocom;
+	dmsg_state_t *state;
 
 	if ((state = msg->state) == NULL) {
-		hammer2_msg_free(msg);
+		dmsg_msg_free(msg);
 	} else if (msg->any.head.cmd & DMSGF_DELETE) {
 		pthread_mutex_lock(&iocom->mtx);
 		state->txcmd |= DMSGF_DELETE;
 		if (state->rxcmd & DMSGF_DELETE) {
 			if (state->msg == msg)
 				state->msg = NULL;
-			assert(state->flags & HAMMER2_STATE_INSERTED);
+			assert(state->flags & DMSG_STATE_INSERTED);
 			if (state->txcmd & DMSGF_REPLY) {
 				assert(msg->any.head.cmd & DMSGF_REPLY);
-				RB_REMOVE(hammer2_state_tree,
+				RB_REMOVE(dmsg_state_tree,
 					  &iocom->router->staterd_tree, state);
 			} else {
 				assert((msg->any.head.cmd & DMSGF_REPLY) == 0);
-				RB_REMOVE(hammer2_state_tree,
+				RB_REMOVE(dmsg_state_tree,
 					  &iocom->router->statewr_tree, state);
 			}
-			state->flags &= ~HAMMER2_STATE_INSERTED;
-			hammer2_state_free(state);
+			state->flags &= ~DMSG_STATE_INSERTED;
+			dmsg_state_free(state);
 		} else {
 			;
 		}
 		pthread_mutex_unlock(&iocom->mtx);
-		hammer2_msg_free(msg);
+		dmsg_msg_free(msg);
 	} else if (state->msg != msg) {
-		hammer2_msg_free(msg);
+		dmsg_msg_free(msg);
 	}
 }
 
@@ -1893,13 +1895,13 @@ hammer2_state_cleanuptx(hammer2_msg_t *msg)
  * Called with iocom locked
  */
 void
-hammer2_state_free(hammer2_state_t *state)
+dmsg_state_free(dmsg_state_t *state)
 {
-	hammer2_iocom_t *iocom = state->iocom;
-	hammer2_msg_t *msg;
+	dmsg_iocom_t *iocom = state->iocom;
+	dmsg_msg_t *msg;
 	char dummy;
 
-	if (DebugOpt) {
+	if (DMsgDebugOpt) {
 		fprintf(stderr, "terminate state %p id=%08x\n",
 			state, (uint32_t)state->msgid);
 	}
@@ -1907,7 +1909,7 @@ hammer2_state_free(hammer2_state_t *state)
 	msg = state->msg;
 	state->msg = NULL;
 	if (msg)
-		hammer2_msg_free_locked(msg);
+		dmsg_msg_free_locked(msg);
 	free(state);
 
 	/*
@@ -1948,49 +1950,49 @@ hammer2_state_free(hammer2_state_t *state)
  * SPANs and RELAYs), but the routes are distinct from the perspective
  * of the router.
  */
-hammer2_router_t *
-hammer2_router_alloc(void)
+dmsg_router_t *
+dmsg_router_alloc(void)
 {
-	hammer2_router_t *router;
+	dmsg_router_t *router;
 
-	router = hammer2_alloc(sizeof(*router));
+	router = dmsg_alloc(sizeof(*router));
 	TAILQ_INIT(&router->txmsgq);
 	return (router);
 }
 
 void
-hammer2_router_connect(hammer2_router_t *router)
+dmsg_router_connect(dmsg_router_t *router)
 {
-	hammer2_router_t *tmp;
+	dmsg_router_t *tmp;
 
 	assert(router->link || router->relay);
-	assert((router->flags & HAMMER2_ROUTER_CONNECTED) == 0);
+	assert((router->flags & DMSG_ROUTER_CONNECTED) == 0);
 
 	pthread_mutex_lock(&router_mtx);
 	if (router->link)
-		tmp = RB_INSERT(hammer2_router_tree, &router_ltree, router);
+		tmp = RB_INSERT(dmsg_router_tree, &router_ltree, router);
 	else
-		tmp = RB_INSERT(hammer2_router_tree, &router_rtree, router);
+		tmp = RB_INSERT(dmsg_router_tree, &router_rtree, router);
 	assert(tmp == NULL);
-	router->flags |= HAMMER2_ROUTER_CONNECTED;
+	router->flags |= DMSG_ROUTER_CONNECTED;
 	pthread_mutex_unlock(&router_mtx);
 }
 
 void
-hammer2_router_disconnect(hammer2_router_t **routerp)
+dmsg_router_disconnect(dmsg_router_t **routerp)
 {
-	hammer2_router_t *router;
+	dmsg_router_t *router;
 
 	router = *routerp;
 	assert(router->link || router->relay);
-	assert(router->flags & HAMMER2_ROUTER_CONNECTED);
+	assert(router->flags & DMSG_ROUTER_CONNECTED);
 
 	pthread_mutex_lock(&router_mtx);
 	if (router->link)
-		RB_REMOVE(hammer2_router_tree, &router_ltree, router);
+		RB_REMOVE(dmsg_router_tree, &router_ltree, router);
 	else
-		RB_REMOVE(hammer2_router_tree, &router_rtree, router);
-	router->flags &= ~HAMMER2_ROUTER_CONNECTED;
+		RB_REMOVE(dmsg_router_tree, &router_rtree, router);
+	router->flags &= ~DMSG_ROUTER_CONNECTED;
 	*routerp = NULL;
 	pthread_mutex_unlock(&router_mtx);
 }
@@ -1999,237 +2001,32 @@ hammer2_router_disconnect(hammer2_router_t **routerp)
 /*
  * XXX
  */
-hammer2_router_t *
-hammer2_route_msg(hammer2_msg_t *msg)
+dmsg_router_t *
+dmsg_route_msg(dmsg_msg_t *msg)
 {
 }
 #endif
 
-/************************************************************************
- *				DEBUGGING				*
- ************************************************************************/
-
-const char *
-hammer2_basecmd_str(uint32_t cmd)
+/*
+ * This swaps endian for a hammer2_msg_hdr.  Note that the extended
+ * header is not adjusted, just the core header.
+ */
+void
+dmsg_bswap_head(dmsg_hdr_t *head)
 {
-	static char buf[64];
-	char protobuf[32];
-	char cmdbuf[32];
-	const char *protostr;
-	const char *cmdstr;
+	head->magic	= bswap16(head->magic);
+	head->reserved02 = bswap16(head->reserved02);
+	head->salt	= bswap32(head->salt);
 
-	switch(cmd & DMSGF_PROTOS) {
-	case DMSG_PROTO_LNK:
-		protostr = "LNK_";
-		break;
-	case DMSG_PROTO_DBG:
-		protostr = "DBG_";
-		break;
-	case DMSG_PROTO_DOM:
-		protostr = "DOM_";
-		break;
-	case DMSG_PROTO_CAC:
-		protostr = "CAC_";
-		break;
-	case DMSG_PROTO_QRM:
-		protostr = "QRM_";
-		break;
-	case DMSG_PROTO_BLK:
-		protostr = "BLK_";
-		break;
-	case DMSG_PROTO_VOP:
-		protostr = "VOP_";
-		break;
-	default:
-		snprintf(protobuf, sizeof(protobuf), "%x_",
-			(cmd & DMSGF_PROTOS) >> 20);
-		protostr = protobuf;
-		break;
-	}
+	head->msgid	= bswap64(head->msgid);
+	head->source	= bswap64(head->source);
+	head->target	= bswap64(head->target);
 
-	switch(cmd & (DMSGF_PROTOS |
-		      DMSGF_CMDS |
-		      DMSGF_SIZE)) {
-	case DMSG_LNK_PAD:
-		cmdstr = "PAD";
-		break;
-	case DMSG_LNK_PING:
-		cmdstr = "PING";
-		break;
-	case DMSG_LNK_AUTH:
-		cmdstr = "AUTH";
-		break;
-	case DMSG_LNK_CONN:
-		cmdstr = "CONN";
-		break;
-	case DMSG_LNK_SPAN:
-		cmdstr = "SPAN";
-		break;
-	case DMSG_LNK_VOLCONF:
-		cmdstr = "VOLCONF";
-		break;
-	case DMSG_LNK_ERROR:
-		if (cmd & DMSGF_DELETE)
-			cmdstr = "RETURN";
-		else
-			cmdstr = "RESULT";
-		break;
-	case DMSG_DBG_SHELL:
-		cmdstr = "SHELL";
-		break;
-	default:
-		snprintf(cmdbuf, sizeof(cmdbuf),
-			 "%06x", (cmd & (DMSGF_PROTOS |
-					 DMSGF_CMDS |
-					 DMSGF_SIZE)));
-		cmdstr = cmdbuf;
-		break;
-	}
-	snprintf(buf, sizeof(buf), "%s%s", protostr, cmdstr);
-	return (buf);
-}
-
-const char *
-hammer2_msg_str(hammer2_msg_t *msg)
-{
-	hammer2_state_t *state;
-	static char buf[256];
-	char errbuf[16];
-	char statebuf[64];
-	char flagbuf[64];
-	const char *statestr;
-	const char *errstr;
-	uint32_t basecmd;
-	int i;
-
-	/*
-	 * Parse the state
-	 */
-	if ((state = msg->state) != NULL) {
-		basecmd = (state->rxcmd & DMSGF_REPLY) ?
-			  state->txcmd : state->rxcmd;
-		snprintf(statebuf, sizeof(statebuf),
-			 " %s=%s,L=%s%s,R=%s%s",
-			 ((state->txcmd & DMSGF_REPLY) ?
-				"rcvcmd" : "sndcmd"),
-			 hammer2_basecmd_str(basecmd),
-			 ((state->txcmd & DMSGF_CREATE) ? "C" : ""),
-			 ((state->txcmd & DMSGF_DELETE) ? "D" : ""),
-			 ((state->rxcmd & DMSGF_CREATE) ? "C" : ""),
-			 ((state->rxcmd & DMSGF_DELETE) ? "D" : "")
-		);
-		statestr = statebuf;
-	} else {
-		statestr = "";
-	}
-
-	/*
-	 * Parse the error
-	 */
-	switch(msg->any.head.error) {
-	case 0:
-		errstr = "";
-		break;
-	case HAMMER2_IOQ_ERROR_SYNC:
-		errstr = "err=IOQ:NOSYNC";
-		break;
-	case HAMMER2_IOQ_ERROR_EOF:
-		errstr = "err=IOQ:STREAMEOF";
-		break;
-	case HAMMER2_IOQ_ERROR_SOCK:
-		errstr = "err=IOQ:SOCKERR";
-		break;
-	case HAMMER2_IOQ_ERROR_FIELD:
-		errstr = "err=IOQ:BADFIELD";
-		break;
-	case HAMMER2_IOQ_ERROR_HCRC:
-		errstr = "err=IOQ:BADHCRC";
-		break;
-	case HAMMER2_IOQ_ERROR_XCRC:
-		errstr = "err=IOQ:BADXCRC";
-		break;
-	case HAMMER2_IOQ_ERROR_ACRC:
-		errstr = "err=IOQ:BADACRC";
-		break;
-	case HAMMER2_IOQ_ERROR_STATE:
-		errstr = "err=IOQ:BADSTATE";
-		break;
-	case HAMMER2_IOQ_ERROR_NOPEER:
-		errstr = "err=IOQ:PEERCONFIG";
-		break;
-	case HAMMER2_IOQ_ERROR_NORKEY:
-		errstr = "err=IOQ:BADRKEY";
-		break;
-	case HAMMER2_IOQ_ERROR_NOLKEY:
-		errstr = "err=IOQ:BADLKEY";
-		break;
-	case HAMMER2_IOQ_ERROR_KEYXCHGFAIL:
-		errstr = "err=IOQ:BADKEYXCHG";
-		break;
-	case HAMMER2_IOQ_ERROR_KEYFMT:
-		errstr = "err=IOQ:BADFMT";
-		break;
-	case HAMMER2_IOQ_ERROR_BADURANDOM:
-		errstr = "err=IOQ:BADRANDOM";
-		break;
-	case HAMMER2_IOQ_ERROR_MSGSEQ:
-		errstr = "err=IOQ:BADSEQ";
-		break;
-	case HAMMER2_IOQ_ERROR_EALREADY:
-		errstr = "err=IOQ:DUPMSG";
-		break;
-	case HAMMER2_IOQ_ERROR_TRANS:
-		errstr = "err=IOQ:BADTRANS";
-		break;
-	case HAMMER2_IOQ_ERROR_IVWRAP:
-		errstr = "err=IOQ:IVWRAP";
-		break;
-	case HAMMER2_IOQ_ERROR_MACFAIL:
-		errstr = "err=IOQ:MACFAIL";
-		break;
-	case HAMMER2_IOQ_ERROR_ALGO:
-		errstr = "err=IOQ:ALGOFAIL";
-		break;
-	case DMSG_ERR_NOSUPP:
-		errstr = "err=NOSUPPORT";
-		break;
-	default:
-		snprintf(errbuf, sizeof(errbuf),
-			 " err=%d", msg->any.head.error);
-		errstr = errbuf;
-		break;
-	}
-
-	/*
-	 * Message flags
-	 */
-	i = 0;
-	if (msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE |
-				 DMSGF_ABORT | DMSGF_REPLY)) {
-		flagbuf[i++] = '|';
-		if (msg->any.head.cmd & DMSGF_CREATE)
-			flagbuf[i++] = 'C';
-		if (msg->any.head.cmd & DMSGF_DELETE)
-			flagbuf[i++] = 'D';
-		if (msg->any.head.cmd & DMSGF_REPLY)
-			flagbuf[i++] = 'R';
-		if (msg->any.head.cmd & DMSGF_ABORT)
-			flagbuf[i++] = 'A';
-	}
-	flagbuf[i] = 0;
-
-	/*
-	 * Generate the buf
-	 */
-	snprintf(buf, sizeof(buf),
-		"msg=%s%s %s id=%08x src=%08x tgt=%08x %s",
-		 hammer2_basecmd_str(msg->any.head.cmd),
-		 flagbuf,
-		 errstr,
-		 (uint32_t)(intmax_t)msg->any.head.msgid,   /* for brevity */
-		 (uint32_t)(intmax_t)msg->any.head.source,  /* for brevity */
-		 (uint32_t)(intmax_t)msg->any.head.target,  /* for brevity */
-		 statestr);
-
-	return(buf);
+	head->cmd	= bswap32(head->cmd);
+	head->aux_crc	= bswap32(head->aux_crc);
+	head->aux_bytes	= bswap32(head->aux_bytes);
+	head->error	= bswap32(head->error);
+	head->aux_descr = bswap64(head->aux_descr);
+	head->reserved38= bswap32(head->reserved38);
+	head->hdr_crc	= bswap32(head->hdr_crc);
 }

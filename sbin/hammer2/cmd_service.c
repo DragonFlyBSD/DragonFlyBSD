@@ -37,10 +37,6 @@
 
 static void *service_thread(void *data);
 static void *udev_thread(void *data);
-static void master_auth_signal(hammer2_router_t *router);
-static void master_auth_rxmsg(hammer2_msg_t *msg);
-static void master_link_signal(hammer2_router_t *router);
-static void master_link_rxmsg(hammer2_msg_t *msg);
 static void master_reconnect(const char *mntpt);
 static void udev_check_disks(void);
 
@@ -87,7 +83,7 @@ cmd_service(void)
 	bzero(&lsin, sizeof(lsin));
 	lsin.sin_family = AF_INET;
 	lsin.sin_addr.s_addr = INADDR_ANY;
-	lsin.sin_port = htons(HAMMER2_LISTEN_PORT);
+	lsin.sin_port = htons(DMSG_LISTEN_PORT);
 	if (bind(lfd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {
 		close(lfd);
 		if (QuietOpt == 0) {
@@ -125,7 +121,7 @@ service_thread(void *data)
 	struct sockaddr_in asin;
 	socklen_t alen;
 	pthread_t thread;
-	hammer2_master_service_info_t *info;
+	dmsg_master_service_info_t *info;
 	int lfd = (int)(intptr_t)data;
 	int fd;
 	int i;
@@ -173,7 +169,7 @@ service_thread(void *data)
 		bzero(info, sizeof(*info));
 		info->fd = fd;
 		info->detachme = 1;
-		pthread_create(&thread, NULL, master_service, info);
+		pthread_create(&thread, NULL, dmsg_master_service, info);
 	}
 	return (NULL);
 }
@@ -262,7 +258,7 @@ void
 master_reconnect(const char *mntpt)
 {
 	struct hammer2_ioc_recluster recls;
-	hammer2_master_service_info_t *info;
+	dmsg_master_service_info_t *info;
 	pthread_t thread;
 	int fd;
 	int pipefds[2];
@@ -293,139 +289,5 @@ master_reconnect(const char *mntpt)
 	bzero(info, sizeof(*info));
 	info->fd = pipefds[1];
 	info->detachme = 1;
-	pthread_create(&thread, NULL, master_service, info);
-}
-
-/*
- * Service an accepted connection (runs as a pthread)
- *
- * (also called from a couple of other places)
- */
-void *
-master_service(void *data)
-{
-	hammer2_master_service_info_t *info = data;
-	hammer2_iocom_t iocom;
-
-	if (info->detachme)
-		pthread_detach(pthread_self());
-
-	hammer2_iocom_init(&iocom, info->fd, -1,
-			   master_auth_signal,
-			   master_auth_rxmsg,
-			   NULL);
-	hammer2_iocom_core(&iocom);
-
-	fprintf(stderr,
-		"iocom on fd %d terminated error rx=%d, tx=%d\n",
-		info->fd, iocom.ioq_rx.error, iocom.ioq_tx.error);
-	close(info->fd);
-	info->fd = -1;	/* safety */
-	free(info);
-
-	return (NULL);
-}
-
-/************************************************************************
- *			    AUTHENTICATION				*
- ************************************************************************
- *
- * Callback via hammer2_iocom_core().
- *
- * Additional messaging-based authentication must occur before normal
- * message operation.  The connection has already been encrypted at
- * this point.
- */
-static void master_auth_conn_rx(hammer2_msg_t *msg);
-
-static
-void
-master_auth_signal(hammer2_router_t *router)
-{
-	hammer2_msg_t *msg;
-
-	/*
-	 * Transmit LNK_CONN, enabling the SPAN protocol if both sides
-	 * agree.
-	 *
-	 * XXX put additional authentication states here?
-	 */
-	msg = hammer2_msg_alloc(router, 0, DMSG_LNK_CONN |
-					   DMSGF_CREATE,
-				master_auth_conn_rx, NULL);
-	msg->any.lnk_conn.peer_mask = (uint64_t)-1;
-	msg->any.lnk_conn.peer_type = HAMMER2_PEER_CLUSTER;
-
-	hammer2_msg_write(msg);
-
-	hammer2_router_restate(router,
-			      master_link_signal,
-			      master_link_rxmsg,
-			      NULL);
-}
-
-static
-void
-master_auth_conn_rx(hammer2_msg_t *msg)
-{
-	if (msg->any.head.cmd & DMSGF_DELETE)
-		hammer2_msg_reply(msg, 0);
-}
-
-static
-void
-master_auth_rxmsg(hammer2_msg_t *msg __unused)
-{
-}
-
-/************************************************************************
- *			POST-AUTHENTICATION SERVICE MSGS		*
- ************************************************************************
- *
- * Callback via hammer2_iocom_core().
- */
-static
-void
-master_link_signal(hammer2_router_t *router)
-{
-	hammer2_msg_lnk_signal(router);
-}
-
-static
-void
-master_link_rxmsg(hammer2_msg_t *msg)
-{
-	hammer2_state_t *state;
-	uint32_t cmd;
-
-	/*
-	 * If the message state has a function established we just
-	 * call the function, otherwise we call the appropriate
-	 * link-level protocol related to the original command and
-	 * let it sort it out.
-	 *
-	 * Non-transactional one-off messages, on the otherhand,
-	 * might have REPLY set.
-	 */
-	state = msg->state;
-	cmd = state ? state->msg->any.head.cmd : msg->any.head.cmd;
-
-	fprintf(stderr, "service-receive: %s\n", hammer2_msg_str(msg));
-
-	if (state && state->func) {
-		assert(state->func != NULL);
-		state->func(msg);
-	} else {
-		switch(cmd & DMSGF_PROTOS) {
-		case DMSG_PROTO_LNK:
-			hammer2_msg_lnk(msg);
-			break;
-		case DMSG_PROTO_DBG:
-			hammer2_msg_dbg(msg);
-			break;
-		default:
-			hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
-			break;
-		}
-	}
+	pthread_create(&thread, NULL, dmsg_master_service, info);
 }

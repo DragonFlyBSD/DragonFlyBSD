@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Matthew Dillon <dillon@backplane.com>
+ * by Matthew Dillon <dillon@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,25 +32,34 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _VFS_HAMMER2_MOUNT_H_
-#define _VFS_HAMMER2_MOUNT_H_
+#include <sys/types.h>
+#include <sys/queue.h>
+#include <sys/tree.h>
+#include <sys/endian.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/dmsg.h>
+#include <sys/poll.h>
+#include <sys/uio.h>
 
-/*
- * This structure is passed from userland to the kernel during the mount
- * system call.
- *
- * The volume name is formatted as '/dev/ad0s1a@LABEL', where the label is
- * the mount point under the super-root.
- */
-struct hammer2_mount_info {
-	const char	*volume;
-	int		hflags;		/* extended hammer mount flags */
-	int		cluster_fd;	/* cluster management pipe/socket */
-	char		reserved1[112];
-};
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-#define HMNT2_NOAUTOSNAP	0x00000001
+#include <assert.h>
+#include <pthread.h>
+#include <libutil.h>
 
-#define HMNT2_USERFLAGS		(HMNT2_NOAUTOSNAP)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <uuid.h>
 
-#endif
+#include <openssl/rsa.h>	/* public/private key functions */
+#include <openssl/pem.h>	/* public/private key file load */
+#include <openssl/err.h>
+#include <openssl/evp.h>	/* aes_256_cbc functions */
+
+#include "dmsg.h"

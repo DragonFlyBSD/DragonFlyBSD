@@ -2,7 +2,8 @@
  * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Matthew Dillon <dillon@backplane.com>
+ * by Matthew Dillon <dillon@dragonflybsd.org>
+ * by Venkatesh Srinivas <vsrinivas@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,25 +33,81 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _VFS_HAMMER2_MOUNT_H_
-#define _VFS_HAMMER2_MOUNT_H_
+#include "dmsg_local.h"
 
 /*
- * This structure is passed from userland to the kernel during the mount
- * system call.
- *
- * The volume name is formatted as '/dev/ad0s1a@LABEL', where the label is
- * the mount point under the super-root.
+ * Allocation wrappers give us shims for possible future use
  */
-struct hammer2_mount_info {
-	const char	*volume;
-	int		hflags;		/* extended hammer mount flags */
-	int		cluster_fd;	/* cluster management pipe/socket */
-	char		reserved1[112];
-};
+void *
+dmsg_alloc(size_t bytes)
+{
+	void *ptr;
 
-#define HMNT2_NOAUTOSNAP	0x00000001
+	ptr = malloc(bytes);
+	assert(ptr);
+	bzero(ptr, bytes);
+	return (ptr);
+}
 
-#define HMNT2_USERFLAGS		(HMNT2_NOAUTOSNAP)
+void
+dmsg_free(void *ptr)
+{
+	free(ptr);
+}
 
-#endif
+const char *
+dmsg_uuid_to_str(uuid_t *uuid, char **strp)
+{
+	uint32_t status;
+	if (*strp) {
+		free(*strp);
+		*strp = NULL;
+	}
+	uuid_to_string(uuid, strp, &status);
+	return (*strp);
+}
+
+int
+dmsg_connect(const char *hostname)
+{
+	struct sockaddr_in lsin;
+	struct hostent *hen;
+	int fd;
+
+	/*
+	 * Acquire socket and set options
+	 */
+	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		fprintf(stderr, "cmd_debug: socket(): %s\n",
+			strerror(errno));
+		return -1;
+	}
+
+	/*
+	 * Connect to the target
+	 */
+	bzero(&lsin, sizeof(lsin));
+	lsin.sin_family = AF_INET;
+	lsin.sin_addr.s_addr = 0;
+	lsin.sin_port = htons(DMSG_LISTEN_PORT);
+
+	if (hostname) {
+		hen = gethostbyname2(hostname, AF_INET);
+		if (hen == NULL) {
+			if (inet_pton(AF_INET, hostname, &lsin.sin_addr) != 1) {
+				fprintf(stderr,
+					"Cannot resolve %s\n", hostname);
+				return -1;
+			}
+		} else {
+			bcopy(hen->h_addr, &lsin.sin_addr, hen->h_length);
+		}
+	}
+	if (connect(fd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {
+		close(fd);
+		fprintf(stderr, "debug: connect failed: %s\n",
+			strerror(errno));
+		return -1;
+	}
+	return (fd);
+}

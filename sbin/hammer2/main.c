@@ -55,7 +55,7 @@ main(int ac, char **av)
 
 	srandomdev();
 	signal(SIGPIPE, SIG_IGN);
-	hammer2_crypto_setup();
+	dmsg_crypto_setup();
 
 	/*
 	 * Core options

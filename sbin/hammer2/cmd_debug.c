@@ -37,9 +37,9 @@
 
 #define SHOW_TAB	2
 
-static void shell_rcvmsg(hammer2_msg_t *msg);
-static void shell_ttymsg(hammer2_iocom_t *iocom);
-static void hammer2_shell_parse(hammer2_msg_t *msg);
+static void shell_rcvmsg(dmsg_msg_t *msg);
+static void shell_ttymsg(dmsg_iocom_t *iocom);
+static void hammer2_shell_parse(dmsg_msg_t *msg);
 
 /************************************************************************
  *				    SHELL				*
@@ -48,39 +48,40 @@ static void hammer2_shell_parse(hammer2_msg_t *msg);
 int
 cmd_shell(const char *hostname)
 {
-	struct hammer2_iocom iocom;
-	hammer2_msg_t *msg;
+	struct dmsg_iocom iocom;
+	dmsg_msg_t *msg;
 	int fd;
 
 	/*
 	 * Connect to the target
 	 */
-	fd = hammer2_connect(hostname);
+	fd = dmsg_connect(hostname);
 	if (fd < 0)
 		return 1;
 
 	/*
 	 * Run the session.  The remote end transmits our prompt.
 	 */
-	hammer2_iocom_init(&iocom, fd, 0, NULL, shell_rcvmsg, shell_ttymsg);
+	dmsg_iocom_init(&iocom, fd, 0, NULL, shell_rcvmsg, shell_ttymsg);
+	iocom.router->dbgmsg_callback = hammer2_shell_parse;
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	printf("debug: connected\n");
 
-	msg = hammer2_msg_alloc(iocom.router, 0, DMSG_DBG_SHELL, NULL, NULL);
-	hammer2_msg_write(msg);
-	hammer2_iocom_core(&iocom);
+	msg = dmsg_msg_alloc(iocom.router, 0, DMSG_DBG_SHELL, NULL, NULL);
+	dmsg_msg_write(msg);
+	dmsg_iocom_core(&iocom);
 	fprintf(stderr, "debug: disconnected\n");
 	close(fd);
 	return 0;
 }
 
 /*
- * Callback from hammer2_iocom_core() when messages might be present
+ * Callback from dmsg_iocom_core() when messages might be present
  * on the socket.
  */
 static
 void
-shell_rcvmsg(hammer2_msg_t *msg)
+shell_rcvmsg(dmsg_msg_t *msg)
 {
 	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
 	case DMSG_LNK_ERROR:
@@ -92,7 +93,7 @@ shell_rcvmsg(hammer2_msg_t *msg)
 		 */
 		if (msg->any.head.error) {
 			fprintf(stderr, "Stream failure: %s\n",
-				hammer2_msg_str(msg));
+				dmsg_msg_str(msg));
 		} else {
 			write(1, "debug> ", 7);
 		}
@@ -105,7 +106,7 @@ shell_rcvmsg(hammer2_msg_t *msg)
 		 * We send the commands, not accept them.
 		 * (one-way message, not transactional)
 		 */
-		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
+		dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
 		/*
@@ -119,7 +120,7 @@ shell_rcvmsg(hammer2_msg_t *msg)
 		break;
 	case DMSG_LNK_CONN | DMSGF_CREATE:
 		fprintf(stderr, "Debug Shell is ignoring received LNK_CONN\n");
-		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
+		dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	case DMSG_LNK_CONN | DMSGF_DELETE:
 		break;
@@ -128,20 +129,20 @@ shell_rcvmsg(hammer2_msg_t *msg)
 		 * Ignore any unknown messages, Terminate any unknown
 		 * transactions with an error.
 		 */
-		fprintf(stderr, "Unknown message: %s\n", hammer2_msg_str(msg));
+		fprintf(stderr, "Unknown message: %s\n", dmsg_msg_str(msg));
 		if (msg->any.head.cmd & DMSGF_CREATE)
-			hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
+			dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		if (msg->any.head.cmd & DMSGF_DELETE)
-			hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
+			dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	}
 }
 
 static
 void
-shell_ttymsg(hammer2_iocom_t *iocom)
+shell_ttymsg(dmsg_iocom_t *iocom)
 {
-	hammer2_msg_t *msg;
+	dmsg_msg_t *msg;
 	char buf[256];
 	size_t len;
 
@@ -150,63 +151,27 @@ shell_ttymsg(hammer2_iocom_t *iocom)
 		if (len && buf[len - 1] == '\n')
 			buf[--len] = 0;
 		++len;
-		msg = hammer2_msg_alloc(iocom->router, len, DMSG_DBG_SHELL,
-					NULL, NULL);
+		msg = dmsg_msg_alloc(iocom->router, len, DMSG_DBG_SHELL,
+				     NULL, NULL);
 		bcopy(buf, msg->aux_data, len);
-		hammer2_msg_write(msg);
+		dmsg_msg_write(msg);
 	} else if (feof(stdin)) {
 		/*
 		 * Set EOF flag without setting any error code for normal
 		 * EOF.
 		 */
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
+		iocom->flags |= DMSG_IOCOMF_EOF;
 	} else {
 		clearerr(stdin);
 	}
 }
 
-/*
- * This is called from the master node to process a received debug
- * shell command.  We process the command, outputting the results,
- * then finish up by outputting another prompt.
- */
-void
-hammer2_msg_dbg(hammer2_msg_t *msg)
-{
-	switch(msg->any.head.cmd & DMSGF_CMDSWMASK) {
-	case DMSG_DBG_SHELL:
-		/*
-		 * This is a command which we must process.
-		 * When we are finished we generate a final reply.
-		 */
-		if (msg->aux_data)
-			msg->aux_data[msg->aux_size - 1] = 0;
-		hammer2_shell_parse(msg);
-		hammer2_msg_reply(msg, 0);
-		break;
-	case DMSG_DBG_SHELL | DMSGF_REPLY:
-		/*
-		 * A reply just prints out the string.  No newline is added
-		 * (it is expected to be embedded if desired).
-		 */
-		if (msg->aux_data)
-			msg->aux_data[msg->aux_size - 1] = 0;
-		if (msg->aux_data)
-			write(2, msg->aux_data, strlen(msg->aux_data));
-		break;
-	default:
-		hammer2_msg_reply(msg, DMSG_ERR_NOSUPP);
-		break;
-	}
-}
-
-static void shell_span(hammer2_router_t *router, char *cmdbuf);
-/*static void shell_tree(hammer2_router_t *router, char *cmdbuf);*/
+static void shell_span(dmsg_router_t *router, char *cmdbuf);
 
 static void
-hammer2_shell_parse(hammer2_msg_t *msg)
+hammer2_shell_parse(dmsg_msg_t *msg)
 {
-	hammer2_router_t *router = msg->router;
+	dmsg_router_t *router = msg->router;
 	char *cmdbuf = msg->aux_data;
 	char *cmd = strsep(&cmdbuf, " \t");
 
@@ -215,18 +180,18 @@ hammer2_shell_parse(hammer2_msg_t *msg)
 	} else if (strcmp(cmd, "span") == 0) {
 		shell_span(router, cmdbuf);
 	} else if (strcmp(cmd, "tree") == 0) {
-		shell_tree(router, cmdbuf);
+		dmsg_shell_tree(router, cmdbuf); /* dump spanning tree */
 	} else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
-		router_printf(router, "help            Command help\n");
-		router_printf(router, "span <host>     Span to target host\n");
-		router_printf(router, "tree            Dump spanning tree\n");
+		dmsg_router_printf(router, "help            Command help\n");
+		dmsg_router_printf(router, "span <host>     Span to target host\n");
+		dmsg_router_printf(router, "tree            Dump spanning tree\n");
 	} else {
-		router_printf(router, "Unrecognized command: %s\n", cmd);
+		dmsg_router_printf(router, "Unrecognized command: %s\n", cmd);
 	}
 }
 
 static void
-shell_span(hammer2_router_t *router, char *cmdbuf)
+shell_span(dmsg_router_t *router, char *cmdbuf)
 {
 	const char *hostname = strsep(&cmdbuf, " \t");
 	pthread_t thread;
@@ -238,48 +203,20 @@ shell_span(hammer2_router_t *router, char *cmdbuf)
 	if (hostname == NULL) {
 		fd = -1;
 	} else {
-		fd = hammer2_connect(hostname);
+		fd = dmsg_connect(hostname);
 	}
 
 	/*
 	 * Start master service
 	 */
 	if (fd < 0) {
-		router_printf(router, "Connection to %s failed\n", hostname);
+		dmsg_router_printf(router, "Connection to %s failed\n", hostname);
 	} else {
-		router_printf(router, "Connected to %s\n", hostname);
+		dmsg_router_printf(router, "Connected to %s\n", hostname);
 		pthread_create(&thread, NULL,
-			       master_service, (void *)(intptr_t)fd);
+			       dmsg_master_service, (void *)(intptr_t)fd);
 		/*pthread_join(thread, &res);*/
 	}
-}
-
-/*
- * Returns text debug output to the original defined by (msg).  (msg) is
- * not modified and stays intact.  We use a one-way message with REPLY set
- * to distinguish between a debug command and debug terminal output.
- *
- * To prevent loops router_printf() can filter the message (cmd) related
- * to the router_printf().  We filter out DBG messages.
- */
-void
-router_printf(hammer2_router_t *router, const char *ctl, ...)
-{
-	hammer2_msg_t *rmsg;
-	va_list va;
-	char buf[1024];
-	size_t len;
-
-	va_start(va, ctl);
-	vsnprintf(buf, sizeof(buf), ctl, va);
-	va_end(va);
-	len = strlen(buf) + 1;
-
-	rmsg = hammer2_msg_alloc(router, len, DMSG_DBG_SHELL | DMSGF_REPLY,
-				 NULL, NULL);
-	bcopy(buf, rmsg->aux_data, len);
-
-	hammer2_msg_write(rmsg);
 }
 
 /************************************************************************
@@ -299,12 +236,13 @@ cmd_debugspan(const char *hostname)
 	/*
 	 * Connect to the target
 	 */
-	fd = hammer2_connect(hostname);
+	fd = dmsg_connect(hostname);
 	if (fd < 0)
 		return 1;
 
 	printf("debugspan: connected to %s, starting CONN/SPAN\n", hostname);
-	pthread_create(&thread, NULL, master_service, (void *)(intptr_t)fd);
+	pthread_create(&thread, NULL,
+		       dmsg_master_service, (void *)(intptr_t)fd);
 	pthread_join(thread, &res);
 	return(0);
 }

@@ -514,10 +514,12 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
  * PEER types identify connections and help cluster controller filter
  * out unwanted SPANs.
  */
-#define HAMMER2_PEER_NONE		0
-#define HAMMER2_PEER_CLUSTER		1	/* a cluster controller */
-#define HAMMER2_PEER_BLOCK		2	/* block devices */
-#define HAMMER2_PEER_HAMMER2		3	/* hammer2-mounted volumes */
+#define HAMMER2_PEER_NONE		DMSG_PEER_NONE
+#define HAMMER2_PEER_CLUSTER		DMSG_PEER_CLUSTER
+#define HAMMER2_PEER_BLOCK		DMSG_PEER_BLOCK
+#define HAMMER2_PEER_HAMMER2		DMSG_PEER_HAMMER2
+
+#define HAMMER2_COPYID_COUNT		DMSG_COPYID_COUNT
 
 /*
  * PFS types identify a PFS on media and in LNK_SPAN messages.
@@ -652,8 +654,6 @@ typedef struct hammer2_allocref hammer2_allocref_t;
  */
 #define HAMMER2_VOLUME_ID_HBO	0x48414d3205172011LLU
 #define HAMMER2_VOLUME_ID_ABO	0x11201705324d4148LLU
-
-#define HAMMER2_COPYID_COUNT	256
 
 struct hammer2_volume_data {
 	/*
@@ -799,12 +799,5 @@ union hammer2_media_data {
 };
 
 typedef union hammer2_media_data hammer2_media_data_t;
-
-/*
- * Prototypes for user & kernel functions.  Kernel-only prototypes are
- * elsewhere.
- */
-uint32_t hammer2_icrc32(const void *buf, size_t size);
-uint32_t hammer2_icrc32c(const void *buf, size_t size, uint32_t crc);
 
 #endif

@@ -47,6 +47,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libdevstat \
 	libdl \
 	libdm \
+	libdmsg \
 	libedit \
 	libevtr \
 	libexpat \

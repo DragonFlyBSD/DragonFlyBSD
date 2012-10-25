@@ -447,6 +447,9 @@ extern long hammer2_ioa_volu_write;
 /*
  * hammer2_subr.c
  */
+uint32_t hammer2_icrc32(const void *buf, size_t size);
+uint32_t hammer2_icrc32c(const void *buf, size_t size, uint32_t crc);
+
 void hammer2_inode_lock_ex(hammer2_inode_t *ip);
 void hammer2_inode_unlock_ex(hammer2_inode_t *ip);
 void hammer2_inode_lock_sh(hammer2_inode_t *ip);

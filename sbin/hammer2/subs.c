@@ -139,30 +139,6 @@ hammer2_demon(void *(*func)(void *), void *arg)
 	_exit(2);	/* NOT REACHED */
 }
 
-/*
- * This swaps endian for a hammer2_msg_hdr.  Note that the extended
- * header is not adjusted, just the core header.
- */
-void
-hammer2_bswap_head(dmsg_hdr_t *head)
-{
-	head->magic	= bswap16(head->magic);
-	head->reserved02 = bswap16(head->reserved02);
-	head->salt	= bswap32(head->salt);
-
-	head->msgid	= bswap64(head->msgid);
-	head->source	= bswap64(head->source);
-	head->target	= bswap64(head->target);
-
-	head->cmd	= bswap32(head->cmd);
-	head->aux_crc	= bswap32(head->aux_crc);
-	head->aux_bytes	= bswap32(head->aux_bytes);
-	head->error	= bswap32(head->error);
-	head->aux_descr = bswap64(head->aux_descr);
-	head->reserved38= bswap32(head->reserved38);
-	head->hdr_crc	= bswap32(head->hdr_crc);
-}
-
 const char *
 hammer2_time64_to_str(uint64_t htime64, char **strp)
 {
@@ -269,6 +245,7 @@ sizetostr(hammer2_off_t size)
 	return(buf);
 }
 
+#if 0
 /*
  * Allocation wrappers give us shims for possible future use
  */
@@ -289,47 +266,4 @@ hammer2_free(void *ptr)
 	free(ptr);
 }
 
-int
-hammer2_connect(const char *hostname)
-{
-	struct sockaddr_in lsin;
-	struct hostent *hen;
-	int fd;
-
-	/*
-	 * Acquire socket and set options
-	 */
-	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "cmd_debug: socket(): %s\n",
-			strerror(errno));
-		return -1;
-	}
-
-	/*
-	 * Connect to the target
-	 */
-	bzero(&lsin, sizeof(lsin));
-	lsin.sin_family = AF_INET;
-	lsin.sin_addr.s_addr = 0;
-	lsin.sin_port = htons(HAMMER2_LISTEN_PORT);
-
-	if (hostname) {
-		hen = gethostbyname2(hostname, AF_INET);
-		if (hen == NULL) {
-			if (inet_pton(AF_INET, hostname, &lsin.sin_addr) != 1) {
-				fprintf(stderr,
-					"Cannot resolve %s\n", hostname);
-				return -1;
-			}
-		} else {
-			bcopy(hen->h_addr, &lsin.sin_addr, hen->h_length);
-		}
-	}
-	if (connect(fd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {
-		close(fd);
-		fprintf(stderr, "debug: connect failed: %s\n",
-			strerror(errno));
-		return -1;
-	}
-	return (fd);
-}
+#endif

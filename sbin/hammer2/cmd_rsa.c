@@ -35,6 +35,10 @@
 
 #include "hammer2.h"
 
+#include <openssl/rsa.h>	/* public/private key functions */
+#include <openssl/pem.h>	/* public/private key file load */
+#include <openssl/err.h>
+
 /*
  * Should be run as root.  Creates /etc/hammer2/rsa.{pub,prv} using
  * an openssl command.

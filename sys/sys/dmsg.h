@@ -396,7 +396,7 @@ struct dmsg_lnk_auth {
  * left empty (zero-fill) if not supported by a particular peer.
  *
  * DMSG_PEER_CLUSTER		filter: none
- * DMSG_PEER_DISK		filter: label
+ * DMSG_PEER_BLOCK		filter: label
  * DMSG_PEER_HAMMER2		filter: pfs_clid if not empty, and label
  */
 struct dmsg_lnk_conn {
@@ -416,6 +416,11 @@ struct dmsg_lnk_conn {
 };
 
 typedef struct dmsg_lnk_conn dmsg_lnk_conn_t;
+
+#define DMSG_PEER_NONE		0
+#define DMSG_PEER_CLUSTER	1	/* a cluster controller */
+#define DMSG_PEER_BLOCK		2	/* block devices */
+#define DMSG_PEER_HAMMER2	3	/* hammer2-mounted volumes */
 
 /*
  * LNK_SPAN - Relay a SPAN (transaction, left open)
@@ -530,6 +535,8 @@ typedef struct dmsg_vol_data dmsg_vol_data_t;
 #define DMSG_VOLF_CONN_RR	0x80	/* round-robin at same priority */
 #define DMSG_VOLF_CONN_EF	0x40	/* media errors flagged */
 #define DMSG_VOLF_CONN_PRI	0x0F	/* select priority 0-15 (15=best) */
+
+#define DMSG_COPYID_COUNT	256	/* WARNING! embedded in hammer2 vol */
 
 struct dmsg_lnk_volconf {
 	dmsg_hdr_t		head;

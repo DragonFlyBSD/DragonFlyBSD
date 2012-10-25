@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  */
 
-#include "hammer2.h"
-#include <sys/endian.h>
+#include "dmsg_local.h"
 
 /*
  * Setup crypto for pthreads
@@ -43,36 +42,36 @@
 static pthread_mutex_t *crypto_locks;
 int crypto_count;
 
-static int hammer2_crypto_gcm_init(hammer2_ioq_t *, char *, int, char *, int, int);
-static int hammer2_crypto_gcm_encrypt_chunk(hammer2_ioq_t *, char *, char *, int, int *);
-static int hammer2_crypto_gcm_decrypt_chunk(hammer2_ioq_t *, char *, char *, int, int *);
+static int dmsg_crypto_gcm_init(dmsg_ioq_t *, char *, int, char *, int, int);
+static int dmsg_crypto_gcm_encrypt_chunk(dmsg_ioq_t *, char *, char *, int, int *);
+static int dmsg_crypto_gcm_decrypt_chunk(dmsg_ioq_t *, char *, char *, int, int *);
 
 /*
- * NOTE: the order of this table needs to match the HAMMER2_CRYPTO_ALGO_*_IDX
+ * NOTE: the order of this table needs to match the DMSG_CRYPTO_ALGO_*_IDX
  *       defines in network.h.
  */
 static struct crypto_algo crypto_algos[] = {
 	{
 		.name      = "aes-256-gcm",
-		.keylen    = HAMMER2_CRYPTO_GCM_KEY_SIZE,
-		.taglen    = HAMMER2_CRYPTO_GCM_TAG_SIZE,
-		.init      = hammer2_crypto_gcm_init,
-		.enc_chunk = hammer2_crypto_gcm_encrypt_chunk,
-		.dec_chunk = hammer2_crypto_gcm_decrypt_chunk
+		.keylen    = DMSG_CRYPTO_GCM_KEY_SIZE,
+		.taglen    = DMSG_CRYPTO_GCM_TAG_SIZE,
+		.init      = dmsg_crypto_gcm_init,
+		.enc_chunk = dmsg_crypto_gcm_encrypt_chunk,
+		.dec_chunk = dmsg_crypto_gcm_decrypt_chunk
 	},
 	{ NULL, 0, 0, NULL, NULL, NULL }
 };
 
 static
 unsigned long
-hammer2_crypto_id_callback(void)
+dmsg_crypto_id_callback(void)
 {
 	return ((unsigned long)(uintptr_t)pthread_self());
 }
 
 static
 void
-hammer2_crypto_locking_callback(int mode, int type,
+dmsg_crypto_locking_callback(int mode, int type,
 				const char *file __unused, int line __unused)
 {
 	assert(type >= 0 && type < crypto_count);
@@ -84,35 +83,35 @@ hammer2_crypto_locking_callback(int mode, int type,
 }
 
 void
-hammer2_crypto_setup(void)
+dmsg_crypto_setup(void)
 {
 	crypto_count = CRYPTO_num_locks();
 	crypto_locks = calloc(crypto_count, sizeof(crypto_locks[0]));
-	CRYPTO_set_id_callback(hammer2_crypto_id_callback);
-	CRYPTO_set_locking_callback(hammer2_crypto_locking_callback);
+	CRYPTO_set_id_callback(dmsg_crypto_id_callback);
+	CRYPTO_set_locking_callback(dmsg_crypto_locking_callback);
 }
 
 static
 int
-hammer2_crypto_gcm_init(hammer2_ioq_t *ioq, char *key, int klen,
+dmsg_crypto_gcm_init(dmsg_ioq_t *ioq, char *key, int klen,
 			char *iv_fixed, int ivlen, int enc)
 {
 	int i, ok;
 
-	if (klen < HAMMER2_CRYPTO_GCM_KEY_SIZE ||
-	    ivlen < HAMMER2_CRYPTO_GCM_IV_FIXED_SIZE) {
-		if (DebugOpt)
+	if (klen < DMSG_CRYPTO_GCM_KEY_SIZE ||
+	    ivlen < DMSG_CRYPTO_GCM_IV_FIXED_SIZE) {
+		if (DMsgDebugOpt)
 			fprintf(stderr, "Not enough key or iv material\n");
 		return -1;
 	}
 
 	printf("%s key: ", enc ? "Encryption" : "Decryption");
-	for (i = 0; i < HAMMER2_CRYPTO_GCM_KEY_SIZE; ++i)
+	for (i = 0; i < DMSG_CRYPTO_GCM_KEY_SIZE; ++i)
 		printf("%02x", (unsigned char)key[i]);
 	printf("\n");
 
 	printf("%s iv:  ", enc ? "Encryption" : "Decryption");
-	for (i = 0; i < HAMMER2_CRYPTO_GCM_IV_FIXED_SIZE; ++i)
+	for (i = 0; i < DMSG_CRYPTO_GCM_IV_FIXED_SIZE; ++i)
 		printf("%02x", (unsigned char)iv_fixed[i]);
 	printf(" (fixed part only)\n");
 
@@ -146,12 +145,12 @@ hammer2_crypto_gcm_init(hammer2_ioq_t *ioq, char *key, int klen,
 	 * traffic.
 	 */
 	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_SET_IVLEN,
-				 HAMMER2_CRYPTO_GCM_IV_SIZE, NULL);
+				 DMSG_CRYPTO_GCM_IV_SIZE, NULL);
 	if (!ok)
 		goto fail;
 
-	memset(ioq->iv, 0, HAMMER2_CRYPTO_GCM_IV_SIZE);
-	memcpy(ioq->iv, iv_fixed, HAMMER2_CRYPTO_GCM_IV_FIXED_SIZE);
+	memset(ioq->iv, 0, DMSG_CRYPTO_GCM_IV_SIZE);
+	memcpy(ioq->iv, iv_fixed, DMSG_CRYPTO_GCM_IV_FIXED_SIZE);
 
 	/*
 	 * Strictly speaking, padding is irrelevant with a counter mode
@@ -166,7 +165,7 @@ hammer2_crypto_gcm_init(hammer2_ioq_t *ioq, char *key, int klen,
 	return 0;
 
 fail:
-	if (DebugOpt)
+	if (DMsgDebugOpt)
 		fprintf(stderr, "Error during _gcm_init\n");
 	return -1;
 }
@@ -183,7 +182,7 @@ _gcm_iv_increment(char *iv)
 	 * unique to the session and a 64 bit integer counter.
 	 */
 
-	uint64_t *c = (uint64_t *)(&iv[HAMMER2_CRYPTO_GCM_IV_FIXED_SIZE]);
+	uint64_t *c = (uint64_t *)(&iv[DMSG_CRYPTO_GCM_IV_FIXED_SIZE]);
 
 	/* Increment invocation field integer counter */
 	*c = htobe64(be64toh(*c)+1);
@@ -197,7 +196,7 @@ _gcm_iv_increment(char *iv)
 
 static
 int
-hammer2_crypto_gcm_encrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
+dmsg_crypto_gcm_encrypt_chunk(dmsg_ioq_t *ioq, char *ct, char *pt,
 				 int in_size, int *out_size)
 {
 	int ok;
@@ -220,32 +219,32 @@ hammer2_crypto_gcm_encrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 
 	/* Retrieve auth tag */
 	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_GET_TAG,
-				 HAMMER2_CRYPTO_GCM_TAG_SIZE,
+				 DMSG_CRYPTO_GCM_TAG_SIZE,
 				 ct + u_len + f_len);
 	if (!ok)
 		goto fail;
 
 	ok = _gcm_iv_increment(ioq->iv);
 	if (!ok) {
-		ioq->error = HAMMER2_IOQ_ERROR_IVWRAP;
+		ioq->error = DMSG_IOQ_ERROR_IVWRAP;
 		goto fail_out;
 	}
 
-	*out_size = u_len + f_len + HAMMER2_CRYPTO_GCM_TAG_SIZE;
+	*out_size = u_len + f_len + DMSG_CRYPTO_GCM_TAG_SIZE;
 
 	return 0;
 
 fail:
-	ioq->error = HAMMER2_IOQ_ERROR_ALGO;
+	ioq->error = DMSG_IOQ_ERROR_ALGO;
 fail_out:
-	if (DebugOpt)
+	if (DMsgDebugOpt)
 		fprintf(stderr, "error during encrypt_chunk\n");
 	return -1;
 }
 
 static
 int
-hammer2_crypto_gcm_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
+dmsg_crypto_gcm_decrypt_chunk(dmsg_ioq_t *ioq, char *ct, char *pt,
 				 int out_size, int *consume_size)
 {
 	int ok;
@@ -256,15 +255,15 @@ hammer2_crypto_gcm_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 	/* Re-initialize with new IV (but without redoing the key schedule) */
 	ok = EVP_DecryptInit_ex(&ioq->ctx, NULL, NULL, NULL, ioq->iv);
 	if (!ok) {
-		ioq->error = HAMMER2_IOQ_ERROR_ALGO;
+		ioq->error = DMSG_IOQ_ERROR_ALGO;
 		goto fail_out;
 	}
 
 	ok = EVP_CIPHER_CTX_ctrl(&ioq->ctx, EVP_CTRL_GCM_SET_TAG,
-				 HAMMER2_CRYPTO_GCM_TAG_SIZE,
+				 DMSG_CRYPTO_GCM_TAG_SIZE,
 				 ct + out_size);
 	if (!ok) {
-		ioq->error = HAMMER2_IOQ_ERROR_ALGO;
+		ioq->error = DMSG_IOQ_ERROR_ALGO;
 		goto fail_out;
 	}
 
@@ -278,18 +277,18 @@ hammer2_crypto_gcm_decrypt_chunk(hammer2_ioq_t *ioq, char *ct, char *pt,
 
 	ok = _gcm_iv_increment(ioq->iv);
 	if (!ok) {
-		ioq->error = HAMMER2_IOQ_ERROR_IVWRAP;
+		ioq->error = DMSG_IOQ_ERROR_IVWRAP;
 		goto fail_out;
 	}
 
-	*consume_size = u_len + f_len + HAMMER2_CRYPTO_GCM_TAG_SIZE;
+	*consume_size = u_len + f_len + DMSG_CRYPTO_GCM_TAG_SIZE;
 
 	return 0;
 
 fail:
-	ioq->error = HAMMER2_IOQ_ERROR_MACFAIL;
+	ioq->error = DMSG_IOQ_ERROR_MACFAIL;
 fail_out:
-	if (DebugOpt)
+	if (DMsgDebugOpt)
 		fprintf(stderr, "error during decrypt_chunk (likely authentication error)\n");
 	return -1;
 }
@@ -339,14 +338,14 @@ typedef union {
 } sockaddr_any_t;
 
 void
-hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
+dmsg_crypto_negotiate(dmsg_iocom_t *iocom)
 {
 	sockaddr_any_t sa;
 	socklen_t salen = sizeof(sa);
 	char peername[128];
 	char realname[128];
-	hammer2_handshake_t handtx;
-	hammer2_handshake_t handrx;
+	dmsg_handshake_t handtx;
+	dmsg_handshake_t handrx;
 	char buf1[sizeof(handtx)];
 	char buf2[sizeof(handtx)];
 	char *ptr;
@@ -365,21 +364,21 @@ hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
 	 * Get the peer IP address for the connection as a string.
 	 */
 	if (getpeername(iocom->sock_fd, &sa.sa, &salen) < 0) {
-		iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_NOPEER;
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
-		if (DebugOpt)
+		iocom->ioq_rx.error = DMSG_IOQ_ERROR_NOPEER;
+		iocom->flags |= DMSG_IOCOMF_EOF;
+		if (DMsgDebugOpt)
 			fprintf(stderr, "accept: getpeername() failed\n");
 		goto done;
 	}
 	if (getnameinfo(&sa.sa, salen, peername, sizeof(peername),
 			NULL, 0, NI_NUMERICHOST) < 0) {
-		iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_NOPEER;
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
-		if (DebugOpt)
+		iocom->ioq_rx.error = DMSG_IOQ_ERROR_NOPEER;
+		iocom->flags |= DMSG_IOCOMF_EOF;
+		if (DMsgDebugOpt)
 			fprintf(stderr, "accept: cannot decode sockaddr\n");
 		goto done;
 	}
-	if (DebugOpt) {
+	if (DMsgDebugOpt) {
 		if (realhostname_sa(realname, sizeof(realname),
 				    &sa.sa, salen) == HOSTNAME_FOUND) {
 			fprintf(stderr, "accept from %s (%s)\n",
@@ -395,19 +394,19 @@ hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
 	 * If the link is not to be encrypted (<ip>.none located) we shortcut
 	 * the handshake entirely.  No buffers are exchanged.
 	 */
-	asprintf(&path, "%s/%s.pub", HAMMER2_PATH_REMOTE, peername);
+	asprintf(&path, "%s/%s.pub", DMSG_PATH_REMOTE, peername);
 	if ((fp = fopen(path, "r")) == NULL) {
 		free(path);
 		asprintf(&path, "%s/%s.none",
-			 HAMMER2_PATH_REMOTE, peername);
+			 DMSG_PATH_REMOTE, peername);
 		if (stat(path, &st) < 0) {
-			iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_NORKEY;
-			iocom->flags |= HAMMER2_IOCOMF_EOF;
-			if (DebugOpt)
+			iocom->ioq_rx.error = DMSG_IOQ_ERROR_NORKEY;
+			iocom->flags |= DMSG_IOCOMF_EOF;
+			if (DMsgDebugOpt)
 				fprintf(stderr, "auth failure: unknown host\n");
 			goto done;
 		}
-		if (DebugOpt)
+		if (DMsgDebugOpt)
 			fprintf(stderr, "auth succeeded, unencrypted link\n");
 		goto done;
 	}
@@ -415,9 +414,9 @@ hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
 		keys[0] = PEM_read_RSA_PUBKEY(fp, NULL, NULL, NULL);
 		fclose(fp);
 		if (keys[0] == NULL) {
-			iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_KEYFMT;
-			iocom->flags |= HAMMER2_IOCOMF_EOF;
-			if (DebugOpt)
+			iocom->ioq_rx.error = DMSG_IOQ_ERROR_KEYFMT;
+			iocom->flags |= DMSG_IOCOMF_EOF;
+			if (DMsgDebugOpt)
 				fprintf(stderr,
 					"auth failure: bad key format\n");
 			goto done;
@@ -428,37 +427,37 @@ hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
 	 * Get our public and private keys
 	 */
 	free(path);
-	asprintf(&path, HAMMER2_DEFAULT_DIR "/rsa.pub");
+	asprintf(&path, DMSG_DEFAULT_DIR "/rsa.pub");
 	if ((fp = fopen(path, "r")) == NULL) {
-		iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_NOLKEY;
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
+		iocom->ioq_rx.error = DMSG_IOQ_ERROR_NOLKEY;
+		iocom->flags |= DMSG_IOCOMF_EOF;
 		goto done;
 	}
 	keys[1] = PEM_read_RSA_PUBKEY(fp, NULL, NULL, NULL);
 	fclose(fp);
 	if (keys[1] == NULL) {
-		iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_KEYFMT;
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
-		if (DebugOpt)
+		iocom->ioq_rx.error = DMSG_IOQ_ERROR_KEYFMT;
+		iocom->flags |= DMSG_IOCOMF_EOF;
+		if (DMsgDebugOpt)
 			fprintf(stderr, "auth failure: bad host key format\n");
 		goto done;
 	}
 
 	free(path);
-	asprintf(&path, HAMMER2_DEFAULT_DIR "/rsa.prv");
+	asprintf(&path, DMSG_DEFAULT_DIR "/rsa.prv");
 	if ((fp = fopen(path, "r")) == NULL) {
-		iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_NOLKEY;
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
-		if (DebugOpt)
+		iocom->ioq_rx.error = DMSG_IOQ_ERROR_NOLKEY;
+		iocom->flags |= DMSG_IOCOMF_EOF;
+		if (DMsgDebugOpt)
 			fprintf(stderr, "auth failure: bad host key format\n");
 		goto done;
 	}
 	keys[2] = PEM_read_RSAPrivateKey(fp, NULL, NULL, NULL);
 	fclose(fp);
 	if (keys[2] == NULL) {
-		iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_KEYFMT;
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
-		if (DebugOpt)
+		iocom->ioq_rx.error = DMSG_IOQ_ERROR_KEYFMT;
+		iocom->flags |= DMSG_IOCOMF_EOF;
+		if (DMsgDebugOpt)
 			fprintf(stderr, "auth failure: bad host key format\n");
 		goto done;
 	}
@@ -473,9 +472,9 @@ hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
 		if (blksize != (size_t)RSA_size(keys[1]) ||
 		    blksize != (size_t)RSA_size(keys[2]) ||
 		    sizeof(handtx) % blksize != 0) {
-			iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_KEYFMT;
-			iocom->flags |= HAMMER2_IOCOMF_EOF;
-			if (DebugOpt)
+			iocom->ioq_rx.error = DMSG_IOQ_ERROR_KEYFMT;
+			iocom->flags |= DMSG_IOCOMF_EOF;
+			if (DMsgDebugOpt)
 				fprintf(stderr, "auth failure: "
 						"key size mismatch\n");
 			goto done;
@@ -500,9 +499,9 @@ hammer2_crypto_negotiate(hammer2_iocom_t *iocom)
 urandfail:
 		if (fd >= 0)
 			close(fd);
-		iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_BADURANDOM;
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
-		if (DebugOpt)
+		iocom->ioq_rx.error = DMSG_IOQ_ERROR_BADURANDOM;
+		iocom->flags |= DMSG_IOCOMF_EOF;
+		if (DMsgDebugOpt)
 			fprintf(stderr, "auth failure: bad rng\n");
 		goto done;
 	}
@@ -554,14 +553,14 @@ urandfail:
 				if (RSA_private_encrypt(blksize, ptr, buf1,
 					    keys[2], RSA_NO_PADDING) < 0) {
 					iocom->ioq_rx.error =
-						HAMMER2_IOQ_ERROR_KEYXCHGFAIL;
+						DMSG_IOQ_ERROR_KEYXCHGFAIL;
 				}
 			} while (buf1[0] & 0xC0);
 
 			if (RSA_public_encrypt(blksize, buf1, buf2,
 					    keys[0], RSA_NO_PADDING) < 0) {
 				iocom->ioq_rx.error =
-					HAMMER2_IOQ_ERROR_KEYXCHGFAIL;
+					DMSG_IOQ_ERROR_KEYXCHGFAIL;
 			}
 		}
 		if (write(iocom->sock_fd, buf2, blksize) != (ssize_t)blksize) {
@@ -569,8 +568,8 @@ urandfail:
 		}
 	}
 	if (iocom->ioq_rx.error) {
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
-		if (DebugOpt)
+		iocom->flags |= DMSG_IOCOMF_EOF;
+		if (DMsgDebugOpt)
 			fprintf(stderr, "auth failure: key exchange failure "
 					"during encryption\n");
 		goto done;
@@ -591,16 +590,16 @@ urandfail:
 			if (RSA_private_decrypt(blksize, ptr, buf1,
 					   keys[2], RSA_NO_PADDING) < 0)
 				iocom->ioq_rx.error =
-						HAMMER2_IOQ_ERROR_KEYXCHGFAIL;
+						DMSG_IOQ_ERROR_KEYXCHGFAIL;
 			if (RSA_public_decrypt(blksize, buf1, ptr,
 					   keys[0], RSA_NO_PADDING) < 0)
 				iocom->ioq_rx.error =
-						HAMMER2_IOQ_ERROR_KEYXCHGFAIL;
+						DMSG_IOQ_ERROR_KEYXCHGFAIL;
 		}
 	}
 	if (iocom->ioq_rx.error) {
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
-		if (DebugOpt)
+		iocom->flags |= DMSG_IOCOMF_EOF;
+		if (DMsgDebugOpt)
 			fprintf(stderr, "auth failure: key exchange failure "
 					"during decryption\n");
 		goto done;
@@ -612,9 +611,9 @@ urandfail:
 	 */
 	if (i != sizeof(handrx)) {
 keyxchgfail:
-		iocom->ioq_rx.error = HAMMER2_IOQ_ERROR_KEYXCHGFAIL;
-		iocom->flags |= HAMMER2_IOCOMF_EOF;
-		if (DebugOpt)
+		iocom->ioq_rx.error = DMSG_IOQ_ERROR_KEYXCHGFAIL;
+		iocom->flags |= DMSG_IOCOMF_EOF;
+		if (DMsgDebugOpt)
 			fprintf(stderr, "auth failure: key exchange failure\n");
 		goto done;
 	}
@@ -637,25 +636,25 @@ keyxchgfail:
 	 * Use separate session keys and session fixed IVs for receive and
 	 * transmit.
 	 */
-	error = crypto_algos[HAMMER2_CRYPTO_ALGO].init(&iocom->ioq_rx, handrx.sess,
-	    crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
-	    handrx.sess + crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
-	    sizeof(handrx.sess) - crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
+	error = crypto_algos[DMSG_CRYPTO_ALGO].init(&iocom->ioq_rx, handrx.sess,
+	    crypto_algos[DMSG_CRYPTO_ALGO].keylen,
+	    handrx.sess + crypto_algos[DMSG_CRYPTO_ALGO].keylen,
+	    sizeof(handrx.sess) - crypto_algos[DMSG_CRYPTO_ALGO].keylen,
 	    0 /* decryption */);
 	if (error)
 		goto keyxchgfail;
 
-	error = crypto_algos[HAMMER2_CRYPTO_ALGO].init(&iocom->ioq_tx, handtx.sess,
-	    crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
-	    handtx.sess + crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
-	    sizeof(handtx.sess) - crypto_algos[HAMMER2_CRYPTO_ALGO].keylen,
+	error = crypto_algos[DMSG_CRYPTO_ALGO].init(&iocom->ioq_tx, handtx.sess,
+	    crypto_algos[DMSG_CRYPTO_ALGO].keylen,
+	    handtx.sess + crypto_algos[DMSG_CRYPTO_ALGO].keylen,
+	    sizeof(handtx.sess) - crypto_algos[DMSG_CRYPTO_ALGO].keylen,
 	    1 /* encryption */);
 	if (error)
 		goto keyxchgfail;
 
-	iocom->flags |= HAMMER2_IOCOMF_CRYPTED;
+	iocom->flags |= DMSG_IOCOMF_CRYPTED;
 
-	if (DebugOpt)
+	if (DMsgDebugOpt)
 		fprintf(stderr, "auth success: %s\n", handrx.quickmsg);
 done:
 	if (path)
@@ -672,7 +671,7 @@ done:
  * Decrypt pending data in the ioq's fifo.  The data is decrypted in-place.
  */
 void
-hammer2_crypto_decrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
+dmsg_crypto_decrypt(dmsg_iocom_t *iocom __unused, dmsg_ioq_t *ioq)
 {
 	int p_len;
 	int used;
@@ -688,15 +687,15 @@ hammer2_crypto_decrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
 	if (p_len == 0)
 		return;
 
-	while (p_len >= crypto_algos[HAMMER2_CRYPTO_ALGO].taglen +
-	    HAMMER2_CRYPTO_CHUNK_SIZE) {
+	while (p_len >= crypto_algos[DMSG_CRYPTO_ALGO].taglen +
+	    DMSG_CRYPTO_CHUNK_SIZE) {
 		bcopy(ioq->buf + ioq->fifo_cdn, buf,
-		      crypto_algos[HAMMER2_CRYPTO_ALGO].taglen +
-		      HAMMER2_CRYPTO_CHUNK_SIZE);
-		error = crypto_algos[HAMMER2_CRYPTO_ALGO].dec_chunk(
+		      crypto_algos[DMSG_CRYPTO_ALGO].taglen +
+		      DMSG_CRYPTO_CHUNK_SIZE);
+		error = crypto_algos[DMSG_CRYPTO_ALGO].dec_chunk(
 		    ioq, buf,
 		    ioq->buf + ioq->fifo_cdx,
-		    HAMMER2_CRYPTO_CHUNK_SIZE,
+		    DMSG_CRYPTO_CHUNK_SIZE,
 		    &used);
 #ifdef CRYPTO_DEBUG
 		printf("dec: p_len: %d, used: %d, fifo_cdn: %ju, fifo_cdx: %ju\n",
@@ -704,7 +703,7 @@ hammer2_crypto_decrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
 #endif
 		p_len -= used;
 		ioq->fifo_cdn += used;
-		ioq->fifo_cdx += HAMMER2_CRYPTO_CHUNK_SIZE;
+		ioq->fifo_cdx += DMSG_CRYPTO_CHUNK_SIZE;
 #ifdef CRYPTO_DEBUG
 		printf("dec: p_len: %d, used: %d, fifo_cdn: %ju, fifo_cdx: %ju\n",
 		       p_len, used, ioq->fifo_cdn, ioq->fifo_cdx);
@@ -717,8 +716,8 @@ hammer2_crypto_decrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq)
  * The FIFO may contain more data.
  */
 int
-hammer2_crypto_encrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq,
-		       struct iovec *iov, int n, size_t *nactp)
+dmsg_crypto_encrypt(dmsg_iocom_t *iocom __unused, dmsg_ioq_t *ioq,
+		    struct iovec *iov, int n, size_t *nactp)
 {
 	int p_len, used, ct_used;
 	int i;
@@ -733,22 +732,22 @@ hammer2_crypto_encrypt(hammer2_iocom_t *iocom __unused, hammer2_ioq_t *ioq,
 		p_len = iov[i].iov_len;
 		assert((p_len & DMSG_ALIGNMASK) == 0);
 
-		while (p_len >= HAMMER2_CRYPTO_CHUNK_SIZE &&
-		    nmax >= HAMMER2_CRYPTO_CHUNK_SIZE +
-		    (size_t)crypto_algos[HAMMER2_CRYPTO_ALGO].taglen) {
-			error = crypto_algos[HAMMER2_CRYPTO_ALGO].enc_chunk(
+		while (p_len >= DMSG_CRYPTO_CHUNK_SIZE &&
+		    nmax >= DMSG_CRYPTO_CHUNK_SIZE +
+		    (size_t)crypto_algos[DMSG_CRYPTO_ALGO].taglen) {
+			error = crypto_algos[DMSG_CRYPTO_ALGO].enc_chunk(
 			    ioq,
 			    ioq->buf + ioq->fifo_cdx,
 			    (char *)iov[i].iov_base + used,
-			    HAMMER2_CRYPTO_CHUNK_SIZE, &ct_used);
+			    DMSG_CRYPTO_CHUNK_SIZE, &ct_used);
 #ifdef CRYPTO_DEBUG
 			printf("nactp: %ju, p_len: %d, ct_used: %d, used: %d, nmax: %ju\n",
 			       *nactp, p_len, ct_used, used, nmax);
 #endif
 
-			*nactp += (size_t)HAMMER2_CRYPTO_CHUNK_SIZE;	/* plaintext count */
-			used += HAMMER2_CRYPTO_CHUNK_SIZE;
-			p_len -= HAMMER2_CRYPTO_CHUNK_SIZE;
+			*nactp += (size_t)DMSG_CRYPTO_CHUNK_SIZE;	/* plaintext count */
+			used += DMSG_CRYPTO_CHUNK_SIZE;
+			p_len -= DMSG_CRYPTO_CHUNK_SIZE;
 
 			ioq->fifo_cdx += (size_t)ct_used;	/* crypted count */
 			ioq->fifo_cdn += (size_t)ct_used;	/* crypted count */
