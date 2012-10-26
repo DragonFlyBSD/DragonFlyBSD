@@ -128,6 +128,8 @@ struct disk_info {
 #define DSO_DEVICEMAPPER	0x0080
 #define DSO_RAWPSIZE		0x0100
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 /*
  * Disk management structure - automated disklabel support.
  */
@@ -147,6 +149,8 @@ struct disk {
 	LIST_ENTRY(disk)	d_list;
 	kdmsg_iocom_t		d_iocom;	/* cluster import/export */
 };
+
+#endif
 
 /*
  * d_flags
