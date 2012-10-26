@@ -22,13 +22,13 @@ SRCS=	${libssp_la_SOURCES}
 # generated
 SRCS+=	ssp.h
 
-sspdir:
-	mkdir -p ssp
-
-ssp.h: sspdir ${GCCDIR}/libssp/ssp/ssp.h.in
+ssp.h: ${GCCDIR}/libssp/ssp/ssp.h.in
 	sed -e 's/@ssp_have_usable_vsnprintf@/define/' \
-	    < ${.ALLSRC:Nsspdir} > ssp/${.TARGET}
+	    < ${.ALLSRC:Nsspdir} > ${.TARGET}
 
-CLEANDIRS+=	ssp
+INCS+=		ssp.h
+INCSDIR=	/usr/libdata/gcc${GCCSHORTVER}/ssp
+
+CLEANFILES+= ssp.h
 
 .include <bsd.lib.mk>

@@ -1,3 +1,5 @@
+CFLAGS+=	-I${.CURDIR}
+CFLAGS+=	-I${.OBJDIR}
 .include "../Makefile.inc"
 
 .PATH: ${GCCDIR}/libobjc
@@ -7,8 +9,6 @@
 .PATH: ${GCCDIR}/gcc/objc
 .PATH: ${GCCDIR}/libgcc
 
-CFLAGS+=	-I.
-CFLAGS+=	-I${GCCDIR}/libobjc/objc
 CFLAGS+=	-I${GCCDIR}/libcpp/include
 CFLAGS+=	-I${GCCDIR}/libgcc
 CFLAGS+=	-DIN_GCC
@@ -70,7 +70,18 @@ runtime-info.h:
 	${CC} -print-objc-runtime-info -S tmp-runtime.m >> ${.TARGET}
 	rm -f tmp-runtime.m tmp-runtime.s
 
-CLEANFILES+=	unwind.h runtime-info.h gthr-default.h
+INCS=		NXConstStr.h \
+		Object.h \
+		Protocol.h \
+		message.h \
+		objc-decls.h \
+		objc-exception.h \
+		objc-sync.h \
+		objc.h \
+		runtime.h \
+		thr.h
+INCSDIR=	/usr/libdata/gcc${GCCSHORTVER}/objc
 
+CLEANFILES+=	unwind.h runtime-info.h gthr-default.h
 
 .include <bsd.lib.mk>
