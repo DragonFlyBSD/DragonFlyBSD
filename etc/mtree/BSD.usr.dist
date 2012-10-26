@@ -45,6 +45,10 @@
         gcc44
         ..
         gcc47
+            objc
+            ..
+            ssp
+            ..
         ..
         lint
         ..
