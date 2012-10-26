@@ -1,5 +1,4 @@
 .\" $FreeBSD: src/sbin/natd/natd.8,v 1.27.2.13 2003/02/23 21:17:43 trhodes Exp $
-.\" $DragonFly: src/sbin/natd/natd.8,v 1.3 2004/03/11 12:28:54 hmp Exp $
 .Dd June 27, 2000
 .Dt NATD 8
 .Os
@@ -33,6 +32,7 @@
 .Op Fl log_facility Ar facility_name
 .Op Fl punch_fw Ar firewall_range
 .Op Fl log_ipfw_denied
+.Op Fl exit_delay | P Ar ms
 .Ek
 .Sh DESCRIPTION
 The
@@ -471,6 +471,10 @@ Log when a packet cannot be re-injected because an
 rule blocks it.
 This is the default with
 .Fl verbose .
+.It Fl exit_delay Ar ms
+Specify delay in ms before daemon exit after signal.
+The default is
+.Pa 10000 .
 .El
 .Sh RUNNING NATD
 The following steps are necessary before attempting to run

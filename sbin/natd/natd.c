@@ -10,7 +10,6 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.c,v 1.25.2.5 2002/02/01 09:18:32 ru Exp $
- * $DragonFly: src/sbin/natd/natd.c,v 1.11 2006/08/03 16:40:46 swildner Exp $
  */
 
 #define SYSLOG_NAMES
@@ -121,6 +120,7 @@ static	int			dropIgnoredIncoming;
 static	int			logDropped;
 static	int			logFacility;
 static	int			logIpfwDenied;
+static	int			exitDelay;
 
 int
 main(int argc, char **argv)
@@ -157,6 +157,7 @@ main(int argc, char **argv)
 	logDropped		= 0;
 	logFacility		= LOG_DAEMON;
 	logIpfwDenied		= -1;
+	exitDelay		= EXIT_DELAY;
 
 	ParseArgs(argc, argv);
 /*
@@ -286,9 +287,12 @@ main(int argc, char **argv)
  * Catch signals to manage shutdown and
  * refresh of interface address.
  */
-	sa.sa_handler = InitiateShutdown;
 	sa.sa_flags = 0;
 	sigemptyset(&sa.sa_mask);
+	if (exitDelay)
+		sa.sa_handler = InitiateShutdown;
+	else
+		sa.sa_handler = Shutdown;
 	sigaction(SIGTERM, &sa, NULL);
 	sa.sa_handler = RefreshAddr;
 	sigaction(SIGHUP, &sa, NULL);
@@ -797,7 +801,7 @@ InitiateShutdown(int sig __unused)
 	sa.sa_flags = 0;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGALRM, &sa, NULL);
-	alarm(10);
+	ualarm(exitDelay*1000, 1000);
 }
 
 static void
@@ -828,7 +832,8 @@ enum Option {
 	LogDenied,
 	LogFacility,
 	PunchFW,
-	LogIpfwDenied
+	LogIpfwDenied,
+	ExitDelay
 };
 
 enum Param {
@@ -1052,6 +1057,13 @@ static struct OptionInfo optionTable[] = {
 		"log packets converted by natd, but denied by ipfw",
 		"log_ipfw_denied",
 		NULL },
+	{ ExitDelay,
+		0,
+		Numeric,
+		"ms",
+		"delay in ms before daemon exit after signal",
+		"exit_delay",
+		NULL },
 };
 
 static void
@@ -1061,7 +1073,7 @@ ParseOption(const char *option, const char *parms)
 	struct OptionInfo*	info;
 	int			yesNoValue;
 	int			aliasValue;
-	int			__unused numValue;
+	int			numValue;
 	u_short			uNumValue;
 	const char*		strValue;
 	struct in_addr		addrValue;
@@ -1234,6 +1246,11 @@ ParseOption(const char *option, const char *parms)
 
 	case LogIpfwDenied:
 		logIpfwDenied = yesNoValue;
+		break;
+	case ExitDelay:
+		if (numValue < 0 || numValue > MAX_EXIT_DELAY)
+			errx(1, "Incorrect exit delay: %d", numValue);
+		exitDelay = numValue;
 		break;
 	}
 }

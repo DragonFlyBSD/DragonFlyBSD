@@ -10,13 +10,15 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.h,v 1.4 1999/08/28 00:13:46 peter Exp $
- * $DragonFly: src/sbin/natd/natd.h,v 1.3 2005/06/07 20:21:23 swildner Exp $
  */
 
 #define PIDFILE	"/var/run/natd.pid"
 #define	INPUT		1
 #define	OUTPUT		2
 #define	DONT_KNOW	3
+
+#define EXIT_DELAY	10000
+#define MAX_EXIT_DELAY	999999
 
 extern void Quit(const char *);
 extern void Warn(const char *);
