@@ -60,16 +60,33 @@ hammer2_msg_dbg_rcvmsg(kdmsg_msg_t *msg)
 	case DMSG_DBG_SHELL:
 		/*
 		 * Execute shell command (not supported atm)
+		 *
+		 * This is a one-way packet but if not (e.g. if part of
+		 * a streaming transaction), we will have already closed
+		 * our end.
 		 */
 		kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
+		/*
+		 * Receive one or more replies to a shell command that we
+		 * sent.
+		 *
+		 * This is a one-way packet but if not (e.g. if part of
+		 * a streaming transaction), we will have already closed
+		 * our end.
+		 */
 		if (msg->aux_data) {
 			msg->aux_data[msg->aux_size - 1] = 0;
 			kprintf("DEBUGMSG: %s\n", msg->aux_data);
 		}
 		break;
 	default:
+		/*
+		 * We don't understand what is going on, issue a reply.
+		 * This will take care of all left-over cases whether it
+		 * is a transaction or one-way.
+		 */
 		kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	}

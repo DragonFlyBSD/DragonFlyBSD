@@ -1042,18 +1042,51 @@ hammer2_msg_lnk_rcvmsg(kdmsg_msg_t *msg)
 	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
 	case DMSG_LNK_CONN | DMSGF_CREATE:
 		/*
-		 * reply & leave trans open
+		 * connection request from peer, send a streaming
+		 * result of 0 (leave the transaction open).  Transaction
+		 * is left open for the duration of the connection, we
+		 * let the kern_dmsg module clean it up on disconnect.
 		 */
-		kprintf("CONN RECEIVE - (just ignore it)\n");
 		kdmsg_msg_result(msg, 0);
 		break;
 	case DMSG_LNK_SPAN | DMSGF_CREATE:
-		kprintf("SPAN RECEIVE - ADDED FROM CLUSTER\n");
+		/*
+		 * Incoming SPAN - transaction create
+		 *
+		 * We do not have to respond right now.  Instead we will
+		 * respond later on when the peer deletes their side.
+		 */
 		break;
 	case DMSG_LNK_SPAN | DMSGF_DELETE:
-		kprintf("SPAN RECEIVE - DELETED FROM CLUSTER\n");
+		/*
+		 * Incoming SPAN - transaction delete.
+		 *
+		 * We must terminate our side so both ends can free up
+		 * their recorded state.
+		 */
+		/* fall through */
+	case DMSG_LNK_SPAN | DMSGF_CREATE | DMSGF_DELETE:
+		/*
+		 * Incoming SPAN - transaction delete (degenerate span).
+		 *
+		 * We must terminate our side so both ends can free up
+		 * their recorded state.
+		 */
+		kdmsg_msg_reply(msg, 0);
 		break;
 	default:
+		/*
+		 * Unsupported LNK message received.  We only need to
+		 * reply if it's a transaction in order to close our end.
+		 * Ignore any one-way messages are any further messages
+		 * associated with the transaction.
+		 *
+		 * NOTE: This case also includes DMSG_LNK_ERROR messages
+		 *	 which might be one-way, replying to those would
+		 *	 cause an infinite ping-pong.
+		 */
+		if (msg->any.head.cmd & DMSGF_CREATE)
+			kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	}
 	return(0);

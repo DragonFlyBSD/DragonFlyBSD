@@ -42,8 +42,9 @@ static void dmsg_state_cleanuptx(dmsg_msg_t *msg);
 
 /*
  * ROUTER TREE - Represents available routes for message routing, indexed
- *		 by their spanid.  The router structure is embedded in
- *		 either an iocom, h2span_link, or h2span_relay (see msg_lnk.c).
+ *		 by their span transaction id.  The router structure is
+ *		 embedded in either an iocom, h2span_link (incoming),
+ *		 or h2span_relay (outgoing) (see msg_lnk.c).
  */
 int
 dmsg_router_cmp(dmsg_router_t *router1, dmsg_router_t *router2)
@@ -922,6 +923,10 @@ again:
 			++ioq->seq;
 		}
 	}
+
+	/*
+	 * Handle relaying.  Transactional state is not recorded XXX
+	 */
 
 	/*
 	 * Process transactional state for the message.
