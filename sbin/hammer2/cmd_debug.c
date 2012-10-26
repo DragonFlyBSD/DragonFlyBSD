@@ -195,6 +195,7 @@ hammer2_shell_parse(dmsg_msg_t *msg)
 static void
 shell_span(dmsg_router_t *router, char *cmdbuf)
 {
+	dmsg_master_service_info_t *info;
 	const char *hostname = strsep(&cmdbuf, " \t");
 	pthread_t thread;
 	int fd;
@@ -215,8 +216,14 @@ shell_span(dmsg_router_t *router, char *cmdbuf)
 		dmsg_router_printf(router, "Connection to %s failed\n", hostname);
 	} else {
 		dmsg_router_printf(router, "Connected to %s\n", hostname);
-		pthread_create(&thread, NULL,
-			       dmsg_master_service, (void *)(intptr_t)fd);
+
+		info = malloc(sizeof(*info));
+		bzero(info, sizeof(*info));
+		info->fd = fd;
+		info->detachme = 1;
+		info->dbgmsg_callback = hammer2_shell_parse;
+
+		pthread_create(&thread, NULL, dmsg_master_service, info);
 		/*pthread_join(thread, &res);*/
 	}
 }

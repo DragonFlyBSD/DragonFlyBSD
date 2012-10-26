@@ -128,7 +128,8 @@ disk_iocom_reconnect(struct disk *dp, struct file *fp)
 	msg->any.lnk_conn.peer_type = DMSG_PEER_BLOCK;
 	msg->any.lnk_conn.peer_mask = 1LLU << DMSG_PEER_BLOCK;
 
-	ksnprintf(msg->any.lnk_conn.label, sizeof(msg->any.lnk_conn.label),
+	ksnprintf(msg->any.lnk_conn.cl_label,
+		  sizeof(msg->any.lnk_conn.cl_label),
 		  "%s/%s", hostname, devname);
 	dp->d_iocom.conn_state = msg->state;
 	kdmsg_msg_write(msg);
@@ -156,8 +157,8 @@ disk_msg_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
 		rmsg->any.lnk_span.proto_version = DMSG_SPAN_PROTO_1;
 		rmsg->any.lnk_span.peer_type = DMSG_PEER_BLOCK;
 
-		ksnprintf(rmsg->any.lnk_span.label,
-			  sizeof(rmsg->any.lnk_span.label),
+		ksnprintf(rmsg->any.lnk_span.cl_label,
+			  sizeof(rmsg->any.lnk_span.cl_label),
 			  "%s/%s%d",
 			  hostname,
 			  dev_dname(dp->d_rawdev),

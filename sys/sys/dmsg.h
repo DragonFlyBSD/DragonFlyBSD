@@ -415,10 +415,22 @@ struct dmsg_lnk_conn {
 	uint8_t		reserved02[8];
 	int32_t		dist;		/* span distance */
 	uint32_t	reserved03[14];
-	char		label[256];	/* PFS label (can be wildcard) */
+	char		cl_label[128];	/* cluster label (for PEER_BLOCK) */
+	char		fs_label[128];	/* PFS label (for PEER_HAMMER2) */
 };
 
 typedef struct dmsg_lnk_conn dmsg_lnk_conn_t;
+
+#define DMSG_PFSTYPE_NONE	0
+#define DMSG_PFSTYPE_ADMIN	1
+#define DMSG_PFSTYPE_CLIENT	2
+#define DMSG_PFSTYPE_CACHE	3
+#define DMSG_PFSTYPE_COPY	4
+#define DMSG_PFSTYPE_SLAVE	5
+#define DMSG_PFSTYPE_SOFT_SLAVE	6
+#define DMSG_PFSTYPE_SOFT_MASTER 7
+#define DMSG_PFSTYPE_MASTER	8
+#define DMSG_PFSTYPE_MAX	9       /* 0-8 */
 
 #define DMSG_PEER_NONE		0
 #define DMSG_PEER_CLUSTER	1	/* a cluster controller */
@@ -478,7 +490,8 @@ struct dmsg_lnk_span {
 	uint8_t		reserved02[8];
 	int32_t		dist;		/* span distance */
 	uint32_t	reserved03[15];
-	char		label[256];	/* PFS label (can be wildcard) */
+	char		cl_label[128];	/* cluster label (for PEER_BLOCK) */
+	char		fs_label[128];	/* PFS label (for PEER_HAMMER2) */
 };
 
 typedef struct dmsg_lnk_span dmsg_lnk_span_t;
@@ -749,6 +762,7 @@ struct kdmsg_iocom {
 	int			(*lnk_rcvmsg)(kdmsg_msg_t *msg);
 	int			(*dbg_rcvmsg)(kdmsg_msg_t *msg);
 	int			(*misc_rcvmsg)(kdmsg_msg_t *msg);
+	void			(*exit_func)(struct kdmsg_iocom *);
 	struct kdmsg_state	*conn_state;	/* active LNK_CONN state */
 	struct kdmsg_state	*freerd_state;	/* allocation cache */
 	struct kdmsg_state	*freewr_state;	/* allocation cache */

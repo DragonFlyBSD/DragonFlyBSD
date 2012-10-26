@@ -239,6 +239,8 @@ struct h2span_cluster {
 	RB_ENTRY(h2span_cluster) rbnode;
 	struct h2span_node_tree tree;
 	uuid_t	pfs_clid;		/* shared fsid */
+	uint8_t	peer_type;
+	char	cl_label[128];		/* cluster label (typ PEER_BLOCK) */
 	int	refs;			/* prevents destruction */
 };
 
@@ -246,9 +248,9 @@ struct h2span_node {
 	RB_ENTRY(h2span_node) rbnode;
 	struct h2span_link_tree tree;
 	struct h2span_cluster *cls;
-	uint8_t	peer_type;
+	uint8_t	pfs_type;
 	uuid_t	pfs_fsid;		/* unique fsid */
-	char	label[64];
+	char	fs_label[128];		/* fs label (typ PEER_HAMMER2) */
 };
 
 struct h2span_link {
@@ -296,26 +298,45 @@ typedef struct h2span_node h2span_node_t;
 typedef struct h2span_link h2span_link_t;
 typedef struct h2span_relay h2span_relay_t;
 
+#define dmsg_termstr(array)	_dmsg_termstr((array), sizeof(array))
+
+static __inline
+void
+_dmsg_termstr(char *base, size_t size)
+{
+	base[size-1] = 0;
+}
+
+/*
+ * Cluster peer_type, uuid, AND label must match for a match
+ */
 static
 int
 h2span_cluster_cmp(h2span_cluster_t *cls1, h2span_cluster_t *cls2)
 {
-	return(uuid_compare(&cls1->pfs_clid, &cls2->pfs_clid, NULL));
+	int r;
+
+	if (cls1->peer_type < cls2->peer_type)
+		return(-1);
+	if (cls1->peer_type > cls2->peer_type)
+		return(1);
+	r = uuid_compare(&cls1->pfs_clid, &cls2->pfs_clid, NULL);
+	if (r == 0)
+		r = strcmp(cls1->cl_label, cls2->cl_label);
+
+	return r;
 }
 
+/*
+ * Match against the uuid.  Currently we never match against the label.
+ */
 static
 int
 h2span_node_cmp(h2span_node_t *node1, h2span_node_t *node2)
 {
 	int r;
 
-	if (node1->peer_type < node2->peer_type)
-		return(-1);
-	if (node1->peer_type > node2->peer_type)
-		return(1);
 	r = uuid_compare(&node1->pfs_fsid, &node2->pfs_fsid, NULL);
-	if (r == 0 && node1->peer_type == DMSG_PEER_BLOCK)
-		r = strcmp(node1->label, node2->label);
 	return (r);
 }
 
@@ -473,11 +494,12 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		 * acknowledge the request, leaving the transaction open.
 		 * We then relay priority-selected SPANs.
 		 */
-		fprintf(stderr, "LNK_CONN(%08x): %s/%s\n",
+		fprintf(stderr, "LNK_CONN(%08x): %s/%s/%s\n",
 			(uint32_t)msg->any.head.msgid,
 			dmsg_uuid_to_str(&msg->any.lnk_conn.pfs_clid,
 					    &alloc),
-			msg->any.lnk_conn.label);
+			msg->any.lnk_conn.cl_label,
+			msg->any.lnk_conn.fs_label);
 		free(alloc);
 
 		conn = dmsg_alloc(sizeof(*conn));
@@ -643,16 +665,25 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		assert(state->func == NULL);
 		state->func = dmsg_lnk_span;
 
-		msg->any.lnk_span.label[sizeof(msg->any.lnk_span.label)-1] = 0;
+		dmsg_termstr(msg->any.lnk_span.cl_label);
+		dmsg_termstr(msg->any.lnk_span.fs_label);
 
 		/*
 		 * Find the cluster
 		 */
 		dummy_cls.pfs_clid = msg->any.lnk_span.pfs_clid;
+		dummy_cls.peer_type = msg->any.lnk_span.peer_type;
+		bcopy(msg->any.lnk_span.cl_label,
+		      dummy_cls.cl_label,
+		      sizeof(dummy_cls.cl_label));
 		cls = RB_FIND(h2span_cluster_tree, &cluster_tree, &dummy_cls);
 		if (cls == NULL) {
 			cls = dmsg_alloc(sizeof(*cls));
 			cls->pfs_clid = msg->any.lnk_span.pfs_clid;
+			cls->peer_type = msg->any.lnk_span.peer_type;
+			bcopy(msg->any.lnk_span.cl_label,
+			      cls->cl_label,
+			      sizeof(cls->cl_label));
 			RB_INIT(&cls->tree);
 			RB_INSERT(h2span_cluster_tree, &cluster_tree, cls);
 		}
@@ -661,16 +692,13 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		 * Find the node
 		 */
 		dummy_node.pfs_fsid = msg->any.lnk_span.pfs_fsid;
-		dummy_node.peer_type = msg->any.lnk_span.peer_type;
-		snprintf(dummy_node.label, sizeof(dummy_node.label),
-			 "%s", msg->any.lnk_span.label);
 		node = RB_FIND(h2span_node_tree, &cls->tree, &dummy_node);
 		if (node == NULL) {
 			node = dmsg_alloc(sizeof(*node));
 			node->pfs_fsid = msg->any.lnk_span.pfs_fsid;
-			node->peer_type = msg->any.lnk_span.peer_type;
-			snprintf(node->label, sizeof(node->label),
-				 "%s", msg->any.lnk_span.label);
+			bcopy(msg->any.lnk_span.fs_label,
+			      node->fs_label,
+			      sizeof(node->fs_label));
 			node->cls = cls;
 			RB_INIT(&node->tree);
 			RB_INSERT(h2span_node_tree, &cls->tree, node);
@@ -702,12 +730,13 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 
 		RB_INSERT(h2span_link_tree, &node->tree, slink);
 
-		fprintf(stderr, "LNK_SPAN(thr %p): %p %s/%s dist=%d\n",
+		fprintf(stderr,
+			"LNK_SPAN(thr %p): %p %s cl=%s fs=%s dist=%d\n",
 			msg->router->iocom,
 			slink,
-			dmsg_uuid_to_str(&msg->any.lnk_span.pfs_clid,
-					    &alloc),
-			msg->any.lnk_span.label,
+			dmsg_uuid_to_str(&msg->any.lnk_span.pfs_clid, &alloc),
+			msg->any.lnk_span.cl_label,
+			msg->any.lnk_span.fs_label,
 			msg->any.lnk_span.dist);
 		free(alloc);
 #if 0
@@ -725,11 +754,12 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		node = slink->node;
 		cls = node->cls;
 
-		fprintf(stderr, "LNK_DELE(thr %p): %p %s/%s dist=%d\n",
+		fprintf(stderr, "LNK_DELE(thr %p): %p %s cl=%s fs=%s dist=%d\n",
 			msg->router->iocom,
 			slink,
 			dmsg_uuid_to_str(&cls->pfs_clid, &alloc),
-			state->msg->any.lnk_span.label,
+			state->msg->any.lnk_span.cl_label,
+			state->msg->any.lnk_span.fs_label,
 			state->msg->any.lnk_span.dist);
 		free(alloc);
 
@@ -905,9 +935,9 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 	h2span_relay_t *next_relay;
 	h2span_link_t *slink;
 	dmsg_lnk_conn_t *lconn;
+	dmsg_lnk_span_t *lspan;
 	dmsg_msg_t *msg;
 	int count = 2;
-	uint8_t peer_type;
 
 	info.node = node;
 	info.relay = NULL;
@@ -975,26 +1005,47 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		 * Don't bother transmitting if the remote connection
 		 * is not accepting this SPAN's peer_type.
 		 */
-		peer_type = slink->state->msg->any.lnk_span.peer_type;
+		lspan = &slink->state->msg->any.lnk_span;
 		lconn = &conn->state->msg->any.lnk_conn;
-		if (((1LLU << peer_type) & lconn->peer_mask) == 0)
+		if (((1LLU << lspan->peer_type) & lconn->peer_mask) == 0)
 			break;
 
 		/*
-		 * Filter based on pfs_clid or label (XXX).  This typically
-		 * reduces the amount of SPAN traffic that a mount end-point
-		 * sees by only passing along SPANs related to the cluster id
-		 * (that is, it will see all PFS's associated with the
-		 * particular cluster it represents).
+		 * Do not give pure clients visibility to other pure clients
 		 */
-		if (peer_type == lconn->peer_type &&
-		    peer_type == DMSG_PEER_HAMMER2) {
-			if (!uuid_is_nil(&slink->node->cls->pfs_clid, NULL) &&
-			    uuid_compare(&slink->node->cls->pfs_clid,
-					 &lconn->pfs_clid, NULL) != 0) {
-				break;
-			}
+		if (lconn->pfs_type == DMSG_PFSTYPE_CLIENT &&
+		    lspan->pfs_type == DMSG_PFSTYPE_CLIENT) {
+			break;
 		}
+
+		/*
+		 * Connection filter, if cluster uuid is not NULL it must
+		 * match the span cluster uuid.  Only applies when the
+		 * peer_type matches.
+		 */
+		if (lspan->peer_type == lconn->peer_type &&
+		    !uuid_is_nil(&lconn->pfs_clid, NULL) &&
+		    uuid_compare(&slink->node->cls->pfs_clid,
+				 &lconn->pfs_clid, NULL)) {
+			break;
+		}
+
+		/*
+		 * Connection filter, if cluster label is not empty it must
+		 * match the span cluster label.  Only applies when the
+		 * peer_type matches.
+		 */
+		if (lspan->peer_type == lconn->peer_type &&
+		    lconn->cl_label[0] &&
+		    strcmp(lconn->cl_label, slink->node->cls->cl_label)) {
+			break;
+		}
+
+		/*
+		 * NOTE! fs_uuid differentiates nodes within the same cluster
+		 *	 so we obviously don't want to match those.  Similarly
+		 *	 for fs_label.
+		 */
 
 		/*
 		 * Ok, we've accepted this SPAN for relaying.
@@ -1267,12 +1318,13 @@ dmsg_shell_tree(dmsg_router_t *router, char *cmdbuf __unused)
 
 	pthread_mutex_lock(&cluster_mtx);
 	RB_FOREACH(cls, h2span_cluster_tree, &cluster_tree) {
-		dmsg_router_printf(router, "Cluster %s\n",
-				   dmsg_uuid_to_str(&cls->pfs_clid, &uustr));
+		dmsg_router_printf(router, "Cluster %s (%s)\n",
+				   dmsg_uuid_to_str(&cls->pfs_clid, &uustr),
+				   cls->cl_label);
 		RB_FOREACH(node, h2span_node_tree, &cls->tree) {
 			dmsg_router_printf(router, "    Node %s (%s)\n",
 				dmsg_uuid_to_str(&node->pfs_fsid, &uustr),
-				node->label);
+				node->fs_label);
 			RB_FOREACH(slink, h2span_link_tree, &node->tree) {
 				dmsg_router_printf(router,
 					    "\tLink dist=%d via %d\n",

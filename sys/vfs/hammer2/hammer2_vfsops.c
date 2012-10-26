@@ -1026,11 +1026,13 @@ hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 	msg->any.lnk_conn.peer_type = pmp->hmp->voldata.peer_type;
 	msg->any.lnk_conn.peer_mask = 1LLU << HAMMER2_PEER_HAMMER2;
 	name_len = pmp->iroot->ip_data.name_len;
-	if (name_len >= sizeof(msg->any.lnk_conn.label))
-		name_len = sizeof(msg->any.lnk_conn.label) - 1;
-	bcopy(pmp->iroot->ip_data.filename, msg->any.lnk_conn.label, name_len);
+	if (name_len >= sizeof(msg->any.lnk_conn.fs_label))
+		name_len = sizeof(msg->any.lnk_conn.fs_label) - 1;
+	bcopy(pmp->iroot->ip_data.filename,
+	      msg->any.lnk_conn.fs_label,
+	      name_len);
 	pmp->iocom.conn_state = msg->state;
-	msg->any.lnk_conn.label[name_len] = 0;
+	msg->any.lnk_conn.fs_label[name_len] = 0;
 	kdmsg_msg_write(msg);
 }
 
@@ -1086,12 +1088,12 @@ hammer2_msg_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
 		rmsg->any.lnk_span.peer_type = pmp->hmp->voldata.peer_type;
 		rmsg->any.lnk_span.proto_version = DMSG_SPAN_PROTO_1;
 		name_len = pmp->iroot->ip_data.name_len;
-		if (name_len >= sizeof(rmsg->any.lnk_span.label))
-			name_len = sizeof(rmsg->any.lnk_span.label) - 1;
+		if (name_len >= sizeof(rmsg->any.lnk_span.fs_label))
+			name_len = sizeof(rmsg->any.lnk_span.fs_label) - 1;
 		bcopy(pmp->iroot->ip_data.filename,
-		      rmsg->any.lnk_span.label,
+		      rmsg->any.lnk_span.fs_label,
 		      name_len);
-		rmsg->any.lnk_span.label[name_len] = 0;
+		rmsg->any.lnk_span.fs_label[name_len] = 0;
 		kdmsg_msg_write(rmsg);
 
 		/*

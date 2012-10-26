@@ -507,12 +507,20 @@ cleanupwr:
 	KKASSERT(RB_EMPTY(&iocom->statewr_tree));
 	KKASSERT(iocom->conn_state == NULL);
 
-	/*
-	 * iocom can be ripped out from under us once msgwr_td is set to NULL.
-	 * The wakeup is safe.
-	 */
-	iocom->msgwr_td = NULL;
-	wakeup(iocom);
+	if (iocom->exit_func) {
+		/*
+		 * iocom is invalid after we call the exit function.
+		 */
+		iocom->msgwr_td = NULL;
+		iocom->exit_func(iocom);
+	} else {
+		/*
+		 * iocom can be ripped out from under us once msgwr_td is
+		 * set to NULL.  The wakeup is safe.
+		 */
+		iocom->msgwr_td = NULL;
+		wakeup(iocom);
+	}
 	lwkt_exit();
 }
 
