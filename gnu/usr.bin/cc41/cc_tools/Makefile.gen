@@ -1,7 +1,0 @@
-# $DragonFly: src/gnu/usr.bin/cc41/cc_tools/Makefile.gen,v 1.1 2007/08/25 15:29:28 corecode Exp $
-
-all: ${TOOLGENDIR}/${GENFILE}
-
-${TOOLGENDIR}/${GENFILE}: ${PROG}.nx ${GENINPUT}
-	${.OBJDIR}/${PROG}.nx ${GENINPUT} > ${.TARGET}.tmp
-	${MIC} ${.TARGET}.tmp ${.TARGET}
