@@ -670,7 +670,7 @@ typedef union dmsg_any dmsg_any_t;
 /*
  * Kernel iocom structures and prototypes for kern/kern_dmsg.c
  */
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 struct hammer2_pfsmount;
 struct kdmsg_router;
