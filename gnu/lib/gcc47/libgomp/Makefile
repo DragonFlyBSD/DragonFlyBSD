@@ -46,6 +46,20 @@ libgomp_f.h: ${GCCDIR}/libgomp/libgomp_f.h.in
 	    -e 's/@OMP_NEST_LOCK_SIZE@/${OMP_NEST_LOCK_SIZE}/g' \
 	    < ${.ALLSRC} > ${.TARGET}
 
-CLEANFILES+=	libgomp_f.h
+omp.h: ${GCCDIR}/libgomp/omp.h.in
+	sed -e 's/@OMP_LOCK_SIZE@/${OMP_LOCK_SIZE}/g' \
+	    -e 's/@OMP_LOCK_ALIGN@/${OMP_LOCK_ALIGN}/g' \
+	    -e 's/@OMP_NEST_LOCK_SIZE@/${OMP_NEST_LOCK_SIZE}/g' \
+	    -e 's/@OMP_NEST_LOCK_ALIGN@/${OMP_NEST_LOCK_ALIGN}/g' \
+	    < ${.ALLSRC} > ${.TARGET}
+
+INCSGROUPS=	hd_libdata hd_lib
+hd_libdataDIR=	/usr/libdata/gcc${GCCSHORTVER}
+hd_libDIR=	/usr/lib/gcc${GCCSHORTVER}
+
+hd_libdata=	omp.h
+hd_lib= 	libgomp.spec
+
+CLEANFILES+=	libgomp_f.h omp.h
 
 .include <bsd.lib.mk>
