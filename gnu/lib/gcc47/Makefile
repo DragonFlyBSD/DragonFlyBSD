@@ -1,3 +1,6 @@
+# Processed in order because SUBDIR_ORDERED is not defined
+# csu and libgcc* are normally built earlier by the _startup_libs47 target
+
 SUBDIR+=	csu
 SUBDIR+=	libgcc
 SUBDIR+=	libgcc_eh

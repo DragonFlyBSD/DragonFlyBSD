@@ -24,14 +24,7 @@ CFLAGS+=	-I${.OBJDIR}
 CFLAGS+=	-I${GCCDIR}/gcc
 CFLAGS+=	-I${GCCDIR}/libgcc
 CFLAGS+=	-I${GCCDIR}/libiberty
-CFLAGS+=	-I${GCCDIR}/include
 CFLAGS+=	-I${GCCDIR}/libcpp/include
-CFLAGS+=	-I${SRCDIR}/include
-CFLAGS+=	-I${SRCDIR}/include/std
-CFLAGS+=	-I${SRCDIR}/include/c_std
-CFLAGS+=	-I${SRCDIR}/include/c_global
-CFLAGS+=	-I${SRCDIR}/include/backward
-CFLAGS+=	-I${SRCDIR}/libsupc++
 CXXFLAGS+=	-fno-implicit-templates
 CXXFLAGS+=	-fdiagnostics-show-location=once
 CXXFLAGS+=	-ffunction-sections -fdata-sections
@@ -186,6 +179,7 @@ gnu11_FLAGS_FILES=	chrono.cc \
 
 #generated sources
 SRCS+=	unwind.h \
+	unwind-cxx.h \
 	${CONF_HEADERS:T}
 
 HD=	${INCLUDEDIR}/c++/${GCCPOINTVER}
@@ -250,6 +244,9 @@ c++locale.cc: ${SRCDIR}/config/locale/dragonfly/c_locale.cc
 unwind.h: unwind-generic.h
 	cp ${.ALLSRC} ${.TARGET}
 
+unwind-cxx.h: ${SRCDIR}/libsupc++/unwind-cxx.h
+	cp ${.ALLSRC} ${.TARGET}
+
 copybits:
 	mkdir -p bits
 
@@ -276,7 +273,7 @@ vec-cxx.cc: ${SRCDIR}/libsupc++/vec.cc
 
 CLEANDIRS+=	bits
 CLEANFILES+=	atomicity.cc basic_file.cc c++locale.cc \
-		ctype_configure_char.cc unwind.h \
+		ctype_configure_char.cc unwind.h unwind-cxx.h \
 		cp-demangle.c debug-cxx.cc tree-cxx.cc vec-cxx.cc \
 		c++config.h gthr.h gthr-default.h
 

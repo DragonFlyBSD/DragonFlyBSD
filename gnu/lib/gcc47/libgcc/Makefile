@@ -28,25 +28,17 @@ CLEANFILES+=	${FUNCS:S/$/.c/}
 #generated sources
 SRCS+=	gthr-default.h sfp-machine.h
 
-beforedepend: cc_prep cc_tools csu
-.ORDER: cc_prep cc_tools csu ${SRCS}
-
-# This is kinda messy, but it's easier then rearranging the top level
-# build.  gcc's libgcc generates source files which depend on generated
+# GCC's libgcc generates source files which depend on generated
 # header files, which means we have to generate our tools set before
 # we can build libgcc.  The toolset is normally built afterwards.
 #
 # XXX for the world stage we could theoretically use the cc_tools generated
 # in the btools stage, but it's easier to regenerate them.
 #
-cc_prep: .PHONY
-	cd ${CCDIR}/cc_prep; ${MAKE} depend
-
-cc_tools: .PHONY
-	cd ${CCDIR}/cc_tools; ${MAKE} depend
-
-csu: .PHONY
-	cd ${.CURDIR}/../csu; ${MAKE} depend
+# Assumed to be built prior to this makefile:
+#   gnu/usr.bin/cc47/cc_prep
+#   gnu/usr.bin/cc47/cc_tools
+#   gnu/lib/gcc47/csu
 
 .if ${GCC_CPU} == "i386"
 EXTRA_HEADERS = \

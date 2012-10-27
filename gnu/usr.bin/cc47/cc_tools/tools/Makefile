@@ -69,10 +69,12 @@ MD_DEPS=	${md_file}
 
 _MIC: .USE
 	${MIC} ${.TARGET}.tmp ${.TARGET}
-_PL: .USE _MIC
+_PL: .USE
 	${.OBJDIR}/${.ALLSRC:M*.nx} > ${.TARGET}.tmp
-_MD: .USE _MIC
+	${MIC} ${.TARGET}.tmp ${.TARGET}
+_MD: .USE
 	${.OBJDIR}/${.ALLSRC:M*.nx} ${md_file} > ${.TARGET}.tmp
+	${MIC} ${.TARGET}.tmp ${.TARGET}
 
 simple_generated_h = insn-attr.h insn-codes.h insn-config.h insn-flags.h \
 		     insn-attr-common.h

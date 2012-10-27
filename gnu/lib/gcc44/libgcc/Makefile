@@ -59,22 +59,16 @@ ${F}.o: ${F}.c
 	${CC} ${CFLAGS} -fnon-call-exceptions -c ${.IMPSRC}
 .endfor
 
-beforedepend: cc_prep cc_tools
-.ORDER: cc_prep cc_tools ${SRCS}
-
-# This is kinda messy, but it's easier then rearranging the top level
-# build.  gcc's libgcc generates source files which depend on generated
+# GCC's libgcc generates source files which depend on generated
 # header files, which means we have to generate our tools set before
 # we can build libgcc.  The toolset is normally built afterwards.
 #
 # XXX for the world stage we could theoretically use the cc_tools generated
 # in the btools stage, but it's easier to regenerate them.
 #
-cc_prep: .PHONY
-	cd ${STOPDIR}/cc_prep; ${MAKE} depend
-
-cc_tools: .PHONY
-	cd ${STOPDIR}/cc_tools; ${MAKE} depend
+# Assumed to be built prior to this makefile:
+#   gnu/usr.bin/cc44/cc_prep
+#   gnu/usr.bin/cc44/cc_tools
 
 .if ${GCC_CPU} == "i386"
 EXTRA_HEADERS = $(srcdir)/config/i386/cpuid.h $(srcdir)/config/i386/mmintrin.h \

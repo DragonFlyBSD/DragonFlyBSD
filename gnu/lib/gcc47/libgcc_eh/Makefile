@@ -38,9 +38,4 @@ gthr-default.h: gthr-posix.h
 
 CLEANFILES+=	unwind.h md-unwind-support.h gthr-default.h
 
-beforedepend: cc_prep
-
-cc_prep: .PHONY
-	cd ${CCDIR}/cc_prep; ${MAKE} depend
-
 .include <bsd.lib.mk>

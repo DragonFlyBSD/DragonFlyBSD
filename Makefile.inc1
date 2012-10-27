@@ -897,11 +897,16 @@ libraries:
 # shared libraries for ELF.  The target for _startup_libsXX is
 # specifically built using gccXX.
 #
-_startup_libs47=	gnu/lib/gcc47/csu \
+_startup_libs47=	gnu/usr.bin/cc47/cc_prep \
+			gnu/usr.bin/cc47/cc_tools \
+			gnu/lib/gcc47/csu \
 			gnu/lib/gcc47/libgcc \
 			gnu/lib/gcc47/libgcc_eh \
 			gnu/lib/gcc47/libgcc_pic
-_startup_libs44=	gnu/lib/gcc44/csu gnu/lib/gcc44/libgcc
+_startup_libs44=	gnu/usr.bin/cc44/cc_prep \
+			gnu/usr.bin/cc44/cc_tools \
+			gnu/lib/gcc44/csu \
+			gnu/lib/gcc44/libgcc
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 
 _prebuild_libs=		lib/libbz2 lib/liblzma lib/libz
