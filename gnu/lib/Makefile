@@ -1,4 +1,5 @@
-# SUBDIR_ORDERED defaults to SUBDIR order which is just fine
+# The libobjc header conflict between base compilers has been resolved
+# Maximum parallelism can be restored by setting SUBDIR_ORDERED to null
 
 SUBDIR= gcc44
 
@@ -11,5 +12,7 @@ SUBDIR+= libdevmapper
 SUBDIR+= libdialog
 SUBDIR+= libluks
 SUBDIR+= liblvm
+
+SUBDIR_ORDERED=
 
 .include <bsd.subdir.mk>

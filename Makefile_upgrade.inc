@@ -2081,6 +2081,7 @@ TO_REMOVE+=/usr/share/man/man2/caps_sys_setgen.2.gz
 TO_REMOVE+=/usr/share/man/cat2/caps_sys_wait.2.gz
 TO_REMOVE+=/usr/share/man/man2/caps_sys_wait.2.gz
 TO_REMOVE+=/var/caps
+TO_REMOVE+=/usr/include/objc
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys

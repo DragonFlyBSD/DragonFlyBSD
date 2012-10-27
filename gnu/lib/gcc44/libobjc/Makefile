@@ -20,7 +20,7 @@ INCS= \
 	 hash.h objc-list.h sarray.h objc.h objc-api.h \
 	 NXConstStr.h Object.h Protocol.h encoding.h typedstream.h \
 	 thr.h objc-decls.h
-INCSDIR=	${INCLUDEDIR}/objc
+INCSDIR=	/usr/libdata/gcc${GCCSHORTVER}/objc
 
 
 SRCS+=	unwind.h runtime-info.h
