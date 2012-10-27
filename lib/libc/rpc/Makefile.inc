@@ -1,6 +1,5 @@
 #	@(#)Makefile    5.11 (Berkeley) 9/6/90
 # $FreeBSD: src/lib/libc/rpc/Makefile.inc,v 1.27 2005/09/11 20:59:52 stefanf Exp $
-# $DragonFly: src/lib/libc/rpc/Makefile.inc,v 1.3 2005/08/05 23:43:19 swildner Exp $
 
 .PATH: ${.CURDIR}/../libc/rpc ${.CURDIR}/.
 SRCS+=	auth_none.c auth_unix.c authunix_prot.c bindresvport.c clnt_bcast.c \
@@ -176,5 +175,5 @@ MLINKS+=	bindresvport.3 bindresvport_sa.3 \
 		rpcbind.3 rpcb_rmtcall.3 \
 		rpcbind.3 rpcb_set.3 \
 		rpcbind.3 rpcb_unset.3
-#		rpc_svc_create.3 svc_control.3 \
+#		rpc_svc_create.3 svc_control.3
 .endif

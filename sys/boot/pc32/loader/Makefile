@@ -81,8 +81,10 @@ CFLAGS+=	-I${.CURDIR}/../btx/lib
 # Debug me!
 #CFLAGS+=	-g
 
-vers.o:	${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version
+vers.c:	${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version
 	sh ${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version ${NEWVERSWHAT}
+
+vers.o: vers.c
 	${CC} ${CFLAGS} -c vers.c
 
 ${PROG}: ${PROG}.bin ${BTXLDR} ${BTXKERN} ${BTXCRT}
