@@ -1,5 +1,4 @@
 /* $NetBSD: btconfig.c,v 1.6 2007/09/07 18:40:01 plunky Exp $ */
-/* $DragonFly: src/usr.sbin/btconfig/btconfig.c,v 1.2 2008/04/20 13:44:26 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -987,16 +986,15 @@ print_result(int num, struct result *r, int rssi)
 #if 0
 	hci_read_remote_features_cp fcp;
 	hci_read_remote_features_compl_ep fep;
-#endif
 	struct hostent *hp;
+#endif
 
 	printf("%3d: bdaddr %s",
 			num,
 			bt_ntoa(&r->bdaddr, NULL));
 
-	hp = bt_gethostbyaddr(&r->bdaddr, sizeof(bdaddr_t), AF_BLUETOOTH);
-
 #if 0
+	hp = bt_gethostbyaddr(&r->bdaddr, sizeof(bdaddr_t), AF_BLUETOOTH);
 	if (hp != NULL)
 		printf(" (%s)", hp->h_name);
 #endif
