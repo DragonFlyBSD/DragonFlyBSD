@@ -14,6 +14,9 @@ CLEANFILES+=	getdate-cvs.texi cvs.texinfo
 
 cvs.info: getdate-cvs.texi
 
+cvs.texinfo: ${SRCDIR}/${.TARGET}
+	cp ${.ALLSRC} ${.TARGET}
+
 getdate-cvs.texi: getdate.texi
 	sed -e "s/^@chapter /@appendixsec /" \
 	    -e "s/^@section /@appendixsubsec /" \

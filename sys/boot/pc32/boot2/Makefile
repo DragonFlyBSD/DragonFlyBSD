@@ -109,11 +109,13 @@ boot1$s.o: boot1.S
 	${CC} ${CFLAGS} ${_ADDCFLAGS$s} -DFLAGS=${B1FLAGS} \
 		${.ALLSRC} -o ${.TARGET} -c
 
-boot2$s.o: boot2.c ${.CURDIR}/../../common/ufsread.c ${.CURDIR}/../../../../lib/libstand/hammerread.c
+boot2$s.s: boot2.c boot2$s.h ${.CURDIR}/../../common/ufsread.c ${.CURDIR}/../../../../lib/libstand/hammerread.c
 	${CC} ${CFLAGS} ${_ADDCFLAGS$s} -S -o boot2$s.s.tmp ${.CURDIR}/boot2.c
-	sed -e '/align/d' -e '/nop/d' < boot2$s.s.tmp > boot2$s.s
-	rm -f boot2$s.s.tmp
-	${AS} ${AFLAGS} -o boot2$s.o boot2$s.s
+	sed -e '/align/d' -e '/nop/d' < ${.TARGET}.tmp > ${.TARGET}
+	rm -f ${.TARGET}.tmp
+
+boot2$s.o: boot2$s.s
+	${AS} ${AFLAGS} -o ${.TARGET} boot2$s.s
 
 boot2$s.h: boot1$s.out bootasmdef.nx
 	@echo "NOTE: boot2 using xread from boot1 at ${REL1}"
@@ -138,8 +140,6 @@ boot2$s.bin: boot2$s.out
 boot2$s.out: boot2$s.o sio.o ${_ADDOBJS$s}
 	${LD} ${LDFLAGS} -Ttext ${ORG2} ${LINKSCRIPT} -o ${.TARGET} \
 		${BTX}/lib/crt0.o ${.ALLSRC}
-
-boot2$s.o: boot2$s.h
 
 CLEANFILES+=	boot1$s boot1$s.out boot1$s.o \
 		boot2$s boot2$s.ldr boot2$s.bin \
