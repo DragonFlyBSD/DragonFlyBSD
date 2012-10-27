@@ -171,7 +171,6 @@ void
 state_welcome(struct i_fn_args *a)
 {
 	struct dfui_form *f;
-	struct dfui_action *k;
 	struct dfui_response *r;
 	char msg_buf[2][1024];
 
@@ -244,7 +243,7 @@ state_welcome(struct i_fn_args *a)
 	    dfui_info_new(_("Live CD Utilities"),
 	    _("Utilities to work with disks, diagnostics, and the LiveCD Environment"), ""));
 
-	k = dfui_form_action_add(f, "exit",
+	dfui_form_action_add(f, "exit",
 	    dfui_info_new(_("Exit to Live CD"),
 	    _("Exit this program to a login prompt with access to the LiveCD"), ""));
 

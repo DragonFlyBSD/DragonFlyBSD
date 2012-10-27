@@ -472,7 +472,7 @@ curses_form_construct_from_dfui_form_single(const struct dfui_form *f)
 	unsigned int max_button_width, total_button_width;
 	struct dfui_field *fi;
 	struct dfui_action *a;
-	struct curses_widget *label, *xbox;
+	struct curses_widget *xbox;
 	struct dfui_celldata *cd;
 	const char *value;
 	int is_menu;
@@ -556,7 +556,7 @@ curses_form_construct_from_dfui_form_single(const struct dfui_form *f)
 	 */
 	for (fi = dfui_form_field_get_first(f); fi != NULL;
 	     fi = dfui_field_get_next(fi)) {
-		label = curses_form_widget_add(cf, 1,
+		curses_form_widget_add(cf, 1,
 		    cf->height, max_label_width, CURSES_LABEL,
 		    dfui_info_get_name(dfui_field_get_info(fi)), 0, 0);
 

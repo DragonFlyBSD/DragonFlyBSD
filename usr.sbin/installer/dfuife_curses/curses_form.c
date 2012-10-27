@@ -243,7 +243,6 @@ curses_form_descriptive_labels_add(struct curses_form *cf, const char *text,
 				   unsigned int x, unsigned int y,
 				   unsigned int width)
 {
-	struct curses_widget *w;
 	int done = 0;
 	int pos = 0;
 	char *line;
@@ -253,7 +252,7 @@ curses_form_descriptive_labels_add(struct curses_form *cf, const char *text,
 		done = extract_wrapped_line(text, line, width, &pos);
 		dfui_debug("line = `%s', done = %d, width = %d, form width = %d : ",
 		   line, done, width, cf->width);
-		w = curses_form_widget_add(cf, x, y++, 0,
+		curses_form_widget_add(cf, x, y++, 0,
 		    CURSES_LABEL, line, 0, CURSES_WIDGET_WIDEN);
 		dfui_debug("now %d\n", cf->width);
 	}
