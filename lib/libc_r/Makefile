@@ -12,6 +12,7 @@ WARNS?=1
 CFLAGS+=-DLIBC_RCS -DSYSLIBC_RCS -I${.CURDIR}/../libc/include
 CFLAGS+=-DPTHREAD_KERNEL -D_THREAD_SAFE -I${.CURDIR}/uthread
 CFLAGS+=-I${.CURDIR}/../../include
+CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
 
 # Uncomment this if you want libc_r to contain debug information for
 # thread locking.
@@ -20,7 +21,6 @@ CFLAGS+=-D_LOCK_DEBUG
 # enable extra internal consistancy checks
 CFLAGS+=-D_PTHREADS_INVARIANTS
 
-AINC=	-I${.CURDIR}/../libc/${MACHINE_ARCH} -I${.CURDIR}/uthread
 PRECIOUSLIB=	yes
 
 LIBDIR=	/usr/lib/thread

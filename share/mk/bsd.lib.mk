@@ -1,6 +1,5 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.17 2008/05/19 10:26:02 corecode Exp $
 #
 
 .include <bsd.init.mk>
@@ -87,25 +86,25 @@ PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
 	${OBJC} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${OBJCFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .s.o:
-	${CC} ${_${.IMPSRC:T}_FLAGS} -x assembler-with-cpp ${CFLAGS} ${AINC} -c \
+	${CC} ${_${.IMPSRC:T}_FLAGS} -x assembler-with-cpp ${CFLAGS} -c \
 	    ${.IMPSRC} -o ${.TARGET}
 
 .s.po:
-	${CC} ${_${.IMPSRC:T}_FLAGS} -x assembler-with-cpp -DPROF ${CFLAGS} ${AINC} -c \
+	${CC} ${_${.IMPSRC:T}_FLAGS} -x assembler-with-cpp -DPROF ${CFLAGS} -c \
 	    ${.IMPSRC} -o ${.TARGET}
 
 .s.So:
 	${CC} ${_${.IMPSRC:T}_FLAGS} -x assembler-with-cpp ${PICFLAG} -DPIC ${CFLAGS} \
-	    ${AINC} -c ${.IMPSRC} -o ${.TARGET}
+	    -c ${.IMPSRC} -o ${.TARGET}
 
 .S.o:
-	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} ${AINC} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .S.po:
-	${CC} ${_${.IMPSRC:T}_FLAGS} -DPROF ${CFLAGS} ${AINC} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} ${_${.IMPSRC:T}_FLAGS} -DPROF ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .S.So:
-	${CC} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${CFLAGS} ${AINC} -c ${.IMPSRC} \
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${CFLAGS} -c ${.IMPSRC} \
 	    -o ${.TARGET}
 
 all: objwarn

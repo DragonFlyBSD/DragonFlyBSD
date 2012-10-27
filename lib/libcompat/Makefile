@@ -3,7 +3,7 @@
 
 LIB=compat
 CFLAGS+=-I${.CURDIR}/../libc/locale
-AINC=	-I${.CURDIR}/../libc/${MACHINE_ARCH}
+CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
 NOPIC=
 WARNS?=	0
 

@@ -1,5 +1,4 @@
 # $FreeBSD: src/share/mk/bsd.dep.mk,v 1.27.2.3 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.dep.mk,v 1.9 2006/02/13 13:27:20 corecode Exp $
 #
 # The include file <bsd.dep.mk> handles Makefile dependencies.
 #
@@ -19,7 +18,7 @@
 # MKDEP		Options for ${MKDEPCMD} [not set]
 #
 # MKDEPCMD	Makefile dependency list program [mkdep]
-# 
+#
 # SRCS          List of source files (c, c++, assembler)
 #
 #
@@ -68,32 +67,31 @@ tags: ${SRCS}
 CLEANFILES?=
 
 .for _LSRC in ${SRCS:M*.l:N*/*}
-.for _LC in ${_LSRC:S/.l/.c/}
+.for _LC in ${_LSRC:R}.c
 ${_LC}: ${_LSRC}
 	${LEX} -t ${LFLAGS} ${.ALLSRC} > ${.TARGET}
 SRCS:=	${SRCS:S/${_LSRC}/${_LC}/}
-CLEANFILES:= ${CLEANFILES} ${_LC}
+CLEANFILES+= ${_LC}
 .endfor
 .endfor
 
 .for _YSRC in ${SRCS:M*.y:N*/*}
-.for _YC in ${_YSRC:S/.y/.c/}
+.for _YC in ${_YSRC:R}.c
 SRCS:=	${SRCS:S/${_YSRC}/${_YC}/}
-CLEANFILES:= ${CLEANFILES} ${_YC}
+CLEANFILES+= ${_YC}
 .if !empty(YFLAGS:M-d) && !empty(SRCS:My.tab.h)
 .ORDER: ${_YC} y.tab.h
 ${_YC} y.tab.h: ${_YSRC}
 	${YACC} ${YFLAGS} ${.ALLSRC}
 	cp y.tab.c ${_YC}
-SRCS:=	${SRCS} y.tab.h
-CLEANFILES:= ${CLEANFILES} y.tab.c y.tab.h
+CLEANFILES+= y.tab.c y.tab.h
 .elif !empty(YFLAGS:M-d)
 .for _YH in ${_YC:S/.c/.h/}
 .ORDER: ${_YC} ${_YH}
 ${_YC} ${_YH}: ${_YSRC}
 	${YACC} ${YFLAGS} -o ${_YC} ${.ALLSRC}
-SRCS:=	${SRCS} ${_YH}
-CLEANFILES:= ${CLEANFILES} ${_YH}
+SRCS+= ${_YH}
+CLEANFILES+= ${_YH}
 .endfor
 .else
 ${_YC}: ${_YSRC}
@@ -142,19 +140,12 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[sS]:N*.c:N*.cc:N*.C:N*.cpp:N*.cpp:N*.cxx:N*.m}
 .depend${_FG:S/^/_/:N__}: ${${_FG}_FLAGS_FILES} ${_ALL_DEPENDS}
 	-rm -f ${.TARGET}
 	-> ${.TARGET}
-.if ${${_FG}_FLAGS_FILES:M*.[sS]} != ""
-	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
-	    ${${_FG}_FLAGS} \
-	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
-	    ${AINC} \
-	    ${.ALLSRC:M*.[sS]}
-.endif
-.if ${${_FG}_FLAGS_FILES:M*.c} != ""
+.if ${${_FG}_FLAGS_FILES:M*.[csS]} != ""
 	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
 	    ${${_FG}_FLAGS} \
 	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
 	    ${CFLAGS:M-std=*} \
-	    ${.ALLSRC:M*.c}
+	    ${.ALLSRC:M*.[csS]}
 .endif
 .if ${${_FG}_FLAGS_FILES:M*.cc} != "" || \
     ${${_FG}_FLAGS_FILES:M*.C} != "" || \

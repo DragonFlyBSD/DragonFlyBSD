@@ -1,5 +1,3 @@
-# $DragonFly: src/lib/libc_rtld/Makefile,v 1.2 2007/01/16 18:38:08 dillon Exp $
-
 LIB=	c_rtld
 INTERNALLIB=
 INSTALL_PIC_ARCHIVE=
@@ -8,10 +6,11 @@ STATIC_LOCALES=
 CFLAGS+=-I${.CURDIR}/../libc/include
 CFLAGS+=-I${.CURDIR}/../libc/resolv
 CFLAGS+=-I${.CURDIR}/../libc/rpc
-CFLAGS+=-I${.CURDIR}/../../include -D__thread=
-CFLAGS+=${AINC}
+CFLAGS+=-I${.CURDIR}/../../include
+CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
+CFLAGS+=-I${.OBJDIR}
+CFLAGS+=-D__thread=
 
-AINC=	-I${.OBJDIR} -I${.CURDIR}/../libc/${MACHINE_ARCH}
 PRECIOUSLIB=	yes
 
 #
