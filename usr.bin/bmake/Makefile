@@ -25,7 +25,7 @@ MAKE_VERSION= 20121010
 .if defined(BOOTSTRAPPING)
 DEFAULT_SYS_PATH = ${.CURDIR}/../../share/mk
 .else
-DEFAULT_SYS_PATH = .../share/mk:/usr/share/mk
+DEFAULT_SYS_PATH = /usr/share/mk:.../share/mk
 .endif
 
 WARNS?= 	4
