@@ -285,7 +285,6 @@ fixit(int *argc, char **argv, const char *opts)
 	int i, j, sawplus;
 	char *vpos, *tpos, spec[20];
 	int col, indent;
-	size_t sz;
 
 	sawplus = 0;
 	for (i = 1; i < *argc; i++) {
@@ -356,8 +355,7 @@ fixit(int *argc, char **argv, const char *opts)
 		}
 
 		/* make the new style spec */
-		sz = snprintf(spec, sizeof(spec), "%d.%d%s", col, indent,
-		    tpos);
+		snprintf(spec, sizeof(spec), "%d.%d%s", col, indent, tpos);
 
 		if (sawplus) {
 			/* Replace the +POS argument with new-style -kSPEC */
