@@ -22,7 +22,11 @@ srcdir= ${.CURDIR}/../../contrib/bmake
 
 # Base version on src date
 MAKE_VERSION= 20121010
-DEFAULT_SYS_PATH = /usr/share/mk
+.if defined(BOOTSTRAPPING)
+DEFAULT_SYS_PATH = ${.CURDIR}/../../share/mk
+.else
+DEFAULT_SYS_PATH = .../share/mk:/usr/share/mk
+.endif
 
 WARNS?= 	4
 
