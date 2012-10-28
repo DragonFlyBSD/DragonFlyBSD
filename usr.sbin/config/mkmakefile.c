@@ -159,9 +159,15 @@ makefile(void)
 	fprintf(ofp, "MACHINE_PLATFORM=%s\n", platformname);
 	fprintf(ofp, "MACHINE=%s\n", machinename);
 	fprintf(ofp, "MACHINE_ARCH=%s\n", machinearchname);
+	fprintf(ofp, ".if defined(.PARSEDIR)\n");
+	fprintf(ofp, ".export MACHINE_PLATFORM\n");
+	fprintf(ofp, ".export MACHINE\n");
+	fprintf(ofp, ".export MACHINE_ARCH\n");
+	fprintf(ofp, ".else\n");
 	fprintf(ofp, ".makeenv MACHINE_PLATFORM\n");
 	fprintf(ofp, ".makeenv MACHINE\n");
 	fprintf(ofp, ".makeenv MACHINE_ARCH\n");
+	fprintf(ofp, ".endif\n");
 	fprintf(ofp, "IDENT=");
 	if (profiling) {
 		/* Don't compile kernel profiling code for vkernel */

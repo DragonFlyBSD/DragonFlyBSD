@@ -87,8 +87,8 @@ ${_YC} y.tab.h: ${_YSRC}
 CLEANFILES+= y.tab.c y.tab.h
 .elif !empty(YFLAGS:M-d)
 .for _YH in ${_YC:S/.c/.h/}
-.ORDER: ${_YC} ${_YH}
-${_YC} ${_YH}: ${_YSRC}
+${_YH}: ${_YC}
+${_YC}: ${_YSRC}
 	${YACC} ${YFLAGS} -o ${_YC} ${.ALLSRC}
 SRCS+= ${_YH}
 CLEANFILES+= ${_YH}
@@ -105,6 +105,9 @@ ${_YC}: ${_YSRC}
 .if defined(SRCS)
 depend: beforedepend _dependincs ${DEPENDFILE} afterdepend
 
+# Tell bmake not to look for generated files via .PATH
+.NOPATH: ${DEPENDFILE}
+
 # Different types of sources are compiled with slightly different flags.
 # Split up the sources, and filter out headers and non-applicable flags.
 # Separate flag groups out of the sources and treat them differently.
@@ -118,7 +121,6 @@ __FLAGS_FILES:=	${__FLAGS_FILES:N${_FFILE}}
 .endfor
 
 _DEPENDFILES=	${FLAGS_GROUPS:S/^/.depend_/g}
-.ORDER: ${_DEPENDFILES}
 
 ${DEPENDFILE}: ${_DEPENDFILES}
 
@@ -174,15 +176,11 @@ _EXTRADEPEND: .USE
 ${DEPENDFILE}: _EXTRADEPEND
 .endif
 
-.ORDER: ${_DEPENDFILES} ${DEPENDFILE} afterdepend
 .else
 depend: beforedepend _dependincs afterdepend
 .endif
 .if !target(beforedepend)
 beforedepend:
-.else
-.ORDER: beforedepend ${_DEPENDFILES} ${DEPENDFILE}
-.ORDER: beforedepend afterdepend
 .endif
 .if !target(afterdepend)
 afterdepend:
@@ -226,13 +224,9 @@ checkdpadd:
 .endif
 
 .if defined(INCS) && make(depend)
-
-_dependincs: ${INCS} ${SRCS}
-
-.ORDER: _dependincs depend
-
+_dependincs: buildincludes .WAIT installincludes
 .else
-
 _dependincs:
-
 .endif
+
+.ORDER: beforedepend _dependincs ${DEPENDFILE} afterdepend

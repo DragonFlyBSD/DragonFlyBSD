@@ -126,7 +126,12 @@ WORLD_BINUTILSVER?=	binutils222
 # temporary until everybody has converted to x86_64
 .if ${MACHINE_ARCH} == "amd64"
 MACHINE_ARCH=	x86_64
+.if defined(.PARSEDIR)
+.export MACHINE_ARCH
+.else
+# LEGACY MAKE - REMOVE FOR DFLY 3.6
 .makeenv MACHINE_ARCH
+.endif
 .endif
 
 TARGET_ARCH?=	${MACHINE_ARCH}
@@ -210,6 +215,11 @@ STRICTTMPPATH=	${CTOOLSDEST}/usr/sbin:${CTOOLSDEST}/usr/bin:${CTOOLSDEST}/bin:${
 
 TMPDIR?=	/tmp
 TMPPID!=	echo $$$$
+
+# Only use the host system make to bootstrap tools, including make itself
+# Use the bootstrap make for the rest of the world
+BTOOLMAKE=	${BTOOLSDEST}/usr/bin/make
+BTOOLCONFIG=	${BTOOLSDEST}/usr/sbin/config
 
 #
 # Building a world goes through the following stages
@@ -296,13 +306,13 @@ WMAKEENV=	${CROSSENV} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh" \
 		PATH=${STRICTTMPPATH}
 
-WMAKE=		${WMAKEENV} ${MAKE} -f Makefile.inc1
+WMAKE=		${WMAKEENV} ${BTOOLMAKE} -f Makefile.inc1
 
 # install stage
 #
 IMAKEENV=	${CROSSENV} \
 		PATH=${STRICTTMPPATH}
-IMAKE=		${IMAKEENV} ${MAKE} -f Makefile.inc1
+IMAKE=		${IMAKEENV} ${BTOOLMAKE} -f Makefile.inc1
 
 # kernel stage
 #
@@ -435,14 +445,14 @@ crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 #
 installcheck:
 .if !defined(NO_SENDMAIL)
-	@pw usershow smmsp || (echo "You may need to run 'make preupgrade' first"; exit 1)
-	@pw groupshow smmsp || (echo "You may need to run 'make preupgrade' first"; exit 1)
+	@pw usershow smmsp || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
+	@pw groupshow smmsp || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
 .endif
-	@pw usershow _pflogd || (echo "You may need to run 'make preupgrade' first"; exit 1)
-	@pw groupshow authpf || (echo "You may need to run 'make preupgrade' first"; exit 1)
-	@pw groupshow _pflogd || (echo "You may need to run 'make preupgrade' first"; exit 1)
+	@pw usershow _pflogd || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
+	@pw groupshow authpf || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
+	@pw groupshow _pflogd || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
 .if !defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/"
-	@case `uname -r` in 1.2*|1.3-*|1.3.*|1.4.*|1.5.0-*|1.5.1-*|1.5.2-*|1.5.3-*) echo "You must upgrade your kernel to at least 1.5.4 and reboot before you can safely installworld, due to libc/system call ABI changes" ; exit 1;; esac
+	@case `uname -r` in 1.2*|1.3-*|1.3.*|1.4.*|1.5.0-*|1.5.1-*|1.5.2-*|1.5.3-*) echo "You must upgrade your kernel to at least 1.5.4 and reboot before you can safely installworld, due to libc/system call ABI changes" ; /usr/bin/false ; esac
 .endif
 #
 # installworld
@@ -539,7 +549,7 @@ bk_tools:
 	    echo "You must buildworld before buildkernel.  If you wish"; \
 	    echo "to build a kernel using native tools, config it manually"; \
 	    echo "or use the nativekernel target if you are in a rush"; \
-	    exit 1; \
+	    /usr/bin/false; \
 	fi
 
 maybe_bk_tools:
@@ -548,7 +558,7 @@ maybe_bk_tools:
 	    if [ ! -f ${WORLDDEST}/.libraries_done ]; then \
 		echo "The kernel was build using buildworld tools which no" ; \
 		echo "longer appear to exist, quickkernel failed!" ; \
-		exit 1; \
+		/usr/bin/false; \
 	    fi; \
 	fi
 .endfor
@@ -590,7 +600,7 @@ buildkernel:	bk_tools bk_build_list bk_kernwarn
 .if !defined(NO_KERNELCONFIG)
 	cd ${KRNLCONFDIR}; \
 		PATH=${STRICTTMPPATH} \
-		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
+		    ${BTOOLCONFIG} ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 			${KERNCONFDIR}/${_kernel}
 .endif
 .if !defined(NOCLEAN) && !defined(NO_KERNELCLEAN) && defined(KERNEL_VERSION_${_kernel})
@@ -599,10 +609,10 @@ buildkernel:	bk_tools bk_build_list bk_kernwarn
 	touch ${KRNLOBJDIR}/${_kernel}/.buildkernel_run
 .if !defined(NO_KERNELDEPEND)
 	cd ${KRNLOBJDIR}/${_kernel}; \
-	    ${KMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} depend
+	    ${KMAKEENV} ${BTOOLMAKE} KERNEL=${INSTKERNNAME} depend
 .endif
 	cd ${KRNLOBJDIR}/${_kernel}; \
-	    ${KMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} all
+	    ${KMAKEENV} ${BTOOLMAKE} KERNEL=${INSTKERNNAME} all
 	@echo "--------------------------------------------------------------"
 	@echo ">>> Kernel build for ${_kernel} completed on `LC_ALL=C date`"
 	@echo "--------------------------------------------------------------"
@@ -666,11 +676,11 @@ quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 .if !defined(NO_KERNELCONFIG)
 	cd ${KRNLCONFDIR}; \
 		PATH=${STRICTTMPPATH} \
-		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
+		    ${BTOOLCONFIG} ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 			${KERNCONFDIR}/${_kernel}
 .endif
 	cd ${KRNLOBJDIR}/${_kernel}; \
-	    ${KMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} all
+	    ${KMAKEENV} ${BTOOLMAKE} KERNEL=${INSTKERNNAME} all
 .else
 .if !defined(NO_KERNELCONFIG)
 	cd ${KRNLCONFDIR}; \
@@ -696,7 +706,7 @@ installkernel reinstallkernel:
 	@echo "--------------------------------------------------------------"
 .if exists(${KRNLOBJDIR}/${INSTALLKERNEL}/.buildkernel_run)
 	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
-	    ${IMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
+	    ${IMAKEENV} ${BTOOLMAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
 .else
 	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
 	    ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
@@ -762,7 +772,7 @@ BSTRAPDIRS= ${_strfile} \
 	bin/test bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh \
 	bin/hostname bin/kill \
 	usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \
-	usr.bin/m4 usr.bin/rpcgen usr.bin/make usr.bin/awk usr.bin/stat \
+	usr.bin/m4 usr.bin/rpcgen usr.bin/bmake usr.bin/awk usr.bin/stat \
 	usr.bin/find usr.bin/lex usr.bin/sed usr.bin/uname usr.bin/touch \
 	usr.bin/mkdep usr.bin/mktemp usr.bin/lorder usr.bin/file2c \
 	usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
@@ -880,15 +890,15 @@ libraries:
 .if !defined(NO_GCC47)
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
-		${MAKE} -f Makefile.inc1 _startup_libs47;
+		${BTOOLMAKE} -f Makefile.inc1 _startup_libs47;
 .endif
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc44 \
-		${MAKE} -f Makefile.inc1 _startup_libs44;
+		${BTOOLMAKE} -f Makefile.inc1 _startup_libs44;
 	cd ${.CURDIR}; \
-	    ${MAKE} -f Makefile.inc1 _startup_libs; \
-	    ${MAKE} -f Makefile.inc1 _prebuild_libs; \
-	    ${MAKE} -f Makefile.inc1 _generic_libs;
+	    ${BTOOLMAKE} -f Makefile.inc1 _startup_libs; \
+	    ${BTOOLMAKE} -f Makefile.inc1 _prebuild_libs; \
+	    ${BTOOLMAKE} -f Makefile.inc1 _generic_libs;
 	touch ${WORLDDEST}/.libraries_done
 
 # These dependencies are not automatically generated:
@@ -976,7 +986,7 @@ ${entry}.${__target}__D: .PHONY
 		edir=${entry}; \
 		cd ${.CURDIR}/$${edir}; \
 	fi; \
-	${MAKE} ${__target} DIRPRFX=${DIRPRFX}$${edir}/
+	${BTOOLMAKE} ${__target} DIRPRFX=${DIRPRFX}$${edir}/
 .endfor
 par-${__target}: ${SUBDIR:S/$/.${__target}__D/}
 .ORDER: ${SUBDIR:S/$/.${__target}__D/}
@@ -987,27 +997,44 @@ par-${__target}: ${SUBDIR:S/$/.${__target}__D/}
 # world build environment.
 #
 wmake:
-	@echo '${WMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${WMAKE_ARGS}'
+	@echo '${WMAKEENV} ${BTOOLMAKE} ${WMAKE_ARGS}'
 
 wmakeenv:
 	@echo '${WMAKEENV} /bin/sh'
 
 bmake:
-	@echo '${BMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${BMAKE_ARGS}'
+	@echo '${BMAKEENV} ${BTOOLMAKE} ${BMAKE_ARGS}'
 
 bmakeenv:
 	@echo '${BMAKEENV} /bin/sh'
 
 tmake:
-	@echo '${TMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${TMAKE_ARGS}'
+	@echo '${TMAKEENV} ${BTOOLMAKE} ${TMAKE_ARGS}'
 
 tmakeenv:
 	@echo '${TMAKEENV} /bin/sh'
 
 xmake:
-	@echo '${XMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${XMAKE_ARGS}'
+	@echo '${XMAKEENV} ${BTOOLMAKE} ${XMAKE_ARGS}'
 
 xmakeenv:
 	@echo '${XMAKEENV} /bin/sh'
+
+# Take advantage of bmake error response
+#
+MAKE_PRINT_VAR_ON_ERROR= \
+	.CURDIR \
+	.OBJDIR \
+	.MAKE \
+	MAKE_VERSION \
+	LD_LIBRARY_PATH \
+	MACHINE_ARCH \
+	MACHINE \
+	MAKEFILE \
+	.TARGETS \
+	.ERROR_TARGET \
+	.ERROR_META_FILE \
+	.MAKE.LEVEL \
+	.MAKE.MODE
 
 .include <bsd.subdir.mk>

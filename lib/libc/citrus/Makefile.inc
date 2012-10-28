@@ -23,10 +23,18 @@ SRCS+=  citrus_prop.c
 .PATH: ${.CURDIR}/../libc/citrus/modules
 CFLAGS+=-I${.CURDIR}/../libc/citrus
 CFLAGS+=-D_I18N_STATIC
+.if defined(.PARSEDIR)
+.for var in ${STATIC_LOCALES}
+SRCS+= citrus_${var:tl}.c
+CFLAGS+=-D_I18N_STATIC_${var}
+.endfor
+.else
+# LEGACY MAKE - REMOVE FOR DFLY 3.6
 .for var in ${STATIC_LOCALES}
 SRCS+= citrus_${var:L}.c
 CFLAGS+=-D_I18N_STATIC_${var}
 .endfor
+.endif
 # iconv support
 SRCS+=citrus_iconv_std.c citrus_mapper_std.c citrus_mapper_none.c citrus_mapper_serial.c citrus_utf1632.c
 .endif # STATIC_LOCALES

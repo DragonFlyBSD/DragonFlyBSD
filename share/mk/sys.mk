@@ -1,8 +1,13 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.21 2008/05/19 10:26:02 corecode Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
+
+# Set any local definitions first.  Place this early, it needs
+# MACHINE_CPUARCH to be defined
+.if defined(.PARSEDIR)
+.sinclude <local.sys.mk>
+.endif
 
 # If the special target .POSIX appears (without prerequisites or
 # commands) before the first noncomment line in the makefile, make shall
@@ -317,3 +322,14 @@ __MAKE_CONF?=/etc/make.conf
 # XXX hint for bsd.port.mk
 OBJFORMAT?=	elf
 
+# Tell bmake to expand -V VAR be default
+.MAKE.EXPAND_VARIABLES= yes
+
+.if !defined(.PARSEDIR)
+# Not using bmake, which is aggressive about search .PATH
+# It is sometimes necessary to curb its enthusiam with .NOPATH
+# The following allows us to quietly ignore .NOPATH when no using bmake.
+.NOTMAIN: .NOPATH
+.NOPATH:
+
+.endif

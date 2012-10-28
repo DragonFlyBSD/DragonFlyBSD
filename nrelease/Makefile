@@ -24,7 +24,12 @@ MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 # temporary until everybody has converted to x86_64
 .if ${MACHINE_ARCH} == "amd64"
 MACHINE_ARCH=	x86_64
+.if defined(.PARSEDIR)
+.export MACHINE_ARCH
+.else
+# LEGACY MAKE - REMOVE FOR DFLY 3.6
 .makeenv MACHINE_ARCH
+.endif
 .endif
 
 # XXX makeshift fix to build the right kernel for the (target) architecture
@@ -209,10 +214,10 @@ check:
 	@echo "in /usr if you are unfamiliar with pkgsrc."
 .endif
 .if !exists (${PKGBIN_MKISOFS})
-	@exit 1
+	@/usr/bin/false
 .endif
 .if !defined(PKGSRC_PATH)
-	@exit 1
+	@/usr/bin/false
 .endif
 
 buildworld1 buildworld2:

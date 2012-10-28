@@ -20,6 +20,7 @@ SUBDIR=	alias \
 	banner \
 	basename \
 	biff \
+	bmake \
 	brandelf \
 	btpin \
 	bzip2 \
@@ -116,7 +117,6 @@ SUBDIR=	alias \
 	lzmainfo \
 	m4 \
 	mail \
-	make \
 	mandoc \
 	mesg \
 	mkcsmapper \

@@ -76,7 +76,7 @@ _SUBDIR_${__target}: .USE
 
 .endfor
 
-${SUBDIR}::
+${SUBDIR}: .PHONY
 	@if test -d ${.TARGET}.${MACHINE_ARCH}; then \
 		cd ${.CURDIR}/${.TARGET}.${MACHINE_ARCH}; \
 	else \
