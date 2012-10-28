@@ -3,6 +3,8 @@
 
 #ifdef _KERNEL
 
+struct sysctl_ctx_list;
+struct sysctl_oid;
 struct lwkt_serialize;
 struct ifnet;
 
@@ -26,6 +28,17 @@ struct ifpoll_info {
 	struct ifpoll_io	ifpi_rx[MAXCPU];
 	struct ifpoll_io	ifpi_tx[MAXCPU];
 };
+
+struct ifpoll_compat {
+	int			ifpc_stcount;
+	int			ifpc_stfrac;
+
+	int			ifpc_cpuid;
+	struct lwkt_serialize	*ifpc_serializer;
+};
+
+void	ifpoll_compat_setup(struct ifpoll_compat *, struct sysctl_ctx_list *,
+	    struct sysctl_oid *, int, struct lwkt_serialize *);
 
 #endif	/* _KERNEL */
 

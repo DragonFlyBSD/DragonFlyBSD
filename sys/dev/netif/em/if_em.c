@@ -337,10 +337,6 @@ static int	em_sysctl_stats(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS);
-#ifdef IFPOLL_ENABLE
-static int	em_sysctl_npoll_stfrac(SYSCTL_HANDLER_ARGS);
-static int	em_sysctl_npoll_cpuid(SYSCTL_HANDLER_ARGS);
-#endif
 static void	em_add_sysctl(struct adapter *adapter);
 
 /* Management and WOL Support */
@@ -781,17 +777,18 @@ em_attach(device_t dev)
 	/* XXX disable wol */
 	adapter->wol = 0;
 
-	/* Polling setup */
-#ifdef IFPOLL_ENABLE
-	adapter->npoll_stfrac = 40 - 1;	/* 1/40 polling freq */
-	adapter->npoll_cpuid = device_get_unit(dev) % ncpus2;
-#endif
-
 	/* Setup OS specific network interface */
 	em_setup_ifp(adapter);
 
 	/* Add sysctl tree, must after em_setup_ifp() */
 	em_add_sysctl(adapter);
+
+#ifdef IFPOLL_ENABLE
+	/* Polling setup */
+	ifpoll_compat_setup(&adapter->npoll,
+	    &adapter->sysctl_ctx, adapter->sysctl_tree, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	/* Reset the hardware */
 	error = em_reset(adapter);
@@ -1390,7 +1387,7 @@ em_init(void *xsc)
 		E1000_WRITE_REG(&adapter->hw, E1000_IVAR, 0x800A0908);
 	}
 
-#ifdef IFPOLL_ENBLE
+#ifdef IFPOLL_ENABLE
 	/*
 	 * Only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
@@ -1420,10 +1417,10 @@ em_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (adapter->npoll_stcount-- == 0) {
+	if (adapter->npoll.ifpc_stcount-- == 0) {
 		uint32_t reg_icr;
 
-		adapter->npoll_stcount = adapter->npoll_stfrac;
+		adapter->npoll.ifpc_stcount = adapter->npoll.ifpc_stfrac;
 
 		reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
 		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
@@ -1449,7 +1446,7 @@ em_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (info != NULL) {
-		int cpuid = adapter->npoll_cpuid;
+		int cpuid = adapter->npoll.ifpc_cpuid;
 
                 info->ifpi_rx[cpuid].poll_func = em_npoll_compat;
 		info->ifpi_rx[cpuid].arg = NULL;
@@ -3536,7 +3533,7 @@ em_disable_intr(struct adapter *adapter)
 
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, clear);
 
-	adapter->npoll_stcount = 0;
+	adapter->npoll.ifpc_stcount = 0;
 
 	lwkt_serialize_handler_disable(adapter->arpcom.ac_if.if_serializer);
 }
@@ -4045,18 +4042,6 @@ em_add_sysctl(struct adapter *adapter)
 		    CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
 		    em_sysctl_int_tx_nsegs, "I",
 		    "# segments per TX interrupt");
-
-#ifdef IFPOLL_ENABLE
-		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO,
-		    "npoll_stfrac", CTLTYPE_INT | CTLFLAG_RW,
-		    adapter, 0, em_sysctl_npoll_stfrac, "I",
-		    "polling status frac");
-		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO,
-		    "npoll_cpuid", CTLTYPE_INT | CTLFLAG_RW,
-		    adapter, 0, em_sysctl_npoll_cpuid, "I", "polling cpuid");
-#endif
 	}
 }
 
@@ -4343,54 +4328,3 @@ em_tso_setup(struct adapter *adapter, struct mbuf *mp,
 	adapter->next_avail_tx_desc = curr_txd;
 	return 1;
 }
-
-#ifdef IFPOLL_ENABLE
-
-static int
-em_sysctl_npoll_stfrac(SYSCTL_HANDLER_ARGS)
-{
-	struct adapter *adapter = arg1;
-	struct ifnet *ifp = &adapter->arpcom.ac_if;
-	int error = 0, stfrac;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	stfrac = adapter->npoll_stfrac + 1;
-	error = sysctl_handle_int(oidp, &stfrac, 0, req);
-	if (!error && req->newptr != NULL) {
-		if (stfrac < 1) {
-			error = EINVAL;
-		} else {
-			adapter->npoll_stfrac = stfrac - 1;
-			if (adapter->npoll_stcount > adapter->npoll_stfrac)
-				adapter->npoll_stcount = adapter->npoll_stfrac;
-		}
-	}
-
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
-}
-
-static int
-em_sysctl_npoll_cpuid(SYSCTL_HANDLER_ARGS)
-{
-	struct adapter *adapter = arg1;
-	struct ifnet *ifp = &adapter->arpcom.ac_if;
-	int error = 0, cpuid;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	cpuid = adapter->npoll_cpuid;
-	error = sysctl_handle_int(oidp, &cpuid, 0, req);
-	if (!error && req->newptr != NULL) {
-		if (cpuid < 0 || cpuid >= ncpus2)
-			error = EINVAL;
-		else
-			adapter->npoll_cpuid = cpuid;
-	}
-
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
-}
-
-#endif	/* IFPOLL_ENABLE */

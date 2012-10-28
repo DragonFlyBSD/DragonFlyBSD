@@ -293,9 +293,7 @@ struct adapter {
 	int			int_throttle_ceil;
 
 	/* Polling */
-	int			npoll_stcount;
-	int			npoll_stfrac;
-	int			npoll_cpuid;
+	struct ifpoll_compat	npoll;
 
 	/*
 	 * Transmit definitions

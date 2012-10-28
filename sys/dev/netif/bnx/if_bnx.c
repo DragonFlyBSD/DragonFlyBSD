@@ -230,10 +230,6 @@ static int	bnx_sysctl_rx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_tx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *,
 		    int, int, uint32_t);
-#ifdef IFPOLL_ENABLE
-static int	bnx_sysctl_npoll_stfrac(SYSCTL_HANDLER_ARGS);
-static int	bnx_sysctl_npoll_cpuid(SYSCTL_HANDLER_ARGS);
-#endif
 
 static int	bnx_msi_enable = 1;
 TUNABLE_INT("hw.bnx.msi.enable", &bnx_msi_enable);
@@ -2101,11 +2097,6 @@ bnx_attach(device_t dev)
 		}
 	}
 
-#ifdef IFPOLL_ENABLE
-	sc->bnx_npoll_stfrac = 40 - 1;	/* 1/40 polling freq */
-	sc->bnx_npoll_cpuid = device_get_unit(dev) % ncpus2;
-#endif
-
 	/*
 	 * Create sysctl nodes.
 	 */
@@ -2166,17 +2157,6 @@ bnx_attach(device_t dev)
 	    "force_defrag", CTLFLAG_RW, &sc->bnx_force_defrag, 0,
 	    "Force defragment on TX path");
 
-#ifdef IFPOLL_ENABLE
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
-	    "npoll_stfrac", CTLTYPE_INT | CTLFLAG_RW,
-	    sc, 0, bnx_sysctl_npoll_stfrac, "I", "polling status frac");
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
-	    "npoll_cpuid", CTLTYPE_INT | CTLFLAG_RW,
-	    sc, 0, bnx_sysctl_npoll_cpuid, "I", "polling cpuid");
-#endif
-
 	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
 	    "rx_coal_bds_int", CTLTYPE_INT | CTLFLAG_RW,
@@ -2201,6 +2181,12 @@ bnx_attach(device_t dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, ether_addr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->bnx_npoll,
+	    &sc->bnx_sysctl_ctx, sc->bnx_sysctl_tree,
+	    device_get_unit(dev), ifp->if_serializer);
+#endif
 
 	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI) {
 		if (sc->bnx_flags & BNX_FLAG_ONESHOT_MSI) {
@@ -2654,7 +2640,7 @@ bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (info != NULL) {
-		int cpuid = sc->bnx_npoll_cpuid;
+		int cpuid = sc->bnx_npoll.ifpc_cpuid;
 
 		info->ifpi_rx[cpuid].poll_func = bnx_npoll_compat;
 		info->ifpi_rx[cpuid].arg = NULL;
@@ -2679,8 +2665,8 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (sc->bnx_npoll_stcount-- == 0) {
-		sc->bnx_npoll_stcount = sc->bnx_npoll_stfrac;
+	if (sc->bnx_npoll.ifpc_stcount-- == 0) {
+		sc->bnx_npoll.ifpc_stcount = sc->bnx_npoll.ifpc_stfrac;
 		/*
 		 * Process link state changes.
 		 */
@@ -3935,57 +3921,6 @@ bnx_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *coal,
 	return error;
 }
 
-#ifdef IFPOLL_ENABLE
-
-static int
-bnx_sysctl_npoll_stfrac(SYSCTL_HANDLER_ARGS)
-{
-	struct bnx_softc *sc = arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error = 0, stfrac;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	stfrac = sc->bnx_npoll_stfrac + 1;
-	error = sysctl_handle_int(oidp, &stfrac, 0, req);
-	if (!error && req->newptr != NULL) {
-		if (stfrac < 1) {
-			error = EINVAL;
-		} else {
-			sc->bnx_npoll_stfrac = stfrac - 1;
-			if (sc->bnx_npoll_stcount > sc->bnx_npoll_stfrac)
-				sc->bnx_npoll_stcount = sc->bnx_npoll_stfrac;
-		}
-	}
-
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
-}
-
-static int
-bnx_sysctl_npoll_cpuid(SYSCTL_HANDLER_ARGS)
-{
-	struct bnx_softc *sc = arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error = 0, cpuid;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	cpuid = sc->bnx_npoll_cpuid;
-	error = sysctl_handle_int(oidp, &cpuid, 0, req);
-	if (!error && req->newptr != NULL) {
-		if (cpuid < 0 || cpuid >= ncpus2)
-			error = EINVAL;
-		else
-			sc->bnx_npoll_cpuid = cpuid;
-	}
-
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
-}
-
-#endif	/* IFPOLL_ENABLE */
-
 static void
 bnx_coal_change(struct bnx_softc *sc)
 {
@@ -4172,7 +4107,7 @@ bnx_disable_intr(struct bnx_softc *sc)
 	sc->bnx_rx_check_considx = 0;
 	sc->bnx_tx_check_considx = 0;
 
-	sc->bnx_npoll_stcount = 0;
+	sc->bnx_npoll.ifpc_stcount = 0;
 
 	lwkt_serialize_handler_disable(ifp->if_serializer);
 }

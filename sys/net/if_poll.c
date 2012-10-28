@@ -246,6 +246,8 @@ static void	sysctl_txfrac_handler(netmsg_t);
 static int	sysctl_pollhz(SYSCTL_HANDLER_ARGS);
 static int	sysctl_stfrac(SYSCTL_HANDLER_ARGS);
 static int	sysctl_txfrac(SYSCTL_HANDLER_ARGS);
+static int	sysctl_compat_npoll_stfrac(SYSCTL_HANDLER_ARGS);
+static int	sysctl_compat_npoll_cpuid(SYSCTL_HANDLER_ARGS);
 
 static struct stpoll_ctx	stpoll_context;
 static struct poll_comm		*poll_common[MAXCPU];
@@ -1467,4 +1469,73 @@ sysctl_txfrac_handler(netmsg_t nmsg)
 	crit_exit();
 
 	lwkt_replymsg(&nmsg->lmsg, 0);
+}
+
+void
+ifpoll_compat_setup(struct ifpoll_compat *cp,
+    struct sysctl_ctx_list *sysctl_ctx,
+    struct sysctl_oid *sysctl_tree,
+    int unit, struct lwkt_serialize *slz)
+{
+	cp->ifpc_stcount = 0;
+	cp->ifpc_stfrac = poll_common[0]->poll_stfrac;
+
+	cp->ifpc_cpuid = unit % ncpus2;
+	cp->ifpc_serializer = slz;
+
+	if (sysctl_ctx != NULL) {
+		SYSCTL_ADD_PROC(sysctl_ctx, SYSCTL_CHILDREN(sysctl_tree),
+		    OID_AUTO, "npoll_stfrac", CTLTYPE_INT | CTLFLAG_RW,
+		    cp, 0, sysctl_compat_npoll_stfrac, "I",
+		    "polling status frac");
+		SYSCTL_ADD_PROC(sysctl_ctx, SYSCTL_CHILDREN(sysctl_tree),
+		    OID_AUTO, "npoll_cpuid", CTLTYPE_INT | CTLFLAG_RW,
+		    cp, 0, sysctl_compat_npoll_cpuid, "I",
+		    "polling cpuid");
+	}
+}
+
+static int
+sysctl_compat_npoll_stfrac(SYSCTL_HANDLER_ARGS)
+{
+	struct ifpoll_compat *cp = arg1;
+	int error = 0, stfrac;
+
+	lwkt_serialize_enter(cp->ifpc_serializer);
+
+	stfrac = cp->ifpc_stfrac + 1;
+	error = sysctl_handle_int(oidp, &stfrac, 0, req);
+	if (!error && req->newptr != NULL) {
+		if (stfrac < 1) {
+			error = EINVAL;
+		} else {
+			cp->ifpc_stfrac = stfrac - 1;
+			if (cp->ifpc_stcount > cp->ifpc_stfrac)
+				cp->ifpc_stcount = cp->ifpc_stfrac;
+		}
+	}
+
+	lwkt_serialize_exit(cp->ifpc_serializer);
+	return error;
+}
+
+static int
+sysctl_compat_npoll_cpuid(SYSCTL_HANDLER_ARGS)
+{
+	struct ifpoll_compat *cp = arg1;
+	int error = 0, cpuid;
+
+	lwkt_serialize_enter(cp->ifpc_serializer);
+
+	cpuid = cp->ifpc_cpuid;
+	error = sysctl_handle_int(oidp, &cpuid, 0, req);
+	if (!error && req->newptr != NULL) {
+		if (cpuid < 0 || cpuid >= ncpus2)
+			error = EINVAL;
+		else
+			cp->ifpc_cpuid = cpuid;
+	}
+
+	lwkt_serialize_exit(cp->ifpc_serializer);
+	return error;
 }

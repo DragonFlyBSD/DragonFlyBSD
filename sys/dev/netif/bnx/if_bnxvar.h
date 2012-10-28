@@ -242,9 +242,7 @@ struct bnx_softc {
 	int			bnx_link_evt;
 	int			bnx_stat_cpuid;
 	struct callout		bnx_stat_timer;
-	int			bnx_npoll_stfrac;
-	int			bnx_npoll_stcount;
-	int			bnx_npoll_cpuid;
+	struct ifpoll_compat	bnx_npoll;
 
 	uint16_t		bnx_rx_check_considx;
 	uint16_t		bnx_tx_check_considx;
