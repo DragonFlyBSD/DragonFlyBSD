@@ -3536,6 +3536,8 @@ em_disable_intr(struct adapter *adapter)
 
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, clear);
 
+	adapter->npoll_stcount = 0;
+
 	lwkt_serialize_handler_disable(adapter->arpcom.ac_if.if_serializer);
 }
 
