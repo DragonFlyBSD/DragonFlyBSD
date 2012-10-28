@@ -1,4 +1,4 @@
-/* $OpenBSD: jpake.c,v 1.6 2010/09/20 04:54:07 djm Exp $ */
+/* $OpenBSD: jpake.c,v 1.7 2012/06/18 11:43:53 dtucker Exp $ */
 /*
  * Copyright (c) 2008 Damien Miller.  All rights reserved.
  *
