@@ -223,7 +223,7 @@ run: check
 
 xrun:
 .if !defined(DISPLAY)
-	@(echo "Variable DISPLAY not set. Is X running?"; exit 1)
+	@(echo "Variable DISPLAY not set. Is X running?"; /usr/bin/false)
 .endif
 	cd ${QEMUDIR} && qemu-system-x86_64 -hda ${QEMUDIR}/root.img \
 					    -m 128 -no-fd-bootchk
@@ -245,7 +245,7 @@ gdb64:
 #
 checkq:
 .if !defined(QEMUDIR)
-	@(echo "must specify QEMUDIR=target or as an environment variable"; exit 1)
+	@(echo "must specify QEMUDIR=target or as an environment variable"; /usr/bin/false)
 .endif
 .if exists(${QEMUDIR})
 	@echo "${QEMUDIR} found"
@@ -260,8 +260,8 @@ check: checkq
 	rm -f ${QEMUDIR}/vn.which
 .endif
 	(vnconfig -l | fgrep "not in use" > /dev/null) || \
-	    (echo "Cannot find unused VN"; exit 1)
+	    (echo "Cannot find unused VN"; /usr/bin/false)
 	vnconfig -l | fgrep "not in use" | \
 	    cut -f 1 -d : | head -1 > ${QEMUDIR}/vn.which
 	egrep '^vn' ${QEMUDIR}/vn.which > /dev/null || \
-	    (echo "VN device selection is bad"; exit 1)
+	    (echo "VN device selection is bad"; /usr/bin/false)

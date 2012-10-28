@@ -105,7 +105,7 @@ links:
 	sh makelinks && rm -f dontlink
 
 kernel-tags:
-	@[ -f .depend ] || { echo "you must make depend first"; exit 1; }
+	@[ -f .depend ] || { echo "you must make depend first"; /usr/bin/false; }
 	sh $S/conf/systags.sh
 	rm -f tags1
 	sed -e 's,      ../,    ,' tags > tags1
@@ -119,7 +119,7 @@ kernel-tags:
 kernel-install: kernel-installable
 	@if [ ! -f ${SELECTEDKERNEL} ]; then			\
 		echo "You must build a kernel first.";		\
-		exit 1;						\
+		/usr/bin/false;					\
 	fi
 	@if [ -f ${DESTDIR}${DESTKERNDIR}.old ]; then		\
 		rm -f ${DESTDIR}${DESTKERNDIR}.old;		\
@@ -163,7 +163,7 @@ kernel-installable:
 		echo "You need to make buildworld, installworld, and upgrade"; \
 		echo "before you can install a new kernel, because the"; \
 		echo "kernel and modules have moved to /boot"; \
-		exit 1; \
+		/usr/bin/false; \
 	fi
 # Skip this step for vkernels
 .if ${MACHINE_PLATFORM} != vkernel && ${MACHINE_PLATFORM} != vkernel64
@@ -173,10 +173,9 @@ kernel-installable:
 		echo "into a subdirectory along with their modules."; \
 		echo "You can do this with a buildworld / installworld"; \
 		echo "sequence."; \
-		exit 1; \
+		/usr/bin/false; \
 	fi
 .endif
-	@exit 0
 
 .if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES)
 all:	modules

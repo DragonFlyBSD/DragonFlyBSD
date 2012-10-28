@@ -87,7 +87,7 @@ remove-obsolete-files:
 	@if [ -z "${TO_REMOVE}" ]; then \
 		echo "Please do a 'make installworld' first."; \
 		echo "See build(7) for further information."; \
-		exit 1; \
+		/usr/bin/false; \
 	fi;
 	@echo "===> Remove now obsolete files"
 	@for item in ${TO_REMOVE:M*.info.gz}; do \

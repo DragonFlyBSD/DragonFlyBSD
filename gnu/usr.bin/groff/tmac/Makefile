@@ -82,16 +82,18 @@ beforeinstall:
 	cd ${.CURDIR}; \
 	    ${INSTALL} -o ${TMACOWN} -g ${TMACGRP} -m ${TMACMODE} \
 	    koi8-r.tmac hyphen.ru ${DESTDIR}${TMACDIR}
-	cd ${.OBJDIR}
 .for f in ${STRIPFILES} ${SPECIALFILES} ${NORMALFILES}
+	cd ${.OBJDIR}; \
 	${INSTALL} -o ${TMACOWN} -g ${TMACGRP} -m ${TMACMODE} \
 	    $f-s ${DESTDIR}${TMACDIR}/$f
 .endfor
 .for f in ${MDOCFILES}
+	cd ${.OBJDIR}; \
 	${INSTALL} -o ${TMACOWN} -g ${TMACGRP} -m ${TMACMODE} \
 	    $f-s ${DESTDIR}${MDOCDIR}/$f
 .endfor
 .if !exists(${DESTDIR}${TMACDIR}/man.local)
+	cd ${.OBJDIR}; \
 	${INSTALL} -o ${TMACOWN} -g ${TMACGRP} -m ${TMACMODE} \
 	    ${DIST_DIR}/man.local ${DESTDIR}${TMACDIR}
 .endif

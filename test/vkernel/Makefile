@@ -132,7 +132,7 @@ install: mount
 
 leaf: mount
 	echo 'ifconfig_vke0="up"' > ${VKDIR}/root/etc/rc.conf
-	echo 'defaultrouter="10.26.0.1" >> ${VKDIR}/root/etc/rc.conf
+	echo 'defaultrouter="10.26.0.1"' >> ${VKDIR}/root/etc/rc.conf
 
 # Quick reinstall - just install a new kernel on top of an existing image
 #
@@ -179,7 +179,7 @@ run_nfsroot: check
 #
 checkq:
 .if !defined(VKDIR)
-	@(echo "must specify VKDIR=target or as an environment variable"; exit 1)
+	@(echo "must specify VKDIR=target or as an environment variable"; /usr/bin/false)
 .endif
 .if exists(${VKDIR})
 	@echo "${VKDIR} found"
@@ -194,8 +194,8 @@ check: checkq
 	rm -f ${VKDIR}/vn.which
 .endif
 	(vnconfig -l | fgrep "not in use" > /dev/null) || \
-	    (echo "Cannot find unused VN"; exit 1)
+	    (echo "Cannot find unused VN"; /usr/bin/false)
 	vnconfig -l | fgrep "not in use" | \
 	    cut -f 1 -d : | head -1 > ${VKDIR}/vn.which
 	egrep '^vn' ${VKDIR}/vn.which > /dev/null || \
-	    (echo "VN device selection is bad"; exit 1)
+	    (echo "VN device selection is bad"; /usr/bin/false)

@@ -25,7 +25,7 @@ all:	conflicts
 conflicts: conflicting.names unique.names
 	@if test `wc -l <conflicting.names` != `wc -l <unique.names`; then \
 		echo "Name conflicts found!" >&2; \
-		exit 1; \
+		/usr/bin/false; \
 	fi
 
 # pathconf.names is not included here because pathconf names are
