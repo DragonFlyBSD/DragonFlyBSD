@@ -1,7 +1,0 @@
-# $DragonFly: src/usr.bin/make/Makefile.dist,v 1.4 2005/06/16 20:44:13 okumoto Exp $
-# a very simple makefile...
-pmake:
-	@echo 'make started.'
-	cc -DDEFSHELLNAME=\"sh\" -I. -c *.c
-	cc *.o -o pmake
-	@echo 'make completed.'
