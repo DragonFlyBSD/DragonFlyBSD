@@ -292,6 +292,11 @@ struct adapter {
 	uint32_t		smartspeed;
 	int			int_throttle_ceil;
 
+	/* Polling */
+	int			npoll_stcount;
+	int			npoll_stfrac;
+	int			npoll_cpuid;
+
 	/*
 	 * Transmit definitions
 	 *

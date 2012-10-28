@@ -93,7 +93,7 @@
  *   if_input even if it is not serializer-aware.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -117,6 +117,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
@@ -265,8 +266,9 @@ static void	em_init(void *);
 static void	em_stop(struct adapter *);
 static int	em_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	em_start(struct ifnet *);
-#ifdef DEVICE_POLLING
-static void	em_poll(struct ifnet *, enum poll_cmd, int);
+#ifdef IFPOLL_ENABLE
+static void	em_npoll(struct ifnet *, struct ifpoll_info *);
+static void	em_npoll_compat(struct ifnet *, void *, int);
 #endif
 static void	em_watchdog(struct ifnet *);
 static void	em_media_status(struct ifnet *, struct ifmediareq *);
@@ -335,6 +337,10 @@ static int	em_sysctl_stats(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS);
+#ifdef IFPOLL_ENABLE
+static int	em_sysctl_npoll_stfrac(SYSCTL_HANDLER_ARGS);
+static int	em_sysctl_npoll_cpuid(SYSCTL_HANDLER_ARGS);
+#endif
 static void	em_add_sysctl(struct adapter *adapter);
 
 /* Management and WOL Support */
@@ -775,6 +781,12 @@ em_attach(device_t dev)
 	/* XXX disable wol */
 	adapter->wol = 0;
 
+	/* Polling setup */
+#ifdef IFPOLL_ENABLE
+	adapter->npoll_stfrac = 40 - 1;	/* 1/40 polling freq */
+	adapter->npoll_cpuid = device_get_unit(dev) % ncpus2;
+#endif
+
 	/* Setup OS specific network interface */
 	em_setup_ifp(adapter);
 
@@ -1115,8 +1127,8 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			if (adapter->hw.mac.type == e1000_82542 &&
 			    adapter->hw.revision_id == E1000_REVISION_2)
 				em_init_rx_unit(adapter);
-#ifdef DEVICE_POLLING
-			if (!(ifp->if_flags & IFF_POLLING))
+#ifdef IFPOLL_ENABLE
+			if (!(ifp->if_flags & IFF_NPOLLING))
 #endif
 				em_enable_intr(adapter);
 		}
@@ -1378,15 +1390,15 @@ em_init(void *xsc)
 		E1000_WRITE_REG(&adapter->hw, E1000_IVAR, 0x800A0908);
 	}
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENBLE
 	/*
 	 * Only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	if (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_NPOLLING)
 		em_disable_intr(adapter);
 	else
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 		em_enable_intr(adapter);
 
 	/* AMT based hardware can now take control from firmware */
@@ -1399,26 +1411,20 @@ em_init(void *xsc)
 	adapter->hw.phy.reset_disable = TRUE;
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+em_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
 	struct adapter *adapter = ifp->if_softc;
-	uint32_t reg_icr;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	switch (cmd) {
-	case POLL_REGISTER:
-		em_disable_intr(adapter);
-		break;
+	if (adapter->npoll_stcount-- == 0) {
+		uint32_t reg_icr;
 
-	case POLL_DEREGISTER:
-		em_enable_intr(adapter);
-		break;
+		adapter->npoll_stcount = adapter->npoll_stfrac;
 
-	case POLL_AND_CHECK_STATUS:
 		reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
 		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
 			callout_stop(&adapter->timer);
@@ -1426,20 +1432,40 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			em_update_link_status(adapter);
 			callout_reset(&adapter->timer, hz, em_timer, adapter);
 		}
-		/* FALL THROUGH */
-	case POLL_ONLY:
-		if (ifp->if_flags & IFF_RUNNING) {
-			em_rxeof(adapter, count);
-			em_txeof(adapter);
+	}
 
-			if (!ifq_is_empty(&ifp->if_snd))
-				if_devstart(ifp);
-		}
-		break;
+	em_rxeof(adapter, count);
+	em_txeof(adapter);
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+}
+
+static void
+em_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct adapter *adapter = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = adapter->npoll_cpuid;
+
+                info->ifpi_rx[cpuid].poll_func = em_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING)
+			em_disable_intr(adapter);
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING)
+			em_enable_intr(adapter);
+		ifp->if_npoll_cpuid = -1;
 	}
 }
 
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 
 static void
 em_intr(void *xsc)
@@ -2431,8 +2457,8 @@ em_setup_ifp(struct adapter *adapter)
 	ifp->if_init =  em_init;
 	ifp->if_ioctl = em_ioctl;
 	ifp->if_start = em_start;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = em_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = em_npoll;
 #endif
 	ifp->if_watchdog = em_watchdog;
 	ifq_set_maxlen(&ifp->if_snd, adapter->num_tx_desc - 1);
@@ -4017,6 +4043,18 @@ em_add_sysctl(struct adapter *adapter)
 		    CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
 		    em_sysctl_int_tx_nsegs, "I",
 		    "# segments per TX interrupt");
+
+#ifdef IFPOLL_ENABLE
+		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+		    SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO,
+		    "npoll_stfrac", CTLTYPE_INT | CTLFLAG_RW,
+		    adapter, 0, em_sysctl_npoll_stfrac, "I",
+		    "polling status frac");
+		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+		    SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO,
+		    "npoll_cpuid", CTLTYPE_INT | CTLFLAG_RW,
+		    adapter, 0, em_sysctl_npoll_cpuid, "I", "polling cpuid");
+#endif
 	}
 }
 
@@ -4303,3 +4341,54 @@ em_tso_setup(struct adapter *adapter, struct mbuf *mp,
 	adapter->next_avail_tx_desc = curr_txd;
 	return 1;
 }
+
+#ifdef IFPOLL_ENABLE
+
+static int
+em_sysctl_npoll_stfrac(SYSCTL_HANDLER_ARGS)
+{
+	struct adapter *adapter = arg1;
+	struct ifnet *ifp = &adapter->arpcom.ac_if;
+	int error = 0, stfrac;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	stfrac = adapter->npoll_stfrac + 1;
+	error = sysctl_handle_int(oidp, &stfrac, 0, req);
+	if (!error && req->newptr != NULL) {
+		if (stfrac < 1) {
+			error = EINVAL;
+		} else {
+			adapter->npoll_stfrac = stfrac - 1;
+			if (adapter->npoll_stcount > adapter->npoll_stfrac)
+				adapter->npoll_stcount = adapter->npoll_stfrac;
+		}
+	}
+
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+static int
+em_sysctl_npoll_cpuid(SYSCTL_HANDLER_ARGS)
+{
+	struct adapter *adapter = arg1;
+	struct ifnet *ifp = &adapter->arpcom.ac_if;
+	int error = 0, cpuid;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	cpuid = adapter->npoll_cpuid;
+	error = sysctl_handle_int(oidp, &cpuid, 0, req);
+	if (!error && req->newptr != NULL) {
+		if (cpuid < 0 || cpuid >= ncpus2)
+			error = EINVAL;
+		else
+			adapter->npoll_cpuid = cpuid;
+	}
+
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+#endif	/* IFPOLL_ENABLE */
