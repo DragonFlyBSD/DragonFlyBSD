@@ -13,7 +13,7 @@
 # Note that some of DragonFly's defaults differ from OpenBSD's, and
 # DragonFly has a few additional options.
 
-#VersionAddendum DragonFly-20110920
+#VersionAddendum DragonFly-20121028
 
 #Port 22
 #AddressFamily any
@@ -119,7 +119,6 @@ UsePrivilegeSeparation sandbox		# Default for new installations.
 #MaxStartups 10
 #PermitTunnel no
 #ChrootDirectory none
-#VersionAddendum none
 
 #XAuthLocation /usr/pkg/bin/xauth
 

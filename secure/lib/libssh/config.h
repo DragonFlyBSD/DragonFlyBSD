@@ -17,6 +17,9 @@
 /* Define if your resolver libs need this for getrrsetbyname */
 /* #undef BIND_8_COMPAT */
 
+/* The system has incomplete BSM API */
+/* #undef BROKEN_BSM_API */
+
 /* Define if cmsg_type is not passed correctly */
 /* #undef BROKEN_CMSG_TYPE */
 
@@ -238,7 +241,7 @@
 /* #undef HAVE_CRYPTO_SHA2_H */
 
 /* Define to 1 if you have the <crypt.h> header file. */
-#define HAVE_CRYPT_H 1
+/* #undef HAVE_CRYPT_H */
 
 /* Define if you are on Cygwin */
 /* #undef HAVE_CYGWIN */
@@ -436,7 +439,7 @@
 /* #undef HAVE_GETRRSETBYNAME */
 
 /* Define to 1 if you have the `getrusage' function. */
-#define HAVE_GETRUSAGE 1
+/* #undef HAVE_GETRUSAGE */
 
 /* Define to 1 if you have the `getseuserbyname' function. */
 /* #undef HAVE_GETSEUSERBYNAME */
@@ -501,6 +504,9 @@
 /* Define if HEADER.ad exists in arpa/nameser.h */
 #define HAVE_HEADER_AD 1
 
+/* Define to 1 if you have the `HMAC_CTX_init' function. */
+#define HAVE_HMAC_CTX_INIT 1
+
 /* Define if you have ut_host in utmp.h */
 #define HAVE_HOST_IN_UTMP 1
 
@@ -552,6 +558,9 @@
 /* Define to 1 if you have the <lastlog.h> header file. */
 /* #undef HAVE_LASTLOG_H */
 
+/* Define if you want ldns support */
+/* #undef HAVE_LDNS */
+
 /* Define to 1 if you have the <libaudit.h> header file. */
 /* #undef HAVE_LIBAUDIT_H */
 
@@ -562,7 +571,7 @@
 /* #undef HAVE_LIBCRYPT */
 
 /* Define to 1 if you have the `dl' library (-ldl). */
-/* #undef HAVE_LIBDL */
+#define HAVE_LIBDL 1
 
 /* Define to 1 if you have the <libgen.h> header file. */
 #define HAVE_LIBGEN_H 1
@@ -594,10 +603,19 @@
 /* Define to 1 if you have the <limits.h> header file. */
 #define HAVE_LIMITS_H 1
 
+/* Define to 1 if you have the <linux/audit.h> header file. */
+/* #undef HAVE_LINUX_AUDIT_H */
+
+/* Define to 1 if you have the <linux/filter.h> header file. */
+/* #undef HAVE_LINUX_FILTER_H */
+
 /* Define to 1 if you have the <linux/if_tun.h> header file. */
 /* #undef HAVE_LINUX_IF_TUN_H */
 
-/* Define if your libraries define login() */
+/* Define to 1 if you have the <linux/seccomp.h> header file. */
+/* #undef HAVE_LINUX_SECCOMP_H */
+
+/* Define to 1 if you have the `login' function. */
 #define HAVE_LOGIN 1
 
 /* Define to 1 if you have the <login_cap.h> header file. */
@@ -805,6 +823,9 @@
 /* Define to 1 if you have the `setgroups' function. */
 #define HAVE_SETGROUPS 1
 
+/* Define to 1 if you have the `setlinebuf' function. */
+#define HAVE_SETLINEBUF 1
+
 /* Define to 1 if you have the `setlogin' function. */
 #define HAVE_SETLOGIN 1
 
@@ -930,6 +951,9 @@
 
 /* Define to 1 if you have the `strmode' function. */
 #define HAVE_STRMODE 1
+
+/* Define to 1 if you have the `strnlen' function. */
+#define HAVE_STRNLEN 1
 
 /* Define to 1 if you have the `strnvis' function. */
 #define HAVE_STRNVIS 1
@@ -1317,6 +1341,9 @@
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "openssh"
 
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
+
 /* Define to the version of this package. */
 #define PACKAGE_VERSION "Portable"
 
@@ -1348,21 +1375,26 @@
 /* Sandbox using setrlimit(2) */
 #define SANDBOX_RLIMIT 1
 
+/* Sandbox using seccomp filter */
+/* #undef SANDBOX_SECCOMP_FILTER */
+
+/* setrlimit RLIMIT_FSIZE works */
+/* #undef SANDBOX_SKIP_RLIMIT_FSIZE */
+
 /* Sandbox using systrace(4) */
 /* #undef SANDBOX_SYSTRACE */
 
+/* Specify the system call convention in use */
+/* #undef SECCOMP_AUDIT_ARCH */
+
 /* Define if your platform breaks doing a seteuid before a setuid */
 /* #undef SETEUID_BREAKS_SETUID */
-
-/* The size of `char', as computed by sizeof. */
-#define SIZEOF_CHAR 1
 
 /* The size of `int', as computed by sizeof. */
 #define SIZEOF_INT 4
 
 /* The size of `long int', as computed by sizeof. */
-/* This doesn't matter since we have int64_t */
-#define SIZEOF_LONG_INT 4
+#define SIZEOF_LONG_INT 8
 
 /* The size of `long long int', as computed by sizeof. */
 #define SIZEOF_LONG_LONG_INT 8

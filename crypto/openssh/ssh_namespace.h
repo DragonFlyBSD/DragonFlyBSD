@@ -98,6 +98,7 @@
 #define channel_after_select			ssh_channel_after_select
 #define channel_by_id				ssh_channel_by_id
 #define channel_cancel_cleanup			ssh_channel_cancel_cleanup
+#define channel_cancel_lport_listener		ssh_channel_cancel_lport_listener
 #define channel_cancel_rport_listener		ssh_channel_cancel_rport_listener
 #define channel_clear_adm_permitted_opens	ssh_channel_clear_adm_permitted_opens
 #define channel_clear_permitted_opens		ssh_channel_clear_permitted_opens
@@ -106,6 +107,7 @@
 #define channel_connect_by_listen_address	ssh_channel_connect_by_listen_address
 #define channel_connect_stdio_fwd		ssh_channel_connect_stdio_fwd
 #define channel_connect_to			ssh_channel_connect_to
+#define channel_disable_adm_local_opens		ssh_channel_disable_adm_local_opens
 #define channel_find_open			ssh_channel_find_open
 #define channel_free				ssh_channel_free
 #define channel_free_all			ssh_channel_free_all
@@ -149,6 +151,7 @@
 #define channel_still_open			ssh_channel_still_open
 #define channel_stop_listening			ssh_channel_stop_listening
 #define channel_tcpwinsz			ssh_channel_tcpwinsz
+#define channel_update_permitted_opens		ssh_channel_update_permitted_opens
 #define check_host_in_hostfile			ssh_check_host_in_hostfile
 #define check_key_in_hostkeys			ssh_check_key_in_hostkeys
 #define choose_dh				ssh_choose_dh
@@ -433,6 +436,7 @@
 #define percent_expand				ssh_percent_expand
 #define permanently_drop_suid			ssh_permanently_drop_suid
 #define permanently_set_uid			ssh_permanently_set_uid
+#define permitopen_port				ssh_permitopen_port
 #define pkcs11_add_provider			ssh_pkcs11_add_provider
 #define pkcs11_del_provider			ssh_pkcs11_del_provider
 #define pkcs11_init				ssh_pkcs11_init
