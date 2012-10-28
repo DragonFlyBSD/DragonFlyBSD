@@ -45,6 +45,7 @@ openbsd-compat/fake-rfc2553.c
 openbsd-compat/getcwd.c
 openbsd-compat/getgrouplist.c
 openbsd-compat/getopt.c
+openbsd-compat/getrrsetbyname-ldns.c
 openbsd-compat/inet_aton.c
 openbsd-compat/inet_ntoa.c
 openbsd-compat/inet_ntop.c
@@ -66,6 +67,7 @@ openbsd-compat/sigact.c
 openbsd-compat/strlcat.c
 openbsd-compat/strlcpy.c
 openbsd-compat/strmode.c
+openbsd-compat/strnlen.c
 openbsd-compat/strptime.c
 openbsd-compat/strsep.c
 openbsd-compat/strtoll.c
@@ -79,6 +81,7 @@ opensshd.init.in
 regress/
 sandbox-darwin.c
 sandbox-null.c
+sandbox-seccomp-filter.c
 sandbox-systrace.c
 scard/
 scp.0
