@@ -39,7 +39,6 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vfsops.c,v 1.2.2.3 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.15 2007/09/03 17:06:23 dillon Exp $
  */
 
 /*
@@ -167,4 +166,5 @@ static struct vfsops linprocfs_vfsops = {
 
 VFS_SET(linprocfs_vfsops, linprocfs, VFCF_SYNTHETIC);
 MODULE_VERSION(linprocfs, 1);
+MODULE_DEPEND(linprocfs, linux, 1, 1, 1);
 MODULE_DEPEND(linprocfs, procfs, 1, 1, 1);
