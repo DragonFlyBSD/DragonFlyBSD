@@ -216,11 +216,6 @@ STRICTTMPPATH=	${CTOOLSDEST}/usr/sbin:${CTOOLSDEST}/usr/bin:${CTOOLSDEST}/bin:${
 TMPDIR?=	/tmp
 TMPPID!=	echo $$$$
 
-# Only use the host system make to bootstrap tools, including make itself
-# Use the bootstrap make for the rest of the world
-BTOOLMAKE=	${BTOOLSDEST}/usr/bin/make
-BTOOLCONFIG=	${BTOOLSDEST}/usr/sbin/config
-
 #
 # Building a world goes through the following stages
 #
@@ -250,7 +245,7 @@ BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		PATH=${BTOOLSPATH}:${PATH} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
-BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
+BMAKE=		${BMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
 		-DNOINFO -DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
 		-DNO_WERROR -DNO_NLS
 
@@ -262,7 +257,7 @@ TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		PATH=${BTOOLSPATH}:${PATH} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
-TMAKE=		${TMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
+TMAKE=		${TMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
 		-DNO_FORTRAN -DNOSHARED
 
 # cross-tool stage
@@ -280,7 +275,7 @@ XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		USRDATA_PREFIX=${WORLDDEST} \
 		PATH=${BTOOLSPATH}:${PATH}
 
-XMAKE=		${XMAKEENV} ${MAKE} -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB \
+XMAKE=		${XMAKEENV} make -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB \
 		-DBOOTSTRAPPING -DNOSHARED
 
 # world stage, note the strict path and note that TOOLS_PREFIX is left
@@ -306,13 +301,13 @@ WMAKEENV=	${CROSSENV} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh" \
 		PATH=${STRICTTMPPATH}
 
-WMAKE=		${WMAKEENV} ${BTOOLMAKE} -f Makefile.inc1
+WMAKE=		${WMAKEENV} make -f Makefile.inc1
 
 # install stage
 #
 IMAKEENV=	${CROSSENV} \
 		PATH=${STRICTTMPPATH}
-IMAKE=		${IMAKEENV} ${BTOOLMAKE} -f Makefile.inc1
+IMAKE=		${IMAKEENV} make -f Makefile.inc1
 
 # kernel stage
 #
@@ -474,12 +469,12 @@ reinstall:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> Making hierarchy"
 	@echo "--------------------------------------------------------------"
-	cd ${.CURDIR}; ${MAKE} -f Makefile.inc1 hierarchy
+	cd ${.CURDIR}; make -f Makefile.inc1 hierarchy
 	@echo
 	@echo "--------------------------------------------------------------"
 	@echo ">>> Installing everything.."
 	@echo "--------------------------------------------------------------"
-	cd ${.CURDIR}; ${MAKE} -f Makefile.inc1 install
+	cd ${.CURDIR}; make -f Makefile.inc1 install
 
 #
 # buildkernel, nativekernel, quickkernel, and installkernel
@@ -600,7 +595,7 @@ buildkernel:	bk_tools bk_build_list bk_kernwarn
 .if !defined(NO_KERNELCONFIG)
 	cd ${KRNLCONFDIR}; \
 		PATH=${STRICTTMPPATH} \
-		    ${BTOOLCONFIG} ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
+		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 			${KERNCONFDIR}/${_kernel}
 .endif
 .if !defined(NOCLEAN) && !defined(NO_KERNELCLEAN) && defined(KERNEL_VERSION_${_kernel})
@@ -609,10 +604,10 @@ buildkernel:	bk_tools bk_build_list bk_kernwarn
 	touch ${KRNLOBJDIR}/${_kernel}/.buildkernel_run
 .if !defined(NO_KERNELDEPEND)
 	cd ${KRNLOBJDIR}/${_kernel}; \
-	    ${KMAKEENV} ${BTOOLMAKE} KERNEL=${INSTKERNNAME} depend
+	    ${KMAKEENV} make KERNEL=${INSTKERNNAME} depend
 .endif
 	cd ${KRNLOBJDIR}/${_kernel}; \
-	    ${KMAKEENV} ${BTOOLMAKE} KERNEL=${INSTKERNNAME} all
+	    ${KMAKEENV} make KERNEL=${INSTKERNNAME} all
 	@echo "--------------------------------------------------------------"
 	@echo ">>> Kernel build for ${_kernel} completed on `LC_ALL=C date`"
 	@echo "--------------------------------------------------------------"
@@ -648,13 +643,13 @@ nativekernel:	bk_build_list bk_kernwarn
 	touch ${KRNLOBJDIR}/${_kernel}/.nativekernel_run
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    MAKESRCPATH=${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm \
-	    ${MAKE} -DBOOTSTRAPPING -f ${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm/Makefile
+	    make -DBOOTSTRAPPING -f ${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm/Makefile
 .if !defined(NO_KERNELDEPEND)
 	cd ${KRNLOBJDIR}/${_kernel}; \
-	    ${MAKE} KERNEL=${INSTKERNNAME} depend
+	    make KERNEL=${INSTKERNNAME} depend
 .endif
 	cd ${KRNLOBJDIR}/${_kernel}; \
-	    ${MAKE} KERNEL=${INSTKERNNAME} all
+	    make KERNEL=${INSTKERNNAME} all
 	@echo "--------------------------------------------------------------"
 	@echo ">>> Kernel build for ${_kernel} completed on `LC_ALL=C date`"
 	@echo "--------------------------------------------------------------"
@@ -676,11 +671,11 @@ quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 .if !defined(NO_KERNELCONFIG)
 	cd ${KRNLCONFDIR}; \
 		PATH=${STRICTTMPPATH} \
-		    ${BTOOLCONFIG} ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
+		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 			${KERNCONFDIR}/${_kernel}
 .endif
 	cd ${KRNLOBJDIR}/${_kernel}; \
-	    ${KMAKEENV} ${BTOOLMAKE} KERNEL=${INSTKERNNAME} all
+	    ${KMAKEENV} make KERNEL=${INSTKERNNAME} all
 .else
 .if !defined(NO_KERNELCONFIG)
 	cd ${KRNLCONFDIR}; \
@@ -688,7 +683,7 @@ quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 		${KERNCONFDIR}/${_kernel}
 .endif
 	cd ${KRNLOBJDIR}/${_kernel}; \
-	    ${MAKE} KERNEL=${INSTKERNNAME} all
+	    make KERNEL=${INSTKERNNAME} all
 .endif
 	@echo "--------------------------------------------------------------"
 	@echo ">>> Kernel build for ${_kernel} completed on `LC_ALL=C date`"
@@ -706,10 +701,10 @@ installkernel reinstallkernel:
 	@echo "--------------------------------------------------------------"
 .if exists(${KRNLOBJDIR}/${INSTALLKERNEL}/.buildkernel_run)
 	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
-	    ${IMAKEENV} ${BTOOLMAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
+	    ${IMAKEENV} make KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
 .else
 	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
-	    ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
+	    make KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
 .endif
 
 #
@@ -722,7 +717,7 @@ most:
 	@echo ">>> Building programs only"
 	@echo "--------------------------------------------------------------"
 .for _dir in bin sbin libexec usr.bin usr.sbin gnu/libexec gnu/usr.bin gnu/usr.sbin
-	cd ${.CURDIR}/${_dir};		${MAKE} DIRPRFX=${_dir}/ all
+	cd ${.CURDIR}/${_dir};		make DIRPRFX=${_dir}/ all
 .endfor
 
 #
@@ -736,7 +731,7 @@ installmost:
 	@echo ">>> Installing programs only"
 	@echo "--------------------------------------------------------------"
 .for _dir in bin sbin libexec usr.bin usr.sbin gnu/libexec gnu/usr.bin gnu/usr.sbin
-	cd ${.CURDIR}/${_dir};		${MAKE} DIRPRFX=${_dir}/ install
+	cd ${.CURDIR}/${_dir};		make DIRPRFX=${_dir}/ install
 .endfor
 
 #
@@ -800,10 +795,10 @@ bootstrap-tools-targets: ${BSTRAPDIRS:S/^/bstrap-/}
 bstrap-${_tool}!
 	${ECHODIR} "===> ${_tool} (bootstrap-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
-		${MAKE} DIRPRFX=${_tool}/ obj; \
-		${MAKE} DIRPRFX=${_tool}/ depend; \
-		${MAKE} DIRPRFX=${_tool}/ all; \
-		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
+		make DIRPRFX=${_tool}/ obj; \
+		make DIRPRFX=${_tool}/ depend; \
+		make DIRPRFX=${_tool}/ all; \
+		make DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
 
 # build-tools: Build special purpose build tools.
@@ -839,10 +834,10 @@ build-tools-targets: ${BTOOLSDIRS:S/^/btools-/}
 btools-${_tool}!
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
-		${MAKE} DIRPRFX=${_tool}/ obj; \
-		${MAKE} DIRPRFX=${_tool}/ depend; \
-		${MAKE} DIRPRFX=${_tool}/ all; \
-		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
+		make DIRPRFX=${_tool}/ obj; \
+		make DIRPRFX=${_tool}/ depend; \
+		make DIRPRFX=${_tool}/ all; \
+		make DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
 
 #
@@ -864,17 +859,17 @@ cross-tools-targets: ${CTOOLSDIRS:S/^/ctools-/}
 ctools-${_tool}!
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
-		${MAKE} DIRPRFX=${_tool}/ obj; \
-		${MAKE} DIRPRFX=${_tool}/ depend; \
-		${MAKE} DIRPRFX=${_tool}/ all; \
-		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${CTOOLSDEST} install
+		make DIRPRFX=${_tool}/ obj; \
+		make DIRPRFX=${_tool}/ depend; \
+		make DIRPRFX=${_tool}/ all; \
+		make DIRPRFX=${_tool}/ DESTDIR=${CTOOLSDEST} install
 .endfor
 
 #
 # hierarchy - ensure that all the needed directories are present
 #
 hierarchy:
-	cd ${.CURDIR}/etc;		${MAKE} distrib-dirs
+	cd ${.CURDIR}/etc;		make distrib-dirs
 
 #
 # libraries - build all libraries, and install them under ${DESTDIR}.
@@ -890,15 +885,15 @@ libraries:
 .if !defined(NO_GCC47)
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
-		${BTOOLMAKE} -f Makefile.inc1 _startup_libs47;
+		make -f Makefile.inc1 _startup_libs47;
 .endif
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc44 \
-		${BTOOLMAKE} -f Makefile.inc1 _startup_libs44;
+		make -f Makefile.inc1 _startup_libs44;
 	cd ${.CURDIR}; \
-	    ${BTOOLMAKE} -f Makefile.inc1 _startup_libs; \
-	    ${BTOOLMAKE} -f Makefile.inc1 _prebuild_libs; \
-	    ${BTOOLMAKE} -f Makefile.inc1 _generic_libs;
+	    make -f Makefile.inc1 _startup_libs; \
+	    make -f Makefile.inc1 _prebuild_libs; \
+	    make -f Makefile.inc1 _generic_libs;
 	touch ${WORLDDEST}/.libraries_done
 
 # These dependencies are not automatically generated:
@@ -953,9 +948,9 @@ ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
 	${ECHODIR} "===> ${_lib}"; \
 		cd ${.CURDIR}/${_lib}; \
-		${MAKE} DIRPRFX=${_lib}/ depend; \
-		${MAKE} DIRPRFX=${_lib}/ all; \
-		${MAKE} DIRPRFX=${_lib}/ install
+		make DIRPRFX=${_lib}/ depend; \
+		make DIRPRFX=${_lib}/ all; \
+		make DIRPRFX=${_lib}/ install
 .endif
 .endfor
 
@@ -986,7 +981,7 @@ ${entry}.${__target}__D: .PHONY
 		edir=${entry}; \
 		cd ${.CURDIR}/$${edir}; \
 	fi; \
-	${BTOOLMAKE} ${__target} DIRPRFX=${DIRPRFX}$${edir}/
+	make ${__target} DIRPRFX=${DIRPRFX}$${edir}/
 .endfor
 par-${__target}: ${SUBDIR:S/$/.${__target}__D/}
 .ORDER: ${SUBDIR:S/$/.${__target}__D/}
@@ -997,25 +992,25 @@ par-${__target}: ${SUBDIR:S/$/.${__target}__D/}
 # world build environment.
 #
 wmake:
-	@echo '${WMAKEENV} ${BTOOLMAKE} ${WMAKE_ARGS}'
+	@echo '${WMAKEENV} make ${WMAKE_ARGS}'
 
 wmakeenv:
 	@echo '${WMAKEENV} /bin/sh'
 
 bmake:
-	@echo '${BMAKEENV} ${BTOOLMAKE} ${BMAKE_ARGS}'
+	@echo '${BMAKEENV} make ${BMAKE_ARGS}'
 
 bmakeenv:
 	@echo '${BMAKEENV} /bin/sh'
 
 tmake:
-	@echo '${TMAKEENV} ${BTOOLMAKE} ${TMAKE_ARGS}'
+	@echo '${TMAKEENV} make ${TMAKE_ARGS}'
 
 tmakeenv:
 	@echo '${TMAKEENV} /bin/sh'
 
 xmake:
-	@echo '${XMAKEENV} ${BTOOLMAKE} ${XMAKE_ARGS}'
+	@echo '${XMAKEENV} make ${XMAKE_ARGS}'
 
 xmakeenv:
 	@echo '${XMAKEENV} /bin/sh'
