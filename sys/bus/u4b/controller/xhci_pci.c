@@ -88,6 +88,14 @@ MODULE_DEPEND(xhci, usb, 1, 1, 1);
 static const char *
 xhci_pci_match(device_t self)
 {
+	uint32_t device_id = pci_get_devid(self);
+
+	switch(device_id) {
+	case 0x70231b6f:
+		return "Etron EJ168 USB 3.0 Host Controller";
+	default:
+		break;
+        }
 	if ((pci_get_class(self) == PCIC_SERIALBUS)
 	    && (pci_get_subclass(self) == PCIS_SERIALBUS_USB)
 	    && (pci_get_progif(self) == PCIP_SERIALBUS_USB_XHCI)) {
