@@ -539,4 +539,5 @@ const char *syscallnames[] = {
 	"swapoff",			/* 529 = swapoff */
 	"vquotactl",			/* 530 = vquotactl */
 	"linkat",			/* 531 = linkat */
+	"eaccess",			/* 532 = eaccess */
 };

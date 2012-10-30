@@ -321,6 +321,9 @@ int	 chown(const char *, uid_t, gid_t);
 int	 close(int);
 int	 dup(int);
 int	 dup2(int, int);
+#if __BSD_VISIBLE
+int	 eaccess(const char *, int);
+#endif
 int	 execl(const char *, const char *, ...);
 int	 execle(const char *, const char *, ...);
 int	 execlp(const char *, const char *, ...);

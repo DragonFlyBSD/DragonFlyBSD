@@ -371,4 +371,5 @@
 #define	SYS_swapoff	529
 #define	SYS_vquotactl	530
 #define	SYS_linkat	531
-#define	SYS_MAXSYSCALL	532
+#define	SYS_eaccess	532
+#define	SYS_MAXSYSCALL	533

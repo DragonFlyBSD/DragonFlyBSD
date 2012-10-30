@@ -747,3 +747,4 @@
 			    struct plistref *pref); }
 531	STD	POSIX	{ int linkat(int fd1, char *path1, int fd2, \
 				char *path2, int flags); }
+532	STD	BSD	{ int eaccess(char *path, int flags); }

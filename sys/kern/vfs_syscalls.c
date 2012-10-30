@@ -2641,6 +2641,25 @@ sys_access(struct access_args *uap)
 
 
 /*
+ * eaccess_args(char *path, int flags)
+ *
+ * Check access permissions.
+ */
+int
+sys_eaccess(struct eaccess_args *uap)
+{
+	struct nlookupdata nd;
+	int error;
+
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_access(&nd, uap->flags, AT_EACCESS);
+	nlookup_done(&nd);
+	return (error);
+}
+
+
+/*
  * faccessat_args(int fd, char *path, int amode, int flags)
  *
  * Check access permissions.

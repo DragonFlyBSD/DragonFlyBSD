@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,16 +26,16 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)access.2	8.2 (Berkeley) 4/1/94
-.\" $FreeBSD: src/lib/libc/sys/access.2,v 1.7.2.5 2002/10/12 22:02:53 rwatson Exp $
-.\" $DragonFly: src/lib/libc/sys/access.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $FreeBSD: release/9.0.0/lib/libc/sys/access.2 208027 2010-05-13 12:07:55Z uqs $
 .\"
-.Dd August 23, 2009
+.Dd October 30, 2012
 .Dt ACCESS 2
 .Os
 .Sh NAME
 .Nm access ,
+.Nm eaccess ,
 .Nm faccessat
-.Nd check access permissions of a file or pathname
+.Nd check accessibility of a file
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -47,87 +43,97 @@
 .Ft int
 .Fn access "const char *path" "int mode"
 .Ft int
-.Fn faccessat "int fd" "const char *path" "int mode" "int flags"
+.Fn eaccess "const char *path" "int mode"
+.Ft int
+.Fn faccessat "int fd" "const char *path" "int mode" "int flag"
 .Sh DESCRIPTION
 The
 .Fn access
-function checks the accessibility of the
+and
+.Fn eaccess
+system calls check the accessibility of the
 file named by
+the
 .Fa path
+argument
 for the access permissions indicated by
-.Fa mode .
+the
+.Fa mode
+argument.
 The value of
 .Fa mode
-is the bitwise inclusive OR of the access permissions to be
+is either the bitwise-inclusive OR of the access permissions to be
 checked
-.Pf ( Dv R_OK
+.Dv ( R_OK
 for read permission,
 .Dv W_OK
-for write permission and
+for write permission, and
 .Dv X_OK
-for execute/search permission) or the existence test,
-.Dv F_OK .
-All components of the pathname
+for execute/search permission),
+or the existence test
+.Pq Dv F_OK .
+.Pp
+For additional information, see the
+.Sx "File Access Permission"
+section of
+.Xr intro 2 .
+.Pp
+The
+.Fn eaccess
+system call uses
+the effective user ID and the group access list
+to authorize the request;
+the
+.Fn access
+system call uses
+the real user ID in place of the effective user ID,
+the real group ID in place of the effective group ID,
+and the rest of the group access list.
+.Pp
+The
+.Fn faccessat
+system call is equivalent to
+.Fn access
+except in the case where
 .Fa path
-are checked for access permissions (including
-.Dv F_OK ) .
+specifies a relative path.
+In this case the file whose accessibility is to be determined is
+located relative to the directory associated with the file descriptor
+.Fa fd
+instead of the current working directory.
+If
+.Fn faccessat
+is passed the special value
+.Dv AT_FDCWD
+in the
+.Fa fd
+parameter, the current working directory is used and the behavior is
+identical to a call to
+.Fn access .
+Values for
+.Fa flag
+are constructed by a bitwise-inclusive OR of flags from the following
+list, defined in
+.In fcntl.h :
+.Bl -tag -width indent
+.It Dv AT_EACCESS
+The checks for accessibility are performed using the effective user and group
+IDs instead of the real user and group ID as required in a call to
+.Fn access .
+.El
 .Pp
-The real user ID is used in place of the effective user ID
-and the real group access list
-(including the real group ID) are
-used in place of the effective ID for verifying permission.
-.Pp
-Even if a process has appropriate privileges and indicates success for
+Even if a process's real or effective user has appropriate privileges
+and indicates success for
 .Dv X_OK ,
 the file may not actually have execute permission bits set.
 Likewise for
 .Dv R_OK
 and
 .Dv W_OK .
-.Pp
-The
-.Fn faccessat
-function
-operates as the
-.Fn access
-function but uses either the effective and group IDs or real ones depending on
-the value of
-.Fa flags .
-.Pp
-The values for the
-.Fa flags
-are constructed by a bitwise-inclusive OR of flags from the following list,
-defined in
-.In fcntl.h :
-.Bl -tag -width indent
-.It Dv AT_EACCESS
-Use effective user and group IDs.
-.El
-.Pp
-If
-.Fa path
-specifies a relative path the file to access is determined relative to the
-directory associated with the file descriptor
-.Fa fd
-instead of the current working directory.
-If
-.Fa fd
-is the special value
-.Dv AT_FDCWD
-the current working directory is used and the behavior is identical to a call to
-.Fn access .
 .Sh RETURN VALUES
-If
-.Fa path
-cannot be found or if any of the desired access modes would
-not be granted, then a -1 value is returned; otherwise
-a 0 value is returned.
+.Rv -std
 .Sh ERRORS
-The
-.Fn access
-and
-.Fn faccessat
-functions can fail with:
+Access to the file is denied if:
 .Bl -tag -width Er
 .It Bq Er ENOTDIR
 A component of the path prefix is not a directory.
@@ -146,65 +152,84 @@ file presently being executed.
 .It Bq Er EACCES
 Permission bits of the file mode do not permit the requested
 access, or search permission is denied on a component of the
-path prefix.  The owner of a file has permission checked with
-respect to the ``owner'' read, write, and execute mode bits,
-members of the file's group other than the owner have permission
-checked with respect to the ``group'' mode bits, and all
-others have permissions checked with respect to the ``other''
-mode bits.
+path prefix.
 .It Bq Er EFAULT
-.Fa Path
+The
+.Fa path
+argument
 points outside the process's allocated address space.
 .It Bq Er EIO
 An I/O error occurred while reading from or writing to the file system.
 .El
 .Pp
-In addition the
+Also, the
 .Fn faccessat
-function can fail with:
+system call may fail if:
 .Bl -tag -width Er
 .It Bq Er EBADF
-.Fa fd
-is not a valid file descriptor.
-.It Bq Er ENOTDIR
+The
 .Fa path
-is relative and
+argument does not specify an absolute path and the
 .Fa fd
-does not point to a directory.
+argument is
+neither
+.Dv AT_FDCWD
+nor a valid file descriptor.
 .It Bq Er EINVAL
-.Fa flags
-contains unsupported flags.
+The value of the
+.Fa flag
+argument is not valid.
+.It Bq Er ENOTDIR
+The
+.Fa path
+argument is not an absolute path and
+.Fa fd
+is neither
+.Dv AT_FDCWD
+nor a file descriptor associated with a directory.
 .El
 .Sh SEE ALSO
 .Xr chmod 2 ,
+.Xr intro 2 ,
 .Xr stat 2
 .Sh STANDARDS
 The
 .Fn access
-function call is expected to conform to
+system call is expected to conform to
 .St -p1003.1-90 .
-.Pp
 The
 .Fn faccessat
-function call is expected to conform to
-.St -p1003.1-2008 .
-.Sh CAVEAT
-.Fn Access
-is a potential security hole due to race conditions and
-should never be used.
-Setuid and setgid applications should either use the
-.Fn faccessat
-function or restore the effective uid or gid
-and perform actions directly rather than use
-.Fn access
-to simulate access checks for the real user of group id.
+system call follows The Open Group Extended API Set 2 specification.
 .Sh HISTORY
-An
+The
 .Fn access
-function call appeared in
+function appeared in
 .At v7 .
-.Pp
 The
 .Fn faccessat
 system call appeared in
 .Dx 2.3 .
+.Sh SECURITY CONSIDERATIONS
+The
+.Fn access
+system call
+is a potential security hole due to race conditions and
+should never be used.
+Set-user-ID and set-group-ID applications should restore the
+effective user or group ID,
+and perform actions directly rather than use
+.Fn access
+to simulate access checks for the real user or group ID.
+The
+.Fn eaccess
+system call
+likewise may be subject to races if used inappropriately.
+.Pp
+.Fn access
+remains useful for providing clues to users as to whether operations
+make sense for particular filesystem objects (e.g. 'delete' menu
+item only highlighted in a writable folder ... avoiding interpretation
+of the st_mode bits that the application might not understand --
+e.g. in the case of AFS).
+It also allows a cheaper file existence test than
+.Xr stat 2 .

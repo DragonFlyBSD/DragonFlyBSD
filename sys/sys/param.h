@@ -93,9 +93,10 @@
  * 300103 - if SIG_IGN is set on SIGCHLD, do not keep zombie children
  * 300200 - 3.2 release
  * 300300 - 3.3 master
+ * 300301 - Add eaccess syscall
 */
 #undef __DragonFly_version
-#define __DragonFly_version 300300	/* propagated to newvers */
+#define __DragonFly_version 300301	/* propagated to newvers */
 
 #include <sys/_null.h>
 

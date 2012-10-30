@@ -2291,6 +2291,13 @@ struct	linkat_args {
 	char *	path2;	char path2_[PAD_(char *)];
 	int	flags;	char flags_[PAD_(int)];
 };
+struct	eaccess_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	char *	path;	char path_[PAD_(char *)];
+	int	flags;	char flags_[PAD_(int)];
+};
 
 #ifdef COMPAT_43
 
@@ -2899,6 +2906,7 @@ int	sys_symlinkat (struct symlinkat_args *);
 int	sys_swapoff (struct swapoff_args *);
 int	sys_vquotactl (struct vquotactl_args *);
 int	sys_linkat (struct linkat_args *);
+int	sys_eaccess (struct eaccess_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

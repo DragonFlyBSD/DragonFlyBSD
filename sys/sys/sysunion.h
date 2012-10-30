@@ -408,4 +408,5 @@ union sysunion {
 	struct	swapoff_args swapoff;
 	struct	vquotactl_args vquotactl;
 	struct	linkat_args linkat;
+	struct	eaccess_args eaccess;
 };
