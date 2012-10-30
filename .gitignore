@@ -1,9 +1,15 @@
 *.[1-9].gz
+!share/examples/splash/dfly.bmp.gz
 *.[psS]o
+!/contrib/nvi/docs/USD.doc/vi.ref/index.so
+!/contrib/nvi/docs/USD.doc/vi.ref/ref.so
 *.a
+!/bin/csh/USD.doc/csh.a
 *.bak
 *.core
 *.diff
+!/contrib/groff/src/devices/grops/psfig.diff
+!/lib/libstand/bzlib.c.diff
 *.o
 *.old
 *.orig
