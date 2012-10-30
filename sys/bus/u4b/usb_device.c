@@ -319,7 +319,7 @@ usbd_get_endpoint(struct usb_device *udev, uint8_t iface_index,
 	 * address" and "any direction" returns the first endpoint of the
 	 * interface. "iface_index" and "direction" is ignored:
 	 */
-	if ((udev->ctrl_ep.edesc) &&
+	if ((udev->ctrl_ep.edesc != NULL) &&
 	    ((udev->ctrl_ep.edesc->bEndpointAddress & ea_mask) == ea_val) &&
 	    ((udev->ctrl_ep.edesc->bmAttributes & type_mask) == type_val) &&
 	    (!index)) {
@@ -354,7 +354,6 @@ usbd_interface_count(struct usb_device *udev, uint8_t *count)
 	return (USB_ERR_NORMAL_COMPLETION);
 }
 
-
 /*------------------------------------------------------------------------*
  *	usb_init_endpoint
  *
@@ -369,6 +368,7 @@ usb_init_endpoint(struct usb_device *udev, uint8_t iface_index,
     struct usb_endpoint *ep)
 {
 	struct usb_bus_methods *methods;
+	usb_stream_t x;
 
 	methods = udev->bus->methods;
 
@@ -378,12 +378,24 @@ usb_init_endpoint(struct usb_device *udev, uint8_t iface_index,
 	ep->edesc = edesc;
 	ep->ecomp = ecomp;
 	ep->iface_index = iface_index;
-	TAILQ_INIT(&ep->endpoint_q.head);
-	ep->endpoint_q.command = &usbd_pipe_start;
+	
+	for (x = 0; x != USB_MAX_EP_STREAMS; x++) {
+		TAILQ_INIT(&ep->endpoint_q[x].head);
+		ep->endpoint_q[x].command = &usbd_pipe_start;
+	}
 
 	/* the pipe is not supported by the hardware */
  	if (ep->methods == NULL)
 		return;
+
+	/* check for SUPER-speed streams mode endpoint */
+	if (udev->speed == USB_SPEED_SUPER && ecomp != NULL &&
+	    (edesc->bmAttributes & UE_XFERTYPE) == UE_BULK &&
+	    (UE_GET_BULK_STREAMS(ecomp->bmAttributes) != 0)) {
+		usbd_set_endpoint_mode(udev, ep, USB_EP_MODE_STREAMS);
+	} else {
+		usbd_set_endpoint_mode(udev, ep, USB_EP_MODE_DEFAULT);
+	}
 
 	/* clear stall, if any */
 	if (methods->clear_stall != NULL) {
@@ -749,10 +761,13 @@ usb_config_parse(struct usb_device *udev, uint8_t iface_index, uint8_t cmd)
 		if (do_init) {
 			/* setup the USB interface structure */
 			iface->idesc = id;
-			/* default setting */
-			iface->parent_iface_index = USB_IFACE_INDEX_ANY;
 			/* set alternate index */
 			iface->alt_index = alt_index;
+			/* set default interface parent */
+			if (iface_index == USB_IFACE_INDEX_ANY) {
+				iface->parent_iface_index =
+					USB_IFACE_INDEX_ANY;
+			}
 		}
 
 		DPRINTFN(5, "found idesc nendpt=%d\n", id->bNumEndpoints);
@@ -929,6 +944,7 @@ usbd_set_endpoint_stall(struct usb_device *udev, struct usb_endpoint *ep,
     uint8_t do_stall)
 {
 	struct usb_xfer *xfer;
+	usb_stream_t x;
 	uint8_t et;
 	uint8_t was_stalled;
 
@@ -971,27 +987,34 @@ usbd_set_endpoint_stall(struct usb_device *udev, struct usb_endpoint *ep,
 
 	if (do_stall || (!was_stalled)) {
 		if (!was_stalled) {
-			/* lookup the current USB transfer, if any */
-			xfer = ep->endpoint_q.curr;
-		} else {
-			xfer = NULL;
+			for (x = 0; x != USB_MAX_EP_STREAMS; x++) {
+				/* lookup the current USB transfer, if any */
+				xfer = ep->endpoint_q[x].curr;
+				if (xfer != NULL) {
+					/*
+					 * The "xfer_stall" method
+					 * will complete the USB
+					 * transfer like in case of a
+					 * timeout setting the error
+					 * code "USB_ERR_STALLED".
+					 */
+					(udev->bus->methods->xfer_stall) (xfer);
+				}
+			}
 		}
-
-		/*
-		 * If "xfer" is non-NULL the "set_stall" method will
-		 * complete the USB transfer like in case of a timeout
-		 * setting the error code "USB_ERR_STALLED".
-		 */
-		(udev->bus->methods->set_stall) (udev, xfer, ep, &do_stall);
+		(udev->bus->methods->set_stall) (udev, ep, &do_stall);
 	}
 	if (!do_stall) {
 		ep->toggle_next = 0;	/* reset data toggle */
 		ep->is_stalled = 0;	/* clear stalled state */
 
 		(udev->bus->methods->clear_stall) (udev, ep);
-
-		/* start up the current or next transfer, if any */
-		usb_command_wrapper(&ep->endpoint_q, ep->endpoint_q.curr);
+		
+				/* start the current or next transfer, if any */
+		for (x = 0; x != USB_MAX_EP_STREAMS; x++) {
+			usb_command_wrapper(&ep->endpoint_q[x],
+			    ep->endpoint_q[x].curr);
+		}
 	}
 	USB_BUS_UNLOCK(udev->bus);
 	return (0);
@@ -1229,7 +1252,11 @@ usbd_set_parent_iface(struct usb_device *udev, uint8_t iface_index,
     uint8_t parent_index)
 {
 	struct usb_interface *iface;
-
+	
+	if (udev == NULL) {
+		/* nothing to do */
+		return;
+	}
 	iface = usbd_get_iface(udev, iface_index);
 	if (iface) {
 		iface->parent_iface_index = parent_index;
@@ -1535,6 +1562,12 @@ usb_alloc_device(device_t parent_dev, struct usb_bus *bus,
 		return (NULL);
 	}
 	udev = kmalloc(sizeof(*udev), M_USB, M_WAITOK | M_ZERO);
+
+	if (udev == NULL) {
+		device_printf(bus->bdev,
+		    "Allocation of usb device memory failed\n");
+		return (NULL);
+	}
 #if 0
 	/* initialise our SX-lock */
 	sx_init_flags(&udev->ctrl_sx, "USB device SX lock", SX_DUPOK);
@@ -1542,8 +1575,8 @@ usb_alloc_device(device_t parent_dev, struct usb_bus *bus,
 	sx_init_flags(&udev->enum_sx, "USB config SX lock", SX_DUPOK);
 	sx_init_flags(&udev->sr_sx, "USB suspend and resume SX lock", SX_NOWITNESS);
 #endif
-	lockinit(&udev->ctrl_lock, "USB device SX lock", 0, 0);
-	lockinit(&udev->enum_lock, "USB config SX lock", 0, 0);
+	lockinit(&udev->ctrl_lock, "USB device SX lock", 0, LK_CANRECURSE);
+	lockinit(&udev->enum_lock, "USB config SX lock", 0, LK_CANRECURSE);
 	lockinit(&udev->sr_lock, "USB suspend and resume SX lock", 0, 0);
 
 	cv_init(&udev->ctrlreq_cv, "WCTRL");
@@ -1896,6 +1929,8 @@ done:
 		/*
 		 * Free USB device and all subdevices, if any.
 		 */
+		device_printf(bus->bdev,
+		    "Error during allocation of usb device\n");
 		usb_free_device(udev, 0);
 		udev = NULL;
 	}
@@ -1925,7 +1960,7 @@ usb_make_dev(struct usb_device *udev, const char *devname, int ep,
 		ksnprintf(buffer, sizeof(buffer), USB_DEVICE_DIR "/%u.%u.%u",
 		    pd->bus_index, pd->dev_index, pd->ep_addr);
 	}
-
+	/* usb_ops */
 	pd->cdev = make_dev(&usb_ops, 0, uid, gid, mode, "%s", devname);
 
 	if (pd->cdev == NULL) {
@@ -2441,11 +2476,9 @@ usbd_get_device_index(struct usb_device *udev)
 static void
 usb_notify_addq(const char *type, struct usb_device *udev)
 {
-#if 0
 	struct usb_interface *iface;
-	int i;
-#endif
 	struct sbuf *sb;
+	int i;
 
 	/* announce the device */
 	sb = sbuf_new(NULL, NULL, 4096, SBUF_AUTOEXTEND);
@@ -2488,7 +2521,6 @@ usb_notify_addq(const char *type, struct usb_device *udev)
 	devctl_notify("USB", "DEVICE", type, sbuf_data(sb));
 	sbuf_delete(sb);
 
-#if 0
 	/* announce each interface */
 	for (i = 0; i < USB_IFACE_MAX; i++) {
 		iface = usbd_get_iface(udev, i);
@@ -2536,7 +2568,6 @@ usb_notify_addq(const char *type, struct usb_device *udev)
 		devctl_notify("USB", "INTERFACE", type, sbuf_data(sb));
 		sbuf_delete(sb);
 	}
-#endif
 }
 #endif
 
@@ -2761,4 +2792,48 @@ usbd_add_dynamic_quirk(struct usb_device *udev, uint16_t quirk)
 		}
 	}
 	return (USB_ERR_NOMEM);
+}
+
+/*
+ * The following function is used to select the endpoint mode. It
+ * should not be called outside enumeration context.
+ */
+
+usb_error_t
+usbd_set_endpoint_mode(struct usb_device *udev, struct usb_endpoint *ep,
+    uint8_t ep_mode)
+{   
+	usb_error_t error;
+	uint8_t do_unlock;
+
+	/* automatic locking */
+	if (usbd_enum_is_locked(udev)) {
+		do_unlock = 0;
+	} else {
+		do_unlock = 1;
+		usbd_enum_lock(udev);
+	}
+
+	if (udev->bus->methods->set_endpoint_mode != NULL) {
+		error = (udev->bus->methods->set_endpoint_mode) (
+		    udev, ep, ep_mode);
+	} else if (ep_mode != USB_EP_MODE_DEFAULT) {
+		error = USB_ERR_INVAL;
+	} else {
+		error = 0;
+	}
+
+	/* only set new mode regardless of error */
+	ep->ep_mode = ep_mode;
+
+	if (do_unlock)
+		usbd_enum_unlock(udev);
+
+	return (error);
+}
+
+uint8_t
+usbd_get_endpoint_mode(struct usb_device *udev, struct usb_endpoint *ep)
+{
+	return (ep->ep_mode);
 }

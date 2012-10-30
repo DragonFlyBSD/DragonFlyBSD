@@ -71,14 +71,6 @@ SYSCTL_INT(_hw_usb, OID_AUTO, no_cs_fail, CTLFLAG_RW,
     &usb_no_cs_fail, 0, "USB clear stall failures are ignored, if set");
 
 #ifdef USB_DEBUG
-static int usb_pr_poll_delay = USB_PORT_RESET_DELAY;
-static int usb_pr_recovery_delay = USB_PORT_RESET_RECOVERY;
-
-SYSCTL_INT(_hw_usb, OID_AUTO, pr_poll_delay, CTLFLAG_RW,
-    &usb_pr_poll_delay, 0, "USB port reset poll delay in ms");
-SYSCTL_INT(_hw_usb, OID_AUTO, pr_recovery_delay, CTLFLAG_RW,
-    &usb_pr_recovery_delay, 0, "USB port reset recovery delay in ms");
-
 #ifdef USB_REQ_DEBUG
 /* The following structures are used in connection to fault injection. */
 struct usb_ctrl_debug {
@@ -226,6 +218,7 @@ usb_do_clear_stall_callback(struct usb_xfer *xfer, usb_error_t error)
 	struct usb_endpoint *ep;
 	struct usb_endpoint *ep_end;
 	struct usb_endpoint *ep_first;
+	usb_stream_t x;
 	uint8_t to;
 
 	udev = xfer->xroot->udev;
@@ -253,9 +246,11 @@ tr_transferred:
 			ep->is_stalled = 0;
 			/* some hardware needs a callback to clear the data toggle */
 			usbd_clear_stall_locked(udev, ep);
-			/* start up the current or next transfer, if any */
-			usb_command_wrapper(&ep->endpoint_q,
-			    ep->endpoint_q.curr);
+			for (x = 0; x != USB_MAX_EP_STREAMS; x++) {
+				/* start the current or next transfer, if any */
+				usb_command_wrapper(&ep->endpoint_q[x],
+				    ep->endpoint_q[x].curr);
+			}
 		}
 		ep++;
 
@@ -792,12 +787,6 @@ usbd_req_reset_port(struct usb_device *udev, struct lock *lock, uint8_t port)
 	uint16_t status;
 	uint16_t change;
 
-#ifdef USB_DEBUG
-	uint16_t pr_poll_delay;
-	uint16_t pr_recovery_delay;
-
-#endif
-
 	DPRINTF("\n");
 
 	/* clear any leftover port reset changes first */
@@ -811,30 +800,12 @@ usbd_req_reset_port(struct usb_device *udev, struct lock *lock, uint8_t port)
 	/* check for errors */
 	if (err)
 		goto done;
-#ifdef USB_DEBUG
-	/* range check input parameters */
-	pr_poll_delay = usb_pr_poll_delay;
-	if (pr_poll_delay < 1) {
-		pr_poll_delay = 1;
-	} else if (pr_poll_delay > 1000) {
-		pr_poll_delay = 1000;
-	}
-	pr_recovery_delay = usb_pr_recovery_delay;
-	if (pr_recovery_delay > 1000) {
-		pr_recovery_delay = 1000;
-	}
-#endif
+ 
 	n = 0;
 	while (1) {
-#ifdef USB_DEBUG
 		/* wait for the device to recover from reset */
-		usb_pause_mtx(lock, USB_MS_TO_TICKS(pr_poll_delay));
-		n += pr_poll_delay;
-#else
-		/* wait for the device to recover from reset */
-		usb_pause_mtx(lock, USB_MS_TO_TICKS(USB_PORT_RESET_DELAY));
-		n += USB_PORT_RESET_DELAY;
-#endif
+		usb_pause_mtx(lock, USB_MS_TO_TICKS(usb_port_reset_delay));
+		n += usb_port_reset_delay;
 		err = usbd_req_get_port_status(udev, lock, &ps, port);
 		if (err)
 			goto done;
@@ -876,13 +847,8 @@ usbd_req_reset_port(struct usb_device *udev, struct lock *lock, uint8_t port)
 		err = USB_ERR_TIMEOUT;
 		goto done;
 	}
-#ifdef USB_DEBUG
-	/* wait for the device to recover from reset */
-	usb_pause_mtx(lock, USB_MS_TO_TICKS(pr_recovery_delay));
-#else
 	/* wait for the device to recover from reset */
 	usb_pause_mtx(lock, USB_MS_TO_TICKS(USB_PORT_RESET_RECOVERY));
-#endif
 
 done:
 	DPRINTFN(2, "port %d reset returning error=%s\n",
@@ -913,12 +879,6 @@ usbd_req_warm_reset_port(struct usb_device *udev, struct lock *lock,
 	uint16_t status;
 	uint16_t change;
 
-#ifdef USB_DEBUG
-	uint16_t pr_poll_delay;
-	uint16_t pr_recovery_delay;
-
-#endif
-
 	DPRINTF("\n");
 
 	err = usbd_req_get_port_status(udev, lock, &ps, port);
@@ -948,30 +908,11 @@ usbd_req_warm_reset_port(struct usb_device *udev, struct lock *lock,
 	if (err)
 		goto done;
 
-#ifdef USB_DEBUG
-	/* range check input parameters */
-	pr_poll_delay = usb_pr_poll_delay;
-	if (pr_poll_delay < 1) {
-		pr_poll_delay = 1;
-	} else if (pr_poll_delay > 1000) {
-		pr_poll_delay = 1000;
-	}
-	pr_recovery_delay = usb_pr_recovery_delay;
-	if (pr_recovery_delay > 1000) {
-		pr_recovery_delay = 1000;
-	}
-#endif
 	n = 0;
 	while (1) {
-#ifdef USB_DEBUG
-		/* wait for the device to recover from reset */
-		usb_pause_mtx(lock, USB_MS_TO_TICKS(pr_poll_delay));
-		n += pr_poll_delay;
-#else
 		/* wait for the device to recover from reset */
 		usb_pause_mtx(lock, USB_MS_TO_TICKS(USB_PORT_RESET_DELAY));
 		n += USB_PORT_RESET_DELAY;
-#endif
 		err = usbd_req_get_port_status(udev, lock, &ps, port);
 		if (err)
 			goto done;
@@ -1005,13 +946,8 @@ usbd_req_warm_reset_port(struct usb_device *udev, struct lock *lock,
 		err = USB_ERR_TIMEOUT;
 		goto done;
 	}
-#ifdef USB_DEBUG
 	/* wait for the device to recover from reset */
-	usb_pause_mtx(lock, USB_MS_TO_TICKS(pr_recovery_delay));
-#else
-	/* wait for the device to recover from reset */
-	usb_pause_mtx(lock, USB_MS_TO_TICKS(USB_PORT_RESET_RECOVERY));
-#endif
+	usb_pause_mtx(lock, USB_MS_TO_TICKS(usb_port_reset_recovery));
 
 done:
 	DPRINTFN(2, "port %d warm reset returning error=%s\n",
@@ -1316,7 +1252,7 @@ usbd_req_get_config_desc(struct usb_device *udev, struct lock *lock,
 		goto done;
 	}
 	/* Extra sanity checking */
-	if (UGETW(d->wTotalLength) < sizeof(*d)) {
+	if (UGETW(d->wTotalLength) < (uint16_t)sizeof(*d)) {
 		err = USB_ERR_INVAL;
 	}
 done:
@@ -1567,7 +1503,7 @@ usbd_req_set_address(struct usb_device *udev, struct lock *lock, uint16_t addr)
 done:
 	/* allow device time to set new address */
 	usb_pause_mtx(lock,
-	    USB_MS_TO_TICKS(USB_SET_ADDRESS_SETTLE));
+	    USB_MS_TO_TICKS(usb_set_address_settle));
 
 	return (err);
 }
@@ -2227,3 +2163,57 @@ usbd_req_set_port_link_state(struct usb_device *udev, struct lock *lock,
 	USETW(req.wLength, 0);
 	return (usbd_do_request(udev, lock, &req, 0));
 }
+
+/*------------------------------------------------------------------------*
+ *		usbd_req_set_lpm_info
+ *
+ * USB 2.0 specific request for Link Power Management.
+ *
+ * Returns:
+ * 0:				Success
+ * USB_ERR_PENDING_REQUESTS:	NYET
+ * USB_ERR_TIMEOUT:		TIMEOUT
+ * USB_ERR_STALL:		STALL
+ * Else:			Failure
+ *------------------------------------------------------------------------*/
+usb_error_t
+usbd_req_set_lpm_info(struct usb_device *udev, struct lock *lock,
+    uint8_t port, uint8_t besl, uint8_t addr, uint8_t rwe)
+{
+	struct usb_device_request req;
+	usb_error_t err;
+	uint8_t buf[1];
+
+	req.bmRequestType = UT_WRITE_CLASS_OTHER;
+	req.bRequest = UR_SET_AND_TEST;
+	USETW(req.wValue, UHF_PORT_L1);
+	req.wIndex[0] = (port & 0xF) | ((besl & 0xF) << 4);
+	req.wIndex[1] = (addr & 0x7F) | (rwe ? 0x80 : 0x00);
+	USETW(req.wLength, sizeof(buf));
+
+	/* set default value in case of short transfer */
+	buf[0] = 0x00;
+
+	err = usbd_do_request(udev, lock, &req, buf);
+	if (err)
+		return (err);
+
+	switch (buf[0]) {
+	case 0x00:	/* SUCCESS */
+		break;
+	case 0x10:	/* NYET */
+		err = USB_ERR_PENDING_REQUESTS;
+		break;
+	case 0x11:	/* TIMEOUT */
+		err = USB_ERR_TIMEOUT;
+		break;
+	case 0x30:	/* STALL */
+		err = USB_ERR_STALLED;
+		break;
+	default:	/* reserved */
+		err = USB_ERR_IOERROR;
+		break;
+	}
+	return (err);
+}
+

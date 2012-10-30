@@ -198,11 +198,9 @@ usbd_transfer_setup_sub_malloc(struct usb_setup_params *parm,
 	usb_size_t r;
 	usb_size_t z;
 
-#if 0
 	USB_ASSERT(align > 1, ("Invalid alignment, 0x%08x\n",
 	    align));
 	USB_ASSERT(size > 0, ("Invalid size = 0\n"));
-#endif
 
 	if (count == 0) {
 		return (0);		/* nothing to allocate */
@@ -216,12 +214,12 @@ usbd_transfer_setup_sub_malloc(struct usb_setup_params *parm,
 	 * Try multi-allocation chunks to reduce the number of DMA
 	 * allocations, hence DMA allocations are slow.
 	 */
-	if (size >= PAGE_SIZE) {
+	if (size >= USB_PAGE_SIZE) {
 		n_dma_pc = count;
 		n_obj = 1;
 	} else {
 		/* compute number of objects per page */
-		n_obj = (PAGE_SIZE / size);
+		n_obj = (USB_PAGE_SIZE / size);
 		/*
 		 * Compute number of DMA chunks, rounded up
 		 * to nearest one:
@@ -386,7 +384,8 @@ usbd_transfer_setup_sub(struct usb_setup_params *parm)
 			if (ecomp != NULL) {
 				uint8_t mult;
 
-				mult = (ecomp->bmAttributes & 3) + 1;
+				mult = UE_GET_SS_ISO_MULT(
+				    ecomp->bmAttributes & 3) + 1;
 				if (mult > 3)
 					mult = 3;
 
@@ -943,8 +942,20 @@ usbd_transfer_setup(struct usb_device *udev,
 			/* see if there is a matching endpoint */
 			ep = usbd_get_endpoint(udev,
 			    ifaces[setup->if_index], setup);
-
-			if ((ep == NULL) || (ep->methods == NULL)) {
+			/*
+			 * Check that the USB PIPE is valid and that
+			 * the endpoint mode is proper.
+			 *
+			 * Make sure we don't allocate a streams
+			 * transfer when such a combination is not
+			 * valid.
+			 */
+			if ((ep == NULL) || (ep->methods == NULL) ||
+			    ((ep->ep_mode != USB_EP_MODE_STREAMS) &&
+			    (ep->ep_mode != USB_EP_MODE_DEFAULT)) ||
+			    (setup->stream_id != 0 &&
+			    (setup->stream_id >= USB_MAX_EP_STREAMS ||
+			    (ep->ep_mode != USB_EP_MODE_STREAMS)))) {
 				if (setup->flags.no_pipe_ok)
 					continue;
 				if ((setup->usb_mode != USB_MODE_DUAL) &&
@@ -988,6 +999,9 @@ usbd_transfer_setup(struct usb_device *udev,
 			/* set transfer endpoint pointer */
 			xfer->endpoint = ep;
 
+			/* set transfer stream ID */
+			xfer->stream_id = setup->stream_id;
+	
 			parm.size[0] += sizeof(xfer[0]);
 			parm.methods = xfer->endpoint->methods;
 			parm.curr_xfer = xfer;
@@ -1265,10 +1279,8 @@ usbd_transfer_unsetup(struct usb_xfer **pxfer, uint16_t n_setup)
 
 		USB_BUS_LOCK(info->bus);
 
-#if 0
 		USB_ASSERT(info->setup_refcount != 0, ("Invalid setup "
 		    "reference count\n"));
-#endif
 
 		info->setup_refcount--;
 
@@ -1570,7 +1582,8 @@ usbd_transfer_submit(struct usb_xfer *xfer)
 			USB_BUS_LOCK(bus);
 			xfer->flags_int.can_cancel_immed = 1;
 			/* start the transfer */
-			usb_command_wrapper(&xfer->endpoint->endpoint_q, xfer);
+			usb_command_wrapper(&xfer->endpoint->
+			    endpoint_q[xfer->stream_id], xfer);
 			USB_BUS_UNLOCK(bus);
 			return;
 		}
@@ -1679,6 +1692,7 @@ usbd_pipe_enter(struct usb_xfer *xfer)
 	/* enter the transfer */
 	(ep->methods->enter) (xfer);
 
+	/* the transfer can now be cancelled */
 	xfer->flags_int.can_cancel_immed = 1;
 
 	/* check for transfer error */
@@ -1690,7 +1704,7 @@ usbd_pipe_enter(struct usb_xfer *xfer)
 	}
 
 	/* start the transfer */
-	usb_command_wrapper(&ep->endpoint_q, xfer);
+	usb_command_wrapper(&ep->endpoint_q[xfer->stream_id], xfer);
 	USB_BUS_UNLOCK(xfer->xroot->bus);
 }
 
@@ -1813,8 +1827,9 @@ usbd_transfer_stop(struct usb_xfer *xfer)
 		 * If the current USB transfer is completing we need
 		 * to start the next one:
 		 */
-		if (ep->endpoint_q.curr == xfer) {
-			usb_command_wrapper(&ep->endpoint_q, NULL);
+		if (ep->endpoint_q[xfer->stream_id].curr == xfer) {
+			usb_command_wrapper(
+                            &ep->endpoint_q[xfer->stream_id], NULL);
 		}
 	}
 
@@ -2422,6 +2437,7 @@ usbd_transfer_start_cb(void *arg)
 	if (xfer->error == 0)
 		(ep->methods->start) (xfer);
 
+	/* the transfer can now be cancelled */
 	xfer->flags_int.can_cancel_immed = 1;
 
 	/* check for error */
@@ -2530,7 +2546,7 @@ usbd_pipe_start(struct usb_xfer_queue *pq)
 
 			if (udev->flags.usb_mode == USB_MODE_DEVICE) {
 				(udev->bus->methods->set_stall) (
-				    udev, NULL, ep, &did_stall);
+				    udev, ep, &did_stall);
 			} else if (udev->ctrl_xfer[1]) {
 				info = udev->ctrl_xfer[1]->xroot;
 				usb_proc_msignal(
@@ -2603,6 +2619,7 @@ usbd_pipe_start(struct usb_xfer_queue *pq)
 	if (xfer->error == 0)
 		(ep->methods->start) (xfer);
 
+	/* the transfer can now be cancelled */
 	xfer->flags_int.can_cancel_immed = 1;
 
 	/* check for error */
@@ -2700,7 +2717,8 @@ usbd_callback_wrapper_sub(struct usb_xfer *xfer)
 				(bus->methods->start_dma_delay) (xfer);
 			} else {
 				usbd_transfer_timeout_ms(xfer,
-				    (void *)&usb_dma_delay_done_cb, temp);
+					(void (*)(void *))&usb_dma_delay_done_cb,
+					temp);
 			}
 			USB_BUS_UNLOCK(bus);
 			return (1);	/* wait for new callback */
@@ -2795,10 +2813,11 @@ usbd_callback_wrapper_sub(struct usb_xfer *xfer)
 	 * next one:
 	 */
 	USB_BUS_LOCK(bus);
-	if (ep->endpoint_q.curr == xfer) {
-		usb_command_wrapper(&ep->endpoint_q, NULL);
+	if (ep->endpoint_q[xfer->stream_id].curr == xfer) {
+		usb_command_wrapper(&ep->endpoint_q[xfer->stream_id], NULL);
 
-		if (ep->endpoint_q.curr || TAILQ_FIRST(&ep->endpoint_q.head)) {
+		if (ep->endpoint_q[xfer->stream_id].curr ||
+                    TAILQ_FIRST(&ep->endpoint_q[xfer->stream_id].head) != NULL) {
 			/* there is another USB transfer waiting */
 		} else {
 			/* this is the last USB transfer */

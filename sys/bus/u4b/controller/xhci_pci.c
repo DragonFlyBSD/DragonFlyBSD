@@ -93,6 +93,12 @@ xhci_pci_match(device_t self)
 	switch(device_id) {
 	case 0x70231b6f:
 		return "Etron EJ168 USB 3.0 Host Controller";
+	case 0x01941033:
+                return ("NEC uPD720200 USB 3.0 controller");
+        case 0x1e318086:
+                return ("Intel Panther Point USB 3.0 controller");
+        case 0x8c318086:
+                return ("Intel Lynx Point USB 3.0 controller");
 	default:
 		break;
         }
