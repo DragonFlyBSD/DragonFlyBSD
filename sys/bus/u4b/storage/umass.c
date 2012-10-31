@@ -2679,6 +2679,7 @@ umass_cam_sense_cb(struct umass_softc *sc, union ccb *ccb, uint32_t residue,
 	case STATUS_CMD_FAILED:
 	{
 		int error, key, asc, ascq;
+		uint8_t sense_len;
 
 		ccb->csio.sense_resid = residue;
 		sense_len = ccb->csio.sense_len - ccb->csio.sense_resid;
