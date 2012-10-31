@@ -142,7 +142,7 @@ YFLAGS		?=	-d
 # prevent buildworld from breaking.
 #
 .if !defined(MACHINE_PLATFORM)
-MACHINE_PLATFORM=pc32
+MACHINE_PLATFORM!=sysctl -n hw.platform
 .endif
 .if ${MACHINE} == "pc32"
 MACHINE=i386
