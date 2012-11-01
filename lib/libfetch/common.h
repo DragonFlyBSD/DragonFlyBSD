@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libfetch/common.h,v 1.30 2007/12/18 11:03:07 des Exp $
- * $DragonFly: src/lib/libfetch/common.h,v 1.3 2007/08/05 21:48:12 swildner Exp $
  */
 
 #ifndef _COMMON_H_INCLUDED
@@ -53,6 +52,13 @@ struct fetchconn {
 	size_t		 bufsize;	/* buffer size */
 	size_t		 buflen;	/* length of buffer contents */
 	int		 err;		/* last protocol reply code */
+	struct {			/* data cached after an interrupted
+					   read */
+		char	*buf;
+		size_t	 size;
+		size_t	 pos;
+		size_t	 len;
+	} cache;
 #ifdef WITH_SSL
 	SSL		*ssl;		/* SSL handle */
 	SSL_CTX		*ssl_ctx;	/* SSL context */

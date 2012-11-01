@@ -197,6 +197,8 @@ http_growbuf(struct httpio *io, size_t len)
 static int
 http_fillbuf(struct httpio *io, size_t len)
 {
+	ssize_t nbytes;
+
 	if (io->error)
 		return (-1);
 	if (io->eof)
@@ -205,10 +207,11 @@ http_fillbuf(struct httpio *io, size_t len)
 	if (io->chunked == 0) {
 		if (http_growbuf(io, len) == -1)
 			return (-1);
-		if ((io->buflen = fetch_read(io->conn, io->buf, len)) == -1) {
-			io->error = 1;
+		if ((nbytes = fetch_read(io->conn, io->buf, len)) == -1) {
+			io->error = errno;
 			return (-1);
 		}
+		io->buflen = nbytes;
 		io->bufpos = 0;
 		return (io->buflen);
 	}
@@ -228,10 +231,11 @@ http_fillbuf(struct httpio *io, size_t len)
 		len = io->chunksize;
 	if (http_growbuf(io, len) == -1)
 		return (-1);
-	if ((io->buflen = fetch_read(io->conn, io->buf, len)) == -1) {
-		io->error = 1;
+	if ((nbytes = fetch_read(io->conn, io->buf, len)) == -1) {
+		io->error = errno;
 		return (-1);
 	}
+	io->buflen = nbytes;
 	io->chunksize -= io->buflen;
 
 	if (io->chunksize == 0) {
@@ -273,8 +277,11 @@ http_readfn(void *v, char *buf, int len)
 		io->bufpos += l;
 	}
 
-	if (!pos && io->error)
+	if (!pos && io->error) {
+		if (io->error == EINTR)
+			io->error = 0;
 		return (-1);
+	}
 	return (pos);
 }
 
