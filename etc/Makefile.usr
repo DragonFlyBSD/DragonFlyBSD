@@ -86,11 +86,11 @@ src-create-repo:
 	cd ${.CURDIR}/src && \
 		git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch origin
-	cd ${.CURDIR}/src && git branch master origin/master
+	cd ${.CURDIR}/src && git branch DragonFly_RELEASE_3_2 origin/DragonFly_RELEASE_3_2
 	cd ${.CURDIR}/src && git gc --aggressive
 
 src-create: src-create-repo
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_3_2
 	cd ${.CURDIR}/src && git pull
 
 src-create-shallow:
@@ -101,12 +101,12 @@ src-create-shallow:
 	cd ${.CURDIR}/src && \
 	    git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch --depth=1 origin
-	cd ${.CURDIR}/src && git branch master origin/master
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git branch DragonFly_RELEASE_3_2 origin/DragonFly_RELEASE_3_2
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_3_2
 	cd ${.CURDIR}/src && git pull
 
 src-checkout:
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_3_2
 
 src-update:
 	cd ${.CURDIR}/src && git pull
