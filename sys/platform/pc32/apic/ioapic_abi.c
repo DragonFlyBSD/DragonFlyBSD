@@ -520,6 +520,7 @@ static void	ioapic_abi_initmap(void);
 static void	ioapic_abi_rman_setup(struct rman *);
 
 static int	ioapic_abi_gsi_cpuid(int, int);
+static int	ioapic_find_unused_irqmap(int);
 
 struct machintr_abi MachIntrABI_IOAPIC = {
 	MACHINTR_IOAPIC,
@@ -767,6 +768,22 @@ ioapic_abi_initmap(void)
 	}
 }
 
+static int
+ioapic_find_unused_irqmap(int gsi)
+{
+	int cpuid, i;
+
+	cpuid = ioapic_abi_gsi_cpuid(-1, gsi);
+
+	for (i = ISA_IRQ_CNT; i < IOAPIC_HWI_VECTORS; ++i) {
+		if (i == acpi_sci_irqno())
+			continue;
+		if (ioapic_irqmaps[cpuid][i].im_type == IOAPIC_IMT_UNUSED)
+			return i;
+	}
+	return -1;
+}
+
 void
 ioapic_set_legacy_irqmap(int irq, int gsi, enum intr_trigger trig,
     enum intr_polarity pola)
@@ -779,7 +796,21 @@ ioapic_set_legacy_irqmap(int irq, int gsi, enum intr_trigger trig,
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
 
-	KKASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS);
+	KKASSERT(irq >= 0);
+	if (irq >= IOAPIC_HWI_VECTORS) {
+		/*
+		 * Some BIOSes seem to assume that all 256 IDT vectors
+		 * could be used, while we limit the available IDT
+		 * vectors to 192; find an unused IRQ for this GSI.
+		 */
+		irq = ioapic_find_unused_irqmap(gsi);
+		if (irq < 0) {
+			kprintf("failed to find unused irq for gsi %d\n", gsi);
+			return;
+		}
+	}
+	KKASSERT(irq < IOAPIC_HWI_VECTORS);
+
 	if (irq > ioapic_abi_legacy_irq_max)
 		ioapic_abi_legacy_irq_max = irq;
 
@@ -1091,6 +1122,7 @@ ioapic_abi_gsi_cpuid(int irq, int gsi)
 	KKASSERT(gsi >= 0);
 
 	if (irq == 0 || gsi == 0) {
+		KKASSERT(irq >= 0);
 		if (bootverbose) {
 			kprintf("IOAPIC: irq %d, gsi %d -> cpu0 (0)\n",
 			    irq, gsi);
@@ -1098,7 +1130,7 @@ ioapic_abi_gsi_cpuid(int irq, int gsi)
 		return 0;
 	}
 
-	if (irq == acpi_sci_irqno()) {
+	if (irq >= 0 && irq == acpi_sci_irqno()) {
 		if (bootverbose) {
 			kprintf("IOAPIC: irq %d, gsi %d -> cpu0 (sci)\n",
 			    irq, gsi);
@@ -1111,7 +1143,7 @@ ioapic_abi_gsi_cpuid(int irq, int gsi)
 
 	if (cpuid < 0) {
 		if (!ioapic_abi_gsi_balance) {
-			if (bootverbose) {
+			if (irq >= 0 && bootverbose) {
 				kprintf("IOAPIC: irq %d, gsi %d -> cpu0 "
 				    "(fixed)\n", irq, gsi);
 			}
@@ -1119,18 +1151,18 @@ ioapic_abi_gsi_cpuid(int irq, int gsi)
 		}
 
 		cpuid = gsi % ncpus;
-		if (bootverbose) {
+		if (irq >= 0 && bootverbose) {
 			kprintf("IOAPIC: irq %d, gsi %d -> cpu%d (auto)\n",
 			    irq, gsi, cpuid);
 		}
 	} else if (cpuid >= ncpus) {
 		cpuid = ncpus - 1;
-		if (bootverbose) {
+		if (irq >= 0 && bootverbose) {
 			kprintf("IOAPIC: irq %d, gsi %d -> cpu%d (fixup)\n",
 			    irq, gsi, cpuid);
 		}
 	} else {
-		if (bootverbose) {
+		if (irq >= 0 && bootverbose) {
 			kprintf("IOAPIC: irq %d, gsi %d -> cpu%d (user)\n",
 			    irq, gsi, cpuid);
 		}
