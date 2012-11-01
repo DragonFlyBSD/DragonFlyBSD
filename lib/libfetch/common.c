@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libfetch/common.c,v 1.56 2008/04/15 23:29:51 cperciva Exp $
- * $DragonFly: src/lib/libfetch/common.c,v 1.5 2008/04/02 14:46:37 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -772,7 +771,7 @@ fetch_no_proxy_match(const char *host)
 				break;
 
 		d_len = q - p;
-		if (d_len > 0 && h_len > d_len &&
+		if (d_len > 0 && h_len >= d_len &&
 		    strncasecmp(host + h_len - d_len,
 			p, d_len) == 0) {
 			/* domain name matches */
