@@ -518,7 +518,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
 		/* Socket layer is responsible for issuing SIGPIPE. */
-		if (error == EPIPE)
+		if (error == EPIPE && fp->f_type != DTYPE_SOCKET)
 			lwpsignal(lp->lwp_proc, lp, SIGPIPE);
 	}
 #ifdef KTRACE

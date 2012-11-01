@@ -32,7 +32,6 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.14 2007/04/22 01:13:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +39,7 @@
 #include <sys/file.h>
 #include <sys/lock.h>
 #include <sys/protosw.h>
+#include <sys/signalvar.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/socketops.h>
@@ -115,6 +115,9 @@ soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		msgflags = 0;
 
 	error = so_pru_sosend(so, NULL, uio, NULL, NULL, msgflags, uio->uio_td);
+	if (error == EPIPE && !(fflags & MSG_NOSIGNAL) &&
+	    !(so->so_options & SO_NOSIGPIPE))
+		lwpsignal(uio->uio_td->td_proc, uio->uio_td->td_lwp, SIGPIPE);
 	return (error);
 }
 

@@ -711,7 +711,8 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 		if (auio->uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
-		if (error == EPIPE && !(flags & MSG_NOSIGNAL))
+		if (error == EPIPE && !(flags & MSG_NOSIGNAL) &&
+		    !(so->so_options & SO_NOSIGPIPE))
 			lwpsignal(p, lp, SIGPIPE);
 	}
 #ifdef KTRACE
