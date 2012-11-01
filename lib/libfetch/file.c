@@ -26,13 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libfetch/file.c,v 1.18 2007/12/14 10:26:58 des Exp $
- * $DragonFly: src/lib/libfetch/file.c,v 1.3 2007/08/05 21:48:12 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
 
 #include <dirent.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -57,6 +57,7 @@ fetchXGetFile(struct url *u, struct url_stat *us, const char *flags)
 		fetch_syserr();
 	}
 
+	fcntl(fileno(f), F_SETFD, FD_CLOEXEC);
 	return (f);
 }
 
@@ -84,6 +85,7 @@ fetchPutFile(struct url *u, const char *flags)
 		fetch_syserr();
 	}
 
+	fcntl(fileno(f), F_SETFD, FD_CLOEXEC);
 	return (f);
 }
 
