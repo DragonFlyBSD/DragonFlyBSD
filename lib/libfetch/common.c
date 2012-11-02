@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2011 Dag-Erling SmÃ¸rgrav
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,8 +24,6 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: src/lib/libfetch/common.c,v 1.56 2008/04/15 23:29:51 cperciva Exp $
  */
 
 #include <sys/param.h>
@@ -213,8 +211,8 @@ fetch_reopen(int sd)
 	/* allocate and fill connection structure */
 	if ((conn = calloc(1, sizeof(*conn))) == NULL)
 		return (NULL);
-        fcntl(sd, F_SETFD, FD_CLOEXEC);
-        setsockopt(sd, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof opt);
+	fcntl(sd, F_SETFD, FD_CLOEXEC);
+	setsockopt(sd, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof opt);
 	conn->sd = sd;
 	++conn->ref;
 	return (conn);
@@ -299,7 +297,7 @@ fetch_connect(const char *host, int port, int af, int verbose)
 			continue;
 		}
 		if (connect(sd, res->ai_addr, res->ai_addrlen) == 0 &&
-                    fcntl(sd, F_SETFL, O_NONBLOCK) == 0)
+		    fcntl(sd, F_SETFL, O_NONBLOCK) == 0)
 			break;
 		close(sd);
 	}
@@ -323,9 +321,9 @@ fetch_connect(const char *host, int port, int af, int verbose)
 int
 fetch_ssl(conn_t *conn, int verbose)
 {
-        int ret, ssl_err;
-
 #ifdef WITH_SSL
+	int ret, ssl_err;
+
 	/* Init the SSL library and context */
 	if (!SSL_library_init()){
 		fprintf(stderr, "SSL library init failed\n");
@@ -456,11 +454,9 @@ fetch_read(conn_t *conn, char *buf, size_t len)
 	struct timeval now, timeout, delta;
 	fd_set readfds;
 	ssize_t rlen, total;
-	int r;
 	char *start;
 
-	if (fetchTimeout) {
-		FD_ZERO(&readfds);
+	if (fetchTimeout > 0) {
 		gettimeofday(&timeout, NULL);
 		timeout.tv_sec += fetchTimeout;
 	}
@@ -524,23 +520,21 @@ fetch_read(conn_t *conn, char *buf, size_t len)
 			return (-1);
 		}
 		// assert(rlen == FETCH_READ_WAIT);
-		while (fetchTimeout && !FD_ISSET(conn->sd, &readfds)) {
+		FD_ZERO(&readfds);
+		while (!FD_ISSET(conn->sd, &readfds)) {
 			FD_SET(conn->sd, &readfds);
-			gettimeofday(&now, NULL);
-			delta.tv_sec = timeout.tv_sec - now.tv_sec;
-			delta.tv_usec = timeout.tv_usec - now.tv_usec;
-			if (delta.tv_usec < 0) {
-				delta.tv_usec += 1000000;
-				delta.tv_sec--;
-			}
-			if (delta.tv_sec < 0) {
-				errno = ETIMEDOUT;
-				fetch_syserr();
-				return (-1);
+			if (fetchTimeout > 0) {
+				gettimeofday(&now, NULL);
+				if (!timercmp(&timeout, &now, >)) {
+					errno = ETIMEDOUT;
+					fetch_syserr();
+					return (-1);
+				}
+				timersub(&timeout, &now, &delta);
 			}
 			errno = 0;
-			r = select(conn->sd + 1, &readfds, NULL, NULL, &delta);
-			if (r == -1) {
+			if (select(conn->sd + 1, &readfds, NULL, NULL,
+				fetchTimeout > 0 ? &delta : NULL) < 0) {
 				if (errno == EINTR) {
 					if (fetchRestartCalls)
 						continue;

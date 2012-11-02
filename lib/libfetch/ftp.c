@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2011 Dag-Erling SmÃ¸rgrav
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,8 +24,6 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: src/lib/libfetch/ftp.c,v 1.102 2008/02/08 09:48:48 des Exp $
  */
 
 /*
@@ -40,7 +38,7 @@
  *
  * Major Changelog:
  *
- * Dag-Erling Coïdan Smørgrav
+ * Dag-Erling SmÃ¸rgrav
  * 9 Jun 1998
  *
  * Incorporated into libfetch
@@ -633,13 +631,12 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 
 	/* check flags */
 	low = CHECK_FLAG('l');
-	pasv = CHECK_FLAG('p');
+	pasv = CHECK_FLAG('p') || !CHECK_FLAG('P');
 	verbose = CHECK_FLAG('v');
 
 	/* passive mode */
-	if (!pasv)
-		pasv = ((s = getenv("FTP_PASSIVE_MODE")) != NULL &&
-		    strncasecmp(s, "no", 2) != 0);
+	if ((s = getenv("FTP_PASSIVE_MODE")) != NULL)
+		pasv = (strncasecmp(s, "no", 2) != 0);
 
 	/* isolate filename */
 	filename = ftp_filename(file, &filenamelen, &type);
@@ -1132,6 +1129,7 @@ ftp_request(struct url *url, const char *op, struct url_stat *us,
 
 	/* just a stat */
 	if (strcmp(op, "STAT") == 0) {
+		--conn->ref;
 		ftp_disconnect(conn);
 		return (FILE *)1; /* bogus return value */
 	}

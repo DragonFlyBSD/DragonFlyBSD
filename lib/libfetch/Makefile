@@ -13,6 +13,9 @@ CLEANFILES=	ftperr.h httperr.h
 CFLAGS+=	-DWITH_SSL
 DPADD=		${LIBSSL} ${LIBCRYPTO}
 LDADD=		-lssl -lcrypto
+.else
+DPADD=		${LIBMD}
+LDADD=		-lmd
 .endif
 
 SHLIB_MAJOR=    4
