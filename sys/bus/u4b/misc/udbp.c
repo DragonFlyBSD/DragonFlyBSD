@@ -654,7 +654,7 @@ ng_udbp_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			{
 				struct ngudbpstat *stats;
 
-				NG_MKRESPONSE(resp, msg, sizeof(*stats), M_NOWAIT);
+				NG_MKRESPONSE(resp, msg, sizeof(*stats), M_WAITOK);
 				if (!resp) {
 					error = ENOMEM;
 					break;

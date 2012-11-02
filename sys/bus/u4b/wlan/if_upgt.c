@@ -1025,7 +1025,7 @@ upgt_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
 	if (!TAILQ_EMPTY(&ic->ic_vaps))		/* only one at a time */
 		return NULL;
 	uvp = (struct upgt_vap *) malloc(sizeof(struct upgt_vap),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
+	    M_80211_VAP, M_WAITOK | M_ZERO);
 	if (uvp == NULL)
 		return NULL;
 	vap = &uvp->vap;
@@ -1948,7 +1948,7 @@ upgt_alloc_tx(struct upgt_softc *sc)
 	for (i = 0; i < UPGT_TX_MAXCOUNT; i++) {
 		struct upgt_data *data = &sc->sc_tx_data[i];
 
-		data->buf = malloc(MCLBYTES, M_USBDEV, M_NOWAIT | M_ZERO);
+		data->buf = malloc(MCLBYTES, M_USBDEV, M_WAITOK | M_ZERO);
 		if (data->buf == NULL) {
 			device_printf(sc->sc_dev,
 			    "could not allocate TX buffer\n");
@@ -1972,7 +1972,7 @@ upgt_alloc_rx(struct upgt_softc *sc)
 	for (i = 0; i < UPGT_RX_MAXCOUNT; i++) {
 		struct upgt_data *data = &sc->sc_rx_data[i];
 
-		data->buf = malloc(MCLBYTES, M_USBDEV, M_NOWAIT | M_ZERO);
+		data->buf = malloc(MCLBYTES, M_USBDEV, M_WAITOK | M_ZERO);
 		if (data->buf == NULL) {
 			device_printf(sc->sc_dev,
 			    "could not allocate RX buffer\n");

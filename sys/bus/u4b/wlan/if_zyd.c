@@ -467,7 +467,7 @@ zyd_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
 	if (!TAILQ_EMPTY(&ic->ic_vaps))		/* only one at a time */
 		return (NULL);
 	zvp = (struct zyd_vap *) malloc(sizeof(struct zyd_vap),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
+	    M_80211_VAP, M_WAITOK | M_ZERO);
 	if (zvp == NULL)
 		return (NULL);
 	vap = &zvp->vap;

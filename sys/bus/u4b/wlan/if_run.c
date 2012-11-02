@@ -796,7 +796,7 @@ run_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
 	}
 
 	rvp = (struct run_vap *) malloc(sizeof(struct run_vap),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
+	    M_80211_VAP, M_WAITOK | M_ZERO);
 	if (rvp == NULL)
 		return (NULL);
 	vap = &rvp->vap;
@@ -1694,7 +1694,7 @@ run_read_eeprom(struct run_softc *sc)
 static struct ieee80211_node *
 run_node_alloc(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
-	return malloc(sizeof (struct run_node), M_DEVBUF, M_NOWAIT | M_ZERO);
+	return malloc(sizeof (struct run_node), M_DEVBUF, M_WAITOK | M_ZERO);
 }
 
 static int

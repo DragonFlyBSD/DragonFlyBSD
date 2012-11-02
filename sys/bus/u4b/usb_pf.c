@@ -278,7 +278,7 @@ usbpf_xfertap(struct usb_xfer *xfer, int type)
 	 * When BPF supports it we could pass a fragmented array of
 	 * buffers avoiding the data copy operation here.
 	 */
-	buf = ptr = malloc(totlen, M_TEMP, M_NOWAIT);
+	buf = ptr = malloc(totlen, M_TEMP, M_WAITOK);
 	if (buf == NULL) {
 		device_printf(bus->parent, "usbpf: Out of memory\n");
 		return;

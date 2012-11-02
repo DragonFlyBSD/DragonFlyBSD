@@ -1004,7 +1004,7 @@ urtw_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
 	if (!TAILQ_EMPTY(&ic->ic_vaps))		/* only one at a time */
 		return (NULL);
 	uvp = (struct urtw_vap *) malloc(sizeof(struct urtw_vap),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
+	    M_80211_VAP, M_WAITOK | M_ZERO);
 	if (uvp == NULL)
 		return (NULL);
 	vap = &uvp->vap;
@@ -1468,7 +1468,7 @@ urtw_alloc_data_list(struct urtw_softc *sc, struct urtw_data data[],
 			dp->buf = mtod(dp->m, uint8_t *);
 		} else {
 			dp->m = NULL;
-			dp->buf = malloc(maxsz, M_USBDEV, M_NOWAIT);
+			dp->buf = malloc(maxsz, M_USBDEV, M_WAITOK);
 			if (dp->buf == NULL) {
 				device_printf(sc->sc_dev,
 				    "could not allocate buffer\n");
@@ -2721,12 +2721,12 @@ urtw_8225_write_s16(struct urtw_softc *sc, uint8_t addr, int index,
 
 	data16 = *data;
 	req = (usb_device_request_t *)malloc(sizeof(usb_device_request_t),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
+	    M_80211_VAP, M_WAITOK | M_ZERO);
 	if (req == NULL) {
 		device_printf(sc->sc_dev, "could not allocate a memory\n");
 		goto fail0;
 	}
-	buf = (uint8_t *)malloc(2, M_80211_VAP, M_NOWAIT | M_ZERO);
+	buf = (uint8_t *)malloc(2, M_80211_VAP, M_WAITOK | M_ZERO);
 	if (req == NULL) {
 		device_printf(sc->sc_dev, "could not allocate a memory\n");
 		goto fail1;

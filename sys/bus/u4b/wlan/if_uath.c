@@ -558,7 +558,7 @@ uath_alloc_cmd_list(struct uath_softc *sc, struct uath_cmd cmds[],
 
 		cmd->sc = sc;	/* backpointer for callbacks */
 		cmd->msgid = i;
-		cmd->buf = malloc(maxsz, M_USBDEV, M_NOWAIT);
+		cmd->buf = malloc(maxsz, M_USBDEV, M_WAITOK);
 		if (cmd->buf == NULL) {
 			device_printf(sc->sc_dev,
 			    "could not allocate xfer buffer\n");
@@ -976,7 +976,7 @@ uath_alloc_data_list(struct uath_softc *sc, struct uath_data data[],
 			dp->buf = mtod(dp->m, uint8_t *);
 		} else {
 			dp->m = NULL;
-			dp->buf = malloc(maxsz, M_USBDEV, M_NOWAIT);
+			dp->buf = malloc(maxsz, M_USBDEV, M_WAITOK);
 			if (dp->buf == NULL) {
 				device_printf(sc->sc_dev,
 				    "could not allocate buffer\n");
@@ -1076,7 +1076,7 @@ uath_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
 	if (!TAILQ_EMPTY(&ic->ic_vaps))		/* only one at a time */
 		return (NULL);
 	uvp = (struct uath_vap *) malloc(sizeof(struct uath_vap),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
+	    M_80211_VAP, M_WAITOK | M_ZERO);
 	if (uvp == NULL)
 		return (NULL);
 	vap = &uvp->vap;

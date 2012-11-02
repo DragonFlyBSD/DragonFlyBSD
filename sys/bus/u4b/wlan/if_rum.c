@@ -592,7 +592,7 @@ rum_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
 	if (!TAILQ_EMPTY(&ic->ic_vaps))		/* only one at a time */
 		return NULL;
 	rvp = (struct rum_vap *) malloc(sizeof(struct rum_vap),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
+	    M_80211_VAP, M_WAITOK | M_ZERO);
 	if (rvp == NULL)
 		return NULL;
 	vap = &rvp->vap;
