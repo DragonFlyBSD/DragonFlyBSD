@@ -33,6 +33,7 @@
 #include <sys/systm.h>
 
 #include <machine/console.h>
+#include <machine/cpufunc.h>
 #include <machine/md_var.h>
 
 #include <dev/video/fb/fbreg.h>
@@ -40,6 +41,39 @@
 
 #define vtb_wrap(vtb, at, offset)				\
     (((at) + (offset) + (vtb)->vtb_size)%(vtb)->vtb_size)
+
+
+/*
+ * Intel text mode emulations can't handle 32-bit or 64-bit writes.
+ * Use 16-bit writes.  32 and 64-bit writes appear to simply get thrown
+ * away.  (observed on D2500HN mobo).
+ *
+ * We don't care about performance so just use a word-write bcopy mode.
+ */
+static
+void
+sc_vtb_bcopy(void *s, void *d, size_t bytes)
+{
+	size_t count;
+	size_t n;
+	uint16_t *sw = s;
+	uint16_t *dw = d;
+
+	count = bytes >> 1;
+	if (s < d) {
+		if (bytes & 1)
+			*(uint8_t *)(dw + count) = *(uint8_t *)(sw + count);
+		while (count--) {
+			dw[count] = sw[count];
+		}
+	} else {
+		for (n = 0; n < count; ++n)
+			dw[n] = sw[n];
+		if (bytes & 1) {
+			*(uint8_t *)(dw + n) = *(uint8_t *)(sw + n);
+		}
+	}
+}
 
 void
 sc_vtb_init(sc_vtb_t *vtb, int type, int cols, int rows, void *buf, int wait)
@@ -165,13 +199,13 @@ sc_vtb_copy(sc_vtb_t *vtb1, int from, sc_vtb_t *vtb2, int to, int count)
 {
 	/* XXX if both are VTB_VRAMEBUFFER... */
 	if (vtb2->vtb_type == VTB_FRAMEBUFFER) {
-		bcopy_toio(vtb1->vtb_buffer + from, vtb2->vtb_buffer + to,
+		sc_vtb_bcopy(vtb1->vtb_buffer + from, vtb2->vtb_buffer + to,
 			   count*sizeof(uint16_t));
 	} else if (vtb1->vtb_type == VTB_FRAMEBUFFER) {
-		bcopy_fromio(vtb1->vtb_buffer + from, vtb2->vtb_buffer + to,
+		sc_vtb_bcopy(vtb1->vtb_buffer + from, vtb2->vtb_buffer + to,
 			     count*sizeof(uint16_t));
 	} else {
-		bcopy(vtb1->vtb_buffer + from, vtb2->vtb_buffer + to,
+		sc_vtb_bcopy(vtb1->vtb_buffer + from, vtb2->vtb_buffer + to,
 		      count*sizeof(uint16_t));
 	}
 }
@@ -187,11 +221,11 @@ sc_vtb_append(sc_vtb_t *vtb1, int from, sc_vtb_t *vtb2, int count)
 	while (count > 0) {
 		len = imin(count, vtb2->vtb_size - vtb2->vtb_tail);
 		if (vtb1->vtb_type == VTB_FRAMEBUFFER) {
-			bcopy_fromio(vtb1->vtb_buffer + from,
+			sc_vtb_bcopy(vtb1->vtb_buffer + from,
 				     vtb2->vtb_buffer + vtb2->vtb_tail,
 				     len*sizeof(uint16_t));
 		} else {
-			bcopy(vtb1->vtb_buffer + from,
+			sc_vtb_bcopy(vtb1->vtb_buffer + from,
 			      vtb2->vtb_buffer + vtb2->vtb_tail,
 			      len*sizeof(uint16_t));
 		}
@@ -228,10 +262,10 @@ sc_vtb_move(sc_vtb_t *vtb, int from, int to, int count)
 	if (count <= 0)
 		return;
 	if (vtb->vtb_type == VTB_FRAMEBUFFER) {
-		bcopy_io(vtb->vtb_buffer + from, vtb->vtb_buffer + to,
+		sc_vtb_bcopy(vtb->vtb_buffer + from, vtb->vtb_buffer + to,
 			 count*sizeof(uint16_t)); 
 	} else {
-		bcopy(vtb->vtb_buffer + from, vtb->vtb_buffer + to,
+		sc_vtb_bcopy(vtb->vtb_buffer + from, vtb->vtb_buffer + to,
 		      count*sizeof(uint16_t));
 	}
 }
@@ -246,11 +280,11 @@ sc_vtb_delete(sc_vtb_t *vtb, int at, int count, int c, int attr)
 	len = vtb->vtb_size - at - count;
 	if (len > 0) {
 		if (vtb->vtb_type == VTB_FRAMEBUFFER) {
-			bcopy_io(vtb->vtb_buffer + at + count,
+			sc_vtb_bcopy(vtb->vtb_buffer + at + count,
 				 vtb->vtb_buffer + at,
 				 len*sizeof(uint16_t)); 
 		} else {
-			bcopy(vtb->vtb_buffer + at + count,
+			sc_vtb_bcopy(vtb->vtb_buffer + at + count,
 			      vtb->vtb_buffer + at,
 			      len*sizeof(uint16_t)); 
 		}
@@ -270,11 +304,11 @@ sc_vtb_ins(sc_vtb_t *vtb, int at, int count, int c, int attr)
 		count = vtb->vtb_size - at;
 	} else {
 		if (vtb->vtb_type == VTB_FRAMEBUFFER) {
-			bcopy_io(vtb->vtb_buffer + at,
+			sc_vtb_bcopy(vtb->vtb_buffer + at,
 				 vtb->vtb_buffer + at + count,
 				 (vtb->vtb_size - at - count)*sizeof(uint16_t));
 		} else {
-			bcopy(vtb->vtb_buffer + at,
+			sc_vtb_bcopy(vtb->vtb_buffer + at,
 			      vtb->vtb_buffer + at + count,
 			      (vtb->vtb_size - at - count)*sizeof(uint16_t)); 
 		}
