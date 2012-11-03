@@ -2855,10 +2855,6 @@ bge_reset(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_SERDES_CFG, serdescfg);
 	}
 
-	CSR_WRITE_4(sc, BGE_MI_MODE,
-	    sc->bge_mi_mode & ~BGE_MIMODE_AUTOPOLL);
-	DELAY(80);
-
 	/* XXX: Broadcom Linux driver. */
 	if ((sc->bge_flags & BGE_FLAG_PCIE) &&
 	    sc->bge_chipid != BGE_CHIPID_BCM5750_A0 &&
