@@ -367,8 +367,8 @@ ic_init(struct isc_softc *isp)
 			 1,		/* max_dev_transactions */
 			 100,		/* max_tagged_dev_transactions */
 			 devq);
+     cam_simq_release(devq);
      if(sim == NULL) {
-	  cam_simq_release(devq);
 	  lockuninit(&isp->cam_lock);
 	  return ENXIO;
      }
