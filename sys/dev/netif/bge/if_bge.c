@@ -70,7 +70,7 @@
  * ring.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -96,6 +96,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
@@ -306,8 +307,9 @@ static int	bge_encap(struct bge_softc *, struct mbuf **, uint32_t *);
 static int	bge_setup_tso(struct bge_softc *, struct mbuf **,
 		    uint16_t *, uint16_t *);
 
-#ifdef DEVICE_POLLING
-static void	bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
+#ifdef IFPOLL_ENABLE
+static void	bge_npoll(struct ifnet *, struct ifpoll_info *);
+static void	bge_npoll_compat(struct ifnet *, void *, int );
 #endif
 static void	bge_intr_crippled(void *);
 static void	bge_intr_legacy(void *);
@@ -2334,8 +2336,8 @@ bge_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = bge_ioctl;
 	ifp->if_start = bge_start;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = bge_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = bge_npoll;
 #endif
 	ifp->if_watchdog = bge_watchdog;
 	ifp->if_init = bge_init;
@@ -2543,6 +2545,13 @@ bge_attach(device_t dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, ether_addr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	/* Polling setup */
+	ifpoll_compat_setup(&sc->bge_npoll,
+	    &sc->bge_sysctl_ctx, sc->bge_sysctl_tree, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	if (sc->bge_irq_type == PCI_INTR_TYPE_MSI) {
 		if (sc->bge_flags & BGE_FLAG_ONESHOT_MSI) {
@@ -3042,53 +3051,71 @@ bge_txeof(struct bge_softc *sc, uint16_t tx_cons)
 		if_devstart(ifp);
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+bge_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycles __unused)
 {
 	struct bge_softc *sc = ifp->if_softc;
 	struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
 	uint16_t rx_prod, tx_cons;
 
-	switch(cmd) {
-	case POLL_REGISTER:
-		bge_disable_intr(sc);
-		break;
-	case POLL_DEREGISTER:
-		bge_enable_intr(sc);
-		break;
-	case POLL_AND_CHECK_STATUS:
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (sc->bge_npoll.ifpc_stcount-- == 0) {
+		sc->bge_npoll.ifpc_stcount = sc->bge_npoll.ifpc_stfrac;
 		/*
 		 * Process link state changes.
 		 */
 		bge_link_poll(sc);
-		/* Fall through */
-	case POLL_ONLY:
-		if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
-			sc->bge_status_tag = sblk->bge_status_tag;
-			/*
-			 * Use a load fence to ensure that status_tag
-			 * is saved  before rx_prod and tx_cons.
-			 */
-			cpu_lfence();
-		}
-		rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
-		tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
-		if (ifp->if_flags & IFF_RUNNING) {
-			rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
-			if (sc->bge_rx_saved_considx != rx_prod)
-				bge_rxeof(sc, rx_prod);
+	}
 
-			tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
-			if (sc->bge_tx_saved_considx != tx_cons)
-				bge_txeof(sc, tx_cons);
-		}
-		break;
+	if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
+		sc->bge_status_tag = sblk->bge_status_tag;
+		/*
+		 * Use a load fence to ensure that status_tag
+		 * is saved  before rx_prod and tx_cons.
+		 */
+		cpu_lfence();
+	}
+
+	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
+	if (sc->bge_rx_saved_considx != rx_prod)
+		bge_rxeof(sc, rx_prod);
+
+	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
+	if (sc->bge_tx_saved_considx != tx_cons)
+		bge_txeof(sc, tx_cons);
+
+	if (sc->bge_flags & BGE_FLAG_STATUS_TAG)
+		bge_writembx(sc, BGE_MBX_IRQ0_LO, sc->bge_status_tag << 24);
+}
+
+static void
+bge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct bge_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->bge_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = bge_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING)
+			bge_disable_intr(sc);
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING)
+			bge_enable_intr(sc);
+		ifp->if_npoll_cpuid = -1;
 	}
 }
 
-#endif
+#endif	/* IFPOLL_ENABLE */
 
 static void
 bge_intr_crippled(void *xsc)
@@ -3655,8 +3682,8 @@ bge_init(void *xsc)
 
 	/* Enable host interrupts if polling(4) is not enabled. */
 	PCI_SETBIT(sc->bge_dev, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_CLEAR_INTA, 4);
-#ifdef DEVICE_POLLING
-	if (ifp->if_flags & IFF_POLLING)
+#ifdef IFPOLL_ENABLE
+	if (ifp->if_flags & IFF_NPOLLING)
 		bge_disable_intr(sc);
 	else
 #endif
@@ -4718,6 +4745,8 @@ bge_disable_intr(struct bge_softc *sc)
 	 * Acknowledge possible asserted interrupt.
 	 */
 	bge_writembx(sc, BGE_MBX_IRQ0_LO, 1);
+
+	sc->bge_npoll.ifpc_stcount = 0;
 
 	lwkt_serialize_handler_disable(ifp->if_serializer);
 }

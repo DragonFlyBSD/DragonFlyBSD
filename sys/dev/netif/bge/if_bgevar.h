@@ -231,6 +231,7 @@ struct bge_softc {
 	uint32_t		bge_chipid;
 	uint32_t		bge_asicrev;
 	uint32_t		bge_chiprev;
+	struct ifpoll_compat	bge_npoll;	/* polling */
 	struct bge_ring_data	bge_ldata;	/* rings */
 	struct bge_chain_data	bge_cdata;	/* mbufs */
 	uint16_t		bge_tx_saved_considx;
