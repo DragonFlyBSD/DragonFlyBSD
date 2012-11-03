@@ -3073,16 +3073,18 @@ bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			 */
 			cpu_lfence();
 		}
-		rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
-		tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
-		if (ifp->if_flags & IFF_RUNNING) {
-			rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
-			if (sc->bge_rx_saved_considx != rx_prod)
-				bge_rxeof(sc, rx_prod);
 
-			tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
-			if (sc->bge_tx_saved_considx != tx_cons)
-				bge_txeof(sc, tx_cons);
+		rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
+		if (sc->bge_rx_saved_considx != rx_prod)
+			bge_rxeof(sc, rx_prod);
+
+		tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
+		if (sc->bge_tx_saved_considx != tx_cons)
+			bge_txeof(sc, tx_cons);
+
+		if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
+			bge_writembx(sc, BGE_MBX_IRQ0_LO,
+			    sc->bge_status_tag << 24);
 		}
 		break;
 	}
