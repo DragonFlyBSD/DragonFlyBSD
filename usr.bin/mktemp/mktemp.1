@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -33,7 +29,7 @@
 .\" $FreeBSD: src/usr.bin/mktemp/mktemp.1,v 1.7.2.8 2003/02/24 22:37:42 trhodes Exp $
 .\" $DragonFly: src/usr.bin/mktemp/mktemp.1,v 1.4 2006/02/17 19:39:09 swildner Exp $
 .\"
-.Dd November 20, 1996
+.Dd November 3, 2012
 .Dt MKTEMP 1
 .Os
 .Sh NAME
@@ -55,8 +51,10 @@
 The
 .Nm
 utility takes each of the given file name templates and overwrites a
-portion of it to create a file name.  This file name is unique
-and suitable for use by the application.  The template may be
+portion of it to create a file name.
+This file name is unique
+and suitable for use by the application.
+The template may be
 any file name with some number of
 .Ql X Ns s
 appended
@@ -75,7 +73,7 @@ provided; six
 will
 result in
 .Nm
-testing roughly 26 ** 6 combinations.
+selecting 1 of 56800235584 (62 ** 6) possible file names.
 .Pp
 If
 .Nm
@@ -102,6 +100,14 @@ Care should
 be taken to ensure that it is appropriate to use an environment variable
 potentially supplied by the user.
 .Pp
+If no arguments are passed or if only the
+.Fl d
+flag is passed
+.Nm
+behaves as if
+.Fl t Li tmp
+was supplied.
+.Pp
 Any number of temporary files may be created in a single invocation,
 including one based on the internal template resulting from the
 .Fl t
@@ -111,12 +117,16 @@ The
 .Nm
 utility is provided to allow shell scripts to safely use temporary files.
 Traditionally, many shell scripts take the name of the program with
-the pid as a suffix and use that as a temporary file name.  This
+the pid as a suffix and use that as a temporary file name.
+This
 kind of naming scheme is predictable and the race condition it creates
-is easy for an attacker to win.  A safer, though still inferior, approach
-is to make a temporary directory using the same naming scheme.  While
+is easy for an attacker to win.
+A safer, though still inferior, approach
+is to make a temporary directory using the same naming scheme.
+While
 this does allow one to guarantee that a temporary file will not be
-subverted, it still allows a simple denial of service attack.  For these
+subverted, it still allows a simple denial of service attack.
+For these
 reasons it is suggested that
 .Nm
 be used instead.
@@ -126,7 +136,8 @@ The available options are as follows:
 .It Fl d
 Make a directory instead of a file.
 .It Fl q
-Fail silently if an error occurs.  This is useful if
+Fail silently if an error occurs.
+This is useful if
 a script does not want error output to go to standard error.
 .It Fl t Ar prefix
 Generate a template (using the supplied
@@ -137,13 +148,18 @@ if set) to create a filename template.
 .It Fl u
 Operate in
 .Dq unsafe
-mode.  The temp file will be unlinked before
+mode.
+The temp file will be unlinked before
 .Nm
-exits.  This is slightly better than
+exits.
+This is slightly better than
 .Xr mktemp 3
-but still introduces a race condition.  Use of this
+but still introduces a race condition.
+Use of this
 option is not encouraged.
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 The following
 .Xr sh 1
@@ -173,11 +189,6 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 .Ed
-.Sh DIAGNOSTICS
-The
-.Nm
-utility
-exits 0 on success, and 1 if an error occurs.
 .Sh SEE ALSO
 .Xr mkdtemp 3 ,
 .Xr mkstemp 3 ,
