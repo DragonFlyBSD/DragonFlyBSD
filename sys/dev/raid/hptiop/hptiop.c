@@ -1413,9 +1413,9 @@ static int hptiop_attach(device_t dev)
 
 	hba->sim = cam_sim_alloc(hptiop_action, hptiop_poll, driver_name,
 			hba, unit, &sim_mplock, hba->max_requests - 1, 1, devq);
+	cam_simq_release(devq);
 	if (!hba->sim) {
 		device_printf(dev, "cam_sim_alloc failed\n");
-		cam_simq_release(devq);
 		goto srb_dmamap_unload;
 	}
 	if (xpt_bus_register(hba->sim, 0) != CAM_SUCCESS)

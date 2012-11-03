@@ -3619,12 +3619,12 @@ static int arcmsr_attach(device_t dev)
 		return ENXIO;
 	}
 	acb->psim=cam_sim_alloc(arcmsr_action, arcmsr_poll, "arcmsr", acb, unit, &acb->qbuffer_lock, 1, ARCMSR_MAX_OUTSTANDING_CMD, devq);
+	cam_simq_release(devq);
 	if(acb->psim == NULL) {
 		arcmsr_free_resource(acb);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
 		if (acb->irq_type == PCI_INTR_TYPE_MSI)
 			pci_release_msi(dev);
-		cam_simq_release(devq);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
 		kprintf("arcmsr%d: cam_sim_alloc failure!\n", unit);
 		return ENXIO;
