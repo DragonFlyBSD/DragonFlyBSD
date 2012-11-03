@@ -77,6 +77,7 @@ void	trimdomain(char *, int);
 int	openpty(int *, int *, char *, struct termios *, struct winsize *);
 int	forkpty(int *, char *, struct termios *, struct winsize *);
 int	dehumanize_number(const char *, int64_t *);
+void	hexdump(const void *_ptr, int _length, const char *_hdr, int _flags);
 int	humanize_number(char *, size_t, int64_t, const char *, int, int);
 int	humanize_unsigned(char *buf, size_t len, uint64_t bytes,
 					const char *suffix, int divisor);
@@ -152,6 +153,13 @@ __END_DECLS
 #define	FPARSELN_UNESCCOMM	0x04
 #define	FPARSELN_UNESCREST	0x08
 #define	FPARSELN_UNESCALL	0x0f
+
+/* Flags for hexdump(3). */
+#define	HD_COLUMN_MASK		0xff
+#define	HD_DELIM_MASK		0xff00
+#define	HD_OMIT_COUNT		(1 << 16)
+#define	HD_OMIT_HEX		(1 << 17)
+#define	HD_OMIT_CHARS		(1 << 18)
 
 /* Values for humanize_number(3)'s flags parameter. */
 #define	HN_DECIMAL		0x01

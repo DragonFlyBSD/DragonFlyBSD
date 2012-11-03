@@ -12,7 +12,7 @@ SRCS=	flopen.c login.c login_tty.c logout.c logwtmp.c logwtmpx.c pty.c \
 	realhostname.c fparseln.c stub.c pidfile.c trimdomain.c \
 	dehumanize_number.c humanize_number.c humanize_unsigned.c pw_util.c \
 	efun.c getmntopts.c
-SRCS+=	gr_util.c
+SRCS+=	gr_util.c hexdump.c
 
 INCS=	libutil.h login_cap.h
 INCSLINKS=libutil.h ${INCLUDEDIR}/util.h
@@ -28,6 +28,7 @@ MAN+=	flopen.3 login.3 loginx.3 login_auth.3 login_tty.3 logout.3 logwtmp.3 \
 	humanize_number.3 humanize_unsigned.3 \
 	efun.3 getmntopts.3
 MAN+=	login.conf.5 auth.conf.5
+MAN+=	hexdump.3
 
 MLINKS+=auth.3 auth_getval.3
 MLINKS+=efun.3 ecalloc.3 efun.3 emalloc.3 efun.3 erealloc.3 efun.3 esetfunc.3 \
