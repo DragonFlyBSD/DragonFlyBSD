@@ -33,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libutil/libutil.h,v 1.26.2.3 2000/11/22 03:49:49 murray Exp $
+ * $FreeBSD$
  */
 
 #ifndef _LIBUTIL_H_
@@ -46,23 +46,23 @@
 #define	_PWSCAN_WARN	0x02
 #endif
 
-#define PROPERTY_MAX_NAME	64
-#define PROPERTY_MAX_VALUE	512
+#define	PROPERTY_MAX_NAME	64
+#define	PROPERTY_MAX_VALUE	512
 
-/* for properties.c */
+/* For properties.c. */
 typedef struct _property {
 	struct _property *next;
-	char *name;
-	char *value;
+	char	*name;
+	char	*value;
 } *properties;
 
-/* Avoid pulling in all the include files for no need */
+/* Avoid pulling in all the include files for no need. */
+struct in_addr;
+struct sockaddr;
 struct termios;
 struct winsize;
 struct utmp;
 struct utmpx;
-struct in_addr;
-struct sockaddr;
 
 __BEGIN_DECLS
 int	flopen(const char *, int, ...);
@@ -98,8 +98,10 @@ char   *fparseln(FILE *, size_t *, size_t *, const char[3], int);
 #endif
 
 #ifdef _PWD_H_
-int	pw_copy(int _ffd, int _tfd, const struct passwd *_pw, struct passwd *_old_pw);
-struct passwd *pw_dup(const struct passwd *_pw);
+int	pw_copy(int _ffd, int _tfd, const struct passwd *_pw,
+	    struct passwd *_old_pw);
+struct passwd
+	*pw_dup(const struct passwd *_pw);
 int	pw_edit(int _notsetuid);
 int	pw_equal(const struct passwd *_pw1, const struct passwd *_pw2);
 void	pw_fini(void);
@@ -107,9 +109,27 @@ int	pw_init(const char *_dir, const char *_master);
 char	*pw_make(const struct passwd *_pw);
 int	pw_mkdb(const char *_user);
 int	pw_lock(void);
-struct passwd *pw_scan(const char *_line, int _flags);
-const char *pw_tempname(void);
+struct passwd *
+	pw_scan(const char *_line, int _flags);
+const char *
+	pw_tempname(void);
 int	pw_tmp(int _mfd);
+#endif
+
+#ifdef _GRP_H_
+int 	gr_copy(int __ffd, int _tfd, const struct group *_gr,
+	    struct group *_old_gr);
+struct group *
+	gr_dup(const struct group *_gr);
+int	gr_equal(const struct group *_gr1, const struct group *_gr2);
+void	gr_fini(void);
+int	gr_init(const char *_dir, const char *_master);
+int	gr_lock(void);
+char	*gr_make(const struct group *_gr);
+int	gr_mkdb(void);
+struct group *
+	gr_scan(const char *_line);
+int	gr_tmp(int _mdf);
 #endif
 
 /* Error checked functions */
@@ -126,22 +146,6 @@ int		easprintf(char ** __restrict, const char * __restrict, ...)
 		__printflike(2, 3);
 __END_DECLS
 
-#define UU_LOCK_INUSE (1)
-#define UU_LOCK_OK (0)
-#define UU_LOCK_OPEN_ERR (-1)
-#define UU_LOCK_READ_ERR (-2)
-#define UU_LOCK_CREAT_ERR (-3)
-#define UU_LOCK_WRITE_ERR (-4)
-#define UU_LOCK_LINK_ERR (-5)
-#define UU_LOCK_TRY_ERR (-6)
-#define UU_LOCK_OWNER_ERR (-7)
-
-/* return values from realhostname() */
-#define HOSTNAME_FOUND		(0)
-#define HOSTNAME_INCORRECTNAME	(1)
-#define HOSTNAME_INVALIDADDR	(2)
-#define HOSTNAME_INVALIDNAME	(3)
-
 /* fparseln(3) */
 #define	FPARSELN_UNESCESC	0x01
 #define	FPARSELN_UNESCCONT	0x02
@@ -149,16 +153,36 @@ __END_DECLS
 #define	FPARSELN_UNESCREST	0x08
 #define	FPARSELN_UNESCALL	0x0f
 
-/* pw_scan() */
-#define PWSCAN_MASTER		0x01
-#define PWSCAN_WARN		0x02
+/* Values for humanize_number(3)'s flags parameter. */
+#define	HN_DECIMAL		0x01
+#define	HN_NOSPACE		0x02
+#define	HN_B			0x04
+#define	HN_DIVISOR_1000		0x08
+#define	HN_IEC_PREFIXES		0x10
 
-/* humanize_number(3) */ 
-#define HN_DECIMAL		0x01 
-#define HN_NOSPACE		0x02 
-#define HN_B			0x04 
-#define HN_DIVISOR_1000		0x08 
-#define HN_GETSCALE		0x10 
-#define HN_AUTOSCALE		0x20 
+/* Values for humanize_number(3)'s scale parameter. */
+#define	HN_GETSCALE		0x10
+#define	HN_AUTOSCALE		0x20
+
+/* Return values from realhostname(). */
+#define	HOSTNAME_FOUND		0
+#define	HOSTNAME_INCORRECTNAME	1
+#define	HOSTNAME_INVALIDADDR	2
+#define	HOSTNAME_INVALIDNAME	3
+
+/* Flags for pw_scan(). */
+#define	PWSCAN_MASTER		0x01
+#define	PWSCAN_WARN		0x02
+
+/* Return values from uu_lock(). */
+#define	UU_LOCK_INUSE		1
+#define	UU_LOCK_OK		0
+#define	UU_LOCK_OPEN_ERR	(-1)
+#define	UU_LOCK_READ_ERR	(-2)
+#define	UU_LOCK_CREAT_ERR	(-3)
+#define	UU_LOCK_WRITE_ERR	(-4)
+#define	UU_LOCK_LINK_ERR	(-5)
+#define	UU_LOCK_TRY_ERR		(-6)
+#define	UU_LOCK_OWNER_ERR	(-7)
 
 #endif /* !_LIBUTIL_H_ */
