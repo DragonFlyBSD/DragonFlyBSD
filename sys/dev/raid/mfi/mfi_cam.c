@@ -121,8 +121,8 @@ mfip_attach(device_t dev)
 	sc->sim = cam_sim_alloc(mfip_cam_action, mfip_cam_poll, "mfi", sc,
 				device_get_unit(dev), &mfisc->mfi_io_lock, 1,
 				MFI_SCSI_MAX_CMDS, sc->devq);
+	cam_simq_release(sc->devq);
 	if (sc->sim == NULL) {
-		cam_simq_release(sc->devq);
 		device_printf(dev, "CAM SIM attach failed\n");
 		return (EINVAL);
 	}
@@ -131,7 +131,6 @@ mfip_attach(device_t dev)
 	if (xpt_bus_register(sc->sim, 0) != 0) {
 		device_printf(dev, "XPT bus registration failed\n");
 		cam_sim_free(sc->sim);
-		cam_simq_release(sc->devq);
 		lockmgr(&mfisc->mfi_io_lock, LK_RELEASE);
 		return (EINVAL);
 	}
@@ -155,9 +154,6 @@ mfip_detach(device_t dev)
 		cam_sim_free(sc->sim);
 		lockmgr(&sc->mfi_sc->mfi_io_lock, LK_RELEASE);
 	}
-
-	if (sc->devq != NULL)
-		cam_simq_release(sc->devq);
 
 	return (0);
 }

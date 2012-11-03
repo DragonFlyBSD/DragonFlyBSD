@@ -610,6 +610,7 @@ mps_attach_sas(struct mps_softc *sc)
 	unit = device_get_unit(sc->mps_dev);
 	sassc->sim = cam_sim_alloc(mpssas_action, mpssas_poll, "mps", sassc,
 	    unit, &sc->mps_lock, sc->num_reqs, sc->num_reqs, sassc->devq);
+	cam_simq_release(sassc->devq);
 	if (sassc->sim == NULL) {
 		mps_dprint(sc, MPS_FAULT, "Cannot allocate SIM\n");
 		error = EINVAL;
@@ -728,9 +729,6 @@ mps_detach_sas(struct mps_softc *sc)
 		}
 	}
 	mps_unlock(sc);
-
-	if (sassc->devq != NULL)
-		cam_simq_release(sassc->devq);
 
 	kfree(sassc->targets, M_MPT2);
 	kfree(sassc, M_MPT2);

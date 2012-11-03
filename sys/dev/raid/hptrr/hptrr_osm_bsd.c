@@ -1081,13 +1081,12 @@ static void hpt_final_init(void *dummy)
 
 		vbus_ext->sim = cam_sim_alloc(hpt_action, hpt_poll, driver_name,
 				vbus_ext, 0, &sim_mplock, os_max_queue_comm, /*tagged*/8,  devq);
+		cam_simq_release(devq);
 
 		if (!vbus_ext->sim) {
 			os_printk("cam_sim_alloc failed");
-			cam_simq_release(devq);
 			return ;
 		}
-		cam_simq_release(devq);
 
 		if (xpt_bus_register(vbus_ext->sim, 0) != CAM_SUCCESS) {
 			os_printk("xpt_bus_register failed");

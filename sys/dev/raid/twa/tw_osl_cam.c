@@ -103,8 +103,8 @@ tw_osli_cam_attach(struct twa_softc *sc)
 	sc->sim = cam_sim_alloc(twa_action, twa_poll, "twa", sc,
 			device_get_unit(sc->bus_dev), sc->sim_lock,
 			TW_OSLI_MAX_NUM_IOS, 1, devq);
+	cam_simq_release(devq);
 	if (sc->sim == NULL) {
-		cam_simq_release(devq);
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
 			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
@@ -113,7 +113,6 @@ tw_osli_cam_attach(struct twa_softc *sc)
 			ENOMEM);
 		return(ENOMEM);
 	}
-	cam_simq_release(devq);
 
 	/*
 	 * Register the bus.
