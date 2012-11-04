@@ -42,7 +42,7 @@
  * Ethernet controller.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -64,6 +64,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
@@ -175,8 +176,9 @@ static void	stge_dma_free(struct stge_softc *);
 static void	stge_dma_wait(struct stge_softc *);
 static void	stge_init_tx_ring(struct stge_softc *);
 static int	stge_init_rx_ring(struct stge_softc *);
-#ifdef DEVICE_POLLING
-static void	stge_poll(struct ifnet *, enum poll_cmd, int);
+#ifdef IFPOLL_ENABLE
+static void	stge_npoll(struct ifnet *, struct ifpoll_info *);
+static void	stge_npoll_compat(struct ifnet *, void *, int);
 #endif
 
 static int	sysctl_hw_stge_rxint_nframe(SYSCTL_HANDLER_ARGS);
@@ -731,8 +733,8 @@ stge_attach(device_t dev)
 	ifp->if_start = stge_start;
 	ifp->if_watchdog = stge_watchdog;
 	ifp->if_init = stge_init;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = stge_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = stge_npoll;
 #endif
 	ifp->if_mtu = ETHERMTU;
 	ifq_set_maxlen(&ifp->if_snd, STGE_TX_RING_CNT - 1);
@@ -761,6 +763,12 @@ stge_attach(device_t dev)
 	}
 
 	ether_ifattach(ifp, enaddr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->sc_npoll,
+	    &sc->sc_sysctl_ctx, sc->sc_sysctl_tree, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	/* VLAN capability setup */
 	ifp->if_capabilities |= IFCAP_VLAN_MTU | IFCAP_VLAN_HWTAGGING;
@@ -1569,7 +1577,7 @@ stge_rxeof(struct stge_softc *sc, int count)
 	prog = 0;
 	for (cons = sc->sc_cdata.stge_rx_cons; prog < STGE_RX_RING_CNT;
 	    prog++, cons = (cons + 1) % STGE_RX_RING_CNT) {
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 		if (count >= 0 && count-- == 0)
 			break;
 #endif
@@ -1688,50 +1696,69 @@ stge_rxeof(struct stge_softc *sc, int count)
 	}
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
+
 static void
-stge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+stge_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
-	struct stge_softc *sc;
-	uint16_t status;
+	struct stge_softc *sc = ifp->if_softc;
 
-	sc = ifp->if_softc;
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	switch (cmd) {
-	case POLL_REGISTER:
-		CSR_WRITE_2(sc, STGE_IntEnable, 0);
-		break;
-	case POLL_DEREGISTER:
-		CSR_WRITE_2(sc, STGE_IntEnable, sc->sc_IntEnable);
-		break;
-	case POLL_ONLY:
-	case POLL_AND_CHECK_STATUS:
-		sc->sc_cdata.stge_rxcycles = count;
-		stge_rxeof(sc, count);
-		stge_txeof(sc);
+	if (sc->sc_npoll.ifpc_stcount-- == 0) {
+		uint16_t status;
 
-		if (cmd == POLL_AND_CHECK_STATUS) {
-			status = CSR_READ_2(sc, STGE_IntStatus);
-			status &= sc->sc_IntEnable;
-			if (status != 0) {
-				if (status & IS_HostError) {
-					device_printf(sc->sc_dev,
-					"Host interface error, "
-					"resetting...\n");
-					stge_init(sc);
-				}
-				if ((status & IS_TxComplete) != 0 &&
-				    stge_tx_error(sc) != 0)
-					stge_init(sc);
+		sc->sc_npoll.ifpc_stcount = sc->sc_npoll.ifpc_stfrac;
+
+		status = CSR_READ_2(sc, STGE_IntStatus);
+		status &= sc->sc_IntEnable;
+		if (status != 0) {
+			if (status & IS_HostError) {
+				device_printf(sc->sc_dev,
+				"Host interface error, "
+				"resetting...\n");
+				stge_init(sc);
 			}
-
+			if ((status & IS_TxComplete) != 0 &&
+			    stge_tx_error(sc) != 0)
+				stge_init(sc);
 		}
+	}
 
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+	stge_rxeof(sc, count);
+	stge_txeof(sc);
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+}
+
+static void
+stge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct stge_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->sc_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = stge_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			CSR_WRITE_2(sc, STGE_IntEnable, 0);
+			sc->sc_npoll.ifpc_stcount = 0;
+		}
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING)
+			CSR_WRITE_2(sc, STGE_IntEnable, sc->sc_IntEnable);
+		ifp->if_npoll_cpuid = -1;
 	}
 }
-#endif	/* DEVICE_POLLING */
+
+#endif	/* IFPOLL_ENABLE */
 
 /*
  * stge_tick:
@@ -1974,11 +2001,12 @@ stge_init(void *xsc)
 	 */
 	sc->sc_IntEnable = IS_HostError | IS_TxComplete |
 	    IS_TxDMAComplete | IS_RxDMAComplete | IS_RFDListEnd;
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/* Disable interrupts if we are polling. */
-	if (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_NPOLLING) {
 		CSR_WRITE_2(sc, STGE_IntEnable, 0);
-	else
+		sc->sc_npoll.ifpc_stcount = 0;
+	} else
 #endif
 	CSR_WRITE_2(sc, STGE_IntEnable, sc->sc_IntEnable);
 

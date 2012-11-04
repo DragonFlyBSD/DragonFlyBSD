@@ -93,9 +93,6 @@ struct stge_chain_data{
 	int			stge_tx_cons;
 	int			stge_tx_cnt;
 	int			stge_rx_cons;
-#ifdef DEVICE_POLLING
-	int			stge_rxcycles;
-#endif
 	int			stge_rxlen;
 	struct mbuf		*stge_rxhead;
 	struct mbuf		*stge_rxtail;
@@ -140,6 +137,7 @@ struct stge_softc {
 
 	struct callout		sc_tick_ch;	/* tick callout */
 
+	struct ifpoll_compat	sc_npoll;
 	struct stge_chain_data	sc_cdata;
 	struct stge_ring_data	sc_rdata;
 	int			sc_if_flags;

@@ -41,6 +41,7 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
