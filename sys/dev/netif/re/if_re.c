@@ -112,7 +112,7 @@
 
 #define _IP_VHL
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -135,6 +135,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
@@ -346,8 +347,9 @@ static void	re_jbuf_ref(void *);
 static int	re_diag(struct re_softc *);
 #endif
 
-#ifdef DEVICE_POLLING
-static void	re_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
+#ifdef IFPOLL_ENABLE
+static void	re_npoll(struct ifnet *, struct ifpoll_info *);
+static void	re_npoll_compat(struct ifnet *, void *, int);
 #endif
 
 static device_method_t re_methods[] = {
@@ -1567,8 +1569,8 @@ re_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = re_ioctl;
 	ifp->if_start = re_start;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = re_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = re_npoll;
 #endif
 	ifp->if_watchdog = re_watchdog;
 	ifp->if_init = re_init;
@@ -1593,6 +1595,12 @@ re_attach(device_t dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->re_npoll,
+	    &sc->re_sysctl_ctx, sc->re_sysctl_tree, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 #ifdef RE_DIAG
 	/*
@@ -2144,54 +2152,66 @@ re_tick_serialized(void *xsc)
 	callout_reset(&sc->re_timer, hz, re_tick, sc);
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-re_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+re_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
 	struct re_softc *sc = ifp->if_softc;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	switch(cmd) {
-	case POLL_REGISTER:
-		/* disable interrupts */
-		re_setup_intr(sc, 0, RE_IMTYPE_NONE);
-		break;
+	if (sc->re_npoll.ifpc_stcount-- == 0) {
+		uint16_t       status;
 
-	case POLL_DEREGISTER:
-		/* enable interrupts */
-		re_setup_intr(sc, 1, sc->re_imtype);
-		break;
+		sc->re_npoll.ifpc_stcount = sc->re_npoll.ifpc_stfrac;
 
-	default:
-		sc->rxcycles = count;
-		re_rxeof(sc);
-		re_txeof(sc);
+		status = CSR_READ_2(sc, RE_ISR);
+		if (status == 0xffff)
+			return;
+		if (status)
+			CSR_WRITE_2(sc, RE_ISR, status);
 
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+		/*
+		 * XXX check behaviour on receiver stalls.
+		 */
 
-		if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
-			uint16_t       status;
+		if (status & RE_ISR_SYSTEM_ERR)
+			re_init(sc);
+	}
 
-			status = CSR_READ_2(sc, RE_ISR);
-			if (status == 0xffff)
-				return;
-			if (status)
-				CSR_WRITE_2(sc, RE_ISR, status);
+	sc->rxcycles = count;
+	re_rxeof(sc);
+	re_txeof(sc);
 
-			/*
-			 * XXX check behaviour on receiver stalls.
-			 */
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+}
 
-			if (status & RE_ISR_SYSTEM_ERR)
-				re_init(sc);
-		}
-		break;
+static void
+re_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct re_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->re_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = re_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING)
+			re_setup_intr(sc, 0, RE_IMTYPE_NONE);
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING)
+			re_setup_intr(sc, 1, sc->re_imtype);
+		ifp->if_npoll_cpuid = -1;
 	}
 }
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 
 static void
 re_intr(void *arg)
@@ -2641,14 +2661,14 @@ re_init(void *xsc)
 	 */
 	re_setmulti(sc);
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/*
 	 * Disable interrupts if we are polling.
 	 */
-	if (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_NPOLLING)
 		re_setup_intr(sc, 0, RE_IMTYPE_NONE);
 	else	/* otherwise ... */
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 	/*
 	 * Enable interrupts.
 	 */
@@ -2992,7 +3012,7 @@ re_sysctl_hwtime(SYSCTL_HANDLER_ARGS, int *hwtime)
 	if (v != *hwtime) {
 		*hwtime = v;
 
-		if ((ifp->if_flags & (IFF_RUNNING | IFF_POLLING)) ==
+		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
 		    IFF_RUNNING && sc->re_imtype == RE_IMTYPE_HW)
 			re_setup_hw_im(sc);
 	}
@@ -3023,7 +3043,7 @@ re_sysctl_simtime(SYSCTL_HANDLER_ARGS)
 	if (v != sc->re_sim_time) {
 		sc->re_sim_time = v;
 
-		if ((ifp->if_flags & (IFF_RUNNING | IFF_POLLING)) ==
+		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
 		    IFF_RUNNING && sc->re_imtype == RE_IMTYPE_SIM) {
 #ifdef foo
 			int reg;
@@ -3080,7 +3100,7 @@ re_sysctl_imtype(SYSCTL_HANDLER_ARGS)
 
 	if (v != sc->re_imtype) {
 		sc->re_imtype = v;
-		if ((ifp->if_flags & (IFF_RUNNING | IFF_POLLING)) ==
+		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
 		    IFF_RUNNING)
 			re_setup_intr(sc, 1, sc->re_imtype);
 	}
@@ -3196,6 +3216,8 @@ re_setup_intr(struct re_softc *sc, int enable_intrs, int imtype)
 		CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
 	else
 		CSR_WRITE_2(sc, RE_IMR, 0); 
+
+	sc->re_npoll.ifpc_stcount = 0;
 
 	switch (imtype) {
 	case RE_IMTYPE_NONE:

@@ -168,6 +168,7 @@ struct re_softc {
 	bus_dma_tag_t		re_parent_tag;
 	bus_dma_tag_t		re_tag;
 	uint32_t		re_hwrev;
+	struct ifpoll_compat	re_npoll;
 	struct re_list_data	re_ldata;
 	struct callout		re_timer;
 	struct mbuf		*re_head;
