@@ -150,7 +150,8 @@ bi_checkcpu(void)
 
     /* Check for vendors that support AMD features. */
     if (strncmp(cpu_vendor, "GenuineIntel", 12) != 0 &&
-	strncmp(cpu_vendor, "AuthenticAMD", 12) != 0)
+	strncmp(cpu_vendor, "AuthenticAMD", 12) != 0 &&
+	strncmp(cpu_vendor, "CentaurHauls", 12) != 0)
 	return (0);
 
     /* Has to support AMD features. */
