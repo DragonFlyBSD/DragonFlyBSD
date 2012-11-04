@@ -111,6 +111,7 @@ struct nfe_softc {
 	uint32_t		rxtxctl;
 	uint8_t			mii_phyaddr;
 
+	struct ifpoll_compat	sc_npoll;
 	bus_dma_tag_t		sc_dtag;
 	struct nfe_tx_ring	txq;
 	struct nfe_rx_ring	rxq;

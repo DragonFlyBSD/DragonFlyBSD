@@ -54,7 +54,7 @@
 
 /* Driver for NVIDIA nForce MCP Fast Ethernet and Gigabit Ethernet */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>
@@ -74,6 +74,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/ifq_var.h>
 #include <net/if_types.h>
 #include <net/if_var.h>
@@ -106,8 +107,9 @@ static int	nfe_miibus_readreg(device_t, int, int);
 static void	nfe_miibus_writereg(device_t, int, int, int);
 static void	nfe_miibus_statchg(device_t);
 
-#ifdef DEVICE_POLLING
-static void	nfe_poll(struct ifnet *, enum poll_cmd, int);
+#ifdef IFPOLL_ENABLE
+static void	nfe_npoll(struct ifnet *, struct ifpoll_info *);
+static void	nfe_npoll_compat(struct ifnet *, void *, int);
 static void	nfe_disable_intrs(struct nfe_softc *);
 #endif
 static void	nfe_intr(void *);
@@ -617,8 +619,8 @@ nfe_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = nfe_ioctl;
 	ifp->if_start = nfe_start;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = nfe_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = nfe_npoll;
 #endif
 	ifp->if_watchdog = nfe_watchdog;
 	ifp->if_init = nfe_init;
@@ -643,6 +645,12 @@ nfe_attach(device_t dev)
 	callout_init(&sc->sc_tick_ch);
 
 	ether_ifattach(ifp, eaddr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->sc_npoll,
+	    &sc->sc_sysctl_ctx, sc->sc_sysctl_tree, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	error = bus_setup_intr(dev, sc->sc_irq_res, INTR_MPSAFE, nfe_intr, sc,
 			       &sc->sc_ih, ifp->if_serializer);
@@ -854,36 +862,53 @@ nfe_miibus_writereg(device_t dev, int phy, int reg, int val)
 #endif
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-nfe_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+nfe_npoll_compat(struct ifnet *ifp, void *arg __unused, int count __unused)
 {
 	struct nfe_softc *sc = ifp->if_softc;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	switch(cmd) {
-	case POLL_REGISTER:
-		nfe_disable_intrs(sc);
-		break;
+	nfe_rxeof(sc);
+	nfe_txeof(sc, 1);
+}
 
-	case POLL_DEREGISTER:
-		nfe_enable_intrs(sc);
-		break;
+static void
+nfe_disable_intrs(struct nfe_softc *sc)
+{
+	/* Disable interrupts */
+	NFE_WRITE(sc, NFE_IRQ_MASK, 0);
+	sc->sc_flags &= ~NFE_F_IRQ_TIMER;
+	sc->sc_npoll.ifpc_stcount = 0;
+}
 
-	case POLL_AND_CHECK_STATUS:
-		/* fall through */
-	case POLL_ONLY:
-		if (ifp->if_flags & IFF_RUNNING) {
-			nfe_rxeof(sc);
-			nfe_txeof(sc, 1);
-		}
-		break;
+static void
+nfe_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct nfe_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->sc_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = nfe_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING)
+			nfe_disable_intrs(sc);
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING)
+			nfe_enable_intrs(sc);
+		ifp->if_npoll_cpuid = -1;
 	}
 }
 
-#endif
+#endif	/* IFPOLL_ENABLE */
 
 static void
 nfe_intr(void *arg)
@@ -1548,8 +1573,8 @@ nfe_init(void *xsc)
 
 	NFE_WRITE(sc, NFE_PHY_STATUS, 0xf);
 
-#ifdef DEVICE_POLLING
-	if ((ifp->if_flags & IFF_POLLING))
+#ifdef IFPOLL_ENABLE
+	if (ifp->if_flags & IFF_NPOLLING)
 		nfe_disable_intrs(sc);
 	else
 #endif
@@ -2338,7 +2363,7 @@ nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS)
 		sc->sc_flags = flags;
 		sc->sc_irq_enable = NFE_IRQ_ENABLE(sc);
 
-		if ((ifp->if_flags & (IFF_POLLING | IFF_RUNNING))
+		if ((ifp->if_flags & (IFF_NPOLLING | IFF_RUNNING))
 		    == IFF_RUNNING) {
 			nfe_enable_intrs(sc);
 		}
@@ -2427,13 +2452,3 @@ nfe_enable_intrs(struct nfe_softc *sc)
 	else
 		sc->sc_flags &= ~NFE_F_IRQ_TIMER;
 }
-
-#ifdef DEVICE_POLLING
-static void
-nfe_disable_intrs(struct nfe_softc *sc)
-{
-	/* Disable interrupts */
-	NFE_WRITE(sc, NFE_IRQ_MASK, 0);
-	sc->sc_flags &= ~NFE_F_IRQ_TIMER;
-}
-#endif
