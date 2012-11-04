@@ -5958,7 +5958,10 @@ struct bce_softc {
 
 	/* The device handle for the MII bus child device. */
 	device_t		bce_miibus;
-													 
+
+	/* Polling */
+	struct ifpoll_compat	bce_npoll;
+
 	/* Driver maintained TX chain pointers and byte counter. */
 	int			rx_pages;
 	uint16_t		rx_prod;

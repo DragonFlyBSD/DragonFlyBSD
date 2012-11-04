@@ -49,7 +49,7 @@
  */
 
 #include "opt_bce.h"
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -77,6 +77,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
@@ -433,8 +434,9 @@ static void	bce_disable_intr(struct bce_softc *);
 static void	bce_enable_intr(struct bce_softc *);
 static void	bce_reenable_intr(struct bce_softc *);
 
-#ifdef DEVICE_POLLING
-static void	bce_poll(struct ifnet *, enum poll_cmd, int);
+#ifdef IFPOLL_ENABLE
+static void	bce_npoll(struct ifnet *, struct ifpoll_info *);
+static void	bce_npoll_compat(struct ifnet *, void *, int);
 #endif
 static void	bce_intr(struct bce_softc *);
 static void	bce_intr_legacy(void *);
@@ -948,8 +950,8 @@ bce_attach(device_t dev)
 	ifp->if_start = bce_start;
 	ifp->if_init = bce_init;
 	ifp->if_watchdog = bce_watchdog;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = bce_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = bce_npoll;
 #endif
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_hwassist = BCE_CSUM_FEATURES | CSUM_TSO;
@@ -1005,6 +1007,12 @@ bce_attach(device_t dev)
 
 	/* Add the supported sysctls to the kernel. */
 	bce_add_sysctls(sc);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->bce_npoll,
+	    &sc->bce_sysctl_ctx, sc->bce_sysctl_tree, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	/*
 	 * The chip reset earlier notified the bootcode that
@@ -4396,7 +4404,7 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 		unsigned int len;
 		uint32_t status = 0;
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 		if (count >= 0 && count-- == 0)
 			break;
 #endif
@@ -4652,6 +4660,8 @@ bce_disable_intr(struct bce_softc *sc)
 	sc->bce_check_tx_cons = 0;
 	sc->bce_check_status_idx = 0xffff;
 
+	sc->bce_npoll.ifpc_stcount = 0;
+
 	lwkt_serialize_handler_disable(sc->arpcom.ac_if.if_serializer);
 }
 
@@ -4795,9 +4805,9 @@ bce_init(void *xsc)
 	/* Init TX buffer descriptor chain. */
 	bce_init_tx_chain(sc);	/* XXX return value */
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/* Disable interrupts if we are polling. */
-	if (ifp->if_flags & IFF_POLLING) {
+	if (ifp->if_flags & IFF_NPOLLING) {
 		bce_disable_intr(sc);
 
 		REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
@@ -5195,39 +5205,16 @@ bce_watchdog(struct ifnet *ifp)
 }
 
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+bce_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
 	struct bce_softc *sc = ifp->if_softc;
 	struct status_block *sblk = sc->status_block;
 	uint16_t hw_tx_cons, hw_rx_cons;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	switch (cmd) {
-	case POLL_REGISTER:
-		bce_disable_intr(sc);
-
-		REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
-		       (1 << 16) | sc->bce_rx_quick_cons_trip);
-		REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
-		       (1 << 16) | sc->bce_tx_quick_cons_trip);
-		return;
-	case POLL_DEREGISTER:
-		bce_enable_intr(sc);
-
-		REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
-		       (sc->bce_tx_quick_cons_trip_int << 16) |
-		       sc->bce_tx_quick_cons_trip);
-		REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
-		       (sc->bce_rx_quick_cons_trip_int << 16) |
-		       sc->bce_rx_quick_cons_trip);
-		return;
-	default:
-		break;
-	}
 
 	/*
 	 * Save the status block index value for use when enabling
@@ -5238,8 +5225,10 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	/* Make sure status index is extracted before rx/tx cons */
 	cpu_lfence();
 
-	if (cmd == POLL_AND_CHECK_STATUS) {
+	if (sc->bce_npoll.ifpc_stcount-- == 0) {
 		uint32_t status_attn_bits;
+
+		sc->bce_npoll.ifpc_stcount = sc->bce_npoll.ifpc_stfrac;
 
 		status_attn_bits = sblk->status_attn_bits;
 
@@ -5283,7 +5272,45 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		if_devstart(ifp);
 }
 
-#endif	/* DEVICE_POLLING */
+static void
+bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct bce_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->bce_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = bce_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			bce_disable_intr(sc);
+
+			REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
+			       (1 << 16) | sc->bce_rx_quick_cons_trip);
+			REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
+			       (1 << 16) | sc->bce_tx_quick_cons_trip);
+		}
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING) {
+			bce_enable_intr(sc);
+
+			REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
+			       (sc->bce_tx_quick_cons_trip_int << 16) |
+			       sc->bce_tx_quick_cons_trip);
+			REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
+			       (sc->bce_rx_quick_cons_trip_int << 16) |
+			       sc->bce_rx_quick_cons_trip);
+		}
+		ifp->if_npoll_cpuid = -1;
+	}
+}
+
+#endif	/* IFPOLL_ENABLE */
 
 
 /*
@@ -5800,12 +5827,11 @@ bce_check_msi(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct status_block *sblk = sc->status_block;
 
-
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	KKASSERT(mycpuid == sc->bce_intr_cpuid);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_POLLING)) != IFF_RUNNING) {
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) != IFF_RUNNING) {
 		lwkt_serialize_exit(ifp->if_serializer);
 		return;
 	}
