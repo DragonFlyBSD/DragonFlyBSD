@@ -1483,7 +1483,7 @@ ifpoll_compat_setup(struct ifpoll_compat *cp,
 	cp->ifpc_cpuid = unit % ncpus2;
 	cp->ifpc_serializer = slz;
 
-	if (sysctl_ctx != NULL) {
+	if (sysctl_ctx != NULL && sysctl_tree != NULL) {
 		SYSCTL_ADD_PROC(sysctl_ctx, SYSCTL_CHILDREN(sysctl_tree),
 		    OID_AUTO, "npoll_stfrac", CTLTYPE_INT | CTLFLAG_RW,
 		    cp, 0, sysctl_compat_npoll_stfrac, "I",
