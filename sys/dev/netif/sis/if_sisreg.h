@@ -440,13 +440,12 @@ struct sis_softc {
 	uint8_t			sis_type;
 	uint8_t			sis_rev;
 	uint8_t			sis_link;
+	struct ifpoll_compat	sis_npoll;
 	struct sis_list_data	sis_ldata;
 	bus_dma_tag_t		sis_parent_tag;
 	struct sis_chain_data	sis_cdata;
 	struct callout		sis_timer;
-#ifdef DEVICE_POLLING
 	int			rxcycles;
-#endif
 };
 
 #define SIS_RXBUF_ALIGN		4

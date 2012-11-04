@@ -57,7 +57,7 @@
  * longword aligned.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -79,6 +79,7 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
 
@@ -158,8 +159,9 @@ static int	sis_list_tx_init(struct sis_softc *);
 
 static int	sis_dma_alloc(device_t dev);
 static void	sis_dma_free(device_t dev);
-#ifdef DEVICE_POLLING
-static poll_handler_t sis_poll;
+#ifdef IFPOLL_ENABLE
+static void	sis_npoll(struct ifnet *, struct ifpoll_info *);
+static void	sis_npoll_compat(struct ifnet *, void *, int);
 #endif
 #ifdef SIS_USEIOSPACE
 #define SIS_RES			SYS_RES_IOPORT
@@ -1136,8 +1138,8 @@ sis_attach(device_t dev)
 	ifp->if_baudrate = 10000000;
 	ifq_set_maxlen(&ifp->if_snd, SIS_TX_LIST_CNT - 1);
 	ifq_set_ready(&ifp->if_snd);
-#ifdef DEVICE_POLLING
-	ifp->if_poll = sis_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = sis_npoll;
 #endif
 	ifp->if_capenable = ifp->if_capabilities;
 
@@ -1155,6 +1157,11 @@ sis_attach(device_t dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->sis_npoll, NULL, NULL, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 	
 	/*
 	 * Tell the upper layer(s) we support long frames.
@@ -1353,13 +1360,13 @@ sis_rxeof(struct sis_softc *sc)
 		struct mbuf *m;
 		int idx = i;
 
-#ifdef DEVICE_POLLING
-		if (ifp->if_flags & IFF_POLLING) {
+#ifdef IFPOLL_ENABLE
+		if (ifp->if_flags & IFF_NPOLLING) {
 			if (sc->rxcycles <= 0)
 				break;
 			sc->rxcycles--;
 		}
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 
 		cur_rx = &sc->sis_ldata.sis_rx_list[idx];
 		rd = &sc->sis_cdata.sis_rx_data[idx];
@@ -1493,57 +1500,79 @@ sis_tick(void *xsc)
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-sis_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+sis_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
-	struct  sis_softc *sc = ifp->if_softc;
+	struct sis_softc *sc = ifp->if_softc;
 
-	switch(cmd) {
-	case POLL_REGISTER:
-		/* disable interrupts */
-		CSR_WRITE_4(sc, SIS_IER, 0);
-		break;
-	case POLL_DEREGISTER:
-		/* enable interrupts */
-		CSR_WRITE_4(sc, SIS_IER, 1);
-		break;
-	default:
-		/*
-		 * On the sis, reading the status register also clears it.
-		 * So before returning to intr mode we must make sure that all
-		 * possible pending sources of interrupts have been served.
-		 * In practice this means run to completion the *eof routines,
-		 * and then call the interrupt routine
-		 */
-		sc->rxcycles = count;
-		sis_rxeof(sc);
-		sis_txeof(sc);
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
-		if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
-			uint32_t status;
+	/*
+	 * On the sis, reading the status register also clears it.
+	 * So before returning to intr mode we must make sure that all
+	 * possible pending sources of interrupts have been served.
+	 * In practice this means run to completion the *eof routines,
+	 * and then call the interrupt routine
+	 */
+	sc->rxcycles = count;
+	sis_rxeof(sc);
+	sis_txeof(sc);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
 
-			/* Reading the ISR register clears all interrupts. */
-			status = CSR_READ_4(sc, SIS_ISR);
+	if (sc->sis_npoll.ifpc_stcount-- == 0) {
+		uint32_t status;
 
-			if (status & (SIS_ISR_RX_ERR|SIS_ISR_RX_OFLOW))
-				sis_rxeoc(sc);
+		sc->sis_npoll.ifpc_stcount = sc->sis_npoll.ifpc_stfrac;
 
-			if (status & (SIS_ISR_RX_IDLE))
-				SIS_SETBIT(sc, SIS_CSR, SIS_CSR_RX_ENABLE);
+		/* Reading the ISR register clears all interrupts. */
+		status = CSR_READ_4(sc, SIS_ISR);
 
-			if (status & SIS_ISR_SYSERR) {
-				sis_reset(sc);
-				sis_init(sc);
-			}
+		if (status & (SIS_ISR_RX_ERR|SIS_ISR_RX_OFLOW))
+			sis_rxeoc(sc);
+
+		if (status & (SIS_ISR_RX_IDLE))
+			SIS_SETBIT(sc, SIS_CSR, SIS_CSR_RX_ENABLE);
+
+		if (status & SIS_ISR_SYSERR) {
+			sis_reset(sc);
+			sis_init(sc);
 		}
-		break;
 	}
 }
-#endif /* DEVICE_POLLING */
+
+static void
+sis_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct sis_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->sis_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = sis_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* disable interrupts */
+			CSR_WRITE_4(sc, SIS_IER, 0);
+			sc->sis_npoll.ifpc_stcount = 0;
+		}
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* enable interrupts */
+			CSR_WRITE_4(sc, SIS_IER, 1);
+		}
+		ifp->if_npoll_cpuid = -1;
+	}
+}
+
+#endif /* IFPOLL_ENABLE */
 
 static void
 sis_intr(void *arg)
@@ -1851,15 +1880,16 @@ sis_init(void *xsc)
 	 * Enable interrupts.
 	 */
 	CSR_WRITE_4(sc, SIS_IMR, SIS_INTRS);
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/*
 	 * ... only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	if (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_NPOLLING) {
 		CSR_WRITE_4(sc, SIS_IER, 0);
-	else
-#endif /* DEVICE_POLLING */
+		sc->sis_npoll.ifpc_stcount = 0;
+	} else
+#endif /* IFPOLL_ENABLE */
 	CSR_WRITE_4(sc, SIS_IER, 1);
 
 	/* Enable receiver and transmitter. */
