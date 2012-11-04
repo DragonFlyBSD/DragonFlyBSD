@@ -600,6 +600,7 @@ struct xl_softc {
 	u_int8_t		xl_stats_no_timeout;
 	u_int16_t		xl_tx_thresh;
 	int			xl_if_flags;
+	struct ifpoll_compat	xl_npoll;
 	struct xl_list_data	xl_ldata;
 	struct xl_chain_data	xl_cdata;
 	struct callout		xl_stat_timer;

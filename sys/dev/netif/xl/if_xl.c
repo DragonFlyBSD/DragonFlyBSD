@@ -98,7 +98,7 @@
  * "vortex" driver in order to obtain better performance.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -119,6 +119,7 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/vlan/if_vlan_var.h>
 
 #include <net/bpf.h>
@@ -224,9 +225,10 @@ static int xl_ioctl		(struct ifnet *, u_long, caddr_t,
 static void xl_init		(void *);
 static void xl_stop		(struct xl_softc *);
 static void xl_watchdog		(struct ifnet *);
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 static void xl_start_poll	(struct ifnet *);
-static void xl_poll		(struct ifnet *, enum poll_cmd, int);
+static void xl_npoll		(struct ifnet *, struct ifpoll_info *);
+static void xl_npoll_compat	(struct ifnet *, void *, int);
 #endif
 static void xl_enable_intrs	(struct xl_softc *, uint16_t);
 
@@ -307,6 +309,7 @@ xl_enable_intrs(struct xl_softc *sc, uint16_t intrs)
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_INTR_ENB | intrs);
 	if (sc->xl_flags & XL_FLAG_FUNCREG)
 		bus_space_write_4(sc->xl_ftag, sc->xl_fhandle, 4, 0x8000);
+	sc->xl_npoll.ifpc_stcount = 0;
 }
 
 /*
@@ -1381,8 +1384,8 @@ xl_attach(device_t dev)
 	}
 	ifp->if_watchdog = xl_watchdog;
 	ifp->if_init = xl_init;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = xl_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = xl_npoll;
 #endif
 	ifp->if_baudrate = 10000000;
 	ifq_set_maxlen(&ifp->if_snd, XL_TX_LIST_CNT - 1);
@@ -1537,6 +1540,11 @@ done:
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->xl_npoll, NULL, NULL, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
         /*
          * Tell the upper layer(s) we support long frames.
@@ -1980,7 +1988,7 @@ xl_rxeof(struct xl_softc *sc, int count)
 	ifp = &sc->arpcom.ac_if;
 again:
 	while((rxstat = le32toh(sc->xl_cdata.xl_rx_head->xl_ptr->xl_status))) {
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 		if (count >= 0 && count-- == 0)
 			break;
 #endif
@@ -2249,68 +2257,89 @@ xl_txeoc(struct xl_softc *sc)
 	return;
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-xl_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+xl_start_poll(struct ifnet *ifp)
+{
+	xl_start_body(ifp, 0);
+}
+
+static void
+xl_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
 	struct xl_softc *sc = ifp->if_softc;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	switch (cmd) {
-	case POLL_REGISTER:
-		xl_enable_intrs(sc, 0);
-		if (sc->xl_type != XL_TYPE_905B)
-			ifp->if_start = xl_start_poll;
-		break;
-	case POLL_DEREGISTER:
-		if (sc->xl_type != XL_TYPE_905B)
-			ifp->if_start = xl_start;
-		xl_enable_intrs(sc, XL_INTRS);
-		break;
-	case POLL_ONLY:
-	case POLL_AND_CHECK_STATUS:
-		xl_rxeof(sc, count);
-		if (sc->xl_type == XL_TYPE_905B)
-			xl_txeof_90xB(sc);
-		else
-			xl_txeof(sc);
+	if (sc->xl_npoll.ifpc_stcount-- == 0) {
+		uint16_t status;
 
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+		sc->xl_npoll.ifpc_stcount = sc->xl_npoll.ifpc_stfrac;
 
-		if (cmd == POLL_AND_CHECK_STATUS) {
-			uint16_t status;
+		/* XXX copy & pasted from xl_intr() */
+		status = CSR_READ_2(sc, XL_STATUS);
+		if ((status & XL_INTRS) && status != 0xFFFF) {
+			CSR_WRITE_2(sc, XL_COMMAND,
+			    XL_CMD_INTR_ACK | (status & XL_INTRS));
 
-			/* XXX copy & pasted from xl_intr() */
-			status = CSR_READ_2(sc, XL_STATUS);
-			if ((status & XL_INTRS) && status != 0xFFFF) {
-				CSR_WRITE_2(sc, XL_COMMAND,
-				    XL_CMD_INTR_ACK | (status & XL_INTRS));
+			if (status & XL_STAT_TX_COMPLETE) {
+				ifp->if_oerrors++;
+				xl_txeoc(sc);
+			}
 
-				if (status & XL_STAT_TX_COMPLETE) {
-					ifp->if_oerrors++;
-					xl_txeoc(sc);
-				}
+			if (status & XL_STAT_ADFAIL) {
+				xl_reset(sc);
+				xl_init(sc);
+			}
 
-				if (status & XL_STAT_ADFAIL) {
-					xl_reset(sc);
-					xl_init(sc);
-				}
-
-				if (status & XL_STAT_STATSOFLOW) {
-					sc->xl_stats_no_timeout = 1;
-					xl_stats_update_serialized(sc);
-					sc->xl_stats_no_timeout = 0;
-				}
+			if (status & XL_STAT_STATSOFLOW) {
+				sc->xl_stats_no_timeout = 1;
+				xl_stats_update_serialized(sc);
+				sc->xl_stats_no_timeout = 0;
 			}
 		}
-		break;
+	}
+
+	xl_rxeof(sc, count);
+	if (sc->xl_type == XL_TYPE_905B)
+		xl_txeof_90xB(sc);
+	else
+		xl_txeof(sc);
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+}
+
+static void
+xl_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct xl_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->xl_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = xl_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING)
+			xl_enable_intrs(sc, 0);
+		if (sc->xl_type != XL_TYPE_905B)
+			ifp->if_start = xl_start_poll;
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (sc->xl_type != XL_TYPE_905B)
+			ifp->if_start = xl_start;
+		if (ifp->if_flags & IFF_RUNNING)
+			xl_enable_intrs(sc, XL_INTRS);
+		ifp->if_npoll_cpuid = -1;
 	}
 }
 
-#endif	/* DEVICE_POLLING */
+#endif	/* IFPOLL_ENABLE */
 
 static void
 xl_intr(void *arg)
@@ -2485,14 +2514,6 @@ xl_start(struct ifnet *ifp)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 	xl_start_body(ifp, 1);
 }
-
-#ifdef DEVICE_POLLING
-static void
-xl_start_poll(struct ifnet *ifp)
-{
-	xl_start_body(ifp, 0);
-}
-#endif
 
 /*
  * Main transmit routine. To avoid having to do mbuf copies, we put pointers
@@ -2893,9 +2914,9 @@ xl_init(void *xsc)
 	 * Enable interrupts.
 	 */
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_STAT_ENB | XL_INTRS);
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/* Do not enable interrupt if polling(4) is enabled */
-	if ((ifp->if_flags & IFF_POLLING) != 0)
+	if (ifp->if_flags & IFF_NPOLLING)
 		xl_enable_intrs(sc, 0);
 	else
 #endif
