@@ -58,7 +58,6 @@
 #include <sys/disk.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
-#include <sys/devicestat.h>
 #include <sys/taskqueue.h>
 #include <sys/time.h>
 

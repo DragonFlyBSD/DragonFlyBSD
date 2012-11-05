@@ -52,8 +52,6 @@
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
 #include <bus/cam/cam_xpt_sim.h>
-
-#include <sys/devicestat.h>
 #include <bus/cam/cam_periph.h>
 
 #include <sys/callout.h>

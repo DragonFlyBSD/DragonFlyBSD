@@ -42,8 +42,6 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
-
-#include <sys/devicestat.h>	/* for struct devstat */
 #include <sys/thread2.h>
 
 #include <bus/cam/cam.h>

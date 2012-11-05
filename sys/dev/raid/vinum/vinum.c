@@ -43,7 +43,6 @@
 
 #include "vinumhdr.h"
 #include <sys/sysproto.h>				    /* for sync(2) */
-#include <sys/devicestat.h>
 #include <sys/poll.h>					    /* XXX: poll ops used in kq filters */
 #include <sys/event.h>
 #include <sys/udev.h>

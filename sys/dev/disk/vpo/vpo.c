@@ -31,7 +31,6 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/malloc.h>
-#include <sys/devicestat.h>	/* for struct devstat */
 #include <sys/thread2.h>	/* for crit_*() */
 
 #include <machine/clock.h>

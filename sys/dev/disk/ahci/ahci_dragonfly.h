@@ -41,7 +41,6 @@
 #include <sys/device.h>
 #include <sys/disk.h>
 #include <sys/stat.h>
-#include <sys/devicestat.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
 #include <sys/queue.h>

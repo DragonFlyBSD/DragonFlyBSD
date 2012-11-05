@@ -87,7 +87,6 @@
 #include <sys/bus.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
-#include <sys/devicestat.h>
 #include <sys/kthread.h>
 #include <sys/module.h>
 #include <sys/proc.h>

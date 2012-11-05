@@ -67,10 +67,6 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#if (__FreeBSD_version <= 500043)
-#include <sys/devicestat.h>
-#endif
-
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>

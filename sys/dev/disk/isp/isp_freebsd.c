@@ -35,7 +35,6 @@
 #include <sys/conf.h>
 #include <sys/module.h>
 #include <dev/disk/isp/isp_ioctl.h>
-#include <sys/devicestat.h>
 #include <bus/cam/cam_periph.h>
 #include <bus/cam/cam_xpt_periph.h>
 #include <sys/device.h>

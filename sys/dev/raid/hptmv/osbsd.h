@@ -31,7 +31,6 @@
 #include <sys/bus.h>
 #include <sys/resource.h>
 #include <sys/eventhandler.h>
-#include <sys/devicestat.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
