@@ -1478,7 +1478,8 @@ ifpoll_compat_setup(struct ifpoll_compat *cp,
     int unit, struct lwkt_serialize *slz)
 {
 	cp->ifpc_stcount = 0;
-	cp->ifpc_stfrac = poll_common[0]->poll_stfrac;
+	cp->ifpc_stfrac = ((poll_common[0]->poll_stfrac + 1) *
+	    howmany(IOPOLL_BURST_MAX, IOPOLL_EACH_BURST)) - 1;
 
 	cp->ifpc_cpuid = unit % ncpus2;
 	cp->ifpc_serializer = slz;
