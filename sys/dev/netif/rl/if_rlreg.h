@@ -372,12 +372,11 @@ struct rl_softc {
 	int			rl_eecmd_read;
 	uint8_t			rl_stats_no_timeout;
 	int			rl_txthresh;
+	struct ifpoll_compat	rl_npoll;
 	struct rl_chain_data	rl_cdata;
 	struct callout		rl_stat_timer;
  	int			suspended;	/* 0 = normal  1 = suspended */
-#ifdef DEVICE_POLLING
 	int			rxcycles;
-#endif /* DEVICE_POLLING */
  
  	uint32_t		saved_maps[5];	/* pci data */
  	uint32_t		saved_biosaddr;

@@ -83,7 +83,7 @@
  * to select which interface to use depending on the chip type.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>
@@ -106,6 +106,7 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 
 #include <net/bpf.h>
 
@@ -205,8 +206,9 @@ static void	rl_setmulti(struct rl_softc *);
 static void	rl_reset(struct rl_softc *);
 static void	rl_list_tx_init(struct rl_softc *);
 
-#ifdef DEVICE_POLLING
-static poll_handler_t rl_poll;
+#ifdef IFPOLL_ENABLE
+static void	rl_npoll(struct ifnet *, struct ifpoll_info *);
+static void	rl_npoll_compat(struct ifnet *, void *, int);
 #endif
 
 static int	rl_dma_alloc(struct rl_softc *);
@@ -858,8 +860,8 @@ rl_attach(device_t dev)
 	ifp->if_init = rl_init;
 	ifp->if_baudrate = 10000000;
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = rl_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = rl_npoll;
 #endif
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifq_set_ready(&ifp->if_snd);
@@ -868,6 +870,11 @@ rl_attach(device_t dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->rl_npoll, NULL, NULL, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	error = bus_setup_intr(dev, sc->rl_irq, INTR_MPSAFE, rl_intr,
 			       sc, &sc->rl_intrhand, ifp->if_serializer);
@@ -975,29 +982,34 @@ rl_rxeof(struct rl_softc *sc)
 	int total_len = 0;
 	uint32_t rxstat;
 	caddr_t rxbufpos;
-	int wrap = 0;
-	uint16_t cur_rx, limit, max_bytes, rx_bytes = 0;
+	int wrap = 0, done = 0;
+	uint16_t cur_rx = 0, max_bytes = 0, rx_bytes = 0;
 
 	ifp = &sc->arpcom.ac_if;
 
-	cur_rx = (CSR_READ_2(sc, RL_CURRXADDR) + 16) % RL_RXBUFLEN;
-
-	/* Do not try to read past this point. */
-	limit = CSR_READ_2(sc, RL_CURRXBUF) % RL_RXBUFLEN;
-
-	if (limit < cur_rx)
-		max_bytes = (RL_RXBUFLEN - cur_rx) + limit;
-	else
-		max_bytes = limit - cur_rx;
-
 	while((CSR_READ_1(sc, RL_COMMAND) & RL_CMD_EMPTY_RXBUF) == 0) {
-#ifdef DEVICE_POLLING
-		if (ifp->if_flags & IFF_POLLING) {
+		if (!done) {
+			uint16_t limit;
+
+			done = 1;
+
+			cur_rx = (CSR_READ_2(sc, RL_CURRXADDR) + 16) %
+			    RL_RXBUFLEN;
+
+			/* Do not try to read past this point. */
+			limit = CSR_READ_2(sc, RL_CURRXBUF) % RL_RXBUFLEN;
+			if (limit < cur_rx)
+				max_bytes = (RL_RXBUFLEN - cur_rx) + limit;
+			else
+				max_bytes = limit - cur_rx;
+		}
+#ifdef IFPOLL_ENABLE
+		if (ifp->if_flags & IFF_NPOLLING) {
 			if (sc->rxcycles <= 0)
 				break;
 			sc->rxcycles--;
 		}
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 		rxbufpos = sc->rl_cdata.rl_rx_buf + cur_rx;
 		rxstat = le32toh(*(uint32_t *)rxbufpos);
 
@@ -1156,51 +1168,73 @@ rl_tick(void *xsc)
 	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-rl_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+rl_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
 	struct rl_softc *sc = ifp->if_softc;
 
-	switch(cmd) {
-	case POLL_REGISTER:
-		/* disable interrupts */
-                CSR_WRITE_2(sc, RL_IMR, 0x0000);
-		break;
-	case POLL_DEREGISTER:
-		/* enable interrupts */
-		CSR_WRITE_2(sc, RL_IMR, RL_INTRS);
-		break;
-	default:
-		sc->rxcycles = count;
-		rl_rxeof(sc);
-		rl_txeof(sc);
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
-		if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
-			uint16_t status;
-	 
-			status = CSR_READ_2(sc, RL_ISR);
-			if (status == 0xffff)
-				return;
-			if (status)
-				CSR_WRITE_2(sc, RL_ISR, status);
-			 
-			/*
-			 * XXX check behaviour on receiver stalls.
-			 */
+	sc->rxcycles = count;
+	rl_rxeof(sc);
+	rl_txeof(sc);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
 
-			if (status & RL_ISR_SYSTEM_ERR) {
-				rl_reset(sc);
-				rl_init(sc);
-			}
+	if (sc->rl_npoll.ifpc_stcount-- == 0) {
+		uint16_t status;
+
+		sc->rl_npoll.ifpc_stcount = sc->rl_npoll.ifpc_stfrac;
+ 
+		status = CSR_READ_2(sc, RL_ISR);
+		if (status == 0xffff)
+			return;
+		if (status)
+			CSR_WRITE_2(sc, RL_ISR, status);
+		 
+		/*
+		 * XXX check behaviour on receiver stalls.
+		 */
+
+		if (status & RL_ISR_SYSTEM_ERR) {
+			rl_reset(sc);
+			rl_init(sc);
 		}
-		break;
 	}
 }
-#endif /* DEVICE_POLLING */
+
+static void
+rl_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct rl_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->rl_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = rl_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* disable interrupts */
+			CSR_WRITE_2(sc, RL_IMR, 0x0000);
+			sc->rl_npoll.ifpc_stcount = 0;
+		}
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* enable interrupts */
+			CSR_WRITE_2(sc, RL_IMR, RL_INTRS);
+		}
+		ifp->if_npoll_cpuid = -1;
+	}
+}
+
+#endif /* IFPOLL_ENABLE */
 
 static void
 rl_intr(void *arg)
@@ -1419,14 +1453,15 @@ rl_init(void *xsc)
 	 */
 	rl_setmulti(sc);
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/*
 	 * Only enable interrupts if we are polling, keep them off otherwise.
 	 */
-	if (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_NPOLLING) {
 		CSR_WRITE_2(sc, RL_IMR, 0);
-	else
-#endif /* DEVICE_POLLING */
+		sc->rl_npoll.ifpc_stcount = 0;
+	} else
+#endif /* IFPOLL_ENABLE */
 	/*
 	 * Enable interrupts.
 	 */

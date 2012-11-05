@@ -47,6 +47,7 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 
 #include "mii.h"
 #include "miivar.h"
