@@ -1189,6 +1189,7 @@ static void override_kernel_driver(void)
 
 static void hpt_init(void *dummy)
 {
+	if (bootverbose)
 		os_printk("%s %s", driver_name_long, driver_ver);
 
 	override_kernel_driver();
@@ -1196,6 +1197,7 @@ static void hpt_init(void *dummy)
 
 	hpt_ich.ich_func = hpt_final_init;
 	hpt_ich.ich_arg = NULL;
+	hpt_ich.ich_desc = "hpt27xx";
 	if (config_intrhook_establish(&hpt_ich) != 0) {
 		kprintf("%s: cannot establish configuration hook\n",
 		    driver_name_long);
