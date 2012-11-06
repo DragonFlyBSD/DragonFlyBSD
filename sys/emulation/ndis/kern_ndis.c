@@ -327,7 +327,7 @@ ndis_create_sysctls(void *arg)
 	 * Some miniport drivers rely on the existence of the SlotNumber,
 	 * NetCfgInstanceId and DriverDesc keys.
 	 */
-	ndis_add_sysctl(sc, "SlotNumber", "Slot Numer", "01", CTLFLAG_RD);
+	ndis_add_sysctl(sc, "SlotNumber", "Slot Number", "01", CTLFLAG_RD);
 	ndis_add_sysctl(sc, "NetCfgInstanceId", "NetCfgInstanceId",
 	    "{12345678-1234-5678-CAFE0-123456789ABC}", CTLFLAG_RD);
 	ndis_add_sysctl(sc, "DriverDesc", "Driver Description",

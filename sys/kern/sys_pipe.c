@@ -124,7 +124,7 @@ static int pipe_wblocked_count;
 
 SYSCTL_NODE(_kern, OID_AUTO, pipe, CTLFLAG_RW, 0, "Pipe operation");
 SYSCTL_INT(_kern_pipe, OID_AUTO, nbig,
-        CTLFLAG_RD, &pipe_nbig, 0, "numer of big pipes allocated");
+        CTLFLAG_RD, &pipe_nbig, 0, "number of big pipes allocated");
 SYSCTL_INT(_kern_pipe, OID_AUTO, bigcount,
         CTLFLAG_RW, &pipe_bigcount, 0, "number of times pipe expanded");
 SYSCTL_INT(_kern_pipe, OID_AUTO, rblocked,

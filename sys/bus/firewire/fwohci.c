@@ -2638,7 +2638,7 @@ fwohci_arcv_swap(struct fw_pkt *fp, int len)
 	hlen = tinfo[fp0->mode.common.tcode].hdr_len;
 	if (hlen > len) {
 		if (firewire_debug)
-			kprintf("splitted header\n");
+			kprintf("split header\n");
 		return(-hlen);
 	}
 #if BYTE_ORDER == BIG_ENDIAN
@@ -2744,7 +2744,7 @@ fwohci_arcv(struct fwohci_softc *sc, struct fwohci_dbch *dbch, int count)
 					kprintf("rlen=%d, offset=%d\n",
 						rlen, dbch->buf_offset);
 				if (dbch->buf_offset < 0) {
-					/* splitted in header, pull up */
+					/* split in header, pull up */
 					char *p;
 
 					p = (char *)&pktbuf;
@@ -2765,7 +2765,7 @@ fwohci_arcv(struct fwohci_softc *sc, struct fwohci_dbch *dbch, int count)
 					vec[0].iov_base = (char *)&pktbuf;
 					vec[0].iov_len = offset;
 				} else {
-					/* splitted in payload */
+					/* split in payload */
 					offset = rlen;
 					vec[0].iov_base = buf;
 					vec[0].iov_len = rlen;
@@ -2806,7 +2806,7 @@ fwohci_arcv(struct fwohci_softc *sc, struct fwohci_dbch *dbch, int count)
 				if (len < 0) {
 					dbch->pdb_tr = db_tr;
 					if (firewire_debug)
-						kprintf("splitted payload\n");
+						kprintf("split payload\n");
 					/* sanity check */
 					if (resCount != 0) 
 						kprintf("resCount = %d !?\n",

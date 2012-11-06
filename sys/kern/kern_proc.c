@@ -69,7 +69,7 @@ int ps_showallprocs = 1;
 static int ps_showallthreads = 1;
 SYSCTL_INT(_security, OID_AUTO, ps_showallprocs, CTLFLAG_RW,
     &ps_showallprocs, 0,
-    "Unprivileged processes can see proccesses with different UID/GID");
+    "Unprivileged processes can see processes with different UID/GID");
 SYSCTL_INT(_security, OID_AUTO, ps_showallthreads, CTLFLAG_RW,
     &ps_showallthreads, 0,
     "Unprivileged processes can see kernel threads");

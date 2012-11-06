@@ -1766,7 +1766,7 @@ options 	AHD_REG_PRETTY_PRINT
 # options 	BKTR_SYSTEM_DEFAULT=BROOKTREE_PAL
 # or
 # options 	BKTR_SYSTEM_DEFAULT=BROOKTREE_NTSC
-# Specifes the default video capture mode.
+# Specifies the default video capture mode.
 # This is required for Dual Crystal (28&35Mhz) boards where PAL is used
 # to prevent hangs during initialisation.  eg VideoLogic Captivator PCI.
 #

@@ -21,7 +21,7 @@ int main(void)
 	if (sysctlbyname("dsched.fq.stats", &fq_stats, &n, NULL, 0) != 0)
 		err(1, "sysctlbyname");
 
-	printf( "Proccesses\n"
+	printf( "Processes\n"
 		"Rate limited:\t%d\n"
 		"---------------------------------------------\n"
 		"Transactions\n"

@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.13 2007/06/26 02:40:20 dillon Exp $
  */
 
 #include "defs.h"
@@ -294,7 +292,7 @@ client_check(struct server_info **checkp,
 	    double freq_diff;
 
 	    freq_diff = info->lin_cache_freq - check->lin_cache_freq;
-	    logdebuginfo(info, 4, "Switching to alternate, Frequence "
+	    logdebuginfo(info, 4, "Switching to alternate, Frequency "
 			 "difference is %6.3f ppm\n",
 			 freq_diff * 1.0E+6);
 	    *checkp = info;
