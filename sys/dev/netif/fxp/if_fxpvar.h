@@ -59,7 +59,7 @@
  * Number of receive frame area buffers. These are large so chose
  * wisely.
  */
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 #define FXP_NRFABUFS	192
 #else
 #define FXP_NRFABUFS    64
@@ -115,6 +115,7 @@ struct fxp_softc {
 	struct fxp_cb_tx *cbl_base;	/* base of TxCB list */
 	struct fxp_cb_mcs *mcsp;	/* Pointer to mcast setup descriptor */
 	struct ifmedia sc_media;	/* media information */
+	struct ifpoll_compat fxp_npoll;	/* polling */
 	device_t miibus;
 	struct sysctl_ctx_list sysctl_ctx;
 	struct sysctl_oid *sysctl_tree;
@@ -141,7 +142,7 @@ struct fxp_softc {
 #define FXP_FLAG_ALL_MCAST	0x0040	/* accept all multicast frames */
 #define FXP_FLAG_CU_RESUME_BUG	0x0080	/* requires workaround for CU_RESUME */
 #define FXP_FLAG_UCODE		0x0100	/* ucode is loaded */
-#define FXP_FLAG_DEFERRED_RNR	0x0200	/* DEVICE_POLLING deferred RNR */
+#define FXP_FLAG_DEFERRED_RNR	0x0200	/* IFPOLL_ENABLE deferred RNR */
 
 /* Macros to ease CSR access. */
 #define	CSR_READ_1(sc, reg)						\

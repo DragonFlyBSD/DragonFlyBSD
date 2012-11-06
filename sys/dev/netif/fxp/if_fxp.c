@@ -32,7 +32,7 @@
  * Intel EtherExpress Pro/100B PCI Fast Ethernet driver
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -56,6 +56,7 @@
 
 #include <net/ethernet.h>
 #include <net/if_arp.h>
+#include <net/if_poll.h>
 
 #include <vm/vm.h>		/* for vtophys */
 #include <vm/pmap.h>		/* for vtophys */
@@ -234,8 +235,9 @@ static void		fxp_miibus_writereg(device_t dev, int phy, int reg,
 static void		fxp_load_ucode(struct fxp_softc *sc);
 static int		sysctl_hw_fxp_bundle_max(SYSCTL_HANDLER_ARGS);
 static int		sysctl_hw_fxp_int_delay(SYSCTL_HANDLER_ARGS);
-#ifdef DEVICE_POLLING
-static poll_handler_t fxp_poll;
+#ifdef IFPOLL_ENABLE
+static void		fxp_npoll(struct ifnet *, struct ifpoll_info *);
+static void		fxp_npoll_compat(struct ifnet *, void *, int);
 #endif
 
 static void		fxp_lwcopy(volatile u_int32_t *src,
@@ -649,8 +651,8 @@ fxp_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = fxp_ioctl;
 	ifp->if_start = fxp_start;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = fxp_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = fxp_npoll;
 #endif
 	ifp->if_watchdog = fxp_watchdog;
 
@@ -658,6 +660,12 @@ fxp_attach(device_t dev)
 	 * Attach the interface.
 	 */
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->fxp_npoll,
+	    &sc->sysctl_ctx, sc->sysctl_tree, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	/*
 	 * Tell the upper layer(s) we support long frames.
@@ -1189,46 +1197,66 @@ tbdinit:
 	}
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-fxp_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+fxp_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
 	struct fxp_softc *sc = ifp->if_softc;
 	u_int8_t statack;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	switch(cmd) {
-	case POLL_REGISTER:
-		/* disable interrupts */
-		CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, FXP_SCB_INTR_DISABLE);
-		break;
-	case POLL_DEREGISTER:
-		/* enable interrupts */
-		CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, 0);
-		break;
-	default:
-		statack = FXP_SCB_STATACK_CXTNO | FXP_SCB_STATACK_CNA |
-			  FXP_SCB_STATACK_FR;
-		if (cmd == POLL_AND_CHECK_STATUS) {
-			u_int8_t tmp;
+	statack = FXP_SCB_STATACK_CXTNO | FXP_SCB_STATACK_CNA |
+		  FXP_SCB_STATACK_FR;
+	if (sc->fxp_npoll.ifpc_stcount-- == 0) {
+		u_int8_t tmp;
 
-			tmp = CSR_READ_1(sc, FXP_CSR_SCB_STATACK);
-			if (tmp == 0xff || tmp == 0)
-				return; /* nothing to do */
-			tmp &= ~statack;
-			/* ack what we can */
-			if (tmp != 0)
-				CSR_WRITE_1(sc, FXP_CSR_SCB_STATACK, tmp);
-			statack |= tmp;
+		sc->fxp_npoll.ifpc_stcount = sc->fxp_npoll.ifpc_stfrac;
+
+		tmp = CSR_READ_1(sc, FXP_CSR_SCB_STATACK);
+		if (tmp == 0xff || tmp == 0)
+			return; /* nothing to do */
+		tmp &= ~statack;
+		/* ack what we can */
+		if (tmp != 0)
+			CSR_WRITE_1(sc, FXP_CSR_SCB_STATACK, tmp);
+		statack |= tmp;
+	}
+	fxp_intr_body(sc, statack, count);
+}
+
+static void
+fxp_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct fxp_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->fxp_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = fxp_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* disable interrupts */
+			CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL,
+			    FXP_SCB_INTR_DISABLE);
+			sc->fxp_npoll.ifpc_stcount = 0;
 		}
-		fxp_intr_body(sc, statack, count);
-		break;
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* enable interrupts */
+			CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, 0);
+		}
+		ifp->if_npoll_cpuid = -1;
 	}
 }
 
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 
 /*
  * Process interface interrupts.
@@ -1273,7 +1301,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 
 	if (rnr)
 		fxp_rnr++;
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/* Pick up a deferred RNR condition if `count' ran out last time. */
 	if (sc->flags & FXP_FLAG_DEFERRED_RNR) {
 		sc->flags &= ~FXP_FLAG_DEFERRED_RNR;
@@ -1349,7 +1377,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 		rfa = (struct fxp_rfa *)(m->m_ext.ext_buf +
 					 RFA_ALIGNMENT_FUDGE);
 
-#ifdef DEVICE_POLLING /* loop at most count times if count >=0 */
+#ifdef IFPOLL_ENABLE /* loop at most count times if count >=0 */
 		if (count >= 0 && count-- == 0) {
 			if (rnr) {
 				/* Defer RNR processing until the next time. */
@@ -1358,7 +1386,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 			}
 			break;
 		}
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 
 		if ( (rfa->rfa_status & FXP_RFA_STATUS_C) == 0)
 			break;
@@ -1848,15 +1876,16 @@ fxp_init(void *xsc)
 	/*
 	 * Enable interrupts.
 	 */
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/*
 	 * ... but only do that if we are not polling. And because (presumably)
 	 * the default is interrupts on, we need to disable them explicitly!
 	 */
-	if ( ifp->if_flags & IFF_POLLING )
+	if (ifp->if_flags & IFF_NPOLLING) {
 		CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, FXP_SCB_INTR_DISABLE);
-	else
-#endif /* DEVICE_POLLING */
+		sc->fxp_npoll.ifpc_stcount = 0;
+	} else
+#endif /* IFPOLL_ENABLE */
 	CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, 0);
 
 	/*
