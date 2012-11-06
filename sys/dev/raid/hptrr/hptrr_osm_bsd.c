@@ -1199,6 +1199,7 @@ static void hpt_init(void *dummy)
 
 	hpt_ich.ich_func = hpt_final_init;
 	hpt_ich.ich_arg = NULL;
+	hpt_ich.ich_desc = "hptrr";
 	if (config_intrhook_establish(&hpt_ich) != 0) {
 		kprintf("%s: cannot establish configuration hook\n",
 		    driver_name_long);
