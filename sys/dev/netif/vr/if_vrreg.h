@@ -469,6 +469,7 @@ struct vr_softc {
 	device_t		vr_miibus;
 	uint8_t			vr_revid;	/* Rhine chip revision */
 	uint8_t			vr_flags;	/* See VR_F_* below */
+	struct ifpoll_compat	vr_npoll;
 	struct vr_list_data	*vr_ldata;
 	struct vr_chain_data	vr_cdata;
 	struct callout		vr_stat_timer;

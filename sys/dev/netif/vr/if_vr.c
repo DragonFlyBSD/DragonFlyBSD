@@ -59,7 +59,7 @@
  * transmission.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -80,6 +80,7 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 
 #include <net/bpf.h>
 
@@ -161,8 +162,9 @@ static void	vr_setmulti(struct vr_softc *);
 static void	vr_reset(struct vr_softc *);
 static int	vr_list_rx_init(struct vr_softc *);
 static int	vr_list_tx_init(struct vr_softc *);
-#ifdef DEVICE_POLLING
-static void	vr_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
+#ifdef IFPOLL_ENABLE
+static void	vr_npoll(struct ifnet *, struct ifpoll_info *);
+static void	vr_npoll_compat(struct ifnet *, void *, int);
 #endif
 
 #ifdef VR_USEIOSPACE
@@ -766,8 +768,8 @@ vr_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = vr_ioctl;
 	ifp->if_start = vr_start;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = vr_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = vr_npoll;
 #endif
 	ifp->if_watchdog = vr_watchdog;
 	ifp->if_init = vr_init;
@@ -787,6 +789,11 @@ vr_attach(device_t dev)
 
 	/* Call MI attach routine. */
 	ether_ifattach(ifp, eaddr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->vr_npoll, NULL, NULL, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	error = bus_setup_intr(dev, sc->vr_irq, INTR_MPSAFE,
 			       vr_intr, sc, &sc->vr_intrhand, 
@@ -1190,7 +1197,7 @@ vr_intr(void *arg)
 	}
 
 	/* Disable interrupts. */
-	if ((ifp->if_flags & IFF_POLLING) == 0)
+	if ((ifp->if_flags & IFF_NPOLLING) == 0)
 		CSR_WRITE_2(sc, VR_IMR, 0x0000);
 
 	for (;;) {
@@ -1249,7 +1256,7 @@ vr_intr(void *arg)
 	}
 
 	/* Re-enable interrupts. */
-	if ((ifp->if_flags & IFF_POLLING) == 0)
+	if ((ifp->if_flags & IFF_NPOLLING) == 0)
 		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
 
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -1466,8 +1473,8 @@ vr_init(void *xsc)
 	 * Enable interrupts, unless we are polling.
 	 */
 	CSR_WRITE_2(sc, VR_ISR, 0xFFFF);
-#ifdef DEVICE_POLLING
-	if ((ifp->if_flags & IFF_POLLING) == 0)
+#ifdef IFPOLL_ENABLE
+	if ((ifp->if_flags & IFF_NPOLLING) == 0)
 #endif
 		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
 
@@ -1546,28 +1553,46 @@ vr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	return(error);
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-vr_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+vr_npoll_compat(struct ifnet *ifp, void *arg __unused, int count __unused)
 {
 	struct vr_softc *sc = ifp->if_softc;
 
-	switch(cmd) {
-	case POLL_REGISTER:
-		/* disable interrupts */
-		CSR_WRITE_2(sc, VR_IMR, 0x0000);
-		break;
-	case POLL_DEREGISTER:
-		/* enable interrupts */
-		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
-		break;
-	default:
-		vr_intr(sc);
-		break;
+	ASSERT_SERIALIZED(ifp->if_serializer);
+	vr_intr(sc);
+}
+
+static void
+vr_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct vr_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->vr_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = vr_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* disable interrupts */
+			CSR_WRITE_2(sc, VR_IMR, 0x0000);
+		}
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* enable interrupts */
+			CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
+		}
+		ifp->if_npoll_cpuid = -1;
 	}
 }
-#endif
+
+#endif	/* IFPOLL_ENABLE */
 
 static void
 vr_watchdog(struct ifnet *ifp)
