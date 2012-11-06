@@ -324,7 +324,7 @@ main(int argc, char *argv[])
 	img = calloc(fsize, 1);
 	n = fread (img, fsize, 1, fp);
 	if (n == 0)
-		err(1, "reading.SYS file '%s' failed", sysfile);
+		err(1, "reading .SYS file '%s' failed", sysfile);
 
 	fclose(fp);
 
