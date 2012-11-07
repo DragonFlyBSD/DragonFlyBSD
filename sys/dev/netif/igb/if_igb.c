@@ -1825,16 +1825,6 @@ igb_init_tx_unit(struct igb_softc *sc)
 		E1000_WRITE_REG(hw, E1000_TDT(i), 0);
 		E1000_WRITE_REG(hw, E1000_TDH(i), 0);
 
-		/*
-		 * WTHRESH is ignored by the hardware, since header
-		 * write back mode is used.
-		 */
-		txdctl |= IGB_TX_PTHRESH;
-		txdctl |= IGB_TX_HTHRESH << 8;
-		txdctl |= IGB_TX_WTHRESH << 16;
-		txdctl |= E1000_TXDCTL_QUEUE_ENABLE;
-		E1000_WRITE_REG(hw, E1000_TXDCTL(i), txdctl);
-
 		dca_txctrl = E1000_READ_REG(hw, E1000_DCA_TXCTRL(i));
 		dca_txctrl &= ~E1000_DCA_TXCTRL_TX_WB_RO_EN;
 		E1000_WRITE_REG(hw, E1000_DCA_TXCTRL(i), dca_txctrl);
@@ -1850,6 +1840,16 @@ igb_init_tx_unit(struct igb_softc *sc)
 		    (uint32_t)(hdr_paddr >> 32));
 		E1000_WRITE_REG(hw, E1000_TDWBAL(i),
 		    ((uint32_t)hdr_paddr) | E1000_TX_HEAD_WB_ENABLE);
+
+		/*
+		 * WTHRESH is ignored by the hardware, since header
+		 * write back mode is used.
+		 */
+		txdctl |= IGB_TX_PTHRESH;
+		txdctl |= IGB_TX_HTHRESH << 8;
+		txdctl |= IGB_TX_WTHRESH << 16;
+		txdctl |= E1000_TXDCTL_QUEUE_ENABLE;
+		E1000_WRITE_REG(hw, E1000_TXDCTL(i), txdctl);
 	}
 
 	if (sc->vf_ifp)
