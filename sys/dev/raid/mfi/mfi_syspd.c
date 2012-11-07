@@ -209,7 +209,7 @@ int
 mfi_syspd_disable(struct mfi_system_pd *sc)
 {
 
-	KKASSERT(lockstatus(&sc->pd_controller->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->pd_controller->mfi_io_lock);
 	if (sc->pd_flags & MFI_DISK_FLAGS_OPEN) {
 		if (sc->pd_controller->mfi_delete_busy_volumes)
 			return (0);
@@ -225,7 +225,7 @@ void
 mfi_syspd_enable(struct mfi_system_pd *sc)
 {
 
-	KKASSERT(lockstatus(&sc->pd_controller->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->pd_controller->mfi_io_lock);
 	sc->pd_flags &= ~MFI_DISK_FLAGS_DISABLED;
 }
 

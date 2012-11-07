@@ -227,7 +227,7 @@ int
 mfi_disk_disable(struct mfi_disk *sc)
 {
 
-	KKASSERT(lockstatus(&sc->ld_controller->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->ld_controller->mfi_io_lock);
 	if (sc->ld_flags & MFI_DISK_FLAGS_OPEN) {
 		if (sc->ld_controller->mfi_delete_busy_volumes)
 			return (0);
@@ -242,7 +242,7 @@ void
 mfi_disk_enable(struct mfi_disk *sc)
 {
 
-	KKASSERT(lockstatus(&sc->ld_controller->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->ld_controller->mfi_io_lock);
 	sc->ld_flags &= ~MFI_DISK_FLAGS_DISABLED;
 }
 

@@ -805,7 +805,7 @@ mfi_release_command(struct mfi_command *cm)
 	struct mfi_frame_header *hdr;
 	uint32_t *hdr_data;
 
-	KKASSERT(lockstatus(&cm->cm_sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&cm->cm_sc->mfi_io_lock);
 
 	/*
 	 * Zero out the important fields of the frame, but make sure the
@@ -845,7 +845,7 @@ mfi_dcmd_command(struct mfi_softc *sc, struct mfi_command **cmp,
 	void *buf = NULL;
 	uint32_t context = 0;
 
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 
 	cm = mfi_dequeue_free(sc);
 	if (cm == NULL)
@@ -1054,7 +1054,7 @@ int
 mfi_wait_command(struct mfi_softc *sc, struct mfi_command *cm)
 {
 
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 	cm->cm_complete = NULL;
 
 
@@ -1311,8 +1311,8 @@ mfi_syspdprobe(struct mfi_softc *sc)
 	struct mfi_system_pd *syspd, *tmp;
 	int error, i, found;
 
-	KKASSERT(lockstatus(&sc->mfi_config_lock, curthread) != 0);
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_config_lock);
+	mfi_lockassert(&sc->mfi_io_lock);
 	/* Add SYSTEM PD's */
 	error = mfi_dcmd_command(sc, &cm, MFI_DCMD_PD_LIST_QUERY,
 	    (void **)&pdlist, sizeof(*pdlist));
@@ -1384,8 +1384,8 @@ mfi_ldprobe(struct mfi_softc *sc)
 	struct mfi_disk *ld;
 	int error, i;
 
-	KKASSERT(lockstatus(&sc->mfi_config_lock, curthread) != 0);
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_config_lock);
+	mfi_lockassert(&sc->mfi_io_lock);
 
 	error = mfi_dcmd_command(sc, &cm, MFI_DCMD_LD_GET_LIST,
 	    (void **)&list, sizeof(*list));
@@ -1562,7 +1562,7 @@ mfi_queue_evt(struct mfi_softc *sc, struct mfi_evt_detail *detail)
 {
 	struct mfi_evt_queue_elm *elm;
 
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 	elm = kmalloc(sizeof(*elm), M_MFIBUF, M_NOWAIT | M_ZERO);
 	if (elm == NULL)
 		return;
@@ -1655,7 +1655,7 @@ mfi_aen_complete(struct mfi_command *cm)
 	int seq = 0, aborted = 0;
 
 	sc = cm->cm_sc;
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 
 	hdr = &cm->cm_frame->header;
 
@@ -1810,7 +1810,7 @@ mfi_add_ld(struct mfi_softc *sc, int id)
 	struct mfi_ld_info *ld_info = NULL;
 	int error;
 
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 
 	error = mfi_dcmd_command(sc, &cm, MFI_DCMD_LD_GET_INFO,
 	    (void **)&ld_info, sizeof(*ld_info));
@@ -1884,7 +1884,7 @@ mfi_add_sys_pd(struct mfi_softc *sc, int id)
 	struct mfi_pd_info *pd_info = NULL;
 	int error;
 
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 
 	error = mfi_dcmd_command(sc, &cm, MFI_DCMD_PD_GET_INFO,
 	    (void **)&pd_info, sizeof(*pd_info));
@@ -2164,7 +2164,7 @@ mfi_mapcmd(struct mfi_softc *sc, struct mfi_command *cm)
 {
 	int error, polled;
 
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 
 	if ((cm->cm_data != NULL) && (cm->cm_frame->header.cmd != MFI_CMD_STP)) {
 		polled = (cm->cm_flags & MFI_CMD_POLLED) ? BUS_DMA_NOWAIT : 0;
@@ -2369,7 +2369,7 @@ mfi_abort(struct mfi_softc *sc, struct mfi_command *cm_abort)
 	int i = 0;
 	uint32_t context = 0;
 
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 
 	if ((cm = mfi_dequeue_free(sc)) == NULL) {
 		return (EBUSY);
@@ -2576,7 +2576,7 @@ mfi_check_command_pre(struct mfi_softc *sc, struct mfi_command *cm)
 	uint16_t syspd_id;
 	uint16_t *mbox;
 
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 	error = 0;
 	switch (cm->cm_frame->dcmd.opcode) {
 	case MFI_DCMD_LD_DELETE:

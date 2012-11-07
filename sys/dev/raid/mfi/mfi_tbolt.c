@@ -627,7 +627,7 @@ map_tbolt_cmd_status(struct mfi_command *mfi_cmd, uint8_t status,
 static inline void
 mfi_tbolt_return_cmd(struct mfi_softc *sc, struct mfi_cmd_tbolt *cmd)
 {
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 
 	TAILQ_INSERT_TAIL(&sc->mfi_cmd_tbolt_tqh, cmd, next);
 }
@@ -780,7 +780,7 @@ struct mfi_cmd_tbolt *mfi_tbolt_get_cmd(struct mfi_softc
 {
 	struct mfi_cmd_tbolt *cmd = NULL;
 
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 
 	cmd = TAILQ_FIRST(&sc->mfi_cmd_tbolt_tqh);
 	TAILQ_REMOVE(&sc->mfi_cmd_tbolt_tqh, cmd, next);
@@ -1209,7 +1209,7 @@ static void mfi_issue_pending_cmds_again (struct mfi_softc *sc)
 {
 	struct mfi_command *cm, *tmp;
 
-	KKASSERT(lockstatus(&sc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&sc->mfi_io_lock);
 	TAILQ_FOREACH_REVERSE_MUTABLE(cm, &sc->mfi_busy, BUSYQ, cm_link, tmp) {
 
 		cm->retry_for_fw_reset++;

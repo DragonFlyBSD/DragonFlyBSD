@@ -560,6 +560,17 @@ mfi_print_sense(struct mfi_softc *sc, void *sense)
 	    "asc %d, ascq %d\n", error, key, asc, ascq);
 }
 
+/* XXX
+ *
+ * Mimics FreeBSD's mtx_assert() behavior.
+ * We might want a global lockassert() function in the future.
+ */
+static __inline void
+mfi_lockassert(struct lock *lockp)
+{
+	if (panicstr == NULL && !dumping)
+		KKASSERT(lockstatus(lockp, curthread) != 0);
+}
 
 #define MFI_WRITE4(sc, reg, val)	bus_space_write_4((sc)->mfi_btag, \
 	sc->mfi_bhandle, (reg), (val))

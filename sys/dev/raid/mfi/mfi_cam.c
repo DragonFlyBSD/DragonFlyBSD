@@ -164,7 +164,7 @@ mfip_cam_action(struct cam_sim *sim, union ccb *ccb)
 	struct mfip_softc *sc = cam_sim_softc(sim);
 	struct mfi_softc *mfisc = sc->mfi_sc;
 
-	KKASSERT(lockstatus(&mfisc->mfi_io_lock, curthread) != 0);
+	mfi_lockassert(&mfisc->mfi_io_lock);
 
 	switch (ccb->ccb_h.func_code) {
 	case XPT_PATH_INQ:
