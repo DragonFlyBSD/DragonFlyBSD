@@ -257,7 +257,7 @@ static char *ntoskrnl_strncat(char *, char *, size_t);
 static int ntoskrnl_toupper(int);
 static int ntoskrnl_tolower(int);
 static funcptr ntoskrnl_findwrap(funcptr);
-static uint32_t DbgPrint(char *, ...);
+static uint32_t DbgPrint(char *, ...) __printflike(1, 2);
 static void DbgBreakPoint(void);
 static void KeBugCheckEx(uint32_t, u_long, u_long, u_long, u_long);
 static int32_t KeDelayExecutionThread(uint8_t, uint8_t, int64_t *);
