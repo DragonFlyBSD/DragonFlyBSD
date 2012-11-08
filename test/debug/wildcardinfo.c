@@ -135,7 +135,7 @@ dumptcb(kvm_t *kd, intptr_t tcbaddr)
     printf("    lastport %d\n", (int)info.lastport);
     printf("    lastlow %d\n", (int)info.lastlow);
     printf("    lasthi %d\n", (int)info.lasthi);
-    printf("    ipi_zone %p\n", info.ipi_zone);
+    printf("    ipi_size %zu\n", info.ipi_size);
     printf("    ipi_count %d\n", (int)info.ipi_count);
     printf("    ipi_gencnt %lld\n", (long long)info.ipi_gencnt);
     printf("    cpu %d\n", info.cpu);
