@@ -52,7 +52,7 @@
 .Ft struct objcache *
 .Fo objcache_create
 .Fa "const char *name"
-.Fa "int *cluster_limit0"
+.Fa "int cluster_limit"
 .Fa "int mag_capacity"
 .Fa "objcache_ctor_fn *ctor"
 .Fa "objcache_dtor_fn *dtor"
@@ -65,7 +65,7 @@
 .Fo objcache_create_mbacked
 .Fa "malloc_type_t mtype"
 .Fa "size_t objsize"
-.Fa "int *cluster_limit"
+.Fa "int cluster_limit"
 .Fa "int mag_capacity"
 .Fa "objcache_ctor_fn *ctor"
 .Fa "objcache_dtor_fn *dtor"
@@ -111,7 +111,7 @@ It is identified by
 .Fa name ,
 which is used to distinguish the object in diagnostic output.
 The
-.Fa cluster_limit0
+.Fa cluster_limit
 determines the number of available magazines in the depot layer.
 It must be at least
 .Fa mag_capacity *
@@ -191,7 +191,7 @@ backed with a
 .Vt malloc_type_t
 argument.
 The
-.Fa cluster_limit0
+.Fa cluster_limit
 is set to 0 and the default value for magazines' capacity is used.
 .Fa ctor
 and
