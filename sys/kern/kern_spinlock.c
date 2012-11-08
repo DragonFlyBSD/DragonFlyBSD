@@ -206,15 +206,16 @@ spin_lock_contested(struct spinlock *spin)
 	for (j = spinlocks_add_latency; j > 0; --j)
 		cpu_ccfence();
 #endif
+#if defined(INVARIANTS)
 	if (spin_lock_test_mode > 10 &&
 	    spin->countb > spin_lock_test_mode &&
 	    (spin_lock_test_mode & 0xFF) == mycpu->gd_cpuid) {
 		spin->countb = 0;
 		print_backtrace(-1);
 	}
-
-	i = 0;
 	++spin->countb;
+#endif
+	i = 0;
 
 	/*logspin(beg, spin, 'w');*/
 	for (;;) {
@@ -240,7 +241,9 @@ spin_lock_contested(struct spinlock *spin)
 			break;
 		}
 		if ((++i & 0x7F) == 0x7F) {
+#if defined(INVARIANTS)
 			++spin->countb;
+#endif
 			if (spin_indefinite_check(spin, &info))
 				break;
 		}
@@ -263,15 +266,16 @@ spin_lock_shared_contested(struct spinlock *spin)
 	for (j = spinlocks_add_latency; j > 0; --j)
 		cpu_ccfence();
 #endif
+#if defined(INVARIANTS)
 	if (spin_lock_test_mode > 10 &&
 	    spin->countb > spin_lock_test_mode &&
 	    (spin_lock_test_mode & 0xFF) == mycpu->gd_cpuid) {
 		spin->countb = 0;
 		print_backtrace(-1);
 	}
-
-	i = 0;
 	++spin->countb;
+#endif
+	i = 0;
 
 	/*logspin(beg, spin, 'w');*/
 	for (;;) {
@@ -299,7 +303,9 @@ spin_lock_shared_contested(struct spinlock *spin)
 				break;
 		}
 		if ((++i & 0x7F) == 0x7F) {
+#if defined(INVARIANTS)
 			++spin->countb;
+#endif
 			if (spin_indefinite_check(spin, &info))
 				break;
 		}
