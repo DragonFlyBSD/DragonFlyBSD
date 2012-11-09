@@ -411,6 +411,7 @@ int dmsg_crypto_encrypt(dmsg_iocom_t *iocom, dmsg_ioq_t *ioq,
  * Service daemon functions
  */
 void *dmsg_master_service(void *data);
-void dmsg_router_printf(dmsg_router_t *router, const char *ctl, ...);
+void dmsg_router_printf(dmsg_router_t *router, const char *ctl, ...)
+	__printflike(2, 3);
 
 extern int DMsgDebugOpt;

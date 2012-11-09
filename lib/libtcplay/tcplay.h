@@ -185,7 +185,7 @@ struct tc_cipher_chain *check_cipher_chain(char *cipher_chain, int quiet);
 struct pbkdf_prf_algo *check_prf_algo(char *algo, int quiet);
 
 int tc_play_init(void);
-void tc_log(int err, const char *fmt, ...);
+void tc_log(int err, const char *fmt, ...) __printflike(2, 3);
 void print_info(struct tcplay_info *info);
 int adjust_info(struct tcplay_info *info, struct tcplay_info *hinfo);
 int process_hdr(const char *dev, unsigned char *pass, int passlen,

@@ -88,6 +88,7 @@ struct ndis_evt {
 #endif
 };
 
+static void dbgmsg(const char *, ...) __printflike(1, 2);
 static int find_ifname(int, char *);
 static int announce_event(char *, int, struct sockaddr_in *);
 static void usage(void);

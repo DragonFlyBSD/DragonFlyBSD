@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.19 2008/07/10 04:44:58 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -161,7 +159,7 @@ void hammer_cache_del(struct cache_info *cache);
 void hammer_cache_used(struct cache_info *cache);
 void hammer_cache_flush(void);
 
-void score_printf(size_t i, size_t w, const char *ctl, ...);
+void score_printf(size_t i, size_t w, const char *ctl, ...) __printflike(3, 4);
 
 void panic(const char *ctl, ...) __printflike(1, 2);
 
