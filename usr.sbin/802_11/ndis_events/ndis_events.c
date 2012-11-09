@@ -187,7 +187,7 @@ announce_event(char *ifname, int sock, struct sockaddr_in *dst)
 		if (verbose) {
 			if (errno == ENOENT)
 				dbgmsg("drained all events from %s",
-				    ifname, errno);
+				    ifname);
 			else
 				dbgmsg("failed to read event info from %s: %d",
 				    ifname, errno);
