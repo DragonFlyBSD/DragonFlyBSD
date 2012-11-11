@@ -79,7 +79,7 @@
  * and sample NICs for testing.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>
@@ -101,6 +101,7 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/ifq_var.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
@@ -183,8 +184,9 @@ static int vge_cam_set		(struct vge_softc *, uint8_t *);
 static void vge_setmulti	(struct vge_softc *);
 static void vge_reset		(struct vge_softc *);
 
-#ifdef DEVICE_POLLING
-static void	vge_poll(struct ifnet *, enum poll_cmd, int);
+#ifdef IFPOLL_ENABLE
+static void	vge_npoll(struct ifnet *, struct ifpoll_info *);
+static void	vge_npoll_compat(struct ifnet *, void *, int);
 static void	vge_disable_intr(struct vge_softc *);
 #endif
 static void	vge_enable_intr(struct vge_softc *, uint32_t);
@@ -1008,8 +1010,8 @@ vge_attach(device_t dev)
 	ifp->if_start = vge_start;
 	ifp->if_watchdog = vge_watchdog;
 	ifp->if_ioctl = vge_ioctl;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = vge_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = vge_npoll;
 #endif
 	ifp->if_hwassist = VGE_CSUM_FEATURES;
 	ifp->if_capabilities = IFCAP_VLAN_MTU |
@@ -1023,6 +1025,11 @@ vge_attach(device_t dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->vge_npoll, NULL, NULL, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	/* Hook interrupt last to avoid having to lock softc */
 	error = bus_setup_intr(dev, sc->vge_irq, INTR_MPSAFE, vge_intr, sc,
@@ -1256,7 +1263,7 @@ vge_rxeof(struct vge_softc *sc, int count)
 			sc->vge_ldata.vge_rx_list_map, BUS_DMASYNC_POSTREAD);
 
 	while (!VGE_OWN(&sc->vge_ldata.vge_rx_list[i])) {
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 		if (count >= 0 && count-- == 0)
 			break;
 #endif
@@ -1480,55 +1487,71 @@ vge_tick(struct vge_softc *sc)
 	}
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
+
 static void
-vge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+vge_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
 	struct vge_softc *sc = ifp->if_softc;
 
-	sc->rxcycles = count;
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	switch (cmd) {
-	case POLL_REGISTER:
-		vge_disable_intr(sc);
-		break;
-	case POLL_DEREGISTER:
-		vge_enable_intr(sc, 0xffffffff);
-		break;
-	case POLL_ONLY:
-	case POLL_AND_CHECK_STATUS:
-		vge_rxeof(sc, count);
-		vge_txeof(sc);
+	vge_rxeof(sc, count);
+	vge_txeof(sc);
 
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
 
-		/* XXX copy & paste from vge_intr */
-		if (cmd == POLL_AND_CHECK_STATUS) {
-			uint32_t status = 0;
+	/* XXX copy & paste from vge_intr */
+	if (sc->vge_npoll.ifpc_stcount-- == 0) {
+		uint32_t status;
 
-			status = CSR_READ_4(sc, VGE_ISR);
-			if (status == 0xffffffff)
-				break;
+		sc->vge_npoll.ifpc_stcount = sc->vge_npoll.ifpc_stfrac;
 
-			if (status)
-				CSR_WRITE_4(sc, VGE_ISR, status);
+		status = CSR_READ_4(sc, VGE_ISR);
+		if (status == 0xffffffff)
+			return;
 
-			if (status & (VGE_ISR_TXDMA_STALL |
-				      VGE_ISR_RXDMA_STALL))
-				vge_init(sc);
+		if (status)
+			CSR_WRITE_4(sc, VGE_ISR, status);
 
-			if (status & (VGE_ISR_RXOFLOW | VGE_ISR_RXNODESC)) {
-				ifp->if_ierrors++;
-				CSR_WRITE_1(sc, VGE_RXQCSRS, VGE_RXQCSR_RUN);
-				CSR_WRITE_1(sc, VGE_RXQCSRS, VGE_RXQCSR_WAK);
-			}
+		if (status & (VGE_ISR_TXDMA_STALL |
+			      VGE_ISR_RXDMA_STALL))
+			vge_init(sc);
+
+		if (status & (VGE_ISR_RXOFLOW | VGE_ISR_RXNODESC)) {
+			ifp->if_ierrors++;
+			CSR_WRITE_1(sc, VGE_RXQCSRS, VGE_RXQCSR_RUN);
+			CSR_WRITE_1(sc, VGE_RXQCSRS, VGE_RXQCSR_WAK);
 		}
-		break;
 	}
-
 }
-#endif	/* DEVICE_POLLING */
+
+static void
+vge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct vge_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->vge_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = vge_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING)
+			vge_disable_intr(sc);
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING)
+			vge_enable_intr(sc, 0xffffffff);
+		ifp->if_npoll_cpuid = -1;
+	}
+}
+
+#endif	/* IFPOLL_ENABLE */
 
 static void
 vge_intr(void *arg)
@@ -1883,9 +1906,9 @@ vge_init(void *xsc)
 	CSR_SETBIT_1(sc, VGE_CAMCTL, VGE_PAGESEL_MAR);
 #endif
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/* Disable intr if polling(4) is enabled */
-	if (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_NPOLLING)
 		vge_disable_intr(sc);
 	else
 #endif
@@ -2173,11 +2196,14 @@ vge_enable_intr(struct vge_softc *sc, uint32_t isr)
 	CSR_WRITE_1(sc, VGE_CRS3, VGE_CR3_INT_GMSK);
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
+
 static void
 vge_disable_intr(struct vge_softc *sc)
 {
 	CSR_WRITE_4(sc, VGE_IMR, 0);
 	CSR_WRITE_1(sc, VGE_CRC3, VGE_CR3_INT_GMSK);
+	sc->vge_npoll.ifpc_stcount = 0;
 }
-#endif
+
+#endif	/* IFPOLL_ENABLE */

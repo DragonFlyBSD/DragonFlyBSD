@@ -118,12 +118,10 @@ struct vge_softc {
 	struct mbuf		*vge_head;
 	struct mbuf		*vge_tail;
 
+	struct ifpoll_compat	vge_npoll;
 	struct vge_list_data	vge_ldata;
 
 	int			suspended;	/* 0 = normal  1 = suspended */
-#ifdef DEVICE_POLLING
-	int			rxcycles;
-#endif
 };
 
 #define	VGE_LOCK(_sc)		mtx_lock(&(_sc)->vge_mtx)
