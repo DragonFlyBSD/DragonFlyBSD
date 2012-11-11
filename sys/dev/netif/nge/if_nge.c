@@ -87,7 +87,7 @@
  * if the user selects an MTU larger than 8152 (8170 - 18).
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -108,6 +108,7 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
@@ -188,8 +189,9 @@ static void	nge_setmulti(struct nge_softc *);
 static void	nge_reset(struct nge_softc *);
 static int	nge_list_rx_init(struct nge_softc *);
 static int	nge_list_tx_init(struct nge_softc *);
-#ifdef DEVICE_POLLING
-static void	nge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
+#ifdef IFPOLL_ENABLE
+static void	nge_npoll(struct ifnet *, struct ifpoll_info *);
+static void	nge_npoll_compat(struct ifnet *, void *, int);
 #endif
 
 #ifdef NGE_USEIOSPACE
@@ -838,8 +840,8 @@ nge_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = nge_ioctl;
 	ifp->if_start = nge_start;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = nge_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = nge_npoll;
 #endif
 	ifp->if_watchdog = nge_watchdog;
 	ifp->if_init = nge_init;
@@ -897,6 +899,11 @@ nge_attach(device_t dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->nge_npoll, NULL, NULL, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	error = bus_setup_intr(dev, sc->nge_irq, INTR_MPSAFE,
 			       nge_intr, sc, &sc->nge_intrhand, 
@@ -1203,13 +1210,13 @@ nge_rxeof(struct nge_softc *sc)
 		struct mbuf *m0 = NULL;
 		uint32_t extsts;
 
-#ifdef DEVICE_POLLING
-		if (ifp->if_flags & IFF_POLLING) {
+#ifdef IFPOLL_ENABLE
+		if (ifp->if_flags & IFF_NPOLLING) {
 			if (sc->rxcycles <= 0)
 				break;
 			sc->rxcycles--;
 		}
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 
 		cur_rx = &sc->nge_ldata->nge_rx_list[i];
 		rxstat = cur_rx->nge_rxstat;
@@ -1399,58 +1406,79 @@ nge_tick(void *xsc)
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-nge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+nge_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
 	struct nge_softc *sc = ifp->if_softc;
 
-	switch(cmd) {
-	case POLL_REGISTER:
-		/* disable interrupts */
-		CSR_WRITE_4(sc, NGE_IER, 0);
-		break;
-	case POLL_DEREGISTER:
-		/* enable interrupts */
-		CSR_WRITE_4(sc, NGE_IER, 1);
-		break;
-	default:
-		/*
-		 * On the nge, reading the status register also clears it.
-		 * So before returning to intr mode we must make sure that all
-		 * possible pending sources of interrupts have been served.
-		 * In practice this means run to completion the *eof routines,
-		 * and then call the interrupt routine
-		 */
-		sc->rxcycles = count;
-		nge_rxeof(sc);
-		nge_txeof(sc);
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
-		if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
-			uint32_t status;
+	/*
+	 * On the nge, reading the status register also clears it.
+	 * So before returning to intr mode we must make sure that all
+	 * possible pending sources of interrupts have been served.
+	 * In practice this means run to completion the *eof routines,
+	 * and then call the interrupt routine
+	 */
+	sc->rxcycles = count;
+	nge_rxeof(sc);
+	nge_txeof(sc);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
 
-			/* Reading the ISR register clears all interrupts. */
-			status = CSR_READ_4(sc, NGE_ISR);
+	if (sc->nge_npoll.ifpc_stcount-- == 0) {
+		uint32_t status;
 
-			if (status & (NGE_ISR_RX_ERR|NGE_ISR_RX_OFLOW))
-				nge_rxeof(sc);
+		sc->nge_npoll.ifpc_stcount = sc->nge_npoll.ifpc_stfrac;
 
-			if (status & (NGE_ISR_RX_IDLE))
-				NGE_SETBIT(sc, NGE_CSR, NGE_CSR_RX_ENABLE);
+		/* Reading the ISR register clears all interrupts. */
+		status = CSR_READ_4(sc, NGE_ISR);
 
-			if (status & NGE_ISR_SYSERR) {
-				nge_reset(sc);
-				nge_init(sc);
-			}
+		if (status & (NGE_ISR_RX_ERR|NGE_ISR_RX_OFLOW))
+			nge_rxeof(sc);
+
+		if (status & (NGE_ISR_RX_IDLE))
+			NGE_SETBIT(sc, NGE_CSR, NGE_CSR_RX_ENABLE);
+
+		if (status & NGE_ISR_SYSERR) {
+			nge_reset(sc);
+			nge_init(sc);
 		}
-		break;
 	}
 }
 
-#endif /* DEVICE_POLLING */
+static void
+nge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct nge_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->nge_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = nge_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* disable interrupts */
+			CSR_WRITE_4(sc, NGE_IER, 0);
+			sc->nge_npoll.ifpc_stcount = 0;
+		}
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* enable interrupts */
+			CSR_WRITE_4(sc, NGE_IER, 1);
+		}
+		ifp->if_npoll_cpuid = -1;
+	}
+}
+
+#endif /* IFPOLL_ENABLE */
 
 static void
 nge_intr(void *arg)
@@ -1830,15 +1858,16 @@ nge_init(void *xsc)
 	 * Enable interrupts.
 	 */
 	CSR_WRITE_4(sc, NGE_IMR, NGE_INTRS);
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/*
 	 * ... only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	if (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_NPOLLING) {
 		CSR_WRITE_4(sc, NGE_IER, 0);
-	else
-#endif /* DEVICE_POLLING */
+		sc->nge_npoll.ifpc_stcount = 0;
+	} else
+#endif /* IFPOLL_ENABLE */
 	CSR_WRITE_4(sc, NGE_IER, 1);
 
 	/* Enable receiver and transmitter. */

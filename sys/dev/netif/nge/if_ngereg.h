@@ -643,6 +643,7 @@ struct nge_softc {
 	uint8_t			nge_width;
 #define NGE_WIDTH_32BITS	0
 #define NGE_WIDTH_64BITS	1
+	struct ifpoll_compat	nge_npoll;
 	struct nge_list_data	*nge_ldata;
 	struct nge_ring_data	nge_cdata;
 	struct callout		nge_stat_timer;
@@ -650,9 +651,7 @@ struct nge_softc {
 	struct lwkt_serialize	nge_jslot_serializer;
 	uint8_t			nge_tbi;
 	struct ifmedia		nge_ifmedia;
-#ifdef DEVICE_POLLING
 	int			rxcycles;
-#endif
 };
 
 /*
