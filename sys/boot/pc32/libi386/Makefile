@@ -1,5 +1,4 @@
 # $FreeBSD: src/sys/boot/i386/libi386/Makefile,v 1.32 2003/07/02 12:45:45 ru Exp $
-# $DragonFly: src/sys/boot/pc32/libi386/Makefile,v 1.9 2007/05/18 07:41:43 dillon Exp $
 #
 LIB=			i386
 INTERNALLIB=		true
@@ -11,7 +10,7 @@ SRCS=	biosacpi.c bioscd.c biosdisk.c biosmem.c biospnp.c \
 	comconsole.c devicename.c elf32_freebsd.c \
 	elf64_freebsd.c gatea20.c \
 	i386_copy.c i386_module.c nullconsole.c pxe.c pxetramp.s \
-	time.c vidconsole.c x86_64_tramp.S
+	smbios.c time.c vidconsole.c x86_64_tramp.S
 
 CFLAGS+=	-ffreestanding
 BOOT_COMCONSOLE_PORT?= 0x3f8
