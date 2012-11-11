@@ -455,7 +455,7 @@ struct dc_desc {
 #define DC_FILTER_HASHONLY	0x10400000
 
 #define DC_MAXFRAGS		16
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 #define DC_RX_LIST_CNT		192
 #else
 #define DC_RX_LIST_CNT		64
@@ -718,12 +718,11 @@ struct dc_softc {
 	u_int32_t		dc_txthresh;
 	u_int8_t		*dc_srom;
 	struct dc_mediainfo	*dc_mi;
+	struct ifpoll_compat	dc_npoll;
 	struct dc_list_data	*dc_ldata;
 	struct dc_chain_data	dc_cdata;
 	struct callout		dc_stat_timer;
-#ifdef	DEVICE_POLLING
 	int			rxcycles;	/* ... when polling */
-#endif
 	int			suspended;	/* 0 = normal  1 = suspended */
 
 	u_int32_t		saved_maps[5];	/* pci data */

@@ -90,7 +90,7 @@
  * AX88140A doesn't support internal NWAY.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -111,6 +111,7 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
 
@@ -217,9 +218,9 @@ static void dc_intr		(void *);
 static void dc_start		(struct ifnet *);
 static int dc_ioctl		(struct ifnet *, u_long, caddr_t,
 					struct ucred *);
-#ifdef DEVICE_POLLING
-static void dc_poll		(struct ifnet *ifp, enum poll_cmd cmd, 
-					int count);
+#ifdef IFPOLL_ENABLE
+static void dc_npoll		(struct ifnet *, struct ifpoll_info *);
+static void dc_npoll_compat	(struct ifnet *, void *, int);
 #endif
 static void dc_init		(void *);
 static void dc_stop		(struct dc_softc *);
@@ -2096,8 +2097,8 @@ dc_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = dc_ioctl;
 	ifp->if_start = dc_start;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = dc_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = dc_npoll;
 #endif
 	ifp->if_watchdog = dc_watchdog;
 	ifp->if_init = dc_init;
@@ -2505,13 +2506,13 @@ dc_rxeof(struct dc_softc *sc)
 
 	while(!(sc->dc_ldata->dc_rx_list[i].dc_status & DC_RXSTAT_OWN)) {
 
-#ifdef DEVICE_POLLING
-		if (ifp->if_flags & IFF_POLLING) {
+#ifdef IFPOLL_ENABLE
+		if (ifp->if_flags & IFF_NPOLLING) {
 			if (sc->rxcycles <= 0)
 				break;
 			sc->rxcycles--;
 		}
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 		cur_rx = &sc->dc_ldata->dc_rx_list[i];
 		rxstat = cur_rx->dc_status;
 		m = sc->dc_cdata.dc_rx_chain[i];
@@ -2835,42 +2836,32 @@ dc_tx_underrun(struct dc_softc *sc)
 	return;
 }
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-dc_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+dc_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
-	struct	dc_softc *sc = ifp->if_softc;
-	u_int32_t status;
+	struct dc_softc *sc = ifp->if_softc;
 
-	switch(cmd) {
-	case POLL_REGISTER:
-		/* Disable interrupts */
-		CSR_WRITE_4(sc, DC_IMR, 0x00000000);
-		break;
-	case POLL_DEREGISTER:
-		/* Re-enable interrupts. */
-		CSR_WRITE_4(sc, DC_IMR, DC_INTRS);
-		break;
-	case POLL_ONLY:
-		sc->rxcycles = count;
-		dc_rxeof(sc);
-		dc_txeof(sc);
-		if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
-		break;
-	case POLL_AND_CHECK_STATUS:
-		sc->rxcycles = count;
-		dc_rxeof(sc);
-		dc_txeof(sc);
-		if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	sc->rxcycles = count;
+	dc_rxeof(sc);
+	dc_txeof(sc);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+
+	if (sc->dc_npoll.ifpc_stcount-- == 0) {
+		uint32_t status;
+
+		sc->dc_npoll.ifpc_stcount = sc->dc_npoll.ifpc_stfrac;
+
 		status = CSR_READ_4(sc, DC_ISR);
 		status &= (DC_ISR_RX_WATDOGTIMEO|DC_ISR_RX_NOBUF|
 			DC_ISR_TX_NOBUF|DC_ISR_TX_IDLE|DC_ISR_TX_UNDERRUN|
 			DC_ISR_BUS_ERR);
 		if (!status)
-			break;
+			return;
 		/* ack what we have */
 		CSR_WRITE_4(sc, DC_ISR, status);
 
@@ -2893,10 +2884,39 @@ dc_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			dc_reset(sc);
 			dc_init(sc);
 		}
-		break;
 	}
 }
-#endif /* DEVICE_POLLING */
+
+static void
+dc_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct dc_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (info != NULL) {
+		int cpuid = sc->dc_npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = dc_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* Disable interrupts */
+			CSR_WRITE_4(sc, DC_IMR, 0x00000000);
+			sc->dc_npoll.ifpc_stcount = 0;
+		}
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* Re-enable interrupts. */
+			CSR_WRITE_4(sc, DC_IMR, DC_INTRS);
+		}
+		ifp->if_npoll_cpuid = -1;
+	}
+}
+
+#endif /* IFPOLL_ENABLE */
 
 static void
 dc_intr(void *arg)
@@ -3265,15 +3285,16 @@ dc_init(void *xsc)
 	/*
 	 * Enable interrupts.
 	 */
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/*
 	 * ... but only if we are not polling, and make sure they are off in
 	 * the case of polling. Some cards (e.g. fxp) turn interrupts on
 	 * after a reset.
 	 */
-	if (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_NPOLLING) {
 		CSR_WRITE_4(sc, DC_IMR, 0x00000000);
-	else
+		sc->dc_npoll.ifpc_stcount = 0;
+	} else
 #endif
 	CSR_WRITE_4(sc, DC_IMR, DC_INTRS);
 	CSR_WRITE_4(sc, DC_ISR, 0xFFFFFFFF);
