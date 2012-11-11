@@ -64,8 +64,7 @@ static struct p_times {
 } *pt;
 
 struct kinfo_cputime old_cp_time;
-static long    fscale;
-static double  lccpu;
+static int fscale;
 
 WINDOW *
 openpigs(void)
@@ -138,36 +137,16 @@ showpigs(void)
 	wmove(wnd, y, 0); wclrtobot(wnd);
 }
 
-static struct nlist namelist[] = {
-#define X_FIRST		0
-#define X_FSCALE        0
-	{ .n_name = "_fscale" },
-
-	{ .n_name = "" }
-};
-
 int
 initpigs(void)
 {
-	int ccpu;
+	size_t oldlen;
 
-	if (namelist[X_FIRST].n_type == 0) {
-		if (kvm_nlist(kd, namelist)) {
-			nlisterr(namelist);
-		        return(0);
-		}
-		if (namelist[X_FIRST].n_type == 0) {
-			error("namelist failed");
-			return(0);
-		}
-	}
 	if (kinfo_get_sched_cputime(&old_cp_time))
 		err(1, "kinfo_get_sched_cputime");
-	if (kinfo_get_sched_ccpu(&ccpu))
-		err(1, "kinfo_get_sched_ccpu");
-	    
-	NREAD(X_FSCALE,  &fscale, LONG);
-	lccpu = log((double) ccpu / fscale);
+
+        if (sysctlbyname("kern.fscale", &fscale, &oldlen, NULL, 0) < 0)
+                err(1, "sysctlbyname");
 
 	return(1);
 }
@@ -183,8 +162,6 @@ fetchpigs(void)
 	double t;
 	static int lastnproc = 0;
 
-	if (namelist[X_FIRST].n_type == 0)
-		return;
 	if ((kpp = kvm_getprocs(kd, KERN_PROC_ALL, 0, &nproc)) == NULL) {
 		error("%s", kvm_geterr(kd));
 		if (pt)
@@ -211,8 +188,7 @@ fetchpigs(void)
 		if (ftime == 0 || (pp->kp_flags & P_SWAPPEDOUT))
 			*pctp = 0;
 		else
-			*pctp = ((double) pp->kp_lwp.kl_pctcpu /
-					fscale) / (1.0 - exp(ftime * lccpu));
+			*pctp = ((double) pp->kp_lwp.kl_pctcpu / fscale);
 	}
 	/*
 	 * and for the imaginary "idle" process
@@ -248,16 +224,16 @@ compar(const void *a, const void *b)
 {
 	const struct p_times *pta = (const struct p_times *)a;
 	const struct p_times *ptb = (const struct p_times *)b;
-	float d;
 
 	/*
 	 * Check overall cpu percentage first.
 	 */
-	d = pta->pt_pctcpu - ptb->pt_pctcpu;
-	if (d > 0.10)
-		return(-1);	/* a is better */
-	else if (d < -0.10)
-		return(1);	/* b is better */
+	if (pta->pt_pctcpu > ptb->pt_pctcpu)
+		return (-1);	/* a is better */
+	else if (pta->pt_pctcpu < ptb->pt_pctcpu)
+		return (1);	/* b is better */
+	else
+		return 0;
 
 	if (pta->pt_kp == NULL && ptb->pt_kp == NULL)
 		return(0);
