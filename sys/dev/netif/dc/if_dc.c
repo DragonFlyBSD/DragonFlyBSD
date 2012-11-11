@@ -2166,6 +2166,11 @@ dc_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&sc->dc_npoll, NULL, NULL, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
+
 	if (DC_IS_ADMTEK(sc)) {
 		/*
 		 * Set automatic TX underrun recovery for the ADMtek chips
