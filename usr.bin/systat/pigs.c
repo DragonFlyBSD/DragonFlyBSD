@@ -31,8 +31,6 @@
  * SUCH DAMAGE.
  *
  * @(#)pigs.c	8.2 (Berkeley) 9/23/93
- *
- * $DragonFly: src/usr.bin/systat/pigs.c,v 1.16 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -145,8 +143,9 @@ initpigs(void)
 	if (kinfo_get_sched_cputime(&old_cp_time))
 		err(1, "kinfo_get_sched_cputime");
 
-        if (sysctlbyname("kern.fscale", &fscale, &oldlen, NULL, 0) < 0)
-                err(1, "sysctlbyname");
+	oldlen = sizeof(fscale);
+	if (sysctlbyname("kern.fscale", &fscale, &oldlen, NULL, 0) < 0)
+		err(1, "sysctlbyname");
 
 	return(1);
 }
