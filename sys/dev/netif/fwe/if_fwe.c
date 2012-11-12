@@ -35,7 +35,7 @@
  */
 
 #include "opt_inet.h"
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/conf.h>
@@ -56,6 +56,7 @@
 #include <net/if_arp.h>
 #ifdef __DragonFly__
 #include <net/ifq_var.h>
+#include <net/if_poll.h>
 #include <net/vlan/if_vlan_var.h>
 #include <bus/firewire/firewire.h>
 #include <bus/firewire/firewirereg.h>
@@ -102,32 +103,61 @@ TUNABLE_INT("hw.firewire.fwe.stream_ch", &stream_ch);
 TUNABLE_INT("hw.firewire.fwe.tx_speed", &tx_speed);
 TUNABLE_INT("hw.firewire.fwe.rx_queue_len", &rx_queue_len);
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 
 static void
-fwe_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+fwe_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
+{
+	struct fwe_softc *fwe;
+	struct firewire_comm *fc;
+	int check_status = 0;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	fwe = ((struct fwe_eth_softc *)ifp->if_softc)->fwe;
+	fc = fwe->fd.fc;
+
+	if (fwe->npoll.ifpc_stcount-- == 0) {
+		fwe->npoll.ifpc_stcount = fwe->npoll.ifpc_stfrac;
+		check_status = 1;
+	}
+	fc->poll(fc, check_status?0:1, count);
+}
+
+static void
+fwe_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 {
 	struct fwe_softc *fwe;
 	struct firewire_comm *fc;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	fwe = ((struct fwe_eth_softc *)ifp->if_softc)->fwe;
 	fc = fwe->fd.fc;
-	switch(cmd) {
-	case POLL_REGISTER:
-		/* disable interrupts */
-		fc->set_intr(fc, 0);
-		break;
-	case POLL_DEREGISTER:
-		/* enable interrupts */
-		fc->set_intr(fc, 1);
-		break;
-	default:
-		fc->poll(fc, (cmd == POLL_AND_CHECK_STATUS)?0:1, count);
-		break;
+
+	if (info != NULL) {
+		int cpuid = fwe->npoll.ifpc_cpuid;
+
+		info->ifpi_rx[cpuid].poll_func = fwe_npoll_compat;
+		info->ifpi_rx[cpuid].arg = NULL;
+		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* disable interrupts */
+			fc->set_intr(fc, 0);
+			fwe->npoll.ifpc_stcount = 0;
+		}
+		ifp->if_npoll_cpuid = cpuid;
+	} else {
+		if (ifp->if_flags & IFF_RUNNING) {
+			/* enable interrupts */
+			fc->set_intr(fc, 1);
+		}
+		ifp->if_npoll_cpuid = -1;
 	}
 }
 
-#endif
+#endif	/* IFPOLL_ENABLE */
 
 static int
 fwe_probe(device_t dev)
@@ -190,8 +220,8 @@ fwe_attach(device_t dev)
 	ifp->if_start = fwe_start;
 	ifp->if_ioctl = fwe_ioctl;
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = fwe_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = fwe_npoll;
 #endif
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = (IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST);
@@ -203,6 +233,10 @@ fwe_attach(device_t dev)
         /* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
+#ifdef IFPOLL_ENABLE
+	ifpoll_compat_setup(&fwe->npoll, NULL, NULL, device_get_unit(dev),
+	    ifp->if_serializer);
+#endif
 
 	FWEDEBUG(ifp, "interface created\n");
 	return 0;
@@ -336,11 +370,12 @@ found:
 	} else
 		xferq = fc->ir[fwe->dma_ch];
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/* Disable interrupt, if polling(4) is enabled */
-	if (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_NPOLLING) {
 		fc->set_intr(fc, 0);
-	else
+		fwe->npoll.ifpc_stcount = 0;
+	} else
 #endif
 	fc->set_intr(fc, 1);
 
