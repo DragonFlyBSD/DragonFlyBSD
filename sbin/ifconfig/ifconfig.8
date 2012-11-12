@@ -28,7 +28,7 @@
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
 .\"
-.Dd July 17, 2010
+.Dd Nov 12, 2012
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -356,21 +356,13 @@ If the driver offers user-configurable VLAN support, disable
 reception of extended frames or tag processing in hardware,
 respectively.
 .It Cm pollcpu Ar cpu
-Turn on
-.Xr polling 4
-feature and disable interrupts on the interface,
-if the driver supports this mode and
-.Ar cpu
-supports
-.Xr polling 4 .
-Driver will be polled by
-.Ar cpu .
-.It Cm polling
+Deprecated, use polling or npolling instead.
+.It Cm polling , npolling
 Turn on
 .Xr polling 4
 feature and disable interrupts on the interface, if the driver supports
 this mode.
-.It Fl polling
+.It Fl polling , npolling
 Turn off
 .Xr polling 4
 feature and enable interrupt mode on the interface.

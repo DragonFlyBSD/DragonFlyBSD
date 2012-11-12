@@ -847,21 +847,8 @@ static void
 setifpollcpu(const char *val, int dummy __unused, int s, 
     const struct afswtch *afp)
 {
-	int pollcpu;
-
-	pollcpu = atoi(val);
-	if (pollcpu < 0) {
-		warn("pollcpu < 0");
-		return;
-	}
-
-	setifflags("-polling", -IFF_POLLING, s, afp);
-
-	ifr.ifr_pollcpu = pollcpu;
-	if (ioctl(s, SIOCSIFPOLLCPU, (caddr_t)&ifr) < 0) {
-		warn("ioctl (set pollcpu)");
-		return;
-	}
+	warnx("pollcpu is deprecated, use polling or npolling instead");
+	setifflags("npolling", IFF_NPOLLING, s, afp);
 }
 
 /*
@@ -977,11 +964,6 @@ status(const struct afswtch *afp, int addrcount, struct	sockaddr_dl *sdl,
 	strncpy(ifs.ifs_name, name, sizeof ifs.ifs_name);
 	if (ioctl(s, SIOCGIFSTATUS, &ifs) == 0) 
 		printf("%s", ifs.ascii);
-
-	if (flags & IFF_POLLING) {
-		if (ioctl(s, SIOCGIFPOLLCPU, &ifr) == 0 && ifr.ifr_pollcpu >= 0)
-			printf("\tpollcpu: %d\n", ifr.ifr_pollcpu);
-	}
 
 	close(s);
 	return;
@@ -1120,8 +1102,8 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD("-monitor",	-IFF_MONITOR,	setifflags),
 	DEF_CMD("staticarp",	IFF_STATICARP,	setifflags),
 	DEF_CMD("-staticarp",	-IFF_STATICARP,	setifflags),
-	DEF_CMD("polling",	IFF_POLLING,	setifflags),
-	DEF_CMD("-polling",	-IFF_POLLING,	setifflags),
+	DEF_CMD("polling",	IFF_NPOLLING,	setifflags),
+	DEF_CMD("-polling",	-IFF_NPOLLING,	setifflags),
 	DEF_CMD("npolling",	IFF_NPOLLING,	setifflags),
 	DEF_CMD("-npolling",	-IFF_NPOLLING,	setifflags),
 	DEF_CMD("rxcsum",	IFCAP_RXCSUM,	setifcap),
