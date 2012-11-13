@@ -25,7 +25,6 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ipcs/ipcs.c,v 1.12.2.4 2003/04/08 11:01:34 tjr Exp $
- * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.8 2005/04/19 20:38:57 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -66,16 +65,14 @@ static struct nlist symbols[] = {
 #define X_SEMA		0
 	{ .n_name = "_seminfo" },
 #define X_SEMINFO	1
-	{ .n_name = "_semu" },
-#define X_SEMU		2
 	{ .n_name = "_msginfo" },
-#define X_MSGINFO	3
+#define X_MSGINFO	2
 	{ .n_name = "_msqids" },
-#define X_MSQIDS	4
+#define X_MSQIDS	3
 	{ .n_name = "_shminfo" },
-#define X_SHMINFO	5
+#define X_SHMINFO	4
 	{ .n_name = "_shmsegs" },
-#define X_SHMSEGS	6
+#define X_SHMSEGS	5
 	{ .n_name = NULL }
 };
 
