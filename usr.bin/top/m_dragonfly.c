@@ -57,7 +57,6 @@
 #include "utils.h"
 
 int swapmode(int *retavail, int *retfree);
-static int smpmode;
 static int namelength;
 static int cmdlength;
 static int show_fullcmd;
@@ -90,13 +89,6 @@ static char smp_header[] =
 
 #define smp_Proc_format \
 	"%5d %-*.*s %3d%7s %6s %8.8s %2d %6s %7s %5.2f%% %.*s"
-
-static char up_header[] =
-"  PID %-*.*s NICE  SIZE    RES    STATE    TIME   CTIME    CPU COMMAND";
-
-#define up_Proc_format \
-	"%5d %-*.*s %3d%7s %6s %8.8s%.0d %7s %7s %5.2f%% %.*s"
-
 
 /* process state names for the "STATE" column of the display */
 /*
@@ -253,11 +245,6 @@ machine_init(struct statics *statics)
 		/* we have no boottime to report */
 		boottime.tv_sec = -1;
 	}
-	modelen = sizeof(smpmode);
-	if ((sysctlbyname("machdep.smp_active", &smpmode, &modelen, NULL, 0) < 0 &&
-	    sysctlbyname("smp.smp_active", &smpmode, &modelen, NULL, 0) < 0) ||
-	    modelen != sizeof(smpmode))
-		smpmode = 0;
 
 	while ((pw = getpwent()) != NULL) {
 		if ((int)strlen(pw->pw_name) > namelength)
@@ -265,10 +252,8 @@ machine_init(struct statics *statics)
 	}
 	if (namelength < 8)
 		namelength = 8;
-	if (smpmode && namelength > 13)
+	if (namelength > 13)
 		namelength = 13;
-	else if (namelength > 15)
-		namelength = 15;
 
 	if ((kd = kvm_open(NULL, NULL, NULL, O_RDONLY, NULL)) == NULL)
 		return -1;
@@ -310,7 +295,7 @@ format_header(char *uname_field)
 {
 	static char Header[128];
 
-	snprintf(Header, sizeof(Header), smpmode ? smp_header : up_header,
+	snprintf(Header, sizeof(Header), smp_header,
 	    namelength, namelength, uname_field);
 
 	if (screen_width <= 79)
@@ -562,7 +547,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	/* generate "STATE" field */
 	switch (state = LP(pp, stat)) {
 	case LSRUN:
-		if (smpmode && LP(pp, tdflags) & TDF_RUNNING)
+		if (LP(pp, tdflags) & TDF_RUNNING)
 			sprintf(status, "CPU%d", LP(pp, cpuid));
 		else
 			strcpy(status, "RUN");
@@ -608,7 +593,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 
 	/* format this entry */
 	snprintf(fmt, sizeof(fmt),
-	    smpmode ? smp_Proc_format : up_Proc_format,
+	    smp_Proc_format,
 	    (int)PP(pp, pid),
 	    namelength, namelength,
 	    get_userid(PP(pp, ruid)),
@@ -616,7 +601,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	    format_k(PROCSIZE(pp)),
 	    format_k(pagetok(VP(pp, rssize))),
 	    status,
-	    (int)(smpmode ? LP(pp, cpuid) : 0),
+	    LP(pp, cpuid),
 	    cputime_fmt,
 	    ccputime_fmt,
 	    100.0 * pct,
