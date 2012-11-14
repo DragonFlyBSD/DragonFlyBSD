@@ -513,6 +513,18 @@ static char init_path[MAXPATHLEN] =
 SYSCTL_STRING(_kern, OID_AUTO, init_path, CTLFLAG_RD, init_path, 0, "");
 
 /*
+ * Shutdown timeout of init(8).
+ * Unused within kernel, but used to control init(8), hence do not remove.
+ */
+#ifndef INIT_SHUTDOWN_TIMEOUT
+#define INIT_SHUTDOWN_TIMEOUT 120
+#endif
+static int init_shutdown_timeout = INIT_SHUTDOWN_TIMEOUT;
+SYSCTL_INT(_kern, OID_AUTO, init_shutdown_timeout,
+	CTLFLAG_RW, &init_shutdown_timeout, 0, "Shutdown timeout of init(8). "
+	"Unused within kernel, but used to control init(8)");
+
+/*
  * Start the initial user process; try exec'ing each pathname in init_path.
  * The program is invoked with one argument containing the boot flags.
  */
