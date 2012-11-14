@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/lib/libkinfo/kinfo_sched.c,v 1.3 2005/04/27 16:16:30 hmp Exp $
  */
 
 #include <sys/kinfo.h>
@@ -49,14 +47,6 @@ kinfo_get_cpus(int *ncpus)
 	size_t len = sizeof(*ncpus);
 
 	return(sysctlbyname("hw.ncpu", ncpus, &len, NULL, 0));
-}
-
-int
-kinfo_get_sched_ccpu(int *ccpu)
-{
-	size_t len = sizeof(*ccpu);
-
-	return(sysctlbyname("kern.ccpu", ccpu, &len, NULL, 0));
 }
 
 int

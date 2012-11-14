@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/lib/libkcore/kcore.h,v 1.3 2005/02/03 17:28:40 joerg Exp $
  */
 
 #ifndef _KCORE_H
@@ -52,8 +50,6 @@
 	kcore_get_maxfiles(NULL, maxfiles)
 #define	kinfo_get_openfiles(openfiles)	\
 	kcore_get_openfiles(NULL, openfiles)
-#define	kinfo_get_sched_ccpu(ccpu)	\
-	kcore_get_sched_ccpu(NULL, ccpu)
 #define	kinfo_get_sched_cputime(cputime)	\
 	kcore_get_sched_cputime(NULL, cputime)
 #define	kinfo_get_sched_hz(hz)		\
@@ -86,7 +82,6 @@ int	 kcore_get_maxfiles(struct kcore_data *, int *);
 int	 kcore_get_openfiles(struct kcore_data *, int *);
 int	 kcore_get_procs(struct kcore_data *kc, struct kinfo_proc **procs,
 			size_t *len);
-int	 kcore_get_sched_ccpu(struct kcore_data *, int *);
 int	 kcore_get_sched_cputime(struct kcore_data *, struct kinfo_cputime *);
 int	 kcore_get_sched_hz(struct kcore_data *, int *);
 int	 kcore_get_sched_profhz(struct kcore_data *, int *);

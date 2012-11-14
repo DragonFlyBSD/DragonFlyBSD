@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/lib/libkcore/kcore_sched.c,v 1.5 2006/08/03 16:40:46 swildner Exp $
  */
 
 #include <sys/kinfo.h>
@@ -59,17 +57,6 @@ kcore_get_cpus(struct kcore_data *kc, int *ncpus)
 	if (kcore_get_generic(kc, nl, ncpus, sizeof(*ncpus)))
 		*ncpus = 1;
 	return(0);
-}
-
-int
-kcore_get_sched_ccpu(struct kcore_data *kc, int *ccpu)
-{
-	static struct nlist nl[] = {
-		{ "_tk_nin", 0, 0, 0, 0},
-		{ NULL, 0, 0, 0, 0}
-	};
-
-	return(kcore_get_generic(kc, nl, ccpu, sizeof(*ccpu)));
 }
 
 int

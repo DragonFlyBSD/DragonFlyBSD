@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/lib/libkinfo/kinfo.h,v 1.8 2005/05/01 04:05:35 hmp Exp $
  */
 
 #ifndef	_KINFO_H_
@@ -56,7 +54,6 @@ int kinfo_get_net_rtstatistics(struct rtstatistics *);
 
 /* Scheduling / Time */
 int	kinfo_get_cpus(int *);
-int	kinfo_get_sched_ccpu(int *);
 int	kinfo_get_sched_cputime(struct kinfo_cputime *);
 int	kinfo_get_sched_hz(int *);
 int	kinfo_get_sched_profhz(int *);
