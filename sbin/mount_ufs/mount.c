@@ -497,7 +497,7 @@ prmount(struct statfs *sfp)
 			printf("%d", sfp->f_owner);
 	}
 
-	if (error == 0 && strlen(buf))
+	if (error != -1 && strlen(buf))
 		printf(", %s", buf);
 
 	if (verbose) {
