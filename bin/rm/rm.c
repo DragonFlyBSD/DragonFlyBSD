@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.19 2006/11/12 00:51:47 swildner Exp $
  */
 
 #include <sys/stat.h>
@@ -239,7 +238,7 @@ rm_tree(char **argv)
 			else if (!uid &&
 				 (p->fts_statp->st_flags & (UF_APPEND|UF_IMMUTABLE)) &&
 				 !(p->fts_statp->st_flags & (SF_APPEND|SF_IMMUTABLE)) &&
-				 chflags(p->fts_accpath,
+				 lchflags(p->fts_accpath,
 					 p->fts_statp->st_flags &= ~(UF_APPEND|UF_IMMUTABLE)) < 0)
 				goto err;
 			continue;
@@ -263,7 +262,7 @@ rm_tree(char **argv)
 		if (!uid &&
 		    (p->fts_statp->st_flags & (UF_APPEND|UF_IMMUTABLE)) &&
 		    !(p->fts_statp->st_flags & (SF_APPEND|SF_IMMUTABLE)))
-			rval = chflags(p->fts_accpath,
+			rval = lchflags(p->fts_accpath,
 				       p->fts_statp->st_flags &= ~(UF_APPEND|UF_IMMUTABLE));
 
 		if (rval == 0) {
@@ -369,7 +368,7 @@ rm_file(char **argv)
 		if (!uid &&
 		    (sb.st_flags & (UF_APPEND|UF_IMMUTABLE)) &&
 		    !(sb.st_flags & (SF_APPEND|SF_IMMUTABLE)))
-			rval = chflags(f, sb.st_flags & ~(UF_APPEND|UF_IMMUTABLE));
+			rval = lchflags(f, sb.st_flags & ~(UF_APPEND|UF_IMMUTABLE));
 		if (rval == 0) {
 			if (S_ISWHT(sb.st_mode))
 				rval = undelete(f);
