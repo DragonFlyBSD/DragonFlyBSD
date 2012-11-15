@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -32,11 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
- * @(#)cp.c	8.2 (Berkeley) 4/1/94
- * $FreeBSD: src/bin/cp/cp.c,v 1.51 2005/01/10 08:39:21 imp Exp $ $
- * $DragonFly: src/bin/cp/cp.c,v 1.12 2006/06/19 12:07:50 corecode Exp $
  */
 
 /*
@@ -74,28 +65,31 @@
                 *--(p).p_end = 0;					\
 }
 
-PATH_T to = { to.p_path, to.p_path, "" };
+static char emptystring[] = "";
 
-int fflag, iflag, nflag, pflag, vflag;
+PATH_T to = { to.p_path, emptystring, "" };
+
+int fflag, iflag, lflag, nflag, pflag, vflag;
 static int Rflag, rflag;
 volatile sig_atomic_t info;
 
 enum op { FILE_TO_FILE, FILE_TO_DIR, DIR_TO_DNE };
 
-static int copy (char **, enum op, int);
+static int copy(char *[], enum op, int);
 static int mastercmp (const FTSENT * const *, const FTSENT * const *);
 static void siginfo (int);
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	struct stat to_stat, tmp_stat;
 	enum op type;
-	int Hflag, Lflag, Pflag, ch, has_trailing_slash, r, fts_options;
+	int Hflag, Lflag, Pflag, ch, fts_options, r, have_trailing_slash;
 	char *target;
 
+	fts_options = FTS_NOCHDIR | FTS_PHYSICAL;
 	Hflag = Lflag = Pflag = 0;
-	while ((ch = getopt(argc, argv, "HLPRfinprv")) != -1)
+	while ((ch = getopt(argc, argv, "HLPRafilnprvx")) != -1)
 		switch (ch) {
 		case 'H':
 			Hflag = 1;
@@ -112,6 +106,12 @@ main(int argc, char **argv)
 		case 'R':
 			Rflag = 1;
 			break;
+		case 'a':
+			Pflag = 1;
+			pflag = 1;
+			Rflag = 1;
+			Hflag = Lflag = 0;
+			break;
 		case 'f':
 			fflag = 1;
 			iflag = nflag = 0;
@@ -119,6 +119,9 @@ main(int argc, char **argv)
 		case 'i':
 			iflag = 1;
 			fflag = nflag = 0;
+			break;
+		case 'l':
+			lflag = 1;
 			break;
 		case 'n':
 			nflag = 1;
@@ -128,10 +131,14 @@ main(int argc, char **argv)
 			pflag = 1;
 			break;
 		case 'r':
-			rflag = 1;
+			rflag = Lflag = 1;
+			Hflag = Pflag = 0;
 			break;
 		case 'v':
 			vflag = 1;
+			break;
+		case 'x':
+			fts_options |= FTS_XDEV;
 			break;
 		default:
 			usage();
@@ -143,17 +150,10 @@ main(int argc, char **argv)
 	if (argc < 2)
 		usage();
 
-	fts_options = FTS_NOCHDIR | FTS_PHYSICAL;
-	if (rflag) {
-		if (Rflag)
-			errx(1,
-		    "the -R and -r options may not be specified together.");
-		if (Hflag || Lflag || Pflag)
-			errx(1,
-	"the -H, -L, and -P options may not be specified with the -r option.");
-		fts_options &= ~FTS_PHYSICAL;
-		fts_options |= FTS_LOGICAL;
-	}
+	if (Rflag && rflag)
+		errx(1, "the -R and -r options may not be specified together");
+	if (rflag)
+		Rflag = 1;
 	if (Rflag) {
 		if (Hflag)
 			fts_options |= FTS_COMFOLLOW;
@@ -165,19 +165,19 @@ main(int argc, char **argv)
 		fts_options &= ~FTS_PHYSICAL;
 		fts_options |= FTS_LOGICAL | FTS_COMFOLLOW;
 	}
-	signal(SIGINFO, siginfo);
+	(void)signal(SIGINFO, siginfo);
 
 	/* Save the target base in "to". */
 	target = argv[--argc];
 	if (strlcpy(to.p_path, target, sizeof(to.p_path)) >= sizeof(to.p_path))
 		errx(1, "%s: name too long", target);
 	to.p_end = to.p_path + strlen(to.p_path);
-        if (to.p_path == to.p_end) {
+	if (to.p_path == to.p_end) {
 		*to.p_end++ = '.';
 		*to.p_end = 0;
 	}
-	has_trailing_slash = (to.p_end[-1] == '/');
-	if (has_trailing_slash)
+	have_trailing_slash = (to.p_end[-1] == '/');
+	if (have_trailing_slash)
 		STRIP_TRAILING_SLASH(to);
 	to.target_end = to.p_end;
 
@@ -205,10 +205,9 @@ main(int argc, char **argv)
 		/*
 		 * Case (1).  Target is not a directory.
 		 */
-		if (argc > 1) {
-			usage();
-			exit(1);
-		}
+		if (argc > 1)
+			errx(1, "%s is not a directory", to.p_path);
+
 		/*
 		 * Need to detect the case:
 		 *	cp -R dir foo
@@ -217,21 +216,22 @@ main(int argc, char **argv)
 		 * the initial mkdir().
 		 */
 		if (r == -1) {
-			if (rflag || (Rflag && (Lflag || Hflag)))
+			if (Rflag && (Lflag || Hflag))
 				stat(*argv, &tmp_stat);
 			else
 				lstat(*argv, &tmp_stat);
 
-			if (S_ISDIR(tmp_stat.st_mode) && (Rflag || rflag))
+			if (S_ISDIR(tmp_stat.st_mode) && Rflag)
 				type = DIR_TO_DNE;
 			else
 				type = FILE_TO_FILE;
 		} else
 			type = FILE_TO_FILE;
 		
-		if (has_trailing_slash && type == FILE_TO_FILE) {
+		if (have_trailing_slash && type == FILE_TO_FILE) {
 			if (r == -1)
-				errx(1, "directory %s does not exist", to.p_path);
+				errx(1, "directory %s does not exist",
+				     to.p_path);
 			else
 				errx(1, "%s is not a directory", to.p_path);
 		}
@@ -245,12 +245,13 @@ main(int argc, char **argv)
 }
 
 static int
-copy(char **argv, enum op type, int fts_options)
+copy(char *argv[], enum op type, int fts_options)
 {
 	struct stat to_stat;
 	FTS *ftsp;
 	FTSENT *curr;
-	int base, dne, badcp, nlen, rval;
+	int base = 0, dne, badcp, rval;
+	size_t nlen;
 	char *p, *target_mid;
 	mode_t mask, mode;
 
@@ -260,10 +261,9 @@ copy(char **argv, enum op type, int fts_options)
 	 */
 	mask = ~umask(0777);
 	umask(~mask);
-	base = 0;
 
 	if ((ftsp = fts_open(argv, fts_options, mastercmp)) == NULL)
-		err(1, NULL);
+		err(1, "fts_open");
 	for (badcp = rval = 0; (curr = fts_read(ftsp)) != NULL; badcp = 0) {
 		switch (curr->fts_info) {
 		case FTS_NS:
@@ -277,12 +277,14 @@ copy(char **argv, enum op type, int fts_options)
 			warnx("%s: directory causes a cycle", curr->fts_path);
 			rval = 1;
 			continue;
+		default:
+			;
 		}
 
 		/*
 		 * If we are in case (2) or (3) above, we need to append the
-                 * source name to the target name.
-                 */
+		 * source name to the target name.
+		 */
 		if (type != FILE_TO_FILE) {
 			/*
 			 * Need to remember the roots of traversals to create
@@ -328,7 +330,7 @@ copy(char **argv, enum op type, int fts_options)
 				rval = 1;
 				continue;
 			}
-			strncat(target_mid, p, nlen);
+			(void)strncat(target_mid, p, nlen);
 			to.p_end = target_mid + nlen;
 			*to.p_end = 0;
 			STRIP_TRAILING_SLASH(to);
@@ -376,12 +378,13 @@ copy(char **argv, enum op type, int fts_options)
 				    to.p_path, curr->fts_path);
 				rval = 1;
 				if (S_ISDIR(curr->fts_statp->st_mode))
-					fts_set(ftsp, curr, FTS_SKIP);
+					(void)fts_set(ftsp, curr, FTS_SKIP);
 				continue;
 			}
 			if (!S_ISDIR(curr->fts_statp->st_mode) &&
 			    S_ISDIR(to_stat.st_mode)) {
-		warnx("cannot overwrite directory %s with non-directory %s",
+				warnx("cannot overwrite directory %s with "
+				    "non-directory %s",
 				    to.p_path, curr->fts_path);
 				rval = 1;
 				continue;
@@ -403,10 +406,10 @@ copy(char **argv, enum op type, int fts_options)
 			}
 			break;
 		case S_IFDIR:
-			if (!Rflag && !rflag) {
+			if (!Rflag) {
 				warnx("%s is a directory (not copied).",
 				    curr->fts_path);
-				fts_set(ftsp, curr, FTS_SKIP);
+				(void)fts_set(ftsp, curr, FTS_SKIP);
 				badcp = rval = 1;
 				break;
 			}
@@ -443,6 +446,10 @@ copy(char **argv, enum op type, int fts_options)
 					badcp = rval = 1;
 			}
 			break;
+		case S_IFSOCK:
+			warnx("%s is a socket (not copied).",
+				    curr->fts_path);
+			break;
 		case S_IFIFO:
 			if (Rflag) {
 				if (copy_fifo(curr->fts_statp, !dne))
@@ -458,7 +465,7 @@ copy(char **argv, enum op type, int fts_options)
 			break;
 		}
 		if (vflag && !badcp)
-			printf("%s -> %s\n", curr->fts_path, to.p_path);
+			(void)printf("%s -> %s\n", curr->fts_path, to.p_path);
 	}
 	if (errno)
 		err(1, "fts_read");
@@ -493,7 +500,7 @@ mastercmp(const FTSENT * const *a, const FTSENT * const *b)
 }
 
 static void
-siginfo(int notused __unused)
+siginfo(int sig __unused)
 {
 
 	info = 1;

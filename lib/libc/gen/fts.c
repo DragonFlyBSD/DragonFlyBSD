@@ -29,7 +29,6 @@
  * @(#)fts.c	8.6 (Berkeley) 8/14/94
  * $OpenBSD: fts.c,v 1.22 1999/10/03 19:22:22 millert Exp $
  * $FreeBSD: src/lib/libc/gen/fts.c,v 1.30 2009/03/04 03:30:21 das Exp $
- * $DragonFly: src/lib/libc/gen/fts.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -117,9 +116,8 @@ fts_open(char * const *argv, int options,
 	}
 
 	/* Allocate/initialize the stream. */
-	if ((priv = malloc(sizeof(*priv))) == NULL)
+	if ((priv = calloc(1, sizeof(*priv))) == NULL)
 		return (NULL);
-	memset(priv, 0, sizeof(*priv));
 	sp = &priv->ftsp_fts;
 	sp->fts_compar = compar;
 	sp->fts_options = options;
@@ -817,11 +815,8 @@ mem1:				saved_errno = errno;
 	 * If not changing directories, reset the path back to original
 	 * state.
 	 */
-	if (ISSET(FTS_NOCHDIR)) {
-		if (len == sp->fts_pathlen || nitems == 0)
-			--cp;
-		*cp = '\0';
-	}
+	if (ISSET(FTS_NOCHDIR))
+		sp->fts_path[cur->fts_pathlen] = '\0';
 
 	/*
 	 * If descended after called from fts_children or after called from
