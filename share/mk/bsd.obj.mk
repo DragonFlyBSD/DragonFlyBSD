@@ -1,5 +1,4 @@
 # $FreeBSD: src/share/mk/bsd.obj.mk,v 1.30.2.10 2003/02/15 05:36:25 kris Exp $
-# $DragonFly: src/share/mk/bsd.obj.mk,v 1.5 2005/10/08 11:31:29 corecode Exp $
 #
 # The include file <bsd.obj.mk> handles creating the 'obj' directory
 # and cleaning up object files, etc.
@@ -45,6 +44,8 @@ __<bsd.obj.mk>__:
 
 .if defined(MAKEOBJDIRPREFIX)
 CANONICALOBJDIR:=${MAKEOBJDIRPREFIX}${.CURDIR}
+.elif defined(MAKEOBJDIR) && ${MAKEOBJDIR:M/*} != ""
+CANONICALOBJDIR:=${MAKEOBJDIR}
 .else
 CANONICALOBJDIR:=/usr/obj${.CURDIR}
 .endif
@@ -119,6 +120,11 @@ cleanobj:
 	  echo rm -f ${.CURDIR}/obj; \
 	  rm -f ${.CURDIR}/obj; \
 	fi
+
+# Tell bmake not to look for generated files via .PATH
+.if !empty(CLEANFILES)
+.NOPATH: ${CLEANFILES}
+.endif
 
 .if !target(clean)
 clean:

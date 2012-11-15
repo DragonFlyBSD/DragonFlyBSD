@@ -390,7 +390,7 @@ MainParseArgs(CLI *cli, int argc, char **argv)
 rearg:
 	optind = 1;	/* since we're called more than once */
 	optreset = 1;
-#define OPTFLAGS "ABC:D:E:I:PSV:Xd:ef:ij:km:nqrstvx:"
+#define OPTFLAGS "ABC:D:E:I:J:PSV:Xd:ef:ij:km:nqrstvx:"
 	for (;;) {
 		if ((optind < argc) && strcmp(argv[optind], "--") == 0) {
 			found_dd = true;
@@ -415,6 +415,9 @@ rearg:
 		case 'I':
 			Path_AddDir(&cli->parseIncPath, optarg);
 			MFLAGS_append("-I", optarg);
+			break;
+		case 'J':
+			/* Allow make child of bmake parent (No-op) */
 			break;
 		case 'V':
 			Lst_AtEnd(&cli->variables, estrdup(optarg));
