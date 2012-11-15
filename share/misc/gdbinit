@@ -133,6 +133,16 @@ define lstok
 	_infotok &vmobj_token
 end
 
+define lstdtok
+	set $mytd=($arg0)
+	printf "\nTokens for td  %p (%s)\n", $mytd, $mytd->td_comm
+	printf "\nToken           collisions owner\n"
+	set $pos = 0
+	while (td->td_toks_array[$pos]->tr_tok) != 0
+		_infotok &td->td_toks_array[$pos++]->tr_tok
+	end
+end
+
 define dmesg
 	set $bufp = msgbufp->msg_ptr
 	set $size = msgbufp->msg_size
@@ -192,6 +202,10 @@ end
 
 document lstok
 Display all known global tokens and some information about them.
+end
+
+document lstdtok
+Display all tokens related to the specified thread.
 end
 
 document infotok
