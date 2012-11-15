@@ -1126,7 +1126,7 @@ semexit(struct proc *p)
 		 * However, they can get ripped out from under us when
 		 * we block or obtain other tokens so we have to re-check.
 		 */
-		ix = suptr->un_cnt;
+		ix = suptr->un_cnt - 1;
 		semid = suptr->un_ent[ix].un_id;
 		semnum = suptr->un_ent[ix].un_num;
 		adjval = suptr->un_ent[ix].un_adjval;
@@ -1146,7 +1146,7 @@ semexit(struct proc *p)
 		semptr = &semaptr->ds.sem_base[semnum];
 		lwkt_getpooltoken(semptr);
 
-		if (ix == suptr->un_cnt &&
+		if (ix == suptr->un_cnt - 1 &&
 		    semid == suptr->un_ent[ix].un_id &&
 		    semnum == suptr->un_ent[ix].un_num &&
 		    adjval == suptr->un_ent[ix].un_adjval) {
