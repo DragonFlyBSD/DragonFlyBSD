@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2012.10.14
-#	Date:    2012-10-14 03:15:01
+#	Version: 2012.11.14
+#	Date:    2012-11-14 03:15:02
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -21,7 +21,6 @@
 #	device  device_name				<-- single tab
 #		subvendor subdevice  subsystem_name	<-- two tabs
 
-0000  Gammagraphx, Inc. (or missing ID)
 0010  Allied Telesis, Inc
 # This is a relabelled RTL-8139
 	8139  AT-2500TX V3 Ethernet
@@ -1911,6 +1910,8 @@
 	9807  Wrestler [Radeon HD 6290]
 # AMD A10-5800K CPU
 	9901  Trinity [Radeon HD 7660D]
+	9902  Trinity HDMI Audio Controller
+	9904  Trinity [Radeon HD 7560D]
 	9990  Trinity [Radeon HD 7520G]
 	aa00  R600 Audio Device [Radeon HD 2900 Series]
 	aa08  RV630 audio device [Radeon HD 2600 Series]
@@ -5030,7 +5031,7 @@
 	87b0  PEX 8732 32-lane, 8-Port PCI Express Gen 3 (8.0 GT/s) Switch
 	9016  PLX 9016 8-port serial controller
 	9030  PCI9030 32-bit 33MHz PCI <-> IOBus Bridge
-		10b5 2695  Hilscher CIF50-PB Profibus Master Board
+		10b5 2695  Hilscher CIF50-PB/DPS Profibus
 		10b5 2862  Alpermann+Velte PCL PCI LV (3V/5V): Timecode Reader Board
 		10b5 2906  Alpermann+Velte PCI TS (3V/5V): Time Synchronisation Board
 		10b5 2940  Alpermann+Velte PCL PCI D (3V/5V): Timecode Reader Board
@@ -7262,7 +7263,6 @@
 	0e24  GF104 [GeForce GTX 460]
 	0e3a  GF104 [Quadro 3000M]
 	0e3b  GF104 [Quadro 4000M]
-# taken from nv_disp.inf
 	0f00  GK107 [GeForce GT 630]
 # Probably GF108
 	0f01  GeForce GT 620
@@ -7273,6 +7273,7 @@
 	0fd1  GK107 [GeForce GT 650M]
 		1043 2103  N56VZ
 	0fd2  GK107 [GeForce GT 640M]
+	0ff2  GK107 [VGX K1]
 	0ffa  GK107 [Quadro K600]
 	0ffb  GK107 [Quadro K2000M]
 	0ffc  GK107 [Quadro K1000M]
@@ -7323,6 +7324,7 @@
 	11bc  GK104 [Quadro K5000M]
 	11bd  GK104 [Quadro K4000M]
 	11be  GK104 [Quadro K3000M]
+	11bf  GK104GL [VGX K2]
 	11fa  GK104 [Quadro K4000]
 	1200  GF114 [GeForce GTX 560 Ti]
 	1201  GF114 [GeForce GTX 560]
@@ -11378,7 +11380,8 @@
 134f  Algo System Co Ltd
 1350  Systec Co. Ltd
 1351  Sonix Inc
-1353  Thales Idatys
+# nee Thales Idatys
+1353  Vierling Communication SAS
 	0002  Proserver
 	0003  PCI-FUT
 	0004  PCI-S0
@@ -11804,7 +11807,7 @@
 		13f6 ffff  CMI8338/C3DX PCI Audio Device
 	0101  CM8338B
 		13f6 0101  CMI8338-031 PCI Audio Device
-	0111  CM8738
+	0111  CMI8738/CMI8768 PCI Audio
 		1019 0970  P6STP-FL motherboard
 		1043 8035  CUSI-FX motherboard
 		1043 8077  CMI8738 6-channel audio controller
@@ -12721,6 +12724,7 @@
 	165f  NetXtreme BCM5720 Gigabit Ethernet PCIe
 	1662  NetXtreme II BCM57712 10 Gigabit Ethernet
 	1663  NetXtreme II BCM57712 10 Gigabit Ethernet Multi Function
+	1665  NetXtreme BCM5717 Gigabit Ethernet PCIe
 	1668  NetXtreme BCM5714 Gigabit Ethernet
 		103c 7039  NC324i PCIe Dual Port Gigabit Server Adapter
 	1669  NetXtreme 5714S Gigabit Ethernet
@@ -13741,6 +13745,10 @@
 	1010  MT27561 Family
 	1011  MT27600 [Connect-IB]
 	1012  MT27600 Family [Connect-IB Virtual Function]
+	1013  MT27620 Family
+	1014  MT27621 Family
+	1015  MT27630 Family
+	1016  MT27631 Family
 	5274  MT21108 InfiniBridge
 	5a44  MT23108 InfiniHost
 	5a45  MT23108 [Infinihost HCA Flash Recovery]
@@ -14592,7 +14600,7 @@
 		13bd 1057  GN-WS32L-RH Half-size Mini PCIe Card
 	3091  RT3091 Wireless 802.11n 1T/2R PCIe
 	3092  RT3092 Wireless 802.11n 2T/2R PCIe
-	3592  RT3592 Wireless 802.11abgn 1T/1R PCIe
+	3592  RT3592 Wireless 802.11abgn 2T/2R PCIe
 	5360  RT5360 Wireless 802.11n 1T/1R
 		1186 3c05  DWA-525 Wireless N 150 Desktop Adapter (rev.A2)
 		20f4 703a  TEW-703PI N150 Wireless PCI Adapter
@@ -14813,6 +14821,7 @@
 	0011  SH7757 PCIe End-Point [PBI]
 	0012  SH7757 PCIe-PCI Bridge [PPB]
 	0013  SH7757 PCIe Switch [PS]
+	0014  uPD720201 USB 3.0 Host Controller
 1919  Soltek Computer Inc.
 1923  Sangoma Technologies Corp.
 	0040  A200/Remora FXO/FXS Analog AFT card
@@ -15308,6 +15317,7 @@
 1b73  Fresco Logic
 	1000  FL1000G USB 3.0 Host Controller
 		1d5c 1000  Anker USB 3.0 Express Card
+	1009  FL1009 USB 3.0 Host Controller
 1b74  OpenVox Communication Co. Ltd.
 	0115  D115P/D115E Single-port E1/T1 card
 	d130  D130P/D130E Single-port E1/T1 card (3rd GEN)
@@ -15320,6 +15330,8 @@
 1b96  Western Digital
 1b9a  XAVi Technologies Corp.
 1bad  ReFLEX CES
+1bb0  SimpliVity Corporation
+	0002  OmniCube Accelerator OA-3000
 1bb3  Bluecherry
 	4304  BC-04120A MPEG4 4 port video encoder / decoder
 	4309  BC-08240A MPEG4 4 port video encoder / decoder
@@ -16275,6 +16287,15 @@
 	0c7d  Centerton Internal Fabric
 	0c7e  Centerton Internal Fabric
 	0c7f  Centerton Internal Fabric
+	0d00  Crystal Well DRAM Controller
+	0d01  Crystal Well PCI Express x16 Controller
+	0d04  Crystal Well DRAM Controller
+	0d05  Crystal Well PCI Express x8 Controller
+	0d09  Crystal Well PCI Express x4 Controller
+	0d0c  Crystal Well HD Audio Controller
+	0d16  Crystal Well Integrated Graphics Controller
+	0d26  Crystal Well Integrated Graphics Controller
+	0d36  Crystal Well Integrated Graphics Controller
 	0e00  Ivytown DMI2
 	0e01  Ivytown PCI Express Root Port in DMI2 Mode
 	0e04  Ivytown PCI Express Root Port 2a
@@ -17182,7 +17203,7 @@
 		1028 1f62  Intel GbE 2P I350crNDC
 		103c 337f  Ethernet 1Gb 2-port 361i Adapter
 		103c 3380  Ethernet 1Gb 4-port 366i Adapter
-		103c 339e  Ethernet 1Gb 2-port 361T Adapter [Wharton Stony Lake]
+		103c 339e  Ethernet 1Gb 2-port 361T Adapter
 		108e 7b16  Quad Port GbE PCIe 2.0 ExpressModule, UTP
 		108e 7b18  Quad Port GbE PCIe 2.0 Low Profile Adapter, UTP
 		10a9 802a  UV2-BaseIO dual-port GbE
@@ -17201,9 +17222,9 @@
 		8086 00a3  Ethernet Server Adapter I350-F4
 		8086 00a4  Ethernet Server Adapter I350-F2
 	1523  I350 Gigabit Backplane Connection
-		103c 1784  Ethernet 1Gb 2-port 361FLB Adapter [Badger Flat]
+		103c 1784  Ethernet 1Gb 2-port 361FLB Adapter
 		103c 18d1  Ethernet 1Gb 2-port 361FLB Adapter
-		103c 339f  Ethernet 1Gb 4-port 366M Adapter [Vaca Key]
+		103c 339f  Ethernet 1Gb 4-port 366M Adapter
 		8086 1f52  1GbE 4P I350 Mezz
 	1524  I350 Gigabit Connection
 	1525  82567V-4 Gigabit Network Connection
@@ -17214,6 +17235,7 @@
 		8086 0001  Ethernet Server Adapter I340-F4
 		8086 0002  Ethernet Server Adapter I340-F4
 	1528  Ethernet Controller 10-Gigabit X540-AT2
+		1028 1f61  Ethernet 10G 4P X540/I350 rNDC
 		103c 192d  561FLR-T 2-port 10Gb Ethernet Adapter
 		108e 7b14  Sun Dual Port 10 GbE PCIe 2.0 ExpressModule, Base-T
 		108e 7b15  Sun Dual Port 10 GbE PCIe 2.0 Low Profile Adapter, Base-T
@@ -17245,6 +17267,7 @@
 		8086 011c  Ethernet Converged Network Adapter X520-4
 	154d  82599EB 10-Gigabit SFP+ Network Connection
 		8086 7b11  10GbE 2P X520 Adapter
+	1557  82599 10 Gigabit Network Connection
 	1560  Ethernet Controller X540-AT1
 	1960  80960RP (i960RP) Microprocessor
 		101e 0431  MegaRAID 431 RAID Controller
@@ -18867,12 +18890,14 @@
 	2821  82801HR/HO/HH (ICH8R/DO/DH) 6 port SATA Controller [AHCI mode]
 	2822  82801 SATA Controller [RAID mode]
 		1028 020d  Inspiron 530
+	2823  Wellsburg sSATA RAID Controller
 	2824  82801HB (ICH8) 4 port SATA Controller [AHCI mode]
 		1043 81ec  P5B
 	2825  82801HR/HO/HH (ICH8R/DO/DH) 2 port SATA Controller [IDE mode]
 		1028 01da  OptiPlex 745
 		1462 7235  P965 Neo MS-7235 mainboard
 	2826  C600/X79 series chipset SATA RAID Controller
+	2827  Wellsburg sSATA RAID Controller
 	2828  82801HM/HEM (ICH8M/ICH8M-E) SATA Controller [IDE mode]
 		1028 01f3  Inspiron 1420
 		103c 30c0  Compaq 6710b
@@ -20465,6 +20490,8 @@
 	8184  Atom Processor E6xx PCI Express Port 1
 	8185  Atom Processor E6xx PCI Express Port 2
 	8186  Atom Processor E6xx LPC Bridge
+	821c  Wellsburg PCI Express Root Port #7
+	821d  Wellsburg PCI Express Root Port #7
 	84c4  450KX/GX [Orion] - 82454KX/GX PCI bridge
 	84c5  450KX/GX [Orion] - 82453KX/GX Memory controller
 	84ca  450NX - 82451NX Memory & I/O Controller
@@ -20580,6 +20607,64 @@
 	8c5d  Lynx Point LPC Controller
 	8c5e  Lynx Point LPC Controller
 	8c5f  Lynx Point LPC Controller
+	8d00  Wellsburg 4-port SATA Controller [IDE mode]
+	8d02  Wellsburg 6-Port SATA Controller [AHCI mode]
+	8d04  Wellsburg SATA Controller [RAID mode]
+	8d06  Wellsburg SATA Controller [RAID mode]
+	8d08  Wellsburg 2-port SATA Controller [IDE mode]
+	8d0e  Wellsburg SATA Controller [RAID mode]
+	8d10  Wellsburg PCI Express Root Port #1
+	8d11  Wellsburg PCI Express Root Port #1
+	8d12  Wellsburg PCI Express Root Port #2
+	8d13  Wellsburg PCI Express Root Port #2
+	8d14  Wellsburg PCI Express Root Port #3
+	8d15  Wellsburg PCI Express Root Port #3
+	8d16  Wellsburg PCI Express Root Port #4
+	8d17  Wellsburg PCI Express Root Port #4
+	8d18  Wellsburg PCI Express Root Port #5
+	8d19  Wellsburg PCI Express Root Port #5
+	8d1a  Wellsburg PCI Express Root Port #6
+	8d1e  Wellsburg PCI Express Root Port #8
+	8d1f  Wellsburg PCI Express Root Port #8
+	8d20  Wellsburg HD Audio Controller
+	8d21  Wellsburg HD Audio Controller
+	8d22  Wellsburg SMBus Controller
+	8d24  Wellsburg Thermal Subsystem
+	8d26  Wellsburg USB Enhanced Host Controller #1
+	8d2d  Wellsburg USB Enhanced Host Controller #2
+	8d31  Wellsburg USB xHCI Host Controller
+	8d33  Wellsburg LAN Controller
+	8d34  Wellsburg NAND Controller
+	8d3a  Wellsburg MEI Controller #1
+	8d3b  Wellsburg MEI Controller #2
+	8d3c  Wellsburg IDE-r Controller
+	8d3d  Wellsburg KT Controller
+	8d40  Wellsburg LPC Controller
+	8d41  Wellsburg LPC Controller
+	8d42  Wellsburg LPC Controller
+	8d43  Wellsburg LPC Controller
+	8d44  Wellsburg LPC Controller
+	8d45  Wellsburg LPC Controller
+	8d46  Wellsburg LPC Controller
+	8d47  Wellsburg LPC Controller
+	8d48  Wellsburg LPC Controller
+	8d49  Wellsburg LPC Controller
+	8d4a  Wellsburg LPC Controller
+	8d4b  Wellsburg LPC Controller
+	8d4c  Wellsburg LPC Controller
+	8d4d  Wellsburg LPC Controller
+	8d4e  Wellsburg LPC Controller
+	8d4f  Wellsburg LPC Controller
+	8d60  Wellsburg sSATA Controller [IDE mode]
+	8d62  Wellsburg sSATA Controller [AHCI mode]
+	8d64  Wellsburg sSATA Controller [RAID mode]
+	8d66  Wellsburg sSATA Controller [RAID mode]
+	8d68  Wellsburg sSATA Controller [IDE mode]
+	8d6e  Wellsburg sSATA Controller [RAID mode]
+	8d7c  Wellsburg SPSR
+	8d7d  Wellsburg MS SMBus 0
+	8d7e  Wellsburg MS SMBus 1
+	8d7f  Wellsburg MS SMBus 2
 	9000  IXP2000 Family Network Processor
 	9001  IXP2400 Network Processor
 	9002  IXP2300 Network Processor
