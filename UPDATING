@@ -9,6 +9,17 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 3.3 to later versions                +
++-----------------------------------------------------------------------+
+
+DEVICE_POLLING OPTION REPLACED BY IFPOLL_ENABLE OPTION
+------------------
+
+The DEVICE_POLLING kernel option has been made a no-op and it has been
+replaced by IFPOLL_ENABLE.  If you have 'options DEVICE_POLLING' in your
+kernel config, you need to change it to IFPOLL_ENABLE.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.2 to later versions                +
 +-----------------------------------------------------------------------+
 
