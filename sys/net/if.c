@@ -37,7 +37,6 @@
 #include "opt_compat.h"
 #include "opt_inet6.h"
 #include "opt_inet.h"
-#include "opt_polling.h"
 #include "opt_ifpoll.h"
 
 #include <sys/param.h>
@@ -208,19 +207,6 @@ if_start_cpuid(struct ifnet *ifp)
 {
 	return ifp->if_cpuid;
 }
-
-#ifdef DEVICE_POLLING
-static int
-if_start_cpuid_poll(struct ifnet *ifp)
-{
-	int poll_cpuid = ifp->if_poll_cpuid;
-
-	if (poll_cpuid >= 0)
-		return poll_cpuid;
-	else
-		return ifp->if_cpuid;
-}
-#endif
 
 #ifdef IFPOLL_ENABLE
 static int
@@ -477,12 +463,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifp->if_start_cpuid = if_start_cpuid;
 	ifp->if_cpuid = 0;
 
-#ifdef DEVICE_POLLING
-	/* Device is not in polling mode by default */
-	ifp->if_poll_cpuid = -1;
-	if (ifp->if_poll != NULL)
-		ifp->if_start_cpuid = if_start_cpuid_poll;
-#endif
 #ifdef IFPOLL_ENABLE
 	/* Device is not in polling mode by default */
 	ifp->if_npoll_cpuid = -1;
@@ -697,10 +677,6 @@ if_detach(struct ifnet *ifp)
 	 * Remove routes and flush queues.
 	 */
 	crit_enter();
-#ifdef DEVICE_POLLING
-	if (ifp->if_flags & IFF_POLLING)
-		ether_poll_deregister(ifp);
-#endif
 #ifdef IFPOLL_ENABLE
 	if (ifp->if_flags & IFF_NPOLLING)
 		ifpoll_deregister(ifp);
@@ -1505,18 +1481,10 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCGIFPOLLCPU:
-#ifdef DEVICE_POLLING
-		ifr->ifr_pollcpu = ifp->if_poll_cpuid;
-#else
 		ifr->ifr_pollcpu = -1;
-#endif
 		break;
 
 	case SIOCSIFPOLLCPU:
-#ifdef DEVICE_POLLING
-		if ((ifp->if_flags & IFF_POLLING) == 0)
-			ether_pollcpu_register(ifp, ifr->ifr_pollcpu);
-#endif
 		break;
 
 	case SIOCSIFFLAGS:
@@ -1539,15 +1507,6 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			crit_exit();
 		}
 
-#ifdef DEVICE_POLLING
-		if ((new_flags ^ ifp->if_flags) & IFF_POLLING) {
-			if (new_flags & IFF_POLLING) {
-				ether_poll_register(ifp);
-			} else {
-				ether_poll_deregister(ifp);
-			}
-		}
-#endif
 #ifdef IFPOLL_ENABLE
 		if ((new_flags ^ ifp->if_flags) & IFF_NPOLLING) {
 			if (new_flags & IFF_NPOLLING)

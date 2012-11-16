@@ -123,19 +123,14 @@ struct	ifqueue {
 };
 
 /*
- * Note of DEVICE_POLLING
- * 1) Any file(*.c) that depends on DEVICE_POLLING supports in this
- *    file should include opt_polling.h at its beginning.
- * 2) When struct changes, which are conditioned by DEVICE_POLLING,
+ * Note of IFPOLL_ENABLE
+ * 1) Any file(*.c) that depends on IFPOLL_ENABLE supports in this
+ *    file should include opt_ifpoll.h at its beginning.
+ * 2) When struct changes, which are conditioned by IFPOLL_ENABLE,
  *    are to be introduced, please keep the struct's size and layout
- *    same, no matter whether DEVICE_POLLING is defined or not.
- *    See ifnet.if_poll and ifnet.if_poll_unused for example.
+ *    same, no matter whether IFPOLL_ENABLE is defined or not.
+ *    See ifnet.if_npoll and ifnet.if_npoll_unused for example.
  */
-
-#ifdef DEVICE_POLLING
-enum poll_cmd { POLL_ONLY, POLL_AND_CHECK_STATUS, POLL_DEREGISTER,
-		POLL_REGISTER };
-#endif
 
 enum ifnet_serialize {
 	IFNET_SERIALIZE_ALL,
@@ -237,15 +232,8 @@ struct ifnet {
 	int	(*if_start_cpuid)	/* cpuid to run if_start */
 		(struct ifnet *);
 	TAILQ_HEAD(, ifg_list) if_groups; /* linked list of groups per if */
-#ifdef DEVICE_POLLING
-	void	(*if_poll)		/* IFF_POLLING support */
-		(struct ifnet *, enum poll_cmd, int);
-	int	if_poll_cpuid;
-#else
-	/* Place holders */
-	void	(*if_poll_unused)(void);
-	int	if_poll_cpuid_used;
-#endif
+	void	(*if_unused1)(void);
+	int	if_unused2;
 	void	(*if_serialize)
 		(struct ifnet *, enum ifnet_serialize);
 	void	(*if_deserialize)
@@ -904,13 +892,6 @@ int	if_ring_count2(int cnt, int cnt_max);
 #define IF_LLSOCKADDR(ifp)						\
     ((struct sockaddr_dl *)(ifp)->if_lladdr->ifa_addr)
 #define IF_LLADDR(ifp)	LLADDR(IF_LLSOCKADDR(ifp))
-
-#ifdef DEVICE_POLLING
-typedef	void poll_handler_t (struct ifnet *ifp, enum poll_cmd cmd, int count);
-int	ether_poll_register(struct ifnet *);
-int	ether_poll_deregister(struct ifnet *);
-int	ether_pollcpu_register(struct ifnet *, int);
-#endif /* DEVICE_POLLING */
 
 #ifdef IFPOLL_ENABLE
 int	ifpoll_register(struct ifnet *);
