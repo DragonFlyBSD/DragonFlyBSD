@@ -25,14 +25,14 @@
 .\" $FreeBSD: src/share/man/man4/polling.4,v 1.27 2007/04/06 14:25:14 brueffer Exp $
 .\" $DragonFly: src/share/man/man4/polling.4,v 1.13 2007/11/03 07:35:52 swildner Exp $
 .\"
-.Dd October 2, 2007
+.Dd November 16, 2012
 .Dt POLLING 4
 .Os
 .Sh NAME
 .Nm polling
-.Nd device polling support
+.Nd network device driver polling support
 .Sh SYNOPSIS
-.Cd "options DEVICE_POLLING"
+.Cd "options IFPOLL_ENABLE"
 .Sh DESCRIPTION
 Device polling
 .Nm (
@@ -95,17 +95,34 @@ in order to turn on its
 feature.
 .Ss Loader Tunables
 The following tunables can be set from
-.Xr loader.conf 5 :
+.Xr loader.conf 5
+.Em ( X
+is the CPU number):
 .Bl -tag -width indent -compact
-.It Va kern.polling.enable
-If set to non-zero,
-.Nm
-is enabled.
-Default is enabled.
+.It Va net.ifpoll.burst_max
+Default value for
+.Va net.ifpoll.X.rx.burst_max
+sysctl nodes.
 .Pp
-.It Va kern.polling.cpumask
-A bitmask that controls which CPUs support device polling.
-Default is 0xffffffff.
+.It Va net.ifpoll.each_burst
+Default value for
+.Va net.ifpoll.X.rx.each_burst
+sysctl nodes.
+.Pp
+.It Va net.ifpoll.pollhz
+Default value for
+.Va net.ifpoll.X.pollhz
+sysctl nodes.
+.Pp
+.It Va net.ifpoll.status_frac
+Default value for
+.Va net.ifpoll.0.status_frac
+sysctl node.
+.Pp
+.It Va net.ifpoll.tx_frac
+Default value for
+.Va net.ifpoll.X.tx_frac
+sysctl nodes.
 .El
 .Ss MIB Variables
 The operation of
@@ -117,23 +134,11 @@ MIB variables
 is the CPU number):
 .Pp
 .Bl -tag -width indent -compact
-.It Va kern.polling.X.enable
-If set to non-zero,
-.Nm
-is enabled.
-Default is enabled.
-.Pp
-.It Va kern.polling.X.pollhz
+.It Va net.ifpoll.X.pollhz
 The polling frequency, whose range is 1 to 30000.
-Default is 2000.
+Default is 4000.
 .Pp
-.It Va kern.polling.cpumask
-A read only bitmask of the CPUs that support device polling.
-.Pp
-.It Va kern.polling.defcpu
-The default CPU used to run device polling (read only).
-.Pp
-.It Va kern.polling.X.user_frac
+.It Va net.ifpoll.X.rx.user_frac
 When
 .Nm
 is enabled, and provided that there is some work to do,
@@ -143,7 +148,7 @@ the remaining fraction being available for
 processing.
 Default is 50.
 .Pp
-.It Va kern.polling.X.burst
+.It Va net.ifpoll.X.rx.burst
 Maximum number of packets grabbed from each network interface in
 each timer tick.
 This number is dynamically adjusted by the kernel,
@@ -151,18 +156,17 @@ according to the programmed
 .Va user_frac , burst_max ,
 CPU speed, and system load.
 .Pp
-.It Va kern.polling.X.each_burst
+.It Va net.ifpoll.X.rx.each_burst
 The burst above is split into smaller chunks of this number of
 packets, going round-robin among all interfaces registered for
 .Nm .
 This prevents the case that a large burst from a single interface
-can saturate the IP interrupt queue
-.Pq Va net.inet.ip.intr_queue_maxlen .
-Default is 5.
+can saturate the IP interrupt queue.
+Default is 15.
 .Pp
-.It Va kern.polling.X.burst_max
+.It Va net.ifpoll.X.rx.burst_max
 Upper bound for
-.Va kern.polling.burst .
+.Va net.ifpoll.X.rx.burst .
 Note that when
 .Nm
 is enabled, each interface can receive at most
@@ -170,30 +174,55 @@ is enabled, each interface can receive at most
 packets per second unless there are spare CPU cycles available for
 .Nm
 in the idle loop.
-This number should be tuned to match the expected load
-(which can be quite high with GigE cards).
-Default is 150 which is adequate for 100Mbit network and pollhz=1000.
+This number should be tuned to match the expected load.
+Default is 375 which is adequate for 1000Mbit network and pollhz=4000.
 .Pp
-.It Va kern.polling.X.reg_frac
-Controls how often (every
-.Va reg_frac No / Va pollhz
-seconds) the status registers of the device are checked for error
-conditions and the like.
-Increasing this value reduces the load on the bus, but also delays
-the error detection.
-Default is 20.
-.Pp
-.It Va kern.polling.X.handlers
-How many active devices have registered for
+.It Va net.ifpoll.X.rx.handlers
+How many active devices have registered for packet reception
 .Nm .
 .Pp
-.It Va kern.polling.X.short_ticks
-.It Va kern.polling.X.lost_polls
-.It Va kern.polling.X.pending_polls
-.It Va kern.polling.X.residual_burst
-.It Va kern.polling.X.phase
-.It Va kern.polling.X.suspect
-.It Va kern.polling.X.stalled
+.It Va net.ifpoll.X.tx_frac
+Controls how often (every
+.Va tx_frac No / Va pollhz
+seconds) the tranmission queue is checked for packet transmission
+done events.
+Increasing this value reduces the time spent on checking packets
+transmission done events thus reduces bus load,
+but it also increases chance
+that the transmission queue getting saturated.
+Default is 1.
+.Pp
+.It Va net.ifpoll.X.tx.handlers
+How many active devices have registered for packet transmission
+.Nm .
+.Pp
+.It Va net.ifpoll.0.status_frac
+Controls how often (every
+.Va status_frac No / Va pollhz
+seconds) the status registers of the device are checked for error
+conditions and the like.
+Increasing this value reduces the load on the bus,
+but also delays the error detection.
+Default is 40.
+.Pp
+.It Va net.ifpoll.0.status.handlers
+How many active devices have registered for status
+.Nm .
+.Pp
+.It Va net.ifpoll.X.rx.short_ticks
+.It Va net.ifpoll.X.rx.lost_polls
+.It Va net.ifpoll.X.rx.pending_polls
+.It Va net.ifpoll.X.rx.residual_burst
+.It Va net.ifpoll.X.rx.phase
+.It Va net.ifpoll.X.rx.suspect
+.It Va net.ifpoll.X.rx.stalled
+.It Va net.ifpoll.X.tx.short_ticks
+.It Va net.ifpoll.X.tx.lost_polls
+.It Va net.ifpoll.X.tx.pending_polls
+.It Va net.ifpoll.X.tx.residual_burst
+.It Va net.ifpoll.X.tx.phase
+.It Va net.ifpoll.X.tx.suspect
+.It Va net.ifpoll.X.tx.stalled
 Debugging variables.
 .El
 .Sh SUPPORTED DEVICES
@@ -201,10 +230,13 @@ Device polling requires explicit modifications to the device drivers.
 As of this writing, the
 .Xr bce 4 ,
 .Xr bge 4 ,
+.Xr bnx 4 ,
 .Xr dc 4 ,
 .Xr em 4 ,
+.Xr emx 4 ,
 .Xr fwe 4 ,
 .Xr fxp 4 ,
+.Xr igb 4 ,
 .Xr jme 4 ,
 .Xr nfe 4 ,
 .Xr nge 4 ,
@@ -214,14 +246,21 @@ As of this writing, the
 .Xr stge 4 ,
 .Xr vge 4 ,
 .Xr vr 4 ,
-.Xr wi 4
 and
 .Xr xl 4
-devices are supported, with others in the works.
+devices are supported,
+with others in the works.
+The
+.Xr emx 4 ,
+.Xr igb 4 ,
+and
+.Xr jme 4
+support multiple reception queues based
+.Nm .
 The modifications are rather straightforward, consisting in
 the extraction of the inner part of the interrupt service routine
 and writing a callback function,
-.Fn *_poll ,
+.Fn *_npoll ,
 which is invoked
 to probe the device for events and process them.
 (See the
@@ -232,7 +271,7 @@ In order to reduce the latency in processing packets,
 it is advisable to set the
 .Xr sysctl 8
 variable
-.Va kern.polling.X.pollhz
+.Va net.ifpoll.X.pollhz
 to at least 1000.
 .Sh HISTORY
 Device polling first appeared in
@@ -246,4 +285,6 @@ The device polling code was rewritten by
 based on the original code by
 .An Luigi Rizzo Aq luigi@iet.unipi.it .
 .An Sepherosa Ziehau
-made the polling frequency settable at runtime and added per CPU polling.
+made the polling frequency settable at runtime,
+added per CPU polling
+and added multiple reception queue polling support.
