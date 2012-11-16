@@ -71,6 +71,7 @@
 #define	_PATH_NOLOGIN	"/var/run/nologin"
 #define	_PATH_RCP	"/bin/rcp"
 #define	_PATH_RLOGIN	"/usr/bin/rlogin"
+#define	_PATH_RM	"/bin/rm"
 #define	_PATH_RSH	"/usr/bin/rsh"
 #define	_PATH_SENDMAIL	"/usr/sbin/sendmail"
 #define	_PATH_SHELLS	"/etc/shells"

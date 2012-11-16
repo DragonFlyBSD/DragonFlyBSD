@@ -12,10 +12,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -33,10 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)mv.1	8.1 (Berkeley) 5/31/93
-.\" $FreeBSD: src/bin/mv/mv.1,v 1.15.2.5 2003/01/24 02:29:13 keramida Exp $
-.\" $DragonFly: src/bin/mv/mv.1,v 1.4 2006/11/11 12:05:36 victor Exp $
+.\" $FreeBSD$
 .\"
-.Dd July 9, 2002
+.Dd November 16, 2012
 .Dt MV 1
 .Os
 .Sh NAME
@@ -45,7 +40,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl f | i | n
-.Op Fl v
+.Op Fl hv
 .Ar source target
 .Nm
 .Op Fl f | i | n
@@ -85,6 +80,21 @@ option overrides any previous
 or
 .Fl n
 options.)
+.It Fl h
+If the
+.Ar target
+operand is a symbolic link to a directory,
+do not follow it.
+This causes the
+.Nm
+utility to rename the file
+.Ar source
+to the destination path
+.Ar target
+rather than moving
+.Ar source
+into the directory referenced by
+.Ar target .
 .It Fl i
 Cause
 .Nm
@@ -117,9 +127,9 @@ Cause
 to be verbose, showing files after they are moved.
 .El
 .Pp
-It is an error for either the
+It is an error for the
 .Ar source
-operand or the destination path to specify a directory unless both do.
+operand to specify a directory if the target exists and is not a directory.
 .Pp
 If the destination path does not have a mode which permits writing,
 .Nm
@@ -157,7 +167,8 @@ will be written to standard error.
 .Ex -std
 .Sh COMPATIBILITY
 The
-.Fl n
+.Fl h ,
+.Fl n ,
 and
 .Fl v
 options are non-standard and their use in scripts is not recommended.
