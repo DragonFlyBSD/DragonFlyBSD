@@ -53,6 +53,10 @@
 /* Exit code for a failed exec. */
 #define EXEC_FAILED 127
 
+#ifndef _PATH_RM
+#define	_PATH_RM	"/bin/rm"
+#endif
+
 static int	fflg, hflg, iflg, nflg, vflg;
 volatile sig_atomic_t info;
 
