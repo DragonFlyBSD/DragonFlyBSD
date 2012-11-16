@@ -31,7 +31,6 @@
 .\"
 .\"     @(#)getrlimit.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/getrlimit.2,v 1.10.2.5 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getrlimit.2,v 1.5 2008/10/17 12:41:38 swildner Exp $
 .\"
 .Dd July 6, 2009
 .Dt GETRLIMIT 2
@@ -192,8 +191,8 @@ raised the maximum limit value, and the caller is not the super-user.
 .Xr csh 1 ,
 .Xr quota 1 ,
 .Xr quotactl 2 ,
+.Xr sigaction 2 ,
 .Xr sigaltstack 2 ,
-.Xr sigvec 2 ,
 .Xr sysctl 3 ,
 .Xr ulimit 3
 .Sh HISTORY
