@@ -276,6 +276,10 @@ srcs:
 	rm -f ${ISOROOT}/usr/src-sys.tgz
 	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
 	cd ${ISOROOT}/usr && make pkgsrc-create-repo GITHOST=${GITHOST}
+	# NOTE: Adding the git gc --aggressive helps by significantly
+	#	reducing the disk space required.
+	#
+	cd ${ISOROOT}/usr/pkgsrc && git gc --aggressive
 	cd ${ISOROOT}/usr && make src-create-repo GITHOST=${GITHOST}
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
