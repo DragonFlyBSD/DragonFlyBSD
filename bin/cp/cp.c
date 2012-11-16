@@ -165,7 +165,7 @@ main(int argc, char *argv[])
 		fts_options &= ~FTS_PHYSICAL;
 		fts_options |= FTS_LOGICAL | FTS_COMFOLLOW;
 	}
-	(void)signal(SIGINFO, siginfo);
+	signal(SIGINFO, siginfo);
 
 	/* Save the target base in "to". */
 	target = argv[--argc];
@@ -330,7 +330,7 @@ copy(char *argv[], enum op type, int fts_options)
 				rval = 1;
 				continue;
 			}
-			(void)strncat(target_mid, p, nlen);
+			strncat(target_mid, p, nlen);
 			to.p_end = target_mid + nlen;
 			*to.p_end = 0;
 			STRIP_TRAILING_SLASH(to);
@@ -378,7 +378,7 @@ copy(char *argv[], enum op type, int fts_options)
 				    to.p_path, curr->fts_path);
 				rval = 1;
 				if (S_ISDIR(curr->fts_statp->st_mode))
-					(void)fts_set(ftsp, curr, FTS_SKIP);
+					fts_set(ftsp, curr, FTS_SKIP);
 				continue;
 			}
 			if (!S_ISDIR(curr->fts_statp->st_mode) &&
@@ -409,7 +409,7 @@ copy(char *argv[], enum op type, int fts_options)
 			if (!Rflag) {
 				warnx("%s is a directory (not copied).",
 				    curr->fts_path);
-				(void)fts_set(ftsp, curr, FTS_SKIP);
+				fts_set(ftsp, curr, FTS_SKIP);
 				badcp = rval = 1;
 				break;
 			}
@@ -465,7 +465,7 @@ copy(char *argv[], enum op type, int fts_options)
 			break;
 		}
 		if (vflag && !badcp)
-			(void)printf("%s -> %s\n", curr->fts_path, to.p_path);
+			printf("%s -> %s\n", curr->fts_path, to.p_path);
 	}
 	if (errno)
 		err(1, "fts_read");

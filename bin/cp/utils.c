@@ -83,17 +83,17 @@ copy_file(const FTSENT *entp, int dne)
 		if (nflag) {
 			if (vflag)
 				printf("%s not overwritten\n", to.p_path);
-			(void)close(from_fd);
+			close(from_fd);
 			return (0);
 		} else if (iflag) {
-			(void)fprintf(stderr, "overwrite %s? %s",
+			fprintf(stderr, "overwrite %s? %s",
 					to.p_path, YESNO);
 			checkch = ch = getchar();
 			while (ch != '\n' && ch != EOF)
 				ch = getchar();
 			if (checkch != 'y' && checkch != 'Y') {
-				(void)close(from_fd);
-				(void)fprintf(stderr, "not overwritten\n");
+				close(from_fd);
+				fprintf(stderr, "not overwritten\n");
 				return (1);
 			}
 		}
@@ -101,7 +101,7 @@ copy_file(const FTSENT *entp, int dne)
 		if (fflag) {
 		    /* remove existing destination file name, 
 		     * create a new file  */
-		    (void)unlink(to.p_path);
+		    unlink(to.p_path);
 		    if (!lflag)
 			to_fd = open(to.p_path, O_WRONLY | O_TRUNC | O_CREAT,
 			    fs->st_mode & ~(S_ISUID | S_ISGID));
@@ -118,7 +118,7 @@ copy_file(const FTSENT *entp, int dne)
 
 	if (to_fd == -1) {
 		warn("%s", to.p_path);
-		(void)close(from_fd);
+		close(from_fd);
 		return (1);
 	}
 
@@ -146,7 +146,7 @@ copy_file(const FTSENT *entp, int dne)
 				wtotal += wcount;
 				if (info) {
 					info = 0;
-					(void)fprintf(stderr,
+					fprintf(stderr,
 					    "%s -> %s %3d%%\n",
 					    entp->fts_path, to.p_path,
 					    cp_pct(wtotal, fs->st_size));
@@ -176,7 +176,7 @@ copy_file(const FTSENT *entp, int dne)
 					wtotal += wcount;
 					if (info) {
 						info = 0;
-						(void)fprintf(stderr,
+						fprintf(stderr,
 						    "%s -> %s %3d%%\n",
 						    entp->fts_path, to.p_path,
 						    cp_pct(wtotal, fs->st_size));
@@ -218,7 +218,7 @@ copy_file(const FTSENT *entp, int dne)
 		}
 	}
 
-	(void)close(from_fd);
+	close(from_fd);
 
 	return (rval);
 }
@@ -341,7 +341,7 @@ void
 usage(void)
 {
 
-	(void)fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n",
 "usage: cp [-R [-H | -L | -P]] [-f | -i | -n] [-alpvx] source_file target_file",
 "       cp [-R [-H | -L | -P]] [-f | -i | -n] [-alpvx] source_file ... "
 "target_directory");
