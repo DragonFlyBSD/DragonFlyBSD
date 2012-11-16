@@ -514,15 +514,13 @@ options		DUMMYNET_DEBUG
 #device		hea			#Efficient ENI-155p ATM PCI
 #device		hfa			#FORE PCA-200E ATM PCI
 
-# DEVICE_POLLING adds support for mixed interrupt-polling handling
+# IFPOLL_ENABLE adds support for mixed interrupt-polling handling
 # of network device drivers, which has significant benefits in terms
 # of robustness to overloads and responsivity, as well as permitting
 # accurate scheduling of the CPU time between kernel network processing
 # and other activities. The drawback is a moderate (up to 1/pollhz seconds)
 # potential increase in response times. See polling(4) for further details.
 #
-options         DEVICE_POLLING
-
 # IFPOLL_ENABLE adds hardware queues' based polling
 options		IFPOLL_ENABLE
 

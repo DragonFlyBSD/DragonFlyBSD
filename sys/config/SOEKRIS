@@ -38,7 +38,7 @@ options 	PROCFS			#Process filesystem
 #options 	COMPAT_43		#Compatible with BSD 4.3
 options 	COMPAT_DF12
 options 	SCSI_DELAY=5000		#Delay (in ms) before probing SCSI
-options		DEVICE_POLLING		# Support mixed interrupt-polling
+options		IFPOLL_ENABLE		# Support mixed interrupt-polling
 					# handling of network device drivers
 options 	UCONSOLE		#Allow users to grab the console
 options 	USERCONFIG		#boot -c editor
