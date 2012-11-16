@@ -69,7 +69,7 @@ IEEE 1394 support for FreeBSD-5.X and 4.X.
 	packets. It doesn't scale because it does something like unicast over		multicast, but it's easy to be implemented and you can use any
 	facilities what ethernet can do. (ipv6, bridging, vlan etc.)
 
-	  It also has DEVICE_POLLING[5] support. To enable it, edit your
+	  It also has IFPOLL_ENABLE[5] support. To enable it, edit your
 	kernel config file and Makefile.fwe then rebuild kernel and if_fwe.ko.
 	Note this driver checks kern.polling.enable only when enabling the
 	interface. When you enable polling after the interface is up,
