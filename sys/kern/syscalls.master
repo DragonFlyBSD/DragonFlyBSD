@@ -129,7 +129,7 @@
 64	COMPAT	BSD	{ int getpagesize(void); } \
 			    getpagesize getpagesize_args int
 65	STD	BSD	{ int msync(void *addr, size_t len, int flags); }
-66	STD	BSD	{ int vfork(void); }
+66	STD	BSD	{ pid_t vfork(void); }
 67	OBSOL	NOHIDE	vread
 68	OBSOL	NOHIDE	vwrite
 69	STD	BSD	{ int sbrk(int incr); }
