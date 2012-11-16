@@ -554,7 +554,7 @@ PCFCLOCK_VERBOSE	opt_pcfclock.h
 PCFCLOCK_MAX_RETRIES	opt_pcfclock.h
 
 # Polling device handling
-DEVICE_POLLING		opt_polling.h
+DEVICE_POLLING		opt_dontuse.h
 
 # Network device queue based polling
 IFPOLL_ENABLE		opt_ifpoll.h
