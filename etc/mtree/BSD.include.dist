@@ -351,8 +351,6 @@
         smb
         ..
     ..
-    objc
-    ..
     openssl
     ..
     pcap
