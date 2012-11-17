@@ -1,5 +1,4 @@
 /*	$NetBSD: dehumanize_number.c,v 1.3 2008/04/28 20:22:59 martin Exp $	*/
-/*	$DragonFly: src/lib/libutil/dehumanize_number.c,v 1.2 2008/10/29 22:03:12 swildner Exp $	*/
 
 /*
  * Copyright (c) 2005, 2006 The NetBSD Foundation, Inc.
@@ -69,20 +68,25 @@ dehumanize_number(const char *str, int64_t *size)
 	unit = str[len - 1];
 	if (isalpha((unsigned char)unit)) {
 		switch (tolower((unsigned char)unit)) {
-		case 'b':
-			multiplier = 1;
-			break;
-
-		case 'k':
-			multiplier = 1024;
-			break;
-
-		case 'm':
-			multiplier = 1024 * 1024;
-			break;
-
+		case 'e':
+			multiplier *= 1024;
+			/* FALLTHROUGH */
+		case 'p':
+			multiplier *= 1024;
+			/* FALLTHROUGH */
+		case 't':
+			multiplier *= 1024;
+			/* FALLTHROUGH */
 		case 'g':
-			multiplier = 1024 * 1024 * 1024;
+			multiplier *= 1024;
+			/* FALLTHROUGH */
+		case 'm':
+			multiplier *= 1024;
+			/* FALLTHROUGH */
+		case 'k':
+			multiplier *= 1024;
+			/* FALLTHROUGH */
+		case 'b':
 			break;
 
 		default:
