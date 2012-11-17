@@ -5,6 +5,6 @@ PROG=	pktgenctl
 BINDIR=	/usr/sbin
 NOMAN=
 
-CFLAGS+= -I${.CURDIR}/..
+CFLAGS+= -I${.CURDIR}/.. -g
 
 .include <bsd.prog.mk>

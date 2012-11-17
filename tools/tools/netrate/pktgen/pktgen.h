@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2012 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Sepherosa Ziehau <sepherosa@gmail.com>
@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/tools/tools/netrate/pktgen/pktgen.h,v 1.2 2008/03/29 11:45:46 sephe Exp $
  */
 
 #ifndef _NET_PKTGEN_H
@@ -39,22 +37,15 @@
 
 #include <sys/ioccom.h>
 
-#define PKTGEN_YIELD_DEFAULT	8
-
 struct pktgen_conf {
 	char			pc_ifname[IFNAMSIZ];
-	int			pc_cpuid;
 	int			pc_datalen;
-	int			pc_yield;
 	int			pc_duration;
 	struct sockaddr		pc_dst_lladdr;
 
 	struct sockaddr_in	pc_src;
-	struct sockaddr_in	pc_dst;
-	int			pc_nsaddr;
-	int			pc_nsport;
-	int			pc_ndaddr;
-	int			pc_ndport;
+	int			pc_ndst;
+	struct sockaddr_in	*pc_dst;
 };
 
 #define PKTGENSTART	_IO('G', 19)
