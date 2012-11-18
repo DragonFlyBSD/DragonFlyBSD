@@ -553,9 +553,6 @@ FDC_DEBUG		opt_fdc.h
 PCFCLOCK_VERBOSE	opt_pcfclock.h
 PCFCLOCK_MAX_RETRIES	opt_pcfclock.h
 
-# Polling device handling
-DEVICE_POLLING		opt_dontuse.h
-
 # Network device queue based polling
 IFPOLL_ENABLE		opt_ifpoll.h
 
@@ -695,4 +692,5 @@ PANIC_REBOOT_WAIT_TIME	opt_panic.h
 
 # Obsolete options (will be removed in the future)
 #
+DEVICE_POLLING		opt_dontuse.h
 SMP			opt_dontuse.h
