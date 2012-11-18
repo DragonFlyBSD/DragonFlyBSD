@@ -1592,8 +1592,9 @@ mpt_raid_timer(void *arg)
 	struct mpt_softc *mpt;
 
 	mpt = (struct mpt_softc *)arg;
-	MPT_LOCK_ASSERT(mpt);
+	MPT_LOCK(mpt);
 	mpt_raid_wakeup(mpt);
+	MPT_UNLOCK(mpt);
 }
 
 static void
