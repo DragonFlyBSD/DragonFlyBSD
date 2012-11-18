@@ -47,7 +47,6 @@
 .Cd options KTR_IPIQ
 .Cd options KTR_KERNENTRY
 .Cd options KTR_MEMORY
-.Cd options KTR_POLLING
 .Cd options KTR_SERIALIZER
 .Cd options KTR_SPIN_CONTENTION
 .\".Cd options KTR_TCP
@@ -116,9 +115,6 @@ entry of the kernel from userland (faults, syscalls)
 and
 .Xr kfree 9
 events
-.It Dv KTR_POLLING
-.Xr polling 4
-begins and ends
 .It Dv KTR_SERIALIZER
 .Xr serializer 9
 related events

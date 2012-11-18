@@ -2320,7 +2320,6 @@ options	KTR_VERBOSE=1
 #options KTR_IPIQ
 #options KTR_KERNENTRY
 #options KTR_MEMORY
-#options KTR_POLLING
 #options KTR_SERIALIZER
 #options KTR_SPIN_CONTENTION
 #options KTR_TESTLOG
