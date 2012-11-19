@@ -658,8 +658,10 @@ found:
 	} else {
 		if ((error = VFS_VGET(vdp->v_mount, NULL, dp->i_ino, &tdp)) != 0)
 			return (error);
-		if (!lockparent)
+		if (!lockparent) {
 			vn_unlock(pdp);
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
+		}
 		*vpp = tdp;
 	}
 	return (0);
