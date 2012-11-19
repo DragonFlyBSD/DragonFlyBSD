@@ -9,32 +9,33 @@ help all:
 	@echo ""
 .if exists(${.CURDIR}/pkgsrc/.git)
 .if exists(${.CURDIR}/pkgsrc/Makefile)
-	@echo "    make pkgsrc-update       - update your pkgsrc repo from the net"
+	@echo "    make pkgsrc-update          - update your pkgsrc repo from the net"
 .else
-	@echo "    make pkgsrc-checkout     - initial checkout of your pre-packaged"
-	@echo "                               pkgsrc repo."
-	@echo "    make pkgsrc-update       - update your pkgsrc repo from the net"
-	@echo "                               after the initial checkout."
+	@echo "    make pkgsrc-checkout        - initial checkout of your pre-packaged"
+	@echo "                                  pkgsrc repo."
+	@echo "    make pkgsrc-update          - update your pkgsrc repo from the net"
+	@echo "                                  after the initial checkout."
 .endif
 .else
-	@echo "    make pkgsrc-create       - fetch initial pkgsrc repo from the net"
-	@echo "    make pkgsrc-create-repo  - fetch pkgsrc repo only, no checkout"
-	@echo "    make pkgsrc-update       - update your pkgsrc repo from the net"
+	@echo "    make pkgsrc-create          - fetch initial pkgsrc repo from the net"
+	@echo "    make pkgsrc-create-shallow  - fetch initial history-free pkgsrc repo"
+	@echo "    make pkgsrc-create-repo     - fetch pkgsrc repo only, no checkout"
+	@echo "    make pkgsrc-update          - update your pkgsrc repo from the net"
 .endif
 	@echo ""
 .if exists(${.CURDIR}/src/.git)
 .if exists(${.CURDIR}/src/Makefile)
-	@echo "    make src-update          - update your src repo from the net"
+	@echo "    make src-update             - update your src repo from the net"
 .else
-	@echo "    make src-checkout        - initial checkout of your pre-packaged src repo"
-	@echo "    make src-update          - update your src repo from the net"
-	@echo "                               after the initial checkout."
+	@echo "    make src-checkout           - initial checkout of your pre-packaged src repo"
+	@echo "    make src-update             - update your src repo from the net"
+	@echo "                                  after the initial checkout."
 .endif
 .else
-	@echo "    make src-create          - fetch initial src repo from the net"
-	@echo "    make src-create-shallow  - fetch initial history-free src repo"
-	@echo "    make src-create-repo     - fetch src repo only, no checkout"
-	@echo "    make src-update          - update your src repo from the net"
+	@echo "    make src-create             - fetch initial src repo from the net"
+	@echo "    make src-create-shallow     - fetch initial history-free src repo"
+	@echo "    make src-create-repo        - fetch src repo only, no checkout"
+	@echo "    make src-update             - update your src repo from the net"
 .endif
 	@echo ""
 .if exists(${.CURDIR}/src-sys.tar.bz2)
@@ -61,6 +62,18 @@ pkgsrc-create-repo:
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
 
 pkgsrc-create: pkgsrc-create-repo
+	cd ${.CURDIR}/pkgsrc && git checkout master
+	cd ${.CURDIR}/pkgsrc && git pull
+
+pkgsrc-create-shallow:
+	@echo "If problems occur you may have to rm -rf pkgsrc and try again."
+	@echo ""
+	mkdir -p ${.CURDIR}/pkgsrc
+	cd ${.CURDIR}/pkgsrc && git init
+	cd ${.CURDIR}/pkgsrc && \
+		git remote add origin git://${GITHOST}/pkgsrcv2.git
+	cd ${.CURDIR}/pkgsrc && git fetch --depth=1 origin
+	cd ${.CURDIR}/pkgsrc && git branch master origin/master
 	cd ${.CURDIR}/pkgsrc && git checkout master
 	cd ${.CURDIR}/pkgsrc && git pull
 
