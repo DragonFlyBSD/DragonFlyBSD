@@ -10,9 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by Boris Popov.
  * 4. Neither the name of the author nor the names of any co-contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -36,8 +33,8 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/endian.h>
 #include <sys/errno.h>
-#include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/module.h>
 #include <sys/uio.h>
@@ -46,11 +43,11 @@
 
 MODULE_VERSION(libmchain, 1);
 
-#define MBERROR(format, args...) kprintf("%s(%d): "format, __func__ , \
-				    __LINE__ ,## args)
+#define MBERROR(format, ...) kprintf("%s(%d): "format, __func__ , \
+				    __LINE__ , ## __VA_ARGS__)
 
-#define MBPANIC(format, args...) kprintf("%s(%d): "format, __func__ , \
-				    __LINE__ ,## args)
+#define MBPANIC(format, ...) kprintf("%s(%d): "format, __func__ , \
+				    __LINE__ , ## __VA_ARGS__)
 
 /*
  * Various helper functions
@@ -156,42 +153,42 @@ mb_put_uint8(struct mbchain *mbp, u_int8_t x)
 int
 mb_put_uint16be(struct mbchain *mbp, u_int16_t x)
 {
-	x = htobes(x);
+	x = htobe16(x);
 	return mb_put_mem(mbp, (caddr_t)&x, sizeof(x), MB_MSYSTEM);
 }
 
 int
 mb_put_uint16le(struct mbchain *mbp, u_int16_t x)
 {
-	x = htoles(x);
+	x = htole16(x);
 	return mb_put_mem(mbp, (caddr_t)&x, sizeof(x), MB_MSYSTEM);
 }
 
 int
 mb_put_uint32be(struct mbchain *mbp, u_int32_t x)
 {
-	x = htobel(x);
+	x = htobe32(x);
 	return mb_put_mem(mbp, (caddr_t)&x, sizeof(x), MB_MSYSTEM);
 }
 
 int
 mb_put_uint32le(struct mbchain *mbp, u_int32_t x)
 {
-	x = htolel(x);
+	x = htole32(x);
 	return mb_put_mem(mbp, (caddr_t)&x, sizeof(x), MB_MSYSTEM);
 }
 
 int
 mb_put_int64be(struct mbchain *mbp, int64_t x)
 {
-	x = htobeq(x);
+	x = htobe64(x);
 	return mb_put_mem(mbp, (caddr_t)&x, sizeof(x), MB_MSYSTEM);
 }
 
 int
 mb_put_int64le(struct mbchain *mbp, int64_t x)
 {
-	x = htoleq(x);
+	x = htole64(x);
 	return mb_put_mem(mbp, (caddr_t)&x, sizeof(x), MB_MSYSTEM);
 }
 
@@ -202,7 +199,7 @@ mb_put_mem(struct mbchain *mbp, c_caddr_t source, int size, int type)
 	caddr_t dst;
 	c_caddr_t src;
 	int error, mleft, count;
-	size_t cplen;
+	size_t cplen, srclen, dstlen;
 
 	m = mbp->mb_cur;
 	mleft = mbp->mb_mleft;
@@ -219,10 +216,13 @@ mb_put_mem(struct mbchain *mbp, c_caddr_t source, int size, int type)
 			continue;
 		}
 		cplen = mleft > size ? size : mleft;
+		srclen = dstlen = cplen;
 		dst = mtod(m, caddr_t) + m->m_len;
 		switch (type) {
 		    case MB_MCUSTOM:
-			error = mbp->mb_copy(mbp, source, dst, cplen);
+			srclen = size;
+			dstlen = mleft;
+			error = mbp->mb_copy(mbp, source, dst, &srclen, &dstlen);
 			if (error)
 				return error;
 			break;
@@ -242,11 +242,11 @@ mb_put_mem(struct mbchain *mbp, c_caddr_t source, int size, int type)
 			bzero(dst, cplen);
 			break;
 		}
-		size -= cplen;
-		source += cplen;
-		m->m_len += cplen;
-		mleft -= cplen;
-		mbp->mb_count += cplen;
+		size -= srclen;
+		source += srclen;
+		m->m_len += dstlen;
+		mleft -= dstlen;
+		mbp->mb_count += dstlen;
 	}
 	mbp->mb_cur = m;
 	mbp->mb_mleft = mleft;
@@ -295,7 +295,8 @@ mb_put_uio(struct mbchain *mbp, struct uio *uiop, int size)
 			return error;
 		uiop->uio_offset += left;
 		uiop->uio_resid -= left;
-		uiop->uio_iov->iov_base = (char *)uiop->uio_iov->iov_base + left;
+		uiop->uio_iov->iov_base =
+		    (char *)uiop->uio_iov->iov_base + left;
 		uiop->uio_iov->iov_len -= left;
 		size -= left;
 	}
@@ -393,7 +394,8 @@ md_get_uint16le(struct mdchain *mdp, u_int16_t *x)
 	u_int16_t v;
 	int error = md_get_uint16(mdp, &v);
 
-	*x = letohs(v);
+	if (x != NULL)
+		*x = le16toh(v);
 	return error;
 }
 
@@ -402,7 +404,8 @@ md_get_uint16be(struct mdchain *mdp, u_int16_t *x) {
 	u_int16_t v;
 	int error = md_get_uint16(mdp, &v);
 
-	*x = betohs(v);
+	if (x != NULL)
+		*x = be16toh(v);
 	return error;
 }
 
@@ -419,7 +422,8 @@ md_get_uint32be(struct mdchain *mdp, u_int32_t *x)
 	int error;
 
 	error = md_get_uint32(mdp, &v);
-	*x = betohl(v);
+	if (x != NULL)
+		*x = be32toh(v);
 	return error;
 }
 
@@ -430,7 +434,8 @@ md_get_uint32le(struct mdchain *mdp, u_int32_t *x)
 	int error;
 
 	error = md_get_uint32(mdp, &v);
-	*x = letohl(v);
+	if (x != NULL)
+		*x = le32toh(v);
 	return error;
 }
 
@@ -447,7 +452,8 @@ md_get_int64be(struct mdchain *mdp, int64_t *x)
 	int error;
 
 	error = md_get_int64(mdp, &v);
-	*x = betohq(v);
+	if (x != NULL)
+		*x = be64toh(v);
 	return error;
 }
 
@@ -458,7 +464,8 @@ md_get_int64le(struct mdchain *mdp, int64_t *x)
 	int error;
 
 	error = md_get_int64(mdp, &v);
-	*x = letohq(v);
+	if (x != NULL)
+		*x = le64toh(v);
 	return error;
 }
 
@@ -546,7 +553,8 @@ md_get_uio(struct mdchain *mdp, struct uio *uiop, int size)
 			return error;
 		uiop->uio_offset += left;
 		uiop->uio_resid -= left;
-		uiop->uio_iov->iov_base = (char *)uiop->uio_iov->iov_base + left;
+		uiop->uio_iov->iov_base =
+		    (char *)uiop->uio_iov->iov_base + left;
 		uiop->uio_iov->iov_len -= left;
 		size -= left;
 	}

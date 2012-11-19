@@ -34,6 +34,7 @@
  */
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/malloc.h>
@@ -187,7 +188,7 @@ void
 smb_strtouni(u_int16_t *dst, const char *src)
 {
 	while (*src) {
-		*dst++ = htoles(*src++);
+		*dst++ = htole16(*src++);
 	}
 	*dst = 0;
 }
@@ -309,11 +310,21 @@ smb_maperror(int eclass, int eno)
 }
 
 static int
-smb_copy_iconv(struct mbchain *mbp, c_caddr_t src, caddr_t dst, size_t len)
+smb_copy_iconv(struct mbchain *mbp, c_caddr_t src, caddr_t dst,
+    size_t *srclen, size_t *dstlen)
 {
-	size_t outlen = len;
+	int error;
+	size_t inlen = *srclen, outlen = *dstlen;
 
-	return iconv_conv((struct iconv_drv*)mbp->mb_udata, &src, &len, &dst, &outlen);
+	error = iconv_conv((struct iconv_drv*)mbp->mb_udata, &src, &inlen,
+	    &dst, &outlen);
+	if (inlen != *srclen || outlen != *dstlen) {
+		*srclen -= inlen;
+		*dstlen -= outlen;
+		return 0;
+	} else {
+		return error;
+	}
 }
 
 int
