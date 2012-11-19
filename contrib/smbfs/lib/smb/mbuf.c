@@ -33,7 +33,7 @@
  */
 
 #include <sys/types.h>
-#include <sys/mchain.h>
+#include <sys/endian.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -264,7 +264,7 @@ int
 mb_put_int64be(struct mbdata *mbp, int64_t x)
 {
 	MB_PUT(int64_t);
-	*p = htobeq(x);
+	*p = htobe64(x);
 	return 0;
 }
 
@@ -272,7 +272,7 @@ int
 mb_put_int64le(struct mbdata *mbp, int64_t x)
 {
 	MB_PUT(int64_t);
-	*p = htoleq(x);
+	*p = htole64(x);
 	return 0;
 }
 
@@ -363,7 +363,8 @@ mb_get_uint16le(struct mbdata *mbp, u_int16_t *x)
 	u_int16_t v;
 	int error = mb_get_uint16(mbp, &v);
 
-	*x = letohs(v);
+	if (x != NULL)
+		*x = le16toh(v);
 	return error;
 }
 
@@ -372,7 +373,8 @@ mb_get_uint16be(struct mbdata *mbp, u_int16_t *x) {
 	u_int16_t v;
 	int error = mb_get_uint16(mbp, &v);
 
-	*x = betohs(v);
+	if (x != NULL)
+		*x = be16toh(v);
 	return error;
 }
 
@@ -389,7 +391,8 @@ mb_get_uint32be(struct mbdata *mbp, u_int32_t *x)
 	int error;
 
 	error = mb_get_uint32(mbp, &v);
-	*x = betohl(v);
+	if (x != NULL)
+		*x = be32toh(v);
 	return error;
 }
 
@@ -400,7 +403,8 @@ mb_get_uint32le(struct mbdata *mbp, u_int32_t *x)
 	int error;
 
 	error = mb_get_uint32(mbp, &v);
-	*x = letohl(v);
+	if (x != NULL)
+		*x = le32toh(v);
 	return error;
 }
 
@@ -417,7 +421,8 @@ mb_get_int64be(struct mbdata *mbp, int64_t *x)
 	int error;
 
 	error = mb_get_int64(mbp, &v);
-	*x = betohq(v);
+	if (x != NULL)
+		*x = be64toh(v);
 	return error;
 }
 
@@ -428,7 +433,8 @@ mb_get_int64le(struct mbdata *mbp, int64_t *x)
 	int error;
 
 	error = mb_get_int64(mbp, &v);
-	*x = letohq(v);
+	if (x != NULL)
+		*x = le64toh(v);
 	return error;
 }
 
