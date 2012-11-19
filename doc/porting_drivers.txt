@@ -140,3 +140,29 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
   away.
 
 * callout_drain() should be replaced by callout_stop_sync()
+
+* UNRHDR functions - DragonFly uses a more generic idr(9) subsystem
+  compatible with the Linux API of the same name
+
+  This LWN article describes it in details: http://lwn.net/Articles/103209/
+
+  A typical conversion looks like this:
+
+  #include <sys/idr.h>
+
+  free_unr() has to be replaced by idr_remove()
+
+  alloc_unr() has to be replaced by a code sequence using idr_pre_get and
+  idr_get_new such as this one:
+
+  retry:
+	if (idr_pre_get(xxx) ==0) {
+	kprintf("Memory allocation error\n");
+	    return error;
+	}
+	spin_lock(xxx);
+	ret = idr_get_new(xxx);
+	spin_unlock(xxx);
+	if (ret == EAGAIN)
+	    goto retry;
+
