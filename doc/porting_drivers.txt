@@ -138,3 +138,5 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
 * CAM CODE - cam_simq* code refcounts, so shared device queues (raid and
   multi-channel devices) are not freed before all references have gone
   away.
+
+* callout_drain() should be replaced by callout_stop_sync()
