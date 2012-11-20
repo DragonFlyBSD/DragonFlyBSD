@@ -481,7 +481,6 @@ iir_attach(struct gdt_softc *gdt)
 
     GDT_DPRINTF(GDT_D_INIT, ("iir_attach()\n"));
 
-    callout_init(&gdt->watchdog_timer);
     /*
      * Create the device queue for our SIM.
      * XXX Throttle this down since the card has problems under load.

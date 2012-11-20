@@ -604,7 +604,6 @@ struct gdt_softc {
 #define GDT_POLLING     0x01
 #define GDT_SHUTDOWN    0x02
 #define GDT_POLL_WAIT   0x80
-    struct callout watchdog_timer;
     cdev_t sc_dev;
     bus_space_tag_t sc_dpmemt;
     bus_space_handle_t sc_dpmemh;
