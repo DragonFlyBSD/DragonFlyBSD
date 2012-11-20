@@ -363,8 +363,10 @@ aac_daemon(void *arg)
 	lockmgr(&sc->aac_io_lock, LK_EXCLUSIVE);
 
 	if (callout_pending(&sc->aac_daemontime) ||
-	    callout_active(&sc->aac_daemontime) == 0)
+	    callout_active(&sc->aac_daemontime) == 0) {
+		lockmgr(&sc->aac_io_lock, LK_RELEASE);
 		return;
+	}
 	getmicrotime(&tv);
 	aac_alloc_sync_fib(sc, &fib);
 	*(uint32_t *)fib->data = tv.tv_sec;
