@@ -310,6 +310,7 @@ struct igb_softc {
 
 	struct ifmedia		media;
 	struct callout		timer;
+	int			timer_cpuid;
 
 	int			intr_type;
 	int			intr_rid;

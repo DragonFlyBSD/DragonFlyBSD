@@ -954,7 +954,11 @@ igb_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	callout_reset(&sc->timer, hz, igb_timer, sc);
+	if (polling || sc->intr_type == PCI_INTR_TYPE_MSIX)
+		sc->timer_cpuid = 0; /* XXX fixed */
+	else
+		sc->timer_cpuid = rman_get_cpuid(sc->intr_res);
+	callout_reset_bycpu(&sc->timer, hz, igb_timer, sc, sc->timer_cpuid);
 	e1000_clear_hw_cntrs_base_generic(&sc->hw);
 
 	/* This clears any pending interrupts */
@@ -1154,7 +1158,7 @@ igb_timer(void *xsc)
 	igb_update_link_status(sc);
 	igb_update_stats_counters(sc);
 
-	callout_reset(&sc->timer, hz, igb_timer, sc);
+	callout_reset_bycpu(&sc->timer, hz, igb_timer, sc, sc->timer_cpuid);
 
 	lwkt_serialize_exit(&sc->main_serialize);
 }
