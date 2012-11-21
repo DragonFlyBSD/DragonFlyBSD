@@ -3390,7 +3390,7 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf,
 	spin_unlock(&vn->v_spin);
 
 	atomic_add_int(&numfullpathcalls, -1);
-	nch.ncp = ncp;;
+	nch.ncp = ncp;
 	nch.mount = vn->v_mount;
 	error = cache_fullpath(p, &nch, NULL, retbuf, freebuf, guess);
 	_cache_drop(ncp);

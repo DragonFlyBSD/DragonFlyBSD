@@ -1318,7 +1318,7 @@ pfsync_pack_state(u_int8_t action, struct pf_state *st, int flags)
 		}
 	}
 
-	st->pfsync_time = mycpu->gd_time_seconds;;
+	st->pfsync_time = mycpu->gd_time_seconds;
 
 	if (sp == NULL) {
 		/* not a "duplicate" update */

@@ -920,7 +920,7 @@ encrypt_gen_printsub(unsigned char *data, int cnt, unsigned char *buf, int bufle
 	data += 2;
 	buf[buflen-1] = '\0';
 	buf[buflen-2] = '*';
-	buflen -= 2;;
+	buflen -= 2;
 	for (; cnt > 0; cnt--, data++) {
 		sprintf(tbuf, " %d", *data);
 		for (cp = tbuf; *cp && buflen > 0; --buflen)

@@ -277,7 +277,7 @@ netmsg_service_loop(void *arg)
 {
 	struct netmsg_rollup *ru;
 	netmsg_base_t msg;
-	thread_t td = curthread;;
+	thread_t td = curthread;
 	int limit;
 
 	while ((msg = lwkt_waitport(&td->td_msgport, 0))) {

@@ -38,7 +38,6 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.28 2008/05/08 01:26:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -233,7 +232,7 @@ acct_process(struct proc *p)
 
 	/* (4) The average amount of memory used */
 	r = &p->p_ru;
-	tmp = ru.ru_utime;;
+	tmp = ru.ru_utime;
 	timevaladd(&tmp, &ru.ru_stime);
 	t = tmp.tv_sec * hz + tmp.tv_usec / ustick;
 	if (t)

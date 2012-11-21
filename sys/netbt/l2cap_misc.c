@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/l2cap_misc.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: src/sys/netbt/l2cap_misc.c,v 1.3 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: l2cap_misc.c,v 1.5 2007/11/03 17:20:17 plunky Exp $ */
 
@@ -71,7 +70,6 @@ int l2cap_response_extended_timeout = 180;	/* seconds */
 void
 l2cap_init(void)
 {
-	;;
 }
 
 /*

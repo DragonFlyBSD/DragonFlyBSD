@@ -718,7 +718,7 @@ lwp_exit(int masterexit)
 static int
 lwp_wait(struct lwp *lp)
 {
-	struct thread *td = lp->lwp_thread;;
+	struct thread *td = lp->lwp_thread;
 	u_int mpflags;
 
 	KKASSERT(lwkt_preempted_proc() != lp);
@@ -785,7 +785,7 @@ lwp_wait(struct lwp *lp)
 void
 lwp_dispose(struct lwp *lp)
 {
-	struct thread *td = lp->lwp_thread;;
+	struct thread *td = lp->lwp_thread;
 
 	KKASSERT(lwkt_preempted_proc() != lp);
 	KKASSERT(td->td_refs == 0);

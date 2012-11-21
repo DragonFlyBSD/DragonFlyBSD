@@ -428,7 +428,7 @@ do_lock(struct file_lock *fl, int block)
 		syslog(LOG_NOTICE, "fhopen failed (from %s): %s",
 		    fl->client_name, strerror(errno));
 		LIST_REMOVE(fl, lcklst);
-		return error;;
+		return error;
 	}
 	if (fstat(fl->fd, &st) < 0) {
 		syslog(LOG_NOTICE, "fstat failed (from %s): %s",

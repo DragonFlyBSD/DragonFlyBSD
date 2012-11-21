@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/ip6opt.c,v 1.8 2005/07/19 18:13:58 ume Exp $
- * $DragonFly: src/lib/libc/net/ip6opt.c,v 1.6 2007/05/29 10:58:11 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -460,7 +459,7 @@ inet6_opt_append(void *extbuf, socklen_t extlen, int offset, u_int8_t type,
 int
 inet6_opt_finish(void *extbuf, socklen_t extlen, int offset)
 {
-	int updatelen = offset > 0 ? (1 + ((offset - 1) | 7)) : 0;;
+	int updatelen = offset > 0 ? (1 + ((offset - 1) | 7)) : 0;
 
 	if (extbuf) {
 		u_int8_t *padp;

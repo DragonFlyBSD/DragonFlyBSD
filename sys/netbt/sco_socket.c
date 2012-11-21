@@ -233,7 +233,7 @@ sco_input(void *arg, struct mbuf *m)
 static void
 sco_sdetach(netmsg_t msg)
 {
-	struct socket *so = msg->detach.base.nm_so;;
+	struct socket *so = msg->detach.base.nm_so;
 	int error;
 
 	error = sco_detach((struct sco_pcb **)&so->so_pcb);

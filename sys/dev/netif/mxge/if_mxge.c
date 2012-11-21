@@ -3207,7 +3207,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d allocating rx_small dmat\n",
 			      err);
-		return err;;
+		return err;
 	}
 
 	err = bus_dma_tag_create(sc->parent_dmat,	/* parent */
@@ -3233,7 +3233,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d allocating rx_big dmat\n",
 			      err);
-		return err;;
+		return err;
 	}
 	for (i = 0; i <= ss->rx_small.mask; i++) {
 		err = bus_dmamap_create(ss->rx_small.dmat, 0, 
@@ -3241,7 +3241,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 		if (err != 0) {
 			device_printf(sc->dev, "Err %d  rx_small dmamap\n",
 				      err);
-			return err;;
+			return err;
 		}
 	}
 	err = bus_dmamap_create(ss->rx_small.dmat, 0, 
@@ -3249,7 +3249,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d extra rx_small dmamap\n",
 			      err);
-		return err;;
+		return err;
 	}
 
 	for (i = 0; i <= ss->rx_big.mask; i++) {
@@ -3258,7 +3258,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 		if (err != 0) {
 			device_printf(sc->dev, "Err %d  rx_big dmamap\n",
 				      err);
-			return err;;
+			return err;
 		}
 	}
 	err = bus_dmamap_create(ss->rx_big.dmat, 0, 
@@ -3266,7 +3266,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d extra rx_big dmamap\n",
 			      err);
-		return err;;
+		return err;
 	}
 
 	/* now allocate TX resouces */
@@ -3294,7 +3294,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	ss->tx.seg_list = (bus_dma_segment_t *) 
 		kmalloc(bytes, M_DEVBUF, M_WAITOK);
 	if (ss->tx.seg_list == NULL)
-		return err;;
+		return err;
 
 	/* allocate the tx host info ring */
 	bytes = tx_ring_entries * sizeof (*ss->tx.info);
@@ -3316,7 +3316,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d allocating tx dmat\n",
 			      err);
-		return err;;
+		return err;
 	}
 
 	/* now use these tags to setup dmamaps for each slot
@@ -3327,7 +3327,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 		if (err != 0) {
 			device_printf(sc->dev, "Err %d  tx dmamap\n",
 				      err);
-			return err;;
+			return err;
 		}
 	}
 	return 0;

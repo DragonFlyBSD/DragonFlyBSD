@@ -513,7 +513,7 @@ freectl:
 void
 rip6_ctloutput(netmsg_t msg)
 {
-	struct socket *so = msg->ctloutput.base.nm_so;;
+	struct socket *so = msg->ctloutput.base.nm_so;
 	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	int error;
 

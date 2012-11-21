@@ -431,7 +431,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	    if (rdp->status & AR_S_REBUILDING)
 		blk = ((lba / rdp->interleave) * rdp->width) * rdp->interleave +
 		      (rdp->interleave * (drv % rdp->width)) +
-		      lba % rdp->interleave;;
+		      lba % rdp->interleave;
 
 	    if (bbp->b_cmd == BUF_CMD_READ) {
 		int src_online =

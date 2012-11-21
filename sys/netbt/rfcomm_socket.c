@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/rfcomm_socket.c,v 1.3 2008/06/20 20:52:29 aggelos Exp $ */
 /* $OpenBSD: src/sys/netbt/rfcomm_socket.c,v 1.2 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: rfcomm_socket.c,v 1.8 2007/10/15 18:04:34 plunky Exp $ */
 
@@ -388,7 +387,7 @@ rfcomm_speeraddr(netmsg_t msg)
 	bzero(sa, sizeof *sa);
 	sa->bt_len = sizeof(struct sockaddr_bt);
 	sa->bt_family = AF_BLUETOOTH;
-	error = rfcomm_peeraddr(pcb, sa);;
+	error = rfcomm_peeraddr(pcb, sa);
 	*nam = dup_sockaddr((struct sockaddr *)sa);
 
 	lwkt_replymsg(&msg->peeraddr.base.lmsg, error);
@@ -407,7 +406,7 @@ rfcomm_ssockaddr(netmsg_t msg)
 	bzero(sa, sizeof *sa);
 	sa->bt_len = sizeof(struct sockaddr_bt);
 	sa->bt_family = AF_BLUETOOTH;
-	error = rfcomm_sockaddr(pcb, sa);;
+	error = rfcomm_sockaddr(pcb, sa);
 	*nam = dup_sockaddr((struct sockaddr *)sa);
 
 	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
@@ -463,7 +462,7 @@ rfcomm_saccept(netmsg_t msg)
 	bzero(sa, sizeof *sa);
 	sa->bt_len = sizeof(struct sockaddr_bt);
 	sa->bt_family = AF_BLUETOOTH;
-	error = rfcomm_peeraddr(pcb, sa);;
+	error = rfcomm_peeraddr(pcb, sa);
 	*nam = dup_sockaddr((struct sockaddr *)sa);
 
 	lwkt_replymsg(&msg->accept.base.lmsg, error);

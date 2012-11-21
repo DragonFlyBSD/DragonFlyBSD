@@ -1523,7 +1523,7 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 static void
 sctp6_in6getaddr(netmsg_t msg)
 {
-	struct socket *so = msg->sockaddr.base.nm_so;;
+	struct socket *so = msg->sockaddr.base.nm_so;
 	struct sockaddr **nam = msg->sockaddr.nm_nam;
 	struct sockaddr *addr;
 	struct in6pcb *inp6 = sotoin6pcb(so);

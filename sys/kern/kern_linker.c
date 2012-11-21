@@ -462,7 +462,7 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
 int
 linker_file_unload(linker_file_t file)
 {
-    module_t mod, next;;
+    module_t mod, next;
     modlist_t ml, nextml;
     struct common_symbol* cp;
     int error = 0;
