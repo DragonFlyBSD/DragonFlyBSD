@@ -1011,7 +1011,7 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 		vref(dvp);
 		nvp = dvp;
 	} else {
-		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
+		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np, NULL);
 		if (error) {
 			m_freem(info.mrep);
 			info.mrep = NULL;
@@ -1060,6 +1060,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 	struct vnode **vpp = ap->a_vpp;
 	int flags = cnp->cn_flags;
 	struct vnode *newvp;
+	struct vnode *notvp;
 	struct nfsmount *nmp;
 	long len;
 	nfsfh_t *fhp;
@@ -1072,6 +1073,8 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(dvp);
 	error = 0;
+
+	notvp = (cnp->cn_flags & CNP_NOTVP) ? cnp->cn_notvp : NULL;
 
 	/*
 	 * Read-only mount check and directory check.
@@ -1135,7 +1138,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 			lwkt_reltoken(&nmp->nm_token);
 			return (EISDIR);
 		}
-		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
+		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np, notvp);
 		if (error) {
 			m_freem(info.mrep);
 			info.mrep = NULL;
@@ -1165,7 +1168,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 	if (flags & CNP_ISDOTDOT) {
 		vn_unlock(dvp);
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
-		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
+		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np, notvp);
 		if (error) {
 			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
@@ -1186,7 +1189,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 		vref(dvp);
 		newvp = dvp;
 	} else {
-		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
+		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np, notvp);
 		if (error) {
 			m_freem(info.mrep);
 			info.mrep = NULL;
@@ -2790,7 +2793,8 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 					goto rdfail;
 				    cache_setunresolved(&nch);
 				    error = nfs_nget_nonblock(vp->v_mount, fhp,
-							      fhsize, &np);
+							      fhsize, &np,
+							      NULL);
 				    if (error) {
 					cache_put(&nch);
 					goto rdfail;
@@ -2979,7 +2983,7 @@ nfs_lookitup(struct vnode *dvp, const char *name, int len, struct ucred *cred,
 		    vref(dvp);
 		    newvp = dvp;
 		} else {
-		    error = nfs_nget(dvp->v_mount, nfhp, fhlen, &np);
+		    error = nfs_nget(dvp->v_mount, nfhp, fhlen, &np, NULL);
 		    if (error) {
 			m_freem(info.mrep);
 			info.mrep = NULL;

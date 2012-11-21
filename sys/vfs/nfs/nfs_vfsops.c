@@ -331,7 +331,7 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 #ifndef nolint
 	sfp = NULL;
 #endif
-	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np);
+	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np, NULL);
 	if (error) {
 		lwkt_reltoken(&nmp->nm_token);
 		return (error);
@@ -416,7 +416,7 @@ nfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 #ifndef nolint
 	sfp = NULL;
 #endif
-	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np);
+	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np, NULL);
 	if (error) {
 		lwkt_reltoken(&nmp->nm_token);
 		return (error);
@@ -1119,7 +1119,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	 * this problem, because one can identify root inodes by their
 	 * number == ROOTINO (2).
 	 */
-	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np);
+	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np, NULL);
 	if (error)
 		goto bad;
 	*vpp = NFSTOV(np);
@@ -1278,7 +1278,7 @@ nfs_root(struct mount *mp, struct vnode **vpp)
 
 	nmp = VFSTONFS(mp);
 	lwkt_gettoken(&nmp->nm_token);
-	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np);
+	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np, NULL);
 	if (error) {
 		lwkt_reltoken(&nmp->nm_token);
 		return (error);

@@ -71,6 +71,7 @@ struct componentname {
 	long	cn_namelen;	/* length of looked up component */
 	long	cn_consume;	/* chars to consume in lookup() */
 	int	cn_timeout;	/* if CNP_CACHETIMEOUT is set, in ticks */
+	struct vnode *cn_notvp;	/* used by NFS to check for collision */
 };
 
 #ifdef _KERNEL
@@ -97,7 +98,7 @@ struct componentname {
  */
 	/* (NOCROSSMOUNT)   0x00000100 */
 #define	CNP_RDONLY	    0x00000200 /* lookup with read-only semantics */
-	/* (HASBUF)	    0x00000400 */
+#define CNP_NOTVP	    0x00000400 /* test cn_notvp, fail if matches */
 	/* (SAVENAME)	    0x00000800 */
 	/* (CNP_SAVESTART)  0x00001000 */
 #define CNP_ISDOTDOT	    0x00002000 /* current component name is .. */

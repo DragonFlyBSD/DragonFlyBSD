@@ -400,7 +400,7 @@ nfsm_mtofh(nfsm_info_t info, struct vnode *dvp, struct vnode **vpp, int *gotvpp)
 	}
 	if (*gotvpp) {
 		NEGATIVEOUT(ttfhsize = nfsm_getfh(info, &ttfhp));
-		error = nfs_nget(dvp->v_mount, ttfhp, ttfhsize, &ttnp);
+		error = nfs_nget(dvp->v_mount, ttfhp, ttfhsize, &ttnp, NULL);
 		if (error) {
 			m_freem(info->mrep);
 			info->mrep = NULL;

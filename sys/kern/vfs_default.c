@@ -580,14 +580,21 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 	 * caches all information required to create the entry in the
 	 * directory inode.  We expect a return code of EJUSTRETURN for
 	 * the CREATE case.  The cnp must simulated a saved-name situation.
+	 *
+	 * It should not be possible for there to be a vnode collision
+	 * between the source vp and target (name lookup).  However NFS
+	 * clients racing each other can cause NFS to alias the same vnode
+	 * across several names without the rest of the system knowing it.
+	 * Use CNP_NOTVP to avoid a panic in this situation.
 	 */
 	bzero(&cnp, sizeof(cnp));
 	cnp.cn_nameiop = NAMEI_CREATE;
-	cnp.cn_flags = CNP_LOCKPARENT;
+	cnp.cn_flags = CNP_LOCKPARENT | CNP_NOTVP;
 	cnp.cn_nameptr = ncp->nc_name;
 	cnp.cn_namelen = ncp->nc_nlen;
 	cnp.cn_cred = ap->a_cred;
 	cnp.cn_td = td;
+	cnp.cn_notvp = ap->a_vp;
 
 	tvp = NULL;
 	error = vop_old_lookup(ap->a_head.a_ops, dvp, &tvp, &cnp);

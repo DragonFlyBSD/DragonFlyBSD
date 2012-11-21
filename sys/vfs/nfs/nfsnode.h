@@ -226,8 +226,10 @@ int	nfs_flush (struct vnode *, int, struct thread *, int);
 
 /* other stuff */
 int	nfs_removeit (struct sillyrename *);
-int	nfs_nget (struct mount *,nfsfh_t *,int,struct nfsnode **);
-int	nfs_nget_nonblock (struct mount *,nfsfh_t *,int,struct nfsnode **);
+int	nfs_nget (struct mount *, nfsfh_t *, int,
+		struct nfsnode **, struct vnode *);
+int	nfs_nget_nonblock (struct mount *, nfsfh_t *, int,
+		struct nfsnode **, struct vnode *);
 nfsuint64 *nfs_getcookie (struct nfsnode *, off_t, int);
 void	nfs_invaldir (struct vnode *);
 

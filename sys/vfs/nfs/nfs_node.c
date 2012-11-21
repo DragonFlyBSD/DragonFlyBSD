@@ -88,7 +88,8 @@ nfs_nhinit(void)
  */
 
 int
-nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
+nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp,
+	 struct vnode *notvp)
 {
 	struct nfsnode *np, *np2;
 	struct nfsnodehashhead *nhpp;
@@ -118,6 +119,13 @@ loop:
 			continue;
 		}
 		vp = NFSTOV(np);
+		if (vp == notvp) {
+			kprintf("nfs warning: client-client collision "
+				"during rename/link/softlink\n");
+			*npp = NULL;
+			lwkt_reltoken(&nfsnhash_token);
+			return (ESTALE);
+		}
 		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
 		LIST_FOREACH(np, nhpp, n_hash) {
@@ -213,7 +221,7 @@ loop:
  */
 int
 nfs_nget_nonblock(struct mount *mntp, nfsfh_t *fhp, int fhsize,
-		  struct nfsnode **npp)
+		  struct nfsnode **npp, struct vnode *notvp)
 {
 	struct nfsnode *np, *np2;
 	struct nfsnodehashhead *nhpp;
@@ -246,6 +254,12 @@ loop:
 		}
 		if (vp == NULL) {
 			vp = NFSTOV(np);
+			if (vp == notvp) {
+				kprintf("nfs warning: client-client collision "
+					"during rename/link/softlink\n");
+				error = ESTALE;
+				goto fail;
+			}
 			if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT)) {
 				error = EWOULDBLOCK;
 				goto fail;
