@@ -29,9 +29,8 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/mount_hpfs/mount_hpfs.8,v 1.1.2.5 2003/02/24 00:56:42 trhodes Exp $
-.\" $DragonFly: src/sbin/mount_hpfs/mount_hpfs.8,v 1.2 2003/06/17 04:27:33 dillon Exp $
 .\"
-.Dd May 20, 1999
+.Dd November 21, 2012
 .Dt MOUNT_HPFS 8
 .Os
 .Sh NAME
@@ -59,6 +58,7 @@ at boot time, but can be used by any user to mount an
 HPFS file system on any directory that they own (provided,
 of course, that they have appropriate access to the device that
 contains the file system).
+HPFS filesystems can only be mounted read only.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
@@ -77,13 +77,10 @@ Specify the maximum file permissions for files
 in the file system.
 .El
 .Sh EXAMPLES
-To mount an hpfs volume located in /dev/wd1s1:
+To mount an hpfs volume located in /dev/ad1s1:
 .Bd -literal -offset indent
-# mount_hpfs /dev/wd1s1 /mnt
+# mount_hpfs /dev/ad1s1 /mnt
 .Ed
-.Sh WRITING
-There is limited writing ability and it is not well-tested.
-It is strongly recommended to mount readonly!
 .Sh SEE ALSO
 .Xr mount 2 ,
 .Xr unmount 2 ,

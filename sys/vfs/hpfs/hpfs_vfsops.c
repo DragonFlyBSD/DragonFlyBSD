@@ -460,7 +460,7 @@ hpfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 	struct buf *bp;
 	int error;
 
-	dprintf(("hpfs_vget(0x%x): ",ino));
+	dprintf(("hpfs_vget(0x%jx): ", ino));
 
 	*vpp = NULL;
 	hp = NULL;
