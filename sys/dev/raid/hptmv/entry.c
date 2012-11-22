@@ -2025,8 +2025,7 @@ hpt_attach(device_t dev)
 	}
 
 
-	ccb = kmalloc(sizeof(*ccb), M_DEVBUF, M_WAITOK);
-	bzero(ccb, sizeof(*ccb));
+	ccb = kmalloc(sizeof(*ccb), M_DEVBUF, M_WAITOK | M_ZERO);
 	ccb->ccb_h.pinfo.priority = 1;
 	ccb->ccb_h.pinfo.index = CAM_UNQUEUED_INDEX;
 

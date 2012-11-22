@@ -26,7 +26,6 @@
  *
  * $SourceForge: ng_netflow.c,v 1.30 2004/09/05 11:37:43 glebius Exp $
  * $FreeBSD: src/sys/netgraph/netflow/ng_netflow.c,v 1.17 2008/04/16 16:47:14 kris Exp $
- * $DragonFly: src/sys/netgraph7/netflow/ng_netflow.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -169,10 +168,9 @@ ng_netflow_constructor(node_p node)
 	int error = 0;
 
 	/* Initialize private data */
-	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
-	bzero(priv, sizeof(*priv));
 
 	/* Make node and its data point at each other */
 	NG_NODE_SET_PRIVATE(node, priv);
