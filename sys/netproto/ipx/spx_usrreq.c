@@ -82,7 +82,7 @@ static int spx_backoff[SPX_MAXRXTSHIFT+1] =
 
 static	struct spxpcb *spx_close(struct spxpcb *cb);
 static	struct spxpcb *spx_disconnect(struct spxpcb *cb);
-static	struct spxpcb *spx_drop(struct spxpcb *cb, int errno);
+static	struct spxpcb *spx_drop(struct spxpcb *cb, int error);
 static	int spx_output(struct spxpcb *cb, struct mbuf *m0);
 static	int spx_reass(struct spxpcb *cb, struct spx *si, struct mbuf *si_m);
 static	void spx_setpersist(struct spxpcb *cb);
@@ -1697,7 +1697,7 @@ spx_disconnect(struct spxpcb *cb)
  * the specified error.
  */
 static struct spxpcb *
-spx_drop(struct spxpcb *cb, int errno)
+spx_drop(struct spxpcb *cb, int error)
 {
 	struct socket *so = cb->s_ipxpcb->ipxp_socket;
 
@@ -1712,7 +1712,7 @@ spx_drop(struct spxpcb *cb, int errno)
 		/*tcp_output(cb);*/
 	} else
 		spxstat.spxs_conndrops++;
-	so->so_error = errno;
+	so->so_error = error;
 	return (spx_close(cb));
 }
 

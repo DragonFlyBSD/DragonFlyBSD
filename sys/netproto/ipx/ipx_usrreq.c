@@ -197,7 +197,7 @@ ipx_abort(struct ipxpcb *ipxp)
  * the specified error.
  */
 void
-ipx_drop(struct ipxpcb *ipxp, int errno)
+ipx_drop(struct ipxpcb *ipxp, int error)
 {
 	struct socket *so = ipxp->ipxp_socket;
 
@@ -212,7 +212,7 @@ ipx_drop(struct ipxpcb *ipxp, int errno)
 		tp->t_state = TCPS_CLOSED;
 		tcp_output(tp);
 	}*/
-	so->so_error = errno;
+	so->so_error = error;
 	soreference(so);
 	ipx_pcbdisconnect(ipxp);
 	soisdisconnected(so);
