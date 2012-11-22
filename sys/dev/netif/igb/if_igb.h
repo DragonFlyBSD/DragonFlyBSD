@@ -228,6 +228,7 @@ struct igb_tx_ring {
 	int			oact_lo_desc;
 	int			oact_hi_desc;
 	int			intr_nsegs;
+	int			wreg_nsegs;
 	int			tx_intr_bit;
 	uint32_t		tx_intr_mask;
 

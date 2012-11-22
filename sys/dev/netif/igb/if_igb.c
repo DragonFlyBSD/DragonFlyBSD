@@ -142,6 +142,7 @@ static void	igb_add_sysctl(struct igb_softc *);
 static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
+static int	igb_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
 #ifdef IFPOLL_ENABLE
 static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
@@ -172,7 +173,7 @@ static void	igb_destroy_rx_ring(struct igb_rx_ring *, int);
 static void	igb_init_tx_ring(struct igb_tx_ring *);
 static int	igb_init_rx_ring(struct igb_rx_ring *);
 static int	igb_newbuf(struct igb_rx_ring *, int, boolean_t);
-static int	igb_encap(struct igb_tx_ring *, struct mbuf **);
+static int	igb_encap(struct igb_tx_ring *, struct mbuf **, int *, int *);
 
 static void	igb_stop(struct igb_softc *);
 static void	igb_init(void *);
@@ -1524,6 +1525,11 @@ igb_add_sysctl(struct igb_softc *sc)
 	    sc, 0, igb_sysctl_tx_intr_nsegs, "I",
 	    "# of segments per TX interrupt");
 
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "tx_wreg_nsegs", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, igb_sysctl_tx_wreg_nsegs, "I",
+	    "# of segments before write to hardare register");
+
 #ifdef IFPOLL_ENABLE
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
@@ -1722,6 +1728,7 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	 */
 	txr->spare_desc = IGB_TX_SPARE;
 	txr->intr_nsegs = txr->num_tx_desc / 16;
+	txr->wreg_nsegs = 8;
 	txr->oact_hi_desc = txr->num_tx_desc / 2;
 	txr->oact_lo_desc = txr->num_tx_desc / 8;
 	if (txr->oact_lo_desc > IGB_TX_OACTIVE_MAX)
@@ -3129,7 +3136,8 @@ igb_intr_shared(void *xsc)
 }
 
 static int
-igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
+igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
+    int *segs_used, int *idx)
 {
 	bus_dma_segment_t segs[IGB_MAX_SCATTER];
 	bus_dmamap_t map;
@@ -3195,14 +3203,17 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 		olinfo_status |= E1000_TXD_POPTS_IXSM << 8;
 		olinfo_status |= E1000_TXD_POPTS_TXSM << 8;
 		txr->tx_nsegs++;
+		(*segs_used)++;
 	} else if (igb_txcsum_ctx(txr, m_head)) {
 		if (m_head->m_pkthdr.csum_flags & CSUM_IP)
 			olinfo_status |= (E1000_TXD_POPTS_IXSM << 8);
 		if (m_head->m_pkthdr.csum_flags & (CSUM_UDP | CSUM_TCP))
 			olinfo_status |= (E1000_TXD_POPTS_TXSM << 8);
 		txr->tx_nsegs++;
+		(*segs_used)++;
 	}
 
+	*segs_used += nsegs;
 	txr->tx_nsegs += nsegs;
 	if (txr->tx_nsegs >= txr->intr_nsegs) {
 		/*
@@ -3258,7 +3269,7 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp)
 	 * Advance the Transmit Descriptor Tail (TDT), this tells the E1000
 	 * that this frame is available to transmit.
 	 */
-	E1000_WRITE_REG(&txr->sc->hw, E1000_TDT(txr->me), i);
+	*idx = i;
 	++txr->tx_packets;
 
 	return 0;
@@ -3270,6 +3281,7 @@ igb_start(struct ifnet *ifp)
 	struct igb_softc *sc = ifp->if_softc;
 	struct igb_tx_ring *txr = &sc->tx_rings[0];
 	struct mbuf *m_head;
+	int idx = -1, nsegs = 0;
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
@@ -3296,14 +3308,22 @@ igb_start(struct ifnet *ifp)
 		if (m_head == NULL)
 			break;
 
-		if (igb_encap(txr, &m_head)) {
+		if (igb_encap(txr, &m_head, &nsegs, &idx)) {
 			ifp->if_oerrors++;
 			continue;
+		}
+
+		if (nsegs >= txr->wreg_nsegs) {
+			E1000_WRITE_REG(&txr->sc->hw, E1000_TDT(txr->me), idx);
+			idx = -1;
+			nsegs = 0;
 		}
 
 		/* Send a copy of the frame to the BPF listener */
 		ETHER_BPF_MTAP(ifp, m_head);
 	}
+	if (idx >= 0)
+		E1000_WRITE_REG(&txr->sc->hw, E1000_TDT(txr->me), idx);
 }
 
 static void
@@ -3457,6 +3477,23 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 	}
 
 	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+static int
+igb_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS)
+{
+	struct igb_softc *sc = (void *)arg1;
+	struct igb_tx_ring *txr = &sc->tx_rings[0];
+	int error, nsegs;
+
+	nsegs = txr->wreg_nsegs;
+	error = sysctl_handle_int(oidp, &nsegs, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	txr->wreg_nsegs = nsegs;
 
 	return error;
 }
