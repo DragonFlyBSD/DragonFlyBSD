@@ -274,7 +274,7 @@ hpfs_bmap(struct vop_bmap_args *ap)
 	if (ap->a_doffsetp == NULL)
 		return (0);
 
-	dprintf(("hpfs_bmap(0x%x, 0x%x): ",hp->h_no, ap->a_bn));
+	dprintf(("hpfs_bmap(0x%x): ", hp->h_no));
 
 	lbn = ap->a_loffset >> DEV_BSHIFT;
 	KKASSERT(((int)ap->a_loffset & DEV_BMASK) == 0);
@@ -308,15 +308,15 @@ hpfs_read(struct vop_read_args *ap)
 
 	resid = (int)szmin(uio->uio_resid, hp->h_fn.fn_size - uio->uio_offset);
 
-	dprintf(("hpfs_read(0x%x, off: %d resid: %d, segflg: %d): "
-		 "[resid: 0x%lx]\n",
+	dprintf(("hpfs_read(0x%x, off: %d resid: %zx, segflg: %d): "
+		 "[resid: 0x%x]\n",
 		 hp->h_no, (u_int32_t)uio->uio_offset,
 		 uio->uio_resid, uio->uio_segflg, resid));
 
 	while (resid) {
 		lbn = uio->uio_offset >> DEV_BSHIFT;
 		off = uio->uio_offset & (DEV_BSIZE - 1);
-		dprintf(("hpfs_read: resid: 0x%lx lbn: 0x%x off: 0x%x\n",
+		dprintf(("hpfs_read: resid: 0x%zx lbn: 0x%x off: 0x%x\n",
 			uio->uio_resid, lbn, off));
 		error = hpfs_hpbmap(hp, lbn, &bn, &runl);
 		if (error)
@@ -365,7 +365,7 @@ hpfs_write(struct vop_write_args *ap)
 	int runl;
 	int error = 0;
 
-	dprintf(("hpfs_write(0x%x, off: %d resid: %ld, segflg: %d):\n",
+	dprintf(("hpfs_write(0x%x, off: %d resid: %zd, segflg: %d):\n",
 		hp->h_no, (u_int32_t)uio->uio_offset,
 		uio->uio_resid, uio->uio_segflg));
 
@@ -384,7 +384,7 @@ hpfs_write(struct vop_write_args *ap)
 	while (uio->uio_resid) {
 		lbn = uio->uio_offset >> DEV_BSHIFT;
 		off = uio->uio_offset & (DEV_BSIZE - 1);
-		dprintf(("hpfs_write: resid: 0x%lx lbn: 0x%x off: 0x%x\n",
+		dprintf(("hpfs_write: resid: 0x%zx lbn: 0x%x off: 0x%x\n",
 			uio->uio_resid, lbn, off));
 		error = hpfs_hpbmap(hp, lbn, &bn, &runl);
 		if (error)
@@ -750,7 +750,7 @@ hpfs_de_uiomove(int *error, struct hpfsmount *hpmp, struct hpfsdirent *dep,
 			(dep->de_flag & DE_DIR) ? DT_DIR : DT_REG,
 			dep->de_namelen, convname);
 
-	dprintf(("[0x%lx] ", uio->uio_resid));
+	dprintf(("[0x%zx] ", uio->uio_resid));
 	return (success);
 }
 
@@ -775,7 +775,7 @@ hpfs_readdir(struct vop_readdir_args *ap)
 	lsn_t lsn;
 	int level;
 
-	dprintf(("hpfs_readdir(0x%x, 0x%x, 0x%lx): ",
+	dprintf(("hpfs_readdir(0x%x, 0x%x, 0x%zx): ",
 		hp->h_no, (u_int32_t)uio->uio_offset, uio->uio_resid));
 
 	/*
@@ -965,6 +965,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 	struct hpfsmount *hpmp = dhp->h_hpmp;
 	struct componentname *cnp = ap->a_cnp;
 	struct ucred *cred = cnp->cn_cred;
+	struct vnode **vpp = ap->a_vpp;
 	int error;
 	int nameiop = cnp->cn_nameiop;
 	int flags = cnp->cn_flags;
@@ -972,6 +973,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 #if HPFS_DEBUG
 	int wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 #endif
+	*vpp = NULL;
 	dprintf(("hpfs_lookup(0x%x, %s, %ld, %d, %d): \n",
 		dhp->h_no, cnp->cn_nameptr, cnp->cn_namelen,
 		lockparent, wantparent));
@@ -990,7 +992,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 		dprintf(("hpfs_lookup(0x%x,...): . faked\n",dhp->h_no));
 
 		vref(dvp);
-		*ap->a_vpp = dvp;
+		*vpp = dvp;
 
 		return (0);
 	} else if( (cnp->cn_namelen == 2) &&
@@ -1001,14 +1003,14 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 		VOP__UNLOCK(dvp, 0);
 
 		error = VFS_VGET(hpmp->hpm_mp, NULL,
-				 dhp->h_fn.fn_parent, ap->a_vpp); 
+				 dhp->h_fn.fn_parent, vpp);
 		if (error) {
 			VOP__LOCK(dvp, 0);
 			return(error);
 		}
 
 		if (lockparent && (error = VOP__LOCK(dvp, 0))) {
-			vput( *(ap->a_vpp) );
+			vput(*vpp);
 			return (error);
 		}
 		return (error);
@@ -1022,8 +1024,10 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 		if (error) {
 			if (error == ENOENT && 
 			    (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)) {
-				if(!lockparent)
+				if(!lockparent) {
+					cnp->cn_flags |= CNP_PDIRUNLOCK;
 					VOP__UNLOCK(dvp, 0);
+				}
 				return (EJUSTRETURN);
 			}
 
@@ -1044,18 +1048,18 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 		if (dhp->h_no == dep->de_fnode) {
 			brelse(bp);
 			vref(dvp);
-			*ap->a_vpp = dvp;
+			*vpp = dvp;
 			return (0);
 		}
 
-		error = VFS_VGET(hpmp->hpm_mp, NULL, dep->de_fnode, ap->a_vpp);
+		error = VFS_VGET(hpmp->hpm_mp, NULL, dep->de_fnode, vpp);
 		if (error) {
 			kprintf("hpfs_lookup: VFS_VGET FAILED %d\n", error);
 			brelse(bp);
 			return(error);
 		}
 
-		hp = VTOHP(*ap->a_vpp);
+		hp = VTOHP(*vpp);
 
 		hp->h_mtime = dep->de_mtime;
 		hp->h_ctime = dep->de_ctime;
@@ -1067,8 +1071,10 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 
 		brelse(bp);
 
-		if(!lockparent)
+		if(!lockparent) {
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 			VOP__UNLOCK(dvp, 0);
+		}
 	}
 	return (error);
 }

@@ -65,18 +65,14 @@ main(int argc, char **argv)
 	struct hpfs_args args;
 	struct stat sb;
 	int c, mntflags, set_gid, set_uid, set_mask,error;
-	int forcerw = 0;
 	char *dev, *dir, ndir[MAXPATHLEN+1];
 	struct vfsconf vfc;
 
 	mntflags = set_gid = set_uid = set_mask = 0;
 	memset(&args, '\0', sizeof(args));
 
-	while ((c = getopt(argc, argv, "u:g:m:o:c:W:F")) !=  -1) {
+	while ((c = getopt(argc, argv, "u:g:m:o:c:W:")) !=  -1) {
 		switch (c) {
-		case 'F':
-			forcerw=1;
-			break;
 		case 'u':
 			args.uid = a_uid(optarg);
 			set_uid = 1;
@@ -108,10 +104,7 @@ main(int argc, char **argv)
 	if (optind + 2 != argc)
 		usage();
 
-	if (!(mntflags & MNT_RDONLY) && !forcerw) {
-		warnx("Write support is BETA, you need -F flag to enable RW mount!");
-		exit (111);
-	}
+	mntflags |= MNT_RDONLY;
 
 	dev = argv[optind];
 	dir = argv[optind + 1];
