@@ -2253,9 +2253,6 @@ usb_alloc_symlink(const char *target)
 	struct usb_symlink *ps;
 
 	ps = kmalloc(sizeof(*ps), M_USBDEV, M_WAITOK);
-	if (ps == NULL) {
-		return (ps);
-	}
 	/* XXX no longer needed */
 	strlcpy(ps->src_path, target, sizeof(ps->src_path));
 	ps->src_len = strlen(ps->src_path);

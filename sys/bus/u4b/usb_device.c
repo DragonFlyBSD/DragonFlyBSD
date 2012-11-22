@@ -1535,9 +1535,6 @@ usb_alloc_device(device_t parent_dev, struct usb_bus *bus,
 		return (NULL);
 	}
 	udev = kmalloc(sizeof(*udev), M_USB, M_WAITOK | M_ZERO);
-	if (udev == NULL) {
-		return (NULL);
-	}
 #if 0
 	/* initialise our SX-lock */
 	sx_init_flags(&udev->ctrl_sx, "USB device SX lock", SX_DUPOK);

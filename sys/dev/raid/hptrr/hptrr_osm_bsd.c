@@ -107,10 +107,6 @@ static int hpt_attach(device_t dev)
 	if (!ldm_register_adapter(&hba->ldm_adapter)) {
 		size = ldm_get_vbus_size();
 		vbus_ext = kmalloc(sizeof(VBUS_EXT) + size, M_DEVBUF, M_WAITOK);
-		if (!vbus_ext) {
-			kfree(hba->ldm_adapter.him_handle, M_DEVBUF);
-			return -1;
-		}
 		memset(vbus_ext, 0, sizeof(VBUS_EXT));
 		vbus_ext->ext_type = EXT_TYPE_VBUS;
 		ldm_create_vbus((PVBUS)vbus_ext->vbus, vbus_ext);

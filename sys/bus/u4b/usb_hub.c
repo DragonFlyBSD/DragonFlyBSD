@@ -1050,9 +1050,6 @@ uhub_attach(device_t dev)
 	hub = kmalloc(sizeof(hub[0]) + (sizeof(hub->ports[0]) * nports),
 	    M_USBDEV, M_WAITOK | M_ZERO);
 
-	if (hub == NULL) {
-		goto error;
-	}
 	udev->hub = hub;
 
 #if USB_HAVE_TT_SUPPORT

@@ -1115,13 +1115,6 @@ usbd_transfer_setup(struct usb_device *udev,
 		/* allocate zeroed memory */
 		buf = kmalloc(parm.size[0], M_USB, M_WAITOK | M_ZERO);
 
-		if (buf == NULL) {
-			parm.err = USB_ERR_NOMEM;
-			DPRINTFN(0, "cannot allocate memory block for "
-			    "configuration (%d bytes)\n",
-			    parm.size[0]);
-			goto done;
-		}
 		parm.dma_tag_p = USB_ADD_BYTES(buf, parm.size[1]);
 		parm.dma_page_ptr = USB_ADD_BYTES(buf, parm.size[3]);
 		parm.dma_page_cache_ptr = USB_ADD_BYTES(buf, parm.size[4]);

@@ -1358,9 +1358,6 @@ usbd_req_get_config_desc_full(struct usb_device *udev, struct lock *lock,
 		return (USB_ERR_INVAL);
 	}
 	cdesc = kmalloc(len, mtype, M_WAITOK);
-	if (cdesc == NULL) {
-		return (USB_ERR_NOMEM);
-	}
 	err = usbd_req_get_desc(udev, lock, NULL, cdesc, len, len, 0,
 	    UDESC_CONFIG, index, 3);
 	if (err) {
