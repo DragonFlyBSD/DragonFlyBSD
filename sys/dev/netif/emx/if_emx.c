@@ -215,7 +215,7 @@ static int	emx_create_rx_ring(struct emx_rxdata *);
 static void	emx_destroy_tx_ring(struct emx_txdata *, int);
 static void	emx_destroy_rx_ring(struct emx_rxdata *, int);
 static int	emx_newbuf(struct emx_rxdata *, int, int);
-static int	emx_encap(struct emx_txdata *, struct mbuf **);
+static int	emx_encap(struct emx_txdata *, struct mbuf **, int *, int *);
 static int	emx_txcsum(struct emx_txdata *, struct mbuf *,
 		    uint32_t *, uint32_t *);
 static int	emx_tso_pullup(struct emx_txdata *, struct mbuf **);
@@ -244,6 +244,7 @@ static int	emx_sysctl_stats(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS);
+static int	emx_sysctl_wreg_tx_nsegs(SYSCTL_HANDLER_ARGS);
 #ifdef IFPOLL_ENABLE
 static int	emx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
@@ -773,6 +774,7 @@ emx_attach(device_t dev)
 	emx_update_link_status(sc);
 
 	sc->tx_data.spare_tx_desc = EMX_TX_SPARE;
+	sc->tx_data.tx_wreg_nsegs = 8;
 
 	/*
 	 * Keep following relationship between spare_tx_desc, oact_tx_desc
@@ -940,6 +942,7 @@ emx_start(struct ifnet *ifp)
 	struct emx_softc *sc = ifp->if_softc;
 	struct emx_txdata *tdata = &sc->tx_data;
 	struct mbuf *m_head;
+	int idx = -1, nsegs = 0;
 
 	ASSERT_SERIALIZED(&sc->tx_data.tx_serialize);
 
@@ -966,10 +969,16 @@ emx_start(struct ifnet *ifp)
 		if (m_head == NULL)
 			break;
 
-		if (emx_encap(tdata, &m_head)) {
+		if (emx_encap(tdata, &m_head, &nsegs, &idx)) {
 			ifp->if_oerrors++;
 			emx_tx_collect(tdata);
 			continue;
+		}
+
+		if (nsegs >= tdata->tx_wreg_nsegs) {
+			E1000_WRITE_REG(&sc->hw, E1000_TDT(0), idx);
+			nsegs = 0;
+			idx = -1;
 		}
 
 		/* Send a copy of the frame to the BPF listener */
@@ -978,6 +987,8 @@ emx_start(struct ifnet *ifp)
 		/* Set timeout in case hardware has problems transmitting. */
 		ifp->if_timer = EMX_TX_TIMEOUT;
 	}
+	if (idx >= 0)
+		E1000_WRITE_REG(&sc->hw, E1000_TDT(0), idx);
 }
 
 static int
@@ -1499,7 +1510,8 @@ emx_media_change(struct ifnet *ifp)
 }
 
 static int
-emx_encap(struct emx_txdata *tdata, struct mbuf **m_headp)
+emx_encap(struct emx_txdata *tdata, struct mbuf **m_headp,
+    int *segs_used, int *idx)
 {
 	bus_dma_segment_t segs[EMX_MAX_SCATTER];
 	bus_dmamap_t map;
@@ -1544,15 +1556,18 @@ emx_encap(struct emx_txdata *tdata, struct mbuf **m_headp)
 
 	m_head = *m_headp;
 	tdata->tx_nsegs += nsegs;
+	*segs_used += nsegs;
 
 	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
 		/* TSO will consume one TX desc */
-		tdata->tx_nsegs += emx_tso_setup(tdata, m_head,
-		    &txd_upper, &txd_lower);
+		i = emx_tso_setup(tdata, m_head, &txd_upper, &txd_lower);
+		tdata->tx_nsegs += i;
+		*segs_used += i;
 	} else if (m_head->m_pkthdr.csum_flags & EMX_CSUM_FEATURES) {
 		/* TX csum offloading will consume one TX desc */
-		tdata->tx_nsegs += emx_txcsum(tdata, m_head,
-		    &txd_upper, &txd_lower);
+		i = emx_txcsum(tdata, m_head, &txd_upper, &txd_lower);
+		tdata->tx_nsegs += i;
+		*segs_used += i;
 	}
 	i = tdata->next_avail_tx_desc;
 
@@ -1617,7 +1632,7 @@ emx_encap(struct emx_txdata *tdata, struct mbuf **m_headp)
 	 * Advance the Transmit Descriptor Tail (TDT), this tells
 	 * the E1000 that this frame is available to transmit.
 	 */
-	E1000_WRITE_REG(&tdata->sc->hw, E1000_TDT(0), i);
+	*idx = i;
 
 	return (0);
 }
@@ -3449,6 +3464,10 @@ emx_add_sysctl(struct emx_softc *sc)
 			OID_AUTO, "int_tx_nsegs", CTLTYPE_INT|CTLFLAG_RW,
 			sc, 0, emx_sysctl_int_tx_nsegs, "I",
 			"# segments per TX interrupt");
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+			OID_AUTO, "wreg_tx_nsegs", CTLTYPE_INT|CTLFLAG_RW,
+			sc, 0, emx_sysctl_wreg_tx_nsegs, "I",
+			"# segments before write to hardware register");
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 		       OID_AUTO, "rx_ring_cnt", CTLFLAG_RD,
@@ -3557,6 +3576,22 @@ emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
 	}
 
 	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+static int
+emx_sysctl_wreg_tx_nsegs(SYSCTL_HANDLER_ARGS)
+{
+	struct emx_softc *sc = (void *)arg1;
+	int error, segs;
+
+	segs = sc->tx_data.tx_wreg_nsegs;
+	error = sysctl_handle_int(oidp, &segs, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	sc->tx_data.tx_wreg_nsegs = segs;
 
 	return error;
 }

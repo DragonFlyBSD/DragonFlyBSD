@@ -268,6 +268,8 @@ struct emx_txdata {
 	uint32_t		csum_txd_upper;
 	uint32_t		csum_txd_lower;
 
+	int			tx_wreg_nsegs;
+
 	/*
 	 * Variables used to reduce TX interrupt rate and
 	 * number of device's TX ring write requests.
