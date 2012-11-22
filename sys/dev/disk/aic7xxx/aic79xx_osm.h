@@ -33,7 +33,6 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.h#23 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.h,v 1.18 2005/12/06 11:19:36 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.14 2008/04/06 19:03:18 pavalos Exp $
  */
 
 #ifndef _AIC79XX_FREEBSD_H_
@@ -44,9 +43,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>		/* For device_t */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/endian.h>
-#endif
 #include <sys/eventhandler.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>

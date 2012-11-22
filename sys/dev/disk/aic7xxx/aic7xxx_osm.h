@@ -32,20 +32,18 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.h#18 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.30 2005/12/05 11:58:32 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.15 2008/04/06 19:03:18 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_FREEBSD_H_
 #define _AIC7XXX_FREEBSD_H_
 
 #include <opt_aic7xxx.h>	/* for config options */
+#include <use_pci.h>
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>		/* For device_t */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/endian.h>
-#endif
 #include <sys/eventhandler.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
@@ -54,12 +52,6 @@
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
-
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-#include <use_pci.h>
-#else
-#define NPCI 1
-#endif
 
 #if NPCI > 0
 #define AIC_PCI_CONFIG 1
