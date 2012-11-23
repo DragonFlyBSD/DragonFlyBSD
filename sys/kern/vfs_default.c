@@ -1454,10 +1454,10 @@ vfs_stdextattrctl(struct mount *mp, int cmd, struct vnode *vp,
 	return(EOPNOTSUPP);
 }
 
-#define ACCOUNTING_NB_FSTYPES 8
+#define ACCOUNTING_NB_FSTYPES 7
 
 static const char *accounting_fstypes[ACCOUNTING_NB_FSTYPES] = {
-	"ext2fs", "hammer", "hpfs", "mfs", "ntfs", "null", "tmpfs", "ufs" };
+	"ext2fs", "hammer", "mfs", "ntfs", "null", "tmpfs", "ufs" };
 
 int
 vfs_stdac_init(struct mount *mp)
