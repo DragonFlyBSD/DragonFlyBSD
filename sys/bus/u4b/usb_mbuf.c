@@ -88,6 +88,5 @@ usb_alloc_mbufs(struct malloc_type *type, struct usb_ifqueue *ifq,
 			data_ptr += block_size;
 		}
 	}
-done:
 	return (free_ptr);
 }
