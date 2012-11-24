@@ -1961,7 +1961,7 @@ fw_rcv(struct fw_rcv_buf *rb)
 	}
 #endif
 	default:
-		kprintf("fw_rcv: unknow tcode %d\n", tcode);
+		kprintf("fw_rcv: unknown tcode %d\n", tcode);
 		break;
 	}
 err:

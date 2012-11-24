@@ -312,7 +312,7 @@ unlock(nlm4_lock *lck, int flags)
 			/* nothing to do */
 			break;
 		default:
-			syslog(LOG_NOTICE, "unknow status %d for %s",
+			syslog(LOG_NOTICE, "unknown status %d for %s",
 			    fl->status, fl->client_name);
 		}
 		sigunlock();
@@ -365,7 +365,7 @@ sigchild_handler(int sig)
 				break;
 		}
 		if (pid != fl->locker) {
-			syslog(LOG_NOTICE, "unknow child %d", pid);
+			syslog(LOG_NOTICE, "unknown child %d", pid);
 		} else {
 			if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 				syslog(LOG_NOTICE, "child %d failed", pid);
