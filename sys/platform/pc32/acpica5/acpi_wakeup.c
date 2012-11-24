@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.33 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_wakeup.c,v 1.15 2007/05/28 18:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,11 +49,6 @@
 #include <dev/acpica5/acpivar.h>
 
 #include "acpi_wakecode.h"
-
-#if __FreeBSD_version < 500000
-#define	vm_page_lock_queues()
-#define	vm_page_unlock_queues()
-#endif
 
 extern uint32_t	acpi_reset_video;
 extern void	initializecpu(void);
@@ -290,9 +284,7 @@ acpi_sleep_machdep(struct acpi_softc *sc, int state)
 	}
 
 out:
-	vm_page_lock_queues();
 	pmap_remove(pm, sc->acpi_wakephys, sc->acpi_wakephys + PAGE_SIZE);
-	vm_page_unlock_queues();
 	if (opage) {
 		pmap_enter(pm, sc->acpi_wakephys, page,
 			   VM_PROT_READ | VM_PROT_WRITE,
