@@ -1,6 +1,3 @@
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*	$NetBSD: ulpt.c,v 1.60 2003/10/04 21:19:50 augustss Exp $	*/
 
 /*-
@@ -39,7 +36,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -48,28 +44,25 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 #include <sys/syslog.h>
-#include <sys/selinfo.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbhid.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbhid.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR ulpt_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
 #ifdef USB_DEBUG
 static int ulpt_debug = 0;
@@ -102,7 +95,7 @@ enum {
 struct ulpt_softc {
 	struct usb_fifo_sc sc_fifo;
 	struct usb_fifo_sc sc_fifo_noreset;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 	struct usb_callout sc_watchdog;
 
 	device_t sc_dev;
@@ -181,17 +174,17 @@ ulpt_reset(struct ulpt_softc *sc)
 	 * so we try both.
 	 */
 
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	req.bmRequestType = UT_WRITE_CLASS_OTHER;
-	if (usbd_do_request_flags(sc->sc_udev, &sc->sc_mtx,
+	if (usbd_do_request_flags(sc->sc_udev, &sc->sc_lock,
 	    &req, NULL, 0, NULL, 2 * USB_MS_HZ)) {	/* 1.0 */
 		req.bmRequestType = UT_WRITE_CLASS_INTERFACE;
-		if (usbd_do_request_flags(sc->sc_udev, &sc->sc_mtx,
+		if (usbd_do_request_flags(sc->sc_udev, &sc->sc_lock,
 		    &req, NULL, 0, NULL, 2 * USB_MS_HZ)) {	/* 1.1 */
 			/* ignore error */
 		}
 	}
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 }
 
 static void
@@ -436,9 +429,9 @@ unlpt_open(struct usb_fifo *fifo, int fflags)
 	}
 	if (fflags & FREAD) {
 		/* clear stall first */
-		mtx_lock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 		usbd_xfer_set_stall(sc->sc_xfer[ULPT_BULK_DT_RD]);
-		mtx_unlock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_RELEASE);
 		if (usb_fifo_alloc_buffer(fifo,
 		    usbd_xfer_max_len(sc->sc_xfer[ULPT_BULK_DT_RD]),
 		    ULPT_IFQ_MAXLEN)) {
@@ -449,9 +442,9 @@ unlpt_open(struct usb_fifo *fifo, int fflags)
 	}
 	if (fflags & FWRITE) {
 		/* clear stall first */
-		mtx_lock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 		usbd_xfer_set_stall(sc->sc_xfer[ULPT_BULK_DT_WR]);
-		mtx_unlock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_RELEASE);
 		if (usb_fifo_alloc_buffer(fifo,
 		    usbd_xfer_max_len(sc->sc_xfer[ULPT_BULK_DT_WR]),
 		    ULPT_IFQ_MAXLEN)) {
@@ -536,9 +529,9 @@ ulpt_attach(device_t dev)
 
 	device_set_usb_desc(dev);
 
-	mtx_init(&sc->sc_mtx, "ulpt lock", NULL, MTX_DEF | MTX_RECURSE);
+	lockinit(&sc->sc_lock, "ulpt lock", 0, LK_CANRECURSE);
 
-	usb_callout_init_mtx(&sc->sc_watchdog, &sc->sc_mtx, 0);
+	usb_callout_init_mtx(&sc->sc_watchdog, &sc->sc_lock, 0);
 
 	/* search through all the descriptors looking for bidir mode */
 
@@ -586,7 +579,7 @@ found:
 
 	error = usbd_transfer_setup(uaa->device, &iface_index,
 	    sc->sc_xfer, ulpt_config, ULPT_N_TRANSFER,
-	    sc, &sc->sc_mtx);
+	    sc, &sc->sc_lock);
 	if (error) {
 		DPRINTF("error=%s\n", usbd_errstr(error));
 		goto detach;
@@ -629,14 +622,14 @@ found:
 	}
 #endif
 
-	error = usb_fifo_attach(uaa->device, sc, &sc->sc_mtx,
+	error = usb_fifo_attach(uaa->device, sc, &sc->sc_lock,
 	    &ulpt_fifo_methods, &sc->sc_fifo,
 	    unit, 0 - 1, uaa->info.bIfaceIndex,
 	    UID_ROOT, GID_OPERATOR, 0644);
 	if (error) {
 		goto detach;
 	}
-	error = usb_fifo_attach(uaa->device, sc, &sc->sc_mtx,
+	error = usb_fifo_attach(uaa->device, sc, &sc->sc_lock,
 	    &unlpt_fifo_methods, &sc->sc_fifo_noreset,
 	    unit, 0 - 1, uaa->info.bIfaceIndex,
 	    UID_ROOT, GID_OPERATOR, 0644);
@@ -645,9 +638,9 @@ found:
 	}
 	/* start reading of status */
 
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	ulpt_watchdog(sc);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 	return (0);
 
 detach:
@@ -665,13 +658,13 @@ ulpt_detach(device_t dev)
 	usb_fifo_detach(&sc->sc_fifo);
 	usb_fifo_detach(&sc->sc_fifo_noreset);
 
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usb_callout_stop(&sc->sc_watchdog);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	usbd_transfer_unsetup(sc->sc_xfer, ULPT_N_TRANSFER);
 	usb_callout_drain(&sc->sc_watchdog);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }
@@ -728,7 +721,7 @@ ulpt_watchdog(void *arg)
 {
 	struct ulpt_softc *sc = arg;
 
-	mtx_assert(&sc->sc_mtx, MA_OWNED);
+	KKASSERT(lockowned(&sc->sc_lock));
 
 	/* 
 	 * Only read status while the device is not opened, due to

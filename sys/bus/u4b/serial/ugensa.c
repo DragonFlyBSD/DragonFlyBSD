@@ -36,7 +36,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -45,24 +44,22 @@
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR usb_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #define	UGENSA_BUF_SIZE		2048	/* bytes */
 #define	UGENSA_CONFIG_INDEX	0
@@ -85,7 +82,7 @@ struct ugensa_softc {
 	struct ucom_softc sc_ucom[UGENSA_IFACE_MAX];
 	struct ugensa_sub_softc sc_sub[UGENSA_IFACE_MAX];
 
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 	uint8_t	sc_niface;
 };
 
@@ -191,7 +188,7 @@ ugensa_attach(device_t dev)
 	int x, cnt;
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "ugensa", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "ugensa", 0, LK_CANRECURSE);
 
 	/* Figure out how many interfaces this device has got */
 	for (cnt = 0; cnt < UGENSA_IFACE_MAX; cnt++) {
@@ -218,7 +215,7 @@ ugensa_attach(device_t dev)
 		iface_index = (UGENSA_IFACE_INDEX + x);
 		error = usbd_transfer_setup(uaa->device,
 		    &iface_index, ssc->sc_xfer, ugensa_xfer_config,
-		    UGENSA_N_TRANSFER, ssc, &sc->sc_mtx);
+		    UGENSA_N_TRANSFER, ssc, &sc->sc_lock);
 
 		if (error) {
 			device_printf(dev, "allocating USB "
@@ -226,10 +223,10 @@ ugensa_attach(device_t dev)
 			goto detach;
 		}
 		/* clear stall at first run */
-		mtx_lock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 		usbd_xfer_set_stall(ssc->sc_xfer[UGENSA_BULK_DT_WR]);
 		usbd_xfer_set_stall(ssc->sc_xfer[UGENSA_BULK_DT_RD]);
-		mtx_unlock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_RELEASE);
 
 		/* initialize port number */
 		ssc->sc_ucom_ptr->sc_portno = sc->sc_niface;
@@ -241,7 +238,7 @@ ugensa_attach(device_t dev)
 	device_printf(dev, "Found %d interfaces.\n", sc->sc_niface);
 
 	error = ucom_attach(&sc->sc_super_ucom, sc->sc_ucom, sc->sc_niface, sc,
-	    &ugensa_callback, &sc->sc_mtx);
+	    &ugensa_callback, &sc->sc_lock);
 	if (error) {
 		DPRINTF("attach failed\n");
 		goto detach;
@@ -266,7 +263,7 @@ ugensa_detach(device_t dev)
 	for (x = 0; x < sc->sc_niface; x++) {
 		usbd_transfer_unsetup(sc->sc_sub[x].sc_xfer, UGENSA_N_TRANSFER);
 	}
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

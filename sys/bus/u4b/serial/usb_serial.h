@@ -164,7 +164,7 @@ struct ucom_softc {
 	const struct ucom_callback *sc_callback;
 	struct ucom_super_softc *sc_super;
 	struct tty *sc_tty;
-	struct mtx *sc_mtx;
+	struct lock *sc_lock;
 	void   *sc_parent;
 	uint32_t sc_subunit;
 	uint16_t sc_portno;
@@ -195,7 +195,7 @@ struct ucom_softc {
 
 int	ucom_attach(struct ucom_super_softc *,
 	    struct ucom_softc *, uint32_t, void *,
-	    const struct ucom_callback *callback, struct mtx *);
+	    const struct ucom_callback *callback, struct lock *);
 void	ucom_detach(struct ucom_super_softc *, struct ucom_softc *);
 void	ucom_set_pnpinfo_usb(struct ucom_super_softc *, device_t);
 void	ucom_status_change(struct ucom_softc *);

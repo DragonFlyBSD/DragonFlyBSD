@@ -18,7 +18,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -27,25 +26,23 @@
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR umoscom_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #ifdef USB_DEBUG
 static int umoscom_debug = 0;
@@ -178,7 +175,7 @@ struct umoscom_softc {
 
 	struct usb_xfer *sc_xfer[UMOSCOM_N_TRANSFER];
 	struct usb_device *sc_udev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint8_t	sc_mcr;
 	uint8_t	sc_lcr;
@@ -316,24 +313,24 @@ umoscom_attach(device_t dev)
 	device_set_desc(dev, "MOSCHIP USB Serial Port Adapter");
 	device_printf(dev, "<MOSCHIP USB Serial Port Adapter>\n");
 
-	mtx_init(&sc->sc_mtx, "umoscom", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "umoscom", 0, LK_CANRECURSE);
 
 	iface_index = UMOSCOM_IFACE_INDEX;
 	error = usbd_transfer_setup(uaa->device, &iface_index,
 	    sc->sc_xfer, umoscom_config_data,
-	    UMOSCOM_N_TRANSFER, sc, &sc->sc_mtx);
+	    UMOSCOM_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (error) {
 		goto detach;
 	}
 	/* clear stall at first run */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_xfer_set_stall(sc->sc_xfer[UMOSCOM_BULK_DT_WR]);
 	usbd_xfer_set_stall(sc->sc_xfer[UMOSCOM_BULK_DT_RD]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &umoscom_callback, &sc->sc_mtx);
+	    &umoscom_callback, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
@@ -354,7 +351,7 @@ umoscom_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UMOSCOM_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

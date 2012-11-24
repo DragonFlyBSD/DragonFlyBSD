@@ -32,7 +32,6 @@
 
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -41,27 +40,25 @@
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR u3g_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_msctest.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_msctest.h>
 
-#include <dev/usb/serial/usb_serial.h>
-#include <dev/usb/quirk/usb_quirk.h>
+#include <bus/u4b/serial/usb_serial.h>
+#include <bus/u4b/quirk/usb_quirk.h>
 
 #ifdef USB_DEBUG
 static int u3g_debug = 0;
@@ -108,7 +105,7 @@ struct u3g_softc {
 
 	struct usb_xfer *sc_xfer[U3G_MAXPORTS][U3G_N_TRANSFER];
 	struct usb_device *sc_udev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint8_t	sc_lsr;			/* local status register */
 	uint8_t	sc_msr;			/* U3G status register */
@@ -689,7 +686,7 @@ u3g_test_autoinst(void *arg, struct usb_device *udev,
 		return;		/* no device match */
 
 	if (bootverbose) {
-		printf("Ejecting %s %s using method %ld\n",
+		kprintf("Ejecting %s %s using method %ld\n",
 		       usb_get_manufacturer(udev),
 		       usb_get_product(udev), method);
 	}
@@ -796,7 +793,7 @@ u3g_attach(device_t dev)
 		u3g_config_tmp[n] = u3g_config[n];
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "u3g", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "u3g", 0, LK_CANRECURSE);
 
 	sc->sc_udev = uaa->device;
 
@@ -829,7 +826,7 @@ u3g_attach(device_t dev)
 		/* try to allocate a set of BULK endpoints */
 		error = usbd_transfer_setup(uaa->device, &i,
 		    sc->sc_xfer[nports], u3g_config_tmp, U3G_N_TRANSFER,
-		    &sc->sc_ucom[nports], &sc->sc_mtx);
+		    &sc->sc_ucom[nports], &sc->sc_lock);
 		if (error) {
 			/* next interface */
 			i++;
@@ -838,10 +835,10 @@ u3g_attach(device_t dev)
 		}
 
 		/* set stall by default */
-		mtx_lock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 		usbd_xfer_set_stall(sc->sc_xfer[nports][U3G_BULK_WR]);
 		usbd_xfer_set_stall(sc->sc_xfer[nports][U3G_BULK_RD]);
-		mtx_unlock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_RELEASE);
 
 		nports++;	/* found one port */
 		ep++;
@@ -855,7 +852,7 @@ u3g_attach(device_t dev)
 	sc->sc_numports = nports;
 
 	error = ucom_attach(&sc->sc_super_ucom, sc->sc_ucom,
-	    sc->sc_numports, sc, &u3g_callback, &sc->sc_mtx);
+	    sc->sc_numports, sc, &u3g_callback, &sc->sc_lock);
 	if (error) {
 		DPRINTF("ucom_attach failed\n");
 		goto detach;
@@ -884,7 +881,7 @@ u3g_detach(device_t dev)
 
 	for (subunit = 0; subunit != U3G_MAXPORTS; subunit++)
 		usbd_transfer_unsetup(sc->sc_xfer[subunit], U3G_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

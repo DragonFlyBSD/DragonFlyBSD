@@ -1,8 +1,5 @@
 /*	$NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $	*/
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*-
  * Copyright (c) 2001-2003, 2005 Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
  * All rights reserved.
@@ -38,7 +35,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -47,25 +43,23 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR uvscom_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #ifdef USB_DEBUG
 static int uvscom_debug = 0;
@@ -147,7 +141,7 @@ struct uvscom_softc {
 
 	struct usb_xfer *sc_xfer[UVSCOM_N_TRANSFER];
 	struct usb_device *sc_udev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint16_t sc_line;		/* line control register */
 
@@ -291,7 +285,7 @@ uvscom_attach(device_t dev)
 	int error;
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "uvscom", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "uvscom", 0, LK_CANRECURSE);
 
 	sc->sc_udev = uaa->device;
 
@@ -301,7 +295,7 @@ uvscom_attach(device_t dev)
 	sc->sc_iface_index = UVSCOM_IFACE_INDEX;
 
 	error = usbd_transfer_setup(uaa->device, &sc->sc_iface_index,
-	    sc->sc_xfer, uvscom_config, UVSCOM_N_TRANSFER, sc, &sc->sc_mtx);
+	    sc->sc_xfer, uvscom_config, UVSCOM_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (error) {
 		DPRINTF("could not allocate all USB transfers!\n");
@@ -310,22 +304,22 @@ uvscom_attach(device_t dev)
 	sc->sc_line = UVSCOM_LINE_INIT;
 
 	/* clear stall at first run */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_xfer_set_stall(sc->sc_xfer[UVSCOM_BULK_DT_WR]);
 	usbd_xfer_set_stall(sc->sc_xfer[UVSCOM_BULK_DT_RD]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &uvscom_callback, &sc->sc_mtx);
+	    &uvscom_callback, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
 	ucom_set_pnpinfo_usb(&sc->sc_super_ucom, dev);
 
 	/* start interrupt pipe */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_transfer_start(sc->sc_xfer[UVSCOM_INTR_DT_RD]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	return (0);
 
@@ -348,7 +342,7 @@ uvscom_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UVSCOM_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

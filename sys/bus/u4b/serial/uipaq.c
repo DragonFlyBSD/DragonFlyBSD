@@ -41,11 +41,7 @@
  * Contact isis@cs.umd.edu if you have any questions/comments about this driver
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -54,26 +50,24 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usb_cdc.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usb_cdc.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR usb_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #define	UIPAQ_CONFIG_INDEX	0	/* config number 1 */
 #define	UIPAQ_IFACE_INDEX	0
@@ -92,7 +86,7 @@ struct uipaq_softc {
 
 	struct usb_xfer *sc_xfer[UIPAQ_N_TRANSFER];
 	struct usb_device *sc_udev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint16_t sc_line;
 
@@ -1120,7 +1114,7 @@ uipaq_attach(device_t dev)
 	sc->sc_udev = uaa->device;
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "uipaq", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "uipaq", 0, LK_CANRECURSE);
 
 	/*
 	 * Send magic bytes, cribbed from Linux ipaq driver that
@@ -1144,19 +1138,19 @@ uipaq_attach(device_t dev)
 	iface_index = UIPAQ_IFACE_INDEX;
 	error = usbd_transfer_setup(uaa->device, &iface_index,
 	    sc->sc_xfer, uipaq_config_data,
-	    UIPAQ_N_TRANSFER, sc, &sc->sc_mtx);
+	    UIPAQ_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (error) {
 		goto detach;
 	}
 	/* clear stall at first run */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_xfer_set_stall(sc->sc_xfer[UIPAQ_BULK_DT_WR]);
 	usbd_xfer_set_stall(sc->sc_xfer[UIPAQ_BULK_DT_RD]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &uipaq_callback, &sc->sc_mtx);
+	    &uipaq_callback, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
@@ -1176,7 +1170,7 @@ uipaq_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UIPAQ_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

@@ -25,7 +25,6 @@
 
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -34,26 +33,24 @@
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbhid.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbhid.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR usb_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #define	UARK_BUF_SIZE		1024	/* bytes */
 
@@ -88,7 +85,7 @@ struct uark_softc {
 
 	struct usb_xfer *sc_xfer[UARK_N_TRANSFER];
 	struct usb_device *sc_udev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint8_t	sc_msr;
 	uint8_t	sc_lsr;
@@ -200,14 +197,14 @@ uark_attach(device_t dev)
 	uint8_t iface_index;
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "uark", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "uark", 0, LK_CANRECURSE);
 
 	sc->sc_udev = uaa->device;
 
 	iface_index = UARK_IFACE_INDEX;
 	error = usbd_transfer_setup
 	    (uaa->device, &iface_index, sc->sc_xfer,
-	    uark_xfer_config, UARK_N_TRANSFER, sc, &sc->sc_mtx);
+	    uark_xfer_config, UARK_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (error) {
 		device_printf(dev, "allocating control USB "
@@ -215,13 +212,13 @@ uark_attach(device_t dev)
 		goto detach;
 	}
 	/* clear stall at first run */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_xfer_set_stall(sc->sc_xfer[UARK_BULK_DT_WR]);
 	usbd_xfer_set_stall(sc->sc_xfer[UARK_BULK_DT_RD]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &uark_callback, &sc->sc_mtx);
+	    &uark_callback, &sc->sc_lock);
 	if (error) {
 		DPRINTF("ucom_attach failed\n");
 		goto detach;
@@ -242,7 +239,7 @@ uark_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UARK_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

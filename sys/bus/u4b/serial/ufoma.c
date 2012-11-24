@@ -1,7 +1,5 @@
 /*	$NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $	*/
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 #define UFOMA_HANDSFREE
 /*-
  * Copyright (c) 2005, Takanori Watanabe
@@ -83,7 +81,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -92,27 +89,25 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 #include <sys/sbuf.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usb_cdc.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usb_cdc.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR usb_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 typedef struct ufoma_mobile_acm_descriptor {
 	uint8_t	bFunctionLength;
@@ -171,7 +166,9 @@ struct ufoma_softc {
 	struct ucom_super_softc sc_super_ucom;
 	struct ucom_softc sc_ucom;
 	struct cv sc_cv;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
+	struct sysctl_ctx_list sc_sysctl_ctx;
+	struct sysctl_oid *sc_sysctl_tree;
 
 	struct usb_xfer *sc_ctrl_xfer[UFOMA_CTRL_ENDPT_MAX];
 	struct usb_xfer *sc_bulk_xfer[UFOMA_BULK_ENDPT_MAX];
@@ -373,8 +370,6 @@ ufoma_attach(device_t dev)
 	struct ufoma_softc *sc = device_get_softc(dev);
 	struct usb_config_descriptor *cd;
 	struct usb_interface_descriptor *id;
-	struct sysctl_ctx_list *sctx;
-	struct sysctl_oid *soid;
 
 	usb_mcpc_acm_descriptor *mad;
 	uint8_t elements;
@@ -384,12 +379,12 @@ ufoma_attach(device_t dev)
 	sc->sc_dev = dev;
 	sc->sc_unit = device_get_unit(dev);
 
-	mtx_init(&sc->sc_mtx, "ufoma", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "ufoma", 0, LK_CANRECURSE);
 	cv_init(&sc->sc_cv, "CWAIT");
 
 	device_set_usb_desc(dev);
 
-	snprintf(sc->sc_name, sizeof(sc->sc_name),
+	ksnprintf(sc->sc_name, sizeof(sc->sc_name),
 	    "%s", device_get_nameunit(dev));
 
 	DPRINTF("\n");
@@ -403,7 +398,7 @@ ufoma_attach(device_t dev)
 
 	error = usbd_transfer_setup(uaa->device,
 	    &sc->sc_ctrl_iface_index, sc->sc_ctrl_xfer,
-	    ufoma_ctrl_config, UFOMA_CTRL_ENDPT_MAX, sc, &sc->sc_mtx);
+	    ufoma_ctrl_config, UFOMA_CTRL_ENDPT_MAX, sc, &sc->sc_lock);
 
 	if (error) {
 		device_printf(dev, "allocating control USB "
@@ -432,7 +427,7 @@ ufoma_attach(device_t dev)
 
 	/* initialize mode variables */
 
-	sc->sc_modetable = malloc(elements + 1, M_USBDEV, M_WAITOK);
+	sc->sc_modetable = kmalloc(elements + 1, M_USBDEV, M_WAITOK);
 
 	if (sc->sc_modetable == NULL) {
 		goto detach;
@@ -444,13 +439,13 @@ ufoma_attach(device_t dev)
 	sc->sc_modetoactivate = mad->bMode[0];
 
 	/* clear stall at first run, if any */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_xfer_set_stall(sc->sc_bulk_xfer[UFOMA_BULK_ENDPT_WRITE]);
 	usbd_xfer_set_stall(sc->sc_bulk_xfer[UFOMA_BULK_ENDPT_READ]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &ufoma_callback, &sc->sc_mtx);
+	    &ufoma_callback, &sc->sc_lock);
 	if (error) {
 		DPRINTF("ucom_attach failed\n");
 		goto detach;
@@ -458,21 +453,35 @@ ufoma_attach(device_t dev)
 	ucom_set_pnpinfo_usb(&sc->sc_super_ucom, dev);
 
 	/*Sysctls*/
-	sctx = device_get_sysctl_ctx(dev);
-	soid = device_get_sysctl_tree(dev);
+	sysctl_ctx_init(&sc->sc_sysctl_ctx);
+	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
+	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
+	    device_get_nameunit(sc->sc_dev), CTLFLAG_RD, 0, "");
+	if (sc->sc_sysctl_tree == NULL) {
+		DPRINTF("can't add sysctl node\n");
+		goto detach;
+	}
 
-	SYSCTL_ADD_PROC(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "supportmode",
+	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
+			OID_AUTO, "supportmode",
 			CTLFLAG_RD|CTLTYPE_STRING, sc, 0, ufoma_sysctl_support,
 			"A", "Supporting port role");
 
-	SYSCTL_ADD_PROC(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "currentmode",
+	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
+			OID_AUTO, "currentmode",
 			CTLFLAG_RD|CTLTYPE_STRING, sc, 0, ufoma_sysctl_current,
 			"A", "Current port role");
 
-	SYSCTL_ADD_PROC(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "openmode",
+	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
+			OID_AUTO, "openmode",
 			CTLFLAG_RW|CTLTYPE_STRING, sc, 0, ufoma_sysctl_open,
 			"A", "Mode to transit when port is opened");
-	SYSCTL_ADD_UINT(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "comunit",
+	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
+			OID_AUTO, "comunit",
 			CTLFLAG_RD, &(sc->sc_super_ucom.sc_unit), 0, 
 			"Unit number as USB serial");
 
@@ -493,10 +502,11 @@ ufoma_detach(device_t dev)
 	usbd_transfer_unsetup(sc->sc_bulk_xfer, UFOMA_BULK_ENDPT_MAX);
 
 	if (sc->sc_modetable) {
-		free(sc->sc_modetable, M_USBDEV);
+		kfree(sc->sc_modetable, M_USBDEV);
 	}
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 	cv_destroy(&sc->sc_cv);
+	sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
 	return (0);
 }
@@ -535,7 +545,7 @@ ufoma_cfg_link_state(struct ufoma_softc *sc)
 	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
 	    &req, sc->sc_modetable, 0, 1000);
 
-	error = cv_timedwait(&sc->sc_cv, &sc->sc_mtx, hz);
+	error = cv_timedwait(&sc->sc_cv, &sc->sc_lock, hz);
 
 	if (error) {
 		DPRINTF("NO response\n");
@@ -557,7 +567,7 @@ ufoma_cfg_activate_state(struct ufoma_softc *sc, uint16_t state)
 	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
 	    &req, NULL, 0, 1000);
 
-	error = cv_timedwait(&sc->sc_cv, &sc->sc_mtx,
+	error = cv_timedwait(&sc->sc_cv, &sc->sc_lock,
 	    (UFOMA_MAX_TIMEOUT * hz));
 	if (error) {
 		DPRINTF("No response\n");
@@ -1075,7 +1085,7 @@ ufoma_modem_setup(device_t dev, struct ufoma_softc *sc,
 
 	error = usbd_transfer_setup(uaa->device,
 	    &sc->sc_data_iface_index, sc->sc_bulk_xfer,
-	    ufoma_bulk_config, UFOMA_BULK_ENDPT_MAX, sc, &sc->sc_mtx);
+	    ufoma_bulk_config, UFOMA_BULK_ENDPT_MAX, sc, &sc->sc_lock);
 
 	if (error) {
 		device_printf(dev, "allocating BULK USB "
@@ -1210,7 +1220,7 @@ static int ufoma_sysctl_current(SYSCTL_HANDLER_ARGS)
 	mode = ufoma_mode_to_str(sc->sc_currentmode);
 	if(!mode){
 		mode = subbuf;
-		snprintf(subbuf, sizeof(subbuf), "(%02x)", sc->sc_currentmode);
+		ksnprintf(subbuf, sizeof(subbuf), "(%02x)", sc->sc_currentmode);
 	}
 	sysctl_handle_string(oidp, mode, strlen(mode), req);
 	
@@ -1230,7 +1240,7 @@ static int ufoma_sysctl_open(SYSCTL_HANDLER_ARGS)
 	if(mode){
 		strncpy(subbuf, mode, sizeof(subbuf));
 	}else{
-		snprintf(subbuf, sizeof(subbuf), "(%02x)", sc->sc_modetoactivate);
+		ksnprintf(subbuf, sizeof(subbuf), "(%02x)", sc->sc_modetoactivate);
 	}
 	error = sysctl_handle_string(oidp, subbuf, sizeof(subbuf), req);
 	if(error != 0 || req->newptr == NULL){

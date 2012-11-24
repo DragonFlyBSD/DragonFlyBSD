@@ -48,7 +48,6 @@
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -57,25 +56,23 @@
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR uvisor_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #ifdef USB_DEBUG
 static int uvisor_debug = 0;
@@ -172,7 +169,7 @@ struct uvisor_softc {
 
 	struct usb_xfer *sc_xfer[UVISOR_N_TRANSFER];
 	struct usb_device *sc_udev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint16_t sc_flag;
 #define	UVISOR_FLAG_PALM4       0x0001
@@ -316,7 +313,7 @@ uvisor_attach(device_t dev)
 
 	device_set_usb_desc(dev);
 
-	mtx_init(&sc->sc_mtx, "uvisor", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "uvisor", 0, LK_CANRECURSE);
 
 	sc->sc_udev = uaa->device;
 
@@ -335,14 +332,14 @@ uvisor_attach(device_t dev)
 	}
 	error = usbd_transfer_setup(uaa->device, &sc->sc_iface_index,
 	    sc->sc_xfer, uvisor_config_copy, UVISOR_N_TRANSFER,
-	    sc, &sc->sc_mtx);
+	    sc, &sc->sc_lock);
 	if (error) {
 		DPRINTF("could not allocate all pipes\n");
 		goto detach;
 	}
 
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &uvisor_callback, &sc->sc_mtx);
+	    &uvisor_callback, &sc->sc_lock);
 	if (error) {
 		DPRINTF("ucom_attach failed\n");
 		goto detach;
@@ -365,7 +362,7 @@ uvisor_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UVISOR_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

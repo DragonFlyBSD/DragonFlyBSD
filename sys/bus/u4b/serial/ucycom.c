@@ -1,6 +1,3 @@
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*-
  * Copyright (c) 2004 Dag-Erling Coïdan Smørgrav
  * All rights reserved.
@@ -35,7 +32,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -44,26 +40,24 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbhid.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbhid.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR usb_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #define	UCYCOM_MAX_IOLEN	(1024 + 2)	/* bytes */
 
@@ -81,7 +75,7 @@ struct ucycom_softc {
 
 	struct usb_device *sc_udev;
 	struct usb_xfer *sc_xfer[UCYCOM_N_TRANSFER];
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint32_t sc_model;
 #define	MODEL_CY7C63743		0x63743
@@ -217,9 +211,9 @@ ucycom_attach(device_t dev)
 	sc->sc_udev = uaa->device;
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "ucycom", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "ucycom", 0, LK_CANRECURSE);
 
-	snprintf(sc->sc_name, sizeof(sc->sc_name),
+	ksnprintf(sc->sc_name, sizeof(sc->sc_name),
 	    "%s", device_get_nameunit(dev));
 
 	DPRINTF("\n");
@@ -263,28 +257,28 @@ ucycom_attach(device_t dev)
 	iface_index = UCYCOM_IFACE_INDEX;
 	error = usbd_transfer_setup(uaa->device, &iface_index,
 	    sc->sc_xfer, ucycom_config, UCYCOM_N_TRANSFER,
-	    sc, &sc->sc_mtx);
+	    sc, &sc->sc_lock);
 	if (error) {
 		device_printf(dev, "allocating USB "
 		    "transfers failed\n");
 		goto detach;
 	}
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &ucycom_callback, &sc->sc_mtx);
+	    &ucycom_callback, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
 	ucom_set_pnpinfo_usb(&sc->sc_super_ucom, dev);
 
 	if (urd_ptr) {
-		free(urd_ptr, M_USBDEV);
+		kfree(urd_ptr, M_USBDEV);
 	}
 
 	return (0);			/* success */
 
 detach:
 	if (urd_ptr) {
-		free(urd_ptr, M_USBDEV);
+		kfree(urd_ptr, M_USBDEV);
 	}
 	ucycom_detach(dev);
 	return (ENXIO);
@@ -297,7 +291,7 @@ ucycom_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UCYCOM_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

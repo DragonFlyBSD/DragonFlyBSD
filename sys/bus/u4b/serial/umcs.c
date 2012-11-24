@@ -37,11 +37,8 @@
  * quad-port mos7840.
  *
  */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -51,28 +48,26 @@ __FBSDID("$FreeBSD$");
 #include <sys/linker_set.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usb_cdc.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usb_cdc.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR umcs_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
-#include <dev/usb/serial/umcs.h>
+#include <bus/u4b/serial/umcs.h>
 
 #define	UMCS7840_MODVER	1
 
@@ -136,7 +131,7 @@ struct umcs7840_softc {
 
 	device_t sc_dev;		/* Device for error prints */
 	struct usb_device *sc_udev;	/* USB Device for all operations */
-	struct mtx sc_mtx;		/* ucom requires this */
+	struct lock sc_lock;		/* ucom requires this */
 
 	uint8_t	sc_driver_done;		/* Flag when enumeration is finished */
 
@@ -309,7 +304,7 @@ umcs7840_attach(device_t dev)
 		umcs7840_config_tmp[n] = umcs7840_bulk_config_data[n];
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "umcs7840", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "umcs7840", 0, LK_CANRECURSE);
 
 	sc->sc_dev = dev;
 	sc->sc_udev = uaa->device;
@@ -360,7 +355,7 @@ umcs7840_attach(device_t dev)
 		}
 		error = usbd_transfer_setup(uaa->device,
 		    &iface_index, sc->sc_ports[sc->sc_ucom[subunit].sc_portno].sc_xfer, umcs7840_config_tmp,
-		    UMCS7840_N_TRANSFERS, sc, &sc->sc_mtx);
+		    UMCS7840_N_TRANSFERS, sc, &sc->sc_lock);
 		if (error) {
 			device_printf(dev, "allocating USB transfers failed for subunit %d of %d\n",
 			    subunit + 1, sc->sc_numports);
@@ -369,21 +364,21 @@ umcs7840_attach(device_t dev)
 	}
 	error = usbd_transfer_setup(uaa->device,
 	    &iface_index, &sc->sc_intr_xfer, umcs7840_intr_config_data,
-	    1, sc, &sc->sc_mtx);
+	    1, sc, &sc->sc_lock);
 	if (error) {
 		device_printf(dev, "allocating USB transfers failed for interrupt\n");
 		goto detach;
 	}
 	/* clear stall at first run */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	for (subunit = 0; subunit < sc->sc_numports; ++subunit) {
 		usbd_xfer_set_stall(sc->sc_ports[sc->sc_ucom[subunit].sc_portno].sc_xfer[UMCS7840_BULK_RD_EP]);
 		usbd_xfer_set_stall(sc->sc_ports[sc->sc_ucom[subunit].sc_portno].sc_xfer[UMCS7840_BULK_WR_EP]);
 	}
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	error = ucom_attach(&sc->sc_super_ucom, sc->sc_ucom, sc->sc_numports, sc,
-	    &umcs7840_callback, &sc->sc_mtx);
+	    &umcs7840_callback, &sc->sc_lock);
 	if (error)
 		goto detach;
 
@@ -408,7 +403,7 @@ umcs7840_detach(device_t dev)
 		usbd_transfer_unsetup(sc->sc_ports[sc->sc_ucom[subunit].sc_portno].sc_xfer, UMCS7840_N_TRANSFERS);
 	usbd_transfer_unsetup(&sc->sc_intr_xfer, 1);
 
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 	return (0);
 }
 

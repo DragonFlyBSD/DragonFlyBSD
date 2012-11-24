@@ -69,15 +69,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*
  * BWCT serial adapter driver
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -86,25 +82,23 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR ubser_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #define	UBSER_UNIT_MAX	32
 
@@ -133,7 +127,7 @@ struct ubser_softc {
 
 	struct usb_xfer *sc_xfer[UBSER_N_TRANSFER];
 	struct usb_device *sc_udev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint16_t sc_tx_size;
 
@@ -242,9 +236,9 @@ ubser_attach(device_t dev)
 	int error;
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "ubser", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "ubser", 0, LK_CANRECURSE);
 
-	snprintf(sc->sc_name, sizeof(sc->sc_name), "%s",
+	ksnprintf(sc->sc_name, sizeof(sc->sc_name), "%s",
 	    device_get_nameunit(dev));
 
 	sc->sc_iface_no = uaa->info.bIfaceNum;
@@ -274,7 +268,7 @@ ubser_attach(device_t dev)
 	device_printf(dev, "found %i serials\n", sc->sc_numser);
 
 	error = usbd_transfer_setup(uaa->device, &sc->sc_iface_index,
-	    sc->sc_xfer, ubser_config, UBSER_N_TRANSFER, sc, &sc->sc_mtx);
+	    sc->sc_xfer, ubser_config, UBSER_N_TRANSFER, sc, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
@@ -291,17 +285,17 @@ ubser_attach(device_t dev)
 	}
 
 	error = ucom_attach(&sc->sc_super_ucom, sc->sc_ucom,
-	    sc->sc_numser, sc, &ubser_callback, &sc->sc_mtx);
+	    sc->sc_numser, sc, &ubser_callback, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
 	ucom_set_pnpinfo_usb(&sc->sc_super_ucom, dev);
 
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_xfer_set_stall(sc->sc_xfer[UBSER_BULK_DT_WR]);
 	usbd_xfer_set_stall(sc->sc_xfer[UBSER_BULK_DT_RD]);
 	usbd_transfer_start(sc->sc_xfer[UBSER_BULK_DT_RD]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	return (0);			/* success */
 
@@ -319,7 +313,7 @@ ubser_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UBSER_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

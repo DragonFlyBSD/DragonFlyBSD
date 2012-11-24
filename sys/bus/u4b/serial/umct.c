@@ -1,6 +1,3 @@
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*-
  * Copyright (c) 2003 Scott Long
  * All rights reserved.
@@ -45,7 +42,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -54,25 +50,23 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR usb_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 /* The UMCT advertises the standard 8250 UART registers */
 #define	UMCT_GET_MSR		2	/* Get Modem Status Register */
@@ -103,7 +97,7 @@ struct umct_softc {
 
 	struct usb_device *sc_udev;
 	struct usb_xfer *sc_xfer[UMCT_N_TRANSFER];
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint32_t sc_unit;
 
@@ -250,16 +244,16 @@ umct_attach(device_t dev)
 	sc->sc_unit = device_get_unit(dev);
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "umct", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "umct", 0, LK_CANRECURSE);
 
-	snprintf(sc->sc_name, sizeof(sc->sc_name),
+	ksnprintf(sc->sc_name, sizeof(sc->sc_name),
 	    "%s", device_get_nameunit(dev));
 
 	sc->sc_iface_no = uaa->info.bIfaceNum;
 
 	iface_index = UMCT_IFACE_INDEX;
 	error = usbd_transfer_setup(uaa->device, &iface_index,
-	    sc->sc_xfer, umct_config, UMCT_N_TRANSFER, sc, &sc->sc_mtx);
+	    sc->sc_xfer, umct_config, UMCT_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (error) {
 		device_printf(dev, "allocating USB "
@@ -292,7 +286,7 @@ umct_attach(device_t dev)
 		}
 	}
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &umct_callback, &sc->sc_mtx);
+	    &umct_callback, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
@@ -312,7 +306,7 @@ umct_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UMCT_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

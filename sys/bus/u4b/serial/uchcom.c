@@ -62,16 +62,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*
  * Driver for WinChipHead CH341/340, the worst USB-serial chip in the
  * world.
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -80,25 +76,23 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR uchcom_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #ifdef USB_DEBUG
 static int uchcom_debug = 0;
@@ -170,7 +164,7 @@ struct uchcom_softc {
 
 	struct usb_xfer *sc_xfer[UCHCOM_N_TRANSFER];
 	struct usb_device *sc_udev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint8_t	sc_dtr;			/* local copy */
 	uint8_t	sc_rts;			/* local copy */
@@ -318,7 +312,7 @@ uchcom_attach(device_t dev)
 	DPRINTFN(11, "\n");
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "uchcom", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "uchcom", 0, LK_CANRECURSE);
 
 	sc->sc_udev = uaa->device;
 
@@ -334,7 +328,7 @@ uchcom_attach(device_t dev)
 	iface_index = UCHCOM_IFACE_INDEX;
 	error = usbd_transfer_setup(uaa->device,
 	    &iface_index, sc->sc_xfer, uchcom_config_data,
-	    UCHCOM_N_TRANSFER, sc, &sc->sc_mtx);
+	    UCHCOM_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (error) {
 		DPRINTF("one or more missing USB endpoints, "
@@ -343,13 +337,13 @@ uchcom_attach(device_t dev)
 	}
 
 	/* clear stall at first run */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_xfer_set_stall(sc->sc_xfer[UCHCOM_BULK_DT_WR]);
 	usbd_xfer_set_stall(sc->sc_xfer[UCHCOM_BULK_DT_RD]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &uchcom_callback, &sc->sc_mtx);
+	    &uchcom_callback, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
@@ -371,7 +365,7 @@ uchcom_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UCHCOM_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

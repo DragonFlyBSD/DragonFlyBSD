@@ -29,9 +29,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*
  * NOTE: all function names beginning like "uftdi_cfg_" can only
  * be called from within the config thread function !
@@ -42,7 +39,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -51,26 +47,24 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR uftdi_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
-#include <dev/usb/serial/uftdi_reg.h>
+#include <bus/u4b/serial/usb_serial.h>
+#include <bus/u4b/serial/uftdi_reg.h>
 
 #ifdef USB_DEBUG
 static int uftdi_debug = 0;
@@ -99,7 +93,7 @@ struct uftdi_softc {
 	struct usb_device *sc_udev;
 	struct usb_xfer *sc_xfer[UFTDI_N_TRANSFER];
 	device_t sc_dev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint32_t sc_unit;
 	enum uftdi_type sc_type;
@@ -221,7 +215,6 @@ static STRUCT_USB_HOST_ID uftdi_devs[] = {
 	UFTDI_DEV(FTDI, SERIAL_4232H, 8U232AM),
 	UFTDI_DEV(FTDI, SERIAL_8U232AM, 8U232AM),
 	UFTDI_DEV(FTDI, SERIAL_8U232AM4, 8U232AM),
-	UFTDI_DEV(FTDI, SERIAL_BEAGLEBONE, 8U232AM),
 	UFTDI_DEV(FTDI, SEMC_DSS20, 8U232AM),
 	UFTDI_DEV(FTDI, CFA_631, 8U232AM),
 	UFTDI_DEV(FTDI, CFA_632, 8U232AM),
@@ -285,9 +278,9 @@ uftdi_attach(device_t dev)
 	sc->sc_unit = device_get_unit(dev);
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "uftdi", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "uftdi", 0, LK_CANRECURSE);
 
-	snprintf(sc->sc_name, sizeof(sc->sc_name),
+	ksnprintf(sc->sc_name, sizeof(sc->sc_name),
 	    "%s", device_get_nameunit(dev));
 
 	DPRINTF("\n");
@@ -307,7 +300,7 @@ uftdi_attach(device_t dev)
 
 	error = usbd_transfer_setup(uaa->device,
 	    &sc->sc_iface_index, sc->sc_xfer, uftdi_config,
-	    UFTDI_N_TRANSFER, sc, &sc->sc_mtx);
+	    UFTDI_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (error) {
 		device_printf(dev, "allocating USB "
@@ -317,10 +310,10 @@ uftdi_attach(device_t dev)
 	sc->sc_ucom.sc_portno = FTDI_PIT_SIOA + uaa->info.bIfaceNum;
 
 	/* clear stall at first run */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_xfer_set_stall(sc->sc_xfer[UFTDI_BULK_DT_WR]);
 	usbd_xfer_set_stall(sc->sc_xfer[UFTDI_BULK_DT_RD]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	/* set a valid "lcr" value */
 
@@ -330,7 +323,7 @@ uftdi_attach(device_t dev)
 	    FTDI_SIO_SET_DATA_BITS(8));
 
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &uftdi_callback, &sc->sc_mtx);
+	    &uftdi_callback, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
@@ -350,7 +343,7 @@ uftdi_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UFTDI_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

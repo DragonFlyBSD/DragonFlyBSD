@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -63,7 +61,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -72,25 +69,23 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbdevs.h>
 
 #define	USB_DEBUG_VAR ubsa_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #ifdef USB_DEBUG
 static int ubsa_debug = 0;
@@ -165,7 +160,7 @@ struct ubsa_softc {
 
 	struct usb_xfer *sc_xfer[UBSA_N_TRANSFER];
 	struct usb_device *sc_udev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint8_t	sc_iface_no;		/* interface number */
 	uint8_t	sc_iface_index;		/* interface index */
@@ -305,27 +300,27 @@ ubsa_attach(device_t dev)
 	DPRINTF("sc=%p\n", sc);
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "ubsa", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "ubsa", 0, LK_CANRECURSE);
 
 	sc->sc_udev = uaa->device;
 	sc->sc_iface_no = uaa->info.bIfaceNum;
 	sc->sc_iface_index = UBSA_IFACE_INDEX;
 
 	error = usbd_transfer_setup(uaa->device, &sc->sc_iface_index,
-	    sc->sc_xfer, ubsa_config, UBSA_N_TRANSFER, sc, &sc->sc_mtx);
+	    sc->sc_xfer, ubsa_config, UBSA_N_TRANSFER, sc, &sc->sc_lock);
 
 	if (error) {
 		DPRINTF("could not allocate all pipes\n");
 		goto detach;
 	}
 	/* clear stall at first run */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_xfer_set_stall(sc->sc_xfer[UBSA_BULK_DT_WR]);
 	usbd_xfer_set_stall(sc->sc_xfer[UBSA_BULK_DT_RD]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &ubsa_callback, &sc->sc_mtx);
+	    &ubsa_callback, &sc->sc_lock);
 	if (error) {
 		DPRINTF("ucom_attach failed\n");
 		goto detach;
@@ -348,7 +343,7 @@ ubsa_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UBSA_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }

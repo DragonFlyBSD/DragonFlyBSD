@@ -1,8 +1,5 @@
 /*	$NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $	*/
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*-
  * Copyright (c) 2003, M. Warner Losh <imp@FreeBSD.org>.
  * All rights reserved.
@@ -81,7 +78,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -90,30 +86,28 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usbhid.h>
-#include <dev/usb/usb_cdc.h>
-#include "usbdevs.h"
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usbhid.h>
+#include <bus/u4b/usb_cdc.h>
+#include <bus/u4b/usbdevs.h>
 
-#include <dev/usb/usb_ioctl.h>
+#include <bus/u4b/usb_ioctl.h>
 
 #define	USB_DEBUG_VAR umodem_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/quirk/usb_quirk.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/quirk/usb_quirk.h>
 
-#include <dev/usb/serial/usb_serial.h>
+#include <bus/u4b/serial/usb_serial.h>
 
 #ifdef USB_DEBUG
 static int umodem_debug = 0;
@@ -161,7 +155,7 @@ struct umodem_softc {
 
 	struct usb_xfer *sc_xfer[UMODEM_N_TRANSFER];
 	struct usb_device *sc_udev;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	uint16_t sc_line;
 
@@ -301,7 +295,7 @@ umodem_attach(device_t dev)
 	int error;
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, "umodem", NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, "umodem", 0, LK_CANRECURSE);
 
 	sc->sc_ctrl_iface_no = uaa->info.bIfaceNum;
 	sc->sc_iface_index[1] = uaa->info.bIfaceIndex;
@@ -398,19 +392,19 @@ umodem_attach(device_t dev)
 	error = usbd_transfer_setup(uaa->device,
 	    sc->sc_iface_index, sc->sc_xfer,
 	    umodem_config, UMODEM_N_TRANSFER,
-	    sc, &sc->sc_mtx);
+	    sc, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
 
 	/* clear stall at first run */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	usbd_xfer_set_stall(sc->sc_xfer[UMODEM_BULK_WR]);
 	usbd_xfer_set_stall(sc->sc_xfer[UMODEM_BULK_RD]);
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	error = ucom_attach(&sc->sc_super_ucom, &sc->sc_ucom, 1, sc,
-	    &umodem_callback, &sc->sc_mtx);
+	    &umodem_callback, &sc->sc_lock);
 	if (error) {
 		goto detach;
 	}
@@ -875,7 +869,7 @@ umodem_detach(device_t dev)
 
 	ucom_detach(&sc->sc_super_ucom, &sc->sc_ucom);
 	usbd_transfer_unsetup(sc->sc_xfer, UMODEM_N_TRANSFER);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }
