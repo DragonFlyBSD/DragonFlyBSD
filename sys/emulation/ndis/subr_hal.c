@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/compat/ndis/subr_hal.c,v 1.32 2009/11/02 11:07:42 rpaulo Exp $
+ * $FreeBSD: src/sys/compat/ndis/subr_hal.c,v 1.34 2012/11/17 01:51:26 svnexp Exp $
  */
 
 #include <sys/param.h>
@@ -365,18 +365,22 @@ KfRaiseIrql(uint8_t irql)
 {
 	uint8_t			oldirql;
 
+#if 0 /* XXX swildner */
+		sched_pin();
+#endif
 	oldirql = KeGetCurrentIrql();
 
 	/* I am so going to hell for this. */
 	if (oldirql > irql)
-		panic("IRQL_NOT_LESS_THAN");
+		panic("IRQL_NOT_LESS_THAN_OR_EQUAL");
 
-	if (oldirql != DISPATCH_LEVEL) {
-#if 0 /* XXX swildner */
-		sched_pin();
-#endif
+	if (oldirql != DISPATCH_LEVEL)
 		lockmgr(&disp_lock[curthread->td_gd->gd_cpuid], LK_EXCLUSIVE);
-	}
+#if 0 /* XXX swildner */
+	else
+		sched_unpin();
+#endif
+
 /*kprintf("RAISE IRQL: %d %d\n", irql, oldirql);*/
 
 	return (oldirql);

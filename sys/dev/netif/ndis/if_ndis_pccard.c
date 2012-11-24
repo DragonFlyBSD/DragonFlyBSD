@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.19 2010/12/16 15:19:32 jhb Exp $
+ * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.21 2012/11/17 01:51:54 svnexp Exp $
  */
 
 #include "use_usb4bsd.h"
@@ -207,7 +207,7 @@ ndis_attach_pccard(device_t dev)
 		goto fail;
 	}
 	sc->ndis_rescnt++;
-	resource_list_add(&sc->ndis_rl, SYS_RES_IOPORT, rid,
+	resource_list_add(&sc->ndis_rl, SYS_RES_IOPORT, sc->ndis_io_rid,
 	    rman_get_start(sc->ndis_res_io), rman_get_end(sc->ndis_res_io),
 	    rman_get_size(sc->ndis_res_io), -1);
 

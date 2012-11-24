@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.114 2011/02/21 09:01:34 brucec Exp $
+ * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.117 2012/11/17 01:51:26 svnexp Exp $
  */
 
 #include <sys/ctype.h>
@@ -3418,6 +3418,7 @@ DbgPrint(char *fmt, ...)
 	if (bootverbose) {
 		va_start(ap, fmt);
 		kvprintf(fmt, ap);
+		va_end(ap);
 	}
 
 	return (STATUS_SUCCESS);

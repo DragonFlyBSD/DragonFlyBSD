@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.178 2011/01/07 18:41:59 bschmidt Exp $
+ * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.181 2012/11/17 01:51:54 svnexp Exp $
  *
  * WPA support originally contributed by Arvind Srinivasan <arvind@celar.us>
  * then hacked upon mercilessly by me.
@@ -160,9 +160,9 @@ static funcptr ndis_resettask_wrap;
 static funcptr ndis_inputtask_wrap;
 
 static struct	ieee80211vap *ndis_vap_create(struct ieee80211com *,
-		    const char name[IFNAMSIZ], int unit, int opmode,
-		    int flags, const uint8_t bssid[IEEE80211_ADDR_LEN],
-		    const uint8_t mac[IEEE80211_ADDR_LEN]);
+		    const char [IFNAMSIZ], int, int, int,
+		    const uint8_t [IEEE80211_ADDR_LEN],
+		    const uint8_t [IEEE80211_ADDR_LEN]);
 static void ndis_vap_delete	(struct ieee80211vap *);
 static void ndis_tick		(void *);
 static void ndis_ticktask	(device_object *, void *);
@@ -734,7 +734,6 @@ ndis_attach(device_t dev)
 	ndis_probe_offload(sc);
 
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
-	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 #if 0
 	if (sc->ndis_iftype == PNPBus)
@@ -999,10 +998,10 @@ fail:
 }
 
 static struct ieee80211vap *
-ndis_vap_create(struct ieee80211com *ic,
-	const char name[IFNAMSIZ], int unit, int opmode, int flags,
-	const uint8_t bssid[IEEE80211_ADDR_LEN],
-	const uint8_t mac[IEEE80211_ADDR_LEN])
+ndis_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
+    int opmode, int flags,
+    const uint8_t bssid[IEEE80211_ADDR_LEN],
+    const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct ndis_vap *nvp;
 	struct ieee80211vap *vap;
