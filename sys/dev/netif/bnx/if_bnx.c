@@ -2691,6 +2691,9 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 	if (sc->bnx_tx_saved_considx != tx_cons)
 		bnx_txeof(sc, tx_cons);
+
+	if (sc->bnx_coal_chg)
+		bnx_coal_change(sc);
 }
 
 #endif	/* IFPOLL_ENABLE */
