@@ -47,6 +47,7 @@
  * expects.
  */
 
+#include "use_usb4bsd.h"
 
 #include <sys/ctype.h>
 #include <sys/param.h>
@@ -90,8 +91,13 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
+#if NUSB4BSD > 0
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#else
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
+#endif
 
 #include <emulation/ndis/pe_var.h>
 #include <emulation/ndis/cfg_var.h>

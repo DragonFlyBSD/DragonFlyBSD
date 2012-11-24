@@ -32,6 +32,8 @@
  * $FreeBSD: src/sys/dev/if_ndis/if_ndisvar.h,v 1.39 2009/05/02 15:14:18 thompsa Exp $
  */
 
+#include "use_usb4bsd.h"
+
 #define NDIS_DEFAULT_NODENAME	"FreeBSD NDIS node"
 #define NDIS_NODENAME_LEN	32
 
@@ -113,6 +115,45 @@ struct ndis_vap {
 };
 #define	NDIS_VAP(vap)	((struct ndis_vap *)(vap))
 
+#if NUSB4BSD > 0
+#define	NDISUSB_CONFIG_NO			0
+#define	NDISUSB_IFACE_INDEX			0
+/* XXX at USB2 there's no USBD_NO_TIMEOUT macro anymore  */
+#define	NDISUSB_NO_TIMEOUT			0
+#define	NDISUSB_INTR_TIMEOUT			1000
+#define	NDISUSB_TX_TIMEOUT			10000
+struct ndisusb_xfer;
+struct ndisusb_ep {
+	struct usb_xfer	*ne_xfer[1];
+	list_entry		ne_active;
+	list_entry		ne_pending;
+	kspin_lock		ne_lock;
+	uint8_t			ne_dirin;
+};
+struct ndisusb_xfer {
+	struct ndisusb_ep	*nx_ep;
+	void			*nx_priv;
+	uint8_t			*nx_urbbuf;
+	uint32_t		nx_urbactlen;
+	uint32_t		nx_urblen;
+	uint8_t			nx_shortxfer;
+	list_entry		nx_next;
+};
+struct ndisusb_xferdone {
+	struct ndisusb_xfer	*nd_xfer;
+	usb_error_t		nd_status;
+	list_entry		nd_donelist;
+};
+
+struct ndisusb_task {
+	unsigned		nt_type;
+#define	NDISUSB_TASK_TSTART	0
+#define	NDISUSB_TASK_IRPCANCEL	1
+#define	NDISUSB_TASK_VENDOR	2
+	void			*nt_ctx;
+	list_entry		nt_tasklist;
+};
+#else /* !NUSB4BSD > 0 */
 #define	NDISUSB_CONFIG_NO			1
 #define	NDISUSB_IFACE_INDEX			0
 #define	NDISUSB_INTR_TIMEOUT			1000
@@ -123,6 +164,7 @@ struct ndisusb_xfer {
 	usbd_status		nx_status;
 	list_entry		nx_xferlist;
 };
+#endif
 
 struct ndis_softc {
 	struct ifnet		*ifp;
@@ -202,6 +244,35 @@ struct ndis_softc {
 	int			ndis_tx_timer;
 	int			ndis_hang_timer;
 
+#if NUSB4BSD > 0
+	struct usb_device	*ndisusb_dev;
+	struct lock		ndisusb_lock;
+	struct ndisusb_ep	ndisusb_dread_ep;
+	struct ndisusb_ep	ndisusb_dwrite_ep;
+#define	NDISUSB_GET_ENDPT(addr) \
+	((UE_GET_DIR(addr) >> 7) | (UE_GET_ADDR(addr) << 1))
+#define	NDISUSB_ENDPT_MAX	((UE_ADDR + 1) * 2)
+	struct ndisusb_ep	ndisusb_ep[NDISUSB_ENDPT_MAX];
+	io_workitem		*ndisusb_xferdoneitem;
+	list_entry		ndisusb_xferdonelist;
+	kspin_lock		ndisusb_xferdonelock;
+	io_workitem		*ndisusb_taskitem;
+	list_entry		ndisusb_tasklist;
+	kspin_lock		ndisusb_tasklock;
+	int			ndisusb_status;
+#define NDISUSB_STATUS_DETACH	0x1
+#define	NDISUSB_STATUS_SETUP_EP	0x2
+};
+
+#define	NDIS_LOCK(_sc)		lockmgr(&(_sc)->ndis_lock, LK_EXCLUSIVE)
+#define	NDIS_UNLOCK(_sc)	lockmgr(&(_sc)->ndis_lock, LK_RELEASE)
+#define	NDISMTX_LOCK		NDIS_LOCK
+#define	NDISMTX_UNLOCK		NDIS_UNLOCK
+#define	NDIS_LOCK_ASSERT(_sc, t)	KKASSERT(lockstatus(&(_sc)->ndis_lock, curthread) != 0)
+#define	NDISUSB_LOCK(_sc)	lockmgr(&(_sc)->ndisusb_lock, LK_EXCLUSIVE)
+#define	NDISUSB_UNLOCK(_sc)	lockmgr(&(_sc)->ndisusb_lock, LK_RELEASE)
+#define	NDISUSB_LOCK_ASSERT(_sc, t)	KKASSERT(lockstatus(&(_sc)->ndisusb_lock, curthread) != 0)
+#else /* !NUSB4BSD > 0 */
 	io_workitem		*ndisusb_xferitem;
 	list_entry		ndisusb_xferlist;
 	kspin_lock		ndisusb_xferlock;
@@ -230,3 +301,4 @@ struct ndis_softc {
 		NDISUSB_UNLOCK(_sc);					\
 	NDISMTX_UNLOCK(_sc);						\
 } while (0)
+#endif
