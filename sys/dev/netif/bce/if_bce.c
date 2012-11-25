@@ -5048,8 +5048,10 @@ bce_start(struct ifnet *ifp)
 		return;
 	}
 
+#if 0
 	REG_WR(sc, BCE_MQ_COMMAND,
 	    REG_RD(sc, BCE_MQ_COMMAND) | BCE_MQ_COMMAND_NO_MAP_ERROR);
+#endif
 
 	/* Start the transmit. */
 	REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX,
