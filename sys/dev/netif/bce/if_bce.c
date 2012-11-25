@@ -5237,14 +5237,15 @@ bce_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 		    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE))
 			bce_phy_intr(sc);
 
-		/* Clear any transient status updates during link state change. */
+		/*
+		 * Clear any transient status updates during link state change.
+		 */
 		REG_WR(sc, BCE_HC_COMMAND,
 		    sc->hc_command | BCE_HC_COMMAND_COAL_NOW_WO_INT);
 		REG_RD(sc, BCE_HC_COMMAND);
 
 		/*
-		 * If any other attention is asserted then
-		 * the chip is toast.
+		 * If any other attention is asserted then the chip is toast.
 		 */
 		if ((status_attn_bits & ~STATUS_ATTN_BITS_LINK_STATE) !=
 		     (sblk->status_attn_bits_ack &
