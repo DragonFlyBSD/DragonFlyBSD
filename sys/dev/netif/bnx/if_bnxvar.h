@@ -233,7 +233,7 @@ struct bnx_softc {
 	uint32_t		bnx_rx_coal_bds_int;
 	uint32_t		bnx_tx_coal_bds_int;
 	uint32_t		bnx_tx_prodidx;
-	uint32_t		bnx_tx_buf_ratio;
+	int			bnx_tx_wreg;
 	uint32_t		bnx_mi_mode;
 	int			bnx_force_defrag;
 	int			bnx_if_flags;
@@ -291,8 +291,8 @@ struct bnx_softc {
 
 /* TX coalesce BDs */
 #define BNX_TX_COAL_BDS_MIN	0
-#define BNX_TX_COAL_BDS_DEF	128
-#define BNX_TX_COAL_BDS_INT_DEF	128
+#define BNX_TX_COAL_BDS_DEF	64
+#define BNX_TX_COAL_BDS_INT_DEF	64
 #define BNX_TX_COAL_BDS_MAX	255
 
 #endif	/* !_IF_BNXVAR_H_ */

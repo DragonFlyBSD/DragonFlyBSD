@@ -184,7 +184,8 @@ static int	bnx_dma_block_alloc(struct bnx_softc *, bus_size_t,
 static void	bnx_dma_block_free(bus_dma_tag_t, bus_dmamap_t, void *);
 static struct mbuf *
 		bnx_defrag_shortdma(struct mbuf *);
-static int	bnx_encap(struct bnx_softc *, struct mbuf **, uint32_t *);
+static int	bnx_encap(struct bnx_softc *, struct mbuf **,
+			uint32_t *, int *);
 static int	bnx_setup_tso(struct bnx_softc *, struct mbuf **,
 		    uint16_t *, uint16_t *);
 
@@ -1968,6 +1969,7 @@ bnx_attach(device_t dev)
 	sc->bnx_tx_coal_bds = BNX_TX_COAL_BDS_DEF;
 	sc->bnx_rx_coal_bds_int = BNX_RX_COAL_BDS_INT_DEF;
 	sc->bnx_tx_coal_bds_int = BNX_TX_COAL_BDS_INT_DEF;
+	sc->bnx_tx_wreg = 8;
 
 	/* Set up ifnet structure */
 	ifp->if_softc = sc;
@@ -2156,6 +2158,11 @@ bnx_attach(device_t dev)
 	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
 	    "force_defrag", CTLFLAG_RW, &sc->bnx_force_defrag, 0,
 	    "Force defragment on TX path");
+
+	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	    "tx_wreg", CTLFLAG_RW, &sc->bnx_tx_wreg, 0,
+	    "# of segments before writing to hardware register");
 
 	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
@@ -2831,7 +2838,8 @@ bnx_stats_update_regs(struct bnx_softc *sc)
  * pointers to descriptors.
  */
 static int
-bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
+bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
+    int *segs_used)
 {
 	struct bge_tx_bd *d = NULL;
 	uint16_t csum_flags = 0, vlan_tag = 0, mss = 0;
@@ -2925,6 +2933,7 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 			m_head0, segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error)
 		goto back;
+	*segs_used += nsegs;
 
 	m_head = *m_head0;
 	bus_dmamap_sync(sc->bnx_cdata.bnx_tx_mtag, map, BUS_DMASYNC_PREWRITE);
@@ -2975,14 +2984,13 @@ bnx_start(struct ifnet *ifp)
 	struct bnx_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	uint32_t prodidx;
-	int need_trans;
+	int nsegs = 0;
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
 	prodidx = sc->bnx_tx_prodidx;
 
-	need_trans = 0;
 	while (sc->bnx_cdata.bnx_tx_chain[prodidx] == NULL) {
 		/*
 		 * Sanity check: avoid coming within BGE_NSEG_RSVD
@@ -3005,28 +3013,31 @@ bnx_start(struct ifnet *ifp)
 		 * don't have room, set the OACTIVE flag and wait
 		 * for the NIC to drain the ring.
 		 */
-		if (bnx_encap(sc, &m_head, &prodidx)) {
+		if (bnx_encap(sc, &m_head, &prodidx, &nsegs)) {
 			ifp->if_flags |= IFF_OACTIVE;
 			ifp->if_oerrors++;
 			break;
 		}
-		need_trans = 1;
+
+		if (nsegs >= sc->bnx_tx_wreg) {
+			/* Transmit */
+			bnx_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
+			nsegs = 0;
+		}
 
 		ETHER_BPF_MTAP(ifp, m_head);
+
+		/*
+		 * Set a timeout in case the chip goes out to lunch.
+		 */
+		ifp->if_timer = 5;
 	}
 
-	if (!need_trans)
-		return;
-
-	/* Transmit */
-	bnx_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
-
+	if (nsegs > 0) {
+		/* Transmit */
+		bnx_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
+	}
 	sc->bnx_tx_prodidx = prodidx;
-
-	/*
-	 * Set a timeout in case the chip goes out to lunch.
-	 */
-	ifp->if_timer = 5;
 }
 
 static void
