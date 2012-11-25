@@ -142,7 +142,6 @@ static void	igb_add_sysctl(struct igb_softc *);
 static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
-static int	igb_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
 #ifdef IFPOLL_ENABLE
 static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
@@ -1525,9 +1524,9 @@ igb_add_sysctl(struct igb_softc *sc)
 	    sc, 0, igb_sysctl_tx_intr_nsegs, "I",
 	    "# of segments per TX interrupt");
 
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-	    OID_AUTO, "tx_wreg_nsegs", CTLTYPE_INT | CTLFLAG_RW,
-	    sc, 0, igb_sysctl_tx_wreg_nsegs, "I",
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "tx_wreg_nsegs", CTLFLAG_RW,
+	    &sc->tx_rings[0].wreg_nsegs, 0,
 	    "# of segments before write to hardare register");
 
 #ifdef IFPOLL_ENABLE
@@ -3477,23 +3476,6 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 	}
 
 	ifnet_deserialize_all(ifp);
-
-	return error;
-}
-
-static int
-igb_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS)
-{
-	struct igb_softc *sc = (void *)arg1;
-	struct igb_tx_ring *txr = &sc->tx_rings[0];
-	int error, nsegs;
-
-	nsegs = txr->wreg_nsegs;
-	error = sysctl_handle_int(oidp, &nsegs, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-
-	txr->wreg_nsegs = nsegs;
 
 	return error;
 }
