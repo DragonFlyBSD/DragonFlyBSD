@@ -244,7 +244,6 @@ static int	emx_sysctl_stats(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS);
-static int	emx_sysctl_wreg_tx_nsegs(SYSCTL_HANDLER_ARGS);
 #ifdef IFPOLL_ENABLE
 static int	emx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
@@ -3464,10 +3463,10 @@ emx_add_sysctl(struct emx_softc *sc)
 			OID_AUTO, "int_tx_nsegs", CTLTYPE_INT|CTLFLAG_RW,
 			sc, 0, emx_sysctl_int_tx_nsegs, "I",
 			"# segments per TX interrupt");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-			OID_AUTO, "wreg_tx_nsegs", CTLTYPE_INT|CTLFLAG_RW,
-			sc, 0, emx_sysctl_wreg_tx_nsegs, "I",
-			"# segments before write to hardware register");
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+		       OID_AUTO, "wreg_tx_nsegs", CTLFLAG_RW,
+		       &sc->tx_data.tx_wreg_nsegs, 0,
+		       "# segments before write to hardware register");
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 		       OID_AUTO, "rx_ring_cnt", CTLFLAG_RD,
@@ -3576,22 +3575,6 @@ emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
 	}
 
 	ifnet_deserialize_all(ifp);
-
-	return error;
-}
-
-static int
-emx_sysctl_wreg_tx_nsegs(SYSCTL_HANDLER_ARGS)
-{
-	struct emx_softc *sc = (void *)arg1;
-	int error, segs;
-
-	segs = sc->tx_data.tx_wreg_nsegs;
-	error = sysctl_handle_int(oidp, &segs, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-
-	sc->tx_data.tx_wreg_nsegs = segs;
 
 	return error;
 }
