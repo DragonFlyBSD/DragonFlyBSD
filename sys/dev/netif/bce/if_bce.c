@@ -5271,6 +5271,9 @@ bce_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 	if (hw_tx_cons != sc->tx_cons)
 		bce_tx_intr(sc, hw_tx_cons);
 
+	if (sc->bce_coalchg_mask)
+		bce_coal_change(sc);
+
 	/* Check for new frames to transmit. */
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
