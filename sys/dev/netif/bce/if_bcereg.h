@@ -5968,6 +5968,7 @@ struct bce_softc {
 	uint16_t		rx_cons;
 	uint32_t		rx_prod_bseq;	/* Counts the bytes used.  */
 	int			tx_pages;
+	int			tx_wreg;
 	uint16_t		tx_prod;
 	uint16_t		tx_cons;
 	uint32_t		tx_prod_bseq;	/* Counts the bytes used.  */

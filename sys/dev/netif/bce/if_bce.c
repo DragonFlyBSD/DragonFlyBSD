@@ -413,7 +413,7 @@ static int	bce_init_rx_chain(struct bce_softc *);
 static void	bce_free_rx_chain(struct bce_softc *);
 static void	bce_free_tx_chain(struct bce_softc *);
 
-static int	bce_encap(struct bce_softc *, struct mbuf **);
+static int	bce_encap(struct bce_softc *, struct mbuf **, int *);
 static int	bce_tso_setup(struct bce_softc *, struct mbuf **,
 		    uint16_t *, uint16_t *);
 static void	bce_start(struct ifnet *);
@@ -929,6 +929,7 @@ bce_attach(device_t dev)
 	sc->bce_rx_ticks_int           = bce_rx_ticks_int;
 	sc->bce_rx_ticks               = bce_rx_ticks;
 #endif
+	sc->tx_wreg = 8;
 
 	/* Update statistics once every second. */
 	sc->bce_stats_ticks = 1000000 & 0xffff00;
@@ -4871,7 +4872,7 @@ bce_mgmt_init(struct bce_softc *sc)
 /*   0 for success, positive value for failure.                             */
 /****************************************************************************/
 static int
-bce_encap(struct bce_softc *sc, struct mbuf **m_head)
+bce_encap(struct bce_softc *sc, struct mbuf **m_head, int *nsegs_used)
 {
 	bus_dma_segment_t segs[BCE_MAX_SEGMENTS];
 	bus_dmamap_t map, tmp_map;
@@ -4919,6 +4920,8 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	if (error)
 		goto back;
 	bus_dmamap_sync(sc->tx_mbuf_tag, map, BUS_DMASYNC_PREWRITE);
+
+	*nsegs_used += nsegs;
 
 	/* Reset m0 */
 	m0 = *m_head;
@@ -5027,7 +5030,7 @@ bce_start(struct ifnet *ifp)
 		 * head of the queue and set the OACTIVE flag
 		 * to wait for the NIC to drain the chain.
 		 */
-		if (bce_encap(sc, &m_head)) {
+		if (bce_encap(sc, &m_head, &count)) {
 			ifp->if_oerrors++;
 			if (sc->used_tx_bd == 0) {
 				continue;
@@ -5037,30 +5040,28 @@ bce_start(struct ifnet *ifp)
 			}
 		}
 
-		count++;
+		if (count >= sc->tx_wreg) {
+			/* Start the transmit. */
+			REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) +
+			    BCE_L2CTX_TX_HOST_BIDX, sc->tx_prod);
+			REG_WR(sc, MB_GET_CID_ADDR(TX_CID) +
+			    BCE_L2CTX_TX_HOST_BSEQ, sc->tx_prod_bseq);
+			count = 0;
+		}
 
 		/* Send a copy of the frame to any BPF listeners. */
 		ETHER_BPF_MTAP(ifp, m_head);
+
+		/* Set the tx timeout. */
+		ifp->if_timer = BCE_TX_TIMEOUT;
 	}
-
-	if (count == 0) {
-		/* no packets were dequeued */
-		return;
+	if (count > 0) {
+		/* Start the transmit. */
+		REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX,
+		    sc->tx_prod);
+		REG_WR(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ,
+		    sc->tx_prod_bseq);
 	}
-
-#if 0
-	REG_WR(sc, BCE_MQ_COMMAND,
-	    REG_RD(sc, BCE_MQ_COMMAND) | BCE_MQ_COMMAND_NO_MAP_ERROR);
-#endif
-
-	/* Start the transmit. */
-	REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX,
-	    sc->tx_prod);
-	REG_WR(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ,
-	    sc->tx_prod_bseq);
-
-	/* Set the tx timeout. */
-	ifp->if_timer = BCE_TX_TIMEOUT;
 }
 
 
@@ -6205,6 +6206,10 @@ bce_add_sysctls(struct bce_softc *sc)
 		CTLFLAG_RD, &sc->rx_pages, 0, "# of RX pages");
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_pages",
 		CTLFLAG_RD, &sc->tx_pages, 0, "# of TX pages");
+
+	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_wreg",
+	    	CTLFLAG_RW, &sc->tx_wreg, 0,
+		"# segments before write to hardware registers");
 
 #ifdef BCE_DEBUG
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
