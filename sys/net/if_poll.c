@@ -114,7 +114,7 @@
 #define IFPOLL_FREQ_DEFAULT	4000
 
 #define IFPOLL_TXFRAC_DEFAULT	1	/* 1/1 of the pollhz */
-#define IFPOLL_STFRAC_DEFAULT	40	/* 1/40 of the pollhz */
+#define IFPOLL_STFRAC_DEFAULT	80	/* 1/80 of the pollhz */
 
 #define IFPOLL_RX		0x1
 #define IFPOLL_TX		0x2
