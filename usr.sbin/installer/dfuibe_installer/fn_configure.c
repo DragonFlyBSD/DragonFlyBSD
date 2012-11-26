@@ -769,20 +769,29 @@ fn_set_timezone(struct i_fn_args *a)
 	char *s = NULL;
 	char current_path[256], selection[256], temp[256];
 	int found_file = 0;
+	int result;
 
-	cmds = commands_new();
-
-        switch (dfui_be_present_dialog(a->c, _("Local or UTC (Greenwich Mean Time) clock"),
+	result = dfui_be_present_dialog(a->c, _("Local or UTC (Greenwich Mean Time) clock"),
 	    _("Yes|No"),
             _("Is this machine's CMOS clock set to UTC?\n\n"
-	    "If it is set to local time, or you don't know, please choose NO here!"))) {
+	    "If it is set to local time, or you don't know, please choose NO here!"));
+	if (result < 1)
+		abort_backend();
+
+	cmds = commands_new();
+	switch (result) {
 		case 1:
-			cmds = commands_new();
+			command_add(cmds, "%s%s -f %s%setc/wall_cmos_clock",
+			    a->os_root, cmd_name(a, "RM"),
+			    a->os_root, a->cfg_root);
+			break;
+		case 2:
 			command_add(cmds, "%s%s %s%setc/wall_cmos_clock",
 			    a->os_root, cmd_name(a, "TOUCH"),
 			    a->os_root, a->cfg_root);
-			commands_execute(a, cmds);
+			break;
 	}
+	commands_execute(a, cmds);
 
 	snprintf(current_path, 256, "%s%susr/share/zoneinfo",
 	    a->os_root, a->cfg_root);
