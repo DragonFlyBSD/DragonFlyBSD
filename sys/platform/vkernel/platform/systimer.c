@@ -65,6 +65,9 @@ SYSCTL_QUAD(_hw, OID_AUTO, tsc_frequency, CTLFLAG_RD,
 
 int adjkerntz;
 int wall_cmos_clock = 0;
+SYSCTL_INT(_machdep, CPU_WALLCLOCK, wall_cmos_clock,
+    CTLFLAG_RD, &wall_cmos_clock, 0, "");
+
 static struct kqueue_info *kqueue_timer_info;
 
 static int cputimer_mib[16];
