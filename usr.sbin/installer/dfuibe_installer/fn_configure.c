@@ -848,7 +848,7 @@ fn_assign_datetime(struct i_fn_args *a)
 	f = dfui_form_create(
 	    "set_datetime",
 	    _("Set Time/Date"),
-	    _("Enter the current time and date."),
+	    _("Enter the date-time in your timezone."),
 	    "",
 
 	    "f", "year", _("Enter year"),
