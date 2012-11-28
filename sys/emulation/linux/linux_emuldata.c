@@ -204,8 +204,8 @@ emuldata_exit(void *unused, struct proc *p)
 	    (em->clone_flags & LINUX_CLONE_THREAD)) {
 		p->p_sigparent = SIGCHLD;
 
-		wakeup((caddr_t) initproc); /* kern_exit seems to do this */
-		proc_reparent(p, initproc); /* XXX: might be dangerous */
+		proc_reparent(p, initproc);
+		wakeup((caddr_t)initproc); /* kern_exit seems to do this */
 	}
 
 	if ((em->s->group_pid == p->p_pid) &&

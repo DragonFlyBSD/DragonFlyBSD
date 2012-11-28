@@ -543,19 +543,7 @@ exit1(int rv)
 	 * instead (and hope it will handle this situation).
 	 */
 	if (p->p_pptr->p_sigacts->ps_flag & (PS_NOCLDWAIT | PS_CLDSIGIGN)) {
-		struct proc *pp = p->p_pptr;
-
-		PHOLD(pp);
 		proc_reparent(p, initproc);
-
-		/*
-		 * If this was the last child of our parent, notify
-		 * parent, so in case he was wait(2)ing, he will
-		 * continue.  This function interlocks with pptr->p_token.
-		 */
-		if (LIST_EMPTY(&pp->p_children))
-			wakeup((caddr_t)pp);
-		PRELE(pp);
 	}
 
 	/* lwkt_gettoken(&proc_token); */
@@ -1122,33 +1110,49 @@ done:
 }
 
 /*
- * Make process 'parent' the new parent of process 'child'.
+ * Change child's parent process to parent.
  *
  * p_children/p_sibling requires the parent's token, and
  * changing pptr requires the child's token, so we have to
- * get three tokens to do this operation.
+ * get three tokens to do this operation.  We also need to
+ * hold pointers that might get ripped out from under us to
+ * preserve structural integrity.
+ *
+ * It is possible to race another reparent or disconnect or other
+ * similar operation.  We must retry when this situation occurs.
+ * Once we successfully reparent the process we no longer care
+ * about any races.
  */
 void
 proc_reparent(struct proc *child, struct proc *parent)
 {
-	struct proc *opp = child->p_pptr;
+	struct proc *opp;
 
-	if (opp == parent)
-		return;
-	PHOLD(opp);
 	PHOLD(parent);
-	lwkt_gettoken(&opp->p_token);
-	lwkt_gettoken(&child->p_token);
-	lwkt_gettoken(&parent->p_token);
-	KKASSERT(child->p_pptr == opp);
-	LIST_REMOVE(child, p_sibling);
-	LIST_INSERT_HEAD(&parent->p_children, child, p_sibling);
-	child->p_pptr = parent;
-	lwkt_reltoken(&parent->p_token);
-	lwkt_reltoken(&child->p_token);
-	lwkt_reltoken(&opp->p_token);
+	while ((opp = child->p_pptr) != parent) {
+		PHOLD(opp);
+		lwkt_gettoken(&opp->p_token);
+		lwkt_gettoken(&child->p_token);
+		lwkt_gettoken(&parent->p_token);
+		if (child->p_pptr != opp) {
+			lwkt_reltoken(&parent->p_token);
+			lwkt_reltoken(&child->p_token);
+			lwkt_reltoken(&opp->p_token);
+			PRELE(opp);
+			continue;
+		}
+		LIST_REMOVE(child, p_sibling);
+		LIST_INSERT_HEAD(&parent->p_children, child, p_sibling);
+		child->p_pptr = parent;
+		lwkt_reltoken(&parent->p_token);
+		lwkt_reltoken(&child->p_token);
+		lwkt_reltoken(&opp->p_token);
+		if (LIST_EMPTY(&opp->p_children))
+			wakeup(opp);
+		PRELE(opp);
+		break;
+	}
 	PRELE(parent);
-	PRELE(opp);
 }
 
 /*
