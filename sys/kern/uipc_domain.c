@@ -155,8 +155,8 @@ net_add_domain(void *data)
 static void
 domaininit(void *dummy)
 {
-	if (max_linkhdr < 16)		/* XXX */
-		max_linkhdr = 16;
+	if (max_linkhdr < 20)		/* XXX */
+		max_linkhdr = 20;
 
 	callout_init_mp(&pffasttimo_ch);
 	callout_init_mp(&pfslowtimo_ch);
