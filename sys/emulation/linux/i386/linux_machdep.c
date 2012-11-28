@@ -513,8 +513,12 @@ sys_linux_clone(struct linux_clone_args *args)
 	args->sysmsg_fds[0] = p2 ? p2->p_pid : 0;
 	args->sysmsg_fds[1] = 0;
 	
-	if (args->flags & (LINUX_CLONE_PARENT | LINUX_CLONE_THREAD))
-		proc_reparent(p2, curproc->p_pptr /* XXX */);
+	if (args->flags & (LINUX_CLONE_PARENT | LINUX_CLONE_THREAD)) {
+		lwkt_gettoken(&curproc->p_token);
+		while (p2->p_pptr != curproc->p_pptr)
+			proc_reparent(p2, curproc->p_pptr);
+		lwkt_reltoken(&curproc->p_token);
+	}
 
 	emuldata_init(curproc, p2, args->flags);
 	linux_proc_fork(p2, curproc, args->child_tidptr);

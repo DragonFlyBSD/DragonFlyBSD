@@ -458,8 +458,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		/* security check done above */
 		p->p_flags |= P_TRACED;
 		p->p_oppid = p->p_pptr->p_pid;
-		if (p->p_pptr != curp)
-			proc_reparent(p, curp);
+		proc_reparent(p, curp);
 		data = SIGSTOP;
 		goto sendsig;	/* in PT_CONTINUE below */
 
@@ -504,8 +503,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 				struct proc *pp;
 
 				pp = pfind(p->p_oppid);
-				proc_reparent(p, pp ? pp : initproc);
-				if (pp != NULL)
+				proc_reparent(p, pp);
+				if (pp)
 					PRELE(pp);
 			}
 
