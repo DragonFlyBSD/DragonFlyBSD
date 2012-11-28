@@ -33,16 +33,17 @@
  *
  *	@(#)errno.h	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/errno.h,v 1.28 2005/04/02 12:33:28 das Exp $
- * $DragonFly: src/sys/sys/errno.h,v 1.10 2006/12/05 23:14:55 dillon Exp $
  */
 
 #ifndef _SYS_ERRNO_H_
 #define _SYS_ERRNO_H_
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
-extern __thread int	errno;
-
 #include <sys/cdefs.h>
+__BEGIN_DECLS
+extern __thread int	errno;
+__END_DECLS
+
 static __inline int *__error(void)
 {
 	return (&errno);
