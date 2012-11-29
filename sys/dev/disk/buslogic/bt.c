@@ -1,7 +1,6 @@
 /*
  * Generic driver for the BusLogic MultiMaster SCSI host adapters
  * Product specific probe and attach routines can be found in:
- * sys/dev/buslogic/bt_isa.c	BT-54X, BT-445 cards
  * sys/dev/buslogic/bt_pci.c	BT-946, BT-948, BT-956, BT-958 cards
  *
  * Copyright (c) 1998, 1999 Justin T. Gibbs.
@@ -160,36 +159,6 @@ timeout_t bttimeout;
 
 u_long bt_unit = 0;
 
-/*
- * XXX
- * Do our own re-probe protection until a configuration
- * manager can do it for us.  This ensures that we don't
- * reprobe a card already found by the PCI probes.
- */
-struct bt_isa_port bt_isa_ports[] =
-{
-	{ 0x130, 0, 4 },
-	{ 0x134, 0, 5 },
-	{ 0x230, 0, 2 },
-	{ 0x234, 0, 3 },
-	{ 0x330, 0, 0 },
-	{ 0x334, 0, 1 }
-};
-
-/*
- * I/O ports listed in the order enumerated by the
- * card for certain op codes.
- */
-u_int16_t bt_board_ports[] =
-{
-	0x330,
-	0x334,
-	0x230,
-	0x234,
-	0x130,
-	0x134
-};
-
 /* Exported functions */
 void
 bt_init_softc(device_t dev, struct resource *port,
@@ -258,68 +227,6 @@ bt_free_softc(device_t dev)
 	case 0:
 		break;
 	}
-}
-
-int
-bt_port_probe(device_t dev, struct bt_probe_info *info)
-{
-	struct bt_softc *bt = device_get_softc(dev);
-	config_data_t config_data;
-	int error;
-
-	/* See if there is really a card present */
-	if (bt_probe(dev) || bt_fetch_adapter_info(dev))
-		return(1);
-
-	/*
-	 * Determine our IRQ, and DMA settings and
-	 * export them to the configuration system.
-	 */
-	error = bt_cmd(bt, BOP_INQUIRE_CONFIG, NULL, /*parmlen*/0,
-		       (u_int8_t*)&config_data, sizeof(config_data),
-		       DEFAULT_CMD_TIMEOUT);
-	if (error != 0) {
-		kprintf("bt_port_probe: Could not determine IRQ or DMA "
-		       "settings for adapter.\n");
-		return (1);
-	}
-
-	if (bt->model[0] == '5') {
-		/* DMA settings only make sense for ISA cards */
-		switch (config_data.dma_chan) {
-		case DMA_CHAN_5:
-			info->drq = 5;
-			break;
-		case DMA_CHAN_6:
-			info->drq = 6;
-			break;
-		case DMA_CHAN_7:
-			info->drq = 7;
-			break;
-		default:
-			kprintf("bt_port_probe: Invalid DMA setting "
-			       "detected for adapter.\n");
-			return (1);
-		}
-	} else {
-		/* VL/EISA/PCI DMA */
-		info->drq = -1;
-	}
-	switch (config_data.irq) {
-	case IRQ_9:
-	case IRQ_10:
-	case IRQ_11:
-	case IRQ_12:
-	case IRQ_14:
-	case IRQ_15:
-		info->irq = ffs(config_data.irq) + 8;
-		break;
-	default:
-		kprintf("bt_port_probe: Invalid IRQ setting %x"
-		       "detected for adapter.\n", config_data.irq);
-		return (1);
-	}
-	return (0);
 }
 
 /*
@@ -854,80 +761,6 @@ bt_attach(device_t dev)
 
 	return (0);
 }
-
-int
-bt_check_probed_iop(u_int ioport)
-{
-	u_int i;
-
-	for (i = 0; i < BT_NUM_ISAPORTS; i++) {
-		if (bt_isa_ports[i].addr == ioport) {
-			if (bt_isa_ports[i].probed != 0)
-				return (1);
-			else {
-				return (0);
-			}
-		}
-	}
-	return (1);
-}
-
-void
-bt_mark_probed_bio(isa_compat_io_t port)
-{
-	if (port < BIO_DISABLED)
-		bt_mark_probed_iop(bt_board_ports[port]);
-}
-
-void
-bt_mark_probed_iop(u_int ioport)
-{
-	u_int i;
-
-	for (i = 0; i < BT_NUM_ISAPORTS; i++) {
-		if (ioport == bt_isa_ports[i].addr) {
-			bt_isa_ports[i].probed = 1;
-			break;
-		}
-	}
-}
-
-void
-bt_find_probe_range(int ioport, int *port_index, int *max_port_index)
-{
-	if (ioport > 0) {
-		int i;
-
-		for (i = 0;i < BT_NUM_ISAPORTS; i++)
-			if (ioport <= bt_isa_ports[i].addr)
-				break;
-		if ((i >= BT_NUM_ISAPORTS)
-		 || (ioport != bt_isa_ports[i].addr)) {
-			kprintf("\nbt_isa_probe: Invalid baseport of 0x%x specified.\n"
-			       "bt_isa_probe: Nearest valid baseport is 0x%x.\n"
-			       "bt_isa_probe: Failing probe.\n",
-			       ioport,
-			       (i < BT_NUM_ISAPORTS)
-				    ? bt_isa_ports[i].addr
-				    : bt_isa_ports[BT_NUM_ISAPORTS - 1].addr);
-			*port_index = *max_port_index = -1;
-			return;
-		}
-		*port_index = *max_port_index = bt_isa_ports[i].bio;
-	} else {
-		*port_index = 0;
-		*max_port_index = BT_NUM_ISAPORTS - 1;
-	}
-}
-
-int
-bt_iop_from_bio(isa_compat_io_t bio_index)
-{
-	if (bio_index >= 0 && bio_index < BT_NUM_ISAPORTS)
-		return (bt_board_ports[bio_index]);
-	return (-1);
-}
-
 
 static void
 btallocccbs(struct bt_softc *bt)

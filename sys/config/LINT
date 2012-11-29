@@ -1162,7 +1162,7 @@ device		npx0	at nexus? port IO_NPX flags 0x0 irq 13
 #
 
 #
-# SCSI host adapters: `bt'
+# SCSI host adapters
 #
 # adv: All Narrow SCSI bus AdvanSys controllers.
 # adw: Second Generation AdvanSys controllers including the ADV940UW.
@@ -1177,7 +1177,7 @@ device		npx0	at nexus? port IO_NPX flags 0x0 irq 13
 # probed correctly.
 #
 
-device		bt0	at isa? port IO_BT0
+device		bt
 device		adv0	at isa?
 device		adw
 device		aic

@@ -982,7 +982,7 @@ options 	SC_TWOBUTTON_MOUSE
 #options 	SC_NO_SYSMOUSE
 
 #
-# SCSI host adapters: `bt'
+# SCSI host adapters
 #
 # adv: All Narrow SCSI bus AdvanSys controllers.
 # adw: Second Generation AdvanSys controllers including the ADV940UW.
@@ -997,7 +997,7 @@ options 	SC_TWOBUTTON_MOUSE
 # probed correctly.
 #
 
-device		bt0	at isa? port IO_BT0
+device		bt
 device		adv0	at isa?
 device		adw
 device		aic

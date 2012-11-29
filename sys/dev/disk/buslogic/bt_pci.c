@@ -46,7 +46,6 @@
 
 #define PCI_DEVICE_ID_BUSLOGIC_MULTIMASTER	0x1040104Bul
 #define PCI_DEVICE_ID_BUSLOGIC_MULTIMASTER_NC	0x0140104Bul
-#define PCI_DEVICE_ID_BUSLOGIC_FLASHPOINT	0x8130104Bul
 
 static int
 bt_pci_alloc_resources(device_t dev)
@@ -108,49 +107,14 @@ bt_pci_probe(device_t dev)
 	switch (pci_get_devid(dev)) {
 		case PCI_DEVICE_ID_BUSLOGIC_MULTIMASTER:
 		case PCI_DEVICE_ID_BUSLOGIC_MULTIMASTER_NC:
-		{
-			struct bt_softc   *bt = device_get_softc(dev);
-			pci_info_data_t pci_info;
-			int error;
-
-			error = bt_pci_alloc_resources(dev);
-			if (error)
-				return (error);
-
-			/*
-			 * Determine if an ISA compatible I/O port has been
-			 * enabled.  If so, record the port so it will not
-			 * be probed by our ISA probe.  If the PCI I/O port
-			 * was not set to the compatibility port, disable it.
-			 */
-			error = bt_cmd(bt, BOP_INQUIRE_PCI_INFO,
-				       /*param*/NULL, /*paramlen*/0,
-				       (u_int8_t*)&pci_info, sizeof(pci_info),
-				       DEFAULT_CMD_TIMEOUT);
-			if (error == 0
-			 && pci_info.io_port < BIO_DISABLED) {
-				bt_mark_probed_bio(pci_info.io_port);
-				if (rman_get_start(bt->port) !=
-				    bt_iop_from_bio(pci_info.io_port)) {
-					u_int8_t new_addr;
-
-					new_addr = BIO_DISABLED;
-					bt_cmd(bt, BOP_MODIFY_IO_ADDR,
-					       /*param*/&new_addr,
-					       /*paramlen*/1, /*reply_buf*/NULL,
-					       /*reply_len*/0,
-					       DEFAULT_CMD_TIMEOUT);
-				}
-			}
-			bt_pci_release_resources(dev);
-			device_set_desc(dev, "Buslogic Multi-Master SCSI Host Adapter");
-			return (0);
-		}
-		default:
+			device_set_desc(dev,
+			    "Buslogic Multi-Master SCSI Host Adapter");
 			break;
+		default:
+			return (ENXIO);
 	}
 
-	return (ENXIO);
+	return (BUS_PROBE_DEFAULT);
 }
 
 static int

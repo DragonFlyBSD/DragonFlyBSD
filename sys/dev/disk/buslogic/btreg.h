@@ -2,7 +2,6 @@
  * Generic register and struct definitions for the BusLogic
  * MultiMaster SCSI host adapters.  Product specific probe and
  * attach routines can be found in:
- * sys/dev/buslogic/bt_isa.c	BT-54X, BT-445 cards
  * sys/dev/buslogic/bt_pci.c	BT-946, BT-948, BT-956, BT-958 cards
  *
  * Copyright (c) 1998, 1999 Justin T. Gibbs.
@@ -402,27 +401,6 @@ typedef struct {
 	u_int8_t	checksum[2];
 } auto_scsi_data_t;
 
-struct bt_isa_port {
-	u_int16_t addr;
-	u_int8_t  probed;
-	u_int8_t  bio;
-};
-
-extern struct bt_isa_port bt_isa_ports[];
-
-#define BT_NUM_ISAPORTS 6
-
-typedef enum {
-	BIO_330		= 0,
-	BIO_334		= 1,
-	BIO_230		= 2,
-	BIO_234		= 3,
-	BIO_130		= 4,
-	BIO_134		= 5,
-	BIO_DISABLED	= 6,
-	BIO_DISABLED2	= 7
-} isa_compat_io_t;
-
 typedef struct {
 	u_int8_t io_port;
 	u_int8_t irq_num;
@@ -669,21 +647,11 @@ void			bt_init_softc(device_t dev,
 				      struct resource *irq,
 				      struct resource *drq);
 void			bt_free_softc(device_t dev);
-int			bt_port_probe(device_t dev,
-				      struct bt_probe_info *info);
 int			bt_probe(device_t dev);
 int			bt_fetch_adapter_info(device_t dev);
 int			bt_init(device_t dev); 
 int			bt_attach(device_t dev);
 void			bt_intr(void *arg);
-int			bt_check_probed_iop(u_int ioport);
-void			bt_mark_probed_bio(isa_compat_io_t port);
-void			bt_mark_probed_iop(u_int ioport);
-void			bt_find_probe_range(int ioport,
-					    int *port_index,
-					    int *max_port_index);
-
-int			bt_iop_from_bio(isa_compat_io_t bio_index);
 
 #define DEFAULT_CMD_TIMEOUT 100000	/* 10 sec */
 int			bt_cmd(struct bt_softc *bt, bt_op_t opcode,
