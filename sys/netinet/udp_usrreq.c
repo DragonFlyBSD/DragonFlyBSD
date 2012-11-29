@@ -148,6 +148,11 @@ int	udp_sosend_async = 1;
 SYSCTL_INT(_net_inet_udp, OID_AUTO, sosend_async, CTLFLAG_RW,
 	&udp_sosend_async, 0, "UDP asynchronized pru_send");
 
+int	udp_sosend_prepend = 1;
+SYSCTL_INT(_net_inet_udp, OID_AUTO, sosend_prepend, CTLFLAG_RW,
+	&udp_sosend_prepend, 0,
+	"Prepend enough space for proto and link header in pru_send");
+
 struct	inpcbinfo udbinfo;
 
 static struct netisr_barrier *udbinfo_br;

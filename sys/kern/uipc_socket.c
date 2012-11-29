@@ -102,6 +102,7 @@
 extern int tcp_sosend_agglim;
 extern int tcp_sosend_async;
 extern int udp_sosend_async;
+extern int udp_sosend_prepend;
 
 #ifdef INET
 static int	 do_setopt_accept_filter(struct socket *so, struct sockopt *sopt);
@@ -941,9 +942,44 @@ restart:
 	}
 
 	if (uio) {
-		top = m_uiomove(uio);
-		if (top == NULL)
-			goto release;
+		int hdrlen = max_hdr;
+
+		/*
+		 * We try to optimize out the additional mbuf
+		 * allocations in M_PREPEND() on output path, e.g.
+		 * - udp_output(), when it tries to prepend protocol
+		 *   headers.
+		 * - Link layer output function, when it tries to
+		 *   prepend link layer header.
+		 *
+		 * This probably will not benefit any data that will
+		 * be fragmented, so this optimization is only performed
+		 * when the size of data and max size of protocol+link
+		 * headers fit into one mbuf cluster.
+		 */
+		if (uio->uio_resid > MCLBYTES - hdrlen ||
+		    !udp_sosend_prepend) {
+			top = m_uiomove(uio);
+			if (top == NULL)
+				goto release;
+		} else {
+			int nsize;
+
+			top = m_getl(uio->uio_resid + hdrlen, MB_WAIT,
+			    MT_DATA, M_PKTHDR, &nsize);
+			KASSERT(nsize >= uio->uio_resid + hdrlen,
+			    ("sosendudp invalid nsize %d, "
+			     "resid %zu, hdrlen %d",
+			     nsize, uio->uio_resid, hdrlen));
+
+			top->m_len = uio->uio_resid;
+			top->m_pkthdr.len = uio->uio_resid;
+			top->m_data += hdrlen;
+
+			error = uiomove(mtod(top, caddr_t), top->m_len, uio);
+			if (error)
+				goto out;
+		}
 	}
 
 	if (flags & MSG_DONTROUTE)
