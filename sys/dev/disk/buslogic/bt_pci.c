@@ -1,4 +1,4 @@
-/*
+/*-
  * Product specific probe and attach routines for:
  *      Buslogic BT946, BT948, BT956, BT958 SCSI controllers
  *
@@ -26,12 +26,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/buslogic/bt_pci.c,v 1.11 2000/01/17 12:38:00 nyan Exp $
+ * $FreeBSD: src/sys/dev/buslogic/bt_pci.c,v 1.25 2012/11/17 01:51:40 svnexp Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
@@ -41,8 +42,8 @@
 
 #include "btreg.h"
 
-#define BT_PCI_IOADDR	PCIR_MAPS
-#define BT_PCI_MEMADDR	PCIR_MAPS + 4
+#define BT_PCI_IOADDR	PCIR_BAR(0)
+#define BT_PCI_MEMADDR	PCIR_BAR(1)
 
 #define PCI_DEVICE_ID_BUSLOGIC_MULTIMASTER	0x1040104Bul
 #define PCI_DEVICE_ID_BUSLOGIC_MULTIMASTER_NC	0x0140104Bul
@@ -60,23 +61,21 @@ bt_pci_alloc_resources(device_t dev)
 	if (command & PCIM_CMD_MEMEN) {
 		type = SYS_RES_MEMORY;
 		rid = BT_PCI_MEMADDR;
-		regs = bus_alloc_resource(dev, type, &rid,
-					  0, ~0, 1, RF_ACTIVE);
+		regs = bus_alloc_resource_any(dev, type, &rid, RF_ACTIVE);
 	}
 #else
 	if (!regs && (command & PCIM_CMD_PORTEN)) {
 		type = SYS_RES_IOPORT;
 		rid = BT_PCI_IOADDR;
-		regs = bus_alloc_resource(dev, type, &rid,
-					  0, ~0, 1, RF_ACTIVE);
+		regs = bus_alloc_resource_any(dev, type, &rid, RF_ACTIVE);
 	}
 #endif
 	if (!regs)
 		return (ENOMEM);
 	
 	zero = 0;
-	irq = bus_alloc_resource(dev, SYS_RES_IRQ, &zero,
-				 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
+	irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &zero,
+				     RF_ACTIVE | RF_SHAREABLE);
 	if (!irq) {
 		bus_release_resource(dev, type, rid, regs);
 		return (ENOMEM);
@@ -132,36 +131,28 @@ bt_pci_attach(device_t dev)
 
 	/* Allocate a dmatag for our CCB DMA maps */
 	/* XXX Should be a child of the PCI bus dma tag */
-	if (bus_dma_tag_create(/*parent*/NULL, /*alignemnt*/1, /*boundary*/0,
-			       /*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
-			       /*highaddr*/BUS_SPACE_MAXADDR,
-			       /*filter*/NULL, /*filterarg*/NULL,
-			       /*maxsize*/BUS_SPACE_MAXSIZE_32BIT,
-			       /*nsegments*/BUS_SPACE_UNRESTRICTED,
-			       /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
-			       /*flags*/0, &bt->parent_dmat) != 0) {
+	if (bus_dma_tag_create(	/* parent	*/ NULL,
+				/* alignemnt	*/ 1,
+				/* boundary	*/ 0,
+				/* lowaddr	*/ BUS_SPACE_MAXADDR_32BIT,
+				/* highaddr	*/ BUS_SPACE_MAXADDR,
+				/* filter	*/ NULL,
+				/* filterarg	*/ NULL,
+				/* maxsize	*/ BUS_SPACE_MAXSIZE_32BIT,
+				/* nsegments	*/ ~0,
+				/* maxsegsz	*/ BUS_SPACE_MAXSIZE_32BIT,
+				/* flags	*/ 0,
+				&bt->parent_dmat) != 0) {
 		bt_pci_release_resources(dev);
 		return (ENOMEM);
 	}
 
-	/*
-	 * Protect ourself from spurrious interrupts during
-	 * intialization and attach.  We should really rely
-	 * on interrupts during attach, but we don't have
-	 * access to our interrupts during ISA probes, so until
-	 * that changes, we mask our interrupts during attach
-	 * too.
-	 */
-	crit_enter();
-
 	if (bt_probe(dev) || bt_fetch_adapter_info(dev) || bt_init(dev)) {
 		bt_pci_release_resources(dev);
-		crit_exit();
 		return (ENXIO);
 	}
 
 	error = bt_attach(dev);
-	crit_exit();
 
 	if (error) {
 		bt_pci_release_resources(dev);
@@ -188,3 +179,4 @@ static driver_t bt_pci_driver = {
 static devclass_t bt_devclass;
 
 DRIVER_MODULE(bt, pci, bt_pci_driver, bt_devclass, NULL, NULL);
+MODULE_DEPEND(bt, pci, 1, 1, 1);

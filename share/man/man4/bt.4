@@ -33,28 +33,32 @@
 .Nm bt
 .Nd Buslogic/Mylex MultiMaster SCSI host adapter driver
 .Sh SYNOPSIS
-.Cd device scbus
-.Cd device bt
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device scbus"
+.Cd "device bt"
+.Ed
 .Sh DESCRIPTION
 This driver provides access to the
 .Tn SCSI
 bus connected to a Buslogic/Mylex MultiMaster or compatible controller:
 .Bd -ragged -offset indent
-.Bl -column "BT-956CD " "PCI " "Commands " Description
 MultiMaster "W" Series Host Adapters:
-.Pp
-.Em "Adapter   Bus   Commands  Description"
-BT-948    PCI     192     ULtra SCSI-3
-BT-958    PCI     192     Wide ULtra SCSI-3
-BT-958D   PCI     192     Wide Differential ULtra SCSI-3
+.Bl -column "BT-956CD " "PCI " "Commands " "Description"
+.Em "Adapter" Ta Em "Bus" Ta Em "Commands" Ta Em "Description"
+BT-948	PCI	192	Ultra SCSI-3
+BT-958	PCI	192	Wide Ultra SCSI-3
+BT-958D	PCI	192	Wide Differential Ultra SCSI-3
 .El
-.Bl -column "BT-956CD " "PCI " "Commands " Description
-MultiMaster "C" Series Host Adapters:
 .Pp
-.Em "Adapter   Bus   Commands  Description"
-BT-946C   PCI     100     Fast SCSI-2
-BT-956C   PCI     100     Wide Fast SCSI-2
-BT-956CD  PCI     100     Wide Differential Fast SCSI-2
+MultiMaster "C" Series Host Adapters:
+.Bl -column "BT-956CD " "PCI " "Commands " "Description"
+.Em "Adapter" Ta Em "Bus" Ta Em "Commands" Ta Em "Description"
+BT-946C	PCI	100	Fast SCSI-2
+BT-956C	PCI	100	Wide Fast SCSI-2
+BT-956CD	PCI	100	Wide Differential Fast SCSI-2
 .El
 .Ed
 .Pp
@@ -65,7 +69,8 @@ Tagged queueing is supported on 'W' series adapters and 'C' series adapters
 with firmware of rev 4.42 and higher.
 .Pp
 Boards with certain firmware revisions may lock up under heavy load to
-certain devices, especially if tagged queueing is used.  Should you encounter
+certain devices, especially if tagged queueing is used.
+Should you encounter
 a problem with your adapter, contact Mylex technical support and ensure you
 have the latest firmware for your controller.
 .Sh FILES
@@ -93,7 +98,8 @@ patch kit.
 .An Julian Elischer
 wrote a driver for the Multimaster cards that appeared in the
 .Bx 386
-patch kit.  The driver was rewritten by
+patch kit.
+The driver was rewritten by
 .An Justin T. Gibbs
 to take advantage of new board features and work with the CAM SCSI framework in
 .Fx 3.0 .
@@ -101,6 +107,7 @@ to take advantage of new board features and work with the CAM SCSI framework in
 Special thanks to
 .An Leonard N. Zubkoff
 for writing such a complete and well documented Mylex/BusLogic MultiMaster
-driver for Linux.  Support in this driver for the wide range of MultiMaster
+driver for Linux.
+Support in this driver for the wide range of MultiMaster
 controllers and firmware revisions, with their otherwise undocumented quirks,
 would not have been possible without his efforts.
