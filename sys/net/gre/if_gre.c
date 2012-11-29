@@ -261,9 +261,13 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	ip = NULL;
 
 	if (ifp->if_bpf) {
-		uint32_t af = dst->sa_family;
+		bpf_gettoken();
+		if (ifp->if_bpf) {
+			uint32_t af = dst->sa_family;
 
-		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+			bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+		}
+		bpf_reltoken();
 	}
 
 	m->m_flags &= ~(M_BCAST|M_MCAST);

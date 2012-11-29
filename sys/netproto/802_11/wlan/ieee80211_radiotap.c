@@ -183,8 +183,14 @@ spam_vaps(struct ieee80211vap *vap0, struct mbuf *m,
 		if (vap != vap0 &&
 		    vap->iv_opmode == IEEE80211_M_MONITOR &&
 		    (vap->iv_flags_ext & IEEE80211_FEXT_BPF) &&
-		    vap->iv_state != IEEE80211_S_INIT)
-			bpf_ptap(vap->iv_rawbpf, m, rh, len);
+		    vap->iv_state != IEEE80211_S_INIT) {
+			if (vap->iv_rawbpf) {
+				bpf_gettoken();
+				if (vap->iv_rawbpf)
+					bpf_ptap(vap->iv_rawbpf, m, rh, len);
+				bpf_reltoken();
+			}
+		}
 	}
 }
 
@@ -201,8 +207,14 @@ ieee80211_radiotap_tx(struct ieee80211vap *vap0, struct mbuf *m)
 	KASSERT(th != NULL, ("no tx radiotap header"));
 	len = le16toh(th->it_len);
 
-	if (vap0->iv_flags_ext & IEEE80211_FEXT_BPF)
-		bpf_ptap(vap0->iv_rawbpf, m, th, len);
+	if (vap0->iv_flags_ext & IEEE80211_FEXT_BPF) {
+		if (vap0->iv_rawbpf) {
+			bpf_gettoken();
+			if (vap0->iv_rawbpf)
+				bpf_ptap(vap0->iv_rawbpf, m, th, len);
+			bpf_reltoken();
+		}
+	}
 	/*
 	 * Spam monitor mode vaps.
 	 */
@@ -223,8 +235,14 @@ ieee80211_radiotap_rx(struct ieee80211vap *vap0, struct mbuf *m)
 	KASSERT(rh != NULL, ("no rx radiotap header"));
 	len = le16toh(rh->it_len);
 
-	if (vap0->iv_flags_ext & IEEE80211_FEXT_BPF)
-		bpf_ptap(vap0->iv_rawbpf, m, rh, len);
+	if (vap0->iv_flags_ext & IEEE80211_FEXT_BPF) {
+		if (vap0->iv_rawbpf) {
+			bpf_gettoken();
+			if (vap0->iv_rawbpf)
+				bpf_ptap(vap0->iv_rawbpf, m, rh, len);
+			bpf_reltoken();
+		}
+	}
 	/*
 	 * Spam monitor mode vaps with unicast frames.  Multicast
 	 * frames are handled by passing through ieee80211_input_all
@@ -249,8 +267,14 @@ ieee80211_radiotap_rx_all(struct ieee80211com *ic, struct mbuf *m)
 	/* XXX locking? */
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 		if (ieee80211_radiotap_active_vap(vap) &&
-		    vap->iv_state != IEEE80211_S_INIT)
-			bpf_ptap(vap->iv_rawbpf, m, rh, len);
+		    vap->iv_state != IEEE80211_S_INIT) {
+			if (vap->iv_rawbpf) {
+				bpf_gettoken();
+				if (vap->iv_rawbpf)
+					bpf_ptap(vap->iv_rawbpf, m, rh, len);
+				bpf_reltoken();
+			}
+		}
 	}
 }
 

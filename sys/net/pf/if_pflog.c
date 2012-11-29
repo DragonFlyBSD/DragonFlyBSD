@@ -304,10 +304,14 @@ pflog_packet(struct pfi_kif *kif, struct mbuf *m, sa_family_t af, u_int8_t dir,
 
 	ifn->if_opackets++;
 	ifn->if_obytes += m->m_pkthdr.len;
-	lwkt_reltoken(&pf_token);
-	bpf_mtap_hdr(ifn->if_bpf, (char *)&hdr, PFLOG_HDRLEN, m,
-	    BPF_DIRECTION_OUT);
-	lwkt_gettoken(&pf_token);
+	if (ifn->if_bpf) {
+		bpf_gettoken();
+		if (ifn->if_bpf) {
+			bpf_mtap_hdr(ifn->if_bpf, (char *)&hdr, PFLOG_HDRLEN, m,
+			    BPF_DIRECTION_OUT);
+		}
+		bpf_reltoken();
+	}
 
 #ifdef INET
 	if (af == AF_INET) {

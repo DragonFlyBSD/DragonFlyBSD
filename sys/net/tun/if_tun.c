@@ -340,13 +340,17 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	}
 
 	if (ifp->if_bpf) {
-		/*
-		 * We need to prepend the address family as
-		 * a four byte field.
-		 */
-		uint32_t af = dst->sa_family;
+		bpf_gettoken();
+		if (ifp->if_bpf) {
+			/*
+			 * We need to prepend the address family as
+			 * a four byte field.
+			 */
+			uint32_t af = dst->sa_family;
 
-		bpf_ptap(ifp->if_bpf, m0, &af, sizeof(af));
+			bpf_ptap(ifp->if_bpf, m0, &af, sizeof(af));
+		}
+		bpf_reltoken();
 	}
 
 	/* prepend sockaddr? this may abort if the mbuf allocation fails */
@@ -635,28 +639,38 @@ tunwrite(struct dev_write_args *ap)
 	top->m_pkthdr.rcvif = ifp;
 
 	if (ifp->if_bpf) {
-		if (tp->tun_flags & TUN_IFHEAD) {
-			/*
-			 * Conveniently, we already have a 4-byte address
-			 * family prepended to our packet !
-			 * Inconveniently, it's in the wrong byte order !
-			 */
-			if ((top = m_pullup(top, sizeof(family))) == NULL)
-				return ENOBUFS;
-			*mtod(top, u_int32_t *) =
-			    ntohl(*mtod(top, u_int32_t *));
-			bpf_mtap(ifp->if_bpf, top);
-			*mtod(top, u_int32_t *) =
-			    htonl(*mtod(top, u_int32_t *));
-		} else {
-			/*
-			 * We need to prepend the address family as
-			 * a four byte field.
-			 */
-			static const uint32_t af = AF_INET;
+		bpf_gettoken();
 
-			bpf_ptap(ifp->if_bpf, top, &af, sizeof(af));
+		if (ifp->if_bpf) {
+			if (tp->tun_flags & TUN_IFHEAD) {
+				/*
+				 * Conveniently, we already have a 4-byte
+				 * address family prepended to our packet !
+				 * Inconveniently, it's in the wrong byte
+				 * order !
+				 */
+				if ((top = m_pullup(top, sizeof(family)))
+				    == NULL) {
+					bpf_reltoken();
+					return ENOBUFS;
+				}
+				*mtod(top, u_int32_t *) =
+				    ntohl(*mtod(top, u_int32_t *));
+				bpf_mtap(ifp->if_bpf, top);
+				*mtod(top, u_int32_t *) =
+				    htonl(*mtod(top, u_int32_t *));
+			} else {
+				/*
+				 * We need to prepend the address family as
+				 * a four byte field.
+				 */
+				static const uint32_t af = AF_INET;
+
+				bpf_ptap(ifp->if_bpf, top, &af, sizeof(af));
+			}
 		}
+
+		bpf_reltoken();
 	}
 
 	if (tp->tun_flags & TUN_IFHEAD) {

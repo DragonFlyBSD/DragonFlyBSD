@@ -199,7 +199,7 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 	}
 
 	if (ifp->if_bpf) {
-		get_mplock();
+		bpf_gettoken();
 
 		/* Re-check */
 		if (ifp->if_bpf == NULL)
@@ -212,7 +212,7 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 			bpf_mtap(ifp->if_bpf, m);
 		}
 rel:
-		rel_mplock();
+		bpf_reltoken();
 	}
 
 	/* Strip away media header */

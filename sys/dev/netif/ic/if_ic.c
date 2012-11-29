@@ -378,8 +378,12 @@ icoutput(struct ifnet *ifp, struct mbuf *m,
 
 	} while ((mm = mm->m_next));
 
-	if (ifp->if_bpf)
-		bpf_ptap(ifp->if_bpf, m, &hdr, ICHDRLEN);
+	if (ifp->if_bpf) {
+		bpf_gettoken();
+		if (ifp->if_bpf)
+			bpf_ptap(ifp->if_bpf, m, &hdr, ICHDRLEN);
+		bpf_reltoken();
+	}
 
 	sc->ic_sending = 1;
 

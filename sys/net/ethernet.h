@@ -389,12 +389,16 @@ extern	void (*vlan_input_p)(struct mbuf *m);
 #define ETHER_BPF_MTAP(_ifp, _m) do {					\
 	if ((_ifp)->if_bpf) {						\
 		M_ASSERTPKTHDR((_m));					\
-		if ((_m)->m_flags & M_VLANTAG) {			\
-			vlan_ether_ptap((_ifp)->if_bpf, (_m),		\
-					(_m)->m_pkthdr.ether_vlantag);	\
-		} else {						\
-			bpf_mtap((_ifp)->if_bpf, (_m));			\
+		bpf_gettoken();						\
+		if ((_ifp->if_bpf)) {					\
+			if ((_m)->m_flags & M_VLANTAG) {		\
+				vlan_ether_ptap((_ifp)->if_bpf, (_m),	\
+				    (_m)->m_pkthdr.ether_vlantag);	\
+			} else {					\
+				bpf_mtap((_ifp)->if_bpf, (_m));		\
+			}						\
 		}							\
+		bpf_reltoken();						\
 	}								\
 } while (0)
 

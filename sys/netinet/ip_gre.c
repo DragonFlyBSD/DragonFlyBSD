@@ -181,8 +181,12 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
 	m->m_len -= hlen;
 	m->m_pkthdr.len -= hlen;
 
-	if (sc->sc_if.if_bpf)
-		bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
+	if (sc->sc_if.if_bpf) {
+		bpf_gettoken();
+		if (sc->sc_if.if_bpf)
+			bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
+		bpf_reltoken();
+	}
 
 	m->m_pkthdr.rcvif = &sc->sc_if;
 	netisr_queue(isr, m);
@@ -248,8 +252,12 @@ gre_mobile_input(struct mbuf **mp, int *offp, int proto)
 	ip->ip_sum = 0;
 	ip->ip_sum = in_cksum(m, (ip->ip_hl << 2));
 
-	if (sc->sc_if.if_bpf)
-		bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
+	if (sc->sc_if.if_bpf) {
+		bpf_gettoken();
+		if (sc->sc_if.if_bpf)
+			bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
+		bpf_reltoken();
+	}
 
 	m->m_pkthdr.rcvif = &sc->sc_if;
 

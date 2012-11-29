@@ -125,13 +125,17 @@ discoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	}
 
 	if (discif.if_bpf) {
-		/*
-		 * We need to prepend the address family as
-		 * a four byte field.
-		 */
-		uint32_t af = dst->sa_family;
+		bpf_gettoken();
+		if (discif.if_bpf) {
+			/*
+			 * We need to prepend the address family as
+			 * a four byte field.
+			 */
+			uint32_t af = dst->sa_family;
 
-		bpf_ptap(discif.if_bpf, m, &af, sizeof(af));
+			bpf_ptap(discif.if_bpf, m, &af, sizeof(af));
+		}
+		bpf_reltoken();
 	}
 	m->m_pkthdr.rcvif = ifp;
 

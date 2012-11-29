@@ -346,13 +346,17 @@ gif_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	}
 
 	if (ifp->if_bpf) {
-		/*
-		 * We need to prepend the address family as
-		 * a four byte field.
-		 */
-		uint32_t af = dst->sa_family;
+		bpf_gettoken();
+		if (ifp->if_bpf) {
+			/*
+			 * We need to prepend the address family as
+			 * a four byte field.
+			 */
+			uint32_t af = dst->sa_family;
 
-		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+			bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+		}
+		bpf_reltoken();
 	}
 	ifp->if_opackets++;	
 	ifp->if_obytes += m->m_pkthdr.len;
@@ -412,13 +416,17 @@ gif_input(struct mbuf *m, int af, struct ifnet *ifp)
 	m->m_pkthdr.rcvif = ifp;
 	
 	if (ifp->if_bpf) {
-		/*
-		 * We need to prepend the address family as
-		 * a four byte field.
-		 */
-		uint32_t af1 = af;
+		bpf_gettoken();
+		if (ifp->if_bpf) {
+			/*
+			 * We need to prepend the address family as
+			 * a four byte field.
+			 */
+			uint32_t af1 = af;
 
-		bpf_ptap(ifp->if_bpf, m, &af1, sizeof(af1));
+			bpf_ptap(ifp->if_bpf, m, &af1, sizeof(af1));
+		}
+		bpf_reltoken();
 	}
 
 	/*

@@ -365,8 +365,12 @@ stf_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		return ENETUNREACH;
 	}
 
-	if (ifp->if_bpf)
-		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+	if (ifp->if_bpf) {
+		bpf_gettoken();
+		if (ifp->if_bpf)
+			bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+		bpf_reltoken();
+	}
 
 	M_PREPEND(m, sizeof(struct ip), MB_DONTWAIT);
 	if (m && m->m_len < sizeof(struct ip))
@@ -581,8 +585,12 @@ in_stf_input(struct mbuf **mp, int *offp, int proto)
 
 	m->m_pkthdr.rcvif = ifp;
 
-	if (ifp->if_bpf)
-		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+	if (ifp->if_bpf) {
+		bpf_gettoken();
+		if (ifp->if_bpf)
+			bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+		bpf_reltoken();
+	}
 
 	/*
 	 * Put the packet to the network layer input queue according to the

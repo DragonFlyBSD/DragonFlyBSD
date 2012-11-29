@@ -488,8 +488,12 @@ ng_iface_bpftap(struct ifnet *ifp, struct mbuf *m, sa_family_t family)
 
 	KASSERT(family != AF_UNSPEC, ("%s: family=AF_UNSPEC", __func__));
 
-	if (ifp->if_bpf)
-		bpf_ptap(ifp->if_bpf, m, &family, sizeof(family4));
+	if (ifp->if_bpf) {
+		bpf_gettoken();
+		if (ifp->if_bpf)
+			bpf_ptap(ifp->if_bpf, m, &family, sizeof(family4));
+		bpf_reltoken();
+	}
 }
 
 #ifdef DEBUG

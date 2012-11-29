@@ -758,8 +758,12 @@ ng_fec_input(struct ifnet *ifp, struct mbuf **m0)
 	bifp->if_ipackets++;
 	bifp->if_ibytes += m->m_pkthdr.len;
 
-	if (bifp->if_bpf)
-		bpf_mtap(bifp->if_bpf, m);
+	if (bifp->if_bpf) {
+		bpf_gettoken();
+		if (bifp->if_bpf)
+			bpf_mtap(bifp->if_bpf, m);
+		bpf_reltoken();
+	}
 }
 
 /*

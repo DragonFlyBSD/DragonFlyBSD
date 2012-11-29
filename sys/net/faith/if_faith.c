@@ -211,13 +211,17 @@ faithoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	}
 
 	if (ifp->if_bpf != NULL) {
-		/*
-		 * We need to prepend the address family as
-		 * a four byte field.
-		 */
-		uint32_t af = dst->sa_family;
+		bpf_gettoken();
+		if (ifp->if_bpf != NULL) {
+			/*
+			 * We need to prepend the address family as
+			 * a four byte field.
+			 */
+			uint32_t af = dst->sa_family;
 
-		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+			bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+		}
+		bpf_reltoken();
 	}
 
 	if (rt && rt->rt_flags & (RTF_REJECT|RTF_BLACKHOLE)) {

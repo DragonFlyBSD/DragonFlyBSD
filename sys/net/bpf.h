@@ -39,7 +39,6 @@
  *	@(#)bpf.h	1.34 (LBL)     6/16/96
  *
  * $FreeBSD: src/sys/net/bpf.h,v 1.21.2.4 2002/07/05 14:40:00 fenner Exp $
- * $DragonFly: src/sys/net/bpf.h,v 1.12 2008/03/14 09:52:10 matthias Exp $
  */
 
 #ifndef _NET_BPF_H_
@@ -241,6 +240,7 @@ struct bpf_dltlist {
 };
 
 #ifdef _KERNEL
+
 struct bpf_if;
 struct ifnet;
 struct mbuf;
@@ -254,19 +254,30 @@ void	 bpf_ptap(struct bpf_if *, struct mbuf *, const void *, u_int);
 void	 bpfattach(struct ifnet *, u_int, u_int);
 void	 bpfattach_dlt(struct ifnet *, u_int, u_int, struct bpf_if **);
 void	 bpfdetach(struct ifnet *);
+void	 bpf_gettoken(void);
+void	 bpf_reltoken(void);
 
-void	 bpfilterattach(int);
 u_int	 bpf_filter(const struct bpf_insn *, u_char *, u_int, u_int);
 
-#define	BPF_TAP(_ifp,_pkt,_pktlen) do {				\
-	if ((_ifp)->if_bpf)					\
-		bpf_tap((_ifp)->if_bpf, (_pkt), (_pktlen));	\
+#define	BPF_TAP(_ifp,_pkt,_pktlen) do {					\
+	if ((_ifp)->if_bpf) {						\
+		bpf_gettoken();						\
+		if ((_ifp)->if_bpf)					\
+			bpf_tap((_ifp)->if_bpf, (_pkt), (_pktlen));	\
+		bpf_reltoken();						\
+	}								\
 } while (0)
-#define	BPF_MTAP(_ifp,_m) do {					\
-	if ((_ifp)->if_bpf)					\
-		bpf_mtap((_ifp)->if_bpf, (_m));			\
+
+#define	BPF_MTAP(_ifp,_m) do {						\
+	if ((_ifp)->if_bpf) {						\
+		bpf_gettoken();						\
+		if ((_ifp)->if_bpf)					\
+			bpf_mtap((_ifp)->if_bpf, (_m));                 \
+		bpf_reltoken();						\
+	}								\
 } while (0)
-#endif
+
+#endif	/* _KERNEL */
 
 /*
  * Number of scratch memory words (for BPF_LD|BPF_MEM and BPF_ST).

@@ -1638,9 +1638,10 @@ pfsync_sendout(struct pfsync_softc *sc)
 
 #if NBPFILTER > 0
 	if (ifp->if_bpf) {
-		lwkt_reltoken(&pf_token);
-		bpf_mtap(ifp->if_bpf, m, BPF_DIRECTION_OUT);
-		lwkt_gettoken(&pf_token);
+		bpf_gettoken();
+		if (ifp->if_bpf)
+			bpf_mtap(ifp->if_bpf, m, BPF_DIRECTION_OUT);
+		bpf_reltoken();
 	}
 #endif
 

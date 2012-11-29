@@ -623,14 +623,22 @@ slstart(struct tty *tp)
 				    &sc->sc_comp, 1);
 		}
 		if (sc->sc_if.if_bpf) {
-			/*
-			 * Put the SLIP pseudo-"link header" in place.  The
-			 * compressed header is now at the beginning of the
-			 * mbuf.
-			 */
-			bpfbuf[SLX_DIR] = SLIPDIR_OUT;
-			bcopy(mtod(m, caddr_t), &bpfbuf[SLX_CHDR], CHDR_LEN);
-			bpf_tap(sc->sc_if.if_bpf, bpfbuf, len + SLIP_HDRLEN);
+			bpf_gettoken();
+
+			if (sc->sc_if.if_bpf) {
+				/*
+				 * Put the SLIP pseudo-"link header" in place.
+				 * The compressed header is now at the
+				 * beginning of the mbuf.
+				 */
+				bpfbuf[SLX_DIR] = SLIPDIR_OUT;
+				bcopy(mtod(m, caddr_t), &bpfbuf[SLX_CHDR],
+				    CHDR_LEN);
+				bpf_tap(sc->sc_if.if_bpf, bpfbuf,
+				    len + SLIP_HDRLEN);
+			}
+
+			bpf_reltoken();
 		}
 
 		/*
@@ -890,17 +898,24 @@ slinput(int c, struct tty *tp)
 				goto error;
 		}
 		if (sc->sc_if.if_bpf) {
-			/*
-			 * Put the SLIP pseudo-"link header" in place.
-			 * We couldn't do this any earlier since
-			 * decompression probably moved the buffer
-			 * pointer.  Then, invoke BPF.
-			 */
-			u_char *hp = sc->sc_buf - SLIP_HDRLEN;
+			bpf_gettoken();
 
-			hp[SLX_DIR] = SLIPDIR_IN;
-			bcopy(chdr, &hp[SLX_CHDR], CHDR_LEN);
-			bpf_tap(sc->sc_if.if_bpf, hp, len + SLIP_HDRLEN);
+			if (sc->sc_if.if_bpf) {
+				/*
+				 * Put the SLIP pseudo-"link header" in place.
+				 * We couldn't do this any earlier since
+				 * decompression probably moved the buffer
+				 * pointer.  Then, invoke BPF.
+				 */
+				u_char *hp = sc->sc_buf - SLIP_HDRLEN;
+
+				hp[SLX_DIR] = SLIPDIR_IN;
+				bcopy(chdr, &hp[SLX_CHDR], CHDR_LEN);
+				bpf_tap(sc->sc_if.if_bpf, hp,
+				    len + SLIP_HDRLEN);
+			}
+
+			bpf_reltoken();
 		}
 		m = sl_btom(sc, len);
 		if (m == NULL)

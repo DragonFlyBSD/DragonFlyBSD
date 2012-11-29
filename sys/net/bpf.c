@@ -62,7 +62,6 @@
 #include <sys/vnode.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/bpf.h>
@@ -109,6 +108,8 @@ SYSCTL_INT(_debug, OID_AUTO, bpf_maxbufsize, CTLFLAG_RW,
  */
 static struct bpf_if	*bpf_iflist;
 
+static struct lwkt_token bpf_token = LWKT_TOKEN_INITIALIZER(bpf_token);
+
 static int	bpf_allocbufs(struct bpf_d *);
 static void	bpf_attachd(struct bpf_d *d, struct bpf_if *bp);
 static void	bpf_detachd(struct bpf_d *d);
@@ -140,7 +141,7 @@ static d_kqfilter_t	bpfkqfilter;
 
 #define CDEV_MAJOR 23
 static struct dev_ops bpf_ops = {
-	{ "bpf", 0, 0 },
+	{ "bpf", 0, D_MPSAFE },
 	.d_open =	bpfopen,
 	.d_close =	bpfclose,
 	.d_read =	bpfread,
@@ -263,11 +264,13 @@ bpf_attachd(struct bpf_d *d, struct bpf_if *bp)
 	 * Finally, point the driver's bpf cookie at the interface so
 	 * it will divert packets to bpf.
 	 */
+	lwkt_gettoken(&bpf_token);
 	d->bd_bif = bp;
 	SLIST_INSERT_HEAD(&bp->bif_dlist, d, bd_next);
 	*bp->bif_driverp = bp;
 
 	EVENTHANDLER_INVOKE(bpf_track, bp->bif_ifp, bp->bif_dlt, 1);
+	lwkt_reltoken(&bpf_token);
 }
 
 /*
@@ -280,6 +283,7 @@ bpf_detachd(struct bpf_d *d)
 	struct bpf_if *bp;
 	struct ifnet *ifp;
 
+	lwkt_gettoken(&bpf_token);
 	bp = d->bd_bif;
 	ifp = bp->bif_ifp;
 
@@ -314,6 +318,7 @@ bpf_detachd(struct bpf_d *d)
 				  error);
 		}
 	}
+	lwkt_reltoken(&bpf_token);
 }
 
 /*
@@ -327,16 +332,21 @@ bpfopen(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d;
 
-	if (ap->a_cred->cr_prison)
+	lwkt_gettoken(&bpf_token);
+	if (ap->a_cred->cr_prison) {
+		lwkt_reltoken(&bpf_token);
 		return(EPERM);
+	}
 
 	d = dev->si_drv1;
 	/*
 	 * Each minor can be opened by only one process.  If the requested
 	 * minor is in use, return EBUSY.
 	 */
-	if (d != NULL)
+	if (d != NULL) {
+		lwkt_reltoken(&bpf_token);
 		return(EBUSY);
+	}
 
 	d = kmalloc(sizeof *d, M_BPF, M_WAITOK | M_ZERO);
 	dev->si_drv1 = d;
@@ -344,6 +354,8 @@ bpfopen(struct dev_open_args *ap)
 	d->bd_sig = SIGIO;
 	d->bd_seesent = 1;
 	callout_init(&d->bd_callout);
+	lwkt_reltoken(&bpf_token);
+
 	return(0);
 }
 
@@ -369,6 +381,7 @@ bpfclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 
+	lwkt_gettoken(&bpf_token);
 	funsetown(&d->bd_sigio);
 	crit_enter();
 	if (d->bd_state == BPF_WAITING)
@@ -384,6 +397,8 @@ bpfclose(struct dev_close_args *ap)
 		destroy_dev(dev);
 	}
 	kfree(d, M_BPF);
+	lwkt_reltoken(&bpf_token);
+
 	return(0);
 }
 
@@ -409,12 +424,15 @@ bpfread(struct dev_read_args *ap)
 	int timed_out;
 	int error;
 
+	lwkt_gettoken(&bpf_token);
 	/*
 	 * Restrict application to use a buffer the same size as
 	 * as kernel buffers.
 	 */
-	if (ap->a_uio->uio_resid != d->bd_bufsize)
+	if (ap->a_uio->uio_resid != d->bd_bufsize) {
+		lwkt_reltoken(&bpf_token);
 		return(EINVAL);
+	}
 
 	crit_enter();
 	if (d->bd_state == BPF_WAITING)
@@ -449,16 +467,19 @@ bpfread(struct dev_read_args *ap)
 		 */
 		if (d->bd_bif == NULL) {
 			crit_exit();
+			lwkt_reltoken(&bpf_token);
 			return(ENXIO);
 		}
 
 		if (ap->a_ioflag & IO_NDELAY) {
 			crit_exit();
+			lwkt_reltoken(&bpf_token);
 			return(EWOULDBLOCK);
 		}
 		error = tsleep(d, PCATCH, "bpf", d->bd_rtout);
 		if (error == EINTR || error == ERESTART) {
 			crit_exit();
+			lwkt_reltoken(&bpf_token);
 			return(error);
 		}
 		if (error == EWOULDBLOCK) {
@@ -477,6 +498,7 @@ bpfread(struct dev_read_args *ap)
 
 			if (d->bd_slen == 0) {
 				crit_exit();
+				lwkt_reltoken(&bpf_token);
 				return(0);
 			}
 			ROTATE_BUFFERS(d);
@@ -500,6 +522,7 @@ bpfread(struct dev_read_args *ap)
 	d->bd_hbuf = NULL;
 	d->bd_hlen = 0;
 	crit_exit();
+	lwkt_reltoken(&bpf_token);
 
 	return(error);
 }
@@ -519,9 +542,7 @@ bpf_wakeup(struct bpf_d *d)
 	if (d->bd_async && d->bd_sig && d->bd_sigio)
 		pgsigio(d->bd_sigio, d->bd_sig, 0);
 
-	get_mplock();
 	KNOTE(&d->bd_kq.ki_note, 0);
-	rel_mplock();
 }
 
 static void
@@ -559,26 +580,34 @@ bpfwrite(struct dev_write_args *ap)
 	struct bpf_d *d = dev->si_drv1;
 	struct ifnet *ifp;
 	struct mbuf *m;
-	int error;
+	int error, ret;
 	struct sockaddr dst;
 	int datlen;
 	struct netmsg_bpf_output bmsg;
 
-	if (d->bd_bif == NULL)
+	lwkt_gettoken(&bpf_token);
+	if (d->bd_bif == NULL) {
+		lwkt_reltoken(&bpf_token);
 		return(ENXIO);
+	}
 
 	ifp = d->bd_bif->bif_ifp;
 
-	if (ap->a_uio->uio_resid == 0)
+	if (ap->a_uio->uio_resid == 0) {
+		lwkt_reltoken(&bpf_token);
 		return(0);
+	}
 
 	error = bpf_movein(ap->a_uio, (int)d->bd_bif->bif_dlt, &m,
 			   &dst, &datlen, d->bd_wfilter);
-	if (error)
+	if (error) {
+		lwkt_reltoken(&bpf_token);
 		return(error);
+	}
 
 	if (datlen > ifp->if_mtu) {
 		m_freem(m);
+		lwkt_reltoken(&bpf_token);
 		return(EMSGSIZE);
 	}
 
@@ -591,7 +620,10 @@ bpfwrite(struct dev_write_args *ap)
 	bmsg.nm_ifp = ifp;
 	bmsg.nm_dst = &dst;
 
-	return lwkt_domsg(netisr_portfn(0), &bmsg.base.lmsg, 0);
+	ret = lwkt_domsg(netisr_portfn(0), &bmsg.base.lmsg, 0);
+	lwkt_reltoken(&bpf_token);
+
+	return ret;
 }
 
 /*
@@ -642,6 +674,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 	struct bpf_d *d = dev->si_drv1;
 	int error = 0;
 
+	lwkt_gettoken(&bpf_token);
 	crit_enter();
 	if (d->bd_state == BPF_WAITING)
 		callout_stop(&d->bd_callout);
@@ -667,6 +700,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 		case TIOCGPGRP:
 			break;
 		default:
+			lwkt_reltoken(&bpf_token);
 			return (EPERM);
 		}
 	}
@@ -949,6 +983,8 @@ bpfioctl(struct dev_ioctl_args *ap)
 		d->bd_locked = 1;
 		break;
 	}
+	lwkt_reltoken(&bpf_token);
+
 	return(error);
 }
 
@@ -1076,9 +1112,11 @@ bpfkqfilter(struct dev_kqfilter_args *ap)
 	struct klist *klist;
 	struct bpf_d *d;
 
+	lwkt_gettoken(&bpf_token);
 	d = dev->si_drv1;
 	if (d->bd_bif == NULL) {
 		ap->a_result = 1;
+		lwkt_reltoken(&bpf_token);
 		return (0);
 	}
 
@@ -1090,11 +1128,13 @@ bpfkqfilter(struct dev_kqfilter_args *ap)
 		break;
 	default:
 		ap->a_result = EOPNOTSUPP;
+		lwkt_reltoken(&bpf_token);
 		return (0);
 	}
 
 	klist = &d->bd_kq.ki_note;
 	knote_insert(klist, kn);
+	lwkt_reltoken(&bpf_token);
 
 	return (0);
 }
@@ -1149,11 +1189,10 @@ bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
 	int gottime = 0;
 	u_int slen;
 
-	get_mplock();
-
+	lwkt_gettoken(&bpf_token);
 	/* Re-check */
 	if (bp == NULL) {
-		rel_mplock();
+		lwkt_reltoken(&bpf_token);
 		return;
 	}
 
@@ -1173,8 +1212,7 @@ bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
 			catchpacket(d, pkt, pktlen, slen, ovbcopy, &tv);
 		}
 	}
-
-	rel_mplock();
+	lwkt_reltoken(&bpf_token);
 }
 
 /*
@@ -1214,17 +1252,16 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 	struct timeval tv;
 	int gottime = 0;
 
-	get_mplock();
-
+	lwkt_gettoken(&bpf_token);
 	/* Re-check */
 	if (bp == NULL) {
-		rel_mplock();
+		lwkt_reltoken(&bpf_token);
 		return;
 	}
 
 	/* Don't compute pktlen, if no descriptor is attached. */
 	if (SLIST_EMPTY(&bp->bif_dlist)) {
-		rel_mplock();
+		lwkt_reltoken(&bpf_token);
 		return;
 	}
 
@@ -1244,8 +1281,7 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 				    &tv);
 		}
 	}
-
-	rel_mplock();
+	lwkt_reltoken(&bpf_token);
 }
 
 /*
@@ -1435,6 +1471,8 @@ bpfattach_dlt(struct ifnet *ifp, u_int dlt, u_int hdrlen, struct bpf_if **driver
 
 	bp = kmalloc(sizeof *bp, M_BPF, M_WAITOK | M_ZERO);
 
+	lwkt_gettoken(&bpf_token);
+
 	SLIST_INIT(&bp->bif_dlist);
 	bp->bif_ifp = ifp;
 	bp->bif_dlt = dlt;
@@ -1452,6 +1490,8 @@ bpfattach_dlt(struct ifnet *ifp, u_int dlt, u_int hdrlen, struct bpf_if **driver
 	 */
 	bp->bif_hdrlen = BPF_WORDALIGN(hdrlen + SIZEOF_BPF_HDR) - hdrlen;
 
+	lwkt_reltoken(&bpf_token);
+
 	if (bootverbose)
 		if_printf(ifp, "bpf attached\n");
 }
@@ -1468,6 +1508,7 @@ bpfdetach(struct ifnet *ifp)
 	struct bpf_if *bp, *bp_prev;
 	struct bpf_d *d;
 
+	lwkt_gettoken(&bpf_token);
 	crit_enter();
 
 	/* Locate BPF interface information */
@@ -1481,6 +1522,7 @@ bpfdetach(struct ifnet *ifp)
 	/* Interface wasn't attached */
 	if (bp->bif_ifp == NULL) {
 		crit_exit();
+		lwkt_reltoken(&bpf_token);
 		kprintf("bpfdetach: %s was not attached\n", ifp->if_xname);
 		return;
 	}
@@ -1498,6 +1540,7 @@ bpfdetach(struct ifnet *ifp)
 	kfree(bp, M_BPF);
 
 	crit_exit();
+	lwkt_reltoken(&bpf_token);
 }
 
 /*
@@ -1567,6 +1610,18 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 	return(bp == NULL ? EINVAL : 0);
 }
 
+void
+bpf_gettoken(void)
+{
+	lwkt_gettoken(&bpf_token);
+}
+
+void
+bpf_reltoken(void)
+{
+	lwkt_reltoken(&bpf_token);
+}
+
 static void
 bpf_drvinit(void *unused)
 {
@@ -1633,6 +1688,16 @@ u_int
 bpf_filter(const struct bpf_insn *pc, u_char *p, u_int wirelen, u_int buflen)
 {
 	return -1;	/* "no filter" behaviour */
+}
+
+void
+bpf_gettoken(void)
+{
+}
+
+void
+bpf_reltoken(void)
+{
 }
 
 #endif /* !BPF */

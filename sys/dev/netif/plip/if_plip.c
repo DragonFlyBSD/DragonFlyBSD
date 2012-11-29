@@ -432,8 +432,12 @@ lptap(struct ifnet *ifp, struct mbuf *m)
 	 */
 	static const uint32_t af = AF_INET;
 
-	if (ifp->if_bpf)
-		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+	if (ifp->if_bpf) {
+		bpf_gettoken();
+		if (ifp->if_bpf)
+			bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
+		bpf_reltoken();
+	}
 }
 
 static void
