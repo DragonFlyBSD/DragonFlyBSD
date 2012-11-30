@@ -136,9 +136,8 @@ static int hammer2_install_volume_header(hammer2_mount_t *hmp);
 static int hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
-static int hammer2_msg_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
-static int hammer2_msg_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
-static int hammer2_msg_lnk_rcvmsg(kdmsg_msg_t *msg);
+static int hammer2_rcvdmsg(kdmsg_msg_t *msg);
+static void hammer2_autodmsg(kdmsg_msg_t *msg);
 
 /*
  * HAMMER2 vfs operations.
@@ -354,10 +353,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	pmp->mp = mp;
 
 	kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
-	kdmsg_iocom_init(&pmp->iocom, pmp, pmp->mmsg,
-			 hammer2_msg_lnk_rcvmsg,
-			 hammer2_msg_dbg_rcvmsg,
-			 hammer2_msg_adhoc_input);
+	kdmsg_iocom_init(&pmp->iocom, pmp,
+			 KDMSG_IOCOMF_AUTOCONN |
+			 KDMSG_IOCOMF_AUTOSPAN |
+			 KDMSG_IOCOMF_AUTOCIRC,
+			 pmp->mmsg, hammer2_rcvdmsg);
 
 	if (create_hmp) {
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
@@ -996,7 +996,6 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 void
 hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 {
-	kdmsg_msg_t *msg;
 	size_t name_len;
 
 	/*
@@ -1007,72 +1006,72 @@ hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 	kdmsg_iocom_reconnect(&pmp->iocom, fp, "hammer2");
 
 	/*
-	 * Open a LNK_CONN transaction indicating that we want to take part
-	 * in the spanning tree algorithm.  Filter explicitly on the PFS
-	 * info in the iroot.
-	 *
-	 * We do not transmit our (only) LNK_SPAN until the other end has
-	 * acknowledged our link connection request.
-	 *
-	 * The transaction remains fully open for the duration of the
-	 * connection.
+	 * Setup LNK_CONN fields for autoinitiated state machine
 	 */
-	msg = kdmsg_msg_alloc(&pmp->iocom.router, DMSG_LNK_CONN | DMSGF_CREATE,
-				hammer2_msg_conn_reply, pmp);
-	msg->any.lnk_conn.pfs_clid = pmp->iroot->ip_data.pfs_clid;
-	msg->any.lnk_conn.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
-	msg->any.lnk_conn.pfs_type = pmp->iroot->ip_data.pfs_type;
-	msg->any.lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
-	msg->any.lnk_conn.peer_type = pmp->hmp->voldata.peer_type;
-	msg->any.lnk_conn.peer_mask = 1LLU << HAMMER2_PEER_HAMMER2;
+	pmp->iocom.auto_lnk_conn.pfs_clid = pmp->iroot->ip_data.pfs_clid;
+	pmp->iocom.auto_lnk_conn.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
+	pmp->iocom.auto_lnk_conn.pfs_type = pmp->iroot->ip_data.pfs_type;
+	pmp->iocom.auto_lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
+	pmp->iocom.auto_lnk_conn.peer_type = pmp->hmp->voldata.peer_type;
+
+	/*
+	 * Filter adjustment.  Clients do not need visibility into other
+	 * clients (otherwise millions of clients would present a serious
+	 * problem).  The fs_label also serves to restrict the namespace.
+	 */
+	pmp->iocom.auto_lnk_conn.peer_mask = 1LLU << HAMMER2_PEER_HAMMER2;
+	pmp->iocom.auto_lnk_conn.pfs_mask = (uint64_t)-1;
+	switch (pmp->iroot->ip_data.pfs_type) {
+	case DMSG_PFSTYPE_CLIENT:
+		pmp->iocom.auto_lnk_conn.peer_mask &=
+				~(1LLU << DMSG_PFSTYPE_CLIENT);
+		break;
+	default:
+		break;
+	}
+
 	name_len = pmp->iroot->ip_data.name_len;
-	if (name_len >= sizeof(msg->any.lnk_conn.fs_label))
-		name_len = sizeof(msg->any.lnk_conn.fs_label) - 1;
+	if (name_len >= sizeof(pmp->iocom.auto_lnk_conn.fs_label))
+		name_len = sizeof(pmp->iocom.auto_lnk_conn.fs_label) - 1;
 	bcopy(pmp->iroot->ip_data.filename,
-	      msg->any.lnk_conn.fs_label,
+	      pmp->iocom.auto_lnk_conn.fs_label,
 	      name_len);
-	pmp->iocom.conn_state = msg->state;
-	msg->any.lnk_conn.fs_label[name_len] = 0;
-	kdmsg_msg_write(msg);
+	pmp->iocom.auto_lnk_conn.fs_label[name_len] = 0;
+
+	/*
+	 * Setup LNK_SPAN fields for autoinitiated state machine
+	 */
+	pmp->iocom.auto_lnk_span.pfs_clid = pmp->iroot->ip_data.pfs_clid;
+	pmp->iocom.auto_lnk_span.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
+	pmp->iocom.auto_lnk_span.pfs_type = pmp->iroot->ip_data.pfs_type;
+	pmp->iocom.auto_lnk_span.peer_type = pmp->hmp->voldata.peer_type;
+	pmp->iocom.auto_lnk_span.proto_version = DMSG_SPAN_PROTO_1;
+	name_len = pmp->iroot->ip_data.name_len;
+	if (name_len >= sizeof(pmp->iocom.auto_lnk_span.fs_label))
+		name_len = sizeof(pmp->iocom.auto_lnk_span.fs_label) - 1;
+	bcopy(pmp->iroot->ip_data.filename,
+	      pmp->iocom.auto_lnk_span.fs_label,
+	      name_len);
+	pmp->iocom.auto_lnk_span.fs_label[name_len] = 0;
+
+	kdmsg_iocom_autoinitiate(&pmp->iocom, hammer2_autodmsg);
 }
 
 static int
-hammer2_msg_lnk_rcvmsg(kdmsg_msg_t *msg)
+hammer2_rcvdmsg(kdmsg_msg_t *msg)
 {
 	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
-	case DMSG_LNK_CONN | DMSGF_CREATE:
+	case DMSG_DBG_SHELL:
 		/*
-		 * connection request from peer, send a streaming
-		 * result of 0 (leave the transaction open).  Transaction
-		 * is left open for the duration of the connection, we
-		 * let the kern_dmsg module clean it up on disconnect.
+		 * Execute shell command (not supported atm)
 		 */
-		kdmsg_msg_result(msg, 0);
+		kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
-	case DMSG_LNK_SPAN | DMSGF_CREATE:
-		/*
-		 * Incoming SPAN - transaction create
-		 *
-		 * We do not have to respond right now.  Instead we will
-		 * respond later on when the peer deletes their side.
-		 */
-		break;
-	case DMSG_LNK_SPAN | DMSGF_DELETE:
-		/*
-		 * Incoming SPAN - transaction delete.
-		 *
-		 * We must terminate our side so both ends can free up
-		 * their recorded state.
-		 */
-		/* fall through */
-	case DMSG_LNK_SPAN | DMSGF_CREATE | DMSGF_DELETE:
-		/*
-		 * Incoming SPAN - transaction delete (degenerate span).
-		 *
-		 * We must terminate our side so both ends can free up
-		 * their recorded state.
-		 */
-		kdmsg_msg_reply(msg, 0);
+	case DMSG_DBG_SHELL | DMSGF_REPLY:
+		if (msg->aux_data) {
+			msg->aux_data[msg->aux_size - 1] = 0;
+			kprintf("HAMMER2 DBG: %s\n", msg->aux_data);
+		}
 		break;
 	default:
 		/*
@@ -1093,41 +1092,34 @@ hammer2_msg_lnk_rcvmsg(kdmsg_msg_t *msg)
 }
 
 /*
- * This function is called when the other end replies to our LNK_CONN
- * request.
+ * This function is called after KDMSG has automatically handled processing
+ * of a LNK layer message (typically CONN, SPAN, or CIRC).
  *
- * We transmit our (single) SPAN on the initial reply, leaving that
- * transaction open too.
+ * We tag off the LNK_CONN to trigger our LNK_VOLCONF messages which
+ * advertises all available hammer2 super-root volumes.
  */
-static int
-hammer2_msg_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
+static void
+hammer2_autodmsg(kdmsg_msg_t *msg)
 {
-	hammer2_pfsmount_t *pmp = state->any.pmp;
+	hammer2_pfsmount_t *pmp = msg->iocom->handle;
 	hammer2_mount_t *hmp = pmp->hmp;
-	kdmsg_msg_t *rmsg;
-	size_t name_len;
 	int copyid;
+
+	/*
+	 * We only care about replies to our LNK_CONN auto-request.  kdmsg
+	 * has already processed the reply, we use this calback as a shim
+	 * to know when we can advertise available super-root volumes.
+	 */
+	if ((msg->any.head.cmd & DMSGF_TRANSMASK) !=
+	    (DMSG_LNK_CONN | DMSGF_CREATE | DMSGF_REPLY) ||
+	    msg->state == NULL) {
+		return;
+	}
 
 	kprintf("LNK_CONN REPLY RECEIVED CMD %08x\n", msg->any.head.cmd);
 
 	if (msg->any.head.cmd & DMSGF_CREATE) {
-		kprintf("LNK_CONN transaction replied to, initiate SPAN\n");
-		rmsg = kdmsg_msg_alloc(&pmp->iocom.router,
-				       DMSG_LNK_SPAN | DMSGF_CREATE,
-				       hammer2_msg_span_reply, pmp);
-		rmsg->any.lnk_span.pfs_clid = pmp->iroot->ip_data.pfs_clid;
-		rmsg->any.lnk_span.pfs_fsid = pmp->iroot->ip_data.pfs_fsid;
-		rmsg->any.lnk_span.pfs_type = pmp->iroot->ip_data.pfs_type;
-		rmsg->any.lnk_span.peer_type = pmp->hmp->voldata.peer_type;
-		rmsg->any.lnk_span.proto_version = DMSG_SPAN_PROTO_1;
-		name_len = pmp->iroot->ip_data.name_len;
-		if (name_len >= sizeof(rmsg->any.lnk_span.fs_label))
-			name_len = sizeof(rmsg->any.lnk_span.fs_label) - 1;
-		bcopy(pmp->iroot->ip_data.filename,
-		      rmsg->any.lnk_span.fs_label,
-		      name_len);
-		rmsg->any.lnk_span.fs_label[name_len] = 0;
-		kdmsg_msg_write(rmsg);
+		kprintf("HAMMER2: VOLDATA DUMP\n");
 
 		/*
 		 * Dump the configuration stored in the volume header
@@ -1140,30 +1132,10 @@ hammer2_msg_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
 		}
 		hammer2_voldata_unlock(hmp);
 	}
-	if ((state->txcmd & DMSGF_DELETE) == 0 &&
-	    (msg->any.head.cmd & DMSGF_DELETE)) {
-		kprintf("LNK_CONN transaction terminated by remote\n");
-		pmp->iocom.conn_state = NULL;
-		kdmsg_msg_reply(msg, 0);
+	if ((msg->any.head.cmd & DMSGF_DELETE) &&
+	    msg->state && (msg->state->txcmd & DMSGF_DELETE) == 0) {
+		kprintf("HAMMER2: CONN WAS TERMINATED\n");
 	}
-	return(0);
-}
-
-/*
- * Remote terminated our span transaction.  We have to terminate our side.
- */
-static int
-hammer2_msg_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
-{
-	/*hammer2_pfsmount_t *pmp = state->any.pmp;*/
-
-	kprintf("SPAN REPLY - Our sent span was terminated by the "
-		"remote %08x state %p\n", msg->any.head.cmd, state);
-	if ((state->txcmd & DMSGF_DELETE) == 0 &&
-	    (msg->any.head.cmd & DMSGF_DELETE)) {
-		kdmsg_msg_reply(msg, 0);
-	}
-	return(0);
 }
 
 /*
@@ -1180,8 +1152,9 @@ hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 	kprintf("volconf update %p\n", pmp->iocom.conn_state);
 	if (pmp->iocom.conn_state) {
 		kprintf("TRANSMIT VOLCONF VIA OPEN CONN TRANSACTION\n");
-		msg = kdmsg_msg_alloc(&pmp->iocom.router, DMSG_LNK_VOLCONF,
-					NULL, NULL);
+		msg = kdmsg_msg_alloc(&pmp->iocom, 0,
+				      DMSG_LNK_VOLCONF,
+				      NULL, NULL);
 		msg->state = pmp->iocom.conn_state;
 		msg->any.lnk_volconf.copy = hmp->voldata.copyinfo[index];
 		msg->any.lnk_volconf.mediaid = hmp->voldata.fsid;
