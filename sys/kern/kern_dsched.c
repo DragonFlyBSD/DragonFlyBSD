@@ -61,6 +61,7 @@ static dsched_teardown_t	noop_teardown;
 static dsched_cancel_t		noop_cancel;
 static dsched_queue_t		noop_queue;
 
+static void dsched_thread_io_unref_destroy(struct dsched_thread_io *tdio);
 static void dsched_sysctl_add_disk(struct dsched_disk_ctx *diskctx, char *name);
 static void dsched_disk_ctx_destroy(struct dsched_disk_ctx *diskctx);
 static void dsched_thread_io_destroy(struct dsched_thread_io *tdio);
@@ -135,18 +136,18 @@ dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 	struct dsched_policy *policy = NULL;
 
 	/* Also look for serno stuff? */
-	/* kprintf("dsched_disk_create_callback() for disk %s%d\n", head_name, unit); */
 	lockmgr(&dsched_lock, LK_EXCLUSIVE);
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "dsched.policy.%s%d",
-	    head_name, unit);
+	ksnprintf(tunable_key, sizeof(tunable_key),
+		  "dsched.policy.%s%d", head_name, unit);
 	if (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0) {
 		policy = dsched_find_policy(sched_policy);
 	}
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "dsched.policy.%s",
-	    head_name);
+	ksnprintf(tunable_key, sizeof(tunable_key),
+		  "dsched.policy.%s", head_name);
+
 	for (ptr = tunable_key; *ptr; ptr++) {
 		if (*ptr == '/')
 			*ptr = '-';
@@ -157,8 +158,9 @@ dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 	}
 
 	ksnprintf(tunable_key, sizeof(tunable_key), "dsched.policy.default");
-	if (!policy && !default_set && (TUNABLE_STR_FETCH(tunable_key, sched_policy,
-	    sizeof(sched_policy)) != 0)) {
+	if (!policy && !default_set &&
+	    (TUNABLE_STR_FETCH(tunable_key, sched_policy,
+			       sizeof(sched_policy)) != 0)) {
 		policy = dsched_find_policy(sched_policy);
 	}
 
@@ -456,30 +458,33 @@ dsched_find_policy(char *search)
 	return policy_found;
 }
 
-struct disk*
+/*
+ * Returns ref'd disk
+ */
+struct disk *
 dsched_find_disk(char *search)
 {
-	struct disk *dp_found = NULL;
+	struct disk marker;
 	struct disk *dp = NULL;
 
-	while((dp = disk_enumerate(dp))) {
-		if (!strcmp(dp->d_cdev->si_name, search)) {
-			dp_found = dp;
+	while ((dp = disk_enumerate(&marker, dp)) != NULL) {
+		if (strcmp(dp->d_cdev->si_name, search) == 0) {
+			disk_enumerate_stop(&marker, NULL);
+			/* leave ref on dp */
 			break;
 		}
 	}
-
-	return dp_found;
+	return dp;
 }
 
-struct disk*
-dsched_disk_enumerate(struct disk *dp, struct dsched_policy *policy)
+struct disk *
+dsched_disk_enumerate(struct disk *marker, struct disk *dp,
+		      struct dsched_policy *policy)
 {
-	while ((dp = disk_enumerate(dp))) {
+	while ((dp = disk_enumerate(marker, dp)) != NULL) {
 		if (dp->d_sched_policy == policy)
-			return dp;
+			break;
 	}
-
 	return NULL;
 }
 
@@ -711,6 +716,8 @@ void
 dsched_disk_ctx_destroy(struct dsched_disk_ctx *diskctx)
 {
 	struct dsched_thread_io	*tdio;
+	int refs;
+	int nrefs;
 
 #if 0
 	kprintf("diskctx (%p) destruction started, trace:\n", diskctx);
@@ -723,12 +730,33 @@ dsched_disk_ctx_destroy(struct dsched_disk_ctx *diskctx)
 		atomic_clear_int(&tdio->flags, DSCHED_LINKED_DISK_CTX);
 		tdio->diskctx = NULL;
 		/* XXX tdio->diskctx->dp->d_sched_policy->destroy_tdio(tdio);*/
-		dsched_thread_io_unref(tdio);
+		lockmgr(&diskctx->lock, LK_RELEASE);
+		dsched_thread_io_unref_destroy(tdio);
+		lockmgr(&diskctx->lock, LK_EXCLUSIVE);
 	}
 	lockmgr(&diskctx->lock, LK_RELEASE);
+
+	/*
+	 * Expect diskctx->refcount to be 0x80000000.  If it isn't someone
+	 * else still has a temporary ref on the diskctx and we have to
+	 * transition it back to an undestroyed-state (albeit without any
+	 * associations), so the other user destroys it properly when the
+	 * ref is released.
+	 */
+	while ((refs = diskctx->refcount) != 0x80000000) {
+		kprintf("dsched_thread_io: destroy race diskctx=%p\n", diskctx);
+		cpu_ccfence();
+		KKASSERT(refs & 0x80000000);
+		nrefs = refs & 0x7FFFFFFF;
+		if (atomic_cmpset_int(&diskctx->refcount, refs, nrefs))
+			return;
+	}
+
+	/*
+	 * Really for sure now.
+	 */
 	if (diskctx->dp->d_sched_policy->destroy_diskctx)
 		diskctx->dp->d_sched_policy->destroy_diskctx(diskctx);
-	KKASSERT(diskctx->refcount == 0x80000000);
 	objcache_put(dsched_diskctx_cache, diskctx);
 	atomic_subtract_int(&dsched_stats.diskctx_allocations, 1);
 }
@@ -766,11 +794,46 @@ dsched_thread_io_unref(struct dsched_thread_io *tdio)
 	}
 }
 
+/*
+ * Unref and destroy the tdio even if additional refs are present.
+ */
+static
+void
+dsched_thread_io_unref_destroy(struct dsched_thread_io *tdio)
+{
+	int refs;
+	int nrefs;
+
+	/*
+	 * If not already transitioned to destroy-in-progress we transition
+	 * to destroy-in-progress, cleanup our ref, and destroy the tdio.
+	 */
+	for (;;) {
+		refs = tdio->refcount;
+		cpu_ccfence();
+		nrefs = refs - 1;
+
+		KKASSERT(((refs ^ nrefs) & 0x80000000) == 0);
+		if (nrefs & 0x80000000) {
+			if (atomic_cmpset_int(&tdio->refcount, refs, nrefs))
+				break;
+			continue;
+		}
+		nrefs |= 0x80000000;
+		if (atomic_cmpset_int(&tdio->refcount, refs, nrefs)) {
+			dsched_thread_io_destroy(tdio);
+			break;
+		}
+	}
+}
+
 static void
 dsched_thread_io_destroy(struct dsched_thread_io *tdio)
 {
 	struct dsched_thread_ctx *tdctx;
 	struct dsched_disk_ctx	*diskctx;
+	int refs;
+	int nrefs;
 
 #if 0
 	kprintf("tdio (%p) destruction started, trace:\n", tdio);
@@ -792,6 +855,7 @@ dsched_thread_io_destroy(struct dsched_thread_io *tdio)
 		TAILQ_REMOVE(&diskctx->tdio_list, tdio, dlink);
 		atomic_clear_int(&tdio->flags, DSCHED_LINKED_DISK_CTX);
 		tdio->diskctx = NULL;
+		dsched_thread_io_unref(tdio);
 		lockmgr(&diskctx->lock, LK_RELEASE);
 		dsched_disk_ctx_unref(diskctx);
 	}
@@ -807,15 +871,31 @@ dsched_thread_io_destroy(struct dsched_thread_io *tdio)
 		TAILQ_REMOVE(&tdctx->tdio_list, tdio, link);
 		atomic_clear_int(&tdio->flags, DSCHED_LINKED_THREAD_CTX);
 		tdio->tdctx = NULL;
+		dsched_thread_io_unref(tdio);
 		lockmgr(&tdctx->lock, LK_RELEASE);
 		dsched_thread_ctx_unref(tdctx);
 	}
-	KKASSERT(tdio->refcount == 0x80000000);
+
+	/*
+	 * Expect tdio->refcount to be 0x80000000.  If it isn't someone else
+	 * still has a temporary ref on the tdio and we have to transition
+	 * it back to an undestroyed-state (albeit without any associations)
+	 * so the other user destroys it properly when the ref is released.
+	 */
+	while ((refs = tdio->refcount) != 0x80000000) {
+		kprintf("dsched_thread_io: destroy race tdio=%p\n", tdio);
+		cpu_ccfence();
+		KKASSERT(refs & 0x80000000);
+		nrefs = refs & 0x7FFFFFFF;
+		if (atomic_cmpset_int(&tdio->refcount, refs, nrefs))
+			return;
+	}
+
+	/*
+	 * Really for sure now.
+	 */
 	objcache_put(dsched_tdio_cache, tdio);
 	atomic_subtract_int(&dsched_stats.tdio_allocations, 1);
-#if 0
-	dsched_disk_ctx_unref(diskctx);
-#endif
 }
 
 void
@@ -869,7 +949,9 @@ dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx)
 		TAILQ_REMOVE(&tdctx->tdio_list, tdio, link);
 		atomic_clear_int(&tdio->flags, DSCHED_LINKED_THREAD_CTX);
 		tdio->tdctx = NULL;
-		dsched_thread_io_unref(tdio);
+		lockmgr(&tdctx->lock, LK_RELEASE);	/* avoid deadlock */
+		dsched_thread_io_unref_destroy(tdio);
+		lockmgr(&tdctx->lock, LK_EXCLUSIVE);
 	}
 	KKASSERT(tdctx->refcount == 0x80000000);
 	TAILQ_REMOVE(&dsched_tdctx_list, tdctx, link);
@@ -882,9 +964,12 @@ dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx)
 	atomic_subtract_int(&dsched_stats.tdctx_allocations, 1);
 }
 
-struct dsched_thread_io *
+/*
+ * Ensures that a tdio is assigned to tdctx and disk.
+ */
+void
 dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
-    struct dsched_policy *pol)
+		       struct dsched_policy *pol)
 {
 	struct dsched_thread_io	*tdio;
 #if 0
@@ -893,8 +978,8 @@ dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
 	tdio = objcache_get(dsched_tdio_cache, M_WAITOK);
 	bzero(tdio, DSCHED_THREAD_IO_MAX_SZ);
 
-	/* XXX: maybe we do need another ref for the disk list for tdio */
-	dsched_thread_io_ref(tdio);
+	dsched_thread_io_ref(tdio);	/* prevent ripout */
+	dsched_thread_io_ref(tdio);	/* for diskctx ref */
 
 	DSCHED_THREAD_IO_LOCKINIT(tdio);
 	tdio->dp = dp;
@@ -911,21 +996,24 @@ dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
 	lockmgr(&tdio->diskctx->lock, LK_RELEASE);
 
 	if (tdctx) {
+		/*
+		 * Put the tdio in the tdctx list.  Inherit the temporary
+		 * ref (one ref for each list).
+		 */
+		DSCHED_THREAD_CTX_LOCK(tdctx);
 		tdio->tdctx = tdctx;
 		tdio->p = tdctx->p;
-
-		/* Put the tdio in the tdctx list */
-		DSCHED_THREAD_CTX_LOCK(tdctx);
 		TAILQ_INSERT_TAIL(&tdctx->tdio_list, tdio, link);
-		DSCHED_THREAD_CTX_UNLOCK(tdctx);
 		atomic_set_int(&tdio->flags, DSCHED_LINKED_THREAD_CTX);
+		DSCHED_THREAD_CTX_UNLOCK(tdctx);
+	} else {
+		dsched_thread_io_unref(tdio);
 	}
 
 	tdio->debug_policy = pol;
 	tdio->debug_inited = 0xF00F1234;
 
 	atomic_add_int(&dsched_stats.tdio_allocations, 1);
-	return tdio;
 }
 
 
@@ -959,8 +1047,8 @@ struct dsched_thread_ctx *
 dsched_thread_ctx_alloc(struct proc *p)
 {
 	struct dsched_thread_ctx	*tdctx;
-	struct dsched_thread_io	*tdio;
-	struct disk	*dp = NULL;
+	struct disk marker;
+	struct disk *dp;
 
 	tdctx = objcache_get(dsched_tdctx_cache, M_WAITOK);
 	bzero(tdctx, DSCHED_THREAD_CTX_MAX_SZ);
@@ -973,9 +1061,9 @@ dsched_thread_ctx_alloc(struct proc *p)
 	tdctx->p = p;
 
 	DSCHED_GLOBAL_THREAD_CTX_LOCK();
-	while ((dp = disk_enumerate(dp))) {
-		tdio = dsched_thread_io_alloc(dp, tdctx, dp->d_sched_policy);
-	}
+	dp = NULL;
+	while ((dp = disk_enumerate(&marker, dp)) != NULL)
+		dsched_thread_io_alloc(dp, tdctx, dp->d_sched_policy);
 
 	TAILQ_INSERT_TAIL(&dsched_tdctx_list, tdctx, link);
 	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
@@ -989,15 +1077,16 @@ void
 policy_new(struct disk *dp, struct dsched_policy *pol) {
 	struct dsched_thread_ctx *tdctx;
 	struct dsched_disk_ctx *diskctx;
-	struct dsched_thread_io *tdio;
 
 	diskctx = dsched_disk_ctx_alloc(dp, pol);
 	dsched_disk_ctx_ref(diskctx);
 	dsched_set_disk_priv(dp, diskctx);
 
-	TAILQ_FOREACH(tdctx, &dsched_tdctx_list, link) {
-		tdio = dsched_thread_io_alloc(dp, tdctx, pol);
-	}
+	/*
+	 * XXX this is really really expensive!
+	 */
+	TAILQ_FOREACH(tdctx, &dsched_tdctx_list, link)
+		dsched_thread_io_alloc(dp, tdctx, pol);
 }
 
 void
@@ -1136,21 +1225,24 @@ dsched_exit_thread(struct thread *td)
 	atomic_subtract_int(&dsched_stats.nthreads, 1);
 }
 
-struct dsched_thread_io *
+/*
+ * Returns ref'd tdio.
+ *
+ * tdio may have additional refs for the diskctx and tdctx it resides on.
+ */
+void
 dsched_new_policy_thread_tdio(struct dsched_disk_ctx *diskctx,
-    struct dsched_policy *pol) {
+			      struct dsched_policy *pol)
+{
 	struct dsched_thread_ctx *tdctx;
-	struct dsched_thread_io *tdio;
 
 	DSCHED_GLOBAL_THREAD_CTX_LOCK();
 
 	tdctx = dsched_get_thread_priv(curthread);
 	KKASSERT(tdctx != NULL);
-	tdio = dsched_thread_io_alloc(diskctx->dp, tdctx, pol);
+	dsched_thread_io_alloc(diskctx->dp, tdctx, pol);
 
 	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
-
-	return tdio;
 }
 
 /* DEFAULT NOOP POLICY */

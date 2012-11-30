@@ -255,9 +255,10 @@ int	dsched_unregister(struct dsched_policy *d_policy);
 int	dsched_switch(struct disk *dp, struct dsched_policy *new_policy);
 void	dsched_set_policy(struct disk *dp, struct dsched_policy *new_policy);
 struct dsched_policy *dsched_find_policy(char *search);
-struct disk	*dsched_find_disk(char *search);
+struct disk *dsched_find_disk(char *search);
 struct dsched_policy *dsched_policy_enumerate(struct dsched_policy *pol);
-struct disk	*dsched_disk_enumerate(struct disk *dp, struct dsched_policy *policy);
+struct disk *dsched_disk_enumerate(struct disk *marker, struct disk *dp,
+			struct dsched_policy *policy);
 void	dsched_cancel_bio(struct bio *bp);
 void	dsched_strategy_raw(struct disk *dp, struct bio *bp);
 void	dsched_strategy_sync(struct disk *dp, struct bio *bp);
@@ -275,12 +276,13 @@ void	dsched_disk_ctx_unref(struct dsched_disk_ctx *diskctx);
 void	dsched_thread_io_unref(struct dsched_thread_io *tdio);
 void	dsched_thread_ctx_unref(struct dsched_thread_ctx *tdctx);
 
-struct dsched_thread_io *dsched_new_policy_thread_tdio(struct dsched_disk_ctx *diskctx,
-	struct dsched_policy *pol);
-struct dsched_thread_io *dsched_thread_io_alloc(struct disk *dp,
-	struct dsched_thread_ctx *tdctx, struct dsched_policy *pol);
+void	dsched_new_policy_thread_tdio(struct dsched_disk_ctx *diskctx,
+			struct dsched_policy *pol);
+void	dsched_thread_io_alloc(struct disk *dp,
+			struct dsched_thread_ctx *tdctx,
+			struct dsched_policy *pol);
 struct dsched_disk_ctx *dsched_disk_ctx_alloc(struct disk *dp,
-	struct dsched_policy *pol);
+			struct dsched_policy *pol);
 struct dsched_thread_ctx *dsched_thread_ctx_alloc(struct proc *p);
 
 typedef	void	dsched_new_buf_t(struct buf *bp);

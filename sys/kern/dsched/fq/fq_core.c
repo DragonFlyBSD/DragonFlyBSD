@@ -67,7 +67,7 @@ fq_dispatcher(struct fq_disk_ctx *diskctx)
 {
 	struct dispatch_prep *dispatch_ary;
 	struct dsched_thread_io	*ds_tdio, *ds_tdio2;
-	struct fq_thread_io	*tdio;
+	struct fq_thread_io *tdio;
 	struct bio *bio, *bio2;
 	int idle;
 	int i, prepd_io;
@@ -84,8 +84,7 @@ fq_dispatcher(struct fq_disk_ctx *diskctx)
 	 * since it isn't assigned one during fq_prepare, as the disk
 	 * is not set up yet.
 	 */
-	tdio = (struct fq_thread_io *)dsched_new_policy_thread_tdio(&diskctx->head,
-	    &dsched_fq_policy);
+	dsched_new_policy_thread_tdio(&diskctx->head, &dsched_fq_policy);
 
 	DSCHED_DISK_CTX_LOCK(&diskctx->head);
 	for(;;) {
@@ -122,7 +121,8 @@ fq_dispatcher(struct fq_disk_ctx *diskctx)
 		 *	to dispatch a few requests from each tdio as to ensure
 		 *	real fairness.
 		 */
-		TAILQ_FOREACH_MUTABLE(ds_tdio, &diskctx->head.tdio_list, dlink, ds_tdio2) {
+		TAILQ_FOREACH_MUTABLE(ds_tdio, &diskctx->head.tdio_list,
+				      dlink, ds_tdio2) {
 			tdio = (struct fq_thread_io *)ds_tdio;
 			if (tdio->head.qlength == 0)
 				continue;

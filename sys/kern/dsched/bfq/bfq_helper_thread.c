@@ -333,12 +333,10 @@ helper_sysctl_init(struct bfq_disk_ctx *bfq_diskctx)
 static void
 helper_thread(struct bfq_disk_ctx *bfq_diskctx)
 {
-	struct dsched_thread_io *tdio;
-
 	int r;
 	helper_msg_t msg;
 
-	tdio = dsched_new_policy_thread_tdio(&bfq_diskctx->head, &dsched_bfq_policy);
+	dsched_new_policy_thread_tdio(&bfq_diskctx->head, &dsched_bfq_policy);
 
 	lwkt_initport_thread(&bfq_diskctx->helper_msg_port, curthread);
 	dsched_disk_ctx_ref(&bfq_diskctx->head);

@@ -148,6 +148,7 @@ struct disk {
 	const char		*d_disktype;	/* Disk type information */
 	LIST_ENTRY(disk)	d_list;
 	kdmsg_iocom_t		d_iocom;	/* cluster import/export */
+	int			d_refs;		/* interlock destruction */
 };
 
 #endif
@@ -155,8 +156,9 @@ struct disk {
 /*
  * d_flags
  */
-#define DISKFLAG_LOCK		0x1
-#define DISKFLAG_WANTED		0x2
+#define DISKFLAG_LOCK		0x0001
+#define DISKFLAG_WANTED		0x0002
+#define DISKFLAG_MARKER		0x0004
 
 #ifdef _KERNEL
 cdev_t disk_create (int unit, struct disk *disk, struct dev_ops *raw_ops);
@@ -171,7 +173,8 @@ int disk_getopencount(struct disk *disk);
 void disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info);
 int disk_dumpcheck (cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize);
 int disk_dumpconf(cdev_t dev, u_int onoff);
-struct disk *disk_enumerate (struct disk *disk);
+struct disk *disk_enumerate (struct disk *marker, struct disk *dp);
+void disk_enumerate_stop (struct disk *marker, struct disk *dp);
 void disk_invalidate (struct disk *disk);
 void disk_unprobe(struct disk *disk);
 
@@ -186,9 +189,6 @@ void disk_iocom_update(struct disk *dp);
 void disk_iocom_uninit(struct disk *dp);
 int disk_iocom_ioctl(struct disk *dp, int cmd, void *data);
 void disk_clusterctl_wakeup(kdmsg_iocom_t *iocom);
-int disk_lnk_rcvmsg(kdmsg_msg_t *msg);
-int disk_dbg_rcvmsg(kdmsg_msg_t *msg);
-int disk_adhoc_input(kdmsg_msg_t *msg);
 
 typedef struct disk_msg {
 	struct lwkt_msg hdr;

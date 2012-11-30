@@ -486,9 +486,13 @@ disk_msg_core(void *arg)
 			devfs_destroy_related(dp->d_cdev);
 			destroy_dev(dp->d_cdev);
 			destroy_only_dev(dp->d_rawdev);
+
 			lwkt_gettoken(&disklist_token);
+			while (dp->d_refs)
+				tsleep(&dp->d_refs, 0, "diskdel", hz / 10);
 			LIST_REMOVE(dp, d_list);
 			lwkt_reltoken(&disklist_token);
+
 			if (dp->d_info.d_serialno) {
 				kfree(dp->d_info.d_serialno, M_TEMP);
 				dp->d_info.d_serialno = NULL;
@@ -886,45 +890,90 @@ disk_invalidate (struct disk *disk)
 	dsgone(&disk->d_slice);
 }
 
+/*
+ * Enumerate disks, pass a marker and an initial NULL dp to initialize,
+ * then loop with the previously returned dp.
+ *
+ * The returned dp will be referenced, preventing its destruction.  When
+ * you pass the returned dp back into the loop the ref is dropped.
+ *
+ * WARNING: If terminating your loop early you must call
+ *	    disk_enumerate_stop().
+ */
 struct disk *
-disk_enumerate(struct disk *disk)
+disk_enumerate(struct disk *marker, struct disk *dp)
 {
-	struct disk *dp;
-
 	lwkt_gettoken(&disklist_token);
-	if (!disk)
-		dp = (LIST_FIRST(&disklist));
-	else
-		dp = (LIST_NEXT(disk, d_list));
+	if (dp) {
+		--dp->d_refs;
+		dp = LIST_NEXT(marker, d_list);
+		LIST_REMOVE(marker, d_list);
+	} else {
+		bzero(marker, sizeof(*marker));
+		marker->d_flags = DISKFLAG_MARKER;
+		dp = LIST_FIRST(&disklist);
+	}
+	while (dp) {
+		if ((dp->d_flags & DISKFLAG_MARKER) == 0)
+			break;
+		dp = LIST_NEXT(dp, d_list);
+	}
+	if (dp) {
+		++dp->d_refs;
+		LIST_INSERT_AFTER(dp, marker, d_list);
+	}
 	lwkt_reltoken(&disklist_token);
+	return (dp);
+}
 
-	return dp;
+/*
+ * Terminate an enumeration early.  Do not call this function if the
+ * enumeration ended normally.  dp can be NULL, indicating that you
+ * wish to retain the ref count on dp.
+ *
+ * This function removes the marker.
+ */
+void
+disk_enumerate_stop(struct disk *marker, struct disk *dp)
+{
+	lwkt_gettoken(&disklist_token);
+	LIST_REMOVE(marker, d_list);
+	if (dp)
+		--dp->d_refs;
+	lwkt_reltoken(&disklist_token);
 }
 
 static
 int
 sysctl_disks(SYSCTL_HANDLER_ARGS)
 {
-	struct disk *disk;
+	struct disk marker;
+	struct disk *dp;
 	int error, first;
 
-	disk = NULL;
 	first = 1;
+	error = 0;
+	dp = NULL;
 
-	while ((disk = disk_enumerate(disk))) {
+	while ((dp = disk_enumerate(&marker, dp))) {
 		if (!first) {
 			error = SYSCTL_OUT(req, " ", 1);
-			if (error)
-				return error;
+			if (error) {
+				disk_enumerate_stop(&marker, dp);
+				break;
+			}
 		} else {
 			first = 0;
 		}
-		error = SYSCTL_OUT(req, disk->d_rawdev->si_name,
-				   strlen(disk->d_rawdev->si_name));
-		if (error)
-			return error;
+		error = SYSCTL_OUT(req, dp->d_rawdev->si_name,
+				   strlen(dp->d_rawdev->si_name));
+		if (error) {
+			disk_enumerate_stop(&marker, dp);
+			break;
+		}
 	}
-	error = SYSCTL_OUT(req, "", 1);
+	if (error == 0)
+		error = SYSCTL_OUT(req, "", 1);
 	return error;
 }
 
@@ -1069,7 +1118,6 @@ diskioctl(struct dev_ioctl_args *ap)
 	}
 
 	if (ap->a_cmd == DIOCRECLUSTER && dev == dp->d_cdev) {
-		kprintf("RECLUSTER\n");
 		error = disk_iocom_ioctl(dp, ap->a_cmd, ap->a_data);
 		return error;
 	}
