@@ -48,11 +48,15 @@
 struct xdisk_attach_ioctl {
 	int	fd;
 	int	unit;
-	int64_t size;		/* size of disk in bytes */
-	char	cl_label[64];	/* LNK_SPAN cl_label match */
-	char	serno[64];	/* serial number */
+	int64_t bytes;		/* size of disk in bytes */
+	int	blksize;
+	int	unused01;
+	int32_t	reserved02[8];
+	char	cl_label[64];	/* LNK_SPAN cl_label match (typ host/dev) */
+	char	fs_label[64];	/* LNK_SPAN fs_label match (typ serialno) */
 };
 
 #define XDISKIOCATTACH	_IOWR('X', 0, struct xdisk_attach_ioctl)
+#define XDISKIOCDETACH	_IOWR('X', 1, struct xdisk_attach_ioctl)
 
 #endif
