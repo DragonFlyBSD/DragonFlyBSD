@@ -62,4 +62,6 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>	/* aes_256_cbc functions */
 
+#include <machine/atomic.h>
+
 #include "dmsg.h"

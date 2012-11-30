@@ -35,9 +35,9 @@
 
 #include "dmsg_local.h"
 
-static void master_auth_signal(dmsg_router_t *router);
+static void master_auth_signal(dmsg_iocom_t *iocom);
 static void master_auth_rxmsg(dmsg_msg_t *msg);
-static void master_link_signal(dmsg_router_t *router);
+static void master_link_signal(dmsg_iocom_t *iocom);
 static void master_link_rxmsg(dmsg_msg_t *msg);
 
 /*
@@ -87,7 +87,7 @@ static void master_auth_conn_rx(dmsg_msg_t *msg);
 
 static
 void
-master_auth_signal(dmsg_router_t *router)
+master_auth_signal(dmsg_iocom_t *iocom)
 {
 	dmsg_msg_t *msg;
 
@@ -97,14 +97,16 @@ master_auth_signal(dmsg_router_t *router)
 	 *
 	 * XXX put additional authentication states here?
 	 */
-	msg = dmsg_msg_alloc(router, 0, DMSG_LNK_CONN | DMSGF_CREATE,
+	msg = dmsg_msg_alloc(&iocom->circuit0, 0,
+			     DMSG_LNK_CONN | DMSGF_CREATE,
 			     master_auth_conn_rx, NULL);
 	msg->any.lnk_conn.peer_mask = (uint64_t)-1;
 	msg->any.lnk_conn.peer_type = DMSG_PEER_CLUSTER;
+	msg->any.lnk_conn.pfs_mask = (uint64_t)-1;
 
 	dmsg_msg_write(msg);
 
-	dmsg_router_restate(router,
+	dmsg_iocom_restate(iocom,
 			    master_link_signal,
 			    master_link_rxmsg,
 			    NULL);
@@ -132,9 +134,9 @@ master_auth_rxmsg(dmsg_msg_t *msg __unused)
  */
 static
 void
-master_link_signal(dmsg_router_t *router)
+master_link_signal(dmsg_iocom_t *iocom)
 {
-	dmsg_msg_lnk_signal(router);
+	dmsg_msg_lnk_signal(iocom);
 }
 
 static
@@ -192,7 +194,7 @@ dmsg_msg_dbg(dmsg_msg_t *msg)
 		 */
 		if (msg->aux_data)
 			msg->aux_data[msg->aux_size - 1] = 0;
-		msg->router->dbgmsg_callback(msg);
+		msg->iocom->dbgmsg_callback(msg);
 		dmsg_msg_reply(msg, 0);
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
@@ -216,11 +218,11 @@ dmsg_msg_dbg(dmsg_msg_t *msg)
  * not modified and stays intact.  We use a one-way message with REPLY set
  * to distinguish between a debug command and debug terminal output.
  *
- * To prevent loops router_printf() can filter the message (cmd) related
- * to the router_printf().  We filter out DBG messages.
+ * To prevent loops circuit_printf() can filter the message (cmd) related
+ * to the circuit_printf().  We filter out DBG messages.
  */
 void
-dmsg_router_printf(dmsg_router_t *router, const char *ctl, ...)
+dmsg_circuit_printf(dmsg_circuit_t *circuit, const char *ctl, ...)
 {
 	dmsg_msg_t *rmsg;
 	va_list va;
@@ -232,8 +234,9 @@ dmsg_router_printf(dmsg_router_t *router, const char *ctl, ...)
 	va_end(va);
 	len = strlen(buf) + 1;
 
-	rmsg = dmsg_msg_alloc(router, len, DMSG_DBG_SHELL | DMSGF_REPLY,
-				 NULL, NULL);
+	rmsg = dmsg_msg_alloc(circuit, len,
+			      DMSG_DBG_SHELL | DMSGF_REPLY,
+			      NULL, NULL);
 	bcopy(buf, rmsg->aux_data, len);
 
 	dmsg_msg_write(rmsg);

@@ -247,13 +247,11 @@ dmsg_msg_str(dmsg_msg_t *msg)
 	 * Generate the buf
 	 */
 	snprintf(buf, sizeof(buf),
-		"msg=%s%s %s id=%08x src=%08x tgt=%08x %s",
+		"msg=%s%s %s msgid=%08x %s",
 		 dmsg_basecmd_str(msg->any.head.cmd),
 		 flagbuf,
 		 errstr,
 		 (uint32_t)(intmax_t)msg->any.head.msgid,   /* for brevity */
-		 (uint32_t)(intmax_t)msg->any.head.source,  /* for brevity */
-		 (uint32_t)(intmax_t)msg->any.head.target,  /* for brevity */
 		 statestr);
 
 	return(buf);

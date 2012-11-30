@@ -122,41 +122,59 @@ typedef struct dmsg_handshake dmsg_handshake_t;
  * directly embedded (any), and the message may contain a reference
  * to allocated auxillary data.  The structure is recycled quite often
  * by a connection.
- *
- * This structure is typically not used for storing persistent message
- * state (see dmsg_persist for that).
  */
 struct dmsg_iocom;
-struct dmsg_persist;
+struct dmsg_circuit;
 struct dmsg_state;
-struct dmsg_router;
 struct dmsg_msg;
 
 TAILQ_HEAD(dmsg_state_queue, dmsg_state);
 TAILQ_HEAD(dmsg_msg_queue, dmsg_msg);
 RB_HEAD(dmsg_state_tree, dmsg_state);
-RB_HEAD(dmsg_router_tree, dmsg_router);
+RB_HEAD(dmsg_circuit_tree, dmsg_circuit);
 
 struct h2span_link;
 struct h2span_relay;
 struct h2span_conn;
 
+struct dmsg_circuit {
+	RB_ENTRY(dmsg_circuit)	rbnode;
+	uint64_t		msgid;
+	struct dmsg_iocom	*iocom;
+	struct dmsg_state_tree	staterd_tree;	/* active transactions */
+	struct dmsg_state_tree	statewr_tree;	/* active transactions */
+	struct dmsg_circuit	*peer;		/* (if circuit relay) */
+	struct dmsg_state	*state;		/* open VC transaction state */
+	struct dmsg_state	*span_state;	/* span, relay or link */
+	int			is_relay;	/* span is h2span_relay */
+	int			refs;
+};
+
+/*
+ * The state structure is ref-counted.  The iocom cannot go away while
+ * state structures are active.  However, the related h2span_* linkages
+ * can be destroyed and NULL'd out if the state is terminated in both
+ * directions.
+ */
 struct dmsg_state {
 	RB_ENTRY(dmsg_state) rbnode;		/* indexed by msgid */
 	struct dmsg_iocom *iocom;
-	struct dmsg_router *router;		/* if routed */
+	struct dmsg_circuit *circuit;		/* associated circuit */
+	uint32_t	icmd;			/* command creating state */
 	uint32_t	txcmd;			/* mostly for CMDF flags */
 	uint32_t	rxcmd;			/* mostly for CMDF flags */
 	uint64_t	msgid;			/* {spanid,msgid} uniq */
 	int		flags;
 	int		error;
-	struct dmsg_msg *msg;
+	int		refs;			/* prevent destruction */
+	struct dmsg_msg *msg;			/* msg creating orig state */
 	void (*func)(struct dmsg_msg *);
 	union {
 		void *any;
 		struct h2span_link *link;
 		struct h2span_conn *conn;
 		struct h2span_relay *relay;
+		struct dmsg_circuit *circ;
 	} any;
 };
 
@@ -164,22 +182,33 @@ struct dmsg_state {
 #define DMSG_STATE_DYNAMIC	0x0002
 #define DMSG_STATE_NODEID	0x0004		/* manages a node id */
 
+/*
+ * This is the core in-memory representation of a message structure.
+ * The iocom represents the incoming or outgoing iocom.  Various state
+ * pointers are calculated based on the message's raw source and target
+ * fields, and will ref the underlying state.  Message headers are embedded
+ * while auxillary data is separately allocated.
+ */
 struct dmsg_msg {
 	TAILQ_ENTRY(dmsg_msg) qentry;
-	struct dmsg_router *router;
-	struct dmsg_state *state;
+	struct dmsg_iocom *iocom;		/* incoming/outgoing iocom */
+	struct dmsg_circuit *circuit;		/* associated circuit */
+	struct dmsg_state *state;		/* message state */
 	size_t		hdr_size;
 	size_t		aux_size;
 	char		*aux_data;
 	dmsg_any_t 	any;
 };
 
+typedef struct dmsg_circuit dmsg_circuit_t;
 typedef struct dmsg_state dmsg_state_t;
 typedef struct dmsg_msg dmsg_msg_t;
 typedef struct dmsg_msg_queue dmsg_msg_queue_t;
 
 int dmsg_state_cmp(dmsg_state_t *state1, dmsg_state_t *state2);
 RB_PROTOTYPE(dmsg_state_tree, dmsg_state, rbnode, dmsg_state_cmp);
+int dmsg_circuit_cmp(dmsg_circuit_t *circuit1, dmsg_circuit_t *circuit2);
+RB_PROTOTYPE(dmsg_circuit_tree, dmsg_circuit, rbnode, dmsg_circuit_cmp);
 
 /*
  * dmsg_ioq - An embedded component of dmsg_conn, holds state
@@ -232,41 +261,12 @@ typedef struct dmsg_ioq dmsg_ioq_t;
 #define DMSG_IOQ_ERROR_IVWRAP		18	/* IVs exhaused */
 #define DMSG_IOQ_ERROR_MACFAIL		19	/* MAC of encr alg failed */
 #define DMSG_IOQ_ERROR_ALGO		20	/* Misc. encr alg error */
+#define DMSG_IOQ_ERROR_ROUTED		21	/* ignore routed message */
+#define DMSG_IOQ_ERROR_BAD_CIRCUIT	22	/* unconfigured circuit */
+#define DMSG_IOQ_ERROR_UNUSED23		23
+#define DMSG_IOQ_ERROR_ASSYM		24	/* Assymetric path */
 
 #define DMSG_IOQ_MAXIOVEC    16
-
-/*
- * dmsg_router - governs the routing of a message.  Passed into
- * 		    dmsg_msg_write.
- *
- * The router is either connected to an iocom (socket) directly, or
- * connected to a SPAN transaction (h2span_link structure for outgoing)
- * or to a SPAN transaction (h2span_relay structure for incoming).
- */
-struct dmsg_router {
-	RB_ENTRY(dmsg_router) rbnode;	/* indexed by target */
-	struct dmsg_iocom *iocom;
-	struct h2span_link   *link;		/* may be NULL */
-	struct h2span_relay  *relay;		/* may be NULL */
-	void	(*signal_callback)(struct dmsg_router *);
-	void	(*rcvmsg_callback)(struct dmsg_msg *);
-	void	(*altmsg_callback)(struct dmsg_iocom *);
-	void	(*dbgmsg_callback)(dmsg_msg_t *msg);
-	struct dmsg_state_tree staterd_tree; /* active messages */
-	struct dmsg_state_tree statewr_tree; /* active messages */
-	dmsg_msg_queue_t txmsgq;		/* tx msgq from remote */
-	uint64_t	target;			/* for routing */
-	int		flags;
-	int		refs;			/* refs prevent destruction */
-};
-
-#define DMSG_ROUTER_CONNECTED		0x0001	/* on global RB tree */
-#define DMSG_ROUTER_DELETED		0x0002	/* parent structure destroyed */
-
-typedef struct dmsg_router dmsg_router_t;
-
-int dmsg_router_cmp(dmsg_router_t *router1, dmsg_router_t *router2);
-RB_PROTOTYPE(dmsg_router_tree, dmsg_router, rbnode, dmsg_router_cmp);
 
 /*
  * dmsg_iocom - governs a messaging stream connection
@@ -282,7 +282,14 @@ struct dmsg_iocom {
 	int	flags;
 	int	rxmisc;
 	int	txmisc;
-	struct dmsg_router *router;
+	void	(*signal_callback)(struct dmsg_iocom *);
+	void	(*rcvmsg_callback)(struct dmsg_msg *);
+	void	(*altmsg_callback)(struct dmsg_iocom *);
+	void	(*dbgmsg_callback)(dmsg_msg_t *msg);
+	struct dmsg_circuit_tree circuit_tree;	/* active circuits */
+	struct dmsg_circuit	circuit0;	/* embedded circuit0 */
+	dmsg_msg_queue_t txmsgq;		/* tx msgq from remote */
+	struct h2span_conn *conn;		/* if LNK_CONN active */
 	pthread_mutex_t mtx;			/* mutex for state*tree/rmsgq */
 };
 
@@ -328,6 +335,14 @@ struct dmsg_master_service_info {
 
 typedef struct dmsg_master_service_info dmsg_master_service_info_t;
 
+/*
+ * node callbacks
+ */
+#define DMSG_NODEOP_ADD		1
+#define DMSG_NODEOP_DEL		2
+
+extern void (*dmsg_node_handler)(void **opaquep, struct dmsg_msg *msg, int op);
+
 
 /*
  * icrc
@@ -347,6 +362,8 @@ const char *dmsg_msg_str(dmsg_msg_t *msg);
 void *dmsg_alloc(size_t bytes);
 void dmsg_free(void *ptr);
 const char *dmsg_uuid_to_str(uuid_t *uuid, char **strp);
+const char *dmsg_peer_type_to_str(uint8_t type);
+const char *dmsg_pfs_type_to_str(uint8_t type);
 int dmsg_connect(const char *hostname);
 
 /*
@@ -356,22 +373,24 @@ void dmsg_bswap_head(dmsg_hdr_t *head);
 void dmsg_ioq_init(dmsg_iocom_t *iocom, dmsg_ioq_t *ioq);
 void dmsg_ioq_done(dmsg_iocom_t *iocom, dmsg_ioq_t *ioq);
 void dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
-			void (*state_func)(dmsg_router_t *),
+			void (*state_func)(dmsg_iocom_t *),
 			void (*rcvmsg_func)(dmsg_msg_t *),
 			void (*dbgmsg_func)(dmsg_msg_t *),
 			void (*altmsg_func)(dmsg_iocom_t *));
-void dmsg_router_restate(dmsg_router_t *router,
-			void (*state_func)(dmsg_router_t *),
+void dmsg_iocom_restate(dmsg_iocom_t *iocom,
+			void (*state_func)(dmsg_iocom_t *),
 			void (*rcvmsg_func)(dmsg_msg_t *),
 			void (*altmsg_func)(dmsg_iocom_t *));
-void dmsg_router_signal(dmsg_router_t *router);
+void dmsg_iocom_signal(dmsg_iocom_t *iocom);
 void dmsg_iocom_done(dmsg_iocom_t *iocom);
-dmsg_msg_t *dmsg_msg_alloc(dmsg_router_t *router,
+void dmsg_circuit_init(dmsg_iocom_t *iocom, dmsg_circuit_t *circuit);
+dmsg_msg_t *dmsg_msg_alloc(dmsg_circuit_t *circuit,
 			size_t aux_size, uint32_t cmd,
 			void (*func)(dmsg_msg_t *), void *data);
 void dmsg_msg_reply(dmsg_msg_t *msg, uint32_t error);
 void dmsg_msg_result(dmsg_msg_t *msg, uint32_t error);
 void dmsg_state_reply(dmsg_state_t *state, uint32_t error);
+void dmsg_state_result(dmsg_state_t *state, uint32_t error);
 
 void dmsg_msg_free(dmsg_msg_t *msg);
 
@@ -385,18 +404,17 @@ void dmsg_iocom_flush2(dmsg_iocom_t *iocom);
 
 void dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg);
 void dmsg_state_free(dmsg_state_t *state);
+void dmsg_circuit_drop(dmsg_circuit_t *circuit);
 
-dmsg_router_t *dmsg_router_alloc(void);
-void dmsg_router_connect(dmsg_router_t *router);
-void dmsg_router_disconnect(dmsg_router_t **routerp);
+int dmsg_circuit_relay(dmsg_msg_t *msg);
 
 /*
  * Msg protocol functions
  */
-void dmsg_msg_lnk_signal(dmsg_router_t *router);
+void dmsg_msg_lnk_signal(dmsg_iocom_t *iocom);
 void dmsg_msg_lnk(dmsg_msg_t *msg);
 void dmsg_msg_dbg(dmsg_msg_t *msg);
-void dmsg_shell_tree(dmsg_router_t *router, char *cmdbuf __unused);
+void dmsg_shell_tree(dmsg_circuit_t *circuit, char *cmdbuf __unused);
 
 /*
  * Crypto functions
@@ -411,7 +429,7 @@ int dmsg_crypto_encrypt(dmsg_iocom_t *iocom, dmsg_ioq_t *ioq,
  * Service daemon functions
  */
 void *dmsg_master_service(void *data);
-void dmsg_router_printf(dmsg_router_t *router, const char *ctl, ...)
+void dmsg_circuit_printf(dmsg_circuit_t *circuit, const char *ctl, ...)
 	__printflike(2, 3);
 
 extern int DMsgDebugOpt;
