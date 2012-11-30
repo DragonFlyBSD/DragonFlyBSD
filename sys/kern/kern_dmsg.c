@@ -53,27 +53,29 @@
 
 RB_GENERATE(kdmsg_state_tree, kdmsg_state, rbnode, kdmsg_state_cmp);
 
+static struct lwkt_token kdmsg_token = LWKT_TOKEN_INITIALIZER(kdmsg_token);
+static void kdmsg_circ_free_check(kdmsg_circuit_t *circ);
+
 static void kdmsg_iocom_thread_rd(void *arg);
 static void kdmsg_iocom_thread_wr(void *arg);
+static int kdmsg_autorxmsg(kdmsg_msg_t *msg);
+static void kdmsg_autocirc(kdmsg_msg_t *msg);
+static int kdmsg_autocirc_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
 
 /*
  * Initialize the roll-up communications structure for a network
  * messaging session.  This function does not install the socket.
  */
 void
-kdmsg_iocom_init(kdmsg_iocom_t *iocom, void *handle,
+kdmsg_iocom_init(kdmsg_iocom_t *iocom, void *handle, uint32_t flags,
 		 struct malloc_type *mmsg,
-		 int (*lnk_rcvmsg)(kdmsg_msg_t *msg),
-		 int (*dbg_rcvmsg)(kdmsg_msg_t *msg),
-		 int (*misc_rcvmsg)(kdmsg_msg_t *msg))
+		 int (*rcvmsg)(kdmsg_msg_t *msg))
 {
 	bzero(iocom, sizeof(*iocom));
 	iocom->handle = handle;
 	iocom->mmsg = mmsg;
-	iocom->lnk_rcvmsg = lnk_rcvmsg;
-	iocom->dbg_rcvmsg = dbg_rcvmsg;
-	iocom->misc_rcvmsg = misc_rcvmsg;
-	iocom->router.iocom = iocom;
+	iocom->rcvmsg = rcvmsg;
+	iocom->flags = flags;
 	lockinit(&iocom->msglk, "h2msg", 0, 0);
 	TAILQ_INIT(&iocom->msgq);
 	RB_INIT(&iocom->staterd_tree);
@@ -104,7 +106,6 @@ kdmsg_iocom_reconnect(kdmsg_iocom_t *iocom, struct file *fp,
 		fdrop(iocom->msg_fp);
 		iocom->msg_fp = NULL;
 	}
-	kprintf("RESTART CONNECTION\n");
 
 	/*
 	 * Setup new communications descriptor
@@ -117,6 +118,76 @@ kdmsg_iocom_reconnect(kdmsg_iocom_t *iocom, struct file *fp,
 		    NULL, 0, -1, "%s-msgrd", subsysname);
 	lwkt_create(kdmsg_iocom_thread_wr, iocom, &iocom->msgwr_td,
 		    NULL, 0, -1, "%s-msgwr", subsysname);
+}
+
+/*
+ * Caller sets up iocom->auto_lnk_conn and iocom->auto_lnk_span, then calls
+ * this function to handle the state machine for LNK_CONN and LNK_SPAN.
+ *
+ * NOTE: Caller typically also sets the IOCOMF_AUTOCONN, IOCOMF_AUTOSPAN,
+ *	 and IOCOMF_AUTOCIRC in the kdmsg_iocom_init() call.  Clients
+ *	 typically set IOCOMF_AUTOFORGE to automatically forged circuits
+ *	 for received SPANs.
+ */
+static int kdmsg_lnk_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
+static int kdmsg_lnk_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
+
+void
+kdmsg_iocom_autoinitiate(kdmsg_iocom_t *iocom,
+			 void (*auto_callback)(kdmsg_msg_t *msg))
+{
+	kdmsg_msg_t *msg;
+
+	iocom->auto_callback = auto_callback;
+
+	msg = kdmsg_msg_alloc(iocom, 0,
+			      DMSG_LNK_CONN | DMSGF_CREATE,
+			      kdmsg_lnk_conn_reply, NULL);
+	iocom->auto_lnk_conn.head = msg->any.head;
+	msg->any.lnk_conn = iocom->auto_lnk_conn;
+	iocom->conn_state = msg->state;
+	kdmsg_msg_write(msg);
+}
+
+static
+int
+kdmsg_lnk_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
+{
+	kdmsg_iocom_t *iocom = state->iocom;
+	kdmsg_msg_t *rmsg;
+
+	if (msg->any.head.cmd & DMSGF_CREATE) {
+		rmsg = kdmsg_msg_alloc(iocom, 0,
+				       DMSG_LNK_SPAN | DMSGF_CREATE,
+				       kdmsg_lnk_span_reply, NULL);
+		iocom->auto_lnk_span.head = rmsg->any.head;
+		rmsg->any.lnk_span = iocom->auto_lnk_span;
+		kdmsg_msg_write(rmsg);
+	}
+	if ((state->txcmd & DMSGF_DELETE) == 0 &&
+	    (msg->any.head.cmd & DMSGF_DELETE)) {
+		iocom->conn_state = NULL;
+		kdmsg_msg_reply(msg, 0);
+	}
+	if (iocom->auto_callback)
+		iocom->auto_callback(msg);
+
+	return (0);
+}
+
+static
+int
+kdmsg_lnk_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
+{
+	/*kdmsg_iocom_t *iocom = state->iocom;*/
+
+	if ((state->txcmd & DMSGF_DELETE) == 0 &&
+	    (msg->any.head.cmd & DMSGF_DELETE)) {
+		kdmsg_msg_reply(msg, 0);
+	}
+	if (state->iocom->auto_callback)
+		state->iocom->auto_callback(msg);
+	return (0);
 }
 
 /*
@@ -180,9 +251,9 @@ kdmsg_iocom_thread_rd(void *arg)
 			break;
 		}
 		/* XXX messy: mask cmd to avoid allocating state */
-		msg = kdmsg_msg_alloc(&iocom->router,
-					hdr.cmd & DMSGF_BASECMDMASK,
-					NULL, NULL);
+		msg = kdmsg_msg_alloc(iocom, 0,
+				      hdr.cmd & DMSGF_BASECMDMASK,
+				      NULL, NULL);
 		msg->any.head = hdr;
 		msg->hdr_size = hbytes;
 		if (hbytes > sizeof(hdr)) {
@@ -205,6 +276,7 @@ kdmsg_iocom_thread_rd(void *arg)
 		if (msg->aux_size) {
 			msg->aux_data = kmalloc(msg->aux_size, iocom->mmsg,
 						M_WAITOK | M_ZERO);
+			msg->flags |= KDMSG_FLAG_AUXALLOC;
 			error = fp_read(iocom->msg_fp, msg->aux_data,
 					msg->aux_size,
 					NULL, 1, UIO_SYSSPACE);
@@ -235,25 +307,11 @@ kdmsg_iocom_thread_rd(void *arg)
 			 */
 			error = msg->state->func(msg->state, msg);
 			kdmsg_state_cleanuprx(msg);
-		} else if ((msg->any.head.cmd & DMSGF_PROTOS) ==
-			   DMSG_PROTO_LNK) {
-			/*
-			 * Message related to the LNK protocol set
-			 */
-			error = iocom->lnk_rcvmsg(msg);
-			kdmsg_state_cleanuprx(msg);
-		} else if ((msg->any.head.cmd & DMSGF_PROTOS) ==
-			   DMSG_PROTO_DBG) {
-			/*
-			 * Message related to the DBG protocol set
-			 */
-			error = iocom->dbg_rcvmsg(msg);
+		} else if (iocom->flags & KDMSG_IOCOMF_AUTOANY) {
+			error = kdmsg_autorxmsg(msg);
 			kdmsg_state_cleanuprx(msg);
 		} else {
-			/*
-			 * Other higher-level messages (e.g. vnops)
-			 */
-			error = iocom->misc_rcvmsg(msg);
+			error = iocom->rcvmsg(msg);
 			kdmsg_state_cleanuprx(msg);
 		}
 		msg = NULL;
@@ -430,11 +488,13 @@ cleanuprd:
 		if (state->func &&
 		    (state->rxcmd & DMSGF_DELETE) == 0) {
 			lockmgr(&iocom->msglk, LK_RELEASE);
-			msg = kdmsg_msg_alloc(&iocom->router, DMSG_LNK_ERROR,
+			msg = kdmsg_msg_alloc(iocom, state->circuit,
+					      DMSG_LNK_ERROR,
 					      NULL, NULL);
 			if ((state->rxcmd & DMSGF_CREATE) == 0)
 				msg->any.head.cmd |= DMSGF_CREATE;
 			msg->any.head.cmd |= DMSGF_DELETE;
+			msg->any.head.error = DMSG_ERR_LOSTLINK;
 			msg->state = state;
 			state->rxcmd = msg->any.head.cmd &
 				       ~DMSGF_DELETE;
@@ -464,12 +524,14 @@ cleanupwr:
 		if (state->func &&
 		    (state->rxcmd & DMSGF_DELETE) == 0) {
 			lockmgr(&iocom->msglk, LK_RELEASE);
-			msg = kdmsg_msg_alloc(&iocom->router, DMSG_LNK_ERROR,
+			msg = kdmsg_msg_alloc(iocom, state->circuit,
+					      DMSG_LNK_ERROR,
 					      NULL, NULL);
 			if ((state->rxcmd & DMSGF_CREATE) == 0)
 				msg->any.head.cmd |= DMSGF_CREATE;
 			msg->any.head.cmd |= DMSGF_DELETE |
 					     DMSGF_REPLY;
+			msg->any.head.error = DMSG_ERR_LOSTLINK;
 			msg->state = state;
 			state->rxcmd = msg->any.head.cmd &
 				       ~DMSGF_DELETE;
@@ -624,17 +686,13 @@ kdmsg_drain_msgq(kdmsg_iocom_t *iocom)
 int
 kdmsg_state_msgrx(kdmsg_msg_t *msg)
 {
-	kdmsg_iocom_t *iocom;
+	kdmsg_iocom_t *iocom = msg->iocom;
 	kdmsg_state_t *state;
 	int error;
-
-	iocom = msg->router->iocom;
 
 	/*
 	 * XXX resolve msg->any.head.source and msg->any.head.target
 	 *     into LNK_SPAN references.
-	 *
-	 * XXX replace msg->router
 	 */
 
 	/*
@@ -657,12 +715,8 @@ kdmsg_state_msgrx(kdmsg_msg_t *msg)
 	lockmgr(&iocom->msglk, LK_EXCLUSIVE);
 
 	state->msgid = msg->any.head.msgid;
-	state->router = &iocom->router;
-	kprintf("received msg %08x msgid %jx source=%jx target=%jx\n",
-		msg->any.head.cmd,
-		(intmax_t)msg->any.head.msgid,
-		(intmax_t)msg->any.head.source,
-		(intmax_t)msg->any.head.target);
+	state->circuit = msg->any.head.circuit;
+	state->iocom = iocom;
 	if (msg->any.head.cmd & DMSGF_REPLY)
 		state = RB_FIND(kdmsg_state_tree, &iocom->statewr_tree, state);
 	else
@@ -682,7 +736,7 @@ kdmsg_state_msgrx(kdmsg_msg_t *msg)
 	 * Switch on CREATE, DELETE, REPLY, and also handle ABORT from
 	 * inside the case statements.
 	 */
-	switch(msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY)) {
+	switch(msg->any.head.cmd & (DMSGF_CREATE|DMSGF_DELETE|DMSGF_REPLY)) {
 	case DMSGF_CREATE:
 	case DMSGF_CREATE | DMSGF_DELETE:
 		/*
@@ -696,10 +750,12 @@ kdmsg_state_msgrx(kdmsg_msg_t *msg)
 		state = iocom->freerd_state;
 		iocom->freerd_state = NULL;
 		msg->state = state;
-		state->router = msg->router;
 		state->msg = msg;
+		state->icmd = msg->any.head.cmd & DMSGF_BASECMDMASK;
 		state->rxcmd = msg->any.head.cmd & ~DMSGF_DELETE;
 		state->txcmd = DMSGF_REPLY;
+		state->msgid = msg->any.head.msgid;
+		state->circuit = msg->any.head.circuit;
 		RB_INSERT(kdmsg_state_tree, &iocom->staterd_tree, state);
 		state->flags |= KDMSG_STATE_INSERTED;
 		error = 0;
@@ -818,13 +874,225 @@ kdmsg_state_msgrx(kdmsg_msg_t *msg)
 	return (error);
 }
 
+/*
+ * Called instead of iocom->rcvmsg() if any of the AUTO flags are set.
+ * This routine must call iocom->rcvmsg() for anything not automatically
+ * handled.
+ */
+static int
+kdmsg_autorxmsg(kdmsg_msg_t *msg)
+{
+	kdmsg_iocom_t *iocom = msg->iocom;
+	int error = 0;
+
+	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
+	case DMSG_LNK_CONN | DMSGF_CREATE:
+		/*
+		 * Received LNK_CONN transaction.  Transmit response and
+		 * leave transaction open, which allows the other end to
+		 * start to the SPAN protocol.
+		 */
+		if (iocom->flags & KDMSG_IOCOMF_AUTOCONN) {
+			kdmsg_msg_result(msg, 0);
+			if (iocom->auto_callback)
+				iocom->auto_callback(msg);
+		} else {
+			error = iocom->rcvmsg(msg);
+		}
+		break;
+	case DMSG_LNK_SPAN | DMSGF_CREATE:
+	case DMSG_LNK_SPAN | DMSGF_CREATE | DMSGF_DELETE:
+		/*
+		 * Received LNK_SPAN transaction.  We do not have to respond
+		 * but we must leave the transaction open.
+		 *
+		 * If AUTOCIRC is set automatically initiate a virtual circuit
+		 * to the span.  This will attach a kdmsg_circuit to the
+		 * SPAN state.
+		 */
+		if (iocom->flags & KDMSG_IOCOMF_AUTOSPAN) {
+			if ((msg->any.head.cmd & DMSGF_DELETE) == 0) {
+				if (iocom->flags & KDMSG_IOCOMF_AUTOFORGE)
+					kdmsg_autocirc(msg);
+				if (iocom->auto_callback)
+					iocom->auto_callback(msg);
+				break;
+			}
+			/* fall through */
+		} else {
+			error = iocom->rcvmsg(msg);
+			break;
+		}
+		/* fall through */
+	case DMSG_LNK_SPAN | DMSGF_DELETE:
+		if (iocom->flags & KDMSG_IOCOMF_AUTOSPAN) {
+			if (iocom->flags & KDMSG_IOCOMF_AUTOFORGE)
+				kdmsg_autocirc(msg);
+			kdmsg_msg_reply(msg, 0);
+			if (iocom->auto_callback)
+				iocom->auto_callback(msg);
+		} else {
+			error = iocom->rcvmsg(msg);
+		}
+		break;
+	case DMSG_LNK_CIRC | DMSGF_CREATE:
+	case DMSG_LNK_CIRC | DMSGF_CREATE | DMSGF_DELETE:
+		/*
+		 * Received LNK_CIRC transaction.  We must respond and should
+		 * leave the transaction open, allowing the circuit.  The
+		 * remote can start issuing commands to us over the circuit
+		 * even before we respond.
+		 *
+		 * Theoretically we should track the circuit id but it
+		 * should not be necessary, kernel devices don't usually
+		 * care how many circuits are forged to a device, only how
+		 * many OPENs are active.
+		 */
+		if (iocom->flags & KDMSG_IOCOMF_AUTOCIRC) {
+			kprintf("kdmsg: CREATE LINK_CIRC\n");
+			kdmsg_msg_result(msg, 0);
+			if ((msg->any.head.cmd & DMSGF_DELETE) == 0) {
+				if (iocom->auto_callback)
+					iocom->auto_callback(msg);
+				break;
+			}
+			/* fall through */
+		} else {
+			error = iocom->rcvmsg(msg);
+			break;
+		}
+		/* fall through */
+	case DMSG_LNK_CIRC | DMSGF_DELETE:
+		if (iocom->flags & KDMSG_IOCOMF_AUTOCIRC) {
+			kprintf("kdmsg: DELETE LINK_CIRC\n");
+			if (iocom->auto_callback)
+				iocom->auto_callback(msg);
+			kdmsg_msg_reply(msg, 0);
+		} else {
+			error = iocom->rcvmsg(msg);
+		}
+		break;
+	default:
+		/*
+		 * Anything unhandled goes into rcvmsg.
+		 *
+		 * NOTE: Replies to link-level messages initiated by our side
+		 *	 are handled by the state callback, they are NOT
+		 *	 handled here.
+		 */
+		error = iocom->rcvmsg(msg);
+		break;
+	}
+	return (error);
+}
+
+/*
+ * Handle automatic management of virtual circuits for received SPANs.
+ *
+ * We can ignore non-transactions here.  Use trans->icmd to test the
+ * transactional command (once past the CREATE the individual message
+ * commands are not usually the icmd).
+ */
+static
+void
+kdmsg_autocirc(kdmsg_msg_t *msg)
+{
+	kdmsg_iocom_t *iocom = msg->iocom;
+	kdmsg_circuit_t *circ;
+	kdmsg_msg_t *xmsg;	/* CIRC */
+
+	if (msg->state == NULL)
+		return;
+
+	/*
+	 * Gaining the SPAN, automatically forge a circuit to the target.
+	 */
+	if (msg->state->icmd == DMSG_LNK_SPAN &&
+	    (msg->any.head.cmd & DMSGF_CREATE)) {
+		kprintf("KDMSG VC: CREATE SPAN->CIRC MSGID %016jx\n",
+			(intmax_t)msg->any.head.msgid);
+		circ = kmalloc(sizeof(*circ), iocom->mmsg, M_WAITOK | M_ZERO);
+		msg->state->any.circ = circ;
+		circ->iocom = iocom;
+		circ->span_state = msg->state;
+		xmsg = kdmsg_msg_alloc(iocom, 0,
+				       DMSG_LNK_CIRC | DMSGF_CREATE,
+				       kdmsg_autocirc_reply, circ);
+		circ->circ_state = xmsg->state;
+		circ->weight = msg->any.lnk_span.dist;
+		xmsg->any.lnk_circ.target = msg->any.head.msgid;
+		kdmsg_msg_write(xmsg);
+	}
+
+	/*
+	 * Losing the SPAN
+	 *
+	 * NOTE: When losing a SPAN, any circuits using the span should be
+	 *	 deleted by the remote end first.  XXX might not be ordered
+	 *	 on actual loss of connection.
+	 */
+	if (msg->state->icmd == DMSG_LNK_SPAN &&
+	    (msg->any.head.cmd & DMSGF_DELETE) &&
+	    msg->state->any.circ) {
+		kprintf("KDMSG VC: DELETE SPAN->CIRC\n");
+		circ = msg->state->any.circ;
+		lwkt_gettoken(&kdmsg_token);
+		circ->span_state = NULL;
+		msg->state->any.circ = NULL;
+		kdmsg_circ_free_check(circ);
+		lwkt_reltoken(&kdmsg_token);
+	}
+}
+
+static
+int
+kdmsg_autocirc_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
+{
+	kdmsg_iocom_t *iocom = state->iocom;
+	kdmsg_circuit_t *circ = state->any.circ;
+
+	/*
+	 * Shim is typically used by the end point to record the circuit
+	 * on CREATE and erase it on DELETE.
+	 */
+	if (iocom->auto_callback)
+		iocom->auto_callback(msg);
+
+	/*
+	 * If the remote is terminating the VC we terminate our side
+	 */
+	if ((state->txcmd & DMSGF_DELETE) == 0 &&
+	    (msg->any.head.cmd & DMSGF_DELETE)) {
+		kprintf("KDMSG VC: DELETE CIRC FROM REMOTE\n");
+		lwkt_gettoken(&kdmsg_token);
+		circ->circ_state = NULL;
+		state->any.circ = NULL;
+		kdmsg_circ_free_check(circ);
+		lwkt_reltoken(&kdmsg_token);
+		kdmsg_msg_reply(msg, 0);
+	}
+	return (0);
+}
+
+static
+void
+kdmsg_circ_free_check(kdmsg_circuit_t *circ)
+{
+	kdmsg_iocom_t *iocom = circ->iocom;
+
+	if (circ->span_state == NULL &&
+	    circ->circ_state == NULL &&
+	    circ->recorded == 0) {
+		circ->iocom = NULL;
+		kfree(circ, iocom->mmsg);
+	}
+}
+
 void
 kdmsg_state_cleanuprx(kdmsg_msg_t *msg)
 {
-	kdmsg_iocom_t *iocom;
+	kdmsg_iocom_t *iocom = msg->iocom;
 	kdmsg_state_t *state;
-
-	iocom = msg->router->iocom;
 
 	if ((state = msg->state) == NULL) {
 		kdmsg_msg_free(msg);
@@ -874,11 +1142,9 @@ kdmsg_state_cleanuprx(kdmsg_msg_t *msg)
 int
 kdmsg_state_msgtx(kdmsg_msg_t *msg)
 {
-	kdmsg_iocom_t *iocom;
+	kdmsg_iocom_t *iocom = msg->iocom;
 	kdmsg_state_t *state;
 	int error;
-
-	iocom = msg->router->iocom;
 
 	/*
 	 * Make sure a state structure is ready to go in case we need a new
@@ -888,7 +1154,7 @@ kdmsg_state_msgtx(kdmsg_msg_t *msg)
 	if ((state = iocom->freewr_state) == NULL) {
 		state = kmalloc(sizeof(*state), iocom->mmsg, M_WAITOK | M_ZERO);
 		state->flags = KDMSG_STATE_DYNAMIC;
-		state->router = &iocom->router;
+		state->iocom = iocom;
 		iocom->freewr_state = state;
 	}
 
@@ -928,6 +1194,7 @@ kdmsg_state_msgtx(kdmsg_msg_t *msg)
 		 *     on-transmit.
 		 */
 		KKASSERT(state != NULL);
+		state->icmd = msg->any.head.cmd & DMSGF_BASECMDMASK;
 		state->txcmd = msg->any.head.cmd & ~DMSGF_DELETE;
 		state->rxcmd = DMSGF_REPLY;
 		error = 0;
@@ -1056,10 +1323,8 @@ kdmsg_state_msgtx(kdmsg_msg_t *msg)
 void
 kdmsg_state_cleanuptx(kdmsg_msg_t *msg)
 {
-	kdmsg_iocom_t *iocom;
+	kdmsg_iocom_t *iocom = msg->iocom;
 	kdmsg_state_t *state;
-
-	iocom = msg->router->iocom;
 
 	if ((state = msg->state) == NULL) {
 		kdmsg_msg_free(msg);
@@ -1096,10 +1361,8 @@ kdmsg_state_cleanuptx(kdmsg_msg_t *msg)
 void
 kdmsg_state_free(kdmsg_state_t *state)
 {
-	kdmsg_iocom_t *iocom;
+	kdmsg_iocom_t *iocom = state->iocom;
 	kdmsg_msg_t *msg;
-
-	iocom = state->router->iocom;
 
 	KKASSERT((state->flags & KDMSG_STATE_INSERTED) == 0);
 	msg = state->msg;
@@ -1110,24 +1373,21 @@ kdmsg_state_free(kdmsg_state_t *state)
 }
 
 kdmsg_msg_t *
-kdmsg_msg_alloc(kdmsg_router_t *router, uint32_t cmd,
+kdmsg_msg_alloc(kdmsg_iocom_t *iocom, uint64_t circuit, uint32_t cmd,
 		int (*func)(kdmsg_state_t *, kdmsg_msg_t *), void *data)
 {
-	kdmsg_iocom_t *iocom;
 	kdmsg_msg_t *msg;
 	kdmsg_state_t *state;
 	size_t hbytes;
 
-	iocom = router->iocom;
+	KKASSERT(iocom != NULL);
 	hbytes = (cmd & DMSGF_SIZE) * DMSG_ALIGN;
 	msg = kmalloc(offsetof(struct kdmsg_msg, any) + hbytes,
 		      iocom->mmsg, M_WAITOK | M_ZERO);
 	msg->hdr_size = hbytes;
-	msg->router = router;
-	KKASSERT(router != NULL);
+	msg->iocom = iocom;
 	msg->any.head.magic = DMSG_HDR_MAGIC;
-	msg->any.head.source = 0;
-	msg->any.head.target = router->target;
+	msg->any.head.circuit = circuit;
 	msg->any.head.cmd = cmd;
 
 	if (cmd & DMSGF_CREATE) {
@@ -1142,11 +1402,10 @@ kdmsg_msg_alloc(kdmsg_router_t *router, uint32_t cmd,
 		state->any.any = data;
 		state->msg = msg;
 		state->msgid = (uint64_t)(uintptr_t)state;
-		state->router = msg->router;
+		state->circuit = circuit;
+		state->iocom = iocom;
 		msg->state = state;
-		msg->any.head.source = 0;
-		msg->any.head.target = state->router->target;
-		msg->any.head.msgid = state->msgid;
+		/*msg->any.head.msgid = state->msgid;XXX*/
 
 		lockmgr(&iocom->msglk, LK_EXCLUSIVE);
 		if (RB_INSERT(kdmsg_state_tree, &iocom->statewr_tree, state))
@@ -1162,16 +1421,17 @@ kdmsg_msg_alloc(kdmsg_router_t *router, uint32_t cmd,
 void
 kdmsg_msg_free(kdmsg_msg_t *msg)
 {
-	kdmsg_iocom_t *iocom;
+	kdmsg_iocom_t *iocom = msg->iocom;
 
-	iocom = msg->router->iocom;
-
-	if (msg->aux_data && msg->aux_size) {
+	if ((msg->flags & KDMSG_FLAG_AUXALLOC) &&
+	    msg->aux_data && msg->aux_size) {
 		kfree(msg->aux_data, iocom->mmsg);
-		msg->aux_data = NULL;
-		msg->aux_size = 0;
-		msg->router = NULL;
+		msg->flags &= ~KDMSG_FLAG_AUXALLOC;
 	}
+	msg->aux_data = NULL;
+	msg->aux_size = 0;
+	msg->iocom = NULL;
+	msg->any.head.circuit = -1;
 	kfree(msg, iocom->mmsg);
 }
 
@@ -1182,9 +1442,13 @@ kdmsg_msg_free(kdmsg_msg_t *msg)
 int
 kdmsg_state_cmp(kdmsg_state_t *state1, kdmsg_state_t *state2)
 {
-	if (state1->router < state2->router)
+	if (state1->iocom < state2->iocom)
 		return(-1);
-	if (state1->router > state2->router)
+	if (state1->iocom > state2->iocom)
+		return(1);
+	if (state1->circuit < state2->circuit)
+		return(-1);
+	if (state1->circuit > state2->circuit)
 		return(1);
 	if (state1->msgid < state2->msgid)
 		return(-1);
@@ -1212,10 +1476,8 @@ kdmsg_state_cmp(kdmsg_state_t *state1, kdmsg_state_t *state2)
 void
 kdmsg_msg_write(kdmsg_msg_t *msg)
 {
-	kdmsg_iocom_t *iocom;
+	kdmsg_iocom_t *iocom = msg->iocom;
 	kdmsg_state_t *state;
-
-	iocom = msg->router->iocom;
 
 	if (msg->state) {
 		/*
@@ -1227,8 +1489,6 @@ kdmsg_msg_write(kdmsg_msg_t *msg)
 		 */
 		state = msg->state;
 		msg->any.head.msgid = state->msgid;
-		msg->any.head.source = 0;
-		msg->any.head.target = state->router->target;
 		lockmgr(&iocom->msglk, LK_EXCLUSIVE);
 	} else {
 		/*
@@ -1237,8 +1497,6 @@ kdmsg_msg_write(kdmsg_msg_t *msg)
 		 * competing aborts and a real one-off message?)
 		 */
 		msg->any.head.msgid = 0;
-		msg->any.head.source = 0;
-		msg->any.head.target = msg->router->target;
 		lockmgr(&iocom->msglk, LK_EXCLUSIVE);
 	}
 
@@ -1300,10 +1558,10 @@ kdmsg_msg_reply(kdmsg_msg_t *msg, uint32_t error)
 		if ((msg->any.head.cmd & DMSGF_REPLY) == 0)
 			cmd |= DMSGF_REPLY;
 	}
-	kprintf("MSG_REPLY state=%p msg %08x\n", state, cmd);
 
 	/* XXX messy mask cmd to avoid allocating state */
-	nmsg = kdmsg_msg_alloc(msg->router, cmd & DMSGF_BASECMDMASK,
+	nmsg = kdmsg_msg_alloc(msg->iocom, msg->any.head.circuit,
+			       cmd & DMSGF_BASECMDMASK,
 			       NULL, NULL);
 	nmsg->any.head.cmd = cmd;
 	nmsg->any.head.error = error;
@@ -1352,7 +1610,105 @@ kdmsg_msg_result(kdmsg_msg_t *msg, uint32_t error)
 	}
 
 	/* XXX messy mask cmd to avoid allocating state */
-	nmsg = kdmsg_msg_alloc(msg->router, cmd & DMSGF_BASECMDMASK,
+	nmsg = kdmsg_msg_alloc(msg->iocom, msg->any.head.circuit,
+			       cmd & DMSGF_BASECMDMASK,
+			       NULL, NULL);
+	nmsg->any.head.cmd = cmd;
+	nmsg->any.head.error = error;
+	nmsg->state = state;
+	kdmsg_msg_write(nmsg);
+}
+
+/*
+ * Reply to a message and terminate our side of the transaction.
+ *
+ * If msg->state is non-NULL we are replying to a one-way message.
+ */
+void
+kdmsg_state_reply(kdmsg_state_t *state, uint32_t error)
+{
+	kdmsg_msg_t *nmsg;
+	uint32_t cmd;
+
+	/*
+	 * Reply with a simple error code and terminate the transaction.
+	 */
+	cmd = DMSG_LNK_ERROR;
+
+	/*
+	 * Check if our direction has even been initiated yet, set CREATE.
+	 *
+	 * Check what direction this is (command or reply direction).  Note
+	 * that txcmd might not have been initiated yet.
+	 *
+	 * If our direction has already been closed we just return without
+	 * doing anything.
+	 */
+	if (state) {
+		if (state->txcmd & DMSGF_DELETE)
+			return;
+		if ((state->txcmd & DMSGF_CREATE) == 0)
+			cmd |= DMSGF_CREATE;
+		if (state->txcmd & DMSGF_REPLY)
+			cmd |= DMSGF_REPLY;
+		cmd |= DMSGF_DELETE;
+	} else {
+		if ((state->txcmd & DMSGF_REPLY) == 0)
+			cmd |= DMSGF_REPLY;
+	}
+
+	/* XXX messy mask cmd to avoid allocating state */
+	nmsg = kdmsg_msg_alloc(state->iocom, state->circuit,
+			       cmd & DMSGF_BASECMDMASK,
+			       NULL, NULL);
+	nmsg->any.head.cmd = cmd;
+	nmsg->any.head.error = error;
+	nmsg->state = state;
+	kdmsg_msg_write(nmsg);
+}
+
+/*
+ * Reply to a message and continue our side of the transaction.
+ *
+ * If msg->state is non-NULL we are replying to a one-way message and this
+ * function degenerates into the same as kdmsg_msg_reply().
+ */
+void
+kdmsg_state_result(kdmsg_state_t *state, uint32_t error)
+{
+	kdmsg_msg_t *nmsg;
+	uint32_t cmd;
+
+	/*
+	 * Return a simple result code, do NOT terminate the transaction.
+	 */
+	cmd = DMSG_LNK_ERROR;
+
+	/*
+	 * Check if our direction has even been initiated yet, set CREATE.
+	 *
+	 * Check what direction this is (command or reply direction).  Note
+	 * that txcmd might not have been initiated yet.
+	 *
+	 * If our direction has already been closed we just return without
+	 * doing anything.
+	 */
+	if (state) {
+		if (state->txcmd & DMSGF_DELETE)
+			return;
+		if ((state->txcmd & DMSGF_CREATE) == 0)
+			cmd |= DMSGF_CREATE;
+		if (state->txcmd & DMSGF_REPLY)
+			cmd |= DMSGF_REPLY;
+		/* continuing transaction, do not set MSGF_DELETE */
+	} else {
+		if ((state->txcmd & DMSGF_REPLY) == 0)
+			cmd |= DMSGF_REPLY;
+	}
+
+	/* XXX messy mask cmd to avoid allocating state */
+	nmsg = kdmsg_msg_alloc(state->iocom, state->circuit,
+			       cmd & DMSGF_BASECMDMASK,
 			       NULL, NULL);
 	nmsg->any.head.cmd = cmd;
 	nmsg->any.head.error = error;

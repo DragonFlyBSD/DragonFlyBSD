@@ -62,16 +62,16 @@
 static MALLOC_DEFINE(M_DMSG_DISK, "dmsg_disk", "disk dmsg");
 
 static int disk_iocom_reconnect(struct disk *dp, struct file *fp);
-static int disk_msg_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
-static int disk_msg_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
+static int disk_rcvdmsg(kdmsg_msg_t *msg);
 
 void
 disk_iocom_init(struct disk *dp)
 {
-	kdmsg_iocom_init(&dp->d_iocom, dp, M_DMSG_DISK,
-			 disk_lnk_rcvmsg,
-			 disk_dbg_rcvmsg,
-			 disk_adhoc_input);
+	kdmsg_iocom_init(&dp->d_iocom, dp,
+			 KDMSG_IOCOMF_AUTOCONN |
+			 KDMSG_IOCOMF_AUTOSPAN |
+			 KDMSG_IOCOMF_AUTOCIRC,
+			 M_DMSG_DISK, disk_rcvdmsg);
 }
 
 void
@@ -113,7 +113,6 @@ static
 int
 disk_iocom_reconnect(struct disk *dp, struct file *fp)
 {
-	kdmsg_msg_t *msg;
 	char devname[64];
 
 	ksnprintf(devname, sizeof(devname), "%s%d",
@@ -121,107 +120,47 @@ disk_iocom_reconnect(struct disk *dp, struct file *fp)
 
 	kdmsg_iocom_reconnect(&dp->d_iocom, fp, devname);
 
-	msg = kdmsg_msg_alloc(&dp->d_iocom.router, DMSG_LNK_CONN | DMSGF_CREATE,
-			      disk_msg_conn_reply, dp);
-	msg->any.lnk_conn.pfs_type = 0;
-	msg->any.lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
-	msg->any.lnk_conn.peer_type = DMSG_PEER_BLOCK;
-	msg->any.lnk_conn.peer_mask = 1LLU << DMSG_PEER_BLOCK;
-
-	ksnprintf(msg->any.lnk_conn.cl_label,
-		  sizeof(msg->any.lnk_conn.cl_label),
+	dp->d_iocom.auto_lnk_conn.pfs_type = DMSG_PFSTYPE_SERVER;
+	dp->d_iocom.auto_lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
+	dp->d_iocom.auto_lnk_conn.peer_type = DMSG_PEER_BLOCK;
+	dp->d_iocom.auto_lnk_conn.peer_mask = 1LLU << DMSG_PEER_BLOCK;
+	dp->d_iocom.auto_lnk_conn.pfs_mask = (uint64_t)-1;
+	ksnprintf(dp->d_iocom.auto_lnk_conn.cl_label,
+		  sizeof(dp->d_iocom.auto_lnk_conn.cl_label),
 		  "%s/%s", hostname, devname);
-	dp->d_iocom.conn_state = msg->state;
-	kdmsg_msg_write(msg);
+	if (dp->d_info.d_serialno) {
+		ksnprintf(dp->d_iocom.auto_lnk_conn.fs_label,
+			  sizeof(dp->d_iocom.auto_lnk_conn.fs_label),
+			  "%s", dp->d_info.d_serialno);
+	}
+
+	dp->d_iocom.auto_lnk_span.pfs_type = DMSG_PFSTYPE_SERVER;
+	dp->d_iocom.auto_lnk_span.proto_version = DMSG_SPAN_PROTO_1;
+	dp->d_iocom.auto_lnk_span.peer_type = DMSG_PEER_BLOCK;
+	dp->d_iocom.auto_lnk_span.media.block.bytes =
+						dp->d_info.d_media_size;
+	dp->d_iocom.auto_lnk_span.media.block.blksize =
+						dp->d_info.d_media_blksize;
+	ksnprintf(dp->d_iocom.auto_lnk_span.cl_label,
+		  sizeof(dp->d_iocom.auto_lnk_span.cl_label),
+		  "%s/%s", hostname, devname);
+	if (dp->d_info.d_serialno) {
+		ksnprintf(dp->d_iocom.auto_lnk_span.fs_label,
+			  sizeof(dp->d_iocom.auto_lnk_span.fs_label),
+			  "%s", dp->d_info.d_serialno);
+	}
+
+	kdmsg_iocom_autoinitiate(&dp->d_iocom, NULL);
 
 	return (0);
 }
 
-/*
- * Received reply to our LNK_CONN transaction, indicating LNK_SPAN support.
- * Issue LNK_SPAN.
- */
-static
 int
-disk_msg_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
+disk_rcvdmsg(kdmsg_msg_t *msg)
 {
-	struct disk *dp = state->any.any;
-	kdmsg_msg_t *rmsg;
-
-	if (msg->any.head.cmd & DMSGF_CREATE) {
-		kprintf("DISK LNK_CONN received reply\n");
-		rmsg = kdmsg_msg_alloc(&dp->d_iocom.router,
-				       DMSG_LNK_SPAN | DMSGF_CREATE,
-				       disk_msg_span_reply, dp);
-		rmsg->any.lnk_span.pfs_type = 0;
-		rmsg->any.lnk_span.proto_version = DMSG_SPAN_PROTO_1;
-		rmsg->any.lnk_span.peer_type = DMSG_PEER_BLOCK;
-
-		ksnprintf(rmsg->any.lnk_span.cl_label,
-			  sizeof(rmsg->any.lnk_span.cl_label),
-			  "%s/%s%d",
-			  hostname,
-			  dev_dname(dp->d_rawdev),
-			  dkunit(dp->d_rawdev));
-		kdmsg_msg_write(rmsg);
-	}
-	if ((state->txcmd & DMSGF_DELETE) == 0 &&
-	    (msg->any.head.cmd & DMSGF_DELETE)) {
-		kprintf("DISK LNK_CONN terminated by remote\n");
-		dp->d_iocom.conn_state = NULL;
-		kdmsg_msg_reply(msg, 0);
-	}
-	return(0);
-}
-
-/*
- * Reply to our LNK_SPAN.  The transaction is left open.
- */
-static
-int
-disk_msg_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
-{
-	/*struct disk *dp = state->any.any;*/
-
-	kprintf("DISK LNK_SPAN reply received\n");
-	if ((state->txcmd & DMSGF_DELETE) == 0 &&
-	    (msg->any.head.cmd & DMSGF_DELETE)) {
-		kdmsg_msg_reply(msg, 0);
-	}
-	return (0);
-}
-
-int
-disk_lnk_rcvmsg(kdmsg_msg_t *msg)
-{
-	/*struct disk *dp = msg->router->iocom->handle;*/
+	struct disk *dp = msg->iocom->handle;
 
 	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
-	case DMSG_LNK_CONN | DMSGF_CREATE:
-		/*
-		 * reply & leave trans open
-		 */
-		kprintf("DISK CONN RECEIVE - (just ignore it)\n");
-		kdmsg_msg_result(msg, 0);
-		break;
-	case DMSG_LNK_SPAN | DMSGF_CREATE:
-		kprintf("DISK SPAN RECEIVE - ADDED FROM CLUSTER\n");
-		break;
-	case DMSG_LNK_SPAN | DMSGF_DELETE:
-		kprintf("DISK SPAN RECEIVE - DELETED FROM CLUSTER\n");
-		break;
-	default:
-		break;
-	}
-	return (0);
-}
-
-int
-disk_dbg_rcvmsg(kdmsg_msg_t *msg)
-{
-	/*struct disk *dp = msg->router->iocom->handle;*/
-
-	switch(msg->any.head.cmd & DMSGF_CMDSWMASK) {
 	case DMSG_DBG_SHELL:
 		/*
 		 * Execute shell command (not supported atm)
@@ -231,23 +170,21 @@ disk_dbg_rcvmsg(kdmsg_msg_t *msg)
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
 		if (msg->aux_data) {
 			msg->aux_data[msg->aux_size - 1] = 0;
-			kprintf("DEBUGMSG: %s\n", msg->aux_data);
+			kprintf("diskiocom: DEBUGMSG: %s\n", msg->aux_data);
 		}
 		break;
+	case DMSG_BLK_OPEN | DMSGF_CREATE:
+	case DMSG_BLK_READ | DMSGF_CREATE:
+	case DMSG_BLK_WRITE | DMSGF_CREATE:
+	case DMSG_BLK_FLUSH | DMSGF_CREATE:
+	case DMSG_BLK_FREEBLKS | DMSGF_CREATE:
 	default:
-		kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+		kprintf("diskiocom: DISK ADHOC INPUT %s%d cmd %08x\n",
+			dev_dname(dp->d_rawdev), dkunit(dp->d_rawdev),
+			msg->any.head.cmd);
+		if (msg->any.head.cmd & DMSGF_CREATE)
+			kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	}
-	return (0);
-}
-
-int
-disk_adhoc_input(kdmsg_msg_t *msg)
-{
-	struct disk *dp = msg->router->iocom->handle;
-
-	kprintf("DISK ADHOC INPUT %s%d\n",
-		dev_dname(dp->d_rawdev), dkunit(dp->d_rawdev));
-
 	return (0);
 }
