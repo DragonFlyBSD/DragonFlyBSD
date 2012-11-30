@@ -483,6 +483,7 @@ disk_msg_core(void *arg)
 				    "DISK_DISK_DESTROY: %s\n",
 					dp->d_cdev->si_name);
 			disk_iocom_uninit(dp);
+			dsched_disk_destroy_callback(dp);
 			devfs_destroy_related(dp->d_cdev);
 			destroy_dev(dp->d_cdev);
 			destroy_only_dev(dp->d_rawdev);
@@ -816,7 +817,6 @@ disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info)
 void
 disk_destroy(struct disk *disk)
 {
-	dsched_disk_destroy_callback(disk);
 	disk_msg_send_sync(DISK_DISK_DESTROY, disk, NULL);
 	return;
 }
