@@ -1521,10 +1521,10 @@ btdone(struct bt_softc *bt, struct bt_ccb *bccb, bt_mbi_comp_code_t comp_code)
 			csio->ccb_h.status = CAM_SEQUENCE_FAIL;
 			break;
 		case BTSTAT_INVALID_ACTION_CODE:
-			panic("%s: Inavlid Action code", bt_name(bt));
+			panic("%s: Invalid Action code", bt_name(bt));
 			break;
 		case BTSTAT_INVALID_OPCODE:
-			panic("%s: Inavlid CCB Opcode code", bt_name(bt));
+			panic("%s: Invalid CCB Opcode code", bt_name(bt));
 			break;
 		case BTSTAT_LINKED_CCB_LUN_MISMATCH:
 			/* We don't even support linked commands... */

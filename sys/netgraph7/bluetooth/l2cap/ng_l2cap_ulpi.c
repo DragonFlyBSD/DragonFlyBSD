@@ -29,7 +29,6 @@
  *
  * $Id: ng_l2cap_ulpi.c,v 1.1 2002/11/24 19:47:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_ulpi.c,v 1.5 2005/01/07 01:45:43 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_ulpi.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -787,7 +786,7 @@ ng_l2cap_l2ca_write_req(ng_l2cap_p l2cap, struct mbuf *m)
 	/* Check channel ID */
 	if (l2ca_hdr->lcid < NG_L2CAP_FIRST_CID) {
 		NG_L2CAP_ERR(
-"%s: %s - invalid L2CA Data packet. Inavlid channel ID, cid=%d\n",
+"%s: %s - invalid L2CA Data packet. Invalid channel ID, cid=%d\n",
 			__func__, NG_NODE_NAME(l2cap->node), l2ca_hdr->lcid);
 		error = EINVAL;
 		goto drop;
