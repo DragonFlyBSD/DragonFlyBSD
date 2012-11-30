@@ -35,9 +35,20 @@
 
 #include "hammer2.h"
 
+#include <sys/xdiskioctl.h>
+
 struct diskcon {
 	TAILQ_ENTRY(diskcon) entry;
 	char	*disk;
+};
+
+struct service_node_opaque {
+	char	cl_label[64];
+	char	fs_label[64];
+	dmsg_media_block_t block;
+	int	attached;
+	int	servicing;
+	int	servicefd;
 };
 
 #define WS " \r\n"
@@ -51,6 +62,11 @@ static void master_reconnect(const char *mntpt);
 static void disk_reconnect(const char *disk);
 static void disk_disconnect(void *handle);
 static void udev_check_disks(void);
+static void service_node_handler(void **opaque, struct dmsg_msg *msg, int op);
+
+static void xdisk_reconnect(struct service_node_opaque *info);
+static void xdisk_disconnect(void *handle);
+static void *xdisk_attach_tmpthread(void *data);
 
 /*
  * Start-up the master listener daemon for the machine.
@@ -147,6 +163,8 @@ service_thread(void *data)
 	setproctitle("hammer2 master listen");
 	pthread_detach(pthread_self());
 
+	dmsg_node_handler = service_node_handler;
+
 	/*
 	 * Start up a thread to handle block device monitoring
 	 */
@@ -185,6 +203,61 @@ service_thread(void *data)
 		pthread_create(&thread, NULL, dmsg_master_service, info);
 	}
 	return (NULL);
+}
+
+/*
+ * Node discovery code on received SPANs (or loss of SPANs).  This code
+ * is used to track the availability of remote block devices and install
+ * or deinstall them using the xdisk driver (/dev/xdisk).
+ *
+ * An installed xdisk creates /dev/xa%d and /dev/serno/<blah> based on
+ * the data handed to it.  When opened, a virtual circuit is forged and
+ * maintained to the block device server via DMSG.  Temporary failures
+ * stall the device until successfully reconnected or explicitly destroyed.
+ */
+static
+void
+service_node_handler(void **opaquep, struct dmsg_msg *msg, int op)
+{
+	struct service_node_opaque *info = *opaquep;
+
+	switch(op) {
+	case DMSG_NODEOP_ADD:
+		if (msg->any.lnk_span.peer_type != DMSG_PEER_BLOCK)
+			break;
+		if (msg->any.lnk_span.pfs_type != DMSG_PFSTYPE_SERVER)
+			break;
+		if (info == NULL) {
+			info = malloc(sizeof(*info));
+			bzero(info, sizeof(*info));
+			*opaquep = info;
+		}
+		snprintf(info->cl_label, sizeof(info->cl_label),
+			 "%s", msg->any.lnk_span.cl_label);
+		snprintf(info->fs_label, sizeof(info->fs_label),
+			 "%s", msg->any.lnk_span.fs_label);
+		info->block = msg->any.lnk_span.media.block;
+		fprintf(stderr, "NODE ADD %s serno %s\n",
+			info->cl_label, info->fs_label);
+		xdisk_reconnect(info);
+		break;
+	case DMSG_NODEOP_DEL:
+		if (info) {
+			fprintf(stderr, "NODE DEL %s serno %s\n",
+				info->cl_label, info->fs_label);
+			pthread_mutex_lock(&diskmtx);
+			*opaquep = NULL;
+			info->attached = 0;
+			if (info->servicing == 0)
+				free(info);
+			else
+				shutdown(info->servicefd, SHUT_RDWR);/*XXX*/
+			pthread_mutex_unlock(&diskmtx);
+		}
+		break;
+	default:
+		break;
+	}
 }
 
 /*
@@ -311,7 +384,7 @@ master_reconnect(const char *mntpt)
 }
 
 /*
- * Reconnect a physical disk to the mesh.
+ * Reconnect a physical disk service to the mesh.
  */
 static
 void
@@ -331,6 +404,8 @@ disk_reconnect(const char *disk)
 	 * to be able to export md disks.
 	 */
 	if (strncmp(disk, "md", 2) == 0)
+		return;
+	if (strncmp(disk, "xa", 2) == 0)
 		return;
 
 	/*
@@ -403,4 +478,88 @@ disk_disconnect(void *handle)
 	pthread_mutex_unlock(&diskmtx);
 	free(dc->disk);
 	free(dc);
+}
+
+/*
+ * [re]connect a remote disk service to the local system via /dev/xdisk.
+ */
+static
+void
+xdisk_reconnect(struct service_node_opaque *xdisk)
+{
+	struct xdisk_attach_ioctl *xaioc;
+	dmsg_master_service_info_t *info;
+	pthread_t thread;
+	int pipefds[2];
+
+	if (pipe(pipefds) < 0) {
+		fprintf(stderr, "reconnect %s: pipe() failed\n",
+			xdisk->cl_label);
+		return;
+	}
+
+	info = malloc(sizeof(*info));
+	bzero(info, sizeof(*info));
+	info->fd = pipefds[1];
+	info->detachme = 1;
+	info->dbgmsg_callback = hammer2_shell_parse;
+	info->exit_callback = xdisk_disconnect;
+	info->handle = xdisk;
+	xdisk->servicing = 1;
+	xdisk->servicefd = info->fd;
+	pthread_create(&thread, NULL, dmsg_master_service, info);
+
+	/*
+	 * We have to run the attach in its own pthread because it will
+	 * synchronously interact with the messaging subsystem over the
+	 * pipe.  If we do it here we will deadlock.
+	 */
+	xaioc = malloc(sizeof(*xaioc));
+	bzero(xaioc, sizeof(xaioc));
+	snprintf(xaioc->cl_label, sizeof(xaioc->cl_label),
+		 "%s", xdisk->cl_label);
+	snprintf(xaioc->fs_label, sizeof(xaioc->fs_label),
+		 "X-%s", xdisk->fs_label);
+	xaioc->bytes = xdisk->block.bytes;
+	xaioc->blksize = xdisk->block.blksize;
+	xaioc->fd = pipefds[0];
+
+	pthread_create(&thread, NULL, xdisk_attach_tmpthread, xaioc);
+}
+
+static
+void *
+xdisk_attach_tmpthread(void *data)
+{
+	struct xdisk_attach_ioctl *xaioc = data;
+	int fd;
+
+	pthread_detach(pthread_self());
+
+	fd = open("/dev/xdisk", O_RDWR, 0600);
+	if (fd < 0) {
+		fprintf(stderr, "xdisk_reconnect: Unable to open /dev/xdisk\n");
+	}
+	if (ioctl(fd, XDISKIOCATTACH, xaioc) < 0) {
+		fprintf(stderr, "reconnect %s: xdisk attach failed\n",
+			xaioc->cl_label);
+	}
+	close(xaioc->fd);
+	close(fd);
+	return (NULL);
+}
+
+static
+void
+xdisk_disconnect(void *handle)
+{
+	struct service_node_opaque *info = handle;
+
+	assert(info->servicing == 1);
+
+	pthread_mutex_lock(&diskmtx);
+	info->servicing = 0;
+	if (info->attached == 0)
+		free(info);
+	pthread_mutex_unlock(&diskmtx);
 }

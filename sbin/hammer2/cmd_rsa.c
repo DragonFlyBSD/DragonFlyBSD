@@ -71,10 +71,9 @@ cmd_rsainit(const char *dir_path)
 	asprintf(&str1, "%s/rsa.prv", dir_path);
 	asprintf(&str2, "%s/rsa.pub", dir_path);
 
+	old_umask = umask(077);
 	if (stat(str1, &st) < 0) {
-		old_umask = umask(077);
 		asprintf(&cmd, "openssl genrsa -out %s 2048", str1);
-		umask(old_umask);
 		ecode = system(cmd);
 		free(cmd);
 		chmod(str1, 0400);
@@ -83,6 +82,7 @@ cmd_rsainit(const char *dir_path)
 				"hammer2 rsainit: private key gen failed\n");
 			free(str2);
 			free(str1);
+			umask(old_umask);
 			return 1;
 		}
 		printf("hammer2 rsainit: created %s\n", str1);
@@ -101,12 +101,14 @@ cmd_rsainit(const char *dir_path)
 				"hammer2 rsainit: public key gen failed\n");
 			free(str2);
 			free(str1);
+			umask(old_umask);
 			return 1;
 		}
 		printf("hammer2 rsainit: created %s\n", str2);
 	} else {
 		printf("hammer2 rsainit: both keys already exist\n");
 	}
+	umask(old_umask);
 	free(str2);
 	free(str1);
 

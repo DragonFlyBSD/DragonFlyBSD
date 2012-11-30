@@ -69,7 +69,7 @@ cmd_shell(const char *hostname)
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	printf("debug: connected\n");
 
-	msg = dmsg_msg_alloc(iocom.router, 0, DMSG_DBG_SHELL, NULL, NULL);
+	msg = dmsg_msg_alloc(&iocom.circuit0, 0, DMSG_DBG_SHELL, NULL, NULL);
 	dmsg_msg_write(msg);
 	dmsg_iocom_core(&iocom);
 	fprintf(stderr, "debug: disconnected\n");
@@ -153,7 +153,7 @@ shell_ttymsg(dmsg_iocom_t *iocom)
 		if (len && buf[len - 1] == '\n')
 			buf[--len] = 0;
 		++len;
-		msg = dmsg_msg_alloc(iocom->router, len, DMSG_DBG_SHELL,
+		msg = dmsg_msg_alloc(&iocom->circuit0, len, DMSG_DBG_SHELL,
 				     NULL, NULL);
 		bcopy(buf, msg->aux_data, len);
 		dmsg_msg_write(msg);
@@ -168,32 +168,32 @@ shell_ttymsg(dmsg_iocom_t *iocom)
 	}
 }
 
-static void shell_span(dmsg_router_t *router, char *cmdbuf);
+static void shell_span(dmsg_circuit_t *circuit, char *cmdbuf);
 
 void
 hammer2_shell_parse(dmsg_msg_t *msg)
 {
-	dmsg_router_t *router = msg->router;
+	dmsg_circuit_t *circuit = msg->circuit;
 	char *cmdbuf = msg->aux_data;
 	char *cmd = strsep(&cmdbuf, " \t");
 
 	if (cmd == NULL || *cmd == 0) {
 		;
 	} else if (strcmp(cmd, "span") == 0) {
-		shell_span(router, cmdbuf);
+		shell_span(circuit, cmdbuf);
 	} else if (strcmp(cmd, "tree") == 0) {
-		dmsg_shell_tree(router, cmdbuf); /* dump spanning tree */
+		dmsg_shell_tree(circuit, cmdbuf); /* dump spanning tree */
 	} else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
-		dmsg_router_printf(router, "help            Command help\n");
-		dmsg_router_printf(router, "span <host>     Span to target host\n");
-		dmsg_router_printf(router, "tree            Dump spanning tree\n");
+		dmsg_circuit_printf(circuit, "help            Command help\n");
+		dmsg_circuit_printf(circuit, "span <host>     Span to target host\n");
+		dmsg_circuit_printf(circuit, "tree            Dump spanning tree\n");
 	} else {
-		dmsg_router_printf(router, "Unrecognized command: %s\n", cmd);
+		dmsg_circuit_printf(circuit, "Unrecognized command: %s\n", cmd);
 	}
 }
 
 static void
-shell_span(dmsg_router_t *router, char *cmdbuf)
+shell_span(dmsg_circuit_t *circuit, char *cmdbuf)
 {
 	dmsg_master_service_info_t *info;
 	const char *hostname = strsep(&cmdbuf, " \t");
@@ -213,9 +213,9 @@ shell_span(dmsg_router_t *router, char *cmdbuf)
 	 * Start master service
 	 */
 	if (fd < 0) {
-		dmsg_router_printf(router, "Connection to %s failed\n", hostname);
+		dmsg_circuit_printf(circuit, "Connection to %s failed\n", hostname);
 	} else {
-		dmsg_router_printf(router, "Connected to %s\n", hostname);
+		dmsg_circuit_printf(circuit, "Connected to %s\n", hostname);
 
 		info = malloc(sizeof(*info));
 		bzero(info, sizeof(*info));
