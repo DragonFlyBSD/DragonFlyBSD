@@ -2092,6 +2092,7 @@ TO_REMOVE+=/usr/sbin/stlstty
 TO_REMOVE+=/usr/share/man/cat8/i386/stlstty.8.gz
 TO_REMOVE+=/usr/share/man/man8/i386/stlstty.8.gz
 TO_REMOVE+=/usr/libdata/stallion
+TO_REMOVE+=/usr/include/bus/isa/isa_compat.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
