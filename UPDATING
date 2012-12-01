@@ -9,8 +9,15 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
-+         UPGRADING DRAGONFLY FROM 3.3 to later versions                +
++         UPGRADING DRAGONFLY FROM 3.2 to later versions                +
 +-----------------------------------------------------------------------+
+
+SMP OPTION REMOVED
+------------------
+
+The SMP kernel option has been made a no-op. All kernels now feature SMP
+support. If you have 'options SMP' in your kernel config, you can as well
+remove it.
 
 DEVICE_POLLING OPTION REPLACED BY IFPOLL_ENABLE OPTION, KTR_POLLING REMOVED
 ---------------------------------------------------------------------------
@@ -21,17 +28,6 @@ kernel config, you need to change it to IFPOLL_ENABLE.
 
 Also, the KTR_POLLING kernel option has been removed, so it must be
 removed from kernel configs that have it.
-
-+-----------------------------------------------------------------------+
-+         UPGRADING DRAGONFLY FROM 3.2 to later versions                +
-+-----------------------------------------------------------------------+
-
-SMP OPTION REMOVED
-------------------
-
-The SMP kernel option has been made a no-op. All kernels now feature SMP
-support. If you have 'options SMP' in your kernel config, you can as well
-remove it.
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.0 to later versions                +
