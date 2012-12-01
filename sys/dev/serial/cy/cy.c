@@ -85,7 +85,6 @@
 #include <machine/clock.h>
 #include <machine/psl.h>
 
-#include <bus/isa/isa_device.h>
 #include "cyreg.h"
 #include <machine_base/isa/ic/cd1400.h>
 
@@ -330,7 +329,6 @@ int	cyattach_common		(cy_addr cy_iobase, int cy_align);
 void	siointr(void *);
 
 static	int	cy_units	(cy_addr cy_iobase, int cy_align);
-static	int	sioattach	(struct isa_device *dev);
 static	void	cd1400_channel_cmd (struct com_s *com, int cmd);
 static	void	cd1400_channel_cmd_wait (struct com_s *com);
 static	void	cd_etc		(struct com_s *com, int etc);
@@ -345,7 +343,6 @@ static	void	siointr1	(struct com_s *com);
 static	int	commctl		(struct com_s *com, int bits, int how);
 static	int	comparam	(struct tty *tp, struct termios *t);
 static	inthand2_t siopoll;
-static	int	sioprobe	(struct isa_device *dev);
 static	void	siosettimeout	(void);
 static	int	siosetwater	(struct com_s *com, speed_t speed);
 static	int	comspeed	(speed_t speed, u_long cy_clock,
@@ -365,10 +362,6 @@ static char driver_name[] = "cy";
 /* table and macro for fast conversion from a unit number to its com struct */
 static	struct com_s	*p_com_addr[NSIO];
 #define	com_addr(unit)	(p_com_addr[unit])
-
-struct isa_driver	siodriver = {
-	sioprobe, sioattach, driver_name
-};
 
 static	d_open_t	sioopen;
 static	d_close_t	sioclose;
@@ -418,24 +411,6 @@ static	int	cy_total_devices;
 static	int	volatile RxFifoThreshold = (CD1400_RX_FIFO_SIZE / 2);
 
 static int
-sioprobe(struct isa_device *dev)
-{
-	cy_addr	iobase;
-
-	iobase = (cy_addr)dev->id_maddr;
-
-	/* Cyclom-16Y hardware reset (Cyclom-8Ys don't care) */
-	cy_inb(iobase, CY16_RESET, 0);	/* XXX? */
-	DELAY(500);	/* wait for the board to get its act together */
-
-	/* this is needed to get the board out of reset */
-	cy_outb(iobase, CY_CLEAR_INTR, 0, 0);
-	DELAY(500);
-
-	return (cy_units(iobase, 0) == 0 ? 0 : -1);
-}
-
-static int
 cy_units(cy_addr cy_iobase, int cy_align)
 {
 	int	cyu;
@@ -480,33 +455,6 @@ cy_units(cy_addr cy_iobase, int cy_align)
 			break;
 	}
 	return (cyu);
-}
-
-static int
-sioattach(struct isa_device *isdp)
-{
-	int	adapter;
-
-	lwkt_gettoken(&tty_token);
-	adapter = cyattach_common((cy_addr) isdp->id_maddr, 0);
-	if (adapter < 0) {
-		lwkt_reltoken(&tty_token);
-		return (0);
-	}
-
-	/*
-	 * XXX
-	 * This kludge is to allow ISA/PCI device specifications in the
-	 * kernel config file to be in any order.
-	 */
-	if (isdp->id_unit != adapter) {
-		kprintf("cy%d: attached as cy%d\n", isdp->id_unit, adapter);
-		isdp->id_unit = adapter;	/* XXX */
-	}
-	isdp->id_intr = (inthand2_t *)siointr;
-	/* isdp->id_ri_flags |= RI_FAST; XXX unimplemented - use newbus! */
-	lwkt_reltoken(&tty_token);
-	return (1);
 }
 
 /*

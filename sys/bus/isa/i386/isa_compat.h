@@ -26,8 +26,6 @@
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
  */
 
-#include "use_cy.h"
-
 struct old_isa_driver {
 	int			type;
 	struct isa_driver	*driver;
@@ -46,10 +44,6 @@ static struct old_isa_driver old_drivers[] = {
 /* Sensitive CAM */
 
 /* TTY */
-
-#if NCY > 0
-	{ 0, &cydriver },
-#endif
 
 /* BIO */
 
