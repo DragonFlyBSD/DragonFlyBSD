@@ -57,6 +57,11 @@ build/install/upgrade cycle is needed.
 Note that this is experimental and incomplete, but we are interested
 in hearing about issues with it, of course.
 
+ISA SUPPORT REMOVED FROM AIC-6260/6360 DRIVER
+---------------------------------------------
+
+ISA adapter support was dropped from the aic(4) driver.
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 2.10 to later versions               +
 +-----------------------------------------------------------------------+
