@@ -27,7 +27,6 @@
  */
 
 #include "use_cy.h"
-#include "use_stl.h"
 
 struct old_isa_driver {
 	int			type;
