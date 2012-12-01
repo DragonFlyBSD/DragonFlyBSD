@@ -97,7 +97,6 @@
  **/
 
 #include "opt_userconfig.h"
-#define COMPAT_OLDISA	/* get the definitions */
 
 #include <sys/param.h>
 #include <sys/systm.h>

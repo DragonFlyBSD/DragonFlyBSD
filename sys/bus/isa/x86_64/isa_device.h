@@ -81,8 +81,4 @@ struct isa_driver {
 	int	sensitive_hw;		/* true if other probes confuse us */
 };
 
-#ifdef _KERNEL
-int	isa_compat_nextid (void);
-#endif
-
 #endif /* !_BUS_ISA_ARCH_ISA_DEVICE_H_ */

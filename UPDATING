@@ -40,6 +40,12 @@ has been completely removed (along with the stlload(8) and stlstty(8)
 utilities) and stl(4) was changed to support only PCI cards. Similarly,
 ISA support was removed from cy(4) too. All these drivers are i386 only.
 
+COMPAT_OLDISA OPTION GONE
+-------------------------
+
+The i386 specific COMPAT_OLDISA kernel option has been removed, since
+nothing needs it anymore.
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.0 to later versions                +
 +-----------------------------------------------------------------------+

@@ -1031,7 +1031,6 @@ device		pnpbios
 # reset the CPU for reboot.  This is needed on some systems with broken
 # keyboard controllers.
 
-options 	COMPAT_OLDISA	#FreeBSD 2.2 and 3.x compatibility shims
 options 	AUTO_EOI_1
 #options 	AUTO_EOI_2
 options 	MAXMEM="(128*1024)"

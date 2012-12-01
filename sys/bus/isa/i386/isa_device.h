@@ -32,7 +32,6 @@
  *
  *	from: @(#)isa_device.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/isa_device.h,v 1.68 2000/01/29 18:01:10 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_device.h,v 1.9 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifndef _BUS_ISA_ARCH_ISA_DEVICE_H_
@@ -81,9 +80,5 @@ struct isa_driver {
 	char	*name;			/* device name */
 	int	sensitive_hw;		/* true if other probes confuse us */
 };
-
-#ifdef _KERNEL
-int	isa_compat_nextid (void);
-#endif
 
 #endif /* !_BUS_ISA_ARCH_ISA_DEVICE_H_ */

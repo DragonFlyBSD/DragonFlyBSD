@@ -265,7 +265,6 @@ dev/disk/fd/fd.c			optional	fd
 dev/disk/fd/fd_pccard.c			optional	fd pccard
 platform/pc32/isa/isa_intr.c		standard
 bus/isa/i386/isa.c			optional	isa
-bus/isa/i386/isa_compat.c		optional nowerror	isa compat_oldisa
 bus/isa/i386/isa_dma.c			optional	isa
 platform/pc32/isa/npx.c			mandatory	npx
 bus/pci/i386/legacy.c			optional	pci
