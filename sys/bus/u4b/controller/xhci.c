@@ -173,6 +173,16 @@ xhci_dump_device(struct xhci_softc *sc, struct xhci_slot_ctx *psl)
 }
 #endif
 
+uint32_t
+xhci_get_port_route(void)
+{
+#ifdef USB_DEBUG
+	return (0xFFFFFFFFU ^ ((uint32_t)xhciroute));
+#else
+	return (0xFFFFFFFFU);
+#endif
+}
+
 static void
 xhci_iterate_hw_softc(struct usb_bus *bus, usb_bus_mem_sub_cb_t *cb)
 {
@@ -629,7 +639,6 @@ xhci_generic_done_sub(struct usb_xfer *xfer)
 				/* follow alt next */
 				td = td->alt_next;
 			} else {
-				DPRINTF("Maybe success on short? %d %d %d\n", status, len,xfer->flags_int.short_frames_ok); 
 				/* the transfer is finished */
 				td = NULL;
 			}
@@ -958,7 +967,7 @@ xhci_interrupt_poll(struct xhci_softc *sc)
 			xhci_check_command(sc, &phwr->hwr_events[i]);
 			break;
 		default:
-			DPRINTF("Unhandled event = %u\n", event);
+			DPRINTFN(10, "Unhandled event = %u\n", event);
 			break;
 		}
 
