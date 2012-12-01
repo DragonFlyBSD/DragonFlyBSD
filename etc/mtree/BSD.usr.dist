@@ -54,8 +54,6 @@
         ..
         lint
         ..
-        stallion
-        ..
     ..
     libexec
         binutils221

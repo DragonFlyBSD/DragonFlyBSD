@@ -28,7 +28,6 @@
 
 #include "use_cy.h"
 #include "use_stl.h"
-#include "use_stli.h"
 
 struct old_isa_driver {
 	int			type;
@@ -36,9 +35,6 @@ struct old_isa_driver {
 };
 
 extern struct isa_driver cydriver;
-extern struct isa_driver stldriver;
-extern struct isa_driver stlidriver;
-
 
 static struct old_isa_driver old_drivers[] = {
 
@@ -54,12 +50,6 @@ static struct old_isa_driver old_drivers[] = {
 
 #if NCY > 0
 	{ 0, &cydriver },
-#endif
-#if NSTL > 0
-	{ 0, &stldriver },
-#endif
-#if NSTLI > 0
-	{ 0, &stlidriver },
 #endif
 
 /* BIO */

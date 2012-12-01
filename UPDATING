@@ -29,11 +29,16 @@ kernel config, you need to change it to IFPOLL_ENABLE.
 Also, the KTR_POLLING kernel option has been removed, so it must be
 removed from kernel configs that have it.
 
-BUSLOGIC ISA SUPPORT REMOVED
-----------------------------
+BUSLOGIC AND STALLION ISA SUPPORT REMOVED
+-----------------------------------------
 
 The bt(4) driver for Buslogic SCSI adapters has been made PCI only. ISA
 cards will no longer be detected.
+
+The same has been done for Stallion multiport serial controllers. stli(4)
+has been completely removed (along with the stlload(8) and stlstty(8)
+utilities) and stl(4) was changed to support only PCI cards. Both drivers
+are i386 only.
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.0 to later versions                +

@@ -40,7 +40,6 @@
 
 #define	TTYDEFCHARS	1
 
-#include "use_pci.h"
 #include "opt_compat.h"
 
 #include <sys/param.h>
@@ -53,32 +52,14 @@
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/thread2.h>
-#include <bus/isa/isa_device.h>
 #include <machine_base/isa/ic/scd1400.h>
 #include <machine_base/isa/ic/sc26198.h>
 #include <machine/comstats.h>
 
-#if NPCI > 0
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#endif
 
 #undef STLDEBUG
-
-/*****************************************************************************/
-
-/*
- *	Define the version level of the kernel - so we can compile in the
- *	appropriate bits of code. By default this will compile for a 2.1
- *	level kernel.
- */
-#define	VFREEBSD	220
-
-#if VFREEBSD >= 220
-#define	STATIC		static
-#else
-#define	STATIC
-#endif
 
 /*****************************************************************************/
 
@@ -95,14 +76,6 @@
 #define	BRD_ECHPCI	26
 #define	BRD_ECH64PCI	27
 #define	BRD_EASYIOPCI	28
-
-/*
- *	When using the BSD "config" stuff there is no easy way to specifiy
- *	a secondary IO address region. So it is hard wired here. Also the
- *	shared interrupt information is hard wired here...
- */
-static unsigned int	stl_ioshared = 0x280;
-static unsigned int	stl_irqshared = 0;
 
 /*****************************************************************************/
 
@@ -150,7 +123,6 @@ static unsigned int	stl_irqshared = 0;
 static const char	stl_drvname[] = "stl";
 static const char	stl_longdrvname[] = "Stallion Multiport Serial Driver";
 static const char	stl_drvversion[] = "2.0.0";
-static int		stl_brdprobed[STL_MAXBRDS];
 
 static int		stl_nrbrds = 0;
 static int		stl_doingtimeout = 0;
@@ -473,12 +445,9 @@ static char     stl_unwanted[SC26198_RXFIFOSIZE];
  *	externally visible functions.
  */
 
-static int	stlprobe(struct isa_device *idp);
-static int	stlattach(struct isa_device *idp);
-
-STATIC	d_open_t	stlopen;
-STATIC	d_close_t	stlclose;
-STATIC	d_ioctl_t	stlioctl;
+static	d_open_t	stlopen;
+static	d_close_t	stlclose;
+static	d_ioctl_t	stlioctl;
 
 /*
  *	Internal function prototypes.
@@ -514,11 +483,9 @@ static int	stl_clrportstats(stlport_t *portp, caddr_t data);
 static stlport_t *stl_getport(int brdnr, int panelnr, int portnr);
 static void	stlintr(void *);
 
-#if NPCI > 0
 static const char *stlpciprobe(pcici_t tag, pcidi_t type);
 static void	stlpciattach(pcici_t tag, int unit);
 static void	stlpciintr(void * arg);
-#endif
 
 /*
  *	CD1400 uart specific handling functions.
@@ -712,17 +679,6 @@ static unsigned int	sc26198_baudtable[] = {
 /*****************************************************************************/
 
 /*
- *	Declare the driver isa structure.
- */
-struct isa_driver	stldriver = {
-	stlprobe, stlattach, "stl"
-};
-
-/*****************************************************************************/
-
-#if NPCI > 0
-
-/*
  *	Declare the driver pci structure.
  */
 static unsigned long	stl_count;
@@ -737,11 +693,7 @@ static struct pci_device	stlpcidriver = {
 
 COMPAT_PCI_DRIVER (stlpci, stlpcidriver);
 
-#endif
-
 /*****************************************************************************/
-
-#if VFREEBSD >= 220
 
 /*
  *	FreeBSD-2.2+ kernel linkage.
@@ -765,51 +717,6 @@ static void stl_drvinit(void *unused)
 
 SYSINIT(sidev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,stl_drvinit,NULL)
 
-#endif
-
-/*****************************************************************************/
-
-/*
- *	Probe for some type of EasyIO or EasyConnection 8/32 board at
- *	the supplied address. All we do is check if we can find the
- *	board ID for the board... (Note, PCI boards not checked here,
- *	they are done in the stlpciprobe() routine).
- */
-
-static int stlprobe(struct isa_device *idp)
-{
-	unsigned int	status;
-
-#if STLDEBUG
-	kprintf("stlprobe(idp=%x): unit=%d iobase=%x\n", (int) idp,
-		idp->id_unit, idp->id_iobase);
-#endif
-
-	if (idp->id_unit > STL_MAXBRDS)
-		return(0);
-
-	status = inb(idp->id_iobase + 1);
-	if ((status & ECH_IDBITMASK) == ECH_ID) {
-		stl_brdprobed[idp->id_unit] = BRD_ECH;
-		return(1);
-	}
-
-	status = inb(idp->id_iobase + 2);
-	switch (status & EIO_IDBITMASK) {
-	case EIO_8PORTRS:
-	case EIO_8PORTM:
-	case EIO_8PORTDI:
-	case EIO_4PORTRS:
-	case EIO_MK3:
-		stl_brdprobed[idp->id_unit] = BRD_EASYIO;
-		return(1);
-	default:
-		break;
-	}
-	
-	return(0);
-}
-
 /*****************************************************************************/
 
 /*
@@ -829,141 +736,6 @@ static int stl_findfreeunit(void)
 }
 
 /*****************************************************************************/
-
-/*
- *	Allocate resources for and initialize the specified board.
- */
-
-static int stlattach(struct isa_device *idp)
-{
-	stlbrd_t	*brdp;
-	int		boardnr, portnr, minor_dev;
-
-#if STLDEBUG
-	kprintf("stlattach(idp=%p): unit=%d iobase=%x\n", (void *) idp,
-		idp->id_unit, idp->id_iobase);
-#endif
-
-/*	idp->id_intr = (inthand2_t *)stlintr; */
-
-	brdp = kmalloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
-
-	if ((brdp->brdnr = stl_findfreeunit()) < 0) {
-		kprintf("STALLION: too many boards found, max=%d\n",
-			STL_MAXBRDS);
-		return(0);
-	}
-	if (brdp->brdnr >= stl_nrbrds)
-		stl_nrbrds = brdp->brdnr + 1;
-
-	brdp->unitid = idp->id_unit;
-	brdp->brdtype = stl_brdprobed[idp->id_unit];
-	brdp->ioaddr1 = idp->id_iobase;
-	brdp->ioaddr2 = stl_ioshared;
-	brdp->irq = ffs(idp->id_irq) - 1;
-	brdp->irqtype = stl_irqshared;
-	stl_brdinit(brdp);
-
-	/* register devices for DEVFS */
-	boardnr = brdp->brdnr;
-	make_dev(&stl_ops, boardnr + 0x1000000, UID_ROOT, GID_WHEEL,
-		 0600, "staliomem%d", boardnr);
-
-	for (portnr = 0, minor_dev = boardnr * 0x100000;
-	      portnr < 32; portnr++, minor_dev++) {
-		/* hw ports */
-		make_dev(&stl_ops, minor_dev,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttyE%d", portnr + (boardnr * 64));
-		make_dev(&stl_ops, minor_dev + 32,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttyiE%d", portnr + (boardnr * 64));
-		make_dev(&stl_ops, minor_dev + 64,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttylE%d", portnr + (boardnr * 64));
-		make_dev(&stl_ops, minor_dev + 128,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cue%d", portnr + (boardnr * 64));
-		make_dev(&stl_ops, minor_dev + 160,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cuie%d", portnr + (boardnr * 64));
-		make_dev(&stl_ops, minor_dev + 192,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cule%d", portnr + (boardnr * 64));
-
-		/* sw ports */
-		make_dev(&stl_ops, minor_dev + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttyE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_ops, minor_dev + 32 + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttyiE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_ops, minor_dev + 64 + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttylE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_ops, minor_dev + 128 + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cue%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_ops, minor_dev + 160 + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cuie%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_ops, minor_dev + 192 + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cule%d", portnr + (boardnr * 64) + 32);
-	}
-	boardnr = brdp->brdnr;
-	make_dev(&stl_ops, boardnr + 0x1000000, UID_ROOT, GID_WHEEL,
-		 0600, "staliomem%d", boardnr);
-
-	for (portnr = 0, minor_dev = boardnr * 0x100000;
-	      portnr < 32; portnr++, minor_dev++) {
-		/* hw ports */
-		make_dev(&stl_ops, minor_dev,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttyE%d", portnr + (boardnr * 64));
-		make_dev(&stl_ops, minor_dev + 32,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttyiE%d", portnr + (boardnr * 64));
-		make_dev(&stl_ops, minor_dev + 64,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttylE%d", portnr + (boardnr * 64));
-		make_dev(&stl_ops, minor_dev + 128,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cue%d", portnr + (boardnr * 64));
-		make_dev(&stl_ops, minor_dev + 160,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cuie%d", portnr + (boardnr * 64));
-		make_dev(&stl_ops, minor_dev + 192,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cule%d", portnr + (boardnr * 64));
-
-		/* sw ports */
-		make_dev(&stl_ops, minor_dev + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttyE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_ops, minor_dev + 32 + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttyiE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_ops, minor_dev + 64 + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "ttylE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_ops, minor_dev + 128 + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cue%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_ops, minor_dev + 160 + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cuie%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_ops, minor_dev + 192 + 0x10000,
-			 UID_ROOT, GID_WHEEL, 0600,
-			 "cule%d", portnr + (boardnr * 64) + 32);
-	}
-
-	return(1);
-}
-
-/*****************************************************************************/
-
-#if NPCI > 0
 
 /*
  *	Probe specifically for the PCI boards. We need to be a little
@@ -1134,11 +906,9 @@ void stlpciattach(pcici_t tag, int unit)
 	}
 }
 
-#endif
-
 /*****************************************************************************/
 
-STATIC int stlopen(struct dev_open_args *ap)
+static int stlopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty	*tp;
@@ -1257,7 +1027,7 @@ stlopen_end:
 
 /*****************************************************************************/
 
-STATIC int stlclose(struct dev_close_args *ap)
+static int stlclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty	*tp;
@@ -1289,9 +1059,7 @@ STATIC int stlclose(struct dev_close_args *ap)
 
 /*****************************************************************************/
 
-#if VFREEBSD >= 220
-
-STATIC void stl_stop(struct tty *tp, int rw)
+static void stl_stop(struct tty *tp, int rw)
 {
 #if STLDEBUG
 	kprintf("stl_stop(tp=%x,rw=%x)\n", (int) tp, rw);
@@ -1300,23 +1068,9 @@ STATIC void stl_stop(struct tty *tp, int rw)
 	stl_flush((stlport_t *) tp, rw);
 }
 
-#else
-
-STATIC int stlstop(struct tty *tp, int rw)
-{
-#if STLDEBUG
-	kprintf("stlstop(tp=%x,rw=%x)\n", (int) tp, rw);
-#endif
-
-	stl_flush((stlport_t *) tp, rw);
-	return(0);
-}
-
-#endif
-
 /*****************************************************************************/
 
-STATIC int stlioctl(struct dev_ioctl_args *ap)
+static int stlioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
@@ -1499,7 +1253,7 @@ STATIC int stlioctl(struct dev_ioctl_args *ap)
  *	pointer. Return NULL if the device number is not a valid port.
  */
 
-STATIC stlport_t *stl_dev2port(cdev_t dev)
+static stlport_t *stl_dev2port(cdev_t dev)
 {
 	stlbrd_t	*brdp;
 
@@ -1623,20 +1377,6 @@ static void stl_start(struct tty *tp)
 			stl_flowcontrol(portp, 1, -1);
 	}
 
-#if VFREEBSD == 205
-/*
- *	Check if the output cooked clist buffers are near empty, wake up
- *	the line discipline to fill it up.
- */
-	if (tp->t_outq.c_cc <= tp->t_lowat) {
-		if (tp->t_state & TS_ASLEEP) {
-			tp->t_state &= ~TS_ASLEEP;
-			wakeup(&tp->t_outq);
-		}
-		KNOTE(&tp->t_wsel.si_note, 0);
-	}
-#endif
-
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
 		crit_exit();
 		return;
@@ -1686,12 +1426,10 @@ static void stl_start(struct tty *tp)
 		tp->t_state |= TS_BUSY;
 	}
 
-#if VFREEBSD != 205
 /*
  *	Do any writer wakeups.
  */
 	ttwwakeup(tp);
-#endif
 
 	crit_exit();
 }
@@ -1775,14 +1513,10 @@ void stlintr(void *arg)
 
 /*****************************************************************************/
 
-#if NPCI > 0
-
 static void stlpciintr(void *arg)
 {
 	stlintr(NULL);
 }
-
-#endif
 
 /*****************************************************************************/
 

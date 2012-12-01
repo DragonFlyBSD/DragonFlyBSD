@@ -2083,23 +2083,22 @@ TO_REMOVE+=/usr/share/man/man2/caps_sys_wait.2.gz
 TO_REMOVE+=/var/caps
 TO_REMOVE+=/usr/include/objc
 TO_REMOVE+=/usr/include/machine/pc/msdos.h
-
-.if ${MACHINE_ARCH} == "x86_64"
-TO_REMOVE+=/usr/libdata/stallion/2681.sys
-TO_REMOVE+=/usr/libdata/stallion/cdk.sys
+TO_REMOVE+=/usr/share/man/cat4/i386/stli.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/stli.4.gz
 TO_REMOVE+=/usr/sbin/stlload
 TO_REMOVE+=/usr/share/man/cat8/i386/stlload.8.gz
 TO_REMOVE+=/usr/share/man/man8/i386/stlload.8.gz
-TO_REMOVE+=/usr/sbin/stlstats
-TO_REMOVE+=/usr/share/man/cat8/i386/stlstats.8.gz
-TO_REMOVE+=/usr/share/man/man8/i386/stlstats.8.gz
 TO_REMOVE+=/usr/sbin/stlstty
 TO_REMOVE+=/usr/share/man/cat8/i386/stlstty.8.gz
 TO_REMOVE+=/usr/share/man/man8/i386/stlstty.8.gz
+TO_REMOVE+=/usr/libdata/stallion
+
+.if ${MACHINE_ARCH} == "x86_64"
+TO_REMOVE+=/usr/sbin/stlstats
+TO_REMOVE+=/usr/share/man/cat8/i386/stlstats.8.gz
+TO_REMOVE+=/usr/share/man/man8/i386/stlstats.8.gz
 TO_REMOVE+=/usr/share/man/cat4/i386/stl.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/stl.4.gz
-TO_REMOVE+=/usr/share/man/cat4/i386/stli.4.gz
-TO_REMOVE+=/usr/share/man/man4/i386/stli.4.gz
 TO_REMOVE+=/usr/sbin/kgzip
 TO_REMOVE+=/usr/share/man/cat8/kgzip.8.gz
 TO_REMOVE+=/usr/share/man/man8/kgzip.8.gz

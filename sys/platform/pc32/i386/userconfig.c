@@ -355,8 +355,6 @@ static DEV_INFO device_info[] = {
 {"cx",          "Cronyx/Sigma multiport sync/async adapter",0,		CLS_COMMS},
 {"cy",          "Cyclades multiport async adapter",	0,		CLS_COMMS},
 {"si",          "Specialix SI/XIO/SX async adapter",	0,		CLS_COMMS},
-{"stl",         "Stallion EasyIO/Easy Connection 8/32 async adapter",0,	CLS_COMMS},
-{"stli",        "Stallion intelligent async adapter"	,0,		CLS_COMMS},
 {"ppc",         "Parallel Port chipset",		0,		CLS_COMMS},
 
 {"atkbdc",      "Keyboard controller",			FLG_INVISIBLE,	CLS_INPUT},

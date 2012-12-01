@@ -33,7 +33,6 @@ MLINKS+=lnc.4 if_lnc.4
 MLINKS+=sbni.4 if_sbni.4
 MLINKS+=spkr.4 speaker.4
 MLINKS+=sr.4 if_sr.4
-MLINKS+=stl.4 stli.4
 MLINKS+=tx.4 if_tx.4
 MLINKS+=vx.4 if_vx.4
 

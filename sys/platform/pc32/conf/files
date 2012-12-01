@@ -267,7 +267,6 @@ platform/pc32/isa/isa_intr.c		standard
 bus/isa/i386/isa.c			optional	isa
 bus/isa/i386/isa_compat.c		optional nowerror	isa compat_oldisa
 bus/isa/i386/isa_dma.c			optional	isa
-dev/serial/stli/istallion.c		optional nowerror	stli
 platform/pc32/isa/npx.c			mandatory	npx
 bus/pci/i386/legacy.c			optional	pci
 bus/pci/i386/pci_bus.c			optional	pci
@@ -278,7 +277,7 @@ platform/pc32/isa/pmtimer.c		optional	pmtimer acpi
 # XXX drhodus
 platform/pc32/isa/prof_machdep.c	optional	profiling-routine
 dev/misc/spic/spic.c			optional nowerror	spic
-dev/serial/stl/stallion.c		optional	stl
+dev/serial/stl/stallion.c		optional	stl pci
 dev/video/i386/vesa/vesa.c		optional	vga vesa
 emulation/linux/i386/imgact_linux.c	optional	compat_linux
 emulation/linux/i386/linux_dummy.c	optional	compat_linux
