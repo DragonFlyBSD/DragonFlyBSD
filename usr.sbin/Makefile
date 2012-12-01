@@ -181,7 +181,7 @@ SUBDIR+=apm \
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR+=kgzip \
 	pnpinfo \
-	stallion
+	stlstats
 .endif
 
 .ifdef BOOT0CFG_SUPPORT
