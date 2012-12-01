@@ -43,6 +43,10 @@
  *
  * /dev/xdisk is the control device, issue ioctl()s to create the /dev/xa%d
  * devices.  These devices look like raw disks to the system.
+ *
+ * TODO:
+ *	Handle circuit disconnects, leave bio's pending
+ *	Restart bio's on circuit reconnect.
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -120,6 +124,7 @@ static uint32_t xa_wait(xa_tag_t *tag, int seq);
 static void xa_done(xa_tag_t *tag, int wasbio);
 static int xa_sync_completion(kdmsg_state_t *state, kdmsg_msg_t *msg);
 static int xa_bio_completion(kdmsg_state_t *state, kdmsg_msg_t *msg);
+static void xa_restart_deferred(xa_softc_t *xa);
 
 MALLOC_DEFINE(M_XDISK, "Networked disk client", "Network Disks");
 
@@ -521,6 +526,9 @@ xa_autodmsg(kdmsg_msg_t *msg)
 	 */
 	switch(xcmd) {
 	case DMSG_LNK_CIRC | DMSGF_CREATE | DMSGF_REPLY:
+		/*
+		 * Track established circuits
+		 */
 		kprintf("XA: Received autodmsg: CREATE+REPLY\n");
 		circ = msg->state->any.circ;
 		lwkt_gettoken(&xa->tok);
@@ -535,6 +543,11 @@ xa_autodmsg(kdmsg_msg_t *msg)
 				TAILQ_INSERT_TAIL(&xa->circq, circ, entry);
 			circ->recorded = 1;
 		}
+
+		/*
+		 * Restart any deferred I/O.
+		 */
+		xa_restart_deferred(xa);
 		lwkt_reltoken(&xa->tok);
 		break;
 	case DMSG_LNK_CIRC | DMSGF_DELETE | DMSGF_REPLY:
@@ -715,10 +728,12 @@ xa_strategy(struct dev_strategy_args *ap)
 	xa_tag_t *tag;
 	struct bio *bio = ap->a_bio;
 
+#if 0
 	bio->bio_buf->b_error = ENXIO;
 	bio->bio_buf->b_flags |= B_ERROR;
 	biodone(bio);
 	return(0);
+#endif
 
 	tag = xa_setup_cmd(xa, bio);
 	if (tag)
@@ -763,7 +778,6 @@ xa_setup_cmd(xa_softc_t *xa, struct bio *bio)
 		tag = NULL;
 	} else if ((tag = TAILQ_FIRST(&xa->tag_freeq)) != NULL) {
 		TAILQ_REMOVE(&xa->tag_freeq, tag, entry);
-		TAILQ_INSERT_TAIL(&xa->tag_pendq, tag, entry);
 		tag->bio = bio;
 		tag->circuit = circ->circ_state->msgid;
 	}
@@ -843,7 +857,14 @@ xa_start(xa_tag_t *tag, kdmsg_msg_t *msg)
 	tag->done = 0;
 	tag->waitseq = 0;
 	if (msg) {
+#if 0
+		lwkt_gettoken(&xa->tok);
+		TAILQ_INSERT_TAIL(&xa->tag_pendq, tag, entry);
+#endif
 		tag->state = msg->state;
+#if 0
+		lwkt_reltoken(&xa->tok);
+#endif
 		kdmsg_msg_write(msg);
 	} else {
 		xa_done(tag, 1);
@@ -868,7 +889,6 @@ xa_done(xa_tag_t *tag, int wasbio)
 	xa_softc_t *xa = tag->xa;
 	struct bio *bio;
 
-	KKASSERT(tag->msg == NULL);
 	KKASSERT(tag->bio == NULL);
 	tag->done = 1;
 
@@ -994,4 +1014,28 @@ handle_done:
 	if (msg->any.head.cmd & DMSGF_DELETE)
 		xa_done(tag, 1);
 	return (0);
+}
+
+/*
+ * Restart as much deferred I/O as we can.
+ *
+ * Called with xa->tok held
+ */
+static
+void
+xa_restart_deferred(xa_softc_t *xa)
+{
+	struct bio *bio;
+	xa_tag_t *tag;
+
+	while ((bio = TAILQ_FIRST(&xa->bioq)) != NULL) {
+		tag = xa_setup_cmd(xa, NULL);
+		if (tag == NULL)
+			break;
+		kprintf("xa: Restart BIO %p on %s\n",
+			bio, xa->iocom.auto_lnk_conn.fs_label);
+		TAILQ_REMOVE(&xa->bioq, bio, bio_act);
+		tag->bio = bio;
+		xa_start(tag, NULL);
+	}
 }

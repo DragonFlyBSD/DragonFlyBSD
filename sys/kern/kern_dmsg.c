@@ -53,14 +53,14 @@
 
 RB_GENERATE(kdmsg_state_tree, kdmsg_state, rbnode, kdmsg_state_cmp);
 
-static struct lwkt_token kdmsg_token = LWKT_TOKEN_INITIALIZER(kdmsg_token);
 static void kdmsg_circ_free_check(kdmsg_circuit_t *circ);
-
 static void kdmsg_iocom_thread_rd(void *arg);
 static void kdmsg_iocom_thread_wr(void *arg);
 static int kdmsg_autorxmsg(kdmsg_msg_t *msg);
 static void kdmsg_autocirc(kdmsg_msg_t *msg);
 static int kdmsg_autocirc_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
+
+static struct lwkt_token kdmsg_token = LWKT_TOKEN_INITIALIZER(kdmsg_token);
 
 /*
  * Initialize the roll-up communications structure for a network
@@ -691,11 +691,6 @@ kdmsg_state_msgrx(kdmsg_msg_t *msg)
 	int error;
 
 	/*
-	 * XXX resolve msg->any.head.source and msg->any.head.target
-	 *     into LNK_SPAN references.
-	 */
-
-	/*
 	 * Make sure a state structure is ready to go in case we need a new
 	 * one.  This is the only routine which uses freerd_state so no
 	 * races are possible.
@@ -1100,8 +1095,6 @@ kdmsg_state_cleanuprx(kdmsg_msg_t *msg)
 		lockmgr(&iocom->msglk, LK_EXCLUSIVE);
 		state->rxcmd |= DMSGF_DELETE;
 		if (state->txcmd & DMSGF_DELETE) {
-			if (state->msg == msg)
-				state->msg = NULL;
 			KKASSERT(state->flags & KDMSG_STATE_INSERTED);
 			if (state->rxcmd & DMSGF_REPLY) {
 				KKASSERT(msg->any.head.cmd &
@@ -1118,9 +1111,10 @@ kdmsg_state_cleanuprx(kdmsg_msg_t *msg)
 			lockmgr(&iocom->msglk, LK_RELEASE);
 			kdmsg_state_free(state);
 		} else {
+			if (state->msg != msg)
+				kdmsg_msg_free(msg);
 			lockmgr(&iocom->msglk, LK_RELEASE);
 		}
-		kdmsg_msg_free(msg);
 	} else if (state->msg != msg) {
 		kdmsg_msg_free(msg);
 	}
@@ -1332,8 +1326,6 @@ kdmsg_state_cleanuptx(kdmsg_msg_t *msg)
 		lockmgr(&iocom->msglk, LK_EXCLUSIVE);
 		state->txcmd |= DMSGF_DELETE;
 		if (state->rxcmd & DMSGF_DELETE) {
-			if (state->msg == msg)
-				state->msg = NULL;
 			KKASSERT(state->flags & KDMSG_STATE_INSERTED);
 			if (state->txcmd & DMSGF_REPLY) {
 				KKASSERT(msg->any.head.cmd &
@@ -1347,12 +1339,14 @@ kdmsg_state_cleanuptx(kdmsg_msg_t *msg)
 					  &iocom->statewr_tree, state);
 			}
 			state->flags &= ~KDMSG_STATE_INSERTED;
+			msg->state = NULL;
 			lockmgr(&iocom->msglk, LK_RELEASE);
 			kdmsg_state_free(state);
 		} else {
+			if (state->msg != msg)
+				kdmsg_msg_free(msg);
 			lockmgr(&iocom->msglk, LK_RELEASE);
 		}
-		kdmsg_msg_free(msg);
 	} else if (state->msg != msg) {
 		kdmsg_msg_free(msg);
 	}
