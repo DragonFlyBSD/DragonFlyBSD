@@ -255,19 +255,21 @@ xhci_pci_take_controller(device_t self)
 
 		if (XHCI_XECP_ID(eec) != XHCI_ID_USB_LEGACY)
 			continue;
-
 		bios_sem = XREAD1(sc, capa, eecp +
 		    XHCI_XECP_BIOS_SEM);
 		if (bios_sem == 0)
 			continue;
 		device_printf(sc->sc_bus.bdev, "waiting for BIOS "
 		    "to give up control\n");
-		XWRITE1(sc, capa, eecp +
+
+		XWRITE1(sc, capa, eecp + 
 		    XHCI_XECP_OS_SEM, 1);
+			
 		to = 500;
 		while (1) {
 			bios_sem = XREAD1(sc, capa, eecp +
 			    XHCI_XECP_BIOS_SEM);
+			
 			if (bios_sem == 0)
 				break;
 

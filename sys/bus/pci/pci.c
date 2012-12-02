@@ -2846,9 +2846,9 @@ ehci_early_takeover(device_t self)
 	struct resource *res;
 	uint32_t cparams;
 	uint32_t eec;
-	uint8_t eecp;
-	uint8_t bios_sem;
-	uint8_t offs;
+	uint32_t eecp;
+	uint32_t bios_sem;
+	uint32_t offs;
 	int rid;
 	int i;
 
@@ -2902,9 +2902,9 @@ xhci_early_takeover(device_t self)
 	struct resource *res;
 	uint32_t cparams;
 	uint32_t eec;
-	uint8_t eecp;
-	uint8_t bios_sem;
-	uint8_t offs;
+	uint32_t eecp;
+	uint32_t bios_sem;
+	uint32_t offs;
 	int rid;
 	int i;
 
@@ -2926,8 +2926,13 @@ xhci_early_takeover(device_t self)
 			continue;
 
 		bios_sem = bus_read_1(res, eecp + XHCI_XECP_BIOS_SEM);
-		if (bios_sem == 0)
+
+		if (bios_sem == 0) {
+			if (bootverbose) 
+				kprintf("xhci early: xhci is not owned by SMM\n");
+			
 			continue;
+		}
 
 		if (bootverbose)
 			kprintf("xhci early: "
@@ -2935,20 +2940,29 @@ xhci_early_takeover(device_t self)
 
 		bus_write_1(res, eecp + XHCI_XECP_OS_SEM, 1);
 
-		/* wait a maximum of 5 second */
+		/* wait a maximum of 5 seconds */
 
 		for (i = 0; (i < 5000) && (bios_sem != 0); i++) {
 			DELAY(1000);
+
 			bios_sem = bus_read_1(res, eecp +
 			    XHCI_XECP_BIOS_SEM);
 		}
 
 		if (bios_sem != 0) {
-			if (bootverbose)
+			if (bootverbose) {
 				kprintf("xhci early: "
 				    "SMM does not respond\n");
+				kprintf("xhci early: "
+				    "taking xhci by force\n");
+			}
+			bus_write_1(res, eecp + XHCI_XECP_BIOS_SEM, 0x00);
+		} else {
+			if (bootverbose) 
+				kprintf("xhci early:"
+				    "handover successful\n");
 		}
-
+	
 		/* Disable interrupts */
 		offs = bus_read_1(res, XHCI_CAPLENGTH);
 		bus_write_4(res, offs + XHCI_USBCMD, 0);
