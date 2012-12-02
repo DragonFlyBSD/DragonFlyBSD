@@ -303,7 +303,9 @@ static void	bge_stats_update(struct bge_softc *);
 static void	bge_stats_update_regs(struct bge_softc *);
 static struct mbuf *
 		bge_defrag_shortdma(struct mbuf *);
-static int	bge_encap(struct bge_softc *, struct mbuf **, uint32_t *);
+static int	bge_encap(struct bge_softc *, struct mbuf **,
+		    uint32_t *, int *);
+static void	bge_xmit(struct bge_softc *, uint32_t);
 static int	bge_setup_tso(struct bge_softc *, struct mbuf **,
 		    uint16_t *, uint16_t *);
 
@@ -2321,6 +2323,7 @@ bge_attach(device_t dev)
 		sc->bge_rx_coal_bds_int = BGE_RX_COAL_BDS_MIN;
 		sc->bge_tx_coal_bds_int = BGE_TX_COAL_BDS_MIN;
 	}
+	sc->bge_tx_wreg = 16;
 
 	/* Set up TX spare and reserved descriptor count */
 	if (sc->bge_flags & BGE_FLAG_TSO) {
@@ -2491,6 +2494,13 @@ bge_attach(device_t dev)
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bge_sysctl_tx_coal_bds, "I",
 			"Transmit max coalesced BD count.");
+
+	SYSCTL_ADD_INT(&sc->bge_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->bge_sysctl_tree),
+		       OID_AUTO, "tx_wreg", CTLFLAG_RW,
+		       &sc->bge_tx_wreg, 0,
+		       "# of segments before writing to hardware register");
+
 	if (sc->bge_flags & BGE_FLAG_PCIE) {
 		/*
 		 * A common design characteristic for many Broadcom
@@ -3343,7 +3353,8 @@ bge_stats_update(struct bge_softc *sc)
  * pointers to descriptors.
  */
 static int
-bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
+bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
+    int *segs_used)
 {
 	struct bge_tx_bd *d = NULL, *last_d;
 	uint16_t csum_flags = 0, mss = 0;
@@ -3420,6 +3431,7 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 			m_head0, segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error)
 		goto back;
+	*segs_used += nsegs;
 
 	m_head = *m_head0;
 	bus_dmamap_sync(sc->bge_cdata.bge_tx_mtag, map, BUS_DMASYNC_PREWRITE);
@@ -3470,6 +3482,16 @@ back:
 	return error;
 }
 
+static void
+bge_xmit(struct bge_softc *sc, uint32_t prodidx)
+{
+	/* Transmit */
+	bge_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
+	/* 5700 b2 errata */
+	if (sc->bge_chiprev == BGE_CHIPREV_5700_BX)
+		bge_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
+}
+
 /*
  * Main transmit routine. To avoid having to do mbuf copies, we put pointers
  * to the mbuf data regions directly in the transmit descriptors.
@@ -3480,14 +3502,13 @@ bge_start(struct ifnet *ifp)
 	struct bge_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	uint32_t prodidx;
-	int need_trans;
+	int nsegs = 0;
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
 	prodidx = sc->bge_tx_prodidx;
 
-	need_trans = 0;
 	while (sc->bge_cdata.bge_tx_chain[prodidx] == NULL) {
 		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
@@ -3534,31 +3555,28 @@ bge_start(struct ifnet *ifp)
 		 * don't have room, set the OACTIVE flag and wait
 		 * for the NIC to drain the ring.
 		 */
-		if (bge_encap(sc, &m_head, &prodidx)) {
+		if (bge_encap(sc, &m_head, &prodidx, &nsegs)) {
 			ifp->if_flags |= IFF_OACTIVE;
 			ifp->if_oerrors++;
 			break;
 		}
-		need_trans = 1;
+
+		if (nsegs >= sc->bge_tx_wreg) {
+			bge_xmit(sc, prodidx);
+			nsegs = 0;
+		}
 
 		ETHER_BPF_MTAP(ifp, m_head);
+
+		/*
+		 * Set a timeout in case the chip goes out to lunch.
+		 */
+		ifp->if_timer = 5;
 	}
 
-	if (!need_trans)
-		return;
-
-	/* Transmit */
-	bge_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
-	/* 5700 b2 errata */
-	if (sc->bge_chiprev == BGE_CHIPREV_5700_BX)
-		bge_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
-
+	if (nsegs > 0)
+		bge_xmit(sc, prodidx);
 	sc->bge_tx_prodidx = prodidx;
-
-	/*
-	 * Set a timeout in case the chip goes out to lunch.
-	 */
-	ifp->if_timer = 5;
 }
 
 static void
