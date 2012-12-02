@@ -469,6 +469,7 @@ repeat:
 		break;
 	case USB_SPEED_SUPER:
 		if (udev->parent_hub == NULL) {
+
 			/* Root HUB - special case */
 			switch (sc->sc_st.port_status & UPS_OTHER_SPEED) {
 			case 0:
@@ -522,7 +523,6 @@ repeat:
 		mode = USB_MODE_DEVICE;
 	else
 		mode = USB_MODE_HOST;
-
 	/* need to create a new child */
 	child = usb_alloc_device(sc->sc_dev, udev->bus, udev,
 	    udev->depth + 1, portno - 1, portno, speed, mode);
