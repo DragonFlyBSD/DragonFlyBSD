@@ -741,11 +741,10 @@ static int
 ntfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct ntfsmount *ntmp = VFSTONTFS(mp);
-	u_int64_t mftsize,mftallocated;
+	u_int64_t mftallocated;
 
 	dprintf(("ntfs_statfs():\n"));
 
-	mftsize = VTOF(ntmp->ntm_sysvn[NTFS_MFTINO])->f_size;
 	mftallocated = VTOF(ntmp->ntm_sysvn[NTFS_MFTINO])->f_allocated;
 
 #if defined(__DragonFly__)
@@ -778,11 +777,10 @@ static int
 ntfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 {
 	struct ntfsmount *ntmp = VFSTONTFS(mp);
-	u_int64_t mftsize,mftallocated;
+	u_int64_t mftallocated;
 
 	dprintf(("ntfs_statvfs():\n"));
 
-	mftsize = VTOF(ntmp->ntm_sysvn[NTFS_MFTINO])->f_size;
 	mftallocated = VTOF(ntmp->ntm_sysvn[NTFS_MFTINO])->f_allocated;
 
 	sbp->f_type = mp->mnt_vfc->vfc_typenum;
