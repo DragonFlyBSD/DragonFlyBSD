@@ -3191,6 +3191,7 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 	struct ieee80211vap *vap;
 	void *ioctl;
 
+	wlan_serialize_exit();
 	if_delallmulti(parent);
 	ioctl = parent->if_ioctl;	/* XXX WAR if_allmulti */
 	parent->if_ioctl = NULL;
@@ -3206,6 +3207,7 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 	}
 	parent->if_ioctl = ioctl;
 	ieee80211_runtask(ic, &ic->ic_mcast_task);
+	wlan_serialize_enter();
 }
 
 int
