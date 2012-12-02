@@ -3089,6 +3089,9 @@ bge_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycles __unused)
 
 	if (sc->bge_flags & BGE_FLAG_STATUS_TAG)
 		bge_writembx(sc, BGE_MBX_IRQ0_LO, sc->bge_status_tag << 24);
+
+	if (sc->bge_coal_chg)
+		bge_coal_change(sc);
 }
 
 static void
