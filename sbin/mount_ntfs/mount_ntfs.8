@@ -29,9 +29,8 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.8,v 1.6.2.9 2003/02/24 00:56:42 trhodes Exp $
-.\" $DragonFly: src/sbin/mount_ntfs/mount_ntfs.8,v 1.2 2003/06/17 04:27:33 dillon Exp $
 .\"
-.Dd July 5, 2012
+.Dd December 2, 2012
 .Dt MOUNT_NTFS 8
 .Os
 .Sh NAME
@@ -44,7 +43,7 @@
 .Op Fl u Ar uid
 .Op Fl g Ar gid
 .Op Fl m Ar mask
-.Op Fl W Ar u2wtable
+.Op Fl C Ar charset
 .Pa special
 .Pa node
 .Sh DESCRIPTION
@@ -118,6 +117,11 @@ To read directory raw data:
 .Bd -literal -offset indent
 # cat /mnt/foodir:\\$INDEX_ROOT:\\$I30
 .Ed
+.Pp
+To mount a Japanese NTFS volume located in
+.Pa /dev/ad0s1 :
+.Pp
+.Dl "mount_ntfs -C eucJP /dev/ad0s1 /mnt"
 .Sh WRITING
 There is limited writing ability.
 Limitations: file must be nonresident
