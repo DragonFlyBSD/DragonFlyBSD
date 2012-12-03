@@ -483,15 +483,25 @@ disk_msg_core(void *arg)
 				    "DISK_DISK_DESTROY: %s\n",
 					dp->d_cdev->si_name);
 			disk_iocom_uninit(dp);
+
+			/*
+			 * Interlock against struct disk enumerations.
+			 * Wait for enumerations to complete then remove
+			 * the dp from the list before tearing it down.
+			 *
+			 * This avoids races against e.g.
+			 * dsched_thread_io_alloc().
+			 */
+			lwkt_gettoken(&disklist_token);
+			while (dp->d_refs)
+				tsleep(&dp->d_refs, 0, "diskdel", hz / 10);
+			LIST_REMOVE(dp, d_list);
+
 			dsched_disk_destroy_callback(dp);
 			devfs_destroy_related(dp->d_cdev);
 			destroy_dev(dp->d_cdev);
 			destroy_only_dev(dp->d_rawdev);
 
-			lwkt_gettoken(&disklist_token);
-			while (dp->d_refs)
-				tsleep(&dp->d_refs, 0, "diskdel", hz / 10);
-			LIST_REMOVE(dp, d_list);
 			lwkt_reltoken(&disklist_token);
 
 			if (dp->d_info.d_serialno) {
