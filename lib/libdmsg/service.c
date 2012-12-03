@@ -59,6 +59,11 @@ dmsg_master_service(void *data)
 			   master_auth_rxmsg,
 			   info->dbgmsg_callback,
 			   NULL);
+	if (info->label) {
+		dmsg_iocom_label(&iocom, "%s", info->label);
+		free(info->label);
+		info->label = NULL;
+	}
 	dmsg_iocom_core(&iocom);
 
 	fprintf(stderr,

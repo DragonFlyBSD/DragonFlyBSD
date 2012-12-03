@@ -200,6 +200,7 @@ service_thread(void *data)
 		info->fd = fd;
 		info->detachme = 1;
 		info->dbgmsg_callback = hammer2_shell_parse;
+		info->label = strdup("client");
 		pthread_create(&thread, NULL, dmsg_master_service, info);
 	}
 	return (NULL);
@@ -380,6 +381,7 @@ master_reconnect(const char *mntpt)
 	info->fd = pipefds[1];
 	info->detachme = 1;
 	info->dbgmsg_callback = hammer2_shell_parse;
+	info->label = strdup("hammer2");
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 }
 
@@ -462,6 +464,7 @@ disk_reconnect(const char *disk)
 	info->dbgmsg_callback = hammer2_shell_parse;
 	info->exit_callback = disk_disconnect;
 	info->handle = dc;
+	info->label = strdup(dc->disk);
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 }
 
@@ -507,6 +510,7 @@ xdisk_reconnect(struct service_node_opaque *xdisk)
 	info->handle = xdisk;
 	xdisk->servicing = 1;
 	xdisk->servicefd = info->fd;
+	info->label = strdup(xdisk->cl_label);
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 
 	/*

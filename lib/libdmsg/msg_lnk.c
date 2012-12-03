@@ -432,6 +432,9 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 
 	pthread_mutex_lock(&cluster_mtx);
 
+	fprintf(stderr, "dmsg_lnk_conn: msg %p cmd %08x state %p txcmd %08x rxcmd %08x\n",
+		msg, msg->any.head.cmd, state, state->txcmd, state->rxcmd);
+
 	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
 	case DMSG_LNK_CONN | DMSGF_CREATE:
 	case DMSG_LNK_CONN | DMSGF_CREATE | DMSGF_DELETE:
@@ -785,6 +788,7 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 	dmsg_msg_t *fwd_msg;
 	dmsg_iocom_t *iocomA;
 	dmsg_iocom_t *iocomB;
+	int disconnect;
 
 	/*pthread_mutex_lock(&cluster_mtx);*/
 
@@ -887,8 +891,10 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 		assert(msg->state == circA->state);
 
 		/*
-		 * If we are closing A and the peer B is closed, disconnect.
+		 * We are closing B's send side.  If B's receive side is
+		 * already closed we disconnect the circuit from B's state.
 		 */
+		disconnect = 0;
 		if (circB && (state = circB->state) != NULL) {
 			if (state->rxcmd & DMSGF_DELETE) {
 				circB->state = NULL;
@@ -896,23 +902,32 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 				dmsg_circuit_drop(circB);
 			}
 			dmsg_state_reply(state, msg->any.head.error);
+			disconnect = 1;
 		}
 
 		/*
-		 * If both sides now closed terminate the peer association
-		 * and the state association.  This may drop up to two refs
-		 * on circA and one on circB.
+		 * We received a close on A.  If A's send side is already
+		 * closed we disconnect the circuit from A's state.
 		 */
-		if (circA->state->txcmd & DMSGF_DELETE) {
+		if (circA && (state = circA->state) != NULL) {
+			if (state->txcmd & DMSGF_DELETE) {
+				circA->state = NULL;
+				state->any.circ = NULL;
+				dmsg_circuit_drop(circA);
+			}
+			disconnect = 1;
+		}
+
+		/*
+		 * Disconnect the peer<->peer association
+		 */
+		if (disconnect) {
 			if (circB) {
 				circA->peer = NULL;
 				circB->peer = NULL;
 				dmsg_circuit_drop(circA);
 				dmsg_circuit_drop(circB); /* XXX SMP */
 			}
-			circA->state->any.circ = NULL;
-			circA->state = NULL;
-			dmsg_circuit_drop(circA);
 		}
 		break;
 	case DMSGF_REPLY | DMSGF_CREATE:
@@ -924,9 +939,11 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 		 * via the virtual circuit before seeing this reply.
 		 */
 		circB = msg->state->any.circ;
+		assert(circB);
 		circA = circB->peer;
 		assert(msg->state == circB->state);
-		if (circA && (msg->any.head.cmd & DMSGF_DELETE) == 0) {
+		assert(circA);
+		if ((msg->any.head.cmd & DMSGF_DELETE) == 0) {
 			dmsg_state_result(circA->state, msg->any.head.error);
 			break;
 		}
@@ -943,8 +960,10 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 		assert(msg->state == circB->state);
 
 		/*
-		 * If we are closing A and the peer B is closed, disconnect.
+		 * We received a close on (B), propagate to (A).  If we have
+		 * already received the close from (A) we disconnect the state.
 		 */
+		disconnect = 0;
 		if (circA && (state = circA->state) != NULL) {
 			if (state->rxcmd & DMSGF_DELETE) {
 				circA->state = NULL;
@@ -952,23 +971,32 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 				dmsg_circuit_drop(circA);
 			}
 			dmsg_state_reply(state, msg->any.head.error);
+			disconnect = 1;
 		}
 
 		/*
-		 * If both sides now closed terminate the peer association
-		 * and the state association.  This may drop up to two refs
-		 * on circA and one on circB.
+		 * We received a close on (B).  If (B)'s send side is already
+		 * closed we disconnect the state.
 		 */
-		if (circB->state->txcmd & DMSGF_DELETE) {
+		if (circB && (state = circB->state) != NULL) {
+			if (state->txcmd & DMSGF_DELETE) {
+				circB->state = NULL;
+				state->any.circ = NULL;
+				dmsg_circuit_drop(circB);
+			}
+			disconnect = 1;
+		}
+
+		/*
+		 * Disconnect the peer<->peer association
+		 */
+		if (disconnect) {
 			if (circA) {
 				circB->peer = NULL;
 				circA->peer = NULL;
 				dmsg_circuit_drop(circB);
 				dmsg_circuit_drop(circA); /* XXX SMP */
 			}
-			circB->state->any.circ = NULL;
-			circB->state = NULL;
-			dmsg_circuit_drop(circB);
 		}
 		break;
 	}
@@ -1457,8 +1485,6 @@ dmsg_circuit_relay(dmsg_msg_t *msg)
 
 	pthread_mutex_unlock(&cluster_mtx);
 
-	fprintf(stderr, "ROUTE MESSAGE VC %08x to %08x\n",
-		(uint32_t)circ->msgid, (uint32_t)peer->msgid);	/* brevity */
 	dmsg_msg_write(msg);
 	error = DMSG_IOQ_ERROR_ROUTED;
 

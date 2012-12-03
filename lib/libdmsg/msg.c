@@ -120,6 +120,7 @@ dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 
 	bzero(iocom, sizeof(*iocom));
 
+	asprintf(&iocom->label, "iocom-%p", iocom);
 	iocom->signal_callback = signal_func;
 	iocom->rcvmsg_callback = rcvmsg_func;
 	iocom->altmsg_callback = altmsg_func;
@@ -165,6 +166,20 @@ dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 	if (alt_fd >= 0)
 		fcntl(alt_fd, F_SETFL, O_NONBLOCK);
 #endif
+}
+
+void
+dmsg_iocom_label(dmsg_iocom_t *iocom, const char *ctl, ...)
+{
+	va_list va;
+	char *optr;
+
+	va_start(va, ctl);
+	optr = iocom->label;
+	vasprintf(&iocom->label, ctl, va);
+	va_end(va);
+	if (optr)
+		free(optr);
 }
 
 /*
@@ -263,14 +278,15 @@ dmsg_msg_alloc(dmsg_circuit_t *circuit,
 	dmsg_state_t *state = NULL;
 	dmsg_msg_t *msg;
 	int hbytes;
+	size_t aligned_size;
 
 	pthread_mutex_lock(&iocom->mtx);
 	if (aux_size) {
-		aux_size = (aux_size + DMSG_ALIGNMASK) &
-			   ~DMSG_ALIGNMASK;
+		aligned_size = DMSG_DOALIGN(aux_size);
 		if ((msg = TAILQ_FIRST(&iocom->freeq_aux)) != NULL)
 			TAILQ_REMOVE(&iocom->freeq_aux, msg, qentry);
 	} else {
+		aligned_size = 0;
 		if ((msg = TAILQ_FIRST(&iocom->freeq)) != NULL)
 			TAILQ_REMOVE(&iocom->freeq, msg, qentry);
 	}
@@ -311,6 +327,12 @@ dmsg_msg_alloc(dmsg_circuit_t *circuit,
 		msg->aux_data = NULL;
 		msg->aux_size = 0;
 	}
+
+	/*
+	 * [re]allocate the auxillary data buffer.  The caller knows that
+	 * a size-aligned buffer will be allocated but we do not want to
+	 * force the caller to zero any tail piece, so we do that ourself.
+	 */
 	if (msg->aux_size != aux_size) {
 		if (msg->aux_data) {
 			free(msg->aux_data);
@@ -318,8 +340,12 @@ dmsg_msg_alloc(dmsg_circuit_t *circuit,
 			msg->aux_size = 0;
 		}
 		if (aux_size) {
-			msg->aux_data = malloc(aux_size);
+			msg->aux_data = malloc(aligned_size);
 			msg->aux_size = aux_size;
+			if (aux_size != aligned_size) {
+				bzero(msg->aux_data + aux_size,
+				      aligned_size - aux_size);
+			}
 		}
 	}
 	hbytes = (cmd & DMSGF_SIZE) * DMSG_ALIGN;
@@ -569,6 +595,7 @@ dmsg_ioq_read(dmsg_iocom_t *iocom)
 	ssize_t n;
 	size_t bytes;
 	size_t nmax;
+	uint32_t aux_size;
 	uint32_t xcrc32;
 	int error;
 
@@ -664,6 +691,10 @@ again:
 		head = (void *)(ioq->buf + ioq->fifo_beg);
 		if (head->magic != DMSG_HDR_MAGIC &&
 		    head->magic != DMSG_HDR_MAGIC_REV) {
+			fprintf(stderr, "%s: head->magic is bad %02x\n",
+				iocom->label, head->magic);
+			if (iocom->flags & DMSG_IOCOMF_CRYPTED)
+				fprintf(stderr, "(on encrypted link)\n");
 			ioq->error = DMSG_IOQ_ERROR_SYNC;
 			break;
 		}
@@ -674,13 +705,14 @@ again:
 		if (head->magic == DMSG_HDR_MAGIC_REV) {
 			ioq->hbytes = (bswap32(head->cmd) & DMSGF_SIZE) *
 				      DMSG_ALIGN;
-			ioq->abytes = bswap32(head->aux_bytes) *
-				      DMSG_ALIGN;
+			aux_size = bswap32(head->aux_bytes);
 		} else {
 			ioq->hbytes = (head->cmd & DMSGF_SIZE) *
 				      DMSG_ALIGN;
-			ioq->abytes = head->aux_bytes * DMSG_ALIGN;
+			aux_size = head->aux_bytes;
 		}
+		ioq->abytes = DMSG_DOALIGN(aux_size);
+		ioq->unaligned_aux_size = aux_size;
 		if (ioq->hbytes < sizeof(msg->any.head) ||
 		    ioq->hbytes > sizeof(msg->any) ||
 		    ioq->abytes > DMSG_AUX_MAX) {
@@ -690,8 +722,10 @@ again:
 
 		/*
 		 * Allocate the message, the next state will fill it in.
+		 * Note that the actual buffer will be sized to an aligned
+		 * value and the aligned remainder zero'd for convenience.
 		 */
-		msg = dmsg_msg_alloc(&iocom->circuit0, ioq->abytes, 0,
+		msg = dmsg_msg_alloc(&iocom->circuit0, aux_size, 0,
 				     NULL, NULL);
 		ioq->msg = msg;
 
@@ -888,17 +922,23 @@ again:
 		/*
 		 * Insufficient data accumulated (set msg NULL so caller will
 		 * retry on event).
+		 *
+		 * Assert the auxillary data size is correct, then record the
+		 * original unaligned size from the message header.
 		 */
 		if (msg->aux_size < ioq->abytes) {
 			msg = NULL;
 			break;
 		}
 		assert(msg->aux_size == ioq->abytes);
+		msg->aux_size = ioq->unaligned_aux_size;
 
 		/*
-		 * Check aux_crc, then we are done.
+		 * Check aux_crc, then we are done.  Note that the crc
+		 * is calculated over the aligned size, not the actual
+		 * size.
 		 */
-		xcrc32 = dmsg_icrc32(msg->aux_data, msg->aux_size);
+		xcrc32 = dmsg_icrc32(msg->aux_data, ioq->abytes);
 		if (xcrc32 != msg->any.head.aux_crc) {
 			ioq->error = DMSG_IOQ_ERROR_ACRC;
 			break;
@@ -1127,7 +1167,8 @@ dmsg_iocom_flush1(dmsg_iocom_t *iocom)
 	dmsg_ioq_t *ioq = &iocom->ioq_tx;
 	dmsg_msg_t *msg;
 	uint32_t xcrc32;
-	int hbytes;
+	size_t hbytes;
+	size_t abytes;
 	dmsg_msg_queue_t tmpq;
 
 	iocom->flags &= ~(DMSG_IOCOMF_WREQ | DMSG_IOCOMF_WWORK);
@@ -1165,12 +1206,11 @@ dmsg_iocom_flush1(dmsg_iocom_t *iocom)
 		 * Calculate aux_crc if 0, then calculate hdr_crc.
 		 */
 		if (msg->aux_size && msg->any.head.aux_crc == 0) {
-			assert((msg->aux_size & DMSG_ALIGNMASK) == 0);
-			xcrc32 = dmsg_icrc32(msg->aux_data, msg->aux_size);
+			abytes = DMSG_DOALIGN(msg->aux_size);
+			xcrc32 = dmsg_icrc32(msg->aux_data, abytes);
 			msg->any.head.aux_crc = xcrc32;
 		}
-		msg->any.head.aux_bytes = msg->aux_size / DMSG_ALIGN;
-		assert((msg->aux_size & DMSG_ALIGNMASK) == 0);
+		msg->any.head.aux_bytes = msg->aux_size;
 
 		hbytes = (msg->any.head.cmd & DMSGF_SIZE) *
 			 DMSG_ALIGN;
@@ -1293,6 +1333,9 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 				ioq->fifo_cdx = 0;
 				ioq->fifo_end = 0;
 			}
+			nact = n;
+		} else {
+			nact = 0;
 		}
 	} else {
 		n = writev(iocom->sock_fd, iov, iovcnt);
@@ -1421,7 +1464,6 @@ dmsg_msg_write(dmsg_msg_t *msg)
 		assert(((state->txcmd ^ msg->any.head.cmd) & DMSGF_REPLY) == 0);
 		if (msg->any.head.cmd & DMSGF_CREATE) {
 			state->txcmd = msg->any.head.cmd & ~DMSGF_DELETE;
-			state->icmd = state->txcmd & DMSGF_BASECMDMASK;
 		}
 	}
 
@@ -1994,6 +2036,11 @@ dmsg_state_free(dmsg_state_t *state)
 		fprintf(stderr, "terminate state %p id=%08x\n",
 			state, (uint32_t)state->msgid);
 	}
+	fprintf(stderr,
+		"dmsg_state_free state %p any.any %p func %p icmd %08x\n",
+		state, state->any.any, state->func, state->icmd);
+	if (state->any.any != NULL)   /* XXX avoid deadlock w/exit & kernel */
+		closefrom(3);
 	assert(state->any.any == NULL);
 	msg = state->msg;
 	state->msg = NULL;
