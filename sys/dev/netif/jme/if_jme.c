@@ -145,7 +145,7 @@ static int	jme_init_rx_ring(struct jme_rxdata *);
 static void	jme_init_tx_ring(struct jme_txdata *);
 static void	jme_init_ssb(struct jme_softc *);
 static int	jme_newbuf(struct jme_rxdata *, struct jme_rxdesc *, int);
-static int	jme_encap(struct jme_txdata *, struct mbuf **);
+static int	jme_encap(struct jme_txdata *, struct mbuf **, int *);
 static void	jme_rxpkt(struct jme_rxdata *);
 static int	jme_rxring_dma_alloc(struct jme_rxdata *);
 static int	jme_rxbuf_dma_alloc(struct jme_rxdata *);
@@ -972,6 +972,8 @@ jme_attach(device_t dev)
 	if (coal_max < sc->jme_rx_coal_pkt)
 		sc->jme_rx_coal_pkt = coal_max;
 
+	sc->jme_cdata.jme_tx_data.jme_tx_wreg = 16;
+
 	/*
 	 * Create sysctl tree
 	 */
@@ -1159,6 +1161,11 @@ jme_sysctl_node(struct jme_softc *sc)
 		       "rx_ring_count", CTLFLAG_RD,
 		       &sc->jme_cdata.jme_rx_ring_cnt,
 		       0, "RX ring count");
+	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+		       "tx_wreg", CTLFLAG_RW,
+		       &sc->jme_cdata.jme_tx_data.jme_tx_wreg, 0,
+		       "# of segments before writing to hardware register");
 
 #ifdef JME_RSS_DEBUG
 	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
@@ -1650,7 +1657,7 @@ jme_tso_pullup(struct mbuf **mp)
 }
 
 static int
-jme_encap(struct jme_txdata *tdata, struct mbuf **m_head)
+jme_encap(struct jme_txdata *tdata, struct mbuf **m_head, int *segs_used)
 {
 	struct jme_txdesc *txd;
 	struct jme_desc *desc;
@@ -1689,6 +1696,7 @@ jme_encap(struct jme_txdata *tdata, struct mbuf **m_head)
 			txsegs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error)
 		goto fail;
+	*segs_used += nsegs;
 
 	bus_dmamap_sync(tdata->jme_tx_tag, txd->tx_dmamap,
 			BUS_DMASYNC_PREWRITE);
@@ -1729,6 +1737,8 @@ jme_encap(struct jme_txdata *tdata, struct mbuf **m_head)
 		flag64 = JME_TD_64BIT;
 		desc->buflen = htole32(mss);
 		desc->addr_lo = 0;
+
+		*segs_used += 1;
 
 		/* No effective TX desc is consumed */
 		i = 0;
@@ -1825,19 +1835,27 @@ jme_start(struct ifnet *ifp)
 		 * don't have room, set the OACTIVE flag and wait
 		 * for the NIC to drain the ring.
 		 */
-		if (jme_encap(tdata, &m_head)) {
+		if (jme_encap(tdata, &m_head, &enq)) {
 			KKASSERT(m_head == NULL);
 			ifp->if_oerrors++;
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		enq++;
+
+		if (enq >= tdata->jme_tx_wreg) {
+			CSR_WRITE_4(sc, JME_TXCSR, sc->jme_txcsr |
+			    TXCSR_TX_ENB | TXCSR_TXQ_N_START(TXCSR_TXQ0));
+			enq = 0;
+		}
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
 		ETHER_BPF_MTAP(ifp, m_head);
+
+		/* Set a timeout in case the chip goes out to lunch. */
+		ifp->if_timer = JME_TX_TIMEOUT;
 	}
 
 	if (enq > 0) {
@@ -1849,8 +1867,6 @@ jme_start(struct ifnet *ifp)
 		 */
 		CSR_WRITE_4(sc, JME_TXCSR, sc->jme_txcsr | TXCSR_TX_ENB |
 		    TXCSR_TXQ_N_START(TXCSR_TXQ0));
-		/* Set a timeout in case the chip goes out to lunch. */
-		ifp->if_timer = JME_TX_TIMEOUT;
 	}
 }
 
