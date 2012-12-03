@@ -161,9 +161,7 @@ master_link_rxmsg(dmsg_msg_t *msg)
 	 * might have REPLY set.
 	 */
 	state = msg->state;
-	cmd = state ? state->msg->any.head.cmd : msg->any.head.cmd;
-
-	fprintf(stderr, "service-receive: %s\n", dmsg_msg_str(msg));
+	cmd = state ? state->icmd : msg->any.head.cmd;
 
 	if (state && state->func) {
 		assert(state->func != NULL);
@@ -200,7 +198,7 @@ dmsg_msg_dbg(dmsg_msg_t *msg)
 		if (msg->aux_data)
 			msg->aux_data[msg->aux_size - 1] = 0;
 		msg->iocom->dbgmsg_callback(msg);
-		dmsg_msg_reply(msg, 0);
+		dmsg_msg_reply(msg, 0);	/* XXX send prompt instead */
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
 		/*

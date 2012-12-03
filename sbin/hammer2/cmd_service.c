@@ -240,6 +240,7 @@ service_node_handler(void **opaquep, struct dmsg_msg *msg, int op)
 		info->block = msg->any.lnk_span.media.block;
 		fprintf(stderr, "NODE ADD %s serno %s\n",
 			info->cl_label, info->fs_label);
+		info->attached = 1;
 		xdisk_reconnect(info);
 		break;
 	case DMSG_NODEOP_DEL:

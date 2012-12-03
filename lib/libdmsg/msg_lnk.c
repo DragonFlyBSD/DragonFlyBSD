@@ -823,9 +823,12 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 		tx_state = RB_FIND(dmsg_state_tree,
 				   &iocomA->circuit0.statewr_tree,
 				   &dummy);
-		/* XXX state refs */
-		assert(tx_state);
 		pthread_mutex_unlock(&iocomA->mtx);
+		if (tx_state == NULL) {
+			fprintf(stderr, "dmsg_lnk_circ: no circuit\n");
+			dmsg_msg_reply(msg, DMSG_ERR_CANTCIRC);
+			break;
+		}
 
 		/* locate h2span_link */
 		rx_state = tx_state->any.relay->source_rt;
@@ -886,6 +889,10 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 		 * to (B).
 		 */
 		iocomA = msg->iocom;
+		if (msg->state->any.circ == NULL) {
+			/* already returned an error/deleted */
+			break;
+		}
 		circA = msg->state->any.circ;
 		circB = circA->peer;
 		assert(msg->state == circA->state);

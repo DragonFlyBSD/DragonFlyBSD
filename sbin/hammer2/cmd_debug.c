@@ -181,6 +181,8 @@ hammer2_shell_parse(dmsg_msg_t *msg)
 		;
 	} else if (strcmp(cmd, "span") == 0) {
 		shell_span(circuit, cmdbuf);
+	} else if (strcmp(cmd, "circ") == 0) {
+		shell_circ(circuit, cmdbuf);
 	} else if (strcmp(cmd, "tree") == 0) {
 		dmsg_shell_tree(circuit, cmdbuf); /* dump spanning tree */
 	} else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {

@@ -1264,7 +1264,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 	TAILQ_FOREACH(msg, &ioq->msgq, qentry) {
 		hbytes = (msg->any.head.cmd & DMSGF_SIZE) *
 			 DMSG_ALIGN;
-		abytes = msg->aux_size;
+		abytes = DMSG_DOALIGN(msg->aux_size);
 		assert(hoff <= hbytes && aoff <= abytes);
 
 		if (hoff < hbytes) {
@@ -1333,7 +1333,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 				ioq->fifo_cdx = 0;
 				ioq->fifo_end = 0;
 			}
-			nact = n;
+			/* XXX what if interrupted mid-write? */
 		} else {
 			nact = 0;
 		}
@@ -1353,7 +1353,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		hbytes = (msg->any.head.cmd & DMSGF_SIZE) *
 			 DMSG_ALIGN;
-		abytes = msg->aux_size;
+		abytes = DMSG_DOALIGN(msg->aux_size);
 
 		if ((size_t)nact < hbytes - ioq->hbytes) {
 			ioq->hbytes += nact;
@@ -2036,9 +2036,6 @@ dmsg_state_free(dmsg_state_t *state)
 		fprintf(stderr, "terminate state %p id=%08x\n",
 			state, (uint32_t)state->msgid);
 	}
-	fprintf(stderr,
-		"dmsg_state_free state %p any.any %p func %p icmd %08x\n",
-		state, state->any.any, state->func, state->icmd);
 	if (state->any.any != NULL)   /* XXX avoid deadlock w/exit & kernel */
 		closefrom(3);
 	assert(state->any.any == NULL);

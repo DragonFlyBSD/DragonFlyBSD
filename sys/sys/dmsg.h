@@ -154,7 +154,8 @@
  *
  * Auxillary data, whether in-band or out-of-band, must be at-least 64-byte
  * aligned.  The aux_bytes field contains the actual byte-granular length
- * and not the aligned length.
+ * and not the aligned length.  The crc is against the aligned length (so
+ * a faster crc algorithm can be used, theoretically).
  *
  * hdr_crc is calculated over the entire, ALIGNED extended header.  For
  * the purposes of calculating the crc, the hdr_crc field is 0.  That is,
@@ -670,19 +671,29 @@ typedef struct dmsg_dbg_shell dmsg_dbg_shell_t;
  *
  * BLK_OPEN	- Open device.  This transaction must be left open for the
  *		  duration and the returned keyid passed in all associated
- *		  BLK commands.
+ *		  BLK commands.  Multiple OPENs can be issued within the
+ *		  transaction.
  *
- * BLK_READ	- Strategy read
+ * BLK_CLOSE	- Close device.  This can be used to close one of the opens
+ *		  within a BLK_OPEN transaction.  It may NOT initiate a
+ *		  transaction.  Note that a termination of the transaction
+ *		  (e.g. with LNK_ERROR or BLK_ERROR) closes all active OPENs
+ *		  for that transaction.
  *
- * BLK_WRITE	- Strategy write
+ * BLK_READ	- Strategy read.  Not typically streaming.
  *
- * BLK_FLUSH	- Strategy flush
+ * BLK_WRITE	- Strategy write.  Not typically streaming.
+ *
+ * BLK_FLUSH	- Strategy flush.  Not typically streaming.
+ *
+ * BLK_FREEBLKS	- Strategy freeblks.  Not typically streaming.
  */
 #define DMSG_BLK_OPEN		DMSG_BLK(0x001, dmsg_blk_open)
-#define DMSG_BLK_READ		DMSG_BLK(0x002, dmsg_blk_read)
-#define DMSG_BLK_WRITE		DMSG_BLK(0x003, dmsg_blk_write)
-#define DMSG_BLK_FLUSH		DMSG_BLK(0x004, dmsg_blk_flush)
-#define DMSG_BLK_FREEBLKS	DMSG_BLK(0x005, dmsg_blk_freeblks)
+#define DMSG_BLK_CLOSE		DMSG_BLK(0x002, dmsg_blk_open)
+#define DMSG_BLK_READ		DMSG_BLK(0x003, dmsg_blk_read)
+#define DMSG_BLK_WRITE		DMSG_BLK(0x004, dmsg_blk_write)
+#define DMSG_BLK_FLUSH		DMSG_BLK(0x005, dmsg_blk_flush)
+#define DMSG_BLK_FREEBLKS	DMSG_BLK(0x006, dmsg_blk_freeblks)
 #define DMSG_BLK_ERROR		DMSG_BLK(0xFFF, dmsg_blk_error)
 
 struct dmsg_blk_open {
@@ -763,6 +774,9 @@ typedef struct dmsg_blk_error		dmsg_blk_error_t;
  */
 #define DMSG_ERR_NOSUPP		0x20
 #define DMSG_ERR_LOSTLINK	0x21
+#define DMSG_ERR_IO		0x22	/* generic */
+#define DMSG_ERR_PARAM		0x23	/* generic */
+#define DMSG_ERR_CANTCIRC	0x24	/* (typically means lost span) */
 
 union dmsg_any {
 	char			buf[DMSG_HDR_MAX];
@@ -811,12 +825,16 @@ struct kdmsg_msg;
  * connect to specific services over the cluster.
  */
 struct kdmsg_circuit {
-	TAILQ_ENTRY(kdmsg_circuit) entry;
-	struct kdmsg_iocom	*iocom;
+	RB_ENTRY(kdmsg_circuit) rbnode;		/* indexed by msgid */
+	TAILQ_ENTRY(kdmsg_circuit) entry;	/* written by shim */
+	struct kdmsg_iocom	*iocom;		/* written by shim */
 	struct kdmsg_state	*span_state;
-	struct kdmsg_state	*circ_state;
-	int			recorded;	/* used by shim */
+	struct kdmsg_state	*circ_state;	/* master circuit */
+	struct kdmsg_state	*rcirc_state;	/* slave circuit */
+	uint64_t		msgid;
 	int			weight;
+	int			recorded;	/* written by shim */
+	int			refs;		/* written by shim */
 };
 
 typedef struct kdmsg_circuit kdmsg_circuit_t;
@@ -829,7 +847,7 @@ typedef struct kdmsg_circuit kdmsg_circuit_t;
 struct kdmsg_state {
 	RB_ENTRY(kdmsg_state) rbnode;		/* indexed by msgid */
 	struct kdmsg_iocom *iocom;
-	uint64_t	circuit;
+	struct kdmsg_circuit *circ;
 	uint32_t	icmd;			/* record cmd creating state */
 	uint32_t	txcmd;			/* mostly for CMDF flags */
 	uint32_t	rxcmd;			/* mostly for CMDF flags */
@@ -854,6 +872,7 @@ struct kdmsg_msg {
 	TAILQ_ENTRY(kdmsg_msg) qentry;		/* serialized queue */
 	struct kdmsg_iocom *iocom;
 	struct kdmsg_state *state;
+	struct kdmsg_circuit *circ;
 	size_t		hdr_size;
 	size_t		aux_size;
 	char		*aux_data;
@@ -868,9 +887,14 @@ typedef struct kdmsg_state kdmsg_state_t;
 typedef struct kdmsg_msg kdmsg_msg_t;
 
 struct kdmsg_state_tree;
-RB_HEAD(kdmsg_state_tree, kdmsg_state);
 int kdmsg_state_cmp(kdmsg_state_t *state1, kdmsg_state_t *state2);
+RB_HEAD(kdmsg_state_tree, kdmsg_state);
 RB_PROTOTYPE(kdmsg_state_tree, kdmsg_state, rbnode, kdmsg_state_cmp);
+
+struct kdmsg_circuit_tree;
+int kdmsg_circuit_cmp(kdmsg_circuit_t *circ1, kdmsg_circuit_t *circ2);
+RB_HEAD(kdmsg_circuit_tree, kdmsg_circuit);
+RB_PROTOTYPE(kdmsg_circuit_tree, kdmsg_circuit, rbnode, kdmsg_circuit_cmp);
 
 /*
  * Structure embedded in e.g. mount, master control structure for
@@ -895,6 +919,7 @@ struct kdmsg_iocom {
 	struct kdmsg_state	*freewr_state;	/* allocation cache */
 	struct kdmsg_state_tree staterd_tree;	/* active messages */
 	struct kdmsg_state_tree statewr_tree;	/* active messages */
+	struct kdmsg_circuit_tree circ_tree;	/* active circuits */
 	dmsg_lnk_conn_t		auto_lnk_conn;
 	dmsg_lnk_span_t		auto_lnk_span;
 };
@@ -905,10 +930,12 @@ typedef struct kdmsg_iocom	kdmsg_iocom_t;
 #define KDMSG_IOCOMF_AUTOSPAN	0x0002	/* handle received LNK_SPAN */
 #define KDMSG_IOCOMF_AUTOCIRC	0x0004	/* handle received LNK_CIRC */
 #define KDMSG_IOCOMF_AUTOFORGE	0x0008	/* auto initiate LNK_CIRC */
+#define KDMSG_IOCOMF_EXITNOACC	0x0010	/* cannot accept writes */
 
 #define KDMSG_IOCOMF_AUTOANY	(KDMSG_IOCOMF_AUTOCONN |	\
 				 KDMSG_IOCOMF_AUTOSPAN |	\
-				 KDMSG_IOCOMF_AUTOCIRC)
+				 KDMSG_IOCOMF_AUTOCIRC |	\
+				 KDMSG_IOCOMF_AUTOFORGE)
 
 uint32_t kdmsg_icrc32(const void *buf, size_t size);
 uint32_t kdmsg_icrc32c(const void *buf, size_t size, uint32_t crc);
@@ -926,15 +953,12 @@ void kdmsg_iocom_autoinitiate(kdmsg_iocom_t *iocom,
 void kdmsg_iocom_uninit(kdmsg_iocom_t *iocom);
 void kdmsg_drain_msgq(kdmsg_iocom_t *iocom);
 
-int kdmsg_state_msgrx(kdmsg_msg_t *msg);
-int kdmsg_state_msgtx(kdmsg_msg_t *msg);
-void kdmsg_state_cleanuprx(kdmsg_msg_t *msg);
-void kdmsg_state_cleanuptx(kdmsg_msg_t *msg);
-int kdmsg_msg_execute(kdmsg_msg_t *msg);
-void kdmsg_state_free(kdmsg_state_t *state);
 void kdmsg_msg_free(kdmsg_msg_t *msg);
-kdmsg_msg_t *kdmsg_msg_alloc(kdmsg_iocom_t *iocom, uint64_t circuit,
+kdmsg_msg_t *kdmsg_msg_alloc(kdmsg_iocom_t *iocom, kdmsg_circuit_t *circ,
 				uint32_t cmd,
+				int (*func)(kdmsg_state_t *, kdmsg_msg_t *),
+				void *data);
+kdmsg_msg_t *kdmsg_msg_alloc_state(kdmsg_state_t *state, uint32_t cmd,
 				int (*func)(kdmsg_state_t *, kdmsg_msg_t *),
 				void *data);
 void kdmsg_msg_write(kdmsg_msg_t *msg);
@@ -942,6 +966,10 @@ void kdmsg_msg_reply(kdmsg_msg_t *msg, uint32_t error);
 void kdmsg_msg_result(kdmsg_msg_t *msg, uint32_t error);
 void kdmsg_state_reply(kdmsg_state_t *state, uint32_t error);
 void kdmsg_state_result(kdmsg_state_t *state, uint32_t error);
+
+void kdmsg_circ_hold(kdmsg_circuit_t *circ);
+void kdmsg_circ_drop(kdmsg_circuit_t *circ);
+
 
 #endif
 
