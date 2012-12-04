@@ -54,17 +54,20 @@ dmsg_master_service(void *data)
 	if (info->detachme)
 		pthread_detach(pthread_self());
 
-	dmsg_iocom_init(&iocom, info->fd, -1,
-			   master_auth_signal,
-			   master_auth_rxmsg,
-			   info->dbgmsg_callback,
-			   NULL);
+	dmsg_iocom_init(&iocom,
+			info->fd,
+			(info->altmsg_callback ? info->altfd : -1),
+			master_auth_signal,
+			master_auth_rxmsg,
+			info->dbgmsg_callback,
+			info->altmsg_callback);
 	if (info->label) {
 		dmsg_iocom_label(&iocom, "%s", info->label);
 		free(info->label);
 		info->label = NULL;
 	}
 	dmsg_iocom_core(&iocom);
+	dmsg_iocom_done(&iocom);
 
 	fprintf(stderr,
 		"iocom on fd %d terminated error rx=%d, tx=%d\n",
@@ -114,7 +117,7 @@ master_auth_signal(dmsg_iocom_t *iocom)
 	dmsg_iocom_restate(iocom,
 			    master_link_signal,
 			    master_link_rxmsg,
-			    NULL);
+			    iocom->altmsg_callback);
 }
 
 static

@@ -329,11 +329,13 @@ struct crypto_algo {
  */
 struct dmsg_master_service_info {
 	int	fd;
+	int	altfd;
 	int	detachme;
 	char	*label;
 	void	*handle;
 	void	(*dbgmsg_callback)(dmsg_msg_t *msg);
 	void	(*exit_callback)(void *handle);
+	void	(*altmsg_callback)(dmsg_iocom_t *);
 };
 
 typedef struct dmsg_master_service_info dmsg_master_service_info_t;

@@ -126,6 +126,7 @@ struct h2span_media {
 		pthread_cond_t		cond;
 		int			ctl;
 		int			fd;
+		int			pipefd[2];	/* signal stop */
 		dmsg_iocom_t		iocom;
 		pthread_t		iocom_thread;
 		enum { H2MC_STOPPED, H2MC_CONNECT, H2MC_RUNNING } state;
@@ -857,7 +858,13 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 		circA->span_state = tx_state;	/* H2SPAN_RELAY state */
 		circA->is_relay = 1;
 		circA->refs = 2;		/* state and peer */
+
+		/*
+		 * Upgrade received state so we act on both it and its
+		 * peer (created below) symmetrically.
+		 */
 		msg->state->any.circ = circA;
+		msg->state->func = dmsg_lnk_circ;
 
 		iocomB = rx_state->iocom;
 
@@ -932,12 +939,12 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 		disconnect = 0;
 		if (circB && (state = circB->state) != NULL) {
 			if (state->rxcmd & DMSGF_DELETE) {
+				disconnect = 1;
 				circB->state = NULL;
 				state->any.circ = NULL;
 				dmsg_circuit_drop(circB);
 			}
 			dmsg_state_reply(state, msg->any.head.error);
-			disconnect = 1;
 		}
 
 		/*
@@ -946,11 +953,11 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 		 */
 		if (circA && (state = circA->state) != NULL) {
 			if (state->txcmd & DMSGF_DELETE) {
+				disconnect = 1;
 				circA->state = NULL;
 				state->any.circ = NULL;
 				dmsg_circuit_drop(circA);
 			}
-			disconnect = 1;
 		}
 
 		/*
@@ -1001,12 +1008,12 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 		disconnect = 0;
 		if (circA && (state = circA->state) != NULL) {
 			if (state->rxcmd & DMSGF_DELETE) {
+				disconnect = 1;
 				circA->state = NULL;
 				state->any.circ = NULL;
 				dmsg_circuit_drop(circA);
 			}
 			dmsg_state_reply(state, msg->any.head.error);
-			disconnect = 1;
 		}
 
 		/*
@@ -1015,11 +1022,11 @@ dmsg_lnk_circ(dmsg_msg_t *msg)
 		 */
 		if (circB && (state = circB->state) != NULL) {
 			if (state->txcmd & DMSGF_DELETE) {
+				disconnect = 1;
 				circB->state = NULL;
 				state->any.circ = NULL;
 				dmsg_circuit_drop(circB);
 			}
-			disconnect = 1;
 		}
 
 		/*
@@ -1444,23 +1451,7 @@ dmsg_volconf_thread(void *info)
 	return(NULL);
 }
 
-static
-void
-dmsg_volconf_stop(h2span_media_config_t *conf)
-{
-	switch(conf->state) {
-	case H2MC_STOPPED:
-		break;
-	case H2MC_CONNECT:
-		conf->state = H2MC_STOPPED;
-		break;
-	case H2MC_RUNNING:
-		shutdown(conf->fd, SHUT_WR);
-		pthread_join(conf->iocom_thread, NULL);
-		conf->iocom_thread = NULL;
-		break;
-	}
-}
+static void dmsg_volconf_signal(dmsg_iocom_t *iocom);
 
 static
 void
@@ -1475,10 +1466,17 @@ dmsg_volconf_start(h2span_media_config_t *conf, const char *hostname)
 		if (conf->fd < 0) {
 			fprintf(stderr, "Unable to connect to %s\n", hostname);
 			conf->state = H2MC_CONNECT;
+		} else if (pipe(conf->pipefd) < 0) {
+			close(conf->fd);
+			fprintf(stderr, "pipe() failed during volconf\n");
+			conf->state = H2MC_CONNECT;
 		} else {
+			fprintf(stderr, "VOLCONF CONNECT\n");
 			info = malloc(sizeof(*info));
 			bzero(info, sizeof(*info));
 			info->fd = conf->fd;
+			info->altfd = conf->pipefd[0];
+			info->altmsg_callback = dmsg_volconf_signal;
 			info->detachme = 0;
 			conf->state = H2MC_RUNNING;
 			pthread_create(&conf->iocom_thread, NULL,
@@ -1488,6 +1486,33 @@ dmsg_volconf_start(h2span_media_config_t *conf, const char *hostname)
 	case H2MC_RUNNING:
 		break;
 	}
+}
+
+static
+void
+dmsg_volconf_stop(h2span_media_config_t *conf)
+{
+	switch(conf->state) {
+	case H2MC_STOPPED:
+		break;
+	case H2MC_CONNECT:
+		conf->state = H2MC_STOPPED;
+		break;
+	case H2MC_RUNNING:
+		close(conf->pipefd[1]);
+		conf->pipefd[1] = -1;
+		pthread_join(conf->iocom_thread, NULL);
+		conf->iocom_thread = NULL;
+		conf->state = H2MC_STOPPED;
+		break;
+	}
+}
+
+static
+void
+dmsg_volconf_signal(dmsg_iocom_t *iocom)
+{
+	shutdown(iocom->sock_fd, SHUT_RDWR);
 }
 
 /************************************************************************

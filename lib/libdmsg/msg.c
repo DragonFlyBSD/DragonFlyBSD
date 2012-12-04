@@ -1080,9 +1080,12 @@ skip:
 			if (state->rxcmd & DMSGF_DELETE) {
 				dmsg_msg_free(msg);
 				fprintf(stderr,
-					"iocom: ioq error %d sleeping\n",
-					ioq->error);
-				sleep(1);	/* XXX */
+					"iocom: ioq error(rd) %d sleeping "
+					"state %p rxcmd %08x txcmd %08x "
+					"func %p\n",
+					ioq->error, state, state->rxcmd,
+					state->txcmd, state->func);
+				usleep(100000);	/* XXX */
 				atomic_set_int(&iocom->flags,
 					       DMSG_IOCOMF_RWORK);
 				msg = NULL;
@@ -1102,9 +1105,12 @@ skip:
 			if (state->rxcmd & DMSGF_DELETE) {
 				dmsg_msg_free(msg);
 				fprintf(stderr,
-					"iocom: ioq error %d sleeping\n",
-					ioq->error);
-				sleep(1);	/* XXX */
+					"iocom: ioq error(wr) %d sleeping "
+					"state %p rxcmd %08x txcmd %08x "
+					"func %p\n",
+					ioq->error, state, state->rxcmd,
+					state->txcmd, state->func);
+				usleep(100000);	/* XXX */
 				atomic_set_int(&iocom->flags,
 					       DMSG_IOCOMF_RWORK);
 				msg = NULL;
