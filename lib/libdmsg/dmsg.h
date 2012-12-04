@@ -197,7 +197,7 @@ struct dmsg_msg {
 	size_t		hdr_size;
 	size_t		aux_size;
 	char		*aux_data;
-	dmsg_any_t 	any;
+	dmsg_any_t 	any;			/* must be last element */
 };
 
 typedef struct dmsg_circuit dmsg_circuit_t;
@@ -408,7 +408,9 @@ void dmsg_iocom_flush2(dmsg_iocom_t *iocom);
 
 void dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg);
 void dmsg_state_free(dmsg_state_t *state);
+void dmsg_circuit_hold(dmsg_circuit_t *circuit);
 void dmsg_circuit_drop(dmsg_circuit_t *circuit);
+void dmsg_circuit_drop_locked(dmsg_circuit_t *circuit);
 
 int dmsg_circuit_relay(dmsg_msg_t *msg);
 
@@ -419,6 +421,8 @@ void dmsg_msg_lnk_signal(dmsg_iocom_t *iocom);
 void dmsg_msg_lnk(dmsg_msg_t *msg);
 void dmsg_msg_dbg(dmsg_msg_t *msg);
 void dmsg_shell_tree(dmsg_circuit_t *circuit, char *cmdbuf __unused);
+int dmsg_debug_findspan(uint64_t msgid, dmsg_state_t **statep);
+
 
 /*
  * Crypto functions
