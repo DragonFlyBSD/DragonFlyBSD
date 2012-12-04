@@ -3385,11 +3385,6 @@ ath_descdma_setup(struct ath_softc *sc,
 	/* allocate rx buffers */
 	bsize = sizeof(struct ath_buf) * nbuf;
 	bf = kmalloc(bsize, M_ATHDEV, M_INTWAIT | M_ZERO);
-	if (bf == NULL) {
-		if_printf(ifp, "malloc of %s buffers failed, size %u\n",
-			dd->dd_name, bsize);
-		goto fail3;
-	}
 	dd->dd_bufptr = bf;
 
 	STAILQ_INIT(head);
@@ -3504,10 +3499,6 @@ ath_node_alloc(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	struct ath_node *an;
 
 	an = kmalloc(space, M_80211_NODE, M_INTWAIT|M_ZERO);
-	if (an == NULL) {
-		/* XXX stat+msg */
-		return NULL;
-	}
 	ath_rate_node_init(sc, an);
 
 	DPRINTF(sc, ATH_DEBUG_NODE, "%s: an %p\n", __func__, an);
@@ -6154,10 +6145,6 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 		 * Copy in data.
 		 */
 		indata = kmalloc(insize, M_TEMP, M_INTWAIT);
-		if (indata == NULL) {
-			error = ENOMEM;
-			goto bad;
-		}
 		error = copyin(ad->ad_in_data, indata, insize);
 		if (error)
 			goto bad;
@@ -6171,10 +6158,6 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 		 * may want to be more defensive.
 		 */
 		outdata = kmalloc(outsize, M_TEMP, M_INTWAIT);
-		if (outdata == NULL) {
-			error = ENOMEM;
-			goto bad;
-		}
 	}
 	if (ath_hal_getdiagstate(ah, id, indata, insize, &outdata, &outsize)) {
 		if (outsize < ad->ad_out_size)

@@ -1587,11 +1587,6 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 
 		rcaplong = kmalloc(sizeof(*rcaplong), M_SCSIDA,
 				   M_INTWAIT | M_ZERO);
-		if (rcaplong == NULL) {
-			kprintf("dastart: Couldn't allocate read_capacity\n");
-			/* da_free_periph??? */
-			break;
-		}
 		csio = &start_ccb->csio;
 		scsi_read_capacity_16(csio,
 				    /*retries*/ 4,

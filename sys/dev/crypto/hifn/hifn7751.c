@@ -2513,11 +2513,6 @@ hifn_process(device_t dev, struct cryptop *crp, int hint)
 	}
 
 	cmd = kmalloc(sizeof(struct hifn_command), M_DEVBUF, M_INTWAIT | M_ZERO);
-	if (cmd == NULL) {
-		hifnstats.hst_nomem++;
-		err = ENOMEM;
-		goto errout;
-	}
 
 	if (crp->crp_flags & CRYPTO_F_IMBUF) {
 		cmd->src_m = (struct mbuf *)crp->crp_buf;

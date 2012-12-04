@@ -768,8 +768,6 @@ swcr_compdec(struct cryptodesc *crd, struct swcr_data *sw,
 	 * copy in a buffer.
 	 */
 	data = kmalloc(crd->crd_len, M_CRYPTO_DATA, M_INTWAIT);
-	if (data == NULL)
-		return (EINVAL);
 	crypto_copydata(flags, buf, crd->crd_skip, crd->crd_len, data);
 
 	if (crd->crd_flags & CRD_F_COMP)

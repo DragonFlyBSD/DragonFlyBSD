@@ -287,8 +287,6 @@ nexus_add_child(device_t bus, device_t parent, int order,
 	struct nexus_device	*ndev;
 
 	ndev = kmalloc(sizeof(struct nexus_device), M_NEXUSDEV, M_INTWAIT|M_ZERO);
-	if (!ndev)
-		return(0);
 	resource_list_init(&ndev->nx_resources);
 	ndev->nx_pcibus = -1;
 

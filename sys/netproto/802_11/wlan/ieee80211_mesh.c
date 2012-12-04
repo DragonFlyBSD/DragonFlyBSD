@@ -495,10 +495,6 @@ mesh_vattach(struct ieee80211vap *vap)
 	vap->iv_recv_mgmt = mesh_recv_mgmt;
 	ms = kmalloc(sizeof(struct ieee80211_mesh_state), M_80211_VAP,
 	    M_INTWAIT | M_ZERO);
-	if (ms == NULL) {
-		kprintf("%s: couldn't alloc MBSS state\n", __func__);
-		return;
-	}
 	vap->iv_mesh = ms;
 	ms->ms_seq = 0;
 	ms->ms_flags = (IEEE80211_MESHFLAGS_AP | IEEE80211_MESHFLAGS_FWD);
@@ -2583,8 +2579,6 @@ mesh_ioctl_get80211(struct ieee80211vap *vap, struct ieee80211req *ireq)
 			ireq->i_len = len;
 			/* XXX M_WAIT? */
 			p = kmalloc(len, M_TEMP, M_INTWAIT | M_ZERO);
-			if (p == NULL)
-				return ENOMEM;
 			off = 0;
 			TAILQ_FOREACH(rt, &ms->ms_routes, rt_next) {
 				if (off >= len)

@@ -594,8 +594,6 @@ devclass_find_internal(const char *classname, const char *parentname,
 		PDEBUG(("creating %s", classname));
 		dc = kmalloc(sizeof(struct devclass) + strlen(classname) + 1,
 			    M_BUS, M_INTWAIT | M_ZERO);
-		if (!dc)
-			return(NULL);
 		dc->parent = NULL;
 		dc->name = (char*) (dc + 1);
 		strcpy(dc->name, classname);
@@ -655,8 +653,6 @@ devclass_add_driver(devclass_t dc, driver_t *driver)
 	PDEBUG(("%s", DRIVERNAME(driver)));
 
 	dl = kmalloc(sizeof *dl, M_BUS, M_INTWAIT | M_ZERO);
-	if (!dl)
-		return(ENOMEM);
 
 	/*
 	 * Compile the driver's methods. Also increase the reference count
@@ -816,8 +812,6 @@ devclass_get_devices(devclass_t dc, device_t **devlistp, int *devcountp)
 			count++;
 
 	list = kmalloc(count * sizeof(device_t), M_TEMP, M_INTWAIT | M_ZERO);
-	if (list == NULL)
-		return(ENOMEM);
 
 	count = 0;
 	for (i = 0; i < dc->maxunit; i++)
@@ -1338,8 +1332,6 @@ device_get_children(device_t dev, device_t **devlistp, int *devcountp)
 		count++;
 
 	list = kmalloc(count * sizeof(device_t), M_TEMP, M_INTWAIT | M_ZERO);
-	if (!list)
-		return(ENOMEM);
 
 	count = 0;
 	TAILQ_FOREACH(child, &dev->children, link) {
@@ -1834,8 +1826,6 @@ resource_new_name(const char *name, int unit)
 
 	new = kmalloc((devtab_count + 1) * sizeof(*new), M_TEMP,
 		     M_INTWAIT | M_ZERO);
-	if (new == NULL)
-		return(-1);
 	if (devtab && devtab_count > 0)
 		bcopy(devtab, new, devtab_count * sizeof(*new));
 	new[devtab_count].name = kmalloc(strlen(name) + 1, M_TEMP, M_INTWAIT);
@@ -1861,8 +1851,6 @@ resource_new_resname(int j, const char *resname, resource_type type)
 
 	i = devtab[j].resource_count;
 	new = kmalloc((i + 1) * sizeof(*new), M_TEMP, M_INTWAIT | M_ZERO);
-	if (new == NULL)
-		return(-1);
 	if (devtab[j].resources && i > 0)
 		bcopy(devtab[j].resources, new, i * sizeof(*new));
 	new[i].name = kmalloc(strlen(resname) + 1, M_TEMP, M_INTWAIT);
@@ -2223,8 +2211,6 @@ resource_list_add(struct resource_list *rl, int type, int rid,
 	if (rle == NULL) {
 		rle = kmalloc(sizeof(struct resource_list_entry), M_BUS,
 			     M_INTWAIT);
-		if (!rle)
-			panic("resource_list_add: can't record entry");
 		SLIST_INSERT_HEAD(rl, rle, link);
 		rle->type = type;
 		rle->rid = rid;

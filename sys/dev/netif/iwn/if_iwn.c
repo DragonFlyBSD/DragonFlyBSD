@@ -4640,12 +4640,6 @@ iwn_scan(struct iwn_softc *sc)
 	uint8_t *buf, *frm, txant;
 
 	buf = kmalloc(IWN_SCAN_MAXSZ, M_DEVBUF, M_INTWAIT | M_ZERO);
-	if (buf == NULL) {
-		device_printf(sc->sc_dev,
-		    "%s: could not allocate buffer for scan command\n",
-		    __func__);
-		return ENOMEM;
-	}
 	hdr = (struct iwn_scan_hdr *)buf;
 
 	/*
