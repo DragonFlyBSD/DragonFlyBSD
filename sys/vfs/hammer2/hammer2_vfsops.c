@@ -1063,11 +1063,15 @@ hammer2_rcvdmsg(kdmsg_msg_t *msg)
 	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
 	case DMSG_DBG_SHELL:
 		/*
+		 * (non-transaction)
 		 * Execute shell command (not supported atm)
 		 */
 		kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
+		/*
+		 * (non-transaction)
+		 */
 		if (msg->aux_data) {
 			msg->aux_data[msg->aux_size - 1] = 0;
 			kprintf("HAMMER2 DBG: %s\n", msg->aux_data);
@@ -1075,7 +1079,7 @@ hammer2_rcvdmsg(kdmsg_msg_t *msg)
 		break;
 	default:
 		/*
-		 * Unsupported LNK message received.  We only need to
+		 * Unsupported message received.  We only need to
 		 * reply if it's a transaction in order to close our end.
 		 * Ignore any one-way messages are any further messages
 		 * associated with the transaction.
@@ -1152,10 +1156,8 @@ hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 	kprintf("volconf update %p\n", pmp->iocom.conn_state);
 	if (pmp->iocom.conn_state) {
 		kprintf("TRANSMIT VOLCONF VIA OPEN CONN TRANSACTION\n");
-		msg = kdmsg_msg_alloc(&pmp->iocom, 0,
-				      DMSG_LNK_VOLCONF,
-				      NULL, NULL);
-		msg->state = pmp->iocom.conn_state;
+		msg = kdmsg_msg_alloc_state(pmp->iocom.conn_state,
+					    DMSG_LNK_VOLCONF, NULL, NULL);
 		msg->any.lnk_volconf.copy = hmp->voldata.copyinfo[index];
 		msg->any.lnk_volconf.mediaid = hmp->voldata.fsid;
 		msg->any.lnk_volconf.index = index;
