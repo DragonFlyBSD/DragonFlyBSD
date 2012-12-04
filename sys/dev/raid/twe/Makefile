@@ -22,8 +22,4 @@ SRCS=	bus_if.h device_if.h pci_if.h twe.c twe_freebsd.c
 #
 CFLAGS+=-DTWE_SHUTDOWN_NOTIFICATION
 
-# The module can be built to override a compiled-in driver
-#
-#CFLAGS+=-DTWE_OVERRIDE
-
 .include <bsd.kmod.mk>
