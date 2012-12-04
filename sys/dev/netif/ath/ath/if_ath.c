@@ -3402,8 +3402,6 @@ ath_descdma_setup(struct ath_softc *sc,
 		STAILQ_INSERT_TAIL(head, bf, bf_list);
 	}
 	return 0;
-fail3:
-	bus_dmamap_unload(dd->dd_dmat, dd->dd_dmamap);
 fail2:
 	bus_dmamem_free(dd->dd_dmat, dd->dd_desc, dd->dd_dmamap);
 fail1:
