@@ -1389,6 +1389,10 @@ options 	COMPAT_OLDPCI	#FreeBSD 2.2 and 3.x compatibility shims
 #
 device		agp
 
+#
+# AGP debugging.
+#
+options                AGP_DEBUG
 
 # The `ahc' device provides support for the Adaptec 29/3940(U)(W)
 # and motherboard based AIC7870/AIC7880 adapters.

@@ -23,8 +23,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/agp/agp.c,v 1.58 2007/11/12 21:51:36 jhb Exp $
+ * $FreeBSD: src/sys/dev/agp/agp.c,v 1.62 2009/02/06 20:57:10 wkoszek Exp $
  */
+
+#include "opt_agp.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -70,7 +72,6 @@ static struct dev_ops agp_ops = {
 };
 
 static devclass_t agp_devclass;
-#define KDEV2DEV(kdev)	devclass_get_device(agp_devclass, minor(kdev))
 
 /* Helper functions for implementing chipset mini drivers. */
 
@@ -238,6 +239,7 @@ agp_generic_attach(device_t dev)
 
 	make_dev(&agp_ops, device_get_unit(dev), UID_ROOT, GID_WHEEL,
 		 0600, "agpgart");
+	sc->as_devnode->si_drv1 = dev;
 
 	return 0;
 }
@@ -270,7 +272,7 @@ agp_generic_detach(device_t dev)
  * Default AGP aperture size detection which simply returns the size of
  * the aperture's PCI resource.
  */
-int
+u_int32_t
 agp_generic_get_aperture(device_t dev)
 {
 	struct agp_softc *sc = device_get_softc(dev);
@@ -514,6 +516,7 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 		return EINVAL;
 	}
 	
+	/* Do some sanity checks first. */
 	if (offset < 0
 	    || (offset & (AGP_PAGE_SIZE - 1)) != 0
 	    || offset + mem->am_size > AGP_GET_APERTURE(dev)) {
@@ -540,7 +543,7 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 		m = vm_page_grab(mem->am_obj, OFF_TO_IDX(i),
 				 VM_ALLOC_NORMAL | VM_ALLOC_ZERO |
 				 VM_ALLOC_RETRY);
-		AGP_DPF("found page pa=%#x\n", VM_PAGE_TO_PHYS(m));
+		AGP_DPF("found page pa=%#jx\n", (uintmax_t)VM_PAGE_TO_PHYS(m));
 		vm_page_wire(m);
 
 		/*
@@ -552,8 +555,8 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 		for (j = 0; j < PAGE_SIZE && i + j < mem->am_size;
 		     j += AGP_PAGE_SIZE) {
 			vm_offset_t pa = VM_PAGE_TO_PHYS(m) + j;
-			AGP_DPF("binding offset %#x to pa %#x\n",
-				offset + i + j, pa);
+			AGP_DPF("binding offset %#jx to pa %#jx\n",
+				(uintmax_t)offset + i + j, (uintmax_t)pa);
 			error = AGP_BIND_PAGE(dev, offset + i + j, pa);
 			if (error) {
 				/*
@@ -765,7 +768,7 @@ static int
 agp_open(struct dev_open_args *ap)
 {
 	cdev_t kdev = ap->a_head.a_dev;
-	device_t dev = KDEV2DEV(kdev);
+	device_t dev = kdev->si_drv1;
 	struct agp_softc *sc = device_get_softc(dev);
 
 	if (!sc->as_isopen) {
@@ -780,7 +783,7 @@ static int
 agp_close(struct dev_close_args *ap)
 {
 	cdev_t kdev = ap->a_head.a_dev;
-	device_t dev = KDEV2DEV(kdev);
+	device_t dev = kdev->si_drv1;
 	struct agp_softc *sc = device_get_softc(dev);
 	struct agp_memory *mem;
 
@@ -806,7 +809,7 @@ static int
 agp_ioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t kdev = ap->a_head.a_dev;
-	device_t dev = KDEV2DEV(kdev);
+	device_t dev = kdev->si_drv1;
 
 	switch (ap->a_cmd) {
 	case AGPIOC_INFO:
@@ -842,7 +845,7 @@ static int
 agp_mmap(struct dev_mmap_args *ap)
 {
 	cdev_t kdev = ap->a_head.a_dev;
-	device_t dev = KDEV2DEV(kdev);
+	device_t dev = kdev->si_drv1;
 	struct agp_softc *sc = device_get_softc(dev);
 
 	if (ap->a_offset > AGP_GET_APERTURE(dev))

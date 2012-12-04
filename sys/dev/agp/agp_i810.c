@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/agp/agp_i810.c,v 1.43 2007/11/12 21:51:36 jhb Exp $
+ * $FreeBSD: src/sys/dev/agp/agp_i810.c,v 1.56 2010/03/12 21:34:23 rnoland Exp $
  */
 
 /*
@@ -69,7 +69,7 @@ enum {
 	CHIP_I915,	/* 915G/915GM */
 	CHIP_I965,	/* G965 */
 	CHIP_G33,	/* G33/Q33/Q35 */
-	CHIP_IGD,	/* G33 like IGD */
+	CHIP_IGD,	/* Pineview */
 	CHIP_G4X,	/* G45/Q45 */
 };
 
@@ -163,6 +163,10 @@ static const struct agp_i810_match {
 	    "Intel G33 SVGA controller"},
 	{0x29D28086, CHIP_G33, 0x00020000,
 	    "Intel Q33 SVGA controller"},
+	{0xA0018086, CHIP_IGD, 0x00010000,
+	    "Intel Pineview SVGA controller"},
+	{0xA0118086, CHIP_IGD, 0x00010000,
+	    "Intel Pineview (M) SVGA controller"},
 	{0x2A028086, CHIP_I965, 0x00020000,
 	    "Intel GM965 SVGA controller"},
 	{0x2A128086, CHIP_I965, 0x00020000,
@@ -170,17 +174,17 @@ static const struct agp_i810_match {
 	{0x2A428086, CHIP_G4X, 0x00020000,
 	    "Intel GM45 SVGA controller"},
 	{0x2E028086, CHIP_G4X, 0x00020000,
-	    "Intel 4 Series SVGA controller"},
+	    "Intel Eaglelake SVGA controller"},
 	{0x2E128086, CHIP_G4X, 0x00020000,
 	    "Intel Q45 SVGA controller"},
 	{0x2E228086, CHIP_G4X, 0x00020000,
 	    "Intel G45 SVGA controller"},
 	{0x2E328086, CHIP_G4X, 0x00020000,
 	    "Intel G41 SVGA controller"},
-	{0xA0018086, CHIP_IGD, 0x00010000,
-	    "Intel IGD SVGA controller"},
-	{0xA0118086, CHIP_IGD, 0x00010000,
-	    "Intel IGD SVGA controller"},
+	{0x00428086, CHIP_G4X, 0x00020000,
+	    "Intel Ironlake (D) SVGA controller"},
+	{0x00468086, CHIP_G4X, 0x00020000,
+	    "Intel Ironlake (M) SVGA controller"},
 	{0, 0, 0, NULL}
 };
 
@@ -484,12 +488,6 @@ agp_i810_attach(device_t dev)
 				agp_generic_detach(dev);
 				return EINVAL;
 		}
-		if (sc->stolen > 0) {
-			device_printf(dev, "detected %dk stolen memory\n",
-			    sc->stolen * 4);
-		}
-		device_printf(dev, "aperture size is %dM\n",
-		    sc->initial_aperture / 1024 / 1024);
 
 		/* GATT address is already in there, make sure it's enabled */
 		pgtblctl = bus_read_4(sc->sc_res[0], AGP_I810_PGTBL_CTL);
@@ -679,9 +677,6 @@ agp_i810_attach(device_t dev)
 		gtt_size += 4;
 
 		sc->stolen = (stolen - gtt_size) * 1024 / 4096;
-		if (sc->stolen > 0)
-			device_printf(dev, "detected %dk stolen memory\n", sc->stolen * 4);
-		device_printf(dev, "aperture size is %dM\n", sc->initial_aperture / 1024 / 1024);
 
 		/* GATT address is already in there, make sure it's enabled */
 		pgtblctl = bus_read_4(sc->sc_res[0], AGP_I810_PGTBL_CTL);
@@ -690,6 +685,13 @@ agp_i810_attach(device_t dev)
 
 		gatt->ag_physical = pgtblctl & ~1;
 	}
+
+	device_printf(dev, "aperture size is %dM",
+	    sc->initial_aperture / 1024 / 1024);
+	if (sc->stolen > 0)
+		kprintf(", detected %dk stolen memory\n", sc->stolen * 4);
+	else
+		kprintf("\n");
 
 	if (0)
 		agp_i810_dump_regs(dev);
@@ -853,12 +855,12 @@ agp_i810_write_gtt_entry(device_t dev, int offset, vm_offset_t physical,
 }
 
 static int
-agp_i810_bind_page(device_t dev, int offset, vm_offset_t physical)
+agp_i810_bind_page(device_t dev, vm_offset_t offset, vm_offset_t physical)
 {
 	struct agp_i810_softc *sc = device_get_softc(dev);
 
-	if (offset < 0 || offset >= (sc->gatt->ag_entries << AGP_PAGE_SHIFT)) {
-		device_printf(dev, "failed: offset is 0x%08x, shift is %d, entries is %d\n", offset, AGP_PAGE_SHIFT, sc->gatt->ag_entries);
+	if (offset >= (sc->gatt->ag_entries << AGP_PAGE_SHIFT)) {
+		device_printf(dev, "failed: offset is 0x%08jx, shift is %d, entries is %d\n", (intmax_t)offset, AGP_PAGE_SHIFT, sc->gatt->ag_entries);
 		return EINVAL;
 	}
 
@@ -875,11 +877,11 @@ agp_i810_bind_page(device_t dev, int offset, vm_offset_t physical)
 }
 
 static int
-agp_i810_unbind_page(device_t dev, int offset)
+agp_i810_unbind_page(device_t dev, vm_offset_t offset)
 {
 	struct agp_i810_softc *sc = device_get_softc(dev);
 
-	if (offset < 0 || offset >= (sc->gatt->ag_entries << AGP_PAGE_SHIFT))
+	if (offset >= (sc->gatt->ag_entries << AGP_PAGE_SHIFT))
 		return EINVAL;
 
 	if ( sc->chiptype != CHIP_I810 ) {
@@ -1034,7 +1036,7 @@ agp_i810_bind_memory(device_t dev, struct agp_memory *mem,
 	vm_offset_t i;
 
 	/* Do some sanity checks first. */
-	if (offset < 0 || (offset & (AGP_PAGE_SIZE - 1)) != 0 ||
+	if ((offset & (AGP_PAGE_SIZE - 1)) != 0 ||
 	    offset + mem->am_size > AGP_GET_APERTURE(dev)) {
 		device_printf(dev, "binding memory at bad offset %#x\n",
 		    (int)offset);

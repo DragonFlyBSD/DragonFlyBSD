@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/agp/agp_via.c,v 1.26 2007/11/12 21:51:37 jhb Exp $
+ * $FreeBSD: src/sys/dev/agp/agp_via.c,v 1.27 2009/01/23 17:48:18 jkim Exp $
  */
 
 #include <sys/param.h>
@@ -79,6 +79,14 @@ agp_via_match(device_t dev)
 		return ("VIA 3296 (P4M800) host to PCI bridge");
 	case 0x03051106:
 		return ("VIA 82C8363 (Apollo KT133x/KM133) host to PCI bridge");
+	case 0x03141106:
+		return ("VIA 3314 (P4M800CE) host to PCI bridge");
+	case 0x03241106:
+		return ("VIA VT3324 (CX700) host to PCI bridge");
+	case 0x03271106:
+		return ("VIA 3327 (P4M890) host to PCI bridge");
+	case 0x03641106:
+		return ("VIA 3364 (P4M900) host to PCI bridge");
 	case 0x03911106:
 		return ("VIA 8371 (Apollo KX133) host to PCI bridge");
 	case 0x05011106:
@@ -161,6 +169,10 @@ agp_via_attach(device_t dev)
 	case 0x02591106:
 	case 0x02691106:
 	case 0x02961106:
+	case 0x03141106:
+	case 0x03241106:
+	case 0x03271106:
+	case 0x03641106:
 	case 0x31231106:
 	case 0x31681106:
 	case 0x31891106:
@@ -286,11 +298,11 @@ agp_via_set_aperture(device_t dev, u_int32_t aperture)
 }
 
 static int
-agp_via_bind_page(device_t dev, int offset, vm_offset_t physical)
+agp_via_bind_page(device_t dev, vm_offset_t offset, vm_offset_t physical)
 {
 	struct agp_via_softc *sc = device_get_softc(dev);
 
-	if (offset < 0 || offset >= (sc->gatt->ag_entries << AGP_PAGE_SHIFT))
+	if (offset >= (sc->gatt->ag_entries << AGP_PAGE_SHIFT))
 		return EINVAL;
 
 	sc->gatt->ag_virtual[offset >> AGP_PAGE_SHIFT] = physical;
@@ -298,11 +310,11 @@ agp_via_bind_page(device_t dev, int offset, vm_offset_t physical)
 }
 
 static int
-agp_via_unbind_page(device_t dev, int offset)
+agp_via_unbind_page(device_t dev, vm_offset_t offset)
 {
 	struct agp_via_softc *sc = device_get_softc(dev);
 
-	if (offset < 0 || offset >= (sc->gatt->ag_entries << AGP_PAGE_SHIFT))
+	if (offset >= (sc->gatt->ag_entries << AGP_PAGE_SHIFT))
 		return EINVAL;
 
 	sc->gatt->ag_virtual[offset >> AGP_PAGE_SHIFT] = 0;
