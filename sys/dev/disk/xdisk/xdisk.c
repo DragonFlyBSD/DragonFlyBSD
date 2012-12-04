@@ -500,6 +500,8 @@ xa_terminate_check(struct xa_softc *xa)
 			tag->bio = NULL;
 			bio->bio_buf->b_error = ENXIO;
 			bio->bio_buf->b_flags |= B_ERROR;
+			if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
+				kprintf("xa_terminate: bio flush terminated tag %p\n", tag);
 			biodone(bio);
 		}
 		TAILQ_INSERT_TAIL(&xa->tag_freeq, tag, entry);
@@ -734,7 +736,7 @@ xa_close(struct dev_close_args *ap)
 	lwkt_gettoken(&xa->tok);
 	if ((tag = xa->opentag) != NULL) {
 		xa->opentag = NULL;
-		kdmsg_state_reply(tag->state, DMSG_ERR_NOSUPP);
+		kdmsg_state_reply(tag->state, 0);
 		while (tag->done == 0)
 			xa_wait(tag, tag->waitseq);
 		xa_done(tag, 0);
@@ -762,7 +764,11 @@ xa_strategy(struct dev_strategy_args *ap)
 	 * only if the device is not open.  That is, we allow the disk
 	 * probe code prior to mount to fail.
 	 */
+	if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
+		kprintf("xa: flush strategy\n");
 	if (xa->attached == 0 && xa->opencnt == 0) {
+		if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
+			kprintf("xa: flush error\n");
 		bio->bio_buf->b_error = ENXIO;
 		bio->bio_buf->b_flags |= B_ERROR;
 		biodone(bio);
@@ -770,8 +776,14 @@ xa_strategy(struct dev_strategy_args *ap)
 	}
 
 	tag = xa_setup_cmd(xa, bio);
-	if (tag)
+	if (tag) {
+		if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
+			kprintf("xa: flush start xa %p tag %p\n", xa, tag);
 		xa_start(tag, NULL);
+	} else {
+		if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
+			kprintf("xa: flush defer\n");
+	}
 	return(0);
 }
 
@@ -923,7 +935,7 @@ xa_done(xa_tag_t *tag, int wasbio)
 	tag->state = NULL;
 
 	lwkt_gettoken(&xa->tok);
-	if ((bio = TAILQ_FIRST(&xa->bioq)) != NULL) {
+	if (wasbio && (bio = TAILQ_FIRST(&xa->bioq)) != NULL) {
 		TAILQ_REMOVE(&xa->bioq, bio, bio_act);
 		tag->bio = bio;
 		lwkt_reltoken(&xa->tok);
@@ -954,11 +966,18 @@ xa_sync_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 		tag->status = msg->any.blk_error;
 		break;
 	}
-	if (msg->any.head.cmd & DMSGF_DELETE) {	/* receive termination */
-		kdmsg_msg_reply(msg, 0);	/* terminate our side */
-		tag->done = 1;
-	}
 	lwkt_gettoken(&xa->tok);
+	if (msg->any.head.cmd & DMSGF_DELETE) {	/* receive termination */
+		if (xa->opentag == tag) {
+			xa->opentag = NULL;	/* XXX */
+			kdmsg_state_reply(tag->state, 0);
+			xa_done(tag, 0);
+			lwkt_reltoken(&xa->tok);
+			return(0);
+		} else {
+			tag->done = 1;
+		}
+	}
 	++tag->waitseq;
 	lwkt_reltoken(&xa->tok);
 
@@ -1032,6 +1051,9 @@ xa_bio_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 		} else {
 			bp->b_resid = 0;
 		}
+		if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
+			kprintf("xa_bio_completion of flush tag %p bio %p\n",
+				tag, bio);
 		biodone(bio);
 		tag->bio = NULL;
 		break;

@@ -867,6 +867,7 @@ struct kdmsg_state {
 #define KDMSG_STATE_INSERTED	0x0001
 #define KDMSG_STATE_DYNAMIC	0x0002
 #define KDMSG_STATE_DELPEND	0x0004		/* transmit delete pending */
+#define KDMSG_STATE_ABORTING	0x0008		/* avoids recursive abort */
 
 struct kdmsg_msg {
 	TAILQ_ENTRY(kdmsg_msg) qentry;		/* serialized queue */

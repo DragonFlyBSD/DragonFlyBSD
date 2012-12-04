@@ -656,8 +656,6 @@ kdmsg_msg_receive_handling(kdmsg_msg_t *msg)
 
 /*
  * Process circuit tracking (NEEDS WORK)
- *
- * Called with msglk held and the msg dequeued.
  */
 static
 int
@@ -1065,6 +1063,7 @@ kdmsg_autorxmsg(kdmsg_msg_t *msg)
 			if ((msg->any.head.cmd & DMSGF_DELETE) == 0) {
 				circ = kmalloc(sizeof(*circ), iocom->mmsg,
 					       M_WAITOK | M_ZERO);
+				lwkt_gettoken(&kdmsg_token);
 				msg->state->any.circ = circ;
 				circ->iocom = iocom;
 				circ->rcirc_state = msg->state;
@@ -1073,16 +1072,12 @@ kdmsg_autorxmsg(kdmsg_msg_t *msg)
 				circ->msgid = circ->rcirc_state->msgid;
 				/* XXX no span link for received circuits */
 				kdmsg_circ_hold(circ);	/* for circ_state */
-#if 0
-				kprintf("KDMSG VC: RECEIVE CIRC CREATE "
-					"IOCOM %p MSGID %016jx\n",
-					msg->iocom, circ->msgid);
-#endif
 
 				if (RB_INSERT(kdmsg_circuit_tree,
 					      &iocom->circ_tree, circ)) {
 					panic("duplicate circuitid allocated");
 				}
+				lwkt_reltoken(&kdmsg_token);
 				kdmsg_msg_result(msg, 0);
 
 				/*
@@ -1117,9 +1112,9 @@ kdmsg_autorxmsg(kdmsg_msg_t *msg)
 				iocom->auto_callback(msg);
 
 			KKASSERT(circ->rcirc_state == msg->state);
+			lwkt_gettoken(&kdmsg_token);
 			circ->rcirc_state = NULL;
 			msg->state->any.circ = NULL;
-			lwkt_gettoken(&kdmsg_token);
 			RB_REMOVE(kdmsg_circuit_tree, &iocom->circ_tree, circ);
 			lwkt_reltoken(&kdmsg_token);
 			kdmsg_circ_drop(circ);	/* for rcirc_state */
@@ -1173,6 +1168,7 @@ kdmsg_autocirc(kdmsg_msg_t *msg)
 	if (msg->state->icmd == DMSG_LNK_SPAN &&
 	    (msg->any.head.cmd & DMSGF_CREATE)) {
 		circ = kmalloc(sizeof(*circ), iocom->mmsg, M_WAITOK | M_ZERO);
+		lwkt_gettoken(&kdmsg_token);
 		msg->state->any.circ = circ;
 		circ->iocom = iocom;
 		circ->span_state = msg->state;
@@ -1191,6 +1187,7 @@ kdmsg_autocirc(kdmsg_msg_t *msg)
 
 		if (RB_INSERT(kdmsg_circuit_tree, &iocom->circ_tree, circ))
 			panic("duplicate circuitid allocated");
+		lwkt_reltoken(&kdmsg_token);
 
 		xmsg->any.lnk_circ.target = msg->any.head.msgid;
 		kdmsg_msg_write(xmsg);
@@ -1268,6 +1265,7 @@ kdmsg_state_cleanuprx(kdmsg_msg_t *msg)
 		kdmsg_msg_free(msg);
 	} else if (msg->any.head.cmd & DMSGF_DELETE) {
 		lockmgr(&iocom->msglk, LK_EXCLUSIVE);
+		KKASSERT((state->rxcmd & DMSGF_DELETE) == 0);
 		state->rxcmd |= DMSGF_DELETE;
 		if (state->txcmd & DMSGF_DELETE) {
 			KKASSERT(state->flags & KDMSG_STATE_INSERTED);
@@ -1298,7 +1296,7 @@ kdmsg_state_cleanuprx(kdmsg_msg_t *msg)
 }
 
 /*
- * Simulate receiving a message which terminates an activate transaction
+ * Simulate receiving a message which terminates an active transaction
  * state.  Our simulated received message must set DELETE and may also
  * have to set CREATE.  It must also ensure that all fields are set such
  * that the receive handling code can find the state (kdmsg_state_msgrx())
@@ -1314,6 +1312,19 @@ kdmsg_state_abort(kdmsg_state_t *state)
 	kdmsg_iocom_t *iocom = state->iocom;
 	kdmsg_msg_t *msg;
 
+	/*
+	 * Prevent recursive aborts which could otherwise occur if the
+	 * simulated message reception runs state->func which then turns
+	 * around and tries to reply to a broken circuit when then calls
+	 * the state abort code again.
+	 */
+	if (state->flags & KDMSG_STATE_ABORTING)
+		return;
+	state->flags |= KDMSG_STATE_ABORTING;
+
+	/*
+	 * Simulatem essage reception
+	 */
 	msg = kdmsg_msg_alloc(iocom, state->circ,
 			      DMSG_LNK_ERROR,
 			      NULL, NULL);
@@ -1323,8 +1334,6 @@ kdmsg_state_abort(kdmsg_state_t *state)
 	msg->any.head.error = DMSG_ERR_LOSTLINK;
 	msg->any.head.msgid = state->msgid;
 	msg->state = state;
-	if ((msg->circ = state->circ) != NULL)
-		kdmsg_circ_hold(msg->circ);
 	kdmsg_msg_receive_handling(msg);
 }
 
@@ -1535,6 +1544,7 @@ kdmsg_state_cleanuptx(kdmsg_msg_t *msg)
 		kdmsg_msg_free(msg);
 	} else if (msg->any.head.cmd & DMSGF_DELETE) {
 		lockmgr(&iocom->msglk, LK_EXCLUSIVE);
+		KKASSERT((state->txcmd & DMSGF_DELETE) == 0);
 		state->txcmd |= DMSGF_DELETE;
 		if (state->rxcmd & DMSGF_DELETE) {
 			KKASSERT(state->flags & KDMSG_STATE_INSERTED);
