@@ -61,6 +61,8 @@ dmsg_master_service(void *data)
 			master_auth_rxmsg,
 			info->dbgmsg_callback,
 			info->altmsg_callback);
+	if (info->noclosealt)
+		iocom.flags &= ~DMSG_IOCOMF_CLOSEALT;
 	if (info->label) {
 		dmsg_iocom_label(&iocom, "%s", info->label);
 		free(info->label);

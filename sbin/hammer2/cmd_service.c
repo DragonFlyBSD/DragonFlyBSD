@@ -36,6 +36,7 @@
 #include "hammer2.h"
 
 #include <sys/xdiskioctl.h>
+#include <machine/atomic.h>
 
 struct diskcon {
 	TAILQ_ENTRY(diskcon) entry;
@@ -449,12 +450,16 @@ autoconn_thread(void *data __unused)
 
 			/*
 			 * Unstaging, stop active connection.
+			 *
+			 * We write to the pipe which causes the iocom_core
+			 * to call autoconn_disconnect_signal().
 			 */
 			if (ac->stage == 0 &&
 			    ac->state == AUTOCONN_ACTIVE) {
 				if (ac->stopme == 0) {
+					char dummy = 0;
 					ac->stopme = 1;
-					close(ac->pipefd[1]); /* signal */
+					write(ac->pipefd[1], &dummy, 1);
 				}
 			}
 
@@ -502,6 +507,7 @@ autoconn_connect_thread(void *data)
 		info->altfd = ac->pipefd[0];
 		info->altmsg_callback = autoconn_disconnect_signal;
 		info->detachme = 0;
+		info->noclosealt = 1;
 		pthread_create(&ac->thread, NULL, dmsg_master_service, info);
 		pthread_join(ac->thread, &res);
 	}
@@ -516,7 +522,7 @@ void
 autoconn_disconnect_signal(dmsg_iocom_t *iocom)
 {
 	fprintf(stderr, "autoconn: Shutting down socket\n");
-	shutdown(iocom->sock_fd, SHUT_RDWR);
+	atomic_set_int(&iocom->flags, DMSG_IOCOMF_EOF);
 }
 
 /*

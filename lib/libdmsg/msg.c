@@ -134,7 +134,7 @@ dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 	TAILQ_INIT(&iocom->txmsgq);
 	iocom->sock_fd = sock_fd;
 	iocom->alt_fd = alt_fd;
-	iocom->flags = DMSG_IOCOMF_RREQ;
+	iocom->flags = DMSG_IOCOMF_RREQ | DMSG_IOCOMF_CLOSEALT;
 	if (signal_func)
 		iocom->flags |= DMSG_IOCOMF_SWORK;
 	dmsg_ioq_init(iocom, &iocom->ioq_rx);
@@ -230,7 +230,7 @@ dmsg_iocom_done(dmsg_iocom_t *iocom)
 		close(iocom->sock_fd);
 		iocom->sock_fd = -1;
 	}
-	if (iocom->alt_fd >= 0) {
+	if (iocom->alt_fd >= 0 && (iocom->flags & DMSG_IOCOMF_CLOSEALT)) {
 		close(iocom->alt_fd);
 		iocom->alt_fd = -1;
 	}
@@ -324,9 +324,7 @@ dmsg_msg_alloc(dmsg_circuit_t *circuit,
 		state->icmd = state->txcmd & DMSGF_BASECMDMASK;
 		state->func = func;
 		state->any.any = data;
-		pthread_mutex_lock(&iocom->mtx);
 		RB_INSERT(dmsg_state_tree, &circuit->statewr_tree, state);
-		pthread_mutex_unlock(&iocom->mtx);
 		state->flags |= DMSG_STATE_INSERTED;
 	}
 	/* XXX SMP race for state */

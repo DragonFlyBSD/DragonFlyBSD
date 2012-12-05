@@ -1512,7 +1512,7 @@ static
 void
 dmsg_volconf_signal(dmsg_iocom_t *iocom)
 {
-	shutdown(iocom->sock_fd, SHUT_RDWR);
+	atomic_set_int(&iocom->flags, DMSG_IOCOMF_EOF);
 }
 
 /************************************************************************

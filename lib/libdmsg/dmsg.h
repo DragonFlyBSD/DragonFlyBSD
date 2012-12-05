@@ -307,6 +307,7 @@ typedef struct dmsg_iocom dmsg_iocom_t;
 #define DMSG_IOCOMF_AWWORK	0x00000080	/* immediate work pending */
 #define DMSG_IOCOMF_SWORK	0x00000100	/* immediate work pending */
 #define DMSG_IOCOMF_CRYPTED	0x00000200	/* encrypt enabled */
+#define DMSG_IOCOMF_CLOSEALT	0x00000400	/* close alt_fd */
 
 /*
  * Crypto algorithm table and related typedefs.
@@ -330,6 +331,7 @@ struct crypto_algo {
 struct dmsg_master_service_info {
 	int	fd;
 	int	altfd;
+	int	noclosealt;
 	int	detachme;
 	char	*label;
 	void	*handle;
