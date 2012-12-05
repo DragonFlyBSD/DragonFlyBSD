@@ -909,7 +909,7 @@ bnx_init_rx_ring_std(struct bnx_softc *sc)
 		error = bnx_newbuf_std(sc, i, 1);
 		if (error)
 			return error;
-	};
+	}
 
 	sc->bnx_std = BGE_STD_RX_RING_CNT - 1;
 	bnx_writembx(sc, BGE_MBX_RX_STD_PROD_LO, sc->bnx_std);
@@ -946,7 +946,7 @@ bnx_init_rx_ring_jumbo(struct bnx_softc *sc)
 		error = bnx_newbuf_jumbo(sc, i, 1);
 		if (error)
 			return error;
-	};
+	}
 
 	sc->bnx_jumbo = BGE_JUMBO_RX_RING_CNT - 1;
 

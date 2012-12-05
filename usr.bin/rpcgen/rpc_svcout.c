@@ -529,7 +529,7 @@ write_program(definition *def, const char *storage)
 			sprintf(_errbuf, "unable to free results");
 			print_err_message("\t\t");
 			f_print(fout, "\n");
-		};
+		}
 		print_return("\t");
 		f_print(fout, "}\n");
 	}

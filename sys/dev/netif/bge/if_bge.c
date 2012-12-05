@@ -1105,7 +1105,7 @@ bge_init_rx_ring_std(struct bge_softc *sc)
 		error = bge_newbuf_std(sc, i, 1);
 		if (error)
 			return error;
-	};
+	}
 
 	sc->bge_std = BGE_STD_RX_RING_CNT - 1;
 	bge_writembx(sc, BGE_MBX_RX_STD_PROD_LO, sc->bge_std);
@@ -1142,7 +1142,7 @@ bge_init_rx_ring_jumbo(struct bge_softc *sc)
 		error = bge_newbuf_jumbo(sc, i, 1);
 		if (error)
 			return error;
-	};
+	}
 
 	sc->bge_jumbo = BGE_JUMBO_RX_RING_CNT - 1;
 

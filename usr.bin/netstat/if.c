@@ -546,7 +546,7 @@ loop:
 		if (kread(interesting_off, (char *)&ifnet, sizeof ifnet)) {
 			printf("???\n");
 			exit(1);
-		};
+		}
 		if (!first) {
 			printf("%10lu %5lu %10lu %10lu %5lu %10lu %5lu",
 				ifnet.if_ipackets - ip->ift_ip,

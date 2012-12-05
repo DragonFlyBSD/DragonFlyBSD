@@ -28,7 +28,6 @@
  *
  * @(#)rpc_cout.c	1.14	93/07/05 SMI; 1.13 89/02/22 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_cout.c,v 1.17 2007/11/20 01:46:12 jb Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_cout.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -75,7 +74,7 @@ emit(definition *def)
 
 		if (strcmp(def->def.ty.old_type, def->def_name) == 0)
 			return;
-	};
+	}
 	print_header(def);
 	switch (def->def_kind) {
 	case DEF_UNION:

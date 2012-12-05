@@ -830,7 +830,7 @@ ti_init_rx_ring_std(struct ti_softc *sc)
 	for (i = 0; i < TI_SSLOTS; i++) {
 		if (ti_newbuf_std(sc, i, NULL) == ENOBUFS)
 			return(ENOBUFS);
-	};
+	}
 
 	TI_UPDATE_STDPROD(sc, i - 1);
 	sc->ti_std = i - 1;

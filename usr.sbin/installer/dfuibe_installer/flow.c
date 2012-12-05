@@ -1447,7 +1447,7 @@ state_setup_remote_installation_server(struct i_fn_args *a)
 
 			break;
 
-	};
+	}
 
 	state = state_welcome;
 

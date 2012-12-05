@@ -1561,7 +1561,7 @@ fw_bus_explore_callback(struct fw_xfer *xfer)
 		while(((fc->ongoaddr - offset)/4 > chdr->crc_len)){
 			if(csrd == NULL){
 				goto nextnode;
-			};
+			}
 			fc->ongoaddr = csrd->ongoaddr + 4;
 			SLIST_REMOVE_HEAD(&fc->ongocsr, link);
 			SLIST_INSERT_HEAD(&fc->csrfree, csrd, link);
