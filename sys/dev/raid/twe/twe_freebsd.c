@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.48 2009/12/25 17:34:43 mav Exp $
+ * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.54 2012/11/17 01:52:19 svnexp Exp $
  */
 
 /*
@@ -39,6 +39,7 @@
 #include <dev/raid/twe/twevar.h>
 #include <dev/raid/twe/twe_tables.h>
 #include <sys/dtype.h>
+#include <sys/mplock2.h>
 
 #include <vm/vm.h>
 
@@ -68,7 +69,7 @@ static	d_close_t		twe_close;
 static	d_ioctl_t		twe_ioctl_wrapper;
 
 static struct dev_ops twe_ops = {
-	{ "twe", 0, 0 },
+	{ "twe", 0, D_MPSAFE },
 	.d_open =	twe_open,
 	.d_close =	twe_close,
 	.d_ioctl =	twe_ioctl_wrapper,
@@ -83,7 +84,13 @@ twe_open(struct dev_open_args *ap)
     cdev_t			dev = ap->a_head.a_dev;
     struct twe_softc		*sc = (struct twe_softc *)dev->si_drv1;
 
+    TWE_IO_LOCK(sc);
+    if (sc->twe_state & TWE_STATE_DETACHING) {
+	TWE_IO_UNLOCK(sc);
+	return (ENXIO);
+    }
     sc->twe_state |= TWE_STATE_OPEN;
+    TWE_IO_UNLOCK(sc);
     return(0);
 }
 
@@ -96,7 +103,9 @@ twe_close(struct dev_close_args *ap)
     cdev_t			dev = ap->a_head.a_dev;
     struct twe_softc		*sc = (struct twe_softc *)dev->si_drv1;
 
+    TWE_IO_LOCK(sc);
     sc->twe_state &= ~TWE_STATE_OPEN;
+    TWE_IO_UNLOCK(sc);
     return (0);
 }
 
@@ -139,8 +148,6 @@ static device_method_t twe_methods[] = {
     DEVMETHOD(device_suspend,	twe_suspend),
     DEVMETHOD(device_resume,	twe_resume),
 
-    DEVMETHOD(bus_print_child,	bus_generic_print_child),
-    DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
     { 0, 0 }
 };
 
@@ -178,7 +185,6 @@ twe_attach(device_t dev)
 {
     struct twe_softc	*sc;
     int			rid, error;
-    u_int32_t		command;
 
     debug_called(4);
 
@@ -187,6 +193,8 @@ twe_attach(device_t dev)
      */
     sc = device_get_softc(dev);
     sc->twe_dev = dev;
+    lockinit(&sc->twe_io_lock, "twe I/O", 0, LK_CANRECURSE);
+    lockinit(&sc->twe_config_lock, "twe config", 0, LK_CANRECURSE);
 
     sysctl_ctx_init(&sc->sysctl_ctx);
     sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
@@ -201,18 +209,9 @@ twe_attach(device_t dev)
 	"TWE driver version");
 
     /*
-     * Make sure we are going to be able to talk to this board.
-     */
-    command = pci_read_config(dev, PCIR_COMMAND, 2);
-    if ((command & PCIM_CMD_PORTEN) == 0) {
-	twe_printf(sc, "register window not available\n");
-	return(ENXIO);
-    }
-    /*
      * Force the busmaster enable bit on, in case the BIOS forgot.
      */
-    command |= PCIM_CMD_BUSMASTEREN;
-    pci_write_config(dev, PCIR_COMMAND, command, 2);
+    pci_enable_busmaster(dev);
 
     /*
      * Allocate the PCI register window.
@@ -224,8 +223,6 @@ twe_attach(device_t dev)
 	twe_free(sc);
 	return(ENXIO);
     }
-    sc->twe_btag = rman_get_bustag(sc->twe_io);
-    sc->twe_bhandle = rman_get_bushandle(sc->twe_io);
 
     /*
      * Allocate the parent bus DMA tag appropriate for PCI.
@@ -254,7 +251,7 @@ twe_attach(device_t dev)
 	twe_free(sc);
 	return(ENXIO);
     }
-    if (bus_setup_intr(sc->twe_dev, sc->twe_irq, 0,
+    if (bus_setup_intr(sc->twe_dev, sc->twe_irq, INTR_MPSAFE,
 			twe_pci_intr, sc, &sc->twe_intr, NULL)) {
 	twe_printf(sc, "can't set up interrupt\n");
 	twe_free(sc);
@@ -427,6 +424,8 @@ twe_free(struct twe_softc *sc)
     dev_ops_remove_minor(&twe_ops, device_get_unit(sc->twe_dev));
 
     sysctl_ctx_free(&sc->sysctl_ctx);
+    lockuninit(&sc->twe_config_lock);
+    lockuninit(&sc->twe_io_lock);
 }
 
 /********************************************************************************
@@ -436,27 +435,30 @@ static int
 twe_detach(device_t dev)
 {
     struct twe_softc	*sc = device_get_softc(dev);
-    int			error;
 
     debug_called(4);
 
-    error = EBUSY;
-    crit_enter();
-    if (sc->twe_state & TWE_STATE_OPEN)
-	goto out;
+    TWE_IO_LOCK(sc);
+    if (sc->twe_state & TWE_STATE_OPEN) {
+	TWE_IO_UNLOCK(sc);
+	return (EBUSY);
+    }
+    sc->twe_state |= TWE_STATE_DETACHING;
+    TWE_IO_UNLOCK(sc);
 
     /*	
      * Shut the controller down.
      */
-    if (twe_shutdown(dev))
-	goto out;
+    if (twe_shutdown(dev)) {
+	TWE_IO_LOCK(sc);
+	sc->twe_state &= ~TWE_STATE_DETACHING;
+	TWE_IO_UNLOCK(sc);
+	return (EBUSY);
+    }
 
     twe_free(sc);
 
-    error = 0;
- out:
-    crit_exit();
-    return(error);
+    return(0);
 }
 
 /********************************************************************************
@@ -473,26 +475,28 @@ twe_shutdown(device_t dev)
 
     debug_called(4);
 
-    crit_enter();
-
     /* 
      * Delete all our child devices.
      */
+    TWE_CONFIG_LOCK(sc);
     for (i = 0; i < TWE_MAX_UNITS; i++) {
 	if (sc->twe_drive[i].td_disk != 0) {
-	    if ((error = twe_detach_drive(sc, i)) != 0)
-		goto out;
+	    if ((error = twe_detach_drive(sc, i)) != 0) {
+		TWE_CONFIG_UNLOCK(sc);
+		return (error);
+	    }
 	}
     }
+    TWE_CONFIG_UNLOCK(sc);
 
     /*
      * Bring the controller down.
      */
+    TWE_IO_LOCK(sc);
     twe_deinit(sc);
+    TWE_IO_UNLOCK(sc);
 
-out:
-    crit_exit();
-    return(error);
+    return(0);
 }
 
 /********************************************************************************
@@ -505,8 +509,9 @@ twe_suspend(device_t dev)
 
     debug_called(4);
 
-    crit_enter();
+    TWE_IO_LOCK(sc);
     sc->twe_state |= TWE_STATE_SUSPEND;
+    TWE_IO_UNLOCK(sc);
     
     twe_disable_interrupts(sc);
     crit_exit();
@@ -524,8 +529,10 @@ twe_resume(device_t dev)
 
     debug_called(4);
 
+    TWE_IO_LOCK(sc);
     sc->twe_state &= ~TWE_STATE_SUSPEND;
     twe_enable_interrupts(sc);
+    TWE_IO_UNLOCK(sc);
 
     return(0);
 }
@@ -537,7 +544,11 @@ twe_resume(device_t dev)
 static void
 twe_pci_intr(void *arg)
 {
-    twe_intr((struct twe_softc *)arg);
+    struct twe_softc *sc = arg;
+
+    TWE_IO_LOCK(sc);
+    twe_intr(sc);
+    TWE_IO_UNLOCK(sc);
 }
 
 /********************************************************************************
@@ -566,8 +577,10 @@ twe_attach_drive(struct twe_softc *sc, struct twe_drive *dr)
     char	buf[80];
     int		error;
 
+    get_mplock();
     dr->td_disk =  device_add_child(sc->twe_dev, NULL, -1);
     if (dr->td_disk == NULL) {
+	rel_mplock();
 	twe_printf(sc, "Cannot add unit\n");
 	return (EIO);
     }
@@ -583,7 +596,9 @@ twe_attach_drive(struct twe_softc *sc, struct twe_drive *dr)
 	    twe_describe_code(twe_table_unitstate, dr->td_state & TWE_PARAM_UNITSTATUS_MASK));
     device_set_desc_copy(dr->td_disk, buf);
 
-    if ((error = bus_generic_attach(sc->twe_dev)) != 0) {
+    error = device_probe_and_attach(dr->td_disk);
+    rel_mplock();
+    if (error != 0) {
 	twe_printf(sc, "Cannot attach unit to controller. error = %d\n", error);
 	return (EIO);
     }
@@ -600,7 +615,11 @@ twe_detach_drive(struct twe_softc *sc, int unit)
 {
     int error = 0;
 
-    if ((error = device_delete_child(sc->twe_dev, sc->twe_drive[unit].td_disk)) != 0) {
+    TWE_CONFIG_ASSERT_LOCKED(sc);
+    get_mplock();
+    error = device_delete_child(sc->twe_dev, sc->twe_drive[unit].td_disk);
+    rel_mplock();
+    if (error != 0) {
 	twe_printf(sc, "failed to delete unit %d\n", unit);
 	return(error);
     }
@@ -666,7 +685,7 @@ static	d_strategy_t	twed_strategy;
 static	d_dump_t	twed_dump;
 
 static struct dev_ops twed_ops = {
-	{ "twed", 0, D_DISK },
+	{ "twed", 0, D_DISK | D_MPSAFE},
 	.d_open =	twed_open,
 	.d_close =	twed_close,
 	.d_read =	physread,
@@ -749,10 +768,12 @@ twed_strategy(struct dev_strategy_args *ap)
     devstat_start_transaction(&sc->twed_stats);
 
     /* queue the bio on the controller */
+    TWE_IO_LOCK(sc->twed_controller);
     twe_enqueue_bio(sc->twed_controller, bio);
 
     /* poke the controller to start I/O */
     twe_startio(sc->twed_controller);
+    TWE_IO_UNLOCK(sc->twed_controller);
     return(0);
 }
 
@@ -794,7 +815,7 @@ twed_intr(struct bio *bio)
     debug_called(4);
 
     /* if no error, transfer completed */
-    if ((bp->b_flags & B_ERROR) == 0)
+    if (!(bp->b_flags & B_ERROR))
 	bp->b_resid = 0;
     devstat_end_transaction_buf(&sc->twed_stats, bp);
     biodone(bio);
@@ -899,13 +920,13 @@ twed_detach(device_t dev)
 /********************************************************************************
  * Allocate a command buffer
  */
-MALLOC_DEFINE(TWE_MALLOC_CLASS, "twe_commands", "twe commands");
+static MALLOC_DEFINE(TWE_MALLOC_CLASS, "twe_commands", "twe commands");
 
 struct twe_request *
 twe_allocate_request(struct twe_softc *sc, int tag)
 {
     struct twe_request	*tr;
-	int aligned_size;
+    int aligned_size;
 
     /*
      * TWE requires requests to be 512-byte aligned.  Depend on malloc()
@@ -914,8 +935,8 @@ twe_allocate_request(struct twe_softc *sc, int tag)
      * allocator only guarentees same-size alignment for power-of-2 requests.
      */
     aligned_size = (sizeof(struct twe_request) + TWE_ALIGNMASK) &
-           ~TWE_ALIGNMASK;
-    tr = kmalloc(aligned_size, TWE_MALLOC_CLASS, M_INTWAIT|M_ZERO);
+	~TWE_ALIGNMASK;
+    tr = kmalloc(aligned_size, TWE_MALLOC_CLASS, M_INTWAIT | M_ZERO);
     tr->tr_sc = sc;
     tr->tr_tag = tag;
     if (bus_dmamap_create(sc->twe_buffer_dmat, 0, &tr->tr_dmamap)) {
@@ -1077,6 +1098,7 @@ twe_map_request(struct twe_request *tr)
 
     debug_called(4);
 
+    twe_lockassert(&sc->twe_io_lock);
     if (sc->twe_state & (TWE_STATE_CTLR_BUSY | TWE_STATE_FRZN)) {
 	twe_requeue_ready(tr);
 	return (EBUSY);
@@ -1196,10 +1218,8 @@ twe_report(void)
     struct twe_softc	*sc;
     int			i;
 
-    crit_enter();
     for (i = 0; (sc = devclass_get_softc(twe_devclass, i)) != NULL; i++)
 	twe_print_controller(sc);
     kprintf("twed: total bio count in %u  out %u\n", twed_bio_in, twed_bio_out);
-    crit_exit();
 }
 #endif

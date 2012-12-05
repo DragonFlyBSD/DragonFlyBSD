@@ -1,4 +1,4 @@
-# $FreeBSD: src/sys/modules/twe/Makefile,v 1.7 2005/08/10 04:01:21 obrien Exp $
+# $FreeBSD: src/sys/modules/twe/Makefile,v 1.8 2012/11/17 01:53:01 svnexp Exp $
 
 KMOD=	twe
 SRCS=	bus_if.h device_if.h pci_if.h twe.c twe_freebsd.c
