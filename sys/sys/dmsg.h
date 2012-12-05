@@ -834,6 +834,7 @@ struct kdmsg_circuit {
 	uint64_t		msgid;
 	int			weight;
 	int			recorded;	/* written by shim */
+	int			lost;		/* written by shim */
 	int			refs;		/* written by shim */
 };
 

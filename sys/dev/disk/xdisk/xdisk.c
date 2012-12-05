@@ -500,8 +500,6 @@ xa_terminate_check(struct xa_softc *xa)
 			tag->bio = NULL;
 			bio->bio_buf->b_error = ENXIO;
 			bio->bio_buf->b_flags |= B_ERROR;
-			if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
-				kprintf("xa_terminate: bio flush terminated tag %p\n", tag);
 			biodone(bio);
 		}
 		TAILQ_INSERT_TAIL(&xa->tag_freeq, tag, entry);
@@ -581,7 +579,7 @@ xa_autodmsg(kdmsg_msg_t *msg)
 		break;
 	case DMSG_LNK_CIRC | DMSGF_DELETE | DMSGF_REPLY:
 		/*
-		 * Losing virtual circuit.  Scan pending tags.
+		 * Losing virtual circuit.  Remove the circ from contention.
 		 */
 		circ = msg->state->any.circ;
 		lwkt_gettoken(&xa->tok);
@@ -589,6 +587,7 @@ xa_autodmsg(kdmsg_msg_t *msg)
 			TAILQ_REMOVE(&xa->circq, circ, entry);
 			circ->recorded = 0;
 		}
+		xa_restart_deferred(xa);
 		lwkt_reltoken(&xa->tok);
 		break;
 	default:
@@ -764,11 +763,7 @@ xa_strategy(struct dev_strategy_args *ap)
 	 * only if the device is not open.  That is, we allow the disk
 	 * probe code prior to mount to fail.
 	 */
-	if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
-		kprintf("xa: flush strategy\n");
 	if (xa->attached == 0 && xa->opencnt == 0) {
-		if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
-			kprintf("xa: flush error\n");
 		bio->bio_buf->b_error = ENXIO;
 		bio->bio_buf->b_flags |= B_ERROR;
 		biodone(bio);
@@ -776,14 +771,8 @@ xa_strategy(struct dev_strategy_args *ap)
 	}
 
 	tag = xa_setup_cmd(xa, bio);
-	if (tag) {
-		if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
-			kprintf("xa: flush start xa %p tag %p\n", xa, tag);
+	if (tag)
 		xa_start(tag, NULL);
-	} else {
-		if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
-			kprintf("xa: flush defer\n");
-	}
 	return(0);
 }
 
@@ -820,7 +809,11 @@ xa_setup_cmd(xa_softc_t *xa, struct bio *bio)
 	 * Only get a tag if we have a valid virtual circuit to the server.
 	 */
 	lwkt_gettoken(&xa->tok);
-	if ((circ = TAILQ_FIRST(&xa->circq)) == NULL || xa->attached <= 0) {
+	TAILQ_FOREACH(circ, &xa->circq, entry) {
+		if (circ->lost == 0)
+			break;
+	}
+	if (circ == NULL || xa->attached <= 0) {
 		tag = NULL;
 	} else if ((tag = TAILQ_FIRST(&xa->tag_freeq)) != NULL) {
 		TAILQ_REMOVE(&xa->tag_freeq, tag, entry);
@@ -990,7 +983,7 @@ static int
 xa_bio_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 {
 	xa_tag_t *tag = state->any.any;
-	/*xa_softc_t *xa = tag->xa;*/
+	xa_softc_t *xa = tag->xa;
 	struct bio *bio;
 	struct buf *bp;
 
@@ -1017,6 +1010,19 @@ xa_bio_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 	case DMSG_BLK_ERROR | DMSGF_REPLY:
 		tag->status = msg->any.blk_error;
 		break;
+	}
+
+	/*
+	 * Potentially move the bio back onto the pending queue if the
+	 * device is open and the error is related to losing the virtual
+	 * circuit.
+	 */
+	if (tag->status.head.error &&
+	    (msg->any.head.cmd & DMSGF_DELETE) && xa->opencnt) {
+		if (tag->status.head.error == DMSG_ERR_LOSTLINK ||
+		    tag->status.head.error == DMSG_ERR_CANTCIRC) {
+			goto handle_repend;
+		}
 	}
 
 	/*
@@ -1051,9 +1057,6 @@ xa_bio_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 		} else {
 			bp->b_resid = 0;
 		}
-		if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
-			kprintf("xa_bio_completion of flush tag %p bio %p\n",
-				tag, bio);
 		biodone(bio);
 		tag->bio = NULL;
 		break;
@@ -1071,10 +1074,37 @@ xa_bio_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 handle_done:
 	if (msg->any.head.cmd & DMSGF_DELETE) {
 		xa_done(tag, 1);
-		if ((state->txcmd & DMSGF_DELETE) == 0) {
+		if ((state->txcmd & DMSGF_DELETE) == 0)
 			kdmsg_msg_reply(msg, 0);
-		}
 	}
+	return (0);
+
+	/*
+	 * Handle the case where the transaction failed due to a
+	 * connectivity issue.  The tag is put away with wasbio=0
+	 * and we restart the bio.
+	 *
+	 * Setting circ->lost causes xa_setup_cmd() to skip the circuit.
+	 * Other circuits might still be live.  Once a circuit gets messed
+	 * up it will (eventually) be deleted so we can simply leave (lost)
+	 * set forever after.
+	 */
+handle_repend:
+	lwkt_gettoken(&xa->tok);
+	kprintf("BIO CIRC FAILURE, REPEND BIO %p\n", bio);
+	tag->circ->lost = 1;
+	tag->bio = NULL;
+	xa_done(tag, 0);
+	if ((state->txcmd & DMSGF_DELETE) == 0)
+		kdmsg_msg_reply(msg, 0);
+
+	/*
+	 * Restart or requeue the bio
+	 */
+	tag = xa_setup_cmd(xa, bio);
+	if (tag)
+		xa_start(tag, NULL);
+	lwkt_reltoken(&xa->tok);
 	return (0);
 }
 

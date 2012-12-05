@@ -582,8 +582,15 @@ diskiodone(struct bio *bio)
 	default:
 		panic("diskiodone: Unknown bio cmd = %d\n",
 		      bio->bio_buf->b_cmd);
-		break; /* NOT REACHED */
+		error = 0;	/* avoid compiler warning */
+		break;		/* NOT REACHED */
 	}
+
+	/*
+	 * Convert error to DMSG_ERR_* code.
+	 */
+	if (error)
+		error = DMSG_ERR_IO;
 
 	/*
 	 * Convert LNK_ERROR or BLK_ERROR if non-zero resid.  READS will
