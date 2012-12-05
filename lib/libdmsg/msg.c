@@ -1197,7 +1197,7 @@ skip:
 				(intmax_t)msg->any.head.circuit);
 		}
 		if (msg->any.head.circuit)
-			error = dmsg_circuit_relay(msg);
+			error = dmsg_circuit_route(msg);
 		else
 			error = dmsg_state_msgrx(msg);
 

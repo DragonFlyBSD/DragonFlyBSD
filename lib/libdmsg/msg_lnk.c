@@ -1520,7 +1520,7 @@ dmsg_volconf_signal(dmsg_iocom_t *iocom)
  ************************************************************************/
 
 int
-dmsg_circuit_relay(dmsg_msg_t *msg)
+dmsg_circuit_route(dmsg_msg_t *msg)
 {
 	dmsg_iocom_t *iocom = msg->iocom;
 	dmsg_circuit_t *circ;

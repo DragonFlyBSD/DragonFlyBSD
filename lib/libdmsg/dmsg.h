@@ -414,7 +414,7 @@ void dmsg_circuit_hold(dmsg_circuit_t *circuit);
 void dmsg_circuit_drop(dmsg_circuit_t *circuit);
 void dmsg_circuit_drop_locked(dmsg_circuit_t *circuit);
 
-int dmsg_circuit_relay(dmsg_msg_t *msg);
+int dmsg_circuit_route(dmsg_msg_t *msg);
 
 /*
  * Msg protocol functions
