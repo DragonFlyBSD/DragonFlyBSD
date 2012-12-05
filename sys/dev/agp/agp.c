@@ -237,8 +237,8 @@ agp_generic_attach(device_t dev)
 	TAILQ_INIT(&sc->as_memory);
 	sc->as_nextid = 1;
 
-	make_dev(&agp_ops, device_get_unit(dev), UID_ROOT, GID_WHEEL,
-		 0600, "agpgart");
+	sc->as_devnode = make_dev(&agp_ops,
+	    0, UID_ROOT, GID_WHEEL, 0600, "agpgart");
 	sc->as_devnode->si_drv1 = dev;
 
 	return 0;
