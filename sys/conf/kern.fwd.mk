@@ -54,7 +54,7 @@ ${_FWDHDRS}:
 	echo "#endif" ; \
 	echo) > ${.TARGET}
 .else
-	# LEGACY MAKE - REMOVE FOR DFLY 3.6
+# LEGACY MAKE - REMOVE FOR DFLY 3.6
 	@(echo "creating machine/ forwarding header ${.TARGET}" 1>&2; \
 	echo "/*" ; \
 	echo " * CONFIG-GENERATED FILE, DO NOT EDIT" ; \
@@ -80,7 +80,7 @@ ${_LHDRS}:
 	echo "#endif" ; \
 	echo) > ${.TARGET}
 .else
-	# LEGACY MAKE - REMOVE FOR DFLY 3.6
+# LEGACY MAKE - REMOVE FOR DFLY 3.6
 	@(echo "creating sys/ forwarding header ${.TARGET}" 1>&2; \
 	echo "/*" ; \
 	echo " * CONFIG-GENERATED FILE, DO NOT EDIT" ; \
