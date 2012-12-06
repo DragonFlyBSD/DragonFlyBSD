@@ -418,6 +418,9 @@ NETGRAPH_TTY		opt_netgraph.h
 NETGRAPH_UI		opt_netgraph.h
 NETGRAPH_VJC		opt_netgraph.h
 
+# AGP options
+AGP_DEBUG		opt_agp.h
+
 # DRM options
 DRM_DEBUG		opt_drm.h
 DRM_LINUX		opt_drm.h

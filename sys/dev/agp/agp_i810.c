@@ -860,7 +860,7 @@ agp_i810_bind_page(device_t dev, vm_offset_t offset, vm_offset_t physical)
 	struct agp_i810_softc *sc = device_get_softc(dev);
 
 	if (offset >= (sc->gatt->ag_entries << AGP_PAGE_SHIFT)) {
-		device_printf(dev, "failed: offset is 0x%08jx, shift is %d, entries is %d\n", (intmax_t)offset, AGP_PAGE_SHIFT, sc->gatt->ag_entries);
+		device_printf(dev, "failed: offset is 0x%08jx, shift is %d, entries is %d\n", (uintmax_t)offset, AGP_PAGE_SHIFT, sc->gatt->ag_entries);
 		return EINVAL;
 	}
 
