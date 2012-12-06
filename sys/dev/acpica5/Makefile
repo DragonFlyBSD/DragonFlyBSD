@@ -75,8 +75,6 @@ SRCS+=  OsdHardware.c OsdInterrupt.c OsdMemory.c OsdSchedule.c
 SRCS+=  OsdStream.c OsdSynch.c OsdTable.c OsdEnvironment.c
 SRCS+=  opt_acpi.h opt_ddb.h
 SRCS+=  device_if.h bus_if.h pci_if.h pcib_if.h isa_if.h acpi_if.h acpi_wmi_if.h
-MFILES = kern/device_if.m kern/bus_if.m bus/pci/pci_if.m bus/pci/pcib_if.m
-MFILES+= bus/isa/isa_if.m dev/acpica5/acpi_if.m dev/acpica5/acpi_wmi_if.m
 
 .if ACPI_NO_SEMAPHORES
 CFLAGS+=-DACPI_NO_SEMAPHORES

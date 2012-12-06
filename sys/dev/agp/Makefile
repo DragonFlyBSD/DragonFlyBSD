@@ -7,6 +7,4 @@ SRCS	+= agp_intel.c agp_sis.c agp_via.c
 SRCS	+= agp_if.c device_if.h bus_if.h agp_if.h pci_if.h
 SRCS	+= opt_agp.h
 
-MFILES	= kern/device_if.m kern/bus_if.m dev/agp/agp_if.m bus/pci/pci_if.m
-
 .include <bsd.kmod.mk>
