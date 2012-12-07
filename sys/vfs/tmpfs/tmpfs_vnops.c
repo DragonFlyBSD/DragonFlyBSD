@@ -595,19 +595,19 @@ tmpfs_write (struct vop_write_args *ap)
 		kflags |= NOTE_WRITE;
 
 		/*
-		 * Always try to flush the page if the request is coming
-		 * from the pageout daemon (IO_ASYNC), else buwrite() the
-		 * buffer.
+		 * Always try to flush the page in the UIO_NOCOPY case.  This
+		 * can come from the pageout daemon or during vnode eviction.
+		 * It is not necessarily going to be marked IO_ASYNC/IO_SYNC.
 		 *
-		 * buwrite() dirties the underlying VM pages instead of
-		 * dirtying the buffer, releasing the buffer as a clean
-		 * buffer.  This allows tmpfs to use essentially all
-		 * available memory to cache file data.  If we used bdwrite()
-		 * the buffer cache would wind up flushing the data to
-		 * swap too quickly.
+		 * For the normal case we buwrite(), dirtying the underlying
+		 * VM pages instead of dirtying the buffer and releasing the
+		 * buffer as a clean buffer.  This allows tmpfs to use
+		 * essentially all available memory to cache file data.
+		 * If we used bdwrite() the buffer cache would wind up
+		 * flushing the data to swap too quickly.
 		 */
 		bp->b_flags |= B_AGE;
-		if (ap->a_ioflag & IO_ASYNC) {
+		if (uio->uio_segflg == UIO_NOCOPY) {
 			bawrite(bp);
 		} else {
 			buwrite(bp);
@@ -1440,6 +1440,8 @@ tmpfs_inactive(struct vop_inactive_args *v)
 }
 
 /* --------------------------------------------------------------------- */
+#include <vm/vm_object.h>
+#include <vm/vm_page.h>
 
 int
 tmpfs_reclaim(struct vop_reclaim_args *v)

@@ -912,10 +912,18 @@ vm_object_terminate(vm_object_t object)
 
 		/*
 		 * Clean pages and flush buffers.
+		 *
+		 * NOTE!  TMPFS buffer flushes do not typically flush the
+		 *	  actual page to swap as this would be highly
+		 *	  inefficient, and normal filesystems usually wrap
+		 *	  page flushes with buffer cache buffers.
+		 *
+		 *	  To deal with this we have to call vinvalbuf() both
+		 *	  before and after the vm_object_page_clean().
 		 */
-		vm_object_page_clean(object, 0, 0, OBJPC_SYNC);
-
 		vp = (struct vnode *) object->handle;
+		vinvalbuf(vp, V_SAVE, 0, 0);
+		vm_object_page_clean(object, 0, 0, OBJPC_SYNC);
 		vinvalbuf(vp, V_SAVE, 0, 0);
 	}
 
@@ -1005,7 +1013,7 @@ vm_object_terminate_callback(vm_page_t p, void *data __unused)
 		vm_page_wakeup(p);
 	} else if (p->wire_count == 0) {
 		/*
-		 * NOTE: PG_NEED_COMMIT is ignored.
+		 * NOTE: p->dirty and PG_NEED_COMMIT are ignored.
 		 */
 		vm_page_free(p);
 		mycpu->gd_cnt.v_pfree++;
@@ -1199,7 +1207,8 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	 * cases where the page cannot be dirty.
 	 */
 	if (p->valid == 0 || (p->queue - p->pc) == PQ_CACHE) {
-		KKASSERT((p->dirty & p->valid) == 0);
+		KKASSERT((p->dirty & p->valid) == 0 &&
+			 (p->flags & PG_NEED_COMMIT) == 0);
 		vm_page_wakeup(p);
 		goto done;
 	}
@@ -1210,7 +1219,7 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	 * page.
 	 */
 	vm_page_test_dirty(p);
-	if ((p->dirty & p->valid) == 0) {
+	if ((p->dirty & p->valid) == 0 && (p->flags & PG_NEED_COMMIT) == 0) {
 		vm_page_flag_clear(p, PG_CLEANCHK);
 		vm_page_wakeup(p);
 		goto done;
@@ -1285,7 +1294,8 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 			break;
 		}
 		vm_page_test_dirty(tp);
-		if ((tp->dirty & tp->valid) == 0) {
+		if ((tp->dirty & tp->valid) == 0 &&
+		    (tp->flags & PG_NEED_COMMIT) == 0) {
 			vm_page_flag_clear(tp, PG_CLEANCHK);
 			vm_page_wakeup(tp);
 			break;
@@ -1318,7 +1328,8 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 			break;
 		}
 		vm_page_test_dirty(tp);
-		if ((tp->dirty & tp->valid) == 0) {
+		if ((tp->dirty & tp->valid) == 0 &&
+		    (tp->flags & PG_NEED_COMMIT) == 0) {
 			vm_page_flag_clear(tp, PG_CLEANCHK);
 			vm_page_wakeup(tp);
 			break;
@@ -1344,33 +1355,13 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 	}
 	runlen = maxb + maxf + 1;
 
-	for (i = 0; i < runlen; i++)
+	for (i = 0; i < runlen; i++)	/* XXX need this any more? */
 		vm_page_hold(ma[i]);
 
 	vm_pageout_flush(ma, runlen, pagerflags);
 
-	/*
-	 * WARNING: Related pages are still held but the BUSY was inherited
-	 *	    by the pageout I/O, so the pages might not be busy any
-	 *	    more.  We cannot re-protect the page without waiting
-	 *	    for the I/O to complete and then busying it again.
-	 */
-	for (i = 0; i < runlen; i++) {
-		if (ma[i]->valid & ma[i]->dirty) {
-			/*vm_page_protect(ma[i], VM_PROT_READ);*/
-			vm_page_flag_set(ma[i], PG_CLEANCHK);
-
-			/*
-			 * maxf will end up being the actual number of pages
-			 * we wrote out contiguously, non-inclusive of the
-			 * first page.  We do not count look-behind pages.
-			 */
-			if (i >= maxb + 1 && (maxf > i - maxb - 1))
-				maxf = i - maxb - 1;
-		}
+	for (i = 0; i < runlen; i++)	/* XXX need this any more? */
 		vm_page_unhold(ma[i]);
-	}
-	/*return(maxf + 1);*/
 }
 
 /*
@@ -2396,13 +2387,13 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 	}
 
 	/*
-	 * limit is our clean_only flag.  If set and the page is dirty, do
-	 * not free it.  If set and the page is being held by someone, do
-	 * not free it.
+	 * limit is our clean_only flag.  If set and the page is dirty or
+	 * requires a commit, do not free it.  If set and the page is being
+	 * held by someone, do not free it.
 	 */
 	if (info->limit && p->valid) {
 		vm_page_test_dirty(p);
-		if (p->valid & p->dirty) {
+		if ((p->valid & p->dirty) || (p->flags & PG_NEED_COMMIT)) {
 			vm_page_wakeup(p);
 			return(0);
 		}

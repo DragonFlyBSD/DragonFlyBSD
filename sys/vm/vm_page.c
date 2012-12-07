@@ -944,7 +944,8 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	 * Since we are inserting a new and possibly dirty page,
 	 * update the object's OBJ_WRITEABLE and OBJ_MIGHTBEDIRTY flags.
 	 */
-	if ((m->valid & m->dirty) || (m->flags & PG_WRITEABLE))
+	if ((m->valid & m->dirty) ||
+	    (m->flags & (PG_WRITEABLE | PG_NEED_COMMIT)))
 		vm_object_set_writeable_dirty(object);
 
 	/*
@@ -2299,7 +2300,7 @@ vm_page_try_to_cache(vm_page_t m)
 	 * be moved to the cache.
 	 */
 	vm_page_test_dirty(m);
-	if (m->dirty) {
+	if (m->dirty || (m->flags & PG_NEED_COMMIT)) {
 		vm_page_wakeup(m);
 		return(0);
 	}
@@ -2351,12 +2352,12 @@ vm_page_try_to_free(vm_page_t m)
 	 * dirty bit after cleaning out the pmaps.
 	 */
 	vm_page_test_dirty(m);
-	if (m->dirty) {
+	if (m->dirty || (m->flags & PG_NEED_COMMIT)) {
 		vm_page_wakeup(m);
 		return(0);
 	}
 	vm_page_protect(m, VM_PROT_NONE);
-	if (m->dirty) {
+	if (m->dirty || (m->flags & PG_NEED_COMMIT)) {
 		vm_page_wakeup(m);
 		return(0);
 	}
@@ -2538,6 +2539,7 @@ void
 vm_page_need_commit(vm_page_t m)
 {
 	vm_page_flag_set(m, PG_NEED_COMMIT);
+	vm_object_set_writeable_dirty(m->object);
 }
 
 void
