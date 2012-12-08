@@ -227,14 +227,6 @@ int	lockcountnb (struct lock *);
 	SYSUNINIT(name##_lock_sysuninit, SI_SUB_DRIVERS, SI_ORDER_MIDDLE,	\
 	    lockuninit, (lock))
 
-/*
- * Helpful macros for quickly coming up with assertions with informative
- * panic messages.
- */
-#define MPASS(ex)               MPASS4(ex, #ex, __FILE__, __LINE__)
-#define MPASS4(ex, what, file, line)                                    \
-        KASSERT((ex), ("Assertion %s failed at %s:%d", what, file, line))
-
 #endif /* _KERNEL */
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 #endif /* _SYS_LOCK_H_ */

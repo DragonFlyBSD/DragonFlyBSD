@@ -746,8 +746,8 @@ acpi_pci_link_srs_from_crs(struct acpi_pci_link_softc *sc, ACPI_BUFFER *srsbuf)
 			resptr = NULL;
 			break;
 		case ACPI_RESOURCE_TYPE_IRQ:
-			MPASS(i < sc->pl_num_links);
-			MPASS(link->l_prs_template.Type == ACPI_RESOURCE_TYPE_IRQ);
+			KKASSERT(i < sc->pl_num_links);
+			KKASSERT(link->l_prs_template.Type == ACPI_RESOURCE_TYPE_IRQ);
 			newres = link->l_prs_template;
 			resptr = &newres;
 			resptr->Data.Irq.InterruptCount = 1;
@@ -762,8 +762,8 @@ acpi_pci_link_srs_from_crs(struct acpi_pci_link_softc *sc, ACPI_BUFFER *srsbuf)
 			i++;
 			break;
 		case ACPI_RESOURCE_TYPE_EXTENDED_IRQ:
-			MPASS(i < sc->pl_num_links);
-			MPASS(link->l_prs_template.Type == ACPI_RESOURCE_TYPE_EXTENDED_IRQ);
+			KKASSERT(i < sc->pl_num_links);
+			KKASSERT(link->l_prs_template.Type == ACPI_RESOURCE_TYPE_EXTENDED_IRQ);
 			newres = link->l_prs_template;
 			resptr = &newres;
 			resptr->Data.ExtendedIrq.InterruptCount = 1;
@@ -893,7 +893,7 @@ acpi_pci_link_route_irqs(device_t dev)
 		switch (resource->Type) {
 		case ACPI_RESOURCE_TYPE_IRQ:
 		case ACPI_RESOURCE_TYPE_EXTENDED_IRQ:
-			MPASS(i < sc->pl_num_links);
+			KKASSERT(i < sc->pl_num_links);
 
 			/*
 			 * Only configure the interrupt and update the
