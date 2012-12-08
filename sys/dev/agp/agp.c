@@ -221,7 +221,8 @@ agp_generic_attach(device_t dev)
 		if (memsize <= agp_max[i][0])
 			break;
 	}
-	if (i == agp_max_size) i = agp_max_size - 1;
+	if (i == agp_max_size)
+		i = agp_max_size - 1;
 	sc->as_maxmem = agp_max[i][1] << 20U;
 
 	/*
@@ -765,6 +766,13 @@ agp_unbind_user(device_t dev, agp_unbind *unbind)
 }
 
 static int
+agp_chipset_flush(device_t dev)
+{
+
+	return (AGP_CHIPSET_FLUSH(dev));
+}
+
+static int
 agp_open(struct dev_open_args *ap)
 {
 	cdev_t kdev = ap->a_head.a_dev;
@@ -836,6 +844,8 @@ agp_ioctl(struct dev_ioctl_args *ap)
 	case AGPIOC_UNBIND:
 		return agp_unbind_user(dev, (agp_unbind *)ap->a_data);
 
+	case AGPIOC_CHIPSET_FLUSH:
+		return agp_chipset_flush(dev);
 	}
 
 	return EINVAL;
