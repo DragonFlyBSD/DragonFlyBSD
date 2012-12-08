@@ -570,6 +570,7 @@ int	pholdzomb (struct proc *);
 void	prelezomb (struct proc *);
 void	pstall (struct proc *, const char *, int);
 void	lwpuserret(struct lwp *);
+void	lwpkthreaddeferred(void);
 
 u_int32_t	procrunnable (void);
 

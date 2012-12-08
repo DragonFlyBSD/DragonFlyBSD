@@ -661,6 +661,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			    error = (*(nfsrv3_procs[nd->nd_procnum]))(nd,
 						slp, nfsd->nfsd_td, &mreq);
 			    /* NOT YET lwkt_gettoken(&slp->ns_token); */
+			    lwpkthreaddeferred();	/* vnlru issues */
 			}
 			if (mreq == NULL)
 				break;

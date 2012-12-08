@@ -873,6 +873,25 @@ lwpuserret(struct lwp *lp)
 }
 
 /*
+ * Kernel threads run from user processes can also accumulate deferred
+ * actions which need to be acted upon.  Callers include:
+ *
+ * nfsd		- Can allocate lots of vnodes
+ */
+void
+lwpkthreaddeferred(void)
+{
+	struct lwp *lp = curthread->td_lwp;
+
+	if (lp) {
+		if (lp->lwp_mpflags & LWP_MP_VNLRU) {
+			atomic_clear_int(&lp->lwp_mpflags, LWP_MP_VNLRU);
+			allocvnode_gc();
+		}
+	}
+}
+
+/*
  * Scan all processes on the allproc list.  The process is automatically
  * held for the callback.  A return value of -1 terminates the loop.
  *
