@@ -111,8 +111,7 @@ agp_find_display(void)
 		device_get_children(bus, &kids, &numkids);
 		for (i = 0; i < numkids; i++) {
 			dev = kids[i];
-			if (pci_get_class(dev) == PCIC_DISPLAY
-			    && pci_get_subclass(dev) == PCIS_DISPLAY_VGA)
+			if (pci_get_class(dev) == PCIC_DISPLAY)
 				if (agp_find_caps(dev)) {
 					kfree(kids, M_TEMP);
 					return dev;
