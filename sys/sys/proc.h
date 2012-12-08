@@ -398,10 +398,13 @@ struct	proc {
  *	      thread has actually exited.
  */
 #define	LWP_MP_ONRUNQ	0x0000001 /* on a user scheduling run queue */
-#define LWP_MP_WEXIT	0x0000002 /* working on exiting */
+#define LWP_MP_WEXIT	0x0000002 /* working on exiting (lwpuserret()) */
 #define	LWP_MP_WSTOP	0x0000004 /* working on stopping */
 #define	LWP_MP_ULOAD	0x0000008 /* uload accounting for current cpu */
 #define	LWP_MP_RRFORCE	0x0000010 /* forced resched due to rrcount */
+#define LWP_MP_VNLRU	0x0000020 /* check excessive vnode allocations (lwpuserret()) */
+
+#define LWP_MP_URETMASK	(LWP_MP_WEXIT | LWP_MP_VNLRU)
 
 #define	FIRST_LWP_IN_PROC(p)		RB_FIRST(lwp_rb_tree, &(p)->p_lwp_tree)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\
@@ -566,6 +569,7 @@ void	prele (struct proc *);
 int	pholdzomb (struct proc *);
 void	prelezomb (struct proc *);
 void	pstall (struct proc *, const char *, int);
+void	lwpuserret(struct lwp *);
 
 u_int32_t	procrunnable (void);
 

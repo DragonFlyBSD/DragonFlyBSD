@@ -242,13 +242,11 @@ userret(struct lwp *lp, struct trapframe *frame, int sticks)
 
 recheck:
 	/*
-	 * If the jungle wants us dead, so be it.
+	 * Specific on-return-to-usermode checks (LWP_MP_WEXIT,
+	 * LWP_MP_VNLRU, etc).
 	 */
-	if (lp->lwp_mpflags & LWP_MP_WEXIT) {
-		lwkt_gettoken(&p->p_token);
-		lwp_exit(0);
-		lwkt_reltoken(&p->p_token);	/* NOT REACHED */
-	}
+	if (lp->lwp_mpflags & LWP_MP_URETMASK)
+		lwpuserret(lp);
 
 	/*
 	 * Block here if we are in a stopped state.
