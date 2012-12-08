@@ -95,6 +95,9 @@ SYSCTL_INT(_debug, OID_AUTO, freevnodes, CTLFLAG_RD,
 static int wantfreevnodes = 25;
 SYSCTL_INT(_debug, OID_AUTO, wantfreevnodes, CTLFLAG_RW,
 	&wantfreevnodes, 0, "Desired number of free vnodes");
+static int batchfreevnodes = 5;
+SYSCTL_INT(_debug, OID_AUTO, batchfreevnodes, CTLFLAG_RW,
+	&batchfreevnodes, 0, "Number of vnodes to free at once");
 #ifdef TRACKVNODE
 static ulong trackvnode;
 SYSCTL_ULONG(_debug, OID_AUTO, trackvnode, CTLFLAG_RW,
@@ -244,6 +247,11 @@ __vfreetail(struct vnode *vp)
  * This routine is only valid if the vnode is already either VFREE or
  * VCACHED, or if it can become VFREE or VCACHED via vnode_terminate().
  *
+ * WARNING!  We used to indicate FALSE if the vnode had an object with
+ *	     resident pages but we no longer do that because it makes
+ *	     managing kern.maxvnodes difficult.  Instead we rely on vfree()
+ *	     to place the vnode properly on the list.
+ *
  * WARNING!  This functions is typically called with v_spin held.
  *
  * MPSAFE
@@ -251,8 +259,10 @@ __vfreetail(struct vnode *vp)
 static __inline boolean_t
 vshouldfree(struct vnode *vp)
 {
-	return (vp->v_auxrefs == 0 &&
-	    (vp->v_object == NULL || vp->v_object->resident_page_count == 0));
+	return (vp->v_auxrefs == 0);
+#if 0
+	 && (vp->v_object == NULL || vp->v_object->resident_page_count == 0));
+#endif
 }
 
 /*
@@ -646,7 +656,7 @@ vx_put(struct vnode *vp)
  */
 static
 void
-vnode_rover_locked(void)
+vnode_free_rover_scan_locked(void)
 {
 	struct vnode *vp;
 
@@ -679,7 +689,6 @@ vnode_rover_locked(void)
 	if (vp->v_object && vp->v_object->resident_page_count) {
 		/*
 		 * Promote vnode with resident pages to section 3.
-		 * (This case shouldn't happen).
 		 */
 		if (rover_state == ROVER_MID1) {
 			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
@@ -702,24 +711,37 @@ vnode_rover_locked(void)
 	}
 }
 
+void
+vnode_free_rover_scan(int count)
+{
+	spin_lock(&vfs_spin);
+	while (count > 0) {
+		--count;
+		vnode_free_rover_scan_locked();
+	}
+	spin_unlock(&vfs_spin);
+}
+
 /*
- * Try to reuse a vnode from the free list.
+ * Try to reuse a vnode from the free list.  This function is somewhat
+ * advisory in that NULL can be returned as a normal case, even if free
+ * vnodes are present.
+ *
+ * The scan is limited because it can result in excessive CPU use during
+ * periods of extreme vnode use.
  *
  * NOTE: The returned vnode is not completely initialized.
- *
- * WARNING: The freevnodes count can race, NULL can be returned even if
- *	    freevnodes != 0.
  *
  * MPSAFE
  */
 static
 struct vnode *
-allocfreevnode(void)
+allocfreevnode(int maxcount)
 {
 	struct vnode *vp;
 	int count;
 
-	for (count = 0; count < freevnodes; count++) {
+	for (count = 0; count < maxcount; count++) {
 		/*
 		 * Try to lock the first vnode on the free list.
 		 * Cycle if we can't.
@@ -730,15 +752,17 @@ allocfreevnode(void)
 		 * vhold here.
 		 */
 		spin_lock(&vfs_spin);
-		vnode_rover_locked();
-		vnode_rover_locked();
+		vnode_free_rover_scan_locked();
+		vnode_free_rover_scan_locked();
 		vp = TAILQ_FIRST(&vnode_free_list);
 		while (vp == &vnode_free_mid1 || vp == &vnode_free_mid2 ||
 		       vp == &vnode_free_rover) {
 			vp = TAILQ_NEXT(vp, v_freelist);
 		}
-		if (vp == NULL)
+		if (vp == NULL) {
+			spin_unlock(&vfs_spin);
 			break;
+		}
 		if (vx_lock_nonblock(vp)) {
 			KKASSERT(vp->v_flag & VFREE);
 			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
@@ -764,7 +788,8 @@ allocfreevnode(void)
 		/*
 		 * Do not reclaim/reuse a vnode while auxillary refs exists.
 		 * This includes namecache refs due to a related ncp being
-		 * locked or having children.
+		 * locked or having children, a VM object association, or
+		 * other hold users.
 		 *
 		 * We will make this test several times as auxrefs can
 		 * get incremented on us without any spinlocks being held
@@ -846,14 +871,14 @@ allocfreevnode(void)
 }
 
 /*
- * Obtain a new vnode from the freelist, allocating more if necessary.
- * The returned vnode is VX locked & vrefd.
+ * Obtain a new vnode.  The returned vnode is VX locked & vrefd.
  *
  * All new vnodes set the VAGE flags.  An open() of the vnode will
  * decrement the (2-bit) flags.  Vnodes which are opened several times
  * are thus retained in the cache over vnodes which are merely stat()d.
  *
- * MPSAFE
+ * We always allocate the vnode.  Attempting to recycle existing vnodes
+ * here can lead to numerous deadlocks, particularly with softupdates.
  */
 struct vnode *
 allocvnode(int lktimeout, int lkflags)
@@ -861,34 +886,18 @@ allocvnode(int lktimeout, int lkflags)
 	struct vnode *vp;
 
 	/*
-	 * Try to reuse vnodes if we hit the max.  This situation only
-	 * occurs in certain large-memory (2G+) situations.  We cannot
-	 * attempt to directly reclaim vnodes due to nasty recursion
-	 * problems.
+	 * Do not flag for recyclement unless there are enough free vnodes
+	 * to recycle and the number of vnodes has exceeded our target.
 	 */
-	while (numvnodes - freevnodes > desiredvnodes)
-		vnlru_proc_wait();
-
-	/*
-	 * Try to build up as many vnodes as we can before reallocating
-	 * from the free list.  A vnode on the free list simply means
-	 * that it is inactive with no resident pages.  It may or may not
-	 * have been reclaimed and could have valuable information associated 
-	 * with it that we shouldn't throw away unless we really need to.
-	 *
-	 * HAMMER NOTE: Re-establishing a vnode is a fairly expensive
-	 * operation for HAMMER but this should benefit UFS as well.
-	 */
-	if (freevnodes >= wantfreevnodes && numvnodes >= desiredvnodes)
-		vp = allocfreevnode();
-	else
-		vp = NULL;
-	if (vp == NULL) {
-		vp = sysref_alloc(&vnode_sysref_class);
-		KKASSERT((vp->v_flag & (VCACHED|VFREE)) == 0);
-		lockmgr(&vp->v_lock, LK_EXCLUSIVE);
-		numvnodes++;
+	if (freevnodes >= wantfreevnodes && numvnodes >= desiredvnodes) {
+		struct thread *td = curthread;
+		if (td->td_lwp)
+			atomic_set_int(&td->td_lwp->lwp_mpflags, LWP_MP_VNLRU);
 	}
+	vp = sysref_alloc(&vnode_sysref_class);
+	KKASSERT((vp->v_flag & (VCACHED|VFREE)) == 0);
+	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
+	atomic_add_int(&numvnodes, 1);
 
 	/*
 	 * We are using a managed sysref class, vnode fields are only
@@ -951,6 +960,32 @@ allocvnode(int lktimeout, int lkflags)
 }
 
 /*
+ * Called after a process has allocated a vnode via allocvnode()
+ * and we detected that too many vnodes were present.
+ *
+ * Try to reuse vnodes if we hit the max.  This situation only
+ * occurs in certain large-memory (2G+) situations on 32 bit systems,
+ * or if kern.maxvnodes is set to very low values.
+ *
+ * This function is called just prior to a return to userland if the
+ * process at some point had to allocate a new vnode during the last
+ * system call and the vnode count was found to be excessive.
+ *
+ * WARNING: Sometimes numvnodes can blow out due to children being
+ *	    present under directory vnodes in the namecache.  For the
+ *	    moment use an if() instead of a while() and note that if
+ *	    we were to use a while() we would still have to break out
+ *	    if freesomevnodes() returned 0.
+ */
+void
+allocvnode_gc(void)
+{
+	if (numvnodes > desiredvnodes && freevnodes > wantfreevnodes) {
+		freesomevnodes(batchfreevnodes);
+	}
+}
+
+/*
  * MPSAFE
  */
 int
@@ -960,11 +995,12 @@ freesomevnodes(int n)
 	int count = 0;
 
 	while (n) {
-		--n;
-		if ((vp = allocfreevnode()) == NULL)
+		if ((vp = allocfreevnode(n * 2)) == NULL)
 			break;
+		--n;
+		++count;
 		vx_put(vp);
-		--numvnodes;
+		atomic_add_int(&numvnodes, -1);
 	}
 	return(count);
 }

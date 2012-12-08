@@ -401,6 +401,8 @@ int	v_associate_rdev(struct vnode *vp, cdev_t dev);
 void	v_release_rdev(struct vnode *vp);
 int 	bdevvp (cdev_t dev, struct vnode **vpp);
 struct vnode *allocvnode(int lktimeout, int lkflags);
+void	allocvnode_gc(void);
+void	vnode_free_rover_scan(int count);
 int	freesomevnodes(int count);
 int	getnewvnode (enum vtagtype tag, struct mount *mp, 
 		    struct vnode **vpp, int timo, int lkflags);
@@ -549,8 +551,6 @@ void	vn_syncer_remove(struct vnode *);
 void	vn_syncer_thr_create(struct mount *);
 void	*vn_syncer_thr_getctx(struct mount *);
 void	vn_syncer_thr_stop(void *);
-
-void	vnlru_proc_wait(void);
 
 extern	struct vop_ops default_vnode_vops;
 extern	struct vop_ops dead_vnode_vops;

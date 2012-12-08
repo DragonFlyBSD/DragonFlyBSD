@@ -919,7 +919,7 @@ bgetvp(struct vnode *vp, struct buf *bp, int testsize)
 	bp->b_flags |= B_VNCLEAN;
 	if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp))
 		panic("reassignbuf: dup lblk/clean vp %p bp %p", vp, bp);
-	vhold(vp);
+	/*vhold(vp);*/
 	lwkt_reltoken(&vp->v_token);
 	return(0);
 }
@@ -958,7 +958,7 @@ brelvp(struct buf *bp)
 
 	lwkt_reltoken(&vp->v_token);
 
-	vdrop(vp);
+	/*vdrop(vp);*/
 }
 
 /*
