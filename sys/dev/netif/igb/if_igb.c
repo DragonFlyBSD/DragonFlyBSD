@@ -2549,7 +2549,7 @@ discard:
 		if (++i == rxr->num_rx_desc)
 			i = 0;
 
-		if (ncoll > rxr->rx_wreg) {
+		if (ncoll >= rxr->rx_wreg) {
 			igb_rx_refresh(rxr, i);
 			ncoll = 0;
 		}
