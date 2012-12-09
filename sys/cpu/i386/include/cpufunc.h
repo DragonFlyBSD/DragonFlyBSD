@@ -46,6 +46,8 @@
 #ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
 #endif
+#include <sys/thread.h>
+#include <machine/smp.h>
 
 __BEGIN_DECLS
 #define readb(va)	(*(volatile u_int8_t *) (va))
@@ -584,6 +586,16 @@ wbinvd(void)
 {
 	__asm __volatile("wbinvd");
 }
+
+#if defined(_KERNEL)
+void cpu_wbinvd_on_all_cpus_callback(void *arg);
+
+static __inline void
+cpu_wbinvd_on_all_cpus(void)
+{
+	lwkt_cpusync_simple(smp_active_mask, cpu_wbinvd_on_all_cpus_callback, NULL);
+}
+#endif
 
 static __inline void
 write_eflags(u_int ef)

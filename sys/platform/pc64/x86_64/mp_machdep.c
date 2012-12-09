@@ -865,6 +865,12 @@ smp_invltlb_intr(void)
 	}
 }
 
+void
+cpu_wbinvd_on_all_cpus_callback(void *arg)
+{
+    wbinvd();
+}
+
 /*
  * When called the executing CPU will send an IPI to all other CPUs
  *  requesting that they halt execution.
