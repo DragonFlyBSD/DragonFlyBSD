@@ -173,6 +173,7 @@ static void	igb_init_tx_ring(struct igb_tx_ring *);
 static int	igb_init_rx_ring(struct igb_rx_ring *);
 static int	igb_newbuf(struct igb_rx_ring *, int, boolean_t);
 static int	igb_encap(struct igb_tx_ring *, struct mbuf **, int *, int *);
+static void	igb_rx_refresh(struct igb_rx_ring *, int);
 
 static void	igb_stop(struct igb_softc *);
 static void	igb_init(void *);
@@ -1542,13 +1543,20 @@ igb_add_sysctl(struct igb_softc *sc)
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug, 0,
 	    "RSS debug level");
+#endif
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+#ifdef IGB_RSS_DEBUG
 		ksnprintf(node, sizeof(node), "rx%d_pkt", i);
 		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
 		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_packets, "RXed packets");
-	}
 #endif
+		ksnprintf(node, sizeof(node), "rx%d_wreg", i);
+		SYSCTL_ADD_INT(&sc->sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
+		    CTLFLAG_RW, &sc->rx_rings[i].rx_wreg, 0,
+		    "# of segments before write to hardare register");
+	}
 }
 
 static int
@@ -2084,6 +2092,12 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 			return error;
 		}
 	}
+
+	/*
+	 * Initialize various watermark
+	 */
+	rxr->rx_wreg = 32;
+
 	return 0;
 }
 
@@ -2414,12 +2428,20 @@ igb_init_rx_unit(struct igb_softc *sc)
 }
 
 static void
+igb_rx_refresh(struct igb_rx_ring *rxr, int i)
+{
+	if (--i < 0)
+		i = rxr->num_rx_desc - 1;
+	E1000_WRITE_REG(&rxr->sc->hw, E1000_RDT(rxr->me), i);
+}
+
+static void
 igb_rxeof(struct igb_rx_ring *rxr, int count)
 {
 	struct ifnet *ifp = &rxr->sc->arpcom.ac_if;
 	union e1000_adv_rx_desc	*cur;
 	uint32_t staterr;
-	int i;
+	int i, ncoll = 0;
 
 	i = rxr->next_to_check;
 	cur = &rxr->rx_base[i];
@@ -2438,6 +2460,7 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 		if (eop)
 			--count;
 
+		++ncoll;
 		if ((staterr & E1000_RXDEXT_ERR_FRAME_ERR_MASK) == 0 &&
 		    !rxr->discard) {
 			struct mbuf *mp = rxbuf->m_head;
@@ -2526,14 +2549,18 @@ discard:
 		if (++i == rxr->num_rx_desc)
 			i = 0;
 
+		if (ncoll > rxr->rx_wreg) {
+			igb_rx_refresh(rxr, i);
+			ncoll = 0;
+		}
+
 		cur = &rxr->rx_base[i];
 		staterr = le32toh(cur->wb.upper.status_error);
 	}
 	rxr->next_to_check = i;
 
-	if (--i < 0)
-		i = rxr->num_rx_desc - 1;
-	E1000_WRITE_REG(&rxr->sc->hw, E1000_RDT(rxr->me), i);
+	if (ncoll > 0)
+		igb_rx_refresh(rxr, i);
 }
 
 

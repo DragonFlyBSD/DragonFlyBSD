@@ -265,6 +265,7 @@ struct igb_rx_ring {
 	 */
 	struct mbuf		*fmp;
 	struct mbuf		*lmp;
+	int			rx_wreg;
 
 	/* Soft stats */
 	u_long			rx_packets;
