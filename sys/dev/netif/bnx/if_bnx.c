@@ -2691,11 +2691,9 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
 	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 
-	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
 	if (sc->bnx_rx_saved_considx != rx_prod)
 		bnx_rxeof(sc, rx_prod);
 
-	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 	if (sc->bnx_tx_saved_considx != tx_cons)
 		bnx_txeof(sc, tx_cons);
 
