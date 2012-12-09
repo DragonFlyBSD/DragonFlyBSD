@@ -150,7 +150,7 @@ static void	bnx_intr(struct bnx_softc *);
 static void	bnx_enable_intr(struct bnx_softc *);
 static void	bnx_disable_intr(struct bnx_softc *);
 static void	bnx_txeof(struct bnx_softc *, uint16_t);
-static void	bnx_rxeof(struct bnx_softc *, uint16_t);
+static void	bnx_rxeof(struct bnx_softc *, uint16_t, int);
 
 static void	bnx_start(struct ifnet *);
 static int	bnx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -2486,19 +2486,21 @@ bnx_reset(struct bnx_softc *sc)
  */
 
 static void
-bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod)
+bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 {
 	struct ifnet *ifp;
 	int stdcnt = 0, jumbocnt = 0;
 
 	ifp = &sc->arpcom.ac_if;
 
-	while (sc->bnx_rx_saved_considx != rx_prod) {
+	while (sc->bnx_rx_saved_considx != rx_prod && count != 0) {
 		struct bge_rx_bd	*cur_rx;
 		uint32_t		rxidx;
 		struct mbuf		*m = NULL;
 		uint16_t		vlan_tag = 0;
 		int			have_tag = 0;
+
+		--count;
 
 		cur_rx =
 	    &sc->bnx_ldata.bnx_rx_return_ring[sc->bnx_rx_saved_considx];
@@ -2664,7 +2666,7 @@ bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 }
 
 static void
-bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle __unused)
+bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
 {
 	struct bnx_softc *sc = ifp->if_softc;
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
@@ -2692,7 +2694,7 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 
 	if (sc->bnx_rx_saved_considx != rx_prod)
-		bnx_rxeof(sc, rx_prod);
+		bnx_rxeof(sc, rx_prod, cycle);
 
 	if (sc->bnx_tx_saved_considx != tx_cons)
 		bnx_txeof(sc, tx_cons);
@@ -2768,7 +2770,7 @@ bnx_intr(struct bnx_softc *sc)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (sc->bnx_rx_saved_considx != rx_prod)
-			bnx_rxeof(sc, rx_prod);
+			bnx_rxeof(sc, rx_prod, -1);
 
 		if (sc->bnx_tx_saved_considx != tx_cons)
 			bnx_txeof(sc, tx_cons);
