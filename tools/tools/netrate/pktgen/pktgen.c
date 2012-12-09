@@ -430,6 +430,7 @@ pktgen_start(struct pktgen *pktg)
 		ui->ui_ulen = ulen;
 		ui->ui_sum = in_pseudo(ui->ui_src.s_addr, ui->ui_dst.s_addr,
 		    psum);
+		m->m_pkthdr.csum_data = offsetof(struct udphdr, uh_sum);
 
 		ip = (struct ip *)ui;
 		ip->ip_len = ip_len;
