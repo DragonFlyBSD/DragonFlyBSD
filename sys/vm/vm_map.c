@@ -2487,8 +2487,8 @@ vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size,
 	for (scan = entry;
 	     scan != &map->header && scan->start < addr + size;
 	     scan = scan->next) {
-	    KKASSERT(entry->wired_count == 0);
-	    entry->wired_count = 1;                                              
+	    KKASSERT(scan->wired_count == 0);
+	    scan->wired_count = 1;
 	}
 	vm_map_unclip_range(map, entry, addr, addr + size,
 			    countp, MAP_CLIP_NO_HOLES);
