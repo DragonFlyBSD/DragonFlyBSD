@@ -296,7 +296,7 @@ static int	bge_probe(device_t);
 static int	bge_attach(device_t);
 static int	bge_detach(device_t);
 static void	bge_txeof(struct bge_softc *, uint16_t);
-static void	bge_rxeof(struct bge_softc *, uint16_t);
+static void	bge_rxeof(struct bge_softc *, uint16_t, int);
 
 static void	bge_tick(void *);
 static void	bge_stats_update(struct bge_softc *);
@@ -2898,19 +2898,21 @@ bge_reset(struct bge_softc *sc)
  */
 
 static void
-bge_rxeof(struct bge_softc *sc, uint16_t rx_prod)
+bge_rxeof(struct bge_softc *sc, uint16_t rx_prod, int count)
 {
 	struct ifnet *ifp;
 	int stdcnt = 0, jumbocnt = 0;
 
 	ifp = &sc->arpcom.ac_if;
 
-	while (sc->bge_rx_saved_considx != rx_prod) {
+	while (sc->bge_rx_saved_considx != rx_prod && count != 0) {
 		struct bge_rx_bd	*cur_rx;
 		uint32_t		rxidx;
 		struct mbuf		*m = NULL;
 		uint16_t		vlan_tag = 0;
 		int			have_tag = 0;
+
+		--count;
 
 		cur_rx =
 	    &sc->bge_ldata.bge_rx_return_ring[sc->bge_rx_saved_considx];
@@ -3063,7 +3065,7 @@ bge_txeof(struct bge_softc *sc, uint16_t tx_cons)
 #ifdef IFPOLL_ENABLE
 
 static void
-bge_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycles __unused)
+bge_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycles)
 {
 	struct bge_softc *sc = ifp->if_softc;
 	struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
@@ -3090,7 +3092,7 @@ bge_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycles __unused)
 
 	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
 	if (sc->bge_rx_saved_considx != rx_prod)
-		bge_rxeof(sc, rx_prod);
+		bge_rxeof(sc, rx_prod, cycles);
 
 	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 	if (sc->bge_tx_saved_considx != tx_cons)
@@ -3170,7 +3172,7 @@ bge_intr_crippled(void *xsc)
 
 		rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
 		if (sc->bge_rx_saved_considx != rx_prod)
-			bge_rxeof(sc, rx_prod);
+			bge_rxeof(sc, rx_prod, -1);
 
 		tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 		if (sc->bge_tx_saved_considx != tx_cons)
@@ -3246,7 +3248,7 @@ bge_intr(struct bge_softc *sc)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (sc->bge_rx_saved_considx != rx_prod)
-			bge_rxeof(sc, rx_prod);
+			bge_rxeof(sc, rx_prod, -1);
 
 		if (sc->bge_tx_saved_considx != tx_cons)
 			bge_txeof(sc, tx_cons);
