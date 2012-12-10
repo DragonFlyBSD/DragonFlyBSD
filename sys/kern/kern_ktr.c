@@ -211,7 +211,6 @@ static void ktr_pipeline_remote(void *dummy);
 #ifdef _RDTSC_SUPPORTED_
 
 static void ktr_resync_remote(void *dummy);
-extern cpumask_t smp_active_mask;
 
 /*
  * We use a callout callback instead of a systimer because we cannot afford
