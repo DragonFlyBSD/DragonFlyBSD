@@ -3011,7 +3011,6 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod)
 		if (have_tag) {
 			m->m_flags |= M_VLANTAG;
 			m->m_pkthdr.ether_vlantag = vlan_tag;
-			have_tag = vlan_tag = 0;
 		}
 		ifp->if_input(ifp, m);
 	}
