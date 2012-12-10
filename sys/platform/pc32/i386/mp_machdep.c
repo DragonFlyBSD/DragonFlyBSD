@@ -794,7 +794,7 @@ again:
 		if (++count == 400000000) {
 			print_backtrace(-1);
 			kprintf("smp_invltlb: endless loop %08lx %08lx, "
-				"rflags %016lx retry",
+				"eflags %016lx retry",
 				(long)md->gd_invltlb_ret,
 				(long)smp_invltlb_req,
 				(long)read_eflags());
