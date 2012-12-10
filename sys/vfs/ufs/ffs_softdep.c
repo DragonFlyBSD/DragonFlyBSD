@@ -4593,6 +4593,7 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 		 * locate that buffer, ensure that there will be no rollback
 		 * caused by a bitmap dependency, then write the inode buffer.
 		 */
+retry_lookup:
 		if (inodedep_lookup(ump->um_fs, inum, 0, &inodedep) == 0) {
 			panic("flush_pagedep_deps: lost inode");
 		}
@@ -4602,6 +4603,8 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 		 */
 		if ((inodedep->id_state & DEPCOMPLETE) == 0) {
 			gotit = getdirtybuf(&inodedep->id_buf, MNT_WAIT);
+			if (gotit == 0)
+				goto retry_lookup;
 			FREE_LOCK(&lk);
 			if (gotit && (error = bwrite(inodedep->id_buf)) != 0)
 				break;
