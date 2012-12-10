@@ -592,6 +592,7 @@ done:
 static int
 process_worklist_item(struct mount *matchmnt, int flags)
 {
+	struct ufsmount *ump;
 	struct worklist *wk;
 	struct dirrem *dirrem;
 	struct fs *matchfs;
@@ -612,8 +613,10 @@ process_worklist_item(struct mount *matchmnt, int flags)
 		if ((flags & LK_NOWAIT) == 0 || wk->wk_type != D_DIRREM)
 			break;
 		dirrem = WK_DIRREM(wk);
-		vp = ufs_ihashlookup(VFSTOUFS(dirrem->dm_mnt)->um_dev,
-		    dirrem->dm_oldinum);
+		ump = VFSTOUFS(dirrem->dm_mnt);
+		lwkt_gettoken(&ump->um_mountp->mnt_token);
+		vp = ufs_ihashlookup(ump, ump->um_dev, dirrem->dm_oldinum);
+		lwkt_reltoken(&ump->um_mountp->mnt_token);
 		if (vp == NULL || !vn_islocked(vp))
 			break;
 	}

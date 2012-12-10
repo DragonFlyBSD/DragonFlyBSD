@@ -32,7 +32,6 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.20 2006/10/14 16:26:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,60 +41,56 @@
 #include <sys/vnode.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/mount.h>
 
 #include "quota.h"
 #include "inode.h"
 #include "ufs_extern.h"
+#include "ufsmount.h"
 
 static MALLOC_DEFINE(M_UFSIHASH, "UFS ihash", "UFS Inode hash tables");
-/*
- * Structures associated with inode cacheing.
- */
-static struct inode **ihashtbl;
-static u_long	ihash;		/* size of hash table - 1 */
-static struct lwkt_token ufs_ihash_token;
 
-#define	INOHASH(device, inum)	(&ihashtbl[(minor(device) + (inum)) & ihash])
+#define	INOHASH(ump, inum)	\
+	(&ump->um_ihashtbl[inum & ump->um_ihash])
 
 /*
  * Initialize inode hash table.
  */
 void
-ufs_ihashinit(void)
+ufs_ihashinit(struct ufsmount *ump)
 {
-	ihash = 16;
-	while (ihash < desiredvnodes)
-		ihash <<= 1;
-	ihashtbl = kmalloc(sizeof(void *) * ihash, M_UFSIHASH, M_WAITOK|M_ZERO);
-	--ihash;
-	lwkt_token_init(&ufs_ihash_token, "ufsihash");
+	u_long target = desiredvnodes / 4 + 1;
+
+	ump->um_ihash = 16;
+	while (ump->um_ihash < target)
+		ump->um_ihash <<= 1;
+	ump->um_ihashtbl = kmalloc(sizeof(void *) * ump->um_ihash, M_UFSIHASH,
+				   M_WAITOK|M_ZERO);
+	--ump->um_ihash;
 }
 
-int
-ufs_uninit(struct vfsconf *vfc)
+void
+ufs_ihashuninit(struct ufsmount *ump)
 {
-    lwkt_gettoken(&ufs_ihash_token);
-    if (ihashtbl)
-		kfree(ihashtbl, M_UFSIHASH);
-    lwkt_reltoken(&ufs_ihash_token);
-
-    return (0);
+	if (ump->um_ihashtbl) {
+		kfree(ump->um_ihashtbl, M_UFSIHASH);
+		ump->um_ihashtbl = NULL;
+	}
 }
+
 /*
  * Use the device/inum pair to find the incore inode, and return a pointer
  * to it. If it is in core, return it, even if it is locked.
  */
 struct vnode *
-ufs_ihashlookup(cdev_t dev, ino_t inum)
+ufs_ihashlookup(struct ufsmount *ump, cdev_t dev, ino_t inum)
 {
-	struct inode *ip;
+	struct inode *ip = NULL;
 
-	lwkt_gettoken(&ufs_ihash_token);
-	for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
+	for (ip = *INOHASH(ump, inum); ip; ip = ip->i_next) {
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
 	}
-	lwkt_reltoken(&ufs_ihash_token);
 	if (ip)
 		return (ITOV(ip));
 	return (NULLVP);
@@ -105,20 +100,16 @@ ufs_ihashlookup(cdev_t dev, ino_t inum)
  * Use the device/inum pair to find the incore inode, and return a pointer
  * to it. If it is in core, but locked, wait for it.
  *
- * Note that the serializing tokens do not prevent other processes from
- * playing with the data structure being protected while we are blocked.
- * They do protect us from preemptive interrupts which might try to
- * play with the protected data structure.
+ * This subroutine may block.
  */
 struct vnode *
-ufs_ihashget(cdev_t dev, ino_t inum)
+ufs_ihashget(struct ufsmount *ump, cdev_t dev, ino_t inum)
 {
 	struct inode *ip;
 	struct vnode *vp;
 
-	lwkt_gettoken(&ufs_ihash_token);
 loop:
-	for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
+	for (ip = *INOHASH(ump, inum); ip; ip = ip->i_next) {
 		if (inum != ip->i_number || dev != ip->i_dev)
 			continue;
 		vp = ITOV(ip);
@@ -128,7 +119,7 @@ loop:
 		 * We must check to see if the inode has been ripped
 		 * out from under us after blocking.
 		 */
-		for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
+		for (ip = *INOHASH(ump, inum); ip; ip = ip->i_next) {
 			if (inum == ip->i_number && dev == ip->i_dev)
 				break;
 		}
@@ -136,10 +127,8 @@ loop:
 			vput(vp);
 			goto loop;
 		}
-		lwkt_reltoken(&ufs_ihash_token);
 		return (vp);
 	}
-	lwkt_reltoken(&ufs_ihash_token);
 	return (NULL);
 }
 
@@ -149,16 +138,14 @@ loop:
  * reallocate of its inode number before we have had a chance to recycle it.
  */
 int
-ufs_ihashcheck(cdev_t dev, ino_t inum)
+ufs_ihashcheck(struct ufsmount *ump, cdev_t dev, ino_t inum)
 {
 	struct inode *ip;
 
-	lwkt_gettoken(&ufs_ihash_token);
-	for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
+	for (ip = *INOHASH(ump, inum); ip; ip = ip->i_next) {
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
 	}
-	lwkt_reltoken(&ufs_ihash_token);
 	return(ip ? 1 : 0);
 }
 
@@ -166,17 +153,15 @@ ufs_ihashcheck(cdev_t dev, ino_t inum)
  * Insert the inode into the hash table, and return it locked.
  */
 int
-ufs_ihashins(struct inode *ip)
+ufs_ihashins(struct ufsmount *ump, struct inode *ip)
 {
 	struct inode **ipp;
 	struct inode *iq;
 
 	KKASSERT((ip->i_flag & IN_HASHED) == 0);
-	lwkt_gettoken(&ufs_ihash_token);
-	ipp = INOHASH(ip->i_dev, ip->i_number);
+	ipp = INOHASH(ump, ip->i_number);
 	while ((iq = *ipp) != NULL) {
 		if (ip->i_dev == iq->i_dev && ip->i_number == iq->i_number) {
-			lwkt_reltoken(&ufs_ihash_token);
 			return(EBUSY);
 		}
 		ipp = &iq->i_next;
@@ -184,7 +169,6 @@ ufs_ihashins(struct inode *ip)
 	ip->i_next = NULL;
 	*ipp = ip;
 	ip->i_flag |= IN_HASHED;
-	lwkt_reltoken(&ufs_ihash_token);
 	return(0);
 }
 
@@ -192,14 +176,13 @@ ufs_ihashins(struct inode *ip)
  * Remove the inode from the hash table.
  */
 void
-ufs_ihashrem(struct inode *ip)
+ufs_ihashrem(struct ufsmount *ump, struct inode *ip)
 {
 	struct inode **ipp;
 	struct inode *iq;
 
-	lwkt_gettoken(&ufs_ihash_token);
 	if (ip->i_flag & IN_HASHED) {
-		ipp = INOHASH(ip->i_dev, ip->i_number);
+		ipp = INOHASH(ump, ip->i_number);
 		while ((iq = *ipp) != NULL) {
 			if (ip == iq)
 				break;
@@ -210,6 +193,5 @@ ufs_ihashrem(struct inode *ip)
 		ip->i_next = NULL;
 		ip->i_flag &= ~IN_HASHED;
 	}
-	lwkt_reltoken(&ufs_ihash_token);
 }
 

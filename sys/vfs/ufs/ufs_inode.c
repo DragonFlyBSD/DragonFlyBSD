@@ -116,9 +116,12 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 {
 	struct inode *ip;
 	struct vnode *vp = ap->a_vp;
+	struct ufsmount *ump;
 #ifdef QUOTA
 	int i;
 #endif
+
+	ump = VFSTOUFS(vp->v_mount);
 
 	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("ufs_reclaim: pushing active", vp);
@@ -146,7 +149,7 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 	 */
 	vp->v_data = NULL;
 	if (ip) {
-		ufs_ihashrem(ip);
+		ufs_ihashrem(ump, ip);
 		if (ip->i_devvp) {
 			vrele(ip->i_devvp);
 			ip->i_devvp = 0;

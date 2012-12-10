@@ -32,7 +32,6 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.11 2008/08/04 18:15:47 dillon Exp $
  */
 
 #ifndef _VFS_UFS_UFSMOUNT_H_
@@ -76,13 +75,7 @@ struct ufsmount {
 	cdev_t	um_dev;				/* device mounted */
 	struct	vnode *um_devvp;		/* block device mounted vnode */
 
-	union {					/* pointer to superblock */
-		struct	fs *fs;			/* FFS */
-		struct	ext2_sb_info *e2fs;	/* EXT2FS */
-	} ufsmount_u;
-#	define	um_fs	ufsmount_u.fs
-#	define	um_e2fs	ufsmount_u.e2fs
-#	define	um_e2fsb ufsmount_u.e2fs->s_es
+	struct	fs *um_fs;			/* FFS */
 	struct	vnode *um_quotas[MAXQUOTAS];	/* pointer to quota files */
 	struct	ucred *um_cred[MAXQUOTAS];	/* quota file access cred */
 	u_long	um_nindir;			/* indirect ptrs per block */
@@ -95,6 +88,8 @@ struct ufsmount {
 	int64_t	um_savedmaxfilesize;		/* XXX - limit maxfilesize */
 	struct malloc_type *um_malloctype;	/* The inodes malloctype */
 	int	um_i_effnlink_valid;		/* i_effnlink valid? */
+	struct inode **um_ihashtbl;		/* inum to inode map */
+	u_long	um_ihash;			/* size of hash table - 1 */
 };
 
 /*

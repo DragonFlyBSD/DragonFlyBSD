@@ -1354,6 +1354,7 @@ fail:
 static ino_t
 ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 {
+	struct ufsmount *ump;
 	struct fs *fs;
 	struct cg *cgp;
 	struct buf *bp;
@@ -1362,7 +1363,10 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 	int error, len, arraysize, i;
 	int icheckmiss;
 	ufs_daddr_t ibase;
+	struct vnode *vp;
 
+	vp = ITOV(ip);
+	ump = VFSTOUFS(vp->v_mount);
 	fs = ip->i_fs;
 	if (fs->fs_cs(fs, cg).cs_nifree == 0)
 		return (0);
@@ -1388,7 +1392,7 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 	if (ipref) {
 		ipref %= fs->fs_ipg;
 		if (isclr(inosused, ipref)) {
-			if (ufs_ihashcheck(ip->i_dev, ibase + ipref) == 0)
+			if (ufs_ihashcheck(ump, ip->i_dev, ibase + ipref) == 0)
 				goto gotit;
 		}
 	}
@@ -1422,7 +1426,7 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 				 * quick-check up above.
 				 */
 				if ((map & (1 << i)) == 0) {
-					if (ufs_ihashcheck(ip->i_dev, ibase + (ipref << 3) + i) == 0) {
+					if (ufs_ihashcheck(ump, ip->i_dev, ibase + (ipref << 3) + i) == 0) {
 						ipref = (ipref << 3) + i;
 						cgp->cg_irotor = (ipref + 1) % fs->fs_ipg;
 						goto gotit;

@@ -84,7 +84,6 @@ static struct vfsops ufs_vfsops = {
 	.vfs_checkexp =    	ufs_check_export,
 	.vfs_vptofh =    	ffs_vptofh,
 	.vfs_init =    		ffs_init,
-	.vfs_uninit =    	ufs_uninit
 };
 
 VFS_SET(ufs_vfsops, ufs, 0);
@@ -768,6 +767,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 		mp->mnt_time = fs->fs_time;
 	}
 
+	ufs_ihashinit(ump);
 	ump->um_savedmaxfilesize = fs->fs_maxfilesize;		/* XXX */
 	maxfilesize = (uint64_t)0x40000000 * fs->fs_bsize - 1;	/* XXX */
 	/* Enforce limit caused by vm object backing (32 bits vm_pindex_t). */
@@ -796,6 +796,7 @@ out:
 		brelse(bp);
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
 	if (ump) {
+		ufs_ihashuninit(ump);
 		kfree(ump->um_fs, M_UFSMNT);
 		kfree(ump, M_UFSMNT);
 		mp->mnt_data = (qaddr_t)0;
@@ -871,6 +872,7 @@ ffs_unmount(struct mount *mp, int mntflags)
 
 	vrele(ump->um_devvp);
 
+	ufs_ihashuninit(ump);
 	kfree(fs->fs_csp, M_UFSMNT);
 	kfree(fs, M_UFSMNT);
 	kfree(ump, M_UFSMNT);
@@ -1085,8 +1087,8 @@ ffs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 
 	ump = VFSTOUFS(mp);
 	dev = ump->um_dev;
-restart:
-	if ((*vpp = ufs_ihashget(dev, ino)) != NULL) {
+
+	if ((*vpp = ufs_ihashget(ump, dev, ino)) != NULL) {
 		return (0);
 	}
 
@@ -1100,7 +1102,8 @@ restart:
 	 * XXX this may no longer be true since getnewvnode returns a
 	 * VX locked vnode now.
 	 */
-	ip = kmalloc(sizeof(struct inode), ump->um_malloctype, M_WAITOK);
+	ip = kmalloc(sizeof(struct inode), ump->um_malloctype,
+		     M_WAITOK | M_ZERO);
 
 	/* Allocate a new vnode/inode. */
 	error = getnewvnode(VT_UFS, mp, &vp, VLKTIMEOUT, LK_CANRECURSE);
@@ -1109,7 +1112,6 @@ restart:
 		kfree(ip, ump->um_malloctype);
 		return (error);
 	}
-	bzero((caddr_t)ip, sizeof(struct inode));
 	ip->i_vnode = vp;
 	ip->i_fs = fs = ump->um_fs;
 	ip->i_dev = dev;
@@ -1123,16 +1125,10 @@ restart:
 #endif
 
 	/*
-	 * Insert it into the inode hash table and check for a collision.
-	 * If a collision occurs, throw away the vnode and try again.
+	 * Insert it into the inode hash table.
 	 */
-	if (ufs_ihashins(ip) != 0) {
-		kprintf("debug: ufs ihashins collision, retrying inode %ld\n",
-		    (long)ip->i_number);
-		vp->v_type = VBAD;
-		vx_put(vp);
-		kfree(ip, ump->um_malloctype);
-		goto restart;
+	if (ufs_ihashins(ump, ip) != 0) {
+		panic("duplicate inode in inohash");
 	}
 	vp->v_data = ip;
 
