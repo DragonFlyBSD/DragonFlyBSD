@@ -110,6 +110,7 @@
 #define IOPOLL_BURST_MAX	375	/* good for 1000Mbit net and HZ=4000 */
 
 #define IOPOLL_EACH_BURST	15
+#define IOPOLL_USER_FRAC	50
 
 #define IFPOLL_FREQ_DEFAULT	4000
 
@@ -259,6 +260,7 @@ SYSCTL_NODE(_net, OID_AUTO, ifpoll, CTLFLAG_RW, 0,
 
 static int	iopoll_burst_max = IOPOLL_BURST_MAX;
 static int	iopoll_each_burst = IOPOLL_EACH_BURST;
+static int	iopoll_user_frac = IOPOLL_USER_FRAC;
 
 static int	ifpoll_pollhz = IFPOLL_FREQ_DEFAULT;
 static int	ifpoll_stfrac = IFPOLL_STFRAC_DEFAULT;
@@ -266,6 +268,7 @@ static int	ifpoll_txfrac = IFPOLL_TXFRAC_DEFAULT;
 
 TUNABLE_INT("net.ifpoll.burst_max", &iopoll_burst_max);
 TUNABLE_INT("net.ifpoll.each_burst", &iopoll_each_burst);
+TUNABLE_INT("net.ifpoll.user_frac", &iopoll_user_frac);
 TUNABLE_INT("net.ifpoll.pollhz", &ifpoll_pollhz);
 TUNABLE_INT("net.ifpoll.status_frac", &ifpoll_stfrac);
 TUNABLE_INT("net.ifpoll.tx_frac", &ifpoll_txfrac);
@@ -679,7 +682,7 @@ iopoll_ctx_create(int cpuid, int poll_type)
 
 	io_ctx->poll_each_burst = iopoll_each_burst;
 	io_ctx->poll_burst_max = iopoll_burst_max;
-	io_ctx->user_frac = 50;
+	io_ctx->user_frac = iopoll_user_frac;
 	if (poll_type == IFPOLL_RX)
 		io_ctx->pollhz = comm->pollhz;
 	else
