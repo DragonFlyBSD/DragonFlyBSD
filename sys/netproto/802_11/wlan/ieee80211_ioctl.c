@@ -3218,6 +3218,8 @@ ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred
 	int error = 0;
 	struct ifreq *ifr;
 
+	wlan_assert_serialized();
+
 	switch (cmd) {
 	case SIOCSIFFLAGS:
 		ieee80211_syncifflag_locked(ic, IFF_PROMISC);

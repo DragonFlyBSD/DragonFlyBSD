@@ -123,6 +123,8 @@ ieee80211_start(struct ifnet *ifp)
 	struct ether_header *eh;
 	int error;
 
+	wlan_assert_serialized();
+
 	/* NB: parent must be up and running */
 	if (!IFNET_IS_UP_RUNNING(parent)) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
