@@ -2,7 +2,7 @@
  * System call switch table.
  *
  * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed
- *               by running make sysent.
+ *               by running make sysent in the same directory.
  */
 
 #include "opt_compat.h"

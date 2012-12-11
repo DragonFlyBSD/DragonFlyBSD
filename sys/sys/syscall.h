@@ -2,7 +2,7 @@
  * System call numbers.
  *
  * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed
- *               by running make sysent.
+ *               by running make sysent in the same directory.
  */
 
 #define	SYS_syscall	0

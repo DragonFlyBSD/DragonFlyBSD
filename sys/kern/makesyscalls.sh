@@ -87,12 +87,12 @@ s/\$//g
 
 		printf "/*\n * System call switch table.\n *\n" > syssw
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > syssw
-		printf " *               by running make sysent.\n" > syssw
+		printf " *               by running make sysent in the same directory.\n" > syssw
 		printf " */\n\n" > syssw
 
 		printf "/*\n * System call prototypes.\n *\n" > sysarg
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysarg
-		printf " *               by running make sysent.\n" > sysarg
+		printf " *               by running make sysent in the same directory.\n" > sysarg
 		printf " */\n\n" > sysarg
 		printf "#ifndef %s\n", sysproto_h > sysarg
 		printf "#define\t%s\n\n", sysproto_h > sysarg
@@ -110,28 +110,28 @@ s/\$//g
 
 		printf "/*\n * System call names.\n *\n" > sysnames
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysnames
-		printf " *               by running make sysent.\n" > sysnames
+		printf " *               by running make sysent in the same directory.\n" > sysnames
 		printf " */\n\n" > sysnames
 		printf "const char *%s[] = {\n", namesname > sysnames
 
 		printf "/*\n * System call numbers.\n *\n" > syshdr
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > syshdr
-		printf " *               by running make sysent.\n" > syshdr
+		printf " *               by running make sysent in the same directory.\n" > syshdr
 		printf " */\n\n" > syshdr
 
 		printf "# DragonFly system call names.\n" > sysmk
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysmk
-		printf " *               by running make sysent.\n" > sysmk
+		printf " *               by running make sysent in the same directory.\n" > sysmk
 		printf "MIASM = " > sysmk
 
 		printf "/*\n * System call hiders.\n *\n" > syshide
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > syshide
-		printf " *               by running make sysent.\n" > syshide
+		printf " *               by running make sysent in the same directory.\n" > syshide
 		printf " */\n\n" > syshide
 
 		printf "/*\n * Union of syscall args for messaging.\n *\n" > sysun
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysun
-		printf " *               by running make sysent.\n" > sysun
+		printf " *               by running make sysent in the same directory.\n" > sysun
 		printf " */\n\n" > sysun
 		printf "union sysunion {\n" > sysun
 		printf "#ifdef _KERNEL /* header only applies in kernel */\n" > sysun

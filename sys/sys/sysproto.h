@@ -2,7 +2,7 @@
  * System call prototypes.
  *
  * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed
- *               by running make sysent.
+ *               by running make sysent in the same directory.
  */
 
 #ifndef _SYS_SYSPROTO_H_
