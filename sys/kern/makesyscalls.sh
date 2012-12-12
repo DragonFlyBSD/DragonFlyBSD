@@ -120,8 +120,8 @@ s/\$//g
 		printf " */\n\n" > syshdr
 
 		printf "# DragonFly system call names.\n" > sysmk
-		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysmk
-		printf " *               by running make sysent in the same directory.\n" > sysmk
+		printf "# DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysmk
+		printf "#               by running make sysent in the same directory.\n" > sysmk
 		printf "MIASM = " > sysmk
 
 		printf "/*\n * System call hiders.\n *\n" > syshide

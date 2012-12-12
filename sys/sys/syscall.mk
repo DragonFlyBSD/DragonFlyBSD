@@ -1,6 +1,6 @@
 # DragonFly system call names.
- * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed
- *               by running make sysent in the same directory.
+# DO NOT EDIT-- To regenerate this file, edit syscalls.master followed
+#               by running make sysent in the same directory.
 MIASM =  \
 	syscall.o \
 	exit.o \
