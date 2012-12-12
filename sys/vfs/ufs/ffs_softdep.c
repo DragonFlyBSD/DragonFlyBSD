@@ -4583,7 +4583,7 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 			if (dap != LIST_FIRST(diraddhdp))
 				continue;
 			if (dap->da_state & MKDIR_BODY) {
-				panic("flush_pagedep_deps: MKDIR_BODY");
+				panic("flush_pagedep_deps: %p MKDIR_BODY", dap);
 			}
 		}
 		/*

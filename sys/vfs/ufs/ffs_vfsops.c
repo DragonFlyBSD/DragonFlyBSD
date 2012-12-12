@@ -1088,6 +1088,7 @@ ffs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 	ump = VFSTOUFS(mp);
 	dev = ump->um_dev;
 
+retry:
 	if ((*vpp = ufs_ihashget(ump, dev, ino)) != NULL) {
 		return (0);
 	}
@@ -1128,7 +1129,13 @@ ffs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 	 * Insert it into the inode hash table.
 	 */
 	if (ufs_ihashins(ump, ip) != 0) {
-		panic("duplicate inode in inohash");
+		kprintf("debug: ufs ihashins collision, retrying inode %ld\n",
+			(long) ip->i_number);
+		*vpp = NULL;
+		vp->v_type = VBAD;
+		vx_put(vp);
+		kfree(ip, ump->um_malloctype);
+		goto retry;
 	}
 	vp->v_data = ip;
 
