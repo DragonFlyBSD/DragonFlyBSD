@@ -2093,6 +2093,11 @@ TO_REMOVE+=/usr/share/man/cat8/i386/stlstty.8.gz
 TO_REMOVE+=/usr/share/man/man8/i386/stlstty.8.gz
 TO_REMOVE+=/usr/libdata/stallion
 TO_REMOVE+=/usr/include/bus/isa/isa_compat.h
+TO_REMOVE+=/usr/include/sys/upcall.h
+TO_REMOVE+=/usr/share/man/cat2/upc_control.2.gz
+TO_REMOVE+=/usr/share/man/man2/upc_control.2.gz
+TO_REMOVE+=/usr/share/man/cat2/upc_register.2.gz
+TO_REMOVE+=/usr/share/man/man2/upc_register.2.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

@@ -64,7 +64,6 @@
 #include <sys/sysent.h>			/* For struct sysentvec */
 #include <sys/thread.h>
 #include <sys/varsym.h>
-#include <sys/upcall.h>
 #include <sys/resourcevar.h>
 #ifdef _KERNEL
 #include <sys/globaldata.h>
@@ -221,7 +220,7 @@ struct lwp {
 	struct mdproc	lwp_md;		/* Any machine-dependent fields. */
 
 	struct thread	*lwp_thread;	/* backpointer to proc's thread */
-	struct upcall	*lwp_upcall;	/* REGISTERED USERLAND POINTER! */
+	void		*lwp_unused01;	/* for future fields */
 	struct kqueue	lwp_kqueue;	/* for select/poll */
 	u_int		lwp_kqueue_serial;
 	struct lwkt_token lwp_token;	/* per-lwp token for signal/state */
@@ -360,7 +359,7 @@ struct	proc {
 #define	P_CONTINUED	0x08000	/* Proc has continued from a stopped state */
 
 #define P_UNUSED16	0x00010000
-#define	P_UPCALLPEND	0x00020000 /* an upcall is pending */
+#define	P_UNUSED17	0x00020000
 
 #define	P_SWAPWAIT	0x00040000 /* Waiting for a swapin */
 #define	P_UNUSED19	0x00080000 /* was: Now in a zombied state */
@@ -375,7 +374,7 @@ struct	proc {
 #define	P_SIGPROF	0x04000000 /* signal SIGPROF pending due to itimer */
 #define	P_INEXEC	0x08000000 /* Process is in execve(). */
 #define P_UNUSED28	0x10000000
-#define	P_UPCALLWAIT	0x20000000 /* Wait for upcall or signal */
+#define	P_UNUSED29	0x20000000
 #define P_XCPU		0x40000000 /* SIGXCPU */
 
 #define	LWP_ALTSTACK	0x0000001 /* have alternate signal stack */

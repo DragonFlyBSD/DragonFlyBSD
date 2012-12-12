@@ -63,7 +63,6 @@
 #include <sys/sem.h>
 #include <sys/jail.h>
 #include <sys/kern_syscall.h>
-#include <sys/upcall.h>
 #include <sys/unistd.h>
 #include <sys/eventhandler.h>
 #include <sys/dsched.h>
@@ -378,12 +377,6 @@ exit1(int rv)
 
 	/* The next two chunks should probably be moved to vmspace_exit. */
 	vm = p->p_vmspace;
-
-	/*
-	 * Release upcalls associated with this process
-	 */
-	if (vm->vm_upcalls)
-		upc_release(vm, lp);
 
 	/*
 	 * Clean up data related to virtual kernel operation.  Clean up

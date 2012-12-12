@@ -65,7 +65,6 @@
 #include <sys/ktrace.h>
 #endif
 #include <sys/ktr.h>
-#include <sys/upcall.h>
 #include <sys/vkernel.h>
 #include <sys/sysproto.h>
 #include <sys/sysunion.h>
@@ -192,7 +191,7 @@ userenter(struct thread *curtd, struct proc *curp)
 }
 
 /*
- * Handle signals, upcalls, profiling, and other AST's and/or tasks that
+ * Handle signals, profiling, and other AST's and/or tasks that
  * must be completed before we can return to or try to return to userland.
  *
  * Note that td_sticks is a 64 bit quantity, but there's no point doing 64
@@ -237,7 +236,7 @@ recheck:
 	 * Post any pending upcalls.  If running a virtual kernel be sure
 	 * to restore the virtual kernel's vmspace before posting the upcall.
 	 */
-	if (p->p_flags & (P_SIGVTALRM | P_SIGPROF | P_UPCALLPEND)) {
+	if (p->p_flags & (P_SIGVTALRM | P_SIGPROF)) {
 		lwkt_gettoken(&p->p_token);
 		if (p->p_flags & P_SIGVTALRM) {
 			p->p_flags &= ~P_SIGVTALRM;
@@ -246,10 +245,6 @@ recheck:
 		if (p->p_flags & P_SIGPROF) {
 			p->p_flags &= ~P_SIGPROF;
 			ksignal(p, SIGPROF);
-		}
-		if (p->p_flags & P_UPCALLPEND) {
-			p->p_flags &= ~P_UPCALLPEND;
-			postupcall(lp);
 		}
 		lwkt_reltoken(&p->p_token);
 		goto recheck;

@@ -293,8 +293,8 @@
 #define	SYS_varsym_set	450
 #define	SYS_varsym_get	451
 #define	SYS_varsym_list	452
-#define	SYS_upc_register	453
-#define	SYS_upc_control	454
+				/* 453 is obsolete upc_register */
+				/* 454 is obsolete upc_control */
 				/* 455 is obsolete caps_sys_service */
 				/* 456 is obsolete caps_sys_client */
 				/* 457 is obsolete caps_sys_close */

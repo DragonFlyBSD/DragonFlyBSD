@@ -233,8 +233,6 @@ MIASM =  \
 	varsym_set.o \
 	varsym_get.o \
 	varsym_list.o \
-	upc_register.o \
-	upc_control.o \
 	exec_sys_register.o \
 	exec_sys_unregister.o \
 	sys_checkpoint.o \

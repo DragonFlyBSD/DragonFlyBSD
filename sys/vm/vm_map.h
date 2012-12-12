@@ -62,7 +62,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.30 2007/04/29 18:25:41 dillon Exp $
  */
 
 /*
@@ -245,21 +244,6 @@ struct vm_map {
  */
 #define MAP_WIREFUTURE		0x0001	/* wire all future pages */
 
-/*
- * Registered upcall
- */
-struct upcall;
-
-struct vmupcall {
-	struct vmupcall	*vu_next;
-	void		*vu_func;	/* user upcall function */
-	void		*vu_data;	/* user data */
-	void		*vu_ctx;	/* user context function */
-	struct lwp	*vu_lwp;	/* process that registered upcall */
-	int		vu_id;		/* upcall identifier */
-	int		vu_pending;	/* upcall request pending */
-};
-
 /* 
  * Shareable process virtual address space.
  *
@@ -283,10 +267,10 @@ struct vmspace {
 	caddr_t vm_minsaddr;	/* user VA at max stack growth */
 #define vm_endcopy	vm_exitingcnt
 	int	vm_exitingcnt;  /* exit/wait context reaping */
-	int	vm_upccount;	/* number of registered upcalls */
+	int	vm_unused01;	/* for future fields */
 	int	vm_pagesupply;
 	u_int	vm_holdcount;
-	struct vmupcall *vm_upcalls;	/* registered upcalls */
+	void	*vm_unused02;	/* for future fields */
 	struct sysref vm_sysref;	/* sysref, refcnt, etc */
 };
 

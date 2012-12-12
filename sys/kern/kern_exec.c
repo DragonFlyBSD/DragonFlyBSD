@@ -803,8 +803,6 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 		map = &vmspace->vm_map;
 	} else if (vmspace->vm_sysref.refcnt == 1) {
 		shmexit(vmspace);
-		if (vmspace->vm_upcalls)
-			upc_release(vmspace, ONLY_LWP_IN_PROC(imgp->proc));
 		pmap_remove_pages(vmspace_pmap(vmspace),
 				  0, VM_MAX_USER_ADDRESS);
 		vm_map_remove(map, 0, VM_MAX_USER_ADDRESS);

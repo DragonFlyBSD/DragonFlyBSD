@@ -340,8 +340,6 @@ union sysunion {
 	struct	varsym_set_args varsym_set;
 	struct	varsym_get_args varsym_get;
 	struct	varsym_list_args varsym_list;
-	struct	upc_register_args upc_register;
-	struct	upc_control_args upc_control;
 	struct	exec_sys_register_args exec_sys_register;
 	struct	exec_sys_unregister_args exec_sys_unregister;
 	struct	sys_checkpoint_args sys_checkpoint;
