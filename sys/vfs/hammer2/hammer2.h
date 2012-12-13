@@ -124,6 +124,7 @@ struct hammer2_chain {
 	hammer2_media_data_t *data;	/* modified copy of data (rw) */
 	u_int		bytes;		/* physical size of data */
 	int		index;		/* index in parent */
+	u_int		movelock;
 	u_int		refs;
 	u_int		flags;
 };
@@ -156,6 +157,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MODIFIED_AUX	0x00000800	/* hmp->vchain only */
 #define HAMMER2_CHAIN_MODIFY_TID	0x00001000	/* mod updates field */
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
+#define HAMMER2_CHAIN_MOVELOCK_WAITING	0x00004000	/* movelock stalled */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -163,6 +165,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
 #define HAMMER2_LOOKUP_SHARED		0x00000100
+#define HAMMER2_LOOKUP_MAYDELETE	0x00000200
 
 /*
  * Flags passed to hammer2_chain_modify() and hammer2_chain_resize()
@@ -187,6 +190,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_RESOLVE_MASK		0x0F
 
 #define HAMMER2_RESOLVE_SHARED		0x10
+#define HAMMER2_RESOLVE_MAYDELETE	0x20
 
 /*
  * Cluster different types of storage together for allocations
@@ -244,7 +248,6 @@ struct hammer2_inode {
 	hammer2_chain_t		chain;
 	struct hammer2_inode_data ip_data;
 	struct lockf		advlock;
-	u_int			depth;		/* directory depth */
 	hammer2_off_t		delta_dcount;	/* adjust data_count */
 	hammer2_off_t		delta_icount;	/* adjust inode_count */
 };
@@ -421,6 +424,8 @@ int hammer2_inode_duplicate(hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len);
 int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 			const uint8_t *name, size_t name_len);
+hammer2_inode_t *hammer2_inode_common_parent(hammer2_mount_t *hmp,
+			hammer2_inode_t *fdip, hammer2_inode_t *tdip);
 
 int hammer2_unlink_file(hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len,
@@ -441,6 +446,8 @@ void hammer2_chain_free(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how);
+int hammer2_chain_lock_pair(hammer2_mount_t *hmp, hammer2_chain_t *parent,
+				hammer2_chain_t *chain, int how);
 void hammer2_chain_moved(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				int flags);

@@ -1148,7 +1148,8 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	lbase = (nsize + HAMMER2_PBUFMASK64) & ~HAMMER2_PBUFMASK64;
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lbase, (hammer2_key_t)-1,
-				     HAMMER2_LOOKUP_NODATA);
+				     HAMMER2_LOOKUP_NODATA |
+				     HAMMER2_LOOKUP_MAYDELETE);
 	while (chain) {
 		/*
 		 * Degenerate embedded data case, nothing to loop on.
@@ -1168,7 +1169,8 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		/* XXX check parent if empty indirect block & delete */
 		chain = hammer2_chain_next(hmp, &parent, chain,
 					   lbase, (hammer2_key_t)-1,
-					   HAMMER2_LOOKUP_NODATA);
+					   HAMMER2_LOOKUP_NODATA |
+					   HAMMER2_LOOKUP_MAYDELETE);
 	}
 	hammer2_chain_unlock(hmp, parent);
 }
@@ -1392,6 +1394,8 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
 			vrele(vp);
+		} else {
+			cache_setvp(ap->a_nch, NULL);
 		}
 		hammer2_chain_unlock(hmp, chain);
 	} else {
@@ -1663,9 +1667,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 *
 	 * We must reconnect the vp.
 	 */
-	hammer2_chain_lock(hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_inode_connect(dip, ip, name, name_len);
-	hammer2_chain_unlock(hmp, &ip->chain);
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
@@ -1957,10 +1959,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *	    deadlocks we want to unlock before issuing a cache_*()
 	 *	    op (that might have to lock a vnode).
 	 */
-	hammer2_chain_lock(hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_inode_connect(tdip, ip, tname, tname_len);
-	hammer2_chain_unlock(hmp, &ip->chain);
-
 	if (error == 0) {
 		cache_rename(ap->a_fnch, ap->a_tnch);
 	}
