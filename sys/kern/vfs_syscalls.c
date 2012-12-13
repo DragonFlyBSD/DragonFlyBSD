@@ -893,7 +893,7 @@ sync_callback(struct mount *mp, void *data __unused)
 		asyncflag = mp->mnt_flag & MNT_ASYNC;
 		mp->mnt_flag &= ~MNT_ASYNC;
 		vfs_msync(mp, MNT_NOWAIT);
-		VFS_SYNC(mp, MNT_NOWAIT | MNT_LAZY);
+		VFS_SYNC(mp, MNT_NOWAIT);
 		mp->mnt_flag |= asyncflag;
 	}
 	return(0);
