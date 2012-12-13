@@ -1619,10 +1619,6 @@ vfs/ufs/ufs_quota.c		optional ffs
 vfs/ufs/ufs_vfsops.c		optional ffs
 vfs/ufs/ufs_vnops.c		optional ffs
 vfs/ufs/ufs_dirhash.c		optional ffs
-vfs/userfs/userfs_vfsops.c	optional userfs
-vfs/userfs/userfs_vnops.c	optional userfs
-vfs/userfs/userfs_inode.c	optional userfs
-vfs/userfs/userfs_elms.c	optional userfs
 vfs/devfs/devfs_core.c		standard
 vfs/devfs/devfs_vnops.c		standard
 vfs/devfs/devfs_vfsops.c	standard
