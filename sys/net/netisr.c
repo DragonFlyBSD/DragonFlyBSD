@@ -280,6 +280,8 @@ netmsg_service_loop(void *arg)
 	thread_t td = curthread;
 	int limit;
 
+	td->td_type = TD_TYPE_NETISR;
+
 	while ((msg = lwkt_waitport(&td->td_msgport, 0))) {
 		/*
 		 * Run up to 512 pending netmsgs.

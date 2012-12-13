@@ -431,6 +431,7 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     td->td_kstack_size = stksize;
     td->td_flags = flags;
     td->td_mpflags = 0;
+    td->td_type = TD_TYPE_GENERIC;
     td->td_gd = gd;
     td->td_pri = TDPRI_KERN_DAEMON;
     td->td_critcount = 1;
