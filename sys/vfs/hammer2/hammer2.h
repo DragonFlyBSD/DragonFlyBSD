@@ -124,7 +124,7 @@ struct hammer2_chain {
 	hammer2_media_data_t *data;	/* modified copy of data (rw) */
 	u_int		bytes;		/* physical size of data */
 	int		index;		/* index in parent */
-	u_int		movelock;
+	u_int		flushing;	/* element undergoing flush (count) */
 	u_int		refs;
 	u_int		flags;
 };
@@ -147,17 +147,17 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DIRTYEMBED	0x00000002	/* inode embedded */
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
 #define HAMMER2_CHAIN_SUBMODIFIED	0x00000008	/* 1+ subs modified */
-#define HAMMER2_CHAIN_DELETED		0x00000010
+#define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* bref changed */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list*/
-#define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying */
+#define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying inode */
 #define HAMMER2_CHAIN_MODIFIED_AUX	0x00000800	/* hmp->vchain only */
 #define HAMMER2_CHAIN_MODIFY_TID	0x00001000	/* mod updates field */
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
-#define HAMMER2_CHAIN_MOVELOCK_WAITING	0x00004000	/* movelock stalled */
+#define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -165,7 +165,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
 #define HAMMER2_LOOKUP_SHARED		0x00000100
-#define HAMMER2_LOOKUP_MAYDELETE	0x00000200
 
 /*
  * Flags passed to hammer2_chain_modify() and hammer2_chain_resize()
@@ -190,7 +189,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_RESOLVE_MASK		0x0F
 
 #define HAMMER2_RESOLVE_SHARED		0x10
-#define HAMMER2_RESOLVE_MAYDELETE	0x20
 
 /*
  * Cluster different types of storage together for allocations
@@ -446,14 +444,13 @@ void hammer2_chain_free(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how);
-int hammer2_chain_lock_pair(hammer2_mount_t *hmp, hammer2_chain_t *parent,
-				hammer2_chain_t *chain, int how);
 void hammer2_chain_moved(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				int flags);
 void hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *chain,
 				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_wait(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_find(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent, int index);
 hammer2_chain_t *hammer2_chain_get(hammer2_mount_t *hmp,
@@ -472,7 +469,8 @@ hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent,
 				hammer2_chain_t *chain,
 				hammer2_key_t key, int keybits,
-				int type, size_t bytes);
+				int type, size_t bytes,
+				int *errorp);
 void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 				hammer2_chain_t *chain, int retain);
 void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,

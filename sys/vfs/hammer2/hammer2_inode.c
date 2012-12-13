@@ -213,6 +213,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	 * entry in.  At the same time check for key collisions
 	 * and iterate until we don't get one.
 	 */
+retry:
 	parent = &dip->chain;
 	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
@@ -232,9 +233,8 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	if (error == 0) {
 		chain = hammer2_chain_create(hmp, parent, NULL, lhc, 0,
 					     HAMMER2_BREF_TYPE_INODE,
-					     HAMMER2_INODE_BYTES);
-		if (chain == NULL)
-			error = EIO;
+					     HAMMER2_INODE_BYTES,
+					     &error);
 	}
 	hammer2_chain_unlock(hmp, parent);
 
@@ -243,6 +243,10 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	 */
 	if (error) {
 		KKASSERT(chain == NULL);
+		if (error == EAGAIN) {
+			hammer2_chain_wait(hmp, parent);
+			goto retry;
+		}
 		*nipp = NULL;
 		return (error);
 	}
@@ -346,6 +350,7 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 * and iterate until we don't get one.
 	 */
 	nip = NULL;
+retry:
 	parent = &dip->chain;
 	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
@@ -369,10 +374,9 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 */
 	if (error == 0) {
 		chain = hammer2_chain_create(hmp, parent, NULL, lhc, 0,
-					     HAMMER2_BREF_TYPE_INODE /* n/a */,
-					     HAMMER2_INODE_BYTES);   /* n/a */
-		if (chain == NULL)
-			error = EIO;
+					     HAMMER2_BREF_TYPE_INODE, /* n/a */
+					     HAMMER2_INODE_BYTES,     /* n/a */
+					     &error);
 	}
 	hammer2_chain_unlock(hmp, parent);
 
@@ -381,6 +385,10 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 */
 	if (error) {
 		KKASSERT(chain == NULL);
+		if (error == EAGAIN) {
+			hammer2_chain_wait(hmp, parent);
+			goto retry;
+		}
 		return (error);
 	}
 
@@ -471,6 +479,7 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 * For now the caller deals with this for us by locking dip in
 	 * that case (and our lock here winds up just being recursive)
 	 */
+retry:
 	parent = &dip->chain;
 	if (oip->pip == dip) {
 		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
@@ -479,7 +488,6 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 		hammer2_chain_lock(hmp, &oip->chain, HAMMER2_RESOLVE_ALWAYS);
 		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 	}
-
 
 	lhc = hammer2_dirhash(name, name_len);
 	hlink = (oip->chain.parent != NULL);
@@ -517,17 +525,17 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 			chain = hammer2_chain_create(hmp, parent,
 						     NULL, lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
-						     HAMMER2_INODE_BYTES);
+						     HAMMER2_INODE_BYTES,
+						     &error);
 		} else {
 			chain = hammer2_chain_create(hmp, parent,
 						     &oip->chain, lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
-						     HAMMER2_INODE_BYTES);
+						     HAMMER2_INODE_BYTES,
+						     &error);
 			if (chain)
 				KKASSERT(chain == &oip->chain);
 		}
-		if (chain == NULL)
-			error = EIO;
 	}
 	hammer2_chain_unlock(hmp, parent);
 
@@ -536,6 +544,11 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 */
 	if (error) {
 		KKASSERT(chain == NULL);
+		if (error == EAGAIN) {
+			hammer2_chain_wait(hmp, parent);
+			hammer2_chain_unlock(hmp, &oip->chain);
+			goto retry;
+		}
 		hammer2_chain_unlock(hmp, &oip->chain);
 		return (error);
 	}
@@ -609,6 +622,9 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
  *
  * isdir determines whether a directory/non-directory check should be made.
  * No check is made if isdir is set to -1.
+ *
+ * If retain_ip is non-NULL this function can fail with an EAGAIN if it
+ * catches the object in the middle of a flush.
  */
 int
 hammer2_unlink_file(hammer2_inode_t *dip,
@@ -638,7 +654,7 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-				     HAMMER2_LOOKUP_MAYDELETE);
+				     0);
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    chain->u.ip &&
@@ -648,7 +664,7 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 		}
 		chain = hammer2_chain_next(hmp, &parent, chain,
 					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-					   HAMMER2_LOOKUP_MAYDELETE);
+					   0);
 	}
 
 	/*
@@ -720,14 +736,19 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 	if (oip) {
 		/*
 		 * If this was a hardlink we first delete the hardlink
-		 * pointer entry.
+		 * pointer entry.  parent is NULL on entry due to the oip
+		 * path.
 		 */
 		parent = oip->chain.parent;
-		hammer2_chain_lock_pair(hmp, parent, &oip->chain,
-					HAMMER2_RESOLVE_ALWAYS |
-					HAMMER2_RESOLVE_MAYDELETE);
+		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_lock(hmp, &oip->chain, HAMMER2_RESOLVE_ALWAYS);
+		if (oip == retain_ip && oip->chain.flushing) {
+			hammer2_chain_unlock(hmp, &oip->chain);
+			error = EAGAIN;
+			goto done;
+		}
 		hammer2_chain_delete(hmp, parent, &oip->chain,
-				    (retain_ip == oip));
+				     (retain_ip == oip));
 		hammer2_chain_unlock(hmp, &oip->chain);
 		hammer2_chain_unlock(hmp, parent);
 		parent = NULL;
@@ -740,9 +761,10 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 			dparent = chain->parent;
 			hammer2_chain_ref(hmp, chain);
 			hammer2_chain_unlock(hmp, chain);
-			hammer2_chain_lock_pair(hmp, dparent, chain,
-					   HAMMER2_RESOLVE_ALWAYS |
-					   HAMMER2_RESOLVE_MAYDELETE);
+			hammer2_chain_lock(hmp, dparent,
+					   HAMMER2_RESOLVE_ALWAYS);
+			hammer2_chain_lock(hmp, chain,
+					   HAMMER2_RESOLVE_ALWAYS);
 			hammer2_chain_drop(hmp, chain);
 			hammer2_chain_modify(hmp, chain, 0);
 			--ip->ip_data.nlinks;
@@ -758,6 +780,10 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 		 * remove the entry and decrement nlinks.
 		 */
 		ip = chain->u.ip;
+		if (ip == retain_ip && chain->flushing) {
+			error = EAGAIN;
+			goto done;
+		}
 		hammer2_chain_modify(hmp, chain, 0);
 		--ip->ip_data.nlinks;
 		hammer2_chain_delete(hmp, parent, chain,

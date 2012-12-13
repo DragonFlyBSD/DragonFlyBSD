@@ -927,15 +927,15 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 	hammer2_chain_t *chain;
 	hammer2_off_t pbase;
 
-	*errorp = 0;
-	hmp = ip->hmp;
-
 	/*
 	 * Locate the chain associated with lbase, return a locked chain.
 	 * However, do not instantiate any data reference (which utilizes a
 	 * device buffer) because we will be using direct IO via the
 	 * logical buffer cache buffer.
 	 */
+	hmp = ip->hmp;
+retry:
+	*errorp = 0;
 	parent = &ip->chain;
 	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
@@ -953,7 +953,13 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 		chain = hammer2_chain_create(hmp, parent, NULL,
 					     lbase, HAMMER2_PBUFRADIX,
 					     HAMMER2_BREF_TYPE_DATA,
-					     lblksize);
+					     lblksize, errorp);
+		if (chain == NULL) {
+			KKASSERT(*errorp == EAGAIN); /* XXX */
+			hammer2_chain_unlock(hmp, parent);
+			goto retry;
+		}
+
 		pbase = chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX;
 		ip->delta_dcount += lblksize;
 	} else {
@@ -1148,8 +1154,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	lbase = (nsize + HAMMER2_PBUFMASK64) & ~HAMMER2_PBUFMASK64;
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lbase, (hammer2_key_t)-1,
-				     HAMMER2_LOOKUP_NODATA |
-				     HAMMER2_LOOKUP_MAYDELETE);
+				     HAMMER2_LOOKUP_NODATA);
 	while (chain) {
 		/*
 		 * Degenerate embedded data case, nothing to loop on.
@@ -1169,8 +1174,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		/* XXX check parent if empty indirect block & delete */
 		chain = hammer2_chain_next(hmp, &parent, chain,
 					   lbase, (hammer2_key_t)-1,
-					   HAMMER2_LOOKUP_NODATA |
-					   HAMMER2_LOOKUP_MAYDELETE);
+					   HAMMER2_LOOKUP_NODATA);
 	}
 	hammer2_chain_unlock(hmp, parent);
 }
@@ -1275,6 +1279,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 * Resize the chain element at the old EOF.
 	 */
 	if (((int)osize & HAMMER2_PBUFMASK)) {
+retry:
 		parent = &ip->chain;
 		error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 		KKASSERT(error == 0);
@@ -1288,7 +1293,12 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			chain = hammer2_chain_create(hmp, parent, NULL,
 						     obase, nblksize,
 						     HAMMER2_BREF_TYPE_DATA,
-						     nblksize);
+						     nblksize, &error);
+			if (chain == NULL) {
+				KKASSERT(error == EAGAIN);
+				hammer2_chain_unlock(hmp, parent);
+				goto retry;
+			}
 			ip->delta_dcount += nblksize;
 		} else {
 			KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA);
@@ -1948,7 +1958,18 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		if (error)
 			goto done;
 	}
-	error = hammer2_unlink_file(fdip, fname, fname_len, -1, ip);
+
+	/*
+	 * NOTE! Because we are retaining (ip) the unlink can fail with
+	 *	 an EAGAIN.
+	 */
+	for (;;) {
+		error = hammer2_unlink_file(fdip, fname, fname_len, -1, ip);
+		if (error != EAGAIN)
+			break;
+		kprintf("hammer2_vop_nrename: unlink race %s\n", fname);
+		tsleep(fdip, 0, "h2renr", 1);
+	}
 	if (error)
 		goto done;
 
