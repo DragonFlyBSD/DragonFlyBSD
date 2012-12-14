@@ -153,10 +153,7 @@ The following might be used to debug basic station mode operation:
 it enables debug messages while scanning, authenticating to
 an access point, and associating to an access point.
 .Sh SEE ALSO
-.Xr athdebug 8 ,
-.Xr athstats 8 ,
-.Xr ifconfig 8 ,
-.Xr wlanstats 8
+.Xr ifconfig 8
 .Sh NOTES
 Different wireless drivers support different debugging messages.
 Drivers such as
@@ -168,6 +165,15 @@ that depend on the
 module for 802.11 protocol processing typically support
 most of the debugging messages while devices that
 implement parts of the 802.11 protocol in firmware do not.
+.Pp
+For some more
+.Xr wlan 4
+related debugging tools, see the
+.Pa /usr/src/tools/tools/net80211
+and
+.Pa /usr/src/tools/tools/ath
+directories, with the latter being specific to
+.Xr ath 4 .
 .Pp
 Some debugging messages are no longer meaningful
 because protocol processing has moved from the operating
