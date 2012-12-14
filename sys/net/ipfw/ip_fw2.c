@@ -1210,10 +1210,8 @@ add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 	i = hash_packet(id);
 
 	r = kmalloc(sizeof(*r), M_IPFW, M_NOWAIT | M_ZERO);
-	if (r == NULL) {
-		kprintf ("sorry cannot allocate state\n");
+	if (r == NULL)
 		return NULL;
-	}
 
 	/* increase refcount on parent, and set pointer */
 	if (dyn_type == O_LIMIT) {
