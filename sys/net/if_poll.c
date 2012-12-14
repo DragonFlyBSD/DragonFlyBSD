@@ -273,6 +273,20 @@ TUNABLE_INT("net.ifpoll.pollhz", &ifpoll_pollhz);
 TUNABLE_INT("net.ifpoll.status_frac", &ifpoll_stfrac);
 TUNABLE_INT("net.ifpoll.tx_frac", &ifpoll_txfrac);
 
+#define IFPOLL_FREQ_ADJ(comm)	(((comm)->poll_cpuid * 3) % 50)
+
+static __inline int
+poll_comm_pollhz_div(const struct poll_comm *comm, int pollhz)
+{
+	return pollhz + IFPOLL_FREQ_ADJ(comm);
+}
+
+static __inline int
+poll_comm_pollhz_conv(const struct poll_comm *comm, int pollhz)
+{
+	return pollhz - IFPOLL_FREQ_ADJ(comm);
+}
+
 static __inline void
 ifpoll_sendmsg_oncpu(netmsg_t msg)
 {
@@ -1232,8 +1246,8 @@ poll_comm_init(int cpuid)
 	if (ifpoll_txfrac < 1)
 		ifpoll_txfrac = IFPOLL_TXFRAC_DEFAULT;
 
-	comm->pollhz = ifpoll_pollhz;
 	comm->poll_cpuid = cpuid;
+	comm->pollhz = poll_comm_pollhz_div(comm, ifpoll_pollhz);
 	comm->poll_stfrac = ifpoll_stfrac - 1;
 	comm->poll_txfrac = ifpoll_txfrac - 1;
 
@@ -1355,7 +1369,7 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 	struct netmsg_base nmsg;
 	int error, phz;
 
-	phz = comm->pollhz;
+	phz = poll_comm_pollhz_conv(comm, comm->pollhz);
 	error = sysctl_handle_int(oidp, &phz, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
@@ -1379,7 +1393,7 @@ sysctl_pollhz_handler(netmsg_t nmsg)
 	KKASSERT(&curthread->td_msgport == netisr_portfn(comm->poll_cpuid));
 
 	/* Save polling frequency */
-	comm->pollhz = nmsg->lmsg.u.ms_result;
+	comm->pollhz = poll_comm_pollhz_div(comm, nmsg->lmsg.u.ms_result);
 
 	/*
 	 * Adjust cached pollhz
