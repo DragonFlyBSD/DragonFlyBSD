@@ -1134,8 +1134,12 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 }
 
 /*
- * Collect together all the buffers in a cluster.
- * Plus add one additional buffer.
+ * Collect together all the buffers in a cluster, plus add one
+ * additional buffer passed-in.
+ *
+ * Only pre-existing buffers whos block size matches blksize are collected.
+ * (this is primarily because HAMMER1 uses varying block sizes and we don't
+ * want to override its choices).
  */
 static struct cluster_save *
 cluster_collectbufs(struct vnode *vp, struct buf *last_bp, int blksize)
@@ -1144,20 +1148,45 @@ cluster_collectbufs(struct vnode *vp, struct buf *last_bp, int blksize)
 	struct buf *bp;
 	off_t loffset;
 	int i, len;
+	int j;
+	int k;
 
 	len = (int)(vp->v_lastw - vp->v_cstart + blksize) / blksize;
 	buflist = kmalloc(sizeof(struct buf *) * (len + 1) + sizeof(*buflist),
 			 M_SEGMENT, M_WAITOK);
 	buflist->bs_nchildren = 0;
 	buflist->bs_children = (struct buf **) (buflist + 1);
-	for (loffset = vp->v_cstart, i = 0; i < len; (loffset += blksize), i++) {
-		(void) bread(vp, loffset, last_bp->b_bcount, &bp);
+	for (loffset = vp->v_cstart, i = 0, j = 0;
+	     i < len;
+	     (loffset += blksize), i++) {
+		bp = getcacheblk(vp, loffset,
+				 last_bp->b_bcount, GETBLK_SZMATCH);
 		buflist->bs_children[i] = bp;
-		if (bp->b_bio2.bio_offset == NOOFFSET) {
+		if (bp == NULL) {
+			j = i + 1;
+		} else if (bp->b_bio2.bio_offset == NOOFFSET) {
 			VOP_BMAP(bp->b_vp, bp->b_loffset,
 				 &bp->b_bio2.bio_offset,
 				 NULL, NULL, BUF_CMD_WRITE);
 		}
+	}
+
+	/*
+	 * Get rid of gaps
+	 */
+	for (k = 0; k < j; ++k) {
+		if (buflist->bs_children[k]) {
+			bqrelse(buflist->bs_children[k]);
+			buflist->bs_children[k] = NULL;
+		}
+	}
+	if (j != 0) {
+		if (j != i) {
+			bcopy(buflist->bs_children + j,
+			      buflist->bs_children + 0,
+			      sizeof(buflist->bs_children[0]) * (i - j));
+		}
+		i -= j;
 	}
 	buflist->bs_children[i] = bp = last_bp;
 	if (bp->b_bio2.bio_offset == NOOFFSET) {
