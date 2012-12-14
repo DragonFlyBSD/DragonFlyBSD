@@ -2901,7 +2901,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		bp = chain->bp;
 		if ((chain->flags & HAMMER2_CHAIN_DIRTYBP) ||
 		    (bp->b_flags & B_DIRTY)) {
-			bawrite(chain->bp);
+			bdwrite(chain->bp);
 		} else {
 			brelse(chain->bp);
 		}
@@ -2945,15 +2945,10 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 			/*
 			 * Copy the data to the buffer, mark the buffer
 			 * dirty, and convert the chain to unmodified.
-			 *
-			 * We expect we might have to make adjustments to
-			 * non-data delayed-write buffers when doing an
-			 * actual flush so use bawrite() instead of
-			 * cluster_awrite() here.
 			 */
 			bcopy(chain->data, bdata, chain->bytes);
 			bp->b_flags |= B_CLUSTEROK;
-			bawrite(bp);
+			bdwrite(bp);
 			bp = NULL;
 			chain->bref.check.iscsi32.value =
 				hammer2_icrc32(chain->data, chain->bytes);

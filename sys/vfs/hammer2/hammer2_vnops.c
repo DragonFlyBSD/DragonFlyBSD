@@ -1397,6 +1397,10 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 
 	/*
 	 * Acquire the related vnode
+	 *
+	 * NOTE: For error processing, only ENOENT resolves the namecache
+	 *	 entry to NULL, otherwise we just return the error and
+	 *	 leave the namecache unresolved.
 	 */
 	if (chain) {
 		vp = hammer2_igetv(chain->u.ip, &error);
@@ -1404,15 +1408,18 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
 			vrele(vp);
-		} else {
+		} else if (error == ENOENT) {
 			cache_setvp(ap->a_nch, NULL);
 		}
 		hammer2_chain_unlock(hmp, chain);
 	} else {
 		error = ENOENT;
-failed:
 		cache_setvp(ap->a_nch, NULL);
 	}
+failed:
+	KASSERT(error || ap->a_nch->ncp->nc_vp != NULL,
+		("resolve error %d/%p chain %p ap %p\n",
+		 error, ap->a_nch->ncp->nc_vp, chain, ap));
 	if (ip)
 		hammer2_inode_drop(ip);
 	return error;
@@ -1837,7 +1844,6 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
-		cache_setvp(ap->a_nch, NULL);
 	}
 	return (error);
 }
@@ -1869,7 +1875,6 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
-		cache_setvp(ap->a_nch, NULL);
 	}
 	return (error);
 }
@@ -1936,7 +1941,6 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	if (error && error != ENOENT)
 		goto done;
 	cache_setunresolved(ap->a_tnch);
-	cache_setvp(ap->a_tnch, NULL);
 
 	/*
 	 * Disconnect (fdip, fname) from the source directory.  This will
