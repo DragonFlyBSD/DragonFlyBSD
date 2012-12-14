@@ -4524,6 +4524,7 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 	struct inodedep *inodedep;
 	struct ufsmount *ump;
 	struct diradd *dap;
+	struct worklist *wk;
 	struct vnode *vp;
 	int gotit, error = 0;
 	struct buf *bp;
@@ -4572,7 +4573,32 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 				break;
 			}
 			drain_output(vp, 0);
+			/*
+			 * If first block is still dirty with a D_MKDIR
+			 * dependency then it needs to be written now.
+			 */
+			error = 0;
+			ACQUIRE_LOCK(&lk);
+			bp = findblk(vp, 0, FINDBLK_TEST);
+			if (bp == NULL) {
+				FREE_LOCK(&lk);
+				goto mkdir_body_continue;
+			}
+			LIST_FOREACH(wk, &bp->b_dep, wk_list)
+				if (wk->wk_type == D_MKDIR) {
+					gotit = getdirtybuf(&bp, MNT_WAIT);
+					FREE_LOCK(&lk);
+					if (gotit && (error = bwrite(bp)) != 0)
+						goto mkdir_body_continue;
+					break;
+				}
+			if (wk == NULL)
+				FREE_LOCK(&lk);
+		mkdir_body_continue:
 			vput(vp);
+			/* Flushing of first block failed. */
+			if (error)
+				break;
 			ACQUIRE_LOCK(&lk);
 			/*
 			 * If that cleared dependencies, go on to next.
