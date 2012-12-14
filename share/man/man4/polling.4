@@ -167,7 +167,7 @@ packets, going round-robin among all interfaces registered for
 .Nm .
 This prevents the case that a large burst from a single interface
 can saturate the IP interrupt queue.
-Default is 15.
+Default is 50.
 .Pp
 .It Va net.ifpoll.X.rx.burst_max
 Upper bound for
