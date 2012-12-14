@@ -438,6 +438,7 @@ pktgen_start(struct pktgen *pktg)
 		ip->ip_tos = 0;		/* XXX */
 		ip->ip_vhl = IP_VHL_BORING;
 		ip->ip_off = 0;
+		ip->ip_sum = 0;
 		ip->ip_id = ip_newid();
 
 		in_delayed_cksum(m);
