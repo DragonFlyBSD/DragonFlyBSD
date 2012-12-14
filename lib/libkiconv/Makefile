@@ -1,7 +1,6 @@
 # $FreeBSD: src/lib/libkiconv/Makefile,v 1.4.8.1 2009/04/15 03:14:26 kensmith Exp $
 
 LIB=		kiconv
-SHLIBDIR?=	/usr/lib
 SRCS=		xlat16_iconv.c xlat16_sysctl.c
 SRCS+=		quirks.c
 WARNS?=		3
