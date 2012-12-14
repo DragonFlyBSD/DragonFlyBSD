@@ -107,6 +107,12 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			ccms_thread_lock(&ip->chain.cst, CCMS_STATE_EXCLUSIVE);
 			vdrop(vp);
 			/* vp still locked and ref from vget */
+			if (ip->vp != vp) {
+				kprintf("hammer2: igetv race %p/%p\n",
+					ip->vp, vp);
+				vput(vp);
+				continue;
+			}
 			*errorp = 0;
 			break;
 		}
@@ -118,6 +124,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 		 */
 		*errorp = getnewvnode(VT_HAMMER2, pmp->mp, &vp, 0, 0);
 		if (*errorp) {
+			kprintf("hammer2: igetv getnewvnode failed %d\n",
+				*errorp);
 			vp = NULL;
 			break;
 		}

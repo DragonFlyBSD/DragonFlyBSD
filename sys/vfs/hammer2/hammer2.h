@@ -298,7 +298,9 @@ struct hammer2_mount {
 	struct lock	alloclk;	/* lockmgr lock */
 	struct lock	voldatalk;	/* lockmgr lock */
 
+	int		volhdrno;	/* last volhdrno written */
 	hammer2_volume_data_t voldata;
+	hammer2_volume_data_t volsync;	/* synchronized voldata */
 	hammer2_freecache_t freecache[HAMMER2_FREECACHE_TYPES]
 				     [HAMMER2_MAX_RADIX+1];
 };

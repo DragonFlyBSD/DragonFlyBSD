@@ -2860,6 +2860,27 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		 * The volume header is flushed manually by the syncer, not
 		 * here.
 		 */
+		KKASSERT(chain->data != NULL);
+		KKASSERT(chain->bp == NULL);
+		kprintf("volume header mirror_tid %jd\n",
+			hmp->voldata.mirror_tid);
+
+		hmp->voldata.icrc_sects[HAMMER2_VOL_ICRC_SECT1]=
+			hammer2_icrc32(
+				(char *)&hmp->voldata +
+				 HAMMER2_VOLUME_ICRC1_OFF,
+				HAMMER2_VOLUME_ICRC1_SIZE);
+		hmp->voldata.icrc_sects[HAMMER2_VOL_ICRC_SECT0]=
+			hammer2_icrc32(
+				(char *)&hmp->voldata +
+				 HAMMER2_VOLUME_ICRC0_OFF,
+				HAMMER2_VOLUME_ICRC0_SIZE);
+		hmp->voldata.icrc_volheader =
+			hammer2_icrc32(
+				(char *)&hmp->voldata +
+				 HAMMER2_VOLUME_ICRCVH_OFF,
+				HAMMER2_VOLUME_ICRCVH_SIZE);
+		hmp->volsync = hmp->voldata;
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 		/*
@@ -2960,38 +2981,6 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 			chain->bref.check.iscsi32.value =
 				hammer2_icrc32(chain->data, chain->bytes);
 		}
-	}
-
-	/*
-	 * Adjustments to the bref.  The caller will use this to adjust
-	 * our chain's pointer to this chain element.
-	 */
-	bref = &chain->bref;
-
-	switch(bref->type) {
-	case HAMMER2_BREF_TYPE_VOLUME:
-		KKASSERT(chain->data != NULL);
-		KKASSERT(chain->bp == NULL);
-
-		hmp->voldata.icrc_sects[HAMMER2_VOL_ICRC_SECT1]=
-			hammer2_icrc32(
-				(char *)&hmp->voldata +
-				 HAMMER2_VOLUME_ICRC1_OFF,
-				HAMMER2_VOLUME_ICRC1_SIZE);
-		hmp->voldata.icrc_sects[HAMMER2_VOL_ICRC_SECT0]=
-			hammer2_icrc32(
-				(char *)&hmp->voldata +
-				 HAMMER2_VOLUME_ICRC0_OFF,
-				HAMMER2_VOLUME_ICRC0_SIZE);
-		hmp->voldata.icrc_volheader =
-			hammer2_icrc32(
-				(char *)&hmp->voldata +
-				 HAMMER2_VOLUME_ICRCVH_OFF,
-				HAMMER2_VOLUME_ICRCVH_SIZE);
-		break;
-	default:
-		break;
-
 	}
 done:
 	if (hammer2_debug & 0x0008) {

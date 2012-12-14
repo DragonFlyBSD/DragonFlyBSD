@@ -1843,7 +1843,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	error = hammer2_unlink_file(dip, name, name_len, 0, NULL);
 
 	if (error == 0) {
-		cache_setunresolved(ap->a_nch);
+		cache_unlink(ap->a_nch);
 	}
 	return (error);
 }
@@ -1874,7 +1874,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	error = hammer2_unlink_file(dip, name, name_len, 1, NULL);
 
 	if (error == 0) {
-		cache_setunresolved(ap->a_nch);
+		cache_unlink(ap->a_nch);
 	}
 	return (error);
 }
