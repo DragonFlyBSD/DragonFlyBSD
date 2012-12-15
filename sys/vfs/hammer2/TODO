@@ -1,4 +1,9 @@
 
+* Filesystem must ensure that modify_tid is not too large relative to
+  the iterator in the volume header, on load, or flush sequencing will
+  not work properly.  We should be able to just override it, but we
+  should complain if it happens.
+
 * Kernel-side needs to clean up transaction queues and make appropriate
   callbacks.
 
@@ -8,10 +13,6 @@
 
 * Inefficient vfsync due to thousands of file buffers, one per-vnode.
   (need to aggregate using a device buffer?)
-
-* Adjust the flusher to unlock the parent after the child is locked,
-  then restart if the parent changed out from under us.  This will
-  greatly reduce namecache contention.
 
 * Use bp->b_dep to interlock the buffer with the chain structure so the
   strategy code can calculate the crc and assert that the chain is marked

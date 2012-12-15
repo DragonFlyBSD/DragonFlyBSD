@@ -478,6 +478,8 @@ void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				hammer2_tid_t modify_tid);
 void hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_parent_setsubmod(hammer2_mount_t *hmp,
+				hammer2_chain_t *chain);
 
 /*
  * hammer2_ioctl.c
