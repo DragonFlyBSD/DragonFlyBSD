@@ -2098,6 +2098,8 @@ TO_REMOVE+=/usr/share/man/cat2/upc_control.2.gz
 TO_REMOVE+=/usr/share/man/man2/upc_control.2.gz
 TO_REMOVE+=/usr/share/man/cat2/upc_register.2.gz
 TO_REMOVE+=/usr/share/man/man2/upc_register.2.gz
+TO_REMOVE+=/usr/share/man/cat9/VFS_INIT.9.gz
+TO_REMOVE+=/usr/share/man/man9/VFS_INIT.9.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
