@@ -295,9 +295,8 @@ fn_wipe_start_of_disk(struct i_fn_args *a)
 	    "LAST CHANCE to cancel!"), disk_get_desc(storage_get_selected_disk(a->s)))) {
 		cmds = commands_new();
 		command_add(cmds,
-		    "%s%s if=%sdev/zero of=%sdev/%s bs=32k count=16",
+		    "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
 		    a->os_root, cmd_name(a, "DD"),
-		    a->os_root, a->os_root,
 		    disk_get_device_name(storage_get_selected_disk(a->s)));
 		if (commands_execute(a, cmds)) {
 			inform(a->c, _("Start of disk was successfully wiped."));
@@ -339,9 +338,8 @@ fn_wipe_start_of_slice(struct i_fn_args *a)
 	    disk_get_desc(storage_get_selected_disk(a->s)))) {
 		/* XXX check to make sure this slice is not mounted first */
 		cmds = commands_new();
-		command_add(cmds, "%s%s if=%sdev/zero of=%sdev/%s bs=32k count=16",
+		command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
 		    a->os_root, cmd_name(a, "DD"),
-		    a->os_root, a->os_root,
 		    slice_get_device_name(storage_get_selected_slice(a->s)));
 		if (commands_execute(a, cmds)) {
 			inform(a->c, _("Start of primary partition was successfully wiped."));
@@ -381,10 +379,10 @@ ask_to_wipe_boot_sector(struct i_fn_args *a, struct commands *fcmds)
 			case 1:
 				cmds = commands_new();
 				command_add(cmds,
-				    "%s%s | %s%s -B %sdev/%s",
+				    "%s%s | %s%s -B /dev/%s",
 				    a->os_root, cmd_name(a, "YES"),
 				    a->os_root, cmd_name(a, "FDISK"),
-				    a->os_root, disk);
+				    disk);
 				if (commands_execute(a, cmds)) {
 					inform(a->c, _("Boot sector successfully initialized."));
 				} else {
@@ -564,11 +562,10 @@ fn_create_cdboot_floppy(struct i_fn_args *a)
 	case 1:
 		cmds = commands_new();
 		command_add(cmds, "%s%s -c %sboot/cdboot.flp.bz2 | "
-		    "%s%s of=%sdev/fd0 bs=32k",
+		    "%s%s of=/dev/fd0 bs=32k",
 		    a->os_root, cmd_name(a, "BUNZIP2"),
 		    a->os_root,
-		    a->os_root, cmd_name(a, "DD"),
-		    a->os_root);
+		    a->os_root, cmd_name(a, "DD"));
 		if (commands_execute(a, cmds))
 			inform(a->c, _("CDBoot floppy successfully created!"));
 		else

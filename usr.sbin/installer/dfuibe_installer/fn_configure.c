@@ -1363,9 +1363,8 @@ mount_target_system(struct i_fn_args *a)
 	 * Mount the target's / and read its /etc/fstab.
 	 */
 	if (use_hammer == 0) {
-		command_add(cmds, "%s%s %sdev/%s %s%s",
+		command_add(cmds, "%s%s /dev/%s %s%s",
 		    a->os_root, cmd_name(a, "MOUNT"),
-		    a->os_root,
 		    subpartition_get_device_name(a_subpart),
 		    a->os_root, a->cfg_root);
 		cmd = command_add(cmds,
@@ -1376,9 +1375,8 @@ mount_target_system(struct i_fn_args *a)
 		    a->os_root, a->cfg_root, a->tmp);
 		command_set_failure_mode(cmd, COMMAND_FAILURE_IGNORE);
 	} else {
-		command_add(cmds, "%s%s %sdev/%s %sboot",
+		command_add(cmds, "%s%s /dev/%s %sboot",
 		    a->os_root, cmd_name(a, "MOUNT"),
-		    a->os_root,
 		    subpartition_get_device_name(a_subpart),
 		    a->os_root);
 		cmd = command_add(cmds,
@@ -1405,27 +1403,24 @@ mount_target_system(struct i_fn_args *a)
 			    a->os_root);
 			fn_get_passphrase(a);
 			command_add(cmds,
-			    "%s%s -d /tmp/t1 luksOpen %sdev/`%s%s \"^vfs\\.root\\.realroot=\" %st2 |"
+			    "%s%s -d /tmp/t1 luksOpen /dev/`%s%s \"^vfs\\.root\\.realroot=\" %st2 |"
 			    "%s%s -Fhammer: '{print $2;}' |"
 			    "%s%s -F: '{print $1;}'` root",
 			    a->os_root, cmd_name(a, "CRYPTSETUP"),
-			    a->os_root,
 			    a->os_root, cmd_name(a, "GREP"),
 			    a->tmp,
 			    a->os_root, cmd_name(a, "AWK"),
 			    a->os_root, cmd_name(a, "AWK"));
 			command_add(cmds,
-			    "%s%s %sdev/mapper/root %s%s",
+			    "%s%s /dev/mapper/root %s%s",
 			    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
-			    a->os_root,
 			    a->os_root, a->cfg_root);
 		} else {
 			command_add(cmds,
-			    "%s%s %sdev/`%s%s \"^vfs\\.root\\.mountfrom\" %sboot/loader.conf |"
+			    "%s%s /dev/`%s%s \"^vfs\\.root\\.mountfrom\" %sboot/loader.conf |"
 			    "%s%s -Fhammer: '{print $2;}' |"
 			    "%s%s 's/\"//'` %s%s",
 			    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
-			    a->os_root,
 			    a->os_root, cmd_name(a, "GREP"),
 			    a->os_root,
 			    a->os_root, cmd_name(a, "AWK"),
