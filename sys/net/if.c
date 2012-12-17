@@ -293,7 +293,7 @@ if_start_dispatch(netmsg_t msg)
 	struct lwkt_msg *lmsg = &msg->base.lmsg;
 	struct ifnet *ifp = lmsg->u.ms_resultp;
 	struct ifaltq *ifq = &ifp->if_snd;
-	int running = 0;
+	int running = 0, need_sched;
 
 	crit_enter();
 	lwkt_replymsg(lmsg, 0);	/* reply ASAP */
@@ -301,31 +301,25 @@ if_start_dispatch(netmsg_t msg)
 
 	if (mycpuid != ifp->if_start_cpuid(ifp)) {
 		/*
-		 * If the ifnet is still up, we need to
-		 * chase its CPU change.
+		 * We need to chase the ifnet CPU change.
 		 */
-		if (ifp->if_flags & IFF_UP) {
-			logifstart(chase_sched, ifp);
-			if_start_schedule(ifp);
-			return;
-		} else {
-			goto check;
-		}
+		logifstart(chase_sched, ifp);
+		if_start_schedule(ifp);
+		return;
 	}
 
-	if (ifp->if_flags & IFF_UP) {
-		ifnet_serialize_tx(ifp); /* XXX try? */
-		if ((ifp->if_flags & IFF_OACTIVE) == 0) {
-			logifstart(run, ifp);
-			ifp->if_start(ifp);
-			if ((ifp->if_flags &
-			(IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
-				running = 1;
-		}
-		ifnet_deserialize_tx(ifp);
+	ifnet_serialize_tx(ifp);
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING) {
+		logifstart(run, ifp);
+		ifp->if_start(ifp);
+		if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) ==
+		    IFF_RUNNING)
+			running = 1;
 	}
-check:
-	if (if_start_need_schedule(ifq, running)) {
+	need_sched = if_start_need_schedule(ifq, running);
+	ifnet_deserialize_tx(ifp);
+
+	if (need_sched) {
 		crit_enter();
 		if (lmsg->ms_flags & MSGF_DONE)	{ /* XXX necessary? */
 			logifstart(sched, ifp);
@@ -2395,7 +2389,7 @@ int
 ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 {
 	struct ifaltq *ifq = &ifp->if_snd;
-	int running = 0, error, start = 0;
+	int running = 0, error, start = 0, need_sched;
 
 	ASSERT_IFNET_NOT_SERIALIZED_TX(ifp);
 
@@ -2439,17 +2433,18 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		return 0;
 	}
 
-	if ((ifp->if_flags & IFF_OACTIVE) == 0) {
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING) {
 		logifstart(run, ifp);
 		ifp->if_start(ifp);
-		if ((ifp->if_flags &
-		     (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
+		if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) ==
+		    IFF_RUNNING)
 			running = 1;
 	}
+	need_sched = if_start_need_schedule(ifq, running);
 
 	ifnet_deserialize_tx(ifp);
 
-	if (if_start_need_schedule(ifq, running)) {
+	if (need_sched) {
 		/*
 		 * More data need to be transmitted, ifnet.if_start is
 		 * scheduled on ifnet's CPU, and we keep going.
