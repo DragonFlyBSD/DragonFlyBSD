@@ -55,7 +55,7 @@ DIRS+=	libexec/dma
 BIN2=	pccard_ether rc.firewall rc.suspend rc.resume
 
 DEFAULTS= compilers.conf devfs.conf make.conf mkinitrd.conf periodic.conf \
-	  rc.conf uuids
+	  pfi.conf rc.conf uuids
 
 MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
 	BSD.var.dist
