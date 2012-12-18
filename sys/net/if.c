@@ -245,7 +245,7 @@ if_start_schedule(struct ifnet *ifp)
 	if (cpu != mycpuid)
 		lwkt_send_ipiq(globaldata_find(cpu), if_start_ipifunc, ifp);
 	else
-	if_start_ipifunc(ifp);
+		if_start_ipifunc(ifp);
 }
 
 /*
