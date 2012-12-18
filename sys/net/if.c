@@ -2656,6 +2656,14 @@ ifnet_service_loop(void *arg __unused)
 	}
 }
 
+#ifdef notyet
+static void
+if_start_rollup(void)
+{
+	/* TODO */
+}
+#endif
+
 static void
 ifnetinit(void *dummy __unused)
 {
@@ -2670,6 +2678,9 @@ ifnetinit(void *dummy __unused)
 		netmsg_service_port_init(&thr->td_msgport);
 		lwkt_schedule(thr);
 	}
+#ifdef notyet
+	netisr_register_rollup(if_start_rollup, NETISR_ROLLUP_PRIO_IFSTART);
+#endif
 }
 
 struct ifnet *

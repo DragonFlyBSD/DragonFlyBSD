@@ -159,6 +159,9 @@ struct netisr {
 #define NETMSG_SERVICE_ADAPTIVE	1
 #define NETMSG_SERVICE_MPSAFE	2
 
+#define NETISR_ROLLUP_PRIO_TCP		200
+#define NETISR_ROLLUP_PRIO_IFSTART	50
+
 extern lwkt_port netisr_adone_rport;
 extern lwkt_port netisr_afree_rport;
 extern lwkt_port netisr_afree_free_so_rport;
@@ -170,7 +173,7 @@ lwkt_port_t	cur_netport(void);
 
 void		netisr_register(int, netisr_fn_t, netisr_cpufn_t);
 void		netisr_register_hashcheck(int, netisr_hashck_t);
-void		netisr_register_rollup(netisr_ru_t ru_func);
+void		netisr_register_rollup(netisr_ru_t ru_func, int ru_prio);
 
 void		netisr_characterize(int num, struct mbuf **mp, int hoff);
 void		netisr_hashcheck(int num, struct mbuf *m,
