@@ -141,7 +141,7 @@ is the CPU number):
 .Bl -tag -width indent -compact
 .It Va net.ifpoll.X.pollhz
 The polling frequency, whose range is 1 to 30000.
-Default is 4000.
+Default is 6000.
 .Pp
 .It Va net.ifpoll.X.rx.user_frac
 When
@@ -180,7 +180,7 @@ packets per second unless there are spare CPU cycles available for
 .Nm
 in the idle loop.
 This number should be tuned to match the expected load.
-Default is 375 which is adequate for 1000Mbit network and pollhz=4000.
+Default is 250 which is adequate for 1000Mbit network and pollhz=6000.
 .Pp
 .It Va net.ifpoll.X.rx.handlers
 How many active devices have registered for packet reception
@@ -208,7 +208,7 @@ seconds) the status registers of the device are checked for error
 conditions and the like.
 Increasing this value reduces the load on the bus,
 but also delays the error detection.
-Default is 80.
+Default is 120.
 .Pp
 .It Va net.ifpoll.0.status.handlers
 How many active devices have registered for status

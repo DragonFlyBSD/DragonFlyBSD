@@ -107,15 +107,15 @@
 
 #define MIN_IOPOLL_BURST_MAX	10
 #define MAX_IOPOLL_BURST_MAX	5000
-#define IOPOLL_BURST_MAX	375	/* good for 1000Mbit net and HZ=4000 */
+#define IOPOLL_BURST_MAX	250	/* good for 1000Mbit net and HZ=6000 */
 
 #define IOPOLL_EACH_BURST	50
 #define IOPOLL_USER_FRAC	50
 
-#define IFPOLL_FREQ_DEFAULT	4000
+#define IFPOLL_FREQ_DEFAULT	6000
 
 #define IFPOLL_TXFRAC_DEFAULT	1	/* 1/1 of the pollhz */
-#define IFPOLL_STFRAC_DEFAULT	80	/* 1/80 of the pollhz */
+#define IFPOLL_STFRAC_DEFAULT	120	/* 1/120 of the pollhz */
 
 #define IFPOLL_RX		0x1
 #define IFPOLL_TX		0x2
