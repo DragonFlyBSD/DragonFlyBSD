@@ -67,6 +67,10 @@
 
 #define PKTGEN_BUFSZ	2048
 
+#ifndef PKTGEN_DEVCNT
+#define PKTGEN_DEVCNT	4
+#endif
+
 struct pktgen;
 
 struct pktgen_buf {
@@ -137,12 +141,14 @@ DEV_MODULE(pktgen, pktgen_modevent, NULL);
 static int
 pktgen_modevent(module_t mod, int type, void *data)
 {
-	int error = 0;
+	int error = 0, i;
 
 	switch (type) {
 	case MOD_LOAD:
-		make_dev(&pktgen_ops, 0, UID_ROOT, GID_WHEEL, 0600,
-		    CDEV_NAME"%d", 0);
+		for (i = 0; i < PKTGEN_DEVCNT; ++i) {
+			make_dev(&pktgen_ops, 0, UID_ROOT, GID_WHEEL, 0600,
+			    CDEV_NAME"%d", i);
+		}
 		break;
 
 	case MOD_UNLOAD:
