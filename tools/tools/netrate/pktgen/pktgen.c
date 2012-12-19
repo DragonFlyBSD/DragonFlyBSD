@@ -64,7 +64,6 @@
 #include "pktgen.h"
 
 #define CDEV_NAME	"pktg"
-#define CDEV_MAJOR	151
 
 #define PKTGEN_BUFSZ	2048
 
@@ -121,7 +120,7 @@ static d_close_t	pktgen_close;
 static d_ioctl_t	pktgen_ioctl;
 
 static struct dev_ops	pktgen_ops = {
-	{ CDEV_NAME, CDEV_MAJOR, 0 },
+	{ CDEV_NAME, 0, D_MPSAFE },
 	.d_open =	pktgen_open,
 	.d_close =	pktgen_close,
 	.d_ioctl =	pktgen_ioctl,
