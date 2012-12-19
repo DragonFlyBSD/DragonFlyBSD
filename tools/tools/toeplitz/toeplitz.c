@@ -22,7 +22,7 @@ static void	getaddrport(char *, uint32_t *, uint16_t *);
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s [-s s1_hex [-s s2_hex]] [-p] [-m mask]"
+	fprintf(stderr, "%s [-s s1_hex [-s s2_hex]] [-p] [-m mask] "
 	    "addr1.port1 addr2.port2\n", cmd);
 	exit(1);
 }
@@ -95,7 +95,7 @@ main(int argc, char *argv[])
 		res ^= hash_table[11][(dport >> 8)  & 0xff];
 	}
 
-	printf("%#08x, masked %#8x\n", res, res & mask);
+	printf("0x%08x, masked 0x%08x\n", res, res & mask);
 	exit(0);
 }
 
