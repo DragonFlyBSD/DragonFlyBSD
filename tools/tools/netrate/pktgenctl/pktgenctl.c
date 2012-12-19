@@ -72,7 +72,7 @@ usage(void)
 	    "-d dst_inaddr[:dst_port] [-d dst_inaddr[:dst_port] ...] "
 	    "-s src_inaddr[:src_port] "
 	    "-e (gw_eaddr|dst_eaddr) -i iface "
-	    "[-m data_len] [-l duration]\n");
+	    "[-m data_len] [-l duration] [-D dev]\n");
 	exit(1);
 }
 
@@ -101,6 +101,9 @@ main(int argc, char *argv[])
 	char eaddr_str[32];
 	uint32_t arg_mask = 0;
 	int fd, c, n, ndst_alloc;
+	const char *dev;
+
+	dev = PKTGEN_DEVPATH;
 
 	memset(&conf, 0, sizeof(conf));
 
@@ -120,7 +123,7 @@ main(int argc, char *argv[])
 		err(1, "calloc(%d dst)", ndst_alloc);
 
 	conf.pc_ndst = 0;
-	while ((c = getopt(argc, argv, "d:s:e:i:m:l:")) != -1) {
+	while ((c = getopt(argc, argv, "d:s:e:i:m:l:D:")) != -1) {
 		switch (c) {
 		case 'd':
 			if (conf.pc_ndst >= ndst_alloc) {
@@ -187,6 +190,10 @@ main(int argc, char *argv[])
 			arg_mask |= DURATION_MASK;
 			break;
 
+		case 'D':
+			dev = optarg;
+			break;
+
 		default:
 			usage();
 		}
@@ -195,9 +202,9 @@ main(int argc, char *argv[])
 	if ((arg_mask & MASK_NEEDED) != MASK_NEEDED)
 		usage();
 
-	fd = open(PKTGEN_DEVPATH, O_RDONLY);
+	fd = open(dev, O_RDONLY);
 	if (fd < 0)
-		err(1, "open(" PKTGEN_DEVPATH ")");
+		err(1, "open(%s)", dev);
 
 	if (ioctl(fd, PKTGENSCONF, &conf) < 0)
 		err(1, "ioctl(PKTGENSCONF)");
