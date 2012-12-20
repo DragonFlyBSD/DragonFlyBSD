@@ -51,10 +51,6 @@ installer_start()
 	fi
 
 	case "X$pfi_dfui_transport" in
-	Xcaps)
-		sysctl kern.caps_enabled=1
-		RENDEZVOUS="installer"
-		;;
 	Xnpipe)
 		RENDEZVOUS="installer"
 		;;
