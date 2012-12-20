@@ -45,7 +45,6 @@ SUBDIR=	adjkerntz \
 	ldconfig \
 	md5 \
 	mkinitrd \
-	mknod \
 	mountctl \
 	mount \
 	mount_ufs \
