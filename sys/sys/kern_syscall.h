@@ -148,6 +148,7 @@ int kern_mountctl(const char *path, int op, struct file *fp,
                 void *buf, int buflen, int *res);
 int kern_mkdir(struct nlookupdata *nd, int mode);
 int kern_mkfifo(struct nlookupdata *nd, int mode);
+int kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor);
 int kern_open(struct nlookupdata *nd, int flags, int mode, int *res);
 int kern_close(int fd);
 int kern_closefrom(int fd);

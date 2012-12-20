@@ -1094,14 +1094,17 @@ sys_linux_mknod(struct linux_mknod_args *args)
 		    path, args->mode, args->dev);
 #endif
 	get_mplock();
-	if ((args->mode & S_IFIFO) == 0 || args->dev != 0) {
-		error = EINVAL;
-	} else {
-		error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
-		if (error == 0)
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		if (args->mode & S_IFIFO) {
 			error = kern_mkfifo(&nd, args->mode);
-		nlookup_done(&nd);
+		} else {
+			error = kern_mknod(&nd, args->mode,
+					   umajor(args->dev),
+					   uminor(args->dev));
+		}
 	}
+	nlookup_done(&nd);
 	rel_mplock();
 
 	linux_free_path(&path);
@@ -1125,15 +1128,18 @@ sys_linux_mknodat(struct linux_mknodat_args *args)
 		    path, args->mode, args->dev);
 #endif
 	get_mplock();
-	if ((args->mode & S_IFIFO) == 0 || args->dev != 0) {
-		error = EINVAL;
-	} else {
-		dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
-		error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, 0);
-		if (error == 0)
+	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		if (args->mode & S_IFIFO) {
 			error = kern_mkfifo(&nd, args->mode);
-		nlookup_done_at(&nd, fp);
+		} else {
+			error = kern_mknod(&nd, args->mode,
+					   umajor(args->dev),
+					   uminor(args->dev));
+		}
 	}
+	nlookup_done_at(&nd, fp);
 	rel_mplock();
 
 	linux_free_path(&path);

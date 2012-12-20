@@ -1976,6 +1976,74 @@ sys_openat(struct openat_args *uap)
 	return (error);
 }
 
+int
+kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct vnode *vp;
+	struct vattr vattr;
+	int error;
+	int whiteout = 0;
+
+	KKASSERT(p);
+
+	VATTR_NULL(&vattr);
+	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
+	vattr.va_rmajor = rmajor;
+	vattr.va_rminor = rminor;
+
+	switch (mode & S_IFMT) {
+	case S_IFMT:	/* used by badsect to flag bad sectors */
+		error = priv_check_cred(td->td_ucred, PRIV_VFS_MKNOD_BAD, 0);
+		vattr.va_type = VBAD;
+		break;
+	case S_IFCHR:
+		error = priv_check(td, PRIV_VFS_MKNOD_DEV);
+		vattr.va_type = VCHR;
+		break;
+	case S_IFBLK:
+		error = priv_check(td, PRIV_VFS_MKNOD_DEV);
+		vattr.va_type = VBLK;
+		break;
+	case S_IFWHT:
+		error = priv_check_cred(td->td_ucred, PRIV_VFS_MKNOD_WHT, 0);
+		whiteout = 1;
+		break;
+	case S_IFDIR:	/* special directories support for HAMMER */
+		error = priv_check_cred(td->td_ucred, PRIV_VFS_MKNOD_DIR, 0);
+		vattr.va_type = VDIR;
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+
+	if (error)
+		return (error);
+
+	bwillinode(1);
+	nd->nl_flags |= NLC_CREATE | NLC_REFDVP;
+	if ((error = nlookup(nd)) != 0)
+		return (error);
+	if (nd->nl_nch.ncp->nc_vp)
+		return (EEXIST);
+	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
+		return (error);
+
+	if (whiteout) {
+		error = VOP_NWHITEOUT(&nd->nl_nch, nd->nl_dvp,
+				      nd->nl_cred, NAMEI_CREATE);
+	} else {
+		vp = NULL;
+		error = VOP_NMKNOD(&nd->nl_nch, nd->nl_dvp,
+				   &vp, nd->nl_cred, &vattr);
+		if (error == 0)
+			vput(vp);
+	}
+	return (error);
+}
+
 /*
  * mknod_args(char *path, int mode, int dev)
  *
@@ -1987,14 +2055,12 @@ sys_mknod(struct mknod_args *uap)
 	struct nlookupdata nd;
 	int error;
 
-	if ((uap->mode & S_IFIFO) == 0 || uap->dev != 0) {
-		error = EINVAL;
-	} else {
-		error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
-		if (error == 0)
-			error = kern_mkfifo(&nd, uap->mode);
-		nlookup_done(&nd);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0) {
+		error = kern_mknod(&nd, uap->mode,
+				   umajor(uap->dev), uminor(uap->dev));
 	}
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -2011,15 +2077,12 @@ sys_mknodat(struct mknodat_args *uap)
 	struct file *fp;
 	int error;
 
-	if ((uap->mode & S_IFIFO) == 0 || uap->dev != 0) {
-		error = EINVAL;
-	} else {
-		error = nlookup_init_at(&nd, &fp, uap->fd, uap->path,
-		    UIO_USERSPACE, 0);
-		if (error == 0)
-			error = kern_mkfifo(&nd, uap->mode);
-		nlookup_done_at(&nd, fp);
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0) {
+		error = kern_mknod(&nd, uap->mode,
+				   umajor(uap->dev), uminor(uap->dev));
 	}
+	nlookup_done_at(&nd, fp);
 	return (error);
 }
 
