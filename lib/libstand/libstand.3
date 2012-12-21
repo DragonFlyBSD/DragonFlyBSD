@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/lib/libstand/libstand.3,v 1.5.2.11 2002/06/26 19:14:43 schweikh Exp $
 .\"
-.Dd December 29, 2012
+.Dd January 2, 2013
 .Dt LIBSTAND 3
 .Os
 .Sh NAME
@@ -318,27 +318,6 @@ printf(
 would give the output
 .Bd -ragged -offset indent
 reg=3<BITTWO,BITONE>
-.Ed
-.Pp
-The
-.Cm D
-conversion provides a hexdump facility, eg.
-.Bd -ragged -offset indent
-printf(
-.Qq %6D ,
-ptr,
-.Qq \&:
-);  gives
-.Qq XX:XX:XX:XX:XX:XX
-.Ed
-.Bd -ragged -offset indent
-printf(
-.Qq %*D ,
-len,
-ptr,
-.Qq "\ "
-);  gives
-.Qq XX XX XX ...
 .Ed
 .El
 .Sh CHARACTER TESTS AND CONVERSIONS

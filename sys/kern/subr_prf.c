@@ -568,7 +568,6 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 	char nbuf[MAXNBUF];
 	char *d;
 	const char *p, *percent, *q;
-	u_char *up;
 	int ch, n;
 	uintmax_t num;
 	int base, tmp, width, ladjust, sharpflag, neg, sign, dot;
@@ -695,20 +694,6 @@ reswitch:
 			break;
 		case 'c':
 			PCHAR(__va_arg(ap, int));
-			break;
-		case 'D':
-			up = __va_arg(ap, u_char *);
-			p = __va_arg(ap, char *);
-			if (!width)
-				width = 16;
-			while(width--) {
-				PCHAR(hex2ascii(*up >> 4));
-				PCHAR(hex2ascii(*up & 0x0f));
-				up++;
-				if (width)
-					for (q=p;*q;q++)
-						PCHAR(*q);
-			}
 			break;
 		case 'd':
 		case 'i':
