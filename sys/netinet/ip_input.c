@@ -233,6 +233,8 @@ struct	in_ifaddrhashhead *in_ifaddrhashtbls[MAXCPU];
 						/* inet addr hash table */
 u_long	in_ifaddrhmask;				/* mask for hash table */
 
+static struct mbuf *ipforward_mtemp[MAXCPU];
+
 struct ip_stats ipstats_percpu[MAXCPU];
 
 static int
@@ -363,12 +365,16 @@ ip_init(void)
 
 	ip_id = time_second & 0xffff;
 
-	/*
-	 * Initialize IP statistics counters for each CPU.
-	 *
-	 */
 	for (cpu = 0; cpu < ncpus; ++cpu) {
+		/*
+		 * Initialize IP statistics counters for each CPU.
+		 */
 		bzero(&ipstats_percpu[cpu], sizeof(struct ip_stats));
+
+		/*
+		 * Preallocate mbuf template for forwarding
+		 */
+		MGETHDR(ipforward_mtemp[cpu], MB_WAIT, MT_DATA);
 	}
 
 	netisr_register(NETISR_IP, ip_input_handler, ip_cpufn_in);
@@ -1838,7 +1844,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	struct rtentry *rt;
 	struct route fwd_ro;
 	int error, type = 0, code = 0, destmtu = 0;
-	struct mbuf *mcopy;
+	struct mbuf *mcopy, *mtemp = NULL;
 	n_long dest;
 	struct in_addr pkt_dst;
 
@@ -1873,38 +1879,32 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	}
 	rt = fwd_ro.ro_rt;
 
-	/*
-	 * Save the IP header and at most 8 bytes of the payload,
-	 * in case we need to generate an ICMP message to the src.
-	 *
-	 * XXX this can be optimized a lot by saving the data in a local
-	 * buffer on the stack (72 bytes at most), and only allocating the
-	 * mbuf if really necessary. The vast majority of the packets
-	 * are forwarded without having to send an ICMP back (either
-	 * because unnecessary, or because rate limited), so we are
-	 * really we are wasting a lot of work here.
-	 *
-	 * We don't use m_copy() because it might return a reference
-	 * to a shared cluster. Both this function and ip_output()
-	 * assume exclusive access to the IP header in `m', so any
-	 * data in a cluster may change before we reach icmp_error().
-	 */
-	MGETHDR(mcopy, MB_DONTWAIT, m->m_type);
-	if (mcopy != NULL && !m_dup_pkthdr(mcopy, m, MB_DONTWAIT)) {
+	if (curthread->td_type == TD_TYPE_NETISR) {
 		/*
-		 * It's probably ok if the pkthdr dup fails (because
-		 * the deep copy of the tag chain failed), but for now
-		 * be conservative and just discard the copy since
-		 * code below may some day want the tags.
+		 * Save the IP header and at most 8 bytes of the payload,
+		 * in case we need to generate an ICMP message to the src.
 		 */
-		m_free(mcopy);
-		mcopy = NULL;
-	}
-	if (mcopy != NULL) {
-		mcopy->m_len = imin((IP_VHL_HL(ip->ip_vhl) << 2) + 8,
-		    (int)ip->ip_len);
-		mcopy->m_pkthdr.len = mcopy->m_len;
-		m_copydata(m, 0, mcopy->m_len, mtod(mcopy, caddr_t));
+		mtemp = ipforward_mtemp[mycpuid];
+		KASSERT((mtemp->m_flags & M_EXT) == 0 &&
+		    mtemp->m_data == mtemp->m_pktdat &&
+		    m_tag_first(mtemp) == NULL,
+		    ("ip_forward invalid mtemp1"));
+
+		if (!m_dup_pkthdr(mtemp, m, MB_DONTWAIT)) {
+			/*
+			 * It's probably ok if the pkthdr dup fails (because
+			 * the deep copy of the tag chain failed), but for now
+			 * be conservative and just discard the copy since
+			 * code below may some day want the tags.
+			 */
+			mtemp = NULL;
+		} else {
+			mtemp->m_type = m->m_type;
+			mtemp->m_len = imin((IP_VHL_HL(ip->ip_vhl) << 2) + 8,
+			    (int)ip->ip_len);
+			mtemp->m_pkthdr.len = mtemp->m_len;
+			m_copydata(m, 0, mtemp->m_len, mtod(mtemp, caddr_t));
+		}
 	}
 
 	if (!ipstealth)
@@ -1948,10 +1948,8 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	if (error == 0) {
 		ipstat.ips_forward++;
 		if (type == 0) {
-			if (mcopy) {
-				ipflow_create(&fwd_ro, mcopy);
-				m_freem(mcopy);
-			}
+			if (mtemp)
+				ipflow_create(&fwd_ro, mtemp);
 			goto done;
 		} else {
 			ipstat.ips_redirectsent++;
@@ -1960,15 +1958,41 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		ipstat.ips_cantforward++;
 	}
 
+	if (mtemp == NULL)
+		goto done;
+
+	/*
+	 * Errors that do not require generating ICMP message
+	 */
+	switch (error) {
+	case ENOBUFS:
+		/*
+		 * A router should not generate ICMP_SOURCEQUENCH as
+		 * required in RFC1812 Requirements for IP Version 4 Routers.
+		 * Source quench could be a big problem under DoS attacks,
+		 * or if the underlying interface is rate-limited.
+		 * Those who need source quench packets may re-enable them
+		 * via the net.inet.ip.sendsourcequench sysctl.
+		 */
+		if (!ip_sendsourcequench)
+			goto done;
+		break;
+
+	case EACCES:			/* ipfw denied packet */
+		goto done;
+	}
+
+	KASSERT((mtemp->m_flags & M_EXT) == 0 &&
+	    mtemp->m_data == mtemp->m_pktdat,
+	    ("ip_forward invalid mtemp2"));
+	mcopy = m_copym(mtemp, 0, mtemp->m_len, MB_DONTWAIT);
 	if (mcopy == NULL)
 		goto done;
 
 	/*
 	 * Send ICMP message.
 	 */
-
 	switch (error) {
-
 	case 0:				/* forwarded, but need redirect */
 		/* type, code set above */
 		break;
@@ -2084,29 +2108,17 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		break;
 
 	case ENOBUFS:
-		/*
-		 * A router should not generate ICMP_SOURCEQUENCH as
-		 * required in RFC1812 Requirements for IP Version 4 Routers.
-		 * Source quench could be a big problem under DoS attacks,
-		 * or if the underlying interface is rate-limited.
-		 * Those who need source quench packets may re-enable them
-		 * via the net.inet.ip.sendsourcequench sysctl.
-		 */
-		if (!ip_sendsourcequench) {
-			m_freem(mcopy);
-			goto done;
-		} else {
-			type = ICMP_SOURCEQUENCH;
-			code = 0;
-		}
+		type = ICMP_SOURCEQUENCH;
+		code = 0;
 		break;
 
 	case EACCES:			/* ipfw denied packet */
-		m_freem(mcopy);
-		goto done;
+		panic("ip_forward EACCES should not reach");
 	}
 	icmp_error(mcopy, type, code, dest, destmtu);
 done:
+	if (mtemp != NULL)
+		m_tag_delete_chain(mtemp);
 	if (fwd_ro.ro_rt != NULL)
 		RTFREE(fwd_ro.ro_rt);
 }
