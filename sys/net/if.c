@@ -2396,8 +2396,10 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	ALTQ_LOCK(ifq);
 	error = ifq_enqueue_locked(ifq, m, pa);
 	if (error) {
-		ALTQ_UNLOCK(ifq);
-		return error;
+		if (!ifq_data_ready(ifq)) {
+			ALTQ_UNLOCK(ifq);
+			return error;
+		}
 	}
 	if (!ifq->altq_started) {
 		/*
@@ -2414,7 +2416,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 
 	if (!start) {
 		logifstart(avoid, ifp);
-		return 0;
+		return error;
 	}
 
 	/*
@@ -2430,7 +2432,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		 */
 		logifstart(contend_sched, ifp);
 		if_start_schedule(ifp);
-		return 0;
+		return error;
 	}
 
 	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING) {
@@ -2453,7 +2455,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		logifstart(sched, ifp);
 		if_start_schedule(ifp);
 	}
-	return 0;
+	return error;
 }
 
 void *
