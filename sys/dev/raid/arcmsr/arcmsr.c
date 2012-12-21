@@ -224,7 +224,7 @@ MODULE_DEPEND(arcmsr, cam, 1, 1, 1);
 #endif
 
 static struct dev_ops arcmsr_ops = {
-	{ "arcmsr", 0, 0 },
+	{ "arcmsr", 0, D_MPSAFE },
 	.d_open =	arcmsr_open,		        /* open     */
 	.d_close =	arcmsr_close,		        /* close    */
 	.d_ioctl =	arcmsr_ioctl,		        /* ioctl    */
