@@ -31,7 +31,6 @@
  * Portability and compatibility interfaces.
  */
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500003
 # include <machine/clock.h>
 
 # include <sys/proc.h>			/* old buf style */
@@ -39,25 +38,3 @@
 # include <sys/buf2.h>
 typedef struct bio			mlx_bio;
 typedef struct bio_queue_head		mlx_bioq;
-#else
-# include <sys/bio.h>
-typedef struct bio			mlx_bio;
-typedef struct bio_queue_head		mlx_bioq;
-# define MLX_BIO_QINIT(bq)		bioq_init(&bq);
-# define MLX_BIO_QINSERT(bq, bp)	bioqdisksort(&bq, bp)
-# define MLX_BIO_QFIRST(bq)		bioq_first(&bq)
-# define MLX_BIO_QREMOVE(bq, bp)	bioq_remove(&bq, bp)
-# define MLX_BIO_IS_READ(bp)		((bp)->bio_cmd == BIO_READ)
-# define MLX_BIO_DATA(bp)		(bp)->bio_data
-# define MLX_BIO_LENGTH(bp)		(bp)->bio_bcount
-# define MLX_BIO_LBA(bp)		(bp)->bio_pblkno
-# define MLX_BIO_SOFTC(bp)		(bp)->bio_dev->si_drv1
-# define MLX_BIO_UNIT(bp)		*(int *)((bp)->bio_dev->si_drv2)
-# define MLX_BIO_SET_ERROR(bp, err)	do { (bp)->bio_error = err; (bp)->bio_flags |= BIO_ERROR;} while(0)
-# define MLX_BIO_HAS_ERROR(bp)		((bp)->bio_flags & BIO_ERROR)
-# define MLX_BIO_RESID(bp)		(bp)->bio_resid
-# define MLX_BIO_DONE(bp)		biodone(bp)	/* XXX nice to integrate bio_finish here */
-# define MLX_BIO_STATS_START(bp)	devstat_start_transaction(&((struct mlxd_softc *)MLX_BIO_SOFTC(bp))->mlxd_stats)
-# define MLX_BIO_STATS_END(bp)		devstat_end_transaction_bio(&((struct mlxd_softc *)MLX_BIO_SOFTC(bp))->mlxd_stats, bp)
-#endif
-
