@@ -253,6 +253,10 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
 	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
 
+	{ RE_HWREV_8111F,	RE_MACVER_UNKN,		RE_MTU_9K,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
+
 	{ RE_HWREV_8100E,	RE_MACVER_UNKN,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_FASTE },
 
@@ -1047,6 +1051,7 @@ re_probe(device_t dev)
 					sc->re_macver = RE_MACVER_2F;
 				break;
 			case RE_HWREV_8168F:
+			case RE_HWREV_8111F:
 				if (macmode == 0x000000)
 					sc->re_macver = RE_MACVER_30;
 				else if (macmode == 0x100000)
