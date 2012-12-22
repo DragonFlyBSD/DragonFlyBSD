@@ -981,6 +981,7 @@ procfs_readdir_root(struct vop_readdir_args *ap)
 	struct uio *uio = ap->a_uio;
 	int res;
 
+	res = 0;
 	info.error = 0;
 	info.i = (int)uio->uio_offset;
 
