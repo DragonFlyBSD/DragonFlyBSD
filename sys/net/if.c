@@ -2389,9 +2389,13 @@ int
 ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 {
 	struct ifaltq *ifq = &ifp->if_snd;
-	int running = 0, error, start = 0, need_sched;
+	int running = 0, error, start = 0, need_sched, mcast = 0, len;
 
 	ASSERT_IFNET_NOT_SERIALIZED_TX(ifp);
+
+	len = m->m_pkthdr.len;
+	if (m->m_flags & M_MCAST)
+		mcast = 1;
 
 	ALTQ_LOCK(ifq);
 	error = ifq_enqueue_locked(ifq, m, pa);
@@ -2410,9 +2414,11 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	}
 	ALTQ_UNLOCK(ifq);
 
-	ifp->if_obytes += m->m_pkthdr.len;
-	if (m->m_flags & M_MCAST)
-		ifp->if_omcasts++;
+	if (!error) {
+		ifp->if_obytes += len;
+		if (mcast)
+			ifp->if_omcasts++;
+	}
 
 	if (!start) {
 		logifstart(avoid, ifp);
