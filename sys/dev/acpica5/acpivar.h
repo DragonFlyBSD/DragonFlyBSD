@@ -38,10 +38,7 @@
 #include "bus_if.h"
 #include <sys/eventhandler.h>
 #include <sys/sysctl.h>
-#if __FreeBSD_version >= 500000 || defined(__DragonFly__)
 #include <sys/lock.h>
-#include <sys/mutex.h>
-#endif
 #include <sys/bus.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
