@@ -155,6 +155,25 @@ settime(struct timeval *tv)
 	return (0);
 }
 
+static void
+get_curthread_cputime(struct timespec *ats)
+{
+	struct thread *td = curthread;
+
+	crit_enter();
+	/*
+	 * These are 64-bit fields but the actual values should never reach
+	 * the limit. We don't care about overflows.
+	 */
+	ats->tv_sec = td->td_uticks / 1000000;
+	ats->tv_sec += td->td_sticks / 1000000;
+	ats->tv_sec += td->td_iticks / 1000000;
+	ats->tv_nsec = (td->td_uticks % 1000000) * 1000;
+	ats->tv_nsec += (td->td_sticks % 1000000) * 1000;
+	ats->tv_nsec += (td->td_iticks % 1000000) * 1000;
+	crit_exit();
+}
+
 /*
  * MPSAFE
  */
@@ -197,6 +216,9 @@ kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 	case CLOCK_SECOND:
 		ats->tv_sec = time_second;
 		ats->tv_nsec = 0;
+		break;
+	case CLOCK_THREAD_CPUTIME_ID:
+		get_curthread_cputime(ats);
 		break;
 	default:
 		error = EINVAL;
@@ -276,6 +298,7 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 	case CLOCK_UPTIME:
 	case CLOCK_UPTIME_FAST:
 	case CLOCK_UPTIME_PRECISE:
+	case CLOCK_THREAD_CPUTIME_ID:
 		/*
 		 * Round up the result of the division cheaply
 		 * by adding 1.  Rounding up is especially important
@@ -1049,4 +1072,3 @@ ppsratecheck(struct timeval *lasttime, int *curpps, int maxpps)
 		return (maxpps < 0 || *curpps < maxpps);
 	}
 }
-
