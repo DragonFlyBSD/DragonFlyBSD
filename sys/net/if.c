@@ -103,6 +103,10 @@ struct netmsg_ifaddr {
 	int		tail;
 };
 
+struct ifaltq_stage_head {
+	TAILQ_HEAD(, ifaltq_stage)	ifqs_head;
+} __cachealign;
+
 /*
  * System initialization
  */
@@ -126,6 +130,17 @@ extern void	nd6_setmtu(struct ifnet *);
 SYSCTL_NODE(_net, PF_LINK, link, CTLFLAG_RW, 0, "Link layers");
 SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
 
+static u_long if_staged;
+SYSCTL_ULONG(_net_link, OID_AUTO, staged, CTLFLAG_RW, &if_staged, 0, "");
+
+static u_long if_staged_start;
+SYSCTL_ULONG(_net_link, OID_AUTO, staged_start, CTLFLAG_RW,
+    &if_staged_start, 0, "");
+
+static int ifq_stage_cntmax = 4;
+SYSCTL_INT(_net_link, OID_AUTO, stage_cntmax, CTLFLAG_RW,
+    &ifq_stage_cntmax, 0, "ifq staging packet count max");
+
 SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL)
 /* Must be after netisr_init */
 SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, ifnetinit, NULL)
@@ -145,6 +160,8 @@ struct callout		if_slowtimo_timer;
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
 static struct thread	ifnet_threads[MAXCPU];
+
+static struct ifaltq_stage_head	ifq_stage_heads[MAXCPU];
 
 #define IFQ_KTR_STRING		"ifq=%p"
 #define IFQ_KTR_ARGS	struct ifaltq *ifq
@@ -556,6 +573,12 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifq->altq_prepended = NULL;
 	ALTQ_LOCK_INIT(ifq);
 	ifq_set_classic(ifq);
+
+	ifq->altq_stage =
+	    kmalloc_cachealign(ncpus * sizeof(struct ifaltq_stage),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	for (i = 0; i < ncpus; ++i)
+		ifq->altq_stage[i].ifqs_altq = ifq;
 
 	if (!SLIST_EMPTY(&domains))
 		if_attachdomain1(ifp);
@@ -2385,45 +2408,11 @@ ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 	return(0);
 }
 
-int
-ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
+static void
+ifq_try_ifstart(struct ifaltq *ifq)
 {
-	struct ifaltq *ifq = &ifp->if_snd;
-	int running = 0, error, start = 0, need_sched, mcast = 0, len;
-
-	ASSERT_IFNET_NOT_SERIALIZED_TX(ifp);
-
-	len = m->m_pkthdr.len;
-	if (m->m_flags & M_MCAST)
-		mcast = 1;
-
-	ALTQ_LOCK(ifq);
-	error = ifq_enqueue_locked(ifq, m, pa);
-	if (error) {
-		if (!ifq_data_ready(ifq)) {
-			ALTQ_UNLOCK(ifq);
-			return error;
-		}
-	}
-	if (!ifq->altq_started) {
-		/*
-		 * Hold the interlock of ifnet.if_start
-		 */
-		ifq->altq_started = 1;
-		start = 1;
-	}
-	ALTQ_UNLOCK(ifq);
-
-	if (!error) {
-		ifp->if_obytes += len;
-		if (mcast)
-			ifp->if_omcasts++;
-	}
-
-	if (!start) {
-		logifstart(avoid, ifp);
-		return error;
-	}
+	struct ifnet *ifp = ifq->altq_ifp;
+	int running = 0, need_sched;
 
 	/*
 	 * Try to do direct ifnet.if_start first, if there is
@@ -2438,7 +2427,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		 */
 		logifstart(contend_sched, ifp);
 		if_start_schedule(ifp);
-		return error;
+		return;
 	}
 
 	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING) {
@@ -2461,6 +2450,107 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		logifstart(sched, ifp);
 		if_start_schedule(ifp);
 	}
+}
+
+static __inline void
+ifq_stage_remove(struct ifaltq_stage_head *head, struct ifaltq_stage *stage)
+{
+	KKASSERT(stage->ifqs_flags & IFQ_STAGE_FLAG_QUED);
+	TAILQ_REMOVE(&head->ifqs_head, stage, ifqs_link);
+	stage->ifqs_flags &= ~IFQ_STAGE_FLAG_QUED;
+	stage->ifqs_cnt = 0;
+	stage->ifqs_len = 0;
+}
+
+static __inline void
+ifq_stage_insert(struct ifaltq_stage_head *head, struct ifaltq_stage *stage)
+{
+	KKASSERT((stage->ifqs_flags & IFQ_STAGE_FLAG_QUED) == 0);
+	stage->ifqs_flags |= IFQ_STAGE_FLAG_QUED;
+	TAILQ_INSERT_TAIL(&head->ifqs_head, stage, ifqs_link);
+}
+
+int
+ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
+{
+	struct ifaltq *ifq = &ifp->if_snd;
+	int error, start = 0, len, mcast = 0, avoid_start = 0;
+	struct ifaltq_stage_head *head = NULL;
+	struct ifaltq_stage *stage = NULL;
+
+	ASSERT_IFNET_NOT_SERIALIZED_TX(ifp);
+
+	len = m->m_pkthdr.len;
+	if (m->m_flags & M_MCAST)
+		mcast = 1;
+
+	if (curthread->td_type == TD_TYPE_NETISR) {
+		int cpuid = mycpuid;
+
+		head = &ifq_stage_heads[cpuid];
+		stage = &ifq->altq_stage[cpuid];
+
+		stage->ifqs_cnt++;
+		stage->ifqs_len += len;
+		if (stage->ifqs_cnt < ifq_stage_cntmax &&
+		    stage->ifqs_len < (ifp->if_mtu - max_protohdr))
+			avoid_start = 1;
+	}
+
+	ALTQ_LOCK(ifq);
+	error = ifq_enqueue_locked(ifq, m, pa);
+	if (error) {
+		if (!ifq_data_ready(ifq)) {
+			ALTQ_UNLOCK(ifq);
+			return error;
+		}
+		avoid_start = 0;
+	}
+	if (!ifq->altq_started) {
+		if (avoid_start) {
+			ALTQ_UNLOCK(ifq);
+
+			KKASSERT(!error);
+			if ((stage->ifqs_flags & IFQ_STAGE_FLAG_QUED) == 0)
+				ifq_stage_insert(head, stage);
+
+			ifp->if_obytes += len;
+			if (mcast)
+				ifp->if_omcasts++;
+
+			/* atomic_add_long(&if_staged, 1); */
+			return error;
+		}
+
+		/*
+		 * Hold the interlock of ifnet.if_start
+		 */
+		ifq->altq_started = 1;
+		start = 1;
+	}
+	ALTQ_UNLOCK(ifq);
+
+	if (!error) {
+		ifp->if_obytes += len;
+		if (mcast)
+			ifp->if_omcasts++;
+	}
+
+	if (stage != NULL) {
+		if (stage->ifqs_flags & IFQ_STAGE_FLAG_QUED) {
+			ifq_stage_remove(head, stage);
+		} else {
+			stage->ifqs_cnt = 0;
+			stage->ifqs_len = 0;
+		}
+	}
+
+	if (!start) {
+		logifstart(avoid, ifp);
+		return error;
+	}
+
+	ifq_try_ifstart(ifq);
 	return error;
 }
 
@@ -2664,13 +2754,33 @@ ifnet_service_loop(void *arg __unused)
 	}
 }
 
-#ifdef notyet
 static void
 if_start_rollup(void)
 {
-	/* TODO */
+	struct ifaltq_stage_head *head = &ifq_stage_heads[mycpuid];
+	struct ifaltq_stage *stage;
+
+	while ((stage = TAILQ_FIRST(&head->ifqs_head)) != NULL) {
+		struct ifaltq *ifq = stage->ifqs_altq;
+		int start = 0;
+
+		ifq_stage_remove(head, stage);
+
+		ALTQ_LOCK(ifq);
+		if (!ifq->altq_started) {
+			/*
+			 * Hold the interlock of ifnet.if_start
+			 */
+			ifq->altq_started = 1;
+			start = 1;
+		}
+		ALTQ_UNLOCK(ifq);
+
+		if (start)
+			ifq_try_ifstart(ifq);
+		/* atomic_add_long(&if_staged_start, 1); */
+	}
 }
-#endif
 
 static void
 ifnetinit(void *dummy __unused)
@@ -2686,9 +2796,10 @@ ifnetinit(void *dummy __unused)
 		netmsg_service_port_init(&thr->td_msgport);
 		lwkt_schedule(thr);
 	}
-#ifdef notyet
+
+	for (i = 0; i < ncpus; ++i)
+		TAILQ_INIT(&ifq_stage_heads[i].ifqs_head);
 	netisr_register_rollup(if_start_rollup, NETISR_ROLLUP_PRIO_IFSTART);
-#endif
 }
 
 struct ifnet *
