@@ -1298,11 +1298,11 @@ poll_comm_start(int cpuid)
 static void
 _poll_comm_systimer(struct poll_comm *comm)
 {
+	iopoll_clock(rxpoll_context[comm->poll_cpuid]);
 	if (comm->txfrac_count-- == 0) {
 		comm->txfrac_count = comm->poll_txfrac;
 		iopoll_clock(txpoll_context[comm->poll_cpuid]);
 	}
-	iopoll_clock(rxpoll_context[comm->poll_cpuid]);
 }
 
 static void
