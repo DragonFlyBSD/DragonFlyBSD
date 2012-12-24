@@ -337,12 +337,13 @@ if_start_dispatch(netmsg_t msg)
 	ifnet_deserialize_tx(ifp);
 
 	if (need_sched) {
-		crit_enter();
-		if (lmsg->ms_flags & MSGF_DONE)	{ /* XXX necessary? */
-			logifstart(sched, ifp);
-			lwkt_sendmsg(netisr_portfn(mycpuid), lmsg);
-		}
-		crit_exit();
+		/*
+		 * More data need to be transmitted, ifnet.if_start is
+		 * scheduled on ifnet's CPU, and we keep going.
+		 * NOTE: ifnet.if_start interlock is not released.
+		 */
+		logifstart(sched, ifp);
+		if_start_schedule(ifp);
 	}
 }
 
