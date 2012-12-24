@@ -45,6 +45,7 @@ struct ifaltq_stage {
 } __cachealign;
 
 #define IFQ_STAGE_FLAG_QUED	0x1
+#define IFQ_STAGE_FLAG_SCHED	0x2
 
 /*
  * Structure defining a queue for a network interface.

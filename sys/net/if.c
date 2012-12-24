@@ -250,13 +250,44 @@ if_start_ipifunc(void *arg)
 	crit_exit();
 }
 
+static __inline void
+ifq_stage_remove(struct ifaltq_stage_head *head, struct ifaltq_stage *stage)
+{
+	KKASSERT(stage->ifqs_flags & IFQ_STAGE_FLAG_QUED);
+	TAILQ_REMOVE(&head->ifqs_head, stage, ifqs_link);
+	stage->ifqs_flags &= ~(IFQ_STAGE_FLAG_QUED | IFQ_STAGE_FLAG_SCHED);
+	stage->ifqs_cnt = 0;
+	stage->ifqs_len = 0;
+}
+
+static __inline void
+ifq_stage_insert(struct ifaltq_stage_head *head, struct ifaltq_stage *stage)
+{
+	KKASSERT((stage->ifqs_flags &
+	    (IFQ_STAGE_FLAG_QUED | IFQ_STAGE_FLAG_SCHED)) == 0);
+	stage->ifqs_flags |= IFQ_STAGE_FLAG_QUED;
+	TAILQ_INSERT_TAIL(&head->ifqs_head, stage, ifqs_link);
+}
+
 /*
  * Schedule ifnet.if_start on ifnet's CPU
  */
 static void
-if_start_schedule(struct ifnet *ifp)
+if_start_schedule(struct ifnet *ifp, int force)
 {
 	int cpu;
+
+	if (!force && curthread->td_type == TD_TYPE_NETISR &&
+	    ifq_stage_cntmax > 0) {
+		struct ifaltq_stage *stage = &ifp->if_snd.altq_stage[mycpuid];
+
+		stage->ifqs_cnt = 0;
+		stage->ifqs_len = 0;
+		if ((stage->ifqs_flags & IFQ_STAGE_FLAG_QUED) == 0)
+			ifq_stage_insert(&ifq_stage_heads[mycpuid], stage);
+		stage->ifqs_flags |= IFQ_STAGE_FLAG_SCHED;
+		return;
+	}
 
 	cpu = ifp->if_start_cpuid(ifp);
 	if (cpu != mycpuid)
@@ -321,7 +352,7 @@ if_start_dispatch(netmsg_t msg)
 		 * We need to chase the ifnet CPU change.
 		 */
 		logifstart(chase_sched, ifp);
-		if_start_schedule(ifp);
+		if_start_schedule(ifp, 1);
 		return;
 	}
 
@@ -343,7 +374,7 @@ if_start_dispatch(netmsg_t msg)
 		 * NOTE: ifnet.if_start interlock is not released.
 		 */
 		logifstart(sched, ifp);
-		if_start_schedule(ifp);
+		if_start_schedule(ifp, 0);
 	}
 }
 
@@ -378,7 +409,7 @@ if_devstart(struct ifnet *ifp)
 		 * NOTE: ifnet.if_start interlock is not released.
 		 */
 		logifstart(sched, ifp);
-		if_start_schedule(ifp);
+		if_start_schedule(ifp, 0);
 	}
 }
 
@@ -2410,7 +2441,7 @@ ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 }
 
 static void
-ifq_try_ifstart(struct ifaltq *ifq)
+ifq_try_ifstart(struct ifaltq *ifq, int force_sched)
 {
 	struct ifnet *ifp = ifq->altq_ifp;
 	int running = 0, need_sched;
@@ -2427,7 +2458,7 @@ ifq_try_ifstart(struct ifaltq *ifq)
 		 * CPU, and we keep going.
 		 */
 		logifstart(contend_sched, ifp);
-		if_start_schedule(ifp);
+		if_start_schedule(ifp, 1);
 		return;
 	}
 
@@ -2449,26 +2480,8 @@ ifq_try_ifstart(struct ifaltq *ifq)
 		 * NOTE: ifnet.if_start interlock is not released.
 		 */
 		logifstart(sched, ifp);
-		if_start_schedule(ifp);
+		if_start_schedule(ifp, force_sched);
 	}
-}
-
-static __inline void
-ifq_stage_remove(struct ifaltq_stage_head *head, struct ifaltq_stage *stage)
-{
-	KKASSERT(stage->ifqs_flags & IFQ_STAGE_FLAG_QUED);
-	TAILQ_REMOVE(&head->ifqs_head, stage, ifqs_link);
-	stage->ifqs_flags &= ~IFQ_STAGE_FLAG_QUED;
-	stage->ifqs_cnt = 0;
-	stage->ifqs_len = 0;
-}
-
-static __inline void
-ifq_stage_insert(struct ifaltq_stage_head *head, struct ifaltq_stage *stage)
-{
-	KKASSERT((stage->ifqs_flags & IFQ_STAGE_FLAG_QUED) == 0);
-	stage->ifqs_flags |= IFQ_STAGE_FLAG_QUED;
-	TAILQ_INSERT_TAIL(&head->ifqs_head, stage, ifqs_link);
 }
 
 int
@@ -2486,10 +2499,8 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		mcast = 1;
 
 	if (curthread->td_type == TD_TYPE_NETISR) {
-		int cpuid = mycpuid;
-
-		head = &ifq_stage_heads[cpuid];
-		stage = &ifq->altq_stage[cpuid];
+		head = &ifq_stage_heads[mycpuid];
+		stage = &ifq->altq_stage[mycpuid];
 
 		stage->ifqs_cnt++;
 		stage->ifqs_len += len;
@@ -2538,6 +2549,15 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	}
 
 	if (stage != NULL) {
+		if (!start && (stage->ifqs_flags & IFQ_STAGE_FLAG_SCHED)) {
+			KKASSERT(stage->ifqs_flags & IFQ_STAGE_FLAG_QUED);
+			if (!avoid_start) {
+				ifq_stage_remove(head, stage);
+				if_start_schedule(ifp, 1);
+			}
+			return error;
+		}
+
 		if (stage->ifqs_flags & IFQ_STAGE_FLAG_QUED) {
 			ifq_stage_remove(head, stage);
 		} else {
@@ -2551,7 +2571,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		return error;
 	}
 
-	ifq_try_ifstart(ifq);
+	ifq_try_ifstart(ifq, 0);
 	return error;
 }
 
@@ -2763,22 +2783,32 @@ if_start_rollup(void)
 
 	while ((stage = TAILQ_FIRST(&head->ifqs_head)) != NULL) {
 		struct ifaltq *ifq = stage->ifqs_altq;
-		int start = 0;
+		int is_sched = 0;
 
+		if (stage->ifqs_flags & IFQ_STAGE_FLAG_SCHED)
+			is_sched = 1;
 		ifq_stage_remove(head, stage);
 
-		ALTQ_LOCK(ifq);
-		if (!ifq->altq_started) {
-			/*
-			 * Hold the interlock of ifnet.if_start
-			 */
-			ifq->altq_started = 1;
-			start = 1;
-		}
-		ALTQ_UNLOCK(ifq);
+		if (is_sched) {
+			if_start_schedule(ifq->altq_ifp, 1);
+		} else {
+			int start = 0;
 
-		if (start)
-			ifq_try_ifstart(ifq);
+			ALTQ_LOCK(ifq);
+			if (!ifq->altq_started) {
+				/*
+				 * Hold the interlock of ifnet.if_start
+				 */
+				ifq->altq_started = 1;
+				start = 1;
+			}
+			ALTQ_UNLOCK(ifq);
+
+			if (start)
+				ifq_try_ifstart(ifq, 1);
+		}
+		KKASSERT((stage->ifqs_flags &
+		    (IFQ_STAGE_FLAG_QUED | IFQ_STAGE_FLAG_SCHED)) == 0);
 		/* atomic_add_long(&if_staged_start, 1); */
 	}
 }
