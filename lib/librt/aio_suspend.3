@@ -23,16 +23,15 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/aio_suspend.2,v 1.8.2.5 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/aio_suspend.2,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd June 2, 1999
-.Dt AIO_SUSPEND 2
+.Dt AIO_SUSPEND 3
 .Os
 .Sh NAME
 .Nm aio_suspend
 .Nd suspend until asynchronous I/O operations or timeout complete (REALTIME)
 .Sh LIBRARY
-.Lb libc
+.Lb librt
 .Sh SYNOPSIS
 .In aio.h
 .Ft int
