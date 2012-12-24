@@ -48,9 +48,9 @@ beginning at the offset
 .Fa iocb->aio_offset
 into the buffer pointed to by
 .Fa iocb->aio_buf .
-The call returns immediately after the read request has
+The function returns immediately after the read request has
 been enqueued to the descriptor; the read may or may not have
-completed at the time the call returns.
+completed at the time the function returns.
 .Pp
 If _POSIX_PRIORITIZED_IO is defined, and the descriptor supports it,
 then the enqueued operation is submitted at a priority equal to that
@@ -61,7 +61,7 @@ The
 .Fa iocb->aio_lio_opcode
 is ignored by the
 .Fn aio_read
-call.
+function.
 .Pp
 The
 .Fa iocb
@@ -73,7 +73,7 @@ in order to determine return or error status for the enqueued operation
 while it is in progress.
 .Pp
 If the request could not be enqueued (generally due to invalid arguments),
-then the call returns without having enqueued the request.
+then the function returns without having enqueued the request.
 .Pp
 If the request is successfully enqueued, the value of
 .Fa iocb->aio_offset
@@ -85,14 +85,15 @@ The Asynchronous I/O Control Block structure pointed to by
 and the buffer that the
 .Fa iocb->aio_buf
 member of that structure references must remain valid until the
-operation has completed.  For this reason, use of auto (stack) variables
+operation has completed.
+For this reason, use of auto (stack) variables
 for these objects is discouraged.
 .Pp
 The asynchronous I/O control buffer
 .Fa iocb
 should be zeroed before the
 .Fn aio_read
-call to avoid passing bogus context information to the kernel.
+function .
 .Pp
 Modifications of the Asynchronous I/O Control Block structure or the
 buffer contents after the request has been enqueued, but before the
@@ -117,13 +118,13 @@ The request was not queued because of system resource limitations.
 .It Bq Er ENOSYS
 The
 .Fn aio_read
-call is not supported.
+function is not supported.
 .El
 .Pp
 The following conditions may be synchronously detected when the
 .Fn aio_read
-call is made, or asynchronously, at any time thereafter.  If they
-are detected at call time,
+function is made, or asynchronously, at any time thereafter.
+If they are detected at call time,
 .Fn aio_read
 returns -1 and sets
 .Va errno
@@ -181,7 +182,7 @@ would be invalid.
 .Sh STANDARDS
 The
 .Fn aio_read
-call is expected to conform to the
+function is expected to conform to the
 .St -p1003.2
 standard.
 .Sh HISTORY
@@ -193,9 +194,3 @@ function first appeared in
 This
 manual page was written by
 .An Terry Lambert Aq terry@whistle.com .
-.Sh BUGS
-The value of
-.Fa iocb->aio_offset
-is ignored.  Invalid information in
-.Fa iocb->_aiocb_private
-may confuse the kernel.

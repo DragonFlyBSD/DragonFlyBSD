@@ -45,10 +45,11 @@ from the buffer pointed to by
 .Fa iocb->aio_buf
 to the descriptor
 .Fa iocb->aio_fildes .
-The call returns immediately after the write request has been enqueued
+The function returns immediately after the write request has been enqueued
 to the descriptor; the write may or may not have completed at the time
-the call returns.  If the request could not be enqueued, generally due
-to invalid arguments, the call returns without having enqueued the
+the function returns.
+If the request could not be enqueued, generally due
+to invalid arguments, the function returns without having enqueued the
 request.
 .Pp
 If
@@ -57,7 +58,8 @@ is set for
 .Fa iocb->aio_fildes ,
 .Fn aio_write
 operations append to the file in the same order as the calls were
-made.  If
+made.
+If
 .Dv O_APPEND
 is not set for the file descriptor, the write operation will occur at
 the absolute position from the beginning of the file plus
@@ -89,14 +91,15 @@ The Asynchronous I/O Control Block structure pointed to by
 and the buffer that the
 .Fa iocb->aio_buf
 member of that structure references must remain valid until the
-operation has completed.  For this reason, use of auto (stack) variables
+operation has completed.
+For this reason, use of auto (stack) variables
 for these objects is discouraged.
 .Pp
 The asynchronous I/O control buffer
 .Fa iocb
 should be zeroed before the
 .Fn aio_write
-call to avoid passing bogus context information to the kernel.
+function.
 .Pp
 Modifications of the Asynchronous I/O Control Block structure or the
 buffer contents after the request has been enqueued, but before the
@@ -119,13 +122,13 @@ The request was not queued because of system resource limitations.
 .It Bq Er ENOSYS
 The
 .Fn aio_write
-call is not supported.
+function is not supported.
 .El
 .Pp
 The following conditions may be synchronously detected when the
 .Fn aio_write
-call is made, or asynchronously, at any time thereafter.  If they
-are detected at call time,
+function is made, or asynchronously, at any time thereafter.
+If they are detected at call time,
 .Fn aio_write
 returns -1 and sets
 .Va errno
@@ -185,8 +188,3 @@ function first appeared in
 .Sh AUTHORS
 This manual page was written by
 .An Wes Peters Aq wes@softweyr.com .
-.Sh BUGS
-Asynchronous I/O operations cannot be canceled in this implementation.
-Invalid information in
-.Fa iocb->_aiocb_private
-may confuse the kernel.
