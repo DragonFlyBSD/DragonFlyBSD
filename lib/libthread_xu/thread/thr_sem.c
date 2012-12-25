@@ -185,7 +185,6 @@ _sem_wait(sem_t *sem)
 	return (-1);
 }
 
-#if 0
 int
 _sem_timedwait(sem_t * __restrict sem, struct timespec * __restrict abstime)
 {
@@ -208,7 +207,8 @@ _sem_timedwait(sem_t * __restrict sem, struct timespec * __restrict abstime)
 			if (atomic_cmpset_acq_int(&(*sem)->count, val, val - 1))
 				return (0);
 		}
-		if (abstime == NULL) {
+		if (abstime == NULL ||
+		    abstime->tv_nsec >= 1000000000 || abstime->tv_nsec < 0) {
 			errno = EINVAL;
 			return (-1);
 		}
@@ -222,7 +222,6 @@ _sem_timedwait(sem_t * __restrict sem, struct timespec * __restrict abstime)
 	errno = retval;
 	return (-1);
 }
-#endif
 
 int
 _sem_post(sem_t *sem)
@@ -269,9 +268,7 @@ __strong_reference(_sem_getvalue, sem_getvalue);
 __strong_reference(_sem_init, sem_init);
 __strong_reference(_sem_trywait, sem_trywait);
 __strong_reference(_sem_wait, sem_wait);
-#if 0
 __strong_reference(_sem_timedwait, sem_timedwait);
-#endif
 __strong_reference(_sem_post, sem_post);
 __strong_reference(_sem_open, sem_open);
 __strong_reference(_sem_close, sem_close);

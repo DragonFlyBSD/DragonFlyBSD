@@ -168,6 +168,7 @@ WR(stub_zero, sem_init);
 WR(stub_zero, sem_open);
 WR(stub_zero, sem_post);
 WR(stub_zero, sem_trywait);
+WR(stub_zero, sem_timedwait);
 WR(stub_zero, sem_unlink);
 WR(stub_zero, sem_wait);
 
