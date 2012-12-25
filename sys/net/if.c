@@ -138,6 +138,7 @@ SYSCTL_ULONG(_net_link, OID_AUTO, staged_start, CTLFLAG_RW,
     &if_staged_start, 0, "");
 
 static int ifq_stage_cntmax = 4;
+TUNABLE_INT("net.link.stage_cntmax", &ifq_stage_cntmax);
 SYSCTL_INT(_net_link, OID_AUTO, stage_cntmax, CTLFLAG_RW,
     &ifq_stage_cntmax, 0, "ifq staging packet count max");
 
@@ -2901,4 +2902,10 @@ if_ring_count2(int cnt, int cnt_max)
 	    ("calculate cnt %d, ncpus2 %d, cnt max %d",
 	     cnt, ncpus2, cnt_max));
 	return cnt;
+}
+
+void
+ifq_set_maxlen(struct ifaltq *ifq, int len)
+{
+	ifq->ifq_maxlen = len + (ncpus * ifq_stage_cntmax);
 }

@@ -298,11 +298,7 @@ ifq_is_empty(struct ifaltq *_ifq)
 	return(_ifq->ifq_len == 0);
 }
 
-static __inline void
-ifq_set_maxlen(struct ifaltq *_ifq, int _len)
-{
-	_ifq->ifq_maxlen = _len;
-}
+void	ifq_set_maxlen(struct ifaltq *_ifq, int _len);
 
 static __inline int
 ifq_data_ready(struct ifaltq *_ifq)
