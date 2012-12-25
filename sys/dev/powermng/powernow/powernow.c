@@ -206,7 +206,7 @@ k8_get_curfreq(void)
 {
 	unsigned int	i;
 	uint64_t	status;
-	int		cfid      , cvid, fid = 0, vid = 0;
+	int		cfid, cvid;
 	struct k8pnow_cpu_state *cstate;
 	status = rdmsr(MSR_AMDK7_FIDVID_STATUS);
 	if (PN8_STA_PENDING(status))
@@ -216,11 +216,8 @@ k8_get_curfreq(void)
 	cstate = k8pnow_current_state;
 	for (i = 0; i < cstate->n_states; i++) {
 		if (cstate->state_table[i].fid == cfid &&
-		    cstate->state_table[i].vid == cvid) {
-			fid = cstate->state_table[i].fid;
-			vid = cstate->state_table[i].vid;
+		    cstate->state_table[i].vid == cvid)
 			return (cstate->state_table[i].freq);
-		}
 	}
 	/* Not reached */
 	return -1;
