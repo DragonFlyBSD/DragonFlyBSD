@@ -143,7 +143,7 @@ static int		vtblk_execute_request(struct vtblk_softc *,
 		    			      struct vtblk_request *);
 
 static int		vtblk_vq_intr(void *);
-static void		vtblk_intr_task(void *, int);
+static void		vtblk_complete(void *, int);
 
 static void		vtblk_stop(struct vtblk_softc *);
 
@@ -331,7 +331,7 @@ vtblk_attach(device_t dev)
 
 	vtblk_alloc_disk(sc, &blkcfg);
 
-	TASK_INIT(&sc->vtblk_intr_task, 0, vtblk_intr_task, sc);
+	TASK_INIT(&sc->vtblk_intr_task, 0, vtblk_complete, sc);
 
 	error = virtio_setup_intr(dev);
 	if (error) {
@@ -725,7 +725,7 @@ vtblk_vq_intr(void *xsc)
 }
 
 static void
-vtblk_intr_task(void *arg, int pending)
+vtblk_complete(void *arg, int pending)
 {
 	struct vtblk_softc *sc;
 	struct vtblk_request *req;
