@@ -709,6 +709,31 @@ if_purgeaddrs_nolink(struct ifnet *ifp)
 	}
 }
 
+static void
+ifq_stage_detach_handler(netmsg_t nmsg)
+{
+	struct ifaltq *ifq = nmsg->lmsg.u.ms_resultp;
+	struct ifaltq_stage *stage = &ifq->altq_stage[mycpuid];
+
+	if (stage->ifqs_flags & IFQ_STAGE_FLAG_QUED)
+		ifq_stage_remove(&ifq_stage_heads[mycpuid], stage);
+	lwkt_replymsg(&nmsg->lmsg, 0);
+}
+
+static void
+ifq_stage_detach(struct ifaltq *ifq)
+{
+	struct netmsg_base base;
+	int cpu;
+
+	netmsg_init(&base, NULL, &curthread->td_msgport, 0,
+	    ifq_stage_detach_handler);
+	base.lmsg.u.ms_resultp = ifq;
+
+	for (cpu = 0; cpu < ncpus; ++cpu)
+		lwkt_domsg(netisr_portfn(cpu), &base.lmsg, 0);
+}
+
 /*
  * Detach an interface, removing it from the
  * list of "active" interfaces.
@@ -811,7 +836,12 @@ if_detach(struct ifnet *ifp)
 
 	TAILQ_REMOVE(&ifnet, ifp, if_link);
 	kfree(ifp->if_addrheads, M_IFADDR);
+
+	lwkt_synchronize_ipiqs("if_detach");
+	ifq_stage_detach(&ifp->if_snd);
+
 	kfree(ifp->if_start_nmsg, M_LWKTMSG);
+	kfree(ifp->if_snd.altq_stage, M_DEVBUF);
 	crit_exit();
 }
 
