@@ -130,13 +130,6 @@ extern void	nd6_setmtu(struct ifnet *);
 SYSCTL_NODE(_net, PF_LINK, link, CTLFLAG_RW, 0, "Link layers");
 SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
 
-static u_long if_staged;
-SYSCTL_ULONG(_net_link, OID_AUTO, staged, CTLFLAG_RW, &if_staged, 0, "");
-
-static u_long if_staged_start;
-SYSCTL_ULONG(_net_link, OID_AUTO, staged_start, CTLFLAG_RW,
-    &if_staged_start, 0, "");
-
 static int ifq_stage_cntmax = 4;
 TUNABLE_INT("net.link.stage_cntmax", &ifq_stage_cntmax);
 SYSCTL_INT(_net_link, OID_AUTO, stage_cntmax, CTLFLAG_RW,
@@ -2560,8 +2553,6 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 			ifp->if_obytes += len;
 			if (mcast)
 				ifp->if_omcasts++;
-
-			/* atomic_add_long(&if_staged, 1); */
 			return error;
 		}
 
@@ -2840,7 +2831,6 @@ if_start_rollup(void)
 		}
 		KKASSERT((stage->ifqs_flags &
 		    (IFQ_STAGE_FLAG_QUED | IFQ_STAGE_FLAG_SCHED)) == 0);
-		/* atomic_add_long(&if_staged_start, 1); */
 	}
 }
 
