@@ -75,6 +75,7 @@ struct mbuf	*ifq_classic_dequeue(struct ifaltq *, struct mbuf *, int);
 int		ifq_classic_request(struct ifaltq *, int, void *);
 void		ifq_set_classic(struct ifaltq *);
 
+void		ifq_set_maxlen(struct ifaltq *, int);
 int		ifq_dispatch(struct ifnet *, struct mbuf *,
 			     struct altq_pktattr *);
 
@@ -297,8 +298,6 @@ ifq_is_empty(struct ifaltq *_ifq)
 {
 	return(_ifq->ifq_len == 0);
 }
-
-void	ifq_set_maxlen(struct ifaltq *_ifq, int _len);
 
 static __inline int
 ifq_data_ready(struct ifaltq *_ifq)
