@@ -2508,6 +2508,41 @@ ifq_try_ifstart(struct ifaltq *ifq, int force_sched)
 	}
 }
 
+/*
+ * IFQ packets staging mechanism:
+ *
+ * The packets enqueued into IFQ are staged to a certain amount before the
+ * ifnet's if_start is called.  In this way, the driver could avoid writing
+ * to hardware registers upon every packet, instead, hardware registers
+ * could be written when certain amount of packets are put onto hardware
+ * TX ring.  The measurement on several modern NICs (emx(4), igb(4), bnx(4),
+ * bge(4), jme(4)) shows that the hardware registers writing aggregation
+ * could save ~20% CPU time when 18bytes UDP datagrams are transmitted at
+ * 1.48Mpps.  The performance improvement by hardware registers writing
+ * aggeregation is also mentioned by Luigi Rizzo's netmap paper
+ * (http://info.iet.unipi.it/~luigi/netmap/).
+ *
+ * IFQ packets staging is performed for two entry points into drivers's
+ * transmission function:
+ * - Direct ifnet's if_start calling, i.e. ifq_try_ifstart()
+ * - ifnet's if_start scheduling, i.e. if_start_schedule()
+ *
+ * IFQ packets staging will be stopped upon any of the following conditions:
+ * - If the count of packets enqueued on the current CPU is great than or
+ *   equal to ifq_stage_cntmax. (XXX this should be per-interface)
+ * - If the total length of packets enqueued on the current CPU is great
+ *   than or equal to the hardware's MTU - max_protohdr.  max_protohdr is
+ *   cut from the hardware's MTU mainly bacause a full TCP segment's size
+ *   is usually less than hardware's MTU.
+ * - if_start_schedule() is not pending on the current CPU and if_start
+ *   interlock (if_snd.altq_started) is not released.
+ * - The if_start_rollup(), which is registered as low priority netisr
+ *   rollup function, is called; probably because no more work is pending
+ *   for netisr.
+ *
+ * NOTE:
+ * Currently IFQ packet staging is only performed in netisr threads.
+ */
 int
 ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 {
