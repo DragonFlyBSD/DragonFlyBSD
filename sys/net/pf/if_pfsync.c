@@ -48,6 +48,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/route.h>
 #include <net/bpf.h>
 #include <netinet/in.h>
@@ -150,7 +151,7 @@ pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	ifp->if_output = pfsyncoutput;
 	ifp->if_start = pfsyncstart;
 	ifp->if_type = IFT_PFSYNC;
-	ifp->if_snd.ifq_maxlen = ifqmaxlen;
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifp->if_hdrlen = PFSYNC_HDRLEN;
 	ifp->if_baudrate = IF_Mbps(100);
 	ifp->if_softc = sc;

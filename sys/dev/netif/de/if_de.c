@@ -3887,8 +3887,8 @@ tulip_attach(tulip_softc_t *sc)
 
     tulip_reset(sc);
 
+    ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
     ether_ifattach(&(sc)->tulip_if, sc->tulip_enaddr, NULL);
-    ifp->if_snd.ifq_maxlen = ifqmaxlen;
 }
 
 static void

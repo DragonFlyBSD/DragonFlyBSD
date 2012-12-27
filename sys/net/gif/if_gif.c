@@ -54,6 +54,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
 #include <net/bpf.h>
@@ -161,7 +162,7 @@ gifattach0(struct gif_softc *sc)
 	sc->gif_if.if_ioctl  = gif_ioctl;
 	sc->gif_if.if_output = gif_output;
 	sc->gif_if.if_type   = IFT_GIF;
-	sc->gif_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&sc->gif_if.if_snd, IFQ_MAXLEN);
 	if_attach(&sc->gif_if, NULL);
 	bpfattach(&sc->gif_if, DLT_NULL, sizeof(u_int));
 }

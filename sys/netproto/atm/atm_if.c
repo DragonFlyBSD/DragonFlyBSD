@@ -479,7 +479,7 @@ atm_physif_ioctl(int code, caddr_t data, caddr_t arg)
 			ifp->if_flags = IFF_UP | IFF_BROADCAST | IFF_RUNNING;
 			ifp->if_output = atm_ifoutput;
 			ifp->if_ioctl = atm_if_ioctl;
-			ifp->if_snd.ifq_maxlen = ifqmaxlen;
+			ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 			/*
 			 * Set if_type and if_baudrate
 			 */

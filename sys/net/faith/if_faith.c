@@ -64,6 +64,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
 #include <net/bpf.h>
@@ -172,7 +173,7 @@ faith_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	sc->sc_if.if_type = IFT_FAITH;
 	sc->sc_if.if_hdrlen = 0;
 	sc->sc_if.if_addrlen = 0;
-	sc->sc_if.if_snd.ifq_maxlen = ifqmaxlen;
+	ifq_set_maxlen(&sc->sc_if.if_snd, ifqmaxlen);
 	if_attach(&sc->sc_if, NULL);
 	bpfattach(&sc->sc_if, DLT_NULL, sizeof(u_int));
 	LIST_INSERT_HEAD(&faith_softc_list, sc, sc_list);

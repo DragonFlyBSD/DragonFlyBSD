@@ -47,6 +47,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
 #include <net/bpf.h>
@@ -132,7 +133,7 @@ ef_attach(struct efnet *sc)
 	ifp->if_start = ef_start;
 	ifp->if_watchdog = NULL;
 	ifp->if_init = ef_init;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST);
 	/*
 	 * Attach the interface

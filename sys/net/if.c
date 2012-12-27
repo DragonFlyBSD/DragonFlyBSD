@@ -205,7 +205,7 @@ ifinit(void *dummy)
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		if (ifp->if_snd.ifq_maxlen == 0) {
 			if_printf(ifp, "XXX: driver didn't set ifq_maxlen\n");
-			ifp->if_snd.ifq_maxlen = ifqmaxlen;
+			ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 		}
 	}
 	crit_exit();

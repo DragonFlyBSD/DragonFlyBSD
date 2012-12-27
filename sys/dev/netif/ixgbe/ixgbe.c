@@ -2415,7 +2415,7 @@ ixgbe_setup_interface(device_t dev, struct adapter *adapter)
 	ifp->if_transmit = ixgbe_mq_start;
 	ifp->if_qflush = ixgbe_qflush;
 #endif
-	ifp->if_snd.ifq_maxlen = adapter->num_tx_desc - 2;
+	ifq_set_maxlen(&ifp->if_snd, adapter->num_tx_desc - 2);
 
 	ether_ifattach(ifp, adapter->hw.mac.addr, NULL);
 

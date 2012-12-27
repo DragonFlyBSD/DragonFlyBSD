@@ -65,6 +65,7 @@
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/route.h>
 #include <net/if_clone.h>
 
@@ -186,7 +187,7 @@ gre_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 
 	sc->sc_if.if_softc = sc;
 	if_initname(&(sc->sc_if), GRENAME, unit);
-	sc->sc_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&sc->sc_if.if_snd, IFQ_MAXLEN);
 	sc->sc_if.if_type = IFT_OTHER;
 	sc->sc_if.if_addrlen = 0;
 	sc->sc_if.if_hdrlen = 24; /* IP + GRE */

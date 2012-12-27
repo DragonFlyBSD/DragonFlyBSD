@@ -49,6 +49,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/route.h>
 #include <net/bpf.h>
 
@@ -83,7 +84,7 @@ discattach(void)
 	ifp->if_type = IFT_LOOP;
 	ifp->if_hdrlen = 0;
 	ifp->if_addrlen = 0;
-	ifp->if_snd.ifq_maxlen = 20;
+	ifq_set_maxlen(&ifp->if_snd, 20);
 	if_attach(ifp, NULL);
 	bpfattach(ifp, DLT_NULL, sizeof(u_int));
 }

@@ -1006,7 +1006,7 @@ sppp_attach(struct ifnet *ifp)
 #if 0
 	sp->pp_flags = PP_KEEPALIVE;
 #endif
- 	sp->pp_if.if_snd.ifq_maxlen = 32;
+ 	ifq_set_maxlen(&sp->pp_if.if_snd, 32);
  	sp->pp_fastq.ifq_maxlen = 32;
  	sp->pp_cpq.ifq_maxlen = 20;
 	sp->pp_loopcnt = 0;
