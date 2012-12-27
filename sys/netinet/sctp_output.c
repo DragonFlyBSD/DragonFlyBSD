@@ -5565,21 +5565,6 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 		no_fragmentflg = 1;
 		one_chunk = 0;
 
-		if ((net->ro.ro_rt) && (net->ro.ro_rt->rt_ifp)) {
-			/* if we have a route and an ifp
-			 * check to see if we have room to
-			 * send to this guy
-			 */
-			struct ifnet *ifp;
-			ifp = net->ro.ro_rt->rt_ifp;
-			if ((ifp->if_snd.ifq_len + 2) >= ifp->if_snd.ifq_maxlen) {
-				sctp_pegs[SCTP_IFP_QUEUE_FULL]++;
-#ifdef SCTP_LOG_MAXBURST
-				sctp_log_maxburst(net, ifp->if_snd.ifq_len, ifp->if_snd.ifq_maxlen, SCTP_MAX_IFP_APPLIED);
-  #endif
-				continue;
-			}
-		}
 		if (((struct sockaddr *)&net->ro._l_addr)->sa_family == AF_INET) {
 			mtu = net->mtu - (sizeof(struct ip) + sizeof(struct sctphdr));
 		} else {
