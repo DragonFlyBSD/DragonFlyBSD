@@ -3292,8 +3292,7 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 	txd->read.cmd_type_len |= htole32(E1000_ADVTXD_DCMD_EOP | cmd_rs);
 
 	/*
-	 * Advance the Transmit Descriptor Tail (TDT), this tells the E1000
-	 * that this frame is available to transmit.
+	 * Defer TDT updating, until enough descrptors are setup
 	 */
 	*idx = i;
 	++txr->tx_packets;
