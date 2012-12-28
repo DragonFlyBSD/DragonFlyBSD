@@ -444,7 +444,7 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 			return (ENOBUFS);
 		}
 		*(sa_family_t *)m->m_data = dst->sa_family;
-		error = ifq_handoff(ifp, m, 0);
+		error = ifq_dispatch(ifp, m, NULL);
 	} else
 		error = ng_iface_send(ifp, m, dst->sa_family);
 
