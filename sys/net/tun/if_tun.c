@@ -208,7 +208,7 @@ tunclose(struct dev_close_args *ap)
 	tp->tun_pid = 0;
 
 	/* Junk all pending output. */
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 
 	if (ifp->if_flags & IFF_UP)
 		if_down(ifp);

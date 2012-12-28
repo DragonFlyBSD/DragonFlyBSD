@@ -99,7 +99,7 @@ priq_add_altq(struct pf_altq *a)
 	pif->pif_bandwidth = a->ifbandwidth;
 	pif->pif_maxpri = -1;
 	pif->pif_ifq = &ifp->if_snd;
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 
 	/* keep the state in pf_altq */
 	a->altq_disc = pif;

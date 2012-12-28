@@ -1063,7 +1063,7 @@ sppp_flush(struct ifnet *ifp)
 {
 	struct sppp *sp = (struct sppp*) ifp;
 
-	ifq_purge(&sp->pp_if.if_snd);
+	ifq_purge_all(&sp->pp_if.if_snd);
 	IF_DRAIN(&sp->pp_fastq);
 	IF_DRAIN(&sp->pp_cpq);
 }

@@ -159,7 +159,7 @@ hfsc_add_altq(struct pf_altq *a)
 
 	hif->hif_eligible = ellist_alloc();
 	hif->hif_ifq = &ifp->if_snd;
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 
 	/* keep the state in pf_altq */
 	a->altq_disc = hif;

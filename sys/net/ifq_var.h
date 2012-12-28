@@ -242,6 +242,24 @@ ifq_purge(struct ifaltq *_ifq)
  * WARNING: Should only be called in an MPSAFE manner.
  */
 static __inline void
+ifq_purge_all_locked(struct ifaltq *_ifq)
+{
+	/* XXX temporary */
+	ifq_purge_locked(_ifq);
+}
+
+static __inline void
+ifq_purge_all(struct ifaltq *_ifq)
+{
+	ALTQ_LOCK(_ifq);
+	ifq_purge_all_locked(_ifq);
+	ALTQ_UNLOCK(_ifq);
+}
+
+/*
+ * WARNING: Should only be called in an MPSAFE manner.
+ */
+static __inline void
 ifq_classify(struct ifaltq *_ifq, struct mbuf *_m, uint8_t _af,
 	     struct altq_pktattr *_pa)
 {

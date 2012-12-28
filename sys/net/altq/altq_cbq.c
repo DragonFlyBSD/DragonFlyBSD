@@ -223,7 +223,7 @@ cbq_add_altq(struct pf_altq *a)
 	callout_init(&cbqp->cbq_callout);
 	cbqp->cbq_qlen = 0;
 	cbqp->ifnp.ifq_ = &ifp->if_snd;	    /* keep the ifq */
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 
 	/* keep the state in pf_altq */
 	a->altq_disc = cbqp;

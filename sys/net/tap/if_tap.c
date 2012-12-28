@@ -400,7 +400,7 @@ tapclose(struct dev_close_args *ap)
 	get_mplock();
 
 	/* Junk all pending output */
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 
 	/*
 	 * Do not bring the interface down, and do not anything with

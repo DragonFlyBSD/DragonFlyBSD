@@ -1315,7 +1315,7 @@ if_unroute(struct ifnet *ifp, int flag, int fam)
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			kpfctlinput(PRC_IFDOWN, ifa->ifa_addr);
 	}
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 	rt_ifmsg(ifp);
 }
 
@@ -1329,7 +1329,7 @@ if_route(struct ifnet *ifp, int flag, int fam)
 {
 	struct ifaddr_container *ifac;
 
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 	ifp->if_flags |= flag;
 	getmicrotime(&ifp->if_lastchange);
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
