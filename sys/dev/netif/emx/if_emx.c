@@ -1628,8 +1628,7 @@ emx_encap(struct emx_txdata *tdata, struct mbuf **m_headp,
 	ctxd->lower.data |= htole32(E1000_TXD_CMD_EOP | cmd);
 
 	/*
-	 * Advance the Transmit Descriptor Tail (TDT), this tells
-	 * the E1000 that this frame is available to transmit.
+	 * Defer TDT updating, until enough descriptors are setup
 	 */
 	*idx = i;
 
