@@ -1675,4 +1675,43 @@ failed:
 	return FALSE;
 }
 
+u_char *
+kether_aton(const char *macstr, u_char *addr)
+{
+        unsigned int o0, o1, o2, o3, o4, o5;
+        int n;
+
+        if (macstr == NULL || addr == NULL)
+                return NULL;
+
+        n = ksscanf(macstr, "%x:%x:%x:%x:%x:%x", &o0, &o1, &o2,
+            &o3, &o4, &o5);
+        if (n != 6)
+                return NULL;
+
+        addr[0] = o0;
+        addr[1] = o1;
+        addr[2] = o2;
+        addr[3] = o3;
+        addr[4] = o4;
+        addr[5] = o5;
+
+        return addr;
+}
+
+char *
+kether_ntoa(const u_char *addr, char *buf)
+{
+        int len = 3 * ETHER_ADDR_LEN;
+        int n;
+
+        n = ksnprintf(buf, len, "%02x:%02x:%02x:%02x:%02x:%02x", addr[0],
+            addr[1], addr[2], addr[3], addr[4], addr[5]);
+
+        if (n < 17)
+                return NULL;
+
+        return buf;
+}
+
 MODULE_VERSION(ether, 1);
