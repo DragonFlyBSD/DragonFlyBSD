@@ -916,6 +916,9 @@ ed_probe_SIC(device_t dev, int port_rid, int flags)
 	u_int	memsize;
 	u_long	conf_maddr, conf_msize;
 	u_char	sum;
+#ifdef ED_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	error = ed_alloc_port(dev, 0, ED_SIC_IO_PORTS);
 	if (error)
@@ -957,8 +960,8 @@ ed_probe_SIC(device_t dev, int port_rid, int flags)
 		sum ^= (sc->arpcom.ac_enaddr[i] = sc->mem_start[i]);
 	}
 #ifdef ED_DEBUG
-	device_printf(dev, "ed_probe_sic: got address %6D\n",
-		      sc->arpcom.ac_enaddr, ":");
+	device_printf(dev, "ed_probe_sic: got address %s\n",
+	    kether_ntoa(sc->arpcom.ac_enaddr, ethestr));
 #endif
 	if (sum != 0) {
 		return (ENXIO);

@@ -601,6 +601,7 @@ void
 en_attach(struct en_softc *sc)
 {
   struct ifnet *ifp = &sc->enif;
+  char ethstr[ETHER_ADDRSTRLEN + 1];
   int sz;
   u_int32_t reg, lcv, check, ptr, sav, midvloc;
 
@@ -757,8 +758,8 @@ done_probe:
   kprintf("%s: %d %dKB receive buffers, %d %dKB transmit buffers allocated\n",
 	sc->sc_dev.dv_xname, sc->en_nrx, EN_RXSZ, EN_NTX, EN_TXSZ);
 
-  kprintf("%s: End Station Identifier (mac address) %6D\n",
-	 sc->sc_dev.dv_xname, sc->macaddr, ":");
+  kprintf("%s: End Station Identifier (mac address) %s\n",
+	 sc->sc_dev.dv_xname, kether_ntoa(sc->macaddr, ethstr));
 
   /*
    * final commit

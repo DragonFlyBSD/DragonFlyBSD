@@ -846,7 +846,7 @@ ng_bridge_put(priv_p priv, const u_char *addr, int linkNum)
 	/* Assert that entry does not already exist in hashtable */
 	SLIST_FOREACH(hent, &priv->tab[bucket], next) {
 		KASSERT(!ETHER_EQUAL(hent->host.addr, addr),
-		    ("%s: entry %6D exists in table", __func__, addr, ":"));
+		    ("%s: entry %s exists in table", __func__, ether_sprintf(addr)));
 	}
 #endif
 
@@ -979,8 +979,8 @@ ng_bridge_timeout(node_p node, hook_p hook, void *arg1, int arg2)
 
 			/* Make sure host's link really exists */
 			KASSERT(priv->links[hent->host.linkNum] != NULL,
-			    ("%s: host %6D on nonexistent link %d",
-			    __func__, hent->host.addr, ":",
+			    ("%s: host %s on nonexistent link %d",
+			    __func__, ether_sprintf(hent->host.addr),
 			    hent->host.linkNum));
 
 			/* Remove hosts we haven't heard from in a while */

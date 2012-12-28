@@ -2152,6 +2152,7 @@ ht_send_action_ba_addba(struct ieee80211_node *ni,
 	uint16_t *args = arg0;
 	struct mbuf *m;
 	uint8_t *frm;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_ACTION | IEEE80211_MSG_11N, ni,
 	    "send ADDBA %s: dialogtoken %d "
@@ -2162,8 +2163,8 @@ ht_send_action_ba_addba(struct ieee80211_node *ni,
 	    args[2], args[3]);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n", __func__, __LINE__,
-	    ni, ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)+1);
+	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n", __func__, __LINE__,
+	    ni, kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
 	m = ieee80211_getmgtframe(&frm,
@@ -2199,6 +2200,7 @@ ht_send_action_ba_delba(struct ieee80211_node *ni,
 	struct mbuf *m;
 	uint16_t baparamset;
 	uint8_t *frm;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	baparamset = SM(args[0], IEEE80211_DELBAPS_TID)
 		   | args[1]
@@ -2208,8 +2210,8 @@ ht_send_action_ba_delba(struct ieee80211_node *ni,
 	    args[0], args[1], args[2]);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n", __func__, __LINE__,
-	    ni, ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)+1);
+	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n", __func__, __LINE__,
+	    ni, kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
 	m = ieee80211_getmgtframe(&frm,
@@ -2240,14 +2242,15 @@ ht_send_action_ht_txchwidth(struct ieee80211_node *ni,
 	struct ieee80211com *ic = ni->ni_ic;
 	struct mbuf *m;
 	uint8_t *frm;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_ACTION | IEEE80211_MSG_11N, ni,
 	    "send HT txchwidth: width %d",
 	    IEEE80211_IS_CHAN_HT40(ni->ni_chan) ? 40 : 20);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n", __func__, __LINE__,
-	    ni, ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)+1);
+	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n", __func__, __LINE__,
+	    ni, kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
 	m = ieee80211_getmgtframe(&frm,

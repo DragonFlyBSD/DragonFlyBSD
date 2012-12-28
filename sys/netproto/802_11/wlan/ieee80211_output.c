@@ -605,7 +605,9 @@ ieee80211_mgmt_output(struct ieee80211_node *ni, struct mbuf *m, int type,
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ieee80211_frame *wh;
-
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	KASSERT(ni != NULL, ("null node"));
 
 	if (vap->iv_state == IEEE80211_S_CAC) {
@@ -644,8 +646,8 @@ ieee80211_mgmt_output(struct ieee80211_node *ni, struct mbuf *m, int type,
 	/* avoid printing too many frames */
 	if ((ieee80211_msg_debug(vap) && doprint(vap, type)) ||
 	    ieee80211_msg_dumppkts(vap)) {
-		kprintf("[%6D] send %s on channel %u\n",
-		    wh->i_addr1, ":",
+		kprintf("[%s] send %s on channel %u\n",
+		    kether_ntoa(wh->i_addr1, ethstr),
 		    ieee80211_mgt_subtype_name[
 			(type & IEEE80211_FC0_SUBTYPE_MASK) >>
 				IEEE80211_FC0_SUBTYPE_SHIFT],
@@ -1719,6 +1721,7 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	const struct ieee80211_rateset *rs;
 	struct mbuf *m;
 	uint8_t *frm;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	if (vap->iv_state == IEEE80211_S_CAC) {
 		IEEE80211_NOTE(vap, IEEE80211_MSG_OUTPUT, ni,
@@ -1733,9 +1736,9 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	 * will remove our reference.
 	 */
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-		"ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n",
+		"ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n",
 		__func__, __LINE__,
-		ni, ni->ni_macaddr, ":",
+		ni, kether_ntoa(ni->ni_macaddr, ethstr),
 		ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
@@ -1803,8 +1806,8 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	IEEE80211_NODE_STAT(ni, tx_mgmt);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_DEBUG | IEEE80211_MSG_DUMPPKTS,
-	    "send probe req on channel %u bssid %6D ssid \"%.*s\"\n",
-	    ieee80211_chan2ieee(ic, ic->ic_curchan), bssid, ":",
+	    "send probe req on channel %u bssid %s ssid \"%.*s\"\n",
+	    ieee80211_chan2ieee(ic, ic->ic_curchan), kether_ntoa(bssid, ethstr),
 	    (int)ssidlen, ssid);
 
 	memset(&params, 0, sizeof(params));
@@ -1867,6 +1870,7 @@ ieee80211_send_mgmt(struct ieee80211_node *ni, int type, int arg)
 	uint8_t *frm;
 	uint16_t capinfo;
 	int has_challenge, is_shared_key, ret, status;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	KASSERT(ni != NULL, ("null node"));
 
@@ -1876,9 +1880,9 @@ ieee80211_send_mgmt(struct ieee80211_node *ni, int type, int arg)
 	 * will remove our reference.
 	 */
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-		"ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n",
+		"ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n",
 		__func__, __LINE__,
-		ni, ni->ni_macaddr, ":",
+		ni, kether_ntoa(ni->ni_macaddr, ethstr),
 		ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
@@ -2377,6 +2381,7 @@ ieee80211_send_proberesp(struct ieee80211vap *vap,
 	struct ieee80211_node *bss = vap->iv_bss;
 	struct ieee80211com *ic = vap->iv_ic;
 	struct mbuf *m;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	if (vap->iv_state == IEEE80211_S_CAC) {
 		IEEE80211_NOTE(vap, IEEE80211_MSG_OUTPUT, bss,
@@ -2391,8 +2396,8 @@ ieee80211_send_proberesp(struct ieee80211vap *vap,
 	 * will remove our reference.
 	 */
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n",
-	    __func__, __LINE__, bss, bss->ni_macaddr, ":",
+	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n",
+	    __func__, __LINE__, bss, kether_ntoa(bss->ni_macaddr, ethstr),
 	    ieee80211_node_refcnt(bss)+1);
 	ieee80211_ref_node(bss);
 
@@ -2414,8 +2419,8 @@ ieee80211_send_proberesp(struct ieee80211vap *vap,
 	M_WME_SETAC(m, WME_AC_BE);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_DEBUG | IEEE80211_MSG_DUMPPKTS,
-	    "send probe resp on channel %u to %6D%s\n",
-	    ieee80211_chan2ieee(ic, ic->ic_curchan), da, ":",
+	    "send probe resp on channel %u to %s%s\n",
+	    ieee80211_chan2ieee(ic, ic->ic_curchan), kether_ntoa(da, ethstr),
 	    legacy ? " <legacy>" : "");
 	IEEE80211_NODE_STAT(bss, tx_mgmt);
 

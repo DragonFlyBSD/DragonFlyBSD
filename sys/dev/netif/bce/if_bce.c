@@ -3410,7 +3410,9 @@ static void
 bce_get_mac_addr(struct bce_softc *sc)
 {
 	uint32_t mac_lo = 0, mac_hi = 0;
-
+#ifdef BCE_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	/*
 	 * The NetXtreme II bootcode populates various NIC
 	 * power-on and runtime configuration items in a
@@ -3434,7 +3436,8 @@ bce_get_mac_addr(struct bce_softc *sc)
 		sc->eaddr[5] = (u_char)(mac_lo >> 0);
 	}
 
-	DBPRINT(sc, BCE_INFO, "Permanent Ethernet address = %6D\n", sc->eaddr, ":");
+	DBPRINT(sc, BCE_INFO, "Permanent Ethernet address = %s\n",
+	    kether_ntoa(sc->eaddr, ethstr));
 }
 
 
@@ -3448,10 +3451,13 @@ static void
 bce_set_mac_addr(struct bce_softc *sc)
 {
 	const uint8_t *mac_addr = sc->eaddr;
+#ifdef BCE_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	uint32_t val;
 
-	DBPRINT(sc, BCE_INFO, "Setting Ethernet address = %6D\n",
-		sc->eaddr, ":");
+	DBPRINT(sc, BCE_INFO, "Setting Ethernet address = %s\n",
+	    kether_ntoa(sc->eaddr, ethstr));
 
 	val = (mac_addr[0] << 8) | mac_addr[1];
 	REG_WR(sc, BCE_EMAC_MAC_MATCH0, val);

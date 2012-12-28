@@ -3566,6 +3566,7 @@ iwl2100_ibss_bssid(void *xsc)
 	struct iwl2100_softc *sc = xsc;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
@@ -3585,8 +3586,8 @@ iwl2100_ibss_bssid(void *xsc)
 		if (len < (int)sizeof(bssid)) {
 			if_printf(ifp, "can't get IBSS bssid\n");
 		} else {
-			DPRINTF(sc, IWL2100_DBG_IBSS, "IBSS bssid: %6D\n",
-				bssid, ":");
+			DPRINTF(sc, IWL2100_DBG_IBSS, "IBSS bssid: %s\n",
+			    kether_ntoa(bssid, ethstr));
 			IEEE80211_ADDR_COPY(ic->ic_bss->ni_bssid, bssid);
 
 			sc->sc_flags |= IWL2100_F_IFSTART;

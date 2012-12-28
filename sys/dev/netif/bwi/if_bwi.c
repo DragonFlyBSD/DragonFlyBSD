@@ -532,6 +532,7 @@ bwi_attach(device_t dev)
 	struct ifnet *ifp = &ic->ic_if;
 	struct bwi_mac *mac;
 	struct bwi_phy *phy;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	int i, error;
 
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -754,7 +755,7 @@ bwi_attach(device_t dev)
 			bwi_get_eaddr(sc, BWI_SPROM_11A_EADDR, ic->ic_myaddr);
 			if (IEEE80211_IS_MULTICAST(ic->ic_myaddr)) {
 				device_printf(dev, "invalid MAC address: "
-					"%6D\n", ic->ic_myaddr, ":");
+				    "%s\n", kether_ntoa(ic->ic_myaddr, ethstr));
 			}
 		}
 	} else if (phy->phy_mode == IEEE80211_MODE_11A) {

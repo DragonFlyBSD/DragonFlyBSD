@@ -248,7 +248,9 @@ int
 valid_Ether_p (u_char const * addr, unsigned vendor)
 {
 #ifdef FE_DEBUG
-	kprintf("fe?: validating %6D against %06x\n", addr, ":", vendor);
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+	kprintf("fe?: validating %s against %06x\n", kether_ntoa(addr, ethstr),
+	    vendor);
 #endif
 
 	/* All zero is not allowed as a vendor code.  */
@@ -2077,15 +2079,17 @@ fe_mcaf ( struct fe_softc *sc )
 	int index;
 	struct fe_filter filter;
 	struct ifmultiaddr *ifma;
-
+#ifdef FE_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	filter = fe_filter_nothing;
 	TAILQ_FOREACH(ifma, &sc->arpcom.ac_if.if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		index = fe_hash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
 #ifdef FE_DEBUG
-		kprintf("fe%d: hash(%6D) == %d\n",
-			sc->sc_unit, enm->enm_addrlo , ":", index);
+		kprintf("fe%d: hash(%s) == %d\n",
+		    sc->sc_unit, kether_ntoa(enm->enm_addrlo, ethstr), index);
 #endif
 
 		filter.data[index >> 3] |= 1 << (index & 7);

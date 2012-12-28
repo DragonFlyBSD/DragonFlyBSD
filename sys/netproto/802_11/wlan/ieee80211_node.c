@@ -507,6 +507,7 @@ check_bss_debug(struct ieee80211vap *vap, struct ieee80211_node *ni)
 	struct ieee80211com *ic = ni->ni_ic;
         uint8_t rate;
         int fail;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	fail = 0;
 	if (isclr(ic->ic_chan_active, ieee80211_chan2ieee(ic, ni->ni_chan)))
@@ -537,8 +538,8 @@ check_bss_debug(struct ieee80211vap *vap, struct ieee80211_node *ni)
 	    !IEEE80211_ADDR_EQ(vap->iv_des_bssid, ni->ni_bssid))
 		fail |= 0x20;
 
-	kprintf(" %c %6D", fail ? '-' : '+', ni->ni_macaddr, ":");
-	kprintf(" %6D%c", ni->ni_bssid, ":", fail & 0x20 ? '!' : ' ');
+	kprintf(" %c %s", fail ? '-' : '+', kether_ntoa(ni->ni_macaddr, ethstr));
+	kprintf(" %s%c", kether_ntoa(ni->ni_bssid, ethstr), fail & 0x20 ? '!' : ' ');
 	kprintf(" %3d%c",
 	    ieee80211_chan2ieee(ic, ni->ni_chan), fail & 0x01 ? '!' : ' ');
 	kprintf(" %2dM%c", (rate & IEEE80211_RATE_VAL) / 2,
@@ -575,6 +576,7 @@ ieee80211_ibss_merge(struct ieee80211_node *ni)
 #ifdef IEEE80211_DEBUG
 	struct ieee80211com *ic = ni->ni_ic;
 #endif
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	if (ni == vap->iv_bss ||
 	    IEEE80211_ADDR_EQ(ni->ni_bssid, vap->iv_bss->ni_bssid)) {
@@ -593,8 +595,8 @@ ieee80211_ibss_merge(struct ieee80211_node *ni)
 		return 0;
 	}
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ASSOC,
-		"%s: new bssid %6D: %s preamble, %s slot time%s\n", __func__,
-		ni->ni_bssid, ":",
+		"%s: new bssid %s: %s preamble, %s slot time%s\n", __func__,
+		kether_ntoa(ni->ni_bssid, ethstr),
 		ic->ic_flags&IEEE80211_F_SHPREAMBLE ? "short" : "long",
 		ic->ic_flags&IEEE80211_F_SHSLOT ? "short" : "long",
 		ic->ic_flags&IEEE80211_F_USEPROT ? ", protection" : ""
@@ -1092,6 +1094,7 @@ ieee80211_alloc_node(struct ieee80211_node_table *nt,
 	struct ieee80211com *ic = nt->nt_ic;
 	struct ieee80211_node *ni;
 	int hash;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	ni = ic->ic_node_alloc(vap, macaddr);
 	if (ni == NULL) {
@@ -1100,8 +1103,8 @@ ieee80211_alloc_node(struct ieee80211_node_table *nt,
 	}
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-		"%s %p<%6D> in %s table\n", __func__, ni,
-		macaddr, ":", nt->nt_name);
+		"%s %p<%s> in %s table\n", __func__, ni,
+		kether_ntoa(macaddr, ethstr), nt->nt_name);
 
 	IEEE80211_ADDR_COPY(ni->ni_macaddr, macaddr);
 	hash = IEEE80211_NODE_HASH(ic, macaddr);
@@ -1144,13 +1147,14 @@ ieee80211_tmp_node(struct ieee80211vap *vap,
 {
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_node *ni;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	ni = ic->ic_node_alloc(vap, macaddr);
 	if (ni != NULL) {
 		struct ieee80211_node *bss = vap->iv_bss;
 
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-			"%s %p<%6D>\n", __func__, ni, macaddr, ":");
+		    "%s %p<%s>\n", __func__, ni, kether_ntoa(macaddr, ethstr));
 
 		ni->ni_table = NULL;		/* NB: pedantic */
 		ni->ni_ic = ic;			/* NB: needed to set channel */
@@ -1266,16 +1270,18 @@ ieee80211_find_node_locked(struct ieee80211_node_table *nt,
 {
 	struct ieee80211_node *ni;
 	int hash;
-
+#ifdef IEEE80211_DEBUG_REFCNT
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	hash = IEEE80211_NODE_HASH(nt->nt_ic, macaddr);
 	LIST_FOREACH(ni, &nt->nt_hash[hash], ni_hash) {
 		if (IEEE80211_ADDR_EQ(ni->ni_macaddr, macaddr)) {
 			ieee80211_ref_node(ni);	/* mark referenced */
 #ifdef IEEE80211_DEBUG_REFCNT
 			IEEE80211_DPRINTF(ni->ni_vap, IEEE80211_MSG_NODE,
-			    "%s (%s:%u) %p<%6D> refcnt %d\n", __func__,
+			    "%s (%s:%u) %p<%s> refcnt %d\n", __func__,
 			    func, line,
-			    ni, ni->ni_macaddr, ":",
+			    ni, kether_ntoa(ni->ni_macaddr, ethstr),
 			    ieee80211_node_refcnt(ni));
 #endif
 			return ni;
@@ -1312,7 +1318,9 @@ ieee80211_find_vap_node_locked(struct ieee80211_node_table *nt,
 {
 	struct ieee80211_node *ni;
 	int hash;
-
+#ifdef IEEE80211_DEBUG_REFCNT
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	hash = IEEE80211_NODE_HASH(nt->nt_ic, macaddr);
 	LIST_FOREACH(ni, &nt->nt_hash[hash], ni_hash) {
 		if (ni->ni_vap == vap &&
@@ -1320,9 +1328,9 @@ ieee80211_find_vap_node_locked(struct ieee80211_node_table *nt,
 			ieee80211_ref_node(ni);	/* mark referenced */
 #ifdef IEEE80211_DEBUG_REFCNT
 			IEEE80211_DPRINTF(ni->ni_vap, IEEE80211_MSG_NODE,
-			    "%s (%s:%u) %p<%6D> refcnt %d\n", __func__,
+			    "%s (%s:%u) %p<%s> refcnt %d\n", __func__,
 			    func, line,
-			    ni, ni->ni_macaddr, ":",
+			    ni, kether_ntoa(ni->ni_macaddr, ethstr),
 			    ieee80211_node_refcnt(ni));
 #endif
 			return ni;
@@ -1359,9 +1367,10 @@ ieee80211_fakeup_adhoc_node(struct ieee80211vap *vap,
 	const uint8_t macaddr[IEEE80211_ADDR_LEN])
 {
 	struct ieee80211_node *ni;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "%s: mac<%6D>\n", __func__, macaddr, ":");
+	    "%s: mac<%s>\n", __func__, kether_ntoa(macaddr, ethstr));
 	ni = ieee80211_dup_bss(vap, macaddr);
 	if (ni != NULL) {
 		struct ieee80211com *ic = vap->iv_ic;
@@ -1444,9 +1453,10 @@ ieee80211_add_neighbor(struct ieee80211vap *vap,
 	const struct ieee80211_scanparams *sp)
 {
 	struct ieee80211_node *ni;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "%s: mac<%6D>\n", __func__, wh->i_addr2, ":");
+	    "%s: mac<%s>\n", __func__, kether_ntoa(wh->i_addr2, ethstr));
 	ni = ieee80211_dup_bss(vap, wh->i_addr2);/* XXX alloc_node? */
 	if (ni != NULL) {
 		struct ieee80211com *ic = vap->iv_ic;
@@ -1522,6 +1532,7 @@ ieee80211_find_rxnode_withkey(struct ieee80211com *ic,
 {
 	struct ieee80211_node_table *nt;
 	struct ieee80211_node *ni;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	nt = &ic->ic_sta;
 	if (nt->nt_keyixmap != NULL && keyix < nt->nt_keyixmax)
@@ -1541,8 +1552,8 @@ ieee80211_find_rxnode_withkey(struct ieee80211com *ic,
 			    nt->nt_keyixmap[keyix] == NULL) {
 				IEEE80211_DPRINTF(ni->ni_vap,
 				    IEEE80211_MSG_NODE,
-				    "%s: add key map entry %p<%6D> refcnt %d\n",
-				    __func__, ni, ni->ni_macaddr, ":",
+				    "%s: add key map entry %p<%s> refcnt %d\n",
+				    __func__, ni, kether_ntoa(ni->ni_macaddr, ethstr),
 				    ieee80211_node_refcnt(ni)+1);
 				nt->nt_keyixmap[keyix] = ieee80211_ref_node(ni);
 			}
@@ -1623,8 +1634,8 @@ _ieee80211_free_node(struct ieee80211_node *ni)
 	 */
 #if 0
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-		"%s %p<%6D> in %s table\n", __func__, ni,
-		ni->ni_macaddr, ":",
+		"%s %p<%s> in %s table\n", __func__, ni,
+		kether_ntoa(ni->ni_macaddr, ethstr),
 		nt != NULL ? nt->nt_name : "<gone>");
 #endif
 	if (ni->ni_associd != 0) {
@@ -1647,11 +1658,12 @@ ieee80211_free_node(struct ieee80211_node *ni)
 #endif
 {
 	struct ieee80211_node_table *nt = ni->ni_table;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 #ifdef IEEE80211_DEBUG_REFCNT
 	IEEE80211_DPRINTF(ni->ni_vap, IEEE80211_MSG_NODE,
-		"%s (%s:%u) %p<%6D> refcnt %d\n", __func__, func, line, ni,
-		 ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)-1);
+		"%s (%s:%u) %p<%s> refcnt %d\n", __func__, func, line, ni,
+		kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni)-1);
 #endif
 	if (nt != NULL) {
 		if (ieee80211_node_dectestref(ni)) {
@@ -1670,8 +1682,8 @@ ieee80211_free_node(struct ieee80211_node *ni)
 			    nt->nt_keyixmap[keyix] == ni) {
 				IEEE80211_DPRINTF(ni->ni_vap,
 				    IEEE80211_MSG_NODE,
-				    "%s: %p<%6D> clear key map entry", __func__,
-				    ni, ni->ni_macaddr, ":");
+				    "%s: %p<%s> clear key map entry", __func__,
+				    ni, kether_ntoa(ni->ni_macaddr, ethstr));
 				nt->nt_keyixmap[keyix] = NULL;
 				ieee80211_node_decref(ni); /* XXX needed? */
 				_ieee80211_free_node(ni);
@@ -1694,6 +1706,7 @@ ieee80211_node_delucastkey(struct ieee80211_node *ni)
 	struct ieee80211_node *nikey;
 	ieee80211_keyix keyix;
 	int status;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	/*
 	 * NB: We must beware of LOR here; deleting the key
@@ -1722,8 +1735,8 @@ ieee80211_node_delucastkey(struct ieee80211_node *ni)
 		KASSERT(nikey == ni,
 			("key map out of sync, ni %p nikey %p", ni, nikey));
 		IEEE80211_DPRINTF(ni->ni_vap, IEEE80211_MSG_NODE,
-			"%s: delete key map entry %p<%6D> refcnt %d\n",
-			__func__, ni, ni->ni_macaddr, ":",
+			"%s: delete key map entry %p<%s> refcnt %d\n",
+			__func__, ni, kether_ntoa(ni->ni_macaddr, ethstr),
 			ieee80211_node_refcnt(ni)-1);
 		ieee80211_free_node(ni);
 	}
@@ -1739,10 +1752,11 @@ static void
 node_reclaim(struct ieee80211_node_table *nt, struct ieee80211_node *ni)
 {
 	ieee80211_keyix keyix;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	IEEE80211_DPRINTF(ni->ni_vap, IEEE80211_MSG_NODE,
-		"%s: remove %p<%6D> from %s table, refcnt %d\n",
-		__func__, ni, ni->ni_macaddr, ":",
+		"%s: remove %p<%s> from %s table, refcnt %d\n",
+		__func__, ni, kether_ntoa(ni->ni_macaddr, ethstr),
 		nt->nt_name, ieee80211_node_refcnt(ni)-1);
 	/*
 	 * Clear any entry in the unicast key mapping table.
@@ -1755,8 +1769,8 @@ node_reclaim(struct ieee80211_node_table *nt, struct ieee80211_node *ni)
 	if (nt->nt_keyixmap != NULL && keyix < nt->nt_keyixmax &&
 	    nt->nt_keyixmap[keyix] == ni) {
 		IEEE80211_DPRINTF(ni->ni_vap, IEEE80211_MSG_NODE,
-			"%s: %p<%6D> clear key map entry %u\n",
-			__func__, ni, ni->ni_macaddr, ":", keyix);
+			"%s: %p<%s> clear key map entry %u\n",
+			__func__, ni, kether_ntoa(ni->ni_macaddr, ethstr), keyix);
 		nt->nt_keyixmap[keyix] = NULL;
 		ieee80211_node_decref(ni);	/* NB: don't need free */
 	}
@@ -2100,7 +2114,9 @@ restart:
 void
 ieee80211_dump_node(struct ieee80211_node_table *nt, struct ieee80211_node *ni)
 {
-	kprintf("0x%p: mac %6D refcnt %d\n", ni, ni->ni_macaddr, ":",
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+
+	kprintf("0x%p: mac %s refcnt %d\n", ni, kether_ntoa(ni->ni_macaddr, ethstr),
 		ieee80211_node_refcnt(ni));
 	kprintf("\tscangen %u authmode %u flags 0x%x\n",
 		ni->ni_scangen, ni->ni_authmode, ni->ni_flags);
@@ -2114,8 +2130,8 @@ ieee80211_dump_node(struct ieee80211_node_table *nt, struct ieee80211_node *ni)
 	kprintf("\trssi %d noise %d intval %u capinfo 0x%x\n",
 		node_getrssi(ni), ni->ni_noise,
 		ni->ni_intval, ni->ni_capinfo);
-	kprintf("\tbssid %6D essid \"%.*s\" channel %u:0x%x\n",
-		ni->ni_bssid, ":",
+	kprintf("\tbssid %s essid \"%.*s\" channel %u:0x%x\n",
+		kether_ntoa(ni->ni_bssid, ethstr),
 		ni->ni_esslen, ni->ni_essid,
 		ni->ni_chan->ic_freq, ni->ni_chan->ic_flags);
 	kprintf("\tinact %u inact_reload %u txrate %u\n",

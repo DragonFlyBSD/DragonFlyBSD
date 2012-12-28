@@ -573,6 +573,7 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen,
 		   lwkt_serialize_t serializer)
 {
 	struct sockaddr_dl *sdl;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	ifp->if_type = IFT_ETHER;
 	ifp->if_addrlen = ETHER_ADDR_LEN;
@@ -599,7 +600,7 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen,
 	if (ng_ether_attach_p != NULL)
 		(*ng_ether_attach_p)(ifp);
 
-	if_printf(ifp, "MAC address: %6D\n", lla, ":");
+	if_printf(ifp, "MAC address: %s\n", kether_ntoa(lla, ethstr));
 }
 
 /*
@@ -1702,7 +1703,7 @@ kether_aton(const char *macstr, u_char *addr)
 char *
 kether_ntoa(const u_char *addr, char *buf)
 {
-        int len = 3 * ETHER_ADDR_LEN;
+        int len = ETHER_ADDRSTRLEN + 1;
         int n;
 
         n = ksnprintf(buf, len, "%02x:%02x:%02x:%02x:%02x:%02x", addr[0],

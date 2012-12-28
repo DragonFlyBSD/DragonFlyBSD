@@ -876,6 +876,7 @@ acx_read_config(struct acx_softc *sc, struct acx_config *conf)
 	struct acx_conf_regdom reg_dom;
 	struct acx_conf_antenna ant;
 	struct acx_conf_fwrev fw_rev;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	uint32_t fw_rev_no;
 	uint8_t sen;
 	int i, error;
@@ -892,8 +893,8 @@ acx_read_config(struct acx_softc *sc, struct acx_config *conf)
 	 */
 	for (i = 0; i < IEEE80211_ADDR_LEN; ++i)
 		conf->eaddr[IEEE80211_ADDR_LEN - 1 - i] = addr.eaddr[i];
-	if_printf(&sc->sc_ic.ic_if, "MAC address (from firmware): %6D\n",
-		  conf->eaddr, ":");
+	if_printf(&sc->sc_ic.ic_if, "MAC address (from firmware): %s\n",
+	    kether_ntoa(conf->eaddr, ethstr));
 
 	/* Get region domain */
 	if (acx_get_regdom_conf(sc, &reg_dom) != 0) {

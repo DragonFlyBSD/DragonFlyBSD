@@ -35,7 +35,6 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.c,v 1.12 2006/12/13 19:34:34 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_amrr/amrr.c,v 1.5 2007/02/22 05:17:09 sephe Exp $
  */
 
 /*
@@ -190,12 +189,13 @@ ath_rate_update(struct ath_softc *sc, struct ieee80211_node *ni, int rate)
 	struct ath_node *an = ATH_NODE(ni);
 	struct amrr_node *amn = ATH_NODE_AMRR(an);
 	const HAL_RATE_TABLE *rt = sc->sc_currates;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	uint8_t rix;
 
 	KASSERT(rt != NULL, ("no rate table, mode %u", sc->sc_curmode));
 
-	DPRINTF(sc, "%s: set xmit rate for %6D to %dM\n",
-	    __func__, ni->ni_macaddr, ":",
+	DPRINTF(sc, "%s: set xmit rate for %s to %dM\n",
+	    __func__, kether_ntoa(ni->ni_macaddr, ethstr),
 	    ni->ni_rates.rs_nrates > 0 ?
 		(ni->ni_rates.rs_rates[rate] & IEEE80211_RATE_VAL) / 2 : 0);
 

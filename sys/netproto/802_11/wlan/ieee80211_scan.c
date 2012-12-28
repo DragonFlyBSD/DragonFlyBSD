@@ -1046,17 +1046,18 @@ dump_probe_beacon(uint8_t subtype, int isnew,
 	const uint8_t mac[IEEE80211_ADDR_LEN],
 	const struct ieee80211_scanparams *sp, int rssi)
 {
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
-	kprintf("[%6D] %s%s on chan %u (bss chan %u) ",
-	    mac, ":", isnew ? "new " : "",
+	kprintf("[%s] %s%s on chan %u (bss chan %u) ",
+	    kether_ntoa(mac, ethstr), isnew ? "new " : "",
 	    ieee80211_mgt_subtype_name[subtype >> IEEE80211_FC0_SUBTYPE_SHIFT],
 	    sp->chan, sp->bchan);
 	ieee80211_print_essid(sp->ssid + 2, sp->ssid[1]);
 	kprintf(" rssi %d\n", rssi);
 
 	if (isnew) {
-		kprintf("[%6D] caps 0x%x bintval %u erp 0x%x", 
-			mac, ":", sp->capinfo, sp->bintval, sp->erp);
+		kprintf("[%s] caps 0x%x bintval %u erp 0x%x",
+			kether_ntoa(mac, ethstr), sp->capinfo, sp->bintval, sp->erp);
 		if (sp->country != NULL)
 			dump_country(sp->country);
 		kprintf("\n");

@@ -954,6 +954,7 @@ match_bss(struct ieee80211vap *vap,
 	struct ieee80211_scan_entry *se = &se0->base;
         uint8_t rate;
         int fail;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	fail = 0;
 	if (isclr(ic->ic_chan_active, ieee80211_chan2ieee(ic, se->se_chan)))
@@ -1093,7 +1094,7 @@ match_bss(struct ieee80211vap *vap,
 		fail |= MATCH_RSSI;
 #ifdef IEEE80211_DEBUG
 	if (ieee80211_msg(vap, debug)) {
-		kprintf(" %c %6D",
+		kprintf(" %c %s",
 		    fail & MATCH_FAILS ? '=' :
 		    fail & MATCH_NOTSEEN ? '^' :
 		    fail & MATCH_CC ? '$' :
@@ -1105,8 +1106,8 @@ match_bss(struct ieee80211vap *vap,
 		    fail & MATCH_TDMA_LOCAL ? 'l' :
 #endif
 		    fail & MATCH_MESH_NOID ? 'm' :
-		    fail ? '-' : '+', se->se_macaddr, ":");
-		kprintf(" %6D%c", se->se_bssid, ":",
+		    fail ? '-' : '+', kether_ntoa(se->se_macaddr, ethstr));
+		kprintf(" %s%c", kether_ntoa(se->se_bssid, ethstr),
 		    fail & MATCH_BSSID ? '!' : ' ');
 		kprintf(" %3d%c", ieee80211_chan2ieee(ic, se->se_chan),
 			fail & MATCH_CHANNEL ? '!' : ' ');

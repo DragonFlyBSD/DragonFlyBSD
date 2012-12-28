@@ -902,10 +902,11 @@ iwi_node_free(struct ieee80211_node *ni)
 	struct ieee80211com *ic = ni->ni_ic;
 	struct iwi_softc *sc = ic->ic_ifp->if_softc;
 	struct iwi_node *in = (struct iwi_node *)ni;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	if (in->in_station != -1) {
-		DPRINTF(("%s mac %6D station %u\n", __func__,
-		    ni->ni_macaddr, ":", in->in_station));
+		DPRINTF(("%s mac %s station %u\n", __func__,
+			kether_ntoa(ni->ni_macaddr, ethstr), in->in_station));
 		devfs_clone_bitmap_put(&sc->sc_unr, in->in_station);
 	}
 
@@ -1735,12 +1736,13 @@ iwi_write_ibssnode(struct iwi_softc *sc,
 	const u_int8_t addr[IEEE80211_ADDR_LEN], int entry)
 {
 	struct iwi_ibssnode node;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	/* write node information into NIC memory */
 	memset(&node, 0, sizeof node);
 	IEEE80211_ADDR_COPY(node.bssid, addr);
 
-	DPRINTF(("%s mac %6D station %u\n", __func__, node.bssid, ":", entry));
+	DPRINTF(("%s mac %s station %u\n", __func__, kether_ntoa(node.bssid, ethstr), entry));
 
 	CSR_WRITE_REGION_1(sc,
 	    IWI_CSR_NODE_BASE + entry * sizeof node,
@@ -2536,8 +2538,9 @@ iwi_config(struct iwi_softc *sc)
 	uint32_t data;
 	int error, i;
 	const uint8_t *eaddr = IF_LLADDR(ifp);
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
-	DPRINTF(("Setting MAC address to %6D\n", eaddr, ":"));
+	DPRINTF(("Setting MAC address to %s\n", kether_ntoa(eaddr, ethstr)));
 	error = iwi_cmd(sc, IWI_CMD_SET_MAC_ADDRESS, IF_LLADDR(ifp),
 	    IEEE80211_ADDR_LEN);
 	if (error != 0)
@@ -2779,6 +2782,7 @@ iwi_auth_and_assoc(struct iwi_softc *sc, struct ieee80211vap *vap)
 	uint16_t capinfo;
 	uint32_t data;
 	int error, mode;
+	char ethstr[2][ETHER_ADDRSTRLEN + 1];
 
 	if (sc->flags & IWI_FLAG_ASSOCIATED) {
 		DPRINTF(("Already associated\n"));
@@ -2929,10 +2933,10 @@ iwi_auth_and_assoc(struct iwi_softc *sc, struct ieee80211vap *vap)
 	else
 		IEEE80211_ADDR_COPY(assoc->dst, ni->ni_bssid);
 
-	DPRINTF(("%s bssid %6D dst %6D channel %u policy 0x%x "
+	DPRINTF(("%s bssid %s dst %s channel %u policy 0x%x "
 	    "auth %u capinfo 0x%x lintval %u bintval %u\n",
 	    assoc->type == IWI_HC_IBSS_START ? "Start" : "Join",
-	    assoc->bssid, ":", assoc->dst, ":",
+	    kether_ntoa(assoc->bssid, ethstr[0]), kether_ntoa(assoc->dst, ethstr[1]),
 	    assoc->chan, le16toh(assoc->policy), assoc->auth,
 	    le16toh(assoc->capinfo), le16toh(assoc->lintval),
 	    le16toh(assoc->intval)));
@@ -2958,6 +2962,7 @@ static int
 iwi_disassociate(struct iwi_softc *sc, int quiet)
 {
 	struct iwi_associate *assoc = &sc->assoc;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	if ((sc->flags & IWI_FLAG_ASSOCIATED) == 0) {
 		DPRINTF(("Not associated\n"));
@@ -2971,8 +2976,8 @@ iwi_disassociate(struct iwi_softc *sc, int quiet)
 	else
 		assoc->type = IWI_HC_DISASSOC;
 
-	DPRINTF(("Trying to disassociate from %6D channel %u\n",
-	    assoc->bssid, ":", assoc->chan));
+	DPRINTF(("Trying to disassociate from %s channel %u\n",
+	    kether_ntoa(assoc->bssid, ethstr), assoc->chan));
 	return iwi_cmd(sc, IWI_CMD_ASSOCIATE, assoc, sizeof *assoc);
 }
 

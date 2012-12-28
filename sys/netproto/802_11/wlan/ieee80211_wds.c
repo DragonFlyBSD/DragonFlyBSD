@@ -123,10 +123,11 @@ ieee80211_create_wds(struct ieee80211vap *vap, struct ieee80211_channel *chan)
 	struct ieee80211com *ic = vap->iv_ic;
 /*	struct ieee80211_node_table *nt = &ic->ic_sta;*/
 	struct ieee80211_node *ni, *obss;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_WDS,
-	     "%s: creating link to %6D on channel %u\n", __func__,
-	     vap->iv_des_bssid, ":", ieee80211_chan2ieee(ic, chan));
+	     "%s: creating link to %s on channel %u\n", __func__,
+	     kether_ntoa(vap->iv_des_bssid, ethstr), ieee80211_chan2ieee(ic, chan));
 
 	/* NB: vap create must specify the bssid for the link */
 	KASSERT(vap->iv_flags & IEEE80211_F_DESBSSID, ("no bssid"));
@@ -152,8 +153,8 @@ ieee80211_create_wds(struct ieee80211vap *vap, struct ieee80211_channel *chan)
 			 * the vap to be destroyed.
 			 */
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_WDS,
-			    "%s: station %6D went away\n",
-			    __func__, vap->iv_des_bssid, ":");
+			    "%s: station %s went away\n",
+			    __func__, kether_ntoa(vap->iv_des_bssid, ethstr));
 			/* XXX stat? */
 		} else if (ni->ni_wdsvap != NULL) {
 			/*
@@ -164,8 +165,8 @@ ieee80211_create_wds(struct ieee80211vap *vap, struct ieee80211_channel *chan)
 			 */
 			/* XXX printf instead? */
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_WDS,
-			    "%s: station %6D in use with %s\n",
-			    __func__, vap->iv_des_bssid, ":",
+			    "%s: station %s in use with %s\n",
+			    __func__, kether_ntoa(vap->iv_des_bssid, ethstr),
 			    ni->ni_wdsvap->iv_ifp->if_xname);
 			/* XXX stat? */
 		} else {
@@ -235,9 +236,10 @@ ieee80211_dwds_mcast(struct ieee80211vap *vap0, struct mbuf *m)
 	struct ifnet *ifp;
 	struct mbuf *mcopy;
 	int err;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	KASSERT(ETHER_IS_MULTICAST(eh->ether_dhost),
-	    ("%6D not mcast", eh->ether_dhost, ":"));
+	    ("%s not mcast", kether_ntoa(eh->ether_dhost, ethstr)));
 
 	/* XXX locking */
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
@@ -409,7 +411,9 @@ wds_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 	int hdrspace, need_tap = 1;	/* mbuf need to be tapped. */
 	uint8_t dir, type, subtype, qos;
 	uint16_t rxseq;
-
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	if (m->m_flags & M_AMPDU_MPDU) {
 		/*
 		 * Fastpath for A-MPDU reorder q resubmission.  Frames
@@ -697,10 +701,10 @@ wds_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 		}
 #ifdef IEEE80211_DEBUG
 		if (ieee80211_msg_debug(vap) || ieee80211_msg_dumppkts(vap)) {
-			if_printf(ifp, "received %s from %6D rssi %d\n",
+			if_printf(ifp, "received %s from %s rssi %d\n",
 			    ieee80211_mgt_subtype_name[subtype >>
 				IEEE80211_FC0_SUBTYPE_SHIFT],
-			    wh->i_addr2, ":", rssi);
+			    kether_ntoa(wh->i_addr2, ethstr), rssi);
 		}
 #endif
 		if (wh->i_fc[1] & IEEE80211_FC1_WEP) {

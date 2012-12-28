@@ -1958,6 +1958,8 @@ static void
 ural_set_bssid(struct ural_softc *sc, uint8_t *bssid)
 {
 	uint16_t tmp;
+	struct ether_addr eaddr;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	tmp = bssid[0] | bssid[1] << 8;
 	ural_write(sc, RAL_MAC_CSR5, tmp);
@@ -1968,13 +1970,16 @@ ural_set_bssid(struct ural_softc *sc, uint8_t *bssid)
 	tmp = bssid[4] | bssid[5] << 8;
 	ural_write(sc, RAL_MAC_CSR7, tmp);
 
-	DPRINTF(("setting BSSID to %6D\n", bssid, ":"));
+	bcopy(bssid, &eaddr.octet, sizeof(eaddr.octet));
+	DPRINTF(("setting BSSID to %s\n", kether_ntoa(&eaddr, ethstr)));
 }
 
 static void
 ural_set_macaddr(struct ural_softc *sc, uint8_t *addr)
 {
 	uint16_t tmp;
+	struct ether_addr eaddr;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	tmp = addr[0] | addr[1] << 8;
 	ural_write(sc, RAL_MAC_CSR2, tmp);
@@ -1985,7 +1990,8 @@ ural_set_macaddr(struct ural_softc *sc, uint8_t *addr)
 	tmp = addr[4] | addr[5] << 8;
 	ural_write(sc, RAL_MAC_CSR4, tmp);
 
-	DPRINTF(("setting MAC address to %6D\n", addr, ":"));
+	bcopy(bssid, &eaddr.octet, sizeof(eaddr.octet));
+	DPRINTF(("setting MAC address to %s\n", kether_ntoa(&eaddr, ethstr)));
 }
 
 static void

@@ -168,12 +168,13 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct aclstate *as = vap->iv_as;
 	struct acl *acl, *new;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	int hash;
 
 	new = (struct acl *) kmalloc(sizeof(struct acl), M_80211_ACL, M_INTWAIT | M_ZERO);
 	if (new == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
-			"ACL: add %6D failed, no memory\n", mac, ":");
+		    "ACL: add %s failed, no memory\n", kether_ntoa(mac, ethstr));
 		/* XXX statistic */
 		return ENOMEM;
 	}
@@ -183,8 +184,8 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 		if (IEEE80211_ADDR_EQ(acl->acl_macaddr, mac)) {
 			kfree(new, M_80211_ACL);
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
-				"ACL: add %6D failed, already present\n",
-				mac, ":");
+				"ACL: add %s failed, already present\n",
+				kether_ntoa(mac, ethstr));
 			return EEXIST;
 		}
 	}
@@ -194,7 +195,7 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	as->as_nacls++;
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
-		"ACL: add %6D\n", mac, ":");
+	    "ACL: add %s\n", kether_ntoa(mac, ethstr));
 	return 0;
 }
 
@@ -203,13 +204,14 @@ acl_remove(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct aclstate *as = vap->iv_as;
 	struct acl *acl;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	acl = _find_acl(as, mac);
 	if (acl != NULL)
 		_acl_free(as, acl);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
-		"ACL: remove %6D%s\n", mac, ":",
+	    "ACL: remove %s%s\n", kether_ntoa(mac, ethstr),
 		acl == NULL ? ", not present" : "");
 
 	return (acl == NULL ? ENOENT : 0);

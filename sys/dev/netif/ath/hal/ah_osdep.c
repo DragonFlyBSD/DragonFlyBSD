@@ -137,7 +137,8 @@ ath_hal_ether_sprintf(const u_int8_t *mac)
 {
 	static char etherbuf[18];
 
-	ksnprintf(etherbuf, sizeof(etherbuf), "%6D", mac, ":");
+	kether_ntoa(mac, etherbuf);
+
 	return etherbuf;
 }
 

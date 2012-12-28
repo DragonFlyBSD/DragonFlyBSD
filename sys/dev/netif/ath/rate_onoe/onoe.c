@@ -34,7 +34,6 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.12 2006/12/13 19:34:35 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_onoe/onoe.c,v 1.5 2007/02/22 05:17:09 sephe Exp $
  */
 
 /*
@@ -175,12 +174,13 @@ ath_rate_update(struct ath_softc *sc, struct ieee80211_node *ni, int rate)
 	struct ath_node *an = ATH_NODE(ni);
 	struct onoe_node *on = ATH_NODE_ONOE(an);
 	const HAL_RATE_TABLE *rt = sc->sc_currates;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	uint8_t rix;
 
 	KASSERT(rt != NULL, ("no rate table, mode %u", sc->sc_curmode));
 
-	DPRINTF(sc, "%s: set xmit rate for %6D to %dM\n",
-	    __func__, ni->ni_macaddr, ":",
+	DPRINTF(sc, "%s: set xmit rate for %s to %dM\n",
+	    __func__, kether_ntoa(ni->ni_macaddr, ethstr),
 	    ni->ni_rates.rs_nrates > 0 ?
 		(ni->ni_rates.rs_rates[rate] & IEEE80211_RATE_VAL) / 2 : 0);
 
@@ -365,6 +365,7 @@ ath_rate_ctl(void *arg, struct ieee80211_node *ni)
 	struct ath_softc *sc = arg;
 	struct onoe_node *on = ATH_NODE_ONOE(ATH_NODE(ni));
 	struct ieee80211_rateset *rs = &ni->ni_rates;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	int dir = 0, nrate, enough;
 
 	/*
@@ -386,8 +387,8 @@ ath_rate_ctl(void *arg, struct ieee80211_node *ni)
 	    on->on_tx_retr < (on->on_tx_ok * ath_rate_raise) / 100)
 		dir = 1;
 
-	DPRINTF(sc, "%6D: ok %d err %d retr %d upper %d dir %d\n",
-		ni->ni_macaddr, ":",
+	DPRINTF(sc, "%s: ok %d err %d retr %d upper %d dir %d\n",
+		kether_ntoa(ni->ni_macaddr, ethstr),
 		on->on_tx_ok, on->on_tx_err, on->on_tx_retr,
 		on->on_tx_upper, dir);
 

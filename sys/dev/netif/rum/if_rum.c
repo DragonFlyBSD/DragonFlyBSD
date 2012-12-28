@@ -267,6 +267,7 @@ rum_attach(device_t self)
 	usbd_status error;
 	int i, ntries;
 	uint32_t tmp;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	sc->sc_udev = uaa->device;
 	sc->sc_dev = self;
@@ -332,9 +333,9 @@ rum_attach(device_t self)
 	/* retrieve MAC address and various other things from EEPROM */
 	rum_read_eeprom(sc);
 
-	kprintf("%s: MAC/BBP RT%04x (rev 0x%05x), RF %s, address %6D\n",
+	kprintf("%s: MAC/BBP RT%04x (rev 0x%05x), RF %s, address %s\n",
 	    device_get_nameunit(sc->sc_dev), sc->macbbp_rev, tmp,
-	    rum_get_rf(sc->rf_rev), ic->ic_myaddr, ":");
+	    rum_get_rf(sc->rf_rev), kether_addr(ic->ic_myaddr, ethstr));
 
 	error = rum_load_microcode(sc, rt2573, sizeof(rt2573));
 	if (error != 0) {

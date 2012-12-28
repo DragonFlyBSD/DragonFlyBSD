@@ -2370,6 +2370,7 @@ static void
 rt2560_set_bssid(struct rt2560_softc *sc, const uint8_t *bssid)
 {
 	uint32_t tmp;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	tmp = bssid[0] | bssid[1] << 8 | bssid[2] << 16 | bssid[3] << 24;
 	RAL_WRITE(sc, RT2560_CSR5, tmp);
@@ -2377,13 +2378,14 @@ rt2560_set_bssid(struct rt2560_softc *sc, const uint8_t *bssid)
 	tmp = bssid[4] | bssid[5] << 8;
 	RAL_WRITE(sc, RT2560_CSR6, tmp);
 
-	DPRINTF(sc, "setting BSSID to %6D\n", bssid, ":");
+	DPRINTF(sc, "setting BSSID to %s\n", kether_ntoa(bssid, ethstr));
 }
 
 static void
 rt2560_set_macaddr(struct rt2560_softc *sc, uint8_t *addr)
 {
 	uint32_t tmp;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	tmp = addr[0] | addr[1] << 8 | addr[2] << 16 | addr[3] << 24;
 	RAL_WRITE(sc, RT2560_CSR3, tmp);
@@ -2391,7 +2393,7 @@ rt2560_set_macaddr(struct rt2560_softc *sc, uint8_t *addr)
 	tmp = addr[4] | addr[5] << 8;
 	RAL_WRITE(sc, RT2560_CSR4, tmp);
 
-	DPRINTF(sc, "setting MAC address to %6D\n", addr, ":");
+	DPRINTF(sc, "setting MAC address to %s\n", kether_ntoa(addr, ethstr));
 }
 
 static void

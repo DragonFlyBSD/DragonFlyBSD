@@ -736,6 +736,7 @@ ath_rate_ctl_reset(struct ath_softc *sc, struct ieee80211_node *ni)
 	const struct ieee80211_txparam *tp = ni->ni_txparms;
 	struct sample_node *sn = ATH_NODE_SAMPLE(an);
 	const HAL_RATE_TABLE *rt = sc->sc_currates;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	int x, y, srate, rix;
 
 	KASSERT(rt != NULL, ("no rate table, mode %u", sc->sc_curmode));
@@ -793,8 +794,8 @@ ath_rate_ctl_reset(struct ath_softc *sc, struct ieee80211_node *ni)
 	if (ieee80211_msg(ni->ni_vap, IEEE80211_MSG_RATECTL)) {
 		uint32_t mask;
 
-		ieee80211_note(ni->ni_vap, "[%6D] %s: size 1600 rate/tt",
-		    ni->ni_macaddr, ":", __func__);
+		ieee80211_note(ni->ni_vap, "[%s] %s: size 1600 rate/tt",
+		    kether_ntoa(ni->ni_macaddr, ethstr), __func__);
 		for (mask = sn->ratemask, rix = 0; mask != 0; mask >>= 1, rix++) {
 			if ((mask & 1) == 0)
 				continue;
@@ -859,11 +860,12 @@ sample_stats(void *arg, struct ieee80211_node *ni)
 	struct ath_softc *sc = arg;
 	const HAL_RATE_TABLE *rt = sc->sc_currates;
 	struct sample_node *sn = ATH_NODE_SAMPLE(ATH_NODE(ni));
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	uint32_t mask;
 	int rix, y;
 
-	kprintf("\n[%6D] refcnt %d static_rix %d ratemask 0x%x\n",
-	    ni->ni_macaddr, ":", ieee80211_node_refcnt(ni),
+	kprintf("\n[%s] refcnt %d static_rix %d ratemask 0x%x\n",
+	    kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni),
 	    sn->static_rix, sn->ratemask);
 	for (y = 0; y < NUM_PACKET_SIZE_BINS; y++) {
 		kprintf("[%4u] cur rix %d since switch: packets %d ticks %u\n",
