@@ -207,7 +207,7 @@ ef_start(struct ifnet *ifp)
 	struct ifnet *p;
 	struct mbuf *m;
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 	p = sc->ef_ifp;
 
 	EFDEBUG("\n");
@@ -223,12 +223,12 @@ ef_start(struct ifnet *ifp)
 			continue;
 		}
 		IF_ENQUEUE(&p->if_snd, m);
-		if ((p->if_flags & IFF_OACTIVE) == 0) {
+		if (!ifq_is_oactive(&p->if_snd)) {
 			p->if_start(p);
 			ifp->if_opackets++;
 		}
 	}
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	return;
 }
 

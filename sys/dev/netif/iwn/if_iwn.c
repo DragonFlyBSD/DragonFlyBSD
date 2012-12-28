@@ -2428,9 +2428,8 @@ iwn_tx_done(struct iwn_softc *sc, struct iwn_rx_desc *desc, int ackfailcnt,
 	sc->sc_tx_timer = 0;
 	if (--ring->queued < IWN_TX_RING_LOMARK) {
 		sc->qfullmsk &= ~(1 << ring->qid);
-		if (sc->qfullmsk == 0 &&
-		    (ifp->if_flags & IFF_OACTIVE)) {
-			ifp->if_flags &= ~IFF_OACTIVE;
+		if (sc->qfullmsk == 0 && ifq_is_oactive(&ifp->if_snd)) {
+			ifq_clr_oactive(&ifp->if_snd);
 			iwn_start_locked(ifp);
 		}
 	}
@@ -3382,7 +3381,7 @@ iwn_start_locked(struct ifnet *ifp)
 
 	for (;;) {
 		if (sc->qfullmsk != 0) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 		m = ifq_dequeue(&ifp->if_snd, NULL);
@@ -6187,7 +6186,7 @@ iwn_init_locked(struct iwn_softc *sc)
 		goto fail;
 	}
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags |= IFF_RUNNING;
 	if (wlan_serializer_needed)
 		wlan_serialize_exit();
@@ -6221,7 +6220,8 @@ iwn_stop_locked(struct iwn_softc *sc)
 
 	sc->sc_tx_timer = 0;
 	callout_stop(&sc->sc_timer_to);
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/* Power OFF hardware. */
 	iwn_hw_stop(sc);

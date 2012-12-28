@@ -1185,14 +1185,14 @@ axe_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 	switch (USB_GET_STATE(xfer)) {
 	case USB_ST_TRANSFERRED:
 		DPRINTFN(11, "transfer complete\n");
-		
-		ifp->if_flags &= ~IFF_OACTIVE;
+
+		ifq_clr_oactive(&ifp->if_snd);
 		
 		/* FALLTHROUGH */
 	case USB_ST_SETUP:
 tr_setup:
 		if ((sc->sc_flags & AXE_FLAG_LINK) == 0 ||
-		    (ifp->if_flags & IFF_OACTIVE) != 0) {
+		    ifq_is_oactive(&ifp->if_snd)) {
 			/*
 			 * Don't send anything if there is no link or
 			 * controller is busy.
@@ -1272,7 +1272,7 @@ tr_setup:
 			usbd_xfer_set_frames(xfer, nframes);
 			DPRINTFN(5, "submitting transfer\n");
 			usbd_transfer_submit(xfer);
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 		}
 		return;
 		/* NOTREACHED */
@@ -1281,7 +1281,7 @@ tr_setup:
 		    usbd_errstr(error));
 
 		ifp->if_oerrors++;
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		if (error != USB_ERR_CANCELLED) {
 			/* try to clear stall first */
 			usbd_xfer_set_stall(xfer);
@@ -1481,7 +1481,8 @@ axe_stop(struct usb_ether *ue)
 	AXE_LOCK_ASSERT(sc);
 
 	
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	
 	sc->sc_flags &= ~AXE_FLAG_LINK;
 

@@ -229,7 +229,8 @@ lance_stop(struct lance_softc *sc)
 	/*
 	 * Mark the interface down and cancel the watchdog timer.
 	 */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	(*sc->sc_wrcsr)(sc, LE_CSR0, LE_C0_STOP);
@@ -297,7 +298,7 @@ lance_init_locked(struct lance_softc *sc)
 		/* Start the LANCE. */
 		(*sc->sc_wrcsr)(sc, LE_CSR0, LE_C0_INEA | LE_C0_STRT);
 		ifp->if_flags |= IFF_RUNNING;
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		ifp->if_timer = 0;
 		if_devstart(ifp);
 	} else

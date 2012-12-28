@@ -1016,7 +1016,7 @@ sf_txeof(struct sf_softc *sc)
 	}
 
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	csr_write_4(sc, SF_CQ_CONSIDX,
 	    (txcons & ~SF_CQ_CONSIDX_TXQ) |
@@ -1197,7 +1197,7 @@ sf_init(void *xsc)
 	sf_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->sf_stat_timer, hz, sf_stats_update, sc);
 }
@@ -1250,7 +1250,7 @@ sf_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	txprod = csr_read_4(sc, SF_TXDQ_PRODIDX);
@@ -1271,12 +1271,12 @@ sf_start(struct ifnet *ifp)
 		 * Don't get the TX DMA queue get too full.
 		 */
 		if (sc->sf_tx_cnt > 64) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 #ifdef foo
 		if (sc->sf_tx_cnt >= (SF_TX_DLIST_CNT - 5)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 #endif
@@ -1369,7 +1369,8 @@ sf_stop(struct sf_softc *sc)
 		}
 	}
 
-	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	return;
 }

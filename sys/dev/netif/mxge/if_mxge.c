@@ -2169,117 +2169,6 @@ drop:
 	return;
 }
 
-#ifdef IFNET_BUF_RING
-static void
-mxge_qflush(struct ifnet *ifp)
-{
-	mxge_softc_t *sc = ifp->if_softc;
-	mxge_tx_ring_t *tx;
-	struct mbuf *m;
-	int slice;
-
-	for (slice = 0; slice < sc->num_slices; slice++) {
-		tx = &sc->ss[slice].tx;
-		lwkt_serialize_enter(sc->ifp->if_serializer);
-		while ((m = buf_ring_dequeue_sc(tx->br)) != NULL)
-			m_freem(m);
-		lwkt_serialize_exit(sc->ifp->if_serializer);
-	}
-	if_qflush(ifp);
-}
-
-static inline void
-mxge_start_locked(struct mxge_slice_state *ss)
-{
-	mxge_softc_t *sc;
-	struct mbuf *m;
-	struct ifnet *ifp;
-	mxge_tx_ring_t *tx;
-
-	sc = ss->sc;
-	ifp = sc->ifp;
-	tx = &ss->tx;
-
-	while ((tx->mask - (tx->req - tx->done)) > tx->max_desc) {
-		m = drbr_dequeue(ifp, tx->br);
-		if (m == NULL) {
-			return;
-		}
-		/* let BPF see it */
-		BPF_MTAP(ifp, m);
-
-		/* give it to the nic */
-		mxge_encap(ss, m);
-	}
-	/* ran out of transmit slots */
-	if (((ss->if_flags & IFF_OACTIVE) == 0)
-	    && (!drbr_empty(ifp, tx->br))) {
-		ss->if_flags |= IFF_OACTIVE;
-		tx->stall++;
-	}
-}
-
-static int
-mxge_transmit_locked(struct mxge_slice_state *ss, struct mbuf *m)
-{
-	mxge_softc_t *sc;
-	struct ifnet *ifp;
-	mxge_tx_ring_t *tx;
-	int err;
-
-	sc = ss->sc;
-	ifp = sc->ifp;
-	tx = &ss->tx;
-
-	if ((ss->if_flags & (IFF_RUNNING|IFF_OACTIVE)) !=
-	    IFF_RUNNING) {
-		err = drbr_enqueue(ifp, tx->br, m);
-		return (err);
-	}
-
-	if (drbr_empty(ifp, tx->br) &&
-	    ((tx->mask - (tx->req - tx->done)) > tx->max_desc)) {
-		/* let BPF see it */
-		BPF_MTAP(ifp, m);
-		/* give it to the nic */
-		mxge_encap(ss, m);
-	} else if ((err = drbr_enqueue(ifp, tx->br, m)) != 0) {
-		return (err);
-	}
-	if (!drbr_empty(ifp, tx->br))
-		mxge_start_locked(ss);
-	return (0);
-}
-
-static int
-mxge_transmit(struct ifnet *ifp, struct mbuf *m)
-{
-	mxge_softc_t *sc = ifp->if_softc;
-	struct mxge_slice_state *ss;
-	mxge_tx_ring_t *tx;
-	int err = 0;
-	int slice;
-
-#if 0
-	slice = m->m_pkthdr.flowid;
-#endif
-	slice &= (sc->num_slices - 1);  /* num_slices always power of 2 */
-
-	ss = &sc->ss[slice];
-	tx = &ss->tx;
-
-	if(lwkt_serialize_try(ifp->if_serializer)) {
-		err = mxge_transmit_locked(ss, m);
-		lwkt_serialize_exit(ifp->if_serializer);
-	} else {
-		err = drbr_enqueue(ifp, tx->br, m);
-	}
-
-	return (err);
-}
-
-#else
-
 static inline void
 mxge_start_locked(struct mxge_slice_state *ss)
 {
@@ -2303,12 +2192,12 @@ mxge_start_locked(struct mxge_slice_state *ss)
 		mxge_encap(ss, m);
 	}
 	/* ran out of transmit slots */
-	if ((sc->ifp->if_flags & IFF_OACTIVE) == 0) {
-		sc->ifp->if_flags |= IFF_OACTIVE;
+	if (!ifq_is_oactive(&ifp->if_snd)) {
+		ifq_set_oactive(&ifp->if_snd);
 		tx->stall++;
 	}
 }
-#endif
+
 static void
 mxge_start(struct ifnet *ifp)
 {
@@ -2715,7 +2604,6 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 	struct mbuf *m;
 	bus_dmamap_t map;
 	int idx;
-	int *flags;
 
 	tx = &ss->tx;
 	ifp = ss->sc->ifp;
@@ -2742,16 +2630,11 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 		}
 	}
 	
-	/* If we have space, clear IFF_OACTIVE to tell the stack that
+	/* If we have space, clear OACTIVE to tell the stack that
            its OK to send packets */
-#ifdef IFNET_BUF_RING
-	flags = &ss->if_flags;
-#else
-	flags = &ifp->if_flags;
-#endif
-	if ((*flags) & IFF_OACTIVE &&
+	if (ifq_is_oactive(&ifp->if_snd) &&
 	    tx->req - tx->done < (tx->mask + 1)/4) {
-		*(flags) &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		ss->tx.wake++;
 		mxge_start_locked(ss);
 	}
@@ -3625,15 +3508,8 @@ mxge_open(mxge_softc_t *sc)
 		device_printf(sc->dev, "Couldn't bring up link\n");
 		goto abort;
 	}
-#ifdef IFNET_BUF_RING
-	for (slice = 0; slice < sc->num_slices; slice++) {
-		ss = &sc->ss[slice];
-		ss->if_flags |= IFF_RUNNING;
-		ss->if_flags &= ~IFF_OACTIVE;
-	}
-#endif
 	sc->ifp->if_flags |= IFF_RUNNING;
-	sc->ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&sc->ifp->if_snd);
 	callout_reset(&sc->co_hdl, mxge_ticks, mxge_tick, sc);
 
 	return 0;

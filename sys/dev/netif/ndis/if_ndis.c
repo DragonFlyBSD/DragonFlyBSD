@@ -1563,7 +1563,7 @@ ndis_txeof(ndis_handle adapter, ndis_packet *packet, ndis_status status)
 		ifp->if_oerrors++;
 
 	sc->ndis_tx_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	NDISMTX_UNLOCK(sc);
 
@@ -1810,7 +1810,13 @@ ndis_start(struct ifnet *ifp)
 	sc = ifp->if_softc;
 
 	NDIS_LOCK(sc);
-	if (!sc->ndis_link || ifp->if_flags & IFF_OACTIVE) {
+	if (!sc->ndis_link) {
+		ifq_purge(&ifp->if_snd);
+		NDIS_UNLOCK(sc);
+		return;
+	}
+
+	if (ifq_is_oactive(&ifp->if_snd)) {
 		NDIS_UNLOCK(sc);
 		return;
 	}
@@ -1902,7 +1908,7 @@ ndis_start(struct ifnet *ifp)
 	}
 
 	if (sc->ndis_txpending == 0)
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -2001,7 +2007,7 @@ ndis_init(void *xsc)
 	if_link_state_change(sc->ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->ndis_tx_timer = 0;
 
 	/*
@@ -3108,7 +3114,8 @@ ndis_stop(struct ndis_softc *sc)
 	NDIS_LOCK(sc);
 	sc->ndis_tx_timer = 0;
 	sc->ndis_link = 0;
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	NDIS_UNLOCK(sc);
 
 	if (sc->ndis_iftype != PNPBus ||

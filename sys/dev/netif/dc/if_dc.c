@@ -2706,7 +2706,7 @@ dc_txeof(struct dc_softc *sc)
 	if (idx != sc->dc_cdata.dc_tx_cons) {
 	    	/* some buffers have been freed */
 		sc->dc_cdata.dc_tx_cons = idx;
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	}
 	ifp->if_timer = (sc->dc_cdata.dc_tx_cnt == 0) ? 0 : 5;
 
@@ -3087,7 +3087,7 @@ dc_start(struct ifnet *ifp)
 		return;
 	}
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if (ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	idx = sc->dc_cdata.dc_tx_prod;
@@ -3109,12 +3109,12 @@ dc_start(struct ifnet *ifp)
 			if ((sc->dc_flags & DC_TX_ADMTEK_WAR) &&
 			    idx != sc->dc_cdata.dc_tx_prod &&
 			    idx == (DC_TX_LIST_CNT - 1)) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
 			if ((DC_TX_LIST_CNT - sc->dc_cdata.dc_tx_cnt) < 5) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
@@ -3122,7 +3122,7 @@ dc_start(struct ifnet *ifp)
 			/* only coalesce if have >1 mbufs */
 			m_defragged = m_defrag(m_head, MB_DONTWAIT);
 			if (m_defragged == NULL) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
@@ -3140,7 +3140,7 @@ dc_start(struct ifnet *ifp)
 			} else {
 				ifq_prepend(&ifp->if_snd, m_head);
 			}
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -3153,7 +3153,7 @@ dc_start(struct ifnet *ifp)
 		BPF_MTAP(ifp, m_head);
 
 		if (sc->dc_flags & DC_TX_ONE) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 	}
@@ -3323,7 +3323,7 @@ dc_init(void *xsc)
 	 * working.
 	 */
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/*
 	 * Load the RX/multicast filter. We do this sort of late
@@ -3479,7 +3479,8 @@ dc_stop(struct dc_softc *sc)
 
 	callout_stop(&sc->dc_stat_timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	DC_CLRBIT(sc, DC_NETCFG, (DC_NETCFG_RX_ON|DC_NETCFG_TX_ON));
 	CSR_WRITE_4(sc, DC_IMR, 0x00000000);

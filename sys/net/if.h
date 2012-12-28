@@ -126,7 +126,7 @@ struct if_data {
 #define	IFF_NOARP	0x80		/* no address resolution protocol */
 #define	IFF_PROMISC	0x100		/* receive all packets */
 #define	IFF_ALLMULTI	0x200		/* receive all multicast packets */
-#define	IFF_OACTIVE	0x400		/* transmission in progress */
+#define	IFF_OACTIVE_COMPAT 0x400	/* was transmission in progress */
 #define	IFF_SIMPLEX	0x800		/* can't hear own transmissions */
 #define	IFF_LINK0	0x1000		/* per link layer defined bit */
 #define	IFF_LINK1	0x2000		/* per link layer defined bit */
@@ -141,9 +141,13 @@ struct if_data {
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \
-	(IFF_BROADCAST|IFF_POINTOPOINT|IFF_RUNNING|IFF_OACTIVE|\
+	(IFF_BROADCAST|IFF_POINTOPOINT|IFF_RUNNING|IFF_OACTIVE_COMPAT|\
 	 IFF_SIMPLEX|IFF_MULTICAST|IFF_ALLMULTI|IFF_SMART|IFF_POLLING|\
 	 IFF_NPOLLING)
+
+#ifndef _KERNEL
+#define IFF_OACTIVE	IFF_OACTIVE_COMPAT
+#endif
 
 /*
  * Some convenience macros used for setting ifi_baudrate.

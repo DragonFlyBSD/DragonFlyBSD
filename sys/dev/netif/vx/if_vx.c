@@ -226,7 +226,7 @@ vxinit(void *xsc)
 
     /* Interface is now `running', with no output active. */
     ifp->if_flags |= IFF_RUNNING;
-    ifp->if_flags &= ~IFF_OACTIVE;
+    ifq_clr_oactive(&ifp->if_snd);
 
     /* Attempt to start output, if any. */
     if_devstart(ifp);
@@ -389,7 +389,7 @@ vxstart(struct ifnet *ifp)
     int len, pad;
 
     /* Don't transmit if interface is busy or not running */
-    if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
+    if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 	return;
 
 startagain:
@@ -420,7 +420,7 @@ startagain:
 	CSR_WRITE_2(sc, VX_COMMAND, SET_TX_AVAIL_THRESH | ((len + pad + 4) >> 2));
 	/* not enough room in FIFO */
 	if (CSR_READ_2(sc, VX_W1_FREE_TX) < len + pad + 4) { /* make sure */
-	    ifp->if_flags |= IFF_OACTIVE;
+	    ifq_set_oactive(&ifp->if_snd);
 	    ifp->if_timer = 1;
 	    ifq_prepend(&ifp->if_snd, m0);
 	    return;
@@ -568,7 +568,7 @@ vxtxstat(struct vx_softc *sc)
 		} else if (i & TXS_MAX_COLLISION) {
 			++ifp->if_collisions;
 			CSR_WRITE_2(sc, VX_COMMAND, TX_ENABLE);
-			ifp->if_flags &= ~IFF_OACTIVE;
+			ifq_clr_oactive(&ifp->if_snd);
 		} else {
 			sc->tx_succ_ok = (sc->tx_succ_ok+1) & 127;
 		}
@@ -603,7 +603,7 @@ vxintr(void *voidsc)
 	    vxread(sc);
 	if (status & S_TX_AVAIL) {
 	    ifp->if_timer = 0;
-	    ifp->if_flags &= ~IFF_OACTIVE;
+	    ifq_clr_oactive(&ifp->if_snd);
 	    if_devstart(ifp);
 	}
 	if (status & S_CARD_FAILURE) {
@@ -892,7 +892,7 @@ vxwatchdog(struct ifnet *ifp)
 
     if (ifp->if_flags & IFF_DEBUG)
 	if_printf(ifp, "device timeout\n");
-    ifp->if_flags &= ~IFF_OACTIVE;
+    ifq_clr_oactive(&ifp->if_snd);
     if_devstart(ifp);
     vxintr(sc);
 }

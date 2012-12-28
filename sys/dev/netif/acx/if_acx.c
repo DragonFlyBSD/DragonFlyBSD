@@ -693,7 +693,7 @@ acx_init(void *arg)
 	acx_enable_intr(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 		if (ic->ic_roaming != IEEE80211_ROAMING_MANUAL)
@@ -832,7 +832,8 @@ acx_stop(struct acx_softc *sc)
 
 	sc->sc_tx_timer = 0;
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	return 0;
 }
@@ -1109,8 +1110,7 @@ acx_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0 ||
-	    (ifp->if_flags & IFF_OACTIVE))
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(ifp->if_snd))
 		return;
 
 	/*
@@ -1241,7 +1241,7 @@ acx_start(struct ifnet *ifp)
 	bd->tx_free_start = idx;
 
 	if (bd->tx_used_count == ACX_TX_DESC_CNT)
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 
 	if (trans && sc->sc_tx_timer == 0)
 		sc->sc_tx_timer = 5;
@@ -1369,7 +1369,7 @@ acx_txeof(struct acx_softc *sc)
 	sc->sc_tx_timer = bd->tx_used_count == 0 ? 0 : 5;
 
 	if (bd->tx_used_count != ACX_TX_DESC_CNT) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		ifp->if_start(ifp);
 	}
 }

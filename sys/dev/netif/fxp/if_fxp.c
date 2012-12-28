@@ -1064,7 +1064,7 @@ fxp_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	txp = NULL;
@@ -1185,7 +1185,7 @@ tbdinit:
 	}
 
 	if (sc->tx_queued >= FXP_USABLE_TXCB)
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 
 	/*
 	 * We're finished. If we added to the list, issue a RESUME to get DMA
@@ -1339,7 +1339,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 		sc->cbl_first = txp;
 
 		if (sc->tx_queued < FXP_USABLE_TXCB)
-			ifp->if_flags &= ~IFF_OACTIVE;
+			ifq_clr_oactive(&ifp->if_snd);
 
 		if (sc->tx_queued == 0) {
 			ifp->if_timer = 0;
@@ -1504,7 +1504,7 @@ fxp_tick(void *xsc)
 	sc->cbl_first = txp;
 
 	if (sc->tx_queued < FXP_USABLE_TXCB)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	if (sc->tx_queued == 0)
 		ifp->if_timer = 0;
 
@@ -1576,7 +1576,8 @@ fxp_stop(struct fxp_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	/*
@@ -1871,7 +1872,7 @@ fxp_init(void *xsc)
 		mii_mediachg(device_get_softc(sc->miibus));
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/*
 	 * Enable interrupts.

@@ -782,7 +782,7 @@ rum_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	DPRINTFN(10, ("tx done\n"));
 
 	sc->sc_tx_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	lwkt_serialize_enter(ifp->if_serializer);
 	ieee80211_free_node(ni);
@@ -889,7 +889,7 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	/* node is no longer needed */
 	ieee80211_free_node(ni);
 
-	if ((ifp->if_flags & IFF_OACTIVE) == 0)
+	if (!ifq_is_oactive(&ifp->if_snd))
 		ifp->if_start(ifp);
 
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -1131,7 +1131,8 @@ rum_start(struct ifnet *ifp)
 
 	crit_enter();
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING) {
+	if ((ifp->if_flags & IFF_RUNNING) == 0 ||
+	    ifq_is_oactive(&ifp->if_snd)) {
 		crit_exit();
 		return;
 	}
@@ -1142,7 +1143,7 @@ rum_start(struct ifnet *ifp)
 
 		if (!IF_QEMPTY(&ic->ic_mgtq)) {
 			if (sc->tx_queued >= RT2573_TX_LIST_COUNT) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 			IF_DEQUEUE(&ic->ic_mgtq, m0);
@@ -1165,7 +1166,7 @@ rum_start(struct ifnet *ifp)
 			}
 
 			if (sc->tx_queued >= RT2573_TX_LIST_COUNT) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 
@@ -2007,7 +2008,7 @@ fail:
 	if (error) {
 		rum_stop(sc);
 	} else {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		ifp->if_flags |= IFF_RUNNING;
 
 		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
@@ -2033,7 +2034,8 @@ rum_stop(struct rum_softc *sc)
 
 	crit_enter();
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->sc_stopped = 1;
 
 	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);	/* free all nodes */

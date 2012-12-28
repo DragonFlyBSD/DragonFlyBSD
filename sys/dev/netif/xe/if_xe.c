@@ -456,7 +456,7 @@ xe_init(void *xscp) {
 
   /* Enable output */
   scp->ifp->if_flags |= IFF_RUNNING;
-  scp->ifp->if_flags &= ~IFF_OACTIVE;
+  ifq_clr_oactive(&scp->ifp->if_snd);
 
   crit_exit();
 }
@@ -464,8 +464,8 @@ xe_init(void *xscp) {
 
 /*
  * Start output on interface.  Should be called at splimp() priority.  Check
- * that the output is idle (ie, IFF_OACTIVE is not set) before calling this
- * function.  If media selection is in progress we set IFF_OACTIVE ourselves
+ * that the output is idle (ie, OACTIVE is not set) before calling this
+ * function.  If media selection is in progress we set OACTIVE ourselves
  * and return immediately.
  */
 static void
@@ -474,7 +474,7 @@ xe_start(struct ifnet *ifp) {
   struct mbuf *mbp;
 
   if (scp->autoneg_status != XE_AUTONEG_NONE) {
-    ifp->if_flags |= IFF_OACTIVE;
+    ifq_set_oactive(&ifp->if_snd);
     return;
   }
 
@@ -494,12 +494,12 @@ xe_start(struct ifnet *ifp) {
        * transmitter may be active, but if we haven't filled all
        * the buffers with data then we still want to accept more.
        */
-      ifp->if_flags &= ~IFF_OACTIVE;
+      ifq_clr_oactive(&ifp->if_snd);
       return;
     }
 
     if (xe_pio_write_packet(scp, mbp) != 0) {
-      ifp->if_flags |= IFF_OACTIVE;
+      ifq_set_oactive(&ifp->if_snd);
       ifq_prepend(&ifp->if_snd, mbp);
       return;
     }
@@ -672,7 +672,7 @@ xe_intr(void *xscp)
 	}
       }
       ifp->if_timer = 0;
-      ifp->if_flags &= ~IFF_OACTIVE;
+      ifq_clr_oactive(&ifp->if_snd);
     }
 
     /* Handle most MAC interrupts */
@@ -982,7 +982,7 @@ xe_setmedia_serialized(void *xscp)
 
     case XE_AUTONEG_NONE:
       IFPRINTF(2, (scp->ifp, "Waiting for idle transmitter\n"));
-      scp->arpcom.ac_if.if_flags |= IFF_OACTIVE;
+      ifq_set_oactive(&scp->arpcom.ac_if.if_snd);
       scp->autoneg_status = XE_AUTONEG_WAITING;
       /* FALL THROUGH */
 
@@ -1176,7 +1176,7 @@ xe_setmedia_serialized(void *xscp)
 
   /* Restart output? */
   xe_enable_intr(scp);
-  scp->ifp->if_flags &= ~IFF_OACTIVE;
+  ifq_clr_oactive(&scp->ifp->if_snd);
   if_devstart(scp->ifp);
 }
 
@@ -1244,7 +1244,7 @@ xe_stop(struct xe_softc *scp) {
    * ~IFF_RUNNING == interface down.
    */
   scp->ifp->if_flags &= ~IFF_RUNNING;
-  scp->ifp->if_flags &= ~IFF_OACTIVE;
+  ifq_clr_oactive(&scp->ifp->if_snd);
   scp->ifp->if_timer = 0;
 
   crit_exit();

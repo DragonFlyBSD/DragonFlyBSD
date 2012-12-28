@@ -1756,7 +1756,7 @@ ath_getbuf(struct ath_softc *sc)
 
 		DPRINTF(sc, ATH_DEBUG_XMIT, "%s: stop queue\n", __func__);
 		sc->sc_stats.ast_tx_qstop++;
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 	}
 	return bf;
 }
@@ -4052,7 +4052,7 @@ rx_next:
 	if (ngood)
 		sc->sc_lastrx = tsf;
 
-	if ((ifp->if_flags & IFF_OACTIVE) == 0) {
+	if (!ifq_is_oactive(&ifp->if_snd)) {
 #ifdef IEEE80211_SUPPORT_SUPERG
 		ieee80211_ff_age_all(ic, 100);
 #endif
@@ -5040,7 +5040,7 @@ ath_tx_task_q0(void *arg, int npending)
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 	if (txqactive(sc->sc_ah, sc->sc_cabq->axq_qnum))
 		ath_tx_processq(sc, sc->sc_cabq);
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 
 	if (sc->sc_softled)
@@ -5079,7 +5079,7 @@ ath_tx_task_q0123(void *arg, int npending)
 	if (nacked)
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 
 	if (sc->sc_softled)
@@ -5112,7 +5112,7 @@ ath_tx_task(void *arg, int npending)
 	if (nacked)
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 
 	if (sc->sc_softled)
@@ -5226,7 +5226,7 @@ ath_draintxq(struct ath_softc *sc)
 		}
 	}
 #endif /* ATH_DEBUG */
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 }
 

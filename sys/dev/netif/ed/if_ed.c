@@ -1992,7 +1992,7 @@ ed_init(void *xsc)
 	 * Set 'running' flag, and clear output active flag.
 	 */
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/*
 	 * ...and attempt to start output
@@ -2061,7 +2061,7 @@ ed_xmit(struct ed_softc *sc)
  *  1) that the current priority is set to splimp _before_ this code
  *     is called *and* is returned to the appropriate priority after
  *     return
- *  2) that the IFF_OACTIVE flag is checked before this code is called
+ *  2) that the OACTIVE flag is checked before this code is called
  *     (i.e. that the output part of the interface is idle)
  */
 static void
@@ -2096,7 +2096,7 @@ outloop:
 		/*
 		 * No room. Indicate this to the outside world and exit.
 		 */
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		return;
 	}
 	m = ifq_dequeue(&ifp->if_snd, NULL);
@@ -2109,7 +2109,7 @@ outloop:
 		 * transmitter may be active, but if we haven't filled all the
 		 * buffers with data then we still want to accept more.
 		 */
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		return;
 	}
 
@@ -2456,7 +2456,7 @@ edintr(void *arg)
 			 * reset tx busy and output active flags
 			 */
 			sc->xmit_busy = 0;
-			ifp->if_flags &= ~IFF_OACTIVE;
+			ifq_clr_oactive(&ifp->if_snd);
 
 			/*
 			 * clear watchdog timer
@@ -2586,7 +2586,7 @@ edintr(void *arg)
 		 * attempt to start output on the interface. This is done
 		 * after handling the receiver to give the receiver priority.
 		 */
-		if ((ifp->if_flags & IFF_OACTIVE) == 0)
+		if (!ifq_is_oactive(&ifp->if_snd))
 			if_devstart(ifp);
 
 		/*

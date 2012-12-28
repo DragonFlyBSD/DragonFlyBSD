@@ -467,7 +467,8 @@ iwl2100_hw_stop(struct iwl2100_softc *sc)
 	iwl2100_free_cmd(sc);
 
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	sc->sc_tx_timer = 0;
 	sc->sc_flags &= ~(IWL2100_F_WAITCMD |
@@ -854,7 +855,7 @@ iwl2100_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	if ((sc->sc_flags & IWL2100_F_IFSTART) == 0) {
@@ -937,7 +938,7 @@ iwl2100_start(struct ifnet *ifp)
 	}
 
 	if (tr->tr_used >= IWL2100_TX_USED_MAX)
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 
 	if (trans) {
 		bus_dmamap_sync(tr->tr_dtag, tr->tr_dmap, BUS_DMASYNC_PREWRITE);
@@ -2507,7 +2508,7 @@ next:
 			sc->sc_tx_timer = 0;
 		}
 
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		if_devstart(ifp);
 	}
 }
@@ -3185,7 +3186,7 @@ iwl2100_hw_init(struct iwl2100_softc *sc, const uint8_t *bssid,
 		}
 	}
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags |= IFF_RUNNING;
 back:
 	if (error)

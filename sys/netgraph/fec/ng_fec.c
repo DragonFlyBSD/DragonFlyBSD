@@ -671,7 +671,7 @@ ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 					error = EINVAL;
 					break;
 				}
-				ifp->if_flags &= ~(IFF_OACTIVE);
+				ifq_clr_oactive(&ifp->if_snd);
 				ifp->if_flags |= IFF_RUNNING;
 				ng_fec_init(ifp);
 			}
@@ -685,8 +685,10 @@ ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				priv->if_flags = ifp->if_flags;
 			}
 		} else {
-			if (ifp->if_flags & IFF_RUNNING)
-				ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+			if (ifp->if_flags & IFF_RUNNING) {
+				ifp->if_flags &= ~IFF_RUNNING;
+				ifq_clr_oactive(&ifp->if_snd);
+			}
 			ng_fec_stop(ifp);
 		}
 		break;

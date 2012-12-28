@@ -281,7 +281,7 @@ vke_init(void *xsc)
 	vke_stop(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	sc->sc_txfifo = kmalloc(sizeof(*sc->sc_txfifo), M_DEVBUF, M_WAITOK);
 	sc->sc_txfifo_done = kmalloc(sizeof(*sc->sc_txfifo_done), M_DEVBUF, M_WAITOK);
@@ -333,7 +333,7 @@ vke_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	count = 0;
@@ -416,7 +416,8 @@ vke_stop(struct vke_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (sc) {
 		if (sc->cotd_tx) {

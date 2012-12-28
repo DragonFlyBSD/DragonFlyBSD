@@ -1709,14 +1709,14 @@ sk_start(struct ifnet *ifp)
 
 	DPRINTFN(2, ("sk_start\n"));
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	while (sc_if->sk_cdata.sk_tx_mbuf[idx] == NULL) {
 		struct mbuf *m_head;
 
 		if (SK_IS_OACTIVE(sc_if)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1733,7 +1733,7 @@ sk_start(struct ifnet *ifp)
 			if (sc_if->sk_cdata.sk_tx_cnt == 0) {
 				continue;
 			} else {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 		}
@@ -2038,7 +2038,7 @@ sk_txeof(struct sk_if_softc *sc_if)
 	}
 
 	if (!SK_IS_OACTIVE(sc_if))
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	if (sc_if->sk_cdata.sk_tx_cnt == 0)
 		ifp->if_timer = 0;
@@ -2778,7 +2778,7 @@ sk_init(void *xsc_if)
 	CSR_WRITE_4(sc, sc_if->sk_tx_bmu, SK_TXBMU_TX_START);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (SK_IS_YUKON(sc))
 		callout_reset(&sc_if->sk_tick_timer, hz, sk_yukon_tick, sc_if);
@@ -2799,7 +2799,8 @@ sk_stop(struct sk_if_softc *sc_if)
 
 	callout_stop(&sc_if->sk_tick_timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/* Stop Tx descriptor polling timer */
 	SK_IF_WRITE_4(sc_if, 0, SK_DPT_TIMER_CTRL, SK_DPT_TCTL_STOP);

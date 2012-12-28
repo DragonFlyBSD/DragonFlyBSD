@@ -306,7 +306,8 @@ sln_stop(struct sln_softc *sc)
 		}
 	}
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 static int
@@ -720,7 +721,7 @@ sln_init(void *x)
 	sc->suspended = 0;
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->sln_state, hz, sln_tick, sc);
 }
@@ -741,7 +742,7 @@ sln_tx(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	while (SL_CUR_TXBUF(sc) == NULL) {	/* SL_CUR_TXBUF(x) = x->sln_bufdata.sln_tx_buf[x->sln_bufdata.cur_tx] */
@@ -799,7 +800,7 @@ sln_tx(struct ifnet *ifp)
 
 	/* Tx buffer chain full */
 	if (SL_CUR_TXBUF(sc) != NULL)
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 
 	/* Set a timeout in case the chip goes out to lunch */
 	ifp->if_timer = 5;
@@ -991,7 +992,7 @@ sln_tx_intr(struct sln_softc *sc)
 		PDEBUG("tx done descriprtor %x\n", entry);
 		sc->sln_bufdata.dirty_tx = (entry + 1) % SL_TXD_CNT;
 
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	} while (sc->sln_bufdata.dirty_tx != sc->sln_bufdata.cur_tx);
 
 	if (sc->sln_bufdata.dirty_tx == sc->sln_bufdata.cur_tx)

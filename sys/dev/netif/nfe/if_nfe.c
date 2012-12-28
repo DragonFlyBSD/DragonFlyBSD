@@ -1227,7 +1227,7 @@ skip:
 
 	if (sc->sc_tx_ring_count - ring->queued >=
 	    sc->sc_tx_spare + NFE_NSEG_RSVD)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	if (ring->queued == 0)
 		ifp->if_timer = 0;
@@ -1366,7 +1366,7 @@ nfe_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	for (;;) {
@@ -1375,7 +1375,7 @@ nfe_start(struct ifnet *ifp)
 		if (sc->sc_tx_ring_count - ring->queued <
 		    sc->sc_tx_spare + NFE_NSEG_RSVD) {
 			if (oactive) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 
@@ -1395,7 +1395,7 @@ nfe_start(struct ifnet *ifp)
 			ifp->if_oerrors++;
 			if (error == EFBIG) {
 				if (oactive) {
-					ifp->if_flags |= IFF_OACTIVE;
+					ifq_set_oactive(&ifp->if_snd);
 					break;
 				}
 				nfe_txeof(sc, 0);
@@ -1583,7 +1583,7 @@ nfe_init(void *xsc)
 	callout_reset(&sc->sc_tick_ch, hz, nfe_tick, sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/*
 	 * If we had stuff in the tx ring before its all cleaned out now
@@ -1606,7 +1606,8 @@ nfe_stop(struct nfe_softc *sc)
 	callout_stop(&sc->sc_tick_ch);
 
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->sc_flags &= ~NFE_F_IRQ_TIMER;
 
 #define WAITMAX	50000

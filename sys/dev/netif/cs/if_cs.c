@@ -797,7 +797,7 @@ cs_init(void *xsc)
 	 * Set running and clear output active flags
 	 */
 	sc->arpcom.ac_if.if_flags |= IFF_RUNNING;
-	sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&sc->arpcom.ac_if.if_snd);
 
 	/*
 	 * Start sending process
@@ -906,18 +906,18 @@ csintr(void *arg)
                                 ifp->if_opackets++;
                         else
                                 ifp->if_oerrors++;
-                        ifp->if_flags &= ~IFF_OACTIVE;
+                        ifq_clr_oactive(&ifp->if_snd);
                         ifp->if_timer = 0;
                         break;
 
                 case ISQ_BUFFER_EVENT:
                         if (status & READY_FOR_TX) {
-                                ifp->if_flags &= ~IFF_OACTIVE;
+                                ifq_clr_oactive(&ifp->if_snd);
                                 ifp->if_timer = 0;
                         }
 
                         if (status & TX_UNDERRUN) {
-                                ifp->if_flags &= ~IFF_OACTIVE;
+                                ifq_clr_oactive(&ifp->if_snd);
                                 ifp->if_timer = 0;
                                 ifp->if_oerrors++;
                         }
@@ -933,7 +933,7 @@ csintr(void *arg)
                 }
         }
 
-        if (!(ifp->if_flags & IFF_OACTIVE))
+        if (!ifq_is_oactive(&ifp->if_snd))
 		if_devstart(ifp);
 }
 
@@ -1022,7 +1022,7 @@ cs_start(struct ifnet *ifp)
 		 */
 		if (!(cs_readreg(sc->nic_addr, PP_BusST) & READY_FOR_TX_NOW)) {
 			ifp->if_timer = sc->buf_len;
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			return;
 		}
 
@@ -1035,7 +1035,7 @@ cs_start(struct ifnet *ifp)
 		 */
 		ifp->if_timer = length;
 
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		return;
 	}
 }
@@ -1051,7 +1051,8 @@ cs_stop(struct cs_softc *sc)
 	cs_writereg(sc->nic_addr, PP_BufCFG, 0);
 	cs_writereg(sc->nic_addr, PP_BusCTL, 0);
 
-	sc->arpcom.ac_if.if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	sc->arpcom.ac_if.if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&sc->arpcom.ac_if.if_snd);
 	sc->arpcom.ac_if.if_timer = 0;
 }
 

@@ -1021,7 +1021,7 @@ aue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	/* XXX should hold serializer */
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		aue_start_schedule(ifp);
@@ -1121,7 +1121,8 @@ aue_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING) {
+	if ((ifp->if_flags & IFF_RUNNING) == 0 ||
+	    ifq_is_oactive(&ifp->if_snd)) {
 		AUE_UNLOCK(sc);
 		return;
 	}
@@ -1134,7 +1135,7 @@ aue_start(struct ifnet *ifp)
 
 	if (aue_encap(sc, m_head, 0)) {
 		/* aue_encap() will free m_head, if we reach here */
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		AUE_UNLOCK(sc);
 		return;
 	}
@@ -1145,7 +1146,7 @@ aue_start(struct ifnet *ifp)
 	 */
 	BPF_MTAP(ifp, m_head);
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -1257,7 +1258,7 @@ aue_init(void *xsc)
 	}
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->aue_stat_timer, hz, aue_tick, sc);
 
@@ -1475,7 +1476,8 @@ aue_stop(struct aue_softc *sc)
 
 	sc->aue_link = 0;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	AUE_UNLOCK(sc);
 
 	return;

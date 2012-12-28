@@ -573,7 +573,7 @@ cbqrestart(struct ifaltq *ifq)
 		ALTQ_UNLOCK(ifq);
 
 		ifnet_serialize_tx(ifp);
-		if (ifp->if_start && (ifp->if_flags & IFF_OACTIVE) == 0)
+		if (ifp->if_start && !ifq_is_oactive(&ifp->if_snd))
 			(*ifp->if_start)(ifp);
 		ifnet_deserialize_tx(ifp);
 

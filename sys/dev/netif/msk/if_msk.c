@@ -2615,13 +2615,13 @@ msk_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	enq = 0;
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		if (MSK_IS_OACTIVE(sc_if)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -2639,7 +2639,7 @@ msk_start(struct ifnet *ifp)
 			if (sc_if->msk_cdata.msk_tx_cnt == 0) {
 				continue;
 			} else {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 		}
@@ -2936,7 +2936,7 @@ msk_txeof(struct msk_if_softc *sc_if, int idx)
 	if (prog > 0) {
 		sc_if->msk_cdata.msk_tx_cons = cons;
 		if (!MSK_IS_OACTIVE(sc_if))
-			ifp->if_flags &= ~IFF_OACTIVE;
+			ifq_clr_oactive(&ifp->if_snd);
 		if (sc_if->msk_cdata.msk_tx_cnt == 0)
 			ifp->if_timer = 0;
 		/* No need to sync LEs as we didn't update LEs. */
@@ -3607,7 +3607,7 @@ msk_init(void *xsc)
 	mskc_set_imtimer(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc_if->msk_tick_ch, hz, msk_tick, sc_if);
 }
@@ -3834,7 +3834,8 @@ msk_stop(struct msk_if_softc *sc_if)
 	/*
 	 * Mark the interface down.
 	 */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc_if->msk_link = 0;
 }
 

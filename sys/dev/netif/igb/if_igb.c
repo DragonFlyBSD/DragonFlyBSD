@@ -953,7 +953,7 @@ igb_init(void *xsc)
 	igb_set_promisc(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (polling || sc->intr_type == PCI_INTR_TYPE_MSIX)
 		sc->timer_cpuid = 0; /* XXX fixed */
@@ -1256,7 +1256,8 @@ igb_stop(struct igb_softc *sc)
 
 	callout_stop(&sc->timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	e1000_reset_hw(&sc->hw);
@@ -1985,11 +1986,11 @@ igb_txeof(struct igb_tx_ring *txr)
 	txr->tx_avail = avail;
 
 	/*
-	 * If we have a minimum free, clear IFF_OACTIVE
+	 * If we have a minimum free, clear OACTIVE
 	 * to tell the stack that it is OK to send packets.
 	 */
 	if (IGB_IS_NOT_OACTIVE(txr)) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 		/*
 		 * We have enough TX descriptors, turn off
@@ -3310,7 +3311,7 @@ igb_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	if (!sc->link_active) {
@@ -3323,7 +3324,7 @@ igb_start(struct ifnet *ifp)
 
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		if (IGB_IS_OACTIVE(txr)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			/* Set watchdog on */
 			ifp->if_timer = 5;
 			break;

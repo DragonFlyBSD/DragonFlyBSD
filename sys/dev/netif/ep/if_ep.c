@@ -383,7 +383,7 @@ ep_if_init(void *xsc)
     outw(BASE + EP_COMMAND, TX_ENABLE);
 
     ifp->if_flags |= IFF_RUNNING;
-    ifp->if_flags &= ~IFF_OACTIVE;	/* just in case */
+    ifq_clr_oactive(&ifp->if_snd);	/* just in case */
 
 #ifdef EP_LOCAL_STATS
     sc->rx_no_first = sc->rx_no_mbuf =
@@ -427,7 +427,7 @@ ep_if_start(struct ifnet *ifp)
     }
 
     while (inw(BASE + EP_STATUS) & S_COMMAND_IN_PROGRESS);
-    if (ifp->if_flags & IFF_OACTIVE) {
+    if (ifq_is_oactive(&ifp->if_snd)) {
 	return;
     }
 
@@ -463,7 +463,7 @@ startagain:
 	outw(BASE + EP_COMMAND, SET_TX_AVAIL_THRESH | (len + pad + 4));
 	/* make sure */
 	if (inw(BASE + EP_W1_FREE_TX) < len + pad + 4) {
-	    ifp->if_flags |= IFF_OACTIVE;
+	    ifq_set_oactive(&ifp->if_snd);
 	    ifq_prepend(&ifp->if_snd, top);
 	    crit_exit();
 	    return;
@@ -549,7 +549,7 @@ rescan:
 	if (status & S_TX_AVAIL) {
 	    /* we need ACK */
 	    ifp->if_timer = 0;
-	    ifp->if_flags &= ~IFF_OACTIVE;
+	    ifq_clr_oactive(&ifp->if_snd);
 	    GO_WINDOW(1);
 	    inw(BASE + EP_W1_FREE_TX);
 	    if_devstart(ifp);
@@ -611,7 +611,7 @@ rescan:
 		outb(BASE + EP_W1_TX_STATUS, 0x0);	/* pops up the next
 							 * status */
 	    }			/* while */
-	    ifp->if_flags &= ~IFF_OACTIVE;
+	    ifq_clr_oactive(&ifp->if_snd);
 	    GO_WINDOW(1);
 	    inw(BASE + EP_W1_FREE_TX);
 	    if_devstart(ifp);
@@ -879,7 +879,7 @@ ep_if_watchdog(struct ifnet *ifp)
 	return;
     }
 
-    ifp->if_flags &= ~IFF_OACTIVE;
+    ifq_clr_oactive(&ifp->if_snd);
     if_devstart(ifp);
     ep_intr(ifp->if_softc);
 }

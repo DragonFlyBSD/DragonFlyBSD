@@ -2104,7 +2104,7 @@ re_txeof(struct re_softc *sc)
 
 	/* There is enough free TX descs */
 	if (sc->re_ldata.re_tx_free > RE_TXDESC_SPARE)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	/*
 	 * Some chips will ignore a second TX request issued while an
@@ -2453,7 +2453,7 @@ re_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	idx = sc->re_ldata.re_tx_prodidx;
@@ -2468,7 +2468,7 @@ re_start(struct ifnet *ifp)
 					continue;
 				}
 			}
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -2487,7 +2487,7 @@ re_start(struct ifnet *ifp)
 					continue;
 				}
 			}
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -2503,17 +2503,16 @@ re_start(struct ifnet *ifp)
 
 	/*
 	 * If sc->re_ldata.re_tx_mbuf[idx] is not NULL it is possible
-	 * for IFF_OACTIVE to not be properly set when we also do not
+	 * for OACTIVE to not be properly set when we also do not
 	 * have sufficient free tx descriptors, leaving packet in
-	 * ifp->if_send.  This can cause if_start_dispatch() to loop
-	 * infinitely so make sure IFF_OACTIVE is set properly.
+	 * ifp->if_snd.  This can cause if_start_dispatch() to loop
+	 * infinitely so make sure OACTIVE is set properly.
 	 */
 	if (sc->re_ldata.re_tx_free <= RE_TXDESC_SPARE) {
-		if ((ifp->if_flags & IFF_OACTIVE) == 0) {
-			device_printf(sc->re_dev,
-				      "Debug: IFF_OACTIVE was not set when"
-				      " re_tx_free was below minimum!\n");
-			ifp->if_flags |= IFF_OACTIVE;
+		if (!ifq_is_oactive(&ifp->if_snd)) {
+			if_printf(ifp, "Debug: OACTIVE was not set when "
+			    "re_tx_free was below minimum!\n");
+			ifq_set_oactive(&ifp->if_snd);
 		}
 	}
 	if (!need_trans)
@@ -2710,7 +2709,7 @@ re_init(void *xsc)
 	CSR_WRITE_1(sc, RE_CFG1, RE_CFG1_DRVLOAD|RE_CFG1_FULLDUPLEX);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->re_timer, hz, re_tick, sc);
 }
@@ -2857,7 +2856,8 @@ re_stop(struct re_softc *sc)
 	ifp->if_timer = 0;
 	callout_stop(&sc->re_timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->re_flags &= ~(RE_F_TIMER_INTR | RE_F_DROP_RXFRAG | RE_F_LINKED);
 
 	CSR_WRITE_1(sc, RE_COMMAND, 0x00);

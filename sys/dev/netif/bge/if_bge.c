@@ -3053,7 +3053,7 @@ bge_txeof(struct bge_softc *sc, uint16_t tx_cons)
 
 	if ((BGE_TX_RING_CNT - sc->bge_txcnt) >=
 	    (sc->bge_txrsvd + sc->bge_txspare))
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	if (sc->bge_txcnt == 0)
 		ifp->if_timer = 0;
@@ -3505,7 +3505,7 @@ bge_start(struct ifnet *ifp)
 	uint32_t prodidx;
 	int nsegs = 0;
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	prodidx = sc->bge_tx_prodidx;
@@ -3532,7 +3532,7 @@ bge_start(struct ifnet *ifp)
 		    (m_head->m_pkthdr.csum_flags & CSUM_DELAY_DATA)) {
 			if ((BGE_TX_RING_CNT - sc->bge_txcnt) <
 			    m_head->m_pkthdr.csum_data + sc->bge_txrsvd) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
@@ -3546,7 +3546,7 @@ bge_start(struct ifnet *ifp)
 		 */
 		if ((BGE_TX_RING_CNT - sc->bge_txcnt) <
 		    (sc->bge_txrsvd + sc->bge_txspare)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
@@ -3557,7 +3557,7 @@ bge_start(struct ifnet *ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (bge_encap(sc, &m_head, &prodidx, &nsegs)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			ifp->if_oerrors++;
 			break;
 		}
@@ -3714,7 +3714,7 @@ bge_init(void *xsc)
 	bge_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->bge_stat_timer, hz, bge_tick, sc);
 }
@@ -4015,7 +4015,8 @@ bge_stop(struct bge_softc *sc)
 
 	sc->bge_tx_saved_considx = BGE_TXCONS_UNSET;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 }
 

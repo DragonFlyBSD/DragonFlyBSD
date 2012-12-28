@@ -358,7 +358,7 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 	case SIOCSIFADDR:
 		ifp->if_flags |= IFF_UP;
 		ifp->if_flags |= IFF_RUNNING;
-		ifp->if_flags &= ~(IFF_OACTIVE);
+		ifq_clr_oactive(&ifp->if_snd);
 		break;
 	case SIOCGIFADDR:
 		break;
@@ -371,12 +371,14 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 		 */
 		if (ifr->ifr_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
-				ifp->if_flags &= ~(IFF_OACTIVE);
+				ifq_clr_oactive(&ifp->if_snd);
 				ifp->if_flags |= IFF_RUNNING;
 			}
 		} else {
-			if (ifp->if_flags & IFF_RUNNING)
-				ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+			if (ifp->if_flags & IFF_RUNNING) {
+				ifp->if_flags &= ~IFF_RUNNING;
+				ifq_clr_oactive(&ifp->if_snd);
+			}
 		}
 		break;
 

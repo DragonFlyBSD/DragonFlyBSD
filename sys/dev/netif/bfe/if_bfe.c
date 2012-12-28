@@ -1091,7 +1091,7 @@ bfe_txeof(struct bfe_softc *sc)
 		sc->bfe_tx_cons = i;
 
 		if (sc->bfe_tx_cnt + BFE_SPARE_TXDESC < BFE_TX_LIST_CNT)
-			ifp->if_flags &= ~IFF_OACTIVE;
+			ifq_clr_oactive(&ifp->if_snd);
 	}
 	if (sc->bfe_tx_cnt == 0)
 		ifp->if_timer = 0;
@@ -1293,7 +1293,7 @@ bfe_start(struct ifnet *ifp)
 		return;
 	}
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if (ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	idx = sc->bfe_tx_prod;
@@ -1301,7 +1301,7 @@ bfe_start(struct ifnet *ifp)
 	need_trans = 0;
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		if (sc->bfe_tx_cnt + BFE_SPARE_TXDESC >= BFE_TX_LIST_CNT) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1318,13 +1318,13 @@ bfe_start(struct ifnet *ifp)
 			ifp->if_oerrors++;
 
 			if (sc->bfe_tx_cnt > 0) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			} else {
 				/*
-				 * IFF_OACTIVE could not be set under
+				 * ifq_set_oactive could not be called under
 				 * this situation, since except up/down,
-				 * nothing will clear IFF_OACTIVE.
+				 * nothing will call ifq_clr_oactive.
 				 *
 				 * Let's just keep draining the ifq ...
 				 */
@@ -1385,7 +1385,7 @@ bfe_init(void *xsc)
 
 	bfe_ifmedia_upd(ifp);
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->bfe_stat_timer, hz, bfe_tick, sc);
 }
@@ -1529,5 +1529,6 @@ bfe_stop(struct bfe_softc *sc)
 	bfe_tx_ring_free(sc);
 	bfe_rx_ring_free(sc);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }

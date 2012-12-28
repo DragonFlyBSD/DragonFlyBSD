@@ -950,7 +950,7 @@ sppp_output_serialized(struct ifnet *ifp, struct mbuf *m,
 		crit_exit();
 		return(rv);
 	}
-	if (! (ifp->if_flags & IFF_OACTIVE))
+	if (!ifq_is_oactive(&ifp->if_snd))
 		(*ifp->if_start) (ifp);
 
 	/*
@@ -1384,7 +1384,7 @@ sppp_cisco_send(struct sppp *sp, int type, long par1, long par2)
 		m_freem (m);
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
-	if (! (ifp->if_flags & IFF_OACTIVE))
+	if (!ifq_is_oactive(&ifp->if_snd))
 		(*ifp->if_start) (ifp);
 	ifp->if_obytes += m->m_pkthdr.len + 3;
 }
@@ -1441,7 +1441,7 @@ sppp_cp_send(struct sppp *sp, u_short proto, u_char type,
 		++ifp->if_oerrors;
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
-	if (! (ifp->if_flags & IFF_OACTIVE))
+	if (!ifq_is_oactive(&ifp->if_snd))
 		(*ifp->if_start) (ifp);
 	ifp->if_obytes += m->m_pkthdr.len + 3;
 }
@@ -4780,7 +4780,7 @@ sppp_auth_send(const struct cp *cp, struct sppp *sp,
 		++ifp->if_oerrors;
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
-	if (! (ifp->if_flags & IFF_OACTIVE))
+	if (!ifq_is_oactive(&ifp->if_snd))
 		(*ifp->if_start) (ifp);
 	ifp->if_obytes += m->m_pkthdr.len + 3;
 }

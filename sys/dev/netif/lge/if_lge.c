@@ -973,7 +973,7 @@ lge_txeof(struct lge_softc *sc)
 	sc->lge_cdata.lge_tx_cons = idx;
 
 	if (cur_tx != NULL)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -1134,7 +1134,7 @@ lge_start(struct ifnet *ifp)
 
 	idx = sc->lge_cdata.lge_tx_prod;
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if (ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	need_timer = 0;
@@ -1143,7 +1143,7 @@ lge_start(struct ifnet *ifp)
 		int frags;
 
 		if (CSR_READ_1(sc, LGE_TXCMDFREE_8BIT) == 0) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1316,7 +1316,7 @@ lge_init(void *xsc)
 	lge_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->lge_stat_timer, hz, lge_tick, sc);
 }
@@ -1471,7 +1471,8 @@ lge_stop(struct lge_softc *sc)
 
 	bzero(&sc->lge_ldata->lge_tx_list, sizeof(sc->lge_ldata->lge_tx_list));
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*

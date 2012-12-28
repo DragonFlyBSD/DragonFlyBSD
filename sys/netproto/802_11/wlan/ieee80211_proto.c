@@ -42,6 +42,7 @@
 
 #include <net/if.h>
 #include <net/if_media.h>
+#include <net/ifq_var.h>
 #include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
@@ -1659,7 +1660,7 @@ ieee80211_newstate_task(void *xvap, int npending)
 		 * Note this can also happen as a result of SLEEP->RUN
 		 * (i.e. coming out of power save mode).
 		 */
-		vap->iv_ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&vap->iv_ifp->if_snd);
 		vap->iv_ifp->if_start(vap->iv_ifp);
 
 		/* bring up any vaps waiting on us */

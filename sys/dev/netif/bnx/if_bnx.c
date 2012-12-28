@@ -2629,7 +2629,7 @@ bnx_txeof(struct bnx_softc *sc, uint16_t tx_cons)
 
 	if ((BGE_TX_RING_CNT - sc->bnx_txcnt) >=
 	    (BNX_NSEG_RSVD + BNX_NSEG_SPARE))
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	if (sc->bnx_txcnt == 0)
 		ifp->if_timer = 0;
@@ -2985,7 +2985,7 @@ bnx_start(struct ifnet *ifp)
 	uint32_t prodidx;
 	int nsegs = 0;
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	prodidx = sc->bnx_tx_prodidx;
@@ -2999,7 +2999,7 @@ bnx_start(struct ifnet *ifp)
 		 */
 		if ((BGE_TX_RING_CNT - sc->bnx_txcnt) <
 		    (BNX_NSEG_RSVD + BNX_NSEG_SPARE)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -3013,7 +3013,7 @@ bnx_start(struct ifnet *ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (bnx_encap(sc, &m_head, &prodidx, &nsegs)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			ifp->if_oerrors++;
 			break;
 		}
@@ -3148,7 +3148,7 @@ bnx_init(void *xsc)
 	bnx_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset_bycpu(&sc->bnx_stat_timer, hz, bnx_tick, sc,
 	    sc->bnx_stat_cpuid);
@@ -3419,7 +3419,8 @@ bnx_stop(struct bnx_softc *sc)
 
 	sc->bnx_tx_saved_considx = BNX_TXCONS_UNSET;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 }
 

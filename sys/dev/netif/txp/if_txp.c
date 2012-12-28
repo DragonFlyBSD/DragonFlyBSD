@@ -825,7 +825,7 @@ txp_tx_reclaim(struct txp_softc *sc, struct txp_tx_ring *r)
 				ifp->if_opackets++;
 			}
 		}
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 		if (++cons == TX_ENTRIES) {
 			txd = r->r_desc;
@@ -1139,7 +1139,7 @@ txp_init(void *xsc)
 	WRITE_REG(sc, TXP_IMR, TXP_INT_A2H_3);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	callout_reset(&sc->txp_stat_timer, hz, txp_tick, sc);
@@ -1194,7 +1194,7 @@ txp_start(struct ifnet *ifp)
 	struct txp_swdesc *sd;
 	u_int32_t firstprod, firstcnt, prod, cnt;
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	prod = r->r_prod;
@@ -1307,7 +1307,7 @@ again:
 	return;
 
 oactive:
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 	r->r_prod = firstprod;
 	r->r_cnt = firstcnt;
 	return;
@@ -1510,7 +1510,8 @@ txp_stop(struct txp_softc *sc)
 
 	ifp = &sc->sc_arpcom.ac_if;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_stop(&sc->txp_stat_timer);
 

@@ -3496,7 +3496,8 @@ bce_stop(struct bce_softc *sc)
 	sc->bce_link = 0;
 	sc->bce_coalchg_mask = 0;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 }
 
@@ -4638,7 +4639,7 @@ bce_tx_intr(struct bce_softc *sc, uint16_t hw_tx_cons)
 
 	/* Clear the tx hardware queue full flag. */
 	if (sc->max_tx_bd - sc->used_tx_bd >= BCE_TX_SPARE_SPACE)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	sc->tx_cons = sw_tx_cons;
 }
 
@@ -4823,7 +4824,7 @@ bce_init(void *xsc)
 	bce_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset_bycpu(&sc->bce_tick_callout, hz, bce_tick, sc,
 	    sc->bce_intr_cpuid);
@@ -5004,7 +5005,7 @@ bce_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	for (;;) {
@@ -5015,7 +5016,7 @@ bce_start(struct ifnet *ifp)
 		 * unlikely to fail.
 		 */
 		if (sc->max_tx_bd - sc->used_tx_bd < BCE_TX_SPARE_SPACE) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -5035,7 +5036,7 @@ bce_start(struct ifnet *ifp)
 			if (sc->used_tx_bd == 0) {
 				continue;
 			} else {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 		}

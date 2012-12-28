@@ -275,7 +275,7 @@ sbni_init(void *xsc)
 	callout_reset(&sc->sbni_stat_timer,hz / SBNI_HZ, sbni_timeout, sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/* attempt to start output */
 	if_devstart(ifp);
@@ -662,7 +662,7 @@ prepare_to_send(struct sbni_softc *sc)
 			sc->pktlen     = 0;
 			sc->tx_frameno = 0;
 			sc->framelen   = 0;
-			sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
+			ifq_clr_oactive(&sc->arpcom.ac_if.if_snd);
 			return;
 		}
 
@@ -682,7 +682,7 @@ prepare_to_send(struct sbni_softc *sc)
 	sc->framelen	= min(len, sc->maxframe);
 
 	sbni_outb(sc, CSR0, sbni_inb(sc, CSR0) | TR_REQ);
-	sc->arpcom.ac_if.if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&sc->arpcom.ac_if.if_snd);
 	BPF_MTAP(&sc->arpcom.ac_if, sc->tx_buf_p);
 }
 
@@ -702,7 +702,7 @@ drop_xmit_queue(struct sbni_softc *sc)
 	sc->framelen	= 0;
 	sc->outpos	= 0;
 	sc->state &= ~(FL_WAIT_ACK | FL_NEED_RESEND);
-	sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&sc->arpcom.ac_if.if_snd);
 }
 
 

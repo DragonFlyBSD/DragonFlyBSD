@@ -443,7 +443,7 @@ lgue_start_transfer(struct lgue_softc *sc) {
 		m_freem(entry->entry_mbuf);
 		kfree(entry, M_USBDEV);
 		lgue_stop(sc);
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		return(EIO);
 	}
 
@@ -451,7 +451,7 @@ lgue_start_transfer(struct lgue_softc *sc) {
 	kfree(entry, M_USBDEV);
 
 	sc->lgue_tx_cnt++;
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 	ifp->if_timer = 5;
 	return(0);
 }
@@ -522,7 +522,7 @@ lgue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*
@@ -538,7 +538,7 @@ lgue_start(struct ifnet *ifp)
 	if (sc->lgue_dying)
 		return;
 
-	if (ifp->if_flags & IFF_OACTIVE) {
+	if (ifq_is_oactive(&ifp->if_snd)) {
 		return;
 	}
 
@@ -647,7 +647,8 @@ lgue_stop(struct lgue_softc *sc)
 		kfree(entry, M_USBDEV);
 	}
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*
@@ -720,7 +721,7 @@ lgue_init(void *xsc)
 	STAILQ_INIT(&sc->lgue_tx_queue);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	sc->lgue_dying = 0;
 

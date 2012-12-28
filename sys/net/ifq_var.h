@@ -285,6 +285,24 @@ ifq_prepend(struct ifaltq *_ifq, struct mbuf *_m)
 	ALTQ_UNLOCK(_ifq);
 }
 
+static __inline void
+ifq_set_oactive(struct ifaltq *_ifq)
+{
+	_ifq->altq_hw_oactive = 1;
+}
+
+static __inline void
+ifq_clr_oactive(struct ifaltq *_ifq)
+{
+	_ifq->altq_hw_oactive = 0;
+}
+
+static __inline int
+ifq_is_oactive(const struct ifaltq *_ifq)
+{
+	return _ifq->altq_hw_oactive;
+}
+
 /*
  * Hand a packet to an interface. 
  *
@@ -305,7 +323,7 @@ ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 		_ifp->if_obytes += _m->m_pkthdr.len;
 		if (_m->m_flags & M_MCAST)
 			_ifp->if_omcasts++;
-		if ((_ifp->if_flags & IFF_OACTIVE) == 0)
+		if (!ifq_is_oactive(&_ifp->if_snd))
 			(*_ifp->if_start)(_ifp);
 	}
 	return(_error);

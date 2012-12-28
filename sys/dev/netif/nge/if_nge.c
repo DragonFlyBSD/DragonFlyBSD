@@ -1360,7 +1360,7 @@ nge_txeof(struct nge_softc *sc)
 	sc->nge_cdata.nge_tx_cons = idx;
 
 	if (cur_tx != NULL)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -1638,7 +1638,7 @@ nge_start(struct ifnet *ifp)
 
 	idx = sc->nge_cdata.nge_tx_prod;
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	need_trans = 0;
@@ -1664,7 +1664,7 @@ again:
 				 * drop this packet.
 				 */
 				m_freem(m_head);
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 
@@ -1877,7 +1877,7 @@ nge_init(void *xsc)
 	nge_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*
@@ -2149,7 +2149,8 @@ nge_stop(struct nge_softc *sc)
 	bzero(&sc->nge_ldata->nge_tx_list,
 		sizeof(sc->nge_ldata->nge_tx_list));
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*

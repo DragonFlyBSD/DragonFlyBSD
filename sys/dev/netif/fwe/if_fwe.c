@@ -253,7 +253,8 @@ fwe_stop(struct fwe_softc *fwe)
 
 	fc = fwe->fd.fc;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (fwe->dma_ch >= 0) {
 		xferq = fc->ir[fwe->dma_ch];
@@ -384,7 +385,7 @@ found:
 		fc->irx_enable(fc, fwe->dma_ch);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 
@@ -464,12 +465,12 @@ fwe_start(struct ifnet *ifp)
 
 		ifq_purge(&ifp->if_snd);
 	} else {
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 
 		if (!ifq_is_empty(&ifp->if_snd))
 			fwe_as_output(fwe, ifp);
 
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	}
 }
 

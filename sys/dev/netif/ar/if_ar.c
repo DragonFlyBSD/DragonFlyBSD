@@ -60,6 +60,7 @@
 #include <sys/thread2.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #ifdef NETGRAPH
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
@@ -615,7 +616,7 @@ ar_xmit(struct ar_softc *sc)
  * This function only place the data in the oncard buffers. It does not
  * start the transmition. ar_xmit() does that.
  *
- * Transmitter idle state is indicated by the IFF_OACTIVE flag. The function
+ * Transmitter idle state is indicated by the ifq_is_oactive. The function
  * that clears that should ensure that the transmitter and its DMA is
  * in a "good" idle state.
  */
@@ -649,9 +650,9 @@ top_arstart:
 	 */
 	if(sc->txb_inuse == AR_TX_BLOCKS) {
 #ifndef NETGRAPH
-		ifp->if_flags |= IFF_OACTIVE;	/* yes, mark active */
+		ifq_set_oactive(&ifp->if_snd);	/* yes, mark active */
 #else	/* NETGRAPH */
-/*XXX*/		/*ifp->if_flags |= IFF_OACTIVE;*/	/* yes, mark active */
+/*XXX*/		/*ifq_set_oactive(&ifp->if_snd);*/	/* yes, mark active */
 #endif /* NETGRAPH */
 		return;
 	}
@@ -854,9 +855,9 @@ arwatchdog(struct ar_softc *sc)
 
 	sc->xmit_busy = 0;
 #ifndef	NETGRAPH
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 #else	/* NETGRAPH */
-	/* XXX ifp->if_flags &= ~IFF_OACTIVE; */
+	/* XXX ifq_clr_oactive(&ifp->if_snd); */
 #endif	/* NETGRAPH */
 
 	if(sc->txb_inuse && --sc->txb_inuse)
@@ -1847,17 +1848,15 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 				/*
 				 * This should be the most common case.
 				 *
-				 * Clear the IFF_OACTIVE flag.
-				 *
 				 * Call arstart to start a new transmit if
 				 * there is data to transmit.
 				 */
 				sc->xmit_busy = 0;
 #ifndef	NETGRAPH
-				sc->ifsppp.pp_if.if_flags &= ~IFF_OACTIVE;
+				ifq_clr_oactive(&sc->ifsppp.pp_if.if_snd);
 				sc->ifsppp.pp_if.if_timer = 0;
 #else	/* NETGRAPH */
-			/* XXX 	c->ifsppp.pp_if.if_flags &= ~IFF_OACTIVE; */
+			/* XXX 	ifq_clr_oactive(&sc->ifsppp.pp_if.if_snd); */
 				sc->out_dog = 0; /* XXX */
 #endif	/* NETGRAPH */
 

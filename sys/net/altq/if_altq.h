@@ -80,6 +80,7 @@ struct	ifaltq {
 	struct	lwkt_serialize altq_lock;
 	struct	mbuf *altq_prepended;	/* mbuf dequeued, but not yet xmit */
 	int	altq_started;		/* ifnet.if_start interlock */
+	int	altq_hw_oactive;	/* hw too busy, protected by driver */
 	struct ifaltq_stage *altq_stage;
 };
 

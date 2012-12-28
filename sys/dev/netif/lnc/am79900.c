@@ -369,7 +369,7 @@ am79900_tint(struct lance_softc *sc)
 		if (tmd1 & LE_T1_OWN)
 			break;
 
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 		if (tmd1 & LE_T1_ERR) {
 			tmd2 = LE_LE32TOH(tmd.tmd2);
@@ -531,8 +531,7 @@ am79900_start_locked(struct lance_softc *sc)
 	struct mbuf *m;
 	int bix, enq, len, rp;
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) !=
-	    IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	bix = sc->sc_last_td;
@@ -544,7 +543,7 @@ am79900_start_locked(struct lance_softc *sc)
 		(*sc->sc_copyfromdesc)(sc, &tmd, rp, sizeof(tmd));
 
 		if (LE_LE32TOH(tmd.tmd1) & LE_T1_OWN) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			if_printf(ifp,
 			    "missing buffer, no_td = %d, last_td = %d\n",
 			    sc->sc_no_td, sc->sc_last_td);
@@ -592,7 +591,7 @@ am79900_start_locked(struct lance_softc *sc)
 			bix = 0;
 
 		if (++sc->sc_no_td == sc->sc_ntbuf) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 	}

@@ -308,7 +308,7 @@ if_start_need_schedule(struct ifaltq *ifq, int running)
 		 * ifnet.if_start interlock is released, if:
 		 * 1) Hardware can not take any packets, due to
 		 *    o  interface is marked down
-		 *    o  hardware queue is full (IFF_OACTIVE)
+		 *    o  hardware queue is full (ifq_is_oactive)
 		 *    Under the second situation, hardware interrupt
 		 *    or polling(4) will call/schedule ifnet.if_start
 		 *    when hardware queue is ready
@@ -351,11 +351,10 @@ if_start_dispatch(netmsg_t msg)
 	}
 
 	ifnet_serialize_tx(ifp);
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING) {
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq)) {
 		logifstart(run, ifp);
 		ifp->if_start(ifp);
-		if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) ==
-		    IFF_RUNNING)
+		if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq))
 			running = 1;
 	}
 	need_sched = if_start_need_schedule(ifq, running);
@@ -393,7 +392,7 @@ if_devstart(struct ifnet *ifp)
 	logifstart(run, ifp);
 	ifp->if_start(ifp);
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq))
 		running = 1;
 
 	if (if_start_need_schedule(ifq, running)) {
@@ -2486,11 +2485,10 @@ ifq_try_ifstart(struct ifaltq *ifq, int force_sched)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING) {
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq)) {
 		logifstart(run, ifp);
 		ifp->if_start(ifp);
-		if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) ==
-		    IFF_RUNNING)
+		if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq))
 			running = 1;
 	}
 	need_sched = if_start_need_schedule(ifq, running);

@@ -1674,7 +1674,7 @@ ale_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	/* Reclaim transmitted frames. */
@@ -1696,7 +1696,7 @@ ale_start(struct ifnet *ifp)
 			if (m_head == NULL)
 				break;
 			ifq_prepend(&ifp->if_snd, m_head);
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 		enq = 1;
@@ -2052,7 +2052,7 @@ ale_txeof(struct ale_softc *sc)
 		if (sc->ale_cdata.ale_tx_cnt <= 0)
 			break;
 		prog++;
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		sc->ale_cdata.ale_tx_cnt--;
 		txd = &sc->ale_cdata.ale_txdesc[cons];
 		if (txd->tx_m != NULL) {
@@ -2556,7 +2556,7 @@ ale_init(void *xsc)
 	callout_reset(&sc->ale_tick_ch, hz, ale_tick, sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -2572,7 +2572,8 @@ ale_stop(struct ale_softc *sc)
 	/*
 	 * Mark the interface down and cancel the watchdog timer.
 	 */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	callout_stop(&sc->ale_tick_ch);

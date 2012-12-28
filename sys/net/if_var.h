@@ -463,7 +463,7 @@ if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
 		_ifp->if_obytes += _m->m_pkthdr.len + _adjust;
 		if (_m->m_flags & M_MCAST)
 			_ifp->if_omcasts++;
-		_need_if_start = !(_ifp->if_flags & IFF_OACTIVE);
+		_need_if_start = !_ifp->if_snd.altq_hw_oactive;
 	}
 	IF_ENQUEUE(_ifq, _m);
 	if (_need_if_start) {

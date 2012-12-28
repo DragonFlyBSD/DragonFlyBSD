@@ -1143,7 +1143,7 @@ rl_txeof(struct rl_softc *sc)
 			if (txstat & (RL_TXSTAT_TXABRT | RL_TXSTAT_OUTOFWIN))
 				CSR_WRITE_4(sc, RL_TXCFG, RL_TXCFG_CONFIG);
 		}
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	} while (sc->rl_cdata.last_tx != sc->rl_cdata.cur_tx);
 
 	if (RL_LAST_TXMBUF(sc) == NULL)
@@ -1346,7 +1346,7 @@ rl_start(struct ifnet *ifp)
 	struct rl_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	while (RL_CUR_TXMBUF(sc) == NULL) {
@@ -1377,7 +1377,7 @@ rl_start(struct ifnet *ifp)
 	 * packets from the queue.
 	 */
 	if (RL_CUR_TXMBUF(sc) != NULL)
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 }
 
 static void
@@ -1481,7 +1481,7 @@ rl_init(void *xsc)
 	CSR_WRITE_1(sc, RL_CFG1, RL_CFG1_DRVLOAD|RL_CFG1_FULLDUPLEX);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->rl_stat_timer, hz, rl_tick, sc);
 }
@@ -1581,7 +1581,8 @@ rl_stop(struct rl_softc *sc)
 	ifp->if_timer = 0;
 
 	callout_stop(&sc->rl_stat_timer);
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	CSR_WRITE_1(sc, RL_COMMAND, 0x00);
 	CSR_WRITE_2(sc, RL_IMR, 0x0000);

@@ -996,7 +996,7 @@ em_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	if (!adapter->link_active) {
@@ -1009,7 +1009,7 @@ em_start(struct ifnet *ifp)
 		if (EM_IS_OACTIVE(adapter)) {
 			em_tx_collect(adapter);
 			if (EM_IS_OACTIVE(adapter)) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				adapter->no_tx_desc_avail1++;
 				break;
 			}
@@ -1212,7 +1212,7 @@ em_watchdog(struct ifnet *ifp)
 		 * the TX engine should have been idled for some time.
 		 * We don't need to call if_devstart() here.
 		 */
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		ifp->if_timer = 0;
 		return;
 	}
@@ -1374,7 +1374,7 @@ em_init(void *xsc)
 	em_set_promisc(adapter);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&adapter->timer, hz, em_timer, adapter);
 	e1000_clear_hw_cntrs_base_generic(&adapter->hw);
@@ -2173,7 +2173,8 @@ em_stop(struct adapter *adapter)
 	callout_stop(&adapter->timer);
 	callout_stop(&adapter->tx_fifo_timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	e1000_reset_hw(&adapter->hw);
@@ -2948,7 +2949,7 @@ em_txeof(struct adapter *adapter)
 	}
 
 	if (!EM_IS_OACTIVE(adapter)) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 		/* All clean, turn off the timer */
 		if (adapter->num_tx_desc_avail == adapter->num_tx_desc)
@@ -3008,7 +3009,7 @@ em_tx_collect(struct adapter *adapter)
 	adapter->num_tx_desc_avail = num_avail;
 
 	if (!EM_IS_OACTIVE(adapter)) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 		/* All clean, turn off the timer */
 		if (adapter->num_tx_desc_avail == adapter->num_tx_desc)

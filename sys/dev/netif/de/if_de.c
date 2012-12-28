@@ -282,7 +282,7 @@ tulip_linkup(tulip_softc_t *sc, tulip_media_t media)
     if ((sc->tulip_flags & TULIP_LINKUP) == 0)
 	sc->tulip_flags |= TULIP_PRINTLINKUP;
     sc->tulip_flags |= TULIP_LINKUP;
-    sc->tulip_if.if_flags &= ~IFF_OACTIVE;
+    ifq_clr_oactive(&sc->tulip_if.if_snd);
 #if 0 /* XXX how does with work with ifmedia? */
     if ((sc->tulip_flags & TULIP_DIDNWAY) == 0) {
 	if (sc->tulip_if.if_flags & IFF_FULLDUPLEX) {
@@ -532,7 +532,7 @@ tulip_media_poll(tulip_softc_t *sc, tulip_mediapoll_event_t event)
     }
 
     if (event == TULIP_MEDIAPOLL_START) {
-	sc->tulip_if.if_flags |= IFF_OACTIVE;
+    	ifq_set_oactive(&sc->tulip_if.if_snd);
 	if (sc->tulip_probe_state != TULIP_PROBE_INACTIVE)
 	    return;
 	sc->tulip_probe_mediamask = 0;
@@ -901,7 +901,7 @@ tulip_21041_media_poll(tulip_softc_t *sc, tulip_mediapoll_event_t event)
      * restart the probe (and reset the tulip to a known state).
      */
     if (event == TULIP_MEDIAPOLL_START) {
-	sc->tulip_if.if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&sc->tulip_if.if_snd);
 	sc->tulip_cmdmode &= ~(TULIP_CMD_FULLDUPLEX|TULIP_CMD_RXRUN);
 #ifdef notyet
 	if (sc->tulip_revinfo >= 0x20) {
@@ -2902,7 +2902,7 @@ tulip_reset(tulip_softc_t *sc)
     if (!inreset) {
 	sc->tulip_flags |= TULIP_INRESET;
 	sc->tulip_flags &= ~(TULIP_NEEDRESET|TULIP_RXBUFSLOW);
-	sc->tulip_if.if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&sc->tulip_if.if_snd);
 	sc->tulip_if.if_start = tulip_ifstart;
     }
 
@@ -2996,7 +2996,7 @@ tulip_init(tulip_softc_t * const sc)
 	    sc->tulip_cmdmode |= TULIP_CMD_RXRUN;
 	    sc->tulip_intrmask |= TULIP_STS_RXSTOPPED;
 	} else {
-	    sc->tulip_if.if_flags |= IFF_OACTIVE;
+	    ifq_set_oactive(&sc->tulip_if.if_snd);
 	    sc->tulip_cmdmode &= ~TULIP_CMD_RXRUN;
 	    sc->tulip_intrmask &= ~TULIP_STS_RXSTOPPED;
 	}
@@ -3298,7 +3298,7 @@ tulip_tx_intr(tulip_softc_t *sc)
 	    ri->ri_nextin = ri->ri_first;
 
 	if ((sc->tulip_flags & TULIP_TXPROBE_ACTIVE) == 0)
-	    sc->tulip_if.if_flags &= ~IFF_OACTIVE;
+	    ifq_clr_oactive(&sc->tulip_if.if_snd);
     }
     /*
      * If nothing left to transmit, disable the timer.
@@ -3598,7 +3598,7 @@ tulip_txput(tulip_softc_t *sc, struct mbuf *m)
 
     if (sc->tulip_flags & TULIP_TXPROBE_ACTIVE) {
 	TULIP_CSR_WRITE(sc, csr_txpoll, 1);
-	sc->tulip_if.if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&sc->tulip_if.if_snd);
 	sc->tulip_if.if_start = tulip_ifstart;
 	return NULL;
     }
@@ -3623,7 +3623,7 @@ tulip_txput(tulip_softc_t *sc, struct mbuf *m)
      */
   finish:
     if (sc->tulip_flags & (TULIP_WANTTXSTART|TULIP_DOINGSETUP)) {
-	sc->tulip_if.if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&sc->tulip_if.if_snd);
 	sc->tulip_if.if_start = tulip_ifstart;
 	if ((sc->tulip_intrmask & TULIP_STS_TXINTR) == 0) {
 	    sc->tulip_intrmask |= TULIP_STS_TXINTR;

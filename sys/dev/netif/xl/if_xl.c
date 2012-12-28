@@ -2137,7 +2137,7 @@ xl_txeof(struct xl_softc *sc)
 	}
 
 	if (sc->xl_cdata.xl_tx_head == NULL) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		sc->xl_cdata.xl_tx_tail = NULL;
 	} else {
 		if (CSR_READ_4(sc, XL_DMACTL) & XL_DMACTL_DOWN_STALLED ||
@@ -2185,7 +2185,7 @@ xl_txeof_90xB(struct xl_softc *sc)
 	sc->xl_cdata.xl_tx_cons = idx;
 
 	if (cur_tx != NULL)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	return;
 }
@@ -2540,7 +2540,7 @@ xl_start_body(struct ifnet *ifp, int proc_rx)
 		xl_txeoc(sc);
 		xl_txeof(sc);
 		if (sc->xl_cdata.xl_tx_free == NULL) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			return;
 		}
 	}
@@ -2657,7 +2657,7 @@ xl_start_90xB(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	idx = sc->xl_cdata.xl_tx_prod;
@@ -2666,7 +2666,7 @@ xl_start_90xB(struct ifnet *ifp)
 	while (sc->xl_cdata.xl_tx_chain[idx].xl_mbuf == NULL) {
 
 		if ((XL_TX_LIST_CNT - sc->xl_cdata.xl_tx_cnt) < 3) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -2939,7 +2939,7 @@ xl_init(void *xsc)
 	XL_SEL_WIN(7);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->xl_stat_timer, hz, xl_stats_update, sc);
 }
@@ -3220,7 +3220,8 @@ xl_stop(struct xl_softc *sc)
 	}
 	bzero(sc->xl_ldata.xl_tx_list, XL_TX_LIST_SZ);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*

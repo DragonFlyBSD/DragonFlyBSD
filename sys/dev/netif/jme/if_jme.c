@@ -404,7 +404,8 @@ jme_miibus_statchg(device_t dev)
 	CSR_WRITE_4(sc, JME_INTR_MASK_CLR, JME_INTRS);
 
 	/* Stop driver */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 	callout_stop(&sc->jme_tick_ch);
 
@@ -479,7 +480,7 @@ jme_miibus_statchg(device_t dev)
 	}
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	callout_reset_bycpu(&sc->jme_tick_ch, hz, jme_tick, sc,
 	    JME_TICK_CPUID);
 
@@ -1809,7 +1810,7 @@ jme_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	if (tdata->jme_tx_cnt >= JME_TX_DESC_HIWAT(tdata))
@@ -1822,7 +1823,7 @@ jme_start(struct ifnet *ifp)
 		 */
 		if (tdata->jme_tx_cnt + JME_TXD_SPARE >
 		    tdata->jme_tx_desc_cnt - JME_TXD_RSVD) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1838,7 +1839,7 @@ jme_start(struct ifnet *ifp)
 		if (jme_encap(tdata, &m_head, &enq)) {
 			KKASSERT(m_head == NULL);
 			ifp->if_oerrors++;
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -2260,7 +2261,7 @@ jme_txeof(struct jme_txdata *tdata)
 
 	if (tdata->jme_tx_cnt + JME_TXD_SPARE <=
 	    tdata->jme_tx_desc_cnt - JME_TXD_RSVD)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 }
 
 static __inline void
@@ -2879,7 +2880,7 @@ jme_init(void *xsc)
 	    JME_TICK_CPUID);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -2897,7 +2898,8 @@ jme_stop(struct jme_softc *sc)
 	/*
 	 * Mark the interface down and cancel the watchdog timer.
 	 */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	callout_stop(&sc->jme_tick_ch);

@@ -1103,7 +1103,7 @@ wb_txeoc(struct wb_softc *sc)
 	ifp->if_timer = 0;
 
 	if (sc->wb_cdata.wb_tx_head == NULL) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		sc->wb_cdata.wb_tx_tail = NULL;
 	} else if (WB_TXOWN(sc->wb_cdata.wb_tx_head) == WB_UNSENT) {
 		WB_TXOWN(sc->wb_cdata.wb_tx_head) = WB_TXSTAT_OWN;
@@ -1305,7 +1305,7 @@ wb_start(struct ifnet *ifp)
 	 * punt.
 	 */
 	if (sc->wb_cdata.wb_tx_free->wb_mbuf != NULL) {
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		return;
 	}
 
@@ -1480,7 +1480,7 @@ wb_init(void *xsc)
 	mii_mediachg(mii);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	crit_exit();
 
@@ -1614,7 +1614,8 @@ wb_stop(struct wb_softc *sc)
 
 	bzero(&sc->wb_ldata->wb_tx_list, sizeof(sc->wb_ldata->wb_tx_list));
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*

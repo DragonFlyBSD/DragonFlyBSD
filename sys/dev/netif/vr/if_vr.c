@@ -1149,7 +1149,7 @@ vr_txeoc(struct vr_softc *sc)
 	ifp = &sc->arpcom.ac_if;
 
 	if (sc->vr_cdata.vr_tx_head_idx == -1) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		sc->vr_cdata.vr_tx_tail_idx = -1;
 		ifp->if_timer = 0;
 	}
@@ -1327,7 +1327,7 @@ vr_start(struct ifnet *ifp)
 	struct vr_chain *tx_chain;
 	int cur_tx_idx, start_tx_idx, prev_tx_idx;
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	sc = ifp->if_softc;
@@ -1339,7 +1339,7 @@ vr_start(struct ifnet *ifp)
 
 	/* Check for an available queue slot. If there are none, punt. */
 	if (tx_chain[start_tx_idx].vr_buf != NULL) {
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		return;
 	}
 
@@ -1357,7 +1357,7 @@ vr_start(struct ifnet *ifp)
 
 		/* Pack the data into the descriptor. */
 		if (vr_encap(sc, cur_tx_idx, m_head)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			cur_tx_idx = prev_tx_idx;
 			break;
 		}
@@ -1481,7 +1481,7 @@ vr_init(void *xsc)
 	mii_mediachg(mii);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->vr_stat_timer, hz, vr_tick, sc);
 }
@@ -1652,7 +1652,8 @@ vr_stop(struct vr_softc *sc)
 
 	bzero(&sc->vr_ldata->vr_tx_list, sizeof(sc->vr_ldata->vr_tx_list));
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*

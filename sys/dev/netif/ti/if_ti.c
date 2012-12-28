@@ -1760,7 +1760,7 @@ ti_txeof(struct ti_softc *sc)
 	}
 
 	if (cur_tx != NULL)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -1932,7 +1932,7 @@ ti_start(struct ifnet *ifp)
 		    m_head->m_pkthdr.csum_flags & (CSUM_DELAY_DATA)) {
 			if ((TI_TX_RING_CNT - sc->ti_txcnt) <
 			    m_head->m_pkthdr.csum_data + 16) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
@@ -1944,7 +1944,7 @@ ti_start(struct ifnet *ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (ti_encap(sc, m_head, &prodidx)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
@@ -2044,7 +2044,7 @@ ti_init2(struct ti_softc *sc)
 	CSR_WRITE_4(sc, TI_MB_HOSTINTR, 0);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/*
 	 * Make sure to set media properly. We have to do this
@@ -2292,7 +2292,8 @@ ti_stop(struct ti_softc *sc)
 	sc->ti_tx_considx.ti_idx = 0;
 	sc->ti_tx_saved_considx = TI_TXCONS_UNSET;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*

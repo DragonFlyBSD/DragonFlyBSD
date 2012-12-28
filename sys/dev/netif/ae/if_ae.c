@@ -224,7 +224,8 @@ ae_stop(struct ae_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	sc->ae_flags &= ~AE_FLAG_LINK;
@@ -737,7 +738,7 @@ ae_tx_intr(struct ae_softc *sc)
 	if (sc->tx_inproc == 0)
 		ifp->if_timer = 0;	/* Unarm watchdog. */
 	if (sc->ae_flags & AE_FLAG_TXAVAIL) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		if (!ifq_is_empty(&ifp->if_snd))
 #ifdef foo
 			ae_intr(sc);
@@ -973,7 +974,7 @@ ae_init(void *xsc)
 
 	callout_reset(&sc->ae_tick_ch, hz, ae_tick, sc);
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -1165,7 +1166,7 @@ ae_start(struct ifnet *ifp)
 		ifq_purge(&ifp->if_snd);
 		return;
 	}
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	trans = 0;
@@ -1180,7 +1181,7 @@ ae_start(struct ifnet *ifp)
 		if (error != 0) {
 			if (m0 != NULL) {
 				ifq_prepend(&ifp->if_snd, m0);
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 #ifdef AE_DEBUG
 				if_printf(ifp, "Setting OACTIVE.\n");
 #endif

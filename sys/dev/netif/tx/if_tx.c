@@ -542,7 +542,7 @@ epic_ifstart(struct ifnet *ifp)
 		BPF_MTAP(ifp, m0);
 	}
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 
 	return;
 	
@@ -651,7 +651,7 @@ epic_tx_done(epic_softc_t *sc)
 	}
 
 	if (sc->pending_txs < TX_RING_SIZE)
-		sc->sc_if.if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&sc->sc_if.if_snd);
 }
 
 /*
@@ -1116,7 +1116,7 @@ epic_init(epic_softc_t *sc)
 	else ifp->if_flags &= ~IFF_RUNNING;
 
 	/* ... and free */
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/* Start Rx process */
 	epic_start_activity(sc);

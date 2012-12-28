@@ -1451,7 +1451,7 @@ vge_txeof(struct vge_softc *sc)
 	/* No changes made to the TX ring, so no flush needed */
 	if (idx != sc->vge_ldata.vge_tx_considx) {
 		sc->vge_ldata.vge_tx_considx = idx;
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		ifp->if_timer = 0;
 	}
 
@@ -1700,7 +1700,7 @@ vge_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	idx = sc->vge_ldata.vge_tx_prodidx;
@@ -1711,7 +1711,7 @@ vge_start(struct ifnet *ifp)
 
 	while (sc->vge_ldata.vge_tx_mbuf[idx] == NULL) {
 		if (sc->vge_ldata.vge_tx_free <= 2) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1721,7 +1721,7 @@ vge_start(struct ifnet *ifp)
 
 		if (vge_encap(sc, m_head, idx)) {
 			/* If vge_encap() failed, it will free m_head for us */
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1917,7 +1917,7 @@ vge_init(void *xsc)
 	mii_mediachg(mii);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	sc->vge_if_flags = 0;
 	sc->vge_link = 0;
@@ -2093,7 +2093,8 @@ vge_stop(struct vge_softc *sc)
 
 	ifp->if_timer = 0;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	CSR_WRITE_1(sc, VGE_CRC3, VGE_CR3_INT_GMSK);
 	CSR_WRITE_1(sc, VGE_CRS0, VGE_CR0_STOP);

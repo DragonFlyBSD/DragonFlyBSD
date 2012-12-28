@@ -886,7 +886,7 @@ rue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	usbd_get_xfer_status(c->rue_xfer, NULL, NULL, NULL, &err);
 
 	if (c->rue_mbuf != NULL) {
@@ -992,7 +992,7 @@ rue_start(struct ifnet *ifp)
 		return;
 	}
 
-	if (ifp->if_flags & IFF_OACTIVE) {
+	if (ifq_is_oactive(&ifp->if_snd)) {
 		RUE_UNLOCK(sc);
 		return;
 	}
@@ -1005,7 +1005,7 @@ rue_start(struct ifnet *ifp)
 
 	if (rue_encap(sc, m_head, 0)) {
 		/* rue_encap() will free m_head, if we reach here */
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		RUE_UNLOCK(sc);
 		return;
 	}
@@ -1016,7 +1016,7 @@ rue_start(struct ifnet *ifp)
 	 */
 	BPF_MTAP(ifp, m_head);
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -1138,7 +1138,7 @@ rue_init(void *xsc)
 	}
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->rue_stat_ch, hz, rue_tick, sc);
 
@@ -1365,7 +1365,8 @@ rue_stop(struct rue_softc *sc)
 
 	sc->rue_link = 0;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	RUE_UNLOCK(sc);
 }

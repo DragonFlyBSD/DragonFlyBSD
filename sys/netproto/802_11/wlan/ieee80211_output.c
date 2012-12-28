@@ -153,7 +153,7 @@ ieee80211_start(struct ifnet *ifp)
 			    "%s: ignore queue, in %s state\n",
 			    __func__, ieee80211_state_name[vap->iv_state]);
 			vap->iv_stats.is_tx_badstate++;
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			return;
 		}
 	}
@@ -384,7 +384,7 @@ ieee80211_output(struct ifnet *ifp, struct mbuf *m,
 	struct ieee80211_frame *wh;
 	int error;
 
-	if (ifp->if_flags & IFF_OACTIVE) {
+	if (ifq_is_oactive(&ifp->if_snd)) {
 		/*
 		 * Short-circuit requests if the vap is marked OACTIVE
 		 * as this can happen because a packet came down through

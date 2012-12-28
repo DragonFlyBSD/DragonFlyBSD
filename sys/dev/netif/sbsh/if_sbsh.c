@@ -343,7 +343,7 @@ sbsh_init(void *xsc)
 		sc->state = ACTIVATION;
 
 		ifp->if_flags |= IFF_RUNNING;
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	}
 }
 
@@ -624,9 +624,9 @@ start_xmit_frames(struct sbsh_softc *sc)
 	}
 
 	if (sc->regs->CTDR != sc->regs->LTDR)
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 	else
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 }
 
 

@@ -2303,7 +2303,7 @@ bridge_start(struct ifnet *ifp)
 
 	ASSERT_IFNET_SERIALIZED_TX(ifp);
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 	for (;;) {
 		struct ifnet *dst_if = NULL;
 		struct ether_header *eh;
@@ -2347,7 +2347,7 @@ bridge_start(struct ifnet *ifp)
 		else
 			bridge_enqueue(dst_if, m);
 	}
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*
