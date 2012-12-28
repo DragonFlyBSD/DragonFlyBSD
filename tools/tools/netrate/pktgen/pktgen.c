@@ -355,7 +355,7 @@ pktgen_start(struct pktgen *pktg)
 		lwkt_migratecpu(cpuid);
 
 	alloc_cnt = ifp->if_snd.ifq_maxlen * 2;
-	keep_cnt = (ifp->if_snd.ifq_maxlen * 7) / 8;
+	keep_cnt = (ifp->if_snd.ifq_maxlen * 3) / 4;
 
 	/*
 	 * Prefault enough mbuf into mbuf objcache
