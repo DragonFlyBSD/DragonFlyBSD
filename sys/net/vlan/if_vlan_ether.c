@@ -57,19 +57,6 @@ vlan_start_dispatch(netmsg_t msg)
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_flags & M_VLANTAG, ("mbuf has not been vlan tagged!"));
 
-	ifnet_serialize_tx(ifp);
-
-	/*
-	 * Make sure that the interface is still UP and RUNNING,
-	 * since interface state may have been changed when the
-	 * mbuf is pending on the msgport.
-	 */
-	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) !=
-	    (IFF_UP | IFF_RUNNING)) {
-		m_freem(m);
-		goto back;
-	}
-
 	/*
 	 * If ALTQ is enabled on the parent interface, do
 	 * classification; the queueing discipline might
@@ -90,14 +77,14 @@ vlan_start_dispatch(netmsg_t msg)
 		M_PREPEND(m, EVL_ENCAPLEN, MB_DONTWAIT);
 		if (m == NULL) {
 			if_printf(ifp, "vlan%u M_PREPEND failed", vlantag);
-			goto back;
+			return;
 		}
 		/* M_PREPEND takes care of m_len, m_pkthdr.len for us */
 
 		m = m_pullup(m, ETHER_HDR_LEN + EVL_ENCAPLEN);
 		if (m == NULL) {
 			if_printf(ifp, "vlan%u m_pullup failed", vlantag);
-			goto back;
+			return;
 		}
 		m->m_pkthdr.csum_lhlen = sizeof(struct ether_vlan_header);
 
@@ -118,9 +105,7 @@ vlan_start_dispatch(netmsg_t msg)
 		/* Hardware does not need to setup vlan tagging */
 		m->m_flags &= ~M_VLANTAG;
 	}
-	ifq_handoff(ifp, m, &pktattr);
-back:
-	ifnet_deserialize_tx(ifp);
+	ifq_dispatch(ifp, m, &pktattr);
 }
 
 void
