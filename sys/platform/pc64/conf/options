@@ -18,6 +18,7 @@ NDISAPI			opt_dontuse.h
 
 # x86_64 SMP options
 CPU_ENABLE_EST		opt_cpu.h
+CPU_DISABLE_AVX	opt_cpu.h
 
 # The cpu type
 #

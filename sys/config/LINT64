@@ -117,7 +117,10 @@ cpu		HAMMER_CPU
 # CPU_ENABLE_EST enables support for Enhanced SpeedStep technology
 # found in Pentium(tm) M processors.
 #
+# CPU_DISABLE_AVX disables AVX instruction set.
+# 
 #options 	CPU_DISABLE_SSE
+options 	CPU_DISABLE_AVX
 options		CPU_ENABLE_EST
 
 #####################################################################

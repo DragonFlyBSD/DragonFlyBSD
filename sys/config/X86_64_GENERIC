@@ -10,6 +10,7 @@ machine_arch	x86_64
 cpu		HAMMER_CPU
 ident		X86_64_GENERIC
 maxusers	0
+#options	CPU_DISABLE_AVX
 
 makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
 

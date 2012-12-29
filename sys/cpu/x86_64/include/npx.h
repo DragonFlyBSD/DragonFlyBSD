@@ -46,6 +46,8 @@
 #ifndef _CPU_NPX_H_
 #define	_CPU_NPX_H_
 
+#include "opt_cpu.h"
+
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -124,9 +126,19 @@ struct  savexmm {
 	u_char sv_pad[220];
 } __attribute__((aligned(16)));
 
+#ifndef  CPU_DISABLE_AVX
+struct	saveymm {
+	u_char xsavedata[832];
+} __attribute__((aligned(64)));
+
+#endif
+
 union	savefpu {
 	struct	save87	sv_87;
 	struct	savexmm	sv_xmm;
+#ifndef CPU_DISABLE_AVX
+	struct  saveymm sv_ymm;
+#endif
 };
 
 /*

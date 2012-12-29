@@ -591,6 +591,14 @@ wrmsr(u_int msr, u_int64_t newval)
 }
 
 static __inline void
+xsetbv(u_int ecx, u_int eax, u_int edx)
+{
+	__asm __volatile(".byte 0x0f,0x01,0xd1"
+	    :
+	    : "a" (eax), "c" (ecx), "d" (edx));
+}
+
+static __inline void
 load_cr0(u_long data)
 {
 

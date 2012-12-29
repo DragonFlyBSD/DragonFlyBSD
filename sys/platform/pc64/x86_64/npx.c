@@ -37,6 +37,7 @@
  */
 
 #include "opt_debug_npx.h"
+#include "opt_cpu.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -76,6 +77,10 @@
 #define	fxrstor(addr)		__asm("fxrstor %0" : : "m" (*(addr)))
 #define	fxsave(addr)		__asm __volatile("fxsave %0" : "=m" (*(addr)))
 #endif
+#ifndef  CPU_DISABLE_AVX
+#define xrstor(eax,edx,addr)	__asm __volatile(".byte 0x0f,0xae,0x2f" : : "D" (addr), "a" (eax), "d" (edx))
+#define xsave(eax,edx,addr)	__asm __volatile(".byte 0x0f,0xae,0x27" : : "D" (addr), "a" (eax), "d" (edx) : "memory")
+#endif
 #define start_emulating()       __asm("smsw %%ax; orb %0,%%al; lmsw %%ax" \
 				      : : "n" (CR0_TS) : "ax")
 #define stop_emulating()        __asm("clts")
@@ -96,7 +101,8 @@ static	void	fpurstor	(union savefpu *);
 void
 npxinit(u_short control)
 {
-	static union savefpu dummy __aligned(16);
+	/*64-Byte alignment required for xsave*/
+	static union savefpu dummy __aligned(64);
 
 	/*
 	 * fninit has the same h/w bugs as fnsave.  Use the detoxified
@@ -405,6 +411,11 @@ npxsave(union savefpu *addr)
 static void
 fpusave(union savefpu *addr)
 {
+#ifndef CPU_DISABLE_AVX
+	if (cpu_xsave)
+		xsave(CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM, 0, addr);
+	else
+#endif
 #ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr)
 		fxsave(addr);
@@ -545,6 +556,11 @@ fpu_clean_state(void)
 static void
 fpurstor(union savefpu *addr)
 {
+#ifndef CPU_DISABLE_AVX
+	if (cpu_xsave)
+		xrstor(CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM, 0, addr);
+	else
+#endif
 #ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
 		fpu_clean_state();
