@@ -1062,12 +1062,11 @@ unix_connect(const char *path)
  */
 static
 int
-netif_init_tap(int tap_unit, in_addr_t *addr, in_addr_t *mask, char *macstr, int s)
+netif_init_tap(int tap_unit, in_addr_t *addr, in_addr_t *mask, int s)
 {
 	in_addr_t tap_addr, netmask, netif_addr;
 	int next_netif_addr;
-	char *tok, *masklen_str, *ifbridge, *mactmp;
-	int n;
+	char *tok, *masklen_str, *ifbridge;
 
 	*addr = 0;
 	*mask = 0;
@@ -1128,7 +1127,7 @@ netif_init_tap(int tap_unit, in_addr_t *addr, in_addr_t *mask, char *macstr, int
 		 * Current token is pseudo netif address, if there is next token
 		 * it must be netmask len
 		 */
-		masklen_str = strtok(NULL, ":/");
+		masklen_str = strtok(NULL, "/");
 	}
 
 	/* Calculate netmask */
@@ -1142,20 +1141,6 @@ netif_init_tap(int tap_unit, in_addr_t *addr, in_addr_t *mask, char *macstr, int
 		} else {
 			warnx("Invalid netmask len: %lu", masklen);
 			return -1;
-		}
-	}
-
-	/* Check whether we were passed a MAC address */
-	mactmp = strtok(NULL, ":/");
-	if (mactmp != NULL) {
-		n = snprintf(macstr, 18, "%c%c:%c%c:%c%c:%c%c:%c%c:%c%c",
-		    mactmp[0], mactmp[1], mactmp[2], mactmp[3], mactmp[4],
-		    mactmp[5], mactmp[6], mactmp[7], mactmp[8], mactmp[9],
-		    mactmp[10], mactmp[11]);
-
-		if (n != 17) {
-			warnx("Invalid MAC address passed, %d args passed", n);
-			macstr = NULL;
 		}
 	}
 
@@ -1193,8 +1178,6 @@ void
 init_netif(char *netifExp[], int netifExpNum)
 {
 	int i, s;
-	char macstr[18];
-	struct ether_addr *hwaddr;
 
 	if (netifExpNum == 0)
 		return;
@@ -1230,7 +1213,7 @@ init_netif(char *netifExp[], int netifExpNum)
 		 * NB: Rest part of netifExp[i] is passed
 		 *     to netif_init_tap() implicitly.
 		 */
-		if (netif_init_tap(tap_unit, &netif_addr, &netif_mask, macstr, s) < 0) {
+		if (netif_init_tap(tap_unit, &netif_addr, &netif_mask, s) < 0) {
 			/*
 			 * NB: Closing tap(4) device file will bring
 			 *     down the corresponding interface
@@ -1240,19 +1223,10 @@ init_netif(char *netifExp[], int netifExpNum)
 		}
 
 		info = &NetifInfo[NetifNum];
-		bzero(info, sizeof(*info));
 		info->tap_fd = tap_fd;
 		info->tap_unit = tap_unit;
 		info->netif_addr = netif_addr;
 		info->netif_mask = netif_mask;
-		/*
-		 * Set our MAC in the case it was correctly passed.
-		 */
-#ifdef _KERNEL
-#error KERNEL defined
-#endif
-		if ((hwaddr = ether_aton(macstr)) != NULL)
-			bcopy(hwaddr, &info->hwaddr.octet, sizeof(*hwaddr));
 
 		NetifNum++;
 		if (NetifNum >= VKNETIF_MAX)	/* XXX will this happen? */

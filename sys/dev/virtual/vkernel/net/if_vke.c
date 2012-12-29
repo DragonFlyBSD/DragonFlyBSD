@@ -698,17 +698,13 @@ vke_attach(const struct vknetif_info *info, int unit)
 			return ENXIO;
 		}
 	} else {
-		if (info->hwaddr != 0)
-			enaddr = info->hwaddr.octet;
-		else {
-			int fd = open("/dev/urandom", O_RDONLY);
-			if (fd >= 0) {
-				read(fd, enaddr + 2, 4);
-				close(fd);
-			}
-			enaddr[4] = (int)getpid() >> 8;
-			enaddr[5] = (int)getpid() & 255;
+		int fd = open("/dev/urandom", O_RDONLY);
+		if (fd >= 0) {
+			read(fd, enaddr + 2, 4);
+			close(fd);
 		}
+		enaddr[4] = (int)getpid() >> 8;
+		enaddr[5] = (int)getpid() & 255;
 
 	}
 	enaddr[1] += 1;
