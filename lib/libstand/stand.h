@@ -284,6 +284,9 @@ extern char	*optarg;			/* getopt(3) external variables */
 extern int	optind, opterr, optopt, optreset;
 extern int	getopt(int, char * const [], const char *);
 
+/* ether.c */
+extern char    *ether_sprintf(u_char *);
+
 /* pager.c */
 extern void	pager_open(void);
 extern void	pager_close(void);

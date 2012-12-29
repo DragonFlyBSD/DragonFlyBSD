@@ -116,7 +116,6 @@ ssize_t	sendrecv(struct iodesc *,
 void	bootp(int, int);
 
 /* Utilities: */
-char	*ether_sprintf(u_char *);
 int	in_cksum(void *, int);
 char	*inet_ntoa(struct in_addr);
 char	*intoa(n_long);		/* similar to inet_ntoa */
