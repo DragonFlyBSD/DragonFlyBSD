@@ -40,6 +40,11 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+
+#ifndef _NET_ETHERNET_H_
+#include <net/ethernet.h>
+#endif
+
 #ifndef _SYS_VKERNEL_H_
 #include <sys/vkernel.h>
 #endif
@@ -52,6 +57,7 @@ struct vknetif_info {
 	int		tap_unit;
 	in_addr_t	netif_addr;
 	in_addr_t	netif_mask;
+	struct ether_addr hwaddr;
 };
 
 struct vkdisk_info {
