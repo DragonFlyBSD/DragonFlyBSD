@@ -105,6 +105,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/ifq_var.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
 
@@ -1098,7 +1099,7 @@ ng_fec_constructor(node_p *nodep)
 	ifp->if_ioctl = ng_fec_ioctl;
 	ifp->if_init = ng_fec_init;
 	ifp->if_watchdog = NULL;
-	ifq_set_maxlen(ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifp->if_mtu = NG_FEC_MTU_DEFAULT;
 	ifp->if_flags = (IFF_SIMPLEX|IFF_BROADCAST|IFF_MULTICAST);
 	ifp->if_type = IFT_PROPVIRTUAL;		/* XXX */
