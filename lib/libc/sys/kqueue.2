@@ -23,7 +23,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/kqueue.2,v 1.1.2.16 2002/07/02 21:05:08 mp Exp $
-.\" $DragonFly: src/lib/libc/sys/kqueue.2,v 1.7 2008/05/02 02:05:04 swildner Exp $
 .\"
 .Dd December 3, 2008
 .Dt KQUEUE 2
@@ -484,14 +483,14 @@ No memory was available to register the event.
 The specified process to attach to does not exist.
 .El
 .Sh SEE ALSO
-.Xr aio_error 2 ,
-.Xr aio_read 2 ,
-.Xr aio_return 2 ,
 .Xr poll 2 ,
 .Xr read 2 ,
 .Xr select 2 ,
 .Xr sigaction 2 ,
 .Xr write 2 ,
+.Xr aio_error 3 ,
+.Xr aio_read 3 ,
+.Xr aio_return 3 ,
 .Xr signal 3
 .Sh HISTORY
 The

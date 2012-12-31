@@ -68,7 +68,7 @@ All outstanding requests meeting the criteria specified were cancelled.
 .It Bq Dv AIO_NOTCANCELED
 Some requests were not cancelled, status for the requests should be
 checked with
-.Xr aio_error 2 .
+.Xr aio_error 3 .
 .It Bq Dv AIO_ALLDONE
 All of the requests meeting the criteria have finished.
 .El
@@ -82,11 +82,11 @@ indicates:
 is an invalid file descriptor.
 .El
 .Sh SEE ALSO
-.Xr aio_error 2 ,
-.Xr aio_read 2 ,
-.Xr aio_return 2 ,
-.Xr aio_suspend 2 ,
-.Xr aio_write 2
+.Xr aio_error 3 ,
+.Xr aio_read 3 ,
+.Xr aio_return 3 ,
+.Xr aio_suspend 3 ,
+.Xr aio_write 3
 .Sh STANDARDS
 The
 .Fn aio_cancel
