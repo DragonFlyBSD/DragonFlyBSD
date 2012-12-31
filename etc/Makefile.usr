@@ -37,7 +37,7 @@ help all:
 	@printf ${LPATT} "dports-update"         "update your dports repo from Github"
 .else
 .  if exists(${.CURDIR}/dports)
-	@printf ${LPATT} "dports-replace"        "Update dports with latest tarball from Github"
+	@printf ${LPATT} "dports-replace"        "Replace dports with latest tarball from Github"
 .  else
 	@printf ${LPATT} "dports-create"         "fetch initial dports repository from Github"
 	@printf ${LPATT} "dports-create-shallow" "fetch initial history-free dports repository"
