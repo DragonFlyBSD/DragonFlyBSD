@@ -875,7 +875,7 @@ vtblk_poll_request(struct vtblk_softc *sc, struct vtblk_request *req)
 {
 	device_t dev;
 	struct virtqueue *vq;
-	struct vtblk_request *r;
+	struct vtblk_request *r __debugvar;
 	int error;
 
 	dev = sc->vtblk_dev;

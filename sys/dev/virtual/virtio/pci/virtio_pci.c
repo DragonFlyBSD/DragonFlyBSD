@@ -842,7 +842,7 @@ static int
 vtpci_alloc_msi(struct vtpci_softc *sc)
 {
 	device_t dev;
-	int nmsi, cnt;
+	int nmsi;
 	u_int irq_flags;
 
 	dev = sc->vtpci_dev;
@@ -850,8 +850,6 @@ vtpci_alloc_msi(struct vtpci_softc *sc)
 
 	if (nmsi < 1)
 		return (1);
-
-	cnt = 1;
 
 	sc->vtpci_irq_rid = 0;
         sc->vtpci_irq_type = pci_alloc_1intr(dev, 1,
