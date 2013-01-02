@@ -26,7 +26,6 @@ SOFTWARE.
 ************************************************************************/
 
 /* $FreeBSD: src/libexec/bootpd/bootpgw/bootpgw.c,v 1.6 2003/02/05 13:45:25 charnier Exp $ */
-/* $DragonFly: src/libexec/bootpd/bootpgw/bootpgw.c,v 1.2 2003/06/17 04:27:07 dillon Exp $ */
 
 /*
  * BOOTPGW is typically used to forward BOOTP client requests from
@@ -661,15 +660,3 @@ handle_reply(void)
 		report(LOG_ERR, "sendto: %s", get_network_errmsg());
 	}
 }
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

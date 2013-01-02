@@ -588,7 +588,3 @@ initsd(int sdno, int verify)
     }
     return error;
 }
-
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

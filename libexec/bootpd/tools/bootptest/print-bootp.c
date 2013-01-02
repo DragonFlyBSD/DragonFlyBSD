@@ -467,15 +467,3 @@ dump_hex(u_char *bp, int len)
 		if (len) printf(".");
 	}
 }
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

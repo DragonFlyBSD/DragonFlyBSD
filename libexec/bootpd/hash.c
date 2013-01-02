@@ -20,7 +20,6 @@ ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
  $FreeBSD: src/libexec/bootpd/hash.c,v 1.5 1999/08/28 00:09:18 peter Exp $
- $DragonFly: src/libexec/bootpd/hash.c,v 1.3 2008/06/05 18:01:49 swildner Exp $
 
 ************************************************************************/
 
@@ -377,15 +376,3 @@ hash_FirstEntry(hash_tbl *hashtable)
 	hashtable->member = (hashtable->table)[0];
 	return hash_NextEntry(hashtable);
 }
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

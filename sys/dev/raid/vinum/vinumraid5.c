@@ -40,7 +40,6 @@
  *
  * $Id: vinumraid5.c,v 1.21 2001/01/09 04:21:27 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumraid5.c,v 1.6.2.2 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumraid5.c,v 1.5 2006/04/30 17:22:17 dillon Exp $
  */
 #include "vinumhdr.h"
 #include "request.h"
@@ -696,6 +695,3 @@ setrqebounds(struct rqelement *rqe, struct metrics *mp)
     rqe->buflen = umax(rqe->dataoffset + rqe->datalen,	    /* total buffer length */
 	rqe->groupoffset + rqe->grouplen);
 }
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

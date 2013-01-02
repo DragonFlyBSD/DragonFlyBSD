@@ -8,7 +8,6 @@
  * please let me know.  <gwr@mc.com>
  *
  * $FreeBSD: src/libexec/bootpd/getether.c,v 1.9.2.3 2003/02/15 05:36:01 kris Exp $
- * $DragonFly: src/libexec/bootpd/getether.c,v 1.4 2008/06/05 18:01:49 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -375,15 +374,3 @@ getether(ifname, eap)
 }
 
 #endif /* !GETETHER */
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

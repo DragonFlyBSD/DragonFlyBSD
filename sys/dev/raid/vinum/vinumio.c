@@ -864,6 +864,3 @@ drivecmp(const void *va, const void *vb)
     else
 	return 1;
 }
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

@@ -4707,12 +4707,3 @@ mxge_shutdown(device_t dev)
 {
 	return 0;
 }
-
-/*
-  This file uses Myri10GE driver indentation.
-
-  Local Variables:
-  c-file-style:"linux"
-  tab-width:8
-  End:
-*/

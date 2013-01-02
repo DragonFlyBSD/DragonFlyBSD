@@ -37,7 +37,6 @@
  *
  * $Id: list.c,v 1.25 2000/12/20 03:38:43 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/list.c,v 1.25.2.4 2001/05/28 05:58:04 grog Exp $
- * $DragonFly: src/sbin/vinum/list.c,v 1.10 2007/06/18 05:13:41 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -1434,7 +1433,3 @@ check_drive(char *devicename)
     }
     return 0;
 }
-
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

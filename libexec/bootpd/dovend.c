@@ -2,7 +2,6 @@
  * dovend.c : Inserts all but the first few vendor options.
  *
  * $FreeBSD: src/libexec/bootpd/dovend.c,v 1.5.2.1 2003/02/15 05:36:01 kris Exp $
- * $DragonFly: src/libexec/bootpd/dovend.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -383,15 +382,3 @@ insert_u_long(u_int32 value, byte **dest)
 	}
 	/* Final result is network byte order */
 }
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

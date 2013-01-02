@@ -1091,6 +1091,3 @@ setstate_by_force(struct vinum_ioctl_msg *msg)
     }
     ioctl_reply->error = 0;
 }
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

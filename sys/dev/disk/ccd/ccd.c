@@ -1589,10 +1589,3 @@ printiinfo(struct ccdiinfo *ii)
 	}
 }
 #endif
-
-
-/* Local Variables: */
-/* c-argdecl-indent: 8 */
-/* c-continued-statement-offset: 8 */
-/* c-indent-level: 8 */
-/* End: */

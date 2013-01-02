@@ -39,7 +39,6 @@
  *
  * $Id: vinumlock.c,v 1.13 2000/05/02 23:25:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumlock.c,v 1.18.2.3 2001/04/04 06:27:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumlock.c,v 1.6 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -248,6 +247,3 @@ unlock_config(void)
 	wakeup(&vinum_conf);
     }
 }
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

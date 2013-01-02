@@ -3,7 +3,6 @@
  * (i.e. Ethernet)
  *
  * $FreeBSD: src/libexec/bootpd/hwaddr.c,v 1.7.2.1 2003/02/15 05:36:01 kris Exp $
- * $DragonFly: src/libexec/bootpd/hwaddr.c,v 1.3 2003/11/14 03:54:29 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -336,15 +335,3 @@ main(void)
 }
 
 #endif
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

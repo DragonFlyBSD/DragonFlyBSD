@@ -47,7 +47,6 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.12 2007/06/07 22:58:00 corecode Exp $
  */
 
 #define STATIC static
@@ -2137,6 +2136,3 @@ finish_config(int update)
 	wakeup_one(&vinum_conf);
     }
 }
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */
