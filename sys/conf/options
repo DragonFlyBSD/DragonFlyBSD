@@ -74,7 +74,6 @@ ACPI_NO_SEMAPHORES	opt_acpi.h
 ACPI_ENABLE_PCI		opt_acpi.h
 
 # Miscellaneous options.
-COMPAT_DF12	opt_compatdf12.h
 COMPAT_43	opt_compat.h
 COMPAT_SUNOS	opt_compat.h
 COMPILING_LINT	opt_lint.h

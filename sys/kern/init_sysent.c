@@ -7,7 +7,9 @@
 
 #include "opt_compat.h"
 
+#ifdef __i386__
 #include "opt_compatdf12.h"
+#endif
 
 #include <sys/param.h>
 #include <sys/sysent.h>

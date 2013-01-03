@@ -499,7 +499,9 @@ s/\$//g
 		}
 
 		if (ncompatdf12 != 0) {
-			printf "#include \"opt_compatdf12.h\"\n\n" > syssw
+			printf "#ifdef __i386__\n" > syssw
+			printf "#include \"opt_compatdf12.h\"\n" > syssw
+			printf "#endif\n\n" > syssw
 			printf "\n#ifdef %s\n", compatdf12 > sysinc
 			printf "#define compatdf12(n, name) n, (sy_call_t *)__CONCAT(sys_,__CONCAT(dfbsd12_,name))\n" > sysinc
 			printf "#else\n" > sysinc
