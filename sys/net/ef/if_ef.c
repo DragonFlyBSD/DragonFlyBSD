@@ -212,17 +212,13 @@ ef_start(struct ifnet *ifp)
 
 	EFDEBUG("\n");
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
+
 		BPF_MTAP(ifp, m);
-		if (IF_QFULL(&p->if_snd)) {
-			IF_DROP(&p->if_snd);
-			ifp->if_oerrors++;
-			m_freem(m);
-			continue;
-		}
-		IF_ENQUEUE(&p->if_snd, m);
+
+		ifq_enqueue(&p->if_snd, m, NULL);
 		if (!ifq_is_oactive(&p->if_snd)) {
 			p->if_start(p);
 			ifp->if_opackets++;
