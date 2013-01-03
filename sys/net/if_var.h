@@ -303,10 +303,9 @@ typedef void if_init_f_t (void *);
 #endif
 
 /*
- * Output queues (ifp->if_snd) and slow device input queues (*ifp->if_slowq)
- * are queues of messages stored on ifqueue structures
- * (defined above).  Entries are added to and deleted from these structures
- * by these macros, which should be called with ipl raised to splimp().
+ * Device private output queues and input queues are queues of messages
+ * stored on ifqueue structures (defined above).  Entries are added to
+ * and deleted from these structures by these macros.
  */
 #define	IF_QFULL(ifq)		((ifq)->ifq_len >= (ifq)->ifq_maxlen)
 #define	IF_DROP(ifq)		((ifq)->ifq_drops++)
