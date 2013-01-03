@@ -212,10 +212,7 @@ pfsync_clone_destroy(struct ifnet *ifp)
 void
 pfsyncstart(struct ifnet *ifp)
 {
-	crit_enter();
-	IF_DROP(&ifp->if_snd);
-	IF_DRAIN(&ifp->if_snd);
-	crit_exit();
+	ifq_purge(&ifp->if_snd);
 }
 
 int

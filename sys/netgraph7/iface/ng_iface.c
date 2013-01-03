@@ -439,9 +439,6 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 	if (ifq_is_enabled(&ifp->if_snd)) {
 		M_PREPEND(m, sizeof(sa_family_t), MB_DONTWAIT);
 		if (m == NULL) {
-			IFQ_LOCK(&ifp->if_snd);
-			IF_DROP(&ifp->if_snd);
-			IFQ_UNLOCK(&ifp->if_snd);
 			ifp->if_oerrors++;
 			return (ENOBUFS);
 		}

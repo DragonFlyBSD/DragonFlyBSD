@@ -188,13 +188,7 @@ pflogstart(struct ifnet *ifp)
 	ASSERT_LWKT_TOKEN_HELD(&pf_token);
 
 	for (;;) {
-		lwkt_reltoken(&pf_token);
-		crit_enter();
-		IF_DROP(&ifp->if_snd);
-		IF_DEQUEUE(&ifp->if_snd, m);
-		crit_exit();
-		lwkt_gettoken(&pf_token);
-
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			return;
 		else

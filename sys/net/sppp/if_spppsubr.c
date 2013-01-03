@@ -1380,7 +1380,6 @@ sppp_cisco_send(struct sppp *sp, int type, long par1, long par2)
 
 	if (IF_QFULL (&sp->pp_cpq)) {
 		IF_DROP (&sp->pp_fastq);
-		IF_DROP (&ifp->if_snd);
 		m_freem (m);
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
@@ -1436,7 +1435,6 @@ sppp_cp_send(struct sppp *sp, u_short proto, u_char type,
 	}
 	if (IF_QFULL (&sp->pp_cpq)) {
 		IF_DROP (&sp->pp_fastq);
-		IF_DROP (&ifp->if_snd);
 		m_freem (m);
 		++ifp->if_oerrors;
 	} else
@@ -4775,7 +4773,6 @@ sppp_auth_send(const struct cp *cp, struct sppp *sp,
 	}
 	if (IF_QFULL (&sp->pp_cpq)) {
 		IF_DROP (&sp->pp_fastq);
-		IF_DROP (&ifp->if_snd);
 		m_freem (m);
 		++ifp->if_oerrors;
 	} else
