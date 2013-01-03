@@ -133,20 +133,24 @@ struct if_data {
 #define	IFF_LINK2	0x4000		/* per link layer defined bit */
 #define	IFF_ALTPHYS	IFF_LINK2	/* use alternate physical connection */
 #define	IFF_MULTICAST	0x8000		/* supports multicast */
-#define	IFF_POLLING	0x10000		/* Interface is in polling mode. */
+#define	IFF_POLLING_COMPAT 0x10000	/* was interface is in polling mode */
 #define	IFF_PPROMISC	0x20000		/* user-requested promisc mode */
 #define	IFF_MONITOR	0x40000		/* user-requested monitor mode */
 #define IFF_STATICARP	0x80000		/* static ARP */
-#define IFF_NPOLLING	0x100000	/* ifpoll is used */
+#define IFF_NPOLLING	0x100000	/* interface is in polling mode */
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \
 	(IFF_BROADCAST|IFF_POINTOPOINT|IFF_RUNNING|IFF_OACTIVE_COMPAT|\
-	 IFF_SIMPLEX|IFF_MULTICAST|IFF_ALLMULTI|IFF_SMART|IFF_POLLING|\
+	 IFF_SIMPLEX|IFF_MULTICAST|IFF_ALLMULTI|IFF_SMART|IFF_POLLING_COMPAT|\
 	 IFF_NPOLLING)
 
 #ifndef _KERNEL
+/*
+ * User space compat
+ */
 #define IFF_OACTIVE	IFF_OACTIVE_COMPAT
+#define IFF_POLLING	IFF_POLLING_COMPAT
 #endif
 
 /*
