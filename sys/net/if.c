@@ -297,7 +297,7 @@ ifq_ifstart_schedule(struct ifaltq *ifq, int force)
  * if ifnet.if_start does not need to be scheduled
  */
 static __inline int
-if_start_need_schedule(struct ifaltq *ifq, int running)
+ifq_ifstart_need_schedule(struct ifaltq *ifq, int running)
 {
 	if (!running || ifq_is_empty(ifq)
 #ifdef ALTQ
@@ -358,7 +358,7 @@ if_start_dispatch(netmsg_t msg)
 		if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq))
 			running = 1;
 	}
-	need_sched = if_start_need_schedule(ifq, running);
+	need_sched = ifq_ifstart_need_schedule(ifq, running);
 	ifnet_deserialize_tx(ifp);
 
 	if (need_sched) {
@@ -396,7 +396,7 @@ if_devstart(struct ifnet *ifp)
 	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq))
 		running = 1;
 
-	if (if_start_need_schedule(ifq, running)) {
+	if (ifq_ifstart_need_schedule(ifq, running)) {
 		/*
 		 * More data need to be transmitted, ifnet.if_start is
 		 * scheduled on ifnet's CPU, and we keep going.
@@ -2499,7 +2499,7 @@ ifq_try_ifstart(struct ifaltq *ifq, int force_sched)
 		if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq))
 			running = 1;
 	}
-	need_sched = if_start_need_schedule(ifq, running);
+	need_sched = ifq_ifstart_need_schedule(ifq, running);
 
 	ifnet_deserialize_tx(ifp);
 
