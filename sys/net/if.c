@@ -233,7 +233,7 @@ if_start_cpuid_npoll(struct ifnet *ifp)
 #endif
 
 static void
-if_start_ipifunc(void *arg)
+ifq_ifstart_ipifunc(void *arg)
 {
 	struct ifnet *ifp = arg;
 	struct lwkt_msg *lmsg = &ifp->if_start_nmsg[mycpuid].lmsg;
@@ -267,14 +267,14 @@ ifq_stage_insert(struct ifaltq_stage_head *head, struct ifaltq_stage *stage)
  * Schedule ifnet.if_start on ifnet's CPU
  */
 static void
-if_start_schedule(struct ifnet *ifp, int force)
+ifq_ifstart_schedule(struct ifaltq *ifq, int force)
 {
+	struct ifnet *ifp = ifq->altq_ifp;
 	int cpu;
 
 	if (!force && curthread->td_type == TD_TYPE_NETISR &&
 	    ifq_stage_cntmax > 0) {
-		struct ifaltq_stage *stage =
-		    ifq_get_stage(&ifp->if_snd, mycpuid);
+		struct ifaltq_stage *stage = ifq_get_stage(ifq, mycpuid);
 
 		stage->ifqs_cnt = 0;
 		stage->ifqs_len = 0;
@@ -286,9 +286,9 @@ if_start_schedule(struct ifnet *ifp, int force)
 
 	cpu = ifp->if_start_cpuid(ifp);
 	if (cpu != mycpuid)
-		lwkt_send_ipiq(globaldata_find(cpu), if_start_ipifunc, ifp);
+		lwkt_send_ipiq(globaldata_find(cpu), ifq_ifstart_ipifunc, ifp);
 	else
-		if_start_ipifunc(ifp);
+		ifq_ifstart_ipifunc(ifp);
 }
 
 /*
@@ -347,7 +347,7 @@ if_start_dispatch(netmsg_t msg)
 		 * We need to chase the ifnet CPU change.
 		 */
 		logifstart(chase_sched, ifp);
-		if_start_schedule(ifp, 1);
+		ifq_ifstart_schedule(ifq, 1);
 		return;
 	}
 
@@ -368,7 +368,7 @@ if_start_dispatch(netmsg_t msg)
 		 * NOTE: ifnet.if_start interlock is not released.
 		 */
 		logifstart(sched, ifp);
-		if_start_schedule(ifp, 0);
+		ifq_ifstart_schedule(ifq, 0);
 	}
 }
 
@@ -403,7 +403,7 @@ if_devstart(struct ifnet *ifp)
 		 * NOTE: ifnet.if_start interlock is not released.
 		 */
 		logifstart(sched, ifp);
-		if_start_schedule(ifp, 0);
+		ifq_ifstart_schedule(ifq, 0);
 	}
 }
 
@@ -2482,7 +2482,7 @@ ifq_try_ifstart(struct ifaltq *ifq, int force_sched)
 		 * CPU, and we keep going.
 		 */
 		logifstart(contend_sched, ifp);
-		if_start_schedule(ifp, 1);
+		ifq_ifstart_schedule(ifq, 1);
 		return;
 	}
 
@@ -2503,7 +2503,7 @@ ifq_try_ifstart(struct ifaltq *ifq, int force_sched)
 		 * NOTE: ifnet.if_start interlock is not released.
 		 */
 		logifstart(sched, ifp);
-		if_start_schedule(ifp, force_sched);
+		ifq_ifstart_schedule(ifq, force_sched);
 	}
 }
 
@@ -2524,7 +2524,7 @@ ifq_try_ifstart(struct ifaltq *ifq, int force_sched)
  * IFQ packets staging is performed for two entry points into drivers's
  * transmission function:
  * - Direct ifnet's if_start calling, i.e. ifq_try_ifstart()
- * - ifnet's if_start scheduling, i.e. if_start_schedule()
+ * - ifnet's if_start scheduling, i.e. ifq_ifstart_schedule()
  *
  * IFQ packets staging will be stopped upon any of the following conditions:
  * - If the count of packets enqueued on the current CPU is great than or
@@ -2533,7 +2533,7 @@ ifq_try_ifstart(struct ifaltq *ifq, int force_sched)
  *   than or equal to the hardware's MTU - max_protohdr.  max_protohdr is
  *   cut from the hardware's MTU mainly bacause a full TCP segment's size
  *   is usually less than hardware's MTU.
- * - if_start_schedule() is not pending on the current CPU and if_start
+ * - ifq_ifstart_schedule() is not pending on the current CPU and if_start
  *   interlock (if_snd.altq_started) is not released.
  * - The if_start_rollup(), which is registered as low priority netisr
  *   rollup function, is called; probably because no more work is pending
@@ -2609,7 +2609,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 			KKASSERT(stage->ifqs_flags & IFQ_STAGE_FLAG_QUED);
 			if (!avoid_start) {
 				ifq_stage_remove(head, stage);
-				if_start_schedule(ifp, 1);
+				ifq_ifstart_schedule(ifq, 1);
 			}
 			return error;
 		}
@@ -2846,7 +2846,7 @@ if_start_rollup(void)
 		ifq_stage_remove(head, stage);
 
 		if (is_sched) {
-			if_start_schedule(ifq->altq_ifp, 1);
+			ifq_ifstart_schedule(ifq, 1);
 		} else {
 			int start = 0;
 
