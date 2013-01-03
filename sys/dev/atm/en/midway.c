@@ -128,6 +128,7 @@
 
 #include <net/if.h>
 #include <net/if_atm.h>
+#include <net/ifq_var.h>
 
 #include <vm/vm.h>
 
@@ -1481,7 +1482,7 @@ en_start(struct ifnet *ifp)
 
     while (1) {
 
-      IF_DEQUEUE(&ifp->if_snd, m);
+      m = ifq_dequeue(&ifp->if_snd, NULL);
       if (m == NULL)
 	return;		/* EMPTY: >>> exit here <<< */
     

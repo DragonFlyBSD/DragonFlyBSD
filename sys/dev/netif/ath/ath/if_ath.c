@@ -1826,7 +1826,7 @@ ath_start(struct ifnet *ifp)
 		if (bf == NULL)
 			break;
 
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL) {
 			STAILQ_INSERT_HEAD(&sc->sc_txbuf, bf, bf_list);
 			break;

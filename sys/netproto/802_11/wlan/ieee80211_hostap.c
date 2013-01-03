@@ -47,6 +47,7 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/if_llc.h>
+#include <net/ifq_var.h>
 #include <net/ethernet.h>
 #include <net/route.h>
 
@@ -2288,6 +2289,6 @@ hostap_recv_pspoll(struct ieee80211_node *ni, struct mbuf *m0)
 		ifp = vap->iv_ic->ic_ifp;
 	else
 		ifp = vap->iv_ifp;
-	IF_ENQUEUE(&ifp->if_snd, m);
+	ifq_enqueue(&ifp->if_snd, m, NULL);
 	ifp->if_start(ifp);
 }

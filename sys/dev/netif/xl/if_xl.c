@@ -812,36 +812,6 @@ xl_setmulti_hash(struct xl_softc *sc)
 	return;
 }
 
-#ifdef notdef
-static void
-xl_testpacket(struct xl_softc *sc)
-{
-	struct mbuf		*m;
-	struct ifnet		*ifp;
-
-	ifp = &sc->arpcom.ac_if;
-
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
-
-	if (m == NULL)
-		return;
-
-	bcopy(&sc->arpcom.ac_enaddr,
-		mtod(m, struct ether_header *)->ether_dhost, ETHER_ADDR_LEN);
-	bcopy(&sc->arpcom.ac_enaddr,
-		mtod(m, struct ether_header *)->ether_shost, ETHER_ADDR_LEN);
-	mtod(m, struct ether_header *)->ether_type = htons(3);
-	mtod(m, unsigned char *)[14] = 0;
-	mtod(m, unsigned char *)[15] = 0;
-	mtod(m, unsigned char *)[16] = 0xE3;
-	m->m_len = m->m_pkthdr.len = sizeof(struct ether_header) + 3;
-	IF_ENQUEUE(&ifp->if_snd, m);
-	xl_start(ifp);
-
-	return;
-}
-#endif
-
 static void
 xl_setcfg(struct xl_softc *sc)
 {
