@@ -438,42 +438,6 @@ ifnet_tryserialize_main(struct ifnet *_ifp)
 }
 
 /*
- * DEPRECATED - should not be used by any new driver.  This code uses the
- * old queueing interface and if_start ABI and does not use the ifp's
- * serializer.
- */
-#define IF_HANDOFF(ifq, m, ifp)			if_handoff(ifq, m, ifp, 0)
-#define IF_HANDOFF_ADJ(ifq, m, ifp, adj)	if_handoff(ifq, m, ifp, adj)
-
-static __inline int
-if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
-	   int _adjust)
-{
-	int _need_if_start = 0;
-
-	crit_enter(); 
-
-	if (IF_QFULL(_ifq)) {
-		IF_DROP(_ifq);
-		crit_exit();
-		m_freem(_m);
-		return (0);
-	}
-	if (_ifp != NULL) {
-		_ifp->if_obytes += _m->m_pkthdr.len + _adjust;
-		if (_m->m_flags & M_MCAST)
-			_ifp->if_omcasts++;
-		_need_if_start = !_ifp->if_snd.altq_hw_oactive;
-	}
-	IF_ENQUEUE(_ifq, _m);
-	if (_need_if_start) {
-		(*_ifp->if_start)(_ifp);
-	}
-	crit_exit();
-	return (1);
-}
-
-/*
  * 72 was chosen below because it is the size of a TCP/IP
  * header (40) + the minimum mss (32).
  */
