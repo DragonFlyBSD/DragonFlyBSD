@@ -1200,7 +1200,6 @@ lge_init(void *xsc)
 {
 	struct lge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mii_data *mii;
 
 	if (ifp->if_flags & IFF_RUNNING)
 		return;
@@ -1210,8 +1209,6 @@ lge_init(void *xsc)
 	 */
 	lge_stop(sc);
 	lge_reset(sc);
-
-	mii = device_get_softc(sc->lge_miibus);
 
 	/* Set MAC address */
 	CSR_WRITE_4(sc, LGE_PAR0, *(uint32_t *)(&sc->arpcom.ac_enaddr[0]));

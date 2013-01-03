@@ -168,7 +168,6 @@ ral_pci_attach(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 	struct rt2560_softc *sc = &psc->u.sc_rt2560;
-	struct ifnet *ifp;
 	int error;
 
 	wlan_serialize_enter();
@@ -211,7 +210,6 @@ ral_pci_attach(device_t dev)
 		wlan_serialize_exit();
 		return error;
 	}
-	ifp = sc->sc_ifp;
 
 	/*
 	 * Hook our interrupt after all initialization is complete.

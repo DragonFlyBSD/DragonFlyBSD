@@ -418,7 +418,6 @@ static void
 ip1000phy_reset(struct mii_softc *sc)
 {
 	struct stge_softc *stge_sc;
-	struct mii_data *mii;
 	device_t parent;
 	uint32_t reg;
 
@@ -429,7 +428,6 @@ ip1000phy_reset(struct mii_softc *sc)
 	reg &= ~(IP1000PHY_BMCR_AUTOEN | IP1000PHY_BMCR_FDX);
 	PHY_WRITE(sc, MII_BMCR, reg);
 
-	mii = sc->mii_pdata;
 	/*
 	 * XXX There should be more general way to pass PHY specific
 	 * data via mii interface.

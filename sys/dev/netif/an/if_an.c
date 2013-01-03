@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.44 2008/05/23 15:34:03 sephe Exp $
  */
 
 /*
@@ -267,9 +266,7 @@ SYSCTL_PROC(_hw_an, OID_AUTO, an_dump, CTLTYPE_STRING | CTLFLAG_RW,
 static int
 sysctl_an_cache_mode(SYSCTL_HANDLER_ARGS)
 {
-	int	error, last;
-
-	last = an_cache_mode;
+	int	error;
 
 	switch (an_cache_mode) {
 	case 1:

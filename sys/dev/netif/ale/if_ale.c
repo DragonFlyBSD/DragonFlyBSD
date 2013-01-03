@@ -1534,7 +1534,7 @@ ale_encap(struct ale_softc *sc, struct mbuf **m_head)
 	struct ale_dmamap_ctx ctx;
 	bus_dmamap_t map;
 	uint32_t cflags, poff, vtag;
-	int error, i, nsegs, prod, si;
+	int error, i, nsegs, prod;
 
 	M_ASSERTPKTHDR((*m_head));
 
@@ -1542,7 +1542,7 @@ ale_encap(struct ale_softc *sc, struct mbuf **m_head)
 	cflags = vtag = 0;
 	poff = 0;
 
-	si = prod = sc->ale_cdata.ale_tx_prod;
+	prod = sc->ale_cdata.ale_tx_prod;
 	txd = &sc->ale_cdata.ale_txdesc[prod];
 	txd_last = txd;
 	map = txd->tx_dmamap;

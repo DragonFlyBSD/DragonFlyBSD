@@ -1457,7 +1457,7 @@ age_encap(struct age_softc *sc, struct mbuf **m_head)
 	bus_dma_segment_t txsegs[AGE_MAXTXSEGS];
 	bus_dmamap_t map;
 	uint32_t cflags, poff, vtag;
-	int error, i, nsegs, prod, si;
+	int error, i, nsegs, prod;
 
 	M_ASSERTPKTHDR((*m_head));
 
@@ -1465,7 +1465,7 @@ age_encap(struct age_softc *sc, struct mbuf **m_head)
 	cflags = vtag = 0;
 	poff = 0;
 
-	si = prod = sc->age_cdata.age_tx_prod;
+	prod = sc->age_cdata.age_tx_prod;
 	txd = &sc->age_cdata.age_txdesc[prod];
 	txd_last = txd;
 	map = txd->tx_dmamap;

@@ -537,7 +537,6 @@ fwe_as_input(struct fw_xferq *xferq)
 	struct fwe_softc *fwe;
 	struct fw_bulkxfer *sxfer;
 	struct fw_pkt *fp;
-	u_char *c;
 
 	fwe = (struct fwe_softc *)xferq->sc;
 	ifp = &fwe->fwe_if;
@@ -566,7 +565,6 @@ fwe_as_input(struct fw_xferq *xferq)
 		}
 
 		m->m_data += HDR_LEN + ETHER_ALIGN;
-		c = mtod(m, char *);
 		m->m_len = m->m_pkthdr.len =
 				fp->mode.stream.len - ETHER_ALIGN;
 		m->m_pkthdr.rcvif = ifp;

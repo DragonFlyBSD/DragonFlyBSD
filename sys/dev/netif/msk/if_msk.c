@@ -437,14 +437,12 @@ msk_miibus_statchg(device_t dev)
 	struct msk_if_softc *sc_if;
 	struct msk_softc *sc;
 	struct mii_data *mii;
-	struct ifnet *ifp;
 	uint32_t gmac;
 
 	sc_if = device_get_softc(dev);
 	sc = sc_if->msk_softc;
 
 	mii = device_get_softc(sc_if->msk_miibus);
-	ifp = sc_if->msk_ifp;
 
 	sc_if->msk_link = 0;
 	if ((mii->mii_media_status & (IFM_AVALID | IFM_ACTIVE)) ==

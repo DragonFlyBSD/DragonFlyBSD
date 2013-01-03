@@ -786,7 +786,6 @@ re_diag(struct re_softc *sc)
 	struct ether_header *eh;
 	struct re_desc *cur_rx;
 	uint16_t status;
-	uint32_t rxstat;
 	int total_len, i, error = 0, phyaddr;
 	uint8_t dst[ETHER_ADDR_LEN] = { 0x00, 'h', 'e', 'l', 'l', 'o' };
 	uint8_t src[ETHER_ADDR_LEN] = { 0x00, 'w', 'o', 'r', 'l', 'd' };
@@ -883,7 +882,6 @@ re_diag(struct re_softc *sc)
 
 	cur_rx = &sc->re_ldata.re_rx_list[0];
 	total_len = RE_RXBYTES(cur_rx);
-	rxstat = le32toh(cur_rx->re_cmdstat);
 
 	if (total_len != ETHER_MIN_LEN) {
 		if_printf(ifp, "diagnostic failed, received short packet\n");

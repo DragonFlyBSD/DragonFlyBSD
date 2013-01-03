@@ -171,7 +171,7 @@ static int
 ndis_attach_pci(device_t dev)
 {
 	struct ndis_softc	*sc;
-	int			unit, error = 0, rid;
+	int			error = 0, rid;
 	struct ndis_pci_type	*t;
 	int			devidx = 0, defidx = 0;
 	struct resource_list	*rl;
@@ -183,7 +183,6 @@ ndis_attach_pci(device_t dev)
 	wlan_serialize_enter();
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 	sc->ndis_dev = dev;
 
 	db = windrv_match((matchfuncptr)ndis_devcompare, dev);

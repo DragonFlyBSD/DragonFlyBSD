@@ -714,7 +714,6 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 	unsigned hdr_offset;
 	int status;
 	unsigned int i;
-	char dummy;
 	size_t fw_len;
 
 	fw = firmware_get(sc->fw_name);
@@ -773,7 +772,6 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 			      inflate_buffer + i,
 			      min(256U, (unsigned)(fw_len - i)));
 		wmb();
-		dummy = *sc->sram;
 		wmb();
 	}
 
@@ -2009,7 +2007,6 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 	mcp_kreq_ether_send_t *req;
 	bus_dma_segment_t *seg;
 	struct mbuf *m_tmp;
-	struct ifnet *ifp;
 	mxge_tx_ring_t *tx;
 	struct ip *ip;
 	int cnt, cum_len, err, i, idx, odd_flag, ip_off;
@@ -2018,7 +2015,6 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 
 
 	sc = ss->sc;
-	ifp = sc->ifp;
 	tx = &ss->tx;
 
 	ip_off = sizeof (struct ether_header);
@@ -2370,11 +2366,9 @@ static void
 mxge_vlan_tag_remove(struct mbuf *m, uint32_t *csum)
 {
 	struct ether_vlan_header *evl;
-	struct ether_header *eh;
 	uint32_t partial;
 
 	evl = mtod(m, struct ether_vlan_header *);
-	eh = mtod(m, struct ether_header *);
 
 	/*
 	 * fix checksum by subtracting EVL_ENCAPLEN bytes
@@ -4252,9 +4246,10 @@ abort_with_msix_table:
 static int
 mxge_add_single_irq(mxge_softc_t *sc)
 {
-	int count, err, rid;
-
+	int err, rid;
 #ifdef OLD_MSI
+	int count;
+
 	count = pci_msi_count(sc->dev);
 	if (count == 1 && pci_alloc_msi(sc->dev, &count) == 0) {
 		rid = 1;
@@ -4263,7 +4258,6 @@ mxge_add_single_irq(mxge_softc_t *sc)
 		sc->legacy_irq = 1;
 	}
 #else
-	count = 0;
 	rid = 0;
 	sc->legacy_irq = 1;
 #endif

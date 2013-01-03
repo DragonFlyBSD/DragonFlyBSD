@@ -821,7 +821,6 @@ sln_rx(struct sln_softc *sc)
 	u_long rx_space;
 	u_long rx_size = 0;
 	u_long rx_size_align = 0;
-	uint32_t rx_bytes = 0;
 	u_long pkt_size = 0;
 
 	cur_rx = SLN_READ_4(sc, SL_RBW_PTR);
@@ -899,9 +898,6 @@ sln_rx(struct sln_softc *sc)
 		if_printf(ifp, "\n");
 #endif
 		/* No errors; receive the packet. */
-		rx_bytes = rx_bytes + rx_size + 4;	/* 4 bytes for receive
-							 * frame header */
-
 		if (rx_bufpos == (sc->sln_bufdata.sln_rx_buf + SL_RX_BUFLEN))
 			rx_bufpos = sc->sln_bufdata.sln_rx_buf;
 
