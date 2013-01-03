@@ -320,7 +320,7 @@ if_start_need_schedule(struct ifaltq *ifq, int running)
 		 *    TBR callout will call ifnet.if_start
 		 */
 		if (!running || !ifq_data_ready(ifq)) {
-			ifq->altq_started = 0;
+			ifq_clr_started(ifq);
 			ALTQ_UNLOCK(ifq);
 			return 0;
 		}
@@ -381,12 +381,12 @@ if_devstart(struct ifnet *ifp)
 	ASSERT_IFNET_SERIALIZED_TX(ifp);
 
 	ALTQ_LOCK(ifq);
-	if (ifq->altq_started || !ifq_data_ready(ifq)) {
+	if (ifq_is_started(ifq) || !ifq_data_ready(ifq)) {
 		logifstart(avoid, ifp);
 		ALTQ_UNLOCK(ifq);
 		return;
 	}
-	ifq->altq_started = 1;
+	ifq_set_started(ifq);
 	ALTQ_UNLOCK(ifq);
 
 	logifstart(run, ifp);
@@ -2575,7 +2575,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		}
 		avoid_start = 0;
 	}
-	if (!ifq->altq_started) {
+	if (!ifq_is_started(ifq)) {
 		if (avoid_start) {
 			ALTQ_UNLOCK(ifq);
 
@@ -2592,7 +2592,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		/*
 		 * Hold the interlock of ifnet.if_start
 		 */
-		ifq->altq_started = 1;
+		ifq_set_started(ifq);
 		start = 1;
 	}
 	ALTQ_UNLOCK(ifq);
@@ -2850,11 +2850,11 @@ if_start_rollup(void)
 			int start = 0;
 
 			ALTQ_LOCK(ifq);
-			if (!ifq->altq_started) {
+			if (!ifq_is_started(ifq)) {
 				/*
 				 * Hold the interlock of ifnet.if_start
 				 */
-				ifq->altq_started = 1;
+				ifq_set_started(ifq);
 				start = 1;
 			}
 			ALTQ_UNLOCK(ifq);

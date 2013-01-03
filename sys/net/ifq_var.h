@@ -345,5 +345,32 @@ ifq_data_ready(struct ifaltq *_ifq)
 	return !ifq_is_empty(_ifq);
 }
 
+/*
+ * ALTQ lock must be held
+ */
+static __inline int
+ifq_is_started(const struct ifaltq *_ifq)
+{
+	return _ifq->altq_started;
+}
+
+/*
+ * ALTQ lock must be held
+ */
+static __inline void
+ifq_set_started(struct ifaltq *_ifq)
+{
+	_ifq->altq_started = 1;
+}
+
+/*
+ * ALTQ lock must be held
+ */
+static __inline void
+ifq_clr_started(struct ifaltq *_ifq)
+{
+	_ifq->altq_started = 0;
+}
+
 #endif	/* _KERNEL */
 #endif	/* _NET_IFQ_VAR_H_ */
