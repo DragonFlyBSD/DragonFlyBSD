@@ -966,30 +966,6 @@ done:
 	usbd_transfer(xfer);
 }
 
-static void
-aue_start_ipifunc(void *arg)
-{
-	struct ifnet *ifp = arg;
-	struct lwkt_msg *lmsg = &ifp->if_start_nmsg[mycpuid].lmsg;
-
-	crit_enter();
-	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_portfn(mycpuid), lmsg);
-	crit_exit();
-}
-
-static void
-aue_start_schedule(struct ifnet *ifp)
-{
-        int cpu;
-
-	cpu = ifp->if_start_cpuid(ifp);
-	if (cpu != mycpuid)
-		lwkt_send_ipiq(globaldata_find(cpu), aue_start_ipifunc, ifp);
-	else
-		aue_start_ipifunc(ifp);
-}
-
 /*
  * A frame was downloaded to the chip. It's safe for us to clean up
  * the list buffers.
@@ -1024,7 +1000,7 @@ aue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	ifq_clr_oactive(&ifp->if_snd);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		aue_start_schedule(ifp);
+		if_devstart_sched(ifp);
 }
 
 static void
@@ -1052,7 +1028,7 @@ aue_tick(void *xsc)
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		sc->aue_link++;
 		if (!ifq_is_empty(&ifp->if_snd))
-			aue_start_schedule(ifp);
+			if_devstart_sched(ifp);
 	}
 
 	callout_reset(&sc->aue_stat_timer, hz, aue_tick, sc);

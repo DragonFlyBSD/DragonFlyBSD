@@ -407,6 +407,13 @@ if_devstart(struct ifnet *ifp)
 	}
 }
 
+/* Device driver ifnet.if_start schedule helper function */
+void
+if_devstart_sched(struct ifnet *ifp)
+{
+	ifq_ifstart_schedule(&ifp->if_snd, 1);
+}
+
 static void
 if_default_serialize(struct ifnet *ifp, enum ifnet_serialize slz __unused)
 {
