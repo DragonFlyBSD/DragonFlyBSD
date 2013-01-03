@@ -564,9 +564,6 @@ static uint8_t
 acpi_fujitsu_check_hardware(struct acpi_fujitsu_softc *sc)
 {
 	int val;
-	struct acpi_softc *acpi_sc;
-
-	acpi_sc = acpi_device_get_parent_softc(sc->dev);
 
 	ACPI_SERIAL_ASSERT(fujitsu);
 	/* save the hotkey bitmask */

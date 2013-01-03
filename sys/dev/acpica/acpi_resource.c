@@ -58,7 +58,8 @@ acpi_lookup_irq_handler(ACPI_RESOURCE *res, void *context)
 {
     struct lookup_irq_request *req;
     size_t len;
-    u_int irqnum, irq;
+    u_int irqnum;
+    u_int irq __debugvar;
 
     switch (res->Type) {
     case ACPI_RESOURCE_TYPE_IRQ:
