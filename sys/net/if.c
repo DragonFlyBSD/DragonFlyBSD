@@ -273,7 +273,8 @@ if_start_schedule(struct ifnet *ifp, int force)
 
 	if (!force && curthread->td_type == TD_TYPE_NETISR &&
 	    ifq_stage_cntmax > 0) {
-		struct ifaltq_stage *stage = &ifp->if_snd.altq_stage[mycpuid];
+		struct ifaltq_stage *stage =
+		    ifq_get_stage(&ifp->if_snd, mycpuid);
 
 		stage->ifqs_cnt = 0;
 		stage->ifqs_len = 0;
@@ -705,7 +706,7 @@ static void
 ifq_stage_detach_handler(netmsg_t nmsg)
 {
 	struct ifaltq *ifq = nmsg->lmsg.u.ms_resultp;
-	struct ifaltq_stage *stage = &ifq->altq_stage[mycpuid];
+	struct ifaltq_stage *stage = ifq_get_stage(ifq, mycpuid);
 
 	if (stage->ifqs_flags & IFQ_STAGE_FLAG_QUED)
 		ifq_stage_remove(&ifq_stage_heads[mycpuid], stage);
@@ -2557,7 +2558,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 
 	if (curthread->td_type == TD_TYPE_NETISR) {
 		head = &ifq_stage_heads[mycpuid];
-		stage = &ifq->altq_stage[mycpuid];
+		stage = ifq_get_stage(ifq, mycpuid);
 
 		stage->ifqs_cnt++;
 		stage->ifqs_len += len;

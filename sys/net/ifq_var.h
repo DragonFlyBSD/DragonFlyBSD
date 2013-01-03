@@ -372,5 +372,11 @@ ifq_clr_started(struct ifaltq *_ifq)
 	_ifq->altq_started = 0;
 }
 
+static __inline struct ifaltq_stage *
+ifq_get_stage(struct ifaltq *_ifq, int cpuid)
+{
+	return &_ifq->altq_stage[cpuid];
+}
+
 #endif	/* _KERNEL */
 #endif	/* _NET_IFQ_VAR_H_ */
