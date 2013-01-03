@@ -23,6 +23,7 @@ LINPROCFS		opt_dontuse.h	#Linux compatible procfs
 NDISAPI			opt_dontuse.h
 
 COMPAT_DF12		opt_compatdf12.h
+NPX_DEBUG		opt_debug_npx.h
 
 # i386 SMP options
 
