@@ -360,7 +360,6 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
-			IF_DROP(&ifp->if_snd);
 			ifp->if_oerrors++;
 			return (ENOBUFS);
 		} else {
@@ -374,7 +373,6 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
-			IF_DROP(&ifp->if_snd);
 			ifp->if_oerrors++;
 			return ENOBUFS;
 		} else
