@@ -3795,17 +3795,15 @@ tulip_ifstart(struct ifnet *ifp)
 	if ((sc->tulip_flags & (TULIP_WANTSETUP|TULIP_TXPROBE_ACTIVE)) == TULIP_WANTSETUP)
 	    tulip_txput_setup(sc);
 
-	while (sc->tulip_if.if_snd.ifq_head != NULL) {
+	while (!ifq_is_empty(&sc->tulip_if.if_snd)) {
 	    struct mbuf *m;
 
-	    ALTQ_LOCK(&sc->tulip_if.if_snd);
-	    IF_DEQUEUE(&sc->tulip_if.if_snd, m);
-	    ALTQ_UNLOCK(&sc->tulip_if.if_snd);
+	    m = ifq_dequeue(&sc->tulip_if.if_snd, NULL);
+	    if (m == NULL)
+	    	break;
 
 	    if ((m = tulip_txput(sc, m)) != NULL) {
-		ALTQ_LOCK(&sc->tulip_if.if_snd);
-		IF_PREPEND(&sc->tulip_if.if_snd, m);
-		ALTQ_UNLOCK(&sc->tulip_if.if_snd);
+		ifq_prepend(&sc->tulip_if.if_snd, m);
 		break;
 	    }
 	}
