@@ -28,13 +28,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-/*
- * NOTE ON MPSAFE access.  Routines which manipulate the packet queue must
- * be called within a critical section to interlock subsystems based on
- * the MP lock, and must be holding the interface serializer to interlock
- * MPSAFE subsystems.  Once all subsystems are made MPSAFE, the critical
- * section will no longer be required.
- */
 
 #ifndef _NET_IFQ_VAR_H_
 #define _NET_IFQ_VAR_H_
@@ -67,19 +60,24 @@
 struct ifaltq;
 
 /*
- * Support for non-ALTQ interfaces.
+ * Support for "classic" ALTQ interfaces.
  */
 int		ifq_classic_enqueue(struct ifaltq *, struct mbuf *,
-				    struct altq_pktattr *);
+		    struct altq_pktattr *);
 struct mbuf	*ifq_classic_dequeue(struct ifaltq *, struct mbuf *, int);
 int		ifq_classic_request(struct ifaltq *, int, void *);
 void		ifq_set_classic(struct ifaltq *);
 
 void		ifq_set_maxlen(struct ifaltq *, int);
+
+/*
+ * Dispatch a packet to an interface.
+ */
 int		ifq_dispatch(struct ifnet *, struct mbuf *,
-			     struct altq_pktattr *);
+		    struct altq_pktattr *);
 
 #ifdef ALTQ
+
 static __inline int
 ifq_is_enabled(struct ifaltq *_ifq)
 {
@@ -91,7 +89,9 @@ ifq_is_attached(struct ifaltq *_ifq)
 {
 	return(_ifq->altq_disc != NULL);
 }
-#else
+
+#else	/* !ALTQ */
+
 static __inline int
 ifq_is_enabled(struct ifaltq *_ifq)
 {
@@ -103,20 +103,15 @@ ifq_is_attached(struct ifaltq *_ifq)
 {
 	return(0);
 }
-#endif
 
-/*
- * WARNING: Should only be called in an MPSAFE manner.
- */
+#endif	/* ALTQ */
+
 static __inline int
 ifq_is_ready(struct ifaltq *_ifq)
 {
 	return(_ifq->altq_flags & ALTQF_READY);
 }
 
-/*
- * WARNING: Should only be called in an MPSAFE manner.
- */
 static __inline void
 ifq_set_ready(struct ifaltq *_ifq)
 {
@@ -124,7 +119,7 @@ ifq_set_ready(struct ifaltq *_ifq)
 }
 
 /*
- * WARNING: Should only be called in an MPSAFE manner.
+ * ALTQ lock must be held
  */
 static __inline int
 ifq_enqueue_locked(struct ifaltq *_ifq, struct mbuf *_m,
@@ -149,9 +144,6 @@ ifq_enqueue(struct ifaltq *_ifq, struct mbuf *_m, struct altq_pktattr *_pa)
 	return _error;
 }
 
-/*
- * WARNING: Should only be called in an MPSAFE manner.
- */
 static __inline struct mbuf *
 ifq_dequeue(struct ifaltq *_ifq, struct mbuf *_mpolled)
 {
@@ -180,7 +172,7 @@ ifq_dequeue(struct ifaltq *_ifq, struct mbuf *_mpolled)
 }
 
 /*
- * WARNING: Should only be called in an MPSAFE manner.
+ * ALTQ lock must be held
  */
 static __inline struct mbuf *
 ifq_poll_locked(struct ifaltq *_ifq)
@@ -210,7 +202,7 @@ ifq_poll(struct ifaltq *_ifq)
 }
 
 /*
- * WARNING: Should only be called in an MPSAFE manner.
+ * ALTQ lock must be held
  */
 static __inline void
 ifq_purge_locked(struct ifaltq *_ifq)
@@ -239,7 +231,7 @@ ifq_purge(struct ifaltq *_ifq)
 }
 
 /*
- * WARNING: Should only be called in an MPSAFE manner.
+ * ALTQ lock must be held
  */
 static __inline void
 ifq_purge_all_locked(struct ifaltq *_ifq)
@@ -256,9 +248,6 @@ ifq_purge_all(struct ifaltq *_ifq)
 	ALTQ_UNLOCK(_ifq);
 }
 
-/*
- * WARNING: Should only be called in an MPSAFE manner.
- */
 static __inline void
 ifq_classify(struct ifaltq *_ifq, struct mbuf *_m, uint8_t _af,
 	     struct altq_pktattr *_pa)
@@ -285,18 +274,27 @@ ifq_prepend(struct ifaltq *_ifq, struct mbuf *_m)
 	ALTQ_UNLOCK(_ifq);
 }
 
+/*
+ * Interface TX serializer must be held
+ */
 static __inline void
 ifq_set_oactive(struct ifaltq *_ifq)
 {
 	_ifq->altq_hw_oactive = 1;
 }
 
+/*
+ * Interface TX serializer must be held
+ */
 static __inline void
 ifq_clr_oactive(struct ifaltq *_ifq)
 {
 	_ifq->altq_hw_oactive = 0;
 }
 
+/*
+ * Interface TX serializer must be held
+ */
 static __inline int
 ifq_is_oactive(const struct ifaltq *_ifq)
 {
@@ -304,13 +302,11 @@ ifq_is_oactive(const struct ifaltq *_ifq)
 }
 
 /*
- * Hand a packet to an interface. 
+ * Hand a packet to an interface.
  *
- * For subsystems protected by the MP lock, access to the queue is protected
- * by a critical section.
- *
- * For MPSAFE subsystems and drivers, access to the queue is protected by
- * the ifnet serializer.
+ * Interface TX serializer must be held.  If the interface TX
+ * serializer is not held yet, ifq_dispatch() should be used
+ * to get better performance.
  */
 static __inline int
 ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
@@ -335,6 +331,9 @@ ifq_is_empty(struct ifaltq *_ifq)
 	return(_ifq->ifq_len == 0);
 }
 
+/*
+ * ALTQ lock must be held
+ */
 static __inline int
 ifq_data_ready(struct ifaltq *_ifq)
 {
