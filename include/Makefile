@@ -181,7 +181,7 @@ copies:		mtree_setup
 		${DESTDIR}/usr/include/crypto; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 opencrypto/*.h \
 		${DESTDIR}/usr/include/crypto
-	cd ${.CURDIR}/../sys/dev/acpica5; \
+	cd ${.CURDIR}/../sys/dev/acpica; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 acpiio.h \
 		${DESTDIR}/usr/include/dev/acpica
 .if exists(${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include)

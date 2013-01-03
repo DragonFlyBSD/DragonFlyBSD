@@ -62,7 +62,7 @@
 #include <machine_base/apic/ioapic_ipl.h>
 #include <machine_base/apic/apicreg.h>
 
-#include <dev/acpica5/acpi_sci_var.h>
+#include <dev/acpica/acpi_sci_var.h>
 
 #define IOAPIC_HWI_VECTORS	IDT_HWI_VECTORS
 

@@ -236,9 +236,9 @@ platform/pc64/x86_64/ipl_funcs.c	standard
 kern/syscalls.c			standard
 platform/pc64/x86_64/mp_machdep.c	standard
 platform/pc64/x86_64/mptable.c		standard
-platform/pc64/acpica5/acpi_sdt.c	standard
-platform/pc64/acpica5/acpi_fadt.c	standard
-platform/pc64/acpica5/acpi_madt.c	standard
+platform/pc64/acpica/acpi_sdt.c	standard
+platform/pc64/acpica/acpi_fadt.c	standard
+platform/pc64/acpica/acpi_madt.c	standard
 dev/misc/atkbd/atkbd_isa.c		optional	atkbd
 dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
 dev/misc/ppc/ppc.c			optional	ppc
