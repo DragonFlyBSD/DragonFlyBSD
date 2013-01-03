@@ -940,11 +940,11 @@ wi_start_locked(struct ifnet *ifp)
 	memset(&frmhdr, 0, sizeof(frmhdr));
 	cur = sc->sc_txnext;
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m0);
+		m0 = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m0 == NULL)
 			break;
 		if (sc->sc_txd[cur].d_len != 0) {
-			IF_PREPEND(&ifp->if_snd, m0);
+			ifq_prepend(&ifp->if_snd, m0);
 			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
