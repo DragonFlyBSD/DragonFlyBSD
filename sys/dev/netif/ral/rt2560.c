@@ -1916,11 +1916,11 @@ rt2560_start_locked(struct ifnet *ifp)
 	struct ieee80211_node *ni;
 
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 		if (sc->txq.queued >= RT2560_TX_RING_COUNT - 1) {
-			IF_PREPEND(&ifp->if_snd, m);
+			ifq_prepend(&ifp->if_snd, m);
 			ifq_set_oactive(&ifp->if_snd);
 			sc->sc_flags |= RT2560_F_DATA_OACTIVE;
 			break;
