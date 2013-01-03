@@ -133,7 +133,6 @@ cxm_iic_attach(device_t dev)
 	int error;
 	int numkids;
 	int i;
-	int unit;
 	bus_space_handle_t *bhandlep;
 	bus_space_tag_t *btagp;
 	struct cxm_iic_softc *sc;
@@ -141,7 +140,6 @@ cxm_iic_attach(device_t dev)
 
 	/* Get the device data */
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 
 	/* retrieve the cxm btag and bhandle */
 	if (BUS_READ_IVAR(device_get_parent(dev), dev,

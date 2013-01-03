@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_tuner.c,v 1.20 2005/11/13 13:26:37 netchild Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.10 2007/10/03 19:27:08 swildner Exp $
  */
 
 
@@ -1189,7 +1188,7 @@ MT2032_ComputeFreq(
 {				/* all in Hz */
 	int             fref, lo1, lo1n, lo1a, s, sel;
 	int             lo1freq, desired_lo1, desired_lo2, lo2, lo2n, lo2a,
-	                lo2num, lo2freq;
+	                lo2num;
 	int             nLO1adjust;
 
 	fref = 5250 * 1000;	/* 5.25MHz */
@@ -1254,7 +1253,6 @@ MT2032_ComputeFreq(
 	lo2a = lo2 - (lo2n * 8);
 	/* scale to fit in 32bit arith */
 	lo2num = ((desired_lo2 / 1000) % (fref / 1000)) * 3780 / (fref / 1000);
-	lo2freq = (lo2a + 8 * lo2n) * fref + lo2num * (fref / 1000) / 3780 * 1000;
 
 	if (lo1a < 0 || lo1a > 7 || lo1n < 17 || lo1n > 48 || lo2a < 0 ||
 	    lo2a > 7 || lo2n < 17 || lo2n > 30) {
