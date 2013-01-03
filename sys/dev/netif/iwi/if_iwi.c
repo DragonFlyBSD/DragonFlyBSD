@@ -1935,14 +1935,14 @@ iwi_start_locked(struct ifnet *ifp)
 		return;
 
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 		ac = M_WME_GETAC(m);
 		if (sc->txq[ac].queued > IWI_TX_RING_COUNT - 8) {
 			/* there is no place left in this ring; tail drop */
 			/* XXX tail drop */
-			IF_PREPEND(&ifp->if_snd, m);
+			ifq_prepend(&ifp->if_snd, m);
 			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
