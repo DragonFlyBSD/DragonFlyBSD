@@ -512,10 +512,6 @@ spicread(struct dev_read_args *ap)
 static int
 spicioctl(struct dev_ioctl_args *ap)
 {
-	struct spic_softc *sc;
-
-	sc = devclass_get_softc(spic_devclass, 0);
-
 	return EIO;
 }
 

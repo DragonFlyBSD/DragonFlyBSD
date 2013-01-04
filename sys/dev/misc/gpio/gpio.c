@@ -298,12 +298,10 @@ gpio_pin_caps(struct gpio *gp, struct gpio_mapping *map, int pin)
 static int
 gpio_open(struct dev_open_args *ap)
 {
-	struct gpio	*gp;
 	gpio_pin_t	*pin;
 	cdev_t	dev;
 
 	dev = ap->a_head.a_dev;
-	gp = dev->si_drv1;
 	pin = dev->si_drv2;
 
 	if (pin->pin_opened || pin->pin_mapped)
@@ -317,12 +315,10 @@ gpio_open(struct dev_open_args *ap)
 static int
 gpio_close(struct dev_close_args *ap)
 {
-	struct gpio	*gp;
 	gpio_pin_t	*pin;
 	cdev_t	dev;
 
 	dev = ap->a_head.a_dev;
-	gp = dev->si_drv1;
 	pin = dev->si_drv2;
 
 	if (pin->pin_opened)

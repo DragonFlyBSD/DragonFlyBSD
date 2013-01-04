@@ -1091,12 +1091,6 @@ static void
 NdisMInitializeTimer(ndis_miniport_timer *timer, ndis_handle handle,
     ndis_timer_function func, void *ctx)
 {
-	ndis_miniport_block	*block;
-	struct ndis_softc	*sc;
-
-	block = (ndis_miniport_block *)handle;
-	sc = device_get_softc(block->nmb_physdeviceobj->do_devext);
-
 	/* Save the driver's funcptr and context */
 
 	timer->nmt_timerfunc = func;

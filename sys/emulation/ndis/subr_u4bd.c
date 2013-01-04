@@ -1093,7 +1093,6 @@ usbd_xfertask(device_object *dobj, void *arg)
 {
 	int error;
 	irp *ip;
-	device_t dev;
 	list_entry *l;
 	struct ndis_softc *sc = arg;
 	struct ndisusb_xferdone *nd;
@@ -1103,8 +1102,6 @@ usbd_xfertask(device_object *dobj, void *arg)
 	union usbd_urb *urb;
 	usb_error_t status;
 	void *priv;
-
-	dev = sc->ndis_dev;
 
 	if (IsListEmpty(&sc->ndisusb_xferdonelist))
 		return;
