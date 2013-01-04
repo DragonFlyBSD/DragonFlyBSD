@@ -3198,10 +3198,8 @@ sysctl_debug_ng_dump_items(SYSCTL_HANDLER_ARGS)
 {
 	int error;
 	int val;
-	int i;
 
 	val = allocated;
-	i = 1;
 	error = sysctl_handle_int(oidp, &val, 0, req);
 	if (error != 0 || req->newptr == NULL)
 		return (error);

@@ -539,7 +539,6 @@ ng_atm_event_func(node_p node, hook_p hook, void *arg, int event)
 	  case ATMEV_FLOW_CONTROL:
 	    {
 		struct atmev_flow_control *ev = arg;
-		struct ngm_queue_state *qstate;
 
 		/* find the connection */
 		LIST_FOREACH(vcc, &priv->vccs, link)
@@ -554,7 +553,6 @@ ng_atm_event_func(node_p node, hook_p hook, void *arg, int event)
 		    sizeof(struct ngm_queue_state), M_WAITOK | M_NULLOK);
 		if (mesg == NULL)
 			break;
-		qstate = (struct ngm_queue_state *)mesg->data;
 
 		/* XXX have to figure out how to get that info */
 
@@ -654,15 +652,12 @@ static int
 ng_atm_cpcs_init(node_p node, const struct ngm_atm_cpcs_init *arg)
 {
 	struct priv *priv = NG_NODE_PRIVATE(node);
-	const struct ifatm_mib *mib;
 	struct ngvcc *vcc;
 	struct atmio_openvcc data;
 	int err;
 
 	if(priv->ifp->if_ioctl == NULL)
 		return (ENXIO);
-
-	mib = (const struct ifatm_mib *)(priv->ifp->if_linkmib);
 
 	LIST_FOREACH(vcc, &priv->vccs, link)
 		if (strcmp(arg->name, NG_HOOK_NAME(vcc->hook)) == 0)

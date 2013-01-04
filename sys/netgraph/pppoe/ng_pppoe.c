@@ -883,7 +883,6 @@ ng_pppoe_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	const struct pppoe_full_hdr *wh;
 	const struct pppoe_hdr	*ph;
 	int			error = 0;
-	u_int16_t		session;
 	u_int16_t		length;
 	u_int8_t		code;
 	const struct pppoe_tag	*utag = NULL, *tag = NULL;
@@ -919,7 +918,6 @@ AAA
 		}
 		wh = mtod(m, struct pppoe_full_hdr *);
 		ph = &wh->ph;
-		session = ntohs(wh->ph.sid);
 		length = ntohs(wh->ph.length);
 		code = wh->ph.code; 
 		switch(wh->eh.ether_type) {
@@ -1309,7 +1307,6 @@ AAA
 			}
 			wh = mtod(m, struct pppoe_full_hdr *);
 			ph = &wh->ph;
-			session = ntohs(wh->ph.sid);
 			length = ntohs(wh->ph.length);
 			code = wh->ph.code; 
 			if ( code != PADI_CODE) {

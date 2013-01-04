@@ -409,7 +409,7 @@ static int
 ng_fec_delport(struct ng_fec_private *priv, char *iface)
 {
 	struct ng_fec_bundle	*b;
-	struct ifnet		*ifp, *bifp;
+	struct ifnet		*bifp;
 	struct arpcom		*ac;
 	struct sockaddr_dl	*sdl;
 	struct ng_fec_portlist	*p;
@@ -418,7 +418,6 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 		return(EINVAL);
 
 	b = &priv->fec_bundle;
-	ifp = &priv->arpcom.ac_if;
 
 	/* Find the interface */
 	bifp = ifunit(iface);
