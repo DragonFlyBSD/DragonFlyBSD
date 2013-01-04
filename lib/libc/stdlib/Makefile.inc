@@ -15,11 +15,15 @@ MISRCS+=a64l.c abort.c abs.c atexit.c aligned_alloc.c \
 	strtol.c strtoll.c strtonum.c strtoq.c strtoul.c strtoull.c \
 	strtoumax.c strtouq.c system.c tdelete.c tfind.c tsearch.c twalk.c
 
-.if ${MACHINE_ARCH} == "x86_64"
-MISRCS+= dmalloc.c
-.else
+# dmalloc has a leak somewhere and is eating up too much
+# memory in long-running programs, and also doesn't do cache
+# coloring for large allocations.  Use nmalloc for now.
+#
+#.if ${MACHINE_ARCH} == "x86_64"
+#MISRCS+= dmalloc.c
+#.else
 MISRCS+= nmalloc.c
-.endif
+#.endif
 
 # machine-dependent stdlib sources
 .if exists(${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib/Makefile.inc)
