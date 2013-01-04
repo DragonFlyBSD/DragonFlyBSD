@@ -821,7 +821,15 @@ _slaballoc(size_t size, int flags)
 		bigalloc_t big;
 		bigalloc_t *bigp;
 
+		/*
+		 * Page-align and cache-color in case of virtually indexed
+		 * physically tagged L1 caches (aka SandyBridge).  No sweat
+		 * otherwise, so just do it.
+		 */
 		size = (size + PAGE_MASK) & ~(size_t)PAGE_MASK;
+		if ((size & 8191) == 0)
+			size += 4096;
+
 		chunk = _vmem_alloc(size, PAGE_SIZE, flags);
 		if (chunk == NULL)
 			return(NULL);
