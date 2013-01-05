@@ -4470,7 +4470,7 @@ xptnextfreepathid(void)
 {
 	struct cam_eb *bus;
 	path_id_t pathid;
-	char *strval;
+	const char *strval;
 
 	pathid = 0;
 	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);

@@ -1969,7 +1969,7 @@ resource_long_value(const char *name, int unit, const char *resname,
 
 int
 resource_string_value(const char *name, int unit, const char *resname,
-		      char **result)
+    const char **result)
 {
 	int error;
 	struct config_resource *res;

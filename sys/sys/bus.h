@@ -423,7 +423,7 @@ int	resource_int_value(const char *name, int unit, const char *resname,
 int	resource_long_value(const char *name, int unit, const char *resname,
 			    long *result);
 int	resource_string_value(const char *name, int unit, const char *resname,
-			      char **result);
+			      const char **result);
 int     resource_disabled(const char *name, int unit);
 int	resource_query_string(int i, const char *resname, const char *value);
 char	*resource_query_name(int i);

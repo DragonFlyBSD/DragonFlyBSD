@@ -402,9 +402,9 @@ camperiphnextunit(struct periph_driver *p_drv, u_int newunit, int wired,
 		  path_id_t pathid, target_id_t target, lun_id_t lun)
 {
 	struct	cam_periph *periph;
-	char	*periph_name, *strval;
+	char	*periph_name;
 	int	i, val, dunit;
-	const char *dname;
+	const char *dname, *strval;
 
 	periph_name = p_drv->driver_name;
 	for (;;newunit++) {
@@ -459,8 +459,8 @@ camperiphunit(struct periph_driver *p_drv,
 {
 	u_int	unit;
 	int	hit, i, val, dunit;
-	const char *dname;
-	char	pathbuf[32], *strval, *periph_name;
+	const char *dname, *strval;
+	char	pathbuf[32], *periph_name;
 
 	unit = 0;
 

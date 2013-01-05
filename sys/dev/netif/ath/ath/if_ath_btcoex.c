@@ -215,7 +215,7 @@ ath_btcoex_attach(struct ath_softc *sc)
 {
 	int ret;
 	struct ath_hal *ah = sc->sc_ah;
-	char *profname;
+	const char *profname;
 
 	/*
 	 * No chipset bluetooth coexistence? Then do nothing.

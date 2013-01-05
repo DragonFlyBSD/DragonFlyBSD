@@ -523,7 +523,7 @@ isp_get_pci_options(device_t dev, int *m1, int *m2)
 static void
 isp_get_specific_options(device_t dev, int chan, ispsoftc_t *isp)
 {
-	char *sptr;
+	const char *sptr;
 	int tval;
 
 	if (resource_int_value(device_get_name(dev), device_get_unit(dev), "iid", &tval)) {
