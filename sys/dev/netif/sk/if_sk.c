@@ -1523,12 +1523,10 @@ skc_attach(device_t dev)
 	}
 
 	cpuid = rman_get_cpuid(sc->sk_irq);
-	KKASSERT(cpuid >= 0 && cpuid < ncpus);
-
 	if (sc->sk_if[0] != NULL)
-		sc->sk_if[0]->arpcom.ac_if.if_cpuid = cpuid;
+		ifq_set_cpuid(&sc->sk_if[0]->arpcom.ac_if.if_snd, cpuid);
 	if (sc->sk_if[1] != NULL)
-		sc->sk_if[1]->arpcom.ac_if.if_cpuid = cpuid;
+		ifq_set_cpuid(&sc->sk_if[1]->arpcom.ac_if.if_snd, cpuid);
 
 	return 0;
 fail:

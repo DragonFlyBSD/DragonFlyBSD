@@ -1040,8 +1040,7 @@ vge_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->vge_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->vge_irq));
 
 	return 0;
 fail:
@@ -1543,11 +1542,11 @@ vge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			vge_disable_intr(sc);
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			vge_enable_intr(sc, 0xffffffff);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->vge_irq));
 	}
 }
 

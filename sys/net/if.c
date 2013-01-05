@@ -213,25 +213,6 @@ ifinit(void *dummy)
 	if_slowtimo(0);
 }
 
-static int
-if_start_cpuid(struct ifnet *ifp)
-{
-	return ifp->if_cpuid;
-}
-
-#ifdef IFPOLL_ENABLE
-static int
-if_start_cpuid_npoll(struct ifnet *ifp)
-{
-	int poll_cpuid = ifp->if_npoll_cpuid;
-
-	if (poll_cpuid >= 0)
-		return poll_cpuid;
-	else
-		return ifp->if_cpuid;
-}
-#endif
-
 static void
 ifq_ifstart_ipifunc(void *arg)
 {
@@ -284,7 +265,7 @@ ifq_ifstart_schedule(struct ifaltq *ifq, int force)
 		return;
 	}
 
-	cpu = ifp->if_start_cpuid(ifp);
+	cpu = ifq_get_cpuid(ifq);
 	if (cpu != mycpuid)
 		lwkt_send_ipiq(globaldata_find(cpu), ifq_ifstart_ipifunc, ifp);
 	else
@@ -342,7 +323,7 @@ if_start_dispatch(netmsg_t msg)
 	lwkt_replymsg(lmsg, 0);	/* reply ASAP */
 	crit_exit();
 
-	if (mycpuid != ifp->if_start_cpuid(ifp)) {
+	if (mycpuid != ifq_get_cpuid(ifq)) {
 		/*
 		 * We need to chase the ifnet CPU change.
 		 */
@@ -504,16 +485,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		ifp->if_serializer = serializer;
 	}
 
-	ifp->if_start_cpuid = if_start_cpuid;
-	ifp->if_cpuid = 0;
-
-#ifdef IFPOLL_ENABLE
-	/* Device is not in polling mode by default */
-	ifp->if_npoll_cpuid = -1;
-	if (ifp->if_npoll != NULL)
-		ifp->if_start_cpuid = if_start_cpuid_npoll;
-#endif
-
 	ifp->if_start_nmsg = kmalloc(ncpus * sizeof(*ifp->if_start_nmsg),
 				     M_LWKTMSG, M_WAITOK);
 	for (i = 0; i < ncpus; ++i) {
@@ -606,6 +577,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifq->altq_prepended = NULL;
 	ALTQ_LOCK_INIT(ifq);
 	ifq_set_classic(ifq);
+	ifq_set_cpuid(ifq, 0);
 
 	ifq->altq_stage =
 	    kmalloc_cachealign(ncpus * sizeof(struct ifaltq_stage),

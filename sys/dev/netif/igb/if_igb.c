@@ -647,7 +647,7 @@ igb_attach(device_t dev)
 		ether_ifdetach(&sc->arpcom.ac_if);
 		goto failed;
 	}
-	sc->arpcom.ac_if.if_cpuid = sc->tx_rings[0].tx_intr_cpuid;
+	ifq_set_cpuid(&sc->arpcom.ac_if.if_snd, sc->tx_rings[0].tx_intr_cpuid);
 
 	return 0;
 
@@ -3038,7 +3038,7 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			else
 				igb_init(sc);
 		}
-		ifp->if_npoll_cpuid = sc->tx_npoll_off;
+		ifq_set_cpuid(&ifp->if_snd, sc->tx_npoll_off);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			if (sc->rx_ring_inuse == sc->rx_ring_cnt)
@@ -3046,7 +3046,7 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			else
 				igb_init(sc);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, sc->tx_rings[0].tx_intr_cpuid);
 	}
 }
 

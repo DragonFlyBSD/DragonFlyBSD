@@ -666,8 +666,7 @@ age_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->age_irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->age_irq_res));
 	return 0;
 fail:
 	age_detach(dev);

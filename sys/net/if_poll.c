@@ -382,7 +382,6 @@ ifpoll_register(struct ifnet *ifp)
 
 	ifp->if_flags |= IFF_NPOLLING;
 	ifp->if_npoll(ifp, info);
-	KASSERT(ifp->if_npoll_cpuid >= 0, ("invalid npoll cpuid"));
 
 	ifnet_deserialize_all(ifp);
 
@@ -429,7 +428,6 @@ ifpoll_deregister(struct ifnet *ifp)
 	if (!error) {
 		ifnet_serialize_all(ifp);
 		ifp->if_npoll(ifp, NULL);
-		KASSERT(ifp->if_npoll_cpuid < 0, ("invalid npoll cpuid"));
 		ifnet_deserialize_all(ifp);
 	}
 	return error;

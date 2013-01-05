@@ -822,8 +822,7 @@ emx_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->intr_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->intr_res));
 	return (0);
 fail:
 	emx_detach(dev);
@@ -3819,11 +3818,11 @@ emx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			emx_disable_intr(sc);
-		ifp->if_npoll_cpuid = sc->tx_npoll_off;
+		ifq_set_cpuid(&ifp->if_snd, sc->tx_npoll_off);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			emx_enable_intr(sc);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->intr_res));
 	}
 }
 

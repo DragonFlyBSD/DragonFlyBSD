@@ -229,8 +229,7 @@ struct ifnet {
 		(void *);
 	int	(*if_resolvemulti)	/* validate/resolve multicast */
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
-	int	(*if_start_cpuid)	/* cpuid to run if_start */
-		(struct ifnet *);
+	void	*if_unused5;
 	TAILQ_HEAD(, ifg_list) if_groups; /* linked list of groups per if */
 	void	(*if_unused1)(void);
 	int	if_unused2;
@@ -250,12 +249,11 @@ struct ifnet {
 #ifdef IFPOLL_ENABLE
 	void	(*if_npoll)
 		(struct ifnet *, struct ifpoll_info *);
-	int	if_npoll_cpuid;
 #else
 	/* Place holders */
 	void	(*if_npoll_unused)(void);
-	int	if_npoll_cpuid_unused;
 #endif
+	int	if_unused3;
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
@@ -265,7 +263,7 @@ struct ifnet {
 	struct lwkt_serialize *if_serializer;	/* serializer or MP lock */
 	struct lwkt_serialize if_default_serializer; /* if not supplied */
 	struct mtx	if_ioctl_mtx;	/* high-level ioctl serializing mutex */
-	int	if_cpuid;
+	int	if_unused4;
 	struct netmsg_base *if_start_nmsg; /* percpu msgs to sched if_start */
 	void	*if_pf_kif; /* pf interface abstraction */
 	void	*if_unused;

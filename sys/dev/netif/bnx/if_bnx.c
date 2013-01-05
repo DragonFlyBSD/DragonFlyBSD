@@ -2214,11 +2214,9 @@ bnx_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->bnx_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
-
-	sc->bnx_stat_cpuid = ifp->if_cpuid;
-	sc->bnx_intr_cpuid = ifp->if_cpuid;
+	sc->bnx_intr_cpuid = rman_get_cpuid(sc->bnx_irq);
+	sc->bnx_stat_cpuid = sc->bnx_intr_cpuid;
+	ifq_set_cpuid(&ifp->if_snd, sc->bnx_intr_cpuid);
 
 	return(0);
 fail:
@@ -2656,11 +2654,11 @@ bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			bnx_disable_intr(sc);
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			bnx_enable_intr(sc);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, sc->bnx_intr_cpuid);
 	}
 }
 

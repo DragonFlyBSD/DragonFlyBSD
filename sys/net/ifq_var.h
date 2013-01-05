@@ -378,5 +378,18 @@ ifq_get_stage(struct ifaltq *_ifq, int cpuid)
 	return &_ifq->altq_stage[cpuid];
 }
 
+static __inline int
+ifq_get_cpuid(const struct ifaltq *_ifq)
+{
+	return _ifq->altq_cpuid;
+}
+
+static __inline void
+ifq_set_cpuid(struct ifaltq *_ifq, int cpuid)
+{
+	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid altq_cpuid %d", cpuid));
+	_ifq->altq_cpuid = cpuid;
+}
+
 #endif	/* _KERNEL */
 #endif	/* _NET_IFQ_VAR_H_ */

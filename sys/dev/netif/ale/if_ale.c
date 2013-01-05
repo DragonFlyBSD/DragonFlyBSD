@@ -640,8 +640,7 @@ ale_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->ale_irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->ale_irq_res));
 	return 0;
 fail:
 	ale_detach(dev);

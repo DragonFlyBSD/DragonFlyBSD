@@ -147,13 +147,13 @@ fwe_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			fc->set_intr(fc, 0);
 			fwe->npoll.ifpc_stcount = 0;
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			/* enable interrupts */
 			fc->set_intr(fc, 1);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, 0 /* XXX */);
 	}
 }
 

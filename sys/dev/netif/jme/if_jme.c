@@ -1068,7 +1068,7 @@ jme_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-	ifp->if_cpuid = sc->jme_tx_cpuid;
+	ifq_set_cpuid(&ifp->if_snd, sc->jme_tx_cpuid);
 
 	return 0;
 fail:
@@ -3386,11 +3386,11 @@ jme_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			jme_disable_intr(sc);
-		ifp->if_npoll_cpuid = sc->jme_npoll_txoff;
+		ifq_set_cpuid(&ifp->if_snd, sc->jme_npoll_txoff);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			jme_enable_intr(sc);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, sc->jme_tx_cpuid);
 	}
 }
 

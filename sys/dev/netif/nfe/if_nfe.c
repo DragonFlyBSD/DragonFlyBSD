@@ -660,8 +660,7 @@ nfe_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->sc_irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
 
 	return 0;
 fail:
@@ -900,11 +899,11 @@ nfe_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			nfe_disable_intrs(sc);
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			nfe_enable_intrs(sc);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
 	}
 }
 

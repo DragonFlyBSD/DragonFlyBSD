@@ -976,6 +976,7 @@ alc_attach(device_t dev)
 		goto fail;
 	}
 #endif
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->alc_irq));
 
 fail:
 	if (error != 0)

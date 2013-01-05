@@ -999,9 +999,8 @@ bce_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->bce_res_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
-	sc->bce_intr_cpuid = ifp->if_cpuid;
+	sc->bce_intr_cpuid = rman_get_cpuid(sc->bce_res_irq);
+	ifq_set_cpuid(&ifp->if_snd, sc->bce_intr_cpuid);
 
 	/* Print some important debugging info. */
 	DBRUN(BCE_INFO, bce_dump_driver_state(sc));
@@ -5302,7 +5301,7 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
 			       (1 << 16) | sc->bce_tx_quick_cons_trip);
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			bce_enable_intr(sc);
@@ -5314,7 +5313,7 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			       (sc->bce_rx_quick_cons_trip_int << 16) |
 			       sc->bce_rx_quick_cons_trip);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, sc->bce_intr_cpuid);
 	}
 }
 

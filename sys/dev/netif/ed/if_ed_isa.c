@@ -40,6 +40,7 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/if_mib.h>
+#include <net/ifq_var.h>
 
 #include <bus/isa/isavar.h>
 
@@ -139,8 +140,8 @@ ed_isa_attach(device_t dev)
 		if (error) {
 			ed_isa_detach(dev);
 		} else {
-			ifp->if_cpuid = rman_get_cpuid(sc->irq_res);
-			KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+			ifq_set_cpuid(&ifp->if_snd,
+			    rman_get_cpuid(sc->irq_res));
 		}
 	} else {
 		ed_release_resources(dev);

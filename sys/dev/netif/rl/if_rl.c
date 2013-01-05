@@ -885,8 +885,7 @@ rl_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->rl_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->rl_irq));
 
 	return(0);
 
@@ -1224,13 +1223,13 @@ rl_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			CSR_WRITE_2(sc, RL_IMR, 0x0000);
 			sc->rl_npoll.ifpc_stcount = 0;
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			/* enable interrupts */
 			CSR_WRITE_2(sc, RL_IMR, RL_INTRS);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->rl_irq));
 	}
 }
 

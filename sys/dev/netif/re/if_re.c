@@ -1634,8 +1634,7 @@ re_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->re_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->re_irq));
 
 fail:
 	if (error)
@@ -2207,11 +2206,11 @@ re_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			re_setup_intr(sc, 0, RE_IMTYPE_NONE);
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			re_setup_intr(sc, 1, sc->re_imtype);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->re_irq));
 	}
 }
 #endif /* IFPOLL_ENABLE */

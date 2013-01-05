@@ -89,6 +89,7 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/if_arp.h>
+#include <net/ifq_var.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -443,8 +444,7 @@ le_pci_attach(device_t dev)
 		goto fail_am79900;
 	}
 
-	sc->ifp->if_cpuid = rman_get_cpuid(lesc->sc_ires);
-	KKASSERT(sc->ifp->if_cpuid >= 0 && sc->ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&sc->ifp->if_snd, rman_get_cpuid(lesc->sc_ires));
 
 	return (0);
 

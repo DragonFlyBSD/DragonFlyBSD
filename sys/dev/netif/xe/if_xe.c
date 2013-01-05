@@ -337,8 +337,7 @@ xe_attach (device_t dev)
     return err;
   }
 
-  scp->ifp->if_cpuid = rman_get_cpuid(scp->irq_res);
-  KKASSERT(scp->ifp->if_cpuid >= 0 && scp->ifp->if_cpuid < ncpus);
+  ifq_set_cpuid(&scp->ifp->if_snd, rman_get_cpuid(scp->irq_res));
 
   /* Done */
   return 0;

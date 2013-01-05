@@ -1737,12 +1737,10 @@ mskc_attach(device_t dev)
 	}
 
 	cpuid = rman_get_cpuid(sc->msk_irq);
-	KKASSERT(cpuid >= 0 && cpuid < ncpus);
-
 	if (sc->msk_if[0] != NULL)
-		sc->msk_if[0]->msk_ifp->if_cpuid = cpuid;
+		ifq_set_cpuid(&sc->msk_if[0]->msk_ifp->if_snd, cpuid);
 	if (sc->msk_if[1] != NULL)
-		sc->msk_if[1]->msk_ifp->if_cpuid = cpuid;
+		ifq_set_cpuid(&sc->msk_if[1]->msk_ifp->if_snd, cpuid);
 	return 0;
 fail:
 	mskc_detach(dev);

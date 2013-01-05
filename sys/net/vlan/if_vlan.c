@@ -550,7 +550,7 @@ vlan_start(struct ifnet *ifp)
 		nmp->nm_packet = m;
 		nmp->base.lmsg.u.ms_resultp = ifp_p;
 
-		lwkt_sendmsg(netisr_portfn(ifp_p->if_start_cpuid(ifp_p)),
+		lwkt_sendmsg(netisr_portfn(ifq_get_cpuid(&ifp_p->if_snd)),
 		    &nmp->base.lmsg);
 		ifp->if_opackets++;
 	}

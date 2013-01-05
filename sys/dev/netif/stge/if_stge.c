@@ -811,8 +811,7 @@ stge_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->sc_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq));
 
 fail:
 	if (error != 0)
@@ -1749,11 +1748,11 @@ stge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			CSR_WRITE_2(sc, STGE_IntEnable, 0);
 			sc->sc_npoll.ifpc_stcount = 0;
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			CSR_WRITE_2(sc, STGE_IntEnable, sc->sc_IntEnable);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq));
 	}
 }
 

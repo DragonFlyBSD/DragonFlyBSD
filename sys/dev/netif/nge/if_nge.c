@@ -914,8 +914,7 @@ nge_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->nge_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->nge_irq));
 
 	return(0);
 fail:
@@ -1468,13 +1467,13 @@ nge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			CSR_WRITE_4(sc, NGE_IER, 0);
 			sc->nge_npoll.ifpc_stcount = 0;
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			/* enable interrupts */
 			CSR_WRITE_4(sc, NGE_IER, 1);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->nge_irq));
 	}
 }
 

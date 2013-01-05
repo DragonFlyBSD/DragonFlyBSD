@@ -1179,8 +1179,7 @@ sis_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->sis_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sis_irq));
 
 fail:
 	if (error)
@@ -1562,13 +1561,13 @@ sis_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			CSR_WRITE_4(sc, SIS_IER, 0);
 			sc->sis_npoll.ifpc_stcount = 0;
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			/* enable interrupts */
 			CSR_WRITE_4(sc, SIS_IER, 1);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sis_irq));
 	}
 }
 

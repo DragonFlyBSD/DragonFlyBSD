@@ -3903,8 +3903,7 @@ rtw_attach(device_t dev)
 		goto err;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->sc_irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
 
 	device_printf(dev, "hardware version %c\n", sc->sc_hwverid);
 	if (bootverbose)

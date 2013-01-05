@@ -1531,8 +1531,7 @@ done:
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->xl_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->xl_irq));
 
 	return 0;
 
@@ -2299,13 +2298,13 @@ xl_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			xl_enable_intrs(sc, 0);
 		if (sc->xl_type != XL_TYPE_905B)
 			ifp->if_start = xl_start_poll;
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (sc->xl_type != XL_TYPE_905B)
 			ifp->if_start = xl_start;
 		if (ifp->if_flags & IFF_RUNNING)
 			xl_enable_intrs(sc, XL_INTRS);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->xl_irq));
 	}
 }
 
