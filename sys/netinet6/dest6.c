@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/dest6.c,v 1.1.2.4 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/dest6.c,v 1.4 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: dest6.c,v 1.34 2002/01/08 02:40:55 k-sugyou Exp $	*/
 
 /*
@@ -64,9 +63,6 @@ dest6_input(struct mbuf **mp, int *offp, int proto)
 	int off = *offp, dstoptlen, optlen;
 	struct ip6_dest *dstopts;
 	u_int8_t *opt;
-	struct ip6_hdr *ip6;
-
-	ip6 = mtod(m, struct ip6_hdr *);
 
 	/* validation of the length of the header */
 #ifndef PULLDOWN_TEST

@@ -591,7 +591,6 @@ esp_cbc_decrypt(struct mbuf *m, size_t off, struct secasvar *sav,
 	int scutoff;
 	int i;
 	int blocklen;
-	int derived;
 
 	if (ivlen != sav->ivlen || ivlen > sizeof(iv)) {
 		ipseclog((LOG_ERR, "esp_cbc_decrypt %s: "
@@ -616,7 +615,6 @@ esp_cbc_decrypt(struct mbuf *m, size_t off, struct secasvar *sav,
 		/* RFC 1827 */
 		ivoff = off + sizeof(struct esp);
 		bodyoff = off + sizeof(struct esp) + ivlen;
-		derived = 0;
 	} else {
 		/* RFC 2406 */
 		if (sav->flags & SADB_X_EXT_DERIV) {
@@ -627,11 +625,9 @@ esp_cbc_decrypt(struct mbuf *m, size_t off, struct secasvar *sav,
 			ivoff = off + sizeof(struct esp);
 			bodyoff = off + sizeof(struct esp) + sizeof(u_int32_t);
 			ivlen = sizeof(u_int32_t);
-			derived = 1;
 		} else {
 			ivoff = off + sizeof(struct newesp);
 			bodyoff = off + sizeof(struct newesp) + ivlen;
-			derived = 0;
 		}
 	}
 

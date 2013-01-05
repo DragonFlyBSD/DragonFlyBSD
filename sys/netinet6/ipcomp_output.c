@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_output.c,v 1.1.2.4 2003/04/29 08:33:50 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_output.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: ipcomp_output.c,v 1.25 2002/06/09 14:44:00 itojun Exp $	*/
 
 /*
@@ -243,27 +242,16 @@ ipcomp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 #ifdef INET
 	struct ip *ip = NULL;
 #endif
-#ifdef INET6
-	struct ip6_hdr *ip6 = NULL;
-#endif
-	size_t hlen = 0;	/* ip header len */
 	size_t complen = sizeof(struct ipcomp);
 
 	switch (af) {
 #ifdef INET
 	case AF_INET:
 		ip = mtod(m, struct ip *);
-#ifdef _IP_VHL
-		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-#else
-		hlen = ip->ip_hl << 2;
-#endif
 		break;
 #endif
 #ifdef INET6
 	case AF_INET6:
-		ip6 = mtod(m, struct ip6_hdr *);
-		hlen = sizeof(*ip6);
 		break;
 #endif
 	}

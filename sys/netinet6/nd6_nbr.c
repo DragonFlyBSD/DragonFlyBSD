@@ -1338,7 +1338,6 @@ static void
 nd6_dad_ns_input(struct ifaddr *ifa)
 {
 	struct in6_ifaddr *ia;
-	struct ifnet *ifp;
 	const struct in6_addr *taddr6;
 	struct dadq *dp;
 	int duplicate;
@@ -1347,7 +1346,6 @@ nd6_dad_ns_input(struct ifaddr *ifa)
 		panic("ifa == NULL in nd6_dad_ns_input");
 
 	ia = (struct in6_ifaddr *)ifa;
-	ifp = ifa->ifa_ifp;
 	taddr6 = &ia->ia_addr.sin6_addr;
 	duplicate = 0;
 	dp = nd6_dad_find(ifa);

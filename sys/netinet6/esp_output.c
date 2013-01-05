@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/esp_output.c,v 1.1.2.4 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.9 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: esp_output.c,v 1.44 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -268,12 +267,8 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 #ifdef INET
 	struct ip *ip = NULL;
 #endif
-#ifdef INET6
-	struct ip6_hdr *ip6 = NULL;
-#endif
 	size_t esplen;	/* sizeof(struct esp/newesp) */
 	size_t esphlen;	/* sizeof(struct esp/newesp) + ivlen */
-	size_t hlen = 0;	/* ip header len */
 
 	if (sav->flags & SADB_X_EXT_OLD) {
 		/* RFC 1827 */
@@ -304,17 +299,10 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 #ifdef INET
 	case AF_INET:
 		ip = mtod(m, struct ip *);
-#ifdef _IP_VHL
-		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-#else
-		hlen = ip->ip_hl << 2;
-#endif
 		break;
 #endif
 #ifdef INET6
 	case AF_INET6:
-		ip6 = mtod(m, struct ip6_hdr *);
-		hlen = sizeof(*ip6);
 		break;
 #endif
 	}

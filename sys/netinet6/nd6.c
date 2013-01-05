@@ -404,7 +404,6 @@ nd6_timer(void *ignored_arg)
 	struct nd_prefix *pr;
 	struct ifnet *ifp;
 	struct in6_ifaddr *ia6, *nia6;
-	struct in6_addrlifetime *lt6;
 
 	mtx_lock(&nd6_mtx);
 	callout_reset(&nd6_timer_ch, nd6_prune * hz,
@@ -537,7 +536,6 @@ addrloop:
 	for (ia6 = in6_ifaddr; ia6; ia6 = nia6) {
 		nia6 = ia6->ia_next;
 		/* check address lifetime */
-		lt6 = &ia6->ia6_lifetime;
 		if (IFA6_IS_INVALID(ia6)) {
 			int regen = 0;
 
