@@ -647,6 +647,8 @@ igb_attach(device_t dev)
 		ether_ifdetach(&sc->arpcom.ac_if);
 		goto failed;
 	}
+	sc->arpcom.ac_if.if_cpuid = sc->tx_rings[0].tx_intr_cpuid;
+
 	return 0;
 
 failed:
@@ -3758,7 +3760,6 @@ igb_init_unshared_intr(struct igb_softc *sc)
 static int
 igb_setup_intr(struct igb_softc *sc)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error;
 
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX)
@@ -3771,9 +3772,7 @@ igb_setup_intr(struct igb_softc *sc)
 		device_printf(sc->dev, "Failed to register interrupt handler");
 		return error;
 	}
-
-	ifp->if_cpuid = rman_get_cpuid(sc->intr_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	sc->tx_rings[0].tx_intr_cpuid = rman_get_cpuid(sc->intr_res);
 
 	return 0;
 }
@@ -4176,7 +4175,7 @@ igb_msix_try_alloc(struct igb_softc *sc)
 			msix->msix_func = igb_msix_tx;
 			msix->msix_arg = txr;
 			msix->msix_cpuid = i + offset;
-			sc->msix_tx_cpuid = msix->msix_cpuid; /* XXX */
+			txr->tx_intr_cpuid = msix->msix_cpuid;
 			KKASSERT(msix->msix_cpuid < ncpus2);
 			ksnprintf(msix->msix_desc, sizeof(msix->msix_desc),
 			    "%s tx%d", device_get_nameunit(sc->dev), i);
@@ -4275,7 +4274,6 @@ igb_msix_free(struct igb_softc *sc, boolean_t setup)
 static int
 igb_msix_setup(struct igb_softc *sc)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
 	for (i = 0; i < sc->msix_cnt; ++i) {
@@ -4292,8 +4290,6 @@ igb_msix_setup(struct igb_softc *sc)
 			return error;
 		}
 	}
-	ifp->if_cpuid = sc->msix_tx_cpuid;
-
 	return 0;
 }
 
