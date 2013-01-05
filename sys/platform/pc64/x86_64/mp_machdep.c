@@ -344,7 +344,7 @@ start_all_aps(u_int boot_addr)
 {
 	vm_offset_t va = boot_address + KERNBASE;
 	u_int64_t *pt4, *pt3, *pt2;
-	int     x, i, pg;
+	int     x, i;
 	int	shift;
 	int	smicount;
 	int	smibest;
@@ -422,9 +422,6 @@ start_all_aps(u_int boot_addr)
 	for (x = 1; x <= naps; ++x) {
 
 		/* This is a bit verbose, it will go away soon.  */
-
-		/* first page of AP's private space */
-		pg = x * x86_64_btop(sizeof(struct privatespace));
 
 		/* allocate new private data page(s) */
 		gd = (struct mdglobaldata *)kmem_alloc(&kernel_map, 

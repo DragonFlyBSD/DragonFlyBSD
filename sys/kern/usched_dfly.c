@@ -1248,7 +1248,7 @@ dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 {
 	struct lwp *lp;
 	struct rq *q;
-	u_int32_t *which, *which2;
+	u_int32_t *which;
 	u_int32_t pri;
 	u_int32_t rtqbits;
 	u_int32_t tsqbits;
@@ -1263,17 +1263,14 @@ dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 			pri = bsrl(idqbits);
 			q = &rdd->idqueues[pri];
 			which = &rdd->idqueuebits;
-			which2 = &idqbits;
 		} else if (tsqbits) {
 			pri = bsrl(tsqbits);
 			q = &rdd->queues[pri];
 			which = &rdd->queuebits;
-			which2 = &tsqbits;
 		} else if (rtqbits) {
 			pri = bsrl(rtqbits);
 			q = &rdd->rtqueues[pri];
 			which = &rdd->rtqueuebits;
-			which2 = &rtqbits;
 		} else {
 			return (NULL);
 		}
@@ -1283,17 +1280,14 @@ dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 			pri = bsfl(rtqbits);
 			q = &rdd->rtqueues[pri];
 			which = &rdd->rtqueuebits;
-			which2 = &rtqbits;
 		} else if (tsqbits) {
 			pri = bsfl(tsqbits);
 			q = &rdd->queues[pri];
 			which = &rdd->queuebits;
-			which2 = &tsqbits;
 		} else if (idqbits) {
 			pri = bsfl(idqbits);
 			q = &rdd->idqueues[pri];
 			which = &rdd->idqueuebits;
-			which2 = &idqbits;
 		} else {
 			return (NULL);
 		}

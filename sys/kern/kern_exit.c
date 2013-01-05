@@ -273,7 +273,7 @@ exit1(int rv)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct lwp *lp = td->td_lwp;
-	struct proc *q, *nq;
+	struct proc *q;
 	struct vmspace *vm;
 	struct vnode *vtmp;
 	struct exitlist *ep;
@@ -312,7 +312,6 @@ exit1(int rv)
 			 * than the internal signal
 			 */
 			sys_kill(&killArgs);
-			nq = q;
 			q = q->p_peers;
 		}
 		while (p->p_peers) 

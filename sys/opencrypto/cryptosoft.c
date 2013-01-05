@@ -607,11 +607,9 @@ swcr_combined(struct cryptop *crp)
 	struct swcr_data *sw, *swa, *swe;
 	struct auth_hash *axf = NULL;
 	struct enc_xform *exf = NULL;
-	struct mbuf *m = NULL;
-	struct uio *uio = NULL;
 	caddr_t buf = (caddr_t)crp->crp_buf;
 	uint32_t *blkp;
-	int i, blksz, ivlen, outtype, len;
+	int i, blksz, ivlen, len;
 
 	blksz = 0;
 	ivlen = 0;
@@ -649,14 +647,6 @@ swcr_combined(struct cryptop *crp)
 	}
 	if (crde == NULL || crda == NULL)
 		return (EINVAL);
-
-	if (crp->crp_flags & CRYPTO_F_IMBUF) {
-		outtype = CRYPTO_BUF_MBUF;
-		m = (struct mbuf *)buf;
-	} else {
-		outtype = CRYPTO_BUF_IOV;
-		uio = (struct uio *)buf;
-	}
 
 	/* Initialize the IV */
 	if (crde->crd_flags & CRD_F_ENCRYPT) {
@@ -1101,7 +1091,6 @@ swcr_freesession_slot(struct swcr_data **swdp, u_int32_t sid)
 {
 	struct enc_xform *txf;
 	struct auth_hash *axf;
-	struct comp_algo *cxf;
 	struct swcr_data *swd;
 	struct swcr_data *swnext;
 
@@ -1193,7 +1182,6 @@ swcr_freesession_slot(struct swcr_data **swdp, u_int32_t sid)
 			break;
 
 		case CRYPTO_DEFLATE_COMP:
-			cxf = swd->sw_cxf;
 			break;
 		}
 
