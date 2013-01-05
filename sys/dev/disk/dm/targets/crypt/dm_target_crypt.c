@@ -249,35 +249,35 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 
 		hashlen = SHA1_RESULTLEN;
 		SHA1Init(&ctx);
-		SHA1Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		SHA1Update(&ctx, priv->crypto_key, klen);
 		SHA1Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "sha256")) {
 		SHA256_CTX ctx;
 
 		hashlen = SHA256_DIGEST_LENGTH;
 		SHA256_Init(&ctx);
-		SHA256_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		SHA256_Update(&ctx, priv->crypto_key, klen);
 		SHA256_Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "sha384")) {
 		SHA384_CTX ctx;
 
 		hashlen = SHA384_DIGEST_LENGTH;
 		SHA384_Init(&ctx);
-		SHA384_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		SHA384_Update(&ctx, priv->crypto_key, klen);
 		SHA384_Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "sha512")) {
 		SHA512_CTX ctx;
 
 		hashlen = SHA512_DIGEST_LENGTH;
 		SHA512_Init(&ctx);
-		SHA512_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		SHA512_Update(&ctx, priv->crypto_key, klen);
 		SHA512_Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "md5")) {
 		MD5_CTX ctx;
 
 		hashlen = MD5_DIGEST_LENGTH;
 		MD5Init(&ctx);
-		MD5Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		MD5Update(&ctx, priv->crypto_key, klen);
 		MD5Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "rmd160") ||
 		   !strcmp(iv_hash, "ripemd160")) {
@@ -285,7 +285,7 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 
 		hashlen = 160/8;
 		RMD160Init(&ctx);
-		RMD160Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		RMD160Update(&ctx, priv->crypto_key, klen);
 		RMD160Final(crypto_keyhash, &ctx);
 	} else {
 		return EINVAL;
@@ -951,12 +951,9 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	struct dmtc_helper *dmtc;
 	struct cryptodesc *crd;
 	struct cryptop *crp;
-	struct cryptoini *cri;
 	int i, bytes, sectors, sz;
 	off_t isector;
 	u_char *ptr, *space;
-
-	cri = &priv->crypto_session;
 
 	/*
 	 * Note: b_resid no good after read I/O, it will be 0, use
@@ -1130,12 +1127,9 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	struct dmtc_helper *dmtc;
 	struct cryptodesc *crd;
 	struct cryptop *crp;
-	struct cryptoini *cri;
 	int i, bytes, sectors, sz;
 	off_t isector;
 	u_char *ptr, *space;
-
-	cri = &priv->crypto_session;
 
 	/*
 	 * Use b_bcount for consistency
@@ -1375,11 +1369,8 @@ dmtc_crypto_dump_start(dm_target_crypt_config_t *priv, struct dmtc_dump_helper *
 {
 	struct cryptodesc *crd;
 	struct cryptop *crp;
-	struct cryptoini *cri;
 	int i, bytes, sectors;
 	off_t isector;
-
-	cri = &priv->crypto_session;
 
 	bytes = dump_helper->length;
 
@@ -1437,7 +1428,6 @@ static int
 dmtc_crypto_cb_dump_done(struct cryptop *crp)
 {
 	struct dmtc_dump_helper *dump_helper;
-	dm_target_crypt_config_t *priv;
 	int n;
 
 	if (crp->crp_etype == EAGAIN)
@@ -1459,7 +1449,6 @@ dmtc_crypto_cb_dump_done(struct cryptop *crp)
 	n = atomic_fetchadd_int(&dump_helper->sectors, -1);
 
 	if (n == 1) {
-		priv = dump_helper->priv;
 		atomic_add_int(dump_helper->ident, 1);
 		wakeup(dump_helper);
 	}

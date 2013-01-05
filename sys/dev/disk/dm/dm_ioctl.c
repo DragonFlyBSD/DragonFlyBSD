@@ -583,14 +583,11 @@ dm_table_deps_ioctl(prop_dictionary_t dm_dict)
 	uint32_t flags, minor;
 
 	int table_type;
-	size_t i;
 
 	name = NULL;
 	uuid = NULL;
 	dmv = NULL;
 	flags = 0;
-
-	i = 0;
 
 	prop_dictionary_get_cstring_nocopy(dm_dict, DM_IOCTL_NAME, &name);
 	prop_dictionary_get_cstring_nocopy(dm_dict, DM_IOCTL_UUID, &uuid);
@@ -820,7 +817,7 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 	prop_array_t cmd_array;
 	prop_dictionary_t target_dict;
 
-	uint32_t rec_size, minor;
+	uint32_t minor;
 
 	const char *name, *uuid;
 	char *params;
@@ -832,7 +829,6 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 	name = NULL;
 	params = NULL;
 	flags = 0;
-	rec_size = 0;
 
 	prop_dictionary_get_cstring_nocopy(dm_dict, DM_IOCTL_NAME, &name);
 	prop_dictionary_get_cstring_nocopy(dm_dict, DM_IOCTL_UUID, &uuid);
