@@ -1068,6 +1068,7 @@ jme_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
+	ifp->if_cpuid = sc->jme_tx_cpuid;
 
 	return 0;
 fail:
@@ -3987,7 +3988,6 @@ static int
 jme_intr_setup(device_t dev)
 {
 	struct jme_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error;
 
 	if (sc->jme_irq_type == PCI_INTR_TYPE_MSIX)
@@ -3999,9 +3999,8 @@ jme_intr_setup(device_t dev)
 		device_printf(dev, "could not set up interrupt handler.\n");
 		return error;
 	}
+	sc->jme_tx_cpuid = rman_get_cpuid(sc->jme_irq_res);
 
-	ifp->if_cpuid = rman_get_cpuid(sc->jme_irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 	return 0;
 }
 
@@ -4020,7 +4019,6 @@ static int
 jme_msix_setup(device_t dev)
 {
 	struct jme_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int x;
 
 	for (x = 0; x < sc->jme_msix_cnt; ++x) {
@@ -4038,7 +4036,6 @@ jme_msix_setup(device_t dev)
 			return error;
 		}
 	}
-	ifp->if_cpuid = sc->jme_tx_cpuid;
 	return 0;
 }
 
