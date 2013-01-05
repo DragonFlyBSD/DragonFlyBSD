@@ -23,8 +23,6 @@
 # SUCH DAMAGE.
 #
 
-CFLAGS+=	-I${.CURDIR}/..
-
 KMOD=	virtio_pci
 SRCS=	virtio_pci.c
 SRCS+=	virtio_bus_if.h virtio_if.h

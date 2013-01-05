@@ -44,13 +44,11 @@
 #include <sys/param.h>
 #include <sys/rman.h>
 
-
-#include <virtio/virtio.h>
-#include <virtio/virtqueue.h>
+#include <dev/virtual/virtio/virtio/virtio.h>
+#include <dev/virtual/virtio/virtio/virtqueue.h>
 #include "virtio_pci.h"
-
-#include "virtio_bus_if.h"
 #include "virtio_if.h"
+#include "virtio_bus_if.h"
 
 struct vtpci_softc {
 	device_t			 vtpci_dev;

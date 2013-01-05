@@ -48,8 +48,8 @@
 #include <sys/spinlock2.h>
 #include <sys/devicestat.h>
 
-#include <virtio/virtio.h>
-#include <virtio/virtqueue.h>
+#include <dev/virtual/virtio/virtio/virtio.h>
+#include <dev/virtual/virtio/virtio/virtqueue.h>
 #include "virtio_blk.h"
 
 struct vtblk_request {
@@ -468,10 +468,6 @@ vtblk_strategy(struct dev_strategy_args *ap)
 	sc = dev->si_drv1;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
-
-	if (bp->b_cmd == BUF_CMD_READ || bp->b_cmd == BUF_CMD_WRITE) {
-		KKASSERT(bp->b_count > 0);
-	}
 
 	if (sc == NULL) {
 		vtblk_bio_error(bio, EINVAL);
