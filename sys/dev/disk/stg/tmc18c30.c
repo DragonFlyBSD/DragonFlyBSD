@@ -339,7 +339,7 @@ stg_msg(struct stg_softc *sc, struct targ_info *ti, u_int msg)
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
 	struct stg_targ_info *sti = (void *) ti;
-	u_int period, offset;
+	u_int period;
 
 	if ((msg & SCSI_LOW_MSG_WIDE) != 0)
 	{
@@ -355,7 +355,6 @@ stg_msg(struct stg_softc *sc, struct targ_info *ti, u_int msg)
 		return 0;
 
 	period = ti->ti_maxsynch.period;
-	offset = ti->ti_maxsynch.offset;
 	period = period << 2;
 	if (period >= 200)
 	{

@@ -556,7 +556,6 @@ ahci_pm_softreset(struct ahci_port *ap, int target)
 	int			count;
 	int			error;
 	u_int32_t		data;
-	int			tried_longer;
 
 	error = EIO;
 	at = ap->ap_ata[target];
@@ -564,7 +563,6 @@ ahci_pm_softreset(struct ahci_port *ap, int target)
 	DPRINTF(AHCI_D_VERBOSE, "%s: soft reset\n", PORTNAME(ap));
 
 	count = 2;
-	tried_longer = 0;
 retry:
 	/*
 	 * Try to clear the phy so we get a good signature, otherwise

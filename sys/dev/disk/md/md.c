@@ -140,12 +140,10 @@ static int
 mdclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct md_s *sc;
 
 	if (md_debug)
 		kprintf("mdclose(%s %x %x)\n",
 			devtoname(dev), ap->a_fflag, ap->a_devtype);
-	sc = dev->si_drv1;
 	atomic_add_int(&refcnt, -1);
 
 	return (0);
