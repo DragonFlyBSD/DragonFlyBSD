@@ -95,6 +95,8 @@ struct pktgen {
 	int			pktg_datalen;
 	struct ifnet		*pktg_ifp;
 
+	int			pktg_pktenq;
+
 	struct sockaddr_in	pktg_src;
 	int			pktg_ndst;
 	struct sockaddr_in	*pktg_dst;
@@ -247,7 +249,7 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 	const struct sockaddr *sa;
 	struct ifnet *ifp;
 	size_t dst_size;
-	int i, error;
+	int i, error, pktenq;
 
 	if (pktg->pktg_flags & (PKTG_F_RUNNING | PKTG_F_CONFIG))
 		return EBUSY;
@@ -294,6 +296,14 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 		goto failed;
 	}
 
+	pktenq = conf->pc_pktenq;
+	if (pktenq < 0 || pktenq > ifp->if_snd.ifq_maxlen) {
+		error = ENOBUFS;
+		goto failed;
+	} else if (pktenq == 0) {
+		pktenq = (ifp->if_snd.ifq_maxlen * 3) / 4;
+	}
+
 	sa = &conf->pc_dst_lladdr;
 	if (sa->sa_family != AF_LINK) {
 		error = EPROTONOSUPPORT;
@@ -316,6 +326,7 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 
 	pktg->pktg_duration = conf->pc_duration;
 	pktg->pktg_datalen = conf->pc_datalen;
+	pktg->pktg_pktenq = pktenq;
 	pktg->pktg_ifp = ifp;
 	pktg->pktg_src = conf->pc_src;
 	pktg->pktg_ndst = conf->pc_ndst;
@@ -354,8 +365,8 @@ pktgen_start(struct pktgen *pktg)
 	if (cpuid != orig_cpuid)
 		lwkt_migratecpu(cpuid);
 
-	alloc_cnt = ifp->if_snd.ifq_maxlen * 2;
-	keep_cnt = (ifp->if_snd.ifq_maxlen * 3) / 4;
+	keep_cnt = pktg->pktg_pktenq;
+	alloc_cnt = keep_cnt * 2;
 
 	/*
 	 * Prefault enough mbuf into mbuf objcache
