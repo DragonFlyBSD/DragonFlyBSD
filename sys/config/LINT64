@@ -2231,6 +2231,13 @@ device		ichwd		# Intel ICH watchdog interrupt timer
 device		tbridge		# regression testing
 
 #
+# Virtio support
+#
+device		virtio
+device		virtio_blk
+device		virtio_pci
+
+#
 # Embedded system options:
 #
 # An embedded system might want to run something other than init.

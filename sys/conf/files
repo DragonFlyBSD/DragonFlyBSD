@@ -2246,3 +2246,13 @@ bus/u4b/quirk/usb_quirk.c		optional usb4bsd
 #
 bus/u4b/audio/uaudio.c			optional snd_uaudio usb4bsd
 #bus/u4b/audio/uaudio_pcm.c		optional snd_uaudio usb4bsd
+
+#
+# virtio support
+#
+dev/virtual/virtio/block/virtio_blk.c	optional virtio_blk virtio
+dev/virtual/virtio/pci/virtio_pci.c	optional virtio_pci virtio
+dev/virtual/virtio/virtio/virtio.c	optional virtio
+dev/virtual/virtio/virtio/virtio_bus_if.m optional virtio
+dev/virtual/virtio/virtio/virtio_if.m	optional virtio
+dev/virtual/virtio/virtio/virtqueue.c	optional virtio
