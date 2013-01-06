@@ -83,6 +83,8 @@ struct	ifaltq {
 	int	altq_hw_oactive;	/* hw too busy, protected by driver */
 	int	altq_cpuid;		/* owner cpu */
 	struct ifaltq_stage *altq_stage;
+	struct netmsg_base *altq_ifstart_nmsg;
+					/* percpu msgs to sched if_start */
 };
 
 #define ALTQ_ASSERT_LOCKED(ifq)	ASSERT_SERIALIZED(&(ifq)->altq_lock)

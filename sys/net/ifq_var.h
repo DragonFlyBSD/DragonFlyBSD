@@ -391,5 +391,11 @@ ifq_set_cpuid(struct ifaltq *_ifq, int cpuid)
 	_ifq->altq_cpuid = cpuid;
 }
 
+static __inline struct lwkt_msg *
+ifq_get_ifstart_lmsg(struct ifaltq *_ifq, int cpuid)
+{
+	return &_ifq->altq_ifstart_nmsg[cpuid].lmsg;
+}
+
 #endif	/* _KERNEL */
 #endif	/* _NET_IFQ_VAR_H_ */

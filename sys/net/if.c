@@ -216,8 +216,8 @@ ifinit(void *dummy)
 static void
 ifq_ifstart_ipifunc(void *arg)
 {
-	struct ifnet *ifp = arg;
-	struct lwkt_msg *lmsg = &ifp->if_start_nmsg[mycpuid].lmsg;
+	struct ifaltq *ifq = arg;
+	struct lwkt_msg *lmsg = ifq_get_ifstart_lmsg(ifq, mycpuid);
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
@@ -250,7 +250,6 @@ ifq_stage_insert(struct ifaltq_stage_head *head, struct ifaltq_stage *stage)
 static void
 ifq_ifstart_schedule(struct ifaltq *ifq, int force)
 {
-	struct ifnet *ifp = ifq->altq_ifp;
 	int cpu;
 
 	if (!force && curthread->td_type == TD_TYPE_NETISR &&
@@ -267,9 +266,9 @@ ifq_ifstart_schedule(struct ifaltq *ifq, int force)
 
 	cpu = ifq_get_cpuid(ifq);
 	if (cpu != mycpuid)
-		lwkt_send_ipiq(globaldata_find(cpu), ifq_ifstart_ipifunc, ifp);
+		lwkt_send_ipiq(globaldata_find(cpu), ifq_ifstart_ipifunc, ifq);
 	else
-		ifq_ifstart_ipifunc(ifp);
+		ifq_ifstart_ipifunc(ifq);
 }
 
 /*
@@ -312,11 +311,11 @@ ifq_ifstart_need_schedule(struct ifaltq *ifq, int running)
 }
 
 static void
-if_start_dispatch(netmsg_t msg)
+ifq_ifstart_dispatch(netmsg_t msg)
 {
 	struct lwkt_msg *lmsg = &msg->base.lmsg;
-	struct ifnet *ifp = lmsg->u.ms_resultp;
-	struct ifaltq *ifq = &ifp->if_snd;
+	struct ifaltq *ifq = lmsg->u.ms_resultp;
+	struct ifnet *ifp = ifq->altq_ifp;
 	int running = 0, need_sched;
 
 	crit_enter();
@@ -485,14 +484,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		ifp->if_serializer = serializer;
 	}
 
-	ifp->if_start_nmsg = kmalloc(ncpus * sizeof(*ifp->if_start_nmsg),
-				     M_LWKTMSG, M_WAITOK);
-	for (i = 0; i < ncpus; ++i) {
-		netmsg_init(&ifp->if_start_nmsg[i], NULL, &netisr_adone_rport,
-			    0, if_start_dispatch);
-		ifp->if_start_nmsg[i].lmsg.u.ms_resultp = ifp;
-	}
-
 	mtx_init(&ifp->if_ioctl_mtx);
 	mtx_lock(&ifp->if_ioctl_mtx);
 
@@ -584,6 +575,15 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 	for (i = 0; i < ncpus; ++i)
 		ifq->altq_stage[i].ifqs_altq = ifq;
+
+	ifq->altq_ifstart_nmsg =
+	    kmalloc(ncpus * sizeof(*ifq->altq_ifstart_nmsg),
+	    M_LWKTMSG, M_WAITOK);
+	for (i = 0; i < ncpus; ++i) {
+		netmsg_init(&ifq->altq_ifstart_nmsg[i], NULL,
+		    &netisr_adone_rport, 0, ifq_ifstart_dispatch);
+		ifq->altq_ifstart_nmsg[i].lmsg.u.ms_resultp = ifq;
+	}
 
 	if (!SLIST_EMPTY(&domains))
 		if_attachdomain1(ifp);
@@ -812,7 +812,7 @@ if_detach(struct ifnet *ifp)
 	lwkt_synchronize_ipiqs("if_detach");
 	ifq_stage_detach(&ifp->if_snd);
 
-	kfree(ifp->if_start_nmsg, M_LWKTMSG);
+	kfree(ifp->if_snd.altq_ifstart_nmsg, M_LWKTMSG);
 	kfree(ifp->if_snd.altq_stage, M_DEVBUF);
 	crit_exit();
 }
@@ -2444,7 +2444,7 @@ ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 }
 
 static void
-ifq_try_ifstart(struct ifaltq *ifq, int force_sched)
+ifq_ifstart_try(struct ifaltq *ifq, int force_sched)
 {
 	struct ifnet *ifp = ifq->altq_ifp;
 	int running = 0, need_sched;
@@ -2502,7 +2502,7 @@ ifq_try_ifstart(struct ifaltq *ifq, int force_sched)
  *
  * IFQ packets staging is performed for two entry points into drivers's
  * transmission function:
- * - Direct ifnet's if_start calling, i.e. ifq_try_ifstart()
+ * - Direct ifnet's if_start calling, i.e. ifq_ifstart_try()
  * - ifnet's if_start scheduling, i.e. ifq_ifstart_schedule()
  *
  * IFQ packets staging will be stopped upon any of the following conditions:
@@ -2606,7 +2606,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		return error;
 	}
 
-	ifq_try_ifstart(ifq, 0);
+	ifq_ifstart_try(ifq, 0);
 	return error;
 }
 
@@ -2840,7 +2840,7 @@ if_start_rollup(void)
 			ALTQ_UNLOCK(ifq);
 
 			if (start)
-				ifq_try_ifstart(ifq, 1);
+				ifq_ifstart_try(ifq, 1);
 		}
 		KKASSERT((stage->ifqs_flags &
 		    (IFQ_STAGE_FLAG_QUED | IFQ_STAGE_FLAG_SCHED)) == 0);
