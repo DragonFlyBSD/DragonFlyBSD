@@ -3092,7 +3092,9 @@ aac_ioctl_send_raw_srb(struct aac_softc *sc, caddr_t arg)
 	struct aac_fib *fib;
 	struct aac_srb *srbcmd, *user_srb;
 	struct aac_sg_entry *sge;
+#ifdef __x86_64__
 	struct aac_sg_entry64 *sge64;
+#endif
 	void *srb_sg_address, *ureply;
 	uint32_t fibsize, srb_sg_bytecount;
 	int error, transfer_data;
@@ -3145,7 +3147,6 @@ aac_ioctl_send_raw_srb(struct aac_softc *sc, caddr_t arg)
 	if (fibsize == (sizeof(struct aac_srb) +
 	    srbcmd->sg_map.SgCount * sizeof(struct aac_sg_entry))) {
 		sge = srbcmd->sg_map.SgEntry;
-		sge64 = NULL;
 		srb_sg_bytecount = sge->SgByteCount;
 		srb_sg_address = (void *)(uintptr_t)sge->SgAddress;
 	}
