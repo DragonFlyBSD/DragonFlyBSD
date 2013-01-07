@@ -931,9 +931,6 @@ ieee80211_wme_initparams_locked(struct ieee80211vap *vap)
 void
 ieee80211_wme_initparams(struct ieee80211vap *vap)
 {
-	struct ieee80211com *ic = vap->iv_ic;
-
-	ic = vap->iv_ic;
 	ieee80211_wme_initparams_locked(vap);
 }
 
@@ -1288,9 +1285,6 @@ ieee80211_stop_locked(struct ieee80211vap *vap)
 void
 ieee80211_stop(struct ieee80211vap *vap)
 {
-	struct ieee80211com *ic = vap->iv_ic;
-
-	ic = vap->iv_ic;
 	ieee80211_stop_locked(vap);
 }
 
@@ -1859,10 +1853,8 @@ int
 ieee80211_new_state(struct ieee80211vap *vap,
 	enum ieee80211_state nstate, int arg)
 {
-	struct ieee80211com *ic = vap->iv_ic;
 	int rc;
 
-	ic = vap->iv_ic;
 	rc = ieee80211_new_state_locked(vap, nstate, arg);
 	return rc;
 }

@@ -516,7 +516,6 @@ mesh_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 	struct ieee80211com *ic = vap->iv_ic;
-	struct ieee80211_node *ni;
 	enum ieee80211_state ostate;
 
 	ostate = vap->iv_state;
@@ -526,7 +525,6 @@ mesh_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	vap->iv_state = nstate;		/* state transition */
 	if (ostate != IEEE80211_S_SCAN)
 		ieee80211_cancel_scan(vap);	/* background scan */
-	ni = vap->iv_bss;			/* NB: no reference held */
 	if (nstate != IEEE80211_S_RUN && ostate == IEEE80211_S_RUN)
 		callout_stop(&ms->ms_cleantimer);
 	switch (nstate) {

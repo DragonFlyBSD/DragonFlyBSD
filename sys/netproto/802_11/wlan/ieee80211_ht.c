@@ -1558,8 +1558,10 @@ ieee80211_addba_response(struct ieee80211_node *ni,
 	struct ieee80211_tx_ampdu *tap,
 	int status, int baparamset, int batimeout)
 {
-	int bufsiz, tid;
-
+	int bufsiz;
+#if 0
+	int tid;
+#endif
 	/* XXX locking */
 	addba_stop_timeout(tap);
 	if (status == IEEE80211_STATUS_SUCCESS) {
@@ -1568,7 +1570,9 @@ ieee80211_addba_response(struct ieee80211_node *ni,
 		tap->txa_wnd = (bufsiz == 0) ?
 		    IEEE80211_AGGR_BAWMAX : min(bufsiz, IEEE80211_AGGR_BAWMAX);
 		/* XXX AC/TID */
+#if 0
 		tid = MS(baparamset, IEEE80211_BAPS_TID);
+#endif
 		tap->txa_flags |= IEEE80211_AGGR_RUNNING;
 		tap->txa_attempts = 0;
 	} else {
