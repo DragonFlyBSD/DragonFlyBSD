@@ -174,7 +174,6 @@ tcp_output(struct tcpcb *tp)
 #endif
 	struct mbuf *m;
 	struct ip *ip;
-	struct ipovly *ipov;
 	struct tcphdr *th;
 	u_char opt[TCP_MAXOLEN];
 	unsigned int ipoptlen, optlen, hdrlen;
@@ -255,7 +254,6 @@ tcp_output(struct tcpcb *tp)
 again:
 	m = NULL;
 	ip = NULL;
-	ipov = NULL;
 	th = NULL;
 	ip6 = NULL;
 
@@ -915,7 +913,6 @@ send:
 		tcp_fillheaders(tp, ip6, th, use_tso);
 	} else {
 		ip = mtod(m, struct ip *);
-		ipov = (struct ipovly *)ip;
 		th = (struct tcphdr *)(ip + 1);
 		/* this picks up the pseudo header (w/o the length) */
 		tcp_fillheaders(tp, ip, th, use_tso);

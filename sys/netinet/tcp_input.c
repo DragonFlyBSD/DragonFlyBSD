@@ -624,9 +624,6 @@ tcp6_input(struct mbuf **mp, int *offp, int proto)
 	 */
 	ia6 = ip6_getdstifaddr(m);
 	if (ia6 && (ia6->ia6_flags & IN6_IFF_ANYCAST)) {
-		struct ip6_hdr *ip6;
-
-		ip6 = mtod(m, struct ip6_hdr *);
 		icmp6_error(m, ICMP6_DST_UNREACH, ICMP6_DST_UNREACH_ADDR,
 			    offsetof(struct ip6_hdr, ip6_dst));
 		return (IPPROTO_DONE);
