@@ -35,7 +35,7 @@
 
 #include <opencrypto/cryptodev.h>
 
-#if defined(__amd64__) || (defined(__i386__) && !defined(PC98))
+#if defined(__x86_64__) || defined(__i386__)
 #include <machine/cpufunc.h>
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
@@ -43,7 +43,7 @@
 #endif
 #if defined(__i386__)
 #include <machine/npx.h>
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 #include <machine/npx.h>
 #endif
 

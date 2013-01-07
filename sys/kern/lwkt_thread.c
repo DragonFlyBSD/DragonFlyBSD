@@ -765,7 +765,7 @@ skip:
 	    need_lwkt_resched();	/* prevent hlt */
 	    goto haveidle;
 	}
-#if defined(INVARIANTS) && defined(__amd64__)
+#if defined(INVARIANTS) && defined(__x86_64__)
 	if ((read_rflags() & PSL_I) == 0) {
 		cpu_enable_intr();
 		panic("lwkt_switch() called with interrupts disabled");

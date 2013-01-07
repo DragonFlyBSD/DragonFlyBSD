@@ -49,7 +49,7 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
-#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+#if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 #include <stdio.h>
 #endif
 
@@ -164,7 +164,7 @@ link_elf_init(void* arg)
 	if (linker_kernel_file == NULL)
 	    panic("link_elf_init: Can't create linker structures for kernel");
 	parse_dynamic(linker_kernel_file);
-#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+#if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 	fprintf(stderr, "WARNING: KERNBASE being used\n");
 #endif
 	linker_kernel_file->address = (caddr_t) KERNBASE;

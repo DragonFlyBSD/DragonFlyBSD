@@ -184,7 +184,7 @@ typedef struct {
     u_int8_t		*buf;		/* 4 */
 } __packed IOCTL_Command_struct;
 
-#ifdef __amd64__
+#ifdef __x86_64__
 typedef struct {
     LUNAddr_struct	LUN_info;	/* 8 */
     RequestBlock_struct	Request;	/* 20 */

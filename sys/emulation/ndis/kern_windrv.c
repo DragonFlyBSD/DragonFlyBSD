@@ -313,7 +313,7 @@ windrv_unload(module_t mod, vm_offset_t img, int len)
 
 #define WINDRV_LOADED		htonl(0x42534F44)
 
-#ifdef __amd64__
+#ifdef __x86_64__
 static void
 patch_user_shared_data_address(vm_offset_t img, size_t len)
 {
@@ -378,7 +378,7 @@ windrv_load(module_t mod, vm_offset_t img, int len, interface_type bustype,
 			return (ENOEXEC);
 	}
 
-#ifdef __amd64__
+#ifdef __x86_64__
 	patch_user_shared_data_address(img, len);
 #endif
 

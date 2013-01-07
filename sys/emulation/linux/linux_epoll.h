@@ -29,7 +29,7 @@
 #ifndef _LINUX_EPOLL_H_
 #define _LINUX_EPOLL_H_
 
-#ifdef __amd64__
+#ifdef __x86_64__
 #define EPOLL_PACKED    __packed
 #else
 #define EPOLL_PACKED

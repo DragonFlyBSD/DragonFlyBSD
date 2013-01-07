@@ -4497,7 +4497,7 @@ ciss_ioctl(struct dev_ioctl_args *ap)
     u_long cmd = ap->a_cmd;
     struct ciss_softc		*sc;
     IOCTL_Command_struct	*ioc	= (IOCTL_Command_struct *)addr;
-#ifdef __amd64__
+#ifdef __x86_64__
     IOCTL_Command_struct32	*ioc32	= (IOCTL_Command_struct32 *)addr;
     IOCTL_Command_struct	ioc_swab;
 #endif
@@ -4612,7 +4612,7 @@ ciss_ioctl(struct dev_ioctl_args *ap)
 	 */
 	break;
 
-#ifdef __amd64__
+#ifdef __x86_64__
     case CCISS_PASSTHRU32:
 	ioc_swab.LUN_info	= ioc32->LUN_info;
 	ioc_swab.Request	= ioc32->Request;

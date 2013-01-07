@@ -658,7 +658,7 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
 			copy_func, copy_arg1, copy_arg2,
 #if defined(__i386__)
 			(frame ? (void *)frame->if_eip : NULL));
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 			(frame ? (void *)frame->if_rip : NULL));
 #else
 			NULL);
