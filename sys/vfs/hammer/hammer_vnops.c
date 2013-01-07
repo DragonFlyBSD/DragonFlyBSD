@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.102 2008/10/16 17:24:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -3298,7 +3296,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	hammer_inode_t ip;
 	struct bio *bio;
 	struct buf *bp;
-	int blksize;
+	int blksize __debugvar;
 	int bytes;
 	int error;
 

@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.25 2008/09/23 21:03:52 dillon Exp $
  */
 
 #include "hammer.h"
@@ -118,7 +116,7 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 void
 hammer_done_transaction(struct hammer_transaction *trans)
 {
-	int expected_lock_refs;
+	int expected_lock_refs __debugvar;
 
 	hammer_rel_volume(trans->rootvol, 0);
 	trans->rootvol = NULL;

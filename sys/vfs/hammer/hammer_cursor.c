@@ -800,13 +800,17 @@ hammer_lock_cursor(hammer_cursor_t cursor)
 int
 hammer_recover_cursor(hammer_cursor_t cursor)
 {
-	hammer_transaction_t trans;
+	hammer_transaction_t trans __debugvar;
+#if 0
 	hammer_inode_t ip;
+#endif
 	int error;
 
 	hammer_unlock_cursor(cursor);
 
+#if 0
 	ip = cursor->ip;
+#endif
 	trans = cursor->trans;
 	KKASSERT(trans->sync_lock_refs > 0);
 

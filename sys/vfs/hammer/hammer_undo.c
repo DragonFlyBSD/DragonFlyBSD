@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.20 2008/07/18 00:19:53 dillon Exp $
  */
 
 /*
@@ -52,7 +50,7 @@ hammer_off_t
 hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 {
 	hammer_volume_t root_volume;
-	hammer_blockmap_t undomap;
+	hammer_blockmap_t undomap __debugvar;
 	hammer_off_t result_offset;
 	int i;
 
@@ -62,7 +60,7 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 		return(0);
 	undomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	KKASSERT(HAMMER_ZONE_DECODE(undomap->alloc_offset) == HAMMER_ZONE_UNDO_INDEX);
-	KKASSERT (zone3_off < undomap->alloc_offset);
+	KKASSERT(zone3_off < undomap->alloc_offset);
 
 	i = (zone3_off & HAMMER_OFF_SHORT_MASK) / HAMMER_LARGEBLOCK_SIZE;
 	result_offset = root_volume->ondisk->vol0_undo_array[i] +
@@ -434,7 +432,7 @@ int
 hammer_enter_undo_history(hammer_mount_t hmp, hammer_off_t offset, int bytes)
 {
 	hammer_undo_t node;
-	hammer_undo_t onode;
+	hammer_undo_t onode __debugvar;
 
 	node = RB_LOOKUP(hammer_und_rb_tree, &hmp->rb_undo_root, offset);
 	if (node) {
@@ -480,7 +478,7 @@ hammer_undo_used(hammer_transaction_t trans)
 {
 	hammer_blockmap_t cundomap;
 	hammer_blockmap_t dundomap;
-	int64_t max_bytes;
+	int64_t max_bytes __debugvar;
 	int64_t bytes;
 
 	cundomap = &trans->hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];

@@ -254,7 +254,7 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor,
 	hammer_btree_elm_t elm;
 	hammer_node_t node;
 	hammer_tid_t tid;
-	u_int8_t type1;
+	u_int8_t type1 __debugvar;
 	int base_count;
 	int root_count;
 	int avg_elms;

@@ -1877,13 +1877,11 @@ static int
 hammer_setup_parent_inodes_helper(hammer_record_t record, int depth,
 				  hammer_flush_group_t flg)
 {
-	hammer_mount_t hmp;
 	hammer_inode_t pip;
 	int good;
 
 	KKASSERT(record->flush_state != HAMMER_FST_IDLE);
 	pip = record->ip;
-	hmp = pip->hmp;
 
 	/*
 	 * If the record is already flushing, is it in our flush group?
