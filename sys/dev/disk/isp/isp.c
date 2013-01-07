@@ -2090,7 +2090,7 @@ isp_plogx(ispsoftc_t *isp, int chan, uint16_t handle, uint32_t portid, int flags
 	fcparam *fcp;
 	uint8_t *scp;
 	uint32_t sst, parm1;
-	int rval, lev;
+	int rval;
 	const char *msg;
 	char buf[64];
 
@@ -2164,7 +2164,6 @@ isp_plogx(ispsoftc_t *isp, int chan, uint16_t handle, uint32_t portid, int flags
 	parm1 = plp->plogx_ioparm[1].lo16 | (plp->plogx_ioparm[1].hi16 << 16);
 
 	rval = -1;
-	lev = ISP_LOGERR;
 	msg = NULL;
 
 	switch (sst) {
@@ -2204,13 +2203,11 @@ isp_plogx(ispsoftc_t *isp, int chan, uint16_t handle, uint32_t portid, int flags
 		msg = buf;
 		break;
 	case PLOGX_IOCBERR_PORTUSED:
-		lev = ISP_LOGSANCFG|ISP_LOGDEBUG0;
 		ISP_SNPRINTF(buf, sizeof (buf), "already logged in with N-Port handle 0x%x", parm1);
 		msg = buf;
 		rval = MBOX_PORT_ID_USED | (parm1 << 16);
 		break;
 	case PLOGX_IOCBERR_HNDLUSED:
-		lev = ISP_LOGSANCFG|ISP_LOGDEBUG0;
 		ISP_SNPRINTF(buf, sizeof (buf), "handle already used for PortID 0x%06x", parm1);
 		msg = buf;
 		rval = MBOX_LOOP_ID_USED;

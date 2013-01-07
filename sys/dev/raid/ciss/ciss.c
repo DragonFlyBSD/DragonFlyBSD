@@ -1426,12 +1426,11 @@ ciss_init_physical(struct ciss_softc *sc)
     struct ciss_lun_report	*cll;
     int				error = 0, i;
     int				nphys;
-    int				bus, target;
+    int				bus;
 
     debug_called(1);
 
     bus = 0;
-    target = 0;
 
     cll = ciss_report_luns(sc, CISS_OPCODE_REPORT_PHYSICAL_LUNS,
 			   CISS_MAX_PHYSICAL);
@@ -2460,11 +2459,7 @@ ciss_preen_command(struct ciss_request *cr)
 static void
 ciss_release_request(struct ciss_request *cr)
 {
-    struct ciss_softc	*sc;
-
     debug_called(2);
-
-    sc = cr->cr_sc;
 
     /* release the request to the free queue */
     ciss_requeue_free(cr);
@@ -3149,12 +3144,9 @@ static int
 ciss_cam_emulate(struct ciss_softc *sc, struct ccb_scsiio *csio)
 {
     int		bus, target;
-    u_int8_t	opcode;
 
     target = csio->ccb_h.target_id;
     bus = cam_sim_bus(xpt_path_sim(csio->ccb_h.path));
-    opcode = (csio->ccb_h.flags & CAM_CDB_POINTER) ?
-	*(u_int8_t *)csio->cdb_io.cdb_ptr : csio->cdb_io.cdb_bytes[0];
 
     if (CISS_IS_PHYSICAL(bus)) {
 	if (sc->ciss_physical[CISS_CAM_TO_PBUS(bus)][target].cp_online != 1) {
@@ -3612,14 +3604,12 @@ ciss_notify_event(struct ciss_softc *sc)
 static void
 ciss_notify_complete(struct ciss_request *cr)
 {
-    struct ciss_command	*cc;
     struct ciss_notify	*cn;
     struct ciss_softc	*sc;
     int			scsi_status;
     int			command_status;
     debug_called(1);
 
-    cc = cr->cr_cc;
     cn = (struct ciss_notify *)cr->cr_data;
     sc = cr->cr_sc;
 

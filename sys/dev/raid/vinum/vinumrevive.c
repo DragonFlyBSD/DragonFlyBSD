@@ -250,8 +250,6 @@ parityops(struct vinum_ioctl_msg *data)
     int plexno;
     struct plex *plex;
     int size;						    /* I/O transfer size, bytes */
-    vinum_off_t stripe;						    /* stripe number in plex */
-    int psd;						    /* parity subdisk number */
     struct rangelock *lock;				    /* lock on stripe */
     struct _ioctl_reply *reply;
     off_t pstripe;					    /* pointer to our stripe counter */
@@ -274,8 +272,6 @@ parityops(struct vinum_ioctl_msg *data)
 	return;
     }
     pstripe = data->offset;
-    stripe = pstripe / plex->stripesize;		    /* stripe number */
-    psd = plex->subdisks - 1 - stripe % plex->subdisks;	    /* parity subdisk for this stripe */
     size = imin(DEFAULT_REVIVE_BLOCKSIZE,		    /* one block at a time */
 	plex->stripesize << DEV_BSHIFT);
 
@@ -501,23 +497,16 @@ initsd(int sdno, int verify)
 {
     struct sd *sd;
     struct plex *plex;
-    struct volume *vol;
     struct buf *bp;
     int error;
     int size;						    /* size of init block, bytes */
-    vinum_off_t plexblkno;					    /* lblkno in plex */
     int verified;					    /* set when we're happy with what we wrote */
 
     error = 0;
-    plexblkno = 0;					    /* to keep the compiler happy */
     sd = &SD[sdno];
     if (sd->plexno < 0)					    /* no plex? */
 	return EINVAL;
     plex = &PLEX[sd->plexno];				    /* point to plex */
-    if (plex->volno >= 0)
-	vol = &VOL[plex->volno];
-    else
-	vol = NULL;
 
     if (sd->init_blocksize == 0) {
 	if (plex->stripesize != 0)			    /* we're striped, don't init more than */

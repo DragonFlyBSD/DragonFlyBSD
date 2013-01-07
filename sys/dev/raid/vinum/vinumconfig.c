@@ -1105,7 +1105,6 @@ config_subdisk(int update)
     enum sdstate state = sd_unallocated;		    /* state to set, if specified */
     int autosize = 0;					    /* set if we autosize in give_sd_to_drive */
     int namedsdno;					    /* index of another with this name */
-    char partition = 0;					    /* partition of external subdisk */
 
     sdno = get_empty_sd();				    /* allocate an SD to initialize */
     sd = &SD[sdno];					    /* and get a pointer */
@@ -1231,8 +1230,6 @@ config_subdisk(int update)
 		    "%s: invalid partition %c",
 		    sd->name,
 		    token[parameter][0]);
-	    else
-		partition = token[parameter][0];
 	    break;
 
 	case kw_retryerrors:

@@ -192,7 +192,6 @@ vinumstart(cdev_t dev, struct bio *bio, int reviveok)
 {
     struct buf *bp = bio->bio_buf;
     int plexno;
-    int maxplex;					    /* maximum number of plexes to handle */
     struct volume *vol;
     struct request *rq;					    /* build up our request here */
     enum requeststatus status;
@@ -230,12 +229,10 @@ vinumstart(cdev_t dev, struct bio *bio, int reviveok)
 	rq->volplex.volno = Volno(dev);		    /* get the volume number */
 	vol = &VOL[rq->volplex.volno];			    /* and point to it */
 	vol->active++;					    /* one more active request */
-	maxplex = vol->plexes;				    /* consider all its plexes */
     } else {
 	vol = NULL;					    /* no volume */
 	rq->volplex.plexno = Plexno(dev);		    /* point to the plex */
 	rq->isplex = 1;					    /* note that it's a plex */
-	maxplex = 1;					    /* just the one plex */
     }
 
     if (bp->b_cmd == BUF_CMD_READ) {
@@ -693,7 +690,6 @@ build_read_request(struct request *rq,			    /* request */
     vinum_off_t diskaddr;					    /* offset of current part of transfer */
     vinum_off_t diskend;					    /* and end offset of transfer */
     int plexno;						    /* plex index in vinum_conf */
-    struct rqgroup *rqg;				    /* point to the request we're working on */
     struct volume *vol;					    /* volume in question */
     int recovered = 0;					    /* set if we recover a read */
     enum requeststatus status = REQUEST_OK;
@@ -703,7 +699,6 @@ build_read_request(struct request *rq,			    /* request */
     bp = bio->bio_buf;
     diskaddr = bio->bio_offset >> DEV_BSHIFT;		    /* start offset of transfer */
     diskend = diskaddr + (bp->b_bcount / DEV_BSIZE);	    /* and end offset of transfer */
-    rqg = &rq->rqg[plexindex];				    /* plex request */
     vol = &VOL[rq->volplex.volno];			    /* point to volume */
 
     while (diskaddr < diskend) {			    /* build up request components */
@@ -798,12 +793,10 @@ enum requeststatus
 build_rq_buffer(struct rqelement *rqe, struct plex *plex)
 {
     struct sd *sd;					    /* point to subdisk */
-    struct volume *vol;
     struct buf *bp;
     struct buf *ubp;					    /* user (high level) buffer header */
     struct bio *ubio;
 
-    vol = &VOL[rqe->rqg->rq->volplex.volno];
     sd = &SD[rqe->sdno];				    /* point to subdisk */
     bp = &rqe->b;
     ubio = rqe->rqg->rq->bio;				    /* pointer to user buffer header */

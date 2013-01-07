@@ -32,7 +32,6 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic_osm_lib.c#5 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic_osm_lib.c,v 1.3 2004/08/17 00:14:31 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.c,v 1.3 2008/02/09 18:13:13 pavalos Exp $
  */
 
 static void	aic_recovery_thread(void *arg);
@@ -54,9 +53,6 @@ aic_set_recoveryscb(struct aic_softc *aic, struct scb *scb)
 		 * them after we've successfully fixed this problem.
 		 */
 		LIST_FOREACH(list_scb, &aic->pending_scbs, pending_links) {
-			union ccb *ccb;
-
-			ccb = list_scb->io_ctx;
 			callout_stop(&scb->io_timer);
 		}
 	}
