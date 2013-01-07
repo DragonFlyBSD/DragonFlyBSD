@@ -2468,7 +2468,8 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 			}
 			nfsrv_setcred(&nuidp->nu_cr, &nd->nd_cr);
 			nd->nd_flag |= ND_KERBNICK;
-		};
+			break;
+		}
 	} else {
 		nd->nd_repstat = (NFSERR_AUTHERR | AUTH_REJECTCRED);
 		nd->nd_procnum = NFSPROC_NOOP;
