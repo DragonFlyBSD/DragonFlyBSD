@@ -6158,7 +6158,6 @@ key_dump(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 	u_int8_t satype;
 	u_int8_t state;
 	int cnt;
-	struct sadb_msg *newmsg;
 	struct mbuf *n;
 
 	/* sanity check */
@@ -6191,7 +6190,6 @@ key_dump(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 		return key_senderror(so, m, ENOENT);
 
 	/* send this to the userland, one at a time. */
-	newmsg = NULL;
 	LIST_FOREACH(sah, &sahtree, chain) {
 		if (mhp->msg->sadb_msg_satype != SADB_SATYPE_UNSPEC
 		 && proto != sah->saidx.proto)

@@ -667,7 +667,6 @@ spx_ctlinput(netmsg_t msg)
 	int cmd = msg->ctlinput.nm_cmd;
 	struct sockaddr *arg_as_sa = msg->ctlinput.nm_arg;
 	caddr_t arg = (/* XXX */ caddr_t)arg_as_sa;
-	struct ipx_addr *na;
 	struct sockaddr_ipx *sipx;
 
 	if (cmd < 0 || cmd > PRC_NCMDS)
@@ -682,7 +681,6 @@ spx_ctlinput(netmsg_t msg)
 		sipx = (struct sockaddr_ipx *)arg;
 		if (sipx->sipx_family != AF_IPX)
 			break;
-		na = &sipx->sipx_addr;
 		break;
 	default:
 		break;

@@ -227,10 +227,8 @@ ipcomp_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 static int
 ipcomp_input_cb(struct cryptop *crp)
 {
-	struct cryptodesc *crd;
 	struct tdb_crypto *tc;
 	int skip, protoff;
-	struct mtag *mtag;
 	struct mbuf *m;
 	struct secasvar *sav;
 	struct secasindex *saidx;
@@ -238,13 +236,10 @@ ipcomp_input_cb(struct cryptop *crp)
 	u_int8_t nproto;
 	caddr_t addr;
 
-	crd = crp->crp_desc;
-
 	tc = (struct tdb_crypto *) crp->crp_opaque;
 	KASSERT(tc != NULL, ("ipcomp_input_cb: null opaque crypto data area!"));
 	skip = tc->tc_skip;
 	protoff = tc->tc_protoff;
-	mtag = (struct mtag *) tc->tc_ptr;
 	m = (struct mbuf *) crp->crp_buf;
 
 	crit_enter();
