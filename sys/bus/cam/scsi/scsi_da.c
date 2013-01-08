@@ -435,7 +435,6 @@ daioctl(struct dev_ioctl_args *ap)
 	struct buf *bp;		
 	struct cam_periph *periph;
 	int byte_count;
-	struct da_softc * softc;
 
 	off_t *del_num = (off_t*)ap->a_data;
 	off_t bytes_left;
@@ -448,7 +447,6 @@ daioctl(struct dev_ioctl_args *ap)
 	periph = cam_extend_get(daperiphs, unit);
 	if (periph == NULL)
 		return(ENXIO);
-	softc = (struct da_softc *)periph->softc;
 	
 	switch (ap->a_cmd) {
 	case IOCTLTRIM:
@@ -698,10 +696,8 @@ dastrategy(struct dev_strategy_args *ap)
 	struct cam_periph *periph;
 	struct da_softc *softc;
 	u_int  unit;
-	u_int  part;
 	
 	unit = dkunit(dev);
-	part = dkpart(dev);
 	periph = cam_extend_get(daperiphs, unit);
 	if (periph == NULL) {
 		bp->b_error = ENXIO;
@@ -978,7 +974,6 @@ daasync(void *callback_arg, u_int32_t code,
 	case AC_FOUND_DEVICE:
 	{
 		struct ccb_getdev *cgd;
-		struct cam_sim *sim;
 		cam_status status;
  
 		cgd = (struct ccb_getdev *)arg;
@@ -1002,7 +997,6 @@ daasync(void *callback_arg, u_int32_t code,
 		 * this device and start the probe
 		 * process.
 		 */
-		sim = xpt_path_sim(cgd->ccb_h.path);
 		status = cam_periph_alloc(daregister, daoninvalidate,
 					  dacleanup, dastart,
 					  "da", CAM_PERIPH_BIO,

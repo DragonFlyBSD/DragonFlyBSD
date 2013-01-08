@@ -366,14 +366,12 @@ fw_write (struct dev_write_args *ap)
 	int unit = DEV2UNIT(dev);
 	int slept = 0;
 	struct fw_pkt *fp;
-	struct firewire_comm *fc;
 	struct fw_xferq *it;
 
 	if (DEV_FWMEM(dev))
 		return physwrite(ap);
 
 	sc = devclass_get_softc(firewire_devclass, unit);
-	fc = sc->fc;
 	it = ((struct fw_drv1 *)dev->si_drv1)->it;
 	if (it == NULL || it->buf == NULL)
 		return (EIO);
@@ -720,10 +718,8 @@ static int
 fw_kqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct firewire_softc *sc;
 	struct fw_xferq *ir;
 	struct knote *kn = ap->a_kn;
-	int unit = DEV2UNIT(dev);
 	struct klist *klist;
 
 	/*
@@ -734,7 +730,6 @@ fw_kqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	sc = devclass_get_softc(firewire_devclass, unit);
 	ir = ((struct fw_drv1 *)dev->si_drv1)->ir;
 
 	ap->a_result = 0;
@@ -791,12 +786,9 @@ static int
 fw_mmap (struct dev_mmap_args *ap)
 {  
 	cdev_t dev = ap->a_head.a_dev;
-	struct firewire_softc *sc;
-	int unit = DEV2UNIT(dev);
 
 	if (DEV_FWMEM(dev))
 		return fwmem_mmap(ap);
-	sc = devclass_get_softc(firewire_devclass, unit);
 
 	return EINVAL;
 }
@@ -822,9 +814,6 @@ fw_strategy(struct dev_strategy_args *ap)
 int
 fwdev_makedev(struct firewire_softc *sc)
 {
-	int unit;
-
-	unit = device_get_unit(sc->fc->bdev);
 	/*HELPME dev_ops_add(&firewire_ops, FW_UNITMASK, FW_UNIT(unit));*/
 	return(0);
 }

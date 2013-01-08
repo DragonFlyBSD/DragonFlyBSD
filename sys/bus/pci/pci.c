@@ -2100,7 +2100,7 @@ pci_set_powerstate_method(device_t dev, device_t child, int state)
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	pcicfgregs *cfg = &dinfo->cfg;
 	uint16_t status;
-	int result, oldstate, highest, delay;
+	int oldstate, highest, delay;
 
 	if (cfg->pp.pp_cap == 0)
 		return (EOPNOTSUPP);
@@ -2135,7 +2135,6 @@ pci_set_powerstate_method(device_t dev, device_t child, int state)
 	    delay = 0;
 	status = PCI_READ_CONFIG(dev, child, cfg->pp.pp_status, 2)
 	    & ~PCIM_PSTAT_DMASK;
-	result = 0;
 	switch (state) {
 	case PCI_POWERSTATE_D0:
 		status |= PCIM_PSTAT_D0;

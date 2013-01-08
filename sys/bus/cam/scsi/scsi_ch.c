@@ -436,9 +436,7 @@ chclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct	cam_periph *periph;
 	struct	ch_softc *softc;
-	int	unit, error;
-
-	error = 0;
+	int	unit;
 
 	unit = CHUNIT(dev);
 	periph = cam_extend_get(chperiphs, unit);

@@ -441,9 +441,7 @@ sesclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct ses_softc *softc;
-	int unit, error;
-
-	error = 0;
+	int unit;
 
 	unit = SESUNIT(dev);
 	periph = cam_extend_get(sesperiphs, unit);
