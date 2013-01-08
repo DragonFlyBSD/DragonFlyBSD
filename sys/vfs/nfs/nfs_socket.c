@@ -1613,7 +1613,7 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 		 */
 		if (nd->nd_flag & ND_KERBFULL) {
 		    struct nfsuid *nuidp;
-		    struct timeval ktvin, ktvout;
+		    struct timeval ktvout;
 
 		    for (nuidp = NUIDHASH(slp, nd->nd_cr.cr_uid)->lh_first;
 			nuidp != NULL; nuidp = nuidp->nu_hash.le_next) {
@@ -1623,11 +1623,6 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 			    break;
 		    }
 		    if (nuidp) {
-			ktvin.tv_sec =
-			    txdr_unsigned(nuidp->nu_timestamp.tv_sec - 1);
-			ktvin.tv_usec =
-			    txdr_unsigned(nuidp->nu_timestamp.tv_usec);
-
 			/*
 			 * Encrypt the timestamp in ecb mode using the
 			 * session key.

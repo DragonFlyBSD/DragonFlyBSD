@@ -107,14 +107,10 @@ ffs_fsync(struct vop_fsync_args *ap)
 	struct vnode *vp = ap->a_vp;
 	int error;
 
-	if (vn_isdisk(vp, NULL)) {
+	if (vn_isdisk(vp, NULL))
 		if (vp->v_rdev && vp->v_rdev->si_mountpoint != NULL &&
 		    (vp->v_rdev->si_mountpoint->mnt_flag & MNT_SOFTDEP))
 			softdep_fsync_mountdev(vp);
-	} else {
-		struct inode *ip;
-		ip = VTOI(vp);
-	}
 
 	/*
 	 * Flush all dirty buffers associated with a vnode.

@@ -322,7 +322,6 @@ void
 puffs_msg_enqueue(struct puffs_mount *pmp, struct puffs_msgpark *park)
 {
 	struct thread *td = curthread;
-	struct mount *mp;
 	struct puffs_req *preq;
 	sigset_t ss;
 
@@ -335,7 +334,6 @@ puffs_msg_enqueue(struct puffs_mount *pmp, struct puffs_msgpark *park)
 	park->park_flags &= ~(PARKFLAG_DONE | PARKFLAG_HASERROR);
 	KKASSERT((park->park_flags & PARKFLAG_WAITERGONE) == 0);
 
-	mp = PMPTOMP(pmp);
 	preq = park->park_preq;
 
 	preq->preq_buflen = park->park_maxlen;
@@ -1131,8 +1129,6 @@ puffs_userdead(struct puffs_mount *pmp)
 
 	/* signal waiters on REQUEST TO file server queue */
 	for (park = TAILQ_FIRST(&pmp->pmp_msg_touser); park; park = park_next) {
-		uint8_t opclass;
-
 		lockmgr(&park->park_mtx, LK_EXCLUSIVE);
 		puffs_msgpark_reference(park);
 		park_next = TAILQ_NEXT(park, park_entries);
@@ -1155,7 +1151,6 @@ puffs_userdead(struct puffs_mount *pmp)
 			puffs_msgpark_release(park);
 
 		} else {
-			opclass = park->park_preq->preq_opclass;
 			park->park_preq->preq_rv = ENXIO;
 
 			if (park->park_flags & PARKFLAG_CALL) {

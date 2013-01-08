@@ -106,7 +106,6 @@ cd9660_lookup(struct vop_old_lookup_args *ap)
 	struct vnode *tdp;		/* returned by cd9660_vget_internal */
 	u_long bmask;			/* block offset mask */
 	int lockparent;			/* 1 => lockparent flag is set */
-	int wantparent;			/* 1 => wantparent or lockparent flag */
 	int error;
 	ino_t ino = 0;
 	int reclen;
@@ -127,7 +126,6 @@ cd9660_lookup(struct vop_old_lookup_args *ap)
 	dp = VTOI(vdp);
 	imp = dp->i_mnt;
 	lockparent = flags & CNP_LOCKPARENT;
-	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 
 	/*

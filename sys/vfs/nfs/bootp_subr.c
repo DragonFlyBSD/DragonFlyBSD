@@ -38,7 +38,6 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.26 2008/03/08 07:50:49 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -1305,9 +1304,6 @@ static unsigned char *
 bootpc_tag(struct bootpc_tagcontext *tctx, struct bootp_packet *bp,
 	   int len, int tag)
 {
-	unsigned char *j;
-	unsigned char *ej;
-
 	tctx->overload = 0;
 	tctx->badopt = 0;
 	tctx->badtag = 0;
@@ -1317,9 +1313,6 @@ bootpc_tag(struct bootpc_tagcontext *tctx, struct bootp_packet *bp,
 	if (bootpc_hascookie(bp) == 0)
 		return NULL;
 	
-	j = &bp->vend[4];
-	ej = (unsigned char *) bp + len;
-
 	bootpc_tag_helper(tctx, &bp->vend[4],
 			  (unsigned char *) bp + len - &bp->vend[4], tag);
 	

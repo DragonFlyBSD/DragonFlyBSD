@@ -272,7 +272,6 @@ int
 smbfs_nget(struct mount *mp, struct vnode *dvp, const char *name, int nmlen,
 	   struct smbfattr *fap, struct vnode **vpp)
 {
-	struct smbnode *np;
 	struct vnode *vp;
 	int error;
 
@@ -280,7 +279,6 @@ smbfs_nget(struct mount *mp, struct vnode *dvp, const char *name, int nmlen,
 	error = smbfs_node_alloc(mp, dvp, name, nmlen, fap, &vp);
 	if (error)
 		return error;
-	np = VTOSMB(vp);
 	if (fap)
 		smbfs_attr_cacheenter(vp, fap);
 	*vpp = vp;

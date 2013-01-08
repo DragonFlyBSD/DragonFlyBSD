@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_subr.c,v 1.2.2.2 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_subr.c,v 1.8 2006/12/23 00:41:30 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -174,7 +173,6 @@ ncp_lookup(struct vnode *dvp, int len, char *name, struct nw_entry_info *fap,
 {
 	struct nwmount *nmp;
 	struct nwnode *dnp = VTONW(dvp);
-	struct ncp_conn *conn;
 	int error;
 
 	if (!dvp || dvp->v_type != VDIR) {
@@ -182,7 +180,6 @@ ncp_lookup(struct vnode *dvp, int len, char *name, struct nw_entry_info *fap,
 		return (ENOENT);
 	}
 	nmp = VTONWFS(dvp);
-	conn = NWFSTOCONN(nmp);
 
 	if (len == 1 && name[0] == '.') {
 		if (strcmp(dnp->n_name, NWFS_ROOTVOL) == 0) {

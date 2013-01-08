@@ -251,7 +251,7 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 int
 nwfs_inactive(struct vop_inactive_args *ap)
 {
-	struct thread *td = curthread;	/* XXX */
+	struct thread *td __debugvar = curthread;	/* XXX */
 	struct ucred *cred;
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);

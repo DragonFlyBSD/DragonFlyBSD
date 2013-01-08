@@ -1399,7 +1399,9 @@ static int
 devfs_fo_ioctl(struct file *fp, u_long com, caddr_t data,
 		  struct ucred *ucred, struct sysmsg *msg)
 {
+#if 0
 	struct devfs_node *node;
+#endif
 	struct vnode *vp;
 	struct vnode *ovp;
 	cdev_t	dev;
@@ -1415,7 +1417,9 @@ devfs_fo_ioctl(struct file *fp, u_long com, caddr_t data,
 
 	reference_dev(dev);
 
+#if 0
 	node = DEVFS_NODE(vp);
+#endif
 
 	devfs_debug(DEVFS_DEBUG_DEBUG,
 		    "devfs_fo_ioctl() called! for dev %s\n",
@@ -1586,14 +1590,16 @@ static int
 devfs_spec_ioctl(struct vop_ioctl_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
+#if 0
 	struct devfs_node *node;
+#endif
 	cdev_t dev;
 
 	if ((dev = vp->v_rdev) == NULL)
 		return (EBADF);		/* device was revoked */
+#if 0
 	node = DEVFS_NODE(vp);
 
-#if 0
 	if (node) {
 		nanotime(&node->atime);
 		nanotime(&node->mtime);
@@ -1612,14 +1618,16 @@ static int
 devfs_spec_kqfilter(struct vop_kqfilter_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
+#if 0
 	struct devfs_node *node;
+#endif
 	cdev_t dev;
 
 	if ((dev = vp->v_rdev) == NULL)
 		return (EBADF);		/* device was revoked (EBADF) */
+#if 0
 	node = DEVFS_NODE(vp);
 
-#if 0
 	if (node)
 		nanotime(&node->atime);
 #endif
