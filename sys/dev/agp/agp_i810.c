@@ -2415,7 +2415,9 @@ int
 agp_intel_gtt_map_memory(device_t dev, vm_page_t *pages, u_int num_entries,
     struct sglist **sg_list)
 {
+#if 0
 	struct agp_i810_softc *sc;
+#endif
 	struct sglist *sg;
 	int i;
 #if 0
@@ -2425,7 +2427,9 @@ agp_intel_gtt_map_memory(device_t dev, vm_page_t *pages, u_int num_entries,
 
 	if (*sg_list != NULL)
 		return (0);
+#if 0
 	sc = device_get_softc(dev);
+#endif
 	sg = sglist_alloc(num_entries, M_WAITOK /* XXXKIB */);
 	for (i = 0; i < num_entries; i++) {
 		sg->sg_segs[i].ss_paddr = VM_PAGE_TO_PHYS(pages[i]);
