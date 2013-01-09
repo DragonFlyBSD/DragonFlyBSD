@@ -509,8 +509,6 @@ static void
 sctp_handle_abort(struct sctp_abort_chunk *cp,
     struct sctp_tcb *stcb, struct sctp_nets *net)
 {
-	struct sctp_inpcb *inp;
-
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INPUT2) {
 		kprintf("sctp_handle_abort: handling ABORT\n");
@@ -526,7 +524,6 @@ sctp_handle_abort(struct sctp_abort_chunk *cp,
 	/* notify user of the abort and clean up... */
 	sctp_abort_notification(stcb, 0);
 	/* free the tcb */
-	inp = stcb->sctp_ep;
 	sctp_free_assoc(stcb->sctp_ep, stcb);
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INPUT2) {
@@ -1450,7 +1447,6 @@ sctp_process_cookie_new(struct mbuf *m, int iphlen, int offset,
 	int init_offset, initack_offset, initack_limit;
 	int retval;
 	int error = 0;
-	u_int32_t old_tag;
 	/*
 	 * find and validate the INIT chunk in the cookie (peer's info)
 	 * the INIT should start after the cookie-echo header struct
@@ -1554,7 +1550,6 @@ sctp_process_cookie_new(struct mbuf *m, int iphlen, int offset,
 	}
 
 	/* process the INIT-ACK info (my info) */
-	old_tag = asoc->my_vtag;
 	asoc->my_vtag = ntohl(initack_cp->init.initiate_tag);
 	asoc->my_rwnd = ntohl(initack_cp->init.a_rwnd);
 	asoc->pre_open_streams = ntohs(initack_cp->init.num_outbound_streams);

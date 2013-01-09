@@ -208,9 +208,7 @@ gre_mobile_input(struct mbuf **mp, int *offp, int proto)
 	struct ip *ip = mtod(m, struct ip *);
 	struct mobip_h *mip = mtod(m, struct mobip_h *);
 	struct gre_softc *sc;
-	int msiz, hlen;
-
-	hlen = *offp;
+	int msiz;
 
 	if ((sc = gre_lookup(m, IPPROTO_MOBILE)) == NULL) {
 		/* No matching tunnel or tunnel is down. */
