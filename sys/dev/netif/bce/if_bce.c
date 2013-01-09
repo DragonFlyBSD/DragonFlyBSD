@@ -4401,7 +4401,6 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 	while (sw_cons != hw_cons) {
 		struct mbuf *m = NULL;
 		struct l2_fhdr *l2fhdr = NULL;
-		struct rx_bd *rxbd;
 		unsigned int len;
 		uint32_t status = 0;
 
@@ -4417,9 +4416,6 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 		sw_chain_cons = RX_CHAIN_IDX(sc, sw_cons);
 		sw_chain_prod = RX_CHAIN_IDX(sc, sw_prod);
 
-		/* Get the used rx_bd. */
-		rxbd = &sc->rx_bd_chain[RX_PAGE(sw_chain_cons)]
-				       [RX_IDX(sw_chain_cons)];
 		sc->free_rx_bd++;
 
 		/* The mbuf is stored with the last rx_bd entry of a packet. */

@@ -3174,7 +3174,7 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 	union e1000_adv_tx_desc	*txd = NULL;
 	struct mbuf *m_head = *m_headp;
 	uint32_t olinfo_status = 0, cmd_type_len = 0, cmd_rs = 0;
-	int maxsegs, nsegs, i, j, error, last = 0;
+	int maxsegs, nsegs, i, j, error;
 	uint32_t hdrlen = 0;
 
 	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
@@ -3275,7 +3275,6 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 		txd->read.buffer_addr = htole64(seg_addr);
 		txd->read.cmd_type_len = htole32(cmd_type_len | seg_len);
 		txd->read.olinfo_status = htole32(olinfo_status);
-		last = i;
 		if (++i == txr->num_tx_desc)
 			i = 0;
 		tx_buf->m_head = NULL;

@@ -4878,7 +4878,7 @@ ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 	struct ath_buf *bf, *last;
-	struct ath_desc *ds, *ds0;
+	struct ath_desc *ds;
 	struct ath_tx_status *ts;
 	struct ieee80211_node *ni;
 	struct ath_node *an;
@@ -4897,7 +4897,6 @@ ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 		bf = STAILQ_FIRST(&txq->axq_q);
 		if (bf == NULL)
 			break;
-		ds0 = &bf->bf_desc[0];
 		ds = &bf->bf_desc[bf->bf_nseg - 1];
 		ts = &bf->bf_status.ds_txstat;
 		qbusy = ath_hal_txqenabled(ah, txq->axq_qnum);

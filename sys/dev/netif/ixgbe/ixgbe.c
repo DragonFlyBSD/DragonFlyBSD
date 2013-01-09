@@ -3783,8 +3783,10 @@ static int
 ixgbe_setup_receive_ring(struct rx_ring *rxr)
 {
 	struct	adapter 	*adapter;
+#if 0 /* NET_LRO */
 	struct ifnet		*ifp;
 	device_t		dev;
+#endif
 	struct ixgbe_rx_buf	*rxbuf;
 	bus_dma_segment_t	pseg[1], hseg[1];
 #if 0	/* NET_LRO */
@@ -3797,8 +3799,10 @@ ixgbe_setup_receive_ring(struct rx_ring *rxr)
 #endif /* DEV_NETMAP */
 
 	adapter = rxr->adapter;
+#if 0 /* NET_LRO */
 	ifp = adapter->ifp;
 	dev = adapter->dev;
+#endif
 
 	/* Clear the ring contents */
 	IXGBE_RX_LOCK(rxr);

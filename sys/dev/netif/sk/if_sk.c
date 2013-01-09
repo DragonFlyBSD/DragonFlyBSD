@@ -1818,7 +1818,7 @@ sk_rxeof(struct sk_if_softc *sc_if)
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct sk_ring_data *rd = &sc_if->sk_rdata;
-	int i, reap, max_frmlen;
+	int i, max_frmlen;
 
 	DPRINTFN(2, ("sk_rxeof\n"));
 
@@ -1829,7 +1829,6 @@ sk_rxeof(struct sk_if_softc *sc_if)
 	else
 		max_frmlen = ETHER_MAX_LEN;
 
-	reap = 0;
 	for (;;) {
 		struct sk_rx_desc *cur_desc;
 		uint32_t rxstat, sk_ctl;
@@ -1865,7 +1864,6 @@ sk_rxeof(struct sk_if_softc *sc_if)
 		 * in the following processing any more.
 		 */
 		SK_INC(i, SK_RX_RING_CNT);
-		reap = 1;
 
 		if ((sk_ctl & (SK_RXCTL_STATUS_VALID | SK_RXCTL_FIRSTFRAG |
 		    SK_RXCTL_LASTFRAG)) != (SK_RXCTL_STATUS_VALID |
@@ -2002,7 +2000,6 @@ sk_txeof(struct sk_if_softc *sc_if)
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
 	uint32_t idx;
-	int reap = 0;
 
 	DPRINTFN(2, ("sk_txeof\n"));
 
@@ -2031,7 +2028,6 @@ sk_txeof(struct sk_if_softc *sc_if)
 			cd->sk_tx_mbuf[idx] = NULL;
 		}
 		sc_if->sk_cdata.sk_tx_cnt--;
-		reap = 1;
 		SK_INC(idx, SK_TX_RING_CNT);
 	}
 

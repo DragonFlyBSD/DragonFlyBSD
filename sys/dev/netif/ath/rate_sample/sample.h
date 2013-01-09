@@ -221,7 +221,6 @@ static unsigned calc_usecs_unicast_packet(struct ath_softc *sc,
 	}
 
 	if (rts || cts) {
-		int ctsrate;
 		int ctsduration = 0;
 
 		/* NB: this is intentionally not a runtime check */
@@ -229,7 +228,6 @@ static unsigned calc_usecs_unicast_packet(struct ath_softc *sc,
 		    ("bogus cix %d, max %u, mode %u", cix, rt->rateCount,
 		     sc->sc_curmode));
 
-		ctsrate = rt->info[cix].rateCode | rt->info[cix].shortPreamble;
 		if (rts)		/* SIFS + CTS */
 			ctsduration += rt->info[cix].spAckDuration;
 

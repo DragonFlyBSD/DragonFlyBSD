@@ -1954,15 +1954,19 @@ alc_encap(struct alc_softc *sc, struct mbuf **m_head)
 	struct tcphdr *tcp;
 	bus_dma_segment_t txsegs[ALC_MAXTXSEGS];
 	bus_dmamap_t map;
-	uint32_t cflags, hdrlen, ip_off, poff, vtag;
+	uint32_t cflags, hdrlen, poff, vtag;
+#if 0 /* XXX: TSO */
+	uint32_t ip_off;
+#endif
 	int error, idx, nsegs, prod;
 
 	M_ASSERTPKTHDR((*m_head));
 
 	m = *m_head;
 	tcp = NULL;
-	ip_off = poff = 0;
+	poff = 0;
 #if 0 /* XXX: TSO */
+	ip_off = 0;
 	ip = NULL;
 
 	if ((m->m_pkthdr.csum_flags & (ALC_CSUM_FEATURES | CSUM_TSO)) != 0) {

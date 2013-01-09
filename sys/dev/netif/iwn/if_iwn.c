@@ -3361,10 +3361,6 @@ iwn_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 static void
 iwn_start(struct ifnet *ifp)
 {
-	struct iwn_softc *sc;
-
-	sc = ifp->if_softc;
-
 	wlan_serialize_enter();
 	iwn_start_locked(ifp);
 	wlan_serialize_exit();

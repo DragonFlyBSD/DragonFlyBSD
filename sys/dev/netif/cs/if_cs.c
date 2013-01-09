@@ -306,7 +306,10 @@ cs_cs89x0_probe(device_t dev)
 	unsigned rev_type = 0;
 	char chip_revision;
 	int eeprom_buff[CHKSUM_LEN];
-	int chip_type, pp_isaint, pp_isadma;
+	int chip_type, pp_isaint;
+#if 0 /* Temporary disabled */
+	int pp_isadma;
+#endif
 
 	error = cs_alloc_port(dev, 0, CS_89x0_IO_PORTS);
 	if (error)
@@ -339,11 +342,15 @@ cs_cs89x0_probe(device_t dev)
 
 	if(chip_type==CS8900) {
 		pp_isaint = PP_CS8900_ISAINT;
+#if 0 /* Temporary disabled */
 		pp_isadma = PP_CS8900_ISADMA;
+#endif
 		sc->send_cmd = TX_CS8900_AFTER_ALL;
 	} else {
 		pp_isaint = PP_CS8920_ISAINT;
+#if 0 /* Temporary disabled */
 		pp_isadma = PP_CS8920_ISADMA;
+#endif
 		sc->send_cmd = TX_CS8920_AFTER_ALL;
 	}
 
@@ -466,16 +473,14 @@ cs_cs89x0_probe(device_t dev)
                 return (ENXIO);
         }
         
-        /*
-         * Temporary disabled
-         *
+#if 0 /* Temporary disabled */
         if (drq>0)
 		cs_writereg(iobase, pp_isadma, drq);
 	else {
 		device_printf(dev, "incorrect drq\n");
 		return 0;
 	}
-        */
+#endif
 
 	if (bootverbose)
 		 device_printf(dev, "CS89%c0%s rev %c media%s%s%s\n",

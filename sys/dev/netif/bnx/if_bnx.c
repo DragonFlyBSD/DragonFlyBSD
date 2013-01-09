@@ -1754,7 +1754,7 @@ bnx_attach(device_t dev)
 	uint32_t hwcfg = 0, misccfg;
 	int error = 0, rid, capmask;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
-	uint16_t product, vendor;
+	uint16_t product;
 	driver_intr_t *intr_func;
 	uintptr_t mii_priv = 0;
 	u_int intr_flags;
@@ -1770,7 +1770,6 @@ bnx_attach(device_t dev)
 	lwkt_serialize_init(&sc->bnx_jslot_serializer);
 
 	product = pci_get_device(dev);
-	vendor = pci_get_vendor(dev);
 
 #ifndef BURN_BRIDGES
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
