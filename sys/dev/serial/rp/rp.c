@@ -1137,7 +1137,6 @@ rpclose(struct dev_close_args *ap)
 	int	unit, mynor, umynor, port; /* SG */
 	struct	rp_port *rp;
 	struct	tty	*tp;
-	CHANNEL_t	*cp;
 
 	lwkt_gettoken(&tty_token);
    umynor = (((minor(dev) >> 16) -1) * 32);    /* SG */
@@ -1150,7 +1149,6 @@ rpclose(struct dev_close_args *ap)
 		return(0);
 	}
 	rp = rp_addr(unit) + port;
-	cp = &rp->rp_channel;
 	tp = rp->rp_tty;
 
 	crit_enter();
@@ -1176,14 +1174,12 @@ rpclose(struct dev_close_args *ap)
 static void
 rphardclose(struct rp_port *rp)
 {
-	int	mynor;
 	struct	tty	*tp;
 	CHANNEL_t	*cp;
 
 	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	cp = &rp->rp_channel;
 	tp = rp->rp_tty;
-	mynor = MINOR_MAGIC(tp->t_dev);
 
 	sFlushRxFIFO(cp);
 	sFlushTxFIFO(cp);
@@ -1263,12 +1259,10 @@ rpioctl(struct dev_ioctl_args *ap)
 	u_long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
 	struct rp_port	*rp;
-	CHANNEL_t	*cp;
 	struct tty	*tp;
 	int	unit, mynor, port, umynor;            /* SG */
 	int	error = 0;
 	int	arg, flags, result, ChanStatus;
-	struct	termios *t;
 
 	lwkt_gettoken(&tty_token);
    umynor = (((minor(dev) >> 16) -1) * 32);    /* SG */
@@ -1320,7 +1314,6 @@ rpioctl(struct dev_ioctl_args *ap)
 	}
 
 	tp = rp->rp_tty;
-	cp = &rp->rp_channel;
 
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 	term = tp->t_termios;
@@ -1356,8 +1349,6 @@ rpioctl(struct dev_ioctl_args *ap)
 		if(lt->c_ospeed != 0)
 			dt->c_ospeed = tp->t_ospeed;
 	}
-
-	t = &tp->t_termios;
 
 	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data,
 					      ap->a_fflag, ap->a_cred);
@@ -1641,7 +1632,6 @@ rpstart(struct tty *tp)
 	CHANNEL_t	*cp;
 	struct	clist	*qp;
 	int	unit, mynor, port, umynor;               /* SG */
-	char	flags;
 	int	xmit_fifo_room;
 	int	count, wcount;
 
@@ -1653,7 +1643,6 @@ rpstart(struct tty *tp)
 	unit = minor_to_unit[mynor];
 	rp = rp_addr(unit) + port;
 	cp = &rp->rp_channel;
-	flags = rp->rp_channel.TxControl[3];
 	crit_enter();
 
 	if(tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {

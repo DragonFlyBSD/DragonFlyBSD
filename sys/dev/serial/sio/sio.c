@@ -1464,9 +1464,6 @@ static void
 comhardclose(struct com_s *com)
 {
 	struct tty	*tp;
-	int		unit;
-
-	unit = com->unit;
 	crit_enter();
 	lwkt_gettoken(&tty_token);
 	com->poll = FALSE;

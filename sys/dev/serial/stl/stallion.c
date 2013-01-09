@@ -1920,14 +1920,11 @@ static void stl_ttyoptim(stlport_t *portp, struct termios *tiosp)
 static int stl_initports(stlbrd_t *brdp, stlpanel_t *panelp)
 {
 	stlport_t	*portp;
-	unsigned int	chipmask;
 	int		i, j;
 
 #if STLDEBUG
 	kprintf("stl_initports(panelp=%x)\n", (int) panelp);
 #endif
-
-        chipmask = stl_panelinit(brdp, panelp);
 
 /*
  *      All UART's are initialized if found. Now go through and setup
@@ -2556,7 +2553,6 @@ static void stl_cd1400ccrwait(stlport_t *portp)
 
 static __inline void stl_cd1400txisr(stlpanel_t *panelp, int ioaddr)
 {
-        struct tty      *tp;
         stlport_t       *portp;
         unsigned char   ioack, srer;
         char            *head, *tail;
@@ -2574,7 +2570,6 @@ static __inline void stl_cd1400txisr(stlpanel_t *panelp, int ioaddr)
                 return;
         }
         portp = panelp->ports[(ioack >> 3)];
-        tp = &portp->tty;
 
 /*
  *      Unfortunately we need to handle breaks in the data stream, since

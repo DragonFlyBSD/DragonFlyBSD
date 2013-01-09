@@ -815,14 +815,10 @@ sioclose(struct dev_close_args *ap)
 static void
 comhardclose(struct com_s *com)
 {
-	cy_addr		iobase;
 	struct tty	*tp;
-	int		unit;
 
 	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
-	unit = com->unit;
-	iobase = com->iobase;
 	crit_enter();
 #if 0
 	com->poll = FALSE;

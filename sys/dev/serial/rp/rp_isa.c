@@ -220,13 +220,10 @@ nogo:
 static int
 rp_attach(device_t dev)
 {
-	int	unit;
 	int	num_ports, num_aiops;
 	int	aiop;
 	CONTROLLER_t	*ctlp;
 	int	retval;
-
-	unit = device_get_unit(dev);
 
 	ctlp = device_get_softc(dev);
 
