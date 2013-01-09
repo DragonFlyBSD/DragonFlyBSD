@@ -341,13 +341,11 @@ viachan_trigger(kobj_t obj, void *data, int go)
 {
 	struct via_chinfo *ch = data;
 	struct via_info *via = ch->parent;
-	struct via_dma_op *ado;
 	bus_addr_t sgd_addr = ch->sgd_addr;
 
 	if (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD)
 		return 0;
 
-	ado = ch->sgd_table;
 	DEB(kprintf("ado located at va=%p pa=%x\n", ado, sgd_addr));
 
 	snd_mtxlock(via->lock);
@@ -368,11 +366,9 @@ viachan_getptr(kobj_t obj, void *data)
 {
 	struct via_chinfo *ch = data;
 	struct via_info *via = ch->parent;
-	struct via_dma_op *ado;
 	bus_addr_t sgd_addr = ch->sgd_addr;
 	int ptr, base, base1, len, seg;
 
-	ado = ch->sgd_table;
 	snd_mtxlock(via->lock);
 	base1 = via_rd(via, ch->base, 4);
 	len = via_rd(via, ch->count, 4);

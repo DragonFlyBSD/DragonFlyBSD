@@ -297,11 +297,9 @@ static int
 gusc_attach(device_t dev)
 {
 	sc_p scp;
-	int unit;
 	void *ih;
 
 	scp = device_get_softc(dev);
-	unit = device_get_unit(dev);
 
 	bzero(scp, sizeof(*scp));
 
@@ -564,16 +562,13 @@ alloc_resource(sc_p scp)
 static int
 release_resource(sc_p scp)
 {
-	int i, lid, flags;
+	int i, lid;
 	device_t dev;
 
-	flags = 0;
 	if (isa_get_vendorid(scp->dev))
 		lid = isa_get_logicalid(scp->dev);
-	else {
+	else
 		lid = LOGICALID_NOPNP;
-		flags = device_get_flags(scp->dev);
-	}
 	switch(lid) {
 	case LOGICALID_PCM:
 	case LOGICALID_NOPNP:		/* XXX Non-PnP */

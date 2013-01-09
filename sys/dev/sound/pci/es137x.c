@@ -1356,12 +1356,10 @@ static void
 es_init_sysctls(device_t dev)
 {
 #ifdef SND_DYNSYSCTL
-	struct es_info *es;
 	int r, devid, revid;
 
 	devid = pci_get_devid(dev);
 	revid = pci_get_revid(dev);
-	es = pcm_getdevinfo(dev);
 	if ((devid == ES1371_PCI_ID && revid == ES1371REV_ES1373_8) ||
 		    (devid == ES1371_PCI_ID && revid == ES1371REV_CT5880_A) ||
 		    (devid == CT5880_PCI_ID && revid == CT5880REV_CT5880_C) ||

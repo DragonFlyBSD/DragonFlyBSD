@@ -1182,7 +1182,6 @@ hdac_intr_handler(void *context)
 	struct hdac_softc *sc;
 	uint32_t intsts;
 	uint8_t rirbsts;
-	struct hdac_rirb *rirb_base;
 	uint32_t trigger;
 
 	sc = (struct hdac_softc *)context;
@@ -1204,7 +1203,6 @@ hdac_intr_handler(void *context)
 
 	/* Was this a controller interrupt? */
 	if (HDA_FLAG_MATCH(intsts, HDAC_INTSTS_CIS)) {
-		rirb_base = (struct hdac_rirb *)sc->rirb_dma.dma_vaddr;
 		rirbsts = HDAC_READ_1(&sc->mem, HDAC_RIRBSTS);
 		/* Get as many responses that we can */
 		while (HDA_FLAG_MATCH(rirbsts, HDAC_RIRBSTS_RINTFL)) {
@@ -2902,7 +2900,6 @@ hdac_command_send_internal(struct hdac_softc *sc,
 	uint32_t *corb;
 	int timeout;
 	int retry = 10;
-	struct hdac_rirb *rirb_base;
 
 	if (sc == NULL || sc->codecs[cad] == NULL || commands == NULL ||
 	    commands->num_commands < 1)
@@ -2913,7 +2910,6 @@ hdac_command_send_internal(struct hdac_softc *sc,
 	codec->responses_received = 0;
 	codec->verbs_sent = 0;
 	corb = (uint32_t *)sc->corb_dma.dma_vaddr;
-	rirb_base = (struct hdac_rirb *)sc->rirb_dma.dma_vaddr;
 
 	do {
 		if (codec->verbs_sent != commands->num_commands) {
