@@ -519,8 +519,8 @@ dos2unixfn(u_char dn[11], u_char *un, int lower, struct msdosfsmount *pmp)
 	 * Copy the name portion into the unix filename string.
          */
 	for(i  = 8; i > 0 && *dn != ' ';) {
-                c = dos2unixchr((const u_char **)&dn, &i, lower & LCASE_BASE,
-                    pmp);
+                c = dos2unixchr((const u_char **)(void *)&dn,
+		    &i, lower & LCASE_BASE, pmp);
                 if (c & 0xff00) {
                         *un++ = c >> 8;
                         thislong++;
@@ -538,7 +538,7 @@ dos2unixfn(u_char dn[11], u_char *un, int lower, struct msdosfsmount *pmp)
                 *un++ = '.';
                 thislong++;
                 for (i = 3; i > 0 && *dn != ' ';) {
-                        c = dos2unixchr((const u_char **)&dn, &i,
+                        c = dos2unixchr((const u_char **)(void *)&dn, &i,
                             lower & LCASE_EXT, pmp);
                         if (c & 0xff00) {
                                 *un++ = c >> 8;
@@ -1013,7 +1013,8 @@ winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
                  * to look up or create files in case sensitive even when
                  * it's a long file name.
                  */
-                c1 = unix2winchr((const u_char **)&np, &len, LCASE_BASE, pmp);
+                c1 = unix2winchr((const u_char **)(void *)&np,
+		    &len, LCASE_BASE, pmp);
                 c2 = unix2winchr(&un, &unlen, LCASE_BASE, pmp);
                 if (c1 != c2)
                         return -2;
