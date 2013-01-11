@@ -55,6 +55,8 @@ static struct hammer_inostats *hammer_inode_inostats(hammer_mount_t hmp,
 extern struct hammer_inode *HammerTruncIp;
 #endif
 
+struct krate hammer_gen_krate = { 1 };
+
 /*
  * RB-Tree support for inode structures
  */
@@ -1829,9 +1831,10 @@ hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
 	 * not be anything to wakeup (ip).
 	 */
 	if (depth == 20 && TAILQ_FIRST(&ip->target_list)) {
-		kprintf("HAMMER Warning: depth limit reached on "
-			"setup recursion, inode %p %016llx\n",
-			ip, (long long)ip->obj_id);
+		krateprintf(&hammer_gen_krate,
+			    "HAMMER Warning: depth limit reached on "
+			    "setup recursion, inode %p %016llx\n",
+			    ip, (long long)ip->obj_id);
 		return(-2);
 	}
 
