@@ -256,7 +256,7 @@ static void	msk_miibus_statchg(device_t);
 
 static void	msk_init(void *);
 static int	msk_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	msk_start(struct ifnet *);
+static void	msk_start(struct ifnet *, struct ifaltq_subque *);
 static void	msk_watchdog(struct ifnet *);
 static int	msk_mediachange(struct ifnet *);
 static void	msk_mediastatus(struct ifnet *, struct ifmediareq *);
@@ -2596,7 +2596,7 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 }
 
 static void
-msk_start(struct ifnet *ifp)
+msk_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
         struct msk_if_softc *sc_if;
         struct mbuf *m_head;
@@ -2604,6 +2604,7 @@ msk_start(struct ifnet *ifp)
 
 	sc_if = ifp->if_softc;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (!sc_if->msk_link) {

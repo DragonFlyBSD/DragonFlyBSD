@@ -156,7 +156,7 @@ static void vge_rxeof		(struct vge_softc *, int);
 static void vge_txeof		(struct vge_softc *);
 static void vge_intr		(void *);
 static void vge_tick		(struct vge_softc *);
-static void vge_start		(struct ifnet *);
+static void vge_start		(struct ifnet *, struct ifaltq_subque *);
 static int vge_ioctl		(struct ifnet *, u_long, caddr_t,
 				 struct ucred *);
 static void vge_init		(void *);
@@ -1686,12 +1686,13 @@ fail:
  */
 
 static void
-vge_start(struct ifnet *ifp)
+vge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct vge_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	int idx, pidx = 0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (!sc->vge_link) {

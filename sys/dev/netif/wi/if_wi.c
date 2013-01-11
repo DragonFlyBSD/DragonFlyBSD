@@ -114,7 +114,7 @@ static struct ieee80211vap *wi_vap_create(struct ieee80211com *ic,
 static void wi_vap_delete(struct ieee80211vap *vap);
 static void wi_stop_locked(struct wi_softc *sc, int disable);
 static void wi_start_locked(struct ifnet *);
-static void wi_start(struct ifnet *);
+static void wi_start(struct ifnet *, struct ifaltq_subque *);
 static int  wi_start_tx(struct ifnet *ifp, struct wi_frame *frmhdr,
 		struct mbuf *m0);
 static int  wi_raw_xmit(struct ieee80211_node *, struct mbuf *,
@@ -1005,8 +1005,9 @@ wi_start_locked(struct ifnet *ifp)
 }
 
 static void
-wi_start(struct ifnet *ifp)
+wi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	wi_start_locked(ifp);
 }
 

@@ -164,7 +164,7 @@ static int	iwn_tx_data(struct iwn_softc *, struct mbuf *,
 		    struct ieee80211_node *, struct iwn_tx_ring *);
 static int	iwn_raw_xmit(struct ieee80211_node *, struct mbuf *,
 		    const struct ieee80211_bpf_params *);
-static void	iwn_start(struct ifnet *);
+static void	iwn_start(struct ifnet *, struct ifaltq_subque *);
 static void	iwn_start_locked(struct ifnet *);
 static void	iwn_watchdog(struct iwn_softc *sc);
 static int	iwn_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -3359,8 +3359,9 @@ iwn_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 }
 
 static void
-iwn_start(struct ifnet *ifp)
+iwn_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	wlan_serialize_enter();
 	iwn_start_locked(ifp);
 	wlan_serialize_exit();

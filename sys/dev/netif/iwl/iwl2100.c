@@ -72,7 +72,7 @@
 
 static void	iwl2100_init(void *);
 static int	iwl2100_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	iwl2100_start(struct ifnet *);
+static void	iwl2100_start(struct ifnet *, struct ifaltq_subque *);
 static void	iwl2100_watchdog(struct ifnet *);
 static int	iwl2100_newstate(struct ieee80211com *, enum ieee80211_state, int);
 static int	iwl2100_media_change(struct ifnet *);
@@ -839,13 +839,14 @@ iwl2100_ioctl(struct ifnet *ifp, u_long cmd, caddr_t req, struct ucred *cr)
 }
 
 static void
-iwl2100_start(struct ifnet *ifp)
+iwl2100_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct iwl2100_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct iwl2100_tx_ring *tr = &sc->sc_txring;
 	int trans = 0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (sc->sc_flags & IWL2100_F_DETACH) {

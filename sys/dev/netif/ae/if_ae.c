@@ -92,7 +92,7 @@ static void	ae_miibus_statchg(device_t);
 static int	ae_mediachange(struct ifnet *);
 static void	ae_mediastatus(struct ifnet *, struct ifmediareq *);
 static void	ae_init(void *);
-static void	ae_start(struct ifnet *);
+static void	ae_start(struct ifnet *, struct ifaltq_subque *);
 static int	ae_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	ae_watchdog(struct ifnet *);
 static void	ae_stop(struct ae_softc *);
@@ -1152,11 +1152,12 @@ ae_encap(struct ae_softc *sc, struct mbuf **m_head)
 }
 
 static void
-ae_start(struct ifnet *ifp)
+ae_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ae_softc *sc = ifp->if_softc;
 	int error, trans;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 #ifdef AE_DEBUG

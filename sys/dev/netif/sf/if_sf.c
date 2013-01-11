@@ -136,7 +136,7 @@ static void sf_txeof		(struct sf_softc *);
 static int sf_encap		(struct sf_softc *,
 					struct sf_tx_bufdesc_type0 *,
 					struct mbuf *);
-static void sf_start		(struct ifnet *);
+static void sf_start		(struct ifnet *, struct ifaltq_subque *);
 static int sf_ioctl		(struct ifnet *, u_long, caddr_t,
 					struct ucred *);
 static void sf_init		(void *);
@@ -1235,12 +1235,14 @@ sf_encap(struct sf_softc *sc, struct sf_tx_bufdesc_type0 *c,
 }
 
 static void
-sf_start(struct ifnet *ifp)
+sf_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct sf_softc		*sc;
 	struct sf_tx_bufdesc_type0 *cur_tx = NULL;
 	struct mbuf		*m_head = NULL, *m_defragged;
 	int			i, txprod, need_trans = 0;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	sc = ifp->if_softc;
 

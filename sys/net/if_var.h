@@ -220,7 +220,7 @@ struct ifnet {
 	void	(*if_input)		/* input routine from hardware driver */
 		(struct ifnet *, struct mbuf *);
 	void	(*if_start)		/* initiate output routine */
-		(struct ifnet *);
+		(struct ifnet *, struct ifaltq_subque *);
 	int	(*if_ioctl)		/* ioctl routine */
 		(struct ifnet *, u_long, caddr_t, struct ucred *);
 	void	(*if_watchdog)		/* timer routine */
@@ -847,8 +847,8 @@ struct ifaddr *ifaddr_byindex(unsigned short);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
-void	if_devstart(struct ifnet *ifp);
-void	if_devstart_sched(struct ifnet *ifp);
+void	if_devstart(struct ifnet *ifp); /* COMPAT */
+void	if_devstart_sched(struct ifnet *ifp); /* COMPAT */
 int	if_ring_count2(int cnt, int cnt_max);
 
 #define IF_LLSOCKADDR(ifp)						\

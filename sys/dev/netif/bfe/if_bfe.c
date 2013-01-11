@@ -91,7 +91,7 @@ static int	bfe_probe(device_t);
 static int	bfe_attach(device_t);
 static int	bfe_detach(device_t);
 static void	bfe_intr(void *);
-static void	bfe_start(struct ifnet *);
+static void	bfe_start(struct ifnet *, struct ifaltq_subque *);
 static int	bfe_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bfe_init(void *);
 static void	bfe_stop(struct bfe_softc *);
@@ -1275,12 +1275,13 @@ fail:
  * Set up to transmit a packet
  */
 static void
-bfe_start(struct ifnet *ifp)
+bfe_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct bfe_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	int idx, need_trans;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* 

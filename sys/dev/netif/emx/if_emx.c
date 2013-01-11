@@ -176,7 +176,7 @@ static int	emx_resume(device_t);
 static void	emx_init(void *);
 static void	emx_stop(struct emx_softc *);
 static int	emx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	emx_start(struct ifnet *);
+static void	emx_start(struct ifnet *, struct ifaltq_subque *);
 #ifdef IFPOLL_ENABLE
 static void	emx_npoll(struct ifnet *, struct ifpoll_info *);
 static void	emx_npoll_status(struct ifnet *);
@@ -935,13 +935,14 @@ emx_resume(device_t dev)
 }
 
 static void
-emx_start(struct ifnet *ifp)
+emx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct emx_softc *sc = ifp->if_softc;
 	struct emx_txdata *tdata = &sc->tx_data;
 	struct mbuf *m_head;
 	int idx = -1, nsegs = 0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(&sc->tx_data.tx_serialize);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))

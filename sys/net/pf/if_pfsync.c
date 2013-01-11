@@ -95,7 +95,7 @@ int	pfsync_alloc_scrub_memory(struct pfsync_state_peer *,
 int	pfsyncoutput(struct ifnet *, struct mbuf *, struct sockaddr *,
 	    struct rtentry *);
 int	pfsyncioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-void	pfsyncstart(struct ifnet *);
+void	pfsyncstart(struct ifnet *, struct ifaltq_subque *);
 
 struct mbuf *pfsync_get_mbuf(struct pfsync_softc *, u_int8_t, void **);
 int	pfsync_request_update(struct pfsync_state_upd *, struct in_addr *);
@@ -210,9 +210,10 @@ pfsync_clone_destroy(struct ifnet *ifp)
  * Start output on the pfsync interface.
  */
 void
-pfsyncstart(struct ifnet *ifp)
+pfsyncstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
-	ifq_purge(&ifp->if_snd);
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+	ifsq_purge(ifsq);
 }
 
 int

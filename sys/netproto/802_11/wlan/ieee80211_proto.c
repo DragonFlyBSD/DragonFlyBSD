@@ -1646,6 +1646,9 @@ ieee80211_newstate_task(void *xvap, int npending)
 		goto done;
 
 	if (nstate == IEEE80211_S_RUN) {
+		struct ifaltq_subque *ifsq =
+		    ifq_get_subq_default(&vap->iv_ifp->if_snd);
+
 		/*
 		 * OACTIVE may be set on the vap if the upper layer
 		 * tried to transmit (e.g. IPv6 NDP) before we reach
@@ -1654,8 +1657,8 @@ ieee80211_newstate_task(void *xvap, int npending)
 		 * Note this can also happen as a result of SLEEP->RUN
 		 * (i.e. coming out of power save mode).
 		 */
-		ifq_clr_oactive(&vap->iv_ifp->if_snd);
-		vap->iv_ifp->if_start(vap->iv_ifp);
+		ifsq_clr_oactive(ifsq);
+		vap->iv_ifp->if_start(vap->iv_ifp, ifsq);
 
 		/* bring up any vaps waiting on us */
 		wakeupwaiting(vap);

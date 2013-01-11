@@ -76,7 +76,7 @@ devclass_t ed_devclass;
 
 static void	ed_init		(void *);
 static int	ed_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	ed_start	(struct ifnet *);
+static void	ed_start	(struct ifnet *, struct ifaltq_subque *);
 static void	ed_reset	(struct ifnet *);
 static void	ed_watchdog	(struct ifnet *);
 #ifndef ED_NO_MIIBUS
@@ -2065,12 +2065,14 @@ ed_xmit(struct ed_softc *sc)
  *     (i.e. that the output part of the interface is idle)
  */
 static void
-ed_start(struct ifnet *ifp)
+ed_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ed_softc *sc = ifp->if_softc;
 	struct mbuf *m0, *m;
 	caddr_t buffer;
 	int     len;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if (sc->gone) {
 		kprintf("ed_start(%p) GONE\n",ifp);

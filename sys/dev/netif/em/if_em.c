@@ -265,7 +265,7 @@ static int	em_resume(device_t);
 static void	em_init(void *);
 static void	em_stop(struct adapter *);
 static int	em_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	em_start(struct ifnet *);
+static void	em_start(struct ifnet *, struct ifaltq_subque *);
 #ifdef IFPOLL_ENABLE
 static void	em_npoll(struct ifnet *, struct ifpoll_info *);
 static void	em_npoll_compat(struct ifnet *, void *, int);
@@ -987,12 +987,13 @@ em_resume(device_t dev)
 }
 
 static void
-em_start(struct ifnet *ifp)
+em_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct adapter *adapter = ifp->if_softc;
 	struct mbuf *m_head;
 	int idx = -1, nsegs = 0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))

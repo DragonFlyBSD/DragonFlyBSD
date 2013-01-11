@@ -122,7 +122,7 @@ static void	ath_vap_delete(struct ieee80211vap *);
 static void	ath_init(void *);
 static void	ath_stop_locked(struct ifnet *);
 static void	ath_stop(struct ifnet *);
-static void	ath_start(struct ifnet *);
+static void	ath_start(struct ifnet *, struct ifaltq_subque *);
 static int	ath_reset(struct ifnet *);
 static int	ath_reset_vap(struct ieee80211vap *, u_long);
 static int	ath_media_change(struct ifnet *);
@@ -1700,7 +1700,7 @@ ath_reset(struct ifnet *ifp)
 	}
 	ath_hal_intrset(ah, sc->sc_imask);
 
-	ath_start(ifp);			/* restart xmit */
+	if_devstart(ifp);	/* restart xmit */
 	return 0;
 }
 
@@ -1806,13 +1806,15 @@ ath_txfrag_setup(struct ath_softc *sc, ath_bufhead *frags,
 }
 
 static void
-ath_start(struct ifnet *ifp)
+ath_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ath_softc *sc = ifp->if_softc;
 	struct ieee80211_node *ni;
 	struct ath_buf *bf;
 	struct mbuf *m, *next;
 	ath_bufhead frags;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || sc->sc_invalid) {
 		ifq_purge(&ifp->if_snd);
@@ -4057,7 +4059,7 @@ rx_next:
 		ieee80211_ff_age_all(ic, 100);
 #endif
 		if (!ifq_is_empty(&ifp->if_snd))
-			ath_start(ifp);
+			if_devstart(ifp);
 	}
 	wlan_serialize_exit();
 #undef PA2DESC
@@ -5045,7 +5047,7 @@ ath_tx_task_q0(void *arg, int npending)
 	if (sc->sc_softled)
 		ath_led_event(sc, sc->sc_txrix);
 
-	ath_start(ifp);
+	if_devstart(ifp);
 	wlan_serialize_exit();
 }
 
@@ -5084,7 +5086,7 @@ ath_tx_task_q0123(void *arg, int npending)
 	if (sc->sc_softled)
 		ath_led_event(sc, sc->sc_txrix);
 
-	ath_start(ifp);
+	if_devstart(ifp);
 	wlan_serialize_exit();
 }
 
@@ -5117,7 +5119,7 @@ ath_tx_task(void *arg, int npending)
 	if (sc->sc_softled)
 		ath_led_event(sc, sc->sc_txrix);
 
-	ath_start(ifp);
+	if_devstart(ifp);
 	wlan_serialize_exit();
 }
 

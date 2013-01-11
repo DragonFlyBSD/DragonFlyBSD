@@ -182,7 +182,7 @@ static int	vlan_clone_destroy(struct ifnet *);
 static void	vlan_ifdetach(void *, struct ifnet *);
 
 static void	vlan_init(void *);
-static void	vlan_start(struct ifnet *);
+static void	vlan_start(struct ifnet *, struct ifaltq_subque *);
 static int	vlan_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	vlan_input(struct mbuf *);
 
@@ -497,26 +497,30 @@ vlan_init(void *xsc)
 }
 
 static void
-vlan_start(struct ifnet *ifp)
+vlan_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ifvlan *ifv = ifp->if_softc;
 	struct ifnet *ifp_p = ifv->ifv_p;
 	struct mbuf *m;
+	lwkt_port_t p_port;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_IFNET_SERIALIZED_TX(ifp);
 
 	if (ifp_p == NULL) {
-		ifq_purge(&ifp->if_snd);
+		ifsq_purge(ifsq);
 		return;
 	}
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
 
+	p_port = netisr_portfn(
+	    ifsq_get_cpuid(ifq_get_subq_default(&ifp_p->if_snd)));
 	for (;;) {
 		struct netmsg_packet *nmp;
 
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifsq_dequeue(ifsq, NULL);
 		if (m == NULL)
 			break;
 		BPF_MTAP(ifp, m);
@@ -550,8 +554,7 @@ vlan_start(struct ifnet *ifp)
 		nmp->nm_packet = m;
 		nmp->base.lmsg.u.ms_resultp = ifp_p;
 
-		lwkt_sendmsg(netisr_portfn(ifq_get_cpuid(&ifp_p->if_snd)),
-		    &nmp->base.lmsg);
+		lwkt_sendmsg(p_port, &nmp->base.lmsg);
 		ifp->if_opackets++;
 	}
 }

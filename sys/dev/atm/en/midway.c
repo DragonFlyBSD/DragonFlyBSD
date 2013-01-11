@@ -263,7 +263,7 @@ STATIC		void en_txdma (struct en_softc *, int);
 STATIC		void en_txlaunch (struct en_softc *, int,
 		    struct en_launch *);
 STATIC		void en_service (struct en_softc *);
-STATIC		void en_start (struct ifnet *);
+STATIC		void en_start (struct ifnet *, struct ifaltq_subque *);
 STATIC INLINE	int en_sz2b (int);
 STATIC INLINE	void en_write (struct en_softc *, u_int32_t,
 		    u_int32_t);
@@ -1463,7 +1463,7 @@ en_loadvc(struct en_softc *sc, int vc)
  */
 
 STATIC void
-en_start(struct ifnet *ifp)
+en_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
     struct en_softc *sc = (struct en_softc *) ifp->if_softc;
     struct mbuf *m, *lastm, *prev;

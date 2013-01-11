@@ -58,16 +58,25 @@
 
 #include <sys/thread2.h>
 
+#define CBQ_SUBQ_INDEX		ALTQ_SUBQ_INDEX_DEFAULT
+#define CBQ_LOCK(ifq) \
+    ALTQ_SQ_LOCK(&(ifq)->altq_subq[CBQ_SUBQ_INDEX])
+#define CBQ_UNLOCK(ifq) \
+    ALTQ_SQ_UNLOCK(&(ifq)->altq_subq[CBQ_SUBQ_INDEX])
+#define CBQ_ASSERT_LOCKED(ifq) \
+    ALTQ_SQ_ASSERT_LOCKED(&(ifq)->altq_subq[CBQ_SUBQ_INDEX])
+
 /*
  * Forward Declarations.
  */
 static int		 cbq_class_destroy(cbq_state_t *, struct rm_class *);
 static struct rm_class  *clh_to_clp(cbq_state_t *, uint32_t);
 static int		 cbq_clear_interface(cbq_state_t *);
-static int		 cbq_request(struct ifaltq *, int, void *);
-static int		 cbq_enqueue(struct ifaltq *, struct mbuf *,
+static int		 cbq_request(struct ifaltq_subque *, int, void *);
+static int		 cbq_enqueue(struct ifaltq_subque *, struct mbuf *,
 			     struct altq_pktattr *);
-static struct mbuf	*cbq_dequeue(struct ifaltq *, struct mbuf *, int);
+static struct mbuf	*cbq_dequeue(struct ifaltq_subque *, struct mbuf *,
+			     int);
 static void		 cbqrestart(struct ifaltq *);
 static void		 get_class_stats(class_stats_t *, struct rm_class *);
 static void		 cbq_purge(cbq_state_t *);
@@ -153,14 +162,23 @@ cbq_clear_interface(cbq_state_t *cbqp)
 }
 
 static int
-cbq_request(struct ifaltq *ifq, int req, void *arg)
+cbq_request(struct ifaltq_subque *ifsq, int req, void *arg)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	cbq_state_t	*cbqp = (cbq_state_t *)ifq->altq_disc;
 
 	crit_enter();
 	switch (req) {
 	case ALTRQ_PURGE:
-		cbq_purge(cbqp);
+		if (ifsq_get_index(ifsq) == CBQ_SUBQ_INDEX) {
+			cbq_purge(cbqp);
+		} else {
+			/*
+			 * Race happened, the unrelated subqueue was
+			 * picked during the packet scheduler transition.
+			 */
+			ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		}
 		break;
 	}
 	crit_exit();
@@ -374,9 +392,9 @@ cbq_add_queue(struct pf_altq *a)
 		return (EINVAL);
 	ifq = cbqp->ifnp.ifq_;
 
-	ALTQ_LOCK(ifq);
+	CBQ_LOCK(ifq);
 	error = cbq_add_queue_locked(a, cbqp);
-	ALTQ_UNLOCK(ifq);
+	CBQ_UNLOCK(ifq);
 
 	return error;
 }
@@ -425,9 +443,9 @@ cbq_remove_queue(struct pf_altq *a)
 		return (EINVAL);
 	ifq = cbqp->ifnp.ifq_;
 
-	ALTQ_LOCK(ifq);
+	CBQ_LOCK(ifq);
 	error = cbq_remove_queue_locked(a, cbqp);
-	ALTQ_UNLOCK(ifq);
+	CBQ_UNLOCK(ifq);
 
 	return error;
 }
@@ -449,16 +467,16 @@ cbq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 		return (EBADF);
 	ifq = cbqp->ifnp.ifq_;
 
-	ALTQ_LOCK(ifq);
+	CBQ_LOCK(ifq);
 
 	if ((cl = clh_to_clp(cbqp, a->qid)) == NULL) {
-		ALTQ_UNLOCK(ifq);
+		CBQ_UNLOCK(ifq);
 		return (EINVAL);
 	}
 
 	get_class_stats(&stats, cl);
 
-	ALTQ_UNLOCK(ifq);
+	CBQ_UNLOCK(ifq);
 
 	if ((error = copyout((caddr_t)&stats, ubuf, sizeof(stats))) != 0)
 		return (error);
@@ -468,7 +486,8 @@ cbq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 
 /*
  * int
- * cbq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pattr)
+ * cbq_enqueue(struct ifaltq_subqueue *ifq, struct mbuf *m,
+ *     struct altq_pktattr *pattr)
  *		- Queue data packets.
  *
  *	cbq_enqueue is set to ifp->if_altqenqueue and called by an upper
@@ -481,11 +500,23 @@ cbq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
  */
 
 static int
-cbq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
+cbq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
+    struct altq_pktattr *pktattr __unused)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	cbq_state_t	*cbqp = (cbq_state_t *)ifq->altq_disc;
 	struct rm_class	*cl;
 	int len;
+
+	if (ifsq_get_index(ifsq) != CBQ_SUBQ_INDEX) {
+		/*
+		 * Race happened, the unrelated subqueue was
+		 * picked during the packet scheduler transition.
+		 */
+		ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		m_freem(m);
+		return (ENOBUFS);
+	}
 
 	/* grab class set by classifier */
 	if ((m->m_flags & M_PKTHDR) == 0) {
@@ -517,23 +548,33 @@ cbq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 
 	/* successfully queued. */
 	++cbqp->cbq_qlen;
-	++ifq->ifq_len;
+	++ifsq->ifq_len;
 	crit_exit();
 	return (0);
 }
 
 static struct mbuf *
-cbq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
+cbq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	cbq_state_t	*cbqp = (cbq_state_t *)ifq->altq_disc;
 	struct mbuf	*m;
+
+	if (ifsq_get_index(ifsq) != CBQ_SUBQ_INDEX) {
+		/*
+		 * Race happened, the unrelated subqueue was
+		 * picked during the packet scheduler transition.
+		 */
+		ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		return NULL;
+	}
 
 	crit_enter();
 	m = rmc_dequeue_next(&cbqp->ifnp, op);
 
 	if (m && op == ALTDQ_REMOVE) {
 		--cbqp->cbq_qlen;  /* decrement # of packets in cbq */
-		--ifq->ifq_len;
+		--ifsq->ifq_len;
 
 		/* Update the class. */
 		rmc_update_class_util(&cbqp->ifnp);
@@ -556,7 +597,7 @@ cbqrestart(struct ifaltq *ifq)
 {
 	cbq_state_t	*cbqp;
 
-	ALTQ_ASSERT_LOCKED(ifq);
+	CBQ_ASSERT_LOCKED(ifq);
 
 	if (!ifq_is_enabled(ifq))
 		/* cbq must have been detached */
@@ -568,16 +609,17 @@ cbqrestart(struct ifaltq *ifq)
 
 	if (cbqp->cbq_qlen > 0) {
 		struct ifnet *ifp = ifq->altq_ifp;
+		struct ifaltq_subque *ifsq = &ifq->altq_subq[CBQ_SUBQ_INDEX];
 
 		/* Release the altq lock to avoid deadlock */
-		ALTQ_UNLOCK(ifq);
+		CBQ_UNLOCK(ifq);
 
 		ifnet_serialize_tx(ifp);
-		if (ifp->if_start && !ifq_is_oactive(&ifp->if_snd))
-			(*ifp->if_start)(ifp);
+		if (ifp->if_start && !ifsq_is_oactive(ifsq))
+			(*ifp->if_start)(ifp, ifsq);
 		ifnet_deserialize_tx(ifp);
 
-		ALTQ_LOCK(ifq);
+		CBQ_LOCK(ifq);
 	}
 }
 
@@ -591,7 +633,7 @@ cbq_purge(cbq_state_t *cbqp)
 			rmc_dropall(cl);
 	}
 	if (ifq_is_enabled(cbqp->ifnp.ifq_))
-		cbqp->ifnp.ifq_->ifq_len = 0;
+		cbqp->ifnp.ifq_->altq_subq[CBQ_SUBQ_INDEX].ifq_len = 0;
 }
 
 #endif /* ALTQ_CBQ */

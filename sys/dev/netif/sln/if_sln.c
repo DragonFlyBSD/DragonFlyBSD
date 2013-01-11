@@ -96,7 +96,7 @@ static int	sln_resume(device_t);
 static void	sln_reset(struct sln_softc *);
 static void	sln_init(void *);
 
-static void	sln_tx(struct ifnet *);
+static void	sln_tx(struct ifnet *, struct ifaltq_subque *);
 static void	sln_rx(struct sln_softc *);
 static void	sln_tx_intr(struct sln_softc *);
 static void	sln_media_intr(struct sln_softc *);
@@ -727,13 +727,14 @@ sln_init(void *x)
 
 /* Transmit Packet */
 static void
-sln_tx(struct ifnet *ifp)
+sln_tx(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct sln_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	struct mbuf *m_new = NULL;
 	int entry;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (!sc->connect) {

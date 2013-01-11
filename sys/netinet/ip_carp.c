@@ -383,7 +383,7 @@ static void	carp_init(void *);
 static int	carp_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	carp_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 		    struct rtentry *);
-static void	carp_start(struct ifnet *);
+static void	carp_start(struct ifnet *, struct ifaltq_subque *);
 
 static void	carp_multicast_cleanup(struct carp_softc *);
 static void	carp_add_addr(struct carp_softc *, struct ifaddr *);
@@ -2623,7 +2623,7 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
  * Start output on carp interface. This function should never be called.
  */
 static void
-carp_start(struct ifnet *ifp)
+carp_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
 	panic("%s: start called", ifp->if_xname);
 }

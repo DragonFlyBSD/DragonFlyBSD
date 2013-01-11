@@ -275,7 +275,7 @@ static int tl_encap		(struct tl_softc *, struct tl_chain *,
 						struct mbuf *);
 
 static void tl_intr		(void *);
-static void tl_start		(struct ifnet *);
+static void tl_start		(struct ifnet *, struct ifaltq_subque *);
 static int tl_ioctl		(struct ifnet *, u_long, caddr_t,
 						struct ucred *);
 static void tl_init		(void *);
@@ -1820,12 +1820,14 @@ tl_encap(struct tl_softc *sc, struct tl_chain *c, struct mbuf *m_head)
  * physical addresses.
  */
 static void
-tl_start(struct ifnet *ifp)
+tl_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct tl_softc		*sc;
 	struct mbuf		*m_head = NULL;
 	u_int32_t		cmd;
 	struct tl_chain		*prev = NULL, *cur_tx = NULL, *start_tx;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	sc = ifp->if_softc;
 

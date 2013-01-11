@@ -84,7 +84,7 @@ static int epic_ifioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void epic_intr(void *);
 static void epic_tx_underrun(epic_softc_t *);
 static int epic_common_attach(epic_softc_t *);
-static void epic_ifstart(struct ifnet *);
+static void epic_ifstart(struct ifnet *, struct ifaltq_subque *);
 static void epic_ifwatchdog(struct ifnet *);
 static void epic_stats_update(void *);
 static int epic_init(epic_softc_t *);
@@ -474,7 +474,7 @@ epic_common_attach(epic_softc_t *sc)
  * or queue become empty.
  */
 static void
-epic_ifstart(struct ifnet *ifp)
+epic_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	epic_softc_t *sc = ifp->if_softc;
 	struct epic_tx_buffer *buf;
@@ -483,6 +483,8 @@ epic_ifstart(struct ifnet *ifp)
 	struct mbuf *m0;
 	struct mbuf *m;
 	int i;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	while (sc->pending_txs < TX_RING_SIZE) {
 		buf = sc->tx_buffer + sc->cur_tx;

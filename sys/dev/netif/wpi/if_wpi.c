@@ -202,7 +202,7 @@ static uint8_t	wpi_plcp_signal(int);
 static void	wpi_watchdog_callout(void *);
 static int	wpi_tx_data(struct wpi_softc *, struct mbuf *,
 		    struct ieee80211_node *, int);
-static void	wpi_start(struct ifnet *);
+static void	wpi_start(struct ifnet *, struct ifaltq_subque *);
 static void	wpi_start_locked(struct ifnet *);
 static int	wpi_raw_xmit(struct ieee80211_node *, struct mbuf *,
 		    const struct ieee80211_bpf_params *);
@@ -1243,7 +1243,7 @@ wpi_resume(device_t dev)
 	if (ifp->if_flags & IFF_UP) {
 		wpi_init(ifp->if_softc);
 		if (ifp->if_flags & IFF_RUNNING)
-			wpi_start(ifp);
+			if_devstart(ifp);
 	}
 	wlan_serialize_exit();
 	return 0;
@@ -2012,8 +2012,9 @@ wpi_tx_data(struct wpi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
  * Process data waiting to be sent on the IFNET output queue
  */
 static void
-wpi_start(struct ifnet *ifp)
+wpi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	wpi_start_locked(ifp);
 }
 

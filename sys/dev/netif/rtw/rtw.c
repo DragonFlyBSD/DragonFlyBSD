@@ -165,7 +165,7 @@ static void	rtw_led_fastblink(void *);
 static void	rtw_led_set(struct rtw_softc *);
 
 static void	rtw_init(void *);
-static void	rtw_start(struct ifnet *);
+static void	rtw_start(struct ifnet *, struct ifaltq_subque *);
 static int	rtw_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	rtw_watchdog(struct ifnet *);
 static void	rtw_intr(void *);
@@ -1684,8 +1684,10 @@ rtw_intr_tx(struct rtw_softc *sc, uint16_t isr)
 		rtw_collect_txring(sc, &sc->sc_txsoft_blk[pri],
 				   &sc->sc_txdesc_blk[pri], 0);
 	}
-	if (isr)
-		rtw_start(&sc->sc_ic.ic_if);
+	if (isr) {
+		rtw_start(&sc->sc_ic.ic_if,
+		    ifq_get_subq_default(&sc->sc_ic.ic_if.if_snd));
+	}
 }
 
 static __inline struct mbuf *
@@ -1758,7 +1760,7 @@ rtw_intr_beacon(struct rtw_softc *sc, uint16_t isr)
 
 		IF_ENQUEUE(&sc->sc_beaconq, m);
 
-		rtw_start(&ic->ic_if);
+		rtw_start(&ic->ic_if, ifq_get_subq_default(&ic->ic_if.if_snd));
 	}
 }
 
@@ -3130,7 +3132,7 @@ rtw_print_txdesc(struct rtw_softc *sc, const char *action,
 #endif /* RTW_DEBUG */
 
 static void
-rtw_start(struct ifnet *ifp)
+rtw_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct rtw_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
@@ -3139,6 +3141,7 @@ rtw_start(struct ifnet *ifp)
 	struct mbuf *m0;
 	uint32_t proto_ctl0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	DPRINTF(sc, RTW_DEBUG_XMIT,
 		("%s: enter %s\n", ifp->if_xname, __func__));
 
@@ -3429,7 +3432,7 @@ rtw_watchdog(struct ifnet *ifp)
 		rtw_txdesc_blk_reset_all(sc);
 		rtw_io_enable(sc, RTW_CR_TE, 1);
 		rtw_txring_fixup(sc);
-		rtw_start(ifp);
+		rtw_start(ifp, ifq_get_subq_default(&ifp->if_snd));
 	}
 	ieee80211_watchdog(&sc->sc_ic);
 }

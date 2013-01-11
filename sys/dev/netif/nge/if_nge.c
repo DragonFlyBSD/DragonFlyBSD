@@ -161,7 +161,7 @@ static void	nge_rxeof(struct nge_softc *);
 static void	nge_txeof(struct nge_softc *);
 static void	nge_intr(void *);
 static void	nge_tick(void *);
-static void	nge_start(struct ifnet *);
+static void	nge_start(struct ifnet *, struct ifaltq_subque *);
 static int	nge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	nge_init(void *);
 static void	nge_stop(struct nge_softc *);
@@ -1623,12 +1623,14 @@ nge_encap(struct nge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
  */
 
 static void
-nge_start(struct ifnet *ifp)
+nge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct nge_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL, *m_defragged;
 	uint32_t idx;
 	int need_trans;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if (!sc->nge_link) {
 		ifq_purge(&ifp->if_snd);

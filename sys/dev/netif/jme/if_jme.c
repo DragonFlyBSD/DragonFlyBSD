@@ -102,7 +102,7 @@ static void	jme_miibus_statchg(device_t);
 
 static void	jme_init(void *);
 static int	jme_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	jme_start(struct ifnet *);
+static void	jme_start(struct ifnet *, struct ifaltq_subque *);
 static void	jme_watchdog(struct ifnet *);
 static void	jme_mediastatus(struct ifnet *, struct ifmediareq *);
 static int	jme_mediachange(struct ifnet *);
@@ -1797,13 +1797,14 @@ fail:
 }
 
 static void
-jme_start(struct ifnet *ifp)
+jme_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct jme_softc *sc = ifp->if_softc;
 	struct jme_txdata *tdata = &sc->jme_cdata.jme_tx_data;
 	struct mbuf *m_head;
 	int enq = 0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(&tdata->jme_tx_serialize);
 
 	if (!sc->jme_has_link) {

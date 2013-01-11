@@ -116,18 +116,24 @@
 
 #include <sys/thread2.h>
 
+#define FAIRQ_SUBQ_INDEX	ALTQ_SUBQ_INDEX_DEFAULT
+#define FAIRQ_LOCK(ifq) \
+    ALTQ_SQ_LOCK(&(ifq)->altq_subq[FAIRQ_SUBQ_INDEX])
+#define FAIRQ_UNLOCK(ifq) \
+    ALTQ_SQ_UNLOCK(&(ifq)->altq_subq[FAIRQ_SUBQ_INDEX])
+
 /*
  * function prototypes
  */
 static int	fairq_clear_interface(struct fairq_if *);
-static int	fairq_request(struct ifaltq *, int, void *);
+static int	fairq_request(struct ifaltq_subque *, int, void *);
 static void	fairq_purge(struct fairq_if *);
 static struct fairq_class *fairq_class_create(struct fairq_if *, int,
 					int, u_int, struct fairq_opts *, int);
 static int	fairq_class_destroy(struct fairq_class *);
-static int	fairq_enqueue(struct ifaltq *, struct mbuf *,
+static int	fairq_enqueue(struct ifaltq_subque *, struct mbuf *,
 					struct altq_pktattr *);
-static struct mbuf *fairq_dequeue(struct ifaltq *, struct mbuf *, int);
+static struct mbuf *fairq_dequeue(struct ifaltq_subque *, struct mbuf *, int);
 
 static int	fairq_addq(struct fairq_class *, struct mbuf *, int hash);
 static struct mbuf *fairq_getq(struct fairq_class *, uint64_t);
@@ -224,9 +230,9 @@ fairq_add_queue(struct pf_altq *a)
 		return (EINVAL);
 	ifq = pif->pif_ifq;
 
-	ALTQ_LOCK(ifq);
+	FAIRQ_LOCK(ifq);
 	error = fairq_add_queue_locked(a, pif);
-	ALTQ_UNLOCK(ifq);
+	FAIRQ_UNLOCK(ifq);
 
 	return error;
 }
@@ -254,9 +260,9 @@ fairq_remove_queue(struct pf_altq *a)
 		return (EINVAL);
 	ifq = pif->pif_ifq;
 
-	ALTQ_LOCK(ifq);
+	FAIRQ_LOCK(ifq);
 	error = fairq_remove_queue_locked(a, pif);
-	ALTQ_UNLOCK(ifq);
+	FAIRQ_UNLOCK(ifq);
 
 	return error;
 }
@@ -278,16 +284,16 @@ fairq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 		return (EBADF);
 	ifq = pif->pif_ifq;
 
-	ALTQ_LOCK(ifq);
+	FAIRQ_LOCK(ifq);
 
 	if ((cl = clh_to_clp(pif, a->qid)) == NULL) {
-		ALTQ_UNLOCK(ifq);
+		FAIRQ_UNLOCK(ifq);
 		return (EINVAL);
 	}
 
 	get_class_stats(&stats, cl);
 
-	ALTQ_UNLOCK(ifq);
+	FAIRQ_UNLOCK(ifq);
 
 	if ((error = copyout((caddr_t)&stats, ubuf, sizeof(stats))) != 0)
 		return (error);
@@ -315,14 +321,23 @@ fairq_clear_interface(struct fairq_if *pif)
 }
 
 static int
-fairq_request(struct ifaltq *ifq, int req, void *arg)
+fairq_request(struct ifaltq_subque *ifsq, int req, void *arg)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct fairq_if *pif = (struct fairq_if *)ifq->altq_disc;
 
 	crit_enter();
 	switch (req) {
 	case ALTRQ_PURGE:
-		fairq_purge(pif);
+		if (ifsq_get_index(ifsq) == FAIRQ_SUBQ_INDEX) {
+			fairq_purge(pif);
+		} else {
+			/*
+			 * Race happened, the unrelated subqueue was
+			 * picked during the packet scheduler transition.
+			 */
+			ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		}
 		break;
 	}
 	crit_exit();
@@ -341,7 +356,7 @@ fairq_purge(struct fairq_if *pif)
 			fairq_purgeq(cl);
 	}
 	if (ifq_is_enabled(pif->pif_ifq))
-		pif->pif_ifq->ifq_len = 0;
+		pif->pif_ifq->altq_subq[FAIRQ_SUBQ_INDEX].ifq_len = 0;
 }
 
 static struct fairq_class *
@@ -503,13 +518,25 @@ fairq_class_destroy(struct fairq_class *cl)
  * (*altq_enqueue) in struct ifaltq.
  */
 static int
-fairq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
+fairq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
+    struct altq_pktattr *pktattr)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct fairq_if *pif = (struct fairq_if *)ifq->altq_disc;
 	struct fairq_class *cl;
 	int error;
 	int len;
 	int hash;
+
+	if (ifsq_get_index(ifsq) != FAIRQ_SUBQ_INDEX) {
+		/*
+		 * Race happened, the unrelated subqueue was
+		 * picked during the packet scheduler transition.
+		 */
+		ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		m_freem(m);
+		return ENOBUFS;
+	}
 
 	crit_enter();
 
@@ -549,7 +576,7 @@ fairq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		error = ENOBUFS;
 		goto done;
 	}
-	ifq->ifq_len++;
+	ifsq->ifq_len++;
 	error = 0;
 done:
 	crit_exit();
@@ -566,8 +593,9 @@ done:
  *	after ALTDQ_POLL.
  */
 static struct mbuf *
-fairq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
+fairq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct fairq_if *pif = (struct fairq_if *)ifq->altq_disc;
 	struct fairq_class *cl;
 	struct fairq_class *best_cl;
@@ -579,7 +607,16 @@ fairq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 	int pri;
 	int hit_limit;
 
-	if (ifq_is_empty(ifq)) {
+	if (ifsq_get_index(ifsq) != FAIRQ_SUBQ_INDEX) {
+		/*
+		 * Race happened, the unrelated subqueue was
+		 * picked during the packet scheduler transition.
+		 */
+		ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		return NULL;
+	}
+
+	if (ifsq_is_empty(ifsq)) {
 		/* no packet in the queue */
 		KKASSERT(mpolled == NULL);
 		return (NULL);
@@ -591,7 +628,7 @@ fairq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 		m = fairq_getq(best_cl, cur_time);
 		pif->pif_poll_cache = NULL;
 		if (m) {
-			ifq->ifq_len--;
+			ifsq->ifq_len--;
 			PKTCNTR_ADD(&best_cl->cl_xmitcnt, m_pktlen(m));
 		}
 	} else {
@@ -640,7 +677,7 @@ fairq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 		} else if (best_cl) {
 			m = fairq_getq(best_cl, cur_time);
 			KKASSERT(best_m == m);
-			ifq->ifq_len--;
+			ifsq->ifq_len--;
 			PKTCNTR_ADD(&best_cl->cl_xmitcnt, m_pktlen(m));
 		} else {
 			m = NULL;

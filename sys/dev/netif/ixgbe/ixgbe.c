@@ -102,7 +102,7 @@ static int      ixgbe_probe(device_t);
 static int      ixgbe_attach(device_t);
 static int      ixgbe_detach(device_t);
 static int      ixgbe_shutdown(device_t);
-static void     ixgbe_start(struct ifnet *);
+static void     ixgbe_start(struct ifnet *, struct ifaltq_subque *);
 static void     ixgbe_start_locked(struct tx_ring *, struct ifnet *);
 #if 0 /* __FreeBSD_version >= 800000 */
 static int	ixgbe_mq_start(struct ifnet *, struct mbuf *);
@@ -731,10 +731,12 @@ ixgbe_start_locked(struct tx_ring *txr, struct ifnet * ifp)
  * not be used with multiqueue tx enabled.
  */
 static void
-ixgbe_start(struct ifnet *ifp)
+ixgbe_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct adapter *adapter = ifp->if_softc;
 	struct tx_ring	*txr = adapter->tx_rings;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		IXGBE_TX_LOCK(txr);

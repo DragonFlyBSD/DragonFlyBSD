@@ -146,7 +146,8 @@ static void		fe_init		(void *);
 static void		fe_intr		(void *);
 static int		fe_ioctl	(struct ifnet *, u_long, caddr_t,
 					 struct ucred *);
-static void		fe_start	(struct ifnet *);
+static void		fe_start	(struct ifnet *,
+					 struct ifaltq_subque *);
 static void		fe_watchdog	(struct ifnet *);
 static int		fe_medchange	(struct ifnet *);
 static void		fe_medstat	(struct ifnet *, struct ifmediareq *);
@@ -1146,10 +1147,12 @@ fe_xmit (struct fe_softc *sc)
  *     (i.e. that the output part of the interface is idle)
  */
 void
-fe_start (struct ifnet *ifp)
+fe_start (struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct fe_softc *sc = ifp->if_softc;
 	struct mbuf *m;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 #ifdef DIAGNOSTIC
 	/* Just a sanity check.  */

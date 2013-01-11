@@ -87,7 +87,7 @@ static	int ipxipioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
 static	int ipxipoutput(struct ifnet *ifp, struct mbuf *m,
 			struct sockaddr *dst, struct rtentry *rt);
 static	void ipxip_rtchange(struct in_addr *dst);
-static	void ipxipstart(struct ifnet *ifp);
+static	void ipxipstart(struct ifnet *ifp, struct ifaltq_subque *);
 
 static struct ifnet_en *
 ipxipattach(void)
@@ -302,7 +302,7 @@ ipxipoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 }
 
 static void
-ipxipstart(struct ifnet *ifp)
+ipxipstart(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
 	panic("ipxip_start called");
 }

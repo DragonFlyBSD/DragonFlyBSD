@@ -107,7 +107,7 @@ struct vke_softc {
 	in_addr_t		sc_mask;	/* netmask */
 };
 
-static void	vke_start(struct ifnet *);
+static void	vke_start(struct ifnet *, struct ifaltq_subque *);
 static void	vke_init(void *);
 static int	vke_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 
@@ -281,7 +281,7 @@ vke_init(void *xsc)
 	vke_stop(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
+	ifsq_clr_oactive(ifq_get_subq_default(&ifp->if_snd));
 
 	sc->sc_txfifo = kmalloc(sizeof(*sc->sc_txfifo), M_DEVBUF, M_WAITOK);
 	sc->sc_txfifo_done = kmalloc(sizeof(*sc->sc_txfifo_done), M_DEVBUF, M_WAITOK);
@@ -324,20 +324,21 @@ vke_init(void *xsc)
  *	 (so mplock, tokens, etc will not be released).
  */
 static void
-vke_start(struct ifnet *ifp)
+vke_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct vke_softc *sc = ifp->if_softc;
 	struct mbuf *m;
 	cothread_t cotd = sc->cotd_tx;
 	int count;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifsq_is_oactive(ifsq))
 		return;
 
 	count = 0;
-	while ((m = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
+	while ((m = ifsq_dequeue(ifsq, NULL)) != NULL) {
 		if (vke_txfifo_enqueue(sc, m) != -1) {
 			if (count++ == VKE_CHUNK) {
 				cothread_lock(cotd, 0);
@@ -417,7 +418,7 @@ vke_stop(struct vke_softc *sc)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	ifp->if_flags &= ~IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
+	ifsq_clr_oactive(ifq_get_subq_default(&ifp->if_snd));
 
 	if (sc) {
 		if (sc->cotd_tx) {
@@ -547,7 +548,7 @@ vke_tx_intr(cothread_t cotd)
 	}
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 
 	ifnet_deserialize_all(ifp);
 }

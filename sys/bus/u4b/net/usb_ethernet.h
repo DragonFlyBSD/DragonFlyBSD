@@ -124,5 +124,5 @@ int		uether_rxbuf(struct usb_ether *,
 		    unsigned int, unsigned int);
 void		uether_rxflush(struct usb_ether *);
 uint8_t		uether_is_gone(struct usb_ether *);
-void		uether_start(struct ifnet *);
+void		uether_start(struct ifnet *, struct ifaltq_subque *);
 #endif					/* _USB_ETHERNET_H_ */

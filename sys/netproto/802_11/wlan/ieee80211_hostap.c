@@ -2221,6 +2221,7 @@ hostap_recv_pspoll(struct ieee80211_node *ni, struct mbuf *m0)
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211_frame_min *wh;
 	struct ifnet *ifp;
+	struct ifaltq_subque *ifsq;
 	struct mbuf *m;
 	uint16_t aid;
 	int qlen;
@@ -2288,6 +2289,8 @@ hostap_recv_pspoll(struct ieee80211_node *ni, struct mbuf *m0)
 		ifp = vap->iv_ic->ic_ifp;
 	else
 		ifp = vap->iv_ifp;
-	ifq_enqueue(&ifp->if_snd, m, NULL);
-	ifp->if_start(ifp);
+
+	ifsq = ifq_get_subq_default(&ifp->if_snd);
+	ifsq_enqueue(ifsq, m, NULL);
+	ifp->if_start(ifp, ifsq);
 }

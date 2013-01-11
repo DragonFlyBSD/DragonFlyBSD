@@ -88,7 +88,7 @@ static int	ale_miibus_writereg(device_t, int, int, int);
 static void	ale_miibus_statchg(device_t);
 
 static void	ale_init(void *);
-static void	ale_start(struct ifnet *);
+static void	ale_start(struct ifnet *, struct ifaltq_subque *);
 static int	ale_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	ale_watchdog(struct ifnet *);
 static int	ale_mediachange(struct ifnet *);
@@ -1660,12 +1660,13 @@ ale_encap(struct ale_softc *sc, struct mbuf **m_head)
 }
 
 static void
-ale_start(struct ifnet *ifp)
+ale_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
         struct ale_softc *sc = ifp->if_softc;
 	struct mbuf *m_head;
 	int enq;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((sc->ale_flags & ALE_FLAG_LINK) == 0) {

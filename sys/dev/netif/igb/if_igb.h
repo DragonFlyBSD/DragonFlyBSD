@@ -214,6 +214,7 @@ struct igb_dma {
 struct igb_tx_ring {
 	struct lwkt_serialize	tx_serialize;
 	struct igb_softc	*sc;
+	struct ifaltq_subque	*ifsq;
 	uint32_t		me;
 	struct e1000_tx_desc	*tx_base;
 	int			num_tx_desc;

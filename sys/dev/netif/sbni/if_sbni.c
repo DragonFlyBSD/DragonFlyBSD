@@ -88,7 +88,7 @@
 #endif
 
 static void	sbni_init(void *);
-static void	sbni_start(struct ifnet *);
+static void	sbni_start(struct ifnet *, struct ifaltq_subque *);
 static int	sbni_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	sbni_watchdog(struct ifnet *);
 static void	sbni_stop(struct sbni_softc *);
@@ -283,9 +283,11 @@ sbni_init(void *xsc)
 
 
 static void
-sbni_start(struct ifnet *ifp)
+sbni_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct sbni_softc *sc = ifp->if_softc;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	if (sc->tx_frameno == 0)
 		prepare_to_send(sc);
 }

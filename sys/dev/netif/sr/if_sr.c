@@ -227,7 +227,7 @@ MODULE_DEPEND(ng_sync_sr, netgraph, NG_ABI_VERSION, NG_ABI_VERSION, NG_ABI_VERSI
 static void	srintr(void *arg);
 static void	sr_xmit(struct sr_softc *sc);
 #ifndef NETGRAPH
-static void	srstart(struct ifnet *ifp);
+static void	srstart(struct ifnet *ifp, struct ifaltq_subque *);
 static int	srioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
 			struct ucred *);
 static void	srwatchdog(struct ifnet *ifp);
@@ -716,7 +716,7 @@ sr_xmit(struct sr_softc *sc)
  */
 #ifndef NETGRAPH
 static void
-srstart(struct ifnet *ifp)
+srstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct sr_softc *sc;	/* channel control structure */
 #else
@@ -1013,7 +1013,7 @@ srioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		 * Interface should be up -- start it.
 		 */
 		sr_up(sc);
-		srstart(ifp);
+		srstart(ifp, ifq_get_subq_default(&ifp->if_snd));
 
 		/*
 		 * XXX Clear the IFF_UP flag so that the link will only go
@@ -1102,7 +1102,8 @@ srwatchdog(struct sr_softc *sc)
 		sr_xmit(sc);
 
 #ifndef NETGRAPH
-	srstart(ifp);	/* restart transmitter */
+	srstart(ifp, ifq_get_subq_default(&ifp->if_snd));
+			/* restart transmitter */
 #else
 	srstart(sc);	/* restart transmitter */
 #endif /* NETGRAPH */
@@ -2399,7 +2400,8 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 		if (dotxstart & 0x0C) {	/* TX initiation enabled? */
 			sc = &hc->sc[mch];
 #ifndef NETGRAPH
-			srstart(&sc->ifsppp.pp_if);
+			srstart(&sc->ifsppp.pp_if,
+			    ifq_get_subq_default(&sc->ifsppp.pp_if.if_snd));
 #else
 			srstart(sc);
 #endif /* NETGRAPH */

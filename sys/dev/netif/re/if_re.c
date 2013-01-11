@@ -304,7 +304,7 @@ static void	re_intr(void *);
 static void	re_tick(void *);
 static void	re_tick_serialized(void *);
 
-static void	re_start(struct ifnet *);
+static void	re_start(struct ifnet *, struct ifaltq_subque *);
 static int	re_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	re_init(void *);
 static void	re_stop(struct re_softc *);
@@ -2437,12 +2437,13 @@ back:
  */
 
 static void
-re_start(struct ifnet *ifp)
+re_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct re_softc	*sc = ifp->if_softc;
 	struct mbuf *m_head;
 	int idx, need_trans, oactive, error;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((sc->re_flags & RE_F_LINKED) == 0) {

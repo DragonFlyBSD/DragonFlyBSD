@@ -152,7 +152,7 @@ static void	bnx_disable_intr(struct bnx_softc *);
 static void	bnx_txeof(struct bnx_softc *, uint16_t);
 static void	bnx_rxeof(struct bnx_softc *, uint16_t, int);
 
-static void	bnx_start(struct ifnet *);
+static void	bnx_start(struct ifnet *, struct ifaltq_subque *);
 static int	bnx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bnx_init(void *);
 static void	bnx_stop(struct bnx_softc *);
@@ -2975,12 +2975,14 @@ back:
  * to the mbuf data regions directly in the transmit descriptors.
  */
 static void
-bnx_start(struct ifnet *ifp)
+bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct bnx_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	uint32_t prodidx;
 	int nsegs = 0;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;

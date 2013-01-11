@@ -119,7 +119,7 @@ static int		rt2661_tx_data(struct rt2661_softc *, struct mbuf *,
 static int		rt2661_tx_mgt(struct rt2661_softc *, struct mbuf *,
 			    struct ieee80211_node *);
 static void		rt2661_start_locked(struct ifnet *);
-static void		rt2661_start(struct ifnet *);
+static void		rt2661_start(struct ifnet *, struct ifaltq_subque *);
 static int		rt2661_raw_xmit(struct ieee80211_node *, struct mbuf *,
 			    const struct ieee80211_bpf_params *);
 static void		rt2661_watchdog_callout(void *);
@@ -1642,8 +1642,9 @@ rt2661_start_locked(struct ifnet *ifp)
 }
 
 static void
-rt2661_start(struct ifnet *ifp)
+rt2661_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	rt2661_start_locked(ifp);
 }
 

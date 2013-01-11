@@ -114,7 +114,7 @@ static int	acx_detach(device_t);
 static int	acx_shutdown(device_t);
 
 static void	acx_init(void *);
-static void	acx_start(struct ifnet *);
+static void	acx_start(struct ifnet *, struct ifaltq_subque *);
 static int	acx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	acx_watchdog(struct ifnet *);
 
@@ -1093,7 +1093,7 @@ acx_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 }
 
 static void
-acx_start(struct ifnet *ifp)
+acx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct acx_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
@@ -1101,6 +1101,7 @@ acx_start(struct ifnet *ifp)
 	struct acx_txbuf *buf;
 	int trans, idx;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((sc->sc_flags & ACX_FLAG_FW_LOADED) == 0) {

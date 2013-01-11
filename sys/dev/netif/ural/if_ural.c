@@ -120,7 +120,7 @@ static int		ural_tx_mgt(struct ural_softc *, struct mbuf *,
 			    struct ieee80211_node *);
 static int		ural_tx_data(struct ural_softc *, struct mbuf *,
 			    struct ieee80211_node *);
-static void		ural_start(struct ifnet *);
+static void		ural_start(struct ifnet *, struct ifaltq_subque *);
 static void		ural_watchdog(struct ifnet *);
 static int		ural_reset(struct ifnet *);
 static int		ural_ioctl(struct ifnet *, u_long, caddr_t,
@@ -1361,11 +1361,12 @@ ural_tx_data(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 }
 
 static void
-ural_start(struct ifnet *ifp)
+ural_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ural_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (sc->sc_stopped) {

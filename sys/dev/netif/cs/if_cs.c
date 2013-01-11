@@ -75,7 +75,7 @@ SYSCTL_INT(_machdep, OID_AUTO, cs_recv_delay, CTLFLAG_RW, &cs_recv_delay, 0, "")
 
 static void	cs_init(void *);
 static int	cs_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	cs_start(struct ifnet *);
+static void	cs_start(struct ifnet *, struct ifaltq_subque *);
 static void	cs_stop(struct cs_softc *);
 static void	cs_reset(struct cs_softc *);
 static void	cs_watchdog(struct ifnet *);
@@ -981,11 +981,13 @@ cs_xmit_buf( struct cs_softc *sc )
 }
 
 static void
-cs_start(struct ifnet *ifp)
+cs_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	int length;
 	struct mbuf *m, *mp;
 	struct cs_softc *sc = ifp->if_softc;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	for (;;) {
 		if (sc->buf_len)

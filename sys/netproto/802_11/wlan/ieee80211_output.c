@@ -110,7 +110,7 @@ doprint(struct ieee80211vap *vap, int subtype)
  * before dispatching them to the underlying device.
  */
 void
-ieee80211_start(struct ifnet *ifp)
+ieee80211_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 #define	IS_DWDS(vap) \
 	(vap->iv_opmode == IEEE80211_M_WDS && \
@@ -123,13 +123,15 @@ ieee80211_start(struct ifnet *ifp)
 	struct ether_header *eh;
 	int error;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+
 	/* NB: parent must be up and running */
 	if (!IFNET_IS_UP_RUNNING(parent)) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
 		    "%s: ignore queue, parent %s not up+running\n",
 		    __func__, parent->if_xname);
 		/* XXX stat */
-		ifq_purge(&ifp->if_snd);
+		ifsq_purge(ifsq);
 		return;
 	}
 	if (vap->iv_state == IEEE80211_S_SLEEP) {
@@ -137,7 +139,7 @@ ieee80211_start(struct ifnet *ifp)
 		 * In power save, wakeup device for transmit.
 		 */
 		ieee80211_new_state(vap, IEEE80211_S_RUN, 0);
-		ifq_purge(&ifp->if_snd);
+		ifsq_purge(ifsq);
 		return;
 	}
 	/*
@@ -153,12 +155,12 @@ ieee80211_start(struct ifnet *ifp)
 			    "%s: ignore queue, in %s state\n",
 			    __func__, ieee80211_state_name[vap->iv_state]);
 			vap->iv_stats.is_tx_badstate++;
-			ifq_set_oactive(&ifp->if_snd);
+			ifsq_set_oactive(ifsq);
 			return;
 		}
 	}
 	for (;;) {
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifsq_dequeue(ifsq, NULL);
 		if (m == NULL)
 			break;
 		/*
@@ -382,9 +384,11 @@ ieee80211_output(struct ifnet *ifp, struct mbuf *m,
 	struct ieee80211_node *ni = NULL;
 	struct ieee80211vap *vap;
 	struct ieee80211_frame *wh;
+	struct ifaltq_subque *ifsq;
 	int error;
 
-	if (ifq_is_oactive(&ifp->if_snd)) {
+	ifsq = ifq_get_subq_default(&ifp->if_snd);
+	if (ifsq_is_oactive(ifsq)) {
 		/*
 		 * Short-circuit requests if the vap is marked OACTIVE
 		 * as this can happen because a packet came down through

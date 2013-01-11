@@ -137,7 +137,7 @@ static void		rum_setup_tx_desc(struct rum_softc *,
 			    int);
 static int		rum_tx_data(struct rum_softc *, struct mbuf *,
 			    struct ieee80211_node *);
-static void		rum_start(struct ifnet *);
+static void		rum_start(struct ifnet *, struct ifaltq_subque *);
 static void		rum_watchdog(struct ifnet *);
 static int		rum_ioctl(struct ifnet *, u_long, caddr_t,
 				  struct ucred *);
@@ -1117,11 +1117,12 @@ rum_tx_data(struct rum_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 }
 
 static void
-rum_start(struct ifnet *ifp)
+rum_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct rum_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (sc->sc_stopped) {

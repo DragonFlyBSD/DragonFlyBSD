@@ -113,7 +113,7 @@ static void     my_rxeof(struct my_softc *);
 static void     my_txeof(struct my_softc *);
 static void     my_txeoc(struct my_softc *);
 static void     my_intr(void *);
-static void     my_start(struct ifnet *);
+static void     my_start(struct ifnet *, struct ifaltq_subque *);
 static int      my_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void     my_init(void *);
 static void     my_stop(struct my_softc *);
@@ -1327,12 +1327,13 @@ my_encap(struct my_softc * sc, struct my_chain * c, struct mbuf * m_head)
  * physical addresses.
  */
 static void
-my_start(struct ifnet * ifp)
+my_start(struct ifnet * ifp, struct ifaltq_subque *ifsq)
 {
 	struct my_softc *sc = ifp->if_softc;
 	struct mbuf    *m_head = NULL;
 	struct my_chain *cur_tx = NULL, *start_tx;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	crit_enter();
 
 	if (sc->my_autoneg) {

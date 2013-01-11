@@ -416,7 +416,7 @@ static void	bce_free_tx_chain(struct bce_softc *);
 static int	bce_encap(struct bce_softc *, struct mbuf **, int *);
 static int	bce_tso_setup(struct bce_softc *, struct mbuf **,
 		    uint16_t *, uint16_t *);
-static void	bce_start(struct ifnet *);
+static void	bce_start(struct ifnet *, struct ifaltq_subque *);
 static int	bce_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bce_watchdog(struct ifnet *);
 static int	bce_ifmedia_upd(struct ifnet *);
@@ -4987,11 +4987,12 @@ back:
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_start(struct ifnet *ifp)
+bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct bce_softc *sc = ifp->if_softc;
 	int count = 0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* If there's no link or the transmit queue is empty then just exit. */

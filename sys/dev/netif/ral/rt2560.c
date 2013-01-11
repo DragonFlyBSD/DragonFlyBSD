@@ -125,7 +125,7 @@ static int		rt2560_tx_mgt(struct rt2560_softc *, struct mbuf *,
 static int		rt2560_tx_data(struct rt2560_softc *, struct mbuf *,
 			    struct ieee80211_node *);
 static void		rt2560_start_locked(struct ifnet *);
-static void		rt2560_start(struct ifnet *);
+static void		rt2560_start(struct ifnet *, struct ifaltq_subque *);
 static void		rt2560_watchdog_callout(void *);
 static int		rt2560_ioctl(struct ifnet *, u_long, caddr_t,
     			    struct ucred *);
@@ -1937,8 +1937,9 @@ rt2560_start_locked(struct ifnet *ifp)
 }
 
 static void
-rt2560_start(struct ifnet *ifp)
+rt2560_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	rt2560_start_locked(ifp);
 }
 

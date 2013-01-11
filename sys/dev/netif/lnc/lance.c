@@ -96,7 +96,7 @@
 
 devclass_t le_devclass;
 
-static void lance_start(struct ifnet *);
+static void lance_start(struct ifnet *, struct ifaltq_subque *);
 static void lance_init(void *);
 static void lance_watchdog(struct ifnet *);
 static int lance_mediachange(struct ifnet *);
@@ -214,10 +214,11 @@ lance_resume(struct lance_softc *sc)
 }
 
 static void
-lance_start(struct ifnet *ifp)
+lance_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct lance_softc *sc = ifp->if_softc;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	(*sc->sc_start_locked)(sc);
 }
 

@@ -190,7 +190,7 @@ MODULE_DEPEND(ng_sync_ar, netgraph, NG_ABI_VERSION, NG_ABI_VERSION, NG_ABI_VERSI
 static void arintr(void *arg);
 static void ar_xmit(struct ar_softc *sc);
 #ifndef NETGRAPH
-static void arstart(struct ifnet *ifp);
+static void arstart(struct ifnet *ifp, struct ifaltq_subque *);
 static int arioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *);
 static void arwatchdog(struct ifnet *ifp);
 #else	/* NETGRAPH */
@@ -622,7 +622,7 @@ ar_xmit(struct ar_softc *sc)
  */
 #ifndef NETGRAPH
 static void
-arstart(struct ifnet *ifp)
+arstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ar_softc *sc = ifp->if_softc;
 #else	/* NETGRAPH */
@@ -803,7 +803,7 @@ arioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	if(!was_up && should_be_up) {
 		/* Interface should be up -- start it. */
 		ar_up(sc);
-		arstart(ifp);
+		arstart(ifp, ifq_get_subq_default(&ifp->if_snd));
 		/* XXX Maybe clear the IFF_UP flag so that the link
 		 * will only go up after sppp lcp and ipcp negotiation.
 		 */
@@ -864,7 +864,7 @@ arwatchdog(struct ar_softc *sc)
 		ar_xmit(sc);
 
 #ifndef	NETGRAPH
-	arstart(ifp);
+	arstart(ifp, ifq_get_subq_default(&ifp->if_snd));
 #else	/* NETGRAPH */
 	arstart(sc);
 #endif	/* NETGRAPH */
@@ -2020,7 +2020,8 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 		if(dotxstart & 0x0C) {
 			sc = &hc->sc[mch + (NCHAN * scano)];
 #ifndef	NETGRAPH
-			arstart(&sc->ifsppp.pp_if);
+			arstart(&sc->ifsppp.pp_if,
+			    ifq_get_subq_default(&sc->ifsppp.pp_if.if_snd));
 #else	/* NETGRAPH */
 			arstart(sc);
 #endif	/* NETGRAPH */

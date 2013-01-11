@@ -170,7 +170,7 @@ static int ndis_raw_xmit	(struct ieee80211_node *, struct mbuf *,
 	const struct ieee80211_bpf_params *);
 static void ndis_update_mcast	(struct ifnet *ifp);
 static void ndis_update_promisc	(struct ifnet *ifp);
-static void ndis_start		(struct ifnet *);
+static void ndis_start		(struct ifnet *, struct ifaltq_subque *);
 static void ndis_starttask	(device_object *, void *);
 static void ndis_resettask	(device_object *, void *);
 static void ndis_inputtask	(device_object *, void *);
@@ -1777,7 +1777,7 @@ ndis_starttask(device_object *d, void *arg)
 	ifp = arg;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ndis_start(ifp);
+		if_devstart(ifp);
 }
 
 /*
@@ -1793,13 +1793,15 @@ ndis_starttask(device_object *d, void *arg)
  * will do the mapping themselves on a buffer by buffer basis.
  */
 static void
-ndis_start(struct ifnet *ifp)
+ndis_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ndis_softc	*sc;
 	struct mbuf		*m = NULL;
 	ndis_packet		**p0 = NULL, *p = NULL;
 	ndis_tcpip_csum		*csum;
 	int			pcnt = 0, status;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	sc = ifp->if_softc;
 

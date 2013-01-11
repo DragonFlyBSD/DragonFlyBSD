@@ -47,7 +47,7 @@ static int lgue_match(device_t);
 static int lgue_attach(device_t);
 static int lgue_detach(device_t);
 
-static void lgue_start(struct ifnet *);
+static void lgue_start(struct ifnet *, struct ifaltq_subque *);
 static void lgue_stop(struct lgue_softc *);
 static void lgue_init(void *);
 static void lgue_watchdog(struct ifnet *);
@@ -494,10 +494,12 @@ lgue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
  * Start transfer
  */
 static void
-lgue_start(struct ifnet *ifp)
+lgue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct lgue_softc *sc;
 	struct mbuf *m_head;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	sc = ifp->if_softc;
 	if (sc->lgue_dying)

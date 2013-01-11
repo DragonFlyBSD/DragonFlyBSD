@@ -368,7 +368,7 @@ static void	bridge_ifdetach(void *, struct ifnet *);
 static void	bridge_init(void *);
 static int	bridge_from_us(struct bridge_softc *, struct ether_header *);
 static void	bridge_stop(struct ifnet *);
-static void	bridge_start(struct ifnet *);
+static void	bridge_start(struct ifnet *, struct ifaltq_subque *);
 static struct mbuf *bridge_input(struct ifnet *, struct mbuf *);
 static int	bridge_output(struct ifnet *, struct mbuf *);
 static struct ifnet *bridge_interface(void *if_bridge);
@@ -2297,19 +2297,20 @@ bridge_interface(void *if_bridge)
  *	Start output on a bridge.
  */
 static void
-bridge_start(struct ifnet *ifp)
+bridge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct bridge_softc *sc = ifp->if_softc;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_IFNET_SERIALIZED_TX(ifp);
 
-	ifq_set_oactive(&ifp->if_snd);
+	ifsq_set_oactive(ifsq);
 	for (;;) {
 		struct ifnet *dst_if = NULL;
 		struct ether_header *eh;
 		struct mbuf *m;
 
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifsq_dequeue(ifsq, NULL);
 		if (m == NULL)
 			break;
 		mbuftrackid(m, 75);
@@ -2347,7 +2348,7 @@ bridge_start(struct ifnet *ifp)
 		else
 			bridge_enqueue(dst_if, m);
 	}
-	ifq_clr_oactive(&ifp->if_snd);
+	ifsq_clr_oactive(ifsq);
 }
 
 /*

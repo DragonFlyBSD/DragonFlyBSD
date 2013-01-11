@@ -98,7 +98,7 @@ static int ste_ioctl		(struct ifnet *, u_long, caddr_t,
 					struct ucred *);
 static int ste_encap		(struct ste_softc *, struct ste_chain *,
 					struct mbuf *);
-static void ste_start		(struct ifnet *);
+static void ste_start		(struct ifnet *, struct ifaltq_subque *);
 static void ste_watchdog	(struct ifnet *);
 static void ste_shutdown	(device_t);
 static int ste_newbuf		(struct ste_softc *,
@@ -1405,12 +1405,14 @@ encap_retry:
 }
 
 static void
-ste_start(struct ifnet *ifp)
+ste_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ste_softc	*sc;
 	struct mbuf		*m_head = NULL;
 	struct ste_chain	*cur_tx = NULL;
 	int			idx;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	sc = ifp->if_softc;
 

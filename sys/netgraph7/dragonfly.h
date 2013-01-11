@@ -56,8 +56,8 @@ typedef __va_list	va_list;
 #define IFNET_RLOCK()	crit_enter()
 #define IFNET_RUNLOCK()	crit_exit()
 
-#define IFQ_LOCK(ifp)	lwkt_serialize_enter(&(ifp)->altq_lock)
-#define IFQ_UNLOCK(ifp)	lwkt_serialize_exit(&(ifp)->altq_lock)
+#define IFQ_LOCK(ifq)	ALTQ_LOCK((ifq))
+#define IFQ_UNLOCK(ifq)	ALTQ_unLOCK((ifq))
 
 #define printf		kprintf
 #define sprintf		ksprintf

@@ -110,7 +110,7 @@ struct ng_iface_private {
 typedef struct ng_iface_private *priv_p;
 
 /* Interface methods */
-static void	ng_iface_start(struct ifnet *ifp);
+static void	ng_iface_start(struct ifnet *ifp, struct ifaltq_subque *);
 static int	ng_iface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
 			struct ucred *cr);
 static int	ng_iface_output(struct ifnet *ifp, struct mbuf *m0,
@@ -475,7 +475,7 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
  */
 
 static void
-ng_iface_start(struct ifnet *ifp)
+ng_iface_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
 	kprintf("%s: %s called?", ifp->if_xname, __func__);
 }

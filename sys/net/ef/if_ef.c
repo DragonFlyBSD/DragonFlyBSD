@@ -114,7 +114,7 @@ static int ef_attach(struct efnet *sc);
 static int ef_detach(struct efnet *sc);
 static void ef_init(void *);
 static int ef_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void ef_start(struct ifnet *);
+static void ef_start(struct ifnet *, struct ifaltq_subque *);
 static int ef_input(struct ifnet*, const struct ether_header *, struct mbuf *);
 static int ef_output(struct ifnet *ifp, struct mbuf **mp,
 		struct sockaddr *dst, short *tp, int *hlen);
@@ -201,30 +201,32 @@ ef_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
  * place.
  */
 static void
-ef_start(struct ifnet *ifp)
+ef_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct efnet *sc = (struct efnet*)ifp->if_softc;
 	struct ifnet *p;
 	struct mbuf *m;
+	struct ifaltq_subque *p_ifsq;
 
-	ifq_set_oactive(&ifp->if_snd);
+	ifsq_set_oactive(ifsq);
 	p = sc->ef_ifp;
+	p_ifsq = ifq_get_subq_default(&p->if_snd);
 
 	EFDEBUG("\n");
 	for (;;) {
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifsq_dequeue(ifsq, NULL);
 		if (m == NULL)
 			break;
 
 		BPF_MTAP(ifp, m);
 
-		ifq_enqueue(&p->if_snd, m, NULL);
-		if (!ifq_is_oactive(&p->if_snd)) {
-			p->if_start(p);
+		ifsq_enqueue(p_ifsq, m, NULL);
+		if (!ifsq_is_oactive(p_ifsq)) {
+			p->if_start(p, p_ifsq);
 			ifp->if_opackets++;
 		}
 	}
-	ifq_clr_oactive(&ifp->if_snd);
+	ifsq_clr_oactive(ifsq);
 	return;
 }
 

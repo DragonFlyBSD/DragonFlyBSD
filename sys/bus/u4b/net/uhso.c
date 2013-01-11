@@ -463,7 +463,7 @@ static void uhso_ucom_cfg_get_status(struct ucom_softc *, uint8_t *, uint8_t *);
 static void uhso_ucom_cfg_set_dtr(struct ucom_softc *, uint8_t);
 static void uhso_ucom_cfg_set_rts(struct ucom_softc *, uint8_t);
 static void uhso_if_init(void *);
-static void uhso_if_start(struct ifnet *);
+static void uhso_if_start(struct ifnet *, struct ifaltq_subque *);
 static void uhso_if_stop(struct uhso_softc *);
 static int  uhso_if_ioctl(struct ifnet *, u_long, caddr_t);
 static int  uhso_if_output(struct ifnet *, struct mbuf *, struct sockaddr *,
@@ -1883,9 +1883,11 @@ uhso_if_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 }
 
 static void
-uhso_if_start(struct ifnet *ifp)
+uhso_if_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct uhso_softc *sc = ifp->if_softc;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0) {
 		UHSO_DPRINTF(1, "Not running\n");

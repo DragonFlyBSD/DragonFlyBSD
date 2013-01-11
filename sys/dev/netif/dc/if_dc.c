@@ -215,7 +215,7 @@ static void dc_txeof		(struct dc_softc *);
 static void dc_tick		(void *);
 static void dc_tx_underrun	(struct dc_softc *);
 static void dc_intr		(void *);
-static void dc_start		(struct ifnet *);
+static void dc_start		(struct ifnet *, struct ifaltq_subque *);
 static int dc_ioctl		(struct ifnet *, u_long, caddr_t,
 					struct ucred *);
 #ifdef IFPOLL_ENABLE
@@ -3073,12 +3073,13 @@ dc_encap(struct dc_softc *sc, struct mbuf *m_head, u_int32_t *txidx)
  */
 
 static void
-dc_start(struct ifnet *ifp)
+dc_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct dc_softc	*sc;
 	struct mbuf *m_head, *m_defragged;
 	int idx, need_trans;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	sc = ifp->if_softc;
 
 	if (!sc->dc_link) {

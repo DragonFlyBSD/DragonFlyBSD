@@ -169,7 +169,7 @@ static int	iwi_tx_start(struct ifnet *, struct mbuf *,
 static int	iwi_raw_xmit(struct ieee80211_node *, struct mbuf *,
 		    const struct ieee80211_bpf_params *);
 static void	iwi_start_locked(struct ifnet *);
-static void	iwi_start(struct ifnet *);
+static void	iwi_start(struct ifnet *, struct ifaltq_subque *);
 static void	iwi_watchdog(void *);
 static int	iwi_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *ucred);
 static void	iwi_stop_master(struct iwi_softc *);
@@ -1958,8 +1958,9 @@ iwi_start_locked(struct ifnet *ifp)
 }
 
 static void
-iwi_start(struct ifnet *ifp)
+iwi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	iwi_start_locked(ifp);
 }
 

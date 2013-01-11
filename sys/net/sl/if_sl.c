@@ -507,7 +507,8 @@ sloutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			error = 0;
 		}
 	} else {
-		error = ifq_enqueue(&sc->sc_if.if_snd, m, &pktattr);
+		error = ifsq_enqueue(ifq_get_subq_default(&sc->sc_if.if_snd),
+		    m, &pktattr);
 	}
 	if (error) {
 		sc->sc_if.if_oerrors++;
@@ -542,6 +543,7 @@ static int
 slstart(struct tty *tp)
 {
 	struct sl_softc *sc = (struct sl_softc *)tp->t_sc;
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(&sc->sc_if.if_snd);
 	struct mbuf *m;
 	u_char *cp;
 	struct ip *ip;
@@ -582,7 +584,7 @@ slstart(struct tty *tp)
 		if (m)
 			sc->sc_if.if_omcasts++;		/* XXX */
 		else
-			m = ifq_dequeue(&sc->sc_if.if_snd, NULL);
+			m = ifsq_dequeue(ifsq, NULL);
 		crit_exit();
 		if (m == NULL) {
 			lwkt_reltoken(&tty_token);

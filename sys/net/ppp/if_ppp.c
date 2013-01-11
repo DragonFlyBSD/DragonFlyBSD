@@ -150,7 +150,7 @@ static void	ppp_ccp (struct ppp_softc *, struct mbuf *m, int rcvd);
 static void	ppp_ccp_closed (struct ppp_softc *);
 static void	ppp_inproc (struct ppp_softc *, struct mbuf *);
 static void	pppdumpm (struct mbuf *m0);
-static void	ppp_ifstart(struct ifnet *ifp);
+static void	ppp_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq);
 
 /*
  * Some useful mbuf macros not in mbuf.h.
@@ -202,6 +202,7 @@ pppintr(netmsg_t msg)
 {
     struct mbuf *m;
     struct ppp_softc *sc;
+    struct ifaltq_subque *ifsq;
     int i;
 
     /*
@@ -214,10 +215,12 @@ pppintr(netmsg_t msg)
     get_mplock();
 
     sc = ppp_softc;
+    ifsq = ifq_get_subq_default(&sc->sc_if.if_snd);
+
     for (i = 0; i < NPPP; ++i, ++sc) {
 	ifnet_serialize_all(&sc->sc_if);
 	if (!(sc->sc_flags & SC_TBUSY)
-	    && (!ifq_is_empty(&sc->sc_if.if_snd) || !IF_QEMPTY(&sc->sc_fastq))) {
+	    && (!ifsq_is_empty(ifsq) || !IF_QEMPTY(&sc->sc_fastq))) {
 	    sc->sc_flags |= SC_TBUSY;
 	    (*sc->sc_start)(sc);
 	} 
@@ -875,7 +878,8 @@ pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	    }
 	} else {
 	    ASSERT_IFNET_SERIALIZED_TX(&sc->sc_if);
-	    error = ifq_enqueue(&sc->sc_if.if_snd, m0, &pktattr);
+	    error = ifsq_enqueue(ifq_get_subq_default(&sc->sc_if.if_snd), m0,
+	        &pktattr);
 	}
 	if (error) {
 	    crit_exit();
@@ -920,9 +924,11 @@ ppp_requeue(struct ppp_softc *sc)
 {
     struct mbuf *m, **mpp;
     struct ifqueue *ifq;
+    struct ifaltq_subque *ifsq;
     enum NPmode mode;
     int error;
 
+    ifsq = ifq_get_subq_default(&sc->sc_if.if_snd);
     for (mpp = &sc->sc_npqueue; (m = *mpp) != NULL; ) {
 	switch (PPP_PROTOCOL(mtod(m, u_char *))) {
 	case PPP_IP:
@@ -949,7 +955,7 @@ ppp_requeue(struct ppp_softc *sc)
 		    error = 0;
 		}
 	    } else {
-		error = ifq_enqueue(&sc->sc_if.if_snd, m, NULL);
+		error = ifsq_enqueue(ifsq, m, NULL);
 	    }
 	    if (error) {
 		    sc->sc_if.if_oerrors++;
@@ -1004,7 +1010,7 @@ ppp_dequeue(struct ppp_softc *sc)
      */
     IF_DEQUEUE(&sc->sc_fastq, m);
     if (m == NULL)
-	m = ifq_dequeue(&sc->sc_if.if_snd, NULL);
+	m = ifsq_dequeue(ifq_get_subq_default(&sc->sc_if.if_snd), NULL);
     if (m == NULL)
 	return NULL;
 
@@ -1605,7 +1611,7 @@ done:
  * if_start to send a packet.
  */
 static void
-ppp_ifstart(struct ifnet *ifp)
+ppp_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
 	struct ppp_softc *sc;
 

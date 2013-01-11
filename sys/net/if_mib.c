@@ -103,9 +103,11 @@ sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 		COPY(flags);
 		COPY(data);
 #undef COPY
+		ifmd.ifmd_snd_maxlen = ifp->if_snd.altq_maxlen;
+#ifdef notyet
 		ifmd.ifmd_snd_len = ifp->if_snd.ifq_len;
-		ifmd.ifmd_snd_maxlen = ifp->if_snd.ifq_maxlen;
 		ifmd.ifmd_snd_drops = ifp->if_snd.ifq_drops;
+#endif
 
 		error = SYSCTL_OUT(req, &ifmd, sizeof ifmd);
 		if (error || !req->newptr)
@@ -126,8 +128,11 @@ sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 #undef DONTCOPY
 #define COPY(fld) ifp->if_##fld = ifmd.ifmd_##fld
 		COPY(data);
+
+#ifdef notyet
 		ifp->if_snd.ifq_maxlen = ifmd.ifmd_snd_maxlen;
 		ifp->if_snd.ifq_drops = ifmd.ifmd_snd_drops;
+#endif
 #undef COPY
 		break;
 

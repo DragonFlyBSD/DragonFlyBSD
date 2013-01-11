@@ -2195,11 +2195,12 @@ mxge_start_locked(struct mxge_slice_state *ss)
 }
 
 static void
-mxge_start(struct ifnet *ifp)
+mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	mxge_softc_t *sc = ifp->if_softc;
 	struct mxge_slice_state *ss;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(sc->ifp->if_serializer);
 	/* only use the first slice for now */
 	ss = &sc->ss[0];

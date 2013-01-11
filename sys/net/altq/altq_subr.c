@@ -105,24 +105,19 @@ altq_lookup(const char *name, int type)
 
 int
 altq_attach(struct ifaltq *ifq, int type, void *discipline,
-	    int (*enqueue)(struct ifaltq *, struct mbuf *, struct altq_pktattr *),
-	    struct mbuf *(*dequeue)(struct ifaltq *, struct mbuf *, int),
-	    int (*request)(struct ifaltq *, int, void *),
-	    void *clfier,
-	    void *(*classify)(struct ifaltq *, struct mbuf *,
-			      struct altq_pktattr *))
+    ifsq_enqueue_t enqueue, ifsq_dequeue_t dequeue, ifsq_request_t request,
+    void *clfier,
+    void *(*classify)(struct ifaltq *, struct mbuf *, struct altq_pktattr *))
 {
 	if (!ifq_is_ready(ifq))
 		return ENXIO;
 
 	ifq->altq_type     = type;
 	ifq->altq_disc     = discipline;
-	ifq->altq_enqueue  = enqueue;
-	ifq->altq_dequeue  = dequeue;
-	ifq->altq_request  = request;
 	ifq->altq_clfier   = clfier;
 	ifq->altq_classify = classify;
 	ifq->altq_flags &= (ALTQF_CANTCHANGE|ALTQF_ENABLED);
+	ifq_set_methods(ifq, enqueue, dequeue, request);
 	return 0;
 }
 
@@ -150,9 +145,9 @@ altq_detach(struct ifaltq *ifq)
 {
 	int error;
 
-	ALTQ_LOCK(ifq);
+	ifq_lock_all(ifq);
 	error = altq_detach_locked(ifq);
-	ALTQ_UNLOCK(ifq);
+	ifq_unlock_all(ifq);
 	return error;
 }
 
@@ -165,7 +160,6 @@ altq_enable_locked(struct ifaltq *ifq)
 		return 0;
 
 	ifq_purge_all_locked(ifq);
-	KKASSERT(ifq->ifq_len == 0);
 
 	ifq->altq_flags |= ALTQF_ENABLED;
 	if (ifq->altq_clfier != NULL)
@@ -178,9 +172,9 @@ altq_enable(struct ifaltq *ifq)
 {
 	int error;
 
-	ALTQ_LOCK(ifq);
+	ifq_lock_all(ifq);
 	error = altq_enable_locked(ifq);
-	ALTQ_UNLOCK(ifq);
+	ifq_unlock_all(ifq);
 	return error;
 }
 
@@ -191,7 +185,6 @@ altq_disable_locked(struct ifaltq *ifq)
 		return 0;
 
 	ifq_purge_all_locked(ifq);
-	KKASSERT(ifq->ifq_len == 0);
 	ifq->altq_flags &= ~(ALTQF_ENABLED|ALTQF_CLASSIFY);
 	return 0;
 }
@@ -201,9 +194,9 @@ altq_disable(struct ifaltq *ifq)
 {
 	int error;
 
-	ALTQ_LOCK(ifq);
+	ifq_lock_all(ifq);
 	error = altq_disable_locked(ifq);
-	ALTQ_UNLOCK(ifq);
+	ifq_unlock_all(ifq);
 	return error;
 }
 
@@ -219,12 +212,22 @@ altq_disable(struct ifaltq *ifq)
 #define	TBR_UNSCALE(x)	((x) >> TBR_SHIFT)
 
 struct mbuf *
-tbr_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
+tbr_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct tb_regulator *tbr;
 	struct mbuf *m;
 	int64_t interval;
 	uint64_t now;
+
+	if (ifsq_get_index(ifsq) != ALTQ_SUBQ_INDEX_DEFAULT) {
+		/*
+		 * Race happened, the unrelated subqueue was
+		 * picked during the packet scheduler transition.
+		 */
+		ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		return NULL;
+	}
 
 	crit_enter();
 	tbr = ifq->altq_tbr;
@@ -252,11 +255,11 @@ tbr_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 	}
 
 	if (ifq_is_enabled(ifq)) {
-		m = (*ifq->altq_dequeue)(ifq, mpolled, op);
+		m = (*ifsq->ifsq_dequeue)(ifsq, mpolled, op);
 	} else if (op == ALTDQ_POLL) {
-		IF_POLL(ifq, m);
+		IF_POLL(ifsq, m);
 	} else {
-		IF_DEQUEUE(ifq, m);
+		IF_DEQUEUE(ifsq, m);
 		KKASSERT(mpolled == NULL || mpolled == m);
 	}
 
@@ -320,9 +323,9 @@ tbr_set(struct ifaltq *ifq, struct tb_profile *profile)
 {
 	int error;
 
-	ALTQ_LOCK(ifq);
+	ifq_lock_all(ifq);
 	error = tbr_set_locked(ifq, profile);
-	ALTQ_UNLOCK(ifq);
+	ifq_unlock_all(ifq);
 	return error;
 }
 
@@ -339,12 +342,15 @@ tbr_timeout(void *arg)
 	active = 0;
 	crit_enter();
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
+		struct ifaltq_subque *ifsq =
+		    &ifp->if_snd.altq_subq[ALTQ_SUBQ_INDEX_DEFAULT];
+
 		if (ifp->if_snd.altq_tbr == NULL)
 			continue;
 		active++;
-		if (!ifq_is_empty(&ifp->if_snd) && ifp->if_start != NULL) {
+		if (!ifsq_is_empty(ifsq) && ifp->if_start != NULL) {
 			ifnet_serialize_tx(ifp);
-			(*ifp->if_start)(ifp);
+			(*ifp->if_start)(ifp, ifsq);
 			ifnet_deserialize_tx(ifp);
 		}
 	}
@@ -396,7 +402,7 @@ altq_pfattach(struct pf_altq *a)
 		return EINVAL;
 	ifq = &ifp->if_snd;
 
-	ALTQ_LOCK(ifq);
+	ifq_lock_all(ifq);
 
 	switch (a->scheduler) {
 #ifdef ALTQ_CBQ
@@ -438,7 +444,7 @@ altq_pfattach(struct pf_altq *a)
 		error = tbr_set_locked(ifq, &tb);
 	}
 back:
-	ALTQ_UNLOCK(ifq);
+	ifq_unlock_all(ifq);
 	return (error);
 }
 
@@ -463,7 +469,7 @@ altq_pfdetach(struct pf_altq *a)
 	if (a->altq_disc == NULL)
 		return (0);
 
-	ALTQ_LOCK(ifq);
+	ifq_lock_all(ifq);
 
 	if (a->altq_disc != ifq->altq_disc)
 		goto back;
@@ -474,7 +480,7 @@ altq_pfdetach(struct pf_altq *a)
 		error = altq_detach_locked(ifq);
 
 back:
-	ALTQ_UNLOCK(ifq);
+	ifq_unlock_all(ifq);
 	return (error);
 }
 

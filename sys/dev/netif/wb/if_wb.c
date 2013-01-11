@@ -149,7 +149,7 @@ static void	wb_txeof(struct wb_softc *);
 static void	wb_txeoc(struct wb_softc *);
 static void	wb_intr(void *);
 static void	wb_tick(void *);
-static void	wb_start(struct ifnet *);
+static void	wb_start(struct ifnet *, struct ifaltq_subque *);
 static int	wb_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	wb_init(void *);
 static void	wb_stop(struct wb_softc *);
@@ -1293,11 +1293,13 @@ wb_encap(struct wb_softc *sc, struct wb_chain *c, struct mbuf *m_head)
  * physical addresses.
  */
 static void
-wb_start(struct ifnet *ifp)
+wb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct wb_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	struct wb_chain *cur_tx = NULL, *start_tx;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	/*
 	 * Check for an available queue slot. If there are none,
