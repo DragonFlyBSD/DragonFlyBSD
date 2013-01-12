@@ -70,6 +70,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/bpf.h>
 
@@ -351,7 +352,7 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 	/* These two are mostly handled at a higher layer */
 	case SIOCSIFADDR:
 		ifp->if_flags |= (IFF_UP | IFF_RUNNING);
-		ifp->if_flags &= ~(IFF_OACTIVE);
+		ifq_clr_oactive(&ifp->if_snd);
 		break;
 	case SIOCGIFADDR:
 		break;
@@ -364,12 +365,13 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 		 */
 		if (ifr->ifr_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
-				ifp->if_flags &= ~(IFF_OACTIVE);
+				ifq_clr_oactive(&ifp->if_snd);
 				ifp->if_flags |= IFF_RUNNING;
 			}
 		} else {
 			if (ifp->if_flags & IFF_RUNNING)
-				ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+				ifp->if_flags &= ~IFF_RUNNING;
+				ifq_clr_oactive(&ifp->if_snd);
 		}
 		break;
 
@@ -587,7 +589,7 @@ ng_iface_constructor(node_p *nodep)
 	ifp->if_start = ng_iface_start;
 	ifp->if_ioctl = ng_iface_ioctl;
 	ifp->if_watchdog = NULL;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifp->if_mtu = NG_IFACE_MTU_DEFAULT;
 	ifp->if_flags = (IFF_SIMPLEX|IFF_POINTOPOINT|IFF_NOARP|IFF_MULTICAST);
 	ifp->if_type = IFT_PROPVIRTUAL;		/* XXX */

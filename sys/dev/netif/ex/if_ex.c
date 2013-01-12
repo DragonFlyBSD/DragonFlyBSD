@@ -342,7 +342,7 @@ ex_init(void *xsc)
 	sc->tx_head = sc->tx_tail = sc->tx_lower_limit;
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	DODEBUG(Status, kprintf("OIDLE init\n"););
 	
 	/*
@@ -375,7 +375,7 @@ ex_start(struct ifnet *ifp)
 	 * Main loop: send outgoing packets to network card until there are no
 	 * more packets left, or the card cannot accept any more yet.
 	 */
-	while ((ifp->if_flags & IFF_OACTIVE) == 0) {
+	while (!ifq_is_oactive(&ifp->if_snd)) {
 		opkt = ifq_dequeue(&ifp->if_snd, NULL);
 		if (opkt == NULL)
 			break;
@@ -523,7 +523,7 @@ ex_start(struct ifnet *ifp)
 			ifp->if_opackets++;
 			m_freem(opkt);
 		} else {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			ifq_prepend(&ifp->if_snd, opkt);
 			DODEBUG(Status, kprintf("OACTIVE start\n"););
 		}
@@ -647,7 +647,7 @@ ex_tx_intr(struct ex_softc *sc)
 	 * The card should be ready to accept more packets now.
 	 */
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	DODEBUG(Status, kprintf("OIDLE tx_intr\n"););
 	DODEBUG(Start_End, kprintf("ex_tx_intr%d: finish\n", unit););
@@ -820,7 +820,7 @@ ex_watchdog(struct ifnet *ifp)
 
 	DODEBUG(Start_End, kprintf("ex_watchdog%d: start\n", ifp->if_dunit););
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	DODEBUG(Status, kprintf("OIDLE watchdog\n"););
 

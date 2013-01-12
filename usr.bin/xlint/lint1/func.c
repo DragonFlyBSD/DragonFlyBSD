@@ -29,8 +29,6 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $DragonFly: src/usr.bin/xlint/lint1/func.c,v 1.3 2004/07/07 12:13:26 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -503,7 +501,7 @@ label(int typ, sym_t *sym, tnode_t *tn)
 			ci->c_default = 1;
 		}
 		break;
-	};
+	}
 	reached = 1;
 }
 

@@ -976,6 +976,7 @@ alc_attach(device_t dev)
 		goto fail;
 	}
 #endif
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->alc_irq));
 
 fail:
 	if (error != 0)
@@ -1953,15 +1954,19 @@ alc_encap(struct alc_softc *sc, struct mbuf **m_head)
 	struct tcphdr *tcp;
 	bus_dma_segment_t txsegs[ALC_MAXTXSEGS];
 	bus_dmamap_t map;
-	uint32_t cflags, hdrlen, ip_off, poff, vtag;
+	uint32_t cflags, hdrlen, poff, vtag;
+#if 0 /* XXX: TSO */
+	uint32_t ip_off;
+#endif
 	int error, idx, nsegs, prod;
 
 	M_ASSERTPKTHDR((*m_head));
 
 	m = *m_head;
 	tcp = NULL;
-	ip_off = poff = 0;
+	poff = 0;
 #if 0 /* XXX: TSO */
+	ip_off = 0;
 	ip = NULL;
 
 	if ((m->m_pkthdr.csum_flags & (ALC_CSUM_FEATURES | CSUM_TSO)) != 0) {
@@ -2180,7 +2185,7 @@ alc_start(struct ifnet *ifp)
 	if (sc->alc_cdata.alc_tx_cnt >= ALC_TX_DESC_HIWAT)
 		alc_txeof(sc);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 	if ((sc->alc_flags & ALC_FLAG_LINK) == 0) {
 		ifq_purge(&ifp->if_snd);
@@ -2200,7 +2205,7 @@ alc_start(struct ifnet *ifp)
 			if (m_head == NULL)
 				break;
 			ifq_prepend(&ifp->if_snd, m_head);
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -2621,7 +2626,7 @@ alc_txeof(struct alc_softc *sc)
 		if (sc->alc_cdata.alc_tx_cnt <= 0)
 			break;
 		prog++;
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		sc->alc_cdata.alc_tx_cnt--;
 		txd = &sc->alc_cdata.alc_txdesc[cons];
 		if (txd->tx_m != NULL) {
@@ -3228,7 +3233,7 @@ alc_init(void *xsc)
 	callout_reset(&sc->alc_tick_ch, hz, alc_tick, sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -3245,7 +3250,8 @@ alc_stop(struct alc_softc *sc)
 	/*
 	 * Mark the interface down and cancel the watchdog timer.
 	 */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->alc_flags &= ~ALC_FLAG_LINK;
 	callout_stop(&sc->alc_tick_ch);
 	sc->alc_watchdog_timer = 0;

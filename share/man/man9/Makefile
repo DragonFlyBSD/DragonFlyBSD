@@ -148,6 +148,7 @@ MAN=	accept_filter.9 \
 	sbuf.9 \
 	sensor_attach.9 \
 	serializer.9 \
+	sglist.9 \
 	sleep.9 \
 	spinlock.9 \
 	store.9 \
@@ -171,7 +172,6 @@ MAN=	accept_filter.9 \
 	VFS.9 \
 	VFS_CHECKEXP.9 \
 	VFS_FHTOVP.9 \
-	VFS_INIT.9 \
 	VFS_MOUNT.9 \
 	VFS_QUOTACTL.9 \
 	VFS_ROOT.9 \
@@ -838,6 +838,24 @@ MLINKS+=serializer.9 ASSERT_NOT_SERIALIZED.9 \
 	serializer.9 lwkt_serialize_handler_try.9 \
 	serializer.9 lwkt_serialize_init.9 \
 	serializer.9 lwkt_serialize_try.9
+MLINKS+=sglist.9 sglist_alloc.9 \
+	sglist.9 sglist_append.9 \
+	sglist.9 sglist_append_mbuf.9 \
+	sglist.9 sglist_append_phys.9 \
+	sglist.9 sglist_append_uio.9 \
+	sglist.9 sglist_append_user.9 \
+	sglist.9 sglist_build.9 \
+	sglist.9 sglist_clone.9 \
+	sglist.9 sglist_consume_uio.9 \
+	sglist.9 sglist_count.9 \
+	sglist.9 sglist_free.9 \
+	sglist.9 sglist_hold.9 \
+	sglist.9 sglist_init.9 \
+	sglist.9 sglist_join.9 \
+	sglist.9 sglist_length.9 \
+	sglist.9 sglist_reset.9 \
+	sglist.9 sglist_slice.9 \
+	sglist.9 sglist_split.9
 MLINKS+=sleep.9 lksleep.9 \
 	sleep.9 mtxsleep.9 \
 	sleep.9 ssleep.9 \

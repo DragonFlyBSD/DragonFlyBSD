@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.14 2005/05/29 04:42:26 nyan Exp $
+ * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.17 2012/11/17 01:52:19 svnexp Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -36,6 +36,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/lock.h>
 #include <sys/sysctl.h>
 #include <sys/buf2.h>
 #include <sys/bus.h>
@@ -44,7 +45,6 @@
 #include <sys/stat.h>
 #include <sys/rman.h>
 #include <sys/devicestat.h>
-#include <sys/thread2.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -56,10 +56,10 @@
 /* 
  * Wrappers for bus-space actions
  */
-#define TWE_CONTROL(sc, val)		bus_space_write_4((sc)->twe_btag, (sc)->twe_bhandle, 0x0, (u_int32_t)val)
-#define TWE_STATUS(sc)			(u_int32_t)bus_space_read_4((sc)->twe_btag, (sc)->twe_bhandle, 0x4)
-#define TWE_COMMAND_QUEUE(sc, val)	bus_space_write_4((sc)->twe_btag, (sc)->twe_bhandle, 0x8, (u_int32_t)val)
-#define TWE_RESPONSE_QUEUE(sc)		bus_space_read_4((sc)->twe_btag, (sc)->twe_bhandle, 0xc)
+#define TWE_CONTROL(sc, val)		bus_write_4((sc)->twe_io, 0x0, (u_int32_t)val)
+#define TWE_STATUS(sc)			(u_int32_t)bus_read_4((sc)->twe_io, 0x4)
+#define TWE_COMMAND_QUEUE(sc, val)	bus_write_4((sc)->twe_io, 0x8, (u_int32_t)val)
+#define TWE_RESPONSE_QUEUE(sc)		bus_read_4((sc)->twe_io, 0xc)
 
 /*
  * FreeBSD-specific softc elements
@@ -70,8 +70,6 @@
     device_t			twe_dev;		/* bus device */		\
     cdev_t			twe_dev_t;		/* control device */		\
     struct resource		*twe_io;		/* register interface window */	\
-    bus_space_handle_t		twe_bhandle;		/* bus space handle */		\
-    bus_space_tag_t		twe_btag;		/* bus space tag */		\
     bus_dma_tag_t		twe_parent_dmat;	/* parent DMA tag */		\
     bus_dma_tag_t		twe_buffer_dmat;	/* data buffer DMA tag */	\
     bus_dma_tag_t		twe_cmd_dmat;		/* command buffer DMA tag */	\
@@ -83,7 +81,9 @@
     void			*twe_immediate;		/* immediate commands */	\
     bus_dmamap_t		twe_immediate_map;					\
     struct sysctl_ctx_list	sysctl_ctx;						\
-    struct sysctl_oid		*sysctl_tree;
+    struct sysctl_oid		*sysctl_tree;						\
+    struct lock			twe_io_lock;						\
+    struct lock			twe_config_lock;
 
 /*
  * FreeBSD-specific request elements
@@ -98,5 +98,21 @@
 #define twe_printf(sc, fmt, args...)	device_printf(sc->twe_dev, fmt , ##args)
 #define twed_printf(twed, fmt, args...)	device_printf(twed->twed_dev, fmt , ##args)
 
-typedef struct bio			twe_bio;
-typedef struct bio_queue_head		twe_bioq;
+#define	TWE_IO_LOCK(sc)			lockmgr(&(sc)->twe_io_lock, LK_EXCLUSIVE)
+#define	TWE_IO_UNLOCK(sc)		lockmgr(&(sc)->twe_io_lock, LK_RELEASE)
+#define	TWE_CONFIG_LOCK(sc)		lockmgr(&(sc)->twe_config_lock, LK_EXCLUSIVE)
+#define	TWE_CONFIG_UNLOCK(sc)		lockmgr(&(sc)->twe_config_lock, LK_RELEASE)
+#define	TWE_CONFIG_ASSERT_LOCKED(sc)	KKASSERT(lockowned(&(sc)->twe_config_lock))
+
+/*
+ * XXX
+ *
+ * Mimics FreeBSD's mtx_assert() behavior.
+ * We might want a global lockassert() function in the future.
+ */
+static __inline void
+twe_lockassert(struct lock *lockp)
+{
+	if (panicstr == NULL && !dumping)
+		KKASSERT(lockstatus(lockp, curthread) != 0);
+}

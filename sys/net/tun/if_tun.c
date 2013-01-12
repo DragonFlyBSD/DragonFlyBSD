@@ -208,7 +208,7 @@ tunclose(struct dev_close_args *ap)
 	tp->tun_pid = 0;
 
 	/* Junk all pending output. */
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 
 	if (ifp->if_flags & IFF_UP)
 		if_down(ifp);
@@ -360,7 +360,6 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
-			IF_DROP(&ifp->if_snd);
 			ifp->if_oerrors++;
 			return (ENOBUFS);
 		} else {
@@ -374,7 +373,6 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
-			IF_DROP(&ifp->if_snd);
 			ifp->if_oerrors++;
 			return ENOBUFS;
 		} else

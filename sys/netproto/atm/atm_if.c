@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.18 2008/06/08 08:38:05 sephe Exp $
  */
 
 /*
@@ -480,7 +479,7 @@ atm_physif_ioctl(int code, caddr_t data, caddr_t arg)
 			ifp->if_flags = IFF_UP | IFF_BROADCAST | IFF_RUNNING;
 			ifp->if_output = atm_ifoutput;
 			ifp->if_ioctl = atm_if_ioctl;
-			ifp->if_snd.ifq_maxlen = ifqmaxlen;
+			ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 			/*
 			 * Set if_type and if_baudrate
 			 */
@@ -822,7 +821,7 @@ atm_nif_detach(struct atm_nif *nip)
 	 * to this interface...oh well...
 	 */
 	for (i = 1; i <= AF_MAX; i++) {
-		if ((rnh = rt_tables[i]) == NULL)
+		if ((rnh = rt_tables[mycpuid][i]) == NULL)
 			continue;
 		rnh->rnh_walktree(rnh, atm_netif_rtdel, ifp);
 	}

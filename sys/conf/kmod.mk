@@ -304,11 +304,13 @@ MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
     bus/pccard/card_if.m bus/pccard/power_if.m bus/pci/pci_if.m \
     bus/pci/pcib_if.m \
     bus/ppbus/ppbus_if.m bus/smbus/smbus_if.m \
-    dev/acpica5/acpi_if.m dev/acpica5/acpi_wmi_if.m dev/disk/nata/ata_if.m \
+    dev/acpica/acpi_if.m dev/acpica/acpi_wmi_if.m dev/disk/nata/ata_if.m \
     dev/sound/pcm/ac97_if.m dev/sound/pcm/channel_if.m \
     dev/sound/pcm/feeder_if.m dev/sound/pcm/mixer_if.m \
     libiconv/iconv_converter_if.m dev/agp/agp_if.m opencrypto/cryptodev_if.m \
-    bus/mmc/mmcbus_if.m bus/mmc/mmcbr_if.m
+    bus/mmc/mmcbus_if.m bus/mmc/mmcbr_if.m \
+    dev/virtual/virtio/virtio/virtio_bus_if.m \
+    dev/virtual/virtio/virtio/virtio_if.m
 
 .if defined(WANT_USB4BSD)
 MFILES+=bus/u4b/usb_if.m

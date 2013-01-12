@@ -400,7 +400,7 @@ tapclose(struct dev_close_args *ap)
 	get_mplock();
 
 	/* Junk all pending output */
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 
 	/*
 	 * Do not bring the interface down, and do not anything with
@@ -537,7 +537,7 @@ tapifinit(void *xtp)
 	tapifstop(tp, 1);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/* attempt to start output */
 	tapifstart(ifp);
@@ -655,7 +655,7 @@ tapifstart(struct ifnet *ifp)
 		return;
 	}
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 
 	ifq = &tp->tap_devq;
 	while ((m = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
@@ -685,7 +685,7 @@ tapifstart(struct ifnet *ifp)
 		}
 	}
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 
@@ -1041,8 +1041,10 @@ tapifstop(struct tap_softc *tp, int clear_flags)
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 	IF_DRAIN(&tp->tap_devq);
 	tp->tap_flags &= ~TAP_CLOSEDOWN;
-	if (clear_flags)
-		ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	if (clear_flags) {
+		ifp->if_flags &= ~IFF_RUNNING;
+		ifq_clr_oactive(&ifp->if_snd);
+	}
 }
 
 static void

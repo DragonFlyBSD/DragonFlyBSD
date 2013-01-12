@@ -606,8 +606,7 @@ wi_intr(void *arg)
 		wi_tx_ex_intr(sc);
 	if (status & WI_EV_INFO)
 		wi_info_intr(sc);
-	if ((ifp->if_flags & IFF_OACTIVE) == 0 &&
-	    !ifq_is_empty(&ifp->if_snd))
+	if (!ifq_is_oactive(&ifp->if_snd) && !ifq_is_empty(&ifp->if_snd))
 		wi_start_locked(ifp);
 
 	/* Re-enable interrupts. */
@@ -680,7 +679,7 @@ wi_init_locked(struct wi_softc *sc)
 	}
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->sc_watchdog, hz, wi_watchdog_callout, sc);
 
@@ -717,7 +716,8 @@ wi_stop_locked(struct wi_softc *sc, int disable)
 	sc->sc_tx_timer = 0;
 	sc->sc_false_syns = 0;
 
-	ifp->if_flags &= ~(IFF_OACTIVE | IFF_RUNNING);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 void
@@ -940,12 +940,12 @@ wi_start_locked(struct ifnet *ifp)
 	memset(&frmhdr, 0, sizeof(frmhdr));
 	cur = sc->sc_txnext;
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m0);
+		m0 = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m0 == NULL)
 			break;
 		if (sc->sc_txd[cur].d_len != 0) {
-			IF_PREPEND(&ifp->if_snd, m0);
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, m0);
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 		ni = (struct ieee80211_node *) m0->m_pkthdr.rcvif;
@@ -1059,7 +1059,7 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 	memset(&frmhdr, 0, sizeof(frmhdr));
 	cur = sc->sc_txnext;
 	if (sc->sc_txd[cur].d_len != 0) {
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		rc = ENOBUFS;
 		goto out;
 	}
@@ -1440,7 +1440,7 @@ wi_tx_intr(struct wi_softc *sc)
 	sc->sc_txd[cur].d_len = 0;
 	sc->sc_txcur = cur = (cur + 1) % sc->sc_ntxbuf;
 	if (sc->sc_txd[cur].d_len == 0)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	else {
 		if (wi_cmd(sc, WI_CMD_TX | WI_RECLAIM, sc->sc_txd[cur].d_fid,
 		    0, 0)) {

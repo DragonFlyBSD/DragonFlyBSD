@@ -618,7 +618,3 @@ vinumkqfilter(struct dev_kqfilter_args *ap)
 
     return (0);
 }
-
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

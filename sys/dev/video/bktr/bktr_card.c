@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_card.c,v 1.36 2005/12/04 10:06:03 ru Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_card.c,v 1.11 2007/10/03 19:27:08 swildner Exp $
  */
 
 /*
@@ -991,10 +990,9 @@ checkTuner:
 	    /* Determine the model number from the eeprom */
 	    if (bktr->card.eepromAddr != 0) {
 		/* eeprom data block structure */
-		unsigned char *block_1, *block_2, *block_3, *block_4;
-		int block_1_data_size,  block_2_data_size, block_3_data_size;
-		int block_1_total_size, block_2_total_size, block_3_total_size;
-		int block_4_header_size;
+		unsigned char *block_1, *block_2, *block_3;
+		int block_1_data_size,  block_2_data_size;
+		int block_1_total_size, block_2_total_size;
 
 		unsigned int model,revision;
 		unsigned char tuner_code;
@@ -1012,11 +1010,6 @@ checkTuner:
 		block_2_total_size = block_2_data_size + 3; /* Header bytes */
     
 		block_3 = &eeprom[block_1_total_size + block_2_total_size];
-		block_3_data_size = (block_3[0] &0x07);
-		block_3_total_size = block_3_data_size + 1; /* Header size */
-
-		block_4 = &eeprom[block_1_total_size +block_2_total_size +block_3_total_size];
-		block_4_header_size = 1;
 
 		model    = (block_1[12] << 8  | block_1[11]);
 		revision = (block_1[15] << 16 | block_1[14] << 8 | block_1[13]);

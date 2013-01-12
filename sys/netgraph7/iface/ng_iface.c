@@ -358,7 +358,7 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 	case SIOCSIFADDR:
 		ifp->if_flags |= IFF_UP;
 		ifp->if_flags |= IFF_RUNNING;
-		ifp->if_flags &= ~(IFF_OACTIVE);
+		ifq_clr_oactive(&ifp->if_snd);
 		break;
 	case SIOCGIFADDR:
 		break;
@@ -371,12 +371,14 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 		 */
 		if (ifr->ifr_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
-				ifp->if_flags &= ~(IFF_OACTIVE);
+				ifq_clr_oactive(&ifp->if_snd);
 				ifp->if_flags |= IFF_RUNNING;
 			}
 		} else {
-			if (ifp->if_flags & IFF_RUNNING)
-				ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+			if (ifp->if_flags & IFF_RUNNING) {
+				ifp->if_flags &= ~IFF_RUNNING;
+				ifq_clr_oactive(&ifp->if_snd);
+			}
 		}
 		break;
 
@@ -437,14 +439,11 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 	if (ifq_is_enabled(&ifp->if_snd)) {
 		M_PREPEND(m, sizeof(sa_family_t), MB_DONTWAIT);
 		if (m == NULL) {
-			IFQ_LOCK(&ifp->if_snd);
-			IF_DROP(&ifp->if_snd);
-			IFQ_UNLOCK(&ifp->if_snd);
 			ifp->if_oerrors++;
 			return (ENOBUFS);
 		}
 		*(sa_family_t *)m->m_data = dst->sa_family;
-		error = ifq_handoff(ifp, m, 0);
+		error = ifq_dispatch(ifp, m, NULL);
 	} else
 		error = ng_iface_send(ifp, m, dst->sa_family);
 
@@ -616,7 +615,6 @@ ng_iface_constructor(node_p node)
 	ifp->if_hdrlen = 0;			/* XXX */
 	ifp->if_baudrate = 64000;		/* XXX */
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	ifq_set_ready(&ifp->if_snd);
 
 	/* Give this node the same name as the interface (if possible) */

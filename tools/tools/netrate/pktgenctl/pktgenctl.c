@@ -60,8 +60,6 @@
 #define INSRC_MASK	0x0002
 #define EADDR_MASK	0x0004
 #define IFACE_MASK	0x0008
-#define DATALEN_MASK	0x0010
-#define DURATION_MASK	0x0020
 
 #define MASK_NEEDED	(INDST_MASK | INSRC_MASK | EADDR_MASK | IFACE_MASK)
 
@@ -72,7 +70,7 @@ usage(void)
 	    "-d dst_inaddr[:dst_port] [-d dst_inaddr[:dst_port] ...] "
 	    "-s src_inaddr[:src_port] "
 	    "-e (gw_eaddr|dst_eaddr) -i iface "
-	    "[-m data_len] [-l duration]\n");
+	    "[-m data_len] [-l duration] [-D dev] [-q pktenq]\n");
 	exit(1);
 }
 
@@ -101,6 +99,9 @@ main(int argc, char *argv[])
 	char eaddr_str[32];
 	uint32_t arg_mask = 0;
 	int fd, c, n, ndst_alloc;
+	const char *dev;
+
+	dev = PKTGEN_DEVPATH;
 
 	memset(&conf, 0, sizeof(conf));
 
@@ -120,7 +121,7 @@ main(int argc, char *argv[])
 		err(1, "calloc(%d dst)", ndst_alloc);
 
 	conf.pc_ndst = 0;
-	while ((c = getopt(argc, argv, "d:s:e:i:m:l:")) != -1) {
+	while ((c = getopt(argc, argv, "d:s:e:i:m:l:D:q:")) != -1) {
 		switch (c) {
 		case 'd':
 			if (conf.pc_ndst >= ndst_alloc) {
@@ -179,12 +180,18 @@ main(int argc, char *argv[])
 
 		case 'm':
 			conf.pc_datalen = atoi(optarg);
-			arg_mask |= DATALEN_MASK;
 			break;
 
 		case 'l':
 			conf.pc_duration = atoi(optarg);
-			arg_mask |= DURATION_MASK;
+			break;
+
+		case 'D':
+			dev = optarg;
+			break;
+
+		case 'q':
+			conf.pc_pktenq = atoi(optarg);
 			break;
 
 		default:
@@ -195,9 +202,9 @@ main(int argc, char *argv[])
 	if ((arg_mask & MASK_NEEDED) != MASK_NEEDED)
 		usage();
 
-	fd = open(PKTGEN_DEVPATH, O_RDONLY);
+	fd = open(dev, O_RDONLY);
 	if (fd < 0)
-		err(1, "open(" PKTGEN_DEVPATH ")");
+		err(1, "open(%s)", dev);
 
 	if (ioctl(fd, PKTGENSCONF, &conf) < 0)
 		err(1, "ioctl(PKTGENSCONF)");

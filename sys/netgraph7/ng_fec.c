@@ -1123,7 +1123,7 @@ ng_fec_start(struct ifnet *ifp)
 	priv = ifp->if_softc;
 	b = &priv->fec_bundle;
 
-	IF_DEQUEUE(&ifp->if_snd, m0);
+	m0 = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m0 == NULL)
 		return;
 
@@ -1139,9 +1139,11 @@ ng_fec_start(struct ifnet *ifp)
 	}
 	ifp->if_opackets++;
 
-	priv->if_error = IF_HANDOFF(&oifp->if_snd, m0, oifp) ? 0 : ENOBUFS;
+	ifnet_deserialize_tx(ifp);
+	error = ifq_dispatch(oifp, m0, NULL);
+	ifnet_serialize_tx(ifp);
 
-	return;
+	priv->if_error = error;
 }
 
 #ifdef DEBUG
@@ -1229,7 +1231,7 @@ ng_fec_constructor(node_p node)
 	ifp->if_ioctl = ng_fec_ioctl;
 	ifp->if_init = ng_fec_init;
 	ifp->if_watchdog = NULL;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifp->if_mtu = NG_FEC_MTU_DEFAULT;
 	ifp->if_flags = (IFF_SIMPLEX|IFF_BROADCAST|IFF_MULTICAST);
 	ifp->if_addrlen = 0;			/* XXX */

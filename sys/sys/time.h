@@ -181,6 +181,7 @@ struct clockinfo {
 #define CLOCK_MONOTONIC_PRECISE	11	/* from freebsd */
 #define CLOCK_MONOTONIC_FAST	12	/* from freebsd */
 #define CLOCK_SECOND		13	/* from freebsd */
+#define CLOCK_THREAD_CPUTIME_ID		14
 
 #define TIMER_RELTIME	0x0	/* relative timer */
 #ifndef TIMER_ABSTIME

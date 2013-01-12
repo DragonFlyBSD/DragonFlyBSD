@@ -1022,7 +1022,7 @@ rt2560_tx_intr(struct rt2560_softc *sc)
 		sc->sc_flags &= ~RT2560_F_DATA_OACTIVE;
 		if ((sc->sc_flags &
 		     (RT2560_F_DATA_OACTIVE | RT2560_F_PRIO_OACTIVE)) == 0)
-			ifp->if_flags &= ~IFF_OACTIVE;
+			ifq_clr_oactive(&ifp->if_snd);
 		rt2560_start_locked(ifp);
 	}
 }
@@ -1106,7 +1106,7 @@ rt2560_prio_intr(struct rt2560_softc *sc)
 		sc->sc_flags &= ~RT2560_F_PRIO_OACTIVE;
 		if ((sc->sc_flags &
 		     (RT2560_F_DATA_OACTIVE | RT2560_F_PRIO_OACTIVE)) == 0)
-			ifp->if_flags &= ~IFF_OACTIVE;
+			ifq_clr_oactive(&ifp->if_snd);
 		rt2560_start_locked(ifp);
 	}
 }
@@ -1916,12 +1916,12 @@ rt2560_start_locked(struct ifnet *ifp)
 	struct ieee80211_node *ni;
 
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 		if (sc->txq.queued >= RT2560_TX_RING_COUNT - 1) {
-			IF_PREPEND(&ifp->if_snd, m);
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, m);
+			ifq_set_oactive(&ifp->if_snd);
 			sc->sc_flags |= RT2560_F_DATA_OACTIVE;
 			break;
 		}
@@ -2671,7 +2671,7 @@ rt2560_init_locked(struct rt2560_softc *sc)
 	/* enable interrupts */
 	RAL_WRITE(sc, RT2560_CSR8, RT2560_INTR_MASK);
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags |= IFF_RUNNING;
 
 	callout_reset(&sc->watchdog_ch, hz, rt2560_watchdog_callout, sc);
@@ -2704,7 +2704,8 @@ rt2560_stop_locked(struct rt2560_softc *sc)
 	sc->sc_tx_timer = 0;
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+		ifp->if_flags &= ~IFF_RUNNING;
+		ifq_clr_oactive(&ifp->if_snd);
 
 		/* abort Tx */
 		RAL_WRITE(sc, RT2560_TXCSR0, RT2560_ABORT_TX);
@@ -2752,7 +2753,7 @@ rt2560_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 		return ENETDOWN;
 	}
 	if (sc->prioq.queued >= RT2560_PRIO_RING_COUNT) {
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		sc->sc_flags |= RT2560_F_PRIO_OACTIVE;
 		m_freem(m);
 		ieee80211_free_node(ni);

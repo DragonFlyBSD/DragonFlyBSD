@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/lib/libstand/libstand.3,v 1.5.2.11 2002/06/26 19:14:43 schweikh Exp $
 .\"
-.Dd February 15, 2009
+.Dd December 29, 2012
 .Dt LIBSTAND 3
 .Os
 .Sh NAME
@@ -491,6 +491,15 @@ Attempts to open and display the file
 Returns -1 on error, 0 at
 .Dv EOF ,
 or 1 if the user elects to quit while reading.
+.El
+.Sh NETWORK
+.Bl -hang -width 10n
+.It Xo
+.Ft "char *"
+.Fn ether_sprintf "u_char *ap"
+.Xc
+.Pp
+Convert an ethernet address to its human readable notation as specified in IEEE 802.
 .El
 .Sh MISC
 .Bl -hang -width 10n

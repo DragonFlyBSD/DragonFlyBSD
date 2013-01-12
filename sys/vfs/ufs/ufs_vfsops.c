@@ -192,7 +192,6 @@ ufs_init(struct vfsconf *vfsp)
 	if (done)
 		return (0);
 	done = 1;
-	ufs_ihashinit();
 #ifdef QUOTA
 	ufs_dqinit();
 #endif

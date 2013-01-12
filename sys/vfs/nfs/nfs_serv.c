@@ -2373,7 +2373,6 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vnode *dvp;
 	struct vnode *vp;
 	struct vnode *xp;
-	struct mount *mp;
 	struct mount *xmp;
 	struct vattr dirfor, diraft, at;
 	nfsfh_t nfh, dnfh;
@@ -2389,7 +2388,7 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	nlookup_zero(&nd);
 	dirp = dvp = vp = xp = NULL;
-	mp = xmp = NULL;
+	xmp = NULL;
 
 	fhp = &nfh.fh_generic;
 	dfhp = &dnfh.fh_generic;
@@ -2901,7 +2900,10 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct iovec iv;
 	int len, nlen, rem, xfer, tsiz, i, error = 0, getret = 1;
 	int siz, cnt, fullsiz, eofflag, rdonly, ncookies;
-	u_quad_t off, toff, verf;
+	u_quad_t off, toff;
+#if 0
+	u_quad_t verf;
+#endif
 	off_t *cookies = NULL, *cookiep;
 	struct nfsm_info info;
 
@@ -2918,12 +2920,16 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		NULLOUT(tl = nfsm_dissect(&info, 5 * NFSX_UNSIGNED));
 		toff = fxdr_hyper(tl);
 		tl += 2;
+#if 0
 		verf = fxdr_hyper(tl);
+#endif
 		tl += 2;
 	} else {
 		NULLOUT(tl = nfsm_dissect(&info, 2 * NFSX_UNSIGNED));
 		toff = fxdr_unsigned(u_quad_t, *tl++);
+#if 0
 		verf = 0;	/* shut up gcc */
+#endif
 	}
 	off = toff;
 	cnt = fxdr_unsigned(int, *tl);
@@ -3203,7 +3209,10 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct nfs_fattr *fp;
 	int len, nlen, rem, xfer, tsiz, i, error = 0, getret = 1;
 	int siz, cnt, fullsiz, eofflag, rdonly, dirlen, ncookies;
-	u_quad_t off, toff, verf;
+	u_quad_t off, toff;
+#if 0
+	u_quad_t verf;
+#endif
 	off_t *cookies = NULL, *cookiep; /* needs to be int64_t or off_t */
 	struct nfsm_info info;
 
@@ -3219,7 +3228,9 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	NULLOUT(tl = nfsm_dissect(&info, 6 * NFSX_UNSIGNED));
 	toff = fxdr_hyper(tl);
 	tl += 2;
+#if 0
 	verf = fxdr_hyper(tl);
+#endif
 	tl += 2;
 	siz = fxdr_unsigned(int, *tl++);
 	cnt = fxdr_unsigned(int, *tl);

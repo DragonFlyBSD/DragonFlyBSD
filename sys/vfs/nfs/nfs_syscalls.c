@@ -661,6 +661,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			    error = (*(nfsrv3_procs[nd->nd_procnum]))(nd,
 						slp, nfsd->nfsd_td, &mreq);
 			    /* NOT YET lwkt_gettoken(&slp->ns_token); */
+			    lwpkthreaddeferred();	/* vnlru issues */
 			}
 			if (mreq == NULL)
 				break;
@@ -1058,7 +1059,7 @@ nfs_getnickauth(struct nfsmount *nmp, struct ucred *cred, char **auth_str,
 {
 	struct nfsuid *nuidp;
 	u_int32_t *nickp, *verfp;
-	struct timeval ktvin, ktvout;
+	struct timeval ktvout;
 
 #ifdef DIAGNOSTIC
 	if (verf_len < (4 * NFSX_UNSIGNED))
@@ -1095,8 +1096,6 @@ nfs_getnickauth(struct nfsmount *nmp, struct ucred *cred, char **auth_str,
 		getmicrotime(&nuidp->nu_timestamp);
 	else
 		nuidp->nu_timestamp.tv_usec++;
-	ktvin.tv_sec = txdr_unsigned(nuidp->nu_timestamp.tv_sec);
-	ktvin.tv_usec = txdr_unsigned(nuidp->nu_timestamp.tv_usec);
 
 	/*
 	 * Now encrypt the timestamp verifier in ecb mode using the session

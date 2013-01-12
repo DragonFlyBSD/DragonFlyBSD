@@ -373,8 +373,7 @@ et_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->sc_irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
 
 	return 0;
 fail:
@@ -571,7 +570,8 @@ et_stop(struct et_softc *sc)
 	sc->sc_flags &= ~ET_FLAG_TXRX_ENABLED;
 
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 static int
@@ -1127,7 +1127,7 @@ et_init(void *xsc)
 	CSR_WRITE_4(sc, ET_TIMER, sc->sc_timer);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 back:
 	if (error)
 		et_stop(sc);
@@ -1208,7 +1208,7 @@ et_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	oactive = 0;
@@ -1219,7 +1219,7 @@ et_start(struct ifnet *ifp)
 
 		if ((tbd->tbd_used + ET_NSEG_SPARE) > ET_TX_NDESC) {
 			if (oactive) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 
@@ -1242,7 +1242,7 @@ et_start(struct ifnet *ifp)
 				 * Excessive fragmented packets
 				 */
 				if (oactive) {
-					ifp->if_flags |= IFF_OACTIVE;
+					ifq_set_oactive(&ifp->if_snd);
 					break;
 				}
 				et_txeof(sc, 0);
@@ -2057,7 +2057,7 @@ et_txeof(struct et_softc *sc, int start)
 	if (tbd->tbd_used == 0)
 		ifp->if_timer = 0;
 	if (tbd->tbd_used + ET_NSEG_SPARE <= ET_TX_NDESC)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	if (start)
 		if_devstart(ifp);

@@ -766,9 +766,6 @@ fwohci_init(struct fwohci_softc *sc, device_t dev)
 void
 fwohci_timeout(void *arg)
 {
-	struct fwohci_softc *sc;
-
-	sc = (struct fwohci_softc *)arg;
 }
 
 u_int32_t
@@ -1488,7 +1485,6 @@ fwohci_itxbuf_enable(struct firewire_comm *fc, int dmach)
 {
 	struct fwohci_softc *sc = (struct fwohci_softc *)fc;
 	int err = 0;
-	unsigned short tag, ich;
 	struct fwohci_dbch *dbch;
 	int cycle_match, cycle_now, ldesc;
 	u_int32_t stat;
@@ -1498,8 +1494,6 @@ fwohci_itxbuf_enable(struct firewire_comm *fc, int dmach)
 	dbch = &sc->it[dmach];
 	it = &dbch->xferq;
 
-	tag = (it->flag >> 6) & 3;
-	ich = it->flag & 0x3f;
 	if ((dbch->flags & FWOHCI_DBCH_INIT) == 0) {
 		dbch->ndb = it->bnpacket * it->bnchunk;
 		dbch->ndesc = 3;
@@ -2266,7 +2260,10 @@ dump_db(struct fwohci_softc *sc, u_int32_t ch)
 {
 	struct fwohci_dbch *dbch;
 	struct fwohcidb_tr *cp = NULL, *pp, *np = NULL;
-	struct fwohcidb *curr = NULL, *prev, *next = NULL;
+	struct fwohcidb *curr = NULL;
+#if 0
+	struct fwohcidb *prev, *next = NULL;
+#endif
 	int idb, jdb;
 	u_int32_t cmd, off;
 	if(ch == 0){
@@ -2295,7 +2292,9 @@ dump_db(struct fwohci_softc *sc, u_int32_t ch)
 		return;
 	}
 	pp = dbch->top;
+#if 0
 	prev = pp->db;
+#endif
 	for(idb = 0 ; idb < dbch->ndb ; idb ++ ){
 		if(pp == NULL){
 			curr = NULL;
@@ -2310,16 +2309,20 @@ dump_db(struct fwohci_softc *sc, u_int32_t ch)
 		for(jdb = 0 ; jdb < dbch->ndesc ; jdb ++ ){
 			if ((cmd  & 0xfffffff0) == cp->bus_addr) {
 				curr = cp->db;
+#if 0
 				if(np != NULL){
 					next = np->db;
 				}else{
 					next = NULL;
 				}
+#endif
 				goto outdb;
 			}
 		}
 		pp = STAILQ_NEXT(pp, link);
+#if 0
 		prev = pp->db;
+#endif
 	}
 outdb:
 	if( curr != NULL){
@@ -2455,7 +2458,10 @@ fwohci_ibr(struct firewire_comm *fc)
 void
 fwohci_txbufdb(struct fwohci_softc *sc, int dmach, struct fw_bulkxfer *bulkxfer)
 {
-	struct fwohcidb_tr *db_tr, *fdb_tr;
+	struct fwohcidb_tr *db_tr;
+#if 0
+	struct fwohcidb_tr *fdb_tr;
+#endif
 	struct fwohci_dbch *dbch;
 	struct fwohcidb *db;
 	struct fw_pkt *fp;
@@ -2467,10 +2473,11 @@ fwohci_txbufdb(struct fwohci_softc *sc, int dmach, struct fw_bulkxfer *bulkxfer)
 	chtag = sc->it[dmach].xferq.flag & 0xff;
 
 	db_tr = (struct fwohcidb_tr *)(bulkxfer->start);
+#if 0
 	fdb_tr = (struct fwohcidb_tr *)(bulkxfer->end);
-/*
-device_printf(sc->fc.dev, "DB %08x %08x %08x\n", bulkxfer, db_tr->bus_addr, fdb_tr->bus_addr);
-*/
+	device_printf(sc->fc.dev, "DB %08x %08x %08x\n", bulkxfer,
+	    db_tr->bus_addr, fdb_tr->bus_addr);
+#endif
 	for (idb = 0; idb < dbch->xferq.bnpacket; idb ++) {
 		db = db_tr->db;
 		fp = (struct fw_pkt *)db_tr->buf;
@@ -2605,9 +2612,9 @@ fwohci_arcv_swap(struct fw_pkt *fp, int len)
 {
 	struct fw_pkt *fp0;
 	u_int32_t ld0;
-	int slen, hlen;
+	int hlen;
 #if BYTE_ORDER == BIG_ENDIAN
-	int i;
+	int slen, i;
 #endif
 
 	ld0 = FWOHCI_DMA_READ(fp->mode.ld[0]);
@@ -2622,15 +2629,19 @@ fwohci_arcv_swap(struct fw_pkt *fp, int len)
 	case FWTCODE_WREQQ:
 	case FWTCODE_RRESQ:
 	case FWOHCITCODE_PHY:
+#if BYTE_ORDER == BIG_ENDIAN
 		slen = 12;
 		break;
+#endif
 	case FWTCODE_RREQB:
 	case FWTCODE_WREQB:
 	case FWTCODE_LREQ:
 	case FWTCODE_RRESB:
 	case FWTCODE_LRES:
+#if BYTE_ORDER == BIG_ENDIAN
 		slen = 16;
 		break;
+#endif
 	default:
 		kprintf("Unknown tcode %d\n", fp0->mode.common.tcode);
 		return(0);
@@ -2693,19 +2704,14 @@ fwohci_arcv(struct fwohci_softc *sc, struct fwohci_dbch *dbch, int count)
 	int nvec;
 	struct fw_pkt *fp;
 	u_int8_t *ld;
-	u_int32_t stat, off, status;
+	u_int32_t stat, status;
 	u_int spd;
 	int len, plen, hlen, pcnt, offset;
 	caddr_t buf;
 	int resCount;
 
-	if(&sc->arrq == dbch){
-		off = OHCI_ARQOFF;
-	}else if(&sc->arrs == dbch){
-		off = OHCI_ARSOFF;
-	}else{
+	if (&sc->arrq != dbch && &sc->arrs != dbch)
 		return;
-	}
 
 	crit_enter();
 	db_tr = dbch->top;

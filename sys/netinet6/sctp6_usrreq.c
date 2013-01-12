@@ -1065,7 +1065,6 @@ sctp6_send(netmsg_t msg)
 	struct mbuf *control = msg->send.nm_control;
 	struct sockaddr *addr = msg->send.nm_addr;
 	struct sctp_inpcb *inp;
-	struct inpcb *in_inp;
 	struct in6pcb *inp6;
 	int flags = msg->send.nm_flags;
 #ifdef INET
@@ -1084,7 +1083,6 @@ sctp6_send(netmsg_t msg)
 		error = EINVAL;
 		goto out;
 	}
-	in_inp = (struct inpcb *)inp;
 	inp6 = (struct in6pcb *)inp;
 	/* For the TCP model we may get a NULL addr, if we
 	 * are a connected socket thats ok.

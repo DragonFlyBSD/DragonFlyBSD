@@ -1321,7 +1321,7 @@ iwi_checkforqos(struct ieee80211vap *vap,
 #define	SUBTYPE(wh)	((wh)->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK)
 	const uint8_t *frm, *efrm, *wme;
 	struct ieee80211_node *ni;
-	uint16_t capinfo, status, associd;
+	uint16_t capinfo, associd;
 
 	/* NB: +8 for capinfo, status, associd, and first ie */
 	if (!(sizeof(*wh)+8 < len && len < IEEE80211_MAX_LEN) ||
@@ -1341,7 +1341,6 @@ iwi_checkforqos(struct ieee80211vap *vap,
 
 	capinfo = le16toh(*(const uint16_t *)frm);
 	frm += 2;
-	status = le16toh(*(const uint16_t *)frm);
 	frm += 2;
 	associd = le16toh(*(const uint16_t *)frm);
 	frm += 2;
@@ -1610,7 +1609,7 @@ iwi_tx_intr(struct iwi_softc *sc, struct iwi_tx_ring *txq)
 	}
 
 	sc->sc_tx_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (sc->sc_softled)
 		iwi_led_event(sc, IWI_LED_TX);
@@ -1935,15 +1934,15 @@ iwi_start_locked(struct ifnet *ifp)
 		return;
 
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 		ac = M_WME_GETAC(m);
 		if (sc->txq[ac].queued > IWI_TX_RING_COUNT - 8) {
 			/* there is no place left in this ring; tail drop */
 			/* XXX tail drop */
-			IF_PREPEND(&ifp->if_snd, m);
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, m);
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -3111,7 +3110,7 @@ iwi_init_locked(struct iwi_softc *sc)
 	}
 
 	callout_reset(&sc->sc_wdtimer_callout, hz, iwi_watchdog, sc);
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags |= IFF_RUNNING;
 	return;
 fail:
@@ -3139,7 +3138,8 @@ iwi_stop_locked(void *priv)
 	struct iwi_softc *sc = priv;
 	struct ifnet *ifp = sc->sc_ifp;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (sc->sc_softled) {
 		callout_stop(&sc->sc_ledtimer_callout);

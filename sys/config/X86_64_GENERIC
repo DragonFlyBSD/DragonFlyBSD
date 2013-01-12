@@ -10,6 +10,7 @@ machine_arch	x86_64
 cpu		HAMMER_CPU
 ident		X86_64_GENERIC
 maxusers	0
+#options	CPU_DISABLE_AVX
 
 makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
 
@@ -148,6 +149,11 @@ device		mfi		# LSI MegaRAID SAS
 device		mfip		# LSI MegaRAID SAS passthrough, requires CAM
 device		twe		# 3ware Escalade 7000/8000's
 
+# VirtIO support
+device		virtio		# VirtIO core
+device		virtio_blk	# VirtIO disk driver
+device		virtio_pci	# VirtIO transport over PCI bus
+
 # atkbdc0 controls both the keyboard and the PS/2 mouse
 device		atkbdc0	at isa? port IO_KBD
 device		atkbd0	at atkbdc? irq 1 flags 0x1
@@ -272,7 +278,6 @@ device		ral		# Ralink Technology 802.11 wireless NIC
 # and resources will always be dynamically assigned by the pccard code.
 device		wi
 
-# The probe order of these is presently determined by i386/isa/isa_compat.c.
 device		lnc0	at isa? disable port 0x280 irq 10 drq 0
 device		cs0	at isa? disable port 0x300
 device		sn0	at isa? disable port 0x300 irq 10

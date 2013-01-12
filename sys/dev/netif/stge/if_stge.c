@@ -811,8 +811,7 @@ stge_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->sc_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq));
 
 fail:
 	if (error != 0)
@@ -1194,14 +1193,13 @@ stge_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) !=
-	    IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	enq = 0;
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		if (sc->sc_cdata.stge_tx_cnt >= STGE_TX_HIWAT) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1218,7 +1216,7 @@ stge_start(struct ifnet *ifp)
 			if (sc->sc_cdata.stge_tx_cnt == 0) {
 				continue;
 			} else {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 		}
@@ -1506,7 +1504,7 @@ stge_txeof(struct stge_softc *sc)
 	sc->sc_cdata.stge_tx_cons = cons;
 
 	if (sc->sc_cdata.stge_tx_cnt < STGE_TX_HIWAT)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	if (sc->sc_cdata.stge_tx_cnt == 0)
 		ifp->if_timer = 0;
 }
@@ -1750,11 +1748,11 @@ stge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			CSR_WRITE_2(sc, STGE_IntEnable, 0);
 			sc->sc_npoll.ifpc_stcount = 0;
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			CSR_WRITE_2(sc, STGE_IntEnable, sc->sc_IntEnable);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq));
 	}
 }
 
@@ -2079,7 +2077,7 @@ stge_init(void *xsc)
 	 * ...all done!
 	 */
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
  out:
 	if (error != 0)
@@ -2180,7 +2178,8 @@ stge_stop(struct stge_softc *sc)
 	/*
 	 * Mark the interface down and cancel the watchdog timer.
 	 */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 }
 

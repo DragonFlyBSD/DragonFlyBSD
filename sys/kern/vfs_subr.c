@@ -304,7 +304,7 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
 			if ((error = VOP_FSYNC(vp, MNT_WAIT, 0)) != 0)
 				goto done;
-
+#if 0
 			/*
 			 * Dirty bufs may be left or generated via races
 			 * in circumstances where vinvalbuf() is called on
@@ -316,6 +316,7 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 			    !RB_EMPTY(&vp->v_rbdirty_tree))) {
 				panic("vinvalbuf: dirty bufs");
 			}
+#endif
 		}
   	}
 	info.slptimeo = slptimeo;
@@ -326,30 +327,34 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 	info.vp = vp;
 
 	/*
-	 * Flush the buffer cache until nothing is left.
-	 */
-	while (!RB_EMPTY(&vp->v_rbclean_tree) || 
-	       !RB_EMPTY(&vp->v_rbdirty_tree)) {
-		info.clean = 1;
-		error = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree, NULL,
-				vinvalbuf_bp, &info);
-		if (error == 0) {
-			info.clean = 0;
-			error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
-					vinvalbuf_bp, &info);
-		}
-	}
-
-	/*
-	 * Wait for I/O completion.  We may block in the pip code so we have
-	 * to re-check.
+	 * Flush the buffer cache until nothing is left, wait for all I/O
+	 * to complete.  At least one pass is required.  We might block
+	 * in the pip code so we have to re-check.  Order is important.
 	 */
 	do {
-		bio_track_wait(&vp->v_track_write, 0, 0);
-		if ((object = vp->v_object) != NULL) {
-			refcount_wait(&object->paging_in_progress, "vnvlbx");
+		/*
+		 * Flush buffer cache
+		 */
+		if (!RB_EMPTY(&vp->v_rbclean_tree)) {
+			info.clean = 1;
+			error = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree,
+					NULL, vinvalbuf_bp, &info);
 		}
-	} while (bio_track_active(&vp->v_track_write));
+		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
+			info.clean = 0;
+			error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree,
+					NULL, vinvalbuf_bp, &info);
+		}
+
+		/*
+		 * Wait for I/O completion.
+		 */
+		bio_track_wait(&vp->v_track_write, 0, 0);
+		if ((object = vp->v_object) != NULL)
+			refcount_wait(&object->paging_in_progress, "vnvlbx");
+	} while (bio_track_active(&vp->v_track_write) ||
+		 !RB_EMPTY(&vp->v_rbclean_tree) ||
+		 !RB_EMPTY(&vp->v_rbdirty_tree));
 
 	/*
 	 * Destroy the copy in the VM cache, too.
@@ -919,7 +924,7 @@ bgetvp(struct vnode *vp, struct buf *bp, int testsize)
 	bp->b_flags |= B_VNCLEAN;
 	if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp))
 		panic("reassignbuf: dup lblk/clean vp %p bp %p", vp, bp);
-	vhold(vp);
+	/*vhold(vp);*/
 	lwkt_reltoken(&vp->v_token);
 	return(0);
 }
@@ -958,7 +963,7 @@ brelvp(struct buf *bp)
 
 	lwkt_reltoken(&vp->v_token);
 
-	vdrop(vp);
+	/*vdrop(vp);*/
 }
 
 /*

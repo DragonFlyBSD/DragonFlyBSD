@@ -1272,7 +1272,10 @@ static int
 mss_probe(device_t dev)
 {
     	u_char tmp, tmpx;
-    	int flags, irq, drq, result = ENXIO, setres = 0;
+    	int flags, irq, drq, result = ENXIO;
+#if 0
+	int setres = 0;
+#endif
     	struct mss_info *mss;
 
     	if (isa_get_logicalid(dev)) return ENXIO; /* not yet */
@@ -1289,7 +1292,9 @@ mss_probe(device_t dev)
         	BVDDB(kprintf("mss_probe: no address given, try 0x%x\n", 0x530));
 		mss->io_rid = 0;
 		/* XXX verify this */
+#if 0
 		setres = 1;
+#endif
 		bus_set_resource(dev, SYS_RES_IOPORT, mss->io_rid,
     		         	0x530, 8, -1);
 		mss->io_base = bus_alloc_resource(dev, SYS_RES_IOPORT, &mss->io_rid,

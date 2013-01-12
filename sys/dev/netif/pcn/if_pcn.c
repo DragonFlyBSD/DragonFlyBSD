@@ -623,8 +623,7 @@ pcn_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->pcn_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->pcn_irq));
 
 	return (0);
 fail:
@@ -863,7 +862,7 @@ pcn_txeof(struct pcn_softc *sc)
 	if (idx != sc->pcn_cdata.pcn_tx_cons) {
 		/* Some buffers have been freed. */
 		sc->pcn_cdata.pcn_tx_cons = idx;
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	}
 	ifp->if_timer = (sc->pcn_cdata.pcn_tx_cnt == 0) ? 0 : 5;
 
@@ -1008,7 +1007,7 @@ pcn_start(struct ifnet *ifp)
 
 	idx = sc->pcn_cdata.pcn_tx_prod;
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	need_trans = 0;
@@ -1034,7 +1033,7 @@ again:
 				 * drop this packet.
 				 */
 				m_freem(m_head);
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 
@@ -1189,7 +1188,7 @@ pcn_init(void *xsc)
 	mii_mediachg(mii);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->pcn_stat_timer, hz, pcn_tick, sc);
 }
@@ -1354,7 +1353,8 @@ pcn_stop(struct pcn_softc *sc)
 	bzero((char *)&sc->pcn_ldata->pcn_tx_list,
 		sizeof(sc->pcn_ldata->pcn_tx_list));
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	return;
 }

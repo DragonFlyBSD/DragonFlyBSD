@@ -212,40 +212,34 @@ create_subpartitions(struct i_fn_args *a)
 			if (subpartition_is_swap(sp) &&
 			    subpartition_is_encrypted(sp)) {
 				command_add(cmds,
-				    "%s%s -d /tmp/t1 luksFormat %sdev/%s",
+				    "%s%s -d /tmp/t1 luksFormat /dev/%s",
 				    a->os_root, cmd_name(a, "CRYPTSETUP"),
-				    a->os_root,
 				    subpartition_get_device_name(sp));
 				command_add(cmds,
-				    "%s%s -d /tmp/t1 luksOpen %sdev/%s swap",
+				    "%s%s -d /tmp/t1 luksOpen /dev/%s swap",
 				    a->os_root, cmd_name(a, "CRYPTSETUP"),
-				    a->os_root,
 				    subpartition_get_device_name(sp));
 			}
 			continue;
 		}
 
 		if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
-			command_add(cmds, "%s%s %sdev/%s",
+			command_add(cmds, "%s%s /dev/%s",
 			    a->os_root, cmd_name(a, "NEWFS"),
-			    a->os_root,
 			    subpartition_get_device_name(sp));
 		} else {
 			if (subpartition_is_encrypted(sp)) {
 				command_add(cmds,
-				    "%s%s -d /tmp/t1 luksFormat %sdev/%s",
+				    "%s%s -d /tmp/t1 luksFormat /dev/%s",
 				    a->os_root, cmd_name(a, "CRYPTSETUP"),
-				    a->os_root,
 				    subpartition_get_device_name(sp));
 				command_add(cmds,
-				    "%s%s -d /tmp/t1 luksOpen %sdev/%s root",
+				    "%s%s -d /tmp/t1 luksOpen /dev/%s root",
 				    a->os_root, cmd_name(a, "CRYPTSETUP"),
-				    a->os_root,
 				    subpartition_get_device_name(sp));
 			}
-			command_add(cmds, "%s%s -f -L ROOT %sdev/%s",
+			command_add(cmds, "%s%s -f -L ROOT /dev/%s",
 			    a->os_root, cmd_name(a, "NEWFS_HAMMER"),
-			    a->os_root,
 			    subpartition_is_encrypted(sp) ?
 			    "mapper/root" : subpartition_get_device_name(sp));
 		}

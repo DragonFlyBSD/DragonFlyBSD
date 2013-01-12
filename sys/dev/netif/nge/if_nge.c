@@ -914,8 +914,7 @@ nge_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->nge_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->nge_irq));
 
 	return(0);
 fail:
@@ -1360,7 +1359,7 @@ nge_txeof(struct nge_softc *sc)
 	sc->nge_cdata.nge_tx_cons = idx;
 
 	if (cur_tx != NULL)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -1468,13 +1467,13 @@ nge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			CSR_WRITE_4(sc, NGE_IER, 0);
 			sc->nge_npoll.ifpc_stcount = 0;
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			/* enable interrupts */
 			CSR_WRITE_4(sc, NGE_IER, 1);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->nge_irq));
 	}
 }
 
@@ -1638,7 +1637,7 @@ nge_start(struct ifnet *ifp)
 
 	idx = sc->nge_cdata.nge_tx_prod;
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	need_trans = 0;
@@ -1664,7 +1663,7 @@ again:
 				 * drop this packet.
 				 */
 				m_freem(m_head);
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 
@@ -1877,7 +1876,7 @@ nge_init(void *xsc)
 	nge_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*
@@ -2149,7 +2148,8 @@ nge_stop(struct nge_softc *sc)
 	bzero(&sc->nge_ldata->nge_tx_list,
 		sizeof(sc->nge_ldata->nge_tx_list));
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*

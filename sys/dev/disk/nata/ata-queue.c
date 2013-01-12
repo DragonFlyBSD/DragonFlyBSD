@@ -285,8 +285,8 @@ ata_finish(struct ata_request *request)
 	/* put request on the proper taskqueue for completion */
 	/* XXX FreeBSD has some sort of bio_taskqueue code here */
         TASK_INIT(&request->task, 0, ata_completed, request);
-	ATA_DEBUG_RQ(request, "finish taskqueue_swi");
-	taskqueue_enqueue(taskqueue_swi, &request->task);
+	ATA_DEBUG_RQ(request, "finish taskqueue_swi_mp");
+	taskqueue_enqueue(taskqueue_swi_mp, &request->task);
     }
 }
 

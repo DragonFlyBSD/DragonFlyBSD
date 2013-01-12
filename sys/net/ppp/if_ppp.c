@@ -1532,11 +1532,19 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
      * called EXACTLY once per packet queued.
      */
     if (isr == -1) {
-	rv = IF_HANDOFF(&sc->sc_inq, m, NULL);
-	if (rv)
-	    (*sc->sc_ctlp)(sc);
+	struct ifqueue *inq = &sc->sc_inq;
+
+	if (IF_QFULL(inq)) {
+	    IF_DROP(inq);
+	    rv = 0;
+	} else {
+	    IF_ENQUEUE(inq, m);
+	    sc->sc_ctlp(sc);
+	    rv = 1;
+	}
     } else {
 	rv = (netisr_queue(isr, m) == 0);
+	m = NULL;
     }
     if (!rv) {
 	if (sc->sc_flags & SC_DEBUG)
@@ -1552,7 +1560,8 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
     return;
 
  bad:
-    m_freem(m);
+    if (m != NULL)
+	m_freem(m);
     sc->sc_if.if_ierrors++;
     sc->sc_stats.ppp_ierrors++;
 }

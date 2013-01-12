@@ -124,6 +124,7 @@ struct hammer2_chain {
 	hammer2_media_data_t *data;	/* modified copy of data (rw) */
 	u_int		bytes;		/* physical size of data */
 	int		index;		/* index in parent */
+	u_int		flushing;	/* element undergoing flush (count) */
 	u_int		refs;
 	u_int		flags;
 };
@@ -146,16 +147,17 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DIRTYEMBED	0x00000002	/* inode embedded */
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
 #define HAMMER2_CHAIN_SUBMODIFIED	0x00000008	/* 1+ subs modified */
-#define HAMMER2_CHAIN_DELETED		0x00000010
+#define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* bref changed */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list*/
-#define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying */
+#define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying inode */
 #define HAMMER2_CHAIN_MODIFIED_AUX	0x00000800	/* hmp->vchain only */
 #define HAMMER2_CHAIN_MODIFY_TID	0x00001000	/* mod updates field */
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
+#define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -244,7 +246,6 @@ struct hammer2_inode {
 	hammer2_chain_t		chain;
 	struct hammer2_inode_data ip_data;
 	struct lockf		advlock;
-	u_int			depth;		/* directory depth */
 	hammer2_off_t		delta_dcount;	/* adjust data_count */
 	hammer2_off_t		delta_icount;	/* adjust inode_count */
 };
@@ -297,7 +298,9 @@ struct hammer2_mount {
 	struct lock	alloclk;	/* lockmgr lock */
 	struct lock	voldatalk;	/* lockmgr lock */
 
+	int		volhdrno;	/* last volhdrno written */
 	hammer2_volume_data_t voldata;
+	hammer2_volume_data_t volsync;	/* synchronized voldata */
 	hammer2_freecache_t freecache[HAMMER2_FREECACHE_TYPES]
 				     [HAMMER2_MAX_RADIX+1];
 };
@@ -421,6 +424,8 @@ int hammer2_inode_duplicate(hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len);
 int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 			const uint8_t *name, size_t name_len);
+hammer2_inode_t *hammer2_inode_common_parent(hammer2_mount_t *hmp,
+			hammer2_inode_t *fdip, hammer2_inode_t *tdip);
 
 int hammer2_unlink_file(hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len,
@@ -447,6 +452,7 @@ void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 void hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *chain,
 				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_wait(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_find(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent, int index);
 hammer2_chain_t *hammer2_chain_get(hammer2_mount_t *hmp,
@@ -465,12 +471,15 @@ hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent,
 				hammer2_chain_t *chain,
 				hammer2_key_t key, int keybits,
-				int type, size_t bytes);
+				int type, size_t bytes,
+				int *errorp);
 void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 				hammer2_chain_t *chain, int retain);
 void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				hammer2_tid_t modify_tid);
 void hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_parent_setsubmod(hammer2_mount_t *hmp,
+				hammer2_chain_t *chain);
 
 /*
  * hammer2_ioctl.c

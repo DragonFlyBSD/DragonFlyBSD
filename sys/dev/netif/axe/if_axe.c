@@ -681,7 +681,7 @@ axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	usbd_get_xfer_status(c->axe_xfer, NULL, NULL, NULL, &err);
 
 	if (c->axe_mbuf != NULL) {
@@ -765,7 +765,7 @@ axe_start(struct ifnet *ifp)
 		return;
 	}
 
-	if (ifp->if_flags & IFF_OACTIVE) {
+	if (ifq_is_oactive(&ifp->if_snd)) {
 		return;
 	}
 
@@ -775,7 +775,7 @@ axe_start(struct ifnet *ifp)
 
 	if (axe_encap(sc, m_head, 0)) {
 		/* axe_encap() will free m_head, if we reach here */
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		return;
 	}
 
@@ -785,7 +785,7 @@ axe_start(struct ifnet *ifp)
 	 */
 	BPF_MTAP(ifp, m_head);
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -876,7 +876,7 @@ axe_init(void *xsc)
 	}
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->axe_stat_timer, hz, axe_tick, sc);
 }
@@ -1047,7 +1047,8 @@ axe_stop(struct axe_softc *sc)
 		}
 	}
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
         sc->axe_link = 0;
 }
 

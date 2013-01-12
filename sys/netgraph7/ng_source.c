@@ -629,7 +629,7 @@ ng_source_store_output_ifp(sc_p sc, char *ifname)
 	if (ifp->if_snd.ifq_maxlen < NG_SOURCE_DRIVER_IFQ_MAXLEN) {
 		printf("ng_source: changing ifq_maxlen from %d to %d\n",
 		    ifp->if_snd.ifq_maxlen, NG_SOURCE_DRIVER_IFQ_MAXLEN);
-		ifp->if_snd.ifq_maxlen = NG_SOURCE_DRIVER_IFQ_MAXLEN;
+		ifq_set_maxlen(&ifp->if_snd, NG_SOURCE_DRIVER_IFQ_MAXLEN);
 	}
 	splx(s);
 #endif

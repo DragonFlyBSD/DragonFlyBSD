@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.44 2008/05/23 15:34:03 sephe Exp $
  */
 
 /*
@@ -267,9 +266,7 @@ SYSCTL_PROC(_hw_an, OID_AUTO, an_dump, CTLTYPE_STRING | CTLFLAG_RW,
 static int
 sysctl_an_cache_mode(SYSCTL_HANDLER_ARGS)
 {
-	int	error, last;
-
-	last = an_cache_mode;
+	int	error;
 
 	switch (an_cache_mode) {
 	case 1:
@@ -1055,7 +1052,7 @@ an_txeof(struct an_softc *sc, int status)
 	ifp = &sc->arpcom.ac_if;
 
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (!sc->mpi350) {
 		id = CSR_READ_2(sc, AN_TX_CMP_FID(sc->mpi350));
@@ -1115,7 +1112,7 @@ an_stats_update(void *xsc)
 		sc->an_associated = 0;
 
 	/* Don't do this while we're not transmitting */
-	if ((ifp->if_flags & IFF_OACTIVE) == 0) {
+	if (!ifq_is_oactive(&ifp->if_snd)) {
 		sc->an_stats.an_len = sizeof(struct an_ltv_stats);
 		sc->an_stats.an_type = AN_RID_32BITS_CUM;
 		an_read_record(sc, (struct an_ltv_gen *)&sc->an_stats.an_len);
@@ -2471,7 +2468,7 @@ an_init(void *xsc)
 	CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), AN_INTRS(sc->mpi350));
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->an_stat_timer, hz, an_stats_update, sc);
 }
@@ -2490,7 +2487,7 @@ an_start(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if (ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	if (!sc->an_associated) {
@@ -2644,7 +2641,7 @@ an_start(struct ifnet *ifp)
 	}
 
 	if (!ready)
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 
 	sc->an_rdata.an_tx_prod = idx;
 }
@@ -2666,7 +2663,8 @@ an_stop(struct an_softc *sc)
 
 	callout_stop(&sc->an_stat_timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (sc->an_flash_buffer) {
 		kfree(sc->an_flash_buffer, M_DEVBUF);

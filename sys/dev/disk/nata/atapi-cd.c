@@ -809,12 +809,9 @@ acd_start(device_t dev, struct bio *bp)
     struct ata_device *atadev = device_get_softc(dev);
     struct acd_softc *cdp = device_get_ivars(dev);
     struct ata_request *request;
-    cdev_t cdev;
     u_int32_t lba, lastlba, count;
     int8_t ccb[16];
     int track, blocksize;
-
-    cdev = bp->bio_driver_info;
 
     /* reject all queued entries if media changed */
     if (atadev->flags & ATA_D_MEDIA_CHANGED) {

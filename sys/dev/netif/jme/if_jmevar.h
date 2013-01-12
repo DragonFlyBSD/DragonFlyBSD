@@ -173,6 +173,7 @@ struct jme_txdata {
 
 	struct jme_desc		*jme_tx_ring;
 
+	int			jme_tx_wreg;
 	int			jme_tx_prod;
 	int			jme_tx_cons;
 	int			jme_tx_cnt;

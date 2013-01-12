@@ -1611,7 +1611,7 @@ wpi_tx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc)
 	ring->queued--;
 
 	sc->sc_tx_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	wpi_start_locked(ifp);
 }
 
@@ -2041,7 +2041,7 @@ wpi_start_locked(struct ifnet *ifp)
 			 * XXX: we CANNOT do it this way. If something
 			 * is prepended already, this is going to blow.
 			 */
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			ifq_prepend(&ifp->if_snd, m);
 			break;
 		}
@@ -2072,7 +2072,7 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 
 	/* management frames go into ring 0 */
 	if (sc->txq[0].queued > sc->txq[0].count - 8) {
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		m_freem(m);
 		ieee80211_free_node(ni);
 		return ENOBUFS;		/* XXX */
@@ -3015,7 +3015,7 @@ wpi_rfkill_resume(struct wpi_softc *sc)
 		return;
 	}
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags |= IFF_RUNNING;
 	sc->flags &= ~WPI_FLAG_HW_RADIO_OFF;
 
@@ -3138,7 +3138,7 @@ wpi_init_locked(struct wpi_softc *sc, int force)
 		return;
 	}
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags |= IFF_RUNNING;
 out:
 	callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
@@ -3166,7 +3166,8 @@ wpi_stop_locked(struct wpi_softc *sc)
 
 	sc->sc_tx_timer = 0;
 	sc->sc_scan_timer = 0;
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->flags &= ~WPI_FLAG_HW_RADIO_OFF;
 	callout_stop(&sc->watchdog_to_callout);
 	callout_stop(&sc->calib_to_callout);

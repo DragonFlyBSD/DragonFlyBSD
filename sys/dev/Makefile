@@ -1,7 +1,7 @@
 .include "../platform/${MACHINE_PLATFORM}/Makefile.inc"
 
 SUBDIR=	\
-	acpica5 \
+	acpica \
 	agp \
 	crypto \
 	disk \

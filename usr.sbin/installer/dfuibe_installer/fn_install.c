@@ -160,10 +160,9 @@ fn_install_os(struct i_fn_args *a)
 		    sp != NULL; sp = subpartition_next(sp)) {
 			if (!subpartition_is_swap(sp))
 				continue;
-			command_add(cmds, "%s%s %sdev/%s",
+			command_add(cmds, "%s%s /dev/%s",
 			    a->os_root,
 			    cmd_name(a, "SWAPON"),
-			    a->os_root,
 			    subpartition_is_encrypted(sp) ?
 			    "mapper/swap" : subpartition_get_device_name(sp));
 		}
@@ -188,17 +187,15 @@ fn_install_os(struct i_fn_args *a)
 	     sp != NULL; sp = subpartition_next(sp)) {
 		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
 			if (use_hammer == 1) {
-				command_add(cmds, "%s%s %sdev/%s %smnt%s",
+				command_add(cmds, "%s%s /dev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
-				    a->os_root,
 				    subpartition_is_encrypted(sp) ?
 				    "mapper/root" : subpartition_get_device_name(sp),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
 			} else {
-				command_add(cmds, "%s%s %sdev/%s %smnt%s",
+				command_add(cmds, "%s%s /dev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT"),
-				    a->os_root,
 				    subpartition_get_device_name(sp),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
@@ -218,9 +215,8 @@ fn_install_os(struct i_fn_args *a)
 			if (subpartition_get_capacity(sp) < storage_get_memsize(a->s))
 				continue;
 
-			command_add(cmds, "%s%s -v %sdev/%s",
+			command_add(cmds, "%s%s -v /dev/%s",
 			    a->os_root, cmd_name(a, "DUMPON"),
-			    a->os_root,
 			    subpartition_is_encrypted(sp) ?
 			    "mapper/swap" : subpartition_get_device_name(sp));
 
@@ -243,16 +239,14 @@ fn_install_os(struct i_fn_args *a)
 				if (subpartition_is_tmpfsbacked(sp))
 					continue;
 				if (subpartition_is_encrypted(sp)) {
-					command_add(cmds, "%s%s %sdev/mapper/%s %smnt%s",
+					command_add(cmds, "%s%s /dev/mapper/%s %smnt%s",
 					    a->os_root, cmd_name(a, "MOUNT"),
-					    a->os_root,
 					    subpartition_get_mountpoint(sp) + 1,
 					    a->os_root,
 					    subpartition_get_mountpoint(sp));
 				} else {
-					command_add(cmds, "%s%s %sdev/%s %smnt%s",
+					command_add(cmds, "%s%s /dev/%s %smnt%s",
 					    a->os_root, cmd_name(a, "MOUNT"),
-					    a->os_root,
 					    subpartition_get_device_name(sp),
 					    a->os_root,
 					    subpartition_get_mountpoint(sp));
@@ -263,9 +257,8 @@ fn_install_os(struct i_fn_args *a)
 			    a->os_root, cmd_name(a, "MKDIR"),
 			    a->os_root,
 			    subpartition_get_mountpoint(sp));
-			command_add(cmds, "%s%s %sdev/%s %smnt%s",
+			command_add(cmds, "%s%s /dev/%s %smnt%s",
 			    a->os_root, cmd_name(a, "MOUNT"),
-			    a->os_root,
 			    subpartition_get_device_name(sp),
 			    a->os_root,
 			    subpartition_get_mountpoint(sp));

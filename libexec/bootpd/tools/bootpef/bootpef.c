@@ -20,7 +20,6 @@ ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
  $FreeBSD: src/libexec/bootpd/tools/bootpef/bootpef.c,v 1.6 1999/08/28 00:09:24 peter Exp $
- $DragonFly: src/libexec/bootpd/tools/bootpef/bootpef.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 ************************************************************************/
 
@@ -320,15 +319,3 @@ mktagfile(struct host *hp)
 	fclose(fp);
 
 } /* mktagfile */
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

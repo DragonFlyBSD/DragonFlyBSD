@@ -679,18 +679,6 @@ vlrureclaim(struct mount *mp, void *data)
  * interesting deadlock problems.
  */
 static struct thread *vnlruthread;
-static int vnlruproc_sig;
-
-void
-vnlru_proc_wait(void)
-{
-	tsleep_interlock(&vnlruproc_sig, 0);
-	if (vnlruproc_sig == 0) {
-		vnlruproc_sig = 1;      /* avoid unnecessary wakeups */
-		wakeup(vnlruthread);
-	}
-	tsleep(&vnlruproc_sig, PINTERLOCKED, "vlruwk", hz);
-}
 
 static void 
 vnlru_proc(void)
@@ -704,6 +692,16 @@ vnlru_proc(void)
 
 	for (;;) {
 		kproc_suspend_loop();
+
+		/*
+		 * Do some opportunistic roving.
+		 */
+		if (numvnodes > 100000)
+			vnode_free_rover_scan(50);
+		else if (numvnodes > 10000)
+			vnode_free_rover_scan(20);
+		else
+			vnode_free_rover_scan(5);
 
 		/*
 		 * Try to free some vnodes if we have too many
@@ -724,8 +722,6 @@ vnlru_proc(void)
 		 * the free list.
 		 */
 		if (numvnodes - freevnodes <= desiredvnodes * 9 / 10) {
-			vnlruproc_sig = 0;
-			wakeup(&vnlruproc_sig);
 			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
 		}

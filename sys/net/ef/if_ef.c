@@ -47,6 +47,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
 #include <net/bpf.h>
@@ -132,7 +133,7 @@ ef_attach(struct efnet *sc)
 	ifp->if_start = ef_start;
 	ifp->if_watchdog = NULL;
 	ifp->if_init = ef_init;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST);
 	/*
 	 * Attach the interface
@@ -206,28 +207,24 @@ ef_start(struct ifnet *ifp)
 	struct ifnet *p;
 	struct mbuf *m;
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 	p = sc->ef_ifp;
 
 	EFDEBUG("\n");
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
+
 		BPF_MTAP(ifp, m);
-		if (IF_QFULL(&p->if_snd)) {
-			IF_DROP(&p->if_snd);
-			ifp->if_oerrors++;
-			m_freem(m);
-			continue;
-		}
-		IF_ENQUEUE(&p->if_snd, m);
-		if ((p->if_flags & IFF_OACTIVE) == 0) {
+
+		ifq_enqueue(&p->if_snd, m, NULL);
+		if (!ifq_is_oactive(&p->if_snd)) {
 			p->if_start(p);
 			ifp->if_opackets++;
 		}
 	}
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	return;
 }
 

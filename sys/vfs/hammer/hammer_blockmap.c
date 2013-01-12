@@ -1076,7 +1076,6 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 		     hammer_off_t zone_offset, int bytes)
 {
 	hammer_mount_t hmp;
-	hammer_volume_t root_volume;
 	hammer_blockmap_t freemap;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
@@ -1086,7 +1085,7 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 	hammer_off_t layer2_offset;
 	int32_t temp;
 	int error;
-	int zone;
+	int zone __debugvar;
 
 	if (bytes == 0)
 		return (0);
@@ -1105,7 +1104,6 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 	 */
 	zone = HAMMER_ZONE_DECODE(zone_offset);
 	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
-	root_volume = trans->rootvol;
 	error = 0;
 
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
@@ -1415,7 +1413,7 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 	hammer_off_t layer2_offset;
 	hammer_off_t result_offset;
 	hammer_off_t base_off;
-	hammer_reserve_t resv;
+	hammer_reserve_t resv __debugvar;
 	int zone;
 
 	/*

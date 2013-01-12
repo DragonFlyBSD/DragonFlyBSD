@@ -147,13 +147,13 @@ fwe_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			fc->set_intr(fc, 0);
 			fwe->npoll.ifpc_stcount = 0;
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			/* enable interrupts */
 			fc->set_intr(fc, 1);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, 0 /* XXX */);
 	}
 }
 
@@ -253,7 +253,8 @@ fwe_stop(struct fwe_softc *fwe)
 
 	fc = fwe->fd.fc;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (fwe->dma_ch >= 0) {
 		xferq = fc->ir[fwe->dma_ch];
@@ -384,7 +385,7 @@ found:
 		fc->irx_enable(fc, fwe->dma_ch);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 
@@ -464,12 +465,12 @@ fwe_start(struct ifnet *ifp)
 
 		ifq_purge(&ifp->if_snd);
 	} else {
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 
 		if (!ifq_is_empty(&ifp->if_snd))
 			fwe_as_output(fwe, ifp);
 
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	}
 }
 
@@ -536,7 +537,6 @@ fwe_as_input(struct fw_xferq *xferq)
 	struct fwe_softc *fwe;
 	struct fw_bulkxfer *sxfer;
 	struct fw_pkt *fp;
-	u_char *c;
 
 	fwe = (struct fwe_softc *)xferq->sc;
 	ifp = &fwe->fwe_if;
@@ -565,7 +565,6 @@ fwe_as_input(struct fw_xferq *xferq)
 		}
 
 		m->m_data += HDR_LEN + ETHER_ALIGN;
-		c = mtod(m, char *);
 		m->m_len = m->m_pkthdr.len =
 				fp->mode.stream.len - ETHER_ALIGN;
 		m->m_pkthdr.rcvif = ifp;

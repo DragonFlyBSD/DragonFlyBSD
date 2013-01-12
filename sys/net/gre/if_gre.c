@@ -65,6 +65,7 @@
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/route.h>
 #include <net/if_clone.h>
 
@@ -186,7 +187,7 @@ gre_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 
 	sc->sc_if.if_softc = sc;
 	if_initname(&(sc->sc_if), GRENAME, unit);
-	sc->sc_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&sc->sc_if.if_snd, IFQ_MAXLEN);
 	sc->sc_if.if_type = IFT_OTHER;
 	sc->sc_if.if_addrlen = 0;
 	sc->sc_if.if_hdrlen = 24; /* IP + GRE */
@@ -284,7 +285,6 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			 * be encapsulated.
 			 */
 			if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
-				IF_DROP(&ifp->if_snd);
 				m_freem(m);
 				error = EINVAL;    /* is there better errno? */
 				goto end;
@@ -314,7 +314,6 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 				/* need new mbuf */
 				MGETHDR(m0, MB_DONTWAIT, MT_HEADER);
 				if (m0 == NULL) {
-					IF_DROP(&ifp->if_snd);
 					m_freem(m);
 					error = ENOBUFS;
 					goto end;
@@ -339,7 +338,6 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			memcpy((caddr_t)(ip + 1), &mob_h, (unsigned)msiz);
 			ip->ip_len = ntohs(ip->ip_len) + msiz;
 		} else {  /* AF_INET */
-			IF_DROP(&ifp->if_snd);
 			m_freem(m);
 			error = EINVAL;
 			goto end;
@@ -351,21 +349,18 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			etype = ETHERTYPE_IP;
 			break;
 		default:
-			IF_DROP(&ifp->if_snd);
 			m_freem(m);
 			error = EAFNOSUPPORT;
 			goto end;
 		}
 		M_PREPEND(m, sizeof(struct greip), MB_DONTWAIT);
 	} else {
-		IF_DROP(&ifp->if_snd);
 		m_freem(m);
 		error = EINVAL;
 		goto end;
 	}
 
 	if (m == NULL) {	/* impossible */
-		IF_DROP(&ifp->if_snd);
 		error = ENOBUFS;
 		goto end;
 	}

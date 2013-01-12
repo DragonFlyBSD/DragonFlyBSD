@@ -47,6 +47,7 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/if_llc.h>
+#include <net/ifq_var.h>
 #include <net/ethernet.h>
 #include <net/route.h>
 
@@ -406,8 +407,7 @@ hostap_deliver_data(struct ieee80211vap *vap,
 			}
 		}
 		if (mcopy != NULL) {
-			int len, err;
-			len = mcopy->m_pkthdr.len;
+			int err;
 			err = ieee80211_handoff(ifp, mcopy);
 			if (err) {
 				/* NB: IFQ_HANDOFF reclaims mcopy */
@@ -2288,6 +2288,6 @@ hostap_recv_pspoll(struct ieee80211_node *ni, struct mbuf *m0)
 		ifp = vap->iv_ic->ic_ifp;
 	else
 		ifp = vap->iv_ifp;
-	IF_ENQUEUE(&ifp->if_snd, m);
+	ifq_enqueue(&ifp->if_snd, m, NULL);
 	ifp->if_start(ifp);
 }

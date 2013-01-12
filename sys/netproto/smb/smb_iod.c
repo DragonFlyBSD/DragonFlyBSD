@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_iod.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.15 2007/02/03 17:05:58 corecode Exp $
  */
  
 #include <sys/param.h>
@@ -600,11 +599,11 @@ smb_iod_main(struct smbiod *iod)
 {
 /*	struct smb_vc *vcp = iod->iod_vc;*/
 	struct smbiod_event *evp;
-/*	struct timespec tsnow;*/
-	int error;
+#if 0
+	struct timespec tsnow;
+#endif
 
 	SMBIODEBUG("\n");
-	error = 0;
 
 	/*
 	 * Check all interesting events

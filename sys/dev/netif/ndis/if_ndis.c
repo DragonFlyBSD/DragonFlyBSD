@@ -1142,19 +1142,17 @@ ndis_detach(device_t dev)
 int
 ndis_suspend(device_t dev)
 {
+#if 0 /* notdef */
 	struct ndis_softc	*sc;
-	struct ifnet		*ifp;
 
 	wlan_serialize_enter();
 	sc = device_get_softc(dev);
-	ifp = sc->ifp;
 
-#ifdef notdef
 	if (NDIS_INITIALIZED(sc))
 		ndis_stop(sc);
-#endif
 
 	wlan_serialize_exit();
+#endif
 	return (0);
 }
 
@@ -1162,11 +1160,9 @@ int
 ndis_resume(device_t dev)
 {
 	struct ndis_softc	*sc;
-	struct ifnet		*ifp;
 
 	wlan_serialize_enter();
 	sc = device_get_softc(dev);
-	ifp = sc->ifp;
 
 	if (NDIS_INITIALIZED(sc))
 		ndis_init(sc);
@@ -1499,7 +1495,6 @@ ndis_rxeof(ndis_handle adapter, ndis_packet **packets, uint32_t pktcnt)
 static void
 ndis_inputtask(device_object *dobj, void *arg)
 {
-	ndis_miniport_block	*block;
 	struct ifnet		*ifp;
 	struct ndis_softc	*sc;
 	struct mbuf		*m;
@@ -1511,7 +1506,6 @@ ndis_inputtask(device_object *dobj, void *arg)
 	sc = ifp->if_softc;
 	ic = ifp->if_l2com;
 	vap = TAILQ_FIRST(&ic->ic_vaps);
-	block = dobj->do_devext;
 
 	KeAcquireSpinLock(&sc->ndis_rxlock, &irql);
 	while(1) {
@@ -1563,7 +1557,7 @@ ndis_txeof(ndis_handle adapter, ndis_packet *packet, ndis_status status)
 		ifp->if_oerrors++;
 
 	sc->ndis_tx_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	NDISMTX_UNLOCK(sc);
 
@@ -1810,7 +1804,13 @@ ndis_start(struct ifnet *ifp)
 	sc = ifp->if_softc;
 
 	NDIS_LOCK(sc);
-	if (!sc->ndis_link || ifp->if_flags & IFF_OACTIVE) {
+	if (!sc->ndis_link) {
+		ifq_purge(&ifp->if_snd);
+		NDIS_UNLOCK(sc);
+		return;
+	}
+
+	if (ifq_is_oactive(&ifp->if_snd)) {
 		NDIS_UNLOCK(sc);
 		return;
 	}
@@ -1902,7 +1902,7 @@ ndis_start(struct ifnet *ifp)
 	}
 
 	if (sc->ndis_txpending == 0)
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -2001,7 +2001,7 @@ ndis_init(void *xsc)
 	if_link_state_change(sc->ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->ndis_tx_timer = 0;
 
 	/*
@@ -2322,11 +2322,9 @@ ndis_setstate_80211(struct ndis_softc *sc)
 	if (config.nc_fhconfig.ncf_dwelltime == 0)
 		config.nc_fhconfig.ncf_dwelltime = 200;
 	if (rval == 0 && ic->ic_bsschan != IEEE80211_CHAN_ANYC) {
-		int chan, chanflag;
+		int chan;
 
 		chan = ieee80211_chan2ieee(ic, ic->ic_bsschan);
-		chanflag = config.nc_dsconfig > 2500000 ? IEEE80211_CHAN_2GHZ :
-		    IEEE80211_CHAN_5GHZ;
 		if (chan != ieee80211_mhz2ieee(config.nc_dsconfig / 1000, 0)) {
 			config.nc_dsconfig =
 				ic->ic_bsschan->ic_freq * 1000;
@@ -2359,7 +2357,6 @@ ndis_setstate_80211(struct ndis_softc *sc)
 static void
 ndis_auth_and_assoc(struct ndis_softc *sc, struct ieee80211vap *vap)
 {
-	struct ieee80211com	*ic;
 	struct ieee80211_node	*ni;
 	ndis_80211_ssid		ssid;
 	ndis_80211_macaddr	bssid;
@@ -2369,7 +2366,6 @@ ndis_auth_and_assoc(struct ndis_softc *sc, struct ieee80211vap *vap)
 	struct ifnet		*ifp;
 
 	ifp = sc->ifp;
-	ic = ifp->if_l2com;
 	ni = vap->iv_bss;
 
 	if (!NDIS_INITIALIZED(sc)) {
@@ -3108,7 +3104,8 @@ ndis_stop(struct ndis_softc *sc)
 	NDIS_LOCK(sc);
 	sc->ndis_tx_timer = 0;
 	sc->ndis_link = 0;
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	NDIS_UNLOCK(sc);
 
 	if (sc->ndis_iftype != PNPBus ||

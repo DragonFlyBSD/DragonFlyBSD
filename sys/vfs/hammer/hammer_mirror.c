@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.17 2008/07/31 22:30:33 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -578,12 +576,7 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 			    u_int32_t localization,
 			    char *uptr)
 {
-	hammer_transaction_t trans;
-	u_int32_t rec_crc;
 	int error;
-
-	trans = cursor->trans;
-	rec_crc = crc32(mrec, sizeof(*mrec));
 
 	if (mrec->leaf.data_len < 0 || 
 	    mrec->leaf.data_len > HAMMER_XBUFSIZE ||
@@ -670,12 +663,7 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
 			     struct hammer_ioc_mirror_rw *mirror,
 			     u_int32_t localization)
 {
-	hammer_transaction_t trans;
-	u_int32_t rec_crc;
 	int error;
-
-	trans = cursor->trans;
-	rec_crc = crc32(mrec, sizeof(*mrec));
 
 	/*
 	 * Re-localize for target.  Relocalization of data is handled

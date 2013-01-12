@@ -344,11 +344,3 @@ mxge_lro_rx(struct mxge_slice_state *ss, struct mbuf *m_head, uint32_t csum)
 }
 
 #endif /* INET */
-/*
-  This file uses Myri10GE driver indentation.
-
-  Local Variables:
-  c-file-style:"linux"
-  tab-width:8
-  End:
-*/

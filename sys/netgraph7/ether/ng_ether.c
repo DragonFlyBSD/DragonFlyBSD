@@ -40,7 +40,6 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.62 2007/03/20 00:36:10 bms Exp $
- * $DragonFly: src/sys/netgraph7/ng_ether.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -642,7 +641,6 @@ ng_ether_rcv_upper(node_p node, struct mbuf *m)
 {
 	const priv_p priv = NG_NODE_PRIVATE(node);
 	struct ifnet *ifp = priv->ifp;
-	struct ether_header *eh;
 
 	/* Check length and pull off header */
 	if (m->m_pkthdr.len < sizeof(struct ether_header)) {
@@ -663,7 +661,6 @@ ng_ether_rcv_upper(node_p node, struct mbuf *m)
 	}
 
 	/* Route packet back in */
-	eh = mtod(m, struct ether_header *);
 	ether_demux_oncpu(ifp, m);
 	return (0);
 }

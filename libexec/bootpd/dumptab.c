@@ -2,7 +2,6 @@
  * dumptab.c - handles dumping the database
  *
  * $FreeBSD: src/libexec/bootpd/dumptab.c,v 1.6.2.1 2001/10/14 21:39:48 iedowse Exp $
- * $DragonFly: src/libexec/bootpd/dumptab.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -357,15 +356,3 @@ list_ipaddresses(FILE *fp, struct in_addr_list *ipptr)
 }
 
 #endif /* DEBUG */
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

@@ -131,14 +131,12 @@ rp_pciattach(device_t dev)
 	int	num_ports, num_aiops;
 	int	aiop;
 	CONTROLLER_t	*ctlp;
-	int	unit;
 	int	retval;
 	u_int32_t	stcmd;
 
 	ctlp = device_get_softc(dev);
 	bzero(ctlp, sizeof(*ctlp));
 	ctlp->dev = dev;
-	unit = device_get_unit(dev);
 	ctlp->aiop2rid = rp_pci_aiop2rid;
 	ctlp->aiop2off = rp_pci_aiop2off;
 	ctlp->ctlmask = rp_pci_ctlmask;

@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.38 2007/11/20 21:03:50 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -577,7 +576,6 @@ nwfs_mkdir(struct vop_old_mkdir_args *ap)
 	struct componentname *cnp = ap->a_cnp;
 	int len=cnp->cn_namelen;
 	struct ncp_open_info no;
-	struct nwnode *np;
 	struct vnode *newvp = NULL;
 	ncpfid fid;
 	int error = 0;
@@ -602,7 +600,6 @@ nwfs_mkdir(struct vop_old_mkdir_args *ap)
 		fid.f_id = no.fattr.dirEntNum;
 		error = nwfs_nget(VTOVFS(dvp), fid, &no.fattr, dvp, &newvp);
 		if (!error) {
-			np = VTONW(newvp);
 			newvp->v_type = VDIR;
 			*ap->a_vpp = newvp;
 		}

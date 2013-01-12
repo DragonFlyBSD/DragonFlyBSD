@@ -230,8 +230,7 @@ sn_attach(device_t dev)
 		return error;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
 
 	return 0;
 }
@@ -325,7 +324,7 @@ sninit(void *xsc)
 	 * Mark the interface running but not active.
 	 */
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/*
 	 * Attempt to push out any waiting packets.
@@ -348,14 +347,14 @@ snstart(struct ifnet *ifp)
 	u_char          packet_no;
 	int             time_out;
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	if (sc->pages_wanted != -1) {
 		/* XXX should never happen */
 		kprintf("%s: snstart() while memory allocation pending\n",
 		       ifp->if_xname);
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		return;
 	}
 startagain:
@@ -440,7 +439,7 @@ startagain:
 		sc->intr_mask = mask;
 
 		ifp->if_timer = 1;
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		sc->pages_wanted = numPages;
 		ifq_prepend(&ifp->if_snd, top);
 
@@ -517,7 +516,7 @@ startagain:
 
 	outw(BASE + MMU_CMD_REG_W, MMUCR_ENQUEUE);
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 	ifp->if_timer = 1;
 
 	BPF_MTAP(ifp, top);
@@ -718,14 +717,14 @@ try_start:
 	/*
 	 * Now pass control to snstart() to queue any additional packets
 	 */
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	if_devstart(ifp);
 
 	/*
 	 * We've sent something, so we're active.  Set a watchdog in case the
 	 * TX_EMPTY interrupt is lost.
 	 */
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 	ifp->if_timer = 1;
 }
 
@@ -814,7 +813,7 @@ sn_intr(void *arg)
 		 * Disable this interrupt.
 		 */
 		mask &= ~IM_ALLOC_INT;
-		sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&sc->arpcom.ac_if.if_snd);
 		snresume(&sc->arpcom.ac_if);
 	}
 	/*
@@ -882,7 +881,7 @@ sn_intr(void *arg)
 		/*
 		 * Attempt to queue more transmits.
 		 */
-		sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&sc->arpcom.ac_if.if_snd);
 		if_devstart(&sc->arpcom.ac_if);
 	}
 	/*
@@ -920,7 +919,7 @@ sn_intr(void *arg)
 		/*
 		 * Attempt to enqueue some more stuff.
 		 */
-		sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&sc->arpcom.ac_if.if_snd);
 		if_devstart(&sc->arpcom.ac_if);
 	}
 	/*

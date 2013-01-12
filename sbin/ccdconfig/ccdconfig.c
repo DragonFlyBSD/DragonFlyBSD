@@ -681,8 +681,3 @@ usage(void)
 		"       ccdconfig -g [-M core] [-N system] [ccd ...]");
 	exit(1);
 }
-
-/* Local Variables: */
-/* c-argdecl-indent: 8 */
-/* c-indent-level: 8 */
-/* End: */

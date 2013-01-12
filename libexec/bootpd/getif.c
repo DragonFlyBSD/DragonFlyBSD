@@ -2,7 +2,6 @@
  * getif.c : get an interface structure
  *
  * $FreeBSD: src/libexec/bootpd/getif.c,v 1.7 1999/08/28 00:09:18 peter Exp $
- * $DragonFly: src/libexec/bootpd/getif.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -138,15 +137,3 @@ nmatch(u_char *ca, u_char *cb)
 	}
 	return (m);
 }
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

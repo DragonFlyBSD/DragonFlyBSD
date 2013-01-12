@@ -991,13 +991,13 @@ lookup_dyn_rule(struct ipfw_flow_id *pkt, int *match_direction,
 #define MATCH_NONE	2
 #define MATCH_UNKNOWN	3
 	int i, dir = MATCH_NONE;
-	ipfw_dyn_rule *prev, *q=NULL;
+	ipfw_dyn_rule *q=NULL;
 
 	if (ipfw_dyn_v == NULL)
 		goto done;	/* not found */
 
 	i = hash_packet(pkt);
-	for (prev = NULL, q = ipfw_dyn_v[i]; q != NULL;) {
+	for (q = ipfw_dyn_v[i]; q != NULL;) {
 		if (q->dyn_type == O_LIMIT_PARENT)
 			goto next;
 
@@ -1026,7 +1026,6 @@ lookup_dyn_rule(struct ipfw_flow_id *pkt, int *match_direction,
 			}
 		}
 next:
-		prev = q;
 		q = q->next;
 	}
 	if (q == NULL)
@@ -1210,10 +1209,8 @@ add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 	i = hash_packet(id);
 
 	r = kmalloc(sizeof(*r), M_IPFW, M_NOWAIT | M_ZERO);
-	if (r == NULL) {
-		kprintf ("sorry cannot allocate state\n");
+	if (r == NULL)
 		return NULL;
-	}
 
 	/* increase refcount on parent, and set pointer */
 	if (dyn_type == O_LIMIT) {

@@ -122,11 +122,11 @@ as_cancel(struct dsched_disk_ctx *diskctx)
 static void
 as_timeout(void *p)
 {
-	pid_t last_blockon;
+	//pid_t last_blockon;
 	struct as_disk_ctx *as_diskctx = (struct as_disk_ctx *)p;
 	DSCHED_DISK_CTX_LOCK(&as_diskctx->head);
 	as_diskctx->as_blockall = 0;
-	last_blockon = as_diskctx->as_blockon;
+	//last_blockon = as_diskctx->as_blockon;
 	as_diskctx->as_blockon = NO_PID;
 	DSCHED_DISK_CTX_UNLOCK(&as_diskctx->head);
 	//dsched_debug(0, "dsched: as, timeout %d\n", last_blockon);

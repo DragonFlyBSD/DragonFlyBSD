@@ -47,7 +47,6 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.12 2007/06/07 22:58:00 corecode Exp $
  */
 
 #define STATIC static
@@ -1106,7 +1105,6 @@ config_subdisk(int update)
     enum sdstate state = sd_unallocated;		    /* state to set, if specified */
     int autosize = 0;					    /* set if we autosize in give_sd_to_drive */
     int namedsdno;					    /* index of another with this name */
-    char partition = 0;					    /* partition of external subdisk */
 
     sdno = get_empty_sd();				    /* allocate an SD to initialize */
     sd = &SD[sdno];					    /* and get a pointer */
@@ -1232,8 +1230,6 @@ config_subdisk(int update)
 		    "%s: invalid partition %c",
 		    sd->name,
 		    token[parameter][0]);
-	    else
-		partition = token[parameter][0];
 	    break;
 
 	case kw_retryerrors:
@@ -2137,6 +2133,3 @@ finish_config(int update)
 	wakeup_one(&vinum_conf);
     }
 }
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

@@ -20,7 +20,6 @@ ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
  $FreeBSD: src/libexec/bootpd/readfile.c,v 1.6.2.2 2001/10/14 21:25:02 iedowse Exp $
- $DragonFly: src/libexec/bootpd/readfile.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 ************************************************************************/
 
@@ -2032,15 +2031,3 @@ iplookcmp(hash_datum *d1, hash_datum *d2)
 
 	return (host1->iaddr.s_addr == host2->iaddr.s_addr);
 }
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

@@ -38,8 +38,6 @@
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
  */
 
-#include "opt_debug_npx.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
@@ -49,9 +47,6 @@
 #include <sys/sysctl.h>
 #include <sys/proc.h>
 #include <sys/rman.h>
-#ifdef NPX_DEBUG
-#include <sys/syslog.h>
-#endif
 #include <sys/signalvar.h>
 
 #include <sys/thread2.h>

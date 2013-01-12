@@ -934,7 +934,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 {
 	hammer_node_ondisk_t ondisk;
 	hammer_node_t node;
-	hammer_node_t parent;
+	hammer_node_t parent __debugvar;
 	int error;
 	int i;
 
@@ -1530,7 +1530,6 @@ btree_split_internal(hammer_cursor_t cursor)
 	hammer_btree_elm_t parent_elm;
 	struct hammer_node_lock lockroot;
 	hammer_mount_t hmp = cursor->trans->hmp;
-	hammer_off_t hint;
 	int parent_index;
 	int made_root;
 	int split;
@@ -1602,20 +1601,6 @@ btree_split_internal(hammer_cursor_t cursor)
 		parent = cursor->parent;
 		parent_index = cursor->parent_index;
 	}
-
-	/*
-	 * Calculate a hint for the allocation of the new B-Tree node.
-	 * The most likely expansion is coming from the insertion point
-	 * at cursor->index, so try to localize the allocation of our
-	 * new node to accomodate that sub-tree.
-	 *
-	 * Use the right-most sub-tree when expandinging on the right edge.
-	 * This is a very common case when copying a directory tree.
-	 */
-	if (cursor->index == ondisk->count)
-		hint = ondisk->elms[cursor->index - 1].internal.subtree_offset;
-	else
-		hint = ondisk->elms[cursor->index].internal.subtree_offset;
 
 	/*
 	 * Split node into new_node at the split point.
@@ -1784,7 +1769,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 	hammer_btree_elm_t elm;
 	hammer_btree_elm_t parent_elm;
 	hammer_base_elm_t mid_boundary;
-	hammer_off_t hint;
 	int parent_index;
 	int made_root;
 	int split;
@@ -1870,25 +1854,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 		parent = cursor->parent;
 		parent_index = cursor->parent_index;
 	}
-
-	/*
-	 * Calculate a hint for the allocation of the new B-Tree leaf node.
-	 * For now just try to localize it within the same bigblock as
-	 * the current leaf.
-	 *
-	 * If the insertion point is at the end of the leaf we recognize a
-	 * likely append sequence of some sort (data, meta-data, inodes,
-	 * whatever).  Set the hint to zero to allocate out of linear space
-	 * instead of trying to completely fill previously hinted space.
-	 *
-	 * This also sets the stage for recursive splits to localize using
-	 * the new space.
-	 */
-	ondisk = leaf->ondisk;
-	if (cursor->index == ondisk->count)
-		hint = 0;
-	else
-		hint = leaf->node_offset;
 
 	/*
 	 * Split leaf into new_leaf at the split point.  Select a separator
@@ -2459,7 +2424,7 @@ hammer_btree_do_propagation(hammer_cursor_t cursor,
 {
 	hammer_cursor_t ncursor;
 	hammer_tid_t mirror_tid;
-	int error;
+	int error __debugvar;
 
 	/*
 	 * We do not propagate a mirror_tid if the filesystem was mounted

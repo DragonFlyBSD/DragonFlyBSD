@@ -770,7 +770,7 @@ ste_txeof(struct ste_softc *sc)
 	sc->ste_cdata.ste_tx_cons = idx;
 
 	if (cur_tx != NULL)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	return;
 }
@@ -976,8 +976,7 @@ ste_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->ste_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->ste_irq));
 
 	return 0;
 
@@ -1214,7 +1213,7 @@ ste_init(void *xsc)
 	ste_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->ste_stat_timer, hz, ste_stats_update, sc);
 }
@@ -1260,7 +1259,8 @@ ste_stop(struct ste_softc *sc)
 
 	bzero(sc->ste_ldata, sizeof(struct ste_list_data));
 
-	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	return;
 }
@@ -1419,7 +1419,7 @@ ste_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	idx = sc->ste_cdata.ste_tx_prod;
@@ -1427,7 +1427,7 @@ ste_start(struct ifnet *ifp)
 	while(sc->ste_cdata.ste_tx_chain[idx].ste_mbuf == NULL) {
 
 		if ((STE_TX_LIST_CNT - sc->ste_cdata.ste_tx_cnt) < 3) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 

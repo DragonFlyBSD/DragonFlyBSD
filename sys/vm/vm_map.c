@@ -364,7 +364,6 @@ vmspace_terminate(struct vmspace *vm)
 		vm->vm_flags |= VMSPACE_EXIT2;
 		cpu_vmspace_free(vm);
 		shmexit(vm);
-		KKASSERT(vm->vm_upcalls == NULL);
 
 		/*
 		 * Lock the map, to wait out all other references to it.
@@ -2487,8 +2486,8 @@ vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size,
 	for (scan = entry;
 	     scan != &map->header && scan->start < addr + size;
 	     scan = scan->next) {
-	    KKASSERT(entry->wired_count == 0);
-	    entry->wired_count = 1;                                              
+	    KKASSERT(scan->wired_count == 0);
+	    scan->wired_count = 1;
 	}
 	vm_map_unclip_range(map, entry, addr, addr + size,
 			    countp, MAP_CLIP_NO_HOLES);
@@ -3264,9 +3263,6 @@ vmspace_fork(struct vmspace *vm1)
 	lwkt_gettoken(&vm1->vm_map.token);
 	vm_map_lock(old_map);
 
-	/*
-	 * XXX Note: upcalls are not copied.
-	 */
 	vm2 = vmspace_alloc(old_map->min_offset, old_map->max_offset);
 	lwkt_gettoken(&vm2->vm_map.token);
 	bcopy(&vm1->vm_startcopy, &vm2->vm_startcopy,
@@ -3676,8 +3672,8 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 
 	/*
 	 * If we are execing a resident vmspace we fork it, otherwise
-	 * we create a new vmspace.  Note that exitingcnt and upcalls
-	 * are not copied to the new vmspace.
+	 * we create a new vmspace.  Note that exitingcnt is not
+	 * copied to the new vmspace.
 	 */
 	lwkt_gettoken(&oldvmspace->vm_map.token);
 	if (vmcopy)  {

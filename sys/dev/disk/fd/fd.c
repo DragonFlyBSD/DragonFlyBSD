@@ -2341,20 +2341,3 @@ fdioctl(struct dev_ioctl_args *ap)
 	}
 	return (error);
 }
-
-/*
- * Hello emacs, these are the
- * Local Variables:
- *  c-indent-level:               8
- *  c-continued-statement-offset: 8
- *  c-continued-brace-offset:     0
- *  c-brace-offset:              -8
- *  c-brace-imaginary-offset:     0
- *  c-argdecl-indent:             8
- *  c-label-offset:              -8
- *  c++-hanging-braces:           1
- *  c++-access-specifier-offset: -8
- *  c++-empty-arglist-indent:     8
- *  c++-friend-offset:            0
- * End:
- */

@@ -3144,12 +3144,8 @@ xpt_action(union ccb *start_ccb)
 			start_ccb->ccb_h.status = CAM_DEV_NOT_THERE;
 		} else {
 			struct ccb_getdev *cgd;
-			struct cam_eb *bus;
-			struct cam_et *tar;
 
 			cgd = &start_ccb->cgd;
-			bus = cgd->ccb_h.path->bus;
-			tar = cgd->ccb_h.path->target;
 			cgd->inq_data = dev->inq_data;
 			cgd->ccb_h.status = CAM_REQ_CMP;
 			cgd->serial_num_len = dev->serial_num_len;
@@ -7267,7 +7263,6 @@ camisr_runqueue(struct cam_sim *sim)
 
 		if (ccb_h->flags & CAM_HIGH_POWER) {
 			struct highpowerlist	*hphead;
-			struct cam_ed		*device;
 			union ccb		*send_ccb;
 
 			lockmgr(&xsoftc.xpt_lock, LK_EXCLUSIVE);
@@ -7284,8 +7279,6 @@ camisr_runqueue(struct cam_sim *sim)
 			 * Any high powered commands queued up?
 			 */
 			if (send_ccb != NULL) {
-				device = send_ccb->ccb_h.path->device;
-
 				STAILQ_REMOVE_HEAD(hphead, xpt_links.stqe);
 				lockmgr(&xsoftc.xpt_lock, LK_RELEASE);
 

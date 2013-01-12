@@ -45,7 +45,9 @@
 #define	_CPU_CPUFUNC_H_
 
 #include <sys/cdefs.h>
+#include <sys/thread.h>
 #include <machine/psl.h>
+#include <machine/smp.h>
 
 struct thread;
 struct region_descriptor;
@@ -562,6 +564,16 @@ wbinvd(void)
 	__asm __volatile("wbinvd");
 }
 
+#if defined(_KERNEL)
+void cpu_wbinvd_on_all_cpus_callback(void *arg);
+
+static __inline void
+cpu_wbinvd_on_all_cpus(void)
+{
+	lwkt_cpusync_simple(smp_active_mask, cpu_wbinvd_on_all_cpus_callback, NULL);
+}
+#endif
+
 static __inline void
 write_rflags(u_long rf)
 {
@@ -576,6 +588,14 @@ wrmsr(u_int msr, u_int64_t newval)
 	low = newval;
 	high = newval >> 32;
 	__asm __volatile("wrmsr" : : "a" (low), "d" (high), "c" (msr));
+}
+
+static __inline void
+xsetbv(u_int ecx, u_int eax, u_int edx)
+{
+	__asm __volatile(".byte 0x0f,0x01,0xd1"
+	    :
+	    : "a" (eax), "c" (ecx), "d" (edx));
 }
 
 static __inline void

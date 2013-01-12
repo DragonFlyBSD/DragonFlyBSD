@@ -6521,7 +6521,6 @@ key_dump(struct socket *so, struct mbuf *m,
 	u_int8_t satype;
 	u_int8_t state;
 	int cnt;
-	struct sadb_msg *newmsg;
 	struct mbuf *n;
 
 	/* sanity check */
@@ -6555,7 +6554,6 @@ key_dump(struct socket *so, struct mbuf *m,
 		return key_senderror(so, m, ENOENT);
 
 	/* send this to the userland, one at a time. */
-	newmsg = NULL;
 	LIST_FOREACH(sah, &sahtree, chain) {
 		if (mhp->msg->sadb_msg_satype != SADB_SATYPE_UNSPEC
 		 && proto != sah->saidx.proto)
@@ -6682,7 +6680,6 @@ key_parse(struct mbuf *m, struct socket *so)
 {
 	struct sadb_msg *msg;
 	struct sadb_msghdr mh;
-	u_int orglen;
 	int error;
 	int target;
 
@@ -6702,7 +6699,6 @@ key_parse(struct mbuf *m, struct socket *so)
 			return ENOBUFS;
 	}
 	msg = mtod(m, struct sadb_msg *);
-	orglen = PFKEY_UNUNIT64(msg->sadb_msg_len);
 	target = KEY_SENDUP_ONE;
 
 	if ((m->m_flags & M_PKTHDR) == 0 ||

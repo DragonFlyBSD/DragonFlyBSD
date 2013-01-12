@@ -394,7 +394,6 @@ firewire_watchdog(void *arg)
 static int
 firewire_attach(device_t dev)
 {
-	int unit;
 	struct firewire_softc *sc = device_get_softc(dev);
 	device_t pa = device_get_parent(dev);
 	struct firewire_comm *fc;
@@ -403,7 +402,6 @@ firewire_attach(device_t dev)
 	sc->fc = fc;
 	fc->status = FWBUSNOTREADY;
 
-	unit = device_get_unit(dev);
 	if( fc->nisodma > FWMAXNDMA) fc->nisodma = FWMAXNDMA;
 
 	fwdev_makedev(sc);
@@ -1561,7 +1559,7 @@ fw_bus_explore_callback(struct fw_xfer *xfer)
 		while(((fc->ongoaddr - offset)/4 > chdr->crc_len)){
 			if(csrd == NULL){
 				goto nextnode;
-			};
+			}
 			fc->ongoaddr = csrd->ongoaddr + 4;
 			SLIST_REMOVE_HEAD(&fc->ongocsr, link);
 			SLIST_INSERT_HEAD(&fc->csrfree, csrd, link);

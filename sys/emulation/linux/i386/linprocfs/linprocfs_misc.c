@@ -738,7 +738,6 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	char *name = "", *freename = NULL;
 	struct vnode *vp;
 	struct vattr vat;
-	int major, minor;
 	ino_t ino;
 
 	if (uio->uio_rw != UIO_READ)
@@ -805,8 +804,6 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 				vn_lock(vp, LK_SHARED | LK_RETRY);
 				VOP_GETATTR(vp, &vat);
 				ino = vat.va_fileid;
-				major = vat.va_rmajor;
-				minor = vat.va_rminor;
 				vput(vp);
 			}
 		}

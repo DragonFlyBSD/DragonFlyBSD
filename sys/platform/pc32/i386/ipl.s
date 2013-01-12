@@ -288,7 +288,7 @@ doreti_soft:
 	 * to do is a reschedule.
 	 */
 doreti_ast:
-	andl	$~(RQF_AST_SIGNAL|RQF_AST_UPCALL),PCPU(reqflags)
+	andl	$~RQF_AST_SIGNAL,PCPU(reqflags)
 	sti
 	movl	%eax,%esi		/* save cpl (can't use stack) */
 	movl	$T_ASTFLT,TF_TRAPNO(%esp)

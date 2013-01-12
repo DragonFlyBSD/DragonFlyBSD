@@ -49,7 +49,7 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
-#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+#if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 #include <stdio.h>
 #endif
 
@@ -164,7 +164,7 @@ link_elf_init(void* arg)
 	if (linker_kernel_file == NULL)
 	    panic("link_elf_init: Can't create linker structures for kernel");
 	parse_dynamic(linker_kernel_file);
-#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+#if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 	fprintf(stderr, "WARNING: KERNBASE being used\n");
 #endif
 	linker_kernel_file->address = (caddr_t) KERNBASE;
@@ -413,10 +413,8 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     Elf_Phdr *segs[2];
     int nsegs;
     Elf_Phdr *phdyn;
-    Elf_Phdr *phphdr;
     caddr_t mapbase;
     size_t mapsize;
-    Elf_Off base_offset;
     Elf_Addr base_vaddr;
     Elf_Addr base_vlimit;
     int error = 0;
@@ -517,7 +515,6 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     phlimit = phdr + hdr->e_phnum;
     nsegs = 0;
     phdyn = NULL;
-    phphdr = NULL;
     while (phdr < phlimit) {
 	switch (phdr->p_type) {
 
@@ -532,7 +529,6 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 	    break;
 
 	case PT_PHDR:
-	    phphdr = phdr;
 	    break;
 
 	case PT_DYNAMIC:
@@ -556,7 +552,6 @@ link_elf_load_file(const char* filename, linker_file_t* result)
      * Allocate the entire address space of the object, to stake out our
      * contiguous region, and to establish the base address for relocation.
      */
-    base_offset = trunc_page(segs[0]->p_offset);
     base_vaddr = trunc_page(segs[0]->p_vaddr);
     base_vlimit = round_page(segs[1]->p_vaddr + segs[1]->p_memsz);
     mapsize = base_vlimit - base_vaddr;
@@ -714,10 +709,10 @@ out:
 Elf_Addr
 elf_relocaddr(linker_file_t lf, Elf_Addr x)
 {
+#if 0
     elf_file_t ef;
 
     ef = lf->priv;
-#if 0
     if (x >= ef->pcpu_start && x < ef->pcpu_stop)
 	return ((x - ef->pcpu_start) + ef->pcpu_base);
 #ifdef VIMAGE

@@ -116,7 +116,6 @@ esp4_input(struct mbuf **mp, int *offp, int proto)
 	u_int16_t nxt;
 	const struct esp_algorithm *algo;
 	int ivlen;
-	size_t hlen;
 	size_t esplen;
 
 	off = *offp;
@@ -143,11 +142,6 @@ esp4_input(struct mbuf **mp, int *offp, int proto)
 
 	ip = mtod(m, struct ip *);
 	esp = (struct esp *)(((u_int8_t *)ip) + off);
-#ifdef _IP_VHL
-	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-#else
-	hlen = ip->ip_hl << 2;
-#endif
 
 	/* find the sassoc. */
 	spi = esp->esp_spi;

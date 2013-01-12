@@ -229,8 +229,7 @@ struct ifnet {
 		(void *);
 	int	(*if_resolvemulti)	/* validate/resolve multicast */
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
-	int	(*if_start_cpuid)	/* cpuid to run if_start */
-		(struct ifnet *);
+	void	*if_unused5;
 	TAILQ_HEAD(, ifg_list) if_groups; /* linked list of groups per if */
 	void	(*if_unused1)(void);
 	int	if_unused2;
@@ -250,12 +249,11 @@ struct ifnet {
 #ifdef IFPOLL_ENABLE
 	void	(*if_npoll)
 		(struct ifnet *, struct ifpoll_info *);
-	int	if_npoll_cpuid;
 #else
 	/* Place holders */
 	void	(*if_npoll_unused)(void);
-	int	if_npoll_cpuid_unused;
 #endif
+	int	if_unused3;
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
@@ -265,7 +263,7 @@ struct ifnet {
 	struct lwkt_serialize *if_serializer;	/* serializer or MP lock */
 	struct lwkt_serialize if_default_serializer; /* if not supplied */
 	struct mtx	if_ioctl_mtx;	/* high-level ioctl serializing mutex */
-	int	if_cpuid;
+	int	if_unused4;
 	struct netmsg_base *if_start_nmsg; /* percpu msgs to sched if_start */
 	void	*if_pf_kif; /* pf interface abstraction */
 	void	*if_unused;
@@ -303,10 +301,9 @@ typedef void if_init_f_t (void *);
 #endif
 
 /*
- * Output queues (ifp->if_snd) and slow device input queues (*ifp->if_slowq)
- * are queues of messages stored on ifqueue structures
- * (defined above).  Entries are added to and deleted from these structures
- * by these macros, which should be called with ipl raised to splimp().
+ * Device private output queues and input queues are queues of messages
+ * stored on ifqueue structures (defined above).  Entries are added to
+ * and deleted from these structures by these macros.
  */
 #define	IF_QFULL(ifq)		((ifq)->ifq_len >= (ifq)->ifq_maxlen)
 #define	IF_DROP(ifq)		((ifq)->ifq_drops++)
@@ -435,42 +432,6 @@ static __inline int
 ifnet_tryserialize_main(struct ifnet *_ifp)
 {
 	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_MAIN);
-}
-
-/*
- * DEPRECATED - should not be used by any new driver.  This code uses the
- * old queueing interface and if_start ABI and does not use the ifp's
- * serializer.
- */
-#define IF_HANDOFF(ifq, m, ifp)			if_handoff(ifq, m, ifp, 0)
-#define IF_HANDOFF_ADJ(ifq, m, ifp, adj)	if_handoff(ifq, m, ifp, adj)
-
-static __inline int
-if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
-	   int _adjust)
-{
-	int _need_if_start = 0;
-
-	crit_enter(); 
-
-	if (IF_QFULL(_ifq)) {
-		IF_DROP(_ifq);
-		crit_exit();
-		m_freem(_m);
-		return (0);
-	}
-	if (_ifp != NULL) {
-		_ifp->if_obytes += _m->m_pkthdr.len + _adjust;
-		if (_m->m_flags & M_MCAST)
-			_ifp->if_omcasts++;
-		_need_if_start = !(_ifp->if_flags & IFF_OACTIVE);
-	}
-	IF_ENQUEUE(_ifq, _m);
-	if (_need_if_start) {
-		(*_ifp->if_start)(_ifp);
-	}
-	crit_exit();
-	return (1);
 }
 
 /*
@@ -887,6 +848,7 @@ struct ifaddr *ifaddr_byindex(unsigned short);
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
 void	if_devstart(struct ifnet *ifp);
+void	if_devstart_sched(struct ifnet *ifp);
 int	if_ring_count2(int cnt, int cnt_max);
 
 #define IF_LLSOCKADDR(ifp)						\

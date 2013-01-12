@@ -64,6 +64,7 @@
 #include <sys/rman.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #ifdef NETGRAPH
 #include <sys/syslog.h>
 #else /* NETGRAPH */
@@ -709,7 +710,7 @@ sr_xmit(struct sr_softc *sc)
  * This function only place the data in the oncard buffers. It does not
  * start the transmition. sr_xmit() does that.
  *
- * Transmitter idle state is indicated by the IFF_OACTIVE flag.
+ * Transmitter idle state is indicated by the OACTIVE flag.
  * The function that clears that should ensure that the transmitter
  * and its DMA is in a "good" idle state.
  */
@@ -760,9 +761,9 @@ top_srstart:
 	 */
 	if (sc->txb_inuse == SR_TX_BLOCKS) {	/* out of space? */
 #ifndef NETGRAPH
-		ifp->if_flags |= IFF_OACTIVE;	/* yes, mark active */
+		ifq_set_oactive(&ifp->if_snd);	/* yes, mark active */
 #else
-		/*ifp->if_flags |= IFF_OACTIVE;*/	/* yes, mark active */
+		/*ifq_set_oactive(&ifp->if_snd);*/	/* yes, mark active */
 #endif /* NETGRAPH */
 
 #if BUGGY > 9
@@ -1092,9 +1093,9 @@ srwatchdog(struct sr_softc *sc)
 	}
 	sc->xmit_busy = 0;
 #ifndef NETGRAPH
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 #else
-	/*ifp->if_flags &= ~IFF_OACTIVE; */
+	/*ifq_clr_oactive(&ifp->if_snd) */
 #endif /* NETGRAPH */
 
 	if (sc->txb_inuse && --sc->txb_inuse)
@@ -2216,7 +2217,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 				/*
 				 * This should be the most common case.
 				 *
-				 * Clear the IFF_OACTIVE flag.
+				 * Clear the OACTIVE flag.
 				 *
 				 * Call srstart to start a new transmit if
 				 * there is data to transmit.
@@ -2226,7 +2227,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 #endif
 				sc->xmit_busy = 0;
 #ifndef NETGRAPH
-				sc->ifsppp.pp_if.if_flags &= ~IFF_OACTIVE;
+				ifq_clr_oactive(&sc->ifsppp.pp_if.if_snd);
 				sc->ifsppp.pp_if.if_timer = 0;
 #else
 				/* XXX may need to mark tx inactive? */

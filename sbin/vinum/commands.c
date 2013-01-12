@@ -2511,7 +2511,3 @@ parityops(int argc, char *argv[], enum parityop op)
 	}
     }
 }
-
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

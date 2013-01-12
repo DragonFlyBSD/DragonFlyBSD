@@ -177,7 +177,7 @@ static int
 ndis_attach_pccard(device_t dev)
 {
 	struct ndis_softc	*sc;
-	int			unit, error = 0, rid;
+	int			error = 0, rid;
 	struct ndis_pccard_type	*t;
 	int			devidx = 0;
 	const char		*prodstr, *vendstr;
@@ -185,7 +185,6 @@ ndis_attach_pccard(device_t dev)
 
 	wlan_serialize_enter();
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 	sc->ndis_dev = dev;
 
 	db = windrv_match((matchfuncptr)ndis_devcompare, dev);

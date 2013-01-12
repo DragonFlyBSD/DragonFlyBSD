@@ -411,7 +411,7 @@ tcp_init(void)
 	}
 
 	syncache_init();
-	netisr_register_rollup(tcp_willblock);
+	netisr_register_rollup(tcp_willblock, NETISR_ROLLUP_PRIO_TCP);
 }
 
 static void

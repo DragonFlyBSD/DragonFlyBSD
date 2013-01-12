@@ -207,7 +207,7 @@ mi_startup(void)
 
 	if (sysinit == NULL) {
 		sysinit = SET_BEGIN(sysinit_set);
-#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+#if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 		/*
 		 * XXX For whatever reason, on 64-bit vkernels
 		 * the value of sysinit obtained from the
@@ -220,7 +220,7 @@ mi_startup(void)
 #endif
 		sysinit_end = SET_LIMIT(sysinit_set);
 	}
-#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+#if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 	KKASSERT((long)sysinit % 8 == 0);
 #endif
 

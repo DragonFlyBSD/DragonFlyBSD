@@ -82,7 +82,10 @@ MALLOC_DEFINE(M_NTFSDIR,"NTFS dir",  "NTFS dir buffer");
 struct iconv_functions *ntfs_iconv = NULL;
 
 static int	ntfs_root (struct mount *, struct vnode **);
-static int	ntfs_statfs (struct mount *, struct statfs *, struct ucred *cred);
+static int	ntfs_statfs (struct mount *, struct statfs *,
+				struct ucred *cred);
+static int	ntfs_statvfs (struct mount *, struct statvfs *,
+				struct ucred *);
 static int	ntfs_unmount (struct mount *, int);
 static int	ntfs_vget (struct mount *mp, struct vnode *dvp,
 				ino_t ino, struct vnode **vpp);
@@ -738,11 +741,10 @@ static int
 ntfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct ntfsmount *ntmp = VFSTONTFS(mp);
-	u_int64_t mftsize,mftallocated;
+	u_int64_t mftallocated;
 
 	dprintf(("ntfs_statfs():\n"));
 
-	mftsize = VTOF(ntmp->ntm_sysvn[NTFS_MFTINO])->f_size;
 	mftallocated = VTOF(ntmp->ntm_sysvn[NTFS_MFTINO])->f_allocated;
 
 #if defined(__DragonFly__)
@@ -767,6 +769,27 @@ ntfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 #ifdef __NetBSD__
 	strncpy(sbp->f_fstypename, mp->mnt_op->vfs_name, MFSNAMELEN);
 #endif
+	
+	return (0);
+}
+
+static int
+ntfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
+{
+	struct ntfsmount *ntmp = VFSTONTFS(mp);
+	u_int64_t mftallocated;
+
+	dprintf(("ntfs_statvfs():\n"));
+
+	mftallocated = VTOF(ntmp->ntm_sysvn[NTFS_MFTINO])->f_allocated;
+
+	sbp->f_type = mp->mnt_vfc->vfc_typenum;
+	sbp->f_bsize = ntmp->ntm_bps;
+	sbp->f_blocks = ntmp->ntm_bootfile.bf_spv;
+	sbp->f_bfree = sbp->f_bavail = ntmp->ntm_cfree * ntmp->ntm_spc;
+	sbp->f_ffree = sbp->f_bfree / ntmp->ntm_bpmftrec;
+	sbp->f_files = mftallocated / (ntmp->ntm_bpmftrec * ntmp->ntm_bps) +
+		       sbp->f_ffree;
 	
 	return (0);
 }
@@ -933,6 +956,7 @@ static struct vfsops ntfs_vfsops = {
 	.vfs_unmount =   	ntfs_unmount,
 	.vfs_root =     	ntfs_root,
 	.vfs_statfs =   	ntfs_statfs,
+	.vfs_statvfs =		ntfs_statvfs,
 	.vfs_sync =      	vfs_stdsync,
 	.vfs_vget =     	ntfs_vget,
 	.vfs_fhtovp =   	ntfs_fhtovp,

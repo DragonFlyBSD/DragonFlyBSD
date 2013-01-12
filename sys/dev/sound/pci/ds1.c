@@ -334,9 +334,8 @@ AC97_DECLARE(ds_ac97);
 static void
 ds_enadsp(struct sc_info *sc, int on)
 {
-	u_int32_t v, i;
+	u_int32_t i;
 
-	v = on? 1 : 0;
 	if (on) {
 		ds_wr(sc, YDSXGR_CONFIG, 0x00000001, 4);
 	} else {

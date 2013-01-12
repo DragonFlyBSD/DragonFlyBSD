@@ -103,6 +103,10 @@ struct netmsg_ifaddr {
 	int		tail;
 };
 
+struct ifaltq_stage_head {
+	TAILQ_HEAD(, ifaltq_stage)	ifqs_head;
+} __cachealign;
+
 /*
  * System initialization
  */
@@ -126,6 +130,11 @@ extern void	nd6_setmtu(struct ifnet *);
 SYSCTL_NODE(_net, PF_LINK, link, CTLFLAG_RW, 0, "Link layers");
 SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
 
+static int ifq_stage_cntmax = 4;
+TUNABLE_INT("net.link.stage_cntmax", &ifq_stage_cntmax);
+SYSCTL_INT(_net_link, OID_AUTO, stage_cntmax, CTLFLAG_RW,
+    &ifq_stage_cntmax, 0, "ifq staging packet count max");
+
 SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL)
 /* Must be after netisr_init */
 SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, ifnetinit, NULL)
@@ -145,6 +154,8 @@ struct callout		if_slowtimo_timer;
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
 static struct thread	ifnet_threads[MAXCPU];
+
+static struct ifaltq_stage_head	ifq_stage_heads[MAXCPU];
 
 #define IFQ_KTR_STRING		"ifq=%p"
 #define IFQ_KTR_ARGS	struct ifaltq *ifq
@@ -194,7 +205,7 @@ ifinit(void *dummy)
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		if (ifp->if_snd.ifq_maxlen == 0) {
 			if_printf(ifp, "XXX: driver didn't set ifq_maxlen\n");
-			ifp->if_snd.ifq_maxlen = ifqmaxlen;
+			ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 		}
 	}
 	crit_exit();
@@ -202,30 +213,11 @@ ifinit(void *dummy)
 	if_slowtimo(0);
 }
 
-static int
-if_start_cpuid(struct ifnet *ifp)
-{
-	return ifp->if_cpuid;
-}
-
-#ifdef IFPOLL_ENABLE
-static int
-if_start_cpuid_npoll(struct ifnet *ifp)
-{
-	int poll_cpuid = ifp->if_npoll_cpuid;
-
-	if (poll_cpuid >= 0)
-		return poll_cpuid;
-	else
-		return ifp->if_cpuid;
-}
-#endif
-
 static void
-if_start_ipifunc(void *arg)
+ifq_ifstart_ipifunc(void *arg)
 {
-	struct ifnet *ifp = arg;
-	struct lwkt_msg *lmsg = &ifp->if_start_nmsg[mycpuid].lmsg;
+	struct ifaltq *ifq = arg;
+	struct lwkt_msg *lmsg = ifq_get_ifstart_lmsg(ifq, mycpuid);
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
@@ -233,19 +225,50 @@ if_start_ipifunc(void *arg)
 	crit_exit();
 }
 
+static __inline void
+ifq_stage_remove(struct ifaltq_stage_head *head, struct ifaltq_stage *stage)
+{
+	KKASSERT(stage->ifqs_flags & IFQ_STAGE_FLAG_QUED);
+	TAILQ_REMOVE(&head->ifqs_head, stage, ifqs_link);
+	stage->ifqs_flags &= ~(IFQ_STAGE_FLAG_QUED | IFQ_STAGE_FLAG_SCHED);
+	stage->ifqs_cnt = 0;
+	stage->ifqs_len = 0;
+}
+
+static __inline void
+ifq_stage_insert(struct ifaltq_stage_head *head, struct ifaltq_stage *stage)
+{
+	KKASSERT((stage->ifqs_flags &
+	    (IFQ_STAGE_FLAG_QUED | IFQ_STAGE_FLAG_SCHED)) == 0);
+	stage->ifqs_flags |= IFQ_STAGE_FLAG_QUED;
+	TAILQ_INSERT_TAIL(&head->ifqs_head, stage, ifqs_link);
+}
+
 /*
  * Schedule ifnet.if_start on ifnet's CPU
  */
 static void
-if_start_schedule(struct ifnet *ifp)
+ifq_ifstart_schedule(struct ifaltq *ifq, int force)
 {
 	int cpu;
 
-	cpu = ifp->if_start_cpuid(ifp);
+	if (!force && curthread->td_type == TD_TYPE_NETISR &&
+	    ifq_stage_cntmax > 0) {
+		struct ifaltq_stage *stage = ifq_get_stage(ifq, mycpuid);
+
+		stage->ifqs_cnt = 0;
+		stage->ifqs_len = 0;
+		if ((stage->ifqs_flags & IFQ_STAGE_FLAG_QUED) == 0)
+			ifq_stage_insert(&ifq_stage_heads[mycpuid], stage);
+		stage->ifqs_flags |= IFQ_STAGE_FLAG_SCHED;
+		return;
+	}
+
+	cpu = ifq_get_cpuid(ifq);
 	if (cpu != mycpuid)
-		lwkt_send_ipiq(globaldata_find(cpu), if_start_ipifunc, ifp);
+		lwkt_send_ipiq(globaldata_find(cpu), ifq_ifstart_ipifunc, ifq);
 	else
-	if_start_ipifunc(ifp);
+		ifq_ifstart_ipifunc(ifq);
 }
 
 /*
@@ -254,7 +277,7 @@ if_start_schedule(struct ifnet *ifp)
  * if ifnet.if_start does not need to be scheduled
  */
 static __inline int
-if_start_need_schedule(struct ifaltq *ifq, int running)
+ifq_ifstart_need_schedule(struct ifaltq *ifq, int running)
 {
 	if (!running || ifq_is_empty(ifq)
 #ifdef ALTQ
@@ -266,7 +289,7 @@ if_start_need_schedule(struct ifaltq *ifq, int running)
 		 * ifnet.if_start interlock is released, if:
 		 * 1) Hardware can not take any packets, due to
 		 *    o  interface is marked down
-		 *    o  hardware queue is full (IFF_OACTIVE)
+		 *    o  hardware queue is full (ifq_is_oactive)
 		 *    Under the second situation, hardware interrupt
 		 *    or polling(4) will call/schedule ifnet.if_start
 		 *    when hardware queue is ready
@@ -278,7 +301,7 @@ if_start_need_schedule(struct ifaltq *ifq, int running)
 		 *    TBR callout will call ifnet.if_start
 		 */
 		if (!running || !ifq_data_ready(ifq)) {
-			ifq->altq_started = 0;
+			ifq_clr_started(ifq);
 			ALTQ_UNLOCK(ifq);
 			return 0;
 		}
@@ -288,50 +311,44 @@ if_start_need_schedule(struct ifaltq *ifq, int running)
 }
 
 static void
-if_start_dispatch(netmsg_t msg)
+ifq_ifstart_dispatch(netmsg_t msg)
 {
 	struct lwkt_msg *lmsg = &msg->base.lmsg;
-	struct ifnet *ifp = lmsg->u.ms_resultp;
-	struct ifaltq *ifq = &ifp->if_snd;
-	int running = 0;
+	struct ifaltq *ifq = lmsg->u.ms_resultp;
+	struct ifnet *ifp = ifq->altq_ifp;
+	int running = 0, need_sched;
 
 	crit_enter();
 	lwkt_replymsg(lmsg, 0);	/* reply ASAP */
 	crit_exit();
 
-	if (mycpuid != ifp->if_start_cpuid(ifp)) {
+	if (mycpuid != ifq_get_cpuid(ifq)) {
 		/*
-		 * If the ifnet is still up, we need to
-		 * chase its CPU change.
+		 * We need to chase the ifnet CPU change.
 		 */
-		if (ifp->if_flags & IFF_UP) {
-			logifstart(chase_sched, ifp);
-			if_start_schedule(ifp);
-			return;
-		} else {
-			goto check;
-		}
+		logifstart(chase_sched, ifp);
+		ifq_ifstart_schedule(ifq, 1);
+		return;
 	}
 
-	if (ifp->if_flags & IFF_UP) {
-		ifnet_serialize_tx(ifp); /* XXX try? */
-		if ((ifp->if_flags & IFF_OACTIVE) == 0) {
-			logifstart(run, ifp);
-			ifp->if_start(ifp);
-			if ((ifp->if_flags &
-			(IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
-				running = 1;
-		}
-		ifnet_deserialize_tx(ifp);
+	ifnet_serialize_tx(ifp);
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq)) {
+		logifstart(run, ifp);
+		ifp->if_start(ifp);
+		if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq))
+			running = 1;
 	}
-check:
-	if (if_start_need_schedule(ifq, running)) {
-		crit_enter();
-		if (lmsg->ms_flags & MSGF_DONE)	{ /* XXX necessary? */
-			logifstart(sched, ifp);
-			lwkt_sendmsg(netisr_portfn(mycpuid), lmsg);
-		}
-		crit_exit();
+	need_sched = ifq_ifstart_need_schedule(ifq, running);
+	ifnet_deserialize_tx(ifp);
+
+	if (need_sched) {
+		/*
+		 * More data need to be transmitted, ifnet.if_start is
+		 * scheduled on ifnet's CPU, and we keep going.
+		 * NOTE: ifnet.if_start interlock is not released.
+		 */
+		logifstart(sched, ifp);
+		ifq_ifstart_schedule(ifq, 0);
 	}
 }
 
@@ -345,29 +362,36 @@ if_devstart(struct ifnet *ifp)
 	ASSERT_IFNET_SERIALIZED_TX(ifp);
 
 	ALTQ_LOCK(ifq);
-	if (ifq->altq_started || !ifq_data_ready(ifq)) {
+	if (ifq_is_started(ifq) || !ifq_data_ready(ifq)) {
 		logifstart(avoid, ifp);
 		ALTQ_UNLOCK(ifq);
 		return;
 	}
-	ifq->altq_started = 1;
+	ifq_set_started(ifq);
 	ALTQ_UNLOCK(ifq);
 
 	logifstart(run, ifp);
 	ifp->if_start(ifp);
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq))
 		running = 1;
 
-	if (if_start_need_schedule(ifq, running)) {
+	if (ifq_ifstart_need_schedule(ifq, running)) {
 		/*
 		 * More data need to be transmitted, ifnet.if_start is
 		 * scheduled on ifnet's CPU, and we keep going.
 		 * NOTE: ifnet.if_start interlock is not released.
 		 */
 		logifstart(sched, ifp);
-		if_start_schedule(ifp);
+		ifq_ifstart_schedule(ifq, 0);
 	}
+}
+
+/* Device driver ifnet.if_start schedule helper function */
+void
+if_devstart_sched(struct ifnet *ifp)
+{
+	ifq_ifstart_schedule(&ifp->if_snd, 1);
 }
 
 static void
@@ -460,24 +484,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		ifp->if_serializer = serializer;
 	}
 
-	ifp->if_start_cpuid = if_start_cpuid;
-	ifp->if_cpuid = 0;
-
-#ifdef IFPOLL_ENABLE
-	/* Device is not in polling mode by default */
-	ifp->if_npoll_cpuid = -1;
-	if (ifp->if_npoll != NULL)
-		ifp->if_start_cpuid = if_start_cpuid_npoll;
-#endif
-
-	ifp->if_start_nmsg = kmalloc(ncpus * sizeof(*ifp->if_start_nmsg),
-				     M_LWKTMSG, M_WAITOK);
-	for (i = 0; i < ncpus; ++i) {
-		netmsg_init(&ifp->if_start_nmsg[i], NULL, &netisr_adone_rport,
-			    0, if_start_dispatch);
-		ifp->if_start_nmsg[i].lmsg.u.ms_resultp = ifp;
-	}
-
 	mtx_init(&ifp->if_ioctl_mtx);
 	mtx_lock(&ifp->if_ioctl_mtx);
 
@@ -562,6 +568,22 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifq->altq_prepended = NULL;
 	ALTQ_LOCK_INIT(ifq);
 	ifq_set_classic(ifq);
+	ifq_set_cpuid(ifq, 0);
+
+	ifq->altq_stage =
+	    kmalloc_cachealign(ncpus * sizeof(struct ifaltq_stage),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	for (i = 0; i < ncpus; ++i)
+		ifq->altq_stage[i].ifqs_altq = ifq;
+
+	ifq->altq_ifstart_nmsg =
+	    kmalloc(ncpus * sizeof(*ifq->altq_ifstart_nmsg),
+	    M_LWKTMSG, M_WAITOK);
+	for (i = 0; i < ncpus; ++i) {
+		netmsg_init(&ifq->altq_ifstart_nmsg[i], NULL,
+		    &netisr_adone_rport, 0, ifq_ifstart_dispatch);
+		ifq->altq_ifstart_nmsg[i].lmsg.u.ms_resultp = ifq;
+	}
 
 	if (!SLIST_EMPTY(&domains))
 		if_attachdomain1(ifp);
@@ -657,6 +679,31 @@ if_purgeaddrs_nolink(struct ifnet *ifp)
 		ifa_ifunlink(ifa, ifp);
 		ifa_destroy(ifa);
 	}
+}
+
+static void
+ifq_stage_detach_handler(netmsg_t nmsg)
+{
+	struct ifaltq *ifq = nmsg->lmsg.u.ms_resultp;
+	struct ifaltq_stage *stage = ifq_get_stage(ifq, mycpuid);
+
+	if (stage->ifqs_flags & IFQ_STAGE_FLAG_QUED)
+		ifq_stage_remove(&ifq_stage_heads[mycpuid], stage);
+	lwkt_replymsg(&nmsg->lmsg, 0);
+}
+
+static void
+ifq_stage_detach(struct ifaltq *ifq)
+{
+	struct netmsg_base base;
+	int cpu;
+
+	netmsg_init(&base, NULL, &curthread->td_msgport, 0,
+	    ifq_stage_detach_handler);
+	base.lmsg.u.ms_resultp = ifq;
+
+	for (cpu = 0; cpu < ncpus; ++cpu)
+		lwkt_domsg(netisr_portfn(cpu), &base.lmsg, 0);
 }
 
 /*
@@ -761,7 +808,12 @@ if_detach(struct ifnet *ifp)
 
 	TAILQ_REMOVE(&ifnet, ifp, if_link);
 	kfree(ifp->if_addrheads, M_IFADDR);
-	kfree(ifp->if_start_nmsg, M_LWKTMSG);
+
+	lwkt_synchronize_ipiqs("if_detach");
+	ifq_stage_detach(&ifp->if_snd);
+
+	kfree(ifp->if_snd.altq_ifstart_nmsg, M_LWKTMSG);
+	kfree(ifp->if_snd.altq_stage, M_DEVBUF);
 	crit_exit();
 }
 
@@ -1242,7 +1294,7 @@ if_unroute(struct ifnet *ifp, int flag, int fam)
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			kpfctlinput(PRC_IFDOWN, ifa->ifa_addr);
 	}
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 	rt_ifmsg(ifp);
 }
 
@@ -1256,7 +1308,7 @@ if_route(struct ifnet *ifp, int flag, int fam)
 {
 	struct ifaddr_container *ifac;
 
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 	ifp->if_flags |= flag;
 	getmicrotime(&ifp->if_lastchange);
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
@@ -2391,37 +2443,11 @@ ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 	return(0);
 }
 
-int
-ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
+static void
+ifq_ifstart_try(struct ifaltq *ifq, int force_sched)
 {
-	struct ifaltq *ifq = &ifp->if_snd;
-	int running = 0, error, start = 0;
-
-	ASSERT_IFNET_NOT_SERIALIZED_TX(ifp);
-
-	ALTQ_LOCK(ifq);
-	error = ifq_enqueue_locked(ifq, m, pa);
-	if (error) {
-		ALTQ_UNLOCK(ifq);
-		return error;
-	}
-	if (!ifq->altq_started) {
-		/*
-		 * Hold the interlock of ifnet.if_start
-		 */
-		ifq->altq_started = 1;
-		start = 1;
-	}
-	ALTQ_UNLOCK(ifq);
-
-	ifp->if_obytes += m->m_pkthdr.len;
-	if (m->m_flags & M_MCAST)
-		ifp->if_omcasts++;
-
-	if (!start) {
-		logifstart(avoid, ifp);
-		return 0;
-	}
+	struct ifnet *ifp = ifq->altq_ifp;
+	int running = 0, need_sched;
 
 	/*
 	 * Try to do direct ifnet.if_start first, if there is
@@ -2435,30 +2461,153 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		 * CPU, and we keep going.
 		 */
 		logifstart(contend_sched, ifp);
-		if_start_schedule(ifp);
-		return 0;
+		ifq_ifstart_schedule(ifq, 1);
+		return;
 	}
 
-	if ((ifp->if_flags & IFF_OACTIVE) == 0) {
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq)) {
 		logifstart(run, ifp);
 		ifp->if_start(ifp);
-		if ((ifp->if_flags &
-		     (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
+		if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_oactive(ifq))
 			running = 1;
 	}
+	need_sched = ifq_ifstart_need_schedule(ifq, running);
 
 	ifnet_deserialize_tx(ifp);
 
-	if (if_start_need_schedule(ifq, running)) {
+	if (need_sched) {
 		/*
 		 * More data need to be transmitted, ifnet.if_start is
 		 * scheduled on ifnet's CPU, and we keep going.
 		 * NOTE: ifnet.if_start interlock is not released.
 		 */
 		logifstart(sched, ifp);
-		if_start_schedule(ifp);
+		ifq_ifstart_schedule(ifq, force_sched);
 	}
-	return 0;
+}
+
+/*
+ * IFQ packets staging mechanism:
+ *
+ * The packets enqueued into IFQ are staged to a certain amount before the
+ * ifnet's if_start is called.  In this way, the driver could avoid writing
+ * to hardware registers upon every packet, instead, hardware registers
+ * could be written when certain amount of packets are put onto hardware
+ * TX ring.  The measurement on several modern NICs (emx(4), igb(4), bnx(4),
+ * bge(4), jme(4)) shows that the hardware registers writing aggregation
+ * could save ~20% CPU time when 18bytes UDP datagrams are transmitted at
+ * 1.48Mpps.  The performance improvement by hardware registers writing
+ * aggeregation is also mentioned by Luigi Rizzo's netmap paper
+ * (http://info.iet.unipi.it/~luigi/netmap/).
+ *
+ * IFQ packets staging is performed for two entry points into drivers's
+ * transmission function:
+ * - Direct ifnet's if_start calling, i.e. ifq_ifstart_try()
+ * - ifnet's if_start scheduling, i.e. ifq_ifstart_schedule()
+ *
+ * IFQ packets staging will be stopped upon any of the following conditions:
+ * - If the count of packets enqueued on the current CPU is great than or
+ *   equal to ifq_stage_cntmax. (XXX this should be per-interface)
+ * - If the total length of packets enqueued on the current CPU is great
+ *   than or equal to the hardware's MTU - max_protohdr.  max_protohdr is
+ *   cut from the hardware's MTU mainly bacause a full TCP segment's size
+ *   is usually less than hardware's MTU.
+ * - ifq_ifstart_schedule() is not pending on the current CPU and if_start
+ *   interlock (if_snd.altq_started) is not released.
+ * - The if_start_rollup(), which is registered as low priority netisr
+ *   rollup function, is called; probably because no more work is pending
+ *   for netisr.
+ *
+ * NOTE:
+ * Currently IFQ packet staging is only performed in netisr threads.
+ */
+int
+ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
+{
+	struct ifaltq *ifq = &ifp->if_snd;
+	int error, start = 0, len, mcast = 0, avoid_start = 0;
+	struct ifaltq_stage_head *head = NULL;
+	struct ifaltq_stage *stage = NULL;
+
+	ASSERT_IFNET_NOT_SERIALIZED_TX(ifp);
+
+	len = m->m_pkthdr.len;
+	if (m->m_flags & M_MCAST)
+		mcast = 1;
+
+	if (curthread->td_type == TD_TYPE_NETISR) {
+		head = &ifq_stage_heads[mycpuid];
+		stage = ifq_get_stage(ifq, mycpuid);
+
+		stage->ifqs_cnt++;
+		stage->ifqs_len += len;
+		if (stage->ifqs_cnt < ifq_stage_cntmax &&
+		    stage->ifqs_len < (ifp->if_mtu - max_protohdr))
+			avoid_start = 1;
+	}
+
+	ALTQ_LOCK(ifq);
+	error = ifq_enqueue_locked(ifq, m, pa);
+	if (error) {
+		if (!ifq_data_ready(ifq)) {
+			ALTQ_UNLOCK(ifq);
+			return error;
+		}
+		avoid_start = 0;
+	}
+	if (!ifq_is_started(ifq)) {
+		if (avoid_start) {
+			ALTQ_UNLOCK(ifq);
+
+			KKASSERT(!error);
+			if ((stage->ifqs_flags & IFQ_STAGE_FLAG_QUED) == 0)
+				ifq_stage_insert(head, stage);
+
+			ifp->if_obytes += len;
+			if (mcast)
+				ifp->if_omcasts++;
+			return error;
+		}
+
+		/*
+		 * Hold the interlock of ifnet.if_start
+		 */
+		ifq_set_started(ifq);
+		start = 1;
+	}
+	ALTQ_UNLOCK(ifq);
+
+	if (!error) {
+		ifp->if_obytes += len;
+		if (mcast)
+			ifp->if_omcasts++;
+	}
+
+	if (stage != NULL) {
+		if (!start && (stage->ifqs_flags & IFQ_STAGE_FLAG_SCHED)) {
+			KKASSERT(stage->ifqs_flags & IFQ_STAGE_FLAG_QUED);
+			if (!avoid_start) {
+				ifq_stage_remove(head, stage);
+				ifq_ifstart_schedule(ifq, 1);
+			}
+			return error;
+		}
+
+		if (stage->ifqs_flags & IFQ_STAGE_FLAG_QUED) {
+			ifq_stage_remove(head, stage);
+		} else {
+			stage->ifqs_cnt = 0;
+			stage->ifqs_len = 0;
+		}
+	}
+
+	if (!start) {
+		logifstart(avoid, ifp);
+		return error;
+	}
+
+	ifq_ifstart_try(ifq, 0);
+	return error;
 }
 
 void *
@@ -2662,6 +2811,43 @@ ifnet_service_loop(void *arg __unused)
 }
 
 static void
+if_start_rollup(void)
+{
+	struct ifaltq_stage_head *head = &ifq_stage_heads[mycpuid];
+	struct ifaltq_stage *stage;
+
+	while ((stage = TAILQ_FIRST(&head->ifqs_head)) != NULL) {
+		struct ifaltq *ifq = stage->ifqs_altq;
+		int is_sched = 0;
+
+		if (stage->ifqs_flags & IFQ_STAGE_FLAG_SCHED)
+			is_sched = 1;
+		ifq_stage_remove(head, stage);
+
+		if (is_sched) {
+			ifq_ifstart_schedule(ifq, 1);
+		} else {
+			int start = 0;
+
+			ALTQ_LOCK(ifq);
+			if (!ifq_is_started(ifq)) {
+				/*
+				 * Hold the interlock of ifnet.if_start
+				 */
+				ifq_set_started(ifq);
+				start = 1;
+			}
+			ALTQ_UNLOCK(ifq);
+
+			if (start)
+				ifq_ifstart_try(ifq, 1);
+		}
+		KKASSERT((stage->ifqs_flags &
+		    (IFQ_STAGE_FLAG_QUED | IFQ_STAGE_FLAG_SCHED)) == 0);
+	}
+}
+
+static void
 ifnetinit(void *dummy __unused)
 {
 	int i;
@@ -2675,6 +2861,10 @@ ifnetinit(void *dummy __unused)
 		netmsg_service_port_init(&thr->td_msgport);
 		lwkt_schedule(thr);
 	}
+
+	for (i = 0; i < ncpus; ++i)
+		TAILQ_INIT(&ifq_stage_heads[i].ifqs_head);
+	netisr_register_rollup(if_start_rollup, NETISR_ROLLUP_PRIO_IFSTART);
 }
 
 struct ifnet *
@@ -2745,4 +2935,10 @@ if_ring_count2(int cnt, int cnt_max)
 	    ("calculate cnt %d, ncpus2 %d, cnt max %d",
 	     cnt, ncpus2, cnt_max));
 	return cnt;
+}
+
+void
+ifq_set_maxlen(struct ifaltq *ifq, int len)
+{
+	ifq->ifq_maxlen = len + (ncpus * ifq_stage_cntmax);
 }

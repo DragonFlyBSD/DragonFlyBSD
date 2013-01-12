@@ -223,7 +223,7 @@ cbq_add_altq(struct pf_altq *a)
 	callout_init(&cbqp->cbq_callout);
 	cbqp->cbq_qlen = 0;
 	cbqp->ifnp.ifq_ = &ifp->if_snd;	    /* keep the ifq */
-	ifq_purge(&ifp->if_snd);
+	ifq_purge_all(&ifp->if_snd);
 
 	/* keep the state in pf_altq */
 	a->altq_disc = cbqp;
@@ -573,7 +573,7 @@ cbqrestart(struct ifaltq *ifq)
 		ALTQ_UNLOCK(ifq);
 
 		ifnet_serialize_tx(ifp);
-		if (ifp->if_start && (ifp->if_flags & IFF_OACTIVE) == 0)
+		if (ifp->if_start && !ifq_is_oactive(&ifp->if_snd))
 			(*ifp->if_start)(ifp);
 		ifnet_deserialize_tx(ifp);
 

@@ -97,7 +97,6 @@
  **/
 
 #include "opt_userconfig.h"
-#define COMPAT_OLDISA	/* get the definitions */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -353,7 +352,6 @@ static DEV_INFO device_info[] = {
 
 {"sio",         "8250/16450/16550 Serial port",		0,		CLS_COMMS},
 {"cx",          "Cronyx/Sigma multiport sync/async adapter",0,		CLS_COMMS},
-{"cy",          "Cyclades multiport async adapter",	0,		CLS_COMMS},
 {"si",          "Specialix SI/XIO/SX async adapter",	0,		CLS_COMMS},
 {"ppc",         "Parallel Port chipset",		0,		CLS_COMMS},
 

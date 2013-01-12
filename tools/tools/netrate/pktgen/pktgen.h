@@ -46,6 +46,7 @@ struct pktgen_conf {
 	struct sockaddr_in	pc_src;
 	int			pc_ndst;
 	struct sockaddr_in	*pc_dst;
+	int			pc_pktenq;
 };
 
 #define PKTGENSTART	_IO('G', 19)

@@ -124,13 +124,13 @@ typedef boolean_t	bool;
 
 #define le16_to_cpu 
 
-#if defined(__i386__) || defined(__amd64__)
+#if defined(__i386__) || defined(__x86_64__)
 #define wmb()	__asm volatile("sfence" ::: "memory")
 #else
 #define wmb()
 #endif
 
-#if defined(__i386__) || defined(__amd64__)
+#if defined(__i386__) || defined(__x86_64__)
 static __inline
 void prefetch(void *x)
 {

@@ -58,9 +58,6 @@ static int lgue_start_transfer(struct lgue_softc *);
 
 static void lgue_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 
-static void lgue_start_ipifunc(void *);
-static void lgue_start_schedule(struct ifnet *);
-
 static int lgue_newbuf(struct lgue_softc *, int, struct mbuf **);
 static void lgue_rxstart(struct ifnet *);
 static void lgue_rxeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
@@ -443,7 +440,7 @@ lgue_start_transfer(struct lgue_softc *sc) {
 		m_freem(entry->entry_mbuf);
 		kfree(entry, M_USBDEV);
 		lgue_stop(sc);
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		return(EIO);
 	}
 
@@ -451,41 +448,9 @@ lgue_start_transfer(struct lgue_softc *sc) {
 	kfree(entry, M_USBDEV);
 
 	sc->lgue_tx_cnt++;
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 	ifp->if_timer = 5;
 	return(0);
-}
-
-/*
- * Start call
- */
-static void
-lgue_start_ipifunc(void *arg)
-{
-	struct ifnet *ifp;
-	struct lwkt_msg *lmsg;
-
-	ifp = arg;
-	lmsg = &ifp->if_start_nmsg[mycpuid].lmsg;
-	crit_enter();
-	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_portfn(mycpuid), lmsg);
-	crit_exit();
-}
-
-/*
- * Schedule start call
- */
-static void
-lgue_start_schedule(struct ifnet *ifp)
-{
-	int cpu;
-
-	cpu = ifp->if_start_cpuid(ifp);
-	if (cpu != mycpuid)
-		lwkt_send_ipiq(globaldata_find(cpu), lgue_start_ipifunc, ifp);
-	else
-		lgue_start_ipifunc(ifp);
 }
 
 /*
@@ -518,11 +483,11 @@ lgue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		ifp->if_opackets++;
 
 	if (!STAILQ_EMPTY(&sc->lgue_tx_queue)) {
-		lgue_start_schedule(ifp);
+		if_devstart_sched(ifp);
 	}
 
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*
@@ -538,7 +503,7 @@ lgue_start(struct ifnet *ifp)
 	if (sc->lgue_dying)
 		return;
 
-	if (ifp->if_flags & IFF_OACTIVE) {
+	if (ifq_is_oactive(&ifp->if_snd)) {
 		return;
 	}
 
@@ -647,7 +612,8 @@ lgue_stop(struct lgue_softc *sc)
 		kfree(entry, M_USBDEV);
 	}
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*
@@ -720,7 +686,7 @@ lgue_init(void *xsc)
 	STAILQ_INIT(&sc->lgue_tx_queue);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	sc->lgue_dying = 0;
 
@@ -880,7 +846,7 @@ lgue_watchdog(struct ifnet *ifp)
 	ifp->if_oerrors++;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		lgue_start_schedule(ifp);
+		if_devstart_sched(ifp);
 }
 
 /*

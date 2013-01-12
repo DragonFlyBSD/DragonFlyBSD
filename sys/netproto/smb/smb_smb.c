@@ -235,7 +235,7 @@ smb_smb_ssnsetup(struct smb_vc *vcp, struct smb_cred *scred)
 	u_int16_t tw, tw1;*/
 	smb_uniptr unipp, ntencpass = NULL;
 	char *pp, *up, *pbuf, *encpass;
-	int error, plen, uniplen, ulen;
+	int error, plen, uniplen;
 
 	vcp->vc_smbuid = SMB_UID_UNKNOWN;
 
@@ -288,7 +288,6 @@ smb_smb_ssnsetup(struct smb_vc *vcp, struct smb_cred *scred)
 	smb_rq_wstart(rqp);
 	mbp = &rqp->sr_rq;
 	up = vcp->vc_username;
-	ulen = strlen(up) + 1;
 	mb_put_uint8(mbp, 0xff);
 	mb_put_uint8(mbp, 0);
 	mb_put_uint16le(mbp, 0);
@@ -466,7 +465,6 @@ int
 smb_smb_treedisconnect(struct smb_share *ssp, struct smb_cred *scred)
 {
 	struct smb_rq *rqp;
-	struct mbchain *mbp;
 	int error;
 
 	if (ssp->ss_tid == SMB_TID_UNKNOWN)
@@ -474,7 +472,6 @@ smb_smb_treedisconnect(struct smb_share *ssp, struct smb_cred *scred)
 	error = smb_rq_alloc(SSTOCP(ssp), SMB_COM_TREE_DISCONNECT, scred, &rqp);
 	if (error)
 		return error;
-	mbp = &rqp->sr_rq;
 	smb_rq_wstart(rqp);
 	smb_rq_wend(rqp);
 	smb_rq_bstart(rqp);

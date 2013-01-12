@@ -34,6 +34,19 @@
 
 struct altq_pktattr;
 
+struct ifaltq;
+
+struct ifaltq_stage {
+	struct ifaltq	*ifqs_altq;
+	int		ifqs_cnt;
+	int		ifqs_len;
+	uint32_t	ifqs_flags;
+	TAILQ_ENTRY(ifaltq_stage) ifqs_link;
+} __cachealign;
+
+#define IFQ_STAGE_FLAG_QUED	0x1
+#define IFQ_STAGE_FLAG_SCHED	0x2
+
 /*
  * Structure defining a queue for a network interface.
  */
@@ -67,6 +80,11 @@ struct	ifaltq {
 	struct	lwkt_serialize altq_lock;
 	struct	mbuf *altq_prepended;	/* mbuf dequeued, but not yet xmit */
 	int	altq_started;		/* ifnet.if_start interlock */
+	int	altq_hw_oactive;	/* hw too busy, protected by driver */
+	int	altq_cpuid;		/* owner cpu */
+	struct ifaltq_stage *altq_stage;
+	struct netmsg_base *altq_ifstart_nmsg;
+					/* percpu msgs to sched if_start */
 };
 
 #define ALTQ_ASSERT_LOCKED(ifq)	ASSERT_SERIALIZED(&(ifq)->altq_lock)

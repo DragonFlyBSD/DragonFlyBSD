@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa.c,v 1.132.2.5 2002/03/03 05:42:50 nyan Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa.c,v 1.8 2006/10/25 20:55:51 dillon Exp $
  */
 
 /*
@@ -66,14 +65,9 @@
 #include "../isavar.h"
 #include "../isa_common.h"
 
-#include "opt_compat_oldisa.h"
-
 void
 isa_init(void)
 {
-#ifdef COMPAT_OLDISA
-	isa_wrap_old_drivers();
-#endif
 }
 
 /*

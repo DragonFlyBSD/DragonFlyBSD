@@ -640,8 +640,7 @@ ale_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->ale_irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->ale_irq_res));
 	return 0;
 fail:
 	ale_detach(dev);
@@ -1534,7 +1533,7 @@ ale_encap(struct ale_softc *sc, struct mbuf **m_head)
 	struct ale_dmamap_ctx ctx;
 	bus_dmamap_t map;
 	uint32_t cflags, poff, vtag;
-	int error, i, nsegs, prod, si;
+	int error, i, nsegs, prod;
 
 	M_ASSERTPKTHDR((*m_head));
 
@@ -1542,7 +1541,7 @@ ale_encap(struct ale_softc *sc, struct mbuf **m_head)
 	cflags = vtag = 0;
 	poff = 0;
 
-	si = prod = sc->ale_cdata.ale_tx_prod;
+	prod = sc->ale_cdata.ale_tx_prod;
 	txd = &sc->ale_cdata.ale_txdesc[prod];
 	txd_last = txd;
 	map = txd->tx_dmamap;
@@ -1674,7 +1673,7 @@ ale_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	/* Reclaim transmitted frames. */
@@ -1696,7 +1695,7 @@ ale_start(struct ifnet *ifp)
 			if (m_head == NULL)
 				break;
 			ifq_prepend(&ifp->if_snd, m_head);
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 		enq = 1;
@@ -2052,7 +2051,7 @@ ale_txeof(struct ale_softc *sc)
 		if (sc->ale_cdata.ale_tx_cnt <= 0)
 			break;
 		prog++;
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		sc->ale_cdata.ale_tx_cnt--;
 		txd = &sc->ale_cdata.ale_txdesc[cons];
 		if (txd->tx_m != NULL) {
@@ -2556,7 +2555,7 @@ ale_init(void *xsc)
 	callout_reset(&sc->ale_tick_ch, hz, ale_tick, sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -2572,7 +2571,8 @@ ale_stop(struct ale_softc *sc)
 	/*
 	 * Mark the interface down and cancel the watchdog timer.
 	 */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	callout_stop(&sc->ale_tick_ch);

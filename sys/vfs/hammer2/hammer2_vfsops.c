@@ -750,6 +750,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	int flags;
 	int error;
 	int haswork;
+	int i;
 
 	hmp = MPTOHMP(mp);
 
@@ -789,12 +790,21 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 
 	error = 0;
 
+	/*
+	 * We can't safely flush the volume header until we have
+	 * flushed any device buffers which have built up.
+	 */
+#if 0
 	if ((waitfor & MNT_LAZY) == 0) {
 		waitfor = MNT_NOWAIT;
 		vn_lock(hmp->devvp, LK_EXCLUSIVE | LK_RETRY);
 		error = VOP_FSYNC(hmp->devvp, waitfor, 0);
 		vn_unlock(hmp->devvp);
 	}
+#endif
+	vn_lock(hmp->devvp, LK_EXCLUSIVE | LK_RETRY);
+	error = VOP_FSYNC(hmp->devvp, MNT_WAIT, 0);
+	vn_unlock(hmp->devvp);
 
 	if (error == 0 && haswork) {
 		struct buf *bp;
@@ -815,15 +825,23 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		relpbuf(bp, NULL);
 
 		/*
-		 * Then we can safely flush the volume header.  Volume
-		 * data is locked separately to prevent ioctl functions
-		 * from deadlocking due to a configuration issue.
+		 * Then we can safely flush the version of the volume header
+		 * synchronized by the flush code.
 		 */
-		bp = getblk(hmp->devvp, 0, HAMMER2_PBUFSIZE, 0, 0);
-		hammer2_voldata_lock(hmp);
-		bcopy(&hmp->voldata, bp->b_data, HAMMER2_PBUFSIZE);
-		hammer2_voldata_unlock(hmp);
+		i = hmp->volhdrno + 1;
+		if (i >= HAMMER2_NUM_VOLHDRS)
+			i = 0;
+		if (i * HAMMER2_ZONE_BYTES64 + HAMMER2_SEGSIZE >
+		    hmp->volsync.volu_size) {
+			i = 0;
+		}
+		kprintf("sync volhdr %d %jd\n",
+			i, (intmax_t)hmp->volsync.volu_size);
+		bp = getblk(hmp->devvp, i * HAMMER2_ZONE_BYTES64,
+			    HAMMER2_PBUFSIZE, 0, 0);
+		bcopy(&hmp->volsync, bp->b_data, HAMMER2_PBUFSIZE);
 		bawrite(bp);
+		hmp->volhdrno = i;
 	}
 	return (error);
 }
@@ -964,7 +982,7 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 				       HAMMER2_VOLUME_ICRC1_SIZE);
 		if ((crc0 != crc) || (bcrc0 != bcrc)) {
 			kprintf("hammer2 volume header crc "
-				"mismatch copy #%d\t%08x %08x",
+				"mismatch copy #%d %08x/%08x\n",
 				i, crc0, crc);
 			error_reported = 1;
 			brelse(bp);
@@ -974,14 +992,18 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 		if (valid == 0 || hmp->voldata.mirror_tid < vd->mirror_tid) {
 			valid = 1;
 			hmp->voldata = *vd;
+			hmp->volhdrno = i;
 		}
 		brelse(bp);
 		bp = NULL;
 	}
 	if (valid) {
+		hmp->volsync = hmp->voldata;
 		error = 0;
-		if (error_reported)
-			kprintf("hammer2: a valid volume header was found\n");
+		if (error_reported || bootverbose || 1) { /* 1/DEBUG */
+			kprintf("hammer2: using volume header #%d\n",
+				hmp->volhdrno);
+		}
 	} else {
 		error = EINVAL;
 		kprintf("hammer2: no valid volume headers found!\n");
@@ -1063,11 +1085,15 @@ hammer2_rcvdmsg(kdmsg_msg_t *msg)
 	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
 	case DMSG_DBG_SHELL:
 		/*
+		 * (non-transaction)
 		 * Execute shell command (not supported atm)
 		 */
 		kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
+		/*
+		 * (non-transaction)
+		 */
 		if (msg->aux_data) {
 			msg->aux_data[msg->aux_size - 1] = 0;
 			kprintf("HAMMER2 DBG: %s\n", msg->aux_data);
@@ -1075,7 +1101,7 @@ hammer2_rcvdmsg(kdmsg_msg_t *msg)
 		break;
 	default:
 		/*
-		 * Unsupported LNK message received.  We only need to
+		 * Unsupported message received.  We only need to
 		 * reply if it's a transaction in order to close our end.
 		 * Ignore any one-way messages are any further messages
 		 * associated with the transaction.
@@ -1152,10 +1178,8 @@ hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 	kprintf("volconf update %p\n", pmp->iocom.conn_state);
 	if (pmp->iocom.conn_state) {
 		kprintf("TRANSMIT VOLCONF VIA OPEN CONN TRANSACTION\n");
-		msg = kdmsg_msg_alloc(&pmp->iocom, 0,
-				      DMSG_LNK_VOLCONF,
-				      NULL, NULL);
-		msg->state = pmp->iocom.conn_state;
+		msg = kdmsg_msg_alloc_state(pmp->iocom.conn_state,
+					    DMSG_LNK_VOLCONF, NULL, NULL);
 		msg->any.lnk_volconf.copy = hmp->voldata.copyinfo[index];
 		msg->any.lnk_volconf.mediaid = hmp->voldata.fsid;
 		msg->any.lnk_volconf.index = index;

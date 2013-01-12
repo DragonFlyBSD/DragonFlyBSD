@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)calendar.c  8.3 (Berkeley) 3/25/94
  * $FreeBSD: src/usr.bin/calendar/io.c,v 1.21 2007/06/09 05:54:13 grog Exp $
- * $DragonFly: src/usr.bin/calendar/io.c,v 1.7 2007/09/24 20:49:09 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -363,7 +362,7 @@ opencal(void)
 		if (setuid(getuid()) < 0) {
 			warnx("first setuid failed");
 			_exit(EXIT_FAILURE);
-		};
+		}
 		if (setgid(getegid()) < 0) {
 			warnx("setgid failed");
 			_exit(EXIT_FAILURE);
@@ -426,7 +425,7 @@ closecal(FILE *fp)
 		if (setuid(getuid()) < 0) {
 			warnx("setuid failed");
 			_exit(EXIT_FAILURE);
-		};
+		}
 		if (setgid(getegid()) < 0) {
 			warnx("setgid failed");
 			_exit(EXIT_FAILURE);

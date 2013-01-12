@@ -1008,9 +1008,11 @@ mn_reset(struct softc *sc)
 static void
 f54_intr(struct softc *sc)
 {
-	unsigned g, u, s;
-
+	unsigned u, s;
+#if 0
+	unsigned g;
 	g = sc->f54r->gis;
+#endif
 	u = sc->f54r->isr0 << 24;
 	u |= sc->f54r->isr1 << 16;
 	u |= sc->f54r->isr2 <<  8;

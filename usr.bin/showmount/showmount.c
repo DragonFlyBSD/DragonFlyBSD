@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1989, 1993, 1995 The Regents of the University of California.  All rights reserved.
  * @(#)showmount.c	8.3 (Berkeley) 3/29/95
  * $FreeBSD: src/usr.bin/showmount/showmount.c,v 1.16 2005/05/21 09:55:08 ru Exp $
- * $DragonFly: src/usr.bin/showmount/showmount.c,v 1.5 2005/09/05 04:22:07 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -173,7 +172,7 @@ main(int argc, char **argv)
 		default:
 			printf("Hosts on %s:\n", host);
 			break;
-		};
+		}
 		print_dump(mntdump);
 	}
 	if (rpcs & DOEXPORTS) {
@@ -285,7 +284,7 @@ xdr_mntdump(XDR *xdrsp, struct mountlist **mlp)
 						goto next;
 					}
 					break;
-				};
+				}
 				if (val < 0) {
 					otp = &tp->ml_left;
 					tp = tp->ml_left;
@@ -375,7 +374,7 @@ print_dump(struct mountlist *mp)
 	default:
 		printf("%s\n", mp->ml_host);
 		break;
-	};
+	}
 	if (mp->ml_right)
 		print_dump(mp->ml_right);
 }

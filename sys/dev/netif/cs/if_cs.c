@@ -306,7 +306,10 @@ cs_cs89x0_probe(device_t dev)
 	unsigned rev_type = 0;
 	char chip_revision;
 	int eeprom_buff[CHKSUM_LEN];
-	int chip_type, pp_isaint, pp_isadma;
+	int chip_type, pp_isaint;
+#if 0 /* Temporary disabled */
+	int pp_isadma;
+#endif
 
 	error = cs_alloc_port(dev, 0, CS_89x0_IO_PORTS);
 	if (error)
@@ -339,11 +342,15 @@ cs_cs89x0_probe(device_t dev)
 
 	if(chip_type==CS8900) {
 		pp_isaint = PP_CS8900_ISAINT;
+#if 0 /* Temporary disabled */
 		pp_isadma = PP_CS8900_ISADMA;
+#endif
 		sc->send_cmd = TX_CS8900_AFTER_ALL;
 	} else {
 		pp_isaint = PP_CS8920_ISAINT;
+#if 0 /* Temporary disabled */
 		pp_isadma = PP_CS8920_ISADMA;
+#endif
 		sc->send_cmd = TX_CS8920_AFTER_ALL;
 	}
 
@@ -466,16 +473,14 @@ cs_cs89x0_probe(device_t dev)
                 return (ENXIO);
         }
         
-        /*
-         * Temporary disabled
-         *
+#if 0 /* Temporary disabled */
         if (drq>0)
 		cs_writereg(iobase, pp_isadma, drq);
 	else {
 		device_printf(dev, "incorrect drq\n");
 		return 0;
 	}
-        */
+#endif
 
 	if (bootverbose)
 		 device_printf(dev, "CS89%c0%s rev %c media%s%s%s\n",
@@ -686,8 +691,7 @@ cs_attach(device_t dev)
 		goto bad;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
 
 	return 0;
 
@@ -797,7 +801,7 @@ cs_init(void *xsc)
 	 * Set running and clear output active flags
 	 */
 	sc->arpcom.ac_if.if_flags |= IFF_RUNNING;
-	sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&sc->arpcom.ac_if.if_snd);
 
 	/*
 	 * Start sending process
@@ -906,18 +910,18 @@ csintr(void *arg)
                                 ifp->if_opackets++;
                         else
                                 ifp->if_oerrors++;
-                        ifp->if_flags &= ~IFF_OACTIVE;
+                        ifq_clr_oactive(&ifp->if_snd);
                         ifp->if_timer = 0;
                         break;
 
                 case ISQ_BUFFER_EVENT:
                         if (status & READY_FOR_TX) {
-                                ifp->if_flags &= ~IFF_OACTIVE;
+                                ifq_clr_oactive(&ifp->if_snd);
                                 ifp->if_timer = 0;
                         }
 
                         if (status & TX_UNDERRUN) {
-                                ifp->if_flags &= ~IFF_OACTIVE;
+                                ifq_clr_oactive(&ifp->if_snd);
                                 ifp->if_timer = 0;
                                 ifp->if_oerrors++;
                         }
@@ -933,7 +937,7 @@ csintr(void *arg)
                 }
         }
 
-        if (!(ifp->if_flags & IFF_OACTIVE))
+        if (!ifq_is_oactive(&ifp->if_snd))
 		if_devstart(ifp);
 }
 
@@ -1022,7 +1026,7 @@ cs_start(struct ifnet *ifp)
 		 */
 		if (!(cs_readreg(sc->nic_addr, PP_BusST) & READY_FOR_TX_NOW)) {
 			ifp->if_timer = sc->buf_len;
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			return;
 		}
 
@@ -1035,7 +1039,7 @@ cs_start(struct ifnet *ifp)
 		 */
 		ifp->if_timer = length;
 
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		return;
 	}
 }
@@ -1051,7 +1055,8 @@ cs_stop(struct cs_softc *sc)
 	cs_writereg(sc->nic_addr, PP_BufCFG, 0);
 	cs_writereg(sc->nic_addr, PP_BusCTL, 0);
 
-	sc->arpcom.ac_if.if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	sc->arpcom.ac_if.if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&sc->arpcom.ac_if.if_snd);
 	sc->arpcom.ac_if.if_timer = 0;
 }
 

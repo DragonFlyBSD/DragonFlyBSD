@@ -687,7 +687,7 @@ ixgbe_start_locked(struct tx_ring *txr, struct ifnet * ifp)
 
 	IXGBE_TX_LOCK_ASSERT(txr);
 
-	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	if (!adapter->link_active) {
@@ -1266,7 +1266,7 @@ ixgbe_init_locked(struct adapter *adapter)
 
 	/* Now inform the stack we're ready */
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	return;
 }
@@ -1882,10 +1882,9 @@ ixgbe_local_timer(void *arg)
                 goto watchdog;
 	/* Only turn off the stack flow when ALL are depleted */
         if (busy == adapter->num_queues)
-                ifp->if_flags |= IFF_OACTIVE;
-        else if ((ifp->if_flags & IFF_OACTIVE) &&
-            (busy < adapter->num_queues))
-                ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
+        else if (ifq_is_oactive(&ifp->if_snd) && (busy < adapter->num_queues))
+		ifq_clr_oactive(&ifp->if_snd);
 
 out:
 	ixgbe_rearm_queues(adapter, adapter->que_mask);
@@ -1973,7 +1972,7 @@ ixgbe_stop(void *arg)
 
 	/* Let the stack know...*/
 	ifp->if_flags &= ~IFF_RUNNING;
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	ixgbe_reset_hw(hw);
 	hw->adapter_stopped = FALSE;
@@ -2415,7 +2414,7 @@ ixgbe_setup_interface(device_t dev, struct adapter *adapter)
 	ifp->if_transmit = ixgbe_mq_start;
 	ifp->if_qflush = ixgbe_qflush;
 #endif
-	ifp->if_snd.ifq_maxlen = adapter->num_tx_desc - 2;
+	ifq_set_maxlen(&ifp->if_snd, adapter->num_tx_desc - 2);
 
 	ether_ifattach(ifp, adapter->hw.mac.addr, NULL);
 
@@ -3784,8 +3783,10 @@ static int
 ixgbe_setup_receive_ring(struct rx_ring *rxr)
 {
 	struct	adapter 	*adapter;
+#if 0 /* NET_LRO */
 	struct ifnet		*ifp;
 	device_t		dev;
+#endif
 	struct ixgbe_rx_buf	*rxbuf;
 	bus_dma_segment_t	pseg[1], hseg[1];
 #if 0	/* NET_LRO */
@@ -3798,8 +3799,10 @@ ixgbe_setup_receive_ring(struct rx_ring *rxr)
 #endif /* DEV_NETMAP */
 
 	adapter = rxr->adapter;
+#if 0 /* NET_LRO */
 	ifp = adapter->ifp;
 	dev = adapter->dev;
+#endif
 
 	/* Clear the ring contents */
 	IXGBE_RX_LOCK(rxr);

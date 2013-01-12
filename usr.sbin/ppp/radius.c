@@ -946,7 +946,7 @@ radius_Account(struct radius *r, struct radacct *ac, struct datalink *dl,
     /* Fetch IP, netmask from IPCP */
     memcpy(&ac->ip, peer_ip, sizeof(ac->ip));
     memcpy(&ac->mask, netmask, sizeof(ac->mask));
-  };
+  }
 
   if (rad_put_string(r->cx.rad, RAD_USER_NAME, ac->user_name) != 0 ||
       rad_put_int(r->cx.rad, RAD_SERVICE_TYPE, RAD_FRAMED) != 0 ||

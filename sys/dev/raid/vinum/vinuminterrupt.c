@@ -463,7 +463,3 @@ complete_raid5_write(struct rqelement *rqe)
 #endif
     vn_strategy(drive->vp, &rqe->b.b_bio1);
 }
-
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

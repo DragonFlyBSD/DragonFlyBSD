@@ -38,7 +38,7 @@
 #include <sys/file.h>
 #include <sys/mapped_ioctl.h>
 #include <sys/proc.h>
-#ifdef __amd64__
+#ifdef __x86_64__
 #include <machine/../linux32/linux.h>
 #include <machine/../linux32/linux32_proto.h>
 #else

@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_pfs.c,v 1.5 2008/07/31 04:42:04 dillon Exp $
  */
 /*
  * HAMMER PFS ioctls - Manage pseudo-fs configurations
@@ -448,15 +446,13 @@ int
 hammer_pfs_delete_at_cursor(hammer_cursor_t cursor, hammer_tid_t trunc_tid)
 {
 	hammer_btree_leaf_elm_t elm;
-	hammer_transaction_t trans;
-        int error;
+	int error;
 
 	elm = &cursor->node->ondisk->elms[cursor->index].leaf;
 	if (elm->base.create_tid < trunc_tid &&
 	    elm->base.delete_tid < trunc_tid) {
 		return(0);
 	}
-        trans = cursor->trans;
 
 	if (elm->base.create_tid >= trunc_tid) {
 		error = hammer_delete_at_cursor(

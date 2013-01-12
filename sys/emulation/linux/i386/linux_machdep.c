@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.23 2007/07/30 17:41:23 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -477,7 +476,6 @@ sys_linux_clone(struct linux_clone_args *args)
 	int error, ff = RFPROC;
 	struct proc *p2 = NULL;
 	int exit_signal;
-	vm_offset_t start;
 
 	exit_signal = args->flags & 0x000000ff;
 	if (exit_signal >= LINUX_NSIG)
@@ -501,7 +499,6 @@ sys_linux_clone(struct linux_clone_args *args)
 	}
 
 	error = 0;
-	start = 0;
 
 	get_mplock();
 	error = fork1(lp, ff | RFPGLOCK, &p2);

@@ -50,7 +50,6 @@
  */
 
 #if 0
-#include "use_apm.h"
 #include "opt_clock.h"
 #endif
 
@@ -70,8 +69,6 @@
 #include <sys/interrupt.h>
 
 #include <machine/clock.h>
-#ifdef CLK_CALIBRATION_LOOP
-#endif
 #include <machine/cputypes.h>
 #include <machine/frame.h>
 #include <machine/ipl.h>

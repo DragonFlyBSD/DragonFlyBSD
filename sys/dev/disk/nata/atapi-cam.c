@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.44 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.12 2008/11/19 08:12:16 hasso Exp $
  */
 
 #include "opt_ata.h"
@@ -782,14 +781,10 @@ static void
 atapi_async(void *callback_arg, u_int32_t code,
 	     struct cam_path* path, void *arg)
 {
-    struct atapi_xpt_softc *softc;
-    struct cam_sim *sim;
     int targ;
 
     crit_enter();
 
-    sim = (struct cam_sim *) callback_arg;
-    softc = (struct atapi_xpt_softc *) cam_sim_softc(sim);
     switch (code) {
     case AC_LOST_DEVICE:
 	targ = xpt_path_target_id(path);

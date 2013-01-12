@@ -148,7 +148,6 @@
 
 #include <sys/thread2.h>
 #include <sys/buf2.h>
-#include <sys/mplock2.h>
 
 #if defined(CCDDEBUG) && !defined(DEBUG)
 #define DEBUG
@@ -187,7 +186,6 @@ struct ccdbuf {
 	struct buf	cb_buf;		/* new I/O buf */
 	struct vnode	*cb_vp;		/* related vnode */
 	struct bio	*cb_obio;	/* ptr. to original I/O buf */
-	struct ccdbuf	*cb_freenext;	/* free list link */
 	int		cb_unit;	/* target unit */
 	int		cb_comp;	/* target component */
 	int		cb_pflags;	/* mirror/parity status flag */
@@ -203,10 +201,8 @@ static d_strategy_t ccdstrategy;
 static d_ioctl_t ccdioctl;
 static d_dump_t ccddump;
 
-#define NCCDFREEHIWAT	16
-
 static struct dev_ops ccd_ops = {
-	{ "ccd", 0, D_DISK },
+	{ "ccd", 0, D_DISK | D_MPSAFE },
 	.d_open =	ccdopen,
 	.d_close =	ccdclose,
 	.d_read =	physread,
@@ -241,33 +237,18 @@ static	void printiinfo (struct ccdiinfo *);
 /* Non-private for the benefit of libkvm. */
 struct	ccd_softc *ccd_softc;
 struct	ccddevice *ccddevs;
-struct	ccdbuf *ccdfreebufs;
-static	int numccdfreebufs;
 static	int numccd = 0;
 
 /*
  * getccdbuf() -	Allocate and zero a ccd buffer.
- *
- *	This routine is called at splbio().
  */
-
-static __inline
-struct ccdbuf *
+static struct ccdbuf *
 getccdbuf(void)
 {
 	struct ccdbuf *cbp;
 
-	/*
-	 * Allocate from freelist or malloc as necessary
-	 */
-	if ((cbp = ccdfreebufs) != NULL) {
-		ccdfreebufs = cbp->cb_freenext;
-		--numccdfreebufs;
-		reinitbufbio(&cbp->cb_buf);
-	} else {
-		cbp = kmalloc(sizeof(struct ccdbuf), M_DEVBUF, M_WAITOK|M_ZERO);
-		initbufbio(&cbp->cb_buf);
-	}
+	cbp = kmalloc(sizeof(struct ccdbuf), M_DEVBUF, M_WAITOK | M_ZERO);
+	initbufbio(&cbp->cb_buf);
 
 	/*
 	 * independant struct buf initialization
@@ -282,24 +263,14 @@ getccdbuf(void)
 
 /*
  * putccdbuf() -	Free a ccd buffer.
- *
- *	This routine is called at splbio().
  */
-
-static __inline
-void
+static void
 putccdbuf(struct ccdbuf *cbp)
 {
 	BUF_UNLOCK(&cbp->cb_buf);
 
-	if (numccdfreebufs < NCCDFREEHIWAT) {
-		cbp->cb_freenext = ccdfreebufs;
-		ccdfreebufs = cbp;
-		++numccdfreebufs;
-	} else {
-		uninitbufbio(&cbp->cb_buf);
-		kfree((caddr_t)cbp, M_DEVBUF);
-	}
+	uninitbufbio(&cbp->cb_buf);
+	kfree(cbp, M_DEVBUF);
 }
 
 /*
@@ -323,7 +294,7 @@ ccdattach(void)
 	ccd_softc = kmalloc(num * sizeof(struct ccd_softc), M_DEVBUF, 
 			    M_WAITOK | M_ZERO);
 	ccddevs = kmalloc(num * sizeof(struct ccddevice), M_DEVBUF,
-			    M_WAITOK | M_ZERO);
+			  M_WAITOK | M_ZERO);
 	numccd = num;
 
 	/*
@@ -436,6 +407,9 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 				M_DEVBUF, M_WAITOK);
 	cs->sc_maxiosize = MAXPHYS;
 
+	lockinit(&cs->sc_lock, "ccdlck", 0, 0);
+	ccdlock(cs);
+	
 	/*
 	 * Verify that each component piece exists and record
 	 * relevant information about it.
@@ -870,9 +844,7 @@ ccdstrategy(struct dev_strategy_args *ap)
 	/*
 	 * "Start" the unit.
 	 */
-	crit_enter();
 	ccdstart(cs, nbio);
-	crit_exit();
 	return(0);
 
 	/*
@@ -1191,6 +1163,7 @@ ccdiodone(struct bio *bio)
 	struct bio *obio = cbp->cb_obio;
 	struct buf *obp = obio->bio_buf;
 	int unit = cbp->cb_unit;
+	struct ccd_softc *sc = &ccd_softc[unit];
 	int count;
 
 	/*
@@ -1199,8 +1172,8 @@ ccdiodone(struct bio *bio)
 	 */
 	clearbiocache(bio->bio_next);
 
-	get_mplock();
-	crit_enter();
+	ccdlock(sc);
+
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
 		kprintf("ccdiodone(%x)\n", cbp);
@@ -1223,7 +1196,7 @@ ccdiodone(struct bio *bio)
 	if (cbp->cb_buf.b_flags & B_ERROR) {
 		const char *msg = "";
 
-		if ((ccd_softc[unit].sc_cflags & CCDF_MIRROR) &&
+		if ((sc->sc_cflags & CCDF_MIRROR) &&
 		    (cbp->cb_buf.b_cmd == BUF_CMD_READ) &&
 		    (cbp->cb_pflags & CCDPF_MIRROR_DONE) == 0) {
 			/*
@@ -1232,11 +1205,9 @@ ccdiodone(struct bio *bio)
 			 * are doing a scan we do not keep hitting the
 			 * bad disk first.
 			 */
-			struct ccd_softc *cs = &ccd_softc[unit];
-
 			msg = ", trying other disk";
-			cs->sc_pick = 1 - cs->sc_pick;
-			cs->sc_blk[cs->sc_pick] = obio->bio_offset;
+			sc->sc_pick = 1 - sc->sc_pick;
+			sc->sc_blk[sc->sc_pick] = obio->bio_offset;
 		} else {
 			obp->b_flags |= B_ERROR;
 			obp->b_error = cbp->cb_buf.b_error ? 
@@ -1259,7 +1230,7 @@ ccdiodone(struct bio *bio)
 	 * we free the second I/O without initiating it.
 	 */
 
-	if (ccd_softc[unit].sc_cflags & CCDF_MIRROR) {
+	if (sc->sc_cflags & CCDF_MIRROR) {
 		if (cbp->cb_buf.b_cmd != BUF_CMD_READ) {
 			/*
 			 * When writing, handshake with the second buffer
@@ -1269,8 +1240,7 @@ ccdiodone(struct bio *bio)
 			if ((cbp->cb_pflags & CCDPF_MIRROR_DONE) == 0) {
 				cbp->cb_mirror->cb_pflags |= CCDPF_MIRROR_DONE;
 				putccdbuf(cbp);
-				crit_exit();
-				rel_mplock();
+				ccdunlock(sc);
 				return;
 			}
 		} else {
@@ -1288,8 +1258,7 @@ ccdiodone(struct bio *bio)
 					    &cbp->cb_mirror->cb_buf.b_bio1
 					);
 					putccdbuf(cbp);
-					crit_exit();
-					rel_mplock();
+					ccdunlock(sc);
 					return;
 				} else {
 					putccdbuf(cbp->cb_mirror);
@@ -1311,10 +1280,11 @@ ccdiodone(struct bio *bio)
 	obp->b_resid -= count;
 	if (obp->b_resid < 0)
 		panic("ccdiodone: count");
+
+	ccdunlock(sc);
+
 	if (obp->b_resid == 0)
-		ccdintr(&ccd_softc[unit], obio);
-	crit_exit();
-	rel_mplock();
+		ccdintr(sc, obio);
 }
 
 static int
@@ -1424,7 +1394,7 @@ ccdioctl(struct dev_ioctl_args *ap)
 		 */
 		if ((error = ccdinit(&ccd, cpp, ap->a_cred)) != 0) {
 			for (j = 0; j < lookedup; ++j)
-				(void)vn_close(vpp[j], FREAD|FWRITE);
+				vn_close(vpp[j], FREAD|FWRITE);
 			kfree(vpp, M_DEVBUF);
 			kfree(cpp, M_DEVBUF);
 			ccdunlock(cs);
@@ -1517,10 +1487,7 @@ ccdioctl(struct dev_ioctl_args *ap)
 		 */
 		devstat_remove_entry(&cs->device_stats);
 
-		/* This must be atomic. */
-		crit_enter();
 		ccdunlock(cs);
-		crit_exit();
 
 		break;
 
@@ -1589,21 +1556,12 @@ done:
 
 /*
  * Wait interruptibly for an exclusive lock.
- *
- * XXX
- * Several drivers do this; it should be abstracted and made MP-safe.
  */
 static int
 ccdlock(struct ccd_softc *cs)
 {
-	int error;
-
-	while ((cs->sc_flags & CCDF_LOCKED) != 0) {
-		cs->sc_flags |= CCDF_WANTED;
-		if ((error = tsleep(cs, PCATCH, "ccdlck", 0)) != 0)
-			return (error);
-	}
-	cs->sc_flags |= CCDF_LOCKED;
+	lockmgr(&cs->sc_lock, LK_EXCLUSIVE);
+	
 	return (0);
 }
 
@@ -1613,12 +1571,7 @@ ccdlock(struct ccd_softc *cs)
 static void
 ccdunlock(struct ccd_softc *cs)
 {
-
-	cs->sc_flags &= ~CCDF_LOCKED;
-	if ((cs->sc_flags & CCDF_WANTED) != 0) {
-		cs->sc_flags &= ~CCDF_WANTED;
-		wakeup(cs);
-	}
+	lockmgr(&cs->sc_lock, LK_RELEASE);
 }
 
 #ifdef DEBUG
@@ -1636,10 +1589,3 @@ printiinfo(struct ccdiinfo *ii)
 	}
 }
 #endif
-
-
-/* Local Variables: */
-/* c-argdecl-indent: 8 */
-/* c-continued-statement-offset: 8 */
-/* c-indent-level: 8 */
-/* End: */

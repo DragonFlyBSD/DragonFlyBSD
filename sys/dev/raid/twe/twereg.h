@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *      $FreeBSD: src/sys/dev/twe/twereg.h,v 1.11 2004/05/12 04:10:37 vkashyap Exp $
+ *      $FreeBSD: src/sys/dev/twe/twereg.h,v 1.12 2012/11/17 01:52:19 svnexp Exp $
  */
 
 /* 

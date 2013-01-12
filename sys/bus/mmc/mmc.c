@@ -1377,11 +1377,10 @@ static int
 mmc_calculate_clock(struct mmc_softc *sc)
 {
 	int max_dtr, max_hs_dtr, max_timing;
-	int nkid, i, f_min, f_max;
+	int nkid, i, f_max;
 	device_t *kids;
 	struct mmc_ivars *ivar;
 
-	f_min = mmcbr_get_f_min(sc->dev);
 	f_max = mmcbr_get_f_max(sc->dev);
 	max_dtr = max_hs_dtr = f_max;
 	if ((mmcbr_get_caps(sc->dev) & MMC_CAP_HSPEED))

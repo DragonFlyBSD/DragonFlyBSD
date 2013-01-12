@@ -280,8 +280,7 @@ epic_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq));
 
 	return(0);
 
@@ -542,7 +541,7 @@ epic_ifstart(struct ifnet *ifp)
 		BPF_MTAP(ifp, m0);
 	}
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 
 	return;
 	
@@ -651,7 +650,7 @@ epic_tx_done(epic_softc_t *sc)
 	}
 
 	if (sc->pending_txs < TX_RING_SIZE)
-		sc->sc_if.if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&sc->sc_if.if_snd);
 }
 
 /*
@@ -1116,7 +1115,7 @@ epic_init(epic_softc_t *sc)
 	else ifp->if_flags &= ~IFF_RUNNING;
 
 	/* ... and free */
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/* Start Rx process */
 	epic_start_activity(sc);

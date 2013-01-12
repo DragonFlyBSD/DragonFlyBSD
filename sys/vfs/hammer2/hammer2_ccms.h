@@ -182,8 +182,15 @@ struct ccms_lock {
  * 64 byte area might be represented as (0,63).  The offsets are UNSIGNED
  * entities.
  *
- * count - negative value indicates active exclusive lock, positive value
+ * High level CST locks must be obtained top-down.
+ *
+ * count - Negative value indicates active exclusive lock, positive value
  *	   indicates active shared lock.
+ *
+ * spin  - Structural spinlock, typically just one is held at a time.
+ *	   However, to complement the top-down nature of the higher level
+ *	   lock we allow the spin lock to be held recursively in a bottom-up
+ *	   fashion for race-to-root flags updates and lastdrop iterations.
  */
 struct ccms_cst {
 	struct spinlock spin;		/* thread spinlock */

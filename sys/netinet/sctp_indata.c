@@ -1061,9 +1061,8 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 {
 	struct mbuf *oper;
 	u_int16_t nxt_todel;
-	u_int32_t cum_ackp1, last_tsn, prev_tsn, post_tsn;
+	u_int32_t cum_ackp1, prev_tsn, post_tsn;
 	int tsize;
-	u_char last_flags;
 	struct sctp_tmit_chunk *at, *prev, *next;
 
 	prev = next = NULL;
@@ -1245,8 +1244,6 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			sctppcbinfo.ipi_gencnt_chunk++;
 			return;
 		} else {
-			last_flags = at->rec.data.rcv_flags;
-			last_tsn = at->rec.data.TSN_seq;
 			prev = at;
 			if (TAILQ_NEXT(at, sctp_next) == NULL) {
 				/*
@@ -1694,7 +1691,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	struct sctp_tmit_chunk *chk;
 	u_int32_t tsn, gap;
 	struct mbuf *dmbuf;
-	int indx, the_len;
+	int the_len;
 	u_int16_t strmno, strmseq;
 	struct mbuf *oper;
 
@@ -1809,7 +1806,6 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			} else {
 				sctp_pegs[SCTP_RWND_DROPS]++;
 			}
-			indx = *break_flag;
 			*break_flag = 1;
 			return (0);
 		}
@@ -3544,7 +3540,6 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 	unsigned int sack_length;
 	uint32_t send_s;
 	int some_on_streamwheel;
-	long j;
 	int strike_enabled = 0, cnt_of_cacc = 0;
 	int accum_moved = 0;
 	int marking_allowed = 1;
@@ -3598,7 +3593,6 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 	 * 12) Assure we will SACK if in shutdown_recv state.
 	 */
 
-	j = 0;
 	sack_length = ntohs(ch->ch.chunk_length);
 	if (sack_length < sizeof(struct sctp_sack_chunk)) {
 #ifdef SCTP_DEBUG
@@ -4729,9 +4723,7 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 #endif
 		for (i = 0; i < num_str; i++) {
 			u_int16_t st;
-			unsigned char *xx;
 			/* Convert */
-			xx = (unsigned char *)&stseq[i];
 			st = ntohs(stseq[i].stream);
 			stseq[i].stream = st;
 			st = ntohs(stseq[i].sequence);

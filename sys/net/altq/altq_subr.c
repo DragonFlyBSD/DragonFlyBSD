@@ -164,7 +164,7 @@ altq_enable_locked(struct ifaltq *ifq)
 	if (ifq_is_enabled(ifq))
 		return 0;
 
-	ifq_purge_locked(ifq);
+	ifq_purge_all_locked(ifq);
 	KKASSERT(ifq->ifq_len == 0);
 
 	ifq->altq_flags |= ALTQF_ENABLED;
@@ -190,7 +190,7 @@ altq_disable_locked(struct ifaltq *ifq)
 	if (!ifq_is_enabled(ifq))
 		return 0;
 
-	ifq_purge_locked(ifq);
+	ifq_purge_all_locked(ifq);
 	KKASSERT(ifq->ifq_len == 0);
 	ifq->altq_flags &= ~(ALTQF_ENABLED|ALTQF_CLASSIFY);
 	return 0;

@@ -150,7 +150,7 @@ static void	bnx_intr(struct bnx_softc *);
 static void	bnx_enable_intr(struct bnx_softc *);
 static void	bnx_disable_intr(struct bnx_softc *);
 static void	bnx_txeof(struct bnx_softc *, uint16_t);
-static void	bnx_rxeof(struct bnx_softc *, uint16_t);
+static void	bnx_rxeof(struct bnx_softc *, uint16_t, int);
 
 static void	bnx_start(struct ifnet *);
 static int	bnx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -909,7 +909,7 @@ bnx_init_rx_ring_std(struct bnx_softc *sc)
 		error = bnx_newbuf_std(sc, i, 1);
 		if (error)
 			return error;
-	};
+	}
 
 	sc->bnx_std = BGE_STD_RX_RING_CNT - 1;
 	bnx_writembx(sc, BGE_MBX_RX_STD_PROD_LO, sc->bnx_std);
@@ -946,7 +946,7 @@ bnx_init_rx_ring_jumbo(struct bnx_softc *sc)
 		error = bnx_newbuf_jumbo(sc, i, 1);
 		if (error)
 			return error;
-	};
+	}
 
 	sc->bnx_jumbo = BGE_JUMBO_RX_RING_CNT - 1;
 
@@ -1754,7 +1754,7 @@ bnx_attach(device_t dev)
 	uint32_t hwcfg = 0, misccfg;
 	int error = 0, rid, capmask;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
-	uint16_t product, vendor;
+	uint16_t product;
 	driver_intr_t *intr_func;
 	uintptr_t mii_priv = 0;
 	u_int intr_flags;
@@ -1770,7 +1770,6 @@ bnx_attach(device_t dev)
 	lwkt_serialize_init(&sc->bnx_jslot_serializer);
 
 	product = pci_get_device(dev);
-	vendor = pci_get_vendor(dev);
 
 #ifndef BURN_BRIDGES
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
@@ -2214,11 +2213,9 @@ bnx_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->bnx_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
-
-	sc->bnx_stat_cpuid = ifp->if_cpuid;
-	sc->bnx_intr_cpuid = ifp->if_cpuid;
+	sc->bnx_intr_cpuid = rman_get_cpuid(sc->bnx_irq);
+	sc->bnx_stat_cpuid = sc->bnx_intr_cpuid;
+	ifq_set_cpuid(&ifp->if_snd, sc->bnx_intr_cpuid);
 
 	return(0);
 fail:
@@ -2486,19 +2483,21 @@ bnx_reset(struct bnx_softc *sc)
  */
 
 static void
-bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod)
+bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 {
 	struct ifnet *ifp;
 	int stdcnt = 0, jumbocnt = 0;
 
 	ifp = &sc->arpcom.ac_if;
 
-	while (sc->bnx_rx_saved_considx != rx_prod) {
+	while (sc->bnx_rx_saved_considx != rx_prod && count != 0) {
 		struct bge_rx_bd	*cur_rx;
 		uint32_t		rxidx;
 		struct mbuf		*m = NULL;
 		uint16_t		vlan_tag = 0;
 		int			have_tag = 0;
+
+		--count;
 
 		cur_rx =
 	    &sc->bnx_ldata.bnx_rx_return_ring[sc->bnx_rx_saved_considx];
@@ -2588,7 +2587,6 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod)
 		if (have_tag) {
 			m->m_flags |= M_VLANTAG;
 			m->m_pkthdr.ether_vlantag = vlan_tag;
-			have_tag = vlan_tag = 0;
 		}
 		ifp->if_input(ifp, m);
 	}
@@ -2628,7 +2626,7 @@ bnx_txeof(struct bnx_softc *sc, uint16_t tx_cons)
 
 	if ((BGE_TX_RING_CNT - sc->bnx_txcnt) >=
 	    (BNX_NSEG_RSVD + BNX_NSEG_SPARE))
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	if (sc->bnx_txcnt == 0)
 		ifp->if_timer = 0;
@@ -2655,16 +2653,16 @@ bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			bnx_disable_intr(sc);
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			bnx_enable_intr(sc);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, sc->bnx_intr_cpuid);
 	}
 }
 
 static void
-bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle __unused)
+bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
 {
 	struct bnx_softc *sc = ifp->if_softc;
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
@@ -2691,11 +2689,9 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle __unused)
 	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
 	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 
-	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
 	if (sc->bnx_rx_saved_considx != rx_prod)
-		bnx_rxeof(sc, rx_prod);
+		bnx_rxeof(sc, rx_prod, cycle);
 
-	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 	if (sc->bnx_tx_saved_considx != tx_cons)
 		bnx_txeof(sc, tx_cons);
 
@@ -2770,7 +2766,7 @@ bnx_intr(struct bnx_softc *sc)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (sc->bnx_rx_saved_considx != rx_prod)
-			bnx_rxeof(sc, rx_prod);
+			bnx_rxeof(sc, rx_prod, -1);
 
 		if (sc->bnx_tx_saved_considx != tx_cons)
 			bnx_txeof(sc, tx_cons);
@@ -2986,7 +2982,7 @@ bnx_start(struct ifnet *ifp)
 	uint32_t prodidx;
 	int nsegs = 0;
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	prodidx = sc->bnx_tx_prodidx;
@@ -3000,7 +2996,7 @@ bnx_start(struct ifnet *ifp)
 		 */
 		if ((BGE_TX_RING_CNT - sc->bnx_txcnt) <
 		    (BNX_NSEG_RSVD + BNX_NSEG_SPARE)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -3014,7 +3010,7 @@ bnx_start(struct ifnet *ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (bnx_encap(sc, &m_head, &prodidx, &nsegs)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			ifp->if_oerrors++;
 			break;
 		}
@@ -3149,7 +3145,7 @@ bnx_init(void *xsc)
 	bnx_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset_bycpu(&sc->bnx_stat_timer, hz, bnx_tick, sc,
 	    sc->bnx_stat_cpuid);
@@ -3420,7 +3416,8 @@ bnx_stop(struct bnx_softc *sc)
 
 	sc->bnx_tx_saved_considx = BNX_TXCONS_UNSET;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 }
 

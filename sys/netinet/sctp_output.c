@@ -3241,7 +3241,6 @@ sctp_are_there_new_addresses(struct sctp_association *asoc,
 	struct ip *iph;
 	struct mbuf *mat;
 	uint16_t ptype, plen;
-	int err_at;
 	uint8_t fnd;
 	struct sctp_nets *net;
 
@@ -3296,7 +3295,6 @@ sctp_are_there_new_addresses(struct sctp_association *asoc,
 	}
 	/* Ok so far lets munge through the rest of the packet */
 	mat = in_initpkt;
-	err_at = 0;
 	sa_touse = NULL;
 	offset += sizeof(struct sctp_init_chunk);
 	phdr = sctp_get_next_param(mat, offset, &params, sizeof(params));
@@ -4940,8 +4938,6 @@ sctp_sendall (struct sctp_inpcb *inp, struct uio *uio, struct mbuf *m, struct sc
 		}
 	} else {
 		if ((m->m_flags & M_PKTHDR) == 0) {
-			struct mbuf *mat;
-			mat = m;
 			ca->sndlen = 0;
 			while(m) {
 				ca->sndlen += m->m_len;
@@ -5565,21 +5561,6 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 		no_fragmentflg = 1;
 		one_chunk = 0;
 
-		if ((net->ro.ro_rt) && (net->ro.ro_rt->rt_ifp)) {
-			/* if we have a route and an ifp
-			 * check to see if we have room to
-			 * send to this guy
-			 */
-			struct ifnet *ifp;
-			ifp = net->ro.ro_rt->rt_ifp;
-			if ((ifp->if_snd.ifq_len + 2) >= ifp->if_snd.ifq_maxlen) {
-				sctp_pegs[SCTP_IFP_QUEUE_FULL]++;
-#ifdef SCTP_LOG_MAXBURST
-				sctp_log_maxburst(net, ifp->if_snd.ifq_len, ifp->if_snd.ifq_maxlen, SCTP_MAX_IFP_APPLIED);
-  #endif
-				continue;
-			}
-		}
 		if (((struct sockaddr *)&net->ro._l_addr)->sa_family == AF_INET) {
 			mtu = net->mtu - (sizeof(struct ip) + sizeof(struct sctphdr));
 		} else {
@@ -6480,15 +6461,12 @@ sctp_send_asconf(struct sctp_tcb *stcb, struct sctp_nets *net)
 	 */
 	struct sctp_tmit_chunk *chk;
 	struct mbuf *m_asconf;
-	struct sctp_asconf_chunk *acp;
-
 
 	/* compose an ASCONF chunk, maximum length is PMTU */
 	m_asconf = sctp_compose_asconf(stcb);
 	if (m_asconf == NULL) {
 		return (-1);
 	}
-	acp = mtod(m_asconf, struct sctp_asconf_chunk *);
 	chk = (struct sctp_tmit_chunk *)SCTP_ZONE_GET(sctppcbinfo.ipi_zone_chunk);
 	if (chk == NULL) {
 		/* no memory */
@@ -7240,7 +7218,6 @@ int
 sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 	    struct mbuf *control, struct thread *p, int flags)
 {
-	struct inpcb *ip_inp;
 	struct sctp_inpcb *t_inp;
  	struct sctp_tcb *stcb;
 	struct sctp_nets *net;
@@ -7255,7 +7232,6 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 
 	crit_enter();
 	queue_only = 0;
-	ip_inp = (struct inpcb *)inp;
 	stcb = NULL;
 	asoc = NULL;
 	net = NULL;
@@ -10095,7 +10071,6 @@ sctp_sosend(struct socket *so,
 #endif
 )
 {
- 	unsigned int sndlen;
 	int error, use_rcvinfo;
 	int queue_only = 0, queue_only_for_init=0;
 	int un_sent = 0;
@@ -10122,11 +10097,6 @@ sctp_sosend(struct socket *so,
 	stcb = NULL;
 	asoc = NULL;
 	t_inp = inp = (struct sctp_inpcb *)so->so_pcb;
-	if (uio)
-		sndlen = uio->uio_resid;
-	else
-		sndlen = top->m_pkthdr.len;
-
 
 	crit_enter();
 

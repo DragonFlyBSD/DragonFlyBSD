@@ -712,7 +712,7 @@ kue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (status != USBD_NORMAL_COMPLETION) {
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
@@ -794,7 +794,7 @@ kue_start(struct ifnet *ifp)
 	sc = ifp->if_softc;
 	KUE_LOCK(sc);
 
-	if (ifp->if_flags & IFF_OACTIVE) {
+	if (ifq_is_oactive(&ifp->if_snd)) {
 		KUE_UNLOCK(sc);
 		return;
 	}
@@ -807,7 +807,7 @@ kue_start(struct ifnet *ifp)
 
 	if (kue_encap(sc, m_head, 0)) {
 		/* kue_encap() will free m_head, if we reach here */
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		KUE_UNLOCK(sc);
 		return;
 	}
@@ -818,7 +818,7 @@ kue_start(struct ifnet *ifp)
 	 */
 	BPF_MTAP(ifp, m_head);
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -913,7 +913,7 @@ kue_init(void *xsc)
 	}
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd)
 
 	KUE_UNLOCK(sc);
 
@@ -1080,7 +1080,8 @@ kue_stop(struct kue_softc *sc)
 		}
 	}
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	KUE_UNLOCK(sc);
 
 	return;

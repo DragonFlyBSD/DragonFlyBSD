@@ -950,7 +950,7 @@ sppp_output_serialized(struct ifnet *ifp, struct mbuf *m,
 		crit_exit();
 		return(rv);
 	}
-	if (! (ifp->if_flags & IFF_OACTIVE))
+	if (!ifq_is_oactive(&ifp->if_snd))
 		(*ifp->if_start) (ifp);
 
 	/*
@@ -1006,7 +1006,7 @@ sppp_attach(struct ifnet *ifp)
 #if 0
 	sp->pp_flags = PP_KEEPALIVE;
 #endif
- 	sp->pp_if.if_snd.ifq_maxlen = 32;
+ 	ifq_set_maxlen(&sp->pp_if.if_snd, 32);
  	sp->pp_fastq.ifq_maxlen = 32;
  	sp->pp_cpq.ifq_maxlen = 20;
 	sp->pp_loopcnt = 0;
@@ -1063,7 +1063,7 @@ sppp_flush(struct ifnet *ifp)
 {
 	struct sppp *sp = (struct sppp*) ifp;
 
-	ifq_purge(&sp->pp_if.if_snd);
+	ifq_purge_all(&sp->pp_if.if_snd);
 	IF_DRAIN(&sp->pp_fastq);
 	IF_DRAIN(&sp->pp_cpq);
 }
@@ -1380,11 +1380,10 @@ sppp_cisco_send(struct sppp *sp, int type, long par1, long par2)
 
 	if (IF_QFULL (&sp->pp_cpq)) {
 		IF_DROP (&sp->pp_fastq);
-		IF_DROP (&ifp->if_snd);
 		m_freem (m);
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
-	if (! (ifp->if_flags & IFF_OACTIVE))
+	if (!ifq_is_oactive(&ifp->if_snd))
 		(*ifp->if_start) (ifp);
 	ifp->if_obytes += m->m_pkthdr.len + 3;
 }
@@ -1436,12 +1435,11 @@ sppp_cp_send(struct sppp *sp, u_short proto, u_char type,
 	}
 	if (IF_QFULL (&sp->pp_cpq)) {
 		IF_DROP (&sp->pp_fastq);
-		IF_DROP (&ifp->if_snd);
 		m_freem (m);
 		++ifp->if_oerrors;
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
-	if (! (ifp->if_flags & IFF_OACTIVE))
+	if (!ifq_is_oactive(&ifp->if_snd))
 		(*ifp->if_start) (ifp);
 	ifp->if_obytes += m->m_pkthdr.len + 3;
 }
@@ -4775,12 +4773,11 @@ sppp_auth_send(const struct cp *cp, struct sppp *sp,
 	}
 	if (IF_QFULL (&sp->pp_cpq)) {
 		IF_DROP (&sp->pp_fastq);
-		IF_DROP (&ifp->if_snd);
 		m_freem (m);
 		++ifp->if_oerrors;
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
-	if (! (ifp->if_flags & IFF_OACTIVE))
+	if (!ifq_is_oactive(&ifp->if_snd))
 		(*ifp->if_start) (ifp);
 	ifp->if_obytes += m->m_pkthdr.len + 3;
 }

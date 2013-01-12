@@ -74,6 +74,7 @@ MAN+=	\
 	sem_init.3 \
 	sem_open.3 \
 	sem_post.3 \
+	sem_timedwait.3 \
 	sem_wait.3 \
 	sigwait.3
 

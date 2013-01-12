@@ -345,7 +345,6 @@ sgdone(struct cam_periph *periph, union ccb *done_ccb)
 	case SG_CCB_RDWR_IO:
 	{
 		struct sg_rdwr *rdwr;
-		int state;
 
 		devstat_end_transaction(
 			&softc->device_stats,
@@ -357,7 +356,6 @@ sgdone(struct cam_periph *periph, union ccb *done_ccb)
 			     DEVSTAT_WRITE : DEVSTAT_READ));
 
 		rdwr = done_ccb->ccb_h.ccb_rdwr;
-		state = rdwr->state;
 		rdwr->state = SG_RDWR_DONE;
 		wakeup(rdwr);
 		break;

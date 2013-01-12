@@ -69,6 +69,7 @@ struct netmsg_port_registration {
 struct netmsg_rollup {
 	TAILQ_ENTRY(netmsg_rollup) ru_entry;
 	netisr_ru_t	ru_func;
+	int		ru_prio;
 };
 
 struct netmsg_barrier {
@@ -279,6 +280,8 @@ netmsg_service_loop(void *arg)
 	netmsg_base_t msg;
 	thread_t td = curthread;
 	int limit;
+
+	td->td_type = TD_TYPE_NETISR;
 
 	while ((msg = lwkt_waitport(&td->td_msgport, 0))) {
 		/*
@@ -501,13 +504,24 @@ netisr_register_hashcheck(int num, netisr_hashck_t hashck)
 }
 
 void
-netisr_register_rollup(netisr_ru_t ru_func)
+netisr_register_rollup(netisr_ru_t ru_func, int prio)
 {
-	struct netmsg_rollup *ru;
+	struct netmsg_rollup *new_ru, *ru;
 
-	ru = kmalloc(sizeof(*ru), M_TEMP, M_WAITOK|M_ZERO);
-	ru->ru_func = ru_func;
-	TAILQ_INSERT_TAIL(&netrulist, ru, ru_entry);
+	new_ru = kmalloc(sizeof(*new_ru), M_TEMP, M_WAITOK|M_ZERO);
+	new_ru->ru_func = ru_func;
+	new_ru->ru_prio = prio;
+
+	/*
+	 * Higher priority "rollup" appears first
+	 */
+	TAILQ_FOREACH(ru, &netrulist, ru_entry) {
+		if (ru->ru_prio < new_ru->ru_prio) {
+			TAILQ_INSERT_BEFORE(ru, new_ru, ru_entry);
+			return;
+		}
+	}
+	TAILQ_INSERT_TAIL(&netrulist, new_ru, ru_entry);
 }
 
 /*

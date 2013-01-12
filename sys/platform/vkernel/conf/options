@@ -2,3 +2,5 @@
 #
 I586_CPU                opt_global.h
 I686_CPU                opt_global.h
+
+COMPAT_DF12		opt_compatdf12.h

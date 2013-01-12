@@ -142,12 +142,18 @@ swi_softclock_setup(void *arg)
 {
 	int cpu;
 	int i;
+	int target;
 
 	/*
 	 * Figure out how large a callwheel we need.  It must be a power of 2.
+	 *
+	 * ncallout is primarily based on available memory, don't explode
+	 * the allocations if the system has a lot of cpus.
 	 */
+	target = ncallout / ncpus + 16;
+
 	callwheelsize = 1;
-	while (callwheelsize < ncallout)
+	while (callwheelsize < target)
 		callwheelsize <<= 1;
 	callwheelmask = callwheelsize - 1;
 

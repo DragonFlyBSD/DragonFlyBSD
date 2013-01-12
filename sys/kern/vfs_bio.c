@@ -102,7 +102,8 @@ static void vfs_dirty_one_page(struct buf *bp, int pageno, vm_page_t m);
 #endif
 static void vfs_vmio_release(struct buf *bp);
 static int flushbufqueues(struct buf *marker, bufq_type_t q);
-static vm_page_t bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit);
+static vm_page_t bio_page_alloc(struct buf *bp, vm_object_t obj,
+				vm_pindex_t pg, int deficit);
 
 static void bd_signal(long totalspace);
 static void buf_daemon(void);
@@ -3389,7 +3390,7 @@ allocbuf(struct buf *bp, int size)
 					 * with paging I/O, no matter which
 					 * process we are.
 					 */
-					m = bio_page_alloc(obj, pi, desiredpages - bp->b_xio.xio_npages);
+					m = bio_page_alloc(bp, obj, pi, desiredpages - bp->b_xio.xio_npages);
 					if (m) {
 						vm_page_wire(m);
 						vm_page_flag_clear(m, PG_ZERO);
@@ -4483,7 +4484,7 @@ vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 		 * process we are.
 		 */
 		vm_object_hold(&kernel_object);
-		p = bio_page_alloc(&kernel_object, pg >> PAGE_SHIFT,
+		p = bio_page_alloc(bp, &kernel_object, pg >> PAGE_SHIFT,
 				   (vm_pindex_t)((to - pg) >> PAGE_SHIFT));
 		vm_object_drop(&kernel_object);
 		if (p) {
@@ -4511,10 +4512,16 @@ vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
  *	 function will use the system reserve with the hope that the page
  *	 allocations can be returned to PQ_CACHE/PQ_FREE when the caller
  *	 is done with the buffer.
+ *
+ * NOTE! However, TMPFS is a special case because flushing a dirty buffer
+ *	 to TMPFS doesn't clean the page.  For TMPFS, only the pagedaemon
+ *	 is capable of retiring pages (to swap).  For TMPFS we don't dig
+ *	 into the system reserve because doing so could stall out pretty
+ *	 much every process running on the system.
  */
 static
 vm_page_t
-bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
+bio_page_alloc(struct buf *bp, vm_object_t obj, vm_pindex_t pg, int deficit)
 {
 	int vmflags = VM_ALLOC_NORMAL | VM_ALLOC_NULL_OK;
 	vm_page_t p;
@@ -4541,6 +4548,8 @@ bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
 	 */
 	if (curthread->td_flags & TDF_SYSTHREAD)
 		vmflags |= VM_ALLOC_SYSTEM | VM_ALLOC_INTERRUPT;
+	else if (bp->b_vp && bp->b_vp->v_tag == VT_TMPFS)
+		vmflags |= 0;
 	else
 		vmflags |= VM_ALLOC_SYSTEM;
 

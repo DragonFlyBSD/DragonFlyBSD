@@ -163,9 +163,8 @@ nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
 {
 	struct nwmount *nmp = VFSTONWFS(vp->v_mount);
 	struct nwnode *np = VTONW(vp);
-	struct thread *td;
 	struct vattr vattr;
-	int error, biosize;
+	int error;
 
 	if (vp->v_type != VREG && vp->v_type != VDIR) {
 		kprintf("%s: vn types other than VREG or VDIR are unsupported !\n",__func__);
@@ -173,12 +172,10 @@ nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
 	}
 	if (uiop->uio_resid == 0) return 0;
 	if (uiop->uio_offset < 0) return EINVAL;
-	td = uiop->uio_td;
 	if (vp->v_type == VDIR) {
 		error = nwfs_readvdir(vp, uiop, cred);
 		return error;
 	}
-	biosize = NWFSTOCONN(nmp)->buffer_size;
 	if (np->n_flag & NMODIFIED) {
 		nwfs_attr_cacheremove(vp);
 		error = VOP_GETATTR(vp, &vattr);

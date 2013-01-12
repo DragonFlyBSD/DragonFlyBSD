@@ -927,15 +927,15 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 	hammer2_chain_t *chain;
 	hammer2_off_t pbase;
 
-	*errorp = 0;
-	hmp = ip->hmp;
-
 	/*
 	 * Locate the chain associated with lbase, return a locked chain.
 	 * However, do not instantiate any data reference (which utilizes a
 	 * device buffer) because we will be using direct IO via the
 	 * logical buffer cache buffer.
 	 */
+	hmp = ip->hmp;
+retry:
+	*errorp = 0;
 	parent = &ip->chain;
 	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
@@ -953,7 +953,13 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 		chain = hammer2_chain_create(hmp, parent, NULL,
 					     lbase, HAMMER2_PBUFRADIX,
 					     HAMMER2_BREF_TYPE_DATA,
-					     lblksize);
+					     lblksize, errorp);
+		if (chain == NULL) {
+			KKASSERT(*errorp == EAGAIN); /* XXX */
+			hammer2_chain_unlock(hmp, parent);
+			goto retry;
+		}
+
 		pbase = chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX;
 		ip->delta_dcount += lblksize;
 	} else {
@@ -1273,6 +1279,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 * Resize the chain element at the old EOF.
 	 */
 	if (((int)osize & HAMMER2_PBUFMASK)) {
+retry:
 		parent = &ip->chain;
 		error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 		KKASSERT(error == 0);
@@ -1286,7 +1293,12 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			chain = hammer2_chain_create(hmp, parent, NULL,
 						     obase, nblksize,
 						     HAMMER2_BREF_TYPE_DATA,
-						     nblksize);
+						     nblksize, &error);
+			if (chain == NULL) {
+				KKASSERT(error == EAGAIN);
+				hammer2_chain_unlock(hmp, parent);
+				goto retry;
+			}
 			ip->delta_dcount += nblksize;
 		} else {
 			KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA);
@@ -1385,6 +1397,10 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 
 	/*
 	 * Acquire the related vnode
+	 *
+	 * NOTE: For error processing, only ENOENT resolves the namecache
+	 *	 entry to NULL, otherwise we just return the error and
+	 *	 leave the namecache unresolved.
 	 */
 	if (chain) {
 		vp = hammer2_igetv(chain->u.ip, &error);
@@ -1392,13 +1408,18 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
 			vrele(vp);
+		} else if (error == ENOENT) {
+			cache_setvp(ap->a_nch, NULL);
 		}
 		hammer2_chain_unlock(hmp, chain);
 	} else {
 		error = ENOENT;
-failed:
 		cache_setvp(ap->a_nch, NULL);
 	}
+failed:
+	KASSERT(error || ap->a_nch->ncp->nc_vp != NULL,
+		("resolve error %d/%p chain %p ap %p\n",
+		 error, ap->a_nch->ncp->nc_vp, chain, ap));
 	if (ip)
 		hammer2_inode_drop(ip);
 	return error;
@@ -1663,9 +1684,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 *
 	 * We must reconnect the vp.
 	 */
-	hammer2_chain_lock(hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_inode_connect(dip, ip, name, name_len);
-	hammer2_chain_unlock(hmp, &ip->chain);
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
@@ -1824,8 +1843,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	error = hammer2_unlink_file(dip, name, name_len, 0, NULL);
 
 	if (error == 0) {
-		cache_setunresolved(ap->a_nch);
-		cache_setvp(ap->a_nch, NULL);
+		cache_unlink(ap->a_nch);
 	}
 	return (error);
 }
@@ -1856,8 +1874,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	error = hammer2_unlink_file(dip, name, name_len, 1, NULL);
 
 	if (error == 0) {
-		cache_setunresolved(ap->a_nch);
-		cache_setvp(ap->a_nch, NULL);
+		cache_unlink(ap->a_nch);
 	}
 	return (error);
 }
@@ -1924,7 +1941,6 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	if (error && error != ENOENT)
 		goto done;
 	cache_setunresolved(ap->a_tnch);
-	cache_setvp(ap->a_tnch, NULL);
 
 	/*
 	 * Disconnect (fdip, fname) from the source directory.  This will
@@ -1946,7 +1962,18 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		if (error)
 			goto done;
 	}
-	error = hammer2_unlink_file(fdip, fname, fname_len, -1, ip);
+
+	/*
+	 * NOTE! Because we are retaining (ip) the unlink can fail with
+	 *	 an EAGAIN.
+	 */
+	for (;;) {
+		error = hammer2_unlink_file(fdip, fname, fname_len, -1, ip);
+		if (error != EAGAIN)
+			break;
+		kprintf("hammer2_vop_nrename: unlink race %s\n", fname);
+		tsleep(fdip, 0, "h2renr", 1);
+	}
 	if (error)
 		goto done;
 
@@ -1957,10 +1984,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *	    deadlocks we want to unlock before issuing a cache_*()
 	 *	    op (that might have to lock a vnode).
 	 */
-	hammer2_chain_lock(hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_inode_connect(tdip, ip, tname, tname_len);
-	hammer2_chain_unlock(hmp, &ip->chain);
-
 	if (error == 0) {
 		cache_rename(ap->a_fnch, ap->a_tnch);
 	}

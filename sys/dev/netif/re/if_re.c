@@ -253,6 +253,10 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
 	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
 
+	{ RE_HWREV_8111F,	RE_MACVER_UNKN,		RE_MTU_9K,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
+
 	{ RE_HWREV_8100E,	RE_MACVER_UNKN,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_FASTE },
 
@@ -782,7 +786,6 @@ re_diag(struct re_softc *sc)
 	struct ether_header *eh;
 	struct re_desc *cur_rx;
 	uint16_t status;
-	uint32_t rxstat;
 	int total_len, i, error = 0, phyaddr;
 	uint8_t dst[ETHER_ADDR_LEN] = { 0x00, 'h', 'e', 'l', 'l', 'o' };
 	uint8_t src[ETHER_ADDR_LEN] = { 0x00, 'w', 'o', 'r', 'l', 'd' };
@@ -879,7 +882,6 @@ re_diag(struct re_softc *sc)
 
 	cur_rx = &sc->re_ldata.re_rx_list[0];
 	total_len = RE_RXBYTES(cur_rx);
-	rxstat = le32toh(cur_rx->re_cmdstat);
 
 	if (total_len != ETHER_MIN_LEN) {
 		if_printf(ifp, "diagnostic failed, received short packet\n");
@@ -1047,6 +1049,7 @@ re_probe(device_t dev)
 					sc->re_macver = RE_MACVER_2F;
 				break;
 			case RE_HWREV_8168F:
+			case RE_HWREV_8111F:
 				if (macmode == 0x000000)
 					sc->re_macver = RE_MACVER_30;
 				else if (macmode == 0x100000)
@@ -1631,8 +1634,7 @@ re_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->re_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->re_irq));
 
 fail:
 	if (error)
@@ -2099,7 +2101,7 @@ re_txeof(struct re_softc *sc)
 
 	/* There is enough free TX descs */
 	if (sc->re_ldata.re_tx_free > RE_TXDESC_SPARE)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	/*
 	 * Some chips will ignore a second TX request issued while an
@@ -2204,11 +2206,11 @@ re_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			re_setup_intr(sc, 0, RE_IMTYPE_NONE);
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			re_setup_intr(sc, 1, sc->re_imtype);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->re_irq));
 	}
 }
 #endif /* IFPOLL_ENABLE */
@@ -2448,7 +2450,7 @@ re_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	idx = sc->re_ldata.re_tx_prodidx;
@@ -2463,7 +2465,7 @@ re_start(struct ifnet *ifp)
 					continue;
 				}
 			}
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -2482,7 +2484,7 @@ re_start(struct ifnet *ifp)
 					continue;
 				}
 			}
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -2498,17 +2500,16 @@ re_start(struct ifnet *ifp)
 
 	/*
 	 * If sc->re_ldata.re_tx_mbuf[idx] is not NULL it is possible
-	 * for IFF_OACTIVE to not be properly set when we also do not
+	 * for OACTIVE to not be properly set when we also do not
 	 * have sufficient free tx descriptors, leaving packet in
-	 * ifp->if_send.  This can cause if_start_dispatch() to loop
-	 * infinitely so make sure IFF_OACTIVE is set properly.
+	 * ifp->if_snd.  This can cause if_start_dispatch() to loop
+	 * infinitely so make sure OACTIVE is set properly.
 	 */
 	if (sc->re_ldata.re_tx_free <= RE_TXDESC_SPARE) {
-		if ((ifp->if_flags & IFF_OACTIVE) == 0) {
-			device_printf(sc->re_dev,
-				      "Debug: IFF_OACTIVE was not set when"
-				      " re_tx_free was below minimum!\n");
-			ifp->if_flags |= IFF_OACTIVE;
+		if (!ifq_is_oactive(&ifp->if_snd)) {
+			if_printf(ifp, "Debug: OACTIVE was not set when "
+			    "re_tx_free was below minimum!\n");
+			ifq_set_oactive(&ifp->if_snd);
 		}
 	}
 	if (!need_trans)
@@ -2705,7 +2706,7 @@ re_init(void *xsc)
 	CSR_WRITE_1(sc, RE_CFG1, RE_CFG1_DRVLOAD|RE_CFG1_FULLDUPLEX);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->re_timer, hz, re_tick, sc);
 }
@@ -2852,7 +2853,8 @@ re_stop(struct re_softc *sc)
 	ifp->if_timer = 0;
 	callout_stop(&sc->re_timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->re_flags &= ~(RE_F_TIMER_INTR | RE_F_DROP_RXFRAG | RE_F_LINKED);
 
 	CSR_WRITE_1(sc, RE_COMMAND, 0x00);

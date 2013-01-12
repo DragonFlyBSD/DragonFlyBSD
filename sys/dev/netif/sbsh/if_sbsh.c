@@ -275,8 +275,7 @@ sbsh_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
 
 	return(0);
 
@@ -343,7 +342,7 @@ sbsh_init(void *xsc)
 		sc->state = ACTIVATION;
 
 		ifp->if_flags |= IFF_RUNNING;
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	}
 }
 
@@ -624,9 +623,9 @@ start_xmit_frames(struct sbsh_softc *sc)
 	}
 
 	if (sc->regs->CTDR != sc->regs->LTDR)
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 	else
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 }
 
 

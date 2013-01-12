@@ -295,7 +295,7 @@ static int	em_create_rx_ring(struct adapter *);
 static void	em_destroy_tx_ring(struct adapter *, int);
 static void	em_destroy_rx_ring(struct adapter *, int);
 static int	em_newbuf(struct adapter *, int, int);
-static int	em_encap(struct adapter *, struct mbuf **);
+static int	em_encap(struct adapter *, struct mbuf **, int *, int *);
 static void	em_rxcsum(struct adapter *, struct e1000_rx_desc *,
 		    struct mbuf *);
 static int	em_txcsum(struct adapter *, struct mbuf *,
@@ -822,6 +822,7 @@ em_attach(device_t dev)
 	}
 	if (adapter->flags & EM_FLAG_TSO)
 		adapter->spare_tx_desc = EM_TX_SPARE_TSO;
+	adapter->tx_wreg_nsegs = 8;
 
 	/*
 	 * Keep following relationship between spare_tx_desc, oact_tx_desc
@@ -870,8 +871,7 @@ em_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(adapter->intr_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(adapter->intr_res));
 	return (0);
 fail:
 	em_detach(dev);
@@ -991,10 +991,11 @@ em_start(struct ifnet *ifp)
 {
 	struct adapter *adapter = ifp->if_softc;
 	struct mbuf *m_head;
+	int idx = -1, nsegs = 0;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	if (!adapter->link_active) {
@@ -1007,7 +1008,7 @@ em_start(struct ifnet *ifp)
 		if (EM_IS_OACTIVE(adapter)) {
 			em_tx_collect(adapter);
 			if (EM_IS_OACTIVE(adapter)) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				adapter->no_tx_desc_avail1++;
 				break;
 			}
@@ -1018,10 +1019,16 @@ em_start(struct ifnet *ifp)
 		if (m_head == NULL)
 			break;
 
-		if (em_encap(adapter, &m_head)) {
+		if (em_encap(adapter, &m_head, &nsegs, &idx)) {
 			ifp->if_oerrors++;
 			em_tx_collect(adapter);
 			continue;
+		}
+
+		if (nsegs >= adapter->tx_wreg_nsegs && idx >= 0) {
+			E1000_WRITE_REG(&adapter->hw, E1000_TDT(0), idx);
+			nsegs = 0;
+			idx = -1;
 		}
 
 		/* Send a copy of the frame to the BPF listener */
@@ -1030,6 +1037,8 @@ em_start(struct ifnet *ifp)
 		/* Set timeout in case hardware has problems transmitting. */
 		ifp->if_timer = EM_TX_TIMEOUT;
 	}
+	if (idx >= 0)
+		E1000_WRITE_REG(&adapter->hw, E1000_TDT(0), idx);
 }
 
 static int
@@ -1202,7 +1211,7 @@ em_watchdog(struct ifnet *ifp)
 		 * the TX engine should have been idled for some time.
 		 * We don't need to call if_devstart() here.
 		 */
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		ifp->if_timer = 0;
 		return;
 	}
@@ -1364,7 +1373,7 @@ em_init(void *xsc)
 	em_set_promisc(adapter);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&adapter->timer, hz, em_timer, adapter);
 	e1000_clear_hw_cntrs_base_generic(&adapter->hw);
@@ -1454,11 +1463,11 @@ em_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			em_disable_intr(adapter);
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			em_enable_intr(adapter);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(adapter->intr_res));
 	}
 }
 
@@ -1646,7 +1655,8 @@ em_media_change(struct ifnet *ifp)
 }
 
 static int
-em_encap(struct adapter *adapter, struct mbuf **m_headp)
+em_encap(struct adapter *adapter, struct mbuf **m_headp,
+    int *segs_used, int *idx)
 {
 	bus_dma_segment_t segs[EM_MAX_SCATTER];
 	bus_dmamap_t map;
@@ -1702,15 +1712,18 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 
 	m_head = *m_headp;
 	adapter->tx_nsegs += nsegs;
+	*segs_used += nsegs;
 
 	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
 		/* TSO will consume one TX desc */
-		adapter->tx_nsegs += em_tso_setup(adapter, m_head,
-		    &txd_upper, &txd_lower);
+		i = em_tso_setup(adapter, m_head, &txd_upper, &txd_lower);
+		adapter->tx_nsegs += i;
+		*segs_used += i;
 	} else if (m_head->m_pkthdr.csum_flags & EM_CSUM_FEATURES) {
 		/* TX csum offloading will consume one TX desc */
-		adapter->tx_nsegs += em_txcsum(adapter, m_head,
-					       &txd_upper, &txd_lower);
+		i = em_txcsum(adapter, m_head, &txd_upper, &txd_lower);
+		adapter->tx_nsegs += i;
+		*segs_used += i;
 	}
 	i = adapter->next_avail_tx_desc;
 
@@ -1807,19 +1820,23 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 	 */
 	ctxd->lower.data |= htole32(E1000_TXD_CMD_EOP | cmd);
 
-	/*
-	 * Advance the Transmit Descriptor Tail (TDT), this tells the E1000
-	 * that this frame is available to transmit.
-	 */
-	if (adapter->hw.mac.type == e1000_82547 &&
-	    adapter->link_duplex == HALF_DUPLEX) {
-		em_82547_move_tail_serialized(adapter);
-	} else {
-		E1000_WRITE_REG(&adapter->hw, E1000_TDT(0), i);
-		if (adapter->hw.mac.type == e1000_82547) {
+	if (adapter->hw.mac.type == e1000_82547) {
+		/*
+		 * Advance the Transmit Descriptor Tail (TDT), this tells the
+		 * E1000 that this frame is available to transmit.
+		 */
+		if (adapter->link_duplex == HALF_DUPLEX) {
+			em_82547_move_tail_serialized(adapter);
+		} else {
+			E1000_WRITE_REG(&adapter->hw, E1000_TDT(0), i);
 			em_82547_update_fifo_head(adapter,
 			    m_head->m_pkthdr.len);
 		}
+	} else {
+		/*
+		 * Defer TDT updating, until enough descriptors are setup
+		 */
+		*idx = i;
 	}
 	return (0);
 }
@@ -2155,7 +2172,8 @@ em_stop(struct adapter *adapter)
 	callout_stop(&adapter->timer);
 	callout_stop(&adapter->tx_fifo_timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	e1000_reset_hw(&adapter->hw);
@@ -2930,7 +2948,7 @@ em_txeof(struct adapter *adapter)
 	}
 
 	if (!EM_IS_OACTIVE(adapter)) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 		/* All clean, turn off the timer */
 		if (adapter->num_tx_desc_avail == adapter->num_tx_desc)
@@ -2990,7 +3008,7 @@ em_tx_collect(struct adapter *adapter)
 	adapter->num_tx_desc_avail = num_avail;
 
 	if (!EM_IS_OACTIVE(adapter)) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 		/* All clean, turn off the timer */
 		if (adapter->num_tx_desc_avail == adapter->num_tx_desc)
@@ -4042,6 +4060,11 @@ em_add_sysctl(struct adapter *adapter)
 		    CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
 		    em_sysctl_int_tx_nsegs, "I",
 		    "# segments per TX interrupt");
+		SYSCTL_ADD_INT(&adapter->sysctl_ctx,
+		    SYSCTL_CHILDREN(adapter->sysctl_tree),
+	            OID_AUTO, "wreg_tx_nsegs", CTLFLAG_RW,
+		    &adapter->tx_wreg_nsegs, 0,
+		    "# segments before write to hardware register");
 	}
 }
 

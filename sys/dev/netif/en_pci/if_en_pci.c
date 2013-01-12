@@ -335,7 +335,7 @@ eni_get_macaddr(struct en_pci_softc *scp)
 {
   struct en_softc * sc = (struct en_softc *)scp;
   pcici_t id = scp->en_confid;
-  int i, j, address, status;
+  int i, j, address;
   u_int32_t data, t_data;
   u_int8_t tmp;
   
@@ -371,7 +371,6 @@ eni_get_macaddr(struct en_pci_softc *scp)
     data |= EN_PROM_CLK ;
     pci_conf_write(id, EN_TONGA, data);
     data = pci_conf_read(id, EN_TONGA);
-    status = data & EN_PROM_DATA;
     data &= ~EN_PROM_CLK ;
     pci_conf_write(id, EN_TONGA, data);
     data |= EN_PROM_DATA ;
@@ -398,7 +397,6 @@ eni_get_macaddr(struct en_pci_softc *scp)
     data |= EN_PROM_CLK ;
     pci_conf_write(id, EN_TONGA, data);
     data = pci_conf_read(id, EN_TONGA);
-    status = data & EN_PROM_DATA;
     data &= ~EN_PROM_CLK ;
     pci_conf_write(id, EN_TONGA, data);
     data |= EN_PROM_DATA ;

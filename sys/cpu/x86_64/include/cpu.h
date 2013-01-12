@@ -35,7 +35,6 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.25 2007/03/01 01:46:52 corecode Exp $
  */
 
 #ifndef _CPU_CPU_H_
@@ -85,8 +84,6 @@
     atomic_set_int(&mycpu->gd_reqflags, RQF_IPIQ)
 #define	signotify()		\
     atomic_set_int(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
-#define	sigupcall()		\
-    atomic_set_int(&mycpu->gd_reqflags, RQF_AST_UPCALL)
 #define	clear_user_resched()	\
     atomic_clear_int(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
 #define	clear_lwkt_resched()	\

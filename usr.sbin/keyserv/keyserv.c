@@ -28,7 +28,6 @@
  *
  * @(#)keyserv.c	1.15	94/04/25 SMI
  * $FreeBSD: src/usr.sbin/keyserv/keyserv.c,v 1.12 2007/11/07 10:53:35 kevlo Exp $
- * $DragonFly: src/usr.sbin/keyserv/keyserv.c,v 1.6 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -397,7 +396,7 @@ key_net_put_2_svc_prog(uid_t uid, key_netstarg *arg)
 			arg->st_netname, (int)sizeof (arg->st_pub_key),
 			arg->st_pub_key, (int)sizeof (arg->st_priv_key),
 			arg->st_priv_key);
-	};
+	}
 
 	status = pk_netput(uid, arg);
 

@@ -94,6 +94,7 @@
 #include <net/route.h>
 #include <net/netisr.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include "if_stf.h"
 
 #include <netinet/in.h>
@@ -194,7 +195,7 @@ stfmodevent(module_t mod, int type, void *data)
 		/* turn off ingress filter */
 		sc->sc_if.if_flags  |= IFF_LINK2;
 #endif
-		sc->sc_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
+		ifq_set_maxlen(&sc->sc_if.if_snd, IFQ_MAXLEN);
 		if_attach(&sc->sc_if, NULL);
 		bpfattach(&sc->sc_if, DLT_NULL, sizeof(u_int));
 		break;

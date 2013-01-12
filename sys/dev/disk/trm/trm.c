@@ -3546,15 +3546,10 @@ static int
 trm_attach(device_t dev)
 {
 	struct	cam_devq *device_Q;
-	u_long	device_id;
 	PACB	pACB = NULL;
 	int	rid = 0;
 	int unit = device_get_unit(dev);
 	
-	device_id = pci_get_devid(dev);
-	/*
-	 * These cards do not allow memory mapped accesses
-	 */
 	if ((pACB = trm_init((u_int16_t) unit,
 	    dev)) == NULL) {
 		kprintf("trm%d: trm_init error!\n",unit);

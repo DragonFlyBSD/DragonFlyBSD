@@ -145,7 +145,7 @@ static int	jme_init_rx_ring(struct jme_rxdata *);
 static void	jme_init_tx_ring(struct jme_txdata *);
 static void	jme_init_ssb(struct jme_softc *);
 static int	jme_newbuf(struct jme_rxdata *, struct jme_rxdesc *, int);
-static int	jme_encap(struct jme_txdata *, struct mbuf **);
+static int	jme_encap(struct jme_txdata *, struct mbuf **, int *);
 static void	jme_rxpkt(struct jme_rxdata *);
 static int	jme_rxring_dma_alloc(struct jme_rxdata *);
 static int	jme_rxbuf_dma_alloc(struct jme_rxdata *);
@@ -404,7 +404,8 @@ jme_miibus_statchg(device_t dev)
 	CSR_WRITE_4(sc, JME_INTR_MASK_CLR, JME_INTRS);
 
 	/* Stop driver */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 	callout_stop(&sc->jme_tick_ch);
 
@@ -479,7 +480,7 @@ jme_miibus_statchg(device_t dev)
 	}
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	callout_reset_bycpu(&sc->jme_tick_ch, hz, jme_tick, sc,
 	    JME_TICK_CPUID);
 
@@ -972,6 +973,8 @@ jme_attach(device_t dev)
 	if (coal_max < sc->jme_rx_coal_pkt)
 		sc->jme_rx_coal_pkt = coal_max;
 
+	sc->jme_cdata.jme_tx_data.jme_tx_wreg = 16;
+
 	/*
 	 * Create sysctl tree
 	 */
@@ -1065,6 +1068,7 @@ jme_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
+	ifq_set_cpuid(&ifp->if_snd, sc->jme_tx_cpuid);
 
 	return 0;
 fail:
@@ -1159,6 +1163,11 @@ jme_sysctl_node(struct jme_softc *sc)
 		       "rx_ring_count", CTLFLAG_RD,
 		       &sc->jme_cdata.jme_rx_ring_cnt,
 		       0, "RX ring count");
+	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+		       "tx_wreg", CTLFLAG_RW,
+		       &sc->jme_cdata.jme_tx_data.jme_tx_wreg, 0,
+		       "# of segments before writing to hardware register");
 
 #ifdef JME_RSS_DEBUG
 	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
@@ -1650,7 +1659,7 @@ jme_tso_pullup(struct mbuf **mp)
 }
 
 static int
-jme_encap(struct jme_txdata *tdata, struct mbuf **m_head)
+jme_encap(struct jme_txdata *tdata, struct mbuf **m_head, int *segs_used)
 {
 	struct jme_txdesc *txd;
 	struct jme_desc *desc;
@@ -1689,6 +1698,7 @@ jme_encap(struct jme_txdata *tdata, struct mbuf **m_head)
 			txsegs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error)
 		goto fail;
+	*segs_used += nsegs;
 
 	bus_dmamap_sync(tdata->jme_tx_tag, txd->tx_dmamap,
 			BUS_DMASYNC_PREWRITE);
@@ -1729,6 +1739,8 @@ jme_encap(struct jme_txdata *tdata, struct mbuf **m_head)
 		flag64 = JME_TD_64BIT;
 		desc->buflen = htole32(mss);
 		desc->addr_lo = 0;
+
+		*segs_used += 1;
 
 		/* No effective TX desc is consumed */
 		i = 0;
@@ -1799,7 +1811,7 @@ jme_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	if (tdata->jme_tx_cnt >= JME_TX_DESC_HIWAT(tdata))
@@ -1812,7 +1824,7 @@ jme_start(struct ifnet *ifp)
 		 */
 		if (tdata->jme_tx_cnt + JME_TXD_SPARE >
 		    tdata->jme_tx_desc_cnt - JME_TXD_RSVD) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1825,19 +1837,27 @@ jme_start(struct ifnet *ifp)
 		 * don't have room, set the OACTIVE flag and wait
 		 * for the NIC to drain the ring.
 		 */
-		if (jme_encap(tdata, &m_head)) {
+		if (jme_encap(tdata, &m_head, &enq)) {
 			KKASSERT(m_head == NULL);
 			ifp->if_oerrors++;
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
-		enq++;
+
+		if (enq >= tdata->jme_tx_wreg) {
+			CSR_WRITE_4(sc, JME_TXCSR, sc->jme_txcsr |
+			    TXCSR_TX_ENB | TXCSR_TXQ_N_START(TXCSR_TXQ0));
+			enq = 0;
+		}
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
 		ETHER_BPF_MTAP(ifp, m_head);
+
+		/* Set a timeout in case the chip goes out to lunch. */
+		ifp->if_timer = JME_TX_TIMEOUT;
 	}
 
 	if (enq > 0) {
@@ -1849,8 +1869,6 @@ jme_start(struct ifnet *ifp)
 		 */
 		CSR_WRITE_4(sc, JME_TXCSR, sc->jme_txcsr | TXCSR_TX_ENB |
 		    TXCSR_TXQ_N_START(TXCSR_TXQ0));
-		/* Set a timeout in case the chip goes out to lunch. */
-		ifp->if_timer = JME_TX_TIMEOUT;
 	}
 }
 
@@ -2244,7 +2262,7 @@ jme_txeof(struct jme_txdata *tdata)
 
 	if (tdata->jme_tx_cnt + JME_TXD_SPARE <=
 	    tdata->jme_tx_desc_cnt - JME_TXD_RSVD)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 }
 
 static __inline void
@@ -2863,7 +2881,7 @@ jme_init(void *xsc)
 	    JME_TICK_CPUID);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -2881,7 +2899,8 @@ jme_stop(struct jme_softc *sc)
 	/*
 	 * Mark the interface down and cancel the watchdog timer.
 	 */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	callout_stop(&sc->jme_tick_ch);
@@ -3367,11 +3386,11 @@ jme_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			jme_disable_intr(sc);
-		ifp->if_npoll_cpuid = sc->jme_npoll_txoff;
+		ifq_set_cpuid(&ifp->if_snd, sc->jme_npoll_txoff);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			jme_enable_intr(sc);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, sc->jme_tx_cpuid);
 	}
 }
 
@@ -3969,7 +3988,6 @@ static int
 jme_intr_setup(device_t dev)
 {
 	struct jme_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error;
 
 	if (sc->jme_irq_type == PCI_INTR_TYPE_MSIX)
@@ -3981,9 +3999,8 @@ jme_intr_setup(device_t dev)
 		device_printf(dev, "could not set up interrupt handler.\n");
 		return error;
 	}
+	sc->jme_tx_cpuid = rman_get_cpuid(sc->jme_irq_res);
 
-	ifp->if_cpuid = rman_get_cpuid(sc->jme_irq_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 	return 0;
 }
 
@@ -4002,7 +4019,6 @@ static int
 jme_msix_setup(device_t dev)
 {
 	struct jme_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int x;
 
 	for (x = 0; x < sc->jme_msix_cnt; ++x) {
@@ -4020,7 +4036,6 @@ jme_msix_setup(device_t dev)
 			return error;
 		}
 	}
-	ifp->if_cpuid = sc->jme_tx_cpuid;
 	return 0;
 }
 

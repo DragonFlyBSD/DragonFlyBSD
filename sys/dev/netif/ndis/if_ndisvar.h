@@ -214,10 +214,8 @@ struct ndis_softc {
 	int			ndis_if_flags;
 	int			ndis_skip;
 
-#if __FreeBSD_version < 502113
 	struct sysctl_ctx_list	ndis_ctx;
 	struct sysctl_oid	*ndis_tree;
-#endif
 	int			ndis_devidx;
 	interface_type		ndis_iftype;
 	driver_object		*ndis_dobj;

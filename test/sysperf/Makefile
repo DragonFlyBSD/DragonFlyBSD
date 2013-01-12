@@ -1,7 +1,3 @@
-#
-# $DragonFly: src/test/sysperf/Makefile,v 1.17 2008/05/09 15:49:42 dillon Exp $
-#
-
 TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 /tmp/sc6 /tmp/sc7 \
 	/tmp/loop1 /tmp/loop2 /tmp/loop3 /tmp/loop4 \
 	/tmp/call1 /tmp/call2 /tmp/call3 /tmp/cmp \
@@ -10,7 +6,6 @@ TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 /tmp/sc6 /tmp/sc7 \
 	/tmp/sp1 \
 	/tmp/sw1 /tmp/sw2 /tmp/sw3 \
 	/tmp/mbw1 \
-	/tmp/upc1 \
 	/tmp/exec1 /tmp/exec2 \
 	/tmp/mem1 /tmp/mem2 \
 	/tmp/cld1 \
@@ -108,9 +103,6 @@ all:	$(TARGETS)
 
 /tmp/sw3: quicksw1.c blib.c sw.S
 	$(CC) $(CFLAGS) -DUSE_CALLU2 quicksw1.c blib.c sw.S -o /tmp/sw3
-
-/tmp/upc1: upcall.S upcall1.c blib.c
-	$(CC) $(CFLAGS) -DUSE_CALLU2 upcall.S upcall1.c blib.c -o /tmp/upc1
 
 /tmp/exec1: exec1.c blib.c
 	$(CC) $(CFLAGS) -static -DISSTATIC exec1.c blib.c -o /tmp/exec1

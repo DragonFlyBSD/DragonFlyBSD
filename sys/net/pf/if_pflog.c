@@ -52,6 +52,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/route.h>
 #include <net/bpf.h>
 
@@ -136,7 +137,7 @@ pflog_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	ifp->if_output = pflogoutput;
 	ifp->if_start = pflogstart;
 	ifp->if_type = IFT_PFLOG;
-	ifp->if_snd.ifq_maxlen = ifqmaxlen;
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifp->if_hdrlen = PFLOG_HDRLEN;
 	if_attach(ifp, NULL);
 
@@ -187,13 +188,7 @@ pflogstart(struct ifnet *ifp)
 	ASSERT_LWKT_TOKEN_HELD(&pf_token);
 
 	for (;;) {
-		lwkt_reltoken(&pf_token);
-		crit_enter();
-		IF_DROP(&ifp->if_snd);
-		IF_DEQUEUE(&ifp->if_snd, m);
-		crit_exit();
-		lwkt_gettoken(&pf_token);
-
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			return;
 		else

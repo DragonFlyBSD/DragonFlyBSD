@@ -592,6 +592,7 @@ done:
 static int
 process_worklist_item(struct mount *matchmnt, int flags)
 {
+	struct ufsmount *ump;
 	struct worklist *wk;
 	struct dirrem *dirrem;
 	struct fs *matchfs;
@@ -612,8 +613,10 @@ process_worklist_item(struct mount *matchmnt, int flags)
 		if ((flags & LK_NOWAIT) == 0 || wk->wk_type != D_DIRREM)
 			break;
 		dirrem = WK_DIRREM(wk);
-		vp = ufs_ihashlookup(VFSTOUFS(dirrem->dm_mnt)->um_dev,
-		    dirrem->dm_oldinum);
+		ump = VFSTOUFS(dirrem->dm_mnt);
+		lwkt_gettoken(&ump->um_mountp->mnt_token);
+		vp = ufs_ihashlookup(ump, ump->um_dev, dirrem->dm_oldinum);
+		lwkt_reltoken(&ump->um_mountp->mnt_token);
 		if (vp == NULL || !vn_islocked(vp))
 			break;
 	}
@@ -4524,6 +4527,7 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 	struct inodedep *inodedep;
 	struct ufsmount *ump;
 	struct diradd *dap;
+	struct worklist *wk;
 	struct vnode *vp;
 	int gotit, error = 0;
 	struct buf *bp;
@@ -4572,7 +4576,32 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 				break;
 			}
 			drain_output(vp, 0);
+			/*
+			 * If first block is still dirty with a D_MKDIR
+			 * dependency then it needs to be written now.
+			 */
+			error = 0;
+			ACQUIRE_LOCK(&lk);
+			bp = findblk(vp, 0, FINDBLK_TEST);
+			if (bp == NULL) {
+				FREE_LOCK(&lk);
+				goto mkdir_body_continue;
+			}
+			LIST_FOREACH(wk, &bp->b_dep, wk_list)
+				if (wk->wk_type == D_MKDIR) {
+					gotit = getdirtybuf(&bp, MNT_WAIT);
+					FREE_LOCK(&lk);
+					if (gotit && (error = bwrite(bp)) != 0)
+						goto mkdir_body_continue;
+					break;
+				}
+			if (wk == NULL)
+				FREE_LOCK(&lk);
+		mkdir_body_continue:
 			vput(vp);
+			/* Flushing of first block failed. */
+			if (error)
+				break;
 			ACQUIRE_LOCK(&lk);
 			/*
 			 * If that cleared dependencies, go on to next.
@@ -4580,7 +4609,7 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 			if (dap != LIST_FIRST(diraddhdp))
 				continue;
 			if (dap->da_state & MKDIR_BODY) {
-				panic("flush_pagedep_deps: MKDIR_BODY");
+				panic("flush_pagedep_deps: %p MKDIR_BODY", dap);
 			}
 		}
 		/*
@@ -4593,6 +4622,7 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 		 * locate that buffer, ensure that there will be no rollback
 		 * caused by a bitmap dependency, then write the inode buffer.
 		 */
+retry_lookup:
 		if (inodedep_lookup(ump->um_fs, inum, 0, &inodedep) == 0) {
 			panic("flush_pagedep_deps: lost inode");
 		}
@@ -4602,6 +4632,8 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 		 */
 		if ((inodedep->id_state & DEPCOMPLETE) == 0) {
 			gotit = getdirtybuf(&inodedep->id_buf, MNT_WAIT);
+			if (gotit == 0)
+				goto retry_lookup;
 			FREE_LOCK(&lk);
 			if (gotit && (error = bwrite(inodedep->id_buf)) != 0)
 				break;

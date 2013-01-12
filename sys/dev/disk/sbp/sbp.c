@@ -657,9 +657,7 @@ static void
 sbp_probe_target(void *arg)
 {
 	struct sbp_target *target = (struct sbp_target *)arg;
-	struct sbp_softc *sbp;
 	struct sbp_dev *sdev;
-	struct firewire_comm *fc;
 	int i, alive;
 
 	alive = SBP_FWDEV_ALIVE(target->fwdev);
@@ -669,8 +667,6 @@ SBP_DEBUG(1)
 		kprintf("not alive\n");
 END_DEBUG
 
-	sbp = target->sbp;
-	fc = target->sbp->fd.fc;
 	sbp_alloc_lun(target);
 
 	/* XXX callout_stop mgm_ocb and dequeue */
@@ -896,7 +892,9 @@ static void
 sbp_mgm_callback(struct fw_xfer *xfer)
 {
 	struct sbp_dev *sdev;
+#if 0
 	int resp;
+#endif
 
 	sdev = (struct sbp_dev *)xfer->sc;
 
@@ -904,7 +902,9 @@ SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
 	kprintf("sbp_mgm_callback\n");
 END_DEBUG
+#if 0
 	resp = xfer->resp;
+#endif
 	sbp_xfer_free(xfer);
 #if 0
 	if (resp != 0) {
@@ -1005,11 +1005,9 @@ sbp_do_attach(struct fw_xfer *xfer)
 {
 	struct sbp_dev *sdev;
 	struct sbp_target *target;
-	struct sbp_softc *sbp;
 
 	sdev = (struct sbp_dev *)xfer->sc;
 	target = sdev->target;
-	sbp = target->sbp;
 SBP_DEBUG(0)
 	sbp_show_sdev_info(sdev, 2);
 	kprintf("sbp_do_attach\n");
@@ -1992,14 +1990,12 @@ sbp_free_sdev(struct sbp_dev *sdev)
 static void
 sbp_free_target(struct sbp_target *target)
 {
-	struct sbp_softc *sbp;
 	struct fw_xfer *xfer, *next;
 	int i;
 
 	if (target->luns == NULL)
 		return;
 	callout_stop(&target->mgm_ocb_timeout);
-	sbp = target->sbp;
 	for (i = 0; i < target->num_lun; i++)
 		sbp_free_sdev(target->luns[i]);
 
@@ -2574,7 +2570,6 @@ sbp_dequeue_ocb(struct sbp_dev *sdev, struct sbp_status *sbp_status)
 	struct sbp_ocb *ocb;
 	struct sbp_ocb *next;
 	int order = 0;
-	int flags;
 
 	crit_enter();
 
@@ -2585,7 +2580,6 @@ SBP_DEBUG(1)
 END_DEBUG
 	for (ocb = STAILQ_FIRST(&sdev->ocbs); ocb != NULL; ocb = next) {
 		next = STAILQ_NEXT(ocb, ocb);
-		flags = ocb->flags;
 		if (OCB_MATCH(ocb, sbp_status)) {
 			/* found */
 			STAILQ_REMOVE(&sdev->ocbs, ocb, sbp_ocb, ocb);

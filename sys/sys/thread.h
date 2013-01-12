@@ -281,7 +281,8 @@ struct thread {
     int		td_cscount;	/* cpu synchronization master */
     int		td_wakefromcpu;	/* who woke me up? */
     int		td_upri;	/* user priority (sub-priority under td_pri) */
-    int		td_unused02[2];	/* for future fields */
+    int		td_type;	/* thread type, TD_TYPE_ */
+    int		td_unused02[1];	/* for future fields */
     int		td_unused03[4];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
@@ -368,7 +369,7 @@ struct thread {
 #define TDF_USINGFP		0x00800000	/* thread using fp coproc */
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */
 #define TDF_DELAYED_WAKEUP	0x02000000
-#define TDF_CRYPTO		0x04000000	/* crypto thread */
+#define TDF_UNUSED1		0x04000000	/* unused */
 #define TDF_USERMODE		0x08000000	/* in or entering user mode */
 
 #define TDF_MP_STOPREQ		0x00000001	/* suspend_kproc */
@@ -376,6 +377,10 @@ struct thread {
 #define TDF_MP_EXITWAIT		0x00000004	/* reaper, see lwp_wait() */
 #define TDF_MP_EXITSIG		0x00000008	/* reaper, see lwp_wait() */
 #define TDF_MP_BATCH_DEMARC	0x00000010	/* batch mode handling */
+
+#define TD_TYPE_GENERIC		0		/* generic thread */
+#define TD_TYPE_CRYPTO		1		/* crypto thread */
+#define TD_TYPE_NETISR		2		/* netisr thread */
 
 /*
  * Thread priorities.  Typically only one thread from any given

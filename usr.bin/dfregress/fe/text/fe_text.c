@@ -179,7 +179,7 @@ runlist_parse_detail(void *arg __unused, prop_dictionary_t testcase)
 	case RESULT_SIGNALLED:
 		printf("Signal: %d\n", testcase_get_signal(testcase));
 		break;
-	};
+	}
 
 	print_row('-');
 	printf("driver sysbuf:\n%s\n", testcase_get_sys_buf(testcase));

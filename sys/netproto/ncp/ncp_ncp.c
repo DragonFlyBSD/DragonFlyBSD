@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.15 2007/04/22 01:13:16 dillon Exp $
  *
  * Core of NCP protocol
  */
@@ -147,7 +146,6 @@ bad:
 int
 ncp_ncp_disconnect(struct ncp_conn *conn) {
 	int error;
-	struct ncp_rqhdr *ncprq;
 	DECLARE_RQ;
 
 	NCPSDEBUG("for connid=%d\n",conn->nc_id);
@@ -155,7 +153,6 @@ ncp_ncp_disconnect(struct ncp_conn *conn) {
 	ncp_burst_disconnect(conn);
 #endif
 	error=ncp_rq_head(rqp,NCP_FREE_SLOT,0,conn->td,conn->ucred);
-	ncprq = mtod(rqp->rq,struct ncp_rqhdr*);
 	error=ncp_do_request(conn,rqp);
 	ncp_rq_done(rqp);
 	ncp_conn_invalidate(conn);

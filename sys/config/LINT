@@ -447,6 +447,7 @@ options 	NETGRAPH_CISCO
 options 	NETGRAPH_ECHO
 options		NETGRAPH_EIFACE
 options 	NETGRAPH_ETHER
+options		NETGRAPH_FEC
 options 	NETGRAPH_FRAME_RELAY
 options 	NETGRAPH_HOLE
 options 	NETGRAPH_IFACE
@@ -1031,7 +1032,6 @@ device		pnpbios
 # reset the CPU for reboot.  This is needed on some systems with broken
 # keyboard controllers.
 
-options 	COMPAT_OLDISA	#FreeBSD 2.2 and 3.x compatibility shims
 options 	AUTO_EOI_1
 #options 	AUTO_EOI_2
 options 	MAXMEM="(128*1024)"
@@ -1555,7 +1555,7 @@ device		"snd_uaudio"
 device		apm0
 device		ecc
 device		joy0	at isa? port IO_GAME
-device		cy0	at isa? irq 10 iomem 0xd4000 iosiz 0x2000
+device		cy
 device		nrp
 device		si0	at isa? iomem 0xd0000 irq 12
 device		spic0	at isa? irq 0 port 0x10a0
@@ -1594,6 +1594,10 @@ options 	COMPAT_OLDPCI	#FreeBSD 2.2 and 3.x compatibility shims
 #
 device		agp
 
+#
+# AGP debugging.
+#
+options                AGP_DEBUG
 
 # The `ahc' device provides support for the Adaptec 29/3940(U)(W)
 # and motherboard based AIC7870/AIC7880 adapters.
@@ -2445,6 +2449,13 @@ device		amdsbwd		# AMD South Bridge watchdog
 device		gpio		# Enable support for the gpio framework
 device		ichwd		# Intel ICH watchdog interrupt timer
 device		tbridge		# regression testing
+
+#
+# VirtIO support
+#
+device		virtio		# VirtIO core
+device		virtio_blk	# VirtIO disk driver
+device		virtio_pci	# VirtIO transport over PCI bus
 
 #
 # Embedded system options:

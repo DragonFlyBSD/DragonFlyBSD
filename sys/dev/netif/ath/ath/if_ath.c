@@ -1758,7 +1758,7 @@ ath_getbuf(struct ath_softc *sc)
 
 		DPRINTF(sc, ATH_DEBUG_XMIT, "%s: stop queue\n", __func__);
 		sc->sc_stats.ast_tx_qstop++;
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 	}
 	return bf;
 }
@@ -1830,7 +1830,7 @@ ath_start(struct ifnet *ifp)
 		if (bf == NULL)
 			break;
 
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL) {
 			STAILQ_INSERT_HEAD(&sc->sc_txbuf, bf, bf_list);
 			break;
@@ -3389,11 +3389,6 @@ ath_descdma_setup(struct ath_softc *sc,
 	/* allocate rx buffers */
 	bsize = sizeof(struct ath_buf) * nbuf;
 	bf = kmalloc(bsize, M_ATHDEV, M_INTWAIT | M_ZERO);
-	if (bf == NULL) {
-		if_printf(ifp, "malloc of %s buffers failed, size %u\n",
-			dd->dd_name, bsize);
-		goto fail3;
-	}
 	dd->dd_bufptr = bf;
 
 	STAILQ_INIT(head);
@@ -3411,8 +3406,6 @@ ath_descdma_setup(struct ath_softc *sc,
 		STAILQ_INSERT_TAIL(head, bf, bf_list);
 	}
 	return 0;
-fail3:
-	bus_dmamap_unload(dd->dd_dmat, dd->dd_dmamap);
 fail2:
 	bus_dmamem_free(dd->dd_dmat, dd->dd_desc, dd->dd_dmamap);
 fail1:
@@ -3508,10 +3501,6 @@ ath_node_alloc(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	struct ath_node *an;
 
 	an = kmalloc(space, M_80211_NODE, M_INTWAIT|M_ZERO);
-	if (an == NULL) {
-		/* XXX stat+msg */
-		return NULL;
-	}
 	ath_rate_node_init(sc, an);
 
 	DPRINTF(sc, ATH_DEBUG_NODE, "%s: an %p\n", __func__, an);
@@ -4067,7 +4056,7 @@ rx_next:
 	if (ngood)
 		sc->sc_lastrx = tsf;
 
-	if ((ifp->if_flags & IFF_OACTIVE) == 0) {
+	if (!ifq_is_oactive(&ifp->if_snd)) {
 #ifdef IEEE80211_SUPPORT_SUPERG
 		ieee80211_ff_age_all(ic, 100);
 #endif
@@ -4893,7 +4882,7 @@ ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 	struct ath_buf *bf, *last;
-	struct ath_desc *ds, *ds0;
+	struct ath_desc *ds;
 	struct ath_tx_status *ts;
 	struct ieee80211_node *ni;
 	struct ath_node *an;
@@ -4912,7 +4901,6 @@ ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 		bf = STAILQ_FIRST(&txq->axq_q);
 		if (bf == NULL)
 			break;
-		ds0 = &bf->bf_desc[0];
 		ds = &bf->bf_desc[bf->bf_nseg - 1];
 		ts = &bf->bf_status.ds_txstat;
 		qbusy = ath_hal_txqenabled(ah, txq->axq_qnum);
@@ -5055,7 +5043,7 @@ ath_tx_task_q0(void *arg, int npending)
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 	if (txqactive(sc->sc_ah, sc->sc_cabq->axq_qnum))
 		ath_tx_processq(sc, sc->sc_cabq);
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 
 	if (sc->sc_softled)
@@ -5094,7 +5082,7 @@ ath_tx_task_q0123(void *arg, int npending)
 	if (nacked)
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 
 	if (sc->sc_softled)
@@ -5127,7 +5115,7 @@ ath_tx_task(void *arg, int npending)
 	if (nacked)
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 
 	if (sc->sc_softled)
@@ -5241,7 +5229,7 @@ ath_draintxq(struct ath_softc *sc)
 		}
 	}
 #endif /* ATH_DEBUG */
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 }
 
@@ -6158,10 +6146,6 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 		 * Copy in data.
 		 */
 		indata = kmalloc(insize, M_TEMP, M_INTWAIT);
-		if (indata == NULL) {
-			error = ENOMEM;
-			goto bad;
-		}
 		error = copyin(ad->ad_in_data, indata, insize);
 		if (error)
 			goto bad;
@@ -6175,10 +6159,6 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 		 * may want to be more defensive.
 		 */
 		outdata = kmalloc(outsize, M_TEMP, M_INTWAIT);
-		if (outdata == NULL) {
-			error = ENOMEM;
-			goto bad;
-		}
 	}
 	if (ath_hal_getdiagstate(ah, id, indata, insize, &outdata, &outsize)) {
 		if (outsize < ad->ad_out_size)

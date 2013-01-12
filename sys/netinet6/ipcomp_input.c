@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_input.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.9 2007/11/22 20:19:43 hasso Exp $	*/
 /*	$KAME: ipcomp_input.c,v 1.25 2001/03/01 09:12:09 itojun Exp $	*/
 
 /*
@@ -97,7 +96,6 @@ ipcomp4_input(struct mbuf **mp, int *offp, int proto)
 	const struct ipcomp_algorithm *algo;
 	u_int16_t cpi;	/* host order */
 	u_int16_t nxt;
-	size_t hlen;
 	int error;
 	size_t newlen, olen;
 	struct secasvar *sav = NULL;
@@ -124,11 +122,6 @@ ipcomp4_input(struct mbuf **mp, int *offp, int proto)
 	ipcomp = mtod(md, struct ipcomp *);
 	ip = mtod(m, struct ip *);
 	nxt = ipcomp->comp_nxt;
-#ifdef _IP_VHL
-	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-#else
-	hlen = ip->ip_hl << 2;
-#endif
 
 	cpi = ntohs(ipcomp->comp_cpi);
 

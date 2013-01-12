@@ -474,7 +474,7 @@ static uint32_t	bce_tx_bds = 255;		/* bcm: 20 */
 static uint32_t	bce_tx_ticks_int = 1022;	/* bcm: 80 */
 static uint32_t	bce_tx_ticks = 1022;		/* bcm: 80 */
 static uint32_t	bce_rx_bds_int = 128;		/* bcm: 6 */
-static uint32_t	bce_rx_bds = 128;		/* bcm: 6 */
+static uint32_t	bce_rx_bds = 0;			/* bcm: 6 */
 static uint32_t	bce_rx_ticks_int = 150;		/* bcm: 18 */
 static uint32_t	bce_rx_ticks = 150;		/* bcm: 18 */
 
@@ -999,9 +999,8 @@ bce_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->bce_res_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
-	sc->bce_intr_cpuid = ifp->if_cpuid;
+	sc->bce_intr_cpuid = rman_get_cpuid(sc->bce_res_irq);
+	ifq_set_cpuid(&ifp->if_snd, sc->bce_intr_cpuid);
 
 	/* Print some important debugging info. */
 	DBRUN(BCE_INFO, bce_dump_driver_state(sc));
@@ -3496,7 +3495,8 @@ bce_stop(struct bce_softc *sc)
 	sc->bce_link = 0;
 	sc->bce_coalchg_mask = 0;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 }
 
@@ -4401,7 +4401,6 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 	while (sw_cons != hw_cons) {
 		struct mbuf *m = NULL;
 		struct l2_fhdr *l2fhdr = NULL;
-		struct rx_bd *rxbd;
 		unsigned int len;
 		uint32_t status = 0;
 
@@ -4417,9 +4416,6 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 		sw_chain_cons = RX_CHAIN_IDX(sc, sw_cons);
 		sw_chain_prod = RX_CHAIN_IDX(sc, sw_prod);
 
-		/* Get the used rx_bd. */
-		rxbd = &sc->rx_bd_chain[RX_PAGE(sw_chain_cons)]
-				       [RX_IDX(sw_chain_cons)];
 		sc->free_rx_bd++;
 
 		/* The mbuf is stored with the last rx_bd entry of a packet. */
@@ -4638,7 +4634,7 @@ bce_tx_intr(struct bce_softc *sc, uint16_t hw_tx_cons)
 
 	/* Clear the tx hardware queue full flag. */
 	if (sc->max_tx_bd - sc->used_tx_bd >= BCE_TX_SPARE_SPACE)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 	sc->tx_cons = sw_tx_cons;
 }
 
@@ -4823,7 +4819,7 @@ bce_init(void *xsc)
 	bce_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset_bycpu(&sc->bce_tick_callout, hz, bce_tick, sc,
 	    sc->bce_intr_cpuid);
@@ -5004,7 +5000,7 @@ bce_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	for (;;) {
@@ -5015,7 +5011,7 @@ bce_start(struct ifnet *ifp)
 		 * unlikely to fail.
 		 */
 		if (sc->max_tx_bd - sc->used_tx_bd < BCE_TX_SPARE_SPACE) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -5035,7 +5031,7 @@ bce_start(struct ifnet *ifp)
 			if (sc->used_tx_bd == 0) {
 				continue;
 			} else {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 		}
@@ -5301,7 +5297,7 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
 			       (1 << 16) | sc->bce_tx_quick_cons_trip);
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			bce_enable_intr(sc);
@@ -5313,7 +5309,7 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			       (sc->bce_rx_quick_cons_trip_int << 16) |
 			       sc->bce_rx_quick_cons_trip);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, sc->bce_intr_cpuid);
 	}
 }
 

@@ -105,6 +105,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/ifq_var.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
 
@@ -408,7 +409,7 @@ static int
 ng_fec_delport(struct ng_fec_private *priv, char *iface)
 {
 	struct ng_fec_bundle	*b;
-	struct ifnet		*ifp, *bifp;
+	struct ifnet		*bifp;
 	struct arpcom		*ac;
 	struct sockaddr_dl	*sdl;
 	struct ng_fec_portlist	*p;
@@ -417,7 +418,6 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 		return(EINVAL);
 
 	b = &priv->fec_bundle;
-	ifp = &priv->arpcom.ac_if;
 
 	/* Find the interface */
 	bifp = ifunit(iface);
@@ -670,7 +670,7 @@ ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 					error = EINVAL;
 					break;
 				}
-				ifp->if_flags &= ~(IFF_OACTIVE);
+				ifq_clr_oactive(&ifp->if_snd);
 				ifp->if_flags |= IFF_RUNNING;
 				ng_fec_init(ifp);
 			}
@@ -684,8 +684,10 @@ ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				priv->if_flags = ifp->if_flags;
 			}
 		} else {
-			if (ifp->if_flags & IFF_RUNNING)
-				ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+			if (ifp->if_flags & IFF_RUNNING) {
+				ifp->if_flags &= ~IFF_RUNNING;
+				ifq_clr_oactive(&ifp->if_snd);
+			}
 			ng_fec_stop(ifp);
 		}
 		break;
@@ -986,7 +988,7 @@ ng_fec_start(struct ifnet *ifp)
 	priv = ifp->if_softc;
 	b = &priv->fec_bundle;
 
-	IF_DEQUEUE(&ifp->if_snd, m0);
+	m0 = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m0 == NULL)
 		return;
 
@@ -1098,7 +1100,7 @@ ng_fec_constructor(node_p *nodep)
 	ifp->if_ioctl = ng_fec_ioctl;
 	ifp->if_init = ng_fec_init;
 	ifp->if_watchdog = NULL;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifp->if_mtu = NG_FEC_MTU_DEFAULT;
 	ifp->if_flags = (IFF_SIMPLEX|IFF_BROADCAST|IFF_MULTICAST);
 	ifp->if_type = IFT_PROPVIRTUAL;		/* XXX */

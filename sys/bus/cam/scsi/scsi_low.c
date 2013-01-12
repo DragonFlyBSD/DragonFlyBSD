@@ -1365,7 +1365,6 @@ static int
 scsi_low_abort_ccb(struct scsi_low_softc *slp, struct slccb *cb)
 {
 	struct targ_info *ti;
-	struct lun_info *li;
 	u_int msg;
 
 	if (cb == NULL)
@@ -1375,7 +1374,6 @@ scsi_low_abort_ccb(struct scsi_low_softc *slp, struct slccb *cb)
 		return EBUSY;
 
 	ti = cb->ti;
-	li = cb->li;
 	if (cb->ccb_tag == SCSI_LOW_UNKTAG)
 		msg = SCSI_LOW_MSG_ABORT;
 	else

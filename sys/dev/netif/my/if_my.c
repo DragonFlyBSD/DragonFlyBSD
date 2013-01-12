@@ -960,8 +960,7 @@ my_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->my_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->my_irq));
 
 	return (0);
 
@@ -1199,7 +1198,7 @@ my_txeoc(struct my_softc * sc)
 
 	ifp->if_timer = 0;
 	if (sc->my_cdata.my_tx_head == NULL) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		sc->my_cdata.my_tx_tail = NULL;
 		if (sc->my_want_auto)
 			my_autoneg_mii(sc, MY_FLAG_SCHEDDELAY, 1);
@@ -1346,7 +1345,7 @@ my_start(struct ifnet * ifp)
 	 * Check for an available queue slot. If there are none, punt.
 	 */
 	if (sc->my_cdata.my_tx_free->my_mbuf != NULL) {
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		crit_exit();
 		return;
 	}
@@ -1486,7 +1485,7 @@ my_init(void *xsc)
 	if (sc->my_pinfo != NULL)
 		my_phy_writereg(sc, PHY_BMCR, phy_bmcr);
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	crit_exit();
 }
 
@@ -1675,7 +1674,8 @@ my_stop(struct my_softc * sc)
 	}
 	bzero((char *)&sc->my_ldata->my_tx_list,
 	    sizeof(sc->my_ldata->my_tx_list));
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*

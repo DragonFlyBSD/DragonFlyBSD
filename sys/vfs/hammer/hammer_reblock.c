@@ -531,7 +531,6 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	struct hammer_node_lock lockroot;
 	hammer_node_t onode;
 	hammer_node_t nnode;
-	hammer_off_t hint;
 	int error;
 	int i;
 
@@ -540,16 +539,7 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	if (error)
 		goto done;
 
-	/*
-	 * The internal node is visited after recursing through its
-	 * first element.  Use the subtree offset allocated for that
-	 * element as a hint for allocating the internal node.
-	 */
 	onode = cursor->node;
-	if (onode->ondisk->count)
-		hint = onode->ondisk->elms[0].internal.subtree_offset;
-	else
-		hint = 0;
 	nnode = hammer_alloc_btree(cursor->trans, 0, &error);
 
 	if (nnode == NULL)

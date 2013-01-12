@@ -493,24 +493,6 @@ reroute:
 		}
 	}
 
-#ifdef ALTQ
-	/*
-	 * Disable packet drop hack.
-	 * Packetdrop should be done by queueing.
-	 */
-#else /* !ALTQ */
-	/*
-	 * Verify that we have any chance at all of being able to queue
-	 *      the packet or packet fragments
-	 */
-	if ((ifp->if_snd.ifq_len + ip->ip_len / ifp->if_mtu + 1) >=
-	    ifp->if_snd.ifq_maxlen) {
-		error = ENOBUFS;
-		ipstat.ips_odropped++;
-		goto bad;
-	}
-#endif /* !ALTQ */
-
 	/*
 	 * Look for broadcast address and
 	 * verify user is allowed to send

@@ -358,6 +358,57 @@ message has been replied to.
 The
 .Fa flags
 argument defines the flags used for the sleep.
+.Sh IMPLEMENTATION NOTES
+All the default putport handlers (used when a message is sent) currently
+implement asynchronous putports only, i.e.\& all
+.Fn *_putport
+handlers return
+.Er EASYNC .
+You can still have synchronous putport handlers (which are run in the sender's
+context) but you have to implement the function yourself and then override the
+default.
+.Pp
+Port handler functions can be overridden with custom functions if required.
+You can override the default putport handler by either using the
+.Fn lwkt_initport_putonly
+initializer, or by manipulating the mp_putport handler pointer directly on the
+.Vt lwkt_port
+structure.
+.Pp
+There is one such case where the putport handler is overridden in
+.Pa sys/net/netisr.c .
+In that case, the putport handler is overridden to detect a loopback message
+(when the target port belongs to the sending thread).
+This special putport handler turns the sent message into a direct function call
+instead of queueing it to the port.
+.Pp
+The
+.Fn lwkt_replymsg
+function works differently depending on the original message request.
+If the
+message was originally an asynchronous request, the reply will be queued to the
+sender's reply port.
+If the message was originally a synchronous request, then
+this function will just write the error response on the message and wake up the
+waiter without queueing the message to the reply port.
+There is no need to queue in the synchronous request case because the original
+sender had blocked waiting on this specific message with
+.Fn lwkt_domsg .
+.Pp
+As is the case with putport handler, the replyport handler can also be
+overridden.
+You override the default replyport handler by using the
+.Fn lwkt_initport_replyonly
+or the
+.Fn lwkt_initport_replyonly_null
+port initializers, or by manipulating the mp_replyport handler pointer directly
+on the
+.Vt lwkt_port
+structure.
+.Pp
+The sent message structure is reused for replies.
+When a message is replied to, the error response is written on the message
+which is subsequently sent to the reply port.
 .Sh FILES
 The LWKT msgport implementation resides in
 .Pa sys/kern/lwkt_msgport.c .
@@ -381,9 +432,9 @@ int my_service_domsg(lwkt_msg_t lmsg, int cpu);
 struct lwkt_port *my_service_ports[MAXCPU];
 
 /*
- * Create per-cpu threads for handling msg processing.  Remember that built-in
- * lwkt ports are automatically initialized to type 'thread' so we don't need
- * to initialize them explicitly.
+ * Create per-cpu threads for handling msg processing.  Remember that
+ * built-in lwkt ports are automatically initialized to type 'thread'
+ * so we don't need to initialize them explicitly.
  */
 static void
 my_per_cpu_service_init(void)
@@ -468,10 +519,11 @@ mod_load(void)
 /*
  * Example 2: Dynamic allocated message passing with automatic free.
  *
- * This scenario is used when resources need to be freed after the message
- * has been replied to. Features:
+ * This scenario is used when resources need to be freed after the
+ * message has been replied to. Features:
  * - An argument is passed within the message.
- * - Messages are allocated with kmalloc(). Replying to the msg, kfree()s it.
+ * - Messages are allocated with kmalloc(). Replying to the message
+ *   kfree()s it.
  */
 
 #include <sys/thread.h>
@@ -520,7 +572,8 @@ my_service_loop(void *dummy __unused)
 		 * sent us.  We print it here.
 		 */
 		char *arg = msg->u.ms_resultp;
-		kprintf("%s: Hi %s! Got your msg.\en", curthread->td_comm, arg);
+		kprintf("%s: Hi %s! Got your msg.\en", curthread->td_comm,
+		    arg);
 
 		/* And finally reply to the message. */
 		lwkt_replymsg(msg, 0);
@@ -548,8 +601,8 @@ my_service_init(void)
 }
 
 /*
- * Example use case. Initialize the service and send the current thread name
- * to the service thread.
+ * Example use case. Initialize the service and send the current thread
+ * name to the service thread.
  */
 static void
 mod_load(void)
@@ -565,57 +618,6 @@ mod_load(void)
 	my_service_queue(arg);
 }
 .Ed
-.Sh NOTES
-All the default putport handlers (used when a message is sent) currently
-implement asynchronous putports only, i.e.\& all
-.Fn *_putport
-handlers return
-.Er EASYNC .
-You can still have synchronous putport handlers (which are run in the sender's
-context) but you have to implement the function yourself and then override the
-default.
-.Pp
-Port handler functions can be overridden with custom functions if required.
-You can override the default putport handler by either using the
-.Fn lwkt_initport_putonly
-initializer, or by manipulating the mp_putport handler pointer directly on the
-.Vt lwkt_port
-structure.
-.Pp
-There is one such case where the putport handler is overridden in
-.Pa sys/net/netisr.c .
-In that case, the putport handler is overridden to detect a loopback message
-(when the target port belongs to the sending thread).
-This special putport handler turns the sent message into a direct function call
-instead of queueing it to the port.
-.Pp
-The
-.Fn lwkt_replymsg
-function works differently depending on the original message request.
-If the
-message was originally an asynchronous request, the reply will be queued to the
-sender's reply port.
-If the message was originally a synchronous request, then
-this function will just write the error response on the message and wake up the
-waiter without queueing the message to the reply port.
-There is no need to queue in the synchronous request case because the original
-sender had blocked waiting on this specific message with
-.Fn lwkt_domsg .
-.Pp
-As is the case with putport handler, the replyport handler can also be
-overridden.
-You override the default replyport handler by using the
-.Fn lwkt_initport_replyonly
-or the
-.Fn lwkt_initport_replyonly_null
-port initializers, or by manipulating the mp_replyport handler pointer directly
-on the
-.Vt lwkt_port
-structure.
-.Pp
-The sent message structure is reused for replies.
-When a message is replied to, the error response is written on the message
-which is subsequently sent to the reply port.
 .Sh SEE ALSO
 .Xr serializer 9 ,
 .Xr sleep 9 ,

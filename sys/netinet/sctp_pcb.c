@@ -963,8 +963,6 @@ sctp_pcb_findep(struct sockaddr *nam, int find_tcp_pool, int have_lock)
 	 */
 	struct sctp_inpcb *inp;
 	struct sctppcbhead *head;
-	struct sockaddr_in *sin;
-	struct sockaddr_in6 *sin6;
 	int lport;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_PCB1) {
@@ -974,10 +972,8 @@ sctp_pcb_findep(struct sockaddr *nam, int find_tcp_pool, int have_lock)
 	}
 #endif
 	if (nam->sa_family == AF_INET) {
-		sin = (struct sockaddr_in *)nam;
 		lport = ((struct sockaddr_in *)nam)->sin_port;
 	} else if (nam->sa_family == AF_INET6) {
-		sin6 = (struct sockaddr_in6 *)nam;
 		lport = ((struct sockaddr_in6 *)nam)->sin6_port;
 	} else {
 		/* unsupported family */
@@ -2225,7 +2221,6 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 	 * c) The hash of all associations.
 	 * d) finally the ep itself.
 	 */
-	struct sctp_pcb *m;
 	struct sctp_inpcb *inp_save;
 	struct sctp_tcb *asoc, *nasoc;
 	struct sctp_laddr *laddr, *nladdr;
@@ -2258,7 +2253,6 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 		inp->pkt = NULL;
 	}
 	so  = inp->sctp_socket;
-	m = &inp->sctp_ep;
 	ip_pcb = &inp->ip_inp.inp; /* we could just cast the main
 				   * pointer here but I will
 				   * be nice :> (i.e. ip_pcb = ep;)
@@ -2514,12 +2508,12 @@ struct sctp_nets *
 sctp_findnet(struct sctp_tcb *stcb, struct sockaddr *addr)
 {
 	struct sctp_nets *net;
+#if 0
 	struct sockaddr_in *sin;
-	struct sockaddr_in6 *sin6;
+
+	/* why do we need to check the port for a nets list on an assoc? */
 	/* use the peer's/remote port for lookup if unspecified */
 	sin = (struct sockaddr_in *)addr;
-	sin6 = (struct sockaddr_in6 *)addr;
-#if 0 /* why do we need to check the port for a nets list on an assoc? */
 	if (stcb->rport != sin->sin_port) {
 		/* we cheat and just a sin for this test */
 		return (NULL);
@@ -3870,7 +3864,6 @@ sctp_del_local_addr_ep(struct sctp_inpcb *inp, struct ifaddr *ifa)
 int
 sctp_add_local_addr_assoc(struct sctp_tcb *stcb, struct ifaddr *ifa)
 {
-	struct sctp_inpcb *inp;
 	struct sctp_laddr *laddr;
 	int error;
 
@@ -3878,7 +3871,6 @@ sctp_add_local_addr_assoc(struct sctp_tcb *stcb, struct ifaddr *ifa)
 	 * the INP. May need to confirm/fix that if
 	 * we need it and is not the case.
 	 */
-	inp = stcb->sctp_ep;
 	if (ifa->ifa_addr->sa_family == AF_INET6) {
 		struct in6_ifaddr *ifa6;
 		ifa6 = (struct in6_ifaddr *)ifa;

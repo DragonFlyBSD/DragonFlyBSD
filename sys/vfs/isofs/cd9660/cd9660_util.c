@@ -73,7 +73,8 @@ isochar(u_char *isofn, u_char *isoend, int joliet_level, u_short *c,
               inbuf[2]='\0';
               inp = inbuf;
               outp = outbuf;
-              cd9660_iconv->convchr(handle, (const char **)&inp, &i, &outp, &j);
+              cd9660_iconv->convchr(handle, (const char **)(void *)&inp,
+		  &i, &outp, &j);
               len -= j;
               if (clen) *clen = len;
               *c = '\0';

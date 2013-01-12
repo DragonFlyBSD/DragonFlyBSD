@@ -891,14 +891,11 @@ int mfi_tbolt_is_ldio(struct mfi_command *mfi_cmd)
 int
 mfi_tbolt_build_io(struct mfi_softc *sc, struct mfi_command *mfi_cmd, struct mfi_cmd_tbolt *cmd)
 {
-	uint32_t device_id;
 	uint32_t sge_count;
 	uint8_t cdb[32], cdb_len;
 
 	memset(cdb, 0, 32);
 	struct mfi_mpi2_request_raid_scsi_io *io_request = cmd->io_request;
-
-	device_id = mfi_cmd->cm_frame->header.target_id;
 
 	/* Have to build CDB here for TB as BSD don't have a scsi layer */
 	if ((cdb_len = mfi_tbolt_build_cdb(sc, mfi_cmd, cdb)) == 1)
@@ -1018,7 +1015,7 @@ static int
 mfi_tbolt_make_sgl(struct mfi_softc *sc, struct mfi_command *mfi_cmd,
 		   pMpi25IeeeSgeChain64_t sgl_ptr, struct mfi_cmd_tbolt *cmd)
 {
-	uint8_t i, sg_processed, sg_to_process;
+	uint8_t i, sg_processed;
 	uint8_t sge_count, sge_idx;
 	union mfi_sgl *os_sgl;
 
@@ -1066,7 +1063,6 @@ mfi_tbolt_make_sgl(struct mfi_softc *sc, struct mfi_command *mfi_cmd,
 
 	if (sg_processed < sge_count) {
 		pMpi25IeeeSgeChain64_t sg_chain;
-		sg_to_process = sge_count - sg_processed;
 		cmd->io_request->ChainOffset =
 		    sc->chain_offset_value_for_main_message;
 		sg_chain = sgl_ptr;

@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twe/twe_tables.h,v 1.4 2003/12/02 07:57:20 ps Exp $
+ *	$FreeBSD: src/sys/dev/twe/twe_tables.h,v 1.5 2012/11/17 01:52:19 svnexp Exp $
  */
 
 /*

@@ -978,7 +978,6 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 		struct mbuf **mnext, *m_frgpart;
 		struct ip6_frag *ip6f;
 		u_int32_t id = htonl(ip6_id++);
-		int qslots = ifp->if_snd.ifq_maxlen - ifp->if_snd.ifq_len;
 		u_char nextproto;
 
 		/*
@@ -994,17 +993,6 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 		if (len < 8) {
 			error = EMSGSIZE;
 			in6_ifstat_inc(ifp, ifs6_out_fragfail);
-			goto bad;
-		}
-
-		/*
-		 * Verify that we have any chance at all of being able to queue
-		 *      the packet or packet fragments
-		 */
-		if (qslots <= 0 || ((u_int)qslots * (mtu - hlen)
-		    < tlen  /* - hlen */)) {
-			error = ENOBUFS;
-			ip6stat.ip6s_odropped++;
 			goto bad;
 		}
 

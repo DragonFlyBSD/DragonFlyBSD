@@ -212,6 +212,7 @@ struct ccd_softc {
 	int		 sc_maxiosize;		/* maximum I/O size */
 	u_int		 sc_nccdisks;		/* number of components */
 #define	CCD_MAXNDISKS	 65536
+	struct lock	 sc_lock;
 	struct ccdcinfo	 *sc_cinfo;		/* component info */
 	struct ccdiinfo	 *sc_itable;		/* interleave table */
 	struct devstat	 device_stats;		/* device statistics */
@@ -226,8 +227,6 @@ struct ccd_softc {
 #define CCDF_INITED	0x01	/* unit has been initialized */
 #define CCDF_UNUSED02	0x02	/* label area is writable */
 #define CCDF_UNUSED04	0x04	/* unit is currently being labelled */
-#define CCDF_WANTED	0x40	/* someone is waiting to obtain a lock */
-#define CCDF_LOCKED	0x80	/* unit is locked */
 
 /*
  * Before you can use a unit, it must be configured with CCDIOCSET.

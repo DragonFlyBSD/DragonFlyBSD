@@ -128,6 +128,7 @@
 
 #include <net/if.h>
 #include <net/if_atm.h>
+#include <net/ifq_var.h>
 
 #include <vm/vm.h>
 
@@ -1481,7 +1482,7 @@ en_start(struct ifnet *ifp)
 
     while (1) {
 
-      IF_DEQUEUE(&ifp->if_snd, m);
+      m = ifq_dequeue(&ifp->if_snd, NULL);
       if (m == NULL)
 	return;		/* EMPTY: >>> exit here <<< */
     
@@ -2629,7 +2630,7 @@ en_service(struct en_softc *sc)
   struct mbuf *m, *tmp;
   u_int32_t cur, dstart, rbd, pdu, *sav, dma, bcode, count, *data, *datastop;
   u_int32_t start, stop, cnt, needalign;
-  int slot, raw, aal5, llc, vci, fill, mlen, tlen, drqneed, need, needfill, end;
+  int slot, raw, aal5, vci, fill, mlen, tlen, drqneed, need, needfill, end;
 
   aal5 = 0;		/* Silence gcc */
 next_vci:
@@ -2703,7 +2704,6 @@ defer:					/* defer processing */
 
     /* normal mode */
     aal5 = (sc->rxslot[slot].atm_flags & ATM_PH_AAL5);
-    llc = (aal5 && (sc->rxslot[slot].atm_flags & ATM_PH_LLCSNAP)) ? 1 : 0;
     rbd = EN_READ(sc, cur);
     if (MID_RBD_ID(rbd) != MID_RBD_STDID) 
       panic("en_service: id mismatch");

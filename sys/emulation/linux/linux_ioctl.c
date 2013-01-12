@@ -1078,8 +1078,7 @@ linux_ioctl_SIOCGIFFLAGS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 
 	flags = ifp->if_flags;
 	/* these flags have no Linux equivalent */
-	flags &= ~(IFF_SMART|IFF_OACTIVE|IFF_SIMPLEX|
-	    IFF_LINK0|IFF_LINK1|IFF_LINK2);
+	flags &= ~(IFF_SMART|IFF_SIMPLEX| IFF_LINK0|IFF_LINK1|IFF_LINK2);
 	/* Linux' multicast flag is in a different bit */
 	if (flags & IFF_MULTICAST) {
 		flags &= ~IFF_MULTICAST;

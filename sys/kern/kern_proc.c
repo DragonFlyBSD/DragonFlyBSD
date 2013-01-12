@@ -42,6 +42,7 @@
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/vnode.h>
 #include <sys/jail.h>
 #include <sys/filedesc.h>
 #include <sys/tty.h>
@@ -849,6 +850,45 @@ proc_remove_zombie(struct proc *p)
 	LIST_REMOVE(p, p_sibling);
 	p->p_pptr = NULL;
 	lwkt_reltoken(&proc_token);
+}
+
+/*
+ * Handle various requirements prior to returning to usermode.  Called from
+ * platform trap and system call code.
+ */
+void
+lwpuserret(struct lwp *lp)
+{
+	struct proc *p = lp->lwp_proc;
+
+	if (lp->lwp_mpflags & LWP_MP_VNLRU) {
+		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_VNLRU);
+		allocvnode_gc();
+	}
+	if (lp->lwp_mpflags & LWP_MP_WEXIT) {
+		lwkt_gettoken(&p->p_token);
+		lwp_exit(0);
+		lwkt_reltoken(&p->p_token);     /* NOT REACHED */
+	}
+}
+
+/*
+ * Kernel threads run from user processes can also accumulate deferred
+ * actions which need to be acted upon.  Callers include:
+ *
+ * nfsd		- Can allocate lots of vnodes
+ */
+void
+lwpkthreaddeferred(void)
+{
+	struct lwp *lp = curthread->td_lwp;
+
+	if (lp) {
+		if (lp->lwp_mpflags & LWP_MP_VNLRU) {
+			atomic_clear_int(&lp->lwp_mpflags, LWP_MP_VNLRU);
+			allocvnode_gc();
+		}
+	}
 }
 
 /*

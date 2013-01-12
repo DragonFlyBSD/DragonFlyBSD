@@ -117,7 +117,10 @@ cpu		HAMMER_CPU
 # CPU_ENABLE_EST enables support for Enhanced SpeedStep technology
 # found in Pentium(tm) M processors.
 #
+# CPU_DISABLE_AVX disables AVX instruction set.
+# 
 #options 	CPU_DISABLE_SSE
+options 	CPU_DISABLE_AVX
 options		CPU_ENABLE_EST
 
 #####################################################################
@@ -303,6 +306,7 @@ options 	NETGRAPH_CISCO
 options 	NETGRAPH_ECHO
 options		NETGRAPH_EIFACE
 options 	NETGRAPH_ETHER
+options		NETGRAPH_FEC
 options 	NETGRAPH_FRAME_RELAY
 options 	NETGRAPH_HOLE
 options 	NETGRAPH_IFACE
@@ -1389,6 +1393,10 @@ options 	COMPAT_OLDPCI	#FreeBSD 2.2 and 3.x compatibility shims
 #
 device		agp
 
+#
+# AGP debugging.
+#
+options                AGP_DEBUG
 
 # The `ahc' device provides support for the Adaptec 29/3940(U)(W)
 # and motherboard based AIC7870/AIC7880 adapters.
@@ -2221,6 +2229,13 @@ device		amdsbwd		# AMD South Bridge watchdog
 device		gpio		# Enable support for the gpio framework
 device		ichwd		# Intel ICH watchdog interrupt timer
 device		tbridge		# regression testing
+
+#
+# Virtio support
+#
+device		virtio
+device		virtio_blk
+device		virtio_pci
 
 #
 # Embedded system options:

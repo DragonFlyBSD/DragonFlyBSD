@@ -45,6 +45,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 
 
@@ -159,12 +160,14 @@ ng_eiface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		 */
 		if (ifr->ifr_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
-				ifp->if_flags &= ~(IFF_OACTIVE);
+				ifq_clr_oactive(&ifp->if_snd);
 				ifp->if_flags |= IFF_RUNNING;
 			}
 		} else {
-			if (ifp->if_flags & IFF_RUNNING)
-				ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+			if (ifp->if_flags & IFF_RUNNING) {
+				ifp->if_flags &= ~IFF_RUNNING;
+				ifq_clr_oactive(&ifp->if_snd);
+			}
 		}
 		break;
 
@@ -203,7 +206,7 @@ ng_eiface_init(void *xsc)
 	crit_enter();
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	crit_exit();
 
@@ -228,20 +231,20 @@ ng_eiface_start(struct ifnet *ifp)
 		return;
 
 	/* Don't do anything if output is active */
-	if( ifp->if_flags & IFF_OACTIVE )
+	if(ifq_is_oactive(&ifp->if_snd))
 		return;
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 
 	/*
 	 * Grab a packet to transmit.
 	 */
-	IF_DEQUEUE(&ifp->if_snd, m);
+	m = ifq_dequeue(&ifp->if_snd, NULL);
 
 	/* If there's nothing to send, return. */
 	if(m == NULL)
 	{
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		return;
 	}
 
@@ -259,7 +262,7 @@ ng_eiface_start(struct ifnet *ifp)
 		ifp->if_opackets++;
 	}
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	return;
 }
@@ -340,7 +343,7 @@ ng_eiface_constructor(node_p *nodep)
 	ifp->if_start = ng_eiface_start;
 	ifp->if_ioctl = ng_eiface_ioctl;
 	ifp->if_watchdog = NULL;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifp->if_flags = (IFF_SIMPLEX | IFF_BROADCAST | IFF_MULTICAST);
 
 	/* Give this node name *
@@ -532,7 +535,8 @@ ng_eiface_rmnode(node_p node)
 	ng_cutlinks(node);
 	node->flags &= ~NG_INVALID;
 	ifnet_serialize_all(ifp);
-	ifp->if_flags &= ~(IFF_UP | IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~(IFF_UP | IFF_RUNNING);
+	ifq_clr_oactive(&ifp->if_snd);
 	ifnet_deserialize_all(ifp);
 	return (0);
 }

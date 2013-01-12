@@ -557,8 +557,7 @@ lge_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->lge_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->lge_irq));
 
 	return(0);
 
@@ -973,7 +972,7 @@ lge_txeof(struct lge_softc *sc)
 	sc->lge_cdata.lge_tx_cons = idx;
 
 	if (cur_tx != NULL)
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -1134,7 +1133,7 @@ lge_start(struct ifnet *ifp)
 
 	idx = sc->lge_cdata.lge_tx_prod;
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if (ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	need_timer = 0;
@@ -1143,7 +1142,7 @@ lge_start(struct ifnet *ifp)
 		int frags;
 
 		if (CSR_READ_1(sc, LGE_TXCMDFREE_8BIT) == 0) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1200,7 +1199,6 @@ lge_init(void *xsc)
 {
 	struct lge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mii_data *mii;
 
 	if (ifp->if_flags & IFF_RUNNING)
 		return;
@@ -1210,8 +1208,6 @@ lge_init(void *xsc)
 	 */
 	lge_stop(sc);
 	lge_reset(sc);
-
-	mii = device_get_softc(sc->lge_miibus);
 
 	/* Set MAC address */
 	CSR_WRITE_4(sc, LGE_PAR0, *(uint32_t *)(&sc->arpcom.ac_enaddr[0]));
@@ -1316,7 +1312,7 @@ lge_init(void *xsc)
 	lge_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->lge_stat_timer, hz, lge_tick, sc);
 }
@@ -1471,7 +1467,8 @@ lge_stop(struct lge_softc *sc)
 
 	bzero(&sc->lge_ldata->lge_tx_list, sizeof(sc->lge_ldata->lge_tx_list));
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*

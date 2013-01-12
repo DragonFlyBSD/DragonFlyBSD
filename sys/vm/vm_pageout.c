@@ -685,7 +685,7 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 			break;
 		}
 		tmpe = tmpe->next;
-	};
+	}
 
 	/*
 	 * Remove all mappings if a process is swapped out, this will free page

@@ -204,7 +204,7 @@ puffs_bioread(struct vnode *vp, struct uio *uio, int ioflag,
 	struct vattr vattr;
 	off_t lbn, loffset, fsize;
 	size_t n;
-	int boff, seqcount;
+	int boff;
 	int error = 0;
 
 	KKASSERT(uio->uio_rw == UIO_READ);
@@ -214,8 +214,6 @@ puffs_bioread(struct vnode *vp, struct uio *uio, int ioflag,
 		return EINVAL;
 	if (uio->uio_resid == 0)
 		return 0;
-
-	seqcount = (int)((off_t)(ioflag >> IO_SEQSHIFT) * biosize / BKVASIZE);
 
 	/*
 	 * Cache consistency can only be maintained approximately.

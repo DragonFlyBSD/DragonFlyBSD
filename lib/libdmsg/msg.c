@@ -39,6 +39,7 @@ int DMsgDebugOpt;
 
 static int dmsg_state_msgrx(dmsg_msg_t *msg);
 static void dmsg_state_cleanuptx(dmsg_msg_t *msg);
+static void dmsg_msg_free_locked(dmsg_msg_t *msg);
 
 RB_GENERATE(dmsg_state_tree, dmsg_state, rbnode, dmsg_state_cmp);
 RB_GENERATE(dmsg_circuit_tree, dmsg_circuit, rbnode, dmsg_circuit_cmp);
@@ -120,6 +121,7 @@ dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 
 	bzero(iocom, sizeof(*iocom));
 
+	asprintf(&iocom->label, "iocom-%p", iocom);
 	iocom->signal_callback = signal_func;
 	iocom->rcvmsg_callback = rcvmsg_func;
 	iocom->altmsg_callback = altmsg_func;
@@ -132,7 +134,7 @@ dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 	TAILQ_INIT(&iocom->txmsgq);
 	iocom->sock_fd = sock_fd;
 	iocom->alt_fd = alt_fd;
-	iocom->flags = DMSG_IOCOMF_RREQ;
+	iocom->flags = DMSG_IOCOMF_RREQ | DMSG_IOCOMF_CLOSEALT;
 	if (signal_func)
 		iocom->flags |= DMSG_IOCOMF_SWORK;
 	dmsg_ioq_init(iocom, &iocom->ioq_rx);
@@ -167,6 +169,20 @@ dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 #endif
 }
 
+void
+dmsg_iocom_label(dmsg_iocom_t *iocom, const char *ctl, ...)
+{
+	va_list va;
+	char *optr;
+
+	va_start(va, ctl);
+	optr = iocom->label;
+	vasprintf(&iocom->label, ctl, va);
+	va_end(va);
+	if (optr)
+		free(optr);
+}
+
 /*
  * May only be called from a callback from iocom_core.
  *
@@ -179,20 +195,24 @@ dmsg_iocom_restate(dmsg_iocom_t *iocom,
 		   void (*rcvmsg_func)(dmsg_msg_t *msg),
 		   void (*altmsg_func)(dmsg_iocom_t *))
 {
+	pthread_mutex_lock(&iocom->mtx);
 	iocom->signal_callback = signal_func;
 	iocom->rcvmsg_callback = rcvmsg_func;
 	iocom->altmsg_callback = altmsg_func;
 	if (signal_func)
-		iocom->flags |= DMSG_IOCOMF_SWORK;
+		atomic_set_int(&iocom->flags, DMSG_IOCOMF_SWORK);
 	else
-		iocom->flags &= ~DMSG_IOCOMF_SWORK;
+		atomic_clear_int(&iocom->flags, DMSG_IOCOMF_SWORK);
+	pthread_mutex_unlock(&iocom->mtx);
 }
 
 void
 dmsg_iocom_signal(dmsg_iocom_t *iocom)
 {
+	pthread_mutex_lock(&iocom->mtx);
 	if (iocom->signal_callback)
-		iocom->flags |= DMSG_IOCOMF_SWORK;
+		atomic_set_int(&iocom->flags, DMSG_IOCOMF_SWORK);
+	pthread_mutex_unlock(&iocom->mtx);
 }
 
 /*
@@ -210,17 +230,17 @@ dmsg_iocom_done(dmsg_iocom_t *iocom)
 		close(iocom->sock_fd);
 		iocom->sock_fd = -1;
 	}
-	if (iocom->alt_fd >= 0) {
+	if (iocom->alt_fd >= 0 && (iocom->flags & DMSG_IOCOMF_CLOSEALT)) {
 		close(iocom->alt_fd);
 		iocom->alt_fd = -1;
 	}
 	dmsg_ioq_done(iocom, &iocom->ioq_rx);
 	dmsg_ioq_done(iocom, &iocom->ioq_tx);
-	if ((msg = TAILQ_FIRST(&iocom->freeq)) != NULL) {
+	while ((msg = TAILQ_FIRST(&iocom->freeq)) != NULL) {
 		TAILQ_REMOVE(&iocom->freeq, msg, qentry);
 		free(msg);
 	}
-	if ((msg = TAILQ_FIRST(&iocom->freeq_aux)) != NULL) {
+	while ((msg = TAILQ_FIRST(&iocom->freeq_aux)) != NULL) {
 		TAILQ_REMOVE(&iocom->freeq_aux, msg, qentry);
 		free(msg->aux_data);
 		msg->aux_data = NULL;
@@ -238,17 +258,17 @@ dmsg_iocom_done(dmsg_iocom_t *iocom)
 }
 
 /*
- * Initialize a circuit structure and add it to the iocom's circuit_tree.
- * circuit0 is left out and will not be added to the tree.
+ * Basic initialization of a circuit structure.
+ *
+ * The circuit structure is initialized with one ref.
  */
 void
 dmsg_circuit_init(dmsg_iocom_t *iocom, dmsg_circuit_t *circuit)
 {
+	circuit->refs = 1;
 	circuit->iocom = iocom;
 	RB_INIT(&circuit->staterd_tree);
 	RB_INIT(&circuit->statewr_tree);
-	if (circuit->msgid)
-		RB_INSERT(dmsg_circuit_tree, &iocom->circuit_tree, circuit);
 }
 
 /*
@@ -263,17 +283,22 @@ dmsg_msg_alloc(dmsg_circuit_t *circuit,
 	dmsg_state_t *state = NULL;
 	dmsg_msg_t *msg;
 	int hbytes;
+	size_t aligned_size;
 
 	pthread_mutex_lock(&iocom->mtx);
+#if 0
 	if (aux_size) {
-		aux_size = (aux_size + DMSG_ALIGNMASK) &
-			   ~DMSG_ALIGNMASK;
+		aligned_size = DMSG_DOALIGN(aux_size);
 		if ((msg = TAILQ_FIRST(&iocom->freeq_aux)) != NULL)
 			TAILQ_REMOVE(&iocom->freeq_aux, msg, qentry);
 	} else {
+		aligned_size = 0;
 		if ((msg = TAILQ_FIRST(&iocom->freeq)) != NULL)
 			TAILQ_REMOVE(&iocom->freeq, msg, qentry);
 	}
+#endif
+	aligned_size = DMSG_DOALIGN(aux_size);
+	msg = NULL;
 	if ((cmd & (DMSGF_CREATE | DMSGF_REPLY)) == DMSGF_CREATE) {
 		/*
 		 * Create state when CREATE is set without REPLY.
@@ -299,18 +324,29 @@ dmsg_msg_alloc(dmsg_circuit_t *circuit,
 		state->icmd = state->txcmd & DMSGF_BASECMDMASK;
 		state->func = func;
 		state->any.any = data;
-		pthread_mutex_lock(&iocom->mtx);
 		RB_INSERT(dmsg_state_tree, &circuit->statewr_tree, state);
-		pthread_mutex_unlock(&iocom->mtx);
 		state->flags |= DMSG_STATE_INSERTED;
 	}
+	/* XXX SMP race for state */
 	pthread_mutex_unlock(&iocom->mtx);
+	hbytes = (cmd & DMSGF_SIZE) * DMSG_ALIGN;
 	if (msg == NULL) {
+		msg = malloc(offsetof(struct dmsg_msg, any.head) + hbytes + 4);
+		bzero(msg, offsetof(struct dmsg_msg, any.head));
+		*(int *)((char *)msg +
+			 offsetof(struct dmsg_msg, any.head) + hbytes) =
+				 0x71B2C3D4;
+#if 0
 		msg = malloc(sizeof(*msg));
 		bzero(msg, sizeof(*msg));
-		msg->aux_data = NULL;
-		msg->aux_size = 0;
+#endif
 	}
+
+	/*
+	 * [re]allocate the auxillary data buffer.  The caller knows that
+	 * a size-aligned buffer will be allocated but we do not want to
+	 * force the caller to zero any tail piece, so we do that ourself.
+	 */
 	if (msg->aux_size != aux_size) {
 		if (msg->aux_data) {
 			free(msg->aux_data);
@@ -318,11 +354,14 @@ dmsg_msg_alloc(dmsg_circuit_t *circuit,
 			msg->aux_size = 0;
 		}
 		if (aux_size) {
-			msg->aux_data = malloc(aux_size);
+			msg->aux_data = malloc(aligned_size);
 			msg->aux_size = aux_size;
+			if (aux_size != aligned_size) {
+				bzero(msg->aux_data + aux_size,
+				      aligned_size - aux_size);
+			}
 		}
 	}
-	hbytes = (cmd & DMSGF_SIZE) * DMSG_ALIGN;
 	if (hbytes)
 		bzero(&msg->any.head, hbytes);
 	msg->hdr_size = hbytes;
@@ -333,6 +372,7 @@ dmsg_msg_alloc(dmsg_circuit_t *circuit,
 	msg->any.head.circuit = 0;
 	msg->circuit = circuit;
 	msg->iocom = iocom;
+	dmsg_circuit_hold(circuit);
 	if (state) {
 		msg->state = state;
 		state->msg = msg;
@@ -352,13 +392,33 @@ static
 void
 dmsg_msg_free_locked(dmsg_msg_t *msg)
 {
-	dmsg_iocom_t *iocom = msg->iocom;
-
+	/*dmsg_iocom_t *iocom = msg->iocom;*/
+#if 1
+	int hbytes = (msg->any.head.cmd & DMSGF_SIZE) * DMSG_ALIGN;
+	if (*(int *)((char *)msg +
+		     offsetof(struct  dmsg_msg, any.head) + hbytes) !=
+	     0x71B2C3D4) {
+		fprintf(stderr, "MSGFREE FAILED CMD %08x\n", msg->any.head.cmd);
+		assert(0);
+	}
+#endif
+	if (msg->circuit) {
+		dmsg_circuit_drop_locked(msg->circuit);
+		msg->circuit = NULL;
+	}
 	msg->state = NULL;
+	if (msg->aux_data) {
+		free(msg->aux_data);
+		msg->aux_data = NULL;
+	}
+	msg->aux_size = 0;
+	free (msg);
+#if 0
 	if (msg->aux_data)
 		TAILQ_INSERT_TAIL(&iocom->freeq_aux, msg, qentry);
 	else
 		TAILQ_INSERT_TAIL(&iocom->freeq, msg, qentry);
+#endif
 }
 
 void
@@ -389,6 +449,11 @@ dmsg_iocom_core(dmsg_iocom_t *iocom)
 	int ai;	/* alt bulk path socket */
 
 	while ((iocom->flags & DMSG_IOCOMF_EOF) == 0) {
+		/*
+		 * These iocom->flags are only manipulated within the
+		 * context of the current thread.  However, modifications
+		 * still require atomic ops.
+		 */
 		if ((iocom->flags & (DMSG_IOCOMF_RWORK |
 				     DMSG_IOCOMF_WWORK |
 				     DMSG_IOCOMF_PWORK |
@@ -445,24 +510,29 @@ dmsg_iocom_core(dmsg_iocom_t *iocom)
 			poll(fds, count, timeout);
 
 			if (wi >= 0 && (fds[wi].revents & POLLIN))
-				iocom->flags |= DMSG_IOCOMF_PWORK;
+				atomic_set_int(&iocom->flags,
+					       DMSG_IOCOMF_PWORK);
 			if (si >= 0 && (fds[si].revents & POLLIN))
-				iocom->flags |= DMSG_IOCOMF_RWORK;
+				atomic_set_int(&iocom->flags,
+					       DMSG_IOCOMF_RWORK);
 			if (si >= 0 && (fds[si].revents & POLLOUT))
-				iocom->flags |= DMSG_IOCOMF_WWORK;
+				atomic_set_int(&iocom->flags,
+					       DMSG_IOCOMF_WWORK);
 			if (wi >= 0 && (fds[wi].revents & POLLOUT))
-				iocom->flags |= DMSG_IOCOMF_WWORK;
+				atomic_set_int(&iocom->flags,
+					       DMSG_IOCOMF_WWORK);
 			if (ai >= 0 && (fds[ai].revents & POLLIN))
-				iocom->flags |= DMSG_IOCOMF_ARWORK;
+				atomic_set_int(&iocom->flags,
+					       DMSG_IOCOMF_ARWORK);
 		} else {
 			/*
 			 * Always check the pipe
 			 */
-			iocom->flags |= DMSG_IOCOMF_PWORK;
+			atomic_set_int(&iocom->flags, DMSG_IOCOMF_PWORK);
 		}
 
 		if (iocom->flags & DMSG_IOCOMF_SWORK) {
-			iocom->flags &= ~DMSG_IOCOMF_SWORK;
+			atomic_clear_int(&iocom->flags, DMSG_IOCOMF_SWORK);
 			iocom->signal_callback(iocom);
 		}
 
@@ -472,10 +542,10 @@ dmsg_iocom_core(dmsg_iocom_t *iocom)
 		 * the pipe with a dummy read.
 		 */
 		if (iocom->flags & DMSG_IOCOMF_PWORK) {
-			iocom->flags &= ~DMSG_IOCOMF_PWORK;
+			atomic_clear_int(&iocom->flags, DMSG_IOCOMF_PWORK);
 			read(iocom->wakeupfds[0], dummybuf, sizeof(dummybuf));
-			iocom->flags |= DMSG_IOCOMF_RWORK;
-			iocom->flags |= DMSG_IOCOMF_WWORK;
+			atomic_set_int(&iocom->flags, DMSG_IOCOMF_RWORK);
+			atomic_set_int(&iocom->flags, DMSG_IOCOMF_WWORK);
 			if (TAILQ_FIRST(&iocom->txmsgq))
 				dmsg_iocom_flush1(iocom);
 		}
@@ -504,7 +574,7 @@ dmsg_iocom_core(dmsg_iocom_t *iocom)
 		}
 
 		if (iocom->flags & DMSG_IOCOMF_ARWORK) {
-			iocom->flags &= ~DMSG_IOCOMF_ARWORK;
+			atomic_clear_int(&iocom->flags, DMSG_IOCOMF_ARWORK);
 			iocom->altmsg_callback(iocom);
 		}
 	}
@@ -569,12 +639,11 @@ dmsg_ioq_read(dmsg_iocom_t *iocom)
 	ssize_t n;
 	size_t bytes;
 	size_t nmax;
+	uint32_t aux_size;
 	uint32_t xcrc32;
 	int error;
 
 again:
-	iocom->flags &= ~(DMSG_IOCOMF_RREQ | DMSG_IOCOMF_RWORK);
-
 	/*
 	 * If a message is already pending we can just remove and
 	 * return it.  Message state has already been processed.
@@ -584,6 +653,7 @@ again:
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);
 		return (msg);
 	}
+	atomic_clear_int(&iocom->flags, DMSG_IOCOMF_RREQ | DMSG_IOCOMF_RWORK);
 
 	/*
 	 * If the stream is errored out we stop processing it.
@@ -664,6 +734,10 @@ again:
 		head = (void *)(ioq->buf + ioq->fifo_beg);
 		if (head->magic != DMSG_HDR_MAGIC &&
 		    head->magic != DMSG_HDR_MAGIC_REV) {
+			fprintf(stderr, "%s: head->magic is bad %02x\n",
+				iocom->label, head->magic);
+			if (iocom->flags & DMSG_IOCOMF_CRYPTED)
+				fprintf(stderr, "(on encrypted link)\n");
 			ioq->error = DMSG_IOQ_ERROR_SYNC;
 			break;
 		}
@@ -674,13 +748,14 @@ again:
 		if (head->magic == DMSG_HDR_MAGIC_REV) {
 			ioq->hbytes = (bswap32(head->cmd) & DMSGF_SIZE) *
 				      DMSG_ALIGN;
-			ioq->abytes = bswap32(head->aux_bytes) *
-				      DMSG_ALIGN;
+			aux_size = bswap32(head->aux_bytes);
 		} else {
 			ioq->hbytes = (head->cmd & DMSGF_SIZE) *
 				      DMSG_ALIGN;
-			ioq->abytes = head->aux_bytes * DMSG_ALIGN;
+			aux_size = head->aux_bytes;
 		}
+		ioq->abytes = DMSG_DOALIGN(aux_size);
+		ioq->unaligned_aux_size = aux_size;
 		if (ioq->hbytes < sizeof(msg->any.head) ||
 		    ioq->hbytes > sizeof(msg->any) ||
 		    ioq->abytes > DMSG_AUX_MAX) {
@@ -690,8 +765,11 @@ again:
 
 		/*
 		 * Allocate the message, the next state will fill it in.
+		 * Note that the aux_data buffer will be sized to an aligned
+		 * value and the aligned remainder zero'd for convenience.
 		 */
-		msg = dmsg_msg_alloc(&iocom->circuit0, ioq->abytes, 0,
+		msg = dmsg_msg_alloc(&iocom->circuit0, aux_size,
+				     ioq->hbytes / DMSG_ALIGN,
 				     NULL, NULL);
 		ioq->msg = msg;
 
@@ -803,12 +881,16 @@ again:
 		/* fall through */
 	case DMSG_MSGQ_STATE_AUXDATA1:
 		/*
-		 * Copy the partial or complete payload from remaining
-		 * bytes in the FIFO in order to optimize the makeroom call
-		 * in the AUXDATA2 state.  We have to fall-through either
-		 * way so we can check the crc.
+		 * Copy the partial or complete [decrypted] payload from
+		 * remaining bytes in the FIFO in order to optimize the
+		 * makeroom call in the AUXDATA2 state.  We have to
+		 * fall-through either way so we can check the crc.
 		 *
 		 * msg->aux_size tracks our aux data.
+		 *
+		 * (Lets not complicate matters if the data is encrypted,
+		 *  since the data in-stream is not the same size as the
+		 *  data decrypted).
 		 */
 		if (bytes >= ioq->abytes) {
 			bcopy(ioq->buf + ioq->fifo_beg, msg->aux_data,
@@ -888,19 +970,27 @@ again:
 		/*
 		 * Insufficient data accumulated (set msg NULL so caller will
 		 * retry on event).
+		 *
+		 * Assert the auxillary data size is correct, then record the
+		 * original unaligned size from the message header.
 		 */
 		if (msg->aux_size < ioq->abytes) {
 			msg = NULL;
 			break;
 		}
 		assert(msg->aux_size == ioq->abytes);
+		msg->aux_size = ioq->unaligned_aux_size;
 
 		/*
-		 * Check aux_crc, then we are done.
+		 * Check aux_crc, then we are done.  Note that the crc
+		 * is calculated over the aligned size, not the actual
+		 * size.
 		 */
-		xcrc32 = dmsg_icrc32(msg->aux_data, msg->aux_size);
+		xcrc32 = dmsg_icrc32(msg->aux_data, ioq->abytes);
 		if (xcrc32 != msg->any.head.aux_crc) {
 			ioq->error = DMSG_IOQ_ERROR_ACRC;
+			fprintf(stderr, "iocom: ACRC error %08x vs %08x msgid %016jx msgcmd %08x auxsize %d\n",
+				xcrc32, msg->any.head.aux_crc, (intmax_t)msg->any.head.msgid, msg->any.head.cmd, msg->any.head.aux_bytes);
 			break;
 		}
 		break;
@@ -941,6 +1031,7 @@ again:
 	 */
 	if (ioq->error) {
 skip:
+		fprintf(stderr, "IOQ ERROR %d\n", ioq->error);
 		/*
 		 * An unrecoverable error causes all active receive
 		 * transactions to be terminated with a LNK_ERROR message.
@@ -986,6 +1077,15 @@ skip:
 			 */
 			if (state->rxcmd & DMSGF_DELETE) {
 				dmsg_msg_free(msg);
+				fprintf(stderr,
+					"iocom: ioq error(rd) %d sleeping "
+					"state %p rxcmd %08x txcmd %08x "
+					"func %p\n",
+					ioq->error, state, state->rxcmd,
+					state->txcmd, state->func);
+				usleep(100000);	/* XXX */
+				atomic_set_int(&iocom->flags,
+					       DMSG_IOCOMF_RWORK);
 				msg = NULL;
 			} else {
 				/*state->txcmd |= DMSGF_DELETE;*/
@@ -1002,6 +1102,15 @@ skip:
 			 */
 			if (state->rxcmd & DMSGF_DELETE) {
 				dmsg_msg_free(msg);
+				fprintf(stderr,
+					"iocom: ioq error(wr) %d sleeping "
+					"state %p rxcmd %08x txcmd %08x "
+					"func %p\n",
+					ioq->error, state, state->rxcmd,
+					state->txcmd, state->func);
+				usleep(100000);	/* XXX */
+				atomic_set_int(&iocom->flags,
+					       DMSG_IOCOMF_RWORK);
 				msg = NULL;
 			} else {
 				msg->state = state;
@@ -1021,7 +1130,7 @@ skip:
 			 * Generate a final LNK_ERROR and flag EOF.
 			 */
 			msg->state = NULL;
-			iocom->flags |= DMSG_IOCOMF_EOF;
+			atomic_set_int(&iocom->flags, DMSG_IOCOMF_EOF);
 			fprintf(stderr, "EOF ON SOCKET %d\n", iocom->sock_fd);
 		}
 		pthread_mutex_unlock(&iocom->mtx);
@@ -1037,7 +1146,7 @@ skip:
 		 * re-set RWORK.
 		 */
 		if (msg)
-			iocom->flags |= DMSG_IOCOMF_RWORK;
+			atomic_set_int(&iocom->flags, DMSG_IOCOMF_RWORK);
 	} else if (msg == NULL) {
 		/*
 		 * Insufficient data received to finish building the message,
@@ -1046,7 +1155,7 @@ skip:
 		 * Leave ioq->msg intact.
 		 * Leave the FIFO intact.
 		 */
-		iocom->flags |= DMSG_IOCOMF_RREQ;
+		atomic_set_int(&iocom->flags, DMSG_IOCOMF_RREQ);
 	} else {
 		/*
 		 * Continue processing msg.
@@ -1060,13 +1169,13 @@ skip:
 		 */
 		if (ioq->fifo_beg == ioq->fifo_cdx &&
 		    ioq->fifo_cdn == ioq->fifo_end) {
-			iocom->flags |= DMSG_IOCOMF_RREQ;
+			atomic_set_int(&iocom->flags, DMSG_IOCOMF_RREQ);
 			ioq->fifo_cdx = 0;
 			ioq->fifo_cdn = 0;
 			ioq->fifo_beg = 0;
 			ioq->fifo_end = 0;
 		} else {
-			iocom->flags |= DMSG_IOCOMF_RWORK;
+			atomic_set_int(&iocom->flags, DMSG_IOCOMF_RWORK);
 		}
 		ioq->state = DMSG_MSGQ_STATE_HEADER1;
 		ioq->msg = NULL;
@@ -1078,8 +1187,15 @@ skip:
 		 *
 		 * State processing only occurs for messages destined for us.
 		 */
+		if (DMsgDebugOpt >= 5) {
+			fprintf(stderr,
+				"rxmsg cmd=%08x msgid=%016jx circ=%016jx\n",
+				msg->any.head.cmd,
+				(intmax_t)msg->any.head.msgid,
+				(intmax_t)msg->any.head.circuit);
+		}
 		if (msg->any.head.circuit)
-			error = dmsg_circuit_relay(msg);
+			error = dmsg_circuit_route(msg);
 		else
 			error = dmsg_state_msgrx(msg);
 
@@ -1119,7 +1235,7 @@ skip:
  * A non-NULL msg is added to the queue but not necessarily flushed.
  * Calling this function with msg == NULL will get a flush going.
  *
- * Caller must hold iocom->mtx.
+ * (called from iocom_core only)
  */
 void
 dmsg_iocom_flush1(dmsg_iocom_t *iocom)
@@ -1127,10 +1243,11 @@ dmsg_iocom_flush1(dmsg_iocom_t *iocom)
 	dmsg_ioq_t *ioq = &iocom->ioq_tx;
 	dmsg_msg_t *msg;
 	uint32_t xcrc32;
-	int hbytes;
+	size_t hbytes;
+	size_t abytes;
 	dmsg_msg_queue_t tmpq;
 
-	iocom->flags &= ~(DMSG_IOCOMF_WREQ | DMSG_IOCOMF_WWORK);
+	atomic_clear_int(&iocom->flags, DMSG_IOCOMF_WREQ | DMSG_IOCOMF_WWORK);
 	TAILQ_INIT(&tmpq);
 	pthread_mutex_lock(&iocom->mtx);
 	while ((msg = TAILQ_FIRST(&iocom->txmsgq)) != NULL) {
@@ -1165,12 +1282,11 @@ dmsg_iocom_flush1(dmsg_iocom_t *iocom)
 		 * Calculate aux_crc if 0, then calculate hdr_crc.
 		 */
 		if (msg->aux_size && msg->any.head.aux_crc == 0) {
-			assert((msg->aux_size & DMSG_ALIGNMASK) == 0);
-			xcrc32 = dmsg_icrc32(msg->aux_data, msg->aux_size);
+			abytes = DMSG_DOALIGN(msg->aux_size);
+			xcrc32 = dmsg_icrc32(msg->aux_data, abytes);
 			msg->any.head.aux_crc = xcrc32;
 		}
-		msg->any.head.aux_bytes = msg->aux_size / DMSG_ALIGN;
-		assert((msg->aux_size & DMSG_ALIGNMASK) == 0);
+		msg->any.head.aux_bytes = msg->aux_size;
 
 		hbytes = (msg->any.head.cmd & DMSGF_SIZE) *
 			 DMSG_ALIGN;
@@ -1189,6 +1305,8 @@ dmsg_iocom_flush1(dmsg_iocom_t *iocom)
 
 /*
  * Thread localized, iocom->mtx not held by caller.
+ *
+ * (called from iocom_core via iocom_flush1 only)
  */
 void
 dmsg_iocom_flush2(dmsg_iocom_t *iocom)
@@ -1224,7 +1342,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 	TAILQ_FOREACH(msg, &ioq->msgq, qentry) {
 		hbytes = (msg->any.head.cmd & DMSGF_SIZE) *
 			 DMSG_ALIGN;
-		abytes = msg->aux_size;
+		abytes = DMSG_DOALIGN(msg->aux_size);
 		assert(hoff <= hbytes && aoff <= abytes);
 
 		if (hoff < hbytes) {
@@ -1270,9 +1388,14 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 		/*
 		 * Make sure the FIFO has a reasonable amount of space
 		 * left (if not completely full).
+		 *
+		 * In this situation we are staging the encrypted message
+		 * data in the FIFO.  (nact) represents how much plaintext
+		 * has been staged, (n) represents how much encrypted data
+		 * has been flushed.  The two are independent of each other.
 		 */
 		if (ioq->fifo_beg > sizeof(ioq->buf) / 2 &&
-		    sizeof(ioq->buf) - ioq->fifo_end >= DMSG_ALIGN * 2) {
+		    sizeof(ioq->buf) - ioq->fifo_end < DMSG_ALIGN * 2) {
 			bcopy(ioq->buf + ioq->fifo_beg, ioq->buf,
 			      ioq->fifo_end - ioq->fifo_beg);
 			ioq->fifo_cdx -= ioq->fifo_beg;
@@ -1294,7 +1417,18 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 				ioq->fifo_end = 0;
 			}
 		}
+		/*
+		 * We don't mess with the nact returned by the crypto_encrypt
+		 * call, which represents the filling of the FIFO.  (n) tells
+		 * us how much we were able to write from the FIFO.  The two
+		 * are different beasts when encrypting.
+		 */
 	} else {
+		/*
+		 * In this situation we are not staging the messages to the
+		 * FIFO but instead writing them directly from the msg
+		 * structure(s), so (nact) is basically (n).
+		 */
 		n = writev(iocom->sock_fd, iov, iovcnt);
 		if (n > 0)
 			nact = n;
@@ -1310,7 +1444,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		hbytes = (msg->any.head.cmd & DMSGF_SIZE) *
 			 DMSG_ALIGN;
-		abytes = msg->aux_size;
+		abytes = DMSG_DOALIGN(msg->aux_size);
 
 		if ((size_t)nact < hbytes - ioq->hbytes) {
 			ioq->hbytes += nact;
@@ -1325,6 +1459,15 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 			break;
 		}
 		nact -= abytes - ioq->abytes;
+		/* ioq->abytes = abytes; optimized out */
+
+		if (DMsgDebugOpt >= 5) {
+			fprintf(stderr,
+				"txmsg cmd=%08x msgid=%016jx circ=%016jx\n",
+				msg->any.head.cmd,
+				(intmax_t)msg->any.head.msgid,
+				(intmax_t)msg->any.head.circuit);
+		}
 
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);
 		--ioq->msgcount;
@@ -1351,10 +1494,10 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 			/*
 			 * Wait for socket buffer space
 			 */
-			iocom->flags |= DMSG_IOCOMF_WREQ;
+			atomic_set_int(&iocom->flags, DMSG_IOCOMF_WREQ);
 		}
 	} else {
-		iocom->flags |= DMSG_IOCOMF_WREQ;
+		atomic_set_int(&iocom->flags, DMSG_IOCOMF_WREQ);
 	}
 	if (ioq->error) {
 		dmsg_iocom_drain(iocom);
@@ -1367,7 +1510,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
  * the caller to pull off our contrived terminal error msg to detect
  * the connection failure.
  *
- * Thread localized, iocom->mtx not held by caller.
+ * Localized to iocom_core thread, iocom->mtx not held by caller.
  */
 void
 dmsg_iocom_drain(dmsg_iocom_t *iocom)
@@ -1375,7 +1518,7 @@ dmsg_iocom_drain(dmsg_iocom_t *iocom)
 	dmsg_ioq_t *ioq = &iocom->ioq_tx;
 	dmsg_msg_t *msg;
 
-	iocom->flags &= ~(DMSG_IOCOMF_WREQ | DMSG_IOCOMF_WWORK);
+	atomic_clear_int(&iocom->flags, DMSG_IOCOMF_WREQ | DMSG_IOCOMF_WWORK);
 	ioq->hbytes = 0;
 	ioq->abytes = 0;
 
@@ -1421,7 +1564,6 @@ dmsg_msg_write(dmsg_msg_t *msg)
 		assert(((state->txcmd ^ msg->any.head.cmd) & DMSGF_REPLY) == 0);
 		if (msg->any.head.cmd & DMSGF_CREATE) {
 			state->txcmd = msg->any.head.cmd & ~DMSGF_DELETE;
-			state->icmd = state->txcmd & DMSGF_BASECMDMASK;
 		}
 	}
 
@@ -1695,6 +1837,7 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 {
 	dmsg_iocom_t *iocom = msg->iocom;
 	dmsg_circuit_t *circuit;
+	dmsg_circuit_t *ocircuit;
 	dmsg_state_t *state;
 	dmsg_state_t sdummy;
 	dmsg_circuit_t cdummy;
@@ -1711,11 +1854,18 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		cdummy.msgid = msg->any.head.circuit;
 		circuit = RB_FIND(dmsg_circuit_tree, &iocom->circuit_tree,
 				  &cdummy);
-		if (circuit == NULL)
+		if (circuit == NULL) {
+			pthread_mutex_unlock(&iocom->mtx);
 			return (DMSG_IOQ_ERROR_BAD_CIRCUIT);
+		}
 	}
+
+	/*
+	 * Replace circuit0 with actual
+	 */
+	dmsg_circuit_hold(circuit);
+	ocircuit = msg->circuit;
 	msg->circuit = circuit;
-	++circuit->refs;
 
 	/*
 	 * If received msg is a command state is on staterd_tree.
@@ -1730,7 +1880,10 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 				&sdummy);
 	}
 	msg->state = state;
+
 	pthread_mutex_unlock(&iocom->mtx);
+	if (ocircuit)
+		dmsg_circuit_drop(ocircuit);
 
 	/*
 	 * Short-cut one-off or mid-stream messages (state may be NULL).
@@ -1994,12 +2147,24 @@ dmsg_state_free(dmsg_state_t *state)
 		fprintf(stderr, "terminate state %p id=%08x\n",
 			state, (uint32_t)state->msgid);
 	}
+	if (state->any.any != NULL)   /* XXX avoid deadlock w/exit & kernel */
+		closefrom(3);
 	assert(state->any.any == NULL);
 	msg = state->msg;
 	state->msg = NULL;
 	if (msg)
 		dmsg_msg_free_locked(msg);
 	free(state);
+}
+
+/*
+ * Called with iocom locked
+ */
+void
+dmsg_circuit_hold(dmsg_circuit_t *circuit)
+{
+	assert(circuit->refs > 0);		/* caller must hold ref */
+	atomic_add_int(&circuit->refs, 1);	/* to safely add more */
 }
 
 /*
@@ -2017,13 +2182,16 @@ dmsg_circuit_drop(dmsg_circuit_t *circuit)
 	/*
 	 * Decrement circuit refs, destroy circuit when refs drops to 0.
 	 */
-	if (--circuit->refs > 0)
+	if (atomic_fetchadd_int(&circuit->refs, -1) != 1)
 		return;
+	assert(circuit != &iocom->circuit0);
 
 	assert(RB_EMPTY(&circuit->staterd_tree));
 	assert(RB_EMPTY(&circuit->statewr_tree));
+	pthread_mutex_lock(&iocom->mtx);
 	RB_REMOVE(dmsg_circuit_tree, &iocom->circuit_tree, circuit);
 	circuit->iocom = NULL;
+	pthread_mutex_unlock(&iocom->mtx);
 	dmsg_free(circuit);
 
 	/*
@@ -2040,6 +2208,29 @@ dmsg_circuit_drop(dmsg_circuit_t *circuit)
 	if (iocom->ioq_rx.error && RB_EMPTY(&iocom->circuit_tree)) {
 		dummy = 0;
 		write(iocom->wakeupfds[1], &dummy, 1);
+	}
+}
+
+void
+dmsg_circuit_drop_locked(dmsg_circuit_t *circuit)
+{
+	dmsg_iocom_t *iocom;
+
+	iocom = circuit->iocom;
+	assert(circuit->refs > 0);
+	assert(iocom);
+
+	if (atomic_fetchadd_int(&circuit->refs, -1) == 1) {
+		assert(circuit != &iocom->circuit0);
+		assert(RB_EMPTY(&circuit->staterd_tree));
+		assert(RB_EMPTY(&circuit->statewr_tree));
+		RB_REMOVE(dmsg_circuit_tree, &iocom->circuit_tree, circuit);
+		circuit->iocom = NULL;
+		dmsg_free(circuit);
+		if (iocom->ioq_rx.error && RB_EMPTY(&iocom->circuit_tree)) {
+			char dummy = 0;
+			write(iocom->wakeupfds[1], &dummy, 1);
+		}
 	}
 }
 

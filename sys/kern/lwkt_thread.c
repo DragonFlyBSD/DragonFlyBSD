@@ -431,6 +431,7 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     td->td_kstack_size = stksize;
     td->td_flags = flags;
     td->td_mpflags = 0;
+    td->td_type = TD_TYPE_GENERIC;
     td->td_gd = gd;
     td->td_pri = TDPRI_KERN_DAEMON;
     td->td_critcount = 1;
@@ -764,7 +765,7 @@ skip:
 	    need_lwkt_resched();	/* prevent hlt */
 	    goto haveidle;
 	}
-#if defined(INVARIANTS) && defined(__amd64__)
+#if defined(INVARIANTS) && defined(__x86_64__)
 	if ((read_rflags() & PSL_I) == 0) {
 		cpu_enable_intr();
 		panic("lwkt_switch() called with interrupts disabled");

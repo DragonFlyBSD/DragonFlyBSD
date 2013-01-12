@@ -1,5 +1,4 @@
 /* $FreeBSD: src/libexec/bootpd/report.c,v 1.2.6.2 2001/03/05 10:58:59 kris Exp $ */
-/* $DragonFly: src/libexec/bootpd/report.c,v 1.2 2003/06/17 04:27:07 dillon Exp $ */
 
 /*
  * report() - calls syslog
@@ -141,15 +140,3 @@ get_errmsg(void)
 {
 	return strerror(errno);
 }
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

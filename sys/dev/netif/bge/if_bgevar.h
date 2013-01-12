@@ -252,6 +252,7 @@ struct bge_softc {
 	uint32_t		bge_rx_coal_bds_int;
 	uint32_t		bge_tx_coal_bds_int;
 	uint32_t		bge_tx_prodidx;
+	int			bge_tx_wreg;
 	uint32_t		bge_tx_buf_ratio;
 	uint32_t		bge_mi_mode;
 	int			bge_force_defrag;

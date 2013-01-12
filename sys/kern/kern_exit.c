@@ -63,7 +63,6 @@
 #include <sys/sem.h>
 #include <sys/jail.h>
 #include <sys/kern_syscall.h>
-#include <sys/upcall.h>
 #include <sys/unistd.h>
 #include <sys/eventhandler.h>
 #include <sys/dsched.h>
@@ -274,7 +273,7 @@ exit1(int rv)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct lwp *lp = td->td_lwp;
-	struct proc *q, *nq;
+	struct proc *q;
 	struct vmspace *vm;
 	struct vnode *vtmp;
 	struct exitlist *ep;
@@ -313,7 +312,6 @@ exit1(int rv)
 			 * than the internal signal
 			 */
 			sys_kill(&killArgs);
-			nq = q;
 			q = q->p_peers;
 		}
 		while (p->p_peers) 
@@ -378,12 +376,6 @@ exit1(int rv)
 
 	/* The next two chunks should probably be moved to vmspace_exit. */
 	vm = p->p_vmspace;
-
-	/*
-	 * Release upcalls associated with this process
-	 */
-	if (vm->vm_upcalls)
-		upc_release(vm, lp);
 
 	/*
 	 * Clean up data related to virtual kernel operation.  Clean up

@@ -35,10 +35,23 @@
 /*
  * This subsystem handles direct and indirect block searches, recursions,
  * creation, and deletion.  Chains of blockrefs are tracked and modifications
- * are flag for propagation... eventually all the way back to the volume
- * header.
+ * are flagged for propagation... eventually all the way back to the volume
+ * header.  Any chain except the volume header can be flushed to disk at
+ * any time... none of it matters until the volume header is dealt with
+ * (which is not here, see hammer2_vfsops.c for the volume header disk
+ * sequencing).
+ *
+ * Serialized flushes are not handled here, see hammer2_flush.c.  This module
+ * can essentially work on the current version of data, which can be in memory
+ * as well as on-disk due to the above.  However, we are responsible for
+ * making a copy of the state when a modified chain is part of a flush
+ * and we attempt to modify it again before the flush gets to it.  In that
+ * situation we create an allocated copy of the state that the flush can
+ * deal with.  If a chain undergoing deletion is part of a flush it is
+ * marked DELETED and its bref index is kept intact for the flush, but the
+ * chain is thereafter ignored by this module's because it is no longer
+ * current.
  */
-
 #include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -52,7 +65,8 @@ static int hammer2_indirect_optimize;	/* XXX SYSCTL */
 
 static hammer2_chain_t *hammer2_chain_create_indirect(
 			hammer2_mount_t *hmp, hammer2_chain_t *parent,
-			hammer2_key_t key, int keybits);
+			hammer2_key_t key, int keybits,
+			int *errorp);
 
 /*
  * We use a red-black tree to guarantee safe lookups under shared locks.
@@ -73,17 +87,28 @@ hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
  *
  * SUBMODIFIED is not set on the chain passed in.
  *
- * XXX rename of parent can create a SMP race
+ * The chain->cst.spin lock can be held to stabilize the chain->parent
+ * pointer.  The first parent is stabilized by virtue of chain being
+ * fully locked.
  */
-static void
+void
 hammer2_chain_parent_setsubmod(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
 	hammer2_chain_t *parent;
 
 	parent = chain->parent;
-	while (parent && (parent->flags & HAMMER2_CHAIN_SUBMODIFIED) == 0) {
-		atomic_set_int(&parent->flags, HAMMER2_CHAIN_SUBMODIFIED);
-		parent = parent->parent;
+	if (parent && (parent->flags & HAMMER2_CHAIN_SUBMODIFIED) == 0) {
+		spin_lock(&parent->cst.spin);
+		for (;;) {
+			atomic_set_int(&parent->flags,
+				       HAMMER2_CHAIN_SUBMODIFIED);
+			if ((chain = parent->parent) == NULL)
+				break;
+			spin_lock(&chain->cst.spin);	/* upward interlock */
+			spin_unlock(&parent->cst.spin);
+			parent = chain;
+		}
+		spin_unlock(&parent->cst.spin);
 	}
 }
 
@@ -170,11 +195,10 @@ hammer2_chain_dealloc(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	hammer2_chain_t *child;
 
 	KKASSERT(chain->refs == 0);
+	KKASSERT(chain->flushing == 0);
 	KKASSERT((chain->flags &
 		  (HAMMER2_CHAIN_MOVED | HAMMER2_CHAIN_MODIFIED)) == 0);
 
-	parent = chain->parent;
-	chain->parent = NULL;
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
 		ip = chain->u.ip;
 	else
@@ -192,12 +216,20 @@ hammer2_chain_dealloc(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	/*
 	 * If the DELETED flag is not set the chain must be removed from
 	 * its parent's tree.
+	 *
+	 * WARNING! chain->cst.spin must be held when chain->parent is
+	 *	    modified, even though we own the full blown lock,
+	 *	    to deal with setsubmod and rename races.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0) {
+	if (chain->flags & HAMMER2_CHAIN_ONRBTREE) {
+		spin_lock(&chain->cst.spin);	/* shouldn't be needed */
+		parent = chain->parent;
 		RB_REMOVE(hammer2_chain_tree, &parent->rbhead, chain);
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 		if (ip)
 			ip->pip = NULL;
+		chain->parent = NULL;
+		spin_unlock(&chain->cst.spin);
 	}
 
 	/*
@@ -303,16 +335,14 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		KKASSERT(refs > 0);
 		if (refs == 1) {
 			/*
-			 * (1) lastdrop successfully drops the chain and
-			 *     returns the parent, we recursively drop the
-			 *     parent.
+			 * (1) lastdrop successfully drops the chain to 0
+			 *     refs and may may not have destroyed it.
+			 *     lastdrop will return the parent so we can
+			 *     recursively drop the implied ref from the
+			 *     1->0 transition.
 			 *
 			 * (2) lastdrop fails to transition refs from 1 to 0
 			 *     and returns the same chain, we retry.
-			 *
-			 * (3) lastdrop fails to drop the chain and returns
-			 *     NULL, leaving the ref intact for a deferred
-			 *     drop later on.
 			 */
 			chain = hammer2_chain_lastdrop(hmp, chain);
 		} else {
@@ -329,12 +359,12 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 }
 
 /*
- * On the last drop we have to stabilize chain->parent, which we can do
- * by acquiring the chain->cst.spin lock.  If we get a full-blown lock
- * it messes up the chain_unlock() code's ccms_thread_unlock_zero() call.
+ * Handle SMP races during the last drop.  We must obtain a lock on
+ * chain->parent to stabilize the last pointer reference to chain
+ * (if applicable).  This reference does not have a parallel ref count,
+ * that is idle chains in the topology can have a ref count of 0.
  *
- * Once the spinlock has been obtained we can drop the refs and become the
- * owner of the implied ref on the parent, allowing us to return the parent.
+ * The 1->0 transition implies a ref on the parent.
  */
 static
 hammer2_chain_t *
@@ -343,55 +373,69 @@ hammer2_chain_lastdrop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	hammer2_chain_t *parent;
 
 	/*
-	 * gain lock, drop refs, return chain to retry if we were unable
-	 * to drop the refs from 1 to 0.
+	 * Stablize chain->parent with the chain cst's spinlock.
+	 * (parent can be NULL here).
+	 *
+	 * cst.spin locks are allowed to be nested bottom-up (the reverse
+	 * of the normal top-down for full-blown cst locks), so this also
+	 * allows us to attempt to obtain the parent's cst lock non-blocking
+	 * (which must acquire the parent's spinlock unconditionally) while
+	 * we are still holding the chain's spinlock.
 	 */
 	spin_lock(&chain->cst.spin);
-	if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
-		spin_unlock(&chain->cst.spin);
-		return (chain);
-	}
+	parent = chain->parent;
 
 	/*
-	 * Refs is 0 and we own the implied ref on the parent.  The
-	 * chain can still be accessed at this point but any cycling
-	 * of its refs will simply build-up more implied refs on the
-	 * parent.
+	 * If chain->flushing is non-zero we cannot deallocate the chain
+	 * here.  The flushing field will be serialized for the inline
+	 * unlock made by the flusher itself and we don't care about races
+	 * in any other situation because the thread lock on the parent
+	 * will fail in other situations.
 	 *
-	 * Thus the parent pointer is valid.
+	 * If we have a non-NULL parent but cannot acquire its thread
+	 * lock, we also cannot deallocate the chain.
 	 */
-	parent = chain->parent;
+	if (chain->flushing ||
+	    (parent && ccms_thread_lock_nonblock(&parent->cst,
+						 CCMS_STATE_EXCLUSIVE))) {
+		if (atomic_cmpset_int(&chain->refs, 1, 0)) {
+			spin_unlock(&chain->cst.spin);	/* success */
+			return(parent);
+		} else {
+			spin_unlock(&chain->cst.spin);	/* failure */
+			return(chain);
+		}
+	}
 	spin_unlock(&chain->cst.spin);
 
 	/*
-	 * Attempt to acquire an exclusive lock on the parent.  If this
-	 * fails we just leave chain alone but still return the parent
-	 * for the drop recursion.
+	 * With the parent now held we control the last pointer reference
+	 * to chain ONLY IF this is the 1->0 drop.  If we fail to transition
+	 * from 1->0 we raced a refs change and must retry at chain.
 	 */
-	if (parent &&
-	    ccms_thread_lock_nonblock(&parent->cst, CCMS_STATE_EXCLUSIVE)) {
-		return (parent);
+	if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
+		/* failure */
+		if (parent)
+			ccms_thread_unlock(&parent->cst);
+		return(chain);
 	}
 
 	/*
-	 * With an exclusive lock on the parent in-hand if chain->refs is
-	 * still 0 then its impossible for anyone new to access it (or any
-	 * of its children), and it can be deallocated.
+	 * Ok, we succeeded.  We now own the implied ref on the parent
+	 * associated with the 1->0 transition of the child.  It should not
+	 * be possible for ANYTHING to access the child now, as we own the
+	 * lock on the parent, so we should be able to safely lock the
+	 * child and destroy it.
 	 */
-	if (chain->refs == 0) {
-		ccms_thread_lock(&chain->cst, CCMS_STATE_EXCLUSIVE);
-		hammer2_chain_dealloc(hmp, chain);
-	}
+	ccms_thread_lock(&chain->cst, CCMS_STATE_EXCLUSIVE);
+	hammer2_chain_dealloc(hmp, chain);
 
 	/*
-	 * drop recursion, return parent so the caller can eat the implied
-	 * ref we own on it.  We have to use hammer2_chain_unlock() (which
-	 * also does a drop so we also need a ref on parent).
+	 * We want to return parent with its implied ref to the caller
+	 * to recurse and drop the parent.
 	 */
-	if (parent) {
-		hammer2_chain_ref(hmp, parent);
-		hammer2_chain_unlock(hmp, parent);
-	}
+	if (parent)
+		ccms_thread_unlock(&parent->cst);
 	return (parent);
 }
 
@@ -1182,6 +1226,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	chain->index = index;
 	if (RB_INSERT(hammer2_chain_tree, &parent->rbhead, chain))
 		panic("hammer2_chain_link: collision");
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 	KKASSERT(parent->refs > 0);
 	atomic_add_int(&parent->refs, 1);	/* for red-black entry */
 	ccms_thread_lock_restore(&parent->cst, ostate);
@@ -1200,7 +1245,6 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			ip->pip = parent->u.ip;
 			ip->pmp = parent->u.ip->pmp;
-			ip->depth = parent->u.ip->depth + 1;
 			ccms_cst_init(&ip->topo_cst, &ip->chain);
 		}
 	}
@@ -1340,11 +1384,17 @@ again:
 
 	/*
 	 * If the element and key overlap we use the element.
+	 *
+	 * NOTE!  Deleted elements are effectively invisible.  A Deleted
+	 *	  elements covers (makes invisible) any original media
+	 *	  data.
 	 */
 	bref = NULL;
 	for (i = 0; i < count; ++i) {
 		tmp = hammer2_chain_find(hmp, parent, i);
 		if (tmp) {
+			if (tmp->flags & HAMMER2_CHAIN_DELETED)
+				continue;
 			bref = &tmp->bref;
 			KKASSERT(bref->type != 0);
 		} else if (base == NULL || base[i].type == 0) {
@@ -1518,11 +1568,19 @@ again2:
 	 * Look for the key.  If we are unable to find a match and an exact
 	 * match was requested we return NULL.  If a range was requested we
 	 * run hammer2_chain_next() to iterate.
+	 *
+	 * NOTE!  Deleted elements are effectively invisible.  A Deleted
+	 *	  elements covers (makes invisible) any original media
+	 *	  data.
 	 */
 	bref = NULL;
 	while (i < count) {
 		tmp = hammer2_chain_find(hmp, parent, i);
 		if (tmp) {
+			if (tmp->flags & HAMMER2_CHAIN_DELETED) {
+				++i;
+				continue;
+			}
 			bref = &tmp->bref;
 		} else if (base == NULL || base[i].type == 0) {
 			++i;
@@ -1611,7 +1669,8 @@ again2:
 hammer2_chain_t *
 hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		     hammer2_chain_t *chain,
-		     hammer2_key_t key, int keybits, int type, size_t bytes)
+		     hammer2_key_t key, int keybits, int type, size_t bytes,
+		     int *errorp)
 {
 	hammer2_blockref_t dummy;
 	hammer2_blockref_t *base;
@@ -1622,6 +1681,7 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	int i;
 
 	KKASSERT(ccms_thread_lock_owned(&parent->cst));
+	*errorp = 0;
 
 	if (chain == NULL) {
 		/*
@@ -1735,13 +1795,15 @@ again:
 	 * causing a deadlock.
 	 *
 	 * This may return the new indirect block or the old parent depending
-	 * on where the key falls.
+	 * on where the key falls.  NULL is returned on error.  The most
+	 * typical error is EAGAIN (flush conflict during chain move).
 	 */
 	if (i == count) {
 		hammer2_chain_t *nparent;
 
 		nparent = hammer2_chain_create_indirect(hmp, parent,
-							key, keybits);
+							key, keybits,
+							errorp);
 		if (nparent == NULL) {
 			if (allocated)
 				hammer2_chain_free(hmp, chain);
@@ -1769,7 +1831,8 @@ again:
 	chain->index = i;
 	if (RB_INSERT(hammer2_chain_tree, &parent->rbhead, chain))
 		panic("hammer2_chain_link: collision");
-	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DELETED);
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
+	KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0);
 	KKASSERT(parent->refs > 0);
 	atomic_add_int(&parent->refs, 1);
 
@@ -1792,7 +1855,6 @@ again:
 		if (scan->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			ip->pip = scan->u.ip;
 			ip->pmp = scan->u.ip->pmp;
-			ip->depth = scan->u.ip->depth + 1;
 			ip->pip->delta_icount += ip->ip_data.inode_count;
 			ip->pip->delta_dcount += ip->ip_data.data_count;
 			++ip->pip->delta_icount;
@@ -1862,6 +1924,10 @@ done:
  * ref changes or returns the new indirect block locked and referenced
  * and leaving the original parent lock/ref intact as well.
  *
+ * If an error occurs, NULL is returned and *errorp is set to the error.
+ * EAGAIN can be returned to indicate a flush collision which requires the
+ * caller to retry.
+ *
  * The returned chain depends on where the specified key falls.
  *
  * The key/keybits for the indirect mode only needs to follow three rules:
@@ -1893,12 +1959,13 @@ done:
  * block and being forced to create several indirect blocks before the element
  * can be inserted.
  *
- * Must be called with an exclusively locked parent
+ * Must be called with an exclusively locked parent.
  */
 static
 hammer2_chain_t *
 hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
-			      hammer2_key_t create_key, int create_bits)
+			      hammer2_key_t create_key, int create_bits,
+			      int *errorp)
 {
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
@@ -1919,6 +1986,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * for RB lookups either way.
 	 */
 	KKASSERT(ccms_thread_lock_owned(&parent->cst));
+	*errorp = 0;
 
 	hammer2_chain_modify(hmp, parent, HAMMER2_MODIFY_OPTDATA);
 	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
@@ -1976,6 +2044,10 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		dummy.index = i;
 		chain = RB_FIND(hammer2_chain_tree, &parent->rbhead, &dummy);
 		if (chain) {
+			/*
+			 * NOTE! CHAIN_DELETED elements have to be adjusted
+			 *	 too, they cannot be ignored.
+			 */
 			bref = &chain->bref;
 		} else if (base && base[i].type) {
 			bref = &base[i];
@@ -2095,6 +2167,10 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		dummy.index = i;
 		chain = RB_FIND(hammer2_chain_tree, &parent->rbhead, &dummy);
 		if (chain) {
+			/*
+			 * NOTE! CHAIN_DELETED elements have to be adjusted
+			 *	 too, they cannot be ignored.
+			 */
 			bref = &chain->bref;
 		} else if (base && base[i].type) {
 			bref = &base[i];
@@ -2124,7 +2200,9 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		/*
 		 * Load the new indirect block by acquiring or allocating
 		 * the related chain entries, then simply move them to the
-		 * new parent (ichain).
+		 * new parent (ichain).  We cannot move chains which are
+		 * undergoing flushing and will break out of the loop in
+		 * that case.
 		 *
 		 * When adjusting the parent/child relationship we must
 		 * set the MOVED bit but we do NOT update bref_flush
@@ -2139,15 +2217,24 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 * We must still set SUBMODIFIED in the parent but we do
 		 * that after the loop.
 		 *
-		 * XXX we really need a lock here but we don't need the
-		 *     data.  NODATA feature needed.
+		 * WARNING! chain->cst.spin must be held when chain->parent is
+		 *	    modified, even though we own the full blown lock,
+		 *	    to deal with setsubmod and rename races.
 		 */
 		chain = hammer2_chain_get(hmp, parent, i,
 					  HAMMER2_LOOKUP_NODATA);
+		if (chain->flushing) {
+			hammer2_chain_unlock(hmp, chain);
+			break;
+		}
+
+		spin_lock(&chain->cst.spin);
 		RB_REMOVE(hammer2_chain_tree, &parent->rbhead, chain);
 		if (RB_INSERT(hammer2_chain_tree, &ichain->rbhead, chain))
 			panic("hammer2_chain_create_indirect: collision");
 		chain->parent = ichain;
+		spin_unlock(&chain->cst.spin);
+
 		if (base)
 			bzero(&base[i], sizeof(base[i]));
 		atomic_add_int(&parent->refs, -1);
@@ -2162,6 +2249,38 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	}
 
 	/*
+	 * If we hit a chain that is undergoing flushing we're screwed and
+	 * we have to duno the whole mess.  Since ichain has not been linked
+	 * in yet, the moved chains are not reachable and will not have been
+	 * disposed of.
+	 *
+	 * WARNING! This code is pretty hairy because the flusher is sitting
+	 *	    on the parent processing one of the children that we
+	 *	    haven't yet moved, and will do a RB_NEXT loop on that
+	 *	    child.  So the children we're moving back have to be
+	 *	    returned to the same place in the iteration that they
+	 *	    were removed from.
+	 */
+	if (i != count) {
+		kprintf("hammer2_chain_create_indirect: EAGAIN\n");
+		*errorp = EAGAIN;
+		while ((chain = RB_ROOT(&ichain->rbhead)) != NULL) {
+			hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_NEVER);
+			KKASSERT(chain->flushing == 0);
+			RB_REMOVE(hammer2_chain_tree, &ichain->rbhead, chain);
+			if (RB_INSERT(hammer2_chain_tree, &parent->rbhead, chain))
+				panic("hammer2_chain_create_indirect: collision");
+			chain->parent = parent;
+			atomic_add_int(&parent->refs, 1);
+			atomic_add_int(&ichain->refs, -1);
+			/* MOVED bit might have been inherited, cannot undo */
+			hammer2_chain_unlock(hmp, chain);
+		}
+		hammer2_chain_free(hmp, ichain);
+		return(NULL);
+	}
+
+	/*
 	 * Insert the new indirect block into the parent now that we've
 	 * cleared out some entries in the parent.  We calculated a good
 	 * insertion index in the loop above (ichain->index).
@@ -2173,6 +2292,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	KKASSERT(ichain->index >= 0);
 	if (RB_INSERT(hammer2_chain_tree, &parent->rbhead, ichain))
 		panic("hammer2_chain_create_indirect: ichain insertion");
+	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_ONRBTREE);
 	ichain->parent = parent;
 	atomic_add_int(&parent->refs, 1);
 
@@ -2236,7 +2356,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
  *     the removal is immediately indicated in the parent's blockref[]
  *     array.
  *
- * Must be called with an exclusively locked parent.
+ * Must be called with an exclusively locked parent and chain.
  */
 void
 hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
@@ -2283,24 +2403,32 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		count = 0;
 		break;
 	}
+	KKASSERT(chain->index >= 0 && chain->index < count);
 
 	/*
-	 * Disconnect the bref in the parent, remove the chain, and
-	 * disconnect in-memory fields from the parent.
+	 * We may not be able to immediately disconnect the chain if a
+	 * flush is in progress.  If retain is non-zero we MUST disconnect
+	 * the chain now and callers are responsible for making sure that
+	 * flushing is zero.
 	 */
-	KKASSERT(chain->index >= 0 && chain->index < count);
-	if (base)
-		bzero(&base[chain->index], sizeof(*base));
-
-	RB_REMOVE(hammer2_chain_tree, &parent->rbhead, chain);
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
-	atomic_add_int(&parent->refs, -1);	/* for red-black entry */
-	chain->index = -1;
-	chain->parent = NULL;
+	spin_lock(&chain->cst.spin);
+	if ((retain || chain->flushing == 0) &&
+	    (chain->flags & HAMMER2_CHAIN_ONRBTREE)) {
+		if (base)
+			bzero(&base[chain->index], sizeof(*base));
+		KKASSERT(chain->flushing == 0);
+		RB_REMOVE(hammer2_chain_tree, &parent->rbhead, chain);
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
+		atomic_add_int(&parent->refs, -1);   /* for red-black entry */
+		chain->index = -1;
+		chain->parent = NULL;
+	}
+	spin_unlock(&chain->cst.spin);
 
 	/*
 	 * Cumulative adjustments must be propagated to the parent inode
-	 * when deleting and synchronized to ip.
+	 * when deleting and synchronized to ip.  This occurs even if we
+	 * cannot detach the chain from its parent.
 	 *
 	 * NOTE:  We do not propagate ip->delta_*count to the parent because
 	 *	  these represent adjustments that have not yet been
@@ -2309,9 +2437,11 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 *
 	 * Clear the pointer to the parent inode.
 	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+	if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
+	    chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		ip = chain->u.ip;
 		if (ip->pip) {
+			/* XXX SMP, pip chain not necessarily parent chain */
 			ip->pip->delta_icount -= ip->ip_data.inode_count;
 			ip->pip->delta_dcount -= ip->ip_data.data_count;
 			ip->ip_data.inode_count += ip->delta_icount;
@@ -2319,9 +2449,10 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			ip->delta_icount = 0;
 			ip->delta_dcount = 0;
 			--ip->pip->delta_icount;
+			spin_lock(&chain->cst.spin); /* XXX */
 			ip->pip = NULL;
+			spin_unlock(&chain->cst.spin);
 		}
-		chain->u.ip->depth = 0;
 	}
 
 	/*
@@ -2338,6 +2469,7 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * disconnected chain.
 	 */
 	if (retain == 0) {
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 			hammer2_chain_drop(hmp, chain);
@@ -2355,666 +2487,8 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 */
 }
 
-/*
- * Recursively flush the specified chain.  The chain is locked and
- * referenced by the caller and will remain so on return.  The chain
- * will remain referenced throughout but can temporarily lose its
- * lock during the recursion to avoid unnecessarily stalling user
- * processes.
- */
-struct hammer2_flush_info {
-	struct flush_deferral_list flush_list;
-	int		depth;
-	hammer2_tid_t	modify_tid;
-};
-
-typedef struct hammer2_flush_info hammer2_flush_info_t;
-
-static void
-hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
-			  hammer2_flush_info_t *info)
-{
-	hammer2_blockref_t *bref;
-	hammer2_off_t pbase;
-	size_t bbytes;
-	size_t boff;
-	char *bdata;
-	struct buf *bp;
-	int error;
-	int wasmodified;
-
-	/*
-	 * If we hit the stack recursion depth limit defer the operation.
-	 * The controller of the info structure will execute the deferral
-	 * list and then retry.
-	 *
-	 * This is only applicable if SUBMODIFIED is set.  After a reflush
-	 * SUBMODIFIED will probably be cleared and we want to drop through
-	 * to finish processing the current element so our direct parent
-	 * can process the results.
-	 */
-	if (info->depth == HAMMER2_FLUSH_DEPTH_LIMIT &&
-	    (chain->flags & HAMMER2_CHAIN_SUBMODIFIED)) {
-		if ((chain->flags & HAMMER2_CHAIN_DEFERRED) == 0) {
-			hammer2_chain_ref(hmp, chain);
-			TAILQ_INSERT_TAIL(&info->flush_list,
-					  chain, flush_node);
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_DEFERRED);
-		}
-		return;
-	}
-
-	if (hammer2_debug & 0x0008)
-		kprintf("%*.*sCHAIN type=%d@%08jx %p/%d %04x {\n",
-			info->depth, info->depth, "",
-			chain->bref.type, chain->bref.data_off,
-			chain, chain->refs, chain->flags);
-
-	/*
-	 * If SUBMODIFIED is set we recurse the flush and adjust the
-	 * blockrefs accordingly.
-	 *
-	 * NOTE: Looping on SUBMODIFIED can prevent a flush from ever
-	 *	 finishing in the face of filesystem activity.
-	 */
-	if (chain->flags & HAMMER2_CHAIN_SUBMODIFIED) {
-		hammer2_chain_t *child;
-		hammer2_chain_t *next;
-		hammer2_blockref_t *base;
-		int count;
-
-		/*
-		 * Clear SUBMODIFIED to catch races.  Note that if any
-		 * child has to be flushed SUBMODIFIED will wind up being
-		 * set again (for next time), but this does not stop us from
-		 * synchronizing block updates which occurred.
-		 *
-		 * We don't want to set our chain to MODIFIED gratuitously.
-		 */
-		/* XXX SUBMODIFIED not interlocked, can race */
-		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_SUBMODIFIED);
-
-		/*
-		 * Flush the children and update the blockrefs in the chain.
-		 * Be careful of ripouts during the loop.
-		 */
-		next = RB_MIN(hammer2_chain_tree, &chain->rbhead);
-		if (next)
-			hammer2_chain_ref(hmp, next);
-		while ((child = next) != NULL) {
-			next = RB_NEXT(hammer2_chain_tree,
-				       &chain->rbhead, child);
-			if (next)
-				hammer2_chain_ref(hmp, next);
-			/*
-			 * We only recurse if SUBMODIFIED (internal node)
-			 * or MODIFIED (internal node or leaf) is set.
-			 * However, we must still track whether any MOVED
-			 * entries are present to determine if the chain's
-			 * blockref's need updating or not.
-			 */
-			if ((child->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-					     HAMMER2_CHAIN_MODIFIED |
-					    HAMMER2_CHAIN_MODIFIED_AUX)) == 0) {
-				hammer2_chain_drop(hmp, child);
-				continue;
-			}
-			hammer2_chain_lock(hmp, child, HAMMER2_RESOLVE_MAYBE);
-			hammer2_chain_drop(hmp, child);
-			if (child->parent != chain ||
-			    (child->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-					     HAMMER2_CHAIN_MODIFIED |
-					    HAMMER2_CHAIN_MODIFIED_AUX)) == 0) {
-				hammer2_chain_unlock(hmp, child);
-				continue;
-			}
-
-			/*
-			 * Propagate the DESTROYED flag if found set, then
-			 * recurse the flush.
-			 */
-			if ((chain->flags & HAMMER2_CHAIN_DESTROYED) &&
-			    (child->flags & HAMMER2_CHAIN_DESTROYED) == 0) {
-				atomic_set_int(&child->flags,
-					       HAMMER2_CHAIN_DESTROYED |
-					       HAMMER2_CHAIN_SUBMODIFIED);
-			}
-			++info->depth;
-			hammer2_chain_flush_pass1(hmp, child, info);
-			--info->depth;
-			hammer2_chain_unlock(hmp, child);
-		}
-
-		/*
-		 * Now synchronize any block updates.
-		 */
-		next = RB_MIN(hammer2_chain_tree, &chain->rbhead);
-		if (next)
-			hammer2_chain_ref(hmp, next);
-		while ((child = next) != NULL) {
-			next = RB_NEXT(hammer2_chain_tree,
-				       &chain->rbhead, child);
-			if (next)
-				hammer2_chain_ref(hmp, next);
-			if ((child->flags & HAMMER2_CHAIN_MOVED) == 0) {
-				hammer2_chain_drop(hmp, child);
-				continue;
-			}
-			hammer2_chain_lock(hmp, child, HAMMER2_RESOLVE_NEVER);
-			hammer2_chain_drop(hmp, child);
-			if (child->parent != chain ||
-			    (child->flags & HAMMER2_CHAIN_MOVED) == 0) {
-				hammer2_chain_unlock(hmp, child);
-				continue;
-			}
-
-			hammer2_chain_modify(hmp, chain,
-					     HAMMER2_MODIFY_NO_MODIFY_TID);
-
-			switch(chain->bref.type) {
-			case HAMMER2_BREF_TYPE_INODE:
-				KKASSERT((chain->data->ipdata.op_flags &
-					  HAMMER2_OPFLAG_DIRECTDATA) == 0);
-				base = &chain->data->ipdata.u.blockset.
-					blockref[0];
-				count = HAMMER2_SET_COUNT;
-				break;
-			case HAMMER2_BREF_TYPE_INDIRECT:
-				base = &chain->data->npdata.blockref[0];
-				count = chain->bytes /
-					sizeof(hammer2_blockref_t);
-				break;
-			case HAMMER2_BREF_TYPE_VOLUME:
-				base = &hmp->voldata.sroot_blockset.blockref[0];
-				count = HAMMER2_SET_COUNT;
-				break;
-			default:
-				base = NULL;
-				panic("hammer2_chain_get: "
-				      "unrecognized blockref type: %d",
-				      chain->bref.type);
-			}
-
-			KKASSERT(child->index >= 0);
-			base[child->index] = child->bref_flush;
-
-			if (chain->bref.mirror_tid <
-			    child->bref_flush.mirror_tid) {
-				chain->bref.mirror_tid =
-					child->bref_flush.mirror_tid;
-			}
-
-			if (chain->bref.type == HAMMER2_BREF_TYPE_VOLUME &&
-			    hmp->voldata.mirror_tid <
-			    child->bref_flush.mirror_tid) {
-				hmp->voldata.mirror_tid =
-					child->bref_flush.mirror_tid;
-			}
-			atomic_clear_int(&child->flags, HAMMER2_CHAIN_MOVED);
-			hammer2_chain_drop(hmp, child); /* MOVED flag */
-			hammer2_chain_unlock(hmp, child);
-		}
-	}
-
-	/*
-	 * If destroying the object we unconditonally clear the MODIFIED
-	 * and MOVED bits, and we destroy the buffer without writing it
-	 * out.
-	 *
-	 * We don't bother updating the hash/crc or the chain bref.
-	 *
-	 * NOTE: The destroy'd object's bref has already been updated.
-	 *	 so we can clear MOVED without propagating mirror_tid
-	 *	 or modify_tid upward.
-	 *
-	 * XXX allocations for unflushed data can be returned to the
-	 *     free pool.
-	 */
-	if (chain->flags & HAMMER2_CHAIN_DESTROYED) {
-		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
-			if (chain->bp) {
-				chain->bp->b_flags |= B_INVAL|B_RELBUF;
-			}
-			atomic_clear_int(&chain->flags,
-					 HAMMER2_CHAIN_MODIFIED |
-					 HAMMER2_CHAIN_MODIFY_TID);
-			hammer2_chain_drop(hmp, chain);
-		}
-		if (chain->flags & HAMMER2_CHAIN_MODIFIED_AUX) {
-			atomic_clear_int(&chain->flags,
-					 HAMMER2_CHAIN_MODIFIED_AUX);
-		}
-		if (chain->flags & HAMMER2_CHAIN_MOVED) {
-			atomic_clear_int(&chain->flags,
-					 HAMMER2_CHAIN_MOVED);
-			hammer2_chain_drop(hmp, chain);
-		}
-		return;
-	}
-
-	/*
-	 * Flush this chain entry only if it is marked modified.
-	 */
-	if ((chain->flags & (HAMMER2_CHAIN_MODIFIED |
-			     HAMMER2_CHAIN_MODIFIED_AUX)) == 0) {
-		goto done;
-	}
-
-	/*
-	 * Synchronize cumulative data and inode count adjustments to
-	 * the inode and propagate the deltas upward to the parent.
-	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
-		hammer2_inode_t *ip;
-
-		ip = chain->u.ip;
-		ip->ip_data.inode_count += ip->delta_icount;
-		ip->ip_data.data_count += ip->delta_dcount;
-		if (ip->pip) {
-			ip->pip->delta_icount += ip->delta_icount;
-			ip->pip->delta_dcount += ip->delta_dcount;
-		}
-		ip->delta_icount = 0;
-		ip->delta_dcount = 0;
-	}
-
-	/*
-	 * Flush if MODIFIED or MODIFIED_AUX is set.  MODIFIED_AUX is only
-	 * used by the volume header (&hmp->vchain).
-	 */
-	if ((chain->flags & (HAMMER2_CHAIN_MODIFIED |
-			     HAMMER2_CHAIN_MODIFIED_AUX)) == 0) {
-		goto done;
-	}
-	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED_AUX);
-
-	/*
-	 * Clear MODIFIED and set HAMMER2_CHAIN_MOVED.  The caller
-	 * will re-test the MOVED bit.  We must also update the mirror_tid
-	 * and modify_tid fields as appropriate.
-	 *
-	 * bits own a single chain ref and the MOVED bit owns its own
-	 * chain ref.
-	 */
-	chain->bref.mirror_tid = info->modify_tid;
-	if (chain->flags & HAMMER2_CHAIN_MODIFY_TID)
-		chain->bref.modify_tid = info->modify_tid;
-	wasmodified = (chain->flags & HAMMER2_CHAIN_MODIFIED) != 0;
-	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED |
-					HAMMER2_CHAIN_MODIFY_TID);
-
-	if (chain->flags & HAMMER2_CHAIN_MOVED) {
-		/*
-		 * Drop the ref from the MODIFIED bit we cleared.
-		 */
-		if (wasmodified)
-			hammer2_chain_drop(hmp, chain);
-	} else {
-		/*
-		 * If we were MODIFIED we inherit the ref from clearing
-		 * that bit, otherwise we need another ref.
-		 */
-		if (wasmodified == 0)
-			hammer2_chain_ref(hmp, chain);
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
-	}
-	chain->bref_flush = chain->bref;
-
-	/*
-	 * If this is part of a recursive flush we can go ahead and write
-	 * out the buffer cache buffer and pass a new bref back up the chain.
-	 *
-	 * This will never be a volume header.
-	 */
-	switch(chain->bref.type) {
-	case HAMMER2_BREF_TYPE_VOLUME:
-		/*
-		 * The volume header is flushed manually by the syncer, not
-		 * here.
-		 */
-		break;
-	case HAMMER2_BREF_TYPE_DATA:
-		/*
-		 * Data elements have already been flushed via the logical
-		 * file buffer cache.  Their hash was set in the bref by
-		 * the vop_write code.
-		 *
-		 * Make sure the buffer(s) have been flushed out here.
-		 */
-		bbytes = chain->bytes;
-		pbase = chain->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
-		boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
-
-		bp = getblk(hmp->devvp, pbase, bbytes, GETBLK_NOWAIT, 0);
-		if (bp) {
-			if ((bp->b_flags & (B_CACHE | B_DIRTY)) ==
-			    (B_CACHE | B_DIRTY)) {
-				kprintf("x");
-				cluster_awrite(bp);
-			} else {
-				bp->b_flags |= B_RELBUF;
-				brelse(bp);
-			}
-		}
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		/*
-		 * Indirect blocks may be in an INITIAL state.  Use the
-		 * chain_lock() call to ensure that the buffer has been
-		 * instantiated (even though it is already locked the buffer
-		 * might not have been instantiated).
-		 *
-		 * Only write the buffer out if it is dirty, it is possible
-		 * the operating system had already written out the buffer.
-		 */
-		hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_ALWAYS);
-		KKASSERT(chain->bp != NULL);
-
-		bp = chain->bp;
-		if ((chain->flags & HAMMER2_CHAIN_DIRTYBP) ||
-		    (bp->b_flags & B_DIRTY)) {
-			bawrite(chain->bp);
-		} else {
-			brelse(chain->bp);
-		}
-		chain->bp = NULL;
-		chain->data = NULL;
-		hammer2_chain_unlock(hmp, chain);
-		break;
-	default:
-		/*
-		 * Embedded elements have to be flushed out.
-		 */
-		KKASSERT(chain->data != NULL);
-		KKASSERT(chain->bp == NULL);
-		bref = &chain->bref;
-
-		KKASSERT((bref->data_off & HAMMER2_OFF_MASK) != 0);
-
-		if (chain->bp == NULL) {
-			/*
-			 * The data is embedded, we have to acquire the
-			 * buffer cache buffer and copy the data into it.
-			 */
-			if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
-				bbytes = HAMMER2_MINIOSIZE;
-			pbase = bref->data_off & ~(hammer2_off_t)(bbytes - 1);
-			boff = bref->data_off & HAMMER2_OFF_MASK & (bbytes - 1);
-
-			/*
-			 * The getblk() optimization can only be used if the
-			 * physical block size matches the request.
-			 */
-			if (chain->bytes == bbytes) {
-				bp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
-				error = 0;
-			} else {
-				error = bread(hmp->devvp, pbase, bbytes, &bp);
-				KKASSERT(error == 0);
-			}
-			bdata = (char *)bp->b_data + boff;
-
-			/*
-			 * Copy the data to the buffer, mark the buffer
-			 * dirty, and convert the chain to unmodified.
-			 *
-			 * We expect we might have to make adjustments to
-			 * non-data delayed-write buffers when doing an
-			 * actual flush so use bawrite() instead of
-			 * cluster_awrite() here.
-			 */
-			bcopy(chain->data, bdata, chain->bytes);
-			bp->b_flags |= B_CLUSTEROK;
-			bawrite(bp);
-			bp = NULL;
-			chain->bref.check.iscsi32.value =
-				hammer2_icrc32(chain->data, chain->bytes);
-			if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
-				++hammer2_iod_meta_write;
-			else
-				++hammer2_iod_indr_write;
-		} else {
-			chain->bref.check.iscsi32.value =
-				hammer2_icrc32(chain->data, chain->bytes);
-		}
-	}
-
-	/*
-	 * Adjustments to the bref.  The caller will use this to adjust
-	 * our chain's pointer to this chain element.
-	 */
-	bref = &chain->bref;
-
-	switch(bref->type) {
-	case HAMMER2_BREF_TYPE_VOLUME:
-		KKASSERT(chain->data != NULL);
-		KKASSERT(chain->bp == NULL);
-
-		hmp->voldata.icrc_sects[HAMMER2_VOL_ICRC_SECT1]=
-			hammer2_icrc32(
-				(char *)&hmp->voldata +
-				 HAMMER2_VOLUME_ICRC1_OFF,
-				HAMMER2_VOLUME_ICRC1_SIZE);
-		hmp->voldata.icrc_sects[HAMMER2_VOL_ICRC_SECT0]=
-			hammer2_icrc32(
-				(char *)&hmp->voldata +
-				 HAMMER2_VOLUME_ICRC0_OFF,
-				HAMMER2_VOLUME_ICRC0_SIZE);
-		hmp->voldata.icrc_volheader =
-			hammer2_icrc32(
-				(char *)&hmp->voldata +
-				 HAMMER2_VOLUME_ICRCVH_OFF,
-				HAMMER2_VOLUME_ICRCVH_SIZE);
-		break;
-	default:
-		break;
-
-	}
-done:
-	if (hammer2_debug & 0x0008) {
-		kprintf("%*.*s} %p/%d %04x ",
-			info->depth, info->depth, "",
-			chain, chain->refs, chain->flags);
-	}
-}
-
-#if 0
-/*
- * PASS2 - not yet implemented (should be called only with the root chain?)
- */
-static void
-hammer2_chain_flush_pass2(hammer2_mount_t *hmp, hammer2_chain_t *chain)
-{
-}
-#endif
-
-/*
- * Stand-alone flush.  If the chain is unable to completely flush we have
- * to be sure that SUBMODIFIED propagates up the parent chain.  We must not
- * clear the MOVED bit after flushing in this situation or our desynchronized
- * bref will not properly update in the parent.
- *
- * This routine can be called from several places but the most important
- * is from the hammer2_vop_reclaim() function.  We want to try to completely
- * clean out the inode structure to prevent disconnected inodes from
- * building up and blowing out the kmalloc pool.
- *
- * If modify_tid is 0 (usual case), a new modify_tid is allocated and
- * applied to the flush.  The depth-limit handling code is the only
- * code which passes a non-zero modify_tid to hammer2_chain_flush().
- */
 void
-hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
-		    hammer2_tid_t modify_tid)
+hammer2_chain_wait(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
-	hammer2_chain_t *parent;
-	hammer2_chain_t *scan;
-	hammer2_blockref_t *base;
-	hammer2_flush_info_t info;
-	int count;
-	int reflush;
-
-	/*
-	 * Execute the recursive flush and handle deferrals.
-	 *
-	 * Chains can be ridiculously long (thousands deep), so to
-	 * avoid blowing out the kernel stack the recursive flush has a
-	 * depth limit.  Elements at the limit are placed on a list
-	 * for re-execution after the stack has been popped.
-	 */
-	bzero(&info, sizeof(info));
-	TAILQ_INIT(&info.flush_list);
-
-	if (modify_tid == 0) {
-		hammer2_voldata_lock(hmp);
-		info.modify_tid = hmp->voldata.alloc_tid++;
-		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED_AUX);
-		hammer2_voldata_unlock(hmp);
-	} else {
-		info.modify_tid = modify_tid;
-	}
-	reflush = 1;
-
-	while (reflush) {
-		/*
-		 * Primary recursion
-		 */
-		hammer2_chain_flush_pass1(hmp, chain, &info);
-		reflush = 0;
-
-		while ((scan = TAILQ_FIRST(&info.flush_list)) != NULL) {
-			/*
-			 * Secondary recursion.  Note that a reference is
-			 * retained from the element's presence on the
-			 * deferral list.
-			 */
-			KKASSERT(scan->flags & HAMMER2_CHAIN_DEFERRED);
-			TAILQ_REMOVE(&info.flush_list, scan, flush_node);
-			atomic_clear_int(&scan->flags, HAMMER2_CHAIN_DEFERRED);
-
-			/*
-			 * Now that we've popped back up we can do a secondary
-			 * recursion on the deferred elements.
-			 */
-			if (hammer2_debug & 0x0040)
-				kprintf("defered flush %p\n", scan);
-			hammer2_chain_lock(hmp, scan, HAMMER2_RESOLVE_MAYBE);
-			hammer2_chain_flush(hmp, scan, info.modify_tid);
-			hammer2_chain_unlock(hmp, scan);
-
-			/*
-			 * Only flag a reflush if SUBMODIFIED is no longer
-			 * set.  If SUBMODIFIED is set the element will just
-			 * wind up on our flush_list again.
-			 */
-			if ((scan->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-					    HAMMER2_CHAIN_MODIFIED |
-					    HAMMER2_CHAIN_MODIFIED_AUX)) == 0) {
-				reflush = 1;
-			}
-			hammer2_chain_drop(hmp, scan);
-		}
-		if ((hammer2_debug & 0x0040) && reflush)
-			kprintf("reflush %p\n", chain);
-	}
-
-	/*
-	 * The SUBMODIFIED bit must propagate upward if the chain could not
-	 * be completely flushed.
-	 */
-	if (chain->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-			    HAMMER2_CHAIN_MODIFIED |
-			    HAMMER2_CHAIN_MODIFIED_AUX |
-			    HAMMER2_CHAIN_MOVED)) {
-		hammer2_chain_parent_setsubmod(hmp, chain);
-	}
-
-	/*
-	 * If the only thing left is a simple bref update try to
-	 * pro-actively update the parent, otherwise return early.
-	 */
-	parent = chain->parent;
-	if (parent == NULL) {
-		return;
-	}
-	if (chain->bref.type != HAMMER2_BREF_TYPE_INODE ||
-	    (chain->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-			     HAMMER2_CHAIN_MODIFIED |
-			     HAMMER2_CHAIN_MODIFIED_AUX |
-			     HAMMER2_CHAIN_MOVED)) != HAMMER2_CHAIN_MOVED) {
-		return;
-	}
-
-	/*
-	 * We are locking backwards so allow the lock to fail.
-	 */
-	if (ccms_thread_lock_nonblock(&parent->cst, CCMS_STATE_EXCLUSIVE))
-		return;
-
-	/*
-	 * We are updating brefs but we have to call chain_modify()
-	 * because our caller is not being run from a recursive flush.
-	 *
-	 * This will also chain up the parent list and set the SUBMODIFIED
-	 * flag.
-	 *
-	 * We do not want to set HAMMER2_CHAIN_MODIFY_TID here because the
-	 * modification is only related to updating a bref in the parent.
-	 *
-	 * When updating the blockset embedded in the volume header we must
-	 * also update voldata.mirror_tid.
-	 */
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_MAYBE);
-	hammer2_chain_modify(hmp, parent, HAMMER2_MODIFY_NO_MODIFY_TID);
-
-	switch(parent->bref.type) {
-	case HAMMER2_BREF_TYPE_INODE:
-		base = &parent->data->ipdata.u.blockset.
-			blockref[0];
-		count = HAMMER2_SET_COUNT;
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		base = &parent->data->npdata.blockref[0];
-		count = parent->bytes /
-			sizeof(hammer2_blockref_t);
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-		base = &hmp->voldata.sroot_blockset.blockref[0];
-		count = HAMMER2_SET_COUNT;
-		if (chain->flags & HAMMER2_CHAIN_MOVED) {
-			if (hmp->voldata.mirror_tid < chain->bref.mirror_tid) {
-				hmp->voldata.mirror_tid =
-					chain->bref.mirror_tid;
-			}
-		}
-		break;
-	default:
-		base = NULL;
-		panic("hammer2_chain_flush: "
-		      "unrecognized blockref type: %d",
-		      parent->bref.type);
-	}
-
-	/*
-	 * Update the blockref in the parent.  We do not have to set
-	 * MOVED in the parent because the parent has been marked modified,
-	 * so the flush sequence will pick up the bref change.
-	 *
-	 * We do have to propagate mirror_tid upward.
-	 */
-	KKASSERT(chain->index >= 0 &&
-		 chain->index < count);
-	KKASSERT(chain->parent == parent);
-	if (chain->flags & HAMMER2_CHAIN_MOVED) {
-		base[chain->index] = chain->bref_flush;
-		if (parent->bref.mirror_tid < chain->bref_flush.mirror_tid)
-			parent->bref.mirror_tid = chain->bref_flush.mirror_tid;
-		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MOVED);
-		hammer2_chain_drop(hmp, chain);
-	} else if (bcmp(&base[chain->index], &chain->bref_flush,
-		   sizeof(chain->bref)) != 0) {
-		panic("hammer2: unflagged bref update(2)");
-	}
-	ccms_thread_unlock(&parent->cst);		/* release manual op */
-	hammer2_chain_unlock(hmp, parent);
+	tsleep(chain, 0, "chnflw", 1);
 }

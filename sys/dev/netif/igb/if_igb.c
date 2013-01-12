@@ -173,6 +173,7 @@ static void	igb_init_tx_ring(struct igb_tx_ring *);
 static int	igb_init_rx_ring(struct igb_rx_ring *);
 static int	igb_newbuf(struct igb_rx_ring *, int, boolean_t);
 static int	igb_encap(struct igb_tx_ring *, struct mbuf **, int *, int *);
+static void	igb_rx_refresh(struct igb_rx_ring *, int);
 
 static void	igb_stop(struct igb_softc *);
 static void	igb_init(void *);
@@ -646,6 +647,8 @@ igb_attach(device_t dev)
 		ether_ifdetach(&sc->arpcom.ac_if);
 		goto failed;
 	}
+	ifq_set_cpuid(&sc->arpcom.ac_if.if_snd, sc->tx_rings[0].tx_intr_cpuid);
+
 	return 0;
 
 failed:
@@ -952,7 +955,7 @@ igb_init(void *xsc)
 	igb_set_promisc(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (polling || sc->intr_type == PCI_INTR_TYPE_MSIX)
 		sc->timer_cpuid = 0; /* XXX fixed */
@@ -1255,7 +1258,8 @@ igb_stop(struct igb_softc *sc)
 
 	callout_stop(&sc->timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	e1000_reset_hw(&sc->hw);
@@ -1542,13 +1546,20 @@ igb_add_sysctl(struct igb_softc *sc)
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug, 0,
 	    "RSS debug level");
+#endif
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+#ifdef IGB_RSS_DEBUG
 		ksnprintf(node, sizeof(node), "rx%d_pkt", i);
 		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
 		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_packets, "RXed packets");
-	}
 #endif
+		ksnprintf(node, sizeof(node), "rx%d_wreg", i);
+		SYSCTL_ADD_INT(&sc->sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
+		    CTLFLAG_RW, &sc->rx_rings[i].rx_wreg, 0,
+		    "# of segments before write to hardare register");
+	}
 }
 
 static int
@@ -1977,11 +1988,11 @@ igb_txeof(struct igb_tx_ring *txr)
 	txr->tx_avail = avail;
 
 	/*
-	 * If we have a minimum free, clear IFF_OACTIVE
+	 * If we have a minimum free, clear OACTIVE
 	 * to tell the stack that it is OK to send packets.
 	 */
 	if (IGB_IS_NOT_OACTIVE(txr)) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 		/*
 		 * We have enough TX descriptors, turn off
@@ -2084,6 +2095,12 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 			return error;
 		}
 	}
+
+	/*
+	 * Initialize various watermark
+	 */
+	rxr->rx_wreg = 32;
+
 	return 0;
 }
 
@@ -2414,12 +2431,20 @@ igb_init_rx_unit(struct igb_softc *sc)
 }
 
 static void
+igb_rx_refresh(struct igb_rx_ring *rxr, int i)
+{
+	if (--i < 0)
+		i = rxr->num_rx_desc - 1;
+	E1000_WRITE_REG(&rxr->sc->hw, E1000_RDT(rxr->me), i);
+}
+
+static void
 igb_rxeof(struct igb_rx_ring *rxr, int count)
 {
 	struct ifnet *ifp = &rxr->sc->arpcom.ac_if;
 	union e1000_adv_rx_desc	*cur;
 	uint32_t staterr;
-	int i;
+	int i, ncoll = 0;
 
 	i = rxr->next_to_check;
 	cur = &rxr->rx_base[i];
@@ -2438,6 +2463,7 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 		if (eop)
 			--count;
 
+		++ncoll;
 		if ((staterr & E1000_RXDEXT_ERR_FRAME_ERR_MASK) == 0 &&
 		    !rxr->discard) {
 			struct mbuf *mp = rxbuf->m_head;
@@ -2526,14 +2552,18 @@ discard:
 		if (++i == rxr->num_rx_desc)
 			i = 0;
 
+		if (ncoll >= rxr->rx_wreg) {
+			igb_rx_refresh(rxr, i);
+			ncoll = 0;
+		}
+
 		cur = &rxr->rx_base[i];
 		staterr = le32toh(cur->wb.upper.status_error);
 	}
 	rxr->next_to_check = i;
 
-	if (--i < 0)
-		i = rxr->num_rx_desc - 1;
-	E1000_WRITE_REG(&rxr->sc->hw, E1000_RDT(rxr->me), i);
+	if (ncoll > 0)
+		igb_rx_refresh(rxr, i);
 }
 
 
@@ -3008,7 +3038,7 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			else
 				igb_init(sc);
 		}
-		ifp->if_npoll_cpuid = sc->tx_npoll_off;
+		ifq_set_cpuid(&ifp->if_snd, sc->tx_npoll_off);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			if (sc->rx_ring_inuse == sc->rx_ring_cnt)
@@ -3016,7 +3046,7 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			else
 				igb_init(sc);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, sc->tx_rings[0].tx_intr_cpuid);
 	}
 }
 
@@ -3144,7 +3174,7 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 	union e1000_adv_tx_desc	*txd = NULL;
 	struct mbuf *m_head = *m_headp;
 	uint32_t olinfo_status = 0, cmd_type_len = 0, cmd_rs = 0;
-	int maxsegs, nsegs, i, j, error, last = 0;
+	int maxsegs, nsegs, i, j, error;
 	uint32_t hdrlen = 0;
 
 	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
@@ -3245,7 +3275,6 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 		txd->read.buffer_addr = htole64(seg_addr);
 		txd->read.cmd_type_len = htole32(cmd_type_len | seg_len);
 		txd->read.olinfo_status = htole32(olinfo_status);
-		last = i;
 		if (++i == txr->num_tx_desc)
 			i = 0;
 		tx_buf->m_head = NULL;
@@ -3265,8 +3294,7 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 	txd->read.cmd_type_len |= htole32(E1000_ADVTXD_DCMD_EOP | cmd_rs);
 
 	/*
-	 * Advance the Transmit Descriptor Tail (TDT), this tells the E1000
-	 * that this frame is available to transmit.
+	 * Defer TDT updating, until enough descrptors are setup
 	 */
 	*idx = i;
 	++txr->tx_packets;
@@ -3284,7 +3312,7 @@ igb_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	if (!sc->link_active) {
@@ -3297,7 +3325,7 @@ igb_start(struct ifnet *ifp)
 
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		if (IGB_IS_OACTIVE(txr)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			/* Set watchdog on */
 			ifp->if_timer = 5;
 			break;
@@ -3731,7 +3759,6 @@ igb_init_unshared_intr(struct igb_softc *sc)
 static int
 igb_setup_intr(struct igb_softc *sc)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error;
 
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX)
@@ -3744,9 +3771,7 @@ igb_setup_intr(struct igb_softc *sc)
 		device_printf(sc->dev, "Failed to register interrupt handler");
 		return error;
 	}
-
-	ifp->if_cpuid = rman_get_cpuid(sc->intr_res);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	sc->tx_rings[0].tx_intr_cpuid = rman_get_cpuid(sc->intr_res);
 
 	return 0;
 }
@@ -4149,7 +4174,7 @@ igb_msix_try_alloc(struct igb_softc *sc)
 			msix->msix_func = igb_msix_tx;
 			msix->msix_arg = txr;
 			msix->msix_cpuid = i + offset;
-			sc->msix_tx_cpuid = msix->msix_cpuid; /* XXX */
+			txr->tx_intr_cpuid = msix->msix_cpuid;
 			KKASSERT(msix->msix_cpuid < ncpus2);
 			ksnprintf(msix->msix_desc, sizeof(msix->msix_desc),
 			    "%s tx%d", device_get_nameunit(sc->dev), i);
@@ -4248,7 +4273,6 @@ igb_msix_free(struct igb_softc *sc, boolean_t setup)
 static int
 igb_msix_setup(struct igb_softc *sc)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
 	for (i = 0; i < sc->msix_cnt; ++i) {
@@ -4265,8 +4289,6 @@ igb_msix_setup(struct igb_softc *sc)
 			return error;
 		}
 	}
-	ifp->if_cpuid = sc->msix_tx_cpuid;
-
 	return 0;
 }
 

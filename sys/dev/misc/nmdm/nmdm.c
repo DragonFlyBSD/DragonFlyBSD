@@ -314,15 +314,18 @@ nmdmread(struct dev_read_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	int error = 0;
-	struct tty *tp, *tp2;
+	struct tty *tp;
+#if 0
+	struct tty *tp2;
+#endif
 	struct softpart *ourpart, *otherpart;
 
 	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
 	GETPARTS(tp, ourpart, otherpart);
+#if 0
 	tp2 = &otherpart->nm_tty;
 
-#if 0
 	if (tp2->t_state & TS_ISOPEN) {
 		error = (*linesw[tp->t_line].l_read)(tp, ap->a_uio, flag);
 		wakeup_other(tp, FWRITE);
@@ -520,13 +523,11 @@ nmdmioctl(struct dev_ioctl_args *ap)
 	struct tty *tp = dev->si_tty;
 	struct nm_softc *pti = dev->si_drv1;
 	int error;
-	struct tty *tp2;
 	struct softpart *ourpart, *otherpart;
 
 	crit_enter();
 	lwkt_gettoken(&tty_token);
 	GETPARTS(tp, ourpart, otherpart);
-	tp2 = &otherpart->nm_tty;
 
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
 					      ap->a_fflag, ap->a_cred);

@@ -37,6 +37,7 @@
 #include <sys/time.h>
 #include <sys/signal.h>
 #include <sys/queue.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/aio.h>
@@ -215,6 +216,13 @@ aio_return(struct aiocb *ap)
 int
 aio_cancel(int fildes, struct aiocb *aiocbp)
 {
+	struct stat sb;
+
+	/* must be a valid file descriptor */
+	if (fstat(fildes, &sb)) {
+		errno = EBADF;
+		return -1;
+	}
 	return (AIO_ALLDONE);
 }
 

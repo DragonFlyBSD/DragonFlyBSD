@@ -41,40 +41,40 @@
 #define	CR0_MP	0x00000002	/* "Math" (fpu) Present */
 #define	CR0_EM	0x00000004	/* EMulate FPU instructions. (trap ESC only) */
 #define	CR0_TS	0x00000008	/* Task Switched (if MP, trap ESC and WAIT) */
-#define	CR0_PG	0x80000000	/* PaGing enable */
+#define	CR0_PG	0x80000000	/* Paging enable */
 
 /*
  * Bits in 486 special registers:
  */
 #define	CR0_NE	0x00000020	/* Numeric Error enable (EX16 vs IRQ13) */
-#define	CR0_WP	0x00010000	/* Write Protect (honor page protect in
-							   all modes) */
+#define	CR0_WP	0x00010000	/* Write Protect (honor page protect in	all modes) */
 #define	CR0_AM	0x00040000	/* Alignment Mask (set to enable AC flag) */
 #define	CR0_NW  0x20000000	/* Not Write-through */
 #define	CR0_CD  0x40000000	/* Cache Disable */
 
 /*
- * Bits in PPro special registers
+ * Bits in CR4 special register
  */
-#define	CR4_VME	0x00000001	/* Virtual 8086 mode extensions */
-#define	CR4_PVI	0x00000002	/* Protected-mode virtual interrupts */
-#define	CR4_TSD	0x00000004	/* Time stamp disable */
-#define	CR4_DE	0x00000008	/* Debugging extensions */
-#define	CR4_PSE	0x00000010	/* Page size extensions */
-#define	CR4_PAE	0x00000020	/* Physical address extension */
-#define	CR4_MCE	0x00000040	/* Machine check enable */
-#define	CR4_PGE	0x00000080	/* Page global enable */
-#define	CR4_PCE	0x00000100	/* Performance monitoring counter enable */
-#define	CR4_FXSR 0x00000200	/* Fast FPU save/restore used by OS */
-#define	CR4_XMM	0x00000400	/* enable SIMD/MMX2 to use except 16 */
+#define	CR4_VME		0x00000001	/* Virtual 8086 mode extensions */
+#define	CR4_PVI		0x00000002	/* Protected-mode virtual interrupts */
+#define	CR4_TSD		0x00000004	/* Time stamp disable */
+#define	CR4_DE		0x00000008	/* Debugging extensions */
+#define	CR4_PSE		0x00000010	/* Page size extensions */
+#define	CR4_PAE		0x00000020	/* Physical address extension */
+#define	CR4_MCE		0x00000040	/* Machine check enable */
+#define	CR4_PGE		0x00000080	/* Page global enable */
+#define	CR4_PCE		0x00000100	/* Performance monitoring counter enable */
+#define	CR4_FXSR	0x00000200	/* Fast FPU save/restore used by OS */
+#define	CR4_XMM		0x00000400	/* Enable SIMD/MMX2 to use except 16 */
+#define	CR4_XSAVE	0x00040000	/* Enable XSave (for AVX Instructions)*/
 
 /*
  * Bits in x86_64 special registers.  EFER is 64 bits wide.
  */
-#define	EFER_SCE 0x000000001	/* System Call Extensions (R/W) */
-#define	EFER_LME 0x000000100	/* Long mode enable (R/W) */
-#define	EFER_LMA 0x000000400	/* Long mode active (R) */
-#define	EFER_NXE 0x000000800	/* PTE No-Execute bit enable (R/W) */
+#define	EFER_SCE	0x000000001	/* System Call Extensions (R/W) */
+#define	EFER_LME	0x000000100	/* Long mode enable (R/W) */
+#define	EFER_LMA	0x000000400	/* Long mode active (R) */
+#define	EFER_NXE	0x000000800	/* PTE No-Execute bit enable (R/W) */
 
 /*
  * CPUID instruction features register
@@ -132,9 +132,18 @@
 #define	CPUID2_SSE42	0x00100000
 #define	CPUID2_X2APIC	0x00200000
 #define	CPUID2_POPCNT	0x00800000
-#define	CPUID2_AESNI	0x02000000
-#define	CPUID2_RDRAND	0x40000000
+#define	CPUID2_AESNI	0x02000000	/* AES Instruction Set */
+#define	CPUID2_XSAVE    0x04000000	/* XSave supported by CPU */
+#define	CPUID2_OSXSAVE  0x08000000      /* XSave and AVX supported by OS */
+#define	CPUID2_AVX	0x10000000      /* AVX instruction set support */
+#define	CPUID2_F16C	0x20000000	/* CVT16 instruction set support */
+#define	CPUID2_RDRAND	0x40000000	/* RdRand. On chip random numbers */
 #define	CPUID2_VMM	0x80000000	/* AMD 25481 2.34 page 11 */
+
+/*Bits related to the XFEATURE_ENABLED_MASK control register*/
+#define	CPU_XFEATURE_X87	0x00000001
+#define	CPU_XFEATURE_SSE	0x00000002
+#define	CPU_XFEATURE_YMM	0x00000004
 
 /*
  * Important bits in the AMD extended cpuid flags

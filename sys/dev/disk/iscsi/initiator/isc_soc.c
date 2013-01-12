@@ -431,9 +431,6 @@ so_recv(isc_session_t *sp, pduq_t *pq)
      }
      if(len) {
 	  int	flags;
-	  struct mbuf **mpp;
-
-	  mpp = &pq->mp;
 
 	  sbp.sb_climit = len;
 	  uio->uio_td = curthread; // why ...
@@ -468,7 +465,6 @@ so_recv(isc_session_t *sp, pduq_t *pq)
 				   pq->iov[1].iov_len = len - pq->pdu.ds_len;
 				   uio->uio_iovcnt++;
 			      }
-			      mpp = NULL;
 
 			      sdebug(4, "uio_resid=0x%zx itt=0x%x bp=%p bo=%x len=%x/%x",
 				     uio->uio_resid,

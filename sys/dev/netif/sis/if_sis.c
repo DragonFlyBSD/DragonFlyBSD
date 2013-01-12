@@ -1179,8 +1179,7 @@ sis_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->sis_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sis_irq));
 
 fail:
 	if (error)
@@ -1472,7 +1471,7 @@ sis_txeof(struct sis_softc *sc)
 	if (cd->sis_tx_cnt == 0)
 		ifp->if_timer = 0;
 	if (!SIS_IS_OACTIVE(sc))
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 }
 
 static void
@@ -1562,13 +1561,13 @@ sis_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			CSR_WRITE_4(sc, SIS_IER, 0);
 			sc->sis_npoll.ifpc_stcount = 0;
 		}
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
 			/* enable interrupts */
 			CSR_WRITE_4(sc, SIS_IER, 1);
 		}
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sis_irq));
 	}
 }
 
@@ -1702,7 +1701,7 @@ sis_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	idx = sc->sis_cdata.sis_tx_prod;
@@ -1715,7 +1714,7 @@ sis_start(struct ifnet *ifp)
 		 * If there's no way we can send any packets, return now.
 		 */
 		if (SIS_IS_OACTIVE(sc)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1729,7 +1728,7 @@ sis_start(struct ifnet *ifp)
 			if (sc->sis_cdata.sis_tx_cnt == 0) {
 				continue;
 			} else {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 		}
@@ -1916,7 +1915,7 @@ sis_init(void *xsc)
 	}
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->sis_timer, hz, sis_tick, sc);
 }
@@ -2031,7 +2030,8 @@ sis_stop(struct sis_softc *sc)
 
 	callout_stop(&sc->sis_timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	CSR_WRITE_4(sc, SIS_IER, 0);

@@ -41,6 +41,7 @@
 #include <net/if.h>
 #include <net/ethernet.h>
 #include <net/if_arp.h>
+#include <net/ifq_var.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -147,8 +148,8 @@ sbni_pci_attach(device_t dev)
 		if (error) {
 			kprintf("sbni%d: bus_setup_intr\n", next_sbni_unit);
 		} else {
-			ifp->if_cpuid = rman_get_cpuid(sc->irq_res);
-			KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+			ifq_set_cpuid(&ifp->if_snd,
+			    rman_get_cpuid(sc->irq_res));
 		}
 	} else {
 		kprintf("\nsbni%d: cannot claim irq!\n", next_sbni_unit);

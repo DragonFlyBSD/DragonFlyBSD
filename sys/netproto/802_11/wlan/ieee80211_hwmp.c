@@ -238,10 +238,6 @@ hwmp_vattach(struct ieee80211vap *vap)
 
 	hs = kmalloc(sizeof(struct ieee80211_hwmp_state), M_80211_VAP,
 	    M_INTWAIT | M_ZERO);
-	if (hs == NULL) {
-		kprintf("%s: couldn't alloc HWMP state\n", __func__);
-		return;
-	}
 	hs->hs_maxhops = IEEE80211_HWMP_DEFAULT_MAXHOPS;
 	callout_init_mp(&hs->hs_roottimer);
 	vap->iv_hwmp = hs;

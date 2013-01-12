@@ -775,14 +775,13 @@ emupchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct sc_pchinfo *ch = data;
 	struct sc_info *sc = ch->parent;
-	int irqrate, blksz;
+	int irqrate;
 
 	ch->blksz = blocksize;
 	snd_mtxlock(sc->lock);
 	emu_settimer(sc);
 	irqrate = 48000 / sc->timerinterval;
 	snd_mtxunlock(sc->lock);
-	blksz = (ch->spd * sndbuf_getbps(ch->buffer)) / irqrate;
 	return blocksize;
 }
 
@@ -936,14 +935,13 @@ emurchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct sc_rchinfo *ch = data;
 	struct sc_info *sc = ch->parent;
-	int irqrate, blksz;
+	int irqrate;
 
 	ch->blksz = blocksize;
 	snd_mtxlock(sc->lock);
 	emu_settimer(sc);
 	irqrate = 48000 / sc->timerinterval;
 	snd_mtxunlock(sc->lock);
-	blksz = (ch->spd * sndbuf_getbps(ch->buffer)) / irqrate;
 	return blocksize;
 }
 

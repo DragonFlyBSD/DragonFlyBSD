@@ -955,7 +955,7 @@ rt2661_tx_intr(struct rt2661_softc *sc)
 	}
 
 	sc->sc_tx_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	rt2661_start_locked(ifp);
 }
@@ -1619,15 +1619,15 @@ rt2661_start_locked(struct ifnet *ifp)
 		return;
 
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 
 		ac = M_WME_GETAC(m);
 		if (sc->txq[ac].queued >= RT2661_TX_RING_COUNT - 1) {
 			/* there is no place left in this ring */
-			IF_PREPEND(&ifp->if_snd, m);
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, m);
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 		ni = (struct ieee80211_node *) m->m_pkthdr.rcvif;
@@ -1662,7 +1662,7 @@ rt2661_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 		return ENETDOWN;
 	}
 	if (sc->mgtq.queued >= RT2661_MGT_RING_COUNT) {
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		m_freem(m);
 		ieee80211_free_node(ni);
 		return ENOBUFS;		/* XXX */
@@ -2416,7 +2416,7 @@ rt2661_init_locked(struct rt2661_softc *sc)
 	/* kick Rx */
 	RAL_WRITE(sc, RT2661_RX_CNTL_CSR, 1);
 
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags |= IFF_RUNNING;
 
 	callout_reset(&sc->watchdog_ch, hz, rt2661_watchdog_callout, sc);
@@ -2450,7 +2450,8 @@ rt2661_stop_locked(struct rt2661_softc *sc)
 	sc->sc_tx_timer = 0;
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+		ifp->if_flags &= ~IFF_RUNNING;
+		ifq_clr_oactive(&ifp->if_snd);
 
 		/* abort Tx (for all 5 Tx rings) */
 		RAL_WRITE(sc, RT2661_TX_CNTL_CSR, 0x1f << 16);

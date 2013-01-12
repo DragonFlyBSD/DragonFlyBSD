@@ -169,6 +169,7 @@ shell_ttymsg(dmsg_iocom_t *iocom)
 }
 
 static void shell_span(dmsg_circuit_t *circuit, char *cmdbuf);
+static void shell_circ(dmsg_circuit_t *circuit, char *cmdbuf);
 
 void
 hammer2_shell_parse(dmsg_msg_t *msg)
@@ -181,11 +182,14 @@ hammer2_shell_parse(dmsg_msg_t *msg)
 		;
 	} else if (strcmp(cmd, "span") == 0) {
 		shell_span(circuit, cmdbuf);
+	} else if (strcmp(cmd, "circ") == 0) {
+		shell_circ(circuit, cmdbuf);
 	} else if (strcmp(cmd, "tree") == 0) {
 		dmsg_shell_tree(circuit, cmdbuf); /* dump spanning tree */
 	} else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
 		dmsg_circuit_printf(circuit, "help            Command help\n");
 		dmsg_circuit_printf(circuit, "span <host>     Span to target host\n");
+		dmsg_circuit_printf(circuit, "circ <msgid>    Create VC to msgid of rx SPAN\n");
 		dmsg_circuit_printf(circuit, "tree            Dump spanning tree\n");
 	} else {
 		dmsg_circuit_printf(circuit, "Unrecognized command: %s\n", cmd);
@@ -213,7 +217,9 @@ shell_span(dmsg_circuit_t *circuit, char *cmdbuf)
 	 * Start master service
 	 */
 	if (fd < 0) {
-		dmsg_circuit_printf(circuit, "Connection to %s failed\n", hostname);
+		dmsg_circuit_printf(circuit,
+				    "Connection to %s failed\n",
+				    hostname);
 	} else {
 		dmsg_circuit_printf(circuit, "Connected to %s\n", hostname);
 
@@ -222,9 +228,50 @@ shell_span(dmsg_circuit_t *circuit, char *cmdbuf)
 		info->fd = fd;
 		info->detachme = 1;
 		info->dbgmsg_callback = hammer2_shell_parse;
+		info->label = strdup("client");
 
 		pthread_create(&thread, NULL, dmsg_master_service, info);
 		/*pthread_join(thread, &res);*/
+	}
+}
+
+static void shell_circ_reply(dmsg_msg_t *msg);
+
+static void
+shell_circ(dmsg_circuit_t *circuit, char *cmdbuf)
+{
+	uint64_t msgid = strtoull(cmdbuf, NULL, 16);
+	dmsg_state_t *state;
+	dmsg_msg_t *msg;
+
+	if (dmsg_debug_findspan(msgid, &state) == 0) {
+		dmsg_circuit_printf(circuit, "Found state %p\n", state);
+
+		dmsg_circuit_printf(circuit, "Establishing CIRC\n");
+		msg = dmsg_msg_alloc(&state->iocom->circuit0, 0,
+				     DMSG_LNK_CIRC | DMSGF_CREATE,
+				     shell_circ_reply, circuit);
+		msg->any.lnk_circ.target = state->msgid;
+		dmsg_msg_write(msg);
+	} else {
+		dmsg_circuit_printf(circuit,
+				    "Unable to locate %016jx\n",
+				    (intmax_t)msgid);
+	}
+}
+
+static void
+shell_circ_reply(dmsg_msg_t *msg)
+{
+	dmsg_circuit_t *circ = msg->state->any.circ;
+
+	if (msg->any.head.cmd & DMSGF_DELETE) {
+		dmsg_circuit_printf(circ, "rxmsg DELETE error %d\n",
+				    msg->any.head.error);
+		msg->state->any.circ = NULL;
+	} else {
+		dmsg_circuit_printf(circ, "rxmsg result error %d\n",
+				    msg->any.head.error);
 	}
 }
 

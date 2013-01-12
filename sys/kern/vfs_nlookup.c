@@ -412,6 +412,7 @@ nlookup(struct nlookupdata *nd)
     struct nchandle par;
     struct nchandle nctmp;
     struct mount *mp;
+    struct vnode *hvp;		/* hold to prevent recyclement */
     int wasdotordotdot;
     char *ptr;
     char *xptr;
@@ -555,11 +556,21 @@ nlookup(struct nlookupdata *nd)
 	    wasdotordotdot = 2;
 	} else {
 	    /*
-	     * Must unlock nl_nch when traversing down the path.
+	     * Must unlock nl_nch when traversing down the path.  However,
+	     * the child ncp has not yet been found/created and the parent's
+	     * child list might be empty.  Thus releasing the lock can
+	     * allow a race whereby the parent ncp's vnode is recycled.
+	     * This case can occur especially when maxvnodes is set very low.
+	     *
+	     * We need the parent's ncp to remain resolved for all normal
+	     * filesystem activities, so we vhold() the vp during the lookup
+	     * to prevent recyclement due to vnlru / maxvnodes.
 	     *
 	     * If we race an unlink or rename the ncp might be marked
 	     * DESTROYED after resolution, requiring a retry.
 	     */
+	    if ((hvp = nd->nl_nch.ncp->nc_vp) != NULL)
+		vhold(hvp);
 	    cache_unlock(&nd->nl_nch);
 	    nd->nl_flags &= ~NLC_NCPISLOCKED;
 	    nch = cache_nlookup(&nd->nl_nch, &nlc);
@@ -572,6 +583,8 @@ nlookup(struct nlookupdata *nd)
 		cache_put(&nch);
 		nch = cache_nlookup(&nd->nl_nch, &nlc);
 	    }
+	    if (hvp)
+		vdrop(hvp);
 	    wasdotordotdot = 0;
 	}
 

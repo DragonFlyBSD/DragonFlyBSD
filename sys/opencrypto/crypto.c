@@ -816,7 +816,7 @@ crypto_dispatch(struct cryptop *crp)
 	 * Fall through to queueing the driver is blocked.
 	 */
 	if ((crp->crp_flags & CRYPTO_F_BATCH) == 0 ||
-	    (curthread->td_flags & TDF_CRYPTO)) {
+	    curthread->td_type == TD_TYPE_CRYPTO) {
 		cap = crypto_checkdriver(hid);
 		/* Driver cannot disappeared when there is an active session. */
 		KASSERT(cap != NULL, ("%s: Driver disappeared.", __func__));
@@ -909,7 +909,7 @@ kdriver_suitable(const struct cryptocap *cap, const struct cryptkop *krp)
 static struct cryptocap *
 crypto_select_kdriver(const struct cryptkop *krp, int flags)
 {
-	struct cryptocap *cap, *best, *blocked;
+	struct cryptocap *cap, *best;
 	int match, hid;
 
 	CRYPTO_DRIVER_ASSERT();
@@ -922,7 +922,6 @@ crypto_select_kdriver(const struct cryptkop *krp, int flags)
 	else
 		match = CRYPTOCAP_F_SOFTWARE;
 	best = NULL;
-	blocked = NULL;
 again:
 	for (hid = 0; hid < crypto_drivers_num; hid++) {
 		cap = &crypto_drivers[hid];
@@ -1299,7 +1298,7 @@ crypto_proc(void *arg)
 
 	CRYPTO_Q_LOCK(tdinfo);
 
-	curthread->td_flags |= TDF_CRYPTO;
+	curthread->td_type = TD_TYPE_CRYPTO;
 
 	for (;;) {
 		/*

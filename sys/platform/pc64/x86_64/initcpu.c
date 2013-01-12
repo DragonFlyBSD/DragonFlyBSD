@@ -62,6 +62,7 @@ u_int	cpu_procinfo2;		/* Multicore info */
 char	cpu_vendor[20];		/* CPU Origin code */
 u_int	cpu_vendor_id;		/* CPU vendor ID */
 u_int	cpu_fxsr;		/* SSE enabled */
+u_int	cpu_xsave;		/* AVX enabled by OS*/
 u_int	cpu_mxcsr_mask;		/* Valid bits in mxcsr */
 u_int	cpu_clflush_line_size = 32;	/* Default CLFLUSH line size */
 
@@ -152,10 +153,23 @@ initializecpu(void)
 {
 	uint64_t msr;
 
+	/*Check for FXSR and SSE support and enable if available.*/
 	if ((cpu_feature & CPUID_XMM) && (cpu_feature & CPUID_FXSR)) {
 		load_cr4(rcr4() | CR4_FXSR | CR4_XMM);
 		cpu_fxsr = hw_instruction_sse = 1;
 	}
+
+#if !defined(CPU_DISABLE_AVX)
+	/*Check for XSAVE and AVX support and enable if available.*/
+	if ((cpu_feature2 & CPUID2_AVX) && (cpu_feature2 & CPUID2_XSAVE)
+	     && (cpu_feature & CPUID_SSE)) {
+		load_cr4(rcr4() | CR4_XSAVE);
+
+		/* Adjust size of savefpu in npx.h before adding to mask.*/
+		xsetbv(0, CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM, 0);
+		cpu_xsave = 1;
+	}
+#endif
 
 	if (cpu_vendor_id == CPU_VENDOR_AMD) {
 		switch((cpu_id & 0xFF0000)) {

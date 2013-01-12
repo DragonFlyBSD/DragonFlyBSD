@@ -74,7 +74,6 @@ ACPI_NO_SEMAPHORES	opt_acpi.h
 ACPI_ENABLE_PCI		opt_acpi.h
 
 # Miscellaneous options.
-COMPAT_DF12	opt_compatdf12.h
 COMPAT_43	opt_compat.h
 COMPAT_SUNOS	opt_compat.h
 COMPILING_LINT	opt_lint.h
@@ -143,7 +142,6 @@ PUFFS		opt_dontuse.h
 SMBFS		opt_dontuse.h
 TMPFS		opt_dontuse.h
 UDF		opt_dontuse.h
-USERFS		opt_dontuse.h
 
 # These static filesystems has one slightly bogus static dependency in
 # sys/platform/.../i386/autoconf.c.  If any of these filesystems are
@@ -398,6 +396,7 @@ NETGRAPH_CISCO		opt_netgraph.h
 NETGRAPH_ECHO		opt_netgraph.h
 NETGRAPH_EIFACE		opt_netgraph.h
 NETGRAPH_ETHER		opt_netgraph.h
+NETGRAPH_FEC		opt_netgraph.h
 NETGRAPH_FRAME_RELAY	opt_netgraph.h
 NETGRAPH_HOLE		opt_netgraph.h
 NETGRAPH_IFACE		opt_netgraph.h
@@ -417,6 +416,9 @@ NETGRAPH_TEE		opt_netgraph.h
 NETGRAPH_TTY		opt_netgraph.h
 NETGRAPH_UI		opt_netgraph.h
 NETGRAPH_VJC		opt_netgraph.h
+
+# AGP options
+AGP_DEBUG		opt_agp.h
 
 # DRM options
 DRM_DEBUG		opt_drm.h
@@ -449,7 +451,6 @@ VP0_DEBUG		opt_vpo.h
 LPT_DEBUG		opt_lpt.h
 PLIP_DEBUG		opt_plip.h
 LOCKF_DEBUG		opt_debug_lockf.h
-NPX_DEBUG		opt_debug_npx.h
 SI_DEBUG		opt_debug_si.h
 
 # Fb options

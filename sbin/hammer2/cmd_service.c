@@ -36,6 +36,7 @@
 #include "hammer2.h"
 
 #include <sys/xdiskioctl.h>
+#include <machine/atomic.h>
 
 struct diskcon {
 	TAILQ_ENTRY(diskcon) entry;
@@ -51,6 +52,16 @@ struct service_node_opaque {
 	int	servicefd;
 };
 
+struct autoconn {
+	TAILQ_ENTRY(autoconn) entry;
+	char	*host;
+	int	stage;
+	int	stopme;
+	int	pipefd[2];	/* {read,write} */
+	enum { AUTOCONN_INACTIVE, AUTOCONN_ACTIVE } state;
+	pthread_t thread;
+};
+
 #define WS " \r\n"
 
 TAILQ_HEAD(, diskcon) diskconq = TAILQ_HEAD_INITIALIZER(diskconq);
@@ -58,6 +69,7 @@ pthread_mutex_t diskmtx;
 
 static void *service_thread(void *data);
 static void *udev_thread(void *data);
+static void *autoconn_thread(void *data);
 static void master_reconnect(const char *mntpt);
 static void disk_reconnect(const char *disk);
 static void disk_disconnect(void *handle);
@@ -172,6 +184,12 @@ service_thread(void *data)
 	pthread_create(&thread, NULL, udev_thread, NULL);
 
 	/*
+	 * Start thread to manage /etc/hammer2/autoconn
+	 */
+	thread = NULL;
+	pthread_create(&thread, NULL, autoconn_thread, NULL);
+
+	/*
 	 * Scan existing hammer2 mounts and reconnect to them using
 	 * HAMMER2IOC_RECLUSTER.
 	 */
@@ -200,6 +218,7 @@ service_thread(void *data)
 		info->fd = fd;
 		info->detachme = 1;
 		info->dbgmsg_callback = hammer2_shell_parse;
+		info->label = strdup("client");
 		pthread_create(&thread, NULL, dmsg_master_service, info);
 	}
 	return (NULL);
@@ -239,6 +258,7 @@ service_node_handler(void **opaquep, struct dmsg_msg *msg, int op)
 		info->block = msg->any.lnk_span.media.block;
 		fprintf(stderr, "NODE ADD %s serno %s\n",
 			info->cl_label, info->fs_label);
+		info->attached = 1;
 		xdisk_reconnect(info);
 		break;
 	case DMSG_NODEOP_DEL:
@@ -283,6 +303,226 @@ udev_thread(void *data __unused)
 		sleep(1);
 	}
 	return (NULL);
+}
+
+static void *autoconn_connect_thread(void *data);
+static void autoconn_disconnect_signal(dmsg_iocom_t *iocom);
+
+static
+void *
+autoconn_thread(void *data __unused)
+{
+	TAILQ_HEAD(, autoconn) autolist;
+	struct autoconn *ac;
+	struct autoconn *next;
+	pthread_t thread;
+	struct stat st;
+	time_t	t;
+	time_t	lmod;
+	int	found_last;
+	FILE	*fp;
+	char	buf[256];
+
+	TAILQ_INIT(&autolist);
+	found_last = 0;
+	lmod = 0;
+
+	pthread_detach(pthread_self());
+	for (;;) {
+		/*
+		 * Polling interval
+		 */
+		sleep(5);
+
+		/*
+		 * Poll the file.  Loop up if the synchronized state (lmod)
+		 * has not changed.
+		 */
+		if (stat(HAMMER2_DEFAULT_DIR "/autoconn", &st) == 0) {
+			if (lmod == st.st_mtime)
+				continue;
+			fp = fopen(HAMMER2_DEFAULT_DIR "/autoconn", "r");
+			if (fp == NULL)
+				continue;
+		} else {
+			if (lmod == 0)
+				continue;
+			fp = NULL;
+		}
+
+		/*
+		 * Wait at least 5 seconds after the file is created or
+		 * removed.
+		 *
+		 * Do not update the synchronized state.
+		 */
+		if (fp == NULL && found_last) {
+			found_last = 0;
+			continue;
+		} else if (fp && found_last == 0) {
+			fclose(fp);
+			found_last = 1;
+			continue;
+		}
+
+		/*
+		 * Don't scan the file until the time progresses past the
+		 * file's mtime, so we can validate that the file was not
+		 * further modified during our scan.
+		 *
+		 * Do not update the synchronized state.
+		 */
+		time(&t);
+		if (fp) {
+			if (t == st.st_mtime) {
+				fclose(fp);
+				continue;
+			}
+			t = st.st_mtime;
+		} else {
+			t = 0;
+		}
+
+		/*
+		 * Set staging to disconnect, then scan the file.
+		 */
+		TAILQ_FOREACH(ac, &autolist, entry)
+			ac->stage = 0;
+		while (fp && fgets(buf, sizeof(buf), fp) != NULL) {
+			char *host;
+
+			if ((host = strtok(buf, " \t\r\n")) == NULL ||
+			    host[0] == '#') {
+				continue;
+			}
+			TAILQ_FOREACH(ac, &autolist, entry) {
+				if (strcmp(host, ac->host) == 0)
+					break;
+			}
+			if (ac == NULL) {
+				ac = malloc(sizeof(*ac));
+				bzero(ac, sizeof(*ac));
+				ac->host = strdup(host);
+				ac->state = AUTOCONN_INACTIVE;
+				TAILQ_INSERT_TAIL(&autolist, ac, entry);
+			}
+			ac->stage = 1;
+		}
+
+		/*
+		 * Ignore the scan (and retry again) if the file was
+		 * modified during the scan.
+		 *
+		 * Do not update the synchronized state.
+		 */
+		if (fp) {
+			if (fstat(fileno(fp), &st) < 0) {
+				fclose(fp);
+				continue;
+			}
+			fclose(fp);
+			if (t != st.st_mtime)
+				continue;
+		}
+
+		/*
+		 * Update the synchronized state and reconfigure the
+		 * connect list as needed.
+		 */
+		lmod = t;
+		next = TAILQ_FIRST(&autolist);
+		while ((ac = next) != NULL) {
+			next = TAILQ_NEXT(ac, entry);
+
+			/*
+			 * Staging, initiate
+			 */
+			if (ac->stage && ac->state == AUTOCONN_INACTIVE) {
+				if (pipe(ac->pipefd) == 0) {
+					ac->stopme = 0;
+					ac->state = AUTOCONN_ACTIVE;
+					thread = NULL;
+					pthread_create(&thread, NULL,
+						       autoconn_connect_thread,
+						       ac);
+				}
+			}
+
+			/*
+			 * Unstaging, stop active connection.
+			 *
+			 * We write to the pipe which causes the iocom_core
+			 * to call autoconn_disconnect_signal().
+			 */
+			if (ac->stage == 0 &&
+			    ac->state == AUTOCONN_ACTIVE) {
+				if (ac->stopme == 0) {
+					char dummy = 0;
+					ac->stopme = 1;
+					write(ac->pipefd[1], &dummy, 1);
+				}
+			}
+
+			/*
+			 * Unstaging, delete inactive connection.
+			 */
+			if (ac->stage == 0 &&
+			    ac->state == AUTOCONN_INACTIVE) {
+				TAILQ_REMOVE(&autolist, ac, entry);
+				free(ac->host);
+				free(ac);
+				continue;
+			}
+		}
+		sleep(5);
+	}
+	return(NULL);
+}
+
+static
+void *
+autoconn_connect_thread(void *data)
+{
+	dmsg_master_service_info_t *info;
+	struct autoconn *ac;
+	void *res;
+	int fd;
+
+	ac = data;
+	pthread_detach(pthread_self());
+
+	while (ac->stopme == 0) {
+		fd = dmsg_connect(ac->host);
+		if (fd < 0) {
+			fprintf(stderr, "autoconn: Connect failure: %s\n",
+				ac->host);
+			sleep(5);
+			continue;
+		}
+		fprintf(stderr, "autoconn: Connect %s\n", ac->host);
+
+		info = malloc(sizeof(*info));
+		bzero(info, sizeof(*info));
+		info->fd = fd;
+		info->altfd = ac->pipefd[0];
+		info->altmsg_callback = autoconn_disconnect_signal;
+		info->detachme = 0;
+		info->noclosealt = 1;
+		pthread_create(&ac->thread, NULL, dmsg_master_service, info);
+		pthread_join(ac->thread, &res);
+	}
+	close(ac->pipefd[0]);
+	ac->state = AUTOCONN_INACTIVE;
+	/* auto structure can be ripped out here */
+	return(NULL);
+}
+
+static
+void
+autoconn_disconnect_signal(dmsg_iocom_t *iocom)
+{
+	fprintf(stderr, "autoconn: Shutting down socket\n");
+	atomic_set_int(&iocom->flags, DMSG_IOCOMF_EOF);
 }
 
 /*
@@ -380,6 +620,7 @@ master_reconnect(const char *mntpt)
 	info->fd = pipefds[1];
 	info->detachme = 1;
 	info->dbgmsg_callback = hammer2_shell_parse;
+	info->label = strdup("hammer2");
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 }
 
@@ -462,6 +703,7 @@ disk_reconnect(const char *disk)
 	info->dbgmsg_callback = hammer2_shell_parse;
 	info->exit_callback = disk_disconnect;
 	info->handle = dc;
+	info->label = strdup(dc->disk);
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 }
 
@@ -507,6 +749,7 @@ xdisk_reconnect(struct service_node_opaque *xdisk)
 	info->handle = xdisk;
 	xdisk->servicing = 1;
 	xdisk->servicefd = info->fd;
+	info->label = strdup(xdisk->cl_label);
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 
 	/*

@@ -55,7 +55,7 @@ DIRS+=	libexec/dma
 BIN2=	pccard_ether rc.firewall rc.suspend rc.resume
 
 DEFAULTS= compilers.conf devfs.conf make.conf mkinitrd.conf periodic.conf \
-	  rc.conf uuids
+	  pfi.conf rc.conf uuids
 
 MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
 	BSD.var.dist
@@ -68,12 +68,11 @@ PPPCNF=	ppp.conf
 ETCMAIL=Makefile README mailer.conf access.sample virtusertable.sample \
 	mailertable.sample aliases
 
-# Special top level files for FreeBSD
-FREEBSD=COPYRIGHT
-
 # List of libraries in /usr/lib/compat that might have to be removed
 # from /usr/lib.
+.if ${MACHINE_ARCH} == "i386"
 COMPAT_LIBS != cd ${DESTDIR}/usr/lib/compat && find . -name '*.so.*'
+.endif
 
 # Use this directory as the source for new configuration files when upgrading
 UPGRADE_SRCDIR?=${.CURDIR}
@@ -191,7 +190,7 @@ upgrade_etc:	preupgrade remove-obsolete-files
 	rm -f /etc/pam.conf
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
 	cd ${UPGRADE_SRCDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${FREEBSD} ${DESTDIR}/
+	    COPYRIGHT ${DESTDIR}/
 .endif
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
@@ -298,8 +297,6 @@ distribution:
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 		dot.profile ${DESTDIR}/root/.profile; \
 	    rm -f ${DESTDIR}/.cshrc ${DESTDIR}/.profile; \
-	    ${LN} ${DESTDIR}/root/.cshrc ${DESTDIR}/.cshrc; \
-	    ${LN} ${DESTDIR}/root/.profile ${DESTDIR}/.profile
 	cd ${.CURDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
 	cd ${.CURDIR}/ppp; ${INSTALL} -o root -g ${BINGRP} -m 600 \
@@ -348,7 +345,7 @@ distribution:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${.CURDIR}/minfree \
 	    ${DESTDIR}/var/crash
 	cd ${.CURDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${FREEBSD} ${DESTDIR}/
+	    COPYRIGHT ${DESTDIR}/
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 	rm -f ${DESTDIR}/usr/include/sys/ata.h

@@ -124,9 +124,14 @@ struct  savexmm {
 	u_char sv_pad[220];
 } __attribute__((aligned(16)));
 
+struct	saveymm {
+	u_char xsavedata[832];
+} __attribute__((aligned(64)));
+
 union	savefpu {
 	struct	save87	sv_87;
 	struct	savexmm	sv_xmm;
+	struct  saveymm sv_ymm;
 };
 
 /*

@@ -1423,14 +1423,14 @@ state_setup_remote_installation_server(struct i_fn_args *a)
 			    a->os_root, cmd_name(a, "INETD"));
 			command_add(cmds, "%s%s %svar/db/dhcpd.leases",
 			    a->os_root, cmd_name(a, "TOUCH"), a->os_root);
-			command_add(cmds, "%s%s -cf /etc/dhcpd.conf >%sdev/null 2>&1",
-			    a->os_root, cmd_name(a, "DHCPD"), a->os_root);
-			command_add(cmds, "%s%s >%sdev/null 2>&1",
-			    a->os_root, cmd_name(a, "RPCBIND"), a->os_root);
-			command_add(cmds, "%s%s -ln >%sdev/null 2>&1",
-			    a->os_root, cmd_name(a, "MOUNTD"), a->os_root);
-			command_add(cmds, "%s%s -u -t -n 6 >%sdev/null 2>&1",
-			    a->os_root, cmd_name(a, "NFSD"), a->os_root);
+			command_add(cmds, "%s%s -cf /etc/dhcpd.conf >/dev/null 2>&1",
+			    a->os_root, cmd_name(a, "DHCPD"));
+			command_add(cmds, "%s%s >/dev/null 2>&1",
+			    a->os_root, cmd_name(a, "RPCBIND"));
+			command_add(cmds, "%s%s -ln >/dev/null 2>&1",
+			    a->os_root, cmd_name(a, "MOUNTD"));
+			command_add(cmds, "%s%s -u -t -n 6 >/dev/null 2>&1",
+			    a->os_root, cmd_name(a, "NFSD"));
 
 			if (commands_execute(a, cmds)) {
 				inform(a->c, _("NetBoot installation services are now started."));
@@ -1447,7 +1447,7 @@ state_setup_remote_installation_server(struct i_fn_args *a)
 
 			break;
 
-	};
+	}
 
 	state = state_welcome;
 

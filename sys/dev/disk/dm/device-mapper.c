@@ -136,11 +136,9 @@ static struct cmd_function cmd_fn[] = {
 static int
 dm_modcmd(module_t mod, int cmd, void *unused)
 {
-	int error, bmajor, cmajor;
+	int error;
 
 	error = 0;
-	bmajor = -1;
-	cmajor = -1;
 
 	switch (cmd) {
 	case MOD_LOAD:
@@ -390,8 +388,6 @@ dmstrategy(struct dev_strategy_args *ap)
 	dm_table_entry_t *table_en;
 	struct buf *nestbuf;
 
-	uint32_t dev_type;
-
 	uint64_t buf_start, buf_len, issued_len;
 	uint64_t table_start, table_end;
 	uint64_t start, end;
@@ -402,7 +398,6 @@ dmstrategy(struct dev_strategy_args *ap)
 	tbl = NULL;
 
 	table_end = 0;
-	dev_type = 0;
 	issued_len = 0;
 
 	dmv = dev->si_drv1;
@@ -501,7 +496,6 @@ dmdump(struct dev_dump_args *ap)
 	dm_dev_t *dmv;
 	dm_table_t  *tbl;
 	dm_table_entry_t *table_en;
-	uint32_t dev_type;
 	uint64_t buf_start, buf_len, issued_len;
 	uint64_t table_start, table_end;
 	uint64_t start, end, data_offset;
@@ -515,7 +509,6 @@ dmdump(struct dev_dump_args *ap)
 	tbl = NULL;
 
 	table_end = 0;
-	dev_type = 0;
 	issued_len = 0;
 
 	dmv = dev->si_drv1;

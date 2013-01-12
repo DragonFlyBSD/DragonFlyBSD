@@ -456,7 +456,6 @@ tws_setup_intr(struct tws_softc *sc, int irqs)
 static int
 tws_setup_irq(struct tws_softc *sc)
 {
-    int messages;
     u_int16_t cmd;
 
     cmd = pci_read_config(sc->tws_dev, PCIR_COMMAND, 2);
@@ -494,7 +493,6 @@ tws_setup_irq(struct tws_softc *sc)
                 return(FAILURE);
             device_printf(sc->tws_dev, "Using MSI\n");
 #else
-	    messages = 0;
 	    panic("%s: Using MSI", device_get_nameunit(sc->tws_dev));
 #endif
             break;

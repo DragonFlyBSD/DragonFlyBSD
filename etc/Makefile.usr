@@ -4,70 +4,101 @@
 
 GITHOST?=git.dragonflybsd.org
 
+THISGIT!= which git 2>/dev/null; echo
+DPTBALL=/tmp/dports.tar.gz
+DPDLURL=https://api.github.com/repos/jrmarino/DPorts/tarball/
+GITNFMSG="git must be present on the system to use this option."
+ERRPS="Error: ${.CURDIR}/pkgsrc already exists"
+ERRDP="Error: ${.CURDIR}/dports already exists"
+ERRSR="Error: ${.CURDIR}/src already exists"
+ERRNPS="Error: ${.CURDIR}/pkgsrc does not exist"
+ERRNDP="Error: ${.CURDIR}/dports does not exist"
+ERRNSR="Error: ${.CURDIR}/src does not exist"
+WSTARS="***************************************************************"
+WARNPS="  Warning: Delete or move ${.CURDIR}/pkg before building any dport!"
+LPATT="   make %-23s- %s\n"
+
+
 help all:
 	@echo "HELP:"
-	@echo ""
 .if exists(${.CURDIR}/pkgsrc/.git)
 .if exists(${.CURDIR}/pkgsrc/Makefile)
-	@echo "    make pkgsrc-update          - update your pkgsrc repo from the net"
+	@printf ${LPATT} "pkgsrc-update"         "update your pkgsrc repo from the net"
 .else
-	@echo "    make pkgsrc-checkout        - initial checkout of your pre-packaged"
-	@echo "                                  pkgsrc repo."
-	@echo "    make pkgsrc-update          - update your pkgsrc repo from the net"
-	@echo "                                  after the initial checkout."
+	@printf ${LPATT} "pkgsrc-checkout"       "Initial checkout of pkgsrc repository"
 .endif
 .else
-	@echo "    make pkgsrc-create          - fetch initial pkgsrc repo from the net"
-	@echo "    make pkgsrc-create-shallow  - fetch initial history-free pkgsrc repo"
-	@echo "    make pkgsrc-create-repo     - fetch pkgsrc repo only, no checkout"
-	@echo "    make pkgsrc-update          - update your pkgsrc repo from the net"
+	@printf ${LPATT} "pkgsrc-create"         "fetch initial pkgsrc repository from the net"
+	@printf ${LPATT} "pkgsrc-create-shallow" "fetch initial history-free pkgsrc repository"
+	@printf ${LPATT} "pkgsrc-create-repo"    "fetch pkgsrc repository only, no checkout"
 .endif
-	@echo ""
+	@echo
+.if exists(${.CURDIR}/dports/.git)
+	@printf ${LPATT} "dports-update"         "update your dports repo from Github"
+.else
+.  if exists(${.CURDIR}/dports)
+	@printf ${LPATT} "dports-replace"        "Replace dports with latest tarball from Github"
+.  else
+	@printf ${LPATT} "dports-create"         "fetch initial dports repository from Github"
+	@printf ${LPATT} "dports-create-shallow" "fetch initial history-free dports repository"
+	@printf ${LPATT} "dports-download"       "download & install dports tarball from Github"
+.  endif
+.endif
+	@echo
+
 .if exists(${.CURDIR}/src/.git)
 .if exists(${.CURDIR}/src/Makefile)
-	@echo "    make src-update             - update your src repo from the net"
+	@printf ${LPATT} "src-update"         "update your src repository from the net"
 .else
-	@echo "    make src-checkout           - initial checkout of your pre-packaged src repo"
-	@echo "    make src-update             - update your src repo from the net"
-	@echo "                                  after the initial checkout."
+	@printf ${LPATT} "src-checkout"       "Initial checkout of src repository"
 .endif
 .else
-	@echo "    make src-create             - fetch initial src repo from the net"
-	@echo "    make src-create-shallow     - fetch initial history-free src repo"
-	@echo "    make src-create-repo        - fetch src repo only, no checkout"
-	@echo "    make src-update             - update your src repo from the net"
+	@printf ${LPATT} "src-create"         "fetch initial src repository from the net"
+	@printf ${LPATT} "src-create-shallow" "fetch initial history-free src repository"
+	@printf ${LPATT} "src-create-repo"    "fetch src repository only, no checkout"
 .endif
-	@echo ""
+	@echo
 .if exists(${.CURDIR}/src-sys.tar.bz2)
-	@echo "    make release-sys-extract - extract the pre-packaged sys-only sources"
+	@printf ${LPATT} "release-sys-extract" "extract the pre-packaged sys-only sources"
+	@echo
 .endif
-	@echo ""
 	@echo "If automating please feel free to run git pull's from cron."
-	@echo "We prefer once a day but you can run them more often if you"
-	@echo "desire."
-	@echo ""
-	@echo "If you have a repo previously maintained via CVS you should"
-	@echo "rm -rf it (save any local modifications) and then use the"
-	@echo "make src-create and/or make pkgsrc-create to set up the initial"
-	@echo "git repo."
+	@echo "We prefer once a day but you can run them more often if you desire"
 
 pkgsrc-create-repo:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif exists (${.CURDIR}/pkgsrc)
+	@echo ${ERRPS}
+.else
 	@echo "If problems occur you may have to rm -rf pkgsrc and try again."
-	@echo ""
+	@echo
 	mkdir -p ${.CURDIR}/pkgsrc
 	cd ${.CURDIR}/pkgsrc && git init
 	cd ${.CURDIR}/pkgsrc && \
 		git remote add origin git://${GITHOST}/pkgsrcv2.git
 	cd ${.CURDIR}/pkgsrc && git fetch origin
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
+.endif
 
 pkgsrc-create: pkgsrc-create-repo
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif exists (${.CURDIR}/pkgsrc)
+	@echo ${ERRPS}
+.else
 	cd ${.CURDIR}/pkgsrc && git checkout master
 	cd ${.CURDIR}/pkgsrc && git pull
+.endif
 
 pkgsrc-create-shallow:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif exists (${.CURDIR}/pkgsrc)
+	@echo ${ERRPS}
+.else
 	@echo "If problems occur you may have to rm -rf pkgsrc and try again."
-	@echo ""
+	@echo
 	mkdir -p ${.CURDIR}/pkgsrc
 	cd ${.CURDIR}/pkgsrc && git init
 	cd ${.CURDIR}/pkgsrc && \
@@ -76,30 +107,60 @@ pkgsrc-create-shallow:
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
 	cd ${.CURDIR}/pkgsrc && git checkout master
 	cd ${.CURDIR}/pkgsrc && git pull
+.endif
 
 pkgsrc-checkout:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif !exists (${.CURDIR}/pkgsrc)
+	@echo ${ERRNPS}
+.else
 	cd ${.CURDIR}/pkgsrc && git checkout master
+.endif
 
 pkgsrc-update:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif !exists (${.CURDIR}/pkgsrc)
+	@echo ${ERRNPS}
+.else
 	cd ${.CURDIR}/pkgsrc && git pull
+.endif
 
 src-create-repo:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif exists (${.CURDIR}/src)
+	@echo ${ERRSR}
+.else
 	@echo "If problems occur you may have to rm -rf src and try again."
-	@echo ""
+	@echo
 	mkdir -p ${.CURDIR}/src
 	cd ${.CURDIR}/src && git init
 	cd ${.CURDIR}/src && \
 		git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch origin
 	cd ${.CURDIR}/src && git branch master origin/master
+.endif
 
 src-create: src-create-repo
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif exists (${.CURDIR}/src)
+	@echo ${ERRSR}
+.else
 	cd ${.CURDIR}/src && git checkout master
 	cd ${.CURDIR}/src && git pull
+.endif
 
 src-create-shallow:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif exists (${.CURDIR}/src)
+	@echo ${ERRSR}
+.else
 	@echo "If problems occur you may have to rm -rf src and try again."
-	@echo ""
+	@echo
 	mkdir -p ${.CURDIR}/src
 	cd ${.CURDIR}/src && git init
 	cd ${.CURDIR}/src && \
@@ -108,13 +169,99 @@ src-create-shallow:
 	cd ${.CURDIR}/src && git branch master origin/master
 	cd ${.CURDIR}/src && git checkout master
 	cd ${.CURDIR}/src && git pull
+.endif
 
 src-checkout:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif !exists (${.CURDIR}/src)
+	@echo ${ERRNSR}
+.else
 	cd ${.CURDIR}/src && git checkout master
+.endif
 
 src-update:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif !exists (${.CURDIR}/src)
+	@echo ${ERRNSR}
+.else
 	cd ${.CURDIR}/src && git pull
+.endif
 
 release-sys-extract:
 	cd ${.CURDIR} && tar xvpjf src-sys.tar.bz2
 
+dports-update:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif !exists (${.CURDIR}/dports)
+	@echo ${ERRNDP}
+.else
+	cd ${.CURDIR}/dports && git pull
+.endif
+
+dports-create:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif exists (${.CURDIR}/dports)
+	@echo ${ERRDP}
+.else
+	@echo "If problems occur you may have to rm -rf dports and try again."
+	@echo
+	git clone git://github.com/jrmarino/DPorts.git ${.CURDIR}/dports
+.if exists(${.CURDIR}/pkg)
+	@echo ${WSTARS}
+	@echo ${WARNPS}
+	@echo ${WSTARS}
+.endif
+.endif
+
+dports-create-shallow:
+.if empty(THISGIT)
+	@echo ${GITNFMSG}
+.elif exists (${.CURDIR}/dports)
+	@echo ${ERRDP}
+.else
+	@echo "If problems occur you may have to rm -rf dports and try again."
+	@echo
+	git clone --depth=1 git://github.com/jrmarino/DPorts.git \
+	   ${.CURDIR}/dports
+.if exists(${.CURDIR}/pkg)
+	@echo ${WSTARS}
+	@echo ${WARNPS}
+	@echo ${WSTARS}
+.endif
+.endif
+
+dports-download:
+.if exists (${.CURDIR}/dports)
+	@echo ${ERRDP}
+.else
+	rm -f ${DPTBALL}
+	fetch -o ${DPTBALL} ${DPDLURL}
+	tar -xf ${DPTBALL} -C ${.CURDIR}
+	mv /usr/jrmarino-DPorts-* ${.CURDIR}/dports
+	rm -f ${DPTBALL}
+.if exists(${.CURDIR}/pkg)
+	@echo ${WSTARS}
+	@echo ${WARNPS}
+	@echo ${WSTARS}
+.endif
+.endif
+
+dports-replace:
+.if !exists (${.CURDIR}/dports)
+	@echo ${ERRNDP}
+.elif exists(${.CURDIR}/dports/.git)
+	@echo "Error: this is git repository currently."
+	@echo "Remove ${.CURDIR}/dports and execute \"make dports-downloads\" if you want"
+	@echo "to convert to a non-git version."
+.else
+	rm -f ${DPTBALL}
+	fetch -o ${DPTBALL} ${DPDLURL}
+	rm -rf ${.CURDIR}/dports
+	tar -xf ${DPTBALL} -C ${.CURDIR}
+	mv /usr/jrmarino-DPorts-* ${.CURDIR}/dports
+	rm -f ${DPTBALL}
+.endif

@@ -195,7 +195,7 @@ sili_cam_changed(struct sili_port *ap, struct ata_port *atx, int found)
 void
 sili_cam_detach(struct sili_port *ap)
 {
-	int error;
+	int error __debugvar;
 
 	if ((ap->ap_flags & AP_F_CAM_ATTACHED) == 0)
 		return;
@@ -785,7 +785,6 @@ sili_xpt_action(struct cam_sim *sim, union ccb *ccb)
 	struct sili_port *ap;
 	struct ata_port	 *at, *atx;
 	struct ccb_hdr *ccbh;
-	int unit;
 
 	/* XXX lock */
 	ap = cam_sim_softc(sim);
@@ -793,7 +792,6 @@ sili_xpt_action(struct cam_sim *sim, union ccb *ccb)
 	atx = NULL;
 	KKASSERT(ap != NULL);
 	ccbh = &ccb->ccb_h;
-	unit = cam_sim_unit(sim);
 
 	/*
 	 * Early failure checks.  These checks do not apply to XPT_PATH_INQ,

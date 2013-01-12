@@ -1,4 +1,4 @@
-# $FreeBSD: src/sys/modules/twe/Makefile,v 1.7 2005/08/10 04:01:21 obrien Exp $
+# $FreeBSD: src/sys/modules/twe/Makefile,v 1.8 2012/11/17 01:53:01 svnexp Exp $
 
 KMOD=	twe
 SRCS=	bus_if.h device_if.h pci_if.h twe.c twe_freebsd.c
@@ -21,9 +21,5 @@ SRCS=	bus_if.h device_if.h pci_if.h twe.c twe_freebsd.c
 # has reliable power, but may be unstable for other reasons.
 #
 CFLAGS+=-DTWE_SHUTDOWN_NOTIFICATION
-
-# The module can be built to override a compiled-in driver
-#
-#CFLAGS+=-DTWE_OVERRIDE
 
 .include <bsd.kmod.mk>

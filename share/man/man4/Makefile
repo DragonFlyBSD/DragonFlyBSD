@@ -358,6 +358,8 @@ MAN=	aac.4 \
 	vga.4 \
 	vge.4 \
 	vinum.4 \
+	virtio.4 \
+	virtio_blk.4 \
 	vlan.4 \
 	vn.4 \
 	vpo.4 \

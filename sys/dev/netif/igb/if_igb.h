@@ -240,6 +240,7 @@ struct igb_tx_ring {
 	bus_dma_tag_t		tx_hdr_dtag;
 	bus_dmamap_t		tx_hdr_dmap;
 	bus_addr_t		tx_hdr_paddr;
+	int			tx_intr_cpuid;
 } __cachealign;
 
 /*
@@ -265,6 +266,7 @@ struct igb_rx_ring {
 	 */
 	struct mbuf		*fmp;
 	struct mbuf		*lmp;
+	int			rx_wreg;
 
 	/* Soft stats */
 	u_long			rx_packets;
@@ -383,7 +385,6 @@ struct igb_softc {
 
 	void 			*stats;
 
-	int			msix_tx_cpuid;
 	int			msix_mem_rid;
 	struct resource 	*msix_mem_res;
 	int			msix_cnt;

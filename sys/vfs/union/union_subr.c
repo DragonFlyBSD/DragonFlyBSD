@@ -915,10 +915,8 @@ union_mkwhiteout(struct union_mount *um, struct vnode *dvp,
 	struct thread *td = cnp->cn_td;
 	struct vnode *wvp;
 	struct componentname cn;
-	struct ucred *cred;
 
 	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	error = union_relookup(um, dvp, &wvp, cnp, &cn, path, strlen(path));
 	if (error)

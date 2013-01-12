@@ -54,14 +54,12 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
 {
     struct nlookupdata nd;
     int error;
-    const char *dname;
 
     /*
      * Fail if already open
      */
     if (drive->flags & VF_OPEN)
 	return EBUSY;
-    dname = drive->devicename;
 
     if (rootdev) {
 	/*
@@ -569,7 +567,6 @@ void
 daemon_save_config(void)
 {
     int error;
-    int written_config;					    /* set when we first write the config to disk */
     int driveno;
     struct drive *drive;				    /* point to current drive info */
     struct vinum_hdr *vhdr;				    /* and as header */
@@ -579,7 +576,6 @@ daemon_save_config(void)
     /* don't save the configuration while we're still working on it */
     if (vinum_conf.flags & VF_CONFIGURING)
 	return;
-    written_config = 0;					    /* no config written yet */
     /* Build a volume header */
     vhdr = (struct vinum_hdr *) Malloc(VINUMHEADERLEN);	    /* get space for the config data */
     CHECKALLOC(vhdr, "Can't allocate config data");
@@ -652,8 +648,7 @@ daemon_save_config(void)
 			    drive->devicename,
 			    error);
 			set_drive_state(drive->driveno, drive_down, setstate_force);
-		    } else
-			written_config = 1;		    /* we've written it on at least one drive */
+		    }
 		}
 	    } else					    /* not worth looking at, */
 		unlockdrive(drive);			    /* just unlock it again */
@@ -669,7 +664,6 @@ vinum_scandisk(char *devicename[], int drives)
 {
     struct drive *volatile drive;
     volatile int driveno;
-    int firstdrive;					    /* first drive in this list */
     volatile int gooddrives;				    /* number of usable drives found */
     int firsttime;					    /* set if we have never configured before */
     int error;
@@ -687,7 +681,6 @@ vinum_scandisk(char *devicename[], int drives)
     vinum_conf.flags |= VF_READING_CONFIG;		    /* reading config from disk */
 
     gooddrives = 0;					    /* number of usable drives found */
-    firstdrive = vinum_conf.drives_used;		    /* the first drive */
     firsttime = vinum_conf.drives_used == 0;		    /* are we a virgin? */
 
     /* allocate a drive pointer list */
@@ -864,6 +857,3 @@ drivecmp(const void *va, const void *vb)
     else
 	return 1;
 }
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

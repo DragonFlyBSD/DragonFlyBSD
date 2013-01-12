@@ -864,7 +864,6 @@ kern/kern_shutdown.c	standard
 kern/kern_sig.c		standard
 kern/kern_memio.c	standard
 kern/kern_udev.c	standard
-kern/kern_upcall.c	standard
 kern/kern_sfbuf.c	standard
 kern/kern_subr.c	standard
 kern/kern_iosched.c	standard
@@ -918,6 +917,7 @@ kern/subr_alist.c	standard
 kern/subr_blist.c	standard
 kern/subr_sbuf.c	standard
 kern/subr_scanf.c	standard
+kern/subr_sglist.c	standard
 kern/subr_taskqueue.c	standard
 kern/subr_rbtree.c	standard
 kern/sys_generic.c	standard
@@ -1136,7 +1136,7 @@ netproto/802_11/wlan_xauth/ieee80211_xauth.c optional wlan_xauth
 netproto/atm/atm_aal5.c		optional atm_core
 netproto/atm/atm_cm.c			optional atm_core
 netproto/atm/atm_device.c		optional atm_core
-netproto/atm/atm_if.c			optional nowerror atm_core
+netproto/atm/atm_if.c			optional atm_core
 netproto/atm/atm_proto.c		optional atm_core
 netproto/atm/atm_signal.c		optional atm_core
 netproto/atm/atm_socket.c		optional atm_core
@@ -1325,6 +1325,7 @@ netgraph/cisco/ng_cisco.c		optional netgraph_cisco
 netgraph/echo/ng_echo.c			optional netgraph_echo
 netgraph/eiface/ng_eiface.c		optional netgraph_eiface
 netgraph/ether/ng_ether.c		optional netgraph_ether
+netgraph/fec/ng_fec.c			optional netgraph_fec
 netgraph/frame_relay/ng_frame_relay.c	optional netgraph_frame_relay
 netgraph/hole/ng_hole.c			optional netgraph_hole
 netgraph/iface/ng_iface.c		optional netgraph_iface
@@ -1532,7 +1533,7 @@ dev/agp/agp_via.c		optional agp
 dev/agp/agp_sis.c		optional agp
 dev/agp/agp_ali.c		optional agp
 dev/agp/agp_amd.c		optional agp
-dev/agp/agp_x86_64.c		optional agp
+dev/agp/agp_amd64.c		optional agp
 dev/agp/agp_i810.c		optional agp
 dev/agp/agp_ati.c		optional agp
 dev/agp/agp_if.m		optional agp
@@ -1619,10 +1620,6 @@ vfs/ufs/ufs_quota.c		optional ffs
 vfs/ufs/ufs_vfsops.c		optional ffs
 vfs/ufs/ufs_vnops.c		optional ffs
 vfs/ufs/ufs_dirhash.c		optional ffs
-vfs/userfs/userfs_vfsops.c	optional userfs
-vfs/userfs/userfs_vnops.c	optional userfs
-vfs/userfs/userfs_inode.c	optional userfs
-vfs/userfs/userfs_elms.c	optional userfs
 vfs/devfs/devfs_core.c		standard
 vfs/devfs/devfs_vnops.c		standard
 vfs/devfs/devfs_vfsops.c	standard
@@ -2249,3 +2246,13 @@ bus/u4b/quirk/usb_quirk.c		optional usb4bsd
 #
 bus/u4b/audio/uaudio.c			optional snd_uaudio usb4bsd
 #bus/u4b/audio/uaudio_pcm.c		optional snd_uaudio usb4bsd
+
+#
+# virtio support
+#
+dev/virtual/virtio/block/virtio_blk.c	optional virtio_blk virtio
+dev/virtual/virtio/pci/virtio_pci.c	optional virtio_pci virtio
+dev/virtual/virtio/virtio/virtio.c	optional virtio
+dev/virtual/virtio/virtio/virtio_bus_if.m optional virtio
+dev/virtual/virtio/virtio/virtio_if.m	optional virtio
+dev/virtual/virtio/virtio/virtqueue.c	optional virtio

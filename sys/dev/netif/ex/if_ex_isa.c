@@ -42,6 +42,7 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/if_media.h> 
+#include <net/ifq_var.h>
 
 #include <bus/isa/isavar.h>
 #include <bus/isa/pnpvar.h>
@@ -286,8 +287,7 @@ ex_isa_attach(device_t dev)
 		goto bad;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq));
 
 	return(0);
 bad:

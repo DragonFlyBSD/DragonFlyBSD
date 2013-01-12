@@ -1523,12 +1523,10 @@ skc_attach(device_t dev)
 	}
 
 	cpuid = rman_get_cpuid(sc->sk_irq);
-	KKASSERT(cpuid >= 0 && cpuid < ncpus);
-
 	if (sc->sk_if[0] != NULL)
-		sc->sk_if[0]->arpcom.ac_if.if_cpuid = cpuid;
+		ifq_set_cpuid(&sc->sk_if[0]->arpcom.ac_if.if_snd, cpuid);
 	if (sc->sk_if[1] != NULL)
-		sc->sk_if[1]->arpcom.ac_if.if_cpuid = cpuid;
+		ifq_set_cpuid(&sc->sk_if[1]->arpcom.ac_if.if_snd, cpuid);
 
 	return 0;
 fail:
@@ -1709,14 +1707,14 @@ sk_start(struct ifnet *ifp)
 
 	DPRINTFN(2, ("sk_start\n"));
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	while (sc_if->sk_cdata.sk_tx_mbuf[idx] == NULL) {
 		struct mbuf *m_head;
 
 		if (SK_IS_OACTIVE(sc_if)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -1733,7 +1731,7 @@ sk_start(struct ifnet *ifp)
 			if (sc_if->sk_cdata.sk_tx_cnt == 0) {
 				continue;
 			} else {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 		}
@@ -1820,7 +1818,7 @@ sk_rxeof(struct sk_if_softc *sc_if)
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct sk_ring_data *rd = &sc_if->sk_rdata;
-	int i, reap, max_frmlen;
+	int i, max_frmlen;
 
 	DPRINTFN(2, ("sk_rxeof\n"));
 
@@ -1831,7 +1829,6 @@ sk_rxeof(struct sk_if_softc *sc_if)
 	else
 		max_frmlen = ETHER_MAX_LEN;
 
-	reap = 0;
 	for (;;) {
 		struct sk_rx_desc *cur_desc;
 		uint32_t rxstat, sk_ctl;
@@ -1867,7 +1864,6 @@ sk_rxeof(struct sk_if_softc *sc_if)
 		 * in the following processing any more.
 		 */
 		SK_INC(i, SK_RX_RING_CNT);
-		reap = 1;
 
 		if ((sk_ctl & (SK_RXCTL_STATUS_VALID | SK_RXCTL_FIRSTFRAG |
 		    SK_RXCTL_LASTFRAG)) != (SK_RXCTL_STATUS_VALID |
@@ -2004,7 +2000,6 @@ sk_txeof(struct sk_if_softc *sc_if)
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
 	uint32_t idx;
-	int reap = 0;
 
 	DPRINTFN(2, ("sk_txeof\n"));
 
@@ -2033,12 +2028,11 @@ sk_txeof(struct sk_if_softc *sc_if)
 			cd->sk_tx_mbuf[idx] = NULL;
 		}
 		sc_if->sk_cdata.sk_tx_cnt--;
-		reap = 1;
 		SK_INC(idx, SK_TX_RING_CNT);
 	}
 
 	if (!SK_IS_OACTIVE(sc_if))
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	if (sc_if->sk_cdata.sk_tx_cnt == 0)
 		ifp->if_timer = 0;
@@ -2778,7 +2772,7 @@ sk_init(void *xsc_if)
 	CSR_WRITE_4(sc, sc_if->sk_tx_bmu, SK_TXBMU_TX_START);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	if (SK_IS_YUKON(sc))
 		callout_reset(&sc_if->sk_tick_timer, hz, sk_yukon_tick, sc_if);
@@ -2799,7 +2793,8 @@ sk_stop(struct sk_if_softc *sc_if)
 
 	callout_stop(&sc_if->sk_tick_timer);
 
-	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/* Stop Tx descriptor polling timer */
 	SK_IF_WRITE_4(sc_if, 0, SK_DPT_TIMER_CTRL, SK_DPT_TCTL_STOP);

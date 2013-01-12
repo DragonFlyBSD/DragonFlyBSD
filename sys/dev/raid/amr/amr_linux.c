@@ -34,7 +34,7 @@
 #include <sys/file.h>
 #include <sys/proc.h>
 
-#if defined(__amd64__) /* Assume amd64 wants 32 bit Linux */
+#if defined(__x86_64__) /* Assume amd64 wants 32 bit Linux */
 #include <machine/../linux32/linux.h>
 #include <machine/../linux32/linux32_proto.h>
 #else

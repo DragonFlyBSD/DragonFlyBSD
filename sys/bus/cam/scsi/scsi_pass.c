@@ -189,7 +189,6 @@ passasync(void *callback_arg, u_int32_t code,
 	  struct cam_path *path, void *arg)
 {
 	struct cam_periph *periph;
-	struct cam_sim *sim;
 
 	periph = (struct cam_periph *)callback_arg;
 
@@ -215,7 +214,6 @@ passasync(void *callback_arg, u_int32_t code,
 		 * this device and start the probe
 		 * process.
 		 */
-		sim = xpt_path_sim(cgd->ccb_h.path);
 		status = cam_periph_alloc(passregister, passoninvalidate,
 					  passcleanup, passstart, "pass",
 					  CAM_PERIPH_BIO, cgd->ccb_h.path,
@@ -413,10 +411,8 @@ passstart(struct cam_periph *periph, union ccb *start_ccb)
 static void
 passdone(struct cam_periph *periph, union ccb *done_ccb)
 { 
-	struct pass_softc *softc;
 	struct ccb_scsiio *csio;
 
-	softc = (struct pass_softc *)periph->softc;
 	csio = &done_ccb->csio;
 	switch (csio->ccb_h.ccb_type) {
 	case PASS_CCB_WAITING:
@@ -433,7 +429,6 @@ passioctl(struct dev_ioctl_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	caddr_t addr = ap->a_data;
 	struct 	cam_periph *periph;
-	struct	pass_softc *softc;
 	u_int8_t unit;
 	int      error;
 
@@ -448,7 +443,6 @@ passioctl(struct dev_ioctl_args *ap)
 		return(ENXIO);
 
 	cam_periph_lock(periph);
-	softc = (struct pass_softc *)periph->softc;
 
 	error = 0;
 

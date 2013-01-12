@@ -959,12 +959,8 @@ void
 nfs_startio(struct vnode *vp, struct bio *bio, struct thread *td)
 {
 	struct buf *bp = bio->bio_buf;
-	struct nfsnode *np;
-	struct nfsmount *nmp;
 
 	KKASSERT(vp->v_tag == VT_NFS);
-	np = VTONFS(vp);
-	nmp = VFSTONFS(vp->v_mount);
 
 	/*
 	 * clear B_ERROR and B_INVAL state prior to initiating the I/O.  We

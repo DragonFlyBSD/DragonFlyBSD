@@ -437,14 +437,12 @@ msk_miibus_statchg(device_t dev)
 	struct msk_if_softc *sc_if;
 	struct msk_softc *sc;
 	struct mii_data *mii;
-	struct ifnet *ifp;
 	uint32_t gmac;
 
 	sc_if = device_get_softc(dev);
 	sc = sc_if->msk_softc;
 
 	mii = device_get_softc(sc_if->msk_miibus);
-	ifp = sc_if->msk_ifp;
 
 	sc_if->msk_link = 0;
 	if ((mii->mii_media_status & (IFM_AVALID | IFM_ACTIVE)) ==
@@ -1739,12 +1737,10 @@ mskc_attach(device_t dev)
 	}
 
 	cpuid = rman_get_cpuid(sc->msk_irq);
-	KKASSERT(cpuid >= 0 && cpuid < ncpus);
-
 	if (sc->msk_if[0] != NULL)
-		sc->msk_if[0]->msk_ifp->if_cpuid = cpuid;
+		ifq_set_cpuid(&sc->msk_if[0]->msk_ifp->if_snd, cpuid);
 	if (sc->msk_if[1] != NULL)
-		sc->msk_if[1]->msk_ifp->if_cpuid = cpuid;
+		ifq_set_cpuid(&sc->msk_if[1]->msk_ifp->if_snd, cpuid);
 	return 0;
 fail:
 	mskc_detach(dev);
@@ -2615,13 +2611,13 @@ msk_start(struct ifnet *ifp)
 		return;
 	}
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	enq = 0;
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		if (MSK_IS_OACTIVE(sc_if)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
 
@@ -2639,7 +2635,7 @@ msk_start(struct ifnet *ifp)
 			if (sc_if->msk_cdata.msk_tx_cnt == 0) {
 				continue;
 			} else {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				break;
 			}
 		}
@@ -2936,7 +2932,7 @@ msk_txeof(struct msk_if_softc *sc_if, int idx)
 	if (prog > 0) {
 		sc_if->msk_cdata.msk_tx_cons = cons;
 		if (!MSK_IS_OACTIVE(sc_if))
-			ifp->if_flags &= ~IFF_OACTIVE;
+			ifq_clr_oactive(&ifp->if_snd);
 		if (sc_if->msk_cdata.msk_tx_cnt == 0)
 			ifp->if_timer = 0;
 		/* No need to sync LEs as we didn't update LEs. */
@@ -3607,7 +3603,7 @@ msk_init(void *xsc)
 	mskc_set_imtimer(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc_if->msk_tick_ch, hz, msk_tick, sc_if);
 }
@@ -3834,7 +3830,8 @@ msk_stop(struct msk_if_softc *sc_if)
 	/*
 	 * Mark the interface down.
 	 */
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	sc_if->msk_link = 0;
 }
 

@@ -197,7 +197,7 @@ struct dmsg_msg {
 	size_t		hdr_size;
 	size_t		aux_size;
 	char		*aux_data;
-	dmsg_any_t 	any;
+	dmsg_any_t 	any;			/* must be last element */
 };
 
 typedef struct dmsg_circuit dmsg_circuit_t;
@@ -228,7 +228,8 @@ struct dmsg_ioq {
 	size_t		fifo_cdn;		/* end-cdn unprocessed */
 	size_t		fifo_end;
 	size_t		hbytes;			/* header size */
-	size_t		abytes;			/* aux_data size */
+	size_t		abytes;			/* aligned aux_data size */
+	size_t		unaligned_aux_size;	/* actual aux_data size */
 	int		error;
 	int		seq;			/* salt sequencer */
 	int		msgcount;
@@ -272,9 +273,10 @@ typedef struct dmsg_ioq dmsg_ioq_t;
  * dmsg_iocom - governs a messaging stream connection
  */
 struct dmsg_iocom {
+	char		*label;			/* label for error reporting */
 	dmsg_ioq_t	ioq_rx;
 	dmsg_ioq_t	ioq_tx;
-	dmsg_msg_queue_t freeq;		/* free msgs hdr only */
+	dmsg_msg_queue_t freeq;			/* free msgs hdr only */
 	dmsg_msg_queue_t freeq_aux;		/* free msgs w/aux_data */
 	int	sock_fd;			/* comm socket or pipe */
 	int	alt_fd;				/* thread signal, tty, etc */
@@ -305,6 +307,7 @@ typedef struct dmsg_iocom dmsg_iocom_t;
 #define DMSG_IOCOMF_AWWORK	0x00000080	/* immediate work pending */
 #define DMSG_IOCOMF_SWORK	0x00000100	/* immediate work pending */
 #define DMSG_IOCOMF_CRYPTED	0x00000200	/* encrypt enabled */
+#define DMSG_IOCOMF_CLOSEALT	0x00000400	/* close alt_fd */
 
 /*
  * Crypto algorithm table and related typedefs.
@@ -327,10 +330,14 @@ struct crypto_algo {
  */
 struct dmsg_master_service_info {
 	int	fd;
+	int	altfd;
+	int	noclosealt;
 	int	detachme;
+	char	*label;
 	void	*handle;
 	void	(*dbgmsg_callback)(dmsg_msg_t *msg);
 	void	(*exit_callback)(void *handle);
+	void	(*altmsg_callback)(dmsg_iocom_t *);
 };
 
 typedef struct dmsg_master_service_info dmsg_master_service_info_t;
@@ -381,6 +388,7 @@ void dmsg_iocom_restate(dmsg_iocom_t *iocom,
 			void (*state_func)(dmsg_iocom_t *),
 			void (*rcvmsg_func)(dmsg_msg_t *),
 			void (*altmsg_func)(dmsg_iocom_t *));
+void dmsg_iocom_label(dmsg_iocom_t *iocom, const char *ctl, ...);
 void dmsg_iocom_signal(dmsg_iocom_t *iocom);
 void dmsg_iocom_done(dmsg_iocom_t *iocom);
 void dmsg_circuit_init(dmsg_iocom_t *iocom, dmsg_circuit_t *circuit);
@@ -404,9 +412,11 @@ void dmsg_iocom_flush2(dmsg_iocom_t *iocom);
 
 void dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg);
 void dmsg_state_free(dmsg_state_t *state);
+void dmsg_circuit_hold(dmsg_circuit_t *circuit);
 void dmsg_circuit_drop(dmsg_circuit_t *circuit);
+void dmsg_circuit_drop_locked(dmsg_circuit_t *circuit);
 
-int dmsg_circuit_relay(dmsg_msg_t *msg);
+int dmsg_circuit_route(dmsg_msg_t *msg);
 
 /*
  * Msg protocol functions
@@ -415,6 +425,8 @@ void dmsg_msg_lnk_signal(dmsg_iocom_t *iocom);
 void dmsg_msg_lnk(dmsg_msg_t *msg);
 void dmsg_msg_dbg(dmsg_msg_t *msg);
 void dmsg_shell_tree(dmsg_circuit_t *circuit, char *cmdbuf __unused);
+int dmsg_debug_findspan(uint64_t msgid, dmsg_state_t **statep);
+
 
 /*
  * Crypto functions

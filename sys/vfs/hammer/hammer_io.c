@@ -1915,7 +1915,6 @@ static int
 hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data)
 {
 	hammer_inode_info_t iinfo = data;
-	hammer_off_t data_offset;
 	hammer_off_t file_offset;
 	struct vnode *vp;
 	struct buf *bp;
@@ -1923,7 +1922,6 @@ hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data)
 
 	if (ip->vp == NULL)
 		return(0);
-	data_offset = iinfo->u.leaf->data_offset;
 	file_offset = iinfo->u.leaf->base.key - iinfo->u.leaf->data_len;
 	blksize = iinfo->u.leaf->data_len;
 	KKASSERT((blksize & HAMMER_BUFMASK) == 0);

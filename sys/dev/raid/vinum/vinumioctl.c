@@ -847,7 +847,3 @@ moveobject(struct vinum_ioctl_msg *msg)
     give_sd_to_drive(sd->sdno);
     reply->error = 0;
 }
-
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */

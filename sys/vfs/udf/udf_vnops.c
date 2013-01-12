@@ -299,9 +299,6 @@ udf_getattr(struct vop_getattr_args *a)
 	struct udf_node *node;
 	struct vattr *vap;
 	struct file_entry *fentry;
-	struct timespec ts;
-
-	ts.tv_sec = 0;
 
 	vp = a->a_vp;
 	vap = a->a_vap;
@@ -871,7 +868,6 @@ udf_lookup(struct vop_old_lookup_args *a)
 	struct udf_mnt *udfmp;
 	struct fileid_desc *fid = NULL;
 	struct udf_dirstream *ds;
-	struct thread *td;
 	u_long nameiop;
 	u_long flags;
 	char *nameptr;
@@ -888,7 +884,6 @@ udf_lookup(struct vop_old_lookup_args *a)
 	nameptr = a->a_cnp->cn_nameptr;
 	namelen = a->a_cnp->cn_namelen;
 	fsize = node->fentry->inf_len;
-	td = a->a_cnp->cn_td;
 
 	*vpp = NULL;
 

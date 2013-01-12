@@ -296,14 +296,16 @@ static int	bge_probe(device_t);
 static int	bge_attach(device_t);
 static int	bge_detach(device_t);
 static void	bge_txeof(struct bge_softc *, uint16_t);
-static void	bge_rxeof(struct bge_softc *, uint16_t);
+static void	bge_rxeof(struct bge_softc *, uint16_t, int);
 
 static void	bge_tick(void *);
 static void	bge_stats_update(struct bge_softc *);
 static void	bge_stats_update_regs(struct bge_softc *);
 static struct mbuf *
 		bge_defrag_shortdma(struct mbuf *);
-static int	bge_encap(struct bge_softc *, struct mbuf **, uint32_t *);
+static int	bge_encap(struct bge_softc *, struct mbuf **,
+		    uint32_t *, int *);
+static void	bge_xmit(struct bge_softc *, uint32_t);
 static int	bge_setup_tso(struct bge_softc *, struct mbuf **,
 		    uint16_t *, uint16_t *);
 
@@ -1103,7 +1105,7 @@ bge_init_rx_ring_std(struct bge_softc *sc)
 		error = bge_newbuf_std(sc, i, 1);
 		if (error)
 			return error;
-	};
+	}
 
 	sc->bge_std = BGE_STD_RX_RING_CNT - 1;
 	bge_writembx(sc, BGE_MBX_RX_STD_PROD_LO, sc->bge_std);
@@ -1140,7 +1142,7 @@ bge_init_rx_ring_jumbo(struct bge_softc *sc)
 		error = bge_newbuf_jumbo(sc, i, 1);
 		if (error)
 			return error;
-	};
+	}
 
 	sc->bge_jumbo = BGE_JUMBO_RX_RING_CNT - 1;
 
@@ -2321,6 +2323,7 @@ bge_attach(device_t dev)
 		sc->bge_rx_coal_bds_int = BGE_RX_COAL_BDS_MIN;
 		sc->bge_tx_coal_bds_int = BGE_TX_COAL_BDS_MIN;
 	}
+	sc->bge_tx_wreg = 16;
 
 	/* Set up TX spare and reserved descriptor count */
 	if (sc->bge_flags & BGE_FLAG_TSO) {
@@ -2491,6 +2494,13 @@ bge_attach(device_t dev)
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bge_sysctl_tx_coal_bds, "I",
 			"Transmit max coalesced BD count.");
+
+	SYSCTL_ADD_INT(&sc->bge_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->bge_sysctl_tree),
+		       OID_AUTO, "tx_wreg", CTLFLAG_RW,
+		       &sc->bge_tx_wreg, 0,
+		       "# of segments before writing to hardware register");
+
 	if (sc->bge_flags & BGE_FLAG_PCIE) {
 		/*
 		 * A common design characteristic for many Broadcom
@@ -2574,8 +2584,7 @@ bge_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->bge_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->bge_irq));
 
 	return(0);
 fail:
@@ -2888,19 +2897,21 @@ bge_reset(struct bge_softc *sc)
  */
 
 static void
-bge_rxeof(struct bge_softc *sc, uint16_t rx_prod)
+bge_rxeof(struct bge_softc *sc, uint16_t rx_prod, int count)
 {
 	struct ifnet *ifp;
 	int stdcnt = 0, jumbocnt = 0;
 
 	ifp = &sc->arpcom.ac_if;
 
-	while (sc->bge_rx_saved_considx != rx_prod) {
+	while (sc->bge_rx_saved_considx != rx_prod && count != 0) {
 		struct bge_rx_bd	*cur_rx;
 		uint32_t		rxidx;
 		struct mbuf		*m = NULL;
 		uint16_t		vlan_tag = 0;
 		int			have_tag = 0;
+
+		--count;
 
 		cur_rx =
 	    &sc->bge_ldata.bge_rx_return_ring[sc->bge_rx_saved_considx];
@@ -3001,7 +3012,6 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod)
 		if (have_tag) {
 			m->m_flags |= M_VLANTAG;
 			m->m_pkthdr.ether_vlantag = vlan_tag;
-			have_tag = vlan_tag = 0;
 		}
 		ifp->if_input(ifp, m);
 	}
@@ -3042,7 +3052,7 @@ bge_txeof(struct bge_softc *sc, uint16_t tx_cons)
 
 	if ((BGE_TX_RING_CNT - sc->bge_txcnt) >=
 	    (sc->bge_txrsvd + sc->bge_txspare))
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 
 	if (sc->bge_txcnt == 0)
 		ifp->if_timer = 0;
@@ -3054,7 +3064,7 @@ bge_txeof(struct bge_softc *sc, uint16_t tx_cons)
 #ifdef IFPOLL_ENABLE
 
 static void
-bge_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycles __unused)
+bge_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycles)
 {
 	struct bge_softc *sc = ifp->if_softc;
 	struct bge_status_block *sblk = sc->bge_ldata.bge_status_block;
@@ -3081,7 +3091,7 @@ bge_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycles __unused)
 
 	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
 	if (sc->bge_rx_saved_considx != rx_prod)
-		bge_rxeof(sc, rx_prod);
+		bge_rxeof(sc, rx_prod, cycles);
 
 	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 	if (sc->bge_tx_saved_considx != tx_cons)
@@ -3089,6 +3099,9 @@ bge_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycles __unused)
 
 	if (sc->bge_flags & BGE_FLAG_STATUS_TAG)
 		bge_writembx(sc, BGE_MBX_IRQ0_LO, sc->bge_status_tag << 24);
+
+	if (sc->bge_coal_chg)
+		bge_coal_change(sc);
 }
 
 static void
@@ -3107,11 +3120,11 @@ bge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			bge_disable_intr(sc);
-		ifp->if_npoll_cpuid = cpuid;
+		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			bge_enable_intr(sc);
-		ifp->if_npoll_cpuid = -1;
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->bge_irq));
 	}
 }
 
@@ -3158,7 +3171,7 @@ bge_intr_crippled(void *xsc)
 
 		rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
 		if (sc->bge_rx_saved_considx != rx_prod)
-			bge_rxeof(sc, rx_prod);
+			bge_rxeof(sc, rx_prod, -1);
 
 		tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 		if (sc->bge_tx_saved_considx != tx_cons)
@@ -3234,7 +3247,7 @@ bge_intr(struct bge_softc *sc)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (sc->bge_rx_saved_considx != rx_prod)
-			bge_rxeof(sc, rx_prod);
+			bge_rxeof(sc, rx_prod, -1);
 
 		if (sc->bge_tx_saved_considx != tx_cons)
 			bge_txeof(sc, tx_cons);
@@ -3340,7 +3353,8 @@ bge_stats_update(struct bge_softc *sc)
  * pointers to descriptors.
  */
 static int
-bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
+bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
+    int *segs_used)
 {
 	struct bge_tx_bd *d = NULL, *last_d;
 	uint16_t csum_flags = 0, mss = 0;
@@ -3417,6 +3431,7 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 			m_head0, segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error)
 		goto back;
+	*segs_used += nsegs;
 
 	m_head = *m_head0;
 	bus_dmamap_sync(sc->bge_cdata.bge_tx_mtag, map, BUS_DMASYNC_PREWRITE);
@@ -3467,6 +3482,16 @@ back:
 	return error;
 }
 
+static void
+bge_xmit(struct bge_softc *sc, uint32_t prodidx)
+{
+	/* Transmit */
+	bge_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
+	/* 5700 b2 errata */
+	if (sc->bge_chiprev == BGE_CHIPREV_5700_BX)
+		bge_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
+}
+
 /*
  * Main transmit routine. To avoid having to do mbuf copies, we put pointers
  * to the mbuf data regions directly in the transmit descriptors.
@@ -3477,14 +3502,13 @@ bge_start(struct ifnet *ifp)
 	struct bge_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	uint32_t prodidx;
-	int need_trans;
+	int nsegs = 0;
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	prodidx = sc->bge_tx_prodidx;
 
-	need_trans = 0;
 	while (sc->bge_cdata.bge_tx_chain[prodidx] == NULL) {
 		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
@@ -3507,7 +3531,7 @@ bge_start(struct ifnet *ifp)
 		    (m_head->m_pkthdr.csum_flags & CSUM_DELAY_DATA)) {
 			if ((BGE_TX_RING_CNT - sc->bge_txcnt) <
 			    m_head->m_pkthdr.csum_data + sc->bge_txrsvd) {
-				ifp->if_flags |= IFF_OACTIVE;
+				ifq_set_oactive(&ifp->if_snd);
 				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
@@ -3521,7 +3545,7 @@ bge_start(struct ifnet *ifp)
 		 */
 		if ((BGE_TX_RING_CNT - sc->bge_txcnt) <
 		    (sc->bge_txrsvd + sc->bge_txspare)) {
-			ifp->if_flags |= IFF_OACTIVE;
+			ifq_set_oactive(&ifp->if_snd);
 			ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
@@ -3531,31 +3555,28 @@ bge_start(struct ifnet *ifp)
 		 * don't have room, set the OACTIVE flag and wait
 		 * for the NIC to drain the ring.
 		 */
-		if (bge_encap(sc, &m_head, &prodidx)) {
-			ifp->if_flags |= IFF_OACTIVE;
+		if (bge_encap(sc, &m_head, &prodidx, &nsegs)) {
+			ifq_set_oactive(&ifp->if_snd);
 			ifp->if_oerrors++;
 			break;
 		}
-		need_trans = 1;
+
+		if (nsegs >= sc->bge_tx_wreg) {
+			bge_xmit(sc, prodidx);
+			nsegs = 0;
+		}
 
 		ETHER_BPF_MTAP(ifp, m_head);
+
+		/*
+		 * Set a timeout in case the chip goes out to lunch.
+		 */
+		ifp->if_timer = 5;
 	}
 
-	if (!need_trans)
-		return;
-
-	/* Transmit */
-	bge_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
-	/* 5700 b2 errata */
-	if (sc->bge_chiprev == BGE_CHIPREV_5700_BX)
-		bge_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
-
+	if (nsegs > 0)
+		bge_xmit(sc, prodidx);
 	sc->bge_tx_prodidx = prodidx;
-
-	/*
-	 * Set a timeout in case the chip goes out to lunch.
-	 */
-	ifp->if_timer = 5;
 }
 
 static void
@@ -3692,7 +3713,7 @@ bge_init(void *xsc)
 	bge_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->bge_stat_timer, hz, bge_tick, sc);
 }
@@ -3993,7 +4014,8 @@ bge_stop(struct bge_softc *sc)
 
 	sc->bge_tx_saved_considx = BGE_TXCONS_UNSET;
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
 }
 

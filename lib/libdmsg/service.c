@@ -54,12 +54,22 @@ dmsg_master_service(void *data)
 	if (info->detachme)
 		pthread_detach(pthread_self());
 
-	dmsg_iocom_init(&iocom, info->fd, -1,
-			   master_auth_signal,
-			   master_auth_rxmsg,
-			   info->dbgmsg_callback,
-			   NULL);
+	dmsg_iocom_init(&iocom,
+			info->fd,
+			(info->altmsg_callback ? info->altfd : -1),
+			master_auth_signal,
+			master_auth_rxmsg,
+			info->dbgmsg_callback,
+			info->altmsg_callback);
+	if (info->noclosealt)
+		iocom.flags &= ~DMSG_IOCOMF_CLOSEALT;
+	if (info->label) {
+		dmsg_iocom_label(&iocom, "%s", info->label);
+		free(info->label);
+		info->label = NULL;
+	}
 	dmsg_iocom_core(&iocom);
+	dmsg_iocom_done(&iocom);
 
 	fprintf(stderr,
 		"iocom on fd %d terminated error rx=%d, tx=%d\n",
@@ -109,7 +119,7 @@ master_auth_signal(dmsg_iocom_t *iocom)
 	dmsg_iocom_restate(iocom,
 			    master_link_signal,
 			    master_link_rxmsg,
-			    NULL);
+			    iocom->altmsg_callback);
 }
 
 static
@@ -156,9 +166,7 @@ master_link_rxmsg(dmsg_msg_t *msg)
 	 * might have REPLY set.
 	 */
 	state = msg->state;
-	cmd = state ? state->msg->any.head.cmd : msg->any.head.cmd;
-
-	fprintf(stderr, "service-receive: %s\n", dmsg_msg_str(msg));
+	cmd = state ? state->icmd : msg->any.head.cmd;
 
 	if (state && state->func) {
 		assert(state->func != NULL);
@@ -195,7 +203,7 @@ dmsg_msg_dbg(dmsg_msg_t *msg)
 		if (msg->aux_data)
 			msg->aux_data[msg->aux_size - 1] = 0;
 		msg->iocom->dbgmsg_callback(msg);
-		dmsg_msg_reply(msg, 0);
+		dmsg_msg_reply(msg, 0);	/* XXX send prompt instead */
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
 		/*

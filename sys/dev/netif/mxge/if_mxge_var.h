@@ -336,14 +336,3 @@ mxge_pio_copy(volatile void *to_v, void *from_v, size_t size)
 void mxge_lro_flush(struct mxge_slice_state *ss, struct lro_entry *lro);
 int mxge_lro_rx(struct mxge_slice_state *ss, struct mbuf *m_head,
 		uint32_t csum);
-		
-
-
-/*
-  This file uses Myri10GE driver indentation.
-
-  Local Variables:
-  c-file-style:"linux"
-  tab-width:8
-  End:
-*/

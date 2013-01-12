@@ -820,8 +820,7 @@ fe_attach (device_t dev)
 		return ENXIO;
 	}
 
-	sc->sc_if.if_cpuid = rman_get_cpuid(sc->irq_res);
-	KKASSERT(sc->sc_if.if_cpuid >= 0 && sc->sc_if.if_cpuid < ncpus);
+	ifq_set_cpuid(&sc->sc_if.if_snd, rman_get_cpuid(sc->irq_res));
   
   	/* Print additional info when attached.  */
  	device_printf(dev, "type %s%s\n", sc->typestr,
@@ -963,7 +962,8 @@ fe_stop (struct fe_softc *sc)
 	DELAY(200);
 
 	/* Reset transmitter variables and interface flags.  */
-	sc->sc_if.if_flags &= ~(IFF_OACTIVE | IFF_RUNNING);
+	sc->sc_if.if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&sc->sc_if.if_snd);
 	sc->sc_if.if_timer = 0;
 	sc->txb_free = sc->txb_size;
 	sc->txb_count = 0;
@@ -1142,7 +1142,7 @@ fe_xmit (struct fe_softc *sc)
  *  1) that the current priority is set to splimp _before_ this code
  *     is called *and* is returned to the appropriate priority after
  *     return
- *  2) that the IFF_OACTIVE flag is checked before this code is called
+ *  2) that the OACTIVE flag is checked before this code is called
  *     (i.e. that the output part of the interface is idle)
  */
 void
@@ -1280,7 +1280,7 @@ fe_start (struct ifnet *ifp)
 	 * filled all the buffers with data then we still
 	 * want to accept more.
 	 */
-	sc->sc_if.if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&sc->sc_if.if_snd);
 	return;
 
   indicate_active:
@@ -1288,7 +1288,7 @@ fe_start (struct ifnet *ifp)
 	 * The transmitter is active, and there are no room for
 	 * more outgoing packets in the transmission buffer.
 	 */
-	sc->sc_if.if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&sc->sc_if.if_snd);
 	return;
 }
 
@@ -1517,7 +1517,7 @@ fe_tint (struct fe_softc * sc, u_char tstat)
 		 * The transmitter is no more active.
 		 * Reset output active flag and watchdog timer.
 		 */
-		sc->sc_if.if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&sc->sc_if.if_snd);
 		sc->sc_if.if_timer = 0;
 
 		/*
@@ -1711,7 +1711,7 @@ fe_intr (void *arg)
 		if (sc->filter_change &&
 		    sc->txb_count == 0 && sc->txb_sched == 0) {
 			fe_loadmar(sc);
-			sc->sc_if.if_flags &= ~IFF_OACTIVE;
+			ifq_clr_oactive(&sc->sc_if.if_snd);
 		}
 
 		/*
@@ -1727,7 +1727,7 @@ fe_intr (void *arg)
 		 * receiver interrupts.  86960 can raise a receiver
 		 * interrupt when the transmission buffer is full.
 		 */
-		if ((sc->sc_if.if_flags & IFF_OACTIVE) == 0)
+		if (!ifq_is_oactive(&sc->sc_if.if_snd))
 			if_devstart(&sc->sc_if);
 	}
 

@@ -1239,8 +1239,7 @@ tl_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = rman_get_cpuid(sc->tl_irq);
-	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->tl_irq));
 
 	return(0);
 
@@ -1536,7 +1535,7 @@ tl_intvec_txeoc(void *xsc, u_int32_t type)
 	ifp->if_timer = 0;
 
 	if (sc->tl_cdata.tl_tx_head == NULL) {
-		ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&ifp->if_snd);
 		sc->tl_cdata.tl_tx_tail = NULL;
 		sc->tl_txeoc = 1;
 	} else {
@@ -1835,7 +1834,7 @@ tl_start(struct ifnet *ifp)
 	 * punt.
 	 */
 	if (sc->tl_cdata.tl_tx_free == NULL) {
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		return;
 	}
 
@@ -1975,7 +1974,7 @@ tl_init(void *xsc)
 	CMD_SET(sc, TL_CMD_GO|TL_CMD_NES|TL_CMD_RT);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/* Start the stats update counter */
 	callout_reset(&sc->tl_stat_timer, hz, tl_stats_update, sc);
@@ -2164,7 +2163,8 @@ tl_stop(struct tl_softc *sc)
 	bzero((char *)&sc->tl_ldata->tl_tx_list,
 		sizeof(sc->tl_ldata->tl_tx_list));
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	return;
 }

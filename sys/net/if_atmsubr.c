@@ -214,9 +214,7 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	/*
 	 * Dispatch message to the interface.
 	 */
-	ifnet_serialize_tx(ifp);
-	error = ifq_handoff(ifp, m, &pktattr);
-	ifnet_deserialize_tx(ifp);
+	error = ifq_dispatch(ifp, m, &pktattr);
 	return error;
 
 bad:

@@ -136,7 +136,6 @@ esp_aesctr_decrypt(struct mbuf *m, size_t off, struct secasvar *sav,
 	union cblock cblock;
 	u_int8_t keystream[AES_BLOCKSIZE], *nonce;
 	u_int32_t ctr;
-	u_int8_t *ivp;
 	u_int8_t sbuf[AES_BLOCKSIZE], *sp, *dst;
 	struct mbuf *scut;
 	int scutoff;
@@ -177,7 +176,7 @@ esp_aesctr_decrypt(struct mbuf *m, size_t off, struct secasvar *sav,
 	s = m;
 	d = d0 = dp = NULL;
 	soff = doff = sn = dn = 0;
-	ivp = sp = NULL;
+	sp = NULL;
 
 	/* skip bodyoff */
 	while (soff < bodyoff) {

@@ -724,7 +724,7 @@ cue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	usbd_get_xfer_status(c->cue_xfer, NULL, NULL, NULL, &err);
 
 	if (c->cue_mbuf != NULL) {
@@ -820,7 +820,7 @@ cue_start(struct ifnet *ifp)
 	sc = ifp->if_softc;
 	CUE_LOCK(sc);
 
-	if (ifp->if_flags & IFF_OACTIVE) {
+	if (ifq_is_oactive(&ifp->if_snd)) {
 		CUE_UNLOCK(sc);
 		return;
 	}
@@ -833,7 +833,7 @@ cue_start(struct ifnet *ifp)
 
 	if (cue_encap(sc, m_head, 0)) {
 		/* cue_encap() will free m_head, if we reach here */
-		ifp->if_flags |= IFF_OACTIVE;
+		ifq_set_oactive(&ifp->if_snd);
 		CUE_UNLOCK(sc);
 		return;
 	}
@@ -844,7 +844,7 @@ cue_start(struct ifnet *ifp)
 	 */
 	BPF_MTAP(ifp, m_head);
 
-	ifp->if_flags |= IFF_OACTIVE;
+	ifq_set_oactive(&ifp->if_snd);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -947,7 +947,7 @@ cue_init(void *xsc)
 	}
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	CUE_UNLOCK(sc);
 
@@ -1118,7 +1118,8 @@ cue_stop(struct cue_softc *sc)
 		}
 	}
 
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 	CUE_UNLOCK(sc);
 
 	return;

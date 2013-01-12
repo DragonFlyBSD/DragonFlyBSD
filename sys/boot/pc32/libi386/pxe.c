@@ -306,10 +306,9 @@ pxe_open(struct open_file *f, ...)
 		setenv("boot.netif.ip", inet_ntoa(myip), 1);
 		setenv("boot.netif.netmask", intoa(netmask), 1);
 		setenv("boot.netif.gateway", inet_ntoa(gateip), 1);
-		if (bootplayer.Hardware == ETHER_TYPE) {
-		    sprintf(temp, "%6D", bootplayer.CAddr, ":");
-		    setenv("boot.netif.hwaddr", temp, 1);
-		}
+		if (bootplayer.Hardware == ETHER_TYPE)
+			setenv("boot.netif.hwaddr", ether_sprintf(bootplayer.CAddr), 1);
+
 		setenv("boot.nfsroot.server", inet_ntoa(rootip), 1);
 		setenv("boot.nfsroot.path", rootpath, 1);
 	}

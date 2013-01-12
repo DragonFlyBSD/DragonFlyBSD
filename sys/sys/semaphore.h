@@ -35,10 +35,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/semaphore.h,v 1.6 2000/01/20 07:55:42 jasone Exp $
- * $DragonFly: src/sys/sys/semaphore.h,v 1.3 2003/08/27 06:30:04 rob Exp $
  */
 
 #include <sys/_posix.h>
+#include <sys/_timespec.h>
 #include <machine/limits.h>
 
 #ifdef _P1003_1B_INCLUDE_MAYBES
@@ -64,6 +64,7 @@ int	 sem_close (sem_t *);
 int	 sem_unlink (const char *);
 int	 sem_wait (sem_t *);
 int	 sem_trywait (sem_t *);
+int	 sem_timedwait (sem_t * __restrict, struct timespec * __restrict);
 int	 sem_post (sem_t *);
 int	 sem_getvalue (sem_t *, int *);
 __END_DECLS

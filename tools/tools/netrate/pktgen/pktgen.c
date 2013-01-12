@@ -64,9 +64,12 @@
 #include "pktgen.h"
 
 #define CDEV_NAME	"pktg"
-#define CDEV_MAJOR	151
 
 #define PKTGEN_BUFSZ	2048
+
+#ifndef PKTGEN_DEVCNT
+#define PKTGEN_DEVCNT	4
+#endif
 
 struct pktgen;
 
@@ -91,6 +94,8 @@ struct pktgen {
 
 	int			pktg_datalen;
 	struct ifnet		*pktg_ifp;
+
+	int			pktg_pktenq;
 
 	struct sockaddr_in	pktg_src;
 	int			pktg_ndst;
@@ -121,7 +126,7 @@ static d_close_t	pktgen_close;
 static d_ioctl_t	pktgen_ioctl;
 
 static struct dev_ops	pktgen_ops = {
-	{ CDEV_NAME, CDEV_MAJOR, 0 },
+	{ CDEV_NAME, 0, D_MPSAFE },
 	.d_open =	pktgen_open,
 	.d_close =	pktgen_close,
 	.d_ioctl =	pktgen_ioctl,
@@ -138,12 +143,14 @@ DEV_MODULE(pktgen, pktgen_modevent, NULL);
 static int
 pktgen_modevent(module_t mod, int type, void *data)
 {
-	int error = 0;
+	int error = 0, i;
 
 	switch (type) {
 	case MOD_LOAD:
-		make_dev(&pktgen_ops, 0, UID_ROOT, GID_WHEEL, 0600,
-		    CDEV_NAME"%d", 0);
+		for (i = 0; i < PKTGEN_DEVCNT; ++i) {
+			make_dev(&pktgen_ops, 0, UID_ROOT, GID_WHEEL, 0600,
+			    CDEV_NAME"%d", i);
+		}
 		break;
 
 	case MOD_UNLOAD:
@@ -242,7 +249,7 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 	const struct sockaddr *sa;
 	struct ifnet *ifp;
 	size_t dst_size;
-	int i, error;
+	int i, error, pktenq;
 
 	if (pktg->pktg_flags & (PKTG_F_RUNNING | PKTG_F_CONFIG))
 		return EBUSY;
@@ -289,6 +296,14 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 		goto failed;
 	}
 
+	pktenq = conf->pc_pktenq;
+	if (pktenq < 0 || pktenq > ifp->if_snd.ifq_maxlen) {
+		error = ENOBUFS;
+		goto failed;
+	} else if (pktenq == 0) {
+		pktenq = (ifp->if_snd.ifq_maxlen * 3) / 4;
+	}
+
 	sa = &conf->pc_dst_lladdr;
 	if (sa->sa_family != AF_LINK) {
 		error = EPROTONOSUPPORT;
@@ -311,6 +326,7 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 
 	pktg->pktg_duration = conf->pc_duration;
 	pktg->pktg_datalen = conf->pc_datalen;
+	pktg->pktg_pktenq = pktenq;
 	pktg->pktg_ifp = ifp;
 	pktg->pktg_src = conf->pc_src;
 	pktg->pktg_ndst = conf->pc_ndst;
@@ -349,8 +365,8 @@ pktgen_start(struct pktgen *pktg)
 	if (cpuid != orig_cpuid)
 		lwkt_migratecpu(cpuid);
 
-	alloc_cnt = ifp->if_snd.ifq_maxlen * 2;
-	keep_cnt = (ifp->if_snd.ifq_maxlen * 7) / 8;
+	keep_cnt = pktg->pktg_pktenq;
+	alloc_cnt = keep_cnt * 2;
 
 	/*
 	 * Prefault enough mbuf into mbuf objcache
@@ -430,6 +446,7 @@ pktgen_start(struct pktgen *pktg)
 		ui->ui_ulen = ulen;
 		ui->ui_sum = in_pseudo(ui->ui_src.s_addr, ui->ui_dst.s_addr,
 		    psum);
+		m->m_pkthdr.csum_data = offsetof(struct udphdr, uh_sum);
 
 		ip = (struct ip *)ui;
 		ip->ip_len = ip_len;
@@ -437,6 +454,7 @@ pktgen_start(struct pktgen *pktg)
 		ip->ip_tos = 0;		/* XXX */
 		ip->ip_vhl = IP_VHL_BORING;
 		ip->ip_off = 0;
+		ip->ip_sum = 0;
 		ip->ip_id = ip_newid();
 
 		in_delayed_cksum(m);

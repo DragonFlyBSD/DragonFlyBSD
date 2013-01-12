@@ -32,7 +32,6 @@
  * 09/93 Original developed by Gordon W. Ross <gwr@mc.com>
  *
  * $FreeBSD: src/libexec/bootpd/tools/bootptest/bootptest.c,v 1.7 1999/08/28 00:09:25 peter Exp $
- * $DragonFly: src/libexec/bootpd/tools/bootptest/bootptest.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 char *usage = "bootptest [-h] server-name [vendor-data-template-file]";
@@ -502,15 +501,3 @@ ipaddr_string(struct in_addr *ina)
 	snprintf(b, sizeof(b), "%d.%d.%d.%d", p[0], p[1], p[2], p[3]);
 	return (b);
 }
-
-/*
- * Local Variables:
- * tab-width: 4
- * c-indent-level: 4
- * c-argdecl-indent: 4
- * c-continued-statement-offset: 4
- * c-continued-brace-offset: -4
- * c-label-offset: -4
- * c-brace-offset: 0
- * End:
- */

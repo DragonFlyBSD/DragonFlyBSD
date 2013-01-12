@@ -42,6 +42,7 @@
 
 #include <net/if.h>
 #include <net/if_media.h>
+#include <net/ifq_var.h>
 #include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
@@ -930,9 +931,6 @@ ieee80211_wme_initparams_locked(struct ieee80211vap *vap)
 void
 ieee80211_wme_initparams(struct ieee80211vap *vap)
 {
-	struct ieee80211com *ic = vap->iv_ic;
-
-	ic = vap->iv_ic;
 	ieee80211_wme_initparams_locked(vap);
 }
 
@@ -1289,9 +1287,6 @@ ieee80211_stop_locked(struct ieee80211vap *vap)
 void
 ieee80211_stop(struct ieee80211vap *vap)
 {
-	struct ieee80211com *ic = vap->iv_ic;
-
-	ic = vap->iv_ic;
 	ieee80211_stop_locked(vap);
 }
 
@@ -1661,7 +1656,7 @@ ieee80211_newstate_task(void *xvap, int npending)
 		 * Note this can also happen as a result of SLEEP->RUN
 		 * (i.e. coming out of power save mode).
 		 */
-		vap->iv_ifp->if_flags &= ~IFF_OACTIVE;
+		ifq_clr_oactive(&vap->iv_ifp->if_snd);
 		vap->iv_ifp->if_start(vap->iv_ifp);
 
 		/* bring up any vaps waiting on us */
@@ -1860,10 +1855,8 @@ int
 ieee80211_new_state(struct ieee80211vap *vap,
 	enum ieee80211_state nstate, int arg)
 {
-	struct ieee80211com *ic = vap->iv_ic;
 	int rc;
 
-	ic = vap->iv_ic;
 	rc = ieee80211_new_state_locked(vap, nstate, arg);
 	return rc;
 }

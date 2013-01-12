@@ -107,6 +107,12 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			ccms_thread_lock(&ip->chain.cst, CCMS_STATE_EXCLUSIVE);
 			vdrop(vp);
 			/* vp still locked and ref from vget */
+			if (ip->vp != vp) {
+				kprintf("hammer2: igetv race %p/%p\n",
+					ip->vp, vp);
+				vput(vp);
+				continue;
+			}
 			*errorp = 0;
 			break;
 		}
@@ -118,6 +124,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 		 */
 		*errorp = getnewvnode(VT_HAMMER2, pmp->mp, &vp, 0, 0);
 		if (*errorp) {
+			kprintf("hammer2: igetv getnewvnode failed %d\n",
+				*errorp);
 			vp = NULL;
 			break;
 		}
@@ -213,6 +221,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	 * entry in.  At the same time check for key collisions
 	 * and iterate until we don't get one.
 	 */
+retry:
 	parent = &dip->chain;
 	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
@@ -232,9 +241,8 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	if (error == 0) {
 		chain = hammer2_chain_create(hmp, parent, NULL, lhc, 0,
 					     HAMMER2_BREF_TYPE_INODE,
-					     HAMMER2_INODE_BYTES);
-		if (chain == NULL)
-			error = EIO;
+					     HAMMER2_INODE_BYTES,
+					     &error);
 	}
 	hammer2_chain_unlock(hmp, parent);
 
@@ -243,6 +251,10 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	 */
 	if (error) {
 		KKASSERT(chain == NULL);
+		if (error == EAGAIN) {
+			hammer2_chain_wait(hmp, parent);
+			goto retry;
+		}
 		*nipp = NULL;
 		return (error);
 	}
@@ -346,6 +358,7 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 * and iterate until we don't get one.
 	 */
 	nip = NULL;
+retry:
 	parent = &dip->chain;
 	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
@@ -369,10 +382,9 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 */
 	if (error == 0) {
 		chain = hammer2_chain_create(hmp, parent, NULL, lhc, 0,
-					     HAMMER2_BREF_TYPE_INODE /* n/a */,
-					     HAMMER2_INODE_BYTES);   /* n/a */
-		if (chain == NULL)
-			error = EIO;
+					     HAMMER2_BREF_TYPE_INODE, /* n/a */
+					     HAMMER2_INODE_BYTES,     /* n/a */
+					     &error);
 	}
 	hammer2_chain_unlock(hmp, parent);
 
@@ -381,6 +393,10 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 */
 	if (error) {
 		KKASSERT(chain == NULL);
+		if (error == EAGAIN) {
+			hammer2_chain_wait(hmp, parent);
+			goto retry;
+		}
 		return (error);
 	}
 
@@ -447,7 +463,7 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
  * If (oip) is already connected we create a OBJTYPE_HARDLINK entry which
  * points to (oip)'s inode number.  (oip) is expected to be the terminus of
  * the hardlink sitting as a hidden file in a common parent directory
- * in this situation (thus the lock order is correct).
+ * in this situation.
  */
 int
 hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
@@ -460,6 +476,26 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	hammer2_key_t lhc;
 	int error;
 	int hlink;
+
+	/*
+	 * (oip) is the terminus of the hardlink sitting in the common
+	 * parent directory.  This means that if oip->pip != dip then
+	 * the already locked oip is ABOVE dip.
+	 *
+	 * But if the common parent directory IS dip, then we would have
+	 * a lock-order reversal and must rearrange the lock ordering.
+	 * For now the caller deals with this for us by locking dip in
+	 * that case (and our lock here winds up just being recursive)
+	 */
+retry:
+	parent = &dip->chain;
+	if (oip->pip == dip) {
+		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_lock(hmp, &oip->chain, HAMMER2_RESOLVE_ALWAYS);
+	} else {
+		hammer2_chain_lock(hmp, &oip->chain, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+	}
 
 	lhc = hammer2_dirhash(name, name_len);
 	hlink = (oip->chain.parent != NULL);
@@ -475,9 +511,6 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 * entry in.  At the same time check for key collisions
 	 * and iterate until we don't get one.
 	 */
-	parent = &dip->chain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
-
 	error = 0;
 	while (error == 0) {
 		chain = hammer2_chain_lookup(hmp, &parent, lhc, lhc, 0);
@@ -500,17 +533,17 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 			chain = hammer2_chain_create(hmp, parent,
 						     NULL, lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
-						     HAMMER2_INODE_BYTES);
+						     HAMMER2_INODE_BYTES,
+						     &error);
 		} else {
 			chain = hammer2_chain_create(hmp, parent,
 						     &oip->chain, lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
-						     HAMMER2_INODE_BYTES);
+						     HAMMER2_INODE_BYTES,
+						     &error);
 			if (chain)
 				KKASSERT(chain == &oip->chain);
 		}
-		if (chain == NULL)
-			error = EIO;
 	}
 	hammer2_chain_unlock(hmp, parent);
 
@@ -519,6 +552,12 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 */
 	if (error) {
 		KKASSERT(chain == NULL);
+		if (error == EAGAIN) {
+			hammer2_chain_wait(hmp, parent);
+			hammer2_chain_unlock(hmp, &oip->chain);
+			goto retry;
+		}
+		hammer2_chain_unlock(hmp, &oip->chain);
 		return (error);
 	}
 
@@ -581,7 +620,7 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 		}
 		oip->ip_data.nlinks = 1;
 	}
-
+	hammer2_chain_unlock(hmp, &oip->chain);
 	return (0);
 }
 
@@ -591,6 +630,9 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
  *
  * isdir determines whether a directory/non-directory check should be made.
  * No check is made if isdir is set to -1.
+ *
+ * If retain_ip is non-NULL this function can fail with an EAGAIN if it
+ * catches the object in the middle of a flush.
  */
 int
 hammer2_unlink_file(hammer2_inode_t *dip,
@@ -702,13 +744,19 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 	if (oip) {
 		/*
 		 * If this was a hardlink we first delete the hardlink
-		 * pointer entry.
+		 * pointer entry.  parent is NULL on entry due to the oip
+		 * path.
 		 */
 		parent = oip->chain.parent;
 		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 		hammer2_chain_lock(hmp, &oip->chain, HAMMER2_RESOLVE_ALWAYS);
+		if (oip == retain_ip && oip->chain.flushing) {
+			hammer2_chain_unlock(hmp, &oip->chain);
+			error = EAGAIN;
+			goto done;
+		}
 		hammer2_chain_delete(hmp, parent, &oip->chain,
-				    (retain_ip == oip));
+				     (retain_ip == oip));
 		hammer2_chain_unlock(hmp, &oip->chain);
 		hammer2_chain_unlock(hmp, parent);
 		parent = NULL;
@@ -723,7 +771,8 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 			hammer2_chain_unlock(hmp, chain);
 			hammer2_chain_lock(hmp, dparent,
 					   HAMMER2_RESOLVE_ALWAYS);
-			hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_ALWAYS);
+			hammer2_chain_lock(hmp, chain,
+					   HAMMER2_RESOLVE_ALWAYS);
 			hammer2_chain_drop(hmp, chain);
 			hammer2_chain_modify(hmp, chain, 0);
 			--ip->ip_data.nlinks;
@@ -739,6 +788,10 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 		 * remove the entry and decrement nlinks.
 		 */
 		ip = chain->u.ip;
+		if (ip == retain_ip && chain->flushing) {
+			error = EAGAIN;
+			goto done;
+		}
 		hammer2_chain_modify(hmp, chain, 0);
 		--ip->ip_data.nlinks;
 		hammer2_chain_delete(hmp, parent, chain,
@@ -807,6 +860,7 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 	hammer2_inode_t *oip = *ipp;
 	hammer2_inode_t *nip = NULL;
 	hammer2_inode_t *fdip;
+	hammer2_inode_t *cdip;
 	hammer2_chain_t *parent;
 	int error;
 
@@ -817,30 +871,14 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 	if (hammer2_hardlink_enable == 0)
 		return (ENOTSUP);
 
-	/*
-	 * Find the common parent directory
-	 */
 	fdip = oip->pip;
-	while (fdip->depth > tdip->depth) {
-		fdip = fdip->pip;
-		KKASSERT(fdip != NULL);
-	}
-	while (tdip->depth > fdip->depth) {
-		tdip = tdip->pip;
-		KKASSERT(tdip != NULL);
-	}
-	while (fdip != tdip) {
-		fdip = fdip->pip;
-		tdip = tdip->pip;
-		KKASSERT(fdip != NULL);
-		KKASSERT(tdip != NULL);
-	}
+	cdip = hammer2_inode_common_parent(hmp, fdip, tdip);
 
 	/*
 	 * Nothing to do (except bump the link count) if the hardlink has
 	 * already been consolidated in the correct place.
 	 */
-	if (oip->pip == fdip &&
+	if (cdip == fdip &&
 	    (oip->ip_data.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
 		kprintf("hardlink already consolidated correctly\n");
 		nip = oip;
@@ -848,6 +886,7 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 		hammer2_chain_modify(hmp, &nip->chain, 0);
 		++nip->ip_data.nlinks;
 		hammer2_inode_unlock_ex(nip);
+		hammer2_inode_drop(cdip);
 		return (0);
 	}
 
@@ -859,13 +898,13 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 	 * under oip to the new hardlink target inode, retiring all chains
 	 * related to oip before returning.  XXX vp->ip races.
 	 */
-	error = hammer2_inode_duplicate(fdip, oip, &nip, NULL, 0);
+	error = hammer2_inode_duplicate(cdip, oip, &nip, NULL, 0);
 	if (error == 0) {
 		/*
 		 * Bump nlinks on duplicated hidden inode.
 		 */
 		kprintf("hardlink consolidation success in parent dir %s\n",
-			fdip->ip_data.filename);
+			cdip->ip_data.filename);
 		hammer2_inode_lock_nlinks(nip);
 		hammer2_inode_unlock_nlinks(oip);
 		hammer2_chain_modify(hmp, &nip->chain, 0);
@@ -933,6 +972,7 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 	} else {
 		KKASSERT(nip == NULL);
 	}
+	hammer2_inode_drop(cdip);
 
 	return (error);
 }
@@ -987,7 +1027,7 @@ hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 		hammer2_chain_unlock(hmp, parent);
 		if (chain)
 			break;
-		pip = pip->pip;
+		pip = pip->pip;	/* XXX SMP RACE */
 	}
 	*chainp = chain;
 	if (chain) {
@@ -997,4 +1037,46 @@ hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 	} else {
 		return (EIO);
 	}
+}
+
+/*
+ * Find the directory common to both fdip and tdip, hold and return
+ * its inode.
+ */
+hammer2_inode_t *
+hammer2_inode_common_parent(hammer2_mount_t *hmp,
+			    hammer2_inode_t *fdip, hammer2_inode_t *tdip)
+{
+	hammer2_inode_t *scan1;
+	hammer2_inode_t *scan2;
+
+	/*
+	 * We used to have a depth field but it complicated matters too
+	 * much for directory renames.  So now its ugly.  Check for
+	 * simple cases before giving up and doing it the expensive way.
+	 *
+	 * XXX need a bottom-up topology stability lock
+	 */
+	if (fdip == tdip || fdip == tdip->pip) {
+		hammer2_inode_ref(fdip);
+		return(fdip);
+	}
+	if (fdip->pip == tdip) {
+		hammer2_inode_ref(tdip);
+		return(tdip);
+	}
+	for (scan1 = fdip; scan1->pmp == fdip->pmp; scan1 = scan1->pip) {
+		scan2 = tdip;
+		while (scan2->pmp == tdip->pmp) {
+			if (scan1 == scan2) {
+				hammer2_inode_ref(scan1);
+				return(scan1);
+			}
+			scan2 = scan2->pip;
+		}
+	}
+	panic("hammer2_inode_common_parent: no common parent %p %p\n",
+	      fdip, tdip);
+	/* NOT REACHED */
+	return(NULL);
 }

@@ -24,7 +24,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/fdformat/fdformat.c,v 1.11.2.4 2001/07/19 13:20:42 joerg Exp $
- * $DragonFly: src/usr.sbin/fdformat/fdformat.c,v 1.5 2007/10/01 08:25:12 swildner Exp $
  */
 
 /*
@@ -436,18 +435,3 @@ main(int argc, char **argv)
 
 	return(errs != 0);
 }
-/*
- * Local Variables:
- *  c-indent-level:               8
- *  c-continued-statement-offset: 8
- *  c-continued-brace-offset:     0
- *  c-brace-offset:              -8
- *  c-brace-imaginary-offset:     0
- *  c-argdecl-indent:             8
- *  c-label-offset:              -8
- *  c++-hanging-braces:           1
- *  c++-access-specifier-offset: -8
- *  c++-empty-arglist-indent:     8
- *  c++-friend-offset:            0
- * End:
- */

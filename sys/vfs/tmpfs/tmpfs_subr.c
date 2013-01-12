@@ -496,8 +496,8 @@ tmpfs_free_vp(struct vnode *vp)
 	TMPFS_NODE_LOCK(node);
 	KKASSERT(lockcount(TMPFS_NODE_MTX(node)) > 0);
 	node->tn_vnode = NULL;
-	TMPFS_NODE_UNLOCK(node);
 	vp->v_data = NULL;
+	TMPFS_NODE_UNLOCK(node);
 }
 
 /* --------------------------------------------------------------------- */

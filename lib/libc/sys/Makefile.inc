@@ -57,8 +57,6 @@ ${SPSEUDO}:
 
 .if ${LIB} == "c"
 MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
-	aio_cancel.2 aio_error.2 aio_read.2 aio_return.2 \
-	aio_suspend.2 aio_waitcomplete.2 aio_write.2 \
 	bind.2 brk.2 \
 	sys_checkpoint.2 chdir.2 chflags.2 \
 	chmod.2 chown.2 chroot.2 clock_gettime.2 close.2 closefrom.2 \
@@ -87,7 +85,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	sigstack.2 sigsuspend.2 socket.2 socketpair.2 stat.2 statfs.2 \
 	statvfs.2 swapon.2 symlink.2 sync.2 sysarch.2 syscall.2 syslink.2 \
 	truncate.2 tls.2 umask.2 umtx.2 undelete.2 \
-	unlink.2 unlinkat.2 utimes.2 utrace.2 upc_register.2 usched_set.2 \
+	unlink.2 unlinkat.2 utimes.2 utrace.2 usched_set.2 \
 	uuidgen.2 \
 	varsym.2 vfork.2 vquotactl.2 wait.2 write.2
 
@@ -171,7 +169,6 @@ MLINKS+=swapon.2 swapoff.2
 MLINKS+=tls.2 set_tls_area.2 tls.2 get_tls_area.2
 MLINKS+=truncate.2 ftruncate.2
 MLINKS+=umtx.2 umtx_sleep.2 umtx.2 umtx_wakeup.2
-MLINKS+=upc_register.2 upc_control.2
 MLINKS+=utimes.2 futimes.2 utimes.2 lutimes.2
 MLINKS+=varsym.2 varsym_get.2 \
 	varsym.2 varsym_list.2 \

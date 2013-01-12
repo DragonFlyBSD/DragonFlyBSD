@@ -723,9 +723,7 @@ nfs_setattr(struct vop_setattr_args *ap)
 	struct nfsnode *np = VTONFS(vp);
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	struct vattr *vap = ap->a_vap;
-	int biosize = vp->v_mount->mnt_stat.f_iosize;
 	int error = 0;
-	int boff;
 	off_t tsize;
 	thread_t td = curthread;
 
@@ -783,7 +781,6 @@ nfs_setattr(struct vop_setattr_args *ap)
 
 			tsize = np->n_size;
 again:
-			boff = (int)vap->va_size & (biosize - 1);
 			error = nfs_meta_setsize(vp, td, vap->va_size, 0);
 
 #if 0
@@ -928,7 +925,6 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 	struct thread *td = curthread;
 	struct namecache *ncp;
 	struct nfsmount *nmp;
-	struct ucred *cred;
 	struct nfsnode *np;
 	struct vnode *dvp;
 	struct vnode *nvp;
@@ -940,7 +936,6 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 	int len;
 	struct nfsm_info info;
 
-	cred = ap->a_cred;
 	dvp = ap->a_dvp;
 	nmp = VFSTONFS(dvp->v_mount);
 

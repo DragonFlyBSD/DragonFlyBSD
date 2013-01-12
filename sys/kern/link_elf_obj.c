@@ -651,7 +651,7 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	 *
 	 * vkernel64's text+data is outside the managed VM space entirely.
 	 */
-#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+#if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 	error = vkernel_module_memory_alloc(&mapbase, round_page(mapsize));
 #else
 	mapbase = KERNBASE;
@@ -889,7 +889,7 @@ link_elf_obj_unload_file(linker_file_t file)
 		kfree(ef->progtab, M_LINKER);
 
 	if (ef->object) {
-#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+#if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 		vkernel_module_memory_free((vm_offset_t)ef->address, ef->bytes);
 #else
 		vm_map_remove(&kernel_map, (vm_offset_t) ef->address,

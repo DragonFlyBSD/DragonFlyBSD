@@ -48,7 +48,6 @@
  * reintroduced and updated by Chris Stenton <chris@gnome.co.uk> 8/10/94
  */
 
-#include "use_apm.h"
 #include "opt_clock.h"
 
 #include <sys/param.h>
@@ -67,8 +66,6 @@
 #include <sys/interrupt.h>
 
 #include <machine/clock.h>
-#ifdef CLK_CALIBRATION_LOOP
-#endif
 #include <machine/cputypes.h>
 #include <machine/frame.h>
 #include <machine/ipl.h>

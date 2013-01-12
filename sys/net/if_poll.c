@@ -107,14 +107,15 @@
 
 #define MIN_IOPOLL_BURST_MAX	10
 #define MAX_IOPOLL_BURST_MAX	5000
-#define IOPOLL_BURST_MAX	375	/* good for 1000Mbit net and HZ=4000 */
+#define IOPOLL_BURST_MAX	250	/* good for 1000Mbit net and HZ=6000 */
 
-#define IOPOLL_EACH_BURST	15
+#define IOPOLL_EACH_BURST	50
+#define IOPOLL_USER_FRAC	50
 
-#define IFPOLL_FREQ_DEFAULT	4000
+#define IFPOLL_FREQ_DEFAULT	6000
 
 #define IFPOLL_TXFRAC_DEFAULT	1	/* 1/1 of the pollhz */
-#define IFPOLL_STFRAC_DEFAULT	80	/* 1/80 of the pollhz */
+#define IFPOLL_STFRAC_DEFAULT	120	/* 1/120 of the pollhz */
 
 #define IFPOLL_RX		0x1
 #define IFPOLL_TX		0x2
@@ -259,6 +260,7 @@ SYSCTL_NODE(_net, OID_AUTO, ifpoll, CTLFLAG_RW, 0,
 
 static int	iopoll_burst_max = IOPOLL_BURST_MAX;
 static int	iopoll_each_burst = IOPOLL_EACH_BURST;
+static int	iopoll_user_frac = IOPOLL_USER_FRAC;
 
 static int	ifpoll_pollhz = IFPOLL_FREQ_DEFAULT;
 static int	ifpoll_stfrac = IFPOLL_STFRAC_DEFAULT;
@@ -266,9 +268,24 @@ static int	ifpoll_txfrac = IFPOLL_TXFRAC_DEFAULT;
 
 TUNABLE_INT("net.ifpoll.burst_max", &iopoll_burst_max);
 TUNABLE_INT("net.ifpoll.each_burst", &iopoll_each_burst);
+TUNABLE_INT("net.ifpoll.user_frac", &iopoll_user_frac);
 TUNABLE_INT("net.ifpoll.pollhz", &ifpoll_pollhz);
 TUNABLE_INT("net.ifpoll.status_frac", &ifpoll_stfrac);
 TUNABLE_INT("net.ifpoll.tx_frac", &ifpoll_txfrac);
+
+#define IFPOLL_FREQ_ADJ(comm)	(((comm)->poll_cpuid * 3) % 50)
+
+static __inline int
+poll_comm_pollhz_div(const struct poll_comm *comm, int pollhz)
+{
+	return pollhz + IFPOLL_FREQ_ADJ(comm);
+}
+
+static __inline int
+poll_comm_pollhz_conv(const struct poll_comm *comm, int pollhz)
+{
+	return pollhz - IFPOLL_FREQ_ADJ(comm);
+}
 
 static __inline void
 ifpoll_sendmsg_oncpu(netmsg_t msg)
@@ -365,7 +382,6 @@ ifpoll_register(struct ifnet *ifp)
 
 	ifp->if_flags |= IFF_NPOLLING;
 	ifp->if_npoll(ifp, info);
-	KASSERT(ifp->if_npoll_cpuid >= 0, ("invalid npoll cpuid"));
 
 	ifnet_deserialize_all(ifp);
 
@@ -412,7 +428,6 @@ ifpoll_deregister(struct ifnet *ifp)
 	if (!error) {
 		ifnet_serialize_all(ifp);
 		ifp->if_npoll(ifp, NULL);
-		KASSERT(ifp->if_npoll_cpuid < 0, ("invalid npoll cpuid"));
 		ifnet_deserialize_all(ifp);
 	}
 	return error;
@@ -679,7 +694,7 @@ iopoll_ctx_create(int cpuid, int poll_type)
 
 	io_ctx->poll_each_burst = iopoll_each_burst;
 	io_ctx->poll_burst_max = iopoll_burst_max;
-	io_ctx->user_frac = 50;
+	io_ctx->user_frac = iopoll_user_frac;
 	if (poll_type == IFPOLL_RX)
 		io_ctx->pollhz = comm->pollhz;
 	else
@@ -1229,8 +1244,8 @@ poll_comm_init(int cpuid)
 	if (ifpoll_txfrac < 1)
 		ifpoll_txfrac = IFPOLL_TXFRAC_DEFAULT;
 
-	comm->pollhz = ifpoll_pollhz;
 	comm->poll_cpuid = cpuid;
+	comm->pollhz = poll_comm_pollhz_div(comm, ifpoll_pollhz);
 	comm->poll_stfrac = ifpoll_stfrac - 1;
 	comm->poll_txfrac = ifpoll_txfrac - 1;
 
@@ -1281,11 +1296,11 @@ poll_comm_start(int cpuid)
 static void
 _poll_comm_systimer(struct poll_comm *comm)
 {
+	iopoll_clock(rxpoll_context[comm->poll_cpuid]);
 	if (comm->txfrac_count-- == 0) {
 		comm->txfrac_count = comm->poll_txfrac;
 		iopoll_clock(txpoll_context[comm->poll_cpuid]);
 	}
-	iopoll_clock(rxpoll_context[comm->poll_cpuid]);
 }
 
 static void
@@ -1352,7 +1367,7 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 	struct netmsg_base nmsg;
 	int error, phz;
 
-	phz = comm->pollhz;
+	phz = poll_comm_pollhz_conv(comm, comm->pollhz);
 	error = sysctl_handle_int(oidp, &phz, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
@@ -1376,7 +1391,7 @@ sysctl_pollhz_handler(netmsg_t nmsg)
 	KKASSERT(&curthread->td_msgport == netisr_portfn(comm->poll_cpuid));
 
 	/* Save polling frequency */
-	comm->pollhz = nmsg->lmsg.u.ms_result;
+	comm->pollhz = poll_comm_pollhz_div(comm, nmsg->lmsg.u.ms_result);
 
 	/*
 	 * Adjust cached pollhz

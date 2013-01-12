@@ -366,13 +366,12 @@ static void
 amd_action(struct cam_sim * psim, union ccb * pccb)
 {
 	struct amd_softc *    amd;
-	u_int   target_id, target_lun;
+	u_int   target_id;
 
 	CAM_DEBUG(pccb->ccb_h.path, CAM_DEBUG_TRACE, ("amd_action\n"));
 
 	amd = (struct amd_softc *) cam_sim_softc(psim);
 	target_id = pccb->ccb_h.target_id;
-	target_lun = pccb->ccb_h.target_lun;
 
 	switch (pccb->ccb_h.func_code) {
 	case XPT_SCSI_IO:
@@ -1199,7 +1198,6 @@ amd_MsgInPhase0(struct amd_softc *amd, struct amd_srb *pSRB, u_int scsistat)
 static int
 amdparsemsg(struct amd_softc *amd)
 {
-	struct	amd_target_info *targ_info;
 	int	reject;
 	int	done;
 	int	response;
@@ -1207,8 +1205,6 @@ amdparsemsg(struct amd_softc *amd)
 	done = FALSE;
 	response = FALSE;
 	reject = FALSE;
-
-	targ_info = &amd->tinfo[amd->cur_target];
 
 	/*
 	 * Parse as much of the message as is availible,
@@ -1863,12 +1859,9 @@ SRBdone(struct amd_softc *amd, struct amd_srb *pSRB)
 	struct ccb_scsiio *pcsio;
 	struct amd_sg *ptr2;
 	u_int32_t   swlval;
-	u_int   target_id, target_lun;
 
 	pccb = pSRB->pccb;
 	pcsio = &pccb->csio;
-	target_id = pSRB->pccb->ccb_h.target_id;
-	target_lun = pSRB->pccb->ccb_h.target_lun;
 
 	CAM_DEBUG(pccb->ccb_h.path, CAM_DEBUG_TRACE,
 		  ("SRBdone - TagNumber %d\n", pSRB->TagNumber));

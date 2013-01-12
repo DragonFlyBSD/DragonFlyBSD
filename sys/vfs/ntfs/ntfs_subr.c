@@ -2049,8 +2049,8 @@ ntfs_u28(struct ntfsmount *ntmp, wchar wc)
 		inbuf[2] = '\0';
 		p = inbuf;
 		outp = outbuf;
-		ntfs_iconv->convchr(ntmp->ntm_ic_u2l, (const char **)&p, &ilen,
-				    &outp, &olen);
+		ntfs_iconv->convchr(ntmp->ntm_ic_u2l,
+		    (const char **)(void *)&p, &ilen, &outp, &olen);
 		if (olen == 1) {
 			return ((wchar)(outbuf[0]&0xFF));
 		} else if (olen == 0) {
@@ -2083,8 +2083,8 @@ ntfs_82u(struct ntfsmount *ntmp,
 		inbuf[2] = '\0';
 		p = inbuf;
 		outp = outbuf;
-		ntfs_iconv->convchr(ntmp->ntm_ic_l2u, (const char **)&p, &ilen,
-				    &outp, &olen);
+		ntfs_iconv->convchr(ntmp->ntm_ic_l2u,
+		    (const char **)(void *)&p, &ilen, &outp, &olen);
 		*len -= (int)ilen;
 		uc = (wchar)((outbuf[0]<<8) | (outbuf[1]&0xFF));
 
