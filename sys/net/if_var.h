@@ -243,14 +243,14 @@ struct ifnet {
 	void	(*if_serialize_assert)
 		(struct ifnet *, enum ifnet_serialize, boolean_t);
 #else
-	/* Place holders */
+	/* Place holder */
 	void	(*if_serialize_unused)(void);
 #endif
 #ifdef IFPOLL_ENABLE
 	void	(*if_npoll)
 		(struct ifnet *, struct ifpoll_info *);
 #else
-	/* Place holders */
+	/* Place holder */
 	void	(*if_npoll_unused)(void);
 #endif
 	int	if_unused3;
@@ -264,9 +264,9 @@ struct ifnet {
 	struct lwkt_serialize if_default_serializer; /* if not supplied */
 	struct mtx	if_ioctl_mtx;	/* high-level ioctl serializing mutex */
 	int	if_unused4;
-	struct netmsg_base *if_start_nmsg; /* percpu msgs to sched if_start */
+	void	*if_unused6;
 	void	*if_pf_kif; /* pf interface abstraction */
-	void	*if_unused;
+	void	*if_unused7;
 };
 typedef void if_init_f_t (void *);
 
