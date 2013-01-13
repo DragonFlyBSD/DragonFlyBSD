@@ -231,7 +231,8 @@ struct ifnet {
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
 	void	*if_unused5;
 	TAILQ_HEAD(, ifg_list) if_groups; /* linked list of groups per if */
-	void	(*if_unused1)(void);
+	int	(*if_mapsubq)
+		(struct ifaltq *, int);
 	int	if_unused2;
 	void	(*if_serialize)
 		(struct ifnet *, enum ifnet_serialize);

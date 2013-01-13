@@ -566,6 +566,9 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 	devctl_notify("IFNET", ifp->if_xname, "ATTACH", NULL);
 
+	if (ifp->if_mapsubq == NULL)
+		ifp->if_mapsubq = ifq_mapsubq_default;
+
 	ifq = &ifp->if_snd;
 	ifq->altq_type = 0;
 	ifq->altq_disc = NULL;
@@ -2433,16 +2436,22 @@ if_free(struct ifnet *ifp)
 void
 ifq_set_classic(struct ifaltq *ifq)
 {
-	ifq_set_methods(ifq, ifsq_classic_enqueue, ifsq_classic_dequeue,
-	    ifsq_classic_request);
+	ifq_set_methods(ifq, ifq->altq_ifp->if_mapsubq,
+	    ifsq_classic_enqueue, ifsq_classic_dequeue, ifsq_classic_request);
 }
 
 void
-ifq_set_methods(struct ifaltq *ifq, ifsq_enqueue_t enqueue,
-    ifsq_dequeue_t dequeue, ifsq_request_t request)
+ifq_set_methods(struct ifaltq *ifq, altq_mapsubq_t mapsubq,
+    ifsq_enqueue_t enqueue, ifsq_dequeue_t dequeue, ifsq_request_t request)
 {
 	int q;
 
+	KASSERT(mapsubq != NULL, ("mapsubq is not specified"));
+	KASSERT(enqueue != NULL, ("enqueue is not specified"));
+	KASSERT(dequeue != NULL, ("dequeue is not specified"));
+	KASSERT(request != NULL, ("request is not specified"));
+
+	ifq->altq_mapsubq = mapsubq;
 	for (q = 0; q < ifq->altq_subq_cnt; ++q) {
 		struct ifaltq_subque *ifsq = &ifq->altq_subq[q];
 
@@ -2580,11 +2589,8 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	int error, start = 0, len, mcast = 0, avoid_start = 0;
 	struct ifsubq_stage_head *head = NULL;
 	struct ifsubq_stage *stage = NULL;
-	int qid = 0; /* XXX */
 
-	/* TODO find qid here */
-	ifsq = &ifq->altq_subq[qid];
-
+	ifsq = ifq_map_subq(ifq, mycpuid);
 	ASSERT_IFNET_NOT_SERIALIZED_TX(ifp, ifsq);
 
 	len = m->m_pkthdr.len;
@@ -2995,4 +3001,10 @@ void
 ifq_set_maxlen(struct ifaltq *ifq, int len)
 {
 	ifq->altq_maxlen = len + (ncpus * ifsq_stage_cntmax);
+}
+
+int
+ifq_mapsubq_default(struct ifaltq *ifq __unused, int cpuid __unused)
+{
+	return ALTQ_SUBQ_INDEX_DEFAULT;
 }

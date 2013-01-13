@@ -75,8 +75,9 @@ int		ifsq_classic_request(struct ifaltq_subque *, int, void *);
 void		ifq_set_classic(struct ifaltq *);
 
 void		ifq_set_maxlen(struct ifaltq *, int);
-void		ifq_set_methods(struct ifaltq *, ifsq_enqueue_t,
-		    ifsq_dequeue_t, ifsq_request_t);
+void		ifq_set_methods(struct ifaltq *, altq_mapsubq_t,
+		    ifsq_enqueue_t, ifsq_dequeue_t, ifsq_request_t);
+int		ifq_mapsubq_default(struct ifaltq *, int);
 
 void		ifsq_devstart(struct ifaltq_subque *ifsq);
 void		ifsq_devstart_sched(struct ifaltq_subque *ifsq);
@@ -478,6 +479,13 @@ ifq_get_subq(const struct ifaltq *_ifq, int _idx)
 	KASSERT(_idx >= 0 && _idx < _ifq->altq_subq_cnt,
 	    ("invalid qid %d", _idx));
 	return &_ifq->altq_subq[_idx];
+}
+
+static __inline struct ifaltq_subque *
+ifq_map_subq(struct ifaltq *_ifq, int _cpuid)
+{ 
+	int _idx = _ifq->altq_mapsubq(_ifq, _cpuid);
+	return ifq_get_subq(_ifq, _idx);
 }
 
 /* COMPAT */

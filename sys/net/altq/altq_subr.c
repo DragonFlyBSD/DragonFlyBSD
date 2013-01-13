@@ -105,6 +105,7 @@ altq_lookup(const char *name, int type)
 
 int
 altq_attach(struct ifaltq *ifq, int type, void *discipline,
+    altq_mapsubq_t mapsubq,
     ifsq_enqueue_t enqueue, ifsq_dequeue_t dequeue, ifsq_request_t request,
     void *clfier,
     void *(*classify)(struct ifaltq *, struct mbuf *, struct altq_pktattr *))
@@ -117,7 +118,7 @@ altq_attach(struct ifaltq *ifq, int type, void *discipline,
 	ifq->altq_clfier   = clfier;
 	ifq->altq_classify = classify;
 	ifq->altq_flags &= (ALTQF_CANTCHANGE|ALTQF_ENABLED);
-	ifq_set_methods(ifq, enqueue, dequeue, request);
+	ifq_set_methods(ifq, mapsubq, enqueue, dequeue, request);
 	return 0;
 }
 

@@ -87,7 +87,7 @@ static struct priq_class *clh_to_clp(struct priq_if *, uint32_t);
 int
 priq_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
-	return altq_attach(ifq, ALTQT_PRIQ, a->altq_disc,
+	return altq_attach(ifq, ALTQT_PRIQ, a->altq_disc, ifq_mapsubq_default,
 	    priq_enqueue, priq_dequeue, priq_request, NULL, NULL);
 }
 

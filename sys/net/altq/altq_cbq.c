@@ -221,7 +221,7 @@ get_class_stats(class_stats_t *statsp, struct rm_class *cl)
 int
 cbq_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
-	return altq_attach(ifq, ALTQT_CBQ, a->altq_disc,
+	return altq_attach(ifq, ALTQT_CBQ, a->altq_disc, ifq_mapsubq_default,
 	    cbq_enqueue, cbq_dequeue, cbq_request, NULL, NULL);
 }
 

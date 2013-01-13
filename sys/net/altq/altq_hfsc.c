@@ -146,7 +146,7 @@ static struct hfsc_class *clh_to_clp(struct hfsc_if *, uint32_t);
 int
 hfsc_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
-	return altq_attach(ifq, ALTQT_HFSC, a->altq_disc,
+	return altq_attach(ifq, ALTQT_HFSC, a->altq_disc, ifq_mapsubq_default,
 	    hfsc_enqueue, hfsc_dequeue, hfsc_request, NULL, NULL);
 }
 

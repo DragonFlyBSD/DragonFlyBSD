@@ -41,6 +41,8 @@ struct altq_pktattr;
 struct ifaltq_subque;
 struct ifaltq;
 
+typedef int (*altq_mapsubq_t)(struct ifaltq *, int);
+
 typedef int (*ifsq_enqueue_t)(struct ifaltq_subque *, struct mbuf *,
     struct altq_pktattr *);
 typedef struct mbuf *(*ifsq_dequeue_t)(struct ifaltq_subque *,
@@ -107,10 +109,13 @@ struct	ifaltq {
 	void	*altq_clfier;		/* classifier-specific use */
 	void	*(*altq_classify)(struct ifaltq *, struct mbuf *,
 				  struct altq_pktattr *);
-	void	*altq_unused;
 
 	/* token bucket regulator */
 	struct	tb_regulator *altq_tbr;
+
+	/* Sub-queues mapping */
+	altq_mapsubq_t altq_mapsubq;
+	uint32_t altq_map_unused;
 
 	/* Sub-queues */
 	int	altq_subq_cnt;
@@ -184,7 +189,7 @@ struct tb_regulator {
 /* altq request types (currently only purge is defined) */
 #define	ALTRQ_PURGE		1	/* purge all packets */
 
-int	altq_attach(struct ifaltq *, int, void *,
+int	altq_attach(struct ifaltq *, int, void *, altq_mapsubq_t,
 	    ifsq_enqueue_t, ifsq_dequeue_t, ifsq_request_t, void *,
 	    void *(*)(struct ifaltq *, struct mbuf *, struct altq_pktattr *));
 int	altq_detach(struct ifaltq *);

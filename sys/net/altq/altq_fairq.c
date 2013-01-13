@@ -148,9 +148,8 @@ static struct fairq_class *clh_to_clp(struct fairq_if *, uint32_t);
 int
 fairq_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
-	return altq_attach(ifq, ALTQT_FAIRQ, a->altq_disc,
-			   fairq_enqueue, fairq_dequeue,
-			   fairq_request, NULL, NULL);
+	return altq_attach(ifq, ALTQT_FAIRQ, a->altq_disc, ifq_mapsubq_default,
+	    fairq_enqueue, fairq_dequeue, fairq_request, NULL, NULL);
 }
 
 int
