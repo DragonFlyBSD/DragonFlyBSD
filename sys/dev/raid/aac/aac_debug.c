@@ -165,6 +165,8 @@ aac_panic(struct aac_softc *sc, char *reason)
 void
 aac_print_fib(struct aac_softc *sc, struct aac_fib *fib, const char *caller)
 {
+	char hexstr[48];
+
 	if (fib == NULL) {
 		device_printf(sc->aac_dev,
 			      "aac_print_fib called with NULL fib\n");
@@ -246,8 +248,10 @@ aac_print_fib(struct aac_softc *sc, struct aac_fib *fib, const char *caller)
 		break;
 	}
 	default:
-		device_printf(sc->aac_dev, "   %16D\n", fib->data, " ");
-		device_printf(sc->aac_dev, "   %16D\n", fib->data + 16, " ");
+		device_printf(sc->aac_dev, "   %s\n", hexncpy(fib->data, 16,
+			hexstr, 48, " "));
+		device_printf(sc->aac_dev, "   %s\n", hexncpy(fib->data + 16, 16,
+			hexstr, 48, " "));
 		break;
 	}
 }

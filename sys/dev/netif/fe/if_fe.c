@@ -376,6 +376,7 @@ fe_read_eeprom_jli (struct fe_softc * sc, u_char * data)
 {
 	u_char n, val, bit;
 	u_char save16, save17;
+	char hexstr[48];
 
 	/* Save the current value of the EEPROM interface registers.  */
 	save16 = fe_inb(sc, FE_BMPR16);
@@ -438,8 +439,9 @@ fe_read_eeprom_jli (struct fe_softc * sc, u_char * data)
 		int i;
 		data -= JLI_EEPROM_SIZE;
 		for (i = 0; i < JLI_EEPROM_SIZE; i += 16) {
-			kprintf("fe%d: EEPROM(JLI):%3x: %16D\n",
-			       sc->sc_unit, i, data + i, " ");
+			hexncpy(data + i, 16, hexstr, 48, " ");
+			kprintf("fe%d: EEPROM(JLI):%3x: %s\n",
+			    sc->sc_unit, i, hexstr);
 		}
 	}
 #endif
@@ -475,6 +477,7 @@ fe_read_eeprom_ssi (struct fe_softc *sc, u_char *data)
 	u_char val, bit;
 	int n;
 	u_char save6, save7, save12;
+	char hexstr[48];
 
 	/* Save the current value for the DLCR registers we are about
            to destroy.  */
@@ -554,8 +557,9 @@ fe_read_eeprom_ssi (struct fe_softc *sc, u_char *data)
 		int i;
 		data -= SSI_EEPROM_SIZE;
 		for (i = 0; i < SSI_EEPROM_SIZE; i += 16) {
-			kprintf("fe%d: EEPROM(SSI):%3x: %16D\n",
-			       sc->sc_unit, i, data + i, " ");
+			hexncpy(data + i, 16, hexstr, 48, " ");
+			kprintf("fe%d: EEPROM(SSI):%3x: %s\n",
+			    sc->sc_unit, i, hexstr);
 		}
 	}
 #endif
@@ -610,6 +614,7 @@ fe_read_eeprom_lnx (struct fe_softc *sc, u_char *data)
 	u_char n, bit, val;
 	u_char save20;
 	u_short reg20 = 0x14;
+	char hexstr[48];
 
 	save20 = fe_inb(sc, reg20);
 
@@ -695,8 +700,9 @@ fe_read_eeprom_lnx (struct fe_softc *sc, u_char *data)
 	if (bootverbose) {
 		data -= LNX_EEPROM_SIZE;
 		for (i = 0; i < LNX_EEPROM_SIZE; i += 16) {
-			kprintf("fe%d: EEPROM(LNX):%3x: %16D\n",
-			       sc->sc_unit, i, data + i, " ");
+			hexncpy(data + i, 16, hexstr, 48, " ");
+			kprintf("fe%d: EEPROM(LNX):%3x: %s\n",
+			    sc->sc_unit, i, hexstr);
 		}
 	}
 #endif

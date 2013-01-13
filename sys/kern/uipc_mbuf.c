@@ -2269,14 +2269,18 @@ m_print(const struct mbuf *m)
 {
 	int len;
 	const struct mbuf *m2;
+	char *hexstr;
 
 	len = m->m_pkthdr.len;
 	m2 = m;
+	hexstr = kmalloc(HEX_NCPYLEN(len), M_TEMP, M_ZERO | M_WAITOK);
 	while (len) {
-		kprintf("%p %*D\n", m2, m2->m_len, (u_char *)m2->m_data, "-");
+		kprintf("%p %s\n", m2, hexncpy(m2->m_data, m2->m_len, hexstr,
+			HEX_NCPYLEN(m2->m_len), "-"));
 		len -= m2->m_len;
 		m2 = m2->m_next;
 	}
+	kfree(hexstr, M_TEMP);
 	return;
 }
 

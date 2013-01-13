@@ -50,7 +50,9 @@ vlan_start_dispatch(netmsg_t msg)
 	struct mbuf *m;
 	struct ifnet *ifp;
 	struct altq_pktattr pktattr;
-
+#ifdef DEBUG
+	char hexstr[HEX_NCPYLEN(sizeof(struct ether_vlan_header))];
+#endif
 	m = nmp->nm_packet;
 	ifp = msg->lmsg.u.ms_resultp;
 
@@ -99,8 +101,8 @@ vlan_start_dispatch(netmsg_t msg)
 		evl->evl_encap_proto = htons(ETHERTYPE_VLAN);
 		evl->evl_tag = htons(vlantag);
 #ifdef DEBUG
-		kprintf("vlan_start: %*D\n", (int)sizeof *evl,
-			(unsigned char *)evl, ":");
+		kprintf("vlan_start: %s\n", hexncpy((u_char *)evl, sizeof(*evl),
+			hexstr, HEX_NCPYLEN(sizeof(*evl)), ":"));
 #endif
 		/* Hardware does not need to setup vlan tagging */
 		m->m_flags &= ~M_VLANTAG;

@@ -4152,6 +4152,7 @@ ciss_print_request(struct ciss_request *cr)
     struct ciss_softc	*sc;
     struct ciss_command	*cc;
     int			i;
+    char		hexstr[HEX_NCPYLEN(CISS_CDB_BUFFER_SIZE)];
 
     sc = cr->cr_sc;
     cc = cr->cr_cc;
@@ -4184,7 +4185,8 @@ ciss_print_request(struct ciss_request *cr)
 		(cc->cdb.attribute == CISS_CDB_ATTRIBUTE_HEAD_OF_QUEUE) ? "head-of-queue" :
 		(cc->cdb.attribute == CISS_CDB_ATTRIBUTE_ORDERED) ? "ordered" :
 		(cc->cdb.attribute == CISS_CDB_ATTRIBUTE_AUTO_CONTINGENT) ? "auto-contingent" : "??");
-    ciss_printf(sc, "  %*D\n", cc->cdb.cdb_length, &cc->cdb.cdb[0], " ");
+    ciss_printf(sc, "  %s\n", hexncpy(&cc->cdb.cdb[0], cc->cdb.cdb_length,
+	    hexstr, HEX_NCPYLEN(cc->cdb.cdb_length), " "));
 
     if (cc->header.host_tag & CISS_HDR_HOST_TAG_ERROR) {
 	/* XXX print error info */

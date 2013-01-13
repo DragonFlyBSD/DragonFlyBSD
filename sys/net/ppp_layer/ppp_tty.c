@@ -1130,12 +1130,16 @@ pppinput(int c, struct tty *tp)
 static void
 ppplogchar(struct ppp_softc *sc, int c)
 {
+    char *hexstr;
+
     if (c >= 0)
 	sc->sc_rawin[sc->sc_rawin_count++] = c;
     if (sc->sc_rawin_count >= sizeof(sc->sc_rawin)
 	|| (c < 0 && sc->sc_rawin_count > 0)) {
-	kprintf("%s input: %*D", sc->sc_if.if_xname,
-		sc->sc_rawin_count, sc->sc_rawin, " ");
+	hexstr = kmalloc(HEX_NCPYLEN(sc->sc_rawin_count), M_TEMP, M_WAITOK | M_ZERO);
+	kprintf("%s input: %s", sc->sc_if.if_xname, hexncpy(sc->sc_rawin,
+		sc->sc_rawin_count, hexstr, HEX_NCPYLEN(sc->sc_rawin_count), " "));
 	sc->sc_rawin_count = 0;
+	kfree(hexstr, M_TEMP);
     }
 }

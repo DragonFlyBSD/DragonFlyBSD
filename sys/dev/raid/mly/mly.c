@@ -1285,7 +1285,7 @@ mly_process_event(struct mly_softc *sc, struct mly_event *me)
     struct scsi_sense_data	*ssd = (struct scsi_sense_data *)&me->sense[0];
     char			*fp, *tp;
     int				bus, target, event, class, action;
-
+    char			hexstr[2][12];
     /* 
      * Errors can be reported using vendor-unique sense data.  In this case, the
      * event code will be 0x1c (Request sense data present), the sense key will
@@ -1346,7 +1346,8 @@ mly_process_event(struct mly_softc *sc, struct mly_event *me)
 	mly_printf(sc, "physical device %d:%d %s\n", me->channel, me->target, tp);
 	mly_printf(sc, "  sense key %d  asc %02x  ascq %02x\n", 
 		      ssd->flags & SSD_KEY, ssd->add_sense_code, ssd->add_sense_code_qual);
-	mly_printf(sc, "  info %4D  csi %4D\n", ssd->info, "", ssd->cmd_spec_info, "");
+	mly_printf(sc, "  info %s csi %s\n", hexncpy(ssd->info, 4, hexstr[0], 12, NULL),
+	    hexncpy(ssd->cmd_spec_info, 4, hexstr[1], 12, NULL));
 	if (action == 'r')
 	    sc->mly_btl[me->channel][me->target].mb_flags |= MLY_BTL_RESCAN;
 	break;

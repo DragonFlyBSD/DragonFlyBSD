@@ -21,6 +21,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/libkern.h>
 
 #if defined(__DragonFly__) 
 #include "opt_inet.h"
@@ -5399,8 +5400,9 @@ sppp_proto_name(u_short proto)
 static void
 sppp_print_bytes(const u_char *p, u_short len)
 {
+	char hexstr[len];
 	if (len)
-		log(-1, " %*D", len, p, "-");
+		log(-1, " %s", hexncpy(p, len, hexstr, HEX_NCPYLEN(len), "-"));
 }
 
 static void

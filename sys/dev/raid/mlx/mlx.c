@@ -1241,6 +1241,7 @@ mlx_periodic_eventlog_respond(struct mlx_command *mc)
     struct mlx_softc		*sc = mc->mc_sc;
     struct mlx_eventlog_entry	*el = (struct mlx_eventlog_entry *)mc->mc_data;
     char			*reason;
+    char			hexstr[2][12];
 
     debug_called(1);
 
@@ -1278,7 +1279,8 @@ mlx_periodic_eventlog_respond(struct mlx_command *mc)
 		    (el->el_asq == 0x02))))) {
 		device_printf(sc->mlx_dev, "physical drive %d:%d error log: sense = %d asc = %x asq = %x\n",
 			      el->el_channel, el->el_target, el->el_sensekey, el->el_asc, el->el_asq);
-		device_printf(sc->mlx_dev, "  info %4D csi %4D\n", el->el_information, ":", el->el_csi, ":");
+		device_printf(sc->mlx_dev, "  info %s csi %s\n", hexncpy(el->el_information, 4, hexstr[0], 12, ":"),
+		    hexncpy(el->el_csi, 4, hexstr[1], 12, ":"));
 	    }
 	    break;
 	    
