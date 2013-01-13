@@ -670,7 +670,7 @@ ifnet_serialize_array_enter(lwkt_serialize_t *_arr, int _arrcnt,
 {
 	int _off;
 
-	if (_slz == IFNET_SERIALIZE_ALL) {
+	if (__predict_false(_slz == IFNET_SERIALIZE_ALL)) {
 		lwkt_serialize_array_enter(_arr, _arrcnt, 0);
 		return;
 	}
@@ -685,7 +685,7 @@ ifnet_serialize_array_exit(lwkt_serialize_t *_arr, int _arrcnt,
 {
 	int _off;
 
-	if (_slz == IFNET_SERIALIZE_ALL) {
+	if (__predict_false(_slz == IFNET_SERIALIZE_ALL)) {
 		lwkt_serialize_array_exit(_arr, _arrcnt, 0);
 		return;
 	}
@@ -700,7 +700,7 @@ ifnet_serialize_array_try(lwkt_serialize_t *_arr, int _arrcnt,
 {
 	int _off;
 
-	if (_slz == IFNET_SERIALIZE_ALL)
+	if (__predict_false(_slz == IFNET_SERIALIZE_ALL))
 		return lwkt_serialize_array_try(_arr, _arrcnt, 0);
 
 	_off = ifnet_serialize_array_index(_arrcnt, _txoff, _rxoff, _slz);
@@ -715,7 +715,7 @@ ifnet_serialize_array_assert(lwkt_serialize_t *_arr, int _arrcnt,
 {
 	int _off;
 
-	if (_slz == IFNET_SERIALIZE_ALL) {
+	if (__predict_false(_slz == IFNET_SERIALIZE_ALL)) {
 		int _i;
 
 		if (_serialized) {
