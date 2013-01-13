@@ -93,14 +93,11 @@ struct	sigcontext {
 	unsigned int	sc_fpformat;
 	unsigned int	sc_ownedfp;
 	unsigned int	sc_reserved;
-	unsigned int	sc_unused01;
-	unsigned int	sc_unused02;
+	unsigned int    sc_unused[8];
 
-	/* 16 byte aligned */
-
-	int		sc_fpregs[128];
-	int		__spare__[16];
-};
+	/* 64 byte aligned */
+	int             sc_fpregs[256]; /* 1024 bytes */
+} __attribute__((aligned(64)));
 
 #endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
 

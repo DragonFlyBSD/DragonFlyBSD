@@ -482,7 +482,15 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		sp = (char *)regs->tf_rsp - sizeof(struct sigframe) - 128;
 	}
 
-	/* Align to 16 bytes */
+	/*
+	 * XXX AVX needs 64-byte alignment but sigframe has other fields and
+	 * the embedded ucontext is not at the front, so aligning this won't
+	 * help us.  Fortunately we bcopy in/out of the sigframe, so the
+	 * kernel is ok.
+	 *
+	 * The problem though is if userland winds up trying to use the
+	 * context directly.
+	 */
 	sfp = (struct sigframe *)((intptr_t)sp & ~(intptr_t)0xF);
 
 	/* Translate the signal is appropriate */
