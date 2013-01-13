@@ -134,12 +134,9 @@ struct	ifqueue {
 
 enum ifnet_serialize {
 	IFNET_SERIALIZE_ALL,
-	IFNET_SERIALIZE_MAIN,
 	IFNET_SERIALIZE_TX_BASE = 0x10000000,
-	IFNET_SERIALIZE_RX_BASE = 0x20000000
 };
 #define IFNET_SERIALIZE_TX(i)	(IFNET_SERIALIZE_TX_BASE + (i))
-#define IFNET_SERIALIZE_RX(i)	(IFNET_SERIALIZE_RX_BASE + (i))
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -369,18 +366,11 @@ EVENTHANDLER_DECLARE(iflladdr_event, iflladdr_event_handler_t);
 #define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp, ifsq) \
 	(ifp)->if_serialize_assert((ifp), \
 	    IFNET_SERIALIZE_TX((ifsq)->ifsq_index), FALSE)
-
-#define ASSERT_IFNET_SERIALIZED_MAIN(ifp) \
-	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_MAIN, TRUE)
-#define ASSERT_IFNET_NOT_SERIALIZED_MAIN(ifp) \
-	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_MAIN, FALSE)
 #else
 #define ASSERT_IFNET_SERIALIZED_ALL(ifp)	((void)0)
 #define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp)	((void)0)
 #define ASSERT_IFNET_SERIALIZED_TX(ifp, ifsq)	((void)0)
 #define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp, ifsq) ((void)0)
-#define ASSERT_IFNET_SERIALIZED_MAIN(ifp)	((void)0)
-#define ASSERT_IFNET_NOT_SERIALIZED_MAIN(ifp)	((void)0)
 #endif
 
 static __inline void
@@ -418,24 +408,6 @@ ifnet_tryserialize_tx(struct ifnet *_ifp, const struct ifaltq_subque *_ifsq)
 {
 	return _ifp->if_tryserialize(_ifp,
 	    IFNET_SERIALIZE_TX(_ifsq->ifsq_index));
-}
-
-static __inline void
-ifnet_serialize_main(struct ifnet *_ifp)
-{
-	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_MAIN);
-}
-
-static __inline void
-ifnet_deserialize_main(struct ifnet *_ifp)
-{
-	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_MAIN);
-}
-
-static __inline int
-ifnet_tryserialize_main(struct ifnet *_ifp)
-{
-	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_MAIN);
 }
 
 /*
@@ -684,19 +656,11 @@ ifnet_serialize_array_index(int _arrcnt, int _txoff, int _rxoff,
 {
 	int _off;
 
-	if (_slz == IFNET_SERIALIZE_MAIN) {
-		_off = 0;
-	} else if (_slz & IFNET_SERIALIZE_TX_BASE) {
-		_off = (_slz & ~IFNET_SERIALIZE_TX_BASE) + _txoff;
-		KASSERT(_off < _arrcnt,
-		    ("invalid TX serializer %#x", _slz));
-	} else if (_slz & IFNET_SERIALIZE_RX_BASE) {
-		_off = (_slz & ~IFNET_SERIALIZE_RX_BASE) + _rxoff;
-		KASSERT(_off < _arrcnt,
-		    ("invalid RX serializer %#x", _slz));
-	} else {
-		panic("unknown serializer %#x", _slz);
-	}
+	KASSERT(_slz & IFNET_SERIALIZE_TX_BASE,
+	    ("unknown serializer %#x", _slz));
+	_off = (_slz & ~IFNET_SERIALIZE_TX_BASE) + _txoff;
+	KASSERT(_off < _arrcnt, ("invalid TX serializer %#x", _slz));
+
 	return _off;
 }
 
