@@ -854,6 +854,8 @@ if_detach(struct ifnet *ifp)
 		kfree(ifsq->ifsq_ifstart_nmsg, M_LWKTMSG);
 		kfree(ifsq->ifsq_stage, M_DEVBUF);
 	}
+	kfree(ifp->if_snd.altq_subq, M_DEVBUF);
+
 	crit_exit();
 }
 
