@@ -138,7 +138,7 @@ enum ifnet_serialize {
 	IFNET_SERIALIZE_TX_BASE = 0x10000000,
 	IFNET_SERIALIZE_RX_BASE = 0x20000000
 };
-#define IFNET_SERIALIZE_TX	IFNET_SERIALIZE_TX_BASE
+#define IFNET_SERIALIZE_TX(i)	(IFNET_SERIALIZE_TX_BASE + (i))
 #define IFNET_SERIALIZE_RX(i)	(IFNET_SERIALIZE_RX_BASE + (i))
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
@@ -362,10 +362,12 @@ EVENTHANDLER_DECLARE(iflladdr_event, iflladdr_event_handler_t);
 #define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp) \
 	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_ALL, FALSE)
 
-#define ASSERT_IFNET_SERIALIZED_TX(ifp) \
-	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_TX, TRUE)
-#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp) \
-	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_TX, FALSE)
+#define ASSERT_IFNET_SERIALIZED_TX(ifp, ifsq) \
+	(ifp)->if_serialize_assert((ifp), \
+	    IFNET_SERIALIZE_TX((ifsq)->ifsq_index), TRUE)
+#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp, ifsq) \
+	(ifp)->if_serialize_assert((ifp), \
+	    IFNET_SERIALIZE_TX((ifsq)->ifsq_index), FALSE)
 
 #define ASSERT_IFNET_SERIALIZED_MAIN(ifp) \
 	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_MAIN, TRUE)
@@ -374,8 +376,8 @@ EVENTHANDLER_DECLARE(iflladdr_event, iflladdr_event_handler_t);
 #else
 #define ASSERT_IFNET_SERIALIZED_ALL(ifp)	((void)0)
 #define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp)	((void)0)
-#define ASSERT_IFNET_SERIALIZED_TX(ifp)		((void)0)
-#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp)	((void)0)
+#define ASSERT_IFNET_SERIALIZED_TX(ifp, ifsq)	((void)0)
+#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp, ifsq) ((void)0)
 #define ASSERT_IFNET_SERIALIZED_MAIN(ifp)	((void)0)
 #define ASSERT_IFNET_NOT_SERIALIZED_MAIN(ifp)	((void)0)
 #endif
@@ -399,21 +401,22 @@ ifnet_tryserialize_all(struct ifnet *_ifp)
 }
 
 static __inline void
-ifnet_serialize_tx(struct ifnet *_ifp)
+ifnet_serialize_tx(struct ifnet *_ifp, const struct ifaltq_subque *_ifsq)
 {
-	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_TX);
+	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_TX(_ifsq->ifsq_index));
 }
 
 static __inline void
-ifnet_deserialize_tx(struct ifnet *_ifp)
+ifnet_deserialize_tx(struct ifnet *_ifp, const struct ifaltq_subque *_ifsq)
 {
-	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_TX);
+	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_TX(_ifsq->ifsq_index));
 }
 
 static __inline int
-ifnet_tryserialize_tx(struct ifnet *_ifp)
+ifnet_tryserialize_tx(struct ifnet *_ifp, const struct ifaltq_subque *_ifsq)
 {
-	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_TX);
+	return _ifp->if_tryserialize(_ifp,
+	    IFNET_SERIALIZE_TX(_ifsq->ifsq_index));
 }
 
 static __inline void

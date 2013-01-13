@@ -459,8 +459,8 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
  * ordering gets trashed.  It can be done for all packets in slstart.
  */
 static int
-sloutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-		    struct rtentry *rtp)
+sloutput_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
+    struct mbuf *m, struct sockaddr *dst, struct rtentry *rtp)
 {
 	struct sl_softc *sc = &sl_softc[ifp->if_dunit];
 	struct ip *ip;
@@ -507,8 +507,7 @@ sloutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			error = 0;
 		}
 	} else {
-		error = ifsq_enqueue(ifq_get_subq_default(&sc->sc_if.if_snd),
-		    m, &pktattr);
+		error = ifsq_enqueue(ifsq, m, &pktattr);
 	}
 	if (error) {
 		sc->sc_if.if_oerrors++;
@@ -525,11 +524,12 @@ static int
 sloutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	 struct rtentry *rtp)
 {
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp);
-	error = sloutput_serialized(ifp, m, dst, rtp);
-	ifnet_deserialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
+	error = sloutput_serialized(ifp, ifsq, m, dst, rtp);
+	ifnet_deserialize_tx(ifp, ifsq);
 
 	return error;
 }

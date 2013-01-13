@@ -1112,7 +1112,7 @@ ng_fec_choose_port(struct ng_fec_bundle *b,
  * transmission.
  */
 static void
-ng_fec_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
+ng_fec_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ng_fec_private	*priv;
 	struct ng_fec_bundle	*b;
@@ -1139,9 +1139,9 @@ ng_fec_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 	}
 	ifp->if_opackets++;
 
-	ifnet_deserialize_tx(ifp);
+	ifnet_deserialize_tx(ifp, ifsq);
 	error = ifq_dispatch(oifp, m0, NULL);
-	ifnet_serialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
 
 	priv->if_error = error;
 }

@@ -60,6 +60,7 @@
 #include <sys/msgport2.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
 
@@ -292,11 +293,12 @@ static int
 ipxipoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	    struct rtentry *rt)
 {
+	const struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
 	error = ipxipoutput_serialized(ifp, m, dst, rt);
-	ifnet_deserialize_tx(ifp);
+	ifnet_deserialize_tx(ifp, ifsq);
 
 	return error;
 }

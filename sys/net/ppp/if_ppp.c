@@ -711,8 +711,8 @@ pppsioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
  * Called at splnet from pppwrite().
  */
 static int
-pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
-		     struct rtentry *rtp)
+pppoutput_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
+    struct mbuf *m0, struct sockaddr *dst, struct rtentry *rtp)
 {
     struct ppp_softc *sc = &ppp_softc[ifp->if_dunit];
     int protocol, address, control;
@@ -877,9 +877,8 @@ pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	        error = 0;
 	    }
 	} else {
-	    ASSERT_IFNET_SERIALIZED_TX(&sc->sc_if);
-	    error = ifsq_enqueue(ifq_get_subq_default(&sc->sc_if.if_snd), m0,
-	        &pktattr);
+	    ASSERT_IFNET_SERIALIZED_TX(&sc->sc_if, ifsq);
+	    error = ifsq_enqueue(ifsq, m0, &pktattr);
 	}
 	if (error) {
 	    crit_exit();
@@ -905,11 +904,12 @@ int
 pppoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	  struct rtentry *rtp)
 {
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp);
-	error = pppoutput_serialized(ifp, m0, dst, rtp);
-	ifnet_deserialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
+	error = pppoutput_serialized(ifp, ifsq, m0, dst, rtp);
+	ifnet_deserialize_tx(ifp, ifsq);
 
 	return error;
 }

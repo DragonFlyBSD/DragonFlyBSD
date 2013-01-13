@@ -357,7 +357,7 @@ ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 
 	_ifsq = &_ifp->if_snd.altq_subq[_qid];
 
-	ASSERT_IFNET_SERIALIZED_TX(_ifp);
+	ASSERT_IFNET_SERIALIZED_TX(_ifp, _ifsq);
 	_error = ifsq_enqueue(_ifsq, _m, _pa);
 	if (_error == 0) {
 		_ifp->if_obytes += _m->m_pkthdr.len;

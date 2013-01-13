@@ -803,8 +803,8 @@ tunstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		}
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
-		ifnet_deserialize_tx(ifp);
+		ifnet_deserialize_tx(ifp, ifsq);
 		KNOTE(&tp->tun_rkq.ki_note, 0);
-		ifnet_serialize_tx(ifp);
+		ifnet_serialize_tx(ifp, ifsq);
 	}
 }

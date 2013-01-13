@@ -722,11 +722,10 @@ drop2:
  * Enqueue transmit packet.
  */
 static int
-sppp_output_serialized(struct ifnet *ifp, struct mbuf *m,
-		       struct sockaddr *dst, struct rtentry *rt)
+sppp_output_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
+    struct mbuf *m, struct sockaddr *dst, struct rtentry *rt)
 {
 	struct sppp *sp = (struct sppp*) ifp;
-	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	struct ppp_header *h;
 	struct ifqueue *ifq = NULL;
 	int rv = 0;
@@ -976,11 +975,12 @@ static int
 sppp_output(struct ifnet *ifp, struct mbuf *m,
 	    struct sockaddr *dst, struct rtentry *rt)
 {
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp);
-	error = sppp_output_serialized(ifp, m, dst, rt);
-	ifnet_deserialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
+	error = sppp_output_serialized(ifp, ifsq, m, dst, rt);
+	ifnet_deserialize_tx(ifp, ifsq);
 
 	return error;
 }

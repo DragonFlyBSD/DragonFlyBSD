@@ -332,14 +332,14 @@ ifsq_ifstart_dispatch(netmsg_t msg)
 		return;
 	}
 
-	ifnet_serialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
 	if ((ifp->if_flags & IFF_RUNNING) && !ifsq_is_oactive(ifsq)) {
 		ifp->if_start(ifp, ifsq);
 		if ((ifp->if_flags & IFF_RUNNING) && !ifsq_is_oactive(ifsq))
 			running = 1;
 	}
 	need_sched = ifsq_ifstart_need_schedule(ifsq, running);
-	ifnet_deserialize_tx(ifp);
+	ifnet_deserialize_tx(ifp, ifsq);
 
 	if (need_sched) {
 		/*
@@ -358,7 +358,7 @@ ifsq_devstart(struct ifaltq_subque *ifsq)
 	struct ifnet *ifp = ifsq_get_ifp(ifsq);
 	int running = 0;
 
-	ASSERT_IFNET_SERIALIZED_TX(ifp);
+	ASSERT_IFNET_SERIALIZED_TX(ifp, ifsq);
 
 	ALTQ_SQ_LOCK(ifsq);
 	if (ifsq_is_started(ifsq) || !ifsq_data_ready(ifsq)) {
@@ -2508,7 +2508,7 @@ ifsq_ifstart_try(struct ifaltq_subque *ifsq, int force_sched)
 	 * contention on ifnet's serializer, ifnet.if_start will
 	 * be scheduled on ifnet's CPU.
 	 */
-	if (!ifnet_tryserialize_tx(ifp)) {
+	if (!ifnet_tryserialize_tx(ifp, ifsq)) {
 		/*
 		 * ifnet serializer contention happened,
 		 * ifnet.if_start is scheduled on ifnet's
@@ -2525,7 +2525,7 @@ ifsq_ifstart_try(struct ifaltq_subque *ifsq, int force_sched)
 	}
 	need_sched = ifsq_ifstart_need_schedule(ifsq, running);
 
-	ifnet_deserialize_tx(ifp);
+	ifnet_deserialize_tx(ifp, ifsq);
 
 	if (need_sched) {
 		/*
@@ -2585,7 +2585,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	/* TODO find qid here */
 	ifsq = &ifq->altq_subq[qid];
 
-	ASSERT_IFNET_NOT_SERIALIZED_TX(ifp);
+	ASSERT_IFNET_NOT_SERIALIZED_TX(ifp, ifsq);
 
 	len = m->m_pkthdr.len;
 	if (m->m_flags & M_MCAST)

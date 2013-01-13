@@ -342,16 +342,17 @@ tbr_timeout(void *arg)
 	active = 0;
 	crit_enter();
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
-		struct ifaltq_subque *ifsq =
-		    &ifp->if_snd.altq_subq[ALTQ_SUBQ_INDEX_DEFAULT];
+		struct ifaltq_subque *ifsq;
 
 		if (ifp->if_snd.altq_tbr == NULL)
 			continue;
+
+		ifsq = &ifp->if_snd.altq_subq[ALTQ_SUBQ_INDEX_DEFAULT];
 		active++;
 		if (!ifsq_is_empty(ifsq) && ifp->if_start != NULL) {
-			ifnet_serialize_tx(ifp);
+			ifnet_serialize_tx(ifp, ifsq);
 			(*ifp->if_start)(ifp, ifsq);
-			ifnet_deserialize_tx(ifp);
+			ifnet_deserialize_tx(ifp, ifsq);
 		}
 	}
 	crit_exit();

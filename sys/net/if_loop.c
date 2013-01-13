@@ -226,10 +226,8 @@ rel:
 	 * a simplex interface).
 	 */
 	if (ifq_is_enabled(&ifp->if_snd) && ifp->if_start == lo_altqstart) {
-		struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 		struct altq_pktattr pktattr;
 		int32_t *afp;
-	        int error;
 
 		/*
 		 * if the queueing discipline needs packet classification,
@@ -243,18 +241,7 @@ rel:
 		afp = mtod(m, int32_t *);
 		*afp = (int32_t)af;
 
-		/*
-		 * A critical section is needed for subsystems protected by
-		 * the MP lock, and the serializer is assumed to already
-		 * be held for MPSAFE subsystems.
-		 */
-	        crit_enter();
-		error = ifsq_enqueue(ifsq, m, &pktattr);
-		ifnet_serialize_tx(ifp);
-		ifp->if_start(ifp, ifsq);
-		ifnet_deserialize_tx(ifp);
-		crit_exit();
-		return (error);
+		return ifq_dispatch(ifp, m, &pktattr);
 	}
 #endif /* ALTQ */
 
