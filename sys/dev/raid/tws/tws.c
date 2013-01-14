@@ -41,12 +41,10 @@
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 
+static int	tws_msi_enable = 1;
+
 MALLOC_DEFINE(M_TWS, "twsbuf", "buffers used by tws driver");
 int tws_queue_depth = TWS_MAX_REQS;
-int tws_enable_msi = 0;
-int tws_enable_msix = 0;
-
-
 
 /* externs */
 extern int tws_cam_attach(struct tws_softc *sc);
@@ -89,7 +87,6 @@ static int tws_init_reqs(struct tws_softc *sc, u_int32_t dma_mem_size);
 static int tws_init_aen_q(struct tws_softc *sc);
 static int tws_init_trace_q(struct tws_softc *sc);
 static int tws_setup_irq(struct tws_softc *sc);
-static int tws_setup_intr(struct tws_softc *sc, int irqs);
 
 
 /* Character device entry points */
@@ -185,7 +182,7 @@ tws_attach(device_t dev)
 {
     struct tws_softc *sc = device_get_softc(dev);
     u_int32_t cmd, bar;
-    int error=0,i;
+    int error=0;
 
     /* no tracing yet */
     /* Look up our softc and initialize its fields. */
@@ -275,10 +272,6 @@ tws_attach(device_t dev)
 #endif
 
     /* Allocate and register our interrupt. */
-    sc->intr_type = TWS_INTx; /* default */
-
-    if ( tws_enable_msi )
-        sc->intr_type = TWS_MSI;
     if ( tws_setup_irq(sc) == FAILURE ) {
         tws_log(sc, ALLOC_MEMORY_RES);
         goto attach_fail_3;
@@ -321,22 +314,18 @@ tws_attach(device_t dev)
     return(0);
 
 attach_fail_4:
-    for(i=0;i<sc->irqs;i++) {
-        if (sc->intr_handle[i]) {
-            if ((error = bus_teardown_intr(sc->tws_dev,
-                         sc->irq_res[i], sc->intr_handle[i])))
-                TWS_TRACE(sc, "bus teardown intr", 0, error);
-        }
+    if (sc->intr_handle) {
+        if ((error = bus_teardown_intr(sc->tws_dev,
+                     sc->irq_res, sc->intr_handle)))
+            TWS_TRACE(sc, "bus teardown intr", 0, error);
     }
     destroy_dev(sc->tws_cdev);
     dev_ops_remove_minor(&tws_ops, device_get_unit(sc->tws_dev));
 attach_fail_3:
-    for(i=0;i<sc->irqs;i++) {
-        if ( sc->irq_res[i] ){
-            if (bus_release_resource(sc->tws_dev,
-                 SYS_RES_IRQ, sc->irq_res_id[i], sc->irq_res[i]))
-                TWS_TRACE(sc, "bus irq res", 0, 0);
-        }
+    if (sc->irq_res) {
+        if (bus_release_resource(sc->tws_dev,
+            SYS_RES_IRQ, sc->irq_res_id, sc->irq_res))
+            TWS_TRACE(sc, "bus irq res", 0, 0);
     }
 #ifndef TWS_PULL_MODE_ENABLE
 attach_fail_2:
@@ -366,7 +355,7 @@ static int
 tws_detach(device_t dev)
 {
     struct tws_softc *sc = device_get_softc(dev);
-    int error, i;
+    int error;
     u_int32_t reg;
 
     TWS_TRACE_DEBUG(sc, "entry", 0, 0);
@@ -386,25 +375,19 @@ tws_detach(device_t dev)
 
     /* Teardown the state in our softc created in our attach routine. */
     /* Disconnect the interrupt handler. */
-    for(i=0;i<sc->irqs;i++) {
-        if (sc->intr_handle[i]) {
-            if ((error = bus_teardown_intr(sc->tws_dev,
-                         sc->irq_res[i], sc->intr_handle[i])))
-                TWS_TRACE(sc, "bus teardown intr", 0, error);
-        }
+    if (sc->intr_handle) {
+        if ((error = bus_teardown_intr(sc->tws_dev,
+                     sc->irq_res, sc->intr_handle)))
+            TWS_TRACE(sc, "bus teardown intr", 0, error);
     }
     /* Release irq resource */
-    for(i=0;i<sc->irqs;i++) {
-        if ( sc->irq_res[i] ){
-            if (bus_release_resource(sc->tws_dev,
-                     SYS_RES_IRQ, sc->irq_res_id[i], sc->irq_res[i]))
-                TWS_TRACE(sc, "bus release irq resource",
-                                       i, sc->irq_res_id[i]);
-        }
+    if (sc->irq_res) {
+        if (bus_release_resource(sc->tws_dev,
+                 SYS_RES_IRQ, sc->irq_res_id, sc->irq_res))
+            TWS_TRACE(sc, "bus release irq resource", 0, sc->irq_res_id);
     }
-    if ( sc->intr_type == TWS_MSI ) {
+    if (sc->intr_type == PCI_INTR_TYPE_MSI)
         pci_release_msi(sc->tws_dev);
-    }
 
     tws_cam_detach(sc);
 
@@ -436,68 +419,34 @@ tws_detach(device_t dev)
 }
 
 static int
-tws_setup_intr(struct tws_softc *sc, int irqs)
-{
-    int i, error;
-
-    for(i=0;i<irqs;i++) {
-        if ((error = bus_setup_intr(sc->tws_dev, sc->irq_res[i],
-                                INTR_MPSAFE,
-                                tws_intr, sc, &sc->intr_handle[i], NULL))) {
-            tws_log(sc, SETUP_INTR_RES);
-            return(FAILURE);
-        }
-    }
-    return(SUCCESS);
-
-}
-
-
-static int
 tws_setup_irq(struct tws_softc *sc)
 {
     u_int16_t cmd;
+    u_int irq_flags;
 
     cmd = pci_read_config(sc->tws_dev, PCIR_COMMAND, 2);
-    switch(sc->intr_type) {
-        case TWS_INTx :
-            cmd = cmd & ~0x0400;
-            pci_write_config(sc->tws_dev, PCIR_COMMAND, cmd, 2);
-            sc->irqs = 1;
-            sc->irq_res_id[0] = 0;
-            sc->irq_res[0] = bus_alloc_resource_any(sc->tws_dev, SYS_RES_IRQ,
-                            &sc->irq_res_id[0], RF_SHAREABLE | RF_ACTIVE);
-            if ( ! sc->irq_res[0] )
-                return(FAILURE);
-            if ( tws_setup_intr(sc, sc->irqs) == FAILURE )
-                return(FAILURE);
-            device_printf(sc->tws_dev, "Using legacy INTx\n");
-            break;
-        case TWS_MSI :
-#ifdef OLD_MSI
-            cmd = cmd | 0x0400;
-            pci_write_config(sc->tws_dev, PCIR_COMMAND, cmd, 2);
-            sc->irqs = 1;
-            sc->irq_res_id[0] = 1;
-            messages = 1;
-            if (pci_alloc_msi(sc->tws_dev, &messages) != 0 ) {
-                TWS_TRACE(sc, "pci alloc msi fail", 0, messages);
-                return(FAILURE);
-            }
-            sc->irq_res[0] = bus_alloc_resource_any(sc->tws_dev, SYS_RES_IRQ,
-                              &sc->irq_res_id[0], RF_SHAREABLE | RF_ACTIVE);
 
-            if ( !sc->irq_res[0]  )
-                return(FAILURE);
-            if ( tws_setup_intr(sc, sc->irqs) == FAILURE )
-                return(FAILURE);
-            device_printf(sc->tws_dev, "Using MSI\n");
-#else
-	    panic("%s: Using MSI", device_get_nameunit(sc->tws_dev));
-#endif
-            break;
-
+    if (tws_msi_enable)
+        cmd |= 0x0400;
+    else
+        cmd &= ~0x0400;
+    pci_write_config(sc->tws_dev, PCIR_COMMAND, cmd, 2);
+    sc->irq_res = 0;
+    sc->intr_type = pci_alloc_1intr(sc->tws_dev, tws_msi_enable,
+        &sc->irq_res_id, &irq_flags);
+    sc->irq_res = bus_alloc_resource_any(sc->tws_dev, SYS_RES_IRQ,
+        &sc->irq_res_id, irq_flags);
+    if (!sc->irq_res)
+        return(FAILURE);
+    if (bus_setup_intr(sc->tws_dev, sc->irq_res, INTR_MPSAFE, tws_intr, sc,
+        &sc->intr_handle, NULL)) {
+            tws_log(sc, SETUP_INTR_RES);
+            return(FAILURE);
     }
+    if (sc->intr_type == PCI_INTR_TYPE_MSI)
+            device_printf(sc->tws_dev, "Using MSI\n");
+    else
+            device_printf(sc->tws_dev, "Using legacy INTx\n");
 
     return(SUCCESS);
 }
@@ -919,6 +868,4 @@ MODULE_DEPEND(tws, cam, 1, 1, 1);
 MODULE_DEPEND(tws, pci, 1, 1, 1);
 
 TUNABLE_INT("hw.tws.queue_depth", &tws_queue_depth);
-#if 0 /* XXX swildner */
-TUNABLE_INT("hw.tws.enable_msi", &tws_enable_msi);
-#endif
+TUNABLE_INT("hw.tws.msi.enable", &tws_msi_enable);
