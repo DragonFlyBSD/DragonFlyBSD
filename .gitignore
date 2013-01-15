@@ -1,16 +1,10 @@
 *.[1-9].gz
 !share/examples/splash/dfly.bmp.gz
-*.[psS]o
-!/contrib/nvi/docs/USD.doc/vi.ref/index.so
-!/contrib/nvi/docs/USD.doc/vi.ref/ref.so
-*.a
-!/bin/csh/USD.doc/csh.a
 *.bak
 *.core
 *.diff
 !/contrib/groff/src/devices/grops/psfig.diff
 !/lib/libstand/bzlib.c.diff
-*.o
 *.old
 *.orig
 *.patch
@@ -20,3 +14,16 @@
 .*.sw[po]
 .sw[po]
 cscope.*
+
+# The following patterns were previously active.
+# They have been commented out because the system "make" will pick up build
+# products in the source tree causing strange build failures.  The benefit
+# of avoiding an accidental commit of a binary is quickly offset by the
+# liability of chasing build failures caused by "invisible" files.  This
+# has burned a few people already and even the source of bug reports.
+# *.[psS]o
+# !/contrib/nvi/docs/USD.doc/vi.ref/index.so
+# !/contrib/nvi/docs/USD.doc/vi.ref/ref.so
+# *.a
+# !/bin/csh/USD.doc/csh.a
+# *.o
