@@ -1,4 +1,4 @@
-/*	$OpenBSD: stdd.h,v 1.4 1999/11/09 18:16:18 deraadt Exp $	*/
+/*	$OpenBSD: stdd.h,v 1.6 2010/09/07 19:58:09 marco Exp $	*/
 /*	$NetBSD: stdd.h,v 1.2 1995/09/28 05:37:50 tls Exp $	*/
 
 /*-
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,8 +33,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)stdd.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/m4/stdd.h,v 1.4 2002/07/15 02:15:12 jmallett Exp $
- * $DragonFly: src/usr.bin/m4/stdd.h,v 1.3 2006/12/27 21:29:02 pavalos Exp $
+ * $FreeBSD: src/usr.bin/m4/stdd.h,v 1.7 2012/11/17 01:54:24 svnexp Exp $
  */
 
 /*
