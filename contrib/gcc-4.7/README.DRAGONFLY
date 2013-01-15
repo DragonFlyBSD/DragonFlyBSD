@@ -28,7 +28,6 @@ libstdc++-v3/config/os/bsd/dragonfly/os_defines.h
 
 The following files have been patched:
 ==============================================================
-gcc/c-family/c-format.c
 gcc/config/i386/i386.c
 gcc/gcc.c
 gcc/ginclude/stddef.h

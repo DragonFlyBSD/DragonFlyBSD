@@ -27,7 +27,6 @@
     /libstdc++-v3/config/locale/dragonfly/ctype_members.cc
     /libstdc++-v3/configure.host
     /libgcc/config.host
-    /gcc/c-format.c
     /gcc/c-opts.c
     /gcc/cfgloop.c
     /gcc/crtstuff.c
