@@ -768,7 +768,7 @@ BSTRAPDIRS= ${_strfile} \
 	bin/hostname bin/kill \
 	usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \
 	usr.bin/m4 usr.bin/rpcgen usr.bin/bmake usr.bin/awk usr.bin/stat \
-	usr.bin/find usr.bin/lex usr.bin/sed usr.bin/uname usr.bin/touch \
+	usr.bin/find usr.bin/flex usr.bin/sed usr.bin/uname usr.bin/touch \
 	usr.bin/mkdep usr.bin/mktemp usr.bin/lorder usr.bin/file2c \
 	usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
 	usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
@@ -940,7 +940,7 @@ secure/lib/libssh__L: secure/lib/libcrypto__L lib/libz__L
 _generic_libs+=	secure/lib
 .endif
 
-_generic_libs+=	usr.bin/lex/lib
+_generic_libs+=	usr.bin/flex/lib
 
 .for _lib in ${_startup_libs44} ${_startup_libs47} \
 		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
