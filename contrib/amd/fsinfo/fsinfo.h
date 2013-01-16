@@ -109,7 +109,6 @@ extern void domain_strip(char *otherdom, char *localdom);
  */
 #ifndef yywrap
 extern int yywrap(void);
-# define yywrap() 1
 #endif /* not yywrap */
 extern int yyparse(void);
 extern int write_atab(qelem *q);

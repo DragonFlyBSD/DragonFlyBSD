@@ -66,7 +66,7 @@ voidp alloca();
 #endif /* not __GNUC__ */
 
 extern char *yytext;
-extern int yylineno;
+extern int ayylineno;
 extern int yylex(void);
 
 static int yyerror(const char *s);
@@ -78,7 +78,7 @@ static char *header_section = NULL; /* start with no header section */
 #define PARSE_DEBUG 0
 
 #if PARSE_DEBUG
-# define dprintf(f,s) fprintf(stderr, (f), yylineno, (s))
+# define dprintf(f,s) fprintf(stderr, (f), ayylineno, (s))
 # define amu_return(v)
 #else
 # define dprintf(f,s)
@@ -168,7 +168,7 @@ static int
 yyerror(const char *s)
 {
   fprintf(stderr, "AMDCONF: %s on line %d (section %s)\n",
-	  s, yylineno,
+	  s, ayylineno,
 	  (header_section ? header_section : "null"));
   exit(1);
   return 1;	/* to full compilers that insist on a return statement */
