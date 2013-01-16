@@ -841,12 +841,13 @@ ng_bridge_put(priv_p priv, const u_char *addr, int linkNum)
 {
 	const int bucket = HASH(addr, priv->hashMask);
 	struct ng_bridge_hent *hent;
+	char ethstr[ETHER_ADDRSTRLEN + 1] __debugvar;
 
 #ifdef INVARIANTS
 	/* Assert that entry does not already exist in hashtable */
 	SLIST_FOREACH(hent, &priv->tab[bucket], next) {
 		KASSERT(!ETHER_EQUAL(hent->host.addr, addr),
-		    ("%s: entry %s exists in table", __func__, ether_sprintf(addr)));
+		    ("%s: entry %s exists in table", __func__, kether_ntoa(addr, ethstr)));
 	}
 #endif
 
@@ -969,6 +970,7 @@ ng_bridge_timeout(node_p node, hook_p hook, void *arg1, int arg2)
 	int bucket;
 	int counter = 0;
 	int linkNum;
+	char ethstr[ETHER_ADDRSTRLEN + 1] __debugvar;
 
 	/* Update host time counters and remove stale entries */
 	for (bucket = 0; bucket < priv->numBuckets; bucket++) {
@@ -980,7 +982,7 @@ ng_bridge_timeout(node_p node, hook_p hook, void *arg1, int arg2)
 			/* Make sure host's link really exists */
 			KASSERT(priv->links[hent->host.linkNum] != NULL,
 			    ("%s: host %s on nonexistent link %d",
-			    __func__, ether_sprintf(hent->host.addr),
+			    __func__, kether_ntoa(hent->host.addr, ethstr),
 			    hent->host.linkNum));
 
 			/* Remove hosts we haven't heard from in a while */
