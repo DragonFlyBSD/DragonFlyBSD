@@ -129,4 +129,7 @@
 #define SIOCSIFPOLLCPU	 _IOW('i', 125, struct ifreq)	/* set polling(4) cpu */
 #define SIOCGIFPOLLCPU	_IOWR('i', 126, struct ifreq)	/* set polling(4) cpu */
 
+#define SIOCSIFTSOLEN	 _IOW('i', 127, struct ifreq)	/* set max TSO len */
+#define SIOCGIFTSOLEN	_IOWR('i', 128, struct ifreq)	/* get max TSO len */
+
 #endif /* !_SYS_SOCKIO_H_ */

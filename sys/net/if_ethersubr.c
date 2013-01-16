@@ -155,6 +155,11 @@ static u_long ether_input_wronghwhash;
 static int ether_input_ckhash;
 #endif
 
+#define ETHER_TSOLEN_DEFAULT	(4 * ETHERMTU)
+
+static int ether_tsolen_default = ETHER_TSOLEN_DEFAULT;
+TUNABLE_INT("net.link.ether.tsolen", &ether_tsolen_default);
+
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_ETHER, ether, CTLFLAG_RW, 0, "Ethernet");
 SYSCTL_INT(_net_link_ether, OID_AUTO, debug, CTLFLAG_RW,
@@ -168,6 +173,9 @@ SYSCTL_ULONG(_net_link_ether, OID_AUTO, prepend_hdr, CTLFLAG_RW,
     "# of ether header restoration which prepends mbuf");
 SYSCTL_ULONG(_net_link_ether, OID_AUTO, input_wronghash, CTLFLAG_RW,
     &ether_input_wronghash, 0, "# of input packets with wrong hash");
+SYSCTL_INT(_net_link_ether, OID_AUTO, tsolen, CTLFLAG_RW,
+    &ether_tsolen_default, 0, "Default max TSO length");
+
 #ifdef RSS_DEBUG
 SYSCTL_ULONG(_net_link_ether, OID_AUTO, rss_nopi, CTLFLAG_RW,
     &ether_rss_nopi, 0, "# of packets do not have pktinfo");
@@ -580,6 +588,14 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen,
 	ifp->if_hdrlen = ETHER_HDR_LEN;
 	if_attach(ifp, serializer);
 	ifp->if_mtu = ETHERMTU;
+	if (ifp->if_tsolen <= 0) {
+		if ((ether_tsolen_default / ETHERMTU) < 2) {
+			kprintf("ether TSO maxlen %d -> %d\n",
+			    ether_tsolen_default, ETHER_TSOLEN_DEFAULT);
+			ether_tsolen_default = ETHER_TSOLEN_DEFAULT;
+		}
+		ifp->if_tsolen = ether_tsolen_default;
+	}
 	if (ifp->if_baudrate == 0)
 		ifp->if_baudrate = 10000000;
 	ifp->if_output = ether_output;

@@ -187,7 +187,7 @@ tcp_output(struct tcpcb *tp)
 #endif
 	boolean_t can_tso = FALSE, use_tso;
 	boolean_t report_sack, idle_cwv = FALSE;
-	u_int segsz, tso_hlen;
+	u_int segsz, tso_hlen, tso_lenmax = 0;
 
 	KKASSERT(so->so_port == &curthread->td_msgport);
 
@@ -245,8 +245,10 @@ tcp_output(struct tcpcb *tp)
 			struct rtentry *rt = inp->inp_route.ro_rt;
 
 			if (rt != NULL && (rt->rt_flags & RTF_UP) &&
-			    (rt->rt_ifp->if_hwassist & CSUM_TSO))
+			    (rt->rt_ifp->if_hwassist & CSUM_TSO)) {
 				can_tso = TRUE;
+				tso_lenmax = rt->rt_ifp->if_tsolen;
+			}
 		}
 	}
 #endif	/* !IPSEC && !FAST_IPSEC */
@@ -492,12 +494,16 @@ again:
 		if (!use_tso) {
 			len = segsz;
 		} else {
+			if (__predict_false(tso_lenmax < segsz))
+				tso_lenmax = segsz << 1;
+
 			/*
 			 * Truncate TSO transfers to (IP_MAXPACKET - iphlen -
 			 * thoff), and make sure that we send equal size
 			 * transfers down the stack (rather than big-small-
 			 * big-small-...).
 			 */
+			len = min(len, tso_lenmax);
 			len = (min(len, (IP_MAXPACKET - tso_hlen)) / segsz) *
 			    segsz;
 			if (len <= segsz)

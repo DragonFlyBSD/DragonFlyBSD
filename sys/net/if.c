@@ -1568,6 +1568,10 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		ifr->ifr_mtu = ifp->if_mtu;
 		break;
 
+	case SIOCGIFTSOLEN:
+		ifr->ifr_tsolen = ifp->if_tsolen;
+		break;
+
 	case SIOCGIFDATA:
 		error = copyout((caddr_t)&ifp->if_data, ifr->ifr_data,
 				sizeof(ifp->if_data));
@@ -1747,6 +1751,19 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		}
 		break;
 	}
+
+	case SIOCSIFTSOLEN:
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		if (error)
+			break;
+
+		/* XXX need driver supplied upper limit */
+		if (ifr->ifr_tsolen <= 0) {
+			error = EINVAL;
+			break;
+		}
+		ifp->if_tsolen = ifr->ifr_tsolen;
+		break;
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:

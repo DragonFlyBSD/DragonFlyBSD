@@ -817,6 +817,16 @@ setifmtu(const char *val, int dummy __unused, int s,
 }
 
 static void
+setiftsolen(const char *val, int dummy __unused, int s,
+    const struct afswtch *afp)
+{
+	strncpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
+	ifr.ifr_tsolen = atoi(val);
+	if (ioctl(s, SIOCSIFTSOLEN, (caddr_t)&ifr) < 0)
+		warn("ioctl (set tsolen)");
+}
+
+static void
 setifname(const char *val, int dummy __unused, int s, 
     const struct afswtch *afp)
 {
@@ -920,6 +930,13 @@ status(const struct afswtch *afp, int addrcount, struct	sockaddr_dl *sdl,
 		if (supmedia && ifr.ifr_reqcap != 0) {
 			printb("\tcapabilities", ifr.ifr_reqcap, IFCAPBITS);
 			putchar('\n');
+			if (ifr.ifr_reqcap & IFCAP_TSO) {
+				if (ioctl(s, SIOCGIFTSOLEN,
+				    (caddr_t)&ifr) == 0) {
+					printf("\ttsolen %d", ifr.ifr_tsolen);
+					putchar('\n');
+				}
+			}
 		}
 	}
 
@@ -1121,7 +1138,8 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD("noicmp",	IFF_LINK1,	setifflags),
 	DEF_CMD_ARG("mtu",			setifmtu),
 	DEF_CMD_ARG("name",			setifname),
-	DEF_CMD_ARG("pollcpu",			setifpollcpu)
+	DEF_CMD_ARG("pollcpu",			setifpollcpu),
+	DEF_CMD_ARG("tsolen",			setiftsolen)
 };
 
 static __constructor(101) void

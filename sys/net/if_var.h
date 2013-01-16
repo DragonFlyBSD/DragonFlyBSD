@@ -251,7 +251,7 @@ struct ifnet {
 	/* Place holder */
 	void	(*if_npoll_unused)(void);
 #endif
-	int	if_unused3;
+	int	if_tsolen;		/* max TSO length */
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
