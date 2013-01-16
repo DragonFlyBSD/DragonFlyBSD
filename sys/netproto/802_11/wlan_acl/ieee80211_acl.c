@@ -168,7 +168,9 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct aclstate *as = vap->iv_as;
 	struct acl *acl, *new;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	int hash;
 
 	new = (struct acl *) kmalloc(sizeof(struct acl), M_80211_ACL, M_INTWAIT | M_ZERO);
@@ -204,7 +206,9 @@ acl_remove(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct aclstate *as = vap->iv_as;
 	struct acl *acl;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	acl = _find_acl(as, mac);
 	if (acl != NULL)
