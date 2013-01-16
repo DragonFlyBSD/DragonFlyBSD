@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/netgraph7/dragonfly.h,v 1.1 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/globaldata.h>	/* curthread in mtx_assert() */
@@ -75,7 +73,7 @@ typedef void *		uma_fini;
 
 #define uma_zcreate(name, size, ctor, dtor, uminit, fini, align, flags)	\
 			objcache_create_mbacked(M_NETGRAPH, size,	\
-					NULL, 0,			\
+					0, 0,			\
 					bzero_ctor, NULL,		\
 					NULL)
 #define uma_zalloc(zone, flags)			\
