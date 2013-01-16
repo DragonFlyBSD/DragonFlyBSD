@@ -130,7 +130,9 @@ adhoc_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_node *ni;
 	enum ieee80211_state ostate;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",
@@ -294,7 +296,9 @@ adhoc_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 	uint8_t dir, type, subtype, qos;
 	uint8_t *bssid;
 	uint16_t rxseq;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	if (m->m_flags & M_AMPDU_MPDU) {
 		/*

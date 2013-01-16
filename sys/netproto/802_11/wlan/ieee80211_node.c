@@ -575,8 +575,8 @@ ieee80211_ibss_merge(struct ieee80211_node *ni)
 	struct ieee80211vap *vap = ni->ni_vap;
 #ifdef IEEE80211_DEBUG
 	struct ieee80211com *ic = ni->ni_ic;
-#endif
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	if (ni == vap->iv_bss ||
 	    IEEE80211_ADDR_EQ(ni->ni_bssid, vap->iv_bss->ni_bssid)) {
@@ -1094,7 +1094,9 @@ ieee80211_alloc_node(struct ieee80211_node_table *nt,
 	struct ieee80211com *ic = nt->nt_ic;
 	struct ieee80211_node *ni;
 	int hash;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	ni = ic->ic_node_alloc(vap, macaddr);
 	if (ni == NULL) {
@@ -1147,7 +1149,9 @@ ieee80211_tmp_node(struct ieee80211vap *vap,
 {
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_node *ni;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	ni = ic->ic_node_alloc(vap, macaddr);
 	if (ni != NULL) {
@@ -1367,7 +1371,9 @@ ieee80211_fakeup_adhoc_node(struct ieee80211vap *vap,
 	const uint8_t macaddr[IEEE80211_ADDR_LEN])
 {
 	struct ieee80211_node *ni;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
 	    "%s: mac<%s>\n", __func__, kether_ntoa(macaddr, ethstr));
@@ -1453,7 +1459,9 @@ ieee80211_add_neighbor(struct ieee80211vap *vap,
 	const struct ieee80211_scanparams *sp)
 {
 	struct ieee80211_node *ni;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
 	    "%s: mac<%s>\n", __func__, kether_ntoa(wh->i_addr2, ethstr));
@@ -1532,7 +1540,9 @@ ieee80211_find_rxnode_withkey(struct ieee80211com *ic,
 {
 	struct ieee80211_node_table *nt;
 	struct ieee80211_node *ni;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	nt = &ic->ic_sta;
 	if (nt->nt_keyixmap != NULL && keyix < nt->nt_keyixmax)
@@ -1658,7 +1668,9 @@ ieee80211_free_node(struct ieee80211_node *ni)
 #endif
 {
 	struct ieee80211_node_table *nt = ni->ni_table;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 #ifdef IEEE80211_DEBUG_REFCNT
 	IEEE80211_DPRINTF(ni->ni_vap, IEEE80211_MSG_NODE,
@@ -1706,7 +1718,9 @@ ieee80211_node_delucastkey(struct ieee80211_node *ni)
 	struct ieee80211_node *nikey;
 	ieee80211_keyix keyix;
 	int status;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	/*
 	 * NB: We must beware of LOR here; deleting the key
@@ -1752,7 +1766,9 @@ static void
 node_reclaim(struct ieee80211_node_table *nt, struct ieee80211_node *ni)
 {
 	ieee80211_keyix keyix;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	IEEE80211_DPRINTF(ni->ni_vap, IEEE80211_MSG_NODE,
 		"%s: remove %p<%s> from %s table, refcnt %d\n",

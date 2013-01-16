@@ -736,7 +736,9 @@ ath_rate_ctl_reset(struct ath_softc *sc, struct ieee80211_node *ni)
 	const struct ieee80211_txparam *tp = ni->ni_txparms;
 	struct sample_node *sn = ATH_NODE_SAMPLE(an);
 	const HAL_RATE_TABLE *rt = sc->sc_currates;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	int x, y, srate, rix;
 
 	KASSERT(rt != NULL, ("no rate table, mode %u", sc->sc_curmode));

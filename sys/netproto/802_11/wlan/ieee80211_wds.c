@@ -123,7 +123,9 @@ ieee80211_create_wds(struct ieee80211vap *vap, struct ieee80211_channel *chan)
 	struct ieee80211com *ic = vap->iv_ic;
 /*	struct ieee80211_node_table *nt = &ic->ic_sta;*/
 	struct ieee80211_node *ni, *obss;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_WDS,
 	     "%s: creating link to %s on channel %u\n", __func__,

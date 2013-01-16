@@ -1721,7 +1721,9 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	const struct ieee80211_rateset *rs;
 	struct mbuf *m;
 	uint8_t *frm;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	if (vap->iv_state == IEEE80211_S_CAC) {
 		IEEE80211_NOTE(vap, IEEE80211_MSG_OUTPUT, ni,
@@ -1870,7 +1872,9 @@ ieee80211_send_mgmt(struct ieee80211_node *ni, int type, int arg)
 	uint8_t *frm;
 	uint16_t capinfo;
 	int has_challenge, is_shared_key, ret, status;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	KASSERT(ni != NULL, ("null node"));
 
@@ -2381,7 +2385,9 @@ ieee80211_send_proberesp(struct ieee80211vap *vap,
 	struct ieee80211_node *bss = vap->iv_bss;
 	struct ieee80211com *ic = vap->iv_ic;
 	struct mbuf *m;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	if (vap->iv_state == IEEE80211_S_CAC) {
 		IEEE80211_NOTE(vap, IEEE80211_MSG_OUTPUT, bss,

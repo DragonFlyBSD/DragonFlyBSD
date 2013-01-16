@@ -5475,7 +5475,9 @@ ath_scan_start(struct ieee80211com *ic)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct ath_softc *sc = ifp->if_softc;
 	struct ath_hal *ah = sc->sc_ah;
+#ifdef ATH_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	u_int32_t rfilt;
 
 	/* XXX calibration timer? */
@@ -5496,7 +5498,9 @@ ath_scan_end(struct ieee80211com *ic)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct ath_softc *sc = ifp->if_softc;
 	struct ath_hal *ah = sc->sc_ah;
+#ifdef ATH_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	u_int32_t rfilt;
 
 	sc->sc_scanning = 0;
@@ -5554,7 +5558,9 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211_node *ni = NULL;
 	int i, error, stamode;
 	u_int32_t rfilt;
+#ifdef ATH_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	static const HAL_LED_STATE leds[] = {
 	    HAL_LED_INIT,	/* IEEE80211_S_INIT */
 	    HAL_LED_SCAN,	/* IEEE80211_S_SCAN */

@@ -492,7 +492,9 @@ int
 ieee80211_crypto_setkey(struct ieee80211vap *vap, struct ieee80211_key *key)
 {
 	const struct ieee80211_cipher *cip = key->wk_cipher;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	KASSERT(cip != NULL, ("No cipher!"));
 

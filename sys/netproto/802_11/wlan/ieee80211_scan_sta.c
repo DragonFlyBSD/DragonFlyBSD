@@ -954,7 +954,9 @@ match_bss(struct ieee80211vap *vap,
 	struct ieee80211_scan_entry *se = &se0->base;
         uint8_t rate;
         int fail;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	fail = 0;
 	if (isclr(ic->ic_chan_active, ieee80211_chan2ieee(ic, se->se_chan)))
