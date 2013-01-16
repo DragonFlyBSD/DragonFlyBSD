@@ -58,11 +58,13 @@ sf_pop (void)
 void
 sf_init (void)
 {
+    char membytes[21];
     assert(_sf_stk == NULL);
     _sf_stk = (scanflags_t*) flex_alloc ( sizeof(scanflags_t) * (_sf_max = 32));
-    if (!_sf_stk)
-        lerrsf_fatal(_("Unable to allocate %ld of stack"),
-            (long)sizeof(scanflags_t));
+    if (!_sf_stk) {
+        snprintf(membytes, 20, "%ld", (long)sizeof(scanflags_t));
+        lerrsf_fatal(_("Unable to allocate %s of stack"), membytes);
+    }
     _sf_stk[_sf_top_ix] = 0;
 }
 

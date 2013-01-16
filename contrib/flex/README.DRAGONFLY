@@ -1,0 +1,20 @@
+FLEX 2.5.37
+===========
+
+Original source can be downloaded from:
+http://flex.sourceforge.net
+
+file = flex-2.5.37.tar.bz2
+date = 03 August 2012
+size = 1303313
+sha1 = db4b140f2aff34c6197cab919828cc4146aae218
+
+A list of files and directories removed is in README.DELETED
+
+Local modifications applied to following files:
+	doc/flex.1  (fix bad version number)
+	flexdef.h   (add lerrs_fatal prototype)
+	scanflags.c (fix sf_init call to lerrs_fatal)
+	main.c      (fix ambiguous if-else)
+	buf.c       (fix discard const char qualifier)
+	filter.c    (fix declaring unused variables)
