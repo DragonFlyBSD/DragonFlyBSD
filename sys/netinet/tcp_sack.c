@@ -282,6 +282,20 @@ tcp_sack_report_cleanup(struct tcpcb *tp)
 }
 
 /*
+ * Whether SACK report is needed or not
+ */
+boolean_t
+tcp_sack_report_needed(const struct tcpcb *tp)
+{
+	if ((tp->sack_flags &
+	     (TSACK_F_DUPSEG | TSACK_F_ENCLOSESEG | TSACK_F_SACKLEFT)) ||
+	    tp->reportblk.rblk_start != tp->reportblk.rblk_end)
+		return TRUE;
+	else
+		return FALSE;
+}
+
+/*
  * Returns	0 if not D-SACK block,
  *		1 if D-SACK,
  *		2 if duplicate of out-of-order D-SACK block.

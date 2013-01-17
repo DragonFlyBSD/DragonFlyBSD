@@ -87,6 +87,7 @@
 
 #include <net/if_var.h>
 #include <net/route.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -154,9 +155,15 @@ static int tcp_do_tso = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, tso, CTLFLAG_RW,
     &tcp_do_tso, 0, "Enable TCP Segmentation Offload (TSO)");
 
+static int tcp_fairsend = 4;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, fairsend, CTLFLAG_RW,
+    &tcp_fairsend, 0,
+    "Amount of segments sent before yield to other senders or receivers");
+
 static void	tcp_idle_cwnd_validate(struct tcpcb *);
 
 static int	tcp_tso_getsize(struct tcpcb *tp, u_int *segsz, u_int *hlen);
+static void	tcp_output_sched(struct tcpcb *tp);
 
 /*
  * Tcp output routine: figure out what should be sent and send it.
@@ -188,6 +195,8 @@ tcp_output(struct tcpcb *tp)
 	boolean_t can_tso = FALSE, use_tso;
 	boolean_t report_sack, idle_cwv = FALSE;
 	u_int segsz, tso_hlen, tso_lenmax = 0;
+	int segcnt = 0;
+	boolean_t need_sched = FALSE;
 
 	KKASSERT(so->so_port == &curthread->td_msgport);
 
@@ -493,7 +502,10 @@ again:
 	if (len > segsz) {
 		if (!use_tso) {
 			len = segsz;
+			++segcnt;
 		} else {
+			int nsegs;
+
 			if (__predict_false(tso_lenmax < segsz))
 				tso_lenmax = segsz << 1;
 
@@ -504,14 +516,23 @@ again:
 			 * big-small-...).
 			 */
 			len = min(len, tso_lenmax);
-			len = (min(len, (IP_MAXPACKET - tso_hlen)) / segsz) *
-			    segsz;
-			if (len <= segsz)
+			nsegs = min(len, (IP_MAXPACKET - tso_hlen)) / segsz;
+			KKASSERT(nsegs > 0);
+
+			len = nsegs * segsz;
+
+			if (len <= segsz) {
 				use_tso = FALSE;
+				++segcnt;
+			} else {
+				segcnt += nsegs;
+			}
 		}
 		sendalot = TRUE;
 	} else {
 		use_tso = FALSE;
+		if (len > 0)
+			++segcnt;
 	}
 	if (SEQ_LT(tp->snd_nxt + len, tp->snd_una + so->so_snd.ssb_cc))
 		flags &= ~TH_FIN;
@@ -662,6 +683,11 @@ again:
 	return (0);
 
 send:
+	if (need_sched && len > 0) {
+		tcp_output_sched(tp);
+		return 0;
+	}
+
 	/*
 	 * Before ESTABLISHED, force sending of initial options
 	 * unless TCP set not to do any options.
@@ -1258,8 +1284,12 @@ out:
 	tp->t_flags &= ~(TF_ACKNOW | TF_XMITNOW);
 	if (tcp_delack_enabled)
 		tcp_callout_stop(tp, tp->tt_delack);
-	if (sendalot)
+	if (sendalot) {
+		if (tcp_fairsend > 0 && (tp->t_flags & TF_FAIRSEND) &&
+		    segcnt >= tcp_fairsend)
+			need_sched = TRUE;
 		goto again;
+	}
 	return (0);
 }
 
@@ -1386,4 +1416,69 @@ tcp_tso_getsize(struct tcpcb *tp, u_int *segsz, u_int *hlen0)
 	*segsz = tp->t_maxopd - optlen - ipoptlen;
 	*hlen0 = hlen;
 	return 0;
+}
+
+static void
+tcp_output_sched_handler(netmsg_t nmsg)
+{
+	struct tcpcb *tp = nmsg->lmsg.u.ms_resultp;
+
+	/* Reply ASAP */
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);
+	crit_exit();
+
+	tcp_output_fair(tp);
+}
+
+void
+tcp_output_init(struct tcpcb *tp)
+{
+	netmsg_init(tp->tt_sndmore, NULL, &netisr_adone_rport, MSGF_DROPABLE,
+	    tcp_output_sched_handler);
+	tp->tt_sndmore->lmsg.u.ms_resultp = tp;
+}
+
+void
+tcp_output_cancel(struct tcpcb *tp)
+{
+	crit_enter();
+	if ((tp->tt_sndmore->lmsg.ms_flags & MSGF_DONE) == 0) {
+		/*
+		 * This message is still pending to be processed;
+		 * drop it.
+		 */
+		lwkt_dropmsg(&tp->tt_sndmore->lmsg);
+	}
+	crit_exit();
+}
+
+boolean_t
+tcp_output_pending(struct tcpcb *tp)
+{
+	if ((tp->tt_sndmore->lmsg.ms_flags & MSGF_DONE) == 0)
+		return TRUE;
+	else
+		return FALSE;
+}
+
+static void
+tcp_output_sched(struct tcpcb *tp)
+{
+	crit_enter();
+	if (tp->tt_sndmore->lmsg.ms_flags & MSGF_DONE)
+		lwkt_sendmsg(netisr_portfn(mycpuid), &tp->tt_sndmore->lmsg);
+	crit_exit();
+}
+
+int
+tcp_output_fair(struct tcpcb *tp)
+{
+	int ret;
+
+	tp->t_flags |= TF_FAIRSEND;
+	ret = tcp_output(tp);
+	tp->t_flags &= ~TF_FAIRSEND;
+
+	return ret;
 }

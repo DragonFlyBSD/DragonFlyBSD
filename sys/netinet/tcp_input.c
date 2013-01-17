@@ -1353,8 +1353,9 @@ after_listen:
 					    tp->t_rxtcur, tcp_timer_rexmt);
 				}
 				sowwakeup(so);
-				if (so->so_snd.ssb_cc > 0)
-					tcp_output(tp);
+				if (so->so_snd.ssb_cc > 0 &&
+				    !tcp_output_pending(tp))
+					tcp_output_fair(tp);
 				return(IPPROTO_DONE);
 			}
 		} else if (tiwin == tp->snd_wnd &&
@@ -2569,8 +2570,13 @@ dodata:							/* XXX */
 	/*
 	 * Return any desired output.
 	 */
-	if (needoutput || (tp->t_flags & TF_ACKNOW))
-		tcp_output(tp);
+	if ((tp->t_flags & TF_ACKNOW) ||
+	    (needoutput && tcp_sack_report_needed(tp))) {
+		tcp_output_cancel(tp);
+		tcp_output_fair(tp);
+	} else if (needoutput && !tcp_output_pending(tp)) {
+		tcp_output_fair(tp);
+	}
 	tcp_sack_report_cleanup(tp);
 	return(IPPROTO_DONE);
 

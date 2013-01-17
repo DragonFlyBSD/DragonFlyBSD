@@ -131,6 +131,7 @@ struct scoreboard {
 };
 
 struct netmsg_tcp_timer;
+struct netmsg_base;
 
 /*
  * Tcp control block, one per tcp; fields:
@@ -148,6 +149,8 @@ struct tcpcb {
 	struct	tcp_callout *tt_2msl;	/* 2*msl TIME_WAIT timer */
 	struct	tcp_callout *tt_delack;	/* delayed ACK timer */
 	struct	netmsg_tcp_timer *tt_msg; /* timer message */
+
+	struct	netmsg_base *tt_sndmore;/* defer sending (fair send) */
 
 	struct	inpcb *t_inpcb;		/* back pointer to internet pcb */
 	int	t_state;		/* state of this connection */
@@ -179,7 +182,7 @@ struct tcpcb {
 #define	TF_UNUSED009	0x01000000
 #define	TF_FORCE	0x02000000	/* Set if forcing out a byte */
 #define TF_ONOUTPUTQ	0x04000000	/* on t_outputq list */
-#define TF_UNUSED002	0x08000000
+#define TF_FAIRSEND	0x08000000
 #define TF_UNUSED003	0x10000000
 #define TF_UNUSED004	0x20000000
 #define TF_KEEPALIVE	0x40000000	/* temporary keepalive */
@@ -645,7 +648,12 @@ void	 tcp_drop_syn_sent (struct inpcb *, int);
 void	 tcp_mtudisc (struct inpcb *, int);
 struct tcpcb *
 	 tcp_newtcpcb (struct inpcb *);
-int	 tcp_output (struct tcpcb *);
+int	 tcp_output(struct tcpcb *);
+int	 tcp_output_fair(struct tcpcb *);
+void	 tcp_output_init(struct tcpcb *);
+void	 tcp_output_cancel(struct tcpcb *);
+boolean_t
+	 tcp_output_pending(struct tcpcb *);
 void	 tcp_quench (struct inpcb *, int);
 void	 tcp_respond (struct tcpcb *, void *,
 	    struct tcphdr *, struct mbuf *, tcp_seq, tcp_seq, int);
@@ -655,6 +663,8 @@ int	 tcp_sack_bytes_below(const struct scoreboard *scb, tcp_seq seq);
 void	 tcp_sack_destroy(struct scoreboard *scb);
 void	 tcp_sack_discard(struct tcpcb *tp);
 void	 tcp_sack_report_cleanup(struct tcpcb *tp);
+boolean_t
+	 tcp_sack_report_needed(const struct tcpcb *tp);
 int	 tcp_sack_ndsack_blocks(const struct raw_sackblock *blocks,
 	    const int numblocks, tcp_seq snd_una);
 void	 tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen);

@@ -330,6 +330,7 @@ struct	inp_tp {
 	struct	tcp_callout inp_tp_2msl;
 	struct	tcp_callout inp_tp_delack;
 	struct	netmsg_tcp_timer inp_tp_timermsg;
+	struct	netmsg_base inp_tp_sndmore;
 };
 #undef ALIGNMENT
 #undef ALIGNM1
@@ -754,6 +755,10 @@ tcp_newtcpcb(struct inpcb *inp)
 	inp->inp_ip_ttl = ip_defttl;
 	inp->inp_ppcb = tp;
 	tcp_sack_tcpcb_init(tp);
+
+	tp->tt_sndmore = &it->inp_tp_sndmore;
+	tcp_output_init(tp);
+
 	return (tp);		/* XXX */
 }
 
@@ -991,6 +996,7 @@ no_valid_rt:
 	/* note: pcb detached later on */
 
 	tcp_destroy_timermsg(tp);
+	tcp_output_cancel(tp);
 
 	if (tp->t_flags & TF_LISTEN)
 		syncache_destroy(tp);
