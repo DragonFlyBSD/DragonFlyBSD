@@ -33,9 +33,8 @@
  */
 
 %{
-#define YY_NO_INPUT
-#define YY_NO_UNPUT
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -63,8 +62,10 @@ char linebuf[LINEBUF_SIZE];
 
 int parse(FILE **);
 void yyerror(const char *);
-int yylex(void);
 %}
+
+%option noinput
+%option nounput
 
 /* common section */
 nl		\n

@@ -18,6 +18,7 @@
  *
  * $FreeBSD: src/usr.bin/m4/tokenizer.l,v 1.3 2012/11/17 01:54:24 svnexp Exp $
  */
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include "parser.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -30,7 +31,6 @@ extern int32_t yylval;
 
 int32_t number(void);
 int32_t parse_radix(void);
-extern int yylex(void);
 %}
 
 delim	[ \t\n]

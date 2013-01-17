@@ -30,15 +30,14 @@
  * $FreeBSD: src/usr.sbin/bluetooth/hcsecd/lexer.l,v 1.1 2003/05/10 21:50:35 julian Exp $
  */
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <string.h>
 #include "parser.h"
 
-#define YY_NO_INPUT
-
-int yylex(void);
 %}
 
 %option yylineno noyywrap nounput
+%option noinput
 
 delim		[ \t\n]
 ws		{delim}+

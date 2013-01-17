@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/colldef/scan.l,v 1.11.2.2 2002/10/11 10:43:45 ache Exp $
- * $DragonFly: src/usr.bin/colldef/scan.l,v 1.4 2008/10/16 01:52:32 swildner Exp $
  */
 
 #include <ctype.h>
@@ -39,7 +38,7 @@
 #include "common.h"
 #include "y.tab.h"
 
-#define YY_NO_INPUT
+#pragma GCC diagnostic ignored "-Wsign-compare"
 
 int line_no = 1, save_no, fromsubs;
 static u_char buffer[BUFSIZE], *buf_ptr;
@@ -48,9 +47,10 @@ YY_BUFFER_STATE main_buf, map_buf;
 #ifdef FLEX_DEBUG
 YYSTYPE yylval;
 #endif /* FLEX_DEBUG */
-int yylex(void);
 
 %}
+%option noinput
+%option nounput
 %%
 <INITIAL,charmap,nchar,subs,subs2>[ \t]+      ;
 <subs2>\"               { buf_ptr = buffer; BEGIN(string); }

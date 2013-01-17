@@ -151,7 +151,6 @@ void	moveifchanged(const char *, const char *);
 void	init_dev(struct device *);       
 void	newbus_ioconf(void);
 int	yyparse(void);
-int	yylex(void);
 void	options(void);
 void	makefile(void);
 void	headers(void);

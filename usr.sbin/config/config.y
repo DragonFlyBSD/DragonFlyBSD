@@ -104,6 +104,7 @@ int	maxusers;
 static int connect(char *, int);
 static void yyerror(const char *s);
 
+int yylex(void);
 
 %}
 %%

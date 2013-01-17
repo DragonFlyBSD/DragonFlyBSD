@@ -31,6 +31,7 @@
  */
 
 %{
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/socket.h>
@@ -68,8 +69,6 @@
 
 #define PREPROC	DECHO CMDARG
 
-#define YY_NO_INPUT
-
 int lineno = 1;
 char cmdarg[8192]; /* XXX: BUFSIZ is the better ? */
 
@@ -77,7 +76,6 @@ extern u_char m_buf[BUFSIZ];
 extern u_int m_len;
 extern int f_debug;
 
-int yylex(void);
 void yyfatal(const char *s);
 void yyerror(const char *s);
 extern void parse_init(void);
@@ -85,6 +83,9 @@ int parse(FILE **);
 int yyparse(void);
 
 %}
+
+%option noinput
+%option nounput
 
 /* common section */
 nl		\n

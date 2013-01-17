@@ -29,6 +29,7 @@
  * $FreeBSD: src/sbin/devd/token.l,v 1.7 2008/03/21 20:38:28 imp Exp $
  */
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,8 +38,6 @@
 #include "y.tab.h"
 
 int lineno = 1;
-#define YY_NO_INPUT
-#define YY_NO_UNPUT
 
 static void
 update_lineno(const char *cp)
@@ -49,6 +48,9 @@ update_lineno(const char *cp)
 }
 
 %}
+
+%option nounput
+%option noinput
 
 %%
 

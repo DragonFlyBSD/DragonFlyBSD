@@ -33,16 +33,13 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.14 2008/05/01 09:24:42 swildner Exp $
  */
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <ctype.h>
 #include <string.h>
 #include "y.tab.h"
 #include "config.h"
-
-#define YY_NO_INPUT
-#define YY_NO_UNPUT
 
 /*
  * Key word table
@@ -89,6 +86,8 @@ int hex(char *);
 WORD	[A-Za-z_][-A-Za-z_]*
 ID	[A-Za-z_][-A-Za-z_0-9]*
 %START NONUM TOEOL
+%option noinput
+%option nounput
 %%
 <NONUM>{WORD}	{
 			int i;

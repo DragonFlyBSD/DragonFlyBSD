@@ -19,6 +19,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <err.h>
 #include <errno.h>
 #include <histedit.h>
@@ -30,8 +31,6 @@
 #include "extern.h"
 #include "pathnames.h"
 #include "y.tab.h"
-
-#define YY_NO_INPUT
 
 int		lineno;
 bool		interactive;
@@ -55,6 +54,7 @@ static int	bc_yyinput(char *, int);
 %}
 
 %option always-interactive
+%option noinput
 
 DIGIT		[0-9A-F]
 ALPHA		[a-z_]

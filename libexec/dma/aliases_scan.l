@@ -1,14 +1,13 @@
 %{
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <string.h>
 #include "aliases_parse.h"
 
-#define YY_NO_INPUT
-
-int yylex(void);
 %}
 
 %option yylineno
+%option noinput
 %option nounput
 
 %%

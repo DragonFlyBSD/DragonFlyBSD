@@ -1,5 +1,4 @@
 /*	$NetBSD: yacc.y,v 1.7 2006/09/09 14:35:17 tnozaki Exp $	*/
-/*	$DragonFly: src/usr.bin/mkcsmapper/yacc.y,v 1.3 2008/07/10 18:29:51 swildner Exp $	*/
 
 %{
 /*-
@@ -93,6 +92,8 @@ static void	put16(void *, size_t, u_int32_t);
 static void	put32(void *, size_t, u_int32_t);
 static void	set_range(u_int32_t, u_int32_t);
 static void	set_src(linear_zone_t *, u_int32_t, u_int32_t);
+
+int yylex (void);
 %}
 
 %union {
@@ -198,7 +199,7 @@ lns		: R_LN
 static void
 warning(const char *s)
 {
-	fprintf(stderr, "%s in %d\n", s, line_number);
+	fprintf(stderr, "%s in %d\n", s, aline_number);
 }
 
 int

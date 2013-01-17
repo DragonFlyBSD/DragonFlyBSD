@@ -25,7 +25,6 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 # $FreeBSD: src/usr.sbin/setkey/Makefile,v 1.1.2.5 2001/04/25 14:05:11 ru Exp $
-# $DragonFly: src/usr.sbin/setkey/Makefile,v 1.6 2004/11/16 22:04:37 joerg Exp $
 
 PROG=	setkey
 SRCS=	setkey.c parse.y token.l
@@ -44,7 +43,7 @@ CFLAGS+=-I${.CURDIR}/../../lib/libipsec -I${.CURDIR}/../../sys/netkey
 
 SRCS+=y.tab.h
 y.tab.h: parse.y
-CFLAGS+=-DIPSEC_DEBUG -DINET6 -DYY_NO_UNPUT -I.
+CFLAGS+=-DIPSEC_DEBUG -DINET6 -I.
 DPADD+=	${LIBIPSEC}
 LDADD+=	-lipsec
 CLEANFILES+=	scriptdump y.tab.h

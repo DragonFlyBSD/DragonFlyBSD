@@ -24,7 +24,7 @@ SUBDIR=		lib
 CFLAGS+= 	-I${CONTRIBDIR} -I${.OBJDIR} -I${.CURDIR}
 CFLAGS+=	-DHAVE_CONFIG_H
 
-WARNS?= 	2
+WARNS?= 	1
 
 # verbatim from vendor makefile
 flex_SOURCES = \
