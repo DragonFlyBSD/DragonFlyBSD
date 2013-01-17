@@ -2113,6 +2113,7 @@ TO_REMOVE+=/usr/share/man/cat2/aio_waitcomplete.2.gz
 TO_REMOVE+=/usr/share/man/man2/aio_waitcomplete.2.gz
 TO_REMOVE+=/usr/share/man/cat2/aio_write.2.gz
 TO_REMOVE+=/usr/share/man/man2/aio_write.2.gz
+TO_REMOVE+=/usr/include/c++/FlexLexer.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

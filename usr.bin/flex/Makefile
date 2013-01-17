@@ -17,7 +17,6 @@ MLINKS+=	flex.1 lex++.1
 MLINKS+=	flex.1 flex++.1
 
 INCS=		FlexLexer.h
-INCSDIR=	${INCLUDEDIR}/c++
 
 SUBDIR=		lib
 
