@@ -675,7 +675,7 @@ dmsg_crypto_decrypt(dmsg_iocom_t *iocom __unused, dmsg_ioq_t *ioq)
 {
 	int p_len;
 	int used;
-	int error;
+	__unused int error;	/* XXX */
 	char buf[512];
 
 	/*
@@ -721,7 +721,7 @@ dmsg_crypto_encrypt(dmsg_iocom_t *iocom __unused, dmsg_ioq_t *ioq,
 {
 	int p_len, used, ct_used;
 	int i;
-	int error;
+	__unused int error;	/* XXX */
 	size_t nmax;
 
 	nmax = sizeof(ioq->buf) - ioq->fifo_end;	/* max new bytes */
