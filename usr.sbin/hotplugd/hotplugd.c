@@ -35,7 +35,6 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <devattr.h>
-#include "compat.h"
 
 #define _PATH_DEV_HOTPLUG		"/dev/hotplug"
 #define _PATH_ETC_HOTPLUG		"/etc/hotplug"
@@ -61,7 +60,7 @@ volatile sig_atomic_t quit = 0;
 void exec_script(const char *, int, const char *);
 void sigchild(int);
 void sigquit(int);
-__dead void usage(void);
+__dead2 void usage(void);
 
 int
 main(int argc, char *argv[])
@@ -209,34 +208,30 @@ exec_script(const char *file, int class, const char *name)
 void
 sigchild(int signum __unused)
 {
-	struct syslog_data sdata = SYSLOG_DATA_INIT;
 	int saved_errno, status;
 	pid_t pid;
 
 	saved_errno = errno;
-
-	sdata.log_tag = _LOG_TAG;
-	sdata.log_fac = _LOG_FACILITY;
-	sdata.log_stat = _LOG_OPT;
 
 	while ((pid = waitpid(WAIT_ANY, &status, WNOHANG)) != 0) {
 		if (pid == -1) {
 			if (errno == EINTR)
 				continue;
 			if (errno != ECHILD)
-				syslog_r(LOG_ERR, &sdata, "waitpid: %m");
+				/* XXX syslog_r() */
+				syslog(LOG_ERR, "waitpid: %m");
 			break;
 		}
 
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status) != 0) {
-				syslog_r(LOG_NOTICE, &sdata,
-				    "child exit status: %d",
+				/* XXX syslog_r() */
+				syslog(LOG_NOTICE, "child exit status: %d",
 				    WEXITSTATUS(status));
 			}
 		} else {
-			syslog_r(LOG_NOTICE, &sdata,
-			    "child is terminated abnormally");
+			/* XXX syslog_r() */
+			syslog(LOG_NOTICE, "child is terminated abnormally");
 		}
 	}
 
@@ -250,7 +245,7 @@ sigquit(int signum __unused)
 	quit = 1;
 }
 
-__dead void
+__dead2 void
 usage(void)
 {
 	fprintf(stderr, "usage: %s [-d device]\n", __progname);
