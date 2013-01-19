@@ -41,7 +41,6 @@
  * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm_macro_gram.y#5 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_macro_gram.y,v 1.4 2006/12/29 13:08:46 yar Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_macro_gram.y,v 1.4 2007/07/07 01:47:51 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -68,7 +67,6 @@ static symbol_t *macro_symbol;
 static void add_macro_arg(const char *argtext, int position);
 
 extern int mmlex(void);
-extern int mmparse(void);
 
 %}
 
