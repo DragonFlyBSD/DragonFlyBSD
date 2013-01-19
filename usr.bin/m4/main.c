@@ -562,7 +562,7 @@ inspect(int c, char *tp)
 		return NULL;
 	}
 
-	p = ohash_find(&macros, ohash_qlookupi(&macros, name, (const char **)&tp));
+	p = ohash_find(&macros, ohash_qlookupi(&macros, name, (const char **)(void *)&tp));
 	if (p == NULL)
 		return NULL;
 	if (macro_getdef(p) == NULL)

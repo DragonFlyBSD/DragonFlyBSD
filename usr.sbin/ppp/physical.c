@@ -551,7 +551,7 @@ physical_DescriptorRead(struct fdescriptor *d, struct bundle *bundle,
 
   if (p->link.lcp.fsm.state <= ST_CLOSED) {
     if (p->type != PHYS_DEDICATED) {
-      found = hdlc_Detect((u_char const **)&rbuff, n, physical_IsSync(p));
+      found = hdlc_Detect((u_char const **)(void *)&rbuff, n, physical_IsSync(p));
       if (rbuff != p->input.buf)
         log_WritePrompts(p->dl, "%.*s", (int)(rbuff - p->input.buf),
                          p->input.buf);
