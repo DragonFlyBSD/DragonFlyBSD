@@ -30,10 +30,10 @@
 #define _VIRTIO_VIRTQUEUE_H
 
 #include <sys/types.h>
+#include <sys/serialize.h>
 
 struct virtqueue;
 struct sglist;
-struct spinlock;
 
 /* The guest publishes the used index for which it expects an interrupt
  * at the end of the avail ring. Host should ignore the avail->flags field.
@@ -84,7 +84,7 @@ int	 virtqueue_full(struct virtqueue *vq);
 int	 virtqueue_empty(struct virtqueue *vq);
 int	 virtqueue_size(struct virtqueue *vq);
 int	 virtqueue_nused(struct virtqueue *vq);
-void	 virtqueue_notify(struct virtqueue *vq, struct spinlock *);
+void	 virtqueue_notify(struct virtqueue *vq, lwkt_serialize_t);
 void	 virtqueue_dump(struct virtqueue *vq);
 
 int	 virtqueue_enqueue(struct virtqueue *vq, void *cookie,

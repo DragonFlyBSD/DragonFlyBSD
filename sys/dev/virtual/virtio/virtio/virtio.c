@@ -35,6 +35,7 @@
 
 #include <machine/inttypes.h>
 #include <sys/bus.h>
+#include <sys/serialize.h>
 #include <sys/rman.h>
 
 #include "virtio.h"
@@ -154,12 +155,8 @@ virtio_describe(device_t dev, const char *msg,
 	if (n > 0)
 		sbuf_cat(&sb, ">");
 
-#if __FreeBSD_version < 900020
-	sbuf_finish(&sb);
-	if (sbuf_overflowed(&sb) == 0)
-#else
-	if (sbuf_finish(&sb) == 0)
-#endif
+       sbuf_finish(&sb);
+       if (sbuf_overflowed(&sb) == 0)
 		device_printf(dev, "%s\n", sbuf_data(&sb));
 
 	sbuf_delete(&sb);
@@ -185,69 +182,60 @@ virtio_feature_name(uint64_t val, struct virtio_feature_desc *feature_desc)
 uint64_t
 virtio_negotiate_features(device_t dev, uint64_t child_features)
 {
-
 	return (VIRTIO_BUS_NEGOTIATE_FEATURES(device_get_parent(dev),
-	    child_features));
+		child_features));
 }
 
 int
 virtio_alloc_virtqueues(device_t dev, int flags, int nvqs,
     struct vq_alloc_info *info)
 {
-
 	return (VIRTIO_BUS_ALLOC_VIRTQUEUES(device_get_parent(dev), flags,
-	    nvqs, info));
+		nvqs, info));
 }
 
 int
-virtio_setup_intr(device_t dev)
+virtio_setup_intr(device_t dev, lwkt_serialize_t slz)
 {
-
-	return (VIRTIO_BUS_SETUP_INTR(device_get_parent(dev)));
+	return (VIRTIO_BUS_SETUP_INTR(device_get_parent(dev), slz));
 }
 
 int
 virtio_with_feature(device_t dev, uint64_t feature)
 {
-
 	return (VIRTIO_BUS_WITH_FEATURE(device_get_parent(dev), feature));
 }
 
 void
 virtio_stop(device_t dev)
 {
-
 	VIRTIO_BUS_STOP(device_get_parent(dev));
 }
 
 int
 virtio_reinit(device_t dev, uint64_t features)
 {
-
 	return (VIRTIO_BUS_REINIT(device_get_parent(dev), features));
 }
 
 void
 virtio_reinit_complete(device_t dev)
 {
-
 	VIRTIO_BUS_REINIT_COMPLETE(device_get_parent(dev));
 }
 
 void
 virtio_read_device_config(device_t dev, bus_size_t offset, void *dst, int len)
 {
-
 	VIRTIO_BUS_READ_DEVICE_CONFIG(device_get_parent(dev),
-	    offset, dst, len);
+				      offset, dst, len);
 }
 
 void
 virtio_write_device_config(device_t dev, bus_size_t offset, void *dst, int len)
 {
-
 	VIRTIO_BUS_WRITE_DEVICE_CONFIG(device_get_parent(dev),
-	    offset, dst, len);
+				       offset, dst, len);
 }
 
 static int
@@ -259,7 +247,6 @@ virtio_modevent(module_t mod, int type, void *unused)
 
 	switch (type) {
 	case MOD_LOAD:
-	//case MOD_QUIESCE:
 	case MOD_UNLOAD:
 	case MOD_SHUTDOWN:
 		break;
