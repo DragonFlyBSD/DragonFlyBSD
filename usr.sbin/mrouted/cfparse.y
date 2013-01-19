@@ -23,7 +23,6 @@ static char *		next_word(void);
 static int		yylex(void);
 static u_int32		valid_if(char *s);
 static struct ifreq *	ifconfaddr(struct ifconf *ifcp, u_int32 a);
-int			yyparse(void);
 
 static FILE *f;
 

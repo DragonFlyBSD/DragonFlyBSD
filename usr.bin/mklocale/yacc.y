@@ -73,7 +73,6 @@ void		*xmalloc(unsigned int sz);
 uint32_t	*xlalloc(unsigned int sz);
 uint32_t	*xrelalloc(uint32_t *old, unsigned int sz);
 void		dump_tables(void);
-int		yyparse(void);
 extern int	yylex(void);
 %}
 

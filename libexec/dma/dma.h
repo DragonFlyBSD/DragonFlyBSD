@@ -164,7 +164,6 @@ extern char neterr[ERRMSG_SIZE];
 extern char errmsg[ERRMSG_SIZE];
 
 /* aliases_parse.y */
-int yyparse(void);
 extern FILE *yyin;
 
 /* conf.c */

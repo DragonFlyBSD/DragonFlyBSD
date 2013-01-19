@@ -49,6 +49,7 @@
 #include "pathnames.h"
 
 extern FILE	*yyin;
+extern int	yyparse(void);
 static int read_file(const char *);
 static const char *default_game(void);
 static const char *okay_game(const char *);

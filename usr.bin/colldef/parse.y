@@ -43,7 +43,6 @@
 
 extern FILE *yyin;
 void yyerror(const char *fmt, ...) __printflike(1, 2);
-int yyparse(void);
 int yylex(void);
 static void usage(void);
 static void collate_print_tables(void);

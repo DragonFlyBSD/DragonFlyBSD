@@ -57,8 +57,6 @@ extern struct termios	tty_start, tty_new;
 
 extern DISPLACEMENT	displacement[MAXDIR];
 
-extern int	yyparse(void);
-
 /* graphics.c */
 extern void	done_screen(void);
 extern void	draw_all(void);

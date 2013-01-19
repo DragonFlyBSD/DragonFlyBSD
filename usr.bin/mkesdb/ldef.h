@@ -28,7 +28,6 @@
 
 extern int	aline_number;
 
-int	yyparse(void);
 int	yyerror(const char *);
 
 struct named_csid {

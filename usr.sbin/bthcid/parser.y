@@ -38,12 +38,12 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 #include "bthcid.h"
 
-	int	yyparse  (void);
 	int	yylex    (void);
 
 static	void	free_key (link_key_p key);

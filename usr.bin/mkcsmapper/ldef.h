@@ -35,5 +35,4 @@ typedef struct {
 extern int	aline_number;
 extern int	debug;
 
-int	yyparse(void);
 int	yyerror(const char *);
