@@ -95,9 +95,10 @@
  * 300300 - 3.3 master
  * 300301 - Add eaccess syscall
  * 300302 - fpsave changes - ucontext_t, mcontext_t, sigcontext, sigframe
+ * 300303 - Demarcation of old m4/flex with new m4/flex
 */
 #undef __DragonFly_version
-#define __DragonFly_version 300302	/* propagated to newvers */
+#define __DragonFly_version 300303	/* propagated to newvers */
 
 #include <sys/_null.h>
 

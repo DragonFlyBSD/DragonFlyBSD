@@ -25,12 +25,16 @@
 #include <errno.h>
 #include <stdint.h>
 #include <limits.h>
+#include <sys/param.h>
 
 extern int mimic_gnu;
 extern int32_t yylval;
 
 int32_t number(void);
 int32_t parse_radix(void);
+#if __DragonFly_version < 300303
+extern int yylex(void);
+#endif
 %}
 
 delim	[ \t\n]
