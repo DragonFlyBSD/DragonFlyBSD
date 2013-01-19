@@ -1141,8 +1141,10 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 	dmsg_lnk_span_t *lspan;
 	int count;
 	int maxcount = 2;
+#ifdef REQUIRE_SYMMETRICAL
 	uint32_t lastdist = DMSG_SPAN_MAXDIST;
 	uint32_t lastrnss = 0;
+#endif
 
 	info.node = node;
 	info.relay = NULL;
@@ -1288,8 +1290,10 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		       relay->source_rt->any.link->node != slink->node ||
 		       relay->source_rt->any.link->dist >= slink->dist);
 		relay = dmsg_generate_relay(conn, slink);
+#ifdef REQUIRE_SYMMETRICAL
 		lastdist = slink->dist;
 		lastrnss = slink->rnss;
+#endif
 
 		/*
 		 * Match (created new relay), get the next relay to
@@ -1321,10 +1325,7 @@ h2span_relay_t *
 dmsg_generate_relay(h2span_conn_t *conn, h2span_link_t *slink)
 {
 	h2span_relay_t *relay;
-	h2span_node_t *node;
 	dmsg_msg_t *msg;
-
-	node = slink->node;
 
 	relay = dmsg_alloc(sizeof(*relay));
 	relay->conn = conn;
@@ -1686,10 +1687,8 @@ dmsg_debug_findspan(uint64_t msgid, dmsg_state_t **statep)
 	h2span_cluster_t *cls;
 	h2span_node_t *node;
 	h2span_link_t *slink;
-	h2span_relay_t *relay;
 
 	pthread_mutex_lock(&cluster_mtx);
-	relay = NULL;
 	RB_FOREACH(cls, h2span_cluster_tree, &cluster_tree) {
 		RB_FOREACH(node, h2span_node_tree, &cls->tree) {
 			RB_FOREACH(slink, h2span_link_tree, &node->tree) {
