@@ -43,6 +43,13 @@
  * #pragma	STDC CX_LIMITED_RANGE	ON
  */
 
+/*
+ * XXX: gcc47 really shouldn't warn here on i386, exclude from -Werror for now
+ */
+#if defined(__i386__) && __GNUC_PREREQ__(4, 7)
+#pragma GCC diagnostic warning "-Woverflow"
+#endif
+
 /* We risk spurious overflow for components >= LDBL_MAX / (1 + sqrt(2)). */
 #define	THRESH	(LDBL_MAX / 2.414213562373095048801688724209698L)
 
