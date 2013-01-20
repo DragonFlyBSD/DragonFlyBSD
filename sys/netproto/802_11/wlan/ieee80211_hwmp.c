@@ -686,7 +686,9 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	struct ieee80211_hwmp_route *hrorig;
 	struct ieee80211_hwmp_state *hs = vap->iv_hwmp;
 	struct ieee80211_meshprep_ie prep;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	if (ni == vap->iv_bss ||
 	    ni->ni_mlstate != IEEE80211_NODE_MESH_ESTABLISHED)
@@ -950,7 +952,9 @@ hwmp_recv_prep(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ifnet *ifp = vap->iv_ifp;
 	struct mbuf *m, *next;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	/*
 	 * Acceptance criteria: if the corresponding PREQ was not generated
@@ -1156,7 +1160,9 @@ hwmp_recv_perr(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	struct ieee80211_hwmp_route *hr;
  	struct ieee80211_meshperr_ie pperr;
 	int i, forward = 0;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	/*
 	 * Acceptance criteria: check if we received a PERR from a
@@ -1301,7 +1307,9 @@ hwmp_discover(struct ieee80211vap *vap,
 	struct ieee80211_meshpreq_ie preq;
 	struct ieee80211_node *ni;
 	int sendpreq = 0;
+#ifdef IEEE80211_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	KASSERT(vap->iv_opmode == IEEE80211_M_MBSS,
 	    ("not a mesh vap, opmode %d", vap->iv_opmode));
