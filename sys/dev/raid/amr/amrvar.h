@@ -56,6 +56,8 @@
  *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.39 2012/08/31 09:42:46 scottl Exp $
  */
 
+#include "opt_amr.h"
+
 #include <sys/buf2.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>

@@ -61,8 +61,6 @@
  * Driver for the AMI MegaRaid family of controllers.
  */
 
-#include "opt_amr.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
