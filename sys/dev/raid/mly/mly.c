@@ -2622,6 +2622,7 @@ mly_print_packet(struct mly_command *mc)
     struct mly_command_scsi_large	*sl = (struct mly_command_scsi_large *)mc->mc_packet;
     struct mly_command_ioctl		*io = (struct mly_command_ioctl *)mc->mc_packet;
     int					transfer;
+    char				hexstr[HEX_NCPYLEN(MLY_CMD_SCSI_SMALL_CDB)];
 
     mly_printf(sc, "   command_id           %d\n", ge->command_id);
     mly_printf(sc, "   opcode               %d\n", ge->opcode);
@@ -2648,7 +2649,8 @@ mly_print_packet(struct mly_command *mc)
     case MDACMD_SCSIPT:
     case MDACMD_SCSI:
 	mly_printf(sc, "   cdb length           %d\n", ss->cdb_length);
-	mly_printf(sc, "   cdb                  %*D\n", ss->cdb_length, ss->cdb, " ");
+	mly_printf(sc, "   cdb                  %s\n", hexncpy(ss->cdb, ss->cdb_length,
+		hexstr, HEX_NCPYLEN(ss->cdb_length), " ");
 	transfer = 1;
 	break;
     case MDACMD_SCSILC:

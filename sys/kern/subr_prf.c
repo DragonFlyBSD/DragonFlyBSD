@@ -553,10 +553,6 @@ ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
  * would produce output:
  *
  *	reg=3<BITTWO,BITONE>
- *
- * XXX:  %D  -- Hexdump, takes pointer and separator string:
- *		("%6D", ptr, ":")   -> XX:XX:XX:XX:XX:XX
- *		("%*D", len, ptr, " " -> XX XX XX XX ...
  */
 
 #define PCHAR(c) {int cc=(c); if(func) (*func)(cc,arg); else *d++=cc; retval++;}

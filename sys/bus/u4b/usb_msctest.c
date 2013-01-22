@@ -465,6 +465,10 @@ bbb_command_start(struct bbb_transfer *sc, uint8_t dir, uint8_t lun,
     void *data_ptr, size_t data_len, void *cmd_ptr, size_t cmd_len,
     usb_timeout_t data_timeout)
 {
+#ifdef USB_DEBUG
+	char hexstr[HEX_NCPYLEN(CBWCDBLENGTH)];
+#endif
+
 	sc->lun = lun;
 	sc->dir = data_len ? dir : DIR_NONE;
 	sc->data_ptr = data_ptr;
@@ -475,8 +479,8 @@ bbb_command_start(struct bbb_transfer *sc, uint8_t dir, uint8_t lun,
 	sc->cmd_len = cmd_len;
 	memset(&sc->cbw.CBWCDB, 0, sizeof(sc->cbw.CBWCDB));
 	memcpy(&sc->cbw.CBWCDB, cmd_ptr, cmd_len);
-	DPRINTFN(1, "SCSI cmd = %*D\n", (int)cmd_len, (char *)sc->cbw.CBWCDB, ":");
-
+	DPRINTFN(1, "SCSI cmd = %s\n", hexncpy(sc->cbw.CBWCDB, cmd_len,
+		hexstr, HEX_NCPYLEN(cmd_len), ":"));
 	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	usbd_transfer_start(sc->xfer[sc->state]);
 
