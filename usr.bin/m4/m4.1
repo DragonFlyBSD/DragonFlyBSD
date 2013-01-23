@@ -40,7 +40,7 @@
 .Nm m4
 .Nd macro language processor
 .Sh SYNOPSIS
-.Nm m4
+.Nm
 .Op Fl gPs
 .Oo
 .Sm off
@@ -57,11 +57,11 @@
 .Ek
 .Sh DESCRIPTION
 The
-.Nm m4
+.Nm
 utility is a macro processor that can be used as a front end to any
 language (e.g., C, ratfor, fortran, lex, and yacc).
 If no input files are given,
-.Nm m4
+.Nm
 reads from the standard input,
 otherwise files specified on the command line are
 processed in the given order.
@@ -69,7 +69,7 @@ Input files can be regular files, files in the m4 include paths, or a
 single dash
 .Pq Sq - ,
 denoting standard input.
-.Nm m4
+.Nm
 writes
 the processed text to the standard output, unless told otherwise.
 .Pp
@@ -169,7 +169,7 @@ Undefine the symbol
 .Ar name .
 .El
 .Sh SYNTAX
-.Nm m4
+.Nm
 provides the following built-in macros.
 They may be redefined, losing their original meaning.
 Return values are null unless otherwise stated.
@@ -240,7 +240,7 @@ macro definitions (even for built-in macros).
 .It Fn divert num
 There are 10 output queues (numbered 0-9).
 At the end of processing
-.Nm m4
+.Nm
 concatenates all the queues in numerical order to produce the
 final output.
 Initially the output queue is 0.
@@ -259,7 +259,7 @@ Prints the first argument on the standard error output stream.
 .It Fn esyscmd cmd
 Passes its first argument to a shell and returns the shell's standard output.
 Note that the shell shares its standard input and standard error with
-.Nm m4 .
+.Nm .
 .It Fn eval expr
 Computes the first argument as an arithmetic expression using 32-bit
 arithmetic.
@@ -480,7 +480,7 @@ replaces the top-most definition only.
 Other implementations may erase all definitions on the stack instead.
 .Pp
 All built-ins do expand without arguments in many other
-.Nm m4 .
+.Nm .
 .Pp
 Many other
 .Nm
