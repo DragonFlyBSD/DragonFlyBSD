@@ -150,7 +150,7 @@ struct tcpcb {
 	struct	tcp_callout *tt_delack;	/* delayed ACK timer */
 	struct	netmsg_tcp_timer *tt_msg; /* timer message */
 
-	struct	netmsg_base *tt_sndmore;/* defer sending (fair send) */
+	struct	netmsg_base *tt_sndmore;/* send more segments (fairsend) */
 
 	struct	inpcb *t_inpcb;		/* back pointer to internet pcb */
 	int	t_state;		/* state of this connection */
@@ -182,7 +182,7 @@ struct tcpcb {
 #define	TF_UNUSED009	0x01000000
 #define	TF_FORCE	0x02000000	/* Set if forcing out a byte */
 #define TF_ONOUTPUTQ	0x04000000	/* on t_outputq list */
-#define TF_FAIRSEND	0x08000000
+#define TF_FAIRSEND	0x08000000	/* fairsend is requested */
 #define TF_UNUSED003	0x10000000
 #define TF_UNUSED004	0x20000000
 #define TF_KEEPALIVE	0x40000000	/* temporary keepalive */

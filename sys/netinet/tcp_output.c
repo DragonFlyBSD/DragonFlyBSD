@@ -1471,6 +1471,26 @@ tcp_output_sched(struct tcpcb *tp)
 	crit_exit();
 }
 
+/*
+ * Fairsend
+ *
+ * Yield to other senders or receivers on the same netisr if the current
+ * TCP stream has sent tcp_fairsend segments and is going to burst more
+ * segments.  Bursting large amount of segements in a single TCP stream
+ * could delay other senders' segments and receivers' ACKs quite a lot,
+ * if others segments and ACKs are queued on to the same hardware transmit
+ * queue; thus cause unfairness between senders and suppress receiving
+ * performance.
+ * 
+ * Fairsend should be performed at the places that do not affect segment
+ * sending during congestion control, e.g.
+ * - User requested output
+ * - ACK input triggered output
+ *
+ * NOTE:
+ * For devices that are TSO capable, their TSO aggregation size limit could
+ * affect fairsend.
+ */
 int
 tcp_output_fair(struct tcpcb *tp)
 {
