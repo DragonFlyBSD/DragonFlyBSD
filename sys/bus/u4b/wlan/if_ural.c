@@ -20,9 +20,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*-
  * Ralink Technology RT2500USB chipset driver
  * http://www.ralinktech.com/
@@ -1847,6 +1844,9 @@ static void
 ural_set_bssid(struct ural_softc *sc, const uint8_t *bssid)
 {
 	uint16_t tmp;
+#ifdef USB_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	tmp = bssid[0] | bssid[1] << 8;
 	ural_write(sc, RAL_MAC_CSR5, tmp);
@@ -1857,13 +1857,16 @@ ural_set_bssid(struct ural_softc *sc, const uint8_t *bssid)
 	tmp = bssid[4] | bssid[5] << 8;
 	ural_write(sc, RAL_MAC_CSR7, tmp);
 
-	DPRINTF("setting BSSID to %6D\n", bssid, ":");
+	DPRINTF("setting BSSID to %s\n", kether_ntoa(bssid, ethstr));
 }
 
 static void
 ural_set_macaddr(struct ural_softc *sc, uint8_t *addr)
 {
 	uint16_t tmp;
+#ifdef USB_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	tmp = addr[0] | addr[1] << 8;
 	ural_write(sc, RAL_MAC_CSR2, tmp);
@@ -1874,7 +1877,7 @@ ural_set_macaddr(struct ural_softc *sc, uint8_t *addr)
 	tmp = addr[4] | addr[5] << 8;
 	ural_write(sc, RAL_MAC_CSR4, tmp);
 
-	DPRINTF("setting MAC address to %6D\n", addr, ":");
+	DPRINTF("setting MAC address to %s\n", kether_ntoa(addr, ethstr));
 }
 
 static void

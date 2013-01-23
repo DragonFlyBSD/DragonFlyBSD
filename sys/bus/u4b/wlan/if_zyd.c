@@ -2680,6 +2680,9 @@ zyd_init_locked(struct zyd_softc *sc)
 	struct usb_config_descriptor *cd;
 	int error;
 	uint32_t val;
+#ifdef USB_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	ZYD_LOCK_ASSERT(sc, MA_OWNED);
 
@@ -2731,8 +2734,8 @@ zyd_init_locked(struct zyd_softc *sc)
 	if (ifp->if_drv_flags & IFF_DRV_RUNNING)
 		zyd_stop(sc);
 
-	DPRINTF(sc, ZYD_DEBUG_INIT, "setting MAC address to %6D\n",
-	    IF_LLADDR(ifp), ":");
+	DPRINTF(sc, ZYD_DEBUG_INIT, "setting MAC address to %s\n",
+	    kether_ntoa(IF_LLADDR(ifp), ethstr));
 	error = zyd_set_macaddr(sc, IF_LLADDR(ifp));
 	if (error != 0)
 		return;

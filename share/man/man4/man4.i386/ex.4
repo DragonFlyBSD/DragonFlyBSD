@@ -24,7 +24,6 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/ex.4,v 1.9.2.6 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/ex.4,v 1.4 2007/02/25 12:03:07 swildner Exp $
 .\"
 .Dd January 19, 1997
 .Dt EX 4 i386
@@ -46,7 +45,7 @@ read from the EEPROM on the card.  For correct operation on newer
 cards the Plug-N-Play support should be disabled.
 .Sh DIAGNOSTICS
 .Bl -diag
-.It "ex%d: Intel EtherExpress Pro/10, address %6D, connector %s"
+.It "ex%d: Intel EtherExpress Pro/10, address XX:XX:XX:XX:XX:XX, connector %s"
 The device probe found an installed card, and was able to correctly install
 the device driver.
 .It "ex%d: WARNING: board's EEPROM is configured for IRQ %d, using %d"
