@@ -692,6 +692,8 @@ udp6_connect(netmsg_t msg)
 			}
 			in6_sin6_2_sin(&sin, sin6_p);
 			crit_enter();
+			if (inp->inp_flags & INP_WILDCARD)
+				in_pcbremwildcardhash(inp);
 			error = in_pcbconnect(inp, (struct sockaddr *)&sin, td);
 			crit_exit();
 			if (error == 0) {
