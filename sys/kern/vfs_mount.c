@@ -1247,20 +1247,27 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct vflush_info *info = data;
 	struct vattr vattr;
+	int flags = info->flags;
 
 	/*
 	 * Skip over a vnodes marked VSYSTEM.
 	 */
-	if ((info->flags & SKIPSYSTEM) && (vp->v_flag & VSYSTEM)) {
+	if ((flags & SKIPSYSTEM) && (vp->v_flag & VSYSTEM)) {
 		return(0);
 	}
+
+	/*
+	 * Do not force-close VCHR or VBLK vnodes
+	 */
+	if (vp->v_type == VCHR || vp->v_type == VBLK)
+		flags &= ~(WRITECLOSE|FORCECLOSE);
 
 	/*
 	 * If WRITECLOSE is set, flush out unlinked but still open
 	 * files (even if open only for reading) and regular file
 	 * vnodes open for writing. 
 	 */
-	if ((info->flags & WRITECLOSE) &&
+	if ((flags & WRITECLOSE) &&
 	    (vp->v_type == VNON ||
 	    (VOP_GETATTR(vp, &vattr) == 0 &&
 	    vattr.va_nlink > 0)) &&
@@ -1282,7 +1289,7 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 	 * it to a dummymount structure so vop_*() functions don't deref
 	 * a NULL pointer.
 	 */
-	if (info->flags & FORCECLOSE) {
+	if (flags & FORCECLOSE) {
 		vhold(vp);
 		vgone_vxlocked(vp);
 		if (vp->v_mount == NULL)
@@ -1290,6 +1297,8 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 		vdrop(vp);
 		return(0);
 	}
+	if (vp->v_type == VCHR || vp->v_type == VBLK)
+		kprintf("vflush: Warning, cannot destroy busy device vnode\n");
 #ifdef DIAGNOSTIC
 	if (busyprt)
 		vprint("vflush: busy vnode", vp);
