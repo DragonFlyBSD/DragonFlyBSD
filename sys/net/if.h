@@ -272,7 +272,7 @@ struct	ifreq {
 #define	ifr_reqcap	ifr_ifru.ifru_cap[0]	/* requested capabilities */
 #define	ifr_curcap	ifr_ifru.ifru_cap[1]	/* current capabilities */
 #define	ifr_index	ifr_ifru.ifru_index	/* interface index */
-#define ifr_pollcpu	ifr_ifru.ifru_pollcpu	/* polling(4) cpu */
+#define ifr_pollcpu	ifr_ifru.ifru_pollcpu	/* deprecated */
 #define ifr_tsolen	ifr_ifru.ifru_tsolen	/* max TSO length */
 };
 
