@@ -236,6 +236,16 @@ TMPPID!=	echo $$$$
 # 5. install stage (optional) [IMAKE]
 #	This stage installs a previously built world.
 #
+# In all cases we must carefully adjust the environment so the proper
+# tools and header files are used.
+#
+# NOTE: The M4 environment variable is used by the [f]lex binary to
+#	override the location of the 'm4' binary.  The override is
+#	needed for certain buildworld version transitions, specifically
+#	past a certain point in 3.3 because the older /usr/bin/m4 will
+#	generate output that will blow up the newer [f]lex/yacc/bison
+#	utilities.
+#
 
 # bootstrap-tool stage
 #
@@ -243,6 +253,7 @@ BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
 		DESTDIR=${BTOOLSDEST} \
 		PATH=${BTOOLSPATH}:${PATH} \
+		M4=${BTOOLSDEST}/usr/bin/m4 \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
 BMAKE=		${BMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
@@ -255,6 +266,7 @@ TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
 		DESTDIR= \
 		PATH=${BTOOLSPATH}:${PATH} \
+		M4=${BTOOLSDEST}/usr/bin/m4 \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
 TMAKE=		${TMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
@@ -273,6 +285,7 @@ XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh" \
 		TOOLS_PREFIX=${CTOOLSDEST} \
 		USRDATA_PREFIX=${WORLDDEST} \
+		M4=${BTOOLSDEST}/usr/bin/m4 \
 		PATH=${BTOOLSPATH}:${PATH}
 
 XMAKE=		${XMAKEENV} make -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB \
@@ -299,6 +312,7 @@ CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 WMAKEENV=	${CROSSENV} \
 		DESTDIR=${WORLDDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh" \
+		M4=${BTOOLSDEST}/usr/bin/m4 \
 		PATH=${STRICTTMPPATH}
 
 WMAKE=		${WMAKEENV} make -f Makefile.inc1
@@ -761,14 +775,21 @@ installmost:
 _strfile=	games/fortune/strfile
 .endif
 
-BSTRAPDIRS= ${_strfile} \
+# BSTRAPDIRS1 - must be built in strict order, no parallelism
+#
+BSTRAPDIRS1= ${_strfile} \
 	usr.bin/patch \
 	bin/chmod bin/cp bin/cpdup bin/dd bin/mkdir bin/rm bin/echo \
 	bin/test bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh \
 	bin/hostname bin/kill \
 	usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \
 	usr.bin/m4 usr.bin/rpcgen usr.bin/bmake usr.bin/awk usr.bin/stat \
-	usr.bin/find usr.bin/flex usr.bin/sed usr.bin/uname usr.bin/touch \
+	usr.bin/find usr.bin/flex
+
+# BSTRAPDIRS2 - may built in parallel
+#
+BSTRAPDIRS2= \
+	usr.bin/sed usr.bin/uname usr.bin/touch \
 	usr.bin/mkdep usr.bin/mktemp usr.bin/lorder usr.bin/file2c \
 	usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
 	usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
@@ -781,17 +802,21 @@ BSTRAPDIRS= ${_strfile} \
 	gnu/usr.bin/texinfo gnu/usr.bin/grep usr.bin/sort \
 	usr.bin/gzip usr.bin/bzip2 usr.bin/mkcsmapper usr.bin/mkesdb
 
-bootstrap-tools: bootstrap-tools-before bootstrap-tools-targets
+bootstrap-tools: bootstrap-tools-before bootstrap-tools-targets1 bootstrap-tools-targets2
 	touch ${BTOOLSDEST}/.bootstrap_done
 
 bootstrap-tools-before:
 	${LN} -fs /bin/date ${BTOOLSDEST}/bin/date
 
-bootstrap-tools-targets: ${BSTRAPDIRS:S/^/bstrap-/}
+bootstrap-tools-targets1: ${BSTRAPDIRS1:S/^/bstrap-/}
 
-.ORDER: bootstrap-tools-before bootstrap-tools-targets
+bootstrap-tools-targets2: ${BSTRAPDIRS2:S/^/bstrap-/}
 
-.for _tool in ${BSTRAPDIRS}
+.ORDER: bootstrap-tools-before bootstrap-tools-targets1 bootstrap-tools-targets2
+
+.ORDER: ${BSTRAPDIRS1:S/^/bstrap-/}
+
+.for _tool in ${BSTRAPDIRS1} ${BSTRAPDIRS2}
 bstrap-${_tool}!
 	${ECHODIR} "===> ${_tool} (bootstrap-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
