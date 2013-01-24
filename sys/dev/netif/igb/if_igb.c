@@ -143,6 +143,7 @@ static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
 static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
+static int	igb_get_rxring_inuse(const struct igb_softc *, boolean_t);
 #ifdef IFPOLL_ENABLE
 static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
@@ -3051,14 +3052,16 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		}
 
 		if (ifp->if_flags & IFF_RUNNING) {
-			if (sc->rx_ring_inuse == sc->rx_ring_cnt)
+			if (igb_get_rxring_inuse(sc, TRUE) ==
+			    sc->rx_ring_inuse)
 				igb_disable_intr(sc);
 			else
 				igb_init(sc);
 		}
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
-			if (sc->rx_ring_inuse == sc->rx_ring_cnt)
+			if (igb_get_rxring_inuse(sc, FALSE) ==
+			    sc->rx_ring_inuse)
 				igb_enable_intr(sc);
 			else
 				igb_init(sc);
@@ -4371,19 +4374,25 @@ igb_msix_status(void *arg)
 static void
 igb_set_ring_inuse(struct igb_softc *sc, boolean_t polling)
 {
-	if (!IGB_ENABLE_HWRSS(sc))
-		return;
-
-	if (polling)
-		sc->rx_ring_inuse = sc->rx_ring_cnt;
-	else if (sc->intr_type != PCI_INTR_TYPE_MSIX)
-		sc->rx_ring_inuse = IGB_MIN_RING_RSS;
-	else
-		sc->rx_ring_inuse = sc->rx_ring_msix;
+	sc->rx_ring_inuse = igb_get_rxring_inuse(sc, polling);
 	if (bootverbose) {
 		if_printf(&sc->arpcom.ac_if, "RX rings %d/%d\n",
 		    sc->rx_ring_inuse, sc->rx_ring_cnt);
 	}
+}
+
+static int
+igb_get_rxring_inuse(const struct igb_softc *sc, boolean_t polling)
+{
+	if (!IGB_ENABLE_HWRSS(sc))
+		return 1;
+
+	if (polling)
+		return sc->rx_ring_cnt;
+	else if (sc->intr_type != PCI_INTR_TYPE_MSIX)
+		return IGB_MIN_RING_RSS;
+	else
+		return sc->rx_ring_msix;
 }
 
 static int
