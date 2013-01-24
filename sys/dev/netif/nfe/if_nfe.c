@@ -118,7 +118,7 @@ static int	nfe_rxeof(struct nfe_softc *);
 static int	nfe_txeof(struct nfe_softc *, int);
 static int	nfe_encap(struct nfe_softc *, struct nfe_tx_ring *,
 			  struct mbuf *);
-static void	nfe_start(struct ifnet *);
+static void	nfe_start(struct ifnet *, struct ifaltq_subque *);
 static void	nfe_watchdog(struct ifnet *);
 static void	nfe_init(void *);
 static void	nfe_stop(struct nfe_softc *);
@@ -1356,13 +1356,14 @@ back:
 }
 
 static void
-nfe_start(struct ifnet *ifp)
+nfe_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct nfe_softc *sc = ifp->if_softc;
 	struct nfe_tx_ring *ring = &sc->txq;
 	int count = 0, oactive = 0;
 	struct mbuf *m0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))

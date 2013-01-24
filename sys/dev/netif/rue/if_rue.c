@@ -134,7 +134,7 @@ static void rue_rxeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 static void rue_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 static void rue_tick(void *);
 static void rue_rxstart(struct ifnet *);
-static void rue_start(struct ifnet *);
+static void rue_start(struct ifnet *, struct ifaltq_subque *);
 static int rue_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void rue_init(void *);
 static void rue_stop(struct rue_softc *);
@@ -979,10 +979,12 @@ rue_encap(struct rue_softc *sc, struct mbuf *m, int idx)
 }
 
 static void
-rue_start(struct ifnet *ifp)
+rue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct rue_softc	*sc = ifp->if_softc;
 	struct mbuf		*m_head = NULL;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	RUE_LOCK(sc);
 

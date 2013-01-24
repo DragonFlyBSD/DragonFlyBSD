@@ -79,7 +79,7 @@ static usb_proc_callback_t ue_start_task;
 static usb_proc_callback_t ue_stop_task;
 
 static void	ue_init(void *);
-static void	ue_start(struct ifnet *);
+static void	ue_start(struct ifnet *, struct ifaltq_subque *);
 static int	ue_ifmedia_upd(struct ifnet *);
 static void	ue_watchdog(void *);
 
@@ -393,16 +393,18 @@ ue_stop_task(struct usb_proc_msg *_task)
 }
 
 void
-uether_start(struct ifnet *ifp)
+uether_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 
 	ue_start(ifp);
 }
 
 static void
-ue_start(struct ifnet *ifp)
+ue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct usb_ether *ue = ifp->if_softc;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;

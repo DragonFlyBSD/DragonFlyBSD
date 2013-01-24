@@ -125,6 +125,7 @@ char *procstatenames[] = {
 /* these are for detailing the cpu states */
 #define CPU_STATES 5
 int *cpu_states;
+int* cpu_averages;
 char *cpustatenames[CPU_STATES + 1] = {
 	"user", "nice", "system", "interrupt", "idle", NULL
 };
@@ -344,9 +345,28 @@ get_system_info(struct system_info *si)
 	lastpid = 0;
 
 	/* convert cp_time counts to percentages */
+	int combine_cpus = (enable_ncpus == 0 && n_cpus > 1);
 	for (cpu = 0; cpu < n_cpus; ++cpu) {
 		cputime_percentages(cpu_states + cpu * CPU_STATES,
 		    &cp_time[cpu], &cp_old[cpu]);
+	}
+	if (combine_cpus) {
+		if (cpu_averages == NULL) {
+			cpu_averages = malloc(sizeof(*cpu_averages) * CPU_STATES);
+			if (cpu_averages == NULL)
+				err(1, "cpu_averages");
+		}
+		bzero(cpu_averages, sizeof(*cpu_averages) * CPU_STATES);
+		for (cpu = 0; cpu < n_cpus; ++cpu) {
+			int j = 0;
+			cpu_averages[0] += *(cpu_states + ((cpu * CPU_STATES) + j++) );
+			cpu_averages[1] += *(cpu_states + ((cpu * CPU_STATES) + j++) );
+			cpu_averages[2] += *(cpu_states + ((cpu * CPU_STATES) + j++) );
+			cpu_averages[3] += *(cpu_states + ((cpu * CPU_STATES) + j++) );
+			cpu_averages[4] += *(cpu_states + ((cpu * CPU_STATES) + j++) );
+		}
+		for (int i = 0; i < CPU_STATES; ++i)
+			cpu_averages[i] /= n_cpus;
 	}
 
 	/* sum memory & swap statistics */
@@ -404,7 +424,8 @@ get_system_info(struct system_info *si)
 	}
 
 	/* set arrays and strings */
-	si->cpustates = cpu_states;
+	si->cpustates = combine_cpus == 1 ?
+	    cpu_averages : cpu_states;
 	si->memory = memory_stats;
 	si->swap = swap_stats;
 

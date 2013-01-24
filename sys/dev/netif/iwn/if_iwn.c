@@ -23,8 +23,6 @@
  * adapters.
  */
 
-/* $FreeBSD$ */
-
 #include <sys/param.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
@@ -164,7 +162,7 @@ static int	iwn_tx_data(struct iwn_softc *, struct mbuf *,
 		    struct ieee80211_node *, struct iwn_tx_ring *);
 static int	iwn_raw_xmit(struct ieee80211_node *, struct mbuf *,
 		    const struct ieee80211_bpf_params *);
-static void	iwn_start(struct ifnet *);
+static void	iwn_start(struct ifnet *, struct ifaltq_subque *);
 static void	iwn_start_locked(struct ifnet *);
 static void	iwn_watchdog(struct iwn_softc *sc);
 static int	iwn_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -412,6 +410,7 @@ iwn_pci_attach(device_t dev)
 	int result;
 #endif
 	uint8_t macaddr[IEEE80211_ADDR_LEN];
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	wlan_serialize_enter();
 
@@ -642,9 +641,9 @@ iwn_pci_attach(device_t dev)
 		goto fail;
 	}
 
-	device_printf(sc->sc_dev, "MIMO %dT%dR, %.4s, address %6D\n",
+	device_printf(sc->sc_dev, "MIMO %dT%dR, %.4s, address %s\n",
 	    sc->ntxchains, sc->nrxchains, sc->eeprom_domain,
-	    macaddr, ":");
+	    kether_ntoa(macaddr, ethstr));
 
 #if 0	/* HT */
 	/* Set supported HT rates. */
@@ -3359,8 +3358,9 @@ iwn_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 }
 
 static void
-iwn_start(struct ifnet *ifp)
+iwn_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	iwn_start_locked(ifp);
 }
 
@@ -4791,6 +4791,7 @@ iwn_auth(struct iwn_softc *sc, struct ieee80211vap *vap)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 	struct ieee80211_node *ni = vap->iv_bss;
+	char ethstr[3][ETHER_ADDRSTRLEN + 1];
 	int error;
 
 	sc->calib.state = IWN_CALIB_STATE_INIT;
@@ -4819,13 +4820,15 @@ iwn_auth(struct iwn_softc *sc, struct ieee80211vap *vap)
 	DPRINTF(sc, IWN_DEBUG_STATE,
 	    "%s: config chan %d mode %d flags 0x%x cck 0x%x ofdm 0x%x "
 	    "ht_single 0x%x ht_dual 0x%x rxchain 0x%x "
-	    "myaddr %6D wlap %6D bssid %6D associd %d filter 0x%x\n",
+	    "myaddr %s wlap %s bssid %s associd %d filter 0x%x\n",
 	    __func__,
 	    le16toh(sc->rxon.chan), sc->rxon.mode, le32toh(sc->rxon.flags),
 	    sc->rxon.cck_mask, sc->rxon.ofdm_mask,
 	    sc->rxon.ht_single_mask, sc->rxon.ht_dual_mask,
 	    le16toh(sc->rxon.rxchain),
-	    sc->rxon.myaddr, ":", sc->rxon.wlap, ":", sc->rxon.bssid, ":",
+	    kether_ntoa(sc->rxon.myaddr, ethstr[0]),
+	    kether_ntoa(sc->rxon.wlap, ethstr[1]),
+	    kether_ntoa(sc->rxon.bssid, ethstr[2]),
 	    le16toh(sc->rxon.associd), le32toh(sc->rxon.filter));
 	error = iwn_cmd(sc, IWN_CMD_RXON, &sc->rxon, hal->rxonsz, 1);
 	if (error != 0) {
@@ -4867,6 +4870,7 @@ iwn_run(struct iwn_softc *sc, struct ieee80211vap *vap)
 	struct ieee80211com *ic = ifp->if_l2com;
 	struct ieee80211_node *ni = vap->iv_bss;
 	struct iwn_node_info node;
+	char ethstr[3][ETHER_ADDRSTRLEN + 1];
 	int error;
 
 	sc->calib.state = IWN_CALIB_STATE_INIT;
@@ -4934,13 +4938,15 @@ iwn_run(struct iwn_softc *sc, struct ieee80211vap *vap)
 	DPRINTF(sc, IWN_DEBUG_STATE,
 	    "%s: config chan %d mode %d flags 0x%x cck 0x%x ofdm 0x%x "
 	    "ht_single 0x%x ht_dual 0x%x rxchain 0x%x "
-	    "myaddr %6D wlap %6D bssid %6D associd %d filter 0x%x\n",
+	    "myaddr %s wlap %s bssid %s associd %d filter 0x%x\n",
 	    __func__,
 	    le16toh(sc->rxon.chan), sc->rxon.mode, le32toh(sc->rxon.flags),
 	    sc->rxon.cck_mask, sc->rxon.ofdm_mask,
 	    sc->rxon.ht_single_mask, sc->rxon.ht_dual_mask,
 	    le16toh(sc->rxon.rxchain),
-	    sc->rxon.myaddr, ":", sc->rxon.wlap, ":", sc->rxon.bssid, ":",
+	    kether_ntoa(sc->rxon.myaddr, ethstr[0]),
+	    kether_ntoa(sc->rxon.wlap, ethstr[1]),
+	    kether_ntoa(sc->rxon.bssid, ethstr[2]),
 	    le16toh(sc->rxon.associd), le32toh(sc->rxon.filter));
 	error = iwn_cmd(sc, IWN_CMD_RXON, &sc->rxon, hal->rxonsz, 1);
 	if (error != 0) {

@@ -155,7 +155,7 @@ main(int ac, char *av[])
 		} else
 			Usage("no command specified");
 	} else {
-		rtn = DoCommand(ac, (const char **)av);
+		rtn = DoCommand(ac, (const char **)(void *)av);
 	}
 
 	/* Convert command return code into system exit code */

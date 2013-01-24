@@ -21,6 +21,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/libkern.h>
 
 #if defined(__DragonFly__) 
 #include "opt_inet.h"
@@ -722,8 +723,8 @@ drop2:
  * Enqueue transmit packet.
  */
 static int
-sppp_output_serialized(struct ifnet *ifp, struct mbuf *m,
-		       struct sockaddr *dst, struct rtentry *rt)
+sppp_output_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
+    struct mbuf *m, struct sockaddr *dst, struct rtentry *rt)
 {
 	struct sppp *sp = (struct sppp*) ifp;
 	struct ppp_header *h;
@@ -937,21 +938,20 @@ sppp_output_serialized(struct ifnet *ifp, struct mbuf *m,
 			IF_DROP(ifq);
 			m_freem(m);
 			rv = ENOBUFS;
-			ifq->ifq_drops++;
 		} else {
 			IF_ENQUEUE(ifq, m);
 			rv = 0;
 		}
 	} else {
-		rv = ifq_enqueue(&ifp->if_snd, m, &pktattr);
+		rv = ifsq_enqueue(ifsq, m, &pktattr);
 	}
 	if (rv) {
 		++ifp->if_oerrors;
 		crit_exit();
 		return(rv);
 	}
-	if (!ifq_is_oactive(&ifp->if_snd))
-		(*ifp->if_start) (ifp);
+	if (!ifsq_is_oactive(ifsq))
+		(*ifp->if_start) (ifp, ifsq);
 
 	/*
 	 * Count output packets and bytes.
@@ -976,11 +976,12 @@ static int
 sppp_output(struct ifnet *ifp, struct mbuf *m,
 	    struct sockaddr *dst, struct rtentry *rt)
 {
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp);
-	error = sppp_output_serialized(ifp, m, dst, rt);
-	ifnet_deserialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
+	error = sppp_output_serialized(ifp, ifsq, m, dst, rt);
+	ifnet_deserialize_tx(ifp, ifsq);
 
 	return error;
 }
@@ -1079,7 +1080,7 @@ sppp_isempty(struct ifnet *ifp)
 
 	crit_enter();
 	empty = IF_QEMPTY(&sp->pp_fastq) && IF_QEMPTY(&sp->pp_cpq) &&
-		ifq_is_empty(&sp->pp_if.if_snd);
+		ifsq_is_empty(ifq_get_subq_default(&sp->pp_if.if_snd));
 	crit_exit();
 	return (empty);
 }
@@ -1105,8 +1106,10 @@ sppp_dequeue(struct ifnet *ifp)
 	if (m == NULL &&
 	    (sppp_ncp_check(sp) || sp->pp_mode == IFF_CISCO)) {
 		IF_DEQUEUE(&sp->pp_fastq, m);
-		if (m == NULL)
-			m = ifq_dequeue(&sp->pp_if.if_snd, NULL);
+		if (m == NULL) {
+			m = ifsq_dequeue(
+			    ifq_get_subq_default(&sp->pp_if.if_snd), NULL);
+		}
 	}
 
 	crit_exit();
@@ -1128,7 +1131,7 @@ sppp_pick(struct ifnet *ifp)
 	if (m == NULL &&
 	    (sp->pp_phase == PHASE_NETWORK || sp->pp_mode == IFF_CISCO)) {
 		if ((m = sp->pp_fastq.ifq_head) == NULL)
-			m = ifq_poll(&sp->pp_if.if_snd);
+			m = ifsq_poll(ifq_get_subq_default(&sp->pp_if.if_snd));
 	}
 
 	crit_exit();
@@ -1342,6 +1345,7 @@ sppp_cisco_send(struct sppp *sp, int type, long par1, long par2)
 #else
 	u_long t = (time.tv_sec - boottime.tv_sec) * 1000;
 #endif
+	struct ifaltq_subque *ifsq;
 
 #if defined(__DragonFly__)
 	getmicrouptime(&tv);
@@ -1383,8 +1387,9 @@ sppp_cisco_send(struct sppp *sp, int type, long par1, long par2)
 		m_freem (m);
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
-	if (!ifq_is_oactive(&ifp->if_snd))
-		(*ifp->if_start) (ifp);
+	ifsq = ifq_get_subq_default(&ifp->if_snd);
+	if (!ifsq_is_oactive(ifsq))
+		(*ifp->if_start) (ifp, ifsq);
 	ifp->if_obytes += m->m_pkthdr.len + 3;
 }
 
@@ -1403,6 +1408,7 @@ sppp_cp_send(struct sppp *sp, u_short proto, u_char type,
 	struct ppp_header *h;
 	struct lcp_header *lh;
 	struct mbuf *m;
+	struct ifaltq_subque *ifsq;
 
 	if (len > MHLEN - PPP_HEADER_LEN - LCP_HEADER_LEN)
 		len = MHLEN - PPP_HEADER_LEN - LCP_HEADER_LEN;
@@ -1439,8 +1445,9 @@ sppp_cp_send(struct sppp *sp, u_short proto, u_char type,
 		++ifp->if_oerrors;
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
-	if (!ifq_is_oactive(&ifp->if_snd))
-		(*ifp->if_start) (ifp);
+	ifsq = ifq_get_subq_default(&ifp->if_snd);
+	if (!ifsq_is_oactive(ifsq))
+		(*ifp->if_start) (ifp, ifsq);
 	ifp->if_obytes += m->m_pkthdr.len + 3;
 }
 
@@ -4726,6 +4733,7 @@ sppp_auth_send(const struct cp *cp, struct sppp *sp,
 	int len;
 	unsigned int mlen;
 	const char *msg;
+	struct ifaltq_subque *ifsq;
 	__va_list ap;
 
 	MGETHDR (m, MB_DONTWAIT, MT_DATA);
@@ -4777,8 +4785,9 @@ sppp_auth_send(const struct cp *cp, struct sppp *sp,
 		++ifp->if_oerrors;
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
-	if (!ifq_is_oactive(&ifp->if_snd))
-		(*ifp->if_start) (ifp);
+	ifsq = ifq_get_subq_default(&ifp->if_snd);
+	if (!ifsq_is_oactive(ifsq))
+		(*ifp->if_start) (ifp, ifsq);
 	ifp->if_obytes += m->m_pkthdr.len + 3;
 }
 
@@ -5391,8 +5400,9 @@ sppp_proto_name(u_short proto)
 static void
 sppp_print_bytes(const u_char *p, u_short len)
 {
+	char hexstr[len];
 	if (len)
-		log(-1, " %*D", len, p, "-");
+		log(-1, " %s", hexncpy(p, len, hexstr, HEX_NCPYLEN(len), "-"));
 }
 
 static void

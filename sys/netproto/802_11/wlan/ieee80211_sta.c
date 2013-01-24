@@ -205,7 +205,9 @@ sta_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_node *ni;
 	enum ieee80211_state ostate;
-
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",
 	    __func__, ieee80211_state_name[ostate],
@@ -374,10 +376,10 @@ sta_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		case IEEE80211_S_ASSOC:
 #ifdef IEEE80211_DEBUG
 			if (ieee80211_msg_debug(vap)) {
-				ieee80211_note(vap, "%s with %6D ssid ",
+				ieee80211_note(vap, "%s with %s ssid ",
 				    (vap->iv_opmode == IEEE80211_M_STA ?
 				    "associated" : "synchronized"),
-				    ni->ni_bssid, ":");
+				    kether_ntoa(ni->ni_bssid, ethstr));
 				ieee80211_print_essid(vap->iv_bss->ni_essid,
 				    ni->ni_esslen);
 				/* XXX MCS/HT */
@@ -517,6 +519,9 @@ sta_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 	uint8_t dir, type, subtype, qos;
 	uint8_t *bssid;
 	uint16_t rxseq;
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	if (m->m_flags & M_AMPDU_MPDU) {
 		/*
@@ -842,10 +847,10 @@ sta_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 #ifdef IEEE80211_DEBUG
 		if ((ieee80211_msg_debug(vap) && doprint(vap, subtype)) ||
 		    ieee80211_msg_dumppkts(vap)) {
-			if_printf(ifp, "received %s from %6D rssi %d\n",
+			if_printf(ifp, "received %s from %s rssi %d\n",
 			    ieee80211_mgt_subtype_name[subtype >>
 				IEEE80211_FC0_SUBTYPE_SHIFT],
-			    wh->i_addr2, ":", rssi);
+			    kether_ntoa(wh->i_addr2, ethstr), rssi);
 		}
 #endif
 		if (wh->i_fc[1] & IEEE80211_FC1_WEP) {

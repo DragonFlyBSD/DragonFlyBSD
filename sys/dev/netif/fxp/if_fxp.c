@@ -205,7 +205,7 @@ static void		fxp_intr_body(struct fxp_softc *sc,
 static void 		fxp_init(void *xsc);
 static void 		fxp_tick(void *xsc);
 static void		fxp_powerstate_d0(device_t dev);
-static void 		fxp_start(struct ifnet *ifp);
+static void 		fxp_start(struct ifnet *ifp, struct ifaltq_subque *);
 static void		fxp_stop(struct fxp_softc *sc);
 static void 		fxp_release(device_t dev);
 static int		fxp_ioctl(struct ifnet *ifp, u_long command,
@@ -1046,11 +1046,12 @@ fxp_write_eeprom(struct fxp_softc *sc, u_short *data, int offset, int words)
  * Start packet transmission on the interface.
  */
 static void
-fxp_start(struct ifnet *ifp)
+fxp_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct fxp_softc *sc = ifp->if_softc;
 	struct fxp_cb_tx *txp;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/*

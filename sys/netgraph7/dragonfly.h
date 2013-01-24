@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/netgraph7/dragonfly.h,v 1.1 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/globaldata.h>	/* curthread in mtx_assert() */
@@ -56,8 +54,8 @@ typedef __va_list	va_list;
 #define IFNET_RLOCK()	crit_enter()
 #define IFNET_RUNLOCK()	crit_exit()
 
-#define IFQ_LOCK(ifp)	lwkt_serialize_enter(&(ifp)->altq_lock)
-#define IFQ_UNLOCK(ifp)	lwkt_serialize_exit(&(ifp)->altq_lock)
+#define IFQ_LOCK(ifq)	ALTQ_LOCK((ifq))
+#define IFQ_UNLOCK(ifq)	ALTQ_unLOCK((ifq))
 
 #define printf		kprintf
 #define sprintf		ksprintf
@@ -75,7 +73,7 @@ typedef void *		uma_fini;
 
 #define uma_zcreate(name, size, ctor, dtor, uminit, fini, align, flags)	\
 			objcache_create_mbacked(M_NETGRAPH, size,	\
-					NULL, 0,			\
+					0, 0,			\
 					bzero_ctor, NULL,		\
 					NULL)
 #define uma_zalloc(zone, flags)			\

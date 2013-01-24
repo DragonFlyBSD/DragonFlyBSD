@@ -33,7 +33,7 @@
 #ifndef _CPU_UCONTEXT_H_
 #define	_CPU_UCONTEXT_H_
 
-typedef struct __mcontext {
+struct __mcontext {
 	/*
 	 * The first 20 fields must match the definition of
 	 * sigcontext. So that we can support sigcontext
@@ -73,18 +73,18 @@ typedef struct __mcontext {
 	unsigned int	mc_fpformat;
 	unsigned int	mc_ownedfp;
 	unsigned int	mc_reserved;
-	unsigned int	mc_unused01;
-	unsigned int	mc_unused02;
+	unsigned int	mc_unused[8];
 
-	/* 16 byte aligned */
+	/* 64 byte aligned */
+	int		mc_fpregs[256];	/* 1024 bytes */
+} __attribute__((aligned(64)));
 
-	int		mc_fpregs[128];
-	int		__spare__[16];
-} mcontext_t;
+typedef struct __mcontext mcontext_t;
 
 #define _MC_FPFMT_NODEV		0x10000 /* device not present or configured */
 #define _MC_FPFMT_387		0x10001
 #define _MC_FPFMT_XMM		0x10002
+#define _MC_FPFMT_YMM		0x10003
 
 #define _MC_FPOWNED_NONE	0x20000 /* FP state not used */
 #define _MC_FPOWNED_FPU		0x20001 /* FP state came from FPU */

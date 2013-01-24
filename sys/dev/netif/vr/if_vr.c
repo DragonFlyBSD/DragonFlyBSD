@@ -138,7 +138,7 @@ static void	vr_txeof(struct vr_softc *);
 static void	vr_txeoc(struct vr_softc *);
 static void	vr_tick(void *);
 static void	vr_intr(void *);
-static void	vr_start(struct ifnet *);
+static void	vr_start(struct ifnet *, struct ifaltq_subque *);
 static int	vr_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	vr_init(void *);
 static void	vr_stop(struct vr_softc *);
@@ -1319,12 +1319,14 @@ vr_encap(struct vr_softc *sc, int chain_idx, struct mbuf *m_head)
  * physical addresses.
  */
 static void
-vr_start(struct ifnet *ifp)
+vr_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct vr_softc *sc;
 	struct vr_chain_data *cd;
 	struct vr_chain *tx_chain;
 	int cur_tx_idx, start_tx_idx, prev_tx_idx;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;

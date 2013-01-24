@@ -648,11 +648,7 @@ static const format_char_info print_char_table[] =
      The format %b is supported to decode error registers.
      Its usage is:	printf("reg=%b\n", regval, "<base><arg>*");
      which produces:	reg=3<BITTWO,BITONE>
-     The format %D provides a hexdump given a pointer and separator string:
-     ("%6D", ptr, ":")		-> XX:XX:XX:XX:XX:XX
-     ("%*D", len, ptr, " ")	-> XX XX XX XX ...
    */
-  { "D",   1, STD_EXT, { T89_V,  BADLEN,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN }, "-wp",       "cR", &dfly_ext_char_info },
   { "b",   0, STD_EXT, { T89_I,  BADLEN,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN }, "-wp",       "",   &dfly_ext_char_info },
   { "ry",  0, STD_EXT, { T89_I,  BADLEN,   BADLEN,   T89_L,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN }, "-wp0 +#",   "i",  NULL },
   { NULL,  0, STD_C89, NOLENGTHS, NULL, NULL, NULL }
@@ -1957,14 +1953,6 @@ check_format_info_main (format_check_results *res,
 	{
 	  while (fli->name != 0
  		 && strncmp (fli->name, format_chars, strlen (fli->name)))
-	      fli++;
-	  /*
-	   * DragonFly's D conversion needs to have precedence
-	   * over the DD length modifier
-	   */
-	  if (fli->index == FMT_LEN_D
-	      && fki->conversion_specs == print_char_table)
-	    while (fli->name != 0)
 	      fli++;
 	  if (fli->name != 0)
 	    {

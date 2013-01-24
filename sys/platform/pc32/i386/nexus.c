@@ -61,12 +61,6 @@
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/lapic.h>
 
-#include <bus/pci/pcivar.h>
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcibus.h>
-#include <bus/pci/pci_cfgreg.h>
-#include <bus/pci/pcib_private.h>
-
 #include "pcib_if.h"
 
 static MALLOC_DEFINE(M_NEXUSDEV, "nexusdev", "Nexus device");

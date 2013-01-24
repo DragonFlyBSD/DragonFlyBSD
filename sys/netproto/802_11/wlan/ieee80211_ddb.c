@@ -238,9 +238,10 @@ static void
 _db_show_sta(const struct ieee80211_node *ni)
 {
 	int i;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
-	db_printf("0x%p: mac %6D refcnt %d\n", ni,
-		ni->ni_macaddr, ":", ieee80211_node_refcnt(ni));
+	db_printf("0x%p: mac %s refcnt %d\n", ni,
+		kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni));
 	db_printf("\tvap %p wdsvap %p ic %p table %p\n",
 		ni->ni_vap, ni->ni_wdsvap, ni->ni_ic, ni->ni_table);
 	db_printf("\tflags=%b\n", ni->ni_flags, IEEE80211_NODE_BITS);
@@ -280,7 +281,7 @@ _db_show_sta(const struct ieee80211_node *ni)
 		ni->ni_noise);
 	db_printf("\tintval %u capinfo %b\n",
 		ni->ni_intval, ni->ni_capinfo, IEEE80211_CAPINFO_BITS);
-	db_printf("\tbssid %6D", ni->ni_bssid, ":");
+	db_printf("\tbssid %s", kether_ntoa(ni->ni_bssid, ethstr));
 	_db_show_ssid(" essid ", 0, ni->ni_esslen, ni->ni_essid);
 	db_printf("\n");
 	_db_show_channel("\tchannel", ni->ni_chan);
@@ -336,11 +337,12 @@ static void
 _db_show_vap(const struct ieee80211vap *vap, int showprocs)
 {
 	const struct ieee80211com *ic = vap->iv_ic;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	int i;
 
 	db_printf("%p:", vap);
 	db_printf(" bss %p", vap->iv_bss);
-	db_printf(" myaddr %6D", vap->iv_myaddr, ":");
+	db_printf(" myaddr %s", kether_ntoa(vap->iv_myaddr, ethstr));
 	db_printf("\n");
 
 	db_printf("\topmode %s", ieee80211_opmode_name[vap->iv_opmode]);
@@ -377,7 +379,7 @@ _db_show_vap(const struct ieee80211vap *vap, int showprocs)
 	if (vap->iv_des_nssid)
 		_db_show_ssid(" des_ssid[%u] ", 0,
 		    vap->iv_des_ssid[0].len, vap->iv_des_ssid[0].ssid);
-	db_printf(" des_bssid %6D", vap->iv_des_bssid, ":");
+	db_printf(" des_bssid %s", kether_ntoa(vap->iv_des_bssid, ethstr));
 	db_printf("\n");
 	db_printf("\tdes_mode %d", vap->iv_des_mode);
 	_db_show_channel(" des_chan", vap->iv_des_chan);
@@ -669,6 +671,7 @@ _db_show_com(const struct ieee80211com *ic, int showvaps, int showsta, int showp
 static void
 _db_show_node_table(const char *tag, const struct ieee80211_node_table *nt)
 {
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	int i;
 
 	db_printf("%s%s@%p:\n", tag, nt->nt_name, nt);
@@ -679,8 +682,8 @@ _db_show_node_table(const char *tag, const struct ieee80211_node_table *nt)
 	for (i = 0; i < nt->nt_keyixmax; i++) {
 		const struct ieee80211_node *ni = nt->nt_keyixmap[i];
 		if (ni != NULL)
-			db_printf("%s [%3u] %p %6D\n", tag, i, ni,
-			    ni->ni_macaddr, ":");
+			db_printf("%s [%3u] %p %s\n", tag, i, ni,
+			    kether_ntoa(ni->ni_macaddr, ethstr));
 	}
 }
 
@@ -861,6 +864,7 @@ static void
 _db_show_mesh(const struct ieee80211_mesh_state *ms)
 {
 	struct ieee80211_mesh_route *rt;
+	char ethstr[2][ETHER_ADDRSTRLEN + 1];
 	int i;
 
 	_db_show_ssid(" meshid ", 0, ms->ms_idlen, ms->ms_id);
@@ -869,8 +873,10 @@ _db_show_mesh(const struct ieee80211_mesh_state *ms)
 	db_printf("routing table:\n");
 	i = 0;
 	TAILQ_FOREACH(rt, &ms->ms_routes, rt_next) {
-		db_printf("entry %d:\tdest: %6D nexthop: %6D metric: %u", i,
-		    rt->rt_dest, ":", rt->rt_nexthop, ":", rt->rt_metric);
+		db_printf("entry %d:\tdest: %s nexthop: %s metric: %u", i,
+		    kether_ntoa(rt->rt_dest, ethstr[0]),
+		    kether_ntoa(rt->rt_nexthop, ethstr[1]),
+		    rt->rt_metric);
 		db_printf("\tlifetime: %u lastseq: %u priv: %p\n",
 		    rt->rt_lifetime, rt->rt_lastmseq, rt->rt_priv);
 		i++;

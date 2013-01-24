@@ -77,7 +77,7 @@ static void	et_miibus_statchg(device_t);
 
 static void	et_init(void *);
 static int	et_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	et_start(struct ifnet *);
+static void	et_start(struct ifnet *, struct ifaltq_subque *);
 static void	et_watchdog(struct ifnet *);
 static int	et_ifmedia_upd(struct ifnet *);
 static void	et_ifmedia_sts(struct ifnet *, struct ifmediareq *);
@@ -1195,12 +1195,13 @@ et_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 }
 
 static void
-et_start(struct ifnet *ifp)
+et_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct et_softc *sc = ifp->if_softc;
 	struct et_txbuf_data *tbd = &sc->sc_tx_data;
 	int trans, oactive;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((sc->sc_flags & ET_FLAG_TXRX_ENABLED) == 0) {

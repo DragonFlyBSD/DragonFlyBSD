@@ -550,6 +550,9 @@ amr_cam_complete(struct amr_command *ac)
 	struct ccb_scsiio		*csio;
 	struct scsi_inquiry_data	*inq;
 	int				scsi_status, cdb0;
+#ifdef AMR_DEBUG
+	char               		hexstr[HEX_NCPYLEN(16)];
+#endif
 
 	ap = &ac->ac_ccb->ccb_pthru;
 	aep = &ac->ac_ccb->ccb_epthru;
@@ -620,8 +623,8 @@ amr_cam_complete(struct amr_command *ac)
 
 out:
 	if ((csio->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE)
-		debug(2, "%*D\n", imin(csio->dxfer_len, 16), csio->data_ptr,
-		    " ");
+		debug(2, "%s\n", hexncpy(csio->data_ptr, imin(csio->dxfer_len, 16),
+			hexstr, HEX_NCPYLEN(imin(csio->dxfer_len, 16)), " "));
 
 	lockmgr(&ac->ac_sc->amr_list_lock, LK_EXCLUSIVE);
 	xpt_done((union ccb *)csio);

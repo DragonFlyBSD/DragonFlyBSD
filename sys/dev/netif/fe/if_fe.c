@@ -146,7 +146,8 @@ static void		fe_init		(void *);
 static void		fe_intr		(void *);
 static int		fe_ioctl	(struct ifnet *, u_long, caddr_t,
 					 struct ucred *);
-static void		fe_start	(struct ifnet *);
+static void		fe_start	(struct ifnet *,
+					 struct ifaltq_subque *);
 static void		fe_watchdog	(struct ifnet *);
 static int		fe_medchange	(struct ifnet *);
 static void		fe_medstat	(struct ifnet *, struct ifmediareq *);
@@ -247,7 +248,9 @@ int
 valid_Ether_p (u_char const * addr, unsigned vendor)
 {
 #ifdef FE_DEBUG
-	kprintf("fe?: validating %6D against %06x\n", addr, ":", vendor);
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+	kprintf("fe?: validating %s against %06x\n", kether_ntoa(addr, ethstr),
+	    vendor);
 #endif
 
 	/* All zero is not allowed as a vendor code.  */
@@ -373,6 +376,7 @@ fe_read_eeprom_jli (struct fe_softc * sc, u_char * data)
 {
 	u_char n, val, bit;
 	u_char save16, save17;
+	char hexstr[48];
 
 	/* Save the current value of the EEPROM interface registers.  */
 	save16 = fe_inb(sc, FE_BMPR16);
@@ -435,8 +439,9 @@ fe_read_eeprom_jli (struct fe_softc * sc, u_char * data)
 		int i;
 		data -= JLI_EEPROM_SIZE;
 		for (i = 0; i < JLI_EEPROM_SIZE; i += 16) {
-			kprintf("fe%d: EEPROM(JLI):%3x: %16D\n",
-			       sc->sc_unit, i, data + i, " ");
+			hexncpy(data + i, 16, hexstr, 48, " ");
+			kprintf("fe%d: EEPROM(JLI):%3x: %s\n",
+			    sc->sc_unit, i, hexstr);
 		}
 	}
 #endif
@@ -472,6 +477,7 @@ fe_read_eeprom_ssi (struct fe_softc *sc, u_char *data)
 	u_char val, bit;
 	int n;
 	u_char save6, save7, save12;
+	char hexstr[48];
 
 	/* Save the current value for the DLCR registers we are about
            to destroy.  */
@@ -551,8 +557,9 @@ fe_read_eeprom_ssi (struct fe_softc *sc, u_char *data)
 		int i;
 		data -= SSI_EEPROM_SIZE;
 		for (i = 0; i < SSI_EEPROM_SIZE; i += 16) {
-			kprintf("fe%d: EEPROM(SSI):%3x: %16D\n",
-			       sc->sc_unit, i, data + i, " ");
+			hexncpy(data + i, 16, hexstr, 48, " ");
+			kprintf("fe%d: EEPROM(SSI):%3x: %s\n",
+			    sc->sc_unit, i, hexstr);
 		}
 	}
 #endif
@@ -607,6 +614,7 @@ fe_read_eeprom_lnx (struct fe_softc *sc, u_char *data)
 	u_char n, bit, val;
 	u_char save20;
 	u_short reg20 = 0x14;
+	char hexstr[48];
 
 	save20 = fe_inb(sc, reg20);
 
@@ -692,8 +700,9 @@ fe_read_eeprom_lnx (struct fe_softc *sc, u_char *data)
 	if (bootverbose) {
 		data -= LNX_EEPROM_SIZE;
 		for (i = 0; i < LNX_EEPROM_SIZE; i += 16) {
-			kprintf("fe%d: EEPROM(LNX):%3x: %16D\n",
-			       sc->sc_unit, i, data + i, " ");
+			hexncpy(data + i, 16, hexstr, 48, " ");
+			kprintf("fe%d: EEPROM(LNX):%3x: %s\n",
+			    sc->sc_unit, i, hexstr);
 		}
 	}
 #endif
@@ -1146,10 +1155,12 @@ fe_xmit (struct fe_softc *sc)
  *     (i.e. that the output part of the interface is idle)
  */
 void
-fe_start (struct ifnet *ifp)
+fe_start (struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct fe_softc *sc = ifp->if_softc;
 	struct mbuf *m;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 #ifdef DIAGNOSTIC
 	/* Just a sanity check.  */
@@ -2074,15 +2085,17 @@ fe_mcaf ( struct fe_softc *sc )
 	int index;
 	struct fe_filter filter;
 	struct ifmultiaddr *ifma;
-
+#ifdef FE_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	filter = fe_filter_nothing;
 	TAILQ_FOREACH(ifma, &sc->arpcom.ac_if.if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		index = fe_hash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
 #ifdef FE_DEBUG
-		kprintf("fe%d: hash(%6D) == %d\n",
-			sc->sc_unit, enm->enm_addrlo , ":", index);
+		kprintf("fe%d: hash(%s) == %d\n",
+		    sc->sc_unit, kether_ntoa(enm->enm_addrlo, ethstr), index);
 #endif
 
 		filter.data[index >> 3] |= 1 << (index & 7);

@@ -77,7 +77,7 @@
 # ifndef ECHO
 #  define ECHO (void) fwrite( yytext, yyleng, 1, yyout )
 # endif /* not ECHO */
-int yylineno = 0;
+int ayylineno = 0;
 #endif /* FLEX_SCANNER */
 
 int yylex(void);
@@ -93,7 +93,7 @@ int yywrap(void);
 #define TOK_DEBUG 0
 
 #if TOK_DEBUG
-# define dprintf(f,s) fprintf(stderr, (f), yylineno, (s))
+# define dprintf(f,s) fprintf(stderr, (f), ayylineno, (s))
 # define amu_return(v)
 #else
 # define dprintf(f,s)
@@ -119,7 +119,7 @@ NONQUOTE	[^\"]
 %%
 
 \n			{
-			yylineno++;
+			ayylineno++;
 			amu_return(NEWLINE);
 			}
 
@@ -146,7 +146,7 @@ NONQUOTE	[^\"]
 			}
 "#"[^\n]*\n		{
 			/* a comment line includes the terminating \n */
-			yylineno++;
+			ayylineno++;
 			yytext[strlen((char *)yytext)-1] = '\0';
 			dprintf("%8d: Comment \"%s\"\n", yytext);
 			}

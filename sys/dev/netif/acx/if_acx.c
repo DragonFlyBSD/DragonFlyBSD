@@ -114,7 +114,7 @@ static int	acx_detach(device_t);
 static int	acx_shutdown(device_t);
 
 static void	acx_init(void *);
-static void	acx_start(struct ifnet *);
+static void	acx_start(struct ifnet *, struct ifaltq_subque *);
 static int	acx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	acx_watchdog(struct ifnet *);
 
@@ -876,6 +876,7 @@ acx_read_config(struct acx_softc *sc, struct acx_config *conf)
 	struct acx_conf_regdom reg_dom;
 	struct acx_conf_antenna ant;
 	struct acx_conf_fwrev fw_rev;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	uint32_t fw_rev_no;
 	uint8_t sen;
 	int i, error;
@@ -892,8 +893,8 @@ acx_read_config(struct acx_softc *sc, struct acx_config *conf)
 	 */
 	for (i = 0; i < IEEE80211_ADDR_LEN; ++i)
 		conf->eaddr[IEEE80211_ADDR_LEN - 1 - i] = addr.eaddr[i];
-	if_printf(&sc->sc_ic.ic_if, "MAC address (from firmware): %6D\n",
-		  conf->eaddr, ":");
+	if_printf(&sc->sc_ic.ic_if, "MAC address (from firmware): %s\n",
+	    kether_ntoa(conf->eaddr, ethstr));
 
 	/* Get region domain */
 	if (acx_get_regdom_conf(sc, &reg_dom) != 0) {
@@ -1093,7 +1094,7 @@ acx_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 }
 
 static void
-acx_start(struct ifnet *ifp)
+acx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct acx_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
@@ -1101,6 +1102,7 @@ acx_start(struct ifnet *ifp)
 	struct acx_txbuf *buf;
 	int trans, idx;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((sc->sc_flags & ACX_FLAG_FW_LOADED) == 0) {

@@ -134,12 +134,9 @@ struct	ifqueue {
 
 enum ifnet_serialize {
 	IFNET_SERIALIZE_ALL,
-	IFNET_SERIALIZE_MAIN,
 	IFNET_SERIALIZE_TX_BASE = 0x10000000,
-	IFNET_SERIALIZE_RX_BASE = 0x20000000
 };
-#define IFNET_SERIALIZE_TX	IFNET_SERIALIZE_TX_BASE
-#define IFNET_SERIALIZE_RX(i)	(IFNET_SERIALIZE_RX_BASE + (i))
+#define IFNET_SERIALIZE_TX(i)	(IFNET_SERIALIZE_TX_BASE + (i))
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -220,7 +217,7 @@ struct ifnet {
 	void	(*if_input)		/* input routine from hardware driver */
 		(struct ifnet *, struct mbuf *);
 	void	(*if_start)		/* initiate output routine */
-		(struct ifnet *);
+		(struct ifnet *, struct ifaltq_subque *);
 	int	(*if_ioctl)		/* ioctl routine */
 		(struct ifnet *, u_long, caddr_t, struct ucred *);
 	void	(*if_watchdog)		/* timer routine */
@@ -231,7 +228,8 @@ struct ifnet {
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
 	void	*if_unused5;
 	TAILQ_HEAD(, ifg_list) if_groups; /* linked list of groups per if */
-	void	(*if_unused1)(void);
+	int	(*if_mapsubq)
+		(struct ifaltq *, int);
 	int	if_unused2;
 	void	(*if_serialize)
 		(struct ifnet *, enum ifnet_serialize);
@@ -243,17 +241,17 @@ struct ifnet {
 	void	(*if_serialize_assert)
 		(struct ifnet *, enum ifnet_serialize, boolean_t);
 #else
-	/* Place holders */
+	/* Place holder */
 	void	(*if_serialize_unused)(void);
 #endif
 #ifdef IFPOLL_ENABLE
 	void	(*if_npoll)
 		(struct ifnet *, struct ifpoll_info *);
 #else
-	/* Place holders */
+	/* Place holder */
 	void	(*if_npoll_unused)(void);
 #endif
-	int	if_unused3;
+	int	if_tsolen;		/* max TSO length */
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
@@ -264,9 +262,9 @@ struct ifnet {
 	struct lwkt_serialize if_default_serializer; /* if not supplied */
 	struct mtx	if_ioctl_mtx;	/* high-level ioctl serializing mutex */
 	int	if_unused4;
-	struct netmsg_base *if_start_nmsg; /* percpu msgs to sched if_start */
+	void	*if_unused6;
 	void	*if_pf_kif; /* pf interface abstraction */
-	void	*if_unused;
+	void	*if_unused7;
 };
 typedef void if_init_f_t (void *);
 
@@ -362,22 +360,17 @@ EVENTHANDLER_DECLARE(iflladdr_event, iflladdr_event_handler_t);
 #define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp) \
 	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_ALL, FALSE)
 
-#define ASSERT_IFNET_SERIALIZED_TX(ifp) \
-	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_TX, TRUE)
-#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp) \
-	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_TX, FALSE)
-
-#define ASSERT_IFNET_SERIALIZED_MAIN(ifp) \
-	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_MAIN, TRUE)
-#define ASSERT_IFNET_NOT_SERIALIZED_MAIN(ifp) \
-	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_MAIN, FALSE)
+#define ASSERT_IFNET_SERIALIZED_TX(ifp, ifsq) \
+	(ifp)->if_serialize_assert((ifp), \
+	    IFNET_SERIALIZE_TX((ifsq)->ifsq_index), TRUE)
+#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp, ifsq) \
+	(ifp)->if_serialize_assert((ifp), \
+	    IFNET_SERIALIZE_TX((ifsq)->ifsq_index), FALSE)
 #else
 #define ASSERT_IFNET_SERIALIZED_ALL(ifp)	((void)0)
 #define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp)	((void)0)
-#define ASSERT_IFNET_SERIALIZED_TX(ifp)		((void)0)
-#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp)	((void)0)
-#define ASSERT_IFNET_SERIALIZED_MAIN(ifp)	((void)0)
-#define ASSERT_IFNET_NOT_SERIALIZED_MAIN(ifp)	((void)0)
+#define ASSERT_IFNET_SERIALIZED_TX(ifp, ifsq)	((void)0)
+#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp, ifsq) ((void)0)
 #endif
 
 static __inline void
@@ -399,39 +392,22 @@ ifnet_tryserialize_all(struct ifnet *_ifp)
 }
 
 static __inline void
-ifnet_serialize_tx(struct ifnet *_ifp)
+ifnet_serialize_tx(struct ifnet *_ifp, const struct ifaltq_subque *_ifsq)
 {
-	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_TX);
+	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_TX(_ifsq->ifsq_index));
 }
 
 static __inline void
-ifnet_deserialize_tx(struct ifnet *_ifp)
+ifnet_deserialize_tx(struct ifnet *_ifp, const struct ifaltq_subque *_ifsq)
 {
-	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_TX);
+	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_TX(_ifsq->ifsq_index));
 }
 
 static __inline int
-ifnet_tryserialize_tx(struct ifnet *_ifp)
+ifnet_tryserialize_tx(struct ifnet *_ifp, const struct ifaltq_subque *_ifsq)
 {
-	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_TX);
-}
-
-static __inline void
-ifnet_serialize_main(struct ifnet *_ifp)
-{
-	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_MAIN);
-}
-
-static __inline void
-ifnet_deserialize_main(struct ifnet *_ifp)
-{
-	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_MAIN);
-}
-
-static __inline int
-ifnet_tryserialize_main(struct ifnet *_ifp)
-{
-	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_MAIN);
+	return _ifp->if_tryserialize(_ifp,
+	    IFNET_SERIALIZE_TX(_ifsq->ifsq_index));
 }
 
 /*
@@ -680,19 +656,11 @@ ifnet_serialize_array_index(int _arrcnt, int _txoff, int _rxoff,
 {
 	int _off;
 
-	if (_slz == IFNET_SERIALIZE_MAIN) {
-		_off = 0;
-	} else if (_slz & IFNET_SERIALIZE_TX_BASE) {
-		_off = (_slz & ~IFNET_SERIALIZE_TX_BASE) + _txoff;
-		KASSERT(_off < _arrcnt,
-		    ("invalid TX serializer %#x", _slz));
-	} else if (_slz & IFNET_SERIALIZE_RX_BASE) {
-		_off = (_slz & ~IFNET_SERIALIZE_RX_BASE) + _rxoff;
-		KASSERT(_off < _arrcnt,
-		    ("invalid RX serializer %#x", _slz));
-	} else {
-		panic("unknown serializer %#x", _slz);
-	}
+	KASSERT(_slz & IFNET_SERIALIZE_TX_BASE,
+	    ("unknown serializer %#x", _slz));
+	_off = (_slz & ~IFNET_SERIALIZE_TX_BASE) + _txoff;
+	KASSERT(_off < _arrcnt, ("invalid TX serializer %#x", _slz));
+
 	return _off;
 }
 
@@ -702,7 +670,7 @@ ifnet_serialize_array_enter(lwkt_serialize_t *_arr, int _arrcnt,
 {
 	int _off;
 
-	if (_slz == IFNET_SERIALIZE_ALL) {
+	if (__predict_false(_slz == IFNET_SERIALIZE_ALL)) {
 		lwkt_serialize_array_enter(_arr, _arrcnt, 0);
 		return;
 	}
@@ -717,7 +685,7 @@ ifnet_serialize_array_exit(lwkt_serialize_t *_arr, int _arrcnt,
 {
 	int _off;
 
-	if (_slz == IFNET_SERIALIZE_ALL) {
+	if (__predict_false(_slz == IFNET_SERIALIZE_ALL)) {
 		lwkt_serialize_array_exit(_arr, _arrcnt, 0);
 		return;
 	}
@@ -732,7 +700,7 @@ ifnet_serialize_array_try(lwkt_serialize_t *_arr, int _arrcnt,
 {
 	int _off;
 
-	if (_slz == IFNET_SERIALIZE_ALL)
+	if (__predict_false(_slz == IFNET_SERIALIZE_ALL))
 		return lwkt_serialize_array_try(_arr, _arrcnt, 0);
 
 	_off = ifnet_serialize_array_index(_arrcnt, _txoff, _rxoff, _slz);
@@ -747,7 +715,7 @@ ifnet_serialize_array_assert(lwkt_serialize_t *_arr, int _arrcnt,
 {
 	int _off;
 
-	if (_slz == IFNET_SERIALIZE_ALL) {
+	if (__predict_false(_slz == IFNET_SERIALIZE_ALL)) {
 		int _i;
 
 		if (_serialized) {
@@ -791,6 +759,8 @@ void	ether_reinput_oncpu(struct ifnet *, struct mbuf *, int);
 void	ether_input_pkt(struct ifnet *, struct mbuf *, const struct pktinfo *);
 int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, u_long, caddr_t);
+u_char	*kether_aton(const char *, u_char *);
+char	*kether_ntoa(const u_char *, char *);
 boolean_t ether_tso_pullup(struct mbuf **, int *, struct ip **, int *,
 	    struct tcphdr **, int *);
 struct ifnet *ether_bridge_interface(struct ifnet *ifp);
@@ -847,8 +817,8 @@ struct ifaddr *ifaddr_byindex(unsigned short);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
-void	if_devstart(struct ifnet *ifp);
-void	if_devstart_sched(struct ifnet *ifp);
+void	if_devstart(struct ifnet *ifp); /* COMPAT */
+void	if_devstart_sched(struct ifnet *ifp); /* COMPAT */
 int	if_ring_count2(int cnt, int cnt_max);
 
 #define IF_LLSOCKADDR(ifp)						\

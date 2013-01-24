@@ -106,7 +106,8 @@ static int		tap_clone_destroy(struct ifnet *);
 
 
 /* network interface */
-static void		tapifstart	(struct ifnet *);
+static void		tapifstart	(struct ifnet *,
+					 struct ifaltq_subque *);
 static int		tapifioctl	(struct ifnet *, u_long, caddr_t,
 					 struct ucred *);
 static void		tapifinit	(void *);
@@ -528,6 +529,7 @@ tapifinit(void *xtp)
 {
 	struct tap_softc *tp = xtp;
 	struct ifnet *ifp = &tp->tap_if;
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 
 	TAPDEBUG(ifp, "initializing, minor = %#x tap_flags = 0x%x\n",
 		 minor(tp->tap_dev), tp->tap_flags);
@@ -537,10 +539,10 @@ tapifinit(void *xtp)
 	tapifstop(tp, 1);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
+	ifsq_clr_oactive(ifsq);
 
 	/* attempt to start output */
-	tapifstart(ifp);
+	tapifstart(ifp, ifsq);
 }
 
 
@@ -633,13 +635,14 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
  * MPSAFE
  */
 static void
-tapifstart(struct ifnet *ifp)
+tapifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct tap_softc *tp = ifp->if_softc;
 	struct ifqueue *ifq;
 	struct mbuf *m;
 	int has_data = 0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	TAPDEBUG(ifp, "starting, minor = %#x\n", minor(tp->tap_dev));
 
 	/*
@@ -651,14 +654,14 @@ tapifstart(struct ifnet *ifp)
 	    ((tp->tap_flags & TAP_READY) != TAP_READY)) {
 		TAPDEBUG(ifp, "not ready. minor = %#x, tap_flags = 0x%x\n",
 			 minor(tp->tap_dev), tp->tap_flags);
-		ifq_purge(&ifp->if_snd);
+		ifsq_purge(ifsq);
 		return;
 	}
 
-	ifq_set_oactive(&ifp->if_snd);
+	ifsq_set_oactive(ifsq);
 
 	ifq = &tp->tap_devq;
-	while ((m = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
+	while ((m = ifsq_dequeue(ifsq, NULL)) != NULL) {
 		if (IF_QFULL(ifq)) {
 			IF_DROP(ifq);
 			ifp->if_oerrors++;
@@ -685,7 +688,7 @@ tapifstart(struct ifnet *ifp)
 		}
 	}
 
-	ifq_clr_oactive(&ifp->if_snd);
+	ifsq_clr_oactive(ifsq);
 }
 
 
@@ -748,7 +751,7 @@ tapioctl(struct dev_ioctl_args *ap)
 		/* Take a look at devq first */
 		IF_POLL(&tp->tap_devq, mb);
 		if (mb == NULL)
-			mb = ifq_poll(&ifp->if_snd);
+			mb = ifsq_poll(ifq_get_subq_default(&ifp->if_snd));
 
 		if (mb != NULL) {
 			for(; mb != NULL; mb = mb->m_next)
@@ -1043,7 +1046,7 @@ tapifstop(struct tap_softc *tp, int clear_flags)
 	tp->tap_flags &= ~TAP_CLOSEDOWN;
 	if (clear_flags) {
 		ifp->if_flags &= ~IFF_RUNNING;
-		ifq_clr_oactive(&ifp->if_snd);
+		ifsq_clr_oactive(ifq_get_subq_default(&ifp->if_snd));
 	}
 }
 

@@ -49,7 +49,7 @@
  */
 
 #ifdef FLEX_SCANNER
-static int yylineno;
+static int ayylineno;
 # define INIT_STATE {				\
 		switch ((yy_start - 1) / 2) {	\
 		case 0:				\
@@ -166,22 +166,22 @@ struct r {
 
 <F>[^ \t\n"={}]+	{ return find_resword(yytext); } /* dummy " */
 <F>[ \t]		;
-<F>"\n"			{ yylineno++; }
+<F>"\n"			{ ayylineno++; }
 <F>[={}]		{ return *yytext; }
 
 <F>\"			{ BEGIN Q; optr = ostr; quoted = 1; }
-<Q>\n			{ yylineno++; yyerror("\" expected"); BEGIN F; }
+<Q>\n			{ ayylineno++; yyerror("\" expected"); BEGIN F; }
 <Q>\\b			{ *optr++ = '\b'; /* escape */ }
 <Q>\\t			{ *optr++ = '\t'; /* escape */ }
 <Q>\\\"			{ *optr++ = '\"'; /* escape */ }
 <Q>\\\\			{ *optr++ = '\\'; /* escape */ }
-<Q>\\\n			{ yylineno++; /* continue */ }
+<Q>\\\n			{ ayylineno++; /* continue */ }
 <Q>\\r			{ *optr++ = '\r'; /* escape */ }
 <Q>\\n			{ *optr++ = '\n'; /* escape */ }
 <Q>\\f			{ *optr++ = '\f'; /* escape */ }
 <Q>"\\ "		{ *optr++ = ' '; /* force space */ }
 <Q>\\.			{ yyerror("Unknown \\ sequence"); }
-<Q>([ \t]|"\\\n"){2,}	{ char *p = (char *) yytext-1; while ((p = strchr(p+1, '\n'))) yylineno++; }
+<Q>([ \t]|"\\\n"){2,}	{ char *p = (char *) yytext-1; while ((p = strchr(p+1, '\n'))) ayylineno++; }
 <Q>\"			{ BEGIN F; quoted = 0;
 				*optr = '\0';
 				yylval.s = strdup(ostr);
@@ -235,7 +235,7 @@ yyerror(char *fmt, ...)
 
   va_start(ap, fmt);
   col_cleanup(0);
-  fprintf(stderr, "%s:%d: ", fsi_filename ? fsi_filename : "/dev/stdin", yylineno);
+  fprintf(stderr, "%s:%d: ", fsi_filename ? fsi_filename : "/dev/stdin", ayylineno);
   fprintf(stderr, fmt, ap);
   fputc('\n', stderr);
   parse_errors++;
@@ -249,7 +249,7 @@ ioloc *
 current_location(void)
 {
   ioloc *ip = CALLOC(struct ioloc);
-  ip->i_line = yylineno;
+  ip->i_line = ayylineno;
   ip->i_file = fsi_filename;
   return ip;
 }

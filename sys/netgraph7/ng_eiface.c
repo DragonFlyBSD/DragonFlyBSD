@@ -82,7 +82,7 @@ typedef struct ng_eiface_private *priv_p;
 
 /* Interface methods */
 static void	ng_eiface_init(void *xsc);
-static void	ng_eiface_start(struct ifnet *ifp);
+static void	ng_eiface_start(struct ifnet *ifp, struct ifaltq_subque *);
 static int	ng_eiface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
 #ifdef DEBUG
 static void	ng_eiface_print_ioctl(struct ifnet *ifp, int cmd, caddr_t data);
@@ -273,7 +273,7 @@ ng_eiface_start2(node_p node, hook_p hook, void *arg1, int arg2)
  * somehow, but we can't and if we did would we solve anything?
  */
 static void
-ng_eiface_start(struct ifnet *ifp)
+ng_eiface_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
 
 	const priv_p priv = (priv_p)ifp->if_softc;

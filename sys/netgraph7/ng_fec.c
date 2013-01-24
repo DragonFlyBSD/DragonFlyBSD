@@ -188,7 +188,7 @@ typedef struct ng_fec_private *priv_p;
 
 /* Interface methods */
 static void	ng_fec_input(struct ifnet *, struct mbuf *);
-static void	ng_fec_start(struct ifnet *ifp);
+static void	ng_fec_start(struct ifnet *ifp, struct ifaltq_subque *);
 static int	ng_fec_choose_port(struct ng_fec_bundle *b,
 			struct mbuf *m, struct ifnet **ifp);
 static int	ng_fec_setport(struct ifnet *ifp, u_long cmd, caddr_t data);
@@ -1112,7 +1112,7 @@ ng_fec_choose_port(struct ng_fec_bundle *b,
  * transmission.
  */
 static void
-ng_fec_start(struct ifnet *ifp)
+ng_fec_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ng_fec_private	*priv;
 	struct ng_fec_bundle	*b;
@@ -1139,9 +1139,9 @@ ng_fec_start(struct ifnet *ifp)
 	}
 	ifp->if_opackets++;
 
-	ifnet_deserialize_tx(ifp);
+	ifnet_deserialize_tx(ifp, ifsq);
 	error = ifq_dispatch(oifp, m0, NULL);
-	ifnet_serialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
 
 	priv->if_error = error;
 }

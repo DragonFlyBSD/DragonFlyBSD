@@ -584,6 +584,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 	int gotrootpath;
 	int retry;
 	const char *s;
+	char hexstr[64];
 	
 	/*
 	 * Create socket and set its recieve timeout.
@@ -711,13 +712,13 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 					s = "BOOTP Query";
 					break;
 				}
+				hexncpy((u_char *)LLADDR(ifctx->sdl),
+				    ifctx->sdl->sdl_alen, hexstr,
+				    HEX_NCPYLEN(ifctx->sdl->sdl_alen), ":");
 				kprintf("Sending %s packet from "
-				       "interface %s (%*D)\n",
-				       s,
-				       ifctx->ireq.ifr_name,
-				       ifctx->sdl->sdl_alen,
-				       (unsigned char *) LLADDR(ifctx->sdl),
-				       ":");
+				       "interface %s (%s)\n",
+				       s, ifctx->ireq.ifr_name,
+				       hexstr);
 				ifctx->sentmsg = 1;
 			}
 

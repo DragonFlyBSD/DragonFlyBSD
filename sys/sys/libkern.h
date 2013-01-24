@@ -65,6 +65,12 @@ extern char const	hex2ascii_data[];
 #define	bin2bcd(bin)	(bin2bcd_data[bin])
 #define	hex2ascii(hex)	(hex2ascii_data[hex])
 
+/*
+ * Number of bytes needed for hexadecimal representation
+ * plus trailing \0
+ */
+#define HEX_NCPYLEN(s) (s * 3)
+
 static __inline int imax(int a, int b) { return (a > b ? a : b); }
 static __inline int imin(int a, int b) { return (a < b ? a : b); }
 static __inline long lmax(long a, long b) { return (a > b ? a : b); }
@@ -125,6 +131,7 @@ char	*strncpy (char * __restrict, const char * __restrict, size_t);
 char	*strsep(char **, const char *);
 int	_kfnmatch(const char *, const char *, int, int);
 void *	memcchr(const void *, int, size_t);
+char *	hexncpy(const u_char *, int, char *, int, const char *);
 
 /*
  * memset can't be an inline, it is used by gcc-4.x directly.

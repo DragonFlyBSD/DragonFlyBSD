@@ -103,7 +103,7 @@ static void	tulip_intr_shared(void *);
 static void	tulip_intr_normal(void *);
 static void	tulip_init(tulip_softc_t *);
 static void	tulip_reset(tulip_softc_t *);
-static void	tulip_ifstart(struct ifnet *);
+static void	tulip_ifstart(struct ifnet *, struct ifaltq_subque *);
 static struct mbuf *tulip_txput(tulip_softc_t *, struct mbuf *);
 static void	tulip_txput_setup(tulip_softc_t *);
 static void	tulip_rx_intr(tulip_softc_t *);
@@ -3786,10 +3786,11 @@ tulip_ifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred * cr)
 }
 
 static void
-tulip_ifstart(struct ifnet *ifp)
+tulip_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
     tulip_softc_t *sc = (tulip_softc_t *)ifp->if_softc;
 
+    ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
     if (sc->tulip_if.if_flags & IFF_RUNNING) {
 
 	if ((sc->tulip_flags & (TULIP_WANTSETUP|TULIP_TXPROBE_ACTIVE)) == TULIP_WANTSETUP)

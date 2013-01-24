@@ -114,7 +114,7 @@ static void txp_intr	(void *);
 static void txp_tick	(void *);
 static int txp_shutdown	(device_t);
 static int txp_ioctl	(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void txp_start	(struct ifnet *);
+static void txp_start	(struct ifnet *, struct ifaltq_subque *);
 static void txp_stop	(struct txp_softc *);
 static void txp_init	(void *);
 static void txp_watchdog	(struct ifnet *);
@@ -1183,7 +1183,7 @@ out:
 }
 
 static void
-txp_start(struct ifnet *ifp)
+txp_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct txp_softc *sc = ifp->if_softc;
 	struct txp_tx_ring *r = &sc->sc_txhir;
@@ -1192,6 +1192,8 @@ txp_start(struct ifnet *ifp)
 	struct mbuf *m, *m0, *m_defragged;
 	struct txp_swdesc *sd;
 	u_int32_t firstprod, firstcnt, prod, cnt;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;

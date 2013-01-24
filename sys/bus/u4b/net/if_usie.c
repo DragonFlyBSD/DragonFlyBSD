@@ -118,7 +118,7 @@ static void usie_if_sync_to(void *);
 static void usie_if_sync_cb(void *, int);
 static void usie_if_status_cb(void *, int);
 
-static void usie_if_start(struct ifnet *);
+static void usie_if_start(struct ifnet *, struct ifaltq_subque *);
 static int usie_if_output(struct ifnet *, struct mbuf *, struct sockaddr *, struct route *);
 static void usie_if_init(void *);
 static void usie_if_stop(struct usie_softc *);
@@ -1141,9 +1141,11 @@ usie_if_status_cb(void *arg, int pending)
 }
 
 static void
-usie_if_start(struct ifnet *ifp)
+usie_if_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct usie_softc *sc = ifp->if_softc;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if (!(ifp->if_drv_flags & IFF_DRV_RUNNING)) {
 		DPRINTF("Not running\n");

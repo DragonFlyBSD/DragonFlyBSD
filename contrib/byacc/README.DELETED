@@ -1,0 +1,17 @@
+ACKNOWLEDGEMENTS
+Makefile.old
+NEW_FEATURES
+NOTES
+NO_WARRANTY
+aclocal.m4
+config.guess
+config.sub
+config_h.in
+configure
+configure.in
+descrip.mms
+install-sh
+makefile.in
+package/
+test/
+vmsbuild.com

@@ -723,8 +723,10 @@ void
 ieee80211_ssid_mismatch(struct ieee80211vap *vap, const char *tag,
 	uint8_t mac[IEEE80211_ADDR_LEN], uint8_t *ssid)
 {
-	kprintf("[%6D] discard %s frame, ssid mismatch: ",
-		mac, ":", tag);
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+
+	kprintf("[%s] discard %s frame, ssid mismatch: ",
+	    kether_ntoa(mac, ethstr), tag);
 	ieee80211_print_essid(ssid + 2, ssid[1]);
 	kprintf("\n");
 }
@@ -766,12 +768,13 @@ ieee80211_note_frame(const struct ieee80211vap *vap,
 {
 	char buf[128];		/* XXX */
 	__va_list ap;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	__va_start(ap, fmt);
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	__va_end(ap);
-	if_printf(vap->iv_ifp, "[%6D] %s\n",
-		ieee80211_getbssid(vap, wh), ":", buf);
+	if_printf(vap->iv_ifp, "[%s] %s\n",
+	    kether_ntoa(ieee80211_getbssid(vap, wh), ethstr), buf);
 }
 
 void
@@ -781,11 +784,12 @@ ieee80211_note_mac(const struct ieee80211vap *vap,
 {
 	char buf[128];		/* XXX */
 	__va_list ap;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	__va_start(ap, fmt);
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	__va_end(ap);
-	if_printf(vap->iv_ifp, "[%6D] %s\n", mac, ":", buf);
+	if_printf(vap->iv_ifp, "[%s] %s\n", kether_ntoa(mac, ethstr), buf);
 }
 
 void
@@ -794,9 +798,10 @@ ieee80211_discard_frame(const struct ieee80211vap *vap,
 	const char *type, const char *fmt, ...)
 {
 	__va_list ap;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
-	if_printf(vap->iv_ifp, "[%6D] discard ",
-		ieee80211_getbssid(vap, wh), ":");
+	if_printf(vap->iv_ifp, "[%s] discard ",
+	    kether_ntoa(ieee80211_getbssid(vap, wh), ethstr));
 	if (type == NULL) {
 		kprintf("%s frame, ", ieee80211_mgt_subtype_name[
 			(wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) >>
@@ -815,9 +820,10 @@ ieee80211_discard_ie(const struct ieee80211vap *vap,
 	const char *type, const char *fmt, ...)
 {
 	__va_list ap;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
-	if_printf(vap->iv_ifp, "[%6D] discard ",
-		ieee80211_getbssid(vap, wh), ":");
+	if_printf(vap->iv_ifp, "[%s] discard ",
+	    kether_ntoa(ieee80211_getbssid(vap, wh), ethstr));
 	if (type != NULL)
 		kprintf("%s information element, ", type);
 	else
@@ -834,8 +840,9 @@ ieee80211_discard_mac(const struct ieee80211vap *vap,
 	const char *type, const char *fmt, ...)
 {
 	__va_list ap;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
-	if_printf(vap->iv_ifp, "[%6D] discard ", mac, ":");
+	if_printf(vap->iv_ifp, "[%s] discard ", kether_ntoa(mac, ethstr));
 	if (type != NULL)
 		kprintf("%s frame, ", type);
 	else

@@ -54,37 +54,38 @@ HEADER {
 };
 
 METHOD int setup_intr {
-	device_t	dev;
+	device_t		dev;
+	lwkt_serialize_t	slz;
 };
 
 METHOD void stop {
-	device_t	dev;
+	device_t		dev;
 };
 
 METHOD int reinit {
-	device_t	dev;
-	uint64_t	features;
+	device_t		dev;
+	uint64_t		features;
 };
 
 METHOD void reinit_complete {
-	device_t	dev;
+	device_t		dev;
 };
 
 METHOD void notify_vq {
-	device_t	dev;
-	uint16_t	queue;
+	device_t		dev;
+	uint16_t		queue;
 };
 
 METHOD void read_device_config {
-	device_t	dev;
-	bus_size_t	offset;
-	void		*dst;
-	int		len;
+	device_t		dev;
+	bus_size_t		offset;
+	void			*dst;
+	int			len;
 };
 
 METHOD void write_device_config {
-	device_t	dev;
-	bus_size_t	offset;
-	void		*src;
-	int		len;
+	device_t		dev;
+	bus_size_t		offset;
+	void			*src;
+	int			len;
 };

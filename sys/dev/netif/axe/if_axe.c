@@ -124,7 +124,7 @@ static void axe_rxeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 static void axe_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 static void axe_tick(void *);
 static void axe_rxstart(struct ifnet *);
-static void axe_start(struct ifnet *);
+static void axe_start(struct ifnet *, struct ifaltq_subque *);
 static int axe_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void axe_init(void *);
 static void axe_stop(struct axe_softc *);
@@ -755,10 +755,12 @@ axe_encap(struct axe_softc *sc, struct mbuf *m, int idx)
 }
 
 static void
-axe_start(struct ifnet *ifp)
+axe_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct axe_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if (!sc->axe_link) {
 		ifq_purge(&ifp->if_snd);

@@ -88,7 +88,7 @@ int	pflogoutput(struct ifnet *, struct mbuf *, struct sockaddr *,
 	    	       struct rtentry *);
 int	pflogioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 void	pflogrtrequest(int, struct rtentry *, struct sockaddr *);
-void	pflogstart(struct ifnet *);
+void	pflogstart(struct ifnet *, struct ifaltq_subque *);
 int	pflog_clone_create(struct if_clone *, int, caddr_t);
 int	pflog_clone_destroy(struct ifnet *);
 
@@ -181,14 +181,15 @@ pflog_clone_destroy(struct ifnet *ifp)
  * Start output on the pflog interface.
  */
 void
-pflogstart(struct ifnet *ifp)
+pflogstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct mbuf *m;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_LWKT_TOKEN_HELD(&pf_token);
 
 	for (;;) {
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifsq_dequeue(ifsq, NULL);
 		if (m == NULL)
 			return;
 		else

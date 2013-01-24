@@ -141,7 +141,7 @@ static void	lge_txeof(struct lge_softc *);
 static void	lge_intr(void *);
 static void	lge_tick(void *);
 static void	lge_tick_serialized(void *);
-static void	lge_start(struct ifnet *);
+static void	lge_start(struct ifnet *, struct ifaltq_subque *);
 static int	lge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	lge_init(void *);
 static void	lge_stop(struct lge_softc *);
@@ -1119,12 +1119,14 @@ lge_encap(struct lge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
  */
 
 static void
-lge_start(struct ifnet *ifp)
+lge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct lge_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL, *m_defragged;
 	uint32_t idx;
 	int need_timer;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if (!sc->lge_link) {
 		ifq_purge(&ifp->if_snd);

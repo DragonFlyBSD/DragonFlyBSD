@@ -321,7 +321,6 @@ format_class(int8_t class)
 	}
 }
 
-/* Simulates %D from kernel printf(9). */
 static void
 simple_hex(void *ptr, size_t length, const char *separator)
 {

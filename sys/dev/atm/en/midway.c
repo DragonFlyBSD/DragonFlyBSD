@@ -263,7 +263,7 @@ STATIC		void en_txdma (struct en_softc *, int);
 STATIC		void en_txlaunch (struct en_softc *, int,
 		    struct en_launch *);
 STATIC		void en_service (struct en_softc *);
-STATIC		void en_start (struct ifnet *);
+STATIC		void en_start (struct ifnet *, struct ifaltq_subque *);
 STATIC INLINE	int en_sz2b (int);
 STATIC INLINE	void en_write (struct en_softc *, u_int32_t,
 		    u_int32_t);
@@ -601,6 +601,7 @@ void
 en_attach(struct en_softc *sc)
 {
   struct ifnet *ifp = &sc->enif;
+  char ethstr[ETHER_ADDRSTRLEN + 1];
   int sz;
   u_int32_t reg, lcv, check, ptr, sav, midvloc;
 
@@ -757,8 +758,8 @@ done_probe:
   kprintf("%s: %d %dKB receive buffers, %d %dKB transmit buffers allocated\n",
 	sc->sc_dev.dv_xname, sc->en_nrx, EN_RXSZ, EN_NTX, EN_TXSZ);
 
-  kprintf("%s: End Station Identifier (mac address) %6D\n",
-	 sc->sc_dev.dv_xname, sc->macaddr, ":");
+  kprintf("%s: End Station Identifier (mac address) %s\n",
+	 sc->sc_dev.dv_xname, kether_ntoa(sc->macaddr, ethstr));
 
   /*
    * final commit
@@ -1463,7 +1464,7 @@ en_loadvc(struct en_softc *sc, int vc)
  */
 
 STATIC void
-en_start(struct ifnet *ifp)
+en_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
     struct en_softc *sc = (struct en_softc *) ifp->if_softc;
     struct mbuf *m, *lastm, *prev;

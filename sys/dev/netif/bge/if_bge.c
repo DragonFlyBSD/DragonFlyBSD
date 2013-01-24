@@ -320,7 +320,7 @@ static void	bge_msi_oneshot(void *);
 static void	bge_intr(struct bge_softc *);
 static void	bge_enable_intr(struct bge_softc *);
 static void	bge_disable_intr(struct bge_softc *);
-static void	bge_start(struct ifnet *);
+static void	bge_start(struct ifnet *, struct ifaltq_subque *);
 static int	bge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bge_init(void *);
 static void	bge_stop(struct bge_softc *);
@@ -3497,12 +3497,14 @@ bge_xmit(struct bge_softc *sc, uint32_t prodidx)
  * to the mbuf data regions directly in the transmit descriptors.
  */
 static void
-bge_start(struct ifnet *ifp)
+bge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct bge_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	uint32_t prodidx;
 	int nsegs = 0;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;

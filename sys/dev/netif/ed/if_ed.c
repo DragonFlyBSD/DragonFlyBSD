@@ -76,7 +76,7 @@ devclass_t ed_devclass;
 
 static void	ed_init		(void *);
 static int	ed_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	ed_start	(struct ifnet *);
+static void	ed_start	(struct ifnet *, struct ifaltq_subque *);
 static void	ed_reset	(struct ifnet *);
 static void	ed_watchdog	(struct ifnet *);
 #ifndef ED_NO_MIIBUS
@@ -916,6 +916,9 @@ ed_probe_SIC(device_t dev, int port_rid, int flags)
 	u_int	memsize;
 	u_long	conf_maddr, conf_msize;
 	u_char	sum;
+#ifdef ED_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	error = ed_alloc_port(dev, 0, ED_SIC_IO_PORTS);
 	if (error)
@@ -957,8 +960,8 @@ ed_probe_SIC(device_t dev, int port_rid, int flags)
 		sum ^= (sc->arpcom.ac_enaddr[i] = sc->mem_start[i]);
 	}
 #ifdef ED_DEBUG
-	device_printf(dev, "ed_probe_sic: got address %6D\n",
-		      sc->arpcom.ac_enaddr, ":");
+	device_printf(dev, "ed_probe_sic: got address %s\n",
+	    kether_ntoa(sc->arpcom.ac_enaddr, ethestr));
 #endif
 	if (sum != 0) {
 		return (ENXIO);
@@ -2065,12 +2068,14 @@ ed_xmit(struct ed_softc *sc)
  *     (i.e. that the output part of the interface is idle)
  */
 static void
-ed_start(struct ifnet *ifp)
+ed_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ed_softc *sc = ifp->if_softc;
 	struct mbuf *m0, *m;
 	caddr_t buffer;
 	int     len;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if (sc->gone) {
 		kprintf("ed_start(%p) GONE\n",ifp);

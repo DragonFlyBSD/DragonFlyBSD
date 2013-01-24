@@ -190,7 +190,7 @@ static void	sk_intr_yukon(struct sk_if_softc *);
 static void	sk_rxeof(struct sk_if_softc *);
 static void	sk_txeof(struct sk_if_softc *);
 static int	sk_encap(struct sk_if_softc *, struct mbuf **, uint32_t *);
-static void	sk_start(struct ifnet *);
+static void	sk_start(struct ifnet *, struct ifaltq_subque *);
 static int	sk_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	sk_init(void *);
 static void	sk_init_xmac(struct sk_if_softc *);
@@ -1698,13 +1698,14 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf **m_head0, uint32_t *txidx)
 }
 
 static void
-sk_start(struct ifnet *ifp)
+sk_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct sk_if_softc *sc_if = ifp->if_softc;
 	struct sk_softc *sc = sc_if->sk_softc;
 	uint32_t idx = sc_if->sk_cdata.sk_tx_prod;
 	int trans = 0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	DPRINTFN(2, ("sk_start\n"));
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))

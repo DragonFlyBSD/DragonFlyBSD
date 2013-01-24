@@ -143,6 +143,7 @@ static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
 static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
+static int	igb_get_rxring_inuse(const struct igb_softc *, boolean_t);
 #ifdef IFPOLL_ENABLE
 static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
@@ -182,7 +183,7 @@ static void	igb_media_status(struct ifnet *, struct ifmediareq *);
 static int	igb_media_change(struct ifnet *);
 static void	igb_timer(void *);
 static void	igb_watchdog(struct ifnet *);
-static void	igb_start(struct ifnet *);
+static void	igb_start(struct ifnet *, struct ifaltq_subque *);
 #ifdef IFPOLL_ENABLE
 static void	igb_npoll(struct ifnet *, struct ifpoll_info *);
 static void	igb_npoll_rx(struct ifnet *, void *, int);
@@ -647,7 +648,16 @@ igb_attach(device_t dev)
 		ether_ifdetach(&sc->arpcom.ac_if);
 		goto failed;
 	}
-	ifq_set_cpuid(&sc->arpcom.ac_if.if_snd, sc->tx_rings[0].tx_intr_cpuid);
+
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		struct ifaltq_subque *ifsq =
+		    ifq_get_subq(&sc->arpcom.ac_if.if_snd, i);
+		struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+		ifsq_set_cpuid(ifsq, txr->tx_intr_cpuid);
+		ifsq_set_priv(ifsq, txr);
+		txr->ifsq = ifsq;
+	}
 
 	return 0;
 
@@ -749,13 +759,15 @@ igb_resume(device_t dev)
 {
 	struct igb_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
 	ifnet_serialize_all(ifp);
 
 	igb_init(sc);
 	igb_get_mgmt(sc);
 
-	if_devstart(ifp);
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
+		ifsq_devstart(sc->tx_rings[i].ifsq);
 
 	ifnet_deserialize_all(ifp);
 
@@ -955,7 +967,8 @@ igb_init(void *xsc)
 	igb_set_promisc(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
+		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
 
 	if (polling || sc->intr_type == PCI_INTR_TYPE_MSIX)
 		sc->timer_cpuid = 0; /* XXX fixed */
@@ -1259,7 +1272,8 @@ igb_stop(struct igb_softc *sc)
 	callout_stop(&sc->timer);
 
 	ifp->if_flags &= ~IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
+		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
 	ifp->if_timer = 0;
 
 	e1000_reset_hw(&sc->hw);
@@ -1992,7 +2006,7 @@ igb_txeof(struct igb_tx_ring *txr)
 	 * to tell the stack that it is OK to send packets.
 	 */
 	if (IGB_IS_NOT_OACTIVE(txr)) {
-		ifq_clr_oactive(&ifp->if_snd);
+		ifsq_clr_oactive(txr->ifsq);
 
 		/*
 		 * We have enough TX descriptors, turn off
@@ -2986,8 +3000,8 @@ igb_npoll_tx(struct ifnet *ifp, void *arg, int cycle __unused)
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
 	igb_txeof(txr);
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
+	if (!ifsq_is_empty(txr->ifsq))
+		ifsq_devstart(txr->ifsq);
 }
 
 static void
@@ -3004,22 +3018,27 @@ static void
 igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 {
 	struct igb_softc *sc = ifp->if_softc;
+	int i;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (info) {
-		struct igb_tx_ring *txr;
-		int i, off;
+		int off;
 
 		info->ifpi_status.status_func = igb_npoll_status;
 		info->ifpi_status.serializer = &sc->main_serialize;
 
 		off = sc->tx_npoll_off;
-		KKASSERT(off < ncpus2);
-		txr = &sc->tx_rings[0];
-		info->ifpi_tx[off].poll_func = igb_npoll_tx;
-		info->ifpi_tx[off].arg = txr;
-		info->ifpi_tx[off].serializer = &txr->tx_serialize;
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+			struct igb_tx_ring *txr = &sc->tx_rings[i];
+			int idx = i + off;
+
+			KKASSERT(idx < ncpus2);
+			info->ifpi_tx[idx].poll_func = igb_npoll_tx;
+			info->ifpi_tx[idx].arg = txr;
+			info->ifpi_tx[idx].serializer = &txr->tx_serialize;
+			ifsq_set_cpuid(txr->ifsq, idx);
+		}
 
 		off = sc->rx_npoll_off;
 		for (i = 0; i < sc->rx_ring_cnt; ++i) {
@@ -3033,20 +3052,26 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		}
 
 		if (ifp->if_flags & IFF_RUNNING) {
-			if (sc->rx_ring_inuse == sc->rx_ring_cnt)
+			if (igb_get_rxring_inuse(sc, TRUE) ==
+			    sc->rx_ring_inuse)
 				igb_disable_intr(sc);
 			else
 				igb_init(sc);
 		}
-		ifq_set_cpuid(&ifp->if_snd, sc->tx_npoll_off);
 	} else {
 		if (ifp->if_flags & IFF_RUNNING) {
-			if (sc->rx_ring_inuse == sc->rx_ring_cnt)
+			if (igb_get_rxring_inuse(sc, FALSE) ==
+			    sc->rx_ring_inuse)
 				igb_enable_intr(sc);
 			else
 				igb_init(sc);
 		}
-		ifq_set_cpuid(&ifp->if_snd, sc->tx_rings[0].tx_intr_cpuid);
+
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+			struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+			ifsq_set_cpuid(txr->ifsq, txr->tx_intr_cpuid);
+		}
 	}
 }
 
@@ -3067,7 +3092,7 @@ igb_intr(void *xsc)
 		return;
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		struct igb_tx_ring *txr;
+		struct igb_tx_ring *txr = &sc->tx_rings[0];
 		int i;
 
 		for (i = 0; i < sc->rx_ring_inuse; ++i) {
@@ -3080,12 +3105,11 @@ igb_intr(void *xsc)
 			}
 		}
 
-		txr = &sc->tx_rings[0];
 		if (eicr & txr->tx_intr_mask) {
 			lwkt_serialize_enter(&txr->tx_serialize);
 			igb_txeof(txr);
-			if (!ifq_is_empty(&ifp->if_snd))
-				if_devstart(ifp);
+			if (!ifsq_is_empty(txr->ifsq))
+				ifsq_devstart(txr->ifsq);
 			lwkt_serialize_exit(&txr->tx_serialize);
 		}
 	}
@@ -3148,8 +3172,8 @@ igb_intr_shared(void *xsc)
 
 			lwkt_serialize_enter(&txr->tx_serialize);
 			igb_txeof(txr);
-			if (!ifq_is_empty(&ifp->if_snd))
-				if_devstart(ifp);
+			if (!ifsq_is_empty(txr->ifsq))
+				ifsq_devstart(txr->ifsq);
 			lwkt_serialize_exit(&txr->tx_serialize);
 		}
 	}
@@ -3303,35 +3327,36 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 }
 
 static void
-igb_start(struct ifnet *ifp)
+igb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct igb_softc *sc = ifp->if_softc;
-	struct igb_tx_ring *txr = &sc->tx_rings[0];
+	struct igb_tx_ring *txr = ifsq_get_priv(ifsq);
 	struct mbuf *m_head;
 	int idx = -1, nsegs = 0;
 
+	KKASSERT(txr->ifsq == ifsq);
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifsq_is_oactive(ifsq))
 		return;
 
 	if (!sc->link_active) {
-		ifq_purge(&ifp->if_snd);
+		ifsq_purge(ifsq);
 		return;
 	}
 
 	if (!IGB_IS_NOT_OACTIVE(txr))
 		igb_txeof(txr);
 
-	while (!ifq_is_empty(&ifp->if_snd)) {
+	while (!ifsq_is_empty(ifsq)) {
 		if (IGB_IS_OACTIVE(txr)) {
-			ifq_set_oactive(&ifp->if_snd);
+			ifsq_set_oactive(ifsq);
 			/* Set watchdog on */
 			ifp->if_timer = 5;
 			break;
 		}
 
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifsq_dequeue(ifsq, NULL);
 		if (m_head == NULL)
 			break;
 
@@ -3383,8 +3408,8 @@ igb_watchdog(struct ifnet *ifp)
 	sc->watchdog_events++;
 
 	igb_init(sc);
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
+	if (!ifsq_is_empty(txr->ifsq))
+		ifsq_devstart(txr->ifsq);
 }
 
 static void
@@ -4319,13 +4344,12 @@ static void
 igb_msix_tx(void *arg)
 {
 	struct igb_tx_ring *txr = arg;
-	struct ifnet *ifp = &txr->sc->arpcom.ac_if;
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
 	igb_txeof(txr);
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
+	if (!ifsq_is_empty(txr->ifsq))
+		ifsq_devstart(txr->ifsq);
 
 	E1000_WRITE_REG(&txr->sc->hw, E1000_EIMS, txr->tx_intr_mask);
 }
@@ -4350,19 +4374,25 @@ igb_msix_status(void *arg)
 static void
 igb_set_ring_inuse(struct igb_softc *sc, boolean_t polling)
 {
-	if (!IGB_ENABLE_HWRSS(sc))
-		return;
-
-	if (polling)
-		sc->rx_ring_inuse = sc->rx_ring_cnt;
-	else if (sc->intr_type != PCI_INTR_TYPE_MSIX)
-		sc->rx_ring_inuse = IGB_MIN_RING_RSS;
-	else
-		sc->rx_ring_inuse = sc->rx_ring_msix;
+	sc->rx_ring_inuse = igb_get_rxring_inuse(sc, polling);
 	if (bootverbose) {
 		if_printf(&sc->arpcom.ac_if, "RX rings %d/%d\n",
 		    sc->rx_ring_inuse, sc->rx_ring_cnt);
 	}
+}
+
+static int
+igb_get_rxring_inuse(const struct igb_softc *sc, boolean_t polling)
+{
+	if (!IGB_ENABLE_HWRSS(sc))
+		return 1;
+
+	if (polling)
+		return sc->rx_ring_cnt;
+	else if (sc->intr_type != PCI_INTR_TYPE_MSIX)
+		return IGB_MIN_RING_RSS;
+	else
+		return sc->rx_ring_msix;
 }
 
 static int

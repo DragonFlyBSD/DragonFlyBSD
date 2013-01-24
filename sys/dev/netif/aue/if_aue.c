@@ -180,7 +180,7 @@ static void aue_rxeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 static void aue_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 static void aue_tick(void *);
 static void aue_rxstart(struct ifnet *);
-static void aue_start(struct ifnet *);
+static void aue_start(struct ifnet *, struct ifaltq_subque *);
 static int aue_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void aue_init(void *);
 static void aue_stop(struct aue_softc *);
@@ -1084,11 +1084,12 @@ aue_encap(struct aue_softc *sc, struct mbuf *m, int idx)
 }
 
 static void
-aue_start(struct ifnet *ifp)
+aue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct aue_softc	*sc = ifp->if_softc;
 	struct mbuf		*m_head = NULL;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	AUE_LOCK(sc);
 
 	if (!sc->aue_link) {

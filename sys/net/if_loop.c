@@ -85,7 +85,7 @@ static int	looutput(struct ifnet *, struct mbuf *, struct sockaddr *,
 static int	loioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	lortrequest(int, struct rtentry *, struct rt_addrinfo *);
 #ifdef ALTQ
-static void	lo_altqstart(struct ifnet *);
+static void	lo_altqstart(struct ifnet *, struct ifaltq_subque *);
 #endif
 PSEUDO_SET(loopattach, if_loop);
 
@@ -228,7 +228,6 @@ rel:
 	if (ifq_is_enabled(&ifp->if_snd) && ifp->if_start == lo_altqstart) {
 		struct altq_pktattr pktattr;
 		int32_t *afp;
-	        int error;
 
 		/*
 		 * if the queueing discipline needs packet classification,
@@ -242,18 +241,7 @@ rel:
 		afp = mtod(m, int32_t *);
 		*afp = (int32_t)af;
 
-		/*
-		 * A critical section is needed for subsystems protected by
-		 * the MP lock, and the serializer is assumed to already
-		 * be held for MPSAFE subsystems.
-		 */
-	        crit_enter();
-		error = ifq_enqueue(&ifp->if_snd, m, &pktattr);
-		ifnet_serialize_tx(ifp);
-		ifp->if_start(ifp);
-		ifnet_deserialize_tx(ifp);
-		crit_exit();
-		return (error);
+		return ifq_dispatch(ifp, m, &pktattr);
 	}
 #endif /* ALTQ */
 
@@ -289,7 +277,7 @@ rel:
 
 #ifdef ALTQ
 static void
-lo_altqstart(struct ifnet *ifp)
+lo_altqstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct mbuf *m;
 	int32_t af, *afp;
@@ -297,7 +285,7 @@ lo_altqstart(struct ifnet *ifp)
 	
 	while (1) {
 		crit_enter();
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifsq_dequeue(ifsq, NULL);
 		crit_exit();
 		if (m == NULL)
 			return;

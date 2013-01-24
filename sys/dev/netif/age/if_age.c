@@ -85,7 +85,7 @@ static void	age_miibus_statchg(device_t);
 
 static void	age_init(void *);
 static int	age_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	age_start(struct ifnet *);
+static void	age_start(struct ifnet *, struct ifaltq_subque *);
 static void	age_watchdog(struct ifnet *);
 static void	age_mediastatus(struct ifnet *, struct ifmediareq *);
 static int	age_mediachange(struct ifnet *);
@@ -1574,12 +1574,13 @@ age_encap(struct age_softc *sc, struct mbuf **m_head)
 }
 
 static void
-age_start(struct ifnet *ifp)
+age_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct age_softc *sc = ifp->if_softc;
 	struct mbuf *m_head;
 	int enq;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((sc->age_flags & AGE_FLAG_LINK) == 0) {

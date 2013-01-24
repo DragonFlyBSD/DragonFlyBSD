@@ -445,13 +445,20 @@ npxpush(mcontext_t *mctx)
 		} else {
 			mctx->mc_ownedfp = _MC_FPOWNED_PCB;
 		}
-		bcopy(td->td_savefpu, mctx->mc_fpregs, sizeof(mctx->mc_fpregs));
+		KKASSERT(sizeof(*td->td_savefpu) <= sizeof(mctx->mc_fpregs));
+		bcopy(td->td_savefpu, mctx->mc_fpregs, sizeof(*td->td_savefpu));
 		td->td_flags &= ~TDF_USINGFP;
-		mctx->mc_fpformat =
-#ifndef CPU_DISABLE_SSE
-			(cpu_fxsr) ? _MC_FPFMT_XMM :
+#ifndef CPU_DISABLE_AVX
+	if (cpu_xsave)
+		mctx->mc_fpformat = _MC_FPFMT_YMM;
+	else
 #endif
-			_MC_FPFMT_387;
+#ifndef CPU_DISABLE_SSE
+	if (cpu_fxsr)
+		mctx->mc_fpformat = _MC_FPFMT_XMM;
+	else
+#endif
+		mctx->mc_fpformat = _MC_FPFMT_387;
 	} else {
 		mctx->mc_ownedfp = _MC_FPOWNED_NONE;
 		mctx->mc_fpformat = _MC_FPFMT_NODEV;
@@ -497,6 +504,7 @@ npxpop(mcontext_t *mctx)
 		 */
 		if (td == mdcpu->gd_npxthread)
 			npxsave(td->td_savefpu);
+		KKASSERT(sizeof(*td->td_savefpu) <= sizeof(mctx->mc_fpregs));
 		bcopy(mctx->mc_fpregs, td->td_savefpu, sizeof(*td->td_savefpu));
 		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF)
 #ifndef CPU_DISABLE_SSE

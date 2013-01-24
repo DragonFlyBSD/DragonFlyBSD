@@ -40,6 +40,8 @@
 #include "path.h"
 #include "lex.h"
 
+int yylex(void);
+
 char ctrl_names[32][4] = {
 	"nul", "soh", "stx", "etx", "eot", "enq", "ack", "bel",
 	"bs ", "ht ", "nl ", "vt ", "ff ", "cr ", "so ", "si ",

@@ -65,6 +65,7 @@ SUBDIR=	alias \
 	file2c \
 	find \
 	finger \
+	flex \
 	fmt \
 	fold \
 	from \
@@ -101,7 +102,6 @@ SUBDIR=	alias \
 	less \
 	lessecho \
 	lesskey \
-	lex \
 	limits \
 	locale \
 	locate \

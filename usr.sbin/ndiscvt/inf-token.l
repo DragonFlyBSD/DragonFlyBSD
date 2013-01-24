@@ -33,6 +33,7 @@
  * $FreeBSD: src/usr.sbin/ndiscvt/inf-token.l,v 1.3 2004/01/11 21:10:35 mdodd Exp $
  */
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <regex.h>
 #include <ctype.h>
 #include <err.h>
@@ -42,10 +43,7 @@
 #include "y.tab.h"
 
 int lineno = 1;
-#define YY_NO_INPUT
-#define YY_NO_UNPUT
 
-int yylex(void);
 void yyerror(const char *);
 
 static void
@@ -57,6 +55,9 @@ update_lineno(const char *cp)
 }
 
 %}
+
+%option noinput
+%option nounput
 
 %%
 

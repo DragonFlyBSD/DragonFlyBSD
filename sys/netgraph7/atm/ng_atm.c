@@ -876,8 +876,8 @@ text_status(node_p node, char *arg, u_int len)
 	if(atmmedia[i].name == NULL)
 		sbuf_printf(&sbuf, "media=unknown\n");
 
-	sbuf_printf(&sbuf, "serial=%u esi=%6D hardware=%u software=%u\n",
-	    mib->serial, mib->esi, ":", mib->hw_version, mib->sw_version);
+	sbuf_printf(&sbuf, "serial=%u esi=%s hardware=%u software=%u\n",
+	    mib->serial, ether_sprintf(mib->esi), mib->hw_version, mib->sw_version);
 	sbuf_printf(&sbuf, "pcr=%u vpi_bits=%u vci_bits=%u max_vpcs=%u "
 	    "max_vccs=%u\n", mib->pcr, mib->vpi_bits, mib->vci_bits,
 	    mib->max_vpcs, mib->max_vccs);

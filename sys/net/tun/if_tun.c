@@ -75,7 +75,7 @@ static int tunoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
 	    struct rtentry *rt);
 static int tunifioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static int tuninit (struct ifnet *);
-static void tunstart(struct ifnet *);
+static void tunstart(struct ifnet *, struct ifaltq_subque *);
 static void tun_filter_detach(struct knote *);
 static int tun_filter_read(struct knote *, long);
 static int tun_filter_write(struct knote *, long);
@@ -493,10 +493,11 @@ tunioctl(struct dev_ioctl_args *ap)
 			tp->tun_flags &= ~TUN_ASYNC;
 		break;
 	case FIONREAD:
-		if (!ifq_is_empty(&tp->tun_if.if_snd)) {
+		if (!ifsq_is_empty(ifq_get_subq_default(&tp->tun_if.if_snd))) {
 			struct mbuf *mb;
 
-			mb = ifq_poll(&tp->tun_if.if_snd);
+			mb = ifsq_poll(
+			    ifq_get_subq_default(&tp->tun_if.if_snd));
 			for( *(int *)ap->a_data = 0; mb != NULL; mb = mb->m_next)
 				*(int *)ap->a_data += mb->m_len;
 		} else {
@@ -536,6 +537,7 @@ tunread(struct dev_read_args *ap)
 	struct uio *uio = ap->a_uio;
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	struct mbuf	*m0;
 	int		error=0, len;
 
@@ -549,7 +551,7 @@ tunread(struct dev_read_args *ap)
 
 	ifnet_serialize_all(ifp);
 
-	while ((m0 = ifq_dequeue(&ifp->if_snd, NULL)) == NULL) {
+	while ((m0 = ifsq_dequeue(ifsq, NULL)) == NULL) {
 		if (ap->a_ioflag & IO_NDELAY) {
 			ifnet_deserialize_all(ifp);
 			return EWOULDBLOCK;
@@ -769,7 +771,7 @@ tun_filter_read(struct knote *kn, long hint)
 	int ready = 0;
 
 	ifnet_serialize_all(&tp->tun_if);
-	if (!ifq_is_empty(&tp->tun_if.if_snd))
+	if (!ifsq_is_empty(ifq_get_subq_default(&tp->tun_if.if_snd)))
 		ready = 1;
 	ifnet_deserialize_all(&tp->tun_if);
 
@@ -783,15 +785,17 @@ tun_filter_read(struct knote *kn, long hint)
  * to notify readers when outgoing packets become ready.
  */
 static void
-tunstart(struct ifnet *ifp)
+tunstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct tun_softc *tp = ifp->if_softc;
 	struct mbuf *m;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+
 	if (!ifq_is_enabled(&ifp->if_snd))
 		return;
 
-	m = ifq_poll(&ifp->if_snd);
+	m = ifsq_poll(ifsq);
 	if (m != NULL) {
 		if (tp->tun_flags & TUN_RWAIT) {
 			tp->tun_flags &= ~TUN_RWAIT;
@@ -799,8 +803,8 @@ tunstart(struct ifnet *ifp)
 		}
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
-		ifnet_deserialize_tx(ifp);
+		ifnet_deserialize_tx(ifp, ifsq);
 		KNOTE(&tp->tun_rkq.ki_note, 0);
-		ifnet_serialize_tx(ifp);
+		ifnet_serialize_tx(ifp, ifsq);
 	}
 }

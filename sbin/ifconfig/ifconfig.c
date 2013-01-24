@@ -817,6 +817,16 @@ setifmtu(const char *val, int dummy __unused, int s,
 }
 
 static void
+setiftsolen(const char *val, int dummy __unused, int s,
+    const struct afswtch *afp)
+{
+	strncpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
+	ifr.ifr_tsolen = atoi(val);
+	if (ioctl(s, SIOCSIFTSOLEN, (caddr_t)&ifr) < 0)
+		warn("ioctl (set tsolen)");
+}
+
+static void
 setifname(const char *val, int dummy __unused, int s, 
     const struct afswtch *afp)
 {
@@ -872,8 +882,8 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 
 #define	IFFBITS \
 "\020\1UP\2BROADCAST\3DEBUG\4LOOPBACK\5POINTOPOINT\6SMART\7RUNNING" \
-"\10NOARP\11PROMISC\12ALLMULTI\13OACTIVE\14SIMPLEX\15LINK0\16LINK1\17LINK2" \
-"\20MULTICAST\21POLLING\22PPROMISC\23MONITOR\24STATICARP\25NPOLLING"
+"\10NOARP\11PROMISC\12ALLMULTI\14SIMPLEX\15LINK0\16LINK1\17LINK2" \
+"\20MULTICAST\22PPROMISC\23MONITOR\24STATICARP\25NPOLLING"
 
 #define	IFCAPBITS \
 "\020\1RXCSUM\2TXCSUM\3NETCONS\4VLAN_MTU\5VLAN_HWTAGGING\6JUMBO_MTU\7RSS" \
@@ -920,6 +930,13 @@ status(const struct afswtch *afp, int addrcount, struct	sockaddr_dl *sdl,
 		if (supmedia && ifr.ifr_reqcap != 0) {
 			printb("\tcapabilities", ifr.ifr_reqcap, IFCAPBITS);
 			putchar('\n');
+			if (ifr.ifr_reqcap & IFCAP_TSO) {
+				if (ioctl(s, SIOCGIFTSOLEN,
+				    (caddr_t)&ifr) == 0) {
+					printf("\ttsolen %d", ifr.ifr_tsolen);
+					putchar('\n');
+				}
+			}
 		}
 	}
 
@@ -1121,7 +1138,8 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD("noicmp",	IFF_LINK1,	setifflags),
 	DEF_CMD_ARG("mtu",			setifmtu),
 	DEF_CMD_ARG("name",			setifname),
-	DEF_CMD_ARG("pollcpu",			setifpollcpu)
+	DEF_CMD_ARG("pollcpu",			setifpollcpu),
+	DEF_CMD_ARG("tsolen",			setiftsolen)
 };
 
 static __constructor(101) void

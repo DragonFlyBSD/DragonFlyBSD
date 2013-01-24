@@ -385,29 +385,30 @@ ieee80211_dump_pkt(struct ieee80211com *ic,
 {
 	const struct ieee80211_frame *wh;
 	int i;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	wh = (const struct ieee80211_frame *)buf;
 	switch (wh->i_fc[1] & IEEE80211_FC1_DIR_MASK) {
 	case IEEE80211_FC1_DIR_NODS:
-		kprintf("NODS %6D", wh->i_addr2, ":");
-		kprintf("->%6D", wh->i_addr1, ":");
-		kprintf("(%6D)", wh->i_addr3, ":");
+		kprintf("NODS %s", kether_ntoa(wh->i_addr2, ethstr));
+		kprintf("->%s", kether_ntoa(wh->i_addr1, ethstr));
+		kprintf("(%s)", kether_ntoa(wh->i_addr3, ethstr));
 		break;
 	case IEEE80211_FC1_DIR_TODS:
-		kprintf("TODS %6D", wh->i_addr2, ":");
-		kprintf("->%6D", wh->i_addr3, ":");
-		kprintf("(%6D)", wh->i_addr1, ":");
+		kprintf("TODS %s", kether_ntoa(wh->i_addr2, ethstr));
+		kprintf("->%s", kether_ntoa(wh->i_addr3, ethstr));
+		kprintf("(%s)", kether_ntoa(wh->i_addr1, ethstr));
 		break;
 	case IEEE80211_FC1_DIR_FROMDS:
-		kprintf("FRDS %6D", wh->i_addr3, ":");
-		kprintf("->%6D", wh->i_addr1, ":");
-		kprintf("(%6D)", wh->i_addr2, ":");
+		kprintf("FRDS %s", kether_ntoa(wh->i_addr3, ethstr));
+		kprintf("->%s", kether_ntoa(wh->i_addr1, ethstr));
+		kprintf("(%s)", kether_ntoa(wh->i_addr2, ethstr));
 		break;
 	case IEEE80211_FC1_DIR_DSTODS:
-		kprintf("DSDS %6D", (const uint8_t *)&wh[1], ":");
-		kprintf("->%6D", wh->i_addr3, ":");
-		kprintf("(%6D", wh->i_addr2, ":");
-		kprintf("->%6D)", wh->i_addr1, ":");
+		kprintf("DSDS %s", kether_ntoa((const uint8_t *)&wh[1], ethstr));
+		kprintf("->%s", kether_ntoa(wh->i_addr3, ethstr));
+		kprintf("(%s", kether_ntoa(wh->i_addr2, ethstr));
+		kprintf("->%s)", kether_ntoa(wh->i_addr1, ethstr));
 		break;
 	}
 	switch (wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK) {
@@ -1648,6 +1649,9 @@ ieee80211_newstate_task(void *xvap, int npending)
 		goto done;
 
 	if (nstate == IEEE80211_S_RUN) {
+		struct ifaltq_subque *ifsq =
+		    ifq_get_subq_default(&vap->iv_ifp->if_snd);
+
 		/*
 		 * OACTIVE may be set on the vap if the upper layer
 		 * tried to transmit (e.g. IPv6 NDP) before we reach
@@ -1656,8 +1660,8 @@ ieee80211_newstate_task(void *xvap, int npending)
 		 * Note this can also happen as a result of SLEEP->RUN
 		 * (i.e. coming out of power save mode).
 		 */
-		ifq_clr_oactive(&vap->iv_ifp->if_snd);
-		vap->iv_ifp->if_start(vap->iv_ifp);
+		ifsq_clr_oactive(ifsq);
+		vap->iv_ifp->if_start(vap->iv_ifp, ifsq);
 
 		/* bring up any vaps waiting on us */
 		wakeupwaiting(vap);

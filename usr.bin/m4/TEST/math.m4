@@ -1,5 +1,4 @@
-dnl $DragonFly: src/usr.bin/m4/TEST/math.m4,v 1.1 2006/12/27 21:29:02 pavalos Exp $
-dnl $FreeBSD: src/usr.bin/m4/TEST/math.m4,v 1.1 2004/05/01 03:27:05 smkelly Exp $
+dnl $FreeBSD: src/usr.bin/m4/TEST/math.m4,v 1.2 2012/11/17 01:54:24 svnexp Exp $
 dnl A regression test for m4 C operators		(ksb,petef)
 dnl If you think you have a short-circuiting m4, run us m4 -DSHORCIRCUIT=yes
 dnl

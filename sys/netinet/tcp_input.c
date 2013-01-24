@@ -134,6 +134,12 @@ struct tcphdr tcp_savetcp;
 #include <netproto/key/key.h>
 #endif
 
+/*
+ * Limit burst of new packets during SACK based fast recovery
+ * or extended limited transmit.
+ */
+#define TCP_SACK_MAXBURST	4
+
 MALLOC_DEFINE(M_TSEGQ, "tseg_qent", "TCP segment queue entry");
 
 static int log_in_vain = 0;
@@ -1353,8 +1359,9 @@ after_listen:
 					    tp->t_rxtcur, tcp_timer_rexmt);
 				}
 				sowwakeup(so);
-				if (so->so_snd.ssb_cc > 0)
-					tcp_output(tp);
+				if (so->so_snd.ssb_cc > 0 &&
+				    !tcp_output_pending(tp))
+					tcp_output_fair(tp);
 				return(IPPROTO_DONE);
 			}
 		} else if (tiwin == tp->snd_wnd &&
@@ -2569,8 +2576,13 @@ dodata:							/* XXX */
 	/*
 	 * Return any desired output.
 	 */
-	if (needoutput || (tp->t_flags & TF_ACKNOW))
-		tcp_output(tp);
+	if ((tp->t_flags & TF_ACKNOW) ||
+	    (needoutput && tcp_sack_report_needed(tp))) {
+		tcp_output_cancel(tp);
+		tcp_output_fair(tp);
+	} else if (needoutput && !tcp_output_pending(tp)) {
+		tcp_output_fair(tp);
+	}
 	tcp_sack_report_cleanup(tp);
 	return(IPPROTO_DONE);
 
@@ -3225,7 +3237,6 @@ tcp_sack_rexmt(struct tcpcb *tp, boolean_t force)
 	int nseg = 0;		/* consecutive new segments */
 	int nseg_rexmt = 0;	/* retransmitted segments */
 	int maxrexmt = 0;
-#define MAXBURST 4		/* limit burst of new packets on partial ack */
 
 	if (force) {
 		uint32_t unsacked = tcp_sack_first_unsacked_len(tp);
@@ -3243,7 +3254,7 @@ tcp_sack_rexmt(struct tcpcb *tp, boolean_t force)
 	pipe = tcp_sack_compute_pipe(tp);
 	while (((tcp_seq_diff_t)(ocwnd - pipe) >= (tcp_seq_diff_t)tp->t_maxseg
 	        || (force && nseg_rexmt < maxrexmt && nseg == 0)) &&
-	    (!tcp_do_smartsack || nseg < MAXBURST)) {
+	    (!tcp_do_smartsack || nseg < TCP_SACK_MAXBURST)) {
 		tcp_seq old_snd_max, old_rexmt_high, nextrexmt;
 		uint32_t sent, seglen;
 		boolean_t rescue;
@@ -3334,6 +3345,9 @@ tcp_sack_limitedxmit(struct tcpcb *tp)
 	cwnd_left = (tcp_seq_diff_t)(ocwnd - pipe);
 	if (cwnd_left < (tcp_seq_diff_t)tp->t_maxseg)
 		return FALSE;
+
+	if (tcp_do_smartsack)
+		cwnd_left = ulmin(cwnd_left, tp->t_maxseg * TCP_SACK_MAXBURST);
 
 	next = tp->snd_nxt = tp->snd_max;
 	tp->snd_cwnd = tp->snd_nxt - tp->snd_una +

@@ -196,9 +196,6 @@ ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
  *
  *	reg=3<BITTWO,BITONE>
  *
- * XXX:  %D  -- Hexdump, takes pointer and separator string:
- *		("%6D", ptr, ":")   -> XX:XX:XX:XX:XX:XX
- *		("%*D", len, ptr, " " -> XX XX XX XX ...
  */
 static int
 kvprintf(char const *fmt, void (*func)(int, void *), void *arg, int radix,
@@ -208,7 +205,6 @@ kvprintf(char const *fmt, void (*func)(int, void *), void *arg, int radix,
 	char nbuf[MAXNBUF];
 	char *d;
 	const char *p, *percent, *q;
-	u_char *up;
 	int ch, n;
 	uintmax_t num;
 	int base, lflag, qflag, tmp, width, ladjust, sharpflag, neg, sign, dot;
@@ -311,20 +307,6 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			break;
 		case 'c':
 			PCHAR(va_arg(ap, int));
-			break;
-		case 'D':
-			up = va_arg(ap, u_char *);
-			p = va_arg(ap, char *);
-			if (!width)
-				width = 16;
-			while(width--) {
-				PCHAR(hex2ascii(*up >> 4));
-				PCHAR(hex2ascii(*up & 0x0f));
-				up++;
-				if (width)
-					for (q=p;*q;q++)
-						PCHAR(*q);
-			}
 			break;
 		case 'd':
 		case 'i':

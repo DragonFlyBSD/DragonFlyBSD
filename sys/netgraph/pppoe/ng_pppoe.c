@@ -56,6 +56,8 @@
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 #include <sys/thread2.h>
+
+#include <net/if_var.h>
 #include <net/ethernet.h>
 
 #include <netgraph/ng_message.h>
@@ -892,6 +894,7 @@ ng_pppoe_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		union	uniq	data;
 	} __attribute ((packed)) uniqtag;
 	negp			neg = NULL;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 AAA
 	if (hook->private == &privp->debug_hook) {
@@ -928,15 +931,13 @@ AAA
 				    ETHERTYPE_PPPOE_STUPID_DISC;
 				log(LOG_NOTICE,
 				    "Switched to nonstandard PPPoE mode due to "
-				    "packet from %*D\n",
-				    ETHER_ADDR_LEN,
-				    wh->eh.ether_shost, ":");
+				    "packet from %s\n",
+				    kether_ntoa(wh->eh.ether_shost, ethstr));
 			} else if (pppoe_mode == PPPOE_KEEPSTANDARD)
 				log(LOG_NOTICE,
 				    "Ignored nonstandard PPPoE packet "
-				    "from %*D\n",
-				    ETHER_ADDR_LEN,
-				    wh->eh.ether_shost, ":");
+				    "from %s\n",
+				    kether_ntoa(wh->eh.ether_shost, ethstr));
 			/* fall through */
 		case	ETHERTYPE_PPPOE_DISC:
 			/*

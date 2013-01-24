@@ -43,6 +43,8 @@
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_macro_scan.l,v 1.5 2003/12/16 23:54:07 gibbs Exp $
  */
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
+
 #include <sys/types.h>
 
 #include <inttypes.h>
@@ -67,8 +69,6 @@ static char string_buf[MAX_STR_CONST];
 static char *string_buf_ptr;
 static int  parren_count;
 static char msgbuf[255];
-
-extern int mmlex(void);
 %}
 
 WORD		[A-Za-z_][-A-Za-z_0-9]*

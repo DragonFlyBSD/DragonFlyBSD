@@ -67,6 +67,7 @@ static int no_config_clobber = TRUE;
 int	debugging;
 int	profiling;
 
+extern int yyparse(void);
 static void configfile(void);
 static void get_srcdir(void);
 static void usage(void);

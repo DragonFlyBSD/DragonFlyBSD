@@ -52,7 +52,6 @@
 #include <sys/errno.h>
 /*#include <sys/kdb.h>*/
 #include <sys/kernel.h>
-#include <sys/ktr.h>
 #include <sys/limits.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>

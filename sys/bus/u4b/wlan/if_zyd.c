@@ -19,9 +19,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*
  * ZyDAS ZD1211/ZD1211B USB WLAN driver.
  */
@@ -620,6 +617,7 @@ zyd_intr_read_callback(struct usb_xfer *xfer, usb_error_t error)
 	struct usb_page_cache *pc;
 	int datalen;
 	int actlen;
+	char hexstr[HEX_NCPYLEN(64)];
 
 	usbd_xfer_status(xfer, &actlen, NULL, NULL, NULL);
 
@@ -685,15 +683,17 @@ zyd_intr_read_callback(struct usb_xfer *xfer, usb_error_t error)
 				/* copy answer into caller-supplied buffer */
 				memcpy(rqp->odata, cmd->data, rqp->olen);
 				DPRINTF(sc, ZYD_DEBUG_CMD,
-				    "command %p complete, data = %*D \n",
-				    rqp, rqp->olen, (char *)rqp->odata, ":");
+				    "command %p complete, data = %s \n",
+				    rqp, hexncpy(rqp->odata, rqp->olen, hexstr,
+					HEX_NCPYLEN(rqp->olen), ":"));
 				wakeup(rqp);	/* wakeup caller */
 				break;
 			}
 			if (rqp == NULL) {
 				device_printf(sc->sc_dev,
-				    "unexpected IORD notification %*D\n",
-				    datalen, cmd->data, ":");
+				    "unexpected IORD notification %s\n",
+				    hexncpy(cmd->data, datalen, hexstr,
+					HEX_NCPYLEN(datalen), ":"));
 			}
 			break;
 		}
@@ -778,14 +778,17 @@ zyd_cmd(struct zyd_softc *sc, uint16_t code, const void *idata, int ilen,
 	struct zyd_cmd cmd;
 	struct zyd_rq rq;
 	int error;
+#ifdef USB_DEBUG
+	char hexstr[HEX_NCPYLEN(64)];
+#endif
 
 	if (ilen > sizeof(cmd.data))
 		return (EINVAL);
 
 	cmd.code = htole16(code);
 	memcpy(cmd.data, idata, ilen);
-	DPRINTF(sc, ZYD_DEBUG_CMD, "sending cmd %p = %*D\n",
-	    &rq, ilen, idata, ":");
+	DPRINTF(sc, ZYD_DEBUG_CMD, "sending cmd %p = %s\n", &rq,
+	    hexncpy(idata, ilen, hexstr, HEX_NCPYLEN(ilen), ":"));
 
 	rq.cmd = &cmd;
 	rq.idata = idata;
@@ -2677,6 +2680,9 @@ zyd_init_locked(struct zyd_softc *sc)
 	struct usb_config_descriptor *cd;
 	int error;
 	uint32_t val;
+#ifdef USB_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	ZYD_LOCK_ASSERT(sc, MA_OWNED);
 
@@ -2728,8 +2734,8 @@ zyd_init_locked(struct zyd_softc *sc)
 	if (ifp->if_drv_flags & IFF_DRV_RUNNING)
 		zyd_stop(sc);
 
-	DPRINTF(sc, ZYD_DEBUG_INIT, "setting MAC address to %6D\n",
-	    IF_LLADDR(ifp), ":");
+	DPRINTF(sc, ZYD_DEBUG_INIT, "setting MAC address to %s\n",
+	    kether_ntoa(IF_LLADDR(ifp), ethstr));
 	error = zyd_set_macaddr(sc, IF_LLADDR(ifp));
 	if (error != 0)
 		return;

@@ -25,9 +25,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/printf.9,v 1.8 2006/09/08 14:05:03 ru Exp $
-.\" $DragonFly: src/share/man/man9/kprintf.9,v 1.5 2008/07/18 00:28:04 swildner Exp $
 .\"
-.Dd July 17, 2008
+.Dd December 21, 2012
 .Dt KPRINTF 9
 .Os
 .Sh NAME
@@ -107,7 +106,7 @@ parameters in the same manner as
 .Xr printf 3 .
 However, the
 .Nm
-functions add two other conversion specifiers to
+functions add another conversion specifier to
 .Fa format :
 .Pp
 The
@@ -130,20 +129,6 @@ The string is terminated by either the bit number at the start of the next
 bit identifier or
 .Dv NUL
 for the last bit identifier.
-.Pp
-The
-.Cm \&%D
-identifier is meant to assist in hexdumps.
-It requires two arguments: a
-.Vt "u_char *"
-pointer and a
-.Vt "char *"
-string.
-The memory pointed to be the pointer is output in hexadecimal one byte at
-a time.
-The string is used as a delimiter between individual bytes.
-If present, a width directive will specify the number of bytes to display.
-By default, 16 bytes of data are output.
 .Pp
 The
 .Fn log
@@ -210,14 +195,12 @@ kprintf_test(void)
 {
 
 	kprintf("reg=%b\en", 3, "\e10\e2BITTWO\e1BITONE\en");
-	kprintf("out: %4D\en", "AAAA", ":");
 }
 .Ed
 .Pp
 will produce the following output:
 .Bd -literal -offset indent
 reg=3<BITTWO,BITONE>
-out: 41:41:41:41
 .Ed
 .Pp
 The call

@@ -582,6 +582,7 @@ arpintr(netmsg_t msg)
 	struct mbuf *m = msg->packet.nm_packet;
 	struct arphdr *ar;
 	u_short ar_hrd;
+	char hexstr[6];
 
 	if (m->m_len < sizeof(struct arphdr) &&
 	    (m = m_pullup(m, sizeof(struct arphdr))) == NULL) {
@@ -592,8 +593,9 @@ arpintr(netmsg_t msg)
 
 	ar_hrd = ntohs(ar->ar_hrd);
 	if (ar_hrd != ARPHRD_ETHER && ar_hrd != ARPHRD_IEEE802) {
-		log(LOG_ERR, "arp: unknown hardware address format (0x%2D)\n",
-		    (unsigned char *)&ar->ar_hrd, "");
+		hexncpy((unsigned char *)&ar->ar_hrd, 2, hexstr, 5, NULL);
+		log(LOG_ERR, "arp: unknown hardware address format (0x%s)\n",
+		    hexstr);
 		m_freem(m);
 		return;
 	}
@@ -677,6 +679,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 	struct llinfo_arp *la;
 	struct sockaddr_dl *sdl;
 	struct rtentry *rt;
+	char hexstr[2][64];
 
 	la = arplookup(saddr, create, generate_report, FALSE);
 	if (la && (rt = la->la_rt) && (sdl = SDL(rt->rt_gateway))) {
@@ -713,12 +716,13 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 
 			if ((log_arp_wrong_iface == 1 && nifp == NULL) ||
 			    log_arp_wrong_iface == 2) {
+				hexncpy((u_char *)ar_sha(ah), ifp->if_addrlen,
+				    hexstr[0], HEX_NCPYLEN(ifp->if_addrlen), ":");
 				log(LOG_ERR,
 				    "arp: %s is on %s "
-				    "but got reply from %*D on %s\n",
+				    "but got reply from %s on %s\n",
 				    inet_ntoa(isaddr),
-				    rt->rt_ifp->if_xname,
-				    ifp->if_addrlen, (u_char *)ar_sha(ah), ":",
+				    rt->rt_ifp->if_xname, hexstr[0],
 				    ifp->if_xname);
 			}
 			if (nifp == NULL)
@@ -736,21 +740,23 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		    bcmp(ar_sha(ah), LLADDR(sdl), sdl->sdl_alen)) {
 			if (rt->rt_expire != 0) {
 				if (dologging && log_arp_movements) {
+					hexncpy((u_char *)LLADDR(sdl), ifp->if_addrlen,
+					    hexstr[0], HEX_NCPYLEN(ifp->if_addrlen), ":");
+					hexncpy((u_char *)ar_sha(ah), ifp->if_addrlen,
+					    hexstr[1], HEX_NCPYLEN(ifp->if_addrlen), ":");
 			    		log(LOG_INFO,
-			    		"arp: %s moved from %*D to %*D on %s\n",
-			    		inet_ntoa(isaddr),
-			    		ifp->if_addrlen, (u_char *)LLADDR(sdl),
-			    		":", ifp->if_addrlen,
-			    		(u_char *)ar_sha(ah), ":",
-			    		ifp->if_xname);
+					    "arp: %s moved from %s to %s on %s\n",
+					    inet_ntoa(isaddr), hexstr[0], hexstr[1],
+					    ifp->if_xname);
 				}
 			} else {
 				if (dologging && log_arp_permanent_modify) {
+					hexncpy((u_char *)ar_sha(ah), ifp->if_addrlen,
+					    hexstr[0], HEX_NCPYLEN(ifp->if_addrlen), ":");
 					log(LOG_ERR,
-					"arp: %*D attempts to modify "
+					"arp: %s attempts to modify "
 					"permanent entry for %s on %s\n",
-					ifp->if_addrlen, (u_char *)ar_sha(ah),
-					":", inet_ntoa(isaddr), ifp->if_xname);
+					hexstr[0], inet_ntoa(isaddr), ifp->if_xname);
 				}
 				return;
 			}
@@ -761,17 +767,19 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		 * length. -is
 		 */
 		if (dologging && sdl->sdl_alen && sdl->sdl_alen != ah->ar_hln) {
+			hexncpy((u_char *)ar_sha(ah), ifp->if_addrlen,
+			    hexstr[0], HEX_NCPYLEN(ifp->if_addrlen), ":");
 			log(LOG_WARNING,
-			    "arp from %*D: new addr len %d, was %d",
-			    ifp->if_addrlen, (u_char *) ar_sha(ah), ":",
-			    ah->ar_hln, sdl->sdl_alen);
+			    "arp from %s: new addr len %d, was %d",
+			    hexstr[0], ah->ar_hln, sdl->sdl_alen);
 		}
 		if (ifp->if_addrlen != ah->ar_hln) {
 			if (dologging) {
+				hexncpy((u_char *)ar_sha(ah), ifp->if_addrlen,
+				    hexstr[0], HEX_NCPYLEN(ifp->if_addrlen), ":");
 				log(LOG_WARNING,
-				"arp from %*D: addr len: new %d, i/f %d "
-				"(ignored)",
-				ifp->if_addrlen, (u_char *) ar_sha(ah), ":",
+				"arp from %s: addr len: new %d, i/f %d "
+				"(ignored)", hexstr[0],
 				ah->ar_hln, ifp->if_addrlen);
 			}
 			return;
@@ -849,6 +857,7 @@ in_arpinput(struct mbuf *m)
 	uint8_t *enaddr = NULL;
 	int op;
 	int req_len;
+	char hexstr[64];
 
 	req_len = arphdr_len2(ifp->if_addrlen, sizeof(struct in_addr));
 	if (m->m_len < req_len && (m = m_pullup(m, req_len)) == NULL) {
@@ -1009,10 +1018,11 @@ match:
 		return;
 	}
 	if (isaddr.s_addr == myaddr.s_addr && myaddr.s_addr != 0) {
+		hexncpy((u_char *)ar_sha(ah), ifp->if_addrlen,
+		    hexstr, HEX_NCPYLEN(ifp->if_addrlen), ":");
 		log(LOG_ERR,
-		   "arp: %*D is using my IP address %s!\n",
-		   ifp->if_addrlen, (u_char *)ar_sha(ah), ":",
-		   inet_ntoa(isaddr));
+		   "arp: %s is using my IP address %s!\n",
+		    hexstr, inet_ntoa(isaddr));
 		itaddr = myaddr;
 		goto reply;
 	}

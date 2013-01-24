@@ -74,7 +74,7 @@ int	ieee80211_output(struct ifnet *, struct mbuf *,
 void	ieee80211_send_setup(struct ieee80211_node *, struct mbuf *, int, int,
         const uint8_t [IEEE80211_ADDR_LEN], const uint8_t [IEEE80211_ADDR_LEN],
         const uint8_t [IEEE80211_ADDR_LEN]);
-void	ieee80211_start(struct ifnet *);
+void	ieee80211_start(struct ifnet *, struct ifaltq_subque *);
 int	ieee80211_send_nulldata(struct ieee80211_node *);
 int	ieee80211_classify(struct ieee80211_node *, struct mbuf *m);
 struct mbuf *ieee80211_mbuf_adjust(struct ieee80211vap *, int,

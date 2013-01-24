@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * @(#)lex.l	8.1 (Berkeley) 5/31/93
- * $DragonFly: src/games/atc/lex.l,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -43,14 +42,14 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include	"y.tab.h"
 
-#define		YY_NO_INPUT
-#define		YY_NO_UNPUT
 extern int	line;
-extern int	yylex(void);
 
 %}
+%option nounput
+%option noinput
 %%
 [0-9]+			{ yylval.ival = atoi(yytext);  return(ConstOp); }
 height			{ return(HeightOp); }

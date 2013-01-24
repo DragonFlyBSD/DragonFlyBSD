@@ -218,15 +218,15 @@ static void xl_txeof_90xB	(struct xl_softc *);
 static void xl_txeoc		(struct xl_softc *);
 static void xl_intr		(void *);
 static void xl_start_body	(struct ifnet *, int);
-static void xl_start		(struct ifnet *);
-static void xl_start_90xB	(struct ifnet *);
+static void xl_start		(struct ifnet *, struct ifaltq_subque *);
+static void xl_start_90xB	(struct ifnet *, struct ifaltq_subque *);
 static int xl_ioctl		(struct ifnet *, u_long, caddr_t,
 						struct ucred *);
 static void xl_init		(void *);
 static void xl_stop		(struct xl_softc *);
 static void xl_watchdog		(struct ifnet *);
 #ifdef IFPOLL_ENABLE
-static void xl_start_poll	(struct ifnet *);
+static void xl_start_poll	(struct ifnet *, struct ifaltq_subque *);
 static void xl_npoll		(struct ifnet *, struct ifpoll_info *);
 static void xl_npoll_compat	(struct ifnet *, void *, int);
 #endif
@@ -2229,8 +2229,9 @@ xl_txeoc(struct xl_softc *sc)
 #ifdef IFPOLL_ENABLE
 
 static void
-xl_start_poll(struct ifnet *ifp)
+xl_start_poll(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	xl_start_body(ifp, 0);
 }
 
@@ -2478,8 +2479,9 @@ xl_encap(struct xl_softc *sc, struct xl_chain *c, struct mbuf *m_head)
 }
 
 static void
-xl_start(struct ifnet *ifp)
+xl_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 	xl_start_body(ifp, 1);
 }
@@ -2614,7 +2616,7 @@ xl_start_body(struct ifnet *ifp, int proc_rx)
 }
 
 static void
-xl_start_90xB(struct ifnet *ifp)
+xl_start_90xB(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct xl_softc		*sc;
 	struct mbuf		*m_head = NULL;
@@ -2622,6 +2624,7 @@ xl_start_90xB(struct ifnet *ifp)
 	struct xl_chain		*prev_tx;
 	int			error, idx;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	sc = ifp->if_softc;

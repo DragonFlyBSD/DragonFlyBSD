@@ -95,7 +95,7 @@ static void cue_rxeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 static void cue_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 static void cue_tick(void *);
 static void cue_rxstart(struct ifnet *);
-static void cue_start(struct ifnet *);
+static void cue_start(struct ifnet *, struct ifaltq_subque *);
 static int cue_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void cue_init(void *);
 static void cue_stop(struct cue_softc *);
@@ -812,10 +812,12 @@ cue_encap(struct cue_softc *sc, struct mbuf *m, int idx)
 }
 
 static void
-cue_start(struct ifnet *ifp)
+cue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct cue_softc	*sc;
 	struct mbuf		*m_head = NULL;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	sc = ifp->if_softc;
 	CUE_LOCK(sc);

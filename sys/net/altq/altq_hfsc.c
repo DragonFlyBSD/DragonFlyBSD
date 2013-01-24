@@ -66,11 +66,17 @@
 
 #include <sys/thread2.h>
 
+#define HFSC_SUBQ_INDEX		ALTQ_SUBQ_INDEX_DEFAULT
+#define HFSC_LOCK(ifq) \
+    ALTQ_SQ_LOCK(&(ifq)->altq_subq[HFSC_SUBQ_INDEX])
+#define HFSC_UNLOCK(ifq) \
+    ALTQ_SQ_UNLOCK(&(ifq)->altq_subq[HFSC_SUBQ_INDEX])
+
 /*
  * function prototypes
  */
 static int	hfsc_clear_interface(struct hfsc_if *);
-static int	hfsc_request(struct ifaltq *, int, void *);
+static int	hfsc_request(struct ifaltq_subque *, int, void *);
 static void	hfsc_purge(struct hfsc_if *);
 static struct hfsc_class *hfsc_class_create(struct hfsc_if *,
 					    struct service_curve *,
@@ -79,9 +85,9 @@ static struct hfsc_class *hfsc_class_create(struct hfsc_if *,
 					    struct hfsc_class *, int, int, int);
 static int	hfsc_class_destroy(struct hfsc_class *);
 static struct hfsc_class *hfsc_nextclass(struct hfsc_class *);
-static int	hfsc_enqueue(struct ifaltq *, struct mbuf *,
+static int	hfsc_enqueue(struct ifaltq_subque *, struct mbuf *,
 			     struct altq_pktattr *);
-static struct mbuf *hfsc_dequeue(struct ifaltq *, struct mbuf *, int);
+static struct mbuf *hfsc_dequeue(struct ifaltq_subque *, struct mbuf *, int);
 
 static int	hfsc_addq(struct hfsc_class *, struct mbuf *);
 static struct mbuf *hfsc_getq(struct hfsc_class *);
@@ -140,7 +146,7 @@ static struct hfsc_class *clh_to_clp(struct hfsc_if *, uint32_t);
 int
 hfsc_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
-	return altq_attach(ifq, ALTQT_HFSC, a->altq_disc,
+	return altq_attach(ifq, ALTQT_HFSC, a->altq_disc, ifq_mapsubq_default,
 	    hfsc_enqueue, hfsc_dequeue, hfsc_request, NULL, NULL);
 }
 
@@ -238,9 +244,9 @@ hfsc_add_queue(struct pf_altq *a)
 		return (EINVAL);
 	ifq = hif->hif_ifq;
 
-	ALTQ_LOCK(ifq);
+	HFSC_LOCK(ifq);
 	error = hfsc_add_queue_locked(a, hif);
-	ALTQ_UNLOCK(ifq);
+	HFSC_UNLOCK(ifq);
 
 	return error;
 }
@@ -268,9 +274,9 @@ hfsc_remove_queue(struct pf_altq *a)
 		return (EINVAL);
 	ifq = hif->hif_ifq;
 
-	ALTQ_LOCK(ifq);
+	HFSC_LOCK(ifq);
 	error = hfsc_remove_queue_locked(a, hif);
-	ALTQ_UNLOCK(ifq);
+	HFSC_UNLOCK(ifq);
 
 	return error;
 }
@@ -292,16 +298,16 @@ hfsc_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 		return (EBADF);
 	ifq = hif->hif_ifq;
 
-	ALTQ_LOCK(ifq);
+	HFSC_LOCK(ifq);
 
 	if ((cl = clh_to_clp(hif, a->qid)) == NULL) {
-		ALTQ_UNLOCK(ifq);
+		HFSC_UNLOCK(ifq);
 		return (EINVAL);
 	}
 
 	get_class_stats(&stats, cl);
 
-	ALTQ_UNLOCK(ifq);
+	HFSC_UNLOCK(ifq);
 
 	if ((error = copyout((caddr_t)&stats, ubuf, sizeof(stats))) != 0)
 		return (error);
@@ -340,14 +346,23 @@ hfsc_clear_interface(struct hfsc_if *hif)
 }
 
 static int
-hfsc_request(struct ifaltq *ifq, int req, void *arg)
+hfsc_request(struct ifaltq_subque *ifsq, int req, void *arg)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct hfsc_if *hif = (struct hfsc_if *)ifq->altq_disc;
 
 	crit_enter();
 	switch (req) {
 	case ALTRQ_PURGE:
-		hfsc_purge(hif);
+		if (ifsq_get_index(ifsq) == HFSC_SUBQ_INDEX) {
+			hfsc_purge(hif);
+		} else {
+			/*
+			 * Race happened, the unrelated subqueue was
+			 * picked during the packet scheduler transition.
+			 */
+			ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		}
 		break;
 	}
 	crit_exit();
@@ -365,7 +380,7 @@ hfsc_purge(struct hfsc_if *hif)
 			hfsc_purgeq(cl);
 	}
 	if (ifq_is_enabled(hif->hif_ifq))
-		hif->hif_ifq->ifq_len = 0;
+		hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX].ifq_len = 0;
 }
 
 struct hfsc_class *
@@ -640,11 +655,23 @@ hfsc_nextclass(struct hfsc_class *cl)
  * (*altq_enqueue) in struct ifaltq.
  */
 static int
-hfsc_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
+hfsc_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
+    struct altq_pktattr *pktattr)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct hfsc_if	*hif = (struct hfsc_if *)ifq->altq_disc;
 	struct hfsc_class *cl;
 	int len;
+
+	if (ifsq_get_index(ifsq) != HFSC_SUBQ_INDEX) {
+		/*
+		 * Race happened, the unrelated subqueue was
+		 * picked during the packet scheduler transition.
+		 */
+		ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		m_freem(m);
+		return ENOBUFS;
+	}
 
 	/* grab class set by classifier */
 	if ((m->m_flags & M_PKTHDR) == 0) {
@@ -674,7 +701,7 @@ hfsc_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		crit_exit();
 		return (ENOBUFS);
 	}
-	ifq->ifq_len++;
+	ifsq->ifq_len++;
 	cl->cl_hif->hif_packets++;
 
 	/* successfully queued. */
@@ -694,14 +721,24 @@ hfsc_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
  *	after ALTDQ_POLL.
  */
 static struct mbuf *
-hfsc_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
+hfsc_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct hfsc_if	*hif = (struct hfsc_if *)ifq->altq_disc;
 	struct hfsc_class *cl;
 	struct mbuf *m;
 	int len, next_len;
 	int realtime = 0;
 	uint64_t cur_time;
+
+	if (ifsq_get_index(ifsq) != HFSC_SUBQ_INDEX) {
+		/*
+		 * Race happened, the unrelated subqueue was
+		 * picked during the packet scheduler transition.
+		 */
+		ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		return NULL;
+	}
 
 	if (hif->hif_packets == 0) {
 		/* no packet in the tree */
@@ -769,7 +806,7 @@ hfsc_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 		panic("hfsc_dequeue:");
 	len = m_pktlen(m);
 	cl->cl_hif->hif_packets--;
-	ifq->ifq_len--;
+	ifsq->ifq_len--;
 	PKTCNTR_ADD(&cl->cl_stats.xmit_cnt, len);
 
 	update_vf(cl, len, cur_time);
@@ -854,7 +891,7 @@ hfsc_purgeq(struct hfsc_class *cl)
 		PKTCNTR_ADD(&cl->cl_stats.drop_cnt, m_pktlen(m));
 		m_freem(m);
 		cl->cl_hif->hif_packets--;
-		cl->cl_hif->hif_ifq->ifq_len--;
+		cl->cl_hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX].ifq_len--;
 	}
 	KKASSERT(qlen(cl->cl_q) == 0);
 

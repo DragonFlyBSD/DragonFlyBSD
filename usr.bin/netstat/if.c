@@ -222,7 +222,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 		ierrors = ifnet.if_ierrors;
 		collisions = ifnet.if_collisions;
 		timer = ifnet.if_timer;
-		drops = ifnet.if_snd.ifq_drops;
+		drops = 0;
 
 		if (ifaddraddr == 0) {
 			printf("%-7.7s %-5lu ", name, ifnet.if_mtu);
@@ -557,7 +557,7 @@ loop:
 				ifnet.if_obytes - ip->ift_ob,
 				ifnet.if_collisions - ip->ift_co);
 			if (dflag)
-				printf(" %5u", ifnet.if_snd.ifq_drops - ip->ift_dr);
+				printf(" %5u", 0 - ip->ift_dr);
 		}
 		ip->ift_ip = ifnet.if_ipackets;
 		ip->ift_ie = ifnet.if_ierrors;
@@ -566,7 +566,7 @@ loop:
 		ip->ift_oe = ifnet.if_oerrors;
 		ip->ift_ob = ifnet.if_obytes;
 		ip->ift_co = ifnet.if_collisions;
-		ip->ift_dr = ifnet.if_snd.ifq_drops;
+		ip->ift_dr = 0;
 	} else {
 		sum->ift_ip = 0;
 		sum->ift_ie = 0;
@@ -590,7 +590,7 @@ loop:
 			sum->ift_oe += ifnet.if_oerrors;
 			sum->ift_ob += ifnet.if_obytes;
 			sum->ift_co += ifnet.if_collisions;
-			sum->ift_dr += ifnet.if_snd.ifq_drops;
+			sum->ift_dr += 0;
 			off = (u_long)TAILQ_NEXT(&ifnet, if_link);
 		}
 		if (!first) {

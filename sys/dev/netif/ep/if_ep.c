@@ -103,7 +103,7 @@ static int	ep_media2if_media[] =
 /* if functions */
 static void	ep_if_init	(void *);
 static int	ep_if_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	ep_if_start	(struct ifnet *);
+static void	ep_if_start	(struct ifnet *, struct ifaltq_subque *);
 static void	ep_if_watchdog	(struct ifnet *);
 
 /* if_media functions */
@@ -413,13 +413,15 @@ ep_if_init(void *xsc)
 static const char padmap[] = {0, 3, 2, 1};
 
 static void
-ep_if_start(struct ifnet *ifp)
+ep_if_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
     struct ep_softc *sc = ifp->if_softc;
     u_int len;
     struct mbuf *m;
     struct mbuf *top;
     int pad;
+
+    ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
     if (sc->gone) {
 	ifq_purge(&ifp->if_snd);

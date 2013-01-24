@@ -808,10 +808,10 @@ tcp_usr_send(netmsg_t msg)
 			socantsendmore(so);
 			tp = tcp_usrclosed(tp);
 		}
-		if (tp != NULL) {
+		if (tp != NULL && !tcp_output_pending(tp)) {
 			if (flags & PRUS_MORETOCOME)
 				tp->t_flags |= TF_MORETOCOME;
-			error = tcp_output(tp);
+			error = tcp_output_fair(tp);
 			if (flags & PRUS_MORETOCOME)
 				tp->t_flags &= ~TF_MORETOCOME;
 		}

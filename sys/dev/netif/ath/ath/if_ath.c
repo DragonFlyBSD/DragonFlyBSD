@@ -122,7 +122,7 @@ static void	ath_vap_delete(struct ieee80211vap *);
 static void	ath_init(void *);
 static void	ath_stop_locked(struct ifnet *);
 static void	ath_stop(struct ifnet *);
-static void	ath_start(struct ifnet *);
+static void	ath_start(struct ifnet *, struct ifaltq_subque *);
 static int	ath_reset(struct ifnet *);
 static int	ath_reset_vap(struct ieee80211vap *, u_long);
 static int	ath_media_change(struct ifnet *);
@@ -1702,7 +1702,7 @@ ath_reset(struct ifnet *ifp)
 	}
 	ath_hal_intrset(ah, sc->sc_imask);
 
-	ath_start(ifp);			/* restart xmit */
+	if_devstart(ifp);	/* restart xmit */
 	return 0;
 }
 
@@ -1808,7 +1808,7 @@ ath_txfrag_setup(struct ath_softc *sc, ath_bufhead *frags,
 }
 
 static void
-ath_start(struct ifnet *ifp)
+ath_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ath_softc *sc = ifp->if_softc;
 	struct ieee80211_node *ni;
@@ -1817,6 +1817,7 @@ ath_start(struct ifnet *ifp)
 	ath_bufhead frags;
 
 	wlan_assert_serialized();
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || sc->sc_invalid) {
 		ifq_purge(&ifp->if_snd);
@@ -1924,12 +1925,13 @@ ath_keyprint(struct ath_softc *sc, const char *tag, u_int ix,
 		"TKIP",
 		"CLR",
 	};
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	int i, n;
 
 	kprintf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
 	for (i = 0, n = hk->kv_len; i < n; i++)
 		kprintf("%02x", hk->kv_val[i]);
-	kprintf(" mac %6D", mac, ":");
+	kprintf(" mac %s", kether_ntoa(mac, ethstr));
 	if (hk->kv_type == HAL_CIPHER_TKIP) {
 		kprintf(" %s ", sc->sc_splitmic ? "mic" : "rxmic");
 		for (i = 0; i < sizeof(hk->kv_mic); i++)
@@ -4061,7 +4063,7 @@ rx_next:
 		ieee80211_ff_age_all(ic, 100);
 #endif
 		if (!ifq_is_empty(&ifp->if_snd))
-			ath_start(ifp);
+			if_devstart(ifp);
 	}
 	wlan_serialize_exit();
 #undef PA2DESC
@@ -5049,7 +5051,7 @@ ath_tx_task_q0(void *arg, int npending)
 	if (sc->sc_softled)
 		ath_led_event(sc, sc->sc_txrix);
 
-	ath_start(ifp);
+	if_devstart(ifp);
 	wlan_serialize_exit();
 }
 
@@ -5088,7 +5090,7 @@ ath_tx_task_q0123(void *arg, int npending)
 	if (sc->sc_softled)
 		ath_led_event(sc, sc->sc_txrix);
 
-	ath_start(ifp);
+	if_devstart(ifp);
 	wlan_serialize_exit();
 }
 
@@ -5121,7 +5123,7 @@ ath_tx_task(void *arg, int npending)
 	if (sc->sc_softled)
 		ath_led_event(sc, sc->sc_txrix);
 
-	ath_start(ifp);
+	if_devstart(ifp);
 	wlan_serialize_exit();
 }
 
@@ -5476,6 +5478,9 @@ ath_scan_start(struct ieee80211com *ic)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct ath_softc *sc = ifp->if_softc;
 	struct ath_hal *ah = sc->sc_ah;
+#ifdef ATH_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	u_int32_t rfilt;
 
 	/* XXX calibration timer? */
@@ -5486,8 +5491,8 @@ ath_scan_start(struct ieee80211com *ic)
 	ath_hal_setrxfilter(ah, rfilt);
 	ath_hal_setassocid(ah, ifp->if_broadcastaddr, 0);
 
-	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %6D aid 0\n",
-		 __func__, rfilt, ifp->if_broadcastaddr, ":");
+	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %s aid 0\n",
+	    __func__, rfilt, kether_ntoa(ifp->if_broadcastaddr, ethstr));
 }
 
 static void
@@ -5496,6 +5501,9 @@ ath_scan_end(struct ieee80211com *ic)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct ath_softc *sc = ifp->if_softc;
 	struct ath_hal *ah = sc->sc_ah;
+#ifdef ATH_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	u_int32_t rfilt;
 
 	sc->sc_scanning = 0;
@@ -5505,9 +5513,9 @@ ath_scan_end(struct ieee80211com *ic)
 
 	ath_hal_process_noisefloor(ah);
 
-	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %6D aid 0x%x\n",
-		 __func__, rfilt, sc->sc_curbssid, ":",
-		 sc->sc_curaid);
+	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %s aid 0x%x\n",
+	    __func__, rfilt, kether_ntoa(sc->sc_curbssid, ethstr),
+	    sc->sc_curaid);
 }
 
 static void
@@ -5553,6 +5561,9 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211_node *ni = NULL;
 	int i, error, stamode;
 	u_int32_t rfilt;
+#ifdef ATH_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 	static const HAL_LED_STATE leds[] = {
 	    HAL_LED_INIT,	/* IEEE80211_S_INIT */
 	    HAL_LED_SCAN,	/* IEEE80211_S_SCAN */
@@ -5595,8 +5606,8 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		IEEE80211_ADDR_COPY(sc->sc_curbssid, ni->ni_bssid);
 		ath_hal_setassocid(ah, sc->sc_curbssid, sc->sc_curaid);
 	}
-	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %6D aid 0x%x\n",
-	   __func__, rfilt, sc->sc_curbssid, ":", sc->sc_curaid);
+	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %s aid 0x%x\n",
+	    __func__, rfilt, kether_ntoa(sc->sc_curbssid, ethstr), sc->sc_curaid);
 	ath_hal_setrxfilter(ah, rfilt);
 
 	/* XXX is this to restore keycache on resume? */
@@ -5619,9 +5630,9 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		ni = vap->iv_bss;
 
 		DPRINTF(sc, ATH_DEBUG_STATE,
-		    "%s(RUN): iv_flags 0x%08x bintvl %d bssid %6D "
+		    "%s(RUN): iv_flags 0x%08x bintvl %d bssid %s "
 		    "capinfo 0x%04x chan %d\n", __func__,
-		    vap->iv_flags, ni->ni_intval, ni->ni_bssid, ":",
+		    vap->iv_flags, ni->ni_intval, kether_ntoa(ni->ni_bssid, ethstr),
 		    ni->ni_capinfo, ieee80211_chan2ieee(ic, ic->ic_curchan));
 
 		switch (vap->iv_opmode) {

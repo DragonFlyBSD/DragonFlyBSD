@@ -73,7 +73,7 @@
 #define TX_MAX_QUEUE	(FWMAXQUEUE - 1)
 
 /* network interface */
-static void fwe_start (struct ifnet *);
+static void fwe_start (struct ifnet *, struct ifaltq_subque *);
 static int fwe_ioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static void fwe_init (void *);
 
@@ -454,10 +454,11 @@ fwe_output_callback(struct fw_xfer *xfer)
 }
 
 static void
-fwe_start(struct ifnet *ifp)
+fwe_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct fwe_softc *fwe = ((struct fwe_eth_softc *)ifp->if_softc)->fwe;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	FWEDEBUG(ifp, "starting\n");
 
 	if (fwe->dma_ch < 0) {

@@ -179,7 +179,7 @@ static void	rl_rxeof(struct rl_softc *);
 static void	rl_txeof(struct rl_softc *);
 static void	rl_intr(void *);
 static void	rl_tick(void *);
-static void	rl_start(struct ifnet *);
+static void	rl_start(struct ifnet *, struct ifaltq_subque *);
 static int	rl_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	rl_init(void *);
 static void	rl_stop	(struct rl_softc *);
@@ -1340,10 +1340,12 @@ rl_encap(struct rl_softc *sc, struct mbuf *m_head)
  */
 
 static void
-rl_start(struct ifnet *ifp)
+rl_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct rl_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;

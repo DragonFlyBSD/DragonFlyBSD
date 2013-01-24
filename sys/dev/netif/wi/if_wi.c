@@ -114,7 +114,7 @@ static struct ieee80211vap *wi_vap_create(struct ieee80211com *ic,
 static void wi_vap_delete(struct ieee80211vap *vap);
 static void wi_stop_locked(struct wi_softc *sc, int disable);
 static void wi_start_locked(struct ifnet *);
-static void wi_start(struct ifnet *);
+static void wi_start(struct ifnet *, struct ifaltq_subque *);
 static int  wi_start_tx(struct ifnet *ifp, struct wi_frame *frmhdr,
 		struct mbuf *m0);
 static int  wi_raw_xmit(struct ieee80211_node *, struct mbuf *,
@@ -1005,8 +1005,9 @@ wi_start_locked(struct ifnet *ifp)
 }
 
 static void
-wi_start(struct ifnet *ifp)
+wi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	wi_start_locked(ifp);
 }
 
@@ -1240,12 +1241,13 @@ wi_sync_bssid(struct wi_softc *sc, u_int8_t new_bssid[IEEE80211_ADDR_LEN])
 	struct ieee80211com *ic = ifp->if_l2com;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 	struct ieee80211_node *ni = vap->iv_bss;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	if (IEEE80211_ADDR_EQ(new_bssid, ni->ni_bssid))
 		return;
 
-	DPRINTF(("wi_sync_bssid: bssid %6D -> ", ni->ni_bssid, ":"));
-	DPRINTF(("%6D ?\n", new_bssid, ":"));
+	DPRINTF(("wi_sync_bssid: bssid %s -> ", kether_ntoa(ni->ni_bssid, ethstr)));
+	DPRINTF(("%s ?\n", kether_ntoa(new_bssid, ethstr)));
 
 	/* In promiscuous mode, the BSSID field is not a reliable
 	 * indicator of the firmware's BSSID. Damp spurious
@@ -1381,6 +1383,7 @@ wi_tx_ex_intr(struct wi_softc *sc)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct wi_frame frmhdr;
 	int fid;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	fid = CSR_READ_2(sc, WI_TX_CMP_FID);
 	/* Read in the frame header */
@@ -1401,9 +1404,9 @@ wi_tx_ex_intr(struct wi_softc *sc)
 				if (status & WI_TXSTAT_DISCONNECT)
 					kprintf(", port disconnected");
 				if (status & WI_TXSTAT_FORM_ERR)
-					kprintf(", invalid format (data len %u src %6D)",
+					kprintf(", invalid format (data len %u src %s)",
 						le16toh(frmhdr.wi_dat_len),
-						frmhdr.wi_ehdr.ether_shost, ":");
+					    kether_ntoa(frmhdr.wi_ehdr.ether_shost, ethstr));
 				if (status & ~0xf)
 					kprintf(", status=0x%x", status);
 				kprintf("\n");

@@ -230,10 +230,9 @@ struct tws_softc {
     bus_space_tag_t bus_tag;              /* bus space tag */
     bus_space_tag_t bus_mfa_tag;          /* bus space tag for mfa's */
     u_int64_t mfa_base;                   /* mfa base address */
-    struct resource *irq_res[TWS_MAX_IRQS];/* interrupt resource */
-    int irq_res_id[TWS_MAX_IRQS];         /* intr resource id */
-    void *intr_handle[TWS_MAX_IRQS];      /* interrupt handle */
-    int irqs;                             /* intrs used */
+    struct resource *irq_res;             /* interrupt resource */
+    int irq_res_id;                       /* intr resource id */
+    void *intr_handle;                    /* interrupt handle */
     struct tws_msix_info msix;            /* msix info */
     struct cam_sim *sim;                  /* sim for this controller */
     struct cam_path *path;                /* Ctlr path to CAM */
@@ -249,7 +248,7 @@ struct tws_softc {
     struct tws_stats stats;               /* I/O stats */
     struct tws_init_connect_info cinfo;   /* compatibility info */
     boolean is64bit;                      /* True - 64bit else 32bit */
-    u_int8_t intr_type;                   /* Interrupt type used */
+    int intr_type;                        /* Interrupt type used */
     bus_dma_tag_t parent_tag;             /* parent DMA tag */
     bus_dma_tag_t cmd_tag;                /* command DMA tag */
     bus_dmamap_t cmd_map;                 /* command map */

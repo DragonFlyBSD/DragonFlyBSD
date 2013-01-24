@@ -72,7 +72,7 @@
 
 static void	iwl2100_init(void *);
 static int	iwl2100_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	iwl2100_start(struct ifnet *);
+static void	iwl2100_start(struct ifnet *, struct ifaltq_subque *);
 static void	iwl2100_watchdog(struct ifnet *);
 static int	iwl2100_newstate(struct ieee80211com *, enum ieee80211_state, int);
 static int	iwl2100_media_change(struct ifnet *);
@@ -839,13 +839,14 @@ iwl2100_ioctl(struct ifnet *ifp, u_long cmd, caddr_t req, struct ucred *cr)
 }
 
 static void
-iwl2100_start(struct ifnet *ifp)
+iwl2100_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct iwl2100_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct iwl2100_tx_ring *tr = &sc->sc_txring;
 	int trans = 0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (sc->sc_flags & IWL2100_F_DETACH) {
@@ -3565,6 +3566,7 @@ iwl2100_ibss_bssid(void *xsc)
 	struct iwl2100_softc *sc = xsc;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
@@ -3584,8 +3586,8 @@ iwl2100_ibss_bssid(void *xsc)
 		if (len < (int)sizeof(bssid)) {
 			if_printf(ifp, "can't get IBSS bssid\n");
 		} else {
-			DPRINTF(sc, IWL2100_DBG_IBSS, "IBSS bssid: %6D\n",
-				bssid, ":");
+			DPRINTF(sc, IWL2100_DBG_IBSS, "IBSS bssid: %s\n",
+			    kether_ntoa(bssid, ethstr));
 			IEEE80211_ADDR_COPY(ic->ic_bss->ni_bssid, bssid);
 
 			sc->sc_flags |= IWL2100_F_IFSTART;

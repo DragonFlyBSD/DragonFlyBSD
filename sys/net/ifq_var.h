@@ -57,18 +57,30 @@
 #include <net/altq/if_altq.h>
 #endif
 
+#define ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq) \
+	KASSERT(ifsq_get_ifp((ifsq)) == (ifp) && \
+	    ifsq_get_index((ifsq)) == ALTQ_SUBQ_INDEX_DEFAULT, \
+	    ("not ifp's default subqueue"));
+
 struct ifaltq;
 
 /*
  * Support for "classic" ALTQ interfaces.
  */
-int		ifq_classic_enqueue(struct ifaltq *, struct mbuf *,
+int		ifsq_classic_enqueue(struct ifaltq_subque *, struct mbuf *,
 		    struct altq_pktattr *);
-struct mbuf	*ifq_classic_dequeue(struct ifaltq *, struct mbuf *, int);
-int		ifq_classic_request(struct ifaltq *, int, void *);
+struct mbuf	*ifsq_classic_dequeue(struct ifaltq_subque *, struct mbuf *,
+		    int);
+int		ifsq_classic_request(struct ifaltq_subque *, int, void *);
 void		ifq_set_classic(struct ifaltq *);
 
 void		ifq_set_maxlen(struct ifaltq *, int);
+void		ifq_set_methods(struct ifaltq *, altq_mapsubq_t,
+		    ifsq_enqueue_t, ifsq_dequeue_t, ifsq_request_t);
+int		ifq_mapsubq_default(struct ifaltq *, int);
+
+void		ifsq_devstart(struct ifaltq_subque *ifsq);
+void		ifsq_devstart_sched(struct ifaltq_subque *ifsq);
 
 /*
  * Dispatch a packet to an interface.
@@ -122,52 +134,53 @@ ifq_set_ready(struct ifaltq *_ifq)
  * ALTQ lock must be held
  */
 static __inline int
-ifq_enqueue_locked(struct ifaltq *_ifq, struct mbuf *_m,
-		   struct altq_pktattr *_pa)
+ifsq_enqueue_locked(struct ifaltq_subque *_ifsq, struct mbuf *_m,
+    struct altq_pktattr *_pa)
 {
 #ifdef ALTQ
-	if (!ifq_is_enabled(_ifq))
-		return ifq_classic_enqueue(_ifq, _m, _pa);
+	if (!ifq_is_enabled(_ifsq->ifsq_altq))
+		return ifsq_classic_enqueue(_ifsq, _m, _pa);
 	else
 #endif
-	return _ifq->altq_enqueue(_ifq, _m, _pa);
+	return _ifsq->ifsq_enqueue(_ifsq, _m, _pa);
 }
 
 static __inline int
-ifq_enqueue(struct ifaltq *_ifq, struct mbuf *_m, struct altq_pktattr *_pa)
+ifsq_enqueue(struct ifaltq_subque *_ifsq, struct mbuf *_m,
+    struct altq_pktattr *_pa)
 {
 	int _error;
 
-	ALTQ_LOCK(_ifq);
-	_error = ifq_enqueue_locked(_ifq, _m, _pa);
-	ALTQ_UNLOCK(_ifq);
+	ALTQ_SQ_LOCK(_ifsq);
+	_error = ifsq_enqueue_locked(_ifsq, _m, _pa);
+	ALTQ_SQ_UNLOCK(_ifsq);
 	return _error;
 }
 
 static __inline struct mbuf *
-ifq_dequeue(struct ifaltq *_ifq, struct mbuf *_mpolled)
+ifsq_dequeue(struct ifaltq_subque *_ifsq, struct mbuf *_mpolled)
 {
 	struct mbuf *_m;
 
-	ALTQ_LOCK(_ifq);
-	if (_ifq->altq_prepended != NULL) {
-		_m = _ifq->altq_prepended;
-		_ifq->altq_prepended = NULL;
-		KKASSERT(_ifq->ifq_len > 0);
-		_ifq->ifq_len--;
-		ALTQ_UNLOCK(_ifq);
+	ALTQ_SQ_LOCK(_ifsq);
+	if (_ifsq->ifsq_prepended != NULL) {
+		_m = _ifsq->ifsq_prepended;
+		_ifsq->ifsq_prepended = NULL;
+		KKASSERT(_ifsq->ifq_len > 0);
+		_ifsq->ifq_len--;
+		ALTQ_SQ_UNLOCK(_ifsq);
 		return _m;
 	}
 
 #ifdef ALTQ
-	if (_ifq->altq_tbr != NULL)
-		_m = tbr_dequeue(_ifq, _mpolled, ALTDQ_REMOVE);
-	else if (!ifq_is_enabled(_ifq))
-		_m = ifq_classic_dequeue(_ifq, _mpolled, ALTDQ_REMOVE);
+	if (_ifsq->ifsq_altq->altq_tbr != NULL)
+		_m = tbr_dequeue(_ifsq, _mpolled, ALTDQ_REMOVE);
+	else if (!ifq_is_enabled(_ifsq->ifsq_altq))
+		_m = ifsq_classic_dequeue(_ifsq, _mpolled, ALTDQ_REMOVE);
 	else
 #endif
-	_m = _ifq->altq_dequeue(_ifq, _mpolled, ALTDQ_REMOVE);
-	ALTQ_UNLOCK(_ifq);
+	_m = _ifsq->ifsq_dequeue(_ifsq, _mpolled, ALTDQ_REMOVE);
+	ALTQ_SQ_UNLOCK(_ifsq);
 	return _m;
 }
 
@@ -175,29 +188,29 @@ ifq_dequeue(struct ifaltq *_ifq, struct mbuf *_mpolled)
  * ALTQ lock must be held
  */
 static __inline struct mbuf *
-ifq_poll_locked(struct ifaltq *_ifq)
+ifsq_poll_locked(struct ifaltq_subque *_ifsq)
 {
-	if (_ifq->altq_prepended != NULL)
-		return _ifq->altq_prepended;
+	if (_ifsq->ifsq_prepended != NULL)
+		return _ifsq->ifsq_prepended;
 
 #ifdef ALTQ
-	if (_ifq->altq_tbr != NULL)
-		return tbr_dequeue(_ifq, NULL, ALTDQ_POLL);
-	else if (!ifq_is_enabled(_ifq))
-		return ifq_classic_dequeue(_ifq, NULL, ALTDQ_POLL);
+	if (_ifsq->ifsq_altq->altq_tbr != NULL)
+		return tbr_dequeue(_ifsq, NULL, ALTDQ_POLL);
+	else if (!ifq_is_enabled(_ifsq->ifsq_altq))
+		return ifsq_classic_dequeue(_ifsq, NULL, ALTDQ_POLL);
 	else
 #endif
-	return _ifq->altq_dequeue(_ifq, NULL, ALTDQ_POLL);
+	return _ifsq->ifsq_dequeue(_ifsq, NULL, ALTDQ_POLL);
 }
 
 static __inline struct mbuf *
-ifq_poll(struct ifaltq *_ifq)
+ifsq_poll(struct ifaltq_subque *_ifsq)
 {
 	struct mbuf *_m;
 
-	ALTQ_LOCK(_ifq);
-	_m = ifq_poll_locked(_ifq);
-	ALTQ_UNLOCK(_ifq);
+	ALTQ_SQ_LOCK(_ifsq);
+	_m = ifsq_poll_locked(_ifsq);
+	ALTQ_SQ_UNLOCK(_ifsq);
 	return _m;
 }
 
@@ -205,29 +218,47 @@ ifq_poll(struct ifaltq *_ifq)
  * ALTQ lock must be held
  */
 static __inline void
-ifq_purge_locked(struct ifaltq *_ifq)
+ifsq_purge_locked(struct ifaltq_subque *_ifsq)
 {
-	if (_ifq->altq_prepended != NULL) {
-		m_freem(_ifq->altq_prepended);
-		_ifq->altq_prepended = NULL;
-		KKASSERT(_ifq->ifq_len > 0);
-		_ifq->ifq_len--;
+	if (_ifsq->ifsq_prepended != NULL) {
+		m_freem(_ifsq->ifsq_prepended);
+		_ifsq->ifsq_prepended = NULL;
+		KKASSERT(_ifsq->ifq_len > 0);
+		_ifsq->ifq_len--;
 	}
 
 #ifdef ALTQ
-	if (!ifq_is_enabled(_ifq))
-		ifq_classic_request(_ifq, ALTRQ_PURGE, NULL);
+	if (!ifq_is_enabled(_ifsq->ifsq_altq))
+		ifsq_classic_request(_ifsq, ALTRQ_PURGE, NULL);
 	else
 #endif
-	_ifq->altq_request(_ifq, ALTRQ_PURGE, NULL);
+	_ifsq->ifsq_request(_ifsq, ALTRQ_PURGE, NULL);
 }
 
 static __inline void
-ifq_purge(struct ifaltq *_ifq)
+ifsq_purge(struct ifaltq_subque *_ifsq)
 {
-	ALTQ_LOCK(_ifq);
-	ifq_purge_locked(_ifq);
-	ALTQ_UNLOCK(_ifq);
+	ALTQ_SQ_LOCK(_ifsq);
+	ifsq_purge_locked(_ifsq);
+	ALTQ_SQ_UNLOCK(_ifsq);
+}
+
+static __inline void
+ifq_lock_all(struct ifaltq *_ifq)
+{
+	int _q;
+
+	for (_q = 0; _q < _ifq->altq_subq_cnt; ++_q)
+		ALTQ_SQ_LOCK(&_ifq->altq_subq[_q]);
+}
+
+static __inline void
+ifq_unlock_all(struct ifaltq *_ifq)
+{
+	int _q;
+
+	for (_q = _ifq->altq_subq_cnt - 1; _q >= 0; --_q)
+		ALTQ_SQ_UNLOCK(&_ifq->altq_subq[_q]);
 }
 
 /*
@@ -236,69 +267,79 @@ ifq_purge(struct ifaltq *_ifq)
 static __inline void
 ifq_purge_all_locked(struct ifaltq *_ifq)
 {
-	/* XXX temporary */
-	ifq_purge_locked(_ifq);
+	int _q;
+
+	for (_q = 0; _q < _ifq->altq_subq_cnt; ++_q)
+		ifsq_purge_locked(&_ifq->altq_subq[_q]);
 }
 
 static __inline void
 ifq_purge_all(struct ifaltq *_ifq)
 {
-	ALTQ_LOCK(_ifq);
+	ifq_lock_all(_ifq);
 	ifq_purge_all_locked(_ifq);
-	ALTQ_UNLOCK(_ifq);
+	ifq_unlock_all(_ifq);
 }
 
 static __inline void
 ifq_classify(struct ifaltq *_ifq, struct mbuf *_m, uint8_t _af,
-	     struct altq_pktattr *_pa)
+    struct altq_pktattr *_pa)
 {
 #ifdef ALTQ
-	ALTQ_LOCK(_ifq);
 	if (ifq_is_enabled(_ifq)) {
 		_pa->pattr_af = _af;
 		_pa->pattr_hdr = mtod(_m, caddr_t);
-		if (_ifq->altq_flags & ALTQF_CLASSIFY)
-			_ifq->altq_classify(_ifq, _m, _pa);
+		if (ifq_is_enabled(_ifq) &&
+		    (_ifq->altq_flags & ALTQF_CLASSIFY)) {
+			/* XXX default subqueue */
+			struct ifaltq_subque *_ifsq =
+			    &_ifq->altq_subq[ALTQ_SUBQ_INDEX_DEFAULT];
+
+			ALTQ_SQ_LOCK(_ifsq);
+			if (ifq_is_enabled(_ifq) &&
+			    (_ifq->altq_flags & ALTQF_CLASSIFY))
+				_ifq->altq_classify(_ifq, _m, _pa);
+			ALTQ_SQ_UNLOCK(_ifsq);
+		}
 	}
-	ALTQ_UNLOCK(_ifq);
 #endif
 }
 
 static __inline void
-ifq_prepend(struct ifaltq *_ifq, struct mbuf *_m)
+ifsq_prepend(struct ifaltq_subque *_ifsq, struct mbuf *_m)
 {
-	ALTQ_LOCK(_ifq);
-	KASSERT(_ifq->altq_prepended == NULL, ("pending prepended mbuf"));
-	_ifq->altq_prepended = _m;
-	_ifq->ifq_len++;
-	ALTQ_UNLOCK(_ifq);
+	ALTQ_SQ_LOCK(_ifsq);
+	KASSERT(_ifsq->ifsq_prepended == NULL, ("pending prepended mbuf"));
+	_ifsq->ifsq_prepended = _m;
+	_ifsq->ifq_len++;
+	ALTQ_SQ_UNLOCK(_ifsq);
 }
 
 /*
  * Interface TX serializer must be held
  */
 static __inline void
-ifq_set_oactive(struct ifaltq *_ifq)
+ifsq_set_oactive(struct ifaltq_subque *_ifsq)
 {
-	_ifq->altq_hw_oactive = 1;
+	_ifsq->ifsq_hw_oactive = 1;
 }
 
 /*
  * Interface TX serializer must be held
  */
 static __inline void
-ifq_clr_oactive(struct ifaltq *_ifq)
+ifsq_clr_oactive(struct ifaltq_subque *_ifsq)
 {
-	_ifq->altq_hw_oactive = 0;
+	_ifsq->ifsq_hw_oactive = 0;
 }
 
 /*
  * Interface TX serializer must be held
  */
 static __inline int
-ifq_is_oactive(const struct ifaltq *_ifq)
+ifsq_is_oactive(const struct ifaltq_subque *_ifsq)
 {
-	return _ifq->altq_hw_oactive;
+	return _ifsq->ifsq_hw_oactive;
 }
 
 /*
@@ -311,90 +352,198 @@ ifq_is_oactive(const struct ifaltq *_ifq)
 static __inline int
 ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 {
+	struct ifaltq_subque *_ifsq;
 	int _error;
+	int _qid = ALTQ_SUBQ_INDEX_DEFAULT; /* XXX default subqueue */
 
-	ASSERT_IFNET_SERIALIZED_TX(_ifp);
-	_error = ifq_enqueue(&_ifp->if_snd, _m, _pa);
+	_ifsq = &_ifp->if_snd.altq_subq[_qid];
+
+	ASSERT_IFNET_SERIALIZED_TX(_ifp, _ifsq);
+	_error = ifsq_enqueue(_ifsq, _m, _pa);
 	if (_error == 0) {
 		_ifp->if_obytes += _m->m_pkthdr.len;
 		if (_m->m_flags & M_MCAST)
 			_ifp->if_omcasts++;
-		if (!ifq_is_oactive(&_ifp->if_snd))
-			(*_ifp->if_start)(_ifp);
+		if (!ifsq_is_oactive(_ifsq))
+			(*_ifp->if_start)(_ifp, _ifsq);
 	}
 	return(_error);
 }
 
 static __inline int
-ifq_is_empty(struct ifaltq *_ifq)
+ifsq_is_empty(const struct ifaltq_subque *_ifsq)
 {
-	return(_ifq->ifq_len == 0);
+	return(_ifsq->ifq_len == 0);
 }
 
 /*
  * ALTQ lock must be held
  */
 static __inline int
-ifq_data_ready(struct ifaltq *_ifq)
+ifsq_data_ready(struct ifaltq_subque *_ifsq)
 {
 #ifdef ALTQ
-	if (_ifq->altq_tbr != NULL)
-		return (ifq_poll_locked(_ifq) != NULL);
+	if (_ifsq->ifsq_altq->altq_tbr != NULL)
+		return (ifsq_poll_locked(_ifsq) != NULL);
 	else
 #endif
-	return !ifq_is_empty(_ifq);
+	return !ifsq_is_empty(_ifsq);
 }
 
 /*
  * ALTQ lock must be held
  */
 static __inline int
-ifq_is_started(const struct ifaltq *_ifq)
+ifsq_is_started(const struct ifaltq_subque *_ifsq)
 {
-	return _ifq->altq_started;
+	return _ifsq->ifsq_started;
 }
 
 /*
  * ALTQ lock must be held
  */
 static __inline void
-ifq_set_started(struct ifaltq *_ifq)
+ifsq_set_started(struct ifaltq_subque *_ifsq)
 {
-	_ifq->altq_started = 1;
+	_ifsq->ifsq_started = 1;
 }
 
 /*
  * ALTQ lock must be held
  */
 static __inline void
-ifq_clr_started(struct ifaltq *_ifq)
+ifsq_clr_started(struct ifaltq_subque *_ifsq)
 {
-	_ifq->altq_started = 0;
+	_ifsq->ifsq_started = 0;
 }
 
-static __inline struct ifaltq_stage *
-ifq_get_stage(struct ifaltq *_ifq, int cpuid)
+static __inline struct ifsubq_stage *
+ifsq_get_stage(struct ifaltq_subque *_ifsq, int _cpuid)
 {
-	return &_ifq->altq_stage[cpuid];
+	return &_ifsq->ifsq_stage[_cpuid];
 }
 
 static __inline int
-ifq_get_cpuid(const struct ifaltq *_ifq)
+ifsq_get_cpuid(const struct ifaltq_subque *_ifsq)
 {
-	return _ifq->altq_cpuid;
+	return _ifsq->ifsq_cpuid;
 }
 
 static __inline void
-ifq_set_cpuid(struct ifaltq *_ifq, int cpuid)
+ifsq_set_cpuid(struct ifaltq_subque *_ifsq, int _cpuid)
 {
-	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid altq_cpuid %d", cpuid));
-	_ifq->altq_cpuid = cpuid;
+	KASSERT(_cpuid >= 0 && _cpuid < ncpus,
+	    ("invalid ifsq_cpuid %d", _cpuid));
+	_ifsq->ifsq_cpuid = _cpuid;
 }
 
 static __inline struct lwkt_msg *
-ifq_get_ifstart_lmsg(struct ifaltq *_ifq, int cpuid)
+ifsq_get_ifstart_lmsg(struct ifaltq_subque *_ifsq, int _cpuid)
 {
-	return &_ifq->altq_ifstart_nmsg[cpuid].lmsg;
+	return &_ifsq->ifsq_ifstart_nmsg[_cpuid].lmsg;
+}
+
+static __inline int
+ifsq_get_index(const struct ifaltq_subque *_ifsq)
+{
+	return _ifsq->ifsq_index;
+}
+
+static __inline void
+ifsq_set_priv(struct ifaltq_subque *_ifsq, void *_priv)
+{
+	_ifsq->ifsq_hw_priv = _priv;
+}
+
+static __inline void *
+ifsq_get_priv(const struct ifaltq_subque *_ifsq)
+{
+	return _ifsq->ifsq_hw_priv;
+}
+
+static __inline struct ifnet *
+ifsq_get_ifp(const struct ifaltq_subque *_ifsq)
+{
+	return _ifsq->ifsq_ifp;
+}
+
+static __inline struct ifaltq_subque *
+ifq_get_subq_default(const struct ifaltq *_ifq)
+{
+	return &_ifq->altq_subq[ALTQ_SUBQ_INDEX_DEFAULT];
+}
+
+static __inline struct ifaltq_subque *
+ifq_get_subq(const struct ifaltq *_ifq, int _idx)
+{
+	KASSERT(_idx >= 0 && _idx < _ifq->altq_subq_cnt,
+	    ("invalid qid %d", _idx));
+	return &_ifq->altq_subq[_idx];
+}
+
+static __inline struct ifaltq_subque *
+ifq_map_subq(struct ifaltq *_ifq, int _cpuid)
+{ 
+	int _idx = _ifq->altq_mapsubq(_ifq, _cpuid);
+	return ifq_get_subq(_ifq, _idx);
+}
+
+/* COMPAT */
+static __inline int
+ifq_is_oactive(const struct ifaltq *_ifq)
+{
+	return ifsq_is_oactive(ifq_get_subq_default(_ifq));
+}
+
+/* COMPAT */
+static __inline void
+ifq_set_oactive(struct ifaltq *_ifq)
+{
+	ifsq_set_oactive(ifq_get_subq_default(_ifq));
+}
+
+/* COMPAT */
+static __inline void
+ifq_clr_oactive(struct ifaltq *_ifq)
+{
+	ifsq_clr_oactive(ifq_get_subq_default(_ifq));
+}
+
+/* COMPAT */
+static __inline int
+ifq_is_empty(struct ifaltq *_ifq)
+{
+	return ifsq_is_empty(ifq_get_subq_default(_ifq));
+}
+
+/* COMPAT */
+static __inline void
+ifq_purge(struct ifaltq *_ifq)
+{
+	ifsq_purge(ifq_get_subq_default(_ifq));
+}
+
+/* COMPAT */
+static __inline struct mbuf *
+ifq_dequeue(struct ifaltq *_ifq, struct mbuf *_mpolled)
+{
+	return ifsq_dequeue(ifq_get_subq_default(_ifq), _mpolled);
+}
+
+/* COMPAT */
+static __inline void
+ifq_prepend(struct ifaltq *_ifq, struct mbuf *_m)
+{
+	ifsq_prepend(ifq_get_subq_default(_ifq), _m);
+}
+
+/* COMPAT */
+static __inline void
+ifq_set_cpuid(struct ifaltq *_ifq, int _cpuid)
+{
+	KASSERT(_ifq->altq_subq_cnt == 1,
+	    ("invalid subqueue count %d", _ifq->altq_subq_cnt));
+	ifsq_set_cpuid(ifq_get_subq_default(_ifq), _cpuid);
 }
 
 #endif	/* _KERNEL */

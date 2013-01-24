@@ -153,7 +153,7 @@ struct xe_mii_frame {
  */
 static void      xe_init		(void *xscp);
 static void      xe_intr		(void *xscp);
-static void      xe_start		(struct ifnet *ifp);
+static void      xe_start		(struct ifnet *ifp, struct ifaltq_subque *);
 static int       xe_ioctl		(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *);
 static void      xe_watchdog		(struct ifnet *ifp);
 static int       xe_media_change	(struct ifnet *ifp);
@@ -468,9 +468,11 @@ xe_init(void *xscp) {
  * and return immediately.
  */
 static void
-xe_start(struct ifnet *ifp) {
+xe_start(struct ifnet *ifp, struct ifaltq_subque *ifsq) {
   struct xe_softc *scp = ifp->if_softc;
   struct mbuf *mbp;
+
+  ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
   if (scp->autoneg_status != XE_AUTONEG_NONE) {
     ifq_set_oactive(&ifp->if_snd);

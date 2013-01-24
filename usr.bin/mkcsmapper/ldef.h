@@ -1,5 +1,4 @@
 /*	$NetBSD: ldef.h,v 1.2 2006/09/09 14:35:17 tnozaki Exp $	*/
-/*	$DragonFly: src/usr.bin/mkcsmapper/ldef.h,v 1.2 2008/04/10 10:21:13 hasso Exp $ */
 
 /*-
  * Copyright (c)2003, 2006 Citrus Project,
@@ -33,9 +32,7 @@ typedef struct {
 	uint32_t	width;
 } linear_zone_t;
 
-extern int	line_number;
+extern int	aline_number;
 extern int	debug;
 
-int	yyparse(void);
-int	yylex(void);
 int	yyerror(const char *);

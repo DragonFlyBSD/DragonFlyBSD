@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  */
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <sys/endian.h>
 #include <sys/queue.h>
 #include <assert.h>
@@ -39,22 +40,22 @@
 #include "ldef.h"
 #include "yacc.h"
 
-#define	YY_NO_INPUT
-#define	YY_NO_UNPUT
-
-int line_number = 1;
+int aline_number = 1;
 %}
+
+%option noinput
+%option nounput
 
 %x	COMMENT
 
 %%
 
 [ \t]+	{ }
-#.*[\n]|"//".*[\n]|[\n]	{ line_number++; return (R_LN); }
+#.*[\n]|"//".*[\n]|[\n]	{ aline_number++; return (R_LN); }
 
 "/*"		{ BEGIN COMMENT; }
 <COMMENT>"*/"	{ BEGIN 0; }
-<COMMENT>[\n]	{ line_number++; }
+<COMMENT>[\n]	{ aline_number++; }
 <COMMENT>.	{ }
 <COMMENT><<EOF>>	{
 		yyerror("unexpected file end (unterminate comment)\n");

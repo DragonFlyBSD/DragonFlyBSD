@@ -156,6 +156,9 @@ hostap_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 	enum ieee80211_state ostate;
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",
@@ -300,8 +303,8 @@ hostap_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 			if (ieee80211_msg_debug(vap)) {
 				struct ieee80211_node *ni = vap->iv_bss;
 				ieee80211_note(vap,
-				    "synchronized with %6D ssid ",
-				    ni->ni_bssid, ":");
+				    "synchronized with %s ssid ",
+				    kether_ntoa(ni->ni_bssid, ethstr));
 				ieee80211_print_essid(ni->ni_essid,
 				    ni->ni_esslen);
 				/* XXX MCS/HT */
@@ -480,6 +483,9 @@ hostap_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 	uint8_t dir, type, subtype, qos;
 	uint8_t *bssid;
 	uint16_t rxseq;
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	if (m->m_flags & M_AMPDU_MPDU) {
 		/*
@@ -835,18 +841,18 @@ hostap_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 		if (IEEE80211_IS_MULTICAST(wh->i_addr2)) {
 			/* ensure return frames are unicast */
 			IEEE80211_DISCARD(vap, IEEE80211_MSG_ANY,
-			    wh, NULL, "source is multicast: %6D",
-			    wh->i_addr2, ":");
+			    wh, NULL, "source is multicast: %s",
+			    kether_ntoa(wh->i_addr2, ethstr));
 			vap->iv_stats.is_rx_mgtdiscard++;	/* XXX stat */
 			goto out;
 		}
 #ifdef IEEE80211_DEBUG
 		if ((ieee80211_msg_debug(vap) && doprint(vap, subtype)) ||
 		    ieee80211_msg_dumppkts(vap)) {
-			if_printf(ifp, "received %s from %6D rssi %d\n",
+			if_printf(ifp, "received %s from %s rssi %d\n",
 			    ieee80211_mgt_subtype_name[subtype >>
 				IEEE80211_FC0_SUBTYPE_SHIFT],
-			    wh->i_addr2, ":", rssi);
+			    kether_ntoa(wh->i_addr2, ethstr), rssi);
 		}
 #endif
 		if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
@@ -2221,6 +2227,7 @@ hostap_recv_pspoll(struct ieee80211_node *ni, struct mbuf *m0)
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211_frame_min *wh;
 	struct ifnet *ifp;
+	struct ifaltq_subque *ifsq;
 	struct mbuf *m;
 	uint16_t aid;
 	int qlen;
@@ -2288,6 +2295,8 @@ hostap_recv_pspoll(struct ieee80211_node *ni, struct mbuf *m0)
 		ifp = vap->iv_ic->ic_ifp;
 	else
 		ifp = vap->iv_ifp;
-	ifq_enqueue(&ifp->if_snd, m, NULL);
-	ifp->if_start(ifp);
+
+	ifsq = ifq_get_subq_default(&ifp->if_snd);
+	ifsq_enqueue(ifsq, m, NULL);
+	ifp->if_start(ifp, ifsq);
 }

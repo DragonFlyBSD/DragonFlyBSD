@@ -38,6 +38,7 @@
 
 #include <net/if.h>
 #include <net/if_media.h>
+#include <net/ifq_var.h>
 #include <net/ethernet.h>
 #include <net/route.h>
 
@@ -400,6 +401,7 @@ pwrsave_flushq(struct ieee80211_node *ni)
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211_psq_head *qhead;
 	struct ifnet *parent, *ifp;
+	struct ifaltq_subque *ifp_ifsq, *parent_ifsq;
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_POWER, ni,
 	    "flush ps queue, %u packets queued", psq->psq_len);
@@ -408,34 +410,49 @@ pwrsave_flushq(struct ieee80211_node *ni)
 	if (qhead->head != NULL) {
 		/* XXX could dispatch through vap and check M_ENCAP */
 		parent = vap->iv_ic->ic_ifp;
+		parent_ifsq = ifq_get_subq_default(&parent->if_snd);
+
+		/* XXX this breaks ALTQ's packet scheduler */
+		ALTQ_SQ_LOCK(parent_ifsq);
 		/* XXX need different driver interface */
 		/* XXX bypasses q max and OACTIVE */
-		IF_PREPEND_LIST(&parent->if_snd, qhead->head, qhead->tail,
+		IF_PREPEND_LIST(parent_ifsq, qhead->head, qhead->tail,
 		    qhead->len);
+		ALTQ_SQ_UNLOCK(parent_ifsq);
+
 		qhead->head = qhead->tail = NULL;
 		qhead->len = 0;
-	} else
+	} else {
 		parent = NULL;
+		parent_ifsq = NULL;
+	}
 
 	qhead = &psq->psq_head[1];	/* 802.3 frames */
 	if (qhead->head != NULL) {
 		ifp = vap->iv_ifp;
+		ifp_ifsq = ifq_get_subq_default(&ifp->if_snd);
+
+		/* XXX this breaks ALTQ's packet scheduler */
+		ALTQ_SQ_LOCK(ifp_ifsq);
 		/* XXX need different driver interface */
 		/* XXX bypasses q max and OACTIVE */
-		IF_PREPEND_LIST(&ifp->if_snd, qhead->head, qhead->tail,
-		    qhead->len);
+		IF_PREPEND_LIST(ifp_ifsq, qhead->head, qhead->tail, qhead->len);
+		ALTQ_SQ_UNLOCK(ifp_ifsq);
+
 		qhead->head = qhead->tail = NULL;
 		qhead->len = 0;
-	} else
+	} else {
 		ifp = NULL;
+		ifp_ifsq = NULL;
+	}
 	psq->psq_len = 0;
 
 	/* NB: do this outside the psq lock */
 	/* XXX packets might get reordered if parent is OACTIVE */
-	if (parent != NULL)
-		parent->if_start(parent);
-	if (ifp != NULL)
-		ifp->if_start(ifp);
+	if (parent != NULL && parent_ifsq != NULL)
+		parent->if_start(parent, parent_ifsq);
+	if (ifp != NULL && ifp_ifsq != NULL)
+		ifp->if_start(ifp, ifp_ifsq);
 }
 
 /*

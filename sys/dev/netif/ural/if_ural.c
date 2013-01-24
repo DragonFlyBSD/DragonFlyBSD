@@ -120,7 +120,7 @@ static int		ural_tx_mgt(struct ural_softc *, struct mbuf *,
 			    struct ieee80211_node *);
 static int		ural_tx_data(struct ural_softc *, struct mbuf *,
 			    struct ieee80211_node *);
-static void		ural_start(struct ifnet *);
+static void		ural_start(struct ifnet *, struct ifaltq_subque *);
 static void		ural_watchdog(struct ifnet *);
 static int		ural_reset(struct ifnet *);
 static int		ural_ioctl(struct ifnet *, u_long, caddr_t,
@@ -1361,11 +1361,12 @@ ural_tx_data(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 }
 
 static void
-ural_start(struct ifnet *ifp)
+ural_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ural_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (sc->sc_stopped) {
@@ -1957,6 +1958,8 @@ static void
 ural_set_bssid(struct ural_softc *sc, uint8_t *bssid)
 {
 	uint16_t tmp;
+	struct ether_addr eaddr;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	tmp = bssid[0] | bssid[1] << 8;
 	ural_write(sc, RAL_MAC_CSR5, tmp);
@@ -1967,13 +1970,16 @@ ural_set_bssid(struct ural_softc *sc, uint8_t *bssid)
 	tmp = bssid[4] | bssid[5] << 8;
 	ural_write(sc, RAL_MAC_CSR7, tmp);
 
-	DPRINTF(("setting BSSID to %6D\n", bssid, ":"));
+	bcopy(bssid, &eaddr.octet, sizeof(eaddr.octet));
+	DPRINTF(("setting BSSID to %s\n", kether_ntoa(&eaddr, ethstr)));
 }
 
 static void
 ural_set_macaddr(struct ural_softc *sc, uint8_t *addr)
 {
 	uint16_t tmp;
+	struct ether_addr eaddr;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	tmp = addr[0] | addr[1] << 8;
 	ural_write(sc, RAL_MAC_CSR2, tmp);
@@ -1984,7 +1990,8 @@ ural_set_macaddr(struct ural_softc *sc, uint8_t *addr)
 	tmp = addr[4] | addr[5] << 8;
 	ural_write(sc, RAL_MAC_CSR4, tmp);
 
-	DPRINTF(("setting MAC address to %6D\n", addr, ":"));
+	bcopy(bssid, &eaddr.octet, sizeof(eaddr.octet));
+	DPRINTF(("setting MAC address to %s\n", kether_ntoa(&eaddr, ethstr)));
 }
 
 static void

@@ -257,6 +257,7 @@ struct	ifreq {
 		void   *ifru_data;
 		int	ifru_cap[2];
 		int	ifru_pollcpu;
+		int	ifru_tsolen;
 	} ifr_ifru;
 #define	ifr_addr	ifr_ifru.ifru_addr	/* address */
 #define	ifr_dstaddr	ifr_ifru.ifru_dstaddr	/* other end of p-to-p link */
@@ -271,7 +272,8 @@ struct	ifreq {
 #define	ifr_reqcap	ifr_ifru.ifru_cap[0]	/* requested capabilities */
 #define	ifr_curcap	ifr_ifru.ifru_cap[1]	/* current capabilities */
 #define	ifr_index	ifr_ifru.ifru_index	/* interface index */
-#define ifr_pollcpu	ifr_ifru.ifru_pollcpu	/* polling(4) cpu */
+#define ifr_pollcpu	ifr_ifru.ifru_pollcpu	/* deprecated */
+#define ifr_tsolen	ifr_ifru.ifru_tsolen	/* max TSO length */
 };
 
 #define	_SIZEOF_ADDR_IFREQ(ifr) \

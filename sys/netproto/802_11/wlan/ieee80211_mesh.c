@@ -517,6 +517,9 @@ mesh_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 	struct ieee80211com *ic = vap->iv_ic;
 	enum ieee80211_state ostate;
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",
@@ -635,8 +638,8 @@ mesh_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 			if (ieee80211_msg_debug(vap)) {
 				struct ieee80211_node *ni = vap->iv_bss;
 				ieee80211_note(vap,
-				    "synchronized with %6D meshid ",
-				    ni->ni_meshid, ":");
+				    "synchronized with %s meshid ",
+				    kether_ntoa(ni->ni_meshid, ethstr));
 				ieee80211_print_essid(ni->ni_meshid,
 				    ni->ni_meshidlen);
 				/* XXX MCS/HT */
@@ -1014,6 +1017,9 @@ mesh_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 	uint32_t seq;
 	uint8_t *addr;
 	ieee80211_seq rxseq;
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	KASSERT(ni != NULL, ("null node"));
 	ni->ni_inact = ni->ni_inact_reload;
@@ -1228,10 +1234,10 @@ mesh_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 		if ((ieee80211_msg_debug(vap) && 
 		    (vap->iv_ic->ic_flags & IEEE80211_F_SCAN)) ||
 		    ieee80211_msg_dumppkts(vap)) {
-			if_printf(ifp, "received %s from %6D rssi %d\n",
+			if_printf(ifp, "received %s from %s rssi %d\n",
 			    ieee80211_mgt_subtype_name[subtype >>
 			    IEEE80211_FC0_SUBTYPE_SHIFT],
-			    wh->i_addr2, ":", rssi);
+			    kether_ntoa(wh->i_addr2, ethstr), rssi);
 		}
 #endif
 		if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
@@ -1878,13 +1884,16 @@ mesh_send_action_meshpeering_open(struct ieee80211_node *ni,
 	const struct ieee80211_rateset *rs;
 	struct mbuf *m;
 	uint8_t *frm;
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_ACTION | IEEE80211_MSG_MESH, ni,
 	    "send PEER OPEN action: localid 0x%x", args[0]);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n", __func__, __LINE__,
-	    ni, ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)+1);
+	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n", __func__, __LINE__,
+	    ni, kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
 	m = ieee80211_getmgtframe(&frm,
@@ -1938,14 +1947,17 @@ mesh_send_action_meshpeering_confirm(struct ieee80211_node *ni,
 	const struct ieee80211_rateset *rs;
 	struct mbuf *m;
 	uint8_t *frm;
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_ACTION | IEEE80211_MSG_MESH, ni,
 	    "send PEER CONFIRM action: localid 0x%x, peerid 0x%x",
 	    args[0], args[1]);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n", __func__, __LINE__,
-	    ni, ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)+1);
+	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n", __func__, __LINE__,
+	    ni, kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
 	m = ieee80211_getmgtframe(&frm,
@@ -2005,14 +2017,17 @@ mesh_send_action_meshpeering_close(struct ieee80211_node *ni,
 	uint16_t *args = args0;
 	struct mbuf *m;
 	uint8_t *frm;
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_ACTION | IEEE80211_MSG_MESH, ni,
 	    "send PEER CLOSE action: localid 0x%x, peerid 0x%x reason %d",
 	    args[0], args[1], args[2]);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n", __func__, __LINE__,
-	    ni, ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)+1);
+	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n", __func__, __LINE__,
+	    ni, kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
 	m = ieee80211_getmgtframe(&frm,
@@ -2055,13 +2070,16 @@ mesh_send_action_meshlink_request(struct ieee80211_node *ni,
 	struct ieee80211com *ic = ni->ni_ic;
 	struct mbuf *m;
 	uint8_t *frm;
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_ACTION | IEEE80211_MSG_MESH, ni,
 	    "%s", "send LINK METRIC REQUEST action");
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n", __func__, __LINE__,
-	    ni, ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)+1);
+	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n", __func__, __LINE__,
+	    ni, kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
 	m = ieee80211_getmgtframe(&frm,
@@ -2094,13 +2112,16 @@ mesh_send_action_meshlink_reply(struct ieee80211_node *ni,
 	uint32_t *metric = args0;
 	struct mbuf *m;
 	uint8_t *frm;
+#ifdef IEEE80211_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_ACTION | IEEE80211_MSG_MESH, ni,
 	    "send LINK METRIC REPLY action: metric 0x%x", *metric);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n", __func__, __LINE__,
-	    ni, ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)+1);
+	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n", __func__, __LINE__,
+	    ni, kether_ntoa(ni->ni_macaddr, ethstr), ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
 	m = ieee80211_getmgtframe(&frm,

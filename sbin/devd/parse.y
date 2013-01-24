@@ -30,9 +30,9 @@
  * $DragonFly: src/sbin/devd/parse.y,v 1.1 2008/10/03 00:26:21 hasso Exp $
  */
 
-#include "devd.h"
 #include <stdio.h>
 #include <string.h>
+#include "devd.h"
 
 %}
 

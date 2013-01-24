@@ -110,7 +110,7 @@ static void	alc_miibus_statchg(device_t);
 static int	alc_miibus_writereg(device_t, int, int, int);
 
 static void	alc_init(void *);
-static void	alc_start(struct ifnet *);
+static void	alc_start(struct ifnet *, struct ifaltq_subque *);
 static void	alc_watchdog(struct alc_softc *);
 static int	alc_mediachange(struct ifnet *);
 static void	alc_mediastatus(struct ifnet *, struct ifmediareq *);
@@ -2173,12 +2173,13 @@ alc_encap(struct alc_softc *sc, struct mbuf **m_head)
 }
 
 static void
-alc_start(struct ifnet *ifp)
+alc_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct alc_softc *sc = ifp->if_softc;
 	struct mbuf *m_head;
 	int enq;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* Reclaim transmitted frames. */

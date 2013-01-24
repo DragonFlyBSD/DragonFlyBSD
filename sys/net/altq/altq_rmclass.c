@@ -1516,8 +1516,9 @@ rmc_restart(void *arg)
 {
 	struct rm_class *cl = arg;
 	struct rm_ifdat *ifd = cl->ifdat_;
+	struct ifaltq_subque *ifsq = &ifd->ifq_->altq_subq[0];
 
-	ALTQ_LOCK(ifd->ifq_);
+	ALTQ_SQ_LOCK(ifsq);
 	if (cl->sleeping_) {
 		cl->sleeping_ = 0;
 		cl->undertime_.tv_sec = 0;
@@ -1527,7 +1528,7 @@ rmc_restart(void *arg)
 			(ifd->restart)(ifd->ifq_);
 		}
 	}
-	ALTQ_UNLOCK(ifd->ifq_);
+	ALTQ_SQ_UNLOCK(ifsq);
 }
 
 /*

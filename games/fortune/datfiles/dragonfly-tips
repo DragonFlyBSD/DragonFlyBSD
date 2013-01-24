@@ -249,7 +249,7 @@ the section of the manual the man page is in.  "man man" will tell you more.
 You can often get answers to your questions about DragonFly BSD by searching
 in the DragonFly BSD mailing list archives at
 
-	http://leaf.dragonflybsd.org/mailarchive/
+	http://lists.dragonflybsd.org/
 %
 You can adjust the volume of various parts of the sound system in your
 computer by typing 'mixer <type> <volume>'.  To get a list of what you can

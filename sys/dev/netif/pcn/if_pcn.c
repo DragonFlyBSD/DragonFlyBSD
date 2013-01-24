@@ -125,7 +125,7 @@ static void pcn_rxeof		(struct pcn_softc *);
 static void pcn_txeof		(struct pcn_softc *);
 static void pcn_intr		(void *);
 static void pcn_tick		(void *);
-static void pcn_start		(struct ifnet *);
+static void pcn_start		(struct ifnet *, struct ifaltq_subque *);
 static int pcn_ioctl		(struct ifnet *, u_long, caddr_t,
 					struct ucred *);
 static void pcn_init		(void *);
@@ -991,12 +991,14 @@ pcn_encap(struct pcn_softc *sc, struct mbuf *m_head, u_int32_t *txidx)
  * physical addresses.
  */
 static void
-pcn_start(struct ifnet *ifp)
+pcn_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct pcn_softc	*sc;
 	struct mbuf		*m_head = NULL, *m_defragged;
 	u_int32_t		idx;
 	int need_trans;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	sc = ifp->if_softc;
 

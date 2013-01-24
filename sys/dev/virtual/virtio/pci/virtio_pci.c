@@ -36,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/malloc.h>
+#include <sys/serialize.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -117,7 +118,7 @@ static uint64_t	vtpci_negotiate_features(device_t, uint64_t);
 static int	vtpci_with_feature(device_t, uint64_t);
 static int	vtpci_alloc_virtqueues(device_t, int, int,
 		    struct vq_alloc_info *);
-static int	vtpci_setup_intr(device_t);
+static int	vtpci_setup_intr(device_t, lwkt_serialize_t);
 static void	vtpci_stop(device_t);
 static int	vtpci_reinit(device_t, uint64_t);
 static void	vtpci_reinit_complete(device_t);
@@ -498,7 +499,7 @@ vtpci_alloc_virtqueues(device_t dev, int flags, int nvqs,
 }
 
 static int
-vtpci_setup_intr(device_t dev)
+vtpci_setup_intr(device_t dev, lwkt_serialize_t slz)
 {
 	struct vtpci_softc *sc;
 	struct vtpci_intr_resource *ires;
@@ -511,20 +512,22 @@ vtpci_setup_intr(device_t dev)
 
 	if ((sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX) == 0) {
 		error = bus_setup_intr(dev, ires->irq, flags,
-		(driver_intr_t *)    vtpci_legacy_intr, sc, &ires->intrhand, NULL);
-
+				       (driver_intr_t *) vtpci_legacy_intr,
+				       sc, &ires->intrhand, slz);
 		return (error);
 	}
 
-	error = bus_setup_intr(dev, ires->irq, flags,(driver_intr_t *) vtpci_config_intr,
-	     sc, &ires->intrhand, NULL);
+	error = bus_setup_intr(dev, ires->irq, flags,
+			       (driver_intr_t *) vtpci_config_intr,
+			       sc, &ires->intrhand, slz);
 	if (error)
 		return (error);
 
 	if (sc->vtpci_flags & VIRTIO_PCI_FLAG_SHARED_MSIX) {
 		ires = &sc->vtpci_intr_res[1];
 		error = bus_setup_intr(dev, ires->irq, flags,
-		 (driver_intr_t *)   vtpci_vq_shared_intr, sc, &ires->intrhand, NULL);
+				       (driver_intr_t *) vtpci_vq_shared_intr,
+				       sc, &ires->intrhand, slz);
 
 		return (error);
 	}
@@ -537,7 +540,8 @@ vtpci_setup_intr(device_t dev)
 
 		ires = &sc->vtpci_intr_res[vqx->ires_idx];
 		error = bus_setup_intr(dev, ires->irq, flags,
-		  (driver_intr_t *)  vtpci_vq_intr, vqx->vq, &ires->intrhand, NULL);
+				       (driver_intr_t *) vtpci_vq_intr,
+				       vqx->vq, &ires->intrhand, slz);
 		if (error)
 			return (error);
 	}
@@ -548,7 +552,6 @@ vtpci_setup_intr(device_t dev)
 static void
 vtpci_stop(device_t dev)
 {
-
 	vtpci_reset(device_get_softc(dev));
 }
 

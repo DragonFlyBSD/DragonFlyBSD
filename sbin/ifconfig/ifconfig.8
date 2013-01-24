@@ -408,6 +408,13 @@ The MTU is used to limit the size of packets that are transmitted on an
 interface.
 Not all interfaces support setting the MTU, and some interfaces have
 range restrictions.
+.It Cm tsolen Ar n
+Set the maximum amount of data
+that TCP segmentation offloading is allowed to aggregate to
+.Ar n ,
+the default value is interface specific.
+This setting only takes effect on interfaces
+that support TCP segmentation offloading.
 .It Cm netmask Ar mask
 .\" (Inet and ISO.)
 (Inet only.)
@@ -2243,8 +2250,10 @@ If the
 .Fl m
 flag is passed before an interface name,
 .Nm
-will display the capability list and all
-of the supported media for the specified interface.
+will display the capability list,
+the maximum amount of data
+that TCP segmentation offloading is allowed to aggregate and
+all of the supported media for the specified interface.
 If
 .Fl L
 flag is supplied, address lifetime is displayed for IPv6 addresses,

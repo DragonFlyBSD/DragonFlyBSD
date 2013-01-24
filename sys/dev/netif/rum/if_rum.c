@@ -137,7 +137,7 @@ static void		rum_setup_tx_desc(struct rum_softc *,
 			    int);
 static int		rum_tx_data(struct rum_softc *, struct mbuf *,
 			    struct ieee80211_node *);
-static void		rum_start(struct ifnet *);
+static void		rum_start(struct ifnet *, struct ifaltq_subque *);
 static void		rum_watchdog(struct ifnet *);
 static int		rum_ioctl(struct ifnet *, u_long, caddr_t,
 				  struct ucred *);
@@ -267,6 +267,7 @@ rum_attach(device_t self)
 	usbd_status error;
 	int i, ntries;
 	uint32_t tmp;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	sc->sc_udev = uaa->device;
 	sc->sc_dev = self;
@@ -332,9 +333,9 @@ rum_attach(device_t self)
 	/* retrieve MAC address and various other things from EEPROM */
 	rum_read_eeprom(sc);
 
-	kprintf("%s: MAC/BBP RT%04x (rev 0x%05x), RF %s, address %6D\n",
+	kprintf("%s: MAC/BBP RT%04x (rev 0x%05x), RF %s, address %s\n",
 	    device_get_nameunit(sc->sc_dev), sc->macbbp_rev, tmp,
-	    rum_get_rf(sc->rf_rev), ic->ic_myaddr, ":");
+	    rum_get_rf(sc->rf_rev), kether_addr(ic->ic_myaddr, ethstr));
 
 	error = rum_load_microcode(sc, rt2573, sizeof(rt2573));
 	if (error != 0) {
@@ -1117,11 +1118,12 @@ rum_tx_data(struct rum_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 }
 
 static void
-rum_start(struct ifnet *ifp)
+rum_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct rum_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (sc->sc_stopped) {

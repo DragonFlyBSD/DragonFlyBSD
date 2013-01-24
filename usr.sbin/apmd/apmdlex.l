@@ -30,19 +30,19 @@
  * $FreeBSD: src/usr.sbin/apmd/apmdlex.l,v 1.2.2.1 2001/08/13 17:30:30 nsayer Exp $
  */
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <string.h>
 #include <syslog.h>
 #include <bitstring.h>
 #include "apmd.h"
 #include "y.tab.h"
 
-/* We don't need them, avoid the warnings. */
-#define YY_NO_INPUT
-#define YY_NO_UNPUT
-
 int lineno;
 int first_time;
 %}
+
+%option noinput
+%option nounput
 
 %s TOP
 

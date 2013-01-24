@@ -87,7 +87,6 @@ static struct file {
 struct file	*pushfile(const char *, int);
 int		 popfile(void);
 int		 check_file_secrecy(int, const char *);
-int		 yyparse(void);
 int		 yylex(void);
 int		 yyerror(const char *, ...) __printflike(1, 2);
 int		 kw_cmp(const void *, const void *);

@@ -128,7 +128,7 @@ static int kue_newbuf(struct kue_softc *, struct kue_chain *, struct mbuf *);
 static int kue_encap(struct kue_softc *, struct mbuf *, int);
 static void kue_rxeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
 static void kue_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
-static void kue_start(struct ifnet *);
+static void kue_start(struct ifnet *, struct ifaltq_subque *);
 static void kue_rxstart(struct ifnet *);
 static int kue_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void kue_init(void *);
@@ -786,10 +786,12 @@ kue_encap(struct kue_softc *sc, struct mbuf *m, int idx)
 }
 
 static void
-kue_start(struct ifnet *ifp)
+kue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct kue_softc	*sc;
 	struct mbuf		*m_head = NULL;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	sc = ifp->if_softc;
 	KUE_LOCK(sc);

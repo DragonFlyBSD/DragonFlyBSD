@@ -1285,7 +1285,7 @@ mly_process_event(struct mly_softc *sc, struct mly_event *me)
     struct scsi_sense_data	*ssd = (struct scsi_sense_data *)&me->sense[0];
     char			*fp, *tp;
     int				bus, target, event, class, action;
-
+    char			hexstr[2][12];
     /* 
      * Errors can be reported using vendor-unique sense data.  In this case, the
      * event code will be 0x1c (Request sense data present), the sense key will
@@ -1346,7 +1346,8 @@ mly_process_event(struct mly_softc *sc, struct mly_event *me)
 	mly_printf(sc, "physical device %d:%d %s\n", me->channel, me->target, tp);
 	mly_printf(sc, "  sense key %d  asc %02x  ascq %02x\n", 
 		      ssd->flags & SSD_KEY, ssd->add_sense_code, ssd->add_sense_code_qual);
-	mly_printf(sc, "  info %4D  csi %4D\n", ssd->info, "", ssd->cmd_spec_info, "");
+	mly_printf(sc, "  info %s csi %s\n", hexncpy(ssd->info, 4, hexstr[0], 12, NULL),
+	    hexncpy(ssd->cmd_spec_info, 4, hexstr[1], 12, NULL));
 	if (action == 'r')
 	    sc->mly_btl[me->channel][me->target].mb_flags |= MLY_BTL_RESCAN;
 	break;
@@ -2621,6 +2622,7 @@ mly_print_packet(struct mly_command *mc)
     struct mly_command_scsi_large	*sl = (struct mly_command_scsi_large *)mc->mc_packet;
     struct mly_command_ioctl		*io = (struct mly_command_ioctl *)mc->mc_packet;
     int					transfer;
+    char				hexstr[HEX_NCPYLEN(MLY_CMD_SCSI_SMALL_CDB)];
 
     mly_printf(sc, "   command_id           %d\n", ge->command_id);
     mly_printf(sc, "   opcode               %d\n", ge->opcode);
@@ -2647,7 +2649,8 @@ mly_print_packet(struct mly_command *mc)
     case MDACMD_SCSIPT:
     case MDACMD_SCSI:
 	mly_printf(sc, "   cdb length           %d\n", ss->cdb_length);
-	mly_printf(sc, "   cdb                  %*D\n", ss->cdb_length, ss->cdb, " ");
+	mly_printf(sc, "   cdb                  %s\n", hexncpy(ss->cdb, ss->cdb_length,
+		hexstr, HEX_NCPYLEN(ss->cdb_length), " ");
 	transfer = 1;
 	break;
     case MDACMD_SCSILC:

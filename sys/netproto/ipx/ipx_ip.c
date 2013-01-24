@@ -60,6 +60,7 @@
 #include <sys/msgport2.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
 
@@ -87,7 +88,7 @@ static	int ipxipioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
 static	int ipxipoutput(struct ifnet *ifp, struct mbuf *m,
 			struct sockaddr *dst, struct rtentry *rt);
 static	void ipxip_rtchange(struct in_addr *dst);
-static	void ipxipstart(struct ifnet *ifp);
+static	void ipxipstart(struct ifnet *ifp, struct ifaltq_subque *);
 
 static struct ifnet_en *
 ipxipattach(void)
@@ -292,17 +293,18 @@ static int
 ipxipoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	    struct rtentry *rt)
 {
+	const struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
 	error = ipxipoutput_serialized(ifp, m, dst, rt);
-	ifnet_deserialize_tx(ifp);
+	ifnet_deserialize_tx(ifp, ifsq);
 
 	return error;
 }
 
 static void
-ipxipstart(struct ifnet *ifp)
+ipxipstart(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
 	panic("ipxip_start called");
 }

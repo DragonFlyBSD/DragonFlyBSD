@@ -97,7 +97,7 @@ u_char plus_ee2irqmap[] =
 
 /* Network Interface Functions */
 static void	ex_init		(void *);
-static void	ex_start	(struct ifnet *);
+static void	ex_start	(struct ifnet *, struct ifaltq_subque *);
 static int	ex_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	ex_watchdog	(struct ifnet *);
 
@@ -360,7 +360,7 @@ ex_init(void *xsc)
 
 
 static void
-ex_start(struct ifnet *ifp)
+ex_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ex_softc *	sc = ifp->if_softc;
 	int			iobase = sc->iobase;
@@ -369,6 +369,7 @@ ex_start(struct ifnet *ifp)
 	struct mbuf *		opkt;
 	struct mbuf *		m;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	DODEBUG(Start_End, kprintf("ex_start%d: start\n", unit););
 
 	/*

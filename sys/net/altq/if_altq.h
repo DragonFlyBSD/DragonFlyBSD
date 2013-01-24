@@ -32,42 +32,78 @@
 #include <sys/serialize.h>
 #endif
 
+/* Default subqueue */
+#define ALTQ_SUBQ_INDEX_DEFAULT	0
+
+struct mbuf;
 struct altq_pktattr;
 
+struct ifaltq_subque;
 struct ifaltq;
 
-struct ifaltq_stage {
-	struct ifaltq	*ifqs_altq;
-	int		ifqs_cnt;
-	int		ifqs_len;
-	uint32_t	ifqs_flags;
-	TAILQ_ENTRY(ifaltq_stage) ifqs_link;
+typedef int (*altq_mapsubq_t)(struct ifaltq *, int);
+
+typedef int (*ifsq_enqueue_t)(struct ifaltq_subque *, struct mbuf *,
+    struct altq_pktattr *);
+typedef struct mbuf *(*ifsq_dequeue_t)(struct ifaltq_subque *,
+    struct mbuf *, int);
+typedef int (*ifsq_request_t)(struct ifaltq_subque *, int, void *);
+
+struct ifsubq_stage {
+	struct ifaltq_subque *stg_subq;
+	int		stg_cnt;
+	int		stg_len;
+	uint32_t	stg_flags;
+	TAILQ_ENTRY(ifsubq_stage) stg_link;
 } __cachealign;
 
-#define IFQ_STAGE_FLAG_QUED	0x1
-#define IFQ_STAGE_FLAG_SCHED	0x2
+#define IFSQ_STAGE_FLAG_QUED	0x1
+#define IFSQ_STAGE_FLAG_SCHED	0x2
+
+struct ifaltq_subque {
+	struct lwkt_serialize ifsq_lock;
+	int		ifsq_index;
+
+	struct ifaltq	*ifsq_altq;
+	struct ifnet	*ifsq_ifp;
+	void		*ifsq_hw_priv;	/* hw private data */
+
+	/* fields compatible with IFQ_ macros */
+	struct mbuf	*ifq_head;
+	struct mbuf	*ifq_tail;
+	int		ifq_len;
+	int		ifq_maxlen;
+
+	ifsq_enqueue_t	ifsq_enqueue;
+	ifsq_dequeue_t	ifsq_dequeue;
+	ifsq_request_t	ifsq_request;
+
+	struct mbuf	*ifsq_prepended;/* mbuf dequeued, but not yet xmit */
+	int		ifsq_started;	/* ifnet.if_start interlock */
+	int		ifsq_hw_oactive;/* hw too busy, protected by driver */
+	int		ifsq_cpuid;	/* owner cpu */
+	struct ifsubq_stage *ifsq_stage;/* packet staging information */
+	struct netmsg_base *ifsq_ifstart_nmsg;
+					/* percpu msgs to sched if_start */
+} __cachealign;
+
+#ifdef _KERNEL
+#define ALTQ_SQ_ASSERT_LOCKED(ifsq)	ASSERT_SERIALIZED(&(ifsq)->ifsq_lock)
+#define ALTQ_SQ_LOCK_INIT(ifsq)		lwkt_serialize_init(&(ifsq)->ifsq_lock)
+#define ALTQ_SQ_LOCK(ifsq) \
+	lwkt_serialize_adaptive_enter(&(ifsq)->ifsq_lock)
+#define ALTQ_SQ_UNLOCK(ifsq)		lwkt_serialize_exit(&(ifsq)->ifsq_lock)
+#endif
 
 /*
  * Structure defining a queue for a network interface.
  */
 struct	ifaltq {
-	/* fields compatible with struct ifqueue */
-	struct	mbuf *ifq_head;
-	struct	mbuf *ifq_tail;
-	int	ifq_len;
-	int	ifq_maxlen;
-	int	ifq_drops;
-
 	/* alternate queueing related fields */
 	int	altq_type;		/* discipline type */
 	int	altq_flags;		/* flags (e.g. ready, in-use) */
 	void	*altq_disc;		/* for discipline-specific use */
 	struct	ifnet *altq_ifp;	/* back pointer to interface */
-
-	int	(*altq_enqueue)(struct ifaltq *, struct mbuf *,
-				struct altq_pktattr *);
-	struct	mbuf *(*altq_dequeue)(struct ifaltq *, struct mbuf *, int);
-	int	(*altq_request)(struct ifaltq *, int, void *);
 
 	/* classifier fields */
 	void	*altq_clfier;		/* classifier-specific use */
@@ -77,20 +113,25 @@ struct	ifaltq {
 	/* token bucket regulator */
 	struct	tb_regulator *altq_tbr;
 
-	struct	lwkt_serialize altq_lock;
-	struct	mbuf *altq_prepended;	/* mbuf dequeued, but not yet xmit */
-	int	altq_started;		/* ifnet.if_start interlock */
-	int	altq_hw_oactive;	/* hw too busy, protected by driver */
-	int	altq_cpuid;		/* owner cpu */
-	struct ifaltq_stage *altq_stage;
-	struct netmsg_base *altq_ifstart_nmsg;
-					/* percpu msgs to sched if_start */
+	/* Sub-queues mapping */
+	altq_mapsubq_t altq_mapsubq;
+	uint32_t altq_map_unused;
+
+	/* Sub-queues */
+	int	altq_subq_cnt;
+	struct ifaltq_subque *altq_subq;
+
+	int	altq_maxlen;
 };
 
-#define ALTQ_ASSERT_LOCKED(ifq)	ASSERT_SERIALIZED(&(ifq)->altq_lock)
-#define ALTQ_LOCK_INIT(ifq)	lwkt_serialize_init(&(ifq)->altq_lock)
-#define ALTQ_LOCK(ifq)		lwkt_serialize_adaptive_enter(&(ifq)->altq_lock)
-#define ALTQ_UNLOCK(ifq)	lwkt_serialize_exit(&(ifq)->altq_lock)
+#ifdef _KERNRL
+/* COMPAT */
+#define ALTQ_LOCK(ifq) \
+	ALTQ_SQ_LOCK(&(ifq)->altq_subq[ALTQ_SUBQ_INDEX_DEFAULT])
+/* COMPAT */
+#define ALTQ_UNLOCK(ifq) \
+	ALTQ_SQ_UNLOCK(&(ifq)->altq_subq[ALTQ_SUBQ_INDEX_DEFAULT])
+#endif
 
 #ifdef _KERNEL
 
@@ -148,16 +189,13 @@ struct tb_regulator {
 /* altq request types (currently only purge is defined) */
 #define	ALTRQ_PURGE		1	/* purge all packets */
 
-int	altq_attach(struct ifaltq *, int, void *,
-		    int (*)(struct ifaltq *, struct mbuf *, struct altq_pktattr *),
-		    struct mbuf *(*)(struct ifaltq *, struct mbuf *, int),
-		    int (*)(struct ifaltq *, int, void *),
-		    void *, void *(*)(struct ifaltq *, struct mbuf *,
-				      struct altq_pktattr *));
+int	altq_attach(struct ifaltq *, int, void *, altq_mapsubq_t,
+	    ifsq_enqueue_t, ifsq_dequeue_t, ifsq_request_t, void *,
+	    void *(*)(struct ifaltq *, struct mbuf *, struct altq_pktattr *));
 int	altq_detach(struct ifaltq *);
 int	altq_enable(struct ifaltq *);
 int	altq_disable(struct ifaltq *);
-struct mbuf *tbr_dequeue(struct ifaltq *, struct mbuf *, int);
+struct mbuf *tbr_dequeue(struct ifaltq_subque *, struct mbuf *, int);
 extern int	(*altq_input)(struct mbuf *, int);
 #endif /* _KERNEL */
 

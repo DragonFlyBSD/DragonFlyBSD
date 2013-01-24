@@ -164,7 +164,7 @@ static void	ti_stats_update(struct ti_softc *);
 static int	ti_encap(struct ti_softc *, struct mbuf *, uint32_t *);
 
 static void	ti_intr(void *);
-static void	ti_start(struct ifnet *);
+static void	ti_start(struct ifnet *, struct ifaltq_subque *);
 static int	ti_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	ti_init(void *);
 static void	ti_init2(struct ti_softc *);
@@ -1904,12 +1904,14 @@ ti_encap(struct ti_softc *sc, struct mbuf *m_head, uint32_t *txidx)
  * to the mbuf data regions directly in the transmit descriptors.
  */
 static void
-ti_start(struct ifnet *ifp)
+ti_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ti_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	uint32_t prodidx = 0;
 	int need_trans;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	prodidx = CSR_READ_4(sc, TI_MB_SENDPROD_IDX);
 

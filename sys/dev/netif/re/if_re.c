@@ -304,7 +304,7 @@ static void	re_intr(void *);
 static void	re_tick(void *);
 static void	re_tick_serialized(void *);
 
-static void	re_start(struct ifnet *);
+static void	re_start(struct ifnet *, struct ifaltq_subque *);
 static int	re_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	re_init(void *);
 static void	re_stop(struct re_softc *);
@@ -789,6 +789,7 @@ re_diag(struct re_softc *sc)
 	int total_len, i, error = 0, phyaddr;
 	uint8_t dst[ETHER_ADDR_LEN] = { 0x00, 'h', 'e', 'l', 'l', 'o' };
 	uint8_t src[ETHER_ADDR_LEN] = { 0x00, 'w', 'o', 'r', 'l', 'd' };
+	char ethstr[2][ETHER_ADDRSTRLEN + 1];
 
 	/* Allocate a single mbuf */
 
@@ -895,10 +896,11 @@ re_diag(struct re_softc *sc)
 	    bcmp(eh->ether_shost, &src, ETHER_ADDR_LEN) ||
 	    be16toh(eh->ether_type) != ETHERTYPE_IP) {
 		if_printf(ifp, "WARNING, DMA FAILURE!\n");
-		if_printf(ifp, "expected TX data: %6D/%6D/0x%x\n",
-		    dst, ":", src, ":", ETHERTYPE_IP);
-		if_printf(ifp, "received RX data: %6D/%6D/0x%x\n",
-		    eh->ether_dhost, ":",  eh->ether_shost, ":",
+		if_printf(ifp, "expected TX data: %s/%s/0x%x\n",
+		    kether_ntoa(dst, ethstr[0]), kether_ntoa(src, ethstr[1]), ETHERTYPE_IP);
+		if_printf(ifp, "received RX data: %s/%s/0x%x\n",
+		    kether_ntoa(eh->ether_dhost, ethstr[0]),
+		    kether_ntoa(eh->ether_shost, ethstr[1]),
 		    ntohs(eh->ether_type));
 		if_printf(ifp, "You may have a defective 32-bit NIC plugged "
 		    "into a 64-bit PCI slot.\n");
@@ -2437,12 +2439,13 @@ back:
  */
 
 static void
-re_start(struct ifnet *ifp)
+re_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct re_softc	*sc = ifp->if_softc;
 	struct mbuf *m_head;
 	int idx, need_trans, oactive, error;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((sc->re_flags & RE_F_LINKED) == 0) {

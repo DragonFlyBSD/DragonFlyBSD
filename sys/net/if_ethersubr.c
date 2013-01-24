@@ -155,6 +155,11 @@ static u_long ether_input_wronghwhash;
 static int ether_input_ckhash;
 #endif
 
+#define ETHER_TSOLEN_DEFAULT	(4 * ETHERMTU)
+
+static int ether_tsolen_default = ETHER_TSOLEN_DEFAULT;
+TUNABLE_INT("net.link.ether.tsolen", &ether_tsolen_default);
+
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_ETHER, ether, CTLFLAG_RW, 0, "Ethernet");
 SYSCTL_INT(_net_link_ether, OID_AUTO, debug, CTLFLAG_RW,
@@ -168,6 +173,9 @@ SYSCTL_ULONG(_net_link_ether, OID_AUTO, prepend_hdr, CTLFLAG_RW,
     "# of ether header restoration which prepends mbuf");
 SYSCTL_ULONG(_net_link_ether, OID_AUTO, input_wronghash, CTLFLAG_RW,
     &ether_input_wronghash, 0, "# of input packets with wrong hash");
+SYSCTL_INT(_net_link_ether, OID_AUTO, tsolen, CTLFLAG_RW,
+    &ether_tsolen_default, 0, "Default max TSO length");
+
 #ifdef RSS_DEBUG
 SYSCTL_ULONG(_net_link_ether, OID_AUTO, rss_nopi, CTLFLAG_RW,
     &ether_rss_nopi, 0, "# of packets do not have pktinfo");
@@ -573,12 +581,21 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen,
 		   lwkt_serialize_t serializer)
 {
 	struct sockaddr_dl *sdl;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	ifp->if_type = IFT_ETHER;
 	ifp->if_addrlen = ETHER_ADDR_LEN;
 	ifp->if_hdrlen = ETHER_HDR_LEN;
 	if_attach(ifp, serializer);
 	ifp->if_mtu = ETHERMTU;
+	if (ifp->if_tsolen <= 0) {
+		if ((ether_tsolen_default / ETHERMTU) < 2) {
+			kprintf("ether TSO maxlen %d -> %d\n",
+			    ether_tsolen_default, ETHER_TSOLEN_DEFAULT);
+			ether_tsolen_default = ETHER_TSOLEN_DEFAULT;
+		}
+		ifp->if_tsolen = ether_tsolen_default;
+	}
 	if (ifp->if_baudrate == 0)
 		ifp->if_baudrate = 10000000;
 	ifp->if_output = ether_output;
@@ -599,7 +616,7 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen,
 	if (ng_ether_attach_p != NULL)
 		(*ng_ether_attach_p)(ifp);
 
-	if_printf(ifp, "MAC address: %6D\n", lla, ":");
+	if_printf(ifp, "MAC address: %s\n", kether_ntoa(lla, ethstr));
 }
 
 /*
@@ -1673,6 +1690,45 @@ failed:
 		m_freem(m);
 	*mp = NULL;
 	return FALSE;
+}
+
+u_char *
+kether_aton(const char *macstr, u_char *addr)
+{
+        unsigned int o0, o1, o2, o3, o4, o5;
+        int n;
+
+        if (macstr == NULL || addr == NULL)
+                return NULL;
+
+        n = ksscanf(macstr, "%x:%x:%x:%x:%x:%x", &o0, &o1, &o2,
+            &o3, &o4, &o5);
+        if (n != 6)
+                return NULL;
+
+        addr[0] = o0;
+        addr[1] = o1;
+        addr[2] = o2;
+        addr[3] = o3;
+        addr[4] = o4;
+        addr[5] = o5;
+
+        return addr;
+}
+
+char *
+kether_ntoa(const u_char *addr, char *buf)
+{
+        int len = ETHER_ADDRSTRLEN + 1;
+        int n;
+
+        n = ksnprintf(buf, len, "%02x:%02x:%02x:%02x:%02x:%02x", addr[0],
+            addr[1], addr[2], addr[3], addr[4], addr[5]);
+
+        if (n < 17)
+                return NULL;
+
+        return buf;
 }
 
 MODULE_VERSION(ether, 1);

@@ -421,11 +421,12 @@ static int
 stf_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	   struct rtentry *rt)
 {
+	const struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
 	error = stf_output_serialized(ifp, m, dst, rt);
-	ifnet_deserialize_tx(ifp);
+	ifnet_deserialize_tx(ifp, ifsq);
 
 	return error;
 }

@@ -139,7 +139,7 @@ static int an_ioctl		(struct ifnet *, u_long, caddr_t,
 					struct ucred *);
 static void an_init		(void *);
 static int an_init_tx_ring	(struct an_softc *);
-static void an_start		(struct ifnet *);
+static void an_start		(struct ifnet *, struct ifaltq_subque *);
 static void an_watchdog		(struct ifnet *);
 static void an_rxeof		(struct an_softc *);
 static void an_txeof		(struct an_softc *, int);
@@ -2474,7 +2474,7 @@ an_init(void *xsc)
 }
 
 static void
-an_start(struct ifnet *ifp)
+an_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct an_softc		*sc;
 	struct mbuf		*m0 = NULL;
@@ -2484,6 +2484,8 @@ an_start(struct ifnet *ifp)
 	unsigned char           txcontrol;
 	struct an_card_tx_desc an_tx_desc;
 	u_int8_t		*buf;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	sc = ifp->if_softc;
 

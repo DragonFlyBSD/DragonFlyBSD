@@ -58,16 +58,23 @@
 
 #include <sys/thread2.h>
 
+#define PRIQ_SUBQ_INDEX		ALTQ_SUBQ_INDEX_DEFAULT
+#define PRIQ_LOCK(ifq) \
+    ALTQ_SQ_LOCK(&(ifq)->altq_subq[PRIQ_SUBQ_INDEX])
+#define PRIQ_UNLOCK(ifq) \
+    ALTQ_SQ_UNLOCK(&(ifq)->altq_subq[PRIQ_SUBQ_INDEX])
+
 /*
  * function prototypes
  */
 static int	priq_clear_interface(struct priq_if *);
-static int	priq_request(struct ifaltq *, int, void *);
+static int	priq_request(struct ifaltq_subque *, int, void *);
 static void	priq_purge(struct priq_if *);
 static struct priq_class *priq_class_create(struct priq_if *, int, int, int, int);
 static int	priq_class_destroy(struct priq_class *);
-static int	priq_enqueue(struct ifaltq *, struct mbuf *, struct altq_pktattr *);
-static struct mbuf *priq_dequeue(struct ifaltq *, struct mbuf *, int);
+static int	priq_enqueue(struct ifaltq_subque *, struct mbuf *,
+		    struct altq_pktattr *);
+static struct mbuf *priq_dequeue(struct ifaltq_subque *, struct mbuf *, int);
 
 static int	priq_addq(struct priq_class *, struct mbuf *);
 static struct mbuf *priq_getq(struct priq_class *);
@@ -80,7 +87,7 @@ static struct priq_class *clh_to_clp(struct priq_if *, uint32_t);
 int
 priq_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
-	return altq_attach(ifq, ALTQT_PRIQ, a->altq_disc,
+	return altq_attach(ifq, ALTQT_PRIQ, a->altq_disc, ifq_mapsubq_default,
 	    priq_enqueue, priq_dequeue, priq_request, NULL, NULL);
 }
 
@@ -161,9 +168,9 @@ priq_add_queue(struct pf_altq *a)
 		return (EINVAL);
 	ifq = pif->pif_ifq;
 
-	ALTQ_LOCK(ifq);
+	PRIQ_LOCK(ifq);
 	error = priq_add_queue_locked(a, pif);
-	ALTQ_UNLOCK(ifq);
+	PRIQ_UNLOCK(ifq);
 
 	return error;
 }
@@ -191,9 +198,9 @@ priq_remove_queue(struct pf_altq *a)
 		return (EINVAL);
 	ifq = pif->pif_ifq;
 
-	ALTQ_LOCK(ifq);
+	PRIQ_LOCK(ifq);
 	error = priq_remove_queue_locked(a, pif);
-	ALTQ_UNLOCK(ifq);
+	PRIQ_UNLOCK(ifq);
 
 	return error;
 }
@@ -215,16 +222,16 @@ priq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 		return (EBADF);
 	ifq = pif->pif_ifq;
 
-	ALTQ_LOCK(ifq);
+	PRIQ_LOCK(ifq);
 
 	if ((cl = clh_to_clp(pif, a->qid)) == NULL) {
-		ALTQ_UNLOCK(ifq);
+		PRIQ_UNLOCK(ifq);
 		return (EINVAL);
 	}
 
 	get_class_stats(&stats, cl);
 
-	ALTQ_UNLOCK(ifq);
+	PRIQ_UNLOCK(ifq);
 
 	if ((error = copyout((caddr_t)&stats, ubuf, sizeof(stats))) != 0)
 		return (error);
@@ -252,14 +259,23 @@ priq_clear_interface(struct priq_if *pif)
 }
 
 static int
-priq_request(struct ifaltq *ifq, int req, void *arg)
+priq_request(struct ifaltq_subque *ifsq, int req, void *arg)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct priq_if *pif = (struct priq_if *)ifq->altq_disc;
 
 	crit_enter();
 	switch (req) {
 	case ALTRQ_PURGE:
-		priq_purge(pif);
+		if (ifsq_get_index(ifsq) == PRIQ_SUBQ_INDEX) {
+			priq_purge(pif);
+		} else {
+			/*
+			 * Race happened, the unrelated subqueue was
+			 * picked during the packet scheduler transition.
+			 */
+			ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		}
 		break;
 	}
 	crit_exit();
@@ -278,7 +294,7 @@ priq_purge(struct priq_if *pif)
 			priq_purgeq(cl);
 	}
 	if (ifq_is_enabled(pif->pif_ifq))
-		pif->pif_ifq->ifq_len = 0;
+		pif->pif_ifq->altq_subq[PRIQ_SUBQ_INDEX].ifq_len = 0;
 }
 
 static struct priq_class *
@@ -411,12 +427,24 @@ priq_class_destroy(struct priq_class *cl)
  * (*altq_enqueue) in struct ifaltq.
  */
 static int
-priq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
+priq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
+    struct altq_pktattr *pktattr)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct priq_if *pif = (struct priq_if *)ifq->altq_disc;
 	struct priq_class *cl;
 	int error;
 	int len;
+
+	if (ifsq_get_index(ifsq) != PRIQ_SUBQ_INDEX) {
+		/*
+		 * Race happened, the unrelated subqueue was
+		 * picked during the packet scheduler transition.
+		 */
+		ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		m_freem(m);
+		return ENOBUFS;
+	}
 
 	crit_enter();
 
@@ -449,7 +477,7 @@ priq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		error = ENOBUFS;
 		goto done;
 	}
-	ifq->ifq_len++;
+	ifsq->ifq_len++;
 	error = 0;
 done:
 	crit_exit();
@@ -466,14 +494,24 @@ done:
  *	after ALTDQ_POLL.
  */
 static struct mbuf *
-priq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
+priq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 {
+	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct priq_if *pif = (struct priq_if *)ifq->altq_disc;
 	struct priq_class *cl;
 	struct mbuf *m;
 	int pri;
 
-	if (ifq_is_empty(ifq)) {
+	if (ifsq_get_index(ifsq) != PRIQ_SUBQ_INDEX) {
+		/*
+		 * Race happened, the unrelated subqueue was
+		 * picked during the packet scheduler transition.
+		 */
+		ifsq_classic_request(ifsq, ALTRQ_PURGE, NULL);
+		return NULL;
+	}
+
+	if (ifsq_is_empty(ifsq)) {
 		/* no packet in the queue */
 		KKASSERT(mpolled == NULL);
 		return (NULL);
@@ -490,7 +528,7 @@ priq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 
 			m = priq_getq(cl);
 			if (m != NULL) {
-				ifq->ifq_len--;
+				ifsq->ifq_len--;
 				if (qempty(cl->cl_q))
 					cl->cl_period++;
 				PKTCNTR_ADD(&cl->cl_xmitcnt, m_pktlen(m));

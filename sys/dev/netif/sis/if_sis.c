@@ -121,7 +121,7 @@ static void	sis_rxeoc(struct sis_softc *);
 static void	sis_txeof(struct sis_softc *);
 static void	sis_intr(void *);
 static void	sis_tick(void *);
-static void	sis_start(struct ifnet *);
+static void	sis_start(struct ifnet *, struct ifaltq_subque *);
 static int	sis_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	sis_init(void *);
 static void	sis_stop(struct sis_softc *);
@@ -1690,11 +1690,13 @@ sis_encap(struct sis_softc *sc, struct mbuf **m_head, uint32_t *txidx)
  */
 
 static void
-sis_start(struct ifnet *ifp)
+sis_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct sis_softc *sc = ifp->if_softc;
 	int need_trans, error;
 	uint32_t idx;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if (!sc->sis_link) {
 		ifq_purge(&ifp->if_snd);

@@ -110,7 +110,7 @@ struct ng_iface_private {
 typedef struct ng_iface_private *priv_p;
 
 /* Interface methods */
-static void	ng_iface_start(struct ifnet *ifp);
+static void	ng_iface_start(struct ifnet *ifp, struct ifaltq_subque *);
 static int	ng_iface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
 			struct ucred *cr);
 static int	ng_iface_output(struct ifnet *ifp, struct mbuf *m0,
@@ -461,11 +461,12 @@ static int
 ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 		struct sockaddr *dst, struct rtentry *rt0)
 {
+	const struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp);
+	ifnet_serialize_tx(ifp, ifsq);
 	error = ng_iface_output_serialized(ifp, m, dst, rt0);
-	ifnet_deserialize_tx(ifp);
+	ifnet_deserialize_tx(ifp, ifsq);
 
 	return error;
 }
@@ -475,7 +476,7 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
  */
 
 static void
-ng_iface_start(struct ifnet *ifp)
+ng_iface_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
 	kprintf("%s: %s called?", ifp->if_xname, __func__);
 }

@@ -1,5 +1,4 @@
 /*	$NetBSD: src/usr.bin/mkesdb/yacc.y,v 1.3 2004/01/02 12:09:48 itojun Exp $	*/
-/*	$DragonFly: src/usr.bin/mkesdb/yacc.y,v 1.2 2008/07/10 18:29:51 swildner Exp $ */
 
 %{
 /*-
@@ -62,6 +61,8 @@ static void	dump_file(void);
 static void	register_named_csid(char *, uint32_t);
 static void	set_prop_string(const char *, char **, char **);
 static void	set_invalid(uint32_t);
+
+int yylex (void);
 %}
 %union {
 	uint32_t	i_value;
@@ -113,7 +114,7 @@ invalid		: R_INVALID L_IMM
 int
 yyerror(const char *s)
 {
-	fprintf(stderr, "%s in %d\n", s, line_number);
+	fprintf(stderr, "%s in %d\n", s, aline_number);
 
 	return (0);
 }

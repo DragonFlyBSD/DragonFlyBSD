@@ -66,5 +66,3 @@
 
 extern int number;
 extern char letter;
-
-extern int yylex(void);

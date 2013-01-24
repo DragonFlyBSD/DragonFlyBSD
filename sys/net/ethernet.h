@@ -18,6 +18,11 @@
 #define	ETHER_ADDR_LEN		6
 
 /*
+ * The number of bytes for a ASCII representation of MAC address.
+ */
+#define	ETHER_ADDRSTRLEN	17
+
+/*
  * The number of bytes in the type field.
  */
 #define	ETHER_TYPE_LEN		2

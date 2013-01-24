@@ -1,14 +1,16 @@
-#	@(#)Makefile	5.3 (Berkeley) 5/12/90
-# $FreeBSD: src/usr.bin/yacc/Makefile,v 1.8.2.2 2001/04/25 14:04:46 ru Exp $
-# $DragonFly: src/usr.bin/yacc/Makefile,v 1.5 2007/08/27 16:51:01 pavalos Exp $
+CONTRIBDIR= ${.CURDIR}/../../contrib/byacc
+.PATH: ${CONTRIBDIR}
 
 PROG=	yacc
-SRCS=	closure.c error.c lalr.c lr0.c main.c mkpar.c output.c reader.c \
-	skeleton.c symtab.c verbose.c warshall.c
-SCRIPTS=yyfix.sh
-MAN=	yacc.1 yyfix.1
+SRCS=	closure.c error.c graph.c lalr.c lr0.c main.c mkpar.c output.c \
+	reader.c skeleton.c symtab.c verbose.c warshall.c
+
+VER!=	cat ${CONTRIBDIR}/VERSION
+CFLAGS+=-DYYPATCH=${VER}
+# config.h defines
+CFLAGS+=-DHAVE_FCNTL_H -DHAVE_MKSTEMP -DMIXEDCASE_FILENAMES
+
 LINKS=	${BINDIR}/yacc ${BINDIR}/byacc
-MLINKS=	yacc.1 byacc.1 \
-	yacc.1 liby.3
+MLINKS=	yacc.1 byacc.1
 
 .include <bsd.prog.mk>

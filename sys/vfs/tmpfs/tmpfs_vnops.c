@@ -535,7 +535,10 @@ tmpfs_write (struct vop_write_args *ap)
 		return (EFBIG);
 	}
 
-	if (vp->v_type == VREG && td != NULL) {
+	/*
+	 * NOTE: Ignore if UIO does not come from a user thread (e.g. VN).
+	 */
+	if (vp->v_type == VREG && td != NULL && td->td_lwp != NULL) {
 		error = kern_getrlimit(RLIMIT_FSIZE, &limit);
 		if (error != 0) {
 			lwkt_reltoken(&vp->v_mount->mnt_token);

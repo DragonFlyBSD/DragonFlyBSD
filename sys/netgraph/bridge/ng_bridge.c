@@ -802,10 +802,12 @@ ng_bridge_put(priv_p priv, const u_char *addr, int linkNum)
 	struct ng_bridge_hent *hent;
 
 #ifdef INVARIANTS
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+
 	/* Assert that entry does not already exist in hashtable */
 	SLIST_FOREACH(hent, &priv->tab[bucket], next) {
 		KASSERT(!ETHER_EQUAL(hent->host.addr, addr),
-		    ("%s: entry %6D exists in table", __func__, addr, ":"));
+		    ("%s: entry %s exists in table", __func__, kether_ntoa(addr, ethstr)));
 	}
 #endif
 
@@ -931,6 +933,7 @@ ng_bridge_timeout(void *arg)
 	int bucket;
 	int counter = 0;
 	int linkNum;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	/* If node was shut down, this is the final lingering timeout */
 	crit_enter();
@@ -954,8 +957,8 @@ ng_bridge_timeout(void *arg)
 
 			/* Make sure host's link really exists */
 			KASSERT(priv->links[hent->host.linkNum] != NULL,
-			    ("%s: host %6D on nonexistent link %d",
-			    __func__, hent->host.addr, ":",
+			    ("%s: host %s on nonexistent link %d",
+			    __func__, kether_ntoa(hent->host.addr, ethstr),
 			    hent->host.linkNum));
 
 			/* Remove hosts we haven't heard from in a while */

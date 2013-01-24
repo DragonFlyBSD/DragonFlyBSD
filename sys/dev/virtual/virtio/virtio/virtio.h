@@ -32,6 +32,7 @@
 #define _VIRTIO_H_
 
 #include <sys/types.h>
+#include <sys/serialize.h>
 
 struct vq_alloc_info;
 
@@ -100,7 +101,7 @@ void	 virtio_describe(device_t dev, const char *msg,
 uint64_t virtio_negotiate_features(device_t dev, uint64_t child_features);
 int	 virtio_alloc_virtqueues(device_t dev, int flags, int nvqs,
 	     struct vq_alloc_info *info);
-int	 virtio_setup_intr(device_t dev);
+int	 virtio_setup_intr(device_t dev, lwkt_serialize_t);
 int	 virtio_with_feature(device_t dev, uint64_t feature);
 void	 virtio_stop(device_t dev);
 int	 virtio_reinit(device_t dev, uint64_t features);

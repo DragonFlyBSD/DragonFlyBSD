@@ -104,7 +104,7 @@ static void vxtxstat (struct vx_softc *);
 static int vxstatus (struct vx_softc *);
 static void vxinit (void *);
 static int vxioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
-static void vxstart (struct ifnet *ifp);
+static void vxstart (struct ifnet *ifp, struct ifaltq_subque *);
 static void vxwatchdog (struct ifnet *);
 static void vxreset (struct vx_softc *);
 /* void vxstop (struct vx_softc *); */
@@ -382,11 +382,13 @@ vxsetlink(struct vx_softc *sc)
 }
 
 static void
-vxstart(struct ifnet *ifp)
+vxstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
     struct vx_softc *sc = ifp->if_softc;
     struct mbuf *m0;
     int len, pad;
+
+    ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
     /* Don't transmit if interface is busy or not running */
     if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))

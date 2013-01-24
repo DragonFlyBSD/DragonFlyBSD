@@ -59,7 +59,7 @@ struct ng_sppp_private {
 typedef struct ng_sppp_private *priv_p;
 
 /* Interface methods */
-static void	ng_sppp_start (struct ifnet *ifp);
+static void	ng_sppp_start (struct ifnet *ifp, struct ifaltq_subque *);
 static int	ng_sppp_ioctl (struct ifnet *ifp, u_long cmd, caddr_t data);
 
 /* Netgraph methods */
@@ -187,7 +187,7 @@ ng_sppp_ioctl (struct ifnet *ifp, u_long command, caddr_t data)
  */
 
 static void
-ng_sppp_start (struct ifnet *ifp)
+ng_sppp_start (struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
 	struct mbuf *m;
 	int len, error = 0;

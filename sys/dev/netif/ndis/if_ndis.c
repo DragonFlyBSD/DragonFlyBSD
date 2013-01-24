@@ -170,7 +170,7 @@ static int ndis_raw_xmit	(struct ieee80211_node *, struct mbuf *,
 	const struct ieee80211_bpf_params *);
 static void ndis_update_mcast	(struct ifnet *ifp);
 static void ndis_update_promisc	(struct ifnet *ifp);
-static void ndis_start		(struct ifnet *);
+static void ndis_start		(struct ifnet *, struct ifaltq_subque *);
 static void ndis_starttask	(device_object *, void *);
 static void ndis_resettask	(device_object *, void *);
 static void ndis_inputtask	(device_object *, void *);
@@ -1777,7 +1777,7 @@ ndis_starttask(device_object *d, void *arg)
 	ifp = arg;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ndis_start(ifp);
+		if_devstart(ifp);
 }
 
 /*
@@ -1793,13 +1793,15 @@ ndis_starttask(device_object *d, void *arg)
  * will do the mapping themselves on a buffer by buffer basis.
  */
 static void
-ndis_start(struct ifnet *ifp)
+ndis_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ndis_softc	*sc;
 	struct mbuf		*m = NULL;
 	ndis_packet		**p0 = NULL, *p = NULL;
 	ndis_tcpip_csum		*csum;
 	int			pcnt = 0, status;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	sc = ifp->if_softc;
 
@@ -2240,6 +2242,7 @@ ndis_setstate_80211(struct ndis_softc *sc)
 	int			rval = 0, len;
 	uint32_t		arg;
 	struct ifnet		*ifp;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	ifp = sc->ifp;
 	ic = ifp->if_l2com;
@@ -2347,7 +2350,7 @@ ndis_setstate_80211(struct ndis_softc *sc)
 	/* Set the BSSID to our value so the driver doesn't associate */
 	len = IEEE80211_ADDR_LEN;
 	bcopy(IF_LLADDR(ifp), bssid, len);
-	DPRINTF(("Setting BSSID to %6D\n", (uint8_t *)&bssid, ":"));
+	DPRINTF(("Setting BSSID to %s\n", kether_ntoa((uint8_t *)&bssid, ethstr)));
 	rval = ndis_set_info(sc, OID_802_11_BSSID, &bssid, &len);
 	if (rval)
 		device_printf(sc->ndis_dev,
@@ -2364,6 +2367,7 @@ ndis_auth_and_assoc(struct ndis_softc *sc, struct ieee80211vap *vap)
 	int			i, rval = 0, len, error;
 	uint32_t		arg;
 	struct ifnet		*ifp;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	ifp = sc->ifp;
 	ni = vap->iv_bss;
@@ -2535,7 +2539,7 @@ ndis_auth_and_assoc(struct ndis_softc *sc, struct ieee80211vap *vap)
 	else
 		bcopy(ifp->if_broadcastaddr, bssid, len);
 
-	DPRINTF(("Setting BSSID to %6D\n", (uint8_t *)&bssid, ":"));
+	DPRINTF(("Setting BSSID to %s\n", kether_ntoa((uint8_t *)&bssid, ethstr)));
 	rval = ndis_set_info(sc, OID_802_11_BSSID, &bssid, &len);
 	if (rval)
 		device_printf(sc->ndis_dev,
@@ -3207,6 +3211,7 @@ ndis_scan_results(struct ndis_softc *sc)
 	uint8_t ssid[2+IEEE80211_NWID_LEN];
 	uint8_t rates[2+IEEE80211_RATE_MAXSIZE];
 	uint8_t *frm, *efrm;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	ic = sc->ifp->if_l2com;
 	vap = TAILQ_FIRST(&ic->ic_vaps);
@@ -3271,8 +3276,8 @@ ndis_scan_results(struct ndis_softc *sc)
 			sp.ies_len = efrm - frm;
 		}
 done:
-		DPRINTF(("scan: bssid %6D chan %dMHz (%d/%d) rssi %d\n",
-		    wb->nwbx_macaddr, ":", freq, sp.bchan, chanflag,
+		DPRINTF(("scan: bssid %s chan %dMHz (%d/%d) rssi %d\n",
+		    kether_ntoa(wb->nwbx_macaddr, ethstr), freq, sp.bchan, chanflag,
 		    rssi));
 		ieee80211_add_scan(vap, &sp, &wh, 0, rssi, noise);
 		wb = (ndis_wlan_bssid_ex *)((char *)wb + wb->nwbx_len);

@@ -29,11 +29,12 @@
  */
 
 %{
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include "lex.h"
-
-#define YY_NO_INPUT
-#define YY_NO_UNPUT
 %}
+
+%option noinput
+%option nounput
 
 D	[0-9]
 X	[0-9a-fA-F]

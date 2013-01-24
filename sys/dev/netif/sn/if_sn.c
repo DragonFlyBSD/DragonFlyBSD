@@ -130,7 +130,7 @@ static void snresume(struct ifnet *);
 void sninit(void *);
 void snread(struct ifnet *);
 void snreset(struct sn_softc *);
-void snstart(struct ifnet *);
+void snstart(struct ifnet *, struct ifaltq_subque *);
 void snstop(struct sn_softc *);
 void snwatchdog(struct ifnet *);
 
@@ -334,7 +334,7 @@ sninit(void *xsc)
 
 
 void
-snstart(struct ifnet *ifp)
+snstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct sn_softc *sc = ifp->if_softc;
 	u_int  len;
@@ -346,6 +346,8 @@ snstart(struct ifnet *ifp)
 	u_short         numPages;
 	u_char          packet_no;
 	int             time_out;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;

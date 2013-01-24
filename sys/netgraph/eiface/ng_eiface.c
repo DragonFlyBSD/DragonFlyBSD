@@ -89,7 +89,7 @@ typedef struct ng_eiface_private *priv_p;
 
 /* Interface methods */
 static void	ng_eiface_init(void *xsc);
-static void	ng_eiface_start(struct ifnet *ifp);
+static void	ng_eiface_start(struct ifnet *ifp, struct ifaltq_subque *);
 static int	ng_eiface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
 				struct ucred *cr);
 #ifdef DEBUG
@@ -219,7 +219,7 @@ ng_eiface_init(void *xsc)
  */
 
 static void
-ng_eiface_start(struct ifnet *ifp)
+ng_eiface_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 {
 	const priv_p priv = (priv_p) ifp->if_softc;
 	meta_p meta = NULL;

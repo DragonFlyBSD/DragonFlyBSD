@@ -159,7 +159,7 @@ static int	sbsh_suspend(device_t);
 static int	sbsh_resume(device_t);
 static void	sbsh_watchdog(struct ifnet *);
 
-static void	sbsh_start(struct ifnet *);
+static void	sbsh_start(struct ifnet *, struct ifaltq_subque *);
 static void	sbsh_init(void *);
 static void	sbsh_stop(struct sbsh_softc *);
 static void	init_card(struct sbsh_softc *);
@@ -311,9 +311,11 @@ sbsh_detach(device_t dev)
 
 
 static void
-sbsh_start(struct ifnet *ifp)
+sbsh_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct sbsh_softc  *sc = ifp->if_softc;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if (sc->state == ACTIVE)
 		start_xmit_frames(ifp->if_softc);

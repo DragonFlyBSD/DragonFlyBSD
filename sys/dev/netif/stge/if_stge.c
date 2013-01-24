@@ -131,7 +131,7 @@ static int	stge_suspend(device_t);
 static int	stge_resume(device_t);
 
 static int	stge_encap(struct stge_softc *, struct mbuf **);
-static void	stge_start(struct ifnet *);
+static void	stge_start(struct ifnet *, struct ifaltq_subque *);
 static void	stge_watchdog(struct ifnet *);
 static int	stge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	stge_init(void *);
@@ -1183,7 +1183,7 @@ stge_encap(struct stge_softc *sc, struct mbuf **m_head)
  *	Start packet transmission on the interface.
  */
 static void
-stge_start(struct ifnet *ifp)
+stge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct stge_softc *sc;
 	struct mbuf *m_head;
@@ -1191,6 +1191,7 @@ stge_start(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))

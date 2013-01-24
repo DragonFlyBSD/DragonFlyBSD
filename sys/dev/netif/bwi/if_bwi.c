@@ -84,7 +84,7 @@ static int	bwi_shutdown(device_t);
 
 static void	bwi_init(void *);
 static int	bwi_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	bwi_start(struct ifnet *);
+static void	bwi_start(struct ifnet *, struct ifaltq_subque *);
 static void	bwi_watchdog(struct ifnet *);
 static int	bwi_newstate(struct ieee80211com *, enum ieee80211_state, int);
 static void	bwi_updateslot(struct ifnet *);
@@ -532,6 +532,7 @@ bwi_attach(device_t dev)
 	struct ifnet *ifp = &ic->ic_if;
 	struct bwi_mac *mac;
 	struct bwi_phy *phy;
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 	int i, error;
 
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -754,7 +755,7 @@ bwi_attach(device_t dev)
 			bwi_get_eaddr(sc, BWI_SPROM_11A_EADDR, ic->ic_myaddr);
 			if (IEEE80211_IS_MULTICAST(ic->ic_myaddr)) {
 				device_printf(dev, "invalid MAC address: "
-					"%6D\n", ic->ic_myaddr, ":");
+				    "%s\n", kether_ntoa(ic->ic_myaddr, ethstr));
 			}
 		}
 	} else if (phy->phy_mode == IEEE80211_MODE_11A) {
@@ -1568,13 +1569,14 @@ bwi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t req, struct ucred *cr)
 }
 
 static void
-bwi_start(struct ifnet *ifp)
+bwi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct bwi_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct bwi_txbuf_data *tbd = &sc->sc_tx_bdata[BWI_TX_DATA_RING];
 	int trans, idx;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (ifq_is_oactive(&ifp->if_snd) || (ifp->if_flags & IFF_RUNNING) == 0)

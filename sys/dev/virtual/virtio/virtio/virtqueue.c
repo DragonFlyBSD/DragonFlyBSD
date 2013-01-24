@@ -36,10 +36,9 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/sglist.h>
+#include <sys/serialize.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
-#include <sys/spinlock.h>
-#include <sys/spinlock2.h>
 
 #include <machine/cpu.h>
 #include <machine/atomic.h>
@@ -279,15 +278,15 @@ virtqueue_full(struct virtqueue *vq)
 }
 
 void
-virtqueue_notify(struct virtqueue *vq, struct spinlock *interlock)
+virtqueue_notify(struct virtqueue *vq, lwkt_serialize_t interlock)
 {
 	/* Ensure updated avail->idx is visible to host. */
 	cpu_mfence();
 
 	if (vq_ring_must_notify_host(vq)) {
-		spin_unlock(interlock);
+		lwkt_serialize_exit(interlock);
 		vq_ring_notify_host(vq);
-		spin_lock(interlock);
+		lwkt_serialize_enter(interlock);
 	}
 	vq->vq_queued_cnt = 0;
 }

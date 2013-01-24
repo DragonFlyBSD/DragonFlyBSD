@@ -1,5 +1,4 @@
 /*	$NetBSD: src/usr.bin/mklocale/lex.l,v 1.13 2003/10/27 00:12:43 lukem Exp $	*/
-/*	$DragonFly: src/usr.bin/mklocale/lex.l,v 1.7 2008/06/21 20:01:14 swildner Exp $ */
 
 %{
 /*-
@@ -34,6 +33,7 @@
  * SUCH DAMAGE.
  */
 
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -42,7 +42,6 @@
 #include "ldef.h"
 #include "yacc.h"
 
-int yylex(void);
 %}
 
 ODIGIT	[0-7]
