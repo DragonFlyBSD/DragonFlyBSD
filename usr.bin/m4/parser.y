@@ -30,9 +30,6 @@
 #define	YYSTYPE	int32_t
 
 extern int yylex(void);
-#if __DragonFly_version < 300303
-extern int yyparse(void);
-#endif
 extern int yyerror(const char *);
 %}
 %token NUMBER
