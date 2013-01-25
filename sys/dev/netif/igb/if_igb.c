@@ -3063,18 +3063,18 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 				igb_init(sc);
 		}
 	} else {
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+			struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+			ifsq_set_cpuid(txr->ifsq, txr->tx_intr_cpuid);
+		}
+
 		if (ifp->if_flags & IFF_RUNNING) {
 			if (igb_get_rxring_inuse(sc, FALSE) ==
 			    sc->rx_ring_inuse)
 				igb_enable_intr(sc);
 			else
 				igb_init(sc);
-		}
-
-		for (i = 0; i < sc->tx_ring_cnt; ++i) {
-			struct igb_tx_ring *txr = &sc->tx_rings[i];
-
-			ifsq_set_cpuid(txr->ifsq, txr->tx_intr_cpuid);
 		}
 	}
 }
