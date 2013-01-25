@@ -119,6 +119,9 @@ static void	if_slowtimo(void *);
 static void	link_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
 static int	if_rtdel(struct radix_node *, void *);
 
+/* Helper functions */
+static void	ifsq_watchdog_reset(struct ifsubq_watchdog *);
+
 #ifdef INET6
 /*
  * XXX: declare here to avoid to include many inet6 related files..
@@ -3024,4 +3027,56 @@ int
 ifq_mapsubq_default(struct ifaltq *ifq __unused, int cpuid __unused)
 {
 	return ALTQ_SUBQ_INDEX_DEFAULT;
+}
+
+static void
+ifsq_watchdog(void *arg)
+{
+	struct ifsubq_watchdog *wd = arg;
+	struct ifnet *ifp;
+
+	if (__predict_true(wd->wd_timer == 0 || --wd->wd_timer))
+		goto done;
+
+	ifp = ifsq_get_ifp(wd->wd_subq);
+	if (ifnet_tryserialize_all(ifp)) {
+		wd->wd_watchdog(wd->wd_subq);
+		ifnet_deserialize_all(ifp);
+	} else {
+		/* try again next timeout */
+		wd->wd_timer = 1;
+	}
+done:
+	ifsq_watchdog_reset(wd);
+}
+
+static void
+ifsq_watchdog_reset(struct ifsubq_watchdog *wd)
+{
+	callout_reset_bycpu(&wd->wd_callout, hz, ifsq_watchdog, wd,
+	    ifsq_get_cpuid(wd->wd_subq));
+}
+
+void
+ifsq_watchdog_init(struct ifsubq_watchdog *wd, struct ifaltq_subque *ifsq,
+    ifsq_watchdog_t watchdog)
+{
+	callout_init_mp(&wd->wd_callout);
+	wd->wd_timer = 0;
+	wd->wd_subq = ifsq;
+	wd->wd_watchdog = watchdog;
+}
+
+void
+ifsq_watchdog_start(struct ifsubq_watchdog *wd)
+{
+	wd->wd_timer = 0;
+	ifsq_watchdog_reset(wd);
+}
+
+void
+ifsq_watchdog_stop(struct ifsubq_watchdog *wd)
+{
+	wd->wd_timer = 0;
+	callout_stop(&wd->wd_callout);
 }

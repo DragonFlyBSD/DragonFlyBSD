@@ -63,6 +63,16 @@
 	    ("not ifp's default subqueue"));
 
 struct ifaltq;
+struct ifaltq_subque;
+
+typedef void	(*ifsq_watchdog_t)(struct ifaltq_subque *);
+
+struct ifsubq_watchdog {
+	struct callout	wd_callout;
+	int		wd_timer;
+	struct ifaltq_subque *wd_subq;
+	ifsq_watchdog_t	wd_watchdog;
+};
 
 /*
  * Support for "classic" ALTQ interfaces.
@@ -81,6 +91,11 @@ int		ifq_mapsubq_default(struct ifaltq *, int);
 
 void		ifsq_devstart(struct ifaltq_subque *ifsq);
 void		ifsq_devstart_sched(struct ifaltq_subque *ifsq);
+
+void		ifsq_watchdog_init(struct ifsubq_watchdog *,
+		    struct ifaltq_subque *, ifsq_watchdog_t);
+void		ifsq_watchdog_start(struct ifsubq_watchdog *);
+void		ifsq_watchdog_stop(struct ifsubq_watchdog *);
 
 /*
  * Dispatch a packet to an interface.
