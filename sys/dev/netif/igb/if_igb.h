@@ -357,6 +357,8 @@ struct igb_softc {
 	 * Transmit rings
 	 */
 	int			tx_ring_cnt;
+	int			tx_ring_msix;
+	int			tx_ring_inuse;
 	struct igb_tx_ring	*tx_rings;
 
 	/*
@@ -394,6 +396,7 @@ struct igb_softc {
 };
 
 #define IGB_ENABLE_HWRSS(sc)	((sc)->rx_ring_cnt > 1)
+#define IGB_ENABLE_HWTSS(sc)	((sc)->tx_ring_cnt > 1)
 
 struct igb_tx_buf {
 	struct mbuf	*m_head;

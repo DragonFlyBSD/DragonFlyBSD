@@ -144,6 +144,7 @@ static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
 static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
 static int	igb_get_rxring_inuse(const struct igb_softc *, boolean_t);
+static int	igb_get_txring_inuse(const struct igb_softc *, boolean_t);
 #ifdef IFPOLL_ENABLE
 static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
@@ -255,6 +256,7 @@ DRIVER_MODULE(if_igb, pci, igb_driver, igb_devclass, NULL, NULL);
 static int	igb_rxd = IGB_DEFAULT_RXD;
 static int	igb_txd = IGB_DEFAULT_TXD;
 static int	igb_rxr = 0;
+static int	igb_txr = 0;
 static int	igb_msi_enable = 1;
 static int	igb_msix_enable = 1;
 static int	igb_eee_disabled = 1;	/* Energy Efficient Ethernet */
@@ -269,6 +271,7 @@ static int	igb_dma_coalesce = 0;
 TUNABLE_INT("hw.igb.rxd", &igb_rxd);
 TUNABLE_INT("hw.igb.txd", &igb_txd);
 TUNABLE_INT("hw.igb.rxr", &igb_rxr);
+TUNABLE_INT("hw.igb.txr", &igb_txr);
 TUNABLE_INT("hw.igb.msi.enable", &igb_msi_enable);
 TUNABLE_INT("hw.igb.msix.enable", &igb_msix_enable);
 TUNABLE_INT("hw.igb.fc_setting", &igb_fc_setting);
@@ -416,13 +419,20 @@ igb_attach(device_t dev)
 		ring_max = IGB_MIN_RING;
 		break;
 	}
+
 	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", igb_rxr);
 	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, ring_max);
 #ifdef IGB_RSS_DEBUG
 	sc->rx_ring_cnt = device_getenv_int(dev, "rxr_debug", sc->rx_ring_cnt);
 #endif
 	sc->rx_ring_inuse = sc->rx_ring_cnt;
-	sc->tx_ring_cnt = 1; /* XXX */
+
+	sc->tx_ring_cnt = device_getenv_int(dev, "txr", igb_txr);
+	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, /* XXX ring_max */1);
+#ifdef IGB_TSS_DEBUG
+	sc->tx_ring_cnt = device_getenv_int(dev, "txr_debug", sc->tx_ring_cnt);
+#endif
+	sc->tx_ring_inuse = sc->tx_ring_cnt;
 
 	if (sc->hw.mac.type == e1000_82575)
 		sc->flags |= IGB_FLAG_TSO_IPLEN0;
@@ -499,12 +509,17 @@ igb_attach(device_t dev)
 	/*
 	 * NPOLLING TX CPU offset
 	 */
-	offset_def = sc->rx_npoll_off;
-	offset = device_getenv_int(dev, "npoll.txoff", offset_def);
-	if (offset >= ncpus2) {
-		device_printf(dev, "invalid npoll.txoff %d, use %d\n",
-		    offset, offset_def);
-		offset = offset_def;
+	if (sc->tx_ring_cnt == ncpus2) {
+		offset = 0;
+	} else {
+		offset_def = (sc->tx_ring_cnt * device_get_unit(dev)) % ncpus2;
+		offset = device_getenv_int(dev, "npoll.txoff", offset_def);
+		if (offset >= ncpus2 ||
+		    offset % sc->tx_ring_cnt != 0) {
+			device_printf(dev, "invalid npoll.txoff %d, use %d\n",
+			    offset, offset_def);
+			offset = offset_def;
+		}
 	}
 	sc->tx_npoll_off = offset;
 #endif
@@ -768,7 +783,7 @@ igb_resume(device_t dev)
 	igb_init(sc);
 	igb_get_mgmt(sc);
 
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
+	for (i = 0; i < sc->tx_ring_inuse; ++i)
 		ifsq_devstart_sched(sc->tx_rings[i].ifsq);
 
 	ifnet_deserialize_all(ifp);
@@ -928,7 +943,7 @@ igb_init(void *xsc)
 	igb_init_intr(sc);
 
 	/* Prepare transmit descriptors and buffers */
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
+	for (i = 0; i < sc->tx_ring_inuse; ++i)
 		igb_init_tx_ring(&sc->tx_rings[i]);
 	igb_init_tx_unit(sc);
 
@@ -969,7 +984,7 @@ igb_init(void *xsc)
 	igb_set_promisc(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	for (i = 0; i < sc->tx_ring_cnt; ++i) {
+	for (i = 0; i < sc->tx_ring_inuse; ++i) {
 		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
 		ifsq_watchdog_start(&sc->tx_rings[i].tx_watchdog);
 	}
@@ -1517,6 +1532,11 @@ igb_add_sysctl(struct igb_softc *sc)
 	    OID_AUTO, "rxr_inuse", CTLFLAG_RD, &sc->rx_ring_inuse, 0,
 	    "# of RX rings used");
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "txr", CTLFLAG_RD, &sc->tx_ring_cnt, 0, "# of TX rings");
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "txr_inuse", CTLFLAG_RD, &sc->tx_ring_inuse, 0,
+	    "# of TX rings used");
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->rx_rings[0].num_rx_desc, 0,
 	    "# of RX descs");
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
@@ -1846,7 +1866,7 @@ igb_init_tx_unit(struct igb_softc *sc)
 	int i;
 
 	/* Setup the Tx Descriptor Rings */
-	for (i = 0; i < sc->tx_ring_cnt; ++i) {
+	for (i = 0; i < sc->tx_ring_inuse; ++i) {
 		struct igb_tx_ring *txr = &sc->tx_rings[i];
 		uint64_t bus_addr = txr->txdma.dma_paddr;
 		uint64_t hdr_paddr = txr->tx_hdr_paddr;
@@ -3022,7 +3042,7 @@ static void
 igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 {
 	struct igb_softc *sc = ifp->if_softc;
-	int i;
+	int i, txr_cnt, rxr_cnt;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
@@ -3032,8 +3052,9 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		info->ifpi_status.status_func = igb_npoll_status;
 		info->ifpi_status.serializer = &sc->main_serialize;
 
+		txr_cnt = igb_get_txring_inuse(sc, TRUE);
 		off = sc->tx_npoll_off;
-		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		for (i = 0; i < txr_cnt; ++i) {
 			struct igb_tx_ring *txr = &sc->tx_rings[i];
 			int idx = i + off;
 
@@ -3044,8 +3065,9 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			ifsq_set_cpuid(txr->ifsq, idx);
 		}
 
+		rxr_cnt = igb_get_rxring_inuse(sc, TRUE);
 		off = sc->rx_npoll_off;
-		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		for (i = 0; i < rxr_cnt; ++i) {
 			struct igb_rx_ring *rxr = &sc->rx_rings[i];
 			int idx = i + off;
 
@@ -3056,8 +3078,8 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		}
 
 		if (ifp->if_flags & IFF_RUNNING) {
-			if (igb_get_rxring_inuse(sc, TRUE) ==
-			    sc->rx_ring_inuse)
+			if (rxr_cnt == sc->rx_ring_inuse &&
+			    txr_cnt == sc->tx_ring_inuse)
 				igb_disable_intr(sc);
 			else
 				igb_init(sc);
@@ -3070,8 +3092,11 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		}
 
 		if (ifp->if_flags & IFF_RUNNING) {
-			if (igb_get_rxring_inuse(sc, FALSE) ==
-			    sc->rx_ring_inuse)
+			txr_cnt = igb_get_txring_inuse(sc, FALSE);
+			rxr_cnt = igb_get_rxring_inuse(sc, FALSE);
+
+			if (rxr_cnt == sc->rx_ring_inuse &&
+			    txr_cnt == sc->tx_ring_inuse)
 				igb_enable_intr(sc);
 			else
 				igb_init(sc);
@@ -3415,7 +3440,7 @@ igb_watchdog(struct ifaltq_subque *ifsq)
 	sc->watchdog_events++;
 
 	igb_init(sc);
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
+	for (i = 0; i < sc->tx_ring_inuse; ++i)
 		ifsq_devstart_sched(sc->tx_rings[i].ifsq);
 }
 
@@ -3583,7 +3608,7 @@ igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS)
 		return EINVAL;
 
 	ifnet_serialize_all(ifp);
-	if (off >= ncpus2) {
+	if (off >= ncpus2 || off % sc->tx_ring_cnt != 0) {
 		error = EINVAL;
 	} else {
 		error = 0;
@@ -3702,7 +3727,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, ivar);
 		}
 		/* TX entries */
-		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		for (i = 0; i < sc->tx_ring_inuse; ++i) {
 			txr = &sc->tx_rings[i];
 
 			index = i >> 1;
@@ -3745,7 +3770,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, ivar);
 		}
 		/* TX entries */
-		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		for (i = 0; i < sc->tx_ring_inuse; ++i) {
 			txr = &sc->tx_rings[i];
 
 			index = i & 0x7; /* Each IVAR has two entries */
@@ -3919,7 +3944,7 @@ igb_set_intr_mask(struct igb_softc *sc)
 	sc->intr_mask = sc->sts_intr_mask;
 	for (i = 0; i < sc->rx_ring_inuse; ++i)
 		sc->intr_mask |= sc->rx_rings[i].rx_intr_mask;
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
+	for (i = 0; i < sc->tx_ring_inuse; ++i)
 		sc->intr_mask |= sc->tx_rings[i].tx_intr_mask;
 	if (bootverbose) {
 		if_printf(&sc->arpcom.ac_if, "intr mask 0x%08x\n",
@@ -4091,14 +4116,18 @@ igb_msix_try_alloc(struct igb_softc *sc)
 	if (sc->rx_ring_msix > msix_cnt2)
 		sc->rx_ring_msix = msix_cnt2;
 
-	if (msix_cnt >= sc->tx_ring_cnt + sc->rx_ring_msix + 1) {
+	sc->tx_ring_msix = sc->tx_ring_cnt;
+	if (sc->tx_ring_msix > msix_cnt2)
+		sc->tx_ring_msix = msix_cnt2;
+
+	if (msix_cnt >= sc->tx_ring_msix + sc->rx_ring_msix + 1) {
 		/*
 		 * Independent TX/RX MSI-X
 		 */
 		aggregate = FALSE;
 		if (bootverbose)
 			device_printf(sc->dev, "independent TX/RX MSI-X\n");
-		alloc_cnt = sc->tx_ring_cnt + sc->rx_ring_msix;
+		alloc_cnt = sc->tx_ring_msix + sc->rx_ring_msix;
 	} else {
 		/*
 		 * Aggregate TX/RX MSI-X
@@ -4194,7 +4223,7 @@ igb_msix_try_alloc(struct igb_softc *sc)
 		}
 
 		/* TX rings */
-		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		for (i = 0; i < sc->tx_ring_msix; ++i) {
 			struct igb_tx_ring *txr = &sc->tx_rings[i];
 
 			KKASSERT(x < sc->msix_cnt);
@@ -4382,9 +4411,11 @@ static void
 igb_set_ring_inuse(struct igb_softc *sc, boolean_t polling)
 {
 	sc->rx_ring_inuse = igb_get_rxring_inuse(sc, polling);
+	sc->tx_ring_inuse = igb_get_txring_inuse(sc, polling);
 	if (bootverbose) {
-		if_printf(&sc->arpcom.ac_if, "RX rings %d/%d\n",
-		    sc->rx_ring_inuse, sc->rx_ring_cnt);
+		if_printf(&sc->arpcom.ac_if, "RX rings %d/%d, TX rings %d/%d\n",
+		    sc->rx_ring_inuse, sc->rx_ring_cnt,
+		    sc->tx_ring_inuse, sc->tx_ring_cnt);
 	}
 }
 
@@ -4400,6 +4431,20 @@ igb_get_rxring_inuse(const struct igb_softc *sc, boolean_t polling)
 		return IGB_MIN_RING_RSS;
 	else
 		return sc->rx_ring_msix;
+}
+
+static int
+igb_get_txring_inuse(const struct igb_softc *sc, boolean_t polling)
+{
+	if (!IGB_ENABLE_HWTSS(sc))
+		return 1;
+
+	if (polling)
+		return sc->tx_ring_cnt;
+	else if (sc->intr_type != PCI_INTR_TYPE_MSIX)
+		return IGB_MIN_RING;
+	else
+		return sc->tx_ring_msix;
 }
 
 static int
