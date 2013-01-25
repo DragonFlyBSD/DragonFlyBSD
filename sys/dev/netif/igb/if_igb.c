@@ -182,7 +182,7 @@ static int	igb_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	igb_media_status(struct ifnet *, struct ifmediareq *);
 static int	igb_media_change(struct ifnet *);
 static void	igb_timer(void *);
-static void	igb_watchdog(struct ifnet *);
+static void	igb_watchdog(struct ifaltq_subque *);
 static void	igb_start(struct ifnet *, struct ifaltq_subque *);
 #ifdef IFPOLL_ENABLE
 static void	igb_npoll(struct ifnet *, struct ifpoll_info *);
@@ -657,6 +657,8 @@ igb_attach(device_t dev)
 		ifsq_set_cpuid(ifsq, txr->tx_intr_cpuid);
 		ifsq_set_priv(ifsq, txr);
 		txr->ifsq = ifsq;
+
+		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, igb_watchdog);
 	}
 
 	return 0;
@@ -967,8 +969,10 @@ igb_init(void *xsc)
 	igb_set_promisc(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
+		ifsq_watchdog_start(&sc->tx_rings[i].tx_watchdog);
+	}
 
 	if (polling || sc->intr_type == PCI_INTR_TYPE_MSIX)
 		sc->timer_cpuid = 0; /* XXX fixed */
@@ -1272,9 +1276,10 @@ igb_stop(struct igb_softc *sc)
 	callout_stop(&sc->timer);
 
 	ifp->if_flags &= ~IFF_RUNNING;
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
-	ifp->if_timer = 0;
+		ifsq_watchdog_stop(&sc->tx_rings[i].tx_watchdog);
+	}
 
 	e1000_reset_hw(&sc->hw);
 	E1000_WRITE_REG(&sc->hw, E1000_WUC, 0);
@@ -1445,7 +1450,6 @@ igb_setup_ifp(struct igb_softc *sc)
 #ifdef IFPOLL_ENABLE
 	ifp->if_npoll = igb_npoll;
 #endif
-	ifp->if_watchdog = igb_watchdog;
 
 	ifq_set_maxlen(&ifp->if_snd, sc->tx_rings[0].num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
@@ -2014,7 +2018,7 @@ igb_txeof(struct igb_tx_ring *txr)
 		 * packets (roughly intr_nsegs) pending on
 		 * the transmit ring.
 		 */
-		ifp->if_timer = 0;
+		txr->tx_watchdog.wd_timer = 0;
 	}
 }
 
@@ -3352,7 +3356,7 @@ igb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		if (IGB_IS_OACTIVE(txr)) {
 			ifsq_set_oactive(ifsq);
 			/* Set watchdog on */
-			ifp->if_timer = 5;
+			txr->tx_watchdog.wd_timer = 5;
 			break;
 		}
 
@@ -3379,11 +3383,13 @@ igb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 }
 
 static void
-igb_watchdog(struct ifnet *ifp)
+igb_watchdog(struct ifaltq_subque *ifsq)
 {
+	struct igb_tx_ring *txr = ifsq_get_priv(ifsq);
+	struct ifnet *ifp = ifsq_get_ifp(ifsq);
 	struct igb_softc *sc = ifp->if_softc;
-	struct igb_tx_ring *txr = &sc->tx_rings[0];
 
+	KKASSERT(txr->ifsq == ifsq);
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/* 
@@ -3392,7 +3398,7 @@ igb_watchdog(struct ifnet *ifp)
 	 */
 	if (sc->pause_frames) {
 		sc->pause_frames = 0;
-		ifp->if_timer = 5;
+		txr->tx_watchdog.wd_timer = 5;
 		return;
 	}
 
@@ -3409,7 +3415,7 @@ igb_watchdog(struct ifnet *ifp)
 
 	igb_init(sc);
 	if (!ifsq_is_empty(txr->ifsq))
-		ifsq_devstart(txr->ifsq);
+		ifsq_devstart_sched(txr->ifsq);
 }
 
 static void

@@ -232,6 +232,7 @@ struct igb_tx_ring {
 	int			wreg_nsegs;
 	int			tx_intr_bit;
 	uint32_t		tx_intr_mask;
+	struct ifsubq_watchdog	tx_watchdog;
 
 	/* Soft stats */
 	u_long			no_desc_avail;
