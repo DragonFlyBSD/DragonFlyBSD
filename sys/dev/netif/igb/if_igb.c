@@ -769,7 +769,7 @@ igb_resume(device_t dev)
 	igb_get_mgmt(sc);
 
 	for (i = 0; i < sc->tx_ring_cnt; ++i)
-		ifsq_devstart(sc->tx_rings[i].ifsq);
+		ifsq_devstart_sched(sc->tx_rings[i].ifsq);
 
 	ifnet_deserialize_all(ifp);
 
@@ -3388,6 +3388,7 @@ igb_watchdog(struct ifaltq_subque *ifsq)
 	struct igb_tx_ring *txr = ifsq_get_priv(ifsq);
 	struct ifnet *ifp = ifsq_get_ifp(ifsq);
 	struct igb_softc *sc = ifp->if_softc;
+	int i;
 
 	KKASSERT(txr->ifsq == ifsq);
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
@@ -3414,8 +3415,8 @@ igb_watchdog(struct ifaltq_subque *ifsq)
 	sc->watchdog_events++;
 
 	igb_init(sc);
-	if (!ifsq_is_empty(txr->ifsq))
-		ifsq_devstart_sched(txr->ifsq);
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
+		ifsq_devstart_sched(sc->tx_rings[i].ifsq);
 }
 
 static void
