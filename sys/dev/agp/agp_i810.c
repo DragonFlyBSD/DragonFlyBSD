@@ -39,8 +39,6 @@
  * bridge code.
  */
 
-#include "opt_bus.h"
-
 #if 0
 #define	KTR_AGP_I810	KTR_DEV
 #else
