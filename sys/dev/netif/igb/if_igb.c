@@ -142,6 +142,7 @@ static void	igb_add_sysctl(struct igb_softc *);
 static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
+static int	igb_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_rx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
 static int	igb_get_rxring_inuse(const struct igb_softc *, boolean_t);
@@ -1567,9 +1568,9 @@ igb_add_sysctl(struct igb_softc *sc)
 	    sc, 0, igb_sysctl_tx_intr_nsegs, "I",
 	    "# of segments per TX interrupt");
 
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-	    OID_AUTO, "tx_wreg_nsegs", CTLFLAG_RW,
-	    &sc->tx_rings[0].wreg_nsegs, 0,
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "tx_wreg_nsegs", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, igb_sysctl_tx_wreg_nsegs, "I",
 	    "# of segments sent before write to hardware register");
 
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
@@ -3555,8 +3556,11 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 	    nsegs >= txr->oact_hi_desc - IGB_MAX_SCATTER) {
 		error = EINVAL;
 	} else {
+		int i;
+
 		error = 0;
-		txr->intr_nsegs = nsegs;
+		for (i = 0; i < sc->tx_ring_cnt; ++i)
+			sc->tx_rings[i].intr_nsegs = nsegs;
 	}
 
 	ifnet_deserialize_all(ifp);
@@ -3579,6 +3583,26 @@ igb_sysctl_rx_wreg_nsegs(SYSCTL_HANDLER_ARGS)
 	ifnet_serialize_all(ifp);
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		sc->rx_rings[i].wreg_nsegs =nsegs;
+	ifnet_deserialize_all(ifp);
+
+	return 0;
+}
+
+static int
+igb_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS)
+{
+	struct igb_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, nsegs, i;
+
+	nsegs = sc->tx_rings[0].wreg_nsegs;
+	error = sysctl_handle_int(oidp, &nsegs, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	ifnet_serialize_all(ifp);
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
+		sc->tx_rings[i].wreg_nsegs =nsegs;
 	ifnet_deserialize_all(ifp);
 
 	return 0;
