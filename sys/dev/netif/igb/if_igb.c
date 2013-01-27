@@ -142,6 +142,7 @@ static void	igb_add_sysctl(struct igb_softc *);
 static int	igb_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_msix_rate(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
+static int	igb_sysctl_rx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
 static int	igb_get_rxring_inuse(const struct igb_softc *, boolean_t);
 static int	igb_get_txring_inuse(const struct igb_softc *, boolean_t);
@@ -1569,7 +1570,12 @@ igb_add_sysctl(struct igb_softc *sc)
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "tx_wreg_nsegs", CTLFLAG_RW,
 	    &sc->tx_rings[0].wreg_nsegs, 0,
-	    "# of segments before write to hardare register");
+	    "# of segments sent before write to hardware register");
+
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "rx_wreg_nsegs", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, igb_sysctl_rx_wreg_nsegs, "I",
+	    "# of segments received before write to hardware register");
 
 #ifdef IFPOLL_ENABLE
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
@@ -1584,20 +1590,13 @@ igb_add_sysctl(struct igb_softc *sc)
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 	    OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug, 0,
 	    "RSS debug level");
-#endif
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
-#ifdef IGB_RSS_DEBUG
 		ksnprintf(node, sizeof(node), "rx%d_pkt", i);
 		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
 		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_packets, "RXed packets");
-#endif
-		ksnprintf(node, sizeof(node), "rx%d_wreg", i);
-		SYSCTL_ADD_INT(&sc->sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
-		    CTLFLAG_RW, &sc->rx_rings[i].rx_wreg, 0,
-		    "# of segments before write to hardare register");
 	}
+#endif
 }
 
 static int
@@ -2137,7 +2136,7 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 	/*
 	 * Initialize various watermark
 	 */
-	rxr->rx_wreg = 32;
+	rxr->wreg_nsegs = 32;
 
 	return 0;
 }
@@ -2590,7 +2589,7 @@ discard:
 		if (++i == rxr->num_rx_desc)
 			i = 0;
 
-		if (ncoll >= rxr->rx_wreg) {
+		if (ncoll >= rxr->wreg_nsegs) {
 			igb_rx_refresh(rxr, i);
 			ncoll = 0;
 		}
@@ -3563,6 +3562,26 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 	ifnet_deserialize_all(ifp);
 
 	return error;
+}
+
+static int
+igb_sysctl_rx_wreg_nsegs(SYSCTL_HANDLER_ARGS)
+{
+	struct igb_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, nsegs, i;
+
+	nsegs = sc->rx_rings[0].wreg_nsegs;
+	error = sysctl_handle_int(oidp, &nsegs, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	ifnet_serialize_all(ifp);
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
+		sc->rx_rings[i].wreg_nsegs =nsegs;
+	ifnet_deserialize_all(ifp);
+
+	return 0;
 }
 
 #ifdef IFPOLL_ENABLE
