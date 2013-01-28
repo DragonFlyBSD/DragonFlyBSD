@@ -1776,7 +1776,7 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	 */
 	txr->spare_desc = IGB_TX_SPARE;
 	txr->intr_nsegs = txr->num_tx_desc / 16;
-	txr->wreg_nsegs = 8;
+	txr->wreg_nsegs = IGB_DEF_TXWREG_NSEGS;
 	txr->oact_hi_desc = txr->num_tx_desc / 2;
 	txr->oact_lo_desc = txr->num_tx_desc / 8;
 	if (txr->oact_lo_desc > IGB_TX_OACTIVE_MAX)
@@ -2137,7 +2137,7 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 	/*
 	 * Initialize various watermark
 	 */
-	rxr->wreg_nsegs = 32;
+	rxr->wreg_nsegs = IGB_DEF_RXWREG_NSEGS;
 
 	return 0;
 }

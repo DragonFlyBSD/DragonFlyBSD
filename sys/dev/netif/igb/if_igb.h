@@ -62,6 +62,16 @@
 #define IGB_MAX_IVAR_VF		1
 
 /*
+ * Default number of segments received before writing to RX related registers
+ */
+#define IGB_DEF_RXWREG_NSEGS	32
+
+/*
+ * Default number of segments sent before writing to RX related registers
+ */
+#define IGB_DEF_TXWREG_NSEGS	8
+
+/*
  * IGB_TXD: Maximum number of Transmit Descriptors
  *
  *   This value is the number of transmit descriptors allocated by the driver.
