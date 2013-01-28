@@ -629,6 +629,7 @@ JME_RSS_DEBUG		opt_jme.h
 
 # igb driver
 IGB_RSS_DEBUG		opt_igb.h
+IGB_TSS_DEBUG		opt_igb.h
 IGB_MSIX_DEBUG		opt_igb.h
 
 # dcons options
