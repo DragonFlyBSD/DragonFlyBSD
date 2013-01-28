@@ -1673,7 +1673,7 @@ ieee80211_newstate_task(void *xvap, int npending)
 		ieee80211_scan_flush(vap);
 
 		/* XXX NB: cast for altq */
-		ieee80211_flush_ifq((struct ifqueue *)&ic->ic_ifp->if_snd, vap);
+		ieee80211_flush_ifq(&ic->ic_ifp->if_snd, vap);
 	}
 done:
 	wlan_serialize_exit();
