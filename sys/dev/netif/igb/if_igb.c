@@ -1468,6 +1468,7 @@ igb_setup_ifp(struct igb_softc *sc)
 
 	ifq_set_maxlen(&ifp->if_snd, sc->tx_rings[0].num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
+	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);
 
 	ether_ifattach(ifp, sc->hw.mac.addr, NULL);
 
