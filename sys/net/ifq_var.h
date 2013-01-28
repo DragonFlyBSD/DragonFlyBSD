@@ -513,7 +513,7 @@ ifq_set_subq_cnt(struct ifaltq *_ifq, int _cnt)
 static __inline void
 ifq_set_subq_mask(struct ifaltq *_ifq, uint32_t _mask)
 {
-	KASSERT(((_mask - 1) & _mask) == 0, ("invalid mask %08x", _mask));
+	KASSERT(((_mask + 1) & _mask) == 0, ("invalid mask %08x", _mask));
 	_ifq->altq_subq_mask = _mask;
 }
 
