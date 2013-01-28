@@ -937,6 +937,7 @@ igb_init(void *xsc)
 
 	/* Configured used RX/TX rings */
 	igb_set_ring_inuse(sc, polling);
+	ifq_set_subq_mask(&ifp->if_snd, sc->tx_ring_inuse - 1);
 
 	/* Initialize interrupt */
 	igb_init_intr(sc);
@@ -1469,6 +1470,9 @@ igb_setup_ifp(struct igb_softc *sc)
 	ifq_set_maxlen(&ifp->if_snd, sc->tx_rings[0].num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);
+
+	ifp->if_mapsubq = ifq_mapsubq_mask;
+	ifq_set_subq_mask(&ifp->if_snd, 0);
 
 	ether_ifattach(ifp, sc->hw.mac.addr, NULL);
 
