@@ -436,9 +436,6 @@ igb_attach(device_t dev)
 #endif
 	sc->tx_ring_inuse = sc->tx_ring_cnt;
 
-	if (sc->hw.mac.type == e1000_82575)
-		sc->flags |= IGB_FLAG_TSO_IPLEN0;
-
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
 
@@ -1770,6 +1767,9 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 			return error;
 		}
 	}
+
+	if (txr->sc->hw.mac.type == e1000_82575)
+		txr->tx_flags |= IGB_TXFLAG_TSO_IPLEN0;
 
 	/*
 	 * Initialize various watermark
@@ -4515,7 +4515,7 @@ igb_tso_pullup(struct igb_tx_ring *txr, struct mbuf **mp)
 		}
 		*mp = m;
 	}
-	if (txr->sc->flags & IGB_FLAG_TSO_IPLEN0) {
+	if (txr->tx_flags & IGB_TXFLAG_TSO_IPLEN0) {
 		struct ip *ip;
 
 		ip = mtodoff(m, struct ip *, hoff);

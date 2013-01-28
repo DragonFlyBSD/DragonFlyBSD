@@ -226,6 +226,8 @@ struct igb_tx_ring {
 	struct igb_softc	*sc;
 	struct ifaltq_subque	*ifsq;
 	uint32_t		me;
+	uint32_t		tx_flags;
+#define IGB_TXFLAG_TSO_IPLEN0	0x1
 	struct e1000_tx_desc	*tx_base;
 	int			num_tx_desc;
 	uint32_t		next_avail_desc;
@@ -316,7 +318,6 @@ struct igb_softc {
 	uint32_t		flags;
 #define IGB_FLAG_SHARED_INTR	0x1
 #define IGB_FLAG_HAS_MGMT	0x2
-#define IGB_FLAG_TSO_IPLEN0	0x4
 
 	bus_dma_tag_t		parent_tag;
 
