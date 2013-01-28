@@ -115,7 +115,7 @@ struct	ifaltq {
 
 	/* Sub-queues mapping */
 	altq_mapsubq_t altq_mapsubq;
-	uint32_t altq_map_unused;
+	uint32_t altq_subq_mask;
 
 	/* Sub-queues */
 	int	altq_subq_cnt;

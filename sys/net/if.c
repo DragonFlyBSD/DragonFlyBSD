@@ -3029,6 +3029,12 @@ ifq_mapsubq_default(struct ifaltq *ifq __unused, int cpuid __unused)
 	return ALTQ_SUBQ_INDEX_DEFAULT;
 }
 
+int
+ifq_mapsubq_mask(struct ifaltq *ifq, int cpuid)
+{
+	return (cpuid & ifq->altq_subq_mask);
+}
+
 static void
 ifsq_watchdog(void *arg)
 {
