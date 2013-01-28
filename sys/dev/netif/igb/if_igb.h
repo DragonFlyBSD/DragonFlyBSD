@@ -248,7 +248,6 @@ struct igb_tx_ring {
 	struct ifsubq_watchdog	tx_watchdog;
 
 	/* Soft stats */
-	u_long			no_desc_avail;
 	u_long			tx_packets;
 
 	struct igb_dma		txdma;

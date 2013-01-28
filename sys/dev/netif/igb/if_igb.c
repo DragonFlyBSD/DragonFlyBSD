@@ -1596,6 +1596,14 @@ igb_add_sysctl(struct igb_softc *sc)
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_packets, "RXed packets");
 	}
 #endif
+#ifdef IGB_TSS_DEBUG
+	for  (i = 0; i < sc->tx_ring_cnt; ++i) {
+		ksnprintf(node, sizeof(node), "tx%d_pkt", i);
+		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
+		    CTLFLAG_RW, &sc->tx_rings[i].tx_packets, "TXed packets");
+	}
+#endif
 }
 
 static int
@@ -3354,7 +3362,9 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 	 * Defer TDT updating, until enough descrptors are setup
 	 */
 	*idx = i;
+#ifdef IGB_TSS_DEBUG
 	++txr->tx_packets;
+#endif
 
 	return 0;
 }
