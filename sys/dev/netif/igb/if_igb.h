@@ -228,6 +228,7 @@ struct igb_tx_ring {
 	uint32_t		me;
 	uint32_t		tx_flags;
 #define IGB_TXFLAG_TSO_IPLEN0	0x1
+#define IGB_TXFLAG_ENABLED	0x2
 	struct e1000_tx_desc	*tx_base;
 	int			num_tx_desc;
 	uint32_t		next_avail_desc;

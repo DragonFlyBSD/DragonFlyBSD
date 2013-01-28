@@ -1293,6 +1293,7 @@ igb_stop(struct igb_softc *sc)
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
 		ifsq_watchdog_stop(&sc->tx_rings[i].tx_watchdog);
+		sc->tx_rings[i].tx_flags &= ~IGB_TXFLAG_ENABLED;
 	}
 
 	e1000_reset_hw(&sc->hw);
@@ -1856,6 +1857,9 @@ igb_init_tx_ring(struct igb_tx_ring *txr)
 
 	/* Set number of descriptors available */
 	txr->tx_avail = txr->num_tx_desc;
+
+	/* Enable this TX ring */
+	txr->tx_flags |= IGB_TXFLAG_ENABLED;
 }
 
 static void
@@ -3369,7 +3373,7 @@ igb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifsq_is_oactive(ifsq))
 		return;
 
-	if (!sc->link_active) {
+	if (!sc->link_active || (txr->tx_flags & IGB_TXFLAG_ENABLED) == 0) {
 		ifsq_purge(ifsq);
 		return;
 	}
