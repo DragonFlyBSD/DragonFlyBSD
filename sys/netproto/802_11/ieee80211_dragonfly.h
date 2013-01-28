@@ -106,7 +106,6 @@ int	ieee80211_node_dectestref(struct ieee80211_node *ni);
 
 struct ifqueue;
 struct ieee80211vap;
-void	ieee80211_drain_ifq(struct ifqueue *);
 void	ieee80211_flush_ifq(struct ifqueue *, struct ieee80211vap *);
 
 void	ieee80211_vap_destroy(struct ieee80211vap *);

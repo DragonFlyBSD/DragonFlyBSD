@@ -408,27 +408,6 @@ ieee80211_node_dectestref(struct ieee80211_node *ni)
 }
 
 void
-ieee80211_drain_ifq(struct ifqueue *ifq)
-{
-	struct ieee80211_node *ni;
-	struct mbuf *m;
-
-	wlan_assert_serialized();
-	for (;;) {
-		IF_DEQUEUE(ifq, m);
-		if (m == NULL)
-			break;
-
-		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
-		KASSERT(ni != NULL, ("frame w/o node"));
-		ieee80211_free_node(ni);
-		m->m_pkthdr.rcvif = NULL;
-
-		m_freem(m);
-	}
-}
-
-void
 ieee80211_flush_ifq(struct ifqueue *ifq, struct ieee80211vap *vap)
 {
 	struct ieee80211_node *ni;
