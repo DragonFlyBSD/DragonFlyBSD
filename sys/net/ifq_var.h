@@ -503,6 +503,12 @@ ifq_map_subq(struct ifaltq *_ifq, int _cpuid)
 	return ifq_get_subq(_ifq, _idx);
 }
 
+static __inline void
+ifq_set_subq_cnt(struct ifaltq *_ifq, int _cnt)
+{
+	_ifq->altq_subq_cnt = _cnt;
+}
+
 /* COMPAT */
 static __inline int
 ifq_is_oactive(const struct ifaltq *_ifq)
