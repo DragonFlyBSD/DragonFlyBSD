@@ -219,12 +219,15 @@ static int	igb_alloc_intr(struct igb_softc *);
 static void	igb_free_intr(struct igb_softc *);
 static void	igb_teardown_intr(struct igb_softc *);
 static void	igb_msix_try_alloc(struct igb_softc *);
+static void	igb_msix_rx_conf(struct igb_softc *, int, int *, int);
+static void	igb_msix_tx_conf(struct igb_softc *, int, int *, int);
 static void	igb_msix_free(struct igb_softc *, boolean_t);
 static int	igb_msix_setup(struct igb_softc *);
 static void	igb_msix_teardown(struct igb_softc *, int);
 static void	igb_msix_rx(void *);
 static void	igb_msix_tx(void *);
 static void	igb_msix_status(void *);
+static void	igb_msix_rxtx(void *);
 
 /* Management and WOL Support */
 static void	igb_get_mgmt(struct igb_softc *);
@@ -4109,6 +4112,7 @@ igb_msix_try_alloc(struct igb_softc *sc)
 {
 	int msix_enable, msix_cnt, msix_cnt2, alloc_cnt;
 	int i, x, error;
+	int offset, offset_def;
 	struct igb_msix_data *msix;
 	boolean_t aggregate, setup = FALSE;
 
@@ -4229,8 +4233,6 @@ igb_msix_try_alloc(struct igb_softc *sc)
 
 	x = 0;
 	if (!aggregate) {
-		int offset, offset_def;
-
 		/*
 		 * RX rings
 		 */
@@ -4250,27 +4252,7 @@ igb_msix_try_alloc(struct igb_softc *sc)
 				offset = offset_def;
 			}
 		}
-
-		for (i = 0; i < sc->rx_ring_msix; ++i) {
-			struct igb_rx_ring *rxr = &sc->rx_rings[i];
-
-			KKASSERT(x < sc->msix_cnt);
-			msix = &sc->msix_data[x++];
-			rxr->rx_intr_bit = msix->msix_vector;
-			rxr->rx_intr_mask = msix->msix_mask;
-
-			msix->msix_serialize = &rxr->rx_serialize;
-			msix->msix_func = igb_msix_rx;
-			msix->msix_arg = rxr;
-			msix->msix_cpuid = i + offset;
-			KKASSERT(msix->msix_cpuid < ncpus2);
-			ksnprintf(msix->msix_desc, sizeof(msix->msix_desc),
-			    "%s rx%d", device_get_nameunit(sc->dev), i);
-			msix->msix_rate = IGB_MSIX_RX_RATE;
-			ksnprintf(msix->msix_rate_desc,
-			    sizeof(msix->msix_rate_desc),
-			    "RX%d interrupt rate", i);
-		}
+		igb_msix_rx_conf(sc, 0, &x, offset);
 
 		/*
 		 * TX rings
@@ -4291,32 +4273,70 @@ igb_msix_try_alloc(struct igb_softc *sc)
 				offset = offset_def;
 			}
 		}
+		igb_msix_tx_conf(sc, 0, &x, offset);
+	} else {
+		int ring_agg, ring_max;
 
-		for (i = 0; i < sc->tx_ring_msix; ++i) {
+		ring_agg = sc->rx_ring_msix;
+		if (ring_agg > sc->tx_ring_msix)
+			ring_agg = sc->tx_ring_msix;
+
+		ring_max = sc->rx_ring_msix;
+		if (ring_max < sc->tx_ring_msix)
+			ring_max = sc->tx_ring_msix;
+
+		if (ring_max == ncpus2) {
+			offset = 0;
+		} else {
+			offset_def = (ring_max * device_get_unit(sc->dev)) %
+			    ncpus2;
+
+			offset = device_getenv_int(sc->dev, "msix.off",
+			    offset_def);
+			if (offset >= ncpus2 || offset % ring_max != 0) {
+				device_printf(sc->dev,
+				    "invalid msix.off %d, use %d\n",
+				    offset, offset_def);
+				offset = offset_def;
+			}
+		}
+
+		for (i = 0; i < ring_agg; ++i) {
 			struct igb_tx_ring *txr = &sc->tx_rings[i];
+			struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
 			KKASSERT(x < sc->msix_cnt);
 			msix = &sc->msix_data[x++];
+
 			txr->tx_intr_bit = msix->msix_vector;
 			txr->tx_intr_mask = msix->msix_mask;
+			rxr->rx_intr_bit = msix->msix_vector;
+			rxr->rx_intr_mask = msix->msix_mask;
 
-			msix->msix_serialize = &txr->tx_serialize;
-			msix->msix_func = igb_msix_tx;
-			msix->msix_arg = txr;
+			msix->msix_serialize = &msix->msix_serialize0;
+			msix->msix_func = igb_msix_rxtx;
+			msix->msix_arg = msix;
+			msix->msix_rx = rxr;
+			msix->msix_tx = txr;
+
 			msix->msix_cpuid = i + offset;
-			txr->tx_intr_cpuid = msix->msix_cpuid;
 			KKASSERT(msix->msix_cpuid < ncpus2);
+			txr->tx_intr_cpuid = msix->msix_cpuid;
+
 			ksnprintf(msix->msix_desc, sizeof(msix->msix_desc),
-			    "%s tx%d", device_get_nameunit(sc->dev), i);
-			msix->msix_rate = IGB_MSIX_TX_RATE;
+			    "%s rxtx%d", device_get_nameunit(sc->dev), i);
+			msix->msix_rate = IGB_MSIX_RX_RATE;
 			ksnprintf(msix->msix_rate_desc,
 			    sizeof(msix->msix_rate_desc),
-			    "TX%d interrupt rate", i);
+			    "RXTX%d interrupt rate", i);
 		}
-	} else {
-		/* TODO */
-		error = EOPNOTSUPP;
-		goto back;
+
+		if (ring_agg != ring_max) {
+			if (ring_max == sc->tx_ring_msix)
+				igb_msix_tx_conf(sc, i, &x, offset);
+			else
+				igb_msix_rx_conf(sc, i, &x, offset);
+		}
 	}
 
 	/*
@@ -4656,4 +4676,91 @@ igb_setup_serializer(struct igb_softc *sc)
 	}
 
 	KKASSERT(i == sc->serialize_cnt);
+}
+
+static void
+igb_msix_rx_conf(struct igb_softc *sc, int i, int *x0, int offset)
+{
+	int x = *x0;
+
+	for (; i < sc->rx_ring_msix; ++i) {
+		struct igb_rx_ring *rxr = &sc->rx_rings[i];
+		struct igb_msix_data *msix;
+
+		KKASSERT(x < sc->msix_cnt);
+		msix = &sc->msix_data[x++];
+
+		rxr->rx_intr_bit = msix->msix_vector;
+		rxr->rx_intr_mask = msix->msix_mask;
+
+		msix->msix_serialize = &rxr->rx_serialize;
+		msix->msix_func = igb_msix_rx;
+		msix->msix_arg = rxr;
+
+		msix->msix_cpuid = i + offset;
+		KKASSERT(msix->msix_cpuid < ncpus2);
+
+		ksnprintf(msix->msix_desc, sizeof(msix->msix_desc), "%s rx%d",
+		    device_get_nameunit(sc->dev), i);
+
+		msix->msix_rate = IGB_MSIX_RX_RATE;
+		ksnprintf(msix->msix_rate_desc, sizeof(msix->msix_rate_desc),
+		    "RX%d interrupt rate", i);
+	}
+	*x0 = x;
+}
+
+static void
+igb_msix_tx_conf(struct igb_softc *sc, int i, int *x0, int offset)
+{
+	int x = *x0;
+
+	for (; i < sc->tx_ring_msix; ++i) {
+		struct igb_tx_ring *txr = &sc->tx_rings[i];
+		struct igb_msix_data *msix;
+
+		KKASSERT(x < sc->msix_cnt);
+		msix = &sc->msix_data[x++];
+
+		txr->tx_intr_bit = msix->msix_vector;
+		txr->tx_intr_mask = msix->msix_mask;
+
+		msix->msix_serialize = &txr->tx_serialize;
+		msix->msix_func = igb_msix_tx;
+		msix->msix_arg = txr;
+
+		msix->msix_cpuid = i + offset;
+		KKASSERT(msix->msix_cpuid < ncpus2);
+		txr->tx_intr_cpuid = msix->msix_cpuid;
+
+		ksnprintf(msix->msix_desc, sizeof(msix->msix_desc), "%s tx%d",
+		    device_get_nameunit(sc->dev), i);
+
+		msix->msix_rate = IGB_MSIX_TX_RATE;
+		ksnprintf(msix->msix_rate_desc, sizeof(msix->msix_rate_desc),
+		    "TX%d interrupt rate", i);
+	}
+	*x0 = x;
+}
+
+static void
+igb_msix_rxtx(void *arg)
+{
+	struct igb_msix_data *msix = arg;
+	struct igb_rx_ring *rxr = msix->msix_rx;
+	struct igb_tx_ring *txr = msix->msix_tx;
+
+	ASSERT_SERIALIZED(&msix->msix_serialize0);
+
+	lwkt_serialize_enter(&rxr->rx_serialize);
+	igb_rxeof(rxr, -1);
+	lwkt_serialize_exit(&rxr->rx_serialize);
+
+	lwkt_serialize_enter(&txr->tx_serialize);
+	igb_txeof(txr);
+	if (!ifsq_is_empty(txr->ifsq))
+		ifsq_devstart(txr->ifsq);
+	lwkt_serialize_exit(&txr->tx_serialize);
+
+	E1000_WRITE_REG(&msix->msix_sc->hw, E1000_EIMS, msix->msix_mask);
 }
