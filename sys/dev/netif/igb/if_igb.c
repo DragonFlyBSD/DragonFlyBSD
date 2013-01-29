@@ -4202,12 +4202,15 @@ igb_msix_try_alloc(struct igb_softc *sc)
 			alloc_cnt = ncpus2;
 		if (sc->rx_ring_msix > alloc_cnt)
 			sc->rx_ring_msix = alloc_cnt;
+		if (sc->tx_ring_msix > alloc_cnt)
+			sc->tx_ring_msix = alloc_cnt;
 	}
 	++alloc_cnt;	/* For link status */
 
 	if (bootverbose) {
-		device_printf(sc->dev, "MSI-X alloc %d, RX ring %d\n",
-		    alloc_cnt, sc->rx_ring_msix);
+		device_printf(sc->dev, "MSI-X alloc %d, "
+		    "RX ring %d, TX ring %d\n", alloc_cnt,
+		    sc->rx_ring_msix, sc->tx_ring_msix);
 	}
 
 	sc->msix_mem_rid = PCIR_BAR(IGB_MSIX_BAR);
@@ -4237,6 +4240,9 @@ igb_msix_try_alloc(struct igb_softc *sc)
 	if (!aggregate) {
 		int offset, offset_def;
 
+		/*
+		 * RX rings
+		 */
 		if (sc->rx_ring_msix == ncpus2) {
 			offset = 0;
 		} else {
@@ -4254,7 +4260,6 @@ igb_msix_try_alloc(struct igb_softc *sc)
 			}
 		}
 
-		/* RX rings */
 		for (i = 0; i < sc->rx_ring_msix; ++i) {
 			struct igb_rx_ring *rxr = &sc->rx_rings[i];
 
@@ -4276,15 +4281,26 @@ igb_msix_try_alloc(struct igb_softc *sc)
 			    "RX%d interrupt rate", i);
 		}
 
-		offset_def = device_get_unit(sc->dev) % ncpus2;
-		offset = device_getenv_int(sc->dev, "msix.txoff", offset_def);
-		if (offset >= ncpus2) {
-			device_printf(sc->dev, "invalid msix.txoff %d, "
-			    "use %d\n", offset, offset_def);
-			offset = offset_def;
+		/*
+		 * TX rings
+		 */
+		if (sc->tx_ring_msix == ncpus2) {
+			offset = 0;
+		} else {
+			offset_def = (sc->tx_ring_msix *
+			    device_get_unit(sc->dev)) % ncpus2;
+
+			offset = device_getenv_int(sc->dev,
+			    "msix.txoff", offset_def);
+			if (offset >= ncpus2 ||
+			    offset % sc->tx_ring_msix != 0) {
+				device_printf(sc->dev,
+				    "invalid msix.txoff %d, use %d\n",
+				    offset, offset_def);
+				offset = offset_def;
+			}
 		}
 
-		/* TX rings */
 		for (i = 0; i < sc->tx_ring_msix; ++i) {
 			struct igb_tx_ring *txr = &sc->tx_rings[i];
 
@@ -4323,7 +4339,7 @@ igb_msix_try_alloc(struct igb_softc *sc)
 	msix->msix_serialize = &sc->main_serialize;
 	msix->msix_func = igb_msix_status;
 	msix->msix_arg = sc;
-	msix->msix_cpuid = 0; /* TODO tunable */
+	msix->msix_cpuid = 0;
 	ksnprintf(msix->msix_desc, sizeof(msix->msix_desc), "%s sts",
 	    device_get_nameunit(sc->dev));
 	ksnprintf(msix->msix_rate_desc, sizeof(msix->msix_rate_desc),
