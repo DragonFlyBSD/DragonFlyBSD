@@ -434,7 +434,7 @@ igb_attach(device_t dev)
 	sc->rx_ring_inuse = sc->rx_ring_cnt;
 
 	sc->tx_ring_cnt = device_getenv_int(dev, "txr", igb_txr);
-	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, /* XXX ring_max */1);
+	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, ring_max);
 #ifdef IGB_TSS_DEBUG
 	sc->tx_ring_cnt = device_getenv_int(dev, "txr_debug", sc->tx_ring_cnt);
 #endif
