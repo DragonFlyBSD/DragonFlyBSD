@@ -174,6 +174,7 @@ struct netmsg_pru_rcvd {
 };
 
 #define PRUR_ASYNC		0x1
+#define PRUR_DEAD		0x2
 
 struct netmsg_pru_rcvoob {
 	struct netmsg_base	base;
