@@ -1093,8 +1093,14 @@ scioctl(struct dev_ioctl_args *ap)
 	    lwkt_reltoken(&tty_token);
 	    return error;
 	}
+
+	/*
+	 * scp might be NULL, we aren't sure why.  Check for NULL.
+	 *
+	 * http://bugs.dragonflybsd.org/issues/2481
+	 */
 	scp = SC_STAT(SC_DEV(sc, i));
-	if (scp == scp->sc->cur_scp) {
+	if (scp == NULL || scp == scp->sc->cur_scp) {
 	    lwkt_reltoken(&tty_token);
 	    return 0;
 	}
