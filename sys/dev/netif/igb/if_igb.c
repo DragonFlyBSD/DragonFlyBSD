@@ -3878,7 +3878,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 static int
 igb_setup_intr(struct igb_softc *sc)
 {
-	int error;
+	int error, i;
 
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX)
 		return igb_msix_setup(sc);
@@ -3890,7 +3890,9 @@ igb_setup_intr(struct igb_softc *sc)
 		device_printf(sc->dev, "Failed to register interrupt handler");
 		return error;
 	}
-	sc->tx_rings[0].tx_intr_cpuid = rman_get_cpuid(sc->intr_res);
+
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
+		sc->tx_rings[i].tx_intr_cpuid = rman_get_cpuid(sc->intr_res);
 
 	return 0;
 }
