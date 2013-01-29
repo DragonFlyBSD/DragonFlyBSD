@@ -188,9 +188,6 @@
 
 #define IGB_TX_OACTIVE_MAX		64
 
-/* main + 16x RX + 16x TX */
-#define IGB_NSERIALIZE			33
-
 #define IGB_NRSSRK			10
 #define IGB_RSSRK_SIZE			4
 #define IGB_RSSRK_VAL(key, i)		(key[(i) * IGB_RSSRK_SIZE] | \
@@ -356,7 +353,7 @@ struct igb_softc {
 	int			serialize_cnt;
 	int			tx_serialize;
 	int			rx_serialize;
-	struct lwkt_serialize	*serializes[IGB_NSERIALIZE];
+	struct lwkt_serialize	**serializes;
 	struct lwkt_serialize	main_serialize;
 
 	int			intr_rate;

@@ -178,6 +178,7 @@ static int	igb_init_rx_ring(struct igb_rx_ring *);
 static int	igb_newbuf(struct igb_rx_ring *, int, boolean_t);
 static int	igb_encap(struct igb_tx_ring *, struct mbuf **, int *, int *);
 static void	igb_rx_refresh(struct igb_rx_ring *, int);
+static void	igb_setup_serializer(struct igb_softc *);
 
 static void	igb_stop(struct igb_softc *);
 static void	igb_init(void *);
@@ -358,7 +359,7 @@ igb_attach(device_t dev)
 {
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
-	int error = 0, i, j, ring_max;
+	int error = 0, i, ring_max;
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
 #endif
@@ -528,22 +529,8 @@ igb_attach(device_t dev)
 	if (error)
 		goto failed;
 
-	/*
-	 * Setup serializers
-	 */
-	i = 0;
-	sc->serializes[i++] = &sc->main_serialize;
-
-	sc->tx_serialize = i;
-	for (j = 0; j < sc->tx_ring_cnt; ++j)
-		sc->serializes[i++] = &sc->tx_rings[j].tx_serialize;
-
-	sc->rx_serialize = i;
-	for (j = 0; j < sc->rx_ring_cnt; ++j)
-		sc->serializes[i++] = &sc->rx_rings[j].rx_serialize;
-
-	sc->serialize_cnt = i;
-	KKASSERT(sc->serialize_cnt <= IGB_NSERIALIZE);
+	/* Setup serializers */
+	igb_setup_serializer(sc);
 
 	/* Allocate the appropriate stats memory */
 	if (sc->vf_ifp) {
@@ -736,6 +723,8 @@ igb_detach(device_t dev)
 		kfree(sc->mta, M_DEVBUF);
 	if (sc->stats != NULL)
 		kfree(sc->stats, M_DEVBUF);
+	if (sc->serializes != NULL)
+		kfree(sc->serializes, M_DEVBUF);
 
 	return 0;
 }
@@ -4610,4 +4599,61 @@ igb_tso_ctx(struct igb_tx_ring *txr, struct mbuf *m, uint32_t *hlen)
 	--txr->tx_avail;
 
 	*hlen = hoff + iphlen + thoff;
+}
+
+static void
+igb_setup_serializer(struct igb_softc *sc)
+{
+	const struct igb_msix_data *msix;
+	int i, j;
+
+	/*
+	 * Allocate serializer array
+	 */
+
+	/* Main + TX + RX */
+	sc->serialize_cnt = 1 + sc->tx_ring_cnt + sc->rx_ring_cnt;
+
+	/* Aggregate TX/RX MSI-X */
+	for (i = 0; i < sc->msix_cnt; ++i) {
+		msix = &sc->msix_data[i];
+		if (msix->msix_serialize == &msix->msix_serialize0)
+			sc->serialize_cnt++;
+	}
+
+	sc->serializes =
+	    kmalloc(sc->serialize_cnt * sizeof(struct lwkt_serialize *),
+	        M_DEVBUF, M_WAITOK | M_ZERO);
+
+	/*
+	 * Setup serializers
+	 *
+	 * NOTE: Order is critical
+	 */
+
+	i = 0;
+	KKASSERT(i < sc->serialize_cnt);
+	sc->serializes[i++] = &sc->main_serialize;
+
+	for (j = 0; j < sc->msix_cnt; ++j) {
+		msix = &sc->msix_data[j];
+		if (msix->msix_serialize == &msix->msix_serialize0) {
+			KKASSERT(i < sc->serialize_cnt);
+			sc->serializes[i++] = msix->msix_serialize;
+		}
+	}
+
+	sc->tx_serialize = i;
+	for (j = 0; j < sc->tx_ring_cnt; ++j) {
+		KKASSERT(i < sc->serialize_cnt);
+		sc->serializes[i++] = &sc->tx_rings[j].tx_serialize;
+	}
+
+	sc->rx_serialize = i;
+	for (j = 0; j < sc->rx_ring_cnt; ++j) {
+		KKASSERT(i < sc->serialize_cnt);
+		sc->serializes[i++] = &sc->rx_rings[j].rx_serialize;
+	}
+
+	KKASSERT(i == sc->serialize_cnt);
 }
