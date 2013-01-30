@@ -189,7 +189,7 @@ static	int newblk_lookup(struct fs *, ufs_daddr_t, int,
 static	int inodedep_lookup(struct fs *, ino_t, int, struct inodedep **);
 static	int pagedep_lookup(struct inode *, ufs_lbn_t, int,
 	    struct pagedep **);
-static	int request_cleanup(int, int);
+static	int request_cleanup(int);
 static	int process_worklist_item(struct mount *, int);
 static	void add_to_worklist(struct worklist *);
 
@@ -598,6 +598,8 @@ process_worklist_item(struct mount *matchmnt, int flags)
 	struct vnode *vp;
 	int matchcnt = 0;
 
+	KKASSERT(lock_held(&lk) > 0);
+
 	matchfs = NULL;
 	if (matchmnt != NULL)
 		matchfs = VFSTOUFS(matchmnt)->um_fs;
@@ -924,7 +926,7 @@ top:
 	 */
 	if (num_inodedep > max_softdeps && firsttry && 
 	    speedup_syncer() == 0 && (flags & NODELAY) == 0 &&
-	    request_cleanup(FLUSH_INODES, 1)) {
+	    request_cleanup(FLUSH_INODES)) {
 		firsttry = 0;
 		goto top;
 	}
@@ -2593,8 +2595,12 @@ newdirrem(struct buf *bp, struct inode *dp, struct inode *ip,
 	 * Limiting the number of dirrem structures will also limit
 	 * the number of freefile and freeblks structures.
 	 */
-	if (num_dirrem > max_softdeps / 2 && speedup_syncer() == 0)
-		(void) request_cleanup(FLUSH_REMOVE, 0);
+	if (num_dirrem > max_softdeps / 2 && speedup_syncer() == 0) {
+		ACQUIRE_LOCK(&lk);
+		request_cleanup(FLUSH_REMOVE);
+		FREE_LOCK(&lk);
+	}
+
 	num_dirrem += 1;
 	dirrem = kmalloc(sizeof(struct dirrem), M_DIRREM,
 			 M_SOFTDEP_FLAGS | M_ZERO);
@@ -4688,9 +4694,11 @@ softdep_slowdown(struct vnode *vp)
  * down and speed up the I/O processing.
  */
 static int
-request_cleanup(int resource, int islocked)
+request_cleanup(int resource)
 {
 	struct thread *td = curthread;		/* XXX */
+
+	KKASSERT(lock_held(&lk) > 0);
 
 	/*
 	 * We never hold up the filesystem syncer process.
@@ -4742,12 +4750,8 @@ request_cleanup(int resource, int islocked)
 	 * Hopefully the syncer daemon will catch up and awaken us.
 	 * We wait at most tickdelay before proceeding in any case.
 	 */
-	if (islocked == 0)
-		ACQUIRE_LOCK(&lk);
 	lksleep(&proc_waiting, &lk, 0, "softupdate", 
 		tickdelay > 2 ? tickdelay : 2);
-	if (islocked == 0)
-		FREE_LOCK(&lk);
 	return (1);
 }
 
