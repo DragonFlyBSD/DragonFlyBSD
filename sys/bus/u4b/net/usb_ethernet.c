@@ -396,7 +396,7 @@ void
 uether_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 
-	ue_start(ifp);
+	ue_start(ifp, ifsq);
 }
 
 static void
