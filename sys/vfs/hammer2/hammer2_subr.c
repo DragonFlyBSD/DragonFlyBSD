@@ -345,10 +345,11 @@ hammer2_dirhash(const unsigned char *name, size_t len)
  * Return the power-of-2 radix greater or equal to
  * the specified number of bytes.
  *
- * Always returns at least HAMMER2_MIN_RADIX (2^6).
+ * Always returns at least the minimum media allocation
+ * size radix, HAMMER2_MIN_RADIX (10), which is 1KB.
  */
 int
-hammer2_bytes_to_radix(size_t bytes)
+hammer2_allocsize(size_t bytes)
 {
 	int radix;
 
@@ -356,6 +357,8 @@ hammer2_bytes_to_radix(size_t bytes)
 		bytes = HAMMER2_MIN_ALLOC;
 	if (bytes == HAMMER2_PBUFSIZE)
 		radix = HAMMER2_PBUFRADIX;
+	else if (bytes >= 16384)
+		radix = 14;
 	else if (bytes >= 1024)
 		radix = 10;
 	else
@@ -376,8 +379,7 @@ hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 	*leofp = ip->ip_data.size & ~HAMMER2_PBUFMASK64;
 	KKASSERT(*lbasep <= *leofp);
 	if (*lbasep == *leofp /*&& *leofp < 1024 * 1024*/) {
-		radix = hammer2_bytes_to_radix(
-				(size_t)(ip->ip_data.size - *leofp));
+		radix = hammer2_allocsize((size_t)(ip->ip_data.size - *leofp));
 		if (radix < HAMMER2_MINALLOCRADIX)
 			radix = HAMMER2_MINALLOCRADIX;
 		*leofp += 1U << radix;

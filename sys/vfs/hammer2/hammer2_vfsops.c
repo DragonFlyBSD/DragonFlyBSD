@@ -66,10 +66,12 @@ long hammer2_iod_indr_read;
 long hammer2_iod_file_write;
 long hammer2_iod_meta_write;
 long hammer2_iod_indr_write;
+long hammer2_iod_fmap_write;
 long hammer2_iod_volu_write;
 long hammer2_ioa_file_read;
 long hammer2_ioa_meta_read;
 long hammer2_ioa_indr_read;
+long hammer2_ioa_fmap_write;
 long hammer2_ioa_file_write;
 long hammer2_ioa_meta_write;
 long hammer2_ioa_indr_write;
@@ -172,8 +174,6 @@ hammer2_vfs_init(struct vfsconf *conf)
 	if (HAMMER2_BLOCKREF_BYTES != sizeof(struct hammer2_blockref))
 		error = EINVAL;
 	if (HAMMER2_INODE_BYTES != sizeof(struct hammer2_inode_data))
-		error = EINVAL;
-	if (HAMMER2_ALLOCREF_BYTES != sizeof(struct hammer2_allocref))
 		error = EINVAL;
 	if (HAMMER2_VOLUME_BYTES != sizeof(struct hammer2_volume_data))
 		error = EINVAL;

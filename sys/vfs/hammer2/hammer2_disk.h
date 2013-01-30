@@ -60,14 +60,18 @@
 
 /*
  * The data at the end of a file or directory may be a fragment in order
- * to optimize storage efficiency.  The minimum fragment size is 64 bytes.
+ * to optimize storage efficiency.  The minimum fragment size is 1KB.
  * Since allocations are in powers of 2 fragments must also be sized in
- * powers of 2 (64, 128, 256, ... 65536).
+ * powers of 2 (1024, 2048, ... 65536).
  *
  * For the moment the maximum allocation size is HAMMER2_PBUFSIZE (64K),
- * which is 2^16.  Larger extents may be supported in the future.
+ * which is 2^16.  Larger extents may be supported in the future.  Smaller
+ * fragments might be supported in the future (down to 64 bytes is possible),
+ * but probably will not be.
  *
- * A full indirect block uses supports 1024 x 64-byte blockrefs.
+ * A full indirect block use supports 1024 x 64-byte blockrefs in a 64KB
+ * buffer.  Indirect blocks down to 1KB are supported to keep small
+ * directories small.
  *
  * A maximally sized file (2^64-1 bytes) requires 5 indirect block levels.
  * The hammer2_blockset in the volume header or file inode has another 8
@@ -76,8 +80,8 @@
  * currently supports up to 8 copies, which brings the address space down
  * to 66 bits and gives us 2 bits of leeway.
  */
-#define HAMMER2_MIN_ALLOC	64	/* minimum allocation size */
-#define HAMMER2_MIN_RADIX	6	/* minimum allocation size 2^N */
+#define HAMMER2_MIN_ALLOC	1024	/* minimum allocation size */
+#define HAMMER2_MIN_RADIX	10	/* minimum allocation size 2^N */
 #define HAMMER2_MAX_RADIX	16	/* maximum allocation size 2^N */
 #define HAMMER2_KEY_RADIX	64	/* number of bits in key */
 
@@ -124,15 +128,20 @@
 				 sizeof(hammer2_blockref_t))
 
 /*
- * HAMMER2 processes blockrefs in sets of 8.  The set is fully associative,
- * is not sorted, and may contain holes.
+ * In HAMMER2, arrays of blockrefs are fully set-associative, meaning that
+ * any element can occur at any index and holes can be anywhere.  As a
+ * future optimization we will be able to flag that such arrays are sorted
+ * and thus optimize lookups, but for now we don't.
  *
- * A full indirect block supports 1024 blockrefs.
+ * Inodes embed either 512 bytes of direct data or an array of 8 blockrefs,
+ * resulting in highly efficient storage for files <= 512 bytes and for files
+ * <= 512KB.  Up to 8 directory entries can be referenced from a directory
+ * without requiring an indirect block.
  *
- * An inode embeds one set of blockrefs but may also use the data area for
- * up to 512 bytes of direct data.
+ * Indirect blocks are typically either 4KB (64 blockrefs / ~4MB represented),
+ * or 64KB (1024 blockrefs / ~64MB represented).
  */
-#define HAMMER2_SET_COUNT	8	/* direct entries & associativity */
+#define HAMMER2_SET_COUNT	8	/* direct entries */
 #define HAMMER2_SET_RADIX	3
 #define HAMMER2_EMBEDDED_BYTES	512
 #define HAMMER2_EMBEDDED_RADIX	9
@@ -153,8 +162,51 @@
  * A HAMMER2 filesystem is always sized in multiples of 8MB.
  *
  * A 4MB segment is reserved at the beginning of each 2GB zone.  This segment
- * contains the volume header, the free block table, and possibly other
- * information in the future.  4MB = 64 x 64K blocks.
+ * contains the volume header (or backup volume header), the free block
+ * table, and possibly other information in the future.
+ *
+ * 4MB = 64 x 64K blocks.  Each 4MB segment is broken down as follows:
+ *
+ *	+-----------------------+
+ *      |	Volume Hdr	| block 0	volume header & alternates
+ *	+-----------------------+		(first four zones only)
+ *      | (A) FreeBlk layer0    | block 1	free block table
+ *      | (A) FreeBlk layer1    |
+ *      | (A) FreeBlk layer2    |
+ *      | (A) FreeBlk layer3    |
+ *      | (A) FreeBlk layer4[8] | (note: 8x64K -> 128x4K)
+ *	+-----------------------+
+ *      | (B) FreeBlk layer0    | block 13	free block table
+ *      | (B) FreeBlk layer1    |
+ *      | (B) FreeBlk layer2    |
+ *      | (B) FreeBlk layer3    |
+ *      | (B) FreeBlk layer4[8] |
+ *	+-----------------------+
+ *      | (C) FreeBlk layer0    | block 25	free block table
+ *      | (C) FreeBlk layer1    |
+ *      | (C) FreeBlk layer2    |
+ *      | (C) FreeBlk layer3    |
+ *      | (C) FreeBlk layer4[8] |
+ *	+-----------------------+
+ *      | (D) FreeBlk layer0    | block 37	free block table
+ *      | (D) FreeBlk layer1    |
+ *      | (D) FreeBlk layer2    |
+ *      | (D) FreeBlk layer3    |
+ *      | (D) FreeBlk layer4[8] |
+ *	+-----------------------+
+ *      |			| block 49...63
+ *      |	reserved	|
+ *      |			|
+ *	+-----------------------+
+ *
+ * The first few 2GB zones contain volume headers and volume header backups.
+ * After that the volume header block# is reserved.  The first 2GB zone
+ * contains all four FreeBlk layers, for example, but the layer1 FreeBlk
+ * is only needed once every 1TB.  The free block topology rotates between
+ * several groups {A,B,C,D} in order to ensure that the free block table
+ * is clean upon reboot after a crash or disk failure.
+ *
+ * The Free block table has a resolution of 1KB
  */
 #define HAMMER2_VOLUME_ALIGN		(8 * 1024 * 1024)
 #define HAMMER2_VOLUME_ALIGN64		((hammer2_off_t)HAMMER2_VOLUME_ALIGN)
@@ -171,6 +223,52 @@
 #define HAMMER2_ZONE_SEG		(4 * 1024 * 1024)
 #define HAMMER2_ZONE_SEG64		((hammer2_off_t)HAMMER2_ZONE_SEG)
 #define HAMMER2_ZONE_BLOCKS_SEG		(HAMMER2_ZONE_SEG / HAMMER2_PBUFSIZE)
+
+/*
+ * 64 x 64KB blocks are reserved at the base of each 2GB zone.  These blocks
+ * are used to store the volume header or volume header backups, allocation
+ * tree, and other information in the future.
+ *
+ * All specified blocks are not necessarily used in all 2GB zones.  However,
+ * dead areas are reserved and MUST NOT BE USED for other purposes.
+ *
+ * The freemap is arranged into four groups.  Modifications rotate through
+ * the groups on a block by block basis (so all the blocks are not necessarily
+ * synchronized to the same group).  Only three groups are actually necessary
+ * (stable, flushing, modifying).
+ *
+ * 64KB freemap indirect blocks are represented by layers 0, 1, 2, and 3.
+ * 4KB freemap leaf blocks each represent 16MB of storage so 128 x 4KB are
+ * needed per zone, which equates to 8 x 64KB layer4 blocks per zone.
+ */
+#define HAMMER2_ZONE_VOLHDR		0	/* volume header or backup */
+#define HAMMER2_ZONE_FREEMAP_A		1	/* freemap layer group A */
+#define HAMMER2_ZONE_FREEMAP_B		13	/* freemap layer group B */
+#define HAMMER2_ZONE_FREEMAP_C		25	/* freemap layer group C */
+#define HAMMER2_ZONE_FREEMAP_D		37	/* freemap layer group D */
+
+#define HAMMER2_ZONEFM_LAYER0		0	/* relative to FREEMAP_x */
+#define HAMMER2_ZONEFM_LAYER1		1
+#define HAMMER2_ZONEFM_LAYER2		2
+#define HAMMER2_ZONEFM_LAYER3		3
+#define HAMMER2_ZONEFM_LAYER4		4	/* 4-11 (8 64KB blocks) */
+
+#define HAMMER2_ZONE_BLOCK49		49	/* future */
+#define HAMMER2_ZONE_BLOCK50		50	/* future */
+#define HAMMER2_ZONE_BLOCK51		51	/* future */
+#define HAMMER2_ZONE_BLOCK52		52	/* future */
+#define HAMMER2_ZONE_BLOCK53		53	/* future */
+#define HAMMER2_ZONE_BLOCK54		54	/* future */
+#define HAMMER2_ZONE_BLOCK55		55	/* future */
+#define HAMMER2_ZONE_BLOCK56		56	/* future */
+#define HAMMER2_ZONE_BLOCK57		57	/* future */
+#define HAMMER2_ZONE_BLOCK58		58	/* future */
+#define HAMMER2_ZONE_BLOCK59		59	/* future */
+
+#define HAMMER2_ZONE_BLOCK60		60	/* future */
+#define HAMMER2_ZONE_BLOCK61		61	/* future */
+#define HAMMER2_ZONE_BLOCK62		62	/* future */
+#define HAMMER2_ZONE_BLOCK63		63	/* future */
 
 /*
  * Two linear areas can be reserved after the initial 2MB segment in the base
@@ -215,9 +313,11 @@ typedef uint32_t hammer2_crc32_t;
  *
  * Indexes into physical buffers are always 64-byte aligned.  The low 6 bits
  * of the data offset field specifies how large the data chunk being pointed
- * to as a power of 2.  This value typically ranges from HAMMER2_MIN_RADIX
- * to HAMMER2_MAX_RADIX (6-16).  Larger values may be supported in the future
- * to support file extents.
+ * to as a power of 2.  The theoretical minimum radix is thus 6 (The space
+ * needed in the low bits of the data offset field).  However, the practical
+ * minimum allocation chunk size is 1KB (a radix of 10), so HAMMER2 sets
+ * HAMMER2_MIN_RADIX to 10.  The maximum radix is currently 16 (64KB), but
+ * we fully intend to support larger extents in the future.
  */
 #define HAMMER2_OFF_BAD		((hammer2_off_t)-1)
 #define HAMMER2_OFF_MASK	0xFFFFFFFFFFFFFFC0ULL
@@ -259,6 +359,13 @@ typedef uint32_t hammer2_crc32_t;
  * UNLESS one doesn't mind once-in-a-blue-moon data corruption (such as when
  * farming web data).  HAMMER2 has an unverified dedup feature for just this
  * purpose.
+ *
+ * --
+ *
+ * NOTE: The range of keys represented by the blockref is (key) to
+ *	 ((key) + (1LL << keybits) - 1).  HAMMER2 usually populates
+ *	 blocks bottom-up, inserting a new root when radix expansion
+ *	 is required.
  */
 struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	uint8_t		type;		/* type of underlying item */
@@ -286,15 +393,41 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 		struct {
 			char data[24];
 		} sha192;
+
+		/*
+		 * Freemap hints are embedded in addition to the icrc32.
+		 *
+		 * biggest - largest possible allocation 2^N within sub-tree.
+		 *	     typically initialized to 64 in freemap_blockref
+		 *	     and to 54 in each blockref[] entry in the
+		 *	     FREEMAP_ROOT indirect block.
+		 *
+		 *	     An allocation > 2^N is guaranteed to fail.  An
+		 *	     allocation <= 2^N MAY fail, and if it does the
+		 *	     biggest hint will be adjusted downward.
+		 *
+		 *	     Used when allocating space.
+		 */
+		struct {
+			uint32_t icrc32;
+			uint8_t biggest;
+			uint8_t reserved05;
+			uint8_t reserved06;
+			uint8_t reserved07;
+			uint64_t avail;		/* total available bytes */
+			uint64_t unused;	/* unused must be 0 */
+		} freemap;
 	} check;
 };
 
 typedef struct hammer2_blockref hammer2_blockref_t;
 
+#if 0
 #define HAMMER2_BREF_SYNC1		0x01	/* modification synchronized */
 #define HAMMER2_BREF_SYNC2		0x02	/* modification committed */
 #define HAMMER2_BREF_DESYNCCHLD		0x04	/* desynchronize children */
 #define HAMMER2_BREF_DELETED		0x80	/* indicates a deletion */
+#endif
 
 #define HAMMER2_BLOCKREF_BYTES		64	/* blockref struct in bytes */
 
@@ -302,12 +435,26 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_BREF_TYPE_INODE		1
 #define HAMMER2_BREF_TYPE_INDIRECT	2
 #define HAMMER2_BREF_TYPE_DATA		3
+#define HAMMER2_BREF_TYPE_FREEMAP_ROOT	4
+#define HAMMER2_BREF_TYPE_FREEMAP_NODE	5
+#define HAMMER2_BREF_TYPE_FREEMAP_LEAF	6
 #define HAMMER2_BREF_TYPE_VOLUME	255	/* pseudo-type */
 
-#define HAMMER2_ENC_COMPMETHOD(n)	(n)
-#define HAMMER2_ENC_CHECKMETHOD(n)	((n) << 4)
-#define HAMMER2_DEC_COMPMETHOD(n)	((n) & 15)
-#define HAMMER2_DEC_CHECKMETHOD(n)	(((n) >> 4) & 15)
+#define HAMMER2_ENC_CHECK(n)		((n) << 4)
+#define HAMMER2_DEC_CHECK(n)		(((n) >> 4) & 15)
+
+#define HAMMER2_CHECK_NONE		0
+#define HAMMER2_CHECK_ISCSI32		1
+#define HAMMER2_CHECK_CRC64		2
+#define HAMMER2_CHECK_SHA192		3
+#define HAMMER2_CHECK_FREEMAP		4
+
+#define HAMMER2_ENC_COMP(n)		(n)
+#define HAMMER2_DEC_COMP(n)		((n) & 15)
+
+#define HAMMER2_COMP_NONE		0
+#define HAMMER2_COMP_AUTOZERO		1
+
 
 /*
  * HAMMER2 block references are collected into sets of 8 blockrefs.  These
@@ -330,6 +477,9 @@ typedef struct hammer2_blockref hammer2_blockref_t;
  * until the set actually becomes full (that is, the entries in the set can
  * shortcut the indirect blocks when the set is not full).  Depending on how
  * things are filled multiple indirect blocks will eventually be created.
+ *
+ * Indirect blocks are typically 4KB (64 entres) or 64KB (1024 entries) and
+ * are also treated as fully set-associative.
  */
 struct hammer2_blockset {
 	hammer2_blockref_t	blockref[HAMMER2_SET_COUNT];
@@ -504,12 +654,6 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_COPYID_NONE		0
 #define HAMMER2_COPYID_LOCAL		((uint8_t)-1)
 
-#define HAMMER2_COMP_NONE		0
-#define HAMMER2_COMP_AUTOZERO		1
-
-#define HAMMER2_CHECK_NONE		0
-#define HAMMER2_CHECK_ICRC		1
-
 /*
  * PEER types identify connections and help cluster controller filter
  * out unwanted SPANs.
@@ -536,75 +680,113 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_PFSTYPE_MAX		DMSG_PFSTYPE_MAX
 
 /*
- * The allocref structure represents the allocation table.  One 64K block
- * is broken down into 4096 x 16 byte entries.  Each indirect block chops
- * 11 bits off the 64-bit storage space, with leaf entries representing
- * 64KB blocks.  So:  (12, 12, 12, 12, 16) = 64 bit storage space.
+ *				Allocation Table
  *
- * Each 64K freemap block breaks the 4096 entries into a 64x64 tree with
- * big_hint1 representing the top level every 64th entry and big_hint2
- * representing the lower level in each entry.  These fields specify the
- * largest contiguous radix (1-63) available for allocation in the related
- * sub-tree.  The largest contiguous radix available for the entire block
- * is saved in the parent (for the root this will be alloc_blockref in the
- * volume header).  The hints may be larger than actual and will be corrected
- * on the fly but must not be smaller.  The allocator uses the hints to
- * very quickly locate nearby blocks of the desired size.
+ * In HAMMER2 the allocation table hangs off of the volume header and
+ * utilizes somewhat customized hammer2_blockref based indirect blocks
+ * until hitting the leaf bitmap.  BREF_TYPE_FREEMAP_ROOT and
+ * BREF_TYPE_FREEMAP_NODE represent the indirect blocks but are formatted
+ * the same as BREF_TYPE_INDIRECT except for the (biggest) and (avail)
+ * fields which use some of the check union space.  Thus a special CHECK
+ * id (CHECK_FREEMAP instead of CHECK_ISCSI32) is also specified for these
+ * babies.
  *
- * In indirect blocks the 64-bit free[_or_mask] field stores the total free
- * space for each of the 4096 sub-nodes in bytes.  The total free space
- * represented by the indirect block is stored in its parent.
+ * newfs_hammer2 builds the FREEMAP_ROOT block and assigns a radix of
+ * 34, 44, 54, or 64 depending on whether the freemap is to be fitted
+ * to the storage or is to maximized for (possibly) sparse storage.
+ * Other keybits specifications for FREEMAP_ROOT are illegal.  Even fitted
+ * storage is required to specify at least a keybits value of 34.
  *
- * Each leaf element represents a 64K block.  A bitmap replaces the free space
- * count, giving us a 1KB allocation resolution.  A micro-allocation append
- * offset replaces the icrc field.  The micro-allocation feature is not
- * currently implemented and the field will be set to 65536.
+ *	Total possible representation is 2^64 (16 Exabytes).
+ *	10: 1024 entries / 64KB			16EB (16PB per entry) layer0
+ *	10: 1024 entries / 64KB			16PB (16TB per entry) layer1
+ *	10: 1024 entries / 64KB			16TB (16GB per entry) layer2
+ *	10: 1024 entries / 64KB			16GB (16MB per entry) layer3
+ *	24: 16384 x 1KB allocgran / 4KB		16MB		      layer4
  *
- * The allocation map uses reserved blocks so no data block reference is
- * required, only a bit in the flags field to specify which of two possible
- * reserved blocks to use.  This allows the allocation map to be flushed to
- * disk with minimal synchronization.
+ * To make the radix come out to exactly 64 the leaf bitmaps are arranged
+ * into 4KB buffers, with each buffer representing a freemap for 16MB worth
+ * of storage using a 1KB allocation granularity.  The leaf bitmaps are
+ * structures and not just a plain bitmap, hence the extra space needed to
+ * represent 16384 x 1KB blocks.
+ *
+ * The reserved area at the beginning of each 2GB zone is marked as being
+ * allocated on-the-fly and does not have to be pre-set in the freemap,
+ * which is just as well as that would require newfs_hammer2 to do a lot
+ * of writing otherwise.
+ *
+ * Indirect blocks are usually created with a semi-dynamic radix but in the
+ * case of freemap-related indirect blocks, the blocks use a static radix
+ * tree with associations to specific reserved blocks.
  */
-struct hammer2_allocref {
-	uint32_t	icrc_or_app;	/* node: icrc, leaf: append offset */
-	uint16_t	flags;
-	uint8_t		big_hint1;	/* upper level hint */
-	uint8_t		big_hint2;	/* lower level hint */
-	uint64_t	free_or_mask;	/* node: free bytes, leaf: bitmask */
-};
-
-typedef struct hammer2_allocref hammer2_allocref_t;
 
 /*
- * WARNING - allocref size x entries must equate to the hammer buffer size,
- *	     and 12 bits per recursion is assumed by the allocator.
+ * 4KB -> hammer2_freemap_elm[256]
  *
- * ALTA-D	Since no data_offset is specified flags are needed to select
- *		which sub-block to recurse down into for root & internal nodes.
- *		(only ALTA and ALTB is currently supported).
+ *	bitmap	   - 64 bits x 1KB representing 64KB.  A '1' bit represents
+ *		     an allocated block.
  *
- * LEAF		Terminal entry, always set for leafs.  May be used to support
- *		4MB extent allocations and early termination in the future.
- *		(not required to shortcut allocation scans as the big_hint1/2
- *		fields are used for this).
+ *	generation - Incremented upon any allocation.  Can't increment more
+ *		     than +64 per background freeing pass due to there being
+ *		     only 64 bits.
+ *
+ *	biggest0   - biggest hint (radix) for freemap_elm.  Represents up to
+ *		     64KB (radix 16).
+ *
+ *	biggest1   - biggest hint (radix) for aligned groups of 16 elements,
+ *		     stored in elm[0], elm[16], etc.  Represents up to 1MB.
+ *		     (radix 20)
+ *
+ *	biggest2   - biggest hint (radix) for aligned groups of 256 elements
+ *		     (i.e. the whole array, only used by elm[0]).
+ *		     Represents up to 16MB (radix 24).
+ *
+ * The hinting is used as part of the allocation mechanism to reduce scan
+ * time, which is particularly important as a filesystem approaches full.
+ * Fill ratios are handled at the indirect block level (in the blockrefs) and
+ * not here.
  */
-#define HAMMER2_ALLOCREF_BYTES		16	/* structure size */
-#define HAMMER2_ALLOCREF_ENTRIES	4096	/* entries */
-#define HAMMER2_ALLOCREF_RADIX		12	/* log2(entries) */
+struct hammer2_freemap_elm {
+	uint64_t	bitmap;
+	uint8_t		generation;
+	uint8_t		biggest0;
+	uint8_t		biggest1;
+	uint8_t		biggest2;
+	uint32_t	reserved0C;
+};
 
-#if (HAMMER2_ALLOCREF_BYTES * HAMMER2_ALLOCREF_ENTRIES) != HAMMER2_PBUFSIZE
-#error "allocref parameters do not fit in hammer buffer"
-#endif
-#if (1 << HAMMER2_ALLOCREF_RADIX) != HAMMER2_ALLOCREF_ENTRIES
-#error "allocref parameters are inconsistent"
-#endif
+typedef struct hammer2_freemap_elm hammer2_freemap_elm_t;
 
-#define HAMMER2_ALLOCREF_ALTMASK	0x0003	/* select block for recurse */
-#define HAMMER2_ALLOCREF_ALTA		0x0000
-#define HAMMER2_ALLOCREF_ALTB		0x0001
-#define HAMMER2_ALLOCREF_ALTC		0x0002	/* unsupported */
-#define HAMMER2_ALLOCREF_ALTD		0x0003	/* unsupported */
-#define HAMMER2_ALLOCREF_LEAF		0x0004
+#define HAMMER2_FREEMAP_LEAF_BYTES	4096
+#define HAMMER2_FREEMAP_LEAF_ENTRIES	(HAMMER2_FREEMAP_LEAF_BYTES /	\
+					 sizeof(hammer2_freemap_elm_t))
+#define HAMMER2_FREEMAP_LEAF_RADIX	24
+#define HAMMER2_FREEMAP_NODE_RADIX	10
+#define HAMMER2_FREEMAP_ELM_RADIX	 5	/* 2^5 == 32 bits */
+
+#define HAMMER2_BIGF_KILLED		0x80
+
+/*
+ * Flags (8 bits) - blockref, for freemap only
+ *
+ * Note that the minimum chunk size is 1KB so we could theoretically have
+ * 10 bits here, but we might have some future extension that allows a
+ * chunk size down to 256 bytes and if so we will need bits 8 and 9.
+ */
+#define HAMMER2_AVF_SELMASK		0x03	/* select group */
+#define HAMMER2_AVF_ALL_ALLOC		0x04	/* indicate all allocated */
+#define HAMMER2_AVF_ALL_FREE		0x08	/* indicate all free */
+#define HAMMER2_AVF_RESERVED10		0x10
+#define HAMMER2_AVF_RESERVED20		0x20
+#define HAMMER2_AVF_RESERVED40		0x40
+#define HAMMER2_AVF_RESERVED80		0x80
+#define HAMMER2_AVF_AVMASK32		((uint32_t)0xFFFFFF00LU)
+#define HAMMER2_AVF_AVMASK64		((uint64_t)0xFFFFFFFFFFFFFF00LLU)
+
+#define HAMMER2_AV_SELECT_A		0x00
+#define HAMMER2_AV_SELECT_B		0x01
+#define HAMMER2_AV_SELECT_C		0x02
+#define HAMMER2_AV_SELECT_D		0x03
 
 /*
  * The volume header eats a 64K block.  There is currently an issue where
@@ -681,8 +863,8 @@ struct hammer2_volume_data {
 	 * allocator_size is precalculated at newfs time and does not include
 	 * reserved blocks, boot, or redo areas.
 	 *
-	 * Initial non-reserved-area allocations do not use the allocation
-	 * map but instead adjust alloc_iterator.  Dynamic allocations take
+	 * Initial non-reserved-area allocations do not use the freemap
+	 * but instead adjust alloc_iterator.  Dynamic allocations take
 	 * over starting at (allocator_beg).  This makes newfs_hammer2's
 	 * job a lot easier and can also serve as a testing jig.
 	 */
@@ -691,7 +873,7 @@ struct hammer2_volume_data {
 	hammer2_off_t	allocator_beg;		/* 0070 Initial allocations */
 	hammer2_tid_t	mirror_tid;		/* 0078 best committed tid */
 	hammer2_tid_t	alloc_tid;		/* 0080 Alloctable modify tid */
-	hammer2_blockref_t alloc_blockref;	/* 0088-00C7 */
+	hammer2_blockref_t freemap_blockref;	/* 0088-00C7 */
 
 	/*
 	 * Copyids are allocated dynamically from the copyexists bitmap.

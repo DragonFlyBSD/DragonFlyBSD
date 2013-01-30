@@ -139,11 +139,14 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 		ip->hmp = hmp;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		np = kmalloc(sizeof(*np), hmp->mchain, M_WAITOK | M_ZERO);
 		chain = &np->chain;
 		chain->u.np = np;
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		dp = kmalloc(sizeof(*dp), hmp->mchain, M_WAITOK | M_ZERO);
 		chain = &dp->chain;
 		chain->u.dp = dp;
@@ -517,6 +520,8 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how)
 			return(0);
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
 			return(0);
+		if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF)
+			return(0);
 		/* fall through */
 	case HAMMER2_RESOLVE_ALWAYS:
 		break;
@@ -627,6 +632,9 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how)
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_DATA:
+	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 	default:
 		/*
 		 * Point data at the device buffer and leave bp intact.
@@ -701,6 +709,11 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		case HAMMER2_BREF_TYPE_INDIRECT:
 			counterp = &hammer2_ioa_indr_write;
 			break;
+		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+			counterp = &hammer2_ioa_fmap_write;
+			break;
 		default:
 			counterp = &hammer2_ioa_volu_write;
 			break;
@@ -717,6 +730,11 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		case HAMMER2_BREF_TYPE_INDIRECT:
 			counterp = &hammer2_iod_indr_write;
 			break;
+		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+			counterp = &hammer2_iod_fmap_write;
+			break;
 		default:
 			counterp = &hammer2_iod_volu_write;
 			break;
@@ -730,6 +748,9 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	 * If a device buffer was used for data be sure to destroy the
 	 * buffer when we are done to avoid aliases (XXX what about the
 	 * underlying VM pages?).
+	 *
+	 * NOTE: Freemap leaf's use reserved blocks and thus no aliasing
+	 *	 is possible.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
 		chain->bp->b_flags |= B_RELBUF;
@@ -803,7 +824,8 @@ hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *chain,
 	int error;
 
 	/*
-	 * Only data and indirect blocks can be resized for now
+	 * Only data and indirect blocks can be resized for now.
+	 * (The volu root, inodes, and freemap elements use a fixed size).
 	 */
 	KKASSERT(chain != &hmp->vchain);
 	KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA ||
@@ -1010,7 +1032,7 @@ skip1:
 
 	/*
 	 * We currently should never instantiate a device buffer for a
-	 * data chain.
+	 * file data chain.  (We definitely can for a freemap chain).
 	 */
 	KKASSERT(chain->bref.type != HAMMER2_BREF_TYPE_DATA);
 
@@ -1028,6 +1050,9 @@ skip1:
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_INDIRECT:
+	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		/*
 		 * Perform the copy-on-write operation
 		 */
@@ -1191,6 +1216,8 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		bref = &parent->data->ipdata.u.blockset.blockref[index];
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		KKASSERT(parent->data != NULL);
 		KKASSERT(index >= 0 &&
 			 index < parent->bytes / sizeof(hammer2_blockref_t));
@@ -1318,7 +1345,8 @@ hammer2_chain_lookup(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
 	 * encloses the key range or we hit the inode.
 	 */
 	parent = *parentp;
-	while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
+	while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
+	       parent->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
 		scan_beg = parent->bref.key;
 		scan_end = scan_beg +
 			   ((hammer2_key_t)1 << parent->bref.keybits) - 1;
@@ -1358,6 +1386,8 @@ again:
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		/*
 		 * Optimize indirect blocks in the INITIAL state to avoid
 		 * I/O.
@@ -1429,7 +1459,8 @@ again:
 	 * The parent always has to be locked with at least RESOLVE_MAYBE,
 	 * so it might need a fixup if the caller passed incompatible flags.
 	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
+	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
+	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
 		hammer2_chain_unlock(hmp, parent);
 		*parentp = parent = chain;
 		if (flags & HAMMER2_LOOKUP_NOLOCK) {
@@ -1504,7 +1535,8 @@ again:
 		if (chain == parent)
 			return(NULL);
 		chain = NULL;
-	} else if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT) {
+	} else if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT &&
+		   parent->bref.type != HAMMER2_BREF_TYPE_FREEMAP_NODE) {
 		/*
 		 * We reached the end of the iteration.
 		 */
@@ -1543,6 +1575,8 @@ again2:
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
 			base = NULL;
 		} else {
@@ -1617,7 +1651,8 @@ again2:
 	 * The parent always has to be locked with at least RESOLVE_MAYBE,
 	 * so it might need a fixup if the caller passed incompatible flags.
 	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
+	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
+	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
 		hammer2_chain_unlock(hmp, parent);
 		*parentp = parent = chain;
 		chain = NULL;
@@ -1692,7 +1727,8 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		dummy.type = type;
 		dummy.key = key;
 		dummy.keybits = keybits;
-		dummy.data_off = hammer2_bytes_to_radix(bytes);
+		dummy.data_off = hammer2_allocsize(bytes);
+		dummy.methods = parent->bref.methods;
 		chain = hammer2_chain_alloc(hmp, &dummy);
 		allocated = 1;
 
@@ -1719,6 +1755,12 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			panic("hammer2_chain_create: cannot be used to"
 			      "create indirect block");
 			break;
+		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+			panic("hammer2_chain_create: cannot be used to"
+			      "create freemap root or node");
+			break;
+		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		case HAMMER2_BREF_TYPE_DATA:
 		default:
 			/* leave chain->data NULL */
@@ -1746,6 +1788,8 @@ again:
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
 			base = NULL;
 		} else {
@@ -1880,17 +1924,24 @@ again:
 	 *			the data onto device buffers!).
 	 */
 	if (allocated) {
-		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+		switch(chain->bref.type) {
+		case HAMMER2_BREF_TYPE_DATA:
+		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 			hammer2_chain_modify(hmp, chain,
 					     HAMMER2_MODIFY_OPTDATA);
-		} else if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 			/* not supported in this function */
 			panic("hammer2_chain_create: bad type");
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 			hammer2_chain_modify(hmp, chain,
 					     HAMMER2_MODIFY_OPTDATA);
-		} else {
+			break;
+		default:
 			hammer2_chain_modify(hmp, chain, 0);
+			break;
 		}
 	} else {
 		/*
@@ -1997,6 +2048,8 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			count = HAMMER2_SET_COUNT;
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
+		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 			count = parent->bytes / sizeof(hammer2_blockref_t);
 			break;
 		case HAMMER2_BREF_TYPE_VOLUME:
@@ -2016,6 +2069,8 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			count = HAMMER2_SET_COUNT;
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
+		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 			base = &parent->data->npdata.blockref[0];
 			count = parent->bytes / sizeof(hammer2_blockref_t);
 			break;
@@ -2145,10 +2200,19 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	/*
 	 * Ok, create our new indirect block
 	 */
-	dummy.bref.type = HAMMER2_BREF_TYPE_INDIRECT;
+	switch(parent->bref.type) {
+	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		dummy.bref.type = HAMMER2_BREF_TYPE_FREEMAP_NODE;
+		break;
+	default:
+		dummy.bref.type = HAMMER2_BREF_TYPE_INDIRECT;
+		break;
+	}
 	dummy.bref.key = key;
 	dummy.bref.keybits = keybits;
-	dummy.bref.data_off = hammer2_bytes_to_radix(nbytes);
+	dummy.bref.data_off = hammer2_allocsize(nbytes);
+	dummy.bref.methods = parent->bref.methods;
 	ichain = hammer2_chain_alloc(hmp, &dummy.bref);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
 
@@ -2384,6 +2448,8 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		hammer2_chain_modify(hmp, parent, HAMMER2_MODIFY_OPTDATA |
 						  HAMMER2_MODIFY_NO_MODIFY_TID);
 		if (parent->flags & HAMMER2_CHAIN_INITIAL)

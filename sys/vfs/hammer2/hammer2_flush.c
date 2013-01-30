@@ -691,6 +691,8 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		bref = &chain->bref;
 
 		KKASSERT((bref->data_off & HAMMER2_OFF_MASK) != 0);
+		KKASSERT(HAMMER2_DEC_CHECK(chain->bref.methods) ==
+			 HAMMER2_CHECK_ISCSI32);
 
 		if (chain->bp == NULL) {
 			/*

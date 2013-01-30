@@ -78,6 +78,9 @@ struct hammer2_span;
 struct hammer2_state;
 struct hammer2_msg;
 
+struct hammer2_indblock;
+struct hammer2_data;
+
 /*
  * The chain structure tracks blockref recursions all the way to
  * the root volume.  These consist of indirect blocks, inodes,
@@ -270,6 +273,9 @@ struct hammer2_data {
 
 typedef struct hammer2_data hammer2_data_t;
 
+/*
+ * XXX
+ */
 struct hammer2_freecache {
 	hammer2_off_t	bulk;
 	hammer2_off_t	single;
@@ -358,6 +364,7 @@ extern long hammer2_iod_indr_read;
 extern long hammer2_iod_file_write;
 extern long hammer2_iod_meta_write;
 extern long hammer2_iod_indr_write;
+extern long hammer2_iod_fmap_write;
 extern long hammer2_iod_volu_write;
 extern long hammer2_ioa_file_read;
 extern long hammer2_ioa_meta_read;
@@ -365,6 +372,7 @@ extern long hammer2_ioa_indr_read;
 extern long hammer2_ioa_file_write;
 extern long hammer2_ioa_meta_write;
 extern long hammer2_ioa_indr_write;
+extern long hammer2_ioa_fmap_write;
 extern long hammer2_ioa_volu_write;
 
 /*
@@ -395,7 +403,7 @@ u_int32_t hammer2_to_unix_xid(uuid_t *uuid);
 void hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
-int hammer2_bytes_to_radix(size_t bytes);
+int hammer2_allocsize(size_t bytes);
 
 int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 			 hammer2_key_t *lbasep, hammer2_key_t *leofp);

@@ -1076,7 +1076,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_DATA:
 				hammer2_chain_resize(ip, chain,
-					     hammer2_bytes_to_radix(nblksize),
+					     hammer2_allocsize(nblksize),
 					     HAMMER2_MODIFY_OPTDATA);
 				bzero(bp->b_data + loff, nblksize - loff);
 				bp->b_bio2.bio_offset = chain->bref.data_off &
@@ -1119,7 +1119,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_DATA:
 				hammer2_chain_resize(ip, chain,
-					     hammer2_bytes_to_radix(nblksize),
+					     hammer2_allocsize(nblksize),
 					     0);
 				hammer2_chain_modify(hmp, chain, 0);
 				bzero(chain->data->buf + loff, nblksize - loff);
@@ -1284,7 +1284,7 @@ retry:
 		error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 		KKASSERT(error == 0);
 
-		nradix = hammer2_bytes_to_radix(nblksize);
+		nradix = hammer2_allocsize(nblksize);
 
 		chain = hammer2_chain_lookup(hmp, &parent,
 					     obase, obase,
