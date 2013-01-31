@@ -235,6 +235,7 @@ void ccms_cst_uninit(ccms_cst_t *cst);
 
 void ccms_thread_lock(ccms_cst_t *cst, ccms_state_t state);
 int ccms_thread_lock_nonblock(ccms_cst_t *cst, ccms_state_t state);
+ccms_state_t ccms_thread_lock_temp_release(ccms_cst_t *cst);
 ccms_state_t ccms_thread_lock_upgrade(ccms_cst_t *cst);
 void ccms_thread_lock_restore(ccms_cst_t *cst, ccms_state_t ostate);
 void ccms_thread_unlock(ccms_cst_t *cst);

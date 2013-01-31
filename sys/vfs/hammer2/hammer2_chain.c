@@ -115,6 +115,7 @@ hammer2_chain_parent_setsubmod(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 /*
  * Allocate a new disconnected chain element representing the specified
  * bref.  The chain element is locked exclusively and refs is set to 1.
+ * Media data (data) and meta-structure (u) pointers are left NULL.
  *
  * This essentially allocates a system memory structure representing one
  * of the media structure types, including inodes.
@@ -123,9 +124,6 @@ hammer2_chain_t *
 hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 {
 	hammer2_chain_t *chain;
-	hammer2_inode_t *ip;
-	hammer2_indblock_t *np;
-	hammer2_data_t *dp;
 	u_int bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 
 	/*
@@ -133,23 +131,12 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 	 */
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_INODE:
-		ip = kmalloc(sizeof(*ip), hmp->minode, M_WAITOK | M_ZERO);
-		chain = &ip->chain;
-		chain->u.ip = ip;
-		ip->hmp = hmp;
-		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		np = kmalloc(sizeof(*np), hmp->mchain, M_WAITOK | M_ZERO);
-		chain = &np->chain;
-		chain->u.np = np;
-		break;
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		dp = kmalloc(sizeof(*dp), hmp->mchain, M_WAITOK | M_ZERO);
-		chain = &dp->chain;
-		chain->u.dp = dp;
+		chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		chain = NULL;
@@ -193,19 +180,14 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 static void
 hammer2_chain_dealloc(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
-	hammer2_inode_t *ip;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *child;
 
 	KKASSERT(chain->refs == 0);
 	KKASSERT(chain->flushing == 0);
+	KKASSERT(chain->u.mem == NULL);
 	KKASSERT((chain->flags &
 		  (HAMMER2_CHAIN_MOVED | HAMMER2_CHAIN_MODIFIED)) == 0);
-
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
-		ip = chain->u.ip;
-	else
-		ip = NULL;
 
 	/*
 	 * If the sub-tree is not empty all the elements on it must have
@@ -229,18 +211,9 @@ hammer2_chain_dealloc(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		parent = chain->parent;
 		RB_REMOVE(hammer2_chain_tree, &parent->rbhead, chain);
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
-		if (ip)
-			ip->pip = NULL;
 		chain->parent = NULL;
 		spin_unlock(&chain->cst.spin);
 	}
-
-	/*
-	 * When cleaning out a hammer2_inode we must
-	 * also clean out the related ccms_inode.
-	 */
-	if (ip)
-		ccms_cst_uninit(&ip->topo_cst);
 	hammer2_chain_free(hmp, chain);
 }
 
@@ -250,28 +223,31 @@ hammer2_chain_dealloc(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 void
 hammer2_chain_free(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
-	void *mem;
-
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE ||
-	    chain->bref.type == HAMMER2_BREF_TYPE_VOLUME) {
+	switch(chain->bref.type) {
+	case HAMMER2_BREF_TYPE_VOLUME:
 		chain->data = NULL;
+		break;
+	case HAMMER2_BREF_TYPE_INODE:
+		if (chain->data) {
+			kfree(chain->data, hmp->minode);
+			chain->data = NULL;
+		}
+		break;
+	default:
+		KKASSERT(chain->data == NULL);
+		break;
 	}
 
 	KKASSERT(chain->bp == NULL);
-	KKASSERT(chain->data == NULL);
 	KKASSERT(chain->bref.type != HAMMER2_BREF_TYPE_INODE ||
-		 chain->u.ip->vp == NULL);
+		 chain->u.ip == NULL);
+
 	ccms_thread_unlock(&chain->cst);
 	KKASSERT(chain->cst.count == 0);
 	KKASSERT(chain->cst.upgrade == 0);
+	KKASSERT(chain->u.mem == NULL);
 
-	if ((mem = chain->u.mem) != NULL) {
-		chain->u.mem = NULL;
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
-			kfree(mem, hmp->minode);
-		else
-			kfree(mem, hmp->mchain);
-	}
+	kfree(chain, hmp->mchain);
 }
 
 /*
@@ -625,8 +601,10 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how)
 		 * Copy data from bp to embedded buffer, do not retain the
 		 * device buffer.
 		 */
-		bcopy(bdata, &chain->u.ip->ip_data, chain->bytes);
-		chain->data = (void *)&chain->u.ip->ip_data;
+		KKASSERT(chain->bytes == sizeof(chain->data->ipdata));
+		chain->data = kmalloc(sizeof(chain->data->ipdata),
+				      hmp->minode, M_WAITOK | M_ZERO);
+		bcopy(bdata, &chain->data->ipdata, chain->bytes);
 		bqrelse(chain->bp);
 		chain->bp = NULL;
 		break;
@@ -681,7 +659,8 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	/*
 	 * Shortcut the case if the data is embedded or not resolved.
 	 *
-	 * Do NOT null-out pointers to embedded data (e.g. inode).
+	 * Do NOT NULL out chain->data (e.g. inode data), it might be
+	 * dirty.
 	 *
 	 * The DIRTYBP flag is non-applicable in this situation and can
 	 * be cleared to keep the flags state clean.
@@ -863,7 +842,7 @@ hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *chain,
 	chain->bref.data_off = hammer2_freemap_alloc(hmp, chain->bref.type,
 						     nbytes);
 	chain->bytes = nbytes;
-	ip->delta_dcount += (ssize_t)(nbytes - obytes); /* XXX atomic */
+	/*ip->delta_dcount += (ssize_t)(nbytes - obytes);*/ /* XXX atomic */
 
 	/*
 	 * The device buffer may be larger than the allocation size.
@@ -1146,7 +1125,6 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		  int index, int flags)
 {
 	hammer2_blockref_t *bref;
-	hammer2_inode_t *ip;
 	hammer2_chain_t *chain;
 	hammer2_chain_t dummy;
 	int how;
@@ -1258,6 +1236,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	atomic_add_int(&parent->refs, 1);	/* for red-black entry */
 	ccms_thread_lock_restore(&parent->cst, ostate);
 
+#if 0
 	/*
 	 * Additional linkage for inodes.  Reuse the parent pointer to
 	 * find the parent directory.
@@ -1275,6 +1254,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			ccms_cst_init(&ip->topo_cst, &ip->chain);
 		}
 	}
+#endif
 
 	/*
 	 * Our new chain structure has already been referenced and locked
@@ -1693,7 +1673,7 @@ again2:
  * The element may or may not have a data area associated with it:
  *
  *	VOLUME		not allowed here
- *	INODE		embedded data are will be set-up
+ *	INODE		kmalloc()'d data area is set up
  *	INDIRECT	not allowed here
  *	DATA		no data area will be set-up (caller is expected
  *			to have logical buffers, we don't want to alias
@@ -1749,7 +1729,8 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			break;
 		case HAMMER2_BREF_TYPE_INODE:
 			KKASSERT(bytes == HAMMER2_INODE_BYTES);
-			chain->data = (void *)&chain->u.ip->ip_data;
+			chain->data = kmalloc(sizeof(chain->data->ipdata),
+					      hmp->minode, M_WAITOK | M_ZERO);
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
 			panic("hammer2_chain_create: cannot be used to"
@@ -1781,7 +1762,7 @@ again:
 	 */
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
-		KKASSERT((parent->u.ip->ip_data.op_flags &
+		KKASSERT((parent->data->ipdata.op_flags &
 			  HAMMER2_OPFLAG_DIRECTDATA) == 0);
 		KKASSERT(parent->data != NULL);
 		base = &parent->data->ipdata.u.blockset.blockref[0];
@@ -1880,6 +1861,7 @@ again:
 	KKASSERT(parent->refs > 0);
 	atomic_add_int(&parent->refs, 1);
 
+#if 0
 	/*
 	 * Additional linkage for inodes.  Reuse the parent pointer to
 	 * find the parent directory.
@@ -1905,7 +1887,7 @@ again:
 			ccms_cst_init(&ip->topo_cst, &ip->chain);
 		}
 	}
-
+#endif
 	/*
 	 * (allocated) indicates that this is a newly-created chain element
 	 * rather than a renamed chain element.  In this situation we want
@@ -2427,7 +2409,6 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		     hammer2_chain_t *chain, int retain)
 {
 	hammer2_blockref_t *base;
-	hammer2_inode_t *ip;
 	int count;
 
 	if (chain->parent != parent)
@@ -2505,20 +2486,7 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
 	    chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
-		ip = chain->u.ip;
-		if (ip->pip) {
-			/* XXX SMP, pip chain not necessarily parent chain */
-			ip->pip->delta_icount -= ip->ip_data.inode_count;
-			ip->pip->delta_dcount -= ip->ip_data.data_count;
-			ip->ip_data.inode_count += ip->delta_icount;
-			ip->ip_data.data_count += ip->delta_dcount;
-			ip->delta_icount = 0;
-			ip->delta_dcount = 0;
-			--ip->pip->delta_icount;
-			spin_lock(&chain->cst.spin); /* XXX */
-			ip->pip = NULL;
-			spin_unlock(&chain->cst.spin);
-		}
+		KKASSERT(chain->u.ip == NULL);
 	}
 
 	/*

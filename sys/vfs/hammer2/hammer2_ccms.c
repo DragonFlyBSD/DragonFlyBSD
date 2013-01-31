@@ -256,6 +256,20 @@ ccms_thread_lock_nonblock(ccms_cst_t *cst, ccms_state_t state)
 	return(0);
 }
 
+ccms_state_t
+ccms_thread_lock_temp_release(ccms_cst_t *cst)
+{
+	if (cst->count < 0) {
+		ccms_thread_unlock(cst);
+		return(CCMS_STATE_EXCLUSIVE);
+	}
+	if (cst->count > 0) {
+		ccms_thread_unlock(cst);
+		return(CCMS_STATE_SHARED);
+	}
+	return (CCMS_STATE_INVALID);
+}
+
 /*
  * Temporarily upgrade a thread lock for making local structural changes.
  * No new shared or exclusive locks can be acquired by others while we are
@@ -320,6 +334,9 @@ void
 ccms_thread_unlock(ccms_cst_t *cst)
 {
 	if (cst->count < 0) {
+		/*
+		 * Exclusive
+		 */
 		KKASSERT(cst->td == curthread);
 		if (cst->count < -1) {
 			++cst->count;
@@ -337,6 +354,9 @@ ccms_thread_unlock(ccms_cst_t *cst)
 		}
 		spin_unlock(&cst->spin);
 	} else if (cst->count > 0) {
+		/*
+		 * Shared
+		 */
 		spin_lock(&cst->spin);
 		if (--cst->count == 0 && cst->blocked) {
 			cst->blocked = 0;

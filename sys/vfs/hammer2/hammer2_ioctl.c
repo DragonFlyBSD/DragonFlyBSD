@@ -319,13 +319,16 @@ hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 {
-	hammer2_mount_t *hmp = ip->hmp;
-	hammer2_ioc_pfs_t *pfs = data;
+	hammer2_inode_data_t *ipdata;
+	hammer2_mount_t *hmp;
+	hammer2_ioc_pfs_t *pfs;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
-	hammer2_inode_t *xip;
-	int error = 0;
+	int error;
 
+	error = 0;
+	hmp = ip->hmp;
+	pfs = data;
 	parent = hmp->schain;
 	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 	if (error)
@@ -350,15 +353,15 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		/*
 		 * Load the data being returned by the ioctl.
 		 */
-		xip = chain->u.ip;
-		pfs->name_key = xip->ip_data.name_key;
-		pfs->pfs_type = xip->ip_data.pfs_type;
-		pfs->pfs_clid = xip->ip_data.pfs_clid;
-		pfs->pfs_fsid = xip->ip_data.pfs_fsid;
-		KKASSERT(xip->ip_data.name_len < sizeof(pfs->name));
-		bcopy(xip->ip_data.filename, pfs->name,
-		      xip->ip_data.name_len);
-		pfs->name[xip->ip_data.name_len] = 0;
+		ipdata = &chain->data->ipdata;
+		pfs->name_key = ipdata->name_key;
+		pfs->pfs_type = ipdata->pfs_type;
+		pfs->pfs_clid = ipdata->pfs_clid;
+		pfs->pfs_fsid = ipdata->pfs_fsid;
+		KKASSERT(ipdata->name_len < sizeof(pfs->name));
+		bcopy(ipdata->filename, pfs->name, ipdata->name_len);
+		pfs->name[ipdata->name_len] = 0;
+		ipdata = NULL;	/* safety */
 
 		/*
 		 * Calculate the next field
@@ -368,7 +371,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 					     0, (hammer2_key_t)-1, 0);
 		} while (chain && chain->bref.type != HAMMER2_BREF_TYPE_INODE);
 		if (chain) {
-			pfs->name_next = chain->u.ip->ip_data.name_key;
+			pfs->name_next = chain->data->ipdata.name_key;
 			hammer2_chain_unlock(hmp, chain);
 		} else {
 			pfs->name_next = (hammer2_key_t)-1;
@@ -388,15 +391,18 @@ done:
 static int
 hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 {
-	hammer2_mount_t *hmp = ip->hmp;
-	hammer2_ioc_pfs_t *pfs = data;
+	hammer2_inode_data_t *ipdata;
+	hammer2_mount_t *hmp;
+	hammer2_ioc_pfs_t *pfs;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
-	hammer2_inode_t *xip;
 	hammer2_key_t lhc;
-	int error = 0;
+	int error;
 	size_t len;
 
+	error = 0;
+	hmp = ip->hmp;
+	pfs = data;
 	parent = hmp->schain;
 	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
 						HAMMER2_RESOLVE_SHARED);
@@ -426,11 +432,12 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	 * Load the data being returned by the ioctl.
 	 */
 	if (chain) {
-		xip = chain->u.ip;
-		pfs->name_key = xip->ip_data.name_key;
-		pfs->pfs_type = xip->ip_data.pfs_type;
-		pfs->pfs_clid = xip->ip_data.pfs_clid;
-		pfs->pfs_fsid = xip->ip_data.pfs_fsid;
+		ipdata = &chain->data->ipdata;
+		pfs->name_key = ipdata->name_key;
+		pfs->pfs_type = ipdata->pfs_type;
+		pfs->pfs_clid = ipdata->pfs_clid;
+		pfs->pfs_fsid = ipdata->pfs_fsid;
+		ipdata = NULL;
 
 		hammer2_chain_unlock(hmp, chain);
 	} else {
@@ -447,21 +454,27 @@ done:
 static int
 hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 {
-	hammer2_mount_t *hmp = ip->hmp;
-	hammer2_ioc_pfs_t *pfs = data;
-	hammer2_inode_t *nip = NULL;
+	hammer2_inode_data_t *nipdata;
+	hammer2_mount_t *hmp;
+	hammer2_ioc_pfs_t *pfs;
+	hammer2_inode_t *nip;
 	int error;
+
+	hmp = ip->hmp;
+	pfs = data;
+	nip = NULL;
 
 	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure 0-termination */
 	error = hammer2_inode_create(hmp->schain->u.ip, NULL, NULL,
 				     pfs->name, strlen(pfs->name),
 				     &nip);
 	if (error == 0) {
-		hammer2_chain_modify(hmp, &nip->chain, 0);
-		nip->ip_data.pfs_type = pfs->pfs_type;
-		nip->ip_data.pfs_clid = pfs->pfs_clid;
-		nip->ip_data.pfs_fsid = pfs->pfs_fsid;
-		hammer2_chain_unlock(hmp, &nip->chain);
+		hammer2_chain_modify(hmp, nip->chain, 0);
+		nipdata = &nip->chain->data->ipdata;
+		nipdata->pfs_type = pfs->pfs_type;
+		nipdata->pfs_clid = pfs->pfs_clid;
+		nipdata->pfs_fsid = pfs->pfs_fsid;
+		hammer2_inode_unlock_ex(nip);
 	}
 	return (error);
 }
@@ -491,7 +504,7 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 	hammer2_ioc_inode_t *ino = data;
 
 	hammer2_inode_lock_sh(ip);
-	ino->ip_data = ip->ip_data;
+	ino->ip_data = ip->chain->data->ipdata;
 	ino->kdata = ip;
 	hammer2_inode_unlock_sh(ip);
 	return (0);

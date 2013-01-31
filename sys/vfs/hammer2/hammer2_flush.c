@@ -255,6 +255,9 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 	hammer2_chain_unlock(hmp, parent);
 }
 
+/*
+ * chain is locked by the caller and remains locked on return.
+ */
 static void
 hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 			  hammer2_flush_info_t *info)
@@ -540,9 +543,12 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		goto done;
 	}
 
+#if 0
 	/*
 	 * Synchronize cumulative data and inode count adjustments to
 	 * the inode and propagate the deltas upward to the parent.
+	 *
+	 * XXX removed atm
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		hammer2_inode_t *ip;
@@ -557,6 +563,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		ip->delta_icount = 0;
 		ip->delta_dcount = 0;
 	}
+#endif
 
 	/*
 	 * Flush if MODIFIED or MODIFIED_AUX is set.  MODIFIED_AUX is only
