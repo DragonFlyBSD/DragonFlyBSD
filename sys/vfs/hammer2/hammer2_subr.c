@@ -51,44 +51,64 @@
  * locked, and can be cleaned out at any time (become NULL) when an inode
  * is not locked.
  *
- * The underlying chain is also locked.
+ * The underlying chain is also locked and returned.
  *
  * NOTE: We don't combine the inode/chain lock because putting away an
  *       inode would otherwise confuse multiple lock holders of the inode.
  */
-void
+hammer2_chain_t *
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
 {
+	hammer2_chain_t *chain;
+
 	hammer2_inode_ref(ip);
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
-	KKASSERT(ip->chain != NULL);	/* for now */
-	hammer2_chain_lock(ip->hmp, ip->chain, HAMMER2_RESOLVE_ALWAYS);
+
+	chain = ip->chain;
+	KKASSERT(chain != NULL);	/* for now */
+	hammer2_chain_lock(ip->hmp, chain, HAMMER2_RESOLVE_ALWAYS);
+
+	return (chain);
 }
 
 void
-hammer2_inode_unlock_ex(hammer2_inode_t *ip)
+hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain)
 {
-	if (ip->chain)
-		hammer2_chain_unlock(ip->hmp, ip->chain);
+	if (chain)
+		hammer2_chain_unlock(ip->hmp, chain);
 	ccms_thread_unlock(&ip->topo_cst);
 	hammer2_inode_drop(ip);
 }
 
-void
+/*
+ * NOTE: We don't combine the inode/chain lock because putting away an
+ *       inode would otherwise confuse multiple lock holders of the inode.
+ *
+ *	 Shared locks are especially sensitive to having too many shared
+ *	 lock counts (from the same thread) on certain paths which might
+ *	 need to upgrade them.  Only one count of a shared lock can be
+ *	 upgraded.
+ */
+hammer2_chain_t *
 hammer2_inode_lock_sh(hammer2_inode_t *ip)
 {
+	hammer2_chain_t *chain;
+
 	hammer2_inode_ref(ip);
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_SHARED);
-	KKASSERT(ip->chain != NULL);	/* for now */
-	hammer2_chain_lock(ip->hmp, ip->chain, HAMMER2_RESOLVE_ALWAYS |
-					       HAMMER2_RESOLVE_SHARED);
+
+	chain = ip->chain;
+	KKASSERT(chain != NULL);	/* for now */
+	hammer2_chain_lock(ip->hmp, chain, HAMMER2_RESOLVE_ALWAYS |
+					   HAMMER2_RESOLVE_SHARED);
+	return (chain);
 }
 
 void
-hammer2_inode_unlock_sh(hammer2_inode_t *ip)
+hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_chain_t *chain)
 {
-	if (ip->chain)
-		hammer2_chain_unlock(ip->hmp, ip->chain);
+	if (chain)
+		hammer2_chain_unlock(ip->hmp, chain);
 	ccms_thread_unlock(&ip->topo_cst);
 	hammer2_inode_drop(ip);
 }

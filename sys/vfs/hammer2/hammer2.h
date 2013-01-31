@@ -363,10 +363,10 @@ extern long hammer2_ioa_volu_write;
 #define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
 #define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
 
-void hammer2_inode_lock_ex(hammer2_inode_t *ip);
-void hammer2_inode_lock_sh(hammer2_inode_t *ip);
-void hammer2_inode_unlock_ex(hammer2_inode_t *ip);
-void hammer2_inode_unlock_sh(hammer2_inode_t *ip);
+hammer2_chain_t *hammer2_inode_lock_ex(hammer2_inode_t *ip);
+hammer2_chain_t *hammer2_inode_lock_sh(hammer2_inode_t *ip);
+void hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain);
+void hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_chain_t *chain);
 void hammer2_voldata_lock(hammer2_mount_t *hmp);
 void hammer2_voldata_unlock(hammer2_mount_t *hmp);
 ccms_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
@@ -401,7 +401,7 @@ void hammer2_inode_lock_nlinks(hammer2_inode_t *ip);
 void hammer2_inode_unlock_nlinks(hammer2_inode_t *ip);
 hammer2_inode_t *hammer2_inode_get(hammer2_pfsmount_t *pmp,
 			hammer2_inode_t *dip, hammer2_chain_t *chain);
-void hammer2_inode_put(hammer2_inode_t *ip);
+void hammer2_inode_put(hammer2_inode_t *ip, hammer2_chain_t *chain);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
@@ -410,10 +410,10 @@ int hammer2_inode_calc_alloc(hammer2_key_t filesize);
 int hammer2_inode_create(hammer2_inode_t *dip,
 			struct vattr *vap, struct ucred *cred,
 			const uint8_t *name, size_t name_len,
-			hammer2_inode_t **nipp);
+			hammer2_inode_t **nipp, hammer2_chain_t **nchainp);
 
-int hammer2_inode_duplicate(hammer2_inode_t *dip,
-			hammer2_inode_t *oip, hammer2_inode_t **nipp,
+int hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
+			hammer2_inode_t **nipp, hammer2_chain_t **nchainp,
 			const uint8_t *name, size_t name_len);
 int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 			const uint8_t *name, size_t name_len);

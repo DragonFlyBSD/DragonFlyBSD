@@ -264,10 +264,9 @@ hammer2_inode_get(hammer2_pfsmount_t *pmp, hammer2_inode_t *dip,
  * by this function.
  */
 void
-hammer2_inode_put(hammer2_inode_t *ip)
+hammer2_inode_put(hammer2_inode_t *ip, hammer2_chain_t *chain)
 {
 	hammer2_mount_t *hmp = ip->hmp;
-	hammer2_chain_t *chain = ip->chain;
 	hammer2_inode_t *pip;
 
 	KKASSERT(chain);
@@ -275,7 +274,7 @@ hammer2_inode_put(hammer2_inode_t *ip)
 	KKASSERT(ip->topo_cst.count == -1);	/* one excl lock allowed */
 	chain->u.ip = NULL;
 	ip->chain = NULL;
-	hammer2_chain_drop(ip->hmp, chain);	/* ref */
+	hammer2_chain_drop(hmp, chain);		/* ref */
 
 	/*
 	 * Disconnect ip from pip & related parent ref.
@@ -285,12 +284,10 @@ hammer2_inode_put(hammer2_inode_t *ip)
 	 */
 	if ((pip = ip->pip) != NULL) {
 		ip->pip = NULL;
-		hammer2_inode_unlock_ex(ip);
-		hammer2_chain_unlock(hmp, chain);
+		hammer2_inode_unlock_ex(ip, chain);
 		hammer2_inode_drop(pip);
 	} else {
-		hammer2_inode_unlock_ex(ip);
-		hammer2_chain_unlock(hmp, chain);
+		hammer2_inode_unlock_ex(ip, chain);
 	}
 }
 
@@ -311,7 +308,7 @@ int
 hammer2_inode_create(hammer2_inode_t *dip,
 		     struct vattr *vap, struct ucred *cred,
 		     const uint8_t *name, size_t name_len,
-		     hammer2_inode_t **nipp)
+		     hammer2_inode_t **nipp, hammer2_chain_t **nchainp)
 {
 	hammer2_inode_data_t *nipdata;
 	hammer2_mount_t *hmp;
@@ -333,10 +330,12 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	 * entry in.  At the same time check for key collisions
 	 * and iterate until we don't get one.
 	 */
-	hammer2_inode_lock_ex(dip);
 retry:
-	parent = dip->chain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+	parent = hammer2_inode_lock_ex(dip);
+
+	dip_uid = parent->data->ipdata.uid;
+	dip_gid = parent->data->ipdata.gid;
+	dip_mode = parent->data->ipdata.mode;
 
 	error = 0;
 	while (error == 0) {
@@ -357,13 +356,8 @@ retry:
 					     HAMMER2_INODE_BYTES,
 					     &error);
 	}
-	hammer2_chain_unlock(hmp, parent);
 
-	dip_uid = dip->chain->data->ipdata.uid;
-	dip_gid = dip->chain->data->ipdata.gid;
-	dip_mode = dip->chain->data->ipdata.mode;
-
-	hammer2_inode_unlock_ex(dip);
+	hammer2_inode_unlock_ex(dip, parent);
 
 	/*
 	 * Handle the error case
@@ -375,6 +369,7 @@ retry:
 			goto retry;
 		}
 		*nipp = NULL;
+		*nchainp = NULL;
 		return (error);
 	}
 
@@ -386,7 +381,8 @@ retry:
 	nip = hammer2_inode_get(dip->pmp, dip, chain);
 	kprintf("nip %p chain %p\n", nip, nip->chain);
 	*nipp = nip;
-	nipdata = &nip->chain->data->ipdata;
+	*nchainp = chain;
+	nipdata = &chain->data->ipdata;
 
 	hammer2_voldata_lock(hmp);
 	if (vap) {
@@ -458,7 +454,7 @@ retry:
  */
 int
 hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
-			hammer2_inode_t **nipp,
+			hammer2_inode_t **nipp, hammer2_chain_t **nchainp,
 			const uint8_t *name, size_t name_len)
 {
 	hammer2_inode_data_t *nipdata;
@@ -473,9 +469,9 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	if (name) {
 		lhc = hammer2_dirhash(name, name_len);
 	} else {
-		hammer2_inode_lock_ex(oip);
-		lhc = oip->chain->data->ipdata.inum;
-		hammer2_inode_unlock_ex(oip);
+		parent = hammer2_inode_lock_ex(oip);
+		lhc = parent->data->ipdata.inum;
+		hammer2_inode_unlock_ex(oip, parent);
 		KKASSERT((lhc & HAMMER2_DIRHASH_VISIBLE) == 0);
 	}
 
@@ -485,10 +481,8 @@ hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	 * and iterate until we don't get one.
 	 */
 	nip = NULL;
-	hammer2_inode_lock_ex(dip);
 retry:
-	parent = dip->chain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+	parent = hammer2_inode_lock_ex(dip);
 
 	error = 0;
 	while (error == 0) {
@@ -514,8 +508,14 @@ retry:
 					     HAMMER2_INODE_BYTES,     /* n/a */
 					     &error);
 	}
-	hammer2_chain_unlock(hmp, parent);
-	hammer2_inode_unlock_ex(dip);
+
+	/*
+	 * Clean up, but we need to retain a ref on parent so we can wait
+	 * on it for certain errors.
+	 */
+	if (error == EAGAIN)
+		hammer2_chain_ref(hmp, parent);
+	hammer2_inode_unlock_ex(dip, parent);
 
 	/*
 	 * Handle the error case
@@ -524,6 +524,7 @@ retry:
 		KKASSERT(chain == NULL);
 		if (error == EAGAIN) {
 			hammer2_chain_wait(hmp, parent);
+			hammer2_chain_drop(hmp, parent);
 			goto retry;
 		}
 		return (error);
@@ -548,8 +549,8 @@ retry:
 	 * pointer to the real hardlink's inum and can't have any sub-chains.
 	 * XXX might be 0-ref chains left.
 	 */
-	hammer2_inode_lock_ex(oip);
-	hammer2_chain_flush(hmp, oip->chain, 0);
+	parent = hammer2_inode_lock_ex(oip);
+	hammer2_chain_flush(hmp, parent, 0);
 	/*KKASSERT(RB_EMPTY(&oip->chain.rbhead));*/
 
 	/*
@@ -561,8 +562,8 @@ retry:
 	nip = hammer2_inode_get(dip->pmp, dip, chain);
 	hammer2_chain_modify(hmp, chain, 0);
 	nipdata = &chain->data->ipdata;
-	*nipdata = oip->chain->data->ipdata;
-	hammer2_inode_unlock_ex(oip);
+	*nipdata = parent->data->ipdata;
+	hammer2_inode_unlock_ex(oip, parent);
 
 	if (name) {
 		/*
@@ -585,6 +586,7 @@ retry:
 		nipdata->name_key = lhc;
 	}
 	*nipp = nip;
+	*nchainp = chain;
 
 	return (0);
 }
@@ -609,6 +611,7 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
+	hammer2_chain_t *ochain;
 	hammer2_inode_t *nip;
 	hammer2_key_t lhc;
 	int error;
@@ -627,23 +630,21 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
 	hmp = dip->hmp;
 retry:
 	if (oip->pip == dip) {
-		hammer2_inode_lock_ex(dip);
-		hammer2_inode_lock_ex(oip);
+		parent = hammer2_inode_lock_ex(dip);
+		ochain = hammer2_inode_lock_ex(oip);
 	} else {
-		hammer2_inode_lock_ex(oip);
-		hammer2_inode_lock_ex(dip);
+		ochain = hammer2_inode_lock_ex(oip);
+		parent = hammer2_inode_lock_ex(dip);
 	}
-	parent = dip->chain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
 	lhc = hammer2_dirhash(name, name_len);
-	hlink = (oip->chain->parent != NULL);
+	hlink = (ochain->parent != NULL);
 
 	/*
 	 * In fake mode flush oip so we can just snapshot it downbelow.
 	 */
 	if (hlink && hammer2_hardlink_enable < 0)
-		hammer2_chain_flush(hmp, oip->chain, 0);
+		hammer2_chain_flush(hmp, ochain, 0);
 
 	/*
 	 * Locate the inode or indirect block to create the new
@@ -680,8 +681,10 @@ retry:
 						     HAMMER2_BREF_TYPE_INODE,
 						     HAMMER2_INODE_BYTES,
 						     &error);
-			if (chain)
+			if (chain) {
 				KKASSERT(chain == oip->chain);
+				KKASSERT(ochain == oip->chain);
+			}
 		}
 	}
 
@@ -691,10 +694,11 @@ retry:
 	 */
 	if (error == EAGAIN)
 		hammer2_chain_ref(hmp, parent);
-	hammer2_chain_unlock(hmp, parent);
-	hammer2_inode_unlock_ex(dip);
+	hammer2_inode_unlock_ex(dip, parent);
 
 	/*
+	 * oip/ochain still active.
+	 *
 	 * Handle the error case
 	 */
 	if (error) {
@@ -702,10 +706,10 @@ retry:
 		if (error == EAGAIN) {
 			hammer2_chain_wait(hmp, parent);
 			hammer2_chain_drop(hmp, parent);
-			hammer2_inode_unlock_ex(oip);
+			hammer2_inode_unlock_ex(oip, ochain);
 			goto retry;
 		}
-		hammer2_inode_unlock_ex(oip);
+		hammer2_inode_unlock_ex(oip, ochain);
 		return (error);
 	}
 
@@ -732,9 +736,9 @@ retry:
 		bcopy(name, nipdata->filename, name_len);
 		nipdata->name_key = lhc;
 		nipdata->name_len = name_len;
-		nipdata->target_type = oip->chain->data->ipdata.type;
+		nipdata->target_type = ochain->data->ipdata.type;
 		nipdata->type = HAMMER2_OBJTYPE_HARDLINK;
-		nipdata->inum = oip->chain->data->ipdata.inum;
+		nipdata->inum = ochain->data->ipdata.inum;
 		nipdata->nlinks = 1;
 		kprintf("created hardlink %*.*s\n",
 			(int)name_len, (int)name_len, name);
@@ -749,7 +753,7 @@ retry:
 		hammer2_chain_modify(hmp, chain, 0);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		nipdata = &nip->chain->data->ipdata;
-		*nipdata = oip->chain->data->ipdata;
+		*nipdata = ochain->data->ipdata;
 		bcopy(name, nipdata->filename, name_len);
 		nipdata->name_key = lhc;
 		nipdata->name_len = name_len;
@@ -766,7 +770,7 @@ retry:
 		 */
 		KKASSERT(chain->u.ip != NULL);
 		hammer2_chain_modify(hmp, chain, 0);
-		nipdata = &oip->chain->data->ipdata;
+		nipdata = &ochain->data->ipdata;
 
 		if (nipdata->name_len != name_len ||
 		    bcmp(nipdata->filename, name, name_len) != 0) {
@@ -777,7 +781,7 @@ retry:
 		}
 		nipdata->nlinks = 1;
 	}
-	hammer2_inode_unlock_ex(oip);
+	hammer2_inode_unlock_ex(oip, ochain);
 	return (0);
 }
 
@@ -803,12 +807,15 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 	hammer2_chain_t *chain;
 	hammer2_chain_t *dparent;
 	hammer2_chain_t *dchain;
+	hammer2_chain_t *tmpchain;
 	hammer2_key_t lhc;
 	hammer2_inode_t *ip;
 	hammer2_inode_t *oip;
 	int error;
+	int parent_ref;
 	uint8_t type;
 
+	parent_ref = 0;
 	error = 0;
 	ip = NULL;
 	ochain = NULL;
@@ -818,9 +825,7 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 	/*
 	 * Search for the filename in the directory
 	 */
-	hammer2_inode_lock_ex(dip);
-	parent = dip->chain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+	parent = hammer2_inode_lock_ex(dip);
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 				     0);
@@ -834,14 +839,14 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 					   0);
 	}
-	hammer2_inode_unlock_ex(dip);
+	hammer2_inode_unlock_ex(dip, NULL);	/* retain parent */
 
 	/*
 	 * Not found or wrong type (isdir < 0 disables the type check).
 	 */
 	if (chain == NULL) {
-		hammer2_chain_unlock(hmp, parent);
-		return ENOENT;
+		error = ENOENT;
+		goto done;
 	}
 	if ((type = chain->data->ipdata.type) == HAMMER2_OBJTYPE_HARDLINK)
 		type = chain->data->ipdata.target_type;
@@ -864,6 +869,7 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 	 * directory.  Otherwise chain remains pointing to the original.
 	 */
 	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK) {
+		KKASSERT(parent_ref == 0);
 		hammer2_chain_unlock(hmp, parent);
 		parent = NULL;
 		error = hammer2_hardlink_find(dip, &chain, &ochain);
@@ -911,8 +917,12 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 	if (ochain) {
 		/*
 		 * Delete the original hardlink pointer.
+		 *
+		 * NOTE: parent from above is NULL when ochain != NULL
+		 *	 so we can reuse it.
 		 */
 		hammer2_chain_lock(hmp, ochain, HAMMER2_RESOLVE_ALWAYS);
+		parent_ref = 1;
 		for (;;) {
 			parent = ochain->parent;
 			hammer2_chain_ref(hmp, parent);
@@ -931,12 +941,14 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 			goto done;
 		}
 		if ((oip = ochain->u.ip) != NULL) {
-			hammer2_inode_lock_ex(oip);
+			tmpchain = hammer2_inode_lock_ex(oip);
 			oip->flags |= HAMMER2_INODE_DELETED;
 			if (oip->vp || oip->refs > 1)
-				hammer2_inode_unlock_ex(oip);
+				hammer2_inode_unlock_ex(oip, tmpchain);
 			else
-				hammer2_inode_put(oip);
+				hammer2_inode_put(oip, tmpchain);
+			KKASSERT(tmpchain == ochain);
+			/* ochain still actively locked */
 		}
 		hammer2_chain_delete(hmp, parent, ochain,
 				     (ochain == retain_ip->chain));
@@ -960,12 +972,13 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 			hammer2_chain_modify(hmp, chain, 0);
 			--chain->data->ipdata.nlinks;
 			if ((ip = chain->u.ip) != NULL) {
-				hammer2_inode_lock_ex(ip);
+				parent = hammer2_inode_lock_ex(ip);
 				ip->flags |= HAMMER2_INODE_DELETED;
 				if (ip->vp)
-					hammer2_inode_unlock_ex(ip);
+					hammer2_inode_unlock_ex(ip, parent);
 				else
-					hammer2_inode_put(ip);
+					hammer2_inode_put(ip, parent);
+				parent = NULL;
 			}
 			hammer2_chain_delete(hmp, dparent, chain, 0);
 			hammer2_chain_unlock(hmp, dparent);
@@ -983,7 +996,7 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 		ip = hammer2_inode_get(dip->pmp, dip, chain);
 		ipdata = &ip->chain->data->ipdata;
 		if (ip == retain_ip && chain->flushing) {
-			hammer2_inode_unlock_ex(ip);
+			hammer2_inode_unlock_ex(ip, chain);
 			chain = NULL;	/* inode_unlock eats chain */
 			error = EAGAIN;
 			goto done;
@@ -994,9 +1007,9 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 		hammer2_chain_delete(hmp, parent, chain,
 				     (retain_ip == ip));
 		if (ip->vp)
-			hammer2_inode_unlock_ex(ip);
+			hammer2_inode_unlock_ex(ip, chain);
 		else
-			hammer2_inode_put(ip);
+			hammer2_inode_put(ip, chain);
 		chain = NULL;	/* inode_unlock eats chain */
 	}
 
@@ -1007,7 +1020,8 @@ done:
 		hammer2_chain_unlock(hmp, chain);
 	if (parent) {
 		hammer2_chain_unlock(hmp, parent);
-		hammer2_chain_drop(hmp, parent);
+		if (parent_ref)
+			hammer2_chain_drop(hmp, parent);
 	}
 	if (ochain)
 		hammer2_chain_drop(hmp, ochain);
@@ -1055,6 +1069,7 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 	hammer2_inode_t *fdip;
 	hammer2_inode_t *cdip;
 	hammer2_chain_t *ochain;
+	hammer2_chain_t *nchain;
 	hammer2_chain_t *parent;
 	int error;
 
@@ -1075,16 +1090,16 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 	 * already been consolidated in the correct place.
 	 */
 	if (cdip == fdip) {
-		hammer2_inode_lock_ex(oip);
-		if ((oip->chain->data->ipdata.name_key &
+		ochain = hammer2_inode_lock_ex(oip);
+		if ((ochain->data->ipdata.name_key &
 		     HAMMER2_DIRHASH_VISIBLE) == 0) {
-			hammer2_chain_modify(hmp, oip->chain, 0);
-			++oip->chain->data->ipdata.nlinks;
-			hammer2_inode_unlock_ex(oip);
+			hammer2_chain_modify(hmp, ochain, 0);
+			++ochain->data->ipdata.nlinks;
+			hammer2_inode_unlock_ex(oip, ochain);
 			hammer2_inode_drop(cdip);
 			return(0);
 		}
-		hammer2_inode_unlock_ex(oip);
+		hammer2_inode_unlock_ex(oip, ochain);
 	}
 
 	/*
@@ -1095,26 +1110,25 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 	 * under oip to the new hardlink target inode, retiring all chains
 	 * related to oip before returning.  XXX vp->ip races.
 	 */
-	error = hammer2_inode_duplicate(cdip, oip, &nip, NULL, 0);
+	error = hammer2_inode_duplicate(cdip, oip, &nip, &nchain, NULL, 0);
 	if (error == 0) {
 		/*
 		 * Bump nlinks on duplicated hidden inode.
 		 */
 		hammer2_inode_ref(nip);			/* ref new *ipp */
-		hammer2_chain_modify(hmp, nip->chain, 0);
-		++nip->chain->data->ipdata.nlinks;
-		hammer2_inode_unlock_ex(nip);
-		hammer2_inode_lock_ex(oip);
+		hammer2_chain_modify(hmp, nchain, 0);
+		++nchain->data->ipdata.nlinks;
+		hammer2_inode_unlock_ex(nip, nchain);
+		ochain = hammer2_inode_lock_ex(oip);
 		hammer2_inode_drop(oip);		/* unref old *ipp */
 
-		if (oip->chain->data->ipdata.name_key &
-		    HAMMER2_DIRHASH_VISIBLE) {
+		if (ochain->data->ipdata.name_key & HAMMER2_DIRHASH_VISIBLE) {
 			/*
 			 * Replace the old inode with an OBJTYPE_HARDLINK
 			 * pointer.
 			 */
-			hammer2_chain_modify(hmp, oip->chain, 0);
-			oipdata = &oip->chain->data->ipdata;
+			hammer2_chain_modify(hmp, ochain, 0);
+			oipdata = &ochain->data->ipdata;
 			oipdata->target_type = oipdata->type;
 			oipdata->type = HAMMER2_OBJTYPE_HARDLINK;
 			oipdata->uflags = 0;
@@ -1145,7 +1159,7 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 			bzero(&oipdata->u, sizeof(oipdata->u));
 			/* XXX transaction ids */
 
-			hammer2_inode_unlock_ex(oip);
+			hammer2_inode_unlock_ex(oip, ochain);
 		} else {
 			/*
 			 * The old inode was a hardlink target, which we
@@ -1155,21 +1169,20 @@ hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
 			 */
 			kprintf("DELETE INVISIBLE\n");
 			for (;;) {
-				parent = oip->chain->parent;
+				parent = ochain->parent;
 				hammer2_chain_ref(hmp, parent);
-				hammer2_inode_unlock_ex(oip);
+				hammer2_inode_unlock_ex(oip, ochain);
 				hammer2_chain_lock(hmp, parent,
 						   HAMMER2_RESOLVE_ALWAYS);
-				hammer2_inode_lock_ex(oip);
+				ochain = hammer2_inode_lock_ex(oip);
 				if (oip->chain->parent == parent)
 					break;
 				hammer2_chain_unlock(hmp, parent);
 				hammer2_chain_drop(hmp, parent);
 			}
 			oip->flags |= HAMMER2_INODE_DELETED;
-			ochain = oip->chain;
 			hammer2_chain_delete(hmp, parent, ochain, 0);
-			hammer2_inode_put(oip);
+			hammer2_inode_put(oip, ochain); /* unconditional */
 			hammer2_chain_unlock(hmp, parent);
 			hammer2_chain_drop(hmp, parent);
 		}
@@ -1241,11 +1254,9 @@ hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 	chain = NULL;
 
 	while ((ip = pip) != NULL) {
-		hammer2_inode_lock_ex(ip);
+		parent = hammer2_inode_lock_ex(ip);
 		hammer2_inode_drop(ip);
-		parent = ip->chain;
 		KKASSERT(parent->bref.type == HAMMER2_BREF_TYPE_INODE);
-		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 		chain = hammer2_chain_lookup(hmp, &parent, lhc, lhc, 0);
 		hammer2_chain_unlock(hmp, parent);
 		if (chain)
@@ -1253,14 +1264,16 @@ hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 		pip = ip->pip;		/* safe, ip held locked */
 		if (pip)
 			hammer2_inode_ref(pip);
-		hammer2_inode_unlock_ex(ip);
+		hammer2_inode_unlock_ex(ip, NULL);
 	}
 
 	/*
 	 * chain is locked, ip is locked.  Unlock ip, return the locked
 	 * chain.  *ipp is already set w/a ref count and not locked.
+	 *
+	 * (parent is already unlocked).
 	 */
-	hammer2_inode_unlock_ex(ip);
+	hammer2_inode_unlock_ex(ip, NULL);
 	*chainp = chain;
 	if (chain) {
 		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INODE);

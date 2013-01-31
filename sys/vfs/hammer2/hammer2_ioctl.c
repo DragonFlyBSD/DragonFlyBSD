@@ -455,6 +455,7 @@ static int
 hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 {
 	hammer2_inode_data_t *nipdata;
+	hammer2_chain_t *nchain;
 	hammer2_mount_t *hmp;
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_inode_t *nip;
@@ -467,14 +468,14 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure 0-termination */
 	error = hammer2_inode_create(hmp->schain->u.ip, NULL, NULL,
 				     pfs->name, strlen(pfs->name),
-				     &nip);
+				     &nip, &nchain);
 	if (error == 0) {
-		hammer2_chain_modify(hmp, nip->chain, 0);
-		nipdata = &nip->chain->data->ipdata;
+		hammer2_chain_modify(hmp, nchain, 0);
+		nipdata = &nchain->data->ipdata;
 		nipdata->pfs_type = pfs->pfs_type;
 		nipdata->pfs_clid = pfs->pfs_clid;
 		nipdata->pfs_fsid = pfs->pfs_fsid;
-		hammer2_inode_unlock_ex(nip);
+		hammer2_inode_unlock_ex(nip, nchain);
 	}
 	return (error);
 }
@@ -502,11 +503,12 @@ static int
 hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino = data;
+	hammer2_chain_t *chain;
 
-	hammer2_inode_lock_sh(ip);
-	ino->ip_data = ip->chain->data->ipdata;
+	chain = hammer2_inode_lock_sh(ip);
+	ino->ip_data = chain->data->ipdata;
 	ino->kdata = ip;
-	hammer2_inode_unlock_sh(ip);
+	hammer2_inode_unlock_sh(ip, chain);
 	return (0);
 }
 
@@ -514,15 +516,16 @@ static int
 hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino = data;
+	hammer2_chain_t *chain;
 	int error = EINVAL;
 
-	hammer2_inode_lock_ex(ip);
+	chain = hammer2_inode_lock_ex(ip);
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_IQUOTA) {
 	}
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_DQUOTA) {
 	}
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_COPIES) {
 	}
-	hammer2_inode_unlock_ex(ip);
+	hammer2_inode_unlock_ex(ip, chain);
 	return (error);
 }

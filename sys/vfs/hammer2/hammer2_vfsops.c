@@ -475,7 +475,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	pmp->rchain = rchain;			/* left held & unlocked */
 	pmp->iroot = hammer2_inode_get(pmp, NULL, rchain);
 	hammer2_inode_ref(pmp->iroot);		/* ref for pmp->iroot */
-	hammer2_inode_unlock_ex(pmp->iroot);	/* iroot & its chain */
+	hammer2_inode_unlock_ex(pmp->iroot, rchain); /* iroot & its chain */
 
 	kprintf("iroot %p\n", pmp->iroot);
 
@@ -528,6 +528,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 {
 	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
+	hammer2_chain_t *chain;
 	int flags;
 	int error = 0;
 	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
@@ -585,8 +586,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	 * clean).
 	 */
 	if (pmp->iroot) {
-		hammer2_inode_lock_ex(pmp->iroot);
-		hammer2_inode_put(pmp->iroot);
+		chain = hammer2_inode_lock_ex(pmp->iroot);
+		hammer2_inode_put(pmp->iroot, chain);
 		/* lock destroyed by the put */
 		KKASSERT(pmp->iroot->refs == 1);
 		hammer2_inode_drop(pmp->iroot);
@@ -659,6 +660,7 @@ int
 hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 {
 	hammer2_pfsmount_t *pmp;
+	hammer2_chain_t *ichain;
 	hammer2_mount_t *hmp;
 	int error;
 	struct vnode *vp;
@@ -670,9 +672,9 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 		*vpp = NULL;
 		error = EINVAL;
 	} else {
-		hammer2_inode_lock_sh(pmp->iroot);
+		ichain = hammer2_inode_lock_sh(pmp->iroot);
 		vp = hammer2_igetv(pmp->iroot, &error);
-		hammer2_inode_unlock_sh(pmp->iroot);
+		hammer2_inode_unlock_sh(pmp->iroot, ichain);
 		*vpp = vp;
 		if (vp == NULL)
 			kprintf("vnodefail\n");
@@ -1021,6 +1023,7 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 void
 hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 {
+	hammer2_chain_t *chain;
 	hammer2_inode_data_t *ipdata;
 	size_t name_len;
 
@@ -1034,14 +1037,14 @@ hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 	/*
 	 * Setup LNK_CONN fields for autoinitiated state machine
 	 */
-	hammer2_inode_lock_ex(pmp->iroot);
-	ipdata = &pmp->iroot->chain->data->ipdata;
+	chain = hammer2_inode_lock_ex(pmp->iroot);
+	ipdata = &chain->data->ipdata;
 	pmp->iocom.auto_lnk_conn.pfs_clid = ipdata->pfs_clid;
 	pmp->iocom.auto_lnk_conn.pfs_fsid = ipdata->pfs_fsid;
 	pmp->iocom.auto_lnk_conn.pfs_type = ipdata->pfs_type;
 	pmp->iocom.auto_lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
 	pmp->iocom.auto_lnk_conn.peer_type = pmp->hmp->voldata.peer_type;
-	hammer2_inode_unlock_ex(pmp->iroot);
+	hammer2_inode_unlock_ex(pmp->iroot, chain);
 
 	/*
 	 * Filter adjustment.  Clients do not need visibility into other
