@@ -38,7 +38,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   struct ctype_base
   {
     // Non-standard typedefs.
-    typedef const unsigned char*	__to_type;
+    typedef const int*		__to_type;
 
     // NB: Offsets into ctype<char>::_M_table force a particular size
     // on the mask type. Because of this, we don't use an enum.
