@@ -249,6 +249,8 @@ kdmsg_lnk_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
 void
 kdmsg_iocom_uninit(kdmsg_iocom_t *iocom)
 {
+	kdmsg_state_t *state;
+
 	/*
 	 * Ask the cluster controller to go away
 	 */
@@ -258,6 +260,19 @@ kdmsg_iocom_uninit(kdmsg_iocom_t *iocom)
 	while (iocom->msgrd_td || iocom->msgwr_td) {
 		wakeup(&iocom->msg_ctl);
 		lksleep(iocom, &iocom->msglk, 0, "clstrkl", hz);
+	}
+
+	/*
+	 * Cleanup caches
+	 */
+	if ((state = iocom->freerd_state) != NULL) {
+		iocom->freerd_state = NULL;
+		kdmsg_state_free(state);
+	}
+
+	if ((state = iocom->freewr_state) != NULL) {
+		iocom->freewr_state = NULL;
+		kdmsg_state_free(state);
 	}
 
 	/*
@@ -282,7 +297,6 @@ kdmsg_iocom_thread_rd(void *arg)
 	kdmsg_iocom_t *iocom = arg;
 	dmsg_hdr_t hdr;
 	kdmsg_msg_t *msg = NULL;
-	kdmsg_state_t *state;
 	size_t hbytes;
 	size_t abytes;
 	int error = 0;
@@ -352,11 +366,6 @@ kdmsg_iocom_thread_rd(void *arg)
 	lockmgr(&iocom->msglk, LK_EXCLUSIVE);
 	if (msg)
 		kdmsg_msg_free(msg);
-
-	if ((state = iocom->freerd_state) != NULL) {
-		iocom->freerd_state = NULL;
-		kdmsg_state_free(state);
-	}
 
 	/*
 	 * Shutdown the socket before waiting for the transmit side.
@@ -552,11 +561,6 @@ cleanupwr:
 		goto cleanuprd;
 	}
 	iocom->flags |= KDMSG_IOCOMF_EXITNOACC;
-
-	if ((state = iocom->freewr_state) != NULL) {
-		iocom->freewr_state = NULL;
-		kdmsg_state_free(state);
-	}
 
 	lockmgr(&iocom->msglk, LK_RELEASE);
 
