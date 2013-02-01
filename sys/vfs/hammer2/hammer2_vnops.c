@@ -146,6 +146,8 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 					      HAMMER2_CHAIN_SUBMODIFIED);
 	}
 	hammer2_chain_flush(hmp, chain, 0);
+	kprintf("vop_reclaim vp %p ip %p refs %d\n",
+		vp, ip, ip->refs);
 	if (ip->refs > 2)			/* (our lock + vp ref) */
 		hammer2_inode_unlock_ex(ip, chain); /* unlock */
 	else
@@ -1715,10 +1717,8 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 {
 	hammer2_inode_t *dip;	/* target directory to create link in */
 	hammer2_inode_t *ip;	/* inode we are hardlinking to */
-	hammer2_inode_t *oip;
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
-	hammer2_chain_t *ochain;
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
@@ -1729,59 +1729,32 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	if (hmp->ronly)
 		return (EROFS);
 
-	/*
-	 * (ip) is the inode we are linking to.
-	 */
-	ip = oip = VTOI(ap->a_vp);
-	hammer2_inode_ref(ip);
-
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
 	/*
-	 * Create a consolidated real file for the hardlink, adjust (ip),
-	 * and move the nlinks lock if necessary.  Tell the function to
-	 * bump the hardlink count on the consolidated file.
+	 * ip represents the file being hardlinked.  The file could be a
+	 * normal file or a hardlink target if it has already been hardlinked.
+	 * If ip is a hardlinked target then ip->pip represents the location
+	 * of the hardlinked target, NOT the location of the hardlink pointer.
+	 *
+	 * Bump nlinks and potentially also create or move the hardlink
+	 * target in the parent directory common to (ip) and (dip).  The
+	 * consolidation code can modify ip->chain and ip->pip.  The
+	 * returned chain is locked.
 	 */
-	error = hammer2_hardlink_consolidate(&ip, dip);
+	ip = VTOI(ap->a_vp);
+	hammer2_inode_ref(ip);
+	error = hammer2_hardlink_consolidate(ip, &chain, dip, 1);
 	if (error)
 		goto done;
 
 	/*
-	 * If the consolidation changed ip to a HARDLINK pointer we have
-	 * to adjust the vnode to point to the actual ip.
-	 *
-	 * XXX this can race against concurrent vnode ops.
+	 * Create a directory entry connected to the specified chain.
+	 * This function unlocks and NULL's chain on return.
 	 */
-	if (oip != ip) {
-		hammer2_inode_ref(ip);			/* vp ref+ */
-		chain = hammer2_inode_lock_ex(ip);
-		ochain = hammer2_inode_lock_ex(oip);
-		if (ip->vp) {
-			KKASSERT(ip->vp == ap->a_vp);
-			hammer2_inode_drop(ip);		/* vp already ref'd */
-		} else {
-			ip->vp = ap->a_vp;
-			ap->a_vp->v_data = ip;
-		}
-		if (oip->vp) {
-			KKASSERT(oip->vp == ap->a_vp);
-			oip->vp = NULL;
-			hammer2_inode_drop(oip);	/* vp ref- */
-		}
-		hammer2_inode_unlock_ex(oip, ochain);
-		hammer2_inode_unlock_ex(ip, chain);
-	}
-
-	/*
-	 * The act of connecting the existing (ip) will properly bump the
-	 * nlinks count.  However, vp will incorrectly point at the old
-	 * inode which has now been turned into a OBJTYPE_HARDLINK pointer.
-	 *
-	 * We must reconnect the vp.
-	 */
-	error = hammer2_inode_connect(dip, ip, name, name_len);
+	error = hammer2_inode_connect(dip, &chain, name, name_len);
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
@@ -2024,10 +1997,12 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * ip represents the actual file and not the hardlink marker.
 	 */
 	ip = VTOI(fncp->nc_vp);
+	chain = NULL;
 
 	/*
-	 * Keep a tight grip on the inode as removing it should disconnect
-	 * it and we don't want to destroy it.
+	 * Keep a tight grip on the inode so the temporary unlinking from
+	 * the source location prior to linking to the target location
+	 * does not cause the chain to be destroyed.
 	 *
 	 * NOTE: To avoid deadlocks we cannot lock (ip) while we are
 	 *	 unlinking elements from their directories.  Locking
@@ -2044,33 +2019,25 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	cache_setunresolved(ap->a_tnch);
 
 	/*
+	 * When renaming a hardlinked file we may have to re-consolidate
+	 * the location of the hardlink target.  Since the element is simply
+	 * being moved, nlinks is not modified in this case.
+	 *
+	 * If ip represents a regular file the consolidation code essentially
+	 * does nothing other than return the locked chain.
+	 *
+	 * The returned chain will be locked.
+	 */
+	error = hammer2_hardlink_consolidate(ip, &chain, tdip, 0);
+	if (error)
+		goto done;
+
+	/*
 	 * Disconnect (fdip, fname) from the source directory.  This will
 	 * disconnect (ip) if it represents a direct file.  If (ip) represents
 	 * a hardlink the HARDLINK pointer object will be removed but the
 	 * hardlink will stay intact.
 	 *
-	 * If (ip) is already hardlinked we have to resolve to a consolidated
-	 * file but we do not bump the nlinks count.  (ip) must hold the nlinks
-	 * lock & ref for the operation.  If the consolidated file has been
-	 * relocated (ip) will be adjusted and the related nlinks lock moved
-	 * along with it.
-	 *
-	 * If (ip) does not have multiple links we can just copy the physical
-	 * contents of the inode.
-	 */
-	chain = hammer2_inode_lock_sh(ip);
-	hammer2_chain_ref(hmp, chain);		/* for unlink file */
-	if (chain->data->ipdata.nlinks > 1) {
-		hammer2_inode_unlock_sh(ip, chain);
-		error = hammer2_hardlink_consolidate(&ip, tdip);
-		if (error)
-			goto done;
-	} else {
-		hammer2_inode_unlock_sh(ip, chain);
-	}
-	/* chain ref still intact */
-
-	/*
 	 * NOTE! Because we are retaining (ip) the unlink can fail with
 	 *	 an EAGAIN.
 	 */
@@ -2081,7 +2048,6 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		kprintf("hammer2_vop_nrename: unlink race %s\n", fname);
 		tsleep(fdip, 0, "h2renr", 1);
 	}
-	hammer2_chain_drop(hmp, chain);	/* drop temporary ref */
 	if (error)
 		goto done;
 
@@ -2090,13 +2056,15 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *
 	 * WARNING: chain locks can lock buffer cache buffers, to avoid
 	 *	    deadlocks we want to unlock before issuing a cache_*()
-	 *	    op (that might have to lock a vnode).
+	 *	    op (that might have to lock a vnode).  The *_connect()
+	 *	    function does this for us.
 	 */
-	error = hammer2_inode_connect(tdip, ip, tname, tname_len);
-	if (error == 0) {
+	error = hammer2_inode_connect(tdip, &chain, tname, tname_len);
+	if (error == 0)
 		cache_rename(ap->a_fnch, ap->a_tnch);
-	}
 done:
+	if (chain)
+		hammer2_chain_unlock(hmp, chain);
 	hammer2_inode_drop(ip);
 
 	return (error);

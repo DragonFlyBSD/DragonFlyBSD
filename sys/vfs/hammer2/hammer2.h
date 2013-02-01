@@ -247,6 +247,7 @@ typedef struct hammer2_inode hammer2_inode_t;
 
 #define HAMMER2_INODE_MODIFIED		0x0001
 #define HAMMER2_INODE_DIRTYEMBED	0x0002
+#define HAMMER2_INODE_RENAME_INPROG	0x0004
 
 /*
  * XXX
@@ -408,10 +409,9 @@ int hammer2_inode_create(hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len,
 			hammer2_inode_t **nipp, hammer2_chain_t **nchainp);
 
-int hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
-			hammer2_inode_t **nipp, hammer2_chain_t **nchainp,
-			const uint8_t *name, size_t name_len);
-int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
+int hammer2_inode_duplicate(hammer2_inode_t *dip,
+			hammer2_chain_t *ochain, hammer2_chain_t **nchainp);
+int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 			const uint8_t *name, size_t name_len);
 hammer2_inode_t *hammer2_inode_common_parent(hammer2_mount_t *hmp,
 			hammer2_inode_t *fdip, hammer2_inode_t *tdip);
@@ -419,7 +419,8 @@ hammer2_inode_t *hammer2_inode_common_parent(hammer2_mount_t *hmp,
 int hammer2_unlink_file(hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len,
 			int isdir, hammer2_chain_t *retain_chain);
-int hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip);
+int hammer2_hardlink_consolidate(hammer2_inode_t *ip, hammer2_chain_t **chainp,
+			hammer2_inode_t *tdip, int linkcnt);
 int hammer2_hardlink_deconsolidate(hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_chain_t **ochainp);
 int hammer2_hardlink_find(hammer2_inode_t *dip,

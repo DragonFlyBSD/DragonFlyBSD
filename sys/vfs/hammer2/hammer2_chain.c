@@ -2246,7 +2246,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 
 	/*
 	 * If we hit a chain that is undergoing flushing we're screwed and
-	 * we have to duno the whole mess.  Since ichain has not been linked
+	 * we have to undo the whole mess.  Since ichain has not been linked
 	 * in yet, the moved chains are not reachable and will not have been
 	 * disposed of.
 	 *
@@ -2348,11 +2348,12 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
  * referenced.  (*parentp) will be modified in a manner similar to a lookup
  * or iteration when indirect blocks are also deleted as a side effect.
  *
+ * Must be called with an exclusively locked parent and chain.  parent and
+ * chain are both left locked on return.
+ *
  * XXX This currently does not adhere to the MOVED flag protocol in that
  *     the removal is immediately indicated in the parent's blockref[]
  *     array.
- *
- * Must be called with an exclusively locked parent and chain.
  */
 void
 hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,

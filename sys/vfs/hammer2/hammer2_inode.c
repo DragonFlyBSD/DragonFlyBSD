@@ -68,7 +68,6 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 		cpu_ccfence();
 		if (refs == 1) {
 			if (atomic_cmpset_int(&ip->refs, 1, 0)) {
-				kprintf("hammer2_inode_drop: 1->0 %p\n", ip);
 				KKASSERT(ip->topo_cst.count == 0);
 
 				hmp = ip->hmp;
@@ -410,7 +409,6 @@ retry:
 	 * NOTE: *_get() integrates chain's lock into the inode lock.
 	 */
 	nip = hammer2_inode_get(dip->hmp, dip->pmp, dip, chain);
-	kprintf("nip %p chain %p\n", nip, nip->chain);
 	*nipp = nip;
 	*nchainp = chain;
 	nipdata = &chain->data->ipdata;
@@ -476,58 +474,44 @@ retry:
 }
 
 /*
- * Duplicate the specified existing inode in the specified target directory.
- * If name is NULL the inode is duplicated as a hidden directory entry.
+ * Create a duplicate of the inode (chain) in the specified target directory
+ * (dip), return the duplicated chain in *nchainp (locked).  chain is locked
+ * on call and remains locked on return.
  *
- * Returns the new inode.  The old inode is left alone.
+ * If name is NULL the inode is duplicated as a hidden directory entry.
  *
  * XXX name needs to be NULL for now.
  */
 int
-hammer2_inode_duplicate(hammer2_inode_t *dip, hammer2_inode_t *oip,
-			hammer2_inode_t **nipp, hammer2_chain_t **nchainp,
-			const uint8_t *name, size_t name_len)
+hammer2_inode_duplicate(hammer2_inode_t *dip,
+			hammer2_chain_t *ochain, hammer2_chain_t **nchainp)
 {
 	hammer2_inode_data_t *nipdata;
 	hammer2_mount_t *hmp;
-	hammer2_inode_t *nip;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t lhc;
-	int error;
+	int error = 0;
 
 	hmp = dip->hmp;
-	if (name) {
-		lhc = hammer2_dirhash(name, name_len);
-	} else {
-		parent = hammer2_inode_lock_ex(oip);
-		lhc = parent->data->ipdata.inum;
-		hammer2_inode_unlock_ex(oip, parent);
-		KKASSERT((lhc & HAMMER2_DIRHASH_VISIBLE) == 0);
-	}
+	lhc = ochain->data->ipdata.inum;
+	*nchainp = NULL;
+	KKASSERT((lhc & HAMMER2_DIRHASH_VISIBLE) == 0);
 
 	/*
 	 * Locate the inode or indirect block to create the new
-	 * entry in.  At the same time check for key collisions
-	 * and iterate until we don't get one.
+	 * entry in.
+	 *
+	 * There should be no key collisions with invisible inode keys.
 	 */
-	nip = NULL;
 retry:
-	parent = hammer2_inode_lock_ex(dip);
-
-	error = 0;
-	while (error == 0) {
-		chain = hammer2_chain_lookup(hmp, &parent, lhc, lhc, 0);
-		if (chain == NULL)
-			break;
-		/* XXX bcmp name if not NULL */
-		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
-			error = ENOSPC;
-		if ((lhc & HAMMER2_DIRHASH_VISIBLE) == 0) /* shouldn't happen */
-			error = ENOSPC;
+	parent = dip->chain;
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
+	chain = hammer2_chain_lookup(hmp, &parent, lhc, lhc, 0);
+	if (chain) {
 		hammer2_chain_unlock(hmp, chain);
 		chain = NULL;
-		++lhc;
+		error = ENOSPC;
 	}
 
 	/*
@@ -546,7 +530,7 @@ retry:
 	 */
 	if (error == EAGAIN)
 		hammer2_chain_ref(hmp, parent);
-	hammer2_inode_unlock_ex(dip, parent);
+	hammer2_chain_unlock(hmp, parent);
 
 	/*
 	 * Handle the error case
@@ -575,98 +559,75 @@ retry:
 	 *     Well, it would work I guess, but you might catch some files
 	 *     mid-operation.
 	 *
-	 * We cannot leave oip with any in-memory chains because (for a
-	 * hardlink), oip will become a OBJTYPE_HARDLINK which is just a
+	 * We cannot leave ochain with any in-memory chains because (for a
+	 * hardlink), ochain will become a OBJTYPE_HARDLINK which is just a
 	 * pointer to the real hardlink's inum and can't have any sub-chains.
 	 * XXX might be 0-ref chains left.
 	 */
-	parent = hammer2_inode_lock_ex(oip);
-	hammer2_chain_flush(hmp, parent, 0);
-	/*KKASSERT(RB_EMPTY(&oip->chain.rbhead));*/
+	hammer2_chain_flush(hmp, ochain, 0);
+	/*KKASSERT(RB_EMPTY(&ochain.rbhead));*/
 
-	/*
-	 * nip is a duplicate of oip.  Meta-data will be synchronized to
-	 * media when nip is flushed.
-	 *
-	 * NOTE: *_get() integrates chain's lock into the inode lock.
-	 */
-	nip = hammer2_inode_get(dip->hmp, dip->pmp, dip, chain);
 	hammer2_chain_modify(hmp, chain, 0);
 	nipdata = &chain->data->ipdata;
-	*nipdata = parent->data->ipdata;
-	hammer2_inode_unlock_ex(oip, parent);
+	*nipdata = ochain->data->ipdata;
 
-	if (name) {
-		/*
-		 * Directory entries are inodes so if the name has changed
-		 * we have to update the inode.
-		 */
-		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
-		bcopy(name, nipdata->filename, name_len);
-		nipdata->name_key = lhc;
-		nipdata->name_len = name_len;
-	} else {
-		/*
-		 * Directory entries are inodes but this is a hidden hardlink
-		 * target.  The name isn't used but to ease debugging give it
-		 * a name after its inode number.
-		 */
-		ksnprintf(nipdata->filename, sizeof(nipdata->filename),
-			  "0x%016jx", (intmax_t)nipdata->inum);
-		nipdata->name_len = strlen(nipdata->filename);
-		nipdata->name_key = lhc;
-	}
-	*nipp = nip;
+	/*
+	 * Directory entries are inodes but this is a hidden hardlink
+	 * target.  The name isn't used but to ease debugging give it
+	 * a name after its inode number.
+	 */
+	ksnprintf(nipdata->filename, sizeof(nipdata->filename),
+		  "0x%016jx", (intmax_t)nipdata->inum);
+	nipdata->name_len = strlen(nipdata->filename);
+	nipdata->name_key = lhc;
+
 	*nchainp = chain;
 
 	return (0);
 }
 
-
 /*
- * Connect inode (oip) to the specified directory using the specified name.
- * (oip) must be locked.
+ * Connect *chainp to the media topology represented by (dip, name, len).
+ * A directory entry is created which points to *chainp.  *chainp is then
+ * unlocked and set to NULL.
  *
- * If (oip) is not currently connected we simply connect it up.
+ * If *chainp is not currently connected we simply connect it up.
  *
- * If (oip) is already connected we create a OBJTYPE_HARDLINK entry which
- * points to (oip)'s inode number.  (oip) is expected to be the terminus of
+ * If *chainp is already connected we create a OBJTYPE_HARDLINK entry which
+ * points to chain's inode number.  *chainp is expected to be the terminus of
  * the hardlink sitting as a hidden file in a common parent directory
  * in this situation.
+ *
+ * The caller always wants to reference the hardlink terminus, not the
+ * hardlink pointer that we might be creating, so we do NOT replace
+ * *chainp here, we simply unlock and NULL it out.
  */
 int
-hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *oip,
+hammer2_inode_connect(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 		      const uint8_t *name, size_t name_len)
 {
-	hammer2_inode_data_t *nipdata;
+	hammer2_inode_data_t *ipdata;
 	hammer2_mount_t *hmp;
-	hammer2_chain_t *chain;
+	hammer2_chain_t *nchain;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *ochain;
-	hammer2_inode_t *nip;
 	hammer2_key_t lhc;
 	int error;
 	int hlink;
 
-	/*
-	 * (oip) is the terminus of the hardlink sitting in the common
-	 * parent directory.  This means that if oip->pip != dip then
-	 * the already locked oip is ABOVE dip.
-	 *
-	 * But if the common parent directory IS dip, then we would have
-	 * a lock-order reversal and must rearrange the lock ordering.
-	 * For now the caller deals with this for us by locking dip in
-	 * that case (and our lock here winds up just being recursive)
-	 */
 	hmp = dip->hmp;
+
+	ochain = *chainp;
+	*chainp = NULL;
+
+	/*
+	 * Since ochain is either disconnected from the topology or represents
+	 * a hardlink terminus which is always a parent of or equal to dip,
+	 * we should be able to safely lock dip->chain for our setup.
+	 */
 retry:
-	if (oip->pip == dip) {
-		parent = hammer2_inode_lock_ex(dip);
-		ochain = hammer2_inode_lock_ex(oip);
-	} else {
-		ochain = hammer2_inode_lock_ex(oip);
-		parent = hammer2_inode_lock_ex(dip);
-	}
+	parent = dip->chain;
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
 	lhc = hammer2_dirhash(name, name_len);
 	hlink = (ochain->parent != NULL);
@@ -684,13 +645,13 @@ retry:
 	 */
 	error = 0;
 	while (error == 0) {
-		chain = hammer2_chain_lookup(hmp, &parent, lhc, lhc, 0);
-		if (chain == NULL)
+		nchain = hammer2_chain_lookup(hmp, &parent, lhc, lhc, 0);
+		if (nchain == NULL)
 			break;
 		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
 			error = ENOSPC;
-		hammer2_chain_unlock(hmp, chain);
-		chain = NULL;
+		hammer2_chain_unlock(hmp, nchain);
+		nchain = NULL;
 		++lhc;
 	}
 
@@ -701,21 +662,25 @@ retry:
 	 */
 	if (error == 0) {
 		if (hlink) {
-			chain = hammer2_chain_create(hmp, parent,
+			nchain = hammer2_chain_create(hmp, parent,
 						     NULL, lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
 						     HAMMER2_INODE_BYTES,
 						     &error);
 		} else {
-			chain = hammer2_chain_create(hmp, parent,
-						     oip->chain, lhc, 0,
+			/*
+			 * NOTE: reconnects oip->chain to the media
+			 *	 topology and returns its argument
+			 *	 (oip->chain).
+			 *
+			 * No additional locks or refs are obtained on
+			 * the returned chain so don't double-unlock!
+			 */
+			nchain = hammer2_chain_create(hmp, parent,
+						     ochain, lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
 						     HAMMER2_INODE_BYTES,
 						     &error);
-			if (chain) {
-				KKASSERT(chain == oip->chain);
-				KKASSERT(ochain == oip->chain);
-			}
 		}
 	}
 
@@ -725,22 +690,21 @@ retry:
 	 */
 	if (error == EAGAIN)
 		hammer2_chain_ref(hmp, parent);
-	hammer2_inode_unlock_ex(dip, parent);
+	hammer2_chain_unlock(hmp, parent);
 
 	/*
-	 * oip/ochain still active.
+	 * ochain still active.
 	 *
 	 * Handle the error case
 	 */
 	if (error) {
-		KKASSERT(chain == NULL);
+		KKASSERT(nchain == NULL);
 		if (error == EAGAIN) {
 			hammer2_chain_wait(hmp, parent);
 			hammer2_chain_drop(hmp, parent);
-			hammer2_inode_unlock_ex(oip, ochain);
 			goto retry;
 		}
-		hammer2_inode_unlock_ex(oip, ochain);
+		hammer2_chain_unlock(hmp, ochain);
 		return (error);
 	}
 
@@ -759,35 +723,35 @@ retry:
 		 *
 		 * NOTE: *_get() integrates chain's lock into the inode lock.
 		 */
-		nip = hammer2_inode_get(dip->hmp, dip->pmp, dip, chain);
-		hammer2_chain_modify(hmp, chain, 0);
+		hammer2_chain_modify(hmp, nchain, 0);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
-		nipdata = &nip->chain->data->ipdata;
-		bcopy(name, nipdata->filename, name_len);
-		nipdata->name_key = lhc;
-		nipdata->name_len = name_len;
-		nipdata->target_type = ochain->data->ipdata.type;
-		nipdata->type = HAMMER2_OBJTYPE_HARDLINK;
-		nipdata->inum = ochain->data->ipdata.inum;
-		nipdata->nlinks = 1;
+		ipdata = &nchain->data->ipdata;
+		bcopy(name, ipdata->filename, name_len);
+		ipdata->name_key = lhc;
+		ipdata->name_len = name_len;
+		ipdata->target_type = ochain->data->ipdata.type;
+		ipdata->type = HAMMER2_OBJTYPE_HARDLINK;
+		ipdata->inum = ochain->data->ipdata.inum;
+		ipdata->nlinks = 1;
 		kprintf("created hardlink %*.*s\n",
 			(int)name_len, (int)name_len, name);
+		hammer2_chain_unlock(hmp, nchain);
 	} else if (hlink && hammer2_hardlink_enable < 0) {
 		/*
 		 * Create a snapshot (hardlink fake mode for debugging).
 		 *
-		 * NOTE: *_get() integrates chain's lock into the inode lock.
+		 * NOTE: *_get() integrates nchain's lock into the inode lock.
 		 */
-		nip = hammer2_inode_get(dip->hmp, dip->pmp, dip, chain);
-		hammer2_chain_modify(hmp, chain, 0);
+		hammer2_chain_modify(hmp, nchain, 0);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
-		nipdata = &nip->chain->data->ipdata;
-		*nipdata = ochain->data->ipdata;
-		bcopy(name, nipdata->filename, name_len);
-		nipdata->name_key = lhc;
-		nipdata->name_len = name_len;
+		ipdata = &nchain->data->ipdata;
+		*ipdata = ochain->data->ipdata;
+		bcopy(name, ipdata->filename, name_len);
+		ipdata->name_key = lhc;
+		ipdata->name_len = name_len;
 		kprintf("created fake hardlink %*.*s\n",
 			(int)name_len, (int)name_len, name);
+		hammer2_chain_unlock(hmp, nchain);
 	} else {
 		/*
 		 * Normally disconnected inode (e.g. during a rename) that
@@ -797,19 +761,19 @@ retry:
 		 * We are using oip as chain, already locked by caller,
 		 * do not unlock it.
 		 */
-		hammer2_chain_modify(hmp, chain, 0);
-		nipdata = &ochain->data->ipdata;
+		hammer2_chain_modify(hmp, ochain, 0);
+		ipdata = &ochain->data->ipdata;
 
-		if (nipdata->name_len != name_len ||
-		    bcmp(nipdata->filename, name, name_len) != 0) {
+		if (ipdata->name_len != name_len ||
+		    bcmp(ipdata->filename, name, name_len) != 0) {
 			KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
-			bcopy(name, nipdata->filename, name_len);
-			nipdata->name_key = lhc;
-			nipdata->name_len = name_len;
+			bcopy(name, ipdata->filename, name_len);
+			ipdata->name_key = lhc;
+			ipdata->name_len = name_len;
 		}
-		nipdata->nlinks = 1;
+		ipdata->nlinks = 1;
 	}
-	hammer2_inode_unlock_ex(oip, ochain);
+	hammer2_chain_unlock(hmp, ochain);
 	return (0);
 }
 
@@ -871,6 +835,7 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 
 	/*
 	 * Not found or wrong type (isdir < 0 disables the type check).
+	 * If a hardlink pointer, type checks use the hardlink target.
 	 */
 	if (chain == NULL) {
 		error = ENOENT;
@@ -970,6 +935,7 @@ hammer2_unlink_file(hammer2_inode_t *dip,
 		}
 		hammer2_chain_delete(hmp, parent, ochain,
 				     (ochain == retain_chain));
+		hammer2_chain_unlock(hmp, ochain);
 		hammer2_chain_unlock(hmp, parent);
 		hammer2_chain_drop(hmp, parent);
 		parent = NULL;
@@ -1045,152 +1011,161 @@ hammer2_inode_calc_alloc(hammer2_key_t filesize)
 }
 
 /*
- * Consolidate for hard link creation.  This moves the specified terminal
- * hardlink inode to a directory common to its current directory and tdip
- * if necessary, replacing *ipp with the new inode chain element and
- * modifying the original inode chain element to OBJTYPE_HARDLINK.
+ * Given an unlocked ip consolidate for hardlink creation, adding (nlinks)
+ * to the file's link count and potentially relocating the file to a
+ * directory common to ip->pip and tdip.
  *
- * If the original inode chain element was a prior incarnation of a hidden
- * inode it can simply be deleted instead of converted.
- *
- * (*ipp) must be referenced on entry and the new (*ipp) will be referenced
- * on return (with the original dropped).  (*ipp) must not be locked.
- *
- * The link count is bumped if requested.
+ * If the file has to be relocated ip->chain will also be adjusted.
  */
 int
-hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip)
+hammer2_hardlink_consolidate(hammer2_inode_t *ip, hammer2_chain_t **chainp,
+			     hammer2_inode_t *tdip, int nlinks)
 {
-	hammer2_inode_data_t *oipdata;
+	hammer2_inode_data_t *ipdata;
 	hammer2_mount_t *hmp;
-	hammer2_inode_t *oip;
-	hammer2_inode_t *nip;
 	hammer2_inode_t *fdip;
 	hammer2_inode_t *cdip;
-	hammer2_chain_t *ochain;
+	hammer2_chain_t *chain;
 	hammer2_chain_t *nchain;
 	hammer2_chain_t *parent;
 	int error;
 
 	hmp = tdip->hmp;
-	oip = *ipp;
-	nip = NULL;
+	*chainp = NULL;
+	chain = hammer2_inode_lock_ex(ip);
 
-	if (hammer2_hardlink_enable < 0)
+	if (nlinks == 0 &&			/* no hardlink needed */
+	    (chain->data->ipdata.name_key & HAMMER2_DIRHASH_VISIBLE)) {
+		hammer2_inode_unlock_ex(ip, NULL);
+		*chainp = chain;
 		return (0);
-	if (hammer2_hardlink_enable == 0)
+	}
+	if (hammer2_hardlink_enable < 0) {	/* fake hardlinks */
+		hammer2_inode_unlock_ex(ip, NULL);
+		*chainp = chain;
+		return (0);
+	}
+	if (hammer2_hardlink_enable == 0) {	/* disallow hardlinks */
+		hammer2_inode_unlock_ex(ip, chain);
 		return (ENOTSUP);
+	}
 
 	/*
 	 * cdip will be returned with a ref, but not locked.
 	 */
-	fdip = oip->pip;
+	fdip = ip->pip;
 	cdip = hammer2_inode_common_parent(hmp, fdip, tdip);
 
 	/*
-	 * Nothing to do (except bump the link count) if the hardlink has
-	 * already been consolidated in the correct place.
+	 * If no change in the hardlink's target directory is required and
+	 * this is already a hardlink target, all we need to do is adjust
+	 * the link count.
 	 */
-	if (cdip == fdip) {
-		ochain = hammer2_inode_lock_ex(oip);
-		if ((ochain->data->ipdata.name_key &
-		     HAMMER2_DIRHASH_VISIBLE) == 0) {
-			hammer2_chain_modify(hmp, ochain, 0);
-			++ochain->data->ipdata.nlinks;
-			hammer2_inode_unlock_ex(oip, ochain);
-			hammer2_inode_drop(cdip);
-			return(0);
+	if (cdip == fdip &&
+	    (chain->data->ipdata.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
+		if (nlinks) {
+			hammer2_chain_modify(hmp, chain, 0);
+			chain->data->ipdata.nlinks += nlinks;
 		}
-		hammer2_inode_unlock_ex(oip, ochain);
+		*chainp = chain;
+		error = 0;
+		goto done;
 	}
 
 	/*
-	 * Create a hidden inode directory entry in the parent, copying
-	 * (*oip)'s state.  Then replace oip with OBJTYPE_HARDLINK.
+	 * We either have to move an existing hardlink target or we have
+	 * to create a fresh hardlink target.
 	 *
-	 * The duplication function will either flush or move any chains
-	 * under oip to the new hardlink target inode, retiring all chains
-	 * related to oip before returning.  XXX vp->ip races.
+	 * Hardlink targets are hidden inodes in a parent directory common
+	 * to all directory entries referencing the hardlink.
 	 */
-	error = hammer2_inode_duplicate(cdip, oip, &nip, &nchain, NULL, 0);
+	error = hammer2_inode_duplicate(cdip, chain, &nchain);
 	if (error == 0) {
 		/*
 		 * Bump nlinks on duplicated hidden inode.
 		 */
-		hammer2_inode_ref(nip);			/* ref new *ipp */
 		hammer2_chain_modify(hmp, nchain, 0);
-		++nchain->data->ipdata.nlinks;
-		hammer2_inode_unlock_ex(nip, nchain);
-		ochain = hammer2_inode_lock_ex(oip);
-		hammer2_inode_drop(oip);		/* unref old *ipp */
+		nchain->data->ipdata.nlinks += nlinks;
 
-		if (ochain->data->ipdata.name_key & HAMMER2_DIRHASH_VISIBLE) {
-			/*
-			 * Replace the old inode with an OBJTYPE_HARDLINK
-			 * pointer.
-			 */
-			hammer2_chain_modify(hmp, ochain, 0);
-			oipdata = &ochain->data->ipdata;
-			oipdata->target_type = oipdata->type;
-			oipdata->type = HAMMER2_OBJTYPE_HARDLINK;
-			oipdata->uflags = 0;
-			oipdata->rmajor = 0;
-			oipdata->rminor = 0;
-			oipdata->ctime = 0;
-			oipdata->mtime = 0;
-			oipdata->atime = 0;
-			oipdata->btime = 0;
-			bzero(&oipdata->uid, sizeof(oipdata->uid));
-			bzero(&oipdata->gid, sizeof(oipdata->gid));
-			oipdata->op_flags = HAMMER2_OPFLAG_DIRECTDATA;
-			oipdata->cap_flags = 0;
-			oipdata->mode = 0;
-			oipdata->size = 0;
-			oipdata->nlinks = 1;
-			oipdata->iparent = 0;	/* XXX */
-			oipdata->pfs_type = 0;
-			oipdata->pfs_inum = 0;
-			bzero(&oipdata->pfs_clid, sizeof(oipdata->pfs_clid));
-			bzero(&oipdata->pfs_fsid, sizeof(oipdata->pfs_fsid));
-			oipdata->data_quota = 0;
-			oipdata->data_count = 0;
-			oipdata->inode_quota = 0;
-			oipdata->inode_count = 0;
-			oipdata->attr_tid = 0;
-			oipdata->dirent_tid = 0;
-			bzero(&oipdata->u, sizeof(oipdata->u));
+		/*
+		 * If the old chain is not a hardlink target then replace
+		 * it with a OBJTYPE_HARDLINK pointer.
+		 *
+		 * If the old chain IS a hardlink target then delete it.
+		 */
+		if (chain->data->ipdata.name_key & HAMMER2_DIRHASH_VISIBLE) {
+			hammer2_chain_modify(hmp, chain, 0);
+			ipdata = &chain->data->ipdata;
+			ipdata->target_type = ipdata->type;
+			ipdata->type = HAMMER2_OBJTYPE_HARDLINK;
+			ipdata->uflags = 0;
+			ipdata->rmajor = 0;
+			ipdata->rminor = 0;
+			ipdata->ctime = 0;
+			ipdata->mtime = 0;
+			ipdata->atime = 0;
+			ipdata->btime = 0;
+			bzero(&ipdata->uid, sizeof(ipdata->uid));
+			bzero(&ipdata->gid, sizeof(ipdata->gid));
+			ipdata->op_flags = HAMMER2_OPFLAG_DIRECTDATA;
+			ipdata->cap_flags = 0;
+			ipdata->mode = 0;
+			ipdata->size = 0;
+			ipdata->nlinks = 1;
+			ipdata->iparent = 0;	/* XXX */
+			ipdata->pfs_type = 0;
+			ipdata->pfs_inum = 0;
+			bzero(&ipdata->pfs_clid, sizeof(ipdata->pfs_clid));
+			bzero(&ipdata->pfs_fsid, sizeof(ipdata->pfs_fsid));
+			ipdata->data_quota = 0;
+			ipdata->data_count = 0;
+			ipdata->inode_quota = 0;
+			ipdata->inode_count = 0;
+			ipdata->attr_tid = 0;
+			ipdata->dirent_tid = 0;
+			bzero(&ipdata->u, sizeof(ipdata->u));
 			/* XXX transaction ids */
-
-			hammer2_inode_unlock_ex(oip, ochain);
 		} else {
-			/*
-			 * The old inode was a hardlink target, which we
-			 * have now moved.  We must delete it so the new
-			 * hardlink target at a higher directory level
-			 * becomes the only hardlink target for this inode.
-			 */
 			kprintf("DELETE INVISIBLE\n");
 			for (;;) {
-				parent = ochain->parent;
+				parent = chain->parent;
 				hammer2_chain_ref(hmp, parent);
-				hammer2_inode_unlock_ex(oip, ochain);
+				hammer2_chain_ref(hmp, chain);
+				hammer2_chain_unlock(hmp, chain);
 				hammer2_chain_lock(hmp, parent,
 						   HAMMER2_RESOLVE_ALWAYS);
-				ochain = hammer2_inode_lock_ex(oip);
-				if (oip->chain->parent == parent)
+				hammer2_chain_lock(hmp, chain,
+						   HAMMER2_RESOLVE_ALWAYS);
+				hammer2_chain_drop(hmp, chain);
+				if (chain->parent == parent)
 					break;
 				hammer2_chain_unlock(hmp, parent);
 				hammer2_chain_drop(hmp, parent);
 			}
-			hammer2_chain_delete(hmp, parent, ochain, 0);
-			hammer2_inode_put(oip, ochain); /* unconditional */
+			hammer2_chain_delete(hmp, parent, chain, 0);
 			hammer2_chain_unlock(hmp, parent);
 			hammer2_chain_drop(hmp, parent);
 		}
-		*ipp = nip;
+
+		/*
+		 * Replace ip->chain with nchain (ip is still locked).
+		 */
+		hammer2_chain_ref(hmp, nchain);			/* ip->chain */
+		if (ip->chain)
+			hammer2_chain_drop(hmp, ip->chain);	/* ip->chain */
+		ip->chain = nchain;
+
+		hammer2_chain_unlock(hmp, chain);
+		*chainp = nchain;
 	} else {
-		KKASSERT(nip == NULL);
+		hammer2_chain_unlock(hmp, chain);
 	}
+
+	/*
+	 * Cleanup, chain/nchain already dealt with.
+	 */
+done:
+	hammer2_inode_unlock_ex(ip, NULL);
 	hammer2_inode_drop(cdip);
 
 	return (error);
@@ -1311,6 +1286,10 @@ hammer2_inode_common_parent(hammer2_mount_t *hmp,
 		hammer2_inode_ref(tdip);
 		return(tdip);
 	}
+
+	/*
+	 * XXX not MPSAFE
+	 */
 	for (scan1 = fdip; scan1->pmp == fdip->pmp; scan1 = scan1->pip) {
 		scan2 = tdip;
 		while (scan2->pmp == tdip->pmp) {
