@@ -803,14 +803,16 @@ sys_linux_rename(struct linux_rename_args *args)
 		kprintf(ARGS(rename, "%s, %s"), from, to);
 #endif
 	get_mplock();
-	error = nlookup_init(&fromnd, from, UIO_SYSSPACE, 0);
-	if (error == 0) {
-		error = nlookup_init(&tond, to, UIO_SYSSPACE, 0);
-		if (error == 0)
-			error = kern_rename(&fromnd, &tond);
-		nlookup_done(&tond);
-	}
-	nlookup_done(&fromnd);
+	do {
+		error = nlookup_init(&fromnd, from, UIO_SYSSPACE, 0);
+		if (error == 0) {
+			error = nlookup_init(&tond, to, UIO_SYSSPACE, 0);
+			if (error == 0)
+				error = kern_rename(&fromnd, &tond);
+			nlookup_done(&tond);
+		}
+		nlookup_done(&fromnd);
+	} while (error == EAGAIN);
 	rel_mplock();
 	linux_free_path(&from);
 	linux_free_path(&to);
