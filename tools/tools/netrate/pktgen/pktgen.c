@@ -79,6 +79,7 @@ struct pktgen_buf {
 	volatile int		pb_done;
 	volatile int		pb_inuse;
 	struct ifnet		*pb_ifp;
+	struct ifaltq_subque	*pb_ifsq;
 	int			pb_len;
 	int			pb_cpuid;
 	struct pktgen		*pb_pktg;
@@ -297,11 +298,11 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 	}
 
 	pktenq = conf->pc_pktenq;
-	if (pktenq < 0 || pktenq > ifp->if_snd.ifq_maxlen) {
+	if (pktenq < 0 || pktenq > ifp->if_snd.altq_maxlen) {
 		error = ENOBUFS;
 		goto failed;
 	} else if (pktenq == 0) {
-		pktenq = (ifp->if_snd.ifq_maxlen * 3) / 4;
+		pktenq = (ifp->if_snd.altq_maxlen * 3) / 4;
 	}
 
 	sa = &conf->pc_dst_lladdr;
@@ -347,6 +348,7 @@ pktgen_start(struct pktgen *pktg)
 {
 	struct mbuf *m, *head = NULL, **next;
 	struct ifnet *ifp;
+	struct ifaltq_subque *ifsq;
 	int cpuid, orig_cpuid, i, alloc_cnt, keep_cnt;
 
 	u_short ulen, psum;
@@ -359,9 +361,10 @@ pktgen_start(struct pktgen *pktg)
 	pktg->pktg_flags |= PKTG_F_RUNNING;
 
 	ifp = pktg->pktg_ifp;
+	ifsq = ifq_get_subq_default(&ifp->if_snd);
 
 	orig_cpuid = mycpuid;
-	cpuid = ifp->if_start_cpuid(ifp);
+	cpuid = ifsq_get_cpuid(ifsq);
 	if (cpuid != orig_cpuid)
 		lwkt_migratecpu(cpuid);
 
@@ -411,6 +414,7 @@ pktgen_start(struct pktgen *pktg)
 
 		pb = kmalloc(sizeof(*pb), M_PKTGEN, M_WAITOK | M_ZERO);
 		pb->pb_ifp = ifp;
+		pb->pb_ifsq = ifsq;
 		pb->pb_inuse = 1;
 		pb->pb_buf = kmalloc(PKTGEN_BUFSZ, M_PKTGEN, M_WAITOK);
 		pb->pb_len = len;
@@ -555,7 +559,7 @@ pktgen_buf_free(void *arg)
 
 	MGETHDR(m, MB_WAIT, MT_DATA);
 	pktgen_mbuf(pb, m);
-	ifq_enqueue(&pb->pb_ifp->if_snd, m, NULL);
+	ifsq_enqueue(pb->pb_ifsq, m, NULL);
 }
 
 static void
