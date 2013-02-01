@@ -435,11 +435,17 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		}
 		hammer2_chain_ref(hmp, schain);	/* for hmp->schain */
 		hmp->schain = schain;		/* left locked */
+		hmp->sroot = hammer2_inode_get(hmp, NULL, NULL, schain);
+		hammer2_inode_ref(hmp->sroot);	/* for hmp->sroot */
+		hammer2_inode_unlock_ex(hmp->sroot, NULL);
 	} else {
 		schain = hmp->schain;
 		hammer2_chain_lock(hmp, schain, HAMMER2_RESOLVE_ALWAYS);
 	}
 
+	/*
+	 * schain left locked at this point, use as basis for PFS search.
+	 */
 	parent = schain;
 	lhc = hammer2_dirhash(label, strlen(label));
 	rchain = hammer2_chain_lookup(hmp, &parent,
@@ -473,7 +479,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	hammer2_chain_ref(hmp, rchain);		/* for pmp->rchain */
 	pmp->rchain = rchain;			/* left held & unlocked */
-	pmp->iroot = hammer2_inode_get(pmp, NULL, rchain);
+	pmp->iroot = hammer2_inode_get(hmp, pmp, NULL, rchain);
 	hammer2_inode_ref(pmp->iroot);		/* ref for pmp->iroot */
 	hammer2_inode_unlock_ex(pmp->iroot, rchain); /* iroot & its chain */
 
@@ -590,7 +596,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		hammer2_inode_put(pmp->iroot, chain);
 		/* lock destroyed by the put */
 		KKASSERT(pmp->iroot->refs == 1);
-		hammer2_inode_drop(pmp->iroot);
+		hammer2_inode_drop(pmp->iroot);	    /* ref for pmp->iroot */
 		pmp->iroot = NULL;
 	}
 	if (pmp->rchain) {
@@ -610,6 +616,10 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	 * If no PFS's left drop the master hammer2_mount for the device.
 	 */
 	if (hmp->pmp_count == 0) {
+		if (hmp->sroot) {
+			hammer2_inode_drop(hmp->sroot);
+			hmp->sroot = NULL;
+		}
 		if (hmp->schain) {
 			KKASSERT(hmp->schain->refs == 1);
 			hammer2_chain_drop(hmp, hmp->schain);

@@ -113,10 +113,6 @@ struct hammer2_chain {
 	struct hammer2_state	*state;		/* if active cache msg */
 	RB_ENTRY(hammer2_chain) rbnode;
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
-	union {
-		void *mem;			/* generic */
-		struct hammer2_inode *ip;	/* high-level h2 structure */
-	} u;
 
 	struct buf	*bp;		/* buffer cache (ro) */
 	hammer2_media_data_t *data;	/* modified copy of data (rw) */
@@ -243,7 +239,6 @@ struct hammer2_inode {
 	struct vnode		*vp;
 	hammer2_chain_t		*chain;
 	struct lockf		advlock;
-	struct lock		lk;
 	u_int			flags;
 	u_int			refs;		/* +vpref, +flushref */
 };
@@ -252,7 +247,6 @@ typedef struct hammer2_inode hammer2_inode_t;
 
 #define HAMMER2_INODE_MODIFIED		0x0001
 #define HAMMER2_INODE_DIRTYEMBED	0x0002
-#define HAMMER2_INODE_DELETED		0x0004
 
 /*
  * XXX
@@ -282,6 +276,7 @@ struct hammer2_mount {
 	int		maxipstacks;
 	hammer2_chain_t vchain;		/* anchor chain */
 	hammer2_chain_t *schain;	/* super-root */
+	hammer2_inode_t	*sroot;		/* super-root inode */
 	struct lock	alloclk;	/* lockmgr lock */
 	struct lock	voldatalk;	/* lockmgr lock */
 
@@ -399,9 +394,10 @@ struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
 
 void hammer2_inode_lock_nlinks(hammer2_inode_t *ip);
 void hammer2_inode_unlock_nlinks(hammer2_inode_t *ip);
-hammer2_inode_t *hammer2_inode_get(hammer2_pfsmount_t *pmp,
-			hammer2_inode_t *dip, hammer2_chain_t *chain);
-void hammer2_inode_put(hammer2_inode_t *ip, hammer2_chain_t *chain);
+hammer2_inode_t *hammer2_inode_get(hammer2_mount_t *hmp,
+			hammer2_pfsmount_t *pmp, hammer2_inode_t *dip,
+			hammer2_chain_t *chain);
+void hammer2_inode_put(hammer2_inode_t *ip, hammer2_chain_t *passed_chain);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
@@ -422,7 +418,7 @@ hammer2_inode_t *hammer2_inode_common_parent(hammer2_mount_t *hmp,
 
 int hammer2_unlink_file(hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len,
-			int isdir, hammer2_inode_t *retain_ip);
+			int isdir, hammer2_chain_t *retain_chain);
 int hammer2_hardlink_consolidate(hammer2_inode_t **ipp, hammer2_inode_t *tdip);
 int hammer2_hardlink_deconsolidate(hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_chain_t **ochainp);

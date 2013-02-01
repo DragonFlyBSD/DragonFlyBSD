@@ -96,18 +96,20 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	 * the strategy code.  Simply mark the inode modified so it gets
 	 * picked up by our normal flush.
 	 */
+	chain = hammer2_inode_lock_ex(ip);
 	if (ip->flags & HAMMER2_INODE_DIRTYEMBED) {
-		chain = hammer2_inode_lock_ex(ip);
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYEMBED);
 		hammer2_chain_modify(ip->hmp, chain, 0);
-		hammer2_inode_unlock_ex(ip, chain);
 	}
 
 	/*
 	 * Check for deleted inodes and recycle immediately.
 	 */
-	if (ip->flags & HAMMER2_INODE_DELETED) {
+	if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
+		hammer2_inode_unlock_ex(ip, chain);
 		vrecycle(vp);
+	} else {
+		hammer2_inode_unlock_ex(ip, chain);
 	}
 	return (0);
 }
@@ -138,7 +140,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	chain = hammer2_inode_lock_ex(ip);
 	vp->v_data = NULL;
 	ip->vp = NULL;
-	if (ip->flags & HAMMER2_INODE_DELETED) {
+	if (chain->flags & HAMMER2_CHAIN_DELETED) {
 		KKASSERT(chain->flags & HAMMER2_CHAIN_DELETED);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROYED |
 					      HAMMER2_CHAIN_SUBMODIFIED);
@@ -193,6 +195,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 * which call this function will eventually call chain_flush
 	 * on the volume root as a catch-all, which is far more optimal.
 	 */
+	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	if (ap->a_flags & VOP_FSYNC_SYSCALL)
 		hammer2_chain_flush(hmp, chain, 0);
 	hammer2_inode_unlock_ex(ip, chain);
@@ -996,7 +999,6 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 	*errorp = 0;
 retry:
 	parent = hammer2_inode_lock_ex(ip);
-
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lbase, lbase,
 				     HAMMER2_LOOKUP_NODATA);
@@ -1462,14 +1464,18 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 * NOTE: For error processing, only ENOENT resolves the namecache
 	 *	 entry to NULL, otherwise we just return the error and
 	 *	 leave the namecache unresolved.
+	 *
+	 * NOTE: multiple hammer2_inode structures can be aliased to the
+	 *	 same chain element, for example for hardlinks.  This
+	 *	 use case does not 'reattach' inode associations that
+	 *	 might already exist, but always allocates a new one.
 	 */
 	if (chain) {
-		ip = hammer2_inode_get(dip->pmp, dip, chain);
+		ip = hammer2_inode_get(dip->hmp, dip->pmp, dip, chain);
 		vp = hammer2_igetv(ip, &error);
 		if (error == 0) {
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
-			vrele(vp);
 		} else if (error == ENOENT) {
 			cache_setvp(ap->a_nch, NULL);
 		}
@@ -1480,6 +1486,14 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 		 */
 		hammer2_inode_unlock_ex(ip, NULL);
 		hammer2_chain_unlock(hmp, chain);
+
+		/*
+		 * The vp should not be released until after we've disposed
+		 * of our locks, because it might cause vop_inactive() to
+		 * be called.
+		 */
+		if (vp)
+			vrele(vp);
 	} else {
 		error = ENOENT;
 		cache_setvp(ap->a_nch, NULL);
@@ -1741,15 +1755,23 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * XXX this can race against concurrent vnode ops.
 	 */
 	if (oip != ip) {
-		hammer2_inode_ref(ip);		/* vp ref+ */
+		hammer2_inode_ref(ip);			/* vp ref+ */
 		chain = hammer2_inode_lock_ex(ip);
 		ochain = hammer2_inode_lock_ex(oip);
-		ip->vp = ap->a_vp;
-		ap->a_vp->v_data = ip;
-		oip->vp = NULL;
+		if (ip->vp) {
+			KKASSERT(ip->vp == ap->a_vp);
+			hammer2_inode_drop(ip);		/* vp already ref'd */
+		} else {
+			ip->vp = ap->a_vp;
+			ap->a_vp->v_data = ip;
+		}
+		if (oip->vp) {
+			KKASSERT(oip->vp == ap->a_vp);
+			oip->vp = NULL;
+			hammer2_inode_drop(oip);	/* vp ref- */
+		}
 		hammer2_inode_unlock_ex(oip, ochain);
 		hammer2_inode_unlock_ex(ip, chain);
-		hammer2_inode_drop(oip);	/* vp ref- */
 	}
 
 	/*
@@ -1921,7 +1943,6 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	name_len = ncp->nc_nlen;
 
 	error = hammer2_unlink_file(dip, name, name_len, 0, NULL);
-
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
 	}
@@ -1952,7 +1973,6 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	name_len = ncp->nc_nlen;
 
 	error = hammer2_unlink_file(dip, name, name_len, 1, NULL);
-
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
 	}
@@ -2039,6 +2059,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * contents of the inode.
 	 */
 	chain = hammer2_inode_lock_sh(ip);
+	hammer2_chain_ref(hmp, chain);		/* for unlink file */
 	if (chain->data->ipdata.nlinks > 1) {
 		hammer2_inode_unlock_sh(ip, chain);
 		error = hammer2_hardlink_consolidate(&ip, tdip);
@@ -2047,18 +2068,20 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	} else {
 		hammer2_inode_unlock_sh(ip, chain);
 	}
+	/* chain ref still intact */
 
 	/*
 	 * NOTE! Because we are retaining (ip) the unlink can fail with
 	 *	 an EAGAIN.
 	 */
 	for (;;) {
-		error = hammer2_unlink_file(fdip, fname, fname_len, -1, ip);
+		error = hammer2_unlink_file(fdip, fname, fname_len, -1, chain);
 		if (error != EAGAIN)
 			break;
 		kprintf("hammer2_vop_nrename: unlink race %s\n", fname);
 		tsleep(fdip, 0, "h2renr", 1);
 	}
+	hammer2_chain_drop(hmp, chain);	/* drop temporary ref */
 	if (error)
 		goto done;
 

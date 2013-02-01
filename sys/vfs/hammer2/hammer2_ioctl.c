@@ -418,7 +418,6 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 				     HAMMER2_LOOKUP_SHARED);
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		    chain->u.ip &&
 		    len == chain->data->ipdata.name_len &&
 		    bcmp(pfs->name, chain->data->ipdata.filename, len) == 0) {
 			break;
@@ -466,7 +465,8 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	nip = NULL;
 
 	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure 0-termination */
-	error = hammer2_inode_create(hmp->schain->u.ip, NULL, NULL,
+
+	error = hammer2_inode_create(hmp->sroot, NULL, NULL,
 				     pfs->name, strlen(pfs->name),
 				     &nip, &nchain);
 	if (error == 0) {
@@ -490,7 +490,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	hammer2_ioc_pfs_t *pfs = data;
 	int error;
 
-	error = hammer2_unlink_file(hmp->schain->u.ip,
+	error = hammer2_unlink_file(hmp->sroot,
 				    pfs->name, strlen(pfs->name),
 				    0, NULL);
 	return (error);

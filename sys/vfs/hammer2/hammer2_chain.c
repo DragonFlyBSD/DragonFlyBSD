@@ -185,7 +185,6 @@ hammer2_chain_dealloc(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 
 	KKASSERT(chain->refs == 0);
 	KKASSERT(chain->flushing == 0);
-	KKASSERT(chain->u.mem == NULL);
 	KKASSERT((chain->flags &
 		  (HAMMER2_CHAIN_MOVED | HAMMER2_CHAIN_MODIFIED)) == 0);
 
@@ -239,13 +238,10 @@ hammer2_chain_free(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	}
 
 	KKASSERT(chain->bp == NULL);
-	KKASSERT(chain->bref.type != HAMMER2_BREF_TYPE_INODE ||
-		 chain->u.ip == NULL);
 
 	ccms_thread_unlock(&chain->cst);
 	KKASSERT(chain->cst.count == 0);
 	KKASSERT(chain->cst.upgrade == 0);
-	KKASSERT(chain->u.mem == NULL);
 
 	kfree(chain, hmp->mchain);
 }
@@ -827,6 +823,7 @@ hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *chain,
 	 * worry about snapshots.
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED |
 					      HAMMER2_CHAIN_MODIFY_TID);
 		hammer2_chain_ref(hmp, chain);
@@ -1235,26 +1232,6 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	KKASSERT(parent->refs > 0);
 	atomic_add_int(&parent->refs, 1);	/* for red-black entry */
 	ccms_thread_lock_restore(&parent->cst, ostate);
-
-#if 0
-	/*
-	 * Additional linkage for inodes.  Reuse the parent pointer to
-	 * find the parent directory.
-	 *
-	 * The ccms_inode is initialized from its parent directory.  The
-	 * chain of ccms_inode's is seeded by the mount code.
-	 */
-	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
-		ip = chain->u.ip;
-		while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
-			parent = parent->parent;
-		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
-			ip->pip = parent->u.ip;
-			ip->pmp = parent->u.ip->pmp;
-			ccms_cst_init(&ip->topo_cst, &ip->chain);
-		}
-	}
-#endif
 
 	/*
 	 * Our new chain structure has already been referenced and locked
@@ -1861,33 +1838,6 @@ again:
 	KKASSERT(parent->refs > 0);
 	atomic_add_int(&parent->refs, 1);
 
-#if 0
-	/*
-	 * Additional linkage for inodes.  Reuse the parent pointer to
-	 * find the parent directory.
-	 *
-	 * Cumulative adjustments are inherited on [re]attach and will
-	 * propagate up the tree on the next flush.
-	 *
-	 * The ccms_inode is initialized from its parent directory.  The
-	 * chain of ccms_inode's is seeded by the mount code.
-	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
-		hammer2_chain_t *scan = parent;
-		hammer2_inode_t *ip = chain->u.ip;
-
-		while (scan->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
-			scan = scan->parent;
-		if (scan->bref.type == HAMMER2_BREF_TYPE_INODE) {
-			ip->pip = scan->u.ip;
-			ip->pmp = scan->u.ip->pmp;
-			ip->pip->delta_icount += ip->ip_data.inode_count;
-			ip->pip->delta_dcount += ip->ip_data.data_count;
-			++ip->pip->delta_icount;
-			ccms_cst_init(&ip->topo_cst, &ip->chain);
-		}
-	}
-#endif
 	/*
 	 * (allocated) indicates that this is a newly-created chain element
 	 * rather than a renamed chain element.  In this situation we want
@@ -2486,7 +2436,7 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
 	    chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
-		KKASSERT(chain->u.ip == NULL);
+		/* XXX */
 	}
 
 	/*

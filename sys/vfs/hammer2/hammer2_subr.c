@@ -74,6 +74,14 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 void
 hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain)
 {
+	/*
+	 * XXX this will catch parent directories too which we don't
+	 *     really want.
+	 */
+	if (ip->chain && (ip->chain->flags & (HAMMER2_CHAIN_MODIFIED |
+					      HAMMER2_CHAIN_SUBMODIFIED))) {
+		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
+	}
 	if (chain)
 		hammer2_chain_unlock(ip->hmp, chain);
 	ccms_thread_unlock(&ip->topo_cst);
