@@ -1417,9 +1417,19 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 }
 
 /*
- * Perform actions consistent with unlinking a file.  The namecache
- * entry is marked DESTROYED so it no longer shows up in searches,
+ * Perform actions consistent with unlinking a file.  The passed-in ncp
+ * must be locked.
+ *
+ * The ncp is marked DESTROYED so it no longer shows up in searches,
  * and will be physically deleted when the vnode goes away.
+ *
+ * If the related vnode has no refs then we cycle it through vget()/vput()
+ * to (possibly if we don't have a ref race) trigger a deactivation,
+ * allowing the VFS to trivially detect and recycle the deleted vnode
+ * via VOP_INACTIVE().
+ *
+ * NOTE: _cache_rename() will automatically call _cache_unlink() on the
+ *	 target ncp.
  */
 void
 cache_unlink(struct nchandle *nch)
@@ -1430,7 +1440,23 @@ cache_unlink(struct nchandle *nch)
 static void
 _cache_unlink(struct namecache *ncp)
 {
+	struct vnode *vp;
+
+	/*
+	 * Causes lookups to fail and allows another ncp with the same
+	 * name to be created under ncp->nc_parent.
+	 */
 	ncp->nc_flag |= NCF_DESTROYED;
+
+	/*
+	 * Attempt to trigger a deactivation.
+	 */
+	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
+	    (vp = ncp->nc_vp) != NULL &&
+	    !sysref_isactive(&vp->v_sysref)) {
+		if (vget(vp, LK_SHARED) == 0)
+			vput(vp);
+	}
 }
 
 /*
