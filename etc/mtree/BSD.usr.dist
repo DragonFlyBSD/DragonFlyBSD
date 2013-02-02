@@ -23,6 +23,20 @@
             ..
         ..
         gcc47
+            plugin
+                include
+                    c-family
+                    ..
+                    objc
+                    ..
+                    config
+                        i386
+                        ..
+                    ..
+                    cp
+                    ..
+                ..
+            ..
             profile
             ..
         ..
