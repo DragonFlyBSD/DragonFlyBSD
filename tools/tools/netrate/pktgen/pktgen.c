@@ -77,7 +77,7 @@ struct pktgen_buf {
 	struct netmsg_base	pb_nmsg;	/* MUST BE THE FIRST */
 	void			*pb_buf;
 	volatile int		pb_done;
-	volatile int		pb_inuse;
+	int			pb_inuse;
 	struct ifnet		*pb_ifp;
 	struct ifaltq_subque	*pb_ifsq;
 	int			pb_len;
@@ -133,7 +133,7 @@ static struct dev_ops	pktgen_ops = {
 	.d_ioctl =	pktgen_ioctl,
 };
 
-static int		pktgen_refcnt;
+static volatile int		pktgen_refcnt;
 static struct lwkt_token pktgen_tok = LWKT_TOKEN_INITIALIZER(pktgen_token);
 
 MALLOC_DECLARE(M_PKTGEN);
@@ -192,7 +192,7 @@ pktgen_open(struct dev_open_args *ap)
 	dev->si_drv1 = pktg;
 	pktg->pktg_refcnt = 1;
 
-	pktgen_refcnt++;
+	atomic_add_int(&pktgen_refcnt, 1);
 
 	lwkt_reltoken(&pktgen_tok);
 	return 0;
@@ -205,11 +205,10 @@ pktgen_close(struct dev_close_args *ap)
 	struct pktgen *pktg = dev->si_drv1;
 
 	lwkt_gettoken(&pktgen_tok);
-
 	dev->si_drv1 = NULL;
-	pktgen_free(pktg);
-
 	lwkt_reltoken(&pktgen_tok);
+
+	pktgen_free(pktg);
 
 	return 0;
 }
@@ -409,8 +408,8 @@ pktgen_start(struct pktgen *pktg)
 		struct udpiphdr *ui;
 		struct ether_header *eh;
 
-		pktg->pktg_refcnt++;
-		pktgen_refcnt++;
+		atomic_add_int(&pktg->pktg_refcnt, 1);
+		atomic_add_int(&pktgen_refcnt, 1);
 
 		pb = kmalloc(sizeof(*pb), M_PKTGEN, M_WAITOK | M_ZERO);
 		pb->pb_ifp = ifp;
@@ -534,16 +533,14 @@ pktgen_buf_free(void *arg)
 		if (atomic_fetchadd_int(&pb->pb_inuse, -1) == 1) {
 			struct pktgen *pktg;
 
-			lwkt_gettoken(&pktgen_tok);
-
 			pktg = pb->pb_pktg;
+			crit_enter();
 			LIST_REMOVE(pb, pb_link);
+			crit_exit();
 			kfree(pb->pb_buf, M_PKTGEN);
 			kfree(pb, M_PKTGEN);
 
 			pktgen_free(pktg);
-
-			lwkt_reltoken(&pktgen_tok);
 		}
 		return;
 	}
@@ -577,7 +574,7 @@ static void
 pktgen_free(struct pktgen *pktg)
 {
 	KKASSERT(pktg->pktg_refcnt > 0);
-	if (--pktg->pktg_refcnt == 0) {
+	if (atomic_fetchadd_int(&pktg->pktg_refcnt, -1) == 1) {
 		if (pktg->pktg_dst != NULL)
 			kfree(pktg->pktg_dst, M_PKTGEN);
 		KKASSERT(LIST_EMPTY(&pktg->pktg_buflist));
@@ -585,7 +582,7 @@ pktgen_free(struct pktgen *pktg)
 	}
 
 	KKASSERT(pktgen_refcnt > 0);
-	pktgen_refcnt--;
+	atomic_subtract_int(&pktgen_refcnt, 1);
 }
 
 static void
@@ -594,8 +591,8 @@ pktgen_stop_cb(void *arg)
 	struct pktgen *pktg = arg;
 	struct pktgen_buf *pb;
 
-	lwkt_gettoken(&pktgen_tok);
+	crit_enter();
 	LIST_FOREACH(pb, &pktg->pktg_buflist, pb_link)
 		pb->pb_done = 1;
-	lwkt_reltoken(&pktgen_tok);
+	crit_exit();
 }
