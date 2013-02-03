@@ -8,6 +8,10 @@
 # If you discover any problem, please contact the bugs@lists.dragonflybsd.org
 # mailing list with the details.
 
++-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 3.2 to later versions                +
++-----------------------------------------------------------------------+
+
 GCC 4.7
 -------
 
@@ -20,10 +24,6 @@ Users who wish to build only GCC 4.7 have to use NO_GCC44 in the
 highly discouraged.  There are a few packages in pkgsrc that do not build
 with GCC 4.7 and the new "DPorts" system uses GCC 4.4 by default.  At
 this time, it is recommended to keep both compilers on the base system.
-
-+-----------------------------------------------------------------------+
-+         UPGRADING DRAGONFLY FROM 3.2 to later versions                +
-+-----------------------------------------------------------------------+
 
 SMP OPTION REMOVED
 ------------------
