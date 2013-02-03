@@ -8,6 +8,19 @@
 # If you discover any problem, please contact the bugs@lists.dragonflybsd.org
 # mailing list with the details.
 
+GCC 4.7
+-------
+
+DragonFly has switched base compilers.  GCC 4.7 is now the default
+compiler and GCC 4.4 is the alternative compiler.  The "NO_GCC47" make
+variable ceases to work now.
+
+Users who wish to build only GCC 4.7 have to use NO_GCC44 in the
+/etc/make.conf to prohibit GCC 4.4 from building.  However, using it is
+highly discouraged.  There are a few packages in pkgsrc that do not build
+with GCC 4.7 and the new "DPorts" system uses GCC 4.4 by default.  At
+this time, it is recommended to keep both compilers on the base system.
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.2 to later versions                +
 +-----------------------------------------------------------------------+
