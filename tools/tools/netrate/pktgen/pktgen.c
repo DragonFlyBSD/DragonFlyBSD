@@ -123,6 +123,7 @@ static int		pktgen_config(struct pktgen *,
 			    const struct pktgen_conf *);
 static int		pktgen_start(struct pktgen *);
 static void		pktgen_free(struct pktgen *);
+static void		pktgen_ref(struct pktgen *);
 static void		pktgen_pcpu_stop_cb(void *);
 static void		pktgen_mbuf(struct pktgen_buf *, struct mbuf *);
 
@@ -419,8 +420,7 @@ pktgen_start(struct pktgen *pktg)
 		struct udpiphdr *ui;
 		struct ether_header *eh;
 
-		atomic_add_int(&pktg->pktg_refcnt, 1);
-		atomic_add_int(&pktgen_refcnt, 1);
+		pktgen_ref(pktg);
 
 		pb = kmalloc(sizeof(*pb), M_PKTGEN, M_WAITOK | M_ZERO);
 		pb->pb_ifp = ifp;
@@ -610,4 +610,11 @@ pktgen_pcpu_stop_cb(void *arg)
 	LIST_FOREACH(pb, &p->pktg_buflist, pb_link)
 		pb->pb_done = 1;
 	crit_exit();
+}
+
+static void
+pktgen_ref(struct pktgen *pktg)
+{
+	atomic_add_int(&pktg->pktg_refcnt, 1);
+	atomic_add_int(&pktgen_refcnt, 1);
 }
