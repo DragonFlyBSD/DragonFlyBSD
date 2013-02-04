@@ -86,11 +86,15 @@ struct pktgen_buf {
 	LIST_ENTRY(pktgen_buf)	pb_link;
 };
 
+struct pktgen_pcpu {
+	struct callout		pktg_stop;
+	LIST_HEAD(, pktgen_buf)	pktg_buflist;
+};
+
 struct pktgen {
 	uint32_t		pktg_flags;	/* PKTG_F_ */
 	int			pktg_refcnt;
 
-	struct callout		pktg_stop;
 	int			pktg_duration;
 
 	int			pktg_datalen;
@@ -103,7 +107,7 @@ struct pktgen {
 	struct sockaddr_in	*pktg_dst;
 	uint8_t			pktg_dst_lladdr[ETHER_ADDR_LEN];
 
-	LIST_HEAD(, pktgen_buf)	pktg_buflist;
+	struct pktgen_pcpu	pktg_pcpu[MAXCPU];
 };
 
 #define PKTG_F_CONFIG	0x1
@@ -119,7 +123,7 @@ static int		pktgen_config(struct pktgen *,
 			    const struct pktgen_conf *);
 static int		pktgen_start(struct pktgen *);
 static void		pktgen_free(struct pktgen *);
-static void		pktgen_stop_cb(void *);
+static void		pktgen_pcpu_stop_cb(void *);
 static void		pktgen_mbuf(struct pktgen_buf *, struct mbuf *);
 
 static d_open_t		pktgen_open;
@@ -172,7 +176,7 @@ pktgen_open(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct pktgen *pktg;
-	int error;
+	int error, i;
 
 	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 	if (error)
@@ -186,8 +190,12 @@ pktgen_open(struct dev_open_args *ap)
 	}
 
 	pktg = kmalloc(sizeof(*pktg), M_PKTGEN, M_ZERO | M_WAITOK);
-	callout_init_mp(&pktg->pktg_stop);
-	LIST_INIT(&pktg->pktg_buflist);
+	for (i = 0; i < ncpus; ++i) {
+		struct pktgen_pcpu *p = &pktg->pktg_pcpu[i];
+
+		callout_init_mp(&p->pktg_stop);
+		LIST_INIT(&p->pktg_buflist);
+	}
 
 	dev->si_drv1 = pktg;
 	pktg->pktg_refcnt = 1;
@@ -348,6 +356,7 @@ pktgen_start(struct pktgen *pktg)
 	struct mbuf *m, *head = NULL, **next;
 	struct ifnet *ifp;
 	struct ifaltq_subque *ifsq;
+	struct pktgen_pcpu *p;
 	int cpuid, orig_cpuid, i, alloc_cnt, keep_cnt;
 
 	u_short ulen, psum;
@@ -366,6 +375,8 @@ pktgen_start(struct pktgen *pktg)
 	cpuid = ifsq_get_cpuid(ifsq);
 	if (cpuid != orig_cpuid)
 		lwkt_migratecpu(cpuid);
+
+	p = &pktg->pktg_pcpu[cpuid];
 
 	keep_cnt = pktg->pktg_pktenq;
 	alloc_cnt = keep_cnt * 2;
@@ -421,7 +432,7 @@ pktgen_start(struct pktgen *pktg)
 		pb->pb_pktg = pktg;
 		netmsg_init(&pb->pb_nmsg, NULL, &netisr_adone_rport, 0,
 		    pktgen_buf_send);
-		LIST_INSERT_HEAD(&pktg->pktg_buflist, pb, pb_link);
+		LIST_INSERT_HEAD(&p->pktg_buflist, pb, pb_link);
 
 		dst = &pktg->pktg_dst[i % pktg->pktg_ndst];
 		++i;
@@ -482,8 +493,8 @@ pktgen_start(struct pktgen *pktg)
 		m = nextm;
 	}
 
-	callout_reset(&pktg->pktg_stop, pktg->pktg_duration * hz,
-	    pktgen_stop_cb, pktg);
+	callout_reset(&p->pktg_stop, pktg->pktg_duration * hz,
+	    pktgen_pcpu_stop_cb, p);
 
 	if (cpuid != orig_cpuid)
 		lwkt_migratecpu(orig_cpuid);
@@ -575,9 +586,13 @@ pktgen_free(struct pktgen *pktg)
 {
 	KKASSERT(pktg->pktg_refcnt > 0);
 	if (atomic_fetchadd_int(&pktg->pktg_refcnt, -1) == 1) {
+		int i;
+
 		if (pktg->pktg_dst != NULL)
 			kfree(pktg->pktg_dst, M_PKTGEN);
-		KKASSERT(LIST_EMPTY(&pktg->pktg_buflist));
+
+		for (i = 0; i < ncpus; ++i)
+			KKASSERT(LIST_EMPTY(&pktg->pktg_pcpu[i].pktg_buflist));
 		kfree(pktg, M_PKTGEN);
 	}
 
@@ -586,13 +601,13 @@ pktgen_free(struct pktgen *pktg)
 }
 
 static void
-pktgen_stop_cb(void *arg)
+pktgen_pcpu_stop_cb(void *arg)
 {
-	struct pktgen *pktg = arg;
+	struct pktgen_pcpu *p = arg;
 	struct pktgen_buf *pb;
 
 	crit_enter();
-	LIST_FOREACH(pb, &pktg->pktg_buflist, pb_link)
+	LIST_FOREACH(pb, &p->pktg_buflist, pb_link)
 		pb->pb_done = 1;
 	crit_exit();
 }
