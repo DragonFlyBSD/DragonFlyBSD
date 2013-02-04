@@ -73,6 +73,12 @@
 
 struct pktgen;
 
+struct netmsg_pktgen {
+	struct netmsg_base	np_base;
+	struct pktgen		*np_pktg;
+	struct ifaltq_subque	*np_ifsq;
+};
+
 struct pktgen_buf {
 	struct netmsg_base	pb_nmsg;	/* MUST BE THE FIRST */
 	void			*pb_buf;
@@ -121,11 +127,14 @@ static void		pktgen_buf_send(netmsg_t);
 
 static int		pktgen_config(struct pktgen *,
 			    const struct pktgen_conf *);
-static int		pktgen_start(struct pktgen *);
+static int		pktgen_start(struct pktgen *, int);
 static void		pktgen_free(struct pktgen *);
 static void		pktgen_ref(struct pktgen *);
 static void		pktgen_pcpu_stop_cb(void *);
 static void		pktgen_mbuf(struct pktgen_buf *, struct mbuf *);
+static void		pktgen_start_ifsq(struct pktgen *,
+			    struct ifaltq_subque *);
+static void		pktgen_start_ifsq_handler(netmsg_t);
 
 static d_open_t		pktgen_open;
 static d_close_t	pktgen_close;
@@ -234,7 +243,11 @@ pktgen_ioctl(struct dev_ioctl_args *ap __unused)
 
 	switch (ap->a_cmd) {
 	case PKTGENSTART:
-		error = pktgen_start(pktg);
+		error = pktgen_start(pktg, 0);
+		break;
+
+	case PKTGENMQSTART:
+		error = pktgen_start(pktg, 1);
 		break;
 
 	case PKTGENSCONF:
@@ -351,17 +364,24 @@ failed:
 	return error;
 }
 
-static int
-pktgen_start(struct pktgen *pktg)
+static void
+pktgen_start_ifsq(struct pktgen *pktg, struct ifaltq_subque *ifsq)
 {
-	struct mbuf *m, *head = NULL, **next;
-	struct ifnet *ifp;
-	struct ifaltq_subque *ifsq;
-	struct pktgen_pcpu *p;
-	int cpuid, orig_cpuid, i, alloc_cnt, keep_cnt;
+	struct netmsg_pktgen *np;
 
-	u_short ulen, psum;
-	int len, ip_len;
+	np = kmalloc(sizeof(*np), M_LWKTMSG, M_WAITOK);
+	netmsg_init(&np->np_base, NULL, &netisr_afree_rport, 0,
+	    pktgen_start_ifsq_handler);
+	np->np_pktg = pktg;
+	np->np_ifsq = ifsq;
+
+	lwkt_sendmsg(netisr_portfn(ifsq_get_cpuid(ifsq)), &np->np_base.lmsg);
+}
+
+static int
+pktgen_start(struct pktgen *pktg, int mq)
+{
+	struct ifaltq *ifq;
 
 	if ((pktg->pktg_flags & PKTG_F_CONFIG) == 0)
 		return EINVAL;
@@ -369,13 +389,43 @@ pktgen_start(struct pktgen *pktg)
 		return EBUSY;
 	pktg->pktg_flags |= PKTG_F_RUNNING;
 
-	ifp = pktg->pktg_ifp;
-	ifsq = ifq_get_subq_default(&ifp->if_snd);
+	ifq = &pktg->pktg_ifp->if_snd;
+	if (!mq) {
+		pktgen_ref(pktg);
+		pktgen_start_ifsq(pktg, ifq_get_subq_default(ifq));
+	} else {
+		int i;
 
-	orig_cpuid = mycpuid;
+		for (i = 0; i < ifq->altq_subq_cnt; ++i)
+			pktgen_ref(pktg);
+		for (i = 0; i < ifq->altq_subq_cnt; ++i)
+			pktgen_start_ifsq(pktg, ifq_get_subq(ifq, i));
+	}
+	return 0;
+}
+
+static void
+pktgen_start_ifsq_handler(netmsg_t nmsg)
+{
+	struct netmsg_pktgen *np = (struct netmsg_pktgen *)nmsg;
+	struct pktgen *pktg = np->np_pktg;
+	struct ifaltq_subque *ifsq = np->np_ifsq;
+
+	struct mbuf *m, *head = NULL, **next;
+	struct ifnet *ifp;
+	struct pktgen_pcpu *p;
+	int cpuid, i, alloc_cnt, keep_cnt;
+
+	u_short ulen, psum;
+	int len, ip_len;
+
+	/* Reply ASAP */
+	lwkt_replymsg(&np->np_base.lmsg, 0);
+
+	ifp = pktg->pktg_ifp;
+
 	cpuid = ifsq_get_cpuid(ifsq);
-	if (cpuid != orig_cpuid)
-		lwkt_migratecpu(cpuid);
+	KKASSERT(cpuid == mycpuid);
 
 	p = &pktg->pktg_pcpu[cpuid];
 
@@ -496,10 +546,7 @@ pktgen_start(struct pktgen *pktg)
 	callout_reset(&p->pktg_stop, pktg->pktg_duration * hz,
 	    pktgen_pcpu_stop_cb, p);
 
-	if (cpuid != orig_cpuid)
-		lwkt_migratecpu(orig_cpuid);
-
-	return 0;
+	pktgen_free(pktg);
 }
 
 static void
