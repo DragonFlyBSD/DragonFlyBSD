@@ -226,6 +226,7 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_82571PT_QUAD_COPPER:
 	case E1000_DEV_ID_82571EB_QUAD_FIBER:
 	case E1000_DEV_ID_82571EB_QUAD_COPPER_LP:
+	case E1000_DEV_ID_82571EB_QUAD_COPPER_BP:
 		mac->type = e1000_82571;
 		break;
 	case E1000_DEV_ID_82572EI:
@@ -325,12 +326,27 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_I350_DA4:
 		mac->type = e1000_i350;
 		break;
+#if defined(QV_RELEASE) && defined(SPRINGVILLE_FLASHLESS_HW)
+	case E1000_DEV_ID_I210_NVMLESS:
+#endif /* QV_RELEASE && SPRINGVILLE_FLASHLESS_HW */
+	case E1000_DEV_ID_I210_COPPER:
+	case E1000_DEV_ID_I210_COPPER_OEM1:
+	case E1000_DEV_ID_I210_COPPER_IT:
+	case E1000_DEV_ID_I210_FIBER:
+	case E1000_DEV_ID_I210_SERDES:
+	case E1000_DEV_ID_I210_SGMII:
+		mac->type = e1000_i210;
+		break;
+	case E1000_DEV_ID_I211_COPPER:
+		mac->type = e1000_i211;
+		break;
 	case E1000_DEV_ID_82576_VF:
 		mac->type = e1000_vfadapt;
 		break;
 	case E1000_DEV_ID_I350_VF:
 		mac->type = e1000_vfadapt_i350;
 		break;
+
 	default:
 		/* Should never have loaded on this device */
 		ret_val = -E1000_ERR_MAC_INIT;
@@ -344,10 +360,10 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
  *  e1000_setup_init_funcs - Initializes function pointers
  *  @hw: pointer to the HW structure
  *  @init_device: TRUE will initialize the rest of the function pointers
- *                 getting the device ready for use.  FALSE will only set
- *                 MAC type and the function pointers for the other init
- *                 functions.  Passing FALSE will not generate any hardware
- *                 reads or writes.
+ *		  getting the device ready for use.  FALSE will only set
+ *		  MAC type and the function pointers for the other init
+ *		  functions.  Passing FALSE will not generate any hardware
+ *		  reads or writes.
  *
  *  This function must be called by a driver in order to use the rest
  *  of the 'shared' code files. Called by drivers only.
@@ -428,6 +444,10 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	case e1000_82580:
 	case e1000_i350:
 		e1000_init_function_pointers_82575(hw);
+		break;
+	case e1000_i210:
+	case e1000_i211:
+		e1000_init_function_pointers_i210(hw);
 		break;
 	case e1000_vfadapt:
 		e1000_init_function_pointers_vf(hw);
@@ -521,11 +541,11 @@ void e1000_write_vfta(struct e1000_hw *hw, u32 offset, u32 value)
  *  The caller must have a packed mc_addr_list of multicast addresses.
  **/
 void e1000_update_mc_addr_list(struct e1000_hw *hw, u8 *mc_addr_list,
-                               u32 mc_addr_count)
+			       u32 mc_addr_count)
 {
 	if (hw->mac.ops.update_mc_addr_list)
 		hw->mac.ops.update_mc_addr_list(hw, mc_addr_list,
-		                                mc_addr_count);
+						mc_addr_count);
 }
 
 /**
@@ -859,12 +879,12 @@ bool e1000_enable_tx_pkt_filtering(struct e1000_hw *hw)
  *  It also does alignment considerations to do the writes in most efficient
  *  way.  Also fills up the sum of the buffer in *buffer parameter.
  **/
-s32 e1000_mng_host_if_write(struct e1000_hw * hw, u8 *buffer, u16 length,
-                            u16 offset, u8 *sum)
+s32 e1000_mng_host_if_write(struct e1000_hw *hw, u8 *buffer, u16 length,
+			    u16 offset, u8 *sum)
 {
 	if (hw->mac.ops.mng_host_if_write)
 		return hw->mac.ops.mng_host_if_write(hw, buffer, length,
-		                                     offset, sum);
+						     offset, sum);
 
 	return E1000_NOT_IMPLEMENTED;
 }
@@ -877,7 +897,7 @@ s32 e1000_mng_host_if_write(struct e1000_hw * hw, u8 *buffer, u16 length,
  *  Writes the command header after does the checksum calculation.
  **/
 s32 e1000_mng_write_cmd_header(struct e1000_hw *hw,
-                               struct e1000_host_mng_command_header *hdr)
+			       struct e1000_host_mng_command_header *hdr)
 {
 	if (hw->mac.ops.mng_write_cmd_header)
 		return hw->mac.ops.mng_write_cmd_header(hw, hdr);
@@ -895,7 +915,7 @@ s32 e1000_mng_write_cmd_header(struct e1000_hw *hw,
  *  and also checks whether the previous command is completed.  It busy waits
  *  in case of previous command is not completed.
  **/
-s32 e1000_mng_enable_host_if(struct e1000_hw * hw)
+s32 e1000_mng_enable_host_if(struct e1000_hw *hw)
 {
 	if (hw->mac.ops.mng_enable_host_if)
 		return hw->mac.ops.mng_enable_host_if(hw);
@@ -1295,7 +1315,7 @@ s32 e1000_write_nvm(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
  *  This is a function pointer entry point called by drivers.
  **/
 s32 e1000_write_8bit_ctrl_reg(struct e1000_hw *hw, u32 reg, u32 offset,
-                              u8 data)
+			      u8 data)
 {
 	return e1000_write_8bit_ctrl_reg_generic(hw, reg, offset, data);
 }
@@ -1352,3 +1372,18 @@ void e1000_shutdown_fiber_serdes_link(struct e1000_hw *hw)
 		hw->mac.ops.shutdown_serdes(hw);
 }
 
+/**
+ * e1000_div_64b_by_32b - divide 64-bit number by 32-bit divisor
+ * @n: pointer to unsigned 64-bit number
+ * @divisor: unsigned 64-bit divisor
+ *
+ * Divide unsigned 64-bit number by unsigned 32-bit divisor; put result of
+ * the integer division in-place of number and return remainder.  This is
+ * needed for some 32-bit OS'es which have issues with 64-bit division.
+ **/
+u32 e1000_div_64b_by_32b(u64 *n, u32 divisor)
+{
+	u32 remainder = *n % divisor;
+	*n = *n / divisor;
+	return remainder;
+}

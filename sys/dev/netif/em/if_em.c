@@ -1413,9 +1413,6 @@ em_init(void *xsc)
 	    (EM_FLAG_HAS_MGMT | EM_FLAG_HAS_AMT) &&
 	    adapter->hw.mac.type >= e1000_82571)
 		em_get_hw_control(adapter);
-
-	/* Don't reset the phy next time init gets called */
-	adapter->hw.phy.reset_disable = TRUE;
 }
 
 #ifdef IFPOLL_ENABLE
@@ -1643,12 +1640,6 @@ em_media_change(struct ifnet *ifp)
 		if_printf(ifp, "Unsupported media type\n");
 		break;
 	}
-
-	/*
-	 * As the speed/duplex settings my have changed we need to
-	 * reset the PHY.
-	 */
-	adapter->hw.phy.reset_disable = FALSE;
 
 	em_init(adapter);
 

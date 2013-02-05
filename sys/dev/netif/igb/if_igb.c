@@ -839,12 +839,6 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCSIFMEDIA:
-		/*
-		 * As the speed/duplex settings are being
-		 * changed, we need toreset the PHY.
-		 */
-		sc->hw.phy.reset_disable = FALSE;
-
 		/* Check SOL/IDER usage */
 		if (e1000_check_reset_block(&sc->hw)) {
 			if_printf(ifp, "Media change is "
@@ -1004,9 +998,6 @@ igb_init(void *xsc)
 
 	/* Set Energy Efficient Ethernet */
 	e1000_set_eee_i350(&sc->hw);
-
-	/* Don't reset the phy next time init gets called */
-	sc->hw.phy.reset_disable = TRUE;
 }
 
 static void

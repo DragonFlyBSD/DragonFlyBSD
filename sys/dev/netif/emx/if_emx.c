@@ -1313,9 +1313,6 @@ emx_init(void *xsc)
 	if ((sc->flags & (EMX_FLAG_HAS_MGMT | EMX_FLAG_HAS_AMT)) ==
 	    (EMX_FLAG_HAS_MGMT | EMX_FLAG_HAS_AMT))
 		emx_get_hw_control(sc);
-
-	/* Don't reset the phy next time init gets called */
-	sc->hw.phy.reset_disable = TRUE;
 }
 
 static void
@@ -1496,12 +1493,6 @@ emx_media_change(struct ifnet *ifp)
 		if_printf(ifp, "Unsupported media type\n");
 		break;
 	}
-
-	/*
-	 * As the speed/duplex settings my have changed we need to
-	 * reset the PHY.
-	 */
-	sc->hw.phy.reset_disable = FALSE;
 
 	emx_init(sc);
 
