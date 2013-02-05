@@ -22,8 +22,12 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
+.\" Style guide for DragonFly.  Based on the CSRG's KNF (Kernel Normal Form).
 .\"
-.Dd August 30, 2004
+.\"	@(#)style	1.14 (Berkeley) 4/28/95
+.\" $FreeBSD: src/share/man/man9/style.9,v 1.32.2.19 2002/04/14 19:28:03 asmodai Exp $
+.\"
+.Dd February 5, 2013
 .Dt STYLE 9
 .Os
 .Sh NAME
@@ -39,14 +43,6 @@ Be careful to check the examples before assuming that
 .Nm
 is silent on an issue.
 .Bd -literal
-/*
- * Style guide for DragonFly.  Based on the CSRG's KNF (Kernel Normal Form).
- *
- *	@(#)style	1.14 (Berkeley) 4/28/95
- * $FreeBSD: src/share/man/man9/style.9,v 1.32.2.19 2002/04/14 19:28:03 asmodai Exp $
- * $DragonFly: src/share/man/man9/style.9,v 1.21 2008/05/02 02:05:06 swildner Exp $
- */
-
 /*
  * VERY important single-line comments look like this.
  */
@@ -745,15 +741,21 @@ KNF
 .Nm
 compliant in the repository must not diverge from compliance.
 .Pp
-Whenever possible, code should be run through a code checker
-(e.g.,
-.Xr lint 1
+.Dx Ap s
+default warning options are a reasonable subset and -Werror is enabled for
+kernel and world, so passing
+.Cm buildworld
 or
-.Nm gcc Fl Wall )
-and produce minimal warnings.
+.Cm buildkernel
+alone is a good check.
+The warnings of most recent compilers are of high quality.
+Further analysis can be done using one of the various code checkers such as
+.Xr cppcheck 1
+or
+.Xr clang 1 Ap s
+static analyzer.
 .Sh SEE ALSO
 .Xr indent 1 ,
-.Xr lint 1 ,
 .Xr err 3 ,
 .Xr sysexits 3 ,
 .Xr warn 3

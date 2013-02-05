@@ -156,9 +156,7 @@ triggering compiler diagnostics.
 function
 returns a data pointer; in the C standard, conversions between
 data and function pointer types are undefined.
-Some compilers and
-.Xr lint 1
-utilities warn about such casts.)
+Some compilers and code checkers warn about such casts.)
 The precise return type of
 .Fn dlfunc
 is unspecified; applications must cast it to an appropriate function pointer

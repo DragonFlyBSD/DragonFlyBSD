@@ -2119,6 +2119,12 @@ TO_REMOVE+=/usr/share/man/man3/liby.3.gz
 TO_REMOVE+=/usr/bin/yyfix
 TO_REMOVE+=/usr/share/man/cat1/yyfix.1.gz
 TO_REMOVE+=/usr/share/man/man1/yyfix.1.gz
+TO_REMOVE+=/usr/bin/lint
+TO_REMOVE+=/usr/libdata/lint
+TO_REMOVE+=/usr/libexec/lint1
+TO_REMOVE+=/usr/libexec/lint2
+TO_REMOVE+=/usr/share/man/cat1/lint.1.gz
+TO_REMOVE+=/usr/share/man/man1/lint.1.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
