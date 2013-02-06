@@ -121,6 +121,13 @@ static struct igb_device {
 	IGB_DEVICE(I350_SERDES),
 	IGB_DEVICE(I350_SGMII),
 	IGB_DEVICE(I350_VF),
+	IGB_DEVICE(I210_COPPER),
+	IGB_DEVICE(I210_COPPER_IT),
+	IGB_DEVICE(I210_COPPER_OEM1),
+	IGB_DEVICE(I210_FIBER),
+	IGB_DEVICE(I210_SERDES),
+	IGB_DEVICE(I210_SGMII),
+	IGB_DEVICE(I211_COPPER),
 
 	/* required last entry */
 	IGB_DEVICE_NULL
@@ -412,15 +419,27 @@ igb_attach(device_t dev)
 	case e1000_82575:
 		ring_max = IGB_MAX_RING_82575;
 		break;
-	case e1000_82580:
-		ring_max = IGB_MAX_RING_82580;
-		break;
-	case e1000_i350:
-		ring_max = IGB_MAX_RING_I350;
-		break;
+
 	case e1000_82576:
 		ring_max = IGB_MAX_RING_82576;
 		break;
+
+	case e1000_82580:
+		ring_max = IGB_MAX_RING_82580;
+		break;
+
+	case e1000_i350:
+		ring_max = IGB_MAX_RING_I350;
+		break;
+
+	case e1000_i210:
+		ring_max = IGB_MAX_RING_I210;
+		break;
+
+	case e1000_i211:
+		ring_max = IGB_MAX_RING_I211;
+		break;
+
 	default:
 		ring_max = IGB_MIN_RING;
 		break;
@@ -563,7 +582,8 @@ igb_attach(device_t dev)
 		sc->dma_coalesce = igb_dma_coalesce;
 		sc->hw.dev_spec._82575.eee_disable = igb_eee_disabled;
 #endif
-		e1000_set_eee_i350(&sc->hw);
+		if (sc->hw.phy.media_type == e1000_media_type_copper)
+			e1000_set_eee_i350(&sc->hw);
 	}
 
 	/*
@@ -573,7 +593,8 @@ igb_attach(device_t dev)
 	e1000_reset_hw(&sc->hw);
 
 	/* Make sure we have a good EEPROM before we read from it */
-	if (e1000_validate_nvm_checksum(&sc->hw) < 0) {
+	if (sc->hw.mac.type != e1000_i210 && sc->hw.mac.type != e1000_i211 &&
+	    e1000_validate_nvm_checksum(&sc->hw) < 0) {
 		/*
 		 * Some PCI-E parts fail the first check due to
 		 * the link being in sleep state, call it again,
@@ -997,14 +1018,14 @@ igb_init(void *xsc)
 	}
 
 	/* Set Energy Efficient Ethernet */
-	e1000_set_eee_i350(&sc->hw);
+	if (sc->hw.phy.media_type == e1000_media_type_copper)
+		e1000_set_eee_i350(&sc->hw);
 }
 
 static void
 igb_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct igb_softc *sc = ifp->if_softc;
-	u_char fiber_type = IFM_1000_SX;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
@@ -1018,28 +1039,31 @@ igb_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 
 	ifmr->ifm_status |= IFM_ACTIVE;
 
-	if (sc->hw.phy.media_type == e1000_media_type_fiber ||
-	    sc->hw.phy.media_type == e1000_media_type_internal_serdes) {
-		ifmr->ifm_active |= fiber_type | IFM_FDX;
-	} else {
-		switch (sc->link_speed) {
-		case 10:
-			ifmr->ifm_active |= IFM_10_T;
-			break;
+	switch (sc->link_speed) {
+	case 10:
+		ifmr->ifm_active |= IFM_10_T;
+		break;
 
-		case 100:
-			ifmr->ifm_active |= IFM_100_TX;
-			break;
-
-		case 1000:
-			ifmr->ifm_active |= IFM_1000_T;
-			break;
-		}
-		if (sc->link_duplex == FULL_DUPLEX)
-			ifmr->ifm_active |= IFM_FDX;
+	case 100:
+		/*
+		 * Support for 100Mb SFP - these are Fiber 
+		 * but the media type appears as serdes
+		 */
+		if (sc->hw.phy.media_type == e1000_media_type_internal_serdes)
+			ifmr->ifm_active |= IFM_100_FX;
 		else
-			ifmr->ifm_active |= IFM_HDX;
+			ifmr->ifm_active |= IFM_100_TX;
+		break;
+
+	case 1000:
+		ifmr->ifm_active |= IFM_1000_T;
+		break;
 	}
+
+	if (sc->link_duplex == FULL_DUPLEX)
+		ifmr->ifm_active |= IFM_FDX;
+	else
+		ifmr->ifm_active |= IFM_HDX;
 }
 
 static int
@@ -1232,10 +1256,33 @@ igb_update_link_status(struct igb_softc *sc)
 		e1000_get_speed_and_duplex(hw, 
 		    &sc->link_speed, &sc->link_duplex);
 		if (bootverbose) {
-			if_printf(ifp, "Link is up %d Mbps %s\n",
+			const char *flowctl;
+
+			/* Get the flow control for display */
+			switch (hw->fc.current_mode) {
+			case e1000_fc_rx_pause:
+				flowctl = "RX";
+				break;
+
+			case e1000_fc_tx_pause:
+				flowctl = "TX";
+				break;
+
+			case e1000_fc_full:
+				flowctl = "Full";
+				break;
+
+			default:
+				flowctl = "None";
+				break;
+			}
+
+			if_printf(ifp, "Link is up %d Mbps %s, "
+			    "Flow control: %s\n",
 			    sc->link_speed,
 			    sc->link_duplex == FULL_DUPLEX ?
-			    "Full Duplex" : "Half Duplex");
+			    "Full Duplex" : "Half Duplex",
+			    flowctl);
 		}
 		sc->link_active = 1;
 
@@ -1326,7 +1373,11 @@ igb_reset(struct igb_softc *sc)
 		pba = E1000_READ_REG(hw, E1000_RXPBS);
 		pba = e1000_rxpbs_adjust_82580(pba);
 		break;
-		/* XXX pba = E1000_PBA_35K; */
+
+	case e1000_i210:
+	case e1000_i211:
+		pba = E1000_PBA_34K;
+		break;
 
 	default:
 		break;
@@ -1380,6 +1431,7 @@ igb_reset(struct igb_softc *sc)
 	}
 	fc->pause_time = IGB_FC_PAUSE_TIME;
 	fc->send_xon = TRUE;
+	fc->requested_mode = e1000_fc_default;
 
 	/* Issue a global reset */
 	e1000_reset_hw(hw);
@@ -1389,42 +1441,69 @@ igb_reset(struct igb_softc *sc)
 		if_printf(ifp, "Hardware Initialization Failed\n");
 
 	/* Setup DMA Coalescing */
-	if (hw->mac.type == e1000_i350 && sc->dma_coalesce) {
+	if (hw->mac.type > e1000_82580 && hw->mac.type != e1000_i211) {
+		uint32_t dmac;
 		uint32_t reg;
 
-		hwm = (pba - 4) << 10;
-		reg = ((pba - 6) << E1000_DMACR_DMACTHR_SHIFT)
-		    & E1000_DMACR_DMACTHR_MASK;
+		if (sc->dma_coalesce == 0) {
+			/*
+			 * Disabled
+			 */
+			reg = E1000_READ_REG(hw, E1000_DMACR);
+			reg &= ~E1000_DMACR_DMAC_EN;
+			E1000_WRITE_REG(hw, E1000_DMACR, reg);
+			goto reset_out;
+		}
 
-		/* transition to L0x or L1 if available..*/
-		reg |= (E1000_DMACR_DMAC_EN | E1000_DMACR_DMAC_LX_MASK);
-
-		/* timer = +-1000 usec in 32usec intervals */
-		reg |= (1000 >> 5);
-		E1000_WRITE_REG(hw, E1000_DMACR, reg);
-
-		/* No lower threshold */
+		/* Set starting thresholds */
+		E1000_WRITE_REG(hw, E1000_DMCTXTH, 0);
 		E1000_WRITE_REG(hw, E1000_DMCRTRH, 0);
 
-		/* set hwm to PBA -  2 * max frame size */
-		E1000_WRITE_REG(hw, E1000_FCRTC, hwm);
+		hwm = 64 * pba - sc->max_frame_size / 16;
+		if (hwm < 64 * (pba - 6))
+			hwm = 64 * (pba - 6);
+		reg = E1000_READ_REG(hw, E1000_FCRTC);
+		reg &= ~E1000_FCRTC_RTH_COAL_MASK;
+		reg |= ((hwm << E1000_FCRTC_RTH_COAL_SHIFT)
+		    & E1000_FCRTC_RTH_COAL_MASK);
+		E1000_WRITE_REG(hw, E1000_FCRTC, reg);
+
+		dmac = pba - sc->max_frame_size / 512;
+		if (dmac < pba - 10)
+			dmac = pba - 10;
+		reg = E1000_READ_REG(hw, E1000_DMACR);
+		reg &= ~E1000_DMACR_DMACTHR_MASK;
+		reg = ((dmac << E1000_DMACR_DMACTHR_SHIFT)
+		    & E1000_DMACR_DMACTHR_MASK);
+		/* Transition to L0x or L1 if available.. */
+		reg |= (E1000_DMACR_DMAC_EN | E1000_DMACR_DMAC_LX_MASK);
+		/* timer = value in sc->dma_coalesce in 32usec intervals */
+		reg |= (sc->dma_coalesce >> 5);
+		E1000_WRITE_REG(hw, E1000_DMACR, reg);
 
 		/* Set the interval before transition */
 		reg = E1000_READ_REG(hw, E1000_DMCTLX);
-		reg |= 0x800000FF; /* 255 usec */
+		reg |= 0x80000004;
 		E1000_WRITE_REG(hw, E1000_DMCTLX, reg);
 
-		/* free space in tx packet buffer to wake from DMA coal */
+		/* Free space in tx packet buffer to wake from DMA coal */
 		E1000_WRITE_REG(hw, E1000_DMCTXTH,
 		    (20480 - (2 * sc->max_frame_size)) >> 6);
 
-		/* make low power state decision controlled by DMA coal */
+		/* Make low power state decision controlled by DMA coal */
 		reg = E1000_READ_REG(hw, E1000_PCIEMISC);
-		E1000_WRITE_REG(hw, E1000_PCIEMISC,
-		    reg | E1000_PCIEMISC_LX_DECISION);
+		reg &= ~E1000_PCIEMISC_LX_DECISION;
+		E1000_WRITE_REG(hw, E1000_PCIEMISC, reg);
 		if_printf(ifp, "DMA Coalescing enabled\n");
+	} else if (hw->mac.type == e1000_82580) {
+		uint32_t reg = E1000_READ_REG(hw, E1000_PCIEMISC);
+
+		E1000_WRITE_REG(hw, E1000_DMACR, 0);
+		E1000_WRITE_REG(hw, E1000_PCIEMISC,
+		    reg & ~E1000_PCIEMISC_LX_DECISION);
 	}
 
+reset_out:
 	E1000_WRITE_REG(&sc->hw, E1000_VET, ETHERTYPE_VLAN);
 	e1000_get_phy_info(hw);
 	e1000_check_for_link(hw);
@@ -3712,6 +3791,10 @@ igb_init_unshared_intr(struct igb_softc *sc)
 		 * Clear IVARs
 		 */
 		switch (sc->hw.mac.type) {
+		case e1000_82576:
+			ivar_max = IGB_MAX_IVAR_82576;
+			break;
+
 		case e1000_82580:
 			ivar_max = IGB_MAX_IVAR_82580;
 			break;
@@ -3725,8 +3808,12 @@ igb_init_unshared_intr(struct igb_softc *sc)
 			ivar_max = IGB_MAX_IVAR_VF;
 			break;
 
-		case e1000_82576:
-			ivar_max = IGB_MAX_IVAR_82576;
+		case e1000_i210:
+			ivar_max = IGB_MAX_IVAR_I210;
+			break;
+
+		case e1000_i211:
+			ivar_max = IGB_MAX_IVAR_I211;
 			break;
 
 		default:
@@ -3753,6 +3840,8 @@ igb_init_unshared_intr(struct igb_softc *sc)
 	case e1000_i350:
 	case e1000_vfadapt:
 	case e1000_vfadapt_i350:
+	case e1000_i210:
+	case e1000_i211:
 		/* RX entries */
 		for (i = 0; i < sc->rx_ring_inuse; ++i) {
 			rxr = &sc->rx_rings[i];
@@ -4045,15 +4134,27 @@ igb_alloc_intr(struct igb_softc *sc)
 	case e1000_82575:
 		intr_bitmax = IGB_MAX_TXRXINT_82575;
 		break;
-	case e1000_82580:
-		intr_bitmax = IGB_MAX_TXRXINT_82580;
-		break;
-	case e1000_i350:
-		intr_bitmax = IGB_MAX_TXRXINT_I350;
-		break;
+
 	case e1000_82576:
 		intr_bitmax = IGB_MAX_TXRXINT_82576;
 		break;
+
+	case e1000_82580:
+		intr_bitmax = IGB_MAX_TXRXINT_82580;
+		break;
+
+	case e1000_i350:
+		intr_bitmax = IGB_MAX_TXRXINT_I350;
+		break;
+
+	case e1000_i210:
+		intr_bitmax = IGB_MAX_TXRXINT_I210;
+		break;
+
+	case e1000_i211:
+		intr_bitmax = IGB_MAX_TXRXINT_I211;
+		break;
+
 	default:
 		intr_bitmax = IGB_MIN_TXRXINT;
 		break;

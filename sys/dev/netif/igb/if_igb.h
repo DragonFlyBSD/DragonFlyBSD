@@ -37,25 +37,31 @@
 /*
  * Max ring count
  */
-#define IGB_MAX_RING_82575	4
+#define IGB_MAX_RING_I210	4
+#define IGB_MAX_RING_I211	2
 #define IGB_MAX_RING_I350	8
 #define IGB_MAX_RING_82580	8
 #define IGB_MAX_RING_82576	16
+#define IGB_MAX_RING_82575	4
 #define IGB_MIN_RING		1
 #define IGB_MIN_RING_RSS	2
 
 /*
  * Max TX/RX interrupt bits
  */
-#define IGB_MAX_TXRXINT_82575	4	/* XXX not used */
+#define IGB_MAX_TXRXINT_I210	4
+#define IGB_MAX_TXRXINT_I211	4
 #define IGB_MAX_TXRXINT_I350	8
 #define IGB_MAX_TXRXINT_82580	8
 #define IGB_MAX_TXRXINT_82576	16
+#define IGB_MAX_TXRXINT_82575	4	/* XXX not used */
 #define IGB_MIN_TXRXINT		2	/* XXX VF? */
 
 /*
  * Max IVAR count
  */
+#define IGB_MAX_IVAR_I210	4
+#define IGB_MAX_IVAR_I211	4
 #define IGB_MAX_IVAR_I350	4
 #define IGB_MAX_IVAR_82580	4
 #define IGB_MAX_IVAR_82576	8
