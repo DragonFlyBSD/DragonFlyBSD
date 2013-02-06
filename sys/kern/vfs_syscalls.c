@@ -663,11 +663,12 @@ dounmount(struct mount *mp, int flags)
 	int lflags;
 	int freeok = 1;
 
+	lwkt_gettoken(&mntvnode_token);
 	/*
 	 * Exclusive access for unmounting purposes
 	 */
 	if ((error = mountlist_interlock(dounmount_interlock, mp)) != 0)
-		return (error);
+		goto out;
 
 	/*
 	 * Allow filesystems to detect that a forced unmount is in progress.
@@ -680,7 +681,7 @@ dounmount(struct mount *mp, int flags)
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
 			wakeup(mp);
-		return (error);
+		goto out;
 	}
 
 	if (mp->mnt_flag & MNT_EXPUBLIC)
@@ -768,7 +769,7 @@ dounmount(struct mount *mp, int flags)
 		lockmgr(&mp->mnt_lock, LK_RELEASE);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
 			wakeup(mp);
-		return (error);
+		goto out;
 	}
 	/*
 	 * Clean up any journals still associated with the mount after
@@ -810,7 +811,10 @@ dounmount(struct mount *mp, int flags)
 		wakeup(mp);
 	if (freeok)
 		kfree(mp, M_MOUNT);
-	return (0);
+	error = 0;
+out:
+	lwkt_reltoken(&mntvnode_token);
+	return (error);
 }
 
 static
