@@ -134,7 +134,7 @@
 #include <dev/netif/em/if_em.h>
 
 #define EM_NAME	"Intel(R) PRO/1000 Network Connection "
-#define EM_VER	" 7.2.4"
+#define EM_VER	" 7.3.4"
 
 #define _EM_DEVICE(id, ret)	\
 	{ EM_VENDOR_ID, E1000_DEV_ID_##id, ret, EM_NAME #id EM_VER }
@@ -977,6 +977,9 @@ em_resume(device_t dev)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
+	if (adapter->hw.mac.type == e1000_pch2lan)
+		e1000_resume_workarounds_pchlan(&adapter->hw);
+
 	em_init(adapter);
 	em_get_mgmt(adapter);
 	if_devstart(ifp);
@@ -1245,75 +1248,10 @@ em_init(void *xsc)
 	struct adapter *adapter = xsc;
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
 	device_t dev = adapter->dev;
-	uint32_t pba;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	em_stop(adapter);
-
-	/*
-	 * Packet Buffer Allocation (PBA)
-	 * Writing PBA sets the receive portion of the buffer
-	 * the remainder is used for the transmit buffer.
-	 *
-	 * Devices before the 82547 had a Packet Buffer of 64K.
-	 *   Default allocation: PBA=48K for Rx, leaving 16K for Tx.
-	 * After the 82547 the buffer was reduced to 40K.
-	 *   Default allocation: PBA=30K for Rx, leaving 10K for Tx.
-	 *   Note: default does not leave enough room for Jumbo Frame >10k.
-	 */
-	switch (adapter->hw.mac.type) {
-	case e1000_82547:
-	case e1000_82547_rev_2: /* 82547: Total Packet Buffer is 40K */
-		if (adapter->max_frame_size > 8192)
-			pba = E1000_PBA_22K; /* 22K for Rx, 18K for Tx */
-		else
-			pba = E1000_PBA_30K; /* 30K for Rx, 10K for Tx */
-		adapter->tx_fifo_head = 0;
-		adapter->tx_head_addr = pba << EM_TX_HEAD_ADDR_SHIFT;
-		adapter->tx_fifo_size =
-		    (E1000_PBA_40K - pba) << EM_PBA_BYTES_SHIFT;
-		break;
-
-	/* Total Packet Buffer on these is 48K */
-	case e1000_82571:
-	case e1000_82572:
-	case e1000_80003es2lan:
-		pba = E1000_PBA_32K; /* 32K for Rx, 16K for Tx */
-		break;
-
-	case e1000_82573: /* 82573: Total Packet Buffer is 32K */
-		pba = E1000_PBA_12K; /* 12K for Rx, 20K for Tx */
-		break;
-
-	case e1000_82574:
-	case e1000_82583:
-		pba = E1000_PBA_20K; /* 20K for Rx, 20K for Tx */
-		break;
-
-	case e1000_ich8lan:
-		pba = E1000_PBA_8K;
-		break;
-
-	case e1000_ich9lan:
-	case e1000_ich10lan:
-#define E1000_PBA_10K	0x000A
-		pba = E1000_PBA_10K;
-		break;
-
-	case e1000_pchlan:
-	case e1000_pch2lan:
-		pba = E1000_PBA_26K;
-		break;
-
-	default:
-		/* Devices before 82547 had a Packet Buffer of 64K.   */
-		if (adapter->max_frame_size > 8192)
-			pba = E1000_PBA_40K; /* 40K for Rx, 24K for Tx */
-		else
-			pba = E1000_PBA_48K; /* 48K for Rx, 16K for Tx */
-	}
-	E1000_WRITE_REG(&adapter->hw, E1000_PBA, pba);
 
 	/* Get the latest mac address, User can use a LAA */
         bcopy(IF_LLADDR(ifp), adapter->hw.mac.addr, ETHER_ADDR_LEN);
@@ -2368,6 +2306,7 @@ em_reset(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
 	uint16_t rx_buffer_size;
+	uint32_t pba;
 
 	/* When hardware is reset, fifo_head is also reset */
 	adapter->tx_fifo_head = 0;
@@ -2385,6 +2324,70 @@ em_reset(struct adapter *adapter)
 		e1000_write_phy_reg(&adapter->hw,
 		    IGP02E1000_PHY_POWER_MGMT, phy_tmp);
 	}
+
+	/*
+	 * Packet Buffer Allocation (PBA)
+	 * Writing PBA sets the receive portion of the buffer
+	 * the remainder is used for the transmit buffer.
+	 *
+	 * Devices before the 82547 had a Packet Buffer of 64K.
+	 *   Default allocation: PBA=48K for Rx, leaving 16K for Tx.
+	 * After the 82547 the buffer was reduced to 40K.
+	 *   Default allocation: PBA=30K for Rx, leaving 10K for Tx.
+	 *   Note: default does not leave enough room for Jumbo Frame >10k.
+	 */
+	switch (adapter->hw.mac.type) {
+	case e1000_82547:
+	case e1000_82547_rev_2: /* 82547: Total Packet Buffer is 40K */
+		if (adapter->max_frame_size > 8192)
+			pba = E1000_PBA_22K; /* 22K for Rx, 18K for Tx */
+		else
+			pba = E1000_PBA_30K; /* 30K for Rx, 10K for Tx */
+		adapter->tx_fifo_head = 0;
+		adapter->tx_head_addr = pba << EM_TX_HEAD_ADDR_SHIFT;
+		adapter->tx_fifo_size =
+		    (E1000_PBA_40K - pba) << EM_PBA_BYTES_SHIFT;
+		break;
+
+	/* Total Packet Buffer on these is 48K */
+	case e1000_82571:
+	case e1000_82572:
+	case e1000_80003es2lan:
+		pba = E1000_PBA_32K; /* 32K for Rx, 16K for Tx */
+		break;
+
+	case e1000_82573: /* 82573: Total Packet Buffer is 32K */
+		pba = E1000_PBA_12K; /* 12K for Rx, 20K for Tx */
+		break;
+
+	case e1000_82574:
+	case e1000_82583:
+		pba = E1000_PBA_20K; /* 20K for Rx, 20K for Tx */
+		break;
+
+	case e1000_ich8lan:
+		pba = E1000_PBA_8K;
+		break;
+
+	case e1000_ich9lan:
+	case e1000_ich10lan:
+#define E1000_PBA_10K	0x000A
+		pba = E1000_PBA_10K;
+		break;
+
+	case e1000_pchlan:
+	case e1000_pch2lan:
+		pba = E1000_PBA_26K;
+		break;
+
+	default:
+		/* Devices before 82547 had a Packet Buffer of 64K.   */
+		if (adapter->max_frame_size > 8192)
+			pba = E1000_PBA_40K; /* 40K for Rx, 24K for Tx */
+		else
+			pba = E1000_PBA_48K; /* 48K for Rx, 16K for Tx */
+	}
+	E1000_WRITE_REG(&adapter->hw, E1000_PBA, pba);
 
 	/*
 	 * These parameters control the automatic generation (Tx) and
@@ -2416,22 +2419,49 @@ em_reset(struct adapter *adapter)
 
 	adapter->hw.fc.requested_mode = e1000_fc_full;
 
-	/* Workaround: no TX flow ctrl for PCH */
-	if (adapter->hw.mac.type == e1000_pchlan)
+	/*
+	 * Device specific overrides/settings
+	 */
+	switch (adapter->hw.mac.type) {
+	case e1000_pchlan:
+		/* Workaround: no TX flow ctrl for PCH */
 		adapter->hw.fc.requested_mode = e1000_fc_rx_pause;
+		adapter->hw.fc.pause_time = 0xFFFF; /* override */
+		if (adapter->arpcom.ac_if.if_mtu > ETHERMTU) {
+			adapter->hw.fc.high_water = 0x3500;
+			adapter->hw.fc.low_water = 0x1500;
+		} else {
+			adapter->hw.fc.high_water = 0x5000;
+			adapter->hw.fc.low_water = 0x3000;
+		}
+		adapter->hw.fc.refresh_time = 0x1000;
+		break;
 
-	/* Override - settings for PCH2LAN, ya its magic :) */
-	if (adapter->hw.mac.type == e1000_pch2lan) {
+	case e1000_pch2lan:
 		adapter->hw.fc.high_water = 0x5C20;
 		adapter->hw.fc.low_water = 0x5048;
 		adapter->hw.fc.pause_time = 0x0650;
 		adapter->hw.fc.refresh_time = 0x0400;
-
 		/* Jumbos need adjusted PBA */
 		if (adapter->arpcom.ac_if.if_mtu > ETHERMTU)
 			E1000_WRITE_REG(&adapter->hw, E1000_PBA, 12);
 		else
 			E1000_WRITE_REG(&adapter->hw, E1000_PBA, 26);
+		break;
+
+	case e1000_ich9lan:
+	case e1000_ich10lan:
+		if (adapter->arpcom.ac_if.if_mtu > ETHERMTU) {
+			adapter->hw.fc.high_water = 0x2800;
+			adapter->hw.fc.low_water =
+			    adapter->hw.fc.high_water - 8;
+			break;
+		}
+		/* FALL THROUGH */
+	default:
+		if (adapter->hw.mac.type == e1000_80003es2lan)
+			adapter->hw.fc.pause_time = 0xFFFF;
+		break;
 	}
 
 	/* Issue a global reset */
@@ -3233,7 +3263,7 @@ em_init_rx_unit(struct adapter *adapter)
 	E1000_WRITE_REG(&adapter->hw, E1000_RDH(0), 0);
 	E1000_WRITE_REG(&adapter->hw, E1000_RDT(0), adapter->num_rx_desc - 1);
 
-	/* Set early receive threshold on appropriate hw */
+	/* Set PTHRESH for improved jumbo performance */
 	if (((adapter->hw.mac.type == e1000_ich9lan) ||
 	    (adapter->hw.mac.type == e1000_pch2lan) ||
 	    (adapter->hw.mac.type == e1000_ich10lan)) &&
@@ -3242,7 +3272,6 @@ em_init_rx_unit(struct adapter *adapter)
 
 		rxdctl = E1000_READ_REG(&adapter->hw, E1000_RXDCTL(0));
 		E1000_WRITE_REG(&adapter->hw, E1000_RXDCTL(0), rxdctl | 3);
-		E1000_WRITE_REG(&adapter->hw, E1000_ERT, 0x100 | (1 << 13));
 	}
 
 	if (adapter->hw.mac.type == e1000_pch2lan) {
