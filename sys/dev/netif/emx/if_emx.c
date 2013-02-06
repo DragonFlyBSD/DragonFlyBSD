@@ -1176,42 +1176,11 @@ emx_init(void *xsc)
 	struct emx_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	device_t dev = sc->dev;
-	uint32_t pba;
 	int i;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	emx_stop(sc);
-
-	/*
-	 * Packet Buffer Allocation (PBA)
-	 * Writing PBA sets the receive portion of the buffer
-	 * the remainder is used for the transmit buffer.
-	 */
-	switch (sc->hw.mac.type) {
-	/* Total Packet Buffer on these is 48K */
-	case e1000_82571:
-	case e1000_82572:
-	case e1000_80003es2lan:
-		pba = E1000_PBA_32K; /* 32K for Rx, 16K for Tx */
-		break;
-
-	case e1000_82573: /* 82573: Total Packet Buffer is 32K */
-		pba = E1000_PBA_12K; /* 12K for Rx, 20K for Tx */
-		break;
-
-	case e1000_82574:
-		pba = E1000_PBA_20K; /* 20K for Rx, 20K for Tx */
-		break;
-
-	default:
-		/* Devices before 82547 had a Packet Buffer of 64K.   */
-		if (sc->max_frame_size > 8192)
-			pba = E1000_PBA_40K; /* 40K for Rx, 24K for Tx */
-		else
-			pba = E1000_PBA_48K; /* 48K for Rx, 16K for Tx */
-	}
-	E1000_WRITE_REG(&sc->hw, E1000_PBA, pba);
 
 	/* Get the latest mac address, User can use a LAA */
         bcopy(IF_LLADDR(ifp), sc->hw.mac.addr, ETHER_ADDR_LEN);
@@ -1861,6 +1830,7 @@ emx_reset(struct emx_softc *sc)
 {
 	device_t dev = sc->dev;
 	uint16_t rx_buffer_size;
+	uint32_t pba;
 
 	/* Set up smart power down as default off on newer adapters. */
 	if (!emx_smart_pwr_down &&
@@ -1875,6 +1845,36 @@ emx_reset(struct emx_softc *sc)
 		e1000_write_phy_reg(&sc->hw,
 		    IGP02E1000_PHY_POWER_MGMT, phy_tmp);
 	}
+
+	/*
+	 * Packet Buffer Allocation (PBA)
+	 * Writing PBA sets the receive portion of the buffer
+	 * the remainder is used for the transmit buffer.
+	 */
+	switch (sc->hw.mac.type) {
+	/* Total Packet Buffer on these is 48K */
+	case e1000_82571:
+	case e1000_82572:
+	case e1000_80003es2lan:
+		pba = E1000_PBA_32K; /* 32K for Rx, 16K for Tx */
+		break;
+
+	case e1000_82573: /* 82573: Total Packet Buffer is 32K */
+		pba = E1000_PBA_12K; /* 12K for Rx, 20K for Tx */
+		break;
+
+	case e1000_82574:
+		pba = E1000_PBA_20K; /* 20K for Rx, 20K for Tx */
+		break;
+
+	default:
+		/* Devices before 82547 had a Packet Buffer of 64K.   */
+		if (sc->max_frame_size > 8192)
+			pba = E1000_PBA_40K; /* 40K for Rx, 24K for Tx */
+		else
+			pba = E1000_PBA_48K; /* 48K for Rx, 16K for Tx */
+	}
+	E1000_WRITE_REG(&sc->hw, E1000_PBA, pba);
 
 	/*
 	 * These parameters control the automatic generation (Tx) and
