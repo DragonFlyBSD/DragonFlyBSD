@@ -107,6 +107,7 @@ MAN=	accept_filter.9 \
 	KASSERT.9 \
 	kenv.9 \
 	kernacc.9 \
+	kether_ntoa.9 \
 	kmalloc.9 \
 	kobj.9 \
 	kprintf.9 \
@@ -602,6 +603,7 @@ MLINKS+=ktr.9 KTR_COND_LOG.9 \
 	ktr.9 KTR_INFO_MASTER.9 \
 	ktr.9 KTR_INFO_MASTER_EXTERN.9 \
 	ktr.9 KTR_LOG.9
+MLINKS+=kether_ntoa.9 kether_aton.9
 MLINKS+=lock.9 lockcount.9 \
 	lock.9 lockcountnb.9 \
 	lock.9 lockinit.9 \
