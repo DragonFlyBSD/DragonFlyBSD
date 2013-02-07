@@ -2778,6 +2778,15 @@ em_init_tx_unit(struct adapter *adapter)
 
 	/* This write will effectively turn on the transmit unit. */
 	E1000_WRITE_REG(&adapter->hw, E1000_TCTL, tctl);
+
+	if (adapter->hw.mac.type == e1000_82571 ||
+	    adapter->hw.mac.type == e1000_82572 ||
+	    adapter->hw.mac.type == e1000_80003es2lan) {
+		/* Bit 28 of TARC1 must be cleared when MULR is enabled */
+		tarc = E1000_READ_REG(&adapter->hw, E1000_TARC(1));
+		tarc &= ~(1 << 28);
+		E1000_WRITE_REG(&adapter->hw, E1000_TARC(1), tarc);
+	}
 }
 
 static void

@@ -2207,6 +2207,15 @@ emx_init_tx_unit(struct emx_softc *sc)
 
 	/* This write will effectively turn on the transmit unit. */
 	E1000_WRITE_REG(&sc->hw, E1000_TCTL, tctl);
+
+	if (sc->hw.mac.type == e1000_82571 ||
+	    sc->hw.mac.type == e1000_82572 ||
+	    sc->hw.mac.type == e1000_80003es2lan) {
+		/* Bit 28 of TARC1 must be cleared when MULR is enabled */
+		tarc = E1000_READ_REG(&sc->hw, E1000_TARC(1));
+		tarc &= ~(1 << 28);
+		E1000_WRITE_REG(&sc->hw, E1000_TARC(1), tarc);
+	}
 }
 
 static void
