@@ -37,9 +37,9 @@
 .Sh SYNOPSIS
 .In net/if_var.h
 .Ft char *
-.Fn kether_ntoa "u_char *addr" "char *buf"
+.Fn kether_ntoa "const u_char *addr" "char *buf"
 .Ft u_char *
-.Fn kether_aton const "char *macstr" "u_char *addr"
+.Fn kether_aton "const char *macstr" "u_char *addr"
 .Sh DESCRIPTION
 The
 .Fn kether_ntoa
