@@ -167,3 +167,25 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
 	    goto retry;
 
 * MPASS macro - Replace it with KKASSERT
+
+* In DragonFly 3.3 format specifier %D was removed from kprintf. As a
+  replacement functions kether_ntoa() and hexncpy() were added.
+
+  - Ethernet address (MAC) to its hexadecimal form:
+
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+	u_char hwaddr[6];
+
+	kprintf("MAC address %s\n", kether_ntoa(hwaddr, ethstr)
+
+  - Generic conversion (block of bytes to hexadecimal form):
+
+	char hexstr[18];
+	u_char mydata[6] = {1, 2, 3, 4, 5 ,6};
+
+	/*
+	 * Below statement would print:
+	 *
+	 * 01-02-03-04-05-06
+	 */
+	kprintf("%s\n", hexncpy(mydata, 6, hexstr, HEX_NCPYLEN(6), "-"));
