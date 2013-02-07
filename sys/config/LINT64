@@ -2269,6 +2269,7 @@ options		BCE_DEBUG
 options		BNX_TSO_DEBUG
 options		EMX_RSS_DEBUG
 options		EMX_TSO_DEBUG
+options		EMX_TSS_DEBUG
 options		JME_RSS_DEBUG
 options		IGB_RSS_DEBUG
 options		IGB_TSS_DEBUG
