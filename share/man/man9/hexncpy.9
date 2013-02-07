@@ -31,57 +31,44 @@
 .\"
 .\"
 .Dd February 7, 2012
-.Dt KETHER_NTOA 9
+.Dt HEXNCPY 9
 .Os
 .Sh NAME
-.Nm kether_ntoa, kether_aton
-.Nd ethernet address conversion routines
+.Nm hexncpy
+.Nd converts a block of bytes into an ASCII string
 .Sh SYNOPSIS
-.In net/if_var.h
+.In sys/libkern.h
 .Ft char *
-.Fn kether_ntoa "u_char *addr" "char *buf"
-.Ft u_char *
-.Fn kether_aton const "char *macstr" "u_char *addr"
+.Fn hexncpy "const u_char *inb" "int inlen" "char *outb" "int outlen" "const char *sep"
 .Sh DESCRIPTION
 The
-.Fn kether_ntoa
-function converts the ethernet address specified in
-.Fa addr
-to the corresponding hexadecimal ASCII
-representation of it.
-Likewise, the
-.Fn kether_aton
-function converts an ASCII
-string specified in
-.Fa macstr
-to an ethernet address.
-.Pp
-Notational conventions for hexadecimal ASCII
-representation of a MAC
-address are specified in IEEE 802.
+.Fn hexncpy
+function converts a block of bytes to an ASCII string which represents its values as hex digits.
+.Bl -tag -width indent
+.It Fa inb
+Pointer to the array of bytes to be converted.
+.It Fa inlen
+Number of bytes to parse from the input buffer.
+.It Fa outb
+Buffer to store the resulting string.
+It should be large enough to hold all the hexadecimal characters that want to
+be represented, the separators and the null terminator character.
+.It Fa outlen
+Number of bytes to store in the buffer.
+.It Fa sep
+Character to be used as separator
+.El
 .Sh RETURN VALUES
 The
-.Fn kether_ntoa
-function returns a pointer to the string containing the hexadecimal ASCII
-representation of the ethernet address passed in
-.Fa addr ,
-or NULL in the case of failure.
-.Pp
-The
-.Fn kether_aton
-function returns a pointer to a block of bytes containing the conversion
-of the specified ASCII
-string in
-.Fa macstr ,
-or NULL in the case of failure.
+.Fn hexncpy
+function returns a pointer to the string containing an ASCII representation as hex digits of the values passed in
+.Fa inb .
 .Sh SEE ALSO
 .Xr ascii 7 ,
-.Xr hexncpy 9 ,
-.Xr hexdump 9
+.Xr hexdump 9 ,
+.Xr kether_ntoa 9
 .Sh HISTORY
 The
-.Fn kether_ntoa
-and
-.Fn kether_aton
-functions first appeared in
+.Fn hexncpy
+function first appeared in
 .Dx 3.3

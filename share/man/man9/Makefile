@@ -85,6 +85,7 @@ MAN=	accept_filter.9 \
 	firmware.9 \
 	hash.9 \
 	hashinit.9 \
+	hexncpy.9 \
 	hexdump.9 \
 	idr.9 \
 	ieee80211.9 \
