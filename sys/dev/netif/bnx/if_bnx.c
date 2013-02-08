@@ -1751,7 +1751,7 @@ bnx_attach(device_t dev)
 {
 	struct ifnet *ifp;
 	struct bnx_softc *sc;
-	uint32_t hwcfg = 0, misccfg;
+	uint32_t hwcfg = 0;
 	int error = 0, rid, capmask;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
 	uint16_t product;
@@ -1883,8 +1883,6 @@ bnx_attach(device_t dev)
 		 */
 		sc->bnx_flags |= BNX_FLAG_STATUSTAG_BUG;
 	}
-
-	misccfg = CSR_READ_4(sc, BGE_MISC_CFG) & BGE_MISCCFG_BOARD_ID_MASK;
 
 	sc->bnx_pciecap = pci_get_pciecap_ptr(sc->bnx_dev);
 	if (sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
@@ -3938,7 +3936,6 @@ static void
 bnx_coal_change(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -3946,7 +3943,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS,
 			    sc->bnx_rx_coal_ticks);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_RX_COAL_TICKS);
+		CSR_READ_4(sc, BGE_HCC_RX_COAL_TICKS);
 
 		if (bootverbose) {
 			if_printf(ifp, "rx_coal_ticks -> %u\n",
@@ -3958,7 +3955,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS,
 			    sc->bnx_tx_coal_ticks);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_TX_COAL_TICKS);
+		CSR_READ_4(sc, BGE_HCC_TX_COAL_TICKS);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_coal_ticks -> %u\n",
@@ -3970,7 +3967,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS,
 			    sc->bnx_rx_coal_bds);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS);
+		CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS);
 
 		if (bootverbose) {
 			if_printf(ifp, "rx_coal_bds -> %u\n",
@@ -3982,7 +3979,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS,
 			    sc->bnx_tx_coal_bds);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS);
+		CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_coal_bds -> %u\n",
@@ -3994,7 +3991,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT,
 		    sc->bnx_rx_coal_bds_int);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT);
+		CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT);
 
 		if (bootverbose) {
 			if_printf(ifp, "rx_coal_bds_int -> %u\n",
@@ -4006,7 +4003,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT,
 		    sc->bnx_tx_coal_bds_int);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT);
+		CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_coal_bds_int -> %u\n",
