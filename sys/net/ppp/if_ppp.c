@@ -1076,12 +1076,12 @@ ppp_dequeue(struct ppp_softc *sc)
     if (protocol != PPP_LCP && protocol != PPP_CCP
 	&& sc->sc_xc_state && (sc->sc_flags & SC_COMP_RUN)) {
 	struct mbuf *mcomp = NULL;
-	int slen, clen;
+	int slen;
 
 	slen = 0;
 	for (mp = m; mp != NULL; mp = mp->m_next)
 	    slen += mp->m_len;
-	clen = (*sc->sc_xcomp->compress)
+	(*sc->sc_xcomp->compress)
 	    (sc->sc_xc_state, &mcomp, m, slen, sc->sc_if.if_mtu + PPP_HDRLEN);
 	if (mcomp != NULL) {
 	    if (sc->sc_flags & SC_CCP_UP) {
