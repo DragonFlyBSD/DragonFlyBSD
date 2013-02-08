@@ -397,14 +397,7 @@ vtblk_open(struct dev_open_args *ap)
 static int
 vtblk_dump(struct dev_dump_args *ap)
 {
-	struct vtblk_softc *sc;
-	int error;
-
-	error = 0;
-
-	cdev_t dev = ap->a_head.a_dev;
-	sc = dev->si_drv1;
-
+	/* XXX */
 	return (ENXIO);
 }
 
