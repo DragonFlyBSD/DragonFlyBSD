@@ -32,15 +32,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohcivar.h,v 1.11 2004/01/06 14:30:47 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohcivar.h,v 1.6 2005/11/17 21:29:45 dillon Exp $
- *
  */
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #define FWOHCI_TASKQUEUE        0
-#else
-#define FWOHCI_TASKQUEUE        1
-#endif
 #if FWOHCI_TASKQUEUE
 #include <sys/taskqueue.h>
 #endif

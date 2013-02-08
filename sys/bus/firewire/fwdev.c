@@ -39,11 +39,7 @@
 #include <sys/systm.h>
 #include <sys/types.h>
 #include <sys/mbuf.h>
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <sys/buf.h>
-#else
-#include <sys/bio.h>
-#endif
 
 #include <sys/kernel.h>
 #include <sys/malloc.h>
@@ -55,19 +51,11 @@
 
 #include <sys/thread2.h>
 
-#ifdef __DragonFly__
-#include "firewire.h"
-#include "firewirereg.h"
-#include "fwdma.h"
-#include "fwmem.h"
-#include "iec68113.h"
-#else
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-#include <dev/firewire/fwdma.h>
-#include <dev/firewire/fwmem.h>
-#include <dev/firewire/iec68113.h>
-#endif
+#include <bus/firewire/firewire.h>
+#include <bus/firewire/firewirereg.h>
+#include <bus/firewire/fwdma.h>
+#include <bus/firewire/fwmem.h>
+#include <bus/firewire/iec68113.h>
 
 #define	FWNODE_INVAL 0xffff
 

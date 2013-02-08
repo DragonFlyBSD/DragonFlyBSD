@@ -32,17 +32,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewirereg.h,v 1.33 2004/01/06 14:30:46 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.12 2006/09/10 01:26:32 dillon Exp $
- *
  */
 
-#ifdef __DragonFly__
 typedef	struct thread fw_proc;
-#elif __FreeBSD_version >= 500000
-typedef	struct thread fw_proc;
-#else
-typedef	struct proc fw_proc;
-#endif
 
 #include <sys/uio.h>
 #include <sys/event.h>
@@ -307,22 +299,9 @@ void fwdev_clone (void *, char *, int, cdev_t *);
 extern int firewire_debug;
 extern devclass_t firewire_devclass;
 
-#ifdef __DragonFly__
 #define		FWPRI		PCATCH
-#else
-#define		FWPRI		((PZERO+8)|PCATCH)
-#endif
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #define CALLOUT_INIT(x) callout_init(x)
-#else
-#define CALLOUT_INIT(x) callout_init(x, 0 /* mpsafe */)
-#endif
-
-#if defined(__DragonFly__)
-#define MIN(a,b) (((a)<(b))?(a):(b))
-#define MAX(a,b) (((a)>(b))?(a):(b))
-#endif
 
 MALLOC_DECLARE(M_FW);
 MALLOC_DECLARE(M_FWXFER);

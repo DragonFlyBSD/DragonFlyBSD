@@ -45,23 +45,11 @@
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-#include <machine/clock.h>	/* for DELAY() */
-#endif
-
-#ifdef __DragonFly__
-#include "firewire.h"
-#include "firewirereg.h"
-#include "fwmem.h"
-#include "iec13213.h"
-#include "iec68113.h"
-#else
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-#include <dev/firewire/fwmem.h>
-#include <dev/firewire/iec13213.h>
-#include <dev/firewire/iec68113.h>
-#endif
+#include <bus/firewire/firewire.h>
+#include <bus/firewire/firewirereg.h>
+#include <bus/firewire/fwmem.h>
+#include <bus/firewire/iec13213.h>
+#include <bus/firewire/iec68113.h>
 
 struct crom_src_buf {
 	struct crom_src	src;
@@ -633,13 +621,8 @@ fw_reset_crom(struct firewire_comm *fc)
 	crom_add_entry(root, CSRKEY_NCAP, 0x0083c0); /* XXX */
 	/* private company_id */
 	crom_add_entry(root, CSRKEY_VENDOR, CSRVAL_VENDOR_PRIVATE);
-#ifdef __DragonFly__
 	crom_add_simple_text(src, root, &buf->vendor, "DragonFly Project");
 	crom_add_entry(root, CSRKEY_HW, __DragonFly_version);
-#else
-	crom_add_simple_text(src, root, &buf->vendor, "FreeBSD Project");
-	crom_add_entry(root, CSRKEY_HW, __FreeBSD_version);
-#endif
 	crom_add_simple_text(src, root, &buf->hw, hostname);
 }
 
