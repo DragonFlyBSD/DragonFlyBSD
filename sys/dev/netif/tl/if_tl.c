@@ -969,7 +969,7 @@ tl_hardreset(device_t dev)
 static void
 tl_softreset(struct tl_softc *sc, int internal)
 {
-        u_int32_t               cmd, dummy, i;
+        u_int32_t               cmd, i;
 
         /* Assert the adapter reset bit. */
 	CMD_SET(sc, TL_CMD_ADRST);
@@ -979,7 +979,7 @@ tl_softreset(struct tl_softc *sc, int internal)
 
 	/* First, clear the stats registers. */
 	for (i = 0; i < 5; i++)
-		dummy = tl_dio_read32(sc, TL_TXGOODFRAMES);
+		tl_dio_read32(sc, TL_TXGOODFRAMES);
 
         /* Clear Areg and Hash registers */
 	for (i = 0; i < 8; i++)
