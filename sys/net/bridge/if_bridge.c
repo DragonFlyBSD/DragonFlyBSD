@@ -912,7 +912,6 @@ static void
 bridge_mutecaps(struct bridge_ifinfo *bif_info, struct ifnet *ifp, int mute)
 {
 	struct ifreq ifr;
-	int error;
 
 	if (ifp->if_ioctl == NULL)
 		return;
@@ -932,7 +931,7 @@ bridge_mutecaps(struct bridge_ifinfo *bif_info, struct ifnet *ifp, int mute)
 
 	if (bif_info->bifi_mutecap != 0) {
 		ifnet_serialize_all(ifp);
-		error = ifp->if_ioctl(ifp, SIOCSIFCAP, (caddr_t)&ifr, NULL);
+		ifp->if_ioctl(ifp, SIOCSIFCAP, (caddr_t)&ifr, NULL);
 		ifnet_deserialize_all(ifp);
 	}
 }
