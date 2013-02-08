@@ -650,11 +650,10 @@ bfe_get_config(struct bfe_softc *sc)
 static void
 bfe_pci_setup(struct bfe_softc *sc, uint32_t cores)
 {
-	uint32_t bar_orig, pci_rev, val;
+	uint32_t bar_orig, val;
 
 	bar_orig = pci_read_config(sc->bfe_dev, BFE_BAR0_WIN, 4);
 	pci_write_config(sc->bfe_dev, BFE_BAR0_WIN, BFE_REG_PCI, 4);
-	pci_rev = CSR_READ_4(sc, BFE_SBIDHIGH) & BFE_RC_MASK;
 
 	val = CSR_READ_4(sc, BFE_SBINTVEC);
 	val |= cores;
