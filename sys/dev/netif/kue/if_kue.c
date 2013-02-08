@@ -394,7 +394,6 @@ kue_attach(device_t self)
 	struct kue_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 	struct ifnet		*ifp;
-	usbd_status		err;
 	usb_interface_descriptor_t	*id;
 	usb_endpoint_descriptor_t	*ed;
 	int			i;
@@ -444,7 +443,7 @@ kue_attach(device_t self)
 	kue_reset(sc);
 
 	/* Read ethernet descriptor */
-	err = kue_ctl(sc, KUE_CTL_READ, KUE_CMD_GET_ETHER_DESCRIPTOR,
+	kue_ctl(sc, KUE_CTL_READ, KUE_CMD_GET_ETHER_DESCRIPTOR,
 	    0, (char *)&sc->kue_desc, sizeof(sc->kue_desc));
 
 	sc->kue_mcfilters = kmalloc(KUE_MCFILTCNT(sc) * ETHER_ADDR_LEN,
