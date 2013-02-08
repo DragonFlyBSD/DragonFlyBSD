@@ -59,7 +59,7 @@ static	jmp_buf timeoutbuf;
 #define delay(num,denom) busyloop(CPUSPEED*num/denom)
 #define CPUSPEED 1000000	/* VAX 780 is 1MIPS */
 #define	DELAY(n)	{ long N = (n); while (--N > 0); }
-busyloop(n) { DELAY(n); }
+void busyloop(int n) { DELAY(n); }
 
 ven_dialer(num, acu)
 	char *num;
@@ -209,7 +209,7 @@ gobble(match, response)
  * there are gory ways to simulate this.
  */
 static int
-vensync(fd)
+vensync(int fd)
 {
 	int already = 0, nread;
 	char buf[60];

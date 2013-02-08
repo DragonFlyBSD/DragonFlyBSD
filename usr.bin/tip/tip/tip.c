@@ -90,8 +90,7 @@ void user_uid(void);
 int speed(int);
 
 int
-main(argc, argv)
-	char *argv[];
+main(int argc, char *argv[])
 {
 	char *system = NULL;
 	int i;
