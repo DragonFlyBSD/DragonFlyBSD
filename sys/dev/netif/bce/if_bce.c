@@ -3716,7 +3716,6 @@ static int
 bce_blockinit(struct bce_softc *sc)
 {
 	uint32_t reg, val;
-	int rc = 0;
 
 	/* Load the hardware default MAC address. */
 	bce_set_mac_addr(sc);
@@ -3801,7 +3800,7 @@ bce_blockinit(struct bce_softc *sc)
 	}
 
 	/* Allow bootcode to apply any additional fixes before enabling MAC. */
-	rc = bce_fw_sync(sc, BCE_DRV_MSG_DATA_WAIT2 | BCE_DRV_MSG_CODE_RESET);
+	bce_fw_sync(sc, BCE_DRV_MSG_DATA_WAIT2 | BCE_DRV_MSG_CODE_RESET);
 
 	/* Enable link state change interrupt generation. */
 	REG_WR(sc, BCE_HC_ATTN_BITS_ENABLE, STATUS_ATTN_BITS_LINK_STATE);
