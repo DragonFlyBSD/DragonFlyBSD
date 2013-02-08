@@ -3998,7 +3998,7 @@ tulip_pci_attach(device_t dev)
 {
     tulip_softc_t *sc;
     int retval, idx;
-    uint32_t revinfo, cfdainfo, cfcsinfo;
+    uint32_t revinfo, cfdainfo;
     u_int csroffset = TULIP_PCI_CSROFFSET;
     u_int csrsize = TULIP_PCI_CSRSIZE;
     tulip_csrptr_t csr_base;
@@ -4014,7 +4014,6 @@ tulip_pci_attach(device_t dev)
 
     revinfo  = pci_get_revid(dev);
     cfdainfo = pci_read_config(dev, PCI_CFDA, 4);
-    cfcsinfo = pci_read_config(dev, PCIR_COMMAND, 4);
 
     /* turn busmaster on in case BIOS doesn't set it */
     pci_enable_busmaster(dev);
