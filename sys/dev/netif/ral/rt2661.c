@@ -1398,7 +1398,7 @@ rt2661_sendprot(struct rt2661_softc *sc, int ac,
 	struct rt2661_tx_desc *desc;
 	struct rt2661_tx_data *data;
 	struct mbuf *mprot;
-	int protrate, ackrate, pktlen, flags, isshort, error;
+	int protrate, pktlen, flags, isshort, error;
 	uint16_t dur;
 	bus_dma_segment_t segs[RT2661_MAX_SCATTER];
 	int nsegs;
@@ -1410,7 +1410,7 @@ rt2661_sendprot(struct rt2661_softc *sc, int ac,
 	pktlen = m->m_pkthdr.len + IEEE80211_CRC_LEN;
 
 	protrate = ieee80211_ctl_rate(ic->ic_rt, rate);
-	ackrate = ieee80211_ack_rate(ic->ic_rt, rate);
+	ieee80211_ack_rate(ic->ic_rt, rate);
 
 	isshort = (ic->ic_flags & IEEE80211_F_SHPREAMBLE) != 0;
 	dur = ieee80211_compute_duration(ic->ic_rt, pktlen, rate, isshort)
