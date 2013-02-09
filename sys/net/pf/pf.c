@@ -5607,7 +5607,6 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	struct ifnet		*ifp = NULL;
 	struct pf_addr		 naddr;
 	struct pf_src_node	*sn = NULL;
-	int			 error = 0;
 
 	if (m == NULL || *m == NULL || r == NULL ||
 	    (dir != PF_IN && dir != PF_OUT) || oifp == NULL)
@@ -5704,7 +5703,7 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	if (IN6_IS_ADDR_LINKLOCAL(&dst->sin6_addr))
 		dst->sin6_addr.s6_addr16[1] = htons(ifp->if_index);
 	if ((u_long)m0->m_pkthdr.len <= ifp->if_mtu) {
-		error = nd6_output(ifp, ifp, m0, dst, NULL);
+		nd6_output(ifp, ifp, m0, dst, NULL);
 	} else {
 		in6_ifstat_inc(ifp, ifs6_in_toobig);
 		if (r->rt != PF_DUPTO)
@@ -5887,7 +5886,10 @@ pf_test(int dir, struct ifnet *ifp, struct mbuf **m0,
 	struct pf_state		*s = NULL;
 	struct pf_ruleset	*ruleset = NULL;
 	struct pf_pdesc		 pd;
-	int			 off, dirndx, pqid = 0;
+	int			 off, dirndx;
+#ifdef ALTQ
+	int			 pqid = 0;
+#endif
 
 	if (!pf_status.running)
 		return (PF_PASS);
@@ -5979,8 +5981,10 @@ pf_test(int dir, struct ifnet *ifp, struct mbuf **m0,
 			goto done;
 		}
 		pd.p_len = pd.tot_len - off - (th.th_off << 2);
+#ifdef ALTQ
 		if ((th.th_flags & TH_ACK) && pd.p_len == 0)
 			pqid = 1;
+#endif
 		action = pf_normalize_tcp(dir, kif, m, 0, off, h, &pd);
 		if (action == PF_DROP)
 			goto done;
