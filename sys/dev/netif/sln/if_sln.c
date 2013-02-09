@@ -278,7 +278,6 @@ static void
 sln_stop(struct sln_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t intr_status;
 	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
@@ -294,7 +293,7 @@ sln_stop(struct sln_softc *sc)
 
 	/* Clear interrupt */
 	SLN_WRITE_4(sc, SL_INT_MASK, 0);
-	intr_status = SLN_READ_4(sc, SL_INT_STATUS);
+	SLN_READ_4(sc, SL_INT_STATUS);
 
 	/* Free the TX list buffers */
 	for (i = 0; i < SL_TXD_CNT; i++) {
