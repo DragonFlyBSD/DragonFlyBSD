@@ -1966,7 +1966,6 @@ iwn_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct iwn_vap *ivp = IWN_VAP(vap);
 	struct ieee80211com *ic = vap->iv_ic;
 	struct iwn_softc *sc = ic->ic_ifp->if_softc;
-	int error;
 
 	DPRINTF(sc, IWN_DEBUG_STATE, "%s: %s -> %s\n", __func__,
 		ieee80211_state_name[vap->iv_state],
@@ -1980,7 +1979,7 @@ iwn_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		sc->rxon.associd = 0;
 		sc->rxon.filter &= ~htole32(IWN_FILTER_BSS);
 		iwn_calib_reset(sc);
-		error = iwn_auth(sc, vap);
+		iwn_auth(sc, vap);
 	}
 	if (nstate == IEEE80211_S_RUN && vap->iv_state != IEEE80211_S_RUN) {
 		/*
@@ -1988,7 +1987,7 @@ iwn_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		 * which is done with a firmware cmd.  We also defer
 		 * starting the timers until that work is done.
 		 */
-		error = iwn_run(sc, vap);
+		iwn_run(sc, vap);
 	}
 	if (nstate == IEEE80211_S_RUN) {
 		/*
