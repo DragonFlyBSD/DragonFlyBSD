@@ -407,13 +407,17 @@ ACPI_STATUS
 AcpiUtReleaseMutex (
     ACPI_MUTEX_HANDLE       MutexId)
 {
+#if defined(ACPI_DEBUG_OUTPUT) || defined(ACPI_MUTEX_DEBUG)
     ACPI_THREAD_ID          ThisThreadId;
+#endif
 
 
     ACPI_FUNCTION_NAME (UtReleaseMutex);
 
 
+#if defined(ACPI_DEBUG_OUTPUT) || defined(ACPI_MUTEX_DEBUG)
     ThisThreadId = AcpiOsGetThreadId ();
+#endif
     ACPI_DEBUG_PRINT ((ACPI_DB_MUTEX, "Thread %u releasing Mutex [%s]\n",
         (UINT32) ThisThreadId, AcpiUtGetMutexName (MutexId)));
 
