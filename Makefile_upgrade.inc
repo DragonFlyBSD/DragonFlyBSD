@@ -2059,6 +2059,8 @@ TO_REMOVE+=/usr/share/man/cat1/cpp41.1.gz
 TO_REMOVE+=/usr/share/man/cat1/g++41.1.gz
 TO_REMOVE+=/usr/share/man/cat1/gcc41.1.gz
 TO_REMOVE+=/usr/share/man/cat1/gcov41.1.gz
+TO_REMOVE+=/usr/share/openssl/man/cat3/EVP_PKEY_verifyrecover.3.gz
+TO_REMOVE+=/usr/share/openssl/man/man3/EVP_PKEY_verifyrecover.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
