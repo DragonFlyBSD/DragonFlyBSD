@@ -2125,6 +2125,8 @@ TO_REMOVE+=/usr/libexec/lint1
 TO_REMOVE+=/usr/libexec/lint2
 TO_REMOVE+=/usr/share/man/cat1/lint.1.gz
 TO_REMOVE+=/usr/share/man/man1/lint.1.gz
+TO_REMOVE+=/usr/share/openssl/man/cat3/EVP_PKEY_verifyrecover.3.gz
+TO_REMOVE+=/usr/share/openssl/man/man3/EVP_PKEY_verifyrecover.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
