@@ -1,16 +1,16 @@
 /*
  * file: sbcard.h
  * $FreeBSD: src/sys/dev/sound/isa/sb.h,v 1.15 2004/05/13 11:32:54 truckman Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb.h,v 1.3 2007/01/04 21:47:02 corecode Exp $
+ */
+
+/*
+ * XXX swildner
+ *
+ * two PCI drivers, snd_solo(4) and snd_als4000(4), also need this file
  */
 
 #ifndef SB_H
 #define SB_H
-
-struct sbc_softc;
-void sbc_lock(struct sbc_softc *);
-void sbc_lockassert(struct sbc_softc *);
-void sbc_unlock(struct sbc_softc *);
 
 /*
  * sound blaster registers

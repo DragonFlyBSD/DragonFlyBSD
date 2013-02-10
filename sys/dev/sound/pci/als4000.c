@@ -36,7 +36,7 @@
  */
 
 #include <dev/sound/pcm/sound.h>
-#include <dev/sound/isa/sb.h>
+#include <dev/sound/pci/sb.h>
 #include <dev/sound/pci/als4000.h>
 
 #include <bus/pci/pcireg.h>

@@ -252,10 +252,6 @@ int sndstat_unregisterfile(char *str);
 #define DV_F_DRQ_MASK	0x00000007	/* mask for secondary drq */
 #define	DV_F_DUAL_DMA	0x00000010	/* set to use secondary dma channel */
 
-/* ought to be made obsolete but still used by mss */
-#define	DV_F_DEV_MASK	0x0000ff00	/* force device type/class */
-#define	DV_F_DEV_SHIFT	8		/* force device type/class */
-
 #define	PCM_DEBUG_MTX
 
 /*

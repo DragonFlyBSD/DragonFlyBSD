@@ -27,8 +27,6 @@
  * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.99.2.5 2007/05/13 20:53:39 ariff Exp $
  */
 
-#include "use_isa.h"
-
 #include <dev/sound/pcm/sound.h>
 #include <sys/vnode.h>		/* IO_NDELAY */
 
@@ -917,18 +915,11 @@ chn_kill(struct pcm_channel *c)
 int
 chn_setdir(struct pcm_channel *c, int dir)
 {
-#if NISA > 0
-    	struct snd_dbuf *b = c->bufhard;
-#endif
 	int r;
 
 	CHN_LOCKASSERT(c);
 	c->direction = dir;
 	r = CHANNEL_SETDIR(c->methods, c->devinfo, c->direction);
-#if NISA > 0
-	if (!r && SND_DMA(b))
-		sndbuf_dmasetdir(b, c->direction);
-#endif
 	return r;
 }
 
@@ -1250,16 +1241,9 @@ out:
 int
 chn_trigger(struct pcm_channel *c, int go)
 {
-#if NISA > 0
-    	struct snd_dbuf *b = c->bufhard;
-#endif
 	int ret;
 
 	CHN_LOCKASSERT(c);
-#if NISA > 0
-	if (SND_DMA(b) && (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD))
-		sndbuf_dmabounce(b);
-#endif
 	ret = CHANNEL_TRIGGER(c->methods, c->devinfo, go);
 
 	return ret;
