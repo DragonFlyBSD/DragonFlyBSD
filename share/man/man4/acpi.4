@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi.4,v 1.61.8.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd November 11, 2009
+.Dd February 10, 2013
 .Dt ACPI 4
 .Os
 .Sh NAME
@@ -371,6 +371,9 @@ Supports system cooling and heat management.
 .It Li timer
 .Pq Vt device
 Implements a timecounter using the ACPI fixed-frequency timer.
+.It Li hpet
+.Pq Vt feature
+Supports the High Precision Event Timer.
 .It Li video
 .Pq Vt device
 Supports
@@ -380,23 +383,21 @@ which may conflict with
 device.
 .El
 .Pp
-The
-.Nm
-driver comprises a set of drivers,
-which may be selectively enabled in case of testing.
-To enable a sub-driver,
-list it in the kernel environment variable
-.Va debug.acpi.enabled .
-Multiple entries can be listed,
-separated by a space.
-.Pp
-ACPI sub-devices and features that can be enabled:
-.Bl -tag -width ".Li sysresource"
-.It Li hpet
-.Pq Vt device
-Supports HPET.
-.El
-.Pp
+.\"The
+.\".Nm
+.\"driver comprises a set of drivers,
+.\"which may be selectively enabled in case of testing.
+.\"To enable a sub-driver,
+.\"list it in the kernel environment variable
+.\".Va debug.acpi.enabled .
+.\"Multiple entries can be listed,
+.\"separated by a space.
+.\".Pp
+.\"ACPI sub-devices and features that can be enabled:
+.\".Bl -tag -width ".Li sysresource"
+.\"[...]
+.\".El
+.\".Pp
 It is also possible to avoid portions of the ACPI namespace which
 may be causing problems, by listing the full path of the root of
 the region to be avoided in the kernel environment variable
