@@ -25,7 +25,7 @@ SRCS=		dumpconfig.c formats.c lvchange.c lvconvert.c lvcreate.c \
 
 CFLAGS+=	-D_XOPEN_SOURCE=600
 CFLAGS+=	-I${LVM2_DISTDIR}/lib -I${LVM2_DISTDIR}/include \
-		-I. -I${LIBDM_INCLUDE} -I${LVM2_DISTDIR}/tools \
+		-I. -I${LVM2_DISTDIR}/tools \
 		-I${LIBDM_DISTDIR}
 
 CFLAGS+=	-DLVM_SHARED_PATH=\"$(BINDIR)/lvm\"

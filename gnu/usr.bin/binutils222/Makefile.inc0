@@ -18,7 +18,6 @@ CFLAGS+= -I.
 CFLAGS+= -I${.CURDIR}/${BINUTIL_ARCH}
 .endif
 CFLAGS+= -I${.CURDIR}
-CFLAGS+= -I${.CURDIR}/${RELTOP}/libbfd/${BINUTIL_ARCH}
 CFLAGS+= -I${SRCDIR}/include
 
 DPADD=	${RELTOP}/libbinutils/libbinutils.a

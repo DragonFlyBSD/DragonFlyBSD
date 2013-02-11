@@ -36,7 +36,6 @@ CFLAGS+=	-m32 -I.
 .endif
 
 CFLAGS+=	-I${.CURDIR}
-CFLAGS+=	-I${.CURDIR}/${MACHINE_ARCH}
 CFLAGS+=	-I${.CURDIR}/../common
 
 .if defined(REALLY_X86_64)

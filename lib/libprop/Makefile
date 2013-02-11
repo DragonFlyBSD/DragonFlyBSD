@@ -6,7 +6,7 @@ PROPLIBDIR=${.CURDIR}/../../sys/libprop
 .PATH: ${PROPLIBDIR}
 
 CFLAGS+=-D_LIBPROP
-CFLAGS+=-D_REENTRANT -I${.CURDIR}/../../sys -I${.CURDIR}/../../../lib/libc/include
+CFLAGS+=-D_REENTRANT -I${.CURDIR}/../../sys
 #LDADD+=-lpthread
 #DPADD+=${LIBPTHREAD}
 

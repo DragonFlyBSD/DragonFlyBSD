@@ -39,7 +39,6 @@ WARNS?=	2
 # ipsec_strerror.c is for avoiding shlib reference to non-exported function.
 .PATH: ${.CURDIR}/../../lib/libipsec ${.CURDIR}/../../sys/netproto/key
 SRCS+= pfkey.c pfkey_dump.c key_debug.c ipsec_strerror.c
-CFLAGS+=-I${.CURDIR}/../../lib/libipsec -I${.CURDIR}/../../sys/netkey
 
 SRCS+=y.tab.h
 y.tab.h: parse.y

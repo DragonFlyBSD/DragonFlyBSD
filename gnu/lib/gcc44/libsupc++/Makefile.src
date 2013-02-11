@@ -4,7 +4,7 @@ CFLAGS+=	-DIN_GLIBCPP_V3 -DHAVE_CONFIG_H
 CXXFLAGS+=	-fno-implicit-templates -ffunction-sections -fdata-sections
 CXXFLAGS+=	-I${GCCDIR}/libstdc++-v3/libsupc++ 
 CXXFLAGS+=	-I${GCCDIR}/libstdc++-v3/include/c_std
-CXXFLAGS+=	-I${STOPDIR}/cc_prep/c++ -I.
+CXXFLAGS+=	-I.
 
 SRCS=	\
 	array_type_info.cc \
