@@ -2702,8 +2702,9 @@ ifa_create(int size, int flags)
 	if (ifa == NULL)
 		return NULL;
 
-	ifa->ifa_containers = kmalloc(ncpus * sizeof(struct ifaddr_container),
-				      M_IFADDR, M_WAITOK | M_ZERO);
+	ifa->ifa_containers =
+	    kmalloc_cachealign(ncpus * sizeof(struct ifaddr_container),
+	        M_IFADDR, M_WAITOK | M_ZERO);
 	ifa->ifa_ncnt = ncpus;
 	for (i = 0; i < ncpus; ++i) {
 		struct ifaddr_container *ifac = &ifa->ifa_containers[i];

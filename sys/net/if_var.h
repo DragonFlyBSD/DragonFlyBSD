@@ -446,7 +446,7 @@ struct ifaddr_container {
 	union {
 		struct in_ifaddr_container u_in_ifac;
 	} ifa_proto_u;
-};
+} __cachealign;
 
 #define IFA_LIST_IFADDRHEAD	0x01	/* on ifnet.if_addrheads[cpuid] */
 #define IFA_LIST_IN_IFADDRHEAD	0x02	/* on in_ifaddrheads[cpuid] */
