@@ -62,6 +62,7 @@ LIBMILTER?=	${DESTDIR}${LIBDIR}/libmilter.a
 LIBMYTINFO?=	"don't use LIBMYTINFO, use LIBNCURSES"
 LIBNCP?=	${DESTDIR}${LIBDIR}/libncp.a
 LIBNCURSES?=	${DESTDIR}${LIBDIR}/libncurses.a
+LIBNCURSESW?=	${DESTDIR}${LIBDIR}/libncursesw.a
 LIBNETGRAPH?=	${DESTDIR}${LIBDIR}/libnetgraph.a
 LIBOPIE?=	${DESTDIR}${LIBDIR}/libopie.a
 
