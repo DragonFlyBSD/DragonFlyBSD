@@ -558,7 +558,7 @@ sbsh_intr(void *arg)
 		resume_tx(sc);
 		sc->regs->SR = UFL;
 		++sc->in_stats.ufl_errs;
-		++sc->arpcom.ac_if.if_oerrors;
+		IFNET_STAT_INC(&sc->arpcom.ac_if, oerrors, 1);
 	}
 
 	if (status & RXS) {
@@ -574,13 +574,13 @@ sbsh_intr(void *arg)
 
 	if (status & CRC) {
 		++sc->in_stats.crc_errs;
-		++sc->arpcom.ac_if.if_ierrors;
+		IFNET_STAT_INC(&sc->arpcom.ac_if, ierrors, 1);
 		sc->regs->SR = CRC;
 	}
 
 	if (status & OFL) {
 		++sc->in_stats.ofl_errs;
-		++sc->arpcom.ac_if.if_ierrors;
+		IFNET_STAT_INC(&sc->arpcom.ac_if, ierrors, 1);
 		sc->regs->SR = OFL;
 	}
 }
@@ -673,7 +673,7 @@ look_for_nonzero:
 
 	sc->regs->LTDR = cur_tbd;
 	++sc->in_stats.sent_pkts;
-	++sc->arpcom.ac_if.if_opackets;
+	IFNET_STAT_INC(&sc->arpcom.ac_if, opackets, 1);
 }
 
 static struct mbuf *
@@ -783,7 +783,7 @@ indicate_frames(struct sbsh_softc *sc)
 
 		ifp->if_input(ifp, m);
 		++sc->in_stats.rcvd_pkts;
-		++ifp->if_ipackets;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 
 		sc->head_rdesc = (sc->head_rdesc + 1) & 0x7f;
 	}

@@ -596,7 +596,7 @@ vke_rx_thread(cothread_t cotd)
 			continue;
 		n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
 		if (n > 0) {
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 			m->m_pkthdr.rcvif = ifp;
 			m->m_pkthdr.len = m->m_len = n;
 			cpu_sfence();
@@ -646,9 +646,9 @@ vke_tx_thread(cothread_t cotd)
 
 				if (write(sc->sc_fd, sc->sc_txbuf,
 					  sc->sc_txbuf_len) < 0) {
-					ifp->if_oerrors++;
+					IFNET_STAT_INC(ifp, oerrors, 1);
 				} else {
-					ifp->if_opackets++;
+					IFNET_STAT_INC(ifp, opackets, 1);
 				}
 			}
 			if (count++ == VKE_CHUNK) {

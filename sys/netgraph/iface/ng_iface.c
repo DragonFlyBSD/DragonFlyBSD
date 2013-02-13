@@ -451,8 +451,8 @@ ng_iface_output_serialized(struct ifnet *ifp, struct mbuf *m,
 
 	/* Update stats */
 	if (error == 0) {
-		ifp->if_obytes += len;
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, obytes, len);
+		IFNET_STAT_INC(ifp, opackets, 1);
 	}
 	return (error);
 }
@@ -758,8 +758,8 @@ ng_iface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	}
 
 	/* Update interface stats */
-	ifp->if_ipackets++;
-	ifp->if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, ipackets, 1);
+	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
 
 	/* Note receiving interface */
 	m->m_pkthdr.rcvif = ifp;

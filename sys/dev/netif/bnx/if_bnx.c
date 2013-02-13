@@ -2513,7 +2513,7 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 			jumbocnt++;
 
 			if (rxidx != sc->bnx_jumbo) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				if_printf(ifp, "sw jumbo index(%d) "
 				    "and hw jumbo index(%d) mismatch, drop!\n",
 				    sc->bnx_jumbo, rxidx);
@@ -2523,12 +2523,12 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 
 			m = sc->bnx_cdata.bnx_rx_jumbo_chain[rxidx].bnx_mbuf;
 			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bnx_setup_rxdesc_jumbo(sc, sc->bnx_jumbo);
 				continue;
 			}
 			if (bnx_newbuf_jumbo(sc, sc->bnx_jumbo, 0)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bnx_setup_rxdesc_jumbo(sc, sc->bnx_jumbo);
 				continue;
 			}
@@ -2537,7 +2537,7 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 			stdcnt++;
 
 			if (rxidx != sc->bnx_std) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				if_printf(ifp, "sw std index(%d) "
 				    "and hw std index(%d) mismatch, drop!\n",
 				    sc->bnx_std, rxidx);
@@ -2547,18 +2547,18 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 
 			m = sc->bnx_cdata.bnx_rx_std_chain[rxidx].bnx_mbuf;
 			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bnx_setup_rxdesc_std(sc, sc->bnx_std);
 				continue;
 			}
 			if (bnx_newbuf_std(sc, sc->bnx_std, 0)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bnx_setup_rxdesc_std(sc, sc->bnx_std);
 				continue;
 			}
 		}
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		m->m_pkthdr.len = m->m_len = cur_rx->bge_len - ETHER_CRC_LEN;
 		m->m_pkthdr.rcvif = ifp;
 
@@ -2612,7 +2612,7 @@ bnx_txeof(struct bnx_softc *sc, uint16_t tx_cons)
 
 		idx = sc->bnx_tx_saved_considx;
 		if (sc->bnx_cdata.bnx_tx_chain[idx] != NULL) {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			bus_dmamap_unload(sc->bnx_cdata.bnx_tx_mtag,
 			    sc->bnx_cdata.bnx_tx_dmamap[idx]);
 			m_freem(sc->bnx_cdata.bnx_tx_chain[idx]);
@@ -2819,12 +2819,11 @@ bnx_stats_update_regs(struct bnx_softc *sc)
 		s++;
 	}
 
-	ifp->if_collisions +=
+	IFNET_STAT_SET(ifp, collisions,
 	   (stats.dot3StatsSingleCollisionFrames +
 	   stats.dot3StatsMultipleCollisionFrames +
 	   stats.dot3StatsExcessiveCollisions +
-	   stats.dot3StatsLateCollisions) -
-	   ifp->if_collisions;
+	   stats.dot3StatsLateCollisions));
 }
 
 /*
@@ -3011,7 +3010,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 */
 		if (bnx_encap(sc, &m_head, &prodidx, &nsegs)) {
 			ifq_set_oactive(&ifp->if_snd);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			break;
 		}
 
@@ -3344,7 +3343,7 @@ bnx_watchdog(struct ifnet *ifp)
 
 	bnx_init(sc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);

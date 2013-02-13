@@ -926,8 +926,8 @@ pass:
 
 		/* Record statistics for this interface address. */
 		if (!(flags & IP_FORWARDING) && ia) {
-			ia->ia_ifa.if_opackets++;
-			ia->ia_ifa.if_obytes += m->m_pkthdr.len;
+			IFA_STAT_INC(&ia->ia_ifa, opackets, 1);
+			IFA_STAT_INC(&ia->ia_ifa, obytes, m->m_pkthdr.len);
 		}
 
 #ifdef IPSEC
@@ -999,8 +999,9 @@ pass:
 		if (error == 0) {
 			/* Record statistics for this interface address. */
 			if (ia != NULL) {
-				ia->ia_ifa.if_opackets++;
-				ia->ia_ifa.if_obytes += m->m_pkthdr.len;
+				IFA_STAT_INC(&ia->ia_ifa, opackets, 1);
+				IFA_STAT_INC(&ia->ia_ifa, obytes,
+				    m->m_pkthdr.len);
 			}
 #ifdef MPLS
 			if (!mpls_output_process(m, ro->ro_rt))

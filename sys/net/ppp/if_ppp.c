@@ -882,15 +882,15 @@ pppoutput_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 	}
 	if (error) {
 	    crit_exit();
-	    sc->sc_if.if_oerrors++;
+	    IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
 	    sc->sc_stats.ppp_oerrors++;
 	    return (error);
 	}
 	(*sc->sc_start)(sc);
     }
     getmicrotime(&ifp->if_lastchange);
-    ifp->if_opackets++;
-    ifp->if_obytes += len;
+    IFNET_STAT_INC(ifp, opackets, 1);
+    IFNET_STAT_INC(ifp, obytes, len);
 
     crit_exit();
     return (0);
@@ -958,7 +958,7 @@ ppp_requeue(struct ppp_softc *sc)
 		error = ifsq_enqueue(ifsq, m, NULL);
 	    }
 	    if (error) {
-		    sc->sc_if.if_oerrors++;
+		    IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
 		    sc->sc_stats.ppp_oerrors++;
 	    }
 	    break;
@@ -1555,12 +1555,12 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
     if (!rv) {
 	if (sc->sc_flags & SC_DEBUG)
 	    kprintf("%s: input queue full\n", ifp->if_xname);
-	ifp->if_iqdrops++;
+	IFNET_STAT_INC(ifp, iqdrops, 1);
 	goto bad;
     }
 
-    ifp->if_ipackets++;
-    ifp->if_ibytes += ilen;
+    IFNET_STAT_INC(ifp, ipackets, 1);
+    IFNET_STAT_INC(ifp, ibytes, ilen);
     getmicrotime(&ifp->if_lastchange);
 
     return;
@@ -1568,7 +1568,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
  bad:
     if (m != NULL)
 	m_freem(m);
-    sc->sc_if.if_ierrors++;
+    IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
     sc->sc_stats.ppp_ierrors++;
 }
 

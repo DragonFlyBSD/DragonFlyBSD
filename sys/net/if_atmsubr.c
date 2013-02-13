@@ -238,7 +238,7 @@ atm_input(struct ifnet *ifp, struct atm_pseudohdr *ah, struct mbuf *m,
 		m_freem(m);
 		return;
 	}
-	ifp->if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
 
 	if (rxhand) {
 #ifdef NATM

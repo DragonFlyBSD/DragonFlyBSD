@@ -664,7 +664,7 @@ txp_rx_reclaim(struct txp_softc *sc, struct txp_rx_ring *r)
 
 		if (rxd->rx_flags & RX_FLAGS_ERROR) {
 			if_printf(ifp, "error 0x%x\n", rxd->rx_stat);
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto next;
 		}
 
@@ -821,7 +821,7 @@ txp_tx_reclaim(struct txp_softc *sc, struct txp_tx_ring *r)
 				m_freem(m);
 				txd->tx_addrlo = 0;
 				txd->tx_addrhi = 0;
-				ifp->if_opackets++;
+				IFNET_STAT_INC(ifp, opackets, 1);
 			}
 		}
 		ifq_clr_oactive(&ifp->if_snd);
@@ -1165,14 +1165,15 @@ txp_tick(void *vsc)
 		goto out;
 	ext = (struct txp_ext_desc *)(rsp + 1);
 
-	ifp->if_ierrors += ext[3].ext_2 + ext[3].ext_3 + ext[3].ext_4 +
-	    ext[4].ext_1 + ext[4].ext_4;
-	ifp->if_oerrors += ext[0].ext_1 + ext[1].ext_1 + ext[1].ext_4 +
-	    ext[2].ext_1;
-	ifp->if_collisions += ext[0].ext_2 + ext[0].ext_3 + ext[1].ext_2 +
-	    ext[1].ext_3;
-	ifp->if_opackets += rsp->rsp_par2;
-	ifp->if_ipackets += ext[2].ext_3;
+	IFNET_STAT_INC(ifp, ierrors,
+	    ext[3].ext_2 + ext[3].ext_3 + ext[3].ext_4 +
+	    ext[4].ext_1 + ext[4].ext_4);
+	IFNET_STAT_INC(ifp, oerrors,
+	    ext[0].ext_1 + ext[1].ext_1 + ext[1].ext_4 + ext[2].ext_1);
+	IFNET_STAT_INC(ifp, collisions,
+	    ext[0].ext_2 + ext[0].ext_3 + ext[1].ext_2 + ext[1].ext_3);
+	IFNET_STAT_INC(ifp, opackets, rsp->rsp_par2);
+	IFNET_STAT_INC(ifp, ipackets, ext[2].ext_3);
 
 out:
 	if (rsp != NULL)

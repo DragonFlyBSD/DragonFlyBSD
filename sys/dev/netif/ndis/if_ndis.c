@@ -1450,7 +1450,7 @@ ndis_rxeof(ndis_handle adapter, ndis_packet **packets, uint32_t pktcnt)
 				p->np_oob.npo_status = NDIS_STATUS_PENDING;
 			m_freem(m0);
 			if (m == NULL) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				continue;
 			}
 			m0 = m;
@@ -1552,9 +1552,9 @@ ndis_txeof(ndis_handle adapter, ndis_packet *packet, ndis_status status)
 	sc->ndis_txpending++;
 
 	if (status == NDIS_STATUS_SUCCESS)
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 	else
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 
 	sc->ndis_tx_timer = 0;
 	ifq_clr_oactive(&ifp->if_snd);
@@ -1652,7 +1652,7 @@ ndis_tick(void *xsc)
 	}
 
 	if (sc->ndis_tx_timer && --sc->ndis_tx_timer == 0) {
-		sc->ifp->if_oerrors++;
+		IFNET_STAT_INC(sc->ifp, oerrors, 1);
 		device_printf(sc->ndis_dev, "watchdog timeout\n");
 
 		IoQueueWorkItem(sc->ndis_resetitem,

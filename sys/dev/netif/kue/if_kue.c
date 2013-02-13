@@ -601,7 +601,7 @@ kue_rxstart(struct ifnet *ifp)
 	c = &sc->kue_cdata.kue_rx_chain[sc->kue_cdata.kue_rx_prod];
 
 	if (kue_newbuf(sc, c, NULL) == ENOBUFS) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
@@ -665,11 +665,11 @@ kue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	total_len = len;
 
 	if (len < sizeof(struct ether_header)) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto done;
 	}
 
-	ifp->if_ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = total_len;
 
@@ -734,9 +734,9 @@ kue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 
 	if (err)
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	else
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -977,7 +977,7 @@ kue_watchdog(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 	KUE_LOCK(sc);
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	kprintf("kue%d: watchdog timeout\n", sc->kue_unit);
 
 	c = &sc->kue_cdata.kue_tx_chain[0];

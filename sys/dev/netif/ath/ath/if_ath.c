@@ -1846,11 +1846,11 @@ ath_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			DPRINTF(sc, ATH_DEBUG_XMIT,
 			    "%s: out of txfrag buffers\n", __func__);
 			sc->sc_stats.ast_tx_nofrag++;
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			ath_freetx(m);
 			goto bad;
 		}
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 	nextfrag:
 		/*
 		 * Pass the frame to the h/w for transmission.
@@ -1867,7 +1867,7 @@ ath_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		next = m->m_nextpkt;
 		if (ath_tx_start(sc, ni, bf, m)) {
 	bad:
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 	reclaim:
 			bf->bf_m = NULL;
 			bf->bf_node = NULL;
@@ -3870,7 +3870,7 @@ ath_rx_task(void *arg, int npending)
 						rs->rs_keyix-32 : rs->rs_keyix);
 				}
 			}
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 rx_error:
 			/*
 			 * Cleanup any pending partial frame.
@@ -3948,7 +3948,7 @@ rx_accept:
 			m->m_pkthdr.len = len;
 		}
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		sc->sc_stats.ast_ant_rx[rs->rs_antenna]++;
 
 		/*
@@ -6124,7 +6124,7 @@ ath_watchdog_callout(void *arg)
 		} else
 			if_printf(ifp, "device timeout\n");
 		ath_reset(ifp);
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		sc->sc_stats.ast_watchdog++;
 	}
 	callout_reset(&sc->sc_wd_ch, hz, ath_watchdog_callout, sc);
@@ -6233,8 +6233,8 @@ ath_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 		break;
 	case SIOCGATHSTATS:
 		/* NB: embed these numbers to get a consistent view */
-		sc->sc_stats.ast_tx_packets = ifp->if_opackets;
-		sc->sc_stats.ast_rx_packets = ifp->if_ipackets;
+		IFNET_STAT_GET(ifp, opackets, sc->sc_stats.ast_tx_packets);
+		IFNET_STAT_GET(ifp, ipackets, sc->sc_stats.ast_rx_packets);
 		sc->sc_stats.ast_tx_rssi = ATH_RSSI(sc->sc_halstats.ns_avgtxrssi);
 		sc->sc_stats.ast_rx_rssi = ATH_RSSI(sc->sc_halstats.ns_avgrssi);
 #ifdef IEEE80211_SUPPORT_TDMA
@@ -6989,14 +6989,14 @@ ath_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 		}
 	}
 	sc->sc_wd_timer = 5;
-	ifp->if_opackets++;
+	IFNET_STAT_INC(ifp, opackets, 1);
 	sc->sc_stats.ast_tx_raw++;
 
 	return 0;
 bad2:
 	STAILQ_INSERT_HEAD(&sc->sc_txbuf, bf, bf_list);
 bad:
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	sc->sc_stats.ast_tx_raw_fail++;
 	ieee80211_free_node(ni);
 	return error;

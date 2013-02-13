@@ -177,11 +177,11 @@ ipxip_input(struct mbuf **mp, int *offp, int proto)
 	/*
 	 * Get IP and IPX header together in first mbuf.
 	 */
-	ipxipif.if_ipackets++;
+	IFNET_STAT_INC(&ipxipif, ipackets, 1);
 	s = sizeof(struct ip) + sizeof(struct ipx);
 	if (((m->m_flags & M_EXT) || m->m_len < s) &&
 	    (m = m_pullup(m, s)) == NULL) {
-		ipxipif.if_ierrors++;
+		IFNET_STAT_INC(&ipxipif, ierrors, 1);
 		return(IPPROTO_DONE);
 	}
 	ip = mtod(m, struct ip *);
@@ -189,7 +189,7 @@ ipxip_input(struct mbuf **mp, int *offp, int proto)
 		ip_stripoptions(m);
 		if (m->m_len < s) {
 			if ((m = m_pullup(m, s)) == NULL) {
-				ipxipif.if_ierrors++;
+				IFNET_STAT_INC(&ipxipif, ierrors, 1);
 				return(IPPROTO_DONE);
 			}
 			ip = mtod(m, struct ip *);
@@ -209,7 +209,7 @@ ipxip_input(struct mbuf **mp, int *offp, int proto)
 		len++;		/* Preserve Garbage Byte */
 	if (ip->ip_len != len) {
 		if (len > ip->ip_len) {
-			ipxipif.if_ierrors++;
+			IFNET_STAT_INC(&ipxipif, ierrors, 1);
 			if (ipxip_badlen)
 				m_freem(ipxip_badlen);
 			ipxip_badlen = m;
@@ -236,8 +236,8 @@ ipxipoutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct ipx *ipx = mtod(m, struct ipx *);
 	int error;
 
-	ifn->ifen_ifnet.if_opackets++;
-	ipxipif.if_opackets++;
+	IFNET_STAT_INC(&ifn->ifen_ifnet, opackets, 1);
+	IFNET_STAT_INC(&ipxipif, opackets, 1);
 
 	/*
 	 * Calculate data length and make space
@@ -281,8 +281,8 @@ ipxipoutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	 */
 	error =  (ip_output(m, NULL, ro, SO_BROADCAST, NULL, NULL));
 	if (error) {
-		ifn->ifen_ifnet.if_oerrors++;
-		ifn->ifen_ifnet.if_ierrors = error;
+		IFNET_STAT_INC(&ifn->ifen_ifnet, oerrors, 1);
+		IFNET_STAT_SET(&ifn->ifen_ifnet, ierrors, error);
 	}
 	return (error);
 	m_freem(m);

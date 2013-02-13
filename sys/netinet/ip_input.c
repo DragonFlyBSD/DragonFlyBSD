@@ -835,8 +835,8 @@ ours:
 
 	/* Count the packet in the ip address stats */
 	if (ia != NULL) {
-		ia->ia_ifa.if_ipackets++;
-		ia->ia_ifa.if_ibytes += m->m_pkthdr.len;
+		IFA_STAT_INC(&ia->ia_ifa, ipackets, 1);
+		IFA_STAT_INC(&ia->ia_ifa, ibytes, m->m_pkthdr.len);
 	}
 
 	/*

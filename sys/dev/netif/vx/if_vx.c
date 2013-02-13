@@ -413,7 +413,7 @@ startagain:
      */
     if (len + pad > ETHER_MAX_LEN) {
 	/* packet is obviously too large: toss it */
-	++ifp->if_oerrors;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	m_freem(m0);
 	goto readcheck;
     }
@@ -460,7 +460,7 @@ startagain:
 
     crit_exit();
 
-    ++ifp->if_opackets;
+    IFNET_STAT_INC(ifp, opackets, 1);
     ifp->if_timer = 1;
 
 readcheck:
@@ -551,12 +551,12 @@ vxtxstat(struct vx_softc *sc)
 		CSR_WRITE_1(sc, VX_W1_TX_STATUS, 0x0);
 
 		if (i & TXS_JABBER) {
-			++ifp->if_oerrors;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (ifp->if_flags & IFF_DEBUG)
 				if_printf(ifp, "jabber (%x)\n", i);
 			vxreset(sc);
 		} else if (i & TXS_UNDERRUN) {
-			++ifp->if_oerrors;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (ifp->if_flags & IFF_DEBUG) {
 				if_printf(ifp, "fifo underrun (%x) @%d\n",
 					  i, sc->tx_start_thresh);
@@ -568,7 +568,7 @@ vxtxstat(struct vx_softc *sc)
 			sc->tx_succ_ok = 0;
 			vxreset(sc);
 		} else if (i & TXS_MAX_COLLISION) {
-			++ifp->if_collisions;
+			IFNET_STAT_INC(ifp, collisions, 1);
 			CSR_WRITE_2(sc, VX_COMMAND, TX_ENABLE);
 			ifq_clr_oactive(&ifp->if_snd);
 		} else {
@@ -662,7 +662,7 @@ again:
 	return;
 
     if (len & ERR_RX) {
-	++ifp->if_ierrors;
+	IFNET_STAT_INC(ifp, ierrors, 1);
 	goto abort;
     }
 
@@ -671,11 +671,11 @@ again:
     /* Pull packet off interface. */
     m = vxget(sc, len);
     if (m == NULL) {
-	ifp->if_ierrors++;
+	IFNET_STAT_INC(ifp, ierrors, 1);
 	goto abort;
     }
 
-    ++ifp->if_ipackets;
+    IFNET_STAT_INC(ifp, ipackets, 1);
 
     /* We assume the header fit entirely in one mbuf. */
     eh = mtod(m, struct ether_header *);

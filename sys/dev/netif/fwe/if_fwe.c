@@ -440,7 +440,7 @@ fwe_output_callback(struct fw_xfer *xfer)
 	/* XXX error check */
 	FWEDEBUG(ifp, "resp = %d\n", xfer->resp);
 	if (xfer->resp != 0)
-		ifp->if_oerrors ++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		
 	m_freem(xfer->mbuf);
 	fw_xfer_unload(xfer);
@@ -513,11 +513,11 @@ fwe_as_output(struct fwe_softc *fwe, struct ifnet *ifp)
 
 		if (fw_asyreq(fwe->fd.fc, -1, xfer) != 0) {
 			/* error */
-			ifp->if_oerrors ++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			/* XXX set error code */
 			fwe_output_callback(xfer);
 		} else {
-			ifp->if_opackets ++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			i++;
 		}
 	}
@@ -561,7 +561,7 @@ fwe_as_input(struct fw_xferq *xferq)
 		if (sxfer->resp != 0 || fp->mode.stream.len <
 		    ETHER_ALIGN + sizeof(struct ether_header)) {
 			m_freem(m);
-			ifp->if_ierrors ++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			continue;
 		}
 
@@ -585,7 +585,7 @@ fwe_as_input(struct fw_xferq *xferq)
 		 );
 #endif
 		ifp->if_input(ifp, m);
-		ifp->if_ipackets ++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 	}
 	if (STAILQ_FIRST(&xferq->stfree) != NULL)
 		fwe->fd.fc->irx_enable(fwe->fd.fc, fwe->dma_ch);

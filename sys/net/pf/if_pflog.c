@@ -298,8 +298,8 @@ pflog_packet(struct pfi_kif *kif, struct mbuf *m, sa_family_t af, u_int8_t dir,
 	}
 #endif /* INET */
 
-	ifn->if_opackets++;
-	ifn->if_obytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifn, opackets, 1);
+	IFNET_STAT_INC(ifn, obytes, m->m_pkthdr.len);
 	if (ifn->if_bpf) {
 		bpf_gettoken();
 		if (ifn->if_bpf) {

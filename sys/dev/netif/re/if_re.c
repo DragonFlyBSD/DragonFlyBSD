@@ -1959,7 +1959,7 @@ re_rxeof(struct re_softc *sc)
 			rxstat >>= 1;
 
 		if (rxstat & RE_RDESC_STAT_RXERRSUM) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			/*
 			 * If this is part of a multi-fragment packet,
 			 * discard all the pieces.
@@ -1975,7 +1975,7 @@ re_rxeof(struct re_softc *sc)
 		 */
 
 		if (sc->re_newbuf(sc, i, 0)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			continue;
 		}
 
@@ -2003,7 +2003,7 @@ re_rxeof(struct re_softc *sc)
 			    (total_len - ETHER_CRC_LEN);
 		}
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		m->m_pkthdr.rcvif = ifp;
 
 		/* Do RX checksumming if enabled */
@@ -2080,11 +2080,11 @@ re_tx_collect(struct re_softc *sc)
 			sc->re_ldata.re_tx_mbuf[idx] = NULL;
 			if (txstat & (RE_TDESC_STAT_EXCESSCOL|
 			    RE_TDESC_STAT_COLCNT))
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			if (txstat & RE_TDESC_STAT_TXERRSUM)
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 			else
-				ifp->if_opackets++;
+				IFNET_STAT_INC(ifp, opackets, 1);
 		}
 		sc->re_ldata.re_tx_free++;
 	}
@@ -2479,7 +2479,7 @@ re_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		error = re_encap(sc, &m_head, &idx);
 		if (error) {
 			/* m_head is freed by re_encap(), if we reach here */
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 
 			if (error == EFBIG && !oactive) {
 				if (re_tx_collect(sc)) {
@@ -2827,7 +2827,7 @@ re_watchdog(struct ifnet *ifp)
 
 	if_printf(ifp, "watchdog timeout\n");
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	re_txeof(sc);
 	re_rxeof(sc);

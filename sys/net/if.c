@@ -2645,9 +2645,9 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 			if ((stage->stg_flags & IFSQ_STAGE_FLAG_QUED) == 0)
 				ifsq_stage_insert(head, stage);
 
-			ifp->if_obytes += len;
+			IFNET_STAT_INC(ifp, obytes, len);
 			if (mcast)
-				ifp->if_omcasts++;
+				IFNET_STAT_INC(ifp, omcasts, 1);
 			return error;
 		}
 
@@ -2660,9 +2660,9 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	ALTQ_SQ_UNLOCK(ifsq);
 
 	if (!error) {
-		ifp->if_obytes += len;
+		IFNET_STAT_INC(ifp, obytes, len);
 		if (mcast)
-			ifp->if_omcasts++;
+			IFNET_STAT_INC(ifp, omcasts, 1);
 	}
 
 	if (stage != NULL) {

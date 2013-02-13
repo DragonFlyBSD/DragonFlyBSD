@@ -555,7 +555,7 @@ udav_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 	switch (USB_GET_STATE(xfer)) {
 	case USB_ST_TRANSFERRED:
 		DPRINTFN(11, "transfer complete\n");
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		/* FALLTHROUGH */
 	case USB_ST_SETUP:
@@ -611,7 +611,7 @@ tr_setup:
 		DPRINTFN(11, "transfer error, %s\n",
 		    usbd_errstr(error));
 
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 
 		if (error != USB_ERR_CANCELLED) {
 			/* try to clear stall first */
@@ -639,7 +639,7 @@ udav_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 	case USB_ST_TRANSFERRED:
 
 		if (actlen < sizeof(stat) + ETHER_CRC_LEN) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto tr_setup;
 		}
 		pc = usbd_xfer_get_frame(xfer, 0);
@@ -649,11 +649,11 @@ udav_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 		len -= ETHER_CRC_LEN;
 
 		if (stat.rxstat & UDAV_RSR_LCS) {
-			ifp->if_collisions++;
+			IFNET_STAT_INC(ifp, collisions, 1);
 			goto tr_setup;
 		}
 		if (stat.rxstat & UDAV_RSR_ERR) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto tr_setup;
 		}
 		uether_rxbuf(ue, pc, sizeof(stat), len);

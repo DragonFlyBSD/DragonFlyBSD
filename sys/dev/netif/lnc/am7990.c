@@ -275,7 +275,7 @@ am7990_rint(struct lance_softc *sc)
 			bix = 0;
 
 		if (m != NULL) {
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 
 #ifdef LANCE_REVC_BUG
 			/*
@@ -299,7 +299,7 @@ am7990_rint(struct lance_softc *sc)
 			/* Pass the packet up. */
 			(*ifp->if_input)(ifp, m);
 		} else
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 	}
 
 	sc->sc_last_rd = bix;
@@ -356,22 +356,22 @@ am7990_tint(struct lance_softc *sc)
 					if_printf(ifp, "lost carrier\n");
 			}
 			if (tmd.tmd3 & LE_T3_LCOL)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			if (tmd.tmd3 & LE_T3_RTRY) {
 #ifdef LEDEBUG
 				if_printf(ifp, "excessive collisions, tdr %d\n",
 				    tmd.tmd3 & LE_T3_TDR_MASK);
 #endif
-				ifp->if_collisions += 16;
+				IFNET_STAT_INC(ifp, collisions, 16);
 			}
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		} else {
 			if (tmd.tmd1_bits & LE_T1_ONE)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			else if (tmd.tmd1_bits & LE_T1_MORE)
 				/* Real number is unknown. */
-				ifp->if_collisions += 2;
-			ifp->if_opackets++;
+				IFNET_STAT_INC(ifp, collisions, 2);
+			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 
 		if (++bix == sc->sc_ntbuf)
@@ -396,7 +396,7 @@ am7990_intr(void *arg)
 	uint16_t isr;
 
 	if (sc->sc_hwintr && (*sc->sc_hwintr)(sc) == -1) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		lance_init_locked(sc);
 		return;
 	}
@@ -427,19 +427,19 @@ am7990_intr(void *arg)
 #ifdef LEDEBUG
 			if_printf(ifp, "babble\n");
 #endif
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		}
 #if 0
 		if (isr & LE_C0_CERR) {
 			if_printf(ifp, "collision error\n");
-			ifp->if_collisions++;
+			IFNET_STAT_INC(ifp, collisions, 1);
 		}
 #endif
 		if (isr & LE_C0_MISS) {
 #ifdef LEDEBUG
 			if_printf(ifp, "missed packet\n");
 #endif
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		}
 		if (isr & LE_C0_MERR) {
 			if_printf(ifp, "memory error\n");
@@ -450,13 +450,13 @@ am7990_intr(void *arg)
 
 	if ((isr & LE_C0_RXON) == 0) {
 		if_printf(ifp, "receiver disabled\n");
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		lance_init_locked(sc);
 		return;
 	}
 	if ((isr & LE_C0_TXON) == 0) {
 		if_printf(ifp, "transmitter disabled\n");
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		lance_init_locked(sc);
 		return;
 	}

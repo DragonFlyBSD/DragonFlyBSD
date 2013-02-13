@@ -1000,7 +1000,7 @@ wi_start_locked(struct ifnet *ifp)
 			continue;
 
 		sc->sc_txnext = cur = (cur + 1) % sc->sc_ntxbuf;
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 	}
 }
 
@@ -1024,7 +1024,7 @@ wi_start_tx(struct ifnet *ifp, struct wi_frame *frmhdr, struct mbuf *m0)
 	     || wi_mwrite_bap(sc, fid, off, m0, m0->m_pkthdr.len) != 0;
 	m_freem(m0);
 	if (error) {
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		return -1;
 	}
 	sc->sc_txd[cur].d_len = off;
@@ -1146,7 +1146,7 @@ wi_watchdog_callout(void *arg)
 
 	if (sc->sc_tx_timer && --sc->sc_tx_timer == 0) {
 		if_printf(ifp, "device timeout\n");
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		wi_init_locked(ifp->if_softc);
 		return;
 	}
@@ -1290,7 +1290,7 @@ wi_rx_intr(struct wi_softc *sc)
 	/* First read in the frame header */
 	if (wi_read_bap(sc, fid, 0, &frmhdr, sizeof(frmhdr))) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		DPRINTF(("wi_rx_intr: read fid %x failed\n", fid));
 		return;
 	}
@@ -1301,7 +1301,7 @@ wi_rx_intr(struct wi_softc *sc)
 	status = le16toh(frmhdr.wi_status);
 	if (status & WI_STAT_ERRSTAT) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		DPRINTF(("wi_rx_intr: fid %x error status %x\n", fid, status));
 		return;
 	}
@@ -1316,7 +1316,7 @@ wi_rx_intr(struct wi_softc *sc)
 	if (off + len > MCLBYTES) {
 		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 			CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			DPRINTF(("wi_rx_intr: oversized packet\n"));
 			return;
 		} else
@@ -1329,7 +1329,7 @@ wi_rx_intr(struct wi_softc *sc)
 		m = m_gethdr(MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		DPRINTF(("wi_rx_intr: MGET failed\n"));
 		return;
 	}
@@ -1411,10 +1411,10 @@ wi_tx_ex_intr(struct wi_softc *sc)
 					kprintf(", status=0x%x", status);
 				kprintf("\n");
 			}
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		} else {
 			DPRINTF(("port disconnected\n"));
-			ifp->if_collisions++;	/* XXX */
+			IFNET_STAT_INC(ifp, collisions, 1);	/* XXX */
 		}
 	} else
 		DPRINTF(("wi_tx_ex_intr: read fid %x failed\n", fid));
@@ -1515,9 +1515,10 @@ wi_info_intr(struct wi_softc *sc)
 #endif
 			*ptr += stat;
 		}
-		ifp->if_collisions = sc->sc_stats.wi_tx_single_retries +
+		IFNET_STAT_SET(ifp, collisions,
+		    sc->sc_stats.wi_tx_single_retries +
 		    sc->sc_stats.wi_tx_multi_retries +
-		    sc->sc_stats.wi_tx_retry_limit;
+		    sc->sc_stats.wi_tx_retry_limit);
 		break;
 	default:
 		DPRINTF(("wi_info_intr: got fid %x type %x len %d\n", fid,

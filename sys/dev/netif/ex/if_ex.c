@@ -521,7 +521,7 @@ ex_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			BPF_MTAP(ifp, opkt);
 
 			ifp->if_timer = 2;
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			m_freem(opkt);
 		} else {
 			ifq_set_oactive(&ifp->if_snd);
@@ -636,12 +636,12 @@ ex_tx_intr(struct ex_softc *sc)
 		sc->tx_head = inw(iobase + IO_PORT_REG);
 
 		if (tx_status & TX_OK_bit) {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		} else {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		}
 
-		ifp->if_collisions += tx_status & No_Collisions_bits;
+		IFNET_STAT_INC(ifp, collisions, tx_status & No_Collisions_bits);
 	}
 
 	/*
@@ -688,7 +688,7 @@ ex_rx_intr(struct ex_softc *sc)
 			MGETHDR(m, MB_DONTWAIT, MT_DATA);
 			ipkt = m;
 			if (ipkt == NULL) {
-				ifp->if_iqdrops++;
+				IFNET_STAT_INC(ifp, iqdrops, 1);
 			} else {
 				ipkt->m_pkthdr.rcvif = ifp;
 				ipkt->m_pkthdr.len = pkt_len;
@@ -701,7 +701,7 @@ ex_rx_intr(struct ex_softc *sc)
 							m->m_len = MCLBYTES;
 						} else {
 							m_freem(ipkt);
-							ifp->if_iqdrops++;
+							IFNET_STAT_INC(ifp, iqdrops, 1);
 							goto rx_another;
 						}
 					}
@@ -724,7 +724,7 @@ ex_rx_intr(struct ex_softc *sc)
 						MGET(m->m_next, MB_DONTWAIT, MT_DATA);
 						if (m->m_next == NULL) {
 							m_freem(ipkt);
-							ifp->if_iqdrops++;
+							IFNET_STAT_INC(ifp, iqdrops, 1);
 							goto rx_another;
 						}
 						m = m->m_next;
@@ -732,10 +732,10 @@ ex_rx_intr(struct ex_softc *sc)
 					}
 				}
 				ifp->if_input(ifp, ipkt);
-				ifp->if_ipackets++;
+				IFNET_STAT_INC(ifp, ipackets, 1);
 			}
 		} else {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		}
 		outw(iobase + HOST_ADDR_REG, sc->rx_head);
 rx_another: ;
@@ -825,7 +825,7 @@ ex_watchdog(struct ifnet *ifp)
 
 	DODEBUG(Status, kprintf("OIDLE watchdog\n"););
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	ex_reset(sc);
 	if_devstart(ifp);
 

@@ -2096,7 +2096,7 @@ igb_txeof(struct igb_tx_ring *txr)
 			bus_dmamap_unload(txr->tx_tag, txbuf->map);
 			m_freem(txbuf->m_head);
 			txbuf->m_head = NULL;
-			++ifp->if_opackets;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 		if (++first == txr->num_tx_desc)
 			first = 0;
@@ -2607,7 +2607,7 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 			    BUS_DMASYNC_POSTREAD);
 
 			if (igb_newbuf(rxr, i, FALSE) != 0) {
-				ifp->if_iqdrops++;
+				IFNET_STAT_INC(ifp, iqdrops, 1);
 				goto discard;
 			}
 
@@ -2628,7 +2628,7 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 				rxr->lmp = NULL;
 
 				m->m_pkthdr.rcvif = ifp;
-				ifp->if_ipackets++;
+				IFNET_STAT_INC(ifp, ipackets, 1);
 
 				if (ifp->if_capenable & IFCAP_RXCSUM)
 					igb_rxcsum(staterr, m);
@@ -2647,7 +2647,7 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 #endif
 			}
 		} else {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 discard:
 			igb_setup_rxdesc(cur, rxbuf);
 			if (!eop)
@@ -3027,14 +3027,16 @@ igb_update_stats_counters(struct igb_softc *sc)
 	stats->tsctc += E1000_READ_REG(hw, E1000_TSCTC);
 	stats->tsctfc += E1000_READ_REG(hw, E1000_TSCTFC);
 
-	ifp->if_collisions = stats->colc;
+	IFNET_STAT_SET(ifp, collisions, stats->colc);
 
 	/* Rx Errors */
-	ifp->if_ierrors = stats->rxerrc + stats->crcerrs + stats->algnerrc +
-	    stats->ruc + stats->roc + stats->mpc + stats->cexterr;
+	IFNET_STAT_SET(ifp, ierrors,
+	    stats->rxerrc + stats->crcerrs + stats->algnerrc +
+	    stats->ruc + stats->roc + stats->mpc + stats->cexterr);
 
 	/* Tx Errors */
-	ifp->if_oerrors = stats->ecol + stats->latecol + sc->watchdog_events;
+	IFNET_STAT_SET(ifp, oerrors,
+	    stats->ecol + stats->latecol + sc->watchdog_events);
 
 	/* Driver specific counters */
 	sc->device_control = E1000_READ_REG(hw, E1000_CTRL);
@@ -3471,7 +3473,7 @@ igb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			break;
 
 		if (igb_encap(txr, &m_head, &nsegs, &idx)) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			continue;
 		}
 
@@ -3517,7 +3519,7 @@ igb_watchdog(struct ifaltq_subque *ifsq)
 	    "Next TX to Clean = %d\n",
 	    txr->me, txr->tx_avail, txr->next_to_clean);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	sc->watchdog_events++;
 
 	igb_init(sc);

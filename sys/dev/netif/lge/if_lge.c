@@ -878,7 +878,7 @@ lge_rxeof(struct lge_softc *sc, int cnt)
 	 	 * comes up in the ring.
 		 */
 		if (rxctl & LGE_RXCTL_ERRMASK) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			lge_newbuf(sc, &LGE_RXTAIL(sc), m);
 			continue;
 		}
@@ -891,7 +891,7 @@ lge_rxeof(struct lge_softc *sc, int cnt)
 				kprintf("lge%d: no receive buffers "
 				    "available -- packet dropped!\n",
 				    sc->lge_unit);
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				continue;
 			}
 			m_adj(m0, ETHER_ALIGN);
@@ -901,7 +901,7 @@ lge_rxeof(struct lge_softc *sc, int cnt)
 			m->m_pkthdr.len = m->m_len = total_len;
 		}
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 
 		/* Do IP checksum checking. */
 		if (rxsts & LGE_RXSTS_ISIP)
@@ -957,7 +957,7 @@ lge_txeof(struct lge_softc *sc)
 	while (idx != sc->lge_cdata.lge_tx_prod && txdone) {
 		cur_tx = &sc->lge_ldata->lge_tx_list[idx];
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		if (cur_tx->lge_mbuf != NULL) {
 			m_freem(cur_tx->lge_mbuf);
 			cur_tx->lge_mbuf = NULL;
@@ -994,9 +994,9 @@ lge_tick_serialized(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	CSR_WRITE_4(sc, LGE_STATSIDX, LGE_STATS_SINGLE_COLL_PKTS);
-	ifp->if_collisions += CSR_READ_4(sc, LGE_STATSVAL);
+	IFNET_STAT_INC(ifp, collisions, CSR_READ_4(sc, LGE_STATSVAL));
 	CSR_WRITE_4(sc, LGE_STATSIDX, LGE_STATS_MULTI_COLL_PKTS);
-	ifp->if_collisions += CSR_READ_4(sc, LGE_STATSVAL);
+	IFNET_STAT_INC(ifp, collisions, CSR_READ_4(sc, LGE_STATSVAL));
 
 	if (!sc->lge_link) {
 		mii = device_get_softc(sc->lge_miibus);
@@ -1416,7 +1416,7 @@ lge_watchdog(struct ifnet *ifp)
 {
 	struct lge_softc *sc = ifp->if_softc;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	kprintf("lge%d: watchdog timeout\n", sc->lge_unit);
 
 	lge_stop(sc);

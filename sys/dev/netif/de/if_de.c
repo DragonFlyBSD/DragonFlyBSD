@@ -3100,7 +3100,7 @@ tulip_rx_intr(tulip_softc_t *sc)
 	    sc->tulip_flags |= TULIP_RXACT;
 	    accept = 1;
 	} else {
-	    ifp->if_ierrors++;
+	    IFNET_STAT_INC(ifp, ierrors, 1);
 	    if (eop->d_status & (TULIP_DSTS_RxBADLENGTH|TULIP_DSTS_RxOVERFLOW|TULIP_DSTS_RxWATCHDOG)) {
 		sc->tulip_dot3stats.dot3StatsInternalMacReceiveErrors++;
 	    } else {
@@ -3116,7 +3116,7 @@ tulip_rx_intr(tulip_softc_t *sc)
 		}
 	    }
 	}
-	ifp->if_ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 	if (++eop == ri->ri_last)
 	    eop = ri->ri_first;
 	ri->ri_nextin = eop;
@@ -3257,7 +3257,7 @@ tulip_tx_intr(tulip_softc_t *sc)
 		} else {
 		    xmits++;
 		    if (d_status & TULIP_DSTS_ERRSUM) {
-			sc->tulip_if.if_oerrors++;
+			IFNET_STAT_INC(&sc->tulip_if, oerrors, 1);
 			if (d_status & TULIP_DSTS_TxEXCCOLL)
 			    sc->tulip_dot3stats.dot3StatsExcessiveCollisions++;
 			if (d_status & TULIP_DSTS_TxLATECOLL)
@@ -3274,7 +3274,7 @@ tulip_tx_intr(tulip_softc_t *sc)
 			u_int32_t collisions = 
 			    (d_status & TULIP_DSTS_TxCOLLMASK)
 				>> TULIP_DSTS_V_TxCOLLCNT;
-			sc->tulip_if.if_collisions += collisions;
+			IFNET_STAT_INC(&sc->tulip_if, collisions, collisions);
 			if (collisions == 1)
 			    sc->tulip_dot3stats.dot3StatsSingleCollisionFrames++;
 			else if (collisions > 1)
@@ -3310,7 +3310,7 @@ tulip_tx_intr(tulip_softc_t *sc)
 	sc->tulip_txtimer = 0;
     else if (xmits > 0)
 	sc->tulip_txtimer = (TULIP_TXTIMER & 3);
-    sc->tulip_if.if_opackets += xmits;
+    IFNET_STAT_INC(&sc->tulip_if, opackets, xmits);
     return descs;
 }
 

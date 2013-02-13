@@ -582,7 +582,7 @@ axe_rxstart(struct ifnet *ifp)
 	c = &sc->axe_cdata.axe_rx_chain[sc->axe_cdata.axe_rx_prod];
 
 	if (axe_newbuf(sc, c, NULL) == ENOBUFS) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
@@ -632,11 +632,11 @@ axe_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	m = c->axe_mbuf;
 
 	if (total_len < sizeof(struct ether_header)) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto done;
 	}
 
-	ifp->if_ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = total_len;
 
@@ -690,9 +690,9 @@ axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 
 	if (err)
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	else
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -945,7 +945,7 @@ axe_watchdog(struct ifnet *ifp)
 	struct axe_chain *c;
 	usbd_status stat;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	if_printf(ifp, "watchdog timeout\n");
 
 	c = &sc->axe_cdata.axe_tx_chain[0];

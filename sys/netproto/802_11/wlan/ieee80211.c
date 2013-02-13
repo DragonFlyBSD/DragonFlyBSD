@@ -233,7 +233,7 @@ static int
 null_transmit(struct ifnet *ifp, struct mbuf *m)
 {
 	m_freem(m);
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	return EACCES;		/* XXX EIO/EPERM? */
 }
 

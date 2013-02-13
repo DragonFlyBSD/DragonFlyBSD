@@ -1727,13 +1727,13 @@ ale_watchdog(struct ifnet *ifp)
 
 	if ((sc->ale_flags & ALE_FLAG_LINK) == 0) {
 		if_printf(ifp, "watchdog timeout (lost link)\n");
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		ale_init(sc);
 		return;
 	}
 
 	if_printf(ifp, "watchdog timeout -- resetting\n");
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	ale_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -1953,11 +1953,11 @@ ale_stats_update(struct ale_softc *sc)
 	stat->tx_mcast_bytes += smb->tx_mcast_bytes;
 
 	/* Update counters in ifnet. */
-	ifp->if_opackets += smb->tx_frames;
+	IFNET_STAT_INC(ifp, opackets, smb->tx_frames);
 
-	ifp->if_collisions += smb->tx_single_colls +
+	IFNET_STAT_INC(ifp, collisions, smb->tx_single_colls +
 	    smb->tx_multi_colls * 2 + smb->tx_late_colls +
-	    smb->tx_abort * HDPX_CFG_RETRY_DEFAULT;
+	    smb->tx_abort * HDPX_CFG_RETRY_DEFAULT);
 
 	/*
 	 * XXX
@@ -1966,15 +1966,15 @@ ale_stats_update(struct ale_softc *sc)
 	 * the counter name is not correct one so I've removed the
 	 * counter in output errors.
 	 */
-	ifp->if_oerrors += smb->tx_abort + smb->tx_late_colls +
-	    smb->tx_underrun;
+	IFNET_STAT_INC(ifp, oerrors, smb->tx_abort + smb->tx_late_colls +
+	    smb->tx_underrun);
 
-	ifp->if_ipackets += smb->rx_frames;
+	IFNET_STAT_INC(ifp, ipackets, smb->rx_frames);
 
-	ifp->if_ierrors += smb->rx_crcerrs + smb->rx_lenerrs +
+	IFNET_STAT_INC(ifp, ierrors, smb->rx_crcerrs + smb->rx_lenerrs +
 	    smb->rx_runts + smb->rx_pkts_truncated +
 	    smb->rx_fifo_oflows + smb->rx_rrs_errs +
-	    smb->rx_alignerrs;
+	    smb->rx_alignerrs);
 }
 
 static void
@@ -2250,7 +2250,7 @@ ale_rxeof(struct ale_softc *sc)
 		m = m_devget((char *)(rs + 1), length - ETHER_CRC_LEN,
 		    ETHER_ALIGN, ifp, NULL);
 		if (m == NULL) {
-			ifp->if_iqdrops++;
+			IFNET_STAT_INC(ifp, iqdrops, 1);
 			ale_rx_update_page(sc, &rx_page, length, &prod);
 			continue;
 		}

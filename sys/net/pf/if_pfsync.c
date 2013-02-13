@@ -1180,7 +1180,7 @@ pfsync_get_mbuf(struct pfsync_softc *sc, u_int8_t action, void **sp)
 
 	MGETHDR(m, M_WAITOK, MT_DATA);
 	if (m == NULL) {
-		sc->sc_if.if_oerrors++;
+		IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
 		return (NULL);
 	}
 
@@ -1219,7 +1219,7 @@ pfsync_get_mbuf(struct pfsync_softc *sc, u_int8_t action, void **sp)
 		MCLGET(m, M_WAITOK);
 		if ((m->m_flags & M_EXT) == 0) {
 			m_free(m);
-			sc->sc_if.if_oerrors++;
+			IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
 			return (NULL);
 		}
 		m->m_data += (MCLBYTES - len) &~ (sizeof(long) - 1);

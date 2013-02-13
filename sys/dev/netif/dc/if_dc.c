@@ -2550,9 +2550,9 @@ dc_rxeof(struct dc_softc *sc)
 			    (rxstat & (DC_RXSTAT_CRCERR | DC_RXSTAT_DRIBBLE |
 				       DC_RXSTAT_MIIERE | DC_RXSTAT_COLLSEEN |
 				       DC_RXSTAT_RUNT   | DC_RXSTAT_DE))) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				if (rxstat & DC_RXSTAT_COLLSEEN)
-					ifp->if_collisions++;
+					IFNET_STAT_INC(ifp, collisions, 1);
 				dc_newbuf(sc, i, m);
 				if (rxstat & DC_RXSTAT_CRCERR) {
 					DC_INC(i, DC_RX_LIST_CNT);
@@ -2591,14 +2591,14 @@ dc_rxeof(struct dc_softc *sc)
 			dc_newbuf(sc, i, m);
 			DC_INC(i, DC_RX_LIST_CNT);
 			if (m0 == NULL) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				continue;
 			}
 			m_adj(m0, ETHER_ALIGN);
 			m = m0;
 		}
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		ifp->if_input(ifp, m);
 	}
 
@@ -2679,20 +2679,21 @@ dc_txeof(struct dc_softc *sc)
 		}
 
 		if (txstat & DC_TXSTAT_ERRSUM) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (txstat & DC_TXSTAT_EXCESSCOLL)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			if (txstat & DC_TXSTAT_LATECOLL)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			if (!(txstat & DC_TXSTAT_UNDERRUN)) {
 				dc_init(sc);
 				return;
 			}
 		}
 
-		ifp->if_collisions += (txstat & DC_TXSTAT_COLLCNT) >> 3;
+		IFNET_STAT_INC(ifp, collisions,
+		    (txstat & DC_TXSTAT_COLLCNT) >> 3);
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		if (sc->dc_cdata.dc_tx_chain[idx] != NULL) {
 			m_freem(sc->dc_cdata.dc_tx_chain[idx]);
 			sc->dc_cdata.dc_tx_chain[idx] = NULL;
@@ -2871,7 +2872,8 @@ dc_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 
 		if (status & (DC_ISR_RX_WATDOGTIMEO|DC_ISR_RX_NOBUF) ) {
 			u_int32_t r = CSR_READ_4(sc, DC_FRAMESDISCARDED);
-			ifp->if_ierrors += (r & 0xffff) + ((r >> 17) & 0x7ff);
+			IFNET_STAT_INC(ifp, ierrors,
+			    (r & 0xffff) + ((r >> 17) & 0x7ff));
 
 			if (dc_rx_resync(sc))
 				dc_rxeof(sc);
@@ -2956,10 +2958,13 @@ dc_intr(void *arg)
 		CSR_WRITE_4(sc, DC_ISR, status);
 
 		if (status & DC_ISR_RX_OK) {
-			int		curpkts;
-			curpkts = ifp->if_ipackets;
+			u_long curpkts, ncurpkts;
+
+			IFNET_STAT_GET(ifp, ipackets, curpkts);
 			dc_rxeof(sc);
-			if (curpkts == ifp->if_ipackets) {
+			IFNET_STAT_GET(ifp, ipackets, ncurpkts);
+
+			if (curpkts == ncurpkts) {
 				while(dc_rx_resync(sc))
 					dc_rxeof(sc);
 			}
@@ -2981,10 +2986,13 @@ dc_intr(void *arg)
 
 		if ((status & DC_ISR_RX_WATDOGTIMEO)
 		    || (status & DC_ISR_RX_NOBUF)) {
-			int		curpkts;
-			curpkts = ifp->if_ipackets;
+			u_long curpkts, ncurpkts;
+
+			IFNET_STAT_GET(ifp, ipackets, curpkts);
 			dc_rxeof(sc);
-			if (curpkts == ifp->if_ipackets) {
+			IFNET_STAT_GET(ifp, ipackets, ncurpkts);
+
+			if (curpkts == ncurpkts) {
 				while(dc_rx_resync(sc))
 					dc_rxeof(sc);
 			}
@@ -3453,7 +3461,7 @@ dc_watchdog(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	if_printf(ifp, "watchdog timeout\n");
 
 	dc_stop(sc);

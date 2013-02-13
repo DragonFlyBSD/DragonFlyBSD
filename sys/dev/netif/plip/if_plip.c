@@ -492,8 +492,8 @@ lp_intr (void *arg)
 	    sc->sc_iferrs = 0;
 
 	    len -= CLPIPHDRLEN;
-	    sc->sc_if.if_ipackets++;
-	    sc->sc_if.if_ibytes += len;
+	    IFNET_STAT_INC(&sc->sc_if, ipackets, 1);
+	    IFNET_STAT_INC(&sc->sc_if, ibytes, len);
 	    top = m_devget(sc->sc_ifbuf + CLPIPHDRLEN, len, 0, &sc->sc_if, 0);
 	    if (top) {
 		if (sc->sc_if.if_bpf)
@@ -537,8 +537,8 @@ lp_intr (void *arg)
 	    sc->sc_iferrs = 0;
 
 	    len -= LPIPHDRLEN;
-	    sc->sc_if.if_ipackets++;
-	    sc->sc_if.if_ibytes += len;
+	    IFNET_STAT_INC(&sc->sc_if, ipackets, 1);
+	    IFNET_STAT_INC(&sc->sc_if, ibytes, len);
 	    top = m_devget(sc->sc_ifbuf + LPIPHDRLEN, len, 0, &sc->sc_if, 0);
 	    if (top) {
 		if (sc->sc_if.if_bpf)
@@ -551,7 +551,7 @@ lp_intr (void *arg)
     err:
 	ppb_wdtr(ppbus, 0);
 	lprintf("R");
-	sc->sc_if.if_ierrors++;
+	IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 	sc->sc_iferrs++;
 
 	/*
@@ -671,11 +671,11 @@ lpoutput (struct ifnet *ifp, struct mbuf *m,
 
 	nend:
 	if (err)  {				/* if we didn't timeout... */
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		lprintf("X");
 	} else {
-		ifp->if_opackets++;
-		ifp->if_obytes += m->m_pkthdr.len;
+		IFNET_STAT_INC(ifp, opackets, 1);
+		IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len);
 		if (ifp->if_bpf)
 		    lptap(ifp, m);
 	}
@@ -716,11 +716,11 @@ lpoutput (struct ifnet *ifp, struct mbuf *m,
     ppb_wdtr(ppbus, txmitl[*cp] ^ 0x17);
 
     if (err)  {				/* if we didn't timeout... */
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
         lprintf("X");
     } else {
-	ifp->if_opackets++;
-	ifp->if_obytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, opackets, 1);
+	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len);
 	if (ifp->if_bpf)
 	    lptap(ifp, m);
     }

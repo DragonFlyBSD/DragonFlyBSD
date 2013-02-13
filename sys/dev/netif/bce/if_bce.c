@@ -4429,7 +4429,7 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 				if_printf(ifp, "RX cons(%d) != prod(%d), "
 					  "drop!\n", sw_chain_cons,
 					  sw_chain_prod);
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 
 				bce_setup_rxdesc_std(sc, sw_chain_cons,
 						     &sw_prod_bseq);
@@ -4476,7 +4476,7 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 				      L2_FHDR_ERRORS_ALIGNMENT |
 				      L2_FHDR_ERRORS_TOO_SHORT |
 				      L2_FHDR_ERRORS_GIANT_FRAME)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 
 				/* Reuse the mbuf for a new frame. */
 				bce_setup_rxdesc_std(sc, sw_chain_prod,
@@ -4493,7 +4493,7 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 			 */
 			if (bce_newbuf_std(sc, &sw_prod, &sw_chain_prod,
 					   &sw_prod_bseq, 0)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 
 				/* Try and reuse the exisitng mbuf. */
 				bce_setup_rxdesc_std(sc, sw_chain_prod,
@@ -4543,7 +4543,7 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 				}
 			}
 
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 bce_rx_int_next_rx:
 			sw_prod = NEXT_RX_BD(sw_prod);
 		}
@@ -4625,7 +4625,7 @@ bce_tx_intr(struct bce_softc *sc, uint16_t hw_tx_cons)
 			m_freem(sc->tx_mbuf_ptr[sw_tx_chain_cons]);
 			sc->tx_mbuf_ptr[sw_tx_chain_cons] = NULL;
 
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 
 		sc->used_tx_bd--;
@@ -5033,7 +5033,7 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 * to wait for the NIC to drain the chain.
 		 */
 		if (bce_encap(sc, &m_head, &count)) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (sc->used_tx_bd == 0) {
 				continue;
 			} else {
@@ -5203,7 +5203,7 @@ bce_watchdog(struct ifnet *ifp)
 	ifp->if_flags &= ~IFF_RUNNING;	/* Force reinitialize */
 	bce_init(sc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -5566,8 +5566,8 @@ bce_stats_update(struct bce_softc *sc)
 	 */
 	if (!(BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5706) &&
 	    !(BCE_CHIP_ID(sc) == BCE_CHIP_ID_5708_A0)) {
-		ifp->if_oerrors +=
-			(u_long)stats->stat_Dot3StatsCarrierSenseErrors;
+		IFNET_STAT_INC(ifp, oerrors,
+			(u_long)stats->stat_Dot3StatsCarrierSenseErrors);
 	}
 
 	/*
@@ -5751,21 +5751,21 @@ bce_stats_update(struct bce_softc *sc)
 	 * Update the interface statistics from the
 	 * hardware statistics.
 	 */
-	ifp->if_collisions = (u_long)sc->stat_EtherStatsCollisions;
+	IFNET_STAT_SET(ifp, collisions, (u_long)sc->stat_EtherStatsCollisions);
 
-	ifp->if_ierrors = (u_long)sc->stat_EtherStatsUndersizePkts +
+	IFNET_STAT_SET(ifp, ierrors, (u_long)sc->stat_EtherStatsUndersizePkts +
 	    (u_long)sc->stat_EtherStatsOverrsizePkts +
 	    (u_long)sc->stat_IfInMBUFDiscards +
 	    (u_long)sc->stat_Dot3StatsAlignmentErrors +
 	    (u_long)sc->stat_Dot3StatsFCSErrors +
 	    (u_long)sc->stat_IfInRuleCheckerDiscards +
 	    (u_long)sc->stat_IfInFTQDiscards +
-	    (u_long)sc->com_no_buffers;
+	    (u_long)sc->com_no_buffers);
 
-	ifp->if_oerrors =
+	IFNET_STAT_SET(ifp, oerrors,
 	    (u_long)sc->stat_emac_tx_stat_dot3statsinternalmactransmiterrors +
 	    (u_long)sc->stat_Dot3StatsExcessiveCollisions +
-	    (u_long)sc->stat_Dot3StatsLateCollisions;
+	    (u_long)sc->stat_Dot3StatsLateCollisions);
 
 	DBPRINT(sc, BCE_EXCESSIVE, "Exiting %s()\n", __func__);
 }

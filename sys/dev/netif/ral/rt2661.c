@@ -919,7 +919,7 @@ rt2661_tx_intr(struct rt2661_softc *sc)
 				ieee80211_ratectl_tx_complete(vap, ni,
 				    IEEE80211_RATECTL_TX_SUCCESS,
 				    &retrycnt, NULL);
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			break;
 
 		case RT2661_TX_RETRY_FAIL:
@@ -931,14 +931,14 @@ rt2661_tx_intr(struct rt2661_softc *sc)
 				ieee80211_ratectl_tx_complete(vap, ni,
 				    IEEE80211_RATECTL_TX_FAILURE,
 				    &retrycnt, NULL);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			break;
 
 		default:
 			/* other failure */
 			device_printf(sc->sc_dev,
 			    "sending data frame failed 0x%08x\n", val);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		}
 
 		DPRINTFN(sc, 15, "tx done q=%d idx=%u\n", qid, txq->stat);
@@ -1025,12 +1025,12 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 			 */
 			DPRINTFN(sc, 5, "PHY or CRC error flags 0x%08x\n",
 			    le32toh(desc->flags));
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto skip;
 		}
 
 		if ((le32toh(desc->flags) & RT2661_RX_CIPHER_MASK) != 0) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto skip;
 		}
 
@@ -1043,7 +1043,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 		 */
 		mnew = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (mnew == NULL) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto skip;
 		}
 
@@ -1066,7 +1066,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 				panic("%s: could not load old rx mbuf",
 				    device_get_name(sc->sc_dev));
 			}
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto skip;
 		}
 
@@ -1633,7 +1633,7 @@ rt2661_start_locked(struct ifnet *ifp)
 		ni = (struct ieee80211_node *) m->m_pkthdr.rcvif;
 		if (rt2661_tx_data(sc, m, ni, ac) != 0) {
 			ieee80211_free_node(ni);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			break;
 		}
 
@@ -1669,7 +1669,7 @@ rt2661_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 		return ENOBUFS;		/* XXX */
 	}
 
-	ifp->if_opackets++;
+	IFNET_STAT_INC(ifp, opackets, 1);
 
 	/*
 	 * Legacy path; interpret frame contents to decide
@@ -1682,7 +1682,7 @@ rt2661_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 
 	return 0;
 bad:
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	ieee80211_free_node(ni);
 	return EIO;		/* XXX */
 }
@@ -1701,7 +1701,7 @@ rt2661_watchdog_callout(void *arg)
 	if (sc->sc_tx_timer > 0 && --sc->sc_tx_timer == 0) {
 		if_printf(ifp, "device timeout\n");
 		rt2661_init_locked(sc);
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		/* NB: callout is reset in rt2661_init() */
 		return;
 	}

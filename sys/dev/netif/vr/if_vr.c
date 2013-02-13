@@ -980,7 +980,7 @@ vr_rxeof(struct vr_softc *sc)
 	 	 * comes up in the ring.
 		 */
 		if (rxstat & VR_RXSTAT_RXERR) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			if_printf(ifp, "rx error (%02x):", rxstat & 0x000000ff);
 			if (rxstat & VR_RXSTAT_CRCERR)
 				kprintf(" crc error");
@@ -1017,13 +1017,13 @@ vr_rxeof(struct vr_softc *sc)
 		    total_len + ETHER_ALIGN, 0, ifp, NULL);
 		vr_newbuf(sc, cur_rx, m);
 		if (m0 == NULL) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			continue;
 		}
 		m_adj(m0, ETHER_ALIGN);
 		m = m0;
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		ifp->if_input(ifp, m);
 	}
 }
@@ -1036,7 +1036,7 @@ vr_rxeoc(struct vr_softc *sc)
 
 	ifp = &sc->arpcom.ac_if;
 
-	ifp->if_ierrors++;
+	IFNET_STAT_INC(ifp, ierrors, 1);
 
 	VR_CLRBIT16(sc, VR_COMMAND, VR_CMD_RX_ON);	
         DELAY(10000);
@@ -1115,16 +1115,17 @@ vr_txeof(struct vr_softc *sc)
 			break;
 
 		if (txstat & VR_TXSTAT_ERRSUM) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (txstat & VR_TXSTAT_DEFER)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			if (txstat & VR_TXSTAT_LATECOLL)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 		}
 
-		ifp->if_collisions += (txstat & VR_TXSTAT_COLLCNT) >> 3;
+		IFNET_STAT_INC(ifp, collisions,
+		    (txstat & VR_TXSTAT_COLLCNT) >> 3);
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		cur_tx->vr_buf = NULL;
 
 		if (cd->vr_tx_head_idx == cd->vr_tx_tail_idx) {
@@ -1212,7 +1213,7 @@ vr_intr(void *arg)
 
 		if (status & VR_ISR_RX_DROPPED) {
 			if_printf(ifp, "rx packet lost\n");
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			}
 
 		if ((status & VR_ISR_RX_ERR) || (status & VR_ISR_RX_NOBUF) ||
@@ -1240,7 +1241,7 @@ vr_intr(void *arg)
 			if ((status & VR_ISR_UDFI) ||
 			    (status & VR_ISR_TX_ABRT2) ||
 			    (status & VR_ISR_TX_ABRT)) {
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				if (sc->vr_cdata.vr_tx_head_idx != -1) {
 					VR_SETBIT16(sc, VR_COMMAND,
 						    VR_CMD_TX_ON);
@@ -1602,7 +1603,7 @@ vr_watchdog(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	if_printf(ifp, "watchdog timeout\n");
 
 	vr_stop(sc);

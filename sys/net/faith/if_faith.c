@@ -230,8 +230,8 @@ faithoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		return (rt->rt_flags & RTF_BLACKHOLE ? 0 :
 		        rt->rt_flags & RTF_HOST ? EHOSTUNREACH : ENETUNREACH);
 	}
-	ifp->if_opackets++;
-	ifp->if_obytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, opackets, 1);
+	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len);
 	switch (dst->sa_family) {
 #ifdef INET
 	case AF_INET:
@@ -252,8 +252,8 @@ faithoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	m->m_pkthdr.rcvif = ifp;
 	m->m_flags &= ~M_HASH;
-	ifp->if_ipackets++;
-	ifp->if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, ipackets, 1);
+	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
 	netisr_queue(isr, m);
 	return (0);
 }

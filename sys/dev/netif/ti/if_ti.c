@@ -1649,12 +1649,12 @@ ti_rxeof(struct ti_softc *sc)
 			m = sc->ti_cdata.ti_rx_jumbo_chain[rxidx];
 			sc->ti_cdata.ti_rx_jumbo_chain[rxidx] = NULL;
 			if (cur_rx->ti_flags & TI_BDFLAG_ERROR) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				ti_newbuf_jumbo(sc, sc->ti_jumbo, m);
 				continue;
 			}
 			if (ti_newbuf_jumbo(sc, sc->ti_jumbo, NULL) == ENOBUFS) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				ti_newbuf_jumbo(sc, sc->ti_jumbo, m);
 				continue;
 			}
@@ -1663,12 +1663,12 @@ ti_rxeof(struct ti_softc *sc)
 			m = sc->ti_cdata.ti_rx_mini_chain[rxidx];
 			sc->ti_cdata.ti_rx_mini_chain[rxidx] = NULL;
 			if (cur_rx->ti_flags & TI_BDFLAG_ERROR) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				ti_newbuf_mini(sc, sc->ti_mini, m);
 				continue;
 			}
 			if (ti_newbuf_mini(sc, sc->ti_mini, NULL) == ENOBUFS) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				ti_newbuf_mini(sc, sc->ti_mini, m);
 				continue;
 			}
@@ -1677,19 +1677,19 @@ ti_rxeof(struct ti_softc *sc)
 			m = sc->ti_cdata.ti_rx_std_chain[rxidx];
 			sc->ti_cdata.ti_rx_std_chain[rxidx] = NULL;
 			if (cur_rx->ti_flags & TI_BDFLAG_ERROR) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				ti_newbuf_std(sc, sc->ti_std, m);
 				continue;
 			}
 			if (ti_newbuf_std(sc, sc->ti_std, NULL) == ENOBUFS) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				ti_newbuf_std(sc, sc->ti_std, m);
 				continue;
 			}
 		}
 
 		m->m_pkthdr.len = m->m_len = cur_rx->ti_len;
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		m->m_pkthdr.rcvif = ifp;
 
 		if (ifp->if_hwassist) {
@@ -1748,7 +1748,7 @@ ti_txeof(struct ti_softc *sc)
 		} else
 			cur_tx = &sc->ti_rdata->ti_tx_ring[idx];
 		if (cur_tx->ti_flags & TI_BDFLAG_END)
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		if (sc->ti_cdata.ti_tx_chain[idx] != NULL) {
 			m_freem(sc->ti_cdata.ti_tx_chain[idx]);
 			sc->ti_cdata.ti_tx_chain[idx] = NULL;
@@ -1800,12 +1800,11 @@ ti_stats_update(struct ti_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	ifp->if_collisions +=
+	IFNET_STAT_SET(ifp, collisions,
 	   (sc->ti_rdata->ti_info.ti_stats.dot3StatsSingleCollisionFrames +
 	   sc->ti_rdata->ti_info.ti_stats.dot3StatsMultipleCollisionFrames +
 	   sc->ti_rdata->ti_info.ti_stats.dot3StatsExcessiveCollisions +
-	   sc->ti_rdata->ti_info.ti_stats.dot3StatsLateCollisions) -
-	   ifp->if_collisions;
+	   sc->ti_rdata->ti_info.ti_stats.dot3StatsLateCollisions));
 }
 
 /*
@@ -2248,7 +2247,7 @@ ti_watchdog(struct ifnet *ifp)
 	ti_stop(sc);
 	ti_init(sc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);

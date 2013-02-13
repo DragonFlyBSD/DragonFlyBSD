@@ -1120,7 +1120,7 @@ nfe_rxeof(struct nfe_softc *sc)
 		}
 
 		if (flags & NFE_RX_ERROR) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto skip;
 		}
 
@@ -1131,7 +1131,7 @@ nfe_rxeof(struct nfe_softc *sc)
 		else
 			error = nfe_newbuf_std(sc, ring, ring->cur, 0);
 		if (error) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto skip;
 		}
 
@@ -1155,7 +1155,7 @@ nfe_rxeof(struct nfe_softc *sc)
 			}
 		}
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		ifp->if_input(ifp, m);
 skip:
 		nfe_set_ready_rxdesc(sc, ring, ring->cur);
@@ -1191,9 +1191,9 @@ nfe_txeof(struct nfe_softc *sc, int start)
 			if ((flags & NFE_TX_ERROR_V1) != 0) {
 				if_printf(ifp, "tx v1 error 0x%4b\n", flags,
 					  NFE_V1_TXERR);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 			} else {
-				ifp->if_opackets++;
+				IFNET_STAT_INC(ifp, opackets, 1);
 			}
 		} else {
 			if (!(flags & NFE_TX_LASTFRAG_V2) && data->m == NULL)
@@ -1202,9 +1202,9 @@ nfe_txeof(struct nfe_softc *sc, int start)
 			if ((flags & NFE_TX_ERROR_V2) != 0) {
 				if_printf(ifp, "tx v2 error 0x%4b\n", flags,
 					  NFE_V2_TXERR);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 			} else {
-				ifp->if_opackets++;
+				IFNET_STAT_INC(ifp, opackets, 1);
 			}
 		}
 
@@ -1392,7 +1392,7 @@ nfe_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 		error = nfe_encap(sc, ring, m0);
 		if (error) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (error == EFBIG) {
 				if (oactive) {
 					ifq_set_oactive(&ifp->if_snd);
@@ -1443,7 +1443,7 @@ nfe_watchdog(struct ifnet *ifp)
 
 	nfe_init(ifp->if_softc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 }
 
 static void

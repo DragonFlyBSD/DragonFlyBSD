@@ -879,7 +879,7 @@ aue_rxstart(struct ifnet *ifp)
 	c = &sc->aue_cdata.aue_rx_chain[sc->aue_cdata.aue_rx_prod];
 
 	if (aue_newbuf(sc, c, NULL) == ENOBUFS) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		AUE_UNLOCK(sc);
 		return;
 	}
@@ -931,7 +931,7 @@ aue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	usbd_get_xfer_status(xfer, NULL, NULL, &total_len, NULL);
 
 	if (total_len <= 4 + ETHER_CRC_LEN) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto done;
 	}
 
@@ -942,14 +942,14 @@ aue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	r.aue_rxstat &= AUE_RXSTAT_MASK;
 
 	if (r.aue_rxstat) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto done;
 	}
 
 	/* No errors; receive the packet. */
 	total_len -= (4 + ETHER_CRC_LEN);
 
-	ifp->if_ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = total_len;
 
@@ -991,9 +991,9 @@ aue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	usbd_get_xfer_status(c->aue_xfer, NULL, NULL, NULL, &err);
 	if (err)
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	else
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 	/* XXX should hold serializer */
 	ifp->if_timer = 0;
@@ -1339,7 +1339,7 @@ aue_watchdog(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	if_printf(ifp, "watchdog timeout\n");
 
 	c = &sc->aue_cdata.aue_tx_chain[0];

@@ -191,7 +191,7 @@ ieee80211_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
 			    "discard frame, %s\n", "m_pullup failed");
 			vap->iv_stats.is_tx_nobuf++;	/* XXX */
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			continue;
 		}
 		eh = mtod(m, struct ether_header *);
@@ -223,7 +223,7 @@ ieee80211_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			ni = ieee80211_find_txnode(vap, eh->ether_dhost);
 			if (ni == NULL) {
 				/* NB: ieee80211_find_txnode does stat+msg */
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				m_freem(m);
 				continue;
 			}
@@ -234,7 +234,7 @@ ieee80211_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 				    "sta not associated (type 0x%04x)",
 				    htons(eh->ether_type));
 				vap->iv_stats.is_tx_notassoc++;
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				m_freem(m);
 				ieee80211_free_node(ni);
 				continue;
@@ -252,7 +252,7 @@ ieee80211_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 					    eh->ether_dhost, NULL,
 					    "%s", "proxy not enabled");
 					vap->iv_stats.is_mesh_notproxy++;
-					ifp->if_oerrors++;
+					IFNET_STAT_INC(ifp, oerrors, 1);
 					m_freem(m);
 					continue;
 				}
@@ -264,7 +264,7 @@ ieee80211_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 				 * NB: ieee80211_mesh_discover holds/disposes
 				 * frame (e.g. queueing on path discovery).
 				 */
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 		}
@@ -287,7 +287,7 @@ ieee80211_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			    eh->ether_dhost, NULL,
 			    "%s", "classification failure");
 			vap->iv_stats.is_tx_classify++;
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			m_freem(m);
 			ieee80211_free_node(ni);
 			continue;
@@ -363,7 +363,7 @@ ieee80211_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			/* NB: IFQ_HANDOFF reclaims mbuf */
 			ieee80211_free_node(ni);
 		} else {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 		ic->ic_lastdata = ticks;
 	}
@@ -469,7 +469,7 @@ ieee80211_output(struct ifnet *ifp, struct mbuf *m,
 	if (ieee80211_classify(ni, m))
 		senderr(EIO);		/* XXX */
 
-	ifp->if_opackets++;
+	IFNET_STAT_INC(ifp, opackets, 1);
 	IEEE80211_NODE_STAT(ni, tx_data);
 	if (IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 		IEEE80211_NODE_STAT(ni, tx_mcast);
@@ -493,7 +493,7 @@ bad:
 		m_freem(m);
 	if (ni != NULL)
 		ieee80211_free_node(ni);
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	return error;
 #undef senderr
 }

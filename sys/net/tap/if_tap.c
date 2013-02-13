@@ -671,11 +671,11 @@ tapifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	while ((m = ifsq_dequeue(ifsq, NULL)) != NULL) {
 		if (IF_QFULL(ifq)) {
 			IF_DROP(ifq);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			m_freem(m);
 		} else {
 			IF_ENQUEUE(ifq, m);
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			has_data = 1;
 		}
 	}
@@ -952,7 +952,7 @@ tapwrite(struct dev_write_args *ap)
 		}
 	}
 	if (error) {
-		ifp->if_ierrors ++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		if (top)
 			m_freem(top);
 		return (error);
@@ -968,7 +968,7 @@ tapwrite(struct dev_write_args *ap)
 	 */
 	ifnet_serialize_all(ifp);
 	ifp->if_input(ifp, top);
-	ifp->if_ipackets ++; /* ibytes are counted in ether_input */
+	IFNET_STAT_INC(ifp, ipackets, 1);/* ibytes are counted in ether_input */
 	ifnet_deserialize_all(ifp);
 
 	return (0);

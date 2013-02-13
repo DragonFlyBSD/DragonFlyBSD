@@ -1419,7 +1419,7 @@ rtw_intr_rx(struct rtw_softc *sc, uint16_t isr)
 			if_printf(ifp, "DMA error/FIFO overflow %08x, "
 				  "rx descriptor %d\n",
 				  hstat & RTW_RXSTAT_IOERROR, next);
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto next;
 		}
 
@@ -1436,7 +1436,7 @@ rtw_intr_rx(struct rtw_softc *sc, uint16_t isr)
 		if (hwrate >= NELEM(ratetbl)) {
 			if_printf(ifp, "unknown rate #%d\n",
 				  __SHIFTOUT(hstat, RTW_RXSTAT_RATE_MASK));
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto next;
 		}
 		rate = ratetbl[hwrate];
@@ -1594,7 +1594,7 @@ rtw_collect_txpkt(struct rtw_softc *sc, struct rtw_txdesc_blk *tdb,
 		condstring = "ok";
 		error = 0;
 	} else {
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		condstring = "error";
 		error = 1;
 	}
@@ -2997,11 +2997,11 @@ rtw_dequeue(struct ifnet *ifp, struct rtw_txsoft_blk **tsbp,
 		DPRINTF(sc, RTW_DEBUG_XMIT,
 			("%s: encap error\n", ifp->if_xname));
 		ieee80211_free_node(*nip);
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		return -1;
 	}
 
-	ifp->if_opackets++;
+	IFNET_STAT_INC(ifp, opackets, 1);
 	DPRINTF(sc, RTW_DEBUG_XMIT,
 		("%s: leave %s\n", ifp->if_xname, __func__));
 	*mp = m0;
@@ -3414,7 +3414,7 @@ rtw_watchdog(struct ifnet *ifp)
 			if (STAILQ_EMPTY(&tsb->tsb_dirtyq))
 				continue;
 			if_printf(ifp, "transmit timeout, priority %d\n", pri);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			tx_timeouts++;
 		} else {
 			ifp->if_timer = 1;

@@ -977,7 +977,7 @@ emx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			break;
 
 		if (emx_encap(tdata, &m_head, &nsegs, &idx)) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			emx_tx_collect(tdata);
 			continue;
 		}
@@ -1172,7 +1172,7 @@ emx_watchdog(struct ifaltq_subque *ifsq)
 
 	if_printf(ifp, "TX %d watchdog timeout -- resetting\n", tdata->idx);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	emx_init(sc);
 	for (i = 0; i < sc->tx_ring_inuse; ++i)
@@ -2467,7 +2467,7 @@ emx_txeof(struct emx_txdata *tdata)
 
 				tx_buffer = &tdata->tx_buf[first];
 				if (tx_buffer->m_head) {
-					ifp->if_opackets++;
+					IFNET_STAT_INC(ifp, opackets, 1);
 					bus_dmamap_unload(tdata->txtag,
 							  tx_buffer->map);
 					m_freem(tx_buffer->m_head);
@@ -2525,7 +2525,7 @@ emx_tx_collect(struct emx_txdata *tdata)
 
 		tx_buffer = &tdata->tx_buf[first];
 		if (tx_buffer->m_head) {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			bus_dmamap_unload(tdata->txtag,
 					  tx_buffer->map);
 			m_freem(tx_buffer->m_head);
@@ -3060,7 +3060,7 @@ emx_rxeof(struct emx_rxdata *rdata, int count)
 			    rdata->idx, mrq, rss_hash);
 
 			if (emx_newbuf(rdata, i, 0) != 0) {
-				ifp->if_iqdrops++;
+				IFNET_STAT_INC(ifp, iqdrops, 1);
 				goto discard;
 			}
 
@@ -3082,7 +3082,7 @@ emx_rxeof(struct emx_rxdata *rdata, int count)
 
 			if (eop) {
 				rdata->fmp->m_pkthdr.rcvif = ifp;
-				ifp->if_ipackets++;
+				IFNET_STAT_INC(ifp, ipackets, 1);
 
 				if (ifp->if_capenable & IFCAP_RXCSUM)
 					emx_rxcsum(staterr, rdata->fmp);
@@ -3105,7 +3105,7 @@ emx_rxeof(struct emx_rxdata *rdata, int count)
 #endif
 			}
 		} else {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 discard:
 			emx_setup_rxdesc(current_desc, rx_buf);
 			if (rdata->fmp != NULL) {
@@ -3368,16 +3368,15 @@ emx_update_stats(struct emx_softc *sc)
 	sc->stats.tsctc += E1000_READ_REG(&sc->hw, E1000_TSCTC);
 	sc->stats.tsctfc += E1000_READ_REG(&sc->hw, E1000_TSCTFC);
 
-	ifp->if_collisions = sc->stats.colc;
+	IFNET_STAT_SET(ifp, collisions, sc->stats.colc);
 
 	/* Rx Errors */
-	ifp->if_ierrors = sc->stats.rxerrc +
-			  sc->stats.crcerrs + sc->stats.algnerrc +
-			  sc->stats.ruc + sc->stats.roc +
-			  sc->stats.mpc + sc->stats.cexterr;
+	IFNET_STAT_SET(ifp, ierrors,
+	    sc->stats.rxerrc + sc->stats.crcerrs + sc->stats.algnerrc +
+	    sc->stats.ruc + sc->stats.roc + sc->stats.mpc + sc->stats.cexterr);
 
 	/* Tx Errors */
-	ifp->if_oerrors = sc->stats.ecol + sc->stats.latecol;
+	IFNET_STAT_SET(ifp, oerrors, sc->stats.ecol + sc->stats.latecol);
 }
 
 static void

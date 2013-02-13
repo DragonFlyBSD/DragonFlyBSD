@@ -1336,7 +1336,7 @@ carp_send_ad(struct carp_softc *sc)
 
 		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 		if (m == NULL) {
-			cifp->if_oerrors++;
+			IFNET_STAT_INC(cifp, oerrors, 1);
 			carpstats.carps_onomem++;
 			/* XXX maybe less ? */
 			if (advbase != 255 || advskew != 255)
@@ -1369,12 +1369,12 @@ carp_send_ad(struct carp_softc *sc)
 		ch_ptr->carp_cksum = in_cksum_skip(m, len, sizeof(*ip));
 
 		getmicrotime(&cifp->if_lastchange);
-		cifp->if_opackets++;
-		cifp->if_obytes += len;
+		IFNET_STAT_INC(cifp, opackets, 1);
+		IFNET_STAT_INC(cifp, obytes, len);
 		carpstats.carps_opackets++;
 
 		if (ip_output(m, NULL, NULL, IP_RAWOUTPUT, &sc->sc_imo, NULL)) {
-			cifp->if_oerrors++;
+			IFNET_STAT_INC(cifp, oerrors, 1);
 			if (sc->sc_sendad_errors < INT_MAX)
 				sc->sc_sendad_errors++;
 			if (sc->sc_sendad_errors == CARP_SENDAD_MAX_ERRORS) {
@@ -1403,7 +1403,7 @@ carp_send_ad(struct carp_softc *sc)
 
 		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 		if (m == NULL) {
-			cifp->if_oerrors++;
+			IFNET_STAT_INC(cifp, oerrors, 1);
 			carpstats.carps_onomem++;
 			/* XXX maybe less ? */
 			if (advbase != 255 || advskew != 255)
@@ -1429,7 +1429,7 @@ carp_send_ad(struct carp_softc *sc)
 		ip6->ip6_dst.s6_addr16[0] = htons(0xff02);
 		ip6->ip6_dst.s6_addr8[15] = 0x12;
 		if (in6_setscope(&ip6->ip6_dst, sc->sc_carpdev, NULL) != 0) {
-			cifp->if_oerrors++;
+			IFNET_STAT_INC(cifp, oerrors, 1);
 			m_freem(m);
 			CARP_LOG("%s: in6_setscope failed\n", __func__);
 			return;
@@ -1441,12 +1441,12 @@ carp_send_ad(struct carp_softc *sc)
 		ch_ptr->carp_cksum = in_cksum_skip(m, len, sizeof(*ip6));
 
 		getmicrotime(&cifp->if_lastchange);
-		cifp->if_opackets++;
-		cifp->if_obytes += len;
+		IFNET_STAT_INC(cifp, opackets, 1);
+		IFNET_STAT_INC(cifp, obytes, len);
 		carpstats.carps_opackets6++;
 
 		if (ip6_output(m, NULL, NULL, 0, &sc->sc_im6o, NULL, NULL)) {
-			cifp->if_oerrors++;
+			IFNET_STAT_INC(cifp, oerrors, 1);
 			if (sc->sc_sendad_errors < INT_MAX)
 				sc->sc_sendad_errors++;
 			if (sc->sc_sendad_errors == CARP_SENDAD_MAX_ERRORS) {

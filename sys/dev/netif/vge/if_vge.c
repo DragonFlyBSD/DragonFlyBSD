@@ -1311,7 +1311,7 @@ vge_rxeof(struct vge_softc *sc, int count)
 		 */
 		if (!(rxstat & VGE_RDSTS_RXOK) && !(rxstat & VGE_RDSTS_VIDM) &&
 		    !(rxstat & VGE_RDSTS_CSUMERR)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			/*
 			 * If this is part of a multi-fragment packet,
 			 * discard all the pieces.
@@ -1330,7 +1330,7 @@ vge_rxeof(struct vge_softc *sc, int count)
 		 * reload the current one.
 		 */
 		if (vge_newbuf(sc, i, NULL)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			if (sc->vge_head != NULL) {
 				m_freem(sc->vge_head);
 				sc->vge_head = sc->vge_tail = NULL;
@@ -1370,7 +1370,7 @@ vge_rxeof(struct vge_softc *sc, int count)
 #ifdef VGE_FIXUP_RX
 		vge_fixup_rx(m);
 #endif
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		m->m_pkthdr.rcvif = ifp;
 
 		/* Do RX checksumming if enabled */
@@ -1437,11 +1437,11 @@ vge_txeof(struct vge_softc *sc)
 		bus_dmamap_unload(sc->vge_ldata.vge_mtag,
 				  sc->vge_ldata.vge_tx_dmamap[idx]);
 		if (txstat & (VGE_TDSTS_EXCESSCOLL|VGE_TDSTS_COLL))
-			ifp->if_collisions++;
+			IFNET_STAT_INC(ifp, collisions, 1);
 		if (txstat & VGE_TDSTS_TXERR)
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		else
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 
 		sc->vge_ldata.vge_tx_free++;
 		VGE_TX_DESC_INC(idx);
@@ -1519,7 +1519,7 @@ vge_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 			vge_init(sc);
 
 		if (status & (VGE_ISR_RXOFLOW | VGE_ISR_RXNODESC)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			CSR_WRITE_1(sc, VGE_RXQCSRS, VGE_RXQCSR_RUN);
 			CSR_WRITE_1(sc, VGE_RXQCSRS, VGE_RXQCSR_WAK);
 		}
@@ -1582,7 +1582,7 @@ vge_intr(void *arg)
 
 		if (status & (VGE_ISR_RXOFLOW|VGE_ISR_RXNODESC)) {
 			vge_rxeof(sc, -1);
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			CSR_WRITE_1(sc, VGE_RXQCSRS, VGE_RXQCSR_RUN);
 			CSR_WRITE_1(sc, VGE_RXQCSRS, VGE_RXQCSR_WAK);
 		}
@@ -2071,7 +2071,7 @@ vge_watchdog(struct ifnet *ifp)
 	struct vge_softc *sc = ifp->if_softc;
 
 	if_printf(ifp, "watchdog timeout\n");
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	vge_txeof(sc);
 	vge_rxeof(sc, -1);

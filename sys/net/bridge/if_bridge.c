@@ -2122,7 +2122,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	if (m->m_len < ETHER_HDR_LEN) {
 		m = m_pullup(m, ETHER_HDR_LEN);
 		if (m == NULL) {
-			bifp->if_oerrors++;
+			IFNET_STAT_INC(bifp, oerrors, 1);
 			return (0);
 		}
 	}
@@ -2225,7 +2225,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 			} else {
 				mc = m_copypacket(m, MB_DONTWAIT);
 				if (mc == NULL) {
-					bifp->if_oerrors++;
+					IFNET_STAT_INC(bifp, oerrors, 1);
 					continue;
 				}
 			}
@@ -2317,14 +2317,14 @@ bridge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		if (m->m_len < sizeof(*eh)) {
 			m = m_pullup(m, sizeof(*eh));
 			if (m == NULL) {
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 		}
 		eh = mtod(m, struct ether_header *);
 
 		BPF_MTAP(ifp, m);
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		if ((m->m_flags & (M_BCAST|M_MCAST)) == 0)
 			dst_if = bridge_rtlookup(sc, eh->ether_dhost);
@@ -2372,8 +2372,8 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
-	ifp->if_ipackets++;
-	ifp->if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, ipackets, 1);
+	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
 
 	/*
 	 * Look up the bridge_iflist.
@@ -2465,7 +2465,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		}
 	} else {
 		/* ...forward it to all interfaces. */
-		ifp->if_imcasts++;
+		IFNET_STAT_INC(ifp, imcasts, 1);
 		dst_if = NULL;
 	}
 
@@ -2550,10 +2550,10 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		BPF_MTAP(bifp, m);
 
 		/* Update bridge's ifnet statistics */
-		bifp->if_ipackets++;
-		bifp->if_ibytes += m->m_pkthdr.len;
+		IFNET_STAT_INC(bifp, ipackets, 1);
+		IFNET_STAT_INC(bifp, ibytes, m->m_pkthdr.len);
 		if (m->m_flags & (M_MCAST | M_BCAST))
-			bifp->if_imcasts++;
+			IFNET_STAT_INC(bifp, imcasts, 1);
 
 		m_freem(m);
 		m = NULL;
@@ -2921,7 +2921,7 @@ bridge_start_bcast(struct bridge_softc *sc, struct mbuf *m)
 		} else {
 			mc = m_copypacket(m, MB_DONTWAIT);
 			if (mc == NULL) {
-				bifp->if_oerrors++;
+				IFNET_STAT_INC(bifp, oerrors, 1);
 				continue;
 			}
 		}
@@ -3054,7 +3054,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 		} else {
 			mc = m_copypacket(m, MB_DONTWAIT);
 			if (mc == NULL) {
-				sc->sc_ifp->if_oerrors++;
+				IFNET_STAT_INC(sc->sc_ifp, oerrors, 1);
 				continue;
 			}
 		}
@@ -3119,7 +3119,7 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 
 		mc = m_copypacket(m, MB_DONTWAIT);
 		if (mc == NULL) {
-			sc->sc_ifp->if_oerrors++;
+			IFNET_STAT_INC(sc->sc_ifp, oerrors, 1);
 			continue;
 		}
 		bridge_enqueue(dst_if, mc);

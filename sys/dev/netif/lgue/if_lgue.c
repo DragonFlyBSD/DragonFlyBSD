@@ -478,9 +478,9 @@ lgue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 	usbd_get_xfer_status(sc->lgue_tx_xfer, NULL, NULL, NULL,&err);
 	if (err)
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	else
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 	if (!STAILQ_EMPTY(&sc->lgue_tx_queue)) {
 		if_devstart_sched(ifp);
@@ -774,16 +774,16 @@ lgue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	usbd_get_xfer_status(xfer, NULL, NULL, &total_len, NULL);
 
 	if (total_len < sizeof(struct ether_header)) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto done;
 	}
 
 	if (lgue_newbuf(sc, total_len, &m) == ENOBUFS) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
-	ifp->if_ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 	m_copyback(m, 0, total_len, sc->lgue_rx_buf);
 	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = total_len;
@@ -845,7 +845,7 @@ lgue_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 static void
 lgue_watchdog(struct ifnet *ifp)
 {
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart_sched(ifp);

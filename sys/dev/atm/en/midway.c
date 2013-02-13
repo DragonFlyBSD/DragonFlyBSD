@@ -1926,7 +1926,7 @@ again:
 
   EN_COUNT(sc->launch);
   ifp = &sc->enif;
-  ifp->if_opackets++;
+  IFNET_STAT_INC(ifp, opackets, 1);
   
   if ((launch.atm_flags & EN_OBHDR) == 0) {
     EN_COUNT(sc->lheader);
@@ -2516,7 +2516,7 @@ en_intr(void *arg)
 #endif
 
 	  ifp = &sc->enif;
-	  ifp->if_ipackets++;
+	  IFNET_STAT_INC(ifp, ipackets, 1);
 
 	  BPF_MTAP(ifp, m);
 
@@ -2746,7 +2746,7 @@ defer:					/* defer processing */
 	fill = tlen;
 
 	ifp = &sc->enif;
-	ifp->if_ierrors++;
+	IFNET_STAT_INC(ifp, ierrors, 1);
 
       }
       mlen = tlen - fill;

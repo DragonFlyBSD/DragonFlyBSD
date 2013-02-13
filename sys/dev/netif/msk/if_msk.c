@@ -2632,7 +2632,7 @@ msk_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 * for the NIC to drain the ring.
 		 */
 		if (msk_encap(sc_if, &m_head) != 0) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (sc_if->msk_cdata.msk_tx_cnt == 0) {
 				continue;
 			} else {
@@ -2673,7 +2673,7 @@ msk_watchdog(struct ifnet *ifp)
 		if (bootverbose)
 			if_printf(sc_if->msk_ifp, "watchdog timeout "
 			   "(missed link)\n");
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		msk_init(sc_if);
 		return;
 	}
@@ -2696,7 +2696,7 @@ msk_watchdog(struct ifnet *ifp)
 	}
 
 	if_printf(ifp, "watchdog timeout\n");
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	msk_init(sc_if);
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -2799,7 +2799,7 @@ msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len)
 			 * handle this frame.
 			 */
 			if (len > MSK_MAX_FRAMELEN || len < ETHER_HDR_LEN) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				msk_discard_rxbuf(sc_if, cons);
 				break;
 			}
@@ -2808,21 +2808,21 @@ msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len)
 		    ((status & GMR_FS_RX_OK) == 0) || (rxlen != len)) {
 			/* Don't count flow-control packet as errors. */
 			if ((status & GMR_FS_GOOD_FC) == 0)
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 			msk_discard_rxbuf(sc_if, cons);
 			break;
 		}
 		rxd = &sc_if->msk_cdata.msk_rxdesc[cons];
 		m = rxd->rx_m;
 		if (msk_newbuf(sc_if, cons, 0) != 0) {
-			ifp->if_iqdrops++;
+			IFNET_STAT_INC(ifp, iqdrops, 1);
 			/* Reuse old buffer. */
 			msk_discard_rxbuf(sc_if, cons);
 			break;
 		}
 		m->m_pkthdr.rcvif = ifp;
 		m->m_pkthdr.len = m->m_len = len;
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 #ifdef notyet
 		/* Check for VLAN tagged packets. */
 		if ((status & GMR_FS_VLAN) != 0 &&
@@ -2923,7 +2923,7 @@ msk_txeof(struct msk_if_softc *sc_if, int idx)
 		txd = &sc_if->msk_cdata.msk_txdesc[cons];
 		bus_dmamap_unload(sc_if->msk_cdata.msk_tx_tag, txd->tx_dmamap);
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		KASSERT(txd->tx_m != NULL, ("%s: freeing NULL mbuf!",
 		    __func__));
 		m_freem(txd->tx_m);

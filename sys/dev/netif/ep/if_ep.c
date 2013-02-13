@@ -456,7 +456,7 @@ startagain:
      */
     if (len + pad > ETHER_MAX_LEN) {
 	/* packet is obviously too large: toss it */
-	++ifp->if_oerrors;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	m_freem(m);
 	goto readcheck;
     }
@@ -501,7 +501,7 @@ startagain:
     BPF_MTAP(ifp, top);
 
     ifp->if_timer = 2;
-    ifp->if_opackets++;
+    IFNET_STAT_INC(ifp, opackets, 1);
     m_freem(top);
 
     /*
@@ -574,7 +574,7 @@ rescan:
 #ifdef DIAGNOSTIC
 	    if_printf(ifp, "Status: %x (input buffer overflow)\n", status);
 #else
-	    ++ifp->if_ierrors;
+	    IFNET_STAT_INC(ifp, ierrors, 1);
 #endif
 
 #endif
@@ -599,9 +599,9 @@ rescan:
 		    } else {
 			if (status & TXS_JABBER);
 			else	/* TXS_MAX_COLLISION - we shouldn't get here */
-			    ++ifp->if_collisions;
+			    IFNET_STAT_INC(ifp, collisions, 1);
 		    }
-		    ++ifp->if_oerrors;
+		    IFNET_STAT_INC(ifp, oerrors, 1);
 		    outw(BASE + EP_COMMAND, TX_ENABLE);
 		    /*
 		     * To have a tx_avail_int but giving the chance to the
@@ -645,7 +645,7 @@ epread(struct ep_softc *sc)
 read_again:
 
     if (status & ERR_RX) {
-	++ifp->if_ierrors;
+	IFNET_STAT_INC(ifp, ierrors, 1);
 	if (status & ERR_RX_OVERRUN) {
 	    /*
 	     * we can think the rx latency is actually greather than we
@@ -730,7 +730,7 @@ read_again:
 	return;
     }
     outw(BASE + EP_COMMAND, RX_DISCARD_TOP_PACK);
-    ++ifp->if_ipackets;
+    IFNET_STAT_INC(ifp, ipackets, 1);
     EP_FSET(sc, F_RX_FIRST);
     top->m_pkthdr.rcvif = &sc->arpcom.ac_if;
     top->m_pkthdr.len = sc->cur_len;

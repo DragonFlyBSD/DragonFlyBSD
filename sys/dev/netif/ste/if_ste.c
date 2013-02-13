@@ -655,7 +655,7 @@ ste_rxeof(struct ste_softc *sc)
 	 	 * comes up in the ring.
 		 */
 		if (rxstat & STE_RXSTAT_FRAME_ERR) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			cur_rx->ste_ptr->ste_status = 0;
 			continue;
 		}
@@ -667,7 +667,7 @@ ste_rxeof(struct ste_softc *sc)
 		 */
 		if (!(rxstat & STE_RXSTAT_DMADONE)) {
 			if_printf(ifp, "bad receive status -- packet dropped");
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			cur_rx->ste_ptr->ste_status = 0;
 			continue;
 		}
@@ -684,12 +684,12 @@ ste_rxeof(struct ste_softc *sc)
 		 * can do in this situation.
 		 */
 		if (ste_newbuf(sc, cur_rx, NULL) == ENOBUFS) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			cur_rx->ste_ptr->ste_status = 0;
 			continue;
 		}
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		m->m_pkthdr.rcvif = ifp;
 		m->m_pkthdr.len = m->m_len = total_len;
 
@@ -715,7 +715,7 @@ ste_txeoc(struct ste_softc *sc)
 		if (txstat & STE_TXSTATUS_UNDERRUN ||
 		    txstat & STE_TXSTATUS_EXCESSCOLLS ||
 		    txstat & STE_TXSTATUS_RECLAIMERR) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if_printf(ifp, "transmission error: %x\n", txstat);
 
 			ste_reset(sc);
@@ -760,7 +760,7 @@ ste_txeof(struct ste_softc *sc)
 			cur_tx->ste_mbuf = NULL;
 		}
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		sc->ste_cdata.ste_tx_cnt--;
 		STE_INC(idx, STE_TX_LIST_CNT);
@@ -788,9 +788,9 @@ ste_stats_update(void *xsc)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-        ifp->if_collisions += CSR_READ_1(sc, STE_LATE_COLLS)
+        IFNET_STAT_INC(ifp, collisions, CSR_READ_1(sc, STE_LATE_COLLS)
             + CSR_READ_1(sc, STE_MULTI_COLLS)
-            + CSR_READ_1(sc, STE_SINGLE_COLLS);
+            + CSR_READ_1(sc, STE_SINGLE_COLLS));
 
 	if (!sc->ste_link) {
 		mii_pollstat(mii);
@@ -1483,7 +1483,7 @@ ste_watchdog(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	if_printf(ifp, "watchdog timeout\n");
 
 	ste_txeoc(sc);

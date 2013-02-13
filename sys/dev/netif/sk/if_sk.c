@@ -1766,7 +1766,7 @@ sk_watchdog(struct ifnet *ifp)
 	sk_txeof(sc_if);
 	if (sc_if->sk_cdata.sk_tx_cnt != 0) {
 		if_printf(&sc_if->arpcom.ac_if, "watchdog timeout\n");
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		ifp->if_flags &= ~IFF_RUNNING;
 		sk_init(sc_if);
 	}
@@ -1871,7 +1871,7 @@ sk_rxeof(struct sk_if_softc *sc_if)
 		    SK_RXCTL_FIRSTFRAG | SK_RXCTL_LASTFRAG) ||
 		    total_len < SK_MIN_FRAMELEN || total_len > max_frmlen ||
 		    sk_rxvalid(sc, rxstat, total_len) == 0) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			cur_desc->sk_ctl = htole32(m->m_pkthdr.len | SK_RXSTAT);
 			continue;
 		}
@@ -1884,7 +1884,7 @@ sk_rxeof(struct sk_if_softc *sc_if)
 		 * the packet.
 		 */
 		if (sk_newbuf(sc_if, cur, 0)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			cur_desc->sk_ctl = htole32(m->m_pkthdr.len | SK_RXSTAT);
 			continue;
 		} else {
@@ -1896,7 +1896,7 @@ sk_rxeof(struct sk_if_softc *sc_if)
 		sk_rxcsum(ifp, m, csum1, csum2);
 #endif
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		ifp->if_input(ifp, m);
 	}
 }
@@ -2022,7 +2022,7 @@ sk_txeof(struct sk_if_softc *sc_if)
 		if (sk_ctl & SK_TXCTL_OWN)
 			break;
 		if (sk_ctl & SK_TXCTL_LASTFRAG)
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		if (cd->sk_tx_mbuf[idx] != NULL) {
 			bus_dmamap_unload(cd->sk_tx_dtag, cd->sk_tx_dmap[idx]);
 			m_freem(cd->sk_tx_mbuf[idx]);

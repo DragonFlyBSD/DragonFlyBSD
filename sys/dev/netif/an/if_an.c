@@ -828,7 +828,7 @@ an_rxeof(struct an_softc *sc)
 			/* read header */
 			if (an_read_data(sc, id, 0x0, (caddr_t)&rx_frame,
 					 sizeof(rx_frame))) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				return;
 			}
 
@@ -851,7 +851,7 @@ an_rxeof(struct an_softc *sc)
 					if_printf(ifp,
 						  "oversized packet received "
 						  "(%d, %d)\n", len, MCLBYTES);
-					ifp->if_ierrors++;
+					IFNET_STAT_INC(ifp, ierrors, 1);
 					return;
 				}
 
@@ -877,7 +877,7 @@ an_rxeof(struct an_softc *sc)
 					if_printf(ifp,
 						  "oversized packet received "
 						  "(%d, %d)\n", len, MCLBYTES);
-					ifp->if_ierrors++;
+					IFNET_STAT_INC(ifp, ierrors, 1);
 					return;
 				}
 
@@ -895,7 +895,7 @@ an_rxeof(struct an_softc *sc)
 		} else {
 			m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 			if (m == NULL) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				return;
 			}
 			m->m_pkthdr.rcvif = ifp;
@@ -905,7 +905,7 @@ an_rxeof(struct an_softc *sc)
 			/* Read NIC frame header */
 			if (an_read_data(sc, id, 0, (caddr_t)&rx_frame, 
 					 sizeof(rx_frame))) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				return;
 			}
 #endif
@@ -913,11 +913,11 @@ an_rxeof(struct an_softc *sc)
 			if (an_read_data(sc, id, 0x34, 
 					 (caddr_t)&rx_frame_802_3,
 					 sizeof(rx_frame_802_3))) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				return;
 			}
 			if (rx_frame_802_3.an_rx_802_3_status != 0) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				return;
 			}
 			/* Check for insane frame length */
@@ -926,7 +926,7 @@ an_rxeof(struct an_softc *sc)
 				if_printf(ifp,
 				    "oversized packet received (%d, %d)\n",
 				    len, MCLBYTES);
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				return;
 			}
 			m->m_pkthdr.len = m->m_len =
@@ -946,10 +946,10 @@ an_rxeof(struct an_softc *sc)
 
 			if (error) {
 				m_freem(m);
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				return;
 			}
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 
 #ifdef ANCACHE
 			an_cache_store(sc, m,
@@ -973,7 +973,7 @@ an_rxeof(struct an_softc *sc)
 
 				m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 				if (m == NULL) {
-					ifp->if_ierrors++;
+					IFNET_STAT_INC(ifp, ierrors, 1);
 					return;
 				}
 				m->m_pkthdr.rcvif = ifp;
@@ -996,7 +996,7 @@ an_rxeof(struct an_softc *sc)
 					if_printf(ifp,
 						  "oversized packet received "
 						  "(%d, %d)\n", len, MCLBYTES);
-					ifp->if_ierrors++;
+					IFNET_STAT_INC(ifp, ierrors, 1);
 					return;
 				}
 
@@ -1008,7 +1008,7 @@ an_rxeof(struct an_softc *sc)
 				bcopy(buf, (char *)eh,
 				      m->m_pkthdr.len);
 				
-				ifp->if_ipackets++;
+				IFNET_STAT_INC(ifp, ipackets, 1);
 				
 #if 0
 #ifdef ANCACHE
@@ -1058,9 +1058,9 @@ an_txeof(struct an_softc *sc, int status)
 		id = CSR_READ_2(sc, AN_TX_CMP_FID(sc->mpi350));
 
 		if (status & AN_EV_TX_EXC) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		} else
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 
 		for (i = 0; i < AN_TX_RING_CNT; i++) {
 			if (id == sc->an_rdata.an_tx_ring[i]) {
@@ -1074,9 +1074,9 @@ an_txeof(struct an_softc *sc, int status)
 		id = CSR_READ_2(sc, AN_TX_CMP_FID(sc->mpi350));
 		if (!sc->an_rdata.an_tx_empty){
 			if (status & AN_EV_TX_EXC) {
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 			} else
-				ifp->if_opackets++;
+				IFNET_STAT_INC(ifp, opackets, 1);
 			AN_INC(sc->an_rdata.an_tx_cons, AN_MAX_TX_DESC);
 			if (sc->an_rdata.an_tx_prod ==
 			    sc->an_rdata.an_tx_cons)
@@ -2686,7 +2686,7 @@ an_watchdog(struct ifnet *ifp)
 		an_init_mpi350_desc(sc);	
 	an_init(sc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	if_printf(ifp, "device timeout\n");
 }

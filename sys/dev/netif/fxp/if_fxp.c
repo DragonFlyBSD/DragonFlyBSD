@@ -1107,14 +1107,14 @@ tbdinit:
 				 * desc.  Give it up.
 				 */
 				m_freem(mb_head);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 
 			mn = m_dup(mb_head, MB_DONTWAIT);
 			if (mn == NULL) {
 				m_freem(mb_head);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 
@@ -1457,10 +1457,10 @@ fxp_tick(void *xsc)
 
 	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
-	ifp->if_opackets += sp->tx_good;
-	ifp->if_collisions += sp->tx_total_collisions;
+	IFNET_STAT_INC(ifp, opackets, sp->tx_good);
+	IFNET_STAT_INC(ifp, collisions, sp->tx_total_collisions);
 	if (sp->rx_good) {
-		ifp->if_ipackets += sp->rx_good;
+		IFNET_STAT_INC(ifp, ipackets, sp->rx_good);
 		sc->rx_idle_secs = 0;
 	} else {
 		/*
@@ -1468,17 +1468,17 @@ fxp_tick(void *xsc)
 		 */
 		sc->rx_idle_secs++;
 	}
-	ifp->if_ierrors +=
+	IFNET_STAT_INC(ifp, ierrors,
 	    sp->rx_crc_errors +
 	    sp->rx_alignment_errors +
 	    sp->rx_rnr_errors +
-	    sp->rx_overrun_errors;
+	    sp->rx_overrun_errors);
 	/*
 	 * If any transmit underruns occured, bump up the transmit
 	 * threshold by another 512 bytes (64 * 8).
 	 */
 	if (sp->tx_underruns) {
-		ifp->if_oerrors += sp->tx_underruns;
+		IFNET_STAT_INC(ifp, oerrors, sp->tx_underruns);
 		if (tx_threshold < 192)
 			tx_threshold += 64;
 	}
@@ -1637,7 +1637,7 @@ fxp_watchdog(struct ifnet *ifp)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if_printf(ifp, "device timeout\n");
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	fxp_init(ifp->if_softc);
 }
 

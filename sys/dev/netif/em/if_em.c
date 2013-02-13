@@ -1024,7 +1024,7 @@ em_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			break;
 
 		if (em_encap(adapter, &m_head, &nsegs, &idx)) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			em_tx_collect(adapter);
 			continue;
 		}
@@ -1233,7 +1233,7 @@ em_watchdog(struct ifnet *ifp)
 	if (e1000_check_for_link(&adapter->hw) == 0)
 		if_printf(ifp, "watchdog timeout -- resetting\n");
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	adapter->watchdog_events++;
 
 	em_init(adapter);
@@ -2956,7 +2956,7 @@ em_txeof(struct adapter *adapter)
 
 				tx_buffer = &adapter->tx_buffer_area[first];
 				if (tx_buffer->m_head) {
-					ifp->if_opackets++;
+					IFNET_STAT_INC(ifp, opackets, 1);
 					bus_dmamap_unload(adapter->txtag,
 							  tx_buffer->map);
 					m_freem(tx_buffer->m_head);
@@ -3014,7 +3014,7 @@ em_tx_collect(struct adapter *adapter)
 
 		tx_buffer = &adapter->tx_buffer_area[first];
 		if (tx_buffer->m_head) {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			bus_dmamap_unload(adapter->txtag,
 					  tx_buffer->map);
 			m_freem(tx_buffer->m_head);
@@ -3429,7 +3429,7 @@ em_rxeof(struct adapter *adapter, int count)
 
 		if (accept_frame) {
 			if (em_newbuf(adapter, i, 0) != 0) {
-				ifp->if_iqdrops++;
+				IFNET_STAT_INC(ifp, iqdrops, 1);
 				goto discard;
 			}
 
@@ -3462,7 +3462,7 @@ em_rxeof(struct adapter *adapter, int count)
 
 			if (eop) {
 				adapter->fmp->m_pkthdr.rcvif = ifp;
-				ifp->if_ipackets++;
+				IFNET_STAT_INC(ifp, ipackets, 1);
 
 				if (ifp->if_capenable & IFCAP_RXCSUM) {
 					em_rxcsum(adapter, current_desc,
@@ -3480,7 +3480,7 @@ em_rxeof(struct adapter *adapter, int count)
 				adapter->lmp = NULL;
 			}
 		} else {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 discard:
 #ifdef foo
 			/* Reuse loaded DMA map and just update mbuf chain */
@@ -3863,19 +3863,19 @@ em_update_stats(struct adapter *adapter)
 		E1000_READ_REG(&adapter->hw, E1000_TSCTFC);
 	}
 
-	ifp->if_collisions = adapter->stats.colc;
+	IFNET_STAT_SET(ifp, collisions, adapter->stats.colc);
 
 	/* Rx Errors */
-	ifp->if_ierrors =
+	IFNET_STAT_SET(ifp, ierrors,
 	    adapter->dropped_pkts + adapter->stats.rxerrc +
 	    adapter->stats.crcerrs + adapter->stats.algnerrc +
 	    adapter->stats.ruc + adapter->stats.roc +
-	    adapter->stats.mpc + adapter->stats.cexterr;
+	    adapter->stats.mpc + adapter->stats.cexterr);
 
 	/* Tx Errors */
-	ifp->if_oerrors =
+	IFNET_STAT_SET(ifp, oerrors,
 	    adapter->stats.ecol + adapter->stats.latecol +
-	    adapter->watchdog_events;
+	    adapter->watchdog_events);
 }
 
 static void

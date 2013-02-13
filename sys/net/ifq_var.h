@@ -377,9 +377,9 @@ ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 	ASSERT_IFNET_SERIALIZED_TX(_ifp, _ifsq);
 	_error = ifsq_enqueue(_ifsq, _m, _pa);
 	if (_error == 0) {
-		_ifp->if_obytes += _m->m_pkthdr.len;
+		IFNET_STAT_INC(_ifp, obytes, _m->m_pkthdr.len);
 		if (_m->m_flags & M_MCAST)
-			_ifp->if_omcasts++;
+			IFNET_STAT_INC(_ifp, omcasts, 1);
 		if (!ifsq_is_oactive(_ifsq))
 			(*_ifp->if_start)(_ifp, _ifsq);
 	}

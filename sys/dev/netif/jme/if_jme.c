@@ -443,7 +443,7 @@ jme_miibus_statchg(device_t dev)
 				m_freem(txd->tx_m);
 				txd->tx_m = NULL;
 				txd->tx_ndesc = 0;
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 			}
 		}
 	}
@@ -1840,7 +1840,7 @@ jme_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 */
 		if (jme_encap(tdata, &m_head, &enq)) {
 			KKASSERT(m_head == NULL);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
@@ -1883,7 +1883,7 @@ jme_watchdog(struct ifnet *ifp)
 
 	if (!sc->jme_has_link) {
 		if_printf(ifp, "watchdog timeout (missed link)\n");
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		jme_init(sc);
 		return;
 	}
@@ -1898,7 +1898,7 @@ jme_watchdog(struct ifnet *ifp)
 	}
 
 	if_printf(ifp, "watchdog timeout\n");
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	jme_init(sc);
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -2224,13 +2224,13 @@ jme_txeof(struct jme_txdata *tdata)
 			break;
 
 		if (status & (JME_TD_TMOUT | JME_TD_RETRY_EXP)) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		} else {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			if (status & JME_TD_COLLISION) {
-				ifp->if_collisions +=
+				IFNET_STAT_INC(ifp, collisions,
 				    le32toh(txd->tx_desc->buflen) &
-				    JME_TD_BUF_LEN_MASK;
+				    JME_TD_BUF_LEN_MASK);
 			}
 		}
 
@@ -2348,7 +2348,7 @@ jme_rxpkt(struct jme_rxdata *rdata)
 			rdata->jme_rx_idx, flags, hash, hashinfo);
 
 	if (status & JME_RX_ERR_STAT) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		jme_discard_rxbufs(rdata, cons, nsegs);
 #ifdef JME_SHOW_ERRORS
 		if_printf(ifp, "%s : receive error = 0x%b\n",
@@ -2367,7 +2367,7 @@ jme_rxpkt(struct jme_rxdata *rdata)
 
 		/* Add a new receive buffer to the ring. */
 		if (jme_newbuf(rdata, rxd, 0) != 0) {
-			ifp->if_iqdrops++;
+			IFNET_STAT_INC(ifp, iqdrops, 1);
 			/* Reuse buffer. */
 			jme_discard_rxbufs(rdata, cons, nsegs - count);
 			if (rdata->jme_rxhead != NULL) {
@@ -2448,7 +2448,7 @@ jme_rxpkt(struct jme_rxdata *rdata)
 				m->m_flags |= M_VLANTAG;
 			}
 
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 
 			if (ifp->if_capenable & IFCAP_RSS)
 				pi = jme_pktinfo(&pi0, flags);

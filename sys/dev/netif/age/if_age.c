@@ -1635,7 +1635,7 @@ age_watchdog(struct ifnet *ifp)
 
 	if ((sc->age_flags & AGE_FLAG_LINK) == 0) {
 		if_printf(ifp, "watchdog timeout (missed link)\n");
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		age_init(sc);
 		return;
 	}
@@ -1649,7 +1649,7 @@ age_watchdog(struct ifnet *ifp)
 	}
 
 	if_printf(ifp, "watchdog timeout\n");
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	age_init(sc);
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -1847,22 +1847,22 @@ age_stats_update(struct age_softc *sc)
 	stat->tx_mcast_bytes += smb->tx_mcast_bytes;
 
 	/* Update counters in ifnet. */
-	ifp->if_opackets += smb->tx_frames;
+	IFNET_STAT_INC(ifp, opackets, smb->tx_frames);
 
-	ifp->if_collisions += smb->tx_single_colls +
+	IFNET_STAT_INC(ifp, collisions, smb->tx_single_colls +
 	    smb->tx_multi_colls + smb->tx_late_colls +
-	    smb->tx_excess_colls * HDPX_CFG_RETRY_DEFAULT;
+	    smb->tx_excess_colls * HDPX_CFG_RETRY_DEFAULT);
 
-	ifp->if_oerrors += smb->tx_excess_colls +
+	IFNET_STAT_INC(ifp, oerrors, smb->tx_excess_colls +
 	    smb->tx_late_colls + smb->tx_underrun +
-	    smb->tx_pkts_truncated;
+	    smb->tx_pkts_truncated);
 
-	ifp->if_ipackets += smb->rx_frames;
+	IFNET_STAT_INC(ifp, ipackets, smb->rx_frames);
 
-	ifp->if_ierrors += smb->rx_crcerrs + smb->rx_lenerrs +
+	IFNET_STAT_INC(ifp, ierrors, smb->rx_crcerrs + smb->rx_lenerrs +
 	    smb->rx_runts + smb->rx_pkts_truncated +
 	    smb->rx_fifo_oflows + smb->rx_desc_oflows +
-	    smb->rx_alignerrs;
+	    smb->rx_alignerrs);
 
 	/* Update done, clear. */
 	smb->updated = 0;
@@ -2043,7 +2043,7 @@ age_rxeof(struct age_softc *sc, struct rx_rdesc *rxrd)
 		desc = rxd->rx_desc;
 		/* Add a new receive buffer to the ring. */
 		if (age_newbuf(sc, rxd, 0) != 0) {
-			ifp->if_iqdrops++;
+			IFNET_STAT_INC(ifp, iqdrops, 1);
 			/* Reuse Rx buffers. */
 			if (sc->age_cdata.age_rxhead != NULL) {
 				m_freem(sc->age_cdata.age_rxhead);

@@ -513,7 +513,7 @@ epic_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 			if (NULL == m) {
 				m_freem(m0);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 
@@ -574,7 +574,7 @@ epic_rx_done(epic_softc_t *sc)
 		 * RXE interrupt usually.
 		 */
 		if ((desc->status & 1) == 0) {
-			sc->sc_if.if_ierrors++;
+			IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 			desc->status = 0x8000;
 			continue;
 		}
@@ -588,7 +588,7 @@ epic_rx_done(epic_softc_t *sc)
 		if (NULL == buf->mbuf) {
 			buf->mbuf = m;
 			desc->status = 0x8000;
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			continue;
 		}
 
@@ -604,7 +604,7 @@ epic_rx_done(epic_softc_t *sc)
 		ifp->if_input(ifp, m);
 
 		/* Successfuly received frame */
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 	}
 
 	return;
@@ -640,9 +640,9 @@ epic_tx_done(epic_softc_t *sc)
 		buf->mbuf = NULL;
 
 		/* Check for errors and collisions */
-		if (status & 0x0001) sc->sc_if.if_opackets++;
-		else sc->sc_if.if_oerrors++;
-		sc->sc_if.if_collisions += (status >> 8) & 0x1F;
+		if (status & 0x0001) IFNET_STAT_INC(&sc->sc_if, opackets, 1);
+		else IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
+		IFNET_STAT_INC(&sc->sc_if, collisions, (status >> 8) & 0x1F);
 #if defined(EPIC_DIAG)
 		if ((status & 0x1001) == 0x1001) {
 			if_printf(&sc->sc_if,
@@ -678,7 +678,7 @@ epic_intr(void *arg)
 #endif
 		if ((CSR_READ_4(sc, COMMAND) & COMMAND_RXQUEUED) == 0)
 		    CSR_WRITE_4(sc, COMMAND, COMMAND_RXQUEUED);
-		sc->sc_if.if_ierrors++;
+		IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 	    }
 	}
 
@@ -710,12 +710,12 @@ epic_intr(void *arg)
 #if defined(EPIC_DIAG)
 		if_printf(sc->sc_if, "CRC/Alignment error\n");
 #endif
-		sc->sc_if.if_ierrors++;
+		IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 	    }
 
 	    if (status & INTSTAT_TXU) {
 		epic_tx_underrun(sc);
-		sc->sc_if.if_oerrors++;
+		IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
 	    }
 	}
     }
@@ -775,7 +775,7 @@ epic_ifwatchdog(struct ifnet *ifp)
 	/* If not successful */
 	if (sc->pending_txs > 0) {
 
-		ifp->if_oerrors+=sc->pending_txs;
+		IFNET_STAT_INC(ifp, oerrors, sc->pending_txs);
 
 		/* Reinitialize board */
 		if_printf(ifp, "reinitialization\n");

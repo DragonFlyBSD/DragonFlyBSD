@@ -140,8 +140,8 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
 		return (0);
 	}
 
-	sc->sc_if.if_ipackets++;
-	sc->sc_if.if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(&sc->sc_if, ipackets, 1);
+	IFNET_STAT_INC(&sc->sc_if, ibytes, m->m_pkthdr.len);
 
 	switch (proto) {
 	case IPPROTO_GRE:
@@ -216,8 +216,8 @@ gre_mobile_input(struct mbuf **mp, int *offp, int proto)
 		return(IPPROTO_DONE);
 	}
 
-	sc->sc_if.if_ipackets++;
-	sc->sc_if.if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(&sc->sc_if, ipackets, 1);
+	IFNET_STAT_INC(&sc->sc_if, ibytes, m->m_pkthdr.len);
 
 	if(ntohs(mip->mh.proto) & MOB_H_SBIT) {
 		msiz = MOB_H_SIZ_L;

@@ -1613,7 +1613,7 @@ bwi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			if (m->m_len < sizeof(*eh)) {
 				m = m_pullup(m, sizeof(*eh));
 				if (m == NULL) {
-					ifp->if_oerrors++;
+					IFNET_STAT_INC(ifp, oerrors, 1);
 					continue;
 				}
 			}
@@ -1622,7 +1622,7 @@ bwi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			ni = ieee80211_find_txnode(ic, eh->ether_dhost);
 			if (ni == NULL) {
 				m_freem(m);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 
@@ -1633,7 +1633,7 @@ bwi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			m = ieee80211_encap(ic, m, ni);
 			if (m == NULL) {
 				ieee80211_free_node(ni);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 		} else {
@@ -1648,7 +1648,7 @@ bwi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			if (ieee80211_crypto_encap(ic, ni, m) == NULL) {
 				ieee80211_free_node(ni);
 				m_freem(m);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 		}
@@ -1658,7 +1658,7 @@ bwi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			/* 'm' is freed in bwi_encap() if we reach here */
 			if (ni != NULL)
 				ieee80211_free_node(ni);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			continue;
 		}
 
@@ -1693,7 +1693,7 @@ bwi_watchdog(struct ifnet *ifp)
 	if (sc->sc_tx_timer) {
 		if (--sc->sc_tx_timer == 0) {
 			if_printf(ifp, "watchdog timeout\n");
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			/* TODO */
 		} else {
 			ifp->if_timer = 1;
@@ -2781,7 +2781,7 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 				BUS_DMASYNC_POSTREAD);
 
 		if (bwi_newbuf(sc, idx, 0)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto next;
 		}
 
@@ -2797,7 +2797,7 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 		if (buflen < BWI_FRAME_MIN_LEN(wh_ofs)) {
 			if_printf(ifp, "short frame %d, hdr_extra %d\n",
 				  buflen, hdr_extra);
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			m_freem(m);
 			goto next;
 		}
@@ -3311,10 +3311,10 @@ _bwi_txeof(struct bwi_softc *sc, uint16_t tx_id, int acked, int data_txcnt)
 		}
 
 		if (acked) {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			retry = data_txcnt > 0 ? data_txcnt - 1 : 0;
 		} else {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			retry = data_txcnt;
 		}
 
@@ -3325,7 +3325,7 @@ _bwi_txeof(struct bwi_softc *sc, uint16_t tx_id, int acked, int data_txcnt)
 		tb->tb_ni = NULL;
 	} else {
 		/* XXX mgt packet error */
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 	}
 
 	if (tbd->tbd_used == 0)

@@ -520,6 +520,26 @@ struct ifmultiaddr {
 
 #ifdef _KERNEL
 
+#define IFA_STAT_INC(ifa, name, v) \
+do { \
+	(ifa)->if_data.ifi_##name += (v); \
+} while (0)
+
+#define IFNET_STAT_INC(ifp, name, v) \
+do { \
+	(ifp)->if_data.ifi_##name += (v); \
+} while (0)
+
+#define IFNET_STAT_SET(ifp, name, v) \
+do { \
+	(ifp)->if_data.ifi_##name = (v); \
+} while (0)
+
+#define IFNET_STAT_GET(ifp, name, v) \
+do { \
+	(v) = (ifp)->if_data.ifi_##name; \
+} while (0)
+
 #ifndef _SYS_SERIALIZE2_H_
 #include <sys/serialize2.h>
 #endif

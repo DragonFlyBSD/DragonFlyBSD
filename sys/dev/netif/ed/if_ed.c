@@ -1814,7 +1814,7 @@ ed_watchdog(struct ifnet *ifp)
 	if (sc->gone)
 		return;
 	log(LOG_ERR, "%s: device timeout\n", ifp->if_xname);
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	ed_reset(ifp);
 }
@@ -2308,7 +2308,7 @@ ed_rint(struct ed_softc *sc)
 			 */
 			ed_get_packet(sc, packet_ptr + sizeof(struct ed_ring),
 				      len - sizeof(struct ed_ring));
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 		} else {
 			/*
 			 * Really BAD. The ring pointers are corrupted.
@@ -2316,7 +2316,7 @@ ed_rint(struct ed_softc *sc)
 			log(LOG_ERR,
 			    "%s: NIC memory corrupt - invalid packet length %d\n",
 			    ifp->if_xname, len);
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			ed_reset(ifp);
 			return;
 		}
@@ -2447,14 +2447,14 @@ edintr(void *arg)
 				/*
 				 * update output errors counter
 				 */
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 			} else {
 
 				/*
 				 * Update total number of successfully
 				 * transmitted packets.
 				 */
-				ifp->if_opackets++;
+				IFNET_STAT_INC(ifp, opackets, 1);
 			}
 
 			/*
@@ -2472,7 +2472,7 @@ edintr(void *arg)
 			 * Add in total number of collisions on last
 			 * transmission.
 			 */
-			ifp->if_collisions += collisions;
+			IFNET_STAT_INC(ifp, collisions, collisions);
 			switch(collisions) {
 			case 0:
 			case 16:
@@ -2515,7 +2515,7 @@ edintr(void *arg)
 			 * fixed in later revs. -DG
 			 */
 			if (isr & ED_ISR_OVW) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 #ifdef DIAGNOSTIC
 				log(LOG_WARNING,
 				    "%s: warning - receiver ring buffer overrun\n",
@@ -2542,7 +2542,7 @@ edintr(void *arg)
 						sc->mibdata.dot3StatsAlignmentErrors++;
 					if (rsr & ED_RSR_FO)
 						sc->mibdata.dot3StatsInternalMacReceiveErrors++;
-					ifp->if_ierrors++;
+					IFNET_STAT_INC(ifp, ierrors, 1);
 #ifdef ED_DEBUG
 					if_printf("receive error %x\n",
 					       ed_nic_inb(sc, ED_P0_RSR));

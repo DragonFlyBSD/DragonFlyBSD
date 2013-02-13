@@ -949,7 +949,7 @@ pppinput(int c, struct tty *tp)
 		if (sc->sc_flags & SC_DEBUG)
 		    kprintf("%s: bad fcs %x, pkt len %d\n",
 			   sc->sc_if.if_xname, sc->sc_fcs, ilen);
-		sc->sc_if.if_ierrors++;
+		IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 		sc->sc_stats.ppp_ierrors++;
 	    } else
 		sc->sc_flags &= ~(SC_FLUSH | SC_ESCAPED);
@@ -963,7 +963,7 @@ pppinput(int c, struct tty *tp)
 		if (sc->sc_flags & SC_DEBUG)
 		    kprintf("%s: too short (%d)\n", sc->sc_if.if_xname, ilen);
 		crit_enter();
-		sc->sc_if.if_ierrors++;
+		IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 		sc->sc_stats.ppp_ierrors++;
 		sc->sc_flags |= SC_PKTLOST;
 		crit_exit();
@@ -1114,7 +1114,7 @@ pppinput(int c, struct tty *tp)
  flush:
     if (!(sc->sc_flags & SC_FLUSH)) {
 	crit_enter();
-	sc->sc_if.if_ierrors++;
+	IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 	sc->sc_stats.ppp_ierrors++;
 	sc->sc_flags |= SC_FLUSH;
 	crit_exit();

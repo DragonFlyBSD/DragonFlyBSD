@@ -1074,7 +1074,7 @@ bfe_txeof(struct bfe_softc *sc)
 		struct bfe_data *r = &sc->bfe_tx_ring[i];
 
 		if (r->bfe_mbuf != NULL) {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			bus_dmamap_unload(sc->bfe_txbuf_tag, r->bfe_map);
 			m_freem(r->bfe_mbuf);
 			r->bfe_mbuf = NULL;
@@ -1122,9 +1122,9 @@ bfe_rxeof(struct bfe_softc *sc)
 
 		/* flag an error and try again */
 		if (len > ETHER_MAX_LEN + 32 || (flags & BFE_RX_FLAG_ERRORS)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			if (flags & BFE_RX_FLAG_SERR)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 
 			bfe_setup_rxdesc(sc, cons);
 			BFE_INC(cons, BFE_RX_LIST_CNT);
@@ -1134,7 +1134,7 @@ bfe_rxeof(struct bfe_softc *sc)
 		/* Go past the rx header */
 		if (bfe_newbuf(sc, cons, 0) != 0) {
 			bfe_setup_rxdesc(sc, cons);
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			BFE_INC(cons, BFE_RX_LIST_CNT);
 			continue;
 		}
@@ -1142,7 +1142,7 @@ bfe_rxeof(struct bfe_softc *sc)
 		m_adj(m, BFE_RX_OFFSET);
 		m->m_len = m->m_pkthdr.len = len;
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		m->m_pkthdr.rcvif = ifp;
 
 		ifp->if_input(ifp, m);
@@ -1179,11 +1179,11 @@ bfe_intr(void *xsc)
 	if (istat & BFE_ISTAT_ERRORS) {
 		flag = CSR_READ_4(sc, BFE_DMATX_STAT);
 		if (flag & BFE_STAT_EMASK)
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 
 		flag = CSR_READ_4(sc, BFE_DMARX_STAT);
 		if (flag & BFE_RX_FLAG_ERRORS)
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 
 		ifp->if_flags &= ~IFF_RUNNING;
 		bfe_init(sc);
@@ -1314,7 +1314,7 @@ bfe_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 */
 		if (bfe_encap(sc, &m_head, &idx)) {
 			/* m_head is freed by re_encap(), if we reach here */
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 
 			if (sc->bfe_tx_cnt > 0) {
 				ifq_set_oactive(&ifp->if_snd);
@@ -1482,7 +1482,7 @@ bfe_watchdog(struct ifnet *ifp)
 	ifp->if_flags &= ~IFF_RUNNING;
 	bfe_init(sc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 }
 
 static void

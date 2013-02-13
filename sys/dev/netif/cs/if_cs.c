@@ -835,7 +835,7 @@ cs_get_packet(struct cs_softc *sc)
 #ifdef CS_DEBUG
 		if_printf(ifp, "bad pkt stat %x\n", status);
 #endif
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return -1;
 	}
 
@@ -869,7 +869,7 @@ cs_get_packet(struct cs_softc *sc)
 	    (ifp->if_flags & IFF_MULTICAST && status & RX_HASHED)) {
 		ifp->if_input(ifp, m);
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 
 		if (length==ETHER_MAX_LEN-ETHER_CRC_LEN)
                         DELAY( cs_recv_delay );
@@ -907,9 +907,9 @@ csintr(void *arg)
 
                 case ISQ_TRANSMITTER_EVENT:
                         if (status & TX_OK)
-                                ifp->if_opackets++;
+                                IFNET_STAT_INC(ifp, opackets, 1);
                         else
-                                ifp->if_oerrors++;
+                                IFNET_STAT_INC(ifp, oerrors, 1);
                         ifq_clr_oactive(&ifp->if_snd);
                         ifp->if_timer = 0;
                         break;
@@ -923,16 +923,16 @@ csintr(void *arg)
                         if (status & TX_UNDERRUN) {
                                 ifq_clr_oactive(&ifp->if_snd);
                                 ifp->if_timer = 0;
-                                ifp->if_oerrors++;
+                                IFNET_STAT_INC(ifp, oerrors, 1);
                         }
                         break;
 
                 case ISQ_RX_MISS_EVENT:
-                        ifp->if_ierrors+=(status>>6);
+                        IFNET_STAT_INC(ifp, ierrors, (status>>6));
                         break;
 
                 case ISQ_TX_COL_EVENT:
-                        ifp->if_collisions+=(status>>6);
+                        IFNET_STAT_INC(ifp, collisions, (status>>6));
                         break;
                 }
         }
@@ -1183,7 +1183,7 @@ cs_watchdog(struct ifnet *ifp)
 {
 	struct cs_softc *sc = ifp->if_softc;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	log(LOG_ERR, "%s: device timeout\n", ifp->if_xname);
 
 	/* Reset the interface */
