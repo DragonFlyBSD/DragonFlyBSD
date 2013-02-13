@@ -68,16 +68,16 @@ Note that the
 .Sq raw
 partitions of the disks
 .Em should not
-be combined.  The kernel will only allow component partitions of type
-FS_CCD (type
+be combined.
+The kernel will only allow component partitions of type FS_CCD (type
 .Dq ccd
 as shown by
 .Xr disklabel 8 ) .
 .Pp
 A
 .Nm
-may be either serially concatenated or interleaved.  To serially
-concatenate the partitions, specify the interleave factor of 0.
+may be either serially concatenated or interleaved.
+To serially concatenate the partitions, specify the interleave factor of 0.
 Note that mirroring may not be used with an interleave factor of 0.
 .Pp
 .Xr ccdconfig 8
@@ -94,35 +94,40 @@ If a
 is interleaved correctly, a
 .Dq striping
 effect is achieved, which can increase sequential read/write
-performance.  The interleave factor is expressed in units of DEV_BSIZE
-(usually 512 bytes).  For large writes, the optimum interleave factor
+performance.
+The interleave factor is expressed in units of DEV_BSIZE (usually 512 bytes).
+For large writes, the optimum interleave factor
 is typically the size of a track, while for large reads, it is about a
 quarter of a track.
 (Note that this changes greatly depending on the
 number and speed of disks.)  For instance, with eight 7,200 RPM drives
 on two Fast-Wide SCSI buses, this translates to about 128 for writes
-and 32 for reads.  A larger interleave tends to work better when the
+and 32 for reads.
+A larger interleave tends to work better when the
 disk is taking a multitasking load by localizing the file I/O from
-any given process onto a single disk.  You lose sequential performance when
+any given process onto a single disk.
+You lose sequential performance when
 you do this, but sequential performance is not usually an issue with a
 multitasking load.
 .Pp
 An interleave factor must be specified when using a mirroring configuration,
-even when you have only two disks (i.e. the layout winds up being the same
-no matter what the interleave factor).  The interleave factor will determine
+even when you have only two disks (i.e.\& the layout winds up being the same
+no matter what the interleave factor).
+The interleave factor will determine
 how I/O is broken up, however, and a value 128 or greater is recommended.
 .Pp
 CCD has an option for a parity disk, but does not currently implement it.
 .Pp
 The best performance is achieved if all component disks have the same
-geometry and size.  Optimum striping cannot occur with different
-disk types.
+geometry and size.
+Optimum striping cannot occur with different disk types.
 .Pp
 For random-access oriented workloads, such as news servers, a larger
-interleave factor (e.g., 65,536) is more desirable.  Note that there
-isn't much
+interleave factor (e.g., 65,536) is more desirable.
+Note that there isn't much
 .Nm
-can do to speed up applications that are seek-time limited.  Larger
+can do to speed up applications that are seek-time limited.
+Larger
 interleave factors will at least reduce the chance of having to seek
 two disk-heads to read one directory or a file.
 .Ss Disk Mirroring
@@ -130,15 +135,20 @@ You can configure the
 .Nm
 to
 .Dq mirror
-any even number of disks.  See
+any even number of disks.
+See
 .Xr ccdconfig 8
-for how to specify the necessary flags.   For example, if you have a ccd
+for how to specify the necessary flags.
+For example, if you have a ccd
 configuration specifying four disks, the first two disks will be mirrored with
-the second two disks.  A write will be run to both sides of
-the mirror.  A read will be run to either side of the mirror depending
-on what the driver believes to be most optimal.  If the read fails,
+the second two disks.
+A write will be run to both sides of the mirror.
+A read will be run to either side of the mirror depending
+on what the driver believes to be most optimal.
+If the read fails,
 the driver will automatically attempt to read the same sector from the
-other side of the mirror.  Currently
+other side of the mirror.
+Currently
 .Nm
 uses a dual seek zone model to optimize reads for a multi-tasking load
 rather than a sequential load.
@@ -150,8 +160,8 @@ to recover the failed disk.
 .Pp
 Note that a one-disk
 .Nm
-is not the same as the original partition.  In particular, this means
-if you have a filesystem on a two-disk mirrored
+is not the same as the original partition.
+In particular, this means if you have a filesystem on a two-disk mirrored
 .Nm
 and one of the disks fail, you cannot mount and use the remaining
 partition as itself; you have to configure it as a one-disk
@@ -167,9 +177,12 @@ fails, the entire
 file system will be lost unless you are mirroring the disks.
 .Pp
 If one of the disks in a mirror is lost, you should still
-be able to backup your data.  If a write error occurs, however, data
-read from that sector may be non-deterministic.  It may return the data
-prior to the write or it may return the data that was written.  When a
+be able to backup your data.
+If a write error occurs, however, data
+read from that sector may be non-deterministic.
+It may return the data
+prior to the write or it may return the data that was written.
+When a
 write error occurs, you should recover and regenerate the data as soon
 as possible.
 .Pp
