@@ -308,7 +308,7 @@
 /*
  * List of capabilities to mask on the member interface.
  */
-#define	BRIDGE_IFCAPS_MASK		IFCAP_TXCSUM
+#define	BRIDGE_IFCAPS_MASK		(IFCAP_TXCSUM | IFCAP_TSO)
 
 typedef int	(*bridge_ctl_t)(struct bridge_softc *, void *);
 
