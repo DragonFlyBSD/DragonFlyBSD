@@ -2,9 +2,9 @@
 
 PROG=	tzsetup
 MAN=	tzsetup.8
-CFLAGS+=	-I${.CURDIR}
-LDADD+=	-ldialog -lncurses
-DPADD+=	${LIBDIALOG} ${LIBNCURSES}
-WARNS?=	2
+WARNS?=	3
+
+DPADD=	${LIBDIALOG} ${LIBM} ${LIBNCURSESW}
+LDADD=	-ldialog -lm -lncursesw
 
 .include <bsd.prog.mk>
