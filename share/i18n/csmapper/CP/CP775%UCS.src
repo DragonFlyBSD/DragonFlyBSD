@@ -1,5 +1,4 @@
 # $NetBSD: CP775%UCS.src,v 1.2 2003/07/12 16:11:03 tshiozak Exp $
-# $DragonFly: src/share/i18n/csmapper/CP/CP775%UCS.src,v 1.2 2008/04/10 10:21:03 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"CP775/UCS"

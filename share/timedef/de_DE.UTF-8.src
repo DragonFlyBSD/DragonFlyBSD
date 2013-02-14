@@ -1,9 +1,9 @@
-# $DragonFly: src/share/timedef/de_DE.UTF-8.src,v 1.1 2004/09/27 14:44:33 asmodai Exp $
+# $FreeBSD: src/share/timedef/de_DE.UTF-8.src,v 1.6 2012/11/17 01:51:03 svnexp Exp $
 #
 # WARNING: spaces may be essential at the end of lines
 # WARNING: empty lines are essential too
 #
-# Short months names
+# Short month names
 #
 Jan
 Feb
@@ -18,7 +18,7 @@ Okt
 Nov
 Dez
 #
-# Long months names
+# Long month names (as in a date)
 #
 Januar
 Februar
@@ -33,7 +33,7 @@ Oktober
 November
 Dezember
 #
-# Short weekdays names
+# Short weekday names
 #
 So
 Mo
@@ -43,7 +43,7 @@ Do
 Fr
 Sa
 #
-# Long weekdays names
+# Long weekday names
 #
 Sonntag
 Montag
@@ -58,6 +58,10 @@ Samstag
 %H:%M:%S
 #
 # x_fmt
+#
+# Note about the new DIN5008, ISO8601 and EN28601 format of %Y-%m-%d:
+# A quick poll on IRC and the -doc mailinglist (June 2009) showed that
+# this format was not used often enough to push this change through.
 #
 %d.%m.%Y
 #
@@ -77,7 +81,7 @@ pm
 #
 %a %e %b %Y %X %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
 Januar
 Februar

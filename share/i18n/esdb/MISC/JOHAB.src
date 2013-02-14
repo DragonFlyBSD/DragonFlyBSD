@@ -1,5 +1,4 @@
 # $NetBSD: JOHAB.src,v 1.1 2006/10/18 17:54:55 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/MISC/JOHAB.src,v 1.1 2008/04/10 10:21:13 hasso Exp $
 
 NAME		"JOHAB"
 ENCODING	"JOHAB"

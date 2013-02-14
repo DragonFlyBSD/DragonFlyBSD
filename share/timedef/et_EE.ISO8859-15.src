@@ -1,5 +1,4 @@
-# $FreeBSD: src/share/timedef/et_EE.ISO8859-15.src,v 1.5.2.1 2002/03/12 17:32:20 phantom Exp $
-# $DragonFly: src/share/timedef/et_EE.ISO8859-15.src,v 1.2 2003/06/17 04:37:04 dillon Exp $
+# $FreeBSD: src/share/timedef/et_EE.ISO8859-15.src,v 1.8 2012/11/17 01:51:03 svnexp Exp $
 #
 # WARNING: spaces may be essential at the end of lines
 # WARNING: empty lines are essential too
@@ -19,7 +18,7 @@ okt
 nov  
 dets 
 #
-# Long month names
+# Long month names (as in a date)
 #
 jaanuar
 veebruar
@@ -78,7 +77,7 @@ laupäev
 #
 %A, %d. %B %Y. %T %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
 jaanuar
 veebruar

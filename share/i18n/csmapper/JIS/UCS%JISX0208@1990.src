@@ -1,5 +1,4 @@
 # $NetBSD: UCS%JISX0208@1990.src,v 1.7 2006/11/29 15:45:26 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/JIS/UCS%JISX0208@1990.src,v 1.2 2008/04/10 10:21:10 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"UCS/JISX0208:1990"

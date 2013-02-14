@@ -1,5 +1,4 @@
 # $NetBSD: CP936.src,v 1.2 2006/08/19 10:58:41 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/CP/CP936.src,v 1.2 2008/04/10 10:21:12 hasso Exp $
 
 NAME		"CP936"
 ENCODING	"GBK2K"

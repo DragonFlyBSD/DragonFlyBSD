@@ -1,11 +1,10 @@
-# $FreeBSD: src/share/timedef/pt_BR.ISO8859-1.src,v 1.1.2.1 2002/08/17 19:25:45 ache Exp $
-# $DragonFly: src/share/timedef/pt_BR.ISO8859-1.src,v 1.2 2003/06/17 04:37:04 dillon Exp $
+# $FreeBSD: src/share/timedef/pt_BR.ISO8859-1.src,v 1.4 2012/11/17 01:51:03 svnexp Exp $
 #
 # WARNING: spaces may be essential at the end of lines
 # WARNING: empty lines are essential too
 # In Portugal we don't use the 12 + am/pm but the 24h format
 #
-# Short months names
+# Short month names
 #
 Jan
 Fev
@@ -20,7 +19,7 @@ Out
 Nov
 Dez
 #
-# Long months names
+# Long month names (as in a date)
 #
 Janeiro
 Fevereiro
@@ -35,7 +34,7 @@ Outubro
 Novembro
 Dezembro
 #
-# Short weekdays names
+# Short weekday names
 #
 Dom
 Seg
@@ -45,7 +44,7 @@ Qui
 Sex
 Sáb
 #
-# Long weekdays names
+# Long weekday names
 #
 Domingo
 Segunda Feira
@@ -79,7 +78,7 @@ Sábado
 #
 %a %e %b %Y %X %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
 Janeiro
 Fevereiro

@@ -1,9 +1,8 @@
-# $FreeBSD: src/share/timedef/be_BY.ISO8859-5.src,v 1.1 2003/12/20 11:18:43 ache Exp $
-# $DragonFly: src/share/timedef/be_BY.ISO8859-5.src,v 1.1 2006/11/12 21:15:46 swildner Exp $
+# $FreeBSD: src/share/timedef/be_BY.ISO8859-5.src,v 1.4 2012/11/17 01:51:02 svnexp Exp $
 # WARNING: spaces may be essential at the end of lines
 # WARNING: empty lines are essential too
 #
-# Short months names
+# Short month names
 #
 сту
 лют
@@ -18,7 +17,7 @@
 ліс
 сне
 #
-# Long months names
+# Long month names (as in a date)
 #
 студзеня
 лютага
@@ -33,7 +32,7 @@
 лістапада
 снежня
 #
-# Short weekdays names
+# Short weekday names
 # (padded with a space to conform with other languages)
 нд 
 пн 
@@ -43,7 +42,7 @@
 пт 
 сб 
 #
-# Long weekdays names
+# Long weekday names
 #
 нядзеля
 панядзелак
@@ -77,7 +76,7 @@ pm
 #
 %a %e %b %Y %X %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
 студзень
 люты

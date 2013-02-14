@@ -1,5 +1,4 @@
-# $NetBSD: src/share/nls/nls.alias,v 1.3 2003/04/14 05:21:51 salo Exp $
-# $DragonFly: src/share/nls/nls.alias,v 1.2 2006/11/12 21:15:46 swildner Exp $
+# $NetBSD: nls.alias,v 1.3 2003/04/14 05:21:51 salo Exp $
 #
 # This file defines aliase names of nls catalogs.
 # Syntax is similar to X11's locale.alias.

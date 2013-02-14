@@ -1,7 +1,6 @@
 # Russian part of ISO8859-5 (backward compatible with ASCII)
 #
-# $FreeBSD: src/share/colldef/ru_RU.ISO8859-5.src,v 1.2.2.1 2002/01/05 15:36:08 phantom Exp $
-# $DragonFly: src/share/colldef/ru_RU.ISO8859-5.src,v 1.2 2003/06/17 04:36:56 dillon Exp $
+# $FreeBSD: src/share/colldef/ru_RU.ISO8859-5.src,v 1.4 2012/11/17 01:50:27 svnexp Exp $
 #
 charmap map.ISO8859-5
 order \
@@ -9,7 +8,7 @@ order \
 	<NU>;...;<US>;\
 #
 	<NS>;<SP>;!;\";<Nb>;<DO>;\
-	%;&;';\(;\);*;+;\,;-;.;/;\
+	%;&;';\(;\);*;+;\,;<-->;-;.;/;\
 # digits
 	0;...;9;\
 #
@@ -29,10 +28,12 @@ order \
 	<s=>;<t=>;<u=>;<f=>;<h=>;<c=>;<c%>;<s%>;<sc>;\
 	<='>;<y=>;<%'>;<je>;<ju>;<ja>;\
 #
-	\{;|;\};~;<DT>;<PA>;<HO>;<BH>;<NH>;<IN>;<NL>;\
+	\{;|;\};~;<N0>;<DT>;\
+#
+	<PA>;<HO>;<BH>;<NH>;<IN>;<NL>;\
 	<SA>;<ES>;<HS>;<HJ>;<VS>;<PD>;<PU>;<RI>;<S2>;\
 	<S3>;<DC>;<P1>;<P2>;<TS>;<CC>;<MW>;<SG>;<EG>;\
 	<SS>;<GC>;<SC>;<CI>;<ST>;<OC>;<PM>;<AC>;<D%>;\
 	<G%>;<IE>;<DS>;<II>;<YI>;<J%>;<LJ>;<NJ>;<Ts>;\
-	<KJ>;<-->;<V%>;<DZ>;<N0>;<d%>;<g%>;<ie>;<ds>;\
+	<KJ>;<V%>;<DZ>;<d%>;<g%>;<ie>;<ds>;\
 	<ii>;<yi>;<j%>;<lj>;<nj>;<ts>;<kj>;<SE>;<v%>;<dz>

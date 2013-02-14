@@ -1,5 +1,4 @@
 # $NetBSD: esdb.dir.MISC.src,v 1.18 2007/04/01 18:52:31 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/MISC/esdb.dir.MISC.src,v 1.2 2008/04/10 10:21:13 hasso Exp $
 
 ATARIST				MISC/ATARIST.esdb
 C99				MISC/C99.esdb

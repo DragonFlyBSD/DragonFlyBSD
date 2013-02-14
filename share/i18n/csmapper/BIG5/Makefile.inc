@@ -1,5 +1,4 @@
 # $NetBSD: Makefile.inc,v 1.2 2007/03/05 16:57:10 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/BIG5/Makefile.inc,v 1.1 2008/04/10 10:21:02 hasso Exp $
 
 .PATH: ${.CURDIR}/BIG5
 
@@ -24,11 +23,9 @@ MAPS_BIG5=		Big5@1984%UCS.mps \
 			UCS@BMP%HKSCS.mps UCS@SIP%HKSCS.mps
 
 mapper.dir.BIG5: ${.CURDIR}/BIG5/mapper.dir.BIG5.src
-	${_MKTARGET_CREATE}
 	(echo "# BIG5" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 charset.pivot.BIG5: ${.CURDIR}/BIG5/charset.pivot.BIG5.src
-	${_MKTARGET_CREATE}
 	(echo "# BIG5" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 FILES+= ${MAPS_BIG5}

@@ -1,5 +1,4 @@
 # $NetBSD: CNS11643-3%UCS@SIP.src,v 1.1 2007/03/05 16:57:12 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/CNS/CNS11643-3%UCS@SIP.src,v 1.1 2008/04/10 10:21:03 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"CNS11643-3/UCS:SIP"

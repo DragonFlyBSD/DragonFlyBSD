@@ -1,5 +1,4 @@
 # $NetBSD: mapper.dir.KS.src,v 1.2 2006/10/18 17:54:55 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/KS/mapper.dir.KS.src,v 1.2 2008/04/10 10:21:11 hasso Exp $
 
 JOHAB/UCS			mapper_std	KS/JOHAB%UCS.mps
 KSC5601HANGUL/UCS		mapper_std	KS/KSC5601HANGUL%UCS.mps

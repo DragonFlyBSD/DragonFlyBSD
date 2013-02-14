@@ -1,5 +1,4 @@
-/*	$NetBSD: src/share/locale/ctype/charset/JISX0201-left,v 1.1 2000/12/30 02:33:20 itojun Exp $	*/
-/*	$DragonFly: src/share/locale/ctype/charset/JISX0201-left,v 1.1 2005/03/11 15:57:42 joerg Exp $ */
+/*	$NetBSD: JISX0201-left,v 1.1 2000/12/30 02:33:20 itojun Exp $	*/
 
 /*
  * JIS X0201 left Code Set (ESC ( J)

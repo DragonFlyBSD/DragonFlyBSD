@@ -1,5 +1,4 @@
 # $NetBSD: HZ.src,v 1.1 2006/11/22 23:38:27 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/MISC/HZ.src,v 1.1 2008/04/10 10:21:13 hasso Exp $
 
 NAME		"HZ"
 ENCODING	"HZ"

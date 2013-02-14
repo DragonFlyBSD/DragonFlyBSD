@@ -1,5 +1,4 @@
 # $NetBSD: Makefile.inc,v 1.4 2006/10/18 17:54:55 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/KS/Makefile.inc,v 1.2 2008/04/10 10:21:11 hasso Exp $
 
 .PATH: ${.CURDIR}/KS
 
@@ -14,11 +13,9 @@ MAPS_KS=		JOHAB%UCS.mps \
 			UCS%KSC5601HANJA.mps
 
 mapper.dir.KS: ${.CURDIR}/KS/mapper.dir.KS.src
-	${_MKTARGET_CREATE}
 	(echo "# KS" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 charset.pivot.KS: ${.CURDIR}/KS/charset.pivot.KS.src
-	${_MKTARGET_CREATE}
 	(echo "# KS" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 FILES+= ${MAPS_KS}

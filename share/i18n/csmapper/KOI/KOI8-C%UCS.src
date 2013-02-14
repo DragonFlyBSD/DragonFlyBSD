@@ -1,5 +1,4 @@
 # $NetBSD: KOI8-C%UCS.src,v 1.3 2007/03/07 15:12:41 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/KOI/KOI8-C%UCS.src,v 1.1 2008/04/10 10:21:11 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"KOI8-C/UCS"

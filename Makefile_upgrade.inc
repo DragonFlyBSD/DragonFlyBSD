@@ -2155,6 +2155,8 @@ TO_REMOVE+=/usr/share/man/cat4/snd_sb16.4.gz
 TO_REMOVE+=/usr/share/man/man4/snd_sb16.4.gz
 TO_REMOVE+=/usr/share/man/cat4/snd_sbc.4.gz
 TO_REMOVE+=/usr/share/man/man4/snd_sbc.4.gz
+TO_REMOVE+=/usr/share/locale/fo_FO.UTF-8
+TO_REMOVE+=/usr/share/locale/hi_IN.UTF-8
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

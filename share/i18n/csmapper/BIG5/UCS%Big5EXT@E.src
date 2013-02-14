@@ -1,5 +1,4 @@
 # $NetBSD: UCS%Big5EXT@E.src,v 1.1 2006/06/19 17:28:25 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/BIG5/UCS%Big5EXT@E.src,v 1.1 2008/04/10 10:21:02 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"UCS/Big5EXT:E"

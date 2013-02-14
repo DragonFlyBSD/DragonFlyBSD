@@ -1,5 +1,4 @@
-# $NetBSD: Makefile.inc,v 1.1 2006/03/13 19:45:36 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/APPLE/Makefile.inc,v 1.1 2008/04/10 10:21:02 hasso Exp $
+# $NetBSD: Makefile.inc,v 1.2 2008/10/25 22:35:36 apb Exp $
 
 .PATH: ${.CURDIR}/APPLE
 
@@ -22,7 +21,6 @@ FILESDIR_UCS%$i.mps=	${BINDIR}/APPLE
 .endfor
 
 mapper.dir.APPLE: ${.CURDIR}/APPLE/MAC.part
-	${_MKTARGET_CREATE}
 	( \
 	    echo "# APPLE"; \
 	    for i in ${PART_MAC}; do \
@@ -35,7 +33,6 @@ mapper.dir.APPLE: ${.CURDIR}/APPLE/MAC.part
 	) > ${.TARGET}
 
 charset.pivot.APPLE: ${.CURDIR}/APPLE/MAC.part
-	${_MKTARGET_CREATE}
 	( \
 	    echo "# APPLE"; \
 	    for i in ${PART_MAC}; do \

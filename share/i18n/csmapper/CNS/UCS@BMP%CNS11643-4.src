@@ -1,5 +1,4 @@
 # $NetBSD: UCS@BMP%CNS11643-4.src,v 1.1 2007/03/05 16:57:14 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/CNS/UCS@BMP%CNS11643-4.src,v 1.1 2008/04/10 10:21:03 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"UCS:BMP/CNS11643-4"

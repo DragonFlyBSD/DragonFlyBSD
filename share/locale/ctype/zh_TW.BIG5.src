@@ -1,5 +1,4 @@
-/*	$NetBSD: src/share/locale/ctype/zh_TW.BIG5.src,v 1.4 2005/02/04 18:35:45 tnozaki Exp $	*/
-/*	$DragonFly: src/share/locale/ctype/zh_TW.BIG5.src,v 1.1 2005/03/11 15:57:42 joerg Exp $ */
+/*	$NetBSD: zh_TW.BIG5.src,v 1.4 2005/02/04 18:35:45 tnozaki Exp $	*/
 
 /*
  * big5   first byte:   A1-FE

@@ -1,15 +1,14 @@
-# $NetBSD: Makefile.inc,v 1.3 2003/10/21 10:01:21 lukem Exp $
-# $DragonFly: src/share/i18n/csmapper/ISO646/Makefile.inc,v 1.2 2008/04/10 10:21:09 hasso Exp $
+# $NetBSD: Makefile.inc,v 1.4 2008/10/25 22:35:36 apb Exp $
 
 .PATH: ${.CURDIR}/ISO646
 
 SRCS_mapper.dir+=	mapper.dir.ISO646
 SRCS_charset.pivot+=	charset.pivot.ISO646
 CLEANFILES+=		mapper.dir.ISO646 charset.pivot.ISO646
-PART_ISO646!=		sed '/^\#/d;/^$$/d;' ${.CURDIR}/ISO646/ISO646.part
+PART_ISO646!=		sed '/^\#/d;/^$$/d;' \
+				${.CURDIR}/ISO646/ISO646.part
 
 mapper.dir.ISO646: ${.CURDIR}/ISO646/ISO646.part
-	${_MKTARGET_CREATE}
 	(\
 	    echo "# ISO646";\
 	    for i in ${PART_ISO646}; do \
@@ -23,7 +22,6 @@ mapper.dir.ISO646: ${.CURDIR}/ISO646/ISO646.part
 	) > ${.TARGET}
 
 charset.pivot.ISO646: ${.CURDIR}/ISO646/ISO646.part
-	${_MKTARGET_CREATE}
 	(\
 	    echo "# ISO646";\
 	    for i in ${PART_ISO646}; do \

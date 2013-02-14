@@ -1,5 +1,4 @@
 # $NetBSD: ISO646.alias,v 1.2 2006/07/05 15:31:50 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/ISO646/ISO646.alias,v 1.2 2008/04/10 10:21:12 hasso Exp $
 
 BASIC:1983	iso_646.basic:1983 ref
 IRV:1983	iso-ir-2 irv

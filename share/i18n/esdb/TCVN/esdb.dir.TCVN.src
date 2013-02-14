@@ -1,5 +1,4 @@
 # $NetBSD: esdb.dir.TCVN.src,v 1.1 2006/11/13 15:16:30 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/TCVN/esdb.dir.TCVN.src,v 1.1 2008/04/10 10:21:13 hasso Exp $
 
 TCVN5712-1			TCVN/TCVN5712-1.esdb
 VISCII				TCVN/VISCII.esdb

@@ -1,5 +1,4 @@
 # $NetBSD: EUC-JIS-2004.src,v 1.1 2007/03/05 16:58:35 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/EUC/EUC-JIS-2004.src,v 1.1 2008/04/10 10:21:12 hasso Exp $
 
 NAME		"EUC-JIS-2004"
 ENCODING	"EUC"

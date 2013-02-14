@@ -1,5 +1,4 @@
 # $NetBSD: GEORGIAN.alias,v 1.2 2006/11/04 06:17:35 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/GEORGIAN/GEORGIAN.alias,v 1.1 2008/04/10 10:21:12 hasso Exp $
 
 PS			geo8std georgian-std geo8-gov
 ACADEMY			georgian-ilia georgian-rs geo8-bpg

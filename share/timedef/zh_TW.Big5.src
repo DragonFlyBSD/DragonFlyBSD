@@ -1,5 +1,4 @@
-# $FreeBSD: src/share/timedef/zh_TW.Big5.src,v 1.5.2.2 2002/03/12 17:32:20 phantom Exp $
-# $DragonFly: src/share/timedef/zh_TW.Big5.src,v 1.2 2003/06/17 04:37:04 dillon Exp $
+# $FreeBSD: src/share/timedef/zh_TW.Big5.src,v 1.13 2012/11/17 01:51:03 svnexp Exp $
 #
 # WARNING: spaces may be essential at the end of lines
 # WARNING: empty lines are essential too
@@ -18,7 +17,7 @@
 11
 12
 #
-# Long month names
+# Long month names (as in a date)
 #
 1月
 2月
@@ -77,7 +76,7 @@
 #
 %Y年%b月%e日 %A %X %Z
 #
-# Long month names (alternative)
+# Long month names (without case ending)
 #
 1月
 2月

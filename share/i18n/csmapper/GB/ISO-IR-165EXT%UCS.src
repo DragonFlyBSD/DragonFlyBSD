@@ -1,5 +1,4 @@
 # $NetBSD: ISO-IR-165EXT%UCS.src,v 1.2 2006/10/26 15:24:00 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/GB/ISO-IR-165EXT%UCS.src,v 1.1 2008/04/10 10:21:07 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"ISO-IR-165EXT/UCS"

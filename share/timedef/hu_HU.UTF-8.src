@@ -1,56 +1,56 @@
 # This is a Hungarian LC_TIME file for ISO 8859-2 code-table
 # Made by Gabor Zahemszky <zgabor@CoDe.hu>
-# $DragonFly: src/share/timedef/hu_HU.UTF-8.src,v 1.1 2004/09/27 14:44:33 asmodai Exp $
+# $FreeBSD: src/share/timedef/hu_HU.UTF-8.src,v 1.5 2012/11/17 01:51:03 svnexp Exp $
 #
 # Short month names
 #
-Jan
-Feb
-Már
-Ápr
-Máj
-Jún
-Júl
-Aug
-Sze
-Okt
-Nov
-Dec
+jan
+feb
+már
+ápr
+máj
+jún
+júl
+aug
+sze
+okt
+nov
+dec
 #
-# Long month names
+# Long month names (as in a date)
 #
-Január
-Február
-Március
-Április
-Május
-Június
-Július
-Augusztus
-Szeptember
-Október
-November
-December
+január
+február
+március
+április
+május
+június
+július
+augusztus
+szeptember
+október
+november
+december
 #
 # Short weekday names
 #
-Vas
-Hét
-Ked
-Sze
-Csü
-Pén
-Szo
+vas
+hét
+ked
+sze
+csü
+pén
+szo
 #
 # Long weekday names
 #
-Vasárnap
-Hétfő
-Kedd
-Szerda
-Csütörtök
-Péntek
-Szombat
+vasárnap
+hétfő
+kedd
+szerda
+csütörtök
+péntek
+szombat
 #
 # X_fmt
 #
@@ -76,20 +76,20 @@ du
 #
 %Y %b %e %a %X %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
-Január
-Február
-Március
-Április
-Május
-Június
-Július
-Augusztus
-Szeptember
-Október
-November
-December
+január
+február
+március
+április
+május
+június
+július
+augusztus
+szeptember
+október
+november
+december
 #
 # md_order
 #

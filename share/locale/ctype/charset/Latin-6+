@@ -1,5 +1,4 @@
-/*	$NetBSD: src/share/locale/ctype/charset/Latin-6+,v 1.1 2000/12/30 02:33:21 itojun Exp $	*/
-/*	$DragonFly: src/share/locale/ctype/charset/Latin-6+,v 1.1 2005/03/11 15:57:42 joerg Exp $ */
+/*	$NetBSD: Latin-6+,v 1.1 2000/12/30 02:33:21 itojun Exp $	*/
 
 /*
  * iso-8859-10 additions, known as Latin-6 (ESC , X)
@@ -13,7 +12,7 @@ GRAPH		0x20 0x30 0x40 - 0x4f 0x60 - 0x6f
 LOWER		0x60 - 0x6f
 PUNCT		0x20 0x30
 UPPER		0x40 - 0x4f
-BLANK		0x20 0x09
+BLANK		0x20
 PRINT		0x20 0x30 0x40 - 0x4f 0x60 - 0x6f
 SWIDTH1		0x20 - 0x7f
 

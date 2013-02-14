@@ -1,5 +1,4 @@
 # $NetBSD: UCS%CP949EXT.src,v 1.6 2006/02/11 17:31:43 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/CP/UCS%CP949EXT.src,v 1.2 2008/04/10 10:21:04 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"UCS/CP949EXT"

@@ -1,5 +1,4 @@
 # $NetBSD: UCS%RISCOS-LATIN1.src,v 1.1 2007/04/01 18:52:29 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/MISC/UCS%RISCOS-LATIN1.src,v 1.1 2008/04/10 10:21:11 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"UCS/RISCOS-LATIN1"

@@ -1,4 +1,4 @@
-# $DragonFly: src/share/timedef/pl_PL.ISO8859-2.src,v 1.3 2004/09/30 12:46:03 asmodai Exp $
+# $FreeBSD: src/share/timedef/pl_PL.ISO8859-2.src,v 1.13 2012/11/17 01:51:03 svnexp Exp $
 #
 # Short month names
 #
@@ -15,7 +15,7 @@ pa¼
 lis
 gru
 #
-# Long month names
+# Long month names (as in a date)
 #
 stycznia
 lutego
@@ -32,12 +32,12 @@ grudnia
 #
 # Short weekday names
 #
-ndz
+nie
 pon
 wto
 ¶ro
 czw
-ptk
+pi±
 sob
 #
 # Long weekday names
@@ -72,9 +72,9 @@ sobota
 #
 # date_fmt
 #
-%a %e %b %X %Y %Z
+%a %e %b %Y %X %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
 styczeñ
 luty

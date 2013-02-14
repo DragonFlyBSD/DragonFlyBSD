@@ -1,5 +1,4 @@
 # $NetBSD: charset.pivot.MISC.src,v 1.11 2007/04/01 18:52:30 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/MISC/charset.pivot.MISC.src,v 1.2 2008/04/10 10:21:11 hasso Exp $
 
 ATARIST			UCS			1
 DECMCS			UCS			1

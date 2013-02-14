@@ -1,9 +1,9 @@
-# $DragonFly: src/share/timedef/fr_FR.UTF-8.src,v 1.1 2004/09/27 14:44:33 asmodai Exp $
+# $FreeBSD: src/share/timedef/fr_FR.UTF-8.src,v 1.5 2012/11/17 01:51:03 svnexp Exp $
 #
 # WARNING: spaces may be essential at the end of lines
 # WARNING: empty lines are essential too
 #
-# Short months names
+# Short month names
 #
 jan
 fév
@@ -18,7 +18,7 @@ oct
 nov
 déc
 #
-# Long months names
+# Long month names (as in a date)
 #
 janvier
 février
@@ -33,25 +33,25 @@ octobre
 novembre
 décembre
 #
-# Short weekdays names
+# Short weekday names
 #
-Dim
-Lun
-Mar
-Mer
-Jeu
-Ven
-Sam
+dim
+lun
+mar
+mer
+jeu
+ven
+sam
 #
-# Long weekdays names
+# Long weekday names
 #
-Dimanche
-Lundi
-Mardi
-Mercredi
-Jeudi
-Vendredi
-Samedi
+dimanche
+lundi
+mardi
+mercredi
+jeudi
+vendredi
+samedi
 #
 # X_fmt
 #
@@ -77,7 +77,7 @@ Samedi
 #
 %a %e %b %Y %X %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
 janvier
 février

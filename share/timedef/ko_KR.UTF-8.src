@@ -1,4 +1,4 @@
-# $DragonFly: src/share/timedef/ko_KR.UTF-8.src,v 1.1 2004/09/27 14:44:33 asmodai Exp $
+# $FreeBSD: src/share/timedef/ko_KR.UTF-8.src,v 1.7 2012/11/17 01:51:03 svnexp Exp $
 #
 # Originally by CHOI Junho <cjh@FreeBSD.org>
 # 27 Mar 1997
@@ -20,7 +20,7 @@
 11
 12
 #
-# Long month names
+# Long month names (as in a date)
 #
 1월
 2월
@@ -61,29 +61,25 @@
 #
 # x_fmt
 #
-%Y/%m/%d
+%Y년 %b월 %e일
 #
 # c_fmt
 #
-# just following tradition...
-# %Y년 %b월 %e일 %a요일 %X
-%a %b/%e %H:%M:%S %Y
+%x %A %X
 #
 # am
 #
-#오전
-AM
+오전
 #
 # pm
 #
-#오후
-PM
+오후
 #
 # date_fmt
 #
-%Y년 %B %e일 %A %X %Z
+%c %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
 1월
 2월
@@ -104,5 +100,5 @@ md
 #
 # ampm_fmt
 #
-%I:%M:%S %p
+%p %I:%M:%S
 # EOF

@@ -1,23 +1,24 @@
-# $FreeBSD: src/share/timedef/ja_JP.SJIS.src,v 1.7.2.2 2002/03/12 17:32:20 phantom Exp $
-# $DragonFly: src/share/timedef/ja_JP.SJIS.src,v 1.2 2003/06/17 04:37:04 dillon Exp $
+# $FreeBSD: src/share/timedef/ja_JP.SJIS.src,v 1.18 2012/11/17 01:51:03 svnexp Exp $
 #
 # WARNING: spaces may be essential at the end of lines
 # WARNING: empty lines are essential too
 #
- 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
+# Short month names
 #
-# Long month names
+ 1ŒŽ
+ 2ŒŽ
+ 3ŒŽ
+ 4ŒŽ
+ 5ŒŽ
+ 6ŒŽ
+ 7ŒŽ
+ 8ŒŽ
+ 9ŒŽ
+10ŒŽ
+11ŒŽ
+12ŒŽ
+#
+# Long month names (as in a date)
 #
 1ŒŽ
 2ŒŽ
@@ -64,23 +65,21 @@
 #
 # just following tradition...
 # %a %b %e %H:%M:%S %Y
-%a %b/%e %T %Y
+%a %_m/%e %T %Y
 #
 # am
 #
-#Œß‘O
-AM
+Œß‘O
 #
 # pm
 #
-#ŒßŒã
-PM
+ŒßŒã
 #
 # date_fmt
 #
 %Y”N %B%e“ú %A %X %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
 1ŒŽ
 2ŒŽ

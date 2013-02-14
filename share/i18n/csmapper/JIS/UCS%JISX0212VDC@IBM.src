@@ -1,5 +1,4 @@
 # $NetBSD: UCS%JISX0212VDC@IBM.src,v 1.1 2003/07/19 20:20:43 tshiozak Exp $
-# $DragonFly: src/share/i18n/csmapper/JIS/UCS%JISX0212VDC@IBM.src,v 1.2 2008/04/10 10:21:10 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"UCS/JISX0212VDC:IBM"

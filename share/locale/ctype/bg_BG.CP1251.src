@@ -1,5 +1,4 @@
-/*	$NetBSD: src/share/locale/ctype/bg_BG.CP1251.src,v 1.3 2004/06/24 03:28:50 itojun Exp $	*/
-/*	$DragonFly: src/share/locale/ctype/bg_BG.CP1251.src,v 1.1 2005/03/11 15:57:42 joerg Exp $ */
+/*	$NetBSD: bg_BG.CP1251.src,v 1.3 2004/06/24 03:28:50 itojun Exp $	*/
 
 /*
  * LOCALE_CTYPE for Bulgarian Cyrillic character set (CP1251)

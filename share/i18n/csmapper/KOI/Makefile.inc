@@ -1,5 +1,4 @@
-# $NetBSD: Makefile.inc,v 1.2 2006/09/16 08:38:20 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/KOI/Makefile.inc,v 1.1 2008/04/10 10:21:11 hasso Exp $
+# $NetBSD: Makefile.inc,v 1.3 2008/10/25 22:35:36 apb Exp $
 
 .PATH: ${.CURDIR}/KOI
 
@@ -15,7 +14,6 @@ MAPS_KOI=		GOST19768-74%UCS.mps	\
 PART_KOI8!=		sed '/^\#/d;/^$$/d;' ${.CURDIR}/KOI/KOI8.part
 
 mapper.dir.KOI: ${.CURDIR}/KOI/KOI8.part mapper.dir.KOI.src
-	${_MKTARGET_CREATE}
 	( \
 	    cat ${.CURDIR}/KOI/mapper.dir.KOI.src; \
 	    for i in ${PART_KOI8}; do \
@@ -34,7 +32,6 @@ mapper.dir.KOI: ${.CURDIR}/KOI/KOI8.part mapper.dir.KOI.src
 	) > ${.TARGET}
 
 charset.pivot.KOI: ${.CURDIR}/KOI/KOI8.part charset.pivot.KOI.src
-	${_MKTARGET_CREATE}
 	( \
 	    cat ${.CURDIR}/KOI/charset.pivot.KOI.src; \
 	    for i in ${PART_KOI8}; do \

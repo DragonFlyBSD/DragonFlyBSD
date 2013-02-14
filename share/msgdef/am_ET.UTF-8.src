@@ -1,0 +1,14 @@
+# $FreeBSD: src/share/msgdef/am_ET.UTF-8.src,v 1.3 2012/11/17 01:50:59 svnexp Exp $
+#
+# WARNING: spaces may be essential at the end of lines
+# WARNING: empty lines are essential too
+#
+# yesexpr
+^[ይሁንyY].*
+# noexpr
+^[አይሁንnN].*
+# yesstr
+ይሁን
+# nostr
+አይሁን
+# EOF

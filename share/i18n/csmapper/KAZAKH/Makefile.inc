@@ -1,5 +1,4 @@
 # $NetBSD: Makefile.inc,v 1.1 2007/03/13 16:34:37 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/KAZAKH/Makefile.inc,v 1.1 2008/04/10 10:21:10 hasso Exp $
 
 .PATH: ${.CURDIR}/KAZAKH
 
@@ -12,11 +11,9 @@ MAPS_KAZAKH=		KZ1048%UCS.mps \
 			UCS%PTCP154.mps
 
 mapper.dir.KAZAKH: ${.CURDIR}/KAZAKH/mapper.dir.KAZAKH.src
-	${_MKTARGET_CREATE}
 	(echo "# KAZAKH" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 charset.pivot.KAZAKH: ${.CURDIR}/KAZAKH/charset.pivot.KAZAKH.src
-	${_MKTARGET_CREATE}
 	(echo "# KAZAKH" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 FILES+= ${MAPS_KAZAKH}

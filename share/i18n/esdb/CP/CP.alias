@@ -1,5 +1,4 @@
-# $NetBSD: CP.alias,v 1.12 2007/07/15 14:41:18 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/CP/CP.alias,v 1.2 2008/04/10 10:21:12 hasso Exp $
+# $NetBSD: CP.alias,v 1.14 2009/11/14 01:56:23 tnozaki Exp $
 
 037	cp037 ibm037 ebcdic-cp-us ebcdic-cp-ca ebcdic-cp-wt ebcdic-cp-nl
 038	cp038 ibm038 ebcdic-int
@@ -53,13 +52,13 @@
 905	cp905 ibm905 ebcdic-cp-tr
 918	cp918 ibm918 ebcdic-cp-ar2
 922	cp922 ibm922
-932	cp932 mscp932
+932	cp932 ms932 windows-31j mscp932
 936	cp936 mscp936
 949	cp949 mscp949 uhc
-942	cp942 ibm942
-942C	cp942c ibm942c
-943	cp943 ibm943
-943C	cp943c ibm943c
+942	cp942
+942C	cp942c ibm932 ibm-932
+943	cp943
+943C	cp943c ibm943 ibm-943
 950	cp950 mscp950
 1006	cp1006 mscp1006
 1026	cp1026 ibm1026
@@ -69,6 +68,16 @@
 1129	cp1129 ibm1129
 1131	cp1131 ibm1131
 1133	cp1133 ibm1133
+1140	cp1140 ibm1140
+1141	cp1141 ibm1141
+1142	cp1142 ibm1142
+1143	cp1143 ibm1143
+1144	cp1144 ibm1144
+1145	cp1145 ibm1145
+1146	cp1146 ibm1146
+1147	cp1147 ibm1147
+1148	cp1148 ibm1148
+1149	cp1149 ibm1149
 1161	cp1161 ibm1161
 1162	cp1162 ibm1162 mscp874 windows-874
 1163	cp1163 ibm1163

@@ -1,5 +1,4 @@
 # $NetBSD: EUC.alias,v 1.3 2007/03/05 16:58:35 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/EUC/EUC.alias,v 1.2 2008/04/10 10:21:12 hasso Exp $
 
 CN		euc-cn euccn gb2312
 JP-MS		euc-jp-ms eucjp-ms

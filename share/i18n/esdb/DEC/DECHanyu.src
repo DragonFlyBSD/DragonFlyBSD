@@ -1,5 +1,4 @@
 # $NetBSD: DECHanyu.src,v 1.1 2007/04/01 18:52:30 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/DEC/DECHanyu.src,v 1.1 2008/04/10 10:21:12 hasso Exp $
 
 NAME		"DECHanyu"
 ENCODING	"DECHanyu"

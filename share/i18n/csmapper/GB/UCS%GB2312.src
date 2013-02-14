@@ -1,5 +1,4 @@
 # $NetBSD: UCS%GB2312.src,v 1.6 2006/11/22 20:22:30 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/GB/UCS%GB2312.src,v 1.2 2008/04/10 10:21:07 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"UCS/GB2312"

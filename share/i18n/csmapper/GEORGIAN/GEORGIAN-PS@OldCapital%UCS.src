@@ -1,5 +1,4 @@
 # $NetBSD: GEORGIAN-PS@OldCapital%UCS.src,v 1.2 2006/11/04 06:17:35 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/GEORGIAN/GEORGIAN-PS@OldCapital%UCS.src,v 1.1 2008/04/10 10:21:08 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"GEORGIAN-PS/UCS"

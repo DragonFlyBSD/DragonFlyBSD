@@ -1,5 +1,4 @@
 # $NetBSD: Shift_JIS.src,v 1.2 2003/07/16 06:57:36 tshiozak Exp $
-# $DragonFly: src/share/i18n/esdb/MISC/Shift_JIS.src,v 1.2 2008/04/10 10:21:13 hasso Exp $
 
 NAME		"Shift_JIS"
 ENCODING	"MSKanji"
