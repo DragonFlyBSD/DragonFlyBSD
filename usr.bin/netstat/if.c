@@ -99,7 +99,7 @@ show_stat(const char *fmt, int width, u_long value, short showvalue)
  * Print a description of the network interfaces.
  */
 void
-intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
+intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 {
 	struct ifnet ifnet;
 	struct ifaddr_container ifac;
@@ -131,6 +131,10 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 	char name[IFNAMSIZ];
 	short network_layer;
 	short link_layer;
+	int ncpus;
+
+	if (kread(ncpusaddr, (char *)&ncpus, sizeof(ncpus)))
+		return;
 
 	if (ifnetaddr == 0) {
 		printf("ifnet: symbol not defined\n");
@@ -162,6 +166,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 		putchar('\n');
 	}
 	ifaddraddr = 0;
+	ifaddrcont_addr = 0;
 	while (ifnetaddr || ifaddraddr) {
 		struct sockaddr_in *sin;
 #ifdef INET6
@@ -229,10 +234,32 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 			printf("%-13.13s ", "none");
 			printf("%-15.15s ", "none");
 		} else {
+			int cpu;
+
 			if (kread(ifaddraddr, (char *)&ifaddr, sizeof ifaddr)) {
 				ifaddraddr = 0;
 				continue;
 			}
+
+			ifaddr.ifa.if_ipackets = ifac.ifa_ipackets;
+			ifaddr.ifa.if_ibytes = ifac.ifa_ibytes;
+			ifaddr.ifa.if_opackets = ifac.ifa_opackets;
+			ifaddr.ifa.if_obytes = ifac.ifa_obytes;
+			for (cpu = 1; cpu < ncpus; ++cpu) {
+				struct ifaddr_container nifac;
+
+				if (kread(ifaddrcont_addr +
+				    (cpu * sizeof(nifac)),
+				    (char *)&nifac, sizeof(nifac))) {
+					ifaddraddr = 0;
+					continue;
+				}
+				ifaddr.ifa.if_ipackets += nifac.ifa_ipackets;
+				ifaddr.ifa.if_ibytes += nifac.ifa_ibytes;
+				ifaddr.ifa.if_opackets += nifac.ifa_opackets;
+				ifaddr.ifa.if_obytes += nifac.ifa_obytes;
+			}
+
 #define CP(x) ((char *)(x))
 			cp = (CP(ifaddr.ifa.ifa_addr) - CP(ifaddraddr)) +
 				CP(&ifaddr);
@@ -342,10 +369,10 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 			 * update stats for their network addresses
 			 */
 			if (network_layer) {
-				opackets = ifaddr.in.ia_ifa.if_opackets;
-				ipackets = ifaddr.in.ia_ifa.if_ipackets;
-				obytes = ifaddr.in.ia_ifa.if_obytes;
-				ibytes = ifaddr.in.ia_ifa.if_ibytes;
+				opackets = ifaddr.ifa.if_opackets;
+				ipackets = ifaddr.ifa.if_ipackets;
+				obytes = ifaddr.ifa.if_obytes;
+				ibytes = ifaddr.ifa.if_ibytes;
 			}
 
 			ifaddrcont_addr =

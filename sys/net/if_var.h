@@ -440,6 +440,11 @@ struct ifaddr_container {
 	uint16_t		ifa_listmask;	/* IFA_LIST_ */
 	uint16_t		ifa_prflags;	/* protocol specific flags */
 
+	u_long			ifa_ipackets;	/* packets received on addr */
+	u_long			ifa_ibytes;	/* bytes received on addr */
+	u_long			ifa_opackets;	/* packets sent on addr */
+	u_long			ifa_obytes;	/* bytes sent on addr */
+
 	/*
 	 * Protocol specific states
 	 */
@@ -522,7 +527,7 @@ struct ifmultiaddr {
 
 #define IFA_STAT_INC(ifa, name, v) \
 do { \
-	(ifa)->if_data.ifi_##name += (v); \
+	(ifa)->ifa_containers[mycpuid].ifa_##name += (v); \
 } while (0)
 
 #define IFNET_STAT_INC(ifp, name, v) \
