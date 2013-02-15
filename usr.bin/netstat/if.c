@@ -102,6 +102,7 @@ void
 intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 {
 	struct ifnet ifnet;
+	struct ifdata_pcpu ifdata;
 	struct ifaddr_container ifac;
 	struct ifnethead ifnethead;
 	union {
@@ -118,6 +119,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 	u_long ifaddraddr;
 	u_long ifaddrcont_addr;
 	u_long ifaddrfound;
+	u_long ifdataaddr;
 	u_long opackets;
 	u_long ipackets;
 	u_long obytes;
@@ -173,7 +175,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 		struct sockaddr_in6 *sin6;
 #endif
 		char *cp;
-		int n, m;
+		int n, m, cpu;
 
 		network_layer = 0;
 		link_layer = 0;
@@ -219,13 +221,30 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 		 * Get the interface stats.  These may get
 		 * overriden below on a per-interface basis.
 		 */
-		opackets = ifnet.if_opackets;
-		ipackets = ifnet.if_ipackets;
-		obytes = ifnet.if_obytes;
-		ibytes = ifnet.if_ibytes;
-		oerrors = ifnet.if_oerrors;
-		ierrors = ifnet.if_ierrors;
-		collisions = ifnet.if_collisions;
+		ifdataaddr = (u_long)ifnet.if_data_pcpu;
+		if (kread(ifdataaddr, (char *)&ifdata, sizeof(ifdata)))
+			return;
+		opackets = ifdata.ifd_opackets;
+		ipackets = ifdata.ifd_ipackets;
+		obytes = ifdata.ifd_obytes;
+		ibytes = ifdata.ifd_ibytes;
+		oerrors = ifdata.ifd_oerrors;
+		ierrors = ifdata.ifd_ierrors;
+		collisions = ifdata.ifd_collisions;
+
+		for (cpu = 1; cpu < ncpus; ++cpu) {
+			if (kread(ifdataaddr + (cpu * sizeof(ifdata)),
+			    (char *)&ifdata, sizeof(ifdata)))
+				return;
+			opackets += ifdata.ifd_opackets;
+			ipackets += ifdata.ifd_ipackets;
+			obytes += ifdata.ifd_obytes;
+			ibytes += ifdata.ifd_ibytes;
+			oerrors += ifdata.ifd_oerrors;
+			ierrors += ifdata.ifd_ierrors;
+			collisions += ifdata.ifd_collisions;
+		}
+
 		timer = ifnet.if_timer;
 		drops = 0;
 
@@ -234,8 +253,6 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 			printf("%-13.13s ", "none");
 			printf("%-15.15s ", "none");
 		} else {
-			int cpu;
-
 			if (kread(ifaddraddr, (char *)&ifaddr, sizeof ifaddr)) {
 				ifaddraddr = 0;
 				continue;

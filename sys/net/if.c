@@ -566,6 +566,9 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		sdl->sdl_data[--namelen] = 0xff;
 	ifa_iflink(ifa, ifp, 0 /* Insert head */);
 
+	ifp->if_data_pcpu = kmalloc_cachealign(
+	    ncpus * sizeof(struct ifdata_pcpu), M_DEVBUF, M_WAITOK | M_ZERO);
+
 	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 	devctl_notify("IFNET", ifp->if_xname, "ATTACH", NULL);
 
@@ -861,6 +864,8 @@ if_detach(struct ifnet *ifp)
 		kfree(ifsq->ifsq_stage, M_DEVBUF);
 	}
 	kfree(ifp->if_snd.altq_subq, M_DEVBUF);
+
+	kfree(ifp->if_data_pcpu, M_DEVBUF);
 
 	crit_exit();
 }
