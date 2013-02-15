@@ -33,16 +33,27 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ccd.4,v 1.11.2.8 2001/12/17 11:30:11 ru Exp $
-.\" $DragonFly: src/share/man/man4/ccd.4,v 1.8 2007/08/10 18:28:27 swildner Exp $
 .\"
-.Dd August 6, 2009
+.Dd February 15, 2013
 .Dt CCD 4
 .Os
 .Sh NAME
 .Nm ccd
 .Nd Concatenated Disk driver
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file (for 4 instances):
+.Bd -ragged -offset indent
 .Cd "pseudo-device ccd 4"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+ccd_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
@@ -63,34 +74,20 @@ FS_CCD (type
 as shown by
 .Xr disklabel 8 ) .
 .Pp
-In order to compile in support for the ccd, you must add a line similar
-to the following to your kernel configuration file:
-.Pp
-.D1 Cd "pseudo-device ccd 4	# concatenated disk devices"
-.Pp
-The count argument is how many
-.Nm Ns 's
-memory is allocated for a boot time.  In this example, no more than 4
-.Nm Ns s
-may be configured.  As of the
-.Fx 3.0
-release, you do not need to
-configure your kernel with ccd but may instead use it as a kernel loadable
-module.  Simply running
-.Nm ccdconfig
-will load the module into the kernel.
-.Pp
 A
 .Nm
 may be either serially concatenated or interleaved.  To serially
 concatenate the partitions, specify the interleave factor of 0.
 Note that mirroring may not be used with an interleave factor of 0.
 .Pp
-There is a run-time utility that is used for configuring
-.Nm Ns s .
-See
 .Xr ccdconfig 8
-for more information.
+is a run-time utility that is used for configuring
+.Nm Ns s .
+Running it will load the
+.Nm
+module if it is not already loaded or
+.Nm
+is compiled into the kernel.
 .Ss The Interleave Factor
 If a
 .Nm
