@@ -67,7 +67,7 @@
 #define	YES	1
 #define	NO	0
 
-static void sidewaysintpr (u_int, u_long);
+static void sidewaysintpr (u_int, u_long, int);
 static void catchalarm (int);
 
 #ifdef INET6
@@ -143,7 +143,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 		return;
 	}
 	if (interval1) {
-		sidewaysintpr((unsigned)interval1, ifnetaddr);
+		sidewaysintpr((unsigned)interval1, ifnetaddr, ncpus);
 		return;
 	}
 	if (kread(ifnetaddr, (char *)&ifnethead, sizeof ifnethead))
@@ -515,15 +515,17 @@ u_char	signalled;			/* set if alarm goes off "early" */
  * XXX - should be rewritten to use ifmib(4).
  */
 static void
-sidewaysintpr(unsigned interval1, u_long off)
+sidewaysintpr(unsigned interval1, u_long off, int ncpus)
 {
 	struct ifnet ifnet;
 	u_long firstifnet;
 	struct ifnethead ifnethead;
+	struct ifdata_pcpu ifdata;
 	struct iftot *iftot, *ip, *ipn, *total, *sum, *interesting;
-	int line;
+	int line, cpu;
 	int oldmask, first;
 	u_long interesting_off;
+	u_long ifdata_addr;
 
 	if (kread(off, (char *)&ifnethead, sizeof ifnethead))
 		return;
@@ -591,6 +593,35 @@ loop:
 			printf("???\n");
 			exit(1);
 		}
+
+		ifdata_addr = (u_long)ifnet.if_data_pcpu;
+		if (kread(ifdata_addr, (char *)&ifdata, sizeof(ifdata))) {
+			printf("ifdata 1\n");
+			exit(1);
+		}
+		ifnet.if_ipackets = ifdata.ifd_ipackets;
+		ifnet.if_ierrors = ifdata.ifd_ierrors;
+		ifnet.if_ibytes = ifdata.ifd_ibytes;
+		ifnet.if_opackets = ifdata.ifd_opackets;
+		ifnet.if_oerrors = ifdata.ifd_oerrors;
+		ifnet.if_obytes = ifdata.ifd_obytes;
+		ifnet.if_collisions = ifdata.ifd_collisions;
+
+		for (cpu = 1; cpu < ncpus; ++cpu) {
+			if (kread(ifdata_addr + (cpu * sizeof(ifdata)),
+			    (char *)&ifdata, sizeof(ifdata))) {
+				printf("ifdata 2\n");
+				exit(1);
+			}
+			ifnet.if_ipackets += ifdata.ifd_ipackets;
+			ifnet.if_ierrors += ifdata.ifd_ierrors;
+			ifnet.if_ibytes += ifdata.ifd_ibytes;
+			ifnet.if_opackets += ifdata.ifd_opackets;
+			ifnet.if_oerrors += ifdata.ifd_oerrors;
+			ifnet.if_obytes += ifdata.ifd_obytes;
+			ifnet.if_collisions += ifdata.ifd_collisions;
+		}
+
 		if (!first) {
 			printf("%10lu %5lu %10lu %10lu %5lu %10lu %5lu",
 				ifnet.if_ipackets - ip->ift_ip,
@@ -627,6 +658,36 @@ loop:
 				off = 0;
 				continue;
 			}
+
+			ifdata_addr = (u_long)ifnet.if_data_pcpu;
+			if (kread(ifdata_addr, (char *)&ifdata,
+			    sizeof(ifdata))) {
+				printf("ifdata 3\n");
+				exit(1);
+			}
+			ifnet.if_ipackets = ifdata.ifd_ipackets;
+			ifnet.if_ierrors = ifdata.ifd_ierrors;
+			ifnet.if_ibytes = ifdata.ifd_ibytes;
+			ifnet.if_opackets = ifdata.ifd_opackets;
+			ifnet.if_oerrors = ifdata.ifd_oerrors;
+			ifnet.if_obytes = ifdata.ifd_obytes;
+			ifnet.if_collisions = ifdata.ifd_collisions;
+
+			for (cpu = 1; cpu < ncpus; ++cpu) {
+				if (kread(ifdata_addr + (cpu * sizeof(ifdata)),
+				    (char *)&ifdata, sizeof(ifdata))) {
+					printf("ifdata 2\n");
+					exit(1);
+				}
+				ifnet.if_ipackets += ifdata.ifd_ipackets;
+				ifnet.if_ierrors += ifdata.ifd_ierrors;
+				ifnet.if_ibytes += ifdata.ifd_ibytes;
+				ifnet.if_opackets += ifdata.ifd_opackets;
+				ifnet.if_oerrors += ifdata.ifd_oerrors;
+				ifnet.if_obytes += ifdata.ifd_obytes;
+				ifnet.if_collisions += ifdata.ifd_collisions;
+			}
+
 			sum->ift_ip += ifnet.if_ipackets;
 			sum->ift_ie += ifnet.if_ierrors;
 			sum->ift_ib += ifnet.if_ibytes;
