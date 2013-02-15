@@ -611,6 +611,8 @@
             ..
             la_LN.US-ASCII
             ..
+            la_LN.UTF-8
+            ..
             lt_LT.ISO8859-13
             ..
             lt_LT.ISO8859-4
