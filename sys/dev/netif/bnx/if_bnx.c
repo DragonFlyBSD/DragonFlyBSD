@@ -1966,7 +1966,7 @@ bnx_attach(device_t dev)
 	sc->bnx_tx_coal_bds = BNX_TX_COAL_BDS_DEF;
 	sc->bnx_rx_coal_bds_int = BNX_RX_COAL_BDS_INT_DEF;
 	sc->bnx_tx_coal_bds_int = BNX_TX_COAL_BDS_INT_DEF;
-	sc->bnx_tx_wreg = 8;
+	sc->bnx_tx_wreg = BNX_TX_WREG_NSEGS;
 
 	/* Set up ifnet structure */
 	ifp->if_softc = sc;
