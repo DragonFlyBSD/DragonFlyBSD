@@ -73,7 +73,7 @@
 #define IGB_DEF_RXWREG_NSEGS	32
 
 /*
- * Default number of segments sent before writing to RX related registers
+ * Default number of segments sent before writing to TX related registers
  */
 #define IGB_DEF_TXWREG_NSEGS	8
 
