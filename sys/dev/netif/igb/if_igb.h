@@ -182,9 +182,6 @@
 #define IGB_PKTTYPE_MASK		0x0000FFF0
 
 #define IGB_CSUM_FEATURES		(CSUM_IP | CSUM_TCP | CSUM_UDP)
-#define IGB_IPVHL_SIZE			1 /* sizeof(ip.ip_vhl) */
-#define IGB_TXCSUM_MINHL		(ETHER_HDR_LEN + EVL_ENCAPLEN + \
-					 IGB_IPVHL_SIZE)
 
 /* One for TX csum offloading desc, the other 2 are reserved */
 #define IGB_TX_RESERVED			3
