@@ -141,6 +141,9 @@
 /* Interrupt throttle rate */
 #define EM_DEFAULT_ITR			6000
 
+/* Number of segments sent before writing to TX related registers */
+#define EM_DEFAULT_TXWREG		8
+
 /*
  * This parameter controls whether or not autonegotation is enabled.
  *              0 - Disable autonegotiation

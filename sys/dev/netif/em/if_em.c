@@ -822,7 +822,7 @@ em_attach(device_t dev)
 	}
 	if (adapter->flags & EM_FLAG_TSO)
 		adapter->spare_tx_desc = EM_TX_SPARE_TSO;
-	adapter->tx_wreg_nsegs = 8;
+	adapter->tx_wreg_nsegs = EM_DEFAULT_TXWREG;
 
 	/*
 	 * Keep following relationship between spare_tx_desc, oact_tx_desc

@@ -2141,7 +2141,7 @@ emx_create_tx_ring(struct emx_txdata *tdata)
 	 * Setup TX parameters
 	 */
 	tdata->spare_tx_desc = EMX_TX_SPARE;
-	tdata->tx_wreg_nsegs = 8;
+	tdata->tx_wreg_nsegs = EMX_DEFAULT_TXWREG;
 
 	/*
 	 * Keep following relationship between spare_tx_desc, oact_tx_desc
