@@ -973,7 +973,7 @@ jme_attach(device_t dev)
 	if (coal_max < sc->jme_rx_coal_pkt)
 		sc->jme_rx_coal_pkt = coal_max;
 
-	sc->jme_cdata.jme_tx_data.jme_tx_wreg = 16;
+	sc->jme_cdata.jme_tx_data.jme_tx_wreg = JME_TXWREG_NSEGS;
 
 	/*
 	 * Create sysctl tree

@@ -325,6 +325,8 @@ do {					\
 /* Large enough to cooperate 64K TSO segment and one spare TX descriptor */
 #define JME_TXD_SPARE		34
 
+#define JME_TXWREG_NSEGS	16
+
 #define JME_ENABLE_HWRSS(sc)	\
 	((sc)->jme_cdata.jme_rx_ring_cnt > JME_NRXRING_MIN)
 
