@@ -66,8 +66,6 @@
             ssp
             ..
         ..
-        lint
-        ..
     ..
     libexec
         binutils221
