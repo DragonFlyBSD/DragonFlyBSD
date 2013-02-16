@@ -61,7 +61,7 @@ static d_strategy_t	mfi_disk_strategy;
 static d_dump_t		mfi_disk_dump;
 
 static struct dev_ops mfi_disk_ops = {
-	{ "mfid", 0, D_DISK },
+	{ "mfid", 0, D_DISK | D_MPSAFE },
 	.d_open = mfi_disk_open,
 	.d_close = mfi_disk_close,
 	.d_strategy = mfi_disk_strategy,
