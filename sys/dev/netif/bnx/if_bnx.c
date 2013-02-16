@@ -90,6 +90,8 @@ static const struct bnx_type {
 } bnx_devs[] = {
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5717,
 		"Broadcom BCM5717 Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5717C,
+		"Broadcom BCM5717C Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5718,
 		"Broadcom BCM5718 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5719,
@@ -1815,6 +1817,7 @@ bnx_attach(device_t dev)
 
 		switch (product) {
 		case PCI_PRODUCT_BROADCOM_BCM5717:
+		case PCI_PRODUCT_BROADCOM_BCM5717C:
 		case PCI_PRODUCT_BROADCOM_BCM5718:
 		case PCI_PRODUCT_BROADCOM_BCM5719:
 		case PCI_PRODUCT_BROADCOM_BCM5720_ALT:
@@ -1842,6 +1845,9 @@ bnx_attach(device_t dev)
 			break;
 		}
 	}
+	if (sc->bnx_chipid == BGE_CHIPID_BCM5717_C0)
+		sc->bnx_chipid = BGE_CHIPID_BCM5720_A0;
+
 	sc->bnx_asicrev = BGE_ASICREV(sc->bnx_chipid);
 	sc->bnx_chiprev = BGE_CHIPREV(sc->bnx_chipid);
 
