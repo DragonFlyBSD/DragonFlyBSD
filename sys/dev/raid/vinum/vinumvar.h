@@ -38,6 +38,8 @@
  * advised of the possibility of such damage.
  */
 
+#include "opt_vinum.h"
+
 #include <sys/time.h>
 #include "vinumstate.h"
 

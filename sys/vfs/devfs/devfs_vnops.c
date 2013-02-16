@@ -71,6 +71,10 @@
 #include <sys/mplock2.h>
 #include <vm/vm_page2.h>
 
+#ifndef SPEC_CHAIN_DEBUG
+#define SPEC_CHAIN_DEBUG 0
+#endif
+
 MALLOC_DECLARE(M_DEVFS);
 #define DEVFS_BADOP	(void *)devfs_vop_badop
 

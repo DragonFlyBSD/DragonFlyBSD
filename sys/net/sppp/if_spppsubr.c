@@ -4917,17 +4917,7 @@ sppp_set_ip_addr(struct sppp *sp, u_long src)
 
 	if (ifac != NULL && si != NULL) {
 		int error;
-#if __NetBSD_Version__ >= 103080000
-		struct sockaddr_in new_sin = *si;
 
-		new_sin.sin_addr.s_addr = htonl(src);
-		error = in_ifinit(ifp, ifatoia(ifa), &new_sin, 1);
-		if(debug && error)
-		{
-			log(LOG_DEBUG, SPP_FMT "sppp_set_ip_addr: in_ifinit "
-			" failed, error=%d\n", SPP_ARGS(ifp), error);
-		}
-#else
 		/* delete old route */
 		error = rtinit(ifa, (int)RTM_DELETE, RTF_HOST);
 		if(debug && error)
@@ -4950,7 +4940,6 @@ sppp_set_ip_addr(struct sppp *sp, u_long src)
 			log(LOG_DEBUG, SPP_FMT "sppp_set_ip_addr: rtinit ADD failed, error=%d",
 		    		SPP_ARGS(ifp), error);
 		}
-#endif
 	}
 }
 
