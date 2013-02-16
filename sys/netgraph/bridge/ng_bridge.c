@@ -933,7 +933,7 @@ ng_bridge_timeout(void *arg)
 	int bucket;
 	int counter = 0;
 	int linkNum;
-	char ethstr[ETHER_ADDRSTRLEN + 1];
+	char ethstr[ETHER_ADDRSTRLEN + 1] __debugvar;
 
 	/* If node was shut down, this is the final lingering timeout */
 	crit_enter();

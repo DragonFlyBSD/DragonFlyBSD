@@ -238,7 +238,7 @@ ieee80211_dwds_mcast(struct ieee80211vap *vap0, struct mbuf *m)
 	struct ifnet *ifp;
 	struct mbuf *mcopy;
 	int err;
-	char ethstr[ETHER_ADDRSTRLEN + 1];
+	char ethstr[ETHER_ADDRSTRLEN + 1] __debugvar;
 
 	KASSERT(ETHER_IS_MULTICAST(eh->ether_dhost),
 	    ("%s not mcast", kether_ntoa(eh->ether_dhost, ethstr)));
