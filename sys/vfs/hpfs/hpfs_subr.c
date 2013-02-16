@@ -756,14 +756,19 @@ hpfs_truncate (
 	u_long size)
 {
 	struct hpfsmount *hpmp = hp->h_hpmp;
-	lsn_t newblen, oldblen;
+	lsn_t newblen;
+#ifdef HPFS_DEBUG
+	lsn_t oldblen;
+#endif
 	int error, pf;
 
 	dprintf(("hpfs_truncate(0x%x, 0x%x -> 0x%lx): ",
 		hp->h_no, hp->h_fn.fn_size, size));
 
 	newblen = (size + DEV_BSIZE - 1) >> DEV_BSHIFT;
+#ifdef HPFS_DEBUG
 	oldblen = (hp->h_fn.fn_size + DEV_BSIZE - 1) >> DEV_BSHIFT;
+#endif
 
 	dprintf(("blen: 0x%x -> 0x%x\n", oldblen, newblen));
 

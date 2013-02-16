@@ -82,7 +82,9 @@ void tws_display_ctlr_info(struct tws_softc *sc);
 int
 tws_init_ctlr(struct tws_softc *sc)
 {
+#ifdef TWS_DEBUG
     u_int64_t reg;
+#endif
     u_int32_t regh, regl;
 
     TWS_TRACE_DEBUG(sc, "entry", sc, sc->is64bit);
@@ -98,7 +100,9 @@ tws_init_ctlr(struct tws_softc *sc)
     while( 1 ) {
         regh = tws_read_reg(sc, TWS_I2O0_IOPOBQPH, 4);
         regl = tws_read_reg(sc, TWS_I2O0_IOPOBQPL, 4);
+#ifdef TWS_DEBUG
         reg = (((u_int64_t)regh) << 32) | regl;
+#endif
         TWS_TRACE_DEBUG(sc, "host outbound cleanup", reg, regl);
         if ( regh == TWS_FIFO_EMPTY32 )
             break;

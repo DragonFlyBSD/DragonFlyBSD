@@ -1310,13 +1310,18 @@ static void
 iir_action( struct cam_sim *sim, union ccb *ccb )
 {
     struct gdt_softc *gdt;
-    int bus, target, lun;
+    int bus, target;
+#ifdef GDT_DEBUG
+    int lun;
+#endif
 
     gdt = (struct gdt_softc *)cam_sim_softc( sim );
     ccb->ccb_h.ccb_sim_ptr = sim;
     bus = cam_sim_bus(sim);
     target = ccb->ccb_h.target_id;
+#ifdef GDT_DEBUG
     lun = ccb->ccb_h.target_lun;
+#endif
     GDT_DPRINTF(GDT_D_CMD,
                 ("iir_action(%p) func 0x%x cmd 0x%x bus %d target %d lun %d\n",
                  gdt, ccb->ccb_h.func_code, ccb->csio.cdb_io.cdb_bytes[0],
