@@ -478,6 +478,8 @@ static uint32_t	bce_rx_bds = 0;			/* bcm: 6 */
 static uint32_t	bce_rx_ticks_int = 150;		/* bcm: 18 */
 static uint32_t	bce_rx_ticks = 150;		/* bcm: 18 */
 
+static int	bce_tx_wreg = 8;
+
 static int	bce_msi_enable = 1;
 
 static int	bce_rx_pages = RX_PAGES_DEFAULT;
@@ -494,6 +496,7 @@ TUNABLE_INT("hw.bce.rx_ticks", &bce_rx_ticks);
 TUNABLE_INT("hw.bce.msi.enable", &bce_msi_enable);
 TUNABLE_INT("hw.bce.rx_pages", &bce_rx_pages);
 TUNABLE_INT("hw.bce.tx_pages", &bce_tx_pages);
+TUNABLE_INT("hw.bce.tx_wreg", &bce_tx_wreg);
 
 /****************************************************************************/
 /* DragonFly device dispatch table.                                         */
@@ -929,7 +932,7 @@ bce_attach(device_t dev)
 	sc->bce_rx_ticks_int           = bce_rx_ticks_int;
 	sc->bce_rx_ticks               = bce_rx_ticks;
 #endif
-	sc->tx_wreg = 8;
+	sc->tx_wreg = bce_tx_wreg;
 
 	/* Update statistics once every second. */
 	sc->bce_stats_ticks = 1000000 & 0xffff00;
