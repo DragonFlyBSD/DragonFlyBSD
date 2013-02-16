@@ -51,5 +51,6 @@ struct pktgen_conf {
 
 #define PKTGENSTART	_IO('G', 19)
 #define PKTGENSCONF	_IOW('G', 20, struct pktgen_conf)
+#define PKTGENMQSTART	_IO('G', 21)
 
 #endif	/* !_NET_PKTGEN_H */

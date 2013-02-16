@@ -30,7 +30,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include  <dev/sound/isa/sb.h>
+#include  <dev/sound/pci/sb.h>
 #include  <dev/sound/chip.h>
 
 #include "mixer_if.h"

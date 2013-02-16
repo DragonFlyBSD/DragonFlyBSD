@@ -1,5 +1,4 @@
 # $NetBSD: UCS%CP858.src,v 1.1 2006/11/29 15:45:26 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/CP/UCS%CP858.src,v 1.1 2008/04/10 10:21:04 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"UCS/CP858"

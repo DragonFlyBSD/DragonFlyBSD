@@ -735,15 +735,29 @@ nlookup(struct nlookupdata *nd)
 	    (mp = cache_findmount(&nch)) != NULL
 	) {
 	    struct vnode *tdp;
+	    int vfs_do_busy = 0;
 
+	    /*
+	     * VFS must be busied before the namecache entry is locked,
+	     * but we don't want to waste time calling vfs_busy() if the
+	     * mount point is already resolved.
+	     */
+again:
 	    cache_put(&nch);
+	    if (vfs_do_busy) {
+		while (vfs_busy(mp, 0))
+		    ;
+	    }
 	    cache_get(&mp->mnt_ncmountpt, &nch);
 
 	    if (nch.ncp->nc_flag & NCF_UNRESOLVED) {
-		while (vfs_busy(mp, 0))
-		    ;
+		if (vfs_do_busy == 0) {
+		    vfs_do_busy = 1;
+		    goto again;
+		}
 		error = VFS_ROOT(mp, &tdp);
 		vfs_unbusy(mp);
+		vfs_do_busy = 0;
 		if (error) {
 		    cache_dropmount(mp);
 		    break;
@@ -751,6 +765,8 @@ nlookup(struct nlookupdata *nd)
 		cache_setvp(&nch, tdp);
 		vput(tdp);
 	    }
+	    if (vfs_do_busy)
+		vfs_unbusy(mp);
 	    cache_dropmount(mp);
 	}
 	if (error) {

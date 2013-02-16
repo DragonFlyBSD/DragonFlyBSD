@@ -943,7 +943,7 @@ sf_rxeof(struct sf_softc *sc)
 		SF_INC(bufprodidx, SF_RX_DLIST_CNT);
 
 		if (!(cur_rx->sf_status1 & SF_RXSTAT1_OK)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			sf_newbuf(sc, desc, m);
 			continue;
 		}
@@ -952,13 +952,13 @@ sf_rxeof(struct sf_softc *sc)
 		    cur_rx->sf_len + ETHER_ALIGN, 0, ifp, NULL);
 		sf_newbuf(sc, desc, m);
 		if (m0 == NULL) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			continue;
 		}
 		m_adj(m0, ETHER_ALIGN);
 		m = m0;
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 
 		ifp->if_input(ifp, m);
 	}
@@ -998,11 +998,11 @@ sf_txeof(struct sf_softc *sc)
 		cur_tx = &sc->sf_ldata->sf_tx_dlist[cur_cmp->sf_index >> 7];
 
 		if (cur_cmp->sf_txstat & SF_TXSTAT_TX_OK)
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		else {
 			if (cur_cmp->sf_txstat & SF_TXSTAT_TX_UNDERRUN)
 				sf_txthresh_adjust(sc);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		}
 
 		sc->sf_tx_cnt--;
@@ -1404,8 +1404,8 @@ sf_stats_update(void *xsc)
 		csr_write_4(sc, SF_STATS_BASE +
 		    (i + sizeof(u_int32_t)), 0);
 
-	ifp->if_collisions += stats.sf_tx_single_colls +
-	    stats.sf_tx_multi_colls + stats.sf_tx_excess_colls;
+	IFNET_STAT_INC(ifp, collisions, stats.sf_tx_single_colls +
+	    stats.sf_tx_multi_colls + stats.sf_tx_excess_colls);
 
 	mii_tick(mii);
 	if (!sc->sf_link) {
@@ -1430,7 +1430,7 @@ sf_watchdog(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	kprintf("sf%d: watchdog timeout\n", sc->sf_unit);
 
 	sf_stop(sc);

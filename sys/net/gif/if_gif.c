@@ -359,8 +359,8 @@ gif_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		}
 		bpf_reltoken();
 	}
-	ifp->if_opackets++;	
-	ifp->if_obytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, opackets, 1);	
+	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len);
 
 	/* inner AF-specific encapsulation */
 
@@ -387,7 +387,7 @@ gif_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
   end:
 	called = 0;		/* reset recursion counter */
 	if (error)
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	return error;
 }
 
@@ -458,8 +458,8 @@ gif_input(struct mbuf *m, int af, struct ifnet *ifp)
 		return;
 	}
 
-	ifp->if_ipackets++;
-	ifp->if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, ipackets, 1);
+	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
 	m->m_flags &= ~M_HASH;
 	netisr_queue(isr, m);
 

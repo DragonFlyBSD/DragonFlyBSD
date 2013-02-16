@@ -223,7 +223,7 @@ ef_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		ifsq_enqueue(p_ifsq, m, NULL);
 		if (!ifsq_is_oactive(p_ifsq)) {
 			p->if_start(p, p_ifsq);
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 	}
 	ifsq_clr_oactive(ifsq);
@@ -362,7 +362,7 @@ ef_input(struct ifnet *ifp, const struct ether_header *eh, struct mbuf *m)
 	eifp = &efp->ef_ac.ac_if;
 	if ((eifp->if_flags & IFF_UP) == 0)
 		return EPROTONOSUPPORT;
-	eifp->if_ibytes += m->m_pkthdr.len + sizeof (*eh);
+	IFNET_STAT_INC(eifp, ibytes, m->m_pkthdr.len + sizeof (*eh));
 	m->m_pkthdr.rcvif = eifp;
 
 	if (eifp->if_bpf) {

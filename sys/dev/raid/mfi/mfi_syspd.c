@@ -67,7 +67,7 @@ static d_strategy_t	mfi_syspd_strategy;
 static d_dump_t		mfi_syspd_dump;
 
 static struct dev_ops mfi_syspd_ops = {
-	{ "mfisyspd", 0, D_DISK },
+	{ "mfisyspd", 0, D_DISK | D_MPSAFE },
 	.d_open = mfi_syspd_open,
 	.d_close = mfi_syspd_close,
 	.d_strategy = mfi_syspd_strategy,

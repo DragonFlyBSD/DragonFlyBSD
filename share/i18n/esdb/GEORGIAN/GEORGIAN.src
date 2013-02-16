@@ -1,5 +1,4 @@
 # $NetBSD: GEORGIAN.src,v 1.1 2006/06/15 15:34:20 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/GEORGIAN/GEORGIAN.src,v 1.1 2008/04/10 10:21:12 hasso Exp $
 
 NAME		"GEORGIANx"
 ENCODING	"NONE"

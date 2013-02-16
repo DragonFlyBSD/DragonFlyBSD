@@ -477,7 +477,7 @@ sloutput_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 		kprintf("%s: af%d not supported\n", sc->sc_if.if_xname,
 			dst->sa_family);
 		m_freem(m);
-		sc->sc_if.if_noproto++;
+		IFNET_STAT_INC(&sc->sc_if, noproto, 1);
 		return (EAFNOSUPPORT);
 	}
 
@@ -510,7 +510,7 @@ sloutput_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 		error = ifsq_enqueue(ifsq, m, &pktattr);
 	}
 	if (error) {
-		sc->sc_if.if_oerrors++;
+		IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
 		crit_exit();
 		return (error);
 	}
@@ -582,7 +582,7 @@ slstart(struct tty *tp)
 		crit_enter();
 		IF_DEQUEUE(&sc->sc_fastq, m);
 		if (m)
-			sc->sc_if.if_omcasts++;		/* XXX */
+			IFNET_STAT_INC(&sc->sc_if, omcasts, 1);	/* XXX */
 		else
 			m = ifsq_dequeue(ifsq, NULL);
 		crit_exit();
@@ -653,7 +653,7 @@ slstart(struct tty *tp)
 		 */
 		if (cfreecount < CLISTRESERVE + SLTMAX) {
 			m_freem(m);
-			sc->sc_if.if_collisions++;
+			IFNET_STAT_INC(&sc->sc_if, collisions, 1);
 			continue;
 		}
 
@@ -664,7 +664,7 @@ slstart(struct tty *tp)
 		 * the line may have been idle for some time.
 		 */
 		if (tp->t_outq.c_cc == 0) {
-			++sc->sc_if.if_obytes;
+			IFNET_STAT_INC(&sc->sc_if, obytes, 1);
 			clist_putc(FRAME_END, &tp->t_outq);
 		}
 
@@ -696,7 +696,8 @@ slstart(struct tty *tp)
 					if (b_to_q((char *)bp, cp - bp,
 					    &tp->t_outq))
 						break;
-					sc->sc_if.if_obytes += cp - bp;
+					IFNET_STAT_INC(&sc->sc_if, obytes,
+					    cp - bp);
 				}
 				/*
 				 * If there are characters left in the mbuf,
@@ -712,7 +713,7 @@ slstart(struct tty *tp)
 						clist_unputc(&tp->t_outq);
 						break;
 					}
-					sc->sc_if.if_obytes += 2;
+					IFNET_STAT_INC(&sc->sc_if, obytes, 2);
 				}
 			}
 			m = m_free(m);
@@ -728,10 +729,10 @@ slstart(struct tty *tp)
 			 */
 			clist_unputc(&tp->t_outq);
 			clist_putc(FRAME_END, &tp->t_outq);
-			sc->sc_if.if_collisions++;
+			IFNET_STAT_INC(&sc->sc_if, collisions, 1);
 		} else {
-			++sc->sc_if.if_obytes;
-			sc->sc_if.if_opackets++;
+			IFNET_STAT_INC(&sc->sc_if, obytes, 1);
+			IFNET_STAT_INC(&sc->sc_if, opackets, 1);
 		}
 	}
 	lwkt_reltoken(&tty_token);
@@ -803,7 +804,7 @@ slinput(int c, struct tty *tp)
 	}
 	c &= TTY_CHARMASK;
 
-	++sc->sc_if.if_ibytes;
+	IFNET_STAT_INC(&sc->sc_if, ibytes, 1);
 
 	if (sc->sc_if.if_flags & IFF_DEBUG) {
 		if (c == ABT_ESC) {
@@ -923,7 +924,7 @@ slinput(int c, struct tty *tp)
 		if (m == NULL)
 			goto error;
 
-		sc->sc_if.if_ipackets++;
+		IFNET_STAT_INC(&sc->sc_if, ipackets, 1);
 
 		if ((sc->sc_if.if_flags & IFF_UP) == 0) {
 			m_freem(m);
@@ -931,8 +932,8 @@ slinput(int c, struct tty *tp)
 		}
 
 		if (netisr_queue(NETISR_IP, m)) {
-			sc->sc_if.if_ierrors++;
-			sc->sc_if.if_iqdrops++;
+			IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
+			IFNET_STAT_INC(&sc->sc_if, iqdrops, 1);
 		}
 
 		goto newpack;
@@ -948,7 +949,7 @@ slinput(int c, struct tty *tp)
 	sc->sc_flags |= SC_ERROR;
 
 error:
-	sc->sc_if.if_ierrors++;
+	IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 newpack:
 	sc->sc_mp = sc->sc_buf = sc->sc_ep + SLBUFSIZE - SLRMAX;
 	sc->sc_escape = 0;
@@ -1059,7 +1060,7 @@ sl_outfill(void *chan)
 	if (sc->sc_outfill && tp != NULL) {
 		if (sc->sc_flags & SC_OUTWAIT) {
 			crit_enter();
-			++sc->sc_if.if_obytes;
+			IFNET_STAT_INC(&sc->sc_if, obytes, 1);
 			clist_putc(FRAME_END, &tp->t_outq);
 			(*tp->t_oproc)(tp);
 			crit_exit();

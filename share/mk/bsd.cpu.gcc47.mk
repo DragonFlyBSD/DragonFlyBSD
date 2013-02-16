@@ -10,6 +10,12 @@ _CPUCFLAGS = -march=native
 _CPUCFLAGS =
 . endif
 
+. if ${MACHINE_ARCH} == "i386"
+MACHINE_CPU = i486 i386
+. elif ${MACHINE_ARCH} == "x86_64"
+MACHINE_CPU = x86_64 sse2 sse mmx
+. endif
+
 .else
 
 _CPUCFLAGS_FIXUP =

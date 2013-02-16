@@ -1,4 +1,4 @@
-# $DragonFly: src/share/i18n/esdb/Makefile,v 1.2 2008/04/10 10:21:11 hasso Exp $
+# $NetBSD: Makefile,v 1.15 2011/04/27 20:05:56 mbalmer Exp $
 
 NOMAN=
 
@@ -11,7 +11,7 @@ BINDIR?=	/usr/share/i18n/esdb
 .src.esdb:
 	mkesdb -o $@ $>
 
-subdir=	APPLE AST BIG5 CP DEC EUC EBCDIC GB GEORGIAN ISO-2022 \
+subdir=	APPLE AST BIG5 CBM CP DEC EUC EBCDIC GB GEORGIAN ISO-2022 \
 	ISO-8859 ISO646 KAZAKH KOI MISC TCVN UTF
 
 .for i in ${subdir}

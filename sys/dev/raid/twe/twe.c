@@ -1112,7 +1112,9 @@ int
 twe_start(struct twe_request *tr)
 {
     struct twe_softc	*sc = tr->tr_sc;
+#ifdef TWE_DEBUG
     TWE_Command		*cmd;
+#endif
     int			i;
     u_int32_t		status_reg;
 
@@ -1122,7 +1124,9 @@ twe_start(struct twe_request *tr)
 
     /* mark the command as currently being processed */
     tr->tr_status = TWE_CMD_BUSY;
+#ifdef TWE_DEBUG
     cmd = TWE_FIND_COMMAND(tr);
+#endif
 
     /* 
      * Spin briefly waiting for the controller to come ready 
@@ -1174,7 +1178,9 @@ static void
 twe_done(struct twe_softc *sc, int startio)
 {
     TWE_Response_Queue	rq;
+#ifdef TWE_DEBUG
     TWE_Command		*cmd;
+#endif
     struct twe_request	*tr;
     int			found;
     u_int32_t		status_reg;
@@ -1191,7 +1197,9 @@ twe_done(struct twe_softc *sc, int startio)
 	    found = 1;
 	    rq.value = TWE_RESPONSE_QUEUE(sc);
 	    tr = sc->twe_lookup[rq.u.response_id];	/* find command */
+#ifdef TWE_DEBUG
 	    cmd = TWE_FIND_COMMAND(tr);
+#endif
 	    if (tr->tr_status != TWE_CMD_BUSY)
 		twe_printf(sc, "completion event for nonbusy command\n");
 	    tr->tr_status = TWE_CMD_COMPLETE;

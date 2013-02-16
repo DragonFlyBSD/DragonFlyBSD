@@ -1,5 +1,4 @@
 # $NetBSD: EUC-JP.src,v 1.2 2003/07/16 06:57:35 tshiozak Exp $
-# $DragonFly: src/share/i18n/esdb/EUC/EUC-JP.src,v 1.2 2008/04/10 10:21:12 hasso Exp $
 
 NAME		"EUC-JP"
 ENCODING	"EUC"

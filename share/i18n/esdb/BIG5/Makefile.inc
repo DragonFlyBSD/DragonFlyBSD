@@ -1,5 +1,4 @@
-# $NetBSD: Makefile.inc,v 1.1 2006/06/19 17:28:25 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/BIG5/Makefile.inc,v 1.1 2008/04/10 10:21:12 hasso Exp $
+# $NetBSD: Makefile.inc,v 1.3 2008/10/25 22:35:36 apb Exp $
 
 .PATH: ${.CURDIR}/BIG5
 
@@ -19,9 +18,9 @@ Big5_$i_variable!= sed \
 .if !exists(${.CURDIR}/BIG5/Big5-${i:S/:/@/}.src)
 # XXX: FIXME
 Big5-${i:S/:/@/}.src: Big5.src Big5.variable
-	${_MKTARGET_CREATE}
-	sed -e 's/encoding/Big5-$i/' -e 's/variable/${Big5_$i_variable}/' \
-	${.CURDIR}/BIG5/Big5.src > $@
+	sed -e 's/encoding/Big5-$i/' \
+		-e 's/variable/${Big5_$i_variable}/' \
+		${.CURDIR}/BIG5/Big5.src > $@
 CLEANFILES+= Big5-${i:S/:/@/}.src
 .endif
 .endfor

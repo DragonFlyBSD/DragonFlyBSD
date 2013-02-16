@@ -1,5 +1,4 @@
 # $NetBSD: mapper.dir.MISC.src,v 1.12 2007/07/15 14:44:37 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/MISC/mapper.dir.MISC.src,v 1.2 2008/04/10 10:21:11 hasso Exp $
 
 ATARIST/UCS			mapper_std	MISC/ATARIST%UCS.mps
 DECMCS/UCS			mapper_std	MISC/DECMCS%UCS.mps

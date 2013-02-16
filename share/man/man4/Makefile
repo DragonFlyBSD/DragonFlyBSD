@@ -103,7 +103,6 @@ MAN=	aac.4 \
 	gdb.4 \
 	gif.4 \
 	gre.4 \
-	gusc.4 \
 	hifn.4 \
 	hpt27xx.4 \
 	hptiop.4 \
@@ -251,7 +250,6 @@ MAN=	aac.4 \
 	rue.4 \
 	sa.4 \
 	safe.4 \
-	sbc.4 \
 	sbp.4 \
 	sbsh.4 \
 	screen.4 \
@@ -271,7 +269,6 @@ MAN=	aac.4 \
 	smbus.4 \
 	smp.4 \
 	sn.4 \
-	snd_ad1816.4 \
 	snd_als4000.4 \
 	snd_atiixp.4 \
 	snd_cmi.4 \
@@ -282,16 +279,12 @@ MAN=	aac.4 \
 	snd_envy24.4 \
 	snd_envy24ht.4 \
 	snd_es137x.4 \
-	snd_ess.4 \
 	snd_fm801.4 \
-	snd_gusc.4 \
 	snd_hda.4 \
 	snd_ich.4 \
 	snd_maestro3.4 \
 	snd_maestro.4 \
-	snd_mss.4 \
 	snd_neomagic.4 \
-	snd_sbc.4 \
 	snd_solo.4 \
 	snd_spicds.4 \
 	snd_t4dwave.4 \
@@ -489,8 +482,6 @@ MLINKS+=sk.4 if_sk.4
 MLINKS+=sl.4 if_sl.4
 MLINKS+=sln.4 if_sln.4
 MLINKS+=smp.4 SMP.4
-MLINKS+=snd_sbc.4 snd_sb16.4 \
-	snd_sbc.4 snd_sb8.4
 MLINKS+=splash.4 screensaver.4
 MLINKS+=ste.4 if_ste.4
 MLINKS+=stf.4 if_stf.4

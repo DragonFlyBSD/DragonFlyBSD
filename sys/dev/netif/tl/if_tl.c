@@ -969,7 +969,7 @@ tl_hardreset(device_t dev)
 static void
 tl_softreset(struct tl_softc *sc, int internal)
 {
-        u_int32_t               cmd, dummy, i;
+        u_int32_t               cmd, i;
 
         /* Assert the adapter reset bit. */
 	CMD_SET(sc, TL_CMD_ADRST);
@@ -979,7 +979,7 @@ tl_softreset(struct tl_softc *sc, int internal)
 
 	/* First, clear the stats registers. */
 	for (i = 0; i < 5; i++)
-		dummy = tl_dio_read32(sc, TL_TXGOODFRAMES);
+		tl_dio_read32(sc, TL_TXGOODFRAMES);
 
         /* Clear Areg and Hash registers */
 	for (i = 0; i < 8; i++)
@@ -1406,7 +1406,7 @@ tl_intvec_rxeof(void *xsc, u_int32_t type)
 		total_len = cur_rx->tl_ptr->tlist_frsize;
 
 		if (tl_newbuf(sc, cur_rx) == ENOBUFS) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			cur_rx->tl_ptr->tlist_frsize = MCLBYTES;
 			cur_rx->tl_ptr->tlist_cstat = TL_CSTAT_READY;
 			cur_rx->tl_ptr->tl_frag.tlist_dcnt = MCLBYTES;
@@ -1698,13 +1698,13 @@ tl_stats_update_serialized(void *xsc)
 	*p++ = CSR_READ_4(sc, TL_DIO_DATA);
 	*p++ = CSR_READ_4(sc, TL_DIO_DATA);
 
-	ifp->if_opackets += tl_tx_goodframes(tl_stats);
-	ifp->if_collisions += tl_stats.tl_tx_single_collision +
-				tl_stats.tl_tx_multi_collision;
-	ifp->if_ipackets += tl_rx_goodframes(tl_stats);
-	ifp->if_ierrors += tl_stats.tl_crc_errors + tl_stats.tl_code_errors +
-			    tl_rx_overrun(tl_stats);
-	ifp->if_oerrors += tl_tx_underrun(tl_stats);
+	IFNET_STAT_INC(ifp, opackets, tl_tx_goodframes(tl_stats));
+	IFNET_STAT_INC(ifp, collisions, tl_stats.tl_tx_single_collision +
+	    tl_stats.tl_tx_multi_collision);
+	IFNET_STAT_INC(ifp, ipackets, tl_rx_goodframes(tl_stats));
+	IFNET_STAT_INC(ifp, ierrors, tl_stats.tl_crc_errors +
+	    tl_stats.tl_code_errors + tl_rx_overrun(tl_stats));
+	IFNET_STAT_INC(ifp, oerrors, tl_tx_underrun(tl_stats));
 
 	if (tl_tx_underrun(tl_stats)) {
 		u_int8_t		tx_thresh;
@@ -2098,7 +2098,7 @@ tl_watchdog(struct ifnet *ifp)
 
 	if_printf(ifp, "device timeout\n");
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	tl_softreset(sc, 1);
 	tl_init(sc);

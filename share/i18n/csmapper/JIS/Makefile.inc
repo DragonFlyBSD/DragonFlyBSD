@@ -1,5 +1,4 @@
 # $NetBSD: Makefile.inc,v 1.6 2007/03/05 16:58:33 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/JIS/Makefile.inc,v 1.2 2008/04/10 10:21:10 hasso Exp $
 
 .PATH: ${.CURDIR}/JIS
 
@@ -32,11 +31,9 @@ MAPS_JIS=		JISX0201-KANA%UCS.mps \
 			UCS@BMP%JISX0213-2.mps UCS@SIP%JISX0213-2.mps
 
 mapper.dir.JIS: ${.CURDIR}/JIS/mapper.dir.JIS.src
-	${_MKTARGET_CREATE}
 	(echo "# JIS" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 charset.pivot.JIS: ${.CURDIR}/JIS/charset.pivot.JIS.src
-	${_MKTARGET_CREATE}
 	(echo "# JIS" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 FILES+= ${MAPS_JIS}

@@ -1,5 +1,4 @@
 # $NetBSD: UCS%TDS565.src,v 1.1 2006/11/29 15:45:26 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/MISC/UCS%TDS565.src,v 1.1 2008/04/10 10:21:11 hasso Exp $
 
 TYPE		ROWCOL
 NAME		UCS/TDS565

@@ -713,7 +713,7 @@ top_arstart:
 #ifndef NETGRAPH
 		BPF_MTAP(ifp, mtx);
 		m_freem(mtx);
-		++sc->ifsppp.pp_if.if_opackets;
+		IFNET_STAT_INC(&sc->ifsppp.pp_if, opackets, 1);
 #else	/* NETGRAPH */
 		m_freem(mtx);
 		sc->outbytes += len;
@@ -1707,7 +1707,7 @@ ar_get_packets(struct ar_softc *sc)
 #else
 			BPF_MTAP(&sc->ifsppp.pp_if, m);
 			sppp_input(&sc->ifsppp.pp_if, m);
-			sc->ifsppp.pp_if.if_ipackets++;
+			IFNET_STAT_INC(&sc->ifsppp.pp_if, ipackets, 1);
 #endif
 			/*
 			 * Update the eda to the previous descriptor.
@@ -1741,7 +1741,7 @@ ar_get_packets(struct ar_softc *sc)
 			ar_eat_packet(sc, 1);
 
 #ifndef	NETGRAPH
-			sc->ifsppp.pp_if.if_ierrors++;
+			IFNET_STAT_INC(&sc->ifsppp.pp_if, ierrors, 1);
 #else	/* NETGRAPH */
 			sc->ierrors[0]++;
 #endif	/* NETGRAPH */
@@ -1800,6 +1800,8 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 		 * Transmit channel
 		 */
 		if(isr1 & 0x0C) {
+			u_long opkt;
+
 			dmac = &sca->dmac[DMAC_TXCH(mch)];
 
 			if(hc->bustype == AR_BUS_ISA)
@@ -1810,37 +1812,37 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 
 			/* Counter overflow */
 			if(dsr & SCA_DSR_COF) {
-				kprintf("ar%d: TX DMA Counter overflow, "
-					"txpacket no %lu.\n",
-					sc->unit,
 #ifndef	NETGRAPH
-					sc->ifsppp.pp_if.if_opackets);
-				sc->ifsppp.pp_if.if_oerrors++;
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, opackets,
+				    opkt);
+				IFNET_STAT_INC(&sc->ifsppp.pp_if, oerrors, 1);
 #else	/* NETGRAPH */
-					sc->opackets);
+				opkt = sc->opackets;
 				sc->oerrors++;
 #endif	/* NETGRAPH */
+				kprintf("ar%d: TX DMA Counter overflow, "
+					"txpacket no %lu.\n",
+					sc->unit, opkt);
 			}
 
 			/* Buffer overflow */
 			if(dsr & SCA_DSR_BOF) {
+#ifndef	NETGRAPH
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, opackets,
+				    opkt);
+				IFNET_STAT_INC(&sc->ifsppp.pp_if, oerrors, 1);
+#else	/* NETGRAPH */
+				opkt = sc->opackets,
+				sc->oerrors++;
+#endif	/* NETGRAPH */
 				kprintf("ar%d: TX DMA Buffer overflow, "
 					"txpacket no %lu, dsr %02x, "
 					"cda %04x, eda %04x.\n",
 					sc->unit,
-#ifndef	NETGRAPH
-					sc->ifsppp.pp_if.if_opackets,
-#else	/* NETGRAPH */
-					sc->opackets,
-#endif	/* NETGRAPH */
+					opkt,
 					dsr,
 					dmac->cda,
 					dmac->eda);
-#ifndef	NETGRAPH
-				sc->ifsppp.pp_if.if_oerrors++;
-#else	/* NETGRAPH */
-				sc->oerrors++;
-#endif	/* NETGRAPH */
 			}
 
 			/* End of Transfer */
@@ -1869,6 +1871,8 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 		 * Receive channel
 		 */
 		if(isr1 & 0x03) {
+			u_long ipkt;
+
 			dmac = &sca->dmac[DMAC_RXCH(mch)];
 
 			if(hc->bustype == AR_BUS_ISA)
@@ -1886,11 +1890,12 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 
 				ar_get_packets(sc);
 #ifndef	NETGRAPH
-#define	IPACKETS sc->ifsppp.pp_if.if_ipackets
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, ipackets,
+				    ipkt);
 #else	/* NETGRAPH */
-#define	IPACKETS sc->ipackets
+				ipkt = sc->ipackets
 #endif	/* NETGRAPH */
-				TRC(if(tt == IPACKETS) {
+				TRC(if(tt == ipkt) {
 					sca_descriptor *rxdesc;
 					int i;
 
@@ -1926,36 +1931,39 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 							"len %d.\n",
 							rxdesc->stat,
 							rxdesc->len);
-				})
+				});
 			}
 
 			/* Counter overflow */
 			if(dsr & SCA_DSR_COF) {
-				kprintf("ar%d: RX DMA Counter overflow, "
-					"rxpkts %lu.\n",
-					sc->unit,
 #ifndef	NETGRAPH
-					sc->ifsppp.pp_if.if_ipackets);
-				sc->ifsppp.pp_if.if_ierrors++;
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, ipackets,
+				    ipkt);
+				IFNET_STAT_INC(&sc->ifsppp.pp_if, ierrors, 1);
 #else	/* NETGRAPH */
-					sc->ipackets);
+				ipkt = sc->ipackets;
 				sc->ierrors[1]++;
 #endif	/* NETGRAPH */
+				kprintf("ar%d: RX DMA Counter overflow, "
+					"rxpkts %lu.\n",
+					sc->unit, ipkt);
 			}
 
 			/* Buffer overflow */
 			if(dsr & SCA_DSR_BOF) {
+#ifndef	NETGRAPH
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, ipackets,
+				    ipkt);
+#else	/* NETGRAPH */
+				ipkt = sc->ipackets;
+#endif	/* NETGRAPH */
 				if(hc->bustype == AR_BUS_ISA)
 					ARC_SET_SCA(hc, scano);
 				kprintf("ar%d: RX DMA Buffer overflow, "
 					"rxpkts %lu, rxind %d, "
 					"cda %x, eda %x, dsr %x.\n",
 					sc->unit,
-#ifndef	NETGRAPH
-					sc->ifsppp.pp_if.if_ipackets,
-#else	/* NETGRAPH */
-					sc->ipackets,
-#endif	/* NETGRAPH */
+					ipkt,
 					sc->rxhind,
 					dmac->cda,
 					dmac->eda,
@@ -1966,7 +1974,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 				 */
 				ar_eat_packet(sc, 0);
 #ifndef	NETGRAPH
-				sc->ifsppp.pp_if.if_ierrors++;
+				IFNET_STAT_INC(&sc->ifsppp.pp_if, ierrors, 1);
 #else	/* NETGRAPH */
 				sc->ierrors[2]++;
 #endif	/* NETGRAPH */
@@ -1988,6 +1996,14 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 
 			/* End of Transfer */
 			if(dsr & SCA_DSR_EOT) {
+#ifndef	NETGRAPH
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, ipackets,
+				    ipkt);
+				IFNET_STAT_INC(&sc->ifsppp.pp_if, ierrors, 1);
+#else	/* NETGRAPH */
+				ipkt = sc->ipackets;
+				sc->ierrors[3]++;
+#endif	/* NETGRAPH */
 				/*
 				 * If this happen, it means that we are
 				 * receiving faster than what the processor
@@ -1996,14 +2012,7 @@ ar_dmac_intr(struct ar_hardc *hc, int scano, u_char isr1)
 				 * XXX We should enable the dma again.
 				 */
 				kprintf("ar%d: RX End of transfer, rxpkts %lu.\n",
-					sc->unit,
-#ifndef	NETGRAPH
-					sc->ifsppp.pp_if.if_ipackets);
-				sc->ifsppp.pp_if.if_ierrors++;
-#else	/* NETGRAPH */
-					sc->ipackets);
-				sc->ierrors[3]++;
-#endif	/* NETGRAPH */
+					sc->unit, ipkt);
 			}
 		}
 

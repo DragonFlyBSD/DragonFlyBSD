@@ -1,50 +1,17 @@
-# Makefile for libdialog
-# $FreeBSD: src/gnu/lib/libdialog/Makefile,v 1.31.2.5 2002/08/07 16:31:43 ru Exp $
-# $DragonFly: src/gnu/lib/libdialog/Makefile,v 1.3 2005/04/21 13:42:33 joerg Exp $
+CONTRIBDIR=	${.CURDIR}/../../../contrib/dialog
+.PATH:	${CONTRIBDIR}
 
-LIB=    dialog
-INCS=	dialog.h
+LIB=	dialog
+SHLIB_MAJOR= 6
 MAN=	dialog.3
-WARNS?=	2
-
-SHLIB_MAJOR= 5
-SRCS=   kernel.c rc.c checklist.c inputbox.c menubox.c msgbox.c \
-	lineedit.c radiolist.c textbox.c yesno.c prgbox.c raw_popen.c \
-	fselect.c ui_objects.c dir.c notify.c help.c gauge.c tree.c
-
-EXAMPLES= Makefile check1.c check2.c check3.c dselect.c fselect.c \
-	ftree1.c ftree1.test ftree2.c ftree2.test gauge.c input1.c \
-	input2.c menu1.c menu2.c menu3.c msg.c prgbox.c radio1.c \
-	radio2.c radio3.c text.c tree.c yesno.c
-
-CFLAGS+= -I${.CURDIR} -DLOCALE
-
-LDADD+= -lncurses
-DPADD+= ${LIBNCURSES}
-
-.if !defined(NOHTML)
-afterinstall:
-.for file in ${EXAMPLES}
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	      ${.CURDIR}/TESTS/${file} ${DESTDIR}/usr/share/examples/libdialog
-.endfor
-.endif
-
-MLINKS+=dialog.3 draw_shadow.3 dialog.3 draw_box.3 \
-	dialog.3 line_edit.3 dialog.3 strheight.3 \
-	dialog.3 strwidth.3 dialog.3 dialog_create_rc.3 \
-	dialog.3 dialog_yesno.3 dialog.3 dialog_noyes.3 \
-	dialog.3 dialog_prgbox.3 \
-	dialog.3 dialog_textbox.3 dialog.3 dialog_menu.3 \
-	dialog.3 dialog_checklist.3 dialog.3 dialog_radiolist.3 \
-	dialog.3 dialog_inputbox.3 dialog.3 dialog_clear_norefresh.3 \
-	dialog.3 dialog_clear.3 dialog.3 dialog_update.3 \
-	dialog.3 dialog_fselect.3 dialog.3 dialog_notify.3 \
-	dialog.3 dialog_mesgbox.3 dialog.3 dialog_gauge.3 \
-	dialog.3 init_dialog.3 dialog.3 end_dialog.3 \
-	dialog.3 use_helpfile.3 dialog.3 use_helpline.3 \
-	dialog.3 get_helpline.3 dialog.3 restore_helpline.3 \
-	dialog.3 dialog_msgbox.3 dialog.3 dialog_ftree.3 \
-	dialog.3 dialog_tree.3
+INCS=	dialog.h dlg_colors.h dlg_config.h dlg_keys.h
+SRCS=	argv.c arrows.c buildlist.c buttons.c \
+	calendar.c checklist.c columns.c dlg_keys.c editbox.c \
+	formbox.c fselect.c guage.c help.c inputbox.c inputstr.c \
+	menubox.c mixedform.c mixedgauge.c mouse.c mousewget.c msgbox.c \
+	pause.c prgbox.c progressbox.c rangebox.c rc.c \
+	tailbox.c textbox.c timebox.c trace.c treeview.c \
+	ui_getc.c util.c version.c yesno.c
+WARNS?=	3
 
 .include <bsd.lib.mk>

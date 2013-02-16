@@ -1,5 +1,4 @@
 # $NetBSD: Makefile.inc,v 1.7 2006/11/23 03:25:24 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/GB/Makefile.inc,v 1.2 2008/04/10 10:21:07 hasso Exp $
 
 .PATH: ${.CURDIR}/GB
 
@@ -26,11 +25,9 @@ MAPS_GB=		GB12345%UCS.mps \
 			UCS%ISO-IR-165EXT.mps
 
 mapper.dir.GB: ${.CURDIR}/GB/mapper.dir.GB.src
-	${_MKTARGET_CREATE}
 	(echo "# GB" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 charset.pivot.GB: ${.CURDIR}/GB/charset.pivot.GB.src
-	${_MKTARGET_CREATE}
 	(echo "# GB" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 FILES+= ${MAPS_GB}

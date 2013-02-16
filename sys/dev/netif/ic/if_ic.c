@@ -287,8 +287,8 @@ icintr (device_t dev, int event, char *ptr)
 	    goto err;
 
 	  len -= ICHDRLEN;
-	  sc->ic_if.if_ipackets ++;
-	  sc->ic_if.if_ibytes += len;
+	  IFNET_STAT_INC(&sc->ic_if, ipackets, 1);
+	  IFNET_STAT_INC(&sc->ic_if, ibytes, len);
 
 	  BPF_TAP(&sc->ic_if, sc->ic_ifbuf, len + ICHDRLEN);
 
@@ -302,7 +302,7 @@ icintr (device_t dev, int event, char *ptr)
 	  kprintf("ic%d: errors (%d)!\n", unit, sc->ic_iferrs);
 
 	  sc->ic_iferrs = 0;			/* reset error count */
-	  sc->ic_if.if_ierrors ++;
+	  IFNET_STAT_INC(&sc->ic_if, ierrors, 1);
 
 	  break;
 
@@ -355,7 +355,7 @@ icoutput(struct ifnet *ifp, struct mbuf *m,
 
 	/* already sending? */
 	if (sc->ic_sending) {
-		ifp->if_oerrors ++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		goto error;
 	}
 		
@@ -368,7 +368,7 @@ icoutput(struct ifnet *ifp, struct mbuf *m,
 	do {
 		if (len + mm->m_len > sc->ic_if.if_mtu) {
 			/* packet to large */
-			ifp->if_oerrors ++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			goto error;
 		}
 			
@@ -395,10 +395,10 @@ icoutput(struct ifnet *ifp, struct mbuf *m,
 	if (iicbus_block_write(parent, sc->ic_addr, sc->ic_obuf,
 				len + ICHDRLEN, &sent))
 
-		ifp->if_oerrors ++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	else {
-		ifp->if_opackets ++;
-		ifp->if_obytes += len;
+		IFNET_STAT_INC(ifp, opackets, 1);
+		IFNET_STAT_INC(ifp, obytes, len);
 	}
 
 	sc->ic_sending = 0;

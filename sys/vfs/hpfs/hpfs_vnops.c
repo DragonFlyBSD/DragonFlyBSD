@@ -970,7 +970,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 	int nameiop = cnp->cn_nameiop;
 	int flags = cnp->cn_flags;
 	int lockparent = flags & CNP_LOCKPARENT;
-#if HPFS_DEBUG
+#ifdef HPFS_DEBUG
 	int wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 #endif
 	*vpp = NULL;

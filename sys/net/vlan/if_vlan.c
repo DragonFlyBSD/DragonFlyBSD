@@ -532,7 +532,7 @@ vlan_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		if ((ifp_p->if_flags & (IFF_UP | IFF_RUNNING)) !=
 		    (IFF_UP | IFF_RUNNING)) {
 			m_freem(m);
-			ifp->if_data.ifi_collisions++;
+			IFNET_STAT_INC(ifp, collisions, 1);
 			continue;
 		}
 
@@ -555,7 +555,7 @@ vlan_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		nmp->base.lmsg.u.ms_resultp = ifp_p;
 
 		lwkt_sendmsg(p_port, &nmp->base.lmsg);
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 	}
 }
 
@@ -572,7 +572,7 @@ vlan_input(struct mbuf *m)
 
 	vlantrunks = rcvif->if_vlantrunks;
 	if (vlantrunks == NULL) {
-		rcvif->if_noproto++;
+		IFNET_STAT_INC(rcvif, noproto, 1);
 		m_freem(m);
 		return;
 	}
@@ -594,7 +594,7 @@ vlan_input(struct mbuf *m)
 	 *   or is being destroyed (ifv->ifv_p != rcvif)
 	 */
 	if (ifv == NULL || ifv->ifv_p != rcvif) {
-		rcvif->if_noproto++;
+		IFNET_STAT_INC(rcvif, noproto, 1);
 		m_freem(m);
 		return;
 	}

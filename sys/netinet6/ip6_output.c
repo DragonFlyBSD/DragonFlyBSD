@@ -948,8 +948,8 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 		ia6 = in6_ifawithifp(ifp, &ip6->ip6_src);
 		if (ia6) {
 			/* Record statistics for this interface address. */
-			ia6->ia_ifa.if_opackets++;
-			ia6->ia_ifa.if_obytes += m->m_pkthdr.len;
+			IFA_STAT_INC(&ia6->ia_ifa, opackets, 1);
+			IFA_STAT_INC(&ia6->ia_ifa, obytes, m->m_pkthdr.len);
 		}
 #ifdef IPSEC
 		/* clean ipsec history once it goes out of the node */
@@ -1081,8 +1081,9 @@ sendorfree:
 		if (error == 0) {
  			/* Record statistics for this interface address. */
  			if (ia) {
- 				ia->ia_ifa.if_opackets++;
- 				ia->ia_ifa.if_obytes += m->m_pkthdr.len;
+ 				IFA_STAT_INC(&ia->ia_ifa, opackets, 1);
+ 				IFA_STAT_INC(&ia->ia_ifa, obytes,
+				    m->m_pkthdr.len);
  			}
 #ifdef IPSEC
 			/* clean ipsec history once it goes out of the node */

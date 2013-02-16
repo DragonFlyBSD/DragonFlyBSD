@@ -1,5 +1,4 @@
 # $NetBSD: RISCOS-LATIN1.src,v 1.1 2007/04/01 18:52:31 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/MISC/RISCOS-LATIN1.src,v 1.1 2008/04/10 10:21:13 hasso Exp $
 
 NAME		"RISCOS-LATIN1"
 ENCODING	"NONE"

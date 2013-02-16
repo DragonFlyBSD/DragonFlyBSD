@@ -2174,13 +2174,12 @@ static uint32_t
 hdac_widget_pin_getcaps(struct hdac_widget *w)
 {
 	struct hdac_softc *sc;
-	uint32_t caps, orig, id;
+	uint32_t caps, orig;
 	nid_t cad, nid;
 
 	sc = w->devinfo->codec->sc;
 	cad = w->devinfo->codec->cad;
 	nid = w->nid;
-	id = hdac_codec_id(w->devinfo);
 
 	caps = hdac_command(sc,
 	    HDA_CMD_GET_PARAMETER(cad, nid, HDA_PARAM_PIN_CAP), cad);

@@ -505,7 +505,7 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 
 	if (ifp->if_flags & IFF_UP)
 		/* Count received bytes, add FCS and one flag */
-		ifp->if_ibytes += m->m_pkthdr.len + 3;
+		IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len + 3);
 
 	if (m->m_pkthdr.len <= PPP_HEADER_LEN) {
 		/* Too small packet, drop it. */
@@ -516,8 +516,8 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 drop:
 		m_freem (m);
 drop2:
-		++ifp->if_ierrors;
-		++ifp->if_iqdrops;
+		IFNET_STAT_INC(ifp, ierrors, 1);
+		IFNET_STAT_INC(ifp, iqdrops, 1);
 		return;
 	}
 
@@ -550,7 +550,7 @@ drop2:
 				sppp_cp_send (sp, PPP_LCP, PROTO_REJ,
 					++sp->pp_seq[IDX_LCP], m->m_pkthdr.len + 2,
 					&h->protocol);
-			++ifp->if_noproto;
+			IFNET_STAT_INC(ifp, noproto, 1);
 			goto drop;
 		case PPP_LCP:
 			sppp_cp_input(&lcp, sp, m);
@@ -666,7 +666,7 @@ drop2:
 		}
 		switch (ntohs (h->protocol)) {
 		default:
-			++ifp->if_noproto;
+			IFNET_STAT_INC(ifp, noproto, 1);
 			goto invalid;
 		case CISCO_KEEPALIVE:
 			sppp_cisco_input ((struct sppp*) ifp, m);
@@ -858,7 +858,7 @@ sppp_output_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 		if (debug)
 			log(LOG_DEBUG, SPP_FMT "no memory for transmit header\n",
 				SPP_ARGS(ifp));
-		++ifp->if_oerrors;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		crit_exit();
 		return (ENOBUFS);
 	}
@@ -924,7 +924,7 @@ sppp_output_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 #endif
 	default:
 		m_freem (m);
-		++ifp->if_oerrors;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		crit_exit();
 		return (EAFNOSUPPORT);
 	}
@@ -946,7 +946,7 @@ sppp_output_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 		rv = ifsq_enqueue(ifsq, m, &pktattr);
 	}
 	if (rv) {
-		++ifp->if_oerrors;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		crit_exit();
 		return(rv);
 	}
@@ -958,7 +958,7 @@ sppp_output_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 	 * The packet length includes header, FCS and 1 flag,
 	 * according to RFC 1333.
 	 */
-	ifp->if_obytes += m->m_pkthdr.len + 3;
+	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len + 3);
 
 	/*
 	 * Unlike in sppp_input(), we can always bump the timestamp
@@ -1390,7 +1390,7 @@ sppp_cisco_send(struct sppp *sp, int type, long par1, long par2)
 	ifsq = ifq_get_subq_default(&ifp->if_snd);
 	if (!ifsq_is_oactive(ifsq))
 		(*ifp->if_start) (ifp, ifsq);
-	ifp->if_obytes += m->m_pkthdr.len + 3;
+	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len + 3);
 }
 
 /*
@@ -1442,13 +1442,13 @@ sppp_cp_send(struct sppp *sp, u_short proto, u_char type,
 	if (IF_QFULL (&sp->pp_cpq)) {
 		IF_DROP (&sp->pp_fastq);
 		m_freem (m);
-		++ifp->if_oerrors;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
 	ifsq = ifq_get_subq_default(&ifp->if_snd);
 	if (!ifsq_is_oactive(ifsq))
 		(*ifp->if_start) (ifp, ifsq);
-	ifp->if_obytes += m->m_pkthdr.len + 3;
+	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len + 3);
 }
 
 /*
@@ -1494,7 +1494,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 				log(-1, SPP_FMT "%s invalid conf-req length %d\n",
 				       SPP_ARGS(ifp), cp->name,
 				       len);
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			break;
 		}
 		/* handle states where RCR doesn't get a SCA/SCN */
@@ -1556,7 +1556,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		}
 		break;
 	case CONF_ACK:
@@ -1565,7 +1565,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 				log(-1, SPP_FMT "%s id mismatch 0x%x != 0x%x\n",
 				       SPP_ARGS(ifp), cp->name,
 				       h->ident, sp->confid[cp->protoidx]);
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			break;
 		}
 		switch (sp->state[cp->protoidx]) {
@@ -1600,7 +1600,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		}
 		break;
 	case CONF_NAK:
@@ -1610,7 +1610,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 				log(-1, SPP_FMT "%s id mismatch 0x%x != 0x%x\n",
 				       SPP_ARGS(ifp), cp->name,
 				       h->ident, sp->confid[cp->protoidx]);
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			break;
 		}
 		if (h->type == CONF_NAK)
@@ -1650,7 +1650,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		}
 		break;
 
@@ -1683,7 +1683,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		}
 		break;
 	case TERM_ACK:
@@ -1714,7 +1714,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		}
 		break;
 	case CODE_REJ:
@@ -1741,7 +1741,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		}
 		break;
 	case PROTO_REJ:
@@ -1800,7 +1800,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			       SPP_ARGS(ifp), cp->name,
 			       sppp_cp_type_name(h->type),
 			       sppp_state_name(sp->state[cp->protoidx]));
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		}
 		break;
 	    }
@@ -1816,7 +1816,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			if (debug)
 				log(-1, SPP_FMT "lcp echo req but lcp closed\n",
 				       SPP_ARGS(ifp));
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			break;
 		}
 		if (len < 8) {
@@ -1850,7 +1850,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 		if (cp->proto != PPP_LCP)
 			goto illegal;
 		if (h->ident != sp->lcp.echoid) {
-			++ifp->if_ierrors;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			break;
 		}
 		if (len < 8) {
@@ -1875,7 +1875,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			       SPP_ARGS(ifp), cp->name, h->type);
 		sppp_cp_send(sp, cp->proto, CODE_REJ,
 			     ++sp->pp_seq[cp->protoidx], m->m_pkthdr.len, h);
-		++ifp->if_ierrors;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 	}
 }
 
@@ -4782,13 +4782,13 @@ sppp_auth_send(const struct cp *cp, struct sppp *sp,
 	if (IF_QFULL (&sp->pp_cpq)) {
 		IF_DROP (&sp->pp_fastq);
 		m_freem (m);
-		++ifp->if_oerrors;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	} else
 		IF_ENQUEUE (&sp->pp_cpq, m);
 	ifsq = ifq_get_subq_default(&ifp->if_snd);
 	if (!ifsq_is_oactive(ifsq))
 		(*ifp->if_start) (ifp, ifsq);
-	ifp->if_obytes += m->m_pkthdr.len + 3;
+	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len + 3);
 }
 
 /*
@@ -4917,17 +4917,7 @@ sppp_set_ip_addr(struct sppp *sp, u_long src)
 
 	if (ifac != NULL && si != NULL) {
 		int error;
-#if __NetBSD_Version__ >= 103080000
-		struct sockaddr_in new_sin = *si;
 
-		new_sin.sin_addr.s_addr = htonl(src);
-		error = in_ifinit(ifp, ifatoia(ifa), &new_sin, 1);
-		if(debug && error)
-		{
-			log(LOG_DEBUG, SPP_FMT "sppp_set_ip_addr: in_ifinit "
-			" failed, error=%d\n", SPP_ARGS(ifp), error);
-		}
-#else
 		/* delete old route */
 		error = rtinit(ifa, (int)RTM_DELETE, RTF_HOST);
 		if(debug && error)
@@ -4950,7 +4940,6 @@ sppp_set_ip_addr(struct sppp *sp, u_long src)
 			log(LOG_DEBUG, SPP_FMT "sppp_set_ip_addr: rtinit ADD failed, error=%d",
 		    		SPP_ARGS(ifp), error);
 		}
-#endif
 	}
 }
 

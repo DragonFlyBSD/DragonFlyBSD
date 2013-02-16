@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_access.c,v 1.15 1999/08/28 00:41:04 peter Exp $
- * $DragonFly: src/sys/ddb/db_access.c,v 1.4 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -47,6 +46,10 @@ static unsigned db_extend[] = {	/* table for sign-extending */
 	0xFFFF8000U,
 	0xFF800000U
 };
+
+#ifndef BYTE_MSF
+#define	BYTE_MSF	0
+#endif
 
 db_expr_t
 db_get_value(db_addr_t addr, int size, boolean_t is_signed)

@@ -44,7 +44,6 @@
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pci/cmireg.h>
-#include <dev/sound/isa/sb.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

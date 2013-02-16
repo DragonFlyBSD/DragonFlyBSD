@@ -1384,9 +1384,9 @@ sis_rxeof(struct sis_softc *sc)
 	 	 * comes up in the ring.
 		 */
 		if (!(rxstat & SIS_CMDSTS_PKT_OK)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			if (rxstat & SIS_RXSTAT_COLL)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			sis_setup_rxdesc(sc, idx);
 			continue;
 		}
@@ -1396,12 +1396,12 @@ sis_rxeof(struct sis_softc *sc)
 			m->m_pkthdr.len = m->m_len = total_len;
 			m->m_pkthdr.rcvif = ifp;
 		} else {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			sis_setup_rxdesc(sc, idx);
 			continue;
 		}
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		ifp->if_input(ifp, m);
 	}
 	sc->sis_cdata.sis_rx_prod = i;
@@ -1445,17 +1445,17 @@ sis_txeof(struct sis_softc *sc)
 			continue;
 
 		if (!(cur_tx->sis_ctl & SIS_CMDSTS_PKT_OK)) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (cur_tx->sis_txstat & SIS_TXSTAT_EXCESSCOLLS)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			if (cur_tx->sis_txstat & SIS_TXSTAT_OUTOFWINCOLL)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 		}
 
-		ifp->if_collisions +=
-		    (cur_tx->sis_txstat & SIS_TXSTAT_COLLCNT) >> 16;
+		IFNET_STAT_INC(ifp, collisions,
+		    (cur_tx->sis_txstat & SIS_TXSTAT_COLLCNT) >> 16);
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		if (td->sis_mbuf != NULL) {
 			bus_dmamap_unload(cd->sis_txbuf_tag, td->sis_map);
 			m_freem(td->sis_mbuf);
@@ -1726,7 +1726,7 @@ sis_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 		error = sis_encap(sc, &m_head, &idx);
 		if (error) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (sc->sis_cdata.sis_tx_cnt == 0) {
 				continue;
 			} else {
@@ -2007,7 +2007,7 @@ sis_watchdog(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	if_printf(ifp, "watchdog timeout\n");
 
 	sis_stop(sc);

@@ -106,7 +106,8 @@ void acu_nap (unsigned int how_long)
 
 #endif /* HAVE_USLEEP */
 
-void acu_hw_flow_control (hw_flow_control)
+void
+acu_hw_flow_control(int hw_flow_control)
 {
 #if HAVE_TERMIOS
 	struct termios t;

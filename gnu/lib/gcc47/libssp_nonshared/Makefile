@@ -1,4 +1,3 @@
-CFLAGS+=	-I${.CURDIR}/libssp
 .include "../Makefile.inc"
 .PATH: ${GCCDIR}/libssp
 

@@ -181,7 +181,7 @@ disconnect(reason)
 }
 
 static void
-acuabort(s)
+acuabort(int s)
 {
 	signal(s, SIG_IGN);
 	longjmp(jmpbuf, 1);

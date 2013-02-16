@@ -31,7 +31,6 @@
  *
  * @(#)update.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/update.c,v 1.6 1999/11/30 03:48:21 billf Exp $
- * $DragonFly: src/games/atc/update.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -253,12 +252,12 @@ name(const PLANE *p)
 char
 number(char l)
 {
-	if (l < 'a' && l > 'z' && l < 'A' && l > 'Z')
-		return (-1);
-	else if (l >= 'a' && l <= 'z')
+	if (islower(l))
 		return (l - 'a');
-	else
+	else if (isupper(l))
 		return (l - 'A');
+	else
+		return (-1);
 }
 
 static int

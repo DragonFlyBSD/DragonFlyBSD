@@ -2323,7 +2323,7 @@ bge_attach(device_t dev)
 		sc->bge_rx_coal_bds_int = BGE_RX_COAL_BDS_MIN;
 		sc->bge_tx_coal_bds_int = BGE_TX_COAL_BDS_MIN;
 	}
-	sc->bge_tx_wreg = 16;
+	sc->bge_tx_wreg = BGE_TX_WREG_NSEGS;
 
 	/* Set up TX spare and reserved descriptor count */
 	if (sc->bge_flags & BGE_FLAG_TSO) {
@@ -2930,7 +2930,7 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod, int count)
 			jumbocnt++;
 
 			if (rxidx != sc->bge_jumbo) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				if_printf(ifp, "sw jumbo index(%d) "
 				    "and hw jumbo index(%d) mismatch, drop!\n",
 				    sc->bge_jumbo, rxidx);
@@ -2940,12 +2940,12 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod, int count)
 
 			m = sc->bge_cdata.bge_rx_jumbo_chain[rxidx].bge_mbuf;
 			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bge_setup_rxdesc_jumbo(sc, sc->bge_jumbo);
 				continue;
 			}
 			if (bge_newbuf_jumbo(sc, sc->bge_jumbo, 0)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bge_setup_rxdesc_jumbo(sc, sc->bge_jumbo);
 				continue;
 			}
@@ -2954,7 +2954,7 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod, int count)
 			stdcnt++;
 
 			if (rxidx != sc->bge_std) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				if_printf(ifp, "sw std index(%d) "
 				    "and hw std index(%d) mismatch, drop!\n",
 				    sc->bge_std, rxidx);
@@ -2964,18 +2964,18 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod, int count)
 
 			m = sc->bge_cdata.bge_rx_std_chain[rxidx].bge_mbuf;
 			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bge_setup_rxdesc_std(sc, sc->bge_std);
 				continue;
 			}
 			if (bge_newbuf_std(sc, sc->bge_std, 0)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bge_setup_rxdesc_std(sc, sc->bge_std);
 				continue;
 			}
 		}
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 #if !defined(__i386__) && !defined(__x86_64__)
 		/*
 		 * The x86 allows unaligned accesses, but for other
@@ -3039,7 +3039,7 @@ bge_txeof(struct bge_softc *sc, uint16_t tx_cons)
 
 		idx = sc->bge_tx_saved_considx;
 		if (sc->bge_cdata.bge_tx_chain[idx] != NULL) {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			bus_dmamap_unload(sc->bge_cdata.bge_tx_mtag,
 			    sc->bge_cdata.bge_tx_dmamap[idx]);
 			m_freem(sc->bge_cdata.bge_tx_chain[idx]);
@@ -3306,12 +3306,11 @@ bge_stats_update_regs(struct bge_softc *sc)
 		s++;
 	}
 
-	ifp->if_collisions +=
+	IFNET_STAT_SET(ifp, collisions,
 	   (stats.dot3StatsSingleCollisionFrames +
 	   stats.dot3StatsMultipleCollisionFrames +
 	   stats.dot3StatsExcessiveCollisions +
-	   stats.dot3StatsLateCollisions) -
-	   ifp->if_collisions;
+	   stats.dot3StatsLateCollisions));
 }
 
 static void
@@ -3325,7 +3324,7 @@ bge_stats_update(struct bge_softc *sc)
 #define READ_STAT(sc, stats, stat)	\
 	CSR_READ_4(sc, stats + offsetof(struct bge_stats, stat))
 
-	ifp->if_collisions +=
+	IFNET_STAT_SET(ifp, collisions,
 	   (READ_STAT(sc, stats,
 		txstats.dot3StatsSingleCollisionFrames.bge_addr_lo) +
 	    READ_STAT(sc, stats,
@@ -3333,18 +3332,16 @@ bge_stats_update(struct bge_softc *sc)
 	    READ_STAT(sc, stats,
 		txstats.dot3StatsExcessiveCollisions.bge_addr_lo) +
 	    READ_STAT(sc, stats,
-		txstats.dot3StatsLateCollisions.bge_addr_lo)) -
-	   ifp->if_collisions;
+		txstats.dot3StatsLateCollisions.bge_addr_lo)));
 
 #undef READ_STAT
 
 #ifdef notdef
-	ifp->if_collisions +=
+	IFNET_STAT_SET(ifp, collisions,
 	   (sc->bge_rdata->bge_info.bge_stats.dot3StatsSingleCollisionFrames +
 	   sc->bge_rdata->bge_info.bge_stats.dot3StatsMultipleCollisionFrames +
 	   sc->bge_rdata->bge_info.bge_stats.dot3StatsExcessiveCollisions +
-	   sc->bge_rdata->bge_info.bge_stats.dot3StatsLateCollisions) -
-	   ifp->if_collisions;
+	   sc->bge_rdata->bge_info.bge_stats.dot3StatsLateCollisions));
 #endif
 }
 
@@ -3559,7 +3556,7 @@ bge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 */
 		if (bge_encap(sc, &m_head, &prodidx, &nsegs)) {
 			ifq_set_oactive(&ifp->if_snd);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			break;
 		}
 
@@ -3934,7 +3931,7 @@ bge_watchdog(struct ifnet *ifp)
 
 	bge_init(sc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -4621,7 +4618,6 @@ static void
 bge_coal_change(struct bge_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -4629,7 +4625,7 @@ bge_coal_change(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS,
 			    sc->bge_rx_coal_ticks);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_RX_COAL_TICKS);
+		CSR_READ_4(sc, BGE_HCC_RX_COAL_TICKS);
 
 		if (bootverbose) {
 			if_printf(ifp, "rx_coal_ticks -> %u\n",
@@ -4641,7 +4637,7 @@ bge_coal_change(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS,
 			    sc->bge_tx_coal_ticks);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_TX_COAL_TICKS);
+		CSR_READ_4(sc, BGE_HCC_TX_COAL_TICKS);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_coal_ticks -> %u\n",
@@ -4653,7 +4649,7 @@ bge_coal_change(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS,
 			    sc->bge_rx_coal_bds);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS);
+		CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS);
 
 		if (bootverbose) {
 			if_printf(ifp, "rx_coal_bds -> %u\n",
@@ -4665,7 +4661,7 @@ bge_coal_change(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS,
 			    sc->bge_tx_coal_bds);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS);
+		CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_max_coal_bds -> %u\n",
@@ -4677,7 +4673,7 @@ bge_coal_change(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS_INT,
 		    sc->bge_rx_coal_ticks_int);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_RX_COAL_TICKS_INT);
+		CSR_READ_4(sc, BGE_HCC_RX_COAL_TICKS_INT);
 
 		if (bootverbose) {
 			if_printf(ifp, "rx_coal_ticks_int -> %u\n",
@@ -4689,7 +4685,7 @@ bge_coal_change(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS_INT,
 		    sc->bge_tx_coal_ticks_int);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_TX_COAL_TICKS_INT);
+		CSR_READ_4(sc, BGE_HCC_TX_COAL_TICKS_INT);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_coal_ticks_int -> %u\n",
@@ -4701,7 +4697,7 @@ bge_coal_change(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT,
 		    sc->bge_rx_coal_bds_int);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT);
+		CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT);
 
 		if (bootverbose) {
 			if_printf(ifp, "rx_coal_bds_int -> %u\n",
@@ -4713,7 +4709,7 @@ bge_coal_change(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT,
 		    sc->bge_tx_coal_bds_int);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT);
+		CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_coal_bds_int -> %u\n",

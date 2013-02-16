@@ -1,5 +1,4 @@
 # $NetBSD: Makefile.inc,v 1.3 2007/03/05 16:57:14 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/CNS/Makefile.inc,v 1.1 2008/04/10 10:21:03 hasso Exp $
 
 .PATH: ${.CURDIR}/CNS
 
@@ -22,11 +21,9 @@ MAPS_CNS=		CNS11643-1%UCS.mps \
 			UCS@BMP%CNS11643-7.mps UCS@SIP%CNS11643-7.mps
 
 mapper.dir.CNS: ${.CURDIR}/CNS/mapper.dir.CNS.src
-	${_MKTARGET_CREATE}
 	(echo "# CNS" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 charset.pivot.CNS: ${.CURDIR}/CNS/charset.pivot.CNS.src
-	${_MKTARGET_CREATE}
 	(echo "# CNS" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 FILES+= ${MAPS_CNS}

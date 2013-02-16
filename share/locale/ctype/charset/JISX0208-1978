@@ -1,5 +1,4 @@
-/*	$NetBSD: src/share/locale/ctype/charset/JISX0208-1978,v 1.1 2000/12/30 02:33:20 itojun Exp $	*/
-/*	$DragonFly: src/share/locale/ctype/charset/JISX0208-1978,v 1.1 2005/03/11 15:57:42 joerg Exp $ */
+/*	$NetBSD: JISX0208-1978,v 1.2 2006/04/11 18:45:03 tnozaki Exp $	*/
 
 /*
  * JIS X0208-1978 - (ESC $ ( @ or ESC $ @)
@@ -8,6 +7,8 @@
 CHARSET		"$(@"
 
 SPACE		0x2121
+BLANK		0x2121
+PRINT		0x2121
 PHONOGRAM	0x213c
 SPECIAL     	0x2122 - 0x217e
 PUNCT		0x2122 - 0x2178		/* A few too many in here... */

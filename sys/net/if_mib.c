@@ -103,6 +103,20 @@ sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 		COPY(flags);
 		COPY(data);
 #undef COPY
+#define COPY_DATA(name)	IFNET_STAT_GET(ifp, name, ifmd.ifmd_data.ifi_##name)
+		COPY_DATA(ipackets);
+		COPY_DATA(ierrors);
+		COPY_DATA(opackets);
+		COPY_DATA(oerrors);
+		COPY_DATA(collisions);
+		COPY_DATA(ibytes);
+		COPY_DATA(obytes);
+		COPY_DATA(imcasts);
+		COPY_DATA(omcasts);
+		COPY_DATA(iqdrops);
+		COPY_DATA(noproto);
+#undef COPY_DATA
+
 		ifmd.ifmd_snd_maxlen = ifp->if_snd.altq_maxlen;
 #ifdef notyet
 		ifmd.ifmd_snd_len = ifp->if_snd.ifq_len;
@@ -128,12 +142,25 @@ sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 #undef DONTCOPY
 #define COPY(fld) ifp->if_##fld = ifmd.ifmd_##fld
 		COPY(data);
+#undef COPY
+#define COPY_DATA(name)	IFNET_STAT_SET(ifp, name, ifmd.ifmd_data.ifi_##name)
+		COPY_DATA(ipackets);
+		COPY_DATA(ierrors);
+		COPY_DATA(opackets);
+		COPY_DATA(oerrors);
+		COPY_DATA(collisions);
+		COPY_DATA(ibytes);
+		COPY_DATA(obytes);
+		COPY_DATA(imcasts);
+		COPY_DATA(omcasts);
+		COPY_DATA(iqdrops);
+		COPY_DATA(noproto);
+#undef COPY_DATA
 
 #ifdef notyet
 		ifp->if_snd.ifq_maxlen = ifmd.ifmd_snd_maxlen;
 		ifp->if_snd.ifq_drops = ifmd.ifmd_snd_drops;
 #endif
-#undef COPY
 		break;
 
 	case IFDATA_LINKSPECIFIC:

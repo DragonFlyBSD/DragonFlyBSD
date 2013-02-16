@@ -1652,7 +1652,6 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 		struct mbuf *mcp;
 		struct ip6_hdr *eip6;
 		u_int32_t *reghdr;
-		int rc;
 	
 		++pim6stat.pim6s_rcv_registers;
 
@@ -1754,8 +1753,8 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 		}
 #endif
 
- 		rc = if_simloop(mif6table[reg_mif_num].m6_ifp, m,
-				dst.sin6_family, 0);
+ 		if_simloop(mif6table[reg_mif_num].m6_ifp, m,
+		    dst.sin6_family, 0);
 	
 		/* prepare the register head to send to the mrouting daemon */
 		m = mcp;

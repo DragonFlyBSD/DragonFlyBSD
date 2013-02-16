@@ -99,6 +99,9 @@
 /* Interrupt throttle rate */
 #define EMX_DEFAULT_ITR			6000
 
+/* Number of segments sent before writing to TX related registers */
+#define EMX_DEFAULT_TXWREG		8
+
 /*
  * This parameter controls whether or not autonegotation is enabled.
  *              0 - Disable autonegotiation
@@ -144,10 +147,15 @@
 #define EMX_DBA_ALIGN			128
 
 /*
- * Speed mode bit in TARC0/TARC1.
+ * Speed mode bit in TARC0.
  * 82571EB/82572EI only, used to improve small packet transmit performance.
  */
 #define EMX_TARC_SPEED_MODE		(1 << 21)
+
+/*
+ * Multiple TX queues arbitration count mask in TARC0/TARC1.
+ */
+#define EMX_TARC_COUNT_MASK		0x7f
 
 #define EMX_MAX_SCATTER			64
 #define EMX_TSO_SIZE			(IP_MAXPACKET + \
@@ -177,7 +185,8 @@
 #define EMX_RETA_RINGIDX_SHIFT		7
 
 #define EMX_NRX_RING			2
-#define EMX_NSERIALIZE			4
+#define EMX_NTX_RING			2
+#define EMX_NSERIALIZE			5
 
 typedef union e1000_rx_desc_extended	emx_rxdesc_t;
 
@@ -235,7 +244,12 @@ struct emx_rxdata {
 struct emx_txdata {
 	struct lwkt_serialize	tx_serialize;
 	struct emx_softc	*sc;
+	struct ifaltq_subque	*ifsq;
 	int			idx;
+	uint32_t		tx_flags;
+#define EMX_TXFLAG_TSO_PULLEX	0x1
+#define EMX_TXFLAG_ENABLED	0x2
+#define EMX_TXFLAG_FORCECTX	0x4
 
 	/*
 	 * Transmit definitions
@@ -300,7 +314,7 @@ struct emx_txdata {
 	 * tx_dd_head points to the first valid element in
 	 * tx_dd[].
 	 */
-	int			tx_int_nsegs;
+	int			tx_intr_nsegs;
 	int			tx_nsegs;
 	int			tx_dd_tail;
 	int			tx_dd_head;
@@ -308,7 +322,10 @@ struct emx_txdata {
 #define EMX_TXDD_SAFE	48 /* 48 <= val < EMX_TXDD_MAX */
 	int			tx_dd[EMX_TXDD_MAX];
 
+	struct ifsubq_watchdog	tx_watchdog;
+
 	/* TX statistics */
+	unsigned long		tx_pkts;
 	unsigned long		tso_segments;
 	unsigned long		tso_ctx_reused;
 
@@ -322,7 +339,6 @@ struct emx_softc {
 	struct e1000_hw		hw;
 	int			flags;
 #define EMX_FLAG_SHARED_INTR	0x0001
-#define EMX_FLAG_TSO_PULLEX	0x0002
 #define EMX_FLAG_HAS_MGMT	0x0004
 #define EMX_FLAG_HAS_AMT	0x0008
 #define EMX_FLAG_HW_CTRL	0x0010
@@ -366,7 +382,9 @@ struct emx_softc {
 	struct lwkt_serialize	main_serialize;
 	struct lwkt_serialize	*serializes[EMX_NSERIALIZE];
 
-	struct emx_txdata	tx_data;
+	int			tx_ring_cnt;
+	int			tx_ring_inuse;
+	struct emx_txdata	tx_data[EMX_NTX_RING];
 
 	int			rss_debug;
 	int			rx_ring_cnt;

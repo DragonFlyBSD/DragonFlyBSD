@@ -26,7 +26,7 @@ HAVE_PNP=	yes
 HAVE_ISABUS=	yes
 
 BOOT_DLOADER=	yes
-CFLAGS+=	-I${.CURDIR}/../../dloader -I${.CURDIR}/../../dloader/i386
+CFLAGS+=	-I${.CURDIR}/../../dloader
 .if exists(${.OBJDIR}/../../dloader/libdloader.a)
 LIBDLOADER=	${.OBJDIR}/../../dloader/libdloader.a
 .else

@@ -1,5 +1,4 @@
 # $NetBSD
-# $DragonFly: src/share/i18n/csmapper/KAZAKH/UCS%PTCP154.src,v 1.1 2008/04/10 10:21:10 hasso Exp $
 
 TYPE		ROWCOL
 NAME		UCS/PTCP154

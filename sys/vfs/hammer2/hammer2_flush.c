@@ -255,6 +255,9 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 	hammer2_chain_unlock(hmp, parent);
 }
 
+/*
+ * chain is locked by the caller and remains locked on return.
+ */
 static void
 hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 			  hammer2_flush_info_t *info)
@@ -540,9 +543,12 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		goto done;
 	}
 
+#if 0
 	/*
 	 * Synchronize cumulative data and inode count adjustments to
 	 * the inode and propagate the deltas upward to the parent.
+	 *
+	 * XXX removed atm
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		hammer2_inode_t *ip;
@@ -557,6 +563,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		ip->delta_icount = 0;
 		ip->delta_dcount = 0;
 	}
+#endif
 
 	/*
 	 * Flush if MODIFIED or MODIFIED_AUX is set.  MODIFIED_AUX is only
@@ -691,6 +698,8 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		bref = &chain->bref;
 
 		KKASSERT((bref->data_off & HAMMER2_OFF_MASK) != 0);
+		KKASSERT(HAMMER2_DEC_CHECK(chain->bref.methods) ==
+			 HAMMER2_CHECK_ISCSI32);
 
 		if (chain->bp == NULL) {
 			/*

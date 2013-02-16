@@ -1,4 +1,13 @@
 
+* on fresh mount with multiple hardlinks present separate lookups will
+  result in separate vnodes pointing to separate inodes pointing to a
+  common chain (the hardlink target).
+
+  When the hardlink target consolidates upward only one vp/ip will be
+  adjusted.  We need code to fixup the other chains (probably put in
+  inode_lock_*()) which will be pointing to an older deleted hardlink
+  target.
+
 * Filesystem must ensure that modify_tid is not too large relative to
   the iterator in the volume header, on load, or flush sequencing will
   not work properly.  We should be able to just override it, but we

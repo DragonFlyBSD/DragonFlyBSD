@@ -51,36 +51,15 @@
 #endif
 #include <sys/thread2.h>
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-#include <machine/clock.h>		/* for DELAY() */
-#endif
-
-#ifdef __DragonFly__
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
-#include "firewire.h"
-#include "firewirereg.h"
+#include <bus/firewire/firewire.h>
+#include <bus/firewire/firewirereg.h>
 
-#include "fwdma.h"
-#include "fwohcireg.h"
-#include "fwohcivar.h"
-#else
-#if __FreeBSD_version < 500000
-#include <pci/pcivar.h>
-#include <pci/pcireg.h>
-#else
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
-#endif
-
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-
-#include <dev/firewire/fwdma.h>
-#include <dev/firewire/fwohcireg.h>
-#include <dev/firewire/fwohcivar.h>
-#endif
+#include <bus/firewire/fwdma.h>
+#include <bus/firewire/fwohcireg.h>
+#include <bus/firewire/fwohcivar.h>
 
 static int fwohci_pci_attach(device_t self);
 static int fwohci_pci_detach(device_t self);
@@ -272,8 +251,8 @@ fwohci_pci_attach(device_t self)
 	fwohci_softc_t *sc = device_get_softc(self);
 	int err;
 	int rid;
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	int intr;
+
 	/* For the moment, put in a message stating what is wrong */
 	intr = pci_read_config(self, PCIR_INTLINE, 1);
 	if (intr == 0 || intr == 255) {
@@ -282,7 +261,6 @@ fwohci_pci_attach(device_t self)
 		device_printf(self, "Please switch PNP-OS to 'No' in BIOS\n");
 #endif
 	}
-#endif
 
 	if (bootverbose)
 		firewire_debug = bootverbose;

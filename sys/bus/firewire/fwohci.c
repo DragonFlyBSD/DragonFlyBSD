@@ -55,25 +55,12 @@
 
 #include <sys/thread2.h>
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-#include <machine/clock.h>		/* for DELAY() */
-#endif
-
-#ifdef __DragonFly__
-#include "firewire.h"
-#include "firewirereg.h"
-#include "fwdma.h"
-#include "fwohcireg.h"
-#include "fwohcivar.h"
-#include "firewire_phy.h"
-#else
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-#include <dev/firewire/fwdma.h>
-#include <dev/firewire/fwohcireg.h>
-#include <dev/firewire/fwohcivar.h>
-#include <dev/firewire/firewire_phy.h>
-#endif
+#include <bus/firewire/firewire.h>
+#include <bus/firewire/firewirereg.h>
+#include <bus/firewire/fwdma.h>
+#include <bus/firewire/fwohcireg.h>
+#include <bus/firewire/fwohcivar.h>
+#include <bus/firewire/firewire_phy.h>
 
 #undef OHCI_DEBUG
 
@@ -1817,12 +1804,7 @@ busresetout:
 #ifndef ACK_ALL
 		OWRITE(sc, FWOHCI_INTSTATCLR, OHCI_INT_DMA_IR);
 #endif
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		irstat = sc->irstat;
-		sc->irstat = 0;
-#else
 		irstat = atomic_readandclear_int(&sc->irstat);
-#endif
 		for(i = 0; i < fc->nisodma ; i++){
 			struct fwohci_dbch *dbch;
 
@@ -1841,12 +1823,7 @@ busresetout:
 #ifndef ACK_ALL
 		OWRITE(sc, FWOHCI_INTSTATCLR, OHCI_INT_DMA_IT);
 #endif
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		itstat = sc->itstat;
-		sc->itstat = 0;
-#else
 		itstat = atomic_readandclear_int(&sc->itstat);
-#endif
 		for(i = 0; i < fc->nisodma ; i++){
 			if((itstat & (1 << i)) != 0){
 				fwohci_tbuf_update(sc, i);
@@ -2372,13 +2349,8 @@ print_db(struct fwohcidb_tr *db_tr, struct fwohcidb *db,
 		res = FWOHCI_DMA_READ(db[i].db.desc.res);
 		key = cmd & OHCI_KEY_MASK;
 		stat = res >> OHCI_STATUS_SHIFT;
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		kprintf("%08x %s %s %s %s %5d %08lx %08lx %04x:%04x",
-				(unsigned int)db_tr->bus_addr,
-#else
 		kprintf("%08jx %s %s %s %s %5d %08lx %08lx %04x:%04x",
 				(uintmax_t)db_tr->bus_addr,
-#endif
 				dbcode[(cmd >> 28) & 0xf],
 				dbkey[(cmd >> 24) & 0x7],
 				dbcond[(cmd >> 20) & 0x3],

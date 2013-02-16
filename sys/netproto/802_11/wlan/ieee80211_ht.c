@@ -1752,11 +1752,16 @@ ht_recv_action_ba_delba(struct ieee80211_node *ni,
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ieee80211_rx_ampdu *rap;
 	struct ieee80211_tx_ampdu *tap;
-	uint16_t baparamset, code;
+	uint16_t baparamset;
+#ifdef IEEE80211_DEBUG
+	uint16_t code;
+#endif
 	int tid, ac;
 
 	baparamset = LE_READ_2(frm+2);
+#ifdef IEEE80211_DEBUG
 	code = LE_READ_2(frm+4);
+#endif
 
 	tid = MS(baparamset, IEEE80211_DELBAPS_TID);
 

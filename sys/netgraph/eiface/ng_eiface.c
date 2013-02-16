@@ -258,8 +258,8 @@ ng_eiface_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 
 	/* Update stats */
 	if (error == 0) {
-		ifp->if_obytes += len;
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, obytes, len);
+		IFNET_STAT_INC(ifp, opackets, 1);
 	}
 
 	ifq_clr_oactive(&ifp->if_snd);
@@ -510,7 +510,7 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	m->m_pkthdr.rcvif = ifp;
 
 	/* Update interface stats */
-	ifp->if_ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 
 	BPF_MTAP(ifp, m);
 

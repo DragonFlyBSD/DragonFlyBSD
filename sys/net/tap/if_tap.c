@@ -97,7 +97,7 @@ DEVFS_DECLARE_CLONE_BITMAP(tap);
 static int 		tapmodevent	(module_t, int, void *);
 
 /* device */
-static struct tap_softc *tapcreate(int, cdev_t);
+static struct tap_softc *tapcreate(int, cdev_t, int);
 static void		tapdestroy(struct tap_softc *);
 
 /* clone */
@@ -220,7 +220,7 @@ tapmodevent(module_t mod, int type, void *data)
  * tapcreate - create or clone an interface
  */
 static struct tap_softc *
-tapcreate(int unit, cdev_t dev)
+tapcreate(int unit, cdev_t dev, int flags)
 {
 	const char	*name = TAP;
 	struct ifnet	*ifp;
@@ -231,6 +231,7 @@ tapcreate(int unit, cdev_t dev)
 	dev->si_drv1 = tp;
 	tp->tap_dev = dev;
 	tp->tap_unit = unit;
+	tp->tap_flags |= flags;
 
 	reference_dev(dev);	/* tp association */
 
@@ -303,7 +304,7 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 		}
 
 		KKASSERT(dev != NULL);
-		tp = tapcreate(unit, dev);
+		tp = tapcreate(unit, dev, TAP_MANUALMAKE);
 	}
 	tp->tap_flags |= TAP_CLONE;
 	TAPDEBUG(&tp->tap_if, "clone created. minor = %#x tap_flags = 0x%x\n",
@@ -333,7 +334,7 @@ tapopen(struct dev_open_args *ap)
 	dev = ap->a_head.a_dev;
 	tp = dev->si_drv1;
 	if (tp == NULL)
-		tp = tapcreate(minor(dev), dev);
+		tp = tapcreate(minor(dev), dev, TAP_MANUALMAKE);
 	if (tp->tap_flags & TAP_OPEN) {
 		rel_mplock();
 		return (EBUSY);
@@ -381,7 +382,7 @@ tapclone(struct dev_clone_args *ap)
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tap), 0);
 	ap->a_dev = make_only_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
 				  0600, "%s%d", TAP, unit);
-	tapcreate(unit, ap->a_dev);
+	tapcreate(unit, ap->a_dev, 0);
 	return (0);
 }
 
@@ -450,8 +451,14 @@ tapclose(struct dev_close_args *ap)
 	TAPDEBUG(ifp, "closed. minor = %#x, refcnt = %d, taplastunit = %d\n",
 		 minor(tp->tap_dev), taprefcnt, taplastunit);
 
-	if (tp->tap_unit >= TAP_PREALLOCATED_UNITS)
+	/*
+	 * Only auto-destroy if the interface was not manually
+	 * created.
+	 */
+	if ((tp->tap_flags & TAP_MANUALMAKE) == 0 &&
+	    tp->tap_unit >= TAP_PREALLOCATED_UNITS) {
 		tapdestroy(tp);
+	}
 
 	rel_mplock();
 	return (0);
@@ -664,11 +671,11 @@ tapifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	while ((m = ifsq_dequeue(ifsq, NULL)) != NULL) {
 		if (IF_QFULL(ifq)) {
 			IF_DROP(ifq);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			m_freem(m);
 		} else {
 			IF_ENQUEUE(ifq, m);
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			has_data = 1;
 		}
 	}
@@ -945,7 +952,7 @@ tapwrite(struct dev_write_args *ap)
 		}
 	}
 	if (error) {
-		ifp->if_ierrors ++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		if (top)
 			m_freem(top);
 		return (error);
@@ -961,7 +968,7 @@ tapwrite(struct dev_write_args *ap)
 	 */
 	ifnet_serialize_all(ifp);
 	ifp->if_input(ifp, top);
-	ifp->if_ipackets ++; /* ibytes are counted in ether_input */
+	IFNET_STAT_INC(ifp, ipackets, 1);/* ibytes are counted in ether_input */
 	ifnet_deserialize_all(ifp);
 
 	return (0);

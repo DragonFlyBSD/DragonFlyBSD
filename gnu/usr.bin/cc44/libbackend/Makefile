@@ -1,7 +1,7 @@
 .include "../Makefile.inc"
 .include "../Makefile.langs"
 
-CFLAGS+=	-I${.CURDIR}/../config -I.
+CFLAGS+=	-I.
 CFLAGS+=	-DTARGET_NAME=\"${target_machine}\"
 
 LIB=		backend

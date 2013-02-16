@@ -311,8 +311,17 @@ so_pru_rcvd_async(struct socket *so)
 	    ("async pru_rcvd is not supported"));
 
 	spin_lock(&so->so_rcvd_spin);
-	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(so->so_port, lmsg);
+	if ((so->so_rcvd_msg.nm_pru_flags & PRUR_DEAD) == 0) {
+		if (lmsg->ms_flags & MSGF_DONE)
+			lwkt_sendmsg(so->so_port, lmsg);
+	} else {
+		static int deadlog = 0;
+
+		if (!deadlog) {
+			kprintf("async rcvd is dead\n");
+			deadlog = 1;
+		}
+	}
 	spin_unlock(&so->so_rcvd_spin);
 }
 
@@ -599,5 +608,6 @@ so_async_rcvd_drop(struct socket *so)
 	spin_lock(&so->so_rcvd_spin);
 	if ((lmsg->ms_flags & MSGF_DONE) == 0)
 		lwkt_dropmsg(lmsg);
+	so->so_rcvd_msg.nm_pru_flags |= PRUR_DEAD;
 	spin_unlock(&so->so_rcvd_spin);
 }

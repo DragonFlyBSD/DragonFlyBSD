@@ -766,7 +766,7 @@ rum_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall_async(sc->sc_tx_pipeh);
 
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		crit_exit();
 		return;
 	}
@@ -778,7 +778,7 @@ rum_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	bzero(data->buf, sizeof(struct rum_tx_data));
 	sc->tx_queued--;
-	ifp->if_opackets++;	/* XXX may fail too */
+	IFNET_STAT_INC(ifp, opackets, 1);	/* XXX may fail too */
 
 	DPRINTFN(10, ("tx done\n"));
 
@@ -827,7 +827,7 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	if (len < RT2573_RX_DESC_SIZE + sizeof(struct ieee80211_frame_min)) {
 		DPRINTF(("%s: xfer too short %d\n", device_get_nameunit(sc->sc_dev),
 		    len));
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto skip;
 	}
 
@@ -839,7 +839,7 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		 * those frames when we filled RT2573_TXRX_CSR0.
 		 */
 		DPRINTFN(5, ("CRC error\n"));
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto skip;
 	}
 
@@ -847,7 +847,7 @@ rum_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	if (mnew == NULL) {
 		kprintf("%s: could not allocate rx mbuf\n",
 		    device_get_nameunit(sc->sc_dev));
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto skip;
 	}
 
@@ -1179,7 +1179,7 @@ rum_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			if (m0->m_len < sizeof(struct ether_header)) {
 				m0 = m_pullup(m0, sizeof(struct ether_header));
 				if (m0 == NULL) {
-					ifp->if_oerrors++;
+					IFNET_STAT_INC(ifp, oerrors, 1);
 					continue;
 				}
 			}
@@ -1204,7 +1204,7 @@ rum_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 			if (rum_tx_data(sc, m0, ni) != 0) {
 				ieee80211_free_node(ni);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				break;
 			}
 		}
@@ -1231,7 +1231,7 @@ rum_watchdog(struct ifnet *ifp)
 		if (--sc->sc_tx_timer == 0) {
 			kprintf("%s: device timeout\n", device_get_nameunit(sc->sc_dev));
 			/*rum_init(sc); XXX needs a process context! */
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 
 			crit_exit();
 			return;
@@ -2188,7 +2188,7 @@ rum_stats_update(usbd_xfer_handle xfer, usbd_private_handle priv,
 	crit_enter();
 
 	/* count TX retry-fail as Tx errors */
-	ifp->if_oerrors += RUM_TX_PKT_FAIL(sc);
+	IFNET_STAT_INC(ifp, oerrors, RUM_TX_PKT_FAIL(sc));
 
 	stats->stats_pkt_noretry += RUM_TX_PKT_NO_RETRY(sc);
 	stats->stats_pkt_ok += RUM_TX_PKT_NO_RETRY(sc) +

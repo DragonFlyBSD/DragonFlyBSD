@@ -383,7 +383,7 @@ startagain:
 	 */
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
 		kprintf("%s: large packet discarded (A)\n", ifp->if_xname);
-		++sc->arpcom.ac_if.if_oerrors;
+		IFNET_STAT_INC(&sc->arpcom.ac_if, oerrors, 1);
 		m_freem(top);
 		goto readcheck;
 	}
@@ -523,7 +523,7 @@ startagain:
 
 	BPF_MTAP(ifp, top);
 
-	ifp->if_opackets++;
+	IFNET_STAT_INC(ifp, opackets, 1);
 	m_freem(top);
 
 readcheck:
@@ -592,7 +592,7 @@ snresume(struct ifnet *ifp)
 	 */
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
 		kprintf("%s: large packet discarded (B)\n", ifp->if_xname);
-		++ifp->if_oerrors;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		m_freem(top);
 		return;
 	}
@@ -711,7 +711,7 @@ snresume(struct ifnet *ifp)
 
 	BPF_MTAP(ifp, top);
 
-	ifp->if_opackets++;
+	IFNET_STAT_INC(ifp, opackets, 1);
 	m_freem(top);
 
 try_start:
@@ -782,7 +782,7 @@ sn_intr(void *arg)
 		SMC_SELECT_BANK(2);
 		outb(BASE + INTR_ACK_REG_B, IM_RX_OVRN_INT);
 
-		++sc->arpcom.ac_if.if_ierrors;
+		IFNET_STAT_INC(&sc->arpcom.ac_if, ierrors, 1);
 	}
 	/*
 	 * Got a packet.
@@ -854,11 +854,11 @@ sn_intr(void *arg)
 			device_printf(sc->dev, 
 			    "Successful packet caused interrupt\n");
 		} else {
-			++sc->arpcom.ac_if.if_oerrors;
+			IFNET_STAT_INC(&sc->arpcom.ac_if, oerrors, 1);
 		}
 
 		if (tx_status & EPHSR_LATCOL)
-			++sc->arpcom.ac_if.if_collisions;
+			IFNET_STAT_INC(&sc->arpcom.ac_if, collisions, 1);
 
 		/*
 		 * Some of these errors will have disabled transmit.
@@ -909,12 +909,14 @@ sn_intr(void *arg)
 		/*
 		 * Single collisions
 		 */
-		sc->arpcom.ac_if.if_collisions += card_stats & ECR_COLN_MASK;
+		IFNET_STAT_INC(&sc->arpcom.ac_if, collisions,
+		    card_stats & ECR_COLN_MASK);
 
 		/*
 		 * Multiple collisions
 		 */
-		sc->arpcom.ac_if.if_collisions += (card_stats & ECR_MCOLN_MASK) >> 4;
+		IFNET_STAT_INC(&sc->arpcom.ac_if, collisions,
+		    (card_stats & ECR_MCOLN_MASK) >> 4);
 
 		SMC_SELECT_BANK(2);
 
@@ -998,7 +1000,7 @@ read_another:
 	 * Account for receive errors and discard.
 	 */
 	if (status & RS_ERRORS) {
-		++ifp->if_ierrors;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto out;
 	}
 	/*
@@ -1031,7 +1033,7 @@ read_another:
 	 */
 	if ((m->m_flags & M_EXT) == 0) {
 		m_freem(m);
-		++ifp->if_ierrors;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		kprintf("sn: snread() kernel memory allocation problem\n");
 		goto out;
 	}
@@ -1046,7 +1048,7 @@ read_another:
 		data += packet_length & ~1;
 		*data = inb(BASE + DATA_REG_B);
 	}
-	++ifp->if_ipackets;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 
 	m->m_pkthdr.len = m->m_len = packet_length;
 

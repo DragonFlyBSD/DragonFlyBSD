@@ -3473,7 +3473,7 @@ ixgbe_txeof(struct tx_ring *txr)
 			    (struct ixgbe_legacy_tx_desc *)&txr->tx_base[first];
 		}
 		++txr->packets;
-		++ifp->if_opackets;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		/* See if there is more work now */
 		last = tx_buffer->eop_index;
 		if (last != -1) {
@@ -4398,7 +4398,7 @@ ixgbe_rxeof(struct ix_queue *que, int count)
 		/* Make sure bad packets are discarded */
 		if (((staterr & IXGBE_RXDADV_ERR_FRAME_ERR_MASK) != 0) ||
 		    (rxr->discard)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			rxr->rx_discarded++;
 			if (eop)
 				rxr->discard = FALSE;
@@ -4539,7 +4539,7 @@ ixgbe_rxeof(struct ix_queue *que, int count)
 		/* Sending this frame? */
 		if (eop) {
 			sendmp->m_pkthdr.rcvif = ifp;
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 			rxr->rx_packets++;
 			/* capture data for AIM */
 			rxr->bytes += sendmp->m_pkthdr.len;
@@ -5136,16 +5136,15 @@ ixgbe_update_stats_counters(struct adapter *adapter)
 	}
 
 	/* Fill out the OS statistics structure */
-	ifp->if_ipackets = adapter->stats.gprc;
-	ifp->if_opackets = adapter->stats.gptc;
-	ifp->if_ibytes = adapter->stats.gorc;
-	ifp->if_obytes = adapter->stats.gotc;
-	ifp->if_imcasts = adapter->stats.mprc;
-	ifp->if_collisions = 0;
+	IFNET_STAT_SET(ifp, ipackets, adapter->stats.gprc);
+	IFNET_STAT_SET(ifp, opackets, adapter->stats.gptc);
+	IFNET_STAT_SET(ifp, ibytes, adapter->stats.gorc);
+	IFNET_STAT_SET(ifp, obytes, adapter->stats.gotc);
+	IFNET_STAT_SET(ifp, imcasts, adapter->stats.mprc);
 
 	/* Rx Errors */
-	ifp->if_ierrors = total_missed_rx + adapter->stats.crcerrs +
-		adapter->stats.rlec;
+	IFNET_STAT_SET(ifp, ierrors, total_missed_rx + adapter->stats.crcerrs +
+		adapter->stats.rlec);
 }
 
 /** ixgbe_sysctl_tdh_handler - Handler function

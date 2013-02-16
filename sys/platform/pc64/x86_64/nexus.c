@@ -41,6 +41,8 @@
  * and I/O memory address space.
  */
 
+#include "use_pci.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
@@ -62,7 +64,9 @@
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 
+#if NPCI > 0
 #include "pcib_if.h"
+#endif
 
 #define I386_BUS_SPACE_IO       0       /* space is i/o space */
 #define I386_BUS_SPACE_MEM      1       /* space is mem space */
@@ -105,11 +109,13 @@ static	int nexus_set_resource(device_t, device_t, int, int, u_long, u_long,
 static	int nexus_get_resource(device_t, device_t, int, int, u_long *, u_long *);
 static void nexus_delete_resource(device_t, device_t, int, int);
 
+#if NPCI > 0
 static	int nexus_alloc_msi(device_t, device_t, int, int, int *, int);
 static	int nexus_release_msi(device_t, device_t, int, int *, int);
 static	int nexus_map_msi(device_t, device_t, int, uint64_t *, uint32_t *, int);
 static	int nexus_alloc_msix(device_t, device_t, int *, int);
 static	int nexus_release_msix(device_t, device_t, int, int);
+#endif
 
 /*
  * The device_identify method will cause nexus to automatically associate
@@ -141,11 +147,13 @@ static device_method_t nexus_methods[] = {
 	DEVMETHOD(bus_get_resource,	nexus_get_resource),
 	DEVMETHOD(bus_delete_resource,	nexus_delete_resource),
 
+#if NPCI > 0
 	DEVMETHOD(pcib_alloc_msi,	nexus_alloc_msi),
 	DEVMETHOD(pcib_release_msi,	nexus_release_msi),
 	DEVMETHOD(pcib_map_msi,		nexus_map_msi),
 	DEVMETHOD(pcib_alloc_msix,	nexus_alloc_msix),
 	DEVMETHOD(pcib_release_msix,	nexus_release_msix),
+#endif
 
 	{ 0, 0 }
 };
@@ -574,6 +582,7 @@ nexus_delete_resource(device_t dev, device_t child, int type, int rid)
 	resource_list_delete(rl, type, rid);
 }
 
+#if NPCI > 0
 static int
 nexus_alloc_msi(device_t dev, device_t child, int count, int maxcount,
     int *irqs, int cpuid)
@@ -617,3 +626,4 @@ nexus_release_msix(device_t dev, device_t child, int irq, int cpuid)
 	MachIntrABI.msix_release(irq, cpuid);
 	return 0;
 }
+#endif

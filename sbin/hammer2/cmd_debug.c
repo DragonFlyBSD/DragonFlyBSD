@@ -315,16 +315,19 @@ cmd_show(const char *devpath)
 {
 	hammer2_blockref_t broot;
 	int fd;
+	int i;
 
 	fd = open(devpath, O_RDONLY);
 	if (fd < 0) {
 		perror("open");
 		return 1;
 	}
-	bzero(&broot, sizeof(broot));
-	broot.type = HAMMER2_BREF_TYPE_VOLUME;
-	broot.data_off = 0 | HAMMER2_PBUFRADIX;
-	show_bref(fd, 0, 0, &broot);
+	for (i = 0; i < 4; ++i) {
+		bzero(&broot, sizeof(broot));
+		broot.type = HAMMER2_BREF_TYPE_VOLUME;
+		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
+		show_bref(fd, 0, i, &broot);
+	}
 	close(fd);
 
 	return 0;

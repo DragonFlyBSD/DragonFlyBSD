@@ -663,11 +663,12 @@ dounmount(struct mount *mp, int flags)
 	int lflags;
 	int freeok = 1;
 
+	lwkt_gettoken(&mntvnode_token);
 	/*
 	 * Exclusive access for unmounting purposes
 	 */
 	if ((error = mountlist_interlock(dounmount_interlock, mp)) != 0)
-		return (error);
+		goto out;
 
 	/*
 	 * Allow filesystems to detect that a forced unmount is in progress.
@@ -680,7 +681,7 @@ dounmount(struct mount *mp, int flags)
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
 			wakeup(mp);
-		return (error);
+		goto out;
 	}
 
 	if (mp->mnt_flag & MNT_EXPUBLIC)
@@ -768,7 +769,7 @@ dounmount(struct mount *mp, int flags)
 		lockmgr(&mp->mnt_lock, LK_RELEASE);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
 			wakeup(mp);
-		return (error);
+		goto out;
 	}
 	/*
 	 * Clean up any journals still associated with the mount after
@@ -810,7 +811,10 @@ dounmount(struct mount *mp, int flags)
 		wakeup(mp);
 	if (freeok)
 		kfree(mp, M_MOUNT);
-	return (0);
+	error = 0;
+out:
+	lwkt_reltoken(&mntvnode_token);
+	return (error);
 }
 
 static
@@ -3694,6 +3698,22 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	fromnd->nl_flags |= NLC_NCPISLOCKED;
 
 	/*
+	 * If either fromnd or tond are marked destroyed a ripout occured
+	 * out from under us and we must retry.
+	 */
+	if ((fromnd->nl_nch.ncp->nc_flag & (NCF_DESTROYED | NCF_UNRESOLVED)) ||
+	    fromnd->nl_nch.ncp->nc_vp == NULL ||
+	    (tond->nl_nch.ncp->nc_flag & NCF_DESTROYED)) {
+		kprintf("kern_rename: retry due to ripout on: "
+			"\"%s\" -> \"%s\"\n",
+			fromnd->nl_nch.ncp->nc_name,
+			tond->nl_nch.ncp->nc_name);
+		cache_drop(&fnchd);
+		cache_drop(&tnchd);
+		return (EAGAIN);
+	}
+
+	/*
 	 * make sure the parent directories linkages are the same
 	 */
 	if (fnchd.ncp != fromnd->nl_nch.ncp->nc_parent ||
@@ -3798,14 +3818,16 @@ sys_rename(struct rename_args *uap)
 	struct nlookupdata fromnd, tond;
 	int error;
 
-	error = nlookup_init(&fromnd, uap->from, UIO_USERSPACE, 0);
-	if (error == 0) {
-		error = nlookup_init(&tond, uap->to, UIO_USERSPACE, 0);
-		if (error == 0)
-			error = kern_rename(&fromnd, &tond);
-		nlookup_done(&tond);
-	}
-	nlookup_done(&fromnd);
+	do {
+		error = nlookup_init(&fromnd, uap->from, UIO_USERSPACE, 0);
+		if (error == 0) {
+			error = nlookup_init(&tond, uap->to, UIO_USERSPACE, 0);
+			if (error == 0)
+				error = kern_rename(&fromnd, &tond);
+			nlookup_done(&tond);
+		}
+		nlookup_done(&fromnd);
+	} while (error == EAGAIN);
 	return (error);
 }
 
@@ -3823,16 +3845,20 @@ sys_renameat(struct renameat_args *uap)
 	struct file *oldfp, *newfp;
 	int error;
 
-	error = nlookup_init_at(&oldnd, &oldfp, uap->oldfd, uap->old,
-	    UIO_USERSPACE, 0);
-	if (error == 0) {
-		error = nlookup_init_at(&newnd, &newfp, uap->newfd, uap->new,
-		    UIO_USERSPACE, 0);
-		if (error == 0)
-			error = kern_rename(&oldnd, &newnd);
-		nlookup_done_at(&newnd, newfp);
-	}
-	nlookup_done_at(&oldnd, oldfp);
+	do {
+		error = nlookup_init_at(&oldnd, &oldfp,
+					uap->oldfd, uap->old,
+					UIO_USERSPACE, 0);
+		if (error == 0) {
+			error = nlookup_init_at(&newnd, &newfp,
+						uap->newfd, uap->new,
+						UIO_USERSPACE, 0);
+			if (error == 0)
+				error = kern_rename(&oldnd, &newnd);
+			nlookup_done_at(&newnd, newfp);
+		}
+		nlookup_done_at(&oldnd, oldfp);
+	} while (error == EAGAIN);
 	return (error);
 }
 

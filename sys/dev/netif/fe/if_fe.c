@@ -934,7 +934,7 @@ static void
 fe_reset (struct fe_softc *sc)
 {
 	/* Record how many packets are lost by this accident.  */
-	sc->sc_if.if_oerrors += sc->txb_sched + sc->txb_count;
+	IFNET_STAT_INC(&sc->sc_if, oerrors, sc->txb_sched + sc->txb_count);
 	sc->mibdata.dot3StatsInternalMacTransmitErrors++;
 
 	/* Put the interface into known initial state.  */
@@ -994,12 +994,15 @@ static void
 fe_watchdog ( struct ifnet *ifp )
 {
 	struct fe_softc *sc = (struct fe_softc *)ifp;
+	u_long opkts, ipkts;
 
 	/* A "debug" message.  */
 	kprintf("%s: transmission timeout (%d+%d)%s\n",
 	       ifp->if_xname, sc->txb_sched, sc->txb_count,
 	       (ifp->if_flags & IFF_UP) ? "" : " when down");
-	if (sc->sc_if.if_opackets == 0 && sc->sc_if.if_ipackets == 0)
+	IFNET_STAT_GET(&sc->sc_if, opackets, opkts);
+	IFNET_STAT_GET(&sc->sc_if, ipackets, ipkts);
+	if (opkts == 0 && ipkts == 0)
 		kprintf("%s: wrong IRQ setting in config?\n", ifp->if_xname);
 	fe_reset(sc);
 }
@@ -1517,9 +1520,9 @@ fe_tint (struct fe_softc * sc, u_char tstat)
 		 * Be sure to reflect number of excessive collisions.
 		 */
 		col = sc->tx_excolls;
-		sc->sc_if.if_opackets += sc->txb_sched - col;
-		sc->sc_if.if_oerrors += col;
-		sc->sc_if.if_collisions += col * 16;
+		IFNET_STAT_INC(&sc->sc_if, opackets, sc->txb_sched - col);
+		IFNET_STAT_INC(&sc->sc_if, oerrors, col);
+		IFNET_STAT_INC(&sc->sc_if, collisions, col * 16);
 		sc->mibdata.dot3StatsExcessiveCollisions += col;
 		sc->mibdata.dot3StatsCollFrequencies[15] += col;
 		sc->txb_sched = 0;
@@ -1576,7 +1579,7 @@ fe_rint (struct fe_softc * sc, u_char rstat)
 		if (rstat & FE_D1_SRTPKT)
 			sc->mibdata.dot3StatsFrameTooShorts++; /* :-) */
 #endif
-		sc->sc_if.if_ierrors++;
+		IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 	}
 
 	/*
@@ -1639,7 +1642,7 @@ fe_rint (struct fe_softc * sc, u_char rstat)
 		    len > ETHER_MAX_LEN - ETHER_CRC_LEN ||
 		    len < ETHER_MIN_LEN - ETHER_CRC_LEN) {
 			kprintf("fe%d: RX buffer out-of-sync\n", sc->sc_unit);
-			sc->sc_if.if_ierrors++;
+			IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 			sc->mibdata.dot3StatsInternalMacReceiveErrors++;
 			fe_reset(sc);
 			return;
@@ -1656,14 +1659,14 @@ fe_rint (struct fe_softc * sc, u_char rstat)
 			 * in the buffer.  We hope we can get more
 			 * mbuf next time.
 			 */
-			sc->sc_if.if_ierrors++;
+			IFNET_STAT_INC(&sc->sc_if, ierrors, 1);
 			sc->mibdata.dot3StatsMissedFrames++;
 			fe_droppacket(sc, len);
 			return;
 		}
 
 		/* Successfully received a packet.  Update stat.  */
-		sc->sc_if.if_ipackets++;
+		IFNET_STAT_INC(&sc->sc_if, ipackets, 1);
 	}
 
 	/* Maximum number of frames has been received.  Something
@@ -1934,7 +1937,7 @@ fe_write_mbufs (struct fe_softc *sc, struct mbuf *m)
 	    length > ETHER_MAX_LEN - ETHER_CRC_LEN) {
 		kprintf("fe%d: got an out-of-spec packet (%u bytes) to send\n",
 			sc->sc_unit, length);
-		sc->sc_if.if_oerrors++;
+		IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
 		sc->mibdata.dot3StatsInternalMacTransmitErrors++;
 		return;
 	}

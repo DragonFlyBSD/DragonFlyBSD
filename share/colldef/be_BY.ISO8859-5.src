@@ -1,5 +1,4 @@
-# $FreeBSD: src/share/colldef/be_BY.ISO8859-5.src,v 1.1 2003/12/20 11:18:42 ache Exp $
-# $DragonFly: src/share/colldef/be_BY.ISO8859-5.src,v 1.1 2006/11/12 21:15:46 swildner Exp $
+# $FreeBSD: src/share/colldef/be_BY.ISO8859-5.src,v 1.2 2012/11/17 01:50:27 svnexp Exp $
 charmap map.ISO8859-5
 order \
 # controls

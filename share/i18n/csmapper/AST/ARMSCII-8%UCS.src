@@ -1,5 +1,4 @@
 # $NetBSD: ARMSCII-8%UCS.src,v 1.1 2006/04/01 04:13:21 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/AST/ARMSCII-8%UCS.src,v 1.1 2008/04/10 10:21:02 hasso Exp $
 
 TYPE		ROWCOL
 NAME		ARMSCII-8/UCS

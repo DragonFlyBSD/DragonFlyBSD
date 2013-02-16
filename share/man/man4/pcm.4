@@ -24,9 +24,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/pcm.4,v 1.39.2.6 2007/05/23 19:45:49 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/pcm.4,v 1.8 2007/12/13 20:51:36 swildner Exp $
 .\"
-.Dd November 26, 2006
+.Dd February 10, 2013
 .Dt SOUND 4
 .Os
 .Sh NAME
@@ -39,11 +38,6 @@ To compile this driver into the kernel, place the following line in your
 kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device pcm"
-.Ed
-.Pp
-For non-PnP sound cards:
-.Bd -literal -offset indent
-.Cd "device pcm0 at isa? port? irq 5 drq 1 flags 0x15"
 .Ed
 .Sh DESCRIPTION
 The
@@ -277,7 +271,6 @@ AC97 codec is not likely to be accompanied with the sound card.
 A device node is not created properly.
 .El
 .Sh SEE ALSO
-.Xr snd_ad1816 4 ,
 .Xr snd_als4000 4 ,
 .Xr snd_atiixp 4 ,
 .Xr snd_cmi 4 ,
@@ -288,16 +281,12 @@ A device node is not created properly.
 .Xr snd_envy24 4 ,
 .Xr snd_envy24ht 4 ,
 .Xr snd_es137x 4 ,
-.Xr snd_ess 4 ,
 .Xr snd_fm801 4 ,
-.Xr snd_gusc 4 ,
 .Xr snd_hda 4 ,
 .Xr snd_ich 4 ,
 .Xr snd_maestro 4 ,
 .Xr snd_maestro3 4 ,
-.Xr snd_mss 4 ,
 .Xr snd_neomagic 4 ,
-.Xr snd_sbc 4 ,
 .Xr snd_solo 4 ,
 .Xr snd_spicds 4 ,
 .Xr snd_t4dwave 4 ,

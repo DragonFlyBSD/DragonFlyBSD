@@ -1,5 +1,4 @@
 # $NetBSD: mapper.dir.GB.src,v 1.6 2006/11/23 03:25:24 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/GB/mapper.dir.GB.src,v 1.2 2008/04/10 10:21:08 hasso Exp $
 
 GB12345/UCS		mapper_std	GB/GB12345%UCS.mps
 GB2312/UCS		mapper_std	GB/GB2312%UCS.mps

@@ -63,6 +63,16 @@
 	    ("not ifp's default subqueue"));
 
 struct ifaltq;
+struct ifaltq_subque;
+
+typedef void	(*ifsq_watchdog_t)(struct ifaltq_subque *);
+
+struct ifsubq_watchdog {
+	struct callout	wd_callout;
+	int		wd_timer;
+	struct ifaltq_subque *wd_subq;
+	ifsq_watchdog_t	wd_watchdog;
+};
 
 /*
  * Support for "classic" ALTQ interfaces.
@@ -78,9 +88,15 @@ void		ifq_set_maxlen(struct ifaltq *, int);
 void		ifq_set_methods(struct ifaltq *, altq_mapsubq_t,
 		    ifsq_enqueue_t, ifsq_dequeue_t, ifsq_request_t);
 int		ifq_mapsubq_default(struct ifaltq *, int);
+int		ifq_mapsubq_mask(struct ifaltq *, int);
 
 void		ifsq_devstart(struct ifaltq_subque *ifsq);
 void		ifsq_devstart_sched(struct ifaltq_subque *ifsq);
+
+void		ifsq_watchdog_init(struct ifsubq_watchdog *,
+		    struct ifaltq_subque *, ifsq_watchdog_t);
+void		ifsq_watchdog_start(struct ifsubq_watchdog *);
+void		ifsq_watchdog_stop(struct ifsubq_watchdog *);
 
 /*
  * Dispatch a packet to an interface.
@@ -361,9 +377,9 @@ ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 	ASSERT_IFNET_SERIALIZED_TX(_ifp, _ifsq);
 	_error = ifsq_enqueue(_ifsq, _m, _pa);
 	if (_error == 0) {
-		_ifp->if_obytes += _m->m_pkthdr.len;
+		IFNET_STAT_INC(_ifp, obytes, _m->m_pkthdr.len);
 		if (_m->m_flags & M_MCAST)
-			_ifp->if_omcasts++;
+			IFNET_STAT_INC(_ifp, omcasts, 1);
 		if (!ifsq_is_oactive(_ifsq))
 			(*_ifp->if_start)(_ifp, _ifsq);
 	}
@@ -486,6 +502,19 @@ ifq_map_subq(struct ifaltq *_ifq, int _cpuid)
 { 
 	int _idx = _ifq->altq_mapsubq(_ifq, _cpuid);
 	return ifq_get_subq(_ifq, _idx);
+}
+
+static __inline void
+ifq_set_subq_cnt(struct ifaltq *_ifq, int _cnt)
+{
+	_ifq->altq_subq_cnt = _cnt;
+}
+
+static __inline void
+ifq_set_subq_mask(struct ifaltq *_ifq, uint32_t _mask)
+{
+	KASSERT(((_mask + 1) & _mask) == 0, ("invalid mask %08x", _mask));
+	_ifq->altq_subq_mask = _mask;
 }
 
 /* COMPAT */

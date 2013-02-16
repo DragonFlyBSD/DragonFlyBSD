@@ -2715,61 +2715,105 @@ static int
 proc_compare(struct proc *p1, struct proc *p2)
 {
 	struct lwp *lp1, *lp2;
+	int res;
 
 	ASSERT_LWKT_TOKEN_HELD(&proc_token);
 
 	if (p1 == NULL)
 		return (1);
+	if (lwkt_trytoken(&p1->p_token) == 0)
+		return (1);
+	if (lwkt_trytoken(&p2->p_token) == 0) {
+		lwkt_reltoken(&p1->p_token);
+		return (0);
+	}
 
 	/*
  	 * weed out zombies
 	 */
 	switch (TESTAB(p1->p_stat == SZOMB, p2->p_stat == SZOMB)) {
 	case ONLYA:
-		return (1);
+		res = 1;
+		goto done;
 	case ONLYB:
-		return (0);
+		res = 0;
+		goto done;
 	case BOTH:
-		return (p2->p_pid > p1->p_pid); /* tie - return highest pid */
+		res = (p2->p_pid > p1->p_pid);	/* tie - return highest pid */
+		goto done;
+	default:
+		break;
 	}
 
-	/* XXX lwp */
+	/* XXX choose the best lwp? */
 	lp1 = FIRST_LWP_IN_PROC(p1);
 	lp2 = FIRST_LWP_IN_PROC(p2);
+
+	/*
+	 * Favor one with LWPs verses one that has none (is exiting).
+	 */
+	if (lp1 == NULL) {
+		res = 1;
+		goto done;
+	}
+	if (lp2 == NULL) {
+		res = 0;
+		goto done;
+	}
 
 	/*
 	 * see if at least one of them is runnable
 	 */
 	switch (TESTAB(ISRUN(lp1), ISRUN(lp2))) {
 	case ONLYA:
-		return (0);
+		res = 0;
+		goto done;
 	case ONLYB:
-		return (1);
+		res = 1;
+		goto done;
 	case BOTH:
 		/*
 		 * tie - favor one with highest recent cpu utilization
 		 */
 		if (lp2->lwp_cpticks > lp1->lwp_cpticks)
-			return (1);
-		if (lp1->lwp_cpticks > lp2->lwp_cpticks)
-			return (0);
-		return (p2->p_pid > p1->p_pid);	/* tie - return highest pid */
+			res = 1;
+		else if (lp1->lwp_cpticks > lp2->lwp_cpticks)
+			res = 0;
+		else
+			res = (p2->p_pid > p1->p_pid); /* tie - ret highest */
+		goto done;
+	default:
+		break;
 	}
+
 	/*
-	 * pick the one with the smallest sleep time
+	 * Pick the one with the smallest sleep time
 	 */
-	if (lp2->lwp_slptime > lp1->lwp_slptime)
-		return (0);
-	if (lp1->lwp_slptime > lp2->lwp_slptime)
-		return (1);
+	if (lp2->lwp_slptime > lp1->lwp_slptime) {
+		res = 0;
+		goto done;
+	}
+	if (lp1->lwp_slptime > lp2->lwp_slptime) {
+		res = 1;
+		goto done;
+	}
+
 	/*
-	 * favor one sleeping in a non-interruptible sleep
+	 * Favor one sleeping in a non-interruptible sleep
 	 */
-	if (lp1->lwp_flags & LWP_SINTR && (lp2->lwp_flags & LWP_SINTR) == 0)
-		return (1);
-	if (lp2->lwp_flags & LWP_SINTR && (lp1->lwp_flags & LWP_SINTR) == 0)
-		return (0);
-	return (p2->p_pid > p1->p_pid);		/* tie - return highest pid */
+	if ((lp1->lwp_flags & LWP_SINTR) && (lp2->lwp_flags & LWP_SINTR) == 0)
+		res = 1;
+	else
+	if ((lp2->lwp_flags & LWP_SINTR) && (lp1->lwp_flags & LWP_SINTR) == 0)
+		res = 0;
+	else
+		res = (p2->p_pid > p1->p_pid);	/* tie - return highest pid */
+	/* fall through */
+
+done:
+	lwkt_reltoken(&p2->p_token);
+	lwkt_reltoken(&p1->p_token);
+	return (res);
 }
 
 /*

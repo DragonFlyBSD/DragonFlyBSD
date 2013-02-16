@@ -213,9 +213,13 @@ wep_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 {
 	struct wep_ctx *ctx = k->wk_private;
 	struct ieee80211vap *vap = ctx->wc_vap;
+#ifdef IEEE80211_DEBUG
 	struct ieee80211_frame *wh;
+#endif
 
+#ifdef IEEE80211_DEBUG
 	wh = mtod(m, struct ieee80211_frame *);
+#endif
 
 	/*
 	 * Check if the device handled the decrypt in hardware.

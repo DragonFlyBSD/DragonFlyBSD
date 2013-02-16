@@ -1,5 +1,4 @@
 # $NetBSD: EUC-KR.src,v 1.1 2003/06/27 08:40:54 tshiozak Exp $
-# $DragonFly: src/share/i18n/esdb/EUC/EUC-KR.src,v 1.2 2008/04/10 10:21:12 hasso Exp $
 
 NAME		"EUC-KR"
 ENCODING	"EUC"

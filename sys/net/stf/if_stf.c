@@ -600,8 +600,8 @@ in_stf_input(struct mbuf **mp, int *offp, int proto)
 	 * See net/if_gif.c for possible issues with packet processing
 	 * reorder due to extra queueing.
 	 */
-	ifp->if_ipackets++;
-	ifp->if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, ipackets, 1);
+	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
 	netisr_queue(NETISR_IPV6, m);
 	return(IPPROTO_DONE);
 }

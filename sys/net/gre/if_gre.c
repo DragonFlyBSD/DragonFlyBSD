@@ -384,14 +384,14 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		gh->gi_len = m->m_pkthdr.len;
 	}
 
-	ifp->if_opackets++;
-	ifp->if_obytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, opackets, 1);
+	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len);
 	/* send it off */
 	error = ip_output(m, NULL, &sc->route, 0, NULL, NULL);
   end:
 	sc->called = 0;
 	if (error)
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	return (error);
 }
 

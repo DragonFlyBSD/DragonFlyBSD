@@ -1,57 +1,57 @@
-# $DragonFly: src/share/timedef/da_DK.UTF-8.src,v 1.1 2004/09/27 14:44:33 asmodai Exp $
+# $FreeBSD: src/share/timedef/da_DK.UTF-8.src,v 1.5 2012/11/17 01:51:02 svnexp Exp $
 #
 # WARNING: spaces may be essential at the end of lines
 # WARNING: empty lines are essential too
 #
-# Short months names
+# Short month names
 #
-Jan
-Feb
-Mar
-Apr
-Maj
-Jun
-Jul
-Aug
-Sep
-Okt
-Nov
-Dec
+jan
+feb
+mar
+apr
+maj
+jun
+jul
+aug
+sep
+okt
+nov
+dec
 #
-# Long months names
+# Long month names (as in a date)
 #
-Januar
-Februar
-Marts
-April
-Maj
-Juni
-Juli
-August
-September
-Oktober
-November
-December
+januar
+februar
+marts
+april
+maj
+juni
+juli
+august
+september
+oktober
+november
+december
 #
-# Short weekdays names
+# Short weekday names
 #
-Søn
-Man
-Tir
-Ons
-Tor
-Fre
-Lør
+søn
+man
+tir
+ons
+tor
+fre
+lør
 #
-# Long weekdays names
+# Long weekday names
 #
-Søndag
-Mandag
-Tirsdag
-Onsdag
-Torsdag
-Fredag
-Lørdag
+søndag
+mandag
+tirsdag
+onsdag
+torsdag
+fredag
+lørdag
 #
 # X_fmt
 #
@@ -77,20 +77,20 @@ pm
 #
 %a %e %b %Y %X %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
-Januar
-Februar
-Marts
-April
-Maj
-Juni
-Juli
-August
-September
-Oktober
-November
-December
+januar
+februar
+marts
+april
+maj
+juni
+juli
+august
+september
+oktober
+november
+december
 #
 # md_order
 #

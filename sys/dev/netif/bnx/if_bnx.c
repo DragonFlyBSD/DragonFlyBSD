@@ -90,6 +90,8 @@ static const struct bnx_type {
 } bnx_devs[] = {
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5717,
 		"Broadcom BCM5717 Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5717C,
+		"Broadcom BCM5717C Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5718,
 		"Broadcom BCM5718 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5719,
@@ -1751,7 +1753,7 @@ bnx_attach(device_t dev)
 {
 	struct ifnet *ifp;
 	struct bnx_softc *sc;
-	uint32_t hwcfg = 0, misccfg;
+	uint32_t hwcfg = 0;
 	int error = 0, rid, capmask;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
 	uint16_t product;
@@ -1815,6 +1817,7 @@ bnx_attach(device_t dev)
 
 		switch (product) {
 		case PCI_PRODUCT_BROADCOM_BCM5717:
+		case PCI_PRODUCT_BROADCOM_BCM5717C:
 		case PCI_PRODUCT_BROADCOM_BCM5718:
 		case PCI_PRODUCT_BROADCOM_BCM5719:
 		case PCI_PRODUCT_BROADCOM_BCM5720_ALT:
@@ -1842,6 +1845,9 @@ bnx_attach(device_t dev)
 			break;
 		}
 	}
+	if (sc->bnx_chipid == BGE_CHIPID_BCM5717_C0)
+		sc->bnx_chipid = BGE_CHIPID_BCM5720_A0;
+
 	sc->bnx_asicrev = BGE_ASICREV(sc->bnx_chipid);
 	sc->bnx_chiprev = BGE_CHIPREV(sc->bnx_chipid);
 
@@ -1883,8 +1889,6 @@ bnx_attach(device_t dev)
 		 */
 		sc->bnx_flags |= BNX_FLAG_STATUSTAG_BUG;
 	}
-
-	misccfg = CSR_READ_4(sc, BGE_MISC_CFG) & BGE_MISCCFG_BOARD_ID_MASK;
 
 	sc->bnx_pciecap = pci_get_pciecap_ptr(sc->bnx_dev);
 	if (sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
@@ -1968,7 +1972,7 @@ bnx_attach(device_t dev)
 	sc->bnx_tx_coal_bds = BNX_TX_COAL_BDS_DEF;
 	sc->bnx_rx_coal_bds_int = BNX_RX_COAL_BDS_INT_DEF;
 	sc->bnx_tx_coal_bds_int = BNX_TX_COAL_BDS_INT_DEF;
-	sc->bnx_tx_wreg = 8;
+	sc->bnx_tx_wreg = BNX_TX_WREG_NSEGS;
 
 	/* Set up ifnet structure */
 	ifp->if_softc = sc;
@@ -2515,7 +2519,7 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 			jumbocnt++;
 
 			if (rxidx != sc->bnx_jumbo) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				if_printf(ifp, "sw jumbo index(%d) "
 				    "and hw jumbo index(%d) mismatch, drop!\n",
 				    sc->bnx_jumbo, rxidx);
@@ -2525,12 +2529,12 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 
 			m = sc->bnx_cdata.bnx_rx_jumbo_chain[rxidx].bnx_mbuf;
 			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bnx_setup_rxdesc_jumbo(sc, sc->bnx_jumbo);
 				continue;
 			}
 			if (bnx_newbuf_jumbo(sc, sc->bnx_jumbo, 0)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bnx_setup_rxdesc_jumbo(sc, sc->bnx_jumbo);
 				continue;
 			}
@@ -2539,7 +2543,7 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 			stdcnt++;
 
 			if (rxidx != sc->bnx_std) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				if_printf(ifp, "sw std index(%d) "
 				    "and hw std index(%d) mismatch, drop!\n",
 				    sc->bnx_std, rxidx);
@@ -2549,18 +2553,18 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 
 			m = sc->bnx_cdata.bnx_rx_std_chain[rxidx].bnx_mbuf;
 			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bnx_setup_rxdesc_std(sc, sc->bnx_std);
 				continue;
 			}
 			if (bnx_newbuf_std(sc, sc->bnx_std, 0)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				bnx_setup_rxdesc_std(sc, sc->bnx_std);
 				continue;
 			}
 		}
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		m->m_pkthdr.len = m->m_len = cur_rx->bge_len - ETHER_CRC_LEN;
 		m->m_pkthdr.rcvif = ifp;
 
@@ -2614,7 +2618,7 @@ bnx_txeof(struct bnx_softc *sc, uint16_t tx_cons)
 
 		idx = sc->bnx_tx_saved_considx;
 		if (sc->bnx_cdata.bnx_tx_chain[idx] != NULL) {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			bus_dmamap_unload(sc->bnx_cdata.bnx_tx_mtag,
 			    sc->bnx_cdata.bnx_tx_dmamap[idx]);
 			m_freem(sc->bnx_cdata.bnx_tx_chain[idx]);
@@ -2821,12 +2825,11 @@ bnx_stats_update_regs(struct bnx_softc *sc)
 		s++;
 	}
 
-	ifp->if_collisions +=
+	IFNET_STAT_SET(ifp, collisions,
 	   (stats.dot3StatsSingleCollisionFrames +
 	   stats.dot3StatsMultipleCollisionFrames +
 	   stats.dot3StatsExcessiveCollisions +
-	   stats.dot3StatsLateCollisions) -
-	   ifp->if_collisions;
+	   stats.dot3StatsLateCollisions));
 }
 
 /*
@@ -3013,7 +3016,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 */
 		if (bnx_encap(sc, &m_head, &prodidx, &nsegs)) {
 			ifq_set_oactive(&ifp->if_snd);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			break;
 		}
 
@@ -3346,7 +3349,7 @@ bnx_watchdog(struct ifnet *ifp)
 
 	bnx_init(sc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -3938,7 +3941,6 @@ static void
 bnx_coal_change(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -3946,7 +3948,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS,
 			    sc->bnx_rx_coal_ticks);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_RX_COAL_TICKS);
+		CSR_READ_4(sc, BGE_HCC_RX_COAL_TICKS);
 
 		if (bootverbose) {
 			if_printf(ifp, "rx_coal_ticks -> %u\n",
@@ -3958,7 +3960,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS,
 			    sc->bnx_tx_coal_ticks);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_TX_COAL_TICKS);
+		CSR_READ_4(sc, BGE_HCC_TX_COAL_TICKS);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_coal_ticks -> %u\n",
@@ -3970,7 +3972,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS,
 			    sc->bnx_rx_coal_bds);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS);
+		CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS);
 
 		if (bootverbose) {
 			if_printf(ifp, "rx_coal_bds -> %u\n",
@@ -3982,7 +3984,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS,
 			    sc->bnx_tx_coal_bds);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS);
+		CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_coal_bds -> %u\n",
@@ -3994,7 +3996,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT,
 		    sc->bnx_rx_coal_bds_int);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT);
+		CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT);
 
 		if (bootverbose) {
 			if_printf(ifp, "rx_coal_bds_int -> %u\n",
@@ -4006,7 +4008,7 @@ bnx_coal_change(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT,
 		    sc->bnx_tx_coal_bds_int);
 		DELAY(10);
-		val = CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT);
+		CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT);
 
 		if (bootverbose) {
 			if_printf(ifp, "tx_coal_bds_int -> %u\n",

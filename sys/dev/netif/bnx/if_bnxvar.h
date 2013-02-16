@@ -295,4 +295,7 @@ struct bnx_softc {
 #define BNX_TX_COAL_BDS_INT_DEF	64
 #define BNX_TX_COAL_BDS_MAX	255
 
+/* Number of segments sent before writing to TX related registers */
+#define BNX_TX_WREG_NSEGS	8
+
 #endif	/* !_IF_BNXVAR_H_ */

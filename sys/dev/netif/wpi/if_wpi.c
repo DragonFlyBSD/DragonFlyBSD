@@ -1467,7 +1467,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 
 	if (stat->len > WPI_STAT_MAXLEN) {
 		device_printf(sc->sc_dev, "invalid rx statistic header\n");
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
@@ -1483,13 +1483,13 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 	if ((le32toh(tail->flags) & WPI_RX_NOERROR) != WPI_RX_NOERROR) {
 		DPRINTFN(WPI_DEBUG_RX, ("%s: rx flags error %x\n", __func__,
 		    le32toh(tail->flags)));
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 	if (le16toh(head->len) < sizeof (struct ieee80211_frame)) {
 		DPRINTFN(WPI_DEBUG_RX, ("%s: frame too short: %d\n", __func__,
 		    le16toh(head->len)));
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
@@ -1498,7 +1498,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 	if (mnew == NULL) {
 		DPRINTFN(WPI_DEBUG_RX, ("%s: no mbuf to restock ring\n",
 		    __func__));
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 	error = bus_dmamap_load(ring->data_dmat, data->map,
@@ -1508,7 +1508,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 		device_printf(sc->sc_dev,
 		    "%s: bus_dmamap_load failed, error %d\n", __func__, error);
 		m_freem(mnew);
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 	bus_dmamap_sync(ring->data_dmat, data->map, BUS_DMASYNC_PREWRITE);
@@ -1596,9 +1596,9 @@ wpi_tx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc)
 
 	/* XXX oerrors should only count errors !maxtries */
 	if ((le32toh(stat->status) & 0xff) != 1)
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	else
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 	bus_dmamap_sync(ring->data_dmat, txdata->map, BUS_DMASYNC_POSTWRITE);
 	bus_dmamap_unload(ring->data_dmat, txdata->map);
@@ -2049,7 +2049,7 @@ wpi_start_locked(struct ifnet *ifp)
 		ni = (struct ieee80211_node *) m->m_pkthdr.rcvif;
 		if (wpi_tx_data(sc, m, ni, ac) != 0) {
 			ieee80211_free_node(ni);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			break;
 		}
 		sc->sc_tx_timer = 5;
@@ -2079,7 +2079,7 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 		return ENOBUFS;		/* XXX */
 	}
 
-	ifp->if_opackets++;
+	IFNET_STAT_INC(ifp, opackets, 1);
 	if (wpi_tx_data(sc, m, ni, 0) != 0)
 		goto bad;
 	sc->sc_tx_timer = 5;
@@ -2087,7 +2087,7 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 
 	return 0;
 bad:
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	ieee80211_free_node(ni);
 	return EIO;		/* XXX */
 }
@@ -3662,7 +3662,7 @@ wpi_watchdog_callout(void *arg)
 	if (sc->sc_tx_timer > 0) {
 		if (--sc->sc_tx_timer == 0) {
 			device_printf(sc->sc_dev,"device timeout\n");
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			wlan_serialize_exit();
 			ieee80211_runtask(ic, &sc->sc_restarttask);
 			wlan_serialize_enter();

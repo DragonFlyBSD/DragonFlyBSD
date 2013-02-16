@@ -1,5 +1,4 @@
-/* $NetBSD: src/share/locale/ctype/zh_CN.GB18030.src,v 1.2 2003/04/06 18:33:23 tshiozak Exp $ */
-/* $DragonFly: src/share/locale/ctype/zh_CN.GB18030.src,v 1.1 2005/03/11 15:57:42 joerg Exp $ */
+/* $NetBSD: zh_CN.GB18030.src,v 1.2 2003/04/06 18:33:23 tshiozak Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,

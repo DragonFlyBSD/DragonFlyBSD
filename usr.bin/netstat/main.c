@@ -265,7 +265,7 @@ struct protox *protoprotox[] = {
 #endif
 					 NULL };
 
-static void printproto (struct protox *, const char *);
+static void printproto (struct protox *, const char *, u_long);
 static void usage (void);
 static struct protox *name2protox (char *);
 static struct protox *knownname (char *);
@@ -491,7 +491,7 @@ main(int argc, char **argv)
 #endif
 	if (iflag && !sflag) {
 		kread(0, 0, 0);
-		intpr(interval, nl[N_IFNET].n_value, NULL);
+		intpr(interval, nl[N_IFNET].n_value, NULL, nl[N_NCPUS].n_value);
 		exit(0);
 	}
 	if (rflag) {
@@ -526,34 +526,34 @@ main(int argc, char **argv)
 
 	kread(0, 0, 0);
 	if (tp) {
-		printproto(tp, tp->pr_name);
+		printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
 		exit(0);
 	}
 	if (af == AF_INET || af == AF_UNSPEC)
 		for (tp = protox; tp->pr_name; tp++)
-			printproto(tp, tp->pr_name);
+			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
 #ifdef INET6
 	if (af == AF_INET6 || af == AF_UNSPEC)
 		for (tp = ip6protox; tp->pr_name; tp++)
-			printproto(tp, tp->pr_name);
+			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
 #endif /*INET6*/
 #ifdef IPSEC
 	if (af == PF_KEY || af == AF_UNSPEC)
 		for (tp = pfkeyprotox; tp->pr_name; tp++)
-			printproto(tp, tp->pr_name);
+			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
 #endif /*IPSEC*/
 	if (af == AF_IPX || af == AF_UNSPEC) {
 		kread(0, 0, 0);
 		for (tp = ipxprotox; tp->pr_name; tp++)
-			printproto(tp, tp->pr_name);
+			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
 	}
 	if (af == AF_NETGRAPH || af == AF_UNSPEC)
 		for (tp = netgraphprotox; tp->pr_name; tp++)
-			printproto(tp, tp->pr_name);
+			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
 #ifdef ISO
 	if (af == AF_ISO || af == AF_UNSPEC)
 		for (tp = isoprotox; tp->pr_name; tp++)
-			printproto(tp, tp->pr_name);
+			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
 #endif
 	if ((af == AF_UNIX || af == AF_UNSPEC) && !Lflag && !sflag)
 		unixpr();
@@ -566,7 +566,7 @@ main(int argc, char **argv)
  * is not in the namelist, ignore this one.
  */
 static void
-printproto(struct protox *tp, const char *name)
+printproto(struct protox *tp, const char *name, u_long ncpusaddr)
 {
 	void (*pr)(u_long, const char *, int);
 	u_long off;
@@ -575,7 +575,7 @@ printproto(struct protox *tp, const char *name)
 		if (iflag) {
 			if (tp->pr_istats)
 				intpr(interval, nl[N_IFNET].n_value,
-				      tp->pr_istats);
+				      tp->pr_istats, ncpusaddr);
 			else if (pflag)
 				printf("%s: no per-interface stats routine\n",
 				    tp->pr_name);

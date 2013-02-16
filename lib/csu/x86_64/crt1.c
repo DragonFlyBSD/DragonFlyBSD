@@ -56,9 +56,7 @@ _start(char **ap, void (*cleanup)(void))
 	argc = *(long *)(void *)ap;
 	argv = ap + 1;
 	env = ap + 2 + argc;
-	environ = env;
-	if (argc > 0 && argv[0] != NULL)
-		handle_progname(argv[0]);
+	handle_argv(argc, argv, env);
 
 	/*
 	 * Setup the initial TLS space.  The RTLD does not set up our TLS

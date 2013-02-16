@@ -278,7 +278,6 @@ static void
 sln_stop(struct sln_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t intr_status;
 	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
@@ -294,7 +293,7 @@ sln_stop(struct sln_softc *sc)
 
 	/* Clear interrupt */
 	SLN_WRITE_4(sc, SL_INT_MASK, 0);
-	intr_status = SLN_READ_4(sc, SL_INT_STATUS);
+	SLN_READ_4(sc, SL_INT_STATUS);
 
 	/* Free the TX list buffers */
 	for (i = 0; i < SL_TXD_CNT; i++) {
@@ -851,6 +850,10 @@ sln_rx(struct sln_softc *sc)
 	rx_offset = (dirty_rx - vtophys(sc->sln_bufdata.sln_rx_buf)) & (u_long) (SL_RX_BUFLEN - 1);
 
 	while (rx_len > 0) {
+#ifdef SLN_DEBUG
+		u_long ipkts;
+#endif
+
 		rx_bufpos = sc->sln_bufdata.sln_rx_buf + rx_offset;
 		rxstat = *(uint32_t *) rx_bufpos;
 		rx_size = (rxstat >> 20) & 0x0FFF;
@@ -862,7 +865,7 @@ sln_rx(struct sln_softc *sc)
 
 		/* errors receive packets caculatation */
 		if (rxstat == 0 || rx_size < 16 || !(rxstat & SL_RXSTAT_RXOK)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 
 			if (!(rxstat & SL_RXSTAT_RXOK))
 				if_printf(ifp, "receiver ok error\n");
@@ -910,7 +913,7 @@ sln_rx(struct sln_softc *sc)
 											 * align */
 
 			if (m == NULL) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				if_printf(ifp,
 				    "out of mbufs, tried to copy %ld bytes\n",
 				    rx_space);
@@ -922,19 +925,25 @@ sln_rx(struct sln_softc *sc)
 			m = m_devget(rx_bufpos - 2, pkt_size + 2, 0, ifp, NULL);
 
 			if (m == NULL) {
-				ifp->if_ierrors++;
+				u_long ierr;
+
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				if_printf(ifp,
 				    "out of mbufs, tried to copy %ld bytes\n",
 				    pkt_size);
-				if_printf(ifp, "ierrors = %ld\n", ifp->if_ierrors);
 
+				IFNET_STAT_GET(ifp, ierrors, ierr);
+				if_printf(ifp, "ierrors = %lu\n", ierr);
 			} else {
 				m_adj(m, 2);
 			}
 		}
 
-		ifp->if_ipackets++;
-		PDEBUG("ipackets = %ld\n", ifp->if_ipackets);
+		IFNET_STAT_INC(ifp, ipackets, 1);
+#ifdef SLN_DEBUG
+		IFNET_STAT_GET(ifp, ipackets, ipkts);
+		PDEBUG("ipackets = %lu\n", ipkts);
+#endif
 
 		ifp->if_input(ifp, m);
 
@@ -970,12 +979,20 @@ sln_tx_intr(struct sln_softc *sc)
 			SL_DIRTY_TXBUF(sc) = NULL;
 		}
 		if (txstat & SL_TXSD_TOK) {
-			ifp->if_opackets++;
-			ifp->if_obytes += txstat & SL_TXSD_LENMASK;
-			PDEBUG("opackets = %ld\n", ifp->if_opackets);
-			ifp->if_collisions += (txstat & SL_TXSD_NCC) >> 22;
+#ifdef SLN_DEBUG
+			u_long opkts;
+#endif
+
+			IFNET_STAT_INC(ifp, opackets, 1);
+			IFNET_STAT_INC(ifp, obytes, txstat & SL_TXSD_LENMASK);
+#ifdef SLN_DEBUG
+			IFNET_STAT_GET(ifp, opackets, opkts);
+			PDEBUG("opackets = %lu\n", opkts);
+#endif
+			IFNET_STAT_INC(ifp, collisions,
+			    (txstat & SL_TXSD_NCC) >> 22);
 		} else {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if ((txstat & (SL_TXSD_TABT | SL_TXSD_OWC))) {
 				sc->txcfg = TX_CFG_DEFAULT;
 
@@ -1076,7 +1093,7 @@ sln_interrupt(void *arg)
 			sln_tx_intr(sc);
 
 		if (int_status & SL_INT_RBO) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			PDEBUG("rx buffer is overflow\n");
 		}
 
@@ -1144,7 +1161,7 @@ sln_watchdog(struct ifnet *ifp)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if_printf(ifp, "watchdog timeout!\n");
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	sln_tx_intr(sc);
 	sln_rx(sc);

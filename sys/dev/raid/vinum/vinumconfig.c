@@ -1908,7 +1908,6 @@ update_plex_config(int plexno, int diskconfig)
     u_int64_t size;
     int sdno;
     struct plex *plex = &PLEX[plexno];
-    enum plexstate state = plex_up;			    /* state we want the plex in */
     int remainder;					    /* size of fractional stripe at end */
     int added_plex;					    /* set if we add a plex to a volume */
     int required_sds;					    /* number of subdisks we need */
@@ -1934,7 +1933,6 @@ update_plex_config(int plexno, int diskconfig)
 	    && (vol->plexes > 0)
 	    && (diskconfig == 0)) {
 	    added_plex = 1;
-	    state = plex_down;				    /* so take ourselves down */
 	}
     }
     /*
@@ -1957,7 +1955,6 @@ update_plex_config(int plexno, int diskconfig)
 		"vinum: plex %s does not have at least %d subdisks\n",
 		plex->name,
 		required_sds);
-	    state = plex_faulty;
 	}
 	/*
 	 * Now see if the plex size is a multiple of
@@ -1995,7 +1992,6 @@ update_plex_config(int plexno, int diskconfig)
 	    && (sdno > 0)
 	    && (sd->sectors != SD[plex->sdnos[sdno - 1]].sectors)) {
 	    log(LOG_ERR, "vinum: %s must have equal sized subdisks\n", plex->name);
-	    state = plex_down;
 	}
 	size += sd->sectors;
 	if (added_plex) {				    /* we were added later */
@@ -2020,7 +2016,6 @@ update_plex_config(int plexno, int diskconfig)
 	plex->length = size;
     } else {						    /* no subdisks, */
 	plex->length = 0;				    /* no size */
-	state = plex_down;				    /* take it down */
     }
     update_plex_state(plexno);				    /* set the state */
     plex->flags &= ~VF_NEWBORN;

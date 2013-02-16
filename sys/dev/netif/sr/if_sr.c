@@ -874,7 +874,7 @@ top_srstart:
 		 */
 		m_freem(mtx);
 #ifndef NETGRAPH
-		++sc->ifsppp.pp_if.if_opackets;
+		IFNET_STAT_INC(&sc->ifsppp.pp_if, opackets, 1);
 #else	/* NETGRAPH */
 		sc->opackets++;
 #endif /* NETGRAPH */
@@ -1064,7 +1064,7 @@ srwatchdog(struct sr_softc *sc)
 	if (!(ifp->if_flags & IFF_RUNNING))
 		return;
 
-	ifp->if_oerrors++;	/* update output error count */
+	IFNET_STAT_INC(ifp, oerrors, 1);	/* update output error count */
 #else	/* NETGRAPH */
 	sc->oerrors++;	/* update output error count */
 #endif /* NETGRAPH */
@@ -2043,7 +2043,7 @@ sr_get_packets(struct sr_softc *sc)
 			}
 #endif
 			sppp_input(ifp, m);
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 
 #else	/* NETGRAPH */
 #if BUGGY > 3
@@ -2100,7 +2100,7 @@ sr_get_packets(struct sr_softc *sc)
 			sr_eat_packet(sc, 1);
 
 #ifndef NETGRAPH
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 #else
 			sc->ierrors[0]++;
 #endif /* NETGRAPH */
@@ -2167,6 +2167,8 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 		 * Transmit channel - DMA Status Register Evaluation
 		 */
 		if (isr1 & 0x0C) {
+			u_long opkts;
+
 			dmac = &sca->dmac[DMAC_TXCH(mch)];
 
 			/*
@@ -2180,36 +2182,37 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 			 * Check for (& process) a Counter overflow
 			 */
 			if (dsr & SCA_DSR_COF) {
-				kprintf("sr%d: TX DMA Counter overflow, "
-				       "txpacket no %lu.\n",
 #ifndef NETGRAPH
-				       sc->unit, sc->ifsppp.pp_if.if_opackets);
-				sc->ifsppp.pp_if.if_oerrors++;
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, opackets,
+				    opkts);
+				IFNET_STAT_INC(&sc->ifsppp.pp_if, oerrors, 1);
 #else
-				       sc->unit, sc->opackets);
+				opkts = sc->opackets;
 				sc->oerrors++;
 #endif /* NETGRAPH */
+				kprintf("sr%d: TX DMA Counter overflow, "
+				       "txpacket no %lu.\n",
+				       sc->unit, opkts);
 			}
 			/*
 			 * Check for (& process) a Buffer overflow
 			 */
 			if (dsr & SCA_DSR_BOF) {
+#ifndef NETGRAPH
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, opackets,
+				    opkts);
+				IFNET_STAT_INC(&sc->ifsppp.pp_if, oerrors, 1);
+#else
+				opkts = sc->opackets;
+				sc->oerrors++;
+#endif /* NETGRAPH */
 				kprintf("sr%d: TX DMA Buffer overflow, "
 				       "txpacket no %lu, dsr %02x, "
 				       "cda %04x, eda %04x.\n",
-#ifndef NETGRAPH
-				       sc->unit, sc->ifsppp.pp_if.if_opackets,
-#else
-				       sc->unit, sc->opackets,
-#endif /* NETGRAPH */
+				       sc->unit, opkts,
 				       dsr,
 				       SRC_GET16(hc->sca_base, dmac->cda),
 				       SRC_GET16(hc->sca_base, dmac->eda));
-#ifndef NETGRAPH
-				sc->ifsppp.pp_if.if_oerrors++;
-#else
-				sc->oerrors++;
-#endif /* NETGRAPH */
 			}
 			/*
 			 * Check for (& process) an End of Transfer (OK)
@@ -2244,6 +2247,8 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 		 * Receive channel processing of DMA Status Register
 		 */
 		if (isr1 & 0x03) {
+			u_long ipkts;
+
 			dmac = &sca->dmac[DMAC_RXCH(mch)];
 
 			dsr = SRC_GET8(hc->sca_base, dmac->dsr);
@@ -2254,10 +2259,11 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 			 */
 			if (dsr & SCA_DSR_EOM) {
 #if BUGGY > 0
-				int tt, ind;
+				u_long tt, ntt;
+				int ind;
 
 #ifndef NETGRAPH
-				tt = sc->ifsppp.pp_if.if_ipackets;
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, ipackets, tt);
 #else	/* NETGRAPH */
 				tt = sc->ipackets;
 #endif /* NETGRAPH */
@@ -2267,11 +2273,12 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 				sr_get_packets(sc);
 #if BUGGY > 0
 #ifndef NETGRAPH
-				if (tt == sc->ifsppp.pp_if.if_ipackets)
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, ipackets,
+				    ntt);
 #else	/* NETGRAPH */
-				if (tt == sc->ipackets)
+				ntt = sc->ipackets;
 #endif /* NETGRAPH */
-				{
+				if (tt == ntt) {
 					sca_descriptor *rxdesc;
 					int i;
 
@@ -2305,28 +2312,32 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 			 * Check for Counter overflow
 			 */
 			if (dsr & SCA_DSR_COF) {
-				kprintf("sr%d: RX DMA Counter overflow, "
-				       "rxpkts %lu.\n",
 #ifndef NETGRAPH
-				       sc->unit, sc->ifsppp.pp_if.if_ipackets);
-				sc->ifsppp.pp_if.if_ierrors++;
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, ipackets,
+				    ipkts);
+				IFNET_STAT_INC(&sc->ifsppp.pp_if, ierrors, 1);
 #else	/* NETGRAPH */
-				       sc->unit, sc->ipackets);
+				ipkts = sc->ipackets;
 				sc->ierrors[1]++;
 #endif /* NETGRAPH */
+				kprintf("sr%d: RX DMA Counter overflow, "
+				       "rxpkts %lu.\n",
+				       sc->unit, ipkts);
 			}
 			/*
 			 * Check for Buffer overflow
 			 */
 			if (dsr & SCA_DSR_BOF) {
+#ifndef NETGRAPH
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, ipackets,
+				    ipkts);
+#else	/* NETGRAPH */
+				ipkts = sc->ipackets;
+#endif /* NETGRAPH */
 				kprintf("sr%d: RX DMA Buffer overflow, "
 				       "rxpkts %lu, rxind %d, "
 				       "cda %x, eda %x, dsr %x.\n",
-#ifndef NETGRAPH
-				       sc->unit, sc->ifsppp.pp_if.if_ipackets,
-#else	/* NETGRAPH */
-				       sc->unit, sc->ipackets,
-#endif /* NETGRAPH */
+				       sc->unit, ipkts,
 				       sc->rxhind,
 				       SRC_GET16(hc->sca_base, dmac->cda),
 				       SRC_GET16(hc->sca_base, dmac->eda),
@@ -2339,7 +2350,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 
 				sr_eat_packet(sc, 0);
 #ifndef NETGRAPH
-				sc->ifsppp.pp_if.if_ierrors++;
+				IFNET_STAT_INC(&sc->ifsppp.pp_if, ierrors, 1);
 #else	/* NETGRAPH */
 				sc->ierrors[2]++;
 #endif /* NETGRAPH */
@@ -2351,15 +2362,16 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 				SRC_PUT8(hc->sca_base, dmac->dsr, SCA_DSR_DE);
 
 #if BUGGY > 0
+#ifndef NETGRAPH
+				ipkts = sc->ipackets;
+#else	/* NETGRAPH */
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, ipackets,
+				    ipkts);
+#endif /* NETGRAPH */
 				kprintf("sr%d: RX DMA Buffer overflow, "
 				       "rxpkts %lu, rxind %d, "
 				       "cda %x, eda %x, dsr %x. After\n",
-				       sc->unit,
-#ifndef NETGRAPH
-				       sc->ipackets,
-#else	/* NETGRAPH */
-				       sc->ifsppp.pp_if.if_ipackets,
-#endif /* NETGRAPH */
+				       sc->unit, ipkts,
 				       sc->rxhind,
 				       SRC_GET16(hc->sca_base, dmac->cda),
 				       SRC_GET16(hc->sca_base, dmac->eda),
@@ -2370,6 +2382,16 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 			 * End of Transfer
 			 */
 			if (dsr & SCA_DSR_EOT) {
+				u_long ipkts;
+
+#ifndef NETGRAPH
+				IFNET_STAT_GET(&sc->ifsppp.pp_if, ipackets,
+				    ipkts);
+				IFNET_STAT_INC(&sc->ifsppp.pp_if, ierrors, 1);
+#else
+				ipkts = sc->ipackets;
+				sc->ierrors[3]++;
+#endif /* NETGRAPH */
 				/*
 				 * If this happen, it means that we are
 				 * receiving faster than what the processor
@@ -2378,14 +2400,7 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 				 * XXX We should enable the dma again.
 				 */
 				kprintf("sr%d: RX End of xfer, rxpkts %lu.\n",
-				       sc->unit,
-#ifndef NETGRAPH
-				       sc->ifsppp.pp_if.if_ipackets);
-				sc->ifsppp.pp_if.if_ierrors++;
-#else
-				       sc->ipackets);
-				sc->ierrors[3]++;
-#endif /* NETGRAPH */
+				       sc->unit, ipkts);
 			}
 		}
 		isr1 >>= 4;	/* process next half of ISR */

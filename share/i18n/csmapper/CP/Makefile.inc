@@ -1,5 +1,4 @@
-# $NetBSD: Makefile.inc,v 1.4 2006/11/04 03:46:19 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/CP/Makefile.inc,v 1.2 2008/04/10 10:21:04 hasso Exp $
+# $NetBSD: Makefile.inc,v 1.6 2008/10/25 22:35:36 apb Exp $
 
 .PATH: ${.CURDIR}/CP
 
@@ -9,7 +8,6 @@ CLEANFILES+=		mapper.dir.CP charset.pivot.CP
 PART_CP!=		sed '/^\#/d;/^$$/d;' ${.CURDIR}/CP/CP.part
 
 mapper.dir.CP: ${.CURDIR}/CP/CP.part ${.CURDIR}/CP/mapper.dir.CP.src
-	${_MKTARGET_CREATE}
 	(\
 	    echo "# CP";\
 	    for i in ${PART_CP}; do \
@@ -24,7 +22,6 @@ mapper.dir.CP: ${.CURDIR}/CP/CP.part ${.CURDIR}/CP/mapper.dir.CP.src
 	) > ${.TARGET}
 
 charset.pivot.CP: ${.CURDIR}/CP/CP.part ${.CURDIR}/CP/charset.pivot.CP.src
-	${_MKTARGET_CREATE}
 	(\
 	    echo "# CP";\
 	    for i in ${PART_CP}; do \

@@ -876,7 +876,7 @@ iwl2100_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		if (m->m_len < sizeof(*eh)) {
 			m = m_pullup(m, sizeof(*eh));
 			if (m == NULL) {
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 		}
@@ -885,7 +885,7 @@ iwl2100_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		ni = ieee80211_find_txnode(ic, eh->ether_dhost);
 		if (ni == NULL) {
 			m_freem(m);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			continue;
 		}
 
@@ -896,7 +896,7 @@ iwl2100_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		m = ieee80211_encap(ic, m, ni);
 		if (m == NULL) {
 			ieee80211_free_node(ni);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			continue;
 		}
 
@@ -908,7 +908,7 @@ iwl2100_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			if (ieee80211_crypto_encap(ic, ni, m) == NULL) {
 				ieee80211_free_node(ni);
 				m_freem(m);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 		}
@@ -929,11 +929,11 @@ iwl2100_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		ieee80211_free_node(ni);
 
 		if (iwl2100_encap(sc, m)) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			continue;
 		}
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		trans = 1;
 	}
 
@@ -963,7 +963,7 @@ iwl2100_watchdog(struct ifnet *ifp)
 	if (sc->sc_tx_timer) {
 		if (--sc->sc_tx_timer == 0) {
 			if_printf(ifp, "watchdog timeout!\n");
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			iwl2100_restart(sc);
 			return;
 		} else {
@@ -3045,7 +3045,7 @@ iwl2100_rxeof_data(struct iwl2100_softc *sc, int i)
 	frame_len = st->r_len;
 
 	if (iwl2100_newbuf(sc, i, 0)) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 

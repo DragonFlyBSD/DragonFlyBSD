@@ -1,5 +1,4 @@
-/*	$NetBSD: src/share/locale/ctype/charset/GB2312,v 1.1 2000/12/30 02:33:20 itojun Exp $	*/
-/*	$DragonFly: src/share/locale/ctype/charset/GB2312,v 1.1 2005/03/11 15:57:42 joerg Exp $ */
+/*	$NetBSD: GB2312,v 1.1 2000/12/30 02:33:20 itojun Exp $	*/
 
 /*
  * GB2312 (ESC $ ( A or ESC $ A)

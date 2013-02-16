@@ -623,12 +623,14 @@ ED_NO_MIIBUS		opt_ed.h
 # emx driver
 EMX_RSS_DEBUG		opt_emx.h
 EMX_TSO_DEBUG		opt_emx.h
+EMX_TSS_DEBUG		opt_emx.h
 
 # jme driver
 JME_RSS_DEBUG		opt_jme.h
 
 # igb driver
 IGB_RSS_DEBUG		opt_igb.h
+IGB_TSS_DEBUG		opt_igb.h
 IGB_MSIX_DEBUG		opt_igb.h
 
 # dcons options

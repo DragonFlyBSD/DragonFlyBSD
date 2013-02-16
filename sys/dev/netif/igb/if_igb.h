@@ -37,29 +37,45 @@
 /*
  * Max ring count
  */
-#define IGB_MAX_RING_82575	4
+#define IGB_MAX_RING_I210	4
+#define IGB_MAX_RING_I211	2
 #define IGB_MAX_RING_I350	8
 #define IGB_MAX_RING_82580	8
 #define IGB_MAX_RING_82576	16
+#define IGB_MAX_RING_82575	4
 #define IGB_MIN_RING		1
 #define IGB_MIN_RING_RSS	2
 
 /*
  * Max TX/RX interrupt bits
  */
-#define IGB_MAX_TXRXINT_82575	4	/* XXX not used */
+#define IGB_MAX_TXRXINT_I210	4
+#define IGB_MAX_TXRXINT_I211	4
 #define IGB_MAX_TXRXINT_I350	8
 #define IGB_MAX_TXRXINT_82580	8
 #define IGB_MAX_TXRXINT_82576	16
+#define IGB_MAX_TXRXINT_82575	4	/* XXX not used */
 #define IGB_MIN_TXRXINT		2	/* XXX VF? */
 
 /*
  * Max IVAR count
  */
+#define IGB_MAX_IVAR_I210	4
+#define IGB_MAX_IVAR_I211	4
 #define IGB_MAX_IVAR_I350	4
 #define IGB_MAX_IVAR_82580	4
 #define IGB_MAX_IVAR_82576	8
 #define IGB_MAX_IVAR_VF		1
+
+/*
+ * Default number of segments received before writing to RX related registers
+ */
+#define IGB_DEF_RXWREG_NSEGS	32
+
+/*
+ * Default number of segments sent before writing to TX related registers
+ */
+#define IGB_DEF_TXWREG_NSEGS	8
 
 /*
  * IGB_TXD: Maximum number of Transmit Descriptors
@@ -166,9 +182,6 @@
 #define IGB_PKTTYPE_MASK		0x0000FFF0
 
 #define IGB_CSUM_FEATURES		(CSUM_IP | CSUM_TCP | CSUM_UDP)
-#define IGB_IPVHL_SIZE			1 /* sizeof(ip.ip_vhl) */
-#define IGB_TXCSUM_MINHL		(ETHER_HDR_LEN + EVL_ENCAPLEN + \
-					 IGB_IPVHL_SIZE)
 
 /* One for TX csum offloading desc, the other 2 are reserved */
 #define IGB_TX_RESERVED			3
@@ -177,9 +190,6 @@
 #define IGB_TX_SPARE			33
 
 #define IGB_TX_OACTIVE_MAX		64
-
-/* main + 16x RX + 16x TX */
-#define IGB_NSERIALIZE			33
 
 #define IGB_NRSSRK			10
 #define IGB_RSSRK_SIZE			4
@@ -216,6 +226,9 @@ struct igb_tx_ring {
 	struct igb_softc	*sc;
 	struct ifaltq_subque	*ifsq;
 	uint32_t		me;
+	uint32_t		tx_flags;
+#define IGB_TXFLAG_TSO_IPLEN0	0x1
+#define IGB_TXFLAG_ENABLED	0x2
 	struct e1000_tx_desc	*tx_base;
 	int			num_tx_desc;
 	uint32_t		next_avail_desc;
@@ -232,9 +245,9 @@ struct igb_tx_ring {
 	int			wreg_nsegs;
 	int			tx_intr_bit;
 	uint32_t		tx_intr_mask;
+	struct ifsubq_watchdog	tx_watchdog;
 
 	/* Soft stats */
-	u_long			no_desc_avail;
 	u_long			tx_packets;
 
 	struct igb_dma		txdma;
@@ -267,7 +280,7 @@ struct igb_rx_ring {
 	 */
 	struct mbuf		*fmp;
 	struct mbuf		*lmp;
-	int			rx_wreg;
+	int			wreg_nsegs;
 
 	/* Soft stats */
 	u_long			rx_packets;
@@ -305,7 +318,6 @@ struct igb_softc {
 	uint32_t		flags;
 #define IGB_FLAG_SHARED_INTR	0x1
 #define IGB_FLAG_HAS_MGMT	0x2
-#define IGB_FLAG_TSO_IPLEN0	0x4
 
 	bus_dma_tag_t		parent_tag;
 
@@ -344,7 +356,7 @@ struct igb_softc {
 	int			serialize_cnt;
 	int			tx_serialize;
 	int			rx_serialize;
-	struct lwkt_serialize	*serializes[IGB_NSERIALIZE];
+	struct lwkt_serialize	**serializes;
 	struct lwkt_serialize	main_serialize;
 
 	int			intr_rate;
@@ -356,6 +368,8 @@ struct igb_softc {
 	 * Transmit rings
 	 */
 	int			tx_ring_cnt;
+	int			tx_ring_msix;
+	int			tx_ring_inuse;
 	struct igb_tx_ring	*tx_rings;
 
 	/*
@@ -393,6 +407,7 @@ struct igb_softc {
 };
 
 #define IGB_ENABLE_HWRSS(sc)	((sc)->rx_ring_cnt > 1)
+#define IGB_ENABLE_HWTSS(sc)	((sc)->tx_ring_cnt > 1)
 
 struct igb_tx_buf {
 	struct mbuf	*m_head;

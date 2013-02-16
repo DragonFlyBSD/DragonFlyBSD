@@ -339,7 +339,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 					n->m_pkthdr.csum_data = 0xffff;
 				if_simloop(ifp, n, dst->sa_family, hlen);
 			} else
-				ifp->if_iqdrops++;
+				IFNET_STAT_INC(ifp, iqdrops, 1);
 		} else if (bcmp(eh->ether_dhost, eh->ether_shost,
 				ETHER_ADDR_LEN) == 0) {
 			m->m_pkthdr.csum_flags |= csum_flags;
@@ -1057,7 +1057,7 @@ post_stats:
 		if (vlan_input_func != NULL) {
 			vlan_input_func(m);
 		} else {
-			m->m_pkthdr.rcvif->if_noproto++;
+			IFNET_STAT_INC(m->m_pkthdr.rcvif, noproto, 1);
 			m_freem(m);
 		}
 		return;
@@ -1306,10 +1306,10 @@ ether_reinput_oncpu(struct ifnet *ifp, struct mbuf *m, int reinput_flags)
 	}
 
 	/* Update statistics */
-	ifp->if_ipackets++;
-	ifp->if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, ipackets, 1);
+	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
 	if (m->m_flags & (M_MCAST | M_BCAST))
-		ifp->if_imcasts++;
+		IFNET_STAT_INC(ifp, imcasts, 1);
 
 	if (reinput_flags & REINPUT_RUNBPF)
 		BPF_MTAP(ifp, m);
@@ -1344,7 +1344,7 @@ ether_vlancheck(struct mbuf **m0)
 		 * To prevent possible dangerous recursion,
 		 * we don't do vlan-in-vlan
 		 */
-		m->m_pkthdr.rcvif->if_noproto++;
+		IFNET_STAT_INC(m->m_pkthdr.rcvif, noproto, 1);
 		goto failed;
 	}
 	KKASSERT(ether_type != ETHERTYPE_VLAN);
@@ -1413,7 +1413,7 @@ ether_input_handler(netmsg_t nmsg)
 			m->m_flags |= M_BCAST;
 		else
 			m->m_flags |= M_MCAST;
-		ifp->if_imcasts++;
+		IFNET_STAT_INC(ifp, imcasts, 1);
 	}
 
 	ether_input_oncpu(ifp, m);
@@ -1474,14 +1474,14 @@ ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi)
 
 	ETHER_BPF_MTAP(ifp, m);
 
-	ifp->if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
 
 	if (ifp->if_flags & IFF_MONITOR) {
 		struct ether_header *eh;
 
 		eh = mtod(m, struct ether_header *);
 		if (ETHER_IS_MULTICAST(eh->ether_dhost))
-			ifp->if_imcasts++;
+			IFNET_STAT_INC(ifp, imcasts, 1);
 
 		/*
 		 * Interface marked for monitoring; discard packet.

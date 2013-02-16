@@ -67,7 +67,7 @@
 #define	YES	1
 #define	NO	0
 
-static void sidewaysintpr (u_int, u_long);
+static void sidewaysintpr (u_int, u_long, int);
 static void catchalarm (int);
 
 #ifdef INET6
@@ -99,9 +99,10 @@ show_stat(const char *fmt, int width, u_long value, short showvalue)
  * Print a description of the network interfaces.
  */
 void
-intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
+intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 {
 	struct ifnet ifnet;
+	struct ifdata_pcpu ifdata;
 	struct ifaddr_container ifac;
 	struct ifnethead ifnethead;
 	union {
@@ -118,6 +119,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 	u_long ifaddraddr;
 	u_long ifaddrcont_addr;
 	u_long ifaddrfound;
+	u_long ifdataaddr;
 	u_long opackets;
 	u_long ipackets;
 	u_long obytes;
@@ -131,13 +133,17 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 	char name[IFNAMSIZ];
 	short network_layer;
 	short link_layer;
+	int ncpus;
+
+	if (kread(ncpusaddr, (char *)&ncpus, sizeof(ncpus)))
+		return;
 
 	if (ifnetaddr == 0) {
 		printf("ifnet: symbol not defined\n");
 		return;
 	}
 	if (interval1) {
-		sidewaysintpr((unsigned)interval1, ifnetaddr);
+		sidewaysintpr((unsigned)interval1, ifnetaddr, ncpus);
 		return;
 	}
 	if (kread(ifnetaddr, (char *)&ifnethead, sizeof ifnethead))
@@ -162,13 +168,14 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 		putchar('\n');
 	}
 	ifaddraddr = 0;
+	ifaddrcont_addr = 0;
 	while (ifnetaddr || ifaddraddr) {
 		struct sockaddr_in *sin;
 #ifdef INET6
 		struct sockaddr_in6 *sin6;
 #endif
 		char *cp;
-		int n, m;
+		int n, m, cpu;
 
 		network_layer = 0;
 		link_layer = 0;
@@ -214,13 +221,30 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 		 * Get the interface stats.  These may get
 		 * overriden below on a per-interface basis.
 		 */
-		opackets = ifnet.if_opackets;
-		ipackets = ifnet.if_ipackets;
-		obytes = ifnet.if_obytes;
-		ibytes = ifnet.if_ibytes;
-		oerrors = ifnet.if_oerrors;
-		ierrors = ifnet.if_ierrors;
-		collisions = ifnet.if_collisions;
+		ifdataaddr = (u_long)ifnet.if_data_pcpu;
+		if (kread(ifdataaddr, (char *)&ifdata, sizeof(ifdata)))
+			return;
+		opackets = ifdata.ifd_opackets;
+		ipackets = ifdata.ifd_ipackets;
+		obytes = ifdata.ifd_obytes;
+		ibytes = ifdata.ifd_ibytes;
+		oerrors = ifdata.ifd_oerrors;
+		ierrors = ifdata.ifd_ierrors;
+		collisions = ifdata.ifd_collisions;
+
+		for (cpu = 1; cpu < ncpus; ++cpu) {
+			if (kread(ifdataaddr + (cpu * sizeof(ifdata)),
+			    (char *)&ifdata, sizeof(ifdata)))
+				return;
+			opackets += ifdata.ifd_opackets;
+			ipackets += ifdata.ifd_ipackets;
+			obytes += ifdata.ifd_obytes;
+			ibytes += ifdata.ifd_ibytes;
+			oerrors += ifdata.ifd_oerrors;
+			ierrors += ifdata.ifd_ierrors;
+			collisions += ifdata.ifd_collisions;
+		}
+
 		timer = ifnet.if_timer;
 		drops = 0;
 
@@ -233,6 +257,26 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 				ifaddraddr = 0;
 				continue;
 			}
+
+			ifaddr.ifa.if_ipackets = ifac.ifa_ipackets;
+			ifaddr.ifa.if_ibytes = ifac.ifa_ibytes;
+			ifaddr.ifa.if_opackets = ifac.ifa_opackets;
+			ifaddr.ifa.if_obytes = ifac.ifa_obytes;
+			for (cpu = 1; cpu < ncpus; ++cpu) {
+				struct ifaddr_container nifac;
+
+				if (kread(ifaddrcont_addr +
+				    (cpu * sizeof(nifac)),
+				    (char *)&nifac, sizeof(nifac))) {
+					ifaddraddr = 0;
+					continue;
+				}
+				ifaddr.ifa.if_ipackets += nifac.ifa_ipackets;
+				ifaddr.ifa.if_ibytes += nifac.ifa_ibytes;
+				ifaddr.ifa.if_opackets += nifac.ifa_opackets;
+				ifaddr.ifa.if_obytes += nifac.ifa_obytes;
+			}
+
 #define CP(x) ((char *)(x))
 			cp = (CP(ifaddr.ifa.ifa_addr) - CP(ifaddraddr)) +
 				CP(&ifaddr);
@@ -342,10 +386,10 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 			 * update stats for their network addresses
 			 */
 			if (network_layer) {
-				opackets = ifaddr.in.ia_ifa.if_opackets;
-				ipackets = ifaddr.in.ia_ifa.if_ipackets;
-				obytes = ifaddr.in.ia_ifa.if_obytes;
-				ibytes = ifaddr.in.ia_ifa.if_ibytes;
+				opackets = ifaddr.ifa.if_opackets;
+				ipackets = ifaddr.ifa.if_ipackets;
+				obytes = ifaddr.ifa.if_obytes;
+				ibytes = ifaddr.ifa.if_ibytes;
 			}
 
 			ifaddrcont_addr =
@@ -471,15 +515,17 @@ u_char	signalled;			/* set if alarm goes off "early" */
  * XXX - should be rewritten to use ifmib(4).
  */
 static void
-sidewaysintpr(unsigned interval1, u_long off)
+sidewaysintpr(unsigned interval1, u_long off, int ncpus)
 {
 	struct ifnet ifnet;
 	u_long firstifnet;
 	struct ifnethead ifnethead;
+	struct ifdata_pcpu ifdata;
 	struct iftot *iftot, *ip, *ipn, *total, *sum, *interesting;
-	int line;
+	int line, cpu;
 	int oldmask, first;
 	u_long interesting_off;
+	u_long ifdata_addr;
 
 	if (kread(off, (char *)&ifnethead, sizeof ifnethead))
 		return;
@@ -547,6 +593,35 @@ loop:
 			printf("???\n");
 			exit(1);
 		}
+
+		ifdata_addr = (u_long)ifnet.if_data_pcpu;
+		if (kread(ifdata_addr, (char *)&ifdata, sizeof(ifdata))) {
+			printf("ifdata 1\n");
+			exit(1);
+		}
+		ifnet.if_ipackets = ifdata.ifd_ipackets;
+		ifnet.if_ierrors = ifdata.ifd_ierrors;
+		ifnet.if_ibytes = ifdata.ifd_ibytes;
+		ifnet.if_opackets = ifdata.ifd_opackets;
+		ifnet.if_oerrors = ifdata.ifd_oerrors;
+		ifnet.if_obytes = ifdata.ifd_obytes;
+		ifnet.if_collisions = ifdata.ifd_collisions;
+
+		for (cpu = 1; cpu < ncpus; ++cpu) {
+			if (kread(ifdata_addr + (cpu * sizeof(ifdata)),
+			    (char *)&ifdata, sizeof(ifdata))) {
+				printf("ifdata 2\n");
+				exit(1);
+			}
+			ifnet.if_ipackets += ifdata.ifd_ipackets;
+			ifnet.if_ierrors += ifdata.ifd_ierrors;
+			ifnet.if_ibytes += ifdata.ifd_ibytes;
+			ifnet.if_opackets += ifdata.ifd_opackets;
+			ifnet.if_oerrors += ifdata.ifd_oerrors;
+			ifnet.if_obytes += ifdata.ifd_obytes;
+			ifnet.if_collisions += ifdata.ifd_collisions;
+		}
+
 		if (!first) {
 			printf("%10lu %5lu %10lu %10lu %5lu %10lu %5lu",
 				ifnet.if_ipackets - ip->ift_ip,
@@ -583,6 +658,36 @@ loop:
 				off = 0;
 				continue;
 			}
+
+			ifdata_addr = (u_long)ifnet.if_data_pcpu;
+			if (kread(ifdata_addr, (char *)&ifdata,
+			    sizeof(ifdata))) {
+				printf("ifdata 3\n");
+				exit(1);
+			}
+			ifnet.if_ipackets = ifdata.ifd_ipackets;
+			ifnet.if_ierrors = ifdata.ifd_ierrors;
+			ifnet.if_ibytes = ifdata.ifd_ibytes;
+			ifnet.if_opackets = ifdata.ifd_opackets;
+			ifnet.if_oerrors = ifdata.ifd_oerrors;
+			ifnet.if_obytes = ifdata.ifd_obytes;
+			ifnet.if_collisions = ifdata.ifd_collisions;
+
+			for (cpu = 1; cpu < ncpus; ++cpu) {
+				if (kread(ifdata_addr + (cpu * sizeof(ifdata)),
+				    (char *)&ifdata, sizeof(ifdata))) {
+					printf("ifdata 2\n");
+					exit(1);
+				}
+				ifnet.if_ipackets += ifdata.ifd_ipackets;
+				ifnet.if_ierrors += ifdata.ifd_ierrors;
+				ifnet.if_ibytes += ifdata.ifd_ibytes;
+				ifnet.if_opackets += ifdata.ifd_opackets;
+				ifnet.if_oerrors += ifdata.ifd_oerrors;
+				ifnet.if_obytes += ifdata.ifd_obytes;
+				ifnet.if_collisions += ifdata.ifd_collisions;
+			}
+
 			sum->ift_ip += ifnet.if_ipackets;
 			sum->ift_ie += ifnet.if_ierrors;
 			sum->ift_ib += ifnet.if_ibytes;

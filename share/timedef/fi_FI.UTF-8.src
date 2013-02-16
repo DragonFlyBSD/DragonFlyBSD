@@ -1,4 +1,4 @@
-# $DragonFly: src/share/timedef/fi_FI.UTF-8.src,v 1.1 2004/09/27 14:44:33 asmodai Exp $
+# $FreeBSD: src/share/timedef/fi_FI.UTF-8.src,v 1.4 2012/11/17 01:51:03 svnexp Exp $
 # WARNING: spaces may be essential at the end of lines
 # WARNING: empty lines are essential too
 #
@@ -17,7 +17,7 @@ Lok
 Mar
 Jou
 #
-# Long month names
+# Long month names (as in a date)
 #
 Tammikuu
 Helmikuu
@@ -76,7 +76,7 @@ pm
 #
 %a %e %b %Y %X %Z
 #
-# Long months names (alternative)
+# Long month names (without case ending)
 #
 Tammikuu
 Helmikuu

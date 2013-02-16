@@ -923,7 +923,7 @@ ural_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall_async(sc->sc_rx_pipeh);
 
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		crit_exit();
 		return;
 	}
@@ -934,7 +934,7 @@ ural_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	data->ni = NULL;
 
 	sc->tx_queued--;
-	ifp->if_opackets++;
+	IFNET_STAT_INC(ifp, opackets, 1);
 
 	DPRINTFN(10, ("tx done\n"));
 
@@ -983,7 +983,7 @@ ural_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	if (len < RAL_RX_DESC_SIZE + IEEE80211_MIN_LEN) {
 		DPRINTF(("%s: xfer too short %d\n", device_get_nameunit(sc->sc_dev),
 		    len));
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto skip;
 	}
 
@@ -997,13 +997,13 @@ ural_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		 * those frames when we filled RAL_TXRX_CSR2.
 		 */
 		DPRINTFN(5, ("PHY or CRC error\n"));
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto skip;
 	}
 
 	mnew = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (mnew == NULL) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto skip;
 	}
 
@@ -1423,7 +1423,7 @@ ural_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			if (m0->m_len < sizeof (struct ether_header)) {
 				m0 = m_pullup(m0, sizeof (struct ether_header));
 				if (m0 == NULL) {
-					ifp->if_oerrors++;
+					IFNET_STAT_INC(ifp, oerrors, 1);
 					continue;
 				}
 			}
@@ -1447,7 +1447,7 @@ ural_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 			if (ural_tx_data(sc, m0, ni) != 0) {
 				ieee80211_free_node(ni);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				break;
 			}
 		}
@@ -1475,7 +1475,7 @@ ural_watchdog(struct ifnet *ifp)
 		if (--sc->sc_tx_timer == 0) {
 			device_printf(sc->sc_dev, "device timeout\n");
 			/*ural_init(sc); XXX needs a process context! */
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 
 			crit_exit();
 			return;
@@ -2394,7 +2394,7 @@ ural_stats_update(usbd_xfer_handle xfer, usbd_private_handle priv,
 	crit_enter();
 
 	/* count TX retry-fail as Tx errors */
-	ifp->if_oerrors += sc->sta[RAL_TX_PKT_FAIL];
+	IFNET_STAT_INC(ifp, oerrors, sc->sta[RAL_TX_PKT_FAIL]);
 
 	stats->stats_pkt_ok += sc->sta[RAL_TX_PKT_NO_RETRY] +
 			       sc->sta[RAL_TX_PKT_ONE_RETRY] +

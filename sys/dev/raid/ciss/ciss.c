@@ -2002,10 +2002,14 @@ ciss_free(struct ciss_softc *sc)
 static int
 ciss_start(struct ciss_request *cr)
 {
-    struct ciss_command	*cc;	/* XXX debugging only */
+#ifdef CISS_DEBUG
+    struct ciss_command	*cc;
+#endif
     int			error;
 
+#ifdef CISS_DEBUG
     cc = cr->cr_cc;
+#endif
     debug(2, "post command %d tag %d ", cr->cr_tag, cc->header.host_tag);
 
     /*
@@ -2986,12 +2990,16 @@ ciss_cam_action(struct cam_sim *sim, union ccb *ccb)
     case XPT_GET_TRAN_SETTINGS:
     {
 	struct ccb_trans_settings	*cts = &ccb->cts;
+#ifdef CISS_DEBUG
 	int				bus, target;
+#endif
 	struct ccb_trans_settings_spi *spi = &cts->xport_specific.spi;
 	struct ccb_trans_settings_scsi *scsi = &cts->proto_specific.scsi;
 
+#ifdef CISS_DEBUG
 	bus = cam_sim_bus(sim);
 	target = cts->ccb_h.target_id;
+#endif
 
 	debug(1, "XPT_GET_TRAN_SETTINGS %d:%d", bus, target);
 	/* disconnect always OK */

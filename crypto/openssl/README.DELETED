@@ -12,6 +12,7 @@ INSTALL.W64
 INSTALL.WCE
 MacOS/
 Makefile
+Makefile.bak
 Makefile.org
 Makefile.shared
 Netware/

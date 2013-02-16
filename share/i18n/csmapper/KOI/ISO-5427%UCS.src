@@ -1,5 +1,4 @@
 # $NetBSD: ISO-5427%UCS.src,v 1.1 2006/09/16 08:38:20 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/KOI/ISO-5427%UCS.src,v 1.1 2008/04/10 10:21:11 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"ISO-5427/UCS"

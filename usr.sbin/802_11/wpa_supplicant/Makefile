@@ -25,7 +25,6 @@ MAN=	wpa_supplicant.8 wpa_supplicant.conf.5
 #FILES=	wpa_supplicant.conf
 #.endif
 
-CFLAGS+=-I${WPA_SUPPLICANT_DISTDIR}
 CFLAGS+=-I${WPA_DISTDIR}/src/drivers
 CFLAGS+=-I${WPA_DISTDIR}/src/rsn_supp
 

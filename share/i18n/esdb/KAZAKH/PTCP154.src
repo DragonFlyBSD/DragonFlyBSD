@@ -1,5 +1,4 @@
 # $NetBSD: PTCP154.src,v 1.1 2007/03/13 16:34:39 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/KAZAKH/PTCP154.src,v 1.1 2008/04/10 10:21:12 hasso Exp $
 
 NAME		"PTCP154"
 ENCODING	"NONE"

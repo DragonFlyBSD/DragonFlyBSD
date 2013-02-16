@@ -745,9 +745,9 @@ rue_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	usbd_get_xfer_status(xfer, NULL, (void **)&p, NULL, NULL);
 
-	ifp->if_ierrors += p->rue_rxlost_cnt;
-	ifp->if_ierrors += p->rue_crcerr_cnt;
-	ifp->if_collisions += p->rue_col_cnt;
+	IFNET_STAT_INC(ifp, ierrors, p->rue_rxlost_cnt);
+	IFNET_STAT_INC(ifp, ierrors, p->rue_crcerr_cnt);
+	IFNET_STAT_INC(ifp, collisions, p->rue_col_cnt);
 
 	RUE_UNLOCK(sc);
 }
@@ -764,7 +764,7 @@ rue_rxstart(struct ifnet *ifp)
 	c = &sc->rue_cdata.rue_rx_chain[sc->rue_cdata.rue_rx_prod];
 
 	if (rue_newbuf(sc, c, NULL) == ENOBUFS) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		RUE_UNLOCK(sc);
 		return;
 	}
@@ -820,7 +820,7 @@ rue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	usbd_get_xfer_status(xfer, NULL, NULL, &total_len, NULL);
 
 	if (total_len <= ETHER_CRC_LEN) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto done;
 	}
 
@@ -829,14 +829,14 @@ rue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	/* Check recieve packet was valid or not */
 	if ((r.rue_rxstat & RUE_RXSTAT_VALID) == 0) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto done;
 	}
 
 	/* No errors; receive the packet. */
 	total_len -= ETHER_CRC_LEN;
 
-	ifp->if_ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = total_len;
 
@@ -895,9 +895,9 @@ rue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 
 	if (err)
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	else
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -1246,7 +1246,7 @@ rue_watchdog(struct ifnet *ifp)
 
 	RUE_LOCK(sc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	if_printf(ifp, "watchdog timeout\n");
 
 	c = &sc->rue_cdata.rue_tx_chain[0];

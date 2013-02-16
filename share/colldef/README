@@ -1,6 +1,6 @@
-$FreeBSD: src/share/colldef/README,v 1.1.2.2 2002/04/08 09:29:30 ache Exp $
-$DragonFly: src/share/colldef/README,v 1.2 2003/06/17 04:36:56 dillon Exp $
+$FreeBSD: src/share/colldef/README,v 1.4 2012/11/17 01:50:27 svnexp Exp $
 
 WARNING: For the compatibility sake try to keep collating table backward 
 compatible with ASCII, i.e.  add other symbols to the existent ASCII order.
 
+For mnemonic names see ftp://std.dkuug.dk/i18n/charmaps/

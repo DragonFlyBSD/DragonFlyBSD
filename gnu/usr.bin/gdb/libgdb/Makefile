@@ -13,7 +13,7 @@ CONTRIBDIR=	${BASEDIR}/gdb
 VERSION!= cat ${CONTRIBDIR}/version.in
 
 CFLAGS+= -I${.OBJDIR} -I${.CURDIR} -I${BASEDIR}/include -I${BASEDIR}/bfd
-CFLAGS+= -I${CONTRIBDIR} -I${CONTRIBDIR}/config -I${CONTRIBDIR}/common
+CFLAGS+= -I${CONTRIBDIR} -I${CONTRIBDIR}/common
 CFLAGS+= -I${BASEDIR}/libdecnumber
 CFLAGS+= -I${.CURDIR}/../libbfd -I${.OBJDIR}/../libbfd
 CFLAGS+= -I${BASEDIR} 

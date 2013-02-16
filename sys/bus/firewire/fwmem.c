@@ -43,26 +43,16 @@
 #include <sys/conf.h>
 #include <sys/bus.h>
 #include <sys/sysctl.h>
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <sys/buf.h>
-#else
-#include <sys/bio.h>
-#endif
 
 #include <sys/signal.h>
 #include <sys/mman.h>
 #include <sys/fcntl.h>
 #include <sys/thread2.h>
 
-#ifdef __DragonFly__
-#include "firewire.h"
-#include "firewirereg.h"
-#include "fwmem.h"
-#else
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-#include <dev/firewire/fwmem.h>
-#endif
+#include <bus/firewire/firewire.h>
+#include <bus/firewire/firewirereg.h>
+#include <bus/firewire/fwmem.h>
 
 static int fwmem_speed=2, fwmem_debug=0;
 static struct fw_eui64 fwmem_eui64;

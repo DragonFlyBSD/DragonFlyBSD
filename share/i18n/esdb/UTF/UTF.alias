@@ -1,5 +1,4 @@
 # $NetBSD: UTF.alias,v 1.5 2007/12/17 14:06:57 joerg Exp $
-# $DragonFly: src/share/i18n/esdb/UTF/UTF.alias,v 1.2 2008/04/10 10:21:13 hasso Exp $
 
 7		utf-7
 8		utf-8 utf8

@@ -361,8 +361,6 @@ static DEV_INFO device_info[] = {
 {"joy",         "Joystick",				FLG_FIXED,	CLS_INPUT},
 {"sc",          "Syscons console driver",		FLG_IMMUTABLE,	CLS_INPUT},
 
-{"sbc",         "PCM Creative SoundBlaster/ESS/Avance sounce cards",	0,CLS_MMEDIA},
-{"gusc",        "PCM Gravis UltraSound sound cards",	0,		CLS_MMEDIA},
 {"pcm",         "PCM Generic soundcard support",		0,		CLS_MMEDIA},
 {"sb",          "VOXWARE Soundblaster PCM (SB/Pro/16, ProAudio Spectrum)",0,CLS_MMEDIA},
 {"sbxvi",       "VOXWARE Soundblaster 16",		0,		CLS_MMEDIA},
@@ -371,7 +369,6 @@ static DEV_INFO device_info[] = {
 {"gus",         "VOXWARE Gravis Ultrasound, Ultrasound 16 and Ultrasound MAX",0,CLS_MMEDIA},
 {"gusxvi",      "VOXWARE Gravis Ultrasound 16-bit PCM",	0,		CLS_MMEDIA},
 {"gusmax",      "VOXWARE Gravis Ultrasound MAX",	0,		CLS_MMEDIA},
-{"mss",         "VOXWARE Microsoft Sound System",	0,		CLS_MMEDIA},
 {"opl",         "VOXWARE OPL-2/3 FM, SB/Pro/16, ProAudio Spectrum",0,CLS_MMEDIA},
 {"mpu",         "VOXWARE Roland MPU401 MIDI",		0,		CLS_MMEDIA},
 {"sscape",      "VOXWARE Ensoniq Soundscape MIDI interface",	0,	CLS_MMEDIA},

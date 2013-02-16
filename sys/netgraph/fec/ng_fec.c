@@ -757,8 +757,8 @@ ng_fec_input(struct ifnet *ifp, struct mbuf **m0)
 
 	/* Pretend this is our frame. */
 	m->m_pkthdr.rcvif = bifp;
-	bifp->if_ipackets++;
-	bifp->if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(bifp, ipackets, 1);
+	IFNET_STAT_INC(bifp, ibytes, m->m_pkthdr.len);
 
 	if (bifp->if_bpf) {
 		bpf_gettoken();
@@ -998,12 +998,12 @@ ng_fec_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 	/* Queue up packet on the proper port. */
 	error = ng_fec_choose_port(b, m0, &oifp);
 	if (error) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		m_freem(m0);
 		priv->if_error = ENOBUFS;
 		return;
 	}
-	ifp->if_opackets++;
+	IFNET_STAT_INC(ifp, opackets, 1);
 
 	/*
 	 * Release current iface's serializer to avoid possible dead lock

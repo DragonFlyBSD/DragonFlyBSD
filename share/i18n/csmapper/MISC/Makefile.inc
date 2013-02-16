@@ -1,5 +1,4 @@
 # $NetBSD: Makefile.inc,v 1.13 2007/04/01 18:52:29 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/MISC/Makefile.inc,v 1.2 2008/04/10 10:21:11 hasso Exp $
 
 .PATH: ${.CURDIR}/MISC
 
@@ -22,11 +21,9 @@ MAPS_MISC=		ATARIST%UCS.mps \
 			UCS%TDS565.mps
 
 mapper.dir.MISC: ${.CURDIR}/MISC/mapper.dir.MISC.src
-	${_MKTARGET_CREATE}
 	(echo "# MISC" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 charset.pivot.MISC: ${.CURDIR}/MISC/charset.pivot.MISC.src
-	${_MKTARGET_CREATE}
 	(echo "# MISC" ; cat ${.ALLSRC} ; echo ) > ${.TARGET}
 
 FILES+= ${MAPS_MISC}

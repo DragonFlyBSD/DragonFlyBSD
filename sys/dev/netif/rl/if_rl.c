@@ -1024,7 +1024,7 @@ rl_rxeof(struct rl_softc *sc)
 			break;
 	
 		if ((rxstat & RL_RXSTAT_RXOK) == 0) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			rl_init(sc);
 			return;
 		}
@@ -1066,7 +1066,7 @@ rl_rxeof(struct rl_softc *sc)
 			m = m_devget(rxbufpos - RL_ETHER_ALIGN,
 			    wrap + RL_ETHER_ALIGN, 0, ifp, NULL);
 			if (m == NULL) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 			} else {
 				m_adj(m, RL_ETHER_ALIGN);
 				m_copyback(m, wrap, total_len - wrap,
@@ -1077,7 +1077,7 @@ rl_rxeof(struct rl_softc *sc)
 			m = m_devget(rxbufpos - RL_ETHER_ALIGN,
 			    total_len + RL_ETHER_ALIGN, 0, ifp, NULL);
 			if (m == NULL) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 			} else
 				m_adj(m, RL_ETHER_ALIGN);
 			cur_rx += total_len + 4 + ETHER_CRC_LEN;
@@ -1092,7 +1092,7 @@ rl_rxeof(struct rl_softc *sc)
 		if (m == NULL)
 			continue;
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 
 		ifp->if_input(ifp, m);
 	}
@@ -1122,7 +1122,8 @@ rl_txeof(struct rl_softc *sc)
 			       RL_TXSTAT_TXABRT)) == 0)
 			break;
 
-		ifp->if_collisions += (txstat & RL_TXSTAT_COLLCNT) >> 24;
+		IFNET_STAT_INC(ifp, collisions,
+		    (txstat & RL_TXSTAT_COLLCNT) >> 24);
 
 		bus_dmamap_unload(sc->rl_cdata.rl_tx_tag, RL_LAST_DMAMAP(sc));
 		m_freem(RL_LAST_TXMBUF(sc));
@@ -1136,9 +1137,9 @@ rl_txeof(struct rl_softc *sc)
 		}
 
 		if (txstat & RL_TXSTAT_TX_OK) {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		} else {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (txstat & (RL_TXSTAT_TXABRT | RL_TXSTAT_OUTOFWIN))
 				CSR_WRITE_4(sc, RL_TXCFG, RL_TXCFG_CONFIG);
 		}
@@ -1562,7 +1563,7 @@ rl_watchdog(struct ifnet *ifp)
 
 	device_printf(sc->rl_dev, "watchdog timeout\n");
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	rl_txeof(sc);
 	rl_rxeof(sc);

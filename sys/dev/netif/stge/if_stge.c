@@ -1250,7 +1250,7 @@ stge_watchdog(struct ifnet *ifp)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if_printf(ifp, "device timeout\n");
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	stge_init(ifp->if_softc);
 }
 
@@ -1609,7 +1609,7 @@ stge_rxeof(struct stge_softc *sc, int count)
 		 * Add a new receive buffer to the ring.
 		 */
 		if (stge_newbuf(sc, cons, 0) != 0) {
-			ifp->if_iqdrops++;
+			IFNET_STAT_INC(ifp, iqdrops, 1);
 			stge_discard_rxbuf(sc, cons);
 			if (sc->sc_cdata.stge_rxhead != NULL) {
 				m_freem(sc->sc_cdata.stge_rxhead);
@@ -1805,22 +1805,22 @@ stge_stats_update(struct stge_softc *sc)
 
 	CSR_READ_4(sc,STGE_OctetRcvOk);
 
-	ifp->if_ipackets += CSR_READ_4(sc, STGE_FramesRcvdOk);
+	IFNET_STAT_INC(ifp, ipackets, CSR_READ_4(sc, STGE_FramesRcvdOk));
 
-	ifp->if_ierrors += CSR_READ_2(sc, STGE_FramesLostRxErrors);
+	IFNET_STAT_INC(ifp, ierrors, CSR_READ_2(sc, STGE_FramesLostRxErrors));
 
 	CSR_READ_4(sc, STGE_OctetXmtdOk);
 
-	ifp->if_opackets += CSR_READ_4(sc, STGE_FramesXmtdOk);
+	IFNET_STAT_INC(ifp, opackets, CSR_READ_4(sc, STGE_FramesXmtdOk));
 
-	ifp->if_collisions +=
+	IFNET_STAT_INC(ifp, collisions,
 	    CSR_READ_4(sc, STGE_LateCollisions) +
 	    CSR_READ_4(sc, STGE_MultiColFrames) +
-	    CSR_READ_4(sc, STGE_SingleColFrames);
+	    CSR_READ_4(sc, STGE_SingleColFrames));
 
-	ifp->if_oerrors +=
+	IFNET_STAT_INC(ifp, oerrors,
 	    CSR_READ_2(sc, STGE_FramesAbortXSColls) +
-	    CSR_READ_2(sc, STGE_FramesWEXDeferal);
+	    CSR_READ_2(sc, STGE_FramesWEXDeferal));
 }
 
 /*

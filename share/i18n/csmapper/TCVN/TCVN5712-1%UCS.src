@@ -1,5 +1,4 @@
 # $NetBSD: TCVN5712-1%UCS.src,v 1.1 2006/11/13 15:16:30 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/TCVN/TCVN5712-1%UCS.src,v 1.1 2008/04/10 10:21:11 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"TCVN5712-1/UCS"

@@ -360,7 +360,7 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			return (ENOBUFS);
 		} else {
 			bcopy(dst, m0->m_data, dst->sa_len);
@@ -373,7 +373,7 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			return ENOBUFS;
 		} else
 			*(u_int32_t *)m0->m_data = htonl(dst->sa_family);
@@ -389,9 +389,9 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 
 	error = ifq_handoff(ifp, m0, &pktattr);
 	if (error) {
-		ifp->if_collisions++;
+		IFNET_STAT_INC(ifp, collisions, 1);
 	} else {
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		if (tp->tun_flags & TUN_RWAIT) {
 			tp->tun_flags &= ~TUN_RWAIT;
 			wakeup((caddr_t)tp);
@@ -631,7 +631,7 @@ tunwrite(struct dev_write_args *ap)
 	if (error) {
 		if (top)
 			m_freem (top);
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return error;
 	}
 
@@ -682,8 +682,8 @@ tunwrite(struct dev_write_args *ap)
 	} else
 		family = AF_INET;
 
-	ifp->if_ibytes += top->m_pkthdr.len;
-	ifp->if_ipackets++;
+	IFNET_STAT_INC(ifp, ibytes, top->m_pkthdr.len);
+	IFNET_STAT_INC(ifp, ipackets, 1);
 
 	switch (family) {
 #ifdef INET

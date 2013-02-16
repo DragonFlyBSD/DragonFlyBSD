@@ -317,13 +317,13 @@ nmdmread(struct dev_read_args *ap)
 	struct tty *tp;
 #if 0
 	struct tty *tp2;
-#endif
 	struct softpart *ourpart, *otherpart;
+#endif
 
 	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
-	GETPARTS(tp, ourpart, otherpart);
 #if 0
+	GETPARTS(tp, ourpart, otherpart);
 	tp2 = &otherpart->nm_tty;
 
 	if (tp2->t_state & TS_ISOPEN) {

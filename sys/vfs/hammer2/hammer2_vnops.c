@@ -51,8 +51,8 @@
 
 static int hammer2_read_file(hammer2_inode_t *ip, struct uio *uio,
 				int seqcount);
-static int hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag,
-			      int seqcount);
+static int hammer2_write_file(hammer2_inode_t *ip, hammer2_chain_t **chainp,
+				struct uio *uio, int ioflag, int seqcount);
 static hammer2_off_t hammer2_assign_physical(hammer2_inode_t *ip,
 				hammer2_key_t lbase, int lblksize, int *errorp);
 static void hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize);
@@ -73,8 +73,9 @@ static
 int
 hammer2_vop_inactive(struct vop_inactive_args *ap)
 {
+	hammer2_chain_t *chain;
+	hammer2_inode_t *ip;
 	struct vnode *vp;
-	struct hammer2_inode *ip;
 #if 0
 	struct hammer2_mount *hmp;
 #endif
@@ -95,18 +96,20 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	 * the strategy code.  Simply mark the inode modified so it gets
 	 * picked up by our normal flush.
 	 */
-	if (ip->chain.flags & HAMMER2_CHAIN_DIRTYEMBED) {
-		hammer2_inode_lock_ex(ip);
-		atomic_clear_int(&ip->chain.flags, HAMMER2_CHAIN_DIRTYEMBED);
-		hammer2_chain_modify(ip->hmp, &ip->chain, 0);
-		hammer2_inode_unlock_ex(ip);
+	chain = hammer2_inode_lock_ex(ip);
+	if (ip->flags & HAMMER2_INODE_DIRTYEMBED) {
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYEMBED);
+		hammer2_chain_modify(ip->hmp, chain, 0);
 	}
 
 	/*
 	 * Check for deleted inodes and recycle immediately.
 	 */
-	if (ip->chain.flags & HAMMER2_CHAIN_DELETED) {
+	if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
+		hammer2_inode_unlock_ex(ip, chain);
 		vrecycle(vp);
+	} else {
+		hammer2_inode_unlock_ex(ip, chain);
 	}
 	return (0);
 }
@@ -119,8 +122,9 @@ static
 int
 hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 {
-	struct hammer2_inode *ip;
-	struct hammer2_mount *hmp;
+	hammer2_chain_t *chain;
+	hammer2_inode_t *ip;
+	hammer2_mount_t *hmp;
 	struct vnode *vp;
 
 	vp = ap->a_vp;
@@ -133,16 +137,22 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * Set SUBMODIFIED so we can detect and propagate the DESTROYED
 	 * bit in the flush code.
 	 */
-	hammer2_inode_lock_ex(ip);
+	chain = hammer2_inode_lock_ex(ip);
 	vp->v_data = NULL;
 	ip->vp = NULL;
-	if (ip->chain.flags & HAMMER2_CHAIN_DELETED) {
-		atomic_set_int(&ip->chain.flags, HAMMER2_CHAIN_DESTROYED |
-						 HAMMER2_CHAIN_SUBMODIFIED);
+	if (chain->flags & HAMMER2_CHAIN_DELETED) {
+		KKASSERT(chain->flags & HAMMER2_CHAIN_DELETED);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROYED |
+					      HAMMER2_CHAIN_SUBMODIFIED);
 	}
-	hammer2_chain_flush(hmp, &ip->chain, 0);
-	hammer2_inode_unlock_ex(ip);
-	hammer2_chain_drop(hmp, &ip->chain);	/* vp ref */
+	hammer2_chain_flush(hmp, chain, 0);
+	kprintf("vop_reclaim vp %p ip %p refs %d\n",
+		vp, ip, ip->refs);
+	if (ip->refs > 2)			/* (our lock + vp ref) */
+		hammer2_inode_unlock_ex(ip, chain); /* unlock */
+	else
+		hammer2_inode_put(ip, chain);	    /* unlock & disconnect */
+	hammer2_inode_drop(ip);			    /* vp ref */
 
 	/*
 	 * XXX handle background sync when ip dirty, kernel will no longer
@@ -157,15 +167,16 @@ static
 int
 hammer2_vop_fsync(struct vop_fsync_args *ap)
 {
-	struct hammer2_inode *ip;
-	struct hammer2_mount *hmp;
+	hammer2_chain_t *chain;
+	hammer2_inode_t *ip;
+	hammer2_mount_t *hmp;
 	struct vnode *vp;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 	hmp = ip->hmp;
 
-	hammer2_inode_lock_ex(ip);
+	chain = hammer2_inode_lock_ex(ip);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
 
 	/*
@@ -173,9 +184,9 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 * the strategy code.  Simply mark the inode modified so it gets
 	 * picked up by our normal flush.
 	 */
-	if (ip->chain.flags & HAMMER2_CHAIN_DIRTYEMBED) {
-		atomic_clear_int(&ip->chain.flags, HAMMER2_CHAIN_DIRTYEMBED);
-		hammer2_chain_modify(hmp, &ip->chain, 0);
+	if (ip->flags & HAMMER2_INODE_DIRTYEMBED) {
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYEMBED);
+		hammer2_chain_modify(hmp, chain, 0);
 	}
 
 	/*
@@ -186,9 +197,10 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 * which call this function will eventually call chain_flush
 	 * on the volume root as a catch-all, which is far more optimal.
 	 */
+	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	if (ap->a_flags & VOP_FSYNC_SYSCALL)
-		hammer2_chain_flush(hmp, &ip->chain, 0);
-	hammer2_inode_unlock_ex(ip);
+		hammer2_chain_flush(hmp, chain, 0);
+	hammer2_inode_unlock_ex(ip, chain);
 	return (0);
 }
 
@@ -197,15 +209,19 @@ int
 hammer2_vop_access(struct vop_access_args *ap)
 {
 	hammer2_inode_t *ip = VTOI(ap->a_vp);
+	hammer2_chain_t *chain;
+	hammer2_inode_data_t *ipdata;
 	uid_t uid;
 	gid_t gid;
 	int error;
 
-	uid = hammer2_to_unix_xid(&ip->ip_data.uid);
-	gid = hammer2_to_unix_xid(&ip->ip_data.gid);
+	chain = hammer2_inode_lock_sh(ip);
+	ipdata = &chain->data->ipdata;
+	uid = hammer2_to_unix_xid(&ipdata->uid);
+	gid = hammer2_to_unix_xid(&ipdata->gid);
+	error = vop_helper_access(ap, uid, gid, ipdata->mode, ipdata->uflags);
+	hammer2_inode_unlock_sh(ip, chain);
 
-	error = vop_helper_access(ap, uid, gid, ip->ip_data.mode,
-				  ip->ip_data.uflags);
 	return (error);
 }
 
@@ -213,8 +229,10 @@ static
 int
 hammer2_vop_getattr(struct vop_getattr_args *ap)
 {
+	hammer2_inode_data_t *ipdata;
 	hammer2_pfsmount_t *pmp;
 	hammer2_inode_t *ip;
+	hammer2_chain_t *chain;
 	struct vnode *vp;
 	struct vattr *vap;
 
@@ -224,32 +242,33 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	ip = VTOI(vp);
 	pmp = ip->pmp;
 
-	hammer2_inode_lock_sh(ip);
+	chain = hammer2_inode_lock_sh(ip);
+	ipdata = &chain->data->ipdata;
 
 	vap->va_fsid = pmp->mp->mnt_stat.f_fsid.val[0];
-	vap->va_fileid = ip->ip_data.inum;
-	vap->va_mode = ip->ip_data.mode;
-	vap->va_nlink = ip->ip_data.nlinks;
-	vap->va_uid = hammer2_to_unix_xid(&ip->ip_data.uid);
-	vap->va_gid = hammer2_to_unix_xid(&ip->ip_data.gid);
+	vap->va_fileid = ipdata->inum;
+	vap->va_mode = ipdata->mode;
+	vap->va_nlink = ipdata->nlinks;
+	vap->va_uid = hammer2_to_unix_xid(&ipdata->uid);
+	vap->va_gid = hammer2_to_unix_xid(&ipdata->gid);
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
-	vap->va_size = ip->ip_data.size;
+	vap->va_size = ipdata->size;
 	vap->va_blocksize = HAMMER2_PBUFSIZE;
-	vap->va_flags = ip->ip_data.uflags;
-	hammer2_time_to_timespec(ip->ip_data.ctime, &vap->va_ctime);
-	hammer2_time_to_timespec(ip->ip_data.mtime, &vap->va_mtime);
-	hammer2_time_to_timespec(ip->ip_data.mtime, &vap->va_atime);
+	vap->va_flags = ipdata->uflags;
+	hammer2_time_to_timespec(ipdata->ctime, &vap->va_ctime);
+	hammer2_time_to_timespec(ipdata->mtime, &vap->va_mtime);
+	hammer2_time_to_timespec(ipdata->mtime, &vap->va_atime);
 	vap->va_gen = 1;
 	vap->va_bytes = vap->va_size;	/* XXX */
-	vap->va_type = hammer2_get_vtype(ip);
+	vap->va_type = hammer2_get_vtype(chain);
 	vap->va_filerev = 0;
-	vap->va_uid_uuid = ip->ip_data.uid;
-	vap->va_gid_uuid = ip->ip_data.gid;
+	vap->va_uid_uuid = ipdata->uid;
+	vap->va_gid_uuid = ipdata->gid;
 	vap->va_vaflags = VA_UID_UUID_VALID | VA_GID_UUID_VALID |
 			  VA_FSID_UUID_VALID;
 
-	hammer2_inode_unlock_sh(ip);
+	hammer2_inode_unlock_sh(ip, chain);
 
 	return (0);
 }
@@ -258,8 +277,10 @@ static
 int
 hammer2_vop_setattr(struct vop_setattr_args *ap)
 {
-	hammer2_mount_t *hmp;
+	hammer2_inode_data_t *ipdata;
+	hammer2_chain_t *chain;
 	hammer2_inode_t *ip;
+	hammer2_mount_t *hmp;
 	struct vnode *vp;
 	struct vattr *vap;
 	int error;
@@ -277,38 +298,39 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	if (hmp->ronly)
 		return(EROFS);
 
-	hammer2_inode_lock_ex(ip);
+	chain = hammer2_inode_lock_ex(ip);
+	ipdata = &chain->data->ipdata;
 	error = 0;
 
 	if (vap->va_flags != VNOVAL) {
 		u_int32_t flags;
 
-		flags = ip->ip_data.uflags;
+		flags = ipdata->uflags;
 		error = vop_helper_setattr_flags(&flags, vap->va_flags,
-					 hammer2_to_unix_xid(&ip->ip_data.uid),
+					 hammer2_to_unix_xid(&ipdata->uid),
 					 ap->a_cred);
 		if (error == 0) {
-			if (ip->ip_data.uflags != flags) {
-				hammer2_chain_modify(hmp, &ip->chain, 0);
-				ip->ip_data.uflags = flags;
-				ip->ip_data.ctime = ctime;
+			if (ipdata->uflags != flags) {
+				hammer2_chain_modify(hmp, chain, 0);
+				ipdata->uflags = flags;
+				ipdata->ctime = ctime;
 				kflags |= NOTE_ATTRIB;
 			}
-			if (ip->ip_data.uflags & (IMMUTABLE | APPEND)) {
+			if (ipdata->uflags & (IMMUTABLE | APPEND)) {
 				error = 0;
 				goto done;
 			}
 		}
 		goto done;
 	}
-	if (ip->ip_data.uflags & (IMMUTABLE | APPEND)) {
+	if (ipdata->uflags & (IMMUTABLE | APPEND)) {
 		error = EPERM;
 		goto done;
 	}
 	if (vap->va_uid != (uid_t)VNOVAL || vap->va_gid != (gid_t)VNOVAL) {
-		mode_t cur_mode = ip->ip_data.mode;
-		uid_t cur_uid = hammer2_to_unix_xid(&ip->ip_data.uid);
-		gid_t cur_gid = hammer2_to_unix_xid(&ip->ip_data.gid);
+		mode_t cur_mode = ipdata->mode;
+		uid_t cur_uid = hammer2_to_unix_xid(&ipdata->uid);
+		gid_t cur_gid = hammer2_to_unix_xid(&ipdata->gid);
 		uuid_t uuid_uid;
 		uuid_t uuid_gid;
 
@@ -318,17 +340,15 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		if (error == 0) {
 			hammer2_guid_to_uuid(&uuid_uid, cur_uid);
 			hammer2_guid_to_uuid(&uuid_gid, cur_gid);
-			if (bcmp(&uuid_uid, &ip->ip_data.uid,
-				 sizeof(uuid_uid)) ||
-			    bcmp(&uuid_gid, &ip->ip_data.gid,
-				 sizeof(uuid_gid)) ||
-			    ip->ip_data.mode != cur_mode
+			if (bcmp(&uuid_uid, &ipdata->uid, sizeof(uuid_uid)) ||
+			    bcmp(&uuid_gid, &ipdata->gid, sizeof(uuid_gid)) ||
+			    ipdata->mode != cur_mode
 			) {
-				hammer2_chain_modify(hmp, &ip->chain, 0);
-				ip->ip_data.uid = uuid_uid;
-				ip->ip_data.gid = uuid_gid;
-				ip->ip_data.mode = cur_mode;
-				ip->ip_data.ctime = ctime;
+				hammer2_chain_modify(hmp, chain, 0);
+				ipdata->uid = uuid_uid;
+				ipdata->gid = uuid_gid;
+				ipdata->mode = cur_mode;
+				ipdata->ctime = ctime;
 			}
 			kflags |= NOTE_ATTRIB;
 		}
@@ -337,12 +357,12 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	/*
 	 * Resize the file
 	 */
-	if (vap->va_size != VNOVAL && ip->ip_data.size != vap->va_size) {
+	if (vap->va_size != VNOVAL && ipdata->size != vap->va_size) {
 		switch(vp->v_type) {
 		case VREG:
-			if (vap->va_size == ip->ip_data.size)
+			if (vap->va_size == ipdata->size)
 				break;
-			if (vap->va_size < ip->ip_data.size) {
+			if (vap->va_size < ipdata->size) {
 				hammer2_truncate_file(ip, vap->va_size);
 			} else {
 				hammer2_extend_file(ip, vap->va_size);
@@ -357,31 +377,32 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 #if 0
 	/* atime not supported */
 	if (vap->va_atime.tv_sec != VNOVAL) {
-		hammer2_chain_modify(hmp, &ip->chain, 0);
-		ip->ip_data.atime = hammer2_timespec_to_time(&vap->va_atime);
+		hammer2_chain_modify(hmp, chain, 0);
+		ipdata->atime = hammer2_timespec_to_time(&vap->va_atime);
 		kflags |= NOTE_ATTRIB;
 	}
 #endif
 	if (vap->va_mtime.tv_sec != VNOVAL) {
-		hammer2_chain_modify(hmp, &ip->chain, 0);
-		ip->ip_data.mtime = hammer2_timespec_to_time(&vap->va_mtime);
+		hammer2_chain_modify(hmp, chain, 0);
+		ipdata->mtime = hammer2_timespec_to_time(&vap->va_mtime);
 		kflags |= NOTE_ATTRIB;
 	}
 	if (vap->va_mode != (mode_t)VNOVAL) {
-		mode_t cur_mode = ip->ip_data.mode;
-		uid_t cur_uid = hammer2_to_unix_xid(&ip->ip_data.uid);
-		gid_t cur_gid = hammer2_to_unix_xid(&ip->ip_data.gid);
+		mode_t cur_mode = ipdata->mode;
+		uid_t cur_uid = hammer2_to_unix_xid(&ipdata->uid);
+		gid_t cur_gid = hammer2_to_unix_xid(&ipdata->gid);
 
 		error = vop_helper_chmod(ap->a_vp, vap->va_mode, ap->a_cred,
 					 cur_uid, cur_gid, &cur_mode);
-		if (error == 0 && ip->ip_data.mode != cur_mode) {
-			ip->ip_data.mode = cur_mode;
-			ip->ip_data.ctime = ctime;
+		if (error == 0 && ipdata->mode != cur_mode) {
+			hammer2_chain_modify(hmp, chain, 0);
+			ipdata->mode = cur_mode;
+			ipdata->ctime = ctime;
 			kflags |= NOTE_ATTRIB;
 		}
 	}
 done:
-	hammer2_inode_unlock_ex(ip);
+	hammer2_inode_unlock_ex(ip, chain);
 	return (error);
 }
 
@@ -389,11 +410,14 @@ static
 int
 hammer2_vop_readdir(struct vop_readdir_args *ap)
 {
+	hammer2_inode_data_t *ipdata;
 	hammer2_mount_t *hmp;
 	hammer2_inode_t *ip;
 	hammer2_inode_t *xip;
 	hammer2_chain_t *parent;
+	hammer2_chain_t *xparent;
 	hammer2_chain_t *chain;
+	hammer2_tid_t inum;
 	hammer2_key_t lkey;
 	struct uio *uio;
 	off_t *cookies;
@@ -423,6 +447,9 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	}
 	cookie_index = 0;
 
+	parent = hammer2_inode_lock_sh(ip);
+	ipdata = &parent->data->ipdata;
+
 	/*
 	 * Handle artificial entries.  To ensure that only positive 64 bit
 	 * quantities are returned to userland we always strip off bit 63.
@@ -436,10 +463,8 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	chain = (void *)(intptr_t)-1;	/* non-NULL for early goto done case */
 
 	if (saveoff == 0) {
-		r = vop_write_dirent(&error, uio,
-				     ip->ip_data.inum &
-					HAMMER2_DIRHASH_USERMSK,
-				     DT_DIR, 1, ".");
+		inum = ipdata->inum & HAMMER2_DIRHASH_USERMSK;
+		r = vop_write_dirent(&error, uio, inum, DT_DIR, 1, ".");
 		if (r)
 			goto done;
 		if (cookies)
@@ -449,16 +474,30 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		if (cookie_index == ncookies)
 			goto done;
 	}
-	if (saveoff == 1) {
-		if (ip->pip == NULL || ip == ip->pmp->iroot)
-			xip = ip;
-		else
-			xip = ip->pip;
 
-		r = vop_write_dirent(&error, uio,
-				     xip->ip_data.inum &
-				      HAMMER2_DIRHASH_USERMSK,
-				     DT_DIR, 2, "..");
+	if (saveoff == 1) {
+		/*
+		 * Be careful with lockorder when accessing ".."
+		 *
+		 * (parent is the current dir. xip is the parent dir).
+		 */
+		inum = parent->data->ipdata.inum & HAMMER2_DIRHASH_USERMSK;
+		while (ip->pip != NULL && ip != ip->pmp->iroot) {
+			xip = ip->pip;
+			hammer2_inode_ref(xip);
+			hammer2_inode_unlock_sh(ip, parent);
+			xparent = hammer2_inode_lock_sh(xip);
+			parent = hammer2_inode_lock_sh(ip);
+			hammer2_inode_drop(xip);
+			if (xip == ip->pip) {
+				inum = xparent->data->ipdata.inum &
+				       HAMMER2_DIRHASH_USERMSK;
+				hammer2_inode_unlock_sh(xip, xparent);
+				break;
+			}
+			hammer2_inode_unlock_sh(xip, xparent);
+		}
+		r = vop_write_dirent(&error, uio, inum, DT_DIR, 2, "..");
 		if (r)
 			goto done;
 		if (cookies)
@@ -471,11 +510,11 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 
 	lkey = saveoff | HAMMER2_DIRHASH_VISIBLE;
 
-	parent = &ip->chain;
-	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
-						HAMMER2_RESOLVE_SHARED);
+	/*
+	 * parent is the inode chain, already locked for us.  Don't
+	 * double lock shared locks as this will screw up upgrades.
+	 */
 	if (error) {
-		hammer2_chain_unlock(hmp, parent);
 		goto done;
 	}
 	chain = hammer2_chain_lookup(hmp, &parent, lkey, lkey,
@@ -487,13 +526,14 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	}
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
-			dtype = hammer2_get_dtype(chain->u.ip);
+			dtype = hammer2_get_dtype(chain);
 			saveoff = chain->bref.key & HAMMER2_DIRHASH_USERMSK;
 			r = vop_write_dirent(&error, uio,
-					     chain->u.ip->ip_data.inum &
+					     chain->data->ipdata.inum &
 					      HAMMER2_DIRHASH_USERMSK,
-					     dtype, chain->u.ip->ip_data.name_len,
-					     chain->u.ip->ip_data.filename);
+					     dtype,
+					     chain->data->ipdata.name_len,
+					     chain->data->ipdata.filename);
 			if (r)
 				break;
 			if (cookies)
@@ -525,8 +565,8 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	}
 	if (chain)
 		hammer2_chain_unlock(hmp, chain);
-	hammer2_chain_unlock(hmp, parent);
 done:
+	hammer2_inode_unlock_sh(ip, parent);
 	if (ap->a_eofflag)
 		*ap->a_eofflag = (chain == NULL);
 	uio->uio_offset = saveoff & ~HAMMER2_DIRHASH_VISIBLE;
@@ -605,10 +645,11 @@ static
 int
 hammer2_vop_write(struct vop_write_args *ap)
 {
-	thread_t td;
-	struct vnode *vp;
+	hammer2_chain_t *chain;
 	hammer2_mount_t *hmp;
 	hammer2_inode_t *ip;
+	thread_t td;
+	struct vnode *vp;
 	struct uio *uio;
 	int error;
 	int seqcount;
@@ -653,29 +694,46 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 * ip must be marked modified, particularly because the write
 	 * might wind up being copied into the embedded data area.
 	 */
-	hammer2_inode_lock_ex(ip);
-	error = hammer2_write_file(ip, uio, ap->a_ioflag, seqcount);
-	hammer2_inode_unlock_ex(ip);
+	chain = hammer2_inode_lock_ex(ip);
+	error = hammer2_write_file(ip, &chain, uio, ap->a_ioflag, seqcount);
+	hammer2_inode_unlock_ex(ip, chain);
 	return (error);
 }
 
 /*
  * Perform read operations on a file or symlink given an UNLOCKED
  * inode and uio.
+ *
+ * The passed ip is not locked.
  */
 static
 int
 hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 {
+	hammer2_chain_t *chain;
+	hammer2_off_t size;
 	struct buf *bp;
 	int error;
 
 	error = 0;
 
 	/*
-	 * UIO read loop
+	 * UIO read loop.
+	 *
+	 * We can't hold a shared lock on ip's chain across file bread's
+	 * because the bread operation will itself obtain a shared lock,
+	 * resulting in one thread holding 2 shared refs.  This will deadlock
+	 * against temporary lock upgrades.  Temporary lock upgrades are
+	 * needed to insert new chain structures into a parent's RB tree.
+	 *
+	 * We should be able to safely retain the shared lock on ip itself.
 	 */
-	while (uio->uio_resid > 0 && uio->uio_offset < ip->ip_data.size) {
+	chain = hammer2_inode_lock_sh(ip);
+	size = chain->data->ipdata.size;
+	hammer2_chain_unlock(ip->hmp, chain);
+	chain = NULL;
+
+	while (uio->uio_resid > 0 && uio->uio_offset < size) {
 		hammer2_key_t lbase;
 		hammer2_key_t leof;
 		int lblksize;
@@ -695,12 +753,13 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 		n = lblksize - loff;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
-		if (n > ip->ip_data.size - uio->uio_offset)
-			n = (int)(ip->ip_data.size - uio->uio_offset);
+		if (n > size - uio->uio_offset)
+			n = (int)(size - uio->uio_offset);
 		bp->b_flags |= B_AGE;
 		uiomove((char *)bp->b_data + loff, n, uio);
 		bqrelse(bp);
 	}
+	hammer2_inode_unlock_sh(ip, chain);
 	return (error);
 }
 
@@ -710,9 +769,11 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
  */
 static
 int
-hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
+hammer2_write_file(hammer2_inode_t *ip, hammer2_chain_t **chainp,
+		   struct uio *uio,
 		   int ioflag, int seqcount)
 {
+	hammer2_inode_data_t *ipdata;
 	hammer2_key_t old_eof;
 	struct buf *bp;
 	int kflags;
@@ -722,8 +783,9 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	/*
 	 * Setup if append
 	 */
+	ipdata = &ip->chain->data->ipdata;
 	if (ioflag & IO_APPEND)
-		uio->uio_offset = ip->ip_data.size;
+		uio->uio_offset = ipdata->size;
 	kflags = 0;
 	error = 0;
 
@@ -735,8 +797,8 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	 * Doing this now makes it easier to calculate buffer sizes in
 	 * the loop.
 	 */
-	old_eof = ip->ip_data.size;
-	if (uio->uio_offset + uio->uio_resid > ip->ip_data.size) {
+	old_eof = ipdata->size;
+	if (uio->uio_offset + uio->uio_resid > ipdata->size) {
 		modified = 1;
 		hammer2_extend_file(ip, uio->uio_offset + uio->uio_resid);
 		kflags |= NOTE_EXTEND;
@@ -762,10 +824,10 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 			 * XXX should try to leave this unlocked through
 			 *	the whole loop
 			 */
-			hammer2_chain_unlock(ip->hmp, &ip->chain);
+			hammer2_inode_unlock_ex(ip, *chainp);
 			bwillwrite(HAMMER2_PBUFSIZE);
-			hammer2_chain_lock(ip->hmp, &ip->chain,
-					   HAMMER2_RESOLVE_ALWAYS);
+			*chainp = hammer2_inode_lock_ex(ip);
+			ipdata = &(*chainp)->data->ipdata;	/* reload */
 		}
 
 		/* XXX bigwrite & signal check test */
@@ -788,7 +850,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		n = lblksize - loff;
 		if (n > uio->uio_resid) {
 			n = uio->uio_resid;
-			if (uio->uio_offset + n == ip->ip_data.size)
+			if (uio->uio_offset + n == ipdata->size)
 				trivial = 1;
 		} else if (loff == 0) {
 			trivial = 1;
@@ -855,9 +917,10 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		/*
 		 * Ok, copy the data in
 		 */
-		hammer2_chain_unlock(ip->hmp, &ip->chain);
+		hammer2_inode_unlock_ex(ip, *chainp);
 		error = uiomove(bp->b_data + loff, n, uio);
-		hammer2_chain_lock(ip->hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
+		*chainp = hammer2_inode_lock_ex(ip);
+		ipdata = &(*chainp)->data->ipdata;	/* reload */
 		kflags |= NOTE_WRITE;
 		modified = 1;
 
@@ -899,11 +962,12 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	 * Cleanup.  If we extended the file EOF but failed to write through
 	 * the entire write is a failure and we have to back-up.
 	 */
-	if (error && ip->ip_data.size != old_eof) {
+	if (error && ipdata->size != old_eof) {
 		hammer2_truncate_file(ip, old_eof);
 	} else if (modified) {
-		hammer2_chain_modify(ip->hmp, &ip->chain, 0);
-		hammer2_update_time(&ip->ip_data.mtime);
+		KKASSERT(ip->chain == *chainp);
+		hammer2_chain_modify(ip->hmp, *chainp, 0);
+		hammer2_update_time(&ipdata->mtime);
 	}
 	hammer2_knote(ip->vp, kflags);
 	return error;
@@ -934,11 +998,9 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 	 * logical buffer cache buffer.
 	 */
 	hmp = ip->hmp;
-retry:
 	*errorp = 0;
-	parent = &ip->chain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
-
+retry:
+	parent = hammer2_inode_lock_ex(ip);
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lbase, lbase,
 				     HAMMER2_LOOKUP_NODATA);
@@ -956,12 +1018,12 @@ retry:
 					     lblksize, errorp);
 		if (chain == NULL) {
 			KKASSERT(*errorp == EAGAIN); /* XXX */
-			hammer2_chain_unlock(hmp, parent);
+			hammer2_inode_unlock_ex(ip, parent);
 			goto retry;
 		}
 
 		pbase = chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX;
-		ip->delta_dcount += lblksize;
+		/*ip->delta_dcount += lblksize;*/
 	} else {
 		switch (chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
@@ -993,7 +1055,7 @@ retry:
 
 	if (chain)
 		hammer2_chain_unlock(hmp, chain);
-	hammer2_chain_unlock(hmp, parent);
+	hammer2_inode_unlock_ex(ip, parent);
 
 	return (pbase);
 }
@@ -1001,7 +1063,7 @@ retry:
 /*
  * Truncate the size of a file.
  *
- * This routine adjusts ip->ip_data.size smaller, destroying any related
+ * This routine adjusts ipdata->size smaller, destroying any related
  * data beyond the new EOF and potentially resizing the block straddling
  * the EOF.
  *
@@ -1011,6 +1073,7 @@ static
 void
 hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 {
+	hammer2_inode_data_t *ipdata;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_mount_t *hmp = ip->hmp;
@@ -1022,8 +1085,9 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	int oblksize;
 	int nblksize;
 
-	hammer2_chain_modify(hmp, &ip->chain, 0);
+	hammer2_chain_modify(hmp, ip->chain, 0);
 	bp = NULL;
+	ipdata = &ip->chain->data->ipdata;
 
 	/*
 	 * Destroy any logical buffer cache buffers beyond the file EOF.
@@ -1041,7 +1105,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	/*
 	 * Setup for lookup/search
 	 */
-	parent = &ip->chain;
+	parent = ip->chain;
 	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 	if (error) {
 		hammer2_chain_unlock(hmp, parent);
@@ -1061,7 +1125,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		error = bread(ip->vp, lbase, oblksize, &bp);
 		KKASSERT(error == 0);
 	}
-	ip->ip_data.size = nsize;
+	ipdata->size = nsize;
 	nblksize = hammer2_calc_logical(ip, nsize, &lbase, &leof);
 
 	/*
@@ -1076,7 +1140,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_DATA:
 				hammer2_chain_resize(ip, chain,
-					     hammer2_bytes_to_radix(nblksize),
+					     hammer2_allocsize(nblksize),
 					     HAMMER2_MODIFY_OPTDATA);
 				bzero(bp->b_data + loff, nblksize - loff);
 				bp->b_bio2.bio_offset = chain->bref.data_off &
@@ -1119,7 +1183,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_DATA:
 				hammer2_chain_resize(ip, chain,
-					     hammer2_bytes_to_radix(nblksize),
+					     hammer2_allocsize(nblksize),
 					     0);
 				hammer2_chain_modify(hmp, chain, 0);
 				bzero(chain->data->buf + loff, nblksize - loff);
@@ -1168,7 +1232,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		 * Delete physical data blocks past the file EOF.
 		 */
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
-			ip->delta_dcount -= chain->bytes;
+			/*ip->delta_dcount -= chain->bytes;*/
 			hammer2_chain_delete(hmp, parent, chain, 0);
 		}
 		/* XXX check parent if empty indirect block & delete */
@@ -1188,6 +1252,7 @@ static
 void
 hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 {
+	hammer2_inode_data_t *ipdata;
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
@@ -1204,16 +1269,17 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	KKASSERT(ip->vp);
 	hmp = ip->hmp;
 
-	hammer2_chain_modify(hmp, &ip->chain, 0);
+	hammer2_chain_modify(hmp, ip->chain, 0);
+	ipdata = &ip->chain->data->ipdata;
 
 	/*
 	 * Nothing to do if the direct-data case is still intact
 	 */
-	if ((ip->ip_data.op_flags & HAMMER2_OPFLAG_DIRECTDATA) &&
+	if ((ipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA) &&
 	    nsize <= HAMMER2_EMBEDDED_BYTES) {
-		ip->ip_data.size = nsize;
+		ipdata->size = nsize;
 		nvextendbuf(ip->vp,
-			    ip->ip_data.size, nsize,
+			    ipdata->size, nsize,
 			    0, HAMMER2_EMBEDDED_BYTES,
 			    0, (int)nsize,
 			    1);
@@ -1224,9 +1290,9 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 * Calculate the blocksize at the original EOF and resize the block
 	 * if necessary.  Adjust the file size in the inode.
 	 */
-	osize = ip->ip_data.size;
+	osize = ipdata->size;
 	oblksize = hammer2_calc_logical(ip, osize, &obase, &leof);
-	ip->ip_data.size = nsize;
+	ipdata->size = nsize;
 	nblksize = hammer2_calc_logical(ip, osize, &nbase, &leof);
 
 	/*
@@ -1234,7 +1300,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 * buffer straddling the orignal EOF.
 	 */
 	nvextendbuf(ip->vp,
-		    ip->ip_data.size, nsize,
+		    ipdata->size, nsize,
 		    0, nblksize,
 		    0, (int)nsize & HAMMER2_PBUFMASK,
 		    1);
@@ -1243,7 +1309,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 * Early return if we have no more work to do.
 	 */
 	if (obase == nbase && oblksize == nblksize &&
-	    (ip->ip_data.op_flags & HAMMER2_OPFLAG_DIRECTDATA) == 0) {
+	    (ipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 		return;
 	}
 
@@ -1270,9 +1336,9 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 * with the data, then converting the inode data area into the
 	 * inode indirect block array area.
 	 */
-	if (ip->ip_data.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
-		ip->ip_data.op_flags &= ~HAMMER2_OPFLAG_DIRECTDATA;
-		bzero(&ip->ip_data.u.blockset, sizeof(ip->ip_data.u.blockset));
+	if (ipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
+		ipdata->op_flags &= ~HAMMER2_OPFLAG_DIRECTDATA;
+		bzero(&ipdata->u.blockset, sizeof(ipdata->u.blockset));
 	}
 
 	/*
@@ -1280,11 +1346,11 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 */
 	if (((int)osize & HAMMER2_PBUFMASK)) {
 retry:
-		parent = &ip->chain;
+		parent = ip->chain;
 		error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 		KKASSERT(error == 0);
 
-		nradix = hammer2_bytes_to_radix(nblksize);
+		nradix = hammer2_allocsize(nblksize);
 
 		chain = hammer2_chain_lookup(hmp, &parent,
 					     obase, obase,
@@ -1299,7 +1365,7 @@ retry:
 				hammer2_chain_unlock(hmp, parent);
 				goto retry;
 			}
-			ip->delta_dcount += nblksize;
+			/*ip->delta_dcount += nblksize;*/
 		} else {
 			KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA);
 			hammer2_chain_resize(ip, chain, nradix,
@@ -1319,11 +1385,12 @@ static
 int
 hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 {
-	hammer2_inode_t *dip;
 	hammer2_inode_t *ip;
+	hammer2_inode_t *dip;
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
+	hammer2_chain_t *ochain;
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
@@ -1341,15 +1408,12 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	/*
 	 * Note: In DragonFly the kernel handles '.' and '..'.
 	 */
-	parent = &dip->chain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
-					HAMMER2_RESOLVE_SHARED);
+	parent = hammer2_inode_lock_sh(dip);
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 				     HAMMER2_LOOKUP_SHARED);
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		    chain->u.ip &&
 		    name_len == chain->data->ipdata.name_len &&
 		    bcmp(name, chain->data->ipdata.filename, name_len) == 0) {
 			break;
@@ -1358,7 +1422,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 					   HAMMER2_LOOKUP_SHARED);
 	}
-	hammer2_chain_unlock(hmp, parent);
+	hammer2_inode_unlock_sh(dip, parent);
 
 	/*
 	 * If the inode represents a forwarding entry for a hardlink we have
@@ -1370,9 +1434,9 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 *
 	 * XXX what kind of chain lock?
 	 */
-	ip = NULL;
-	if (chain && chain->u.ip->ip_data.type == HAMMER2_OBJTYPE_HARDLINK) {
-		error = hammer2_hardlink_find(dip, &chain, &ip);
+	ochain = NULL;
+	if (chain && chain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK) {
+		error = hammer2_hardlink_find(dip, &chain, &ochain);
 		if (error) {
 			kprintf("hammer2: unable to find hardlink\n");
 			if (chain) {
@@ -1389,10 +1453,11 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 *
 	 * XXX upgrade shared lock?
 	 */
-	if (ip && chain && chain->u.ip->ip_data.nlinks == 1 && !hmp->ronly) {
+	if (ochain && chain && chain->data->ipdata.nlinks == 1 && !hmp->ronly) {
 		kprintf("hammer2: need to unconsolidate hardlink for %s\n",
-			chain->u.ip->ip_data.filename);
-		hammer2_hardlink_deconsolidate(dip, &chain, &ip);
+			chain->data->ipdata.filename);
+		/* XXX retain shared lock on dip? (currently not held) */
+		hammer2_hardlink_deconsolidate(dip, &chain, &ochain);
 	}
 
 	/*
@@ -1401,17 +1466,36 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 * NOTE: For error processing, only ENOENT resolves the namecache
 	 *	 entry to NULL, otherwise we just return the error and
 	 *	 leave the namecache unresolved.
+	 *
+	 * NOTE: multiple hammer2_inode structures can be aliased to the
+	 *	 same chain element, for example for hardlinks.  This
+	 *	 use case does not 'reattach' inode associations that
+	 *	 might already exist, but always allocates a new one.
 	 */
 	if (chain) {
-		vp = hammer2_igetv(chain->u.ip, &error);
+		ip = hammer2_inode_get(dip->hmp, dip->pmp, dip, chain);
+		vp = hammer2_igetv(ip, &error);
 		if (error == 0) {
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
-			vrele(vp);
 		} else if (error == ENOENT) {
 			cache_setvp(ap->a_nch, NULL);
 		}
+		/*
+		 * don't break the API, chain is locked shared so unlock
+		 * it separately even though unlock_ex() currently doesn't
+		 * care.
+		 */
+		hammer2_inode_unlock_ex(ip, NULL);
 		hammer2_chain_unlock(hmp, chain);
+
+		/*
+		 * The vp should not be released until after we've disposed
+		 * of our locks, because it might cause vop_inactive() to
+		 * be called.
+		 */
+		if (vp)
+			vrele(vp);
 	} else {
 		error = ENOENT;
 		cache_setvp(ap->a_nch, NULL);
@@ -1420,8 +1504,8 @@ failed:
 	KASSERT(error || ap->a_nch->ncp->nc_vp != NULL,
 		("resolve error %d/%p chain %p ap %p\n",
 		 error, ap->a_nch->ncp->nc_vp, chain, ap));
-	if (ip)
-		hammer2_inode_drop(ip);
+	if (ochain)
+		hammer2_chain_drop(hmp, ochain);
 	return error;
 }
 
@@ -1429,6 +1513,7 @@ static
 int
 hammer2_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 {
+	hammer2_chain_t *chain;
 	hammer2_inode_t *dip;
 	hammer2_inode_t *ip;
 	hammer2_mount_t *hmp;
@@ -1441,9 +1526,9 @@ hammer2_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 		*ap->a_vpp = NULL;
 		return ENOENT;
 	}
-	hammer2_chain_lock(hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
+	chain = hammer2_inode_lock_ex(ip);
 	*ap->a_vpp = hammer2_igetv(ip, &error);
-	hammer2_chain_unlock(hmp, &ip->chain);
+	hammer2_inode_unlock_ex(ip, chain);
 
 	return error;
 }
@@ -1452,6 +1537,7 @@ static
 int
 hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 {
+	hammer2_chain_t *nchain;
 	hammer2_mount_t *hmp;
 	hammer2_inode_t *dip;
 	hammer2_inode_t *nip;
@@ -1470,14 +1556,14 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	name_len = ncp->nc_nlen;
 
 	error = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
-				     name, name_len, &nip);
+				     name, name_len, &nip, &nchain);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
 		return error;
 	}
 	*ap->a_vpp = hammer2_igetv(nip, &error);
-	hammer2_chain_unlock(hmp, &nip->chain);
+	hammer2_inode_unlock_ex(nip, nchain);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1535,16 +1621,14 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 		lend = lbeg;
 	loff = ap->a_loffset & HAMMER2_OFF_MASK_LO;
 
-	parent = &ip->chain;
-	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
-					HAMMER2_RESOLVE_SHARED);
+	parent = hammer2_inode_lock_sh(ip);
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lbeg, lend,
 				     HAMMER2_LOOKUP_NODATA |
 				     HAMMER2_LOOKUP_SHARED);
 	if (chain == NULL) {
 		*ap->a_doffsetp = ZFOFFSET;
-		hammer2_chain_unlock(hmp, parent);
+		hammer2_inode_unlock_sh(ip, parent);
 		return (0);
 	}
 
@@ -1560,7 +1644,7 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 					   HAMMER2_LOOKUP_NODATA |
 					   HAMMER2_LOOKUP_SHARED);
 	}
-	hammer2_chain_unlock(hmp, parent);
+	hammer2_inode_unlock_sh(ip, parent);
 
 	/*
 	 * If the requested loffset is not mappable physically we can't
@@ -1605,8 +1689,13 @@ int
 hammer2_vop_advlock(struct vop_advlock_args *ap)
 {
 	hammer2_inode_t *ip = VTOI(ap->a_vp);
+	hammer2_chain_t *chain;
+	hammer2_off_t size;
 
-	return (lf_advlock(ap, &ip->advlock, ip->ip_data.size));
+	chain = hammer2_inode_lock_sh(ip);
+	size = chain->data->ipdata.size;
+	hammer2_inode_unlock_sh(ip, chain);
+	return (lf_advlock(ap, &ip->advlock, size));
 }
 
 
@@ -1628,8 +1717,8 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 {
 	hammer2_inode_t *dip;	/* target directory to create link in */
 	hammer2_inode_t *ip;	/* inode we are hardlinking to */
-	hammer2_inode_t *oip;
 	hammer2_mount_t *hmp;
+	hammer2_chain_t *chain;
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
@@ -1640,57 +1729,38 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	if (hmp->ronly)
 		return (EROFS);
 
-	/*
-	 * (ip) is the inode we are linking to.
-	 */
-	ip = oip = VTOI(ap->a_vp);
-	hammer2_inode_lock_nlinks(ip);
-
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
 	/*
-	 * Create a consolidated real file for the hardlink, adjust (ip),
-	 * and move the nlinks lock if necessary.  Tell the function to
-	 * bump the hardlink count on the consolidated file.
+	 * ip represents the file being hardlinked.  The file could be a
+	 * normal file or a hardlink target if it has already been hardlinked.
+	 * If ip is a hardlinked target then ip->pip represents the location
+	 * of the hardlinked target, NOT the location of the hardlink pointer.
+	 *
+	 * Bump nlinks and potentially also create or move the hardlink
+	 * target in the parent directory common to (ip) and (dip).  The
+	 * consolidation code can modify ip->chain and ip->pip.  The
+	 * returned chain is locked.
 	 */
-	error = hammer2_hardlink_consolidate(&ip, dip);
+	ip = VTOI(ap->a_vp);
+	hammer2_inode_ref(ip);
+	error = hammer2_hardlink_consolidate(ip, &chain, dip, 1);
 	if (error)
 		goto done;
 
 	/*
-	 * If the consolidation changed ip to a HARDLINK pointer we have
-	 * to adjust the vnode to point to the actual ip.
-	 *
-	 * XXX this can race against concurrent vnode ops.
+	 * Create a directory entry connected to the specified chain.
+	 * This function unlocks and NULL's chain on return.
 	 */
-	if (oip != ip) {
-		hammer2_chain_ref(hmp, &ip->chain);
-		hammer2_inode_lock_ex(ip);
-		hammer2_inode_lock_ex(oip);
-		ip->vp = ap->a_vp;
-		ap->a_vp->v_data = ip;
-		oip->vp = NULL;
-		hammer2_inode_unlock_ex(oip);
-		hammer2_inode_unlock_ex(ip);
-		hammer2_chain_drop(hmp, &oip->chain);
-	}
-
-	/*
-	 * The act of connecting the existing (ip) will properly bump the
-	 * nlinks count.  However, vp will incorrectly point at the old
-	 * inode which has now been turned into a OBJTYPE_HARDLINK pointer.
-	 *
-	 * We must reconnect the vp.
-	 */
-	error = hammer2_inode_connect(dip, ip, name, name_len);
+	error = hammer2_inode_connect(dip, &chain, name, name_len);
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
 	}
 done:
-	hammer2_inode_unlock_nlinks(ip);
+	hammer2_inode_drop(ip);
 	return error;
 }
 
@@ -1707,6 +1777,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	hammer2_mount_t *hmp;
 	hammer2_inode_t *dip;
 	hammer2_inode_t *nip;
+	hammer2_chain_t *nchain;
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
@@ -1722,14 +1793,14 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	name_len = ncp->nc_nlen;
 
 	error = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
-				     name, name_len, &nip);
+				     name, name_len, &nip, &nchain);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
 		return error;
 	}
 	*ap->a_vpp = hammer2_igetv(nip, &error);
-	hammer2_chain_unlock(hmp, &nip->chain);
+	hammer2_inode_unlock_ex(nip, nchain);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1748,6 +1819,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	hammer2_mount_t *hmp;
 	hammer2_inode_t *dip;
 	hammer2_inode_t *nip;
+	hammer2_chain_t *nchain;
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
@@ -1765,7 +1837,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	ap->a_vap->va_type = VLNK;	/* enforce type */
 
 	error = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
-				     name, name_len, &nip);
+				     name, name_len, &nip, &nchain);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1780,14 +1852,16 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		size_t bytes;
 		struct uio auio;
 		struct iovec aiov;
+		hammer2_inode_data_t *nipdata;
 
+		nipdata = &nchain->data->ipdata;
 		bytes = strlen(ap->a_target);
 
 		if (bytes <= HAMMER2_EMBEDDED_BYTES) {
-			KKASSERT(nip->ip_data.op_flags &
+			KKASSERT(nipdata->op_flags &
 				 HAMMER2_OPFLAG_DIRECTDATA);
-			bcopy(ap->a_target, nip->ip_data.u.data, bytes);
-			nip->ip_data.size = bytes;
+			bcopy(ap->a_target, nipdata->u.data, bytes);
+			nipdata->size = bytes;
 		} else {
 			bzero(&auio, sizeof(auio));
 			bzero(&aiov, sizeof(aiov));
@@ -1799,12 +1873,13 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 			auio.uio_td = curthread;
 			aiov.iov_base = ap->a_target;
 			aiov.iov_len = bytes;
-			error = hammer2_write_file(nip, &auio, IO_APPEND, 0);
+			error = hammer2_write_file(nip, &nchain,
+						   &auio, IO_APPEND, 0);
 			/* XXX handle error */
 			error = 0;
 		}
 	}
-	hammer2_chain_unlock(hmp, &nip->chain);
+	hammer2_inode_unlock_ex(nip, nchain);
 
 	/*
 	 * Finalize namecache
@@ -1841,7 +1916,6 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	name_len = ncp->nc_nlen;
 
 	error = hammer2_unlink_file(dip, name, name_len, 0, NULL);
-
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
 	}
@@ -1872,7 +1946,6 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	name_len = ncp->nc_nlen;
 
 	error = hammer2_unlink_file(dip, name, name_len, 1, NULL);
-
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
 	}
@@ -1891,6 +1964,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	hammer2_inode_t *fdip;
 	hammer2_inode_t *tdip;
 	hammer2_inode_t *ip;
+	hammer2_chain_t *chain;
 	hammer2_mount_t *hmp;
 	const uint8_t *fname;
 	size_t fname_len;
@@ -1923,16 +1997,18 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * ip represents the actual file and not the hardlink marker.
 	 */
 	ip = VTOI(fncp->nc_vp);
+	chain = NULL;
 
 	/*
-	 * Keep a tight grip on the inode as removing it should disconnect
-	 * it and we don't want to destroy it.
+	 * Keep a tight grip on the inode so the temporary unlinking from
+	 * the source location prior to linking to the target location
+	 * does not cause the chain to be destroyed.
 	 *
 	 * NOTE: To avoid deadlocks we cannot lock (ip) while we are
 	 *	 unlinking elements from their directories.  Locking
 	 *	 the nlinks field does not lock the whole inode.
 	 */
-	hammer2_inode_lock_nlinks(ip);
+	hammer2_inode_ref(ip);
 
 	/*
 	 * Remove target if it exists
@@ -1943,32 +2019,30 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	cache_setunresolved(ap->a_tnch);
 
 	/*
+	 * When renaming a hardlinked file we may have to re-consolidate
+	 * the location of the hardlink target.  Since the element is simply
+	 * being moved, nlinks is not modified in this case.
+	 *
+	 * If ip represents a regular file the consolidation code essentially
+	 * does nothing other than return the locked chain.
+	 *
+	 * The returned chain will be locked.
+	 */
+	error = hammer2_hardlink_consolidate(ip, &chain, tdip, 0);
+	if (error)
+		goto done;
+
+	/*
 	 * Disconnect (fdip, fname) from the source directory.  This will
 	 * disconnect (ip) if it represents a direct file.  If (ip) represents
 	 * a hardlink the HARDLINK pointer object will be removed but the
 	 * hardlink will stay intact.
 	 *
-	 * If (ip) is already hardlinked we have to resolve to a consolidated
-	 * file but we do not bump the nlinks count.  (ip) must hold the nlinks
-	 * lock & ref for the operation.  If the consolidated file has been
-	 * relocated (ip) will be adjusted and the related nlinks lock moved
-	 * along with it.
-	 *
-	 * If (ip) does not have multiple links we can just copy the physical
-	 * contents of the inode.
-	 */
-	if (ip->ip_data.nlinks > 1) {
-		error = hammer2_hardlink_consolidate(&ip, tdip);
-		if (error)
-			goto done;
-	}
-
-	/*
 	 * NOTE! Because we are retaining (ip) the unlink can fail with
 	 *	 an EAGAIN.
 	 */
 	for (;;) {
-		error = hammer2_unlink_file(fdip, fname, fname_len, -1, ip);
+		error = hammer2_unlink_file(fdip, fname, fname_len, -1, chain);
 		if (error != EAGAIN)
 			break;
 		kprintf("hammer2_vop_nrename: unlink race %s\n", fname);
@@ -1982,14 +2056,16 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *
 	 * WARNING: chain locks can lock buffer cache buffers, to avoid
 	 *	    deadlocks we want to unlock before issuing a cache_*()
-	 *	    op (that might have to lock a vnode).
+	 *	    op (that might have to lock a vnode).  The *_connect()
+	 *	    function does this for us.
 	 */
-	error = hammer2_inode_connect(tdip, ip, tname, tname_len);
-	if (error == 0) {
+	error = hammer2_inode_connect(tdip, &chain, tname, tname_len);
+	if (error == 0)
 		cache_rename(ap->a_fnch, ap->a_tnch);
-	}
 done:
-	hammer2_inode_unlock_nlinks(ip);
+	if (chain)
+		hammer2_chain_unlock(hmp, chain);
+	hammer2_inode_drop(ip);
 
 	return (error);
 }
@@ -2058,9 +2134,7 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	 * includes both small-block allocations and inode-embedded data.
 	 */
 	if (nbio->bio_offset == NOOFFSET) {
-		parent = &ip->chain;
-		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
-						HAMMER2_RESOLVE_SHARED);
+		parent = hammer2_inode_lock_sh(ip);
 
 		chain = hammer2_chain_lookup(hmp, &parent, lbase, lbase,
 					     HAMMER2_LOOKUP_NODATA |
@@ -2088,7 +2162,7 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 		} else {
 			panic("hammer2_strategy_read: unknown bref type");
 		}
-		hammer2_chain_unlock(hmp, parent);
+		hammer2_inode_unlock_sh(ip, parent);
 	}
 
 	if (hammer2_debug & 0x0020) {
@@ -2146,9 +2220,14 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	if (nbio->bio_offset == NOOFFSET) {
 		/*
 		 * Must be embedded in the inode.
+		 *
+		 * Because the inode is dirty, the chain must exist whether
+		 * the inode is locked or not. XXX
 		 */
 		KKASSERT(bio->bio_offset == 0);
-		bcopy(bp->b_data, ip->ip_data.u.data, HAMMER2_EMBEDDED_BYTES);
+		KKASSERT(ip->chain && ip->chain->data);
+		bcopy(bp->b_data, ip->chain->data->ipdata.u.data,
+		      HAMMER2_EMBEDDED_BYTES);
 		bp->b_resid = 0;
 		bp->b_error = 0;
 		biodone(nbio);
@@ -2158,7 +2237,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 		 * because we might deadlock on ip.  Instead we depend on
 		 * VOP_FSYNC() to detect the case.
 		 */
-		atomic_set_int(&ip->chain.flags, HAMMER2_CHAIN_DIRTYEMBED);
+		atomic_set_int(&ip->flags, HAMMER2_INODE_DIRTYEMBED);
 	} else {
 		/*
 		 * Forward direct IO to the device

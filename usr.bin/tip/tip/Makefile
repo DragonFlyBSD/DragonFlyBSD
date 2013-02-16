@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/tip/tip/Makefile,v 1.10.6.3 2002/07/17 13:25:19 ru Exp $
-# $DragonFly: src/usr.bin/tip/tip/Makefile,v 1.5 2007/08/27 16:50:59 pavalos Exp $
 #
 # Files are:
 #	/etc/remote		remote host description file
@@ -31,11 +30,5 @@ BINGRP=		dialer
 # XXX: there is some concern that `tip' in its current state shouldn't run
 #      SUID.  If it believed it should, the mode above may still no be proper.
 #BINMODE?=	4510
-#INSTALLFLAGS=	-fschg
-
-# XXX Our LINKS rules should really handle this case
-#
-beforeinstall:
-	-chflags noschg ${DESTDIR}${BINDIR}/cu
 
 .include <bsd.prog.mk>

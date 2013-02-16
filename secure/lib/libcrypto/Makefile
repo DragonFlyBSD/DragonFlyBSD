@@ -202,7 +202,7 @@ SRCS+=	err.c err_all.c err_prn.c
 INCS+=	err.h
 
 # evp
-SRCS+=	encode.c digest.c evp_enc.c evp_key.c evp_acnf.c \
+SRCS+=	encode.c digest.c evp_enc.c evp_key.c evp_acnf.c evp_cnf.c \
 	e_des.c e_bf.c e_idea.c e_des3.c e_camellia.c\
 	e_rc4.c e_aes.c names.c e_seed.c \
 	e_xcbc_d.c e_rc2.c e_cast.c e_rc5.c \

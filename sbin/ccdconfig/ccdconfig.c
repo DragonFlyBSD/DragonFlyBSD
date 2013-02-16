@@ -166,8 +166,15 @@ main(int argc, char **argv)
 
 	if (modfind("ccd") < 0) {
 		/* Not present in kernel, try loading it */
-		if (kldload("ccd") < 0 || modfind("ccd") < 0)
-			warn("ccd module not available!");
+		if (kldload("ccd") < 0 || modfind("ccd") < 0) {
+			warn("ccd module not available!\n"
+			    "NOTE: Systems which don't have /boot as part of"
+			    " the root partition\n"
+			    "      (as is the case with the default HAMMER"
+			    " install) need to load ccd(4)\n"
+			    "      via /boot/loader.conf or compile it into"
+			    " the kernel.");
+		}
 	}
 
 	switch (action) {

@@ -1231,7 +1231,7 @@ nge_rxeof(struct nge_softc *sc)
 	 	 * comes up in the ring.
 		 */
 		if ((rxstat & NGE_CMDSTS_PKT_OK) == 0) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			nge_newbuf(sc, cur_rx, m);
 			continue;
 		}
@@ -1259,7 +1259,7 @@ nge_rxeof(struct nge_softc *sc)
 				kprintf("nge%d: no receive buffers "
 				    "available -- packet dropped!\n",
 				    sc->nge_unit);
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				continue;
 			}
 			m_adj(m0, ETHER_ALIGN);
@@ -1271,7 +1271,7 @@ nge_rxeof(struct nge_softc *sc)
 		}
 #endif
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 
 		/* Do IP checksum checking. */
 		if (extsts & NGE_RXEXTSTS_IPPKT)
@@ -1335,17 +1335,17 @@ nge_txeof(struct nge_softc *sc)
 		}
 
 		if (!(cur_tx->nge_ctl & NGE_CMDSTS_PKT_OK)) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (cur_tx->nge_txstat & NGE_TXSTAT_EXCESSCOLLS)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			if (cur_tx->nge_txstat & NGE_TXSTAT_OUTOFWINCOLL)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 		}
 
-		ifp->if_collisions +=
-		    (cur_tx->nge_txstat & NGE_TXSTAT_COLLCNT) >> 16;
+		IFNET_STAT_INC(ifp, collisions,
+		    (cur_tx->nge_txstat & NGE_TXSTAT_COLLCNT) >> 16);
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		if (cur_tx->nge_mbuf != NULL) {
 			m_freem(cur_tx->nge_mbuf);
 			cur_tx->nge_mbuf = NULL;
@@ -2061,7 +2061,7 @@ nge_watchdog(struct ifnet *ifp)
 {
 	struct nge_softc *sc = ifp->if_softc;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	kprintf("nge%d: watchdog timeout\n", sc->nge_unit);
 
 	nge_stop(sc);

@@ -44,8 +44,8 @@ void	cleanup();
 /*
  * Botch the interface to look like cu's
  */
-cumain(argc, argv)
-	char *argv[];
+int
+cumain(int argc, char *argv[])
 {
 	int i;
 	static char sbuf[12];

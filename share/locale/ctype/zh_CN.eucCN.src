@@ -1,5 +1,4 @@
-/*	$NetBSD: src/share/locale/ctype/zh_CN.eucCN.src,v 1.2 2001/03/26 19:56:37 tshiozak Exp $	*/
-/*	$DragonFly: src/share/locale/ctype/zh_CN.eucCN.src,v 1.1 2005/03/11 15:57:42 joerg Exp $ */
+/*	$NetBSD: zh_CN.eucCN.src,v 1.2 2001/03/26 19:56:37 tshiozak Exp $	*/
 
 /*-
  * Copyright (c) 1998,	Luoqi Chen

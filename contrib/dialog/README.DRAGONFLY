@@ -1,0 +1,7 @@
+This is dialog from:
+http://invisible-island.net/dialog/dialog.html
+
+configure hint:
+./configure --with-ncursesw
+
+When upgrading remember to update gnu/lib/libdialog/dlg_config.h.

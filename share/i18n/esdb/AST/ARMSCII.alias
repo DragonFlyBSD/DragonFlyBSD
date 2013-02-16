@@ -1,5 +1,4 @@
 # $NetBSD: ARMSCII.alias,v 1.1 2006/04/01 04:13:22 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/AST/ARMSCII.alias,v 1.1 2008/04/10 10:21:12 hasso Exp $
 
 7		AST_34.005 AST166-7
 8		AST_34.002 AST166-8

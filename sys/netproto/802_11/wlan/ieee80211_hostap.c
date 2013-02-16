@@ -362,7 +362,7 @@ hostap_deliver_data(struct ieee80211vap *vap,
 	/*
 	 * Do accounting.
 	 */
-	ifp->if_ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 	IEEE80211_NODE_STAT(ni, rx_data);
 	IEEE80211_NODE_STAT_ADD(ni, rx_bytes, m->m_pkthdr.len);
 	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
@@ -378,7 +378,7 @@ hostap_deliver_data(struct ieee80211vap *vap,
 		if (m->m_flags & M_MCAST) {
 			mcopy = m_dup(m, MB_DONTWAIT);
 			if (mcopy == NULL)
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 			else
 				mcopy->m_flags |= M_MCAST;
 		} else {
@@ -415,7 +415,7 @@ hostap_deliver_data(struct ieee80211vap *vap,
 			if (err) {
 				/* NB: IFQ_HANDOFF reclaims mcopy */
 			} else {
-				ifp->if_opackets++;
+				IFNET_STAT_INC(ifp, opackets, 1);
 			}
 		}
 	}
@@ -900,7 +900,7 @@ hostap_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 		break;
 	}
 err:
-	ifp->if_ierrors++;
+	IFNET_STAT_INC(ifp, ierrors, 1);
 out:
 	if (m != NULL) {
 		if (need_tap && ieee80211_radiotap_active_vap(vap))
@@ -996,7 +996,10 @@ hostap_auth_shared(struct ieee80211_node *ni, struct ieee80211_frame *wh,
 {
 	struct ieee80211vap *vap = ni->ni_vap;
 	uint8_t *challenge;
-	int allocbs, estatus;
+#ifdef IEEE80211_DEBUG
+	int allocbs;
+#endif
+	int estatus;
 
 	KASSERT(vap->iv_state == IEEE80211_S_RUN, ("state %d", vap->iv_state));
 
@@ -1075,11 +1078,15 @@ hostap_auth_shared(struct ieee80211_node *ni, struct ieee80211_frame *wh,
 				/* NB: no way to return an error */
 				return;
 			}
+#ifdef IEEE80211_DEBUG
 			allocbs = 1;
+#endif
 		} else {
 			if ((ni->ni_flags & IEEE80211_NODE_AREF) == 0)
 				(void) ieee80211_ref_node(ni);
+#ifdef IEEE80211_DEBUG
 			allocbs = 0;
+#endif
 		}
 		/*
 		 * Mark the node as referenced to reflect that it's
@@ -2158,7 +2165,9 @@ hostap_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 
 	case IEEE80211_FC0_SUBTYPE_DEAUTH:
 	case IEEE80211_FC0_SUBTYPE_DISASSOC: {
+#ifdef IEEE80211_DEBUG
 		uint16_t reason;
+#endif
 
 		if (vap->iv_state != IEEE80211_S_RUN ||
 		    /* NB: can happen when in promiscuous mode */
@@ -2171,7 +2180,9 @@ hostap_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 		 *	[2] reason
 		 */
 		IEEE80211_VERIFY_LENGTH(efrm - frm, 2, return);
+#ifdef IEEE80211_DEBUG
 		reason = le16toh(*(uint16_t *)frm);
+#endif
 		if (subtype == IEEE80211_FC0_SUBTYPE_DEAUTH) {
 			vap->iv_stats.is_rx_deauth++;
 			IEEE80211_NODE_STAT(ni, rx_deauth);

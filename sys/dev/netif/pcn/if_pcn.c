@@ -777,7 +777,7 @@ pcn_rxeof(struct pcn_softc *sc)
 	 	 * comes up in the ring.
 		 */
 		if (cur_rx->pcn_rxstat & PCN_RXSTAT_ERR) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			pcn_newbuf(sc, i, m);
 			PCN_INC(i, PCN_RX_LIST_CNT);
 			continue;
@@ -786,7 +786,7 @@ pcn_rxeof(struct pcn_softc *sc)
 		if (pcn_newbuf(sc, i, NULL)) {
 			/* Ran out of mbufs; recycle this one. */
 			pcn_newbuf(sc, i, m);
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			PCN_INC(i, PCN_RX_LIST_CNT);
 			continue;
 		}
@@ -794,7 +794,7 @@ pcn_rxeof(struct pcn_softc *sc)
 		PCN_INC(i, PCN_RX_LIST_CNT);
 
 		/* No errors; receive the packet. */
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		m->m_len = m->m_pkthdr.len =
 		    cur_rx->pcn_rxlen - ETHER_CRC_LEN;
 		m->m_pkthdr.rcvif = ifp;
@@ -839,17 +839,17 @@ pcn_txeof(struct pcn_softc *sc)
 		}
 
 		if (cur_tx->pcn_txctl & PCN_TXCTL_ERR) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (cur_tx->pcn_txstat & PCN_TXSTAT_EXDEF)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			if (cur_tx->pcn_txstat & PCN_TXSTAT_RTRY)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 		}
 
-		ifp->if_collisions +=
-		    cur_tx->pcn_txstat & PCN_TXSTAT_TRC;
+		IFNET_STAT_INC(ifp, collisions,
+		    cur_tx->pcn_txstat & PCN_TXSTAT_TRC);
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		if (sc->pcn_cdata.pcn_tx_chain[idx] != NULL) {
 			m_freem(sc->pcn_cdata.pcn_tx_chain[idx]);
 			sc->pcn_cdata.pcn_tx_chain[idx] = NULL;
@@ -1302,7 +1302,7 @@ pcn_watchdog(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	kprintf("pcn%d: watchdog timeout\n", sc->pcn_unit);
 
 	pcn_stop(sc);

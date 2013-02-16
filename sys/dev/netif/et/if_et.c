@@ -1235,7 +1235,7 @@ et_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 		error = et_encap(sc, &m);
 		if (error) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			KKASSERT(m == NULL);
 
 			if (error == EFBIG) {
@@ -1879,12 +1879,12 @@ et_rxeof(struct et_softc *sc)
 		CSR_WRITE_4(sc, ET_RXSTAT_POS, rxstat_pos);
 
 		if (ring_idx >= ET_RX_NRING) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			if_printf(ifp, "invalid ring index %d\n", ring_idx);
 			continue;
 		}
 		if (buf_idx >= ET_RX_NDESC) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			if_printf(ifp, "invalid buf index %d\n", buf_idx);
 			continue;
 		}
@@ -1895,18 +1895,18 @@ et_rxeof(struct et_softc *sc)
 		if (rbd->rbd_newbuf(rbd, buf_idx, 0) == 0) {
 			if (buflen < ETHER_CRC_LEN) {
 				m_freem(m);
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 			} else {
 				m->m_pkthdr.len = m->m_len = buflen;
 				m->m_pkthdr.rcvif = ifp;
 
 				m_adj(m, -ETHER_CRC_LEN);
 
-				ifp->if_ipackets++;
+				IFNET_STAT_INC(ifp, ipackets, 1);
 				ifp->if_input(ifp, m);
 			}
 		} else {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		}
 		m = NULL;	/* Catch invalid reference */
 
@@ -2043,7 +2043,7 @@ et_txeof(struct et_softc *sc, int start)
 			bus_dmamap_unload(sc->sc_txbuf_dtag, tb->tb_dmap);
 			m_freem(tb->tb_mbuf);
 			tb->tb_mbuf = NULL;
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 
 		if (++tbd->tbd_start_index == ET_TX_NDESC) {

@@ -140,8 +140,8 @@ looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		        rt->rt_flags & RTF_HOST ? EHOSTUNREACH : ENETUNREACH);
 	}
 
-	ifp->if_opackets++;
-	ifp->if_obytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, opackets, 1);
+	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len);
 #if 1	/* XXX */
 	switch (dst->sa_family) {
 	case AF_INET:
@@ -269,8 +269,8 @@ rel:
 		return (EAFNOSUPPORT);
 	}
 
-	ifp->if_ipackets++;
-	ifp->if_ibytes += m->m_pkthdr.len;
+	IFNET_STAT_INC(ifp, ipackets, 1);
+	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
 	netisr_queue(isr, m);
 	return (0);
 }
@@ -322,8 +322,8 @@ lo_altqstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			return;
 		}
 
-		ifp->if_ipackets++;
-		ifp->if_ibytes += m->m_pkthdr.len;
+		IFNET_STAT_INC(ifp, ipackets, 1);
+		IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
 		netisr_queue(isr, m);
 	}
 }

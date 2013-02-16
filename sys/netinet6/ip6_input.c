@@ -586,8 +586,8 @@ ip6_input(netmsg_t msg)
 			ours = 1;
 			deliverifp = ia6->ia_ifp;	/* correct? */
 			/* Count the packet in the ip address stats */
-			ia6->ia_ifa.if_ipackets++;
-			ia6->ia_ifa.if_ibytes += m->m_pkthdr.len;
+			IFA_STAT_INC(&ia6->ia_ifa, ipackets, 1);
+			IFA_STAT_INC(&ia6->ia_ifa, ibytes, m->m_pkthdr.len);
 			goto hbhcheck;
 		} else {
 			/* address is not ready, so discard the packet. */

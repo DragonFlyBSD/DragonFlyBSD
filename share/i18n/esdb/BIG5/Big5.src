@@ -1,5 +1,4 @@
 # $NetBSD: Big5.src,v 1.1 2006/06/19 17:28:25 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/BIG5/Big5.src,v 1.1 2008/04/10 10:21:12 hasso Exp $
 
 NAME		"encoding"
 ENCODING	"BIG5"

@@ -1,5 +1,4 @@
 # $NetBSD: ISO-2022-CN.src,v 1.2 2006/03/17 16:37:10 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/ISO-2022/ISO-2022-CN.src,v 1.1 2008/04/10 10:21:12 hasso Exp $
 
 NAME		"ISO-2022-CN"
 ENCODING	"ISO2022"

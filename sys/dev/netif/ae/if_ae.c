@@ -666,15 +666,15 @@ ae_rx_intr(struct ae_softc *sc)
 		 */
 		sc->rxd_cur = (sc->rxd_cur + 1) % AE_RXD_COUNT_DEFAULT;
 		if ((flags & AE_RXD_SUCCESS) == 0) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			continue;
 		}
 
 		error = ae_rxeof(sc, rxd);
 		if (error)
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 		else
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 	}
 
 	/* Update Rx index. */
@@ -724,9 +724,9 @@ ae_tx_intr(struct ae_softc *sc)
 		sc->txd_ack = ((sc->txd_ack + le16toh(txd->len) + 4 + 3) & ~3) %
 		    AE_TXD_BUFSIZE_DEFAULT;
 		if ((flags & AE_TXS_SUCCESS) != 0)
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		else
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		sc->tx_inproc--;
 	}
 
@@ -988,7 +988,7 @@ ae_watchdog(struct ifnet *ifp)
 		if_printf(ifp, "watchdog timeout (missed link).\n");
 	else
 		if_printf(ifp, "watchdog timeout - resetting.\n");
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	ae_init(sc);
 	if (!ifq_is_empty(&ifp->if_snd))

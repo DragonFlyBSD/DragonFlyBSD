@@ -50,7 +50,7 @@ static s32 e1000_null_mbx_check_for_flag(struct e1000_hw *hw, u16 mbx_id)
  *  @hw: pointer to the HW structure
  **/
 static s32 e1000_null_mbx_transact(struct e1000_hw *hw, u32 *msg, u16 size,
-                            u16 mbx_id)
+				   u16 mbx_id)
 {
 	DEBUGFUNC("e1000_null_mbx_rw_msg");
 
@@ -403,7 +403,7 @@ static s32 e1000_check_for_rst_vf(struct e1000_hw *hw, u16 mbx_id)
 	DEBUGFUNC("e1000_check_for_rst_vf");
 
 	if (!e1000_check_for_bit_vf(hw, (E1000_V2PMAILBOX_RSTD |
-	                                 E1000_V2PMAILBOX_RSTI))) {
+					 E1000_V2PMAILBOX_RSTI))) {
 		ret_val = E1000_SUCCESS;
 		hw->mbx.stats.rsts++;
 	}
@@ -443,7 +443,7 @@ static s32 e1000_obtain_mbx_lock_vf(struct e1000_hw *hw)
  *  returns SUCCESS if it successfully copied message into the buffer
  **/
 static s32 e1000_write_mbx_vf(struct e1000_hw *hw, u32 *msg, u16 size,
-                              u16 mbx_id)
+			      u16 mbx_id)
 {
 	s32 ret_val;
 	u16 i;
@@ -484,7 +484,7 @@ out_no_write:
  *  returns SUCCESS if it successfuly read message from buffer
  **/
 static s32 e1000_read_mbx_vf(struct e1000_hw *hw, u32 *msg, u16 size,
-                             u16 mbx_id)
+			     u16 mbx_id)
 {
 	s32 ret_val = E1000_SUCCESS;
 	u16 i;
@@ -657,7 +657,7 @@ static s32 e1000_obtain_mbx_lock_pf(struct e1000_hw *hw, u16 vf_number)
  *  returns SUCCESS if it successfully copied message into the buffer
  **/
 static s32 e1000_write_mbx_pf(struct e1000_hw *hw, u32 *msg, u16 size,
-                              u16 vf_number)
+			      u16 vf_number)
 {
 	s32 ret_val;
 	u16 i;
@@ -700,7 +700,7 @@ out_no_write:
  *  a message due to a VF request so no polling for message is needed.
  **/
 static s32 e1000_read_mbx_pf(struct e1000_hw *hw, u32 *msg, u16 size,
-                             u16 vf_number)
+			     u16 vf_number)
 {
 	s32 ret_val;
 	u16 i;

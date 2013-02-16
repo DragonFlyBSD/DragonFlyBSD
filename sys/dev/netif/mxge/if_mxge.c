@@ -2440,7 +2440,7 @@ mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 	/* try to replace the received mbuf */
 	if (mxge_get_buf_big(ss, rx->extra_map, idx)) {
 		/* drop the frame -- the old mbuf is re-cycled */
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
@@ -2506,7 +2506,7 @@ mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 	/* try to replace the received mbuf */
 	if (mxge_get_buf_small(ss, rx->extra_map, idx)) {
 		/* drop the frame -- the old mbuf is re-cycled */
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
@@ -3729,14 +3729,14 @@ mxge_update_stats(mxge_softc_t *sc)
 #endif
 		oerrors += ss->oerrors;
 	}
-	sc->ifp->if_ipackets = ipackets;
-	sc->ifp->if_opackets = opackets;
+	IFNET_STAT_SET(sc->ifp, ipackets, ipackets);
+	IFNET_STAT_SET(sc->ifp, opackets, opackets);
 #ifdef IFNET_BUF_RING
 	sc->ifp->if_obytes = obytes;
 	sc->ifp->if_omcasts = omcasts;
 	sc->ifp->if_snd.ifq_drops = odrops;
 #endif
-	sc->ifp->if_oerrors = oerrors;
+	IFNET_STAT_SET(sc->ifp, oerrors, oerrors);
 }
 
 static void

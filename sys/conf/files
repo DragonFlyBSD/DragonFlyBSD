@@ -318,6 +318,7 @@ dev/netif/ig_hal/e1000_82543.c	optional ig_hal
 dev/netif/ig_hal/e1000_82571.c	optional ig_hal
 dev/netif/ig_hal/e1000_82575.c	optional ig_hal
 dev/netif/ig_hal/e1000_api.c	optional ig_hal
+dev/netif/ig_hal/e1000_i210.c	optional ig_hal
 dev/netif/ig_hal/e1000_ich8lan.c	optional ig_hal
 dev/netif/ig_hal/e1000_mac.c	optional ig_hal
 dev/netif/ig_hal/e1000_manage.c	optional ig_hal
@@ -1758,14 +1759,6 @@ dev/misc/tbridge/tbridge.c	optional tbridge
 bus/isa/pnp.c			optional isa
 bus/isa/pnpparse.c		optional isa
 #
-dev/sound/isa/ad1816.c		optional snd_ad1816 isa
-dev/sound/isa/ess.c		optional snd_ess isa
-dev/sound/isa/gusc.c		optional snd_gusc isa
-dev/sound/isa/mss.c		optional snd_mss isa
-dev/sound/isa/sb16.c		optional snd_sb16 isa
-dev/sound/isa/sb8.c		optional snd_sb8 isa
-dev/sound/isa/sbc.c		optional snd_sbc isa
-dev/sound/isa/sndbuf_dma.c	optional pcm isa
 dev/sound/pci/als4000.c		optional snd_als4000 pci
 dev/sound/pci/atiixp.c		optional snd_atiixp pci
 dev/sound/pci/cmi.c		optional snd_cmi pci

@@ -59,9 +59,6 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
-#ifdef BCE_DEBUG
-#include <sys/random.h>
-#endif
 #include <sys/rman.h>
 #include <sys/serialize.h>
 #include <sys/socket.h>
@@ -96,40 +93,6 @@
 #include <dev/netif/bce/if_bcefw.h>
 
 #define BCE_MSI_CKINTVL		((10 * hz) / 1000)	/* 10ms */
-
-/****************************************************************************/
-/* BCE Debug Options                                                        */
-/****************************************************************************/
-#ifdef BCE_DEBUG
-
-static uint32_t	bce_debug = BCE_WARN;
-
-/*
- *          0 = Never             
- *          1 = 1 in 2,147,483,648
- *        256 = 1 in     8,388,608
- *       2048 = 1 in     1,048,576
- *      65536 = 1 in        32,768
- *    1048576 = 1 in         2,048
- *  268435456 = 1 in             8
- *  536870912 = 1 in             4
- * 1073741824 = 1 in             2
- *
- * bce_debug_mbuf_allocation_failure:
- *     How often to simulate an mbuf allocation failure.
- *
- * bce_debug_dma_map_addr_failure:
- *     How often to simulate a DMA mapping failure.
- *
- * bce_debug_bootcode_running_failure:
- *     How often to simulate a bootcode failure.
- */
-static int	bce_debug_mbuf_allocation_failure = 0;
-static int	bce_debug_dma_map_addr_failure = 0;
-static int	bce_debug_bootcode_running_failure = 0;
-
-#endif	/* BCE_DEBUG */
-
 
 /****************************************************************************/
 /* PCI Device ID Table                                                      */
@@ -319,30 +282,6 @@ static int	bce_attach(device_t);
 static int	bce_detach(device_t);
 static void	bce_shutdown(device_t);
 
-/****************************************************************************/
-/* BCE Debug Data Structure Dump Routines                                   */
-/****************************************************************************/
-#ifdef BCE_DEBUG
-static void	bce_dump_mbuf(struct bce_softc *, struct mbuf *);
-static void	bce_dump_rx_mbuf_chain(struct bce_softc *, int, int);
-static void	bce_dump_txbd(struct bce_softc *, int, struct tx_bd *);
-static void	bce_dump_rxbd(struct bce_softc *, int, struct rx_bd *);
-static void	bce_dump_l2fhdr(struct bce_softc *, int,
-				struct l2_fhdr *) __unused;
-static void	bce_dump_tx_chain(struct bce_softc *, int, int);
-static void	bce_dump_rx_chain(struct bce_softc *, int, int);
-static void	bce_dump_status_block(struct bce_softc *);
-static void	bce_dump_driver_state(struct bce_softc *);
-static void	bce_dump_stats_block(struct bce_softc *) __unused;
-static void	bce_dump_hw_state(struct bce_softc *);
-static void	bce_dump_txp_state(struct bce_softc *);
-static void	bce_dump_rxp_state(struct bce_softc *) __unused;
-static void	bce_dump_tpat_state(struct bce_softc *) __unused;
-static void	bce_freeze_controller(struct bce_softc *) __unused;
-static void	bce_unfreeze_controller(struct bce_softc *) __unused;
-static void	bce_breakpoint(struct bce_softc *);
-#endif	/* BCE_DEBUG */
-
 
 /****************************************************************************/
 /* BCE Register/Memory Access Routines                                      */
@@ -478,6 +417,8 @@ static uint32_t	bce_rx_bds = 0;			/* bcm: 6 */
 static uint32_t	bce_rx_ticks_int = 150;		/* bcm: 18 */
 static uint32_t	bce_rx_ticks = 150;		/* bcm: 18 */
 
+static int	bce_tx_wreg = 8;
+
 static int	bce_msi_enable = 1;
 
 static int	bce_rx_pages = RX_PAGES_DEFAULT;
@@ -494,6 +435,7 @@ TUNABLE_INT("hw.bce.rx_ticks", &bce_rx_ticks);
 TUNABLE_INT("hw.bce.msi.enable", &bce_msi_enable);
 TUNABLE_INT("hw.bce.rx_pages", &bce_rx_pages);
 TUNABLE_INT("hw.bce.tx_pages", &bce_tx_pages);
+TUNABLE_INT("hw.bce.tx_wreg", &bce_tx_wreg);
 
 /****************************************************************************/
 /* DragonFly device dispatch table.                                         */
@@ -784,7 +726,6 @@ bce_attach(device_t dev)
 	} else {
 		sc->bce_shmem_base = HOST_VIEW_SHMEM_BASE;
 	}
-	DBPRINT(sc, BCE_INFO, "bce_shmem_base = 0x%08X\n", sc->bce_shmem_base);
 
 	/* Fetch the bootcode revision. */
 	val = bce_shmem_rd(sc, BCE_DEV_INFO_BC_REV);
@@ -929,7 +870,7 @@ bce_attach(device_t dev)
 	sc->bce_rx_ticks_int           = bce_rx_ticks_int;
 	sc->bce_rx_ticks               = bce_rx_ticks;
 #endif
-	sc->tx_wreg = 8;
+	sc->tx_wreg = bce_tx_wreg;
 
 	/* Update statistics once every second. */
 	sc->bce_stats_ticks = 1000000 & 0xffff00;
@@ -1001,9 +942,6 @@ bce_attach(device_t dev)
 
 	sc->bce_intr_cpuid = rman_get_cpuid(sc->bce_res_irq);
 	ifq_set_cpuid(&ifp->if_snd, sc->bce_intr_cpuid);
-
-	/* Print some important debugging info. */
-	DBRUN(BCE_INFO, bce_dump_driver_state(sc));
 
 	/* Add the supported sysctls to the kernel. */
 	bce_add_sysctls(sc);
@@ -1136,18 +1074,7 @@ bce_reg_rd_ind(struct bce_softc *sc, uint32_t offset)
 	device_t dev = sc->bce_dev;
 
 	pci_write_config(dev, BCE_PCICFG_REG_WINDOW_ADDRESS, offset, 4);
-#ifdef BCE_DEBUG
-	{
-		uint32_t val;
-		val = pci_read_config(dev, BCE_PCICFG_REG_WINDOW, 4);
-		DBPRINT(sc, BCE_EXCESSIVE,
-			"%s(); offset = 0x%08X, val = 0x%08X\n",
-			__func__, offset, val);
-		return val;
-	}
-#else
 	return pci_read_config(dev, BCE_PCICFG_REG_WINDOW, 4);
-#endif
 }
 
 
@@ -1165,9 +1092,6 @@ static void
 bce_reg_wr_ind(struct bce_softc *sc, uint32_t offset, uint32_t val)
 {
 	device_t dev = sc->bce_dev;
-
-	DBPRINT(sc, BCE_EXCESSIVE, "%s(); offset = 0x%08X, val = 0x%08X\n",
-		__func__, offset, val);
 
 	pci_write_config(dev, BCE_PCICFG_REG_WINDOW_ADDRESS, offset, 4);
 	pci_write_config(dev, BCE_PCICFG_REG_WINDOW, val, 4);
@@ -1301,10 +1225,6 @@ bce_miibus_read_reg(device_t dev, int phy, int reg)
 		val = REG_RD(sc, BCE_EMAC_MDIO_COMM);
 	}
 
-	DBPRINT(sc, BCE_EXCESSIVE,
-		"%s(): phy = %d, reg = 0x%04X, val = 0x%04X\n",
-		__func__, phy, (uint16_t)reg & 0xffff, (uint16_t) val & 0xffff);
-
 	if (sc->bce_phy_flags & BCE_PHY_INT_MODE_AUTO_POLLING_FLAG) {
 		val = REG_RD(sc, BCE_EMAC_MDIO_MODE);
 		val |= BCE_EMAC_MDIO_MODE_AUTO_POLL;
@@ -1336,11 +1256,6 @@ bce_miibus_write_reg(device_t dev, int phy, int reg, int val)
 	/* Make sure we are accessing the correct PHY address. */
 	KASSERT(phy == sc->bce_phy_addr,
 	    ("invalid phyno %d, should be %d\n", phy, sc->bce_phy_addr));
-
-	DBPRINT(sc, BCE_EXCESSIVE,
-		"%s(): phy = %d, reg = 0x%04X, val = 0x%04X\n",
-		__func__, phy, (uint16_t)(reg & 0xffff),
-		(uint16_t)(val & 0xffff));
 
 	if (sc->bce_phy_flags & BCE_PHY_INT_MODE_AUTO_POLLING_FLAG) {
 		val1 = REG_RD(sc, BCE_EMAC_MDIO_MODE);
@@ -1398,65 +1313,6 @@ bce_miibus_statchg(device_t dev)
 	struct bce_softc *sc = device_get_softc(dev);
 	struct mii_data *mii = device_get_softc(sc->bce_miibus);
 
-	DBPRINT(sc, BCE_INFO, "mii_media_active = 0x%08X\n",
-		mii->mii_media_active);
-
-#ifdef BCE_DEBUG
-	/* Decode the interface media flags. */
-	if_printf(&sc->arpcom.ac_if, "Media: ( ");
-	switch(IFM_TYPE(mii->mii_media_active)) {
-	case IFM_ETHER:
-		kprintf("Ethernet )");
-		break;
-	default:
-		kprintf("Unknown )");
-		break;
-	}
-
-	kprintf(" Media Options: ( ");
-	switch(IFM_SUBTYPE(mii->mii_media_active)) {
-	case IFM_AUTO:
-		kprintf("Autoselect )");
-		break;
-	case IFM_MANUAL:
-		kprintf("Manual )");
-		break;
-	case IFM_NONE:
-		kprintf("None )");
-		break;
-	case IFM_10_T:
-		kprintf("10Base-T )");
-		break;
-	case IFM_100_TX:
-		kprintf("100Base-TX )");
-		break;
-	case IFM_1000_SX:
-		kprintf("1000Base-SX )");
-		break;
-	case IFM_1000_T:
-		kprintf("1000Base-T )");
-		break;
-	default:
-		kprintf("Other )");
-		break;
-	}
-
-	kprintf(" Global Options: (");
-	if (mii->mii_media_active & IFM_FDX)
-		kprintf(" FullDuplex");
-	if (mii->mii_media_active & IFM_HDX)
-		kprintf(" HalfDuplex");
-	if (mii->mii_media_active & IFM_LOOP)
-		kprintf(" Loopback");
-	if (mii->mii_media_active & IFM_FLAG0)
-		kprintf(" Flag0");
-	if (mii->mii_media_active & IFM_FLAG1)
-		kprintf(" Flag1");
-	if (mii->mii_media_active & IFM_FLAG2)
-		kprintf(" Flag2");
-	kprintf(" )\n");
-#endif
-
 	BCE_CLRBIT(sc, BCE_EMAC_MODE, BCE_EMAC_MODE_PORT);
 
 	/*
@@ -1465,10 +1321,8 @@ bce_miibus_statchg(device_t dev)
 	 */
 	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T || 
 	    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX) {
-		DBPRINT(sc, BCE_INFO, "Setting GMII interface.\n");
 		BCE_SETBIT(sc, BCE_EMAC_MODE, BCE_EMAC_MODE_PORT_GMII);
 	} else {
-		DBPRINT(sc, BCE_INFO, "Setting MII interface.\n");
 		BCE_SETBIT(sc, BCE_EMAC_MODE, BCE_EMAC_MODE_PORT_MII);
 	}
 
@@ -1477,10 +1331,8 @@ bce_miibus_statchg(device_t dev)
 	 * by the PHY.
 	 */
 	if ((mii->mii_media_active & IFM_GMASK) == IFM_FDX) {
-		DBPRINT(sc, BCE_INFO, "Setting Full-Duplex interface.\n");
 		BCE_CLRBIT(sc, BCE_EMAC_MODE, BCE_EMAC_MODE_HALF_DUPLEX);
 	} else {
-		DBPRINT(sc, BCE_INFO, "Setting Half-Duplex interface.\n");
 		BCE_SETBIT(sc, BCE_EMAC_MODE, BCE_EMAC_MODE_HALF_DUPLEX);
 	}
 }
@@ -1502,8 +1354,6 @@ bce_acquire_nvram_lock(struct bce_softc *sc)
 	uint32_t val;
 	int j;
 
-	DBPRINT(sc, BCE_VERBOSE, "Acquiring NVRAM lock.\n");
-
 	/* Request access to the flash interface. */
 	REG_WR(sc, BCE_NVM_SW_ARB, BCE_NVM_SW_ARB_ARB_REQ_SET2);
 	for (j = 0; j < NVRAM_TIMEOUT_COUNT; j++) {
@@ -1515,7 +1365,6 @@ bce_acquire_nvram_lock(struct bce_softc *sc)
 	}
 
 	if (j >= NVRAM_TIMEOUT_COUNT) {
-		DBPRINT(sc, BCE_WARN, "Timeout acquiring NVRAM lock!\n");
 		return EBUSY;
 	}
 	return 0;
@@ -1538,8 +1387,6 @@ bce_release_nvram_lock(struct bce_softc *sc)
 	int j;
 	uint32_t val;
 
-	DBPRINT(sc, BCE_VERBOSE, "Releasing NVRAM lock.\n");
-
 	/*
 	 * Relinquish nvram interface.
 	 */
@@ -1554,7 +1401,6 @@ bce_release_nvram_lock(struct bce_softc *sc)
 	}
 
 	if (j >= NVRAM_TIMEOUT_COUNT) {
-		DBPRINT(sc, BCE_WARN, "Timeout reeasing NVRAM lock!\n");
 		return EBUSY;
 	}
 	return 0;
@@ -1575,8 +1421,6 @@ bce_enable_nvram_access(struct bce_softc *sc)
 {
 	uint32_t val;
 
-	DBPRINT(sc, BCE_VERBOSE, "Enabling NVRAM access.\n");
-
 	val = REG_RD(sc, BCE_NVM_ACCESS_ENABLE);
 	/* Enable both bits, even on read. */
 	REG_WR(sc, BCE_NVM_ACCESS_ENABLE,
@@ -1596,8 +1440,6 @@ static void
 bce_disable_nvram_access(struct bce_softc *sc)
 {
 	uint32_t val;
-
-	DBPRINT(sc, BCE_VERBOSE, "Disabling NVRAM access.\n");
 
 	val = REG_RD(sc, BCE_NVM_ACCESS_ENABLE);
 
@@ -1684,8 +1526,6 @@ bce_init_nvram(struct bce_softc *sc)
 	int j, entry_count, rc = 0;
 	const struct flash_spec *flash;
 
-	DBPRINT(sc, BCE_VERBOSE_RESET, "Entering %s()\n", __func__);
-
 	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
 	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
 		sc->bce_flash_info = &flash_5709;
@@ -1706,10 +1546,6 @@ bce_init_nvram(struct bce_softc *sc)
 
 	if (val & 0x40000000) {
 		/* Flash interface reconfigured by bootcode. */
-
-		DBPRINT(sc, BCE_INFO_LOAD, 
-			"%s(): Flash WAS reconfigured.\n", __func__);
-
 		for (j = 0, flash = flash_table; j < entry_count;
 		     j++, flash++) {
 			if ((val & FLASH_BACKUP_STRAP_MASK) ==
@@ -1721,9 +1557,6 @@ bce_init_nvram(struct bce_softc *sc)
 	} else {
 		/* Flash interface not yet reconfigured. */
 		uint32_t mask;
-
-		DBPRINT(sc, BCE_INFO_LOAD, 
-			"%s(): Flash was NOT reconfigured.\n", __func__);
 
 		if (val & (1 << 23))
 			mask = FLASH_BACKUP_STRAP_MASK;
@@ -1771,11 +1604,6 @@ bce_init_nvram_get_flash_size:
 		sc->bce_flash_size = val;
 	else
 		sc->bce_flash_size = sc->bce_flash_info->total_size;
-
-	DBPRINT(sc, BCE_INFO_LOAD, "%s() flash->total_size = 0x%08X\n",
-		__func__, sc->bce_flash_info->total_size);
-
-	DBPRINT(sc, BCE_VERBOSE_RESET, "Exiting %s()\n", __func__);
 
 	return rc;
 }
@@ -2182,15 +2010,6 @@ bce_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 {
 	bus_addr_t *busaddr = arg;
 
-	/*
-	 * Simulate a mapping failure.
-	 * XXX not correct.
-	 */
-	DBRUNIF(DB_RANDOMTRUE(bce_debug_dma_map_addr_failure),
-		kprintf("bce: %s(%d): Simulating DMA mapping error.\n",
-			__FILE__, __LINE__);
-		error = ENOMEM);
-		
 	/* Check for an error and signal the caller that an error occurred. */
 	if (error)
 		return;
@@ -2438,8 +2257,6 @@ bce_dma_alloc(struct bce_softc *sc)
 
 		sc->tx_bd_chain_paddr[i] = busaddr;
 		/* DRC - Fix for 64 bit systems. */
-		DBPRINT(sc, BCE_INFO, "tx_bd_chain_paddr[%d] = 0x%08X\n", 
-			i, (uint32_t)sc->tx_bd_chain_paddr[i]);
 	}
 
 	/* Create a DMA tag for TX mbufs. */
@@ -2524,8 +2341,6 @@ bce_dma_alloc(struct bce_softc *sc)
 
 		sc->rx_bd_chain_paddr[i] = busaddr;
 		/* DRC - Fix for 64 bit systems. */
-		DBPRINT(sc, BCE_INFO, "rx_bd_chain_paddr[%d] = 0x%08X\n",
-			i, (uint32_t)sc->rx_bd_chain_paddr[i]);
 	}
 
 	/* Create a DMA tag for RX mbufs. */
@@ -2595,8 +2410,6 @@ bce_fw_sync(struct bce_softc *sc, uint32_t msg_data)
 	/* Increment the message sequence number. */
 	sc->bce_fw_wr_seq++;
 	msg_data |= sc->bce_fw_wr_seq;
-
- 	DBPRINT(sc, BCE_VERBOSE, "bce_fw_sync(): msg_data = 0x%08X\n", msg_data);
 
 	/* Send the message to the bootcode driver mailbox. */
 	bce_shmem_wr(sc, BCE_DRV_MB, msg_data);
@@ -2881,7 +2694,6 @@ bce_init_rxp_cpu(struct bce_softc *sc)
 		fw.rodata = bce_RXP_b06FwRodata;
 	}
 
-	DBPRINT(sc, BCE_INFO_RESET, "Loading RX firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
 	/* Delay RXP start until initialization is complete. */
 }
@@ -2975,7 +2787,6 @@ bce_init_txp_cpu(struct bce_softc *sc)
 		fw.rodata = bce_TXP_b06FwRodata;
 	}
 
-	DBPRINT(sc, BCE_INFO_RESET, "Loading TX firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
 	bce_start_cpu(sc, &cpu_reg);
 }
@@ -3069,7 +2880,6 @@ bce_init_tpat_cpu(struct bce_softc *sc)
 		fw.rodata = bce_TPAT_b06FwRodata;
 	}
 
-	DBPRINT(sc, BCE_INFO_RESET, "Loading TPAT firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
 	bce_start_cpu(sc, &cpu_reg);
 }
@@ -3163,7 +2973,6 @@ bce_init_cp_cpu(struct bce_softc *sc)
 		fw.rodata = bce_CP_b06FwRodata;
 	}
 
-	DBPRINT(sc, BCE_INFO_RESET, "Loading CP firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
 	bce_start_cpu(sc, &cpu_reg);
 }
@@ -3257,7 +3066,6 @@ bce_init_com_cpu(struct bce_softc *sc)
 		fw.rodata = bce_COM_b06FwRodata;
 	}
 
-	DBPRINT(sc, BCE_INFO_RESET, "Loading COM firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
 	bce_start_cpu(sc, &cpu_reg);
 }
@@ -3410,9 +3218,7 @@ static void
 bce_get_mac_addr(struct bce_softc *sc)
 {
 	uint32_t mac_lo = 0, mac_hi = 0;
-#ifdef BCE_DEBUG
-	char ethstr[ETHER_ADDRSTRLEN + 1];
-#endif
+
 	/*
 	 * The NetXtreme II bootcode populates various NIC
 	 * power-on and runtime configuration items in a
@@ -3435,9 +3241,6 @@ bce_get_mac_addr(struct bce_softc *sc)
 		sc->eaddr[4] = (u_char)(mac_lo >> 8);
 		sc->eaddr[5] = (u_char)(mac_lo >> 0);
 	}
-
-	DBPRINT(sc, BCE_INFO, "Permanent Ethernet address = %s\n",
-	    kether_ntoa(sc->eaddr, ethstr));
 }
 
 
@@ -3451,13 +3254,7 @@ static void
 bce_set_mac_addr(struct bce_softc *sc)
 {
 	const uint8_t *mac_addr = sc->eaddr;
-#ifdef BCE_DEBUG
-	char ethstr[ETHER_ADDRSTRLEN + 1];
-#endif
 	uint32_t val;
-
-	DBPRINT(sc, BCE_INFO, "Setting Ethernet address = %s\n",
-	    kether_ntoa(sc->eaddr, ethstr));
 
 	val = (mac_addr[0] << 8) | mac_addr[1];
 	REG_WR(sc, BCE_EMAC_MAC_MATCH0, val);
@@ -3716,7 +3513,6 @@ static int
 bce_blockinit(struct bce_softc *sc)
 {
 	uint32_t reg, val;
-	int rc = 0;
 
 	/* Load the hardware default MAC address. */
 	bce_set_mac_addr(sc);
@@ -3776,12 +3572,6 @@ bce_blockinit(struct bce_softc *sc)
 	/* Verify that bootcode is running. */
 	reg = bce_shmem_rd(sc, BCE_DEV_INFO_SIGNATURE);
 
-	DBRUNIF(DB_RANDOMTRUE(bce_debug_bootcode_running_failure),
-		if_printf(&sc->arpcom.ac_if,
-			  "%s(%d): Simulating bootcode failure.\n",
-			  __FILE__, __LINE__);
-		reg = 0);
-
 	if ((reg & BCE_DEV_INFO_SIGNATURE_MAGIC_MASK) !=
 	    BCE_DEV_INFO_SIGNATURE_MAGIC) {
 		if_printf(&sc->arpcom.ac_if,
@@ -3801,7 +3591,7 @@ bce_blockinit(struct bce_softc *sc)
 	}
 
 	/* Allow bootcode to apply any additional fixes before enabling MAC. */
-	rc = bce_fw_sync(sc, BCE_DRV_MSG_DATA_WAIT2 | BCE_DRV_MSG_CODE_RESET);
+	bce_fw_sync(sc, BCE_DRV_MSG_DATA_WAIT2 | BCE_DRV_MSG_CODE_RESET);
 
 	/* Enable link state change interrupt generation. */
 	REG_WR(sc, BCE_HC_ATTN_BITS_ENABLE, STATUS_ATTN_BITS_LINK_STATE);
@@ -3852,32 +3642,11 @@ bce_newbuf_std(struct bce_softc *sc, uint16_t *prod, uint16_t *chain_prod,
 	bus_dma_segment_t seg;
 	struct mbuf *m_new;
 	int error, nseg;
-#ifdef BCE_DEBUG
-	uint16_t debug_chain_prod = *chain_prod;
-#endif
-
-	/* Make sure the inputs are valid. */
-	DBRUNIF((*chain_prod > MAX_RX_BD(sc)),
-		if_printf(&sc->arpcom.ac_if, "%s(%d): "
-			  "RX producer out of range: 0x%04X > 0x%04X\n",
-			  __FILE__, __LINE__,
-			  *chain_prod, (uint16_t)MAX_RX_BD(sc)));
-
-	DBPRINT(sc, BCE_VERBOSE_RECV, "%s(enter): prod = 0x%04X, chain_prod = 0x%04X, "
-		"prod_bseq = 0x%08X\n", __func__, *prod, *chain_prod, *prod_bseq);
-
-	DBRUNIF(DB_RANDOMTRUE(bce_debug_mbuf_allocation_failure),
-		if_printf(&sc->arpcom.ac_if, "%s(%d): "
-			  "Simulating mbuf allocation failure.\n",
-			  __FILE__, __LINE__);
-		sc->mbuf_alloc_failed++;
-		return ENOBUFS);
 
 	/* This is a new mbuf allocation. */
 	m_new = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
 		return ENOBUFS;
-	DBRUNIF(1, sc->rx_mbuf_alloc++);
 
 	m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
 
@@ -3891,7 +3660,6 @@ bce_newbuf_std(struct bce_softc *sc, uint16_t *prod, uint16_t *chain_prod,
 			if_printf(&sc->arpcom.ac_if,
 				  "Error mapping mbuf into RX chain!\n");
 		}
-		DBRUNIF(1, sc->rx_mbuf_alloc--);
 		return error;
 	}
 
@@ -3904,30 +3672,12 @@ bce_newbuf_std(struct bce_softc *sc, uint16_t *prod, uint16_t *chain_prod,
 	sc->rx_mbuf_map[*chain_prod] = sc->rx_mbuf_tmpmap;
 	sc->rx_mbuf_tmpmap = map;
 
-	/* Watch for overflow. */
-	DBRUNIF((sc->free_rx_bd > USABLE_RX_BD(sc)),
-		if_printf(&sc->arpcom.ac_if, "%s(%d): "
-			  "Too many free rx_bd (0x%04X > 0x%04X)!\n",
-			  __FILE__, __LINE__, sc->free_rx_bd,
-			  (uint16_t)USABLE_RX_BD(sc)));
-
-	/* Update some debug statistic counters */
-	DBRUNIF((sc->free_rx_bd < sc->rx_low_watermark),
-		sc->rx_low_watermark = sc->free_rx_bd);
-	DBRUNIF((sc->free_rx_bd == 0), sc->rx_empty_count++);
-
 	/* Save the mbuf and update our counter. */
 	sc->rx_mbuf_ptr[*chain_prod] = m_new;
 	sc->rx_mbuf_paddr[*chain_prod] = seg.ds_addr;
 	sc->free_rx_bd--;
 
 	bce_setup_rxdesc_std(sc, *chain_prod, prod_bseq);
-
-	DBRUN(BCE_VERBOSE_RECV,
-	      bce_dump_rx_mbuf_chain(sc, debug_chain_prod, 1));
-
-	DBPRINT(sc, BCE_VERBOSE_RECV, "%s(exit): prod = 0x%04X, chain_prod = 0x%04X, "
-		"prod_bseq = 0x%08X\n", __func__, *prod, *chain_prod, *prod_bseq);
 
 	return 0;
 }
@@ -4013,16 +3763,12 @@ bce_init_tx_chain(struct bce_softc *sc)
 	struct tx_bd *txbd;
 	int i, rc = 0;
 
-	DBPRINT(sc, BCE_VERBOSE_RESET, "Entering %s()\n", __func__);
-
 	/* Set the initial TX producer/consumer indices. */
 	sc->tx_prod = 0;
 	sc->tx_cons = 0;
 	sc->tx_prod_bseq   = 0;
 	sc->used_tx_bd = 0;
 	sc->max_tx_bd = USABLE_TX_BD(sc);
-	DBRUNIF(1, sc->tx_hi_watermark = USABLE_TX_BD(sc));
-	DBRUNIF(1, sc->tx_full_count = 0);
 
 	/*
 	 * The NetXtreme II supports a linked-list structre called
@@ -4068,15 +3814,12 @@ bce_free_tx_chain(struct bce_softc *sc)
 {
 	int i;
 
-	DBPRINT(sc, BCE_VERBOSE_RESET, "Entering %s()\n", __func__);
-
 	/* Unmap, unload, and free any mbufs still in the TX mbuf chain. */
 	for (i = 0; i < TOTAL_TX_BD(sc); i++) {
 		if (sc->tx_mbuf_ptr[i] != NULL) {
 			bus_dmamap_unload(sc->tx_mbuf_tag, sc->tx_mbuf_map[i]);
 			m_freem(sc->tx_mbuf_ptr[i]);
 			sc->tx_mbuf_ptr[i] = NULL;
-			DBRUNIF(1, sc->tx_mbuf_alloc--);
 		}
 	}
 
@@ -4084,15 +3827,6 @@ bce_free_tx_chain(struct bce_softc *sc)
 	for (i = 0; i < sc->tx_pages; i++)
 		bzero(sc->tx_bd_chain[i], BCE_TX_CHAIN_PAGE_SZ);
 	sc->used_tx_bd = 0;
-
-	/* Check if we lost any mbufs in the process. */
-	DBRUNIF((sc->tx_mbuf_alloc),
-		if_printf(&sc->arpcom.ac_if,
-			  "%s(%d): Memory leak! "
-			  "Lost %d mbufs from tx chain!\n",
-			  __FILE__, __LINE__, sc->tx_mbuf_alloc));
-
-	DBPRINT(sc, BCE_VERBOSE_RESET, "Exiting %s()\n", __func__);
 }
 
 
@@ -4167,16 +3901,12 @@ bce_init_rx_chain(struct bce_softc *sc)
 	uint16_t prod, chain_prod;
 	uint32_t prod_bseq;
 
-	DBPRINT(sc, BCE_VERBOSE_RESET, "Entering %s()\n", __func__);
-
 	/* Initialize the RX producer and consumer indices. */
 	sc->rx_prod = 0;
 	sc->rx_cons = 0;
 	sc->rx_prod_bseq = 0;
 	sc->free_rx_bd = USABLE_RX_BD(sc);
 	sc->max_rx_bd = USABLE_RX_BD(sc);
-	DBRUNIF(1, sc->rx_low_watermark = USABLE_RX_BD(sc));
-	DBRUNIF(1, sc->rx_empty_count = 0);
 
 	/* Initialize the RX next pointer chain entries. */
 	for (i = 0; i < sc->rx_pages; i++) {
@@ -4238,30 +3968,18 @@ bce_free_rx_chain(struct bce_softc *sc)
 {
 	int i;
 
-	DBPRINT(sc, BCE_VERBOSE_RESET, "Entering %s()\n", __func__);
-
 	/* Free any mbufs still in the RX mbuf chain. */
 	for (i = 0; i < TOTAL_RX_BD(sc); i++) {
 		if (sc->rx_mbuf_ptr[i] != NULL) {
 			bus_dmamap_unload(sc->rx_mbuf_tag, sc->rx_mbuf_map[i]);
 			m_freem(sc->rx_mbuf_ptr[i]);
 			sc->rx_mbuf_ptr[i] = NULL;
-			DBRUNIF(1, sc->rx_mbuf_alloc--);
 		}
 	}
 
 	/* Clear each RX chain page. */
 	for (i = 0; i < sc->rx_pages; i++)
 		bzero(sc->rx_bd_chain[i], BCE_RX_CHAIN_PAGE_SZ);
-
-	/* Check if we lost any mbufs in the process. */
-	DBRUNIF((sc->rx_mbuf_alloc),
-		if_printf(&sc->arpcom.ac_if,
-			  "%s(%d): Memory leak! "
-			  "Lost %d mbufs from rx chain!\n",
-			  __FILE__, __LINE__, sc->rx_mbuf_alloc));
-
-	DBPRINT(sc, BCE_VERBOSE_RESET, "Exiting %s()\n", __func__);
 }
 
 
@@ -4336,8 +4054,6 @@ bce_phy_intr(struct bce_softc *sc)
 
 	/* Handle any changes if the link state has changed. */
 	if (new_link_state != old_link_state) {	/* XXX redundant? */
-		DBRUN(BCE_VERBOSE_INTR, bce_dump_status_block(sc));
-
 		/* Update the status_attn_bits_ack field in the status block. */
 		if (new_link_state) {
 			REG_WR(sc, BCE_PCICFG_STATUS_BIT_SET_CMD,
@@ -4430,7 +4146,7 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 				if_printf(ifp, "RX cons(%d) != prod(%d), "
 					  "drop!\n", sw_chain_cons,
 					  sw_chain_prod);
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 
 				bce_setup_rxdesc_std(sc, sw_chain_cons,
 						     &sw_prod_bseq);
@@ -4477,7 +4193,7 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 				      L2_FHDR_ERRORS_ALIGNMENT |
 				      L2_FHDR_ERRORS_TOO_SHORT |
 				      L2_FHDR_ERRORS_GIANT_FRAME)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 
 				/* Reuse the mbuf for a new frame. */
 				bce_setup_rxdesc_std(sc, sw_chain_prod,
@@ -4494,7 +4210,7 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 			 */
 			if (bce_newbuf_std(sc, &sw_prod, &sw_chain_prod,
 					   &sw_prod_bseq, 0)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 
 				/* Try and reuse the exisitng mbuf. */
 				bce_setup_rxdesc_std(sc, sw_chain_prod,
@@ -4544,7 +4260,7 @@ bce_rx_intr(struct bce_softc *sc, int count, uint16_t hw_cons)
 				}
 			}
 
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 bce_rx_int_next_rx:
 			sw_prod = NEXT_RX_BD(sw_prod);
 		}
@@ -4626,7 +4342,7 @@ bce_tx_intr(struct bce_softc *sc, uint16_t hw_tx_cons)
 			m_freem(sc->tx_mbuf_ptr[sw_tx_chain_cons]);
 			sc->tx_mbuf_ptr[sw_tx_chain_cons] = NULL;
 
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 
 		sc->used_tx_bd--;
@@ -4769,8 +4485,6 @@ bce_init(void *xsc)
 	/* Calculate and program the Ethernet MTU size. */
 	ether_mtu = ETHER_HDR_LEN + EVL_ENCAPLEN + ifp->if_mtu + ETHER_CRC_LEN;
 
-	DBPRINT(sc, BCE_INFO, "%s(): setting mtu = %d\n", __func__, ether_mtu);
-
 	/* 
 	 * Program the mtu, enabling jumbo frame 
 	 * support if necessary.  Also set the mbuf
@@ -4792,12 +4506,6 @@ bce_init(void *xsc)
 
 	/* Calculate the RX Ethernet frame size for rx_bd's. */
 	sc->max_frame_size = sizeof(struct l2_fhdr) + 2 + ether_mtu + 8;
-
-	DBPRINT(sc, BCE_INFO,
-		"%s(): mclbytes = %d, mbuf_alloc_size = %d, "
-		"max_frame_size = %d\n",
-		__func__, (int)MCLBYTES, sc->mbuf_alloc_size,
-		sc->max_frame_size);
 
 	/* Program appropriate promiscuous/multicast filtering. */
 	bce_set_rx_mode(sc);
@@ -5034,7 +4742,7 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 * to wait for the NIC to drain the chain.
 		 */
 		if (bce_encap(sc, &m_head, &count)) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (sc->used_tx_bd == 0) {
 				continue;
 			} else {
@@ -5098,8 +4806,6 @@ bce_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			break;
 		}
 
-		DBPRINT(sc, BCE_INFO, "Setting new MTU of %d\n", ifr->ifr_mtu);
-
 		ifp->if_mtu = ifr->ifr_mtu;
 		ifp->if_flags &= ~IFF_RUNNING;	/* Force reinitialize */
 		bce_init(sc);
@@ -5136,19 +4842,12 @@ bce_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 	case SIOCSIFMEDIA:
 	case SIOCGIFMEDIA:
-		DBPRINT(sc, BCE_VERBOSE, "bce_phy_flags = 0x%08X\n",
-			sc->bce_phy_flags);
-		DBPRINT(sc, BCE_VERBOSE, "Copper media set/get\n");
-
 		mii = device_get_softc(sc->bce_miibus);
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
 
 	case SIOCSIFCAP:
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
-		DBPRINT(sc, BCE_INFO, "Received SIOCSIFCAP = 0x%08X\n",
-			(uint32_t) mask);
-
 		if (mask & IFCAP_HWCSUM) {
 			ifp->if_capenable ^= (mask & IFCAP_HWCSUM);
 			if (ifp->if_capenable & IFCAP_TXCSUM)
@@ -5186,10 +4885,6 @@ bce_watchdog(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	DBRUN(BCE_VERBOSE_SEND,
-	      bce_dump_driver_state(sc);
-	      bce_dump_status_block(sc));
-
 	/*
 	 * If we are in this routine because of pause frames, then
 	 * don't reset the hardware.
@@ -5199,12 +4894,10 @@ bce_watchdog(struct ifnet *ifp)
 
 	if_printf(ifp, "Watchdog timeout occurred, resetting!\n");
 
-	/* DBRUN(BCE_FATAL, bce_breakpoint(sc)); */
-
 	ifp->if_flags &= ~IFF_RUNNING;	/* Force reinitialize */
 	bce_init(sc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -5494,14 +5187,10 @@ bce_set_rx_mode(struct bce_softc *sc)
 	 * multicast address filtering.
 	 */
 	if (ifp->if_flags & IFF_PROMISC) {
-		DBPRINT(sc, BCE_INFO, "Enabling promiscuous mode.\n");
-
 		/* Enable promiscuous mode. */
 		rx_mode |= BCE_EMAC_RX_MODE_PROMISCUOUS;
 		sort_mode |= BCE_RPM_SORT_USER0_PROM_EN;
 	} else if (ifp->if_flags & IFF_ALLMULTI) {
-		DBPRINT(sc, BCE_INFO, "Enabling all multicast mode.\n");
-
 		/* Enable all multicast addresses. */
 		for (i = 0; i < NUM_MC_HASH_REGISTERS; i++) {
 			REG_WR(sc, BCE_EMAC_MULTICAST_HASH0 + (i * 4),
@@ -5510,8 +5199,6 @@ bce_set_rx_mode(struct bce_softc *sc)
 		sort_mode |= BCE_RPM_SORT_USER0_MC_EN;
 	} else {
 		/* Accept one or more multicast(s). */
-		DBPRINT(sc, BCE_INFO, "Enabling selective multicast mode.\n");
-
 		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
@@ -5530,9 +5217,6 @@ bce_set_rx_mode(struct bce_softc *sc)
 
 	/* Only make changes if the recive mode has actually changed. */
 	if (rx_mode != sc->rx_mode) {
-		DBPRINT(sc, BCE_VERBOSE, "Enabling new receive mode: 0x%08X\n",
-			rx_mode);
-
 		sc->rx_mode = rx_mode;
 		REG_WR(sc, BCE_EMAC_RX_MODE, rx_mode);
 	}
@@ -5557,8 +5241,6 @@ bce_stats_update(struct bce_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct statistics_block *stats = sc->stats_block;
 
-	DBPRINT(sc, BCE_EXCESSIVE, "Entering %s()\n", __func__);
-
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* 
@@ -5567,8 +5249,8 @@ bce_stats_update(struct bce_softc *sc)
 	 */
 	if (!(BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5706) &&
 	    !(BCE_CHIP_ID(sc) == BCE_CHIP_ID_5708_A0)) {
-		ifp->if_oerrors +=
-			(u_long)stats->stat_Dot3StatsCarrierSenseErrors;
+		IFNET_STAT_INC(ifp, oerrors,
+			(u_long)stats->stat_Dot3StatsCarrierSenseErrors);
 	}
 
 	/*
@@ -5752,23 +5434,21 @@ bce_stats_update(struct bce_softc *sc)
 	 * Update the interface statistics from the
 	 * hardware statistics.
 	 */
-	ifp->if_collisions = (u_long)sc->stat_EtherStatsCollisions;
+	IFNET_STAT_SET(ifp, collisions, (u_long)sc->stat_EtherStatsCollisions);
 
-	ifp->if_ierrors = (u_long)sc->stat_EtherStatsUndersizePkts +
+	IFNET_STAT_SET(ifp, ierrors, (u_long)sc->stat_EtherStatsUndersizePkts +
 	    (u_long)sc->stat_EtherStatsOverrsizePkts +
 	    (u_long)sc->stat_IfInMBUFDiscards +
 	    (u_long)sc->stat_Dot3StatsAlignmentErrors +
 	    (u_long)sc->stat_Dot3StatsFCSErrors +
 	    (u_long)sc->stat_IfInRuleCheckerDiscards +
 	    (u_long)sc->stat_IfInFTQDiscards +
-	    (u_long)sc->com_no_buffers;
+	    (u_long)sc->com_no_buffers);
 
-	ifp->if_oerrors =
+	IFNET_STAT_SET(ifp, oerrors,
 	    (u_long)sc->stat_emac_tx_stat_dot3statsinternalmactransmiterrors +
 	    (u_long)sc->stat_Dot3StatsExcessiveCollisions +
-	    (u_long)sc->stat_Dot3StatsLateCollisions;
-
-	DBPRINT(sc, BCE_EXCESSIVE, "Exiting %s()\n", __func__);
+	    (u_long)sc->stat_Dot3StatsLateCollisions);
 }
 
 
@@ -5938,216 +5618,6 @@ bce_tick(void *xsc)
 }
 
 
-#ifdef BCE_DEBUG
-/****************************************************************************/
-/* Allows the driver state to be dumped through the sysctl interface.       */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 for success, positive value for failure.                             */
-/****************************************************************************/
-static int
-bce_sysctl_driver_state(SYSCTL_HANDLER_ARGS)
-{
-        int error;
-        int result;
-        struct bce_softc *sc;
-
-        result = -1;
-        error = sysctl_handle_int(oidp, &result, 0, req);
-
-        if (error || !req->newptr)
-                return (error);
-
-        if (result == 1) {
-                sc = (struct bce_softc *)arg1;
-                bce_dump_driver_state(sc);
-        }
-
-        return error;
-}
-
-
-/****************************************************************************/
-/* Allows the hardware state to be dumped through the sysctl interface.     */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 for success, positive value for failure.                             */
-/****************************************************************************/
-static int
-bce_sysctl_hw_state(SYSCTL_HANDLER_ARGS)
-{
-        int error;
-        int result;
-        struct bce_softc *sc;
-
-        result = -1;
-        error = sysctl_handle_int(oidp, &result, 0, req);
-
-        if (error || !req->newptr)
-                return (error);
-
-        if (result == 1) {
-                sc = (struct bce_softc *)arg1;
-                bce_dump_hw_state(sc);
-        }
-
-        return error;
-}
-
-
-/****************************************************************************/
-/* Provides a sysctl interface to allows dumping the RX chain.              */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 for success, positive value for failure.                             */
-/****************************************************************************/
-static int
-bce_sysctl_dump_rx_chain(SYSCTL_HANDLER_ARGS)
-{
-        int error;
-        int result;
-        struct bce_softc *sc;
-
-        result = -1;
-        error = sysctl_handle_int(oidp, &result, 0, req);
-
-        if (error || !req->newptr)
-                return (error);
-
-        if (result == 1) {
-                sc = (struct bce_softc *)arg1;
-                bce_dump_rx_chain(sc, 0, USABLE_RX_BD(sc));
-        }
-
-        return error;
-}
-
-
-/****************************************************************************/
-/* Provides a sysctl interface to allows dumping the TX chain.              */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 for success, positive value for failure.                             */
-/****************************************************************************/
-static int
-bce_sysctl_dump_tx_chain(SYSCTL_HANDLER_ARGS)
-{
-        int error;
-        int result;
-        struct bce_softc *sc;
-
-        result = -1;
-        error = sysctl_handle_int(oidp, &result, 0, req);
-
-        if (error || !req->newptr)
-                return (error);
-
-        if (result == 1) {
-                sc = (struct bce_softc *)arg1;
-                bce_dump_tx_chain(sc, 0, USABLE_TX_BD(sc));
-        }
-
-        return error;
-}
-
-
-/****************************************************************************/
-/* Provides a sysctl interface to allow reading arbitrary registers in the  */
-/* device.  DO NOT ENABLE ON PRODUCTION SYSTEMS!                            */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 for success, positive value for failure.                             */
-/****************************************************************************/
-static int
-bce_sysctl_reg_read(SYSCTL_HANDLER_ARGS)
-{
-	struct bce_softc *sc;
-	int error;
-	uint32_t val, result;
-
-	result = -1;
-	error = sysctl_handle_int(oidp, &result, 0, req);
-	if (error || (req->newptr == NULL))
-		return (error);
-
-	/* Make sure the register is accessible. */
-	if (result < 0x8000) {
-		sc = (struct bce_softc *)arg1;
-		val = REG_RD(sc, result);
-		if_printf(&sc->arpcom.ac_if, "reg 0x%08X = 0x%08X\n",
-			  result, val);
-	} else if (result < 0x0280000) {
-		sc = (struct bce_softc *)arg1;
-		val = REG_RD_IND(sc, result);
-		if_printf(&sc->arpcom.ac_if, "reg 0x%08X = 0x%08X\n",
-			  result, val);
-	}
-	return (error);
-}
-
-
-/****************************************************************************/
-/* Provides a sysctl interface to allow reading arbitrary PHY registers in  */
-/* the device.  DO NOT ENABLE ON PRODUCTION SYSTEMS!                        */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 for success, positive value for failure.                             */
-/****************************************************************************/
-static int
-bce_sysctl_phy_read(SYSCTL_HANDLER_ARGS)
-{
-	struct bce_softc *sc;
-	device_t dev;
-	int error, result;
-	uint16_t val;
-
-	result = -1;
-	error = sysctl_handle_int(oidp, &result, 0, req);
-	if (error || (req->newptr == NULL))
-		return (error);
-
-	/* Make sure the register is accessible. */
-	if (result < 0x20) {
-		sc = (struct bce_softc *)arg1;
-		dev = sc->bce_dev;
-		val = bce_miibus_read_reg(dev, sc->bce_phy_addr, result);
-		if_printf(&sc->arpcom.ac_if,
-			  "phy 0x%02X = 0x%04X\n", result, val);
-	}
-	return (error);
-}
-
-
-/****************************************************************************/
-/* Provides a sysctl interface to forcing the driver to dump state and      */
-/* enter the debugger.  DO NOT ENABLE ON PRODUCTION SYSTEMS!                */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 for success, positive value for failure.                             */
-/****************************************************************************/
-static int
-bce_sysctl_breakpoint(SYSCTL_HANDLER_ARGS)
-{
-        int error;
-        int result;
-        struct bce_softc *sc;
-
-        result = -1;
-        error = sysctl_handle_int(oidp, &result, 0, req);
-
-        if (error || !req->newptr)
-                return (error);
-
-        if (result == 1) {
-                sc = (struct bce_softc *)arg1;
-                bce_breakpoint(sc);
-        }
-
-        return error;
-}
-#endif
-
-
 /****************************************************************************/
 /* Adds any sysctl parameters for tuning or debugging purposes.             */
 /*                                                                          */
@@ -6216,48 +5686,6 @@ bce_add_sysctls(struct bce_softc *sc)
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_wreg",
 	    	CTLFLAG_RW, &sc->tx_wreg, 0,
 		"# segments before write to hardware registers");
-
-#ifdef BCE_DEBUG
-	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
-		"rx_low_watermark",
-		CTLFLAG_RD, &sc->rx_low_watermark,
-		0, "Lowest level of free rx_bd's");
-
-	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
-		"rx_empty_count",
-		CTLFLAG_RD, &sc->rx_empty_count,
-		0, "Number of times the RX chain was empty");
-
-	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
-		"tx_hi_watermark",
-		CTLFLAG_RD, &sc->tx_hi_watermark,
-		0, "Highest level of used tx_bd's");
-
-	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
-		"tx_full_count",
-		CTLFLAG_RD, &sc->tx_full_count,
-		0, "Number of times the TX chain was full");
-
-	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
-		"l2fhdr_status_errors",
-		CTLFLAG_RD, &sc->l2fhdr_status_errors,
-		0, "l2_fhdr status errors");
-
-	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
-		"unexpected_attentions",
-		CTLFLAG_RD, &sc->unexpected_attentions,
-		0, "unexpected attentions");
-
-	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
-		"lost_status_block_updates",
-		CTLFLAG_RD, &sc->lost_status_block_updates,
-		0, "lost status block updates");
-
-	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
-		"mbuf_alloc_failed",
-		CTLFLAG_RD, &sc->mbuf_alloc_failed,
-		0, "mbuf cluster allocation failures");
-#endif
 
 	SYSCTL_ADD_ULONG(ctx, children, OID_AUTO, 
 		"stat_IfHCInOctets",
@@ -6533,1292 +5961,7 @@ bce_add_sysctls(struct bce_softc *sc)
 		"com_no_buffers",
 		CTLFLAG_RD, &sc->com_no_buffers,
 		0, "Valid packets received but no RX buffers available");
-
-#ifdef BCE_DEBUG
-	SYSCTL_ADD_PROC(ctx, children, OID_AUTO,
-		"driver_state", CTLTYPE_INT | CTLFLAG_RW,
-		(void *)sc, 0,
-		bce_sysctl_driver_state, "I", "Drive state information");
-
-	SYSCTL_ADD_PROC(ctx, children, OID_AUTO,
-		"hw_state", CTLTYPE_INT | CTLFLAG_RW,
-		(void *)sc, 0,
-		bce_sysctl_hw_state, "I", "Hardware state information");
-
-	SYSCTL_ADD_PROC(ctx, children, OID_AUTO,
-		"dump_rx_chain", CTLTYPE_INT | CTLFLAG_RW,
-		(void *)sc, 0,
-		bce_sysctl_dump_rx_chain, "I", "Dump rx_bd chain");
-
-	SYSCTL_ADD_PROC(ctx, children, OID_AUTO,
-		"dump_tx_chain", CTLTYPE_INT | CTLFLAG_RW,
-		(void *)sc, 0,
-		bce_sysctl_dump_tx_chain, "I", "Dump tx_bd chain");
-
-	SYSCTL_ADD_PROC(ctx, children, OID_AUTO,
-		"breakpoint", CTLTYPE_INT | CTLFLAG_RW,
-		(void *)sc, 0,
-		bce_sysctl_breakpoint, "I", "Driver breakpoint");
-
-	SYSCTL_ADD_PROC(ctx, children, OID_AUTO,
-		"reg_read", CTLTYPE_INT | CTLFLAG_RW,
-		(void *)sc, 0,
-		bce_sysctl_reg_read, "I", "Register read");
-
-	SYSCTL_ADD_PROC(ctx, children, OID_AUTO,
-		"phy_read", CTLTYPE_INT | CTLFLAG_RW,
-		(void *)sc, 0,
-		bce_sysctl_phy_read, "I", "PHY register read");
-
-#endif
-
 }
-
-
-/****************************************************************************/
-/* BCE Debug Routines                                                       */
-/****************************************************************************/
-#ifdef BCE_DEBUG
-
-/****************************************************************************/
-/* Freezes the controller to allow for a cohesive state dump.               */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_freeze_controller(struct bce_softc *sc)
-{
-	uint32_t val;
-
-	val = REG_RD(sc, BCE_MISC_COMMAND);
-	val |= BCE_MISC_COMMAND_DISABLE_ALL;
-	REG_WR(sc, BCE_MISC_COMMAND, val);
-}
-
-
-/****************************************************************************/
-/* Unfreezes the controller after a freeze operation.  This may not always  */
-/* work and the controller will require a reset!                            */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_unfreeze_controller(struct bce_softc *sc)
-{
-	uint32_t val;
-
-	val = REG_RD(sc, BCE_MISC_COMMAND);
-	val |= BCE_MISC_COMMAND_ENABLE_ALL;
-	REG_WR(sc, BCE_MISC_COMMAND, val);
-}
-
-
-/****************************************************************************/
-/* Prints out information about an mbuf.                                    */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_mbuf(struct bce_softc *sc, struct mbuf *m)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val_hi, val_lo;
-	struct mbuf *mp = m;
-
-	if (m == NULL) {
-		/* Index out of range. */
-		if_printf(ifp, "mbuf: null pointer\n");
-		return;
-	}
-
-	while (mp) {
-		val_hi = BCE_ADDR_HI(mp);
-		val_lo = BCE_ADDR_LO(mp);
-		if_printf(ifp, "mbuf: vaddr = 0x%08X:%08X, m_len = %d, "
-			  "m_flags = ( ", val_hi, val_lo, mp->m_len);
-
-		if (mp->m_flags & M_EXT)
-			kprintf("M_EXT ");
-		if (mp->m_flags & M_PKTHDR)
-			kprintf("M_PKTHDR ");
-		if (mp->m_flags & M_EOR)
-			kprintf("M_EOR ");
-#ifdef M_RDONLY
-		if (mp->m_flags & M_RDONLY)
-			kprintf("M_RDONLY ");
-#endif
-
-		val_hi = BCE_ADDR_HI(mp->m_data);
-		val_lo = BCE_ADDR_LO(mp->m_data);
-		kprintf(") m_data = 0x%08X:%08X\n", val_hi, val_lo);
-
-		if (mp->m_flags & M_PKTHDR) {
-			if_printf(ifp, "- m_pkthdr: flags = ( ");
-			if (mp->m_flags & M_BCAST) 
-				kprintf("M_BCAST ");
-			if (mp->m_flags & M_MCAST)
-				kprintf("M_MCAST ");
-			if (mp->m_flags & M_FRAG)
-				kprintf("M_FRAG ");
-			if (mp->m_flags & M_FIRSTFRAG)
-				kprintf("M_FIRSTFRAG ");
-			if (mp->m_flags & M_LASTFRAG)
-				kprintf("M_LASTFRAG ");
-#ifdef M_VLANTAG
-			if (mp->m_flags & M_VLANTAG)
-				kprintf("M_VLANTAG ");
-#endif
-#ifdef M_PROMISC
-			if (mp->m_flags & M_PROMISC)
-				kprintf("M_PROMISC ");
-#endif
-			kprintf(") csum_flags = ( ");
-			if (mp->m_pkthdr.csum_flags & CSUM_IP)
-				kprintf("CSUM_IP ");
-			if (mp->m_pkthdr.csum_flags & CSUM_TCP)
-				kprintf("CSUM_TCP ");
-			if (mp->m_pkthdr.csum_flags & CSUM_UDP)
-				kprintf("CSUM_UDP ");
-			if (mp->m_pkthdr.csum_flags & CSUM_IP_FRAGS)
-				kprintf("CSUM_IP_FRAGS ");
-			if (mp->m_pkthdr.csum_flags & CSUM_FRAGMENT)
-				kprintf("CSUM_FRAGMENT ");
-#ifdef CSUM_TSO
-			if (mp->m_pkthdr.csum_flags & CSUM_TSO)
-				kprintf("CSUM_TSO ");
-#endif
-			if (mp->m_pkthdr.csum_flags & CSUM_IP_CHECKED)
-				kprintf("CSUM_IP_CHECKED ");
-			if (mp->m_pkthdr.csum_flags & CSUM_IP_VALID)
-				kprintf("CSUM_IP_VALID ");
-			if (mp->m_pkthdr.csum_flags & CSUM_DATA_VALID)
-				kprintf("CSUM_DATA_VALID ");
-			kprintf(")\n");
-		}
-
-		if (mp->m_flags & M_EXT) {
-			val_hi = BCE_ADDR_HI(mp->m_ext.ext_buf);
-			val_lo = BCE_ADDR_LO(mp->m_ext.ext_buf);
-			if_printf(ifp, "- m_ext: vaddr = 0x%08X:%08X, "
-				  "ext_size = %d\n",
-				  val_hi, val_lo, mp->m_ext.ext_size);
-		}
-		mp = mp->m_next;
-	}
-}
-
-
-/****************************************************************************/
-/* Prints out the mbufs in the RX mbuf chain.                               */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_rx_mbuf_chain(struct bce_softc *sc, int chain_prod, int count)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i;
-
-	if_printf(ifp,
-	"----------------------------"
-	"  rx mbuf data  "
-	"----------------------------\n");
-
-	for (i = 0; i < count; i++) {
-		if_printf(ifp, "rxmbuf[0x%04X]\n", chain_prod);
-		bce_dump_mbuf(sc, sc->rx_mbuf_ptr[chain_prod]);
-		chain_prod = RX_CHAIN_IDX(sc, NEXT_RX_BD(chain_prod));
-	}
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-}
-
-
-/****************************************************************************/
-/* Prints out a tx_bd structure.                                            */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_txbd(struct bce_softc *sc, int idx, struct tx_bd *txbd)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-
-	if (idx > MAX_TX_BD(sc)) {
-		/* Index out of range. */
-		if_printf(ifp, "tx_bd[0x%04X]: Invalid tx_bd index!\n", idx);
-	} else if ((idx & USABLE_TX_BD_PER_PAGE) == USABLE_TX_BD_PER_PAGE) {
-		/* TX Chain page pointer. */
-		if_printf(ifp, "tx_bd[0x%04X]: haddr = 0x%08X:%08X, "
-			  "chain page pointer\n",
-			  idx, txbd->tx_bd_haddr_hi, txbd->tx_bd_haddr_lo);
-	} else {
-		/* Normal tx_bd entry. */
-		if_printf(ifp, "tx_bd[0x%04X]: haddr = 0x%08X:%08X, "
-			  "nbytes = 0x%08X, "
-			  "vlan tag= 0x%04X, flags = 0x%04X (",
-			  idx, txbd->tx_bd_haddr_hi, txbd->tx_bd_haddr_lo,
-			  txbd->tx_bd_mss_nbytes,
-			  txbd->tx_bd_vlan_tag, txbd->tx_bd_flags);
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_CONN_FAULT)
-			kprintf(" CONN_FAULT");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_TCP_UDP_CKSUM)
-			kprintf(" TCP_UDP_CKSUM");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_IP_CKSUM)
-			kprintf(" IP_CKSUM");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_VLAN_TAG)
-			kprintf("  VLAN");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_COAL_NOW)
-			kprintf(" COAL_NOW");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_DONT_GEN_CRC)
-			kprintf(" DONT_GEN_CRC");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_START)
-			kprintf(" START");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_END)
-			kprintf(" END");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_SW_LSO)
-			kprintf(" LSO");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_SW_OPTION_WORD)
-			kprintf(" OPTION_WORD");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_SW_FLAGS)
-			kprintf(" FLAGS");
-
-		if (txbd->tx_bd_flags & TX_BD_FLAGS_SW_SNAP)
-			kprintf(" SNAP");
-
-		kprintf(" )\n");
-	}
-}
-
-
-/****************************************************************************/
-/* Prints out a rx_bd structure.                                            */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_rxbd(struct bce_softc *sc, int idx, struct rx_bd *rxbd)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-
-	if (idx > MAX_RX_BD(sc)) {
-		/* Index out of range. */
-		if_printf(ifp, "rx_bd[0x%04X]: Invalid rx_bd index!\n", idx);
-	} else if ((idx & USABLE_RX_BD_PER_PAGE) == USABLE_RX_BD_PER_PAGE) {
-		/* TX Chain page pointer. */
-		if_printf(ifp, "rx_bd[0x%04X]: haddr = 0x%08X:%08X, "
-			  "chain page pointer\n",
-			  idx, rxbd->rx_bd_haddr_hi, rxbd->rx_bd_haddr_lo);
-	} else {
-		/* Normal tx_bd entry. */
-		if_printf(ifp, "rx_bd[0x%04X]: haddr = 0x%08X:%08X, "
-			  "nbytes = 0x%08X, flags = 0x%08X\n",
-			  idx, rxbd->rx_bd_haddr_hi, rxbd->rx_bd_haddr_lo,
-			  rxbd->rx_bd_len, rxbd->rx_bd_flags);
-	}
-}
-
-
-/****************************************************************************/
-/* Prints out a l2_fhdr structure.                                          */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_l2fhdr(struct bce_softc *sc, int idx, struct l2_fhdr *l2fhdr)
-{
-	if_printf(&sc->arpcom.ac_if, "l2_fhdr[0x%04X]: status = 0x%08X, "
-		  "pkt_len = 0x%04X, vlan = 0x%04x, "
-		  "ip_xsum = 0x%04X, tcp_udp_xsum = 0x%04X\n",
-		  idx, l2fhdr->l2_fhdr_status,
-		  l2fhdr->l2_fhdr_pkt_len, l2fhdr->l2_fhdr_vlan_tag,
-		  l2fhdr->l2_fhdr_ip_xsum, l2fhdr->l2_fhdr_tcp_udp_xsum);
-}
-
-
-/****************************************************************************/
-/* Prints out the tx chain.                                                 */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_tx_chain(struct bce_softc *sc, int tx_prod, int count)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i;
-
-	/* First some info about the tx_bd chain structure. */
-	if_printf(ifp,
-	"----------------------------"
-	"  tx_bd  chain  "
-	"----------------------------\n");
-
-	if_printf(ifp, "page size      = 0x%08X, "
-		  "tx chain pages        = 0x%08X\n",
-		  (uint32_t)BCM_PAGE_SIZE, (uint32_t)sc->tx_pages);
-
-	if_printf(ifp, "tx_bd per page = 0x%08X, "
-		  "usable tx_bd per page = 0x%08X\n",
-		  (uint32_t)TOTAL_TX_BD_PER_PAGE,
-		  (uint32_t)USABLE_TX_BD_PER_PAGE);
-
-	if_printf(ifp, "total tx_bd    = 0x%08X\n", (uint32_t)TOTAL_TX_BD(sc));
-
-	if_printf(ifp,
-	"----------------------------"
-	"  tx_bd data    "
-	"----------------------------\n");
-
-	/* Now print out the tx_bd's themselves. */
-	for (i = 0; i < count; i++) {
-		struct tx_bd *txbd;
-
-	 	txbd = &sc->tx_bd_chain[TX_PAGE(tx_prod)][TX_IDX(tx_prod)];
-		bce_dump_txbd(sc, tx_prod, txbd);
-		tx_prod = TX_CHAIN_IDX(sc, NEXT_TX_BD(tx_prod));
-	}
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-}
-
-
-/****************************************************************************/
-/* Prints out the rx chain.                                                 */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_rx_chain(struct bce_softc *sc, int rx_prod, int count)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i;
-
-	/* First some info about the tx_bd chain structure. */
-	if_printf(ifp,
-	"----------------------------"
-	"  rx_bd  chain  "
-	"----------------------------\n");
-
-	if_printf(ifp, "page size      = 0x%08X, "
-		  "rx chain pages        = 0x%08X\n",
-		  (uint32_t)BCM_PAGE_SIZE, (uint32_t)sc->rx_pages);
-
-	if_printf(ifp, "rx_bd per page = 0x%08X, "
-		  "usable rx_bd per page = 0x%08X\n",
-		  (uint32_t)TOTAL_RX_BD_PER_PAGE,
-		  (uint32_t)USABLE_RX_BD_PER_PAGE);
-
-	if_printf(ifp, "total rx_bd    = 0x%08X\n", (uint32_t)TOTAL_RX_BD(sc));
-
-	if_printf(ifp,
-	"----------------------------"
-	"   rx_bd data   "
-	"----------------------------\n");
-
-	/* Now print out the rx_bd's themselves. */
-	for (i = 0; i < count; i++) {
-		struct rx_bd *rxbd;
-
-		rxbd = &sc->rx_bd_chain[RX_PAGE(rx_prod)][RX_IDX(rx_prod)];
-		bce_dump_rxbd(sc, rx_prod, rxbd);
-		rx_prod = RX_CHAIN_IDX(sc, NEXT_RX_BD(rx_prod));
-	}
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-}
-
-
-/****************************************************************************/
-/* Prints out the status block from host memory.                            */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_status_block(struct bce_softc *sc)
-{
-	struct status_block *sblk = sc->status_block;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-
-	if_printf(ifp,
-	"----------------------------"
-	"  Status Block  "
-	"----------------------------\n");
-
-	if_printf(ifp, "    0x%08X - attn_bits\n", sblk->status_attn_bits);
-
-	if_printf(ifp, "    0x%08X - attn_bits_ack\n",
-		  sblk->status_attn_bits_ack);
-
-	if_printf(ifp, "0x%04X(0x%04X) - rx_cons0\n",
-	    sblk->status_rx_quick_consumer_index0,
-	    (uint16_t)RX_CHAIN_IDX(sc, sblk->status_rx_quick_consumer_index0));
-
-	if_printf(ifp, "0x%04X(0x%04X) - tx_cons0\n",
-	    sblk->status_tx_quick_consumer_index0,
-	    (uint16_t)TX_CHAIN_IDX(sc, sblk->status_tx_quick_consumer_index0));
-
-	if_printf(ifp, "        0x%04X - status_idx\n", sblk->status_idx);
-
-	/* Theses indices are not used for normal L2 drivers. */
-	if (sblk->status_rx_quick_consumer_index1) {
-		if_printf(ifp, "0x%04X(0x%04X) - rx_cons1\n",
-		sblk->status_rx_quick_consumer_index1,
-		(uint16_t)RX_CHAIN_IDX(sc,
-		    sblk->status_rx_quick_consumer_index1));
-	}
-
-	if (sblk->status_tx_quick_consumer_index1) {
-		if_printf(ifp, "0x%04X(0x%04X) - tx_cons1\n",
-		sblk->status_tx_quick_consumer_index1,
-		(uint16_t)TX_CHAIN_IDX(sc,
-		    sblk->status_tx_quick_consumer_index1));
-	}
-
-	if (sblk->status_rx_quick_consumer_index2) {
-		if_printf(ifp, "0x%04X(0x%04X)- rx_cons2\n",
-		sblk->status_rx_quick_consumer_index2,
-		(uint16_t)RX_CHAIN_IDX(sc,
-		    sblk->status_rx_quick_consumer_index2));
-	}
-
-	if (sblk->status_tx_quick_consumer_index2) {
-		if_printf(ifp, "0x%04X(0x%04X) - tx_cons2\n",
-		sblk->status_tx_quick_consumer_index2,
-		(uint16_t)TX_CHAIN_IDX(sc,
-		    sblk->status_tx_quick_consumer_index2));
-	}
-
-	if (sblk->status_rx_quick_consumer_index3) {
-		if_printf(ifp, "0x%04X(0x%04X) - rx_cons3\n",
-		sblk->status_rx_quick_consumer_index3,
-		(uint16_t)RX_CHAIN_IDX(sc,
-		    sblk->status_rx_quick_consumer_index3));
-	}
-
-	if (sblk->status_tx_quick_consumer_index3) {
-		if_printf(ifp, "0x%04X(0x%04X) - tx_cons3\n",
-		sblk->status_tx_quick_consumer_index3,
-		(uint16_t)TX_CHAIN_IDX(sc,
-		    sblk->status_tx_quick_consumer_index3));
-	}
-
-	if (sblk->status_rx_quick_consumer_index4 ||
-	    sblk->status_rx_quick_consumer_index5) {
-		if_printf(ifp, "rx_cons4  = 0x%08X, rx_cons5      = 0x%08X\n",
-			  sblk->status_rx_quick_consumer_index4,
-			  sblk->status_rx_quick_consumer_index5);
-	}
-
-	if (sblk->status_rx_quick_consumer_index6 ||
-	    sblk->status_rx_quick_consumer_index7) {
-		if_printf(ifp, "rx_cons6  = 0x%08X, rx_cons7      = 0x%08X\n",
-			  sblk->status_rx_quick_consumer_index6,
-			  sblk->status_rx_quick_consumer_index7);
-	}
-
-	if (sblk->status_rx_quick_consumer_index8 ||
-	    sblk->status_rx_quick_consumer_index9) {
-		if_printf(ifp, "rx_cons8  = 0x%08X, rx_cons9      = 0x%08X\n",
-			  sblk->status_rx_quick_consumer_index8,
-			  sblk->status_rx_quick_consumer_index9);
-	}
-
-	if (sblk->status_rx_quick_consumer_index10 ||
-	    sblk->status_rx_quick_consumer_index11) {
-		if_printf(ifp, "rx_cons10 = 0x%08X, rx_cons11     = 0x%08X\n",
-			  sblk->status_rx_quick_consumer_index10,
-			  sblk->status_rx_quick_consumer_index11);
-	}
-
-	if (sblk->status_rx_quick_consumer_index12 ||
-	    sblk->status_rx_quick_consumer_index13) {
-		if_printf(ifp, "rx_cons12 = 0x%08X, rx_cons13     = 0x%08X\n",
-			  sblk->status_rx_quick_consumer_index12,
-			  sblk->status_rx_quick_consumer_index13);
-	}
-
-	if (sblk->status_rx_quick_consumer_index14 ||
-	    sblk->status_rx_quick_consumer_index15) {
-		if_printf(ifp, "rx_cons14 = 0x%08X, rx_cons15     = 0x%08X\n",
-			  sblk->status_rx_quick_consumer_index14,
-			  sblk->status_rx_quick_consumer_index15);
-	}
-
-	if (sblk->status_completion_producer_index ||
-	    sblk->status_cmd_consumer_index) {
-		if_printf(ifp, "com_prod  = 0x%08X, cmd_cons      = 0x%08X\n",
-			  sblk->status_completion_producer_index,
-			  sblk->status_cmd_consumer_index);
-	}
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-}
-
-
-/****************************************************************************/
-/* Prints out the statistics block.                                         */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_stats_block(struct bce_softc *sc)
-{
-	struct statistics_block *sblk = sc->stats_block;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-
-	if_printf(ifp,
-	"---------------"
-	" Stats Block  (All Stats Not Shown Are 0) "
-	"---------------\n");
-
-	if (sblk->stat_IfHCInOctets_hi || sblk->stat_IfHCInOctets_lo) {
-		if_printf(ifp, "0x%08X:%08X : IfHcInOctets\n",
-			  sblk->stat_IfHCInOctets_hi,
-			  sblk->stat_IfHCInOctets_lo);
-	}
-
-	if (sblk->stat_IfHCInBadOctets_hi || sblk->stat_IfHCInBadOctets_lo) {
-		if_printf(ifp, "0x%08X:%08X : IfHcInBadOctets\n",
-			  sblk->stat_IfHCInBadOctets_hi,
-			  sblk->stat_IfHCInBadOctets_lo);
-	}
-
-	if (sblk->stat_IfHCOutOctets_hi || sblk->stat_IfHCOutOctets_lo) {
-		if_printf(ifp, "0x%08X:%08X : IfHcOutOctets\n",
-			  sblk->stat_IfHCOutOctets_hi,
-			  sblk->stat_IfHCOutOctets_lo);
-	}
-
-	if (sblk->stat_IfHCOutBadOctets_hi || sblk->stat_IfHCOutBadOctets_lo) {
-		if_printf(ifp, "0x%08X:%08X : IfHcOutBadOctets\n",
-			  sblk->stat_IfHCOutBadOctets_hi,
-			  sblk->stat_IfHCOutBadOctets_lo);
-	}
-
-	if (sblk->stat_IfHCInUcastPkts_hi || sblk->stat_IfHCInUcastPkts_lo) {
-		if_printf(ifp, "0x%08X:%08X : IfHcInUcastPkts\n",
-			  sblk->stat_IfHCInUcastPkts_hi,
-			  sblk->stat_IfHCInUcastPkts_lo);
-	}
-
-	if (sblk->stat_IfHCInBroadcastPkts_hi ||
-	    sblk->stat_IfHCInBroadcastPkts_lo) {
-		if_printf(ifp, "0x%08X:%08X : IfHcInBroadcastPkts\n",
-			  sblk->stat_IfHCInBroadcastPkts_hi,
-			  sblk->stat_IfHCInBroadcastPkts_lo);
-	}
-
-	if (sblk->stat_IfHCInMulticastPkts_hi ||
-	    sblk->stat_IfHCInMulticastPkts_lo) {
-		if_printf(ifp, "0x%08X:%08X : IfHcInMulticastPkts\n",
-			  sblk->stat_IfHCInMulticastPkts_hi,
-			  sblk->stat_IfHCInMulticastPkts_lo);
-	}
-
-	if (sblk->stat_IfHCOutUcastPkts_hi || sblk->stat_IfHCOutUcastPkts_lo) {
-		if_printf(ifp, "0x%08X:%08X : IfHcOutUcastPkts\n",
-			  sblk->stat_IfHCOutUcastPkts_hi,
-			  sblk->stat_IfHCOutUcastPkts_lo);
-	}
-
-	if (sblk->stat_IfHCOutBroadcastPkts_hi ||
-	    sblk->stat_IfHCOutBroadcastPkts_lo) {
-		if_printf(ifp, "0x%08X:%08X : IfHcOutBroadcastPkts\n",
-			  sblk->stat_IfHCOutBroadcastPkts_hi,
-			  sblk->stat_IfHCOutBroadcastPkts_lo);
-	}
-
-	if (sblk->stat_IfHCOutMulticastPkts_hi ||
-	    sblk->stat_IfHCOutMulticastPkts_lo) {
-		if_printf(ifp, "0x%08X:%08X : IfHcOutMulticastPkts\n",
-			  sblk->stat_IfHCOutMulticastPkts_hi,
-			  sblk->stat_IfHCOutMulticastPkts_lo);
-	}
-
-	if (sblk->stat_emac_tx_stat_dot3statsinternalmactransmiterrors) {
-		if_printf(ifp, "         0x%08X : "
-		"emac_tx_stat_dot3statsinternalmactransmiterrors\n", 
-		sblk->stat_emac_tx_stat_dot3statsinternalmactransmiterrors);
-	}
-
-	if (sblk->stat_Dot3StatsCarrierSenseErrors) {
-		if_printf(ifp, "         0x%08X : "
-			  "Dot3StatsCarrierSenseErrors\n",
-			  sblk->stat_Dot3StatsCarrierSenseErrors);
-	}
-
-	if (sblk->stat_Dot3StatsFCSErrors) {
-		if_printf(ifp, "         0x%08X : Dot3StatsFCSErrors\n",
-			  sblk->stat_Dot3StatsFCSErrors);
-	}
-
-	if (sblk->stat_Dot3StatsAlignmentErrors) {
-		if_printf(ifp, "         0x%08X : Dot3StatsAlignmentErrors\n",
-			  sblk->stat_Dot3StatsAlignmentErrors);
-	}
-
-	if (sblk->stat_Dot3StatsSingleCollisionFrames) {
-		if_printf(ifp, "         0x%08X : "
-			  "Dot3StatsSingleCollisionFrames\n",
-			  sblk->stat_Dot3StatsSingleCollisionFrames);
-	}
-
-	if (sblk->stat_Dot3StatsMultipleCollisionFrames) {
-		if_printf(ifp, "         0x%08X : "
-			  "Dot3StatsMultipleCollisionFrames\n",
-			  sblk->stat_Dot3StatsMultipleCollisionFrames);
-	}
-
-	if (sblk->stat_Dot3StatsDeferredTransmissions) {
-		if_printf(ifp, "         0x%08X : "
-			  "Dot3StatsDeferredTransmissions\n",
-			  sblk->stat_Dot3StatsDeferredTransmissions);
-	}
-
-	if (sblk->stat_Dot3StatsExcessiveCollisions) {
-		if_printf(ifp, "         0x%08X : "
-			  "Dot3StatsExcessiveCollisions\n",
-			  sblk->stat_Dot3StatsExcessiveCollisions);
-	}
-
-	if (sblk->stat_Dot3StatsLateCollisions) {
-		if_printf(ifp, "         0x%08X : Dot3StatsLateCollisions\n",
-			  sblk->stat_Dot3StatsLateCollisions);
-	}
-
-	if (sblk->stat_EtherStatsCollisions) {
-		if_printf(ifp, "         0x%08X : EtherStatsCollisions\n",
-			  sblk->stat_EtherStatsCollisions);
-	}
-
-	if (sblk->stat_EtherStatsFragments)  {
-		if_printf(ifp, "         0x%08X : EtherStatsFragments\n",
-			  sblk->stat_EtherStatsFragments);
-	}
-
-	if (sblk->stat_EtherStatsJabbers) {
-		if_printf(ifp, "         0x%08X : EtherStatsJabbers\n",
-			  sblk->stat_EtherStatsJabbers);
-	}
-
-	if (sblk->stat_EtherStatsUndersizePkts) {
-		if_printf(ifp, "         0x%08X : EtherStatsUndersizePkts\n",
-			  sblk->stat_EtherStatsUndersizePkts);
-	}
-
-	if (sblk->stat_EtherStatsOverrsizePkts) {
-		if_printf(ifp, "         0x%08X : EtherStatsOverrsizePkts\n",
-			  sblk->stat_EtherStatsOverrsizePkts);
-	}
-
-	if (sblk->stat_EtherStatsPktsRx64Octets) {
-		if_printf(ifp, "         0x%08X : EtherStatsPktsRx64Octets\n",
-			  sblk->stat_EtherStatsPktsRx64Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsRx65Octetsto127Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsRx65Octetsto127Octets\n",
-			  sblk->stat_EtherStatsPktsRx65Octetsto127Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsRx128Octetsto255Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsRx128Octetsto255Octets\n",
-			  sblk->stat_EtherStatsPktsRx128Octetsto255Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsRx256Octetsto511Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsRx256Octetsto511Octets\n",
-			  sblk->stat_EtherStatsPktsRx256Octetsto511Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsRx512Octetsto1023Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsRx512Octetsto1023Octets\n",
-			  sblk->stat_EtherStatsPktsRx512Octetsto1023Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsRx1024Octetsto1522Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsRx1024Octetsto1522Octets\n",
-			  sblk->stat_EtherStatsPktsRx1024Octetsto1522Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsRx1523Octetsto9022Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsRx1523Octetsto9022Octets\n",
-			  sblk->stat_EtherStatsPktsRx1523Octetsto9022Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsTx64Octets) {
-		if_printf(ifp, "         0x%08X : EtherStatsPktsTx64Octets\n",
-			  sblk->stat_EtherStatsPktsTx64Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsTx65Octetsto127Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsTx65Octetsto127Octets\n",
-			  sblk->stat_EtherStatsPktsTx65Octetsto127Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsTx128Octetsto255Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsTx128Octetsto255Octets\n",
-			  sblk->stat_EtherStatsPktsTx128Octetsto255Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsTx256Octetsto511Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsTx256Octetsto511Octets\n",
-			  sblk->stat_EtherStatsPktsTx256Octetsto511Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsTx512Octetsto1023Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsTx512Octetsto1023Octets\n",
-			  sblk->stat_EtherStatsPktsTx512Octetsto1023Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsTx1024Octetsto1522Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsTx1024Octetsto1522Octets\n",
-			  sblk->stat_EtherStatsPktsTx1024Octetsto1522Octets);
-	}
-
-	if (sblk->stat_EtherStatsPktsTx1523Octetsto9022Octets) {
-		if_printf(ifp, "         0x%08X : "
-			  "EtherStatsPktsTx1523Octetsto9022Octets\n",
-			  sblk->stat_EtherStatsPktsTx1523Octetsto9022Octets);
-	}
-
-	if (sblk->stat_XonPauseFramesReceived) {
-		if_printf(ifp, "         0x%08X : XonPauseFramesReceived\n",
-			  sblk->stat_XonPauseFramesReceived);
-	}
-
-	if (sblk->stat_XoffPauseFramesReceived) {
-		if_printf(ifp, "          0x%08X : XoffPauseFramesReceived\n",
-			  sblk->stat_XoffPauseFramesReceived);
-	}
-
-	if (sblk->stat_OutXonSent) {
-		if_printf(ifp, "         0x%08X : OutXoffSent\n",
-			  sblk->stat_OutXonSent);
-	}
-
-	if (sblk->stat_OutXoffSent) {
-		if_printf(ifp, "         0x%08X : OutXoffSent\n",
-			  sblk->stat_OutXoffSent);
-	}
-
-	if (sblk->stat_FlowControlDone) {
-		if_printf(ifp, "         0x%08X : FlowControlDone\n",
-			  sblk->stat_FlowControlDone);
-	}
-
-	if (sblk->stat_MacControlFramesReceived) {
-		if_printf(ifp, "         0x%08X : MacControlFramesReceived\n",
-			  sblk->stat_MacControlFramesReceived);
-	}
-
-	if (sblk->stat_XoffStateEntered) {
-		if_printf(ifp, "         0x%08X : XoffStateEntered\n",
-			  sblk->stat_XoffStateEntered);
-	}
-
-	if (sblk->stat_IfInFramesL2FilterDiscards) {
-		if_printf(ifp, "         0x%08X : IfInFramesL2FilterDiscards\n",			  sblk->stat_IfInFramesL2FilterDiscards);
-	}
-
-	if (sblk->stat_IfInRuleCheckerDiscards) {
-		if_printf(ifp, "         0x%08X : IfInRuleCheckerDiscards\n",
-			  sblk->stat_IfInRuleCheckerDiscards);
-	}
-
-	if (sblk->stat_IfInFTQDiscards) {
-		if_printf(ifp, "         0x%08X : IfInFTQDiscards\n",
-			  sblk->stat_IfInFTQDiscards);
-	}
-
-	if (sblk->stat_IfInMBUFDiscards) {
-		if_printf(ifp, "         0x%08X : IfInMBUFDiscards\n",
-			  sblk->stat_IfInMBUFDiscards);
-	}
-
-	if (sblk->stat_IfInRuleCheckerP4Hit) {
-		if_printf(ifp, "         0x%08X : IfInRuleCheckerP4Hit\n",
-			  sblk->stat_IfInRuleCheckerP4Hit);
-	}
-
-	if (sblk->stat_CatchupInRuleCheckerDiscards) {
-		if_printf(ifp, "         0x%08X : "
-			  "CatchupInRuleCheckerDiscards\n",
-			  sblk->stat_CatchupInRuleCheckerDiscards);
-	}
-
-	if (sblk->stat_CatchupInFTQDiscards) {
-		if_printf(ifp, "         0x%08X : CatchupInFTQDiscards\n",
-			  sblk->stat_CatchupInFTQDiscards);
-	}
-
-	if (sblk->stat_CatchupInMBUFDiscards) {
-		if_printf(ifp, "         0x%08X : CatchupInMBUFDiscards\n",
-			  sblk->stat_CatchupInMBUFDiscards);
-	}
-
-	if (sblk->stat_CatchupInRuleCheckerP4Hit) {
-		if_printf(ifp, "         0x%08X : CatchupInRuleCheckerP4Hit\n",
-			  sblk->stat_CatchupInRuleCheckerP4Hit);
-	}
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-}
-
-
-/****************************************************************************/
-/* Prints out a summary of the driver state.                                */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_driver_state(struct bce_softc *sc)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val_hi, val_lo;
-
-	if_printf(ifp,
-	"-----------------------------"
-	" Driver State "
-	"-----------------------------\n");
-
-	val_hi = BCE_ADDR_HI(sc);
-	val_lo = BCE_ADDR_LO(sc);
-	if_printf(ifp, "0x%08X:%08X - (sc) driver softc structure "
-		  "virtual address\n", val_hi, val_lo);
-
-	val_hi = BCE_ADDR_HI(sc->status_block);
-	val_lo = BCE_ADDR_LO(sc->status_block);
-	if_printf(ifp, "0x%08X:%08X - (sc->status_block) status block "
-		  "virtual address\n", val_hi, val_lo);
-
-	val_hi = BCE_ADDR_HI(sc->stats_block);
-	val_lo = BCE_ADDR_LO(sc->stats_block);
-	if_printf(ifp, "0x%08X:%08X - (sc->stats_block) statistics block "
-		  "virtual address\n", val_hi, val_lo);
-
-	val_hi = BCE_ADDR_HI(sc->tx_bd_chain);
-	val_lo = BCE_ADDR_LO(sc->tx_bd_chain);
-	if_printf(ifp, "0x%08X:%08X - (sc->tx_bd_chain) tx_bd chain "
-		  "virtual address\n", val_hi, val_lo);
-
-	val_hi = BCE_ADDR_HI(sc->rx_bd_chain);
-	val_lo = BCE_ADDR_LO(sc->rx_bd_chain);
-	if_printf(ifp, "0x%08X:%08X - (sc->rx_bd_chain) rx_bd chain "
-		  "virtual address\n", val_hi, val_lo);
-
-	val_hi = BCE_ADDR_HI(sc->tx_mbuf_ptr);
-	val_lo = BCE_ADDR_LO(sc->tx_mbuf_ptr);
-	if_printf(ifp, "0x%08X:%08X - (sc->tx_mbuf_ptr) tx mbuf chain "
-		  "virtual address\n", val_hi, val_lo);
-
-	val_hi = BCE_ADDR_HI(sc->rx_mbuf_ptr);
-	val_lo = BCE_ADDR_LO(sc->rx_mbuf_ptr);
-	if_printf(ifp, "0x%08X:%08X - (sc->rx_mbuf_ptr) rx mbuf chain "
-		  "virtual address\n", val_hi, val_lo);
-
-	if_printf(ifp, "         0x%08X - (sc->interrupts_generated) "
-		  "h/w intrs\n", sc->interrupts_generated);
-
-	if_printf(ifp, "         0x%08X - (sc->rx_interrupts) "
-		  "rx interrupts handled\n", sc->rx_interrupts);
-
-	if_printf(ifp, "         0x%08X - (sc->tx_interrupts) "
-		  "tx interrupts handled\n", sc->tx_interrupts);
-
-	if_printf(ifp, "         0x%08X - (sc->last_status_idx) "
-		  "status block index\n", sc->last_status_idx);
-
-	if_printf(ifp, "     0x%04X(0x%04X) - (sc->tx_prod) "
-		  "tx producer index\n",
-		  sc->tx_prod, (uint16_t)TX_CHAIN_IDX(sc, sc->tx_prod));
-
-	if_printf(ifp, "     0x%04X(0x%04X) - (sc->tx_cons) "
-		  "tx consumer index\n",
-		  sc->tx_cons, (uint16_t)TX_CHAIN_IDX(sc, sc->tx_cons));
-
-	if_printf(ifp, "         0x%08X - (sc->tx_prod_bseq) "
-		  "tx producer bseq index\n", sc->tx_prod_bseq);
-
-	if_printf(ifp, "     0x%04X(0x%04X) - (sc->rx_prod) "
-		  "rx producer index\n",
-		  sc->rx_prod, (uint16_t)RX_CHAIN_IDX(sc, sc->rx_prod));
-
-	if_printf(ifp, "     0x%04X(0x%04X) - (sc->rx_cons) "
-		  "rx consumer index\n",
-		  sc->rx_cons, (uint16_t)RX_CHAIN_IDX(sc, sc->rx_cons));
-
-	if_printf(ifp, "         0x%08X - (sc->rx_prod_bseq) "
-		  "rx producer bseq index\n", sc->rx_prod_bseq);
-
-	if_printf(ifp, "         0x%08X - (sc->rx_mbuf_alloc) "
-		  "rx mbufs allocated\n", sc->rx_mbuf_alloc);
-
-	if_printf(ifp, "         0x%08X - (sc->free_rx_bd) "
-		  "free rx_bd's\n", sc->free_rx_bd);
-
-	if_printf(ifp, "0x%08X/%08X - (sc->rx_low_watermark) rx "
-		  "low watermark\n", sc->rx_low_watermark, sc->max_rx_bd);
-
-	if_printf(ifp, "         0x%08X - (sc->txmbuf_alloc) "
-		  "tx mbufs allocated\n", sc->tx_mbuf_alloc);
-
-	if_printf(ifp, "         0x%08X - (sc->rx_mbuf_alloc) "
-		  "rx mbufs allocated\n", sc->rx_mbuf_alloc);
-
-	if_printf(ifp, "         0x%08X - (sc->used_tx_bd) used tx_bd's\n",
-		  sc->used_tx_bd);
-
-	if_printf(ifp, "0x%08X/%08X - (sc->tx_hi_watermark) tx hi watermark\n",
-		  sc->tx_hi_watermark, sc->max_tx_bd);
-
-	if_printf(ifp, "         0x%08X - (sc->mbuf_alloc_failed) "
-		  "failed mbuf alloc\n", sc->mbuf_alloc_failed);
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-}
-
-
-/****************************************************************************/
-/* Prints out the hardware state through a summary of important registers,  */
-/* followed by a complete register dump.                                    */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_hw_state(struct bce_softc *sc)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val1;
-	int i;
-
-	if_printf(ifp,
-	"----------------------------"
-	" Hardware State "
-	"----------------------------\n");
-
-	if_printf(ifp, "%s - bootcode version\n", sc->bce_bc_ver);
-
-	val1 = REG_RD(sc, BCE_MISC_ENABLE_STATUS_BITS);
-	if_printf(ifp, "0x%08X - (0x%06X) misc_enable_status_bits\n",
-		  val1, BCE_MISC_ENABLE_STATUS_BITS);
-
-	val1 = REG_RD(sc, BCE_DMA_STATUS);
-	if_printf(ifp, "0x%08X - (0x%04X) dma_status\n", val1, BCE_DMA_STATUS);
-
-	val1 = REG_RD(sc, BCE_CTX_STATUS);
-	if_printf(ifp, "0x%08X - (0x%04X) ctx_status\n", val1, BCE_CTX_STATUS);
-
-	val1 = REG_RD(sc, BCE_EMAC_STATUS);
-	if_printf(ifp, "0x%08X - (0x%04X) emac_status\n",
-		  val1, BCE_EMAC_STATUS);
-
-	val1 = REG_RD(sc, BCE_RPM_STATUS);
-	if_printf(ifp, "0x%08X - (0x%04X) rpm_status\n", val1, BCE_RPM_STATUS);
-
-	val1 = REG_RD(sc, BCE_TBDR_STATUS);
-	if_printf(ifp, "0x%08X - (0x%04X) tbdr_status\n",
-		  val1, BCE_TBDR_STATUS);
-
-	val1 = REG_RD(sc, BCE_TDMA_STATUS);
-	if_printf(ifp, "0x%08X - (0x%04X) tdma_status\n",
-		  val1, BCE_TDMA_STATUS);
-
-	val1 = REG_RD(sc, BCE_HC_STATUS);
-	if_printf(ifp, "0x%08X - (0x%06X) hc_status\n", val1, BCE_HC_STATUS);
-
-	val1 = REG_RD_IND(sc, BCE_TXP_CPU_STATE);
-	if_printf(ifp, "0x%08X - (0x%06X) txp_cpu_state\n",
-		  val1, BCE_TXP_CPU_STATE);
-
-	val1 = REG_RD_IND(sc, BCE_TPAT_CPU_STATE);
-	if_printf(ifp, "0x%08X - (0x%06X) tpat_cpu_state\n",
-		  val1, BCE_TPAT_CPU_STATE);
-
-	val1 = REG_RD_IND(sc, BCE_RXP_CPU_STATE);
-	if_printf(ifp, "0x%08X - (0x%06X) rxp_cpu_state\n",
-		  val1, BCE_RXP_CPU_STATE);
-
-	val1 = REG_RD_IND(sc, BCE_COM_CPU_STATE);
-	if_printf(ifp, "0x%08X - (0x%06X) com_cpu_state\n",
-		  val1, BCE_COM_CPU_STATE);
-
-	val1 = REG_RD_IND(sc, BCE_MCP_CPU_STATE);
-	if_printf(ifp, "0x%08X - (0x%06X) mcp_cpu_state\n",
-		  val1, BCE_MCP_CPU_STATE);
-
-	val1 = REG_RD_IND(sc, BCE_CP_CPU_STATE);
-	if_printf(ifp, "0x%08X - (0x%06X) cp_cpu_state\n",
-		  val1, BCE_CP_CPU_STATE);
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-
-	if_printf(ifp,
-	"----------------------------"
-	" Register  Dump "
-	"----------------------------\n");
-
-	for (i = 0x400; i < 0x8000; i += 0x10) {
-		if_printf(ifp, "0x%04X: 0x%08X 0x%08X 0x%08X 0x%08X\n", i,
-			  REG_RD(sc, i),
-			  REG_RD(sc, i + 0x4),
-			  REG_RD(sc, i + 0x8),
-			  REG_RD(sc, i + 0xc));
-	}
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-}
-
-
-/****************************************************************************/
-/* Prints out the TXP state.                                                */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_txp_state(struct bce_softc *sc)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val1;
-	int i;
-
-	if_printf(ifp,
-	"----------------------------"
-	"   TXP  State   "
-	"----------------------------\n");
-
-	val1 = REG_RD_IND(sc, BCE_TXP_CPU_MODE);
-	if_printf(ifp, "0x%08X - (0x%06X) txp_cpu_mode\n",
-		  val1, BCE_TXP_CPU_MODE);
-
-	val1 = REG_RD_IND(sc, BCE_TXP_CPU_STATE);
-	if_printf(ifp, "0x%08X - (0x%06X) txp_cpu_state\n",
-		  val1, BCE_TXP_CPU_STATE);
-
-	val1 = REG_RD_IND(sc, BCE_TXP_CPU_EVENT_MASK);
-	if_printf(ifp, "0x%08X - (0x%06X) txp_cpu_event_mask\n",
-		  val1, BCE_TXP_CPU_EVENT_MASK);
-
-	if_printf(ifp,
-	"----------------------------"
-	" Register  Dump "
-	"----------------------------\n");
-
-	for (i = BCE_TXP_CPU_MODE; i < 0x68000; i += 0x10) {
-		/* Skip the big blank spaces */
-		if (i < 0x454000 && i > 0x5ffff) {
-			if_printf(ifp, "0x%04X: "
-				  "0x%08X 0x%08X 0x%08X 0x%08X\n", i,
-				  REG_RD_IND(sc, i),
-				  REG_RD_IND(sc, i + 0x4),
-				  REG_RD_IND(sc, i + 0x8),
-				  REG_RD_IND(sc, i + 0xc));
-		}
-	}
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-}
-
-
-/****************************************************************************/
-/* Prints out the RXP state.                                                */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_rxp_state(struct bce_softc *sc)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val1;
-	int i;
-
-	if_printf(ifp,
-	"----------------------------"
-	"   RXP  State   "
-	"----------------------------\n");
-
-	val1 = REG_RD_IND(sc, BCE_RXP_CPU_MODE);
-	if_printf(ifp, "0x%08X - (0x%06X) rxp_cpu_mode\n",
-		  val1, BCE_RXP_CPU_MODE);
-
-	val1 = REG_RD_IND(sc, BCE_RXP_CPU_STATE);
-	if_printf(ifp, "0x%08X - (0x%06X) rxp_cpu_state\n",
-		  val1, BCE_RXP_CPU_STATE);
-
-	val1 = REG_RD_IND(sc, BCE_RXP_CPU_EVENT_MASK);
-	if_printf(ifp, "0x%08X - (0x%06X) rxp_cpu_event_mask\n",
-		  val1, BCE_RXP_CPU_EVENT_MASK);
-
-	if_printf(ifp,
-	"----------------------------"
-	" Register  Dump "
-	"----------------------------\n");
-
-	for (i = BCE_RXP_CPU_MODE; i < 0xe8fff; i += 0x10) {
-		/* Skip the big blank sapces */
-		if (i < 0xc5400 || i > 0xdffff) {
-			if_printf(ifp, "0x%04X: "
-				  "0x%08X 0x%08X 0x%08X 0x%08X\n", i,
-				  REG_RD_IND(sc, i),
-				  REG_RD_IND(sc, i + 0x4),
-				  REG_RD_IND(sc, i + 0x8),
-				  REG_RD_IND(sc, i + 0xc));
-		}
-	}
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-}
-
-
-/****************************************************************************/
-/* Prints out the TPAT state.                                               */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_dump_tpat_state(struct bce_softc *sc)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val1;
-	int i;
-
-	if_printf(ifp,
-	"----------------------------"
-	"   TPAT State   "
-	"----------------------------\n");
-
-	val1 = REG_RD_IND(sc, BCE_TPAT_CPU_MODE);
-	if_printf(ifp, "0x%08X - (0x%06X) tpat_cpu_mode\n",
-		  val1, BCE_TPAT_CPU_MODE);
-
-	val1 = REG_RD_IND(sc, BCE_TPAT_CPU_STATE);
-	if_printf(ifp, "0x%08X - (0x%06X) tpat_cpu_state\n",
-		  val1, BCE_TPAT_CPU_STATE);
-
-	val1 = REG_RD_IND(sc, BCE_TPAT_CPU_EVENT_MASK);
-	if_printf(ifp, "0x%08X - (0x%06X) tpat_cpu_event_mask\n",
-		  val1, BCE_TPAT_CPU_EVENT_MASK);
-
-	if_printf(ifp,
-	"----------------------------"
-	" Register  Dump "
-	"----------------------------\n");
-
-	for (i = BCE_TPAT_CPU_MODE; i < 0xa3fff; i += 0x10) {
-		/* Skip the big blank spaces */
-		if (i < 0x854000 && i > 0x9ffff) {
-			if_printf(ifp, "0x%04X: "
-				  "0x%08X 0x%08X 0x%08X 0x%08X\n", i,
-				  REG_RD_IND(sc, i),
-				  REG_RD_IND(sc, i + 0x4),
-				  REG_RD_IND(sc, i + 0x8),
-				  REG_RD_IND(sc, i + 0xc));
-		}
-	}
-
-	if_printf(ifp,
-	"----------------------------"
-	"----------------"
-	"----------------------------\n");
-}
-
-
-/****************************************************************************/
-/* Prints out the driver state and then enters the debugger.                */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_breakpoint(struct bce_softc *sc)
-{
-#if 0
-	bce_freeze_controller(sc);
-#endif
-
-	bce_dump_driver_state(sc);
-	bce_dump_status_block(sc);
-	bce_dump_tx_chain(sc, 0, TOTAL_TX_BD(sc));
-	bce_dump_hw_state(sc);
-	bce_dump_txp_state(sc);
-
-#if 0
-	bce_unfreeze_controller(sc);
-#endif
-
-	/* Call the debugger. */
-	breakpoint();
-}
-
-#endif	/* BCE_DEBUG */
 
 static int
 bce_sysctl_tx_bds_int(SYSCTL_HANDLER_ARGS)

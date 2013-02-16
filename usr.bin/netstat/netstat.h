@@ -102,7 +102,7 @@ void	mbpr (u_long, u_long, u_long, u_long, u_long);
 void	hostpr (u_long, u_long);
 void	impstats (u_long, u_long);
 
-void	intpr (int, u_long, void (*)(char *));
+void	intpr (int, u_long, void (*)(char *), u_long);
 
 void	pr_rthdr (int);
 void	pr_family (int);

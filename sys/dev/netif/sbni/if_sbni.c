@@ -555,7 +555,7 @@ upload_data(struct sbni_softc *sc, u_int framelen, u_int frameno,
 		} else if ((frame_ok = skip_tail(sc, framelen, crc)) != 0) {
 			sc->wait_frameno = 0;
 			sc->inppos = 0;
-			sc->arpcom.ac_if.if_ierrors++;
+			IFNET_STAT_INC(&sc->arpcom.ac_if, ierrors, 1);
 			/* now skip all frames until is_first != 0 */
 		}
 	} else
@@ -567,7 +567,7 @@ upload_data(struct sbni_softc *sc, u_int framelen, u_int frameno,
 		 * is_first already... Drop entire packet.
 		 */
 		sc->wait_frameno = 0;
-		sc->arpcom.ac_if.if_ierrors++;
+		IFNET_STAT_INC(&sc->arpcom.ac_if, ierrors, 1);
 	}
 
 	return (frame_ok);
@@ -581,7 +581,7 @@ send_complete(struct sbni_softc *sc)
 {
 	m_freem(sc->tx_buf_p);
 	sc->tx_buf_p = NULL;
-	sc->arpcom.ac_if.if_opackets++;
+	IFNET_STAT_INC(&sc->arpcom.ac_if, opackets, 1);
 }
 
 
@@ -632,7 +632,7 @@ append_frame_to_pkt(struct sbni_softc *sc, u_int framelen, u_int32_t crc)
 	sc->inppos += framelen - 4;
 	if (--sc->wait_frameno == 0) {		/* last frame received */
 		indicate_pkt(sc);
-		sc->arpcom.ac_if.if_ipackets++;
+		IFNET_STAT_INC(&sc->arpcom.ac_if, ipackets, 1);
 	}
 
 	return (1);
@@ -695,7 +695,7 @@ drop_xmit_queue(struct sbni_softc *sc)
 	if (sc->tx_buf_p) {
 		m_freem(sc->tx_buf_p);
 		sc->tx_buf_p = NULL;
-		sc->arpcom.ac_if.if_oerrors++;
+		IFNET_STAT_INC(&sc->arpcom.ac_if, oerrors, 1);
 	}
 
 	ifq_purge(&sc->arpcom.ac_if.if_snd);
@@ -911,7 +911,7 @@ static void
 sbni_watchdog(struct ifnet *ifp)
 {
 	log(LOG_ERR, "%s: device timeout\n", ifp->if_xname);
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 }
 
 

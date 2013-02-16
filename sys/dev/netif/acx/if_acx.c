@@ -1166,7 +1166,7 @@ acx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			if (m->m_len < sizeof(struct ether_header)) {
 				m = m_pullup(m, sizeof(struct ether_header));
 				if (m == NULL) {
-					ifp->if_oerrors++;
+					IFNET_STAT_INC(ifp, oerrors, 1);
 					continue;
 				}
 			}
@@ -1175,7 +1175,7 @@ acx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			ni = ieee80211_find_txnode(ic, eh->ether_dhost);
 			if (ni == NULL) {
 				m_freem(m);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 
@@ -1186,7 +1186,7 @@ acx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			m = ieee80211_encap(ic, m, ni);
 			if (m == NULL) {
 				ieee80211_free_node(ni);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 		} else {
@@ -1202,7 +1202,7 @@ acx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			if (ieee80211_crypto_encap(ic, ni, m) == NULL) {
 				ieee80211_free_node(ni);
 				m_freem(m);
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 				continue;
 			}
 		}
@@ -1223,7 +1223,7 @@ acx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			 */
 			if (ni != NULL)
 				ieee80211_free_node(ni);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			continue;
 		}
 
@@ -1262,7 +1262,7 @@ acx_watchdog(struct ifnet *ifp)
 	if (sc->sc_tx_timer) {
 		if (--sc->sc_tx_timer == 0) {
 			if_printf(ifp, "watchdog timeout\n");
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			acx_txeof(ifp->if_softc);
 		} else {
 			ifp->if_timer = 1;
@@ -1348,9 +1348,9 @@ acx_txeof(struct acx_softc *sc)
 		error = FW_TXDESC_GETFIELD_1(sc, buf, f_tx_error);
 		if (error) {
 			acx_txerr(sc, error);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 		} else {
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 
 		if (buf->tb_node != NULL) {
@@ -1507,7 +1507,7 @@ acx_rxeof(struct acx_softc *sc)
 
 		error = acx_newbuf(sc, buf, 0);
 		if (error) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto next;
 		}
 
@@ -1577,7 +1577,7 @@ acx_rxeof(struct acx_softc *sc)
 					le32toh(head->rbh_time));
 			ieee80211_free_node(ni);
 
-			ifp->if_ipackets++;
+			IFNET_STAT_INC(ifp, ipackets, 1);
 		} else {
 			if (len < sizeof(struct ieee80211_frame_min)) {
 				if (ic->ic_rawbpf != NULL &&

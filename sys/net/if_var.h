@@ -92,6 +92,7 @@ struct	lwkt_msg;
 union	netmsg;
 struct	pktinfo;
 struct	ifpoll_info;
+struct	ifdata_pcpu;
 
 #include <sys/queue.h>		/* get TAILQ macros */
 
@@ -262,7 +263,7 @@ struct ifnet {
 	struct lwkt_serialize if_default_serializer; /* if not supplied */
 	struct mtx	if_ioctl_mtx;	/* high-level ioctl serializing mutex */
 	int	if_unused4;
-	void	*if_unused6;
+	struct ifdata_pcpu *if_data_pcpu;
 	void	*if_pf_kif; /* pf interface abstraction */
 	void	*if_unused7;
 };
@@ -295,6 +296,20 @@ typedef void if_init_f_t (void *);
 
 /* for compatibility with other BSDs */
 #define	if_list		if_link
+
+struct ifdata_pcpu {
+	u_long	ifd_ipackets;		/* packets received on interface */
+	u_long	ifd_ierrors;		/* input errors on interface */
+	u_long	ifd_opackets;		/* packets sent on interface */
+	u_long	ifd_oerrors;		/* output errors on interface */
+	u_long	ifd_collisions;		/* collisions on csma interfaces */
+	u_long	ifd_ibytes;		/* total number of octets received */
+	u_long	ifd_obytes;		/* total number of octets sent */
+	u_long	ifd_imcasts;		/* packets received via multicast */
+	u_long	ifd_omcasts;		/* packets sent via multicast */
+	u_long	ifd_iqdrops;		/* dropped on input, this interface */
+	u_long	ifd_noproto;		/* destined for unsupported protocol */
+} __cachealign;
 
 #endif
 
@@ -440,13 +455,18 @@ struct ifaddr_container {
 	uint16_t		ifa_listmask;	/* IFA_LIST_ */
 	uint16_t		ifa_prflags;	/* protocol specific flags */
 
+	u_long			ifa_ipackets;	/* packets received on addr */
+	u_long			ifa_ibytes;	/* bytes received on addr */
+	u_long			ifa_opackets;	/* packets sent on addr */
+	u_long			ifa_obytes;	/* bytes sent on addr */
+
 	/*
 	 * Protocol specific states
 	 */
 	union {
 		struct in_ifaddr_container u_in_ifac;
 	} ifa_proto_u;
-};
+} __cachealign;
 
 #define IFA_LIST_IFADDRHEAD	0x01	/* on ifnet.if_addrheads[cpuid] */
 #define IFA_LIST_IN_IFADDRHEAD	0x02	/* on in_ifaddrheads[cpuid] */
@@ -519,6 +539,32 @@ struct ifmultiaddr {
 };
 
 #ifdef _KERNEL
+
+#define IFA_STAT_INC(ifa, name, v) \
+do { \
+	(ifa)->ifa_containers[mycpuid].ifa_##name += (v); \
+} while (0)
+
+#define IFNET_STAT_INC(ifp, name, v) \
+do { \
+	(ifp)->if_data_pcpu[mycpuid].ifd_##name += (v); \
+} while (0)
+
+#define IFNET_STAT_SET(ifp, name, v) \
+do { \
+	int _cpu; \
+	(ifp)->if_data_pcpu[0].ifd_##name = (v); \
+	for (_cpu = 1; _cpu < ncpus; ++_cpu) \
+		(ifp)->if_data_pcpu[_cpu].ifd_##name = 0; \
+} while (0)
+
+#define IFNET_STAT_GET(ifp, name, v) \
+do { \
+	int _cpu; \
+	(v) = (ifp)->if_data_pcpu[0].ifd_##name; \
+	for (_cpu = 1; _cpu < ncpus; ++_cpu) \
+		(v) += (ifp)->if_data_pcpu[_cpu].ifd_##name; \
+} while (0)
 
 #ifndef _SYS_SERIALIZE2_H_
 #include <sys/serialize2.h>

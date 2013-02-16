@@ -1,5 +1,4 @@
 # $NetBSD: CP942.src,v 1.1 2006/11/29 15:45:26 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/CP/CP942.src,v 1.1 2008/04/10 10:21:12 hasso Exp $
 
 NAME		"CP942"
 ENCODING	"MSKanji"

@@ -1,5 +1,4 @@
 # $NetBSD: charset.pivot.GB.src,v 1.5 2006/11/23 03:25:24 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/GB/charset.pivot.GB.src,v 1.2 2008/04/10 10:21:08 hasso Exp $
 
 GB12345			UCS			1
 GB2312			UCS			1

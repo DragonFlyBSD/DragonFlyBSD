@@ -1,5 +1,4 @@
 # $NetBSD: UCS%CELTIC.src,v 1.2 2006/04/08 15:47:39 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/APPLE/UCS%CELTIC.src,v 1.1 2008/04/10 10:21:02 hasso Exp $
 
 TYPE		ROWCOL
 NAME		UCS/CELTIC

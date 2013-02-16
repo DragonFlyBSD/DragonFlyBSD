@@ -23,6 +23,20 @@
             ..
         ..
         gcc47
+            plugin
+                include
+                    c-family
+                    ..
+                    objc
+                    ..
+                    config
+                        i386
+                        ..
+                    ..
+                    cp
+                    ..
+                ..
+            ..
             profile
             ..
         ..
@@ -51,8 +65,6 @@
             ..
             ssp
             ..
-        ..
-        lint
         ..
     ..
     libexec
@@ -127,8 +139,6 @@
             ..
             cvsup
             ..
-            dialog
-            ..
             diskless
             ..
             drivers
@@ -162,8 +172,6 @@
                     test
                     ..
                 ..
-            ..
-            libdialog
             ..
             libvgl
             ..
@@ -280,6 +288,8 @@
                 ..
                 BIG5
                 ..
+                CBM
+                ..
                 CNS
                 ..
                 CP
@@ -313,6 +323,8 @@
                 AST
                 ..
                 BIG5
+                ..
+                CBM
                 ..
                 CP
                 ..
@@ -383,11 +395,29 @@
             ..
             bg_BG.UTF-8
             ..
+            ca_AD.ISO8859-1
+            ..
             ca_ES.ISO8859-1
+            ..
+            ca_FR.ISO8859-1
+            ..
+            ca_IT.ISO8859-1
+            ..
+            ca_AD.ISO8859-15
             ..
             ca_ES.ISO8859-15
             ..
+            ca_FR.ISO8859-15
+            ..
+            ca_IT.ISO8859-15
+            ..
+            ca_AD.UTF-8
+            ..
             ca_ES.UTF-8
+            ..
+            ca_FR.UTF-8
+            ..
+            ca_IT.UTF-8
             ..
             cs_CZ.ISO8859-2
             ..
@@ -487,8 +517,6 @@
             ..
             fo_FO.ISO8859-1
             ..
-            fo_FO.UTF-8
-            ..
             fr_BE.ISO8859-1
             ..
             fr_BE.ISO8859-15
@@ -516,8 +544,6 @@
             he_IL.UTF-8
             ..
             hi_IN.ISCII-DEV
-            ..
-            hi_IN.UTF-8
             ..
             hr_HR.ISO8859-2
             ..
@@ -573,6 +599,8 @@
             ..
             la_LN.ISO8859-1
             ..
+            la_LN.ISO8859-13
+            ..
             la_LN.ISO8859-15
             ..
             la_LN.ISO8859-2
@@ -589,6 +617,18 @@
             ..
             lt_LT.UTF-8
             ..
+            lv_LV.ISO8859-13
+            ..
+            lv_LV.UTF-8
+            ..
+            mn_MN.UTF-8
+            ..
+            nb_NO.ISO8859-1
+            ..
+            nb_NO.ISO8859-15
+            ..
+            nb_NO.UTF-8
+            ..
             nl_BE.ISO8859-1
             ..
             nl_BE.ISO8859-15
@@ -600,6 +640,12 @@
             nl_NL.ISO8859-15
             ..
             nl_NL.UTF-8
+            ..
+            nn_NO.ISO8859-1
+            ..
+            nn_NO.ISO8859-15
+            ..
+            nn_NO.UTF-8
             ..
             no_NO.ISO8859-1
             ..
@@ -625,6 +671,8 @@
             ..
             ro_RO.UTF-8
             ..
+            ru_BY.CP1251
+            ..
             ru_RU.CP1251
             ..
             ru_RU.CP866
@@ -643,6 +691,14 @@
             ..
             sl_SI.UTF-8
             ..
+            sr_ME.ISO8859-2
+            ..
+            sr_ME.ISO8859-5
+            ..
+            sr_RS.ISO8859-2
+            ..
+            sr_RS.ISO8859-5
+            ..
             sr_YU.ISO8859-2
             ..
             sr_YU.ISO8859-5
@@ -658,6 +714,8 @@
             tr_TR.ISO8859-9
             ..
             tr_TR.UTF-8
+            ..
+            uk_UA.CP1251
             ..
             uk_UA.ISO8859-5
             ..

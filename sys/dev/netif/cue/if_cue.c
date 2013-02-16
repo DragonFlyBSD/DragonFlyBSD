@@ -604,7 +604,7 @@ cue_rxstart(struct ifnet *ifp)
 	c = &sc->cue_cdata.cue_rx_chain[sc->cue_cdata.cue_rx_prod];
 
 	if (cue_newbuf(sc, c, NULL) == ENOBUFS) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		CUE_UNLOCK(sc);
 		return;
 	}
@@ -666,11 +666,11 @@ cue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	total_len = len;
 
 	if (len < sizeof(struct ether_header)) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		goto done;
 	}
 
-	ifp->if_ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 	m_adj(m, sizeof(u_int16_t));
 	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = total_len;
@@ -733,9 +733,9 @@ cue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 
 	if (err)
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	else
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -760,12 +760,15 @@ cue_tick(void *xsc)
 
 	ifp = &sc->arpcom.ac_if;
 
-	ifp->if_collisions += cue_csr_read_2(sc, CUE_TX_SINGLECOLL);
-	ifp->if_collisions += cue_csr_read_2(sc, CUE_TX_MULTICOLL);
-	ifp->if_collisions += cue_csr_read_2(sc, CUE_TX_EXCESSCOLL);
+	IFNET_STAT_INC(ifp, collisions,
+	    cue_csr_read_2(sc, CUE_TX_SINGLECOLL));
+	IFNET_STAT_INC(ifp, collisions,
+	    cue_csr_read_2(sc, CUE_TX_MULTICOLL));
+	IFNET_STAT_INC(ifp, collisions,
+	    cue_csr_read_2(sc, CUE_TX_EXCESSCOLL));
 
 	if (cue_csr_read_2(sc, CUE_RX_FRAMEERR))
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 
 	callout_reset(&sc->cue_stat_timer, hz, cue_tick, sc);
 
@@ -1011,7 +1014,7 @@ cue_watchdog(struct ifnet *ifp)
 	sc = ifp->if_softc;
 	CUE_LOCK(sc);
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	if_printf(ifp, "watchdog timeout\n");
 
 	c = &sc->cue_cdata.cue_tx_chain[0];

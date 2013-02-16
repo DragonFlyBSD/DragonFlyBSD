@@ -1,5 +1,4 @@
 # $NetBSD: VISCII.src,v 1.1 2006/11/13 15:16:30 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/TCVN/VISCII.src,v 1.1 2008/04/10 10:21:13 hasso Exp $
 
 NAME		"VISCII"
 ENCODING	"NONE"

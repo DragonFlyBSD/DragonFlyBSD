@@ -983,7 +983,7 @@ wb_rxeof(struct wb_softc *sc)
 		    (WB_RXBYTES(cur_rx->wb_ptr->wb_status) > 1536) ||
 		    (rxstat & WB_RXSTAT_LASTFRAG) == 0||
 		    (rxstat & WB_RXSTAT_RXCMP) == 0) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			wb_newbuf(sc, cur_rx, m);
 			if_printf(ifp, "receiver babbling: possible chip "
 				  "bug, forcing reset\n");
@@ -994,7 +994,7 @@ wb_rxeof(struct wb_softc *sc)
 		}
 
 		if (rxstat & WB_RXSTAT_RXERR) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			wb_newbuf(sc, cur_rx, m);
 			break;
 		}
@@ -1015,13 +1015,13 @@ wb_rxeof(struct wb_softc *sc)
 		     total_len + ETHER_ALIGN, 0, ifp, NULL);
 		wb_newbuf(sc, cur_rx, m);
 		if (m0 == NULL) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			break;
 		}
 		m_adj(m0, ETHER_ALIGN);
 		m = m0;
 
-		ifp->if_ipackets++;
+		IFNET_STAT_INC(ifp, ipackets, 1);
 		ifp->if_input(ifp, m);
 	}
 }
@@ -1068,16 +1068,17 @@ wb_txeof(struct wb_softc *sc)
 			break;
 
 		if (txstat & WB_TXSTAT_TXERR) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			if (txstat & WB_TXSTAT_ABORT)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 			if (txstat & WB_TXSTAT_LATECOLL)
-				ifp->if_collisions++;
+				IFNET_STAT_INC(ifp, collisions, 1);
 		}
 
-		ifp->if_collisions += (txstat & WB_TXSTAT_COLLCNT) >> 3;
+		IFNET_STAT_INC(ifp, collisions,
+		    (txstat & WB_TXSTAT_COLLCNT) >> 3);
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		m_freem(cur_tx->wb_mbuf);
 		cur_tx->wb_mbuf = NULL;
 
@@ -1133,7 +1134,7 @@ wb_intr(void *arg)
 			break;
 
 		if ((status & WB_ISR_RX_NOBUF) || (status & WB_ISR_RX_ERR)) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			wb_reset(sc);
 			if (status & WB_ISR_RX_ERR)
 				wb_fixmedia(sc);
@@ -1162,7 +1163,7 @@ wb_intr(void *arg)
 		}
 
 		if (status & WB_ISR_TX_UNDERRUN) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			wb_txeof(sc);
 			WB_CLRBIT(sc, WB_NETCFG, WB_NETCFG_TX_ON);
 			/* Jack up TX threshold */
@@ -1559,7 +1560,7 @@ wb_watchdog(struct ifnet *ifp)
 {
 	struct wb_softc *sc = ifp->if_softc;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	if_printf(ifp, "watchdog timeout\n");
 #ifdef foo
 	if ((wb_phy_readreg(sc, PHY_BMSR) & PHY_BMSR_LINKSTAT) == 0)

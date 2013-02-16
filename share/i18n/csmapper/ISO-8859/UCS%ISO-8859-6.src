@@ -1,5 +1,4 @@
 # $NetBSD: UCS%ISO-8859-6.src,v 1.4 2005/03/09 11:31:41 tshiozak Exp $
-# $DragonFly: src/share/i18n/csmapper/ISO-8859/UCS%ISO-8859-6.src,v 1.2 2008/04/10 10:21:08 hasso Exp $
 
 TYPE		ROWCOL
 NAME		ISO-8859-6/UCS

@@ -1233,7 +1233,7 @@ iwi_frame_intr(struct iwi_softc *sc, struct iwi_rx_data *data, int i,
 	 */
 	mnew = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (mnew == NULL) {
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
@@ -1254,7 +1254,7 @@ iwi_frame_intr(struct iwi_softc *sc, struct iwi_rx_data *data, int i,
 			panic("%s: could not load old rx mbuf",
 			    device_get_name(sc->sc_dev));
 		}
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
@@ -1603,7 +1603,7 @@ iwi_tx_intr(struct iwi_softc *sc, struct iwi_tx_ring *txq)
 
 		DPRINTFN(15, ("tx done idx=%u\n", txq->next));
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		txq->queued--;
 		txq->next = (txq->next + 1) % IWI_TX_RING_COUNT;
@@ -1798,7 +1798,7 @@ iwi_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni,
 					/* h/w table is full */
 					m_freem(m0);
 					ieee80211_free_node(ni);
-					ifp->if_oerrors++;
+					IFNET_STAT_INC(ifp, oerrors, 1);
 					return 0;
 				}
 				iwi_write_ibssnode(sc,
@@ -1951,7 +1951,7 @@ iwi_start_locked(struct ifnet *ifp)
 		ni = (struct ieee80211_node *) m->m_pkthdr.rcvif;
 		if (iwi_tx_start(ifp, m, ni, ac) != 0) {
 			ieee80211_free_node(ni);
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			break;
 		}
 
@@ -1977,7 +1977,7 @@ iwi_watchdog(void *arg)
 	if (sc->sc_tx_timer > 0) {
 		if (--sc->sc_tx_timer == 0) {
 			if_printf(ifp, "device timeout\n");
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			wlan_serialize_exit();
 			ieee80211_runtask(ic, &sc->sc_restarttask);
 			wlan_serialize_enter();

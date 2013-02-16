@@ -1,5 +1,4 @@
-# $NetBSD: Makefile.inc,v 1.1 2006/04/01 04:13:21 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/AST/Makefile.inc,v 1.1 2008/04/10 10:21:02 hasso Exp $
+# $NetBSD: Makefile.inc,v 1.2 2008/10/25 22:35:36 apb Exp $
 
 .PATH: ${.CURDIR}/AST
 
@@ -22,7 +21,6 @@ FILESDIR_UCS%ARMSCII-$i.mps=	${BINDIR}/AST
 .endfor
 
 mapper.dir.AST: ${.CURDIR}/AST/ARMSCII.part
-	${_MKTARGET_CREATE}
 	( \
 	    echo "# AST"; \
 	    for i in ${PART_ARMSCII}; do \
@@ -35,7 +33,6 @@ mapper.dir.AST: ${.CURDIR}/AST/ARMSCII.part
 	) > ${.TARGET}
 
 charset.pivot.AST: ${.CURDIR}/AST/ARMSCII.part
-	${_MKTARGET_CREATE}
 	( \
 	    echo "# AST"; \
 	    for i in ${PART_ARMSCII}; do \

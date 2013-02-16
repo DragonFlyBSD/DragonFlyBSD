@@ -45,70 +45,99 @@
 /*
  * HAMMER2 inode locks
  *
- * HAMMER2 offers shared locks, update locks, and exclusive locks on inodes.
+ * HAMMER2 offers shared locks and exclusive locks on inodes.
  *
- * Shared locks allow concurrent access to an inode's fields, but exclude
- * access by concurrent exclusive locks.
+ * An inode's ip->chain pointer is resolved and stable while an inode is
+ * locked, and can be cleaned out at any time (become NULL) when an inode
+ * is not locked.
  *
- * Update locks are interesting -- an update lock will be taken after all
- * shared locks on an inode are released, but once it is in place, shared
- * locks may proceed. The update field is signalled by a busy flag in the
- * inode. Only one update lock may be in place at a given time on an inode.
+ * The underlying chain is also locked and returned.
  *
- * Exclusive locks prevent concurrent access to the inode.
- *
- * XXX: What do we use each for? How is visibility to the inode controlled?
+ * NOTE: We don't combine the inode/chain lock because putting away an
+ *       inode would otherwise confuse multiple lock holders of the inode.
  */
-
-
-void
+hammer2_chain_t *
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
 {
-	hammer2_chain_lock(ip->hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_chain_t *chain;
+
+	hammer2_inode_ref(ip);
+	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
+
+	chain = ip->chain;
+	KKASSERT(chain != NULL);	/* for now */
+	hammer2_chain_lock(ip->hmp, chain, HAMMER2_RESOLVE_ALWAYS);
+
+	return (chain);
 }
 
 void
-hammer2_inode_unlock_ex(hammer2_inode_t *ip)
+hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain)
 {
-	hammer2_chain_unlock(ip->hmp, &ip->chain);
+	/*
+	 * XXX this will catch parent directories too which we don't
+	 *     really want.
+	 */
+	if (ip->chain && (ip->chain->flags & (HAMMER2_CHAIN_MODIFIED |
+					      HAMMER2_CHAIN_SUBMODIFIED))) {
+		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
+	}
+	if (chain)
+		hammer2_chain_unlock(ip->hmp, chain);
+	ccms_thread_unlock(&ip->topo_cst);
+	hammer2_inode_drop(ip);
 }
 
-void
+/*
+ * NOTE: We don't combine the inode/chain lock because putting away an
+ *       inode would otherwise confuse multiple lock holders of the inode.
+ *
+ *	 Shared locks are especially sensitive to having too many shared
+ *	 lock counts (from the same thread) on certain paths which might
+ *	 need to upgrade them.  Only one count of a shared lock can be
+ *	 upgraded.
+ */
+hammer2_chain_t *
 hammer2_inode_lock_sh(hammer2_inode_t *ip)
 {
-	KKASSERT(ip->chain.refs > 0);
-	hammer2_chain_lock(ip->hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS |
-						HAMMER2_RESOLVE_SHARED);
+	hammer2_chain_t *chain;
+
+	hammer2_inode_ref(ip);
+	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_SHARED);
+
+	chain = ip->chain;
+	KKASSERT(chain != NULL);	/* for now */
+	hammer2_chain_lock(ip->hmp, chain, HAMMER2_RESOLVE_ALWAYS |
+					   HAMMER2_RESOLVE_SHARED);
+	return (chain);
 }
 
 void
-hammer2_inode_unlock_sh(hammer2_inode_t *ip)
+hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_chain_t *chain)
 {
-	hammer2_chain_unlock(ip->hmp, &ip->chain);
+	if (chain)
+		hammer2_chain_unlock(ip->hmp, chain);
+	ccms_thread_unlock(&ip->topo_cst);
+	hammer2_inode_drop(ip);
 }
 
-#if 0
-/*
- * Soft-busy an inode.
- *
- * The inode must be exclusively locked while soft-busying or soft-unbusying
- * an inode.  Once busied or unbusied the caller can release the lock.
- */
+ccms_state_t
+hammer2_inode_lock_temp_release(hammer2_inode_t *ip)
+{
+	return(ccms_thread_lock_temp_release(&ip->topo_cst));
+}
+
+ccms_state_t
+hammer2_inode_lock_upgrade(hammer2_inode_t *ip)
+{
+	return(ccms_thread_lock_upgrade(&ip->topo_cst));
+}
+
 void
-hammer2_inode_busy(hammer2_inode_t *ip)
+hammer2_inode_lock_restore(hammer2_inode_t *ip, ccms_state_t ostate)
 {
-	if (ip->chain.busy++ == 0)
-		hammer2_chain_ref(ip->hmp, &ip->chain, 0);
+	ccms_thread_lock_restore(&ip->topo_cst, ostate);
 }
-
-void
-hammer2_inode_unbusy(hammer2_inode_t *ip)
-{
-	if (--ip->chain.busy == 0)
-		hammer2_chain_drop(ip->hmp, &ip->chain);
-}
-
-#endif
 
 /*
  * Mount-wide locks
@@ -145,15 +174,19 @@ hammer2_voldata_unlock(hammer2_mount_t *hmp)
 }
 
 /*
- * Return the directory entry type for an inode
+ * Return the directory entry type for an inode.
+ *
+ * ip must be locked sh/ex.
  */
 int
-hammer2_get_dtype(hammer2_inode_t *ip)
+hammer2_get_dtype(hammer2_chain_t *chain)
 {
 	uint8_t type;
 
-	if ((type = ip->ip_data.type) == HAMMER2_OBJTYPE_HARDLINK)
-		type = ip->ip_data.target_type;
+	KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INODE);
+
+	if ((type = chain->data->ipdata.type) == HAMMER2_OBJTYPE_HARDLINK)
+		type = chain->data->ipdata.target_type;
 
 	switch(type) {
 	case HAMMER2_OBJTYPE_UNKNOWN:
@@ -186,9 +219,11 @@ hammer2_get_dtype(hammer2_inode_t *ip)
  * Return the directory entry type for an inode
  */
 int
-hammer2_get_vtype(hammer2_inode_t *ip)
+hammer2_get_vtype(hammer2_chain_t *chain)
 {
-	switch(ip->ip_data.type) {
+	KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INODE);
+
+	switch(chain->data->ipdata.type) {
 	case HAMMER2_OBJTYPE_UNKNOWN:
 		return (VBAD);
 	case HAMMER2_OBJTYPE_DIRECTORY:
@@ -345,10 +380,11 @@ hammer2_dirhash(const unsigned char *name, size_t len)
  * Return the power-of-2 radix greater or equal to
  * the specified number of bytes.
  *
- * Always returns at least HAMMER2_MIN_RADIX (2^6).
+ * Always returns at least the minimum media allocation
+ * size radix, HAMMER2_MIN_RADIX (10), which is 1KB.
  */
 int
-hammer2_bytes_to_radix(size_t bytes)
+hammer2_allocsize(size_t bytes)
 {
 	int radix;
 
@@ -356,6 +392,8 @@ hammer2_bytes_to_radix(size_t bytes)
 		bytes = HAMMER2_MIN_ALLOC;
 	if (bytes == HAMMER2_PBUFSIZE)
 		radix = HAMMER2_PBUFRADIX;
+	else if (bytes >= 16384)
+		radix = 14;
 	else if (bytes >= 1024)
 		radix = 10;
 	else
@@ -366,18 +404,21 @@ hammer2_bytes_to_radix(size_t bytes)
 	return (radix);
 }
 
+/*
+ * ip must be locked sh/ex
+ */
 int
 hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 		     hammer2_key_t *lbasep, hammer2_key_t *leofp)
 {
+	hammer2_inode_data_t *ipdata = &ip->chain->data->ipdata;
 	int radix;
 
 	*lbasep = uoff & ~HAMMER2_PBUFMASK64;
-	*leofp = ip->ip_data.size & ~HAMMER2_PBUFMASK64;
+	*leofp = ipdata->size & ~HAMMER2_PBUFMASK64;
 	KKASSERT(*lbasep <= *leofp);
 	if (*lbasep == *leofp /*&& *leofp < 1024 * 1024*/) {
-		radix = hammer2_bytes_to_radix(
-				(size_t)(ip->ip_data.size - *leofp));
+		radix = hammer2_allocsize((size_t)(ipdata->size - *leofp));
 		if (radix < HAMMER2_MINALLOCRADIX)
 			radix = HAMMER2_MINALLOCRADIX;
 		*leofp += 1U << radix;

@@ -119,6 +119,9 @@ static void	if_slowtimo(void *);
 static void	link_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
 static int	if_rtdel(struct radix_node *, void *);
 
+/* Helper functions */
+static void	ifsq_watchdog_reset(struct ifsubq_watchdog *);
+
 #ifdef INET6
 /*
  * XXX: declare here to avoid to include many inet6 related files..
@@ -563,6 +566,9 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		sdl->sdl_data[--namelen] = 0xff;
 	ifa_iflink(ifa, ifp, 0 /* Insert head */);
 
+	ifp->if_data_pcpu = kmalloc_cachealign(
+	    ncpus * sizeof(struct ifdata_pcpu), M_DEVBUF, M_WAITOK | M_ZERO);
+
 	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 	devctl_notify("IFNET", ifp->if_xname, "ATTACH", NULL);
 
@@ -858,6 +864,8 @@ if_detach(struct ifnet *ifp)
 		kfree(ifsq->ifsq_stage, M_DEVBUF);
 	}
 	kfree(ifp->if_snd.altq_subq, M_DEVBUF);
+
+	kfree(ifp->if_data_pcpu, M_DEVBUF);
 
 	crit_exit();
 }
@@ -2642,9 +2650,9 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 			if ((stage->stg_flags & IFSQ_STAGE_FLAG_QUED) == 0)
 				ifsq_stage_insert(head, stage);
 
-			ifp->if_obytes += len;
+			IFNET_STAT_INC(ifp, obytes, len);
 			if (mcast)
-				ifp->if_omcasts++;
+				IFNET_STAT_INC(ifp, omcasts, 1);
 			return error;
 		}
 
@@ -2657,9 +2665,9 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	ALTQ_SQ_UNLOCK(ifsq);
 
 	if (!error) {
-		ifp->if_obytes += len;
+		IFNET_STAT_INC(ifp, obytes, len);
 		if (mcast)
-			ifp->if_omcasts++;
+			IFNET_STAT_INC(ifp, omcasts, 1);
 	}
 
 	if (stage != NULL) {
@@ -2699,8 +2707,9 @@ ifa_create(int size, int flags)
 	if (ifa == NULL)
 		return NULL;
 
-	ifa->ifa_containers = kmalloc(ncpus * sizeof(struct ifaddr_container),
-				      M_IFADDR, M_WAITOK | M_ZERO);
+	ifa->ifa_containers =
+	    kmalloc_cachealign(ncpus * sizeof(struct ifaddr_container),
+	        M_IFADDR, M_WAITOK | M_ZERO);
 	ifa->ifa_ncnt = ncpus;
 	for (i = 0; i < ncpus; ++i) {
 		struct ifaddr_container *ifac = &ifa->ifa_containers[i];
@@ -3024,4 +3033,62 @@ int
 ifq_mapsubq_default(struct ifaltq *ifq __unused, int cpuid __unused)
 {
 	return ALTQ_SUBQ_INDEX_DEFAULT;
+}
+
+int
+ifq_mapsubq_mask(struct ifaltq *ifq, int cpuid)
+{
+	return (cpuid & ifq->altq_subq_mask);
+}
+
+static void
+ifsq_watchdog(void *arg)
+{
+	struct ifsubq_watchdog *wd = arg;
+	struct ifnet *ifp;
+
+	if (__predict_true(wd->wd_timer == 0 || --wd->wd_timer))
+		goto done;
+
+	ifp = ifsq_get_ifp(wd->wd_subq);
+	if (ifnet_tryserialize_all(ifp)) {
+		wd->wd_watchdog(wd->wd_subq);
+		ifnet_deserialize_all(ifp);
+	} else {
+		/* try again next timeout */
+		wd->wd_timer = 1;
+	}
+done:
+	ifsq_watchdog_reset(wd);
+}
+
+static void
+ifsq_watchdog_reset(struct ifsubq_watchdog *wd)
+{
+	callout_reset_bycpu(&wd->wd_callout, hz, ifsq_watchdog, wd,
+	    ifsq_get_cpuid(wd->wd_subq));
+}
+
+void
+ifsq_watchdog_init(struct ifsubq_watchdog *wd, struct ifaltq_subque *ifsq,
+    ifsq_watchdog_t watchdog)
+{
+	callout_init_mp(&wd->wd_callout);
+	wd->wd_timer = 0;
+	wd->wd_subq = ifsq;
+	wd->wd_watchdog = watchdog;
+}
+
+void
+ifsq_watchdog_start(struct ifsubq_watchdog *wd)
+{
+	wd->wd_timer = 0;
+	ifsq_watchdog_reset(wd);
+}
+
+void
+ifsq_watchdog_stop(struct ifsubq_watchdog *wd)
+{
+	wd->wd_timer = 0;
+	callout_stop(&wd->wd_callout);
 }

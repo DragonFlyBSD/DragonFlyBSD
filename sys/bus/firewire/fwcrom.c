@@ -52,13 +52,8 @@
 #define kprintf		printf
 #endif
 
-#ifdef __DragonFly__
-#include "firewire.h"
-#include "iec13213.h"
-#else
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/iec13213.h>
-#endif
+#include <bus/firewire/firewire.h>
+#include <bus/firewire/iec13213.h>
 
 #define MAX_ROM (1024 - sizeof(u_int32_t) * 5)
 #define CROM_END(cc) ((vm_offset_t)(cc)->stack[0].dir + MAX_ROM - 1)
@@ -455,11 +450,7 @@ crom_add_simple_text(struct crom_src *src, struct crom_chunk *parent,
 
 	len = strlen(buf);
 	if (len > MAX_TEXT) {
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		kprintf("text(%d) truncated to %lu.\n", len, (u_long)MAX_TEXT);
-#else
-		kprintf("text(%d) truncated to %td.\n", len, MAX_TEXT);
-#endif
 		len = MAX_TEXT;
 	}
 
@@ -594,15 +585,9 @@ main(int argc, char *argv[])
 	/* private company_id */
 	crom_add_entry(&root, CSRKEY_VENDOR, 0xacde48);
 
-#ifdef __DragonFly__
 	crom_add_simple_text(&src, &root, &text1, "DragonFly");
 	crom_add_entry(&root, CSRKEY_HW, __DragonFly_version);
 	crom_add_simple_text(&src, &root, &text2, "DragonFly-1");
-#else
-	crom_add_simple_text(&src, &root, &text1, "FreeBSD");
-	crom_add_entry(&root, CSRKEY_HW, __FreeBSD_version);
-	crom_add_simple_text(&src, &root, &text2, "FreeBSD-5");
-#endif
 
 	/* SBP unit directory */
 	crom_add_chunk(&src, &root, &unit1, CROM_UDIR);

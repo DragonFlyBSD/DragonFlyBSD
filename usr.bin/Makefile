@@ -236,7 +236,6 @@ SUBDIR=	alias \
 	write \
 	xargs \
 	xinstall \
-	xlint \
 	xstr \
 	xz \
 	xzdec \

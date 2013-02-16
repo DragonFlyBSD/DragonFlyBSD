@@ -80,7 +80,7 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 	/*
 	 * Figure out the base 2 radix of the allocation (rounded up)
 	 */
-	radix = hammer2_bytes_to_radix(bytes);
+	radix = hammer2_allocsize(bytes);
 	bytes = 1 << radix;
 
 	if (radix <= HAMMER2_MAX_RADIX)

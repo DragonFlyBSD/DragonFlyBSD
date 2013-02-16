@@ -393,7 +393,7 @@ lance_watchdog(struct ifnet *ifp)
 	struct lance_softc *sc = ifp->if_softc;
 
 	if_printf(ifp, "device timeout\n");
-	++ifp->if_oerrors;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	lance_init_locked(sc);
 }
 

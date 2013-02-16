@@ -2244,12 +2244,12 @@ alc_watchdog(struct alc_softc *sc)
 
 	if ((sc->alc_flags & ALC_FLAG_LINK) == 0) {
 		if_printf(sc->alc_ifp, "watchdog timeout (lost link)\n");
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		alc_init(sc);
 		return;
 	}
 	if_printf(sc->alc_ifp, "watchdog timeout -- resetting\n");
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	alc_init(sc);
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -2516,11 +2516,11 @@ alc_stats_update(struct alc_softc *sc)
 	stat->tx_mcast_bytes += smb->tx_mcast_bytes;
 
 	/* Update counters in ifnet. */
-	ifp->if_opackets += smb->tx_frames;
+	IFNET_STAT_INC(ifp, opackets, smb->tx_frames);
 
-	ifp->if_collisions += smb->tx_single_colls +
+	IFNET_STAT_INC(ifp, collisions, smb->tx_single_colls +
 	    smb->tx_multi_colls * 2 + smb->tx_late_colls +
-	    smb->tx_abort * HDPX_CFG_RETRY_DEFAULT;
+	    smb->tx_abort * HDPX_CFG_RETRY_DEFAULT);
 
 	/*
 	 * XXX
@@ -2529,15 +2529,15 @@ alc_stats_update(struct alc_softc *sc)
 	 * the counter name is not correct one so I've removed the
 	 * counter in output errors.
 	 */
-	ifp->if_oerrors += smb->tx_abort + smb->tx_late_colls +
-	    smb->tx_underrun;
+	IFNET_STAT_INC(ifp, oerrors, smb->tx_abort + smb->tx_late_colls +
+	    smb->tx_underrun);
 
-	ifp->if_ipackets += smb->rx_frames;
+	IFNET_STAT_INC(ifp, ipackets, smb->rx_frames);
 
-	ifp->if_ierrors += smb->rx_crcerrs + smb->rx_lenerrs +
+	IFNET_STAT_INC(ifp, ierrors, smb->rx_crcerrs + smb->rx_lenerrs +
 	    smb->rx_runts + smb->rx_pkts_truncated +
 	    smb->rx_fifo_oflows + smb->rx_rrs_errs +
-	    smb->rx_alignerrs;
+	    smb->rx_alignerrs);
 
 	if ((sc->alc_flags & ALC_FLAG_SMB_BUG) == 0) {
 		/* Update done, clear. */
@@ -2804,7 +2804,7 @@ alc_rxeof(struct alc_softc *sc, struct rx_rdesc *rrd)
 		mp = rxd->rx_m;
 		/* Add a new receive buffer to the ring. */
 		if (alc_newbuf(sc, rxd, FALSE) != 0) {
-			ifp->if_iqdrops++;
+			IFNET_STAT_INC(ifp, iqdrops, 1);
 			/* Reuse Rx buffers. */
 			if (sc->alc_cdata.alc_rxhead != NULL)
 				m_freem(sc->alc_cdata.alc_rxhead);

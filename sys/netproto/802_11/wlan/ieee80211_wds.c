@@ -238,7 +238,7 @@ ieee80211_dwds_mcast(struct ieee80211vap *vap0, struct mbuf *m)
 	struct ifnet *ifp;
 	struct mbuf *mcopy;
 	int err;
-	char ethstr[ETHER_ADDRSTRLEN + 1];
+	char ethstr[ETHER_ADDRSTRLEN + 1] __debugvar;
 
 	KASSERT(ETHER_IS_MULTICAST(eh->ether_dhost),
 	    ("%s not mcast", kether_ntoa(eh->ether_dhost, ethstr)));
@@ -258,14 +258,14 @@ ieee80211_dwds_mcast(struct ieee80211vap *vap0, struct mbuf *m)
 		 */
 		mcopy = m_copypacket(m, MB_DONTWAIT);
 		if (mcopy == NULL) {
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			/* XXX stat + msg */
 			continue;
 		}
 		ni = ieee80211_find_txnode(vap, eh->ether_dhost);
 		if (ni == NULL) {
 			/* NB: ieee80211_find_txnode does stat+msg */
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			m_freem(mcopy);
 			continue;
 		}
@@ -276,7 +276,7 @@ ieee80211_dwds_mcast(struct ieee80211vap *vap0, struct mbuf *m)
 			    eh->ether_dhost, NULL,
 			    "%s", "classification failure");
 			vap->iv_stats.is_tx_classify++;
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			m_freem(mcopy);
 			ieee80211_free_node(ni);
 			continue;
@@ -299,10 +299,10 @@ ieee80211_dwds_mcast(struct ieee80211vap *vap0, struct mbuf *m)
 		err = ieee80211_handoff(parent, mcopy);
 		if (err) {
 			/* NB: IFQ_HANDOFF reclaims mbuf */
-			ifp->if_oerrors++;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 			ieee80211_free_node(ni);
 		} else
-			ifp->if_opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 	}
 }
 
@@ -730,7 +730,7 @@ wds_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 		break;
 	}
 err:
-	ifp->if_ierrors++;
+	IFNET_STAT_INC(ifp, ierrors, 1);
 out:
 	if (m != NULL) {
 		if (need_tap && ieee80211_radiotap_active_vap(vap))

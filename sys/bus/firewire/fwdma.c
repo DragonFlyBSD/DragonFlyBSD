@@ -46,15 +46,9 @@
 #include <sys/mutex.h>
 #endif
 
-#ifdef __DragonFly__
 #include <bus/firewire/firewire.h>
 #include <bus/firewire/firewirereg.h>
 #include <bus/firewire/fwdma.h>
-#else
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-#include <dev/firewire/fwdma.h>
-#endif
 
 static void
 fwdma_map_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
@@ -190,11 +184,7 @@ fwdma_malloc_multiseg(struct firewire_comm *fc, int alignment,
 	}
 
 #if 0
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	kprintf("malloc_multi: ssize=%d nseg=%d\n", ssize, nseg);
-#else
-	kprintf("malloc_multi: ssize=%td nseg=%d\n", ssize, nseg);
-#endif
+	kprintf("malloc_multi: ssize=%ld nseg=%d\n", ssize, nseg);
 #endif
 	for (seg = &am->seg[0]; nseg --; seg ++) {
 		seg->v_addr = fwdma_malloc_size(am->dma_tag, &seg->dma_map,

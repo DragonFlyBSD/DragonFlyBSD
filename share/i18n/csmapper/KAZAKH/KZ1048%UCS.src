@@ -1,5 +1,4 @@
 # $NetBSD: KZ1048%UCS.src,v 1.1 2007/03/13 16:34:37 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/KAZAKH/KZ1048%UCS.src,v 1.1 2008/04/10 10:21:10 hasso Exp $
 
 TYPE		ROWCOL
 NAME		KZ1048/UCS

@@ -1,5 +1,4 @@
-/*	$NetBSD: src/share/locale/ctype/el_GR.ISO8859-7.src,v 1.1 2003/07/21 17:41:18 tshiozak Exp $	*/
-/*	$DragonFly: src/share/locale/ctype/el_GR.ISO8859-7.src,v 1.1 2005/03/11 15:57:42 joerg Exp $ */
+/*	$NetBSD: el_GR.ISO8859-7.src,v 1.1 2003/07/21 17:41:18 tshiozak Exp $	*/
 
 /*
  * LOCALE_CTYPE for Greek/ISO8859-7 set

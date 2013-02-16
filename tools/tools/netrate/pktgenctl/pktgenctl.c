@@ -70,7 +70,7 @@ usage(void)
 	    "-d dst_inaddr[:dst_port] [-d dst_inaddr[:dst_port] ...] "
 	    "-s src_inaddr[:src_port] "
 	    "-e (gw_eaddr|dst_eaddr) -i iface "
-	    "[-m data_len] [-l duration] [-D dev] [-q pktenq]\n");
+	    "[-m data_len] [-l duration] [-D dev] [-q pktenq] [-M]\n");
 	exit(1);
 }
 
@@ -100,6 +100,7 @@ main(int argc, char *argv[])
 	uint32_t arg_mask = 0;
 	int fd, c, n, ndst_alloc;
 	const char *dev;
+	u_long start = PKTGENSTART;
 
 	dev = PKTGEN_DEVPATH;
 
@@ -121,7 +122,7 @@ main(int argc, char *argv[])
 		err(1, "calloc(%d dst)", ndst_alloc);
 
 	conf.pc_ndst = 0;
-	while ((c = getopt(argc, argv, "d:s:e:i:m:l:D:q:")) != -1) {
+	while ((c = getopt(argc, argv, "d:s:e:i:m:l:D:q:M")) != -1) {
 		switch (c) {
 		case 'd':
 			if (conf.pc_ndst >= ndst_alloc) {
@@ -194,6 +195,10 @@ main(int argc, char *argv[])
 			conf.pc_pktenq = atoi(optarg);
 			break;
 
+		case 'M':
+			start = PKTGENMQSTART;
+			break;
+
 		default:
 			usage();
 		}
@@ -209,8 +214,10 @@ main(int argc, char *argv[])
 	if (ioctl(fd, PKTGENSCONF, &conf) < 0)
 		err(1, "ioctl(PKTGENSCONF)");
 
-	if (ioctl(fd, PKTGENSTART) < 0)
-		err(1, "ioctl(PKTGENSTART)");
+	if (ioctl(fd, start) < 0) {
+		err(1, "ioctl(%s)",
+		    start == PKTGENSTART ? "PKTGENSTART" : "PKTGENMQSTART");
+	}
 
 	close(fd);
 	exit(0);

@@ -1,5 +1,4 @@
 # $NetBSD: esdb.alias.MISC.src,v 1.16 2007/03/13 16:34:40 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/MISC/esdb.alias.MISC.src,v 1.2 2008/04/10 10:21:13 hasso Exp $
 
 c99				C99
 ctext				CTEXT

@@ -1,5 +1,4 @@
 # $NetBSD: KSC5601HANJA%UCS.src,v 1.2 2006/12/04 15:01:42 tnozaki Exp $
-# $DragonFly: src/share/i18n/csmapper/KS/KSC5601HANJA%UCS.src,v 1.1 2008/04/10 10:21:11 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"KSC5601HANJA/UCS"

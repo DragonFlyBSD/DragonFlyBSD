@@ -407,40 +407,24 @@ ieee80211_node_dectestref(struct ieee80211_node *ni)
 	return atomic_cmpset_int(&ni->ni_refcnt, 0, 1);
 }
 
+/* XXX this breaks ALTQ's packet scheduler */
 void
-ieee80211_drain_ifq(struct ifqueue *ifq)
-{
-	struct ieee80211_node *ni;
-	struct mbuf *m;
-
-	wlan_assert_serialized();
-	for (;;) {
-		IF_DEQUEUE(ifq, m);
-		if (m == NULL)
-			break;
-
-		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
-		KASSERT(ni != NULL, ("frame w/o node"));
-		ieee80211_free_node(ni);
-		m->m_pkthdr.rcvif = NULL;
-
-		m_freem(m);
-	}
-}
-
-void
-ieee80211_flush_ifq(struct ifqueue *ifq, struct ieee80211vap *vap)
+ieee80211_flush_ifq(struct ifaltq *ifq, struct ieee80211vap *vap)
 {
 	struct ieee80211_node *ni;
 	struct mbuf *m, **mprev;
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(ifq);
 
 	wlan_assert_serialized();
-	mprev = &ifq->ifq_head;
+
+	ALTQ_SQ_LOCK(ifsq);
+
+	mprev = &ifsq->ifq_head;
 	while ((m = *mprev) != NULL) {
 		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
 		if (ni != NULL && ni->ni_vap == vap) {
 			*mprev = m->m_nextpkt;		/* remove from list */
-			ifq->ifq_len--;
+			ifsq->ifq_len--;
 
 			m_freem(m);
 			ieee80211_free_node(ni);	/* reclaim ref */
@@ -448,10 +432,12 @@ ieee80211_flush_ifq(struct ifqueue *ifq, struct ieee80211vap *vap)
 			mprev = &m->m_nextpkt;
 	}
 	/* recalculate tail ptr */
-	m = ifq->ifq_head;
+	m = ifsq->ifq_head;
 	for (; m != NULL && m->m_nextpkt != NULL; m = m->m_nextpkt)
 		;
-	ifq->ifq_tail = m;
+	ifsq->ifq_tail = m;
+
+	ALTQ_SQ_UNLOCK(ifsq);
 }
 
 /*
