@@ -566,18 +566,24 @@ int savage_driver_firstopen(struct drm_device *dev)
 	 * in case we decide we need information on the BAR for BSD in the
 	 * future.
 	 */
+#if 0
 	unsigned int fb_rsrc, aper_rsrc;
+#endif
 	int ret = 0;
 
 	dev_priv->mtrr[0].handle = -1;
 	dev_priv->mtrr[1].handle = -1;
 	dev_priv->mtrr[2].handle = -1;
 	if (S3_SAVAGE3D_SERIES(dev_priv->chipset)) {
+#if 0
 		fb_rsrc = 0;
+#endif
 		fb_base = drm_get_resource_start(dev, 0);
 		fb_size = SAVAGE_FB_SIZE_S3;
 		mmio_base = fb_base + SAVAGE_FB_SIZE_S3;
+#if 0
 		aper_rsrc = 0;
+#endif
 		aperture_base = fb_base + SAVAGE_APERTURE_OFFSET;
 		/* this should always be true */
 		if (drm_get_resource_len(dev, 0) == 0x08000000) {
@@ -605,10 +611,14 @@ int savage_driver_firstopen(struct drm_device *dev)
 	} else if (dev_priv->chipset != S3_SUPERSAVAGE &&
 		   dev_priv->chipset != S3_SAVAGE2000) {
 		mmio_base = drm_get_resource_start(dev, 0);
+#if 0
 		fb_rsrc = 1;
+#endif
 		fb_base = drm_get_resource_start(dev, 1);
 		fb_size = SAVAGE_FB_SIZE_S4;
+#if 0
 		aper_rsrc = 1;
+#endif
 		aperture_base = fb_base + SAVAGE_APERTURE_OFFSET;
 		/* this should always be true */
 		if (drm_get_resource_len(dev, 1) == 0x08000000) {
@@ -625,10 +635,14 @@ int savage_driver_firstopen(struct drm_device *dev)
 		}
 	} else {
 		mmio_base = drm_get_resource_start(dev, 0);
+#if 0
 		fb_rsrc = 1;
+#endif
 		fb_base = drm_get_resource_start(dev, 1);
 		fb_size = drm_get_resource_len(dev, 1);
+#if 0
 		aper_rsrc = 2;
+#endif
 		aperture_base = drm_get_resource_start(dev, 2);
 		/* Automatic MTRR setup will do the right thing. */
 	}
