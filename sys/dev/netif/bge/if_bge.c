@@ -2323,7 +2323,7 @@ bge_attach(device_t dev)
 		sc->bge_rx_coal_bds_int = BGE_RX_COAL_BDS_MIN;
 		sc->bge_tx_coal_bds_int = BGE_TX_COAL_BDS_MIN;
 	}
-	sc->bge_tx_wreg = 16;
+	sc->bge_tx_wreg = BGE_TX_WREG_NSEGS;
 
 	/* Set up TX spare and reserved descriptor count */
 	if (sc->bge_flags & BGE_FLAG_TSO) {

@@ -309,4 +309,7 @@ struct bge_softc {
 #define BGE_TX_COAL_BDS_DEF	128
 #define BGE_TX_COAL_BDS_MAX	255
 
+/* Number of segments sent before writing to TX related registers */
+#define BGE_TX_WREG_NSEGS	16
+
 #endif	/* !_IF_BGEVAR_H_ */
