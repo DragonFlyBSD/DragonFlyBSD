@@ -263,7 +263,7 @@ dev/serial/cy/cy_pci.c			optional	cy pci
 dev/netif/elink_layer/elink.c		optional	ep
 dev/disk/fd/fd.c			optional	fd
 dev/disk/fd/fd_pccard.c			optional	fd pccard
-platform/pc32/isa/isa_intr.c		standard
+platform/pc32/isa/isa_intr.c		optional	isa
 bus/isa/i386/isa.c			optional	isa
 bus/isa/i386/isa_dma.c			optional	isa
 platform/pc32/isa/npx.c			mandatory	npx

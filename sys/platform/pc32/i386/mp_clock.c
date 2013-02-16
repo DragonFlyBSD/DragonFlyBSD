@@ -39,9 +39,9 @@
 #include <sys/sysctl.h>
 #include <sys/bus.h>
 
-#include <bus/pci/pcivar.h>
-
 #if 0
+
+#include <bus/pci/pcivar.h>
 
 static unsigned piix_get_timecount(struct timecounter *tc);
 

@@ -886,6 +886,7 @@ out:
 	return (error);
 }
 
+#ifdef INET
 /*
  * A specialization of sosend() for UDP based on protocol-specific knowledge:
  *   so->so_proto->pr_flags has the PR_ATOMIC field set.  This means that
@@ -1175,6 +1176,7 @@ out:
 		m_freem(control);
 	return (error);
 }
+#endif
 
 /*
  * Implement receive operations on a socket.
