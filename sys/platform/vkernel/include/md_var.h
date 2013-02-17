@@ -41,6 +41,9 @@
 #ifndef _SYS_VKERNEL_H_
 #include <sys/vkernel.h>
 #endif
+#ifndef _NET_ETHERNET_H_
+#include <net/ethernet.h>
+#endif
 
 #define VKNETIF_MAX	16
 #define VKDISK_MAX	16
@@ -50,6 +53,7 @@ struct vknetif_info {
 	int		tap_unit;
 	in_addr_t	netif_addr;
 	in_addr_t	netif_mask;
+	u_char		*enaddr;
 };
 
 struct vkdisk_info {

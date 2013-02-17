@@ -683,6 +683,11 @@ vke_attach(const struct vknetif_info *info, int unit)
 	KKASSERT(info->tap_fd >= 0);
 	fd = info->tap_fd;
 
+	if (info->enaddr) {
+		bcopy(info->enaddr, enaddr, ETHER_ADDR_LEN);
+		goto havemac;
+	}
+
 	/*
 	 * This is only a TAP device if tap_unit is non-zero.  If
 	 * connecting to a virtual socket we generate a unique MAC.
@@ -711,6 +716,7 @@ vke_attach(const struct vknetif_info *info, int unit)
 	}
 	enaddr[1] += 1;
 
+havemac:
 	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	sc->sc_txbuf = kmalloc(MCLBYTES, M_DEVBUF, M_WAITOK);

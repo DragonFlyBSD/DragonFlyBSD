@@ -66,6 +66,7 @@
 #include <net/bridge/if_bridgevar.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <net/if_var.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1178,6 +1179,7 @@ void
 init_netif(char *netifExp[], int netifExpNum)
 {
 	int i, s;
+	char *tmp;
 
 	if (netifExpNum == 0)
 		return;
@@ -1191,6 +1193,10 @@ init_netif(char *netifExp[], int netifExpNum)
 		in_addr_t netif_addr, netif_mask;
 		int tap_fd, tap_unit;
 		char *netif;
+
+		/* Extract MAC address if there is one */
+		tmp = netifExp[i];
+		strsep(&tmp, "=");
 
 		netif = strtok(netifExp[i], ":");
 		if (netif == NULL) {
@@ -1223,10 +1229,27 @@ init_netif(char *netifExp[], int netifExpNum)
 		}
 
 		info = &NetifInfo[NetifNum];
+		bzero(info, sizeof(*info));
 		info->tap_fd = tap_fd;
 		info->tap_unit = tap_unit;
 		info->netif_addr = netif_addr;
 		info->netif_mask = netif_mask;
+		/*
+		 * If tmp isn't NULL it means a MAC could have been
+		 * specified so attempt to convert it.
+		 * Setting enaddr to NULL will tell vke_attach() we
+		 * need a pseudo-random MAC address.
+		 */
+		if (tmp != NULL) {
+			if ((info->enaddr = malloc(ETHER_ADDR_LEN)) == NULL)
+				warnx("Couldn't allocate memory for the operation");
+			else {
+				if ((kether_aton(tmp, info->enaddr)) == NULL) {
+					free(info->enaddr);
+					info->enaddr = NULL;
+				}
+			}
+		}
 
 		NetifNum++;
 		if (NetifNum >= VKNETIF_MAX)	/* XXX will this happen? */
