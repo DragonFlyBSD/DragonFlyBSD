@@ -217,19 +217,7 @@ INSTALL="install -C"
 defines where system binaries will be backed up for the
 .Dq make backupworld
 target.  The default value is
-.Dq /var/backups/world_binaries .
-.It Va DAYS_BACKUP
-.Pq Vt int
-If the last world backup is older than the number of days
-defined here, the
-.Dq make installworld
-will fail with an appropriate message.
-.Dq 28
-is the default value.
-.It Va NO_BACKUP
-.Pq Vt bool
-Set this to skip the existence and currency checks for world
-binary backups.
+.Dq /var/backups/world_backup .
 .It Va LOCAL_DIRS
 .Pq Vt str
 List any directories that should be entered when running make
