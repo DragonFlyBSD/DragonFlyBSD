@@ -1058,12 +1058,12 @@ backupworld:
 	@rm -rf ${WORLD_BACKUP}/sbin ${WORLD_BACKUP}/bin \
 	        ${WORLD_BACKUP}/usr.sbin ${WORLD_BACKUP}/usr.bin \
 	        ${WORLD_BACKUP}/usr.libexec
-	cp -a /bin ${WORLD_BACKUP}/bin
-	cp -a /sbin ${WORLD_BACKUP}/sbin
-	cp -a /usr/bin ${WORLD_BACKUP}/usr.bin
-	cp -a /usr/lib ${WORLD_BACKUP}/usr.lib
-	cp -a /usr/sbin ${WORLD_BACKUP}/usr.sbin
-	cp -a /usr/libexec ${WORLD_BACKUP}/usr.libexec
+	cp -RpP /bin ${WORLD_BACKUP}/bin
+	cp -RpP /sbin ${WORLD_BACKUP}/sbin
+	cp -RpP /usr/bin ${WORLD_BACKUP}/usr.bin
+	cp -RpP /usr/lib ${WORLD_BACKUP}/usr.lib
+	cp -RpP /usr/sbin ${WORLD_BACKUP}/usr.sbin
+	cp -RpP /usr/libexec ${WORLD_BACKUP}/usr.libexec
 
 backupworld-auto:
 	@mkdir -p ${AUTO_BACKUP}
@@ -1071,12 +1071,12 @@ backupworld-auto:
 	@rm -rf ${AUTO_BACKUP}/sbin ${AUTO_BACKUP}/bin \
 	        ${AUTO_BACKUP}/usr.sbin ${AUTO_BACKUP}/usr.bin \
 	        ${AUTO_BACKUP}/usr.libexec
-	cp -a /bin ${AUTO_BACKUP}/bin
-	cp -a /sbin ${AUTO_BACKUP}/sbin
-	cp -a /usr/bin ${AUTO_BACKUP}/usr.bin
-	cp -a /usr/lib ${AUTO_BACKUP}/usr.lib
-	cp -a /usr/sbin ${AUTO_BACKUP}/usr.sbin
-	cp -a /usr/libexec ${AUTO_BACKUP}/usr.libexec
+	cp -RpP /bin ${AUTO_BACKUP}/bin
+	cp -RpP /sbin ${AUTO_BACKUP}/sbin
+	cp -RpP /usr/bin ${AUTO_BACKUP}/usr.bin
+	cp -RpP /usr/lib ${AUTO_BACKUP}/usr.lib
+	cp -RpP /usr/sbin ${AUTO_BACKUP}/usr.sbin
+	cp -RpP /usr/libexec ${AUTO_BACKUP}/usr.libexec
 
 restoreworld:
 .if !(exists(${WORLD_BACKUP}/sbin) && exists(${WORLD_BACKUP}/bin) && \
