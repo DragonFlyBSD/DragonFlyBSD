@@ -479,16 +479,6 @@ installcheck:
 .if !defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/"
 	@case `uname -r` in 1.2*|1.3-*|1.3.*|1.4.*|1.5.0-*|1.5.1-*|1.5.2-*|1.5.3-*) echo "You must upgrade your kernel to at least 1.5.4 and reboot before you can safely installworld, due to libc/system call ABI changes" ; /usr/bin/false ; esac
 .endif
-.if !defined(NO_BACKUP)
-.  if defined(NEVER_BACKED_UP)
-	@echo "Run 'make backupworld' or set NO_BACKUP first"
-	/usr/bin/false
-.  elif defined(BACKUP_EXPIRED)
-	@echo "More than ${DAYS_BACKUP} days have passed since last backup."
-	@echo "Run 'make backupworld' or set NO_BACKUP first"
-	/usr/bin/false
-.  endif
-.endif
 #
 # installworld
 #
