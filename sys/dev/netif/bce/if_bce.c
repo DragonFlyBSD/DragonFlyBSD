@@ -345,16 +345,18 @@ static void	bce_probe_pci_caps(struct bce_softc *);
 static void	bce_print_adapter_info(struct bce_softc *);
 static void	bce_get_media(struct bce_softc *);
 
-static void	bce_init_tx_context(struct bce_softc *);
-static int	bce_init_tx_chain(struct bce_softc *);
+static int	bce_create_tx_ring(struct bce_tx_ring *);
+static void	bce_destroy_tx_ring(struct bce_tx_ring *);
+static void	bce_init_tx_context(struct bce_tx_ring *);
+static int	bce_init_tx_chain(struct bce_tx_ring *);
+static void	bce_free_tx_chain(struct bce_tx_ring *);
 static void	bce_init_rx_context(struct bce_softc *);
 static int	bce_init_rx_chain(struct bce_softc *);
 static void	bce_free_rx_chain(struct bce_softc *);
-static void	bce_free_tx_chain(struct bce_softc *);
 
-static void	bce_xmit(struct bce_softc *);
-static int	bce_encap(struct bce_softc *, struct mbuf **, int *);
-static int	bce_tso_setup(struct bce_softc *, struct mbuf **,
+static void	bce_xmit(struct bce_tx_ring *);
+static int	bce_encap(struct bce_tx_ring *, struct mbuf **, int *);
+static int	bce_tso_setup(struct bce_tx_ring *, struct mbuf **,
 		    uint16_t *, uint16_t *);
 static void	bce_start(struct ifnet *, struct ifaltq_subque *);
 static int	bce_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -369,7 +371,7 @@ static void	bce_get_mac_addr(struct bce_softc *);
 static void	bce_set_mac_addr(struct bce_softc *);
 static void	bce_phy_intr(struct bce_softc *);
 static void	bce_rx_intr(struct bce_softc *, int, uint16_t);
-static void	bce_tx_intr(struct bce_softc *, uint16_t);
+static void	bce_tx_intr(struct bce_tx_ring *, uint16_t);
 static void	bce_disable_intr(struct bce_softc *);
 static void	bce_enable_intr(struct bce_softc *);
 static void	bce_reenable_intr(struct bce_softc *);
@@ -871,13 +873,15 @@ bce_attach(device_t dev)
 	sc->bce_rx_ticks_int           = bce_rx_ticks_int;
 	sc->bce_rx_ticks               = bce_rx_ticks;
 #endif
-	sc->tx_wreg = bce_tx_wreg;
 
 	/* Update statistics once every second. */
 	sc->bce_stats_ticks = 1000000 & 0xffff00;
 
 	/* Find the media type for the adapter. */
 	bce_get_media(sc);
+
+	/* Find out RX/TX ring count */
+	sc->ring_cnt = 1; /* XXX */
 
 	/* Allocate DMA memory resources. */
 	rc = bce_dma_alloc(sc);
@@ -900,7 +904,7 @@ bce_attach(device_t dev)
 	ifp->if_hwassist = BCE_CSUM_FEATURES | CSUM_TSO;
 	ifp->if_capabilities = BCE_IF_CAPABILITIES;
 	ifp->if_capenable = ifp->if_capabilities;
-	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD(sc));
+	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD(&sc->tx_rings[0]));
 	ifq_set_ready(&ifp->if_snd);
 
 	if (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)
@@ -1865,6 +1869,50 @@ bce_get_media(struct bce_softc *sc)
 }
 
 
+static void
+bce_destroy_tx_ring(struct bce_tx_ring *txr)
+{
+	int i;
+
+	/* Destroy the TX buffer descriptor DMA stuffs. */
+	if (txr->tx_bd_chain_tag != NULL) {
+		for (i = 0; i < txr->tx_pages; i++) {
+			if (txr->tx_bd_chain[i] != NULL) {
+				bus_dmamap_unload(txr->tx_bd_chain_tag,
+				    txr->tx_bd_chain_map[i]);
+				bus_dmamem_free(txr->tx_bd_chain_tag,
+				    txr->tx_bd_chain[i],
+				    txr->tx_bd_chain_map[i]);
+			}
+		}
+		bus_dma_tag_destroy(txr->tx_bd_chain_tag);
+	}
+
+	/* Destroy the TX mbuf DMA stuffs. */
+	if (txr->tx_mbuf_tag != NULL) {
+		for (i = 0; i < TOTAL_TX_BD(txr); i++) {
+			/* Must have been unloaded in bce_stop() */
+			KKASSERT(txr->tx_mbuf_ptr[i] == NULL);
+			bus_dmamap_destroy(txr->tx_mbuf_tag,
+			    txr->tx_mbuf_map[i]);
+		}
+		bus_dma_tag_destroy(txr->tx_mbuf_tag);
+	}
+
+	if (txr->tx_bd_chain_map != NULL)
+		kfree(txr->tx_bd_chain_map, M_DEVBUF);
+	if (txr->tx_bd_chain != NULL)
+		kfree(txr->tx_bd_chain, M_DEVBUF);
+	if (txr->tx_bd_chain_paddr != NULL)
+		kfree(txr->tx_bd_chain_paddr, M_DEVBUF);
+
+	if (txr->tx_mbuf_map != NULL)
+		kfree(txr->tx_mbuf_map, M_DEVBUF);
+	if (txr->tx_mbuf_ptr != NULL)
+		kfree(txr->tx_mbuf_ptr, M_DEVBUF);
+}
+
+
 /****************************************************************************/
 /* Free any DMA memory owned by the driver.                                 */
 /*                                                                          */
@@ -1911,18 +1959,11 @@ bce_dma_free(struct bce_softc *sc)
 		bus_dma_tag_destroy(sc->ctx_tag);
 	}
 
-	/* Destroy the TX buffer descriptor DMA stuffs. */
-	if (sc->tx_bd_chain_tag != NULL) {
-		for (i = 0; i < sc->tx_pages; i++) {
-			if (sc->tx_bd_chain[i] != NULL) {
-				bus_dmamap_unload(sc->tx_bd_chain_tag,
-						  sc->tx_bd_chain_map[i]);
-				bus_dmamem_free(sc->tx_bd_chain_tag,
-						sc->tx_bd_chain[i],
-						sc->tx_bd_chain_map[i]);
-			}
-		}
-		bus_dma_tag_destroy(sc->tx_bd_chain_tag);
+	/* Free TX rings */
+	if (sc->tx_rings != NULL) {
+		for (i = 0; i < sc->ring_cnt; ++i)
+			bce_destroy_tx_ring(&sc->tx_rings[i]);
+		kfree(sc->tx_rings, M_DEVBUF);
 	}
 
 	/* Destroy the RX buffer descriptor DMA stuffs. */
@@ -1937,17 +1978,6 @@ bce_dma_free(struct bce_softc *sc)
 			}
 		}
 		bus_dma_tag_destroy(sc->rx_bd_chain_tag);
-	}
-
-	/* Destroy the TX mbuf DMA stuffs. */
-	if (sc->tx_mbuf_tag != NULL) {
-		for (i = 0; i < TOTAL_TX_BD(sc); i++) {
-			/* Must have been unloaded in bce_stop() */
-			KKASSERT(sc->tx_mbuf_ptr[i] == NULL);
-			bus_dmamap_destroy(sc->tx_mbuf_tag,
-					   sc->tx_mbuf_map[i]);
-		}
-		bus_dma_tag_destroy(sc->tx_mbuf_tag);
 	}
 
 	/* Destroy the RX mbuf DMA stuffs. */
@@ -1966,24 +1996,12 @@ bce_dma_free(struct bce_softc *sc)
 	if (sc->parent_tag != NULL)
 		bus_dma_tag_destroy(sc->parent_tag);
 
-	if (sc->tx_bd_chain_map != NULL)
-		kfree(sc->tx_bd_chain_map, M_DEVBUF);
-	if (sc->tx_bd_chain != NULL)
-		kfree(sc->tx_bd_chain, M_DEVBUF);
-	if (sc->tx_bd_chain_paddr != NULL)
-		kfree(sc->tx_bd_chain_paddr, M_DEVBUF);
-
 	if (sc->rx_bd_chain_map != NULL)
 		kfree(sc->rx_bd_chain_map, M_DEVBUF);
 	if (sc->rx_bd_chain != NULL)
 		kfree(sc->rx_bd_chain, M_DEVBUF);
 	if (sc->rx_bd_chain_paddr != NULL)
 		kfree(sc->rx_bd_chain_paddr, M_DEVBUF);
-
-	if (sc->tx_mbuf_map != NULL)
-		kfree(sc->tx_mbuf_map, M_DEVBUF);
-	if (sc->tx_mbuf_ptr != NULL)
-		kfree(sc->tx_mbuf_ptr, M_DEVBUF);
 
 	if (sc->rx_mbuf_map != NULL)
 		kfree(sc->rx_mbuf_map, M_DEVBUF);
@@ -2020,6 +2038,122 @@ bce_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 }
 
 
+static int
+bce_create_tx_ring(struct bce_tx_ring *txr)
+{
+	int pages, rc, i;
+
+	txr->tx_wreg = bce_tx_wreg;
+
+	pages = device_getenv_int(txr->sc->bce_dev, "tx_pages", bce_tx_pages);
+	if (pages <= 0 || pages > TX_PAGES_MAX || !powerof2(pages)) {
+		device_printf(txr->sc->bce_dev, "invalid # of TX pages\n");
+		pages = TX_PAGES_DEFAULT;
+	}
+	txr->tx_pages = pages;
+
+	txr->tx_bd_chain_map = kmalloc(sizeof(bus_dmamap_t) * txr->tx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	txr->tx_bd_chain = kmalloc(sizeof(struct tx_bd *) * txr->tx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	txr->tx_bd_chain_paddr = kmalloc(sizeof(bus_addr_t) * txr->tx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+
+	txr->tx_mbuf_map = kmalloc(sizeof(bus_dmamap_t) * TOTAL_TX_BD(txr),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	txr->tx_mbuf_ptr = kmalloc(sizeof(struct mbuf *) * TOTAL_TX_BD(txr),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+
+	/*
+	 * Create a DMA tag for the TX buffer descriptor chain,
+	 * allocate and clear the  memory, and fetch the
+	 * physical address of the block.
+	 */
+	rc = bus_dma_tag_create(txr->sc->parent_tag, BCM_PAGE_SIZE, 0,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BCE_TX_CHAIN_PAGE_SZ, 1, BCE_TX_CHAIN_PAGE_SZ,
+	    0, &txr->tx_bd_chain_tag);
+	if (rc != 0) {
+		device_printf(txr->sc->bce_dev, "Could not allocate "
+		    "TX descriptor chain DMA tag!\n");
+		return rc;
+	}
+
+	for (i = 0; i < txr->tx_pages; i++) {
+		bus_addr_t busaddr;
+
+		rc = bus_dmamem_alloc(txr->tx_bd_chain_tag,
+		    (void **)&txr->tx_bd_chain[i],
+		    BUS_DMA_WAITOK | BUS_DMA_ZERO | BUS_DMA_COHERENT,
+		    &txr->tx_bd_chain_map[i]);
+		if (rc != 0) {
+			device_printf(txr->sc->bce_dev,
+			    "Could not allocate %dth TX descriptor "
+			    "chain DMA memory!\n", i);
+			return rc;
+		}
+
+		rc = bus_dmamap_load(txr->tx_bd_chain_tag,
+		    txr->tx_bd_chain_map[i],
+		    txr->tx_bd_chain[i],
+		    BCE_TX_CHAIN_PAGE_SZ,
+		    bce_dma_map_addr, &busaddr,
+		    BUS_DMA_WAITOK);
+		if (rc != 0) {
+			if (rc == EINPROGRESS) {
+				panic("%s coherent memory loading "
+				    "is still in progress!",
+				    txr->sc->arpcom.ac_if.if_xname);
+			}
+			device_printf(txr->sc->bce_dev, "Could not map %dth "
+			    "TX descriptor chain DMA memory!\n", i);
+			bus_dmamem_free(txr->tx_bd_chain_tag,
+			    txr->tx_bd_chain[i],
+			    txr->tx_bd_chain_map[i]);
+			txr->tx_bd_chain[i] = NULL;
+			return rc;
+		}
+
+		txr->tx_bd_chain_paddr[i] = busaddr;
+	}
+
+	/* Create a DMA tag for TX mbufs. */
+	rc = bus_dma_tag_create(txr->sc->parent_tag, 1, 0,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    IP_MAXPACKET + sizeof(struct ether_vlan_header),
+	    BCE_MAX_SEGMENTS, PAGE_SIZE,
+	    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
+	    &txr->tx_mbuf_tag);
+	if (rc != 0) {
+		device_printf(txr->sc->bce_dev,
+		    "Could not allocate TX mbuf DMA tag!\n");
+		return rc;
+	}
+
+	/* Create DMA maps for the TX mbufs clusters. */
+	for (i = 0; i < TOTAL_TX_BD(txr); i++) {
+		rc = bus_dmamap_create(txr->tx_mbuf_tag,
+		    BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
+		    &txr->tx_mbuf_map[i]);
+		if (rc != 0) {
+			int j;
+
+			for (j = 0; j < i; ++j) {
+				bus_dmamap_destroy(txr->tx_mbuf_tag,
+				    txr->tx_mbuf_map[i]);
+			}
+			bus_dma_tag_destroy(txr->tx_mbuf_tag);
+			txr->tx_mbuf_tag = NULL;
+
+			device_printf(txr->sc->bce_dev, "Unable to create "
+			    "%dth TX mbuf DMA map!\n", i);
+			return rc;
+		}
+	}
+	return 0;
+}
+
+
 /****************************************************************************/
 /* Allocate any DMA memory needed by the driver.                            */
 /*                                                                          */
@@ -2051,46 +2185,6 @@ bce_dma_alloc(struct bce_softc *sc)
 	int i, j, rc = 0, pages;
 	bus_addr_t busaddr, max_busaddr;
 	bus_size_t status_align, stats_align;
-
-	pages = device_getenv_int(sc->bce_dev, "rx_pages", bce_rx_pages);
-	if (pages <= 0 || pages > RX_PAGES_MAX || !powerof2(pages)) {
-		device_printf(sc->bce_dev, "invalid # of RX pages\n");
-		pages = RX_PAGES_DEFAULT;
-	}
-	sc->rx_pages = pages;
-
-	pages = device_getenv_int(sc->bce_dev, "tx_pages", bce_tx_pages);
-	if (pages <= 0 || pages > TX_PAGES_MAX || !powerof2(pages)) {
-		device_printf(sc->bce_dev, "invalid # of TX pages\n");
-		pages = TX_PAGES_DEFAULT;
-	}
-	sc->tx_pages = pages;
-
-	sc->tx_bd_chain_map = kmalloc(sizeof(bus_dmamap_t) * sc->tx_pages,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->tx_bd_chain = kmalloc(sizeof(struct tx_bd *) * sc->tx_pages,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->tx_bd_chain_paddr = kmalloc(sizeof(bus_addr_t) * sc->tx_pages,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-
-	sc->rx_bd_chain_map = kmalloc(sizeof(bus_dmamap_t) * sc->rx_pages,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->rx_bd_chain = kmalloc(sizeof(struct rx_bd *) * sc->rx_pages,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->rx_bd_chain_paddr = kmalloc(sizeof(bus_addr_t) * sc->rx_pages,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-
-	sc->tx_mbuf_map = kmalloc(sizeof(bus_dmamap_t) * TOTAL_TX_BD(sc),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->tx_mbuf_ptr = kmalloc(sizeof(struct mbuf *) * TOTAL_TX_BD(sc),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-
-	sc->rx_mbuf_map = kmalloc(sizeof(bus_dmamap_t) * TOTAL_RX_BD(sc),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->rx_mbuf_ptr = kmalloc(sizeof(struct mbuf *) * TOTAL_RX_BD(sc),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->rx_mbuf_paddr = kmalloc(sizeof(bus_addr_t) * TOTAL_RX_BD(sc),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * The embedded PCIe to PCI-X bridge (EPB) 
@@ -2209,89 +2303,40 @@ bce_dma_alloc(struct bce_softc *sc)
 		}
 	}
 
-	/*
-	 * Create a DMA tag for the TX buffer descriptor chain,
-	 * allocate and clear the  memory, and fetch the
-	 * physical address of the block.
-	 */
-	rc = bus_dma_tag_create(sc->parent_tag, BCM_PAGE_SIZE, 0,
-				BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				NULL, NULL,
-				BCE_TX_CHAIN_PAGE_SZ, 1, BCE_TX_CHAIN_PAGE_SZ,
-				0, &sc->tx_bd_chain_tag);
-	if (rc != 0) {
-		if_printf(ifp, "Could not allocate "
-			  "TX descriptor chain DMA tag!\n");
-		return rc;
-	}
+	sc->tx_rings = kmalloc_cachealign(
+	    sizeof(struct bce_tx_ring) * sc->ring_cnt, M_DEVBUF,
+	    M_WAITOK | M_ZERO);
+	for (i = 0; i < sc->ring_cnt; ++i) {
+		sc->tx_rings[i].sc = sc;
 
-	for (i = 0; i < sc->tx_pages; i++) {
-		rc = bus_dmamem_alloc(sc->tx_bd_chain_tag,
-				      (void **)&sc->tx_bd_chain[i],
-				      BUS_DMA_WAITOK | BUS_DMA_ZERO |
-				      BUS_DMA_COHERENT,
-				      &sc->tx_bd_chain_map[i]);
+		rc = bce_create_tx_ring(&sc->tx_rings[i]);
 		if (rc != 0) {
-			if_printf(ifp, "Could not allocate %dth TX descriptor "
-				  "chain DMA memory!\n", i);
-			return rc;
-		}
-
-		rc = bus_dmamap_load(sc->tx_bd_chain_tag,
-				     sc->tx_bd_chain_map[i],
-				     sc->tx_bd_chain[i], BCE_TX_CHAIN_PAGE_SZ,
-				     bce_dma_map_addr, &busaddr,
-				     BUS_DMA_WAITOK);
-		if (rc != 0) {
-			if (rc == EINPROGRESS) {
-				panic("%s coherent memory loading "
-				      "is still in progress!", ifp->if_xname);
-			}
-			if_printf(ifp, "Could not map %dth TX descriptor "
-				  "chain DMA memory!\n", i);
-			bus_dmamem_free(sc->tx_bd_chain_tag,
-					sc->tx_bd_chain[i],
-					sc->tx_bd_chain_map[i]);
-			sc->tx_bd_chain[i] = NULL;
-			return rc;
-		}
-
-		sc->tx_bd_chain_paddr[i] = busaddr;
-		/* DRC - Fix for 64 bit systems. */
-	}
-
-	/* Create a DMA tag for TX mbufs. */
-	rc = bus_dma_tag_create(sc->parent_tag, 1, 0,
-				BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				NULL, NULL,
-				IP_MAXPACKET + sizeof(struct ether_vlan_header),
-				BCE_MAX_SEGMENTS, PAGE_SIZE,
-				BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
-				BUS_DMA_ONEBPAGE,
-				&sc->tx_mbuf_tag);
-	if (rc != 0) {
-		if_printf(ifp, "Could not allocate TX mbuf DMA tag!\n");
-		return rc;
-	}
-
-	/* Create DMA maps for the TX mbufs clusters. */
-	for (i = 0; i < TOTAL_TX_BD(sc); i++) {
-		rc = bus_dmamap_create(sc->tx_mbuf_tag,
-				       BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
-				       &sc->tx_mbuf_map[i]);
-		if (rc != 0) {
-			for (j = 0; j < i; ++j) {
-				bus_dmamap_destroy(sc->tx_mbuf_tag,
-						   sc->tx_mbuf_map[i]);
-			}
-			bus_dma_tag_destroy(sc->tx_mbuf_tag);
-			sc->tx_mbuf_tag = NULL;
-
-			if_printf(ifp, "Unable to create "
-				  "%dth TX mbuf DMA map!\n", i);
+			device_printf(sc->bce_dev,
+			    "can't create %dth tx ring\n", i);
 			return rc;
 		}
 	}
+
+	pages = device_getenv_int(sc->bce_dev, "rx_pages", bce_rx_pages);
+	if (pages <= 0 || pages > RX_PAGES_MAX || !powerof2(pages)) {
+		device_printf(sc->bce_dev, "invalid # of RX pages\n");
+		pages = RX_PAGES_DEFAULT;
+	}
+	sc->rx_pages = pages;
+
+	sc->rx_bd_chain_map = kmalloc(sizeof(bus_dmamap_t) * sc->rx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->rx_bd_chain = kmalloc(sizeof(struct rx_bd *) * sc->rx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->rx_bd_chain_paddr = kmalloc(sizeof(bus_addr_t) * sc->rx_pages,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+
+	sc->rx_mbuf_map = kmalloc(sizeof(bus_dmamap_t) * TOTAL_RX_BD(sc),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->rx_mbuf_ptr = kmalloc(sizeof(struct mbuf *) * TOTAL_RX_BD(sc),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->rx_mbuf_paddr = kmalloc(sizeof(bus_addr_t) * TOTAL_RX_BD(sc),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * Create a DMA tag for the RX buffer descriptor chain,
@@ -3278,6 +3323,7 @@ static void
 bce_stop(struct bce_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -3294,7 +3340,8 @@ bce_stop(struct bce_softc *sc)
 	bce_free_rx_chain(sc);
 
 	/* Free TX buffers. */
-	bce_free_tx_chain(sc);
+	for (i = 0; i < sc->ring_cnt; ++i)
+		bce_free_tx_chain(&sc->tx_rings[i]);
 
 	sc->bce_link = 0;
 	sc->bce_coalchg_mask = 0;
@@ -3714,39 +3761,42 @@ bce_setup_rxdesc_std(struct bce_softc *sc, uint16_t chain_prod, uint32_t *prod_b
 /*   Nothing                                                                */
 /****************************************************************************/
 static void
-bce_init_tx_context(struct bce_softc *sc)
+bce_init_tx_context(struct bce_tx_ring *txr)
 {
 	uint32_t val;
 
 	/* Initialize the context ID for an L2 TX chain. */
-	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
-	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+	if (BCE_CHIP_NUM(txr->sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(txr->sc) == BCE_CHIP_NUM_5716) {
 		/* Set the CID type to support an L2 connection. */
 		val = BCE_L2CTX_TX_TYPE_TYPE_L2 | BCE_L2CTX_TX_TYPE_SIZE_L2;
-		CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TX_TYPE_XI, val);
+		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
+		    BCE_L2CTX_TX_TYPE_XI, val);
 		val = BCE_L2CTX_TX_CMD_TYPE_TYPE_L2 | (8 << 16);
-		CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TX_CMD_TYPE_XI, val);
+		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
+		    BCE_L2CTX_TX_CMD_TYPE_XI, val);
 
 		/* Point the hardware to the first page in the chain. */
-		val = BCE_ADDR_HI(sc->tx_bd_chain_paddr[0]);
-		CTX_WR(sc, GET_CID_ADDR(TX_CID),
+		val = BCE_ADDR_HI(txr->tx_bd_chain_paddr[0]);
+		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
 		    BCE_L2CTX_TX_TBDR_BHADDR_HI_XI, val);
-		val = BCE_ADDR_LO(sc->tx_bd_chain_paddr[0]);
-		CTX_WR(sc, GET_CID_ADDR(TX_CID),
+		val = BCE_ADDR_LO(txr->tx_bd_chain_paddr[0]);
+		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
 		    BCE_L2CTX_TX_TBDR_BHADDR_LO_XI, val);
 	} else {
 		/* Set the CID type to support an L2 connection. */
 		val = BCE_L2CTX_TX_TYPE_TYPE_L2 | BCE_L2CTX_TX_TYPE_SIZE_L2;
-		CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TX_TYPE, val);
+		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TX_TYPE, val);
 		val = BCE_L2CTX_TX_CMD_TYPE_TYPE_L2 | (8 << 16);
-		CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TX_CMD_TYPE, val);
+		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
+		    BCE_L2CTX_TX_CMD_TYPE, val);
 
 		/* Point the hardware to the first page in the chain. */
-		val = BCE_ADDR_HI(sc->tx_bd_chain_paddr[0]);
-		CTX_WR(sc, GET_CID_ADDR(TX_CID),
+		val = BCE_ADDR_HI(txr->tx_bd_chain_paddr[0]);
+		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
 		    BCE_L2CTX_TX_TBDR_BHADDR_HI, val);
-		val = BCE_ADDR_LO(sc->tx_bd_chain_paddr[0]);
-		CTX_WR(sc, GET_CID_ADDR(TX_CID),
+		val = BCE_ADDR_LO(txr->tx_bd_chain_paddr[0]);
+		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
 		    BCE_L2CTX_TX_TBDR_BHADDR_LO, val);
 	}
 }
@@ -3759,17 +3809,17 @@ bce_init_tx_context(struct bce_softc *sc)
 /*   0 for success, positive value for failure.                             */
 /****************************************************************************/
 static int
-bce_init_tx_chain(struct bce_softc *sc)
+bce_init_tx_chain(struct bce_tx_ring *txr)
 {
 	struct tx_bd *txbd;
 	int i, rc = 0;
 
 	/* Set the initial TX producer/consumer indices. */
-	sc->tx_prod = 0;
-	sc->tx_cons = 0;
-	sc->tx_prod_bseq   = 0;
-	sc->used_tx_bd = 0;
-	sc->max_tx_bd = USABLE_TX_BD(sc);
+	txr->tx_prod = 0;
+	txr->tx_cons = 0;
+	txr->tx_prod_bseq = 0;
+	txr->used_tx_bd = 0;
+	txr->max_tx_bd = USABLE_TX_BD(txr);
 
 	/*
 	 * The NetXtreme II supports a linked-list structre called
@@ -3782,23 +3832,23 @@ bce_init_tx_chain(struct bce_softc *sc)
 	 */
 
 	/* Set the TX next pointer chain entries. */
-	for (i = 0; i < sc->tx_pages; i++) {
+	for (i = 0; i < txr->tx_pages; i++) {
 		int j;
 
-		txbd = &sc->tx_bd_chain[i][USABLE_TX_BD_PER_PAGE];
+		txbd = &txr->tx_bd_chain[i][USABLE_TX_BD_PER_PAGE];
 
 		/* Check if we've reached the last page. */
-		if (i == (sc->tx_pages - 1))
+		if (i == (txr->tx_pages - 1))
 			j = 0;
 		else
 			j = i + 1;
 
 		txbd->tx_bd_haddr_hi =
-			htole32(BCE_ADDR_HI(sc->tx_bd_chain_paddr[j]));
+		    htole32(BCE_ADDR_HI(txr->tx_bd_chain_paddr[j]));
 		txbd->tx_bd_haddr_lo =
-			htole32(BCE_ADDR_LO(sc->tx_bd_chain_paddr[j]));
+		    htole32(BCE_ADDR_LO(txr->tx_bd_chain_paddr[j]));
 	}
-	bce_init_tx_context(sc);
+	bce_init_tx_context(txr);
 
 	return(rc);
 }
@@ -3811,23 +3861,24 @@ bce_init_tx_chain(struct bce_softc *sc)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_free_tx_chain(struct bce_softc *sc)
+bce_free_tx_chain(struct bce_tx_ring *txr)
 {
 	int i;
 
 	/* Unmap, unload, and free any mbufs still in the TX mbuf chain. */
-	for (i = 0; i < TOTAL_TX_BD(sc); i++) {
-		if (sc->tx_mbuf_ptr[i] != NULL) {
-			bus_dmamap_unload(sc->tx_mbuf_tag, sc->tx_mbuf_map[i]);
-			m_freem(sc->tx_mbuf_ptr[i]);
-			sc->tx_mbuf_ptr[i] = NULL;
+	for (i = 0; i < TOTAL_TX_BD(txr); i++) {
+		if (txr->tx_mbuf_ptr[i] != NULL) {
+			bus_dmamap_unload(txr->tx_mbuf_tag,
+			    txr->tx_mbuf_map[i]);
+			m_freem(txr->tx_mbuf_ptr[i]);
+			txr->tx_mbuf_ptr[i] = NULL;
 		}
 	}
 
 	/* Clear each TX chain page. */
-	for (i = 0; i < sc->tx_pages; i++)
-		bzero(sc->tx_bd_chain[i], BCE_TX_CHAIN_PAGE_SZ);
-	sc->used_tx_bd = 0;
+	for (i = 0; i < txr->tx_pages; i++)
+		bzero(txr->tx_bd_chain[i], BCE_TX_CHAIN_PAGE_SZ);
+	txr->used_tx_bd = 0;
 }
 
 
@@ -4315,50 +4366,50 @@ bce_get_hw_tx_cons(struct bce_softc *sc)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_tx_intr(struct bce_softc *sc, uint16_t hw_tx_cons)
+bce_tx_intr(struct bce_tx_ring *txr, uint16_t hw_tx_cons)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct ifnet *ifp = &txr->sc->arpcom.ac_if;
 	uint16_t sw_tx_cons, sw_tx_chain_cons;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* Get the hardware's view of the TX consumer index. */
-	sw_tx_cons = sc->tx_cons;
+	sw_tx_cons = txr->tx_cons;
 
 	/* Cycle through any completed TX chain page entries. */
 	while (sw_tx_cons != hw_tx_cons) {
-		sw_tx_chain_cons = TX_CHAIN_IDX(sc, sw_tx_cons);
+		sw_tx_chain_cons = TX_CHAIN_IDX(txr, sw_tx_cons);
 
 		/*
 		 * Free the associated mbuf. Remember
 		 * that only the last tx_bd of a packet
 		 * has an mbuf pointer and DMA map.
 		 */
-		if (sc->tx_mbuf_ptr[sw_tx_chain_cons] != NULL) {
+		if (txr->tx_mbuf_ptr[sw_tx_chain_cons] != NULL) {
 			/* Unmap the mbuf. */
-			bus_dmamap_unload(sc->tx_mbuf_tag,
-					  sc->tx_mbuf_map[sw_tx_chain_cons]);
+			bus_dmamap_unload(txr->tx_mbuf_tag,
+			    txr->tx_mbuf_map[sw_tx_chain_cons]);
 
 			/* Free the mbuf. */
-			m_freem(sc->tx_mbuf_ptr[sw_tx_chain_cons]);
-			sc->tx_mbuf_ptr[sw_tx_chain_cons] = NULL;
+			m_freem(txr->tx_mbuf_ptr[sw_tx_chain_cons]);
+			txr->tx_mbuf_ptr[sw_tx_chain_cons] = NULL;
 
 			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 
-		sc->used_tx_bd--;
+		txr->used_tx_bd--;
 		sw_tx_cons = NEXT_TX_BD(sw_tx_cons);
 	}
 
-	if (sc->used_tx_bd == 0) {
+	if (txr->used_tx_bd == 0) {
 		/* Clear the TX timeout timer. */
 		ifp->if_timer = 0;
 	}
 
 	/* Clear the tx hardware queue full flag. */
-	if (sc->max_tx_bd - sc->used_tx_bd >= BCE_TX_SPARE_SPACE)
+	if (txr->max_tx_bd - txr->used_tx_bd >= BCE_TX_SPARE_SPACE)
 		ifq_clr_oactive(&ifp->if_snd);
-	sc->tx_cons = sw_tx_cons;
+	txr->tx_cons = sw_tx_cons;
 }
 
 
@@ -4451,7 +4502,7 @@ bce_init(void *xsc)
 	struct bce_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t ether_mtu;
-	int error;
+	int error, i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -4515,7 +4566,8 @@ bce_init(void *xsc)
 	bce_init_rx_chain(sc);	/* XXX return value */
 
 	/* Init TX buffer descriptor chain. */
-	bce_init_tx_chain(sc);	/* XXX return value */
+	for (i = 0; i < sc->ring_cnt; ++i)
+		bce_init_tx_chain(&sc->tx_rings[i]);
 
 #ifdef IFPOLL_ENABLE
 	/* Disable interrupts if we are polling. */
@@ -4583,7 +4635,7 @@ bce_mgmt_init(struct bce_softc *sc)
 /*   0 for success, positive value for failure.                             */
 /****************************************************************************/
 static int
-bce_encap(struct bce_softc *sc, struct mbuf **m_head, int *nsegs_used)
+bce_encap(struct bce_tx_ring *txr, struct mbuf **m_head, int *nsegs_used)
 {
 	bus_dma_segment_t segs[BCE_MAX_SEGMENTS];
 	bus_dmamap_t map, tmp_map;
@@ -4596,7 +4648,7 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head, int *nsegs_used)
 
 	/* Transfer any checksum offload flags to the bd. */
 	if (m0->m_pkthdr.csum_flags & CSUM_TSO) {
-		error = bce_tso_setup(sc, m_head, &flags, &mss);
+		error = bce_tso_setup(txr, m_head, &flags, &mss);
 		if (error)
 			return ENOBUFS;
 		m0 = *m_head;
@@ -4613,24 +4665,24 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head, int *nsegs_used)
 		vlan_tag = m0->m_pkthdr.ether_vlantag;
 	}
 
-	prod = sc->tx_prod;
-	chain_prod_start = chain_prod = TX_CHAIN_IDX(sc, prod);
+	prod = txr->tx_prod;
+	chain_prod_start = chain_prod = TX_CHAIN_IDX(txr, prod);
 
 	/* Map the mbuf into DMAable memory. */
-	map = sc->tx_mbuf_map[chain_prod_start];
+	map = txr->tx_mbuf_map[chain_prod_start];
 
-	maxsegs = sc->max_tx_bd - sc->used_tx_bd;
+	maxsegs = txr->max_tx_bd - txr->used_tx_bd;
 	KASSERT(maxsegs >= BCE_TX_SPARE_SPACE,
 		("not enough segments %d", maxsegs));
 	if (maxsegs > BCE_MAX_SEGMENTS)
 		maxsegs = BCE_MAX_SEGMENTS;
 
 	/* Map the mbuf into our DMA address space. */
-	error = bus_dmamap_load_mbuf_defrag(sc->tx_mbuf_tag, map, m_head,
+	error = bus_dmamap_load_mbuf_defrag(txr->tx_mbuf_tag, map, m_head,
 			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error)
 		goto back;
-	bus_dmamap_sync(sc->tx_mbuf_tag, map, BUS_DMASYNC_PREWRITE);
+	bus_dmamap_sync(txr->tx_mbuf_tag, map, BUS_DMASYNC_PREWRITE);
 
 	*nsegs_used += nsegs;
 
@@ -4638,7 +4690,7 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head, int *nsegs_used)
 	m0 = *m_head;
 
 	/* prod points to an empty tx_bd at this point. */
-	prod_bseq  = sc->tx_prod_bseq;
+	prod_bseq  = txr->tx_prod_bseq;
 
 	/*
 	 * Cycle through each mbuf segment that makes up
@@ -4647,8 +4699,9 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head, int *nsegs_used)
 	 * the mbuf.
 	 */
 	for (i = 0; i < nsegs; i++) {
-		chain_prod = TX_CHAIN_IDX(sc, prod);
-		txbd= &sc->tx_bd_chain[TX_PAGE(chain_prod)][TX_IDX(chain_prod)];
+		chain_prod = TX_CHAIN_IDX(txr, prod);
+		txbd =
+		&txr->tx_bd_chain[TX_PAGE(chain_prod)][TX_IDX(chain_prod)];
 
 		txbd->tx_bd_haddr_lo = htole32(BCE_ADDR_LO(segs[i].ds_addr));
 		txbd->tx_bd_haddr_hi = htole32(BCE_ADDR_HI(segs[i].ds_addr));
@@ -4675,17 +4728,17 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head, int *nsegs_used)
 	 * unload the map before all of the segments
 	 * have been freed.
 	 */
-	sc->tx_mbuf_ptr[chain_prod] = m0;
+	txr->tx_mbuf_ptr[chain_prod] = m0;
 
-	tmp_map = sc->tx_mbuf_map[chain_prod];
-	sc->tx_mbuf_map[chain_prod] = map;
-	sc->tx_mbuf_map[chain_prod_start] = tmp_map;
+	tmp_map = txr->tx_mbuf_map[chain_prod];
+	txr->tx_mbuf_map[chain_prod] = map;
+	txr->tx_mbuf_map[chain_prod_start] = tmp_map;
 
-	sc->used_tx_bd += nsegs;
+	txr->used_tx_bd += nsegs;
 
 	/* prod points to the next free tx_bd at this point. */
-	sc->tx_prod = prod;
-	sc->tx_prod_bseq = prod_bseq;
+	txr->tx_prod = prod;
+	txr->tx_prod_bseq = prod_bseq;
 back:
 	if (error) {
 		m_freem(*m_head);
@@ -4696,13 +4749,13 @@ back:
 
 
 static void
-bce_xmit(struct bce_softc *sc)
+bce_xmit(struct bce_tx_ring *txr)
 {
 	/* Start the transmit. */
-	REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX,
-	    sc->tx_prod);
-	REG_WR(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ,
-	    sc->tx_prod_bseq);
+	REG_WR16(txr->sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX,
+	    txr->tx_prod);
+	REG_WR(txr->sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ,
+	    txr->tx_prod_bseq);
 }
 
 
@@ -4716,6 +4769,7 @@ static void
 bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct bce_softc *sc = ifp->if_softc;
+	struct bce_tx_ring *txr = &sc->tx_rings[0];
 	int count = 0;
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
@@ -4737,7 +4791,7 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 * We keep BCE_TX_SPARE_SPACE entries, so bce_encap() is
 		 * unlikely to fail.
 		 */
-		if (sc->max_tx_bd - sc->used_tx_bd < BCE_TX_SPARE_SPACE) {
+		if (txr->max_tx_bd - txr->used_tx_bd < BCE_TX_SPARE_SPACE) {
 			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
@@ -4753,9 +4807,9 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 * head of the queue and set the OACTIVE flag
 		 * to wait for the NIC to drain the chain.
 		 */
-		if (bce_encap(sc, &m_head, &count)) {
+		if (bce_encap(txr, &m_head, &count)) {
 			IFNET_STAT_INC(ifp, oerrors, 1);
-			if (sc->used_tx_bd == 0) {
+			if (txr->used_tx_bd == 0) {
 				continue;
 			} else {
 				ifq_set_oactive(&ifp->if_snd);
@@ -4763,8 +4817,8 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			}
 		}
 
-		if (count >= sc->tx_wreg) {
-			bce_xmit(sc);
+		if (count >= txr->tx_wreg) {
+			bce_xmit(txr);
 			count = 0;
 		}
 
@@ -4775,7 +4829,7 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		ifp->if_timer = BCE_TX_TIMEOUT;
 	}
 	if (count > 0)
-		bce_xmit(sc);
+		bce_xmit(txr);
 }
 
 
@@ -4914,6 +4968,7 @@ bce_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 {
 	struct bce_softc *sc = ifp->if_softc;
 	struct status_block *sblk = sc->status_block;
+	struct bce_tx_ring *txr = &sc->tx_rings[0];
 	uint16_t hw_tx_cons, hw_rx_cons;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
@@ -4967,8 +5022,8 @@ bce_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 		bce_rx_intr(sc, count, hw_rx_cons);
 
 	/* Check for any completed TX frames. */
-	if (hw_tx_cons != sc->tx_cons)
-		bce_tx_intr(sc, hw_tx_cons);
+	if (hw_tx_cons != txr->tx_cons)
+		bce_tx_intr(txr, hw_tx_cons);
 
 	if (sc->bce_coalchg_mask)
 		bce_coal_change(sc);
@@ -5037,6 +5092,7 @@ bce_intr(struct bce_softc *sc)
 	struct status_block *sblk;
 	uint16_t hw_rx_cons, hw_tx_cons;
 	uint32_t status_attn_bits;
+	struct bce_tx_ring *txr = &sc->tx_rings[0];
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -5088,8 +5144,8 @@ bce_intr(struct bce_softc *sc)
 		bce_rx_intr(sc, -1, hw_rx_cons);
 
 	/* Check for any completed TX frames. */
-	if (hw_tx_cons != sc->tx_cons)
-		bce_tx_intr(sc, hw_tx_cons);
+	if (hw_tx_cons != txr->tx_cons)
+		bce_tx_intr(txr, hw_tx_cons);
 
 	/* Re-enable interrupts. */
 	bce_reenable_intr(sc);
@@ -5519,6 +5575,7 @@ bce_check_msi(void *xsc)
 	struct bce_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct status_block *sblk = sc->status_block;
+	struct bce_tx_ring *txr = &sc->tx_rings[0];
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
@@ -5530,11 +5587,11 @@ bce_check_msi(void *xsc)
 	}
 
 	if (bce_get_hw_rx_cons(sc) != sc->rx_cons ||
-	    bce_get_hw_tx_cons(sc) != sc->tx_cons ||
+	    bce_get_hw_tx_cons(sc) != txr->tx_cons ||
 	    (sblk->status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
 	    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE)) {
 		if (sc->bce_check_rx_cons == sc->rx_cons &&
-		    sc->bce_check_tx_cons == sc->tx_cons &&
+		    sc->bce_check_tx_cons == txr->tx_cons &&
 		    sc->bce_check_status_idx == sc->last_status_idx) {
 			uint32_t msi_ctrl;
 
@@ -5560,7 +5617,7 @@ bce_check_msi(void *xsc)
 	}
 	sc->bce_msi_maylose = FALSE;
 	sc->bce_check_rx_cons = sc->rx_cons;
-	sc->bce_check_tx_cons = sc->tx_cons;
+	sc->bce_check_tx_cons = txr->tx_cons;
 	sc->bce_check_status_idx = sc->last_status_idx;
 
 done:
@@ -5684,10 +5741,10 @@ bce_add_sysctls(struct bce_softc *sc)
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "rx_pages",
 		CTLFLAG_RD, &sc->rx_pages, 0, "# of RX pages");
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_pages",
-		CTLFLAG_RD, &sc->tx_pages, 0, "# of TX pages");
+		CTLFLAG_RD, &sc->tx_rings[0].tx_pages, 0, "# of TX pages");
 
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_wreg",
-	    	CTLFLAG_RW, &sc->tx_wreg, 0,
+	    	CTLFLAG_RW, &sc->tx_rings[0].tx_wreg, 0,
 		"# segments before write to hardware registers");
 
 	SYSCTL_ADD_ULONG(ctx, children, OID_AUTO, 
@@ -6131,7 +6188,7 @@ bce_coal_change(struct bce_softc *sc)
 }
 
 static int
-bce_tso_setup(struct bce_softc *sc, struct mbuf **mp,
+bce_tso_setup(struct bce_tx_ring *txr, struct mbuf **mp,
     uint16_t *flags0, uint16_t *mss0)
 {
 	struct mbuf *m;
