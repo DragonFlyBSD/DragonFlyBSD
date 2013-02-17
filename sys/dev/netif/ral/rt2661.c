@@ -2509,7 +2509,12 @@ rt2661_load_microcode(struct rt2661_softc *sc)
 		    __func__, sc->sc_id);
 		return EINVAL;
 	}
+
+	wlan_assert_serialized();
+	wlan_serialize_exit();
 	fp = firmware_get(imagename);
+	wlan_serialize_enter();
+
 	if (fp == NULL) {
 		if_printf(ifp, "%s: unable to retrieve firmware image %s\n",
 		    __func__, imagename);
