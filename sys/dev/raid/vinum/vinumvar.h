@@ -38,7 +38,9 @@
  * advised of the possibility of such damage.
  */
 
+#ifdef _KERNEL
 #include "opt_vinum.h"
+#endif
 
 #include <sys/time.h>
 #include "vinumstate.h"
