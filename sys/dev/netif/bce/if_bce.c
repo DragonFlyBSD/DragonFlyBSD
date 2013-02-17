@@ -352,6 +352,7 @@ static int	bce_init_rx_chain(struct bce_softc *);
 static void	bce_free_rx_chain(struct bce_softc *);
 static void	bce_free_tx_chain(struct bce_softc *);
 
+static void	bce_xmit(struct bce_softc *);
 static int	bce_encap(struct bce_softc *, struct mbuf **, int *);
 static int	bce_tso_setup(struct bce_softc *, struct mbuf **,
 		    uint16_t *, uint16_t *);
@@ -4694,6 +4695,17 @@ back:
 }
 
 
+static void
+bce_xmit(struct bce_softc *sc)
+{
+	/* Start the transmit. */
+	REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX,
+	    sc->tx_prod);
+	REG_WR(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ,
+	    sc->tx_prod_bseq);
+}
+
+
 /****************************************************************************/
 /* Main transmit routine when called from another routine with a lock.      */
 /*                                                                          */
@@ -4752,11 +4764,7 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		}
 
 		if (count >= sc->tx_wreg) {
-			/* Start the transmit. */
-			REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) +
-			    BCE_L2CTX_TX_HOST_BIDX, sc->tx_prod);
-			REG_WR(sc, MB_GET_CID_ADDR(TX_CID) +
-			    BCE_L2CTX_TX_HOST_BSEQ, sc->tx_prod_bseq);
+			bce_xmit(sc);
 			count = 0;
 		}
 
@@ -4766,13 +4774,8 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		/* Set the tx timeout. */
 		ifp->if_timer = BCE_TX_TIMEOUT;
 	}
-	if (count > 0) {
-		/* Start the transmit. */
-		REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX,
-		    sc->tx_prod);
-		REG_WR(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ,
-		    sc->tx_prod_bseq);
-	}
+	if (count > 0)
+		bce_xmit(sc);
 }
 
 
