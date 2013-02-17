@@ -75,6 +75,7 @@ TGTS=	all all-man buildkernel quickkernel nativekernel \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installmost installworld libraries lint maninstall \
 	manlint mk most obj objlink regress rerelease tags \
+	backupworld restoreworld \
 	_obj _includes _libraries _depend _worldtmp \
 	_bootstrap-tools _build-tools _cross-tools
 
