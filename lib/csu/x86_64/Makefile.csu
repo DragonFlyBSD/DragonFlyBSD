@@ -10,6 +10,7 @@ WARNS?=		2
 CFLAGS+=	-I${CSUDIR}/../common \
 		-I${CSUDIR}/../../libc/include
 CFLAGS+=	-fno-omit-frame-pointer
+CFLAGS+=	-fno-asynchronous-unwind-tables
 
 .PATH:		${CSUDIR} ${CSUDIR}/../common
 
