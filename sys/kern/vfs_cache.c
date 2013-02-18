@@ -2845,10 +2845,21 @@ _cache_cleanneg(int count)
 		TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
 		_cache_hold(ncp);
 		spin_unlock(&ncspin);
+
+		/*
+		 * This can race, so we must re-check that the ncp
+		 * is on the ncneglist after successfully locking it.
+		 */
 		if (_cache_lock_special(ncp) == 0) {
-			ncp = cache_zap(ncp, 1);
-			if (ncp)
-				_cache_drop(ncp);
+			if (ncp->nc_vp == NULL &&
+			    (ncp->nc_flag & NCF_UNRESOLVED) == 0) {
+				ncp = cache_zap(ncp, 1);
+				if (ncp)
+					_cache_drop(ncp);
+			} else {
+				kprintf("cache_cleanneg: race avoided\n");
+				_cache_unlock(ncp);
+			}
 		} else {
 			_cache_drop(ncp);
 		}
