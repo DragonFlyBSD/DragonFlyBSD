@@ -64,7 +64,7 @@
 
 #ifdef LWBUF_IS_OPTIMAL
 
-static int vm_read_shortcut_enable = 0;
+static int vm_read_shortcut_enable = 1;
 static long vm_read_shortcut_count;
 static long vm_read_shortcut_failed;
 SYSCTL_INT(_vm, OID_AUTO, read_shortcut_enable, CTLFLAG_RW,
@@ -358,27 +358,23 @@ vop_helper_read_shortcut(struct vop_read_args *ap)
 		if (n == 0)
 			break;	/* hit EOF */
 
-		m = vm_page_lookup(obj, OFF_TO_IDX(uio->uio_offset));
-		if (m == NULL) {
+		m = vm_page_lookup_busy_try(obj, OFF_TO_IDX(uio->uio_offset),
+					    FALSE, &error);
+		if (error || m == NULL) {
 			++vm_read_shortcut_failed;
-			break;
-		}
-		vm_page_hold(m);
-		if (m->flags & PG_BUSY) {
-			++vm_read_shortcut_failed;
-			vm_page_unhold(m);
+			error = 0;
 			break;
 		}
 		if ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
 			++vm_read_shortcut_failed;
-			vm_page_unhold(m);
+			vm_page_wakeup(m);
 			break;
 		}
 		lwb = lwbuf_alloc(m, &lwb_cache);
 		error = uiomove((char *)lwbuf_kva(lwb) + offset, n, uio);
 		vm_page_flag_set(m, PG_REFERENCED);
 		lwbuf_free(lwb);
-		vm_page_unhold(m);
+		vm_page_wakeup(m);
 	}
 	vm_object_drop(obj);
 
