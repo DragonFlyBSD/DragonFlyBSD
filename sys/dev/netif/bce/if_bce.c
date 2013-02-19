@@ -281,7 +281,9 @@ static int	bce_probe(device_t);
 static int	bce_attach(device_t);
 static int	bce_detach(device_t);
 static void	bce_shutdown(device_t);
-
+static int	bce_miibus_read_reg(device_t, int, int);
+static int	bce_miibus_write_reg(device_t, int, int, int);
+static void	bce_miibus_statchg(device_t);
 
 /****************************************************************************/
 /* BCE Register/Memory Access Routines                                      */
@@ -291,10 +293,6 @@ static void	bce_reg_wr_ind(struct bce_softc *, uint32_t, uint32_t);
 static void	bce_shmem_wr(struct bce_softc *, uint32_t, uint32_t);
 static uint32_t	bce_shmem_rd(struct bce_softc *, u32);
 static void	bce_ctx_wr(struct bce_softc *, uint32_t, uint32_t, uint32_t);
-static int	bce_miibus_read_reg(device_t, int, int);
-static int	bce_miibus_write_reg(device_t, int, int, int);
-static void	bce_miibus_statchg(device_t);
-
 
 /****************************************************************************/
 /* BCE NVRAM Access Routines                                                */
@@ -304,7 +302,7 @@ static int	bce_release_nvram_lock(struct bce_softc *);
 static void	bce_enable_nvram_access(struct bce_softc *);
 static void	bce_disable_nvram_access(struct bce_softc *);
 static int	bce_nvram_read_dword(struct bce_softc *, uint32_t, uint8_t *,
-				     uint32_t);
+		    uint32_t);
 static int	bce_init_nvram(struct bce_softc *);
 static int	bce_nvram_read(struct bce_softc *, uint32_t, uint8_t *, int);
 static int	bce_nvram_test(struct bce_softc *);
@@ -321,9 +319,9 @@ static void	bce_dma_map_addr(void *, bus_dma_segment_t *, int, int);
 /****************************************************************************/
 static int	bce_fw_sync(struct bce_softc *, uint32_t);
 static void	bce_load_rv2p_fw(struct bce_softc *, uint32_t *,
-				 uint32_t, uint32_t);
+		    uint32_t, uint32_t);
 static void	bce_load_cpu_fw(struct bce_softc *, struct cpu_reg *,
-				struct fw_info *);
+		    struct fw_info *);
 static void	bce_start_cpu(struct bce_softc *, struct cpu_reg *);
 static void	bce_halt_cpu(struct bce_softc *, struct cpu_reg *);
 static void	bce_start_rxp_cpu(struct bce_softc *);
@@ -338,64 +336,65 @@ static void	bce_stop(struct bce_softc *);
 static int	bce_reset(struct bce_softc *, uint32_t);
 static int	bce_chipinit(struct bce_softc *);
 static int	bce_blockinit(struct bce_softc *);
-static int	bce_newbuf_std(struct bce_rx_ring *, uint16_t *, uint16_t *,
-		    uint32_t *, int);
-static void	bce_setup_rxdesc_std(struct bce_rx_ring *, uint16_t,
-		    uint32_t *);
 static void	bce_probe_pci_caps(struct bce_softc *);
 static void	bce_print_adapter_info(struct bce_softc *);
 static void	bce_get_media(struct bce_softc *);
+static void	bce_mgmt_init(struct bce_softc *);
+static int	bce_init_ctx(struct bce_softc *);
+static void	bce_get_mac_addr(struct bce_softc *);
+static void	bce_set_mac_addr(struct bce_softc *);
+static void	bce_set_rx_mode(struct bce_softc *);
+static void	bce_coal_change(struct bce_softc *);
 
 static int	bce_create_tx_ring(struct bce_tx_ring *);
 static void	bce_destroy_tx_ring(struct bce_tx_ring *);
 static void	bce_init_tx_context(struct bce_tx_ring *);
 static int	bce_init_tx_chain(struct bce_tx_ring *);
 static void	bce_free_tx_chain(struct bce_tx_ring *);
+static void	bce_xmit(struct bce_tx_ring *);
+static int	bce_encap(struct bce_tx_ring *, struct mbuf **, int *);
+static int	bce_tso_setup(struct bce_tx_ring *, struct mbuf **,
+		    uint16_t *, uint16_t *);
+
 static int	bce_create_rx_ring(struct bce_rx_ring *);
 static void	bce_destroy_rx_ring(struct bce_rx_ring *);
 static void	bce_init_rx_context(struct bce_rx_ring *);
 static int	bce_init_rx_chain(struct bce_rx_ring *);
 static void	bce_free_rx_chain(struct bce_rx_ring *);
+static int	bce_newbuf_std(struct bce_rx_ring *, uint16_t *, uint16_t *,
+		    uint32_t *, int);
+static void	bce_setup_rxdesc_std(struct bce_rx_ring *, uint16_t,
+		    uint32_t *);
 
-static void	bce_xmit(struct bce_tx_ring *);
-static int	bce_encap(struct bce_tx_ring *, struct mbuf **, int *);
-static int	bce_tso_setup(struct bce_tx_ring *, struct mbuf **,
-		    uint16_t *, uint16_t *);
 static void	bce_start(struct ifnet *, struct ifaltq_subque *);
 static int	bce_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bce_watchdog(struct ifnet *);
 static int	bce_ifmedia_upd(struct ifnet *);
 static void	bce_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static void	bce_init(void *);
-static void	bce_mgmt_init(struct bce_softc *);
-
-static int	bce_init_ctx(struct bce_softc *);
-static void	bce_get_mac_addr(struct bce_softc *);
-static void	bce_set_mac_addr(struct bce_softc *);
-static void	bce_phy_intr(struct bce_softc *);
-static void	bce_rx_intr(struct bce_rx_ring *, int, uint16_t);
-static void	bce_tx_intr(struct bce_tx_ring *, uint16_t);
-static void	bce_disable_intr(struct bce_softc *);
-static void	bce_enable_intr(struct bce_softc *);
-static void	bce_reenable_intr(struct bce_softc *);
-
 #ifdef IFPOLL_ENABLE
 static void	bce_npoll(struct ifnet *, struct ifpoll_info *);
 static void	bce_npoll_compat(struct ifnet *, void *, int);
 #endif
+
 static void	bce_intr(struct bce_softc *);
 static void	bce_intr_legacy(void *);
 static void	bce_intr_msi(void *);
 static void	bce_intr_msi_oneshot(void *);
-static void	bce_set_rx_mode(struct bce_softc *);
+static void	bce_tx_intr(struct bce_tx_ring *, uint16_t);
+static void	bce_rx_intr(struct bce_rx_ring *, int, uint16_t);
+static void	bce_phy_intr(struct bce_softc *);
+static void	bce_disable_intr(struct bce_softc *);
+static void	bce_enable_intr(struct bce_softc *);
+static void	bce_reenable_intr(struct bce_softc *);
+static void	bce_check_msi(void *);
+
 static void	bce_stats_update(struct bce_softc *);
 static void	bce_tick(void *);
 static void	bce_tick_serialized(struct bce_softc *);
 static void	bce_pulse(void *);
-static void	bce_check_msi(void *);
-static void	bce_add_sysctls(struct bce_softc *);
 
-static void	bce_coal_change(struct bce_softc *);
+static void	bce_add_sysctls(struct bce_softc *);
 static int	bce_sysctl_tx_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_tx_bds(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_tx_ticks_int(SYSCTL_HANDLER_ARGS);
@@ -405,7 +404,7 @@ static int	bce_sysctl_rx_bds(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_rx_ticks_int(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_rx_ticks(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_coal_change(SYSCTL_HANDLER_ARGS,
-				       uint32_t *, uint32_t);
+		    uint32_t *, uint32_t);
 
 /*
  * NOTE:
