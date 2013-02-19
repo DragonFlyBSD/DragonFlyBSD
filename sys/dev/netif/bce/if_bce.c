@@ -345,6 +345,9 @@ static void	bce_get_mac_addr(struct bce_softc *);
 static void	bce_set_mac_addr(struct bce_softc *);
 static void	bce_set_rx_mode(struct bce_softc *);
 static void	bce_coal_change(struct bce_softc *);
+static void	bce_setup_serialize(struct bce_softc *);
+static void	bce_serialize_skipmain(struct bce_softc *);
+static void	bce_deserialize_skipmain(struct bce_softc *);
 
 static int	bce_create_tx_ring(struct bce_tx_ring *);
 static void	bce_destroy_tx_ring(struct bce_tx_ring *);
@@ -375,6 +378,13 @@ static void	bce_init(void *);
 #ifdef IFPOLL_ENABLE
 static void	bce_npoll(struct ifnet *, struct ifpoll_info *);
 static void	bce_npoll_compat(struct ifnet *, void *, int);
+#endif
+static void	bce_serialize(struct ifnet *, enum ifnet_serialize);
+static void	bce_deserialize(struct ifnet *, enum ifnet_serialize);
+static int	bce_tryserialize(struct ifnet *, enum ifnet_serialize);
+#ifdef INVARIANTS
+static void	bce_serialize_assert(struct ifnet *, enum ifnet_serialize,
+		    boolean_t);
 #endif
 
 static void	bce_intr(struct bce_softc *);
@@ -634,6 +644,8 @@ bce_attach(device_t dev)
 	sc->bce_dev = dev;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
+	lwkt_serialize_init(&sc->main_serialize);
+
 	pci_enable_busmaster(dev);
 
 	bce_probe_pci_caps(sc);
@@ -892,6 +904,9 @@ bce_attach(device_t dev)
 		    device_get_nameunit(dev), sc->bce_irq_type);
 	}
 
+	/* Setup serializer */
+	bce_setup_serialize(sc);
+
 	/* Initialize the ifnet interface. */
 	ifp->if_softc = sc;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
@@ -899,20 +914,28 @@ bce_attach(device_t dev)
 	ifp->if_start = bce_start;
 	ifp->if_init = bce_init;
 	ifp->if_watchdog = bce_watchdog;
+	ifp->if_serialize = bce_serialize;
+	ifp->if_deserialize = bce_deserialize;
+	ifp->if_tryserialize = bce_tryserialize;
+#ifdef INVARIANTS
+	ifp->if_serialize_assert = bce_serialize_assert;
+#endif
 #ifdef IFPOLL_ENABLE
 	ifp->if_npoll = bce_npoll;
 #endif
+
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_hwassist = BCE_CSUM_FEATURES | CSUM_TSO;
 	ifp->if_capabilities = BCE_IF_CAPABILITIES;
 	ifp->if_capenable = ifp->if_capabilities;
-	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD(&sc->tx_rings[0]));
-	ifq_set_ready(&ifp->if_snd);
 
 	if (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)
 		ifp->if_baudrate = IF_Gbps(2.5);
 	else
 		ifp->if_baudrate = IF_Gbps(1);
+
+	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD(&sc->tx_rings[0]));
+	ifq_set_ready(&ifp->if_snd);
 
 	/*
 	 * Look for our PHY.
@@ -937,7 +960,7 @@ bce_attach(device_t dev)
 
 	/* Hookup IRQ last. */
 	rc = bus_setup_intr(dev, sc->bce_res_irq, INTR_MPSAFE, irq_handle, sc,
-			    &sc->bce_intrhand, ifp->if_serializer);
+	    &sc->bce_intrhand, &sc->main_serialize);
 	if (rc != 0) {
 		device_printf(dev, "Failed to setup IRQ!\n");
 		ether_ifdetach(ifp);
@@ -953,7 +976,7 @@ bce_attach(device_t dev)
 #ifdef IFPOLL_ENABLE
 	ifpoll_compat_setup(&sc->bce_npoll,
 	    &sc->bce_sysctl_ctx, sc->bce_sysctl_tree, device_get_unit(dev),
-	    ifp->if_serializer);
+	    &sc->main_serialize);
 #endif
 
 	/*
@@ -994,8 +1017,9 @@ bce_detach(device_t dev)
 		struct ifnet *ifp = &sc->arpcom.ac_if;
 		uint32_t msg;
 
+		ifnet_serialize_all(ifp);
+
 		/* Stop and reset the controller. */
-		lwkt_serialize_enter(ifp->if_serializer);
 		callout_stop(&sc->bce_pulse_callout);
 		bce_stop(sc);
 		if (sc->bce_flags & BCE_NO_WOL_FLAG)
@@ -1004,7 +1028,8 @@ bce_detach(device_t dev)
 			msg = BCE_DRV_MSG_CODE_UNLOAD;
 		bce_reset(sc, msg);
 		bus_teardown_intr(dev, sc->bce_res_irq, sc->bce_intrhand);
-		lwkt_serialize_exit(ifp->if_serializer);
+
+		ifnet_deserialize_all(ifp);
 
 		ether_ifdetach(ifp);
 	}
@@ -1051,14 +1076,16 @@ bce_shutdown(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t msg;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
+
 	bce_stop(sc);
 	if (sc->bce_flags & BCE_NO_WOL_FLAG)
 		msg = BCE_DRV_MSG_CODE_UNLOAD_LNK_DN;
 	else
 		msg = BCE_DRV_MSG_CODE_UNLOAD;
 	bce_reset(sc, msg);
-	lwkt_serialize_exit(ifp->if_serializer);
+
+	ifnet_deserialize_all(ifp);
 }
 
 
@@ -2056,6 +2083,7 @@ bce_create_tx_ring(struct bce_tx_ring *txr)
 {
 	int pages, rc, i;
 
+	lwkt_serialize_init(&txr->tx_serialize);
 	txr->tx_wreg = bce_tx_wreg;
 
 	pages = device_getenv_int(txr->sc->bce_dev, "tx_pages", bce_tx_pages);
@@ -2171,6 +2199,8 @@ static int
 bce_create_rx_ring(struct bce_rx_ring *rxr)
 {
 	int pages, rc, i;
+
+	lwkt_serialize_init(&rxr->rx_serialize);
 
 	pages = device_getenv_int(rxr->sc->bce_dev, "rx_pages", bce_rx_pages);
 	if (pages <= 0 || pages > RX_PAGES_MAX || !powerof2(pages)) {
@@ -3366,7 +3396,7 @@ bce_stop(struct bce_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	callout_stop(&sc->bce_tick_callout);
 
@@ -4140,7 +4170,7 @@ bce_phy_intr(struct bce_softc *sc)
 	uint32_t new_link_state, old_link_state;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	new_link_state = sc->status_block->status_attn_bits &
 			 STATUS_ATTN_BITS_LINK_STATE;
@@ -4207,7 +4237,7 @@ bce_rx_intr(struct bce_rx_ring *rxr, int count, uint16_t hw_cons)
 	uint16_t sw_cons, sw_chain_cons, sw_prod, sw_chain_prod;
 	uint32_t sw_prod_bseq;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&rxr->rx_serialize);
 
 	/* Get working copies of the driver's view of the RX indices. */
 	sw_cons = rxr->rx_cons;
@@ -4413,7 +4443,7 @@ bce_tx_intr(struct bce_tx_ring *txr, uint16_t hw_tx_cons)
 	struct ifnet *ifp = &txr->sc->arpcom.ac_if;
 	uint16_t sw_tx_cons, sw_tx_chain_cons;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&txr->tx_serialize);
 
 	/* Get the hardware's view of the TX consumer index. */
 	sw_tx_cons = txr->tx_cons;
@@ -4475,7 +4505,7 @@ bce_disable_intr(struct bce_softc *sc)
 
 	sc->bce_npoll.ifpc_stcount = 0;
 
-	lwkt_serialize_handler_disable(sc->arpcom.ac_if.if_serializer);
+	lwkt_serialize_handler_disable(&sc->main_serialize);
 }
 
 
@@ -4488,7 +4518,7 @@ bce_disable_intr(struct bce_softc *sc)
 static void
 bce_enable_intr(struct bce_softc *sc)
 {
-	lwkt_serialize_handler_enable(sc->arpcom.ac_if.if_serializer);
+	lwkt_serialize_handler_enable(&sc->main_serialize);
 
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
 	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID |
@@ -4546,7 +4576,7 @@ bce_init(void *xsc)
 	uint32_t ether_mtu;
 	int error, i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/* Check if the driver is still running and bail out if it is. */
 	if (ifp->if_flags & IFF_RUNNING)
@@ -4811,7 +4841,7 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	int count = 0;
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&txr->tx_serialize);
 
 	/* If there's no link or the transmit queue is empty then just exit. */
 	if (!sc->bce_link) {
@@ -4885,7 +4915,7 @@ bce_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data *mii;
 	int mask, error = 0;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	switch(command) {
 	case SIOCSIFMTU:
@@ -4978,7 +5008,7 @@ bce_watchdog(struct ifnet *ifp)
 {
 	struct bce_softc *sc = ifp->if_softc;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/*
 	 * If we are in this routine because of pause frames, then
@@ -5010,7 +5040,7 @@ bce_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 	struct bce_rx_ring *rxr = &sc->rx_rings[0];
 	uint16_t hw_tx_cons, hw_rx_cons;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	/*
 	 * Save the status block index value for use when enabling
@@ -5048,7 +5078,9 @@ bce_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 		      ~STATUS_ATTN_BITS_LINK_STATE)) {
 			if_printf(ifp, "Fatal attention detected: 0x%08X\n",
 				  sblk->status_attn_bits);
+			bce_serialize_skipmain(sc);
 			bce_init(sc);
+			bce_deserialize_skipmain(sc);
 			return;
 		}
 	}
@@ -5057,19 +5089,22 @@ bce_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 	hw_tx_cons = bce_get_hw_tx_cons(sc);
 
 	/* Check for any completed RX frames. */
+	lwkt_serialize_enter(&rxr->rx_serialize);
 	if (hw_rx_cons != rxr->rx_cons)
 		bce_rx_intr(rxr, count, hw_rx_cons);
+	lwkt_serialize_exit(&rxr->rx_serialize);
 
 	/* Check for any completed TX frames. */
-	if (hw_tx_cons != txr->tx_cons)
+	lwkt_serialize_enter(&txr->tx_serialize);
+	if (hw_tx_cons != txr->tx_cons) {
 		bce_tx_intr(txr, hw_tx_cons);
+		if (!ifq_is_empty(&ifp->if_snd))
+			if_devstart(ifp);
+	}
+	lwkt_serialize_exit(&txr->tx_serialize);
 
 	if (sc->bce_coalchg_mask)
 		bce_coal_change(sc);
-
-	/* Check for new frames to transmit. */
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
 }
 
 static void
@@ -5077,14 +5112,14 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 {
 	struct bce_softc *sc = ifp->if_softc;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (info != NULL) {
 		int cpuid = sc->bce_npoll.ifpc_cpuid;
 
 		info->ifpi_rx[cpuid].poll_func = bce_npoll_compat;
 		info->ifpi_rx[cpuid].arg = NULL;
-		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+		info->ifpi_rx[cpuid].serializer = &sc->main_serialize;
 
 		if (ifp->if_flags & IFF_RUNNING) {
 			bce_disable_intr(sc);
@@ -5134,7 +5169,7 @@ bce_intr(struct bce_softc *sc)
 	struct bce_tx_ring *txr = &sc->tx_rings[0];
 	struct bce_rx_ring *rxr = &sc->rx_rings[0];
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	sblk = sc->status_block;
 
@@ -5175,27 +5210,32 @@ bce_intr(struct bce_softc *sc)
 	    (sblk->status_attn_bits_ack & ~STATUS_ATTN_BITS_LINK_STATE)) {
 		if_printf(ifp, "Fatal attention detected: 0x%08X\n",
 			  sblk->status_attn_bits);
+		bce_serialize_skipmain(sc);
 		bce_init(sc);
+		bce_deserialize_skipmain(sc);
 		return;
 	}
 
 	/* Check for any completed RX frames. */
+	lwkt_serialize_enter(&rxr->rx_serialize);
 	if (hw_rx_cons != rxr->rx_cons)
 		bce_rx_intr(rxr, -1, hw_rx_cons);
+	lwkt_serialize_exit(&rxr->rx_serialize);
 
 	/* Check for any completed TX frames. */
-	if (hw_tx_cons != txr->tx_cons)
+	lwkt_serialize_enter(&txr->tx_serialize);
+	if (hw_tx_cons != txr->tx_cons) {
 		bce_tx_intr(txr, hw_tx_cons);
+		if (!ifq_is_empty(&ifp->if_snd))
+			if_devstart(ifp);
+	}
+	lwkt_serialize_exit(&txr->tx_serialize);
 
 	/* Re-enable interrupts. */
 	bce_reenable_intr(sc);
 
 	if (sc->bce_coalchg_mask)
 		bce_coal_change(sc);
-
-	/* Handle any frames that arrived while handling the interrupt. */
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
 }
 
 static void
@@ -5265,7 +5305,7 @@ bce_set_rx_mode(struct bce_softc *sc)
 	uint32_t rx_mode, sort_mode;
 	int h, i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/* Initialize receive mode default settings. */
 	rx_mode = sc->rx_mode &
@@ -5340,7 +5380,7 @@ bce_stats_update(struct bce_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct statistics_block *stats = sc->stats_block;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	/* 
 	 * Certain controllers don't report carrier sense errors correctly.
@@ -5565,7 +5605,7 @@ bce_pulse(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t msg;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	lwkt_serialize_enter(&sc->main_serialize);
 
 	/* Tell the firmware that the driver is still running. */
 	msg = (uint32_t)++sc->bce_fw_drv_pulse_wr_seq;
@@ -5599,7 +5639,7 @@ bce_pulse(void *xsc)
 	callout_reset_bycpu(&sc->bce_pulse_callout, hz, bce_pulse, sc,
 	    sc->bce_intr_cpuid);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	lwkt_serialize_exit(&sc->main_serialize);
 }
 
 
@@ -5618,12 +5658,12 @@ bce_check_msi(void *xsc)
 	struct bce_tx_ring *txr = &sc->tx_rings[0];
 	struct bce_rx_ring *rxr = &sc->rx_rings[0];
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	lwkt_serialize_enter(&sc->main_serialize);
 
 	KKASSERT(mycpuid == sc->bce_intr_cpuid);
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) != IFF_RUNNING) {
-		lwkt_serialize_exit(ifp->if_serializer);
+		lwkt_serialize_exit(&sc->main_serialize);
 		return;
 	}
 
@@ -5664,7 +5704,7 @@ bce_check_msi(void *xsc)
 done:
 	callout_reset(&sc->bce_ckmsi_callout, BCE_MSI_CKINTVL,
 	    bce_check_msi, sc);
-	lwkt_serialize_exit(ifp->if_serializer);
+	lwkt_serialize_exit(&sc->main_serialize);
 }
 
 
@@ -5680,7 +5720,7 @@ bce_tick_serialized(struct bce_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	/* Update the statistics from the hardware statistics block. */
 	bce_stats_update(sc);
@@ -5701,8 +5741,7 @@ bce_tick_serialized(struct bce_softc *sc)
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		sc->bce_link++;
 		/* Now that link is up, handle any outstanding TX traffic. */
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+		if_devstart_sched(ifp);
 	}
 }
 
@@ -5711,11 +5750,10 @@ static void
 bce_tick(void *xsc)
 {
 	struct bce_softc *sc = xsc;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	lwkt_serialize_enter(&sc->main_serialize);
 	bce_tick_serialized(sc);
-	lwkt_serialize_exit(ifp->if_serializer);
+	lwkt_serialize_exit(&sc->main_serialize);
 }
 
 
@@ -6152,7 +6190,7 @@ bce_sysctl_coal_change(SYSCTL_HANDLER_ARGS, uint32_t *coal,
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error = 0, v;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	v = *coal;
 	error = sysctl_handle_int(oidp, &v, 0, req);
@@ -6165,7 +6203,7 @@ bce_sysctl_coal_change(SYSCTL_HANDLER_ARGS, uint32_t *coal,
 		}
 	}
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	return error;
 }
 
@@ -6174,7 +6212,7 @@ bce_coal_change(struct bce_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		sc->bce_coalchg_mask = 0;
@@ -6270,4 +6308,98 @@ bce_tso_setup(struct bce_tx_ring *txr, struct mbuf **mp,
 	*flags0 = flags;
 
 	return 0;
+}
+
+static void
+bce_setup_serialize(struct bce_softc *sc)
+{
+	int i, j;
+
+	/*
+	 * Allocate serializer array
+	 */
+
+	/* Main + TX + RX */
+	sc->serialize_cnt = 1 + sc->ring_cnt + sc->ring_cnt;
+
+	sc->serializes =
+	    kmalloc(sc->serialize_cnt * sizeof(struct lwkt_serialize *),
+	        M_DEVBUF, M_WAITOK | M_ZERO);
+
+	/*
+	 * Setup serializers
+	 *
+	 * NOTE: Order is critical
+	 */
+
+	i = 0;
+	KKASSERT(i < sc->serialize_cnt);
+	sc->serializes[i++] = &sc->main_serialize;
+
+	sc->tx_serialize = i;
+	for (j = 0; j < sc->ring_cnt; ++j) {
+		KKASSERT(i < sc->serialize_cnt);
+		sc->serializes[i++] = &sc->tx_rings[j].tx_serialize;
+	}
+
+	sc->rx_serialize = i;
+	for (j = 0; j < sc->ring_cnt; ++j) {
+		KKASSERT(i < sc->serialize_cnt);
+		sc->serializes[i++] = &sc->rx_rings[j].rx_serialize;
+	}
+
+	KKASSERT(i == sc->serialize_cnt);
+}
+
+static void
+bce_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct bce_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_enter(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz);
+}
+
+static void
+bce_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct bce_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_exit(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz);
+}
+
+static int
+bce_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct bce_softc *sc = ifp->if_softc;
+
+	return ifnet_serialize_array_try(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz);
+}
+
+#ifdef INVARIANTS
+
+static void
+bce_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
+    boolean_t serialized)
+{
+	struct bce_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_assert(sc->serializes, sc->serialize_cnt,
+	    sc->tx_serialize, sc->rx_serialize, slz, serialized);
+}
+
+#endif	/* INVARIANTS */
+
+static void
+bce_serialize_skipmain(struct bce_softc *sc)
+{
+	lwkt_serialize_array_enter(sc->serializes, sc->serialize_cnt, 1);
+}
+
+static void
+bce_deserialize_skipmain(struct bce_softc *sc)
+{
+	lwkt_serialize_array_exit(sc->serializes, sc->serialize_cnt, 1);
 }

@@ -5726,6 +5726,7 @@ struct fw_info {
 #define BCE_CTX_BLK_SZ		0x2000
 
 struct bce_tx_ring {
+	struct lwkt_serialize	tx_serialize;
 	struct bce_softc	*sc;
 	int			tx_pages;
 	int			tx_wreg;
@@ -5750,6 +5751,7 @@ struct bce_tx_ring {
 } __cachealign;
 
 struct bce_rx_ring {
+	struct lwkt_serialize	rx_serialize;
 	struct bce_softc	*sc;
 	int			rx_pages;
 	uint16_t		rx_prod;
@@ -5921,6 +5923,12 @@ struct bce_softc {
 	bus_dmamap_t		ctx_map[BCE_CTX_PAGES];
 	void			*ctx_block[BCE_CTX_PAGES]; /* Virtual address */
 	bus_addr_t		ctx_paddr[BCE_CTX_PAGES]; /* Physical address */
+
+	int			serialize_cnt;
+	int			tx_serialize;
+	int			rx_serialize;
+	struct lwkt_serialize	**serializes;
+	struct lwkt_serialize	main_serialize;
 
 	int			ring_cnt;
 	struct bce_tx_ring	*tx_rings;
