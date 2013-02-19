@@ -377,7 +377,9 @@ static void	bce_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static void	bce_init(void *);
 #ifdef IFPOLL_ENABLE
 static void	bce_npoll(struct ifnet *, struct ifpoll_info *);
-static void	bce_npoll_compat(struct ifnet *, void *, int);
+static void	bce_npoll_rx(struct ifnet *, void *, int);
+static void	bce_npoll_tx(struct ifnet *, void *, int);
+static void	bce_npoll_status(struct ifnet *);
 #endif
 static void	bce_serialize(struct ifnet *, enum ifnet_serialize);
 static void	bce_deserialize(struct ifnet *, enum ifnet_serialize);
@@ -413,6 +415,9 @@ static int	bce_sysctl_rx_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_rx_bds(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_rx_ticks_int(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_rx_ticks(SYSCTL_HANDLER_ARGS);
+#ifdef IFPOLL_ENABLE
+static int	bce_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS);
+#endif
 static int	bce_sysctl_coal_change(SYSCTL_HANDLER_ARGS,
 		    uint32_t *, uint32_t);
 
@@ -640,6 +645,9 @@ bce_attach(device_t dev)
 	int i, j;
 	struct mii_probe_args mii_args;
 	uintptr_t mii_priv = 0;
+#ifdef IFPOLL_ENABLE
+	int offset, offset_def;
+#endif
 
 	sc->bce_dev = dev;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -877,6 +885,25 @@ bce_attach(device_t dev)
 		goto fail;
 	}
 
+#ifdef IFPOLL_ENABLE
+	/*
+	 * NPOLLING RX/TX CPU offset
+	 */
+	if (sc->ring_cnt == ncpus2) {
+		offset = 0;
+	} else {
+		offset_def = (sc->ring_cnt * device_get_unit(dev)) % ncpus2;
+		offset = device_getenv_int(dev, "npoll.offset", offset_def);
+		if (offset >= ncpus2 ||
+		    offset % sc->ring_cnt != 0) {
+			device_printf(dev, "invalid npoll.offset %d, use %d\n",
+			    offset, offset_def);
+			offset = offset_def;
+		}
+	}
+	sc->npoll_ofs = offset;
+#endif
+
 	/* Allocate PCI IRQ resources. */
 	sc->bce_irq_type = pci_alloc_1intr(dev, bce_msi_enable,
 	    &sc->bce_irq_rid, &irq_flags);
@@ -972,12 +999,6 @@ bce_attach(device_t dev)
 
 	/* Add the supported sysctls to the kernel. */
 	bce_add_sysctls(sc);
-
-#ifdef IFPOLL_ENABLE
-	ifpoll_compat_setup(&sc->bce_npoll,
-	    &sc->bce_sysctl_ctx, sc->bce_sysctl_tree, device_get_unit(dev),
-	    &sc->main_serialize);
-#endif
 
 	/*
 	 * The chip reset earlier notified the bootcode that
@@ -4503,8 +4524,6 @@ bce_disable_intr(struct bce_softc *sc)
 	sc->bce_check_tx_cons = 0;
 	sc->bce_check_status_idx = 0xffff;
 
-	sc->bce_npoll.ifpc_stcount = 0;
-
 	lwkt_serialize_handler_disable(&sc->main_serialize);
 }
 
@@ -5032,36 +5051,20 @@ bce_watchdog(struct ifnet *ifp)
 #ifdef IFPOLL_ENABLE
 
 static void
-bce_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
+bce_npoll_status(struct ifnet *ifp)
 {
 	struct bce_softc *sc = ifp->if_softc;
 	struct status_block *sblk = sc->status_block;
-	struct bce_tx_ring *txr = &sc->tx_rings[0];
-	struct bce_rx_ring *rxr = &sc->rx_rings[0];
-	uint16_t hw_tx_cons, hw_rx_cons;
+	uint32_t status_attn_bits;
 
 	ASSERT_SERIALIZED(&sc->main_serialize);
 
-	/*
-	 * Save the status block index value for use when enabling
-	 * the interrupt.
-	 */
-	sc->last_status_idx = sblk->status_idx;
+	status_attn_bits = sblk->status_attn_bits;
 
-	/* Make sure status index is extracted before rx/tx cons */
-	cpu_lfence();
-
-	if (sc->bce_npoll.ifpc_stcount-- == 0) {
-		uint32_t status_attn_bits;
-
-		sc->bce_npoll.ifpc_stcount = sc->bce_npoll.ifpc_stfrac;
-
-		status_attn_bits = sblk->status_attn_bits;
-
-		/* Was it a link change interrupt? */
-		if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
-		    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE))
-			bce_phy_intr(sc);
+	/* Was it a link change interrupt? */
+	if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
+	    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE)) {
+		bce_phy_intr(sc);
 
 		/*
 		 * Clear any transient status updates during link state change.
@@ -5069,57 +5072,93 @@ bce_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 		REG_WR(sc, BCE_HC_COMMAND,
 		    sc->hc_command | BCE_HC_COMMAND_COAL_NOW_WO_INT);
 		REG_RD(sc, BCE_HC_COMMAND);
-
-		/*
-		 * If any other attention is asserted then the chip is toast.
-		 */
-		if ((status_attn_bits & ~STATUS_ATTN_BITS_LINK_STATE) !=
-		     (sblk->status_attn_bits_ack &
-		      ~STATUS_ATTN_BITS_LINK_STATE)) {
-			if_printf(ifp, "Fatal attention detected: 0x%08X\n",
-				  sblk->status_attn_bits);
-			bce_serialize_skipmain(sc);
-			bce_init(sc);
-			bce_deserialize_skipmain(sc);
-			return;
-		}
 	}
 
+	/*
+	 * If any other attention is asserted then the chip is toast.
+	 */
+	if ((status_attn_bits & ~STATUS_ATTN_BITS_LINK_STATE) !=
+	     (sblk->status_attn_bits_ack & ~STATUS_ATTN_BITS_LINK_STATE)) {
+		if_printf(ifp, "Fatal attention detected: 0x%08X\n",
+		    sblk->status_attn_bits);
+		bce_serialize_skipmain(sc);
+		bce_init(sc);
+		bce_deserialize_skipmain(sc);
+	}
+}
+
+static void
+bce_npoll_rx(struct ifnet *ifp, void *arg, int count)
+{
+	struct bce_softc *sc = ifp->if_softc;
+	struct bce_rx_ring *rxr = arg;
+	struct status_block *sblk = sc->status_block;
+	uint16_t hw_rx_cons;
+
+	ASSERT_SERIALIZED(&rxr->rx_serialize);
+
+	/*
+	 * Save the status block index value for use when enabling
+	 * the interrupt.
+	 */
+	sc->last_status_idx = sblk->status_idx;
+
+	/* Make sure status index is extracted before RX/TX cons */
+	cpu_lfence();
+
 	hw_rx_cons = bce_get_hw_rx_cons(sc);
-	hw_tx_cons = bce_get_hw_tx_cons(sc);
 
 	/* Check for any completed RX frames. */
-	lwkt_serialize_enter(&rxr->rx_serialize);
 	if (hw_rx_cons != rxr->rx_cons)
 		bce_rx_intr(rxr, count, hw_rx_cons);
-	lwkt_serialize_exit(&rxr->rx_serialize);
+}
+
+static void
+bce_npoll_tx(struct ifnet *ifp, void *arg, int count __unused)
+{
+	struct bce_softc *sc = ifp->if_softc;
+	struct bce_tx_ring *txr = arg;
+	uint16_t hw_tx_cons;
+
+	ASSERT_SERIALIZED(&txr->tx_serialize);
+
+	hw_tx_cons = bce_get_hw_tx_cons(sc);
 
 	/* Check for any completed TX frames. */
-	lwkt_serialize_enter(&txr->tx_serialize);
 	if (hw_tx_cons != txr->tx_cons) {
 		bce_tx_intr(txr, hw_tx_cons);
 		if (!ifq_is_empty(&ifp->if_snd))
 			if_devstart(ifp);
 	}
-	lwkt_serialize_exit(&txr->tx_serialize);
-
-	if (sc->bce_coalchg_mask)
-		bce_coal_change(sc);
 }
 
 static void
 bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 {
 	struct bce_softc *sc = ifp->if_softc;
+	int i;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (info != NULL) {
-		int cpuid = sc->bce_npoll.ifpc_cpuid;
+		info->ifpi_status.status_func = bce_npoll_status;
+		info->ifpi_status.serializer = &sc->main_serialize;
 
-		info->ifpi_rx[cpuid].poll_func = bce_npoll_compat;
-		info->ifpi_rx[cpuid].arg = NULL;
-		info->ifpi_rx[cpuid].serializer = &sc->main_serialize;
+		for (i = 0; i < sc->ring_cnt; ++i) {
+			struct bce_tx_ring *txr = &sc->tx_rings[i];
+			struct bce_rx_ring *rxr = &sc->rx_rings[i];
+			int idx = i + sc->npoll_ofs;
+
+			KKASSERT(idx < ncpus2);
+
+			info->ifpi_tx[idx].poll_func = bce_npoll_tx;
+			info->ifpi_tx[idx].arg = txr;
+			info->ifpi_tx[idx].serializer = &txr->tx_serialize;
+
+			info->ifpi_rx[idx].poll_func = bce_npoll_rx;
+			info->ifpi_rx[idx].arg = rxr;
+			info->ifpi_rx[idx].serializer = &rxr->rx_serialize;
+		}
 
 		if (ifp->if_flags & IFF_RUNNING) {
 			bce_disable_intr(sc);
@@ -5129,8 +5168,10 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
 			       (1 << 16) | sc->bce_tx_quick_cons_trip);
 		}
-		ifq_set_cpuid(&ifp->if_snd, cpuid);
+		ifq_set_cpuid(&ifp->if_snd, sc->npoll_ofs); /* XXX */
 	} else {
+		ifq_set_cpuid(&ifp->if_snd, sc->bce_intr_cpuid);
+
 		if (ifp->if_flags & IFF_RUNNING) {
 			bce_enable_intr(sc);
 
@@ -5141,7 +5182,6 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			       (sc->bce_rx_quick_cons_trip_int << 16) |
 			       sc->bce_rx_quick_cons_trip);
 		}
-		ifq_set_cpuid(&ifp->if_snd, sc->bce_intr_cpuid);
 	}
 }
 
@@ -5233,9 +5273,6 @@ bce_intr(struct bce_softc *sc)
 
 	/* Re-enable interrupts. */
 	bce_reenable_intr(sc);
-
-	if (sc->bce_coalchg_mask)
-		bce_coal_change(sc);
 }
 
 static void
@@ -5826,6 +5863,12 @@ bce_add_sysctls(struct bce_softc *sc)
 	    	CTLFLAG_RW, &sc->tx_rings[0].tx_wreg, 0,
 		"# segments before write to hardware registers");
 
+#ifdef IFPOLL_ENABLE
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "npoll_offset",
+	    CTLTYPE_INT|CTLFLAG_RW, sc, 0, bce_sysctl_npoll_offset,
+	    "I", "NPOLLING cpu offset");
+#endif
+
 	SYSCTL_ADD_ULONG(ctx, children, OID_AUTO, 
 		"stat_IfHCInOctets",
 		CTLFLAG_RD, &sc->stat_IfHCInOctets,
@@ -6200,6 +6243,9 @@ bce_sysctl_coal_change(SYSCTL_HANDLER_ARGS, uint32_t *coal,
 		} else {
 			*coal = v;
 			sc->bce_coalchg_mask |= coalchg_mask;
+
+			/* Commit changes */
+			bce_coal_change(sc);
 		}
 	}
 
@@ -6403,3 +6449,33 @@ bce_deserialize_skipmain(struct bce_softc *sc)
 {
 	lwkt_serialize_array_exit(sc->serializes, sc->serialize_cnt, 1);
 }
+
+#ifdef IFPOLL_ENABLE
+
+static int
+bce_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS)
+{
+	struct bce_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, off;
+
+	off = sc->npoll_ofs;
+	error = sysctl_handle_int(oidp, &off, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (off < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+	if (off >= ncpus2 || off % sc->ring_cnt != 0) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		sc->npoll_ofs = off;
+	}
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+#endif	/* IFPOLL_ENABLE */

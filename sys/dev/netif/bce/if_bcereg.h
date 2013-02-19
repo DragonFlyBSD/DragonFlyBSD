@@ -5880,9 +5880,6 @@ struct bce_softc {
 	/* The device handle for the MII bus child device. */
 	device_t		bce_miibus;
 
-	/* Polling */
-	struct ifpoll_compat	bce_npoll;
-
 	int			bce_intr_cpuid;
 	int			bce_link;
 	struct callout		bce_tick_callout;
@@ -5930,6 +5927,7 @@ struct bce_softc {
 	struct lwkt_serialize	**serializes;
 	struct lwkt_serialize	main_serialize;
 
+	int			npoll_ofs;
 	int			ring_cnt;
 	struct bce_tx_ring	*tx_rings;
 	struct bce_rx_ring	*rx_rings;
