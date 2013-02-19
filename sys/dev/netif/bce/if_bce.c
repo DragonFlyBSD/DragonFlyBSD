@@ -36,7 +36,7 @@
  *   BCM5706S A2, A3
  *   BCM5708C B1, B2
  *   BCM5708S B1, B2
- *   BCM5709C A1, C0
+ *   BCM5709C A1, B2, C0
  *   BCM5716  C0
  *
  * The following controllers are not supported by this driver:
