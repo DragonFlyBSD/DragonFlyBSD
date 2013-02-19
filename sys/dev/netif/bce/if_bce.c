@@ -649,18 +649,6 @@ bce_attach(device_t dev)
 	sc->bce_btag = rman_get_bustag(sc->bce_res_mem);
 	sc->bce_bhandle = rman_get_bushandle(sc->bce_res_mem);
 
-	/* Allocate PCI IRQ resources. */
-	sc->bce_irq_type = pci_alloc_1intr(dev, bce_msi_enable,
-	    &sc->bce_irq_rid, &irq_flags);
-
-	sc->bce_res_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
-	    &sc->bce_irq_rid, irq_flags);
-	if (sc->bce_res_irq == NULL) {
-		device_printf(dev, "PCI map interrupt failed\n");
-		rc = ENXIO;
-		goto fail;
-	}
-
 	/*
 	 * Configure byte swap and enable indirect register access.
 	 * Rely on CPU to do target byte swapping on big endian systems.
@@ -700,21 +688,6 @@ bce_attach(device_t dev)
 			mii_priv |= BRGPHY_FLAG_NO_EARLYDAC;
 	} else {
 		mii_priv |= BRGPHY_FLAG_BER_BUG;
-	}
-
-	if (sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
-		irq_handle = bce_intr_legacy;
-	} else if (sc->bce_irq_type == PCI_INTR_TYPE_MSI) {
-		if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709) {
-			irq_handle = bce_intr_msi_oneshot;
-			sc->bce_flags |= BCE_ONESHOT_MSI_FLAG;
-		} else {
-			irq_handle = bce_intr_msi;
-			sc->bce_flags |= BCE_CHECK_MSI_FLAG;
-		}
-	} else {
-		panic("%s: unsupported intr type %d",
-		    device_get_nameunit(dev), sc->bce_irq_type);
 	}
 
 	/*
@@ -890,6 +863,33 @@ bce_attach(device_t dev)
 	if (rc != 0) {
 		device_printf(dev, "DMA resource allocation failed!\n");
 		goto fail;
+	}
+
+	/* Allocate PCI IRQ resources. */
+	sc->bce_irq_type = pci_alloc_1intr(dev, bce_msi_enable,
+	    &sc->bce_irq_rid, &irq_flags);
+
+	sc->bce_res_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+	    &sc->bce_irq_rid, irq_flags);
+	if (sc->bce_res_irq == NULL) {
+		device_printf(dev, "PCI map interrupt failed\n");
+		rc = ENXIO;
+		goto fail;
+	}
+
+	if (sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
+		irq_handle = bce_intr_legacy;
+	} else if (sc->bce_irq_type == PCI_INTR_TYPE_MSI) {
+		if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709) {
+			irq_handle = bce_intr_msi_oneshot;
+			sc->bce_flags |= BCE_ONESHOT_MSI_FLAG;
+		} else {
+			irq_handle = bce_intr_msi;
+			sc->bce_flags |= BCE_CHECK_MSI_FLAG;
+		}
+	} else {
+		panic("%s: unsupported intr type %d",
+		    device_get_nameunit(dev), sc->bce_irq_type);
 	}
 
 	/* Initialize the ifnet interface. */
