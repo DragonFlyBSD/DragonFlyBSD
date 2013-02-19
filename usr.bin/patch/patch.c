@@ -393,7 +393,7 @@ main(int argc, char *argv[])
 				    sizeof(rejname)) >= sizeof(rejname))
 					fatal("filename %s is too long\n", outname);
 			}
-			if (!check_only)
+			if (!check_only) {
 				say("%d out of %d hunks %s--saving rejects to %s\n",
 				    failed, hunk, skip_rest_of_patch ? "ignored" : "failed", rejname);
 			} else {
