@@ -99,6 +99,10 @@ struct vke_softc {
 	fifo_t			sc_txfifo_done;
 	fifo_t			sc_rxfifo;
 
+	long			cotd_ipackets;
+	long			cotd_oerrors;
+	long			cotd_opackets;
+
 	struct sysctl_ctx_list	sc_sysctl_ctx;
 	struct sysctl_oid	*sc_sysctl_tree;
 
@@ -493,6 +497,10 @@ vke_rx_intr(cothread_t cotd)
 		ifnet_deserialize_all(ifp);
 		return;
 	}
+	if (sc->cotd_ipackets) {
+		IFNET_STAT_INC(ifp, ipackets, 1);
+		sc->cotd_ipackets = 0;
+	}
 	cothread_unlock(cotd, 0);
 
 	while ((m = vke_rxfifo_sniff(sc)) != NULL) {
@@ -537,6 +545,14 @@ vke_tx_intr(cothread_t cotd)
 		ifnet_deserialize_all(ifp);
 		return;
 	}
+	if (sc->cotd_opackets) {
+		IFNET_STAT_INC(ifp, opackets, 1);
+		sc->cotd_opackets = 0;
+	}
+	if (sc->cotd_oerrors) {
+		IFNET_STAT_INC(ifp, oerrors, 1);
+		sc->cotd_oerrors = 0;
+	}
 	cothread_unlock(cotd, 0);
 
 	/*
@@ -555,6 +571,8 @@ vke_tx_intr(cothread_t cotd)
 
 /*
  * vke_rx_thread() is the body of the receive cothread.
+ *
+ * WARNING!  THIS IS A COTHREAD WHICH HAS NO PER-CPU GLOBALDATA!!!!!
  */
 static void
 vke_rx_thread(cothread_t cotd)
@@ -596,7 +614,9 @@ vke_rx_thread(cothread_t cotd)
 			continue;
 		n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
 		if (n > 0) {
-			IFNET_STAT_INC(ifp, ipackets, 1);
+			/* no mycpu in cothread */
+			/*IFNET_STAT_INC(ifp, ipackets, 1);*/
+			++sc->cotd_ipackets;
 			m->m_pkthdr.rcvif = ifp;
 			m->m_pkthdr.len = m->m_len = n;
 			cpu_sfence();
@@ -613,7 +633,8 @@ vke_rx_thread(cothread_t cotd)
 			FD_SET(sc->sc_fd, &fdset);
 
 			if (select(sc->sc_fd + 1, &fdset, NULL, NULL, &tv) == -1) {
-				kprintf(VKE_DEVNAME "%d: select failed for "
+				fprintf(stderr,
+					VKE_DEVNAME "%d: select failed for "
 					"TAP device\n", sc->sc_unit);
 				usleep(1000000);
 			}
@@ -625,6 +646,8 @@ vke_rx_thread(cothread_t cotd)
 
 /*
  * vke_tx_thread() is the body of the transmit cothread.
+ *
+ * WARNING!  THIS IS A COTHREAD WHICH HAS NO PER-CPU GLOBALDATA!!!!!
  */
 static void
 vke_tx_thread(cothread_t cotd)
@@ -646,9 +669,13 @@ vke_tx_thread(cothread_t cotd)
 
 				if (write(sc->sc_fd, sc->sc_txbuf,
 					  sc->sc_txbuf_len) < 0) {
-					IFNET_STAT_INC(ifp, oerrors, 1);
+					/* no mycpu in cothread */
+					/*IFNET_STAT_INC(ifp, oerrors, 1);*/
+					++sc->cotd_oerrors;
 				} else {
-					IFNET_STAT_INC(ifp, opackets, 1);
+					/* no mycpu in cothread */
+					/*IFNET_STAT_INC(ifp, opackets, 1);*/
+					++sc->cotd_opackets;
 				}
 			}
 			if (count++ == VKE_CHUNK) {
