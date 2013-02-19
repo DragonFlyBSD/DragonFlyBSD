@@ -16,6 +16,9 @@
 /* MD5 via ARCHIVE_CRYPTO_MD5_OPENSSL supported. */
 /* #undef ARCHIVE_CRYPTO_MD5_OPENSSL */
 
+/* MD5 via ARCHIVE_CRYPTO_MD5_WIN supported. */
+/* #undef ARCHIVE_CRYPTO_MD5_WIN */
+
 /* RMD160 via ARCHIVE_CRYPTO_RMD160_LIBC supported. */
 /* #undef ARCHIVE_CRYPTO_RMD160_LIBC */
 
@@ -43,6 +46,9 @@
 /* SHA1 via ARCHIVE_CRYPTO_SHA1_OPENSSL supported. */
 /* #undef ARCHIVE_CRYPTO_SHA1_OPENSSL */
 
+/* SHA1 via ARCHIVE_CRYPTO_SHA1_WIN supported. */
+/* #undef ARCHIVE_CRYPTO_SHA1_WIN */
+
 /* SHA256 via ARCHIVE_CRYPTO_SHA256_LIBC supported. */
 /* #undef ARCHIVE_CRYPTO_SHA256_LIBC */
 
@@ -64,6 +70,9 @@
 /* SHA256 via ARCHIVE_CRYPTO_SHA256_OPENSSL supported. */
 /* #undef ARCHIVE_CRYPTO_SHA256_OPENSSL */
 
+/* SHA256 via ARCHIVE_CRYPTO_SHA256_WIN supported. */
+/* #undef ARCHIVE_CRYPTO_SHA256_WIN */
+
 /* SHA384 via ARCHIVE_CRYPTO_SHA384_LIBC supported. */
 /* #undef ARCHIVE_CRYPTO_SHA384_LIBC */
 
@@ -81,6 +90,9 @@
 
 /* SHA384 via ARCHIVE_CRYPTO_SHA384_OPENSSL supported. */
 /* #undef ARCHIVE_CRYPTO_SHA384_OPENSSL */
+
+/* SHA384 via ARCHIVE_CRYPTO_SHA384_WIN supported. */
+/* #undef ARCHIVE_CRYPTO_SHA384_WIN */
 
 /* SHA512 via ARCHIVE_CRYPTO_SHA512_LIBC supported. */
 /* #undef ARCHIVE_CRYPTO_SHA512_LIBC */
@@ -102,6 +114,9 @@
 
 /* SHA512 via ARCHIVE_CRYPTO_SHA512_OPENSSL supported. */
 /* #undef ARCHIVE_CRYPTO_SHA512_OPENSSL */
+
+/* SHA512 via ARCHIVE_CRYPTO_SHA512_WIN supported. */
+/* #undef ARCHIVE_CRYPTO_SHA512_WIN */
 
 /* Version number of bsdcpio */
 /* #undef BSDCPIO_VERSION_STRING */
@@ -207,6 +222,9 @@
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
    */
 #define HAVE_DIRENT_H 1
+
+/* Define to 1 if you have the `dirfd' function. */
+/* #undef HAVE_DIRFD */
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
@@ -391,6 +409,15 @@
 /* Define to 1 if you have the `charset' library (-lcharset). */
 /* #undef HAVE_LIBCHARSET */
 
+/* Define to 1 if you have the `crypto' library (-lcrypto). */
+/* #undef HAVE_LIBCRYPTO */
+
+/* Define to 1 if you have the `eay32' library (-leay32). */
+/* #undef HAVE_LIBEAY32 */
+
+/* Define to 1 if you have the `eay64' library (-leay64). */
+/* #undef HAVE_LIBEAY64 */
+
 /* Define to 1 if you have the `expat' library (-lexpat). */
 /* #undef HAVE_LIBEXPAT */
 
@@ -399,6 +426,21 @@
 
 /* Define to 1 if you have the `lzmadec' library (-llzmadec). */
 /* #undef HAVE_LIBLZMADEC */
+
+/* Define to 1 if you have the `lzo2' library (-llzo2). */
+/* #undef HAVE_LIBLZO2 */
+
+/* Define to 1 if you have the `md' library (-lmd). */
+#define HAVE_LIBMD 1
+
+/* Define to 1 if you have the `nettle' library (-lnettle). */
+/* #undef HAVE_LIBNETTLE */
+
+/* Define to 1 if you have the `pcre' library (-lpcre). */
+/* #undef HAVE_LIBPCRE */
+
+/* Define to 1 if you have the `pcreposix' library (-lpcreposix). */
+/* #undef HAVE_LIBPCREPOSIX */
 
 /* Define to 1 if you have the `regex' library (-lregex). */
 /* #undef HAVE_LIBREGEX */
@@ -482,8 +524,17 @@
 /* Define to 1 if you have the <lzma.h> header file. */
 #define HAVE_LZMA_H 1
 
+/* Define to 1 if you have the <lzo/lzo1x.h> header file. */
+/* #undef HAVE_LZO_LZO1X_H */
+
+/* Define to 1 if you have the <lzo/lzoconf.h> header file. */
+/* #undef HAVE_LZO_LZOCONF_H */
+
 /* Define to 1 if you have the `mbrtowc' function. */
 #define HAVE_MBRTOWC 1
+
+/* Define to 1 if you have the <md5.h> header file. */
+#define HAVE_MD5_H 1
 
 /* Define to 1 if you have the `memmove' function. */
 #define HAVE_MEMMOVE 1
@@ -509,14 +560,29 @@
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 /* #undef HAVE_NDIR_H */
 
+/* Define to 1 if you have the <nettle/md5.h> header file. */
+/* #undef HAVE_NETTLE_MD5_H */
+
+/* Define to 1 if you have the <nettle/ripemd160.h> header file. */
+/* #undef HAVE_NETTLE_RIPEMD160_H */
+
+/* Define to 1 if you have the <nettle/sha.h> header file. */
+/* #undef HAVE_NETTLE_SHA_H */
+
 /* Define to 1 if you have the `nl_langinfo' function. */
 #define HAVE_NL_LANGINFO 1
 
 /* Define to 1 if you have the `openat' function. */
 #define HAVE_OPENAT 1
 
+/* Define to 1 if you have the <openssl/evp.h> header file. */
+/* #undef HAVE_OPENSSL_EVP_H */
+
 /* Define to 1 if you have the <paths.h> header file. */
 #define HAVE_PATHS_H 1
+
+/* Define to 1 if you have the <pcreposix.h> header file. */
+/* #undef HAVE_PCREPOSIX_H */
 
 /* Define to 1 if you have the `pipe' function. */
 #define HAVE_PIPE 1
@@ -526,6 +592,9 @@
 
 /* Define to 1 if you have the <poll.h> header file. */
 #define HAVE_POLL_H 1
+
+/* Define to 1 if you have the `posix_spawnp' function. */
+#define HAVE_POSIX_SPAWNP 1
 
 /* Define to 1 if you have the <pwd.h> header file. */
 #define HAVE_PWD_H 1
@@ -542,6 +611,9 @@
 /* Define to 1 if you have the <regex.h> header file. */
 #define HAVE_REGEX_H 1
 
+/* Define to 1 if you have the <ripemd.h> header file. */
+#define HAVE_RIPEMD_H 1
+
 /* Define to 1 if you have the `select' function. */
 #define HAVE_SELECT 1
 
@@ -551,11 +623,23 @@
 /* Define to 1 if you have the `setlocale' function. */
 #define HAVE_SETLOCALE 1
 
+/* Define to 1 if you have the <sha256.h> header file. */
+#define HAVE_SHA256_H 1
+
+/* Define to 1 if you have the <sha512.h> header file. */
+#define HAVE_SHA512_H 1
+
+/* Define to 1 if you have the <sha.h> header file. */
+#define HAVE_SHA_H 1
+
 /* Define to 1 if you have the `sigaction' function. */
 #define HAVE_SIGACTION 1
 
 /* Define to 1 if you have the <signal.h> header file. */
 #define HAVE_SIGNAL_H 1
+
+/* Define to 1 if you have the <spawn.h> header file. */
+#define HAVE_SPAWN_H 1
 
 /* Define to 1 if you have the `statfs' function. */
 #define HAVE_STATFS 1
@@ -864,6 +948,9 @@
 /* Define to the version of this package. */
 /* #undef PACKAGE_VERSION */
 
+/* Define to 1 if PCRE_STATIC needs to be defined. */
+/* #undef PCRE_STATIC */
+
 /* The size of `wchar_t', as computed by sizeof. */
 #define SIZEOF_WCHAR_T 4
 
@@ -903,6 +990,11 @@
 
 /* Define to '0x0500' for Windows 2000 APIs. */
 /* #undef WINVER */
+
+/* Enable large inode numbers on Mac OS X 10.5.  */
+#ifndef _DARWIN_USE_64_BIT_INODE
+# define _DARWIN_USE_64_BIT_INODE 1
+#endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */
