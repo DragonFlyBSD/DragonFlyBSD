@@ -654,7 +654,7 @@ vke_tx_thread(cothread_t cotd)
 {
 	struct mbuf *m;
 	struct vke_softc *sc = cotd->arg;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
+	/*struct ifnet *ifp = &sc->arpcom.ac_if;*/
 	int count = 0;
 
 	while (sc->cotd_tx_exit == VKE_COTD_RUN) {
