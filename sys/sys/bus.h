@@ -477,7 +477,7 @@ void	bus_data_generation_update(void);
 #endif
 
 /*
- * Shorthands for constructing method tables.
+ * Shorthand for constructing method tables.
  */
 #define DEVMETHOD	KOBJMETHOD
 #define DEVMETHOD_END	KOBJMETHOD_END
