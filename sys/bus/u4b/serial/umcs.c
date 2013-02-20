@@ -257,7 +257,7 @@ static device_method_t umcs7840_methods[] = {
 	DEVMETHOD(device_probe, umcs7840_probe),
 	DEVMETHOD(device_attach, umcs7840_attach),
 	DEVMETHOD(device_detach, umcs7840_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t umcs7840_devclass;

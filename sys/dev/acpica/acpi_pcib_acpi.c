@@ -115,7 +115,7 @@ static device_method_t acpi_pcib_acpi_methods[] = {
     DEVMETHOD(pcib_alloc_msix,		acpi_pcib_alloc_msix),
     DEVMETHOD(pcib_release_msix,	pcib_release_msix),
     DEVMETHOD(pcib_map_msi,		acpi_pcib_map_msi),
-    {0, 0}
+    DEVMETHOD_END
 };
 
 static devclass_t pcib_devclass;

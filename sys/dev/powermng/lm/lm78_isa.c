@@ -66,7 +66,7 @@ static device_method_t lm_isa_methods[] = {
 	DEVMETHOD(device_detach,        lm_isa_detach),
 
 	/* Terminate method list */
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t lm_isa_driver = {

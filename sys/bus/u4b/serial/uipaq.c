@@ -1064,7 +1064,7 @@ static device_method_t uipaq_methods[] = {
 	DEVMETHOD(device_probe, uipaq_probe),
 	DEVMETHOD(device_attach, uipaq_attach),
 	DEVMETHOD(device_detach, uipaq_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t uipaq_devclass;

@@ -179,7 +179,7 @@ static device_method_t pci_methods[] = {
 	DEVMETHOD(pci_msi_count,	pci_msi_count_method),
 	DEVMETHOD(pci_msix_count,	pci_msix_count_method),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 DEFINE_CLASS_0(pci, pci_driver, pci_methods, 0);

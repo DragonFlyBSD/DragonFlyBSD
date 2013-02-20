@@ -1412,7 +1412,7 @@ static device_method_t apm_methods[] = {
 	DEVMETHOD(device_probe,		apm_probe),
 	DEVMETHOD(device_attach,	apm_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t apm_driver = {

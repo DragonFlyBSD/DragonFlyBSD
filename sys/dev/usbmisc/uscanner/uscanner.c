@@ -280,7 +280,7 @@ static kobj_method_t uscanner_methods[] = {
 	DEVMETHOD(device_probe, uscanner_match),
 	DEVMETHOD(device_attach, uscanner_attach),
 	DEVMETHOD(device_detach, uscanner_detach),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t uscanner_driver = {

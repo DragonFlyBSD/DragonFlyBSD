@@ -75,7 +75,7 @@ static device_method_t mps_methods[] = {
 	DEVMETHOD(device_suspend,	mps_pci_suspend),
 	DEVMETHOD(device_resume,	mps_pci_resume),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t mps_pci_driver = {

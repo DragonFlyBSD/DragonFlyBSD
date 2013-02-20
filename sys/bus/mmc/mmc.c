@@ -1512,7 +1512,7 @@ static device_method_t mmc_methods[] = {
 	DEVMETHOD(mmcbus_acquire_bus, mmc_acquire_bus),
 	DEVMETHOD(mmcbus_release_bus, mmc_release_bus),
 
-	{0, 0},
+	DEVMETHOD_END
 };
 
 static driver_t mmc_driver = {

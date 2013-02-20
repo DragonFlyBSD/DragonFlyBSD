@@ -114,7 +114,7 @@ static device_method_t radeon_methods[] = {
 	DEVMETHOD(device_attach,	radeon_attach),
 	DEVMETHOD(device_detach,	radeon_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t radeon_driver = {

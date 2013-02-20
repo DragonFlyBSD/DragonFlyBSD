@@ -174,7 +174,7 @@ static device_method_t windrv_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,         windrv_probe),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t windrv_driver = {

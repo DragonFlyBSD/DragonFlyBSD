@@ -1082,7 +1082,7 @@ static device_method_t via_methods[] = {
 	DEVMETHOD(device_probe,		via_probe),
 	DEVMETHOD(device_attach,	via_attach),
 	DEVMETHOD(device_detach,	via_detach),
-	{ 0, 0}
+	DEVMETHOD_END
 };
 
 static driver_t via_driver = {

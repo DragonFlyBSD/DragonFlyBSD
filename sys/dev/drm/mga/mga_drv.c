@@ -154,7 +154,7 @@ static device_method_t mga_methods[] = {
 	DEVMETHOD(device_attach,	mga_attach),
 	DEVMETHOD(device_detach,	mga_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t mga_driver = {

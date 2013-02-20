@@ -74,7 +74,7 @@ static device_method_t nsgphy_methods[] = {
 	DEVMETHOD(device_probe,		nsgphy_probe),
 	DEVMETHOD(device_attach,	nsgphy_attach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static const struct mii_phydesc nsgphys[] = {

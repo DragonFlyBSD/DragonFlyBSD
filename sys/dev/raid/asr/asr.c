@@ -409,7 +409,7 @@ static int	ASR_queue(Asr_softc_t *sc, PI2O_MESSAGE_FRAME Message);
 static device_method_t asr_methods[] = {
 	DEVMETHOD(device_probe,	 asr_probe),
 	DEVMETHOD(device_attach, asr_attach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t asr_driver = {

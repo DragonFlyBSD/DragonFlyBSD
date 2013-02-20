@@ -77,7 +77,7 @@ static device_method_t it_methods[] = {
 	DEVMETHOD(device_detach,        it_detach),
 
 	/* Terminate method list */
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t it_driver = {

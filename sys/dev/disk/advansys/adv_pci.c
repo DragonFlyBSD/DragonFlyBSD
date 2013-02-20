@@ -303,7 +303,7 @@ static device_method_t adv_pci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		adv_pci_probe),
 	DEVMETHOD(device_attach,	adv_pci_attach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t adv_pci_driver = {

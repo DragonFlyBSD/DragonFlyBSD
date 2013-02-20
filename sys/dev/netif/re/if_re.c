@@ -374,7 +374,7 @@ static device_method_t re_methods[] = {
 	DEVMETHOD(miibus_writereg,	re_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	re_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t re_driver = {

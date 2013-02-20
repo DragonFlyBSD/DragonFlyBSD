@@ -116,7 +116,7 @@ static device_method_t mach64_methods[] = {
 	DEVMETHOD(device_attach,	mach64_attach),
 	DEVMETHOD(device_detach,	mach64_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t mach64_driver = {

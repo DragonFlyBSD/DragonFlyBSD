@@ -121,7 +121,7 @@ static device_method_t mxge_methods[] =
   DEVMETHOD(device_attach, mxge_attach),
   DEVMETHOD(device_detach, mxge_detach),
   DEVMETHOD(device_shutdown, mxge_shutdown),
-  {0, 0}
+  DEVMETHOD_END
 };
 
 static driver_t mxge_driver =

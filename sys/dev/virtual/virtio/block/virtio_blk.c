@@ -182,7 +182,7 @@ static device_method_t vtblk_methods[] = {
 	DEVMETHOD(device_resume,	vtblk_resume),
 	DEVMETHOD(device_shutdown,	vtblk_shutdown),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t vtblk_driver = {

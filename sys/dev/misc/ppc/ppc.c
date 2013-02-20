@@ -99,7 +99,7 @@ static device_method_t ppc_methods[] = {
 	DEVMETHOD(ppbus_read,		ppc_read),
 	DEVMETHOD(ppbus_write,		ppc_write),
 
-        { 0, 0 }
+        DEVMETHOD_END
   };
   
 static driver_t ppc_driver = {

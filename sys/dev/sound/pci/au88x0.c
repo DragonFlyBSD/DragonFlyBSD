@@ -716,7 +716,7 @@ static device_method_t au88x0_methods[] = {
 	DEVMETHOD(device_probe,		au88x0_pci_probe),
 	DEVMETHOD(device_attach,	au88x0_pci_attach),
 	DEVMETHOD(device_detach,	au88x0_pci_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t au88x0_driver = {

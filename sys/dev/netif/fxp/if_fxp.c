@@ -260,7 +260,7 @@ static device_method_t fxp_methods[] = {
 	DEVMETHOD(miibus_readreg,	fxp_miibus_readreg),
 	DEVMETHOD(miibus_writereg,	fxp_miibus_writereg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t fxp_driver = {

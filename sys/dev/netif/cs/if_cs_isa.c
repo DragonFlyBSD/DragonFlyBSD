@@ -78,7 +78,7 @@ static device_method_t cs_isa_methods[] = {
 	DEVMETHOD(device_attach,	cs_attach),
 	DEVMETHOD(device_detach,	cs_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t cs_isa_driver = {

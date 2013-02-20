@@ -342,7 +342,7 @@ static device_method_t tl_methods[] = {
 	DEVMETHOD(miibus_writereg,	tl_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	tl_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t tl_driver = {

@@ -100,7 +100,7 @@ static device_method_t savage_methods[] = {
 	DEVMETHOD(device_attach,	savage_attach),
 	DEVMETHOD(device_detach,	savage_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t savage_driver = {

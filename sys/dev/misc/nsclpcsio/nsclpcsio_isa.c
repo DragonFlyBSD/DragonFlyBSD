@@ -212,7 +212,7 @@ int	 nsclpcsio_isa_attach(struct device *);
 static device_method_t nsclpcsio_isa_methods[] = {
 	DEVMETHOD(device_probe,		nsclpcsio_isa_probe),
 	DEVMETHOD(device_attach,		nsclpcsio_isa_attach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t nsclpcsio_isa_driver = {

@@ -4431,7 +4431,7 @@ static device_method_t urtw_methods[] = {
 	DEVMETHOD(device_probe, urtw_match),
 	DEVMETHOD(device_attach, urtw_attach),
 	DEVMETHOD(device_detach, urtw_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 static driver_t urtw_driver = {
 	"urtw",

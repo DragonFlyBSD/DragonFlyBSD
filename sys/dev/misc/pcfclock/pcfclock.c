@@ -322,7 +322,7 @@ static device_method_t pcfclock_methods[] = {
 	DEVMETHOD(device_probe,		pcfclock_probe),
 	DEVMETHOD(device_attach,	pcfclock_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t pcfclock_driver = {

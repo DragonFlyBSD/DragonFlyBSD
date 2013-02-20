@@ -212,7 +212,7 @@ static device_method_t vge_methods[] = {
 	DEVMETHOD(miibus_writereg,	vge_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	vge_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t vge_driver = {

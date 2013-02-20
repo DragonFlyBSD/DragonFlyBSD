@@ -271,7 +271,7 @@ static device_method_t emx_methods[] = {
 	DEVMETHOD(device_shutdown,	emx_shutdown),
 	DEVMETHOD(device_suspend,	emx_suspend),
 	DEVMETHOD(device_resume,	emx_resume),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t emx_driver = {

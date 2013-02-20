@@ -476,7 +476,7 @@ static device_method_t bce_methods[] = {
 	DEVMETHOD(miibus_writereg,	bce_miibus_write_reg),
 	DEVMETHOD(miibus_statchg,	bce_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t bce_driver = {

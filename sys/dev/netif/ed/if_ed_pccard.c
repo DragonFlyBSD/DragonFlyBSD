@@ -525,7 +525,7 @@ static device_method_t ed_pccard_methods[] = {
 	DEVMETHOD(card_compat_match,	ed_pccard_match),
 	DEVMETHOD(card_compat_probe,	ed_pccard_probe),
 	DEVMETHOD(card_compat_attach,	ed_pccard_attach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ed_pccard_driver = {

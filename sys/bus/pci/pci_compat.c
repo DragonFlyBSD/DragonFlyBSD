@@ -233,7 +233,7 @@ static device_method_t pci_compat_methods[] = {
 	DEVMETHOD(device_probe,		pci_compat_probe),
 	DEVMETHOD(device_attach,	pci_compat_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 /*

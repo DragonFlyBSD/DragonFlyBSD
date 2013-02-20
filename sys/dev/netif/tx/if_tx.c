@@ -135,7 +135,7 @@ static device_method_t epic_methods[] = {
 	DEVMETHOD(miibus_statchg,	epic_miibus_statchg),
 	DEVMETHOD(miibus_mediainit,	epic_miibus_mediainit),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t epic_driver = {

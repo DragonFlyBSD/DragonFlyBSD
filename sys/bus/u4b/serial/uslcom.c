@@ -295,7 +295,7 @@ static device_method_t uslcom_methods[] = {
 	DEVMETHOD(device_probe, uslcom_probe),
 	DEVMETHOD(device_attach, uslcom_attach),
 	DEVMETHOD(device_detach, uslcom_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t uslcom_devclass;

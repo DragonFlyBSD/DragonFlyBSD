@@ -151,7 +151,7 @@ static kobj_method_t atausb_methods[] = {
 	DEVMETHOD(device_probe, atausb_match),
 	DEVMETHOD(device_attach, atausb_attach),
 	DEVMETHOD(device_detach, atausb_detach),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t atausb_driver = {
@@ -976,7 +976,7 @@ static device_method_t ata_usbchannel_methods[] = {
     DEVMETHOD(ata_locking,        ata_usbchannel_locking),
     /* DEVMETHOD(ata_reset,        ata_usbchannel_reset), */
 
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t ata_usbchannel_driver = {

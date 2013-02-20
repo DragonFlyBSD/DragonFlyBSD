@@ -308,7 +308,7 @@ static device_method_t ufoma_methods[] = {
 	DEVMETHOD(device_probe, ufoma_probe),
 	DEVMETHOD(device_attach, ufoma_attach),
 	DEVMETHOD(device_detach, ufoma_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t ufoma_devclass;

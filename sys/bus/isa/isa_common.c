@@ -1025,7 +1025,7 @@ static device_method_t isa_methods[] = {
 	DEVMETHOD(isa_set_config_callback, isa_set_config_callback),
 	DEVMETHOD(isa_pnp_probe,	isa_pnp_probe),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t isa_driver = {

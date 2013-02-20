@@ -187,7 +187,7 @@ static device_method_t sis_methods[] = {
 	DEVMETHOD(miibus_writereg,	sis_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	sis_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t sis_driver = {

@@ -240,7 +240,7 @@ static device_method_t vga_pci_methods[] = {
 	DEVMETHOD(pci_assign_interrupt,	vga_pci_assign_interrupt),
 	DEVMETHOD(pci_find_extcap,	vga_pci_find_extcap),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t vga_pci_driver = {

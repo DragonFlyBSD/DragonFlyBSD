@@ -115,7 +115,7 @@ static device_method_t r128_methods[] = {
 	DEVMETHOD(device_attach,	r128_attach),
 	DEVMETHOD(device_detach,	r128_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t r128_driver = {

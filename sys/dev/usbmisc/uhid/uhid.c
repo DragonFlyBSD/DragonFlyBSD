@@ -162,7 +162,7 @@ static kobj_method_t uhid_methods[] = {
 	DEVMETHOD(device_probe, uhid_match),
 	DEVMETHOD(device_attach, uhid_attach),
 	DEVMETHOD(device_detach, uhid_detach),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t uhid_driver = {

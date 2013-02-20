@@ -406,7 +406,7 @@ static device_method_t adv_isa_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		adv_isa_probe),
 	DEVMETHOD(device_attach,	adv_isa_attach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t adv_isa_driver = {

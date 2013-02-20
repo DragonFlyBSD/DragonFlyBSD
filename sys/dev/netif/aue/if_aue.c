@@ -219,7 +219,7 @@ static device_method_t aue_methods[] = {
 	DEVMETHOD(miibus_writereg,	aue_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	aue_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t aue_driver = {

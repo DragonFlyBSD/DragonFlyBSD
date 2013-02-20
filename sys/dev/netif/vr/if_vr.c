@@ -191,7 +191,7 @@ static device_method_t vr_methods[] = {
 	DEVMETHOD(miibus_writereg,	vr_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	vr_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t vr_driver = {

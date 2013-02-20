@@ -171,7 +171,7 @@ static device_method_t fdc_pccard_methods[] = {
 	DEVMETHOD(bus_read_ivar,	fdc_read_ivar),
 	/* Our children never use any other bus interface methods. */
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t fdc_pccard_driver = {

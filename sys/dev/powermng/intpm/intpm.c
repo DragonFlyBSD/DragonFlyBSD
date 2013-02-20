@@ -803,7 +803,7 @@ static device_method_t intsmb_methods[] = {
 	DEVMETHOD(smbus_bwrite,		intsmb_bwrite),
 	DEVMETHOD(smbus_bread,		intsmb_bread),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t intsmb_driver = {

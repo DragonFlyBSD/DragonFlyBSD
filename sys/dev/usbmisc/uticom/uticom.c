@@ -189,7 +189,7 @@ static device_method_t uticom_methods[] = {
 	DEVMETHOD(device_probe, uticom_match),
 	DEVMETHOD(device_attach, uticom_attach),
 	DEVMETHOD(device_detach, uticom_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t uticom_driver = {

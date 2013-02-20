@@ -200,7 +200,7 @@ static device_method_t cbb_methods[] = {
 	DEVMETHOD(power_enable_socket,		cbb_power_enable_socket),
 	DEVMETHOD(power_disable_socket,		cbb_power_disable_socket),
 
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t cbb_isa_driver = {

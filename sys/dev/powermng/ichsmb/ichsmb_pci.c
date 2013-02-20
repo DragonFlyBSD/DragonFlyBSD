@@ -112,7 +112,7 @@ static device_method_t ichsmb_pci_methods[] = {
         DEVMETHOD(smbus_pcall, ichsmb_pcall),
         DEVMETHOD(smbus_bwrite, ichsmb_bwrite),
         DEVMETHOD(smbus_bread, ichsmb_bread),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ichsmb_pci_driver = {

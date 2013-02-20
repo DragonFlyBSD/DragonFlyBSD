@@ -76,7 +76,7 @@ static device_method_t ar_methods[] = {
 	DEVMETHOD(device_probe,		ar_isa_probe),
 	DEVMETHOD(device_attach,	ar_isa_attach),
 	DEVMETHOD(device_detach,	ar_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ar_isa_driver = {

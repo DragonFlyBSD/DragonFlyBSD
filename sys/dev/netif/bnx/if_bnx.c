@@ -255,7 +255,7 @@ static device_method_t bnx_methods[] = {
 	DEVMETHOD(miibus_writereg,	bnx_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	bnx_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static DEFINE_CLASS_0(bnx, bnx_driver, bnx_methods, sizeof(struct bnx_softc));

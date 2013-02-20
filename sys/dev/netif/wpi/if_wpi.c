@@ -266,7 +266,7 @@ static device_method_t wpi_methods[] = {
 	DEVMETHOD(device_suspend,	wpi_suspend),
 	DEVMETHOD(device_resume,	wpi_resume),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t wpi_driver = {

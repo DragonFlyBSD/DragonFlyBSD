@@ -650,7 +650,7 @@ static device_method_t cbb_methods[] = {
 	DEVMETHOD(pcib_write_config,		cbb_write_config),
 	DEVMETHOD(pcib_route_interrupt,		cbb_route_interrupt),
 
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t cbb_driver = {

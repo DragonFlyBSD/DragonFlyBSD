@@ -163,7 +163,7 @@ static device_method_t u3g_methods[] = {
 	DEVMETHOD(device_probe, u3g_probe),
 	DEVMETHOD(device_attach, u3g_attach),
 	DEVMETHOD(device_detach, u3g_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t u3g_devclass;

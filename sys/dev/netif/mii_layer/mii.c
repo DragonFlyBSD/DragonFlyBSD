@@ -37,7 +37,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii.c,v 1.6.2.2 2002/08/19 16:56:33 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.12 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -87,7 +86,7 @@ static device_method_t miibus_methods[] = {
 	DEVMETHOD(miibus_statchg,	miibus_statchg),    
 	DEVMETHOD(miibus_mediainit,	miibus_mediainit),    
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 devclass_t miibus_devclass;

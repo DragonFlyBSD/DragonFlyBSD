@@ -748,7 +748,7 @@ static device_method_t puc_pci_methods[] = {
     DEVMETHOD(bus_teardown_intr,	puc_teardown_intr),
     DEVMETHOD(bus_print_child,		bus_generic_print_child),
     DEVMETHOD(bus_driver_added,		bus_generic_driver_added),
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t puc_pci_driver = {

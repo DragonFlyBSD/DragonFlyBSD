@@ -6455,7 +6455,7 @@ static device_method_t hdac_methods[] = {
 	DEVMETHOD(device_probe,		hdac_probe),
 	DEVMETHOD(device_attach,	hdac_attach),
 	DEVMETHOD(device_detach,	hdac_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t hdac_driver = {

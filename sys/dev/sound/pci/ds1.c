@@ -1087,7 +1087,7 @@ static device_method_t ds1_methods[] = {
 	DEVMETHOD(device_attach,	ds_pci_attach),
 	DEVMETHOD(device_detach,	ds_pci_detach),
 	DEVMETHOD(device_resume,        ds_pci_resume),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ds1_driver = {

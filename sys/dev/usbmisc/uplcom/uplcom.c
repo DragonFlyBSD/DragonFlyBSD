@@ -261,7 +261,7 @@ static device_method_t uplcom_methods[] = {
 	DEVMETHOD(device_probe, uplcom_match),
 	DEVMETHOD(device_attach, uplcom_attach),
 	DEVMETHOD(device_detach, uplcom_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t uplcom_driver = {

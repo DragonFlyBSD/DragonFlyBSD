@@ -426,7 +426,7 @@ static device_method_t uhci_pci_methods[] = {
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
 	DEVMETHOD(usb_take_controller, uhci_pci_take_controller),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t uhci_driver = {

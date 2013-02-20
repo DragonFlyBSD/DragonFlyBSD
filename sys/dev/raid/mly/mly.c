@@ -135,7 +135,7 @@ static device_method_t mly_methods[] = {
     DEVMETHOD(device_attach,	mly_attach),
     DEVMETHOD(device_detach,	mly_detach),
     DEVMETHOD(device_shutdown,	mly_shutdown),
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t mly_pci_driver = {

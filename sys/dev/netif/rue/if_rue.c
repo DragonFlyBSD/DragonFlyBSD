@@ -174,7 +174,7 @@ static device_method_t rue_methods[] = {
 	DEVMETHOD(miibus_writereg, rue_miibus_writereg),
 	DEVMETHOD(miibus_statchg, rue_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t rue_driver = {

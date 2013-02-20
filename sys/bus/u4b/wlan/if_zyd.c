@@ -2935,7 +2935,7 @@ static device_method_t zyd_methods[] = {
         DEVMETHOD(device_attach, zyd_attach),
         DEVMETHOD(device_detach, zyd_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t zyd_driver = {

@@ -2462,7 +2462,7 @@ static device_method_t amd_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		amd_probe),
 	DEVMETHOD(device_attach,	amd_attach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t amd_driver = {

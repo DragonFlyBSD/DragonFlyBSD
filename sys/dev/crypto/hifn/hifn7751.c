@@ -141,7 +141,7 @@ static device_method_t hifn_methods[] = {
 	DEVMETHOD(cryptodev_freesession,hifn_freesession),
 	DEVMETHOD(cryptodev_process,	hifn_process),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 static driver_t hifn_driver = {
 	"hifn",

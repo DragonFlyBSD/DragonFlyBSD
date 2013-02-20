@@ -3722,7 +3722,7 @@ static device_method_t trm_methods[] = {
 	DEVMETHOD(device_probe,		trm_probe),
 	DEVMETHOD(device_attach,	trm_attach),
 	DEVMETHOD(device_detach,	trm_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t trm_driver = {

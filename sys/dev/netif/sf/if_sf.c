@@ -193,7 +193,7 @@ static device_method_t sf_methods[] = {
 	DEVMETHOD(miibus_writereg,	sf_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	sf_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t sf_driver = {

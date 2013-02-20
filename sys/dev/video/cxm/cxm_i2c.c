@@ -89,7 +89,7 @@ static device_method_t cxm_iic_methods[] = {
 	DEVMETHOD(iicbb_setscl,         cxm_iic_setscl),
 	DEVMETHOD(iicbb_setsda,         cxm_iic_setsda),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t cxm_iic_driver = {

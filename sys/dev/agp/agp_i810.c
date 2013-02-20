@@ -2128,7 +2128,7 @@ static device_method_t agp_i810_methods[] = {
 	DEVMETHOD(agp_unbind_memory,	agp_i810_unbind_memory),
 	DEVMETHOD(agp_chipset_flush,	agp_intel_gtt_chipset_flush),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t agp_i810_driver = {

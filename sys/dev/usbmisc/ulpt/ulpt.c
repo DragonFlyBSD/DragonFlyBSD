@@ -168,7 +168,7 @@ static kobj_method_t ulpt_methods[] = {
 	DEVMETHOD(device_probe, ulpt_match),
 	DEVMETHOD(device_attach, ulpt_attach),
 	DEVMETHOD(device_detach, ulpt_detach),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t ulpt_driver = {

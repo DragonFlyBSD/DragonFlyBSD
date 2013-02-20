@@ -246,7 +246,7 @@ static device_method_t stg_pccard_methods[] = {
 	DEVMETHOD(card_compat_probe,	stg_pccard_probe),
 	DEVMETHOD(card_compat_attach,	stg_pccard_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t stg_pccard_driver = {

@@ -179,7 +179,7 @@ static device_method_t ida_pci_methods[] = {
 
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ida_pci_driver = {

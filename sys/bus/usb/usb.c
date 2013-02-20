@@ -204,7 +204,7 @@ static kobj_method_t usb_methods[] = {
 	DEVMETHOD(device_suspend, bus_generic_suspend),
 	DEVMETHOD(device_resume, bus_generic_resume),
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t usb_driver = {

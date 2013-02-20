@@ -115,7 +115,7 @@ static device_method_t firewire_methods[] = {
 	DEVMETHOD(bus_add_child,	firewire_add_child),
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 char *linkspeed[] = {
 	"S100", "S200", "S400", "S800",

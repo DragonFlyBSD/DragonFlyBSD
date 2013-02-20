@@ -198,7 +198,7 @@ static device_method_t sio_isa_methods[] = {
 	DEVMETHOD(device_probe,		sio_isa_probe),
 	DEVMETHOD(device_attach,	sio_isa_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t sio_isa_driver = {
@@ -213,7 +213,7 @@ static device_method_t sio_pci_methods[] = {
 	DEVMETHOD(device_probe,		sio_pci_probe),
 	DEVMETHOD(device_attach,	sio_pci_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t sio_pci_driver = {
@@ -229,7 +229,7 @@ static device_method_t sio_puc_methods[] = {
 	DEVMETHOD(device_probe,		sio_puc_probe),
 	DEVMETHOD(device_attach,	sio_puc_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t sio_puc_driver = {

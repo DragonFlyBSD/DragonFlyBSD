@@ -303,7 +303,7 @@ static device_method_t dc_methods[] = {
 	DEVMETHOD(miibus_statchg,	dc_miibus_statchg),
 	DEVMETHOD(miibus_mediainit,	dc_miibus_mediainit),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t dc_driver = {

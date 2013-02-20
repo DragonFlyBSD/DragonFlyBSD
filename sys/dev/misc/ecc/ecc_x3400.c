@@ -102,7 +102,7 @@ static device_method_t ecc_x3400_methods[] = {
         DEVMETHOD(device_shutdown,	bus_generic_shutdown),
         DEVMETHOD(device_suspend,	bus_generic_suspend),
         DEVMETHOD(device_resume,	bus_generic_resume),
-        { 0, 0 }
+        DEVMETHOD_END
 };
 
 static driver_t ecc_x3400_driver = {

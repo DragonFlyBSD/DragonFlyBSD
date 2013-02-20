@@ -186,7 +186,7 @@ static device_method_t lge_methods[] = {
 	DEVMETHOD(miibus_writereg,	lge_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	lge_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static DEFINE_CLASS_0(lge, lge_driver, lge_methods, sizeof(struct lge_softc));

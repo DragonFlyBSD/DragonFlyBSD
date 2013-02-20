@@ -111,7 +111,7 @@ static kobj_method_t uhub_methods[] = {
 	DEVMETHOD(device_suspend, bus_generic_suspend),
 	DEVMETHOD(device_resume, bus_generic_resume),
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t uhub_driver = {
@@ -137,7 +137,7 @@ static device_method_t uhubroot_methods[] = {
 	DEVMETHOD(device_suspend, bus_generic_suspend),
 	DEVMETHOD(device_resume, bus_generic_resume),
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static	driver_t uhubroot_driver = {

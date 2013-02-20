@@ -240,7 +240,7 @@ static device_method_t rl_methods[] = {
 	DEVMETHOD(miibus_writereg,	rl_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	rl_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static DEFINE_CLASS_0(rl, rl_driver, rl_methods, sizeof(struct rl_softc));

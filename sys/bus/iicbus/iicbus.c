@@ -69,7 +69,7 @@ static device_method_t iicbus_methods[] = {
 
 	DEVMETHOD(iicbus_transfer,	iicbus_transfer_gen),
 
-        { 0, 0 }
+        DEVMETHOD_END
 };
 
 driver_t iicbus_driver = {

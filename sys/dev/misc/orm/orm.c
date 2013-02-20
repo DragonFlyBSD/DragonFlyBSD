@@ -182,7 +182,7 @@ static device_method_t orm_methods[] = {
 	DEVMETHOD(device_probe,		orm_probe),
 	DEVMETHOD(device_attach,	orm_attach),
 	DEVMETHOD(device_detach,	orm_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t orm_driver = {

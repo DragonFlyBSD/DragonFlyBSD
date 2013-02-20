@@ -218,7 +218,7 @@ static device_method_t nge_methods[] = {
 	DEVMETHOD(miibus_writereg,	nge_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	nge_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static DEFINE_CLASS_0(nge, nge_driver, nge_methods, sizeof(struct nge_softc));

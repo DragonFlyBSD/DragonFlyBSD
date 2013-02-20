@@ -80,7 +80,7 @@ static device_method_t acpi_pcib_pci_methods[] = {
     /* pcib interface */
     DEVMETHOD(pcib_route_interrupt,	acpi_pcib_pci_route_interrupt),
 
-    {0, 0}
+    DEVMETHOD_END
 };
 
 static devclass_t pcib_devclass;

@@ -209,7 +209,7 @@ static device_method_t acx_methods[] = {
 	DEVMETHOD(device_suspend,	acx_suspend),
 	DEVMETHOD(device_resume,	acx_resume),
 #endif
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t acx_driver = {

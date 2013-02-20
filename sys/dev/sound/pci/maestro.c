@@ -2047,7 +2047,7 @@ static device_method_t agg_methods[] = {
     DEVMETHOD(device_resume,	agg_resume),
     DEVMETHOD(device_shutdown,	agg_shutdown),
 
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t agg_driver = {

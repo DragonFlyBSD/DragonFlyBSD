@@ -106,7 +106,7 @@ static device_method_t ata_isa_methods[] = {
     DEVMETHOD(device_suspend,   ata_suspend),
     DEVMETHOD(device_resume,    ata_resume),
 
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t ata_isa_driver = {

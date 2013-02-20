@@ -563,7 +563,7 @@ static device_method_t amdsmb_methods[] = {
 	DEVMETHOD(smbus_bwrite,		amdsmb_bwrite),
 	DEVMETHOD(smbus_bread,		amdsmb_bread),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static devclass_t amdsmb_devclass;

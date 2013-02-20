@@ -1113,8 +1113,7 @@ static kobj_method_t umass_methods[] = {
 	DEVMETHOD(device_probe, umass_match),
 	DEVMETHOD(device_attach, umass_attach),
 	DEVMETHOD(device_detach, umass_detach),
-	{0,0},
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t umass_driver = {

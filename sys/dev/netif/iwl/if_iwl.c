@@ -114,7 +114,7 @@ static device_method_t iwl_methods[] = {
 	DEVMETHOD(device_detach,	iwl_detach),
 	DEVMETHOD(device_shutdown,	iwl_shutdown),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t iwl_driver = {

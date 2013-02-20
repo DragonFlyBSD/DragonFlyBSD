@@ -343,7 +343,7 @@ static device_method_t nfe_methods[] = {
 	DEVMETHOD(miibus_writereg,	nfe_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	nfe_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t nfe_driver = {

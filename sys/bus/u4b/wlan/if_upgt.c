@@ -2378,7 +2378,7 @@ static device_method_t upgt_methods[] = {
         DEVMETHOD(device_attach, upgt_attach),
         DEVMETHOD(device_detach, upgt_detach),
 	
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t upgt_driver = {

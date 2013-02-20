@@ -78,7 +78,7 @@ static device_method_t wi_pci_methods[] = {
 	DEVMETHOD(device_suspend,	wi_pci_suspend),
 	DEVMETHOD(device_resume,	wi_pci_resume),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t wi_pci_driver = {

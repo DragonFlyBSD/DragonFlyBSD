@@ -750,7 +750,7 @@ static device_method_t fm801_methods[] = {
 	DEVMETHOD(bus_release_resource,	fm801_release_resource),
 	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
 	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
-	{ 0, 0}
+	DEVMETHOD_END
 };
 
 static driver_t fm801_driver = {

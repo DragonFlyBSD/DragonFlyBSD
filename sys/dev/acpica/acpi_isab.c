@@ -76,7 +76,7 @@ static device_method_t acpi_isab_methods[] = {
 	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
 
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static driver_t acpi_isab_driver = {

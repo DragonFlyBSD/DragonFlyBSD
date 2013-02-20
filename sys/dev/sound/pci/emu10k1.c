@@ -2019,7 +2019,7 @@ static device_method_t emu_methods[] = {
 	DEVMETHOD(device_attach,	emu_pci_attach),
 	DEVMETHOD(device_detach,	emu_pci_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t emu_driver = {
@@ -2071,7 +2071,7 @@ static device_method_t emujoy_methods[] = {
 	DEVMETHOD(device_attach,	emujoy_pci_attach),
 	DEVMETHOD(device_detach,	emujoy_pci_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t emujoy_driver = {

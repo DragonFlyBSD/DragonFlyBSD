@@ -411,7 +411,7 @@ static device_method_t padlock_methods[] = {
 	DEVMETHOD(cryptodev_freesession,padlock_freesession),
 	DEVMETHOD(cryptodev_process,	padlock_process),
 
-	{0, 0},
+	DEVMETHOD_END
 };
 
 static driver_t padlock_driver = {

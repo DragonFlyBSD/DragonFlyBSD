@@ -94,7 +94,7 @@ static device_method_t sis_methods[] = {
 	DEVMETHOD(device_attach,	sis_attach),
 	DEVMETHOD(device_detach,	sis_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t sis_driver = {

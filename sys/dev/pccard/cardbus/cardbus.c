@@ -364,7 +364,7 @@ static device_method_t cardbus_methods[] = {
 	DEVMETHOD(card_attach_card,	cardbus_attach_card),
 	DEVMETHOD(card_detach_card,	cardbus_detach_card),
 
-	{0,0}
+	DEVMETHOD_END
 };
 
 DEFINE_CLASS_1(cardbus, cardbus_driver, cardbus_methods, 0, pci_driver);

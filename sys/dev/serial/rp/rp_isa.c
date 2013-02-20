@@ -475,7 +475,7 @@ static device_method_t rp_methods[] = {
 	DEVMETHOD(device_probe,		rp_probe),
 	DEVMETHOD(device_attach,	rp_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t rp_driver = {

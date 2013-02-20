@@ -1054,7 +1054,7 @@ static device_method_t csa_methods[] = {
 	DEVMETHOD(bus_setup_intr,	csa_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	csa_teardown_intr),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t csa_driver = {

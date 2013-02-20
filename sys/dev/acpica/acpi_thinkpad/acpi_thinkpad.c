@@ -276,7 +276,7 @@ static device_method_t acpi_thinkpad_methods[] = {
 	DEVMETHOD(device_probe, acpi_thinkpad_probe),
 	DEVMETHOD(device_attach, acpi_thinkpad_attach),
 	DEVMETHOD(device_detach, acpi_thinkpad_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static driver_t	acpi_thinkpad_driver = {

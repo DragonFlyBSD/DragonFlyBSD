@@ -429,7 +429,7 @@ static device_method_t uep_methods[] = {
 	DEVMETHOD(device_probe, uep_probe),
        	DEVMETHOD(device_attach, uep_attach),
 	DEVMETHOD(device_detach, uep_detach),
-	{ 0, 0 },
+	DEVMETHOD_END
 };
 
 static driver_t uep_driver = {

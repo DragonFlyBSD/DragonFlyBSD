@@ -576,7 +576,7 @@ static device_method_t mmcsd_methods[] = {
 	DEVMETHOD(device_detach, mmcsd_detach),
 	DEVMETHOD(device_suspend, mmcsd_suspend),
 	DEVMETHOD(device_resume, mmcsd_resume),
-	{0, 0},
+	DEVMETHOD_END
 };
 
 static driver_t mmcsd_driver = {

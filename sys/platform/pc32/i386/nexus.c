@@ -151,7 +151,7 @@ static device_method_t nexus_methods[] = {
 	DEVMETHOD(pcib_release_msix,	nexus_release_msix),
 #endif
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t nexus_driver = {

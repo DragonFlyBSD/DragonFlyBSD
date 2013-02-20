@@ -182,7 +182,7 @@ static device_method_t uvisor_methods[] = {
        DEVMETHOD(device_probe, uvisor_match),
        DEVMETHOD(device_attach, uvisor_attach),
        DEVMETHOD(device_detach, uvisor_detach),
-       { 0, 0 }
+       DEVMETHOD_END
  };
 
 

@@ -97,7 +97,7 @@ static device_method_t ndis_methods[] = {
 	/* Bus interface */
 	DEVMETHOD(bus_get_resource_list, ndis_get_resource_list),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ndis_driver = {

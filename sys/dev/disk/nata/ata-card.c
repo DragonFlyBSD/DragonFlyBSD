@@ -150,7 +150,7 @@ static device_method_t ata_pccard_methods[] = {
     DEVMETHOD(device_attach,            ata_pccard_attach),
     DEVMETHOD(device_detach,            ata_pccard_detach),
 
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t ata_pccard_driver = {

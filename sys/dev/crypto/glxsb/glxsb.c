@@ -229,7 +229,7 @@ static device_method_t glxsb_methods[] = {
 	DEVMETHOD(cryptodev_freesession,	glxsb_crypto_freesession),
 	DEVMETHOD(cryptodev_process,		glxsb_crypto_process),
 
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t glxsb_driver = {

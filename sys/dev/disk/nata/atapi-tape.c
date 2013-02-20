@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.101 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-tape.c,v 1.4 2008/08/30 02:56:11 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -751,7 +750,7 @@ static device_method_t ast_methods[] = {
     /* ATA methods */
     DEVMETHOD(ata_reinit,       ast_reinit),
 
-    { 0, 0 }
+    DEVMETHOD_END
 };
 	    
 static driver_t ast_driver = {

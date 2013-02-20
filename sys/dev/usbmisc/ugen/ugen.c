@@ -184,7 +184,7 @@ static kobj_method_t ugen_methods[] = {
 	DEVMETHOD(device_probe, ugen_match),
 	DEVMETHOD(device_attach, ugen_attach),
 	DEVMETHOD(device_detach, ugen_detach),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t ugen_driver = {

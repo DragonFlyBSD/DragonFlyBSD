@@ -308,7 +308,7 @@ static device_method_t uplcom_methods[] = {
 	DEVMETHOD(device_probe, uplcom_probe),
 	DEVMETHOD(device_attach, uplcom_attach),
 	DEVMETHOD(device_detach, uplcom_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t uplcom_devclass;

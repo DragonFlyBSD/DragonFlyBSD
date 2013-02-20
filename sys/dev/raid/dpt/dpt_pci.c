@@ -185,7 +185,7 @@ static device_method_t dpt_pci_methods[] = {
 	DEVMETHOD(device_probe,         dpt_pci_probe),
 	DEVMETHOD(device_attach,        dpt_pci_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t dpt_pci_driver = {

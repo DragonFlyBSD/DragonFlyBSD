@@ -69,7 +69,7 @@ static device_method_t sili_methods[] = {
 
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t	sili_devclass;

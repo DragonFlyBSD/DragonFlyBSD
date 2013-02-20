@@ -109,7 +109,7 @@ static device_method_t pmtimer_methods[] = {
 	DEVMETHOD(device_attach,	bus_generic_attach),
 	DEVMETHOD(device_suspend,	pmtimer_suspend),
 	DEVMETHOD(device_resume,	pmtimer_resume),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t pmtimer_driver = {

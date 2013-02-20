@@ -1561,7 +1561,7 @@ static device_method_t sdhci_methods[] = {
 	DEVMETHOD(mmcbr_acquire_host, sdhci_acquire_host),
 	DEVMETHOD(mmcbr_release_host, sdhci_release_host),
 
-	{0, 0},
+	DEVMETHOD_END
 };
 
 static driver_t sdhci_driver = {

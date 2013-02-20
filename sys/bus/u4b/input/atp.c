@@ -2209,7 +2209,7 @@ static device_method_t atp_methods[] = {
 	DEVMETHOD(device_probe,  atp_probe),
 	DEVMETHOD(device_attach, atp_attach),
 	DEVMETHOD(device_detach, atp_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t atp_driver = {

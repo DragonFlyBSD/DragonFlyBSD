@@ -343,7 +343,7 @@ static kobj_method_t uaudio_methods[] = {
 	DEVMETHOD(device_resume, bus_generic_resume),
 	DEVMETHOD(device_shutdown, bus_generic_shutdown),
 	DEVMETHOD(bus_print_child, bus_generic_print_child),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t uaudio_driver = {

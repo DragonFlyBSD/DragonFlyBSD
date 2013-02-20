@@ -69,7 +69,7 @@ static int	scattach(device_t dev);
 static device_method_t sc_methods[] = {
 	DEVMETHOD(device_probe,         scprobe),
 	DEVMETHOD(device_attach,        scattach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t sc_driver = {

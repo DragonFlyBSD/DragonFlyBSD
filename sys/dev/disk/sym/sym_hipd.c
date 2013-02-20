@@ -8359,7 +8359,7 @@ sym_update_dflags(hcb_p np, u_char *flags, struct ccb_trans_settings *cts)
 static device_method_t sym_pci_methods[] = {
 	DEVMETHOD(device_probe,	 sym_pci_probe),
 	DEVMETHOD(device_attach, sym_pci_attach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t sym_pci_driver = {

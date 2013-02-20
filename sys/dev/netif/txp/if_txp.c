@@ -166,7 +166,7 @@ static device_method_t txp_methods[] = {
 	DEVMETHOD(device_attach,	txp_attach),
 	DEVMETHOD(device_detach,	txp_detach),
 	DEVMETHOD(device_shutdown,	txp_shutdown),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t txp_driver = {

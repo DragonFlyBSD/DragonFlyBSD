@@ -82,7 +82,7 @@ static device_method_t pcib_methods[] = {
     DEVMETHOD(pcib_release_msix,	pcib_release_msix),
     DEVMETHOD(pcib_map_msi,		pcib_map_msi),
 
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static devclass_t pcib_devclass;

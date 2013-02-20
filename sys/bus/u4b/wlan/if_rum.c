@@ -2360,7 +2360,7 @@ static device_method_t rum_methods[] = {
 	DEVMETHOD(device_attach,	rum_attach),
 	DEVMETHOD(device_detach,	rum_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t rum_driver = {

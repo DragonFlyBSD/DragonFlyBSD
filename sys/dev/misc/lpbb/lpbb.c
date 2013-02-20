@@ -216,7 +216,7 @@ static device_method_t lpbb_methods[] = {
 	DEVMETHOD(iicbb_getscl,		lpbb_getscl),
 	DEVMETHOD(iicbb_reset,		lpbb_reset),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t lpbb_driver = {

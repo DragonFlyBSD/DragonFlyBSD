@@ -140,7 +140,7 @@ static device_method_t i915_methods[] = {
 	DEVMETHOD(device_resume,	i915_resume),
 	DEVMETHOD(device_detach,	i915_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t i915_driver = {

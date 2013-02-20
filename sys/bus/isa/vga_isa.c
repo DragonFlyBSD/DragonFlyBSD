@@ -72,7 +72,7 @@ static device_method_t isavga_methods[] = {
 	DEVMETHOD(device_resume,	isavga_resume),
 
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t isavga_driver = {
