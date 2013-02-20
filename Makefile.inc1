@@ -421,6 +421,7 @@ everything:
 	@echo ">>> stage 4d: building everything.."
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} all
+	@rm -f ${AUTO_BACKUP}/installstamp
 
 # note: buildworld no longer depends on _cleanobj because we rm -rf the
 # entire object tree and built the bootstrap tools in a different location.
@@ -1066,6 +1067,7 @@ backupworld:
 	cp -RpP /usr/libexec ${WORLD_BACKUP}/usr.libexec
 
 backupworld-auto:
+.if !exists(${AUTO_BACKUP}/installstamp)
 	@mkdir -p ${AUTO_BACKUP}
 	@chflags -R noschg ${AUTO_BACKUP}
 	@rm -rf ${AUTO_BACKUP}/sbin ${AUTO_BACKUP}/bin \
@@ -1077,6 +1079,8 @@ backupworld-auto:
 	cp -RpP /usr/lib ${AUTO_BACKUP}/usr.lib
 	cp -RpP /usr/sbin ${AUTO_BACKUP}/usr.sbin
 	cp -RpP /usr/libexec ${AUTO_BACKUP}/usr.libexec
+	@date '+%Y-%m-%d %H:%M:%S' > ${AUTO_BACKUP}/installstamp
+.endif
 
 restoreworld:
 .if !(exists(${WORLD_BACKUP}/sbin) && exists(${WORLD_BACKUP}/bin) && \
