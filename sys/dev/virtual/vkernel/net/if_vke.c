@@ -390,8 +390,9 @@ vke_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 		len = strlen(ifs->ascii);
 		if (len < sizeof(ifs->ascii)) {
-			ksnprintf(ifs->ascii + len, sizeof(ifs->ascii) - len,
-				  "\tBacked by tap%d\n", sc->sc_tap_unit);
+			if (sc->sc_tap_unit >= 0)
+				ksnprintf(ifs->ascii + len, sizeof(ifs->ascii) - len,
+				    "\tBacked by tap%d\n", sc->sc_tap_unit);
 		}
 		break;
 	}
