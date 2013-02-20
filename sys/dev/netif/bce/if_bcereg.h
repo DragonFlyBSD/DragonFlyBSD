@@ -5728,6 +5728,7 @@ struct fw_info {
 struct bce_tx_ring {
 	struct lwkt_serialize	tx_serialize;
 	struct bce_softc	*sc;
+	struct ifaltq_subque	*ifsq;
 	int			tx_pages;
 	int			tx_wreg;
 	uint16_t		tx_prod;
@@ -5744,6 +5745,8 @@ struct bce_tx_ring {
 	bus_dma_tag_t		tx_mbuf_tag;
 	bus_dmamap_t		*tx_mbuf_map;	/* TOTAL_TX_BD */
 	struct mbuf		**tx_mbuf_ptr;	/* TOTAL_TX_BD */
+
+	struct ifsubq_watchdog	tx_watchdog;
 
 	bus_dma_tag_t		tx_bd_chain_tag;
 	bus_dmamap_t		*tx_bd_chain_map; /* tx_pages */

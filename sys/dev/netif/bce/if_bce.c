@@ -371,7 +371,7 @@ static void	bce_setup_rxdesc_std(struct bce_rx_ring *, uint16_t,
 
 static void	bce_start(struct ifnet *, struct ifaltq_subque *);
 static int	bce_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	bce_watchdog(struct ifnet *);
+static void	bce_watchdog(struct ifaltq_subque *);
 static int	bce_ifmedia_upd(struct ifnet *);
 static void	bce_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static void	bce_init(void *);
@@ -940,7 +940,6 @@ bce_attach(device_t dev)
 	ifp->if_ioctl = bce_ioctl;
 	ifp->if_start = bce_start;
 	ifp->if_init = bce_init;
-	ifp->if_watchdog = bce_watchdog;
 	ifp->if_serialize = bce_serialize;
 	ifp->if_deserialize = bce_deserialize;
 	ifp->if_tryserialize = bce_tryserialize;
@@ -963,6 +962,7 @@ bce_attach(device_t dev)
 
 	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD(&sc->tx_rings[0]));
 	ifq_set_ready(&ifp->if_snd);
+	ifq_set_subq_cnt(&ifp->if_snd, sc->ring_cnt);
 
 	/*
 	 * Look for our PHY.
@@ -995,7 +995,17 @@ bce_attach(device_t dev)
 	}
 
 	sc->bce_intr_cpuid = rman_get_cpuid(sc->bce_res_irq);
-	ifq_set_cpuid(&ifp->if_snd, sc->bce_intr_cpuid);
+
+	for (i = 0; i < sc->ring_cnt; ++i) {
+		struct ifaltq_subque *ifsq = ifq_get_subq(&ifp->if_snd, i);
+		struct bce_tx_ring *txr = &sc->tx_rings[i];
+
+		ifsq_set_cpuid(ifsq, sc->bce_intr_cpuid); /* XXX */
+		ifsq_set_priv(ifsq, txr);
+		txr->ifsq = ifsq;
+
+		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, bce_watchdog);
+	}
 
 	/* Add the supported sysctls to the kernel. */
 	bce_add_sysctls(sc);
@@ -3428,6 +3438,12 @@ bce_stop(struct bce_softc *sc)
 
 	bce_disable_intr(sc);
 
+	ifp->if_flags &= ~IFF_RUNNING;
+	for (i = 0; i < sc->ring_cnt; ++i) {
+		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
+		ifsq_watchdog_stop(&sc->tx_rings[i].tx_watchdog);
+	}
+
 	/* Free the RX lists. */
 	for (i = 0; i < sc->ring_cnt; ++i)
 		bce_free_rx_chain(&sc->rx_rings[i]);
@@ -3438,10 +3454,6 @@ bce_stop(struct bce_softc *sc)
 
 	sc->bce_link = 0;
 	sc->bce_coalchg_mask = 0;
-
-	ifp->if_flags &= ~IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
-	ifp->if_timer = 0;
 }
 
 
@@ -4496,12 +4508,12 @@ bce_tx_intr(struct bce_tx_ring *txr, uint16_t hw_tx_cons)
 
 	if (txr->used_tx_bd == 0) {
 		/* Clear the TX timeout timer. */
-		ifp->if_timer = 0;
+		txr->tx_watchdog.wd_timer = 0;
 	}
 
 	/* Clear the tx hardware queue full flag. */
 	if (txr->max_tx_bd - txr->used_tx_bd >= BCE_TX_SPARE_SPACE)
-		ifq_clr_oactive(&ifp->if_snd);
+		ifsq_clr_oactive(txr->ifsq);
 	txr->tx_cons = sw_tx_cons;
 }
 
@@ -4673,7 +4685,10 @@ bce_init(void *xsc)
 	bce_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
+	for (i = 0; i < sc->ring_cnt; ++i) {
+		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
+		ifsq_watchdog_start(&sc->tx_rings[i].tx_watchdog);
+	}
 
 	callout_reset_bycpu(&sc->bce_tick_callout, hz, bce_tick, sc,
 	    sc->bce_intr_cpuid);
@@ -4856,19 +4871,19 @@ static void
 bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct bce_softc *sc = ifp->if_softc;
-	struct bce_tx_ring *txr = &sc->tx_rings[0];
+	struct bce_tx_ring *txr = ifsq_get_priv(ifsq);
 	int count = 0;
 
-	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+	KKASSERT(txr->ifsq == ifsq);
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
 	/* If there's no link or the transmit queue is empty then just exit. */
 	if (!sc->bce_link) {
-		ifq_purge(&ifp->if_snd);
+		ifsq_purge(ifsq);
 		return;
 	}
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifsq_is_oactive(ifsq))
 		return;
 
 	for (;;) {
@@ -4879,12 +4894,12 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 * unlikely to fail.
 		 */
 		if (txr->max_tx_bd - txr->used_tx_bd < BCE_TX_SPARE_SPACE) {
-			ifq_set_oactive(&ifp->if_snd);
+			ifsq_set_oactive(ifsq);
 			break;
 		}
 
 		/* Check for any frames to send. */
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifsq_dequeue(ifsq, NULL);
 		if (m_head == NULL)
 			break;
 
@@ -4899,7 +4914,7 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			if (txr->used_tx_bd == 0) {
 				continue;
 			} else {
-				ifq_set_oactive(&ifp->if_snd);
+				ifsq_set_oactive(ifsq);
 				break;
 			}
 		}
@@ -4913,7 +4928,7 @@ bce_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		ETHER_BPF_MTAP(ifp, m_head);
 
 		/* Set the tx timeout. */
-		ifp->if_timer = BCE_TX_TIMEOUT;
+		txr->tx_watchdog.wd_timer = BCE_TX_TIMEOUT;
 	}
 	if (count > 0)
 		bce_xmit(txr);
@@ -5023,9 +5038,11 @@ bce_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_watchdog(struct ifnet *ifp)
+bce_watchdog(struct ifaltq_subque *ifsq)
 {
+	struct ifnet *ifp = ifsq_get_ifp(ifsq);
 	struct bce_softc *sc = ifp->if_softc;
+	int i;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
@@ -5043,8 +5060,8 @@ bce_watchdog(struct ifnet *ifp)
 
 	IFNET_STAT_INC(ifp, oerrors, 1);
 
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
+	for (i = 0; i < sc->ring_cnt; ++i)
+		ifsq_devstart_sched(sc->tx_rings[i].ifsq);
 }
 
 
@@ -5127,8 +5144,8 @@ bce_npoll_tx(struct ifnet *ifp, void *arg, int count __unused)
 	/* Check for any completed TX frames. */
 	if (hw_tx_cons != txr->tx_cons) {
 		bce_tx_intr(txr, hw_tx_cons);
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+		if (!ifsq_is_empty(txr->ifsq))
+			ifsq_devstart(txr->ifsq);
 	}
 }
 
@@ -5154,6 +5171,7 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			info->ifpi_tx[idx].poll_func = bce_npoll_tx;
 			info->ifpi_tx[idx].arg = txr;
 			info->ifpi_tx[idx].serializer = &txr->tx_serialize;
+			ifsq_set_cpuid(txr->ifsq, idx);
 
 			info->ifpi_rx[idx].poll_func = bce_npoll_rx;
 			info->ifpi_rx[idx].arg = rxr;
@@ -5168,9 +5186,11 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
 			       (1 << 16) | sc->bce_tx_quick_cons_trip);
 		}
-		ifq_set_cpuid(&ifp->if_snd, sc->npoll_ofs); /* XXX */
 	} else {
-		ifq_set_cpuid(&ifp->if_snd, sc->bce_intr_cpuid);
+		for (i = 0; i < sc->ring_cnt; ++i) {
+			ifsq_set_cpuid(sc->tx_rings[i].ifsq,
+			    sc->bce_intr_cpuid); /* XXX */
+		}
 
 		if (ifp->if_flags & IFF_RUNNING) {
 			bce_enable_intr(sc);
@@ -5266,8 +5286,8 @@ bce_intr(struct bce_softc *sc)
 	lwkt_serialize_enter(&txr->tx_serialize);
 	if (hw_tx_cons != txr->tx_cons) {
 		bce_tx_intr(txr, hw_tx_cons);
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+		if (!ifsq_is_empty(txr->ifsq))
+			ifsq_devstart(txr->ifsq);
 	}
 	lwkt_serialize_exit(&txr->tx_serialize);
 
@@ -5754,7 +5774,6 @@ done:
 static void
 bce_tick_serialized(struct bce_softc *sc)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 
 	ASSERT_SERIALIZED(&sc->main_serialize);
@@ -5776,9 +5795,12 @@ bce_tick_serialized(struct bce_softc *sc)
 	/* Check if the link has come up. */
 	if ((mii->mii_media_status & IFM_ACTIVE) &&
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
+		int i;
+
 		sc->bce_link++;
 		/* Now that link is up, handle any outstanding TX traffic. */
-		if_devstart_sched(ifp);
+		for (i = 0; i < sc->ring_cnt; ++i)
+			ifsq_devstart_sched(sc->tx_rings[i].ifsq);
 	}
 }
 
