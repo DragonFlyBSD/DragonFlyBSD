@@ -1618,14 +1618,12 @@ ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
 	*deny = 0;
 	gen = ctx->ipfw_gen;
 
-	get_mplock();
 	if (gen != ctx->ipfw_gen) {
 		/* See the comment in lookup_rule() */
 		*deny = 1;
 	} else {
 		match = _ipfw_match_uid(fid, oif, opcode, uid);
 	}
-	rel_mplock();
 	return match;
 }
 

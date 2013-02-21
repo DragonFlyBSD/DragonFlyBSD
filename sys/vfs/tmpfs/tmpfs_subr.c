@@ -290,7 +290,7 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
  */
 int
 tmpfs_alloc_dirent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
-    const char *name, uint16_t len, struct tmpfs_dirent **de)
+		   const char *name, uint16_t len, struct tmpfs_dirent **de)
 {
 	struct tmpfs_dirent *nde;
 
@@ -308,7 +308,7 @@ tmpfs_alloc_dirent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 	nde->td_node = node;
 
 	TMPFS_NODE_LOCK(node);
-	node->tn_links++;
+	++node->tn_links;	/* also requires mnt_token protection */
 	TMPFS_NODE_UNLOCK(node);
 
 	*de = nde;
@@ -337,7 +337,7 @@ tmpfs_free_dirent(struct tmpfs_mount *tmp, struct tmpfs_dirent *de)
 	TMPFS_NODE_LOCK(node);
 	TMPFS_ASSERT_ELOCKED(node);
 	KKASSERT(node->tn_links > 0);
-	node->tn_links--;
+	node->tn_links--;	/* also requires mnt_token protection */
 	TMPFS_NODE_UNLOCK(node);
 
 	kfree(de->td_name, tmp->tm_name_zone);
@@ -592,10 +592,10 @@ tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 	TMPFS_NODE_LOCK(dnode);
 	if (node && node->tn_type == VDIR) {
 		TMPFS_NODE_LOCK(node);
-		++node->tn_links;
+		++node->tn_links;	/* also requires mnt_token protection */
 		node->tn_status |= TMPFS_NODE_CHANGED;
 		node->tn_dir.tn_parent = dnode;
-		++dnode->tn_links;
+		++dnode->tn_links;	/* also requires mnt_token protection */
 		TMPFS_NODE_UNLOCK(node);
 	}
 	RB_INSERT(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
@@ -643,8 +643,8 @@ tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 		TMPFS_NODE_LOCK(dnode);
 		TMPFS_NODE_LOCK(node);
 		KKASSERT(node->tn_dir.tn_parent == dnode);
-		dnode->tn_links--;
-		node->tn_links--;
+		dnode->tn_links--;	/* also requires mnt_token protection */
+		node->tn_links--;	/* also requires mnt_token protection */
 		node->tn_dir.tn_parent = NULL;
 		TMPFS_NODE_UNLOCK(node);
 		TMPFS_NODE_UNLOCK(dnode);
@@ -1225,7 +1225,7 @@ tmpfs_chsize(struct vnode *vp, u_quad_t size, struct ucred *cred)
  */
 int
 tmpfs_chtimes(struct vnode *vp, struct timespec *atime, struct timespec *mtime,
-	int vaflags, struct ucred *cred)
+	      int vaflags, struct ucred *cred)
 {
 	struct tmpfs_node *node;
 
@@ -1261,7 +1261,7 @@ tmpfs_chtimes(struct vnode *vp, struct timespec *atime, struct timespec *mtime,
 /* Sync timestamps */
 void
 tmpfs_itimes(struct vnode *vp, const struct timespec *acc,
-    const struct timespec *mod)
+	     const struct timespec *mod)
 {
 	struct tmpfs_node *node;
 	struct timespec now;
