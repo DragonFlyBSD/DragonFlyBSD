@@ -777,9 +777,9 @@ again:
 	    cache_dropmount(mp);
 	}
 
-double_break:
 	if (error) {
 	    cache_put(&nch);
+double_break:
 	    break;
 	}
 	    
