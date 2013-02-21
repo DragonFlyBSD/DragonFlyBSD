@@ -482,20 +482,36 @@ tmpfs_read (struct vop_read_args *ap)
 	off_t base_offset;
 	size_t offset;
 	size_t len;
+	size_t resid;
 	int error;
 
-	error = 0;
-	if (uio->uio_resid == 0) {
-		return error;
-	}
-
-	node = VP_TO_TMPFS_NODE(vp);
-
+	/*
+	 * Check the basics
+	 */
 	if (uio->uio_offset < 0)
 		return (EINVAL);
 	if (vp->v_type != VREG)
 		return (EINVAL);
 
+	/*
+	 * Extract node, try to shortcut the operation through
+	 * the VM page cache, allowing us to avoid buffer cache
+	 * overheads.
+	 */
+	node = VP_TO_TMPFS_NODE(vp);
+        resid = uio->uio_resid;
+        error = vop_helper_read_shortcut(ap);
+        if (error)
+                return error;
+        if (uio->uio_resid == 0) {
+		if (resid)
+			goto finished;
+		return error;
+	}
+
+	/*
+	 * Fall-through to our normal read code.
+	 */
 	while (uio->uio_resid > 0 && uio->uio_offset < node->tn_size) {
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
@@ -532,6 +548,7 @@ tmpfs_read (struct vop_read_args *ap)
 		}
 	}
 
+finished:
 	TMPFS_NODE_LOCK(node);
 	node->tn_status |= TMPFS_NODE_ACCESSED;
 	TMPFS_NODE_UNLOCK(node);
