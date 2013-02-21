@@ -876,7 +876,8 @@ bce_attach(device_t dev)
 	bce_get_media(sc);
 
 	/* Find out RX/TX ring count */
-	sc->ring_cnt = 1; /* XXX */
+	sc->rx_ring_cnt = 1; /* XXX */
+	sc->tx_ring_cnt = 1; /* XXX */
 
 	/* Allocate DMA memory resources. */
 	rc = bce_dma_alloc(sc);
@@ -889,13 +890,13 @@ bce_attach(device_t dev)
 	/*
 	 * NPOLLING RX/TX CPU offset
 	 */
-	if (sc->ring_cnt == ncpus2) {
+	if (sc->rx_ring_cnt == ncpus2) {
 		offset = 0;
 	} else {
-		offset_def = (sc->ring_cnt * device_get_unit(dev)) % ncpus2;
+		offset_def = (sc->rx_ring_cnt * device_get_unit(dev)) % ncpus2;
 		offset = device_getenv_int(dev, "npoll.offset", offset_def);
 		if (offset >= ncpus2 ||
-		    offset % sc->ring_cnt != 0) {
+		    offset % sc->rx_ring_cnt != 0) {
 			device_printf(dev, "invalid npoll.offset %d, use %d\n",
 			    offset, offset_def);
 			offset = offset_def;
@@ -962,7 +963,7 @@ bce_attach(device_t dev)
 
 	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD(&sc->tx_rings[0]));
 	ifq_set_ready(&ifp->if_snd);
-	ifq_set_subq_cnt(&ifp->if_snd, sc->ring_cnt);
+	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);
 
 	/*
 	 * Look for our PHY.
@@ -996,7 +997,7 @@ bce_attach(device_t dev)
 
 	sc->bce_intr_cpuid = rman_get_cpuid(sc->bce_res_irq);
 
-	for (i = 0; i < sc->ring_cnt; ++i) {
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		struct ifaltq_subque *ifsq = ifq_get_subq(&ifp->if_snd, i);
 		struct bce_tx_ring *txr = &sc->tx_rings[i];
 
@@ -2065,14 +2066,14 @@ bce_dma_free(struct bce_softc *sc)
 
 	/* Free TX rings */
 	if (sc->tx_rings != NULL) {
-		for (i = 0; i < sc->ring_cnt; ++i)
+		for (i = 0; i < sc->tx_ring_cnt; ++i)
 			bce_destroy_tx_ring(&sc->tx_rings[i]);
 		kfree(sc->tx_rings, M_DEVBUF);
 	}
 
 	/* Free RX rings */
 	if (sc->rx_rings != NULL) {
-		for (i = 0; i < sc->ring_cnt; ++i)
+		for (i = 0; i < sc->rx_ring_cnt; ++i)
 			bce_destroy_rx_ring(&sc->rx_rings[i]);
 		kfree(sc->rx_rings, M_DEVBUF);
 	}
@@ -2505,9 +2506,9 @@ bce_dma_alloc(struct bce_softc *sc)
 	}
 
 	sc->tx_rings = kmalloc_cachealign(
-	    sizeof(struct bce_tx_ring) * sc->ring_cnt, M_DEVBUF,
+	    sizeof(struct bce_tx_ring) * sc->tx_ring_cnt, M_DEVBUF,
 	    M_WAITOK | M_ZERO);
-	for (i = 0; i < sc->ring_cnt; ++i) {
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		sc->tx_rings[i].sc = sc;
 
 		rc = bce_create_tx_ring(&sc->tx_rings[i]);
@@ -2519,9 +2520,9 @@ bce_dma_alloc(struct bce_softc *sc)
 	}
 
 	sc->rx_rings = kmalloc_cachealign(
-	    sizeof(struct bce_rx_ring) * sc->ring_cnt, M_DEVBUF,
+	    sizeof(struct bce_rx_ring) * sc->rx_ring_cnt, M_DEVBUF,
 	    M_WAITOK | M_ZERO);
-	for (i = 0; i < sc->ring_cnt; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		sc->rx_rings[i].sc = sc;
 
 		rc = bce_create_rx_ring(&sc->rx_rings[i]);
@@ -3439,17 +3440,17 @@ bce_stop(struct bce_softc *sc)
 	bce_disable_intr(sc);
 
 	ifp->if_flags &= ~IFF_RUNNING;
-	for (i = 0; i < sc->ring_cnt; ++i) {
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
 		ifsq_watchdog_stop(&sc->tx_rings[i].tx_watchdog);
 	}
 
 	/* Free the RX lists. */
-	for (i = 0; i < sc->ring_cnt; ++i)
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		bce_free_rx_chain(&sc->rx_rings[i]);
 
 	/* Free TX buffers. */
-	for (i = 0; i < sc->ring_cnt; ++i)
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		bce_free_tx_chain(&sc->tx_rings[i]);
 
 	sc->bce_link = 0;
@@ -4661,11 +4662,11 @@ bce_init(void *xsc)
 	bce_set_rx_mode(sc);
 
 	/* Init RX buffer descriptor chain. */
-	for (i = 0; i < sc->ring_cnt; ++i)
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		bce_init_rx_chain(&sc->rx_rings[i]);	/* XXX return value */
 
 	/* Init TX buffer descriptor chain. */
-	for (i = 0; i < sc->ring_cnt; ++i)
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		bce_init_tx_chain(&sc->tx_rings[i]);
 
 #ifdef IFPOLL_ENABLE
@@ -4685,7 +4686,7 @@ bce_init(void *xsc)
 	bce_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	for (i = 0; i < sc->ring_cnt; ++i) {
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
 		ifsq_watchdog_start(&sc->tx_rings[i].tx_watchdog);
 	}
@@ -5060,7 +5061,7 @@ bce_watchdog(struct ifaltq_subque *ifsq)
 
 	IFNET_STAT_INC(ifp, oerrors, 1);
 
-	for (i = 0; i < sc->ring_cnt; ++i)
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		ifsq_devstart_sched(sc->tx_rings[i].ifsq);
 }
 
@@ -5161,18 +5162,22 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		info->ifpi_status.status_func = bce_npoll_status;
 		info->ifpi_status.serializer = &sc->main_serialize;
 
-		for (i = 0; i < sc->ring_cnt; ++i) {
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
 			struct bce_tx_ring *txr = &sc->tx_rings[i];
-			struct bce_rx_ring *rxr = &sc->rx_rings[i];
 			int idx = i + sc->npoll_ofs;
 
 			KKASSERT(idx < ncpus2);
-
 			info->ifpi_tx[idx].poll_func = bce_npoll_tx;
 			info->ifpi_tx[idx].arg = txr;
 			info->ifpi_tx[idx].serializer = &txr->tx_serialize;
 			ifsq_set_cpuid(txr->ifsq, idx);
+		}
 
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			struct bce_rx_ring *rxr = &sc->rx_rings[i];
+			int idx = i + sc->npoll_ofs;
+
+			KKASSERT(idx < ncpus2);
 			info->ifpi_rx[idx].poll_func = bce_npoll_rx;
 			info->ifpi_rx[idx].arg = rxr;
 			info->ifpi_rx[idx].serializer = &rxr->rx_serialize;
@@ -5187,7 +5192,7 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			       (1 << 16) | sc->bce_tx_quick_cons_trip);
 		}
 	} else {
-		for (i = 0; i < sc->ring_cnt; ++i) {
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
 			ifsq_set_cpuid(sc->tx_rings[i].ifsq,
 			    sc->bce_intr_cpuid); /* XXX */
 		}
@@ -5799,7 +5804,7 @@ bce_tick_serialized(struct bce_softc *sc)
 
 		sc->bce_link++;
 		/* Now that link is up, handle any outstanding TX traffic. */
-		for (i = 0; i < sc->ring_cnt; ++i)
+		for (i = 0; i < sc->tx_ring_cnt; ++i)
 			ifsq_devstart_sched(sc->tx_rings[i].ifsq);
 	}
 }
@@ -6388,7 +6393,7 @@ bce_setup_serialize(struct bce_softc *sc)
 	 */
 
 	/* Main + TX + RX */
-	sc->serialize_cnt = 1 + sc->ring_cnt + sc->ring_cnt;
+	sc->serialize_cnt = 1 + sc->tx_ring_cnt + sc->rx_ring_cnt;
 
 	sc->serializes =
 	    kmalloc(sc->serialize_cnt * sizeof(struct lwkt_serialize *),
@@ -6405,13 +6410,13 @@ bce_setup_serialize(struct bce_softc *sc)
 	sc->serializes[i++] = &sc->main_serialize;
 
 	sc->tx_serialize = i;
-	for (j = 0; j < sc->ring_cnt; ++j) {
+	for (j = 0; j < sc->tx_ring_cnt; ++j) {
 		KKASSERT(i < sc->serialize_cnt);
 		sc->serializes[i++] = &sc->tx_rings[j].tx_serialize;
 	}
 
 	sc->rx_serialize = i;
-	for (j = 0; j < sc->ring_cnt; ++j) {
+	for (j = 0; j < sc->rx_ring_cnt; ++j) {
 		KKASSERT(i < sc->serialize_cnt);
 		sc->serializes[i++] = &sc->rx_rings[j].rx_serialize;
 	}
@@ -6489,7 +6494,7 @@ bce_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS)
 		return EINVAL;
 
 	ifnet_serialize_all(ifp);
-	if (off >= ncpus2 || off % sc->ring_cnt != 0) {
+	if (off >= ncpus2 || off % sc->rx_ring_cnt != 0) {
 		error = EINVAL;
 	} else {
 		error = 0;

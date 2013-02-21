@@ -5931,7 +5931,8 @@ struct bce_softc {
 	struct lwkt_serialize	main_serialize;
 
 	int			npoll_ofs;
-	int			ring_cnt;
+	int			tx_ring_cnt;
+	int			rx_ring_cnt;
 	struct bce_tx_ring	*tx_rings;
 	struct bce_rx_ring	*rx_rings;
 
