@@ -2750,15 +2750,12 @@ asr_action(struct cam_sim *sim, union ccb  *ccb)
 	}
 
 	case XPT_RESET_DEV:	/* Bus Device Reset the specified SCSI device */
-		/* Rese HBA device ... */
+		/* Reset HBA device ... */
 		asr_hbareset (sc);
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
 
-#if (defined(REPORT_LUNS))
-	case REPORT_LUNS:
-#endif
 	case XPT_ABORT:			/* Abort the specified CCB */
 		/* XXX Implement */
 		ccb->ccb_h.status = CAM_REQ_INVALID;
