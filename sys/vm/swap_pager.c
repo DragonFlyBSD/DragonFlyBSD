@@ -2224,7 +2224,10 @@ swp_pager_meta_free_callback(struct swblock *swap, void *data)
 		}
 		++index;
 	}
+
 	/* swap may be invalid here due to zfree above */
+	lwkt_yield();
+
 	return(0);
 }
 
@@ -2261,6 +2264,7 @@ swp_pager_meta_free_all(vm_object_t object)
 			panic("swap_pager_meta_free_all: swb_count != 0");
 		zfree(swap_zone, swap);
 		--object->swblock_count;
+		lwkt_yield();
 	}
 	KKASSERT(object->swblock_count == 0);
 }
