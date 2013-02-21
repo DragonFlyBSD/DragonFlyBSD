@@ -5883,11 +5883,12 @@ struct bce_softc {
 	/* The device handle for the MII bus child device. */
 	device_t		bce_miibus;
 
-	int			bce_intr_cpuid;
 	int			bce_link;
+	int			bce_timer_cpuid;
 	struct callout		bce_tick_callout;
 	struct callout		bce_pulse_callout;
 
+	int			bce_intr_cpuid;
 	boolean_t		bce_msi_maylose;
 	uint16_t		bce_check_rx_cons;
 	uint16_t		bce_check_tx_cons;

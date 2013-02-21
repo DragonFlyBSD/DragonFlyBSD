@@ -348,6 +348,7 @@ static void	bce_coal_change(struct bce_softc *);
 static void	bce_setup_serialize(struct bce_softc *);
 static void	bce_serialize_skipmain(struct bce_softc *);
 static void	bce_deserialize_skipmain(struct bce_softc *);
+static void	bce_set_timer_cpuid(struct bce_softc *, boolean_t);
 
 static int	bce_create_tx_ring(struct bce_tx_ring *);
 static void	bce_destroy_tx_ring(struct bce_tx_ring *);
@@ -1007,6 +1008,9 @@ bce_attach(device_t dev)
 
 		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, bce_watchdog);
 	}
+
+	/* Set timer CPUID */
+	bce_set_timer_cpuid(sc, FALSE);
 
 	/* Add the supported sysctls to the kernel. */
 	bce_add_sysctls(sc);
@@ -4607,6 +4611,7 @@ bce_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t ether_mtu;
 	int error, i;
+	boolean_t polling;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
@@ -4669,19 +4674,25 @@ bce_init(void *xsc)
 	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		bce_init_tx_chain(&sc->tx_rings[i]);
 
+	polling = FALSE;
 #ifdef IFPOLL_ENABLE
-	/* Disable interrupts if we are polling. */
-	if (ifp->if_flags & IFF_NPOLLING) {
+	if (ifp->if_flags & IFF_NPOLLING)
+		polling = TRUE;
+#endif
+
+	if (polling) {
+		/* Disable interrupts if we are polling. */
 		bce_disable_intr(sc);
 
 		REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
 		       (1 << 16) | sc->bce_rx_quick_cons_trip);
 		REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
 		       (1 << 16) | sc->bce_tx_quick_cons_trip);
-	} else
-#endif
-	/* Enable host interrupts. */
-	bce_enable_intr(sc);
+	} else {
+		/* Enable host interrupts. */
+		bce_enable_intr(sc);
+	}
+	bce_set_timer_cpuid(sc, polling);
 
 	bce_ifmedia_upd(ifp);
 
@@ -4692,7 +4703,7 @@ bce_init(void *xsc)
 	}
 
 	callout_reset_bycpu(&sc->bce_tick_callout, hz, bce_tick, sc,
-	    sc->bce_intr_cpuid);
+	    sc->bce_timer_cpuid);
 back:
 	if (error)
 		bce_stop(sc);
@@ -5184,6 +5195,7 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		}
 
 		if (ifp->if_flags & IFF_RUNNING) {
+			bce_set_timer_cpuid(sc, TRUE);
 			bce_disable_intr(sc);
 
 			REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
@@ -5198,6 +5210,7 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		}
 
 		if (ifp->if_flags & IFF_RUNNING) {
+			bce_set_timer_cpuid(sc, FALSE);
 			bce_enable_intr(sc);
 
 			REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
@@ -5699,7 +5712,7 @@ bce_pulse(void *xsc)
 
 	/* Schedule the next pulse. */
 	callout_reset_bycpu(&sc->bce_pulse_callout, hz, bce_pulse, sc,
-	    sc->bce_intr_cpuid);
+	    sc->bce_timer_cpuid);
 
 	lwkt_serialize_exit(&sc->main_serialize);
 }
@@ -5788,7 +5801,7 @@ bce_tick_serialized(struct bce_softc *sc)
 
 	/* Schedule the next tick. */
 	callout_reset_bycpu(&sc->bce_tick_callout, hz, bce_tick, sc,
-	    sc->bce_intr_cpuid);
+	    sc->bce_timer_cpuid);
 
 	/* If link is up already up then we're done. */
 	if (sc->bce_link)
@@ -6506,3 +6519,12 @@ bce_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS)
 }
 
 #endif	/* IFPOLL_ENABLE */
+
+static void
+bce_set_timer_cpuid(struct bce_softc *sc, boolean_t polling)
+{
+	if (polling)
+		sc->bce_timer_cpuid = 0; /* XXX */
+	else
+		sc->bce_timer_cpuid = rman_get_cpuid(sc->bce_res_irq);
+}
