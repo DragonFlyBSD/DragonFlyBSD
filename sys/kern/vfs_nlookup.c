@@ -745,8 +745,15 @@ nlookup(struct nlookupdata *nd)
 again:
 	    cache_put(&nch);
 	    if (vfs_do_busy) {
-		while (vfs_busy(mp, 0))
-		    ;
+		while (vfs_busy(mp, 0)) {
+		    if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
+			kprintf("nlookup: warning umount race avoided\n");
+			cache_dropmount(mp);
+			error = EBUSY;
+			vfs_do_busy = 0;
+			goto double_break;
+		    }
+		}
 	    }
 	    cache_get(&mp->mnt_ncmountpt, &nch);
 
@@ -769,6 +776,8 @@ again:
 		vfs_unbusy(mp);
 	    cache_dropmount(mp);
 	}
+
+double_break:
 	if (error) {
 	    cache_put(&nch);
 	    break;

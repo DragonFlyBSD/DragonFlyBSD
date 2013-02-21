@@ -326,6 +326,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	LIST_FOREACH(node, &tmp->tm_nodes_used, tn_entries) {
 		if (node->tn_type == VREG && node->tn_vnode) {
 			++node->tn_links;
+			lwkt_yield();
 			TMPFS_NODE_LOCK(node);
 			vx_get(node->tn_vnode);
 			tmpfs_truncate(node->tn_vnode, 0);
@@ -348,6 +349,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	 */
 	LIST_FOREACH(node, &tmp->tm_nodes_used, tn_entries) {
 		++node->tn_links;
+		lwkt_yield();
 		TMPFS_NODE_LOCK(node);
 		if (node->tn_type == VDIR) {
 			struct tmpfs_dirent *de;
@@ -387,6 +389,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 		TMPFS_NODE_LOCK(node);
 		tmpfs_free_node(tmp, node);
 		/* eats lock */
+		lwkt_yield();
 	}
 	KKASSERT(tmp->tm_root == NULL);
 

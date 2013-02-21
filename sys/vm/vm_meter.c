@@ -95,11 +95,17 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 {
 	struct vmtotal total;
 	struct vmtotal *totalp;
+	struct vm_object marker;
 	vm_object_t object;
+	long collisions;
 
 	bzero(&total, sizeof(total));
 	totalp = &total;
+	bzero(&marker, sizeof(marker));
+	marker.type = OBJT_MARKER;
+	collisions = vmobj_token.t_collisions;
 
+#if 0
 	/*
 	 * Mark all objects as inactive.
 	 */
@@ -112,6 +118,7 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 		vm_object_clear_flag(object, OBJ_ACTIVE);
 	}
 	lwkt_reltoken(&vmobj_token);
+#endif
 
 	/*
 	 * Calculate process statistics.
@@ -122,6 +129,8 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	 * Calculate object memory usage statistics.
 	 */
 	lwkt_gettoken(&vmobj_token);
+	TAILQ_INSERT_HEAD(&vm_object_list, &marker, object_list);
+
 	for (object = TAILQ_FIRST(&vm_object_list);
 	    object != NULL;
 	    object = TAILQ_NEXT(object, object_list)) {
@@ -160,8 +169,25 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 				totalp->t_armshr += object->resident_page_count;
 			}
 		}
+
+		/*
+		 * Don't hog the vmobj_token if someone else wants it.
+		 */
+		if (collisions != vmobj_token.t_collisions) {
+			TAILQ_REMOVE(&vm_object_list, &marker, object_list);
+			TAILQ_INSERT_AFTER(&vm_object_list, object,
+					   &marker, object_list);
+			tsleep(&vm_object_list, 0, "breath", 1);
+			object = &marker;
+			collisions = vmobj_token.t_collisions;
+		} else {
+			lwkt_yield();
+		}
 	}
+
+	TAILQ_REMOVE(&vm_object_list, &marker, object_list);
 	lwkt_reltoken(&vmobj_token);
+
 	totalp->t_free = vmstats.v_free_count + vmstats.v_cache_count;
 
 	return (sysctl_handle_opaque(oidp, totalp, sizeof total, req));

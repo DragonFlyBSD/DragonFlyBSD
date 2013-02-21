@@ -128,7 +128,6 @@ sys_mount(struct mount_args *uap)
 	char fstypename[MFSNAMELEN];
 	struct ucred *cred;
 
-	get_mplock();
 	cred = td->td_ucred;
 	if (jailed(cred)) {
 		error = EPERM;
@@ -267,6 +266,7 @@ sys_mount(struct mount_args *uap)
 		vsetflags(vp, VMOUNT);
 		mp->mnt_flag |=
 		    uap->flags & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
+		lwkt_gettoken(&mp->mnt_token);
 		vn_unlock(vp);
 		goto update;
 	}
@@ -348,9 +348,12 @@ sys_mount(struct mount_args *uap)
 	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
 	mp->mnt_stat.f_owner = cred->cr_uid;
+	lwkt_gettoken(&mp->mnt_token);
 	vn_unlock(vp);
 update:
 	/*
+	 * (per-mount token acquired at this point)
+	 *
 	 * Set the mount level flags.
 	 */
 	if (uap->flags & MNT_RDONLY)
@@ -380,6 +383,7 @@ update:
 			mp->mnt_flag = flag;
 			mp->mnt_kern_flag = flag2;
 		}
+		lwkt_reltoken(&mp->mnt_token);
 		vfs_unbusy(mp);
 		vclrflags(vp, VMOUNT);
 		vrele(vp);
@@ -415,6 +419,7 @@ update:
 		vn_unlock(vp);
 		checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);
 		error = vfs_allocate_syncvnode(mp);
+		lwkt_reltoken(&mp->mnt_token);
 		vfs_unbusy(mp);
 		error = VFS_START(mp, 0);
 		vrele(vp);
@@ -426,13 +431,13 @@ update:
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
 		vclrflags(vp, VMOUNT);
 		mp->mnt_vfc->vfc_refcount--;
+		lwkt_reltoken(&mp->mnt_token);
 		vfs_unbusy(mp);
 		kfree(mp, M_MOUNT);
 		cache_drop(&nch);
 		vput(vp);
 	}
 done:
-	rel_mplock();
 	return (error);
 }
 
@@ -664,6 +669,7 @@ dounmount(struct mount *mp, int flags)
 	int freeok = 1;
 
 	lwkt_gettoken(&mntvnode_token);
+	lwkt_gettoken(&mp->mnt_token);
 	/*
 	 * Exclusive access for unmounting purposes
 	 */
@@ -679,8 +685,10 @@ dounmount(struct mount *mp, int flags)
 	error = lockmgr(&mp->mnt_lock, lflags);
 	if (error) {
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
-		if (mp->mnt_kern_flag & MNTK_MWAIT)
+		if (mp->mnt_kern_flag & MNTK_MWAIT) {
+			mp->mnt_kern_flag &= ~MNTK_MWAIT;
 			wakeup(mp);
+		}
 		goto out;
 	}
 
@@ -767,8 +775,10 @@ dounmount(struct mount *mp, int flags)
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		mp->mnt_flag |= async_flag;
 		lockmgr(&mp->mnt_lock, LK_RELEASE);
-		if (mp->mnt_kern_flag & MNTK_MWAIT)
+		if (mp->mnt_kern_flag & MNTK_MWAIT) {
+			mp->mnt_kern_flag &= ~MNTK_MWAIT;
 			wakeup(mp);
+		}
 		goto out;
 	}
 	/*
@@ -807,12 +817,29 @@ dounmount(struct mount *mp, int flags)
 	if (!TAILQ_EMPTY(&mp->mnt_nvnodelist))
 		panic("unmount: dangling vnode");
 	lockmgr(&mp->mnt_lock, LK_RELEASE);
-	if (mp->mnt_kern_flag & MNTK_MWAIT)
+	if (mp->mnt_kern_flag & MNTK_MWAIT) {
+		mp->mnt_kern_flag &= ~MNTK_MWAIT;
 		wakeup(mp);
-	if (freeok)
+	}
+
+	/*
+	 * If we reach here and freeok != 0 we must free the mount.
+	 * If refs > 1 cycle and wait, just in case someone tried
+	 * to busy the mount after we decided to do the unmount.
+	 */
+	if (freeok) {
+		while (mp->mnt_refs > 1) {
+			wakeup(mp);
+			tsleep(&mp->mnt_refs, 0, "umntrwait", hz / 10 + 1);
+		}
+		lwkt_reltoken(&mp->mnt_token);
 		kfree(mp, M_MOUNT);
+		mp = NULL;
+	}
 	error = 0;
 out:
+	if (mp)
+		lwkt_reltoken(&mp->mnt_token);
 	lwkt_reltoken(&mntvnode_token);
 	return (error);
 }

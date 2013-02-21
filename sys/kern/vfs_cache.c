@@ -3128,9 +3128,7 @@ sys___getcwd(struct __getcwd_args *uap)
 		buflen = MAXPATHLEN;
 
 	buf = kmalloc(buflen, M_TEMP, M_WAITOK);
-	get_mplock();
 	bp = kern_getcwd(buf, buflen, &error);
-	rel_mplock();
 	if (error == 0)
 		error = copyout(bp, uap->buf, strlen(bp) + 1);
 	kfree(buf, M_TEMP);

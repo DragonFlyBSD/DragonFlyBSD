@@ -248,8 +248,10 @@ vfs_busy(struct mount *mp, int flags)
 	int lkflags;
 
 	atomic_add_int(&mp->mnt_refs, 1);
+	lwkt_gettoken(&mp->mnt_token);
 	if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
 		if (flags & LK_NOWAIT) {
+			lwkt_reltoken(&mp->mnt_token);
 			atomic_add_int(&mp->mnt_refs, -1);
 			return (ENOENT);
 		}
@@ -262,12 +264,14 @@ vfs_busy(struct mount *mp, int flags)
 		 * exclusive lock at the end of dounmount.
 		 */
 		tsleep((caddr_t)mp, 0, "vfs_busy", 0);
+		lwkt_reltoken(&mp->mnt_token);
 		atomic_add_int(&mp->mnt_refs, -1);
 		return (ENOENT);
 	}
 	lkflags = LK_SHARED;
 	if (lockmgr(&mp->mnt_lock, lkflags))
 		panic("vfs_busy: unexpected lock failure");
+	lwkt_reltoken(&mp->mnt_token);
 	return (0);
 }
 
