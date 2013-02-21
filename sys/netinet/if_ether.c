@@ -1258,6 +1258,20 @@ arp_ifaddr(void *arg __unused, struct ifnet *ifp,
 	}
 }
 
+/*
+ * The ARP handler uses a dedicated thread because arp updates must
+ * update the routing table on every cpu via a synchronous forwarded
+ * message, and this can be expensive.
+ */
+static void
+cpuarg_cpufn(struct mbuf **mp, int hoff __unused)
+{
+	struct mbuf *m = *mp;
+
+	m->m_flags |= M_HASH;
+	m->m_pkthdr.hash = NETISR_ARP | NETISR_DEDICATED;
+}
+
 static void
 arp_init(void)
 {
@@ -1266,7 +1280,8 @@ arp_init(void)
 	for (cpu = 0; cpu < ncpus2; cpu++)
 		LIST_INIT(&llinfo_arp_list[cpu]);
 
-	netisr_register(NETISR_ARP, arpintr, NULL);
+	netisr_init_dedicated(NETISR_ARP);
+	netisr_register(NETISR_ARP, arpintr, cpuarg_cpufn);
 
 	EVENTHANDLER_REGISTER(ifaddr_event, arp_ifaddr, NULL,
 	    EVENTHANDLER_PRI_LAST);

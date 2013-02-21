@@ -99,6 +99,7 @@
 #define	NETISR_BLUETOOTH 31
 
 #define	NETISR_MAX	32
+#define NETISR_DEDICATED	0x1000
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -168,6 +169,7 @@ extern lwkt_port netisr_sync_port;
 lwkt_port_t	netisr_portfn(int cpu);
 lwkt_port_t	cur_netport(void);
 
+void		netisr_init_dedicated(int);
 void		netisr_register(int, netisr_fn_t, netisr_cpufn_t);
 void		netisr_register_hashcheck(int, netisr_hashck_t);
 void		netisr_register_rollup(netisr_ru_t ru_func, int ru_prio);
