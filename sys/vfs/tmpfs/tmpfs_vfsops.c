@@ -309,6 +309,8 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	int flags = 0;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
+	struct vnode *vp;
+	int isok;
 
 	tmp = VFS_TO_TMPFS(mp);
 	TMPFS_LOCK(tmp);
@@ -323,23 +325,39 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	 * and vm objects before calling vflush().
 	 */
 	LIST_FOREACH(node, &tmp->tm_nodes_used, tn_entries) {
-		if (node->tn_type == VREG && node->tn_vnode) {
-			++node->tn_links;	/* mnt_token protected */
+		/*
+		 * tn_links is mnt_token protected
+		 */
+		++node->tn_links;
+		while (node->tn_type == VREG && node->tn_vnode) {
+			vp = node->tn_vnode;
+			vhold_interlocked(vp);
 			lwkt_yield();
-			TMPFS_NODE_LOCK(node);
 
 			/*
 			 * vx_get/vx_put and tmpfs_truncate may block,
 			 * releasing the tmpfs mountpoint token.
+			 *
+			 * Make sure the lock order is correct.
 			 */
-			vx_get(node->tn_vnode);
-			tmpfs_truncate(node->tn_vnode, 0);
-			vx_put(node->tn_vnode);
-
+			vx_get(vp);		/* held vnode */
+			TMPFS_NODE_LOCK(node);
+			if (node->tn_vnode == vp) {
+				tmpfs_truncate(vp, 0);
+				isok = 1;
+			} else {
+				isok = 0;
+			}
 			TMPFS_NODE_UNLOCK(node);
-			--node->tn_links;	/* mnt_token protected */
+			vx_put(vp);
+			vdrop(vp);
+			if (isok)
+				break;
+			/* retry */
 		}
+		--node->tn_links;
 	}
+
 	/*
 	 * Flush all vnodes on the mount.
 	 *
