@@ -126,7 +126,7 @@
 #define NCHHASH(hash)		(&nchashtbl[(hash) & nchash])
 #define MINNEG			1024
 #define MINPOS			1024
-#define NCMOUNT_NUMCACHE	128
+#define NCMOUNT_NUMCACHE	1009	/* prime number */
 
 MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
@@ -186,6 +186,19 @@ SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode),
     "sizeof(struct vnode)");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache),
     "sizeof(struct namecache)");
+
+static int	ncmount_cache_enable = 1;
+SYSCTL_INT(_debug, OID_AUTO, ncmount_cache_enable, CTLFLAG_RW,
+	   &ncmount_cache_enable, 0, "mount point cache");
+static long	ncmount_cache_hit;
+SYSCTL_LONG(_debug, OID_AUTO, ncmount_cache_hit, CTLFLAG_RW,
+	    &ncmount_cache_hit, 0, "mpcache hits");
+static long	ncmount_cache_miss;
+SYSCTL_LONG(_debug, OID_AUTO, ncmount_cache_miss, CTLFLAG_RW,
+	    &ncmount_cache_miss, 0, "mpcache misses");
+static long	ncmount_cache_overwrite;
+SYSCTL_LONG(_debug, OID_AUTO, ncmount_cache_overwrite, CTLFLAG_RW,
+	    &ncmount_cache_overwrite, 0, "mpcache entry overwrites");
 
 static int cache_resolve_mp(struct mount *mp);
 static struct vnode *cache_dvpref(struct namecache *ncp);
@@ -2561,7 +2574,7 @@ ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
 
 	hash = ((int)(intptr_t)mp / sizeof(*mp)) ^
 	       ((int)(intptr_t)ncp / sizeof(*ncp));
-	hash &= NCMOUNT_NUMCACHE - 1;
+	hash = (hash & 0x7FFFFFFF) % NCMOUNT_NUMCACHE;
 	return (&ncmount_cache[hash]);
 }
 
@@ -2594,6 +2607,10 @@ cache_findmount(struct nchandle *nch)
 	/*
 	 * Fast
 	 */
+	if (ncmount_cache_enable == 0) {
+		ncc = NULL;
+		goto skip;
+	}
 	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
 	if (ncc->ncp == nch->ncp) {
 		spin_lock_shared(&ncc->spin);
@@ -2602,11 +2619,13 @@ cache_findmount(struct nchandle *nch)
 			    mp->mnt_ncmounton.ncp == nch->ncp) {
 				atomic_add_int(&mp->mnt_refs, 1);
 				spin_unlock_shared(&ncc->spin);
+				++ncmount_cache_hit;
 				return(mp);
 			}
 		}
 		spin_unlock_shared(&ncc->spin);
 	}
+skip:
 
 	/*
 	 * Slow
@@ -2617,7 +2636,7 @@ cache_findmount(struct nchandle *nch)
 	mountlist_scan(cache_findmount_callback, &info,
 			       MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
 
-	if (info.result) {
+	if (info.result && ncc) {
 		spin_lock(&ncc->spin);
 		if ((info.result->mnt_kern_flag & MNTK_UNMOUNT) == 0) {
 			if (ncc->mp)
@@ -2626,9 +2645,11 @@ cache_findmount(struct nchandle *nch)
 			ncc->mp = info.result;
 			ncc->ncp = nch->ncp;
 			spin_unlock(&ncc->spin);
+			++ncmount_cache_overwrite;
 		} else {
 			spin_unlock(&ncc->spin);
 		}
+		++ncmount_cache_miss;
 	}
 	return(info.result);
 }
