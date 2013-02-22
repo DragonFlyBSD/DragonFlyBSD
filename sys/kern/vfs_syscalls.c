@@ -412,6 +412,7 @@ update:
 		}
 		mp->mnt_ncmounton = nch;		/* inherits ref */
 		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
+		cache_ismounting(mp);
 
 		/* XXX get the root of the fs and cache_setvp(mnt_ncmountpt...) */
 		vclrflags(vp, VMOUNT);
@@ -668,7 +669,6 @@ dounmount(struct mount *mp, int flags)
 	int lflags;
 	int freeok = 1;
 
-	lwkt_gettoken(&mntvnode_token);
 	lwkt_gettoken(&mp->mnt_token);
 	/*
 	 * Exclusive access for unmounting purposes
@@ -843,7 +843,6 @@ dounmount(struct mount *mp, int flags)
 out:
 	if (mp)
 		lwkt_reltoken(&mp->mnt_token);
-	lwkt_reltoken(&mntvnode_token);
 	return (error);
 }
 

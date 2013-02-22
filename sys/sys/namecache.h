@@ -193,6 +193,7 @@ struct nchandle cache_nlookup_nonblock(struct nchandle *nch,
 void	cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp);
 struct mount *cache_findmount(struct nchandle *nch);
 void	cache_dropmount(struct mount *mp);
+void	cache_ismounting(struct mount *mp);
 void	cache_unmounting(struct mount *mp);
 int	cache_inval(struct nchandle *nch, int flags);
 int	cache_inval_vp(struct vnode *vp, int flags);
