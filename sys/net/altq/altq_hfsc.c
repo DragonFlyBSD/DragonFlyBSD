@@ -1175,7 +1175,7 @@ ellist_alloc(void)
 {
 	ellist_t *head;
 
-	head = kmalloc(sizeof(ellist_t *), M_ALTQ, M_WAITOK);
+	head = kmalloc(sizeof(*head), M_ALTQ, M_WAITOK);
 	TAILQ_INIT(head);
 	return (head);
 }
