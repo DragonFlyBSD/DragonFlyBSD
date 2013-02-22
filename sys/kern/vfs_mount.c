@@ -590,11 +590,13 @@ vlrureclaim(struct mount *mp, void *data)
 	 * This should not happen in normal operation, even on machines with
 	 * low amounts of memory, but extraordinary memory use by the system
 	 * verses the amount of cached data can trigger it.
+	 *
+	 * (long) -> deal with 64 bit machines, intermediate overflow
 	 */
 	usevnodes = desiredvnodes;
 	if (usevnodes <= 0)
 		usevnodes = 1;
-	trigger = vmstats.v_page_count * (trigger_mult + 2) / usevnodes;
+	trigger = (long)vmstats.v_page_count * (trigger_mult + 2) / usevnodes;
 
 	done = 0;
 	lwkt_gettoken(&mntvnode_token);
@@ -709,6 +711,8 @@ vnlru_proc(void)
 
 		/*
 		 * Try to free some vnodes if we have too many
+		 *
+		 * (long) -> deal with 64 bit machines, intermediate overflow
 		 */
 		if (numvnodes > desiredvnodes &&
 		    freevnodes > desiredvnodes * 2 / 10) {
@@ -725,7 +729,7 @@ vnlru_proc(void)
 		 * Nothing to do if most of our vnodes are already on
 		 * the free list.
 		 */
-		if (numvnodes - freevnodes <= desiredvnodes * 9 / 10) {
+		if (numvnodes - freevnodes <= (long)desiredvnodes * 9 / 10) {
 			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
 		}

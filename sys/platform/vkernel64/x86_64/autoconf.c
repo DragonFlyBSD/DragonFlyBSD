@@ -163,9 +163,9 @@ cpu_startup(void *dummy)
         ffs_rawread_setup();
 #endif
 	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
-		      (nbuf*BKVASIZE) + (nswbuf*MAXPHYS) + pager_map_size);
+		      (nbuf*BKVASIZE*2) + (nswbuf*MAXPHYS) + pager_map_size);
 	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
-		      (nbuf*BKVASIZE));
+		      (nbuf*BKVASIZE*2));
 	buffer_map.system_map = 1;
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
 		      (nswbuf*MAXPHYS) + pager_map_size);
