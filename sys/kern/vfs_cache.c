@@ -123,9 +123,10 @@
 /*
  * Structures associated with name cacheing.
  */
-#define NCHHASH(hash)	(&nchashtbl[(hash) & nchash])
-#define MINNEG		1024
-#define MINPOS		1024
+#define NCHHASH(hash)		(&nchashtbl[(hash) & nchash])
+#define MINNEG			1024
+#define MINPOS			1024
+#define NCMOUNT_NUMCACHE	128
 
 MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
@@ -136,9 +137,16 @@ struct nchash_head {
        struct spinlock	spin;
 };
 
+struct ncmount_cache {
+	struct spinlock	spin;
+	struct namecache *ncp;
+	struct mount *mp;
+};
+
 static struct nchash_head	*nchashtbl;
 static struct namecache_list	ncneglist;
 static struct spinlock		ncspin;
+static struct ncmount_cache	ncmount_cache[NCMOUNT_NUMCACHE];
 
 /*
  * ncvp_debug - debug cache_fromvp().  This is used by the NFS server
@@ -2528,13 +2536,34 @@ failed:
 
 /*
  * The namecache entry is marked as being used as a mount point. 
- * Locate the mount if it is visible to the caller.
+ * Locate the mount if it is visible to the caller.  The DragonFly
+ * mount system allows arbitrary loops in the topology and disentangles
+ * those loops by matching against (mp, ncp) rather than just (ncp).
+ * This means any given ncp can dive any number of mounts, depending
+ * on the relative mount (e.g. nullfs) the caller is at in the topology.
+ *
+ * We use a very simple frontend cache to reduce SMP conflicts,
+ * which we have to do because the mountlist scan needs an exclusive
+ * lock around its ripout info list.  Not to mention that there might
+ * be a lot of mounts.
  */
 struct findmount_info {
 	struct mount *result;
 	struct mount *nch_mount;
 	struct namecache *nch_ncp;
 };
+
+static
+struct ncmount_cache *
+ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
+{
+	int hash;
+
+	hash = ((int)(intptr_t)mp / sizeof(*mp)) ^
+	       ((int)(intptr_t)ncp / sizeof(*ncp));
+	hash &= NCMOUNT_NUMCACHE - 1;
+	return (&ncmount_cache[hash]);
+}
 
 static
 int
@@ -2559,12 +2588,48 @@ struct mount *
 cache_findmount(struct nchandle *nch)
 {
 	struct findmount_info info;
+	struct ncmount_cache *ncc;
+	struct mount *mp;
 
+	/*
+	 * Fast
+	 */
+	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
+	if (ncc->ncp == nch->ncp) {
+		spin_lock_shared(&ncc->spin);
+		if (ncc->ncp == nch->ncp && (mp = ncc->mp) != NULL) {
+			if (mp->mnt_ncmounton.mount == nch->mount &&
+			    mp->mnt_ncmounton.ncp == nch->ncp) {
+				atomic_add_int(&mp->mnt_refs, 1);
+				spin_unlock_shared(&ncc->spin);
+				return(mp);
+			}
+		}
+		spin_unlock_shared(&ncc->spin);
+	}
+
+	/*
+	 * Slow
+	 */
 	info.result = NULL;
 	info.nch_mount = nch->mount;
 	info.nch_ncp = nch->ncp;
 	mountlist_scan(cache_findmount_callback, &info,
 			       MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
+
+	if (info.result) {
+		spin_lock(&ncc->spin);
+		if ((info.result->mnt_kern_flag & MNTK_UNMOUNT) == 0) {
+			if (ncc->mp)
+				atomic_add_int(&ncc->mp->mnt_refs, -1);
+			atomic_add_int(&info.result->mnt_refs, 1);
+			ncc->mp = info.result;
+			ncc->ncp = nch->ncp;
+			spin_unlock(&ncc->spin);
+		} else {
+			spin_unlock(&ncc->spin);
+		}
+	}
 	return(info.result);
 }
 
@@ -2572,6 +2637,24 @@ void
 cache_dropmount(struct mount *mp)
 {
 	atomic_add_int(&mp->mnt_refs, -1);
+}
+
+void
+cache_unmounting(struct mount *mp)
+{
+	struct nchandle *nch = &mp->mnt_ncmounton;
+	struct ncmount_cache *ncc;
+
+	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
+	if (ncc->ncp == nch->ncp && ncc->mp == mp) {
+		spin_lock(&ncc->spin);
+		if (ncc->ncp == nch->ncp && ncc->mp == mp) {
+			atomic_add_int(&mp->mnt_refs, -1);
+			ncc->ncp = NULL;
+			ncc->mp = NULL;
+		}
+		spin_unlock(&ncc->spin);
+	}
 }
 
 /*
@@ -2979,6 +3062,8 @@ nchinit(void)
 		LIST_INIT(&nchashtbl[i].list);
 		spin_init(&nchashtbl[i].spin);
 	}
+	for (i = 0; i < NCMOUNT_NUMCACHE; ++i)
+		spin_init(&ncmount_cache[i].spin);
 	nclockwarn = 5 * hz;
 }
 

@@ -739,6 +739,7 @@ dounmount(struct mount *mp, int flags)
 	 * nchandle records ref the mount structure.  Expect a count of 1
 	 * (our mount->mnt_ncmountpt).
 	 */
+	cache_unmounting(mp);
 	if (mp->mnt_refs != 1) {
 		if ((flags & MNT_FORCE) == 0) {
 			mount_warning(mp, "Cannot unmount: "
@@ -807,6 +808,7 @@ dounmount(struct mount *mp, int flags)
 		cache_drop(&nch);
 	}
 	if (mp->mnt_ncmounton.ncp != NULL) {
+		cache_unmounting(mp);
 		nch = mp->mnt_ncmounton;
 		cache_zero(&mp->mnt_ncmounton);
 		cache_clrmountpt(&nch);
@@ -829,6 +831,7 @@ dounmount(struct mount *mp, int flags)
 	 */
 	if (freeok) {
 		while (mp->mnt_refs > 1) {
+			cache_unmounting(mp);
 			wakeup(mp);
 			tsleep(&mp->mnt_refs, 0, "umntrwait", hz / 10 + 1);
 		}
