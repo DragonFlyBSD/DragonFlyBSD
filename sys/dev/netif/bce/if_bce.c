@@ -6425,16 +6425,16 @@ bce_setup_serialize(struct bce_softc *sc)
 	KKASSERT(i < sc->serialize_cnt);
 	sc->serializes[i++] = &sc->main_serialize;
 
-	sc->tx_serialize = i;
-	for (j = 0; j < sc->tx_ring_cnt; ++j) {
-		KKASSERT(i < sc->serialize_cnt);
-		sc->serializes[i++] = &sc->tx_rings[j].tx_serialize;
-	}
-
 	sc->rx_serialize = i;
 	for (j = 0; j < sc->rx_ring_cnt; ++j) {
 		KKASSERT(i < sc->serialize_cnt);
 		sc->serializes[i++] = &sc->rx_rings[j].rx_serialize;
+	}
+
+	sc->tx_serialize = i;
+	for (j = 0; j < sc->tx_ring_cnt; ++j) {
+		KKASSERT(i < sc->serialize_cnt);
+		sc->serializes[i++] = &sc->tx_rings[j].tx_serialize;
 	}
 
 	KKASSERT(i == sc->serialize_cnt);
