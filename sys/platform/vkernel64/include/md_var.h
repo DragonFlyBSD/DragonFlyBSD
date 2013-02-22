@@ -49,6 +49,7 @@
 
 #define VKNETIF_MAX	16
 #define VKDISK_MAX	16
+#define	SERNOLEN        30
 
 struct vknetif_info {
 	int		tap_fd;
@@ -62,7 +63,8 @@ struct vkdisk_info {
         int fd;
         int unit;
 	enum vkdisk_type { VKD_EMPTY, VKD_DISK, VKD_CD } type;
-        char fname[MAXPATHLEN];
+	char fname[MAXPATHLEN];
+	char *serno;
 };
 
 extern	char	sigcode[];

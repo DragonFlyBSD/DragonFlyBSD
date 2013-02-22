@@ -776,6 +776,7 @@ static
 void
 init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 {
+	char *serno;
 	int i;	
 
         if (diskFileNum == 0)
@@ -789,6 +790,12 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
                         warnx("Invalid argument to '-r'");
                         continue;
                 }
+		/*
+		 * Check for a serial number for the virtual disk
+		 * passed from the command line.
+		 */
+		serno = fname;
+		strsep(&serno, ":");
 
 		if (DiskNum < VKDISK_MAX) {
 			struct stat st; 
@@ -819,6 +826,13 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 			info->fd = fd;
 			info->type = type;
 	        	memcpy(info->fname, fname, l);
+			info->serno = NULL;
+			if (serno) {
+				if ((info->serno = malloc(SERNOLEN)) != NULL)
+				    strlcpy(info->serno, serno, SERNOLEN);
+				else
+				    warnx("Couldn't allocate memory for the operation");
+			}
 
 			if (DiskNum == 0) {
 				if (type == VKD_CD) {

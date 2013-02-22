@@ -55,7 +55,7 @@
 .Op Fl m Ar size
 .Op Fl n Ar numcpus Ns Op Ar :lbits Ns Oo Ar :cbits Oc
 .Op Fl p Ar pidfile
-.Op Fl r Ar file
+.Op Fl r Ar file Ns Op Ar :serno
 .Sh DESCRIPTION
 The
 .Nm
@@ -229,7 +229,7 @@ vkernel.
 .Pp
 An error is issued and the vkernel exits if this file cannot be opened for
 writing or if it is already locked by an active vkernel process.
-.It Fl r Ar file
+.It Fl r Ar file Ns Op Ar :serno
 Specify a R/W disk image
 .Ar file
 to be used by the kernel, with the first
@@ -239,6 +239,9 @@ option defining
 the second one
 .Li vkd1 ,
 and so on.
+A serial number for the virtual disk can be specified in
+.Ar serno .
+.Pp
 The first
 .Fl r
 or

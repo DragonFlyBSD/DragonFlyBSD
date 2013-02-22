@@ -136,6 +136,10 @@ vkdinit(void *dummy __unused)
 		info.d_secpertrack = info.d_media_blocks;
 		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
 
+		if (dsk->serno) {
+			info.d_serialno = kmalloc(SERNOLEN, M_TEMP, M_WAITOK | M_ZERO);
+			strlcpy(info.d_serialno, dsk->serno, SERNOLEN);
+		}
 		disk_setdiskinfo(&sc->disk, &info);
 	}
 }
