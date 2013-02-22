@@ -141,6 +141,7 @@ struct ncmount_cache {
 	struct spinlock	spin;
 	struct namecache *ncp;
 	struct mount *mp;
+	int isneg;		/* if != 0 mp is originator and not target */
 };
 
 static struct nchash_head	*nchashtbl;
@@ -2614,14 +2615,28 @@ cache_findmount(struct nchandle *nch)
 	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
 	if (ncc->ncp == nch->ncp) {
 		spin_lock_shared(&ncc->spin);
-		if (ncc->ncp == nch->ncp && (mp = ncc->mp) != NULL) {
+		if (ncc->isneg == 0 &&
+		    ncc->ncp == nch->ncp && (mp = ncc->mp) != NULL) {
 			if (mp->mnt_ncmounton.mount == nch->mount &&
 			    mp->mnt_ncmounton.ncp == nch->ncp) {
+				/*
+				 * Cache hit (positive)
+				 */
 				atomic_add_int(&mp->mnt_refs, 1);
 				spin_unlock_shared(&ncc->spin);
 				++ncmount_cache_hit;
 				return(mp);
 			}
+			/* else cache miss */
+		}
+		if (ncc->isneg &&
+		    ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
+			/*
+			 * Cache hit (negative)
+			 */
+			spin_unlock_shared(&ncc->spin);
+			++ncmount_cache_hit;
+			return(NULL);
 		}
 		spin_unlock_shared(&ncc->spin);
 	}
@@ -2636,14 +2651,38 @@ skip:
 	mountlist_scan(cache_findmount_callback, &info,
 			       MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
 
-	if (info.result && ncc) {
+	/*
+	 * Cache the result.
+	 *
+	 * Negative lookups: We cache the originating {ncp,mp}. (mp) is
+	 *		     only used for pointer comparisons and is not
+	 *		     referenced (otherwise there would be dangling
+	 *		     refs).
+	 *
+	 * Positive lookups: We cache the originating {ncp} and the target
+	 *		     (mp).  (mp) is referenced.
+	 *
+	 * Indeterminant:    If the match is undergoing an unmount we do
+	 *		     not cache it to avoid racing cache_unmounting(),
+	 *		     but still return the match.
+	 */
+	if (ncc) {
 		spin_lock(&ncc->spin);
-		if ((info.result->mnt_kern_flag & MNTK_UNMOUNT) == 0) {
-			if (ncc->mp)
+		if (info.result == NULL) {
+			if (ncc->isneg == 0 && ncc->mp)
+				atomic_add_int(&ncc->mp->mnt_refs, -1);
+			ncc->ncp = nch->ncp;
+			ncc->mp = nch->mount;
+			ncc->isneg = 1;
+			spin_unlock(&ncc->spin);
+			++ncmount_cache_overwrite;
+		} else if ((info.result->mnt_kern_flag & MNTK_UNMOUNT) == 0) {
+			if (ncc->isneg == 0 && ncc->mp)
 				atomic_add_int(&ncc->mp->mnt_refs, -1);
 			atomic_add_int(&info.result->mnt_refs, 1);
-			ncc->mp = info.result;
 			ncc->ncp = nch->ncp;
+			ncc->mp = info.result;
+			ncc->isneg = 0;
 			spin_unlock(&ncc->spin);
 			++ncmount_cache_overwrite;
 		} else {
@@ -2661,15 +2700,36 @@ cache_dropmount(struct mount *mp)
 }
 
 void
+cache_ismounting(struct mount *mp)
+{
+	struct nchandle *nch = &mp->mnt_ncmounton;
+	struct ncmount_cache *ncc;
+
+	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
+	if (ncc->isneg &&
+	    ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
+		spin_lock(&ncc->spin);
+		if (ncc->isneg &&
+		    ncc->ncp == nch->ncp && ncc->mp == nch->mount) {
+			ncc->ncp = NULL;
+			ncc->mp = NULL;
+		}
+		spin_unlock(&ncc->spin);
+	}
+}
+
+void
 cache_unmounting(struct mount *mp)
 {
 	struct nchandle *nch = &mp->mnt_ncmounton;
 	struct ncmount_cache *ncc;
 
 	ncc = ncmount_cache_lookup(nch->mount, nch->ncp);
-	if (ncc->ncp == nch->ncp && ncc->mp == mp) {
+	if (ncc->isneg == 0 &&
+	    ncc->ncp == nch->ncp && ncc->mp == mp) {
 		spin_lock(&ncc->spin);
-		if (ncc->ncp == nch->ncp && ncc->mp == mp) {
+		if (ncc->isneg == 0 &&
+		    ncc->ncp == nch->ncp && ncc->mp == mp) {
 			atomic_add_int(&mp->mnt_refs, -1);
 			ncc->ncp = NULL;
 			ncc->mp = NULL;
