@@ -1093,6 +1093,9 @@ bce_detach(device_t dev)
 	if (sc->bce_sysctl_tree != NULL)
 		sysctl_ctx_free(&sc->bce_sysctl_ctx);
 
+	if (sc->serializes != NULL)
+		kfree(sc->serializes, M_DEVBUF);
+
 	return 0;
 }
 
