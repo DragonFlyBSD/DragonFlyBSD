@@ -505,6 +505,7 @@ vmspace_president_count(struct vmspace *vmspace)
 #define MAP_IS_KSTACK		0x0080
 #define MAP_DISABLE_COREDUMP	0x0100
 #define MAP_PREFAULT_MADVISE	0x0200	/* from (user) madvise request */
+#define MAP_PREFAULT_RELOCK	0x0200
 
 /*
  * vm_fault option flags

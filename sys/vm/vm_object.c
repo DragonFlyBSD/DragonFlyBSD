@@ -1,6 +1,4 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -339,6 +337,28 @@ debugvm_object_hold_shared(vm_object_t obj, char *file, int line)
 }
 
 /*
+ * Obtain either a shared or exclusive lock on VM object
+ * based on whether this is a terminal vnode object or not.
+ */
+int
+#ifndef DEBUG_LOCKS
+vm_object_hold_maybe_shared(vm_object_t obj)
+#else
+debugvm_object_hold_maybe_shared(vm_object_t obj, char *file, int line)
+#endif
+{
+	if (vm_shared_fault &&
+	    obj->type == OBJT_VNODE &&
+	    obj->backing_object == NULL) {
+		vm_object_hold_shared(obj);
+		return(1);
+	} else {
+		vm_object_hold(obj);
+		return(0);
+	}
+}
+
+/*
  * Drop the token and hold_count on the object.
  */
 void
@@ -504,7 +524,8 @@ vm_object_allocate_hold(objtype_t type, vm_pindex_t size)
  * will call vm_object_chain_wait() prior to calling
  * vm_object_reference_locked() to avoid the case.
  *
- * The object must be held.
+ * The object must be held, but may be held shared if desired (hence why
+ * we use an atomic op).
  */
 void
 vm_object_reference_locked(vm_object_t object)
@@ -512,7 +533,7 @@ vm_object_reference_locked(vm_object_t object)
 	KKASSERT(object != NULL);
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 	KKASSERT((object->flags & OBJ_CHAINLOCK) == 0);
-	object->ref_count++;
+	atomic_add_int(&object->ref_count, 1);
 	if (object->type == OBJT_VNODE) {
 		vref(object->handle);
 		/* XXX what if the vnode is being destroyed? */
@@ -600,7 +621,8 @@ vm_object_chain_release_all(vm_object_t first_object, vm_object_t stopobj)
 /*
  * Dereference an object and its underlying vnode.
  *
- * The object must be held and will be held on return.
+ * The object must be held exclusively and will remain held on return.
+ * (We don't need an atomic op due to the exclusivity).
  */
 static void
 vm_object_vndeallocate(vm_object_t object)
@@ -631,6 +653,8 @@ vm_object_vndeallocate(vm_object_t object)
  * The caller does not have to hold the object locked but must have control
  * over the reference in question in order to guarantee that the object
  * does not get ripped out from under us.
+ *
+ * XXX Currently all deallocations require an exclusive lock.
  */
 void
 vm_object_deallocate(vm_object_t object)
@@ -657,6 +681,7 @@ vm_object_deallocate_locked(vm_object_t object)
 	 */
 again:
 	while (object != NULL) {
+		ASSERT_LWKT_TOKEN_HELD_EXCL(&object->token);
 #if 0
 		/*
 		 * Don't rip a ref_count out from under an object undergoing
@@ -684,9 +709,14 @@ again:
 		 *
 		 * Nominal ref_count > 1 case if the second ref is not from
 		 * a shadow.
+		 *
+		 * (ONEMAPPING only applies to DEFAULT AND SWAP objects)
 		 */
 		if (object->ref_count == 2 && object->shadow_count == 0) {
-			vm_object_set_flag(object, OBJ_ONEMAPPING);
+			if (object->type == OBJT_DEFAULT ||
+			    object->type == OBJT_SWAP) {
+				vm_object_set_flag(object, OBJ_ONEMAPPING);
+			}
 			object->ref_count--;
 			break;
 		}

@@ -118,13 +118,14 @@ struct faultstate {
 	int hardfault;
 	int fault_flags;
 	int map_generation;
+	int shared;
 	boolean_t wired;
 	struct vnode *vp;
 };
 
 static int debug_cluster = 0;
 SYSCTL_INT(_vm, OID_AUTO, debug_cluster, CTLFLAG_RW, &debug_cluster, 0, "");
-static int vm_shared_fault = 1;
+int vm_shared_fault = 1;
 SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW, &vm_shared_fault, 0,
 	   "Allow shared token on vm_object");
 static long vm_shared_hit = 0;
@@ -132,7 +133,7 @@ SYSCTL_LONG(_vm, OID_AUTO, shared_hit, CTLFLAG_RW, &vm_shared_hit, 0,
 	   "Successful shared faults");
 static long vm_shared_miss = 0;
 SYSCTL_LONG(_vm, OID_AUTO, shared_miss, CTLFLAG_RW, &vm_shared_miss, 0,
-	   "Successful shared faults");
+	   "Unsuccessful shared faults");
 
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t);
 static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *, vpte_t, int);
@@ -453,6 +454,7 @@ RetryFault:
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
 	fs.object = fs.first_object;	/* so unlock_and_deallocate works */
+	fs.shared = 0;
 
 	/*
 	 * If the entry is wired we cannot change the page protection.
@@ -492,9 +494,13 @@ RetryFault:
 	 * page can be safely written.  However, it will force a read-only
 	 * mapping for a read fault if the memory is managed by a virtual
 	 * page table.
+	 *
+	 * If the fault code uses the shared object lock shortcut
+	 * we must not try to burst (we can't allocate VM pages).
 	 */
-	/* BEFORE */
 	result = vm_fault_object(&fs, first_pindex, fault_type);
+	if (fs.shared)
+		fault_flags &= ~VM_FAULT_BURST;
 
 	if (result == KERN_TRY_AGAIN) {
 		vm_object_drop(fs.first_object);
@@ -694,6 +700,7 @@ RetryFault:
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
 	fs.object = fs.first_object;	/* so unlock_and_deallocate works */
+	fs.shared = 0;
 
 	/*
 	 * If the entry is wired we cannot change the page protection.
@@ -829,7 +836,8 @@ done:
  */
 vm_page_t
 vm_fault_object_page(vm_object_t object, vm_ooffset_t offset,
-		     vm_prot_t fault_type, int fault_flags, int *errorp)
+		     vm_prot_t fault_type, int fault_flags,
+		     int shared, int *errorp)
 {
 	int result;
 	vm_pindex_t first_pindex;
@@ -854,6 +862,7 @@ RetryFault:
 	fs.entry = &entry;
 	fs.first_prot = fault_type;
 	fs.wired = 0;
+	fs.shared = shared;
 	/*fs.map_generation = 0; unused */
 
 	/*
@@ -1125,6 +1134,8 @@ vm_fault_object(struct faultstate *fs,
 		 * inclusive is chainlocked.
 		 *
 		 * If the object is dead, we stop here
+		 *
+		 * vm_shared_fault (fs->shared != 0) case: nothing special.
 		 */
 		if (fs->object->flags & OBJ_DEAD) {
 			vm_object_pip_wakeup(fs->first_object);
@@ -1148,6 +1159,11 @@ vm_fault_object(struct faultstate *fs,
 		 * worth.  We cannot under any circumstances mess
 		 * around with a vm_page_t->busy page except, perhaps,
 		 * to pmap it.
+		 *
+		 * vm_shared_fault (fs->shared != 0) case:
+		 *	error		nothing special
+		 *	fs->m		relock excl if I/O needed
+		 *	NULL		relock excl
 		 */
 		fs->m = vm_page_lookup_busy_try(fs->object, pindex,
 						TRUE, &error);
@@ -1202,16 +1218,32 @@ vm_fault_object(struct faultstate *fs,
 			if (fs->m->object != &kernel_object) {
 				if ((fs->m->valid & VM_PAGE_BITS_ALL) !=
 				    VM_PAGE_BITS_ALL) {
+					if (fs->shared) {
+						vm_object_drop(fs->object);
+						vm_object_hold(fs->object);
+						fs->shared = 0;
+					}
 					goto readrest;
 				}
 				if (fs->m->flags & PG_RAM) {
 					if (debug_cluster)
 						kprintf("R");
 					vm_page_flag_clear(fs->m, PG_RAM);
+					if (fs->shared) {
+						vm_object_drop(fs->object);
+						vm_object_hold(fs->object);
+						fs->shared = 0;
+					}
 					goto readrest;
 				}
 			}
 			break; /* break to PAGE HAS BEEN FOUND */
+		}
+
+		if (fs->shared) {
+			vm_object_drop(fs->object);
+			vm_object_hold(fs->object);
+			fs->shared = 0;
 		}
 
 		/*
@@ -1494,9 +1526,24 @@ skip:
 		/*
 		 * Move on to the next object.  The chain lock should prevent
 		 * the backing_object from getting ripped out from under us.
+		 *
+		 * vm_shared_fault case:
+		 *
+		 *	If the next object is the last object and
+		 *	vnode-backed (thus possibly shared), we can try a
+		 *	shared object lock.  There is no 'chain' for this
+		 *	last object if vnode-backed (otherwise we would
+		 *	need an exclusive lock).
+		 *
+		 *	fs->shared mode is very fragile and only works
+		 *	under certain specific conditions, and is only
+		 *	handled for those conditions in our loop.  Essentially
+		 *	it is designed only to be able to 'dip into' the
+		 *	vnode's object and extract an already-cached page.
 		 */
+		fs->shared = 0;
 		if ((next_object = fs->object->backing_object) != NULL) {
-			vm_object_hold(next_object);
+			fs->shared = vm_object_hold_maybe_shared(next_object);
 			vm_object_chain_acquire(next_object);
 			KKASSERT(next_object == fs->object->backing_object);
 			pindex += OFF_TO_IDX(fs->object->backing_object_offset);

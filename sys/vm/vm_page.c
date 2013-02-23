@@ -913,7 +913,7 @@ vm_page_unhold(vm_page_t m)
 int
 vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 {
-	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
+	ASSERT_LWKT_TOKEN_HELD_EXCL(vm_object_token(object));
 	if (m->object != NULL)
 		panic("vm_page_insert: already inserted");
 
@@ -1146,9 +1146,9 @@ void
 vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 {
 	KKASSERT(m->flags & PG_BUSY);
-	ASSERT_LWKT_TOKEN_HELD(vm_object_token(new_object));
+	ASSERT_LWKT_TOKEN_HELD_EXCL(vm_object_token(new_object));
 	if (m->object) {
-		ASSERT_LWKT_TOKEN_HELD(vm_object_token(m->object));
+		ASSERT_LWKT_TOKEN_HELD_EXCL(vm_object_token(m->object));
 		vm_page_remove(m);
 	}
 	if (vm_page_insert(m, new_object, new_pindex) == FALSE) {

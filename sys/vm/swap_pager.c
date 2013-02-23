@@ -1947,7 +1947,7 @@ swp_pager_fault_page(vm_object_t object, vm_pindex_t pindex)
 		m = vm_fault_object_page(object, IDX_TO_OFF(pindex),
 					 VM_PROT_NONE,
 					 VM_FAULT_DIRTY | VM_FAULT_UNSWAP,
-					 &error);
+					 0, &error);
 		if (m)
 			vm_page_unhold(m);
 	}
