@@ -97,9 +97,10 @@
  * 300302 - fpsave changes - ucontext_t, mcontext_t, sigcontext, sigframe
  * 300303 - Demarcation of old m4/flex with new m4/flex
  * 300304 - Update to dialog-1.2-20121230
-*/
+ * 300305 - <malloc.h> deprecation (now errors with __STDC__)
+ */
 #undef __DragonFly_version
-#define __DragonFly_version 300304	/* propagated to newvers */
+#define __DragonFly_version 300305	/* propagated to newvers */
 
 #include <sys/_null.h>
 
