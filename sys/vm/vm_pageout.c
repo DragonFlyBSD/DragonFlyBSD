@@ -131,6 +131,8 @@ static int vm_pageout_full_stats_interval = 0;
 static int vm_pageout_stats_free_max=0, vm_pageout_algorithm=0;
 static int defer_swap_pageouts=0;
 static int disable_swap_pageouts=0;
+static u_int vm_anonmem_decline = ACT_DECLINE;
+static u_int vm_filemem_decline = ACT_DECLINE * 2;
 
 #if defined(NO_SWAPPING)
 static int vm_swap_enabled=0;
@@ -140,8 +142,11 @@ static int vm_swap_enabled=1;
 static int vm_swap_idle_enabled=0;
 #endif
 
-SYSCTL_INT(_vm, VM_PAGEOUT_ALGORITHM, pageout_algorithm,
-	CTLFLAG_RW, &vm_pageout_algorithm, 0, "LRU page mgmt");
+SYSCTL_UINT(_vm, VM_PAGEOUT_ALGORITHM, anonmem_decline,
+	CTLFLAG_RW, &vm_anonmem_decline, 0, "active->inactive anon memory");
+
+SYSCTL_INT(_vm, VM_PAGEOUT_ALGORITHM, filemem_decline,
+	CTLFLAG_RW, &vm_filemem_decline, 0, "active->inactive file cache");
 
 SYSCTL_INT(_vm, OID_AUTO, max_launder,
 	CTLFLAG_RW, &vm_max_launder, 0, "Limit dirty flushes in pageout");
@@ -1282,7 +1287,17 @@ vm_pageout_scan_active(int pass, int q,
 			vm_page_and_queue_spin_unlock(m);
 			vm_page_wakeup(m);
 		} else {
-			m->act_count -= min(m->act_count, ACT_DECLINE);
+			switch(m->object->type) {
+			case OBJT_DEFAULT:
+			case OBJT_SWAP:
+				m->act_count -= min(m->act_count,
+						    vm_anonmem_decline);
+				break;
+			default:
+				m->act_count -= min(m->act_count,
+						    vm_filemem_decline);
+				break;
+			}
 			if (vm_pageout_algorithm ||
 			    (m->object == NULL) ||
 			    (m->object && (m->object->ref_count == 0)) ||
