@@ -2406,8 +2406,10 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 			/* learning, blocking, bonded, forwarding */
 			break;
 		}
+		from_blocking = (bif->bif_state == BSTP_IFSTATE_BLOCKING);
+	} else {
+		from_blocking = 0;
 	}
-	from_blocking = (bif->bif_state == BSTP_IFSTATE_BLOCKING);
 
 	eh = mtod(m, struct ether_header *);
 
@@ -2809,7 +2811,8 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 				m->m_flags |= M_ETHER_BRIDGED;
 			}
 			if ((bif->bif_flags & IFBIF_LEARNING) &&
-			    bif->bif_state != BSTP_IFSTATE_BLOCKING) {
+			    ((bif->bif_flags & IFBIF_STP) == 0 ||
+			     bif->bif_state != BSTP_IFSTATE_BLOCKING)) {
 				bridge_rtupdate(sc, eh->ether_shost,
 						ifp, IFBAF_DYNAMIC);
 			}
