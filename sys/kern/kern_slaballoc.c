@@ -224,6 +224,10 @@ static int ZoneRelsThresh = ZONE_RELS_THRESH;
 SYSCTL_INT(_kern, OID_AUTO, zone_big_alloc, CTLFLAG_RD, &ZoneBigAlloc, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, zone_gen_alloc, CTLFLAG_RD, &ZoneGenAlloc, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, zone_cache, CTLFLAG_RW, &ZoneRelsThresh, 0, "");
+static long SlabsAllocated;
+static long SlabsFreed;
+SYSCTL_LONG(_kern, OID_AUTO, slabs_allocated, CTLFLAG_RD, &SlabsAllocated, 0, "");
+SYSCTL_LONG(_kern, OID_AUTO, slabs_freed, CTLFLAG_RD, &SlabsFreed, 0, "");
 
 /*
  * Returns the kernel memory size limit for the purposes of initializing
@@ -1563,6 +1567,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     }
     smp_invltlb();
     vm_map_entry_release(count);
+    atomic_add_long(&SlabsAllocated, 1);
     return((void *)addr);
 }
 
@@ -1574,6 +1579,7 @@ kmem_slab_free(void *ptr, vm_size_t size)
 {
     crit_enter();
     vm_map_remove(&kernel_map, (vm_offset_t)ptr, (vm_offset_t)ptr + size);
+    atomic_add_long(&SlabsFreed, 1);
     crit_exit();
 }
 
