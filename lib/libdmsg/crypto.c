@@ -191,7 +191,7 @@ _gcm_iv_increment(char *iv)
 	 * Detect wrap-around, which means it is time to renegotiate
 	 * the session to get a new key and/or fixed field.
 	 */
-	return (c == 0) ? 0 : 1;
+	return (*c == 0) ? 0 : 1;
 }
 
 static
