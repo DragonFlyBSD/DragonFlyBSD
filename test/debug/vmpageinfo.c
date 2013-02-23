@@ -50,6 +50,7 @@
 #include <sys/signalvar.h>
 #include <sys/vnode.h>
 #include <sys/namecache.h>
+#include <sys/slaballoc.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -87,7 +88,11 @@ struct vm_page *vm_page_array;
 int vm_page_array_size;
 
 void checkpage(kvm_t *kd, vm_page_t mptr, vm_page_t m, struct vm_object *obj);
-void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
+static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
+static int kkread_err(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
+
+static void addsltrack(vm_page_t m);
+static void dumpsltrack(kvm_t *kd);
 
 int
 main(int ac, char **av)
@@ -169,11 +174,12 @@ main(int ac, char **av)
 	    } else {
 		qstr = "NONE";
 	    } 
-	    printf("page %p obj %p/%-8jd val=%02x dty=%02x hold=%d "
+	    printf("page %p obj %p/%-8ju(%016jx) val=%02x dty=%02x hold=%d "
 		   "wire=%-2d act=%-3d busy=%d %8s",
 		&vm_page_array[i],
 		m.object,
 		(intmax_t)m.pindex,
+		(intmax_t)m.pindex * PAGE_SIZE,
 		m.valid,
 		m.dirty,
 		m.hold_count,
@@ -240,7 +246,11 @@ main(int ac, char **av)
 		printf(" RAM");
 	    if (m.flags & PG_SWAPPED)
 		printf(" SWAPPED");
+	    if (m.flags & PG_SLAB)
+		printf(" SLAB");
 	    printf("\n");
+	    if (m.flags & PG_SLAB)
+		addsltrack(&m);
 	}
     }
     if (debugopt || verboseopt)
@@ -276,6 +286,7 @@ main(int ac, char **av)
 #endif
     if (debugopt)
 	printf("\n");
+    dumpsltrack(kd);
     return(0);
 }
 
@@ -309,7 +320,7 @@ checkpage(kvm_t *kd, vm_page_t mptr, vm_page_t m, struct vm_object *obj)
 #endif
 }
 
-void
+static void
 kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes)
 {
     if (kvm_read(kd, addr, buf, nbytes) != nbytes) {
@@ -318,3 +329,80 @@ kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes)
     }
 }
 
+static int
+kkread_err(kvm_t *kd, u_long addr, void *buf, size_t nbytes)
+{
+    if (kvm_read(kd, addr, buf, nbytes) != nbytes) {
+	return 1;
+    }
+    return 0;
+}
+
+struct SLTrack {
+        struct SLTrack *next;
+        u_long addr;
+};
+
+#define SLHSIZE 1024
+#define SLHMASK (SLHSIZE - 1)
+
+struct SLTrack *SLHash[SLHSIZE];
+
+static
+void
+addsltrack(vm_page_t m)
+{
+	struct SLTrack *slt;
+	u_long addr = (m->pindex * PAGE_SIZE) & ~131071L;
+	int i;
+
+	if (m->wire_count == 0 || (m->flags & PG_MAPPED) == 0 ||
+	    m->object == NULL)
+		return;
+
+	i = (addr / 131072) & SLHMASK;
+	for (slt = SLHash[i]; slt; slt = slt->next) {
+		if (slt->addr == addr)
+			break;
+	}
+	if (slt == NULL) {
+		slt = malloc(sizeof(*slt));
+		slt->addr = addr;
+		slt->next = SLHash[i];
+		SLHash[i] = slt;
+	}
+}
+
+static
+void
+dumpsltrack(kvm_t *kd)
+{
+	struct SLTrack *slt;
+	int i;
+	long total_zones = 0;
+	long full_zones = 0;
+
+	for (i = 0; i < SLHSIZE; ++i) {
+		for (slt = SLHash[i]; slt; slt = slt->next) {
+			SLZone z;
+
+			if (kkread_err(kd, slt->addr, &z, sizeof(z))) {
+				printf("SLZone 0x%016lx not mapped\n",
+					slt->addr);
+				continue;
+			}
+			printf("SLZone 0x%016lx { mag=%08x cpu=%-2d NFree=%-3d "
+			       "chunksz=%-5d }\n",
+			       slt->addr,
+			       z.z_Magic,
+			       z.z_Cpu,
+			       z.z_NFree,
+			       z.z_ChunkSize
+			);
+			++total_zones;
+			if (z.z_NFree == 0)
+				++full_zones;
+		}
+	}
+	printf("FullZones/TotalZones: %ld/%ld\n", full_zones, total_zones);
+}
