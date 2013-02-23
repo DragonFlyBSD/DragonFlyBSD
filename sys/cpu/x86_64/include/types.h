@@ -66,13 +66,10 @@ typedef	__uint64_t	uintfptr_t;
 /*
  * MMU page tables
  */
-#ifndef JG_defined_pml4_entry_t
-#define JG_defined_pml4_entry_t
 typedef __uint64_t	pml4_entry_t;
 typedef __uint64_t	pdp_entry_t;
 typedef __uint64_t	pd_entry_t;
 typedef __uint64_t	pt_entry_t;
-#endif
 typedef __uint64_t      cpumask_t;      /* mask representing a set of cpus */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
@@ -87,4 +84,3 @@ typedef __uint64_t      cpumask_t;      /* mask representing a set of cpus */
 #define PTESIZE         sizeof(pt_entry_t) /* for assembly files */
 
 #endif /* !_CPU_TYPES_H_ */
-

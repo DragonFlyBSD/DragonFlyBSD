@@ -136,10 +136,7 @@
 /*
  * Type of the first (asm) part of an interrupt handler.
  */
-#ifndef JG_defined_inthand_t
-#define JG_defined_inthand_t
 typedef void inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
-#endif
 
 #define	IDTVEC(name)	__CONCAT(X,name)
 
