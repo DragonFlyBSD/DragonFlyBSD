@@ -402,7 +402,20 @@ nlookup_simple(const char *str, enum uio_seg seg,
  * If NLC_REFDVP is set nd->nl_dvp will be set to the directory vnode
  * of the returned entry.  The vnode will be referenced, but not locked,
  * and will be released by nlookup_done() along with everything else.
+ *
+ * NOTE: As an optimization we attempt to obtain a shared namecache lock
+ *	 on any intermediate elements.  On success, the returned element
+ *	 is ALWAYS locked exclusively.
  */
+static
+int
+islastelement(const char *ptr)
+{
+	while (*ptr == '/')
+		++ptr;
+	return (*ptr == 0);
+}
+
 int
 nlookup(struct nlookupdata *nd)
 {
@@ -415,7 +428,6 @@ nlookup(struct nlookupdata *nd)
     struct vnode *hvp;		/* hold to prevent recyclement */
     int wasdotordotdot;
     char *ptr;
-    char *xptr;
     int error;
     int len;
     int dflags;
@@ -450,7 +462,7 @@ nlookup(struct nlookupdata *nd)
 	 */
 	if ((nd->nl_flags & NLC_NCPISLOCKED) == 0) {
 		nd->nl_flags |= NLC_NCPISLOCKED;
-		cache_lock(&nd->nl_nch);
+		cache_lock_maybe_shared(&nd->nl_nch, islastelement(ptr));
 	}
 
 	/*
@@ -463,8 +475,10 @@ nlookup(struct nlookupdata *nd)
 	    do {
 		++ptr;
 	    } while (*ptr == '/');
-	    cache_get(&nd->nl_rootnch, &nch);
-	    cache_put(&nd->nl_nch);
+	    cache_unlock(&nd->nl_nch);
+	    cache_get_maybe_shared(&nd->nl_rootnch, &nch,
+				   islastelement(ptr));
+	    cache_drop(&nd->nl_nch);
 	    nd->nl_nch = nch;		/* remains locked */
 
 	    /*
@@ -485,7 +499,7 @@ nlookup(struct nlookupdata *nd)
 	}
 
 	/*
-	 * Check directory search permissions.
+	 * Check directory search permissions (nd->nl_nch is locked & refd)
 	 */
 	dflags = 0;
 	error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, &dflags);
@@ -517,13 +531,21 @@ nlookup(struct nlookupdata *nd)
 	 * since our dflags will be for some sub-directory instead of the
 	 * parent dir.
 	 *
-	 * This subsection returns a locked, refd 'nch' unless it errors out.
+	 * This subsection returns a locked, refd 'nch' unless it errors out,
+	 * and an unlocked but still ref'd nd->nl_nch.
+	 *
 	 * The namecache topology is not allowed to be disconnected, so 
 	 * encountering a NULL parent will generate EINVAL.  This typically
 	 * occurs when a directory is removed out from under a process.
+	 *
+	 * WARNING! The unlocking of nd->nl_nch is sensitive code.
 	 */
+	KKASSERT(nd->nl_flags & NLC_NCPISLOCKED);
+
 	if (nlc.nlc_namelen == 1 && nlc.nlc_nameptr[0] == '.') {
-	    cache_get(&nd->nl_nch, &nch);
+	    cache_unlock(&nd->nl_nch);
+	    nd->nl_flags &= ~NLC_NCPISLOCKED;
+	    cache_get_maybe_shared(&nd->nl_nch, &nch, islastelement(ptr));
 	    wasdotordotdot = 1;
 	} else if (nlc.nlc_namelen == 2 && 
 		   nlc.nlc_nameptr[0] == '.' && nlc.nlc_nameptr[1] == '.') {
@@ -533,7 +555,9 @@ nlookup(struct nlookupdata *nd)
 		/*
 		 * ".." at the root returns the root
 		 */
-		cache_get(&nd->nl_nch, &nch);
+		cache_unlock(&nd->nl_nch);
+		nd->nl_flags &= ~NLC_NCPISLOCKED;
+		cache_get_maybe_shared(&nd->nl_nch, &nch, islastelement(ptr));
 	    } else {
 		/*
 		 * Locate the parent ncp.  If we are at the root of a
@@ -550,7 +574,9 @@ nlookup(struct nlookupdata *nd)
 		nctmp.ncp = nctmp.ncp->nc_parent;
 		KKASSERT(nctmp.ncp != NULL);
 		cache_hold(&nctmp);
-		cache_get(&nctmp, &nch);
+		cache_unlock(&nd->nl_nch);
+		nd->nl_flags &= ~NLC_NCPISLOCKED;
+		cache_get_maybe_shared(&nctmp, &nch, islastelement(ptr));
 		cache_drop(&nctmp);		/* NOTE: zero's nctmp */
 	    }
 	    wasdotordotdot = 2;
@@ -573,15 +599,24 @@ nlookup(struct nlookupdata *nd)
 		vhold(hvp);
 	    cache_unlock(&nd->nl_nch);
 	    nd->nl_flags &= ~NLC_NCPISLOCKED;
-	    nch = cache_nlookup(&nd->nl_nch, &nlc);
-	    if (nch.ncp->nc_flag & NCF_UNRESOLVED)
-		hit = 0;
-	    while ((error = cache_resolve(&nch, nd->nl_cred)) == EAGAIN ||
-		(nch.ncp->nc_flag & NCF_DESTROYED)) {
-		kprintf("[diagnostic] nlookup: relookup %*.*s\n", 
-			nch.ncp->nc_nlen, nch.ncp->nc_nlen, nch.ncp->nc_name);
-		cache_put(&nch);
-		nch = cache_nlookup(&nd->nl_nch, &nlc);
+	    error = cache_nlookup_maybe_shared(&nd->nl_nch, &nlc,
+					       islastelement(ptr), &nch);
+	    if (error == EWOULDBLOCK) {
+		    nch = cache_nlookup(&nd->nl_nch, &nlc);
+		    if (nch.ncp->nc_flag & NCF_UNRESOLVED)
+			hit = 0;
+		    for (;;) {
+			error = cache_resolve(&nch, nd->nl_cred);
+			if (error != EAGAIN &&
+			    (nch.ncp->nc_flag & NCF_DESTROYED) == 0) {
+				break;
+			}
+			kprintf("[diagnostic] nlookup: relookup %*.*s\n",
+				nch.ncp->nc_nlen, nch.ncp->nc_nlen,
+				nch.ncp->nc_name);
+			cache_put(&nch);
+			nch = cache_nlookup(&nd->nl_nch, &nlc);
+		    }
 	    }
 	    if (hvp)
 		vdrop(hvp);
@@ -600,14 +635,10 @@ nlookup(struct nlookupdata *nd)
 	    if ((par.ncp = nch.ncp->nc_parent) != NULL) {
 		par.mount = nch.mount;
 		cache_hold(&par);
-		cache_lock(&par);
+		cache_lock_maybe_shared(&par, islastelement(ptr));
 		error = naccess(&par, 0, nd->nl_cred, &dflags);
 		cache_put(&par);
 	    }
-	}
-	if (nd->nl_flags & NLC_NCPISLOCKED) {
-	    cache_unlock(&nd->nl_nch);
-	    nd->nl_flags &= ~NLC_NCPISLOCKED;
 	}
 
 	/*
@@ -619,6 +650,7 @@ nlookup(struct nlookupdata *nd)
 	 * nl_nch must be unlocked or we could chain lock to the root
 	 * if a resolve gets stuck (e.g. in NFS).
 	 */
+	KKASSERT((nd->nl_flags & NLC_NCPISLOCKED) == 0);
 
 	/*
 	 * Resolve the namespace if necessary.  The ncp returned by
@@ -645,9 +677,7 @@ nlookup(struct nlookupdata *nd)
 	 * for a create/rename/delete.  The standard requires this and pax
 	 * pretty stupidly depends on it.
 	 */
-	for (xptr = ptr; *xptr == '/'; ++xptr)
-		;
-	if (*xptr == 0) {
+	if (islastelement(ptr)) {
 	    if (error == ENOENT &&
 		(nd->nl_flags & (NLC_CREATE | NLC_RENAME_DST))
 	    ) {
@@ -755,7 +785,8 @@ again:
 		    }
 		}
 	    }
-	    cache_get(&mp->mnt_ncmountpt, &nch);
+	    cache_get_maybe_shared(&mp->mnt_ncmountpt, &nch,
+				   islastelement(ptr));
 
 	    if (nch.ncp->nc_flag & NCF_UNRESOLVED) {
 		if (vfs_do_busy == 0) {
@@ -864,9 +895,12 @@ double_break:
     }
 
     if (hit)
-	    ++gd->gd_nchstats->ncs_longhits;
+	++gd->gd_nchstats->ncs_longhits;
     else
-	    ++gd->gd_nchstats->ncs_longmiss;
+	++gd->gd_nchstats->ncs_longmiss;
+
+    if (nd->nl_flags & NLC_NCPISLOCKED)
+	KKASSERT(cache_lockstatus(&nd->nl_nch) == LK_EXCLUSIVE);
 
     /*
      * NOTE: If NLC_CREATE was set the ncp may represent a negative hit
@@ -979,7 +1013,8 @@ fail:
  * The directory sticky bit is tested for NLC_DELETE and NLC_RENAME_DST,
  * the latter is only tested if the target exists.
  *
- * The passed ncp must be referenced and locked.
+ * The passed ncp must be referenced and locked.  If it is already resolved
+ * it may be locked shared but otherwise should be locked exclusively.
  */
 static int
 naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
@@ -990,7 +1025,8 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
     int error;
     int cflags;
 
-    ASSERT_NCH_LOCKED(nch);
+    KKASSERT(cache_lockstatus(nch) > 0);
+
     ncp = nch->ncp;
     if (ncp->nc_flag & NCF_UNRESOLVED) {
 	cache_resolve(nch, cred);
@@ -1019,7 +1055,7 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 	    } else if (error == 0 || error == ENOENT) {
 		par.mount = nch->mount;
 		cache_hold(&par);
-		cache_lock(&par);
+		cache_lock_maybe_shared(&par, 0);
 		error = naccess(&par, NLC_WRITE, cred, NULL);
 		cache_put(&par);
 	    }
@@ -1133,9 +1169,15 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 				cflags |= NCF_UF_PCACHE;
 			}
 		}
-		ncp->nc_flag &= ~(NCF_SF_NOCACHE | NCF_UF_CACHE |
-				  NCF_SF_PNOCACHE | NCF_UF_PCACHE);
-		ncp->nc_flag |= cflags;
+
+		/*
+		 * XXX we're not supposed to update nc_flag when holding
+		 *     a shared lock.
+		 */
+		atomic_clear_short(&ncp->nc_flag,
+				   (NCF_SF_NOCACHE | NCF_UF_CACHE |
+				   NCF_SF_PNOCACHE | NCF_UF_PCACHE) & ~cflags);
+		atomic_set_short(&ncp->nc_flag, cflags);
 
 		/*
 		 * Process general access.
