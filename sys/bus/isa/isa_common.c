@@ -87,7 +87,6 @@ static int
 isa_probe(device_t dev)
 {
 	device_set_desc(dev, "ISA bus");
-	isa_init();		/* Allow machdep code to initialise */
 	return 0;
 }
 
