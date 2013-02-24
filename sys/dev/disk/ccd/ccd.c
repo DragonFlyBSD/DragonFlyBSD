@@ -1557,7 +1557,7 @@ ccdlookup(char *path, struct vnode **vpp)
 		return (error);
 	if ((error = vn_open(&nd, NULL, FREAD|FWRITE, 0)) != 0) {
 #ifdef DEBUG
-		if (ccddebug & CCDB_FOLLOW|CCDB_INIT)
+		if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
 			kprintf("ccdlookup: vn_open error = %d\n", error);
 #endif
 		goto done;
