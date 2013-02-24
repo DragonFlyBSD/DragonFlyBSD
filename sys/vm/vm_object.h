@@ -330,6 +330,7 @@ void vm_object_hold_shared(vm_object_t);
 #else
 #define vm_object_hold_maybe_shared(obj)		\
 	debugvm_object_hold_maybe_shared(obj, __FILE__, __LINE__)
+int debugvm_object_hold_maybe_shared(vm_object_t, char *, int);
 #define vm_object_hold(obj)		\
 	debugvm_object_hold(obj, __FILE__, __LINE__)
 void debugvm_object_hold(vm_object_t, char *, int);
