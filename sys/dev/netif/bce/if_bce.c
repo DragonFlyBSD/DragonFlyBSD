@@ -2517,6 +2517,7 @@ bce_dma_alloc(struct bce_softc *sc)
 	    M_WAITOK | M_ZERO);
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		sc->tx_rings[i].sc = sc;
+		sc->tx_rings[i].tx_cid = TX_CID; /* TODO */
 
 		rc = bce_create_tx_ring(&sc->tx_rings[i]);
 		if (rc != 0) {
@@ -2531,6 +2532,7 @@ bce_dma_alloc(struct bce_softc *sc)
 	    M_WAITOK | M_ZERO);
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		sc->rx_rings[i].sc = sc;
+		sc->rx_rings[i].rx_cid = RX_CID; /* TODO */
 
 		rc = bce_create_rx_ring(&sc->rx_rings[i]);
 		if (rc != 0) {
@@ -3883,33 +3885,34 @@ bce_init_tx_context(struct bce_tx_ring *txr)
 	    BCE_CHIP_NUM(txr->sc) == BCE_CHIP_NUM_5716) {
 		/* Set the CID type to support an L2 connection. */
 		val = BCE_L2CTX_TX_TYPE_TYPE_L2 | BCE_L2CTX_TX_TYPE_SIZE_L2;
-		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
+		CTX_WR(txr->sc, GET_CID_ADDR(txr->tx_cid),
 		    BCE_L2CTX_TX_TYPE_XI, val);
 		val = BCE_L2CTX_TX_CMD_TYPE_TYPE_L2 | (8 << 16);
-		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
+		CTX_WR(txr->sc, GET_CID_ADDR(txr->tx_cid),
 		    BCE_L2CTX_TX_CMD_TYPE_XI, val);
 
 		/* Point the hardware to the first page in the chain. */
 		val = BCE_ADDR_HI(txr->tx_bd_chain_paddr[0]);
-		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
+		CTX_WR(txr->sc, GET_CID_ADDR(txr->tx_cid),
 		    BCE_L2CTX_TX_TBDR_BHADDR_HI_XI, val);
 		val = BCE_ADDR_LO(txr->tx_bd_chain_paddr[0]);
-		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
+		CTX_WR(txr->sc, GET_CID_ADDR(txr->tx_cid),
 		    BCE_L2CTX_TX_TBDR_BHADDR_LO_XI, val);
 	} else {
 		/* Set the CID type to support an L2 connection. */
 		val = BCE_L2CTX_TX_TYPE_TYPE_L2 | BCE_L2CTX_TX_TYPE_SIZE_L2;
-		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TX_TYPE, val);
+		CTX_WR(txr->sc, GET_CID_ADDR(txr->tx_cid),
+		    BCE_L2CTX_TX_TYPE, val);
 		val = BCE_L2CTX_TX_CMD_TYPE_TYPE_L2 | (8 << 16);
-		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
+		CTX_WR(txr->sc, GET_CID_ADDR(txr->tx_cid),
 		    BCE_L2CTX_TX_CMD_TYPE, val);
 
 		/* Point the hardware to the first page in the chain. */
 		val = BCE_ADDR_HI(txr->tx_bd_chain_paddr[0]);
-		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
+		CTX_WR(txr->sc, GET_CID_ADDR(txr->tx_cid),
 		    BCE_L2CTX_TX_TBDR_BHADDR_HI, val);
 		val = BCE_ADDR_LO(txr->tx_bd_chain_paddr[0]);
-		CTX_WR(txr->sc, GET_CID_ADDR(TX_CID),
+		CTX_WR(txr->sc, GET_CID_ADDR(txr->tx_cid),
 		    BCE_L2CTX_TX_TBDR_BHADDR_LO, val);
 	}
 }
@@ -4035,7 +4038,8 @@ bce_init_rx_context(struct bce_rx_ring *rxr)
 		    (hi_water << BCE_L2CTX_RX_HI_WATER_MARK_SHIFT);
 	}
 
- 	CTX_WR(rxr->sc, GET_CID_ADDR(RX_CID), BCE_L2CTX_RX_CTX_TYPE, val);
+ 	CTX_WR(rxr->sc, GET_CID_ADDR(rxr->rx_cid),
+	    BCE_L2CTX_RX_CTX_TYPE, val);
 
 	/* Setup the MQ BIN mapping for l2_ctx_host_bseq. */
 	if (BCE_CHIP_NUM(rxr->sc) == BCE_CHIP_NUM_5709 ||
@@ -4046,9 +4050,11 @@ bce_init_rx_context(struct bce_rx_ring *rxr)
 
 	/* Point the hardware to the first page in the chain. */
 	val = BCE_ADDR_HI(rxr->rx_bd_chain_paddr[0]);
-	CTX_WR(rxr->sc, GET_CID_ADDR(RX_CID), BCE_L2CTX_RX_NX_BDHADDR_HI, val);
+	CTX_WR(rxr->sc, GET_CID_ADDR(rxr->rx_cid),
+	    BCE_L2CTX_RX_NX_BDHADDR_HI, val);
 	val = BCE_ADDR_LO(rxr->rx_bd_chain_paddr[0]);
-	CTX_WR(rxr->sc, GET_CID_ADDR(RX_CID), BCE_L2CTX_RX_NX_BDHADDR_LO, val);
+	CTX_WR(rxr->sc, GET_CID_ADDR(rxr->rx_cid),
+	    BCE_L2CTX_RX_NX_BDHADDR_LO, val);
 }
 
 
@@ -4111,9 +4117,9 @@ bce_init_rx_chain(struct bce_rx_ring *rxr)
 	rxr->rx_prod_bseq = prod_bseq;
 
 	/* Tell the chip about the waiting rx_bd's. */
-	REG_WR16(rxr->sc, MB_GET_CID_ADDR(RX_CID) + BCE_L2MQ_RX_HOST_BDIDX,
+	REG_WR16(rxr->sc, MB_GET_CID_ADDR(rxr->rx_cid) + BCE_L2MQ_RX_HOST_BDIDX,
 	    rxr->rx_prod);
-	REG_WR(rxr->sc, MB_GET_CID_ADDR(RX_CID) + BCE_L2MQ_RX_HOST_BSEQ,
+	REG_WR(rxr->sc, MB_GET_CID_ADDR(rxr->rx_cid) + BCE_L2MQ_RX_HOST_BSEQ,
 	    rxr->rx_prod_bseq);
 
 	bce_init_rx_context(rxr);
@@ -4447,9 +4453,9 @@ bce_rx_int_next_rx:
 	rxr->rx_prod = sw_prod;
 	rxr->rx_prod_bseq = sw_prod_bseq;
 
-	REG_WR16(rxr->sc, MB_GET_CID_ADDR(RX_CID) + BCE_L2MQ_RX_HOST_BDIDX,
+	REG_WR16(rxr->sc, MB_GET_CID_ADDR(rxr->rx_cid) + BCE_L2MQ_RX_HOST_BDIDX,
 	    rxr->rx_prod);
-	REG_WR(rxr->sc, MB_GET_CID_ADDR(RX_CID) + BCE_L2MQ_RX_HOST_BSEQ,
+	REG_WR(rxr->sc, MB_GET_CID_ADDR(rxr->rx_cid) + BCE_L2MQ_RX_HOST_BSEQ,
 	    rxr->rx_prod_bseq);
 }
 
@@ -4869,9 +4875,9 @@ static void
 bce_xmit(struct bce_tx_ring *txr)
 {
 	/* Start the transmit. */
-	REG_WR16(txr->sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX,
+	REG_WR16(txr->sc, MB_GET_CID_ADDR(txr->tx_cid) + BCE_L2CTX_TX_HOST_BIDX,
 	    txr->tx_prod);
-	REG_WR(txr->sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ,
+	REG_WR(txr->sc, MB_GET_CID_ADDR(txr->tx_cid) + BCE_L2CTX_TX_HOST_BSEQ,
 	    txr->tx_prod_bseq);
 }
 

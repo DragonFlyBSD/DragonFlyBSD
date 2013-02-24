@@ -5728,6 +5728,7 @@ struct fw_info {
 struct bce_tx_ring {
 	struct lwkt_serialize	tx_serialize;
 	struct bce_softc	*sc;
+	uint32_t		tx_cid;
 	struct ifaltq_subque	*ifsq;
 	int			tx_pages;
 	int			tx_wreg;
@@ -5756,6 +5757,7 @@ struct bce_tx_ring {
 struct bce_rx_ring {
 	struct lwkt_serialize	rx_serialize;
 	struct bce_softc	*sc;
+	uint32_t		rx_cid;
 	int			rx_pages;
 	uint16_t		rx_prod;
 	uint16_t		rx_cons;
