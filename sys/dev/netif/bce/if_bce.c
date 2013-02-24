@@ -2517,7 +2517,13 @@ bce_dma_alloc(struct bce_softc *sc)
 	    M_WAITOK | M_ZERO);
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		sc->tx_rings[i].sc = sc;
-		sc->tx_rings[i].tx_cid = TX_CID; /* TODO */
+
+		/*
+		 * TODO
+		 */
+		sc->tx_rings[i].tx_cid = TX_CID;
+		sc->tx_rings[i].tx_hw_cons =
+		    &sc->status_block->status_tx_quick_consumer_index0;
 
 		rc = bce_create_tx_ring(&sc->tx_rings[i]);
 		if (rc != 0) {
@@ -2532,7 +2538,13 @@ bce_dma_alloc(struct bce_softc *sc)
 	    M_WAITOK | M_ZERO);
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		sc->rx_rings[i].sc = sc;
-		sc->rx_rings[i].rx_cid = RX_CID; /* TODO */
+
+		/*
+		 * TODO
+		 */
+		sc->rx_rings[i].rx_cid = RX_CID;
+		sc->rx_rings[i].rx_hw_cons =
+		    &sc->status_block->status_rx_quick_consumer_index0;
 
 		rc = bce_create_rx_ring(&sc->rx_rings[i]);
 		if (rc != 0) {
@@ -4261,9 +4273,9 @@ bce_phy_intr(struct bce_softc *sc)
 /*   hw_cons                                                                */
 /****************************************************************************/
 static __inline uint16_t
-bce_get_hw_rx_cons(struct bce_softc *sc)
+bce_get_hw_rx_cons(struct bce_rx_ring *rxr)
 {
-	uint16_t hw_cons = sc->status_block->status_rx_quick_consumer_index0;
+	uint16_t hw_cons = *rxr->rx_hw_cons;
 
 	if ((hw_cons & USABLE_RX_BD_PER_PAGE) == USABLE_RX_BD_PER_PAGE)
 		hw_cons++;
@@ -4468,9 +4480,9 @@ bce_rx_int_next_rx:
 /*   hw_cons                                                                */
 /****************************************************************************/
 static __inline uint16_t
-bce_get_hw_tx_cons(struct bce_softc *sc)
+bce_get_hw_tx_cons(struct bce_tx_ring *txr)
 {
-	uint16_t hw_cons = sc->status_block->status_tx_quick_consumer_index0;
+	uint16_t hw_cons = *txr->tx_hw_cons;
 
 	if ((hw_cons & USABLE_TX_BD_PER_PAGE) == USABLE_TX_BD_PER_PAGE)
 		hw_cons++;
@@ -5144,7 +5156,7 @@ bce_npoll_rx(struct ifnet *ifp, void *arg, int count)
 	/* Make sure status index is extracted before RX/TX cons */
 	cpu_lfence();
 
-	hw_rx_cons = bce_get_hw_rx_cons(sc);
+	hw_rx_cons = bce_get_hw_rx_cons(rxr);
 
 	/* Check for any completed RX frames. */
 	if (hw_rx_cons != rxr->rx_cons)
@@ -5154,13 +5166,12 @@ bce_npoll_rx(struct ifnet *ifp, void *arg, int count)
 static void
 bce_npoll_tx(struct ifnet *ifp, void *arg, int count __unused)
 {
-	struct bce_softc *sc = ifp->if_softc;
 	struct bce_tx_ring *txr = arg;
 	uint16_t hw_tx_cons;
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
-	hw_tx_cons = bce_get_hw_tx_cons(sc);
+	hw_tx_cons = bce_get_hw_tx_cons(txr);
 
 	/* Check for any completed TX frames. */
 	if (hw_tx_cons != txr->tx_cons) {
@@ -5266,12 +5277,12 @@ bce_intr(struct bce_softc *sc)
 	 */
 	sc->last_status_idx = sblk->status_idx;
 
-	/* Make sure status index is extracted before rx/tx cons */
+	/* Make sure status index is extracted before RX/TX cons */
 	cpu_lfence();
 
 	/* Check if the hardware has finished any work. */
-	hw_rx_cons = bce_get_hw_rx_cons(sc);
-	hw_tx_cons = bce_get_hw_tx_cons(sc);
+	hw_rx_cons = bce_get_hw_rx_cons(rxr);
+	hw_tx_cons = bce_get_hw_tx_cons(txr);
 
 	status_attn_bits = sblk->status_attn_bits;
 
@@ -5751,8 +5762,8 @@ bce_check_msi(void *xsc)
 		return;
 	}
 
-	if (bce_get_hw_rx_cons(sc) != rxr->rx_cons ||
-	    bce_get_hw_tx_cons(sc) != txr->tx_cons ||
+	if (bce_get_hw_rx_cons(rxr) != rxr->rx_cons ||
+	    bce_get_hw_tx_cons(txr) != txr->tx_cons ||
 	    (sblk->status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
 	    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE)) {
 		if (sc->bce_check_rx_cons == rxr->rx_cons &&
