@@ -145,7 +145,7 @@ i386_extend_pcb(struct lwp *lp)
 	 */
 	offset = PAGE_SIZE - 16;
 	ext->ext_tss.tss_ioopt = 
-	    (offset - ((unsigned)&ext->ext_tss - (unsigned)ext)) << 16;
+	    (offset - offsetof(struct pcb_ext, ext_tss)) << 16;
 	ext->ext_iomap = (caddr_t)ext + offset;
 	ext->ext_vm86.vm86_intmap = (caddr_t)ext + offset - 32;
 
@@ -154,7 +154,7 @@ i386_extend_pcb(struct lwp *lp)
 		*addr++ = ~0;
 
 	ssd.ssd_base = (unsigned)&ext->ext_tss;
-	ssd.ssd_limit -= ((unsigned)&ext->ext_tss - (unsigned)ext);
+	ssd.ssd_limit -= offsetof(struct pcb_ext, ext_tss);
 	ssdtosd(&ssd, &ext->ext_tssd);
 
 	/* 
