@@ -229,8 +229,8 @@ ncp_sock_connect_ipx(struct ncp_conn *conn) {
 	npcb = sotoipxpcb(conn->ncp_so);
 	npcb->ipxp_dpt = IPXPROTO_NCP;
 	/* IPXrouted must be running, i.e. route must be presented */
-	conn->li.ipxaddr.sipx_len = sizeof(struct sockaddr_ipx);
-	checkbad(ncp_soconnect(conn->ncp_so, &conn->li.saddr, td));
+	conn->li.addr.ipxaddr.sipx_len = sizeof(struct sockaddr_ipx);
+	checkbad(ncp_soconnect(conn->ncp_so, &conn->li.addr.addr, td));
 	if (conn->wdg_so) {
 		sotoipxpcb(conn->wdg_so)->ipxp_laddr.x_net = npcb->ipxp_laddr.x_net;
 		sotoipxpcb(conn->wdg_so)->ipxp_laddr.x_host= npcb->ipxp_laddr.x_host;
@@ -244,7 +244,7 @@ ncp_sock_connect_ipx(struct ncp_conn *conn) {
 		bzero(&sipx, sizeof(sipx));
 		sipx.sipx_len = sizeof(sipx);
 		checkbad(sobind(conn->bc_so, (struct sockaddr *)&sipx, td));
-		checkbad(ncp_soconnect(conn->bc_so, &conn->li.saddr, td));
+		checkbad(ncp_soconnect(conn->bc_so, &conn->li.addr.addr, td));
 	}
 #endif
 	if (!error) {

@@ -527,7 +527,7 @@ ncp_reconnect(struct ncp_conn *conn) {
 
 	/* close any open sockets */
 	ncp_sock_disconnect(conn);
-	switch( conn->li.saddr.sa_family ) {
+	switch( conn->li.addr.addr.sa_family ) {
 #ifdef IPX
 	    case AF_IPX:
 		error = ncp_sock_connect_ipx(conn);
@@ -558,7 +558,7 @@ ncp_connect(struct ncp_conn_args *li, struct thread *td, struct ucred *cred,
 	struct ucred *owner;
 	int error, isroot;
 
-	if (li->saddr.sa_family != AF_INET && li->saddr.sa_family != AF_IPX)
+	if (li->addr.addr.sa_family != AF_INET && li->addr.addr.sa_family != AF_IPX)
 		return EPROTONOSUPPORT;
 	isroot = ncp_suser(cred) == 0;
 	/*

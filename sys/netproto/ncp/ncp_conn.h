@@ -107,10 +107,6 @@ struct ncp_conn_args {
 	mode_t		access_mode;	/* R/W - can do rq's, X - can see the conn */
 };
 
-#define ipxaddr		addr.ipxaddr
-#define	inaddr		addr.inaddr
-#define	saddr		addr.addr
-
 /* user side structure to issue ncp calls */
 struct ncp_buf {
 	int	rqsize;			/* request size without ncp header */
