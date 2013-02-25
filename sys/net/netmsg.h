@@ -64,7 +64,9 @@ typedef struct netmsg_base *netmsg_base_t;
 /*
  * NETISR messages
  *
- * NOTE: netmsg_packet is embedded in mbufs.
+ * NOTE:
+ * - netmsg_packet is embedded in mbufs.
+ * - netmsg_pru_send is embedded in mbufs.
  */
 TAILQ_HEAD(notifymsglist, netmsg_so_notify);
 
