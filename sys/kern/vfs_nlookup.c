@@ -381,8 +381,13 @@ nlookup_simple(const char *str, enum uio_seg seg,
 
 /*
  * Do a generic nlookup.  Note that the passed nd is not nlookup_done()'d
- * on return, even if an error occurs.  If no error occurs the returned
- * nl_nch is always referenced and locked, otherwise it may or may not be.
+ * on return, even if an error occurs.  If no error occurs or NLC_CREATE
+ * is flagged and ENOENT is returned, then the returned nl_nch is always
+ * referenced and locked exclusively.
+ *
+ * WARNING: For any general error other than ENOENT w/NLC_CREATE, the
+ *	    the resulting nl_nch may or may not be locked and if locked
+ *	    might be locked either shared or exclusive.
  *
  * Intermediate directory elements, including the current directory, require
  * execute (search) permission.  nlookup does not examine the access 
@@ -900,7 +905,7 @@ double_break:
 	++gd->gd_nchstats->ncs_longmiss;
 
     if (nd->nl_flags & NLC_NCPISLOCKED)
-	KKASSERT(cache_lockstatus(&nd->nl_nch) == LK_EXCLUSIVE);
+	KKASSERT(cache_lockstatus(&nd->nl_nch) > 0);
 
     /*
      * NOTE: If NLC_CREATE was set the ncp may represent a negative hit
