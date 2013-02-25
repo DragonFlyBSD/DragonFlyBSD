@@ -58,6 +58,7 @@
 #include <sys/mplock2.h>
 
 static void netmsg_service_loop(void *arg);
+static void netmsg_service_loop_simple(void *arg);
 static void cpu0_cpufn(struct mbuf **mp, int hoff);
 static void netisr_nohashck(struct mbuf *, const struct pktinfo *);
 
@@ -477,7 +478,7 @@ netisr_init_dedicated(int num)
 {
 	KKASSERT(num > 0 && num < NETISR_MAX);
 	KKASSERT(netisr_ded[num].td_pri == 0);
-	lwkt_create(netmsg_service_loop, NULL, NULL,
+	lwkt_create(netmsg_service_loop_simple, NULL, NULL,
 		    &netisr_ded[num], TDF_NOSTART|TDF_FORCE_SPINPORT,
 		    num % ncpus, "netisr_ded %d", num);
 	netmsg_service_port_init(&netisr_ded[num].td_msgport);
@@ -765,4 +766,15 @@ netisr_hashcheck(int num, struct mbuf *m, const struct pktinfo *pi)
 		panic("Unregistered isr %d", num);
 
 	ni->ni_hashck(m, pi);
+}
+
+static void
+netmsg_service_loop_simple(void *arg __unused)
+{
+	netmsg_t msg;
+
+	while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
+		KASSERT(msg->base.nm_dispatch, ("%s: badmsg", __func__));
+		msg->base.nm_dispatch(msg);
+	}
 }
