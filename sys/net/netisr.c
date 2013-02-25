@@ -58,7 +58,6 @@
 #include <sys/mplock2.h>
 
 static void netmsg_service_loop(void *arg);
-static void netmsg_service_loop_simple(void *arg);
 static void cpu0_cpufn(struct mbuf **mp, int hoff);
 static void netisr_nohashck(struct mbuf *, const struct pktinfo *);
 
@@ -93,7 +92,6 @@ static TAILQ_HEAD(,netmsg_rollup) netrulist;
 
 /* Per-CPU thread to handle any protocol.  */
 static struct thread netisr_cpu[MAXCPU];
-static struct thread netisr_ded[NETISR_MAX];
 lwkt_port netisr_afree_rport;
 lwkt_port netisr_afree_free_so_rport;
 lwkt_port netisr_adone_rport;
@@ -474,18 +472,6 @@ netisr_characterize(int num, struct mbuf **mp, int hoff)
 }
 
 void
-netisr_init_dedicated(int num)
-{
-	KKASSERT(num > 0 && num < NETISR_MAX);
-	KKASSERT(netisr_ded[num].td_pri == 0);
-	lwkt_create(netmsg_service_loop_simple, NULL, NULL,
-		    &netisr_ded[num], TDF_NOSTART|TDF_FORCE_SPINPORT,
-		    num % ncpus, "netisr_ded %d", num);
-	netmsg_service_port_init(&netisr_ded[num].td_msgport);
-	lwkt_schedule(&netisr_ded[num]);
-}
-
-void
 netisr_register(int num, netisr_fn_t handler, netisr_cpufn_t cpufn)
 {
 	struct netisr *ni;
@@ -541,25 +527,12 @@ netisr_register_rollup(netisr_ru_t ru_func, int prio)
 /*
  * Return the message port for the general protocol message servicing
  * thread for a particular cpu.
- *
- * A standard cpu value returns the general lockless/asynchronous
- * netisr thread for the cpu specified.
- *
- * A dedicated cpu value specifies a thread dedicated to a particular
- * ISR.  Such threads can potentially stall or block for long periods
- * of time (see arp_init() for an example).
  */
 lwkt_port_t
 netisr_portfn(int cpu)
 {
-	if (__predict_false(cpu & NETISR_DEDICATED)) {
-		cpu &= (NETISR_DEDICATED - 1);
-		KKASSERT(cpu < NETISR_MAX && netisr_ded[cpu].td_pri != 0);
-		return (&netisr_ded[cpu].td_msgport);
-	} else {
-		KKASSERT((uint32_t)cpu < ncpus);
-		return (&netisr_cpu[cpu].td_msgport);
-	}
+	KKASSERT(cpu >= 0 && cpu < ncpus);
+	return (&netisr_cpu[cpu].td_msgport);
 }
 
 /*
@@ -766,15 +739,4 @@ netisr_hashcheck(int num, struct mbuf *m, const struct pktinfo *pi)
 		panic("Unregistered isr %d", num);
 
 	ni->ni_hashck(m, pi);
-}
-
-static void
-netmsg_service_loop_simple(void *arg __unused)
-{
-	netmsg_t msg;
-
-	while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
-		KASSERT(msg->base.nm_dispatch, ("%s: badmsg", __func__));
-		msg->base.nm_dispatch(msg);
-	}
 }
