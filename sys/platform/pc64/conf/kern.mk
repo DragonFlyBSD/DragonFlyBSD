@@ -14,10 +14,17 @@ CFLAGS+=	-mcmodel=kernel -mno-red-zone -mfpmath=387
 
 CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3
 
-.if ${CCVER} == "gcc44"
+.if ${CCVER} == "gcc44" || ${CCVER} == "gcc47"
 CFLAGS+=	-mno-ssse3 -mno-sse4.1 -mno-sse4.2 -mno-sse4 -mno-sse4a \
 		-mno-sse5 
 CFLAGS+=	-mno-abm -mno-aes -mno-avx -mno-pclmul -mno-popcnt
+.endif
+
+.if ${CCVER} == "gcc47"
+CFLAGS+=	-mno-avx2 -mno-fsgsbase -mno-rdrnd -mno-f16c
+CFLAGS+=	-mno-fma -mno-fma4
+CFLAGS+=	-mno-bmi -mno-bmi2
+CFLAGS+=	-mno-xop -mno-lwp -mno-lzcnt -mno-tbm
 .endif
 
 CFLAGS+=	-msoft-float
