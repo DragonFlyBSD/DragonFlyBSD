@@ -4483,12 +4483,7 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 	netmsg_service_sync();
 
 	crit_enter();
-	if ((ipfw_timeout_netmsg.lmsg.ms_flags & MSGF_DONE) == 0) {
-		/*
-		 * Callout message is pending; drop it
-		 */
-		lwkt_dropmsg(&ipfw_timeout_netmsg.lmsg);
-	}
+	lwkt_dropmsg(&ipfw_timeout_netmsg.lmsg);
 	crit_exit();
 
 	ip_fw_chk_ptr = NULL;

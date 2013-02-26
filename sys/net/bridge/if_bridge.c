@@ -1113,7 +1113,6 @@ static int
 bridge_ioctl_stop(struct bridge_softc *sc, void *arg __unused)
 {
 	struct ifnet *ifp = sc->sc_ifp;
-	struct lwkt_msg *lmsg;
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return 0;
@@ -1121,11 +1120,7 @@ bridge_ioctl_stop(struct bridge_softc *sc, void *arg __unused)
 	callout_stop(&sc->sc_brcallout);
 
 	crit_enter();
-	lmsg = &sc->sc_brtimemsg.lmsg;
-	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
-		/* Pending to be processed; drop it */
-		lwkt_dropmsg(lmsg);
-	}
+	lwkt_dropmsg(&sc->sc_brtimemsg.lmsg);
 	crit_exit();
 
 	bstp_stop(sc);

@@ -144,6 +144,7 @@ MALLOC_DECLARE(M_LWKTMSG);
  *	- drop a specific message from the specified port.  Currently only
  *	  threads' embedded ports (thread ports or spin ports) support this
  *        function and must be used in the port's owner thread.
+ *	  (returns 0 on success, ENOENT on error).
  *
  * The use of mpu_td and mp_u.spin is specific to the port callback function
  * set.  Default ports are tied to specific threads and use cpu locality
@@ -168,7 +169,7 @@ typedef struct lwkt_port {
     int			(*mp_waitmsg)(lwkt_msg_t, int flags);
     void *		(*mp_waitport)(lwkt_port_t, int flags);
     void		(*mp_replyport)(lwkt_port_t, lwkt_msg_t);
-    void		(*mp_dropmsg)(lwkt_port_t, lwkt_msg_t);
+    int			(*mp_dropmsg)(lwkt_port_t, lwkt_msg_t);
 } lwkt_port;
 
 #ifdef _KERNEL
@@ -205,6 +206,8 @@ void lwkt_initport_putonly(lwkt_port_t,
 				int (*pportfn)(lwkt_port_t, lwkt_msg_t));
 
 void lwkt_sendmsg(lwkt_port_t, lwkt_msg_t);
+void lwkt_sendmsg_stage1(lwkt_port_t, lwkt_msg_t);
+void lwkt_sendmsg_stage2(lwkt_port_t, lwkt_msg_t);
 int lwkt_domsg(lwkt_port_t, lwkt_msg_t, int);
 int lwkt_forwardmsg(lwkt_port_t, lwkt_msg_t);
 void lwkt_abortmsg(lwkt_msg_t);

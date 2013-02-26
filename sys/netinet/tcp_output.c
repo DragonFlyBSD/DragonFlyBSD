@@ -1442,12 +1442,12 @@ tcp_output_init(struct tcpcb *tp)
 void
 tcp_output_cancel(struct tcpcb *tp)
 {
+	/*
+	 * This message is still pending to be processed;
+	 * drop it.  Optimized.
+	 */
 	crit_enter();
 	if ((tp->tt_sndmore->lmsg.ms_flags & MSGF_DONE) == 0) {
-		/*
-		 * This message is still pending to be processed;
-		 * drop it.
-		 */
 		lwkt_dropmsg(&tp->tt_sndmore->lmsg);
 	}
 	crit_exit();

@@ -673,10 +673,8 @@ carp_clone_destroy_dispatch(netmsg_t msg)
 	callout_stop_sync(&sc->sc_md6_tmo);
 
 	crit_enter();
-	if ((sc->sc_ad_msg.base.lmsg.ms_flags & MSGF_DONE) == 0)
-		lwkt_dropmsg(&sc->sc_ad_msg.base.lmsg);
-	if ((sc->sc_md_msg.base.lmsg.ms_flags & MSGF_DONE) == 0)
-		lwkt_dropmsg(&sc->sc_md_msg.base.lmsg);
+	lwkt_dropmsg(&sc->sc_ad_msg.base.lmsg);
+	lwkt_dropmsg(&sc->sc_md_msg.base.lmsg);
 	crit_exit();
 
 	lwkt_replymsg(&cmsg->base.lmsg, 0);

@@ -1224,7 +1224,6 @@ void
 bstp_stop(struct bridge_softc *sc)
 {
 	struct bridge_iflist *bif;
-	struct lwkt_msg *lmsg;
 
 	KKASSERT(&curthread->td_msgport == BRIDGE_CFGPORT);
 
@@ -1243,11 +1242,7 @@ bstp_stop(struct bridge_softc *sc)
 	bstp_timer_stop(&sc->sc_hello_timer);
 
 	crit_enter();
-	lmsg = &sc->sc_bstptimemsg.lmsg;
-	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
-		/* Pending to be processed; drop it */
-		lwkt_dropmsg(lmsg);
-	}
+	lwkt_dropmsg(&sc->sc_bstptimemsg.lmsg);
 	crit_exit();
 }
 

@@ -106,6 +106,28 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
     }
 }
 
+void
+lwkt_sendmsg_stage1(lwkt_port_t port, lwkt_msg_t msg)
+{
+    KKASSERT(msg->ms_reply_port != NULL &&
+	     (msg->ms_flags & (MSGF_DONE|MSGF_QUEUED)) == MSGF_DONE);
+    msg->ms_flags &= ~(MSGF_REPLY | MSGF_SYNC | MSGF_DONE);
+}
+
+void
+lwkt_sendmsg_stage2(lwkt_port_t port, lwkt_msg_t msg)
+{
+    int error;
+
+    if ((error = lwkt_beginmsg(port, msg)) != EASYNC) {
+	/*
+	 * Target port opted to execute the message synchronously so
+	 * queue the response.
+	 */
+	lwkt_replymsg(msg, error);
+    }
+}
+
 /*
  * lwkt_domsg()
  *
@@ -197,14 +219,14 @@ static int lwkt_thread_putport(lwkt_port_t port, lwkt_msg_t msg);
 static int lwkt_thread_waitmsg(lwkt_msg_t msg, int flags);
 static void *lwkt_thread_waitport(lwkt_port_t port, int flags);
 static void lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg);
-static void lwkt_thread_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_thread_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
 
 static void *lwkt_spin_getport(lwkt_port_t port);
 static int lwkt_spin_putport(lwkt_port_t port, lwkt_msg_t msg);
 static int lwkt_spin_waitmsg(lwkt_msg_t msg, int flags);
 static void *lwkt_spin_waitport(lwkt_port_t port, int flags);
 static void lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg);
-static void lwkt_spin_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_spin_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
 
 static void *lwkt_serialize_getport(lwkt_port_t port);
 static int lwkt_serialize_putport(lwkt_port_t port, lwkt_msg_t msg);
@@ -218,7 +240,7 @@ static int lwkt_panic_putport(lwkt_port_t port, lwkt_msg_t msg);
 static int lwkt_panic_waitmsg(lwkt_msg_t msg, int flags);
 static void *lwkt_panic_waitport(lwkt_port_t port, int flags);
 static void lwkt_panic_replyport(lwkt_port_t port, lwkt_msg_t msg);
-static void lwkt_panic_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_panic_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
 
 /*
  * Core port initialization (internal)
@@ -231,7 +253,7 @@ _lwkt_initport(lwkt_port_t port,
 	       int (*wmsgfn)(lwkt_msg_t, int),
 	       void *(*wportfn)(lwkt_port_t, int),
 	       void (*rportfn)(lwkt_port_t, lwkt_msg_t),
-	       void (*dmsgfn)(lwkt_port_t, lwkt_msg_t))
+	       int (*dmsgfn)(lwkt_port_t, lwkt_msg_t))
 {
     bzero(port, sizeof(*port));
     TAILQ_INIT(&port->mp_msgq);
@@ -286,7 +308,7 @@ lwkt_initport_thread(lwkt_port_t port, thread_t td)
 void
 lwkt_initport_spin(lwkt_port_t port, thread_t td)
 {
-    void (*dmsgfn)(lwkt_port_t, lwkt_msg_t);
+    int (*dmsgfn)(lwkt_port_t, lwkt_msg_t);
 
     if (td == NULL)
 	dmsgfn = lwkt_panic_dropmsg;
@@ -556,16 +578,25 @@ lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
  * This function could _only_ be used when caller is in the same thread
  * as the message's target port owner thread.
  */
-static void
+static int
 lwkt_thread_dropmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
+    int error;
+
     KASSERT(port->mpu_td == curthread,
     	    ("message could only be dropped in the same thread "
 	     "as the message target port thread"));
     crit_enter_quick(port->mpu_td);
-    _lwkt_pullmsg(port, msg);
-    atomic_set_int(&msg->ms_flags, MSGF_DONE);
+    if ((msg->ms_flags & (MSGF_REPLY|MSGF_QUEUED)) == MSGF_QUEUED) {
+	    _lwkt_pullmsg(port, msg);
+	    atomic_set_int(&msg->ms_flags, MSGF_DONE);
+	    error = 0;
+    } else {
+	    error = ENOENT;
+    }
     crit_exit_quick(port->mpu_td);
+
+    return (error);
 }
 
 /*
@@ -936,16 +967,25 @@ lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg)
  * This function could _only_ be used when caller is in the same thread
  * as the message's target port owner thread.
  */
-static void
+static int
 lwkt_spin_dropmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
+    int error;
+
     KASSERT(port->mpu_td == curthread,
     	    ("message could only be dropped in the same thread "
 	     "as the message target port thread\n"));
     spin_lock(&port->mpu_spin);
-    _lwkt_pullmsg(port, msg);
-    msg->ms_flags |= MSGF_DONE;
+    if ((msg->ms_flags & (MSGF_REPLY|MSGF_QUEUED)) == MSGF_QUEUED) {
+	    _lwkt_pullmsg(port, msg);
+	    msg->ms_flags |= MSGF_DONE;
+	    error = 0;
+    } else {
+	    error = ENOENT;
+    }
     spin_unlock(&port->mpu_spin);
+
+    return (error);
 }
 
 /************************************************************************
@@ -1157,8 +1197,10 @@ lwkt_panic_replyport(lwkt_port_t port, lwkt_msg_t msg)
 }
 
 static
-void
+int
 lwkt_panic_dropmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
     panic("lwkt_dropmsg() is illegal on port %p msg %p", port, msg);
+    /* NOT REACHED */
+    return (ENOENT);
 }

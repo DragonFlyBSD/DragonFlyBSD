@@ -45,7 +45,9 @@
 #include <sys/spinlock2.h>
 #include <sys/mbuf.h>
 #include <vm/pmap.h>
+
 #include <net/netmsg2.h>
+#include <sys/socketvar2.h>
 
 #include <net/netisr.h>
 #include <net/netmsg.h>
@@ -310,10 +312,20 @@ so_pru_rcvd_async(struct socket *so)
 	KASSERT(so->so_proto->pr_flags & PR_ASYNC_RCVD,
 	    ("async pru_rcvd is not supported"));
 
+	/*
+	 * WARNING!  Spinlock is a bit dodgy, use hacked up sendmsg
+	 *	     to avoid deadlocking.
+	 */
 	spin_lock(&so->so_rcvd_spin);
 	if ((so->so_rcvd_msg.nm_pru_flags & PRUR_DEAD) == 0) {
-		if (lmsg->ms_flags & MSGF_DONE)
-			lwkt_sendmsg(so->so_port, lmsg);
+		if (lmsg->ms_flags & MSGF_DONE) {
+			soreference(so);
+			lwkt_sendmsg_stage1(so->so_port, lmsg);
+			spin_unlock(&so->so_rcvd_spin);
+			lwkt_sendmsg_stage2(so->so_port, lmsg);
+		} else {
+			spin_unlock(&so->so_rcvd_spin);
+		}
 	} else {
 		static int deadlog = 0;
 
@@ -321,8 +333,8 @@ so_pru_rcvd_async(struct socket *so)
 			kprintf("async rcvd is dead\n");
 			deadlog = 1;
 		}
+		spin_unlock(&so->so_rcvd_spin);
 	}
-	spin_unlock(&so->so_rcvd_spin);
 }
 
 int
@@ -595,9 +607,13 @@ netmsg_so_notify_abort(netmsg_t msg)
 void
 so_async_rcvd_reply(struct socket *so)
 {
+	/*
+	 * Spinlock safe, reply runs to degenerate lwkt_null_replyport()
+	 */
 	spin_lock(&so->so_rcvd_spin);
 	lwkt_replymsg(&so->so_rcvd_msg.base.lmsg, 0);
 	spin_unlock(&so->so_rcvd_spin);
+	sofree(so);
 }
 
 void
@@ -605,9 +621,18 @@ so_async_rcvd_drop(struct socket *so)
 {
 	lwkt_msg_t lmsg = &so->so_rcvd_msg.base.lmsg;
 
+	/*
+	 * Spinlock safe, reply runs to degenerate lwkt_spin_dropmsg()
+	 */
 	spin_lock(&so->so_rcvd_spin);
-	if ((lmsg->ms_flags & MSGF_DONE) == 0)
-		lwkt_dropmsg(lmsg);
+	if (lwkt_dropmsg(lmsg) == 0)
+		sofree(so);
 	so->so_rcvd_msg.nm_pru_flags |= PRUR_DEAD;
 	spin_unlock(&so->so_rcvd_spin);
+	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
+		kprintf("Warning: tcp: so_async_rcvd_drop() raced message\n");
+		while ((lmsg->ms_flags & MSGF_DONE) == 0) {
+			tsleep(so, 0, "soadrop", 1);
+		}
+	}
 }
