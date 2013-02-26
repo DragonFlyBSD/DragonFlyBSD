@@ -4615,11 +4615,6 @@ bce_enable_intr(struct bce_softc *sc)
 static void
 bce_reenable_intr(struct bce_rx_ring *rxr)
 {
-	if (rxr->sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
-		REG_WR(rxr->sc, BCE_PCICFG_INT_ACK_CMD,
-		       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID |
-		       BCE_PCICFG_INT_ACK_CMD_MASK_INT | rxr->last_status_idx);
-	}
 	REG_WR(rxr->sc, BCE_PCICFG_INT_ACK_CMD,
 	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | rxr->last_status_idx);
 }
@@ -5332,15 +5327,13 @@ bce_intr(struct bce_softc *sc)
 			ifsq_devstart(txr->ifsq);
 	}
 	lwkt_serialize_exit(&txr->tx_serialize);
-
-	/* Re-enable interrupts. */
-	bce_reenable_intr(rxr);
 }
 
 static void
 bce_intr_legacy(void *xsc)
 {
 	struct bce_softc *sc = xsc;
+	struct bce_rx_ring *rxr = &sc->rx_rings[0];
 	struct status_block *sblk;
 
 	sblk = sc->status_block;
@@ -5350,7 +5343,7 @@ bce_intr_legacy(void *xsc)
 	 * read by the driver and we haven't asserted our interrupt
 	 * then there's nothing to do.
 	 */
-	if (sblk->status_idx == sc->rx_rings[0].last_status_idx &&
+	if (sblk->status_idx == rxr->last_status_idx &&
 	    (REG_RD(sc, BCE_PCICFG_MISC_STATUS) &
 	     BCE_PCICFG_MISC_STATUS_INTA_VALUE))
 		return;
@@ -5367,6 +5360,12 @@ bce_intr_legacy(void *xsc)
 	REG_RD(sc, BCE_PCICFG_INT_ACK_CMD);
 
 	bce_intr(sc);
+
+	/* Re-enable interrupts. */
+	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
+	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID |
+	       BCE_PCICFG_INT_ACK_CMD_MASK_INT | rxr->last_status_idx);
+	bce_reenable_intr(rxr);
 }
 
 static void
@@ -5380,12 +5379,20 @@ bce_intr_msi(void *xsc)
 	       BCE_PCICFG_INT_ACK_CMD_MASK_INT);
 
 	bce_intr(sc);
+
+	/* Re-enable interrupts */
+	bce_reenable_intr(&sc->rx_rings[0]);
 }
 
 static void
 bce_intr_msi_oneshot(void *xsc)
 {
-	bce_intr(xsc);
+	struct bce_softc *sc = xsc;
+
+	bce_intr(sc);
+
+	/* Re-enable interrupts */
+	bce_reenable_intr(&sc->rx_rings[0]);
 }
 
 
