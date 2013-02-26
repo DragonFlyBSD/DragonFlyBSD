@@ -503,9 +503,10 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 				struct proc *pp;
 
 				pp = pfind(p->p_oppid);
-				proc_reparent(p, pp);
-				if (pp)
+				if (pp) {
+					proc_reparent(p, pp);
 					PRELE(pp);
+				}
 			}
 
 			p->p_flags &= ~(P_TRACED | P_WAITED);
