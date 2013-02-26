@@ -270,12 +270,14 @@ sys_mount(struct mount_args *uap)
 		vn_unlock(vp);
 		goto update;
 	}
+
 	/*
 	 * If the user is not root, ensure that they own the directory
 	 * onto which we are attempting to mount.
 	 */
 	if ((error = VOP_GETATTR(vp, &va)) ||
-	    (va.va_uid != cred->cr_uid && (error = priv_check(td, PRIV_ROOT)))) {
+	    (va.va_uid != cred->cr_uid &&
+	     (error = priv_check(td, PRIV_ROOT)))) {
 		cache_drop(&nch);
 		vput(vp);
 		goto done;
@@ -391,6 +393,7 @@ update:
 		goto done;
 	}
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+
 	/*
 	 * Put the new filesystem on the mount list after root.  The mount
 	 * point gets its own mnt_ncmountpt (unless the VFS already set one
@@ -414,7 +417,6 @@ update:
 		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
 		cache_ismounting(mp);
 
-		/* XXX get the root of the fs and cache_setvp(mnt_ncmountpt...) */
 		vclrflags(vp, VMOUNT);
 		mountlist_insert(mp, MNTINS_LAST);
 		vn_unlock(vp);
@@ -447,9 +449,9 @@ done:
  * or root directory onto which the new filesystem has just been
  * mounted. If so, replace them with the new mount point.
  *
- * The passed ncp is ref'd and locked (from the mount code) and
- * must be associated with the vnode representing the root of the
- * mount point.
+ * Both old_nch and new_nch are ref'd on call but not locked.
+ * new_nch must be temporarily locked so it can be associated with the
+ * vnode representing the root of the mount point.
  */
 struct checkdirs_info {
 	struct nchandle old_nch;
@@ -483,8 +485,10 @@ checkdirs(struct nchandle *old_nch, struct nchandle *new_nch)
 	mp = new_nch->mount;
 	if (VFS_ROOT(mp, &newdp))
 		panic("mount: lost mount");
+	cache_lock(new_nch);
 	cache_setunresolved(new_nch);
 	cache_setvp(new_nch, newdp);
+	cache_unlock(new_nch);
 
 	/*
 	 * Special handling of the root node
