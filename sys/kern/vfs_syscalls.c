@@ -668,6 +668,7 @@ dounmount(struct mount *mp, int flags)
 	int async_flag;
 	int lflags;
 	int freeok = 1;
+	int retry;
 
 	lwkt_gettoken(&mp->mnt_token);
 	/*
@@ -681,7 +682,7 @@ dounmount(struct mount *mp, int flags)
 	 */
 	if (flags & MNT_FORCE)
 		mp->mnt_kern_flag |= MNTK_UNMOUNTF;
-	lflags = LK_EXCLUSIVE | ((flags & MNT_FORCE) ? 0 : LK_NOWAIT);
+	lflags = LK_EXCLUSIVE | ((flags & MNT_FORCE) ? 0 : LK_TIMELOCK);
 	error = lockmgr(&mp->mnt_lock, lflags);
 	if (error) {
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
@@ -736,40 +737,60 @@ dounmount(struct mount *mp, int flags)
 	}
 
 	/*
+	 * Decomission our special mnt_syncer vnode.  This also stops
+	 * the vnlru code.  If we are unable to unmount we recommission
+	 * the vnode.
+	 *
+	 * Then sync the filesystem.
+	 */
+	if ((vp = mp->mnt_syncer) != NULL) {
+		mp->mnt_syncer = NULL;
+		vrele(vp);
+	}
+	if ((mp->mnt_flag & MNT_RDONLY) == 0)
+		VFS_SYNC(mp, MNT_WAIT);
+
+	/*
 	 * nchandle records ref the mount structure.  Expect a count of 1
 	 * (our mount->mnt_ncmountpt).
+	 *
+	 * Scans can get temporary refs on a mountpoint (thought really
+	 * heavy duty stuff like cache_findmount() do not).
 	 */
-	cache_unmounting(mp);
+	for (retry = 0; retry < 10 && mp->mnt_refs != 1; ++retry) {
+		cache_unmounting(mp);
+		tsleep(&mp->mnt_refs, 0, "mntbsy", hz / 10 + 1);
+	}
 	if (mp->mnt_refs != 1) {
 		if ((flags & MNT_FORCE) == 0) {
 			mount_warning(mp, "Cannot unmount: "
-					  "%d process references still "
-					  "present", mp->mnt_refs);
+					  "%d mount refs still present",
+					  mp->mnt_refs);
 			error = EBUSY;
 		} else {
 			mount_warning(mp, "Forced unmount: "
-					  "%d process references still "
-					  "present", mp->mnt_refs);
+					  "%d mount refs still present",
+					  mp->mnt_refs);
 			freeok = 0;
 		}
 	}
 
 	/*
-	 * Decomission our special mnt_syncer vnode.  This also stops
-	 * the vnlru code.  If we are unable to unmount we recommission
-	 * the vnode.
+	 * So far so good, sync the filesystem once more and
+	 * call the VFS unmount code if the sync succeeds.
 	 */
 	if (error == 0) {
-		if ((vp = mp->mnt_syncer) != NULL) {
-			mp->mnt_syncer = NULL;
-			vrele(vp);
-		}
 		if (((mp->mnt_flag & MNT_RDONLY) ||
 		     (error = VFS_SYNC(mp, MNT_WAIT)) == 0) ||
 		    (flags & MNT_FORCE)) {
 			error = VFS_UNMOUNT(mp, flags);
 		}
 	}
+
+	/*
+	 * If an error occurred we can still recover, restoring the
+	 * syncer vnode and misc flags.
+	 */
 	if (error) {
 		if (mp->mnt_syncer == NULL)
 			vfs_allocate_syncvnode(mp);

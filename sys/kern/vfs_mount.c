@@ -328,7 +328,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 void
 mount_init(struct mount *mp)
 {
-	lockinit(&mp->mnt_lock, "vfslock", 0, 0);
+	lockinit(&mp->mnt_lock, "vfslock", hz*5, 0);
 	lwkt_token_init(&mp->mnt_token, "permnt");
 
 	TAILQ_INIT(&mp->mnt_vnodescan_list);
