@@ -371,7 +371,16 @@ vop_helper_read_shortcut(struct vop_read_args *ap)
 			break;
 		}
 		lwb = lwbuf_alloc(m, &lwb_cache);
+
+		/*
+		 * Can't hold object across uiomove, a VM fault could
+		 * wind up live locking on the same object (one shared,
+		 * on exclusive).
+		 */
+		vm_object_drop(obj);
 		error = uiomove((char *)lwbuf_kva(lwb) + offset, n, uio);
+		vm_object_hold_shared(obj);
+
 		vm_page_flag_set(m, PG_REFERENCED);
 		lwbuf_free(lwb);
 		vm_page_wakeup(m);
