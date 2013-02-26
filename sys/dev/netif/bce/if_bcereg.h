@@ -5758,6 +5758,10 @@ struct bce_tx_ring {
 struct bce_rx_ring {
 	struct lwkt_serialize	rx_serialize;
 	struct bce_softc	*sc;
+
+	volatile uint16_t	*hw_status_idx;
+	uint16_t		last_status_idx;
+
 	uint32_t		rx_cid;
 	volatile uint16_t	*rx_hw_cons;
 	int			rx_pages;
@@ -5910,9 +5914,6 @@ struct bce_softc {
 	bus_dmamap_t		status_map;
 	struct status_block	*status_block;		/* virtual address */
 	bus_addr_t		status_block_paddr;	/* Physical address */
-
-	/* Driver maintained status block values. */
-	uint16_t		last_status_idx;
 
 	/* H/W maintained statistics block. */
 	bus_dma_tag_t		stats_tag;

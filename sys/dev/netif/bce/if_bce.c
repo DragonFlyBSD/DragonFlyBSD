@@ -399,7 +399,7 @@ static void	bce_rx_intr(struct bce_rx_ring *, int, uint16_t);
 static void	bce_phy_intr(struct bce_softc *);
 static void	bce_disable_intr(struct bce_softc *);
 static void	bce_enable_intr(struct bce_softc *);
-static void	bce_reenable_intr(struct bce_softc *);
+static void	bce_reenable_intr(struct bce_rx_ring *);
 static void	bce_check_msi(void *);
 
 static void	bce_stats_update(struct bce_softc *);
@@ -2545,6 +2545,8 @@ bce_dma_alloc(struct bce_softc *sc)
 		sc->rx_rings[i].rx_cid = RX_CID;
 		sc->rx_rings[i].rx_hw_cons =
 		    &sc->status_block->status_rx_quick_consumer_index0;
+		sc->rx_rings[i].hw_status_idx =
+		    &sc->status_block->status_idx;
 
 		rc = bce_create_rx_ring(&sc->rx_rings[i]);
 		if (rc != 0) {
@@ -3697,7 +3699,6 @@ bce_blockinit(struct bce_softc *sc)
 	      sc->eaddr[3] + (sc->eaddr[4] << 8) + (sc->eaddr[5] << 16);
 	REG_WR(sc, BCE_EMAC_BACKOFF_SEED, val);
 
-	sc->last_status_idx = 0;
 	sc->rx_mode = BCE_EMAC_RX_MODE_SORT_MODE;
 
 	/* Set up link change interrupt generation. */
@@ -4090,6 +4091,9 @@ bce_init_rx_chain(struct bce_rx_ring *rxr)
 	rxr->rx_prod_bseq = 0;
 	rxr->free_rx_bd = USABLE_RX_BD(rxr);
 	rxr->max_rx_bd = USABLE_RX_BD(rxr);
+
+	/* Clear cache status index */
+	rxr->last_status_idx = 0;
 
 	/* Initialize the RX next pointer chain entries. */
 	for (i = 0; i < rxr->rx_pages; i++) {
@@ -4575,13 +4579,15 @@ bce_disable_intr(struct bce_softc *sc)
 static void
 bce_enable_intr(struct bce_softc *sc)
 {
+	struct bce_rx_ring *rxr = &sc->rx_rings[0]; /* XXX */
+
 	lwkt_serialize_handler_enable(&sc->main_serialize);
 
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
 	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID |
-	       BCE_PCICFG_INT_ACK_CMD_MASK_INT | sc->last_status_idx);
+	       BCE_PCICFG_INT_ACK_CMD_MASK_INT | rxr->last_status_idx);
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
-	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | sc->last_status_idx);
+	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | rxr->last_status_idx);
 
 	REG_WR(sc, BCE_HC_COMMAND, sc->hc_command | BCE_HC_COMMAND_COAL_NOW);
 
@@ -4607,15 +4613,15 @@ bce_enable_intr(struct bce_softc *sc)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_reenable_intr(struct bce_softc *sc)
+bce_reenable_intr(struct bce_rx_ring *rxr)
 {
-	if (sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
-		REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
+	if (rxr->sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
+		REG_WR(rxr->sc, BCE_PCICFG_INT_ACK_CMD,
 		       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID |
-		       BCE_PCICFG_INT_ACK_CMD_MASK_INT | sc->last_status_idx);
+		       BCE_PCICFG_INT_ACK_CMD_MASK_INT | rxr->last_status_idx);
 	}
-	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
-	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | sc->last_status_idx);
+	REG_WR(rxr->sc, BCE_PCICFG_INT_ACK_CMD,
+	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | rxr->last_status_idx);
 }
 
 
@@ -5140,9 +5146,7 @@ bce_npoll_status(struct ifnet *ifp)
 static void
 bce_npoll_rx(struct ifnet *ifp, void *arg, int count)
 {
-	struct bce_softc *sc = ifp->if_softc;
 	struct bce_rx_ring *rxr = arg;
-	struct status_block *sblk = sc->status_block;
 	uint16_t hw_rx_cons;
 
 	ASSERT_SERIALIZED(&rxr->rx_serialize);
@@ -5151,7 +5155,7 @@ bce_npoll_rx(struct ifnet *ifp, void *arg, int count)
 	 * Save the status block index value for use when enabling
 	 * the interrupt.
 	 */
-	sc->last_status_idx = sblk->status_idx;
+	rxr->last_status_idx = *rxr->hw_status_idx;
 
 	/* Make sure status index is extracted before RX/TX cons */
 	cpu_lfence();
@@ -5275,7 +5279,7 @@ bce_intr(struct bce_softc *sc)
 	 * Save the status block index value for use during
 	 * the next interrupt.
 	 */
-	sc->last_status_idx = sblk->status_idx;
+	rxr->last_status_idx = *rxr->hw_status_idx;
 
 	/* Make sure status index is extracted before RX/TX cons */
 	cpu_lfence();
@@ -5330,7 +5334,7 @@ bce_intr(struct bce_softc *sc)
 	lwkt_serialize_exit(&txr->tx_serialize);
 
 	/* Re-enable interrupts. */
-	bce_reenable_intr(sc);
+	bce_reenable_intr(rxr);
 }
 
 static void
@@ -5346,7 +5350,7 @@ bce_intr_legacy(void *xsc)
 	 * read by the driver and we haven't asserted our interrupt
 	 * then there's nothing to do.
 	 */
-	if (sblk->status_idx == sc->last_status_idx &&
+	if (sblk->status_idx == sc->rx_rings[0].last_status_idx &&
 	    (REG_RD(sc, BCE_PCICFG_MISC_STATUS) &
 	     BCE_PCICFG_MISC_STATUS_INTA_VALUE))
 		return;
@@ -5768,7 +5772,7 @@ bce_check_msi(void *xsc)
 	    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE)) {
 		if (sc->bce_check_rx_cons == rxr->rx_cons &&
 		    sc->bce_check_tx_cons == txr->tx_cons &&
-		    sc->bce_check_status_idx == sc->last_status_idx) {
+		    sc->bce_check_status_idx == rxr->last_status_idx) {
 			uint32_t msi_ctrl;
 
 			if (!sc->bce_msi_maylose) {
@@ -5794,7 +5798,7 @@ bce_check_msi(void *xsc)
 	sc->bce_msi_maylose = FALSE;
 	sc->bce_check_rx_cons = rxr->rx_cons;
 	sc->bce_check_tx_cons = txr->tx_cons;
-	sc->bce_check_status_idx = sc->last_status_idx;
+	sc->bce_check_status_idx = rxr->last_status_idx;
 
 done:
 	callout_reset(&sc->bce_ckmsi_callout, BCE_MSI_CKINTVL,
