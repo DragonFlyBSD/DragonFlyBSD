@@ -20,7 +20,7 @@
 #define HAVE_LIMITS_H 1
 
 /* Define to 1 if you have the <malloc.h> header file. */
-/* #undef HAVE_MALLOC_H */
+#define HAVE_MALLOC_H 1
 
 /* Define to 1 if you have the `memmove' function. */
 #define HAVE_MEMMOVE 1
