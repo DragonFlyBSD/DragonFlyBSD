@@ -2219,6 +2219,7 @@ TO_REMOVE+=/usr/share/man/cat3/use_helpfile.3.gz
 TO_REMOVE+=/usr/share/man/man3/use_helpfile.3.gz
 TO_REMOVE+=/usr/share/man/cat3/use_helpline.3.gz
 TO_REMOVE+=/usr/share/man/man3/use_helpline.3.gz
+TO_REMOVE+=/usr/include/machine/apm_segments.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
