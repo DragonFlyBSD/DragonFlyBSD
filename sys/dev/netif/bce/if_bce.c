@@ -46,6 +46,29 @@
  *   BCM5708S A0, B0
  *   BCM5709C A0, B0, B1
  *   BCM5709S A0, A1, B0, B1, B2, C0
+ *
+ *
+ * Note about MSI-X on 5709/5716:
+ * - 9 MSI-X vectors are supported.
+ * - MSI-X vectors, RX/TX rings and status blocks' association
+ *   are fixed:
+ *   o  The first RX ring and the first TX ring use the first
+ *      status block.
+ *   o  The first MSI-X vector is associated with the first
+ *      status block.
+ *   o  The second RX ring and the second TX ring use the second
+ *      status block.
+ *   o  The second MSI-X vector is associated with the second
+ *      status block.
+ *   ...
+ *   and so on so forth.
+ * - Status blocks must reside in physically contiguous memory
+ *   and each status block consumes 128bytes.  In addition to
+ *   this, the memory for the status blocks is aligned on 128bytes
+ *   in this driver.  (see bce_dma_alloc() and HC_CONFIG)
+ * - Each status block has its own coalesce parameters, which also
+ *   serve as the related MSI-X vector's interrupt moderation
+ *   parameters.  (see bce_coal_change())
  */
 
 #include "opt_bce.h"
@@ -77,6 +100,8 @@
 #include <net/if_poll.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
+#include <net/toeplitz.h>
+#include <net/toeplitz2.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
 
@@ -93,6 +118,16 @@
 #include <dev/netif/bce/if_bcefw.h>
 
 #define BCE_MSI_CKINTVL		((10 * hz) / 1000)	/* 10ms */
+
+#ifdef BCE_RSS_DEBUG
+#define BCE_RSS_DPRINTF(sc, lvl, fmt, ...) \
+do { \
+	if (sc->rss_debug >= lvl) \
+		if_printf(&sc->arpcom.ac_if, fmt, __VA_ARGS__); \
+} while (0)
+#else	/* !BCE_RSS_DEBUG */
+#define BCE_RSS_DPRINTF(sc, lvl, fmt, ...)	((void)0)
+#endif	/* BCE_RSS_DEBUG */
 
 /****************************************************************************/
 /* PCI Device ID Table                                                      */
@@ -331,6 +366,8 @@ static void	bce_init_tpat_cpu(struct bce_softc *);
 static void	bce_init_cp_cpu(struct bce_softc *);
 static void	bce_init_com_cpu(struct bce_softc *);
 static void	bce_init_cpus(struct bce_softc *);
+static void	bce_setup_msix_table(struct bce_softc *);
+static void	bce_init_rss(struct bce_softc *);
 
 static void	bce_stop(struct bce_softc *);
 static int	bce_reset(struct bce_softc *, uint32_t);
@@ -345,10 +382,20 @@ static void	bce_get_mac_addr(struct bce_softc *);
 static void	bce_set_mac_addr(struct bce_softc *);
 static void	bce_set_rx_mode(struct bce_softc *);
 static void	bce_coal_change(struct bce_softc *);
+static void	bce_npoll_coal_change(struct bce_softc *);
 static void	bce_setup_serialize(struct bce_softc *);
 static void	bce_serialize_skipmain(struct bce_softc *);
 static void	bce_deserialize_skipmain(struct bce_softc *);
 static void	bce_set_timer_cpuid(struct bce_softc *, boolean_t);
+static int	bce_alloc_intr(struct bce_softc *);
+static void	bce_free_intr(struct bce_softc *);
+static void	bce_try_alloc_msix(struct bce_softc *);
+static void	bce_free_msix(struct bce_softc *, boolean_t);
+static void	bce_setup_ring_cnt(struct bce_softc *);
+static int	bce_setup_intr(struct bce_softc *);
+static void	bce_teardown_intr(struct bce_softc *);
+static int	bce_setup_msix(struct bce_softc *);
+static void	bce_teardown_msix(struct bce_softc *, int);
 
 static int	bce_create_tx_ring(struct bce_tx_ring *);
 static void	bce_destroy_tx_ring(struct bce_tx_ring *);
@@ -381,6 +428,7 @@ static void	bce_npoll(struct ifnet *, struct ifpoll_info *);
 static void	bce_npoll_rx(struct ifnet *, void *, int);
 static void	bce_npoll_tx(struct ifnet *, void *, int);
 static void	bce_npoll_status(struct ifnet *);
+static void	bce_npoll_rx_pack(struct ifnet *, void *, int);
 #endif
 static void	bce_serialize(struct ifnet *, enum ifnet_serialize);
 static void	bce_deserialize(struct ifnet *, enum ifnet_serialize);
@@ -394,6 +442,8 @@ static void	bce_intr(struct bce_softc *);
 static void	bce_intr_legacy(void *);
 static void	bce_intr_msi(void *);
 static void	bce_intr_msi_oneshot(void *);
+static void	bce_intr_msix_rxtx(void *);
+static void	bce_intr_msix_rx(void *);
 static void	bce_tx_intr(struct bce_tx_ring *, uint16_t);
 static void	bce_rx_intr(struct bce_rx_ring *, int, uint16_t);
 static void	bce_phy_intr(struct bce_softc *);
@@ -441,9 +491,13 @@ static uint32_t	bce_rx_ticks = 150;		/* bcm: 18 */
 static int	bce_tx_wreg = 8;
 
 static int	bce_msi_enable = 1;
+static int	bce_msix_enable = 1;
 
 static int	bce_rx_pages = RX_PAGES_DEFAULT;
 static int	bce_tx_pages = TX_PAGES_DEFAULT;
+
+static int	bce_rx_rings = 0;	/* auto */
+static int	bce_tx_rings = 0;	/* auto */
 
 TUNABLE_INT("hw.bce.tx_bds_int", &bce_tx_bds_int);
 TUNABLE_INT("hw.bce.tx_bds", &bce_tx_bds);
@@ -454,9 +508,12 @@ TUNABLE_INT("hw.bce.rx_bds", &bce_rx_bds);
 TUNABLE_INT("hw.bce.rx_ticks_int", &bce_rx_ticks_int);
 TUNABLE_INT("hw.bce.rx_ticks", &bce_rx_ticks);
 TUNABLE_INT("hw.bce.msi.enable", &bce_msi_enable);
+TUNABLE_INT("hw.bce.msix.enable", &bce_msix_enable);
 TUNABLE_INT("hw.bce.rx_pages", &bce_rx_pages);
 TUNABLE_INT("hw.bce.tx_pages", &bce_tx_pages);
 TUNABLE_INT("hw.bce.tx_wreg", &bce_tx_wreg);
+TUNABLE_INT("hw.bce.tx_rings", &bce_tx_rings);
+TUNABLE_INT("hw.bce.rx_rings", &bce_rx_rings);
 
 /****************************************************************************/
 /* DragonFly device dispatch table.                                         */
@@ -640,8 +697,6 @@ bce_attach(device_t dev)
 	struct bce_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t val;
-	u_int irq_flags;
-	void (*irq_handle)(void *);
 	int rid, rc = 0;
 	int i, j;
 	struct mii_probe_args mii_args;
@@ -654,6 +709,12 @@ bce_attach(device_t dev)
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
 	lwkt_serialize_init(&sc->main_serialize);
+	for (i = 0; i < BCE_MSIX_MAX; ++i) {
+		struct bce_msix_data *msix = &sc->bce_msix[i];
+
+		msix->msix_cpuid = -1;
+		msix->msix_rid = -1;
+	}
 
 	pci_enable_busmaster(dev);
 
@@ -877,8 +938,7 @@ bce_attach(device_t dev)
 	bce_get_media(sc);
 
 	/* Find out RX/TX ring count */
-	sc->rx_ring_cnt = 1; /* XXX */
-	sc->tx_ring_cnt = 1; /* XXX */
+	bce_setup_ring_cnt(sc);
 
 	/* Allocate DMA memory resources. */
 	rc = bce_dma_alloc(sc);
@@ -891,13 +951,13 @@ bce_attach(device_t dev)
 	/*
 	 * NPOLLING RX/TX CPU offset
 	 */
-	if (sc->rx_ring_cnt == ncpus2) {
+	if (sc->rx_ring_cnt2 == ncpus2) {
 		offset = 0;
 	} else {
-		offset_def = (sc->rx_ring_cnt * device_get_unit(dev)) % ncpus2;
+		offset_def = (sc->rx_ring_cnt2 * device_get_unit(dev)) % ncpus2;
 		offset = device_getenv_int(dev, "npoll.offset", offset_def);
 		if (offset >= ncpus2 ||
-		    offset % sc->rx_ring_cnt != 0) {
+		    offset % sc->rx_ring_cnt2 != 0) {
 			device_printf(dev, "invalid npoll.offset %d, use %d\n",
 			    offset, offset_def);
 			offset = offset_def;
@@ -907,31 +967,9 @@ bce_attach(device_t dev)
 #endif
 
 	/* Allocate PCI IRQ resources. */
-	sc->bce_irq_type = pci_alloc_1intr(dev, bce_msi_enable,
-	    &sc->bce_irq_rid, &irq_flags);
-
-	sc->bce_res_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
-	    &sc->bce_irq_rid, irq_flags);
-	if (sc->bce_res_irq == NULL) {
-		device_printf(dev, "PCI map interrupt failed\n");
-		rc = ENXIO;
+	rc = bce_alloc_intr(sc);
+	if (rc != 0)
 		goto fail;
-	}
-
-	if (sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
-		irq_handle = bce_intr_legacy;
-	} else if (sc->bce_irq_type == PCI_INTR_TYPE_MSI) {
-		if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709) {
-			irq_handle = bce_intr_msi_oneshot;
-			sc->bce_flags |= BCE_ONESHOT_MSI_FLAG;
-		} else {
-			irq_handle = bce_intr_msi;
-			sc->bce_flags |= BCE_CHECK_MSI_FLAG;
-		}
-	} else {
-		panic("%s: unsupported intr type %d",
-		    device_get_nameunit(dev), sc->bce_irq_type);
-	}
 
 	/* Setup serializer */
 	bce_setup_serialize(sc);
@@ -966,6 +1004,11 @@ bce_attach(device_t dev)
 	ifq_set_ready(&ifp->if_snd);
 	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);
 
+	if (sc->tx_ring_cnt > 1) {
+		ifp->if_mapsubq = ifq_mapsubq_mask;
+		ifq_set_subq_mask(&ifp->if_snd, sc->tx_ring_cnt - 1);
+	}
+
 	/*
 	 * Look for our PHY.
 	 */
@@ -987,22 +1030,18 @@ bce_attach(device_t dev)
 	callout_init_mp(&sc->bce_pulse_callout);
 	callout_init_mp(&sc->bce_ckmsi_callout);
 
-	/* Hookup IRQ last. */
-	rc = bus_setup_intr(dev, sc->bce_res_irq, INTR_MPSAFE, irq_handle, sc,
-	    &sc->bce_intrhand, &sc->main_serialize);
+	rc = bce_setup_intr(sc);
 	if (rc != 0) {
 		device_printf(dev, "Failed to setup IRQ!\n");
 		ether_ifdetach(ifp);
 		goto fail;
 	}
 
-	sc->bce_intr_cpuid = rman_get_cpuid(sc->bce_res_irq);
-
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		struct ifaltq_subque *ifsq = ifq_get_subq(&ifp->if_snd, i);
 		struct bce_tx_ring *txr = &sc->tx_rings[i];
 
-		ifsq_set_cpuid(ifsq, sc->bce_intr_cpuid); /* XXX */
+		ifsq_set_cpuid(ifsq, sc->bce_msix[i].msix_cpuid);
 		ifsq_set_priv(ifsq, txr);
 		txr->ifsq = ifsq;
 
@@ -1063,7 +1102,8 @@ bce_detach(device_t dev)
 		else
 			msg = BCE_DRV_MSG_CODE_UNLOAD;
 		bce_reset(sc, msg);
-		bus_teardown_intr(dev, sc->bce_res_irq, sc->bce_intrhand);
+
+		bce_teardown_intr(sc);
 
 		ifnet_deserialize_all(ifp);
 
@@ -1075,13 +1115,7 @@ bce_detach(device_t dev)
 		device_delete_child(dev, sc->bce_miibus);
 	bus_generic_detach(dev);
 
-	if (sc->bce_res_irq != NULL) {
-		bus_release_resource(dev, SYS_RES_IRQ, sc->bce_irq_rid,
-		    sc->bce_res_irq);
-	}
-
-	if (sc->bce_irq_type == PCI_INTR_TYPE_MSI)
-		pci_release_msi(dev);
+	bce_free_intr(sc);
 
 	if (sc->bce_res_mem != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BAR(0),
@@ -2393,7 +2427,7 @@ bce_dma_alloc(struct bce_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i, rc = 0;
 	bus_addr_t busaddr, max_busaddr;
-	bus_size_t status_align, stats_align;
+	bus_size_t status_align, stats_align, status_size;
 
 	/*
 	 * The embedded PCIe to PCI-X bridge (EPB) 
@@ -2426,6 +2460,17 @@ bce_dma_alloc(struct bce_softc *sc)
 	}
 
 	/*
+	 * Each MSI-X vector needs a status block; each status block
+	 * consumes 128bytes and is 128bytes aligned.
+	 */
+	if (sc->rx_ring_cnt > 1) {
+		status_size = BCE_MSIX_MAX * BCE_STATUS_BLK_MSIX_ALIGN;
+		status_align = BCE_STATUS_BLK_MSIX_ALIGN;
+	} else {
+		status_size = BCE_STATUS_BLK_SZ;
+	}
+
+	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
 	 */
 	rc = bus_dma_tag_create(NULL, 1, BCE_DMA_BOUNDARY,
@@ -2443,7 +2488,7 @@ bce_dma_alloc(struct bce_softc *sc)
 	 * Allocate status block.
 	 */
 	sc->status_block = bus_dmamem_coherent_any(sc->parent_tag,
-				status_align, BCE_STATUS_BLK_SZ,
+				status_align, status_size,
 				BUS_DMA_WAITOK | BUS_DMA_ZERO,
 				&sc->status_tag, &sc->status_map,
 				&sc->status_block_paddr);
@@ -2517,13 +2562,20 @@ bce_dma_alloc(struct bce_softc *sc)
 	    M_WAITOK | M_ZERO);
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		sc->tx_rings[i].sc = sc;
+		if (i == 0) {
+			sc->tx_rings[i].tx_cid = TX_CID;
+			sc->tx_rings[i].tx_hw_cons =
+			    &sc->status_block->status_tx_quick_consumer_index0;
+		} else {
+			struct status_block_msix *sblk =
+			    (struct status_block_msix *)
+			    (((uint8_t *)(sc->status_block)) +
+			     (i * BCE_STATUS_BLK_MSIX_ALIGN));
 
-		/*
-		 * TODO
-		 */
-		sc->tx_rings[i].tx_cid = TX_CID;
-		sc->tx_rings[i].tx_hw_cons =
-		    &sc->status_block->status_tx_quick_consumer_index0;
+			sc->tx_rings[i].tx_cid = TX_TSS_CID + i - 1;
+			sc->tx_rings[i].tx_hw_cons =
+			    &sblk->status_tx_quick_consumer_index;
+		}
 
 		rc = bce_create_tx_ring(&sc->tx_rings[i]);
 		if (rc != 0) {
@@ -2538,15 +2590,24 @@ bce_dma_alloc(struct bce_softc *sc)
 	    M_WAITOK | M_ZERO);
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		sc->rx_rings[i].sc = sc;
+		sc->rx_rings[i].idx = i;
+		if (i == 0) {
+			sc->rx_rings[i].rx_cid = RX_CID;
+			sc->rx_rings[i].rx_hw_cons =
+			    &sc->status_block->status_rx_quick_consumer_index0;
+			sc->rx_rings[i].hw_status_idx =
+			    &sc->status_block->status_idx;
+		} else {
+			struct status_block_msix *sblk =
+			    (struct status_block_msix *)
+			    (((uint8_t *)(sc->status_block)) +
+			     (i * BCE_STATUS_BLK_MSIX_ALIGN));
 
-		/*
-		 * TODO
-		 */
-		sc->rx_rings[i].rx_cid = RX_CID;
-		sc->rx_rings[i].rx_hw_cons =
-		    &sc->status_block->status_rx_quick_consumer_index0;
-		sc->rx_rings[i].hw_status_idx =
-		    &sc->status_block->status_idx;
+			sc->rx_rings[i].rx_cid = RX_RSS_CID + i - 1;
+			sc->rx_rings[i].rx_hw_cons =
+			    &sblk->status_rx_quick_consumer_index;
+			sc->rx_rings[i].hw_status_idx = &sblk->status_idx;
+		}
 
 		rc = bce_create_rx_ring(&sc->rx_rings[i]);
 		if (rc != 0) {
@@ -3574,6 +3635,14 @@ bce_reset(struct bce_softc *sc, uint32_t reset_code)
 		if_printf(&sc->arpcom.ac_if,
 			  "Firmware did not complete initialization!\n");
 	}
+
+	if (sc->bce_irq_type == PCI_INTR_TYPE_MSIX) {
+		bce_setup_msix_table(sc);
+		/* Prevent MSIX table reads and write from timing out */
+		REG_WR(sc, BCE_MISC_ECO_HW_CTL,
+		    BCE_MISC_ECO_HW_CTL_LARGE_GRC_TMOUT_EN);
+
+	}
 	return rc;
 }
 
@@ -3690,6 +3759,7 @@ static int
 bce_blockinit(struct bce_softc *sc)
 {
 	uint32_t reg, val;
+	int i;
 
 	/* Load the hardware default MAC address. */
 	bce_set_mac_addr(sc);
@@ -3734,13 +3804,49 @@ bce_blockinit(struct bce_softc *sc)
 	REG_WR(sc, BCE_HC_STATS_TICKS, (sc->bce_stats_ticks & 0xffff00));
 	REG_WR(sc, BCE_HC_STAT_COLLECT_TICKS, 0xbb8);	/* 3ms */
 
+	if (sc->bce_irq_type == PCI_INTR_TYPE_MSIX)
+		REG_WR(sc, BCE_HC_MSIX_BIT_VECTOR, BCE_HC_MSIX_BIT_VECTOR_VAL);
+
 	val = BCE_HC_CONFIG_TX_TMR_MODE | BCE_HC_CONFIG_COLLECT_STATS;
-	if (sc->bce_flags & BCE_ONESHOT_MSI_FLAG) {
-		if (bootverbose)
-			if_printf(&sc->arpcom.ac_if, "oneshot MSI\n");
+	if ((sc->bce_flags & BCE_ONESHOT_MSI_FLAG) ||
+	    sc->bce_irq_type == PCI_INTR_TYPE_MSIX) {
+		if (bootverbose) {
+			if (sc->bce_irq_type == PCI_INTR_TYPE_MSIX) {
+				if_printf(&sc->arpcom.ac_if,
+				    "using MSI-X\n");
+			} else {
+				if_printf(&sc->arpcom.ac_if,
+				    "using oneshot MSI\n");
+			}
+		}
 		val |= BCE_HC_CONFIG_ONE_SHOT | BCE_HC_CONFIG_USE_INT_PARAM;
+		if (sc->bce_irq_type == PCI_INTR_TYPE_MSIX)
+			val |= BCE_HC_CONFIG_SB_ADDR_INC_128B;
 	}
 	REG_WR(sc, BCE_HC_CONFIG, val);
+
+	for (i = 1; i < sc->rx_ring_cnt; ++i) {
+		uint32_t base;
+
+		base = ((i - 1) * BCE_HC_SB_CONFIG_SIZE) + BCE_HC_SB_CONFIG_1;
+		KKASSERT(base <= BCE_HC_SB_CONFIG_8);
+
+		REG_WR(sc, base,
+		    BCE_HC_SB_CONFIG_1_TX_TMR_MODE |
+		    /* BCE_HC_SB_CONFIG_1_RX_TMR_MODE | */
+		    BCE_HC_SB_CONFIG_1_ONE_SHOT);
+
+		REG_WR(sc, base + BCE_HC_TX_QUICK_CONS_TRIP_OFF,
+		    (sc->bce_tx_quick_cons_trip_int << 16) |
+		    sc->bce_tx_quick_cons_trip);
+		REG_WR(sc, base + BCE_HC_RX_QUICK_CONS_TRIP_OFF,
+		    (sc->bce_rx_quick_cons_trip_int << 16) |
+		    sc->bce_rx_quick_cons_trip);
+		REG_WR(sc, base + BCE_HC_TX_TICKS_OFF,
+		    (sc->bce_tx_ticks_int << 16) | sc->bce_tx_ticks);
+		REG_WR(sc, base + BCE_HC_RX_TICKS_OFF,
+		    (sc->bce_rx_ticks_int << 16) | sc->bce_rx_ticks);
+	}
 
 	/* Clear the internal statistics counters. */
 	REG_WR(sc, BCE_HC_COMMAND, BCE_HC_COMMAND_CLR_STAT_NOW);
@@ -4462,6 +4568,7 @@ bce_rx_int_next_rx:
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
 			ifp->if_input(ifp, m);
+			rxr->rx_pkts++;
 		}
 	}
 
@@ -4530,6 +4637,9 @@ bce_tx_intr(struct bce_tx_ring *txr, uint16_t hw_tx_cons)
 			txr->tx_mbuf_ptr[sw_tx_chain_cons] = NULL;
 
 			IFNET_STAT_INC(ifp, opackets, 1);
+#ifdef BCE_TSS_DEBUG
+			txr->tx_pkts++;
+#endif
 		}
 
 		txr->used_tx_bd--;
@@ -4557,7 +4667,13 @@ bce_tx_intr(struct bce_tx_ring *txr, uint16_t hw_tx_cons)
 static void
 bce_disable_intr(struct bce_softc *sc)
 {
-	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD, BCE_PCICFG_INT_ACK_CMD_MASK_INT);
+	int i;
+
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
+		    (sc->rx_rings[i].idx << 24) |
+		    BCE_PCICFG_INT_ACK_CMD_MASK_INT);
+	}
 	REG_RD(sc, BCE_PCICFG_INT_ACK_CMD);
 
 	callout_stop(&sc->bce_ckmsi_callout);
@@ -4566,7 +4682,8 @@ bce_disable_intr(struct bce_softc *sc)
 	sc->bce_check_tx_cons = 0;
 	sc->bce_check_status_idx = 0xffff;
 
-	lwkt_serialize_handler_disable(&sc->main_serialize);
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
+		lwkt_serialize_handler_disable(sc->bce_msix[i].msix_serialize);
 }
 
 
@@ -4579,16 +4696,22 @@ bce_disable_intr(struct bce_softc *sc)
 static void
 bce_enable_intr(struct bce_softc *sc)
 {
-	struct bce_rx_ring *rxr = &sc->rx_rings[0]; /* XXX */
+	int i;
 
-	lwkt_serialize_handler_enable(&sc->main_serialize);
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
+		lwkt_serialize_handler_enable(sc->bce_msix[i].msix_serialize);
 
-	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
-	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID |
-	       BCE_PCICFG_INT_ACK_CMD_MASK_INT | rxr->last_status_idx);
-	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
-	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | rxr->last_status_idx);
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		struct bce_rx_ring *rxr = &sc->rx_rings[i];
 
+		REG_WR(sc, BCE_PCICFG_INT_ACK_CMD, (rxr->idx << 24) |
+		       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID |
+		       BCE_PCICFG_INT_ACK_CMD_MASK_INT |
+		       rxr->last_status_idx);
+		REG_WR(sc, BCE_PCICFG_INT_ACK_CMD, (rxr->idx << 24) |
+		       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID |
+		       rxr->last_status_idx);
+	}
 	REG_WR(sc, BCE_HC_COMMAND, sc->hc_command | BCE_HC_COMMAND_COAL_NOW);
 
 	if (sc->bce_flags & BCE_CHECK_MSI_FLAG) {
@@ -4601,7 +4724,7 @@ bce_enable_intr(struct bce_softc *sc)
 			if_printf(&sc->arpcom.ac_if, "check msi\n");
 
 		callout_reset_bycpu(&sc->bce_ckmsi_callout, BCE_MSI_CKINTVL,
-		    bce_check_msi, sc, sc->bce_intr_cpuid);
+		    bce_check_msi, sc, sc->bce_msix[0].msix_cpuid);
 	}
 }
 
@@ -4615,7 +4738,7 @@ bce_enable_intr(struct bce_softc *sc)
 static void
 bce_reenable_intr(struct bce_rx_ring *rxr)
 {
-	REG_WR(rxr->sc, BCE_PCICFG_INT_ACK_CMD,
+	REG_WR(rxr->sc, BCE_PCICFG_INT_ACK_CMD, (rxr->idx << 24) |
 	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | rxr->last_status_idx);
 }
 
@@ -4688,13 +4811,30 @@ bce_init(void *xsc)
 	/* Program appropriate promiscuous/multicast filtering. */
 	bce_set_rx_mode(sc);
 
-	/* Init RX buffer descriptor chain. */
+	/*
+	 * Init RX buffer descriptor chain.
+	 */
+        REG_WR(sc, BCE_RLUP_RSS_CONFIG, 0);
+	bce_reg_wr_ind(sc, BCE_RXP_SCRATCH_RSS_TBL_SZ, 0);
+
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		bce_init_rx_chain(&sc->rx_rings[i]);	/* XXX return value */
 
-	/* Init TX buffer descriptor chain. */
+	if (sc->rx_ring_cnt > 1)
+		bce_init_rss(sc);
+
+	/*
+	 * Init TX buffer descriptor chain.
+	 */
+	REG_WR(sc, BCE_TSCH_TSS_CFG, 0);
+
 	for (i = 0; i < sc->tx_ring_cnt; ++i)
 		bce_init_tx_chain(&sc->tx_rings[i]);
+
+	if (sc->tx_ring_cnt > 1) {
+		REG_WR(sc, BCE_TSCH_TSS_CFG,
+		    ((sc->tx_ring_cnt - 1) << 24) | (TX_TSS_CID << 7));
+	}
 
 	polling = FALSE;
 #ifdef IFPOLL_ENABLE
@@ -4706,10 +4846,8 @@ bce_init(void *xsc)
 		/* Disable interrupts if we are polling. */
 		bce_disable_intr(sc);
 
-		REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
-		       (1 << 16) | sc->bce_rx_quick_cons_trip);
-		REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
-		       (1 << 16) | sc->bce_tx_quick_cons_trip);
+		/* Change coalesce parameters */
+		bce_npoll_coal_change(sc);
 	} else {
 		/* Enable host interrupts. */
 		bce_enable_intr(sc);
@@ -5163,6 +5301,26 @@ bce_npoll_rx(struct ifnet *ifp, void *arg, int count)
 }
 
 static void
+bce_npoll_rx_pack(struct ifnet *ifp, void *arg, int count)
+{
+	struct bce_rx_ring *rxr = arg;
+
+	KASSERT(rxr->idx == 0, ("not the first RX ring, but %d", rxr->idx));
+	bce_npoll_rx(ifp, rxr, count);
+
+	KASSERT(rxr->sc->rx_ring_cnt != rxr->sc->rx_ring_cnt2,
+	    ("RX ring count %d, count2 %d", rxr->sc->rx_ring_cnt,
+	     rxr->sc->rx_ring_cnt2));
+
+	/* Last ring carries packets whose masked hash is 0 */
+	rxr = &rxr->sc->rx_rings[rxr->sc->rx_ring_cnt - 1];
+
+	lwkt_serialize_enter(&rxr->rx_serialize);
+	bce_npoll_rx(ifp, rxr, count);
+	lwkt_serialize_exit(&rxr->rx_serialize);
+}
+
+static void
 bce_npoll_tx(struct ifnet *ifp, void *arg, int count __unused)
 {
 	struct bce_tx_ring *txr = arg;
@@ -5203,12 +5361,29 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			ifsq_set_cpuid(txr->ifsq, idx);
 		}
 
-		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		for (i = 0; i < sc->rx_ring_cnt2; ++i) {
 			struct bce_rx_ring *rxr = &sc->rx_rings[i];
 			int idx = i + sc->npoll_ofs;
 
 			KKASSERT(idx < ncpus2);
-			info->ifpi_rx[idx].poll_func = bce_npoll_rx;
+			if (i == 0 && sc->rx_ring_cnt2 != sc->rx_ring_cnt) {
+				/*
+				 * If RSS is enabled, the packets whose
+				 * masked hash are 0 are queued to the
+				 * last RX ring; piggyback the last RX
+				 * ring's processing in the first RX
+				 * polling handler. (see also: comment
+				 * in bce_setup_ring_cnt())
+				 */
+				if (bootverbose) {
+					if_printf(ifp, "npoll pack last "
+					    "RX ring on cpu%d\n", idx);
+				}
+				info->ifpi_rx[idx].poll_func =
+				    bce_npoll_rx_pack;
+			} else {
+				info->ifpi_rx[idx].poll_func = bce_npoll_rx;
+			}
 			info->ifpi_rx[idx].arg = rxr;
 			info->ifpi_rx[idx].serializer = &rxr->rx_serialize;
 		}
@@ -5216,28 +5391,21 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		if (ifp->if_flags & IFF_RUNNING) {
 			bce_set_timer_cpuid(sc, TRUE);
 			bce_disable_intr(sc);
-
-			REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
-			       (1 << 16) | sc->bce_rx_quick_cons_trip);
-			REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
-			       (1 << 16) | sc->bce_tx_quick_cons_trip);
+			bce_npoll_coal_change(sc);
 		}
 	} else {
 		for (i = 0; i < sc->tx_ring_cnt; ++i) {
 			ifsq_set_cpuid(sc->tx_rings[i].ifsq,
-			    sc->bce_intr_cpuid); /* XXX */
+			    sc->bce_msix[i].msix_cpuid);
 		}
 
 		if (ifp->if_flags & IFF_RUNNING) {
 			bce_set_timer_cpuid(sc, FALSE);
 			bce_enable_intr(sc);
 
-			REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
-			       (sc->bce_tx_quick_cons_trip_int << 16) |
-			       sc->bce_tx_quick_cons_trip);
-			REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
-			       (sc->bce_rx_quick_cons_trip_int << 16) |
-			       sc->bce_rx_quick_cons_trip);
+			sc->bce_coalchg_mask |= BCE_COALMASK_TX_BDS_INT |
+			    BCE_COALMASK_RX_BDS_INT;
+			bce_coal_change(sc);
 		}
 	}
 }
@@ -5393,6 +5561,72 @@ bce_intr_msi_oneshot(void *xsc)
 
 	/* Re-enable interrupts */
 	bce_reenable_intr(&sc->rx_rings[0]);
+}
+
+static void
+bce_intr_msix_rxtx(void *xrxr)
+{
+	struct bce_rx_ring *rxr = xrxr;
+	struct bce_tx_ring *txr;
+	uint16_t hw_rx_cons, hw_tx_cons;
+
+	ASSERT_SERIALIZED(&rxr->rx_serialize);
+
+	KKASSERT(rxr->idx < rxr->sc->tx_ring_cnt);
+	txr = &rxr->sc->tx_rings[rxr->idx];
+
+	/*
+	 * Save the status block index value for use during
+	 * the next interrupt.
+	 */
+	rxr->last_status_idx = *rxr->hw_status_idx;
+
+	/* Make sure status index is extracted before RX/TX cons */
+	cpu_lfence();
+
+	/* Check if the hardware has finished any work. */
+	hw_rx_cons = bce_get_hw_rx_cons(rxr);
+	if (hw_rx_cons != rxr->rx_cons)
+		bce_rx_intr(rxr, -1, hw_rx_cons);
+
+	/* Check for any completed TX frames. */
+	hw_tx_cons = bce_get_hw_tx_cons(txr);
+	lwkt_serialize_enter(&txr->tx_serialize);
+	if (hw_tx_cons != txr->tx_cons) {
+		bce_tx_intr(txr, hw_tx_cons);
+		if (!ifsq_is_empty(txr->ifsq))
+			ifsq_devstart(txr->ifsq);
+	}
+	lwkt_serialize_exit(&txr->tx_serialize);
+
+	/* Re-enable interrupts */
+	bce_reenable_intr(rxr);
+}
+
+static void
+bce_intr_msix_rx(void *xrxr)
+{
+	struct bce_rx_ring *rxr = xrxr;
+	uint16_t hw_rx_cons;
+
+	ASSERT_SERIALIZED(&rxr->rx_serialize);
+
+	/*
+	 * Save the status block index value for use during
+	 * the next interrupt.
+	 */
+	rxr->last_status_idx = *rxr->hw_status_idx;
+
+	/* Make sure status index is extracted before RX cons */
+	cpu_lfence();
+
+	/* Check if the hardware has finished any work. */
+	hw_rx_cons = bce_get_hw_rx_cons(rxr);
+	if (hw_rx_cons != rxr->rx_cons)
+		bce_rx_intr(rxr, -1, hw_rx_cons);
+
+	/* Re-enable interrupts */
+	bce_reenable_intr(rxr);
 }
 
 
@@ -5766,7 +6000,7 @@ bce_check_msi(void *xsc)
 
 	lwkt_serialize_enter(&sc->main_serialize);
 
-	KKASSERT(mycpuid == sc->bce_intr_cpuid);
+	KKASSERT(mycpuid == sc->bce_msix[0].msix_cpuid);
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) != IFF_RUNNING) {
 		lwkt_serialize_exit(&sc->main_serialize);
@@ -5876,6 +6110,10 @@ bce_add_sysctls(struct bce_softc *sc)
 {
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid_list *children;
+#if defined(BCE_TSS_DEBUG) || defined(BCE_RSS_DEBUG)
+	char node[32];
+	int i;
+#endif
 
 	sysctl_ctx_init(&sc->bce_sysctl_ctx);
 	sc->bce_sysctl_tree = SYSCTL_ADD_NODE(&sc->bce_sysctl_ctx,
@@ -5925,8 +6163,13 @@ bce_add_sysctls(struct bce_softc *sc)
 			sc, 0, bce_sysctl_rx_ticks, "I",
 			"Receive coalescing ticks");
 
+	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "rx_rings",
+		CTLFLAG_RD, &sc->rx_ring_cnt, 0, "# of RX rings");
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "rx_pages",
 		CTLFLAG_RD, &sc->rx_rings[0].rx_pages, 0, "# of RX pages");
+
+	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_rings",
+		CTLFLAG_RD, &sc->tx_ring_cnt, 0, "# of TX rings");
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_pages",
 		CTLFLAG_RD, &sc->tx_rings[0].tx_pages, 0, "# of TX pages");
 
@@ -5938,6 +6181,26 @@ bce_add_sysctls(struct bce_softc *sc)
 	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "npoll_offset",
 	    CTLTYPE_INT|CTLFLAG_RW, sc, 0, bce_sysctl_npoll_offset,
 	    "I", "NPOLLING cpu offset");
+#endif
+
+#ifdef BCE_RSS_DEBUG
+	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "rss_debug",
+	    CTLFLAG_RW, &sc->rss_debug, 0, "RSS debug level");
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		ksnprintf(node, sizeof(node), "rx%d_pkt", i);
+		SYSCTL_ADD_ULONG(ctx, children, OID_AUTO, node,
+		    CTLFLAG_RW, &sc->rx_rings[i].rx_pkts,
+		    "RXed packets");
+	}
+#endif
+
+#ifdef BCE_TSS_DEBUG
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		ksnprintf(node, sizeof(node), "tx%d_pkt", i);
+		SYSCTL_ADD_ULONG(ctx, children, OID_AUTO, node,
+		    CTLFLAG_RW, &sc->tx_rings[i].tx_pkts,
+		    "TXed packets");
+	}
 #endif
 
 	SYSCTL_ADD_ULONG(ctx, children, OID_AUTO, 
@@ -6298,7 +6561,7 @@ bce_sysctl_rx_ticks(SYSCTL_HANDLER_ARGS)
 
 static int
 bce_sysctl_coal_change(SYSCTL_HANDLER_ARGS, uint32_t *coal,
-		       uint32_t coalchg_mask)
+    uint32_t coalchg_mask)
 {
 	struct bce_softc *sc = arg1;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -6328,6 +6591,7 @@ static void
 bce_coal_change(struct bce_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
 	ASSERT_SERIALIZED(&sc->main_serialize);
 
@@ -6341,6 +6605,15 @@ bce_coal_change(struct bce_softc *sc)
 		REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
 		       (sc->bce_tx_quick_cons_trip_int << 16) |
 		       sc->bce_tx_quick_cons_trip);
+		for (i = 1; i < sc->rx_ring_cnt; ++i) {
+			uint32_t base;
+
+			base = ((i - 1) * BCE_HC_SB_CONFIG_SIZE) +
+			    BCE_HC_SB_CONFIG_1;
+			REG_WR(sc, base + BCE_HC_TX_QUICK_CONS_TRIP_OFF,
+			    (sc->bce_tx_quick_cons_trip_int << 16) |
+			    sc->bce_tx_quick_cons_trip);
+		}
 		if (bootverbose) {
 			if_printf(ifp, "tx_bds %u, tx_bds_int %u\n",
 				  sc->bce_tx_quick_cons_trip,
@@ -6352,6 +6625,14 @@ bce_coal_change(struct bce_softc *sc)
 	    (BCE_COALMASK_TX_TICKS | BCE_COALMASK_TX_TICKS_INT)) {
 		REG_WR(sc, BCE_HC_TX_TICKS,
 		       (sc->bce_tx_ticks_int << 16) | sc->bce_tx_ticks);
+		for (i = 1; i < sc->rx_ring_cnt; ++i) {
+			uint32_t base;
+
+			base = ((i - 1) * BCE_HC_SB_CONFIG_SIZE) +
+			    BCE_HC_SB_CONFIG_1;
+			REG_WR(sc, base + BCE_HC_TX_TICKS_OFF,
+			    (sc->bce_tx_ticks_int << 16) | sc->bce_tx_ticks);
+		}
 		if (bootverbose) {
 			if_printf(ifp, "tx_ticks %u, tx_ticks_int %u\n",
 				  sc->bce_tx_ticks, sc->bce_tx_ticks_int);
@@ -6363,6 +6644,15 @@ bce_coal_change(struct bce_softc *sc)
 		REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
 		       (sc->bce_rx_quick_cons_trip_int << 16) |
 		       sc->bce_rx_quick_cons_trip);
+		for (i = 1; i < sc->rx_ring_cnt; ++i) {
+			uint32_t base;
+
+			base = ((i - 1) * BCE_HC_SB_CONFIG_SIZE) +
+			    BCE_HC_SB_CONFIG_1;
+			REG_WR(sc, base + BCE_HC_RX_QUICK_CONS_TRIP_OFF,
+			    (sc->bce_rx_quick_cons_trip_int << 16) |
+			    sc->bce_rx_quick_cons_trip);
+		}
 		if (bootverbose) {
 			if_printf(ifp, "rx_bds %u, rx_bds_int %u\n",
 				  sc->bce_rx_quick_cons_trip,
@@ -6374,6 +6664,14 @@ bce_coal_change(struct bce_softc *sc)
 	    (BCE_COALMASK_RX_TICKS | BCE_COALMASK_RX_TICKS_INT)) {
 		REG_WR(sc, BCE_HC_RX_TICKS,
 		       (sc->bce_rx_ticks_int << 16) | sc->bce_rx_ticks);
+		for (i = 1; i < sc->rx_ring_cnt; ++i) {
+			uint32_t base;
+
+			base = ((i - 1) * BCE_HC_SB_CONFIG_SIZE) +
+			    BCE_HC_SB_CONFIG_1;
+			REG_WR(sc, base + BCE_HC_RX_TICKS_OFF,
+			    (sc->bce_rx_ticks_int << 16) | sc->bce_rx_ticks);
+		}
 		if (bootverbose) {
 			if_printf(ifp, "rx_ticks %u, rx_ticks_int %u\n",
 				  sc->bce_rx_ticks, sc->bce_rx_ticks_int);
@@ -6538,7 +6836,7 @@ bce_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS)
 		return EINVAL;
 
 	ifnet_serialize_all(ifp);
-	if (off >= ncpus2 || off % sc->rx_ring_cnt != 0) {
+	if (off >= ncpus2 || off % sc->rx_ring_cnt2 != 0) {
 		error = EINVAL;
 	} else {
 		error = 0;
@@ -6557,5 +6855,420 @@ bce_set_timer_cpuid(struct bce_softc *sc, boolean_t polling)
 	if (polling)
 		sc->bce_timer_cpuid = 0; /* XXX */
 	else
-		sc->bce_timer_cpuid = rman_get_cpuid(sc->bce_res_irq);
+		sc->bce_timer_cpuid = sc->bce_msix[0].msix_cpuid;
+}
+
+static int
+bce_alloc_intr(struct bce_softc *sc)
+{
+	u_int irq_flags;
+
+	bce_try_alloc_msix(sc);
+	if (sc->bce_irq_type == PCI_INTR_TYPE_MSIX)
+		return 0;
+
+	sc->bce_irq_type = pci_alloc_1intr(sc->bce_dev, bce_msi_enable,
+	    &sc->bce_irq_rid, &irq_flags);
+
+	sc->bce_res_irq = bus_alloc_resource_any(sc->bce_dev, SYS_RES_IRQ,
+	    &sc->bce_irq_rid, irq_flags);
+	if (sc->bce_res_irq == NULL) {
+		device_printf(sc->bce_dev, "PCI map interrupt failed\n");
+		return ENXIO;
+	}
+	return 0;
+}
+
+static void
+bce_try_alloc_msix(struct bce_softc *sc)
+{
+	struct bce_msix_data *msix;
+	int offset, i, error;
+	boolean_t setup = FALSE;
+
+	if (sc->rx_ring_cnt == 1)
+		return;
+
+	if (sc->rx_ring_cnt2 == ncpus2) {
+		offset = 0;
+	} else {
+		int offset_def =
+		    (sc->rx_ring_cnt2 * device_get_unit(sc->bce_dev)) % ncpus2;
+
+		offset = device_getenv_int(sc->bce_dev,
+		    "msix.offset", offset_def);
+		if (offset >= ncpus2 || offset % sc->rx_ring_cnt2 != 0) {
+			device_printf(sc->bce_dev,
+			    "invalid msix.offset %d, use %d\n",
+			    offset, offset_def);
+			offset = offset_def;
+		}
+	}
+
+	msix = &sc->bce_msix[0];
+	msix->msix_serialize = &sc->main_serialize;
+	msix->msix_func = bce_intr_msi_oneshot;
+	msix->msix_arg = sc;
+	KKASSERT(offset < ncpus2);
+	msix->msix_cpuid = offset;
+	ksnprintf(msix->msix_desc, sizeof(msix->msix_desc), "%s combo",
+	    device_get_nameunit(sc->bce_dev));
+
+	for (i = 1; i < sc->rx_ring_cnt; ++i) {
+		struct bce_rx_ring *rxr = &sc->rx_rings[i];
+
+		msix = &sc->bce_msix[i];
+
+		msix->msix_serialize = &rxr->rx_serialize;
+		msix->msix_arg = rxr;
+		msix->msix_cpuid = offset + (i % sc->rx_ring_cnt2);
+		KKASSERT(msix->msix_cpuid < ncpus2);
+
+		if (i < sc->tx_ring_cnt) {
+			msix->msix_func = bce_intr_msix_rxtx;
+			ksnprintf(msix->msix_desc, sizeof(msix->msix_desc),
+			    "%s rxtx%d", device_get_nameunit(sc->bce_dev), i);
+		} else {
+			msix->msix_func = bce_intr_msix_rx;
+			ksnprintf(msix->msix_desc, sizeof(msix->msix_desc),
+			    "%s rx%d", device_get_nameunit(sc->bce_dev), i);
+		}
+	}
+
+	/*
+	 * Setup MSI-X table
+	 */
+	bce_setup_msix_table(sc);
+	REG_WR(sc, BCE_PCI_MSIX_CONTROL, BCE_MSIX_MAX - 1);
+	REG_WR(sc, BCE_PCI_MSIX_TBL_OFF_BIR, BCE_PCI_GRC_WINDOW2_BASE);
+	REG_WR(sc, BCE_PCI_MSIX_PBA_OFF_BIT, BCE_PCI_GRC_WINDOW3_BASE);
+	/* Flush */
+	REG_RD(sc, BCE_PCI_MSIX_CONTROL);
+
+	error = pci_setup_msix(sc->bce_dev);
+	if (error) {
+		device_printf(sc->bce_dev, "Setup MSI-X failed\n");
+		goto back;
+	}
+	setup = TRUE;
+
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		msix = &sc->bce_msix[i];
+
+		error = pci_alloc_msix_vector(sc->bce_dev, i, &msix->msix_rid,
+		    msix->msix_cpuid);
+		if (error) {
+			device_printf(sc->bce_dev,
+			    "Unable to allocate MSI-X %d on cpu%d\n",
+			    i, msix->msix_cpuid);
+			goto back;
+		}
+
+		msix->msix_res = bus_alloc_resource_any(sc->bce_dev,
+		    SYS_RES_IRQ, &msix->msix_rid, RF_ACTIVE);
+		if (msix->msix_res == NULL) {
+			device_printf(sc->bce_dev,
+			    "Unable to allocate MSI-X %d resource\n", i);
+			error = ENOMEM;
+			goto back;
+		}
+	}
+
+	pci_enable_msix(sc->bce_dev);
+	sc->bce_irq_type = PCI_INTR_TYPE_MSIX;
+back:
+	if (error)
+		bce_free_msix(sc, setup);
+}
+
+static void
+bce_setup_ring_cnt(struct bce_softc *sc)
+{
+	int msix_enable, ring_max, msix_cnt2, msix_cnt, i;
+
+	sc->rx_ring_cnt = 1;
+	sc->rx_ring_cnt2 = 1;
+	sc->tx_ring_cnt = 1;
+
+	if (BCE_CHIP_NUM(sc) != BCE_CHIP_NUM_5709)
+		return;
+
+	msix_enable = device_getenv_int(sc->bce_dev, "msix.enable",
+	    bce_msix_enable);
+	if (!msix_enable)
+		return;
+
+	if (ncpus2 == 1)
+		return;
+
+	msix_cnt = pci_msix_count(sc->bce_dev);
+	if (msix_cnt <= 1)
+		return;
+
+	i = 0;
+	while ((1 << (i + 1)) <= msix_cnt)
+		++i;
+	msix_cnt2 = 1 << i;
+
+	/*
+	 * One extra RX ring will be needed (see below), so make sure
+	 * that there are enough MSI-X vectors.
+	 */
+	if (msix_cnt == msix_cnt2) {
+		/*
+		 * XXX
+		 * This probably will not happen; 5709/5716
+		 * come with 9 MSI-X vectors.
+		 */
+		msix_cnt2 >>= 1;
+		if (msix_cnt2 <= 1) {
+			device_printf(sc->bce_dev,
+			    "MSI-X count %d could not be used\n", msix_cnt);
+			return;
+		}
+		device_printf(sc->bce_dev, "MSI-X count %d is power of 2\n",
+		    msix_cnt);
+	}
+
+	/*
+	 * Setup RX ring count
+	 */
+	ring_max = BCE_RX_RING_MAX;
+	if (ring_max > msix_cnt2)
+		ring_max = msix_cnt2;
+	sc->rx_ring_cnt2 = device_getenv_int(sc->bce_dev, "rx_rings",
+	    bce_rx_rings);
+	sc->rx_ring_cnt2 = if_ring_count2(sc->rx_ring_cnt2, ring_max);
+
+	/*
+	 * One extra RX ring is allocated, since the first RX ring
+	 * could not be used for RSS hashed packets whose masked
+	 * hash is 0.  The first RX ring is only used for packets
+	 * whose RSS hash could not be calculated, e.g. ARP packets.
+	 * This extra RX ring will be used for packets whose masked
+	 * hash is 0.  The effective RX ring count involved in RSS
+	 * is still sc->rx_ring_cnt2.
+	 */
+	KKASSERT(sc->rx_ring_cnt2 + 1 <= msix_cnt);
+	sc->rx_ring_cnt = sc->rx_ring_cnt2 + 1;
+
+	/*
+	 * Setup TX ring count
+	 *
+	 * NOTE:
+	 * TX ring count must be less than the effective RSS RX ring
+	 * count, since we use RX ring software data struct to save
+	 * status index and various other MSI-X related stuffs.
+	 */
+	ring_max = BCE_TX_RING_MAX;
+	if (ring_max > msix_cnt2)
+		ring_max = msix_cnt2;
+	if (ring_max > sc->rx_ring_cnt2)
+		ring_max = sc->rx_ring_cnt2;
+	sc->tx_ring_cnt = device_getenv_int(sc->bce_dev, "tx_rings",
+	    bce_tx_rings);
+	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, ring_max);
+}
+
+static void
+bce_free_msix(struct bce_softc *sc, boolean_t setup)
+{
+	int i;
+
+	KKASSERT(sc->rx_ring_cnt > 1);
+
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		struct bce_msix_data *msix = &sc->bce_msix[i];
+
+		if (msix->msix_res != NULL) {
+			bus_release_resource(sc->bce_dev, SYS_RES_IRQ,
+			    msix->msix_rid, msix->msix_res);
+		}
+		if (msix->msix_rid >= 0)
+			pci_release_msix_vector(sc->bce_dev, msix->msix_rid);
+	}
+	if (setup)
+		pci_teardown_msix(sc->bce_dev);
+}
+
+static void
+bce_free_intr(struct bce_softc *sc)
+{
+	if (sc->bce_irq_type != PCI_INTR_TYPE_MSIX) {
+		if (sc->bce_res_irq != NULL) {
+			bus_release_resource(sc->bce_dev, SYS_RES_IRQ,
+			    sc->bce_irq_rid, sc->bce_res_irq);
+		}
+		if (sc->bce_irq_type == PCI_INTR_TYPE_MSI)
+			pci_release_msi(sc->bce_dev);
+	} else {
+		bce_free_msix(sc, TRUE);
+	}
+}
+
+static void
+bce_setup_msix_table(struct bce_softc *sc)
+{
+	REG_WR(sc, BCE_PCI_GRC_WINDOW_ADDR, BCE_PCI_GRC_WINDOW_ADDR_SEP_WIN);
+	REG_WR(sc, BCE_PCI_GRC_WINDOW2_ADDR, BCE_MSIX_TABLE_ADDR);
+	REG_WR(sc, BCE_PCI_GRC_WINDOW3_ADDR, BCE_MSIX_PBA_ADDR);
+}
+
+static int
+bce_setup_intr(struct bce_softc *sc)
+{
+	void (*irq_handle)(void *);
+	int error;
+
+	if (sc->bce_irq_type == PCI_INTR_TYPE_MSIX)
+		return bce_setup_msix(sc);
+
+	if (sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
+		irq_handle = bce_intr_legacy;
+	} else if (sc->bce_irq_type == PCI_INTR_TYPE_MSI) {
+		if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709) {
+			irq_handle = bce_intr_msi_oneshot;
+			sc->bce_flags |= BCE_ONESHOT_MSI_FLAG;
+		} else {
+			irq_handle = bce_intr_msi;
+			sc->bce_flags |= BCE_CHECK_MSI_FLAG;
+		}
+	} else {
+		panic("%s: unsupported intr type %d",
+		    device_get_nameunit(sc->bce_dev), sc->bce_irq_type);
+	}
+
+	error = bus_setup_intr(sc->bce_dev, sc->bce_res_irq, INTR_MPSAFE,
+	    irq_handle, sc, &sc->bce_intrhand, &sc->main_serialize);
+	if (error != 0) {
+		device_printf(sc->bce_dev, "Failed to setup IRQ!\n");
+		return error;
+	}
+	sc->bce_msix[0].msix_cpuid = rman_get_cpuid(sc->bce_res_irq);
+	sc->bce_msix[0].msix_serialize = &sc->main_serialize;
+
+	return 0;
+}
+
+static void
+bce_teardown_intr(struct bce_softc *sc)
+{
+	if (sc->bce_irq_type != PCI_INTR_TYPE_MSIX)
+		bus_teardown_intr(sc->bce_dev, sc->bce_res_irq, sc->bce_intrhand);
+	else
+		bce_teardown_msix(sc, sc->rx_ring_cnt);
+}
+
+static int
+bce_setup_msix(struct bce_softc *sc)
+{
+	int i;
+
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		struct bce_msix_data *msix = &sc->bce_msix[i];
+		int error;
+
+		error = bus_setup_intr_descr(sc->bce_dev, msix->msix_res,
+		    INTR_MPSAFE, msix->msix_func, msix->msix_arg,
+		    &msix->msix_handle, msix->msix_serialize, msix->msix_desc);
+		if (error) {
+			device_printf(sc->bce_dev, "could not set up %s "
+			    "interrupt handler.\n", msix->msix_desc);
+			bce_teardown_msix(sc, i);
+			return error;
+		}
+	}
+	return 0;
+}
+
+static void
+bce_teardown_msix(struct bce_softc *sc, int msix_cnt)
+{
+	int i;
+
+	for (i = 0; i < msix_cnt; ++i) {
+		struct bce_msix_data *msix = &sc->bce_msix[i];
+
+		bus_teardown_intr(sc->bce_dev, msix->msix_res,
+		    msix->msix_handle);
+	}
+}
+
+static void
+bce_init_rss(struct bce_softc *sc)
+{
+	uint8_t key[BCE_RLUP_RSS_KEY_CNT * BCE_RLUP_RSS_KEY_SIZE];
+	uint32_t tbl = 0;
+	int i;
+
+	KKASSERT(sc->rx_ring_cnt > 2);
+
+	/*
+	 * Configure RSS keys
+	 */
+	toeplitz_get_key(key, sizeof(key));
+	for (i = 0; i < BCE_RLUP_RSS_KEY_CNT; ++i) {
+		uint32_t rss_key;
+
+		rss_key = BCE_RLUP_RSS_KEYVAL(key, i);
+		BCE_RSS_DPRINTF(sc, 1, "rss_key%d 0x%08x\n", i, rss_key);
+
+		REG_WR(sc, BCE_RLUP_RSS_KEY(i), rss_key);
+	}
+
+	/*
+	 * Configure the redirect table
+	 *
+	 * NOTE:
+	 * - The "queue ID" in redirect table is the software RX ring's
+	 *   index _minus_ one.
+	 * - The last RX ring, whose "queue ID" is (sc->rx_ring_cnt - 2)
+	 *   will be used for packets whose masked hash is 0.
+	 *   (see also: comment in bce_setup_ring_cnt())
+	 *
+	 * The redirect table is configured in following fashion, except
+	 * for the masked hash 0, which is noted above:
+	 * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
+	 */
+	for (i = 0; i < BCE_RXP_SCRATCH_RSS_TBL_MAX_ENTRIES; i++) {
+		int shift = (i % 8) << 2, qid;
+
+		qid = i % sc->rx_ring_cnt2;
+		if (qid > 0)
+			--qid;
+		else
+			qid = sc->rx_ring_cnt - 2;
+		KKASSERT(qid < (sc->rx_ring_cnt - 1));
+
+		tbl |= qid << shift;
+		if (i % 8 == 7) {
+			BCE_RSS_DPRINTF(sc, 1, "tbl 0x%08x\n", tbl);
+			REG_WR(sc, BCE_RLUP_RSS_DATA, tbl);
+			REG_WR(sc, BCE_RLUP_RSS_COMMAND, (i >> 3) |
+			    BCE_RLUP_RSS_COMMAND_RSS_WRITE_MASK |
+			    BCE_RLUP_RSS_COMMAND_WRITE |
+			    BCE_RLUP_RSS_COMMAND_HASH_MASK);
+			tbl = 0;
+		}
+	}
+	REG_WR(sc, BCE_RLUP_RSS_CONFIG,
+	    BCE_RLUP_RSS_CONFIG_IPV4_RSS_TYPE_ALL_XI);
+}
+
+static void
+bce_npoll_coal_change(struct bce_softc *sc)
+{
+	uint32_t old_rx_cons, old_tx_cons;
+
+	old_rx_cons = sc->bce_rx_quick_cons_trip_int;
+	old_tx_cons = sc->bce_tx_quick_cons_trip_int;
+	sc->bce_rx_quick_cons_trip_int = 1;
+	sc->bce_tx_quick_cons_trip_int = 1;
+
+	sc->bce_coalchg_mask |= BCE_COALMASK_TX_BDS_INT |
+	    BCE_COALMASK_RX_BDS_INT;
+	bce_coal_change(sc);
+
+	sc->bce_rx_quick_cons_trip_int = old_rx_cons;
+	sc->bce_tx_quick_cons_trip_int = old_tx_cons;
 }

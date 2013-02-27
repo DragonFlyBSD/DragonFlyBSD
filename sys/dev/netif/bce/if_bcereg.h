@@ -698,6 +698,31 @@ struct status_block {
 };
 
 
+struct status_block_msix {
+#if BYTE_ORDER == BIG_ENDIAN
+	uint16_t status_tx_quick_consumer_index;
+	uint16_t status_rx_quick_consumer_index;
+	uint16_t status_completion_producer_index;
+	uint16_t status_cmd_consumer_index;
+	uint32_t status_unused;
+	uint16_t status_idx;
+	uint8_t status_unused2;
+	uint8_t status_blk_num;
+#else
+	uint16_t status_rx_quick_consumer_index;
+	uint16_t status_tx_quick_consumer_index;
+	uint16_t status_cmd_consumer_index;
+	uint16_t status_completion_producer_index;
+	uint32_t status_unused;
+	uint8_t status_blk_num;
+	uint8_t status_unused2;
+	uint16_t status_idx;
+#endif
+};
+
+#define BCE_STATUS_BLK_MSIX_ALIGN	128
+
+
 /*
  *  statistics_block definition
  */
@@ -1005,8 +1030,12 @@ struct l2_fhdr {
  *  pci_reg definition
  *  offset: 0x400
  */
-#define BCE_PCI_GRC_WINDOW_ADDR					0x00000400
-#define BCE_PCI_GRC_WINDOW_ADDR_PCI_GRC_WINDOW_ADDR_VALUE	 (0x3ffffL<<8)
+#define BCE_PCI_GRC_WINDOW_ADDR				0x00000400
+#define BCE_PCI_GRC_WINDOW_ADDR_VALUE			 (0x1ffL<<13)
+#define BCE_PCI_GRC_WINDOW_ADDR_SEP_WIN			 (1L<<31)
+
+#define BCE_PCI_GRC_WINDOW2_BASE			 0xc000
+#define BCE_PCI_GRC_WINDOW3_BASE			 0xe000
 
 #define BCE_PCI_CONFIG_1				0x00000404
 #define BCE_PCI_CONFIG_1_READ_BOUNDARY			 (0x7L<<8)
@@ -1182,6 +1211,26 @@ struct l2_fhdr {
 #define BCE_PCI_MSI_ADDR_H				0x00000454
 #define BCE_PCI_MSI_ADDR_L				0x00000458
 
+#define BCE_PCI_MSIX_CONTROL				0x000004c0
+#define BCE_PCI_MSIX_CONTROL_MSIX_TBL_SIZ		 (0x7ffL<<0)
+#define BCE_PCI_MSIX_CONTROL_RESERVED0			 (0x1fffffL<<11)
+
+#define BCE_PCI_MSIX_TBL_OFF_BIR			0x000004c4
+#define BCE_PCI_MSIX_TBL_OFF_BIR_MSIX_TBL_BIR		 (0x7L<<0)
+#define BCE_PCI_MSIX_TBL_OFF_BIR_MSIX_TBL_OFF		 (0x1fffffffL<<3)
+
+#define BCE_PCI_MSIX_PBA_OFF_BIT			0x000004c8
+#define BCE_PCI_MSIX_PBA_OFF_BIT_MSIX_PBA_BIR		 (0x7L<<0)
+#define BCE_PCI_MSIX_PBA_OFF_BIT_MSIX_PBA_OFF		 (0x1fffffffL<<3)
+
+#define BCE_PCI_GRC_WINDOW2_ADDR			0x00000614
+#define BCE_PCI_GRC_WINDOW2_ADDR_VALUE			 (0x1ffL<<13)
+
+#define BCE_PCI_GRC_WINDOW3_ADDR			0x00000618
+#define BCE_PCI_GRC_WINDOW3_ADDR_VALUE			 (0x1ffL<<13)
+
+#define BCE_MSIX_TABLE_ADDR				 0x318000
+#define BCE_MSIX_PBA_ADDR				 0x31c000
 
 /*
  *  misc_reg definition
@@ -3480,6 +3529,38 @@ struct l2_fhdr {
  *  rlup_reg definition
  *  offset: 0x2000
  */
+#define BCE_RLUP_RSS_CONFIG				0x0000201c
+#define BCE_RLUP_RSS_CONFIG_IPV4_RSS_TYPE_XI		 (0x3L<<0)
+#define BCE_RLUP_RSS_CONFIG_IPV4_RSS_TYPE_OFF_XI	 (0L<<0)
+#define BCE_RLUP_RSS_CONFIG_IPV4_RSS_TYPE_ALL_XI	 (1L<<0)
+#define BCE_RLUP_RSS_CONFIG_IPV4_RSS_TYPE_IP_ONLY_XI	 (2L<<0)
+#define BCE_RLUP_RSS_CONFIG_IPV4_RSS_TYPE_RES_XI	 (3L<<0)
+#define BCE_RLUP_RSS_CONFIG_IPV6_RSS_TYPE_XI		 (0x3L<<2)
+#define BCE_RLUP_RSS_CONFIG_IPV6_RSS_TYPE_OFF_XI	 (0L<<2)
+#define BCE_RLUP_RSS_CONFIG_IPV6_RSS_TYPE_ALL_XI	 (1L<<2)
+#define BCE_RLUP_RSS_CONFIG_IPV6_RSS_TYPE_IP_ONLY_XI	 (2L<<2)
+#define BCE_RLUP_RSS_CONFIG_IPV6_RSS_TYPE_RES_XI	 (3L<<2)
+
+#define BCE_RLUP_RSS_KEY_BASE				0x00002020
+#define BCE_RLUP_RSS_KEY_SIZE				 4
+#define BCE_RLUP_RSS_KEY_CNT				 10
+#define BCE_RLUP_RSS_KEY(i) \
+    (BCE_RLUP_RSS_KEY_BASE + (i * BCE_RLUP_RSS_KEY_SIZE))
+#define BCE_RLUP_RSS_KEYVAL(key, i) \
+    (key[(i) * BCE_RLUP_RSS_KEY_SIZE] << 24 | \
+     key[(i) * BCE_RLUP_RSS_KEY_SIZE + 1] << 16 | \
+     key[(i) * BCE_RLUP_RSS_KEY_SIZE + 2] << 8 | \
+     key[(i) * BCE_RLUP_RSS_KEY_SIZE + 3])
+
+#define BCE_RLUP_RSS_COMMAND				0x00002048
+#define BCE_RLUP_RSS_COMMAND_RSS_IND_TABLE_ADDR		 (0xfUL<<0)
+#define BCE_RLUP_RSS_COMMAND_RSS_WRITE_MASK		 (0xffUL<<4)
+#define BCE_RLUP_RSS_COMMAND_WRITE			 (1UL<<12)
+#define BCE_RLUP_RSS_COMMAND_READ			 (1UL<<13)
+#define BCE_RLUP_RSS_COMMAND_HASH_MASK			 (0x7UL<<14)
+
+#define BCE_RLUP_RSS_DATA				0x0000204c
+
 #define BCE_RLUP_FTQ_CMD				0x000023f8
 #define BCE_RLUP_FTQ_CTL				0x000023fc
 #define BCE_RLUP_FTQ_CTL_MAX_DEPTH			 (0x3ffL<<12)
@@ -3867,6 +3948,15 @@ struct l2_fhdr {
 #define BCE_CSCH_CH_FTQ_CTL				 0x000043fc
 #define BCE_CSCH_CH_FTQ_CTL_MAX_DEPTH			 (0x3ffL<<12)
 #define BCE_CSCH_CH_FTQ_CTL_CUR_DEPTH			 (0x3ffL<<22)
+
+
+/*
+ *  tsch_reg definition
+ *  offset: 0x4c00
+ */
+#define BCE_TSCH_TSS_CFG				0x00004c1c
+#define BCE_TSCH_TSS_CFG_TSS_START_CID			 (0x7ffL<<8)
+#define BCE_TSCH_TSS_CFG_NUM_OF_TSS_CON			 (0xfL<<24)
 
 
 /*
@@ -4920,6 +5010,23 @@ struct l2_fhdr {
 #define BCE_HC_PERIODIC_TICKS_8_HC_PERIODIC_TICKS	 (0xffffL<<0)
 #define BCE_HC_PERIODIC_TICKS_8_HC_INT_PERIODIC_TICKS	 (0xffffL<<16)
 
+#define BCE_HC_SB_CONFIG_SIZE \
+    (BCE_HC_SB_CONFIG_2 - BCE_HC_SB_CONFIG_1)
+#define BCE_HC_COMP_PROD_TRIP_OFF \
+    (BCE_HC_COMP_PROD_TRIP_1 -	BCE_HC_SB_CONFIG_1)
+#define BCE_HC_COM_TICKS_OFF \
+    (BCE_HC_COM_TICKS_1 - BCE_HC_SB_CONFIG_1)
+#define BCE_HC_CMD_TICKS_OFF \
+    (BCE_HC_CMD_TICKS_1 - BCE_HC_SB_CONFIG_1)
+#define BCE_HC_TX_QUICK_CONS_TRIP_OFF \
+    (BCE_HC_TX_QUICK_CONS_TRIP_1 - BCE_HC_SB_CONFIG_1)
+#define BCE_HC_TX_TICKS_OFF \
+    (BCE_HC_TX_TICKS_1 - BCE_HC_SB_CONFIG_1)
+#define BCE_HC_RX_QUICK_CONS_TRIP_OFF \
+    (BCE_HC_RX_QUICK_CONS_TRIP_1 - BCE_HC_SB_CONFIG_1)
+#define BCE_HC_RX_TICKS_OFF \
+    (BCE_HC_RX_TICKS_1 - BCE_HC_SB_CONFIG_1)
+
 
 /*
  *  txp_reg definition
@@ -5183,6 +5290,10 @@ struct l2_fhdr {
 #define BCE_RXP_FTQ_CTL_CUR_DEPTH			 (0x3ffL<<22)
 
 #define BCE_RXP_SCRATCH					0x000e0000
+#define BCE_RXP_SCRATCH_RXP_FLOOD			0x000e0024
+#define BCE_RXP_SCRATCH_RSS_TBL_SZ			0x000e0038
+#define BCE_RXP_SCRATCH_RSS_TBL				0x000e003c
+#define BCE_RXP_SCRATCH_RSS_TBL_MAX_ENTRIES		128
 
 
 /*
@@ -5593,7 +5704,9 @@ struct l2_fhdr {
 #define MAX_CID_ADDR		(GET_CID_ADDR(MAX_CID_CNT))
 #define INVALID_CID_ADDR	0xffffffff
 
+#define TX_TSS_CID		32
 #define TX_CID			16
+#define RX_RSS_CID		4
 #define RX_CID			0
 
 /****************************************************************************/
@@ -5750,14 +5863,34 @@ struct bce_tx_ring {
 
 	struct ifsubq_watchdog	tx_watchdog;
 
+	u_long			tx_pkts;
+
 	bus_dma_tag_t		tx_bd_chain_tag;
 	bus_dmamap_t		*tx_bd_chain_map; /* tx_pages */
 	bus_addr_t		*tx_bd_chain_paddr; /* tx_pages */
 } __cachealign;
 
+struct bce_msix_data {
+	struct lwkt_serialize	*msix_serialize;
+
+	driver_intr_t		*msix_func;
+	void			*msix_arg;
+
+	int			msix_cpuid;
+	char			msix_desc[32];
+	int			msix_rid;
+	struct resource		*msix_res;
+	void			*msix_handle;
+};
+
+#define BCE_RX_RING_MAX			8
+#define BCE_TX_RING_MAX			8
+#define BCE_MSIX_MAX			9
+
 struct bce_rx_ring {
 	struct lwkt_serialize	rx_serialize;
 	struct bce_softc	*sc;
+	int			idx;
 
 	volatile uint16_t	*hw_status_idx;
 	uint16_t		last_status_idx;
@@ -5781,6 +5914,8 @@ struct bce_rx_ring {
 	bus_dmamap_t		*rx_mbuf_map;	/* TOTAL_RX_BD */
 	struct mbuf		**rx_mbuf_ptr;	/* TOTAL_RX_BD */
 	bus_addr_t		*rx_mbuf_paddr;	/* TOTAL_RX_BD */
+
+	u_long			rx_pkts;
 
 	bus_dma_tag_t		rx_bd_chain_tag;
 	bus_dmamap_t		*rx_bd_chain_map; /* rx_pages */
@@ -5896,7 +6031,6 @@ struct bce_softc {
 	struct callout		bce_tick_callout;
 	struct callout		bce_pulse_callout;
 
-	int			bce_intr_cpuid;
 	boolean_t		bce_msi_maylose;
 	uint16_t		bce_check_rx_cons;
 	uint16_t		bce_check_tx_cons;
@@ -5936,9 +6070,11 @@ struct bce_softc {
 	struct lwkt_serialize	**serializes;
 	struct lwkt_serialize	main_serialize;
 
+	int			rss_debug;
 	int			npoll_ofs;
 	int			tx_ring_cnt;
 	int			rx_ring_cnt;
+	int			rx_ring_cnt2;
 	struct bce_tx_ring	*tx_rings;
 	struct bce_rx_ring	*rx_rings;
 
@@ -6005,6 +6141,8 @@ struct bce_softc {
 
 	/* Provides access to certain firmware statistics. */
 	uint32_t com_no_buffers;
+
+	struct bce_msix_data	bce_msix[BCE_MSIX_MAX];
 };
 
 #define BCE_COALMASK_TX_BDS_INT		0x01

@@ -612,7 +612,8 @@ ATH_TXBUF		opt_ath.h
 AH_SUPPORT_AR5416	opt_ah.h
 
 # bce driver
-BCE_DEBUG		opt_bce.h
+BCE_RSS_DEBUG		opt_bce.h
+BCE_TSS_DEBUG		opt_bce.h
 
 # bnx driver
 BNX_TSO_DEBUG		opt_bnx.h
