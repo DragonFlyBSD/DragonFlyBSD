@@ -1,5 +1,4 @@
 /*	$KAME: sctp_pcb.h,v 1.19 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.h,v 1.3 2006/05/20 02:42:12 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -164,7 +163,7 @@ struct sctp_epinfo {
 
 	/* ep zone info */
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	struct uma_zone *ipi_zone_ep;
 	struct uma_zone *ipi_zone_asoc;
 	struct uma_zone *ipi_zone_laddr;

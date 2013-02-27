@@ -480,7 +480,7 @@ acd_ioctl(struct dev_ioctl_args *ap)
 	break;
 
 /* XXX TGEN Remove this and the rest of the nocopyout logic? */
-#if __FreeBSD_version > 600008
+#if 0 /* __FreeBSD_version > 600008 */
     case CDIOCREADSUBCHANNEL_SYSSPACE:
 	nocopyout = 1;
 	/* FALLTHROUGH */

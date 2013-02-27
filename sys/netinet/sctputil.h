@@ -65,7 +65,7 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
  * number = number of elements in zone/pool
  */
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <vm/uma.h>
 #endif
 #elif defined(__NetBSD__) || defined(__OpenBSD__)
@@ -74,7 +74,7 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 
 /* SCTP_ZONE_INIT: initialize the zone */
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #define UMA_ZFLAG_FULL	0x0020
 #define SCTP_ZONE_INIT(zone, name, size, number) { \
 	zone = uma_zcreate(name, size, NULL, NULL, NULL, NULL, UMA_ALIGN_PTR,\

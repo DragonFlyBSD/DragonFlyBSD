@@ -100,7 +100,7 @@
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
 #include <netinet6/scope6_var.h>
-#if defined(__FreeBSD__) || (__NetBSD__) || defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 #include <netinet6/in6_pcb.h>
 #elif defined(__OpenBSD__)
 #include <netinet/in_pcb.h>
@@ -1616,7 +1616,7 @@ sctp_inpcb_alloc(struct socket *so)
 	m->store_at = SCTP_SIGNATURE_SIZE;
 #if (defined(__FreeBSD__) && (__FreeBSD_version < 500000)) || defined(__DragonFly__)
 	read_random_unlimited(m->random_numbers, sizeof(m->random_numbers));
-#elif defined(__APPLE__) || (__FreeBSD_version > 500000)
+#elif defined(__APPLE__) || (defined(__FreeBSD__) && (__FreeBSD_version > 500000))
 	read_random(m->random_numbers, sizeof(m->random_numbers));
 #elif defined(__OpenBSD__)
 	get_random_bytes(m->random_numbers, sizeof(m->random_numbers));

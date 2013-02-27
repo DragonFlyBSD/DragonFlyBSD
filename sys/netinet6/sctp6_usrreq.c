@@ -418,7 +418,7 @@ sctp_skip_csum:
 #if (defined(SCTP_BASE_FREEBSD) && __FreeBSD_version < 501113) || \
     defined(__APPLE__) || defined(__DragonFly__)
 		ip6_savecontrol(in6p_ip, &opts, ip6, m);
-#elif __FreeBSD_version >= 440000 || (defined(SCTP_BASE_FREEBSD) && __FreeBSD_version >= 501113)
+#elif defined(__FreeBSD__) && (__FreeBSD_version >= 440000 || (defined(SCTP_BASE_FREEBSD) && __FreeBSD_version >= 501113))
 		ip6_savecontrol(in6p_ip, m, &opts);
 #else
 		ip6_savecontrol(in6p_ip, m, &opts, NULL);
