@@ -527,13 +527,15 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 			vm_object_drop(tobject);
 		}
 		if (lobject != object) {
-			vm_object_lock_swap();
+			if (tobject)
+				vm_object_lock_swap();
 			vm_object_drop(lobject);
+			/* leaves tobject locked & at top */
 		}
 		lobject = tobject;
 	}
 	if (lobject != object)
-		vm_object_drop(lobject);
+		vm_object_drop(lobject);	/* NULL ok */
 }
 
 /*
