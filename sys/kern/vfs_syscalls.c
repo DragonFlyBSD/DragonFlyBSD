@@ -256,14 +256,13 @@ sys_mount(struct mount_args *uap)
 			error = EBUSY;
 			goto done;
 		}
-		if ((vp->v_flag & VMOUNT) != 0 || hasmount) {
+		if (hasmount) {
 			cache_drop(&nch);
 			vfs_unbusy(mp);
 			vput(vp);
 			error = EBUSY;
 			goto done;
 		}
-		vsetflags(vp, VMOUNT);
 		mp->mnt_flag |=
 		    uap->flags & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
 		lwkt_gettoken(&mp->mnt_token);
@@ -329,13 +328,12 @@ sys_mount(struct mount_args *uap)
 			goto done;
 		}
 	}
-	if ((vp->v_flag & VMOUNT) != 0 || hasmount) {
+	if (hasmount) {
 		cache_drop(&nch);
 		vput(vp);
 		error = EBUSY;
 		goto done;
 	}
-	vsetflags(vp, VMOUNT);
 
 	/*
 	 * Allocate and initialize the filesystem.
@@ -387,7 +385,6 @@ update:
 		}
 		lwkt_reltoken(&mp->mnt_token);
 		vfs_unbusy(mp);
-		vclrflags(vp, VMOUNT);
 		vrele(vp);
 		cache_drop(&nch);
 		goto done;
@@ -417,7 +414,6 @@ update:
 		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
 		cache_ismounting(mp);
 
-		vclrflags(vp, VMOUNT);
 		mountlist_insert(mp, MNTINS_LAST);
 		vn_unlock(vp);
 		checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);
@@ -432,7 +428,6 @@ update:
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
-		vclrflags(vp, VMOUNT);
 		mp->mnt_vfc->vfc_refcount--;
 		lwkt_reltoken(&mp->mnt_token);
 		vfs_unbusy(mp);
