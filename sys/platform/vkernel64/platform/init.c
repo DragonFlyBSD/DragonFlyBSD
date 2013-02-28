@@ -538,6 +538,9 @@ init_kern_memory(void)
 		/* NOT REACHED */
 	}
 
+	/*
+	 * Bootstrap the kernel_pmap
+	 */
 	firstfree = NULL;
 	pmap_bootstrap((vm_paddr_t *)&firstfree, (int64_t)base);
 
@@ -600,13 +603,6 @@ init_kern_memory(void)
 	 */
 	ptvmmap = (caddr_t)virtual_start;
 	virtual_start += PAGE_SIZE;
-
-	/*
-	 * Bootstrap the kernel_pmap
-	 */
-#if JGV
-	pmap_bootstrap();
-#endif
 }
 
 /*
