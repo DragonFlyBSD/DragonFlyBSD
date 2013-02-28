@@ -47,6 +47,7 @@ main(int ac, char **av)
 	int verboseOpt = 1;
 	int allOpt = 0;
 	int execok = 0;
+	int ret = 0;
 
 	while ((i = getopt(ac, av, "adhpqsux")) != -1) {
 		switch (i) {
@@ -96,8 +97,10 @@ main(int ac, char **av)
 			if (marker < 0)		/* no more vars */
 			    break;
 		}
-		if (bytes < 0)
+		if (bytes < 0) {
 			fprintf(stderr, "varsym_list(): %s\n", strerror(errno));
+			return 1;
+		}
 	}
 
 	for ( ; optind < ac; optind++) {
@@ -116,26 +119,34 @@ main(int ac, char **av)
 			}
 			if (data) {
 				error = varsym_set(level, name, data);
+				if (error)
+					ret = 2;
 			} else {
 				error = doexec(av + optind);
 			}
 		} else if (deleteOpt) {
 			error = varsym_set(level, name, NULL);
+			if (error)
+				ret = 2;
 		} else if (data) {
 			error = varsym_set(level, name, data);
+			if (error)
+				ret = 2;
 		} else {
 			error = varsym_get(mask, name, buf, sizeof(buf));
 			if (error >= 0 && error <= (int)sizeof(buf)) {
 				if (verboseOpt)
 					printf("%s=", name);
 				printf("%s\n", buf);
+			} else {
+				ret = 1;
 			}
 		}
 		if (error < 0 && verboseOpt)
 			fprintf(stderr, "%s: %s\n", name, strerror(errno));
 	}
 
-	return(0);
+	return ret;
 }
 
 static void
