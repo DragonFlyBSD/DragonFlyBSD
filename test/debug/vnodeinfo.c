@@ -281,8 +281,6 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 #endif
     if (vn.v_flag & VONWORKLST)
 	printf(" VONWORKLST");
-    if (vn.v_flag & VMOUNT)
-	printf(" VMOUNT");
     if (vn.v_flag & VOBJDIRTY)
 	printf(" VOBJDIRTY");
     if (vn.v_flag & VMAYHAVELOCKS)
