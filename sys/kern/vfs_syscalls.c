@@ -480,7 +480,9 @@ checkdirs(struct nchandle *old_nch, struct nchandle *new_nch)
 	mp = new_nch->mount;
 	if (VFS_ROOT(mp, &newdp))
 		panic("mount: lost mount");
+	vn_unlock(newdp);
 	cache_lock(new_nch);
+	vn_lock(newdp, LK_EXCLUSIVE | LK_RETRY);
 	cache_setunresolved(new_nch);
 	cache_setvp(new_nch, newdp);
 	cache_unlock(new_nch);
