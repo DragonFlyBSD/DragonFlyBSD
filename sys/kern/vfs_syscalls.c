@@ -3659,8 +3659,12 @@ sys_fsync(struct fsync_args *uap)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-	if ((obj = vp->v_object) != NULL)
-		vm_object_page_clean(obj, 0, 0, 0);
+	if ((obj = vp->v_object) != NULL) {
+		if (vp->v_mount == NULL ||
+		    (vp->v_mount->mnt_kern_flag & MNTK_NOMSYNC) == 0) {
+			vm_object_page_clean(obj, 0, 0, 0);
+		}
+	}
 	error = VOP_FSYNC(vp, MNT_WAIT, VOP_FSYNC_SYSCALL);
 	if (error == 0 && vp->v_mount)
 		error = buf_fsync(vp);
