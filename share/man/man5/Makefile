@@ -71,6 +71,7 @@ MAN+=	hesiod.conf.5
 
 MLINKS=	dir.5 dirent.5
 MLINKS+=ffs.5 UFS.5
+MLINKS+=ffs.5 ufs.5
 MLINKS+=fs.5 inode.5
 MLINKS+=hammer.5 HAMMER.5
 MLINKS+=null.5 nullfs.5
