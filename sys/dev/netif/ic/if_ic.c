@@ -216,7 +216,7 @@ icioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	sc->ic_ifbuf = kmalloc(ifr->ifr_mtu+ICHDRLEN, M_DEVBUF, M_WAITOK);
 
 	/* allocate output buffer */
-	sc->ic_ifbuf = kmalloc(ifr->ifr_mtu+ICHDRLEN, M_DEVBUF, M_WAITOK);
+	sc->ic_obuf = kmalloc(ifr->ifr_mtu+ICHDRLEN, M_DEVBUF, M_WAITOK);
 
 	if (iptr)
 	    kfree(iptr,M_DEVBUF);
