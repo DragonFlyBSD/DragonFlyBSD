@@ -1651,12 +1651,11 @@ done:
 	 */
 	if (object) {
 		if (vm_page_insert(m, object, pindex) == FALSE) {
-			kprintf("PAGE RACE (%p:%d,%"PRIu64")\n",
-				object, object->type, pindex);
 			vm_page_free(m);
-			m = NULL;
 			if ((page_req & VM_ALLOC_NULL_OK) == 0)
-				panic("PAGE RACE");
+				panic("PAGE RACE %p[%ld]/%p",
+				      object, (long)pindex, m);
+			m = NULL;
 		}
 	} else {
 		m->pindex = pindex;
