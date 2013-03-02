@@ -529,6 +529,18 @@ tmpfs_read (struct vop_read_args *ap)
 				break;
 			}
 			lwkt_reltoken(&vp->v_mount->mnt_token);
+
+			/*
+			 * tmpfs pretty much fiddles directly with the VM
+			 * system, don't let it exhaust it or we won't play
+			 * nice with other processes.
+			 *
+			 * Only do this if the VOP is coming from a normal
+			 * read/write.  The VM system handles the case for
+			 * UIO_NOCOPY.
+			 */
+			if (uio->uio_segflg != UIO_NOCOPY)
+				vm_wait_nominal();
 		}
 
 		/*
@@ -672,12 +684,19 @@ tmpfs_write (struct vop_write_args *ap)
 		 * essentially all available memory to cache file data.
 		 * If we used bdwrite() the buffer cache would wind up
 		 * flushing the data to swap too quickly.
+		 *
+		 * tmpfs pretty much fiddles directly with the VM
+		 * system, don't let it exhaust it or we won't play
+		 * nice with other processes.  Only do this if the
+		 * VOP is coming from a normal read/write.  The VM system
+		 * handles the case for UIO_NOCOPY.
 		 */
 		bp->b_flags |= B_AGE;
 		if (uio->uio_segflg == UIO_NOCOPY) {
 			bawrite(bp);
 		} else {
 			buwrite(bp);
+			vm_wait_nominal();
 		}
 
 		if (bp->b_error) {
