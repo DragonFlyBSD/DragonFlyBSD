@@ -1144,6 +1144,24 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 		} else {
 			vm_page_wakeup(m);
 		}
+
+		/*
+		 * Systems with a ton of memory can wind up with huge
+		 * deactivation counts.  Because the inactive scan is
+		 * doing a lot of flushing, the combination can result
+		 * in excessive paging even in situations where other
+		 * unrelated threads free up sufficient VM.
+		 *
+		 * To deal with this we abort the nominal active->inactive
+		 * scan before we hit the inactive target when free+cache
+		 * levels have already reached their target.
+		 *
+		 * Note that nominally the inactive scan is not freeing or
+		 * caching pages, it is deactivating active pages, so it
+		 * will not by itself cause the abort condition.
+		 */
+		if (vm_paging_target() < 0)
+			break;
 	}
 	vm_page_queues_spin_lock(PQ_INACTIVE + q);
 	TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE + q].pl, &marker, pageq);
