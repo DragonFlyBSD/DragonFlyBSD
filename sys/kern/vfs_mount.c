@@ -726,6 +726,13 @@ vnlru_proc(void)
 		}
 
 		/*
+		 * Do non-critical-path (more robust) cache cleaning,
+		 * even if vnode counts are nominal, to try to avoid
+		 * having to do it in the critical path.
+		 */
+		cache_hysteresis(0);
+
+		/*
 		 * Nothing to do if most of our vnodes are already on
 		 * the free list.
 		 */
@@ -733,7 +740,6 @@ vnlru_proc(void)
 			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
 		}
-		cache_hysteresis();
 
 		/*
 		 * The pass iterates through the four combinations of

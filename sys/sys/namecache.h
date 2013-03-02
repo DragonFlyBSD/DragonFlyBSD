@@ -209,7 +209,7 @@ void	vfs_cache_setroot(struct vnode *vp, struct nchandle *nch);
 int	cache_resolve(struct nchandle *nch, struct ucred *cred);
 void	cache_purge(struct vnode *vp);
 void	cache_purgevfs (struct mount *mp);
-void	cache_hysteresis(void);
+void	cache_hysteresis(int critpath);
 void	cache_get(struct nchandle *nch, struct nchandle *target);
 int	cache_get_nonblock(struct nchandle *nch, struct nchandle *target);
 void	cache_get_maybe_shared(struct nchandle *nch,

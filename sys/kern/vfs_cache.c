@@ -167,6 +167,14 @@ static u_long	nchash;			/* size of hash table */
 SYSCTL_ULONG(_debug, OID_AUTO, nchash, CTLFLAG_RD, &nchash, 0,
     "Size of namecache hash table");
 
+static int	ncnegflush = 10;	/* burst for negative flush */
+SYSCTL_INT(_debug, OID_AUTO, ncnegflush, CTLFLAG_RW, &ncnegflush, 0,
+    "Batch flush negative entries");
+
+static int	ncposflush = 10;	/* burst for positive flush */
+SYSCTL_INT(_debug, OID_AUTO, ncposflush, CTLFLAG_RW, &ncposflush, 0,
+    "Batch flush positive entries");
+
 static int	ncnegfactor = 16;	/* ratio of negative entries */
 SYSCTL_INT(_debug, OID_AUTO, ncnegfactor, CTLFLAG_RW, &ncnegfactor, 0,
     "Ratio of namecache negative entries");
@@ -2486,35 +2494,53 @@ cache_zap(struct namecache *ncp, int nonblock)
 /*
  * Clean up dangling negative cache and defered-drop entries in the
  * namecache.
+ *
+ * This routine is called in the critical path and also called from
+ * vnlru().  When called from vnlru we use a lower limit to try to
+ * deal with the negative cache before the critical path has to start
+ * dealing with it.
  */
 typedef enum { CHI_LOW, CHI_HIGH } cache_hs_t;
 
-static cache_hs_t neg_cache_hysteresis_state = CHI_LOW;
-static cache_hs_t pos_cache_hysteresis_state = CHI_LOW;
+static cache_hs_t neg_cache_hysteresis_state[2] = { CHI_LOW, CHI_LOW };
+static cache_hs_t pos_cache_hysteresis_state[2] = { CHI_LOW, CHI_LOW };
 
 void
-cache_hysteresis(void)
+cache_hysteresis(int critpath)
 {
 	int poslimit;
+	int neglimit = desiredvnodes / ncnegfactor;
+	int xnumcache = numcache;
+
+	if (critpath == 0)
+		neglimit = neglimit * 8 / 10;
 
 	/*
 	 * Don't cache too many negative hits.  We use hysteresis to reduce
 	 * the impact on the critical path.
 	 */
-	switch(neg_cache_hysteresis_state) {
+	switch(neg_cache_hysteresis_state[critpath]) {
 	case CHI_LOW:
-		if (numneg > MINNEG && numneg * ncnegfactor > numcache) {
-			_cache_cleanneg(10);
-			neg_cache_hysteresis_state = CHI_HIGH;
+		if (numneg > MINNEG && numneg > neglimit) {
+			if (critpath)
+				_cache_cleanneg(ncnegflush);
+			else
+				_cache_cleanneg(ncnegflush +
+						numneg - neglimit);
+			neg_cache_hysteresis_state[critpath] = CHI_HIGH;
 		}
 		break;
 	case CHI_HIGH:
 		if (numneg > MINNEG * 9 / 10 && 
-		    numneg * ncnegfactor * 9 / 10 > numcache
+		    numneg * 9 / 10 > neglimit
 		) {
-			_cache_cleanneg(10);
+			if (critpath)
+				_cache_cleanneg(ncnegflush);
+			else
+				_cache_cleanneg(ncnegflush +
+						numneg * 9 / 10 - neglimit);
 		} else {
-			neg_cache_hysteresis_state = CHI_LOW;
+			neg_cache_hysteresis_state[critpath] = CHI_LOW;
 		}
 		break;
 	}
@@ -2529,19 +2555,29 @@ cache_hysteresis(void)
 	 */
 	if ((poslimit = ncposlimit) == 0)
 		poslimit = desiredvnodes * 2;
+	if (critpath == 0)
+		poslimit = poslimit * 8 / 10;
 
-	switch(pos_cache_hysteresis_state) {
+	switch(pos_cache_hysteresis_state[critpath]) {
 	case CHI_LOW:
-		if (numcache > poslimit && numcache > MINPOS) {
-			_cache_cleanpos(10);
-			pos_cache_hysteresis_state = CHI_HIGH;
+		if (xnumcache > poslimit && xnumcache > MINPOS) {
+			if (critpath)
+				_cache_cleanpos(ncposflush);
+			else
+				_cache_cleanpos(ncposflush +
+						xnumcache - poslimit);
+			pos_cache_hysteresis_state[critpath] = CHI_HIGH;
 		}
 		break;
 	case CHI_HIGH:
-		if (numcache > poslimit * 5 / 6 && numcache > MINPOS) {
-			_cache_cleanpos(10);
+		if (xnumcache > poslimit * 5 / 6 && xnumcache > MINPOS) {
+			if (critpath)
+				_cache_cleanpos(ncposflush);
+			else
+				_cache_cleanpos(ncposflush +
+						xnumcache - poslimit * 5 / 6);
 		} else {
-			pos_cache_hysteresis_state = CHI_LOW;
+			pos_cache_hysteresis_state[critpath] = CHI_LOW;
 		}
 		break;
 	}
@@ -2553,7 +2589,7 @@ cache_hysteresis(void)
 	 * can be reused and the counter is not handled in a MP
 	 * safe manner by design.
 	 */
-	if (numdefered * ncnegfactor > numcache) {
+	if (numdefered > neglimit) {
 		_cache_cleandefered();
 	}
 }
@@ -2613,7 +2649,7 @@ cache_nlookup(struct nchandle *par_nch, struct nlcomponent *nlc)
 	 * This is a good time to call it, no ncp's are locked by
 	 * the caller or us.
 	 */
-	cache_hysteresis();
+	cache_hysteresis(1);
 
 	/*
 	 * Try to locate an existing entry
@@ -2738,7 +2774,7 @@ cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
 	 * This is a good time to call it, no ncp's are locked by
 	 * the caller or us.
 	 */
-	cache_hysteresis();
+	cache_hysteresis(1);
 
 	/*
 	 * Try to locate an existing entry
