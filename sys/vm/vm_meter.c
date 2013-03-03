@@ -98,6 +98,7 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	struct vm_object marker;
 	vm_object_t object;
 	long collisions;
+	int burst;
 
 	bzero(&total, sizeof(total));
 	totalp = &total;
@@ -130,6 +131,7 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	 */
 	lwkt_gettoken(&vmobj_token);
 	TAILQ_INSERT_HEAD(&vm_object_list, &marker, object_list);
+	burst = 0;
 
 	for (object = TAILQ_FIRST(&vm_object_list);
 	    object != NULL;
@@ -171,14 +173,21 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 		}
 
 		/*
+		 * Don't waste time unnecessarily
+		 */
+		if (++burst < 25)
+			continue;
+		burst = 0;
+
+		/*
 		 * Don't hog the vmobj_token if someone else wants it.
 		 */
+		TAILQ_REMOVE(&vm_object_list, &marker, object_list);
+		TAILQ_INSERT_AFTER(&vm_object_list, object,
+				   &marker, object_list);
+		object = &marker;
 		if (collisions != vmobj_token.t_collisions) {
-			TAILQ_REMOVE(&vm_object_list, &marker, object_list);
-			TAILQ_INSERT_AFTER(&vm_object_list, object,
-					   &marker, object_list);
 			tsleep(&vm_object_list, 0, "breath", 1);
-			object = &marker;
 			collisions = vmobj_token.t_collisions;
 		} else {
 			lwkt_yield();
