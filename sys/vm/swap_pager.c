@@ -165,6 +165,7 @@ static int nsw_cluster_max;	/* maximum VOP I/O allowed		*/
 struct blist *swapblist;
 static int swap_async_max = 4;	/* maximum in-progress async I/O's	*/
 static int swap_burst_read = 0;	/* allow burst reading */
+static swblk_t swapiterator;	/* linearize allocations */
 
 /* from vm_swap.c */
 extern struct vnode *swapdev_vp;
@@ -481,7 +482,10 @@ swp_pager_getswapspace(vm_object_t object, int npages)
 	swblk_t blk;
 
 	lwkt_gettoken(&vm_token);
-	if ((blk = blist_alloc(swapblist, npages)) == SWAPBLK_NONE) {
+	blk = blist_allocat(swapblist, npages, swapiterator);
+	if (blk == SWAPBLK_NONE)
+		blk = blist_allocat(swapblist, npages, 0);
+	if (blk == SWAPBLK_NONE) {
 		if (swap_pager_full != 2) {
 			kprintf("swap_pager_getswapspace: failed alloc=%d\n",
 				npages);
@@ -489,6 +493,7 @@ swp_pager_getswapspace(vm_object_t object, int npages)
 			swap_pager_almost_full = 1;
 		}
 	} else {
+		swapiterator = blk;
 		swapacctspace(blk, -npages);
 		if (object->type == OBJT_SWAP)
 			vm_swap_anon_use += npages;
@@ -900,8 +905,11 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	char *data;
 	struct bio *biox;
 	struct buf *bufx;
+#if 0
 	struct bio_track *track;
+#endif
 
+#if 0
 	/*
 	 * tracking for swapdev vnode I/Os
 	 */
@@ -909,6 +917,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		track = &swapdev_vp->v_track_read;
 	else
 		track = &swapdev_vp->v_track_write;
+#endif
 
 	if (bp->b_bcount & PAGE_MASK) {
 		bp->b_error = EINVAL;

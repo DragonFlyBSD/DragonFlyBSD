@@ -132,9 +132,11 @@ void panic(const char *ctl, ...);
  * static support functions
  */
 
-static swblk_t blst_leaf_alloc(blmeta_t *scan, swblk_t blk, int count);
-static swblk_t blst_meta_alloc(blmeta_t *scan, swblk_t blk, 
-				swblk_t count, int64_t radix, int skip);
+static swblk_t blst_leaf_alloc(blmeta_t *scan, swblk_t blkat,
+				swblk_t blk, int count);
+static swblk_t blst_meta_alloc(blmeta_t *scan, swblk_t blkat,
+				swblk_t blk, swblk_t count,
+				int64_t radix, int skip);
 static void blst_leaf_free(blmeta_t *scan, swblk_t relblk, int count);
 static void blst_meta_free(blmeta_t *scan, swblk_t freeBlk, swblk_t count, 
 					int64_t radix, int skip, swblk_t blk);
@@ -228,9 +230,27 @@ blist_alloc(blist_t bl, swblk_t count)
 
 	if (bl) {
 		if (bl->bl_radix == BLIST_BMAP_RADIX)
-			blk = blst_leaf_alloc(bl->bl_root, 0, count);
+			blk = blst_leaf_alloc(bl->bl_root, 0, 0, count);
 		else
-			blk = blst_meta_alloc(bl->bl_root, 0, count, bl->bl_radix, bl->bl_skip);
+			blk = blst_meta_alloc(bl->bl_root, 0, 0, count,
+					      bl->bl_radix, bl->bl_skip);
+		if (blk != SWAPBLK_NONE)
+			bl->bl_free -= count;
+	}
+	return(blk);
+}
+
+swblk_t
+blist_allocat(blist_t bl, swblk_t count, swblk_t blkat)
+{
+	swblk_t blk = SWAPBLK_NONE;
+
+	if (bl) {
+		if (bl->bl_radix == BLIST_BMAP_RADIX)
+			blk = blst_leaf_alloc(bl->bl_root, blkat, 0, count);
+		else
+			blk = blst_meta_alloc(bl->bl_root, blkat, 0, count,
+					      bl->bl_radix, bl->bl_skip);
 		if (blk != SWAPBLK_NONE)
 			bl->bl_free -= count;
 	}
@@ -345,7 +365,7 @@ blist_print(blist_t bl)
  */
 
 static swblk_t
-blst_leaf_alloc(blmeta_t *scan, swblk_t blk, int count)
+blst_leaf_alloc(blmeta_t *scan, swblk_t blkat __unused, swblk_t blk, int count)
 {
 	u_swblk_t orig = scan->u.bmu_bitmap;
 
@@ -417,11 +437,13 @@ blst_leaf_alloc(blmeta_t *scan, swblk_t blk, int count)
  *	and we have a few optimizations strewn in as well.
  */
 static swblk_t
-blst_meta_alloc(blmeta_t *scan, swblk_t blk, swblk_t count,
+blst_meta_alloc(blmeta_t *scan, swblk_t blkat,
+		swblk_t blk, swblk_t count,
 		int64_t radix, int skip)
 {
 	int i;
 	int next_skip = ((u_int)skip / BLIST_META_RADIX);
+	int hintok = (blk >= blkat);
 
 	/*
 	 * ALL-ALLOCATED special case
@@ -457,15 +479,18 @@ blst_meta_alloc(blmeta_t *scan, swblk_t blk, swblk_t count,
 	}
 
 	for (i = 1; i <= skip; i += next_skip) {
-		if (count <= scan[i].bm_bighint) {
+		if (count <= scan[i].bm_bighint &&
+		    blk + (swblk_t)radix > blkat) {
 			/*
 			 * count fits in object
 			 */
 			swblk_t r;
 			if (next_skip == 1) {
-				r = blst_leaf_alloc(&scan[i], blk, count);
+				r = blst_leaf_alloc(&scan[i], blkat,
+						    blk, count);
 			} else {
-				r = blst_meta_alloc(&scan[i], blk, count,
+				r = blst_meta_alloc(&scan[i], blkat,
+						    blk, count,
 						    radix, next_skip - 1);
 			}
 			if (r != SWAPBLK_NONE) {
@@ -493,7 +518,7 @@ blst_meta_alloc(blmeta_t *scan, swblk_t blk, swblk_t count,
 	/*
 	 * We couldn't allocate count in this subtree, update bighint.
 	 */
-	if (scan->bm_bighint >= count)
+	if (hintok && scan->bm_bighint >= count)
 		scan->bm_bighint = count - 1;
 	return(SWAPBLK_NONE);
 }
@@ -1022,6 +1047,7 @@ main(int ac, char **av)
 		char buf[1024];
 		swblk_t da = 0;
 		swblk_t count = 0;
+		swblk_t blkat;
 
 
 		kprintf("%d/%d/%lld> ",
@@ -1041,8 +1067,11 @@ main(int ac, char **av)
 			blist_print(bl);
 			break;
 		case 'a':
-			if (sscanf(buf + 1, "%d", &count) == 1) {
+			if (sscanf(buf + 1, "%d %d", &count, &blkat) == 1) {
 				swblk_t blk = blist_alloc(bl, count);
+				kprintf("    R=%04x\n", blk);
+			} else if (sscanf(buf + 1, "%d %d", &count, &blkat) == 2) {
+				swblk_t blk = blist_allocat(bl, count, blkat);
 				kprintf("    R=%04x\n", blk);
 			} else {
 				kprintf("?\n");
