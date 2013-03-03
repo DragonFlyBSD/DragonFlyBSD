@@ -146,6 +146,11 @@ struct swfreeinfo {
 	vm_pindex_t	endi;	/* inclusive */
 };
 
+struct swswapoffinfo {
+	vm_object_t	object;
+	int		devidx;
+};
+
 /*
  * vm_swap_size is in page-sized chunks now.  It was DEV_BSIZE'd chunks
  * in the old system.
@@ -1921,6 +1926,7 @@ swp_pager_async_iodone(struct bio *bio)
 
 /*
  * Fault-in a potentially swapped page and remove the swap reference.
+ * (used by swapoff code)
  *
  * object must be held.
  */
@@ -1962,38 +1968,50 @@ swp_pager_fault_page(vm_object_t object, vm_pindex_t pindex)
 	}
 }
 
+/*
+ * This removes all swap blocks related to a particular device.  We have
+ * to be careful of ripups during the scan.
+ */
+static int swp_pager_swapoff_callback(struct swblock *swap, void *data);
+
 int
 swap_pager_swapoff(int devidx)
 {
+	struct vm_object marker;
 	vm_object_t object;
-	struct swblock *swap;
-	swblk_t v;
-	int i;
+	struct swswapoffinfo info;
+
+	bzero(&marker, sizeof(marker));
+	marker.type = OBJT_MARKER;
 
 	lwkt_gettoken(&vmobj_token);
-rescan:
-	TAILQ_FOREACH(object, &vm_object_list, object_list) {
+	TAILQ_INSERT_HEAD(&vm_object_list, &marker, object_list);
+
+	while ((object = TAILQ_NEXT(&marker, object_list)) != NULL) {
+		if (object->type == OBJT_MARKER)
+			goto skip;
 		if (object->type != OBJT_SWAP && object->type != OBJT_VNODE)
-			continue;
+			goto skip;
 		vm_object_hold(object);
-		if (object->type == OBJT_SWAP || object->type == OBJT_VNODE) {
-			RB_FOREACH(swap,
-				   swblock_rb_tree, &object->swblock_root) {
-				for (i = 0; i < SWAP_META_PAGES; ++i) {
-					v = swap->swb_pages[i];
-					if (v != SWAPBLK_NONE &&
-					    BLK2DEVIDX(v) == devidx) {
-						swp_pager_fault_page(
-						    object,
-						    swap->swb_index + i);
-						vm_object_drop(object);
-						goto rescan;
-					}
-				}
-			}
+		if (object->type != OBJT_SWAP && object->type != OBJT_VNODE) {
+			vm_object_drop(object);
+			goto skip;
 		}
+		info.object = object;
+		info.devidx = devidx;
+		swblock_rb_tree_RB_SCAN(&object->swblock_root,
+					NULL,
+					swp_pager_swapoff_callback,
+					&info);
 		vm_object_drop(object);
+skip:
+		if (object == TAILQ_NEXT(&marker, object_list)) {
+			TAILQ_REMOVE(&vm_object_list, &marker, object_list);
+			TAILQ_INSERT_AFTER(&vm_object_list, object,
+					   &marker, object_list);
+		}
 	}
+	TAILQ_REMOVE(&vm_object_list, &marker, object_list);
 	lwkt_reltoken(&vmobj_token);
 
 	/*
@@ -2005,6 +2023,42 @@ rescan:
 		return (1);
 	else
 		return (0);
+}
+
+static
+int
+swp_pager_swapoff_callback(struct swblock *swap, void *data)
+{
+	struct swswapoffinfo *info = data;
+	vm_object_t object = info->object;
+	vm_pindex_t index;
+	swblk_t v;
+	int i;
+
+	index = swap->swb_index;
+	for (i = 0; i < SWAP_META_PAGES; ++i) {
+		/*
+		 * Make sure we don't race a dying object.  This will
+		 * kill the scan of the object's swap blocks entirely.
+		 */
+		if (object->flags & OBJ_DEAD)
+			return(-1);
+
+		/*
+		 * Fault the page, which can obviously block.  If the swap
+		 * structure disappears break out.
+		 */
+		v = swap->swb_pages[i];
+		if (v != SWAPBLK_NONE && BLK2DEVIDX(v) == info->devidx) {
+			swp_pager_fault_page(object, swap->swb_index + i);
+			/* swap ptr might go away */
+			if (RB_LOOKUP(swblock_rb_tree,
+				      &object->swblock_root, index) != swap) {
+				break;
+			}
+		}
+	}
+	return(0);
 }
 
 /************************************************************************
