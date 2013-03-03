@@ -1202,7 +1202,7 @@ vm_fault_object(struct faultstate *fs,
 				if (fs->object != fs->first_object)
 					vm_object_drop(fs->object);
 				unlock_and_deallocate(fs);
-				vm_waitpfault();
+				vm_wait_pfault();
 				return (KERN_TRY_AGAIN);
 			}
 
@@ -1285,7 +1285,7 @@ vm_fault_object(struct faultstate *fs,
 				if (fs->object != fs->first_object)
 					vm_object_drop(fs->object);
 				unlock_and_deallocate(fs);
-				vm_waitpfault();
+				vm_wait_pfault();
 				return (KERN_TRY_AGAIN);
 			}
 

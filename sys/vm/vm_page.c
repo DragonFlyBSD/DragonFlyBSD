@@ -1828,20 +1828,22 @@ vm_wait(int timo)
  * easily tracked.
  */
 void
-vm_waitpfault(void)
+vm_wait_pfault(void)
 {
 	/*
 	 * Wakeup the pageout daemon if necessary and wait.
 	 */
-	if (vm_page_count_target()) {
+	if (vm_page_count_min(0)) {
 		lwkt_gettoken(&vm_token);
-		if (vm_page_count_target()) {
-			if (vm_pages_needed == 0) {
-				vm_pages_needed = 1;
-				wakeup(&vm_pages_needed);
+		while (vm_page_count_severe()) {
+			if (vm_page_count_target()) {
+				if (vm_pages_needed == 0) {
+					vm_pages_needed = 1;
+					wakeup(&vm_pages_needed);
+				}
+				++vm_pages_waiting;	/* SMP race ok */
+				tsleep(&vmstats.v_free_count, 0, "pfault", hz);
 			}
-			++vm_pages_waiting;	/* SMP race ok */
-			tsleep(&vmstats.v_free_count, 0, "pfault", hz);
 		}
 		lwkt_reltoken(&vm_token);
 	}
