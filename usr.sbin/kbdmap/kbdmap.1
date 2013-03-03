@@ -22,8 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/kbdmap/kbdmap.1,v 1.31 2002/12/04 14:45:48 ru Exp $
-.\" $DragonFly: src/usr.sbin/kbdmap/kbdmap.1,v 1.5 2008/04/29 09:33:41 swildner Exp $
+.\" $FreeBSD: head/usr.sbin/kbdmap/kbdmap.1 191634 2009-04-28 20:20:13Z danger $
 .Dd July 3, 2002
 .Dt KBDMAP 1
 .Os
@@ -35,13 +34,13 @@
 .Nm
 .Op Fl K
 .Op Fl V
-.Op Fl d | Fl default
-.Op Fl h | Fl help
-.Op Fl l | Fl lang Ar language
-.Op Fl p | Fl print
-.Op Fl r | Fl restore
-.Op Fl s | Fl show
-.Op Fl v | Fl verbose
+.Op Fl d | default
+.Op Fl h | help
+.Op Fl l | lang Ar language
+.Op Fl p | print
+.Op Fl r | restore
+.Op Fl s | show
+.Op Fl v | verbose
 .Sh DESCRIPTION
 The
 .Nm
@@ -77,26 +76,26 @@ Run as command
 .It Fl V
 Run as command
 .Nm vidfont .
-.It Fl d , Fl default
+.It Fl d , default
 Use default language.
 Ignore
 .Ev LANG
 environment variable.
-.It Fl h , Fl help
+.It Fl h , help
 Print options and exit.
-.It Fl l , Fl lang Ar language
+.It Fl l , lang Ar language
 Use
 .Ar language
-for description and menu
-.It Fl p , Fl print
-Print description  of available keymaps or fonts
+for description and menu.
+.It Fl p , print
+Print description of available keymaps or fonts
 to stdout and exit.
-.It Fl r , Fl restore
+.It Fl r , restore
 Load default font from
 .Pa /etc/rc.conf .
-.It Fl s , Fl show
+.It Fl s , show
 Show currently supported languages and exit.
-.It Fl v , Fl verbose
+.It Fl v , verbose
 More warnings.
 .El
 .Sh ENVIRONMENT
@@ -105,14 +104,14 @@ More warnings.
 preferred language
 .El
 .Sh FILES
-.Bl -tag -width /usr/share/syscons/keymaps/INDEX.keymaps -compact
+.Bl -tag -width ".Pa /usr/share/syscons/keymaps/INDEX.keymaps" -compact
 .It Pa /usr/share/syscons/keymaps/INDEX.keymaps
 database for keymaps
 .It Pa /usr/share/syscons/fonts/INDEX.fonts
 database for fonts
 .It Pa /etc/rc.conf
 default font
-.It Pa /usr/X11/lib/X11/locale/locale.alias
+.It Pa /usr/share/locale/locale.alias
 describe common
 .Ev LANG
 values

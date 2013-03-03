@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/kbdmap/kbdmap.c,v 1.2 2002/10/27 17:44:33 wollman Exp $
+ * $FreeBSD: head/usr.sbin/kbdmap/kbdmap.c 237257 2012-06-19 06:10:31Z eadler $
  */
 
 #include <sys/types.h>
@@ -225,6 +225,7 @@ get_font(void)
 				}
 			}
 		}
+		fclose(fp);
 	} else
 		fprintf(stderr, "Could not open %s for reading\n", sysconfig);
 
@@ -287,7 +288,7 @@ do_kbdcontrol(struct keymap *km)
 	if (!x11)
 		system(kbd_cmd);
 
-	printf("keymap=%s\n", km->keym);
+	fprintf(stderr, "keymap=\"%s\"\n", km->keym);
 	free(kbd_cmd);
 }
 
@@ -334,7 +335,7 @@ show_dialog(struct keymap **km_sorted, int num_keymaps)
 		exit(1);
 	}
 	asprintf(&dialog, "/usr/bin/dialog --clear --title \"Keyboard Menu\" "
-			  "--menu \"%s\" -1 -1 10", menu);
+			  "--menu \"%s\" 0 0 0", menu);
 
 	/* start right font, assume that current font is equal
 	 * to default font in /etc/rc.conf
@@ -378,7 +379,7 @@ show_dialog(struct keymap **km_sorted, int num_keymaps)
 	fp = fopen(tmp_name, "r");
 	if (fp) {
 		char choice[64];
-		if (fgets(choice, 64, fp) != NULL) {
+		if (fgets(choice, sizeof(choice), fp) != NULL) {
 			/* Find key for desc */
 			for (i=0; i<num_keymaps; i++) {
 				if (!strcmp(choice, km_sorted[i]->desc)) {
@@ -542,7 +543,7 @@ check_file(const char *keym)
 }
 
 /*
- * Read options from the relevent configuration file, then
+ * Read options from the relevant configuration file, then
  *  present to user.
  */
 static void
@@ -567,7 +568,7 @@ menu_read(void)
 
 	/* en_US.ISO8859-1 -> en_..\.ISO8859-1 */
 	strlcpy(dialect, lang, sizeof(dialect));
-	if (strlen(dialect) >= 6 && dialect[2] == '-') {
+	if (strlen(dialect) >= 6 && dialect[2] == '_') {
 		dialect[3] = '.';
 		dialect[4] = '.';
 	}
@@ -575,8 +576,8 @@ menu_read(void)
 
 	/* en_US.ISO8859-1 -> en */
 	strlcpy(lang_abk, lang, sizeof(lang_abk));
-	if (strlen(lang_abk) >= 3 && lang_abk[2] == '-')
-		lang_abk[2] = '.';
+	if (strlen(lang_abk) >= 3 && lang_abk[2] == '_')
+		lang_abk[2] = '\0';
 
 	fprintf(stderr, "lang_default = %s\n", lang_default);
 	fprintf(stderr, "dialect = %s\n", dialect);
