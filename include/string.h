@@ -79,6 +79,7 @@ char    *stpncpy(char * __restrict, const char * __restrict, size_t);
 #endif
 #if __BSD_VISIBLE
 char	*strcasestr(const char *, const char *) __pure;
+char	*strchrnul(const char *, int) __pure;
 #endif
 #if !defined(_KERNEL_VIRTUAL)
 char	*strcat(char * __restrict, const char * __restrict);
