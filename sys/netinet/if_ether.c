@@ -480,7 +480,7 @@ int
 arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	   struct sockaddr *dst, u_char *desten)
 {
-	struct rtentry *rt;
+	struct rtentry *rt = NULL;
 	struct llinfo_arp *la = NULL;
 	struct sockaddr_dl *sdl;
 
