@@ -26,7 +26,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/tzsetup/tzsetup.c,v 1.48 2012/11/17 01:54:59 svnexp Exp $
+ * $FreeBSD: head/usr.sbin/tzsetup/tzsetup.c 247780 2013-03-04 11:34:31Z dteske $
  */
 
 /*
@@ -694,8 +694,13 @@ install_zoneinfo_file(const char *zoneinfo_file)
 				return (DITEM_FAILURE | DITEM_RECREATE);
 			}
 #ifdef VERBOSE
+			snprintf(title, sizeof(title), "Done");
 			snprintf(prompt, sizeof(prompt),
 			    "Removed %s", path_localtime);
+			if (usedialog)
+				dialog_msgbox(title, prompt, 8, 72, 1);
+			else
+				fprintf(stderr, "%s\n", prompt);
 #endif
 			return (DITEM_LEAVE_MENU);
 		}
