@@ -1073,7 +1073,22 @@ _rmc_wrr_dequeue_next(struct rm_ifdat *ifd, int op)
 	} else {
 		/* mode == ALTDQ_PPOLL */
 		m = _rmc_pollq(cl);
+#ifdef foo
+		/*
+		 * Don't use poll cache; the poll/dequeue
+		 * model is no longer applicable to SMP
+		 * system.  e.g.
+		 *    CPU-A            CPU-B
+		 *      :                :
+		 *    poll               :
+		 *      :              poll
+		 *    dequeue (+)        :
+		 *
+		 * The dequeue at (+) will hit the poll
+		 * cache set by CPU-B.
+		 */
 		ifd->pollcache_ = cl;
+#endif
 	}
 	return (m);
 }
@@ -1179,7 +1194,22 @@ _rmc_prr_dequeue_next(struct rm_ifdat *ifd, int op)
 	} else {
 		/* mode == ALTDQ_POLL */
 		m = _rmc_pollq(cl);
+#ifdef foo
+		/*
+		 * Don't use poll cache; the poll/dequeue
+		 * model is no longer applicable to SMP
+		 * system.  e.g.
+		 *    CPU-A            CPU-B
+		 *      :                :
+		 *    poll               :
+		 *      :              poll
+		 *    dequeue (+)        :
+		 *
+		 * The dequeue at (+) will hit the poll
+		 * cache set by CPU-B.
+		 */
 		ifd->pollcache_ = cl;
+#endif
 	}
 	return (m);
 }

@@ -795,7 +795,22 @@ hfsc_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 		}
 
 		if (op == ALTDQ_POLL) {
+#ifdef foo
+			/*
+			 * Don't use poll cache; the poll/dequeue
+			 * model is no longer applicable to SMP
+			 * system.  e.g.
+			 *    CPU-A            CPU-B
+			 *      :                :
+			 *    poll               :
+			 *      :              poll
+			 *    dequeue (+)        :
+			 *
+			 * The dequeue at (+) will hit the poll
+			 * cache set by CPU-B.
+			 */
 			hif->hif_pollcache = cl;
+#endif
 			m = hfsc_pollq(cl);
 			goto done;
 		}
