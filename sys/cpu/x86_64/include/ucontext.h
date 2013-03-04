@@ -75,8 +75,11 @@ struct __mcontext {
 	unsigned int	mc_reserved;
 	unsigned int	mc_unused[8];
 
-	/* 64 byte aligned */
-	int		mc_fpregs[256];	/* 1024 bytes */
+	/*
+	 * NOTE! 64-byte aligned as of here.  Also must match savefpu
+	 *	 structure.
+	 */
+	int		mc_fpregs[256];
 } __attribute__((aligned(64)));
 
 typedef struct __mcontext mcontext_t;

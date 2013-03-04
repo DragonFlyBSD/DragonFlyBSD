@@ -45,6 +45,9 @@
 
 /*
  * x86_64 process control block
+ *
+ * WARNING! union savefpu has a 64-byte alignment requirement built-in
+ *	    which will adjust the size of this structure.
  */
 #include <machine/npx.h>
 

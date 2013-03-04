@@ -132,6 +132,7 @@ union	savefpu {
 	struct	save87	sv_87;
 	struct	savexmm	sv_xmm;
 	struct  saveymm sv_ymm;
+	char		sv_savearea[1024];	/* see mcontext_t */
 };
 
 /*
