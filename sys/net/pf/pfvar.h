@@ -1333,10 +1333,11 @@ struct pf_pdesc {
 
 #define REASON_SET(a, x) \
 	do { \
-		if ((a) != NULL) \
-			*(a) = (x); \
-		if (x < PFRES_MAX) \
-			pf_status.counters[x]++; \
+		u_short *r = (a); /* keep -Waddress happy */ \
+		if (r != NULL) \
+			*r = (x); \
+		if ((x) < PFRES_MAX) \
+			pf_status.counters[(x)]++; \
 	} while (0)
 
 struct pf_status {
