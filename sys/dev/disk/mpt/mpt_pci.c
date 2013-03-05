@@ -163,7 +163,7 @@ static device_method_t mpt_methods[] = {
 	DEVMETHOD(device_attach,	mpt_pci_attach),
 	DEVMETHOD(device_detach,	mpt_pci_detach),
 	DEVMETHOD(device_shutdown,	mpt_pci_shutdown),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t mpt_driver = {

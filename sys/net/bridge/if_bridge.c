@@ -1113,7 +1113,6 @@ static int
 bridge_ioctl_stop(struct bridge_softc *sc, void *arg __unused)
 {
 	struct ifnet *ifp = sc->sc_ifp;
-	struct lwkt_msg *lmsg;
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return 0;
@@ -1121,11 +1120,7 @@ bridge_ioctl_stop(struct bridge_softc *sc, void *arg __unused)
 	callout_stop(&sc->sc_brcallout);
 
 	crit_enter();
-	lmsg = &sc->sc_brtimemsg.lmsg;
-	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
-		/* Pending to be processed; drop it */
-		lwkt_dropmsg(lmsg);
-	}
+	lwkt_dropmsg(&sc->sc_brtimemsg.lmsg);
 	crit_exit();
 
 	bstp_stop(sc);
@@ -2406,8 +2401,10 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 			/* learning, blocking, bonded, forwarding */
 			break;
 		}
+		from_blocking = (bif->bif_state == BSTP_IFSTATE_BLOCKING);
+	} else {
+		from_blocking = 0;
 	}
-	from_blocking = (bif->bif_state == BSTP_IFSTATE_BLOCKING);
 
 	eh = mtod(m, struct ether_header *);
 
@@ -2809,7 +2806,8 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 				m->m_flags |= M_ETHER_BRIDGED;
 			}
 			if ((bif->bif_flags & IFBIF_LEARNING) &&
-			    bif->bif_state != BSTP_IFSTATE_BLOCKING) {
+			    ((bif->bif_flags & IFBIF_STP) == 0 ||
+			     bif->bif_state != BSTP_IFSTATE_BLOCKING)) {
 				bridge_rtupdate(sc, eh->ether_shost,
 						ifp, IFBAF_DYNAMIC);
 			}

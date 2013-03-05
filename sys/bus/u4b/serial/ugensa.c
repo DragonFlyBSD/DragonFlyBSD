@@ -135,7 +135,7 @@ static device_method_t ugensa_methods[] = {
 	DEVMETHOD(device_probe, ugensa_probe),
 	DEVMETHOD(device_attach, ugensa_attach),
 	DEVMETHOD(device_detach, ugensa_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t ugensa_devclass;

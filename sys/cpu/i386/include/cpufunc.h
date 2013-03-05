@@ -75,7 +75,7 @@ breakpoint(void)
 static __inline void
 cpu_pause(void)
 {
-	__asm __volatile("pause");
+	__asm __volatile("pause":::"memory");
 }
 
 /*

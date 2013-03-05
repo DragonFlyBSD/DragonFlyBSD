@@ -138,6 +138,10 @@ TUNABLE_INT("net.link.stage_cntmax", &ifsq_stage_cntmax);
 SYSCTL_INT(_net_link, OID_AUTO, stage_cntmax, CTLFLAG_RW,
     &ifsq_stage_cntmax, 0, "ifq staging packet count max");
 
+static int if_stats_compat = 0;
+SYSCTL_INT(_net_link, OID_AUTO, stats_compat, CTLFLAG_RW,
+    &if_stats_compat, 0, "Compat the old ifnet stats");
+
 SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL)
 /* Must be after netisr_init */
 SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, ifnetinit, NULL)
@@ -1430,6 +1434,20 @@ if_slowtimo(void *arg)
 	crit_enter();
 
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		if (if_stats_compat) {
+			IFNET_STAT_GET(ifp, ipackets, ifp->if_ipackets);
+			IFNET_STAT_GET(ifp, ierrors, ifp->if_ierrors);
+			IFNET_STAT_GET(ifp, opackets, ifp->if_opackets);
+			IFNET_STAT_GET(ifp, oerrors, ifp->if_oerrors);
+			IFNET_STAT_GET(ifp, collisions, ifp->if_collisions);
+			IFNET_STAT_GET(ifp, ibytes, ifp->if_ibytes);
+			IFNET_STAT_GET(ifp, obytes, ifp->if_obytes);
+			IFNET_STAT_GET(ifp, imcasts, ifp->if_imcasts);
+			IFNET_STAT_GET(ifp, omcasts, ifp->if_omcasts);
+			IFNET_STAT_GET(ifp, iqdrops, ifp->if_iqdrops);
+			IFNET_STAT_GET(ifp, noproto, ifp->if_noproto);
+		}
+
 		if (ifp->if_timer == 0 || --ifp->if_timer)
 			continue;
 		if (ifp->if_watchdog) {

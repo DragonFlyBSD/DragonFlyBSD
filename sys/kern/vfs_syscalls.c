@@ -128,7 +128,6 @@ sys_mount(struct mount_args *uap)
 	char fstypename[MFSNAMELEN];
 	struct ucred *cred;
 
-	get_mplock();
 	cred = td->td_ucred;
 	if (jailed(cred)) {
 		error = EPERM;
@@ -257,25 +256,27 @@ sys_mount(struct mount_args *uap)
 			error = EBUSY;
 			goto done;
 		}
-		if ((vp->v_flag & VMOUNT) != 0 || hasmount) {
+		if (hasmount) {
 			cache_drop(&nch);
 			vfs_unbusy(mp);
 			vput(vp);
 			error = EBUSY;
 			goto done;
 		}
-		vsetflags(vp, VMOUNT);
 		mp->mnt_flag |=
 		    uap->flags & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
+		lwkt_gettoken(&mp->mnt_token);
 		vn_unlock(vp);
 		goto update;
 	}
+
 	/*
 	 * If the user is not root, ensure that they own the directory
 	 * onto which we are attempting to mount.
 	 */
 	if ((error = VOP_GETATTR(vp, &va)) ||
-	    (va.va_uid != cred->cr_uid && (error = priv_check(td, PRIV_ROOT)))) {
+	    (va.va_uid != cred->cr_uid &&
+	     (error = priv_check(td, PRIV_ROOT)))) {
 		cache_drop(&nch);
 		vput(vp);
 		goto done;
@@ -327,13 +328,12 @@ sys_mount(struct mount_args *uap)
 			goto done;
 		}
 	}
-	if ((vp->v_flag & VMOUNT) != 0 || hasmount) {
+	if (hasmount) {
 		cache_drop(&nch);
 		vput(vp);
 		error = EBUSY;
 		goto done;
 	}
-	vsetflags(vp, VMOUNT);
 
 	/*
 	 * Allocate and initialize the filesystem.
@@ -348,9 +348,12 @@ sys_mount(struct mount_args *uap)
 	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
 	mp->mnt_stat.f_owner = cred->cr_uid;
+	lwkt_gettoken(&mp->mnt_token);
 	vn_unlock(vp);
 update:
 	/*
+	 * (per-mount token acquired at this point)
+	 *
 	 * Set the mount level flags.
 	 */
 	if (uap->flags & MNT_RDONLY)
@@ -380,13 +383,14 @@ update:
 			mp->mnt_flag = flag;
 			mp->mnt_kern_flag = flag2;
 		}
+		lwkt_reltoken(&mp->mnt_token);
 		vfs_unbusy(mp);
-		vclrflags(vp, VMOUNT);
 		vrele(vp);
 		cache_drop(&nch);
 		goto done;
 	}
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+
 	/*
 	 * Put the new filesystem on the mount list after root.  The mount
 	 * point gets its own mnt_ncmountpt (unless the VFS already set one
@@ -408,13 +412,13 @@ update:
 		}
 		mp->mnt_ncmounton = nch;		/* inherits ref */
 		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
+		cache_ismounting(mp);
 
-		/* XXX get the root of the fs and cache_setvp(mnt_ncmountpt...) */
-		vclrflags(vp, VMOUNT);
 		mountlist_insert(mp, MNTINS_LAST);
 		vn_unlock(vp);
 		checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);
 		error = vfs_allocate_syncvnode(mp);
+		lwkt_reltoken(&mp->mnt_token);
 		vfs_unbusy(mp);
 		error = VFS_START(mp, 0);
 		vrele(vp);
@@ -424,15 +428,14 @@ update:
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
-		vclrflags(vp, VMOUNT);
 		mp->mnt_vfc->vfc_refcount--;
+		lwkt_reltoken(&mp->mnt_token);
 		vfs_unbusy(mp);
 		kfree(mp, M_MOUNT);
 		cache_drop(&nch);
 		vput(vp);
 	}
 done:
-	rel_mplock();
 	return (error);
 }
 
@@ -441,9 +444,9 @@ done:
  * or root directory onto which the new filesystem has just been
  * mounted. If so, replace them with the new mount point.
  *
- * The passed ncp is ref'd and locked (from the mount code) and
- * must be associated with the vnode representing the root of the
- * mount point.
+ * Both old_nch and new_nch are ref'd on call but not locked.
+ * new_nch must be temporarily locked so it can be associated with the
+ * vnode representing the root of the mount point.
  */
 struct checkdirs_info {
 	struct nchandle old_nch;
@@ -477,8 +480,12 @@ checkdirs(struct nchandle *old_nch, struct nchandle *new_nch)
 	mp = new_nch->mount;
 	if (VFS_ROOT(mp, &newdp))
 		panic("mount: lost mount");
+	vn_unlock(newdp);
+	cache_lock(new_nch);
+	vn_lock(newdp, LK_EXCLUSIVE | LK_RETRY);
 	cache_setunresolved(new_nch);
 	cache_setvp(new_nch, newdp);
+	cache_unlock(new_nch);
 
 	/*
 	 * Special handling of the root node
@@ -662,8 +669,9 @@ dounmount(struct mount *mp, int flags)
 	int async_flag;
 	int lflags;
 	int freeok = 1;
+	int retry;
 
-	lwkt_gettoken(&mntvnode_token);
+	lwkt_gettoken(&mp->mnt_token);
 	/*
 	 * Exclusive access for unmounting purposes
 	 */
@@ -675,12 +683,14 @@ dounmount(struct mount *mp, int flags)
 	 */
 	if (flags & MNT_FORCE)
 		mp->mnt_kern_flag |= MNTK_UNMOUNTF;
-	lflags = LK_EXCLUSIVE | ((flags & MNT_FORCE) ? 0 : LK_NOWAIT);
+	lflags = LK_EXCLUSIVE | ((flags & MNT_FORCE) ? 0 : LK_TIMELOCK);
 	error = lockmgr(&mp->mnt_lock, lflags);
 	if (error) {
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
-		if (mp->mnt_kern_flag & MNTK_MWAIT)
+		if (mp->mnt_kern_flag & MNTK_MWAIT) {
+			mp->mnt_kern_flag &= ~MNTK_MWAIT;
 			wakeup(mp);
+		}
 		goto out;
 	}
 
@@ -728,47 +738,70 @@ dounmount(struct mount *mp, int flags)
 	}
 
 	/*
+	 * Decomission our special mnt_syncer vnode.  This also stops
+	 * the vnlru code.  If we are unable to unmount we recommission
+	 * the vnode.
+	 *
+	 * Then sync the filesystem.
+	 */
+	if ((vp = mp->mnt_syncer) != NULL) {
+		mp->mnt_syncer = NULL;
+		vrele(vp);
+	}
+	if ((mp->mnt_flag & MNT_RDONLY) == 0)
+		VFS_SYNC(mp, MNT_WAIT);
+
+	/*
 	 * nchandle records ref the mount structure.  Expect a count of 1
 	 * (our mount->mnt_ncmountpt).
+	 *
+	 * Scans can get temporary refs on a mountpoint (thought really
+	 * heavy duty stuff like cache_findmount() do not).
 	 */
+	for (retry = 0; retry < 10 && mp->mnt_refs != 1; ++retry) {
+		cache_unmounting(mp);
+		tsleep(&mp->mnt_refs, 0, "mntbsy", hz / 10 + 1);
+	}
 	if (mp->mnt_refs != 1) {
 		if ((flags & MNT_FORCE) == 0) {
 			mount_warning(mp, "Cannot unmount: "
-					  "%d process references still "
-					  "present", mp->mnt_refs);
+					  "%d mount refs still present",
+					  mp->mnt_refs);
 			error = EBUSY;
 		} else {
 			mount_warning(mp, "Forced unmount: "
-					  "%d process references still "
-					  "present", mp->mnt_refs);
+					  "%d mount refs still present",
+					  mp->mnt_refs);
 			freeok = 0;
 		}
 	}
 
 	/*
-	 * Decomission our special mnt_syncer vnode.  This also stops
-	 * the vnlru code.  If we are unable to unmount we recommission
-	 * the vnode.
+	 * So far so good, sync the filesystem once more and
+	 * call the VFS unmount code if the sync succeeds.
 	 */
 	if (error == 0) {
-		if ((vp = mp->mnt_syncer) != NULL) {
-			mp->mnt_syncer = NULL;
-			vrele(vp);
-		}
 		if (((mp->mnt_flag & MNT_RDONLY) ||
 		     (error = VFS_SYNC(mp, MNT_WAIT)) == 0) ||
 		    (flags & MNT_FORCE)) {
 			error = VFS_UNMOUNT(mp, flags);
 		}
 	}
+
+	/*
+	 * If an error occurred we can still recover, restoring the
+	 * syncer vnode and misc flags.
+	 */
 	if (error) {
 		if (mp->mnt_syncer == NULL)
 			vfs_allocate_syncvnode(mp);
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		mp->mnt_flag |= async_flag;
 		lockmgr(&mp->mnt_lock, LK_RELEASE);
-		if (mp->mnt_kern_flag & MNTK_MWAIT)
+		if (mp->mnt_kern_flag & MNTK_MWAIT) {
+			mp->mnt_kern_flag &= ~MNTK_MWAIT;
 			wakeup(mp);
+		}
 		goto out;
 	}
 	/*
@@ -797,6 +830,7 @@ dounmount(struct mount *mp, int flags)
 		cache_drop(&nch);
 	}
 	if (mp->mnt_ncmounton.ncp != NULL) {
+		cache_unmounting(mp);
 		nch = mp->mnt_ncmounton;
 		cache_zero(&mp->mnt_ncmounton);
 		cache_clrmountpt(&nch);
@@ -807,13 +841,30 @@ dounmount(struct mount *mp, int flags)
 	if (!TAILQ_EMPTY(&mp->mnt_nvnodelist))
 		panic("unmount: dangling vnode");
 	lockmgr(&mp->mnt_lock, LK_RELEASE);
-	if (mp->mnt_kern_flag & MNTK_MWAIT)
+	if (mp->mnt_kern_flag & MNTK_MWAIT) {
+		mp->mnt_kern_flag &= ~MNTK_MWAIT;
 		wakeup(mp);
-	if (freeok)
+	}
+
+	/*
+	 * If we reach here and freeok != 0 we must free the mount.
+	 * If refs > 1 cycle and wait, just in case someone tried
+	 * to busy the mount after we decided to do the unmount.
+	 */
+	if (freeok) {
+		while (mp->mnt_refs > 1) {
+			cache_unmounting(mp);
+			wakeup(mp);
+			tsleep(&mp->mnt_refs, 0, "umntrwait", hz / 10 + 1);
+		}
+		lwkt_reltoken(&mp->mnt_token);
 		kfree(mp, M_MOUNT);
+		mp = NULL;
+	}
 	error = 0;
 out:
-	lwkt_reltoken(&mntvnode_token);
+	if (mp)
+		lwkt_reltoken(&mp->mnt_token);
 	return (error);
 }
 
@@ -3608,8 +3659,12 @@ sys_fsync(struct fsync_args *uap)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-	if ((obj = vp->v_object) != NULL)
-		vm_object_page_clean(obj, 0, 0, 0);
+	if ((obj = vp->v_object) != NULL) {
+		if (vp->v_mount == NULL ||
+		    (vp->v_mount->mnt_kern_flag & MNTK_NOMSYNC) == 0) {
+			vm_object_page_clean(obj, 0, 0, 0);
+		}
+	}
 	error = VOP_FSYNC(vp, MNT_WAIT, VOP_FSYNC_SYSCALL);
 	if (error == 0 && vp->v_mount)
 		error = buf_fsync(vp);

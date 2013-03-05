@@ -700,7 +700,7 @@ static device_method_t umass_methods[] = {
 	DEVMETHOD(device_probe, umass_probe),
 	DEVMETHOD(device_attach, umass_attach),
 	DEVMETHOD(device_detach, umass_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static driver_t umass_driver = {
@@ -2269,9 +2269,9 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_CALC_GEOMETRY:
 		/* the opcodes requiring a target. These should never occur. */
 		if (sc == NULL) {
-			DPRINTF(sc, UDMASS_GEN, "%s:%d:%d:%d:func_code 0x%04x: "
+			DPRINTF(sc, UDMASS_GEN, "%s:xx:%d:%d:func_code 0x%04x: "
 			    "Invalid target (target needed)\n",
-			    DEVNAME_SIM, cam_sim_path(sc->sc_sim),
+			    DEVNAME_SIM,
 			    ccb->ccb_h.target_id, ccb->ccb_h.target_lun,
 			    ccb->ccb_h.func_code);
 

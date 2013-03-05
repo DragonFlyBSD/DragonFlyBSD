@@ -109,7 +109,7 @@ TAILQ_HEAD(namecache_list, namecache);
  * confusion, but only the one representing the physical directory is passed
  * into lower layer VOP calls.
  *
- * ncp locking is done using atomic ops on nc_exlocks, including a request
+ * ncp locking is done using atomic ops on nc_lockstatus, including a request
  * flag for waiters.  nc_locktd is set after locking or cleared before
  * the last unlock.  ncp locks are reentrant.
  *
@@ -131,7 +131,7 @@ struct namecache {
     char		*nc_name;	/* Separately allocated seg name */
     int			nc_error;
     int			nc_timeout;	/* compared against ticks, or 0 */
-    u_int		nc_exlocks;	/* namespace locking */
+    u_int		nc_lockstatus;	/* namespace locking */
     struct thread	*nc_locktd;	/* namespace locking */
     long		nc_namecache_gen; /* cmp against mnt_namecache_gen */
 };
@@ -144,8 +144,6 @@ struct nchandle {
     struct namecache *ncp;		/* ncp in underlying filesystem */
     struct mount *mount;		/* mount pt (possible overlay) */
 };
-
-#define ASSERT_NCH_LOCKED(nch)	KKASSERT(nch->ncp->nc_locktd == curthread)
 
 /*
  * Flags in namecache.nc_flag (u_char)
@@ -163,7 +161,10 @@ struct nchandle {
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
 #define NCF_DEFEREDZAP	0x0800	/* zap defered due to lock unavailability */
 
-#define NC_EXLOCK_REQ	0x80000000	/* ex_lock state */
+#define NC_EXLOCK_REQ	0x80000000	/* nc_lockstatus state flag */
+#define NC_SHLOCK_REQ	0x40000000	/* nc_lockstatus state flag */
+#define NC_SHLOCK_FLAG	0x20000000	/* nc_lockstatus state flag */
+#define NC_SHLOCK_VHOLD	0x10000000	/* nc_lockstatus state flag */
 
 /*
  * cache_inval[_vp]() flags
@@ -179,10 +180,12 @@ struct nlcomponent;
 struct mount;
 
 void	cache_lock(struct nchandle *nch);
+void	cache_lock_maybe_shared(struct nchandle *nch, int excl);
 void	cache_relock(struct nchandle *nch1, struct ucred *cred1,
 			struct nchandle *nch2, struct ucred *cred2);
 int	cache_lock_nonblock(struct nchandle *nch);
 void	cache_unlock(struct nchandle *nch);
+int	cache_lockstatus(struct nchandle *nch);
 void	cache_setvp(struct nchandle *nch, struct vnode *vp);
 void	cache_settimeout(struct nchandle *nch, int nticks);
 void	cache_setunresolved(struct nchandle *nch);
@@ -190,9 +193,14 @@ void	cache_clrmountpt(struct nchandle *nch);
 struct nchandle cache_nlookup(struct nchandle *nch, struct nlcomponent *nlc);
 struct nchandle cache_nlookup_nonblock(struct nchandle *nch,
 			struct nlcomponent *nlc);
+int	cache_nlookup_maybe_shared(struct nchandle *nch,
+			struct nlcomponent *nlc, int excl,
+			struct nchandle *nchres);
 void	cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp);
 struct mount *cache_findmount(struct nchandle *nch);
-void cache_dropmount(struct mount *mp);
+void	cache_dropmount(struct mount *mp);
+void	cache_ismounting(struct mount *mp);
+void	cache_unmounting(struct mount *mp);
 int	cache_inval(struct nchandle *nch, int flags);
 int	cache_inval_vp(struct vnode *vp, int flags);
 int	cache_inval_vp_nonblock(struct vnode *vp);
@@ -201,9 +209,11 @@ void	vfs_cache_setroot(struct vnode *vp, struct nchandle *nch);
 int	cache_resolve(struct nchandle *nch, struct ucred *cred);
 void	cache_purge(struct vnode *vp);
 void	cache_purgevfs (struct mount *mp);
-int	cache_get_nonblock(struct nchandle *nch, struct nchandle *target);
-void	cache_hysteresis(void);
+void	cache_hysteresis(int critpath);
 void	cache_get(struct nchandle *nch, struct nchandle *target);
+int	cache_get_nonblock(struct nchandle *nch, struct nchandle *target);
+void	cache_get_maybe_shared(struct nchandle *nch,
+			struct nchandle *target, int excl);
 struct nchandle *cache_hold(struct nchandle *nch);
 void	cache_copy(struct nchandle *nch, struct nchandle *target);
 void	cache_changemount(struct nchandle *nch, struct mount *mp);

@@ -148,7 +148,7 @@ static device_method_t twe_methods[] = {
     DEVMETHOD(device_suspend,	twe_suspend),
     DEVMETHOD(device_resume,	twe_resume),
 
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t twe_pci_driver = {
@@ -664,7 +664,7 @@ static device_method_t twed_methods[] = {
     DEVMETHOD(device_probe,	twed_probe),
     DEVMETHOD(device_attach,	twed_attach),
     DEVMETHOD(device_detach,	twed_detach),
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t twed_driver = {

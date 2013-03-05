@@ -4945,7 +4945,7 @@ static device_method_t run_methods[] = {
 	DEVMETHOD(device_attach,	run_attach),
 	DEVMETHOD(device_detach,	run_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t run_driver = {

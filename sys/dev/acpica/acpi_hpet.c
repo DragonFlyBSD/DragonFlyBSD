@@ -92,7 +92,7 @@ static device_method_t acpi_hpet_methods[] = {
 	DEVMETHOD(device_attach,	acpi_hpet_attach),
 	DEVMETHOD(device_suspend,	acpi_hpet_suspend),
 	DEVMETHOD(device_resume,	acpi_hpet_resume),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t acpi_hpet_driver = {

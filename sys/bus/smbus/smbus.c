@@ -24,9 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smbus.c,v 1.18.10.4 2006/09/26 18:44:56 jhb Exp $
- * $DragonFly: src/sys/bus/smbus/smbus.c,v 1.4 2006/12/22 23:12:17 swildner Exp $
- *
  */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -57,7 +56,7 @@ static device_method_t smbus_methods[] = {
 	DEVMETHOD(bus_add_child,	bus_generic_add_child),
         DEVMETHOD(bus_print_child,	bus_generic_print_child),
 
-        { 0, 0 }
+        DEVMETHOD_END
 };
 
 driver_t smbus_driver = {

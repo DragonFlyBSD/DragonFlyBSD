@@ -562,7 +562,7 @@ ndis_convert_res(void *arg)
 		return (ENOMEM);
 
 	rl->cprl_version = 5;
-	rl->cprl_version = 1;
+	rl->cprl_revision = 1;
 	rl->cprl_count = sc->ndis_rescnt;
 	prd = rl->cprl_partial_descs;
 

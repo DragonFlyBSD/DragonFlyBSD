@@ -137,7 +137,7 @@ joy_attach (device_t dev)
 static device_method_t joy_methods[] = {
     DEVMETHOD(device_probe,	joy_probe),
     DEVMETHOD(device_attach,	joy_attach),
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t joy_isa_driver = {

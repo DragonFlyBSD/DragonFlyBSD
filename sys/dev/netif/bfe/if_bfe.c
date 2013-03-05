@@ -144,7 +144,7 @@ static device_method_t bfe_methods[] = {
 	DEVMETHOD(miibus_readreg,	bfe_miibus_readreg),
 	DEVMETHOD(miibus_writereg,	bfe_miibus_writereg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t bfe_driver = {

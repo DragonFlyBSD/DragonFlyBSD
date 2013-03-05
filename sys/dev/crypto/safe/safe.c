@@ -104,7 +104,7 @@ static device_method_t safe_methods[] = {
 	DEVMETHOD(cryptodev_freesession,safe_freesession),
 	DEVMETHOD(cryptodev_process,	safe_process),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 static driver_t safe_driver = {
 	"safe",

@@ -31,6 +31,7 @@
  *	Date:	7/90
  */
 #include <sys/param.h>
+#include <machine/limits.h>
 
 #include <ddb/ddb.h>
 #include <ddb/db_access.h>
@@ -40,12 +41,29 @@
  * boundaries.
  */
 
+#if LONG_BIT == 32
+
 static unsigned db_extend[] = {	/* table for sign-extending */
 	0,
 	0xFFFFFF80U,
 	0xFFFF8000U,
 	0xFF800000U
 };
+
+#else
+
+static unsigned long db_extend[] = {	/* table for sign-extending */
+	0,
+	0xFFFFFFFFFFFFFF80LU,
+	0xFFFFFFFFFFFF8000LU,
+	0xFFFFFFFFFF800000LU,
+	0xFFFFFFFF80000000LU,
+	0xFFFFFF8000000000LU,
+	0xFFFF800000000000LU,
+	0xFF80000000000000LU
+};
+
+#endif
 
 #ifndef BYTE_MSF
 #define	BYTE_MSF	0
@@ -54,9 +72,12 @@ static unsigned db_extend[] = {	/* table for sign-extending */
 db_expr_t
 db_get_value(db_addr_t addr, int size, boolean_t is_signed)
 {
-	char		data[sizeof(int)];
-	db_expr_t 	value;
+	char	data[sizeof(long)];
 	int	i;
+	db_expr_t value;
+
+	if (size > sizeof(long))
+		size = sizeof(long);
 
 	db_read_bytes(addr, size, data);
 
@@ -67,12 +88,12 @@ db_get_value(db_addr_t addr, int size, boolean_t is_signed)
 	for (i = size - 1; i >= 0; i--)
 #endif
 	{
-	    value = (value << 8) + (data[i] & 0xFF);
+		value = (value << 8) + (data[i] & 0xFF);
 	}
 
-	if (size < 4) {
-	    if (is_signed && (value & db_extend[size]) != 0)
-		value |= db_extend[size];
+	if (size < sizeof(long)) {
+		if (is_signed && (value & db_extend[size]) != 0)
+			value |= db_extend[size];
 	}
 	return (value);
 }
@@ -80,8 +101,11 @@ db_get_value(db_addr_t addr, int size, boolean_t is_signed)
 void
 db_put_value(db_addr_t addr, int size, db_expr_t value)
 {
-	char		data[sizeof(int)];
-	int		i;
+	char	data[sizeof(long)];
+	int	i;
+
+	if (size > sizeof(long))
+		size = sizeof(long);
 
 #if	BYTE_MSF
 	for (i = size - 1; i >= 0; i--)
@@ -89,8 +113,8 @@ db_put_value(db_addr_t addr, int size, db_expr_t value)
 	for (i = 0; i < size; i++)
 #endif
 	{
-	    data[i] = value & 0xFF;
-	    value >>= 8;
+		data[i] = value & 0xFF;
+		value >>= 8;
 	}
 
 	db_write_bytes(addr, size, data);

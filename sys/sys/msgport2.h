@@ -101,15 +101,17 @@ lwkt_checkmsg(lwkt_msg_t msg)
 }
 
 static __inline
-void
+int
 lwkt_dropmsg(lwkt_msg_t msg)
 {
     lwkt_port_t port;
+    int error = ENOENT;
 
-    KKASSERT((msg->ms_flags & (MSGF_DROPABLE | MSGF_DONE | MSGF_QUEUED)) ==
-    	     (MSGF_DROPABLE | MSGF_QUEUED));
+    KKASSERT(msg->ms_flags & MSGF_DROPABLE);
     port = msg->ms_target_port;
-    port->mp_dropmsg(port, msg);
+    if (port)
+	    error = port->mp_dropmsg(port, msg);
+    return (error);
 }
 
 #endif	/* _KERNEL */

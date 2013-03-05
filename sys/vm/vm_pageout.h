@@ -105,7 +105,7 @@ extern int vm_pageout_deficit;
 
 extern void pagedaemon_wakeup (void);
 extern void vm_wait (int timo);
-extern void vm_waitpfault (void);
+extern void vm_wait_pfault (void);
 
 #ifdef _KERNEL
 void vm_pageout_page (vm_page_t, vm_object_t);

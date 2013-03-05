@@ -141,7 +141,7 @@ static device_method_t an_isa_methods[] = {
 	DEVMETHOD(device_attach,	an_attach_isa),
 	DEVMETHOD(device_detach,	an_detach),
 	DEVMETHOD(device_shutdown,	an_shutdown),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t an_isa_driver = {

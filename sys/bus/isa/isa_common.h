@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.h,v 1.5 1999/09/07 08:42:47 dfr Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.h,v 1.4 2005/05/24 20:58:48 dillon Exp $
  */
 
 /*
@@ -65,7 +64,6 @@ struct isa_device {
 /*
  * These functions are architecture dependant.
  */
-extern void isa_init(void);
 extern struct resource *isa_alloc_resource(device_t bus, device_t child,
 					   int type, int *rid,
 					   u_long start, u_long end,

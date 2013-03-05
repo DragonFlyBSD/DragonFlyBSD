@@ -70,6 +70,7 @@ struct journal;
 struct vop_ops;
 struct vop_mountctl_args;
 struct statvfs;
+struct vmntvnodescan_info;
 
 typedef struct fsid { int32_t val[2]; } fsid_t;	/* file system id type */
 
@@ -216,6 +217,7 @@ struct mount {
 	struct vnode	*mnt_syncer;		/* syncer vnode */
 	struct syncer_ctx *mnt_syncer_ctx;	/* syncer process context */
 	struct vnodelst	mnt_nvnodelist;		/* list of vnodes this mount */
+	TAILQ_HEAD(,vmntvnodescan_info) mnt_vnodescan_list;
 	struct lock	mnt_lock;		/* mount structure lock */
 	int		mnt_flag;		/* flags shared with user */
 	int		mnt_kern_flag;		/* kernel only flags */

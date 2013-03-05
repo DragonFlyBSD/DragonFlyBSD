@@ -2,7 +2,6 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.68 2005/07/30 06:14:50 skrll Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.22 2008/05/26 12:37:44 mneumann Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -117,7 +116,7 @@ Static device_method_t __CONCAT(dname,_methods)[] = { \
         DEVMETHOD(device_attach, __CONCAT(dname,_attach)), \
         DEVMETHOD(device_detach, __CONCAT(dname,_detach)), \
 	init, \
-        {0,0} \
+        DEVMETHOD_END \
 }; \
 \
 Static driver_t __CONCAT(dname,_driver) = { \

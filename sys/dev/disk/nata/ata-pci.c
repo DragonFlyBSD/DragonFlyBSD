@@ -617,7 +617,7 @@ static device_method_t ata_pci_methods[] = {
     DEVMETHOD(bus_setup_intr,           ata_pci_setup_intr),
     DEVMETHOD(bus_teardown_intr,        ata_pci_teardown_intr),
 
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 devclass_t atapci_devclass;
@@ -753,7 +753,7 @@ static device_method_t ata_pcichannel_methods[] = {
     DEVMETHOD(ata_locking,      ata_pcichannel_locking),
     DEVMETHOD(ata_reset,        ata_pcichannel_reset),
 
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 driver_t ata_pcichannel_driver = {

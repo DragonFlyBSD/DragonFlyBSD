@@ -250,7 +250,7 @@ static device_method_t umodem_methods[] = {
 	DEVMETHOD(device_probe, umodem_probe),
 	DEVMETHOD(device_attach, umodem_attach),
 	DEVMETHOD(device_detach, umodem_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t umodem_devclass;

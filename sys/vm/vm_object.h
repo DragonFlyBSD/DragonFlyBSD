@@ -196,6 +196,10 @@ struct vm_object {
 
 /*
  * Flags
+ *
+ * NOTE: OBJ_ONEMAPPING only applies to DEFAULT and SWAP objects.  It
+ *	 may be gratuitously re-cleared in other cases but will already be
+ *	 clear in those cases.
  */
 #define OBJ_CHAINLOCK	0x0001		/* backing_object/shadow changing */
 #define OBJ_CHAINWANT	0x0002
@@ -234,6 +238,7 @@ extern struct object_q vm_object_list;	/* list of allocated objects */
  /* lock for object list and count */
 
 extern struct vm_object kernel_object;	/* the single kernel object */
+extern int vm_shared_fault;
 
 #endif				/* _KERNEL */
 
@@ -309,7 +314,7 @@ void vm_object_shadow (vm_object_t *, vm_ooffset_t *, vm_size_t, int);
 void vm_object_madvise (vm_object_t, vm_pindex_t, int, int);
 void vm_object_init2 (void);
 vm_page_t vm_fault_object_page(vm_object_t, vm_ooffset_t,
-				vm_prot_t, int, int *);
+				vm_prot_t, int, int, int *);
 void vm_object_dead_sleep(vm_object_t, const char *);
 void vm_object_dead_wakeup(vm_object_t);
 void vm_object_lock_swap(void);
@@ -319,9 +324,13 @@ void vm_object_unlock(vm_object_t);
 
 #ifndef DEBUG_LOCKS
 void vm_object_hold(vm_object_t);
+int vm_object_hold_maybe_shared(vm_object_t);
 int vm_object_hold_try(vm_object_t);
 void vm_object_hold_shared(vm_object_t);
 #else
+#define vm_object_hold_maybe_shared(obj)		\
+	debugvm_object_hold_maybe_shared(obj, __FILE__, __LINE__)
+int debugvm_object_hold_maybe_shared(vm_object_t, char *, int);
 #define vm_object_hold(obj)		\
 	debugvm_object_hold(obj, __FILE__, __LINE__)
 void debugvm_object_hold(vm_object_t, char *, int);

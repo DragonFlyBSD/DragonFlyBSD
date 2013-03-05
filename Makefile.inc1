@@ -10,6 +10,8 @@
 # realquickworld - skip the glue and depend stages and just build the meat
 # crossworld  - only build the glue (particularly the cross-build environment)
 # installworld- install everything built by "buildworld"
+# backupworld - copies /bin /sbin /usr/bin /usr/sbin /libexec to backup dir
+# restoreworld- installs binaries from backup dir to world
 # most        - build user commands, no libraries or include files
 # installmost - install user commands, no libraries or include files
 #
@@ -122,6 +124,11 @@ DESTDIRBASE?=		${OBJTREE}${.CURDIR}
 WORLD_CCVER?=		gcc47
 WORLD_LDVER?=		ld.bfd
 WORLD_BINUTILSVER?=	binutils222
+
+# Set the backup parameters if they are not already defined
+#
+WORLD_BACKUP?=		/var/backups/world_backup
+AUTO_BACKUP=		${OBJTREE}/world_backup
 
 # temporary until everybody has converted to x86_64
 .if ${MACHINE_ARCH} == "amd64"
@@ -414,6 +421,7 @@ everything:
 	@echo ">>> stage 4d: building everything.."
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} all
+	@rm -f ${AUTO_BACKUP}/installstamp
 
 # note: buildworld no longer depends on _cleanobj because we rm -rf the
 # entire object tree and built the bootstrap tools in a different location.
@@ -446,6 +454,7 @@ crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 .ORDER: ${WMAKE_TGTS}
 .ORDER: _obj _includes
 .ORDER: _mtreetmp _obj
+.ORDER: installcheck backupworld-auto
 
 #
 # installcheck
@@ -468,7 +477,7 @@ installcheck:
 #
 # Installs everything compiled by a 'buildworld'.
 #
-installworld: installcheck
+installworld: installcheck backupworld-auto
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
 
@@ -1044,21 +1053,94 @@ xmake:
 xmakeenv:
 	@echo '${XMAKEENV} /bin/sh'
 
+backupworld:
+	@mkdir -p ${WORLD_BACKUP}
+	@chflags -R noschg ${WORLD_BACKUP}
+	@rm -rf ${WORLD_BACKUP}/sbin ${WORLD_BACKUP}/bin \
+	        ${WORLD_BACKUP}/usr.sbin ${WORLD_BACKUP}/usr.bin \
+	        ${WORLD_BACKUP}/usr.libexec
+	cp -RpP /bin ${WORLD_BACKUP}/bin
+	cp -RpP /sbin ${WORLD_BACKUP}/sbin
+	cp -RpP /usr/bin ${WORLD_BACKUP}/usr.bin
+	cp -RpP /usr/lib ${WORLD_BACKUP}/usr.lib
+	cp -RpP /usr/sbin ${WORLD_BACKUP}/usr.sbin
+	cp -RpP /usr/libexec ${WORLD_BACKUP}/usr.libexec
+
+backupworld-auto:
+.if !exists(${AUTO_BACKUP}/installstamp)
+	@mkdir -p ${AUTO_BACKUP}
+	@chflags -R noschg ${AUTO_BACKUP}
+	@rm -rf ${AUTO_BACKUP}/sbin ${AUTO_BACKUP}/bin \
+	        ${AUTO_BACKUP}/usr.sbin ${AUTO_BACKUP}/usr.bin \
+	        ${AUTO_BACKUP}/usr.libexec
+	cp -RpP /bin ${AUTO_BACKUP}/bin
+	cp -RpP /sbin ${AUTO_BACKUP}/sbin
+	cp -RpP /usr/bin ${AUTO_BACKUP}/usr.bin
+	cp -RpP /usr/lib ${AUTO_BACKUP}/usr.lib
+	cp -RpP /usr/sbin ${AUTO_BACKUP}/usr.sbin
+	cp -RpP /usr/libexec ${AUTO_BACKUP}/usr.libexec
+	@date '+%Y-%m-%d %H:%M:%S' > ${AUTO_BACKUP}/installstamp
+.endif
+
+restoreworld:
+.if !(exists(${WORLD_BACKUP}/sbin) && exists(${WORLD_BACKUP}/bin) && \
+      exists(${WORLD_BACKUP}/usr.sbin) && exists(${WORLD_BACKUP}/usr.bin) && \
+      exists(${WORLD_BACKUP}/usr.lib) && exists(${WORLD_BACKUP}/usr.libexec))
+	@echo "There does not seem to be a valid archive present."
+.else
+	@echo "Restoring system binaries from manual backup archive..."
+	@rm -f /tmp/rs.tmp
+.for BX in sbin bin usr.sbin usr.bin usr.lib usr.libexec
+	@chflags -R noschg /${BX:S/./\//}
+	@cd ${WORLD_BACKUP}/${BX} && find * -type f -perm +700 -exec \
+	  echo cp ${WORLD_BACKUP}/${BX}/{} /${BX:S/./\//}/{} >> /tmp/rs.tmp \;
+.endfor
+	@grep -Ev ' (/bin/sh|/bin/cp|/sbin/init.bak|/usr/bin/make|/usr/libexec/ld-elf.so.2|/usr/libexec/ld-elf.so.2.old)$$' \
+	   /tmp/rs.tmp > /tmp/restore.script
+	@/bin/sh /tmp/restore.script
+	@rm /tmp/rs.tmp /tmp/restore.script
+	@echo "These files were not restored from ${WORLD_BACKUP}:"
+	@echo "   /bin/cp"
+	@echo "   /bin/sh"
+	@echo "   /usr/bin/make"
+	@echo "   /usr/libexec/ld-elf.so.2"
+.endif
+
+restoreworld-auto:
+.if !(exists(${AUTO_BACKUP}/sbin) && exists(${AUTO_BACKUP}/bin) && \
+      exists(${AUTO_BACKUP}/usr.sbin) && exists(${AUTO_BACKUP}/usr.bin) && \
+      exists(${AUTO_BACKUP}/usr.lib) && exists(${AUTO_BACKUP}/usr.libexec))
+	@echo "There does not seem to be a valid archive present."
+.else
+	@echo "Restoring system binaries from auto-backup archive..."
+	@rm -f /tmp/rs.tmp
+.for BX in sbin bin usr.sbin usr.bin usr.lib usr.libexec
+	@chflags -R noschg /${BX:S/./\//}
+	@cd ${AUTO_BACKUP}/${BX} && find * -type f -perm +700 -exec \
+	  echo cp ${AUTO_BACKUP}/${BX}/{} /${BX:S/./\//}/{} >> /tmp/rs.tmp \;
+.endfor
+	@grep -Ev ' (/bin/sh|/bin/cp|/sbin/init.bak|/usr/bin/make|/usr/libexec/ld-elf.so.2|/usr/libexec/ld-elf.so.2.old)$$' \
+	   /tmp/rs.tmp > /tmp/restore.script
+	@/bin/sh /tmp/restore.script
+	@rm /tmp/rs.tmp /tmp/restore.script
+	@echo "These files were not restored from ${AUTO_BACKUP}:"
+	@echo "   /bin/cp"
+	@echo "   /bin/sh"
+	@echo "   /usr/bin/make"
+	@echo "   /usr/libexec/ld-elf.so.2"
+.endif
+
 # Take advantage of bmake error response
 #
 MAKE_PRINT_VAR_ON_ERROR= \
 	.CURDIR \
 	.OBJDIR \
-	.MAKE \
-	MAKE_VERSION \
 	LD_LIBRARY_PATH \
 	MACHINE_ARCH \
 	MACHINE \
 	MAKEFILE \
 	.TARGETS \
 	.ERROR_TARGET \
-	.ERROR_META_FILE \
-	.MAKE.LEVEL \
-	.MAKE.MODE
+	.MAKE.LEVEL
 
 .include <bsd.subdir.mk>

@@ -1391,7 +1391,7 @@ static device_method_t swcr_methods[] = {
 	DEVMETHOD(cryptodev_freesession,swcr_freesession),
 	DEVMETHOD(cryptodev_process,	swcr_process),
 
-	{0, 0},
+	DEVMETHOD_END
 };
 
 static driver_t swcr_driver = {

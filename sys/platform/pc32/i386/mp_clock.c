@@ -125,7 +125,7 @@ static device_method_t piix_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		piix_probe),
 	DEVMETHOD(device_attach,	piix_attach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t piix_driver = {

@@ -67,7 +67,7 @@ static device_method_t aac_methods[] = {
 
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t aac_pci_driver = {
@@ -470,7 +470,7 @@ static device_method_t aacch_methods[] = {
 	DEVMETHOD(device_probe,		aacch_probe),
 	DEVMETHOD(device_attach,	aacch_attach),
 	DEVMETHOD(device_detach,	aacch_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 struct aacch_softc {

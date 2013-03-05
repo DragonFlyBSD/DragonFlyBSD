@@ -62,19 +62,19 @@ MALLOC_DECLARE(M_TMPFSMNT);
  * Internal representation of a tmpfs directory entry.
  */
 struct tmpfs_dirent {
-	RB_ENTRY(tmpfs_dirent) rb_node;
+	RB_ENTRY(tmpfs_dirent)	rb_node;
 
 	/* Length of the name stored in this directory entry.  This avoids
 	 * the need to recalculate it every time the name is used. */
-	uint16_t			td_namelen;
+	uint16_t		td_namelen;
 
 	/* The name of the entry, allocated from a string pool.  This
 	* string is not required to be zero-terminated; therefore, the
 	* td_namelen field must always be used when accessing its value. */
-	char *				td_name;
+	char 			*td_name;
 
 	/* Pointer to the node this entry refers to. */
-	struct tmpfs_node *		td_node;
+	struct tmpfs_node 	*td_node;
 };
 
 struct tmpfs_dirtree;
@@ -173,11 +173,6 @@ tmpfs_dircookie(struct tmpfs_dirent *de)
  * to all file types and the other holds data that is only applicable to
  * a particular type.  The code must be careful to only access those
  * attributes that are actually allowed by the node's type.
- *
- *
- * Below is the key of locks used to protected the fields in the following
- * structures.
- *
  */
 struct tmpfs_node {
 	/* Doubly-linked list entry which links all existing nodes for a
@@ -211,7 +206,7 @@ struct tmpfs_node {
 	gid_t			tn_gid;
 	mode_t			tn_mode;
 	int			tn_flags;
-	nlink_t			tn_links;
+	nlink_t			tn_links;   /* requires mnt_token protection */
 	int32_t			tn_atime;
 	int32_t			tn_atimensec;
 	int32_t			tn_mtime;
@@ -251,7 +246,7 @@ struct tmpfs_node {
 		dev_t			tn_rdev; /*int32_t ?*/
 
 		/* Valid when tn_type == VDIR. */
-		struct tn_dir{
+		struct tn_dir {
 			/* Pointer to the parent directory.  The root
 			 * directory has a pointer to itself in this field;
 			 * this property identifies the root node. */
@@ -273,7 +268,7 @@ struct tmpfs_node {
 			 * point where readdir starts returning values. */
 			off_t			tn_readdir_lastn;
 			struct tmpfs_dirent *	tn_readdir_lastp;
-		}tn_dir;
+		} tn_dir;
 
 		/* Valid when tn_type == VLNK. */
 		/* The link's target, allocated from a string pool. */
@@ -293,7 +288,7 @@ struct tmpfs_node {
 			vm_object_t		tn_aobj;
 			size_t			tn_aobj_pages;
 
-		}tn_reg;
+		} tn_reg;
 
 		/* Valid when tn_type = VFIFO */
 		struct tn_fifo {
@@ -301,8 +296,8 @@ struct tmpfs_node {
 			        struct ucred *cred, int flags);
 			int (*tn_fo_write) (struct file *fp, struct uio *uio,
 			        struct ucred *cred, int flags);
-		}tn_fifo;
-	}tn_spec;
+		} tn_fifo;
+	} tn_spec;
 };
 LIST_HEAD(tmpfs_node_list, tmpfs_node);
 
@@ -342,6 +337,8 @@ LIST_HEAD(tmpfs_node_list, tmpfs_node);
  * Internal representation of a tmpfs mount point.
  */
 struct tmpfs_mount {
+	struct mount		*tm_mount;
+
 	/* Maximum number of memory pages available for use by the file
 	 * system, set during mount time.  This variable must never be
 	 * used directly as it may be bigger than the current amount of
@@ -386,9 +383,6 @@ struct tmpfs_mount {
 	 * file system is unmounted. */
 	struct tmpfs_node_list	tm_nodes_used;
 
-	/* All node lock to protect the node list and tmp_pages_used */
-	struct lock		 allnode_lock;
-
 	/* Per-mount malloc zones for tmpfs nodes, names, and dirents */
 	struct malloc_type	*tm_node_zone;
 	struct malloc_type	*tm_dirent_zone;
@@ -397,9 +391,7 @@ struct tmpfs_mount {
 	struct objcache_malloc_args tm_node_zone_malloc_args;
 	struct objcache_malloc_args tm_dirent_zone_malloc_args;
 
-	/* Pools used to store file system meta data.  These are not shared
-	 * across several instances of tmpfs for the reasons described in
-	 * tmpfs_pool.c. */
+	/* Pools used to store file system meta data. */
 	struct objcache		*tm_dirent_pool;
 	struct objcache		*tm_node_pool;
 
@@ -407,10 +399,12 @@ struct tmpfs_mount {
 	int			tm_flags;
 
 	struct netexport	tm_export;
+
+	struct mount		*tm_mnt;
 };
 
-#define TMPFS_LOCK(tm) lockmgr(&(tm)->allnode_lock, LK_EXCLUSIVE|LK_RETRY)
-#define TMPFS_UNLOCK(tm) lockmgr(&(tm)->allnode_lock, LK_RELEASE)
+#define TMPFS_LOCK(tm) lwkt_gettoken(&(tm)->tm_mount->mnt_token)
+#define TMPFS_UNLOCK(tm) lwkt_reltoken(&(tm)->tm_mount->mnt_token)
 
 /* --------------------------------------------------------------------- */
 

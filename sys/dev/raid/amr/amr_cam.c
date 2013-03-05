@@ -93,7 +93,7 @@ static device_method_t	amr_pass_methods[] = {
 	DEVMETHOD(device_probe,		amr_cam_probe),
 	DEVMETHOD(device_attach,	amr_cam_attach),
 	DEVMETHOD(device_detach,	amr_cam_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t	amr_pass_driver = {

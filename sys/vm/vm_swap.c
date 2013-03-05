@@ -538,7 +538,7 @@ swapoff_one(int index)
 	/*
 	 * Page in the contents of the device and close it.
 	 */
-	if (swap_pager_swapoff(index)) {
+	if (swap_pager_swapoff(index) && swap_pager_swapoff(index)) {
 		mtx_unlock(&swap_mtx);
 		return (EINTR);
 	}

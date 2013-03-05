@@ -139,7 +139,7 @@ static device_method_t rtw_pci_methods[] = {
 	DEVMETHOD(device_suspend,	rtw_pci_suspend),
 	DEVMETHOD(device_resume,	rtw_pci_resume),
 #endif
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t rtw_pci_driver = {

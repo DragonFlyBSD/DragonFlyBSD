@@ -169,7 +169,7 @@ static device_method_t moscom_methods[] = {
 	DEVMETHOD(device_probe, moscom_match),
 	DEVMETHOD(device_attach, moscom_attach),
 	DEVMETHOD(device_detach, moscom_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t moscom_driver = {

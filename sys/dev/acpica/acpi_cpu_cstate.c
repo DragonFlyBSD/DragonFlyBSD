@@ -187,7 +187,7 @@ static device_method_t acpi_cpu_cst_methods[] = {
     DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
     DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
     DEVMETHOD(bus_teardown_intr, bus_generic_teardown_intr),
-    {0, 0}
+    DEVMETHOD_END
 };
 
 static driver_t acpi_cpu_cst_driver = {

@@ -97,7 +97,7 @@ static device_method_t cmx_pccard_methods[] = {
 	DEVMETHOD(device_attach, cmx_pccard_attach),
 	DEVMETHOD(device_detach, cmx_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t cmx_pccard_driver = {

@@ -152,7 +152,7 @@ static device_method_t ed_pci_methods[] = {
 	DEVMETHOD(device_attach,	ed_pci_attach),
 	DEVMETHOD(device_attach,	ed_pci_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ed_pci_driver = {

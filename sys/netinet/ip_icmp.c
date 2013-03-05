@@ -117,7 +117,7 @@ SYSCTL_INT(_net_inet_icmp, ICMPCTL_ICMPLIM, icmplim, CTLFLAG_RD,
 	
 #endif
 
-static int	icmplim_output = 1;
+static int	icmplim_output = 0;
 SYSCTL_INT(_net_inet_icmp, OID_AUTO, icmplim_output, CTLFLAG_RW,
 	&icmplim_output, 0, "Enable output about ICMP bandwidth limits");
 

@@ -803,7 +803,7 @@ static device_method_t pnp_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_identify,	pnp_identify),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t pnp_driver = {

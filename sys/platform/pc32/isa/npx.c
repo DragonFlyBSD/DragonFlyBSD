@@ -908,7 +908,7 @@ static device_method_t npx_methods[] = {
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
 	DEVMETHOD(device_resume,	bus_generic_resume),
 	
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t npx_driver = {

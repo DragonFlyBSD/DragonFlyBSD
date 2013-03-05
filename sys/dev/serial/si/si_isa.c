@@ -313,7 +313,7 @@ static device_method_t si_isa_methods[] = {
 	DEVMETHOD(device_probe,		si_isa_probe),
 	DEVMETHOD(device_attach,	si_isa_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t si_isa_driver = {

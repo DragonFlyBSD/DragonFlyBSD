@@ -293,6 +293,7 @@ nvtruncbuf_bp_trunc(struct buf *bp, void *data)
 		bp->b_flags |= (B_INVAL | B_RELBUF | B_NOCACHE);
 		brelse(bp);
 	}
+	lwkt_yield();
 	return(1);
 }
 
@@ -306,6 +307,7 @@ nvtruncbuf_bp_metasync_cmp(struct buf *bp, void *data __unused)
 {
 	if (bp->b_loffset < 0)
 		return(0);
+	lwkt_yield();
 	return(1);
 }
 
@@ -332,6 +334,7 @@ nvtruncbuf_bp_metasync(struct buf *bp, void *data)
 		bremfree(bp);
 		bawrite(bp);
 	}
+	lwkt_yield();
 	return(1);
 }
 
@@ -470,6 +473,7 @@ nvnode_pager_setsize(struct vnode *vp, off_t length, int blksize, int boff)
 				vm_page_wakeup(m);
 			}
 			++pi;
+			lwkt_yield();
 		}
 	} else {
 		/*

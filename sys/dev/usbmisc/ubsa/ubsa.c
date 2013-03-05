@@ -220,7 +220,7 @@ static device_method_t ubsa_methods[] = {
 	DEVMETHOD(device_probe, ubsa_match),
 	DEVMETHOD(device_attach, ubsa_attach),
 	DEVMETHOD(device_detach, ubsa_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ubsa_driver = {

@@ -128,7 +128,7 @@ static device_method_t ral_pci_methods[] = {
 	DEVMETHOD(device_suspend,	ral_pci_suspend),
 	DEVMETHOD(device_resume,	ral_pci_resume),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ral_pci_driver = {

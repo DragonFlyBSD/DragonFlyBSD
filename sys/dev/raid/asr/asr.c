@@ -409,7 +409,7 @@ static int	ASR_queue(Asr_softc_t *sc, PI2O_MESSAGE_FRAME Message);
 static device_method_t asr_methods[] = {
 	DEVMETHOD(device_probe,	 asr_probe),
 	DEVMETHOD(device_attach, asr_attach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t asr_driver = {
@@ -2750,15 +2750,12 @@ asr_action(struct cam_sim *sim, union ccb  *ccb)
 	}
 
 	case XPT_RESET_DEV:	/* Bus Device Reset the specified SCSI device */
-		/* Rese HBA device ... */
+		/* Reset HBA device ... */
 		asr_hbareset (sc);
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
 
-#if (defined(REPORT_LUNS))
-	case REPORT_LUNS:
-#endif
 	case XPT_ABORT:			/* Abort the specified CCB */
 		/* XXX Implement */
 		ccb->ccb_h.status = CAM_REQ_INVALID;

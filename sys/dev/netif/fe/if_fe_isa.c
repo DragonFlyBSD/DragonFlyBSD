@@ -61,7 +61,7 @@ static device_method_t fe_isa_methods[] = {
 	DEVMETHOD(device_probe,		fe_isa_probe),
 	DEVMETHOD(device_attach,	fe_isa_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t fe_isa_driver = {

@@ -170,7 +170,7 @@ static device_method_t pcn_methods[] = {
 	DEVMETHOD(miibus_writereg,	pcn_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	pcn_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t pcn_driver = {

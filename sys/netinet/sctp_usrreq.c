@@ -538,7 +538,7 @@ sctp_getcred(SYSCTL_HANDLER_ARGS)
 	struct sctp_tcb *stcb;
 	int error;
 
-#if __FreeBSD_version >= 500000 || defined(__DragonFly__)
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 	error = priv_check(req->td, PRIV_ROOT);
 #else
 	error = suser(req->p);
@@ -4386,7 +4386,7 @@ sctp_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
 #endif
 
 /* #if defined(__NetBSD__) || defined(__OpenBSD__) */
-#if __OpenBSD__
+#if defined(__OpenBSD__)
 /*
  * Sysctl for sctp variables.
  */
@@ -4487,7 +4487,7 @@ sysctl_int();
 	/* NOTREACHED */
 }
 #endif
-#if __NetBSD__
+#if defined(__NetBSD__)
 /*
  * Sysctl for sctp variables.
  */

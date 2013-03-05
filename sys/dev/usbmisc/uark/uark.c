@@ -96,7 +96,7 @@ static device_method_t uark_methods[] = {
 	DEVMETHOD(device_probe, uark_match),
 	DEVMETHOD(device_attach, uark_attach),
 	DEVMETHOD(device_detach, uark_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t uark_driver = {

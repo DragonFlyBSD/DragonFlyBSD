@@ -448,7 +448,7 @@ static device_method_t vpo_methods[] = {
 	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		vpo_probe),
 	DEVMETHOD(device_attach,	vpo_attach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t vpo_driver = {

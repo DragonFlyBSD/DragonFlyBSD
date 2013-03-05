@@ -85,6 +85,9 @@ MALLOC_DEFINE(M_LWKTMSG, "lwkt message", "lwkt message");
  *	NOTE: The message is in an indeterminant state until this call
  *	returns.  The caller should not mess with it (e.g. try to abort it)
  *	until then.
+ *
+ *	NOTE: Do not use this function to forward a message as we might
+ *	clobber ms_flags in a SMP race.
  */
 void
 lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
@@ -103,6 +106,28 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
     }
 }
 
+void
+lwkt_sendmsg_stage1(lwkt_port_t port, lwkt_msg_t msg)
+{
+    KKASSERT(msg->ms_reply_port != NULL &&
+	     (msg->ms_flags & (MSGF_DONE|MSGF_QUEUED)) == MSGF_DONE);
+    msg->ms_flags &= ~(MSGF_REPLY | MSGF_SYNC | MSGF_DONE);
+}
+
+void
+lwkt_sendmsg_stage2(lwkt_port_t port, lwkt_msg_t msg)
+{
+    int error;
+
+    if ((error = lwkt_beginmsg(port, msg)) != EASYNC) {
+	/*
+	 * Target port opted to execute the message synchronously so
+	 * queue the response.
+	 */
+	lwkt_replymsg(msg, error);
+    }
+}
+
 /*
  * lwkt_domsg()
  *
@@ -111,6 +136,9 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
  *	asynchronously and this function will automatically block and
  *	wait for a response if the target executes the message
  *	asynchronously.
+ *
+ *	NOTE: Do not use this function to forward a message as we might
+ *	clobber ms_flags in a SMP race.
  */
 int
 lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg, int flags)
@@ -143,11 +171,9 @@ lwkt_forwardmsg(lwkt_port_t port, lwkt_msg_t msg)
 {   
     int error;
 
-    crit_enter();
     KKASSERT((msg->ms_flags & (MSGF_QUEUED|MSGF_DONE|MSGF_REPLY)) == 0);
     if ((error = port->mp_putport(port, msg)) != EASYNC)
 	lwkt_replymsg(msg, error);
-    crit_exit();
     return(error);
 }
 
@@ -193,14 +219,14 @@ static int lwkt_thread_putport(lwkt_port_t port, lwkt_msg_t msg);
 static int lwkt_thread_waitmsg(lwkt_msg_t msg, int flags);
 static void *lwkt_thread_waitport(lwkt_port_t port, int flags);
 static void lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg);
-static void lwkt_thread_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_thread_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
 
 static void *lwkt_spin_getport(lwkt_port_t port);
 static int lwkt_spin_putport(lwkt_port_t port, lwkt_msg_t msg);
 static int lwkt_spin_waitmsg(lwkt_msg_t msg, int flags);
 static void *lwkt_spin_waitport(lwkt_port_t port, int flags);
 static void lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg);
-static void lwkt_spin_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_spin_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
 
 static void *lwkt_serialize_getport(lwkt_port_t port);
 static int lwkt_serialize_putport(lwkt_port_t port, lwkt_msg_t msg);
@@ -214,7 +240,7 @@ static int lwkt_panic_putport(lwkt_port_t port, lwkt_msg_t msg);
 static int lwkt_panic_waitmsg(lwkt_msg_t msg, int flags);
 static void *lwkt_panic_waitport(lwkt_port_t port, int flags);
 static void lwkt_panic_replyport(lwkt_port_t port, lwkt_msg_t msg);
-static void lwkt_panic_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_panic_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
 
 /*
  * Core port initialization (internal)
@@ -227,7 +253,7 @@ _lwkt_initport(lwkt_port_t port,
 	       int (*wmsgfn)(lwkt_msg_t, int),
 	       void *(*wportfn)(lwkt_port_t, int),
 	       void (*rportfn)(lwkt_port_t, lwkt_msg_t),
-	       void (*dmsgfn)(lwkt_port_t, lwkt_msg_t))
+	       int (*dmsgfn)(lwkt_port_t, lwkt_msg_t))
 {
     bzero(port, sizeof(*port));
     TAILQ_INIT(&port->mp_msgq);
@@ -282,7 +308,7 @@ lwkt_initport_thread(lwkt_port_t port, thread_t td)
 void
 lwkt_initport_spin(lwkt_port_t port, thread_t td)
 {
-    void (*dmsgfn)(lwkt_port_t, lwkt_msg_t);
+    int (*dmsgfn)(lwkt_port_t, lwkt_msg_t);
 
     if (td == NULL)
 	dmsgfn = lwkt_panic_dropmsg;
@@ -464,7 +490,7 @@ lwkt_thread_replyport_remote(lwkt_msg_t msg)
     }
 
     /*
-     * Cleanup
+     * Cleanup (in critical section, IPI on same cpu, atomic op not needed)
      */
 #ifdef INVARIANTS
     KKASSERT(msg->ms_flags & MSGF_INTRANSIT);
@@ -507,16 +533,18 @@ lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	 * section is required.
 	 */
 	if (port->mpu_td->td_gd == mycpu) {
+	    crit_enter();
 	    flags = msg->ms_flags;
 	    cpu_sfence();
 	    msg->ms_flags |= MSGF_DONE | MSGF_REPLY;
 	    if (port->mp_flags & MSGPORTF_WAITING)
 		_lwkt_schedule_msg(port->mpu_td, flags);
+	    crit_exit();
 	} else {
 #ifdef INVARIANTS
-	    msg->ms_flags |= MSGF_INTRANSIT;
+	    atomic_set_int(&msg->ms_flags, MSGF_INTRANSIT);
 #endif
-	    msg->ms_flags |= MSGF_REPLY;
+	    atomic_set_int(&msg->ms_flags, MSGF_REPLY);
 	    lwkt_send_ipiq(port->mpu_td->td_gd,
 			   (ipifunc1_t)lwkt_thread_replyport_remote, msg);
 	}
@@ -535,9 +563,9 @@ lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	    crit_exit();
 	} else {
 #ifdef INVARIANTS
-	    msg->ms_flags |= MSGF_INTRANSIT;
+	    atomic_set_int(&msg->ms_flags, MSGF_INTRANSIT);
 #endif
-	    msg->ms_flags |= MSGF_REPLY;
+	    atomic_set_int(&msg->ms_flags, MSGF_REPLY);
 	    lwkt_send_ipiq(port->mpu_td->td_gd,
 			   (ipifunc1_t)lwkt_thread_replyport_remote, msg);
 	}
@@ -550,16 +578,25 @@ lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
  * This function could _only_ be used when caller is in the same thread
  * as the message's target port owner thread.
  */
-static void
+static int
 lwkt_thread_dropmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
+    int error;
+
     KASSERT(port->mpu_td == curthread,
     	    ("message could only be dropped in the same thread "
 	     "as the message target port thread"));
     crit_enter_quick(port->mpu_td);
-    _lwkt_pullmsg(port, msg);
-    msg->ms_flags |= MSGF_DONE;
+    if ((msg->ms_flags & (MSGF_REPLY|MSGF_QUEUED)) == MSGF_QUEUED) {
+	    _lwkt_pullmsg(port, msg);
+	    atomic_set_int(&msg->ms_flags, MSGF_DONE);
+	    error = 0;
+    } else {
+	    error = ENOENT;
+    }
     crit_exit_quick(port->mpu_td);
+
+    return (error);
 }
 
 /*
@@ -587,11 +624,13 @@ lwkt_thread_putport_remote(lwkt_msg_t msg)
     }
 
     /*
-     * Cleanup
+     * An atomic op is needed on ms_flags vs originator.  Also
+     * note that the originator might be using a different type
+     * of msgport.
      */
 #ifdef INVARIANTS
     KKASSERT(msg->ms_flags & MSGF_INTRANSIT);
-    msg->ms_flags &= ~MSGF_INTRANSIT;
+    atomic_clear_int(&msg->ms_flags, MSGF_INTRANSIT);
 #endif
     _lwkt_pushmsg(port, msg);
     if (port->mp_flags & MSGPORTF_WAITING)
@@ -613,7 +652,14 @@ lwkt_thread_putport(lwkt_port_t port, lwkt_msg_t msg)
 	crit_exit();
     } else {
 #ifdef INVARIANTS
-	msg->ms_flags |= MSGF_INTRANSIT;
+	/*
+	 * Cleanup.
+	 *
+	 * An atomic op is needed on ms_flags vs originator.  Also
+	 * note that the originator might be using a different type
+	 * of msgport.
+	 */
+	atomic_set_int(&msg->ms_flags, MSGF_INTRANSIT);
 #endif
 	lwkt_send_ipiq(port->mpu_td->td_gd,
 			(ipifunc1_t)lwkt_thread_putport_remote, msg);
@@ -653,6 +699,8 @@ static
 int
 lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
 {
+    thread_t td = curthread;
+
     KASSERT((msg->ms_flags & MSGF_DROPABLE) == 0,
 	    ("can't wait dropable message"));
 
@@ -661,7 +709,6 @@ lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
 	 * If the done bit was not set we have to block until it is.
 	 */
 	lwkt_port_t port = msg->ms_reply_port;
-	thread_t td = curthread;
 	int sentabort;
 
 	KKASSERT(port->mpu_td == td);
@@ -669,7 +716,7 @@ lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
 	sentabort = 0;
 
 	while ((msg->ms_flags & MSGF_DONE) == 0) {
-	    port->mp_flags |= MSGPORTF_WAITING;
+	    port->mp_flags |= MSGPORTF_WAITING;	/* same cpu */
 	    if (sentabort == 0) {
 		if ((sentabort = lwkt_sleep("waitmsg", flags)) != 0) {
 		    lwkt_abortmsg(msg);
@@ -687,15 +734,15 @@ lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
 	 * If the done bit was set we only have to mess around with the
 	 * message if it is queued on the reply port.
 	 */
+	crit_enter_quick(td);
 	if (msg->ms_flags & MSGF_QUEUED) {
 	    lwkt_port_t port = msg->ms_reply_port;
 	    thread_t td = curthread;
 
 	    KKASSERT(port->mpu_td == td);
-	    crit_enter_quick(td);
 	    _lwkt_pullmsg(port, msg);
-	    crit_exit_quick(td);
 	}
+	crit_exit_quick(td);
     }
     return(msg->ms_error);
 }
@@ -791,9 +838,9 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 
     KASSERT((msg->ms_flags & MSGF_DROPABLE) == 0,
 	    ("can't wait dropable message"));
+    port = msg->ms_reply_port;
 
     if ((msg->ms_flags & MSGF_DONE) == 0) {
-	port = msg->ms_reply_port;
 	sentabort = 0;
 	spin_lock(&port->mpu_spin);
 	while ((msg->ms_flags & MSGF_DONE) == 0) {
@@ -803,6 +850,8 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 	     * If message was sent synchronously from the beginning
 	     * the wakeup will be on the message structure, else it
 	     * will be on the port structure.
+	     *
+	     * ms_flags needs atomic op originator vs target MSGF_QUEUED
 	     */
 	    if (msg->ms_flags & MSGF_SYNC) {
 		won = msg;
@@ -838,12 +887,11 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 	    _lwkt_pullmsg(port, msg);
 	spin_unlock(&port->mpu_spin);
     } else {
+	spin_lock(&port->mpu_spin);
 	if (msg->ms_flags & MSGF_QUEUED) {
-	    port = msg->ms_reply_port;
-	    spin_lock(&port->mpu_spin);
 	    _lwkt_pullmsg(port, msg);
-	    spin_unlock(&port->mpu_spin);
 	}
+	spin_unlock(&port->mpu_spin);
     }
     return(msg->ms_error);
 }
@@ -882,12 +930,14 @@ lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	/*
 	 * If a synchronous completion has been requested, just wakeup
 	 * the message without bothering to queue it to the target port.
+	 *
+	 * ms_flags protected by reply port spinlock
 	 */
 	spin_lock(&port->mpu_spin);
 	msg->ms_flags |= MSGF_DONE | MSGF_REPLY;
 	dowakeup = 0;
 	if (msg->ms_flags & MSGF_WAITING) {
-		atomic_clear_int(&msg->ms_flags, MSGF_WAITING);
+		msg->ms_flags &= ~MSGF_WAITING;
 		dowakeup = 1;
 	}
 	spin_unlock(&port->mpu_spin);
@@ -917,16 +967,25 @@ lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg)
  * This function could _only_ be used when caller is in the same thread
  * as the message's target port owner thread.
  */
-static void
+static int
 lwkt_spin_dropmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
+    int error;
+
     KASSERT(port->mpu_td == curthread,
     	    ("message could only be dropped in the same thread "
 	     "as the message target port thread\n"));
     spin_lock(&port->mpu_spin);
-    _lwkt_pullmsg(port, msg);
-    msg->ms_flags |= MSGF_DONE;
+    if ((msg->ms_flags & (MSGF_REPLY|MSGF_QUEUED)) == MSGF_QUEUED) {
+	    _lwkt_pullmsg(port, msg);
+	    msg->ms_flags |= MSGF_DONE;
+	    error = 0;
+    } else {
+	    error = ENOENT;
+    }
     spin_unlock(&port->mpu_spin);
+
+    return (error);
 }
 
 /************************************************************************
@@ -1068,6 +1127,8 @@ lwkt_serialize_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	/*
 	 * If a synchronous completion has been requested, just wakeup
 	 * the message without bothering to queue it to the target port.
+	 *
+	 * (both sides synchronized via serialized reply port)
 	 */
 	msg->ms_flags |= MSGF_DONE | MSGF_REPLY;
 	wakeup(msg);
@@ -1136,8 +1197,10 @@ lwkt_panic_replyport(lwkt_port_t port, lwkt_msg_t msg)
 }
 
 static
-void
+int
 lwkt_panic_dropmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
     panic("lwkt_dropmsg() is illegal on port %p msg %p", port, msg);
+    /* NOT REACHED */
+    return (ENOENT);
 }

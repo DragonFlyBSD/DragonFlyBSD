@@ -443,7 +443,7 @@ ncp_connect_addr(struct sockaddr *sa, NWCONN_HANDLE *chp) {
 	/*
 	 * XXX Temporary !!!. server will be filled in kernel !!!
 	 */
-	strcpy(li.server,ipx_ntoa(li.ipxaddr.sipx_addr));
+	strcpy(li.server,ipx_ntoa(li.addr.ipxaddr.sipx_addr));
 	error = ncp_connect(&li, chp);
 	return error;
 }

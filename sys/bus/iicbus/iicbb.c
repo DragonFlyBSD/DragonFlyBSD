@@ -94,7 +94,7 @@ static device_method_t iicbb_methods[] = {
 	DEVMETHOD(iicbus_reset,		iicbb_reset),
 	DEVMETHOD(iicbus_transfer,	iicbus_transfer_gen),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 driver_t iicbb_driver = {

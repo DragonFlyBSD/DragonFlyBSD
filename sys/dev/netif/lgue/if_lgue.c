@@ -78,7 +78,7 @@ static device_method_t lgue_methods[] = {
 	DEVMETHOD(device_attach, lgue_attach),
 	DEVMETHOD(device_detach, lgue_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t lgue_driver = {

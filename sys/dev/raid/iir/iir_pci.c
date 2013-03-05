@@ -136,7 +136,7 @@ static device_method_t iir_pci_methods[] = {
         /* Device interface */
         DEVMETHOD(device_probe,         iir_pci_probe),
         DEVMETHOD(device_attach,        iir_pci_attach),
-        { 0, 0}
+        DEVMETHOD_END
 };
 
 

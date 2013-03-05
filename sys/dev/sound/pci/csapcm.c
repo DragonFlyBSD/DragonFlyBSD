@@ -1021,7 +1021,7 @@ static device_method_t pcmcsa_methods[] = {
 	DEVMETHOD(device_suspend, pcmcsa_suspend),
 	DEVMETHOD(device_resume, pcmcsa_resume),
 
-	{ 0, 0 },
+	DEVMETHOD_END
 };
 
 static driver_t pcmcsa_driver = {

@@ -87,7 +87,6 @@ static int
 isa_probe(device_t dev)
 {
 	device_set_desc(dev, "ISA bus");
-	isa_init();		/* Allow machdep code to initialise */
 	return 0;
 }
 
@@ -1025,7 +1024,7 @@ static device_method_t isa_methods[] = {
 	DEVMETHOD(isa_set_config_callback, isa_set_config_callback),
 	DEVMETHOD(isa_pnp_probe,	isa_pnp_probe),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t isa_driver = {

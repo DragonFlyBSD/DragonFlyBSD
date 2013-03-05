@@ -621,7 +621,7 @@ static device_method_t ichwd_methods[] = {
 	DEVMETHOD(device_attach, ichwd_attach),
 	DEVMETHOD(device_detach, ichwd_detach),
 	DEVMETHOD(device_shutdown, ichwd_detach),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t ichwd_driver = {

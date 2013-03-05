@@ -131,6 +131,8 @@ static int vm_pageout_full_stats_interval = 0;
 static int vm_pageout_stats_free_max=0, vm_pageout_algorithm=0;
 static int defer_swap_pageouts=0;
 static int disable_swap_pageouts=0;
+static u_int vm_anonmem_decline = ACT_DECLINE;
+static u_int vm_filemem_decline = ACT_DECLINE * 2;
 
 #if defined(NO_SWAPPING)
 static int vm_swap_enabled=0;
@@ -140,8 +142,11 @@ static int vm_swap_enabled=1;
 static int vm_swap_idle_enabled=0;
 #endif
 
-SYSCTL_INT(_vm, VM_PAGEOUT_ALGORITHM, pageout_algorithm,
-	CTLFLAG_RW, &vm_pageout_algorithm, 0, "LRU page mgmt");
+SYSCTL_UINT(_vm, VM_PAGEOUT_ALGORITHM, anonmem_decline,
+	CTLFLAG_RW, &vm_anonmem_decline, 0, "active->inactive anon memory");
+
+SYSCTL_INT(_vm, VM_PAGEOUT_ALGORITHM, filemem_decline,
+	CTLFLAG_RW, &vm_filemem_decline, 0, "active->inactive file cache");
 
 SYSCTL_INT(_vm, OID_AUTO, max_launder,
 	CTLFLAG_RW, &vm_max_launder, 0, "Limit dirty flushes in pageout");
@@ -527,13 +532,15 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 			vm_object_drop(tobject);
 		}
 		if (lobject != object) {
-			vm_object_lock_swap();
+			if (tobject)
+				vm_object_lock_swap();
 			vm_object_drop(lobject);
+			/* leaves tobject locked & at top */
 		}
 		lobject = tobject;
 	}
 	if (lobject != object)
-		vm_object_drop(lobject);
+		vm_object_drop(lobject);	/* NULL ok */
 }
 
 /*
@@ -1137,6 +1144,24 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 		} else {
 			vm_page_wakeup(m);
 		}
+
+		/*
+		 * Systems with a ton of memory can wind up with huge
+		 * deactivation counts.  Because the inactive scan is
+		 * doing a lot of flushing, the combination can result
+		 * in excessive paging even in situations where other
+		 * unrelated threads free up sufficient VM.
+		 *
+		 * To deal with this we abort the nominal active->inactive
+		 * scan before we hit the inactive target when free+cache
+		 * levels have already reached their target.
+		 *
+		 * Note that nominally the inactive scan is not freeing or
+		 * caching pages, it is deactivating active pages, so it
+		 * will not by itself cause the abort condition.
+		 */
+		if (vm_paging_target() < 0)
+			break;
 	}
 	vm_page_queues_spin_lock(PQ_INACTIVE + q);
 	TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE + q].pl, &marker, pageq);
@@ -1282,7 +1307,17 @@ vm_pageout_scan_active(int pass, int q,
 			vm_page_and_queue_spin_unlock(m);
 			vm_page_wakeup(m);
 		} else {
-			m->act_count -= min(m->act_count, ACT_DECLINE);
+			switch(m->object->type) {
+			case OBJT_DEFAULT:
+			case OBJT_SWAP:
+				m->act_count -= min(m->act_count,
+						    vm_anonmem_decline);
+				break;
+			default:
+				m->act_count -= min(m->act_count,
+						    vm_filemem_decline);
+				break;
+			}
 			if (vm_pageout_algorithm ||
 			    (m->object == NULL) ||
 			    (m->object && (m->object->ref_count == 0)) ||

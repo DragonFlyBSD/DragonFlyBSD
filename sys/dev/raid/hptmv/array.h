@@ -148,7 +148,7 @@ typedef struct _ArrayDescript
 	UCHAR	Description[64];		/* array description */
 	UCHAR	CreateManager[16];		/* who created it */
 
-#define ArrayDescript_3_0_size ((unsigned)(ULONG_PTR)&((struct _ArrayDescript *)0)->bCheckSum31)
+#define ArrayDescript_3_0_size offsetof(struct _ArrayDescript, bCheckSum31)
 #define ArrayDescript_3_1_size 512
 
 	UCHAR   bCheckSum31;        /* new check sum */

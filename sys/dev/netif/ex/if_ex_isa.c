@@ -64,7 +64,7 @@ static device_method_t ex_methods[] = {
 	DEVMETHOD(device_probe,		ex_isa_probe),
 	DEVMETHOD(device_attach,	ex_isa_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ex_driver = {

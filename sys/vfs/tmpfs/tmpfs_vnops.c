@@ -51,6 +51,7 @@
 #include <sys/mountctl.h>
 
 #include <vm/vm.h>
+#include <vm/vm_extern.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
@@ -60,9 +61,10 @@
 
 #include <vfs/fifofs/fifo.h>
 #include <vfs/tmpfs/tmpfs_vnops.h>
+#if 0
 #include <vfs/tmpfs/tmpfs.h>
-
-MALLOC_DECLARE(M_TMPFS);
+#endif
+#include "tmpfs.h"
 
 static void tmpfs_strategy_done(struct bio *bio);
 
@@ -84,10 +86,14 @@ tmpfs_nresolve(struct vop_nresolve_args *v)
 	struct vnode *vp = NULL;
 	struct namecache *ncp = v->a_nch->ncp;
 	struct tmpfs_node *tnode;
+	struct mount *mp;
 
 	int error;
 	struct tmpfs_dirent *de;
 	struct tmpfs_node *dnode;
+
+	mp = dvp->v_mount;
+	lwkt_gettoken(&mp->mnt_token);
 
 	dnode = VP_TO_TMPFS_DIR(dvp);
 
@@ -119,7 +125,9 @@ out:
 	} else if (error == ENOENT) {
 		cache_setvp(v->a_nch, NULL);
 	}
-	return error;
+
+	lwkt_reltoken(&mp->mnt_token);
+	return (error);
 }
 
 static int
@@ -129,22 +137,31 @@ tmpfs_nlookupdotdot(struct vop_nlookupdotdot_args *v)
 	struct vnode **vpp = v->a_vpp;
 	struct tmpfs_node *dnode = VP_TO_TMPFS_NODE(dvp);
 	struct ucred *cred = v->a_cred;
+	struct mount *mp;
 	int error;
 
 	*vpp = NULL;
+
+	mp = dvp->v_mount;
+	lwkt_gettoken(&mp->mnt_token);
+
 	/* Check accessibility of requested node as a first step. */
 	error = VOP_ACCESS(dvp, VEXEC, cred);
-	if (error != 0)
+	if (error != 0) {
+		lwkt_reltoken(&mp->mnt_token);
 		return error;
+	}
 
 	if (dnode->tn_dir.tn_parent != NULL) {
 		/* Allocate a new vnode on the matching entry. */
 		error = tmpfs_alloc_vp(dvp->v_mount, dnode->tn_dir.tn_parent,
-		    LK_EXCLUSIVE | LK_RETRY, vpp);
+				       LK_EXCLUSIVE | LK_RETRY, vpp);
 
 		if (*vpp)
 			vn_unlock(*vpp);
 	}
+
+	lwkt_reltoken(&mp->mnt_token);
 
 	return (*vpp == NULL) ? ENOENT : 0;
 }
@@ -159,7 +176,11 @@ tmpfs_ncreate(struct vop_ncreate_args *v)
 	struct namecache *ncp = v->a_nch->ncp;
 	struct vattr *vap = v->a_vap;
 	struct ucred *cred = v->a_cred;
+	struct mount *mp;
 	int error;
+
+	mp = dvp->v_mount;
+	lwkt_gettoken(&mp->mnt_token);
 
 	KKASSERT(vap->va_type == VREG || vap->va_type == VSOCK);
 
@@ -170,7 +191,9 @@ tmpfs_ncreate(struct vop_ncreate_args *v)
 		tmpfs_knote(dvp, NOTE_WRITE);
 	}
 
-	return error;
+	lwkt_reltoken(&mp->mnt_token);
+
+	return (error);
 }
 /* --------------------------------------------------------------------- */
 
@@ -182,11 +205,16 @@ tmpfs_nmknod(struct vop_nmknod_args *v)
 	struct namecache *ncp = v->a_nch->ncp;
 	struct vattr *vap = v->a_vap;
 	struct ucred *cred = v->a_cred;
+	struct mount *mp = dvp->v_mount;
 	int error;
 
+	lwkt_gettoken(&mp->mnt_token);
+
 	if (vap->va_type != VBLK && vap->va_type != VCHR &&
-	    vap->va_type != VFIFO)
-		return EINVAL;
+	    vap->va_type != VFIFO) {
+		lwkt_reltoken(&mp->mnt_token);
+		return (EINVAL);
+	}
 
 	error = tmpfs_alloc_file(dvp, vpp, vap, ncp, cred, NULL);
 	if (error == 0) {
@@ -194,6 +222,8 @@ tmpfs_nmknod(struct vop_nmknod_args *v)
 		cache_setvp(v->a_nch, *vpp);
 		tmpfs_knote(dvp, NOTE_WRITE);
 	}
+
+	lwkt_reltoken(&mp->mnt_token);
 
 	return error;
 }
@@ -205,10 +235,11 @@ tmpfs_open(struct vop_open_args *v)
 {
 	struct vnode *vp = v->a_vp;
 	int mode = v->a_mode;
-
-	int error;
+	struct mount *mp = vp->v_mount;
 	struct tmpfs_node *node;
+	int error;
 
+	lwkt_gettoken(&mp->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 #if 0
@@ -224,9 +255,11 @@ tmpfs_open(struct vop_open_args *v)
 	    (mode & (FWRITE | O_APPEND)) == FWRITE) {
 		error = EPERM;
 	} else {
-		return (vop_stdopen(v));
+		error = (vop_stdopen(v));
 	}
-	return error;
+
+	lwkt_reltoken(&mp->mnt_token);
+	return (error);
 }
 
 /* --------------------------------------------------------------------- */
@@ -236,7 +269,9 @@ tmpfs_close(struct vop_close_args *v)
 {
 	struct vnode *vp = v->a_vp;
 	struct tmpfs_node *node;
+	int error;
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	if (node->tn_links > 0) {
@@ -247,7 +282,11 @@ tmpfs_close(struct vop_close_args *v)
 		tmpfs_update(vp);
 	}
 
-	return vop_stdclose(v);
+	error = vop_stdclose(v);
+
+	lwkt_reltoken(&vp->v_mount->mnt_token);
+
+	return (error);
 }
 
 /* --------------------------------------------------------------------- */
@@ -259,6 +298,7 @@ tmpfs_access(struct vop_access_args *v)
 	int error;
 	struct tmpfs_node *node;
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	switch (vp->v_type) {
@@ -267,7 +307,8 @@ tmpfs_access(struct vop_access_args *v)
 	case VLNK:
 		/* FALLTHROUGH */
 	case VREG:
-		if ((v->a_mode & VWRITE) && (vp->v_mount->mnt_flag & MNT_RDONLY)) {
+		if ((v->a_mode & VWRITE) &&
+	            (vp->v_mount->mnt_flag & MNT_RDONLY)) {
 			error = EROFS;
 			goto out;
 		}
@@ -292,10 +333,11 @@ tmpfs_access(struct vop_access_args *v)
 		goto out;
 	}
 
-	error = vop_helper_access(v, node->tn_uid, node->tn_gid, node->tn_mode, 0);
+	error = vop_helper_access(v, node->tn_uid, node->tn_gid,
+			          node->tn_mode, 0);
 
 out:
-
+	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return error;
 }
 
@@ -308,9 +350,9 @@ tmpfs_getattr(struct vop_getattr_args *v)
 	struct vattr *vap = v->a_vap;
 	struct tmpfs_node *node;
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
-	lwkt_gettoken(&vp->v_mount->mnt_token);
 	tmpfs_update(vp);
 
 	vap->va_type = vp->v_type;
@@ -355,6 +397,7 @@ tmpfs_setattr(struct vop_setattr_args *v)
 	int error = 0;
 	int kflags = 0;
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	if (error == 0 && (vap->va_flags != VNOVAL)) {
 		error = tmpfs_chflags(vp, vap->va_flags, cred);
 		kflags |= NOTE_ATTRIB;
@@ -394,7 +437,9 @@ tmpfs_setattr(struct vop_setattr_args *v)
 	tmpfs_update(vp);
 	tmpfs_knote(vp, kflags);
 
-	return error;
+	lwkt_reltoken(&vp->v_mount->mnt_token);
+
+	return (error);
 }
 
 /* --------------------------------------------------------------------- */
@@ -409,6 +454,7 @@ tmpfs_fsync(struct vop_fsync_args *v)
 	struct tmpfs_node *node;
 	struct vnode *vp = v->a_vp;
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	tmpfs_update(vp);
@@ -420,6 +466,8 @@ tmpfs_fsync(struct vop_fsync_args *v)
 				vfsync(v->a_vp, v->a_waitfor, 1, NULL, NULL);
 		}
 	}
+
+	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return 0;
 }
 
@@ -435,20 +483,36 @@ tmpfs_read (struct vop_read_args *ap)
 	off_t base_offset;
 	size_t offset;
 	size_t len;
+	size_t resid;
 	int error;
 
-	error = 0;
-	if (uio->uio_resid == 0) {
-		return error;
-	}
-
-	node = VP_TO_TMPFS_NODE(vp);
-
+	/*
+	 * Check the basics
+	 */
 	if (uio->uio_offset < 0)
 		return (EINVAL);
 	if (vp->v_type != VREG)
 		return (EINVAL);
 
+	/*
+	 * Extract node, try to shortcut the operation through
+	 * the VM page cache, allowing us to avoid buffer cache
+	 * overheads.
+	 */
+	node = VP_TO_TMPFS_NODE(vp);
+        resid = uio->uio_resid;
+        error = vop_helper_read_shortcut(ap);
+        if (error)
+                return error;
+        if (uio->uio_resid == 0) {
+		if (resid)
+			goto finished;
+		return error;
+	}
+
+	/*
+	 * Fall-through to our normal read code.
+	 */
 	while (uio->uio_resid > 0 && uio->uio_offset < node->tn_size) {
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
@@ -466,6 +530,18 @@ tmpfs_read (struct vop_read_args *ap)
 				break;
 			}
 			lwkt_reltoken(&vp->v_mount->mnt_token);
+
+			/*
+			 * tmpfs pretty much fiddles directly with the VM
+			 * system, don't let it exhaust it or we won't play
+			 * nice with other processes.
+			 *
+			 * Only do this if the VOP is coming from a normal
+			 * read/write.  The VM system handles the case for
+			 * UIO_NOCOPY.
+			 */
+			if (uio->uio_segflg != UIO_NOCOPY)
+				vm_wait_nominal();
 		}
 
 		/*
@@ -485,11 +561,12 @@ tmpfs_read (struct vop_read_args *ap)
 		}
 	}
 
+finished:
 	TMPFS_NODE_LOCK(node);
 	node->tn_status |= TMPFS_NODE_ACCESSED;
 	TMPFS_NODE_UNLOCK(node);
 
-	return(error);
+	return (error);
 }
 
 static int
@@ -608,12 +685,19 @@ tmpfs_write (struct vop_write_args *ap)
 		 * essentially all available memory to cache file data.
 		 * If we used bdwrite() the buffer cache would wind up
 		 * flushing the data to swap too quickly.
+		 *
+		 * tmpfs pretty much fiddles directly with the VM
+		 * system, don't let it exhaust it or we won't play
+		 * nice with other processes.  Only do this if the
+		 * VOP is coming from a normal read/write.  The VM system
+		 * handles the case for UIO_NOCOPY.
 		 */
 		bp->b_flags |= B_AGE;
 		if (uio->uio_segflg == UIO_NOCOPY) {
 			bawrite(bp);
 		} else {
 			buwrite(bp);
+			vm_wait_nominal();
 		}
 
 		if (bp->b_error) {
@@ -656,7 +740,6 @@ done:
 
 	tmpfs_knote(vp, kflags);
 
-
 	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return(error);
 }
@@ -666,10 +749,15 @@ tmpfs_advlock (struct vop_advlock_args *ap)
 {
 	struct tmpfs_node *node;
 	struct vnode *vp = ap->a_vp;
+	int error;
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
-	return (lf_advlock(ap, &node->tn_advlock, node->tn_size));
+	error = (lf_advlock(ap, &node->tn_advlock, node->tn_size));
+	lwkt_reltoken(&vp->v_mount->mnt_token);
+
+	return (error);
 }
 
 /*
@@ -784,6 +872,11 @@ tmpfs_nremove(struct vop_nremove_args *v)
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *dnode;
 	struct tmpfs_node *node;
+	struct mount *mp;
+
+	mp = dvp->v_mount;
+
+	lwkt_gettoken(&mp->mnt_token);
 
 	/*
 	 * We have to acquire the vp from v->a_nch because we will likely
@@ -795,6 +888,7 @@ tmpfs_nremove(struct vop_nremove_args *v)
 	 * will not get called when we release it.
 	 */
 	error = cache_vget(v->a_nch, v->a_cred, LK_SHARED, &vp);
+	KKASSERT(vp->v_mount == dvp->v_mount);
 	KKASSERT(error == 0);
 	vn_unlock(vp);
 
@@ -842,6 +936,7 @@ tmpfs_nremove(struct vop_nremove_args *v)
 
 out:
 	vrele(vp);
+	lwkt_reltoken(&mp->mnt_token);
 
 	return error;
 }
@@ -857,8 +952,14 @@ tmpfs_nlink(struct vop_nlink_args *v)
 	struct tmpfs_dirent *de;
 	struct tmpfs_node *node;
 	struct tmpfs_node *dnode;
+	struct mount *mp;
 	int error;
 
+	if (dvp->v_mount != vp->v_mount)
+		return(EXDEV);
+	mp = dvp->v_mount;
+
+	lwkt_gettoken(&mp->mnt_token);
 	KKASSERT(dvp != vp); /* XXX When can this be false? */
 
 	node = VP_TO_TMPFS_NODE(vp);
@@ -894,7 +995,7 @@ tmpfs_nlink(struct vop_nlink_args *v)
 
 	/* Allocate a new directory entry to represent the node. */
 	error = tmpfs_alloc_dirent(VFS_TO_TMPFS(vp->v_mount), node,
-	    ncp->nc_name, ncp->nc_nlen, &de);
+				   ncp->nc_name, ncp->nc_nlen, &de);
 	if (error != 0)
 		goto out;
 
@@ -915,6 +1016,7 @@ tmpfs_nlink(struct vop_nlink_args *v)
 	error = 0;
 
 out:
+	lwkt_reltoken(&mp->mnt_token);
 	return error;
 }
 
@@ -935,10 +1037,15 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	struct tmpfs_node *fnode;
 	struct tmpfs_node *tnode;
 	struct tmpfs_node *tdnode;
+	struct mount *mp;
 	char *newname;
 	char *oldname;
 	int error;
 
+	mp = fdvp->v_mount;
+	KKASSERT(fdvp->v_mount == fvp->v_mount);
+
+	lwkt_gettoken(&mp->mnt_token);
 	/*
 	 * Because tvp can get overwritten we have to vget it instead of
 	 * just vref or use it, otherwise it's VINACTIVE flag may not get
@@ -1121,6 +1228,8 @@ out:
 	if (tvp)
 		vrele(tvp);
 
+	lwkt_reltoken(&mp->mnt_token);
+
 	return error;
 }
 
@@ -1134,8 +1243,12 @@ tmpfs_nmkdir(struct vop_nmkdir_args *v)
 	struct namecache *ncp = v->a_nch->ncp;
 	struct vattr *vap = v->a_vap;
 	struct ucred *cred = v->a_cred;
+	struct mount *mp;
 	int error;
 
+	mp = dvp->v_mount;
+
+	lwkt_gettoken(&mp->mnt_token);
 	KKASSERT(vap->va_type == VDIR);
 
 	error = tmpfs_alloc_file(dvp, vpp, vap, ncp, cred, NULL);
@@ -1144,6 +1257,8 @@ tmpfs_nmkdir(struct vop_nmkdir_args *v)
 		cache_setvp(v->a_nch, *vpp);
 		tmpfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
 	}
+
+	lwkt_reltoken(&mp->mnt_token);
 
 	return error;
 }
@@ -1160,7 +1275,11 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *dnode;
 	struct tmpfs_node *node;
+	struct mount *mp;
 	int error;
+
+	mp = dvp->v_mount;
+	lwkt_gettoken(&mp->mnt_token);
 
 	/*
 	 * We have to acquire the vp from v->a_nch because we will likely
@@ -1261,6 +1380,8 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 out:
 	vrele(vp);
 
+	lwkt_reltoken(&mp->mnt_token);
+
 	return error;
 }
 
@@ -1275,8 +1396,10 @@ tmpfs_nsymlink(struct vop_nsymlink_args *v)
 	struct vattr *vap = v->a_vap;
 	struct ucred *cred = v->a_cred;
 	char *target = v->a_target;
+	struct mount *mp = dvp->v_mount;
 	int error;
 
+	lwkt_gettoken(&mp->mnt_token);
 	vap->va_type = VLNK;
 	error = tmpfs_alloc_file(dvp, vpp, vap, ncp, cred, target);
 	if (error == 0) {
@@ -1284,6 +1407,8 @@ tmpfs_nsymlink(struct vop_nsymlink_args *v)
 		cache_setunresolved(v->a_nch);
 		cache_setvp(v->a_nch, *vpp);
 	}
+
+	lwkt_reltoken(&mp->mnt_token);
 
 	return error;
 }
@@ -1303,10 +1428,15 @@ tmpfs_readdir(struct vop_readdir_args *v)
 	off_t startoff;
 	off_t cnt = 0;
 	struct tmpfs_node *node;
+	struct mount *mp = vp->v_mount;
+
+	lwkt_gettoken(&mp->mnt_token);
 
 	/* This operation only makes sense on directory nodes. */
-	if (vp->v_type != VDIR)
+	if (vp->v_type != VDIR) {
+		lwkt_reltoken(&mp->mnt_token);
 		return ENOTDIR;
+	}
 
 	tmp = VFS_TO_TMPFS(vp->v_mount);
 	node = VP_TO_TMPFS_DIR(vp);
@@ -1373,6 +1503,8 @@ outok:
 		KKASSERT(uio->uio_offset == off);
 	}
 
+	lwkt_reltoken(&mp->mnt_token);
+
 	return error;
 }
 
@@ -1383,9 +1515,11 @@ tmpfs_readlink(struct vop_readlink_args *v)
 {
 	struct vnode *vp = v->a_vp;
 	struct uio *uio = v->a_uio;
-
+	struct mount *mp = vp->v_mount;
 	int error;
 	struct tmpfs_node *node;
+
+	lwkt_gettoken(&mp->mnt_token);
 
 	KKASSERT(uio->uio_offset == 0);
 	KKASSERT(vp->v_type == VLNK);
@@ -1398,6 +1532,8 @@ tmpfs_readlink(struct vop_readlink_args *v)
 	node->tn_status |= TMPFS_NODE_ACCESSED;
 	TMPFS_NODE_UNLOCK(node);
 
+	lwkt_reltoken(&mp->mnt_token);
+
 	return error;
 }
 
@@ -1408,7 +1544,10 @@ tmpfs_inactive(struct vop_inactive_args *v)
 {
 	struct vnode *vp = v->a_vp;
 	struct tmpfs_node *node;
+	struct mount *mp;
 
+	mp = vp->v_mount;
+	lwkt_gettoken(&mp->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	/*
@@ -1416,6 +1555,7 @@ tmpfs_inactive(struct vop_inactive_args *v)
 	 */
 	if (node == NULL) {
 		vrecycle(vp);
+		lwkt_reltoken(&mp->mnt_token);
 		return(0);
 	}
 
@@ -1438,13 +1578,12 @@ tmpfs_inactive(struct vop_inactive_args *v)
 	} else {
 		TMPFS_NODE_UNLOCK(node);
 	}
+	lwkt_reltoken(&mp->mnt_token);
 
 	return 0;
 }
 
 /* --------------------------------------------------------------------- */
-#include <vm/vm_object.h>
-#include <vm/vm_page.h>
 
 int
 tmpfs_reclaim(struct vop_reclaim_args *v)
@@ -1452,9 +1591,14 @@ tmpfs_reclaim(struct vop_reclaim_args *v)
 	struct vnode *vp = v->a_vp;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
+	struct mount *mp;
+
+	mp = vp->v_mount;
+	lwkt_gettoken(&mp->mnt_token);
 
 	node = VP_TO_TMPFS_NODE(vp);
 	tmp = VFS_TO_TMPFS(vp->v_mount);
+	KKASSERT(mp == tmp->tm_mount);
 
 	tmpfs_free_vp(vp);
 
@@ -1474,6 +1618,7 @@ tmpfs_reclaim(struct vop_reclaim_args *v)
 	} else {
 		TMPFS_NODE_UNLOCK(node);
 	}
+	lwkt_reltoken(&mp->mnt_token);
 
 	KKASSERT(vp->v_data == NULL);
 	return 0;
@@ -1488,9 +1633,11 @@ tmpfs_mountctl(struct vop_mountctl_args *ap)
 	struct mount *mp; 
 	int rc; 
 
+	mp = ap->a_head.a_ops->head.vv_mount;
+	lwkt_gettoken(&mp->mnt_token);
+
 	switch (ap->a_op) { 
 	case (MOUNTCTL_SET_EXPORT): 
-		mp = ap->a_head.a_ops->head.vv_mount; 
 		tmp = (struct tmpfs_mount *) mp->mnt_data; 
  
 		if (ap->a_ctllen != sizeof(struct export_args)) 
@@ -1503,6 +1650,8 @@ tmpfs_mountctl(struct vop_mountctl_args *ap)
 		rc = vop_stdmountctl(ap); 
 		break; 
 	} 
+
+	lwkt_reltoken(&mp->mnt_token);
 	return (rc); 
 } 
 

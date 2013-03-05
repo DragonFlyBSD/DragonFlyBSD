@@ -736,7 +736,7 @@ static device_method_t pir_methods[] = {
 	DEVMETHOD(device_attach,	pir_attach),
 	DEVMETHOD(device_resume,	pir_resume),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t pir_driver = {

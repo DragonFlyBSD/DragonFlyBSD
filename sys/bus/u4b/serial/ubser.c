@@ -193,7 +193,7 @@ static device_method_t ubser_methods[] = {
 	DEVMETHOD(device_probe, ubser_probe),
 	DEVMETHOD(device_attach, ubser_attach),
 	DEVMETHOD(device_detach, ubser_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t ubser_devclass;

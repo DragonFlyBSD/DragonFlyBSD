@@ -227,7 +227,7 @@ static device_method_t ips_driver_methods[] = {
 	DEVMETHOD(device_attach, ips_pci_attach),
 	DEVMETHOD(device_detach, ips_pci_detach),
 	DEVMETHOD(device_shutdown, ips_pci_shutdown),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ips_pci_driver = {

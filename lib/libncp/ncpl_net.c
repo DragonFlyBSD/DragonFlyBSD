@@ -68,7 +68,7 @@ ncp_find_server_ipx(struct ncp_conn_loginfo *li, int type) {
 	strcpy(server, li->server);
 	ncp_str_upper(server);
 
-	if ((error = sap_find_nearest(type, &li->ipxaddr, nearest)) != 0) {
+	if ((error = sap_find_nearest(type, &li->addr.ipxaddr, nearest)) != 0) {
 		return error;
 	}
 	/* if no server specified return info about nearest */
@@ -76,7 +76,7 @@ ncp_find_server_ipx(struct ncp_conn_loginfo *li, int type) {
 		strcpy(li->server, nearest);
 		return 0;
 	}
-/*	printf("%s\n",ipx_ntoa(li->ipxaddr.sipx_addr));*/
+/*	printf("%s\n",ipx_ntoa(li->addr.ipxaddr.sipx_addr));*/
 	if (strcmp(server, nearest) == 0) {
 		return 0;
 	}
@@ -92,10 +92,10 @@ ncp_find_server_ipx(struct ncp_conn_loginfo *li, int type) {
 	if ((error = ncp_disconnect(connid)) != 0) {
 		return error;
 	}
-	li->ipxaddr.sipx_family = AF_IPX;
-	li->ipxaddr.sipx_addr.x_net = n_addr->x_net;
-	li->ipxaddr.sipx_port = n_addr->x_port;
-	li->ipxaddr.sipx_addr.x_host = n_addr->x_host;
+	li->addr.ipxaddr.sipx_family = AF_IPX;
+	li->addr.ipxaddr.sipx_addr.x_net = n_addr->x_net;
+	li->addr.ipxaddr.sipx_port = n_addr->x_port;
+	li->addr.ipxaddr.sipx_addr.x_host = n_addr->x_host;
 	return 0;
 }
 
@@ -119,11 +119,11 @@ ncp_find_server_in(struct ncp_conn_loginfo *li, int type, char *server_name) {
 		return 1;
 	}
 	l = sizeof(struct sockaddr_in);
-	bzero(&li->inaddr, l);
-	li->inaddr.sin_len = l;
-	li->inaddr.sin_family = h->h_addrtype;
-	memcpy(&li->inaddr.sin_addr.s_addr, h->h_addr, 4);
-	li->inaddr.sin_port = htons(524); /* ncp */
+	bzero(&li->addr.inaddr, l);
+	li->addr.inaddr.sin_len = l;
+	li->addr.inaddr.sin_family = h->h_addrtype;
+	memcpy(&li->addr.inaddr.sin_addr.s_addr, h->h_addr, 4);
+	li->addr.inaddr.sin_port = htons(524); /* ncp */
 	return 0;
 }
 

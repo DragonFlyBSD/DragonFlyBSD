@@ -346,7 +346,7 @@ static kobj_method_t ural_methods[] = {
 	DEVMETHOD(device_probe, ural_match),
 	DEVMETHOD(device_attach, ural_attach),
 	DEVMETHOD(device_detach, ural_detach),
-	{0,0}
+	DEVMETHOD_END
 };
 
 static driver_t ural_driver = {

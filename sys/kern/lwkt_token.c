@@ -82,6 +82,7 @@ extern int lwkt_sched_debug;
 #endif
 
 static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
+struct spinlock		tok_debug_spin = SPINLOCK_INITIALIZER(&tok_debug_spin);
 
 #define TOKEN_STRING	"REF=%p TOK=%p TD=%p"
 #define TOKEN_ARGS	lwkt_tokref_t ref, lwkt_token_t tok, struct thread *td
@@ -162,6 +163,11 @@ SYSCTL_LONG(_lwkt, OID_AUTO, tty_collisions, CTLFLAG_RW,
     &tty_token.t_collisions, 0, "Collision counter of tty_token");
 SYSCTL_LONG(_lwkt, OID_AUTO, vnode_collisions, CTLFLAG_RW,
     &vnode_token.t_collisions, 0, "Collision counter of vnode_token");
+
+int tokens_debug_output;
+SYSCTL_INT(_lwkt, OID_AUTO, tokens_debug_output, CTLFLAG_RW,
+    &tokens_debug_output, 0, "Generate stack trace N times");
+
 
 #ifdef DEBUG_LOCKS_LATENCY
 
@@ -653,6 +659,17 @@ good:
 	++tok->t_collisions;
 	logtoken(fail, ref);
 	td->td_toks_have = td->td_toks_stop - 1;
+
+	if (tokens_debug_output > 0) {
+		--tokens_debug_output;
+		spin_lock(&tok_debug_spin);
+		kprintf("Excl Token thread %p %s %s\n",
+			td, tok->t_desc, td->td_comm);
+		print_backtrace(6);
+		kprintf("\n");
+		spin_unlock(&tok_debug_spin);
+	}
+
 	lwkt_switch();
 	logtoken(succ, ref);
 	KKASSERT(tok->t_ref == ref);
@@ -705,6 +722,17 @@ lwkt_gettoken_shared(lwkt_token_t tok)
 	++tok->t_collisions;
 	logtoken(fail, ref);
 	td->td_toks_have = td->td_toks_stop - 1;
+
+	if (tokens_debug_output > 0) {
+		--tokens_debug_output;
+		spin_lock(&tok_debug_spin);
+		kprintf("Shar Token thread %p %s %s\n",
+			td, tok->t_desc, td->td_comm);
+		print_backtrace(6);
+		kprintf("\n");
+		spin_unlock(&tok_debug_spin);
+	}
+
 	lwkt_switch();
 	logtoken(succ, ref);
 }

@@ -480,6 +480,7 @@ void	bus_data_generation_update(void);
  * Shorthand for constructing method tables.
  */
 #define DEVMETHOD	KOBJMETHOD
+#define DEVMETHOD_END	KOBJMETHOD_END
 
 /*
  * Some common device interfaces.

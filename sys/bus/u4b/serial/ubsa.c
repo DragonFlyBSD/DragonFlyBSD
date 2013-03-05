@@ -257,7 +257,7 @@ static device_method_t ubsa_methods[] = {
 	DEVMETHOD(device_probe, ubsa_probe),
 	DEVMETHOD(device_attach, ubsa_attach),
 	DEVMETHOD(device_detach, ubsa_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t ubsa_devclass;

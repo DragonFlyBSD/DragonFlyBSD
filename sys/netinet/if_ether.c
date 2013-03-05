@@ -166,6 +166,9 @@ static struct llinfo_arp *
 		arplookup(in_addr_t, boolean_t, boolean_t, boolean_t);
 #ifdef INET
 static void	in_arpinput(struct mbuf *);
+static void	in_arpreply(struct mbuf *m, in_addr_t, in_addr_t);
+static void	arp_update_msghandler(netmsg_t);
+static void	arp_reply_msghandler(netmsg_t);
 #endif
 
 static struct callout	arptimer_ch[MAXCPU];
@@ -477,7 +480,7 @@ int
 arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	   struct sockaddr *dst, u_char *desten)
 {
-	struct rtentry *rt;
+	struct rtentry *rt = NULL;
 	struct llinfo_arp *la = NULL;
 	struct sockaddr_dl *sdl;
 
@@ -829,15 +832,6 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 	}
 }
 
-struct netmsg_arp_update {
-	struct netmsg_base base;
-	struct mbuf	*m;
-	in_addr_t	saddr;
-	boolean_t	create;
-};
-
-static void arp_update_msghandler(netmsg_t msg);
-
 /*
  * Called from arpintr() - this routine is run from a single cpu.
  */
@@ -846,16 +840,12 @@ in_arpinput(struct mbuf *m)
 {
 	struct arphdr *ah;
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
-	struct ether_header *eh;
-	struct rtentry *rt;
 	struct ifaddr_container *ifac;
 	struct in_ifaddr_container *iac;
 	struct in_ifaddr *ia = NULL;
-	struct sockaddr sa;
 	struct in_addr isaddr, itaddr, myaddr;
-	struct netmsg_arp_update msg;
+	struct netmsg_inarp *msg;
 	uint8_t *enaddr = NULL;
-	int op;
 	int req_len;
 	char hexstr[64];
 
@@ -866,7 +856,6 @@ in_arpinput(struct mbuf *m)
 	}
 
 	ah = mtod(m, struct arphdr *);
-	op = ntohs(ah->ar_op);
 	memcpy(&isaddr, ar_spa(ah), sizeof isaddr);
 	memcpy(&itaddr, ar_tpa(ah), sizeof itaddr);
 
@@ -1039,25 +1028,99 @@ match:
 		return;
 	}
 
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
-		    0, arp_update_msghandler);
-	msg.m = m;
-	msg.saddr = isaddr.s_addr;
-	msg.create = (itaddr.s_addr == myaddr.s_addr);
-	lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
+	/*
+	 * Update all CPU's routing tables with this ARP packet
+	 */
+	msg = &m->m_hdr.mh_arpmsg;
+	netmsg_init(&msg->base, NULL, &netisr_apanic_rport,
+	    0, arp_update_msghandler);
+	msg->m = m;
+	msg->saddr = isaddr.s_addr;
+	msg->taddr = itaddr.s_addr;
+	msg->myaddr = myaddr.s_addr;
+	lwkt_sendmsg(rtable_portfn(0), &msg->base.lmsg);
+
+	/*
+	 * Just return here; after all CPUs's routing tables are
+	 * properly updated by this ARP packet, an ARP reply will
+	 * be generated if appropriate.
+	 */
+	return;
 reply:
-	if (op != ARPOP_REQUEST) {
+	in_arpreply(m, itaddr.s_addr, myaddr.s_addr);
+}
+
+static void
+arp_reply_msghandler(netmsg_t msg)
+{
+	struct netmsg_inarp *rmsg = (struct netmsg_inarp *)msg;
+
+	in_arpreply(rmsg->m, rmsg->taddr, rmsg->myaddr);
+	/* Don't reply this netmsg; netmsg_inarp is embedded in mbuf */
+}
+
+static void
+arp_update_msghandler(netmsg_t msg)
+{
+	struct netmsg_inarp *rmsg = (struct netmsg_inarp *)msg;
+	int nextcpu;
+
+	/*
+	 * This message handler will be called on all of the CPUs,
+	 * however, we only need to generate rtmsg on CPU0.
+	 */
+	arp_update_oncpu(rmsg->m, rmsg->saddr, rmsg->taddr == rmsg->myaddr,
+	    mycpuid == 0 ? RTL_REPORTMSG : RTL_DONTREPORT, mycpuid == 0);
+
+	nextcpu = mycpuid + 1;
+	if (nextcpu < ncpus) {
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
+	} else {
+		struct mbuf *m = rmsg->m;
+		in_addr_t saddr = rmsg->saddr;
+		in_addr_t taddr = rmsg->taddr;
+		in_addr_t myaddr = rmsg->myaddr;
+
+		/*
+		 * Dispatch this mbuf to netisr0 to perform ARP reply,
+		 * if appropriate.
+		 * NOTE: netmsg_inarp is embedded in this mbuf.
+		 */
+		netmsg_init(&rmsg->base, NULL, &netisr_apanic_rport,
+		    0, arp_reply_msghandler);
+		rmsg->m = m;
+		rmsg->saddr = saddr;
+		rmsg->taddr = taddr;
+		rmsg->myaddr = myaddr;
+		lwkt_sendmsg(netisr_portfn(0), &rmsg->base.lmsg);
+	}
+}
+
+static void
+in_arpreply(struct mbuf *m, in_addr_t taddr, in_addr_t myaddr)
+{
+	struct ifnet *ifp = m->m_pkthdr.rcvif;
+	const uint8_t *enaddr;
+	struct arphdr *ah;
+	struct sockaddr sa;
+	struct ether_header *eh;
+
+	ah = mtod(m, struct arphdr *);
+	if (ntohs(ah->ar_op) != ARPOP_REQUEST) {
 		m_freem(m);
 		return;
 	}
-	if (itaddr.s_addr == myaddr.s_addr) {
+
+	enaddr = (const uint8_t *)IF_LLADDR(ifp);
+	if (taddr == myaddr) {
 		/* I am the target */
 		memcpy(ar_tha(ah), ar_sha(ah), ah->ar_hln);
 		memcpy(ar_sha(ah), enaddr, ah->ar_hln);
 	} else {
 		struct llinfo_arp *la;
+		struct rtentry *rt;
 
-		la = arplookup(itaddr.s_addr, FALSE, RTL_DONTREPORT, SIN_PROXY);
+		la = arplookup(taddr, FALSE, RTL_DONTREPORT, SIN_PROXY);
 		if (la == NULL) {
 			struct sockaddr_in sin;
 
@@ -1069,7 +1132,7 @@ reply:
 			bzero(&sin, sizeof sin);
 			sin.sin_family = AF_INET;
 			sin.sin_len = sizeof sin;
-			sin.sin_addr = itaddr;
+			sin.sin_addr.s_addr = taddr;
 
 			rt = rtpurelookup((struct sockaddr *)&sin);
 			if (rt == NULL) {
@@ -1102,7 +1165,7 @@ reply:
 	}
 
 	memcpy(ar_tpa(ah), ar_spa(ah), ah->ar_pln);
-	memcpy(ar_spa(ah), &itaddr, ah->ar_pln);
+	memcpy(ar_spa(ah), &taddr, ah->ar_pln);
 	ah->ar_op = htons(ARPOP_REPLY);
 	ah->ar_pro = htons(ETHERTYPE_IP); /* let's be sure! */
 	switch (ifp->if_type) {
@@ -1120,27 +1183,6 @@ reply:
 	sa.sa_family = AF_UNSPEC;
 	sa.sa_len = sizeof sa;
 	ifp->if_output(ifp, m, &sa, NULL);
-}
-
-static void
-arp_update_msghandler(netmsg_t msg)
-{
-	struct netmsg_arp_update *rmsg = (struct netmsg_arp_update *)msg;
-	int nextcpu;
-
-	/*
-	 * This message handler will be called on all of the CPUs,
-	 * however, we only need to generate rtmsg on CPU0.
-	 */
-	arp_update_oncpu(rmsg->m, rmsg->saddr, rmsg->create,
-			 mycpuid == 0 ? RTL_REPORTMSG : RTL_DONTREPORT,
-			 mycpuid == 0);
-
-	nextcpu = mycpuid + 1;
-	if (nextcpu < ncpus)
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
-	else
-		lwkt_replymsg(&rmsg->base.lmsg, 0);
 }
 
 #endif	/* INET */

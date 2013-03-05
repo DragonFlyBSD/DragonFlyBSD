@@ -189,7 +189,7 @@ static device_method_t uchcom_methods[] = {
 	DEVMETHOD(device_probe, uchcom_match),
 	DEVMETHOD(device_attach, uchcom_attach),
 	DEVMETHOD(device_detach, uchcom_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t uchcom_driver = {

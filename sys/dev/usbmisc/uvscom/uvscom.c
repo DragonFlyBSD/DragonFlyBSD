@@ -212,7 +212,7 @@ static device_method_t uvscom_methods[] = {
 	DEVMETHOD(device_probe, uvscom_match),
 	DEVMETHOD(device_attach, uvscom_attach),
 	DEVMETHOD(device_detach, uvscom_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t uvscom_driver = {

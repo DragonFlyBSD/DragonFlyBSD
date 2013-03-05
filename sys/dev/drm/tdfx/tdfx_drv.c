@@ -96,7 +96,7 @@ static device_method_t tdfx_methods[] = {
 	DEVMETHOD(device_attach,	tdfx_attach),
 	DEVMETHOD(device_detach,	tdfx_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t tdfx_driver = {

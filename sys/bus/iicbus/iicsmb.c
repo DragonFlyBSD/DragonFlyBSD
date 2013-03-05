@@ -122,7 +122,7 @@ static device_method_t iicsmb_methods[] = {
 	DEVMETHOD(smbus_bwrite,		iicsmb_bwrite),
 	DEVMETHOD(smbus_bread,		iicsmb_bread),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t iicsmb_driver = {

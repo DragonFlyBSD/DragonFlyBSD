@@ -66,16 +66,14 @@
 
 #define VKE_CHUNK	8 /* number of mbufs to queue before interrupting */
 
-#define NETFIFOSIZE	256
-#define NETFIFOMASK	(NETFIFOSIZE -1)
-#define NETFIFOINDEX(u) ((u) & NETFIFOMASK)
+#define NETFIFOINDEX(u, sc) ((u) & ((sc)->sc_ringsize - 1))
 
 #define VKE_COTD_RUN	0
 #define VKE_COTD_EXIT	1
 #define VKE_COTD_DEAD	2
 
 struct vke_fifo {
-	struct mbuf	*array[NETFIFOSIZE];
+	struct mbuf	**array;
 	int		rindex;
 	int		windex;
 };
@@ -98,6 +96,12 @@ struct vke_softc {
 	fifo_t			sc_txfifo;
 	fifo_t			sc_txfifo_done;
 	fifo_t			sc_rxfifo;
+
+	int			sc_ringsize;
+
+	long			cotd_ipackets;
+	long			cotd_oerrors;
+	long			cotd_opackets;
 
 	struct sysctl_ctx_list	sc_sysctl_ctx;
 	struct sysctl_oid	*sc_sysctl_tree;
@@ -153,11 +157,11 @@ vke_txfifo_done_enqueue(struct vke_softc *sc, struct mbuf *m)
 {
 	fifo_t fifo = sc->sc_txfifo_done;
 
-	while (NETFIFOINDEX(fifo->windex + 1) == NETFIFOINDEX(fifo->rindex)) {
+	while (NETFIFOINDEX(fifo->windex + 1, sc) == NETFIFOINDEX(fifo->rindex, sc)) {
 		usleep(20000);
 	}
 
-	fifo->array[NETFIFOINDEX(fifo->windex)] = m;
+	fifo->array[NETFIFOINDEX(fifo->windex, sc)] = m;
 	cpu_sfence();
 	++fifo->windex;
 	return (0);
@@ -172,11 +176,11 @@ vke_txfifo_done_dequeue(struct vke_softc *sc, struct mbuf *nm)
 	fifo_t fifo = sc->sc_txfifo_done;
 	struct mbuf *m;
 
-	if (NETFIFOINDEX(fifo->rindex) == NETFIFOINDEX(fifo->windex))
+	if (NETFIFOINDEX(fifo->rindex, sc) == NETFIFOINDEX(fifo->windex, sc))
 		return (NULL);
 
-	m = fifo->array[NETFIFOINDEX(fifo->rindex)];
-	fifo->array[NETFIFOINDEX(fifo->rindex)] = nm;
+	m = fifo->array[NETFIFOINDEX(fifo->rindex, sc)];
+	fifo->array[NETFIFOINDEX(fifo->rindex, sc)] = nm;
 	cpu_lfence();
 	++fifo->rindex;
 	return (m);
@@ -190,10 +194,10 @@ vke_txfifo_enqueue(struct vke_softc *sc, struct mbuf *m)
 {
 	fifo_t fifo = sc->sc_txfifo;
 
-	if (NETFIFOINDEX(fifo->windex + 1) == NETFIFOINDEX(fifo->rindex))
+	if (NETFIFOINDEX(fifo->windex + 1, sc) == NETFIFOINDEX(fifo->rindex, sc))
 		return (-1);
 
-	fifo->array[NETFIFOINDEX(fifo->windex)] = m;
+	fifo->array[NETFIFOINDEX(fifo->windex, sc)] = m;
 	cpu_sfence();
 	++fifo->windex;
 
@@ -210,11 +214,11 @@ vke_txfifo_dequeue(struct vke_softc *sc)
 	fifo_t fifo = sc->sc_txfifo;
 	struct mbuf *m;
 
-	if (NETFIFOINDEX(fifo->rindex) == NETFIFOINDEX(fifo->windex))
+	if (NETFIFOINDEX(fifo->rindex, sc) == NETFIFOINDEX(fifo->windex, sc))
 		return (NULL);
 
-	m = fifo->array[NETFIFOINDEX(fifo->rindex)];
-	fifo->array[NETFIFOINDEX(fifo->rindex)] = NULL;
+	m = fifo->array[NETFIFOINDEX(fifo->rindex, sc)];
+	fifo->array[NETFIFOINDEX(fifo->rindex, sc)] = NULL;
 
 	cpu_lfence();
 	++fifo->rindex;
@@ -226,7 +230,7 @@ vke_txfifo_empty(struct vke_softc *sc)
 {
 	fifo_t fifo = sc->sc_txfifo;
 
-	if (NETFIFOINDEX(fifo->rindex) == NETFIFOINDEX(fifo->windex))
+	if (NETFIFOINDEX(fifo->rindex, sc) == NETFIFOINDEX(fifo->windex, sc))
 		return (1);
 	return(0);
 }
@@ -242,11 +246,11 @@ vke_rxfifo_dequeue(struct vke_softc *sc, struct mbuf *newm)
 	fifo_t fifo = sc->sc_rxfifo;
 	struct mbuf *m;
 
-	if (NETFIFOINDEX(fifo->rindex) == NETFIFOINDEX(fifo->windex))
+	if (NETFIFOINDEX(fifo->rindex, sc) == NETFIFOINDEX(fifo->windex, sc))
 		return (NULL);
 
-	m = fifo->array[NETFIFOINDEX(fifo->rindex)];
-	fifo->array[NETFIFOINDEX(fifo->rindex)] = newm;
+	m = fifo->array[NETFIFOINDEX(fifo->rindex, sc)];
+	fifo->array[NETFIFOINDEX(fifo->rindex, sc)] = newm;
 	cpu_lfence();
 	++fifo->rindex;
 	return (m);
@@ -261,10 +265,10 @@ vke_rxfifo_sniff(struct vke_softc *sc)
 	fifo_t fifo = sc->sc_rxfifo;
 	struct mbuf *m;
 
-	if (NETFIFOINDEX(fifo->rindex) == NETFIFOINDEX(fifo->windex))
+	if (NETFIFOINDEX(fifo->rindex, sc) == NETFIFOINDEX(fifo->windex, sc))
 		return (NULL);
 
-	m = fifo->array[NETFIFOINDEX(fifo->rindex)];
+	m = fifo->array[NETFIFOINDEX(fifo->rindex, sc)];
 	cpu_lfence();
 	return (m);
 }
@@ -274,6 +278,7 @@ vke_init(void *xsc)
 {
 	struct vke_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	size_t ringsize = sc->sc_ringsize * sizeof(struct mbuf *);
 	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
@@ -283,11 +288,17 @@ vke_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifsq_clr_oactive(ifq_get_subq_default(&ifp->if_snd));
 
+	/*
+	 * Allocate memory for FIFO structures and mbufs.
+	 */
 	sc->sc_txfifo = kmalloc(sizeof(*sc->sc_txfifo), M_DEVBUF, M_WAITOK);
 	sc->sc_txfifo_done = kmalloc(sizeof(*sc->sc_txfifo_done), M_DEVBUF, M_WAITOK);
-
 	sc->sc_rxfifo = kmalloc(sizeof(*sc->sc_rxfifo), M_DEVBUF, M_WAITOK);
-	for (i = 0; i < NETFIFOSIZE; i++) {
+	sc->sc_txfifo->array = kmalloc(ringsize, M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->sc_txfifo_done->array = kmalloc(ringsize, M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->sc_rxfifo->array = kmalloc(ringsize, M_DEVBUF, M_WAITOK | M_ZERO);
+
+	for (i = 0; i < sc->sc_ringsize; i++) {
 		sc->sc_rxfifo->array[i] = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
 		sc->sc_txfifo->array[i] = NULL;
 		sc->sc_txfifo_done->array[i] = NULL;
@@ -386,8 +397,9 @@ vke_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 		len = strlen(ifs->ascii);
 		if (len < sizeof(ifs->ascii)) {
-			ksnprintf(ifs->ascii + len, sizeof(ifs->ascii) - len,
-				  "\tBacked by tap%d\n", sc->sc_tap_unit);
+			if (sc->sc_tap_unit >= 0)
+				ksnprintf(ifs->ascii + len, sizeof(ifs->ascii) - len,
+				    "\tBacked by tap%d\n", sc->sc_tap_unit);
 		}
 		break;
 	}
@@ -438,7 +450,7 @@ vke_stop(struct vke_softc *sc)
 			cothread_delete(&sc->cotd_rx);
 		}
 
-		for (i = 0; i < NETFIFOSIZE; i++) {
+		for (i = 0; i < sc->sc_ringsize; i++) {
 			if (sc->sc_rxfifo && sc->sc_rxfifo->array[i]) {
 				m_freem(sc->sc_rxfifo->array[i]);
 				sc->sc_rxfifo->array[i] = NULL;
@@ -454,16 +466,22 @@ vke_stop(struct vke_softc *sc)
 		}
 
 		if (sc->sc_txfifo) {
+			if (sc->sc_txfifo->array)
+				kfree(sc->sc_txfifo->array, M_DEVBUF);
 			kfree(sc->sc_txfifo, M_DEVBUF);
 			sc->sc_txfifo = NULL;
 		}
 
 		if (sc->sc_txfifo_done) {
+			if (sc->sc_txfifo_done->array)
+				kfree(sc->sc_txfifo_done->array, M_DEVBUF);
 			kfree(sc->sc_txfifo_done, M_DEVBUF);
 			sc->sc_txfifo_done = NULL;
 		}
 
 		if (sc->sc_rxfifo) {
+			if (sc->sc_rxfifo->array)
+				kfree(sc->sc_rxfifo->array, M_DEVBUF);
 			kfree(sc->sc_rxfifo, M_DEVBUF);
 			sc->sc_rxfifo = NULL;
 		}
@@ -492,6 +510,10 @@ vke_rx_intr(cothread_t cotd)
 		cothread_unlock(cotd, 0);
 		ifnet_deserialize_all(ifp);
 		return;
+	}
+	if (sc->cotd_ipackets) {
+		IFNET_STAT_INC(ifp, ipackets, 1);
+		sc->cotd_ipackets = 0;
 	}
 	cothread_unlock(cotd, 0);
 
@@ -537,6 +559,14 @@ vke_tx_intr(cothread_t cotd)
 		ifnet_deserialize_all(ifp);
 		return;
 	}
+	if (sc->cotd_opackets) {
+		IFNET_STAT_INC(ifp, opackets, 1);
+		sc->cotd_opackets = 0;
+	}
+	if (sc->cotd_oerrors) {
+		IFNET_STAT_INC(ifp, oerrors, 1);
+		sc->cotd_oerrors = 0;
+	}
 	cothread_unlock(cotd, 0);
 
 	/*
@@ -555,6 +585,8 @@ vke_tx_intr(cothread_t cotd)
 
 /*
  * vke_rx_thread() is the body of the receive cothread.
+ *
+ * WARNING!  THIS IS A COTHREAD WHICH HAS NO PER-CPU GLOBALDATA!!!!!
  */
 static void
 vke_rx_thread(cothread_t cotd)
@@ -582,8 +614,8 @@ vke_rx_thread(cothread_t cotd)
 		 * Wait for the RX FIFO to be loaded with
 		 * empty mbufs.
 		 */
-		if (NETFIFOINDEX(fifo->windex + 1) ==
-		    NETFIFOINDEX(fifo->rindex)) {
+		if (NETFIFOINDEX(fifo->windex + 1, sc) ==
+		    NETFIFOINDEX(fifo->rindex, sc)) {
 			usleep(20000);
 			continue;
 		}
@@ -591,12 +623,14 @@ vke_rx_thread(cothread_t cotd)
 		/*
 		 * Load data into the rx fifo
 		 */
-		m = fifo->array[NETFIFOINDEX(fifo->windex)];
+		m = fifo->array[NETFIFOINDEX(fifo->windex, sc)];
 		if (m == NULL)
 			continue;
 		n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
 		if (n > 0) {
-			IFNET_STAT_INC(ifp, ipackets, 1);
+			/* no mycpu in cothread */
+			/*IFNET_STAT_INC(ifp, ipackets, 1);*/
+			++sc->cotd_ipackets;
 			m->m_pkthdr.rcvif = ifp;
 			m->m_pkthdr.len = m->m_len = n;
 			cpu_sfence();
@@ -613,7 +647,8 @@ vke_rx_thread(cothread_t cotd)
 			FD_SET(sc->sc_fd, &fdset);
 
 			if (select(sc->sc_fd + 1, &fdset, NULL, NULL, &tv) == -1) {
-				kprintf(VKE_DEVNAME "%d: select failed for "
+				fprintf(stderr,
+					VKE_DEVNAME "%d: select failed for "
 					"TAP device\n", sc->sc_unit);
 				usleep(1000000);
 			}
@@ -625,13 +660,15 @@ vke_rx_thread(cothread_t cotd)
 
 /*
  * vke_tx_thread() is the body of the transmit cothread.
+ *
+ * WARNING!  THIS IS A COTHREAD WHICH HAS NO PER-CPU GLOBALDATA!!!!!
  */
 static void
 vke_tx_thread(cothread_t cotd)
 {
 	struct mbuf *m;
 	struct vke_softc *sc = cotd->arg;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
+	/*struct ifnet *ifp = &sc->arpcom.ac_if;*/
 	int count = 0;
 
 	while (sc->cotd_tx_exit == VKE_COTD_RUN) {
@@ -646,9 +683,13 @@ vke_tx_thread(cothread_t cotd)
 
 				if (write(sc->sc_fd, sc->sc_txbuf,
 					  sc->sc_txbuf_len) < 0) {
-					IFNET_STAT_INC(ifp, oerrors, 1);
+					/* no mycpu in cothread */
+					/*IFNET_STAT_INC(ifp, oerrors, 1);*/
+					++sc->cotd_oerrors;
 				} else {
-					IFNET_STAT_INC(ifp, opackets, 1);
+					/* no mycpu in cothread */
+					/*IFNET_STAT_INC(ifp, opackets, 1);*/
+					++sc->cotd_opackets;
 				}
 			}
 			if (count++ == VKE_CHUNK) {
@@ -678,10 +719,16 @@ vke_attach(const struct vknetif_info *info, int unit)
 	struct ifnet *ifp;
 	struct tapinfo tapinfo;
 	uint8_t enaddr[ETHER_ADDR_LEN];
+	int nmbufs;
 	int fd;
 
 	KKASSERT(info->tap_fd >= 0);
 	fd = info->tap_fd;
+
+	if (info->enaddr) {
+		bcopy(info->enaddr, enaddr, ETHER_ADDR_LEN);
+		goto havemac;
+	}
 
 	/*
 	 * This is only a TAP device if tap_unit is non-zero.  If
@@ -711,6 +758,7 @@ vke_attach(const struct vknetif_info *info, int unit)
 	}
 	enaddr[1] += 1;
 
+havemac:
 	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	sc->sc_txbuf = kmalloc(MCLBYTES, M_DEVBUF, M_WAITOK);
@@ -719,6 +767,19 @@ vke_attach(const struct vknetif_info *info, int unit)
 	sc->sc_tap_unit = info->tap_unit;
 	sc->sc_addr = info->netif_addr;
 	sc->sc_mask = info->netif_mask;
+
+	/*
+	 * Calculate the number of mbuf clusters we are going to use
+	 * up to 50% of the total mbuf clusters available in the
+	 * system.
+	 * In the case our vkernel has so little mem that it can't
+	 * allocate even VKE_CHUNK for every vke(4) device, just panic.
+	 */
+	nmbufs = nmbclusters / (NetifNum * 2);
+	sc->sc_ringsize = (1 << (fls(nmbufs) - 1));
+
+	KASSERT(sc->sc_ringsize >= VKE_CHUNK,
+	    ("Not enough mbuf clusters for %d vke devices", NetifNum));
 
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, VKE_DEVNAME, sc->sc_unit);
@@ -755,8 +816,8 @@ vke_attach(const struct vknetif_info *info, int unit)
 
 	if (bootverbose && sc->sc_addr != 0) {
 		if_printf(ifp, "pre-configured "
-			  "address 0x%08x, netmask 0x%08x\n",
-			  ntohl(sc->sc_addr), ntohl(sc->sc_mask));
+		    "address 0x%08x, netmask 0x%08x, %d mbuf clusters\n",
+		    ntohl(sc->sc_addr), ntohl(sc->sc_mask), sc->sc_ringsize);
 	}
 
 	return 0;

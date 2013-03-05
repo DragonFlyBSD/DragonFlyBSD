@@ -1178,12 +1178,14 @@ lwkt_yield_quick(void)
     if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2)
 	splz();
     if (lwkt_resched_wanted()) {
+	crit_enter();
 	if (TAILQ_FIRST(&gd->gd_tdrunq) == td) {
 	    clear_lwkt_resched();
 	} else {
 	    lwkt_schedule_self(curthread);
 	    lwkt_switch();
 	}
+	crit_exit();
     }
 }
 

@@ -151,7 +151,7 @@ static device_method_t uark_methods[] = {
 	DEVMETHOD(device_probe, uark_probe),
 	DEVMETHOD(device_attach, uark_attach),
 	DEVMETHOD(device_detach, uark_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t uark_devclass;

@@ -298,9 +298,11 @@ bus/isa/syscons_isa.c			optional	sc
 bus/isa/vga_isa.c			optional	vga
 kern/subr_diskmbr.c			standard
 kern/subr_diskgpt.c			standard
-libkern/flsl.c				standard
+#libkern/cmpdi2.c			standard
 libkern/divdi3.c			standard
+libkern/flsl.c				standard
 libkern/moddi3.c			standard
 libkern/qdivrem.c			standard
+#libkern/ucmpdi2.c			standard
 libkern/udivdi3.c			standard
 libkern/umoddi3.c			standard

@@ -162,7 +162,7 @@ static device_method_t et_methods[] = {
 	DEVMETHOD(miibus_writereg,	et_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	et_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t et_driver = {

@@ -218,7 +218,7 @@ static device_method_t iwi_methods[] = {
 	DEVMETHOD(device_suspend,	iwi_suspend),
 	DEVMETHOD(device_resume,	iwi_resume),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t iwi_driver = {

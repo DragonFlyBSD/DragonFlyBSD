@@ -189,7 +189,7 @@ static device_method_t usie_methods[] = {
 	DEVMETHOD(device_probe, usie_probe),
 	DEVMETHOD(device_attach, usie_attach),
 	DEVMETHOD(device_detach, usie_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static driver_t usie_driver = {

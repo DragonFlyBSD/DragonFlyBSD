@@ -81,7 +81,7 @@ static device_method_t cs_pccard_methods[] = {
 	DEVMETHOD(card_compat_probe,	cs_pccard_probe),
 	DEVMETHOD(card_compat_attach,	cs_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t cs_pccard_driver = {

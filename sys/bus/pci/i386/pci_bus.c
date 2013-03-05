@@ -573,7 +573,7 @@ static device_method_t legacy_pcib_methods[] = {
 	DEVMETHOD(pcib_alloc_msix,	legacy_pcib_alloc_msix),
 	DEVMETHOD(pcib_release_msix,	pcib_release_msix),
 	DEVMETHOD(pcib_map_msi,		legacy_pcib_map_msi),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static devclass_t hostb_devclass;
@@ -621,7 +621,7 @@ static device_method_t pcibus_pnp_methods[] = {
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
 	DEVMETHOD(device_resume,	bus_generic_resume),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static devclass_t pcibus_pnp_devclass;
@@ -667,7 +667,7 @@ static device_method_t pcibios_pcib_pci_methods[] = {
 	DEVMETHOD(pcib_release_msix,	pcib_release_msix),
 	DEVMETHOD(pcib_map_msi,		pcib_map_msi),
 
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t pcib_devclass;

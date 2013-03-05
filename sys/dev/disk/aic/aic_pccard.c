@@ -177,7 +177,7 @@ static device_method_t aic_pccard_methods[] = {
 	DEVMETHOD(device_attach,	aic_pccard_attach),
 	DEVMETHOD(device_detach,	aic_pccard_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t aic_pccard_driver = {

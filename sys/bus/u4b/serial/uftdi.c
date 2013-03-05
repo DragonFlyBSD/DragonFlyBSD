@@ -184,7 +184,7 @@ static device_method_t uftdi_methods[] = {
 	DEVMETHOD(device_attach, uftdi_attach),
 	DEVMETHOD(device_detach, uftdi_detach),
 
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t uftdi_devclass;

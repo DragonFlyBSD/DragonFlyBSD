@@ -57,7 +57,7 @@ static device_method_t fixup_pci_methods[] = {
     /* Device interface */
     DEVMETHOD(device_probe,		fixup_pci_probe),
     DEVMETHOD(device_attach,		bus_generic_attach),
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t fixup_pci_driver = {

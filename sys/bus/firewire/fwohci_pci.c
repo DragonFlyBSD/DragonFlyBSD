@@ -475,7 +475,7 @@ static device_method_t fwohci_methods[] = {
 	DEVMETHOD(bus_add_child,	fwohci_pci_add_child),
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t fwohci_driver = {

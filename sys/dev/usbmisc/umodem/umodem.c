@@ -194,7 +194,7 @@ static device_method_t umodem_methods[] = {
 	DEVMETHOD(device_probe, umodem_match),
 	DEVMETHOD(device_attach, umodem_attach),
 	DEVMETHOD(device_detach, umodem_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t umodem_driver = {

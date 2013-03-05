@@ -1350,7 +1350,7 @@ static device_method_t pccard_methods[] = {
 	DEVMETHOD(card_do_product_lookup, pccard_do_product_lookup),
 	DEVMETHOD(card_cis_scan,	pccard_scan_cis),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t pccard_driver = {

@@ -139,7 +139,7 @@ static device_method_t rdrand_methods[] = {
 	DEVMETHOD(device_attach, rdrand_attach),
 	DEVMETHOD(device_detach, rdrand_detach),
 
-	{0, 0},
+	DEVMETHOD_END
 };
 
 

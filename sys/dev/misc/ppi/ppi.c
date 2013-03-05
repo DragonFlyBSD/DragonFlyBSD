@@ -565,7 +565,7 @@ static device_method_t ppi_methods[] = {
 	DEVMETHOD(device_probe,		ppi_probe),
 	DEVMETHOD(device_attach,	ppi_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ppi_driver = {

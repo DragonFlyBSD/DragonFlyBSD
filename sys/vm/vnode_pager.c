@@ -865,7 +865,7 @@ vnode_pager_lock(vm_object_t object)
 		tobject = lobject->backing_object;
 		if (tobject == NULL)
 			break;
-		vm_object_hold(tobject);
+		vm_object_hold_shared(tobject);
 		if (tobject == lobject->backing_object) {
 			if (lobject != object) {
 				vm_object_lock_swap();

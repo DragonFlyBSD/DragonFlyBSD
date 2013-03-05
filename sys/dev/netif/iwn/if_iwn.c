@@ -6537,7 +6537,7 @@ static device_method_t iwn_methods[] = {
 	DEVMETHOD(device_shutdown,	iwn_pci_shutdown),
 	DEVMETHOD(device_suspend,	iwn_pci_suspend),
 	DEVMETHOD(device_resume,	iwn_pci_resume),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t iwn_driver = {

@@ -100,7 +100,7 @@ static device_method_t amrd_methods[] = {
     DEVMETHOD(device_probe,	amrd_probe),
     DEVMETHOD(device_attach,	amrd_attach),
     DEVMETHOD(device_detach,	amrd_detach),
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t amrd_driver = {

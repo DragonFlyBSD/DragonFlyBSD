@@ -338,7 +338,7 @@ static device_method_t aesni_methods[] = {
 	DEVMETHOD(cryptodev_freesession, aesni_freesession),
 	DEVMETHOD(cryptodev_process, aesni_process),
 
-	{0, 0},
+	DEVMETHOD_END
 };
 
 static driver_t aesni_driver = {

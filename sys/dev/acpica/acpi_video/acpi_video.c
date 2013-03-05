@@ -145,7 +145,7 @@ static device_method_t acpi_video_methods[] = {
 	DEVMETHOD(device_attach, acpi_video_attach),
 	DEVMETHOD(device_detach, acpi_video_detach),
 	DEVMETHOD(device_shutdown, acpi_video_shutdown),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t acpi_video_driver = {

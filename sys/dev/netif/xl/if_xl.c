@@ -285,7 +285,7 @@ static device_method_t xl_methods[] = {
 	DEVMETHOD(miibus_statchg,	xl_miibus_statchg),
 	DEVMETHOD(miibus_mediainit,	xl_miibus_mediainit),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t xl_driver = {

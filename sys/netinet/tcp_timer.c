@@ -757,12 +757,13 @@ tcp_destroy_timermsg(struct tcpcb *tp)
 		return;
 
 	KKASSERT(tmsg->tt_cpuid == mycpuid);
+
+	/*
+	 * This message is still pending to be processed;
+	 * drop it.  Optimized.
+	 */
 	crit_enter();
 	if ((tmsg->tt_msg.lmsg.ms_flags & MSGF_DONE) == 0) {
-		/*
-		 * This message is still pending to be processed;
-		 * drop it.
-		 */
 		lwkt_dropmsg(&tmsg->tt_msg.lmsg);
 	}
 	crit_exit();

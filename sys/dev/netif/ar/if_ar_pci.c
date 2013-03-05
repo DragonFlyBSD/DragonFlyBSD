@@ -81,7 +81,7 @@ static device_method_t ar_pci_methods[] = {
 	DEVMETHOD(device_probe,		ar_pci_probe),
 	DEVMETHOD(device_attach,	ar_pci_attach),
 	DEVMETHOD(device_detach,	ar_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ar_pci_driver = {

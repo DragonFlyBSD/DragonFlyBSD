@@ -1618,14 +1618,12 @@ ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
 	*deny = 0;
 	gen = ctx->ipfw_gen;
 
-	get_mplock();
 	if (gen != ctx->ipfw_gen) {
 		/* See the comment in lookup_rule() */
 		*deny = 1;
 	} else {
 		match = _ipfw_match_uid(fid, oif, opcode, uid);
 	}
-	rel_mplock();
 	return match;
 }
 
@@ -4485,12 +4483,7 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 	netmsg_service_sync();
 
 	crit_enter();
-	if ((ipfw_timeout_netmsg.lmsg.ms_flags & MSGF_DONE) == 0) {
-		/*
-		 * Callout message is pending; drop it
-		 */
-		lwkt_dropmsg(&ipfw_timeout_netmsg.lmsg);
-	}
+	lwkt_dropmsg(&ipfw_timeout_netmsg.lmsg);
 	crit_exit();
 
 	ip_fw_chk_ptr = NULL;

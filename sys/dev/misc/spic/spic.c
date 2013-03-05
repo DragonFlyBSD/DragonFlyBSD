@@ -571,7 +571,7 @@ static device_method_t spic_methods[] = {
 	DEVMETHOD(device_probe,		spic_probe),
 	DEVMETHOD(device_attach,	spic_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t spic_driver = {

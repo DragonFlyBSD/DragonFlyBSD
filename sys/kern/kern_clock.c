@@ -675,6 +675,10 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 			td->td_sticks += bump;
 
 		if (IS_INTR_RUNNING) {
+			/*
+			 * If we interrupted an interrupt thread, well,
+			 * count it as interrupt time.
+			 */
 #ifdef DEBUG_PCTRACK
 			if (frame)
 				do_pctrack(frame, PCTRACK_INT);
@@ -682,8 +686,20 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 			cpu_time.cp_intr += bump;
 		} else {
 			if (td == &mycpu->gd_idlethread) {
-				cpu_time.cp_idle += bump;
+				/*
+				 * Even if the current thread is the idle
+				 * thread it could be due to token contention
+				 * in the LWKT scheduler.  Count such as
+				 * system time.
+				 */
+				if (mycpu->gd_reqflags & RQF_AST_LWKT_RESCHED)
+					cpu_time.cp_sys += bump;
+				else
+					cpu_time.cp_idle += bump;
 			} else {
+				/*
+				 * System thread was running.
+				 */
 #ifdef DEBUG_PCTRACK
 				if (frame)
 					do_pctrack(frame, PCTRACK_SYS);

@@ -270,7 +270,7 @@ static device_method_t skc_methods[] = {
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static DEFINE_CLASS_0(skc, skc_driver, skc_methods, sizeof(struct sk_softc));
@@ -292,7 +292,7 @@ static device_method_t sk_methods[] = {
 	DEVMETHOD(miibus_writereg,	sk_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	sk_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static DEFINE_CLASS_0(sk, sk_driver, sk_methods, sizeof(struct sk_if_softc));

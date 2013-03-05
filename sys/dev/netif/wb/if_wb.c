@@ -200,7 +200,7 @@ static device_method_t wb_methods[] = {
 	DEVMETHOD(miibus_readreg,	wb_miibus_readreg),
 	DEVMETHOD(miibus_writereg,	wb_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	wb_miibus_statchg),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static DEFINE_CLASS_0(wb, wb_driver, wb_methods, sizeof(struct wb_softc));

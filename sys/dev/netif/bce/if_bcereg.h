@@ -5536,25 +5536,25 @@ struct l2_fhdr {
 #define TX_PAGES_MAX		256
 #define TOTAL_TX_BD_PER_PAGE	(BCM_PAGE_SIZE / sizeof(struct tx_bd))
 #define USABLE_TX_BD_PER_PAGE	(TOTAL_TX_BD_PER_PAGE - 1)
-#define TOTAL_TX_BD(sc)		(TOTAL_TX_BD_PER_PAGE * (sc)->tx_pages)
-#define USABLE_TX_BD(sc)	(USABLE_TX_BD_PER_PAGE * (sc)->tx_pages)
-#define MAX_TX_BD(sc)		(TOTAL_TX_BD((sc)) - 1)
+#define TOTAL_TX_BD(txr)	(TOTAL_TX_BD_PER_PAGE * (txr)->tx_pages)
+#define USABLE_TX_BD(txr)	(USABLE_TX_BD_PER_PAGE * (txr)->tx_pages)
+#define MAX_TX_BD(txr)		(TOTAL_TX_BD((txr)) - 1)
 #define BCE_TX_SPARE_SPACE	33
 
 #define RX_PAGES_DEFAULT	2
 #define RX_PAGES_MAX		256
 #define TOTAL_RX_BD_PER_PAGE	(BCM_PAGE_SIZE / sizeof(struct rx_bd))
 #define USABLE_RX_BD_PER_PAGE	(TOTAL_RX_BD_PER_PAGE - 1)
-#define TOTAL_RX_BD(sc)		(TOTAL_RX_BD_PER_PAGE * (sc)->rx_pages)
-#define USABLE_RX_BD(sc)	(USABLE_RX_BD_PER_PAGE * (sc)->rx_pages)
-#define MAX_RX_BD(sc)		(TOTAL_RX_BD((sc)) - 1)
+#define TOTAL_RX_BD(rxr)	(TOTAL_RX_BD_PER_PAGE * (rxr)->rx_pages)
+#define USABLE_RX_BD(rxr)	(USABLE_RX_BD_PER_PAGE * (rxr)->rx_pages)
+#define MAX_RX_BD(rxr)		(TOTAL_RX_BD((rxr)) - 1)
 
 /* Advance to the next tx_bd, skipping any next page pointers. */
 #define NEXT_TX_BD(x) \
 	(((x) & USABLE_TX_BD_PER_PAGE) == (USABLE_TX_BD_PER_PAGE - 1)) ? \
 	(x) + 2 : (x) + 1
 
-#define TX_CHAIN_IDX(sc, x)	((x) & MAX_TX_BD((sc)))
+#define TX_CHAIN_IDX(txr, x)	((x) & MAX_TX_BD((txr)))
 
 #define TX_PAGE(x) \
 	(((x) & ~USABLE_TX_BD_PER_PAGE) >> BCE_TX_BD_PAGE_SHIFT)
@@ -5565,7 +5565,7 @@ struct l2_fhdr {
 	(((x) & USABLE_RX_BD_PER_PAGE) == (USABLE_RX_BD_PER_PAGE - 1)) ? \
 	(x) + 2 : (x) + 1
 
-#define RX_CHAIN_IDX(sc, x)	((x) & MAX_RX_BD(sc))
+#define RX_CHAIN_IDX(rxr, x)	((x) & MAX_RX_BD(rxr))
 
 #define RX_PAGE(x) \
 	(((x) & ~USABLE_RX_BD_PER_PAGE) >> BCE_RX_BD_PAGE_SHIFT)
@@ -5725,6 +5725,68 @@ struct fw_info {
 #define BCE_RX_CHAIN_PAGE_SZ	BCM_PAGE_SIZE
 #define BCE_CTX_BLK_SZ		0x2000
 
+struct bce_tx_ring {
+	struct lwkt_serialize	tx_serialize;
+	struct bce_softc	*sc;
+	uint32_t		tx_cid;
+	volatile uint16_t	*tx_hw_cons;
+	struct ifaltq_subque	*ifsq;
+	int			tx_pages;
+	int			tx_wreg;
+	uint16_t		tx_prod;
+	uint16_t		tx_cons;
+	uint32_t		tx_prod_bseq;	/* Counts the bytes used. */
+
+	uint16_t		used_tx_bd;
+	uint16_t		max_tx_bd;
+
+	/* H/W maintained TX buffer descriptor chain structure. */
+	struct tx_bd		**tx_bd_chain;	/* tx_pages */
+
+	/* S/W maintained mbuf TX chain structure. */
+	bus_dma_tag_t		tx_mbuf_tag;
+	bus_dmamap_t		*tx_mbuf_map;	/* TOTAL_TX_BD */
+	struct mbuf		**tx_mbuf_ptr;	/* TOTAL_TX_BD */
+
+	struct ifsubq_watchdog	tx_watchdog;
+
+	bus_dma_tag_t		tx_bd_chain_tag;
+	bus_dmamap_t		*tx_bd_chain_map; /* tx_pages */
+	bus_addr_t		*tx_bd_chain_paddr; /* tx_pages */
+} __cachealign;
+
+struct bce_rx_ring {
+	struct lwkt_serialize	rx_serialize;
+	struct bce_softc	*sc;
+
+	volatile uint16_t	*hw_status_idx;
+	uint16_t		last_status_idx;
+
+	uint32_t		rx_cid;
+	volatile uint16_t	*rx_hw_cons;
+	int			rx_pages;
+	uint16_t		rx_prod;
+	uint16_t		rx_cons;
+	uint32_t		rx_prod_bseq;	/* Counts the bytes used. */
+
+	uint16_t 		free_rx_bd;
+	uint16_t		max_rx_bd;
+
+	/* H/W maintained RX buffer descriptor chain structure. */
+	struct rx_bd		**rx_bd_chain;	/* rx_pages */
+
+	/* S/W maintained mbuf RX chain structure. */
+	bus_dma_tag_t		rx_mbuf_tag;
+	bus_dmamap_t		rx_mbuf_tmpmap;
+	bus_dmamap_t		*rx_mbuf_map;	/* TOTAL_RX_BD */
+	struct mbuf		**rx_mbuf_ptr;	/* TOTAL_RX_BD */
+	bus_addr_t		*rx_mbuf_paddr;	/* TOTAL_RX_BD */
+
+	bus_dma_tag_t		rx_bd_chain_tag;
+	bus_dmamap_t		*rx_bd_chain_map; /* rx_pages */
+	bus_addr_t		*rx_bd_chain_paddr; /* rx_pages */
+} __cachealign;
+
 struct bce_softc {
 	struct arpcom		arpcom;
 	device_t		bce_dev;
@@ -5829,34 +5891,17 @@ struct bce_softc {
 	/* The device handle for the MII bus child device. */
 	device_t		bce_miibus;
 
-	/* Polling */
-	struct ifpoll_compat	bce_npoll;
-
-	/* Driver maintained TX chain pointers and byte counter. */
-	int			rx_pages;
-	uint16_t		rx_prod;
-	uint16_t		rx_cons;
-	uint32_t		rx_prod_bseq;	/* Counts the bytes used.  */
-	int			tx_pages;
-	int			tx_wreg;
-	uint16_t		tx_prod;
-	uint16_t		tx_cons;
-	uint32_t		tx_prod_bseq;	/* Counts the bytes used.  */
-
-	int			bce_intr_cpuid;
 	int			bce_link;
+	int			bce_timer_cpuid;
 	struct callout		bce_tick_callout;
 	struct callout		bce_pulse_callout;
 
+	int			bce_intr_cpuid;
 	boolean_t		bce_msi_maylose;
 	uint16_t		bce_check_rx_cons;
 	uint16_t		bce_check_tx_cons;
 	uint16_t		bce_check_status_idx;
 	struct callout		bce_ckmsi_callout;
-
-	/* Frame size and mbuf allocation size for RX frames. */
-	uint32_t		max_frame_size;
-	int			mbuf_alloc_size;
 
 	/* Receive mode settings (i.e promiscuous, multicast, etc.). */
 	uint32_t		rx_mode;
@@ -5864,26 +5909,11 @@ struct bce_softc {
 	/* Bus tag for the bce controller. */
 	bus_dma_tag_t		parent_tag;
 
-	/* H/W maintained TX buffer descriptor chain structure. */
-	bus_dma_tag_t		tx_bd_chain_tag;
-	bus_dmamap_t		*tx_bd_chain_map; /* TX_PAGES */
-	struct tx_bd		**tx_bd_chain; /* TX_PAGES */
-	bus_addr_t		*tx_bd_chain_paddr; /* TX_PAGES */
-
-	/* H/W maintained RX buffer descriptor chain structure. */
-	bus_dma_tag_t		rx_bd_chain_tag;
-	bus_dmamap_t		*rx_bd_chain_map; /* RX_PAGES */
-	struct rx_bd		**rx_bd_chain; /* RX_PAGES */
-	bus_addr_t		*rx_bd_chain_paddr; /* RX_PAGES */
-
 	/* H/W maintained status block. */
 	bus_dma_tag_t		status_tag;
 	bus_dmamap_t		status_map;
 	struct status_block	*status_block;		/* virtual address */
 	bus_addr_t		status_block_paddr;	/* Physical address */
-
-	/* Driver maintained status block values. */
-	uint16_t		last_status_idx;
 
 	/* H/W maintained statistics block. */
 	bus_dma_tag_t		stats_tag;
@@ -5900,25 +5930,17 @@ struct bce_softc {
 	void			*ctx_block[BCE_CTX_PAGES]; /* Virtual address */
 	bus_addr_t		ctx_paddr[BCE_CTX_PAGES]; /* Physical address */
 
-	/* Bus tag for RX/TX mbufs. */
-	bus_dma_tag_t		rx_mbuf_tag;
-	bus_dma_tag_t		tx_mbuf_tag;
+	int			serialize_cnt;
+	int			tx_serialize;
+	int			rx_serialize;
+	struct lwkt_serialize	**serializes;
+	struct lwkt_serialize	main_serialize;
 
-	/* S/W maintained mbuf TX chain structure. */
-	bus_dmamap_t		*tx_mbuf_map; /* TOTAL_TX_BD */
-	struct mbuf		**tx_mbuf_ptr; /* TOTAL_TX_BD */
-
-	/* S/W maintained mbuf RX chain structure. */
-	bus_dmamap_t		rx_mbuf_tmpmap;
-	bus_dmamap_t		*rx_mbuf_map; /* TOTAL_RX_BD */
-	struct mbuf		**rx_mbuf_ptr; /* TOTAL_RX_BD */
-	bus_addr_t		*rx_mbuf_paddr; /* TOTAL_RX_BD */
-
-	/* Track the number of rx_bd and tx_bd's in use. */
-	uint16_t 		free_rx_bd;
-	uint16_t		max_rx_bd;
-	uint16_t		used_tx_bd;
-	uint16_t		max_tx_bd;
+	int			npoll_ofs;
+	int			tx_ring_cnt;
+	int			rx_ring_cnt;
+	struct bce_tx_ring	*tx_rings;
+	struct bce_rx_ring	*rx_rings;
 
 	int			bce_if_flags;
 	struct sysctl_ctx_list	bce_sysctl_ctx;

@@ -7150,7 +7150,7 @@ static device_method_t ncr_methods[] = {
 	DEVMETHOD(device_probe,		ncr_probe),
 	DEVMETHOD(device_attach,	ncr_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ncr_driver = {

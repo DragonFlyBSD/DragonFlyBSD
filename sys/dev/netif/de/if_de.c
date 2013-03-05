@@ -4150,7 +4150,7 @@ static device_method_t tulip_pci_methods[] = {
     DEVMETHOD(device_probe,	tulip_pci_probe),
     DEVMETHOD(device_attach,	tulip_pci_attach),
     DEVMETHOD(device_shutdown,	tulip_shutdown),
-    { 0, 0 }
+    DEVMETHOD_END
 };
 static driver_t tulip_pci_driver = {
     "de",

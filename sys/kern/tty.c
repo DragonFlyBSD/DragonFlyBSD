@@ -107,6 +107,7 @@
 #include <sys/lock.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
+#include <vm/vm_extern.h>
 
 MALLOC_DEFINE(M_TTYS, "ttys", "tty data structures");
 
@@ -2577,9 +2578,15 @@ ttsetwater(struct tty *tp)
 void
 ttyinfo(struct tty *tp)
 {
+	struct pgrp *pgrp;
 	struct proc *p, *pick;
 	struct lwp *lp;
 	struct rusage ru;
+	char buf[64];
+	const char *str;
+	struct vmspace *vm;
+	long vmsz;
+	int pctcpu;
 	int tmp;
 
 	if (ttycheckoutq(tp,0) == 0)
@@ -2596,95 +2603,108 @@ ttyinfo(struct tty *tp)
 
 	if (tp->t_session == NULL) {
 		ttyprintf(tp, "not a controlling terminal\n");
-	} else if (tp->t_pgrp == NULL) {
-		ttyprintf(tp, "no foreground process group\n");
-	} else if ((p = LIST_FIRST(&tp->t_pgrp->pg_members)) == NULL) {
-		ttyprintf(tp, "empty foreground process group\n");
-	} else {
-		/*
-		 * Pick an interesting process.  Note that certain elements,
-		 * in particular the wmesg, require a critical section for
-		 * safe access (YYY and we are still not MP safe).
-		 *
-		 * NOTE: lwp_wmesg is lwp_thread->td_wmesg.
-		 */
-		char buf[64];
-		const char *str;
-		long vmsz;
-		int pctcpu;
-
-		crit_enter();
-
-		/* XXX lwp should compare lwps */
-
-		for (pick = NULL; p != NULL; p = LIST_NEXT(p, p_pglist)) {
-			if (proc_compare(pick, p))
-				pick = p;
-		}
-
-		/* XXX lwp */
-		lp = FIRST_LWP_IN_PROC(pick);
-		if (lp == NULL) {
-			ttyprintf(tp, "foreground process without lwp\n");
-			tp->t_rocount = 0;
-			crit_exit();
-			lwkt_reltoken(&proc_token);
-			lwkt_reltoken(&tty_token);
-			return;
-		}
-
-		/*
-		 * Figure out what wait/process-state message, and command
-		 * buffer to present
-		 */
-		/*
-		 * XXX lwp This is a horrible mixture.  We need to rework this
-		 * as soon as lwps have their own runnable status.
-		 */
-		if (pick->p_flags & P_WEXIT)
-			str = "exiting";
-		else if (lp->lwp_stat == LSRUN)
-			str = "running";
-		else if (pick->p_stat == SIDL)
-			str = "spawning";
-		else if (lp->lwp_wmesg)	/* lwp_thread must not be NULL */
-			str = lp->lwp_wmesg;
-		else
-			str = "iowait";
-
-		ksnprintf(buf, sizeof(buf), "cmd: %s %d [%s]",
-			pick->p_comm, pick->p_pid, str);
-
-		/*
-		 * Calculate cpu usage, percent cpu, and cmsz.  Note that
-		 * 'pick' becomes invalid the moment we exit the critical
-		 * section.
-		 */
-		if (lp->lwp_thread && (pick->p_flags & P_SWAPPEDOUT) == 0)
-			calcru_proc(pick, &ru);
-
-		pctcpu = (lp->lwp_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
-
-		if (pick->p_stat == SIDL || pick->p_stat == SZOMB) {
-		    vmsz = 0;
-		} else {
-		    lwkt_gettoken(&pick->p_vmspace->vm_map.token);
-		    vmsz = pgtok(vmspace_resident_count(pick->p_vmspace));
-		    lwkt_reltoken(&pick->p_vmspace->vm_map.token);
-		}
-
-		crit_exit();
-
-		/*
-		 * Dump the output
-		 */
-		ttyprintf(tp, " %s ", buf);
-		ttyprintf(tp, "%ld.%02ldu ",
-			ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 10000);
-		ttyprintf(tp, "%ld.%02lds ",
-			ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 10000);
-		ttyprintf(tp, "%d%% %ldk\n", pctcpu / 100, vmsz);
+		goto done2;
 	}
+	if ((pgrp = tp->t_pgrp) == NULL) {
+		ttyprintf(tp, "no foreground process group\n");
+		goto done2;
+	}
+
+	/*
+	 * Pick an interesting process.  Note that certain elements,
+	 * in particular the wmesg, require a critical section for
+	 * safe access (YYY and we are still not MP safe).
+	 *
+	 * NOTE: lwp_wmesg is lwp_thread->td_wmesg.
+	 */
+	pgref(pgrp);
+	lwkt_gettoken(&pgrp->pg_token);
+
+	pick = NULL;
+	for (p = LIST_FIRST(&pgrp->pg_members);
+	     p != NULL;
+	     p = LIST_NEXT(p, p_pglist)) {
+		if (proc_compare(pick, p))
+			pick = p;
+	}
+	if (pick == NULL) {
+		ttyprintf(tp, "empty foreground process group\n");
+		goto done1;
+	}
+
+	/*
+	 * Pick an interesting LWP (XXX)
+	 */
+	PHOLD(pick);
+	lp = FIRST_LWP_IN_PROC(pick);
+	if (lp == NULL) {
+		PRELE(pick);
+		ttyprintf(tp, "foreground process without lwp\n");
+		goto done1;
+	}
+
+	/*
+	 * Figure out what wait/process-state message, and command
+	 * buffer to present
+	 */
+	/*
+	 * XXX lwp This is a horrible mixture.  We need to rework this
+	 * as soon as lwps have their own runnable status.
+	 */
+	LWPHOLD(lp);
+	if (pick->p_flags & P_WEXIT)
+		str = "exiting";
+	else if (lp->lwp_stat == LSRUN)
+		str = "running";
+	else if (pick->p_stat == SIDL)
+		str = "spawning";
+	else if (lp->lwp_wmesg)	/* lwp_thread must not be NULL */
+				str = lp->lwp_wmesg;
+	else
+		str = "iowait";
+
+	ksnprintf(buf, sizeof(buf), "cmd: %s %d [%s]",
+		  pick->p_comm, pick->p_pid, str);
+
+	/*
+	 * Calculate cpu usage, percent cpu, and cmsz.  Note that
+	 * 'pick' becomes invalid the moment we exit the critical
+	 * section.
+	 */
+	if (lp->lwp_thread && (pick->p_flags & P_SWAPPEDOUT) == 0)
+		calcru_proc(pick, &ru);
+
+	pctcpu = (lp->lwp_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
+
+	LWPRELE(lp);
+
+	if (pick->p_stat == SIDL || pick->p_stat == SZOMB) {
+		vmsz = 0;
+	} else if ((vm = pick->p_vmspace) == NULL) {
+		vmsz = 0;
+	} else {
+		vmspace_hold(vm);
+		vmsz = pgtok(vmspace_resident_count(vm));
+		vmspace_drop(vm);
+	}
+	PRELE(pick);
+
+	/*
+	 * Dump the output
+	 */
+	ttyprintf(tp, " %s ",
+		  buf);
+	ttyprintf(tp, "%ld.%02ldu ",
+		  ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 10000);
+	ttyprintf(tp, "%ld.%02lds ",
+		  ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 10000);
+	ttyprintf(tp, "%d%% %ldk\n",
+		  pctcpu / 100, vmsz);
+
+done1:
+	lwkt_reltoken(&pgrp->pg_token);
+	pgrel(pgrp);
+done2:
 	tp->t_rocount = 0;	/* so pending input will be retyped if BS */
 	lwkt_reltoken(&proc_token);
 	lwkt_reltoken(&tty_token);

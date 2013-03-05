@@ -1181,7 +1181,7 @@ static device_method_t	bt3c_pccard_methods[] = {
 	DEVMETHOD(device_attach,	bt3c_pccard_attach),
 	DEVMETHOD(device_detach,	bt3c_pccard_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t		bt3c_pccard_driver = {

@@ -155,7 +155,7 @@ static device_method_t ucycom_methods[] = {
 	DEVMETHOD(device_probe, ucycom_probe),
 	DEVMETHOD(device_attach, ucycom_attach),
 	DEVMETHOD(device_detach, ucycom_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t ucycom_devclass;

@@ -913,7 +913,7 @@ vm_page_unhold(vm_page_t m)
 int
 vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 {
-	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
+	ASSERT_LWKT_TOKEN_HELD_EXCL(vm_object_token(object));
 	if (m->object != NULL)
 		panic("vm_page_insert: already inserted");
 
@@ -1146,9 +1146,9 @@ void
 vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 {
 	KKASSERT(m->flags & PG_BUSY);
-	ASSERT_LWKT_TOKEN_HELD(vm_object_token(new_object));
+	ASSERT_LWKT_TOKEN_HELD_EXCL(vm_object_token(new_object));
 	if (m->object) {
-		ASSERT_LWKT_TOKEN_HELD(vm_object_token(m->object));
+		ASSERT_LWKT_TOKEN_HELD_EXCL(vm_object_token(m->object));
 		vm_page_remove(m);
 	}
 	if (vm_page_insert(m, new_object, new_pindex) == FALSE) {
@@ -1651,12 +1651,11 @@ done:
 	 */
 	if (object) {
 		if (vm_page_insert(m, object, pindex) == FALSE) {
-			kprintf("PAGE RACE (%p:%d,%"PRIu64")\n",
-				object, object->type, pindex);
 			vm_page_free(m);
-			m = NULL;
 			if ((page_req & VM_ALLOC_NULL_OK) == 0)
-				panic("PAGE RACE");
+				panic("PAGE RACE %p[%ld]/%p",
+				      object, (long)pindex, m);
+			m = NULL;
 		}
 	} else {
 		m->pindex = pindex;
@@ -1829,20 +1828,22 @@ vm_wait(int timo)
  * easily tracked.
  */
 void
-vm_waitpfault(void)
+vm_wait_pfault(void)
 {
 	/*
 	 * Wakeup the pageout daemon if necessary and wait.
 	 */
-	if (vm_page_count_target()) {
+	if (vm_page_count_min(0)) {
 		lwkt_gettoken(&vm_token);
-		if (vm_page_count_target()) {
-			if (vm_pages_needed == 0) {
-				vm_pages_needed = 1;
-				wakeup(&vm_pages_needed);
+		while (vm_page_count_severe()) {
+			if (vm_page_count_target()) {
+				if (vm_pages_needed == 0) {
+					vm_pages_needed = 1;
+					wakeup(&vm_pages_needed);
+				}
+				++vm_pages_waiting;	/* SMP race ok */
+				tsleep(&vmstats.v_free_count, 0, "pfault", hz);
 			}
-			++vm_pages_waiting;	/* SMP race ok */
-			tsleep(&vmstats.v_free_count, 0, "pfault", hz);
 		}
 		lwkt_reltoken(&vm_token);
 	}

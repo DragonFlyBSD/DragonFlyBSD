@@ -65,7 +65,7 @@ static device_method_t sio_pccard_methods[] = {
 	DEVMETHOD(card_compat_probe,	sio_pccard_probe),
 	DEVMETHOD(card_compat_attach,	sio_pccard_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t sio_pccard_driver = {

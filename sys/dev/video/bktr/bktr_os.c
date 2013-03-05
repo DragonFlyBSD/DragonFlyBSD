@@ -143,7 +143,7 @@ static device_method_t bktr_methods[] = {
 	DEVMETHOD(smbus_readb,		bti2c_smb_readb),
 #endif
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t bktr_driver = {

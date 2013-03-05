@@ -1,6 +1,5 @@
 /*
  * $OpenBSD: patch.c,v 1.45 2007/04/18 21:52:24 sobrado Exp $
- * $DragonFly: src/usr.bin/patch/patch.c,v 1.10 2008/08/10 23:39:56 joerg Exp $
  */
 
 /*
@@ -394,12 +393,12 @@ main(int argc, char *argv[])
 				    sizeof(rejname)) >= sizeof(rejname))
 					fatal("filename %s is too long\n", outname);
 			}
-			if (skip_rest_of_patch) {
-				say("%d out of %d hunks ignored--saving rejects to %s\n",
-				    failed, hunk, rejname);
+			if (!check_only) {
+				say("%d out of %d hunks %s--saving rejects to %s\n",
+				    failed, hunk, skip_rest_of_patch ? "ignored" : "failed", rejname);
 			} else {
-				say("%d out of %d hunks failed--saving rejects to %s\n",
-				    failed, hunk, rejname);
+				say("%d out of %d hunks %s\n",
+				    failed, hunk, skip_rest_of_patch ? "ignored" : "failed");
 			}
 			if (!check_only && move_file(TMPREJNAME, rejname) < 0)
 				trejkeep = true;

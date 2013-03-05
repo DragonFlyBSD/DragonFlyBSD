@@ -155,7 +155,7 @@ static device_method_t axe_methods[] = {
 	DEVMETHOD(miibus_writereg,	axe_miibus_writereg),
 	DEVMETHOD(miibus_statchg,	axe_miibus_statchg),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t axe_driver = {

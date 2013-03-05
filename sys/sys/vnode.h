@@ -232,7 +232,7 @@ struct vnode {
 #define	VFREE		0x00080000	/* This vnode is on the freelist */
 #define VNOTSEEKABLE	0x00100000	/* rd/wr ignores file offset */
 #define	VONWORKLST	0x00200000	/* On syncer work-list */
-#define VMOUNT		0x00400000	/* Mount in progress */
+/* open for business	0x00400000 */
 #define	VOBJDIRTY	0x00800000	/* object might be dirty */
 #define VSWAPCACHE	0x01000000	/* enable swapcache */
 /* open for business	0x02000000 */

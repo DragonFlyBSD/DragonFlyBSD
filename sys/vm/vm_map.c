@@ -158,6 +158,9 @@ static struct vm_map map_init[MAX_KMAP];
 static int randomize_mmap;
 SYSCTL_INT(_vm, OID_AUTO, randomize_mmap, CTLFLAG_RW, &randomize_mmap, 0,
     "Randomize mmap offsets");
+static int vm_map_relock_enable = 1;
+SYSCTL_INT(_vm, OID_AUTO, map_relock_enable, CTLFLAG_RW,
+	   &vm_map_relock_enable, 0, "Randomize mmap offsets");
 
 static void vm_map_entry_shadow(vm_map_entry_t entry, int addref);
 static vm_map_entry_t vm_map_entry_create(vm_map_t map, int *);
@@ -987,6 +990,11 @@ vm_map_insert(vm_map_t map, int *countp,
 		 * When object is non-NULL, it could be shared with another
 		 * process.  We have to set or clear OBJ_ONEMAPPING 
 		 * appropriately.
+		 *
+		 * NOTE: This flag is only applicable to DEFAULT and SWAP
+		 *	 objects and will already be clear in other types
+		 *	 of objects, so a shared object lock is ok for
+		 *	 VNODE objects.
 		 */
 		if ((object->ref_count > 1) || (object->shadow_count != 0)) {
 			vm_object_clear_flag(object, OBJ_ONEMAPPING);
@@ -1095,9 +1103,19 @@ vm_map_insert(vm_map_t map, int *countp,
 	 */
 	if ((cow & (MAP_PREFAULT|MAP_PREFAULT_PARTIAL)) &&
 	    maptype != VM_MAPTYPE_VPAGETABLE) {
+		int dorelock = 0;
+		if (vm_map_relock_enable && (cow & MAP_PREFAULT_RELOCK)) {
+			dorelock = 1;
+			vm_object_lock_swap();
+			vm_object_drop(object);
+		}
 		pmap_object_init_pt(map->pmap, start, prot,
 				    object, OFF_TO_IDX(offset), end - start,
 				    cow & MAP_PREFAULT_PARTIAL);
+		if (dorelock) {
+			vm_object_hold(object);
+			vm_object_lock_swap();
+		}
 	}
 	if (must_drop)
 		vm_object_drop(object);
@@ -2803,9 +2821,11 @@ again:
 		} else if (object && object->type != OBJT_DEFAULT &&
 			   object->type != OBJT_SWAP) {
 			/*
-			 * vnode object routines cannot be chain-locked
+			 * vnode object routines cannot be chain-locked,
+			 * but since we aren't removing pages from the
+			 * object here we can use a shared hold.
 			 */
-			vm_object_hold(object);
+			vm_object_hold_shared(object);
 			pmap_remove(map->pmap, s, e);
 			vm_object_drop(object);
 		} else if (object) {

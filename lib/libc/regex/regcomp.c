@@ -32,7 +32,6 @@
  *
  *	@(#)regcomp.c	8.5 (Berkeley) 3/20/94
  * $FreeBSD: src/lib/libc/regex/regcomp.c,v 1.36 2007/06/11 03:05:54 delphij Exp $
- * $DragonFly: src/lib/libc/regex/regcomp.c,v 1.7 2005/11/20 09:18:37 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -1201,7 +1200,7 @@ CHaddrange(struct parse *p, cset *cs, wint_t min, wint_t max)
 	}
 	cs->ranges = newranges;
 	cs->ranges[cs->nranges].min = min;
-	cs->ranges[cs->nranges].min = max;
+	cs->ranges[cs->nranges].max = max;
 	cs->nranges++;
 }
 

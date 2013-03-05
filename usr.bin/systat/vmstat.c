@@ -559,9 +559,8 @@ showkre(void)
 			}
 		}
 #define nz(x)	((x) ? (x) : 1)
-	put64(s.nchpathcount, NAMEIROW + 1, NAMEICOL + 3, 9, 'D');
-
-	put64(nchtotal.ncs_longhits, NAMEIROW + 1, NAMEICOL + 12, 7, 'D');
+	put64(s.nchpathcount, NAMEIROW + 1, NAMEICOL + 6, 6, 'D');
+	put64(nchtotal.ncs_longhits, NAMEIROW + 1, NAMEICOL + 13, 6, 'D');
 	putfloat(nchtotal.ncs_longhits * 100.0 / nz(s.nchpathcount),
 	    NAMEIROW + 1, NAMEICOL + 19, 4, 0, 0);
 

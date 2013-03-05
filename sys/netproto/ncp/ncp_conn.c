@@ -300,8 +300,8 @@ ncp_conn_getattached(struct ncp_conn_args *li,struct thread *td,struct ucred *cr
 	SLIST_FOREACH(ncp, &conn_list, nc_next) {
 		if ((ncp->flags & NCPFL_LOGGED) != 0 ||
 		    strcmp(ncp->li.server,li->server) != 0 || 
-		    ncp->li.saddr.sa_len != li->saddr.sa_len ||
-		    bcmp(&ncp->li.saddr,&ncp->li.saddr,li->saddr.sa_len) != 0)
+		    ncp->li.addr.addr.sa_len != li->addr.addr.sa_len ||
+		    bcmp(&ncp->li.addr.addr,&ncp->li.addr.addr,li->addr.addr.sa_len) != 0)
 			continue;
 		if (ncp_suser(cred) == 0 || 
 		    cred->cr_uid == ncp->nc_owner->cr_uid)

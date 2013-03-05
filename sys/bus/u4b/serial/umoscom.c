@@ -261,7 +261,7 @@ static device_method_t umoscom_methods[] = {
 	DEVMETHOD(device_probe, umoscom_probe),
 	DEVMETHOD(device_attach, umoscom_attach),
 	DEVMETHOD(device_detach, umoscom_detach),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static devclass_t umoscom_devclass;

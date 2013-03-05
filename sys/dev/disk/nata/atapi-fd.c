@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.109 2006/03/30 05:29:57 marcel Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-fd.c,v 1.5 2008/08/30 02:56:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -474,7 +473,7 @@ static device_method_t afd_methods[] = {
     /* ATA methods */
     DEVMETHOD(ata_reinit,       afd_reinit),
     
-    { 0, 0 }
+    DEVMETHOD_END
 };
     
 static driver_t afd_driver = {

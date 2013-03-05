@@ -213,7 +213,7 @@ static device_method_t ixgbe_methods[] = {
 	DEVMETHOD(device_attach, ixgbe_attach),
 	DEVMETHOD(device_detach, ixgbe_detach),
 	DEVMETHOD(device_shutdown, ixgbe_shutdown),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static driver_t ixgbe_driver = {

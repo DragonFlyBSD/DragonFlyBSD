@@ -35,3 +35,4 @@ tar/bsdtar_windows.c
 tar/bsdtar_windows.h
 tar/config_freebsd.h
 tar/test/
+test_utils/

@@ -45,7 +45,7 @@ static device_method_t ignore_pci_methods[] = {
     /* Device interface */
     DEVMETHOD(device_probe,		ignore_pci_probe),
     DEVMETHOD(device_attach,		bus_generic_attach),
-    { 0, 0 }
+    DEVMETHOD_END
 };
 
 static driver_t ignore_pci_driver = {

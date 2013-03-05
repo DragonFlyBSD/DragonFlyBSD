@@ -335,7 +335,7 @@ static device_method_t rp_pcimethods[] = {
 	DEVMETHOD(device_shutdown,	rp_pcishutdown),
 #endif /* notdef */
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t rp_pcidriver = {

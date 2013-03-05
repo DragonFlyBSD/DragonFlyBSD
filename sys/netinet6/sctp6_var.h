@@ -1,5 +1,4 @@
 /*	$KAME: sctp6_var.h,v 1.6 2003/11/25 06:40:55 ono Exp $	*/
-/*	$DragonFly: src/sys/netinet6/sctp6_var.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2004 Cisco Systems, Inc.
@@ -50,7 +49,7 @@ struct socket;
 struct sockopt;
 struct sctp_inpcb;
 
-#if defined(__FreeBSD__) || (__APPLE__) || defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 SYSCTL_DECL(_net_inet6_sctp6);
 extern struct pr_usrreqs sctp6_usrreqs;
 int	sctp6_ctloutput(struct socket *, struct sockopt *);

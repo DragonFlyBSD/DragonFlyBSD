@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd December 7, 2012
+.Dd February 18, 2013
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -125,6 +125,11 @@ If set to
 .Dq Li NO ,
 no swapfile is installed, otherwise the value is used as the full
 pathname to a file to use for additional swap space.
+The
+.Xr vn 4
+driver is needed for a swapfile and will be loaded if it is not
+already compiled into the kernel or loaded via
+.Xr loader.conf 5 .
 .It Va apm_enable
 .Pq Vt bool
 If set to

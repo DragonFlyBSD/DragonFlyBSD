@@ -231,7 +231,7 @@ static device_method_t bwi_methods[] = {
 	DEVMETHOD(device_suspend,	bwi_suspend),
 	DEVMETHOD(device_resume,	bwi_resume),
 #endif
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t bwi_driver = {

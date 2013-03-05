@@ -32,7 +32,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd February 5, 2013
+.Dd February 23, 2013
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -52,11 +52,9 @@ programs and configuration files used during operating system bootstrap
 .It Pa defaults/
 default bootstrapping configuration files; see
 .Xr loader.conf 5
-.It Pa kernel
+.It Pa kernel/
 pure kernel executable (the operating system loaded into memory
-at boot time).
-.It Pa modules/
-loadable kernel modules;
+at boot time) and loadable kernel modules;
 see
 .Xr kldstat 8
 .El
@@ -228,8 +226,6 @@ see
 SMB/CIFS requester
 .It Pa nfs/
 C include files for NFS (Network File System)
-.It Pa objc/
-Objective C include files
 .It Pa openssl/
 OpenSSL (Cryptography/SSL toolkit) headers
 .It Pa pcap/

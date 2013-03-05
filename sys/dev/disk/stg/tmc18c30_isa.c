@@ -211,7 +211,7 @@ static device_method_t stg_isa_methods[] = {
 	DEVMETHOD(device_attach,	stg_isa_attach),
 	DEVMETHOD(device_detach,	stg_isa_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t stg_isa_driver = {

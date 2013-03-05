@@ -17,6 +17,7 @@ INCS=	archive.h archive_entry.h
 
 SRCS=	archive_acl.c					\
 	archive_check_magic.c				\
+	archive_cmdline.c				\
 	archive_crypto.c				\
 	archive_entry.c					\
 	archive_entry_copy_stat.c			\
@@ -32,6 +33,7 @@ SRCS=	archive_acl.c					\
 	archive_ppmd7.c					\
 	archive_rb.c					\
 	archive_read.c					\
+	archive_read_append_filter.c			\
 	archive_read_data_into_fd.c			\
 	archive_read_disk_entry_from_file.c		\
 	archive_read_disk_posix.c			\
@@ -41,11 +43,15 @@ SRCS=	archive_acl.c					\
 	archive_read_open_file.c			\
 	archive_read_open_filename.c			\
 	archive_read_open_memory.c			\
+	archive_read_set_format.c			\
 	archive_read_set_options.c			\
 	archive_read_support_filter_all.c		\
 	archive_read_support_filter_bzip2.c		\
 	archive_read_support_filter_compress.c		\
+	archive_read_support_filter_grzip.c		\
 	archive_read_support_filter_gzip.c		\
+	archive_read_support_filter_lrzip.c		\
+	archive_read_support_filter_lzop.c		\
 	archive_read_support_filter_none.c		\
 	archive_read_support_filter_program.c		\
 	archive_read_support_filter_rpm.c		\
@@ -71,6 +77,7 @@ SRCS=	archive_acl.c					\
 	archive_util.c					\
 	archive_virtual.c				\
 	archive_write.c					\
+	archive_write_disk_acl.c			\
 	archive_write_disk_posix.c			\
 	archive_write_disk_set_standard_lookup.c	\
 	archive_write_open_fd.c				\
@@ -78,11 +85,17 @@ SRCS=	archive_acl.c					\
 	archive_write_open_filename.c			\
 	archive_write_open_memory.c			\
 	archive_write_add_filter.c			\
+	archive_write_add_filter_b64encode.c		\
+	archive_write_add_filter_by_name.c		\
 	archive_write_add_filter_bzip2.c		\
 	archive_write_add_filter_compress.c		\
+	archive_write_add_filter_grzip.c		\
 	archive_write_add_filter_gzip.c			\
+	archive_write_add_filter_lrzip.c		\
+	archive_write_add_filter_lzop.c			\
 	archive_write_add_filter_none.c			\
 	archive_write_add_filter_program.c		\
+	archive_write_add_filter_uuencode.c		\
 	archive_write_add_filter_xz.c			\
 	archive_write_set_format.c			\
 	archive_write_set_format_7zip.c			\
@@ -95,11 +108,12 @@ SRCS=	archive_acl.c					\
 	archive_write_set_format_pax.c			\
 	archive_write_set_format_shar.c			\
 	archive_write_set_format_ustar.c		\
+	archive_write_set_format_v7tar.c		\
 	archive_write_set_format_gnutar.c		\
 	archive_write_set_format_xar.c			\
 	archive_write_set_format_zip.c			\
 	archive_write_set_options.c			\
-	filter_fork.c
+	filter_fork_posix.c
 
 MAN=	archive_entry.3					\
 	archive_entry_acl.3				\
@@ -109,14 +123,32 @@ MAN=	archive_entry.3					\
 	archive_entry_stat.3				\
 	archive_entry_time.3				\
 	archive_read.3					\
+	archive_read_data.3				\
 	archive_read_disk.3				\
+	archive_read_extract.3				\
+	archive_read_filter.3				\
+	archive_read_format.3				\
+	archive_read_free.3				\
+	archive_read_header.3				\
+	archive_read_new.3				\
+	archive_read_open.3				\
 	archive_read_set_options.3			\
 	archive_util.3					\
 	archive_write.3					\
+	archive_write_blocksize.3			\
+	archive_write_data.3				\
 	archive_write_disk.3				\
+	archive_write_filter.3				\
+	archive_write_finish_entry.3			\
+	archive_write_format.3				\
+	archive_write_free.3				\
+	archive_write_header.3				\
+	archive_write_new.3				\
+	archive_write_open.3				\
 	archive_write_set_options.3			\
 	cpio.5						\
 	libarchive.3					\
+	libarchive_changes.3				\
 	libarchive_internals.3				\
 	libarchive-formats.5				\
 	mtree.5						\
@@ -234,6 +266,9 @@ MLINKS=	archive_entry.3 archive_entry_clear.3 \
 	archive_entry_time.3 archive_entry_mtime_is_set.3 \
 	archive_entry_time.3 archive_entry_set_mtime.3 \
 	archive_entry_time.3 archive_entry_unset_mtime.3 \
+	archive_read_data.3 archive_read_data_block.3 \
+	archive_read_data.3 archive_read_data_skip.3 \
+	archive_read_data.3 archive_read_data_into_fd.3 \
 	archive_read_disk.3 archive_read_disk_new.3 \
 	archive_read_disk.3 archive_read_disk_set_symlink_logical.3 \
 	archive_read_disk.3 archive_read_disk_set_symlink_physical.3 \
@@ -247,6 +282,41 @@ MLINKS=	archive_entry.3 archive_entry_clear.3 \
 	archive_read_disk.3 archive_read_close.3 \
 	archive_read_disk.3 archive_read_finish.3 \
 	archive_read_disk.3 archive_read_free.3 \
+	archive_read_extract.3 archive_read_extract2.3 \
+	archive_read_extract.3 archive_read_extract_set_progress_callback.3 \
+	archive_read_filter.3 archive_read_support_filter_all.3 \
+	archive_read_filter.3 archive_read_support_filter_bzip2.3 \
+	archive_read_filter.3 archive_read_support_filter_compress.3 \
+	archive_read_filter.3 archive_read_support_filter_gzip.3 \
+	archive_read_filter.3 archive_read_support_filter_lzma.3 \
+	archive_read_filter.3 archive_read_support_filter_none.3 \
+	archive_read_filter.3 archive_read_support_filter_xz.3 \
+	archive_read_filter.3 archive_read_support_filter_program.3 \
+	archive_read_filter.3 archive_read_support_filter_program_signature.3 \
+	archive_read_format.3 archive_read_support_format_7zip.3 \
+	archive_read_format.3 archive_read_support_format_all.3 \
+	archive_read_format.3 archive_read_support_format_ar.3 \
+	archive_read_format.3 archive_read_support_format_by_code.3 \
+	archive_read_format.3 archive_read_support_format_cab.3 \
+	archive_read_format.3 archive_read_support_format_cpio.3 \
+	archive_read_format.3 archive_read_support_format_empty.3 \
+	archive_read_format.3 archive_read_support_format_iso9660.3 \
+	archive_read_format.3 archive_read_support_format_lha.3 \
+	archive_read_format.3 archive_read_support_format_mtree.3 \
+	archive_read_format.3 archive_read_support_format_rar.3 \
+	archive_read_format.3 archive_read_support_format_raw.3 \
+	archive_read_format.3 archive_read_support_format_tar.3 \
+	archive_read_format.3 archive_read_support_format_xar.3 \
+	archive_read_format.3 archive_read_support_format_zip.3 \
+	archive_read_free.3 archive_read_close.3 \
+	archive_read_free.3 archive_read_finish.3 \
+	archive_read_header.3 archive_read_next_header.3 \
+	archive_read_header.3 archive_read_next_header2.3 \
+	archive_read_open.3 archive_read_open2.3 \
+	archive_read_open.3 archive_read_open_fd.3 \
+	archive_read_open.3 archive_read_open_FILE.3 \
+	archive_read_open.3 archive_read_open_filename.3 \
+	archive_read_open.3 archive_read_open_memory.3 \
 	archive_read_set_options.3 archive_read_set_filter_option.3 \
 	archive_read_set_options.3 archive_read_set_format_option.3 \
 	archive_read_set_options.3 archive_read_set_option.3 \
@@ -264,6 +334,10 @@ MLINKS=	archive_entry.3 archive_entry_clear.3 \
 	archive_util.3 archive_format_name.3 \
 	archive_util.3 archive_position.3 \
 	archive_util.3 archive_set_error.3 \
+	archive_write_blocksize.3 archive_write_get_bytes_per_block.3 \
+	archive_write_blocksize.3 archive_write_set_bytes_per_block.3 \
+	archive_write_blocksize.3 archive_write_get_bytes_in_last_block.3 \
+	archive_write_blocksize.3 archive_write_set_bytes_in_last_block.3 \
 	archive_write_disk.3 archive_write_disk_new.3 \
 	archive_write_disk.3 archive_write_disk_set_options.3 \
 	archive_write_disk.3 archive_write_disk_set_skip_file.3 \
@@ -277,6 +351,27 @@ MLINKS=	archive_entry.3 archive_entry_clear.3 \
 	archive_write_disk.3 archive_write_close.3 \
 	archive_write_disk.3 archive_write_finish.3 \
 	archive_write_disk.3 archive_write_free.3 \
+	archive_write_filter.3 archive_write_add_filter_bzip2.3 \
+	archive_write_filter.3 archive_write_add_filter_compress.3 \
+	archive_write_filter.3 archive_write_add_filter_gzip.3 \
+	archive_write_filter.3 archive_write_add_filter_lzip.3 \
+	archive_write_filter.3 archive_write_add_filter_lzma.3 \
+	archive_write_filter.3 archive_write_add_filter_none.3 \
+	archive_write_filter.3 archive_write_add_filter_program.3 \
+	archive_write_filter.3 archive_write_add_filter_xz.3 \
+	archive_write_format.3 archive_write_set_format_cpio.3 \
+	archive_write_format.3 archive_write_set_format_pax.3 \
+	archive_write_format.3 archive_write_set_format_pax_restricted.3 \
+	archive_write_format.3 archive_write_set_format_shar.3 \
+	archive_write_format.3 archive_write_set_format_shar_dump.3 \
+	archive_write_format.3 archive_write_set_format_ustar.3 \
+	archive_write_free.3 archive_write_fail.3 \
+	archive_write_free.3 archive_write_close.3 \
+	archive_write_free.3 archive_write_finish.3 \
+	archive_write_open.3 archive_write_open_fd.3\
+	archive_write_open.3 archive_write_open_FILE.3 \
+	archive_write_open.3 archive_write_open_filename.3 \
+	archive_write_open.3 archive_write_open_memory.3 \
 	archive_write_set_options.3 archive_write_set_filter_option.3 \
 	archive_write_set_options.3 archive_write_set_format_option.3 \
 	archive_write_set_options.3 archive_write_set_option.3

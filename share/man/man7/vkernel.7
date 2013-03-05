@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 17, 2012
+.Dd February 22, 2013
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -50,12 +50,12 @@
 .Op Fl c Ar file
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 .Op Fl i Ar file
-.Op Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
+.Op Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc Ns Oo Ar =mac Oc
 .Op Fl l Ar cpulock
 .Op Fl m Ar size
 .Op Fl n Ar numcpus Ns Op Ar :lbits Ns Oo Ar :cbits Oc
 .Op Fl p Ar pidfile
-.Op Fl r Ar file
+.Op Fl r Ar file Ns Op Ar :serno
 .Sh DESCRIPTION
 The
 .Nm
@@ -98,7 +98,7 @@ with the trailing
 .Ql X Ns s
 being replaced by a sequential number, e.g.\&
 .Pa memimg.000001 .
-.It Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
+.It Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc Ns Oo Ar =MAC Oc
 Create a virtual network device, with the first
 .Fl I
 option defining
@@ -149,6 +149,13 @@ address is not assigned until the interface is brought up in the guest.
 The
 .Ar netmask
 argument applies to all interfaces for which an address is specified.
+.Pp
+The
+.Ar MAC
+argument is the MAC address of the
+.Xr vke 4
+interface.
+If not specified, a pseudo-random one will be generated.
 .Pp
 When running multiple vkernels it is often more convenient to simply
 connect to a
@@ -222,7 +229,7 @@ vkernel.
 .Pp
 An error is issued and the vkernel exits if this file cannot be opened for
 writing or if it is already locked by an active vkernel process.
-.It Fl r Ar file
+.It Fl r Ar file Ns Op Ar :serno
 Specify a R/W disk image
 .Ar file
 to be used by the kernel, with the first
@@ -232,6 +239,9 @@ option defining
 the second one
 .Li vkd1 ,
 and so on.
+A serial number for the virtual disk can be specified in
+.Ar serno .
+.Pp
 The first
 .Fl r
 or

@@ -79,7 +79,7 @@ static device_method_t wi_pccard_methods[] = {
 	DEVMETHOD(device_detach,	wi_detach),
 	DEVMETHOD(device_shutdown,	wi_shutdown),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t wi_pccard_driver = {

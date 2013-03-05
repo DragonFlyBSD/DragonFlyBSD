@@ -121,7 +121,7 @@ static device_method_t umct_methods[] = {
 	DEVMETHOD(device_probe, umct_match),
 	DEVMETHOD(device_attach, umct_attach),
 	DEVMETHOD(device_detach, umct_detach),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t umct_driver = {

@@ -65,23 +65,22 @@ void
 _refcount_wait(volatile u_int *countp, const char *wstr)
 {
 	u_int n;
-	int loops = 0;
-	int threshold = 5;
+	int base_ticks = ticks;
 
 	for (;;) {
 		n = *countp;
 		cpu_ccfence();
 		if (n == 0)
 			break;
-		if (loops > threshold) {
-			kprintf("refcount_wait %s long wait\n", wstr);
-			loops = 0;
+		if ((int)(ticks - base_ticks) >= hz*60 - 1) {
+			kprintf("warning: refcount_wait %s: long wait\n",
+				wstr);
+			base_ticks = ticks;
 		}
 		KKASSERT(n != REFCNTF_WAITING);	/* impossible state */
 		tsleep_interlock(countp, 0);
 		if (atomic_cmpset_int(countp, n, n | REFCNTF_WAITING))
 			tsleep(countp, PINTERLOCKED, wstr, hz*10);
-		loops++;
 	}
 }
 

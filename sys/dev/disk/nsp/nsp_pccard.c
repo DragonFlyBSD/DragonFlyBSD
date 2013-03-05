@@ -250,7 +250,7 @@ static device_method_t nsp_pccard_methods[] = {
 	DEVMETHOD(card_compat_probe,	nsp_pccard_probe),
 	DEVMETHOD(card_compat_attach,	nsp_pccard_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t nsp_pccard_driver = {

@@ -218,7 +218,7 @@ static device_method_t geode_methods[] = {
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
 	DEVMETHOD(device_resume,	bus_generic_resume),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static driver_t geode_driver = {

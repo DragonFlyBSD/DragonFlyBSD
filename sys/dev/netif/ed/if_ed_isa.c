@@ -180,7 +180,7 @@ static device_method_t ed_isa_methods[] = {
 	DEVMETHOD(device_attach,	ed_isa_attach),
 	DEVMETHOD(device_attach,	ed_isa_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ed_isa_driver = {

@@ -247,7 +247,7 @@ static device_method_t ath_pci_methods[] = {
 	DEVMETHOD(device_suspend,	ath_pci_suspend),
 	DEVMETHOD(device_resume,	ath_pci_resume),
 
-	{ 0,0 }
+	DEVMETHOD_END
 };
 static driver_t ath_pci_driver = {
 	"ath",

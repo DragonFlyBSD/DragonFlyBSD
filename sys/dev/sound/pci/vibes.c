@@ -927,7 +927,7 @@ static device_method_t sc_methods[] = {
         DEVMETHOD(device_detach,        sv_detach),
         DEVMETHOD(device_resume,        sv_resume),
         DEVMETHOD(device_suspend,       sv_suspend),
-        { 0, 0 }
+        DEVMETHOD_END
 };
 
 static driver_t sonicvibes_driver = {

@@ -29,7 +29,6 @@
  *
  * $Id: ubtbcmfw.c,v 1.3 2003/10/10 19:15:08 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/drivers/ubtbcmfw/ubtbcmfw.c,v 1.18 2007/06/23 04:34:38 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/drivers/ubtbcmfw/ubtbcmfw.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -122,7 +121,7 @@ static device_method_t ubtbcmfw_methods[] = {
 	DEVMETHOD(device_attach,	ubtbcmfw_attach),
 	DEVMETHOD(device_detach,	ubtbcmfw_detach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t ubtbcmfw_driver = {

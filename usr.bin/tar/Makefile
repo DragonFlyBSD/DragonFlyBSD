@@ -1,5 +1,5 @@
 PROG=	bsdtar
-SRCS=	bsdtar.c cmdline.c read.c subst.c util.c write.c
+SRCS=	bsdtar.c cmdline.c creation_set.c read.c subst.c util.c write.c
 SRCS+=	err.c line_reader.c
 DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBZ}
 LDADD=	-larchive -lbz2 -llzma -lmd -lz

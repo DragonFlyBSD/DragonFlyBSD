@@ -121,8 +121,6 @@ static struct mount dummymount;
 struct mntlist mountlist = TAILQ_HEAD_INITIALIZER(mountlist);
 static TAILQ_HEAD(,mountscan_info) mountscan_list;
 static struct lwkt_token mountlist_token;
-static TAILQ_HEAD(,vmntvnodescan_info) mntvnodescan_list;
-struct lwkt_token mntvnode_token;
 
 static TAILQ_HEAD(,bio_ops) bio_ops_list = TAILQ_HEAD_INITIALIZER(bio_ops_list);
 
@@ -133,25 +131,26 @@ void
 vfs_mount_init(void)
 {
 	lwkt_token_init(&mountlist_token, "mntlist");
-	lwkt_token_init(&mntvnode_token, "mntvnode");
 	lwkt_token_init(&mntid_token, "mntid");
 	TAILQ_INIT(&mountscan_list);
-	TAILQ_INIT(&mntvnodescan_list);
 	mount_init(&dummymount);
 	dummymount.mnt_flag |= MNT_RDONLY;
 	dummymount.mnt_kern_flag |= MNTK_ALL_MPSAFE;
 }
 
 /*
- * Support function called with mntvnode_token held to remove a vnode
- * from the mountlist.  We must update any list scans which are in progress.
+ * Support function called to remove a vnode from the mountlist and
+ * deal with side effects for scans in progress.
+ *
+ * Target mnt_token is held on call.
  */
 static void
 vremovevnodemnt(struct vnode *vp)
 {
         struct vmntvnodescan_info *info;
+	struct mount *mp = vp->v_mount;
 
-	TAILQ_FOREACH(info, &mntvnodescan_list, entry) {
+	TAILQ_FOREACH(info, &mp->mnt_vnodescan_list, entry) {
 		if (info->vp == vp)
 			info->vp = TAILQ_NEXT(vp, v_nmntvnodes);
 	}
@@ -248,8 +247,10 @@ vfs_busy(struct mount *mp, int flags)
 	int lkflags;
 
 	atomic_add_int(&mp->mnt_refs, 1);
+	lwkt_gettoken(&mp->mnt_token);
 	if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
 		if (flags & LK_NOWAIT) {
+			lwkt_reltoken(&mp->mnt_token);
 			atomic_add_int(&mp->mnt_refs, -1);
 			return (ENOENT);
 		}
@@ -262,12 +263,14 @@ vfs_busy(struct mount *mp, int flags)
 		 * exclusive lock at the end of dounmount.
 		 */
 		tsleep((caddr_t)mp, 0, "vfs_busy", 0);
+		lwkt_reltoken(&mp->mnt_token);
 		atomic_add_int(&mp->mnt_refs, -1);
 		return (ENOENT);
 	}
 	lkflags = LK_SHARED;
 	if (lockmgr(&mp->mnt_lock, lkflags))
 		panic("vfs_busy: unexpected lock failure");
+	lwkt_reltoken(&mp->mnt_token);
 	return (0);
 }
 
@@ -325,9 +328,10 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 void
 mount_init(struct mount *mp)
 {
-	lockinit(&mp->mnt_lock, "vfslock", 0, 0);
+	lockinit(&mp->mnt_lock, "vfslock", hz*5, 0);
 	lwkt_token_init(&mp->mnt_token, "permnt");
 
+	TAILQ_INIT(&mp->mnt_vnodescan_list);
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
 	TAILQ_INIT(&mp->mnt_jlist);
@@ -586,14 +590,16 @@ vlrureclaim(struct mount *mp, void *data)
 	 * This should not happen in normal operation, even on machines with
 	 * low amounts of memory, but extraordinary memory use by the system
 	 * verses the amount of cached data can trigger it.
+	 *
+	 * (long) -> deal with 64 bit machines, intermediate overflow
 	 */
 	usevnodes = desiredvnodes;
 	if (usevnodes <= 0)
 		usevnodes = 1;
-	trigger = vmstats.v_page_count * (trigger_mult + 2) / usevnodes;
+	trigger = (long)vmstats.v_page_count * (trigger_mult + 2) / usevnodes;
 
 	done = 0;
-	lwkt_gettoken(&mntvnode_token);
+	lwkt_gettoken(&mp->mnt_token);
 	count = mp->mnt_nvnodelistsize / 10 + 1;
 
 	while (count && mp->mnt_syncer) {
@@ -618,7 +624,7 @@ vlrureclaim(struct mount *mp, void *data)
 		/*
 		 * __VNODESCAN__
 		 *
-		 * The VP will stick around while we hold mntvnode_token,
+		 * The VP will stick around while we hold mnt_token,
 		 * at least until we block, so we can safely do an initial
 		 * check, and then must check again after we lock the vnode.
 		 */
@@ -669,7 +675,7 @@ vlrureclaim(struct mount *mp, void *data)
 		++done;
 		--count;
 	}
-	lwkt_reltoken(&mntvnode_token);
+	lwkt_reltoken(&mp->mnt_token);
 	return (done);
 }
 
@@ -705,6 +711,8 @@ vnlru_proc(void)
 
 		/*
 		 * Try to free some vnodes if we have too many
+		 *
+		 * (long) -> deal with 64 bit machines, intermediate overflow
 		 */
 		if (numvnodes > desiredvnodes &&
 		    freevnodes > desiredvnodes * 2 / 10) {
@@ -718,14 +726,20 @@ vnlru_proc(void)
 		}
 
 		/*
+		 * Do non-critical-path (more robust) cache cleaning,
+		 * even if vnode counts are nominal, to try to avoid
+		 * having to do it in the critical path.
+		 */
+		cache_hysteresis(0);
+
+		/*
 		 * Nothing to do if most of our vnodes are already on
 		 * the free list.
 		 */
-		if (numvnodes - freevnodes <= desiredvnodes * 9 / 10) {
+		if (numvnodes - freevnodes <= (long)desiredvnodes * 9 / 10) {
 			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
 		}
-		cache_hysteresis();
 
 		/*
 		 * The pass iterates through the four combinations of
@@ -962,31 +976,38 @@ SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp)
 void
 insmntque(struct vnode *vp, struct mount *mp)
 {
-	lwkt_gettoken(&mntvnode_token);
+	struct mount *omp;
+
 	/*
 	 * Delete from old mount point vnode list, if on one.
 	 */
-	if (vp->v_mount != NULL) {
-		KASSERT(vp->v_mount->mnt_nvnodelistsize > 0,
+	if ((omp = vp->v_mount) != NULL) {
+		lwkt_gettoken(&omp->mnt_token);
+		KKASSERT(omp == vp->v_mount);
+		KASSERT(omp->mnt_nvnodelistsize > 0,
 			("bad mount point vnode list size"));
 		vremovevnodemnt(vp);
-		vp->v_mount->mnt_nvnodelistsize--;
+		omp->mnt_nvnodelistsize--;
+		lwkt_reltoken(&omp->mnt_token);
 	}
+
 	/*
 	 * Insert into list of vnodes for the new mount point, if available.
 	 * The 'end' of the LRU list is the vnode prior to mp->mnt_syncer.
 	 */
-	if ((vp->v_mount = mp) == NULL) {
-		lwkt_reltoken(&mntvnode_token);
+	if (mp == NULL) {
+		vp->v_mount = NULL;
 		return;
 	}
+	lwkt_gettoken(&mp->mnt_token);
+	vp->v_mount = mp;
 	if (mp->mnt_syncer) {
 		TAILQ_INSERT_BEFORE(mp->mnt_syncer, vp, v_nmntvnodes);
 	} else {
 		TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
 	}
 	mp->mnt_nvnodelistsize++;
-	lwkt_reltoken(&mntvnode_token);
+	lwkt_reltoken(&mp->mnt_token);
 }
 
 
@@ -1028,7 +1049,7 @@ vmntvnodescan(
 	int stopcount = 0;
 	int count = 0;
 
-	lwkt_gettoken(&mntvnode_token);
+	lwkt_gettoken(&mp->mnt_token);
 	lwkt_gettoken(&vmobj_token);
 
 	/*
@@ -1040,7 +1061,8 @@ vmntvnodescan(
 		stopcount = mp->mnt_nvnodelistsize;
 
 	info.vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
-	TAILQ_INSERT_TAIL(&mntvnodescan_list, &info, entry);
+	TAILQ_INSERT_TAIL(&mp->mnt_vnodescan_list, &info, entry);
+
 	while ((vp = info.vp) != NULL) {
 		if (--maxcount == 0) {
 			kprintf("Warning: excessive fssync iteration\n");
@@ -1149,9 +1171,10 @@ next:
 		if (info.vp == vp)
 			info.vp = TAILQ_NEXT(vp, v_nmntvnodes);
 	}
-	TAILQ_REMOVE(&mntvnodescan_list, &info, entry);
+
+	TAILQ_REMOVE(&mp->mnt_vnodescan_list, &info, entry);
 	lwkt_reltoken(&vmobj_token);
-	lwkt_reltoken(&mntvnode_token);
+	lwkt_reltoken(&mp->mnt_token);
 	return(r);
 }
 

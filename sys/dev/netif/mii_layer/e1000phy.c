@@ -72,7 +72,7 @@ static device_method_t e1000phy_methods[] = {
 	DEVMETHOD(device_attach,	e1000phy_attach),
 	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static const struct mii_phydesc e1000phys[] = {

@@ -246,7 +246,7 @@ static device_method_t an_pci_methods[] = {
 	DEVMETHOD(device_shutdown,	an_shutdown),
 	DEVMETHOD(device_suspend,	an_suspend_pci),
 	DEVMETHOD(device_resume,	an_resume_pci),
-        { 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t an_pci_driver = {

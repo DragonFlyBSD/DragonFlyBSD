@@ -134,7 +134,7 @@ static device_method_t isahint_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_identify,	isahint_identify),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t isahint_driver = {

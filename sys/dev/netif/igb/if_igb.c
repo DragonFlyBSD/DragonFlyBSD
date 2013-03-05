@@ -154,6 +154,7 @@ static int	igb_sysctl_rx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
 static int	igb_get_rxring_inuse(const struct igb_softc *, boolean_t);
 static int	igb_get_txring_inuse(const struct igb_softc *, boolean_t);
+static void	igb_set_timer_cpuid(struct igb_softc *, boolean_t);
 #ifdef IFPOLL_ENABLE
 static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
@@ -251,7 +252,7 @@ static device_method_t igb_methods[] = {
 	DEVMETHOD(device_shutdown,	igb_shutdown),
 	DEVMETHOD(device_suspend,	igb_suspend),
 	DEVMETHOD(device_resume,	igb_resume),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t igb_driver = {
@@ -996,10 +997,7 @@ igb_init(void *xsc)
 		ifsq_watchdog_start(&sc->tx_rings[i].tx_watchdog);
 	}
 
-	if (polling || sc->intr_type == PCI_INTR_TYPE_MSIX)
-		sc->timer_cpuid = 0; /* XXX fixed */
-	else
-		sc->timer_cpuid = rman_get_cpuid(sc->intr_res);
+	igb_set_timer_cpuid(sc, polling);
 	callout_reset_bycpu(&sc->timer, hz, igb_timer, sc, sc->timer_cpuid);
 	e1000_clear_hw_cntrs_base_generic(&sc->hw);
 
@@ -3160,10 +3158,12 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING) {
 			if (rxr_cnt == sc->rx_ring_inuse &&
-			    txr_cnt == sc->tx_ring_inuse)
+			    txr_cnt == sc->tx_ring_inuse) {
+				igb_set_timer_cpuid(sc, TRUE);
 				igb_disable_intr(sc);
-			else
+			} else {
 				igb_init(sc);
+			}
 		}
 	} else {
 		for (i = 0; i < sc->tx_ring_cnt; ++i) {
@@ -3177,10 +3177,12 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			rxr_cnt = igb_get_rxring_inuse(sc, FALSE);
 
 			if (rxr_cnt == sc->rx_ring_inuse &&
-			    txr_cnt == sc->tx_ring_inuse)
+			    txr_cnt == sc->tx_ring_inuse) {
+				igb_set_timer_cpuid(sc, FALSE);
 				igb_enable_intr(sc);
-			else
+			} else {
 				igb_init(sc);
+			}
 		}
 	}
 }
@@ -4857,4 +4859,13 @@ igb_msix_rxtx(void *arg)
 	lwkt_serialize_exit(&txr->tx_serialize);
 
 	E1000_WRITE_REG(&msix->msix_sc->hw, E1000_EIMS, msix->msix_mask);
+}
+
+static void
+igb_set_timer_cpuid(struct igb_softc *sc, boolean_t polling)
+{
+	if (polling || sc->intr_type == PCI_INTR_TYPE_MSIX)
+		sc->timer_cpuid = 0; /* XXX fixed */
+	else
+		sc->timer_cpuid = rman_get_cpuid(sc->intr_res);
 }

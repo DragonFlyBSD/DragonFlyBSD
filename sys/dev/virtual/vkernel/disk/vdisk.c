@@ -136,7 +136,18 @@ vkdinit(void *dummy __unused)
 		info.d_secpertrack = info.d_media_blocks;
 		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
 
+		if (dsk->serno) {
+			info.d_serialno = kmalloc(SERNOLEN, M_TEMP, M_WAITOK | M_ZERO);
+			strlcpy(info.d_serialno, dsk->serno, SERNOLEN);
+		}
 		disk_setdiskinfo(&sc->disk, &info);
+
+		/* Announce disk details */
+		kprintf("vkd%d: <Virtual disk> ", i);
+		if (info.d_serialno)
+			kprintf("Serial Number %s", info.d_serialno);
+		kprintf("\nvkd%d: %dMB (%ju %d byte sectors)\n",
+		    i, (int)(st.st_size / 1024 / 1024), info.d_media_blocks, info.d_media_blksize);
 	}
 }
 

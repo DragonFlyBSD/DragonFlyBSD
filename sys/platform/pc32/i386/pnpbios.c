@@ -247,7 +247,7 @@ static device_method_t pnpbios_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_identify,	pnpbios_identify),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t pnpbios_driver = {

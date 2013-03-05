@@ -231,7 +231,7 @@ struct protosw inetsw[] = {
 	.pr_type = SOCK_RAW,
 	.pr_domain = &inetdomain,
 	.pr_protocol = IPPROTO_ICMP,
-	.pr_flags = PR_ATOMIC|PR_ADDR|PR_LASTHDR,
+	.pr_flags = PR_ATOMIC|PR_ADDR|PR_LASTHDR|PR_MPSAFE,
 
 	.pr_input = icmp_input,
 	.pr_output = NULL,

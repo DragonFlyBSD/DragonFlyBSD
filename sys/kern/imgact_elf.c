@@ -246,6 +246,7 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	vm_offset_t map_addr;
 	int error, rv, cow;
 	int count;
+	int shared;
 	size_t copy_len;
 	vm_object_t object;
 	vm_offset_t file_addr;
@@ -253,7 +254,12 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	object = vp->v_object;
 	error = 0;
 
-	vm_object_hold(object);
+	/*
+	 * In most cases we will be able to use a shared lock on the
+	 * object we are inserting into the map.  The lock will be
+	 * upgraded in situations where new VM pages must be allocated.
+	 */
+	shared = vm_object_hold_maybe_shared(object);
 
 	/*
 	 * It's necessary to fail if the filsz + offset taken from the
@@ -288,8 +294,11 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 		vm_object_reference_locked(object);
 
 		/* cow flags: don't dump readonly sections in core */
-		cow = MAP_COPY_ON_WRITE | MAP_PREFAULT |
-		    (prot & VM_PROT_WRITE ? 0 : MAP_DISABLE_COREDUMP);
+		cow = MAP_COPY_ON_WRITE | MAP_PREFAULT;
+		if ((prot & VM_PROT_WRITE) == 0)
+			cow |= MAP_DISABLE_COREDUMP;
+		if (shared == 0)
+			cow |= MAP_PREFAULT_RELOCK;
 
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 		vm_map_lock(&vmspace->vm_map);
@@ -303,9 +312,14 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 				      cow);
 		vm_map_unlock(&vmspace->vm_map);
 		vm_map_entry_release(count);
+
+		/*
+		 * NOTE: Object must have a hold ref when calling
+		 * vm_object_deallocate().
+		 */
 		if (rv != KERN_SUCCESS) {
-			vm_object_deallocate(object);
 			vm_object_drop(object);
+			vm_object_deallocate(object);
 			return (EINVAL);
 		}
 
@@ -315,7 +329,6 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 			return (0);
 		}
 	}
-
 
 	/*
 	 * We have to get the remaining bit of the file into the first part
@@ -346,12 +359,12 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	}
 
 	if (copy_len != 0) {
-		vm_page_t m;
 		struct lwbuf *lwb;
 		struct lwbuf lwb_cache;
+		vm_page_t m;
 
 		m = vm_fault_object_page(object, trunc_page(offset + filsz),
-					 VM_PROT_READ, 0, &error);
+					 VM_PROT_READ, 0, shared, &error);
 		if (m) {
 			lwb = lwbuf_alloc(m, &lwb_cache);
 			error = copyout((caddr_t)lwbuf_kva(lwb),
@@ -366,6 +379,7 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	}
 
 	vm_object_drop(object);
+
 	/*
 	 * set it to the specified protection
 	 */

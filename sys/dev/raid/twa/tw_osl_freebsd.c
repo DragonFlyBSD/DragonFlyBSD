@@ -203,7 +203,7 @@ static device_method_t	twa_methods[] = {
 
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
-	{0, 0}
+	DEVMETHOD_END
 };
 
 static driver_t	twa_pci_driver = {

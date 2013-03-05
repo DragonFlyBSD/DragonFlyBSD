@@ -671,7 +671,7 @@ static device_method_t au_methods[] = {
 	DEVMETHOD(device_probe,		au_pci_probe),
 	DEVMETHOD(device_attach,	au_pci_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t au_driver = {

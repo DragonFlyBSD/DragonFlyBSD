@@ -167,7 +167,7 @@ static device_method_t bt_pci_methods[] = {
 	DEVMETHOD(device_probe,		bt_pci_probe),
 	DEVMETHOD(device_attach,	bt_pci_attach),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t bt_pci_driver = {

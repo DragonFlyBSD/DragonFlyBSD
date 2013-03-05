@@ -189,7 +189,7 @@ static device_method_t sbsh_methods[] = {
 	DEVMETHOD(device_suspend,	sbsh_suspend),
 	DEVMETHOD(device_resume,	sbsh_resume),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t sbsh_driver = {
