@@ -79,6 +79,13 @@ struct vke_fifo {
 };
 typedef struct vke_fifo *fifo_t;
 
+/* Default value for a long time */
+#define VKE_DEFAULT_RINGSIZE	256
+static int vke_max_ringsize = 0;
+TUNABLE_INT("hw.vke.max_ringsize", &vke_max_ringsize);
+
+#define LOW_POW_2(n)	(1 << (fls(n) - 1))
+
 struct vke_softc {
 	struct arpcom		arpcom;
 	int			sc_fd;
@@ -768,18 +775,16 @@ havemac:
 	sc->sc_addr = info->netif_addr;
 	sc->sc_mask = info->netif_mask;
 
-	/*
-	 * Calculate the number of mbuf clusters we are going to use
-	 * up to 50% of the total mbuf clusters available in the
-	 * system.
-	 * In the case our vkernel has so little mem that it can't
-	 * allocate even VKE_CHUNK for every vke(4) device, just panic.
-	 */
-	nmbufs = nmbclusters / (NetifNum * 2);
-	sc->sc_ringsize = (1 << (fls(nmbufs) - 1));
-
-	KASSERT(sc->sc_ringsize >= VKE_CHUNK,
-	    ("Not enough mbuf clusters for %d vke devices", NetifNum));
+	if (vke_max_ringsize == 0) {
+		nmbufs = nmbclusters / (NetifNum * 2);
+		sc->sc_ringsize = LOW_POW_2(nmbufs);
+		if (sc->sc_ringsize > VKE_DEFAULT_RINGSIZE)
+			sc->sc_ringsize = VKE_DEFAULT_RINGSIZE;
+	} else if (vke_max_ringsize >= VKE_CHUNK) {	/* Tunable specified */
+		sc->sc_ringsize = LOW_POW_2(vke_max_ringsize);
+	} else {
+		sc->sc_ringsize = LOW_POW_2(VKE_CHUNK);
+	}
 
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, VKE_DEVNAME, sc->sc_unit);

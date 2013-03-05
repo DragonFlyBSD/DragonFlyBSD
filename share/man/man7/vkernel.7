@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 22, 2013
+.Dd March 6, 2013
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -290,6 +290,11 @@ variable
 holds the unit number of the associated
 .Xr tap 4
 device.
+.Pp
+By default, half of the total mbuf clusters available is distributed equally
+among all the vke devices up to 256. This can be overriden with the tunable
+.Va hw.vke.max_ringsize .
+Take into account the number passed will be aligned to the lower power of two.
 .Sh SIGNALS
 The virtual kernel only enables
 .Dv SIGQUIT
