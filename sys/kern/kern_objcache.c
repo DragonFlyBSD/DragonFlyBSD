@@ -291,10 +291,6 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 	nmagdepot = nom_cache / mag_capacity + 1;
 	if (nmagdepot < 2)
 		nmagdepot = 2;
-	if (bootverbose) {
-		kprintf("ndepotmags=%-3d x mag_cap=%-3d for %s\n",
-			nmagdepot, mag_capacity, name);
-	}
 
 	/*
 	 * Put empty magazines in depot
