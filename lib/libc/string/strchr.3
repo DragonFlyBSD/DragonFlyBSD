@@ -74,16 +74,17 @@ function is identical to
 except it locates the last occurrence of
 .Fa c .
 .Pp
+The
 .Fn strchrnul
-is identical to
+function is identical to
 .Fn strchr
-except that it returns a pointer to the nul character at the end of
+except that it returns a pointer to the terminating nul character of
 .Fa s
 instead of
 .Dv NULL
-if the 
+if
 .Fa c
-character is not found.
+is not found.
 .Sh RETURN VALUES
 The functions
 .Fn strchr
@@ -94,7 +95,7 @@ return a pointer to the located character, or
 if the character does not appear in the string.
 .Fn strchrnul
 returns a pointer to the located character, or to the terminating nul
-character at the end of
+character of
 .Fa s
 if
 .Fa c
