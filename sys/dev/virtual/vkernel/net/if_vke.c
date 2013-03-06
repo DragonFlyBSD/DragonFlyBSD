@@ -298,9 +298,12 @@ vke_init(void *xsc)
 	/*
 	 * Allocate memory for FIFO structures and mbufs.
 	 */
-	sc->sc_txfifo = kmalloc(sizeof(*sc->sc_txfifo), M_DEVBUF, M_WAITOK);
-	sc->sc_txfifo_done = kmalloc(sizeof(*sc->sc_txfifo_done), M_DEVBUF, M_WAITOK);
-	sc->sc_rxfifo = kmalloc(sizeof(*sc->sc_rxfifo), M_DEVBUF, M_WAITOK);
+	sc->sc_txfifo = kmalloc(sizeof(*sc->sc_txfifo),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->sc_txfifo_done = kmalloc(sizeof(*sc->sc_txfifo_done),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->sc_rxfifo = kmalloc(sizeof(*sc->sc_rxfifo),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->sc_txfifo->array = kmalloc(ringsize, M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->sc_txfifo_done->array = kmalloc(ringsize, M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->sc_rxfifo->array = kmalloc(ringsize, M_DEVBUF, M_WAITOK | M_ZERO);
