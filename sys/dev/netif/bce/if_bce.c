@@ -4816,7 +4816,7 @@ bce_init(void *xsc)
 	/*
 	 * Init RX buffer descriptor chain.
 	 */
-        REG_WR(sc, BCE_RLUP_RSS_CONFIG, 0);
+	REG_WR(sc, BCE_RLUP_RSS_CONFIG, 0);
 	bce_reg_wr_ind(sc, BCE_RXP_SCRATCH_RSS_TBL_SZ, 0);
 
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
