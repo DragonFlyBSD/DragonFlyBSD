@@ -160,8 +160,9 @@ If not specified, a pseudo-random one will be generated.
 When running multiple vkernels it is often more convenient to simply
 connect to a
 .Xr vknetd 8
-socket and let vknetd deal with the tap and/or bridge.  An example of
-this would be '/var/run/vknet:0.0.0.0:10.2.0.2/16'.
+socket and let vknetd deal with the tap and/or bridge.
+An example of this would be
+.Pa /var/run/vknet:0.0.0.0:10.2.0.2/16 .
 .It Fl l Ar cpulock
 Specify which, if any, real CPUs to lock virtual CPUs to.
 .Ar cpulock
@@ -292,7 +293,8 @@ holds the unit number of the associated
 device.
 .Pp
 By default, half of the total mbuf clusters available is distributed equally
-among all the vke devices up to 256. This can be overriden with the tunable
+among all the vke devices up to 256.
+This can be overriden with the tunable
 .Va hw.vke.max_ringsize .
 Take into account the number passed will be aligned to the lower power of two.
 .Sh SIGNALS
