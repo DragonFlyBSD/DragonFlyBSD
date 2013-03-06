@@ -46,7 +46,16 @@ create_vn()
 		mkdir -p $BUILD_DIR
 		echo "Created build directory $BUILD_DIR"
 	fi
-	VN_DEV=`vnconfig -c -S ${INITRD_SIZE} -Z -T vn ${TMP_DIR}/initrd.img | cut -f 2 -d ' '`
+	vnconfig -c -S ${INITRD_SIZE} -Z -T vn ${TMP_DIR}/initrd.img \
+	    > ${TMP_DIR}/vndev.mkinitrd
+	if [ $? -ne 0 ]; then
+	    echo "Failed to configure vn device"
+	    exit 1
+	fi
+
+	VN_DEV=`cat ${TMP_DIR}/vndev.mkinitrd | cut -f 2 -d ' '`
+	[ -f ${TMP_DIR}/vndev.mkinitrd ] && rm ${TMP_DIR}/vndev.mkinitrd
+
 	echo "Configured $VN_DEV"
 	newfs /dev/${VN_DEV}s0
 	echo "Formatted initrd image with UFS"
