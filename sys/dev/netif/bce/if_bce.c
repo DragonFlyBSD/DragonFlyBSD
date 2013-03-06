@@ -4568,7 +4568,9 @@ bce_rx_int_next_rx:
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
 			ifp->if_input(ifp, m);
+#ifdef BCE_RSS_DEBUG
 			rxr->rx_pkts++;
+#endif
 		}
 	}
 
