@@ -768,8 +768,8 @@ _cache_drop(struct namecache *ncp)
  *
  * Both ncp and par must be referenced and locked.
  *
- * NOTE: The hash table spinlock is likely held during this call, we
- *	 can't do anything fancy.
+ * NOTE: The hash table spinlock is held during this call, we can't do
+ *	 anything fancy.
  */
 static void
 _cache_link_parent(struct namecache *ncp, struct namecache *par,
@@ -3463,6 +3463,8 @@ _cache_cleanpos(int count)
 
 		spin_lock(&nchpp->spin);
 		ncp = LIST_FIRST(&nchpp->list);
+		while (ncp && (ncp->nc_flag & NCF_DESTROYED))
+			ncp = LIST_NEXT(ncp, nc_hash);
 		if (ncp)
 			_cache_hold(ncp);
 		spin_unlock(&nchpp->spin);
@@ -3499,6 +3501,7 @@ _cache_cleandefered(void)
 	numdefered = 0;
 	bzero(&dummy, sizeof(dummy));
 	dummy.nc_flag = NCF_DESTROYED;
+	dummy.nc_refs = 1;
 
 	for (i = 0; i <= nchash; ++i) {
 		nchpp = &nchashtbl[i];
