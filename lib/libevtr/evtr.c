@@ -855,7 +855,7 @@ thread_switch_callback(evtr_event_t ev, void *d)
 	static struct evtr_event tdcr;
 	static char *fmt = "new_td %p %s";
 	char tidstr[40];
-	char fmtdata[sizeof(void *) + sizeof(char *)];
+	void *fmtdata[2];
 
 	cpu = evtr_cpu(evtr, ev->cpu);
 	if (!cpu) {
@@ -886,8 +886,8 @@ thread_switch_callback(evtr_event_t ev, void *d)
 		tdcr.cpu = ev->cpu;
 		tdcr.td = NULL;
 		snprintf(tidstr, sizeof(tidstr), "%p", ktdn);
-		((void **)fmtdata)[0] = ktdn;
-		((char **)fmtdata)[1] = &tidstr[0];
+		fmtdata[0] = ktdn;
+		fmtdata[1] = tidstr;
 		thread_creation_callback(&tdcr, d);
 
 		tdn = thread_map_find(&evtr->threads, ktdn);

@@ -122,17 +122,17 @@ static void
 unmappedaddr(struct sockaddr_in6 *sin6)
 {
 	struct sockaddr_in *sin4;
-	u_int32_t addr;
+	void *addr;
 	int port;
 
 	if (sin6->sin6_family != AF_INET6 ||
 	    !IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr))
 		return;
 	sin4 = (struct sockaddr_in *)sin6;
-	addr = *(u_int32_t *)(uintptr_t)&sin6->sin6_addr.s6_addr[12];
+	addr = &sin6->sin6_addr.s6_addr[12];
 	port = sin6->sin6_port;
 	memset(sin4, 0, sizeof(struct sockaddr_in));
-	sin4->sin_addr.s_addr = addr;
+	sin4->sin_addr.s_addr = *(uint32_t *)addr;
 	sin4->sin_port = port;
 	sin4->sin_family = AF_INET;
 	sin4->sin_len = sizeof(struct sockaddr_in);
