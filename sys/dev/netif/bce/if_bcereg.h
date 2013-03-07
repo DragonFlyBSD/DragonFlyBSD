@@ -5838,6 +5838,11 @@ struct fw_info {
 #define BCE_RX_CHAIN_PAGE_SZ	BCM_PAGE_SIZE
 #define BCE_CTX_BLK_SZ		0x2000
 
+struct bce_tx_buf {
+	bus_dmamap_t		tx_mbuf_map;
+	struct mbuf		*tx_mbuf_ptr;
+};
+
 struct bce_tx_ring {
 	struct lwkt_serialize	tx_serialize;
 	struct bce_softc	*sc;
@@ -5858,8 +5863,7 @@ struct bce_tx_ring {
 
 	/* S/W maintained mbuf TX chain structure. */
 	bus_dma_tag_t		tx_mbuf_tag;
-	bus_dmamap_t		*tx_mbuf_map;	/* TOTAL_TX_BD */
-	struct mbuf		**tx_mbuf_ptr;	/* TOTAL_TX_BD */
+	struct bce_tx_buf	*tx_bufs;	/* TOTAL_TX_BD */
 
 	struct ifsubq_watchdog	tx_watchdog;
 
@@ -5887,6 +5891,12 @@ struct bce_msix_data {
 #define BCE_TX_RING_MAX			8
 #define BCE_MSIX_MAX			9
 
+struct bce_rx_buf {
+	bus_dmamap_t		rx_mbuf_map;
+	struct mbuf		*rx_mbuf_ptr;
+	bus_addr_t		rx_mbuf_paddr;
+};
+
 struct bce_rx_ring {
 	struct lwkt_serialize	rx_serialize;
 	struct bce_softc	*sc;
@@ -5911,9 +5921,7 @@ struct bce_rx_ring {
 	/* S/W maintained mbuf RX chain structure. */
 	bus_dma_tag_t		rx_mbuf_tag;
 	bus_dmamap_t		rx_mbuf_tmpmap;
-	bus_dmamap_t		*rx_mbuf_map;	/* TOTAL_RX_BD */
-	struct mbuf		**rx_mbuf_ptr;	/* TOTAL_RX_BD */
-	bus_addr_t		*rx_mbuf_paddr;	/* TOTAL_RX_BD */
+	struct bce_rx_buf	*rx_bufs;	/* TOTAL_RX_BD */
 
 	u_long			rx_pkts;
 

@@ -410,7 +410,7 @@ static void	bce_destroy_rx_ring(struct bce_rx_ring *);
 static void	bce_init_rx_context(struct bce_rx_ring *);
 static int	bce_init_rx_chain(struct bce_rx_ring *);
 static void	bce_free_rx_chain(struct bce_rx_ring *);
-static int	bce_newbuf_std(struct bce_rx_ring *, uint16_t *, uint16_t *,
+static int	bce_newbuf_std(struct bce_rx_ring *, uint16_t *, uint16_t,
 		    uint32_t *, int);
 static void	bce_setup_rxdesc_std(struct bce_rx_ring *, uint16_t,
 		    uint32_t *);
@@ -1964,9 +1964,9 @@ bce_destroy_tx_ring(struct bce_tx_ring *txr)
 	if (txr->tx_mbuf_tag != NULL) {
 		for (i = 0; i < TOTAL_TX_BD(txr); i++) {
 			/* Must have been unloaded in bce_stop() */
-			KKASSERT(txr->tx_mbuf_ptr[i] == NULL);
+			KKASSERT(txr->tx_bufs[i].tx_mbuf_ptr == NULL);
 			bus_dmamap_destroy(txr->tx_mbuf_tag,
-			    txr->tx_mbuf_map[i]);
+			    txr->tx_bufs[i].tx_mbuf_map);
 		}
 		bus_dma_tag_destroy(txr->tx_mbuf_tag);
 	}
@@ -1978,10 +1978,8 @@ bce_destroy_tx_ring(struct bce_tx_ring *txr)
 	if (txr->tx_bd_chain_paddr != NULL)
 		kfree(txr->tx_bd_chain_paddr, M_DEVBUF);
 
-	if (txr->tx_mbuf_map != NULL)
-		kfree(txr->tx_mbuf_map, M_DEVBUF);
-	if (txr->tx_mbuf_ptr != NULL)
-		kfree(txr->tx_mbuf_ptr, M_DEVBUF);
+	if (txr->tx_bufs != NULL)
+		kfree(txr->tx_bufs, M_DEVBUF);
 }
 
 static void
@@ -2007,9 +2005,9 @@ bce_destroy_rx_ring(struct bce_rx_ring *rxr)
 	if (rxr->rx_mbuf_tag != NULL) {
 		for (i = 0; i < TOTAL_RX_BD(rxr); i++) {
 			/* Must have been unloaded in bce_stop() */
-			KKASSERT(rxr->rx_mbuf_ptr[i] == NULL);
+			KKASSERT(rxr->rx_bufs[i].rx_mbuf_ptr == NULL);
 			bus_dmamap_destroy(rxr->rx_mbuf_tag,
-			    rxr->rx_mbuf_map[i]);
+			    rxr->rx_bufs[i].rx_mbuf_map);
 		}
 		bus_dmamap_destroy(rxr->rx_mbuf_tag, rxr->rx_mbuf_tmpmap);
 		bus_dma_tag_destroy(rxr->rx_mbuf_tag);
@@ -2022,12 +2020,8 @@ bce_destroy_rx_ring(struct bce_rx_ring *rxr)
 	if (rxr->rx_bd_chain_paddr != NULL)
 		kfree(rxr->rx_bd_chain_paddr, M_DEVBUF);
 
-	if (rxr->rx_mbuf_map != NULL)
-		kfree(rxr->rx_mbuf_map, M_DEVBUF);
-	if (rxr->rx_mbuf_ptr != NULL)
-		kfree(rxr->rx_mbuf_ptr, M_DEVBUF);
-	if (rxr->rx_mbuf_paddr != NULL)
-		kfree(rxr->rx_mbuf_paddr, M_DEVBUF);
+	if (rxr->rx_bufs != NULL)
+		kfree(rxr->rx_bufs, M_DEVBUF);
 }
 
 /****************************************************************************/
@@ -2142,9 +2136,8 @@ bce_create_tx_ring(struct bce_tx_ring *txr)
 	txr->tx_bd_chain_paddr = kmalloc(sizeof(bus_addr_t) * txr->tx_pages,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
-	txr->tx_mbuf_map = kmalloc(sizeof(bus_dmamap_t) * TOTAL_TX_BD(txr),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	txr->tx_mbuf_ptr = kmalloc(sizeof(struct mbuf *) * TOTAL_TX_BD(txr),
+	txr->tx_bufs = kmalloc_cachealign(
+	    sizeof(struct bce_tx_buf) * TOTAL_TX_BD(txr),
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
@@ -2217,13 +2210,13 @@ bce_create_tx_ring(struct bce_tx_ring *txr)
 	for (i = 0; i < TOTAL_TX_BD(txr); i++) {
 		rc = bus_dmamap_create(txr->tx_mbuf_tag,
 		    BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
-		    &txr->tx_mbuf_map[i]);
+		    &txr->tx_bufs[i].tx_mbuf_map);
 		if (rc != 0) {
 			int j;
 
 			for (j = 0; j < i; ++j) {
 				bus_dmamap_destroy(txr->tx_mbuf_tag,
-				    txr->tx_mbuf_map[i]);
+				    txr->tx_bufs[j].tx_mbuf_map);
 			}
 			bus_dma_tag_destroy(txr->tx_mbuf_tag);
 			txr->tx_mbuf_tag = NULL;
@@ -2257,11 +2250,8 @@ bce_create_rx_ring(struct bce_rx_ring *rxr)
 	rxr->rx_bd_chain_paddr = kmalloc(sizeof(bus_addr_t) * rxr->rx_pages,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
-	rxr->rx_mbuf_map = kmalloc(sizeof(bus_dmamap_t) * TOTAL_RX_BD(rxr),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	rxr->rx_mbuf_ptr = kmalloc(sizeof(struct mbuf *) * TOTAL_RX_BD(rxr),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	rxr->rx_mbuf_paddr = kmalloc(sizeof(bus_addr_t) * TOTAL_RX_BD(rxr),
+	rxr->rx_bufs = kmalloc_cachealign(
+	    sizeof(struct bce_rx_buf) * TOTAL_RX_BD(rxr),
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
@@ -2345,13 +2335,13 @@ bce_create_rx_ring(struct bce_rx_ring *rxr)
 	/* Create DMA maps for the RX mbuf clusters. */
 	for (i = 0; i < TOTAL_RX_BD(rxr); i++) {
 		rc = bus_dmamap_create(rxr->rx_mbuf_tag, BUS_DMA_WAITOK,
-		    &rxr->rx_mbuf_map[i]);
+		    &rxr->rx_bufs[i].rx_mbuf_map);
 		if (rc != 0) {
 			int j;
 
 			for (j = 0; j < i; ++j) {
 				bus_dmamap_destroy(rxr->rx_mbuf_tag,
-				    rxr->rx_mbuf_map[j]);
+				    rxr->rx_bufs[j].rx_mbuf_map);
 			}
 			bus_dma_tag_destroy(rxr->rx_mbuf_tag);
 			rxr->rx_mbuf_tag = NULL;
@@ -3864,9 +3854,10 @@ bce_blockinit(struct bce_softc *sc)
 /*   0 for success, positive value for failure.                             */
 /****************************************************************************/
 static int
-bce_newbuf_std(struct bce_rx_ring *rxr, uint16_t *prod, uint16_t *chain_prod,
+bce_newbuf_std(struct bce_rx_ring *rxr, uint16_t *prod, uint16_t chain_prod,
     uint32_t *prod_bseq, int init)
 {
+	struct bce_rx_buf *rx_buf;
 	bus_dmamap_t map;
 	bus_dma_segment_t seg;
 	struct mbuf *m_new;
@@ -3891,21 +3882,20 @@ bce_newbuf_std(struct bce_rx_ring *rxr, uint16_t *prod, uint16_t *chain_prod,
 		return error;
 	}
 
-	if (rxr->rx_mbuf_ptr[*chain_prod] != NULL) {
-		bus_dmamap_unload(rxr->rx_mbuf_tag,
-		    rxr->rx_mbuf_map[*chain_prod]);
-	}
+	rx_buf = &rxr->rx_bufs[chain_prod];
+	if (rx_buf->rx_mbuf_ptr != NULL)
+		bus_dmamap_unload(rxr->rx_mbuf_tag, rx_buf->rx_mbuf_map);
 
-	map = rxr->rx_mbuf_map[*chain_prod];
-	rxr->rx_mbuf_map[*chain_prod] = rxr->rx_mbuf_tmpmap;
+	map = rx_buf->rx_mbuf_map;
+	rx_buf->rx_mbuf_map = rxr->rx_mbuf_tmpmap;
 	rxr->rx_mbuf_tmpmap = map;
 
 	/* Save the mbuf and update our counter. */
-	rxr->rx_mbuf_ptr[*chain_prod] = m_new;
-	rxr->rx_mbuf_paddr[*chain_prod] = seg.ds_addr;
+	rx_buf->rx_mbuf_ptr = m_new;
+	rx_buf->rx_mbuf_paddr = seg.ds_addr;
 	rxr->free_rx_bd--;
 
-	bce_setup_rxdesc_std(rxr, *chain_prod, prod_bseq);
+	bce_setup_rxdesc_std(rxr, chain_prod, prod_bseq);
 
 	return 0;
 }
@@ -3914,12 +3904,14 @@ static void
 bce_setup_rxdesc_std(struct bce_rx_ring *rxr, uint16_t chain_prod,
     uint32_t *prod_bseq)
 {
+	const struct bce_rx_buf *rx_buf;
 	struct rx_bd *rxbd;
 	bus_addr_t paddr;
 	int len;
 
-	paddr = rxr->rx_mbuf_paddr[chain_prod];
-	len = rxr->rx_mbuf_ptr[chain_prod]->m_len;
+	rx_buf = &rxr->rx_bufs[chain_prod];
+	paddr = rx_buf->rx_mbuf_paddr;
+	len = rx_buf->rx_mbuf_ptr->m_len;
 
 	/* Setup the rx_bd for the first segment. */
 	rxbd = &rxr->rx_bd_chain[RX_PAGE(chain_prod)][RX_IDX(chain_prod)];
@@ -4045,11 +4037,13 @@ bce_free_tx_chain(struct bce_tx_ring *txr)
 
 	/* Unmap, unload, and free any mbufs still in the TX mbuf chain. */
 	for (i = 0; i < TOTAL_TX_BD(txr); i++) {
-		if (txr->tx_mbuf_ptr[i] != NULL) {
+		struct bce_tx_buf *tx_buf = &txr->tx_bufs[i];
+
+		if (tx_buf->tx_mbuf_ptr != NULL) {
 			bus_dmamap_unload(txr->tx_mbuf_tag,
-			    txr->tx_mbuf_map[i]);
-			m_freem(txr->tx_mbuf_ptr[i]);
-			txr->tx_mbuf_ptr[i] = NULL;
+			    tx_buf->tx_mbuf_map);
+			m_freem(tx_buf->tx_mbuf_ptr);
+			tx_buf->tx_mbuf_ptr = NULL;
 		}
 	}
 
@@ -4165,7 +4159,7 @@ bce_init_rx_chain(struct bce_rx_ring *rxr)
 	prod = prod_bseq = 0;
 	while (prod < TOTAL_RX_BD(rxr)) {
 		chain_prod = RX_CHAIN_IDX(rxr, prod);
-		if (bce_newbuf_std(rxr, &prod, &chain_prod, &prod_bseq, 1)) {
+		if (bce_newbuf_std(rxr, &prod, chain_prod, &prod_bseq, 1)) {
 			if_printf(&rxr->sc->arpcom.ac_if,
 			    "Error filling RX chain: rx_bd[0x%04X]!\n",
 			    chain_prod);
@@ -4203,11 +4197,13 @@ bce_free_rx_chain(struct bce_rx_ring *rxr)
 
 	/* Free any mbufs still in the RX mbuf chain. */
 	for (i = 0; i < TOTAL_RX_BD(rxr); i++) {
-		if (rxr->rx_mbuf_ptr[i] != NULL) {
+		struct bce_rx_buf *rx_buf = &rxr->rx_bufs[i];
+
+		if (rx_buf->rx_mbuf_ptr != NULL) {
 			bus_dmamap_unload(rxr->rx_mbuf_tag,
-			    rxr->rx_mbuf_map[i]);
-			m_freem(rxr->rx_mbuf_ptr[i]);
-			rxr->rx_mbuf_ptr[i] = NULL;
+			    rx_buf->rx_mbuf_map);
+			m_freem(rx_buf->rx_mbuf_ptr);
+			rx_buf->rx_mbuf_ptr = NULL;
 		}
 	}
 
@@ -4350,6 +4346,7 @@ bce_rx_intr(struct bce_rx_ring *rxr, int count, uint16_t hw_cons)
 
 	/* Scan through the receive chain as long as there is work to do. */
 	while (sw_cons != hw_cons) {
+		struct bce_rx_buf *rx_buf;
 		struct mbuf *m = NULL;
 		struct l2_fhdr *l2fhdr = NULL;
 		unsigned int len;
@@ -4366,11 +4363,12 @@ bce_rx_intr(struct bce_rx_ring *rxr, int count, uint16_t hw_cons)
 		 */
 		sw_chain_cons = RX_CHAIN_IDX(rxr, sw_cons);
 		sw_chain_prod = RX_CHAIN_IDX(rxr, sw_prod);
+		rx_buf = &rxr->rx_bufs[sw_chain_cons];
 
 		rxr->free_rx_bd++;
 
 		/* The mbuf is stored with the last rx_bd entry of a packet. */
-		if (rxr->rx_mbuf_ptr[sw_chain_cons] != NULL) {
+		if (rx_buf->rx_mbuf_ptr != NULL) {
 			if (sw_chain_cons != sw_chain_prod) {
 				if_printf(ifp, "RX cons(%d) != prod(%d), "
 				    "drop!\n", sw_chain_cons, sw_chain_prod);
@@ -4383,12 +4381,11 @@ bce_rx_intr(struct bce_rx_ring *rxr, int count, uint16_t hw_cons)
 			}
 
 			/* Unmap the mbuf from DMA space. */
-			bus_dmamap_sync(rxr->rx_mbuf_tag,
-			    rxr->rx_mbuf_map[sw_chain_cons],
+			bus_dmamap_sync(rxr->rx_mbuf_tag, rx_buf->rx_mbuf_map,
 			    BUS_DMASYNC_POSTREAD);
 
 			/* Save the mbuf from the driver's chain. */
-			m = rxr->rx_mbuf_ptr[sw_chain_cons];
+			m = rx_buf->rx_mbuf_ptr;
 
 			/*
 			 * Frames received on the NetXteme II are prepended 
@@ -4436,7 +4433,7 @@ bce_rx_intr(struct bce_rx_ring *rxr, int count, uint16_t hw_cons)
 			 * log an ierror on the interface, and generate
 			 * an error in the system log.
 			 */
-			if (bce_newbuf_std(rxr, &sw_prod, &sw_chain_prod,
+			if (bce_newbuf_std(rxr, &sw_prod, sw_chain_prod,
 			    &sw_prod_bseq, 0)) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
 
@@ -4555,21 +4552,24 @@ bce_tx_intr(struct bce_tx_ring *txr, uint16_t hw_tx_cons)
 
 	/* Cycle through any completed TX chain page entries. */
 	while (sw_tx_cons != hw_tx_cons) {
+		struct bce_tx_buf *tx_buf;
+
 		sw_tx_chain_cons = TX_CHAIN_IDX(txr, sw_tx_cons);
+		tx_buf = &txr->tx_bufs[sw_tx_chain_cons];
 
 		/*
 		 * Free the associated mbuf. Remember
 		 * that only the last tx_bd of a packet
 		 * has an mbuf pointer and DMA map.
 		 */
-		if (txr->tx_mbuf_ptr[sw_tx_chain_cons] != NULL) {
+		if (tx_buf->tx_mbuf_ptr != NULL) {
 			/* Unmap the mbuf. */
 			bus_dmamap_unload(txr->tx_mbuf_tag,
-			    txr->tx_mbuf_map[sw_tx_chain_cons]);
+			    tx_buf->tx_mbuf_map);
 
 			/* Free the mbuf. */
-			m_freem(txr->tx_mbuf_ptr[sw_tx_chain_cons]);
-			txr->tx_mbuf_ptr[sw_tx_chain_cons] = NULL;
+			m_freem(tx_buf->tx_mbuf_ptr);
+			tx_buf->tx_mbuf_ptr = NULL;
 
 			IFNET_STAT_INC(ifp, opackets, 1);
 #ifdef BCE_TSS_DEBUG
@@ -4872,7 +4872,7 @@ bce_encap(struct bce_tx_ring *txr, struct mbuf **m_head, int *nsegs_used)
 	chain_prod_start = chain_prod = TX_CHAIN_IDX(txr, prod);
 
 	/* Map the mbuf into DMAable memory. */
-	map = txr->tx_mbuf_map[chain_prod_start];
+	map = txr->tx_bufs[chain_prod_start].tx_mbuf_map;
 
 	maxsegs = txr->max_tx_bd - txr->used_tx_bd;
 	KASSERT(maxsegs >= BCE_TX_SPARE_SPACE,
@@ -4931,11 +4931,11 @@ bce_encap(struct bce_tx_ring *txr, struct mbuf **m_head, int *nsegs_used)
 	 * unload the map before all of the segments
 	 * have been freed.
 	 */
-	txr->tx_mbuf_ptr[chain_prod] = m0;
+	txr->tx_bufs[chain_prod].tx_mbuf_ptr = m0;
 
-	tmp_map = txr->tx_mbuf_map[chain_prod];
-	txr->tx_mbuf_map[chain_prod] = map;
-	txr->tx_mbuf_map[chain_prod_start] = tmp_map;
+	tmp_map = txr->tx_bufs[chain_prod].tx_mbuf_map;
+	txr->tx_bufs[chain_prod].tx_mbuf_map = map;
+	txr->tx_bufs[chain_prod_start].tx_mbuf_map = tmp_map;
 
 	txr->used_tx_bd += nsegs;
 
