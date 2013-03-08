@@ -59,7 +59,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ddb.4,v 1.7.2.6 2001/08/17 13:08:37 ru Exp $
 .\"
-.Dd May 7, 2011
+.Dd March 8, 2013
 .Dt DDB 4
 .Os
 .Sh NAME
@@ -429,6 +429,9 @@ If the
 .Li v
 modifier is specified, timestamp, filename and line number are displayed
 with each log entry.
+.It Cm "show tokens"
+For every global token, it prints its address, exclusive owner address,
+number of collisions and description.
 .It Cm "show watches"
 Displays all watchpoints.
 .It Xo
