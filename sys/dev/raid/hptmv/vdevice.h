@@ -77,10 +77,10 @@ typedef  struct _VDevice
 
 } VDevice;
 
-#define ARRAY_VDEV_SIZE (offsetof(VDevice, u) + sizeof(RaidArray))
-#define DISK_VDEV_SIZE  (offsetof(VDevice, u) + sizeof(Device))
+#define ARRAY_VDEV_SIZE (__offsetof(VDevice, u) + sizeof(RaidArray))
+#define DISK_VDEV_SIZE  (__offsetof(VDevice, u) + sizeof(Device))
 
-#define Map2pVDevice(pDev) ((PVDevice)((UINT_PTR)pDev - offsetof(VDevice, u.disk)))
+#define Map2pVDevice(pDev) ((PVDevice)((UINT_PTR)pDev - __offsetof(VDevice, u.disk)))
 
 /*
  * bUserDeviceMode
