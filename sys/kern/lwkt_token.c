@@ -53,6 +53,7 @@
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/ktr.h>
+#include <ddb/ddb.h>
 #include <sys/kthread.h>
 #include <machine/cpu.h>
 #include <sys/lock.h>
@@ -930,4 +931,29 @@ lwkt_token_swap(void)
 	}
 
 	crit_exit();
+}
+
+DB_SHOW_COMMAND(tokens, db_tok_all)
+{
+	struct lwkt_token *tok, **ptr;
+	struct lwkt_token *toklist[16] = {
+		&mp_token,
+		&pmap_token,
+		&dev_token,
+		&vm_token,
+		&vmspace_token,
+		&kvm_token,
+		&proc_token,
+		&tty_token,
+		&vnode_token,
+		&vmobj_token,
+		NULL
+	};
+
+	ptr = toklist;
+	for (tok = *ptr; tok; tok = *(++ptr)) {
+		db_printf("tok=%p tr_owner=%p t_colissions=%ld t_desc=%s\n", tok,
+		    (tok->t_ref ? tok->t_ref->tr_owner : NULL),
+		    tok->t_collisions, tok->t_desc);
+	}
 }
