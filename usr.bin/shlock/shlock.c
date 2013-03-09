@@ -234,7 +234,7 @@ check_lock(const char *file, int uucpstyle, int debug)
 			return(1);
 		}
 
-		buf[BUFSIZE] = '\0';
+		buf[BUFSIZE - 1] = '\0';
 		errno = 0;
 		tmp_pid = strtol(buf, &endptr, 10);
 		if ((*endptr != '\0' && *endptr != '\n') || errno ||
