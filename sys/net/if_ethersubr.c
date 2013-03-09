@@ -151,9 +151,9 @@ static u_long ether_pktinfo_hit;
 static u_long ether_rss_nopi;
 static u_long ether_rss_nohash;
 static u_long ether_input_requeue;
+#endif
 static u_long ether_input_wronghwhash;
 static int ether_input_ckhash;
-#endif
 
 #define ETHER_TSOLEN_DEFAULT	(4 * ETHERMTU)
 
@@ -189,11 +189,11 @@ SYSCTL_ULONG(_net_link_ether, OID_AUTO, pktinfo_hit, CTLFLAG_RW,
     "# of packets whose msgport are found using pktinfo");
 SYSCTL_ULONG(_net_link_ether, OID_AUTO, input_requeue, CTLFLAG_RW,
     &ether_input_requeue, 0, "# of input packets gets requeued");
+#endif
 SYSCTL_ULONG(_net_link_ether, OID_AUTO, input_wronghwhash, CTLFLAG_RW,
     &ether_input_wronghwhash, 0, "# of input packets with wrong hw hash");
 SYSCTL_INT(_net_link_ether, OID_AUTO, always_ckhash, CTLFLAG_RW,
     &ether_input_ckhash, 0, "always check hash");
-#endif
 
 #define ETHER_KTR_STR		"ifp=%p"
 #define ETHER_KTR_ARGS	struct ifnet *ifp
@@ -1376,11 +1376,8 @@ ether_input_handler(netmsg_t nmsg)
 			return;
 		}
 	}
-	if ((m->m_flags & (M_HASH | M_CKHASH)) == (M_HASH | M_CKHASH)
-#ifdef RSS_DEBUG
-	    || ether_input_ckhash
-#endif
-	    ) {
+	if ((m->m_flags & (M_HASH | M_CKHASH)) == (M_HASH | M_CKHASH) ||
+	    __predict_false(ether_input_ckhash)) {
 		int isr;
 
 		/*
@@ -1398,9 +1395,8 @@ ether_input_handler(netmsg_t nmsg)
 			 * Wrong hardware supplied hash; redispatch
 			 */
 			ether_dispatch(isr, m);
-#ifdef RSS_DEBUG
-			atomic_add_long(&ether_input_wronghwhash, 1);
-#endif
+			if (__predict_false(ether_input_ckhash))
+				atomic_add_long(&ether_input_wronghwhash, 1);
 			return;
 		}
 	}
