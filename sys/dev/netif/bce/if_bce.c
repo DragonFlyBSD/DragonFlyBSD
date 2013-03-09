@@ -414,6 +414,8 @@ static int	bce_newbuf_std(struct bce_rx_ring *, uint16_t *, uint16_t,
 		    uint32_t *, int);
 static void	bce_setup_rxdesc_std(struct bce_rx_ring *, uint16_t,
 		    uint32_t *);
+static struct pktinfo *bce_rss_pktinfo(struct pktinfo *, uint32_t,
+		    const struct l2_fhdr *);
 
 static void	bce_start(struct ifnet *, struct ifaltq_subque *);
 static int	bce_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -986,6 +988,8 @@ bce_attach(device_t dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_hwassist = BCE_CSUM_FEATURES | CSUM_TSO;
 	ifp->if_capabilities = BCE_IF_CAPABILITIES;
+	if (sc->rx_ring_cnt > 1)
+		ifp->if_capabilities |= IFCAP_RSS;
 	ifp->if_capenable = ifp->if_capabilities;
 
 	if (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)
@@ -4346,6 +4350,7 @@ bce_rx_intr(struct bce_rx_ring *rxr, int count, uint16_t hw_cons)
 
 	/* Scan through the receive chain as long as there is work to do. */
 	while (sw_cons != hw_cons) {
+		struct pktinfo pi0, *pi = NULL;
 		struct bce_rx_buf *rx_buf;
 		struct mbuf *m = NULL;
 		struct l2_fhdr *l2fhdr = NULL;
@@ -4484,6 +4489,15 @@ bce_rx_intr(struct bce_rx_ring *rxr, int count, uint16_t hw_cons)
 					}
 				}
 			}
+			if (ifp->if_capenable & IFCAP_RSS) {
+				pi = bce_rss_pktinfo(&pi0, status, l2fhdr);
+				if (pi != NULL &&
+				    (status & L2_FHDR_STATUS_RSS_HASH)) {
+					m->m_flags |= M_HASH;
+					m->m_pkthdr.hash =
+					    toeplitz_hash(l2fhdr->l2_fhdr_hash);
+				}
+			}
 
 			IFNET_STAT_INC(ifp, ipackets, 1);
 bce_rx_int_next_rx:
@@ -4499,7 +4513,7 @@ bce_rx_int_next_rx:
 				m->m_pkthdr.ether_vlantag =
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
-			ifp->if_input(ifp, m);
+			ether_input_pkt(ifp, m, pi);
 #ifdef BCE_RSS_DEBUG
 			rxr->rx_pkts++;
 #endif
@@ -5119,6 +5133,8 @@ bce_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			else
 				ifp->if_hwassist &= ~CSUM_TSO;
 		}
+		if (mask & IFCAP_RSS)
+			ifp->if_capenable ^= IFCAP_RSS;
 		break;
 
 	default:
@@ -7187,4 +7203,38 @@ bce_npoll_coal_change(struct bce_softc *sc)
 
 	sc->bce_rx_quick_cons_trip_int = old_rx_cons;
 	sc->bce_tx_quick_cons_trip_int = old_tx_cons;
+}
+
+static struct pktinfo *
+bce_rss_pktinfo(struct pktinfo *pi, uint32_t status,
+    const struct l2_fhdr *l2fhdr)
+{
+	/* Check for an IP datagram. */
+	if ((status & L2_FHDR_STATUS_IP_DATAGRAM) == 0)
+		return NULL;
+
+	/* Check if the IP checksum is valid. */
+	if (l2fhdr->l2_fhdr_ip_xsum != 0xffff)
+		return NULL;
+
+	/* Check for a valid TCP/UDP frame. */
+	if (status & L2_FHDR_STATUS_TCP_SEGMENT) {
+		if (status & L2_FHDR_ERRORS_TCP_XSUM)
+			return NULL;
+		if (l2fhdr->l2_fhdr_tcp_udp_xsum != 0xffff)
+			return NULL;
+		pi->pi_l3proto = IPPROTO_TCP;
+	} else if (status & L2_FHDR_STATUS_UDP_DATAGRAM) {
+		if (status & L2_FHDR_ERRORS_UDP_XSUM)
+			return NULL;
+		if (l2fhdr->l2_fhdr_tcp_udp_xsum != 0xffff)
+			return NULL;
+		pi->pi_l3proto = IPPROTO_UDP;
+	} else {
+		return NULL;
+	}
+	pi->pi_netisr = NETISR_IP;
+	pi->pi_flags = 0;
+
+	return pi;
 }
