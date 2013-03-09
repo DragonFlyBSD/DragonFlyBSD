@@ -3595,9 +3595,10 @@ jme_enable_rss(struct jme_softc *sc)
 		uint32_t keyreg;
 
 		keyreg = RSSKEY_REGVAL(key, i);
-		JME_RSS_DPRINTF(sc, 5, "keyreg%d 0x%08x\n", i, keyreg);
+		JME_RSS_DPRINTF(sc, 5, "keyreg%d 0x%08x, reg 0x%08x\n",
+		    i, keyreg, RSSKEY_REG(RSSKEY_NREGS - 1 - i));
 
-		CSR_WRITE_4(sc, RSSKEY_REG(i), keyreg);
+		CSR_WRITE_4(sc, RSSKEY_REG(RSSKEY_NREGS - 1 - i), keyreg);
 	}
 
 	/*
