@@ -2545,8 +2545,7 @@ atm_cm_timeout(struct atm_time *tip)
 	/*
 	 * Back-off to cvc control block
 	 */
-	cvp = (Atm_connvc *)
-			((caddr_t)tip - (int)(&((Atm_connvc *)0)->cvc_time));
+	cvp = (Atm_connvc *)((caddr_t)tip - __offsetof(Atm_connvc, cvc_time));
 
 	/*
 	 * Process timeout based on protocol state

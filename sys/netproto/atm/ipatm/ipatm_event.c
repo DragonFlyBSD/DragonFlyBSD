@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_event.c,v 1.4 1999/08/28 00:48:43 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_event.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -65,7 +64,7 @@ ipatm_timeout(struct atm_time *tip)
 	 * Back-off to ipvcc control block
 	 */
 	ivp = (struct ipvcc *)
-			((caddr_t)tip - (int)(&((struct ipvcc *)0)->iv_time));
+			((caddr_t)tip - __offsetof(struct ipvcc, iv_time));
 
 	/*
 	 * Process timeout based on protocol state

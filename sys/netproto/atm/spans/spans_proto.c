@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_proto.c,v 1.4 1999/08/28 00:48:51 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_proto.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -193,7 +192,7 @@ spans_timer(struct atm_time *tip)
 	 * Back-off to SPANS control block
 	 */
 	spp = (struct spans *)
-		((caddr_t)tip - (int)(&((struct spans *)0)->sp_time));
+		((caddr_t)tip - __offsetof(struct spans, sp_time));
 
 	ATM_DEBUG2("spans_timer: spp=%p,state=%d\n",
 			spp, spp->sp_state);
@@ -341,7 +340,7 @@ spans_vctimer(struct atm_time *tip)
 	 * Get VCCB and SPANS control block addresses
 	 */
 	svp = (struct spans_vccb *) ((caddr_t)tip -
-			(int)(&((struct vccb *)0)->vc_time));
+			__offsetof(struct vccb, vc_time));
 	spp = (struct spans *)svp->sv_pif->pif_siginst;
 
 	ATM_DEBUG3("spans_vctimer: svp=%p, sstate=%d, ustate=%d\n",

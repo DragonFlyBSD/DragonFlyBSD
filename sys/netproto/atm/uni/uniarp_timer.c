@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_timer.c,v 1.4 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_timer.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -74,7 +73,7 @@ uniarp_timeout(struct atm_time *tip)
 	 * Back-off to uniarp control block
 	 */
 	uap = (struct uniarp *)
-			((caddr_t)tip - (int)(&((struct uniarp *)0)->ua_time));
+			((caddr_t)tip - __offsetof(struct uniarp, ua_time));
 	uip = uap->ua_intf;
 
 

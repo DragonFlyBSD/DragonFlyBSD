@@ -67,8 +67,6 @@
 #include <netgraph/ng_parse.h>
 #include "ng_bpf.h"
 
-#define OFFSETOF(s, e) ((char *)&((s *)0)->e - (char *)((s *)0))
-
 #define ERROUT(x)	do { error = (x); goto done; } while (0)
 
 /* Per hook private info */
@@ -112,7 +110,7 @@ ng_bpf_hookprogary_getLength(const struct ng_parse_type *type,
 	const struct ng_bpf_hookprog *hp;
 
 	hp = (const struct ng_bpf_hookprog *)
-	    (buf - OFFSETOF(struct ng_bpf_hookprog, bpf_prog));
+	    (buf - __offsetof(struct ng_bpf_hookprog, bpf_prog));
 	return hp->bpf_prog_len;
 }
 

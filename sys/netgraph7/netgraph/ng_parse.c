@@ -39,7 +39,6 @@
  *
  * $Whistle: ng_parse.c,v 1.3 1999/11/29 01:43:48 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_parse.c,v 1.30 2007/06/23 00:02:20 mjacob Exp $
- * $DragonFly: src/sys/netgraph7/ng_parse.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -85,9 +84,9 @@ struct int64_temp {
 };
 
 #define INT8_ALIGNMENT		1
-#define INT16_ALIGNMENT		((size_t)&((struct int16_temp *)0)->y)
-#define INT32_ALIGNMENT		((size_t)&((struct int32_temp *)0)->y)
-#define INT64_ALIGNMENT		((size_t)&((struct int64_temp *)0)->y)
+#define INT16_ALIGNMENT		__offsetof(struct int16_temp, y)
+#define INT32_ALIGNMENT		__offsetof(struct int32_temp, y)
+#define INT64_ALIGNMENT		__offsetof(struct int64_temp, y)
 
 /* Output format for integral types */
 #define INT_UNSIGNED		0

@@ -38,7 +38,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bpf.c,v 1.24 2008/02/04 19:26:53 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_bpf.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_bpf.c,v 1.3 1999/12/03 20:30:23 archie Exp $
  */
 
@@ -77,8 +76,6 @@ MALLOC_DEFINE(M_NETGRAPH_BPF, "netgraph_bpf", "netgraph bpf node ");
 #else
 #define M_NETGRAPH_BPF M_NETGRAPH
 #endif
-
-#define OFFSETOF(s, e) ((char *)&((s *)0)->e - (char *)((s *)0))
 
 #define ERROUT(x)	do { error = (x); goto done; } while (0)
 
@@ -127,7 +124,7 @@ ng_bpf_hookprogary_getLength(const struct ng_parse_type *type,
 	const struct ng_bpf_hookprog *hp;
 
 	hp = (const struct ng_bpf_hookprog *)
-	    (buf - OFFSETOF(struct ng_bpf_hookprog, bpf_prog));
+	    (buf - __offsetof(struct ng_bpf_hookprog, bpf_prog));
 	return hp->bpf_prog_len;
 }
 

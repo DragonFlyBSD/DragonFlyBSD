@@ -114,7 +114,7 @@ struct	direct {
  *
  */
 #define	DIRECTSIZ(namlen)						\
-	(((int)&((struct direct *)0)->d_name +				\
+	((__offsetof(struct direct, d_name) +				\
 	  ((namlen)+1)*sizeof(((struct direct *)0)->d_name[0]) + 3) & ~3)
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 #define DIRSIZ(oldfmt, dp) \

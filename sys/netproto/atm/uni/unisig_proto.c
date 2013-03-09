@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_proto.c,v 1.5 2000/01/17 20:49:57 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_proto.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -64,7 +63,7 @@ unisig_timer(struct atm_time *tip)
 	 * Back-off to UNISIG control block
 	 */
 	usp = (struct unisig *)
-		((caddr_t)tip - (int)(&((struct unisig *)0)->us_time));
+		((caddr_t)tip - __offsetof(struct unisig, us_time));
 
 	ATM_DEBUG2("unisig_timer: usp=%p,state=%d\n",
 			usp, usp->us_state);
@@ -103,7 +102,7 @@ unisig_vctimer(struct atm_time *tip)
 	 * Get VCCB and UNISIG control block addresses
 	 */
 	uvp = (struct unisig_vccb *) ((caddr_t)tip -
-			(int)(&((struct vccb *)0)->vc_time));
+			__offsetof(struct vccb, vc_time));
 	usp = (struct unisig *)uvp->uv_pif->pif_siginst;
 
 	ATM_DEBUG3("unisig_vctimer: uvp=%p, sstate=%d, ustate=%d\n",
