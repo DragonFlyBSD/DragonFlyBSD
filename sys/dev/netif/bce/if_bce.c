@@ -1023,17 +1023,7 @@ bce_attach(device_t dev)
 	/* Attach to the Ethernet interface list. */
 	ether_ifattach(ifp, sc->eaddr, NULL);
 
-	callout_init_mp(&sc->bce_tick_callout);
-	callout_init_mp(&sc->bce_pulse_callout);
-	callout_init_mp(&sc->bce_ckmsi_callout);
-
-	rc = bce_setup_intr(sc);
-	if (rc != 0) {
-		device_printf(dev, "Failed to setup IRQ!\n");
-		ether_ifdetach(ifp);
-		goto fail;
-	}
-
+	/* Setup TX rings and subqueues */
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		struct ifaltq_subque *ifsq = ifq_get_subq(&ifp->if_snd, i);
 		struct bce_tx_ring *txr = &sc->tx_rings[i];
@@ -1043,6 +1033,17 @@ bce_attach(device_t dev)
 		txr->ifsq = ifsq;
 
 		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, bce_watchdog);
+	}
+
+	callout_init_mp(&sc->bce_tick_callout);
+	callout_init_mp(&sc->bce_pulse_callout);
+	callout_init_mp(&sc->bce_ckmsi_callout);
+
+	rc = bce_setup_intr(sc);
+	if (rc != 0) {
+		device_printf(dev, "Failed to setup IRQ!\n");
+		ether_ifdetach(ifp);
+		goto fail;
 	}
 
 	/* Set timer CPUID */
@@ -6808,6 +6809,9 @@ bce_alloc_intr(struct bce_softc *sc)
 		device_printf(sc->bce_dev, "PCI map interrupt failed\n");
 		return ENXIO;
 	}
+	sc->bce_msix[0].msix_cpuid = rman_get_cpuid(sc->bce_res_irq);
+	sc->bce_msix[0].msix_serialize = &sc->main_serialize;
+
 	return 0;
 }
 
@@ -7076,8 +7080,6 @@ bce_setup_intr(struct bce_softc *sc)
 		device_printf(sc->bce_dev, "Failed to setup IRQ!\n");
 		return error;
 	}
-	sc->bce_msix[0].msix_cpuid = rman_get_cpuid(sc->bce_res_irq);
-	sc->bce_msix[0].msix_serialize = &sc->main_serialize;
 
 	return 0;
 }
