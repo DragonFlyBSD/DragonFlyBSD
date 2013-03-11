@@ -408,11 +408,17 @@ struct	proc {
 #define	FIRST_LWP_IN_PROC(p)		RB_FIRST(lwp_rb_tree, &(p)->p_lwp_tree)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\
 	RB_FOREACH(lp, lwp_rb_tree, &(p)->p_lwp_tree)
-#define	ONLY_LWP_IN_PROC(p)		\
-	(p->p_nthreads != 1 &&		\
-	(panic("%s: proc %p (pid %d cmd %s) has more than one thread",	\
-	       __func__, p, p->p_pid, p->p_comm), 1),	\
-	RB_ROOT(&p->p_lwp_tree))
+#define	ONLY_LWP_IN_PROC(p)		_only_lwp_in_proc(p, __func__)
+
+static inline struct lwp *
+_only_lwp_in_proc(struct proc *p, const char *caller)
+{
+	if (p->p_nthreads != 1) {
+		panic("%s: proc %p (pid %d cmd %s) has more than one thread",
+		    caller, p, p->p_pid, p->p_comm);
+	}
+	return RB_ROOT(&p->p_lwp_tree);
+}
 
 /*
  * We use process IDs <= PID_MAX; PID_MAX + 1 must also fit in a pid_t,
