@@ -1063,12 +1063,14 @@ jme_attach(device_t dev)
 	/* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
+	/* Setup the TX ring's CPUID */
+	ifq_set_cpuid(&ifp->if_snd, sc->jme_tx_cpuid);
+
 	error = jme_intr_setup(dev);
 	if (error) {
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-	ifq_set_cpuid(&ifp->if_snd, sc->jme_tx_cpuid);
 
 	return 0;
 fail:
@@ -3846,6 +3848,7 @@ jme_intr_alloc(device_t dev)
 			device_printf(dev, "can't allocate irq\n");
 			return ENXIO;
 		}
+		sc->jme_tx_cpuid = rman_get_cpuid(sc->jme_irq_res);
 	}
 	return 0;
 }
@@ -4001,7 +4004,6 @@ jme_intr_setup(device_t dev)
 		device_printf(dev, "could not set up interrupt handler.\n");
 		return error;
 	}
-	sc->jme_tx_cpuid = rman_get_cpuid(sc->jme_irq_res);
 
 	return 0;
 }
