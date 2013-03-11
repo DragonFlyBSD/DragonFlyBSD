@@ -669,6 +669,13 @@ igb_attach(device_t dev)
 	igb_add_hw_stats(adapter);
 #endif
 
+	/*
+	 * Disable interrupt to prevent spurious interrupts (line based
+	 * interrupt, MSI or even MSI-X), which had been observed on
+	 * several types of LOMs, from being handled.
+	 */
+	igb_disable_intr(sc);
+
 	error = igb_setup_intr(sc);
 	if (error) {
 		ether_ifdetach(&sc->arpcom.ac_if);
