@@ -419,7 +419,6 @@ static int
 emx_attach(device_t dev)
 {
 	struct emx_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error = 0, i, throttle, msi_enable, tx_ring_max;
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
@@ -770,6 +769,7 @@ emx_attach(device_t dev)
 	}
 	sc->tx_npoll_off = offset;
 #endif
+	sc->tx_ring_inuse = emx_get_txring_inuse(sc, FALSE);
 
 	/* Setup OS specific network interface */
 	emx_setup_ifp(sc);
@@ -816,18 +816,6 @@ emx_attach(device_t dev)
 		device_printf(dev, "Failed to register interrupt handler");
 		ether_ifdetach(&sc->arpcom.ac_if);
 		goto fail;
-	}
-
-	sc->tx_ring_inuse = emx_get_txring_inuse(sc, FALSE);
-	for (i = 0; i < sc->tx_ring_cnt; ++i) {
-		struct ifaltq_subque *ifsq = ifq_get_subq(&ifp->if_snd, i);
-		struct emx_txdata *tdata = &sc->tx_data[i];
-
-		ifsq_set_cpuid(ifsq, rman_get_cpuid(sc->intr_res));
-		ifsq_set_priv(ifsq, tdata);
-		tdata->ifsq = ifsq;
-
-		ifsq_watchdog_init(&tdata->tx_watchdog, ifsq, emx_watchdog);
 	}
 	return (0);
 fail:
@@ -1931,6 +1919,7 @@ static void
 emx_setup_ifp(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
 	if_initname(ifp, device_get_name(sc->dev),
 		    device_get_unit(sc->dev));
@@ -1971,6 +1960,17 @@ emx_setup_ifp(struct emx_softc *sc)
 	 * Tell the upper layer(s) we support long frames.
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
+
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		struct ifaltq_subque *ifsq = ifq_get_subq(&ifp->if_snd, i);
+		struct emx_txdata *tdata = &sc->tx_data[i];
+
+		ifsq_set_cpuid(ifsq, rman_get_cpuid(sc->intr_res));
+		ifsq_set_priv(ifsq, tdata);
+		tdata->ifsq = ifsq;
+
+		ifsq_watchdog_init(&tdata->tx_watchdog, ifsq, emx_watchdog);
+	}
 
 	/*
 	 * Specify the media types supported by this sc and register
