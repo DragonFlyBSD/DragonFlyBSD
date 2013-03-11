@@ -1400,6 +1400,8 @@ ae_attach(device_t dev)
 	/* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->ae_irq_res));
+
 	error = bus_setup_intr(dev, sc->ae_irq_res, INTR_MPSAFE, ae_intr, sc,
 			       &sc->ae_irq_handle, ifp->if_serializer);
 	if (error) {
@@ -1407,7 +1409,6 @@ ae_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->ae_irq_res));
 	return 0;
 fail:
 	ae_detach(dev);

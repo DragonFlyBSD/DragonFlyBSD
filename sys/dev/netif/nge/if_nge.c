@@ -900,6 +900,8 @@ nge_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->nge_irq));
+
 #ifdef IFPOLL_ENABLE
 	ifpoll_compat_setup(&sc->nge_npoll, NULL, NULL, device_get_unit(dev),
 	    ifp->if_serializer);
@@ -913,8 +915,6 @@ nge_attach(device_t dev)
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->nge_irq));
 
 	return(0);
 fail:

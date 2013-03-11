@@ -2556,6 +2556,8 @@ bge_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, ether_addr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->bge_irq));
+
 #ifdef IFPOLL_ENABLE
 	/* Polling setup */
 	ifpoll_compat_setup(&sc->bge_npoll,
@@ -2583,8 +2585,6 @@ bge_attach(device_t dev)
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->bge_irq));
 
 	return(0);
 fail:

@@ -204,6 +204,8 @@ an_attach_pci(device_t dev)
 	if (error)
 		goto fail;
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
+
 	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 			       an_intr, sc, &sc->irq_handle, 
 			       sc->arpcom.ac_if.if_serializer);
@@ -212,8 +214,6 @@ an_attach_pci(device_t dev)
 		ether_ifdetach(&sc->arpcom.ac_if);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
 
 	return(0);
 

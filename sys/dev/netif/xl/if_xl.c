@@ -1511,6 +1511,8 @@ done:
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->xl_irq));
+
 #ifdef IFPOLL_ENABLE
 	ifpoll_compat_setup(&sc->xl_npoll, NULL, NULL, device_get_unit(dev),
 	    ifp->if_serializer);
@@ -1530,8 +1532,6 @@ done:
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->xl_irq));
 
 	return 0;
 

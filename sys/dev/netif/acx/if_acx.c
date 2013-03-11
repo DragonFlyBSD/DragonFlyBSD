@@ -540,6 +540,8 @@ acx_attach(device_t dev)
 	sc->sc_rx_th.wr_ihdr.it_len = htole16(sc->sc_rx_th_len);
 	sc->sc_rx_th.wr_ihdr.it_present = htole32(ACX_RX_RADIOTAP_PRESENT);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
+
 	error = bus_setup_intr(dev, sc->sc_irq_res, INTR_MPSAFE, acx_intr, sc,
 			       &sc->sc_irq_handle, ifp->if_serializer);
 	if (error) {
@@ -548,8 +550,6 @@ acx_attach(device_t dev)
 		ieee80211_ifdetach(ic);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
 
 	if (bootverbose)
 		ieee80211_announce(ic);

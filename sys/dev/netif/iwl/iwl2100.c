@@ -303,6 +303,8 @@ iwl2100_attach(device_t dev)
 
 	ieee80211_media_init(ic, iwl2100_media_change, iwl2100_media_status);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
+
 	error = bus_setup_intr(dev, sc->sc_irq_res, INTR_MPSAFE,
 			       iwl2100_intr, sc, &sc->sc_irq_handle,
 			       ifp->if_serializer);
@@ -311,8 +313,6 @@ iwl2100_attach(device_t dev)
 		ieee80211_ifdetach(ic);
 		return ENXIO;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
 
 	/*
 	 * Attach radio tap

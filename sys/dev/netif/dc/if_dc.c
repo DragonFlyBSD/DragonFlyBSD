@@ -2183,6 +2183,8 @@ dc_attach(device_t dev)
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->dc_irq));
+
 	error = bus_setup_intr(dev, sc->dc_irq, INTR_MPSAFE,
 			       dc_intr, sc, &sc->dc_intrhand, 
 			       ifp->if_serializer);
@@ -2191,8 +2193,6 @@ dc_attach(device_t dev)
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->dc_irq));
 
 	return(0);
 

@@ -413,6 +413,8 @@ bfe_attach(device_t dev)
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->bfe_irq));
+
 	/*
 	 * Hook interrupt last to avoid having to lock softc
 	 */
@@ -425,8 +427,6 @@ bfe_attach(device_t dev)
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->bfe_irq));
 	return 0;
 fail:
 	bfe_detach(dev);

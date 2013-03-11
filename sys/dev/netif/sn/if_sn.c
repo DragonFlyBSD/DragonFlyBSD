@@ -221,6 +221,8 @@ sn_attach(device_t dev)
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
+
 	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 			       sn_intr, sc, &sc->intrhand,
 			       ifp->if_serializer);
@@ -229,8 +231,6 @@ sn_attach(device_t dev)
 		sn_deactivate(dev);
 		return error;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
 
 	return 0;
 }

@@ -809,6 +809,8 @@ wb_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->wb_irq));
+
 	error = bus_setup_intr(dev, sc->wb_irq, INTR_MPSAFE,
 			       wb_intr, sc, &sc->wb_intrhand, 
 			       ifp->if_serializer);
@@ -818,8 +820,6 @@ wb_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->wb_irq));
 
 	return(0);
 

@@ -172,6 +172,8 @@ vx_pci_attach(device_t dev)
 	}
     }
 
+    ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->vx_irq));
+
     if (bus_setup_intr(dev, sc->vx_irq, INTR_MPSAFE,
 		       vxintr, sc, &sc->vx_intrhand, 
 		       ifp->if_serializer)
@@ -179,8 +181,6 @@ vx_pci_attach(device_t dev)
 	ether_ifdetach(&sc->arpcom.ac_if);
 	goto bad;
     }
-
-    ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->vx_irq));
 
     return(0);
 

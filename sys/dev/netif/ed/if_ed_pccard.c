@@ -283,6 +283,8 @@ ed_pccard_attach(device_t dev)
 	}
 #endif
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
+
 	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 			       edintr, sc, &sc->irq_handle,
 			       ifp->if_serializer);
@@ -290,8 +292,6 @@ ed_pccard_attach(device_t dev)
 		kprintf("setup intr failed %d \n", error);
 		ed_release_resources(dev);
 		return (error);
-	} else {
-		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
 	}
 
 	return (error);

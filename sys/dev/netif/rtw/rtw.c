@@ -3899,6 +3899,8 @@ rtw_attach(device_t dev)
 	bpfattach_dlt(ifp, DLT_IEEE802_11_RADIO,
 		      sizeof(struct ieee80211_frame) + 64, &sc->sc_radiobpf);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
+
 	rc = bus_setup_intr(dev, sc->sc_irq_res, INTR_MPSAFE, rtw_intr, sc,
 			    &sc->sc_irq_handle, ifp->if_serializer);
 	if (rc) {
@@ -3907,8 +3909,6 @@ rtw_attach(device_t dev)
 		ieee80211_ifdetach(ic);
 		goto err;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
 
 	device_printf(dev, "hardware version %c\n", sc->sc_hwverid);
 	if (bootverbose)

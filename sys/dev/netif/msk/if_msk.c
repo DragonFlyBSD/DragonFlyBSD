@@ -1728,6 +1728,12 @@ mskc_attach(device_t dev)
 
 	bus_generic_attach(dev);
 
+	cpuid = rman_get_cpuid(sc->msk_irq);
+	if (sc->msk_if[0] != NULL)
+		ifq_set_cpuid(&sc->msk_if[0]->msk_ifp->if_snd, cpuid);
+	if (sc->msk_if[1] != NULL)
+		ifq_set_cpuid(&sc->msk_if[1]->msk_ifp->if_snd, cpuid);
+
 	error = bus_setup_intr(dev, sc->msk_irq, INTR_MPSAFE,
 			       mskc_intr, sc, &sc->msk_intrhand,
 			       &sc->msk_serializer);
@@ -1735,12 +1741,6 @@ mskc_attach(device_t dev)
 		device_printf(dev, "couldn't set up interrupt handler\n");
 		goto fail;
 	}
-
-	cpuid = rman_get_cpuid(sc->msk_irq);
-	if (sc->msk_if[0] != NULL)
-		ifq_set_cpuid(&sc->msk_if[0]->msk_ifp->if_snd, cpuid);
-	if (sc->msk_if[1] != NULL)
-		ifq_set_cpuid(&sc->msk_if[1]->msk_ifp->if_snd, cpuid);
 	return 0;
 fail:
 	mskc_detach(dev);

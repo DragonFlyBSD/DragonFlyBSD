@@ -327,6 +327,8 @@ xe_attach (device_t dev)
   /* Attach the interface */
   ether_ifattach(scp->ifp, scp->arpcom.ac_enaddr, NULL);
 
+  ifq_set_cpuid(&scp->ifp->if_snd, rman_get_cpuid(scp->irq_res));
+
   err = bus_setup_intr(dev, scp->irq_res, INTR_MPSAFE,
 		       xe_intr, scp, &scp->intrhand,
 		       scp->ifp->if_serializer);
@@ -336,8 +338,6 @@ xe_attach (device_t dev)
     xe_deactivate(dev);
     return err;
   }
-
-  ifq_set_cpuid(&scp->ifp->if_snd, rman_get_cpuid(scp->irq_res));
 
   /* Done */
   return 0;

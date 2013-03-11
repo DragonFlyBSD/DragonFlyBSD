@@ -157,6 +157,8 @@ an_pccard_attach(device_t dev)
 	if (error)
 		goto fail;
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
+
 	/*
 	 * Must setup the interrupt after the an_attach to prevent racing.
 	 */
@@ -168,8 +170,6 @@ an_pccard_attach(device_t dev)
 		ifmedia_removeall(&sc->an_ifmedia);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
 
 	return 0;
 

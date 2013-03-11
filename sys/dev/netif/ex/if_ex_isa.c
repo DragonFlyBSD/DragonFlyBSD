@@ -279,6 +279,8 @@ ex_isa_attach(device_t dev)
 		goto bad;
 	}
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq));
+
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 				ex_intr, (void *)sc, &sc->ih, 
 				ifp->if_serializer);
@@ -286,8 +288,6 @@ ex_isa_attach(device_t dev)
 		device_printf(dev, "bus_setup_intr() failed!\n");
 		goto bad;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq));
 
 	return(0);
 bad:

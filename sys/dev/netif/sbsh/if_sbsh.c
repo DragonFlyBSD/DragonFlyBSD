@@ -266,6 +266,8 @@ sbsh_attach(device_t dev)
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
+
 	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 				sbsh_intr, sc, &sc->intr_hand, 
 				ifp->if_serializer);
@@ -274,8 +276,6 @@ sbsh_attach(device_t dev)
 		kprintf("sbsh%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
 
 	return(0);
 

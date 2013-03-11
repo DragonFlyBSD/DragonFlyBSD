@@ -324,14 +324,14 @@ ep_isa_attach(device_t dev)
 		goto bad;
 	}
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq));
+
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE, ep_intr,
 			       sc, &sc->ep_intrhand, ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
 		goto bad;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq));
 
 	return (0);
 bad:

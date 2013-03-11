@@ -548,6 +548,8 @@ lge_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->lge_irq));
+
 	error = bus_setup_intr(dev, sc->lge_irq, INTR_MPSAFE,
 			       lge_intr, sc, &sc->lge_intrhand, 
 			       ifp->if_serializer);
@@ -556,8 +558,6 @@ lge_attach(device_t dev)
 		kprintf("lge%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->lge_irq));
 
 	return(0);
 

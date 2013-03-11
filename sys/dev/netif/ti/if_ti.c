@@ -1563,6 +1563,8 @@ ti_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->ti_irq));
+
 	error = bus_setup_intr(dev, sc->ti_irq, INTR_MPSAFE,
 			       ti_intr, sc, &sc->ti_intrhand, 
 			       ifp->if_serializer);
@@ -1571,8 +1573,6 @@ ti_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->ti_irq));
 
 	return 0;
 fail:

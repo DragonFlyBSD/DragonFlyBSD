@@ -270,6 +270,8 @@ epic_attach(device_t dev)
 	ether_ifattach(ifp, sc->sc_macaddr, NULL);
 	ifp->if_hdrlen = sizeof(struct ether_vlan_header);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq));
+
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 			       epic_intr, sc, &sc->sc_ih, 
 			       ifp->if_serializer);
@@ -279,8 +281,6 @@ epic_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq));
 
 	return(0);
 

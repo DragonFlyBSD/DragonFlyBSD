@@ -800,6 +800,8 @@ stge_attach(device_t dev)
 	if ((cmd & PCIM_CMD_MWRICEN) == 0)
 		sc->sc_DMACtrl |= DMAC_MWIDisable;
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq));
+
 	/*
 	 * Hookup IRQ
 	 */
@@ -810,8 +812,6 @@ stge_attach(device_t dev)
 		device_printf(sc->sc_dev, "couldn't set up IRQ\n");
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq));
 
 fail:
 	if (error != 0)

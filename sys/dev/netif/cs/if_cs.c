@@ -682,6 +682,8 @@ cs_attach(device_t dev)
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
+
 	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 			       csintr, sc, &sc->irq_handle, 
 			       ifp->if_serializer);
@@ -690,8 +692,6 @@ cs_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto bad;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
 
 	return 0;
 

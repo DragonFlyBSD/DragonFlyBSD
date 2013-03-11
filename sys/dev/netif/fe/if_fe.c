@@ -818,6 +818,9 @@ fe_attach (device_t dev)
 
 	/* Attach and stop the interface. */
 	ether_ifattach(&sc->sc_if, sc->sc_enaddr, NULL);
+
+	ifq_set_cpuid(&sc->sc_if.if_snd, rman_get_cpuid(sc->irq_res));
+
 	fe_stop(sc);
 
 	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
@@ -828,8 +831,6 @@ fe_attach (device_t dev)
 		fe_release_resource(dev);
 		return ENXIO;
 	}
-
-	ifq_set_cpuid(&sc->sc_if.if_snd, rman_get_cpuid(sc->irq_res));
   
   	/* Print additional info when attached.  */
  	device_printf(dev, "type %s%s\n", sc->typestr,

@@ -1515,18 +1515,18 @@ skc_attach(device_t dev)
 
 	bus_generic_attach(dev);
 
+	cpuid = rman_get_cpuid(sc->sk_irq);
+	if (sc->sk_if[0] != NULL)
+		ifq_set_cpuid(&sc->sk_if[0]->arpcom.ac_if.if_snd, cpuid);
+	if (sc->sk_if[1] != NULL)
+		ifq_set_cpuid(&sc->sk_if[1]->arpcom.ac_if.if_snd, cpuid);
+
 	error = bus_setup_intr(dev, sc->sk_irq, INTR_MPSAFE, sk_intr, sc,
 			       &sc->sk_intrhand, &sc->sk_serializer);
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
-
-	cpuid = rman_get_cpuid(sc->sk_irq);
-	if (sc->sk_if[0] != NULL)
-		ifq_set_cpuid(&sc->sk_if[0]->arpcom.ac_if.if_snd, cpuid);
-	if (sc->sk_if[1] != NULL)
-		ifq_set_cpuid(&sc->sk_if[1]->arpcom.ac_if.if_snd, cpuid);
 
 	return 0;
 fail:

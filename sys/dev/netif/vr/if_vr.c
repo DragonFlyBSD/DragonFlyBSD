@@ -790,6 +790,8 @@ vr_attach(device_t dev)
 	/* Call MI attach routine. */
 	ether_ifattach(ifp, eaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->vr_irq));
+
 #ifdef IFPOLL_ENABLE
 	ifpoll_compat_setup(&sc->vr_npoll, NULL, NULL, device_get_unit(dev),
 	    ifp->if_serializer);
@@ -803,8 +805,6 @@ vr_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->vr_irq));
 
 	return 0;
 

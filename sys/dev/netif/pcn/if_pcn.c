@@ -614,6 +614,8 @@ pcn_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->pcn_irq));
+
 	error = bus_setup_intr(dev, sc->pcn_irq, INTR_MPSAFE,
 			       pcn_intr, sc, &sc->pcn_intrhand, 
 			       ifp->if_serializer);
@@ -622,8 +624,6 @@ pcn_attach(device_t dev)
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->pcn_irq));
 
 	return (0);
 fail:

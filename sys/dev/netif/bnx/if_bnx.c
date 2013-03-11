@@ -2192,6 +2192,8 @@ bnx_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, ether_addr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, sc->bnx_intr_cpuid);
+
 #ifdef IFPOLL_ENABLE
 	ifpoll_compat_setup(&sc->bnx_npoll,
 	    &sc->bnx_sysctl_ctx, sc->bnx_sysctl_tree,
@@ -2219,7 +2221,6 @@ bnx_attach(device_t dev)
 
 	sc->bnx_intr_cpuid = rman_get_cpuid(sc->bnx_irq);
 	sc->bnx_stat_cpuid = sc->bnx_intr_cpuid;
-	ifq_set_cpuid(&ifp->if_snd, sc->bnx_intr_cpuid);
 
 	return(0);
 fail:

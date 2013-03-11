@@ -142,15 +142,13 @@ sbni_pci_attach(device_t dev)
 	if (sc->irq_res) {
 		struct ifnet *ifp = &sc->arpcom.ac_if;
 
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
+
 		error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 				       sbni_intr, sc, &sc->irq_handle,
 				       ifp->if_serializer);
-		if (error) {
+		if (error)
 			kprintf("sbni%d: bus_setup_intr\n", next_sbni_unit);
-		} else {
-			ifq_set_cpuid(&ifp->if_snd,
-			    rman_get_cpuid(sc->irq_res));
-		}
 	} else {
 		kprintf("\nsbni%d: cannot claim irq!\n", next_sbni_unit);
 	}

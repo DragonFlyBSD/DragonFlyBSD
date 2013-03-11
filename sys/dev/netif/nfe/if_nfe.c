@@ -646,6 +646,8 @@ nfe_attach(device_t dev)
 
 	ether_ifattach(ifp, eaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
+
 #ifdef IFPOLL_ENABLE
 	ifpoll_compat_setup(&sc->sc_npoll,
 	    &sc->sc_sysctl_ctx, sc->sc_sysctl_tree, device_get_unit(dev),
@@ -659,8 +661,6 @@ nfe_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
 
 	return 0;
 fail:

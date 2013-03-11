@@ -437,14 +437,14 @@ le_pci_attach(device_t dev)
 		goto fail_dmap;
 	}
 
+	ifq_set_cpuid(&sc->ifp->if_snd, rman_get_cpuid(lesc->sc_ires));
+
 	error = bus_setup_intr(dev, lesc->sc_ires, INTR_MPSAFE,
 	    am79900_intr, sc, &lesc->sc_ih, sc->ifp->if_serializer);
 	if (error != 0) {
 		device_printf(dev, "cannot set up interrupt\n");
 		goto fail_am79900;
 	}
-
-	ifq_set_cpuid(&sc->ifp->if_snd, rman_get_cpuid(lesc->sc_ires));
 
 	return (0);
 

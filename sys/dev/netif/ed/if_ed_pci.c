@@ -106,15 +106,13 @@ ed_pci_attach(device_t dev)
 	if (error == 0) {
 		struct ifnet *ifp = &sc->arpcom.ac_if;
 
+		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
+
 		error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 				       edintr, sc, &sc->irq_handle,
 				       ifp->if_serializer);
-		if (error) {
+		if (error)
 			ed_pci_detach(dev);
-		} else {
-			ifq_set_cpuid(&ifp->if_snd,
-			    rman_get_cpuid(sc->irq_res));
-		}
 	} else {
                 ed_release_resources(dev);
 	}

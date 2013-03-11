@@ -1168,6 +1168,8 @@ sis_attach(device_t dev)
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sis_irq));
+
 	error = bus_setup_intr(dev, sc->sis_irq, INTR_MPSAFE,
 			       sis_intr, sc, 
 			       &sc->sis_intrhand, 
@@ -1178,8 +1180,6 @@ sis_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sis_irq));
 
 fail:
 	if (error)

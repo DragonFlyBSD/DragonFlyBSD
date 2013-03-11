@@ -933,6 +933,7 @@ alc_attach(device_t dev)
 	/* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->alc_irq));
 #if 0
 	/* Create local taskq. */
 	TASK_INIT(&sc->alc_tx_task, 1, alc_tx_task, ifp);
@@ -976,7 +977,6 @@ alc_attach(device_t dev)
 		goto fail;
 	}
 #endif
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->alc_irq));
 
 fail:
 	if (error != 0)

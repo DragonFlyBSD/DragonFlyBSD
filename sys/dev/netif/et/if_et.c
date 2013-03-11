@@ -365,6 +365,8 @@ et_attach(device_t dev)
 
 	ether_ifattach(ifp, eaddr, NULL);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
+
 	error = bus_setup_intr(dev, sc->sc_irq_res, INTR_MPSAFE, et_intr, sc,
 			       &sc->sc_irq_handle, ifp->if_serializer);
 	if (error) {
@@ -372,8 +374,6 @@ et_attach(device_t dev)
 		device_printf(dev, "can't setup intr\n");
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
 
 	return 0;
 fail:

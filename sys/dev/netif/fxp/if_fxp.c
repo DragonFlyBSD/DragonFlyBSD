@@ -679,6 +679,8 @@ fxp_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, FXP_USABLE_TXCB);
 	ifq_set_ready(&ifp->if_snd);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq));
+
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 			       fxp_intr, sc, &sc->ih, 
 			       ifp->if_serializer);
@@ -689,8 +691,6 @@ fxp_attach(device_t dev)
 		device_printf(dev, "could not setup irq\n");
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq));
 
 	return (0);
 

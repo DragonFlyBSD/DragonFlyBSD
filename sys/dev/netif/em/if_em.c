@@ -845,6 +845,8 @@ em_attach(device_t dev)
 	    EM_FLAG_HAS_MGMT && adapter->hw.mac.type >= e1000_82571)
 		em_get_hw_control(adapter);
 
+	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(adapter->intr_res));
+
 	/*
 	 * Missing Interrupt Following ICR read:
 	 *
@@ -870,8 +872,6 @@ em_attach(device_t dev)
 		ether_ifdetach(&adapter->arpcom.ac_if);
 		goto fail;
 	}
-
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(adapter->intr_res));
 	return (0);
 fail:
 	em_detach(dev);
