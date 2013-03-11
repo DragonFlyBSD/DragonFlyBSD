@@ -621,6 +621,7 @@ so_async_rcvd_drop(struct socket *so)
 {
 	lwkt_msg_t lmsg = &so->so_rcvd_msg.base.lmsg;
 
+again:
 	/*
 	 * Spinlock safe, reply runs to degenerate lwkt_spin_dropmsg()
 	 */
@@ -631,8 +632,7 @@ so_async_rcvd_drop(struct socket *so)
 	spin_unlock(&so->so_rcvd_spin);
 	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
 		kprintf("Warning: tcp: so_async_rcvd_drop() raced message\n");
-		while ((lmsg->ms_flags & MSGF_DONE) == 0) {
-			tsleep(so, 0, "soadrop", 1);
-		}
+		tsleep(so, 0, "soadrop", 1);
+		goto again;
 	}
 }
