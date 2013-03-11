@@ -370,7 +370,7 @@ igb_attach(device_t dev)
 {
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
-	int error = 0, i, ring_max;
+	int error = 0, ring_max;
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
 #endif
@@ -674,19 +674,6 @@ igb_attach(device_t dev)
 		ether_ifdetach(&sc->arpcom.ac_if);
 		goto failed;
 	}
-
-	for (i = 0; i < sc->tx_ring_cnt; ++i) {
-		struct ifaltq_subque *ifsq =
-		    ifq_get_subq(&sc->arpcom.ac_if.if_snd, i);
-		struct igb_tx_ring *txr = &sc->tx_rings[i];
-
-		ifsq_set_cpuid(ifsq, txr->tx_intr_cpuid);
-		ifsq_set_priv(ifsq, txr);
-		txr->ifsq = ifsq;
-
-		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, igb_watchdog);
-	}
-
 	return 0;
 
 failed:
@@ -1511,6 +1498,7 @@ static void
 igb_setup_ifp(struct igb_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
 	ifp->if_softc = sc;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
@@ -1547,6 +1535,18 @@ igb_setup_ifp(struct igb_softc *sc)
 	 * Tell the upper layer(s) we support long frames
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
+
+	/* Setup TX rings and subqueues */
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		struct ifaltq_subque *ifsq = ifq_get_subq(&ifp->if_snd, i);
+		struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+		ifsq_set_cpuid(ifsq, txr->tx_intr_cpuid);
+		ifsq_set_priv(ifsq, txr);
+		txr->ifsq = ifsq;
+
+		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, igb_watchdog);
+	}
 
 	/*
 	 * Specify the media types supported by this adapter and register
@@ -3954,7 +3954,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 static int
 igb_setup_intr(struct igb_softc *sc)
 {
-	int error, i;
+	int error;
 
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX)
 		return igb_msix_setup(sc);
@@ -3966,10 +3966,6 @@ igb_setup_intr(struct igb_softc *sc)
 		device_printf(sc->dev, "Failed to register interrupt handler");
 		return error;
 	}
-
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
-		sc->tx_rings[i].tx_intr_cpuid = rman_get_cpuid(sc->intr_res);
-
 	return 0;
 }
 
@@ -4130,6 +4126,9 @@ igb_alloc_intr(struct igb_softc *sc)
 		    "interrupt\n");
 		return ENXIO;
 	}
+
+	for (i = 0; i < sc->tx_ring_cnt; ++i)
+		sc->tx_rings[i].tx_intr_cpuid = rman_get_cpuid(sc->intr_res);
 
 	/*
 	 * Setup MSI/legacy interrupt mask
