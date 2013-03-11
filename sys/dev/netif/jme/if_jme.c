@@ -3372,6 +3372,7 @@ jme_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		info->ifpi_tx[off].arg = &sc->jme_cdata.jme_tx_data;
 		info->ifpi_tx[off].serializer =
 		    &sc->jme_cdata.jme_tx_data.jme_tx_serialize;
+		ifq_set_cpuid(&ifp->if_snd, sc->jme_npoll_txoff);
 
 		off = sc->jme_npoll_rxoff;
 		for (i = 0; i < sc->jme_cdata.jme_rx_ring_cnt; ++i) {
@@ -3387,11 +3388,10 @@ jme_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		if (ifp->if_flags & IFF_RUNNING)
 			jme_disable_intr(sc);
-		ifq_set_cpuid(&ifp->if_snd, sc->jme_npoll_txoff);
 	} else {
+		ifq_set_cpuid(&ifp->if_snd, sc->jme_tx_cpuid);
 		if (ifp->if_flags & IFF_RUNNING)
 			jme_enable_intr(sc);
-		ifq_set_cpuid(&ifp->if_snd, sc->jme_tx_cpuid);
 	}
 }
 
