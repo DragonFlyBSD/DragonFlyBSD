@@ -609,7 +609,12 @@ emx_attach(device_t dev)
 	 *
 	 * NOTE:
 	 * Don't enable multiple TX queues on 82574; it always gives
-	 * watchdog timeout when multiple TCP streams are received.
+	 * watchdog timeout on TX queue0, when multiple TCP streams are
+	 * received.  It was originally suspected that the hardware TX
+	 * checksum offloading caused this watchdog timeout, since only
+	 * TCP ACKs are sent during TCP receiving tests.  However, even
+	 * if the hardware TX checksum offloading is disable, TX queue0
+	 * still will give watchdog.
 	 */
 	tx_ring_max = 1;
 	if (sc->hw.mac.type == e1000_82571 ||
