@@ -2058,7 +2058,10 @@ igb_txcsum_ctx(struct igb_tx_ring *txr, struct mbuf *mp)
 	else if (mp->m_pkthdr.csum_flags & CSUM_UDP)
 		type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_UDP;
 
-	/* 82575 needs the queue index added */
+	/*
+	 * 82575 needs the TX context index added; the queue
+	 * index is used as TX context index here.
+	 */
 	if (txr->sc->hw.mac.type == e1000_82575)
 		mss_l4len_idx = txr->me << 4;
 
@@ -3400,7 +3403,10 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 	olinfo_status |= ((m_head->m_pkthdr.len - hdrlen)
 	    << E1000_ADVTXD_PAYLEN_SHIFT);
 
-	/* 82575 needs the queue index added */
+	/*
+	 * 82575 needs the TX context index added; the queue
+	 * index is used as TX context index here.
+	 */
 	if (txr->sc->hw.mac.type == e1000_82575)
 		olinfo_status |= txr->me << 4;
 
@@ -4705,7 +4711,11 @@ igb_tso_ctx(struct igb_tx_ring *txr, struct mbuf *m, uint32_t *hlen)
 
 	mss_l4len_idx |= (m->m_pkthdr.tso_segsz << E1000_ADVTXD_MSS_SHIFT);
 	mss_l4len_idx |= (thoff << E1000_ADVTXD_L4LEN_SHIFT);
-	/* 82575 needs the queue index added */
+
+	/*
+	 * 82575 needs the TX context index added; the queue
+	 * index is used as TX context index here.
+	 */
 	if (txr->sc->hw.mac.type == e1000_82575)
 		mss_l4len_idx |= txr->me << 4;
 
