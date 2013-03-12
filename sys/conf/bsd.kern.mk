@@ -9,8 +9,8 @@
 
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
-		-Wold-style-definition -Wold-style-declaration \
-		-Wno-pointer-sign -std=c99
+		-Wold-style-definition -Wold-style-declaration -Wno-inline \
+		-Wno-pointer-sign -Wno-unused-but-set-variable -std=c99
 
 CFLAGS+= -finline-limit=${INLINE_LIMIT}
 CFLAGS+= --param inline-unit-growth=100
