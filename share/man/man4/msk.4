@@ -23,9 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/msk.4,v 1.6 2007/12/05 09:41:58 remko Exp $
-.\" $DragonFly: src/share/man/man4/msk.4,v 1.3 2008/03/16 15:50:22 hasso Exp $
 .\"
-.Dd December 26, 2007
+.Dd March 12, 2013
 .Dt MSK 4
 .Os
 .Sh NAME
@@ -204,17 +203,16 @@ SysKonnect SK-9Sxx Gigabit Ethernet
 .It
 SysKonnect SK-9Exx Gigabit Ethernet
 .El
-.\" NOT YET
-.\".Sh LOADER TUNABLES
-.\"Tunables can be set at the
-.\".Xr loader 8
-.\"prompt before booting the kernel or stored in
-.\".Xr loader.conf 5 .
-.\".Bl -tag -width indent
-.\".It Va hw.msk.msi_disable
-.\"This tunable disables MSI support on the Ethernet hardware.
-.\"The default value is 0.
-.\".El
+.Sh LOADER TUNABLES
+Tunables can be set at the
+.Xr loader 8
+prompt before booting the kernel or stored in
+.Xr loader.conf 5 .
+.Bl -tag -width indent
+.It Va hw.mskc.msi.enable
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting this tunable to 0.
+.El
 .\".Sh SYSCTL VARIABLES
 .\"The following variables are available as both
 .\".Xr sysctl 8
