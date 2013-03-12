@@ -1466,7 +1466,7 @@ ASR_acquireLct(Asr_softc_t *sc)
 	int				MessageSizeInBytes;
 	caddr_t				v;
 	int				len;
-	I2O_LCT				Table;
+	I2O_LCT				Table, *TableP = &Table;
 	PI2O_LCT_ENTRY			Entry;
 
 	/*
@@ -1491,7 +1491,7 @@ ASR_acquireLct(Asr_softc_t *sc)
 	 * to reserve space for.
 	 */
 	SG(&(Message_Ptr->SGL), 0,
-	  I2O_SGL_FLAGS_LAST_ELEMENT | I2O_SGL_FLAGS_END_OF_BUFFER, &Table,
+	  I2O_SGL_FLAGS_LAST_ELEMENT | I2O_SGL_FLAGS_END_OF_BUFFER, TableP,
 	  sizeof(I2O_LCT));
 	/*
 	 *	since this code is reused in several systems, code efficiency
@@ -2009,7 +2009,7 @@ ASR_acquireHrt(Asr_softc_t *sc)
 	struct {
 		I2O_HRT	      Header;
 		I2O_HRT_ENTRY Entry[MAX_CHANNEL];
-	}				Hrt;
+	}				Hrt, *HrtP = &Hrt;
 	u_int8_t			NumberOfEntries;
 	PI2O_HRT_ENTRY			Entry;
 
@@ -2029,7 +2029,7 @@ ASR_acquireHrt(Asr_softc_t *sc)
 	 */
 	SG(&(Message_Ptr->SGL), 0,
 	  I2O_SGL_FLAGS_LAST_ELEMENT | I2O_SGL_FLAGS_END_OF_BUFFER,
-	  &Hrt, sizeof(Hrt));
+	  HrtP, sizeof(Hrt));
 	if (ASR_queue_c(sc, (PI2O_MESSAGE_FRAME)Message_Ptr) != CAM_REQ_CMP) {
 		return (ENODEV);
 	}
