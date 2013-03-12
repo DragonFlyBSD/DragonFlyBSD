@@ -410,6 +410,7 @@ struct	proc {
 	RB_FOREACH(lp, lwp_rb_tree, &(p)->p_lwp_tree)
 #define	ONLY_LWP_IN_PROC(p)		_only_lwp_in_proc(p, __func__)
 
+#ifdef _KERNEL
 static inline struct lwp *
 _only_lwp_in_proc(struct proc *p, const char *caller)
 {
@@ -419,6 +420,7 @@ _only_lwp_in_proc(struct proc *p, const char *caller)
 	}
 	return RB_ROOT(&p->p_lwp_tree);
 }
+#endif
 
 /*
  * We use process IDs <= PID_MAX; PID_MAX + 1 must also fit in a pid_t,
