@@ -348,11 +348,13 @@ DRIVER_MODULE(if_msk, pci, mskc_driver, mskc_devclass, NULL, NULL);
 DRIVER_MODULE(if_msk, mskc, msk_driver, msk_devclass, NULL, NULL);
 DRIVER_MODULE(miibus, msk, miibus_driver, miibus_devclass, NULL, NULL);
 
+static int	mskc_msi_enable = 1;
 static int	mskc_intr_rate = 0;
 static int	mskc_process_limit = MSK_PROC_DEFAULT;
 
 TUNABLE_INT("hw.mskc.intr_rate", &mskc_intr_rate);
 TUNABLE_INT("hw.mskc.process_limit", &mskc_process_limit);
+TUNABLE_INT("hw.mskc.msi.enable", &mskc_msi_enable);
 
 static int
 msk_miibus_readreg(device_t dev, int phy, int reg)
@@ -1477,6 +1479,7 @@ mskc_attach(device_t dev)
 {
 	struct msk_softc *sc;
 	int error, *port, cpuid;
+	u_int irq_flags;
 
 	sc = device_get_softc(dev);
 	sc->msk_dev = dev;
@@ -1553,10 +1556,11 @@ mskc_attach(device_t dev)
 	/*
 	 * Allocate IRQ
 	 */
-	sc->msk_irq_rid = 0;
-	sc->msk_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
-					     &sc->msk_irq_rid,
-					     RF_SHAREABLE | RF_ACTIVE);
+	sc->msk_irq_type = pci_alloc_1intr(dev, mskc_msi_enable,
+	    &sc->msk_irq_rid, &irq_flags);
+
+	sc->msk_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->msk_irq_rid,
+	    irq_flags);
 	if (sc->msk_irq == NULL) {
 		device_printf(dev, "couldn't allocate IRQ resources\n");
 		error = ENXIO;
@@ -1830,6 +1834,9 @@ mskc_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_IRQ, sc->msk_irq_rid,
 				     sc->msk_irq);
 	}
+	if (sc->msk_irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(dev);
+
 	if (sc->msk_res != NULL) {
 		bus_release_resource(dev, sc->msk_res_type, sc->msk_res_rid,
 				     sc->msk_res);

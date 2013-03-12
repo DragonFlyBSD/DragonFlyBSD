@@ -2453,6 +2453,7 @@ struct msk_softc {
 	bus_space_tag_t		msk_res_bt;
 	bus_space_handle_t	msk_res_bh;
 
+	int			msk_irq_type;
 	int			msk_irq_rid;
 	struct resource		*msk_irq;	/* IRQ resources */
 	void			*msk_intrhand;	/* irq handler handle */
