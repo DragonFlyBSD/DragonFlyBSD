@@ -219,6 +219,7 @@ struct et_softc {
 	bus_space_tag_t		sc_mem_bt;
 	bus_space_handle_t	sc_mem_bh;
 
+	int			sc_irq_type;
 	int			sc_irq_rid;
 	struct resource		*sc_irq_res;
 	void			*sc_irq_handle;

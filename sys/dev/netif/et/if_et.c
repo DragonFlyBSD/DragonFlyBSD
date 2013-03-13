@@ -183,10 +183,13 @@ static int	et_rx_intr_delay = 25;		/* x4 usec */
 static int	et_tx_intr_nsegs = 256;
 static uint32_t	et_timer = 1000 * 1000 * 1000;	/* nanosec */
 
+static int	et_msi_enable = 1;
+
 TUNABLE_INT("hw.et.timer", &et_timer);
 TUNABLE_INT("hw.et.rx_intr_npkts", &et_rx_intr_npkts);
 TUNABLE_INT("hw.et.rx_intr_delay", &et_rx_intr_delay);
 TUNABLE_INT("hw.et.tx_intr_nsegs", &et_tx_intr_nsegs);
+TUNABLE_INT("hw.et.msi.enable", &et_msi_enable);
 
 struct et_bsize {
 	int		bufsize;
@@ -233,6 +236,7 @@ et_attach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	int error;
+	u_int irq_flags;
 
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	callout_init(&sc->sc_tick);
@@ -281,10 +285,10 @@ et_attach(device_t dev)
 	/*
 	 * Allocate IRQ
 	 */
-	sc->sc_irq_rid = 0;
+	sc->sc_irq_type = pci_alloc_1intr(dev, et_msi_enable,
+	    &sc->sc_irq_rid, &irq_flags);
 	sc->sc_irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ,
-						&sc->sc_irq_rid,
-						RF_SHAREABLE | RF_ACTIVE);
+	    &sc->sc_irq_rid, irq_flags);
 	if (sc->sc_irq_res == NULL) {
 		device_printf(dev, "can't allocate irq\n");
 		error = ENXIO;
@@ -408,6 +412,8 @@ et_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_IRQ, sc->sc_irq_rid,
 				     sc->sc_irq_res);
 	}
+	if (sc->sc_irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(dev);
 
 	if (sc->sc_mem_res != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->sc_mem_rid,
