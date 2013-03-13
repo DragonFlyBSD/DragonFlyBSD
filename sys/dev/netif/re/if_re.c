@@ -2243,32 +2243,32 @@ re_intr(void *arg)
 		return;
 
 	rx = tx = 0;
-	for (;;) {
-		status = CSR_READ_2(sc, RE_ISR);
-		/* If the card has gone away the read returns 0xffff. */
-		if (status == 0xffff)
-			break;
-		if (status)
-			CSR_WRITE_2(sc, RE_ISR, status);
 
-		if ((status & sc->re_intrs) == 0)
-			break;
+	status = CSR_READ_2(sc, RE_ISR);
+	/* If the card has gone away the read returns 0xffff. */
+	if (status == 0xffff)
+		goto reload;
+	if (status)
+		CSR_WRITE_2(sc, RE_ISR, status);
 
-		if (status & (sc->re_rx_ack | RE_ISR_RX_ERR))
-			rx |= re_rxeof(sc);
+	if ((status & sc->re_intrs) == 0)
+		goto reload;
 
-		if (status & (sc->re_tx_ack | RE_ISR_TX_ERR))
-			tx |= re_txeof(sc);
+	if (status & (sc->re_rx_ack | RE_ISR_RX_ERR))
+		rx |= re_rxeof(sc);
 
-		if (status & RE_ISR_SYSTEM_ERR)
-			re_init(sc);
+	if (status & (sc->re_tx_ack | RE_ISR_TX_ERR))
+		tx |= re_txeof(sc);
 
-		if (status & RE_ISR_LINKCHG) {
-			callout_stop(&sc->re_timer);
-			re_tick_serialized(sc);
-		}
+	if (status & RE_ISR_SYSTEM_ERR)
+		re_init(sc);
+
+	if (status & RE_ISR_LINKCHG) {
+		callout_stop(&sc->re_timer);
+		re_tick_serialized(sc);
 	}
 
+reload:
 	if (sc->re_imtype == RE_IMTYPE_SIM) {
 		if ((sc->re_flags & RE_F_TIMER_INTR)) {
 			if ((tx | rx) == 0) {
