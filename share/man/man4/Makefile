@@ -293,7 +293,6 @@ MAN=	aac.4 \
 	snd_via82c686.4 \
 	snd_vibes.4 \
 	snp.4 \
-	spic.4 \
 	splash.4 \
 	sppp.4 \
 	st.4 \

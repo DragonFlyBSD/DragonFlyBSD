@@ -19,6 +19,7 @@ MAN=	ar.4 \
 	pnp.4 \
 	pnpbios.4 \
 	sbni.4 \
+	spic.4 \
 	spkr.4 \
 	sr.4 \
 	stl.4 \
