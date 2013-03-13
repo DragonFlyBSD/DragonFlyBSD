@@ -393,7 +393,7 @@ DRIVER_MODULE(miibus, re, miibus_driver, miibus_devclass, NULL, NULL);
 
 static int	re_rx_desc_count = RE_RX_DESC_CNT_DEF;
 static int	re_tx_desc_count = RE_TX_DESC_CNT_DEF;
-static int	re_msi_enable = 0;
+static int	re_msi_enable = 1;
 
 TUNABLE_INT("hw.re.rx_desc_count", &re_rx_desc_count);
 TUNABLE_INT("hw.re.tx_desc_count", &re_tx_desc_count);
@@ -1314,7 +1314,7 @@ re_attach(device_t dev)
 	struct re_softc	*sc = device_get_softc(dev);
 	struct ifnet *ifp;
 	uint8_t eaddr[ETHER_ADDR_LEN];
-	int error = 0, rid, qlen;
+	int error = 0, rid, qlen, msi_enable;
 	u_int irq_flags;
 
 	callout_init(&sc->re_timer);
@@ -1445,9 +1445,15 @@ re_attach(device_t dev)
 	sc->re_btag = rman_get_bustag(sc->re_res);
 	sc->re_bhandle = rman_get_bushandle(sc->re_res);
 
-	/* Allocate interrupt */
-	sc->re_irq_type = pci_alloc_1intr(dev, re_msi_enable,
-					   &sc->re_irq_rid, &irq_flags);
+	/*
+	 * Allocate interrupt
+	 */
+	if (pci_is_pcie(dev))
+		msi_enable = re_msi_enable;
+	else
+		msi_enable = 0;
+	sc->re_irq_type = pci_alloc_1intr(dev, msi_enable,
+	    &sc->re_irq_rid, &irq_flags);
 
 	sc->re_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->re_irq_rid,
 					    irq_flags);
