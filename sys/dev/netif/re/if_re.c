@@ -1314,7 +1314,7 @@ re_attach(device_t dev)
 	struct re_softc	*sc = device_get_softc(dev);
 	struct ifnet *ifp;
 	uint8_t eaddr[ETHER_ADDR_LEN];
-	int error = 0, rid, qlen, msi_enable;
+	int error = 0, qlen, msi_enable;
 	u_int irq_flags;
 
 	callout_init(&sc->re_timer);
@@ -1432,12 +1432,17 @@ re_attach(device_t dev)
 	 */
 	pci_enable_busmaster(dev);
 
-	rid = RE_PCI_LOIO;
-	sc->re_res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
-					    RF_ACTIVE);
-
+	if (pci_is_pcie(dev)) {
+		sc->re_res_rid = PCIR_BAR(2);
+		sc->re_res_type = SYS_RES_MEMORY;
+	} else {
+		sc->re_res_rid = PCIR_BAR(0);
+		sc->re_res_type = SYS_RES_IOPORT;
+	}
+	sc->re_res = bus_alloc_resource_any(dev, sc->re_res_type,
+	    &sc->re_res_rid, RF_ACTIVE);
 	if (sc->re_res == NULL) {
-		device_printf(dev, "couldn't map ports\n");
+		device_printf(dev, "couldn't map IO\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1688,8 +1693,8 @@ re_detach(device_t dev)
 		pci_release_msi(dev);
 
 	if (sc->re_res) {
-		bus_release_resource(dev, SYS_RES_IOPORT, RE_PCI_LOIO,
-				     sc->re_res);
+		bus_release_resource(dev, sc->re_res_type, sc->re_res_rid,
+		    sc->re_res);
 	}
 
 	/* Free DMA stuffs */

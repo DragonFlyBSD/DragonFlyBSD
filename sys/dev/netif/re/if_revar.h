@@ -161,6 +161,8 @@ struct re_softc {
 	device_t		re_dev;
 	bus_space_handle_t	re_bhandle;	/* bus space handle */
 	bus_space_tag_t		re_btag;	/* bus space tag */
+	int			re_res_rid;
+	int			re_res_type;
 	struct resource		*re_res;
 	struct resource		*re_irq;
 	void			*re_intrhand;
