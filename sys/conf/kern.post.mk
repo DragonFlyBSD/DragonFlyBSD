@@ -273,13 +273,4 @@ vers.c: $S/conf/newvers.sh $S/sys/param.h ${SYSTEM_DEP}
 vers.o:
 	${NORMAL_C}
 
-#vnode_if.c: $S/tools/vnode_if.awk $S/kern/vnode_if.src
-#	awk -f $S/tools/vnode_if.awk -- -c $S/kern/vnode_if.src
-#
-#vnode_if.h: $S/tools/vnode_if.awk $S/kern/vnode_if.src
-#	awk -f $S/tools/vnode_if.awk -- -h $S/kern/vnode_if.src
-#
-#vnode_if.o:
-#	${NORMAL_C}
-
 .include "$S/conf/bsd.kern.mk"
