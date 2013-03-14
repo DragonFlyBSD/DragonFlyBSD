@@ -275,7 +275,7 @@ bus/pci/i386/mptable_pci.c		optional	pci
 platform/pc32/isa/pmtimer.c		optional	pmtimer acpi
 # XXX drhodus
 platform/pc32/isa/prof_machdep.c	optional	profiling-routine
-dev/misc/spic/spic.c			optional nowerror	spic
+dev/misc/spic/spic.c			optional 	spic
 dev/serial/stl/stallion.c		optional	stl pci
 dev/video/i386/vesa/vesa.c		optional	vga vesa
 emulation/linux/i386/imgact_linux.c	optional	compat_linux
