@@ -1550,6 +1550,7 @@ igb_setup_ifp(struct igb_softc *sc)
 
 		ifsq_set_cpuid(ifsq, txr->tx_intr_cpuid);
 		ifsq_set_priv(ifsq, txr);
+		ifsq_set_hw_serialize(ifsq, &txr->tx_serialize);
 		txr->ifsq = ifsq;
 
 		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, igb_watchdog);

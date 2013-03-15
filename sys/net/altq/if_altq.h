@@ -78,6 +78,8 @@ struct ifaltq_subque {
 	ifsq_dequeue_t	ifsq_dequeue;
 	ifsq_request_t	ifsq_request;
 
+	struct lwkt_serialize *ifsq_hw_serialize;
+					/* hw serializer */
 	struct mbuf	*ifsq_prepended;/* mbuf dequeued, but not yet xmit */
 	int		ifsq_started;	/* ifnet.if_start interlock */
 	int		ifsq_hw_oactive;/* hw too busy, protected by driver */
@@ -88,12 +90,19 @@ struct ifaltq_subque {
 } __cachealign;
 
 #ifdef _KERNEL
+
 #define ALTQ_SQ_ASSERT_LOCKED(ifsq)	ASSERT_SERIALIZED(&(ifsq)->ifsq_lock)
 #define ALTQ_SQ_LOCK_INIT(ifsq)		lwkt_serialize_init(&(ifsq)->ifsq_lock)
 #define ALTQ_SQ_LOCK(ifsq) \
 	lwkt_serialize_adaptive_enter(&(ifsq)->ifsq_lock)
 #define ALTQ_SQ_UNLOCK(ifsq)		lwkt_serialize_exit(&(ifsq)->ifsq_lock)
-#endif
+
+#define ASSERT_ALTQ_SQ_SERIALIZED_HW(ifsq) \
+	ASSERT_SERIALIZED((ifsq)->ifsq_hw_serialize)
+#define ASSERT_ALTQ_SQ_NOT_SERIALIZED_HW(ifsq) \
+	ASSERT_NOT_SERIALIZED((ifsq)->ifsq_hw_serialize)
+
+#endif	/* _KERNEL */
 
 /*
  * Structure defining a queue for a network interface.

@@ -505,7 +505,7 @@ vlan_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	lwkt_port_t p_port;
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
-	ASSERT_IFNET_SERIALIZED_TX(ifp, ifsq);
+	ASSERT_ALTQ_SQ_SERIALIZED_HW(ifsq);
 
 	if (ifp_p == NULL) {
 		ifsq_purge(ifsq);

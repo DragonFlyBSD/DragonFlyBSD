@@ -351,9 +351,9 @@ tbr_timeout(void *arg)
 		ifsq = &ifp->if_snd.altq_subq[ALTQ_SUBQ_INDEX_DEFAULT];
 		active++;
 		if (!ifsq_is_empty(ifsq) && ifp->if_start != NULL) {
-			ifnet_serialize_tx(ifp, ifsq);
+			ifsq_serialize_hw(ifsq);
 			(*ifp->if_start)(ifp, ifsq);
-			ifnet_deserialize_tx(ifp, ifsq);
+			ifsq_deserialize_hw(ifsq);
 		}
 	}
 	crit_exit();

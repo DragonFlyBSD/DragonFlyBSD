@@ -2296,7 +2296,7 @@ bridge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	struct bridge_softc *sc = ifp->if_softc;
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
-	ASSERT_IFNET_SERIALIZED_TX(ifp, ifsq);
+	ASSERT_ALTQ_SQ_SERIALIZED_HW(ifsq);
 
 	ifsq_set_oactive(ifsq);
 	for (;;) {

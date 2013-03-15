@@ -134,10 +134,8 @@ struct	ifqueue {
  */
 
 enum ifnet_serialize {
-	IFNET_SERIALIZE_ALL,
-	IFNET_SERIALIZE_TX_BASE = 0x10000000,
+	IFNET_SERIALIZE_ALL
 };
-#define IFNET_SERIALIZE_TX(i)	(IFNET_SERIALIZE_TX_BASE + (i))
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -374,18 +372,9 @@ EVENTHANDLER_DECLARE(iflladdr_event, iflladdr_event_handler_t);
 	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_ALL, TRUE)
 #define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp) \
 	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_ALL, FALSE)
-
-#define ASSERT_IFNET_SERIALIZED_TX(ifp, ifsq) \
-	(ifp)->if_serialize_assert((ifp), \
-	    IFNET_SERIALIZE_TX((ifsq)->ifsq_index), TRUE)
-#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp, ifsq) \
-	(ifp)->if_serialize_assert((ifp), \
-	    IFNET_SERIALIZE_TX((ifsq)->ifsq_index), FALSE)
 #else
 #define ASSERT_IFNET_SERIALIZED_ALL(ifp)	((void)0)
 #define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp)	((void)0)
-#define ASSERT_IFNET_SERIALIZED_TX(ifp, ifsq)	((void)0)
-#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp, ifsq) ((void)0)
 #endif
 
 static __inline void
@@ -404,25 +393,6 @@ static __inline int
 ifnet_tryserialize_all(struct ifnet *_ifp)
 {
 	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_ALL);
-}
-
-static __inline void
-ifnet_serialize_tx(struct ifnet *_ifp, const struct ifaltq_subque *_ifsq)
-{
-	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_TX(_ifsq->ifsq_index));
-}
-
-static __inline void
-ifnet_deserialize_tx(struct ifnet *_ifp, const struct ifaltq_subque *_ifsq)
-{
-	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_TX(_ifsq->ifsq_index));
-}
-
-static __inline int
-ifnet_tryserialize_tx(struct ifnet *_ifp, const struct ifaltq_subque *_ifsq)
-{
-	return _ifp->if_tryserialize(_ifp,
-	    IFNET_SERIALIZE_TX(_ifsq->ifsq_index));
 }
 
 /*
@@ -696,61 +666,28 @@ ifa_forwardmsg(struct lwkt_msg *_lmsg, int _nextcpu)
 	ifnet_forwardmsg(_lmsg, _nextcpu);
 }
 
-static __inline int
-ifnet_serialize_array_index(int _arrcnt, int _txoff, int _rxoff,
-    enum ifnet_serialize _slz)
-{
-	int _off;
-
-	KASSERT(_slz & IFNET_SERIALIZE_TX_BASE,
-	    ("unknown serializer %#x", _slz));
-	_off = (_slz & ~IFNET_SERIALIZE_TX_BASE) + _txoff;
-	KASSERT(_off < _arrcnt, ("invalid TX serializer %#x", _slz));
-
-	return _off;
-}
-
 static __inline void
 ifnet_serialize_array_enter(lwkt_serialize_t *_arr, int _arrcnt,
     int _txoff, int _rxoff, enum ifnet_serialize _slz)
 {
-	int _off;
-
-	if (__predict_false(_slz == IFNET_SERIALIZE_ALL)) {
-		lwkt_serialize_array_enter(_arr, _arrcnt, 0);
-		return;
-	}
-
-	_off = ifnet_serialize_array_index(_arrcnt, _txoff, _rxoff, _slz);
-	lwkt_serialize_enter(_arr[_off]);
+	KKASSERT(_slz == IFNET_SERIALIZE_ALL);
+	lwkt_serialize_array_enter(_arr, _arrcnt, 0);
 }
 
 static __inline void
 ifnet_serialize_array_exit(lwkt_serialize_t *_arr, int _arrcnt,
     int _txoff, int _rxoff, enum ifnet_serialize _slz)
 {
-	int _off;
-
-	if (__predict_false(_slz == IFNET_SERIALIZE_ALL)) {
-		lwkt_serialize_array_exit(_arr, _arrcnt, 0);
-		return;
-	}
-
-	_off = ifnet_serialize_array_index(_arrcnt, _txoff, _rxoff, _slz);
-	lwkt_serialize_exit(_arr[_off]);
+	KKASSERT(_slz == IFNET_SERIALIZE_ALL);
+	lwkt_serialize_array_exit(_arr, _arrcnt, 0);
 }
 
 static __inline int
 ifnet_serialize_array_try(lwkt_serialize_t *_arr, int _arrcnt,
     int _txoff, int _rxoff, enum ifnet_serialize _slz)
 {
-	int _off;
-
-	if (__predict_false(_slz == IFNET_SERIALIZE_ALL))
-		return lwkt_serialize_array_try(_arr, _arrcnt, 0);
-
-	_off = ifnet_serialize_array_index(_arrcnt, _txoff, _rxoff, _slz);
-	return lwkt_serialize_try(_arr[_off]);
+	KKASSERT(_slz == IFNET_SERIALIZE_ALL);
+	return lwkt_serialize_array_try(_arr, _arrcnt, 0);
 }
 
 #ifdef INVARIANTS
@@ -759,26 +696,16 @@ static __inline void
 ifnet_serialize_array_assert(lwkt_serialize_t *_arr, int _arrcnt,
     int _txoff, int _rxoff, enum ifnet_serialize _slz, boolean_t _serialized)
 {
-	int _off;
+	int _i;
 
-	if (__predict_false(_slz == IFNET_SERIALIZE_ALL)) {
-		int _i;
-
-		if (_serialized) {
-			for (_i = 0; _i < _arrcnt; ++_i)
-				ASSERT_SERIALIZED(_arr[_i]);
-		} else {
-			for (_i = 0; _i < _arrcnt; ++_i)
-				ASSERT_NOT_SERIALIZED(_arr[_i]);
-		}
-		return;
+	KKASSERT(_slz == IFNET_SERIALIZE_ALL);
+	if (_serialized) {
+		for (_i = 0; _i < _arrcnt; ++_i)
+			ASSERT_SERIALIZED(_arr[_i]);
+	} else {
+		for (_i = 0; _i < _arrcnt; ++_i)
+			ASSERT_NOT_SERIALIZED(_arr[_i]);
 	}
-
-	_off = ifnet_serialize_array_index(_arrcnt, _txoff, _rxoff, _slz);
-	if (_serialized)
-		ASSERT_SERIALIZED(_arr[_off]);
-	else
-		ASSERT_NOT_SERIALIZED(_arr[_off]);
 }
 
 #endif	/* INVARIANTS */

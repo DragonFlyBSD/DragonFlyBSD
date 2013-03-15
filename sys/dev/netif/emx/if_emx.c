@@ -1972,6 +1972,7 @@ emx_setup_ifp(struct emx_softc *sc)
 
 		ifsq_set_cpuid(ifsq, rman_get_cpuid(sc->intr_res));
 		ifsq_set_priv(ifsq, tdata);
+		ifsq_set_hw_serialize(ifsq, &tdata->tx_serialize);
 		tdata->ifsq = ifsq;
 
 		ifsq_watchdog_init(&tdata->tx_watchdog, ifsq, emx_watchdog);

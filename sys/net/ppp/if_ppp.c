@@ -877,7 +877,7 @@ pppoutput_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 	        error = 0;
 	    }
 	} else {
-	    ASSERT_IFNET_SERIALIZED_TX(&sc->sc_if, ifsq);
+	    ASSERT_ALTQ_SQ_SERIALIZED_HW(ifsq);
 	    error = ifsq_enqueue(ifsq, m0, &pktattr);
 	}
 	if (error) {
@@ -907,9 +907,9 @@ pppoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp, ifsq);
+	ifsq_serialize_hw(ifsq);
 	error = pppoutput_serialized(ifp, ifsq, m0, dst, rtp);
-	ifnet_deserialize_tx(ifp, ifsq);
+	ifsq_deserialize_hw(ifsq);
 
 	return error;
 }

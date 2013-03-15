@@ -374,7 +374,7 @@ ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 
 	_ifsq = &_ifp->if_snd.altq_subq[_qid];
 
-	ASSERT_IFNET_SERIALIZED_TX(_ifp, _ifsq);
+	ASSERT_ALTQ_SQ_SERIALIZED_HW(_ifsq);
 	_error = ifsq_enqueue(_ifsq, _m, _pa);
 	if (_error == 0) {
 		IFNET_STAT_INC(_ifp, obytes, _m->m_pkthdr.len);
@@ -481,6 +481,34 @@ static __inline struct ifnet *
 ifsq_get_ifp(const struct ifaltq_subque *_ifsq)
 {
 	return _ifsq->ifsq_ifp;
+}
+
+static __inline void
+ifsq_set_hw_serialize(struct ifaltq_subque *_ifsq,
+    struct lwkt_serialize *_hwslz)
+{
+	KASSERT(_hwslz != NULL, ("NULL hw serialize"));
+	KASSERT(_ifsq->ifsq_hw_serialize == NULL,
+	    ("hw serialize has been setup"));
+	_ifsq->ifsq_hw_serialize = _hwslz;
+}
+
+static __inline void
+ifsq_serialize_hw(struct ifaltq_subque *_ifsq)
+{
+	lwkt_serialize_enter(_ifsq->ifsq_hw_serialize);
+}
+
+static __inline void
+ifsq_deserialize_hw(struct ifaltq_subque *_ifsq)
+{
+	lwkt_serialize_exit(_ifsq->ifsq_hw_serialize);
+}
+
+static __inline int
+ifsq_tryserialize_hw(struct ifaltq_subque *_ifsq)
+{
+	return lwkt_serialize_try(_ifsq->ifsq_hw_serialize);
 }
 
 static __inline struct ifaltq_subque *

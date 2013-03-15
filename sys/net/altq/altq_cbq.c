@@ -614,10 +614,10 @@ cbqrestart(struct ifaltq *ifq)
 		/* Release the altq lock to avoid deadlock */
 		CBQ_UNLOCK(ifq);
 
-		ifnet_serialize_tx(ifp, ifsq);
+		ifsq_serialize_hw(ifsq);
 		if (ifp->if_start && !ifsq_is_oactive(ifsq))
 			(*ifp->if_start)(ifp, ifsq);
-		ifnet_deserialize_tx(ifp, ifsq);
+		ifsq_deserialize_hw(ifsq);
 
 		CBQ_LOCK(ifq);
 	}

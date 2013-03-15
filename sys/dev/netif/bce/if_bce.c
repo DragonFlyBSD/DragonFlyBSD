@@ -1030,6 +1030,7 @@ bce_attach(device_t dev)
 
 		ifsq_set_cpuid(ifsq, sc->bce_msix[i].msix_cpuid);
 		ifsq_set_priv(ifsq, txr);
+		ifsq_set_hw_serialize(ifsq, &txr->tx_serialize);
 		txr->ifsq = ifsq;
 
 		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, bce_watchdog);

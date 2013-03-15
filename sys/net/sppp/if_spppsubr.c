@@ -979,9 +979,9 @@ sppp_output(struct ifnet *ifp, struct mbuf *m,
 	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp, ifsq);
+	ifsq_serialize_hw(ifsq);
 	error = sppp_output_serialized(ifp, ifsq, m, dst, rt);
-	ifnet_deserialize_tx(ifp, ifsq);
+	ifsq_deserialize_hw(ifsq);
 
 	return error;
 }

@@ -972,12 +972,12 @@ int
 atm_ifoutput(struct ifnet *ifp, KBuffer *m, struct sockaddr *dst,
 	     struct rtentry *rt)
 {
-	const struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ifnet_serialize_tx(ifp, ifsq);
+	ifsq_serialize_hw(ifsq);
 	error = atm_ifoutput_serialized(ifp, m, dst, rt);
-	ifnet_deserialize_tx(ifp, ifsq);
+	ifsq_deserialize_hw(ifsq);
 
 	return error;
 }
