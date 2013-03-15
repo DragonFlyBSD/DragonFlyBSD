@@ -462,7 +462,7 @@ netname(struct sockaddr *sa)
 			 * width subnet fields.
 			 */
 			while (in.s_addr &~ mask)
-				mask = (long)mask >> subnetshift;
+				mask |= mask >> subnetshift;
 			net = in.s_addr & mask;
 			while ((mask & 1) == 0)
 				mask >>= 1, net >>= 1;
