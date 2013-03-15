@@ -6073,8 +6073,6 @@ struct bce_softc {
 	bus_addr_t		ctx_paddr[BCE_CTX_PAGES]; /* Physical address */
 
 	int			serialize_cnt;
-	int			tx_serialize;
-	int			rx_serialize;
 	struct lwkt_serialize	**serializes;
 	struct lwkt_serialize	main_serialize;
 

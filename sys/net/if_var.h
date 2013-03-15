@@ -668,7 +668,7 @@ ifa_forwardmsg(struct lwkt_msg *_lmsg, int _nextcpu)
 
 static __inline void
 ifnet_serialize_array_enter(lwkt_serialize_t *_arr, int _arrcnt,
-    int _txoff, int _rxoff, enum ifnet_serialize _slz)
+    enum ifnet_serialize _slz)
 {
 	KKASSERT(_slz == IFNET_SERIALIZE_ALL);
 	lwkt_serialize_array_enter(_arr, _arrcnt, 0);
@@ -676,7 +676,7 @@ ifnet_serialize_array_enter(lwkt_serialize_t *_arr, int _arrcnt,
 
 static __inline void
 ifnet_serialize_array_exit(lwkt_serialize_t *_arr, int _arrcnt,
-    int _txoff, int _rxoff, enum ifnet_serialize _slz)
+    enum ifnet_serialize _slz)
 {
 	KKASSERT(_slz == IFNET_SERIALIZE_ALL);
 	lwkt_serialize_array_exit(_arr, _arrcnt, 0);
@@ -684,7 +684,7 @@ ifnet_serialize_array_exit(lwkt_serialize_t *_arr, int _arrcnt,
 
 static __inline int
 ifnet_serialize_array_try(lwkt_serialize_t *_arr, int _arrcnt,
-    int _txoff, int _rxoff, enum ifnet_serialize _slz)
+    enum ifnet_serialize _slz)
 {
 	KKASSERT(_slz == IFNET_SERIALIZE_ALL);
 	return lwkt_serialize_array_try(_arr, _arrcnt, 0);
@@ -694,7 +694,7 @@ ifnet_serialize_array_try(lwkt_serialize_t *_arr, int _arrcnt,
 
 static __inline void
 ifnet_serialize_array_assert(lwkt_serialize_t *_arr, int _arrcnt,
-    int _txoff, int _rxoff, enum ifnet_serialize _slz, boolean_t _serialized)
+    enum ifnet_serialize _slz, boolean_t _serialized)
 {
 	int _i;
 

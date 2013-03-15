@@ -4050,8 +4050,7 @@ igb_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct igb_softc *sc = ifp->if_softc;
 
-	ifnet_serialize_array_enter(sc->serializes, sc->serialize_cnt,
-	    sc->tx_serialize, sc->rx_serialize, slz);
+	ifnet_serialize_array_enter(sc->serializes, sc->serialize_cnt, slz);
 }
 
 static void
@@ -4059,8 +4058,7 @@ igb_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct igb_softc *sc = ifp->if_softc;
 
-	ifnet_serialize_array_exit(sc->serializes, sc->serialize_cnt,
-	    sc->tx_serialize, sc->rx_serialize, slz);
+	ifnet_serialize_array_exit(sc->serializes, sc->serialize_cnt, slz);
 }
 
 static int
@@ -4069,7 +4067,7 @@ igb_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 	struct igb_softc *sc = ifp->if_softc;
 
 	return ifnet_serialize_array_try(sc->serializes, sc->serialize_cnt,
-	    sc->tx_serialize, sc->rx_serialize, slz);
+	    slz);
 }
 
 #ifdef INVARIANTS
@@ -4081,7 +4079,7 @@ igb_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 	struct igb_softc *sc = ifp->if_softc;
 
 	ifnet_serialize_array_assert(sc->serializes, sc->serialize_cnt,
-	    sc->tx_serialize, sc->rx_serialize, slz, serialized);
+	    slz, serialized);
 }
 
 #endif	/* INVARIANTS */
@@ -4765,6 +4763,7 @@ igb_setup_serializer(struct igb_softc *sc)
 	 */
 
 	i = 0;
+
 	KKASSERT(i < sc->serialize_cnt);
 	sc->serializes[i++] = &sc->main_serialize;
 
@@ -4776,13 +4775,11 @@ igb_setup_serializer(struct igb_softc *sc)
 		}
 	}
 
-	sc->tx_serialize = i;
 	for (j = 0; j < sc->tx_ring_cnt; ++j) {
 		KKASSERT(i < sc->serialize_cnt);
 		sc->serializes[i++] = &sc->tx_rings[j].tx_serialize;
 	}
 
-	sc->rx_serialize = i;
 	for (j = 0; j < sc->rx_ring_cnt; ++j) {
 		KKASSERT(i < sc->serialize_cnt);
 		sc->serializes[i++] = &sc->rx_rings[j].rx_serialize;

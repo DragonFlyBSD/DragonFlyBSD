@@ -120,9 +120,6 @@ do { \
 #define EMX_RSS_DPRINTF(sc, lvl, fmt, ...)	((void)0)
 #endif	/* EMX_RSS_DEBUG */
 
-#define EMX_TX_SERIALIZE	1
-#define EMX_RX_SERIALIZE	3
-
 #define EMX_NAME	"Intel(R) PRO/1000 "
 
 #define EMX_DEVICE(id)	\
@@ -456,15 +453,20 @@ emx_attach(device_t dev)
 	 * Initialize serializer array
 	 */
 	i = 0;
+
+	KKASSERT(i < EMX_NSERIALIZE);
 	sc->serializes[i++] = &sc->main_serialize;
 
-	KKASSERT(i == EMX_TX_SERIALIZE);
+	KKASSERT(i < EMX_NSERIALIZE);
 	sc->serializes[i++] = &sc->tx_data[0].tx_serialize;
+	KKASSERT(i < EMX_NSERIALIZE);
 	sc->serializes[i++] = &sc->tx_data[1].tx_serialize;
 
-	KKASSERT(i == EMX_RX_SERIALIZE);
+	KKASSERT(i < EMX_NSERIALIZE);
 	sc->serializes[i++] = &sc->rx_data[0].rx_serialize;
+	KKASSERT(i < EMX_NSERIALIZE);
 	sc->serializes[i++] = &sc->rx_data[1].rx_serialize;
+
 	KKASSERT(i == EMX_NSERIALIZE);
 
 	callout_init_mp(&sc->timer);
@@ -3867,8 +3869,7 @@ emx_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct emx_softc *sc = ifp->if_softc;
 
-	ifnet_serialize_array_enter(sc->serializes, EMX_NSERIALIZE,
-	    EMX_TX_SERIALIZE, EMX_RX_SERIALIZE, slz);
+	ifnet_serialize_array_enter(sc->serializes, EMX_NSERIALIZE, slz);
 }
 
 static void
@@ -3876,8 +3877,7 @@ emx_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct emx_softc *sc = ifp->if_softc;
 
-	ifnet_serialize_array_exit(sc->serializes, EMX_NSERIALIZE,
-	    EMX_TX_SERIALIZE, EMX_RX_SERIALIZE, slz);
+	ifnet_serialize_array_exit(sc->serializes, EMX_NSERIALIZE, slz);
 }
 
 static int
@@ -3885,8 +3885,7 @@ emx_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct emx_softc *sc = ifp->if_softc;
 
-	return ifnet_serialize_array_try(sc->serializes, EMX_NSERIALIZE,
-	    EMX_TX_SERIALIZE, EMX_RX_SERIALIZE, slz);
+	return ifnet_serialize_array_try(sc->serializes, EMX_NSERIALIZE, slz);
 }
 
 static void
@@ -3910,7 +3909,7 @@ emx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 	struct emx_softc *sc = ifp->if_softc;
 
 	ifnet_serialize_array_assert(sc->serializes, EMX_NSERIALIZE,
-	    EMX_TX_SERIALIZE, EMX_RX_SERIALIZE, slz, serialized);
+	    slz, serialized);
 }
 
 #endif	/* INVARIANTS */

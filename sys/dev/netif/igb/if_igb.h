@@ -354,8 +354,6 @@ struct igb_softc {
 	int			rx_npoll_off;
 	int			tx_npoll_off;
 	int			serialize_cnt;
-	int			tx_serialize;
-	int			rx_serialize;
 	struct lwkt_serialize	**serializes;
 	struct lwkt_serialize	main_serialize;
 

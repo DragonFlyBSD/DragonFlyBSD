@@ -74,9 +74,6 @@
 
 #define JME_TICK_CPUID		0	/* DO NOT CHANGE THIS */
 
-#define JME_TX_SERIALIZE	1
-#define JME_RX_SERIALIZE	2
-
 #define	JME_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 
 #ifdef JME_RSS_DEBUG
@@ -722,17 +719,20 @@ jme_attach(device_t dev)
 	 * Initialize serializer array
 	 */
 	i = 0;
+
+	KKASSERT(i < JME_NSERIALIZE);
 	sc->jme_serialize_arr[i++] = &sc->jme_serialize;
 
-	KKASSERT(i == JME_TX_SERIALIZE);
+	KKASSERT(i < JME_NSERIALIZE);
 	sc->jme_serialize_arr[i++] =
 	    &sc->jme_cdata.jme_tx_data.jme_tx_serialize;
 
-	KKASSERT(i == JME_RX_SERIALIZE);
 	for (j = 0; j < sc->jme_cdata.jme_rx_ring_cnt; ++j) {
+		KKASSERT(i < JME_NSERIALIZE);
 		sc->jme_serialize_arr[i++] =
 		    &sc->jme_cdata.jme_rx_data[j].jme_rx_serialize;
 	}
+
 	KKASSERT(i <= JME_NSERIALIZE);
 	sc->jme_serialize_cnt = i;
 
@@ -3634,7 +3634,7 @@ jme_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 	struct jme_softc *sc = ifp->if_softc;
 
 	ifnet_serialize_array_enter(sc->jme_serialize_arr,
-	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE, slz);
+	    sc->jme_serialize_cnt, slz);
 }
 
 static void
@@ -3643,7 +3643,7 @@ jme_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 	struct jme_softc *sc = ifp->if_softc;
 
 	ifnet_serialize_array_exit(sc->jme_serialize_arr,
-	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE, slz);
+	    sc->jme_serialize_cnt, slz);
 }
 
 static int
@@ -3652,7 +3652,7 @@ jme_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 	struct jme_softc *sc = ifp->if_softc;
 
 	return ifnet_serialize_array_try(sc->jme_serialize_arr,
-	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE, slz);
+	    sc->jme_serialize_cnt, slz);
 }
 
 #ifdef INVARIANTS
@@ -3664,8 +3664,7 @@ jme_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 	struct jme_softc *sc = ifp->if_softc;
 
 	ifnet_serialize_array_assert(sc->jme_serialize_arr,
-	    sc->jme_serialize_cnt, JME_TX_SERIALIZE, JME_RX_SERIALIZE,
-	    slz, serialized);
+	    sc->jme_serialize_cnt, slz, serialized);
 }
 
 #endif	/* INVARIANTS */

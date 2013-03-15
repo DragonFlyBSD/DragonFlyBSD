@@ -6682,16 +6682,15 @@ bce_setup_serialize(struct bce_softc *sc)
 	 */
 
 	i = 0;
+
 	KKASSERT(i < sc->serialize_cnt);
 	sc->serializes[i++] = &sc->main_serialize;
 
-	sc->rx_serialize = i;
 	for (j = 0; j < sc->rx_ring_cnt; ++j) {
 		KKASSERT(i < sc->serialize_cnt);
 		sc->serializes[i++] = &sc->rx_rings[j].rx_serialize;
 	}
 
-	sc->tx_serialize = i;
 	for (j = 0; j < sc->tx_ring_cnt; ++j) {
 		KKASSERT(i < sc->serialize_cnt);
 		sc->serializes[i++] = &sc->tx_rings[j].tx_serialize;
@@ -6705,8 +6704,7 @@ bce_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct bce_softc *sc = ifp->if_softc;
 
-	ifnet_serialize_array_enter(sc->serializes, sc->serialize_cnt,
-	    sc->tx_serialize, sc->rx_serialize, slz);
+	ifnet_serialize_array_enter(sc->serializes, sc->serialize_cnt, slz);
 }
 
 static void
@@ -6714,8 +6712,7 @@ bce_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct bce_softc *sc = ifp->if_softc;
 
-	ifnet_serialize_array_exit(sc->serializes, sc->serialize_cnt,
-	    sc->tx_serialize, sc->rx_serialize, slz);
+	ifnet_serialize_array_exit(sc->serializes, sc->serialize_cnt, slz);
 }
 
 static int
@@ -6724,7 +6721,7 @@ bce_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 	struct bce_softc *sc = ifp->if_softc;
 
 	return ifnet_serialize_array_try(sc->serializes, sc->serialize_cnt,
-	    sc->tx_serialize, sc->rx_serialize, slz);
+	    slz);
 }
 
 #ifdef INVARIANTS
@@ -6736,7 +6733,7 @@ bce_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 	struct bce_softc *sc = ifp->if_softc;
 
 	ifnet_serialize_array_assert(sc->serializes, sc->serialize_cnt,
-	    sc->tx_serialize, sc->rx_serialize, slz, serialized);
+	    slz, serialized);
 }
 
 #endif	/* INVARIANTS */
