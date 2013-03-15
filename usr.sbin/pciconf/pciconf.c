@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pciconf/pciconf.c,v 1.30.2.3.2.1 2009/04/15 03:14:26 kensmith Exp $
- * $DragonFly: src/usr.sbin/pciconf/pciconf.c,v 1.6 2005/01/01 22:06:25 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -149,10 +148,10 @@ main(int argc, char **argv)
 		       byte ? 1 : isshort ? 2 : 4);
 	} else if (readmode) {
 		readit(argv[optind], argv[optind + 1],
-		       byte ? 1 : isshort ? 2 : 4);
+		    byte ? 1 : isshort ? 2 : 4);
 	} else if (writemode) {
 		writeit(argv[optind], argv[optind + 1], argv[optind + 2],
-		       byte ? 1 : isshort ? 2 : 4);
+		    byte ? 1 : isshort ? 2 : 4);
 	} else {
 		usage();
 	}
@@ -204,17 +203,17 @@ list_devs(int verbose, int bars, int caps)
 		}
 		for (p = conf; p < &conf[pc.num_matches]; p++) {
 			printf("%s%d@pci%d:%d:%d:%d:\tclass=0x%06x card=0x%08x "
-			       "chip=0x%08x rev=0x%02x hdr=0x%02x\n",
-			       (p->pd_name && *p->pd_name) ? p->pd_name :
-			       "none",
-			       (p->pd_name && *p->pd_name) ? (int)p->pd_unit :
-			       none_count++, p->pc_sel.pc_domain,
-			       p->pc_sel.pc_bus, p->pc_sel.pc_dev,
-			       p->pc_sel.pc_func, (p->pc_class << 16) |
-			       (p->pc_subclass << 8) | p->pc_progif,
-			       (p->pc_subdevice << 16) | p->pc_subvendor,
-			       (p->pc_device << 16) | p->pc_vendor,
-			       p->pc_revid, p->pc_hdr);
+			    "chip=0x%08x rev=0x%02x hdr=0x%02x\n",
+			    (p->pd_name && *p->pd_name) ? p->pd_name :
+			    "none",
+			    (p->pd_name && *p->pd_name) ? (int)p->pd_unit :
+			    none_count++, p->pc_sel.pc_domain,
+			    p->pc_sel.pc_bus, p->pc_sel.pc_dev,
+			    p->pc_sel.pc_func, (p->pc_class << 16) |
+			    (p->pc_subclass << 8) | p->pc_progif,
+			    (p->pc_subdevice << 16) | p->pc_subvendor,
+			    (p->pc_device << 16) | p->pc_vendor,
+			    p->pc_revid, p->pc_hdr);
 			if (verbose)
 				list_verbose(p);
 			if (bars)
@@ -614,7 +613,8 @@ readit(const char *name, const char *reg, int width)
 	sel = getsel(name);
 	for (i = 1, r = rstart; r <= rend; i++, r += width) {
 		readone(fd, &sel, r, width);
-		if (i && !(i % 8)) putchar(' ');
+		if (i && !(i % 8))
+			putchar(' ');
 		putchar(i % (16/width) ? ' ' : '\n');
 	}
 	if (i % (16/width) != 1)
