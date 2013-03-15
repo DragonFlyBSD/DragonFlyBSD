@@ -52,6 +52,7 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
  * PCIV_xxx: PCI vendor ID (only required to fixup ancient devices)
  * PCID_xxx: device ID
  * PCIY_xxx: capability identification number
+ * PCIZ_xxx: extended capability identification number
  */
 
 /* some PCI bus constants */
@@ -131,6 +132,30 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIY_SECDEV	0x0f	/* Secure Device */
 #define	PCIY_EXPRESS	0x10	/* PCI Express */
 #define	PCIY_MSIX	0x11	/* MSI-X */
+#define	PCIY_SATA	0x12	/* SATA */
+#define	PCIY_PCIAF	0x13	/* PCI Advanced Features */
+
+/* Extended Capability Register Fields */
+
+#define	PCIR_EXTCAP	0x100
+#define	PCIM_EXTCAP_ID		0x0000ffff
+#define	PCIM_EXTCAP_VER		0x000f0000
+#define	PCIM_EXTCAP_NEXTPTR	0xfff00000
+#define	PCI_EXTCAP_ID(ecap)	((ecap) & PCIM_EXTCAP_ID)
+#define	PCI_EXTCAP_VER(ecap)	(((ecap) & PCIM_EXTCAP_VER) >> 16)
+#define	PCI_EXTCAP_NEXTPTR(ecap) (((ecap) & PCIM_EXTCAP_NEXTPTR) >> 20)
+
+/* Extended Capability Identification Numbers */
+
+#define	PCIZ_AER	0x0001	/* Advanced Error Reporting */
+#define	PCIZ_VC		0x0002	/* Virtual Channel */
+#define	PCIZ_SERNUM	0x0003	/* Device Serial Number */
+#define	PCIZ_PWRBDGT	0x0004	/* Power Budgeting */
+#define	PCIZ_VENDOR	0x000b	/* Vendor Unique */
+#define	PCIZ_ACS	0x000d	/* Access Control Services */
+#define	PCIZ_ARI	0x000e	/* Alternative Routing-ID Interpretation */
+#define	PCIZ_ATS	0x000f	/* Address Translation Services */
+#define	PCIZ_SRIOV	0x0010	/* Single Root IO Virtualization */
 
 /* config registers for header type 0 devices */
 
@@ -636,7 +661,9 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 					 * valid only for root port and
 					 * switch downstream port
 					 */
-    /* PCI Express port types */
+#define PCIEM_CAP_IRQ_MSGNO	0x3e00
+
+/* PCI Express port types */
 #define PCIE_END_POINT		0x0000	/* Endpoint device */
 #define PCIE_LEG_END_POINT	0x0010	/* Legacy endpoint device */
 #define PCIE_ROOT_PORT		0x0040	/* Root port */
@@ -646,6 +673,10 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define PCIE_PCI2PCIE_BRIDGE	0x0080	/* PCI/PCI-X to PCI Express bridge */
 #define PCIE_ROOT_END_POINT	0x0090	/* Root Complex Integrated Endpoint */
 #define PCIE_ROOT_EVT_COLL	0x00a0	/* Root Complex Event Collector */
+
+/* PCI Express device capabilities, 32bits */
+#define PCIER_DEVCAP			0x04
+#define PCIEM_DEVCAP_MAX_PAYLOAD	0x0007
 
 /* PCI Express device control, 16bits */
 #define PCIER_DEVCTRL			0x08
@@ -697,6 +728,10 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define PCIEM_LNKCTL_ASPM_L0S		0x1
 #define PCIEM_LNKCTL_ASPM_L1		0x2
 
+/* PCI Express link status, 16bits */
+#define PCIER_LINKSTAT			0x12
+#define PCIEM_LNKSTAT_WIDTH		0x03f0
+
 /* PCI Express slot capabilities, 32bits */
 #define PCIER_SLOTCAP		0x14
 #define PCIEM_SLTCAP_ATTEN_BTN	0x00000001 /* Attention button present */
@@ -712,12 +747,85 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define PCIER_SLOTCTRL			0x18
 #define PCIEM_SLTCTL_HPINTR_MASK	0x001f	/* Hot-plug interrupts mask */
 #define PCIEM_SLTCTL_HPINTR_EN		0x0020	/* Enable hot-plug interrupts */
-    /* PCI Expres hot-plug interrupts */
+
+/* PCI Express hot-plug interrupts */
 #define PCIE_HPINTR_ATTEN_BTN		0x0001	/* Attention button intr */
 #define PCIE_HPINTR_PWR_FAULT		0x0002	/* Power fault intr */
 #define PCIE_HPINTR_MRL_SNS		0x0004	/* MRL sensor changed intr */
 #define PCIE_HPINTR_PRSN_DETECT		0x0008	/* Presence detect intr */
 #define PCIE_HPINTR_CMD_COMPL		0x0010	/* Command completed intr */
+
+/* PCI Advanced Features definitions */
+#define	PCIR_PCIAF_CAP		0x3
+#define	PCIM_PCIAFCAP_TP	0x01
+#define	PCIM_PCIAFCAP_FLR	0x02
+#define	PCIR_PCIAF_CTRL		0x4
+#define	PCIR_PCIAFCTRL_FLR	0x01
+#define	PCIR_PCIAF_STATUS	0x5
+#define	PCIR_PCIAFSTATUS_TP	0x01
+
+/* Advanced Error Reporting */
+#define	PCIR_AER_UC_STATUS	0x04
+#define	PCIM_AER_UC_TRAINING_ERROR	0x00000001
+#define	PCIM_AER_UC_DL_PROTOCOL_ERROR	0x00000010
+#define	PCIM_AER_UC_SURPRISE_LINK_DOWN	0x00000020
+#define	PCIM_AER_UC_POISONED_TLP	0x00001000
+#define	PCIM_AER_UC_FC_PROTOCOL_ERROR	0x00002000
+#define	PCIM_AER_UC_COMPLETION_TIMEOUT	0x00004000
+#define	PCIM_AER_UC_COMPLETER_ABORT	0x00008000
+#define	PCIM_AER_UC_UNEXPECTED_COMPLETION 0x00010000
+#define	PCIM_AER_UC_RECEIVER_OVERFLOW	0x00020000
+#define	PCIM_AER_UC_MALFORMED_TLP	0x00040000
+#define	PCIM_AER_UC_ECRC_ERROR		0x00080000
+#define	PCIM_AER_UC_UNSUPPORTED_REQUEST	0x00100000
+#define	PCIM_AER_UC_ACS_VIOLATION	0x00200000
+#define	PCIR_AER_UC_MASK	0x08	/* Shares bits with UC_STATUS */
+#define	PCIR_AER_UC_SEVERITY	0x0c	/* Shares bits with UC_STATUS */
+#define	PCIR_AER_COR_STATUS	0x10
+#define	PCIM_AER_COR_RECEIVER_ERROR	0x00000001
+#define	PCIM_AER_COR_BAD_TLP		0x00000040
+#define	PCIM_AER_COR_BAD_DLLP		0x00000080
+#define	PCIM_AER_COR_REPLAY_ROLLOVER	0x00000100
+#define	PCIM_AER_COR_REPLAY_TIMEOUT	0x00001000
+#define	PCIM_AER_COR_ADVISORY_NF_ERROR	0x00002000
+#define	PCIR_AER_COR_MASK	0x14	/* Shares bits with COR_STATUS */
+#define	PCIR_AER_CAP_CONTROL	0x18
+#define	PCIM_AER_FIRST_ERROR_PTR	0x0000001f
+#define	PCIM_AER_ECRC_GEN_CAPABLE	0x00000020
+#define	PCIM_AER_ECRC_GEN_ENABLE	0x00000040
+#define	PCIM_AER_ECRC_CHECK_CAPABLE	0x00000080
+#define	PCIM_AER_ECRC_CHECK_ENABLE	0x00000100
+#define	PCIR_AER_HEADER_LOG	0x1c
+#define	PCIR_AER_ROOTERR_CMD	0x2c	/* Only for root complex ports */
+#define	PCIM_AER_ROOTERR_COR_ENABLE	0x00000001
+#define	PCIM_AER_ROOTERR_NF_ENABLE	0x00000002
+#define	PCIM_AER_ROOTERR_F_ENABLE	0x00000004
+#define	PCIR_AER_ROOTERR_STATUS	0x30	/* Only for root complex ports */
+#define	PCIM_AER_ROOTERR_COR_ERR	0x00000001
+#define	PCIM_AER_ROOTERR_MULTI_COR_ERR	0x00000002
+#define	PCIM_AER_ROOTERR_UC_ERR		0x00000004
+#define	PCIM_AER_ROOTERR_MULTI_UC_ERR	0x00000008
+#define	PCIM_AER_ROOTERR_FIRST_UC_FATAL	0x00000010
+#define	PCIM_AER_ROOTERR_NF_ERR		0x00000020
+#define	PCIM_AER_ROOTERR_F_ERR		0x00000040
+#define	PCIM_AER_ROOTERR_INT_MESSAGE	0xf8000000
+#define	PCIR_AER_COR_SOURCE_ID	0x34	/* Only for root complex ports */
+#define	PCIR_AER_ERR_SOURCE_ID	0x36	/* Only for root complex ports */
+
+/* Virtual Channel definitions */
+#define	PCIR_VC_CAP1		0x04
+#define	PCIM_VC_CAP1_EXT_COUNT		0x00000007
+#define	PCIM_VC_CAP1_LOWPRI_EXT_COUNT	0x00000070
+#define	PCIR_VC_CAP2		0x08
+#define	PCIR_VC_CONTROL		0x0C
+#define	PCIR_VC_STATUS		0x0E
+#define	PCIR_VC_RESOURCE_CAP(n)	(0x10 + (n) * 0x0C)
+#define	PCIR_VC_RESOURCE_CTL(n)	(0x14 + (n) * 0x0C)
+#define	PCIR_VC_RESOURCE_STA(n)	(0x18 + (n) * 0x0C)
+
+/* Serial Number definitions */
+#define	PCIR_SERIAL_LOW		0x04
+#define	PCIR_SERIAL_HIGH	0x08
 
 /* for compatibility to FreeBSD-2.2 and 3.x versions of PCI code */
 
