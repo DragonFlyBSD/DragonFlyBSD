@@ -103,6 +103,7 @@
 #define	MII_OUI_xxDAVICOM	0x006040	/* Davicom Semiconductor */
 #define	MII_OUI_xxBROADCOM2	0x0050ef	/* Broadcom Corporation */
 #define	MII_OUI_xxBROADCOM3	0x00d897	/* Broadcom Corporation */
+#define	MII_OUI_xxBROADCOM4	0x180361	/* Broadcom Corporation */
 
 /* This is the OUI of the gigE PHY in the RealTek 8211B/8169S/8110S chips */
 #define	MII_OUI_xxREALTEK	0x000732	/*  */
@@ -250,6 +251,8 @@
 #define	MII_STR_xxBROADCOM3_BCM57765	"BCM57765 10/100/1000baseT PHY"
 #define	MII_MODEL_xxBROADCOM3_BCM5718C	0x0036
 #define	MII_STR_xxBROADCOM3_BCM5718C	"BCM5718C 10/100/1000baseT PHY"
+#define	MII_MODEL_xxBROADCOM4_BCM5762	0x0038
+#define	MII_STR_xxBROADCOM4_BCM5762	"BCM5762 10/100/1000BaseT PHY"
 #define	MII_MODEL_BROADCOM2_BCM5906	0x0004
 #define	MII_STR_BROADCOM2_BCM5906	"BCM5906 10/100baseTX PHY"
 
