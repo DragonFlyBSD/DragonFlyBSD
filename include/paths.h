@@ -37,7 +37,9 @@
 #include <sys/paths.h>	/* dev paths */
 
 /* Default search path. */
-#define	_PATH_DEFPATH	"/bin:/sbin:/usr/bin:/usr/sbin:/usr/pkg/bin:/usr/pkg/sbin"
+#define	_PATH_DEFPATH \
+	"/bin:/sbin:/usr/bin:/usr/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/local/bin:/usr/local/sbin"
+
 /* All standard utilities path. */
 #define	_PATH_STDPATH \
 	"/usr/bin:/bin:/usr/sbin:/sbin:"
