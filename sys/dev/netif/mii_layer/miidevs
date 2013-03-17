@@ -101,6 +101,7 @@ oui xxLEVEL1a			0x0004de	Level 1
 oui xxDAVICOM			0x006040	Davicom Semiconductor
 oui xxBROADCOM2			0x0050ef	Broadcom Corporation
 oui xxBROADCOM3			0x00d897	Broadcom Corporation
+oui xxBROADCOM4			0x180361	Broadcom Corporation
 
 /* This is the OUI of the gigE PHY in the RealTek 8211B/8169S/8110S chips */
 oui xxREALTEK			0x000732
@@ -185,6 +186,7 @@ model xxBROADCOM3 BCM5720C	0x0020 BCM5720C 10/100/1000baseT PHY
 model xxBROADCOM3 BCM5719C	0x0022 BCM5719C 10/100/1000baseT PHY
 model xxBROADCOM3 BCM57765	0x0024 BCM57765 10/100/1000baseT PHY
 model xxBROADCOM3 BCM5718C	0x0036 BCM5718C 10/100/1000baseT PHY
+model xxBROADCOM4 BCM5762	0x0038 BCM5762 10/100/1000BaseT PHY
 model BROADCOM2 BCM5906		0x0004 BCM5906 10/100baseTX PHY
 
 /* Cicada Semiconductor PHYs (now owned by Vitesse?) */
