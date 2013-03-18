@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/plus-minus4.0,v 1.1 2010/08/08 17:03:23 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/plus-minus4.0 211080 2010-08-08 17:03:23Z jilles $
 
 # These may be a bit unclear in the POSIX spec or the proposed revisions,
 # and conflict with bash's interpretation, but I think ksh93's interpretation

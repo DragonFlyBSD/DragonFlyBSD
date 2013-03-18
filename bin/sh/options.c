@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)options.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/options.c,v 1.38 2011/11/20 21:48:50 jilles Exp $
+ * $FreeBSD: head/bin/sh/options.c 240247 2012-09-08 19:24:03Z jilles $
  */
 
 #include <signal.h>
@@ -532,10 +532,6 @@ out:
 }
 
 /*
- * XXX - should get rid of.  have all builtins use getopt(3).  the
- * library getopt must have the BSD extension static variable "optreset"
- * otherwise it can't be used within the shell safely.
- *
  * Standard option processing (a la getopt) for builtin routines.  The
  * only argument that is passed to nextopt is the option string; the
  * other arguments are unnecessary.  It return the character, or '\0' on

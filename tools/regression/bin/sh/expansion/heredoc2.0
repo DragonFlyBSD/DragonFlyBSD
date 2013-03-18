@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/heredoc2.0,v 1.1 2011/06/05 14:13:15 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/heredoc2.0 222716 2011-06-05 14:13:15Z jilles $
 
 f() { return $1; }
 

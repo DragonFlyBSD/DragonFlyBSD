@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/parser/case1.0,v 1.1 2010/05/09 17:10:50 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/parser/case1.0 207824 2010-05-09 17:10:50Z jilles $
 
 keywords='if then else elif fi while until for do done { } case esac ! in'
 

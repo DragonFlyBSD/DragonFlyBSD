@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/unalias.0,v 1.1 2005/09/04 11:59:59 stefanf Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/unalias.0 149781 2005-09-04 11:59:59Z stefanf $
 set -e
 
 alias false=true

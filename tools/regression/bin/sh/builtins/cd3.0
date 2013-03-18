@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/cd3.0,v 1.1 2011/05/20 22:55:18 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/cd3.0 222154 2011-05-20 22:55:18Z jilles $
 
 # If fully successful, cd -Pe must be like cd -P.
 

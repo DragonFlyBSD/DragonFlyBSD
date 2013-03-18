@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/parameters/env1.0,v 1.1 2011/06/10 22:42:00 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/parameters/env1.0 222957 2011-06-10 22:42:00Z jilles $
 
 export key='must contain this'
 unset x

@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/dot2.0,v 1.1 2010/05/28 22:40:24 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/dot2.0 208630 2010-05-28 22:40:24Z jilles $
 
 failures=
 failure() {

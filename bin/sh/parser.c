@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
- * $FreeBSD: src/bin/sh/parser.c,v 1.115 2011/06/18 23:58:59 jilles Exp $
+ * $FreeBSD: head/bin/sh/parser.c 245382 2013-01-13 19:26:33Z jilles $
  */
 
 #include <stdio.h>
@@ -239,9 +239,9 @@ list(int nlflag, int erflag)
 		n2 = andor();
 		tok = readtoken();
 		if (tok == TBACKGND) {
-			if (n2->type == NPIPE) {
+			if (n2 != NULL && n2->type == NPIPE) {
 				n2->npipe.backgnd = 1;
-			} else if (n2->type == NREDIR) {
+			} else if (n2 != NULL && n2->type == NREDIR) {
 				n2->type = NBACKGND;
 			} else {
 				n3 = (union node *)stalloc(sizeof (struct nredir));
@@ -285,7 +285,8 @@ list(int nlflag, int erflag)
 				tokpushback++;
 			}
 			checkkwd = CHKNL | CHKKWD | CHKALIAS;
-			if (!nlflag && !erflag && tokendlist[peektoken()])
+			if (!nlflag && (erflag ? peektoken() == TEOF :
+			    tokendlist[peektoken()]))
 				return ntop;
 			break;
 		case TEOF:

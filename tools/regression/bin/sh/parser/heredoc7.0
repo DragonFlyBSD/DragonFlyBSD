@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/parser/heredoc7.0,v 1.1 2010/07/25 22:25:52 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/parser/heredoc7.0 210488 2010-07-25 22:25:52Z jilles $
 
 # Some of these created malformed parse trees with null pointers for here
 # documents, causing the here document writing process to segfault.

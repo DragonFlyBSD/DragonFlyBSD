@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/cmdsubst8.0,v 1.1 2010/12/30 15:04:59 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/cmdsubst8.0 216819 2010-12-30 15:04:59Z jilles $
 # Not required by POSIX (although referenced in a non-normative section),
 # but possibly useful.
 

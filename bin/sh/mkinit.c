@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkinit.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mkinit.c,v 1.23 2011/06/24 07:29:04 kevlo Exp $
+ * $FreeBSD: head/bin/sh/mkinit.c 245689 2013-01-20 12:44:50Z jilles $
  */
 
 /*
@@ -95,7 +95,7 @@ struct block {
  */
 
 struct event {
-	const char *name;	/* name of event (e.g. INIT) */
+	const char *name;	/* name of event (e.g. RESET) */
 	const char *routine;	/* name of routine called on event */
 	const char *comment;	/* comment describing routine */
 	struct text code;	/* code for handling event */
@@ -108,11 +108,6 @@ char writer[] = "\
  */\n\
 \n";
 
-char init[] = "\
-/*\n\
- * Initialization code.\n\
- */\n";
-
 char reset[] = "\
 /*\n\
  * This routine is called when an error or an interrupt occurs in an\n\
@@ -121,7 +116,6 @@ char reset[] = "\
 
 
 struct event event[] = {
-	{ "INIT", "init", init, { NULL, 0, NULL, NULL } },
 	{ "RESET", "reset", reset, { NULL, 0, NULL, NULL } },
 	{ NULL, NULL, NULL, { NULL, 0, NULL, NULL } }
 };

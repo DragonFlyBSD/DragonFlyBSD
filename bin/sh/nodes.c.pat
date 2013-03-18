@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)nodes.c.pat	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/nodes.c.pat,v 1.18 2010/10/13 22:18:03 obrien Exp $
+ * $FreeBSD: head/bin/sh/nodes.c.pat 213811 2010-10-13 22:18:03Z obrien $
  */
 
 #include <sys/param.h>

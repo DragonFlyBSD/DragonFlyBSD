@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/execution/set-n2.0,v 1.1 2011/06/03 21:17:42 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/execution/set-n2.0 222661 2011-06-03 21:17:42Z jilles $
 
 $SH -n <<'EOF'
 echo bad

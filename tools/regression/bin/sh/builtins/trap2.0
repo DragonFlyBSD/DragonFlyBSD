@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/trap2.0,v 1.1 2009/06/19 22:15:59 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/trap2.0 194517 2009-06-19 22:15:59Z jilles $
 # This is really a test for outqstr(), which is readily accessible via trap.
 
 runtest()

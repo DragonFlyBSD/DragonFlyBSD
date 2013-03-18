@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/cd1.0,v 1.4 2010/10/11 23:24:57 obrien Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/cd1.0 228975 2011-12-30 00:04:11Z uqs $
 set -e
 
 P=${TMPDIR:-/tmp}
@@ -7,7 +7,7 @@ T=$(mktemp -d sh-test.XXXXXX)
 
 chmod 0 $T
 if [ `id -u` -ne 0 ]; then
-	# Root can always cd, irregardless of directory permissions.
+	# Root can always cd, regardless of directory permissions.
 	cd -L $T 2>/dev/null && exit 1
 	[ "$PWD" = "$P" ]
 	[ "$(pwd)" = "$P" ]

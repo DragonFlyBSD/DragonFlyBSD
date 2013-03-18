@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/parser/heredoc3.0,v 1.1 2010/05/09 17:10:50 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/parser/heredoc3.0 207824 2010-05-09 17:10:50Z jilles $
 
 # This may be expected to work, but pretty much only ash derivatives allow it.
 

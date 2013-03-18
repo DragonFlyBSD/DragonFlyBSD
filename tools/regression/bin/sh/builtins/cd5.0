@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/cd5.0,v 1.1 2011/05/27 19:36:07 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/cd5.0 222379 2011-05-27 19:36:07Z jilles $
 
 set -e
 T=$(mktemp -d "${TMPDIR:-/tmp}/sh-test.XXXXXX")

@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/errors/redirection-error7.0,v 1.1 2010/12/31 18:20:17 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/errors/redirection-error7.0 216851 2010-12-31 18:20:17Z jilles $
 
 ! dummy=$(
 	exec 3>&1 >&2 2>&3

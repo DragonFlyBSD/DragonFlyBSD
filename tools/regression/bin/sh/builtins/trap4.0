@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/trap4.0,v 1.1 2011/01/05 23:17:29 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/trap4.0 217035 2011-01-05 23:17:29Z jilles $
 
 T=$(mktemp -d ${TMPDIR:-/tmp}/sh-test.XXXXXX)
 trap 'rm -rf $T' 0

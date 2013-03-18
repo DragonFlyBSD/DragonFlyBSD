@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.7 2011/11/08 23:54:39 jilles Exp $
+ * $FreeBSD: head/bin/sh/arith_yacc.c 230530 2012-01-25 08:42:19Z charnier $
  */
 
 #include <limits.h>

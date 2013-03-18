@@ -36,7 +36,7 @@
 # SUCH DAMAGE.
 #
 #	@(#)login	8.2 (Berkeley) 5/4/95
-# $FreeBSD: src/bin/sh/funcs/login,v 1.8 2005/01/10 08:39:26 imp Exp $
+# $FreeBSD: head/bin/sh/funcs/login 139969 2005-01-10 08:39:26Z imp $
 
 # replaces the login builtin in the BSD shell
 login () exec login "$@"

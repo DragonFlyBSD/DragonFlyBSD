@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)memalloc.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/memalloc.c,v 1.38 2011/01/09 22:47:58 jilles Exp $
+ * $FreeBSD: head/bin/sh/memalloc.c 217209 2011-01-09 22:47:58Z jilles $
  */
 
 #include <sys/param.h>

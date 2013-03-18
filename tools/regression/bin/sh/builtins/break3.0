@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/break3.0,v 1.1 2010/08/22 11:04:30 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/break3.0 211612 2010-08-22 11:07:46Z jilles $
 
 # We accept this and people might rely on it.
 # However, various other shells do not accept it.

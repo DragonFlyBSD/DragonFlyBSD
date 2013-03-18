@@ -34,10 +34,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)trap.h	8.3 (Berkeley) 6/5/95
- * $FreeBSD: src/bin/sh/trap.h,v 1.16 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: head/bin/sh/trap.h 247206 2013-02-23 22:50:57Z jilles $
  */
 
-extern int pendingsigs;
+extern volatile sig_atomic_t pendingsig;
 extern int in_dotrap;
 extern volatile sig_atomic_t gotwinch;
 
@@ -45,6 +45,7 @@ void clear_traps(void);
 int have_traps(void);
 void setsignal(int);
 void ignoresig(int);
+int issigchldtrapped(void);
 void onsig(int);
 void dotrap(void);
 void setinteractive(int);

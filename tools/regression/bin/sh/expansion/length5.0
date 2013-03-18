@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/length5.0,v 1.1 2011/04/15 15:33:24 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/length5.0 220656 2011-04-15 15:33:24Z jilles $
 
 unset LC_ALL
 LC_CTYPE=en_US.ISO8859-1

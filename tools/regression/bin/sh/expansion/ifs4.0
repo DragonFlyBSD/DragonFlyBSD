@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/ifs4.0,v 1.1 2011/05/27 15:56:13 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/ifs4.0 222361 2011-05-27 15:56:13Z jilles $
 
 c=: e= s=' '
 failures=''

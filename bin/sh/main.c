@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.53 2012/01/01 22:17:12 jilles Exp $
+ * $FreeBSD: head/bin/sh/main.c 247206 2013-02-23 22:50:57Z jilles $
  */
 
 #include <stdio.h>
@@ -133,7 +133,7 @@ main(int argc, char *argv[])
 #endif
 	rootpid = getpid();
 	rootshell = 1;
-	init();
+	initvar();
 	setstackmark(&smark);
 	setstackmark(&smark2);
 	procargs(argc, argv);
@@ -190,7 +190,7 @@ cmdloop(int top)
 	TRACE(("cmdloop(%d) called\n", top));
 	setstackmark(&smark);
 	for (;;) {
-		if (pendingsigs)
+		if (pendingsig)
 			dotrap();
 		inter = 0;
 		if (iflag && top) {
@@ -260,14 +260,7 @@ read_profile(const char *name)
 void
 readcmdfile(const char *name)
 {
-	int fd;
-
-	INTOFF;
-	if ((fd = open(name, O_RDONLY)) >= 0)
-		setinputfd(fd, 1);
-	else
-		error("cannot open %s: %s", name, strerror(errno));
-	INTON;
+	setinputfile(name, 1);
 	cmdloop(0);
 	popfile();
 }

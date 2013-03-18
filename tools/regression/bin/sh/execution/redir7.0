@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/execution/redir7.0,v 1.1 2011/04/23 22:28:56 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/execution/redir7.0 220978 2011-04-23 22:28:56Z jilles $
 
 failures=0
 

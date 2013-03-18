@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/fc1.0,v 1.4 2010/10/12 18:20:38 obrien Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/fc1.0 213738 2010-10-12 18:20:38Z obrien $
 set -e
 trap 'echo Broken pipe -- test failed' PIPE
 

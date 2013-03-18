@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/eval2.0,v 1.1 2009/06/24 20:22:54 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/eval2.0 194897 2009-06-24 20:22:54Z jilles $
 
 eval '
 false

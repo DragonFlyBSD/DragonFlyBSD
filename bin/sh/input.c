@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
- * $FreeBSD: src/bin/sh/input.c,v 1.36 2012/07/11 22:17:58 pfg Exp $
+ * $FreeBSD: head/bin/sh/input.c 245676 2013-01-19 22:12:08Z jilles $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -63,7 +63,6 @@
 
 #define EOF_NLEFT -99		/* value of parsenleft when EOF pushed back */
 
-MKINIT
 struct strpush {
 	struct strpush *prev;	/* preceding string on stack */
 	char *prevstring;
@@ -77,7 +76,6 @@ struct strpush {
  * contains information about the current file being read.
  */
 
-MKINIT
 struct parsefile {
 	struct parsefile *prev;	/* preceding file on stack */
 	int linno;		/* current line */
@@ -95,10 +93,12 @@ int plinno = 1;			/* input line number */
 int parsenleft;			/* copy of parsefile->nleft */
 MKINIT int parselleft;		/* copy of parsefile->lleft */
 char *parsenextc;		/* copy of parsefile->nextc */
-MKINIT struct parsefile basepf;	/* top level input file */
-MKINIT char basebuf[BUFSIZ + 1];	/* buffer for top level input file */
+static char basebuf[BUFSIZ + 1];/* buffer for top level input file */
+static struct parsefile basepf = {	/* top level input file */
+	.nextc = basebuf,
+	.buf = basebuf
+};
 static struct parsefile *parsefile = &basepf;	/* current input file */
-int init_editline = 0;		/* editline library initialized? */
 int whichprompt;		/* 1 == PS1, 2 == PS2 */
 
 EditLine *el;			/* cookie for editline package */
@@ -111,10 +111,6 @@ static void popstring(void);
 INCLUDE <stdio.h>
 INCLUDE "input.h"
 INCLUDE "error.h"
-
-INIT {
-	basepf.nextc = basepf.buf = basebuf;
-}
 
 RESET {
 	popallfiles();
@@ -348,7 +344,7 @@ pungetc(void)
  * We handle aliases this way.
  */
 void
-pushstring(char *s, int len, void *ap)
+pushstring(char *s, int len, struct alias *ap)
 {
 	struct strpush *sp;
 
@@ -363,9 +359,9 @@ pushstring(char *s, int len, void *ap)
 	sp->prevstring = parsenextc;
 	sp->prevnleft = parsenleft;
 	sp->prevlleft = parselleft;
-	sp->ap = (struct alias *)ap;
+	sp->ap = ap;
 	if (ap)
-		((struct alias *)ap)->flag |= ALIASINUSE;
+		ap->flag |= ALIASINUSE;
 	parsenextc = s;
 	parsenleft = len;
 	INTON;

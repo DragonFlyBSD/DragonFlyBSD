@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)show.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/show.c,v 1.27 2010/10/13 22:18:03 obrien Exp $
+ * $FreeBSD: head/bin/sh/show.c 213811 2010-10-13 22:18:03Z obrien $
  */
 
 #include <fcntl.h>

@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/parser/alias3.0,v 1.1 2010/11/02 23:44:29 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/parser/alias3.0 214709 2010-11-02 23:44:29Z jilles $
 
 alias alias0=exit
 x=alias0

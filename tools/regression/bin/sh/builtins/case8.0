@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/case8.0,v 1.1 2011/06/15 21:48:10 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/case8.0 223120 2011-06-15 21:48:10Z jilles $
 
 case aZ_ in
 [[:alpha:]_][[:upper:]_][[:alpha:]_]) ;;

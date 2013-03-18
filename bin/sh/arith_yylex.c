@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/bin/sh/arith_yylex.c,v 1.3 2011/03/07 07:31:15 stefanf Exp $
+ * $FreeBSD: head/bin/sh/arith_yylex.c 230530 2012-01-25 08:42:19Z charnier $
  */
 
 #include <inttypes.h>

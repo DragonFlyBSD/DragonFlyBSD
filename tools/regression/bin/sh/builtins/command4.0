@@ -1,2 +1,2 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/command4.0,v 1.1 2010/08/29 20:53:24 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/command4.0 211973 2010-08-29 20:53:24Z jilles $
 ! command -v nonexisting

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)mail.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mail.c,v 1.16 2010/10/13 04:01:01 obrien Exp $
+ * $FreeBSD: head/bin/sh/mail.c 213760 2010-10-13 04:01:01Z obrien $
  */
 
 /*

@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/plus-minus7.0,v 1.1 2010/12/27 15:57:41 emaste Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/plus-minus7.0 216738 2010-12-27 15:57:41Z emaste $
 
 e= s='foo'
 failures=''

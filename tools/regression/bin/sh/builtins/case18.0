@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/case18.0,v 1.1 2012/01/15 21:39:38 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/case18.0 230161 2012-01-15 21:39:38Z jilles $
 
 case x$(false) in
 x)	;&

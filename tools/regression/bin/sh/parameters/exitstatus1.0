@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/parameters/exitstatus1.0,v 1.1 2008/11/23 20:27:03 stefanf Exp $
+# $FreeBSD: head/tools/regression/bin/sh/parameters/exitstatus1.0 185232 2008-11-23 20:27:03Z stefanf $
 f() {
 	[ $? = $1 ] || exit 1
 }

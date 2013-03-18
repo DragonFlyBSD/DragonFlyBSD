@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/plus-minus3.0,v 1.1 2010/04/18 22:13:45 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/plus-minus3.0 206817 2010-04-18 22:13:45Z jilles $
 
 e= q='?' a='*' t=texttext s='ast*que?non' p='/et[c]/' w='a b c' b='{{(#)}}'
 h='##'

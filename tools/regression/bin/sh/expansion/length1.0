@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/length1.0,v 1.1 2011/03/13 16:20:38 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/length1.0 219611 2011-03-13 16:20:38Z jilles $
 
 v=abcd
 [ "${#v}" = 4 ] || echo '${#v} wrong'

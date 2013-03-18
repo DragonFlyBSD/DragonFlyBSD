@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/execution/killed2.0,v 1.1 2011/01/30 22:57:52 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/execution/killed2.0 218105 2011-01-30 22:57:52Z jilles $
 # Most shells print a message when a foreground job is killed by a signal.
 # POSIX allows this, provided the message is sent to stderr, not stdout.
 # Some trickery is needed to capture the message as redirecting stderr of

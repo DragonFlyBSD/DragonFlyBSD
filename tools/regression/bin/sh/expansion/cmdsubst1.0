@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/cmdsubst1.0,v 1.1 2010/01/01 18:17:46 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/cmdsubst1.0 201366 2010-01-01 18:17:46Z jilles $
 
 failures=0
 

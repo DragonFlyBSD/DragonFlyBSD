@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/read1.0,v 1.2 2009/03/22 23:00:52 stefanf Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/read1.0 190300 2009-03-22 23:00:52Z stefanf $
 set -e
 
 echo "1 2 3"		| { read a; echo "x${a}x"; }

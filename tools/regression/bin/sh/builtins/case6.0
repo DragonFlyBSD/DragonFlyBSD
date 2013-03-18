@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/case6.0,v 1.1 2011/06/12 12:27:17 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/case6.0 223007 2011-06-12 12:27:17Z jilles $
 
 unset LC_ALL
 LC_CTYPE=de_DE.ISO8859-1

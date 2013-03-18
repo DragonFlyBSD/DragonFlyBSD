@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/arith7.0,v 1.1 2010/12/12 16:56:16 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/arith7.0 216395 2010-12-12 16:56:16Z jilles $
 
 v=1+
 v=$v$v$v$v

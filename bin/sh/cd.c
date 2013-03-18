@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)cd.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/cd.c,v 1.50 2012/01/13 23:32:27 jilles Exp $
+ * $FreeBSD: head/bin/sh/cd.c 240541 2012-09-15 21:56:30Z jilles $
  */
 
 #include <sys/types.h>
@@ -78,7 +78,7 @@ static char *prevdir;		/* previous working directory */
 static char *cdcomppath;
 
 int
-cdcmd(int argc, char **argv)
+cdcmd(int argc __unused, char **argv __unused)
 {
 	const char *dest;
 	const char *path;
@@ -88,9 +88,8 @@ cdcmd(int argc, char **argv)
 	int rc;
 	int errno1 = ENOENT;
 
-	optreset = 1; optind = 1; opterr = 0; /* initialize getopt */
 	phys = Pflag;
-	while ((ch = getopt(argc, argv, "eLP")) != -1) {
+	while ((ch = nextopt("eLP")) != '\0') {
 		switch (ch) {
 		case 'e':
 			getcwderr = 1;
@@ -101,18 +100,13 @@ cdcmd(int argc, char **argv)
 		case 'P':
 			phys = 1;
 			break;
-		default:
-			error("unknown option: -%c", optopt);
-			break;
 		}
 	}
-	argc -= optind;
-	argv += optind;
 
-	if (argc > 1)
+	if (*argptr != NULL && argptr[1] != NULL)
 		error("too many arguments");
 
-	if ((dest = *argv) == NULL && (dest = bltinlookup("HOME", 1)) == NULL)
+	if ((dest = *argptr) == NULL && (dest = bltinlookup("HOME", 1)) == NULL)
 		error("HOME not set");
 	if (*dest == '\0')
 		dest = ".";
@@ -329,14 +323,13 @@ updatepwd(char *dir)
 }
 
 int
-pwdcmd(int argc, char **argv)
+pwdcmd(int argc __unused, char **argv __unused)
 {
 	char *p;
 	int ch, phys;
 
-	optreset = 1; optind = 1; opterr = 0; /* initialize getopt */
 	phys = Pflag;
-	while ((ch = getopt(argc, argv, "LP")) != -1) {
+	while ((ch = nextopt("LP")) != '\0') {
 		switch (ch) {
 		case 'L':
 			phys = 0;
@@ -344,15 +337,10 @@ pwdcmd(int argc, char **argv)
 		case 'P':
 			phys = 1;
 			break;
-		default:
-			error("unknown option: -%c", optopt);
-			break;
 		}
 	}
-	argc -= optind;
-	argv += optind;
 
-	if (argc != 0)
+	if (*argptr != NULL)
 		error("too many arguments");
 
 	if (!phys && getpwd()) {

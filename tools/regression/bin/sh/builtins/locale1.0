@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/locale1.0,v 1.2 2011/02/18 20:37:09 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/locale1.0 218819 2011-02-18 20:37:09Z jilles $
 # Note: this test depends on strerror() using locale.
 
 failures=0

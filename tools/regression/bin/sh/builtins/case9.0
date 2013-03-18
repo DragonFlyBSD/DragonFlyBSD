@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/case9.0,v 1.1 2011/06/17 13:03:49 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/case9.0 223186 2011-06-17 13:03:49Z jilles $
 
 errors=0
 

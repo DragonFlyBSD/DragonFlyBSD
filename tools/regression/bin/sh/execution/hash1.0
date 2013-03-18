@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/execution/hash1.0,v 1.1 2011/02/05 14:01:46 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/execution/hash1.0 218323 2011-02-05 14:01:46Z jilles $
 
 T=`mktemp -d "${TMPDIR:-/tmp}/sh-test.XXXXXXXX"` || exit
 trap 'rm -rf "${T}"' 0

@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/case7.0,v 1.1 2011/06/12 12:55:46 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/case7.0 223011 2011-06-12 12:55:46Z jilles $
 
 # Character ranges in a locale other than the POSIX locale, not specified
 # by POSIX.

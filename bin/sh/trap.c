@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)trap.c	8.5 (Berkeley) 6/5/95
- * $FreeBSD: src/bin/sh/trap.c,v 1.48 2012/01/16 11:07:46 dumbbell Exp $
+ * $FreeBSD: head/bin/sh/trap.c 247720 2013-03-03 17:33:59Z jilles $
  */
 
 #include <signal.h>
@@ -72,7 +72,7 @@
 
 
 MKINIT char sigmode[NSIG];	/* current value of signal */
-int pendingsigs;		/* indicates some signal received */
+volatile sig_atomic_t pendingsig;	/* indicates some signal received */
 int in_dotrap;			/* do we execute in a trap handler? */
 static char *volatile trap[NSIG];	/* trap handler commands */
 static volatile sig_atomic_t gotsig[NSIG];
@@ -367,6 +367,14 @@ ignoresig(int signo)
 }
 
 
+int
+issigchldtrapped(void)
+{
+
+	return (trap[SIGCHLD] != NULL && *trap[SIGCHLD] != '\0');
+}
+
+
 /*
  * Signal handler.
  */
@@ -379,22 +387,25 @@ onsig(int signo)
 		return;
 	}
 
-	if (signo != SIGCHLD || !ignore_sigchld)
-		gotsig[signo] = 1;
-	pendingsigs++;
-
 	/* If we are currently in a wait builtin, prepare to break it */
-	if ((signo == SIGINT || signo == SIGQUIT) && in_waitcmd != 0)
+	if ((signo == SIGINT || signo == SIGQUIT) && in_waitcmd != 0) {
 		breakwaitcmd = 1;
-	/*
-	 * If a trap is set, not ignored and not the null command, we need
-	 * to make sure traps are executed even when a child blocks signals.
-	 */
-	if (Tflag &&
-	    trap[signo] != NULL &&
-	    ! (trap[signo][0] == '\0') &&
-	    ! (trap[signo][0] == ':' && trap[signo][1] == '\0'))
-		breakwaitcmd = 1;
+		pendingsig = signo;
+	}
+
+	if (trap[signo] != NULL && trap[signo][0] != '\0' &&
+	    (signo != SIGCHLD || !ignore_sigchld)) {
+		gotsig[signo] = 1;
+		pendingsig = signo;
+
+		/*
+		 * If a trap is set, not ignored and not the null command, we
+		 * need to make sure traps are executed even when a child
+		 * blocks signals.
+		 */
+		if (Tflag && !(trap[signo][0] == ':' && trap[signo][1] == '\0'))
+			breakwaitcmd = 1;
+	}
 
 #ifndef NO_HISTORY
 	if (signo == SIGWINCH)
@@ -415,6 +426,7 @@ dotrap(void)
 
 	in_dotrap++;
 	for (;;) {
+		pendingsig = 0;
 		for (i = 1; i < NSIG; i++) {
 			if (gotsig[i]) {
 				gotsig[i] = 0;
@@ -442,7 +454,6 @@ dotrap(void)
 					last_trapsig = i;
 					savestatus = exitstatus;
 					evalstring(trap[i], 0);
-					exitstatus = savestatus;
 
 					/*
 					 * If such a command was not
@@ -451,9 +462,11 @@ dotrap(void)
 					 * trap action to have an effect
 					 * outside of it.
 					 */
-					if (prev_evalskip != 0) {
+					if (evalskip == 0 ||
+					    prev_evalskip != 0) {
 						evalskip  = prev_evalskip;
 						skipcount = prev_skipcount;
+						exitstatus = savestatus;
 					}
 
 					if (i == SIGCHLD)
@@ -466,7 +479,6 @@ dotrap(void)
 			break;
 	}
 	in_dotrap--;
-	pendingsigs = 0;
 }
 
 

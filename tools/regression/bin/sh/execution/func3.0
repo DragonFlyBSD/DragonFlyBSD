@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/execution/func3.0,v 1.2 2010/12/12 21:18:16 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/execution/func3.0 216398 2010-12-12 21:18:16Z jilles $
 
 # This may fail when parsing or when defining the function, or the definition
 # may silently do nothing. In no event may the function be executed.

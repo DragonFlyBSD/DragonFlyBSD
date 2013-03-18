@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/plus-minus6.0,v 1.1 2010/10/29 13:42:18 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/plus-minus6.0 214512 2010-10-29 13:42:18Z jilles $
 
 failures=0
 unset LC_ALL

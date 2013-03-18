@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/ifs3.0,v 1.1 2010/08/22 13:09:12 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/ifs3.0 211622 2010-08-22 13:09:12Z jilles $
 
 failures=0
 unset LC_ALL

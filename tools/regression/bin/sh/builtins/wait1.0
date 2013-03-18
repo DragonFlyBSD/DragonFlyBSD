@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/wait1.0,v 1.1 2010/05/23 22:10:20 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/wait1.0 208476 2010-05-23 22:10:20Z jilles $
 
 failures=
 failure() {

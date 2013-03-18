@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/set-u3.0,v 1.1 2011/05/04 22:12:22 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/set-u3.0 221463 2011-05-04 22:12:22Z jilles $
 
 set -u
 unset x

@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/errors/redirection-error6.0,v 1.1 2010/03/14 14:24:35 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/errors/redirection-error6.0 205154 2010-03-14 14:24:35Z jilles $
 # A redirection error on a compound command should not abort the shell.
 exec 2>/dev/null
 { echo bad; } </var/empty/x

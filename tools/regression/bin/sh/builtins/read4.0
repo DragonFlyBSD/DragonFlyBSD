@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/read4.0,v 1.1 2010/09/08 20:35:43 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/read4.0 212339 2010-09-08 20:35:43Z jilles $
 
 printf '%s\n' '\a\ b c'	| { read a b; printf '%s\n' "x${a}x${b}x"; }
 printf '%s\n' '\a b\ c'	| { read a b; printf '%s\n' "x${a}x${b}x"; }

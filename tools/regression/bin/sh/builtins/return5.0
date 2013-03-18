@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/return5.0,v 1.1 2010/08/15 21:06:53 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/return5.0 211349 2010-08-15 21:06:53Z jilles $
 
 if [ "$1" != nested ]; then
 	f() {

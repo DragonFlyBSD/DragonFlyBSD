@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)jobs.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/jobs.h,v 1.22 2012/02/04 23:12:14 jilles Exp $
+ * $FreeBSD: head/bin/sh/jobs.h 238470 2012-07-15 10:49:16Z jilles $
  */
 
 /* Mode argument to forkshell.  Don't change FORK_FG or FORK_BG. */
@@ -88,7 +88,6 @@ enum {
 
 extern int job_warning;		/* user was warned about stopped jobs */
 extern int in_waitcmd;		/* are we in waitcmd()? */
-extern int in_dowait;		/* are we in dowait()? */
 extern volatile sig_atomic_t breakwaitcmd; /* break wait to process traps? */
 
 void setjobctl(int);

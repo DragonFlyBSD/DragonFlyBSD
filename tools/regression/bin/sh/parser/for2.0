@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/parser/for2.0,v 1.1 2011/02/20 14:18:58 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/parser/for2.0 218889 2011-02-20 14:18:58Z jilles $
 
 # Common extensions to the 'for' syntax.
 

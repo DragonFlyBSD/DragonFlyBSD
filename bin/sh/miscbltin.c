@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)miscbltin.c	8.4 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/miscbltin.c,v 1.46 2012/05/15 22:50:47 jilles Exp $
+ * $FreeBSD: head/bin/sh/miscbltin.c 246167 2013-01-31 22:10:57Z jilles $
  */
 
 /*
@@ -46,7 +46,6 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <unistd.h>
-#include <ctype.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -59,6 +58,7 @@
 #include "memalloc.h"
 #include "error.h"
 #include "mystring.h"
+#include "syntax.h"
 
 int readcmd(int, char **);
 int umaskcmd(int, char **);
@@ -306,7 +306,7 @@ umaskcmd(int argc __unused, char **argv __unused)
 			out1fmt("%.4o\n", mask);
 		}
 	} else {
-		if (isdigit(*ap)) {
+		if (is_digit(*ap)) {
 			mask = 0;
 			do {
 				if (*ap >= '8' || *ap < '0')

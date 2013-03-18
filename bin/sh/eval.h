@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)eval.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/eval.h,v 1.16 2012/01/16 11:07:46 dumbbell Exp $
+ * $FreeBSD: head/bin/sh/eval.h 230212 2012-01-16 11:07:46Z dumbbell $
  */
 
 extern const char *commandname;	/* currently executing command */

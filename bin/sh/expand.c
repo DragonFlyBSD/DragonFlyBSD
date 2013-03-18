@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
- * $FreeBSD: src/bin/sh/expand.c,v 1.95 2012/01/01 22:17:12 jilles Exp $
+ * $FreeBSD: head/bin/sh/expand.c 246288 2013-02-03 15:54:57Z jilles $
  */
 
 #include <sys/types.h>
@@ -124,19 +124,6 @@ collate_range_cmp(wchar_t c1, wchar_t c2)
 	s1[0] = c1;
 	s2[0] = c2;
 	return (wcscoll(s1, s2));
-}
-
-/*
- * Expand shell variables and backquotes inside a here document.
- *	union node *arg		the document
- *	int fd;			where to write the expanded version
- */
-
-void
-expandhere(union node *arg, int fd)
-{
-	expandarg(arg, NULL, 0);
-	xwrite(fd, stackblock(), expdest - stackblock());
 }
 
 static char *

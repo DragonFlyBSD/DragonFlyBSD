@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/var-assign.0,v 1.2 2010/10/12 18:20:38 obrien Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/var-assign.0 213738 2010-10-12 18:20:38Z obrien $
 IFS=,
 
 SPECIAL="break,\

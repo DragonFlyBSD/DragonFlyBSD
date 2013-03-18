@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)error.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/error.c,v 1.33 2010/12/21 20:47:06 jilles Exp $
+ * $FreeBSD: head/bin/sh/error.c 216622 2010-12-21 20:47:06Z jilles $
  */
 
 /*

@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/cmdsubst10.0,v 1.1 2010/12/30 22:33:55 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/cmdsubst10.0 216826 2010-12-30 22:33:55Z jilles $
 
 a1=$(alias)
 : $(alias testalias=abcd)

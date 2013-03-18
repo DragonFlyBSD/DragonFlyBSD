@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/parser/func1.0,v 1.1 2010/10/24 20:45:13 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/parser/func1.0 214291 2010-10-24 20:45:13Z jilles $
 # POSIX does not require these bytes to work in function names,
 # but making them all work seems a good goal.
 

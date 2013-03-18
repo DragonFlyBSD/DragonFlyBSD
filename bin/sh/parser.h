@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)parser.h	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/parser.h,v 1.18 2011/06/09 23:12:23 jilles Exp $
+ * $FreeBSD: head/bin/sh/parser.h 246507 2013-02-07 21:24:10Z jilles $
  */
 
 /* control characters in argument strings */
@@ -43,7 +43,7 @@
 #define CTLENDVAR '\371'
 #define CTLBACKQ '\372'
 #define CTLQUOTE 01		/* ored with CTLBACKQ code if in quotes */
-/*	CTLBACKQ | CTLQUOTE == '\205' */
+/*	CTLBACKQ | CTLQUOTE == '\373' */
 #define	CTLARI	'\374'
 #define	CTLENDARI '\375'
 #define	CTLQUOTEMARK '\376'

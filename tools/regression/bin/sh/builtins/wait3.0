@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/wait3.0,v 1.1 2010/11/19 21:15:06 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/wait3.0 236771 2012-06-08 22:54:25Z jilles $
 
 failures=
 failure() {
@@ -15,7 +15,7 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
 done
 exec 3>fifo1
 wait || failure $LINENO
-(echo >&3) 2>/dev/null && failure $LINENO
+(${SH} -c echo >&3) 2>/dev/null && failure $LINENO
 wait || failure $LINENO
 
 test -z "$failures"

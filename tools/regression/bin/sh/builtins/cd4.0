@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/cd4.0,v 1.1 2011/05/20 22:55:18 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/cd4.0 222154 2011-05-20 22:55:18Z jilles $
 
 # This test assumes that whatever mechanism cd -P uses to determine the
 # pathname to the current directory if it is longer than PATH_MAX requires

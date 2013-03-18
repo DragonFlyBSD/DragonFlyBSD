@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/errors/bad-binary1.126,v 1.1 2011/02/05 12:54:59 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/errors/bad-binary1.126 218320 2011-02-05 12:54:59Z jilles $
 # Checking for binary "scripts" without magic number is permitted but not
 # required by POSIX. However, it is preferable to getting errors like
 # Syntax error: word unexpected (expecting ")")

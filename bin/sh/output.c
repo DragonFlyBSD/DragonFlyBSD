@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)output.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/output.c,v 1.28 2010/12/11 17:47:27 jilles Exp $
+ * $FreeBSD: head/bin/sh/output.c 244162 2012-12-12 22:01:10Z jilles $
  */
 
 /*
@@ -235,6 +235,20 @@ freestdout(void)
 		output.nleft = 0;
 	}
 	INTON;
+}
+
+
+int
+outiserror(struct output *file)
+{
+	return (file->flags & OUTPUT_ERR);
+}
+
+
+void
+outclearerror(struct output *file)
+{
+	file->flags &= ~OUTPUT_ERR;
 }
 
 

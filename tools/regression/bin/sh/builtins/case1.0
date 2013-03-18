@@ -1,4 +1,4 @@
-#$FreeBSD: src/tools/regression/bin/sh/builtins/case1.0,v 1.1 2007/10/04 16:14:48 stefanf Exp $
+#$FreeBSD: head/tools/regression/bin/sh/builtins/case1.0 172440 2007-10-04 16:14:48Z stefanf $
 f()
 {
 	false

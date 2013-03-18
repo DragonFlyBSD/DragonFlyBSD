@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/getopts1.0,v 1.3 2012/01/06 23:20:33 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/getopts1.0 229742 2012-01-06 23:20:33Z jilles $
 
 printf -- '-1-\n'
 set -- -abc

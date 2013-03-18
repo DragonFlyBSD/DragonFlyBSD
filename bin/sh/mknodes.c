@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mknodes.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mknodes.c,v 1.20 2009/08/28 22:41:25 jilles Exp $
+ * $FreeBSD: head/bin/sh/mknodes.c 196634 2009-08-28 22:41:25Z jilles $
  */
 
 /*

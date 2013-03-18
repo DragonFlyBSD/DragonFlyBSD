@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)var.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.h,v 1.25 2012/02/04 23:12:14 jilles Exp $
+ * $FreeBSD: head/bin/sh/var.h 230998 2012-02-04 23:12:14Z jilles $
  */
 
 /*

@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/cd8.0,v 1.1 2012/01/13 23:32:27 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/builtins/cd8.0 230095 2012-01-13 23:32:27Z jilles $
 
 # The exact wording of the error message is not standardized, but giving
 # a description of the errno is useful.

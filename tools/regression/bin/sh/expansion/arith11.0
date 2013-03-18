@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/arith11.0,v 1.1 2011/02/12 23:44:05 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/arith11.0 218626 2011-02-12 23:44:05Z jilles $
 # Try to divide the smallest integer by -1.
 # On amd64 this causes SIGFPE, so make sure the shell checks.
 

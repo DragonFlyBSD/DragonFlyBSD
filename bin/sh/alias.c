@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)alias.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/alias.c,v 1.32 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: head/bin/sh/alias.c 242766 2012-11-08 13:33:48Z jilles $
  */
 
 #include <stdlib.h>
@@ -67,7 +67,18 @@ setalias(const char *name, const char *val)
 		if (equal(name, ap->name)) {
 			INTOFF;
 			ckfree(ap->val);
+			/* See HACK below. */
+#ifdef notyet
 			ap->val	= savestr(val);
+#else
+			{
+			size_t len = strlen(val);
+			ap->val = ckmalloc(len + 2);
+			memcpy(ap->val, val, len);
+			ap->val[len] = ' ';
+			ap->val[len+1] = '\0';
+			}
+#endif
 			INTON;
 			return;
 		}

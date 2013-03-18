@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/set-u1.0,v 1.2 2010/10/12 18:20:38 obrien Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/set-u1.0 213738 2010-10-12 18:20:38Z obrien $
 
 ${SH} -uc 'unset foo; echo $foo' 2>/dev/null && exit 1
 ${SH} -uc 'foo=; echo $foo' >/dev/null || exit 1

@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/length6.0,v 1.1 2011/04/20 22:24:54 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/sh/expansion/length6.0 220903 2011-04-20 22:24:54Z jilles $
 
 x='!@#$%^&*()[]'
 [ ${#x} = 12 ] || echo bad 1
