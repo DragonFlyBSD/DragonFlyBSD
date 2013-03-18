@@ -96,6 +96,7 @@ WR(stub_zero, pthread_getconcurrency);
 WR(stub_zero, pthread_getprio);
 WR(stub_zero, pthread_getschedparam);
 WR(stub_null, pthread_getspecific);
+WR(stub_empty, pthread_init_early);
 WR(stub_zero, pthread_join);
 WR(stub_zero, pthread_key_create);
 WR(stub_zero, pthread_key_delete);
@@ -216,7 +217,23 @@ stub_true(void)
 }
 
 static void __used
+stub_empty(void)
+{
+}
+
+static void __used
 stub_exit(void)
 {
 	exit(0);
+}
+
+/*
+ * If libpthread is loaded, make sure it is initialised before
+ * other libraries call pthread functions
+ */
+void _pthread_init(void) __constructor(0);
+void
+_pthread_init(void)
+{
+	_pthread_init_early();
 }

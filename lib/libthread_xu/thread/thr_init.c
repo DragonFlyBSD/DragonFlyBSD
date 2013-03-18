@@ -87,6 +87,8 @@ STATIC_LIB_REQUIRE(_pthread_getprio);
 STATIC_LIB_REQUIRE(_pthread_getschedparam);
 /* thr_info.c */
 STATIC_LIB_REQUIRE(_pthread_set_name_np);
+/* thr_init.c */
+STATIC_LIB_REQUIRE(_pthread_init_early);
 /* thr_join.c */
 STATIC_LIB_REQUIRE(_pthread_join);
 /* thr_kill.c */
@@ -157,6 +159,17 @@ static int	init_once = 0;
 void	_thread_init(void) __attribute__ ((constructor));
 void
 _thread_init(void)
+{
+	_libpthread_init(NULL);
+}
+
+/*
+ * This function is used by libc to initialise libpthread
+ * early during dynamic linking.
+ */
+void _pthread_init_early(void);
+void
+_pthread_init_early(void)
 {
 	_libpthread_init(NULL);
 }
@@ -341,3 +354,5 @@ init_private(void)
 	}
 	init_once = 1;
 }
+
+__strong_reference(_pthread_init_early, pthread_init_early);
