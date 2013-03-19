@@ -274,8 +274,6 @@ _pthread_attr_init(pthread_attr_t *attr)
 	int	ret;
 	pthread_attr_t	pattr;
 
-	_thr_check_init();
-
 	/* Allocate memory for the attribute object: */
 	if ((pattr = (pthread_attr_t) malloc(sizeof(struct pthread_attr))) == NULL)
 		/* Insufficient memory: */
