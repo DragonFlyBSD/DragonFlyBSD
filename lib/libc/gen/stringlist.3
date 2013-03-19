@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/gen/stringlist.3,v 1.3.2.4 2001/12/14 18:33:51 ru Exp $
 .\"
-.Dd February 24, 1997
+.Dd March 19, 2013
 .Dt STRINGLIST 3
 .Os
 .Sh NAME
@@ -56,7 +56,7 @@
 .Ft void
 .Fn sl_free "StringList *sl" "int freeall"
 .Ft char *
-.Fn sl_find "StringList *sl" "char *item"
+.Fn sl_find "StringList *sl" "const char *item"
 .Sh DESCRIPTION
 The
 .Nm
