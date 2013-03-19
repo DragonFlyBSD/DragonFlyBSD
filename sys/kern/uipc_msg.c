@@ -43,6 +43,7 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <sys/spinlock2.h>
+#include <sys/sysctl.h>
 #include <sys/mbuf.h>
 #include <vm/pmap.h>
 
@@ -51,6 +52,10 @@
 
 #include <net/netisr.h>
 #include <net/netmsg.h>
+
+static int async_rcvd_drop_race = 0;
+SYSCTL_INT(_kern_ipc, OID_AUTO, async_rcvd_drop_race, CTLFLAG_RW,
+    &async_rcvd_drop_race, 0, "# of asynchronized pru_rcvd msg drop races");
 
 /*
  * Abort a socket and free it.  Called from soabort() only.  soabort()
@@ -615,18 +620,18 @@ so_async_rcvd_drop(struct socket *so)
 {
 	lwkt_msg_t lmsg = &so->so_rcvd_msg.base.lmsg;
 
-again:
 	/*
-	 * Spinlock safe, reply runs to degenerate lwkt_spin_dropmsg()
+	 * Spinlock safe, drop runs to degenerate lwkt_spin_dropmsg()
 	 */
 	spin_lock(&so->so_rcvd_spin);
+	so->so_rcvd_msg.nm_pru_flags |= PRUR_DEAD;
+again:
 	if (lwkt_dropmsg(lmsg) == 0)
 		sofree(so);
-	so->so_rcvd_msg.nm_pru_flags |= PRUR_DEAD;
-	spin_unlock(&so->so_rcvd_spin);
 	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
-		kprintf("Warning: tcp: so_async_rcvd_drop() raced message\n");
-		tsleep(so, 0, "soadrop", 1);
+		++async_rcvd_drop_race;
+		ssleep(so, &so->so_rcvd_spin, 0, "soadrop", 1);
 		goto again;
 	}
+	spin_unlock(&so->so_rcvd_spin);
 }
