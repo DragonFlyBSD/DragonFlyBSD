@@ -83,8 +83,6 @@ _pthread_atfork(void (*prepare)(void), void (*parent)(void),
 	struct pthread *curthread;
 	struct pthread_atfork *af;
 
-	_thr_check_init();
-
 	if ((af = malloc(sizeof(struct pthread_atfork))) == NULL)
 		return (ENOMEM);
 
@@ -103,8 +101,6 @@ __pthread_cxa_finalize(struct dl_phdr_info *phdr_info)
 {
 	struct pthread *curthread;
 	struct pthread_atfork *af, *af1;
-
-	_thr_check_init();
 
 	curthread = tls_get_curthread();
 	THR_UMTX_LOCK(curthread, &_thr_atfork_lock);

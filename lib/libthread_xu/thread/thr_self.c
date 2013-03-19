@@ -43,8 +43,6 @@
 pthread_t
 _pthread_self(void)
 {
-	_thr_check_init();
-
 	/* Return the running thread pointer: */
 	return (tls_get_curthread());
 }
