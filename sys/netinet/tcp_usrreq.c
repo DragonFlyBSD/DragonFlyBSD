@@ -1573,6 +1573,8 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 		return (ENOBUFS);
 	}
 	tp->t_state = TCPS_CLOSED;
+	/* Keep a reference for asynchronized pru_rcvd */
+	soreference(so);
 	return (0);
 }
 

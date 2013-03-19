@@ -380,7 +380,10 @@ sonewconn_faddr(struct socket *head, int connstatus,
 		sofree(so);		/* remove implied pcb ref */
 		return (NULL);
 	}
-	KKASSERT(so->so_refs == 2);	/* attach + our base ref */
+	KKASSERT(((so->so_proto->pr_flags & PR_ASYNC_RCVD) == 0 &&
+	    so->so_refs == 2) ||	/* attach + our base ref */
+	   ((so->so_proto->pr_flags & PR_ASYNC_RCVD) &&
+	    so->so_refs == 3));		/* + async rcvd ref */
 	sofree(so);
 	KKASSERT(so->so_port != NULL);
 	so->so_rcv.ssb_lowat = head->so_rcv.ssb_lowat;

@@ -1002,6 +1002,8 @@ no_valid_rt:
 		syncache_destroy(tp);
 
 	so_async_rcvd_drop(so);
+	/* Drop the reference for the asynchronized pru_rcvd */
+	sofree(so);
 
 	/*
 	 * NOTE:

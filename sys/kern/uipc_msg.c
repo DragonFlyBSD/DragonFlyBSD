@@ -324,7 +324,6 @@ so_pru_rcvd_async(struct socket *so)
 	spin_lock(&so->so_rcvd_spin);
 	if ((so->so_rcvd_msg.nm_pru_flags & PRUR_DEAD) == 0) {
 		if (lmsg->ms_flags & MSGF_DONE) {
-			soreference(so);
 			lwkt_sendmsg_stage1(so->so_port, lmsg);
 			spin_unlock(&so->so_rcvd_spin);
 			lwkt_sendmsg_stage2(so->so_port, lmsg);
@@ -612,7 +611,6 @@ so_async_rcvd_reply(struct socket *so)
 	spin_lock(&so->so_rcvd_spin);
 	lwkt_replymsg(&so->so_rcvd_msg.base.lmsg, 0);
 	spin_unlock(&so->so_rcvd_spin);
-	sofree(so);
 }
 
 void
@@ -626,8 +624,7 @@ so_async_rcvd_drop(struct socket *so)
 	spin_lock(&so->so_rcvd_spin);
 	so->so_rcvd_msg.nm_pru_flags |= PRUR_DEAD;
 again:
-	if (lwkt_dropmsg(lmsg) == 0)
-		sofree(so);
+	lwkt_dropmsg(lmsg);
 	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
 		++async_rcvd_drop_race;
 		ssleep(so, &so->so_rcvd_spin, 0, "soadrop", 1);
