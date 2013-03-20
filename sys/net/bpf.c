@@ -383,13 +383,11 @@ bpfclose(struct dev_close_args *ap)
 
 	lwkt_gettoken(&bpf_token);
 	funsetown(&d->bd_sigio);
-	crit_enter();
 	if (d->bd_state == BPF_WAITING)
 		callout_stop(&d->bd_callout);
 	d->bd_state = BPF_IDLE;
 	if (d->bd_bif != NULL)
 		bpf_detachd(d);
-	crit_exit();
 	bpf_freed(d);
 	dev->si_drv1 = NULL;
 	if (dev->si_uminor >= BPF_PREALLOCATED_UNITS) {
@@ -434,7 +432,6 @@ bpfread(struct dev_read_args *ap)
 		return(EINVAL);
 	}
 
-	crit_enter();
 	if (d->bd_state == BPF_WAITING)
 		callout_stop(&d->bd_callout);
 	timed_out = (d->bd_state == BPF_TIMED_OUT);
@@ -466,19 +463,16 @@ bpfread(struct dev_read_args *ap)
 		 * it before using it again.
 		 */
 		if (d->bd_bif == NULL) {
-			crit_exit();
 			lwkt_reltoken(&bpf_token);
 			return(ENXIO);
 		}
 
 		if (ap->a_ioflag & IO_NDELAY) {
-			crit_exit();
 			lwkt_reltoken(&bpf_token);
 			return(EWOULDBLOCK);
 		}
 		error = tsleep(d, PCATCH, "bpf", d->bd_rtout);
 		if (error == EINTR || error == ERESTART) {
-			crit_exit();
 			lwkt_reltoken(&bpf_token);
 			return(error);
 		}
@@ -497,7 +491,6 @@ bpfread(struct dev_read_args *ap)
 				break;
 
 			if (d->bd_slen == 0) {
-				crit_exit();
 				lwkt_reltoken(&bpf_token);
 				return(0);
 			}
@@ -508,7 +501,6 @@ bpfread(struct dev_read_args *ap)
 	/*
 	 * At this point, we know we have something in the hold slot.
 	 */
-	crit_exit();
 
 	/*
 	 * Move data from hold buffer into user space.
@@ -517,11 +509,9 @@ bpfread(struct dev_read_args *ap)
 	 */
 	error = uiomove(d->bd_hbuf, d->bd_hlen, ap->a_uio);
 
-	crit_enter();
 	d->bd_fbuf = d->bd_hbuf;
 	d->bd_hbuf = NULL;
 	d->bd_hlen = 0;
-	crit_exit();
 	lwkt_reltoken(&bpf_token);
 
 	return(error);
@@ -550,13 +540,11 @@ bpf_timed_out(void *arg)
 {
 	struct bpf_d *d = (struct bpf_d *)arg;
 
-	crit_enter();
 	if (d->bd_state == BPF_WAITING) {
 		d->bd_state = BPF_TIMED_OUT;
 		if (d->bd_slen != 0)
 			bpf_wakeup(d);
 	}
-	crit_exit();
 }
 
 static void
@@ -675,11 +663,9 @@ bpfioctl(struct dev_ioctl_args *ap)
 	int error = 0;
 
 	lwkt_gettoken(&bpf_token);
-	crit_enter();
 	if (d->bd_state == BPF_WAITING)
 		callout_stop(&d->bd_callout);
 	d->bd_state = BPF_IDLE;
-	crit_exit();
 
 	if (d->bd_locked == 1) {
 		switch (ap->a_cmd) {
@@ -716,11 +702,9 @@ bpfioctl(struct dev_ioctl_args *ap)
 		{
 			int n;
 
-			crit_enter();
 			n = d->bd_slen;
 			if (d->bd_hbuf)
 				n += d->bd_hlen;
-			crit_exit();
 
 			*(int *)ap->a_data = n;
 			break;
@@ -779,9 +763,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 	 * Flush read packet buffer.
 	 */
 	case BIOCFLUSH:
-		crit_enter();
 		bpf_resetd(d);
-		crit_exit();
 		break;
 
 	/*
@@ -795,13 +777,11 @@ bpfioctl(struct dev_ioctl_args *ap)
 			error = EINVAL;
 			break;
 		}
-		crit_enter();
 		if (d->bd_promisc == 0) {
 			error = ifpromisc(d->bd_bif->bif_ifp, 1);
 			if (error == 0)
 				d->bd_promisc = 1;
 		}
-		crit_exit();
 		break;
 
 	/*
@@ -1008,13 +988,11 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp, u_long cmd)
 	if (fp->bf_insns == NULL) {
 		if (fp->bf_len != 0)
 			return(EINVAL);
-		crit_enter();
 		if (wfilter)
 			d->bd_wfilter = NULL;
 		else
 			d->bd_rfilter = NULL;
 		bpf_resetd(d);
-		crit_exit();
 		if (old != NULL)
 			kfree(old, M_BPF);
 		return(0);
@@ -1027,13 +1005,11 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp, u_long cmd)
 	fcode = (struct bpf_insn *)kmalloc(size, M_BPF, M_WAITOK);
 	if (copyin(fp->bf_insns, fcode, size) == 0 &&
 	    bpf_validate(fcode, (int)flen)) {
-		crit_enter();
 		if (wfilter)
 			d->bd_wfilter = fcode;
 		else
 			d->bd_rfilter = fcode;
 		bpf_resetd(d);
-		crit_exit();
 		if (old != NULL)
 			kfree(old, M_BPF);
 
@@ -1081,7 +1057,6 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 			if (error != 0)
 				return(error);
 		}
-		crit_enter();
 		if (bp != d->bd_bif) {
 			if (d->bd_bif != NULL) {
 				/*
@@ -1093,7 +1068,6 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 			bpf_attachd(d, bp);
 		}
 		bpf_resetd(d);
-		crit_exit();
 		return(0);
 	}
 
@@ -1156,7 +1130,6 @@ bpf_filter_read(struct knote *kn, long hint)
 	struct bpf_d *d;
 	int ready = 0;
 
-	crit_enter();
 	d = (struct bpf_d *)kn->kn_hook;
 	if (d->bd_hlen != 0 ||
 	    ((d->bd_immediate || d->bd_state == BPF_TIMED_OUT) &&
@@ -1170,7 +1143,6 @@ bpf_filter_read(struct knote *kn, long hint)
 			d->bd_state = BPF_WAITING;
 		}
 	}
-	crit_exit();
 
 	return (ready);
 }
@@ -1509,7 +1481,6 @@ bpfdetach(struct ifnet *ifp)
 	struct bpf_d *d;
 
 	lwkt_gettoken(&bpf_token);
-	crit_enter();
 
 	/* Locate BPF interface information */
 	bp_prev = NULL;
@@ -1521,7 +1492,6 @@ bpfdetach(struct ifnet *ifp)
 
 	/* Interface wasn't attached */
 	if (bp->bif_ifp == NULL) {
-		crit_exit();
 		lwkt_reltoken(&bpf_token);
 		kprintf("bpfdetach: %s was not attached\n", ifp->if_xname);
 		return;
@@ -1539,7 +1509,6 @@ bpfdetach(struct ifnet *ifp)
 
 	kfree(bp, M_BPF);
 
-	crit_exit();
 	lwkt_reltoken(&bpf_token);
 }
 
@@ -1591,7 +1560,6 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 	}
 	if (bp != NULL) {
 		opromisc = d->bd_promisc;
-		crit_enter();
 		bpf_detachd(d);
 		bpf_attachd(d, bp);
 		bpf_resetd(d);
@@ -1605,7 +1573,6 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 				d->bd_promisc = 1;
 			}
 		}
-		crit_exit();
 	}
 	return(bp == NULL ? EINVAL : 0);
 }
