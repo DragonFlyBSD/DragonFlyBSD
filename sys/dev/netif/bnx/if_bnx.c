@@ -99,6 +99,13 @@ static const struct bnx_type {
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5720_ALT,
 		"Broadcom BCM5720 Gigabit Ethernet" },
 
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5725,
+		"Broadcom BCM5725 Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5727,
+		"Broadcom BCM5727 Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5762,
+		"Broadcom BCM5762 Gigabit Ethernet" },
+
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57761,
 		"Broadcom BCM57761 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57762,
@@ -1131,6 +1138,7 @@ bnx_chipinit(struct bnx_softc *sc)
 	 * disabled.
 	 */
 	if (sc->bnx_asicrev != BGE_ASICREV_BCM5717 &&
+	    sc->bnx_asicrev != BGE_ASICREV_BCM5762 &&
 	    !BNX_IS_57765_FAMILY(sc))
 		dma_rw_ctl |= BGE_PCIDMARWCTL_TAGGED_STATUS_WA;
 	if (bootverbose) {
@@ -1393,7 +1401,8 @@ bnx_blockinit(struct bnx_softc *sc)
 	 */
 	if (BNX_IS_5717_PLUS(sc))
 		limit = 4;
-	else if (BNX_IS_57765_FAMILY(sc))
+	else if (BNX_IS_57765_FAMILY(sc) ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5762)
 		limit = 2;
 	else
 		limit = 1;
@@ -1427,7 +1436,8 @@ bnx_blockinit(struct bnx_softc *sc)
 	if (BNX_IS_5717_PLUS(sc)) {
 		/* Should be 17, use 16 until we get an SRAM map. */
 		limit = 16;
-	} else if (BNX_IS_57765_FAMILY(sc)) {
+	} else if (BNX_IS_57765_FAMILY(sc) ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5762) {
 		limit = 4;
 	} else {
 		limit = 1;
@@ -1467,7 +1477,8 @@ bnx_blockinit(struct bnx_softc *sc)
 
 	/* Set inter-packet gap */
 	val = 0x2620;
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5720 ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5762) {
 		val |= CSR_READ_4(sc, BGE_TX_LENGTHS) &
 		    (BGE_TXLEN_JMB_FRM_LEN_MSK | BGE_TXLEN_CNT_DN_VAL_MSK);
 	}
@@ -1578,15 +1589,21 @@ bnx_blockinit(struct bnx_softc *sc)
 	DELAY(40);
 
 	if (BNX_IS_57765_PLUS(sc)) {
-		uint32_t dmactl;
+		uint32_t dmactl, dmactl_reg;
 
-		dmactl = CSR_READ_4(sc, BGE_RDMA_RSRVCTRL);
+		if (sc->bnx_asicrev == BGE_ASICREV_BCM5762)
+			dmactl_reg = BGE_RDMA_RSRVCTRL2;
+		else
+			dmactl_reg = BGE_RDMA_RSRVCTRL;
+
+		dmactl = CSR_READ_4(sc, dmactl_reg);
 		/*
 		 * Adjust tx margin to prevent TX data corruption and
 		 * fix internal FIFO overflow.
 		 */
 		if (sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
-		    sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+		    sc->bnx_asicrev == BGE_ASICREV_BCM5720 ||
+		    sc->bnx_asicrev == BGE_ASICREV_BCM5762) {
 			dmactl &= ~(BGE_RDMA_RSRVCTRL_FIFO_LWM_MASK |
 			    BGE_RDMA_RSRVCTRL_FIFO_HWM_MASK |
 			    BGE_RDMA_RSRVCTRL_TXMRGN_MASK);
@@ -1599,7 +1616,7 @@ bnx_blockinit(struct bnx_softc *sc)
 		 * The fix is to limit the number of RX BDs
 		 * the hardware would fetch at a fime.
 		 */
-		CSR_WRITE_4(sc, BGE_RDMA_RSRVCTRL,
+		CSR_WRITE_4(sc, dmactl_reg,
 		    dmactl | BGE_RDMA_RSRVCTRL_FIFO_OFLW_FIX);
 	}
 
@@ -1608,13 +1625,21 @@ bnx_blockinit(struct bnx_softc *sc)
 		    CSR_READ_4(sc, BGE_RDMA_LSO_CRPTEN_CTRL) |
 		    BGE_RDMA_LSO_CRPTEN_CTRL_BLEN_BD_4K |
 		    BGE_RDMA_LSO_CRPTEN_CTRL_BLEN_LSO_4K);
-	} else if (sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+	} else if (sc->bnx_asicrev == BGE_ASICREV_BCM5720 ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5762) {
+		uint32_t ctrl_reg;
+
+		if (sc->bnx_asicrev == BGE_ASICREV_BCM5762)
+			ctrl_reg = BGE_RDMA_LSO_CRPTEN_CTRL2;
+		else
+			ctrl_reg = BGE_RDMA_LSO_CRPTEN_CTRL;
+
 		/*
 		 * Allow 4KB burst length reads for non-LSO frames.
 		 * Enable 512B burst length reads for buffer descriptors.
 		 */
-		CSR_WRITE_4(sc, BGE_RDMA_LSO_CRPTEN_CTRL,
-		    CSR_READ_4(sc, BGE_RDMA_LSO_CRPTEN_CTRL) |
+		CSR_WRITE_4(sc, ctrl_reg,
+		    CSR_READ_4(sc, ctrl_reg) |
 		    BGE_RDMA_LSO_CRPTEN_CTRL_BLEN_BD_512 |
 		    BGE_RDMA_LSO_CRPTEN_CTRL_BLEN_LSO_4K);
 	}
@@ -1630,7 +1655,8 @@ bnx_blockinit(struct bnx_softc *sc)
 		    BGE_RDMAMODE_MBUF_RBD_CRPT_ATTN |
 		    BGE_RDMAMODE_MBUF_SBD_CRPT_ATTN;
 	}
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5720 ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5762) {
 		val |= CSR_READ_4(sc, BGE_RDMA_MODE) &
 		    BGE_RDMAMODE_H2BNC_VLAN_DET;
 		/*
@@ -1821,6 +1847,9 @@ bnx_attach(device_t dev)
 		case PCI_PRODUCT_BROADCOM_BCM5718:
 		case PCI_PRODUCT_BROADCOM_BCM5719:
 		case PCI_PRODUCT_BROADCOM_BCM5720_ALT:
+		case PCI_PRODUCT_BROADCOM_BCM5725:
+		case PCI_PRODUCT_BROADCOM_BCM5727:
+		case PCI_PRODUCT_BROADCOM_BCM5762:
 			sc->bnx_chipid = pci_read_config(dev,
 			    BGE_PCI_GEN2_PRODID_ASICREV, 4);
 			break;
@@ -1856,6 +1885,10 @@ bnx_attach(device_t dev)
 	case BGE_ASICREV_BCM5719:
 	case BGE_ASICREV_BCM5720:
 		sc->bnx_flags |= BNX_FLAG_5717_PLUS | BNX_FLAG_57765_PLUS;
+		break;
+
+	case BGE_ASICREV_BCM5762:
+		sc->bnx_flags |= BNX_FLAG_57765_PLUS;
 		break;
 
 	case BGE_ASICREV_BCM57765:
@@ -1912,6 +1945,8 @@ bnx_attach(device_t dev)
 	}
 
 	mii_priv |= BRGPHY_FLAG_WIRESPEED;
+	if (sc->bnx_chipid == BGE_CHIPID_BCM5762_A0)
+		mii_priv |= BRGPHY_FLAG_5762_A0;
 
 	/*
 	 * Allocate interrupt
@@ -3107,7 +3142,8 @@ bnx_init(void *xsc)
 	/* Enable TX MAC state machine lockup fix. */
 	mode = CSR_READ_4(sc, BGE_TX_MODE);
 	mode |= BGE_TXMODE_MBUF_LOCKUP_FIX;
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5720 ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5762) {
 		mode &= ~(BGE_TXMODE_JMB_FRM_LEN | BGE_TXMODE_CNT_DN_MODE);
 		mode |= CSR_READ_4(sc, BGE_TX_MODE) &
 		    (BGE_TXMODE_JMB_FRM_LEN | BGE_TXMODE_CNT_DN_MODE);
@@ -4285,7 +4321,8 @@ bnx_dma_swap_options(struct bnx_softc *sc)
 #if BYTE_ORDER == BIG_ENDIAN
 	dma_options |= BGE_MODECTL_BYTESWAP_NONFRAME;
 #endif
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5720 ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5762) {
 		dma_options |= BGE_MODECTL_BYTESWAP_B2HRX_DATA |
 		    BGE_MODECTL_WORDSWAP_B2HRX_DATA | BGE_MODECTL_B2HRX_ENABLE |
 		    BGE_MODECTL_HTX2B_ENABLE;

@@ -105,6 +105,8 @@ static const struct mii_phydesc brgphys[] = {
 	MII_PHYDESC(xxBROADCOM3, BCM57765),
 	MII_PHYDESC(xxBROADCOM3, BCM57780),
 
+	MII_PHYDESC(xxBROADCOM4, BCM5762),
+
 	MII_PHYDESC(BROADCOM2, BCM5906),
 
 	MII_PHYDESC_NULL
@@ -548,6 +550,11 @@ brgphy_reset(struct mii_softc *sc)
 	/* Adjust output voltage */
 	if (sc->mii_priv & BRGPHY_FLAG_5906)
 		PHY_WRITE(sc, BRGPHY_MII_EPHY_PTEST, 0x12);
+
+	if (sc->mii_priv & BRGPHY_FLAG_5762_A0) {
+		PHY_WRITE(sc, BRGPHY_MII_DSP_ADDR_REG, 0xffb);
+		PHY_WRITE(sc, BRGPHY_MII_DSP_RW_PORT, 0x4000);
+	}
 
 	/* Enable Ethernet@Wirespeed */
 	if (sc->mii_priv & BRGPHY_FLAG_WIRESPEED)
