@@ -1097,6 +1097,11 @@ bnx_chipinit(struct bnx_softc *sc)
 			CSR_WRITE_4(sc, BGE_MODE_CTL, mode_ctl);
 		}
 		if (sc->bnx_chiprev != BGE_CHIPREV_57765_AX) {
+			/* Fix transmit hangs */
+			val = CSR_READ_4(sc, BGE_CPMU_PADRNG_CTL);
+			val |= BGE_CPMU_PADRNG_CTL_RDIV2;
+			CSR_WRITE_4(sc, BGE_CPMU_PADRNG_CTL, val);
+
 			mode_ctl = CSR_READ_4(sc, BGE_MODE_CTL);
 			val = mode_ctl & ~BGE_MODECTL_PCIE_PORTS;
 
