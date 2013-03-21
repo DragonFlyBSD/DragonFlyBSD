@@ -333,6 +333,7 @@ struct	proc {
 	struct spinlock p_spin;		/* Spinlock for LWP access to proc */
 	struct lwkt_token p_token;	/* Token for LWP access to proc */
 	struct sem_undo	*p_sem_undo;	/* Fast semaphore tracking lookup */
+	void		*p_drv_priv;	/* scp linkage (for syscons) */
 };
 
 #define lwp_wchan	lwp_thread->td_wchan
@@ -348,7 +349,8 @@ struct	proc {
 #define	P_PPWAIT	0x00010	/* Parent is waiting for child to exec/exit */
 #define	P_PROFIL	0x00020	/* Has started profiling */
 #define P_POSTEXIT	0x00040 /* Prevent procfs from stepping after this pt */
-#define	P_UNUSED7	0x00080	/* was: Sleep is interruptible */
+#define	P_SCMOUSE	0x00080 /* Process is held by syscons ioctl */
+				/* was: Sleep is interruptible */
 #define	P_SUGID		0x00100	/* Had set id privileges since last exec */
 #define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping */
 #define	P_UNUSED10	0x00400	/* was: SIGSTOP status */

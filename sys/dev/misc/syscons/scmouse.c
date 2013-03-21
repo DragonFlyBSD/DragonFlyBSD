@@ -24,18 +24,19 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scmouse.c,v 1.12.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.14 2008/08/10 19:47:31 swildner Exp $
  */
 
 #include "opt_syscons.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/signalvar.h>
 #include <sys/proc.h>
 #include <sys/tty.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <machine/console.h>
 #include <sys/mouse.h>
@@ -54,11 +55,13 @@
 
 #ifndef SC_NO_SYSMOUSE
 
-/* local variables */
 static int		cut_buffer_size;
 static u_char		*cut_buffer;
 
 /* local functions */
+static void sc_mouse_init(void *);
+static void sc_mouse_uninit(void *);
+
 static void set_mouse_pos(scr_stat *scp);
 #ifndef SC_NO_CUTPASTE
 static int skip_spc_right(scr_stat *scp, int p);
@@ -567,13 +570,56 @@ mouse_paste(scr_stat *scp)
 
 #endif /* SC_NO_CUTPASTE */
 
+static void
+sc_mouse_exit1_proc(struct proc *p)
+{
+    scr_stat *scp;
+
+    scp = p->p_drv_priv;
+    KKASSERT(scp != NULL);
+
+    get_mplock();
+    KKASSERT(scp->mouse_proc == p);
+    KKASSERT(scp->mouse_pid == p->p_pid);
+
+    scp->mouse_signal = 0;
+    scp->mouse_proc = NULL;
+    scp->mouse_pid = 0;
+    rel_mplock();
+
+    PRELE(p);
+    p->p_flags &= ~P_SCMOUSE;
+    p->p_drv_priv = NULL;
+}
+
+/*
+ * sc_mouse_exit1:
+ *
+ *	Handle exit1 for processes registered as MOUSE_MODE handlers.
+ *	We must remove a process hold, established when MOUSE_MODE
+ *	was enabled.
+ */
+static void
+sc_mouse_exit1(struct thread *td)
+{
+    struct proc *p;
+
+    p = td->td_proc;
+    KKASSERT(p != NULL);
+
+    if ((p->p_flags & P_SCMOUSE) == 0)
+	return;
+
+
+    sc_mouse_exit1_proc(p);
+}
+
 int
 sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 {
     mouse_info_t *mouse;
     scr_stat *cur_scp;
     scr_stat *scp;
-    struct proc *oproc;
     int f;
 
     scp = SC_STAT(tp->t_dev);
@@ -581,28 +627,57 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
     switch (cmd) {
 
     case CONS_MOUSECTL:		/* control mouse arrow */
-	mouse = (mouse_info_t*)data;
+	mouse = (mouse_info_t*) data;
 	cur_scp = scp->sc->cur_scp;
 
 	switch (mouse->operation) {
+	/*
+	 * Setup a process to receive signals on mouse events.
+	 */
 	case MOUSE_MODE:
-	    if (ISSIGVALID(mouse->u.mode.signal)) {
-		oproc = scp->mouse_proc;
-		scp->mouse_signal = mouse->u.mode.signal;
-		scp->mouse_proc = curproc;
-		scp->mouse_pid = curproc->p_pid;
-		PHOLD(curproc);
+	    get_mplock();
+
+	    if (!ISSIGVALID(mouse->u.mode.signal)) {
+		/* Setting MOUSE_MODE w/ an invalid signal is used to disarm */
+		if (scp->mouse_proc == curproc) {
+		    sc_mouse_exit1_proc(curproc);
+		    rel_mplock();
+		    return 0;
+		} else {
+		    rel_mplock();
+		    return EINVAL;
+		}
 	    } else {
-		oproc = scp->mouse_proc;
-		scp->mouse_signal = 0;
-		scp->mouse_proc = NULL;
-		scp->mouse_pid = 0;
-	    }
-	    if (oproc) {
-		    PRELE(oproc);
-		    oproc = NULL;
-	    }
-	    return 0;
+		/* Only one mouse process per syscons */
+		if (scp->mouse_proc) {
+		    rel_mplock();
+		    return EINVAL;
+		}
+
+		/* Only one syscons signal source per process */
+		if (curproc->p_flags & P_SCMOUSE) {
+		    rel_mplock();
+		    return EINVAL;
+		}
+
+	        /*
+	         * Process is stabilized by a hold, which is removed from
+	         * sc_mouse_exit1. scp's mouse_{signal,proc,pid} fields
+	         * are synchronized by the MP Lock.
+	         */
+	        scp->mouse_signal = mouse->u.mode.signal;
+	        scp->mouse_proc = curproc;
+	        scp->mouse_pid = curproc->p_pid;
+	        curproc->p_flags |= P_SCMOUSE;
+		KKASSERT(curproc->p_drv_priv == NULL);
+	        curproc->p_drv_priv = scp;
+	        PHOLD(curproc);
+
+	        rel_mplock();
+	        return 0;
+            }
+	    /*NOTREACHED*/
+	    break;
 
 	case MOUSE_SHOW:
 	    crit_enter();
@@ -692,21 +767,14 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
 	    cur_scp->status &= ~MOUSE_HIDDEN;
 
+	    get_mplock();
 	    if (cur_scp->mouse_signal) {
-    		/* has controlling process died? */
-		if (cur_scp->mouse_proc && 
-		    (cur_scp->mouse_proc != pfindn(cur_scp->mouse_pid))){
-			oproc = cur_scp->mouse_proc;
-		    	cur_scp->mouse_signal = 0;
-			cur_scp->mouse_proc = NULL;
-			cur_scp->mouse_pid = 0;
-			if (oproc)
-				PRELE(oproc);
-		} else {
-		    ksignal(cur_scp->mouse_proc, cur_scp->mouse_signal);
-		    break;
-		}
+		KKASSERT(cur_scp->mouse_proc != NULL);
+		ksignal(cur_scp->mouse_proc, cur_scp->mouse_signal);
+		rel_mplock();
+	        break;
 	    }
+	    rel_mplock();
 
 	    if (ISGRAPHSC(cur_scp) || (cut_buffer == NULL))
 		break;
@@ -749,20 +817,14 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
 	    cur_scp->status &= ~MOUSE_HIDDEN;
 
+	    get_mplock();
 	    if (cur_scp->mouse_signal) {
-		if (cur_scp->mouse_proc && 
-		    (cur_scp->mouse_proc != pfindn(cur_scp->mouse_pid))){
-			oproc = cur_scp->mouse_proc;
-		    	cur_scp->mouse_signal = 0;
-			cur_scp->mouse_proc = NULL;
-			cur_scp->mouse_pid = 0;
-			if (oproc)
-				PRELE(oproc);
-		} else {
-		    ksignal(cur_scp->mouse_proc, cur_scp->mouse_signal);
-		    break;
-		}
+		KKASSERT(cur_scp->mouse_proc != NULL);
+		ksignal(cur_scp->mouse_proc, cur_scp->mouse_signal);
+		rel_mplock();
+	        break;
 	    }
+	    rel_mplock();
 
 	    if (ISGRAPHSC(cur_scp) || (cut_buffer == NULL))
 		break;
@@ -838,5 +900,19 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
     return ENOIOCTL;
 }
+
+void
+sc_mouse_init(void *unused)
+{
+    at_exit(sc_mouse_exit1);
+}
+
+void
+sc_mouse_uninit(void *unused)
+{
+}
+
+SYSINIT(sc_mouse_init, SI_SUB_DRIVERS, SI_ORDER_ANY, sc_mouse_init, NULL);
+SYSUNINIT(sc_mouse_uninit, SI_SUB_DRIVERS, SI_ORDER_ANY, sc_mouse_uninit, NULL);
 
 #endif /* SC_NO_SYSMOUSE */
