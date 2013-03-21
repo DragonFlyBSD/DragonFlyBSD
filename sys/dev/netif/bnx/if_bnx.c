@@ -1670,6 +1670,8 @@ bnx_blockinit(struct bnx_softc *sc)
 		 */
 		val &= ~BGE_RDMAMODE_MULT_DMA_RD_DIS;
 	}
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM57766)
+		val |= BGE_RDMAMODE_JMB_2K_MMRR;
 	if (sc->bnx_flags & BNX_FLAG_TSO)
 		val |= BGE_RDMAMODE_TSO4_ENABLE;
 	val |= BGE_RDMAMODE_FIFO_LONG_BURST;
@@ -3585,7 +3587,7 @@ static int
 bnx_dma_alloc(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	bus_size_t txmaxsz;
+	bus_size_t txmaxsz, txmaxsegsz;
 	int i, error;
 
 	/*
@@ -3656,10 +3658,14 @@ bnx_dma_alloc(struct bnx_softc *sc)
 		txmaxsz = IP_MAXPACKET + sizeof(struct ether_vlan_header);
 	else
 		txmaxsz = BNX_JUMBO_FRAMELEN;
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM57766)
+		txmaxsegsz = MCLBYTES;
+	else
+		txmaxsegsz = PAGE_SIZE;
 	error = bus_dma_tag_create(sc->bnx_cdata.bnx_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   txmaxsz, BNX_NSEG_NEW, PAGE_SIZE,
+				   txmaxsz, BNX_NSEG_NEW, txmaxsegsz,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
 				   BUS_DMA_ONEBPAGE,
 				   &sc->bnx_cdata.bnx_tx_mtag);
