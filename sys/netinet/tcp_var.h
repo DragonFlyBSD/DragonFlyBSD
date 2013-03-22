@@ -327,6 +327,8 @@ struct tcpcb {
 
 /*
  * TCP statistics.
+ *
+ * NOTE: Make sure this struct's size is multiple cache line size.
  */
 struct tcp_stats {
 	u_long	tcps_connattempt;	/* connections initiated */
@@ -440,6 +442,8 @@ struct tcp_stats {
 	u_long	tcps_sc_zonefail;	/* zalloc() failed */
 	u_long	tcps_sc_sendcookie;	/* SYN cookie sent */
 	u_long	tcps_sc_recvcookie;	/* SYN cookie received */
+
+	u_long	tcps_pad[6];		/* pad to cache line size (64B) */
 };
 
 #ifdef _KERNEL

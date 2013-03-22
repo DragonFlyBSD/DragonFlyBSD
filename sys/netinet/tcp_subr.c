@@ -277,7 +277,7 @@ static struct malloc_pipe tcptemp_mpipe;
 static void tcp_willblock(void);
 static void tcp_notify (struct inpcb *, int);
 
-struct tcp_stats tcpstats_percpu[MAXCPU];
+struct tcp_stats tcpstats_percpu[MAXCPU] __cachealign;
 
 static int
 sysctl_tcpstats(SYSCTL_HANDLER_ARGS)
