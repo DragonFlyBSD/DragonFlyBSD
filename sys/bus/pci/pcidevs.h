@@ -511,6 +511,7 @@
 
 /* Sundance Technology products */
 #define	PCI_PRODUCT_SUNDANCETI_ST201	0x0201		/* ST201 10/100 Ethernet */
+#define	PCI_PRODUCT_SUNDANCETI_ST201_0	0x0200		/* ST201 10/100 Ethernet */
 
 /* Surecom Technology products */
 #define	PCI_PRODUCT_SURECOM_NE34	0x0e34		/* NE-34 Ethernet */

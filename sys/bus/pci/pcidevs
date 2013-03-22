@@ -509,6 +509,7 @@ product SUN SCA1K	0x5455	Crypto Accelerator 1000
 
 /* Sundance Technology products */
 product SUNDANCETI ST201	0x0201	ST201 10/100 Ethernet
+product SUNDANCETI ST201_0	0x0200	ST201 10/100 Ethernet
 
 /* Surecom Technology products */
 product SURECOM NE34	0x0e34	NE-34 Ethernet
