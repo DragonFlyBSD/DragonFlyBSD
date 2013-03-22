@@ -151,7 +151,7 @@ DB_SHOW_COMMAND(com, db_show_com)
 	_db_show_com(ic, showvaps, showsta, showprocs);
 }
 
-#if __FreeBSD__
+#ifdef __FreeBSD__
 DB_SHOW_ALL_COMMAND(vaps, db_show_all_vaps)
 {
 	const struct ifnet *ifp;
