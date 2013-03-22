@@ -235,7 +235,7 @@ mfi_syspd_strategy(struct dev_strategy_args *ap)
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct mfi_system_pd *sc = ap->a_head.a_dev->si_drv1;
-	struct mfi_softc *controller = sc->pd_controller;
+	struct mfi_softc *controller;
 
 	if (sc == NULL) {
 		bp->b_error = EINVAL;
@@ -244,6 +244,7 @@ mfi_syspd_strategy(struct dev_strategy_args *ap)
 		biodone(bio);
 		return (0);
 	}
+	controller = sc->pd_controller;
 
 	if (controller->hw_crit_error) {
 		bp->b_error = EBUSY;
