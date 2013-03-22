@@ -254,7 +254,7 @@ vtpci_attach(device_t dev)
 	if (pci_find_extcap(dev, PCIY_MSI, NULL) != 0)
 		sc->vtpci_flags |= VIRTIO_PCI_FLAG_NO_MSI;
 	/* XXX(vsrinivas): Check out how to get MSI-X */
-#if OLD_MSI
+#ifdef OLD_MSI
 	if (pci_find_extcap(dev, PCIY_MSIX, NULL) == 0) {
 		rid = PCIR_BAR(1);
 		sc->vtpci_msix_res = bus_alloc_resource_any(dev,
