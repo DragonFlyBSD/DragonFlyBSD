@@ -99,7 +99,7 @@ AcpiOsAcquireObject(ACPI_CACHE_T *Cache)
 	head = objcache_get(Cache->cache, M_WAITOK);
 	bzero(head, Cache->args.objsize);
 	head->state = TRACK_ALLOCATED;
-#if ACPI_DEBUG_CACHE
+#ifdef ACPI_DEBUG_CACHE
 	head->cache = Cache;
 	head->func = "nowhere";
 	head->line = 0;
@@ -108,7 +108,7 @@ AcpiOsAcquireObject(ACPI_CACHE_T *Cache)
 }
 
 ACPI_STATUS
-#if ACPI_DEBUG_CACHE
+#ifdef ACPI_DEBUG_CACHE
 _AcpiOsReleaseObject(ACPI_CACHE_T *Cache, void *Object,
     const char *func, int line)
 #else
@@ -117,7 +117,7 @@ AcpiOsReleaseObject(ACPI_CACHE_T *Cache, void *Object)
 {
 	struct acpiobjhead *head = (void *)((char *)Object - OBJHEADSIZE);
 
-#if ACPI_DEBUG_CACHE
+#ifdef ACPI_DEBUG_CACHE
 	if (head->cache != Cache) {
 		kprintf("%s: object %p belongs to %p, not %p\n",
 			__func__, Object, head->cache, Cache);
@@ -125,7 +125,7 @@ AcpiOsReleaseObject(ACPI_CACHE_T *Cache, void *Object)
 #endif
 	if (head->state != TRACK_ALLOCATED) {
 		if (head->state == TRACK_FREED) {
-#if ACPI_DEBUG_CACHE
+#ifdef ACPI_DEBUG_CACHE
 			kprintf("%s: Double Free %p, %s:%d, first %s:%d\n",
 				__func__, Object, func, line, head->func,
 				head->line);
@@ -138,7 +138,7 @@ AcpiOsReleaseObject(ACPI_CACHE_T *Cache, void *Object)
 		return AE_OK;
 	}
 	head->state = TRACK_FREED;
-#if ACPI_DEBUG_CACHE
+#ifdef ACPI_DEBUG_CACHE
 	head->func = func;
 	head->line = line;
 #endif

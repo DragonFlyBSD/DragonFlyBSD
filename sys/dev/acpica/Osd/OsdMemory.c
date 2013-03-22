@@ -45,7 +45,7 @@ struct acpi_memtrack {
     struct acpi_memtrack *next;
     void *base;
     ACPI_SIZE size;
-#if ACPI_DEBUG_MEMMAP
+#ifdef ACPI_DEBUG_MEMMAP
     int freed;
     struct {
 	const char *func;
@@ -70,7 +70,7 @@ AcpiOsFree(void *Memory)
     kfree(Memory, M_ACPICA);
 }
 
-#if ACPI_DEBUG_MEMMAP
+#ifdef ACPI_DEBUG_MEMMAP
 void *
 _AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS Where, ACPI_SIZE Length,
 		 const char *caller, int line)
@@ -86,7 +86,7 @@ AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS Where, ACPI_SIZE Length)
     if (map == NULL)
 	return(NULL);
     else {
-#if ACPI_DEBUG_MEMMAP
+#ifdef ACPI_DEBUG_MEMMAP
 	for (track = acpi_mapbase; track != NULL; track = track->next) {
 	    if (track->base == map)
 		break;
@@ -100,7 +100,7 @@ AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS Where, ACPI_SIZE Length)
 	    track->base = map;
 	}
 	track->size = Length;
-#if ACPI_DEBUG_MEMMAP
+#ifdef ACPI_DEBUG_MEMMAP
 	track->freed = 0;
 	track->mapper.func = caller;
 	track->mapper.line = line;
@@ -112,7 +112,7 @@ AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS Where, ACPI_SIZE Length)
     return(map);
 }
 
-#if ACPI_DEBUG_MEMMAP
+#ifdef ACPI_DEBUG_MEMMAP
 void
 _AcpiOsUnmapMemory(void *LogicalAddress, ACPI_SIZE Length,
 		   const char *caller, int line)
@@ -126,7 +126,7 @@ AcpiOsUnmapMemory(void *LogicalAddress, ACPI_SIZE Length)
 
 again:
     for (ptrack = &acpi_mapbase; (track = *ptrack); ptrack = &track->next) {
-#if ACPI_DEBUG_MEMMAP
+#ifdef ACPI_DEBUG_MEMMAP
 	if (track->freed)
 	    continue;
 #endif
@@ -136,7 +136,7 @@ again:
 	if (track->base == LogicalAddress && track->size == Length) {
 	    *ptrack = track->next;
 	    pmap_unmapdev((vm_offset_t)track->base, track->size);
-#if ACPI_DEBUG_MEMMAP
+#ifdef ACPI_DEBUG_MEMMAP
 	    track->freed = 1;
 	    track->unmapper.func = caller;
 	    track->unmapper.line = line;
@@ -157,7 +157,7 @@ again:
 		   " large! %p/%08jx (actual was %p/%08jx)\n",
 		   LogicalAddress, (intmax_t)Length,
 		   track->base, (intmax_t)track->size);
-#if ACPI_DEBUG_MEMMAP
+#ifdef ACPI_DEBUG_MEMMAP
 	    track->freed = 1;
 	    track->unmapper.func = caller;
 	    track->unmapper.line = line;
@@ -181,7 +181,7 @@ again:
     }
     kprintf("AcpiOsUnmapMemory: Warning, broken ACPI, bad unmap: %p/%08jx\n",
 	    LogicalAddress, (intmax_t)Length);
-#if ACPI_DEBUG_MEMMAP
+#ifdef ACPI_DEBUG_MEMMAP
     for (track = acpi_mapbase; track != NULL; track = track->next) {
 	if (track->freed && track->base == LogicalAddress) {
 	    kprintf("%s: unmapping: %p/%08x, mapped by %s:%d,"
