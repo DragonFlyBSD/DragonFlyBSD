@@ -1217,7 +1217,7 @@ vr_intr(void *arg)
 			}
 
 		if ((status & VR_ISR_RX_ERR) || (status & VR_ISR_RX_NOBUF) ||
-		    (status & VR_ISR_RX_NOBUF) || (status & VR_ISR_RX_OFLOW)) {
+		    (status & VR_ISR_RX_OFLOW)) {
 			if_printf(ifp, "receive error (%04x)", status);
 			if (status & VR_ISR_RX_NOBUF)
 				kprintf(" no buffers");
