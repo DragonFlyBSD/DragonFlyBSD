@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/atacontrol/atacontrol.c,v 1.42 2006/03/15 19:32:43 sos Exp $
- * $DragonFly: src/sbin/natacontrol/natacontrol.c,v 1.3 2008/09/04 21:00:28 swildner Exp $
  */
 
 #include <sys/nata.h>
@@ -539,7 +538,7 @@ main(int argc, char **argv)
 				err(1, "read");
 			else
 				fprintf(stderr,
-				    "atacontrol: ar%d rebuild completed\n",
+				    "natacontrol: ar%d rebuild completed\n",
 				    array);
 			free(buffer);
 			close(arfd);
