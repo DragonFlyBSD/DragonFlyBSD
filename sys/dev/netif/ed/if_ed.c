@@ -367,7 +367,7 @@ ed_probe_WD80x3_generic(device_t dev, int flags, u_short *intr_vals[])
 	if (error)
 		return (error);
 
-#if ED_DEBUG
+#ifdef ED_DEBUG
 	kprintf("type = %x type_str=%s isa16bit=%d memsize=%d id_msize=%d\n",
 	       sc->type, sc->type_str, isa16bit, memsize, conf_msize);
 	for (i = 0; i < 8; i++)
