@@ -110,6 +110,8 @@
 #include <dev/netif/ig_hal/e1000_82571.h>
 #include <dev/netif/emx/if_emx.h>
 
+#define DEBUG_HW 0
+
 #ifdef EMX_RSS_DEBUG
 #define EMX_RSS_DPRINTF(sc, lvl, fmt, ...) \
 do { \

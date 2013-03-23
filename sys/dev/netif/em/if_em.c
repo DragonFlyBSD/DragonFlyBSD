@@ -133,6 +133,8 @@
 #include <dev/netif/ig_hal/e1000_82571.h>
 #include <dev/netif/em/if_em.h>
 
+#define DEBUG_HW 0
+
 #define EM_NAME	"Intel(R) PRO/1000 Network Connection "
 #define EM_VER	" 7.3.4"
 
