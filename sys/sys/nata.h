@@ -276,6 +276,10 @@ struct ata_params {
 #define         ATA_SF_DIS_RELIRQ       0xdd    /* disable release interrupt */
 #define         ATA_SF_ENAB_SRVIRQ      0x5e    /* enable service interrupt */
 #define         ATA_SF_DIS_SRVIRQ       0xde    /* disable service interrupt */
+#define		ATA_SF_ENAB_APM		0x05	/* enable adv power mgmt */
+#define		ATA_SF_DIS_APM		0x85	/* disable adv power mgmt */
+#define		ATA_SF_ENAB_ACCOUS	0x42	/* enable acoustic mgmt */
+#define		ATA_SF_DIS_ACCOUS	0xc2	/* disable acoustic mgmt */
 #define ATA_SECURITY_FREEE_LOCK         0xf5    /* freeze security config */
 #define ATA_READ_NATIVE_MAX_ADDDRESS    0xf8    /* read native max address */
 #define ATA_SET_MAX_ADDRESS             0xf9    /* set max address */

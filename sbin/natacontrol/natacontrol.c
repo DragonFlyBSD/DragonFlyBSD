@@ -111,6 +111,8 @@ usage(void)
 		"        natacontrol rebuild array\n"
 		"        natacontrol status array\n"
 		"        natacontrol mode device [mode]\n"
+		"        natacontrol feature device apm apmlevel\n"
+		"        natacontrol feature device acoustic soundsupplevel\n"
 		"        natacontrol cap device\n"
 	);
 	exit(EX_USAGE);
@@ -325,6 +327,80 @@ main(int argc, char **argv)
 			if (ioctl(fd, IOCATAGMODE, &mode) < 0)
 				err(1, "ioctl(IOCATAGMODE)");
 			printf("current mode = %s\n", mode2str(mode));
+		}
+		exit(EX_OK);
+	}
+	if (!strcmp(argv[1], "feature") && argc == 5) {
+		int disk;
+		char device[64];
+		struct ata_ioc_request request;
+
+		if (!(sscanf(argv[2], "ad%d", &disk) == 1 ||
+		      sscanf(argv[2], "acd%d", &disk) == 1 ||
+		      sscanf(argv[2], "afd%d", &disk) == 1 ||
+		      sscanf(argv[2], "ast%d", &disk) == 1)) {
+			fprintf(stderr, "natacontrol: Invalid device %s\n",
+			    argv[2]);
+			exit(EX_USAGE);
+		}
+		sprintf(device, "/dev/%s", argv[2]);
+		if ((fd = open(device, O_RDONLY)) < 0)
+			err(1, "device not found");
+
+		bzero(&request, sizeof(struct ata_ioc_request));
+		request.u.ata.command = ATA_SETFEATURES;
+		request.flags = ATA_CMD_CONTROL;
+		request.timeout = 500;
+		if (!strcmp(argv[3], "apm")) {
+			if (!strcmp(argv[4], "off")) {
+				request.u.ata.feature = ATA_SF_DIS_APM;
+			} else if (!strcmp(argv[4], "maxperf")) {
+				request.u.ata.feature = ATA_SF_ENAB_APM;
+				request.u.ata.count = 0xfe;
+			} else if (!strcmp(argv[4], "minpower")) {
+				request.u.ata.feature = ATA_SF_ENAB_APM;
+				request.u.ata.count = 0x01;
+			} else {
+				int offset = 0;
+
+				request.u.ata.feature = ATA_SF_ENAB_APM;
+				if (argv[4][0] == 's') {
+					offset = atoi(&argv[4][1]);
+					request.u.ata.count = 0x01;
+				} else {
+					offset = atoi(&argv[4][1]);
+					request.u.ata.count = 0x80;
+				}
+				if (offset >= 0 && offset <= 127)
+					request.u.ata.count += offset;
+			}
+		} else if (!strcmp(argv[3], "acoustic")) {
+			if (!strcmp(argv[4], "off")) {
+				request.u.ata.feature = ATA_SF_DIS_ACCOUS;
+			} else if (!strcmp(argv[4], "maxperf")) {
+				request.u.ata.feature = ATA_SF_ENAB_ACCOUS;
+				request.u.ata.count = 0xfe;
+			} else if (!strcmp(argv[4], "maxquiet")) {
+				request.u.ata.feature = ATA_SF_ENAB_ACCOUS;
+				request.u.ata.count = 0x80;
+			} else {
+				request.u.ata.feature = ATA_SF_ENAB_ACCOUS;
+				request.u.ata.count = atoi(argv[4]);
+				if (request.u.ata.count > 124)
+					request.u.ata.count = 124;
+			}
+		} else {
+			usage();
+		}
+
+		if (ioctl(fd, IOCATAREQUEST, &request) < 0)
+			err(1, "ioctl(IOCATAREQUEST)");
+
+		if (request.error != 0) {
+			fprintf(stderr,
+			    "IOCATAREQUEST returned err status %d",
+			    request.error);
+			exit(EX_IOERR);
 		}
 		exit(EX_OK);
 	}
