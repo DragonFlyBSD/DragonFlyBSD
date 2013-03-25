@@ -1267,7 +1267,7 @@ detect_cpu_topology(void)
 
 OUT:
 	if (bootverbose)
-		kprintf("BITS within APICID: logical_CPU_bits: %d; core_bits: %d\n",
+		kprintf("Bits within APICID: logical_CPU_bits: %d; core_bits: %d\n",
 		    logical_CPU_bits, core_bits);
 
 	topology_detected = 1;
