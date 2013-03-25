@@ -116,6 +116,8 @@ struct ip_moptions {
 
 /*
  * IP Statistics.
+ *
+ * NOTE: Make sure this struct's size is multiple cache line size.
  */
 struct	ip_stats {
 	u_long	ips_total;		/* total packets received */
@@ -147,6 +149,7 @@ struct	ip_stats {
 	u_long	ips_notmember;		/* multicasts for unregistered grps */
 	u_long	ips_nogif;		/* no match gif found */
 	u_long	ips_badaddr;		/* invalid address on header */
+	u_long	ips_pad[3];		/* pad to cache line size (64B) */
 };
 
 #ifdef _KERNEL

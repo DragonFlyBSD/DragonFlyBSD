@@ -235,7 +235,7 @@ u_long	in_ifaddrhmask;				/* mask for hash table */
 
 static struct mbuf *ipforward_mtemp[MAXCPU];
 
-struct ip_stats ipstats_percpu[MAXCPU];
+struct ip_stats ipstats_percpu[MAXCPU] __cachealign;
 
 static int
 sysctl_ipstats(SYSCTL_HANDLER_ARGS)
