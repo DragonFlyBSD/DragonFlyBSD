@@ -238,7 +238,7 @@ buildkernel1 buildkernel2:
 # MAKEOBJDIRPREFIX for targets that are not run through the buildworld and 
 # buildkernel mechanism.
 #
-# Unconditionally clean out /usr/release/root so a previous img build
+# Unconditionally clean out ${ISOROOT} so a previous img build
 # does not blow up a future quick iso build
 #
 # We install with INSTALLSTRIPPEDMODULES to make things fit into the ISO.
@@ -481,10 +481,10 @@ realclean:	clean
 	rm -rf ${ISODIR}/distfiles
 
 pkgsrc_bootstrap:
-	mkdir -p /usr/release/bootstrap
+	mkdir -p ${ISODIR}/bootstrap
 	(cd ${PKGSRC_PATH}/bootstrap; \
-	    export share_dir=/usr/release/bootstrap/share; \
-	    ./bootstrap --workdir /usr/release/bootstrap)
+	    export share_dir=${ISODIR}/bootstrap/share; \
+	    ./bootstrap --workdir ${ISODIR}/bootstrap)
 
 pkgsrc_cdrecord:
 .if !exists (${PKGBIN_MKISOFS})
