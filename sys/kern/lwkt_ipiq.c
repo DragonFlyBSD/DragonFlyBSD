@@ -66,27 +66,23 @@
 #include <machine/smp.h>
 #include <machine/atomic.h>
 
-static __int64_t ipiq_count;	/* total calls to lwkt_send_ipiq*() */
-static __int64_t ipiq_fifofull;	/* number of fifo full conditions detected */
-static __int64_t ipiq_avoided;	/* interlock with target avoids cpu ipi */
-static __int64_t ipiq_passive;	/* passive IPI messages */
-static __int64_t ipiq_cscount;	/* number of cpu synchronizations */
+struct ipiq_stats {
+    __int64_t ipiq_count;	/* total calls to lwkt_send_ipiq*() */
+    __int64_t ipiq_fifofull;	/* number of fifo full conditions detected */
+    __int64_t ipiq_avoided;	/* interlock with target avoids cpu ipi */
+    __int64_t ipiq_passive;	/* passive IPI messages */
+    __int64_t ipiq_cscount;	/* number of cpu synchronizations */
+} __cachealign;
+
+static struct ipiq_stats ipiq_stats_percpu[MAXCPU];
+#define ipiq_stat	ipiq_stats_percpu[mycpuid]
+
 static int ipiq_debug;		/* set to 1 for debug */
 #ifdef PANIC_DEBUG
 static int	panic_ipiq_cpu = -1;
 static int	panic_ipiq_count = 100;
 #endif
 
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_count, CTLFLAG_RW, &ipiq_count, 0,
-    "Number of IPI's sent");
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_fifofull, CTLFLAG_RW, &ipiq_fifofull, 0,
-    "Number of fifo full conditions detected");
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_avoided, CTLFLAG_RW, &ipiq_avoided, 0,
-    "Number of IPI's avoided by interlock with target cpu");
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_passive, CTLFLAG_RW, &ipiq_passive, 0,
-    "Number of passive IPI messages sent");
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_cscount, CTLFLAG_RW, &ipiq_cscount, 0,
-    "Number of cpu synchronizations");
 SYSCTL_INT(_lwkt, OID_AUTO, ipiq_debug, CTLFLAG_RW, &ipiq_debug, 0,
     "");
 #ifdef PANIC_DEBUG
@@ -120,6 +116,47 @@ static int lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
 				  struct intrframe *frame);
 static void lwkt_cpusync_remote1(lwkt_cpusync_t cs);
 static void lwkt_cpusync_remote2(lwkt_cpusync_t cs);
+
+#define IPIQ_SYSCTL(name) \
+static int \
+sysctl_##name(SYSCTL_HANDLER_ARGS) \
+{ \
+    __int64_t val = 0; \
+    int cpu, error; \
+ \
+    for (cpu = 0; cpu < ncpus; ++cpu) \
+	val += ipiq_stats_percpu[cpu].name; \
+ \
+    error = sysctl_handle_quad(oidp, &val, 0, req); \
+    if (error || req->newptr == NULL) \
+	return error; \
+ \
+    for (cpu = 0; cpu < ncpus; ++cpu) \
+    	ipiq_stats_percpu[cpu].name = val; \
+ \
+    return 0; \
+}
+
+IPIQ_SYSCTL(ipiq_count);
+IPIQ_SYSCTL(ipiq_fifofull);
+IPIQ_SYSCTL(ipiq_avoided);
+IPIQ_SYSCTL(ipiq_passive);
+IPIQ_SYSCTL(ipiq_cscount);
+
+SYSCTL_PROC(_lwkt, OID_AUTO, ipiq_count, (CTLTYPE_QUAD | CTLFLAG_RW),
+    0, 0, sysctl_ipiq_count, "Q", "Number of IPI's sent");
+SYSCTL_PROC(_lwkt, OID_AUTO, ipiq_fifofull, (CTLTYPE_QUAD | CTLFLAG_RW),
+    0, 0, sysctl_ipiq_fifofull, "Q",
+    "Number of fifo full conditions detected");
+SYSCTL_PROC(_lwkt, OID_AUTO, ipiq_avoided, (CTLTYPE_QUAD | CTLFLAG_RW),
+    0, 0, sysctl_ipiq_avoided, "Q",
+    "Number of IPI's avoided by interlock with target cpu");
+SYSCTL_PROC(_lwkt, OID_AUTO, ipiq_passive, (CTLTYPE_QUAD | CTLFLAG_RW),
+    0, 0, sysctl_ipiq_passive, "Q",
+    "Number of passive IPI messages sent");
+SYSCTL_PROC(_lwkt, OID_AUTO, ipiq_cscount, (CTLTYPE_QUAD | CTLFLAG_RW),
+    0, 0, sysctl_ipiq_cscount, "Q",
+    "Number of cpu synchronizations");
 
 /*
  * Send a function execution request to another cpu.  The request is queued
@@ -160,7 +197,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	panic("lwkt_send_ipiq: TOO HEAVILY NESTED!");
 #endif
     KKASSERT(curthread->td_critcount);
-    ++ipiq_count;
+    ++ipiq_stat.ipiq_count;
     ip = &gd->gd_ipiq[target->gd_cpuid];
 
     /*
@@ -179,7 +216,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 #endif
 
 	cpu_enable_intr();
-	++ipiq_fifofull;
+	++ipiq_stat.ipiq_fifofull;
 	DEBUG_PUSH_INFO("send_ipiq3");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
 	    if (atomic_poll_acquire_int(&target->gd_npoll)) {
@@ -216,7 +253,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	logipiq(cpu_send, func, arg1, arg2, gd, target);
 	cpu_send_ipiq(target->gd_cpuid);
     } else {
-	++ipiq_avoided;
+	++ipiq_stat.ipiq_avoided;
     }
     --gd->gd_intr_nesting_level;
     crit_exit();
@@ -253,8 +290,8 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 	panic("lwkt_send_ipiq: TOO HEAVILY NESTED!");
 #endif
     KKASSERT(curthread->td_critcount);
-    ++ipiq_count;
-    ++ipiq_passive;
+    ++ipiq_stat.ipiq_count;
+    ++ipiq_stat.ipiq_passive;
     ip = &gd->gd_ipiq[target->gd_cpuid];
 
     /*
@@ -269,7 +306,7 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 #endif
 
 	cpu_enable_intr();
-	++ipiq_fifofull;
+	++ipiq_stat.ipiq_fifofull;
 	DEBUG_PUSH_INFO("send_ipiq3_passive");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
 	    if (atomic_poll_acquire_int(&target->gd_npoll)) {
@@ -333,7 +370,7 @@ lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func,
     } 
     crit_enter();
     ++gd->gd_intr_nesting_level;
-    ++ipiq_count;
+    ++ipiq_stat.ipiq_count;
     ip = &gd->gd_ipiq[target->gd_cpuid];
 
     if (ip->ip_windex - ip->ip_rindex >= MAXCPUFIFO * 2 / 3) {
@@ -357,7 +394,7 @@ lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func,
 	logipiq(cpu_send, func, arg1, arg2, gd, target);
 	cpu_send_ipiq(target->gd_cpuid);
     } else {
-	++ipiq_avoided;
+	++ipiq_stat.ipiq_avoided;
     }
     --gd->gd_intr_nesting_level;
     crit_exit();
@@ -759,7 +796,7 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
     crit_enter_id("cpusync");
     if (mask) {
 	DEBUG_PUSH_INFO("cpusync_interlock");
-	++ipiq_cscount;
+	++ipiq_stat.ipiq_cscount;
 	++gd->gd_curthread->td_cscount;
 	lwkt_send_ipiq_mask(mask, (ipifunc1_t)lwkt_cpusync_remote1, cs);
 	logipiq2(sync_start, (long)mask);
