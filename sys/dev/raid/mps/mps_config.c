@@ -134,7 +134,7 @@ mps_config_get_ioc_pg8(struct mps_softc *sc, Mpi2ConfigReply_t *mpi_reply,
 	cm->cm_sglsize = sizeof(MPI2_SGE_IO_UNION);
 	cm->cm_flags = MPS_CM_FLAGS_SGE_SIMPLE | MPS_CM_FLAGS_DATAIN;
 	cm->cm_desc.Default.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_DEFAULT_TYPE;
-	page = kmalloc((cm->cm_length), M_MPT2, M_ZERO | M_NOWAIT);
+	page = kmalloc((cm->cm_length), M_MPT2, M_ZERO | M_INTWAIT);
 	if (!page) {
 		kprintf("%s: page alloc failed\n", __func__);
 		error = ENOMEM;
@@ -252,7 +252,7 @@ mps_config_get_man_pg10(struct mps_softc *sc, Mpi2ConfigReply_t *mpi_reply)
 	cm->cm_sglsize = sizeof(MPI2_SGE_IO_UNION);
 	cm->cm_flags = MPS_CM_FLAGS_SGE_SIMPLE | MPS_CM_FLAGS_DATAIN;
 	cm->cm_desc.Default.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_DEFAULT_TYPE;
-	page = kmalloc(MPS_MAN_PAGE10_SIZE, M_MPT2, M_ZERO | M_NOWAIT);
+	page = kmalloc(MPS_MAN_PAGE10_SIZE, M_MPT2, M_ZERO | M_INTWAIT);
 	if (!page) {
 		kprintf("%s: page alloc failed\n", __func__);
 		error = ENOMEM;
@@ -378,7 +378,7 @@ mps_wd_config_pages(struct mps_softc *sc)
 		 */
 		raid_vol_pg0 = kmalloc(sizeof(Mpi2RaidVolPage0_t) +
 		    (sizeof(Mpi2RaidVol0PhysDisk_t) * MPS_MAX_DISKS_IN_VOL),
-		    M_MPT2, M_ZERO | M_NOWAIT);
+		    M_MPT2, M_ZERO | M_INTWAIT);
 		if (!raid_vol_pg0) {
 			kprintf("%s: page alloc failed\n", __func__);
 			goto out;
@@ -605,7 +605,7 @@ mps_config_get_dpm_pg0(struct mps_softc *sc, Mpi2ConfigReply_t *mpi_reply,
 	cm->cm_sglsize = sizeof(MPI2_SGE_IO_UNION);
 	cm->cm_flags = MPS_CM_FLAGS_SGE_SIMPLE | MPS_CM_FLAGS_DATAIN;
 	cm->cm_desc.Default.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_DEFAULT_TYPE;
-	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO|M_NOWAIT);
+	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO|M_INTWAIT);
 	if (!page) {
 		kprintf("%s: page alloc failed\n", __func__);
 		error = ENOMEM;
@@ -728,7 +728,7 @@ int mps_config_set_dpm_pg0(struct mps_softc *sc, Mpi2ConfigReply_t *mpi_reply,
 	cm->cm_sglsize = sizeof(MPI2_SGE_IO_UNION);
 	cm->cm_flags = MPS_CM_FLAGS_SGE_SIMPLE | MPS_CM_FLAGS_DATAOUT;
 	cm->cm_desc.Default.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_DEFAULT_TYPE;
-	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_NOWAIT);
+	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_INTWAIT);
 	if (!page) {
 		kprintf("%s: page alloc failed\n", __func__);
 		error = ENOMEM;
@@ -850,7 +850,7 @@ mps_config_get_sas_device_pg0(struct mps_softc *sc, Mpi2ConfigReply_t
 	cm->cm_sglsize = sizeof(MPI2_SGE_IO_UNION);
 	cm->cm_flags = MPS_CM_FLAGS_SGE_SIMPLE | MPS_CM_FLAGS_DATAIN;
 	cm->cm_desc.Default.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_DEFAULT_TYPE;
-	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_NOWAIT);
+	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_INTWAIT);
 	if (!page) {
 		kprintf("%s: page alloc failed\n", __func__);
 		error = ENOMEM;
@@ -968,7 +968,7 @@ mps_config_get_bios_pg3(struct mps_softc *sc, Mpi2ConfigReply_t *mpi_reply,
 	cm->cm_sglsize = sizeof(MPI2_SGE_IO_UNION);
 	cm->cm_flags = MPS_CM_FLAGS_SGE_SIMPLE | MPS_CM_FLAGS_DATAIN;
 	cm->cm_desc.Default.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_DEFAULT_TYPE;
-	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_NOWAIT);
+	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_INTWAIT);
 	if (!page) {
 		kprintf("%s: page alloc failed\n", __func__);
 		error = ENOMEM;
@@ -1087,7 +1087,7 @@ mps_config_get_raid_volume_pg0(struct mps_softc *sc, Mpi2ConfigReply_t
 	cm->cm_sglsize = sizeof(MPI2_SGE_IO_UNION);
 	cm->cm_flags = MPS_CM_FLAGS_SGE_SIMPLE | MPS_CM_FLAGS_DATAIN;
 	cm->cm_desc.Default.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_DEFAULT_TYPE;
-	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_NOWAIT);
+	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_INTWAIT);
 	if (!page) {
 		kprintf("%s: page alloc failed\n", __func__);
 		error = ENOMEM;
@@ -1207,7 +1207,7 @@ mps_config_get_raid_volume_pg1(struct mps_softc *sc, Mpi2ConfigReply_t
 	cm->cm_sglsize = sizeof(MPI2_SGE_IO_UNION);
 	cm->cm_flags = MPS_CM_FLAGS_SGE_SIMPLE | MPS_CM_FLAGS_DATAIN;
 	cm->cm_desc.Default.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_DEFAULT_TYPE;
-	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_NOWAIT);
+	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_INTWAIT);
 	if (!page) {
 		kprintf("%s: page alloc failed\n", __func__);
 		error = ENOMEM;
@@ -1352,7 +1352,7 @@ mps_config_get_raid_pd_pg0(struct mps_softc *sc, Mpi2ConfigReply_t *mpi_reply,
 	cm->cm_sglsize = sizeof(MPI2_SGE_IO_UNION);
 	cm->cm_flags = MPS_CM_FLAGS_SGE_SIMPLE | MPS_CM_FLAGS_DATAIN;
 	cm->cm_desc.Default.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_DEFAULT_TYPE;
-	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_NOWAIT);
+	page = kmalloc(cm->cm_length, M_MPT2, M_ZERO | M_INTWAIT);
 	if (!page) {
 		kprintf("%s: page alloc failed\n", __func__);
 		error = ENOMEM;

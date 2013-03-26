@@ -1390,34 +1390,34 @@ mps_mapping_allocate_memory(struct mps_softc *sc)
 	uint32_t dpm_pg0_sz;
 
 	sc->mapping_table = kmalloc((sizeof(struct dev_mapping_table) *
-	    sc->max_devices), M_MPT2, M_ZERO|M_NOWAIT);
+	    sc->max_devices), M_MPT2, M_ZERO|M_INTWAIT);
 	if (!sc->mapping_table)
 		goto free_resources;
 
 	sc->removal_table = kmalloc((sizeof(struct map_removal_table) *
-	    sc->max_devices), M_MPT2, M_ZERO|M_NOWAIT);
+	    sc->max_devices), M_MPT2, M_ZERO|M_INTWAIT);
 	if (!sc->removal_table)
 		goto free_resources;
 
 	sc->enclosure_table = kmalloc((sizeof(struct enc_mapping_table) *
-	    sc->max_enclosures), M_MPT2, M_ZERO|M_NOWAIT);
+	    sc->max_enclosures), M_MPT2, M_ZERO|M_INTWAIT);
 	if (!sc->enclosure_table)
 		goto free_resources;
 
 	sc->dpm_entry_used = kmalloc((sizeof(u8) * sc->max_dpm_entries),
-	    M_MPT2, M_ZERO|M_NOWAIT);
+	    M_MPT2, M_ZERO|M_INTWAIT);
 	if (!sc->dpm_entry_used)
 		goto free_resources;
 
 	sc->dpm_flush_entry = kmalloc((sizeof(u8) * sc->max_dpm_entries),
-	    M_MPT2, M_ZERO|M_NOWAIT);
+	    M_MPT2, M_ZERO|M_INTWAIT);
 	if (!sc->dpm_flush_entry)
 		goto free_resources;
 
 	dpm_pg0_sz = sizeof(MPI2_CONFIG_EXTENDED_PAGE_HEADER) +
 	    (sc->max_dpm_entries * sizeof(MPI2_CONFIG_PAGE_DRIVER_MAP0_ENTRY));
 
-	sc->dpm_pg0 = kmalloc(dpm_pg0_sz, M_MPT2, M_ZERO|M_NOWAIT);
+	sc->dpm_pg0 = kmalloc(dpm_pg0_sz, M_MPT2, M_ZERO|M_INTWAIT);
 	if (!sc->dpm_pg0) {
 		kprintf("%s: memory alloc failed for dpm page; disabling dpm\n",
 		    __func__);
@@ -2048,7 +2048,7 @@ mps_mapping_topology_change_event(struct mps_softc *sc,
 	if (!num_entries)
 		goto out;
 	phy_change = kmalloc(sizeof(struct _map_phy_change) * num_entries,
-	    M_MPT2, M_NOWAIT|M_ZERO);
+	    M_MPT2, M_INTWAIT|M_ZERO);
 	topo_change.phy_details = phy_change;
 	if (!phy_change)
 		goto out;
@@ -2150,7 +2150,7 @@ mps_mapping_ir_config_change_event(struct mps_softc *sc,
 	u8 log_full_error = 0;
 
 	wwid_table = kmalloc(sizeof(u64) * event_data->NumElements, M_MPT2,
-	    M_NOWAIT | M_ZERO);
+	    M_INTWAIT | M_ZERO);
 	if (!wwid_table)
 		goto out;
 	element = (Mpi2EventIrConfigElement_t *)&event_data->ConfigElement[0];

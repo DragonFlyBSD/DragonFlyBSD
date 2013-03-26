@@ -130,13 +130,13 @@ mpssas_evt_handler(struct mps_softc *sc, uintptr_t data,
 	mpssas_record_event(sc, event);
 
 	fw_event = kmalloc(sizeof(struct mps_fw_event_work), M_MPT2,
-	     M_ZERO|M_NOWAIT);
+	     M_ZERO|M_INTWAIT);
 	if (!fw_event) {
 		kprintf("%s: allocate failed for fw_event\n", __func__);
 		return;
 	}
 	sz = le16toh(event->EventDataLength) * 4;
-	fw_event->event_data = kmalloc(sz, M_MPT2, M_ZERO|M_NOWAIT);
+	fw_event->event_data = kmalloc(sz, M_MPT2, M_ZERO|M_INTWAIT);
 	if (!fw_event->event_data) {
 		kprintf("%s: allocate failed for event_data\n", __func__);
 		kfree(fw_event, M_MPT2);
@@ -697,7 +697,7 @@ mpssas_get_sata_identify(struct mps_softc *sc, u16 handle,
 	char *buffer;
 	int error = 0;
 
-	buffer = kmalloc( sz, M_MPT2, M_NOWAIT | M_ZERO);
+	buffer = kmalloc( sz, M_MPT2, M_INTWAIT | M_ZERO);
 	if (!buffer)
 		return ENOMEM;
 

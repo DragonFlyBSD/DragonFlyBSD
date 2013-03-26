@@ -621,7 +621,7 @@ mps_attach_sas(struct mps_softc *sc)
 
 	/* Initialize taskqueue for Event Handling */
 	TASK_INIT(&sassc->ev_task, 0, mpssas_firmware_event_work, sc);
-	sassc->ev_tq = taskqueue_create("mps_taskq", M_NOWAIT | M_ZERO,
+	sassc->ev_tq = taskqueue_create("mps_taskq", M_INTWAIT | M_ZERO,
 	    taskqueue_thread_enqueue, &sassc->ev_tq);
 
 	/* Run the task queue with lowest priority */
@@ -2887,7 +2887,7 @@ mpssas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 
 		if (found_lun == 0) {
 			lun = kmalloc(sizeof(struct mpssas_lun), M_MPT2,
-				     M_NOWAIT | M_ZERO);
+				     M_INTWAIT | M_ZERO);
 			if (lun == NULL) {
 				mps_dprint(sc, MPS_FAULT, "Unable to alloc "
 					   "LUN for EEDP support.\n");
@@ -2956,7 +2956,7 @@ mpssas_check_eedp(struct mpssas_softc *sassc)
 		do {
 			rcap_buf =
 			    kmalloc(sizeof(struct scsi_read_capacity_eedp),
-			    M_MPT2, M_NOWAIT | M_ZERO);
+			    M_MPT2, M_INTWAIT | M_ZERO);
 			if (rcap_buf == NULL) {
 				mps_dprint(sc, MPS_FAULT, "Unable to alloc read "
 				    "capacity buffer for EEDP support.\n");
