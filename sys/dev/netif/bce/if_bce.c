@@ -6924,7 +6924,8 @@ bce_setup_ring_cnt(struct bce_softc *sc)
 	sc->rx_ring_cnt2 = 1;
 	sc->tx_ring_cnt = 1;
 
-	if (BCE_CHIP_NUM(sc) != BCE_CHIP_NUM_5709)
+	if (BCE_CHIP_NUM(sc) != BCE_CHIP_NUM_5709 &&
+	    BCE_CHIP_NUM(sc) != BCE_CHIP_NUM_5716)
 		return;
 
 	msix_enable = device_getenv_int(sc->bce_dev, "msix.enable",
