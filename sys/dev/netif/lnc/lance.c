@@ -103,7 +103,7 @@ static int lance_mediachange(struct ifnet *);
 static void lance_mediastatus(struct ifnet *, struct ifmediareq *);
 static int lance_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 
-int
+void
 lance_config(struct lance_softc *sc, const char* name, int unit)
 {
 	struct ifnet *ifp;
@@ -125,6 +125,14 @@ lance_config(struct lance_softc *sc, const char* name, int unit)
 	ifp->if_baudrate = IF_Mbps(10);
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifq_set_ready(&ifp->if_snd);
+
+	/* Attach the interface. */
+	ether_ifattach(ifp, sc->sc_enaddr, NULL);
+
+	/* Claim 802.1q capability. */
+	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
+	ifp->if_capabilities |= IFCAP_VLAN_MTU;
+	ifp->if_capenable |= IFCAP_VLAN_MTU;
 
 	/* Initialize ifmedia structures. */
 	ifmedia_init(&sc->sc_media, 0, lance_mediachange, lance_mediastatus);
@@ -176,22 +184,6 @@ lance_config(struct lance_softc *sc, const char* name, int unit)
 
 	/* Make sure the chip is stopped. */
 	lance_stop(sc);
-
-	return (0);
-}
-
-void
-lance_attach(struct lance_softc *sc)
-{
-	struct ifnet *ifp = sc->ifp;
-
-	/* Attach the interface. */
-	ether_ifattach(ifp, sc->sc_enaddr, NULL);
-
-	/* Claim 802.1q capability. */
-	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
-	ifp->if_capabilities |= IFCAP_VLAN_MTU;
-	ifp->if_capenable |= IFCAP_VLAN_MTU;
 }
 
 void

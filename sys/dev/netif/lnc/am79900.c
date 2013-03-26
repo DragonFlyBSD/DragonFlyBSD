@@ -145,14 +145,12 @@ static void	am79900_xmit_print(struct lance_softc *, int);
 int
 am79900_config(struct am79900_softc *sc, const char* name, int unit)
 {
-	int error, mem;
+	int mem;
 
 	sc->lsc.sc_meminit = am79900_meminit;
 	sc->lsc.sc_start_locked = am79900_start_locked;
 
-	error = lance_config(&sc->lsc, name, unit);
-	if (error != 0)
-		return (error);
+	lance_config(&sc->lsc, name, unit);
 
 	mem = 0;
 	sc->lsc.sc_initaddr = mem;
@@ -168,8 +166,6 @@ am79900_config(struct am79900_softc *sc, const char* name, int unit)
 
 	if (mem > sc->lsc.sc_memsize)
 		panic("%s: memsize", __func__);
-
-	lance_attach(&sc->lsc);
 
 	return (0);
 }

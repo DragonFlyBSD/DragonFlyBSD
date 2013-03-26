@@ -133,8 +133,7 @@ struct lance_softc {
 #define	LE_LE16TOH(v)	(((sc)->sc_flags & LE_BSWAP) ? le16toh(v) : (v))
 #define	LE_LE32TOH(v)	(((sc)->sc_flags & LE_BSWAP) ? le32toh(v) : (v))
 
-int lance_config(struct lance_softc *, const char*, int);
-void lance_attach(struct lance_softc *);
+void lance_config(struct lance_softc *, const char*, int);
 void lance_detach(struct lance_softc *);
 void lance_stop(struct lance_softc *);
 void lance_suspend(struct lance_softc *);
