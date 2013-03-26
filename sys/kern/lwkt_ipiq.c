@@ -75,7 +75,7 @@ struct ipiq_stats {
 } __cachealign;
 
 static struct ipiq_stats ipiq_stats_percpu[MAXCPU];
-#define ipiq_stat	ipiq_stats_percpu[mycpuid]
+#define ipiq_stat(gd)	ipiq_stats_percpu[(gd)->gd_cpuid]
 
 static int ipiq_debug;		/* set to 1 for debug */
 #ifdef PANIC_DEBUG
@@ -197,7 +197,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	panic("lwkt_send_ipiq: TOO HEAVILY NESTED!");
 #endif
     KKASSERT(curthread->td_critcount);
-    ++ipiq_stat.ipiq_count;
+    ++ipiq_stat(gd).ipiq_count;
     ip = &gd->gd_ipiq[target->gd_cpuid];
 
     /*
@@ -216,7 +216,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 #endif
 
 	cpu_enable_intr();
-	++ipiq_stat.ipiq_fifofull;
+	++ipiq_stat(gd).ipiq_fifofull;
 	DEBUG_PUSH_INFO("send_ipiq3");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
 	    if (atomic_poll_acquire_int(&target->gd_npoll)) {
@@ -253,7 +253,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	logipiq(cpu_send, func, arg1, arg2, gd, target);
 	cpu_send_ipiq(target->gd_cpuid);
     } else {
-	++ipiq_stat.ipiq_avoided;
+	++ipiq_stat(gd).ipiq_avoided;
     }
     --gd->gd_intr_nesting_level;
     crit_exit();
@@ -290,8 +290,8 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 	panic("lwkt_send_ipiq: TOO HEAVILY NESTED!");
 #endif
     KKASSERT(curthread->td_critcount);
-    ++ipiq_stat.ipiq_count;
-    ++ipiq_stat.ipiq_passive;
+    ++ipiq_stat(gd).ipiq_count;
+    ++ipiq_stat(gd).ipiq_passive;
     ip = &gd->gd_ipiq[target->gd_cpuid];
 
     /*
@@ -306,7 +306,7 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 #endif
 
 	cpu_enable_intr();
-	++ipiq_stat.ipiq_fifofull;
+	++ipiq_stat(gd).ipiq_fifofull;
 	DEBUG_PUSH_INFO("send_ipiq3_passive");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
 	    if (atomic_poll_acquire_int(&target->gd_npoll)) {
@@ -370,7 +370,7 @@ lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func,
     } 
     crit_enter();
     ++gd->gd_intr_nesting_level;
-    ++ipiq_stat.ipiq_count;
+    ++ipiq_stat(gd).ipiq_count;
     ip = &gd->gd_ipiq[target->gd_cpuid];
 
     if (ip->ip_windex - ip->ip_rindex >= MAXCPUFIFO * 2 / 3) {
@@ -394,7 +394,7 @@ lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func,
 	logipiq(cpu_send, func, arg1, arg2, gd, target);
 	cpu_send_ipiq(target->gd_cpuid);
     } else {
-	++ipiq_stat.ipiq_avoided;
+	++ipiq_stat(gd).ipiq_avoided;
     }
     --gd->gd_intr_nesting_level;
     crit_exit();
@@ -796,7 +796,7 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
     crit_enter_id("cpusync");
     if (mask) {
 	DEBUG_PUSH_INFO("cpusync_interlock");
-	++ipiq_stat.ipiq_cscount;
+	++ipiq_stat(gd).ipiq_cscount;
 	++gd->gd_curthread->td_cscount;
 	lwkt_send_ipiq_mask(mask, (ipifunc1_t)lwkt_cpusync_remote1, cs);
 	logipiq2(sync_start, (long)mask);
