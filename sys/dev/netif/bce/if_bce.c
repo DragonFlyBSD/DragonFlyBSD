@@ -6976,6 +6976,19 @@ bce_setup_ring_cnt(struct bce_softc *sc)
 	sc->rx_ring_cnt2 = if_ring_count2(sc->rx_ring_cnt2, ring_max);
 
 	/*
+	 * Don't use MSI-X, if the effective RX ring count is 1.
+	 * Since if the effective RX ring count is 1, the TX ring
+	 * count will be 1.  This RX ring and the TX ring must be
+	 * bundled into one MSI-X vector, so the hot path will be
+	 * exact same as using MSI.  Besides, the first RX ring
+	 * must be fully populated, which only accepts packets whose
+	 * RSS hash can't calculated, e.g. ARP packets; waste of
+	 * resource at least.
+	 */
+	if (sc->rx_ring_cnt2 == 1)
+		return;
+
+	/*
 	 * One extra RX ring is allocated, since the first RX ring
 	 * could not be used for RSS hashed packets whose masked
 	 * hash is 0.  The first RX ring is only used for packets
