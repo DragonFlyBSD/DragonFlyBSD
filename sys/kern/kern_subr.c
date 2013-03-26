@@ -114,10 +114,7 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 				error = copyout(cp, iov->iov_base, cnt);
 			else
 				error = copyin(iov->iov_base, cp, cnt);
-			if (error)
-				break;
 			break;
-
 		case UIO_SYSSPACE:
 			if (uio->uio_rw == UIO_READ)
 				bcopy(cp, iov->iov_base, cnt);
@@ -127,6 +124,9 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 		case UIO_NOCOPY:
 			break;
 		}
+
+		if (error)
+			break;
 		iov->iov_base = (char *)iov->iov_base + cnt;
 		iov->iov_len -= cnt;
 		uio->uio_resid -= cnt;
@@ -137,6 +137,7 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 	crit_enter();
 	td->td_flags = (td->td_flags & ~TDF_DEADLKTREAT) | save;
 	crit_exit();
+
 	return (error);
 }
 
@@ -174,6 +175,27 @@ uiomovebp(struct buf *bp, caddr_t cp, size_t n, struct uio *uio)
 }
 
 /*
+ * uiomove() but fail for non-trivial VM faults, even if the VM fault is
+ * valid.  Returns EFAULT if a VM fault occurred via the copyin/copyout
+ * onfault code.
+ *
+ * This allows callers to hold e.g. a busy VM page, or a busy VM object,
+ * or a locked vnode through the call and then fall-back to safer code
+ * if we fail.
+ */
+int
+uiomove_nofault(caddr_t cp, size_t n, struct uio *uio)
+{
+	thread_t td = curthread;
+	int error;
+
+	atomic_set_int(&td->td_flags, TDF_NOFAULT);
+	error = uiomove(cp, n, uio);
+	atomic_clear_int(&td->td_flags, TDF_NOFAULT);
+	return error;
+}
+
+/*
  * Like uiomove() but copies zero-fill.  Only allowed for UIO_READ,
  * for obvious reasons.
  */
@@ -202,8 +224,6 @@ uiomovez(size_t n, struct uio *uio)
 		switch (uio->uio_segflg) {
 		case UIO_USERSPACE:
 			error = copyout(ZeroPage, iov->iov_base, cnt);
-			if (error)
-				break;
 			break;
 		case UIO_SYSSPACE:
 			bzero(iov->iov_base, cnt);
@@ -211,6 +231,9 @@ uiomovez(size_t n, struct uio *uio)
 		case UIO_NOCOPY:
 			break;
 		}
+
+		if (error)
+			break;
 		iov->iov_base = (char *)iov->iov_base + cnt;
 		iov->iov_len -= cnt;
 		uio->uio_resid -= cnt;
@@ -256,22 +279,21 @@ again:
 		uio->uio_iov++;
 		goto again;
 	}
-	switch (uio->uio_segflg) {
 
+	switch (uio->uio_segflg) {
 	case UIO_USERSPACE:
 		if (subyte(iov->iov_base, c) < 0)
 			return (EFAULT);
 		break;
-
 	case UIO_SYSSPACE:
 		iov_base = iov->iov_base;
 		*iov_base = c;
 		iov->iov_base = iov_base;
 		break;
-
 	case UIO_NOCOPY:
 		break;
 	}
+
 	iov->iov_base = (char *)iov->iov_base + 1;
 	iov->iov_len--;
 	uio->uio_resid--;
@@ -533,6 +555,7 @@ uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, size_t n, struct uio *uio)
 		m = ma[offset >> PAGE_SHIFT];
 		lwb = lwbuf_alloc(m, &lwb_cache);
 		cp = (char *)lwbuf_kva(lwb) + page_offset;
+
 		switch (uio->uio_segflg) {
 		case UIO_USERSPACE:
 			/*

@@ -95,6 +95,7 @@ struct vm_object;
 struct vm_page;
 
 int	uiomove (caddr_t, size_t, struct uio *);
+int	uiomove_nofault (caddr_t, size_t, struct uio *);
 int	uiomovebp (struct buf *, caddr_t, size_t, struct uio *);
 int	uiomovez (size_t, struct uio *);
 int 	uiomove_frombuf (void *buf, size_t buflen, struct uio *uio);

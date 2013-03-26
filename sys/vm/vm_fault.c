@@ -353,6 +353,11 @@ RetryFault:
 	 * Misc checks.  Save the map generation number to detect races.
 	 */
 	fs.map_generation = fs.map->timestamp;
+	fs.lookup_still_valid = TRUE;
+	fs.first_m = NULL;
+	fs.object = fs.first_object;	/* so unlock_and_deallocate works */
+	fs.shared = 0;
+	fs.vp = NULL;
 
 	if (fs.entry->eflags & (MAP_ENTRY_NOFAULT | MAP_ENTRY_KSTACK)) {
 		if (fs.entry->eflags & MAP_ENTRY_NOFAULT) {
@@ -374,6 +379,18 @@ RetryFault:
 	if (fs.first_object == NULL) {
 		panic("vm_fault: unrecoverable fault at %p in entry %p",
 			(void *)vaddr, fs.entry);
+	}
+
+	/*
+	 * Fail here if not a trivial anonymous page fault and TDF_NOFAULT
+	 * is set.
+	 */
+	if ((curthread->td_flags & TDF_NOFAULT) &&
+	    (fs.first_object->type == OBJT_VNODE ||
+	     fs.first_object->backing_object)) {
+		result = KERN_FAILURE;
+		unlock_things(&fs);
+		goto done2;
 	}
 
 	/*
@@ -451,10 +468,12 @@ RetryFault:
 	if (fs.vp == NULL)
 		fs.vp = vnode_pager_lock(fs.first_object);
 
+#if 0
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
 	fs.object = fs.first_object;	/* so unlock_and_deallocate works */
 	fs.shared = 0;
+#endif
 
 	/*
 	 * If the entry is wired we cannot change the page protection.
@@ -581,6 +600,7 @@ quick:
 done:
 	if (fs.first_object)
 		vm_object_drop(fs.first_object);
+done2:
 	lwkt_reltoken(&map->token);
 	if (lp)
 		lp->lwp_flags &= ~LWP_PAGING;
@@ -665,6 +685,11 @@ RetryFault:
 	 * Misc checks.  Save the map generation number to detect races.
 	 */
 	fs.map_generation = fs.map->timestamp;
+	fs.lookup_still_valid = TRUE;
+	fs.first_m = NULL;
+	fs.object = fs.first_object;	/* so unlock_and_deallocate works */
+	fs.shared = 0;
+	fs.vp = NULL;
 
 	if (fs.entry->eflags & MAP_ENTRY_NOFAULT) {
 		panic("vm_fault: fault on nofault entry, addr: %lx",
@@ -678,6 +703,18 @@ RetryFault:
 	if (fs.first_object == NULL) {
 		panic("vm_fault: unrecoverable fault at %p in entry %p",
 			(void *)vaddr, fs.entry);
+	}
+
+	/*
+	 * Fail here if not a trivial anonymous page fault and TDF_NOFAULT
+	 * is set.
+	 */
+	if ((curthread->td_flags & TDF_NOFAULT) &&
+	    (fs.first_object->type == OBJT_VNODE ||
+	     fs.first_object->backing_object)) {
+		result = KERN_FAILURE;
+		unlock_things(&fs);
+		goto done2;
 	}
 
 	/*
@@ -697,10 +734,12 @@ RetryFault:
 	vm_object_hold(fs.first_object);
 	fs.vp = vnode_pager_lock(fs.first_object);
 
+#if 0
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
 	fs.object = fs.first_object;	/* so unlock_and_deallocate works */
 	fs.shared = 0;
+#endif
 
 	/*
 	 * If the entry is wired we cannot change the page protection.
@@ -821,6 +860,7 @@ RetryFault:
 done:
 	if (fs.first_object)
 		vm_object_drop(fs.first_object);
+done2:
 	lwkt_reltoken(&map->token);
 	return(fs.m);
 }

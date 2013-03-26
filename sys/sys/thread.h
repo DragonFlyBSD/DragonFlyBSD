@@ -371,6 +371,7 @@ struct thread {
 #define TDF_DELAYED_WAKEUP	0x02000000
 #define TDF_UNUSED1		0x04000000	/* unused */
 #define TDF_USERMODE		0x08000000	/* in or entering user mode */
+#define TDF_NOFAULT		0x10000000	/* force onfault on fault */
 
 #define TDF_MP_STOPREQ		0x00000001	/* suspend_kproc */
 #define TDF_MP_WAKEREQ		0x00000002	/* resume_kproc */
