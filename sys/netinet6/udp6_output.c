@@ -117,7 +117,7 @@
  */
 
 #define in6pcb		inpcb
-#define udp6stat	udpstat
+#define udp6stat	udp_stat
 #define udp6s_opackets	udps_opackets
 
 int

@@ -226,13 +226,13 @@ ip_lengthcheck(struct mbuf **mp, int hoff)
 		break;
 	case IPPROTO_UDP:
 		if (iplen < iphlen + sizeof(struct udphdr)) {
-			++udpstat.udps_hdrops;
+			++udp_stat.udps_hdrops;
 			goto fail;
 		}
 		if (m->m_len < hoff + iphlen + sizeof(struct udphdr)) {
 			m = m_pullup(m, hoff + iphlen + sizeof(struct udphdr));
 			if (m == NULL) {
-				udpstat.udps_hdrops++;
+				udp_stat.udps_hdrops++;
 				goto fail;
 			}
 		}

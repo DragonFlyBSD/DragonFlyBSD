@@ -5829,7 +5829,7 @@ pf_check_proto_cksum(struct mbuf *m, int off, int len, u_int8_t p,
 			tcpstat.tcps_rcvbadsum++;
 			break;
 		case IPPROTO_UDP:
-			udpstat.udps_badsum++;
+			udp_stat.udps_badsum++;
 			break;
 		case IPPROTO_ICMP:
 			icmpstat.icps_checksum++;

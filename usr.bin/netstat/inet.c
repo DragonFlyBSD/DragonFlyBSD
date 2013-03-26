@@ -388,6 +388,7 @@ proto ##_stats_agg(type *ary, type *ttl, int cpucnt)          \
 }
 CPU_STATS_FUNC(tcp, struct tcp_stats);
 CPU_STATS_FUNC(ip, struct ip_stats);
+CPU_STATS_FUNC(udp, struct udpstat);
 
 /*
  * Dump TCP statistics structure.
@@ -557,17 +558,32 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 void
 udp_stats(u_long off __unused, const char *name, int af1 __unused)
 {
-	struct udpstat udpstat, zerostat;
-	size_t len = sizeof udpstat;
+	struct udpstat udpstat, *stattmp;
+	struct udpstat zerostat[SMP_MAXCPU];
+	size_t len = sizeof(struct udpstat) * SMP_MAXCPU;
+	int cpucnt;
 	u_long delivered;
 
 	if (zflag)
 		memset(&zerostat, 0, len);
-	if (sysctlbyname("net.inet.udp.stats", &udpstat, &len,
-	    zflag ? &zerostat : NULL, zflag ? len : 0) < 0) {
-		warn("sysctl: net.inet.udp.stats");
+
+	if ((stattmp = malloc(len)) == NULL) {
 		return;
+	} else {
+		if (sysctlbyname("net.inet.udp.stats", stattmp, &len,
+			zflag ? zerostat : NULL, zflag ? len : 0) < 0) {
+			warn("sysctl: net.inet.udp.stats");
+			free(stattmp);
+			return;
+		} else {
+			if ((stattmp = realloc(stattmp, len)) == NULL) {
+				warn("udp_stats");
+				return;
+			}
+		}
 	}
+	cpucnt = len / sizeof(struct udpstat);
+	udp_stats_agg(stattmp, &udpstat, cpucnt);
 
 #ifdef INET6
 	if (udp_done != 0)

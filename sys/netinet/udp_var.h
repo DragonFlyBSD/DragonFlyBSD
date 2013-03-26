@@ -95,6 +95,11 @@ struct	udpiphdr {
 #define	ui_ulen		ui_u.uh_ulen
 #define	ui_sum		ui_u.uh_sum
 
+/*
+ * UDP Statistics.
+ *
+ * NOTE: Make sure this struct's size is multiple cache line size.
+ */
 struct	udpstat {
 				/* input statistics: */
 	u_long	udps_ipackets;		/* total input packets */
@@ -112,6 +117,7 @@ struct	udpstat {
 	u_long	udps_fastout;		/* output packets on fast path */
 	/* of no socket on port, arrived as multicast */
 	u_long	udps_noportmcast;
+	u_long	udps_pad[3];		/* pad to cache line size (64B) */
 };
 
 /*
@@ -138,11 +144,13 @@ struct	udpstat {
 SYSCTL_DECL(_net_inet_udp);
 #endif
 
+#define udp_stat	udpstat_percpu[mycpuid]
+
 extern struct	pr_usrreqs udp_usrreqs;
 extern struct	inpcbinfo udbinfo;
 extern u_long	udp_sendspace;
 extern u_long	udp_recvspace;
-extern struct	udpstat udpstat;
+extern struct	udpstat udpstat_percpu[MAXCPU];
 extern int	log_in_vain;
 
 int			udp_addrcpu (in_addr_t faddr, in_port_t fport,

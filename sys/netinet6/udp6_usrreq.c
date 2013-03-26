@@ -167,14 +167,14 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		return IPPROTO_DONE;
 	}
 
-	udpstat.udps_ipackets++;
+	udp_stat.udps_ipackets++;
 
 	plen = ntohs(ip6->ip6_plen) - off + sizeof(*ip6);
 	uh = (struct udphdr *)((caddr_t)ip6 + off);
 	ulen = ntohs((u_short)uh->uh_ulen);
 
 	if (plen != ulen) {
-		udpstat.udps_badlen++;
+		udp_stat.udps_badlen++;
 		goto bad;
 	}
 
@@ -182,9 +182,9 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	 * Checksum extended UDP header and data.
 	 */
 	if (uh->uh_sum == 0)
-		udpstat.udps_nosum++;
+		udp_stat.udps_nosum++;
 	else if (in6_cksum(m, IPPROTO_UDP, off, ulen) != 0) {
-		udpstat.udps_badsum++;
+		udp_stat.udps_badsum++;
 		goto bad;
 	}
 
@@ -295,7 +295,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 						m_freem(n);
 						if (opts)
 							m_freem(opts);
-						udpstat.udps_fullsock++;
+						udp_stat.udps_fullsock++;
 					} else {
 						sorwakeup(so);
 					}
@@ -323,8 +323,8 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			 * (No need to send an ICMP Port Unreachable
 			 * for a broadcast or multicast datgram.)
 			 */
-			udpstat.udps_noport++;
-			udpstat.udps_noportmcast++;
+			udp_stat.udps_noport++;
+			udp_stat.udps_noportmcast++;
 			goto bad;
 		}
 #ifdef IPSEC
@@ -353,7 +353,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		lwkt_gettoken(&so->so_rcv.ssb_token);
 		if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *)&udp_in6,
 				   m, opts) == 0) {
-			udpstat.udps_fullsock++;
+			udp_stat.udps_fullsock++;
 			lwkt_reltoken(&so->so_rcv.ssb_token);
 			goto bad;
 		}
@@ -377,10 +377,10 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			    buf, ntohs(uh->uh_dport),
 			    ip6_sprintf(&ip6->ip6_src), ntohs(uh->uh_sport));
 		}
-		udpstat.udps_noport++;
+		udp_stat.udps_noport++;
 		if (m->m_flags & M_MCAST) {
 			kprintf("UDP6: M_MCAST is set in a unicast packet.\n");
-			udpstat.udps_noportmcast++;
+			udp_stat.udps_noportmcast++;
 			goto bad;
 		}
 		icmp6_error(m, ICMP6_DST_UNREACH, ICMP6_DST_UNREACH_NOPORT, 0);
@@ -418,7 +418,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	lwkt_gettoken(&so->so_rcv.ssb_token);
 	if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *)&udp_in6,
 			   m, opts) == 0) {
-		udpstat.udps_fullsock++;
+		udp_stat.udps_fullsock++;
 		lwkt_reltoken(&so->so_rcv.ssb_token);
 		goto bad;
 	}

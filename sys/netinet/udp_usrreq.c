@@ -162,9 +162,7 @@ static struct lwkt_serialize udbinfo_slize = LWKT_SERIALIZE_INITIALIZER;
 #define UDBHASHSIZE 16
 #endif
 
-struct	udpstat udpstat;	/* from udp_var.h */
-SYSCTL_STRUCT(_net_inet_udp, UDPCTL_STATS, stats, CTLFLAG_RW,
-    &udpstat, udpstat, "UDP statistics (struct udpstat, netinet/udp_var.h)");
+struct	udpstat udpstat_percpu[MAXCPU] __cachealign;
 
 static struct	sockaddr_in udp_in = { sizeof udp_in, AF_INET };
 #ifdef INET6
@@ -195,6 +193,8 @@ static int udp_output (struct inpcb *, struct mbuf *, struct sockaddr *,
 void
 udp_init(void)
 {
+	int cpu;
+
 	in_pcbinfo_init(&udbinfo);
 	udbinfo.hashbase = hashinit(UDBHASHSIZE, M_PCB, &udbinfo.hashmask);
 	udbinfo.porthashbase = hashinit(UDBHASHSIZE, M_PCB,
@@ -204,7 +204,32 @@ udp_init(void)
 	udbinfo.ipi_size = sizeof(struct inpcb);
 
 	udbinfo_br = netisr_barrier_create();
+
+	/*
+	 * Initialize UDP statistics counters for each CPU.
+	 */
+	for (cpu = 0; cpu < ncpus; ++cpu)
+		bzero(&udpstat_percpu[cpu], sizeof(struct udpstat));
 }
+
+static int
+sysctl_udpstat(SYSCTL_HANDLER_ARGS)
+{
+	int cpu, error = 0;
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		if ((error = SYSCTL_OUT(req, &udpstat_percpu[cpu],
+					sizeof(struct udpstat))))
+			break;
+		if ((error = SYSCTL_IN(req, &udpstat_percpu[cpu],
+				       sizeof(struct udpstat))))
+			break;
+	}
+
+	return (error);
+}
+SYSCTL_PROC(_net_inet_udp, UDPCTL_STATS, stats, (CTLTYPE_OPAQUE | CTLFLAG_RW),
+    0, 0, sysctl_udpstat, "S,udpstat", "UDP statistics");
 
 /*
  * Check multicast packets to make sure they are only sent to sockets with
@@ -256,7 +281,7 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 	*mp = NULL;
 
 	iphlen = off;
-	udpstat.udps_ipackets++;
+	udp_stat.udps_ipackets++;
 
 	/*
 	 * Strip IP options, if any; should skip this,
@@ -290,7 +315,7 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 	len = ntohs((u_short)uh->uh_ulen);
 	if (ip->ip_len != len) {
 		if (len > ip->ip_len || len < sizeof(struct udphdr)) {
-			udpstat.udps_badlen++;
+			udp_stat.udps_badlen++;
 			goto bad;
 		}
 		m_adj(m, len - ip->ip_len);
@@ -324,12 +349,12 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 			bcopy(b, ((struct ipovly *)ip)->ih_x1, 9);
 		}
 		if (uh->uh_sum) {
-			udpstat.udps_badsum++;
+			udp_stat.udps_badsum++;
 			m_freem(m);
 			return(IPPROTO_DONE);
 		}
 	} else
-		udpstat.udps_nosum++;
+		udp_stat.udps_nosum++;
 
 	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
 	    in_broadcast(ip->ip_dst, m->m_pkthdr.rcvif)) {
@@ -428,7 +453,7 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 			 * (No need to send an ICMP Port Unreachable
 			 * for a broadcast or multicast datgram.)
 			 */
-			udpstat.udps_noportbcast++;
+			udp_stat.udps_noportbcast++;
 			goto bad;
 		}
 #ifdef IPSEC
@@ -461,9 +486,9 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 			    buf, ntohs(uh->uh_dport), inet_ntoa(ip->ip_src),
 			    ntohs(uh->uh_sport));
 		}
-		udpstat.udps_noport++;
+		udp_stat.udps_noport++;
 		if (m->m_flags & (M_BCAST | M_MCAST)) {
-			udpstat.udps_noportbcast++;
+			udp_stat.udps_noportbcast++;
 			goto bad;
 		}
 		if (blackhole)
@@ -525,7 +550,7 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 
 	lwkt_gettoken(&inp->inp_socket->so_rcv.ssb_token);
 	if (ssb_appendaddr(&inp->inp_socket->so_rcv, append_sa, m, opts) == 0) {
-		udpstat.udps_fullsock++;
+		udp_stat.udps_fullsock++;
 		lwkt_reltoken(&inp->inp_socket->so_rcv.ssb_token);
 		goto bad;
 	}
@@ -600,7 +625,7 @@ udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off)
 		m_freem(n);
 		if (opts)
 			m_freem(opts);
-		udpstat.udps_fullsock++;
+		udp_stat.udps_fullsock++;
 	} else {
 		sorwakeup(last->inp_socket);
 	}
@@ -903,7 +928,7 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	((struct ip *)ui)->ip_len = sizeof(struct udpiphdr) + len;
 	((struct ip *)ui)->ip_ttl = inp->inp_ip_ttl;	/* XXX */
 	((struct ip *)ui)->ip_tos = inp->inp_ip_tos;	/* XXX */
-	udpstat.udps_opackets++;
+	udp_stat.udps_opackets++;
 
 	error = ip_output(m, inp->inp_options, &inp->inp_route,
 	    (inp->inp_socket->so_options & (SO_DONTROUTE | SO_BROADCAST)) |
