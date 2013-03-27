@@ -712,7 +712,7 @@ RetryFault:
 	if ((curthread->td_flags & TDF_NOFAULT) &&
 	    (fs.first_object->type == OBJT_VNODE ||
 	     fs.first_object->backing_object)) {
-		result = KERN_FAILURE;
+		*errorp = KERN_FAILURE;
 		unlock_things(&fs);
 		goto done2;
 	}
