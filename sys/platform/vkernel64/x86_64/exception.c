@@ -214,8 +214,15 @@ exc_segfault(int signo, siginfo_t *info, void *ctxp)
 #ifdef DDB
 
 static void
-exc_debugger(int signo, siginfo_t *info, void *ctx)
+exc_debugger(int signo, siginfo_t *info, void *ctxp)
 {
+	ucontext_t *ctx = ctxp;
+
+	kprintf("CAUGHT SIG %d RIP %08lx RSP %08lx TD %p\n",
+		signo,
+		ctx->uc_mcontext.mc_rip,
+		ctx->uc_mcontext.mc_rsp,
+		curthread);
 	Debugger("interrupt from console");
 }
 
