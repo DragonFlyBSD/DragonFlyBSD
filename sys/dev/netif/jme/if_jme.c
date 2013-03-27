@@ -60,6 +60,7 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 
+#include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
 #include <dev/netif/mii_layer/jmphyreg.h>
 
@@ -170,6 +171,11 @@ static void	jme_enable_rss(struct jme_softc *);
 static void	jme_disable_rss(struct jme_softc *);
 static void	jme_serialize_skipmain(struct jme_softc *);
 static void	jme_deserialize_skipmain(struct jme_softc *);
+static void	jme_phy_poweron(struct jme_softc *);
+static void	jme_phy_poweroff(struct jme_softc *);
+static int	jme_miiext_read(struct jme_softc *, int);
+static void	jme_miiext_write(struct jme_softc *, int, int);
+static void	jme_phy_init(struct jme_softc *);
 
 static void	jme_sysctl_node(struct jme_softc *);
 static int	jme_sysctl_tx_coal_to(SYSCTL_HANDLER_ARGS);
@@ -836,8 +842,12 @@ jme_attach(device_t dev)
 		break;
 
 	case PCI_PRODUCT_JMICRON_JMC260:
-		if (rev == JME_REV2)
+		if (rev == JME_REV2) {
 			sc->jme_lowaddr = BUS_SPACE_MAXADDR_32BIT;
+			sc->jme_phycom0 = 0x608a;
+		} else if (rev == JME_REV2_2) {
+			sc->jme_phycom0 = 0x408a;
+		}
 		break;
 
 	default:
@@ -847,6 +857,23 @@ jme_attach(device_t dev)
 		sc->jme_clksrc = GHC_TXOFL_CLKSRC | GHC_TXMAC_CLKSRC;
 		sc->jme_clksrc_1000 = GHC_TXOFL_CLKSRC_1000 |
 				      GHC_TXMAC_CLKSRC_1000;
+	}
+	if (rev >= JME_REV5)
+		sc->jme_caps |= JME_CAP_PHYPWR;
+	if (rev >= JME_REV6 || rev == JME_REV5 || rev == JME_REV5_1 ||
+	    rev == JME_REV5_3) {
+		sc->jme_phycom0 = 0x008a;
+		sc->jme_phycom1 = 0x4109;
+	} else if (rev == JME_REV3_1 || rev == JME_REV3_2) {
+		sc->jme_phycom0 = 0xe088;
+	}
+
+	if (rev >= JME_REV2) {
+		reg = pci_read_config(dev, JME_PCI_SSCTRL, 4);
+		if ((reg & SSCTRL_PHYMASK) == SSCTRL_PHYEA) {
+			sc->jme_phycom0 = 0;
+			sc->jme_phycom1 = 0;
+		}
 	}
 
 	/* Reset the ethernet controller. */
@@ -2878,6 +2905,8 @@ jme_init(void *xsc)
 	 */
 	sc->jme_has_link = FALSE;
 
+	jme_phy_init(sc);
+
 	/* Set the current media. */
 	mii = device_get_softc(sc->jme_miibus);
 	mii_mediachg(mii);
@@ -4092,4 +4121,114 @@ jme_disable_intr(struct jme_softc *sc)
 
 	for (i = 0; i < sc->jme_serialize_cnt; ++i)
 		lwkt_serialize_handler_disable(sc->jme_serialize_arr[i]);
+}
+
+static void
+jme_phy_poweron(struct jme_softc *sc)
+{
+	uint16_t bmcr;
+
+	bmcr = jme_miibus_readreg(sc->jme_dev, sc->jme_phyaddr, MII_BMCR);
+	bmcr &= ~BMCR_PDOWN;
+	jme_miibus_writereg(sc->jme_dev, sc->jme_phyaddr, MII_BMCR, bmcr);
+
+	if (sc->jme_caps & JME_CAP_PHYPWR) {
+		uint32_t val;
+
+		val = CSR_READ_4(sc, JME_PHYPWR);
+		val &= ~(PHYPWR_DOWN1SEL | PHYPWR_DOWN1SW |
+		    PHYPWR_DOWN2 | PHYPWR_CLKSEL);
+		CSR_WRITE_4(sc, JME_PHYPWR, val);
+
+		val = pci_read_config(sc->jme_dev, JME_PCI_PE1, 4);
+		val &= ~PE1_GPREG0_PHYBG;
+		val |= PE1_GPREG0_ENBG;
+		pci_write_config(sc->jme_dev, JME_PCI_PE1, val, 4);
+	}
+}
+
+static void
+jme_phy_poweroff(struct jme_softc *sc)
+{
+	uint16_t bmcr;
+
+	bmcr = jme_miibus_readreg(sc->jme_dev, sc->jme_phyaddr, MII_BMCR);
+	bmcr |= BMCR_PDOWN;
+	jme_miibus_writereg(sc->jme_dev, sc->jme_phyaddr, MII_BMCR, bmcr);
+
+	if (sc->jme_caps & JME_CAP_PHYPWR) {
+		uint32_t val;
+
+		val = CSR_READ_4(sc, JME_PHYPWR);
+		val |= PHYPWR_DOWN1SEL | PHYPWR_DOWN1SW |
+		    PHYPWR_DOWN2 | PHYPWR_CLKSEL;
+		CSR_WRITE_4(sc, JME_PHYPWR, val);
+
+		val = pci_read_config(sc->jme_dev, JME_PCI_PE1, 4);
+		val &= ~PE1_GPREG0_PHYBG;
+		val |= PE1_GPREG0_PDD3COLD;
+		pci_write_config(sc->jme_dev, JME_PCI_PE1, val, 4);
+	}
+}
+
+static int
+jme_miiext_read(struct jme_softc *sc, int reg)
+{
+	int addr;
+
+	addr = JME_MII_EXT_ADDR_RD | reg;
+	jme_miibus_writereg(sc->jme_dev, sc->jme_phyaddr,
+	    JME_MII_EXT_ADDR, addr);
+	return jme_miibus_readreg(sc->jme_dev, sc->jme_phyaddr,
+	    JME_MII_EXT_DATA);
+}
+
+static void
+jme_miiext_write(struct jme_softc *sc, int reg, int val)
+{
+	int addr;
+
+	addr = JME_MII_EXT_ADDR_WR | reg;
+	jme_miibus_writereg(sc->jme_dev, sc->jme_phyaddr,
+	    JME_MII_EXT_DATA, val);
+	jme_miibus_writereg(sc->jme_dev, sc->jme_phyaddr,
+	    JME_MII_EXT_ADDR, addr);
+}
+
+static void
+jme_phy_init(struct jme_softc *sc)
+{
+	uint16_t gtcr;
+	int val;
+
+	jme_phy_poweroff(sc);
+	jme_phy_poweron(sc);
+
+	/* Enable PHY test 1 */
+	gtcr = jme_miibus_readreg(sc->jme_dev, sc->jme_phyaddr, MII_100T2CR);
+	gtcr &= ~GTCR_TEST_MASK;
+	gtcr |= GTCR_TEST_1;
+	jme_miibus_writereg(sc->jme_dev, sc->jme_phyaddr, MII_100T2CR, gtcr);
+
+	val = jme_miiext_read(sc, JME_MII_EXT_COM2);
+	val &= ~JME_MII_EXT_COM2_CALIB_MODE0;
+	val |= JME_MII_EXT_COM2_CALIB_LATCH | JME_MII_EXT_COM2_CALIB_EN;
+	jme_miiext_write(sc, JME_MII_EXT_COM2, val);
+
+	DELAY(20000);
+
+	val = jme_miiext_read(sc, JME_MII_EXT_COM2);
+	val &= ~(JME_MII_EXT_COM2_CALIB_MODE0 |
+	    JME_MII_EXT_COM2_CALIB_LATCH | JME_MII_EXT_COM2_CALIB_EN);
+	jme_miiext_write(sc, JME_MII_EXT_COM2, val);
+
+	/* Disable PHY test */
+	gtcr = jme_miibus_readreg(sc->jme_dev, sc->jme_phyaddr, MII_100T2CR);
+	gtcr &= ~GTCR_TEST_MASK;
+	jme_miibus_writereg(sc->jme_dev, sc->jme_phyaddr, MII_100T2CR, gtcr);
+
+	if (sc->jme_phycom0 != 0)
+		jme_miiext_write(sc, JME_MII_EXT_COM0, sc->jme_phycom0);
+	if (sc->jme_phycom1 != 0)
+		jme_miiext_write(sc, JME_MII_EXT_COM1, sc->jme_phycom1);
 }

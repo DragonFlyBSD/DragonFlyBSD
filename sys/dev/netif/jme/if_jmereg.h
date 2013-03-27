@@ -35,7 +35,13 @@
 #define JME_REV1_A1		0x10
 #define JME_REV1_A2		0x11	/* JMC250A2 */
 #define JME_REV2		0x20
+#define JME_REV2_2		0x22
+#define JME_REV3_1		0x31
+#define JME_REV3_2		0x32
 #define JME_REV5		0x50
+#define JME_REV5_1		0x51
+#define JME_REV5_3		0x53
+#define JME_REV6		0x60
 
 /* JMC250 PCI configuration register. */
 #define JME_PCIR_BAR		PCIR_BAR(0)
@@ -97,6 +103,13 @@
 #define	PE0_PM_AUXC_DEF		0x00000007
 
 #define	JME_PCI_PE1		0xE4
+#define PE1_GPREG0_PHYBG	0x0000C000
+#define PE1_GPREG0_ENBG		0x00000000
+#define PE1_GPREG0_PDD3COLD	0x00004000
+
+#define JME_PCI_SSCTRL		0xF4
+#define SSCTRL_PHYMASK		0x30
+#define SSCTRL_PHYEA		0x20
 
 #define	JME_PCI_PHYTEST		0xF8
 
@@ -391,6 +404,19 @@
 #define	JME_GIGARCHI		0x041C
 #define	JME_GIGARDLO		0x0420
 #define	JME_GIGARDHI		0x0424
+
+#define JME_PHYPWR		0x0424	/* XXX same as JME_GIGARDHI */
+#define PHYPWR_DOWN1SEL		0x01000000
+#define PHYPWR_DOWN1SW		0x02000000
+#define PHYPWR_DOWN2		0x04000000
+/*
+ * XTL_OUT Clock select
+ * (an internal free-running clock)
+ * 0: xtl_out = A_XTL25_O
+ * 1: xtl_out = PD_OSC
+ */
+#define PHYPWR_CLKSEL		0x08000000
+
 
 /* BIST status and control. */
 #define	JME_GIGACSR		0x0428
@@ -996,5 +1022,22 @@ struct jme_desc {
 #define JME_RD_HASH_FN_MASK	0x0000000f
 #define	JME_RD_HASH_FN_NONE	0x00000000
 #define	JME_RD_HASH_FN_TOEPLITZ	0x00000001
+
+/* MII_100T2CR */
+#define GTCR_TEST_1		0x2000
+
+/* MII register, extended register address */
+#define JME_MII_EXT_ADDR	0x1E
+#define JME_MII_EXT_ADDR_RD	0x4000
+#define JME_MII_EXT_ADDR_WR	0x8000
+#define JME_MII_EXT_COM0	0x0030
+#define JME_MII_EXT_COM1	0x0031
+#define JME_MII_EXT_COM2	0x0032
+
+/* MII register, extended register data */
+#define JME_MII_EXT_DATA	0x1F
+#define JME_MII_EXT_COM2_CALIB_EN	0x0001
+#define JME_MII_EXT_COM2_CALIB_MODE0	0x0002
+#define JME_MII_EXT_COM2_CALIB_LATCH	0x0010
 
 #endif

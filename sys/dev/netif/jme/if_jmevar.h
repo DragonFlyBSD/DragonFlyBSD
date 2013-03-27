@@ -261,6 +261,8 @@ struct jme_softc {
 
 	uint32_t		jme_clksrc;
 	uint32_t		jme_clksrc_1000;
+	uint16_t		jme_phycom0;
+	uint16_t		jme_phycom1;
 	uint32_t		jme_tx_dma_size;
 	uint32_t		jme_rx_dma_size;
 
@@ -270,6 +272,7 @@ struct jme_softc {
 #define	JME_CAP_PMCAP		0x0004
 #define	JME_CAP_FASTETH		0x0008
 #define	JME_CAP_JUMBO		0x0010
+#define JME_CAP_PHYPWR		0x0020
 
 	uint32_t		jme_workaround;
 #define JME_WA_EXTFIFO		0x0001
