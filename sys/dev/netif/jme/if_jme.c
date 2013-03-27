@@ -2648,7 +2648,7 @@ jme_reset(struct jme_softc *sc)
 
 	/* Enable TXMAC and TXOFL clock sources */
 	CSR_WRITE_4(sc, JME_GHC, GHC_TXOFL_CLKSRC | GHC_TXMAC_CLKSRC);
-	/* Eisable RXMAC clock source */
+	/* Disable RXMAC clock source */
 	val = CSR_READ_4(sc, JME_GPREG1);
 	CSR_WRITE_4(sc, JME_GPREG1, val & ~GPREG1_DIS_RXMAC_CLKSRC);
 	/* Flush */
