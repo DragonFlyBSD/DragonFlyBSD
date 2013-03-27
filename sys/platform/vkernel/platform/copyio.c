@@ -149,6 +149,8 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 		lwbuf_free(lwb);
 		vm_page_unhold(m);
 	}
+	if (error)
+		error = EFAULT;
 	return (error);
 }
 
@@ -187,6 +189,8 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 		lwbuf_free(lwb);
 		vm_page_unhold(m);
 	}
+	if (error)
+		error = EFAULT;
 	return (error);
 }
  
