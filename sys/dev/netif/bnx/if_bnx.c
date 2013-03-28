@@ -213,10 +213,8 @@ static void	bnx_writemem_ind(struct bnx_softc *, uint32_t, uint32_t);
 #ifdef notdef
 static uint32_t	bnx_readreg_ind(struct bnx_softc *, uint32_t);
 #endif
-static void	bnx_writereg_ind(struct bnx_softc *, uint32_t, uint32_t);
 static void	bnx_writemem_direct(struct bnx_softc *, uint32_t, uint32_t);
 static void	bnx_writembx(struct bnx_softc *, int, int);
-static uint8_t	bnx_nvram_getbyte(struct bnx_softc *, int, uint8_t *);
 static int	bnx_read_nvram(struct bnx_softc *, caddr_t, int, int);
 static uint8_t	bnx_eeprom_getbyte(struct bnx_softc *, uint32_t, uint8_t *);
 static int	bnx_read_eeprom(struct bnx_softc *, caddr_t, uint32_t, size_t);
@@ -278,10 +276,6 @@ bnx_readmem_ind(struct bnx_softc *sc, uint32_t off)
 	device_t dev = sc->bnx_dev;
 	uint32_t val;
 
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5906 &&
-	    off >= BGE_STATS_BLOCK && off < BGE_SEND_RING_1_TO_4)
-		return 0;
-
 	pci_write_config(dev, BGE_PCI_MEMWIN_BASEADDR, off, 4);
 	val = pci_read_config(dev, BGE_PCI_MEMWIN_DATA, 4);
 	pci_write_config(dev, BGE_PCI_MEMWIN_BASEADDR, 0, 4);
@@ -293,33 +287,9 @@ bnx_writemem_ind(struct bnx_softc *sc, uint32_t off, uint32_t val)
 {
 	device_t dev = sc->bnx_dev;
 
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5906 &&
-	    off >= BGE_STATS_BLOCK && off < BGE_SEND_RING_1_TO_4)
-		return;
-
 	pci_write_config(dev, BGE_PCI_MEMWIN_BASEADDR, off, 4);
 	pci_write_config(dev, BGE_PCI_MEMWIN_DATA, val, 4);
 	pci_write_config(dev, BGE_PCI_MEMWIN_BASEADDR, 0, 4);
-}
-
-#ifdef notdef
-static uint32_t
-bnx_readreg_ind(struct bnx_softc *sc, uin32_t off)
-{
-	device_t dev = sc->bnx_dev;
-
-	pci_write_config(dev, BGE_PCI_REG_BASEADDR, off, 4);
-	return(pci_read_config(dev, BGE_PCI_REG_DATA, 4));
-}
-#endif
-
-static void
-bnx_writereg_ind(struct bnx_softc *sc, uint32_t off, uint32_t val)
-{
-	device_t dev = sc->bnx_dev;
-
-	pci_write_config(dev, BGE_PCI_REG_BASEADDR, off, 4);
-	pci_write_config(dev, BGE_PCI_REG_DATA, val, 4);
 }
 
 static void
@@ -331,60 +301,7 @@ bnx_writemem_direct(struct bnx_softc *sc, uint32_t off, uint32_t val)
 static void
 bnx_writembx(struct bnx_softc *sc, int off, int val)
 {
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5906)
-		off += BGE_LPMBX_IRQ0_HI - BGE_MBX_IRQ0_HI;
-
 	CSR_WRITE_4(sc, off, val);
-}
-
-static uint8_t
-bnx_nvram_getbyte(struct bnx_softc *sc, int addr, uint8_t *dest)
-{
-	uint32_t access, byte = 0;
-	int i;
-
-	/* Lock. */
-	CSR_WRITE_4(sc, BGE_NVRAM_SWARB, BGE_NVRAMSWARB_SET1);
-	for (i = 0; i < 8000; i++) {
-		if (CSR_READ_4(sc, BGE_NVRAM_SWARB) & BGE_NVRAMSWARB_GNT1)
-			break;
-		DELAY(20);
-	}
-	if (i == 8000)
-		return (1);
-
-	/* Enable access. */
-	access = CSR_READ_4(sc, BGE_NVRAM_ACCESS);
-	CSR_WRITE_4(sc, BGE_NVRAM_ACCESS, access | BGE_NVRAMACC_ENABLE);
-
-	CSR_WRITE_4(sc, BGE_NVRAM_ADDR, addr & 0xfffffffc);
-	CSR_WRITE_4(sc, BGE_NVRAM_CMD, BGE_NVRAM_READCMD);
-	for (i = 0; i < BNX_TIMEOUT * 10; i++) {
-		DELAY(10);
-		if (CSR_READ_4(sc, BGE_NVRAM_CMD) & BGE_NVRAMCMD_DONE) {
-			DELAY(10);
-			break;
-		}
-	}
-
-	if (i == BNX_TIMEOUT * 10) {
-		if_printf(&sc->arpcom.ac_if, "nvram read timed out\n");
-		return (1);
-	}
-
-	/* Get result. */
-	byte = CSR_READ_4(sc, BGE_NVRAM_RDDATA);
-
-	*dest = (bswap32(byte) >> ((addr % 4) * 8)) & 0xFF;
-
-	/* Disable access. */
-	CSR_WRITE_4(sc, BGE_NVRAM_ACCESS, access);
-
-	/* Unlock. */
-	CSR_WRITE_4(sc, BGE_NVRAM_SWARB, BGE_NVRAMSWARB_CLR1);
-	CSR_READ_4(sc, BGE_NVRAM_SWARB);
-
-	return (0);
 }
 
 /*
@@ -393,20 +310,7 @@ bnx_nvram_getbyte(struct bnx_softc *sc, int addr, uint8_t *dest)
 static int
 bnx_read_nvram(struct bnx_softc *sc, caddr_t dest, int off, int cnt)
 {
-	int err = 0, i;
-	uint8_t byte = 0;
-
-	if (sc->bnx_asicrev != BGE_ASICREV_BCM5906)
-		return (1);
-
-	for (i = 0; i < cnt; i++) {
-		err = bnx_nvram_getbyte(sc, off + i, &byte);
-		if (err)
-			break;
-		*(dest + i) = byte;
-	}
-
-	return (err ? 1 : 0);
+	return (1);
 }
 
 /*
@@ -532,10 +436,6 @@ bnx_miibus_writereg(device_t dev, int phy, int reg, int val)
 	KASSERT(phy == sc->bnx_phyno,
 	    ("invalid phyno %d, should be %d", phy, sc->bnx_phyno));
 
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5906 &&
-	    (reg == BRGPHY_MII_1000CTL || reg == BRGPHY_MII_AUXCTL))
-	       return 0;
-
 	/* Clear the autopoll bit if set, otherwise may trigger PCI errors. */
 	if (sc->bnx_mi_mode & BGE_MIMODE_AUTOPOLL) {
 		CSR_WRITE_4(sc, BGE_MI_MODE,
@@ -587,10 +487,7 @@ bnx_miibus_statchg(device_t dev)
 		case IFM_1000_T:
 		case IFM_1000_SX:
 		case IFM_2500_SX:
-			if (sc->bnx_asicrev != BGE_ASICREV_BCM5906)
-				sc->bnx_link = 1;
-			else
-				sc->bnx_link = 0;
+			sc->bnx_link = 1;
 			break;
 		default:
 			sc->bnx_link = 0;
@@ -1170,15 +1067,6 @@ bnx_chipinit(struct bnx_softc *sc)
 	/* Set the timer prescaler (always 66Mhz) */
 	CSR_WRITE_4(sc, BGE_MISC_CFG, 65 << 1/*BGE_32BITTIME_66MHZ*/);
 
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5906) {
-		DELAY(40);	/* XXX */
-
-		/* Put PHY into ready state */
-		BNX_CLRBIT(sc, BGE_MISC_CFG, BGE_MISCCFG_EPHY_IDDQ);
-		CSR_READ_4(sc, BGE_MISC_CFG); /* Flush */
-		DELAY(40);
-	}
-
 	return(0);
 }
 
@@ -1209,10 +1097,6 @@ bnx_blockinit(struct bnx_softc *sc)
 			CSR_WRITE_4(sc, BGE_BMAN_MBUFPOOL_MACRX_LOWAT, 0x2a);
 			CSR_WRITE_4(sc, BGE_BMAN_MBUFPOOL_HIWAT, 0xa0);
 		}
-	} else if (sc->bnx_asicrev == BGE_ASICREV_BCM5906) {
-		CSR_WRITE_4(sc, BGE_BMAN_MBUFPOOL_READDMA_LOWAT, 0x0);
-		CSR_WRITE_4(sc, BGE_BMAN_MBUFPOOL_MACRX_LOWAT, 0x04);
-		CSR_WRITE_4(sc, BGE_BMAN_MBUFPOOL_HIWAT, 0x10);
 	} else {
 		CSR_WRITE_4(sc, BGE_BMAN_MBUFPOOL_READDMA_LOWAT, 0x0);
 		CSR_WRITE_4(sc, BGE_BMAN_MBUFPOOL_MACRX_LOWAT, 0x10);
@@ -1367,15 +1251,6 @@ bnx_blockinit(struct bnx_softc *sc)
 		CSR_WRITE_4(sc, BGE_RX_JUMBO_RCB_NICADDR, rcb->bge_nicaddr);
 		/* Reset the jumbo receive producer ring producer index. */
 		bnx_writembx(sc, BGE_MBX_RX_JUMBO_PROD_LO, 0);
-	}
-
-	/* Choose de-pipeline mode for BCM5906 A0, A1 and A2. */
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5906 &&
-	    (sc->bnx_chipid == BGE_CHIPID_BCM5906_A0 ||
-	     sc->bnx_chipid == BGE_CHIPID_BCM5906_A1 ||
-	     sc->bnx_chipid == BGE_CHIPID_BCM5906_A2)) {
-		CSR_WRITE_4(sc, BGE_ISO_PKT_TX,
-		    (CSR_READ_4(sc, BGE_ISO_PKT_TX) & ~3) | 2);
 	}
 
 	/*
@@ -2324,10 +2199,7 @@ bnx_reset(struct bnx_softc *sc)
 
 	dev = sc->bnx_dev;
 
-	if (sc->bnx_asicrev != BGE_ASICREV_BCM5906)
-		write_op = bnx_writemem_direct;
-	else
-		write_op = bnx_writereg_ind;
+	write_op = bnx_writemem_direct;
 
 	/* Save some important PCI state. */
 	cachesize = pci_read_config(dev, BGE_PCI_CACHESZ, 4);
@@ -2378,17 +2250,6 @@ bnx_reset(struct bnx_softc *sc)
 	/* Issue global reset */
 	write_op(sc, BGE_MISC_CFG, reset);
 
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5906) {
-		uint32_t status, ctrl;
-
-		status = CSR_READ_4(sc, BGE_VCPU_STATUS);
-		CSR_WRITE_4(sc, BGE_VCPU_STATUS,
-		    status | BGE_VCPU_STATUS_DRV_RESET);
-		ctrl = CSR_READ_4(sc, BGE_VCPU_EXT_CTRL);
-		CSR_WRITE_4(sc, BGE_VCPU_EXT_CTRL,
-		    ctrl & ~BGE_VCPU_EXT_CTRL_HALT_CPU);
-	}
-
 	DELAY(1000);
 
 	/* XXX: Broadcom Linux driver. */
@@ -2433,38 +2294,24 @@ bnx_reset(struct bnx_softc *sc)
 	/* Enable memory arbiter */
 	CSR_WRITE_4(sc, BGE_MARB_MODE, BGE_MARBMODE_ENABLE);
 
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM5906) {
-		for (i = 0; i < BNX_TIMEOUT; i++) {
-			val = CSR_READ_4(sc, BGE_VCPU_STATUS);
-			if (val & BGE_VCPU_STATUS_INIT_DONE)
-				break;
-			DELAY(100);
-		}
-		if (i == BNX_TIMEOUT) {
-			if_printf(&sc->arpcom.ac_if, "reset timed out\n");
-			return;
-		}
-	} else {
-		/*
-		 * Poll until we see the 1's complement of the magic number.
-		 * This indicates that the firmware initialization
-		 * is complete.
-		 */
-		for (i = 0; i < BNX_FIRMWARE_TIMEOUT; i++) {
-			val = bnx_readmem_ind(sc, BGE_SOFTWARE_GENCOMM);
-			if (val == ~BGE_MAGIC_NUMBER)
-				break;
-			DELAY(10);
-		}
-		if (i == BNX_FIRMWARE_TIMEOUT) {
-			if_printf(&sc->arpcom.ac_if, "firmware handshake "
-				  "timed out, found 0x%08x\n", val);
-		}
-
-		/* BCM57765 A0 needs additional time before accessing. */
-		if (sc->bnx_chipid == BGE_CHIPID_BCM57765_A0)
-			DELAY(10 * 1000);
+	/*
+	 * Poll until we see the 1's complement of the magic number.
+	 * This indicates that the firmware initialization is complete.
+	 */
+	for (i = 0; i < BNX_FIRMWARE_TIMEOUT; i++) {
+		val = bnx_readmem_ind(sc, BGE_SOFTWARE_GENCOMM);
+		if (val == ~BGE_MAGIC_NUMBER)
+			break;
+		DELAY(10);
 	}
+	if (i == BNX_FIRMWARE_TIMEOUT) {
+		if_printf(&sc->arpcom.ac_if, "firmware handshake "
+			  "timed out, found 0x%08x\n", val);
+	}
+
+	/* BCM57765 A0 needs additional time before accessing. */
+	if (sc->bnx_chipid == BGE_CHIPID_BCM57765_A0)
+		DELAY(10 * 1000);
 
 	/*
 	 * XXX Wait for the value of the PCISTATE register to
@@ -4208,8 +4055,6 @@ bnx_get_eaddr_nvram(struct bnx_softc *sc, uint8_t ether_addr[])
 			mac_offset = BGE_EE_MAC_OFFSET_5717;
 		if (f > 1)
 			mac_offset += BGE_EE_MAC_OFFSET_5717_OFF;
-	} else if (sc->bnx_asicrev == BGE_ASICREV_BCM5906) {
-		mac_offset = BGE_EE_MAC_OFFSET_5906;
 	}
 
 	return bnx_read_nvram(sc, ether_addr, mac_offset + 2, ETHER_ADDR_LEN);
