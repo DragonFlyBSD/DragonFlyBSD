@@ -112,12 +112,6 @@
 #include <sys/lock.h>
 #include <sys/thread2.h>
 
-#ifndef MAX_PAGEOUT_CLUSTER
-#define MAX_PAGEOUT_CLUSTER 16
-#endif
-
-#define SWB_NPAGES	MAX_PAGEOUT_CLUSTER
-
 #include "opt_swap.h"
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -131,6 +125,10 @@
 
 #include <sys/buf2.h>
 #include <vm/vm_page2.h>
+
+#ifndef MAX_PAGEOUT_CLUSTER
+#define MAX_PAGEOUT_CLUSTER	SWB_NPAGES
+#endif
 
 #define SWM_FREE	0x02	/* free, period			*/
 #define SWM_POP		0x04	/* pop out			*/

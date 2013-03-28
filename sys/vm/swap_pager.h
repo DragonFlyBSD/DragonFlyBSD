@@ -63,9 +63,7 @@
  * pages per allocation.  We recommend you stick with the default of 8.
  * The 16-page limit is due to the radix code (kern/subr_blist.c).
  */
-#if !defined(SWB_NPAGES)
-#define SWB_NPAGES 8
-#endif
+#define SWB_NPAGES	16
 
 /*
  * Piecemeal swap metadata structure.  Swap is stored in a hash table.
