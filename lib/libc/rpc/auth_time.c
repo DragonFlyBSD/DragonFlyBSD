@@ -26,7 +26,6 @@
  *
  * @(#)auth_time.c	1.4	92/11/10 SMI
  * $FreeBSD: src/lib/libc/rpc/auth_time.c,v 1.12 2007/09/20 22:35:24 matteo Exp $
- * $DragonFly: src/lib/libc/rpc/auth_time.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 #include "namespace.h"
@@ -433,10 +432,11 @@ __rpc_get_time_offset(struct timeval *td,	/* Time difference			*/
 			}
 			res = _read(s, (char *)&thetime, sizeof(thetime));
 			if (res != sizeof(thetime)) {
-				if (saw_alarm)
+				if (saw_alarm) {
 					msg("timed out TCP call.");
-				else
+				} else {
 					msg("wrong size of results returned");
+				}
 
 				goto error;
 			}
