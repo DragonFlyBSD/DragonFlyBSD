@@ -911,7 +911,6 @@ bnx_init_tx_ring(struct bnx_tx_ring *txr)
 	/* Initialize transmit producer index for host-memory send ring. */
 	bnx_writembx(txr->bnx_sc, BGE_MBX_TX_HOST_PROD0_LO,
 	    txr->bnx_tx_prodidx);
-	bnx_writembx(txr->bnx_sc, BGE_MBX_TX_NIC_PROD0_LO, 0);
 
 	return(0);
 }
