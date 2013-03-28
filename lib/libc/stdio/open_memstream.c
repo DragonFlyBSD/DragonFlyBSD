@@ -114,6 +114,7 @@ memstream_closefn(void *cookie)
 	sync_pub_cookie(c);
 
 	free(c);
+	return (0);
 }
 
 FILE *
