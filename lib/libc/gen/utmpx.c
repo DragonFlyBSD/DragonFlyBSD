@@ -129,7 +129,6 @@ setutxdb(utx_db_t db_type, char *fname)
 	if ((_open_db(fname)) == -1)
 		return -1;
 
-done:
 	dbtype = db_type;
 	return 0;
 }
