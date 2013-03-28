@@ -142,8 +142,6 @@ struct bnx_ring_data {
 	bus_addr_t		bnx_rx_jumbo_ring_paddr;
 	struct bge_rx_bd	*bnx_rx_return_ring;
 	bus_addr_t		bnx_rx_return_ring_paddr;
-	struct bge_tx_bd	*bnx_tx_ring;
-	bus_addr_t		bnx_tx_ring_paddr;
 	struct bge_status_block	*bnx_status_block;
 	bus_addr_t		bnx_status_block_paddr;
 	void			*bnx_jumbo_buf;
@@ -165,26 +163,39 @@ struct bnx_chain_data {
 	bus_dma_tag_t		bnx_rx_std_ring_tag;
 	bus_dma_tag_t		bnx_rx_jumbo_ring_tag;
 	bus_dma_tag_t		bnx_rx_return_ring_tag;
-	bus_dma_tag_t		bnx_tx_ring_tag;
 	bus_dma_tag_t		bnx_status_tag;
 	bus_dma_tag_t		bnx_jumbo_tag;
-	bus_dma_tag_t		bnx_tx_mtag;	/* TX mbuf DMA tag */
 	bus_dma_tag_t		bnx_rx_mtag;	/* RX mbuf DMA tag */
 	bus_dmamap_t		bnx_rx_tmpmap;
-	bus_dmamap_t		bnx_tx_dmamap[BGE_TX_RING_CNT];
 	bus_dmamap_t		bnx_rx_std_dmamap[BGE_STD_RX_RING_CNT];
 	bus_dmamap_t		bnx_rx_std_ring_map;
 	bus_dmamap_t		bnx_rx_jumbo_ring_map;
-	bus_dmamap_t		bnx_tx_ring_map;
 	bus_dmamap_t		bnx_rx_return_ring_map;
 	bus_dmamap_t		bnx_status_map;
 	bus_dmamap_t		bnx_jumbo_map;
-	struct mbuf		*bnx_tx_chain[BGE_TX_RING_CNT];
 	struct bnx_rxchain	bnx_rx_std_chain[BGE_STD_RX_RING_CNT];
 	struct bnx_rxchain	bnx_rx_jumbo_chain[BGE_JUMBO_RX_RING_CNT];
 	/* Stick the jumbo mem management stuff here too. */
 	struct bnx_jslot	bnx_jslots[BNX_JSLOTS];
 };
+
+struct bnx_tx_ring {
+	struct bnx_softc	*bnx_sc;
+	uint16_t		bnx_tx_saved_considx;
+	int			bnx_txcnt;
+	uint32_t		bnx_tx_prodidx;
+	int			bnx_tx_wreg;
+
+	struct bge_tx_bd	*bnx_tx_ring;
+
+	bus_dma_tag_t		bnx_tx_mtag;	/* TX mbuf DMA tag */
+	bus_dmamap_t		bnx_tx_dmamap[BGE_TX_RING_CNT];
+	struct mbuf		*bnx_tx_chain[BGE_TX_RING_CNT];
+
+	bus_dma_tag_t		bnx_tx_ring_tag;
+	bus_dmamap_t		bnx_tx_ring_map;
+	bus_addr_t		bnx_tx_ring_paddr;
+} __cachealign;
 
 struct bnx_softc {
 	struct arpcom		arpcom;		/* interface info */
@@ -219,7 +230,8 @@ struct bnx_softc {
 	uint32_t		bnx_chiprev;
 	struct bnx_ring_data	bnx_ldata;	/* rings */
 	struct bnx_chain_data	bnx_cdata;	/* mbufs */
-	uint16_t		bnx_tx_saved_considx;
+	int			bnx_tx_ringcnt;
+	struct bnx_tx_ring	*bnx_tx_ring;
 	uint16_t		bnx_rx_saved_considx;
 	uint16_t		bnx_std;	/* current std ring head */
 	uint16_t		bnx_jumbo;	/* current jumo ring head */
@@ -231,12 +243,9 @@ struct bnx_softc {
 	uint32_t		bnx_tx_coal_bds;
 	uint32_t		bnx_rx_coal_bds_int;
 	uint32_t		bnx_tx_coal_bds_int;
-	uint32_t		bnx_tx_prodidx;
-	int			bnx_tx_wreg;
 	uint32_t		bnx_mi_mode;
 	int			bnx_force_defrag;
 	int			bnx_if_flags;
-	int			bnx_txcnt;
 	int			bnx_link;
 	int			bnx_link_evt;
 	int			bnx_stat_cpuid;

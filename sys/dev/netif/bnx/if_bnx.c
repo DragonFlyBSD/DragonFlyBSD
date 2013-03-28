@@ -158,7 +158,7 @@ static void	bnx_msi_oneshot(void *);
 static void	bnx_intr(struct bnx_softc *);
 static void	bnx_enable_intr(struct bnx_softc *);
 static void	bnx_disable_intr(struct bnx_softc *);
-static void	bnx_txeof(struct bnx_softc *, uint16_t);
+static void	bnx_txeof(struct bnx_tx_ring *, uint16_t);
 static void	bnx_rxeof(struct bnx_softc *, uint16_t, int);
 
 static void	bnx_start(struct ifnet *, struct ifaltq_subque *);
@@ -184,8 +184,10 @@ static int	bnx_init_rx_ring_std(struct bnx_softc *);
 static void	bnx_free_rx_ring_std(struct bnx_softc *);
 static int	bnx_init_rx_ring_jumbo(struct bnx_softc *);
 static void	bnx_free_rx_ring_jumbo(struct bnx_softc *);
-static void	bnx_free_tx_ring(struct bnx_softc *);
-static int	bnx_init_tx_ring(struct bnx_softc *);
+static void	bnx_free_tx_ring(struct bnx_tx_ring *);
+static int	bnx_init_tx_ring(struct bnx_tx_ring *);
+static int	bnx_create_tx_ring(struct bnx_tx_ring *);
+static void	bnx_destroy_tx_ring(struct bnx_tx_ring *);
 static int	bnx_dma_alloc(struct bnx_softc *);
 static void	bnx_dma_free(struct bnx_softc *);
 static int	bnx_dma_block_alloc(struct bnx_softc *, bus_size_t,
@@ -193,9 +195,9 @@ static int	bnx_dma_block_alloc(struct bnx_softc *, bus_size_t,
 static void	bnx_dma_block_free(bus_dma_tag_t, bus_dmamap_t, void *);
 static struct mbuf *
 		bnx_defrag_shortdma(struct mbuf *);
-static int	bnx_encap(struct bnx_softc *, struct mbuf **,
-			uint32_t *, int *);
-static int	bnx_setup_tso(struct bnx_softc *, struct mbuf **,
+static int	bnx_encap(struct bnx_tx_ring *, struct mbuf **,
+		    uint32_t *, int *);
+static int	bnx_setup_tso(struct bnx_tx_ring *, struct mbuf **,
 		    uint16_t *, uint16_t *);
 
 static void	bnx_reset(struct bnx_softc *);
@@ -883,32 +885,33 @@ bnx_free_rx_ring_jumbo(struct bnx_softc *sc)
 }
 
 static void
-bnx_free_tx_ring(struct bnx_softc *sc)
+bnx_free_tx_ring(struct bnx_tx_ring *txr)
 {
 	int i;
 
 	for (i = 0; i < BGE_TX_RING_CNT; i++) {
-		if (sc->bnx_cdata.bnx_tx_chain[i] != NULL) {
-			bus_dmamap_unload(sc->bnx_cdata.bnx_tx_mtag,
-					  sc->bnx_cdata.bnx_tx_dmamap[i]);
-			m_freem(sc->bnx_cdata.bnx_tx_chain[i]);
-			sc->bnx_cdata.bnx_tx_chain[i] = NULL;
+		if (txr->bnx_tx_chain[i] != NULL) {
+			bus_dmamap_unload(txr->bnx_tx_mtag,
+			    txr->bnx_tx_dmamap[i]);
+			m_freem(txr->bnx_tx_chain[i]);
+			txr->bnx_tx_chain[i] = NULL;
 		}
-		bzero(&sc->bnx_ldata.bnx_tx_ring[i],
-		    sizeof(struct bge_tx_bd));
+		bzero(&txr->bnx_tx_ring[i], sizeof(struct bge_tx_bd));
 	}
+	txr->bnx_tx_saved_considx = BNX_TXCONS_UNSET;
 }
 
 static int
-bnx_init_tx_ring(struct bnx_softc *sc)
+bnx_init_tx_ring(struct bnx_tx_ring *txr)
 {
-	sc->bnx_txcnt = 0;
-	sc->bnx_tx_saved_considx = 0;
-	sc->bnx_tx_prodidx = 0;
+	txr->bnx_txcnt = 0;
+	txr->bnx_tx_saved_considx = 0;
+	txr->bnx_tx_prodidx = 0;
 
 	/* Initialize transmit producer index for host-memory send ring. */
-	bnx_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, sc->bnx_tx_prodidx);
-	bnx_writembx(sc, BGE_MBX_TX_NIC_PROD0_LO, 0);
+	bnx_writembx(txr->bnx_sc, BGE_MBX_TX_HOST_PROD0_LO,
+	    txr->bnx_tx_prodidx);
+	bnx_writembx(txr->bnx_sc, BGE_MBX_TX_NIC_PROD0_LO, 0);
 
 	return(0);
 }
@@ -1073,6 +1076,7 @@ bnx_chipinit(struct bnx_softc *sc)
 static int
 bnx_blockinit(struct bnx_softc *sc)
 {
+	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0];
 	struct bge_rcb *rcb;
 	bus_size_t vrcb;
 	bge_hostaddr taddr;
@@ -1296,7 +1300,7 @@ bnx_blockinit(struct bnx_softc *sc)
 
 	/* Configure send ring RCB 0 (we use only the first ring) */
 	vrcb = BGE_MEMWIN_START + BGE_SEND_RING_RCB;
-	BGE_HOSTADDR(taddr, sc->bnx_ldata.bnx_tx_ring_paddr);
+	BGE_HOSTADDR(taddr, txr->bnx_tx_ring_paddr);
 	RCB_WRITE_4(sc, vrcb, bge_hostaddr.bge_addr_hi, taddr.bge_addr_hi);
 	RCB_WRITE_4(sc, vrcb, bge_hostaddr.bge_addr_lo, taddr.bge_addr_lo);
 	if (BNX_IS_5717_PLUS(sc)) {
@@ -1852,6 +1856,9 @@ bnx_attach(device_t dev)
 		goto fail;
 	}
 
+	/* XXX */
+	sc->bnx_tx_ringcnt = 1;
+
 	error = bnx_dma_alloc(sc);
 	if (error)
 		goto fail;
@@ -1882,7 +1889,6 @@ bnx_attach(device_t dev)
 	sc->bnx_tx_coal_bds = BNX_TX_COAL_BDS_DEF;
 	sc->bnx_rx_coal_bds_int = BNX_RX_COAL_BDS_INT_DEF;
 	sc->bnx_tx_coal_bds_int = BNX_TX_COAL_BDS_INT_DEF;
-	sc->bnx_tx_wreg = BNX_TX_WREG_NSEGS;
 
 	/* Set up ifnet structure */
 	ifp->if_softc = sc;
@@ -2074,7 +2080,7 @@ bnx_attach(device_t dev)
 
 	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
-	    "tx_wreg", CTLFLAG_RW, &sc->bnx_tx_wreg, 0,
+	    "tx_wreg", CTLFLAG_RW, &sc->bnx_tx_ring[0].bnx_tx_wreg, 0,
 	    "# of segments before writing to hardware register");
 
 	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
@@ -2486,36 +2492,34 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 }
 
 static void
-bnx_txeof(struct bnx_softc *sc, uint16_t tx_cons)
+bnx_txeof(struct bnx_tx_ring *txr, uint16_t tx_cons)
 {
-	struct ifnet *ifp;
-
-	ifp = &sc->arpcom.ac_if;
+	struct ifnet *ifp = &txr->bnx_sc->arpcom.ac_if;
 
 	/*
 	 * Go through our tx ring and free mbufs for those
 	 * frames that have been sent.
 	 */
-	while (sc->bnx_tx_saved_considx != tx_cons) {
+	while (txr->bnx_tx_saved_considx != tx_cons) {
 		uint32_t idx = 0;
 
-		idx = sc->bnx_tx_saved_considx;
-		if (sc->bnx_cdata.bnx_tx_chain[idx] != NULL) {
+		idx = txr->bnx_tx_saved_considx;
+		if (txr->bnx_tx_chain[idx] != NULL) {
 			IFNET_STAT_INC(ifp, opackets, 1);
-			bus_dmamap_unload(sc->bnx_cdata.bnx_tx_mtag,
-			    sc->bnx_cdata.bnx_tx_dmamap[idx]);
-			m_freem(sc->bnx_cdata.bnx_tx_chain[idx]);
-			sc->bnx_cdata.bnx_tx_chain[idx] = NULL;
+			bus_dmamap_unload(txr->bnx_tx_mtag,
+			    txr->bnx_tx_dmamap[idx]);
+			m_freem(txr->bnx_tx_chain[idx]);
+			txr->bnx_tx_chain[idx] = NULL;
 		}
-		sc->bnx_txcnt--;
-		BNX_INC(sc->bnx_tx_saved_considx, BGE_TX_RING_CNT);
+		txr->bnx_txcnt--;
+		BNX_INC(txr->bnx_tx_saved_considx, BGE_TX_RING_CNT);
 	}
 
-	if ((BGE_TX_RING_CNT - sc->bnx_txcnt) >=
+	if ((BGE_TX_RING_CNT - txr->bnx_txcnt) >=
 	    (BNX_NSEG_RSVD + BNX_NSEG_SPARE))
 		ifq_clr_oactive(&ifp->if_snd);
 
-	if (sc->bnx_txcnt == 0)
+	if (txr->bnx_txcnt == 0)
 		ifp->if_timer = 0;
 
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -2552,6 +2556,7 @@ static void
 bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
 {
 	struct bnx_softc *sc = ifp->if_softc;
+	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
 	uint16_t rx_prod, tx_cons;
 
@@ -2579,8 +2584,8 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
 	if (sc->bnx_rx_saved_considx != rx_prod)
 		bnx_rxeof(sc, rx_prod, cycle);
 
-	if (sc->bnx_tx_saved_considx != tx_cons)
-		bnx_txeof(sc, tx_cons);
+	if (txr->bnx_tx_saved_considx != tx_cons)
+		bnx_txeof(txr, tx_cons);
 
 	if (sc->bnx_coal_chg)
 		bnx_coal_change(sc);
@@ -2652,11 +2657,13 @@ bnx_intr(struct bnx_softc *sc)
 		bnx_link_poll(sc);
 
 	if (ifp->if_flags & IFF_RUNNING) {
+		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
+
 		if (sc->bnx_rx_saved_considx != rx_prod)
 			bnx_rxeof(sc, rx_prod, -1);
 
-		if (sc->bnx_tx_saved_considx != tx_cons)
-			bnx_txeof(sc, tx_cons);
+		if (txr->bnx_tx_saved_considx != tx_cons)
+			bnx_txeof(txr, tx_cons);
 	}
 
 	bnx_writembx(sc, BGE_MBX_IRQ0_LO, sc->bnx_status_tag << 24);
@@ -2720,7 +2727,7 @@ bnx_stats_update_regs(struct bnx_softc *sc)
  * pointers to descriptors.
  */
 static int
-bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
+bnx_encap(struct bnx_tx_ring *txr, struct mbuf **m_head0, uint32_t *txidx,
     int *segs_used)
 {
 	struct bge_tx_bd *d = NULL;
@@ -2735,7 +2742,7 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
 		int tso_nsegs;
 #endif
 
-		error = bnx_setup_tso(sc, m_head0, &mss, &csum_flags);
+		error = bnx_setup_tso(txr, m_head0, &mss, &csum_flags);
 		if (error)
 			return error;
 		m_head = *m_head0;
@@ -2747,7 +2754,7 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
 			tso_nsegs = BNX_TSO_NSTATS - 1;
 		else if (tso_nsegs < 0)
 			tso_nsegs = 0;
-		sc->bnx_tsosegs[tso_nsegs]++;
+		txr->sc->bnx_tsosegs[tso_nsegs]++;
 #endif
 	} else if (m_head->m_pkthdr.csum_flags & BNX_CSUM_FEATURES) {
 		if (m_head->m_pkthdr.csum_flags & CSUM_IP)
@@ -2765,9 +2772,9 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
 	}
 
 	idx = *txidx;
-	map = sc->bnx_cdata.bnx_tx_dmamap[idx];
+	map = txr->bnx_tx_dmamap[idx];
 
-	maxsegs = (BGE_TX_RING_CNT - sc->bnx_txcnt) - BNX_NSEG_RSVD;
+	maxsegs = (BGE_TX_RING_CNT - txr->bnx_txcnt) - BNX_NSEG_RSVD;
 	KASSERT(maxsegs >= BNX_NSEG_SPARE,
 		("not enough segments %d", maxsegs));
 
@@ -2790,7 +2797,8 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
 			goto back;
 	}
 
-	if ((sc->bnx_flags & BNX_FLAG_SHORTDMA) && m_head->m_next != NULL) {
+	if ((txr->bnx_sc->bnx_flags & BNX_FLAG_SHORTDMA) &&
+	    m_head->m_next != NULL) {
 		m_new = bnx_defrag_shortdma(m_head);
 		if (m_new == NULL) {
 			error = ENOBUFS;
@@ -2799,7 +2807,7 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
 		*m_head0 = m_head = m_new;
 	}
 	if ((m_head->m_pkthdr.csum_flags & CSUM_TSO) == 0 &&
-	    sc->bnx_force_defrag && m_head->m_next != NULL) {
+	    txr->bnx_sc->bnx_force_defrag && m_head->m_next != NULL) {
 		/*
 		 * Forcefully defragment mbuf chain to overcome hardware
 		 * limitation which only support a single outstanding
@@ -2811,17 +2819,17 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
 			*m_head0 = m_head = m_new;
 	}
 
-	error = bus_dmamap_load_mbuf_defrag(sc->bnx_cdata.bnx_tx_mtag, map,
-			m_head0, segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+	error = bus_dmamap_load_mbuf_defrag(txr->bnx_tx_mtag, map,
+	    m_head0, segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error)
 		goto back;
 	*segs_used += nsegs;
 
 	m_head = *m_head0;
-	bus_dmamap_sync(sc->bnx_cdata.bnx_tx_mtag, map, BUS_DMASYNC_PREWRITE);
+	bus_dmamap_sync(txr->bnx_tx_mtag, map, BUS_DMASYNC_PREWRITE);
 
 	for (i = 0; ; i++) {
-		d = &sc->bnx_ldata.bnx_tx_ring[idx];
+		d = &txr->bnx_tx_ring[idx];
 
 		d->bge_addr.bge_addr_lo = BGE_ADDR_LO(segs[i].ds_addr);
 		d->bge_addr.bge_addr_hi = BGE_ADDR_HI(segs[i].ds_addr);
@@ -2841,10 +2849,10 @@ bnx_encap(struct bnx_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
 	 * Insure that the map for this transmission is placed at
 	 * the array index of the last descriptor in this chain.
 	 */
-	sc->bnx_cdata.bnx_tx_dmamap[*txidx] = sc->bnx_cdata.bnx_tx_dmamap[idx];
-	sc->bnx_cdata.bnx_tx_dmamap[idx] = map;
-	sc->bnx_cdata.bnx_tx_chain[idx] = m_head;
-	sc->bnx_txcnt += nsegs;
+	txr->bnx_tx_dmamap[*txidx] = txr->bnx_tx_dmamap[idx];
+	txr->bnx_tx_dmamap[idx] = map;
+	txr->bnx_tx_chain[idx] = m_head;
+	txr->bnx_txcnt += nsegs;
 
 	BNX_INC(idx, BGE_TX_RING_CNT);
 	*txidx = idx;
@@ -2864,6 +2872,7 @@ static void
 bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct bnx_softc *sc = ifp->if_softc;
+	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
 	struct mbuf *m_head = NULL;
 	uint32_t prodidx;
 	int nsegs = 0;
@@ -2873,16 +2882,16 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
 
-	prodidx = sc->bnx_tx_prodidx;
+	prodidx = txr->bnx_tx_prodidx;
 
-	while (sc->bnx_cdata.bnx_tx_chain[prodidx] == NULL) {
+	while (txr->bnx_tx_chain[prodidx] == NULL) {
 		/*
 		 * Sanity check: avoid coming within BGE_NSEG_RSVD
 		 * descriptors of the end of the ring.  Also make
 		 * sure there are BGE_NSEG_SPARE descriptors for
 		 * jumbo buffers' or TSO segments' defragmentation.
 		 */
-		if ((BGE_TX_RING_CNT - sc->bnx_txcnt) <
+		if ((BGE_TX_RING_CNT - txr->bnx_txcnt) <
 		    (BNX_NSEG_RSVD + BNX_NSEG_SPARE)) {
 			ifq_set_oactive(&ifp->if_snd);
 			break;
@@ -2897,15 +2906,16 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 * don't have room, set the OACTIVE flag and wait
 		 * for the NIC to drain the ring.
 		 */
-		if (bnx_encap(sc, &m_head, &prodidx, &nsegs)) {
+		if (bnx_encap(txr, &m_head, &prodidx, &nsegs)) {
 			ifq_set_oactive(&ifp->if_snd);
 			IFNET_STAT_INC(ifp, oerrors, 1);
 			break;
 		}
 
-		if (nsegs >= sc->bnx_tx_wreg) {
+		if (nsegs >= txr->bnx_tx_wreg) {
 			/* Transmit */
-			bnx_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
+			bnx_writembx(txr->bnx_sc, BGE_MBX_TX_HOST_PROD0_LO,
+			    prodidx);
 			nsegs = 0;
 		}
 
@@ -2919,9 +2929,9 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	if (nsegs > 0) {
 		/* Transmit */
-		bnx_writembx(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
+		bnx_writembx(txr->bnx_sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
 	}
-	sc->bnx_tx_prodidx = prodidx;
+	txr->bnx_tx_prodidx = prodidx;
 }
 
 static void
@@ -2931,6 +2941,7 @@ bnx_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t *m;
 	uint32_t mode;
+	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -2984,7 +2995,8 @@ bnx_init(void *xsc)
 	sc->bnx_rx_saved_considx = 0;
 
 	/* Init TX ring. */
-	bnx_init_tx_ring(sc);
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
+		bnx_init_tx_ring(&sc->bnx_tx_ring[i]);
 
 	/* Enable TX MAC state machine lockup fix. */
 	mode = CSR_READ_4(sc, BGE_TX_MODE);
@@ -3247,6 +3259,7 @@ static void
 bnx_stop(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -3297,13 +3310,12 @@ bnx_stop(struct bnx_softc *sc)
 		bnx_free_rx_ring_jumbo(sc);
 
 	/* Free TX buffers. */
-	bnx_free_tx_ring(sc);
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
+		bnx_free_tx_ring(&sc->bnx_tx_ring[i]);
 
 	sc->bnx_status_tag = 0;
 	sc->bnx_link = 0;
 	sc->bnx_coal_chg = 0;
-
-	sc->bnx_tx_saved_considx = BNX_TXCONS_UNSET;
 
 	ifp->if_flags &= ~IFF_RUNNING;
 	ifq_clr_oactive(&ifp->if_snd);
@@ -3386,13 +3398,11 @@ bnx_dma_free(struct bnx_softc *sc)
 		bus_dma_tag_destroy(sc->bnx_cdata.bnx_rx_mtag);
 	}
 
-	/* Destroy TX mbuf DMA stuffs. */
-	if (sc->bnx_cdata.bnx_tx_mtag != NULL) {
-		for (i = 0; i < BGE_TX_RING_CNT; i++) {
-			bus_dmamap_destroy(sc->bnx_cdata.bnx_tx_mtag,
-			    sc->bnx_cdata.bnx_tx_dmamap[i]);
-		}
-		bus_dma_tag_destroy(sc->bnx_cdata.bnx_tx_mtag);
+	/* Destroy TX rings */
+	if (sc->bnx_tx_ring != NULL) {
+		for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
+			bnx_destroy_tx_ring(&sc->bnx_tx_ring[i]);
+		kfree(sc->bnx_tx_ring, M_DEVBUF);
 	}
 
 	/* Destroy standard RX ring */
@@ -3408,11 +3418,6 @@ bnx_dma_free(struct bnx_softc *sc)
 			   sc->bnx_cdata.bnx_rx_return_ring_map,
 			   sc->bnx_ldata.bnx_rx_return_ring);
 
-	/* Destroy TX ring */
-	bnx_dma_block_free(sc->bnx_cdata.bnx_tx_ring_tag,
-			   sc->bnx_cdata.bnx_tx_ring_map,
-			   sc->bnx_ldata.bnx_tx_ring);
-
 	/* Destroy status block */
 	bnx_dma_block_free(sc->bnx_cdata.bnx_status_tag,
 			   sc->bnx_cdata.bnx_status_map,
@@ -3427,7 +3432,6 @@ static int
 bnx_dma_alloc(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	bus_size_t txmaxsz, txmaxsegsz;
 	int i, error;
 
 	/*
@@ -3492,48 +3496,6 @@ bnx_dma_alloc(struct bnx_softc *sc)
 	}
 
 	/*
-	 * Create DMA tag and maps for TX mbufs.
-	 */
-	if (sc->bnx_flags & BNX_FLAG_TSO)
-		txmaxsz = IP_MAXPACKET + sizeof(struct ether_vlan_header);
-	else
-		txmaxsz = BNX_JUMBO_FRAMELEN;
-	if (sc->bnx_asicrev == BGE_ASICREV_BCM57766)
-		txmaxsegsz = MCLBYTES;
-	else
-		txmaxsegsz = PAGE_SIZE;
-	error = bus_dma_tag_create(sc->bnx_cdata.bnx_parent_tag, 1, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   txmaxsz, BNX_NSEG_NEW, txmaxsegsz,
-				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
-				   BUS_DMA_ONEBPAGE,
-				   &sc->bnx_cdata.bnx_tx_mtag);
-	if (error) {
-		if_printf(ifp, "could not allocate TX mbuf dma tag\n");
-		return error;
-	}
-
-	for (i = 0; i < BGE_TX_RING_CNT; i++) {
-		error = bus_dmamap_create(sc->bnx_cdata.bnx_tx_mtag,
-					  BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
-					  &sc->bnx_cdata.bnx_tx_dmamap[i]);
-		if (error) {
-			int j;
-
-			for (j = 0; j < i; ++j) {
-				bus_dmamap_destroy(sc->bnx_cdata.bnx_tx_mtag,
-					sc->bnx_cdata.bnx_tx_dmamap[j]);
-			}
-			bus_dma_tag_destroy(sc->bnx_cdata.bnx_tx_mtag);
-			sc->bnx_cdata.bnx_tx_mtag = NULL;
-
-			if_printf(ifp, "could not create DMA map for TX\n");
-			return error;
-		}
-	}
-
-	/*
 	 * Create DMA stuffs for standard RX ring.
 	 */
 	error = bnx_dma_block_alloc(sc, BGE_STD_RX_RING_SZ,
@@ -3572,19 +3534,6 @@ bnx_dma_alloc(struct bnx_softc *sc)
 	}
 
 	/*
-	 * Create DMA stuffs for TX ring.
-	 */
-	error = bnx_dma_block_alloc(sc, BGE_TX_RING_SZ,
-				    &sc->bnx_cdata.bnx_tx_ring_tag,
-				    &sc->bnx_cdata.bnx_tx_ring_map,
-				    (void *)&sc->bnx_ldata.bnx_tx_ring,
-				    &sc->bnx_ldata.bnx_tx_ring_paddr);
-	if (error) {
-		if_printf(ifp, "could not create TX ring\n");
-		return error;
-	}
-
-	/*
 	 * Create DMA stuffs for status block.
 	 */
 	error = bnx_dma_block_alloc(sc, BGE_STATUS_BLK_SZ,
@@ -3595,6 +3544,21 @@ bnx_dma_alloc(struct bnx_softc *sc)
 	if (error) {
 		if_printf(ifp, "could not create status block\n");
 		return error;
+	}
+
+	sc->bnx_tx_ring = kmalloc_cachealign(
+	    sizeof(struct bnx_tx_ring) * sc->bnx_tx_ringcnt, M_DEVBUF,
+	    M_WAITOK | M_ZERO);
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
+		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
+
+		txr->bnx_sc = sc;
+		error = bnx_create_tx_ring(txr);
+		if (error) {
+			device_printf(sc->bnx_dev,
+			    "can't create %dth tx ring\n", i);
+			return error;
+		}
 	}
 
 	return 0;
@@ -3911,6 +3875,7 @@ static void
 bnx_intr_check(void *xsc)
 {
 	struct bnx_softc *sc = xsc;
+	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
 
@@ -3924,9 +3889,9 @@ bnx_intr_check(void *xsc)
 	}
 
 	if (sblk->bge_idx[0].bge_rx_prod_idx != sc->bnx_rx_saved_considx ||
-	    sblk->bge_idx[0].bge_tx_cons_idx != sc->bnx_tx_saved_considx) {
+	    sblk->bge_idx[0].bge_tx_cons_idx != txr->bnx_tx_saved_considx) {
 		if (sc->bnx_rx_check_considx == sc->bnx_rx_saved_considx &&
-		    sc->bnx_tx_check_considx == sc->bnx_tx_saved_considx) {
+		    sc->bnx_tx_check_considx == txr->bnx_tx_saved_considx) {
 			if (!sc->bnx_intr_maylose) {
 				sc->bnx_intr_maylose = TRUE;
 				goto done;
@@ -3938,7 +3903,7 @@ bnx_intr_check(void *xsc)
 	}
 	sc->bnx_intr_maylose = FALSE;
 	sc->bnx_rx_check_considx = sc->bnx_rx_saved_considx;
-	sc->bnx_tx_check_considx = sc->bnx_tx_saved_considx;
+	sc->bnx_tx_check_considx = txr->bnx_tx_saved_considx;
 
 done:
 	callout_reset(&sc->bnx_intr_timer, BNX_INTR_CKINTVL,
@@ -4180,7 +4145,7 @@ bnx_dma_swap_options(struct bnx_softc *sc)
 }
 
 static int
-bnx_setup_tso(struct bnx_softc *sc, struct mbuf **mp,
+bnx_setup_tso(struct bnx_tx_ring *txr, struct mbuf **mp,
     uint16_t *mss0, uint16_t *flags0)
 {
 	struct mbuf *m;
@@ -4225,4 +4190,88 @@ bnx_setup_tso(struct bnx_softc *sc, struct mbuf **mp,
 	*flags0 = flags;
 
 	return 0;
+}
+
+static int
+bnx_create_tx_ring(struct bnx_tx_ring *txr)
+{
+	bus_size_t txmaxsz, txmaxsegsz;
+	int i, error;
+
+	/*
+	 * Create DMA tag and maps for TX mbufs.
+	 */
+	if (txr->bnx_sc->bnx_flags & BNX_FLAG_TSO)
+		txmaxsz = IP_MAXPACKET + sizeof(struct ether_vlan_header);
+	else
+		txmaxsz = BNX_JUMBO_FRAMELEN;
+	if (txr->bnx_sc->bnx_asicrev == BGE_ASICREV_BCM57766)
+		txmaxsegsz = MCLBYTES;
+	else
+		txmaxsegsz = PAGE_SIZE;
+	error = bus_dma_tag_create(txr->bnx_sc->bnx_cdata.bnx_parent_tag,
+	    1, 0, BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    txmaxsz, BNX_NSEG_NEW, txmaxsegsz,
+	    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
+	    &txr->bnx_tx_mtag);
+	if (error) {
+		device_printf(txr->bnx_sc->bnx_dev,
+		    "could not allocate TX mbuf dma tag\n");
+		return error;
+	}
+
+	for (i = 0; i < BGE_TX_RING_CNT; i++) {
+		error = bus_dmamap_create(txr->bnx_tx_mtag,
+		    BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
+		    &txr->bnx_tx_dmamap[i]);
+		if (error) {
+			int j;
+
+			for (j = 0; j < i; ++j) {
+				bus_dmamap_destroy(txr->bnx_tx_mtag,
+					txr->bnx_tx_dmamap[j]);
+			}
+			bus_dma_tag_destroy(txr->bnx_tx_mtag);
+			txr->bnx_tx_mtag = NULL;
+
+			device_printf(txr->bnx_sc->bnx_dev,
+			    "could not create DMA map for TX\n");
+			return error;
+		}
+	}
+
+	/*
+	 * Create DMA stuffs for TX ring.
+	 */
+	error = bnx_dma_block_alloc(txr->bnx_sc, BGE_TX_RING_SZ,
+	    &txr->bnx_tx_ring_tag, &txr->bnx_tx_ring_map,
+	    (void *)&txr->bnx_tx_ring, &txr->bnx_tx_ring_paddr);
+	if (error) {
+		device_printf(txr->bnx_sc->bnx_dev,
+		    "could not create TX ring\n");
+		return error;
+	}
+
+	txr->bnx_tx_wreg = BNX_TX_WREG_NSEGS;
+
+	return 0;
+}
+
+static void
+bnx_destroy_tx_ring(struct bnx_tx_ring *txr)
+{
+	/* Destroy TX mbuf DMA stuffs. */
+	if (txr->bnx_tx_mtag != NULL) {
+		int i;
+
+		for (i = 0; i < BGE_TX_RING_CNT; i++) {
+			bus_dmamap_destroy(txr->bnx_tx_mtag,
+			    txr->bnx_tx_dmamap[i]);
+		}
+		bus_dma_tag_destroy(txr->bnx_tx_mtag);
+	}
+
+	/* Destroy TX ring */
+	bnx_dma_block_free(txr->bnx_tx_ring_tag,
+	    txr->bnx_tx_ring_map, txr->bnx_tx_ring);
 }
