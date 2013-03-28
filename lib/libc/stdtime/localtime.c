@@ -1444,7 +1444,6 @@ timesub(const time_t * const timep, const long offset,
 	int			idays;	/* unsigned would be so 2003 */
 	long			rem;
 	int			y;
-	int			yleap;
 	const int *		ip;
 	long			corr;
 	int			hit;

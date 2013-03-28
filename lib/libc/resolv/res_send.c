@@ -133,8 +133,6 @@ static const char rcsid[] = "$Id: res_send.c,v 1.18.10.1 2008/01/27 02:06:46 mar
 
 #if !defined(USE_POLL) && !defined(USE_KQUEUE)
 static const int highestFD = FD_SETSIZE - 1;
-#else
-static int highestFD = 0;
 #endif
 
 /* Forward. */
@@ -315,10 +313,6 @@ res_nsend(res_state statp,
 	int kq;
 #endif
 	char abuf[NI_MAXHOST];
-
-#ifdef USE_POLL 
-	highestFD = sysconf(_SC_OPEN_MAX) - 1;
-#endif
 
 	/* No name servers or res_init() failure */
 	if (statp->nscount == 0 || EXT(statp).ext == NULL) {
