@@ -30,7 +30,6 @@
  * @(#)xdr.c	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: xdr.c,v 1.22 2000/07/06 03:10:35 christos Exp $
  * $FreeBSD: src/lib/libc/xdr/xdr.c,v 1.14 2004/10/16 06:32:43 obrien Exp $
- * $DragonFly: src/lib/libc/xdr/xdr.c,v 1.4 2005/12/05 00:47:57 swildner Exp $
  */
 
 /*
@@ -246,6 +245,36 @@ xdr_u_int32_t(XDR *xdrs, u_int32_t *u_int32_p)
 	return (FALSE);
 }
 
+/*
+ * XDR unsigned 32-bit integers
+ * same as xdr_int32_t - open coded to save a proc call!
+ */
+bool_t
+xdr_uint32_t(xdrs, u_int32_p)
+	XDR *xdrs;
+	uint32_t *u_int32_p;
+{
+	u_long l;
+
+	switch (xdrs->x_op) {
+
+	case XDR_ENCODE:
+		l = (u_long) *u_int32_p;
+		return (XDR_PUTLONG(xdrs, (long *)&l));
+
+	case XDR_DECODE:
+		if (!XDR_GETLONG(xdrs, (long *)&l)) {
+			return (FALSE);
+		}
+		*u_int32_p = (u_int32_t) l;
+		return (TRUE);
+
+	case XDR_FREE:
+		return (TRUE);
+	}
+	/* NOTREACHED */
+	return (FALSE);
+}
 
 /*
  * XDR short integers
@@ -748,6 +777,36 @@ xdr_u_int64_t(XDR *xdrs, u_int64_t *ullp)
 			return (FALSE);
 		*ullp = (u_int64_t)
 		    (((u_int64_t)ul[0] << 32) | ((u_int64_t)ul[1]));
+		return (TRUE);
+	case XDR_FREE:
+		return (TRUE);
+	}
+	/* NOTREACHED */
+	return (FALSE);
+}
+
+/*
+ * XDR unsigned 64-bit integers
+ */
+bool_t
+xdr_uint64_t(XDR *xdrs, uint64_t *ullp)
+{
+	u_long ul[2];
+
+	switch (xdrs->x_op) {
+	case XDR_ENCODE:
+		ul[0] = (u_long)(*ullp >> 32) & 0xffffffff;
+		ul[1] = (u_long)(*ullp) & 0xffffffff;
+		if (XDR_PUTLONG(xdrs, (long *)&ul[0]) == FALSE)
+			return (FALSE);
+		return (XDR_PUTLONG(xdrs, (long *)&ul[1]));
+	case XDR_DECODE:
+		if (XDR_GETLONG(xdrs, (long *)&ul[0]) == FALSE)
+			return (FALSE);
+		if (XDR_GETLONG(xdrs, (long *)&ul[1]) == FALSE)
+			return (FALSE);
+		*ullp = (uint64_t)
+		    (((uint64_t)ul[0] << 32) | ((uint64_t)ul[1]));
 		return (TRUE);
 	case XDR_FREE:
 		return (TRUE);
