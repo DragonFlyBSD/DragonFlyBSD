@@ -1830,25 +1830,6 @@ bnx_attach(device_t dev)
 	if (sc->bnx_chipid == BGE_CHIPID_BCM5762_A0)
 		mii_priv |= BRGPHY_FLAG_5762_A0;
 
-	/*
-	 * Allocate interrupt
-	 */
-	sc->bnx_irq_type = pci_alloc_1intr(dev, bnx_msi_enable, &sc->bnx_irq_rid,
-	    &intr_flags);
-
-	sc->bnx_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->bnx_irq_rid,
-	    intr_flags);
-	if (sc->bnx_irq == NULL) {
-		device_printf(dev, "couldn't map interrupt\n");
-		error = ENXIO;
-		goto fail;
-	}
-
-	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI) {
-		sc->bnx_flags |= BNX_FLAG_ONESHOT_MSI;
-		bnx_enable_msi(sc);
-	}
-
 	/* Initialize if_name earlier, so if_printf could be used */
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -1881,6 +1862,25 @@ bnx_attach(device_t dev)
 	error = bnx_dma_alloc(sc);
 	if (error)
 		goto fail;
+
+	/*
+	 * Allocate interrupt
+	 */
+	sc->bnx_irq_type = pci_alloc_1intr(dev, bnx_msi_enable, &sc->bnx_irq_rid,
+	    &intr_flags);
+
+	sc->bnx_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->bnx_irq_rid,
+	    intr_flags);
+	if (sc->bnx_irq == NULL) {
+		device_printf(dev, "couldn't map interrupt\n");
+		error = ENXIO;
+		goto fail;
+	}
+
+	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI) {
+		sc->bnx_flags |= BNX_FLAG_ONESHOT_MSI;
+		bnx_enable_msi(sc);
+	}
 
 	/* Set default tuneable values. */
 	sc->bnx_rx_coal_ticks = BNX_RX_COAL_TICKS_DEF;
