@@ -968,7 +968,7 @@ struct valuelist {
 static struct valuelist *servicelist, *protolist;
 
 static void
-res_buildservicelist() {
+res_buildservicelist(void) {
 	struct servent *sp;
 	struct valuelist *slp;
 

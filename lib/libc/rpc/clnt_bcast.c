@@ -222,19 +222,19 @@ __rpc_broadenable(int af, int s, struct broadif *bip)
 
 
 enum clnt_stat
-rpc_broadcast_exp(prog, vers, proc, xargs, argsp, xresults, resultsp,
-	eachresult, inittime, waittime, nettype)
-	rpcprog_t	prog;		/* program number */
-	rpcvers_t	vers;		/* version number */
-	rpcproc_t	proc;		/* procedure number */
-	xdrproc_t	xargs;		/* xdr routine for args */
-	caddr_t		argsp;		/* pointer to args */
-	xdrproc_t	xresults;	/* xdr routine for results */
-	caddr_t		resultsp;	/* pointer to results */
-	resultproc_t	eachresult;	/* call with each result obtained */
-	int 		inittime;	/* how long to wait initially */
-	int 		waittime;	/* maximum time to wait */
-	const char		*nettype;	/* transport type */
+rpc_broadcast_exp(
+    rpcprog_t		prog,		/* program number */
+    rpcvers_t		vers,		/* version number */
+    rpcproc_t		proc,		/* procedure number */
+    xdrproc_t		xargs,		/* xdr routine for args */
+    caddr_t		argsp,		/* pointer to args */
+    xdrproc_t		xresults,	/* xdr routine for results */
+    caddr_t		resultsp,	/* pointer to results */
+    resultproc_t	eachresult,	/* call with each result obtained */
+    int 		inittime,	/* how long to wait initially */
+    int			waittime,	/* maximum time to wait */
+    const char 		*nettype	/* transport type */
+)
 {
 	enum clnt_stat	stat = RPC_SUCCESS; /* Return status */
 	XDR 		xdr_stream; /* XDR stream */
@@ -646,17 +646,17 @@ done_broad:
 
 
 enum clnt_stat
-rpc_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp,
-			eachresult, nettype)
-	rpcprog_t	prog;		/* program number */
-	rpcvers_t	vers;		/* version number */
-	rpcproc_t	proc;		/* procedure number */
-	xdrproc_t	xargs;		/* xdr routine for args */
-	caddr_t		argsp;		/* pointer to args */
-	xdrproc_t	xresults;	/* xdr routine for results */
-	caddr_t		resultsp;	/* pointer to results */
-	resultproc_t	eachresult;	/* call with each result obtained */
-	const char		*nettype;	/* transport type */
+rpc_broadcast(
+    rpcprog_t		prog,		/* program number */
+    rpcvers_t		vers,		/* version number */
+    rpcproc_t		proc,		/* procedure number */
+    xdrproc_t		xargs,		/* xdr routine for args */
+    caddr_t		argsp,		/* pointer to args */
+    xdrproc_t		xresults,	/* xdr routine for results */
+    caddr_t		resultsp,	/* pointer to results */
+    resultproc_t	eachresult,	/* call with each result obtained */
+    const char 		*nettype	/* transport type */
+)
 {
 	enum clnt_stat	dummy;
 

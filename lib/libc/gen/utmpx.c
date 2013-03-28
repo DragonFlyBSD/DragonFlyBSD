@@ -135,7 +135,7 @@ done:
 }
 
 void
-setutxent()
+setutxent(void)
 {
 	(void)memset(&ut, 0, sizeof(ut));
 	if (fp == NULL)
@@ -149,7 +149,7 @@ setutxent()
 }
 
 void
-endutxent()
+endutxent(void)
 {
 	(void)memset(&ut, 0, sizeof(ut));
 
@@ -161,7 +161,7 @@ endutxent()
 }
 
 struct utmpx *
-getutxent()
+getutxent(void)
 {
 	if (fp == NULL) {
 		if ((_open_db(utfile)) == -1)

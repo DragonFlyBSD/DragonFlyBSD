@@ -49,8 +49,7 @@ static const char sccsid[] = "@(#)inet_lnaof.c	8.1 (Berkeley) 6/4/93";
  * number formats.
  */
 in_addr_t
-inet_lnaof(in)
-	struct in_addr in;
+inet_lnaof(struct in_addr in)
 {
 	in_addr_t i = ntohl(in.s_addr);
 

@@ -48,8 +48,7 @@ static const char sccsid[] = "@(#)inet_netof.c	8.1 (Berkeley) 6/4/93";
  * address; handles class a/b/c network #'s.
  */
 in_addr_t
-inet_netof(in)
-	struct in_addr in;
+inet_netof(struct in_addr in)
 {
 	in_addr_t i = ntohl(in.s_addr);
 	

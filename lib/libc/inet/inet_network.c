@@ -50,8 +50,7 @@ static const char sccsid[] = "@(#)inet_network.c	8.1 (Berkeley) 6/4/93";
  * network numbers.
  */
 in_addr_t
-inet_network(cp)
-	const char *cp;
+inet_network(const char *cp)
 {
 	in_addr_t val, base, n;
 	char c;
