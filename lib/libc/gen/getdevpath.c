@@ -124,7 +124,7 @@ finddevlabel(char **pathp, const char *devname)
 		 */
 		ptr1 = strchr(prefix, ':');
 		len = (ptr1) ? (size_t)(ptr1 - prefix) : strlen(prefix);
-		asprintf(&dtpath, "%*.*s/devtab", len, len, prefix);
+		asprintf(&dtpath, "%*.*s/devtab", (int)len, (int)len, prefix);
 
 		/*
 		 * Each devtab file

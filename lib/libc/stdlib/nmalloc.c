@@ -602,7 +602,7 @@ zoneindex(size_t *bytes, size_t *chunking)
 		return(n / 2048 + 63);
 	}
 #endif
-	_mpanic("Unexpected byte count %d", n);
+	_mpanic("Unexpected byte count %zu", n);
 	return(0);
 }
 
