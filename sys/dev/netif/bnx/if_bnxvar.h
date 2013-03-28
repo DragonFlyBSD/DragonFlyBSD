@@ -221,7 +221,6 @@ struct bnx_softc {
 	struct bnx_chain_data	bnx_cdata;	/* mbufs */
 	uint16_t		bnx_tx_saved_considx;
 	uint16_t		bnx_rx_saved_considx;
-	uint16_t		bnx_return_ring_cnt;
 	uint16_t		bnx_std;	/* current std ring head */
 	uint16_t		bnx_jumbo;	/* current jumo ring head */
 	SLIST_HEAD(__bnx_jfreehead, bnx_jslot)	bnx_jfree_listhead;
@@ -297,5 +296,8 @@ struct bnx_softc {
 
 /* Number of segments sent before writing to TX related registers */
 #define BNX_TX_WREG_NSEGS	8
+
+/* Return ring descriptor count */
+#define BNX_RETURN_RING_CNT	512
 
 #endif	/* !_IF_BNXVAR_H_ */

@@ -1346,7 +1346,7 @@ bnx_blockinit(struct bnx_softc *sc)
 	RCB_WRITE_4(sc, vrcb, bge_hostaddr.bge_addr_lo, taddr.bge_addr_lo);
 	RCB_WRITE_4(sc, vrcb, bge_nicaddr, 0);
 	RCB_WRITE_4(sc, vrcb, bge_maxlen_flags,
-	    BGE_RCB_MAXLEN_FLAGS(sc->bnx_return_ring_cnt, 0));
+	    BGE_RCB_MAXLEN_FLAGS(BNX_RETURN_RING_CNT, 0));
 
 	/* Set random backoff seed for TX */
 	CSR_WRITE_4(sc, BGE_TX_RANDOM_BACKOFF,
@@ -1850,13 +1850,6 @@ bnx_attach(device_t dev)
 	if (error) {
 		device_printf(dev, "failed to read station address\n");
 		goto fail;
-	}
-
-	if (BNX_IS_57765_PLUS(sc)) {
-		sc->bnx_return_ring_cnt = BGE_RETURN_RING_CNT;
-	} else {
-		/* 5705/5750 limits RX return ring to 512 entries. */
-		sc->bnx_return_ring_cnt = BGE_RETURN_RING_CNT_5705;
 	}
 
 	error = bnx_dma_alloc(sc);
@@ -2397,7 +2390,7 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 	    &sc->bnx_ldata.bnx_rx_return_ring[sc->bnx_rx_saved_considx];
 
 		rxidx = cur_rx->bge_idx;
-		BNX_INC(sc->bnx_rx_saved_considx, sc->bnx_return_ring_cnt);
+		BNX_INC(sc->bnx_rx_saved_considx, BNX_RETURN_RING_CNT);
 
 		if (cur_rx->bge_flags & BGE_RXBDFLAG_VLAN_TAG) {
 			have_tag = 1;
@@ -3568,7 +3561,7 @@ bnx_dma_alloc(struct bnx_softc *sc)
 	 * Create DMA stuffs for RX return ring.
 	 */
 	error = bnx_dma_block_alloc(sc,
-	    BGE_RX_RTN_RING_SZ(sc->bnx_return_ring_cnt),
+	    BGE_RX_RTN_RING_SZ(BNX_RETURN_RING_CNT),
 	    &sc->bnx_cdata.bnx_rx_return_ring_tag,
 	    &sc->bnx_cdata.bnx_rx_return_ring_map,
 	    (void *)&sc->bnx_ldata.bnx_rx_return_ring,
