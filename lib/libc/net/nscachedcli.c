@@ -73,7 +73,8 @@ safe_write(struct cached_connection_ *connection, const void *data,
 		nevents = _kevent(connection->write_queue, NULL, 0, &eventlist,
 		    1, &timeout);
 		if ((nevents == 1) && (eventlist.filter == EVFILT_WRITE)) {
-			s_result = _write(connection->sockfd, data + result,
+			s_result = _write(connection->sockfd,
+			    (char *)data + result,
 			    eventlist.data < data_size - result ?
 			    eventlist.data : data_size - result);
 			if (s_result == -1)
@@ -115,7 +116,8 @@ safe_read(struct cached_connection_ *connection, void *data, size_t data_size)
 		nevents = _kevent(connection->read_queue, NULL, 0, &eventlist,
 		    1, &timeout);
 		if (nevents == 1 && eventlist.filter == EVFILT_READ) {
-			s_result = _read(connection->sockfd, data + result,
+			s_result = _read(connection->sockfd,
+			    (char *)data + result,
 			    eventlist.data <= data_size - result ?
 			    eventlist.data : data_size - result);
 			if (s_result == -1)
