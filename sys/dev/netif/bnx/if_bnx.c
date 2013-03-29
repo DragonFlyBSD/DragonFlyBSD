@@ -2756,7 +2756,7 @@ bnx_encap(struct bnx_tx_ring *txr, struct mbuf **m_head0, uint32_t *txidx,
 			tso_nsegs = BNX_TSO_NSTATS - 1;
 		else if (tso_nsegs < 0)
 			tso_nsegs = 0;
-		txr->sc->bnx_tsosegs[tso_nsegs]++;
+		txr->bnx_sc->bnx_tsosegs[tso_nsegs]++;
 #endif
 	} else if (m_head->m_pkthdr.csum_flags & BNX_CSUM_FEATURES) {
 		if (m_head->m_pkthdr.csum_flags & CSUM_IP)
