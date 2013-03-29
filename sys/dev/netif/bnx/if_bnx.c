@@ -1781,7 +1781,6 @@ bnx_attach(device_t dev)
 		sc->bnx_flags |= BNX_FLAG_57765_FAMILY | BNX_FLAG_57765_PLUS;
 		break;
 	}
-	sc->bnx_flags |= BNX_FLAG_SHORTDMA;
 
 	sc->bnx_flags |= BNX_FLAG_TSO;
 	if (sc->bnx_asicrev == BGE_ASICREV_BCM5719 &&
@@ -2796,7 +2795,7 @@ bnx_encap(struct bnx_tx_ring *txr, struct mbuf **m_head0, uint32_t *txidx,
 			goto back;
 	}
 
-	if ((txr->bnx_sc->bnx_flags & BNX_FLAG_SHORTDMA) &&
+	if ((txr->bnx_tx_flags & BNX_TX_FLAG_SHORTDMA) &&
 	    m_head->m_next != NULL) {
 		m_new = bnx_defrag_shortdma(m_head);
 		if (m_new == NULL) {
@@ -4251,6 +4250,7 @@ bnx_create_tx_ring(struct bnx_tx_ring *txr)
 		return error;
 	}
 
+	txr->bnx_tx_flags |= BNX_TX_FLAG_SHORTDMA;
 	txr->bnx_tx_wreg = BNX_TX_WREG_NSEGS;
 
 	return 0;

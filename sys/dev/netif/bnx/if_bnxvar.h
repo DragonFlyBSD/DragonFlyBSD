@@ -181,6 +181,8 @@ struct bnx_chain_data {
 
 struct bnx_tx_ring {
 	struct bnx_softc	*bnx_sc;
+	uint16_t		bnx_tx_flags;
+#define BNX_TX_FLAG_SHORTDMA	0x0001
 	uint16_t		bnx_tx_saved_considx;
 	int			bnx_txcnt;
 	uint32_t		bnx_tx_prodidx;
@@ -223,7 +225,6 @@ struct bnx_softc {
 #define BNX_FLAG_STATUSTAG_BUG	0x00000100
 #define BNX_FLAG_TSO		0x00000200
 #define BNX_FLAG_NO_EEPROM	0x10000000
-#define BNX_FLAG_SHORTDMA	0x40000000
 
 	uint32_t		bnx_chipid;
 	uint32_t		bnx_asicrev;
