@@ -30,7 +30,6 @@
  * @(#)svc_raw.c	1.16	94/04/24 SMI
  * $NetBSD: svc_raw.c,v 1.14 2000/07/06 03:10:35 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/svc_raw.c,v 1.15 2006/02/27 22:10:59 deischen Exp $
- * $DragonFly: src/lib/libc/rpc/svc_raw.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc.
@@ -110,14 +109,14 @@ svc_raw_create(void)
 
 /*ARGSUSED*/
 static enum xprt_stat
-svc_raw_stat(SVCXPRT *xprt)
+svc_raw_stat(SVCXPRT *xprt __unused)
 {
 	return (XPRT_IDLE);
 }
 
 /*ARGSUSED*/
 static bool_t
-svc_raw_recv(SVCXPRT *xprt, struct rpc_msg *msg)
+svc_raw_recv(SVCXPRT *xprt __unused, struct rpc_msg *msg)
 {
 	struct svc_raw_private *srp;
 	XDR *xdrs;
@@ -141,7 +140,7 @@ svc_raw_recv(SVCXPRT *xprt, struct rpc_msg *msg)
 
 /*ARGSUSED*/
 static bool_t
-svc_raw_reply(SVCXPRT *xprt, struct rpc_msg *msg)
+svc_raw_reply(SVCXPRT *xprt __unused, struct rpc_msg *msg)
 {
 	struct svc_raw_private *srp;
 	XDR *xdrs;
@@ -166,7 +165,7 @@ svc_raw_reply(SVCXPRT *xprt, struct rpc_msg *msg)
 
 /*ARGSUSED*/
 static bool_t
-svc_raw_getargs(SVCXPRT *xprt, xdrproc_t xdr_args, void *args_ptr)
+svc_raw_getargs(SVCXPRT *xprt __unused, xdrproc_t xdr_args, void *args_ptr)
 {
 	struct svc_raw_private *srp;
 
@@ -182,7 +181,7 @@ svc_raw_getargs(SVCXPRT *xprt, xdrproc_t xdr_args, void *args_ptr)
 
 /*ARGSUSED*/
 static bool_t
-svc_raw_freeargs(SVCXPRT *xprt, xdrproc_t xdr_args, void *args_ptr)
+svc_raw_freeargs(SVCXPRT *xprt __unused, xdrproc_t xdr_args, void *args_ptr)
 {
 	struct svc_raw_private *srp;
 	XDR *xdrs;
@@ -202,13 +201,14 @@ svc_raw_freeargs(SVCXPRT *xprt, xdrproc_t xdr_args, void *args_ptr)
 
 /*ARGSUSED*/
 static void
-svc_raw_destroy(SVCXPRT *xprt)
+svc_raw_destroy(SVCXPRT *xprt __unused)
 {
 }
 
 /*ARGSUSED*/
 static bool_t
-svc_raw_control(SVCXPRT *xprt, const u_int rq, void *in)
+svc_raw_control(SVCXPRT *xprt __unused, const u_int rq __unused,
+    void *in __unused)
 {
 	return (FALSE);
 }

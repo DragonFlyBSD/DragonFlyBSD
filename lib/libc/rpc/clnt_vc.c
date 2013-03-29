@@ -466,7 +466,7 @@ clnt_vc_freeres(CLIENT *cl, xdrproc_t xdr_res, void *res_ptr)
 
 /*ARGSUSED*/
 static void
-clnt_vc_abort(CLIENT *cl)
+clnt_vc_abort(CLIENT *cl __unused)
 {
 }
 

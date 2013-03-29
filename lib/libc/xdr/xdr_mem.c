@@ -108,7 +108,7 @@ xdrmem_create(XDR *xdrs, char *addr, u_int size, enum xdr_op op)
 
 /*ARGSUSED*/
 static void
-xdrmem_destroy(XDR *xdrs)
+xdrmem_destroy(XDR *xdrs __unused)
 {
 
 }

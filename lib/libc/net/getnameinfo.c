@@ -332,7 +332,8 @@ ip6_parsenumeric(const struct sockaddr *sa, const char *addr, char *host,
 
 /* ARGSUSED */
 static int
-ip6_sa2str(const struct sockaddr_in6 *sa6, char *buf, size_t bufsiz, int flags)
+ip6_sa2str(const struct sockaddr_in6 *sa6, char *buf, size_t bufsiz,
+	   int flags __unused)
 {
 	unsigned int ifindex;
 	const struct in6_addr *a6;
@@ -376,8 +377,9 @@ ip6_sa2str(const struct sockaddr_in6 *sa6, char *buf, size_t bufsiz, int flags)
  */
 /* ARGSUSED */
 static int
-getnameinfo_link(const struct sockaddr *sa, socklen_t salen, char *host,
-		 size_t hostlen, char *serv, size_t servlen, int flags)
+getnameinfo_link(const struct sockaddr *sa, socklen_t salen __unused,
+		 char *host, size_t hostlen, char *serv, size_t servlen,
+		 int flags __unused)
 {
 	const struct sockaddr_dl *sdl =
 	    (const struct sockaddr_dl *)(const void *)sa;

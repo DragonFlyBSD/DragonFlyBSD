@@ -555,7 +555,7 @@ clnt_dg_freeres(CLIENT *cl, xdrproc_t xdr_res, void *res_ptr)
 
 /*ARGSUSED*/
 static void
-clnt_dg_abort(CLIENT *h)
+clnt_dg_abort(CLIENT *h __unused)
 {
 }
 

@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_stdenc.c,v 1.3 2005/10/29 18:02:04 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_stdenc.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -50,10 +49,10 @@ struct _citrus_stdenc _citrus_stdenc_default = {
 
 static int
 /*ARGSUSED*/
-get_state_desc_default(struct _citrus_stdenc * __restrict ce,
-		       void * __restrict ps,
-		       int id,
-		       struct _citrus_stdenc_state_desc * __restrict d)
+get_state_desc_default(struct _citrus_stdenc * __restrict ce __unused,
+		       void * __restrict ps __unused,
+		       int id __unused,
+		       struct _citrus_stdenc_state_desc * __restrict d __unused)
 {
 	return EOPNOTSUPP;
 }

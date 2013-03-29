@@ -48,7 +48,6 @@
  *
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/getnetbydns.c,v 1.34 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/getnetbydns.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 /* Portions Copyright (c) 1993 Carlos Leandro and Rui Salgueiro
  *	Dep. Matematica Universidade de Coimbra, Portugal, Europe
@@ -258,7 +257,7 @@ getnetanswer(querybuf *answer, int anslen, int net_i, struct netent *ne,
 }
 
 int
-_dns_getnetbyaddr(void *rval, void *cb_data, va_list ap)
+_dns_getnetbyaddr(void *rval, void *cb_data __unused, va_list ap)
 {
 	uint32_t net;
 	int net_type;
@@ -364,7 +363,7 @@ _dns_getnetbyaddr(void *rval, void *cb_data, va_list ap)
 }
 
 int
-_dns_getnetbyname(void *rval, void *cb_data, va_list ap)
+_dns_getnetbyname(void *rval, void *cb_data __unused, va_list ap)
 {
 	const char *net;
 	char *buffer;

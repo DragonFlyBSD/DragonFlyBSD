@@ -356,7 +356,7 @@ again:
 
 /*ARGSUSED*/
 static enum xprt_stat
-rendezvous_stat(SVCXPRT *xprt)
+rendezvous_stat(SVCXPRT *xprt __unused)
 {
 
 	return (XPRT_IDLE);
@@ -404,7 +404,8 @@ __svc_vc_dodestroy(SVCXPRT *xprt)
 
 /*ARGSUSED*/
 static bool_t
-svc_vc_control(SVCXPRT *xprt, const u_int rq, void *in)
+svc_vc_control(SVCXPRT *xprt __unused, const u_int rq __unused,
+    void *in __unused)
 {
 	return (FALSE);
 }

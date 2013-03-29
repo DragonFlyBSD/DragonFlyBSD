@@ -1,5 +1,4 @@
 /* $NetBSD: src/lib/libc/citrus/modules/citrus_mapper_serial.c,v 1.2 2003/07/12 15:39:20 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_mapper_serial.c,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -165,7 +164,7 @@ static int
 /*ARGSUSED*/
 _citrus_mapper_serial_mapper_init(struct _citrus_mapper_area *__restrict ma,
 				  struct _citrus_mapper * __restrict cm,
-				  const char * __restrict dir,
+				  const char * __restrict dir __unused,
 				  const void * __restrict var, size_t lenvar,
 				  struct _citrus_mapper_traits * __restrict mt,
 				  size_t lenmt)
@@ -211,7 +210,7 @@ static int
 /*ARGSUSED*/
 _citrus_mapper_serial_mapper_convert(struct _citrus_mapper * __restrict cm,
 				     _index_t * __restrict dst, _index_t src,
-				     void * __restrict ps)
+				     void * __restrict ps __unused)
 {
 	int ret;
 	struct _citrus_mapper_serial *sr;
@@ -233,7 +232,7 @@ static int
 /*ARGSUSED*/
 _citrus_mapper_parallel_mapper_convert(struct _citrus_mapper * __restrict cm,
 				       _index_t * __restrict dst, _index_t src,
-				       void * __restrict ps)
+				       void * __restrict ps __unused)
 {
 	int ret;
 	struct _citrus_mapper_serial *sr;
@@ -256,7 +255,7 @@ _citrus_mapper_parallel_mapper_convert(struct _citrus_mapper * __restrict cm,
 
 static void
 /*ARGSUSED*/
-_citrus_mapper_serial_mapper_init_state(struct _citrus_mapper * __restrict cm,
-					void * __restrict ps)
+_citrus_mapper_serial_mapper_init_state(struct _citrus_mapper * __restrict cm __unused,
+					void * __restrict ps __unused)
 {
 }

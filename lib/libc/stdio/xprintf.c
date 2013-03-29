@@ -191,7 +191,7 @@ __printf_render_pct(struct __printf_io *io,
 /* 'n' ---------------------------------------------------------------*/
 
 static int
-__printf_arginfo_n(const struct printf_info *pi, size_t n, int *argt)
+__printf_arginfo_n(const struct printf_info *pi __unused, size_t n, int *argt)
 {
 
 	assert(n >= 1);

@@ -176,7 +176,7 @@ dl_iterate_phdr(int (*callback)(struct dl_phdr_info *, size_t, void *),
 
 #pragma weak fdlopen
 void *
-fdlopen(int fd, int mode)
+fdlopen(int fd __unused, int mode __unused)
 {
         _rtld_error(sorry);
         return NULL;
@@ -184,7 +184,8 @@ fdlopen(int fd, int mode)
 
 #pragma weak _rtld_addr_phdr
 int
-_rtld_addr_phdr(const void *addr, struct dl_phdr_info *phdr_info)
+_rtld_addr_phdr(const void *addr __unused,
+		struct dl_phdr_info *phdr_info __unused)
 {
 
 	return (0);

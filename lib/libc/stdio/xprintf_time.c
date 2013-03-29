@@ -43,7 +43,8 @@
 #include "printf.h"
 
 int
-__printf_arginfo_time(const struct printf_info *pi, size_t n, int *argt)
+__printf_arginfo_time(const struct printf_info *pi __unused, size_t n,
+		      int *argt)
 {
 
 	assert(n >= 1);

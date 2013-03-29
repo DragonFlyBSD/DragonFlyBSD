@@ -29,7 +29,6 @@
  * @(#)svc_auth_unix.c 1.28 88/02/08 Copyr 1984 Sun Micro
  * @(#)svc_auth_unix.c	2.3 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_auth_unix.c,v 1.11 2004/10/16 06:11:35 obrien Exp $
- * $DragonFly: src/lib/libc/rpc/svc_auth_unix.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -144,7 +143,7 @@ done:
  */
 /*ARGSUSED*/
 enum auth_stat
-_svcauth_short(struct svc_req *rqst, struct rpc_msg *msg)
+_svcauth_short(struct svc_req *rqst __unused, struct rpc_msg *msg __unused)
 {
 	return (AUTH_REJECTEDCRED);
 }

@@ -516,8 +516,8 @@ _citrus_NONE_stdenc_put_state_reset(struct _citrus_stdenc * __restrict ce __unus
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_stdenc_get_state_desc(struct _stdenc * __restrict ce,
-				   void * __restrict ps,
+_citrus_NONE_stdenc_get_state_desc(struct _stdenc * __restrict ce __unused,
+				   void * __restrict ps __unused,
 				   int id,
 				   struct _stdenc_state_desc * __restrict d)
 {

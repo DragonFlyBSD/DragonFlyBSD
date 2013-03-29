@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getgrent.c,v 1.37 2007/12/12 10:08:02 bushman Exp $
- * $DragonFly: src/lib/libc/gen/getgrent.c,v 1.5 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include "namespace.h"
@@ -204,8 +203,8 @@ fin:
 }
 
 static int
-grp_marshal_func(char *buffer, size_t *buffer_size, void *retval, va_list ap,
-    void *cache_mdata)
+grp_marshal_func(char *buffer, size_t *buffer_size, void *retval __unused,
+    va_list ap, void *cache_mdata)
 {
 	char *name;
 	gid_t gid;
@@ -450,7 +449,7 @@ gr_addgid(gid_t gid, gid_t *groups, int maxgrp, int *grpcnt)
 }
 
 static int
-getgroupmembership_fallback(void *retval, void *mdata, va_list ap)
+getgroupmembership_fallback(void *retval __unused, void *mdata, va_list ap)
 {
 	const ns_src src[] = {
 		{ mdata, NS_SUCCESS },
@@ -794,7 +793,7 @@ files_endstate(void *p)
 
 
 static int
-files_setgrent(void *retval, void *mdata, va_list ap)
+files_setgrent(void *retval __unused, void *mdata, va_list ap)
 {
 	struct files_state *st;
 	int		 rv, stayopen;
@@ -1055,7 +1054,7 @@ nis_endstate(void *p)
 
 
 static int
-nis_setgrent(void *retval, void *cb_data, va_list ap)
+nis_setgrent(void *retval __unused, void *cb_data __unused, va_list ap __unused)
 {
 	struct nis_state	*st;
 	int			 rv;
@@ -1213,7 +1212,7 @@ compat_endstate(void *p)
 
 
 static int
-compat_setgrent(void *retval, void *mdata, va_list ap)
+compat_setgrent(void *retval __unused, void *mdata, va_list ap)
 {
 	static const ns_src compatsrc[] = {
 #ifdef YP
@@ -1509,8 +1508,8 @@ __gr_match_entry(const char *line, size_t linesize, enum nss_lookup_type how,
 
 
 int
-__gr_parse_entry(char *line, size_t linesize, struct group *grp, char *membuf,
-    size_t membufsize, int *errnop)
+__gr_parse_entry(char *line, size_t linesize __unused, struct group *grp,
+    char *membuf, size_t membufsize, int *errnop)
 {
 	char	       *s_gid, *s_mem, *p, **members;
 	unsigned long	n;

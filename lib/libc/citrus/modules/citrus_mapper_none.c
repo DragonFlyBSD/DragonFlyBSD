@@ -1,5 +1,4 @@
 /* $NetBSD: src/lib/libc/citrus/modules/citrus_mapper_none.c,v 1.2 2003/06/27 17:53:31 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_mapper_none.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -64,10 +63,11 @@ _citrus_mapper_none_mapper_getops(struct _citrus_mapper_ops *ops,
 
 static int
 /*ARGSUSED*/
-_citrus_mapper_none_mapper_init(struct _citrus_mapper_area *__restrict ma,
+_citrus_mapper_none_mapper_init(struct _citrus_mapper_area *__restrict ma __unused,
 				struct _citrus_mapper * __restrict cm,
-				const char * __restrict dir,
-				const void * __restrict var, size_t lenvar,
+				const char * __restrict dir __unused,
+				const void * __restrict var __unused,
+				size_t lenvar __unused,
 				struct _citrus_mapper_traits * __restrict mt,
 				size_t lenmt)
 {
@@ -86,15 +86,16 @@ _citrus_mapper_none_mapper_init(struct _citrus_mapper_area *__restrict ma,
 
 static void
 /*ARGSUSED*/
-_citrus_mapper_none_mapper_uninit(struct _citrus_mapper *cm)
+_citrus_mapper_none_mapper_uninit(struct _citrus_mapper *cm __unused)
 {
 }
 
 static int
 /*ARGSUSED*/
-_citrus_mapper_none_mapper_convert(struct _citrus_mapper * __restrict cm,
+_citrus_mapper_none_mapper_convert(struct _citrus_mapper * __restrict cm __unused,
 				   _citrus_index_t * __restrict dst,
-				   _citrus_index_t src, void * __restrict ps)
+				   _citrus_index_t src,
+				   void * __restrict ps __unused)
 {
 	*dst = src;
 	return _CITRUS_MAPPER_CONVERT_SUCCESS;
@@ -102,7 +103,7 @@ _citrus_mapper_none_mapper_convert(struct _citrus_mapper * __restrict cm,
 
 static void
 /*ARGSUSED*/
-_citrus_mapper_none_mapper_init_state(struct _citrus_mapper * __restrict cm,
-				      void * __restrict ps)
+_citrus_mapper_none_mapper_init_state(struct _citrus_mapper * __restrict cm __unused,
+				      void * __restrict ps __unused)
 {
 }

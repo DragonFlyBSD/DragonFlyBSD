@@ -30,7 +30,6 @@
  * @(#)getrpcent.c 1.14 91/03/11 Copyr 1984 Sun Micro
  * $NetBSD: getrpcent.c,v 1.17 2000/01/22 22:19:17 mycroft Exp $
  * $FreeBSD: src/lib/libc/rpc/getrpcent.c,v 1.16 2007/05/17 03:34:33 jon Exp $
- * $DragonFly: src/lib/libc/rpc/getrpcent.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -335,7 +334,7 @@ done:
 }
 
 static int
-files_setrpcent(void *retval, void *mdata, va_list ap)
+files_setrpcent(void *retval __unused, void *mdata, va_list ap)
 {
 	struct files_state	*st;
 	int	rv;
@@ -563,7 +562,7 @@ fin:
 }
 
 static int
-nis_setrpcent(void *retval, void *mdata, va_list ap)
+nis_setrpcent(void *retval __unused, void *mdata, va_list ap __unused)
 {
 	struct nis_state	*st;
 	int	rv;
@@ -642,8 +641,8 @@ fin:
 }
 
 static int
-rpc_marshal_func(char *buffer, size_t *buffer_size, void *retval, va_list ap,
-    void *cache_mdata)
+rpc_marshal_func(char *buffer, size_t *buffer_size, void *retval __unused,
+		 va_list ap, void *cache_mdata)
 {
 	char *name;
 	int num;

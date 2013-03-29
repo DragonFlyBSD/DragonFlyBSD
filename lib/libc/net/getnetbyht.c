@@ -181,7 +181,7 @@ getnetent(void)
 }
 
 int
-_ht_getnetbyname(void *rval, void *cb_data, va_list ap)
+_ht_getnetbyname(void *rval, void *cb_data __unused, va_list ap)
 {
 	const char *name;
 	char *buffer;
@@ -231,7 +231,7 @@ found:
 }
 
 int
-_ht_getnetbyaddr(void *rval, void *cb_data, va_list ap)
+_ht_getnetbyaddr(void *rval, void *cb_data __unused, va_list ap)
 {
 	uint32_t net;
 	int type;

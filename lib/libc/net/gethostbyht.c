@@ -211,7 +211,7 @@ gethostent(void)
 }
 
 int
-_ht_gethostbyname(void *rval, void *cb_data, va_list ap)
+_ht_gethostbyname(void *rval, void *cb_data __unused, va_list ap)
 {
 	const char *name;
 	int af;
@@ -273,7 +273,7 @@ found:
 }
 
 int
-_ht_gethostbyaddr(void *rval, void *cb_data, va_list ap)
+_ht_gethostbyaddr(void *rval, void *cb_data __unused, va_list ap)
 {
 	const void *addr;
 	socklen_t len;

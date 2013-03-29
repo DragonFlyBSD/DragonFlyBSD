@@ -30,7 +30,6 @@
  * @(#)clnt_raw.c	2.2 88/08/01 4.0 RPCSRC
  * $NetBSD: clnt_raw.c,v 1.20 2000/12/10 04:12:03 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/clnt_raw.c,v 1.20 2006/02/27 22:10:58 deischen Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_raw.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -136,7 +135,8 @@ clnt_raw_create(rpcprog_t prog, rpcvers_t vers)
 /* ARGSUSED */
 static enum clnt_stat
 clnt_raw_call(CLIENT *h, rpcproc_t proc, xdrproc_t xargs, void *argsp,
-	      xdrproc_t xresults, void *resultsp, struct timeval timeout)
+	      xdrproc_t xresults, void *resultsp,
+	      struct timeval timeout __unused)
 {
 	struct clntraw_private *clp = clntraw_private;
 	XDR *xdrs = &clp->xdr_stream;
@@ -227,14 +227,14 @@ call_again:
 
 /*ARGSUSED*/
 static void
-clnt_raw_geterr(CLIENT *cl, struct rpc_err *err)
+clnt_raw_geterr(CLIENT *cl __unused, struct rpc_err *err __unused)
 {
 }
 
 
 /* ARGSUSED */
 static bool_t
-clnt_raw_freeres(CLIENT *cl, xdrproc_t xdr_res, void *res_ptr)
+clnt_raw_freeres(CLIENT *cl __unused, xdrproc_t xdr_res, void *res_ptr)
 {
 	struct clntraw_private *clp = clntraw_private;
 	XDR *xdrs = &clp->xdr_stream;
@@ -253,20 +253,20 @@ clnt_raw_freeres(CLIENT *cl, xdrproc_t xdr_res, void *res_ptr)
 
 /*ARGSUSED*/
 static void
-clnt_raw_abort(CLIENT *cl)
+clnt_raw_abort(CLIENT *cl __unused)
 {
 }
 
 /*ARGSUSED*/
 static bool_t
-clnt_raw_control(CLIENT *cl, u_int ui, void *str)
+clnt_raw_control(CLIENT *cl __unused, u_int ui __unused, void *str __unused)
 {
 	return (FALSE);
 }
 
 /*ARGSUSED*/
 static void
-clnt_raw_destroy(CLIENT *cl)
+clnt_raw_destroy(CLIENT *cl __unused)
 {
 }
 

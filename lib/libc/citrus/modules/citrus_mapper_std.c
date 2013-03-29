@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_mapper_std.c,v 1.8 2006/09/11 13:06:33 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_mapper_std.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003, 2006 Citrus Project,
@@ -79,7 +78,7 @@ static int
 /*ARGSUSED*/
 rowcol_convert(struct _citrus_mapper_std * __restrict ms,
 	       _index_t * __restrict dst, _index_t src,
-	       void * __restrict ps)
+	       void * __restrict ps __unused)
 {
 	struct _citrus_mapper_std_rowcol *rc;
 	size_t i;
@@ -344,7 +343,7 @@ static const struct {
 
 static int
 /*ARGSUSED*/
-_citrus_mapper_std_mapper_init(struct _citrus_mapper_area *__restrict ma,
+_citrus_mapper_std_mapper_init(struct _citrus_mapper_area *__restrict ma __unused,
 			       struct _citrus_mapper * __restrict cm,
 			       const char * __restrict curdir,
 			       const void * __restrict var, size_t lenvar,
@@ -435,8 +434,8 @@ _citrus_mapper_std_mapper_uninit(struct _citrus_mapper *cm)
 
 static void
 /*ARGSUSED*/
-_citrus_mapper_std_mapper_init_state(struct _citrus_mapper * __restrict cm,
-				     void * __restrict ps)
+_citrus_mapper_std_mapper_init_state(struct _citrus_mapper * __restrict cm __unused,
+				     void * __restrict ps __unused)
 {
 }
 

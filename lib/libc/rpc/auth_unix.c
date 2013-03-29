@@ -30,7 +30,6 @@
  * @(#)auth_unix.c	2.2 88/08/01 4.0 RPCSRC
  * $NetBSD: auth_unix.c,v 1.18 2000/07/06 03:03:30 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/auth_unix.c,v 1.18 2007/06/14 20:07:35 harti Exp $
- * $DragonFly: src/lib/libc/rpc/auth_unix.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -203,7 +202,7 @@ authunix_create_default(void)
 
 /* ARGSUSED */
 static void
-authunix_nextverf(AUTH *auth)
+authunix_nextverf(AUTH *auth __unused)
 {
 	/* no action necessary */
 }
@@ -253,7 +252,7 @@ authunix_validate(AUTH *auth, struct opaque_auth *verf)
 }
 
 static bool_t
-authunix_refresh(AUTH *auth, void *dummy)
+authunix_refresh(AUTH *auth, void *dummy __unused)
 {
 	struct audata *au = AUTH_PRIVATE(auth);
 	struct authunix_parms aup;

@@ -29,7 +29,6 @@
  * @(#)svc_auth.c	1.16	94/04/24 SMI; 1.26 89/02/07 Copyr 1984 Sun Micro
  * $NetBSD: svc_auth.c,v 1.12 2000/07/06 03:10:35 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/svc_auth.c,v 1.13 2006/02/27 22:10:59 deischen Exp $
- * $DragonFly: src/lib/libc/rpc/svc_auth.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc.
@@ -138,7 +137,7 @@ _authenticate(struct svc_req *rqst, struct rpc_msg *msg)
 
 /*ARGSUSED*/
 enum auth_stat
-_svcauth_null(struct svc_req *rqst, struct rpc_msg *msg)
+_svcauth_null(struct svc_req *rqst __unused, struct rpc_msg *msg __unused)
 {
 	return (AUTH_OK);
 }

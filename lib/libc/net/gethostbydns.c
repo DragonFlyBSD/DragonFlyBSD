@@ -51,7 +51,6 @@
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * From: Id: gethnamaddr.c,v 8.23 1998/04/07 04:59:46 vixie Exp $
  * $FreeBSD: src/lib/libc/net/gethostbydns.c,v 1.58 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/gethostbydns.c,v 1.6 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -460,7 +459,7 @@ __dns_getanswer(const char *answer, int anslen, const char *qname, int qtype)
 }
 
 int
-_dns_gethostbyname(void *rval, void *cb_data, va_list ap)
+_dns_gethostbyname(void *rval, void *cb_data __unused, va_list ap)
 {
 	const char *name;
 	int af;
@@ -539,7 +538,7 @@ _dns_gethostbyname(void *rval, void *cb_data, va_list ap)
 }
 
 int
-_dns_gethostbyaddr(void *rval, void *cb_data, va_list ap)
+_dns_gethostbyaddr(void *rval, void *cb_data __unused, va_list ap)
 {
 	const void *addr;
 	socklen_t len;

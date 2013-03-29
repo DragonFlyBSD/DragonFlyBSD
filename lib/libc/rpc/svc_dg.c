@@ -160,7 +160,7 @@ freedata:
 
 /*ARGSUSED*/
 static enum xprt_stat
-svc_dg_stat(SVCXPRT *xprt)
+svc_dg_stat(SVCXPRT *xprt __unused)
 {
 	return (XPRT_IDLE);
 }
@@ -274,7 +274,8 @@ svc_dg_destroy(SVCXPRT *xprt)
 
 static bool_t
 /*ARGSUSED*/
-svc_dg_control(SVCXPRT *xprt, const u_int rq, void *in)
+svc_dg_control(SVCXPRT *xprt __unused, const u_int rq __unused,
+    void *in __unused)
 {
 	return (FALSE);
 }

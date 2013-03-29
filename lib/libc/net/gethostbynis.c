@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/gethostbynis.c,v 1.28 2006/05/12 15:37:23 ume Exp $
- * $DragonFly: src/lib/libc/net/gethostbynis.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -178,7 +177,7 @@ _gethostbynisname_r(const char *name, int af, struct hostent *he,
 }
 
 static int
-_gethostbynisaddr_r(const void *addr, socklen_t len, int af,
+_gethostbynisaddr_r(const void *addr, socklen_t len __unused, int af,
 		    struct hostent *he, struct hostent_data *hed)
 {
 	char *map;
@@ -254,7 +253,7 @@ _gethostbynisaddr(const void *addr, socklen_t len, int af)
 }
 
 int
-_nis_gethostbyname(void *rval, void *cb_data, va_list ap)
+_nis_gethostbyname(void *rval, void *cb_data __unused, va_list ap)
 {
 #ifdef YP
 	const char *name;
@@ -300,7 +299,7 @@ _nis_gethostbyname(void *rval, void *cb_data, va_list ap)
 }
 
 int
-_nis_gethostbyaddr(void *rval, void *cb_data, va_list ap)
+_nis_gethostbyaddr(void *rval, void *cb_data __unused, va_list ap)
 {
 #ifdef YP
 	const void *addr;

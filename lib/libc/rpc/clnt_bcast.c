@@ -202,7 +202,7 @@ __rpc_freebroadifs(broadlist_t *list)
 
 int
 /*ARGSUSED*/
-__rpc_broadenable(int af, int s, struct broadif *bip)
+__rpc_broadenable(int af __unused, int s, struct broadif *bip __unused)
 {
 	int o = 1;
 

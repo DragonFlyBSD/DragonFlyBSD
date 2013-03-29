@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_iconv_std.c,v 1.15 2006/11/13 19:08:19 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_iconv_std.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -300,7 +299,8 @@ err:
 static int
 /*ARGSUSED*/
 do_conv(const struct _citrus_iconv_std_shared *is,
-	struct _citrus_iconv_std_context *sc, _csid_t *csid, _index_t *idx)
+	struct _citrus_iconv_std_context *sc __unused, _csid_t *csid,
+	_index_t *idx)
 {
 	_index_t tmpidx;
 	int ret;
@@ -340,10 +340,11 @@ do_conv(const struct _citrus_iconv_std_shared *is,
 static int
 /*ARGSUSED*/
 _citrus_iconv_std_iconv_init_shared(struct _citrus_iconv_shared *ci,
-				    const char * __restrict curdir,
+				    const char * __restrict curdir __unused,
 				    const char * __restrict src,
 				    const char * __restrict dst,
-				    const void * __restrict var, size_t lenvar)
+				    const void * __restrict var __unused,
+				    size_t lenvar __unused)
 {
 	int ret;
 	struct _citrus_iconv_std_shared *is;

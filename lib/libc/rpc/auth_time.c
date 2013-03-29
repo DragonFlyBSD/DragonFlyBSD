@@ -59,7 +59,7 @@ extern int	_rpc_dtablesize(void);
 static int saw_alarm = 0;
 
 static void
-alarm_hndler(int s)
+alarm_hndler(int s __unused)
 {
 	saw_alarm = 1;
 	return;

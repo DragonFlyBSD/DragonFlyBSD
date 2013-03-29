@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/gethostnamadr.c,v 1.33 2006/05/21 11:27:28 ume Exp $
- * $DragonFly: src/lib/libc/net/gethostnamadr.c,v 1.6 2007/12/29 22:55:29 matthias Exp $
  */
 
 #include "namespace.h"
@@ -260,8 +259,8 @@ fin:
 }
 
 static int
-host_marshal_func(char *buffer, size_t *buffer_size, void *retval, va_list ap,
-		  void *cache_mdata)
+host_marshal_func(char *buffer, size_t *buffer_size, void *retval __unused,
+		  va_list ap, void *cache_mdata)
 {
 	char *str;
 	void *addr;

@@ -158,7 +158,7 @@ __nss_compat_getgrent_r(void *retval, void *mdata, va_list ap)
 
 
 int
-__nss_compat_setgrent(void *retval, void *mdata, va_list ap)
+__nss_compat_setgrent(void *retval __unused, void *mdata, va_list ap __unused)
 {
 
 	SET_TERMINATOR(group, NULL);
@@ -168,7 +168,7 @@ __nss_compat_setgrent(void *retval, void *mdata, va_list ap)
 
 
 int
-__nss_compat_endgrent(void *retval, void *mdata, va_list ap)
+__nss_compat_endgrent(void *retval __unused, void *mdata, va_list ap __unused)
 {
 
 	SET_TERMINATOR(group, NULL);
@@ -259,7 +259,7 @@ __nss_compat_getpwent_r(void *retval, void *mdata, va_list ap)
 
 
 int
-__nss_compat_setpwent(void *retval, void *mdata, va_list ap)
+__nss_compat_setpwent(void *retval __unused, void *mdata, va_list ap __unused)
 {
 
 	SET_TERMINATOR(passwd, NULL);
@@ -269,7 +269,7 @@ __nss_compat_setpwent(void *retval, void *mdata, va_list ap)
 
 
 int
-__nss_compat_endpwent(void *retval, void *mdata, va_list ap)
+__nss_compat_endpwent(void *retval __unused, void *mdata, va_list ap __unused)
 {
 
 	SET_TERMINATOR(passwd, NULL);

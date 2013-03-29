@@ -28,7 +28,6 @@
  *
  * @(#)getproto.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/getproto.c,v 1.7 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/getproto.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <netdb.h>
@@ -51,7 +50,7 @@ extern int __proto_unmarshal_func(char *, size_t, void *, va_list, void *);
 #endif
 
 static int
-files_getprotobynumber(void *retval, void *mdata, va_list ap)
+files_getprotobynumber(void *retval, void *mdata __unused, va_list ap)
 {
 	struct protoent pe;
 	struct protoent_data *ped;

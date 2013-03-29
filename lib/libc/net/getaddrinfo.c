@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/lib/libc/net/getaddrinfo.c,v 1.87 2008/02/03 19:07:55 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.9 2008/10/04 22:38:42 swildner Exp $	*/
 /*	$KAME: getaddrinfo.c,v 1.15 2000/07/09 04:37:24 itojun Exp $	*/
 
 /*
@@ -1506,7 +1505,7 @@ ip6_str2scopeid(char *scope, struct sockaddr_in6 *sin6, u_int32_t *scopeid)
 #ifdef NS_CACHING
 static int
 addrinfo_id_func(char *buffer, size_t *buffer_size, va_list ap,
-		 void *cache_mdata)
+		 void *cache_mdata __unused)
 {
 	res_state statp;
 	u_long res_options;
@@ -1575,7 +1574,7 @@ addrinfo_id_func(char *buffer, size_t *buffer_size, va_list ap,
 
 static int
 addrinfo_marshal_func(char *buffer, size_t *buffer_size, void *retval,
-		      va_list ap, void *cache_mdata)
+		      va_list ap __unused, void *cache_mdata __unused)
 {
 	struct addrinfo	*ai, *cai;
 	char *p;
@@ -1626,8 +1625,8 @@ addrinfo_marshal_func(char *buffer, size_t *buffer_size, void *retval,
 }
 
 static int
-addrinfo_unmarshal_func(char *buffer, size_t buffer_size, void *retval,
-			va_list ap, void *cache_mdata)
+addrinfo_unmarshal_func(char *buffer, size_t buffer_size __unused, void *retval,
+			va_list ap __unused, void *cache_mdata __unused)
 {
 	struct addrinfo	new_ai, *result, *sentinel, *lasts;
 
@@ -2025,7 +2024,7 @@ addr4sort(struct addrinfo *sentinel, res_state res)
 
 /*ARGSUSED*/
 static int
-_dns_getaddrinfo(void *rv, void *cb_data, va_list ap)
+_dns_getaddrinfo(void *rv, void *cb_data __unused, va_list ap)
 {
 	struct addrinfo *ai;
 	querybuf *buf, *buf2;
@@ -2224,7 +2223,7 @@ found:
 
 /*ARGSUSED*/
 static int
-_files_getaddrinfo(void *rv, void *cb_data, va_list ap)
+_files_getaddrinfo(void *rv, void *cb_data __unused, va_list ap)
 {
 	const char *name;
 	const struct addrinfo *pai;
@@ -2331,7 +2330,7 @@ done:
 
 /*ARGSUSED*/
 static int
-_yp_getaddrinfo(void *rv, void *cb_data, va_list ap)
+_yp_getaddrinfo(void *rv, void *cb_data __unused, va_list ap)
 {
 	struct addrinfo sentinel, *cur;
 	struct addrinfo *ai = NULL;

@@ -43,7 +43,8 @@
 #define CACHED_SOCKET_PATH 		"/var/run/nscd"
 
 int
-__nss_cache_handler(void *retval, void *mdata, va_list ap)
+__nss_cache_handler(void *retval __unused, void *mdata __unused,
+    va_list ap __unused)
 {
 	return (NS_UNAVAIL);
 }
@@ -387,7 +388,8 @@ __nss_mp_cache_write(void *retval, void *mdata, va_list ap)
 }
 
 int
-__nss_mp_cache_write_submit(void *retval, void *mdata, va_list ap)
+__nss_mp_cache_write_submit(void *retval __unused, void *mdata,
+    va_list ap __unused)
 {
 	cached_mp_write_session ws;
 
@@ -407,7 +409,7 @@ __nss_mp_cache_write_submit(void *retval, void *mdata, va_list ap)
 }
 
 int
-__nss_mp_cache_end(void *retval, void *mdata, va_list ap)
+__nss_mp_cache_end(void *retval __unused, void *mdata, va_list ap __unused)
 {
 	cached_mp_write_session ws;
 	cached_mp_read_session rs;

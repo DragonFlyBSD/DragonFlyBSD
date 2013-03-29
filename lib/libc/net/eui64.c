@@ -214,7 +214,7 @@ eui64_ntoa(const struct eui64 *id, char *a, size_t len)
  * Map an EUI-64 to a hostname. Use either /etc/eui64 or NIS/YP.
  */
 int
-eui64_ntohost(char *hostname, size_t len, const struct eui64 *id)
+eui64_ntohost(char *hostname, size_t len __unused, const struct eui64 *id)
 {
 	FILE *fp;
 	char buf[BUFSIZ + 2];

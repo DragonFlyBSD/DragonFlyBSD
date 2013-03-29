@@ -133,7 +133,7 @@ __rpc_dtbsize(void)
  */
 u_int
 /*ARGSUSED*/
-__rpc_get_t_size(int af, int proto,
+__rpc_get_t_size(int af __unused, int proto,
 		 int size)	/* Size requested */
 {
 	int maxsize, defsize;

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/fmtmsg.c,v 1.5 2003/05/01 19:03:13 nectar Exp $
- * $DragonFly: src/lib/libc/gen/fmtmsg.c,v 1.1 2008/10/06 21:01:37 swildner Exp $
  */
 
 #include <fmtmsg.h>
@@ -114,7 +113,7 @@ def:
  * a newly malloc()'d output buffer.
  */
 static char *
-printfmt(char *msgverb, long class, const char *label, int sev,
+printfmt(char *msgverb, long class __unused, const char *label, int sev,
     const char *text, const char *act, const char *tag)
 {
 	size_t size;

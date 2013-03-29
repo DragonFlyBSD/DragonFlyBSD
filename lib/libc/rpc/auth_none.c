@@ -103,7 +103,7 @@ authnone_create(void)
 
 /*ARGSUSED*/
 static bool_t
-authnone_marshal(AUTH *client, XDR *xdrs)
+authnone_marshal(AUTH *client __unused, XDR *xdrs)
 {
 	struct authnone_private *ap;
 	bool_t dummy;
@@ -124,13 +124,13 @@ authnone_marshal(AUTH *client, XDR *xdrs)
 /* All these unused parameters are required to keep ANSI-C from grumbling */
 /*ARGSUSED*/
 static void
-authnone_verf(AUTH *client)
+authnone_verf(AUTH *client __unused)
 {
 }
 
 /*ARGSUSED*/
 static bool_t
-authnone_validate(AUTH *client, struct opaque_auth *opaque)
+authnone_validate(AUTH *client __unused, struct opaque_auth *opaque __unused)
 {
 
 	return (TRUE);
@@ -138,7 +138,7 @@ authnone_validate(AUTH *client, struct opaque_auth *opaque)
 
 /*ARGSUSED*/
 static bool_t
-authnone_refresh(AUTH *client, void *dummy)
+authnone_refresh(AUTH *client __unused, void *dummy __unused)
 {
 
 	return (FALSE);
@@ -146,7 +146,7 @@ authnone_refresh(AUTH *client, void *dummy)
 
 /*ARGSUSED*/
 static void
-authnone_destroy(AUTH *client)
+authnone_destroy(AUTH *client __unused)
 {
 }
 

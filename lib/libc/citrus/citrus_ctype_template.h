@@ -1,6 +1,4 @@
 /* $NetBSD: citrus_ctype_template.h,v 1.35 2008/02/09 14:56:20 junyoung Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_ctype_template.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
-
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -416,7 +414,7 @@ _FUNCNAME(ctype_uninit)(void *cl)
 
 static unsigned
 /*ARGSUSED*/
-_FUNCNAME(ctype_get_mb_cur_max)(void *cl)
+_FUNCNAME(ctype_get_mb_cur_max)(void *cl __unused)
 {
 	return _ENCODING_MB_CUR_MAX(_CEI_TO_EI(_TO_CEI(cl)));
 }

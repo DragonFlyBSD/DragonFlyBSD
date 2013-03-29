@@ -417,7 +417,7 @@ files_servent(void *retval, void *mdata, va_list ap)
 }
 
 static int
-files_setservent(void *retval, void *mdata, va_list ap)
+files_setservent(void *retval __unused, void *mdata, va_list ap)
 {
 	struct files_state *st;
 	int rv;
@@ -636,7 +636,7 @@ fin:
 }
 
 static int
-nis_setservent(void *result, void *mdata, va_list ap)
+nis_setservent(void *result __unused, void *mdata, va_list ap __unused)
 {
 	struct nis_state *st;
 	int rv;
@@ -774,8 +774,8 @@ fin:
 }
 
 int
-serv_marshal_func(char *buffer, size_t *buffer_size, void *retval, va_list ap,
-    void *cache_mdata)
+serv_marshal_func(char *buffer, size_t *buffer_size, void *retval __unused,
+    va_list ap, void *cache_mdata)
 {
 	char *name;
 	char *proto;
@@ -1125,7 +1125,7 @@ wrap_getservbyport_r(struct key key, struct servent *serv, char *buffer,
 }
 
 static	int
-wrap_getservent_r(struct key key, struct servent *serv, char *buffer,
+wrap_getservent_r(struct key key __unused, struct servent *serv, char *buffer,
     size_t bufsize, struct servent **res)
 {
 	return (getservent_r(serv, buffer, bufsize, res));

@@ -29,7 +29,6 @@
  * @(#)getusershell.c	8.1 (Berkeley) 6/4/93
  * $NetBSD: getusershell.c,v 1.17 1999/01/25 01:09:34 lukem Exp $
  * $FreeBSD: src/lib/libc/gen/getusershell.c,v 1.10 2007/01/09 00:27:54 imp Exp $
- * $DragonFly: src/lib/libc/gen/getusershell.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -106,7 +105,8 @@ static int	_local_initshells(void *, void *, va_list);
 
 /*ARGSUSED*/
 static int
-_local_initshells(void *rv, void *cb_data, va_list ap)
+_local_initshells(void *rv __unused, void *cb_data __unused,
+    va_list ap __unused)
 {
 	char	*sp, *cp;
 	FILE	*fp;
@@ -181,7 +181,7 @@ static int	_nis_initshells(void *, void *, va_list);
 
 /*ARGSUSED*/
 static int
-_nis_initshells(void *rv, void *cb_data, va_list ap)
+_nis_initshells(void *rv __unused, void *cb_data __unused, va_list ap __unused)
 {
 	static char *ypdomain;
 	char	*key, *data;

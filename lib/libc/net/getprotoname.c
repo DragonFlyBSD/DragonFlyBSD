@@ -51,7 +51,7 @@ extern int __proto_unmarshal_func(char *, size_t, void *, va_list, void *);
 #endif
 
 static int
-files_getprotobyname(void *retval, void *mdata, va_list ap)
+files_getprotobyname(void *retval, void *mdata __unused, va_list ap)
 {
 	struct protoent pe;
 	struct protoent_data *ped;

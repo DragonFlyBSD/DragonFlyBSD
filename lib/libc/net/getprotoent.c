@@ -28,7 +28,6 @@
  *
  * @(#)getprotoent.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/getprotoent.c,v 1.9 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/getprotoent.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -138,7 +137,7 @@ fin:
 
 
 int
-__proto_marshal_func(char *buffer, size_t *buffer_size, void *retval,
+__proto_marshal_func(char *buffer, size_t *buffer_size, void *retval __unused,
     va_list ap, void *cache_mdata)
 {
 	char *name;
@@ -407,7 +406,7 @@ again:
 }
 
 static int
-files_getprotoent_r(void *retval, void *mdata, va_list ap)
+files_getprotoent_r(void *retval, void *mdata __unused, va_list ap)
 {
 	struct protoent pe;
 	struct protoent_data *ped;
@@ -440,7 +439,7 @@ files_getprotoent_r(void *retval, void *mdata, va_list ap)
 }
 
 static int
-files_setprotoent(void *retval, void *mdata, va_list ap)
+files_setprotoent(void *retval __unused, void *mdata __unused, va_list ap)
 {
 	struct protoent_data *ped;
 	int f;
@@ -454,7 +453,8 @@ files_setprotoent(void *retval, void *mdata, va_list ap)
 }
 
 static int
-files_endprotoent(void *retval, void *mdata, va_list ap)
+files_endprotoent(void *retval __unused, void *mdata __unused,
+    va_list ap __unused)
 {
 	struct protoent_data *ped;
 

@@ -28,7 +28,6 @@
  *
  * @(#)exec.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/exec.c,v 1.25 2008/06/23 05:22:06 ed Exp $
- * $DragonFly: src/lib/libc/gen/exec.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -144,7 +143,7 @@ execvp(const char *name, char * const *argv)
 
 static int
 execvPe(const char *name, const char *path, char * const *argv,
-	char * const *envp)
+	char * const *envp __unused)
 {
 	const char **memp;
 	int cnt;

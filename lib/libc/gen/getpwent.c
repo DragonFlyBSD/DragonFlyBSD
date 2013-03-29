@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getpwent.c,v 1.90 2006/04/28 12:03:35 ume Exp $
- * $DragonFly: src/lib/libc/gen/getpwent.c,v 1.7 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include "namespace.h"
@@ -254,8 +253,8 @@ fin:
 }
 
 static int
-pwd_marshal_func(char *buffer, size_t *buffer_size, void *retval, va_list ap,
-    void *cache_mdata)
+pwd_marshal_func(char *buffer, size_t *buffer_size, void *retval __unused,
+    va_list ap, void *cache_mdata)
 {
 	char *name;
 	uid_t uid;
@@ -772,7 +771,7 @@ files_endstate(void *p)
 
 
 static int
-files_setpwent(void *retval, void *mdata, va_list ap)
+files_setpwent(void *retval __unused, void *mdata, va_list ap)
 {
 	struct files_state	*st;
 	int			 rv, stayopen;
@@ -963,7 +962,7 @@ pwdb_match_entry_v3(char *entry, size_t entrysize, enum nss_lookup_type how,
 
 static int
 pwdb_parse_entry_v3(char *buffer, size_t bufsize, struct passwd *pwd,
-    int *errnop)
+    int *errnop __unused)
 {
 	char		*p, *eom;
 	int32_t		 pw_change, pw_expire;
@@ -1034,7 +1033,7 @@ pwdb_match_entry_v4(char *entry, size_t entrysize, enum nss_lookup_type how,
 
 static int
 pwdb_parse_entry_v4(char *buffer, size_t bufsize, struct passwd *pwd,
-    int *errnop)
+    int *errnop __unused)
 {
 	char		*p, *eom;
 	uint32_t	 n;
@@ -1280,7 +1279,7 @@ nis_adjunct(char *domain, const char *name, char *buffer, size_t bufsize)
 
 
 static int
-nis_setpwent(void *retval, void *mdata, va_list ap)
+nis_setpwent(void *retval __unused, void *mdata __unused, va_list ap __unused)
 {
 	struct nis_state	*st;
 	int			 rv;
@@ -1678,7 +1677,7 @@ compat_endstate(void *p)
 
 
 static int
-compat_setpwent(void *retval, void *mdata, va_list ap)
+compat_setpwent(void *retval __unused, void *mdata, va_list ap)
 {
 	static const ns_src compatsrc[] = {
 #ifdef YP

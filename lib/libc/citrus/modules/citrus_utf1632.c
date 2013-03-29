@@ -78,7 +78,7 @@ typedef struct {
 
 static __inline void
 /*ARGSUSED*/
-_citrus_UTF1632_init_state(_UTF1632EncodingInfo *ei, _UTF1632State *s)
+_citrus_UTF1632_init_state(_UTF1632EncodingInfo *ei __unused, _UTF1632State *s)
 {
 	memset(s, 0, sizeof(*s));
 }
@@ -418,13 +418,13 @@ _citrus_UTF1632_encoding_module_init(_UTF1632EncodingInfo * __restrict ei,
 
 static void
 /*ARGSUSED*/
-_citrus_UTF1632_encoding_module_uninit(_UTF1632EncodingInfo *ei)
+_citrus_UTF1632_encoding_module_uninit(_UTF1632EncodingInfo *ei __unused)
 {
 }
 
 static __inline int
 /*ARGSUSED*/
-_citrus_UTF1632_stdenc_wctocs(_UTF1632EncodingInfo * __restrict ei,
+_citrus_UTF1632_stdenc_wctocs(_UTF1632EncodingInfo * __restrict ei __unused,
 			      _csid_t * __restrict csid,
 			      _index_t * __restrict idx,
 			      _wc_t wc)
@@ -440,7 +440,7 @@ _citrus_UTF1632_stdenc_wctocs(_UTF1632EncodingInfo * __restrict ei,
 
 static __inline int
 /*ARGSUSED*/
-_citrus_UTF1632_stdenc_cstowc(_UTF1632EncodingInfo * __restrict ei,
+_citrus_UTF1632_stdenc_cstowc(_UTF1632EncodingInfo * __restrict ei __unused,
 			      _wc_t * __restrict wc,
 			      _csid_t csid, _index_t idx)
 {
@@ -457,7 +457,7 @@ _citrus_UTF1632_stdenc_cstowc(_UTF1632EncodingInfo * __restrict ei,
 
 static __inline int
 /*ARGSUSED*/
-_citrus_UTF1632_stdenc_get_state_desc_generic(_UTF1632EncodingInfo * __restrict ei,
+_citrus_UTF1632_stdenc_get_state_desc_generic(_UTF1632EncodingInfo * __restrict ei __unused,
 					      _UTF1632State * __restrict psenc,
 					      int * __restrict rstate)
 {

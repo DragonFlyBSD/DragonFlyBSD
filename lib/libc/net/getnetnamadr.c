@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/getnetnamadr.c,v 1.23 2006/04/28 12:03:35 ume Exp $
- * $DragonFly: src/lib/libc/net/getnetnamadr.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include "namespace.h"
@@ -123,8 +122,8 @@ fin:
 
 
 static int
-net_marshal_func(char *buffer, size_t *buffer_size, void *retval, va_list ap,
-		 void *cache_mdata)
+net_marshal_func(char *buffer, size_t *buffer_size, void *retval __unused,
+		 va_list ap, void *cache_mdata)
 {
 	char *name;
 	uint32_t net;
