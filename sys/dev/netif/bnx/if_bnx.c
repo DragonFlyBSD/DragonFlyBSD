@@ -233,6 +233,7 @@ static int	bnx_get_eaddr(struct bnx_softc *, uint8_t[]);
 
 static void	bnx_coal_change(struct bnx_softc *);
 static int	bnx_sysctl_force_defrag(SYSCTL_HANDLER_ARGS);
+static int	bnx_sysctl_tx_wreg(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_rx_coal_ticks(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_tx_coal_ticks(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_rx_coal_bds(SYSCTL_HANDLER_ARGS);
@@ -2078,9 +2079,10 @@ bnx_attach(device_t dev)
 	    sc, 0, bnx_sysctl_force_defrag, "I",
 	    "Force defragment on TX path");
 
-	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
+	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
-	    "tx_wreg", CTLFLAG_RW, &sc->bnx_tx_ring[0].bnx_tx_wreg, 0,
+	    "tx_wreg", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, bnx_sysctl_tx_wreg, "I",
 	    "# of segments before writing to hardware register");
 
 	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
@@ -4303,6 +4305,27 @@ bnx_sysctl_force_defrag(SYSCTL_HANDLER_ARGS)
 		else
 			txr->bnx_tx_flags &= ~BNX_TX_FLAG_FORCE_DEFRAG;
 	}
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return 0;
+}
+
+static int
+bnx_sysctl_tx_wreg(SYSCTL_HANDLER_ARGS)
+{
+	struct bnx_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0];
+	int error, tx_wreg, i;
+
+	tx_wreg = txr->bnx_tx_wreg;
+	error = sysctl_handle_int(oidp, &tx_wreg, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
+		sc->bnx_tx_ring[i].bnx_tx_wreg = tx_wreg;
 	lwkt_serialize_exit(ifp->if_serializer);
 
 	return 0;
