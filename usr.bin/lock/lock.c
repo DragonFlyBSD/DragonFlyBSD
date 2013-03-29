@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1980, 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lock.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/lock/lock.c,v 1.8.2.1 2002/09/15 22:32:56 dd Exp $
- * $DragonFly: src/usr.bin/lock/lock.c,v 1.5 2007/11/25 18:10:07 swildner Exp $
  */
 
 /*
@@ -53,12 +52,14 @@
 
 #include <err.h>
 #include <pwd.h>
-#include <sgtty.h>
+#include <errno.h>
+#include <stdint.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
+#include <termios.h>
 #include <unistd.h>
 
 #define	TIMEOUT	15
@@ -68,20 +69,19 @@ static void	bye(int);
 static void	hi(int);
 static void	usage(void);
 
-struct timeval	timeout;
-struct timeval	zerotime;
-struct sgttyb	tty, ntty;
-long	nexttime;			/* keep the timeout time */
-int     no_timeout;                     /* lock terminal forever */
-int	vtyunlock;			/* Unlock flag and code. */
+static struct timeval	timeout;
+static struct timeval	zerotime;
+static struct termios	tty, ntty;
+static long		nexttime;			/* keep the timeout time */
+static int     		no_timeout;                     /* lock terminal forever */
+static int		vtyunlock;			/* Unlock flag and code. */
 
 /*ARGSUSED*/
 int
 main(int argc, char **argv)
 {
 	struct passwd *pw;
-	struct timeval timval;
-	time_t timval_sec;
+	time_t timval;
 	struct itimerval ntimer, otimer;
 	struct tm *timp;
 	int ch, failures, sectimeout, usemine, vtylock;
@@ -92,6 +92,7 @@ main(int argc, char **argv)
 	openlog("lock", LOG_ODELAY, LOG_AUTH);
 
 	sectimeout = TIMEOUT;
+	pw = NULL;
 	mypw = NULL;
 	usemine = 0;
 	no_timeout = 0;
@@ -122,27 +123,25 @@ main(int argc, char **argv)
 		}
 	timeout.tv_sec = sectimeout * 60;
 
-	setuid(getuid());		/* discard privs */
+	if (setuid(getuid()) != 0)			/* discard privs */
+		errx(1, "setuid failed");
 
-	if (ioctl(STDIN_FILENO, TIOCGETP, &tty))	/* get information for header */
-		err(1, "ioctl(TIOCGETP) failed");
+	if (tcgetattr(STDIN_FILENO, &tty))		/* get information for header */
+		err(1, "tcgetattr failed");
 
 	gethostname(hostname, sizeof(hostname));
-	if (!(ttynam = ttyname(0)))
+	if (!(ttynam = ttyname(STDIN_FILENO)))
 		errx(1, "not a terminal?");
-	if (gettimeofday(&timval, NULL))
-		err(1, "gettimeofday");
-	nexttime = timval.tv_sec + (sectimeout * 60);
-	timval_sec = timval.tv_sec;
-	timp = localtime(&timval_sec);
+	timval = time(NULL);
+	nexttime = timval + (sectimeout * 60);
+	timp = localtime(&timval);
 	ap = asctime(timp);
 	tzn = timp->tm_zone;
 
 	signal(SIGINT, quit);
 	signal(SIGQUIT, quit);
-	ntty = tty; ntty.sg_flags &= ~ECHO;
-	if (ioctl(STDIN_FILENO, TIOCSETP, &ntty))
-		err(1, "ioctl(TIOSETP) failed");
+	ntty = tty; ntty.c_lflag &= ~ECHO;
+	tcsetattr(STDIN_FILENO, TCSADRAIN|TCSASOFT, &ntty);
 
 	if (!mypw) {
 		/* get key and check again */
@@ -158,7 +157,7 @@ main(int argc, char **argv)
 		putchar('\n');
 		if (strcmp(s1, s)) {
 			printf("\07lock: passwords didn't match.\n");
-			ioctl(STDIN_FILENO, TIOCSETP, &tty);
+			tcsetattr(STDIN_FILENO, TCSADRAIN|TCSASOFT, &tty);
 			exit(1);
 		}
 		s[0] = '\0';
@@ -183,14 +182,18 @@ main(int argc, char **argv)
 		 * "Key:" prompt.
 		 */
 		if (ioctl(STDIN_FILENO, VT_LOCKSWITCH, &vtylock) == -1) {
-			ioctl(STDIN_FILENO, TIOCSETP, &tty);
+			tcsetattr(0, TCSADRAIN|TCSASOFT, &tty);
 			err(1, "locking vty");
 		}
 		vtyunlock = 0x2;
 	}
 
 	/* header info */
-	printf("lock: %s on %s.", ttynam, hostname);
+	if (pw != NULL)
+		printf("lock: %s using %s on %s.", pw->pw_name,
+		    ttynam, hostname);
+	else
+		printf("lock: %s on %s.", ttynam, hostname);
 	if (no_timeout)
 		printf(" no timeout.");
 	else
@@ -207,7 +210,7 @@ main(int argc, char **argv)
 		if (!fgets(s, sizeof(s), stdin)) {
 			clearerr(stdin);
 			hi(0);
-			continue;
+			goto tryagain;
 		}
 		if (usemine) {
 			s[strlen(s) - 1] = '\0';
@@ -222,7 +225,8 @@ main(int argc, char **argv)
 		if (getuid() == 0)
 	    	    syslog(LOG_NOTICE, "%d ROOT UNLOCK FAILURE%s (%s on %s)",
 			failures, failures > 1 ? "S": "", ttynam, hostname);
-		if (ioctl(STDIN_FILENO, TIOCGETP, &ntty))
+tryagain:
+		if (tcgetattr(0, &ntty) && (errno != EINTR))
 			exit(1);
 		sleep(1);		/* to discourage guessing */
 	}
@@ -244,16 +248,16 @@ usage(void)
 static void
 hi(int signo __unused)
 {
-	struct timeval timval;
+	time_t timval;
 
-	if (!gettimeofday(&timval, NULL)) {
+	if ((timval = time(NULL)) != (time_t)-1) {
 		printf("lock: type in the unlock key. ");
 		if (no_timeout) {
 			putchar('\n');
 		} else {
 			printf("timeout in %ld:%ld minutes\n",
-			    (nexttime - timval.tv_sec) / 60,
-			    (nexttime - timval.tv_sec) % 60);
+			    (intmax_t)(nexttime - timval) / 60,
+			    (intmax_t)(nexttime - timval) % 60);
 		}
 	}
 }
@@ -262,7 +266,7 @@ static void
 quit(int signo __unused)
 {
 	putchar('\n');
-	ioctl(STDIN_FILENO, TIOCSETP, &tty);
+	tcsetattr(STDIN_FILENO, TCSADRAIN|TCSASOFT, &tty);
 	if (vtyunlock)
 		ioctl(STDIN_FILENO, VT_LOCKSWITCH, &vtyunlock);
 	exit(0);
@@ -272,7 +276,7 @@ static void
 bye(int signo __unused)
 {
 	if (!no_timeout) {
-		ioctl(STDIN_FILENO, TIOCSETP, &tty);
+		tcsetattr(STDIN_FILENO, TCSADRAIN|TCSASOFT, &tty);
 		if (vtyunlock)
 			ioctl(STDIN_FILENO, VT_LOCKSWITCH, &vtyunlock);
 		printf("lock: timeout\n");
