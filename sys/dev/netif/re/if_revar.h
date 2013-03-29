@@ -193,6 +193,7 @@ struct re_softc {
 	uint32_t		re_flags;	/* see RE_F_ */
 	int			re_if_flags;	/* saved ifnet.if_flags */
 
+	u_long			re_hwassist;
 	struct sysctl_ctx_list	re_sysctl_ctx;
 	struct sysctl_oid	*re_sysctl_tree;
 	uint16_t		re_intrs;

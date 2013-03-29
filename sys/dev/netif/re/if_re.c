@@ -155,8 +155,6 @@
 #include <dev/netif/re/if_rereg.h>
 #include <dev/netif/re/if_revar.h>
 
-#define RE_CSUM_FEATURES    (CSUM_IP | CSUM_TCP | CSUM_UDP)
-
 /*
  * Various supported device vendors/types and their names.
  */
@@ -1602,10 +1600,18 @@ re_attach(device_t dev)
 		ifp->if_capabilities |= IFCAP_HWCSUM;
 
 	ifp->if_capenable = ifp->if_capabilities;
-	if (ifp->if_capabilities & IFCAP_HWCSUM)
-		ifp->if_hwassist = RE_CSUM_FEATURES;
-	else
-		ifp->if_hwassist = 0;
+	if (ifp->if_capabilities & IFCAP_HWCSUM) {
+		/*
+		 * RTL8168/8111C generates wrong IP checksummed frame if the
+		 * packet has IP options so disable TX IP checksum offloading.
+		 */ 
+		if (sc->re_hwrev == RE_HWREV_8168CP ||
+		    sc->re_hwrev == RE_HWREV_8168C)
+			sc->re_hwassist = CSUM_TCP | CSUM_UDP;
+		else
+			sc->re_hwassist = CSUM_IP | CSUM_TCP | CSUM_UDP;
+	}
+	ifp->if_hwassist = sc->re_hwassist;
 
 	/*
 	 * Call MI attach routine.
@@ -2814,7 +2820,7 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 		if (mask & IFCAP_HWCSUM) {
 			if (ifp->if_capenable & IFCAP_TXCSUM)
-				ifp->if_hwassist = RE_CSUM_FEATURES;
+				ifp->if_hwassist = sc->re_hwassist;
 			else
 				ifp->if_hwassist = 0;
 		}
