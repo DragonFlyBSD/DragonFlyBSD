@@ -30,7 +30,6 @@
  * @(#)xdr_stdio.c	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: xdr_stdio.c,v 1.14 2000/01/22 22:19:19 mycroft Exp $
  * $FreeBSD: src/lib/libc/xdr/xdr_stdio.c,v 1.13 2004/10/16 06:32:43 obrien Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_stdio.c,v 1.4 2005/12/05 00:47:57 swildner Exp $
  */
 
 /*
@@ -71,7 +70,8 @@ static const struct xdr_ops	xdrstdio_ops = {
 	xdrstdio_getpos,	/* get offset in the stream */
 	xdrstdio_setpos,	/* set offset in the stream */
 	xdrstdio_inline,	/* prime stream for inline macros */
-	xdrstdio_destroy	/* destroy stream */
+	xdrstdio_destroy,	/* destroy stream */
+	NULL
 };
 
 /*

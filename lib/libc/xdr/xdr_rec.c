@@ -30,7 +30,6 @@
  * @(#)xdr_rec.c	2.2 88/08/01 4.0 RPCSRC
  * $NetBSD: xdr_rec.c,v 1.18 2000/07/06 03:10:35 christos Exp $
  * $FreeBSD: src/lib/libc/xdr/xdr_rec.c,v 1.22 2008/03/30 09:35:04 dfr Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_rec.c,v 1.5 2005/12/05 00:47:57 swildner Exp $
  */
 
 /*
@@ -87,7 +86,8 @@ static const struct  xdr_ops xdrrec_ops = {
 	xdrrec_getpos,
 	xdrrec_setpos,
 	xdrrec_inline,
-	xdrrec_destroy
+	xdrrec_destroy,
+	NULL
 };
 
 /*

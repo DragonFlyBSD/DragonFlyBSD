@@ -31,7 +31,6 @@
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.33 2009/03/01 19:25:40 das Exp $
- * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.11 2006/03/02 18:05:30 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -52,8 +51,10 @@ int	__sdidinit;
 #define	NDYNAMIC 10		/* add ten more whenever necessary */
 
 #define	std(flags, file) {		\
-	.pub._flags = (flags),		\
-	.pub._fileno = (file),		\
+	.pub = {			\
+		._flags = (flags),	\
+		._fileno = (file),	\
+	},				\
 	._cookie = __sF + (file),	\
 	._close = __sclose,		\
 	._read = __sread,		\

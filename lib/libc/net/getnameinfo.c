@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/lib/libc/net/getnameinfo.c,v 1.20 2007/02/28 21:18:38 bms Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getnameinfo.c,v 1.5 2008/10/04 22:09:17 swildner Exp $	*/
 /*	$KAME: getnameinfo.c,v 1.61 2002/06/27 09:25:47 itojun Exp $	*/
 
 /*
@@ -103,7 +102,7 @@ static const struct afd {
 #endif
 	{PF_INET, sizeof(struct in_addr), sizeof(struct sockaddr_in),
 		offsetof(struct sockaddr_in, sin_addr)},
-	{0, 0, 0},
+	{ .a_af = 0 },
 };
 
 struct sockinet {

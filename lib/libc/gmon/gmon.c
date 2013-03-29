@@ -28,7 +28,6 @@
  *
  * @(#)gmon.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gmon/gmon.c,v 1.22 2007/01/09 00:27:58 imp Exp $
- * $DragonFly: src/lib/libc/gmon/gmon.c,v 1.8 2005/11/13 01:18:20 swildner Exp $
  */
 
 #include "namespace.h"
@@ -53,7 +52,7 @@ extern char *minbrk __asm (".minbrk");
 extern char *minbrk __asm ("minbrk");
 #endif
 
-struct gmonparam _gmonparam = { GMON_PROF_OFF };
+struct gmonparam _gmonparam = { .state = GMON_PROF_OFF };
 
 static int	s_scale;
 /* see profil(2) where this is describe (incorrectly) */

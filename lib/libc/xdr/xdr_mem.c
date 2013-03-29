@@ -75,7 +75,8 @@ static const struct	xdr_ops xdrmem_ops_aligned = {
 	xdrmem_getpos,
 	xdrmem_setpos,
 	xdrmem_inline_aligned,
-	xdrmem_destroy
+	xdrmem_destroy,
+	NULL
 };
 
 static const struct	xdr_ops xdrmem_ops_unaligned = {
@@ -86,7 +87,8 @@ static const struct	xdr_ops xdrmem_ops_unaligned = {
 	xdrmem_getpos,
 	xdrmem_setpos,
 	xdrmem_inline_unaligned,
-	xdrmem_destroy
+	xdrmem_destroy,
+	NULL
 };
 
 /*
