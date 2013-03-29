@@ -10,6 +10,8 @@ MDASM=
 MIASM=
 NOASM=
 
+WARNS=0
+
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/Makefile.inc"
 
 .include "${.CURDIR}/../libc/citrus/Makefile.inc"
@@ -60,6 +62,3 @@ SRCS+=	${_src}
 .endif
 .endfor
 .endif
-
-# Disable warnings in contributed sources.
-CWARNFLAGS:=	${.IMPSRC:Ngdtoa_*.c:C/^.+$/${CWARNFLAGS}/:C/^$/-w/}
