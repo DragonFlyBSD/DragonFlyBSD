@@ -1646,7 +1646,7 @@ sys_linux_reboot(struct linux_reboot_args *args)
 
 /*
  * The FreeBSD native getpid(2), getgid(2) and getuid(2) also modify
- * p->p_retval[1] when COMPAT_43 or COMPAT_SUNOS is defined. This
+ * p->p_retval[1] when COMPAT_43 is defined. This
  * globbers registers that are assumed to be preserved. The following
  * lightweight syscalls fixes this. See also linux_getgid16() and
  * linux_getuid16() in linux_uid16.c.

@@ -1131,7 +1131,7 @@ static int stlioctl(struct dev_ioctl_args *ap)
 /*
  *	Deal with 4.3 compatibility issues if we have too...
  */
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(COMPAT_43)
 	if (1) {
 		struct termios	tios;
 		unsigned long	oldcmd;

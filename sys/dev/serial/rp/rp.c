@@ -1315,7 +1315,7 @@ rpioctl(struct dev_ioctl_args *ap)
 
 	tp = rp->rp_tty;
 
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(COMPAT_43)
 	term = tp->t_termios;
 	oldcmd = cmd;
 	error = ttsetcompat(tp, &cmd, data, &term);

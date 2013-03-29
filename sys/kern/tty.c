@@ -81,7 +81,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/filio.h>
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(COMPAT_43)
 #include <sys/ioctl_compat.h>
 #endif
 #include <sys/proc.h>
@@ -885,7 +885,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	case  TIOCSTI:
 	case  TIOCSTOP:
 	case  TIOCSWINSZ:
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(COMPAT_43)
 	case  TIOCLBIC:
 	case  TIOCLBIS:
 	case  TIOCLSET:
@@ -1307,15 +1307,12 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		*(int *)data = tp->t_timeout / hz;
 		break;
 	default:
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 		lwkt_reltoken(&p->p_token);
 		lwkt_reltoken(&proc_token);
 		lwkt_reltoken(&tty_token);
+#if defined(COMPAT_43)
 		return (ttcompat(tp, cmd, data, flag));
 #else
-		lwkt_reltoken(&p->p_token);
-		lwkt_reltoken(&proc_token);
-		lwkt_reltoken(&tty_token);
 		return (ENOIOCTL);
 #endif
 	}

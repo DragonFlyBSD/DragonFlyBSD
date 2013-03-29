@@ -1091,7 +1091,7 @@ digiioctl(struct dev_ioctl_args *ap)
 	struct digi_softc *sc;
 	struct digi_p *port;
 	struct tty *tp;
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(COMPAT_43)
 	int oldcmd;
 	struct termios term;
 #endif
@@ -1272,7 +1272,7 @@ digiioctl(struct dev_ioctl_args *ap)
 	}
 
 	tp = port->tp;
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(COMPAT_43)
 	term = tp->t_termios;
 	oldcmd = cmd;
 	error = ttsetcompat(tp, &cmd, data, &term);

@@ -53,7 +53,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(COMPAT_43)
 #include <sys/ioctl_compat.h>
 #endif
 #include <sys/proc.h>
@@ -1241,8 +1241,6 @@ ptyioctl(struct dev_ioctl_args *ap)
 #ifdef COMPAT_43
 		case TIOCSETP:
 		case TIOCSETN:
-#endif
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 		case TIOCSETC:
 		case TIOCSLTC:
 		case TIOCLBIS:

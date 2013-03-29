@@ -71,7 +71,7 @@ sys_getpid(struct getpid_args *uap)
 	struct proc *p = curproc;
 
 	uap->sysmsg_fds[0] = p->p_pid;
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(COMPAT_43)
 	lwkt_gettoken(&proc_token);
 	uap->sysmsg_fds[1] = p->p_pptr->p_pid;
 	lwkt_reltoken(&proc_token);
@@ -184,7 +184,7 @@ sys_getuid(struct getuid_args *uap)
 	struct ucred *cred = curthread->td_ucred;
 
 	uap->sysmsg_fds[0] = cred->cr_ruid;
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(COMPAT_43)
 	uap->sysmsg_fds[1] = cred->cr_uid;
 #endif
 	return (0);
@@ -215,7 +215,7 @@ sys_getgid(struct getgid_args *uap)
 	struct ucred *cred = curthread->td_ucred;
 
 	uap->sysmsg_fds[0] = cred->cr_rgid;
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(COMPAT_43)
 	uap->sysmsg_fds[1] = cred->cr_groups[0];
 #endif
 	return (0);

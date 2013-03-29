@@ -12,6 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 3.2 to later versions                +
 +-----------------------------------------------------------------------+
 
+COMPAT_SUNOS OPTION REMOVED
+---------------------------
+
+The COMPAT_SUNOS option has been removed. It was meant to provide binary
+compatibility with SunOS 4.x for the sparc32 port of 4.4BSD.
+
 ISA SOUND CARD SUPPORT REMOVED
 ------------------------------
 

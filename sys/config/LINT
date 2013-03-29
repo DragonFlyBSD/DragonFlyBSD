@@ -2455,7 +2455,6 @@ options 	AHC_DUMP_EEPROM
 options 	CAM_DEBUG_DELAY
 options 	CLUSTERDEBUG
 options 	COMPAT_LINUX
-options 	COMPAT_SUNOS
 options 	DEBUG
 options 	DEBUG_CRIT_SECTIONS
 options 	DEBUG_INTERRUPTS

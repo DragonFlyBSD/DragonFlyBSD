@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_uid16.c,v 1.4.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.12 2006/12/23 00:27:02 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -228,7 +227,7 @@ sys_linux_getgroups16(struct linux_getgroups16_args *args)
 
 /*
  * The FreeBSD native getgid(2) and getuid(2) also modify p->p_retval[1]
- * when COMPAT_43 or COMPAT_SUNOS is defined. This globbers registers that
+ * when COMPAT_43 is defined. This globbers registers that
  * are assumed to be preserved. The following lightweight syscalls fixes
  * this. See also linux_getpid(2), linux_getgid(2) and linux_getuid(2) in
  * linux_misc.c

@@ -37,7 +37,6 @@
  *
  *	@(#)ioctl.h	8.6 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/ioctl.h,v 1.9 1999/12/29 04:24:43 peter Exp $
- * $DragonFly: src/sys/sys/ioctl.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef	_SYS_IOCTL_H_
@@ -75,8 +74,8 @@ struct ttysize {
  * Compatibility with old terminal driver
  *
  * Source level -> #define USE_OLD_TTY
- * Kernel level -> options COMPAT_43 or COMPAT_SUNOS
+ * Kernel level -> options COMPAT_43
  */
-#if defined(USE_OLD_TTY) || defined(COMPAT_43) || defined(COMPAT_SUNOS)
+#if defined(USE_OLD_TTY) || defined(COMPAT_43)
 #include <sys/ioctl_compat.h>
 #endif

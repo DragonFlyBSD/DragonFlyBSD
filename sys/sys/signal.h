@@ -290,9 +290,6 @@ struct	sigaction {
 #define	SA_NODEFER	0x0010	/* don't mask the signal we're delivering */
 #define	SA_NOCLDWAIT	0x0020	/* don't keep zombies around */
 #define	SA_SIGINFO	0x0040	/* signal handler with SA_SIGINFO args */
-#ifdef COMPAT_SUNOS
-#define	SA_USERTRAMP	0x0100	/* do not bounce off kernel's sigtramp */
-#endif
 
 #define NSIG		64	/* size of sigptbl */
 
