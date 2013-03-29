@@ -182,7 +182,8 @@ struct bnx_chain_data {
 struct bnx_tx_ring {
 	struct bnx_softc	*bnx_sc;
 	uint16_t		bnx_tx_flags;
-#define BNX_TX_FLAG_SHORTDMA	0x0001
+#define BNX_TX_FLAG_SHORTDMA		0x0001
+#define BNX_TX_FLAG_FORCE_DEFRAG	0x0002
 	uint16_t		bnx_tx_saved_considx;
 	int			bnx_txcnt;
 	uint32_t		bnx_tx_prodidx;
@@ -245,7 +246,6 @@ struct bnx_softc {
 	uint32_t		bnx_rx_coal_bds_int;
 	uint32_t		bnx_tx_coal_bds_int;
 	uint32_t		bnx_mi_mode;
-	int			bnx_force_defrag;
 	int			bnx_if_flags;
 	int			bnx_link;
 	int			bnx_link_evt;

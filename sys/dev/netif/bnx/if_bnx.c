@@ -232,6 +232,7 @@ static int	bnx_get_eaddr_eeprom(struct bnx_softc *, uint8_t[]);
 static int	bnx_get_eaddr(struct bnx_softc *, uint8_t[]);
 
 static void	bnx_coal_change(struct bnx_softc *);
+static int	bnx_sysctl_force_defrag(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_rx_coal_ticks(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_tx_coal_ticks(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_rx_coal_bds(SYSCTL_HANDLER_ARGS);
@@ -2071,9 +2072,10 @@ bnx_attach(device_t dev)
 	 * consumes a lot of CPU cycles, so leave it off by
 	 * default.
 	 */
-	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
+	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
-	    "force_defrag", CTLFLAG_RW, &sc->bnx_force_defrag, 0,
+	    "force_defrag", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, bnx_sysctl_force_defrag, "I",
 	    "Force defragment on TX path");
 
 	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
@@ -2805,7 +2807,8 @@ bnx_encap(struct bnx_tx_ring *txr, struct mbuf **m_head0, uint32_t *txidx,
 		*m_head0 = m_head = m_new;
 	}
 	if ((m_head->m_pkthdr.csum_flags & CSUM_TSO) == 0 &&
-	    txr->bnx_sc->bnx_force_defrag && m_head->m_next != NULL) {
+	    (txr->bnx_tx_flags & BNX_TX_FLAG_FORCE_DEFRAG) &&
+	    m_head->m_next != NULL) {
 		/*
 		 * Forcefully defragment mbuf chain to overcome hardware
 		 * limitation which only support a single outstanding
@@ -4273,4 +4276,34 @@ bnx_destroy_tx_ring(struct bnx_tx_ring *txr)
 	/* Destroy TX ring */
 	bnx_dma_block_free(txr->bnx_tx_ring_tag,
 	    txr->bnx_tx_ring_map, txr->bnx_tx_ring);
+}
+
+static int
+bnx_sysctl_force_defrag(SYSCTL_HANDLER_ARGS)
+{
+	struct bnx_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0];
+	int error, defrag, i;
+
+	if (txr->bnx_tx_flags & BNX_TX_FLAG_FORCE_DEFRAG)
+		defrag = 1;
+	else
+		defrag = 0;
+
+	error = sysctl_handle_int(oidp, &defrag, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
+		txr = &sc->bnx_tx_ring[i];
+		if (defrag)
+			txr->bnx_tx_flags |= BNX_TX_FLAG_FORCE_DEFRAG;
+		else
+			txr->bnx_tx_flags &= ~BNX_TX_FLAG_FORCE_DEFRAG;
+	}
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return 0;
 }
