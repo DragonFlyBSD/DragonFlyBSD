@@ -255,7 +255,7 @@ hi(int signo __unused)
 		if (no_timeout) {
 			putchar('\n');
 		} else {
-			printf("timeout in %ld:%ld minutes\n",
+			printf("timeout in %jd:%jd minutes\n",
 			    (intmax_t)(nexttime - timval) / 60,
 			    (intmax_t)(nexttime - timval) % 60);
 		}
