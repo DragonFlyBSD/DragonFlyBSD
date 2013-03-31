@@ -270,17 +270,17 @@ struct ciss_softc
 #ifdef CISS_DEBUG
 # define debug(level, fmt, args...)							\
 	do {										\
-	    if (level <= CISS_DEBUG) printf("%s: " fmt "\n", __func__ , ##args);	\
+	    if (level <= CISS_DEBUG) kprintf("%s: " fmt "\n", __func__ , ##args);	\
 	} while(0)
 # define debug_called(level)						\
 	do {								\
-	    if (level <= CISS_DEBUG) printf("%s: called\n", __func__);	\
+	    if (level <= CISS_DEBUG) kprintf("%s: called\n", __func__);	\
 	} while(0)
-# define debug_struct(s)		printf("  SIZE %s: %zu\n", #s, sizeof(struct s))
-# define debug_union(s)			printf("  SIZE %s: %zu\n", #s, sizeof(union s))
-# define debug_type(s)			printf("  SIZE %s: %zu\n", #s, sizeof(s))
-# define debug_field(s, f)		printf("  OFFSET %s.%s: %d\n", #s, #f, ((int)&(((struct s *)0)->f)))
-# define debug_const(c)			printf("  CONST %s %jd/0x%jx\n", #c, (intmax_t)c, (intmax_t)c);
+# define debug_struct(s)		kprintf("  SIZE %s: %zu\n", #s, sizeof(struct s))
+# define debug_union(s)			kprintf("  SIZE %s: %zu\n", #s, sizeof(union s))
+# define debug_type(s)			kprintf("  SIZE %s: %zu\n", #s, sizeof(s))
+# define debug_field(s, f)		kprintf("  OFFSET %s.%s: %d\n", #s, #f, ((int)&(((struct s *)0)->f)))
+# define debug_const(c)			kprintf("  CONST %s %jd/0x%jx\n", #c, (intmax_t)c, (intmax_t)c);
 #else
 # define debug(level, fmt, args...)
 # define debug_called(level)
