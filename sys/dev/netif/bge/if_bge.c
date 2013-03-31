@@ -2089,6 +2089,15 @@ bge_attach(device_t dev)
 	if (BGE_IS_5755_PLUS(sc) || sc->bge_asicrev == BGE_ASICREV_BCM5906)
 		sc->bge_flags |= BGE_FLAG_SHORTDMA;
 
+	/*
+	 * Increase STD RX ring prod index by at most 8 for BCM5750,
+	 * BCM5752 and BCM5755 to workaround hardware errata.
+	 */
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5750 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM5752 ||
+	    sc->bge_asicrev == BGE_ASICREV_BCM5755)
+		sc->bge_rx_wreg = 8;
+
   	/*
 	 * Check if this is a PCI-X or PCI Express device.
   	 */
@@ -2950,6 +2959,8 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod, int count)
 				continue;
 			}
 		} else {
+			int discard = 0;
+
 			BGE_INC(sc->bge_std, BGE_STD_RX_RING_CNT);
 			stdcnt++;
 
@@ -2959,20 +2970,30 @@ bge_rxeof(struct bge_softc *sc, uint16_t rx_prod, int count)
 				    "and hw std index(%d) mismatch, drop!\n",
 				    sc->bge_std, rxidx);
 				bge_setup_rxdesc_std(sc, rxidx);
-				continue;
+				discard = 1;
+				goto refresh_rx;
 			}
 
 			m = sc->bge_cdata.bge_rx_std_chain[rxidx].bge_mbuf;
 			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
 				bge_setup_rxdesc_std(sc, sc->bge_std);
-				continue;
+				discard = 1;
+				goto refresh_rx;
 			}
 			if (bge_newbuf_std(sc, sc->bge_std, 0)) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
 				bge_setup_rxdesc_std(sc, sc->bge_std);
-				continue;
+				discard = 1;
 			}
+refresh_rx:
+			if (sc->bge_rx_wreg > 0 && stdcnt >= sc->bge_rx_wreg) {
+				bge_writembx(sc, BGE_MBX_RX_STD_PROD_LO,
+				    sc->bge_std);
+				stdcnt = 0;
+			}
+			if (discard)
+				continue;
 		}
 
 		IFNET_STAT_INC(ifp, ipackets, 1);
