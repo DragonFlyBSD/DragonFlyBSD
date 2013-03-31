@@ -911,8 +911,7 @@ bnx_init_tx_ring(struct bnx_tx_ring *txr)
 	txr->bnx_tx_prodidx = 0;
 
 	/* Initialize transmit producer index for host-memory send ring. */
-	bnx_writembx(txr->bnx_sc, BGE_MBX_TX_HOST_PROD0_LO,
-	    txr->bnx_tx_prodidx);
+	bnx_writembx(txr->bnx_sc, txr->bnx_tx_mbx, txr->bnx_tx_prodidx);
 
 	return(0);
 }
@@ -2917,8 +2916,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 		if (nsegs >= txr->bnx_tx_wreg) {
 			/* Transmit */
-			bnx_writembx(txr->bnx_sc, BGE_MBX_TX_HOST_PROD0_LO,
-			    prodidx);
+			bnx_writembx(txr->bnx_sc, txr->bnx_tx_mbx, prodidx);
 			nsegs = 0;
 		}
 
@@ -2932,7 +2930,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	if (nsegs > 0) {
 		/* Transmit */
-		bnx_writembx(txr->bnx_sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
+		bnx_writembx(txr->bnx_sc, txr->bnx_tx_mbx, prodidx);
 	}
 	txr->bnx_tx_prodidx = prodidx;
 }
@@ -3435,7 +3433,7 @@ static int
 bnx_dma_alloc(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i, error;
+	int i, error, mbx;
 
 	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
@@ -3549,6 +3547,7 @@ bnx_dma_alloc(struct bnx_softc *sc)
 		return error;
 	}
 
+	mbx = BGE_MBX_TX_HOST_PROD0_LO;
 	sc->bnx_tx_ring = kmalloc_cachealign(
 	    sizeof(struct bnx_tx_ring) * sc->bnx_tx_ringcnt, M_DEVBUF,
 	    M_WAITOK | M_ZERO);
@@ -3556,6 +3555,13 @@ bnx_dma_alloc(struct bnx_softc *sc)
 		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
 
 		txr->bnx_sc = sc;
+		txr->bnx_tx_mbx = mbx;
+
+		if (mbx & 0x4)
+			mbx -= 0x4;
+		else
+			mbx += 0xc;
+
 		error = bnx_create_tx_ring(txr);
 		if (error) {
 			device_printf(sc->bnx_dev,

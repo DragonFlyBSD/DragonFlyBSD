@@ -188,6 +188,7 @@ struct bnx_tx_ring {
 	int			bnx_txcnt;
 	uint32_t		bnx_tx_prodidx;
 	int			bnx_tx_wreg;
+	int			bnx_tx_mbx;
 
 	struct bge_tx_bd	*bnx_tx_ring;
 
