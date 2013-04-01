@@ -91,6 +91,8 @@ const char *mfi_pd_inq_string(struct mfi_pd_info *info);
 const char *mfi_volume_name(int fd, uint8_t target_id);
 int	mfi_volume_busy(int fd, uint8_t target_id);
 int	mfi_config_read(int fd, struct mfi_config_data **configp);
+int	mfi_config_read_opcode(int fd, uint32_t opcode,
+    struct mfi_config_data **configp, uint8_t *mbox, size_t mboxlen);
 int	mfi_lookup_drive(int fd, char *drive, uint16_t *device_id);
 int	mfi_lookup_volume(int fd, const char *name, uint8_t *target_id);
 int	mfi_dcmd_command(int fd, uint32_t opcode, void *buf, size_t bufsize,
@@ -107,5 +109,9 @@ int	mfi_reconfig_supported(void);
 const char *mfi_status(u_int status_code);
 const char *mfi_drive_name(struct mfi_pd_info *pinfo, uint16_t device_id,
     uint32_t def);
+void	format_stripe(char *buf, size_t buflen, uint8_t stripe);
+void	print_ld(struct mfi_ld_info *info, int state_len);
+void	print_pd(struct mfi_pd_info *info, int state_len);
+void	dump_config(int fd, struct mfi_config_data *config, const char* msg_prefix);
 
 #endif /* !__MFIUTIL_H__ */

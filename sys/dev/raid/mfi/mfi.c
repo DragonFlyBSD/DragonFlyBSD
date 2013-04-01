@@ -2550,6 +2550,7 @@ mfi_config_lock(struct mfi_softc *sc, uint32_t opcode)
 	case MFI_DCMD_LD_DELETE:
 	case MFI_DCMD_CFG_ADD:
 	case MFI_DCMD_CFG_CLEAR:
+	case MFI_DCMD_CFG_FOREIGN_IMPORT:
 		lockmgr(&sc->mfi_config_lock, LK_EXCLUSIVE);
 		return (1);
 	default:
@@ -2665,10 +2666,9 @@ mfi_check_command_post(struct mfi_softc *sc, struct mfi_command *cm)
 		}
 		break;
 	case MFI_DCMD_CFG_ADD:
-		mfi_ldprobe(sc);
-		break;
 	case MFI_DCMD_CFG_FOREIGN_IMPORT:
-		mfi_ldprobe(sc);
+		if (cm->cm_frame->header.cmd_status == MFI_STAT_OK)
+			mfi_ldprobe(sc);
 		break;
 	case MFI_DCMD_PD_STATE_SET:
 		mbox = (uint16_t *)cm->cm_frame->dcmd.mbox;

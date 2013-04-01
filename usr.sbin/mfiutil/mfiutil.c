@@ -83,6 +83,12 @@ usage(void)
 	fprintf(stderr, "    patrol <disable|auto|manual> [interval [start]]\n");
 	fprintf(stderr, "    start patrol              - start a patrol read\n");
 	fprintf(stderr, "    stop patrol               - stop a patrol read\n");
+	fprintf(stderr, "    foreign scan              - scan for foreign configurations\n");
+	fprintf(stderr, "    foreign drives            - list foreign drives\n");
+	fprintf(stderr, "    foreign clear [volume]    - clear foreign configurations (default all)\n");
+	fprintf(stderr, "    foreign display [volume]  - display foreign configurations (default all)\n");
+	fprintf(stderr, "    foreign preview [volume]  - preview foreign configurations (default all)\n");
+	fprintf(stderr, "    foreign import [volume]   - import foreign configurations (default all)\n");
 	fprintf(stderr, "    flash <firmware>\n");
 #ifdef DEBUG
 	fprintf(stderr, "    debug                     - debug 'show config'\n");

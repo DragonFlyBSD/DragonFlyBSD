@@ -286,7 +286,7 @@ mfi_dcmd_command(int fd, uint32_t opcode, void *buf, size_t bufsize,
 	if (statusp != NULL)
 		*statusp = dcmd->header.cmd_status;
 	else if (dcmd->header.cmd_status != MFI_STAT_OK) {
-		warnx("Command failed: %s",
+		warnx("Command 0x%08x failed: %s", opcode,
 		    mfi_status(dcmd->header.cmd_status));
 		errno = EIO;
 		return (-1);

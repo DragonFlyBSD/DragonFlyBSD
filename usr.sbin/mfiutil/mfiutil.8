@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/usr.sbin/mfiutil/mfiutil.8,v 1.9 2011/09/02 16:00:51 jhb Exp $
 .\"
-.Dd January 6, 2012
+.Dd April 1, 2013
 .Dt MFIUTIL 8
 .Os
 .Sh NAME
@@ -138,6 +138,24 @@
 .Nm
 .Op Fl u Ar unit
 .Cm patrol Ar command Op Ar interval Op Ar start
+.Nm
+.Op Fl u Ar unit
+.Cm foreign scan
+.Nm
+.Op Fl u Ar unit
+.Cm foreign drives
+.Nm
+.Op Fl u Ar unit
+.Cm foreign clear Op Ar config
+.Nm
+.Op Fl u Ar unit
+.Cm foreign display Op Ar config
+.Nm
+.Op Fl u Ar unit
+.Cm foreign preview Op Ar config
+.Nm
+.Op Fl u Ar unit
+.Cm foreign import Op Ar config
 .Nm
 .Op Fl u Ar unit
 .Cm flash Ar file
@@ -561,6 +579,38 @@ Enable manual patrol reads that are only initiated by the user.
 Start a patrol read operation.
 .It Cm stop patrol
 Stop a currently running patrol read operation.
+.It Cm foreign scan
+Scan for foreign configurations and display the number found.
+The
+.Ar config
+argument for the commands below takes the form of a number from 0 to
+the total configurations found.
+.It Cm foreign drives
+Scan for drives flagged as foreign and display them.
+.It Cm foreign clear Op config
+Clear the specifed foreign
+.Ar config
+or all if no
+.Ar config
+argument is provided.
+.It Cm foreign display Op config
+Display the specifed foreign
+.Ar config
+or all if no
+.Ar config
+argument is provided.
+.It Cm foreign preview Op config
+Preview the specifed foreign
+.Ar config
+after import or all if no
+.Ar config
+argument is provided.
+.It Cm foreign import Op config
+Import the specifed foreign
+.Ar config
+or all if no
+.Ar config
+argument is provided.
 .It Cm flash Ar file
 Updates the flash on the controller with the firmware stored in
 .Ar file .
