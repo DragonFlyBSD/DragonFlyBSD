@@ -892,11 +892,13 @@ bnx_free_tx_ring(struct bnx_tx_ring *txr)
 	int i;
 
 	for (i = 0; i < BGE_TX_RING_CNT; i++) {
-		if (txr->bnx_tx_chain[i] != NULL) {
+		struct bnx_tx_buf *buf = &txr->bnx_tx_buf[i];
+
+		if (buf->bnx_tx_mbuf != NULL) {
 			bus_dmamap_unload(txr->bnx_tx_mtag,
-			    txr->bnx_tx_dmamap[i]);
-			m_freem(txr->bnx_tx_chain[i]);
-			txr->bnx_tx_chain[i] = NULL;
+			    buf->bnx_tx_dmamap);
+			m_freem(buf->bnx_tx_mbuf);
+			buf->bnx_tx_mbuf = NULL;
 		}
 		bzero(&txr->bnx_tx_ring[i], sizeof(struct bge_tx_bd));
 	}
@@ -2502,15 +2504,17 @@ bnx_txeof(struct bnx_tx_ring *txr, uint16_t tx_cons)
 	 * frames that have been sent.
 	 */
 	while (txr->bnx_tx_saved_considx != tx_cons) {
+		struct bnx_tx_buf *buf;
 		uint32_t idx = 0;
 
 		idx = txr->bnx_tx_saved_considx;
-		if (txr->bnx_tx_chain[idx] != NULL) {
+		buf = &txr->bnx_tx_buf[idx];
+		if (buf->bnx_tx_mbuf != NULL) {
 			IFNET_STAT_INC(ifp, opackets, 1);
 			bus_dmamap_unload(txr->bnx_tx_mtag,
-			    txr->bnx_tx_dmamap[idx]);
-			m_freem(txr->bnx_tx_chain[idx]);
-			txr->bnx_tx_chain[idx] = NULL;
+			    buf->bnx_tx_dmamap);
+			m_freem(buf->bnx_tx_mbuf);
+			buf->bnx_tx_mbuf = NULL;
 		}
 		txr->bnx_txcnt--;
 		BNX_INC(txr->bnx_tx_saved_considx, BGE_TX_RING_CNT);
@@ -2773,7 +2777,7 @@ bnx_encap(struct bnx_tx_ring *txr, struct mbuf **m_head0, uint32_t *txidx,
 	}
 
 	idx = *txidx;
-	map = txr->bnx_tx_dmamap[idx];
+	map = txr->bnx_tx_buf[idx].bnx_tx_dmamap;
 
 	maxsegs = (BGE_TX_RING_CNT - txr->bnx_txcnt) - BNX_NSEG_RSVD;
 	KASSERT(maxsegs >= BNX_NSEG_SPARE,
@@ -2851,9 +2855,9 @@ bnx_encap(struct bnx_tx_ring *txr, struct mbuf **m_head0, uint32_t *txidx,
 	 * Insure that the map for this transmission is placed at
 	 * the array index of the last descriptor in this chain.
 	 */
-	txr->bnx_tx_dmamap[*txidx] = txr->bnx_tx_dmamap[idx];
-	txr->bnx_tx_dmamap[idx] = map;
-	txr->bnx_tx_chain[idx] = m_head;
+	txr->bnx_tx_buf[*txidx].bnx_tx_dmamap = txr->bnx_tx_buf[idx].bnx_tx_dmamap;
+	txr->bnx_tx_buf[idx].bnx_tx_dmamap = map;
+	txr->bnx_tx_buf[idx].bnx_tx_mbuf = m_head;
 	txr->bnx_txcnt += nsegs;
 
 	BNX_INC(idx, BGE_TX_RING_CNT);
@@ -2886,7 +2890,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	prodidx = txr->bnx_tx_prodidx;
 
-	while (txr->bnx_tx_chain[prodidx] == NULL) {
+	while (txr->bnx_tx_buf[prodidx].bnx_tx_mbuf == NULL) {
 		/*
 		 * Sanity check: avoid coming within BGE_NSEG_RSVD
 		 * descriptors of the end of the ring.  Also make
@@ -4232,13 +4236,13 @@ bnx_create_tx_ring(struct bnx_tx_ring *txr)
 	for (i = 0; i < BGE_TX_RING_CNT; i++) {
 		error = bus_dmamap_create(txr->bnx_tx_mtag,
 		    BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
-		    &txr->bnx_tx_dmamap[i]);
+		    &txr->bnx_tx_buf[i].bnx_tx_dmamap);
 		if (error) {
 			int j;
 
 			for (j = 0; j < i; ++j) {
 				bus_dmamap_destroy(txr->bnx_tx_mtag,
-					txr->bnx_tx_dmamap[j]);
+				    txr->bnx_tx_buf[j].bnx_tx_dmamap);
 			}
 			bus_dma_tag_destroy(txr->bnx_tx_mtag);
 			txr->bnx_tx_mtag = NULL;
@@ -4275,8 +4279,9 @@ bnx_destroy_tx_ring(struct bnx_tx_ring *txr)
 		int i;
 
 		for (i = 0; i < BGE_TX_RING_CNT; i++) {
+			KKASSERT(txr->bnx_tx_buf[i].bnx_tx_mbuf == NULL);
 			bus_dmamap_destroy(txr->bnx_tx_mtag,
-			    txr->bnx_tx_dmamap[i]);
+			    txr->bnx_tx_buf[i].bnx_tx_dmamap);
 		}
 		bus_dma_tag_destroy(txr->bnx_tx_mtag);
 	}

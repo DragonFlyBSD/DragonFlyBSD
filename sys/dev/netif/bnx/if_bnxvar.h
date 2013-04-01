@@ -179,6 +179,11 @@ struct bnx_chain_data {
 	struct bnx_jslot	bnx_jslots[BNX_JSLOTS];
 };
 
+struct bnx_tx_buf {
+	bus_dmamap_t		bnx_tx_dmamap;
+	struct mbuf		*bnx_tx_mbuf;
+};
+
 struct bnx_tx_ring {
 	struct bnx_softc	*bnx_sc;
 	uint16_t		bnx_tx_flags;
@@ -193,8 +198,7 @@ struct bnx_tx_ring {
 	struct bge_tx_bd	*bnx_tx_ring;
 
 	bus_dma_tag_t		bnx_tx_mtag;	/* TX mbuf DMA tag */
-	bus_dmamap_t		bnx_tx_dmamap[BGE_TX_RING_CNT];
-	struct mbuf		*bnx_tx_chain[BGE_TX_RING_CNT];
+	struct bnx_tx_buf	bnx_tx_buf[BGE_TX_RING_CNT];
 
 	bus_dma_tag_t		bnx_tx_ring_tag;
 	bus_dmamap_t		bnx_tx_ring_map;
