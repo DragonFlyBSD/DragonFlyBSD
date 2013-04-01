@@ -34,12 +34,9 @@
  * $FreeBSD: src/sys/kern/tty_compat.c,v 1.29 1999/08/28 00:46:20 peter Exp $
  */
 
-#include "opt_compat.h"
-
 /*
  * mapping routines for old line discipline (yuck)
  */
-#if defined(COMPAT_43)
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -473,4 +470,3 @@ ttcompatsetlflags(struct tty *tp, struct termios *t)
 	t->c_lflag = lflag;
 	t->c_cflag = cflag;
 }
-#endif	/* COMPAT_43 */
