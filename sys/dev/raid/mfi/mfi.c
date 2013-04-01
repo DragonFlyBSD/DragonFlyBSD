@@ -151,6 +151,11 @@ TUNABLE_INT("hw.mfi.detect_jbod_change", &mfi_detect_jbod_change);
 SYSCTL_INT(_hw_mfi, OID_AUTO, detect_jbod_change, CTLFLAG_RW,
 	   &mfi_detect_jbod_change, 0, "Detect a change to a JBOD");
 
+static int	mfi_cmd_timeout = MFI_CMD_TIMEOUT;
+TUNABLE_INT("hw.mfi.cmd_timeout", &mfi_cmd_timeout);
+SYSCTL_INT(_hw_mfi, OID_AUTO, cmd_timeout, CTLFLAG_RW, &mfi_cmd_timeout,
+	   0, "Command timeout (in seconds)");
+
 /* Management interface */
 static d_open_t		mfi_open;
 static d_close_t	mfi_close;
@@ -750,7 +755,7 @@ mfi_attach(struct mfi_softc *sc)
 
 	/* Start the timeout watchdog */
 	callout_init_mp(&sc->mfi_watchdog_callout);
-	callout_reset(&sc->mfi_watchdog_callout, MFI_CMD_TIMEOUT * hz,
+	callout_reset(&sc->mfi_watchdog_callout, mfi_cmd_timeout * hz,
 	    mfi_timeout, sc);
 
 	return (0);
@@ -3479,7 +3484,7 @@ mfi_dump_all(void)
 			break;
 		device_printf(sc->mfi_dev, "Dumping\n\n");
 		timedout = 0;
-		deadline = time_second - MFI_CMD_TIMEOUT;
+		deadline = time_second - mfi_cmd_timeout;
 		lockmgr(&sc->mfi_io_lock, LK_EXCLUSIVE);
 		TAILQ_FOREACH(cm, &sc->mfi_busy, cm_link) {
 			if (cm->cm_timestamp < deadline) {
@@ -3510,11 +3515,11 @@ mfi_timeout(void *data)
 	time_t deadline;
 	int timedout = 0;
 
-	deadline = time_second - MFI_CMD_TIMEOUT;
+	deadline = time_second - mfi_cmd_timeout;
 	if (sc->adpreset == 0) {
 		if (!mfi_tbolt_reset(sc)) {
 			callout_reset(&sc->mfi_watchdog_callout,
-			    MFI_CMD_TIMEOUT * hz, mfi_timeout, sc);
+			    mfi_cmd_timeout * hz, mfi_timeout, sc);
 			return;
 		}
 	}
@@ -3543,7 +3548,7 @@ mfi_timeout(void *data)
 
 	lockmgr(&sc->mfi_io_lock, LK_RELEASE);
 
-	callout_reset(&sc->mfi_watchdog_callout, MFI_CMD_TIMEOUT * hz,
+	callout_reset(&sc->mfi_watchdog_callout, mfi_cmd_timeout * hz,
 	    mfi_timeout, sc);
 
 	if (0)
