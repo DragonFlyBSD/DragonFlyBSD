@@ -23,7 +23,7 @@ CFLAGS		+= -std=${CSTD}
 .if !defined(NO_WARNS)
 . if defined(WARNS)
 .  if ${WARNS} >= 1
-CWARNFLAGS	+=	-Wsystem-headers
+CWARNFLAGS	+=	-Wmissing-include-dirs -Wsystem-headers
 .   if !defined(NO_WERROR) && (${CCVER} == "gcc44" || ${CCVER} == "gcc47")
 CWARNFLAGS	+=	-Werror
 .   endif
