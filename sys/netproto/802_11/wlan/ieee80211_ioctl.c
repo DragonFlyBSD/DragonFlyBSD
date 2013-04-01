@@ -3189,6 +3189,7 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 	struct ieee80211vap *vap;
 	void *ioctl;
 
+	wlan_serialize_exit();
 	if_delallmulti(parent);
 	ioctl = parent->if_ioctl;	/* XXX WAR if_allmulti */
 	parent->if_ioctl = NULL;
@@ -3204,6 +3205,7 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 	}
 	parent->if_ioctl = ioctl;
 	ieee80211_runtask(ic, &ic->ic_mcast_task);
+	wlan_serialize_enter();
 }
 
 int
@@ -3213,6 +3215,8 @@ ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred
 	struct ieee80211com *ic = vap->iv_ic;
 	int error = 0;
 	struct ifreq *ifr;
+
+	wlan_assert_serialized();
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:

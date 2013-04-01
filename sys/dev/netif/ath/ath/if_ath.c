@@ -1531,6 +1531,8 @@ ath_init(void *arg)
 	DPRINTF(sc, ATH_DEBUG_ANY, "%s: if_flags 0x%x\n",
 		__func__, ifp->if_flags);
 
+	wlan_assert_serialized();
+
 	/*
 	 * Stop anything previously setup.  This is safe
 	 * whether this is the first time through or not.
@@ -1814,6 +1816,7 @@ ath_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	struct mbuf *m, *next;
 	ath_bufhead frags;
 
+	wlan_assert_serialized();
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || sc->sc_invalid) {
@@ -6196,6 +6199,8 @@ ath_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 	struct ifreq *ifr = (struct ifreq *)data;
 	const HAL_RATE_TABLE *rt;
 	int error = 0;
+
+	wlan_assert_serialized();
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:

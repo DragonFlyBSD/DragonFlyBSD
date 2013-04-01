@@ -3360,9 +3360,7 @@ static void
 iwn_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
-	wlan_serialize_enter();
 	iwn_start_locked(ifp);
-	wlan_serialize_exit();
 }
 
 static void
@@ -3373,6 +3371,8 @@ iwn_start_locked(struct ifnet *ifp)
 	struct iwn_tx_ring *txq;
 	struct mbuf *m;
 	int pri;
+
+	wlan_assert_serialized();
 
 	for (;;) {
 		if (sc->qfullmsk != 0) {
@@ -3415,6 +3415,8 @@ iwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 	struct ifreq *ifr = (struct ifreq *) data;
 	int error = 0, startall = 0, stop = 0;
+
+	wlan_assert_serialized();
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -6206,9 +6208,9 @@ iwn_init(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
-	wlan_serialize_enter();
+	wlan_assert_serialized();
+
 	iwn_init_locked(sc);
-	wlan_serialize_exit();
 
 	if (ifp->if_flags & IFF_RUNNING)
 		ieee80211_start_all(ic);

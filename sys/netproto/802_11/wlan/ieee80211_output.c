@@ -123,6 +123,7 @@ ieee80211_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	struct ether_header *eh;
 	int error;
 
+	wlan_assert_serialized();
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	/* NB: parent must be up and running */

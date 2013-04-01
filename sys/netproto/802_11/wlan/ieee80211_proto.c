@@ -1234,6 +1234,8 @@ ieee80211_init(void *arg)
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE | IEEE80211_MSG_DEBUG,
 	    "%s\n", __func__);
 
+	wlan_assert_serialized();
+
 	ieee80211_start_locked(vap);
 }
 
