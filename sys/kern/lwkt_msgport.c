@@ -737,7 +737,7 @@ lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
 	crit_enter_quick(td);
 	if (msg->ms_flags & MSGF_QUEUED) {
 	    lwkt_port_t port = msg->ms_reply_port;
-	    thread_t td = curthread;
+	    thread_t td __debugvar = curthread;
 
 	    KKASSERT(port->mpu_td == td);
 	    _lwkt_pullmsg(port, msg);
