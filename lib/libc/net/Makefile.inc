@@ -22,7 +22,7 @@ SRCS+=	base64.c ether_addr.c eui64.c \
 SRCS+=	nscache.c nscachedcli.c
 .endif
 
-CFLAGS+=-DINET6 -I${.OBJDIR} -I${.CURDIR}/resolv
+CFLAGS+=-DINET6 -I${.OBJDIR} -I${.CURDIR}/../libc/resolv
 
 YFLAGS+=-p_nsyy
 LFLAGS+=-P_nsyy

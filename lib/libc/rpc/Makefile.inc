@@ -26,7 +26,7 @@ SRCS+=	rtime.c
 SRCS+=	crypt_clnt.c crypt_xdr.c crypt.h
 
 CFLAGS+= -DBROKEN_DES -DPORTMAP -DDES_BUILTIN
-CFLAGS+= -I${.CURDIR}/rpc
+CFLAGS+= -I${.CURDIR}/../libc/rpc
 
 CLEANFILES+= crypt_clnt.c crypt_xdr.c crypt.h
 
