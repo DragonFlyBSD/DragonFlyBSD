@@ -97,9 +97,11 @@
  * 300302 - fpsave changes - ucontext_t, mcontext_t, sigcontext, sigframe
  * 300303 - Demarcation of old m4/flex with new m4/flex
  * 300304 - Update to dialog-1.2-20121230
+ * 300400 - 3.4 release
+ * 300500 - 3.5 master
 */
 #undef __DragonFly_version
-#define __DragonFly_version 300304	/* propagated to newvers */
+#define __DragonFly_version 300500	/* propagated to newvers */
 
 #include <sys/_null.h>
 
