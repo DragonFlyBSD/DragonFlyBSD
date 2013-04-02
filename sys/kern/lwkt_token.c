@@ -53,7 +53,6 @@
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/ktr.h>
-#include <ddb/ddb.h>
 #include <sys/kthread.h>
 #include <machine/cpu.h>
 #include <sys/lock.h>
@@ -75,6 +74,11 @@
 
 #include <machine/stdarg.h>
 #include <machine/smp.h>
+
+#include "opt_ddb.h"
+#ifdef DDB
+#include <ddb/ddb.h>
+#endif
 
 extern int lwkt_sched_debug;
 
@@ -933,6 +937,7 @@ lwkt_token_swap(void)
 	crit_exit();
 }
 
+#ifdef DDB
 DB_SHOW_COMMAND(tokens, db_tok_all)
 {
 	struct lwkt_token *tok, **ptr;
@@ -957,3 +962,4 @@ DB_SHOW_COMMAND(tokens, db_tok_all)
 		    tok->t_collisions, tok->t_desc);
 	}
 }
+#endif /* DDB */
