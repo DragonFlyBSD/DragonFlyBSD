@@ -99,7 +99,7 @@
  * 300304 - Update to dialog-1.2-20121230
  * 300400 - 3.4 release
  * 300500 - 3.5 master
-*/
+ */
 #undef __DragonFly_version
 #define __DragonFly_version 300500	/* propagated to newvers */
 
