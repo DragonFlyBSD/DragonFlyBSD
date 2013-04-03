@@ -391,7 +391,7 @@ DRIVER_MODULE(miibus, re, miibus_driver, miibus_devclass, NULL, NULL);
 
 static int	re_rx_desc_count = RE_RX_DESC_CNT_DEF;
 static int	re_tx_desc_count = RE_TX_DESC_CNT_DEF;
-static int	re_msi_enable = 1;
+static int	re_msi_enable = 0;
 
 TUNABLE_INT("hw.re.rx_desc_count", &re_rx_desc_count);
 TUNABLE_INT("hw.re.tx_desc_count", &re_tx_desc_count);
