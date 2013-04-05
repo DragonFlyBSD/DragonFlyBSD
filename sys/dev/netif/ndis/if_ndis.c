@@ -1776,8 +1776,10 @@ ndis_starttask(device_object *d, void *arg)
 
 	ifp = arg;
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
