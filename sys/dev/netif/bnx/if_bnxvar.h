@@ -136,22 +136,49 @@ struct bnx_jslot {
  * we access via the shared memory window.
  */
 struct bnx_ring_data {
-	struct bge_rx_bd	*bnx_rx_std_ring;
-	bus_addr_t		bnx_rx_std_ring_paddr;
 	struct bge_rx_bd	*bnx_rx_jumbo_ring;
 	bus_addr_t		bnx_rx_jumbo_ring_paddr;
-	struct bge_rx_bd	*bnx_rx_return_ring;
-	bus_addr_t		bnx_rx_return_ring_paddr;
 	struct bge_status_block	*bnx_status_block;
 	bus_addr_t		bnx_status_block_paddr;
 	void			*bnx_jumbo_buf;
 	struct bnx_gib		bnx_info;
 };
 
-struct bnx_rxchain {
-	struct mbuf	*bnx_mbuf;
-	bus_addr_t	bnx_paddr;
+struct bnx_rx_buf {
+	bus_dmamap_t		bnx_rx_dmamap;
+	struct mbuf		*bnx_rx_mbuf;
+	bus_addr_t		bnx_rx_paddr;
 };
+
+struct bnx_rx_std_ring {
+	struct bnx_softc	*bnx_sc;
+
+	uint16_t		bnx_rx_std;	/* current prod ring head */
+	struct bge_rx_bd	*bnx_rx_std_ring;
+
+	bus_dma_tag_t		bnx_rx_mtag;	/* RX mbuf DMA tag */
+	struct bnx_rx_buf	bnx_rx_std_buf[BGE_STD_RX_RING_CNT];
+
+	bus_dma_tag_t		bnx_rx_std_ring_tag;
+	bus_dmamap_t		bnx_rx_std_ring_map;
+	bus_addr_t		bnx_rx_std_ring_paddr;
+} __cachealign;
+
+struct bnx_rx_ret_ring {
+	struct bnx_softc	*bnx_sc;
+	struct bnx_rx_std_ring	*bnx_std;
+
+	/* Shadow of bnx_rx_std_ring's bnx_rx_mtag */
+	bus_dma_tag_t		bnx_rx_mtag;
+
+	uint16_t		bnx_rx_saved_considx;
+	struct bge_rx_bd	*bnx_rx_ret_ring;
+	bus_dmamap_t		bnx_rx_tmpmap;
+
+	bus_dma_tag_t		bnx_rx_ret_ring_tag;
+	bus_dmamap_t		bnx_rx_ret_ring_map;
+	bus_addr_t		bnx_rx_ret_ring_paddr;
+} __cachealign;
 
 /*
  * Mbuf pointers. We need these to keep track of the virtual addresses
@@ -160,21 +187,13 @@ struct bnx_rxchain {
  */
 struct bnx_chain_data {
 	bus_dma_tag_t		bnx_parent_tag;
-	bus_dma_tag_t		bnx_rx_std_ring_tag;
 	bus_dma_tag_t		bnx_rx_jumbo_ring_tag;
-	bus_dma_tag_t		bnx_rx_return_ring_tag;
 	bus_dma_tag_t		bnx_status_tag;
 	bus_dma_tag_t		bnx_jumbo_tag;
-	bus_dma_tag_t		bnx_rx_mtag;	/* RX mbuf DMA tag */
-	bus_dmamap_t		bnx_rx_tmpmap;
-	bus_dmamap_t		bnx_rx_std_dmamap[BGE_STD_RX_RING_CNT];
-	bus_dmamap_t		bnx_rx_std_ring_map;
 	bus_dmamap_t		bnx_rx_jumbo_ring_map;
-	bus_dmamap_t		bnx_rx_return_ring_map;
 	bus_dmamap_t		bnx_status_map;
 	bus_dmamap_t		bnx_jumbo_map;
-	struct bnx_rxchain	bnx_rx_std_chain[BGE_STD_RX_RING_CNT];
-	struct bnx_rxchain	bnx_rx_jumbo_chain[BGE_JUMBO_RX_RING_CNT];
+	struct bnx_rx_buf	bnx_rx_jumbo_chain[BGE_JUMBO_RX_RING_CNT];
 	/* Stick the jumbo mem management stuff here too. */
 	struct bnx_jslot	bnx_jslots[BNX_JSLOTS];
 };
@@ -237,10 +256,13 @@ struct bnx_softc {
 	uint32_t		bnx_chiprev;
 	struct bnx_ring_data	bnx_ldata;	/* rings */
 	struct bnx_chain_data	bnx_cdata;	/* mbufs */
+
 	int			bnx_tx_ringcnt;
 	struct bnx_tx_ring	*bnx_tx_ring;
-	uint16_t		bnx_rx_saved_considx;
-	uint16_t		bnx_std;	/* current std ring head */
+	int			bnx_rx_retcnt;
+	struct bnx_rx_ret_ring	*bnx_rx_ret_ring;
+	struct bnx_rx_std_ring	bnx_rx_std_ring;
+
 	uint16_t		bnx_jumbo;	/* current jumo ring head */
 	SLIST_HEAD(__bnx_jfreehead, bnx_jslot)	bnx_jfree_listhead;
 	struct lwkt_serialize	bnx_jslot_serializer;

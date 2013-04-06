@@ -159,7 +159,7 @@ static void	bnx_intr(struct bnx_softc *);
 static void	bnx_enable_intr(struct bnx_softc *);
 static void	bnx_disable_intr(struct bnx_softc *);
 static void	bnx_txeof(struct bnx_tx_ring *, uint16_t);
-static void	bnx_rxeof(struct bnx_softc *, uint16_t, int);
+static void	bnx_rxeof(struct bnx_rx_ret_ring *, uint16_t, int);
 
 static void	bnx_start(struct ifnet *, struct ifaltq_subque *);
 static int	bnx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -176,19 +176,21 @@ static struct bnx_jslot
 		*bnx_jalloc(struct bnx_softc *);
 static void	bnx_jfree(void *);
 static void	bnx_jref(void *);
-static int	bnx_newbuf_std(struct bnx_softc *, int, int);
+static int	bnx_newbuf_std(struct bnx_rx_ret_ring *, int, int);
 static int	bnx_newbuf_jumbo(struct bnx_softc *, int, int);
-static void	bnx_setup_rxdesc_std(struct bnx_softc *, int);
+static void	bnx_setup_rxdesc_std(struct bnx_rx_std_ring *, int);
 static void	bnx_setup_rxdesc_jumbo(struct bnx_softc *, int);
-static int	bnx_init_rx_ring_std(struct bnx_softc *);
-static void	bnx_free_rx_ring_std(struct bnx_softc *);
+static int	bnx_init_rx_ring_std(struct bnx_rx_std_ring *);
+static void	bnx_free_rx_ring_std(struct bnx_rx_std_ring *);
 static int	bnx_init_rx_ring_jumbo(struct bnx_softc *);
 static void	bnx_free_rx_ring_jumbo(struct bnx_softc *);
 static void	bnx_free_tx_ring(struct bnx_tx_ring *);
 static int	bnx_init_tx_ring(struct bnx_tx_ring *);
 static int	bnx_create_tx_ring(struct bnx_tx_ring *);
 static void	bnx_destroy_tx_ring(struct bnx_tx_ring *);
-static int	bnx_dma_alloc(struct bnx_softc *);
+static int	bnx_create_rx_ret_ring(struct bnx_rx_ret_ring *);
+static void	bnx_destroy_rx_ret_ring(struct bnx_rx_ret_ring *);
+static int	bnx_dma_alloc(device_t);
 static void	bnx_dma_free(struct bnx_softc *);
 static int	bnx_dma_block_alloc(struct bnx_softc *, bus_size_t,
 		    bus_dma_tag_t *, bus_dmamap_t *, void **, bus_addr_t *);
@@ -690,12 +692,13 @@ bnx_jfree(void *arg)
  * Intialize a standard receive ring descriptor.
  */
 static int
-bnx_newbuf_std(struct bnx_softc *sc, int i, int init)
+bnx_newbuf_std(struct bnx_rx_ret_ring *ret, int i, int init)
 {
 	struct mbuf *m_new = NULL;
 	bus_dma_segment_t seg;
 	bus_dmamap_t map;
 	int error, nsegs;
+	struct bnx_rx_buf *rb;
 
 	m_new = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
@@ -703,45 +706,44 @@ bnx_newbuf_std(struct bnx_softc *sc, int i, int init)
 	m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
 	m_adj(m_new, ETHER_ALIGN);
 
-	error = bus_dmamap_load_mbuf_segment(sc->bnx_cdata.bnx_rx_mtag,
-			sc->bnx_cdata.bnx_rx_tmpmap, m_new,
-			&seg, 1, &nsegs, BUS_DMA_NOWAIT);
+	error = bus_dmamap_load_mbuf_segment(ret->bnx_rx_mtag,
+	    ret->bnx_rx_tmpmap, m_new, &seg, 1, &nsegs, BUS_DMA_NOWAIT);
 	if (error) {
 		m_freem(m_new);
 		return error;
 	}
 
+	rb = &ret->bnx_std->bnx_rx_std_buf[i];
+
 	if (!init) {
-		bus_dmamap_sync(sc->bnx_cdata.bnx_rx_mtag,
-				sc->bnx_cdata.bnx_rx_std_dmamap[i],
-				BUS_DMASYNC_POSTREAD);
-		bus_dmamap_unload(sc->bnx_cdata.bnx_rx_mtag,
-			sc->bnx_cdata.bnx_rx_std_dmamap[i]);
+		bus_dmamap_sync(ret->bnx_rx_mtag, rb->bnx_rx_dmamap,
+		    BUS_DMASYNC_POSTREAD);
+		bus_dmamap_unload(ret->bnx_rx_mtag, rb->bnx_rx_dmamap);
 	}
 
-	map = sc->bnx_cdata.bnx_rx_tmpmap;
-	sc->bnx_cdata.bnx_rx_tmpmap = sc->bnx_cdata.bnx_rx_std_dmamap[i];
-	sc->bnx_cdata.bnx_rx_std_dmamap[i] = map;
+	map = ret->bnx_rx_tmpmap;
+	ret->bnx_rx_tmpmap = rb->bnx_rx_dmamap;
+	rb->bnx_rx_dmamap = map;
 
-	sc->bnx_cdata.bnx_rx_std_chain[i].bnx_mbuf = m_new;
-	sc->bnx_cdata.bnx_rx_std_chain[i].bnx_paddr = seg.ds_addr;
+	rb->bnx_rx_mbuf = m_new;
+	rb->bnx_rx_paddr = seg.ds_addr;
 
-	bnx_setup_rxdesc_std(sc, i);
+	bnx_setup_rxdesc_std(ret->bnx_std, i);
 	return 0;
 }
 
 static void
-bnx_setup_rxdesc_std(struct bnx_softc *sc, int i)
+bnx_setup_rxdesc_std(struct bnx_rx_std_ring *std, int i)
 {
-	struct bnx_rxchain *rc;
+	const struct bnx_rx_buf *rb;
 	struct bge_rx_bd *r;
 
-	rc = &sc->bnx_cdata.bnx_rx_std_chain[i];
-	r = &sc->bnx_ldata.bnx_rx_std_ring[i];
+	rb = &std->bnx_rx_std_buf[i];
+	r = &std->bnx_rx_std_ring[i];
 
-	r->bge_addr.bge_addr_lo = BGE_ADDR_LO(rc->bnx_paddr);
-	r->bge_addr.bge_addr_hi = BGE_ADDR_HI(rc->bnx_paddr);
-	r->bge_len = rc->bnx_mbuf->m_len;
+	r->bge_addr.bge_addr_lo = BGE_ADDR_LO(rb->bnx_rx_paddr);
+	r->bge_addr.bge_addr_hi = BGE_ADDR_HI(rb->bnx_rx_paddr);
+	r->bge_len = rb->bnx_rx_mbuf->m_len;
 	r->bge_idx = i;
 	r->bge_flags = BGE_RXBDFLAG_END;
 }
@@ -786,8 +788,8 @@ bnx_newbuf_jumbo(struct bnx_softc *sc, int i, int init)
 	paddr += ETHER_ALIGN;
 
 	/* Save necessary information */
-	sc->bnx_cdata.bnx_rx_jumbo_chain[i].bnx_mbuf = m_new;
-	sc->bnx_cdata.bnx_rx_jumbo_chain[i].bnx_paddr = paddr;
+	sc->bnx_cdata.bnx_rx_jumbo_chain[i].bnx_rx_mbuf = m_new;
+	sc->bnx_cdata.bnx_rx_jumbo_chain[i].bnx_rx_paddr = paddr;
 
 	/* Set up the descriptor. */
 	bnx_setup_rxdesc_jumbo(sc, i);
@@ -798,51 +800,50 @@ static void
 bnx_setup_rxdesc_jumbo(struct bnx_softc *sc, int i)
 {
 	struct bge_rx_bd *r;
-	struct bnx_rxchain *rc;
+	struct bnx_rx_buf *rc;
 
 	r = &sc->bnx_ldata.bnx_rx_jumbo_ring[i];
 	rc = &sc->bnx_cdata.bnx_rx_jumbo_chain[i];
 
-	r->bge_addr.bge_addr_lo = BGE_ADDR_LO(rc->bnx_paddr);
-	r->bge_addr.bge_addr_hi = BGE_ADDR_HI(rc->bnx_paddr);
-	r->bge_len = rc->bnx_mbuf->m_len;
+	r->bge_addr.bge_addr_lo = BGE_ADDR_LO(rc->bnx_rx_paddr);
+	r->bge_addr.bge_addr_hi = BGE_ADDR_HI(rc->bnx_rx_paddr);
+	r->bge_len = rc->bnx_rx_mbuf->m_len;
 	r->bge_idx = i;
 	r->bge_flags = BGE_RXBDFLAG_END|BGE_RXBDFLAG_JUMBO_RING;
 }
 
 static int
-bnx_init_rx_ring_std(struct bnx_softc *sc)
+bnx_init_rx_ring_std(struct bnx_rx_std_ring *std)
 {
 	int i, error;
 
 	for (i = 0; i < BGE_STD_RX_RING_CNT; i++) {
-		error = bnx_newbuf_std(sc, i, 1);
+		/* Use the first RX return ring's tmp RX mbuf DMA map */
+		error = bnx_newbuf_std(&std->bnx_sc->bnx_rx_ret_ring[0], i, 1);
 		if (error)
 			return error;
 	}
 
-	sc->bnx_std = BGE_STD_RX_RING_CNT - 1;
-	bnx_writembx(sc, BGE_MBX_RX_STD_PROD_LO, sc->bnx_std);
+	std->bnx_rx_std = BGE_STD_RX_RING_CNT - 1;
+	bnx_writembx(std->bnx_sc, BGE_MBX_RX_STD_PROD_LO, std->bnx_rx_std);
 
 	return(0);
 }
 
 static void
-bnx_free_rx_ring_std(struct bnx_softc *sc)
+bnx_free_rx_ring_std(struct bnx_rx_std_ring *std)
 {
 	int i;
 
 	for (i = 0; i < BGE_STD_RX_RING_CNT; i++) {
-		struct bnx_rxchain *rc = &sc->bnx_cdata.bnx_rx_std_chain[i];
+		struct bnx_rx_buf *rb = &std->bnx_rx_std_buf[i];
 
-		if (rc->bnx_mbuf != NULL) {
-			bus_dmamap_unload(sc->bnx_cdata.bnx_rx_mtag,
-					  sc->bnx_cdata.bnx_rx_std_dmamap[i]);
-			m_freem(rc->bnx_mbuf);
-			rc->bnx_mbuf = NULL;
+		if (rb->bnx_rx_mbuf != NULL) {
+			bus_dmamap_unload(std->bnx_rx_mtag, rb->bnx_rx_dmamap);
+			m_freem(rb->bnx_rx_mbuf);
+			rb->bnx_rx_mbuf = NULL;
 		}
-		bzero(&sc->bnx_ldata.bnx_rx_std_ring[i],
-		    sizeof(struct bge_rx_bd));
+		bzero(&std->bnx_rx_std_ring[i], sizeof(struct bge_rx_bd));
 	}
 }
 
@@ -875,11 +876,11 @@ bnx_free_rx_ring_jumbo(struct bnx_softc *sc)
 	int i;
 
 	for (i = 0; i < BGE_JUMBO_RX_RING_CNT; i++) {
-		struct bnx_rxchain *rc = &sc->bnx_cdata.bnx_rx_jumbo_chain[i];
+		struct bnx_rx_buf *rc = &sc->bnx_cdata.bnx_rx_jumbo_chain[i];
 
-		if (rc->bnx_mbuf != NULL) {
-			m_freem(rc->bnx_mbuf);
-			rc->bnx_mbuf = NULL;
+		if (rc->bnx_rx_mbuf != NULL) {
+			m_freem(rc->bnx_rx_mbuf);
+			rc->bnx_rx_mbuf = NULL;
 		}
 		bzero(&sc->bnx_ldata.bnx_rx_jumbo_ring[i],
 		    sizeof(struct bge_rx_bd));
@@ -1079,6 +1080,7 @@ static int
 bnx_blockinit(struct bnx_softc *sc)
 {
 	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0];
+	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0];
 	struct bge_rcb *rcb;
 	bus_size_t vrcb;
 	bge_hostaddr taddr;
@@ -1193,9 +1195,9 @@ bnx_blockinit(struct bnx_softc *sc)
 	/* Initialize the standard receive producer ring control block. */
 	rcb = &sc->bnx_ldata.bnx_info.bnx_std_rx_rcb;
 	rcb->bge_hostaddr.bge_addr_lo =
-	    BGE_ADDR_LO(sc->bnx_ldata.bnx_rx_std_ring_paddr);
+	    BGE_ADDR_LO(sc->bnx_rx_std_ring.bnx_rx_std_ring_paddr);
 	rcb->bge_hostaddr.bge_addr_hi =
-	    BGE_ADDR_HI(sc->bnx_ldata.bnx_rx_std_ring_paddr);
+	    BGE_ADDR_HI(sc->bnx_rx_std_ring.bnx_rx_std_ring_paddr);
 	if (BNX_IS_57765_PLUS(sc)) {
 		/*
 		 * Bits 31-16: Programmable ring size (2048, 1024, 512, .., 32)
@@ -1347,7 +1349,7 @@ bnx_blockinit(struct bnx_softc *sc)
 	 * within the host, so the nicaddr field in the RCB isn't used.
 	 */
 	vrcb = BGE_MEMWIN_START + BGE_RX_RETURN_RING_RCB;
-	BGE_HOSTADDR(taddr, sc->bnx_ldata.bnx_rx_return_ring_paddr);
+	BGE_HOSTADDR(taddr, ret->bnx_rx_ret_ring_paddr);
 	RCB_WRITE_4(sc, vrcb, bge_hostaddr.bge_addr_hi, taddr.bge_addr_hi);
 	RCB_WRITE_4(sc, vrcb, bge_hostaddr.bge_addr_lo, taddr.bge_addr_lo);
 	RCB_WRITE_4(sc, vrcb, bge_nicaddr, 0);
@@ -1859,8 +1861,9 @@ bnx_attach(device_t dev)
 
 	/* XXX */
 	sc->bnx_tx_ringcnt = 1;
+	sc->bnx_rx_retcnt = 1;
 
-	error = bnx_dma_alloc(sc);
+	error = bnx_dma_alloc(dev);
 	if (error)
 		goto fail;
 
@@ -2379,14 +2382,14 @@ bnx_reset(struct bnx_softc *sc)
  */
 
 static void
-bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
+bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 {
-	struct ifnet *ifp;
+	struct bnx_softc *sc = ret->bnx_sc;
+	struct bnx_rx_std_ring *std = ret->bnx_std;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int stdcnt = 0, jumbocnt = 0;
 
-	ifp = &sc->arpcom.ac_if;
-
-	while (sc->bnx_rx_saved_considx != rx_prod && count != 0) {
+	while (ret->bnx_rx_saved_considx != rx_prod && count != 0) {
 		struct bge_rx_bd	*cur_rx;
 		uint32_t		rxidx;
 		struct mbuf		*m = NULL;
@@ -2395,11 +2398,10 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 
 		--count;
 
-		cur_rx =
-	    &sc->bnx_ldata.bnx_rx_return_ring[sc->bnx_rx_saved_considx];
+		cur_rx = &ret->bnx_rx_ret_ring[ret->bnx_rx_saved_considx];
 
 		rxidx = cur_rx->bge_idx;
-		BNX_INC(sc->bnx_rx_saved_considx, BNX_RETURN_RING_CNT);
+		BNX_INC(ret->bnx_rx_saved_considx, BNX_RETURN_RING_CNT);
 
 		if (cur_rx->bge_flags & BGE_RXBDFLAG_VLAN_TAG) {
 			have_tag = 1;
@@ -2419,7 +2421,7 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 				continue;
 			}
 
-			m = sc->bnx_cdata.bnx_rx_jumbo_chain[rxidx].bnx_mbuf;
+			m = sc->bnx_cdata.bnx_rx_jumbo_chain[rxidx].bnx_rx_mbuf;
 			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
 				bnx_setup_rxdesc_jumbo(sc, sc->bnx_jumbo);
@@ -2431,27 +2433,27 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 				continue;
 			}
 		} else {
-			BNX_INC(sc->bnx_std, BGE_STD_RX_RING_CNT);
+			BNX_INC(std->bnx_rx_std, BGE_STD_RX_RING_CNT);
 			stdcnt++;
 
-			if (rxidx != sc->bnx_std) {
+			if (rxidx != std->bnx_rx_std) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
 				if_printf(ifp, "sw std index(%d) "
 				    "and hw std index(%d) mismatch, drop!\n",
-				    sc->bnx_std, rxidx);
-				bnx_setup_rxdesc_std(sc, rxidx);
+				    std->bnx_rx_std, rxidx);
+				bnx_setup_rxdesc_std(std, rxidx);
 				continue;
 			}
 
-			m = sc->bnx_cdata.bnx_rx_std_chain[rxidx].bnx_mbuf;
+			m = std->bnx_rx_std_buf[rxidx].bnx_rx_mbuf;
 			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
-				bnx_setup_rxdesc_std(sc, sc->bnx_std);
+				bnx_setup_rxdesc_std(std, std->bnx_rx_std);
 				continue;
 			}
-			if (bnx_newbuf_std(sc, sc->bnx_std, 0)) {
+			if (bnx_newbuf_std(ret, std->bnx_rx_std, 0)) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
-				bnx_setup_rxdesc_std(sc, sc->bnx_std);
+				bnx_setup_rxdesc_std(std, std->bnx_rx_std);
 				continue;
 			}
 		}
@@ -2487,9 +2489,9 @@ bnx_rxeof(struct bnx_softc *sc, uint16_t rx_prod, int count)
 		ifp->if_input(ifp, m);
 	}
 
-	bnx_writembx(sc, BGE_MBX_RX_CONS0_LO, sc->bnx_rx_saved_considx);
+	bnx_writembx(sc, BGE_MBX_RX_CONS0_LO, ret->bnx_rx_saved_considx);
 	if (stdcnt)
-		bnx_writembx(sc, BGE_MBX_RX_STD_PROD_LO, sc->bnx_std);
+		bnx_writembx(sc, BGE_MBX_RX_STD_PROD_LO, std->bnx_rx_std);
 	if (jumbocnt)
 		bnx_writembx(sc, BGE_MBX_RX_JUMBO_PROD_LO, sc->bnx_jumbo);
 }
@@ -2562,6 +2564,7 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
 {
 	struct bnx_softc *sc = ifp->if_softc;
 	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
+	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0]; /* XXX */
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
 	uint16_t rx_prod, tx_cons;
 
@@ -2586,8 +2589,8 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
 	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
 	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 
-	if (sc->bnx_rx_saved_considx != rx_prod)
-		bnx_rxeof(sc, rx_prod, cycle);
+	if (ret->bnx_rx_saved_considx != rx_prod)
+		bnx_rxeof(ret, rx_prod, cycle);
 
 	if (txr->bnx_tx_saved_considx != tx_cons)
 		bnx_txeof(txr, tx_cons);
@@ -2663,9 +2666,10 @@ bnx_intr(struct bnx_softc *sc)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
+		struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0]; /* XXX */
 
-		if (sc->bnx_rx_saved_considx != rx_prod)
-			bnx_rxeof(sc, rx_prod, -1);
+		if (ret->bnx_rx_saved_considx != rx_prod)
+			bnx_rxeof(ret, rx_prod, -1);
 
 		if (txr->bnx_tx_saved_considx != tx_cons)
 			bnx_txeof(txr, tx_cons);
@@ -2981,7 +2985,7 @@ bnx_init(void *xsc)
 	bnx_setmulti(sc);
 
 	/* Init RX ring. */
-	if (bnx_init_rx_ring_std(sc)) {
+	if (bnx_init_rx_ring_std(&sc->bnx_rx_std_ring)) {
 		if_printf(ifp, "RX ring initialization failed\n");
 		bnx_stop(sc);
 		return;
@@ -2997,7 +3001,8 @@ bnx_init(void *xsc)
 	}
 
 	/* Init our RX return ring index */
-	sc->bnx_rx_saved_considx = 0;
+	for (i = 0; i < sc->bnx_rx_retcnt; ++i)
+		sc->bnx_rx_ret_ring[i].bnx_rx_saved_considx = 0;
 
 	/* Init TX ring. */
 	for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
@@ -3308,7 +3313,7 @@ bnx_stop(struct bnx_softc *sc)
 	BNX_CLRBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
 
 	/* Free the RX lists. */
-	bnx_free_rx_ring_std(sc);
+	bnx_free_rx_ring_std(&sc->bnx_rx_std_ring);
 
 	/* Free jumbo RX list. */
 	if (BNX_IS_JUMBO_CAPABLE(sc))
@@ -3390,18 +3395,29 @@ bnx_setpromisc(struct bnx_softc *sc)
 static void
 bnx_dma_free(struct bnx_softc *sc)
 {
+	struct bnx_rx_std_ring *std = &sc->bnx_rx_std_ring;
 	int i;
 
-	/* Destroy RX mbuf DMA stuffs. */
-	if (sc->bnx_cdata.bnx_rx_mtag != NULL) {
-		for (i = 0; i < BGE_STD_RX_RING_CNT; i++) {
-			bus_dmamap_destroy(sc->bnx_cdata.bnx_rx_mtag,
-			    sc->bnx_cdata.bnx_rx_std_dmamap[i]);
-		}
-		bus_dmamap_destroy(sc->bnx_cdata.bnx_rx_mtag,
-				   sc->bnx_cdata.bnx_rx_tmpmap);
-		bus_dma_tag_destroy(sc->bnx_cdata.bnx_rx_mtag);
+	/* Destroy RX return rings */
+	if (sc->bnx_rx_ret_ring != NULL) {
+		for (i = 0; i < sc->bnx_rx_retcnt; ++i)
+			bnx_destroy_rx_ret_ring(&sc->bnx_rx_ret_ring[i]);
+		kfree(sc->bnx_rx_ret_ring, M_DEVBUF);
 	}
+
+	/* Destroy RX mbuf DMA stuffs. */
+	if (std->bnx_rx_mtag != NULL) {
+		for (i = 0; i < BGE_STD_RX_RING_CNT; i++) {
+			KKASSERT(std->bnx_rx_std_buf[i].bnx_rx_mbuf == NULL);
+			bus_dmamap_destroy(std->bnx_rx_mtag,
+			    std->bnx_rx_std_buf[i].bnx_rx_dmamap);
+		}
+		bus_dma_tag_destroy(std->bnx_rx_mtag);
+	}
+
+	/* Destroy standard RX ring */
+	bnx_dma_block_free(std->bnx_rx_std_ring_tag,
+	    std->bnx_rx_std_ring_map, std->bnx_rx_std_ring);
 
 	/* Destroy TX rings */
 	if (sc->bnx_tx_ring != NULL) {
@@ -3410,23 +3426,13 @@ bnx_dma_free(struct bnx_softc *sc)
 		kfree(sc->bnx_tx_ring, M_DEVBUF);
 	}
 
-	/* Destroy standard RX ring */
-	bnx_dma_block_free(sc->bnx_cdata.bnx_rx_std_ring_tag,
-			   sc->bnx_cdata.bnx_rx_std_ring_map,
-			   sc->bnx_ldata.bnx_rx_std_ring);
-
 	if (BNX_IS_JUMBO_CAPABLE(sc))
 		bnx_free_jumbo_mem(sc);
 
-	/* Destroy RX return ring */
-	bnx_dma_block_free(sc->bnx_cdata.bnx_rx_return_ring_tag,
-			   sc->bnx_cdata.bnx_rx_return_ring_map,
-			   sc->bnx_ldata.bnx_rx_return_ring);
-
 	/* Destroy status block */
 	bnx_dma_block_free(sc->bnx_cdata.bnx_status_tag,
-			   sc->bnx_cdata.bnx_status_map,
-			   sc->bnx_ldata.bnx_status_block);
+	    sc->bnx_cdata.bnx_status_map,
+	    sc->bnx_ldata.bnx_status_block);
 
 	/* Destroy the parent tag */
 	if (sc->bnx_cdata.bnx_parent_tag != NULL)
@@ -3434,9 +3440,10 @@ bnx_dma_free(struct bnx_softc *sc)
 }
 
 static int
-bnx_dma_alloc(struct bnx_softc *sc)
+bnx_dma_alloc(device_t dev)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct bnx_softc *sc = device_get_softc(dev);
+	struct bnx_rx_std_ring *std = &sc->bnx_rx_std_ring;
 	int i, error, mbx;
 
 	/*
@@ -3450,52 +3457,55 @@ bnx_dma_alloc(struct bnx_softc *sc)
 	 * state machine will lockup and cause the device to hang.
 	 */
 	error = bus_dma_tag_create(NULL, 1, BGE_DMA_BOUNDARY_4G,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   BUS_SPACE_MAXSIZE_32BIT, 0,
-				   BUS_SPACE_MAXSIZE_32BIT,
-				   0, &sc->bnx_cdata.bnx_parent_tag);
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXSIZE_32BIT, 0, BUS_SPACE_MAXSIZE_32BIT,
+	    0, &sc->bnx_cdata.bnx_parent_tag);
 	if (error) {
-		if_printf(ifp, "could not allocate parent dma tag\n");
+		device_printf(dev, "could not create parent DMA tag\n");
+		return error;
+	}
+
+	/*
+	 * Create DMA stuffs for status block.
+	 */
+	error = bnx_dma_block_alloc(sc, BGE_STATUS_BLK_SZ,
+	    &sc->bnx_cdata.bnx_status_tag,
+	    &sc->bnx_cdata.bnx_status_map,
+	    (void *)&sc->bnx_ldata.bnx_status_block,
+	    &sc->bnx_ldata.bnx_status_block_paddr);
+	if (error) {
+		device_printf(dev, "could not create status block\n");
 		return error;
 	}
 
 	/*
 	 * Create DMA tag and maps for RX mbufs.
 	 */
+	std->bnx_sc = sc;
 	error = bus_dma_tag_create(sc->bnx_cdata.bnx_parent_tag, 1, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL, MCLBYTES, 1, MCLBYTES,
-				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
-				   &sc->bnx_cdata.bnx_rx_mtag);
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+	    NULL, NULL, MCLBYTES, 1, MCLBYTES,
+	    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK, &std->bnx_rx_mtag);
 	if (error) {
-		if_printf(ifp, "could not allocate RX mbuf dma tag\n");
+		device_printf(dev, "could not create RX mbuf DMA tag\n");
 		return error;
 	}
 
-	error = bus_dmamap_create(sc->bnx_cdata.bnx_rx_mtag,
-				  BUS_DMA_WAITOK, &sc->bnx_cdata.bnx_rx_tmpmap);
-	if (error) {
-		bus_dma_tag_destroy(sc->bnx_cdata.bnx_rx_mtag);
-		sc->bnx_cdata.bnx_rx_mtag = NULL;
-		return error;
-	}
-
-	for (i = 0; i < BGE_STD_RX_RING_CNT; i++) {
-		error = bus_dmamap_create(sc->bnx_cdata.bnx_rx_mtag,
-					  BUS_DMA_WAITOK,
-					  &sc->bnx_cdata.bnx_rx_std_dmamap[i]);
+	for (i = 0; i < BGE_STD_RX_RING_CNT; ++i) {
+		error = bus_dmamap_create(std->bnx_rx_mtag, BUS_DMA_WAITOK,
+		    &std->bnx_rx_std_buf[i].bnx_rx_dmamap);
 		if (error) {
 			int j;
 
 			for (j = 0; j < i; ++j) {
-				bus_dmamap_destroy(sc->bnx_cdata.bnx_rx_mtag,
-					sc->bnx_cdata.bnx_rx_std_dmamap[j]);
+				bus_dmamap_destroy(std->bnx_rx_mtag,
+				    std->bnx_rx_std_buf[j].bnx_rx_dmamap);
 			}
-			bus_dma_tag_destroy(sc->bnx_cdata.bnx_rx_mtag);
-			sc->bnx_cdata.bnx_rx_mtag = NULL;
+			bus_dma_tag_destroy(std->bnx_rx_mtag);
+			std->bnx_rx_mtag = NULL;
 
-			if_printf(ifp, "could not create DMA map for RX\n");
+			device_printf(dev,
+			    "could not create %dth RX mbuf DMA map\n", i);
 			return error;
 		}
 	}
@@ -3504,53 +3514,37 @@ bnx_dma_alloc(struct bnx_softc *sc)
 	 * Create DMA stuffs for standard RX ring.
 	 */
 	error = bnx_dma_block_alloc(sc, BGE_STD_RX_RING_SZ,
-				    &sc->bnx_cdata.bnx_rx_std_ring_tag,
-				    &sc->bnx_cdata.bnx_rx_std_ring_map,
-				    (void *)&sc->bnx_ldata.bnx_rx_std_ring,
-				    &sc->bnx_ldata.bnx_rx_std_ring_paddr);
+	    &std->bnx_rx_std_ring_tag,
+	    &std->bnx_rx_std_ring_map,
+	    (void *)&std->bnx_rx_std_ring,
+	    &std->bnx_rx_std_ring_paddr);
 	if (error) {
-		if_printf(ifp, "could not create std RX ring\n");
+		device_printf(dev, "could not create std RX ring\n");
 		return error;
 	}
 
 	/*
-	 * Create jumbo buffer pool.
+	 * Create RX return rings
 	 */
-	if (BNX_IS_JUMBO_CAPABLE(sc)) {
-		error = bnx_alloc_jumbo_mem(sc);
+	sc->bnx_rx_ret_ring = kmalloc_cachealign(
+	    sizeof(struct bnx_rx_ret_ring) * sc->bnx_rx_retcnt, M_DEVBUF,
+	    M_WAITOK | M_ZERO);
+	for (i = 0; i < sc->bnx_rx_retcnt; ++i) {
+		struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[i];
+
+		ret->bnx_sc = sc;
+		ret->bnx_std = std;
+		error = bnx_create_rx_ret_ring(ret);
 		if (error) {
-			if_printf(ifp, "could not create jumbo buffer pool\n");
+			device_printf(dev,
+			    "could not create %dth RX ret ring\n", i);
 			return error;
 		}
 	}
 
 	/*
-	 * Create DMA stuffs for RX return ring.
+	 * Create TX rings
 	 */
-	error = bnx_dma_block_alloc(sc,
-	    BGE_RX_RTN_RING_SZ(BNX_RETURN_RING_CNT),
-	    &sc->bnx_cdata.bnx_rx_return_ring_tag,
-	    &sc->bnx_cdata.bnx_rx_return_ring_map,
-	    (void *)&sc->bnx_ldata.bnx_rx_return_ring,
-	    &sc->bnx_ldata.bnx_rx_return_ring_paddr);
-	if (error) {
-		if_printf(ifp, "could not create RX ret ring\n");
-		return error;
-	}
-
-	/*
-	 * Create DMA stuffs for status block.
-	 */
-	error = bnx_dma_block_alloc(sc, BGE_STATUS_BLK_SZ,
-				    &sc->bnx_cdata.bnx_status_tag,
-				    &sc->bnx_cdata.bnx_status_map,
-				    (void *)&sc->bnx_ldata.bnx_status_block,
-				    &sc->bnx_ldata.bnx_status_block_paddr);
-	if (error) {
-		if_printf(ifp, "could not create status block\n");
-		return error;
-	}
-
 	mbx = BGE_MBX_TX_HOST_PROD0_LO;
 	sc->bnx_tx_ring = kmalloc_cachealign(
 	    sizeof(struct bnx_tx_ring) * sc->bnx_tx_ringcnt, M_DEVBUF,
@@ -3568,8 +3562,20 @@ bnx_dma_alloc(struct bnx_softc *sc)
 
 		error = bnx_create_tx_ring(txr);
 		if (error) {
-			device_printf(sc->bnx_dev,
-			    "can't create %dth tx ring\n", i);
+			device_printf(dev,
+			    "could not create %dth TX ring\n", i);
+			return error;
+		}
+	}
+
+	/*
+	 * Create jumbo buffer pool.
+	 */
+	if (BNX_IS_JUMBO_CAPABLE(sc)) {
+		error = bnx_alloc_jumbo_mem(sc);
+		if (error) {
+			device_printf(dev,
+			    "could not create jumbo buffer pool\n");
 			return error;
 		}
 	}
@@ -3889,6 +3895,7 @@ bnx_intr_check(void *xsc)
 {
 	struct bnx_softc *sc = xsc;
 	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
+	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0]; /* XXX */
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
 
@@ -3901,9 +3908,9 @@ bnx_intr_check(void *xsc)
 		return;
 	}
 
-	if (sblk->bge_idx[0].bge_rx_prod_idx != sc->bnx_rx_saved_considx ||
+	if (sblk->bge_idx[0].bge_rx_prod_idx != ret->bnx_rx_saved_considx ||
 	    sblk->bge_idx[0].bge_tx_cons_idx != txr->bnx_tx_saved_considx) {
-		if (sc->bnx_rx_check_considx == sc->bnx_rx_saved_considx &&
+		if (sc->bnx_rx_check_considx == ret->bnx_rx_saved_considx &&
 		    sc->bnx_tx_check_considx == txr->bnx_tx_saved_considx) {
 			if (!sc->bnx_intr_maylose) {
 				sc->bnx_intr_maylose = TRUE;
@@ -3915,7 +3922,7 @@ bnx_intr_check(void *xsc)
 		}
 	}
 	sc->bnx_intr_maylose = FALSE;
-	sc->bnx_rx_check_considx = sc->bnx_rx_saved_considx;
+	sc->bnx_rx_check_considx = ret->bnx_rx_saved_considx;
 	sc->bnx_tx_check_considx = txr->bnx_tx_saved_considx;
 
 done:
@@ -4229,7 +4236,7 @@ bnx_create_tx_ring(struct bnx_tx_ring *txr)
 	    &txr->bnx_tx_mtag);
 	if (error) {
 		device_printf(txr->bnx_sc->bnx_dev,
-		    "could not allocate TX mbuf dma tag\n");
+		    "could not create TX mbuf DMA tag\n");
 		return error;
 	}
 
@@ -4248,7 +4255,7 @@ bnx_create_tx_ring(struct bnx_tx_ring *txr)
 			txr->bnx_tx_mtag = NULL;
 
 			device_printf(txr->bnx_sc->bnx_dev,
-			    "could not create DMA map for TX\n");
+			    "could not create TX mbuf DMA map\n");
 			return error;
 		}
 	}
@@ -4257,8 +4264,10 @@ bnx_create_tx_ring(struct bnx_tx_ring *txr)
 	 * Create DMA stuffs for TX ring.
 	 */
 	error = bnx_dma_block_alloc(txr->bnx_sc, BGE_TX_RING_SZ,
-	    &txr->bnx_tx_ring_tag, &txr->bnx_tx_ring_map,
-	    (void *)&txr->bnx_tx_ring, &txr->bnx_tx_ring_paddr);
+	    &txr->bnx_tx_ring_tag,
+	    &txr->bnx_tx_ring_map,
+	    (void *)&txr->bnx_tx_ring,
+	    &txr->bnx_tx_ring_paddr);
 	if (error) {
 		device_printf(txr->bnx_sc->bnx_dev,
 		    "could not create TX ring\n");
@@ -4340,4 +4349,53 @@ bnx_sysctl_tx_wreg(SYSCTL_HANDLER_ARGS)
 	lwkt_serialize_exit(ifp->if_serializer);
 
 	return 0;
+}
+
+static int
+bnx_create_rx_ret_ring(struct bnx_rx_ret_ring *ret)
+{
+	int error;
+
+	/*
+	 * Create DMA stuffs for RX return ring.
+	 */
+	error = bnx_dma_block_alloc(ret->bnx_sc,
+	    BGE_RX_RTN_RING_SZ(BNX_RETURN_RING_CNT),
+	    &ret->bnx_rx_ret_ring_tag,
+	    &ret->bnx_rx_ret_ring_map,
+	    (void *)&ret->bnx_rx_ret_ring,
+	    &ret->bnx_rx_ret_ring_paddr);
+	if (error) {
+		device_printf(ret->bnx_sc->bnx_dev,
+		    "could not create RX ret ring\n");
+		return error;
+	}
+
+	/* Shadow standard ring's RX mbuf DMA tag */
+	ret->bnx_rx_mtag = ret->bnx_std->bnx_rx_mtag;
+
+	/*
+	 * Create tmp DMA map for RX mbufs.
+	 */
+	error = bus_dmamap_create(ret->bnx_rx_mtag, BUS_DMA_WAITOK,
+	    &ret->bnx_rx_tmpmap);
+	if (error) {
+		device_printf(ret->bnx_sc->bnx_dev,
+		    "could not create tmp RX mbuf DMA map\n");
+		ret->bnx_rx_mtag = NULL;
+		return error;
+	}
+	return 0;
+}
+
+static void
+bnx_destroy_rx_ret_ring(struct bnx_rx_ret_ring *ret)
+{
+	/* Destroy tmp RX mbuf DMA map */
+	if (ret->bnx_rx_mtag != NULL)
+		bus_dmamap_destroy(ret->bnx_rx_mtag, ret->bnx_rx_tmpmap);
+
+	/* Destroy RX return ring */
+	bnx_dma_block_free(ret->bnx_rx_ret_ring_tag,
+	    ret->bnx_rx_ret_ring_map, ret->bnx_rx_ret_ring);
 }
