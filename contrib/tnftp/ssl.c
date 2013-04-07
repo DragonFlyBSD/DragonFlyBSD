@@ -42,6 +42,7 @@ __RCSID("$NetBSD: ssl.c,v 1.2 2012/12/24 22:12:28 christos Exp $");
 
 #include <sys/param.h>
 #include <sys/select.h>
+#include <sys/socket.h>
 #include <sys/uio.h>
 
 #include <netinet/tcp.h>
@@ -155,7 +156,7 @@ fetch_write(struct fetch_connect *conn, const char *str, size_t len)
 {
 	struct iovec iov[1];
 
-	iov[0].iov_base = (char *)__UNCONST(str);
+	iov[0].iov_base = __DECONST(char *, str);
 	iov[0].iov_len = len;
 	return fetch_writev(conn, iov, 1);
 }
