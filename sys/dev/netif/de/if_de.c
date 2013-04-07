@@ -3884,10 +3884,10 @@ tulip_attach(tulip_softc_t *sc)
     sc->tulip_flags &= ~TULIP_DEVICEPROBE;
     tulip_ifmedia_add(sc);
 
-    tulip_reset(sc);
-
     ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
     ether_ifattach(&(sc)->tulip_if, sc->tulip_enaddr, NULL);
+
+    tulip_reset(sc);
 }
 
 static void
