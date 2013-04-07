@@ -33,7 +33,6 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined.h,v 1.5 2005/10/29 12:05:27 swildner Exp $*
  */
 /*========================================================================*
  *				Mined.h					  *
@@ -309,7 +308,7 @@ void	 catch(int sig);
 void	 abort_mined(void);
 void	 raw_mode(FLAG state);
 void	 panic(const char *message);
-char	*alloc(int bytes);
+void	*alloc(int bytes);
 void	 free_space(char *p);
 void	 initialize(void);
 char	*basename(char *path);
