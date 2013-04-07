@@ -33,7 +33,6 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined1.c,v 1.9 2008/06/05 18:06:30 swildner Exp $*
  */
 /*
  * Part one of the mined editor.
@@ -1212,7 +1211,7 @@ panic(const char *message)
 #endif /* UNIX */
 }
 
-char *
+void *
 alloc(int bytes)
 {
   char *p;
