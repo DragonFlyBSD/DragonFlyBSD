@@ -1,26 +1,28 @@
 
 /* @(#)e_rem_pio2.c 1.4 95/01/18 */
+/* $FreeBSD: head/lib/msun/src/e_rem_pio2.c 239195 2012-08-11 15:47:22Z dim $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
  * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
  *
  * Optimized by Bruce D. Evans.
- * FreeBSD SVN: 223302 (2011-06-19)
  */
 
-/* __libm_rem_pio2(x,y)
- *
- * return the remainder of x rem pi/2 in y[0]+y[1]
+/* __ieee754_rem_pio2(x,y)
+ * 
+ * return the remainder of x rem pi/2 in y[0]+y[1] 
  * use __kernel_rem_pio2()
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
 #include "math_private.h"
 
 /*
@@ -44,8 +46,11 @@ pio2_2t =  2.02226624879595063154e-21, /* 0x3BA3198A, 0x2E037073 */
 pio2_3  =  2.02226624871116645580e-21, /* 0x3BA3198A, 0x2E000000 */
 pio2_3t =  8.47842766036889956997e-32; /* 0x397B839A, 0x252049C1 */
 
-__inline int
-__libm_rem_pio2(double x, double *y)
+#ifdef INLINE_REM_PIO2
+static __inline __always_inline
+#endif
+int
+__ieee754_rem_pio2(double x, double *y)
 {
 	double z,w,t,r,fn;
 	double tx[3],ty[2];
@@ -133,22 +138,22 @@ medium:
 	    {
 	        u_int32_t high;
 	        j  = ix>>20;
-	        y[0] = r-w;
+	        y[0] = r-w; 
 		GET_HIGH_WORD(high,y[0]);
 	        i = j-((high>>20)&0x7ff);
 	        if(i>16) {  /* 2nd iteration needed, good to 118 */
 		    t  = r;
-		    w  = fn*pio2_2;
+		    w  = fn*pio2_2;	
 		    r  = t-w;
-		    w  = fn*pio2_2t-((t-r)-w);
+		    w  = fn*pio2_2t-((t-r)-w);	
 		    y[0] = r-w;
 		    GET_HIGH_WORD(high,y[0]);
 		    i = j-((high>>20)&0x7ff);
 		    if(i>49)  {	/* 3rd iteration need, 151 bits acc */
 		    	t  = r;	/* will cover all possible cases */
-		    	w  = fn*pio2_3;
+		    	w  = fn*pio2_3;	
 		    	r  = t-w;
-		    	w  = fn*pio2_3t-((t-r)-w);
+		    	w  = fn*pio2_3t-((t-r)-w);	
 		    	y[0] = r-w;
 		    }
 		}
@@ -156,7 +161,7 @@ medium:
 	    y[1] = (r-y[0])-w;
 	    return n;
 	}
-    /*
+    /* 
      * all other (large) arguments
      */
 	if(ix>=0x7ff00000) {		/* x is inf or NaN */

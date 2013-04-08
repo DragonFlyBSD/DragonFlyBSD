@@ -1,6 +1,4 @@
-/*
- * FreeBSD SVN: 144771 (2005-04-08)
- */
+/* $FreeBSD: head/lib/msun/src/s_llroundf.c 144771 2005-04-08 00:52:27Z das $ */
 
 #define type		float
 #define	roundit		roundf

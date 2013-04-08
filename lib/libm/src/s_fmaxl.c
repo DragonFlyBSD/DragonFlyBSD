@@ -23,37 +23,32 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $NetBSD: s_fmaxl.c,v 1.3 2011/07/04 11:46:41 mrg Exp $
+ * $FreeBSD: head/lib/msun/src/s_fmaxl.c 131320 2004-06-30 07:04:01Z das $
  */
 
-#include <string.h>
 #include <math.h>
 
-#include <machine/ieee.h>
-#ifdef EXT_EXP_INFNAN
+#include "fpmath.h"
+
 long double
 fmaxl(long double x, long double y)
 {
-	union ieee_ext_u u[2];
+	union IEEEl2bits u[2];
 
-	memset(&u, 0, sizeof u);
-	u[0].extu_ld = x;
-	u[0].extu_ext.ext_frach &= ~0x80000000;
-	u[1].extu_ld = y;
-	u[1].extu_ext.ext_frach &= ~0x80000000;
+	u[0].e = x;
+	mask_nbit_l(u[0]);
+	u[1].e = y;
+	mask_nbit_l(u[1]);
 
 	/* Check for NaNs to avoid raising spurious exceptions. */
-	if (u[0].extu_ext.ext_exp == EXT_EXP_INFNAN &&
-	    (u[0].extu_ext.ext_frach | u[0].extu_ext.ext_fracl) != 0)
+	if (u[0].bits.exp == 32767 && (u[0].bits.manh | u[0].bits.manl) != 0)
 		return (y);
-	if (u[1].extu_ext.ext_exp == EXT_EXP_INFNAN &&
-	    (u[1].extu_ext.ext_frach | u[1].extu_ext.ext_fracl) != 0)
+	if (u[1].bits.exp == 32767 && (u[1].bits.manh | u[1].bits.manl) != 0)
 		return (x);
 
-	/* Handle comparisons of ext_signed zeroes. */
-	if (u[0].extu_ext.ext_sign != u[1].extu_ext.ext_sign)
-		return (u[0].extu_ext.ext_sign ? y : x);
+	/* Handle comparisons of signed zeroes. */
+	if (u[0].bits.sign != u[1].bits.sign)
+		return (u[0].bits.sign ? y : x);
 
 	return (x > y ? x : y);
 }
-#endif

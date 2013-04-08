@@ -11,10 +11,11 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- * FreeBSD SVN: 193368 (2009-06-03)
+ *
+ * $FreeBSD: head/lib/msun/src/k_tanf.c 239192 2012-08-11 11:13:48Z dim $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 /* |tan(x)/x - t(x)| < 2**-25.5 (~[-2e-08, 2e-08]). */
@@ -28,7 +29,10 @@ T[] =  {
   0x1362b9bf971bcd.0p-59,	/* 0.00946564784943673166728 */
 };
 
-__inline float
+#ifdef INLINE_KERNEL_TANDF
+static __inline
+#endif
+float
 __kernel_tandf(double x, int iy)
 {
 	double z,r,w,s,t,u;

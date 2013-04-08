@@ -1,4 +1,5 @@
 /* @(#)s_expm1.c 5.1 93/09/24 */
+/* $FreeBSD: head/lib/msun/src/s_expm1.c 251024 2013-05-27 08:50:10Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -8,9 +9,6 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * $NetBSD: s_expm1.c,v 1.12 2002/05/26 22:01:55 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_expm1.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
 /* expm1(x)
@@ -45,7 +43,7 @@
  * 		Q3  =  -9.9206344733435987357E-6,
  * 		Q4  =   2.5051361420808517002E-7,
  * 		Q5  =  -6.2843505682382617102E-9;
- *  	(where z=r*r, and the values of Q1 to Q5 are listed below)
+ *		z   =  r*r,
  *	with error bounded by
  *	    |                  5           |     -61
  *	    | 1.0+Q1*z+...+Q5*z   -  R1(z) | <= 2
@@ -108,32 +106,34 @@
  * to produce the hexadecimal values shown.
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
 #include "math_private.h"
 
 static const double
 one		= 1.0,
-huge		= 1.0e+300,
 tiny		= 1.0e-300,
 o_threshold	= 7.09782712893383973096e+02,/* 0x40862E42, 0xFEFA39EF */
 ln2_hi		= 6.93147180369123816490e-01,/* 0x3fe62e42, 0xfee00000 */
 ln2_lo		= 1.90821492927058770002e-10,/* 0x3dea39ef, 0x35793c76 */
 invln2		= 1.44269504088896338700e+00,/* 0x3ff71547, 0x652b82fe */
-	/* scaled coefficients related to expm1 */
+/* Scaled Q's: Qn_here = 2**n * Qn_above, for R(2*z) where z = hxs = x*x/2: */
 Q1  =  -3.33333333333331316428e-02, /* BFA11111 111110F4 */
 Q2  =   1.58730158725481460165e-03, /* 3F5A01A0 19FE5585 */
 Q3  =  -7.93650757867487942473e-05, /* BF14CE19 9EAADBB7 */
 Q4  =   4.00821782732936239552e-06, /* 3ED0CFCA 86E65239 */
 Q5  =  -2.01099218183624371326e-07; /* BE8AFDB7 6E09C32D */
 
+static volatile double huge = 1.0e+300;
+
 double
 expm1(double x)
 {
-	double y,hi,lo,c,t,e,hxs,hfx,r1;
+	double y,hi,lo,c,t,e,hxs,hfx,r1,twopk;
 	int32_t k,xsb;
 	u_int32_t hx;
 
-	c = 0;
 	GET_HIGH_WORD(hx,x);
 	xsb = hx&0x80000000;		/* sign bit of x */
 	hx &= 0x7fffffff;		/* high word of |x| */
@@ -169,7 +169,7 @@ expm1(double x)
 		hi = x - t*ln2_hi;	/* t*ln2_hi is exact here */
 		lo = t*ln2_lo;
 	    }
-	    x  = hi - lo;
+	    STRICT_ASSIGN(double, x, hi - lo);
 	    c  = (hi-x)-lo;
 	}
 	else if(hx < 0x3c900000) {  	/* when |x|<2**-54, return x */
@@ -186,34 +186,30 @@ expm1(double x)
 	e  = hxs*((r1-t)/(6.0 - x*t));
 	if(k==0) return x - (x*e-hxs);		/* c is 0 */
 	else {
+	    INSERT_WORDS(twopk,0x3ff00000+(k<<20),0);	/* 2^k */
 	    e  = (x*(e-c)-c);
 	    e -= hxs;
 	    if(k== -1) return 0.5*(x-e)-0.5;
-	    if(k==1)  {
+	    if(k==1) {
 	       	if(x < -0.25) return -2.0*(e-(x+0.5));
 	       	else 	      return  one+2.0*(x-e);
 	    }
 	    if (k <= -2 || k>56) {   /* suffice to return exp(x)-1 */
-	        u_int32_t high;
 	        y = one-(e-x);
-		GET_HIGH_WORD(high,y);
-		SET_HIGH_WORD(y,high+(k<<20));	/* add k to y's exponent */
+		if (k == 1024) y = y*2.0*0x1p1023;
+		else y = y*twopk;
 	        return y-one;
 	    }
 	    t = one;
 	    if(k<20) {
-	        u_int32_t high;
 	        SET_HIGH_WORD(t,0x3ff00000 - (0x200000>>k));  /* t=1-2^-k */
 	       	y = t-(e-x);
-		GET_HIGH_WORD(high,y);
-		SET_HIGH_WORD(y,high+(k<<20));	/* add k to y's exponent */
+		y = y*twopk;
 	   } else {
-	        u_int32_t high;
 		SET_HIGH_WORD(t,((0x3ff-k)<<20));	/* 2^-k */
 	       	y = x-(e+t);
 	       	y += one;
-		GET_HIGH_WORD(high,y);
-		SET_HIGH_WORD(y,high+(k<<20));	/* add k to y's exponent */
+		y = y*twopk;
 	    }
 	}
 	return y;

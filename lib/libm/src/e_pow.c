@@ -1,25 +1,23 @@
-/* @(#)e_pow.c 5.1 93/09/24 */
+/* @(#)e_pow.c 1.5 04/04/22 SMI */
+/* $FreeBSD: head/lib/msun/src/e_pow.c 226595 2011-10-21 06:26:07Z das $ */
 /*
  * ====================================================
- * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ * Copyright (C) 2004 by Sun Microsystems, Inc. All rights reserved.
  *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
- *
- * $NetBSD: e_pow.c,v 1.16 2010/04/23 19:17:07 drochner Exp $
  */
 
-/* pow(x,y) return x**y
+/* __ieee754_pow(x,y) return x**y
  *
  *		      n
  * Method:  Let x =  2   * (1+f)
  *	1. Compute and return log2(x) in two pieces:
  *		log2(x) = w1 + w2,
  *	   where w1 has 53-24 = 29 bit trailing zeros.
- *	2. Perform y*log2(x) = n+y' by simulating multi-precision
+ *	2. Perform y*log2(x) = n+y' by simulating muti-precision 
  *	   arithmetic, where |y'|<=0.5.
  *	3. Return x**y = 2**n*exp(y'*log2)
  *
@@ -47,17 +45,17 @@
  * Accuracy:
  *	pow(x,y) returns x**y nearly rounded. In particular
  *			pow(integer,integer)
- *	always returns the correct integer provided it is
+ *	always returns the correct integer provided it is 
  *	representable.
  *
  * Constants :
- * The hexadecimal values are the intended ones for the following
- * constants. The decimal values may be used, provided that the
- * compiler will convert from decimal to binary accurately enough
+ * The hexadecimal values are the intended ones for the following 
+ * constants. The decimal values may be used, provided that the 
+ * compiler will convert from decimal to binary accurately enough 
  * to produce the hexadecimal values shown.
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const double
@@ -94,10 +92,10 @@ ivln2_h  =  1.44269502162933349609e+00, /* 0x3FF71547, 0x60000000 =24b 1/ln2*/
 ivln2_l  =  1.92596299112661746887e-08; /* 0x3E54AE0B, 0xF85DDF44 =1/ln2 tail*/
 
 double
-pow(double x, double y)
+__ieee754_pow(double x, double y)
 {
 	double z,ax,z_h,z_l,p_h,p_l;
-	double yy1,t1,t2,r,s,t,u,v,w;
+	double y1,t1,t2,r,s,t,u,v,w;
 	int32_t i,j,k,yisint,n;
 	int32_t hx,hy,ix,iy;
 	u_int32_t lx,ly;
@@ -107,12 +105,15 @@ pow(double x, double y)
 	ix = hx&0x7fffffff;  iy = hy&0x7fffffff;
 
     /* y==zero: x**0 = 1 */
-	if((iy|ly)==0) return one;
+	if((iy|ly)==0) return one; 	
 
-    /* +-NaN return x+y */
+    /* x==1: 1**y = 1, even if y is NaN */
+	if (hx==0x3ff00000 && lx == 0) return one;
+
+    /* y!=zero: result is NaN if either arg is NaN */
 	if(ix > 0x7ff00000 || ((ix==0x7ff00000)&&(lx!=0)) ||
-	   iy > 0x7ff00000 || ((iy==0x7ff00000)&&(ly!=0)))
-		return x+y;
+	   iy > 0x7ff00000 || ((iy==0x7ff00000)&&(ly!=0))) 
+		return (x+0.0)+(y+0.0);
 
     /* determine if y is an odd int when x < 0
      * yisint = 0	... y is not an integer
@@ -120,37 +121,37 @@ pow(double x, double y)
      * yisint = 2	... y is an even int
      */
 	yisint  = 0;
-	if(hx<0) {
+	if(hx<0) {	
 	    if(iy>=0x43400000) yisint = 2; /* even integer y */
 	    else if(iy>=0x3ff00000) {
 		k = (iy>>20)-0x3ff;	   /* exponent */
 		if(k>20) {
 		    j = ly>>(52-k);
-		    if((uint32_t)(j<<(52-k))==ly) yisint = 2-(j&1);
+		    if((j<<(52-k))==ly) yisint = 2-(j&1);
 		} else if(ly==0) {
 		    j = iy>>(20-k);
 		    if((j<<(20-k))==iy) yisint = 2-(j&1);
 		}
-	    }
-	}
+	    }		
+	} 
 
     /* special value of y */
-	if(ly==0) {
+	if(ly==0) { 	
 	    if (iy==0x7ff00000) {	/* y is +-inf */
 	        if(((ix-0x3ff00000)|lx)==0)
-		    return  y - y;	/* inf**+-1 is NaN */
+		    return  one;	/* (-1)**+-inf is NaN */
 	        else if (ix >= 0x3ff00000)/* (|x|>1)**+-inf = inf,0 */
 		    return (hy>=0)? y: zero;
 	        else			/* (|x|<1)**-,+inf = inf,0 */
 		    return (hy<0)?-y: zero;
-	    }
+	    } 
 	    if(iy==0x3ff00000) {	/* y is  +-1 */
 		if(hy<0) return one/x; else return x;
 	    }
 	    if(hy==0x40000000) return x*x; /* y is  2 */
 	    if(hy==0x3fe00000) {	/* y is  0.5 */
 		if(hx>=0)	/* x >= +0 */
-		return sqrt(x);
+		return sqrt(x);	
 	    }
 	}
 
@@ -163,14 +164,18 @@ pow(double x, double y)
 		if(hx<0) {
 		    if(((ix-0x3ff00000)|yisint)==0) {
 			z = (z-z)/(z-z); /* (-1)**non-int is NaN */
-		    } else if(yisint==1)
+		    } else if(yisint==1) 
 			z = -z;		/* (x<0)**odd = -(|x|**odd) */
 		}
 		return z;
 	    }
 	}
-
+    
+    /* CYGNUS LOCAL + fdlibm-5.3 fix: This used to be
 	n = (hx>>31)+1;
+       but ANSI C says a right shift of a signed negative quantity is
+       implementation defined.  */
+	n = ((u_int32_t)hx>>31)-1;
 
     /* (x<0)**(non-int) is NaN */
 	if((n|yisint)==0) return (x-x)/(x-x);
@@ -187,7 +192,7 @@ pow(double x, double y)
 	/* over/underflow if x is not close to one */
 	    if(ix<0x3fefffff) return (hy<0)? s*huge*huge:s*tiny*tiny;
 	    if(ix>0x3ff00000) return (hy>0)? s*huge*huge:s*tiny*tiny;
-	/* now |1-x| is tiny <= 2**-20, suffice to compute
+	/* now |1-x| is tiny <= 2**-20, suffice to compute 
 	   log(x) by x-x^2/2+x^3/3-x^4/4 */
 	    t = ax-one;		/* t has 20 trailing zeros */
 	    w = (t*t)*(0.5-t*(0.3333333333333333333333-t*0.25));
@@ -246,11 +251,11 @@ pow(double x, double y)
 	    t2 = z_l-(((t1-t)-dp_h[k])-z_h);
 	}
 
-    /* split up y into yy1+y2 and compute (yy1+y2)*(t1+t2) */
-	yy1  = y;
-	SET_LOW_WORD(yy1,0);
-	p_l = (y-yy1)*t1+y*t2;
-	p_h = yy1*t1;
+    /* split up y into y1+y2 and compute (y1+y2)*(t1+t2) */
+	y1  = y;
+	SET_LOW_WORD(y1,0);
+	p_l = (y-y1)*t1+y*t2;
+	p_h = y1*t1;
 	z = p_l+p_h;
 	EXTRACT_WORDS(j,i,z);
 	if (j>=0x40900000) {				/* z >= 1024 */
@@ -280,7 +285,7 @@ pow(double x, double y)
 	    n = ((n&0x000fffff)|0x00100000)>>(20-k);
 	    if(j<0) n = -n;
 	    p_h -= t;
-	}
+	} 
 	t = p_l+p_h;
 	SET_LOW_WORD(t,0);
 	u = t*lg2_h;

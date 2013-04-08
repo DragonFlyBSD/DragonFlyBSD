@@ -1,40 +1,44 @@
 
-/* @(#)e_log.c 1.3 95/01/18 */
+/* @(#)e_log10.c 1.3 95/01/18 */
+/* $FreeBSD: head/lib/msun/src/e_log2.c 251024 2013-05-27 08:50:10Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
  * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
- *
- * $NetBSD: e_log2.c,v 1.1 2005/07/21 12:55:58 christos Exp $
- * $DragonFly: src/lib/libm/src/e_log2.c,v 1.1 2007/06/16 22:26:53 pavalos Exp $
  */
 
-#include <math.h>
+/*
+ * Return the base 2 logarithm of x.  See e_log.c and k_log.h for most
+ * comments.
+ *
+ * This reduces x to {k, 1+f} exactly as in e_log.c, then calls the kernel,
+ * then does the combining and scaling steps
+ *    log2(x) = (f - 0.5*f*f + k_log1p(f)) / ln2 + k
+ * in not-quite-routine extra precision.
+ */
+
+#include "math.h"
 #include "math_private.h"
+#include "k_log.h"
 
 static const double
-ln2 = 0.6931471805599452862268,
-two54   =  1.80143985094819840000e+16,  /* 43500000 00000000 */
-Lg1 = 6.666666666666735130e-01,  /* 3FE55555 55555593 */
-Lg2 = 3.999999999940941908e-01,  /* 3FD99999 9997FA04 */
-Lg3 = 2.857142874366239149e-01,  /* 3FD24924 94229359 */
-Lg4 = 2.222219843214978396e-01,  /* 3FCC71C5 1D8E78AF */
-Lg5 = 1.818357216161805012e-01,  /* 3FC74664 96CB03DE */
-Lg6 = 1.531383769920937332e-01,  /* 3FC39A09 D078C69F */
-Lg7 = 1.479819860511658591e-01;  /* 3FC2F112 DF3E5244 */
+two54      =  1.80143985094819840000e+16, /* 0x43500000, 0x00000000 */
+ivln2hi    =  1.44269504072144627571e+00, /* 0x3ff71547, 0x65200000 */
+ivln2lo    =  1.67517131648865118353e-10; /* 0x3de705fc, 0x2eefa200 */
 
 static const double zero   =  0.0;
+static volatile double vzero = 0.0;
 
 double
-log2(double x)
+__ieee754_log2(double x)
 {
-	double hfsq,f,s,z,R,w,t1,t2,dk;
-	int32_t k,hx,i,j;
+	double f,hfsq,hi,lo,r,val_hi,val_lo,w,y;
+	int32_t i,k,hx;
 	u_int32_t lx;
 
 	EXTRACT_WORDS(hx,lx,x);
@@ -42,37 +46,64 @@ log2(double x)
 	k=0;
 	if (hx < 0x00100000) {			/* x < 2**-1022  */
 	    if (((hx&0x7fffffff)|lx)==0)
-		return -two54/zero;		/* log(+-0)=-inf */
+		return -two54/vzero;		/* log(+-0)=-inf */
 	    if (hx<0) return (x-x)/zero;	/* log(-#) = NaN */
 	    k -= 54; x *= two54; /* subnormal number, scale up x */
 	    GET_HIGH_WORD(hx,x);
 	}
 	if (hx >= 0x7ff00000) return x+x;
+	if (hx == 0x3ff00000 && lx == 0)
+	    return zero;			/* log(1) = +0 */
 	k += (hx>>20)-1023;
 	hx &= 0x000fffff;
 	i = (hx+0x95f64)&0x100000;
 	SET_HIGH_WORD(x,hx|(i^0x3ff00000));	/* normalize x or x/2 */
 	k += (i>>20);
-	f = x-1.0;
-	dk = (double)k;
-	if((0x000fffff&(2+hx))<3) {	/* |f| < 2**-20 */
-	    if (f==zero)
-		    return (dk);
-	    R = f*f*(0.5-0.33333333333333333*f);
-	    return (dk-(R-f)/ln2);
-	}
-	s = f/(2.0+f);
-	z = s*s;
-	i = hx-0x6147a;
-	w = z*z;
-	j = 0x6b851-hx;
-	t1= w*(Lg2+w*(Lg4+w*Lg6));
-	t2= z*(Lg1+w*(Lg3+w*(Lg5+w*Lg7)));
-	i |= j;
-	R = t2+t1;
-	if(i>0) {
-	    hfsq=0.5*f*f;
-	    return (dk-(hfsq-s*(hfsq+R)-f)/ln2);
-	} else
-		return (dk-((s*(f-R))-f)/ln2);
+	y = (double)k;
+	f = x - 1.0;
+	hfsq = 0.5*f*f;
+	r = k_log1p(f);
+
+	/*
+	 * f-hfsq must (for args near 1) be evaluated in extra precision
+	 * to avoid a large cancellation when x is near sqrt(2) or 1/sqrt(2).
+	 * This is fairly efficient since f-hfsq only depends on f, so can
+	 * be evaluated in parallel with R.  Not combining hfsq with R also
+	 * keeps R small (though not as small as a true `lo' term would be),
+	 * so that extra precision is not needed for terms involving R.
+	 *
+	 * Compiler bugs involving extra precision used to break Dekker's
+	 * theorem for spitting f-hfsq as hi+lo, unless double_t was used
+	 * or the multi-precision calculations were avoided when double_t
+	 * has extra precision.  These problems are now automatically
+	 * avoided as a side effect of the optimization of combining the
+	 * Dekker splitting step with the clear-low-bits step.
+	 *
+	 * y must (for args near sqrt(2) and 1/sqrt(2)) be added in extra
+	 * precision to avoid a very large cancellation when x is very near
+	 * these values.  Unlike the above cancellations, this problem is
+	 * specific to base 2.  It is strange that adding +-1 is so much
+	 * harder than adding +-ln2 or +-log10_2.
+	 *
+	 * This uses Dekker's theorem to normalize y+val_hi, so the
+	 * compiler bugs are back in some configurations, sigh.  And I
+	 * don't want to used double_t to avoid them, since that gives a
+	 * pessimization and the support for avoiding the pessimization
+	 * is not yet available.
+	 *
+	 * The multi-precision calculations for the multiplications are
+	 * routine.
+	 */
+	hi = f - hfsq;
+	SET_LOW_WORD(hi,0);
+	lo = (f - hi) - hfsq + r;
+	val_hi = hi*ivln2hi;
+	val_lo = (lo+hi)*ivln2lo + lo*ivln2hi;
+
+	/* spadd(val_hi, val_lo, y), except for not using double_t: */
+	w = y + val_hi;
+	val_lo += (y - w) + val_hi;
+	val_hi = w;
+
+	return val_lo + val_hi;
 }

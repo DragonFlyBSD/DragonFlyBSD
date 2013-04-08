@@ -1742,8 +1742,6 @@ TO_REMOVE+=/usr/share/man/cat9/MALLOC.9.gz
 TO_REMOVE+=/usr/share/man/man9/MALLOC.9.gz
 TO_REMOVE+=/usr/share/man/cat9/FREE.9.gz
 TO_REMOVE+=/usr/share/man/man9/FREE.9.gz
-TO_REMOVE+=/usr/share/man/cat3/ieee.3.gz
-TO_REMOVE+=/usr/share/man/man3/ieee.3.gz
 TO_REMOVE+=/usr/share/man/cat3/expmlf.3.gz
 TO_REMOVE+=/usr/share/man/man3/expmlf.3.gz
 TO_REMOVE+=/usr/share/man/man3/archive.3.gz
@@ -2125,6 +2123,14 @@ TO_REMOVE+=/usr/sbin/spkrtest
 TO_REMOVE+=/usr/share/man/cat8/spkrtest.8.gz
 TO_REMOVE+=/usr/share/man/man8/spkrtest.8.gz
 TO_REMOVE+=/usr/include/machine/uvparam.h
+TO_REMOVE+=/usr/include/cpu/float.h
+TO_REMOVE+=/usr/include/machine/float.h
+TO_REMOVE+=/usr/include/cpu/floatingpoint.h
+TO_REMOVE+=/usr/include/machine/floatingpoint.h
+TO_REMOVE+=/usr/include/cpu/ieee.h
+TO_REMOVE+=/usr/include/machine/ieee.h
+TO_REMOVE+=/usr/include/cpu/math.h
+TO_REMOVE+=/usr/include/machine/math.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * FreeBSD SVN: 222508 (2011-05-30)
+ * $FreeBSD: head/lib/msun/src/s_tanl.c 240828 2012-09-22 15:38:29Z kargl $
  */
 
 /*
@@ -33,10 +33,19 @@
  */
 
 #include <float.h>
+#ifdef __i386__
+#include <ieeefp.h>
+#endif
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
-#include "e_rem_pio2l.h"
+#if LDBL_MANT_DIG == 64
+#include "../ld80/e_rem_pio2l.h"
+#elif LDBL_MANT_DIG == 113
+#include "../ld128/e_rem_pio2l.h"
+#else
+#error "Unsupported long double format"
+#endif
 
 long double
 tanl(long double x)
@@ -58,13 +67,15 @@ tanl(long double x)
 	if (z.bits.exp == 32767)
 		return ((x - x) / (x - x));
 
+	ENTERI();
+
 	/* Optimize the case where x is already within range. */
 	if (z.e < M_PI_4) {
 		hi = __kernel_tanl(z.e, 0, 0);
-		return (s ? -hi : hi);
+		RETURNI(s ? -hi : hi);
 	}
 
-	e0 = __libm_rem_pio2l(x, y);
+	e0 = __ieee754_rem_pio2l(x, y);
 	hi = y[0];
 	lo = y[1];
 
@@ -79,5 +90,5 @@ tanl(long double x)
 	    break;
 	}
 
-	return (hi);
+	RETURNI(hi);
 }

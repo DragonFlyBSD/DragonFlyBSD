@@ -1,28 +1,27 @@
-/* @(#)e_sinh.c 5.1 93/09/24 */
+
+/* @(#)e_sinh.c 1.3 95/01/18 */
+/* $FreeBSD: head/lib/msun/src/e_sinh.c 226598 2011-10-21 06:28:47Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
- *
- * $NetBSD: e_sinh.c,v 1.11 2002/05/26 22:01:52 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_sinh.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
-/* sinh(x)
- * Method :
+/* __ieee754_sinh(x)
+ * Method : 
  * mathematically sinh(x) if defined to be (exp(x)-exp(-x))/2
- *	1. Replace x by |x| (sinh(-x) = -sinh(x)).
- *	2.
+ *	1. Replace x by |x| (sinh(-x) = -sinh(x)). 
+ *	2. 
  *		                                    E + E/(E+1)
  *	    0        <= x <= 22     :  sinh(x) := --------------, E=expm1(x)
  *			       			        2
  *
- *	    22       <= x <= lnovft :  sinh(x) := exp(x)/2
+ *	    22       <= x <= lnovft :  sinh(x) := exp(x)/2 
  *	    lnovft   <= x <= ln2ovft:  sinh(x) := exp(x/2)/2 * exp(x/2)
  *	    ln2ovft  <  x	    :  sinh(x) := x*shuge (overflow)
  *
@@ -31,24 +30,23 @@
  *	only sinh(0)=0 is exact for finite x.
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const double one = 1.0, shuge = 1.0e307;
 
 double
-sinh(double x)
+__ieee754_sinh(double x)
 {
-	double t,w,h;
+	double t,h;
 	int32_t ix,jx;
-	u_int32_t lx;
 
     /* High word of |x|. */
 	GET_HIGH_WORD(jx,x);
 	ix = jx&0x7fffffff;
 
     /* x is INF or NaN */
-	if(ix>=0x7ff00000) return x+x;
+	if(ix>=0x7ff00000) return x+x;	
 
 	h = 0.5;
 	if (jx<0) h = -h;
@@ -62,15 +60,11 @@ sinh(double x)
 	}
 
     /* |x| in [22, log(maxdouble)] return 0.5*exp(|x|) */
-	if (ix < 0x40862E42)  return h*exp(fabs(x));
+	if (ix < 0x40862E42)  return h*__ieee754_exp(fabs(x));
 
     /* |x| in [log(maxdouble), overflowthresold] */
-	GET_LOW_WORD(lx,x);
-	if (ix<0x408633CE || ((ix==0x408633ce)&&(lx<=(u_int32_t)0x8fb9f87d))) {
-	    w = exp(0.5*fabs(x));
-	    t = h*w;
-	    return t*w;
-	}
+	if (ix<=0x408633CE)
+	    return h*2.0*__ldexp_exp(fabs(x), -1);
 
     /* |x| > overflowthresold, sinh(x) overflow */
 	return x*shuge;

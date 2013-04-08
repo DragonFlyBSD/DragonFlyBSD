@@ -1,4 +1,5 @@
 /* @(#)s_sin.c 5.1 93/09/24 */
+/* $FreeBSD: head/lib/msun/src/s_sin.c 218509 2011-02-10 07:37:50Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -8,8 +9,6 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * $NetBSD: s_sin.c,v 1.11 2007/08/20 16:01:39 drochner Exp $
  */
 
 /* sin(x)
@@ -18,7 +17,7 @@
  * kernel function:
  *	__kernel_sin		... sine function on [-pi/4,pi/4]
  *	__kernel_cos		... cose function on [-pi/4,pi/4]
- *	__libm_rem_pio2		... argument reduction routine
+ *	__ieee754_rem_pio2	... argument reduction routine
  *
  * Method.
  *      Let S,C and T denote the sin, cos and tan respectively on
@@ -43,8 +42,12 @@
  *	TRIG(x) returns trig(x) nearly rounded
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
+#define INLINE_REM_PIO2
 #include "math_private.h"
+#include "e_rem_pio2.c"
 
 double
 sin(double x)
@@ -57,14 +60,18 @@ sin(double x)
 
     /* |x| ~< pi/4 */
 	ix &= 0x7fffffff;
-	if(ix <= 0x3fe921fb) return __kernel_sin(x,z,0);
+	if(ix <= 0x3fe921fb) {
+	    if(ix<0x3e500000)			/* |x| < 2**-26 */
+	       {if((int)x==0) return x;}	/* generate inexact */
+	    return __kernel_sin(x,z,0);
+	}
 
     /* sin(Inf or NaN) is NaN */
 	else if (ix>=0x7ff00000) return x-x;
 
     /* argument reduction needed */
 	else {
-	    n = __libm_rem_pio2(x,y);
+	    n = __ieee754_rem_pio2(x,y);
 	    switch(n&3) {
 		case 0: return  __kernel_sin(y[0],y[1],1);
 		case 1: return  __kernel_cos(y[0],y[1]);
@@ -74,3 +81,7 @@ sin(double x)
 	    }
 	}
 }
+
+#if (LDBL_MANT_DIG == 53)
+__weak_reference(sin, sinl);
+#endif

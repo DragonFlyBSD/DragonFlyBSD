@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * FreeBSD SVN: 143219 (2005-03-07)
+ * $FreeBSD: head/lib/msun/src/s_scalbln.c 143219 2005-03-07 04:57:50Z das $
  */
 
 #include <limits.h>

@@ -8,12 +8,12 @@
 
 CLEANFILES= osreldate.h version vers.c vers.txt
 SUBDIR= arpa protocols rpc rpcsvc
-INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
+INCS=	a.out.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 	dirent.h disktab.h \
-	dlfcn.h elf.h elf-hints.h err.h fmtmsg.h fnmatch.h fstab.h \
+	dlfcn.h elf.h elf-hints.h err.h float.h fmtmsg.h fnmatch.h fstab.h \
 	fts.h ftw.h getopt.h glob.h grp.h histedit.h \
 	iconv.h ieeefp.h ifaddrs.h iso646.h inttypes.h \
-	langinfo.h libgen.h limits.h link.h locale.h malloc.h math.h memory.h \
+	langinfo.h libgen.h limits.h link.h locale.h malloc.h memory.h \
 	mntopts.h mpool.h mqueue.h monetary.h ndbm.h netconfig.h \
 	netdb.h nl_types.h nlist.h nss.h nsswitch.h objformat.h \
 	paths.h printf.h pthread.h pthread_np.h pwd.h \
@@ -22,7 +22,8 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	search.h setjmp.h sgtty.h \
 	signal.h spawn.h stab.h stdarg.h stdbool.h \
 	stddef.h stdint.h stdio.h stdlib.h \
-	string.h stringlist.h strings.h struct.h sysexits.h tar.h time.h \
+	string.h stringlist.h strings.h struct.h sysexits.h \
+	tar.h time.h \
 	timeconv.h \
 	timers.h ttyent.h tzfile.h unistd.h ulimit.h utime.h utmp.h utmpx.h \
 	uuid.h vis.h \
@@ -32,7 +33,7 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 INCS+=	hesiod.h
 .endif
 
-MHDRS=	float.h floatingpoint.h varargs.h
+MHDRS=	varargs.h
 
 # Only for default SHARED=copies case
 SHDRS=	soundcard.h joystick.h
@@ -150,6 +151,8 @@ INCSLINKS+=	netproto/natm ${INCLUDEDIR}/netnatm
 INCSLINKS+=	netproto/ncp ${INCLUDEDIR}/netncp
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
 INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
+# Some 3rd party software looks for <floatingpoint.h>
+INCSLINKS+=	ieeefp.h ${INCLUDEDIR}/floatingpoint.h
 
 # NOTE!
 #

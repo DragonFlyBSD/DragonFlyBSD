@@ -12,11 +12,10 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_atanhf.c,v 1.7 2002/05/26 22:01:49 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_atanhf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $FreeBSD: head/lib/msun/src/e_atanhf.c 176451 2008-02-22 02:30:36Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const float one = 1.0, huge = 1e30;
@@ -24,7 +23,7 @@ static const float one = 1.0, huge = 1e30;
 static const float zero = 0.0;
 
 float
-atanhf(float x)
+__ieee754_atanhf(float x)
 {
 	float t;
 	int32_t hx,ix;

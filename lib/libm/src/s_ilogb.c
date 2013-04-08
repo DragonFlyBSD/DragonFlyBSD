@@ -1,4 +1,5 @@
 /* @(#)s_ilogb.c 5.1 93/09/24 */
+/* $FreeBSD: head/lib/msun/src/s_ilogb.c 176451 2008-02-22 02:30:36Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -8,30 +9,29 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * $NetBSD: s_ilogb.c,v 1.13 2011/07/28 22:32:29 joerg Exp $
  */
 
 /* ilogb(double x)
  * return the binary exponent of non-zero x
- * ilogb(0) = 0x80000001
- * ilogb(inf/NaN) = 0x7fffffff (no signal is raised)
+ * ilogb(0) = FP_ILOGB0
+ * ilogb(NaN) = FP_ILOGBNAN (no signal is raised)
+ * ilogb(inf) = INT_MAX (no signal is raised)
  */
 
-#include <math.h>
+#include <limits.h>
+
+#include "math.h"
 #include "math_private.h"
 
-int
-ilogb(double x)
+	int ilogb(double x)
 {
 	int32_t hx,lx,ix;
 
-	GET_HIGH_WORD(hx,x);
+	EXTRACT_WORDS(hx,lx,x);
 	hx &= 0x7fffffff;
 	if(hx<0x00100000) {
-	    GET_LOW_WORD(lx,x);
 	    if((hx|lx)==0)
-		return 0x80000001;	/* ilogb(0) = 0x80000001 */
+		return FP_ILOGB0;
 	    else			/* subnormal x */
 		if(hx==0) {
 		    for (ix = -1043; lx>0; lx<<=1) ix -=1;
@@ -41,5 +41,6 @@ ilogb(double x)
 	    return ix;
 	}
 	else if (hx<0x7ff00000) return (hx>>20)-1023;
-	else return 0x7fffffff;
+	else if (hx>0x7ff00000 || lx!=0) return FP_ILOGBNAN;
+	else return INT_MAX;
 }

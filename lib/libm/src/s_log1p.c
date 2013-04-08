@@ -1,4 +1,5 @@
 /* @(#)s_log1p.c 5.1 93/09/24 */
+/* $FreeBSD: head/lib/msun/src/s_log1p.c 251024 2013-05-27 08:50:10Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -8,9 +9,6 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * $NetBSD: s_log1p.c,v 1.12 2002/05/26 22:01:57 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_log1p.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
 /* double log1p(double x)
@@ -78,7 +76,9 @@
  *	 See HP-15C Advanced Functions Handbook, p.193.
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
 #include "math_private.h"
 
 static const double
@@ -94,6 +94,7 @@ Lp6 = 1.531383769920937332e-01,  /* 3FC39A09 D078C69F */
 Lp7 = 1.479819860511658591e-01;  /* 3FC2F112 DF3E5244 */
 
 static const double zero = 0.0;
+static volatile double vzero = 0.0;
 
 double
 log1p(double x)
@@ -101,15 +102,13 @@ log1p(double x)
 	double hfsq,f,c,s,z,R,u;
 	int32_t k,hx,hu,ax;
 
-	f = c = 0;
-	hu = 0;
 	GET_HIGH_WORD(hx,x);
 	ax = hx&0x7fffffff;
 
 	k = 1;
-	if (hx < 0x3FDA827A) {			/* x < 0.41422  */
+	if (hx < 0x3FDA827A) {			/* 1+x < sqrt(2)+ */
 	    if(ax>=0x3ff00000) {		/* x <= -1.0 */
-		if(x==-1.0) return -two54/zero; /* log1p(-1)=+inf */
+		if(x==-1.0) return -two54/vzero; /* log1p(-1)=+inf */
 		else return (x-x)/(x-x);	/* log1p(x<-1)=NaN */
 	    }
 	    if(ax<0x3e200000) {			/* |x| < 2**-29 */
@@ -119,13 +118,13 @@ log1p(double x)
 		else
 		    return x - x*x*0.5;
 	    }
-	    if(hx>0||hx<=((int32_t)0xbfd2bec3)) {
-		k=0;f=x;hu=1;}	/* -0.2929<x<0.41422 */
+	    if(hx>0||hx<=((int32_t)0xbfd2bec4)) {
+		k=0;f=x;hu=1;}		/* sqrt(2)/2- <= 1+x < sqrt(2)+ */
 	}
 	if (hx >= 0x7ff00000) return x+x;
 	if(k!=0) {
 	    if(hx<0x43400000) {
-		u  = 1.0+x;
+		STRICT_ASSIGN(double,u,1.0+x);
 		GET_HIGH_WORD(hu,u);
 	        k  = (hu>>20)-1023;
 	        c  = (k>0)? 1.0-(u-x):x-(u-1.0);/* correction term */
@@ -137,7 +136,14 @@ log1p(double x)
 		c  = 0;
 	    }
 	    hu &= 0x000fffff;
-	    if(hu<0x6a09e) {
+	    /*
+	     * The approximation to sqrt(2) used in thresholds is not
+	     * critical.  However, the ones used above must give less
+	     * strict bounds than the one here so that the k==0 case is
+	     * never reached from here, since here we have committed to
+	     * using the correction term but don't use it if k==0.
+	     */
+	    if(hu<0x6a09e) {			/* u ~< sqrt(2) */
 	        SET_HIGH_WORD(u,hu|0x3ff00000);	/* normalize u */
 	    } else {
 	        k += 1;
@@ -148,8 +154,13 @@ log1p(double x)
 	}
 	hfsq=0.5*f*f;
 	if(hu==0) {	/* |f| < 2**-20 */
-	    if(f==zero) { if(k==0) return zero;
-			  else {c += k*ln2_lo; return k*ln2_hi+c;}
+	    if(f==zero) {
+		if(k==0) {
+		    return zero;
+		} else {
+		    c += k*ln2_lo;
+		    return k*ln2_hi+c;
+		}
 	    }
 	    R = hfsq*(1.0-0.66666666666666666*f);
 	    if(k==0) return f-R; else

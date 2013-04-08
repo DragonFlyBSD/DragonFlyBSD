@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)ieee.3	6.4 (Berkeley) 5/6/91
-.\" $FreeBSD$
+.\" $FreeBSD: head/lib/msun/man/nextafter.3 165906 2007-01-09 01:02:06Z imp $
 .\"
 .Dd December 21, 2011
 .Dt NEXTAFTER 3
@@ -36,7 +36,8 @@
 .Nm nextafterf ,
 .Nm nextafterl ,
 .Nm nexttoward ,
-.Nm nexttowardf
+.Nm nexttowardf ,
+.Nm nexttowardl
 .Nd next representable value
 .Sh LIBRARY
 .Lb libm
@@ -52,6 +53,8 @@
 .Fn nexttoward "double x" "long double y"
 .Ft float
 .Fn nexttowardf "float x" "long double y"
+.Ft long double
+.Fn nexttowardl "long double x" "long double y"
 .Sh DESCRIPTION
 These functions
 return the next machine representable number from
@@ -59,6 +62,7 @@ return the next machine representable number from
 in direction
 .Fa y .
 .Sh SEE ALSO
+.Xr ieee 3 ,
 .Xr math 3
 .Sh STANDARDS
 The
@@ -66,8 +70,9 @@ The
 .Fn nextafterf ,
 .Fn nextafterl ,
 .Fn nexttoward ,
+.Fn nexttowardf ,
 and
-.Fn nexttowardf
+.Fn nexttowardl
 routines conform to
 .St -isoC-99 .
 They implement the Nextafter function recommended by
@@ -89,6 +94,3 @@ and
 .Fn nextafterf
 appeared in
 .Fx 2.0 .
-.Fn nextafterl
-appeared in
-.Dx 2.13 .

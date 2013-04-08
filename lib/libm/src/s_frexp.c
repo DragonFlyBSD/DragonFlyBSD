@@ -1,4 +1,5 @@
 /* @(#)s_frexp.c 5.1 93/09/24 */
+/* $FreeBSD: head/lib/msun/src/s_frexp.c 176451 2008-02-22 02:30:36Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -8,8 +9,6 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * $NetBSD: s_frexp.c,v 1.13 2008/09/28 18:54:55 christos Exp $
  */
 
 /*
@@ -22,7 +21,9 @@
  * with *exp=0.
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
 #include "math_private.h"
 
 static const double
@@ -42,8 +43,12 @@ frexp(double x, int *eptr)
 	    ix = hx&0x7fffffff;
 	    *eptr = -54;
 	}
-	*eptr += ((uint32_t)ix>>20)-1022;
+	*eptr += (ix>>20)-1022;
 	hx = (hx&0x800fffff)|0x3fe00000;
 	SET_HIGH_WORD(x,hx);
 	return x;
 }
+
+#if (LDBL_MANT_DIG == 53)
+__weak_reference(frexp, frexpl);
+#endif

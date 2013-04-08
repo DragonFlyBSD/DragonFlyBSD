@@ -1,27 +1,26 @@
-/* @(#)e_acos.c 5.1 93/09/24 */
+
+/* @(#)e_acos.c 1.3 95/01/18 */
+/* $FreeBSD: head/lib/msun/src/e_acos.c 181074 2008-07-31 22:41:26Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
- *
- * $NetBSD: e_acos.c,v 1.12 2002/05/26 22:01:47 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_acos.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
-/* acos(x)
- * Method :
+/* __ieee754_acos(x)
+ * Method :                  
  *	acos(x)  = pi/2 - asin(x)
  *	acos(-x) = pi/2 + asin(x)
  * For |x|<=0.5
  *	acos(x) = pi/2 - (x + x*x^2*R(x^2))	(see asin.c)
  * For x>0.5
  * 	acos(x) = pi/2 - (pi/2 - 2asin(sqrt((1-x)/2)))
- *		= 2asin(sqrt((1-x)/2))
+ *		= 2asin(sqrt((1-x)/2))  
  *		= 2s + 2s*z*R(z) 	...z=(1-x)/2, s=sqrt(z)
  *		= 2f + (2c + 2s*z*R(z))
  *     where f=hi part of s, and c = (z-f*f)/(s+f) is the correction term
@@ -37,14 +36,18 @@
  * Function needed: sqrt
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
 #include "math_private.h"
 
 static const double
 one=  1.00000000000000000000e+00, /* 0x3FF00000, 0x00000000 */
 pi =  3.14159265358979311600e+00, /* 0x400921FB, 0x54442D18 */
-pio2_hi =  1.57079632679489655800e+00, /* 0x3FF921FB, 0x54442D18 */
-pio2_lo =  6.12323399573676603587e-17, /* 0x3C91A626, 0x33145C07 */
+pio2_hi =  1.57079632679489655800e+00; /* 0x3FF921FB, 0x54442D18 */
+static volatile double
+pio2_lo =  6.12323399573676603587e-17; /* 0x3C91A626, 0x33145C07 */
+static const double
 pS0 =  1.66666666666666657415e-01, /* 0x3FC55555, 0x55555555 */
 pS1 = -3.25565818622400915405e-01, /* 0xBFD4D612, 0x03EB6F7D */
 pS2 =  2.01212532134862925881e-01, /* 0x3FC9C155, 0x0E884455 */
@@ -57,7 +60,7 @@ qS3 = -6.88283971605453293030e-01, /* 0xBFE6066C, 0x1B8D0159 */
 qS4 =  7.70381505559019352791e-02; /* 0x3FB3B8C5, 0xB12E9282 */
 
 double
-acos(double x)
+__ieee754_acos(double x)
 {
 	double z,p,q,r,w,s,c,df;
 	int32_t hx,ix;
@@ -100,3 +103,7 @@ acos(double x)
 	    return 2.0*(df+w);
 	}
 }
+
+#if LDBL_MANT_DIG == 53
+__weak_reference(acos, acosl);
+#endif

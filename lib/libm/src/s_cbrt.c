@@ -1,4 +1,5 @@
 /* @(#)s_cbrt.c 5.1 93/09/24 */
+/* $FreeBSD: head/lib/msun/src/s_cbrt.c 219571 2011-03-12 16:50:39Z kargl $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -10,13 +11,9 @@
  * ====================================================
  *
  * Optimized by Bruce D. Evans.
- *
- * $FreeBSD: src/lib/msun/src/s_cbrt.c,v 1.14 2005/12/20 01:21:30 bde Exp $
- * $NetBSD: s_cbrt.c,v 1.11 2002/05/26 22:01:54 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_cbrt.c,v 1.2 2007/07/03 04:54:07 pavalos Exp $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 /* cbrt(x)
@@ -95,7 +92,7 @@ cbrt(double x)
      * 2 23-bit ulps larger).  With rounding towards zero, the error bound
      * would be ~5/6 instead of ~4/6.  With a maximum error of 2 23-bit ulps
      * in the rounded t, the infinite-precision error in the Newton
-     * approximation barely affects third digit in the the final error
+     * approximation barely affects third digit in the final error
      * 0.667; the error in the rounded t can be up to about 3 23-bit ulps
      * before the final error is larger than 0.667 ulps.
      */
@@ -112,3 +109,7 @@ cbrt(double x)
 
 	return(t);
 }
+
+#if (LDBL_MANT_DIG == 53)
+__weak_reference(cbrt, cbrtl);
+#endif

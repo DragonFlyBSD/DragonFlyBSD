@@ -12,13 +12,11 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_powf.c,v 1.15 2010/04/23 19:17:07 drochner Exp $
+ * $FreeBSD: head/lib/msun/src/e_powf.c 226595 2011-10-21 06:26:07Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
-
-static const float huge = 1.0e+30, tiny = 1.0e-30;
 
 static const float
 bp[] = {1.0, 1.5,},
@@ -28,6 +26,8 @@ zero    =  0.0,
 one	=  1.0,
 two	=  2.0,
 two24	=  16777216.0,	/* 0x4b800000 */
+huge	=  1.0e30,
+tiny    =  1.0e-30,
 	/* poly coefs for (3/2)*(log(x)-2s-2/3*s**3 */
 L1  =  6.0000002384e-01, /* 0x3f19999a */
 L2  =  4.2857143283e-01, /* 0x3edb6db7 */
@@ -45,17 +45,17 @@ lg2_h  =  6.93145752e-01, /* 0x3f317200 */
 lg2_l  =  1.42860654e-06, /* 0x35bfbe8c */
 ovt =  4.2995665694e-08, /* -(128-log2(ovfl+.5ulp)) */
 cp    =  9.6179670095e-01, /* 0x3f76384f =2/(3ln2) */
-cp_h  =  9.6179199219e-01, /* 0x3f763800 =head of cp */
-cp_l  =  4.7017383622e-06, /* 0x369dc3a0 =tail of cp_h */
+cp_h  =  9.6191406250e-01, /* 0x3f764000 =12b cp */
+cp_l  = -1.1736857402e-04, /* 0xb8f623c6 =tail of cp_h */
 ivln2    =  1.4426950216e+00, /* 0x3fb8aa3b =1/ln2 */
 ivln2_h  =  1.4426879883e+00, /* 0x3fb8aa00 =16b 1/ln2*/
 ivln2_l  =  7.0526075433e-06; /* 0x36eca570 =1/ln2 tail*/
 
 float
-powf(float x, float y)
+__ieee754_powf(float x, float y)
 {
 	float z,ax,z_h,z_l,p_h,p_l;
-	float yy1,t1,t2,r,s,t,u,v,w;
+	float y1,t1,t2,r,s,sn,t,u,v,w;
 	int32_t i,j,k,yisint,n;
 	int32_t hx,hy,ix,iy,is;
 
@@ -66,10 +66,13 @@ powf(float x, float y)
     /* y==zero: x**0 = 1 */
 	if(iy==0) return one;
 
-    /* +-NaN return x+y */
+    /* x==1: 1**y = 1, even if y is NaN */
+	if (hx==0x3f800000) return one;
+
+    /* y!=zero: result is NaN if either arg is NaN */
 	if(ix > 0x7f800000 ||
 	   iy > 0x7f800000)
-		return x+y;
+		return (x+0.0F)+(y+0.0F);
 
     /* determine if y is an odd int when x < 0
      * yisint = 0	... y is not an integer
@@ -89,7 +92,7 @@ powf(float x, float y)
     /* special value of y */
 	if (iy==0x7f800000) {	/* y is +-inf */
 	    if (ix==0x3f800000)
-	        return  y - y;	/* inf**+-1 is NaN */
+	        return  one;	/* (-1)**+-inf is NaN */
 	    else if (ix > 0x3f800000)/* (|x|>1)**+-inf = inf,0 */
 	        return (hy>=0)? y: zero;
 	    else			/* (|x|<1)**-,+inf = inf,0 */
@@ -101,7 +104,7 @@ powf(float x, float y)
 	if(hy==0x40000000) return x*x; /* y is  2 */
 	if(hy==0x3f000000) {	/* y is  0.5 */
 	    if(hx>=0)	/* x >= +0 */
-	    return sqrtf(x);
+	    return __ieee754_sqrtf(x);
 	}
 
 	ax   = fabsf(x);
@@ -118,17 +121,22 @@ powf(float x, float y)
 	    return z;
 	}
 
+	n = ((u_int32_t)hx>>31)-1;
+
     /* (x<0)**(non-int) is NaN */
-	if(((((u_int32_t)hx>>31)-1)|yisint)==0) return (x-x)/(x-x);
+	if((n|yisint)==0) return (x-x)/(x-x);
+
+	sn = one; /* s (sign of result -ve**odd) = -1 else = 1 */
+	if((n|(yisint-1))==0) sn = -one;/* (-ve)**(odd int) */
 
     /* |y| is huge */
 	if(iy>0x4d000000) { /* if |y| > 2**27 */
 	/* over/underflow if x is not close to one */
-	    if(ix<0x3f7ffff8) return (hy<0)? huge*huge:tiny*tiny;
-	    if(ix>0x3f800007) return (hy>0)? huge*huge:tiny*tiny;
+	    if(ix<0x3f7ffff8) return (hy<0)? sn*huge*huge:sn*tiny*tiny;
+	    if(ix>0x3f800007) return (hy>0)? sn*huge*huge:sn*tiny*tiny;
 	/* now |1-x| is tiny <= 2**-20, suffice to compute
 	   log(x) by x-x^2/2+x^3/3-x^4/4 */
-	    t = ax-one;		/* t has 20 trailing zeros */
+	    t = ax-1;		/* t has 20 trailing zeros */
 	    w = (t*t)*((float)0.5-t*((float)0.333333333333-t*(float)0.25));
 	    u = ivln2_h*t;	/* ivln2_h has 16 sig. bits */
 	    v = t*ivln2_l-w*ivln2;
@@ -159,7 +167,8 @@ powf(float x, float y)
 	    GET_FLOAT_WORD(is,s_h);
 	    SET_FLOAT_WORD(s_h,is&0xfffff000);
 	/* t_h=ax+bp[k] High */
-	    SET_FLOAT_WORD(t_h,((ix>>1)|0x20000000)+0x0040000+(k<<21));
+	    is = ((ix>>1)&0xfffff000)|0x20000000;
+	    SET_FLOAT_WORD(t_h,is+0x00400000+(k<<21));
 	    t_l = ax - (t_h-bp[k]);
 	    s_l = v*((u-s_h*t_h)-s_h*t_l);
 	/* compute log(ax) */
@@ -189,27 +198,23 @@ powf(float x, float y)
 	    t2 = z_l-(((t1-t)-dp_h[k])-z_h);
 	}
 
-	s = one; /* s (sign of result -ve**odd) = -1 else = 1 */
-	if(((((u_int32_t)hx>>31)-1)|(yisint-1))==0)
-	    s = -one;	/* (-ve)**(odd int) */
-
-    /* split up y into yy1+y2 and compute (yy1+y2)*(t1+t2) */
+    /* split up y into y1+y2 and compute (y1+y2)*(t1+t2) */
 	GET_FLOAT_WORD(is,y);
-	SET_FLOAT_WORD(yy1,is&0xfffff000);
-	p_l = (y-yy1)*t1+y*t2;
-	p_h = yy1*t1;
+	SET_FLOAT_WORD(y1,is&0xfffff000);
+	p_l = (y-y1)*t1+y*t2;
+	p_h = y1*t1;
 	z = p_l+p_h;
 	GET_FLOAT_WORD(j,z);
 	if (j>0x43000000)				/* if z > 128 */
-	    return s*huge*huge;				/* overflow */
+	    return sn*huge*huge;			/* overflow */
 	else if (j==0x43000000) {			/* if z == 128 */
-	    if(p_l+ovt>z-p_h) return s*huge*huge;	/* overflow */
-	}
-	else if ((uint32_t)j==0xc3160000){		/* z == -150 */
-	    if(p_l<=z-p_h) return s*tiny*tiny;		/* underflow */
+	    if(p_l+ovt>z-p_h) return sn*huge*huge;	/* overflow */
 	}
 	else if ((j&0x7fffffff)>0x43160000)		/* z <= -150 */
-	    return s*tiny*tiny;				/* underflow */
+	    return sn*tiny*tiny;			/* underflow */
+	else if (j==0xc3160000){			/* z == -150 */
+	    if(p_l<=z-p_h) return sn*tiny*tiny;		/* underflow */
+	}
     /*
      * compute 2**(p_h+p_l)
      */
@@ -226,7 +231,7 @@ powf(float x, float y)
 	}
 	t = p_l+p_h;
 	GET_FLOAT_WORD(is,t);
-	SET_FLOAT_WORD(t,is&0xfffff000);
+	SET_FLOAT_WORD(t,is&0xffff8000);
 	u = t*lg2_h;
 	v = (p_l-(t-p_h))*lg2+t*lg2_l;
 	z = u+v;
@@ -239,5 +244,5 @@ powf(float x, float y)
 	j += (n<<23);
 	if((j>>23)<=0) z = scalbnf(z,n);	/* subnormal output */
 	else SET_FLOAT_WORD(z,j);
-	return s*z;
+	return sn*z;
 }

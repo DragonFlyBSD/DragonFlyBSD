@@ -12,10 +12,13 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- * FreeBSD SVN: 176569 (2008-02-25)
+ *
+ * $FreeBSD: head/lib/msun/src/s_tanf.c 176569 2008-02-25 22:19:17Z bde $
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
 #define	INLINE_KERNEL_TANDF
 #define INLINE_REM_PIO2F
 #include "math_private.h"
@@ -61,7 +64,7 @@ tanf(float x)
 
     /* general argument reduction needed */
 	else {
-	    n = __libm_rem_pio2f(x,&y);
+	    n = __ieee754_rem_pio2f(x,&y);
 	    /* integer parameter: 1 -- n even; -1 -- n odd */
 	    return __kernel_tandf(y,1-((n&1)<<1));
 	}

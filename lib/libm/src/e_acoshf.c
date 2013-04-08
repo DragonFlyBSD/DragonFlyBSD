@@ -12,11 +12,10 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_acoshf.c,v 1.8 2002/05/26 22:01:48 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_acoshf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $FreeBSD: head/lib/msun/src/e_acoshf.c 176451 2008-02-22 02:30:36Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const float
@@ -24,7 +23,7 @@ one	= 1.0,
 ln2	= 6.9314718246e-01;  /* 0x3f317218 */
 
 float
-acoshf(float x)
+__ieee754_acoshf(float x)
 {
 	float t;
 	int32_t hx;
@@ -35,14 +34,14 @@ acoshf(float x)
 	    if(hx >=0x7f800000) {	/* x is inf of NaN */
 	        return x+x;
 	    } else
-		return logf(x)+ln2;	/* acosh(huge)=log(2x) */
+		return __ieee754_logf(x)+ln2;	/* acosh(huge)=log(2x) */
 	} else if (hx==0x3f800000) {
 	    return 0.0;			/* acosh(1) = 0 */
 	} else if (hx > 0x40000000) {	/* 2**28 > x > 2 */
 	    t=x*x;
-	    return logf((float)2.0*x-one/(x+sqrtf(t-one)));
+	    return __ieee754_logf((float)2.0*x-one/(x+__ieee754_sqrtf(t-one)));
 	} else {			/* 1<x<2 */
 	    t = x-one;
-	    return log1pf(t+sqrtf((float)2.0*t+t*t));
+	    return log1pf(t+__ieee754_sqrtf((float)2.0*t+t*t));
 	}
 }

@@ -12,18 +12,16 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_coshf.c,v 1.9 2002/05/26 22:01:49 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_coshf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $FreeBSD: head/lib/msun/src/e_coshf.c 226598 2011-10-21 06:28:47Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
-static const float huge = 1.0e30;
-static const float one = 1.0, half=0.5;
+static const float one = 1.0, half=0.5, huge = 1.0e30;
 
 float
-coshf(float x)
+__ieee754_coshf(float x)
 {
 	float t,w;
 	int32_t ix;
@@ -38,25 +36,22 @@ coshf(float x)
 	if(ix<0x3eb17218) {
 	    t = expm1f(fabsf(x));
 	    w = one+t;
-	    if (ix<0x24000000) return w;	/* cosh(tiny) = 1 */
+	    if (ix<0x39800000) return one;	/* cosh(tiny) = 1 */
 	    return one+(t*t)/(w+w);
 	}
 
-    /* |x| in [0.5*ln2,22], return (exp(|x|)+1/exp(|x|)/2; */
-	if (ix < 0x41b00000) {
-		t = expf(fabsf(x));
+    /* |x| in [0.5*ln2,9], return (exp(|x|)+1/exp(|x|))/2; */
+	if (ix < 0x41100000) {
+		t = __ieee754_expf(fabsf(x));
 		return half*t+half/t;
 	}
 
-    /* |x| in [22, log(maxdouble)] return half*exp(|x|) */
-	if (ix < 0x42b17180)  return half*expf(fabsf(x));
+    /* |x| in [9, log(maxfloat)] return half*exp(|x|) */
+	if (ix < 0x42b17217)  return half*__ieee754_expf(fabsf(x));
 
-    /* |x| in [log(maxdouble), overflowthresold] */
-	if (ix<=0x42b2d4fc) {
-	    w = expf(half*fabsf(x));
-	    t = half*w;
-	    return t*w;
-	}
+    /* |x| in [log(maxfloat), overflowthresold] */
+	if (ix<=0x42b2d4fc)
+	    return __ldexp_expf(fabsf(x), -1);
 
     /* |x| > overflowthresold, cosh(x) overflow */
 	return huge*huge;

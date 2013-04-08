@@ -1,22 +1,22 @@
-/* @(#)e_atan2.c 5.1 93/09/24 */
+
+/* @(#)e_atan2.c 1.3 95/01/18 */
+/* $FreeBSD: head/lib/msun/src/e_atan2.c 181204 2008-08-02 19:17:00Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_atan2.c,v 1.12 2002/05/26 22:01:48 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_atan2.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
-/* atan2(y,x)
+/* __ieee754_atan2(y,x)
  * Method :
  *	1. Reduce y to positive by atan2(y,x)=-atan2(-y,x).
- *	2. Reduce x to positive by (if x and y are unexceptional):
+ *	2. Reduce x to positive by (if x and y are unexceptional): 
  *		ARG (x+iy) = arctan(y/x)   	   ... if x > 0,
  *		ARG (x+iy) = pi - arctan[y/(-x)]   ... if x < 0,
  *
@@ -34,25 +34,29 @@
  *	ATAN2(+-INF, (anything but,0,NaN, and INF)) is +-pi/2;
  *
  * Constants:
- * The hexadecimal values are the intended ones for the following
- * constants. The decimal values may be used, provided that the
- * compiler will convert from decimal to binary accurately enough
+ * The hexadecimal values are the intended ones for the following 
+ * constants. The decimal values may be used, provided that the 
+ * compiler will convert from decimal to binary accurately enough 
  * to produce the hexadecimal values shown.
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
 #include "math_private.h"
 
+static volatile double
+tiny  = 1.0e-300;
 static const double
-tiny  = 1.0e-300,
 zero  = 0.0,
 pi_o_4  = 7.8539816339744827900E-01, /* 0x3FE921FB, 0x54442D18 */
 pi_o_2  = 1.5707963267948965580E+00, /* 0x3FF921FB, 0x54442D18 */
-pi      = 3.1415926535897931160E+00, /* 0x400921FB, 0x54442D18 */
+pi      = 3.1415926535897931160E+00; /* 0x400921FB, 0x54442D18 */
+static volatile double
 pi_lo   = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
 
 double
-atan2(double y, double x)
+__ieee754_atan2(double y, double x)
 {
 	double z;
 	int32_t k,m,hx,hy,ix,iy;
@@ -65,13 +69,13 @@ atan2(double y, double x)
 	if(((ix|((lx|-lx)>>31))>0x7ff00000)||
 	   ((iy|((ly|-ly)>>31))>0x7ff00000))	/* x or y is NaN */
 	   return x+y;
-	if(((hx-0x3ff00000)|lx)==0) return atan(y);   /* x=1.0 */
+	if((hx-0x3ff00000|lx)==0) return atan(y);   /* x=1.0 */
 	m = ((hy>>31)&1)|((hx>>30)&2);	/* 2*sign(x)+sign(y) */
 
     /* when y = 0 */
 	if((iy|ly)==0) {
 	    switch(m) {
-		case 0:
+		case 0: 
 		case 1: return y; 	/* atan(+-0,+anything)=+-0 */
 		case 2: return  pi+tiny;/* atan(+0,-anything) = pi */
 		case 3: return -pi-tiny;/* atan(-0,-anything) =-pi */
@@ -79,7 +83,7 @@ atan2(double y, double x)
 	}
     /* when x = 0 */
 	if((ix|lx)==0) return (hy<0)?  -pi_o_2-tiny: pi_o_2+tiny;
-
+	    
     /* when x is INF */
 	if(ix==0x7ff00000) {
 	    if(iy==0x7ff00000) {
@@ -103,19 +107,21 @@ atan2(double y, double x)
 
     /* compute y/x */
 	k = (iy-ix)>>20;
-	if(k > 60) z=pi_o_2+0.5*pi_lo; 	/* |y/x| >  2**60 */
-	else if(hx<0&&k<-60) z=0.0; 	/* |y|/x < -2**60 */
+	if(k > 60) {		 	/* |y/x| >  2**60 */
+	    z=pi_o_2+0.5*pi_lo;
+	    m&=1;
+	}
+	else if(hx<0&&k<-60) z=0.0; 	/* 0 > |y|/x > -2**-60 */
 	else z=atan(fabs(y/x));		/* safe to do y/x */
 	switch (m) {
 	    case 0: return       z  ;	/* atan(+,+) */
-	    case 1: {
-	    	      u_int32_t zh;
-		      GET_HIGH_WORD(zh,z);
-		      SET_HIGH_WORD(z,zh ^ 0x80000000);
-		    }
-		    return       z  ;	/* atan(-,+) */
+	    case 1: return      -z  ;	/* atan(-,+) */
 	    case 2: return  pi-(z-pi_lo);/* atan(+,-) */
 	    default: /* case 3 */
 	    	    return  (z-pi_lo)-pi;/* atan(-,-) */
 	}
 }
+
+#if LDBL_MANT_DIG == 53
+__weak_reference(atan2, atan2l);
+#endif

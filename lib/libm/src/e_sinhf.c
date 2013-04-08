@@ -12,19 +12,18 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_sinhf.c,v 1.7 2002/05/26 22:01:52 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_sinhf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $FreeBSD: head/lib/msun/src/e_sinhf.c 226598 2011-10-21 06:28:47Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const float one = 1.0, shuge = 1.0e37;
 
 float
-sinhf(float x)
+__ieee754_sinhf(float x)
 {
-	float t,w,h;
+	float t,h;
 	int32_t ix,jx;
 
 	GET_FLOAT_WORD(jx,x);
@@ -35,24 +34,21 @@ sinhf(float x)
 
 	h = 0.5;
 	if (jx<0) h = -h;
-    /* |x| in [0,22], return sign(x)*0.5*(E+E/(E+1))) */
-	if (ix < 0x41b00000) {		/* |x|<22 */
-	    if (ix<0x31800000) 		/* |x|<2**-28 */
+    /* |x| in [0,9], return sign(x)*0.5*(E+E/(E+1))) */
+	if (ix < 0x41100000) {		/* |x|<9 */
+	    if (ix<0x39800000) 		/* |x|<2**-12 */
 		if(shuge+x>one) return x;/* sinh(tiny) = tiny with inexact */
 	    t = expm1f(fabsf(x));
 	    if(ix<0x3f800000) return h*((float)2.0*t-t*t/(t+one));
 	    return h*(t+t/(t+one));
 	}
 
-    /* |x| in [22, log(maxdouble)] return 0.5*exp(|x|) */
-	if (ix < 0x42b17180)  return h*expf(fabsf(x));
+    /* |x| in [9, logf(maxfloat)] return 0.5*exp(|x|) */
+	if (ix < 0x42b17217)  return h*__ieee754_expf(fabsf(x));
 
-    /* |x| in [log(maxdouble), overflowthresold] */
-	if (ix<=0x42b2d4fc) {
-	    w = expf((float)0.5*fabsf(x));
-	    t = h*w;
-	    return t*w;
-	}
+    /* |x| in [logf(maxfloat), overflowthresold] */
+	if (ix<=0x42b2d4fc)
+	    return h*2.0F*__ldexp_expf(fabsf(x), -1);
 
     /* |x| > overflowthresold, sinh(x) overflow */
 	return x*shuge;

@@ -1,15 +1,14 @@
 /* @(#)e_fmod.c 1.3 95/01/18 */
+/* $FreeBSD: head/lib/msun/src/e_fmodl.c 181063 2008-07-31 20:09:47Z das $ */
 /*-
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
  * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
- *
- * FreeBSD SVN: 181063 (2008-07-31)
  */
 
 #include <float.h>

@@ -12,11 +12,10 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_j0f.c,v 1.10 2007/08/20 16:01:38 drochner Exp $
+ * $FreeBSD: head/lib/msun/src/e_j0f.c 176451 2008-02-22 02:30:36Z das $
  */
 
-#include <sys/_null.h>
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static float pzerof(float), qzerof(float);
@@ -39,7 +38,7 @@ S04  =  1.1661400734e-09; /* 0x30a045e8 */
 static const float zero = 0.0;
 
 float
-j0f(float x)
+__ieee754_j0f(float x)
 {
 	float z, s,c,ss,cc,r,u,v;
 	int32_t hx,ix;
@@ -62,11 +61,8 @@ j0f(float x)
 	 * j0(x) = 1/sqrt(pi) * (P(0,x)*cc - Q(0,x)*ss) / sqrt(x)
 	 * y0(x) = 1/sqrt(pi) * (P(0,x)*ss + Q(0,x)*cc) / sqrt(x)
 	 */
-#ifdef DEAD_CODE
 		if(ix>0x80000000) z = (invsqrtpi*cc)/sqrtf(x);
-		else
-#endif
-		{
+		else {
 		    u = pzerof(x); v = qzerof(x);
 		    z = invsqrtpi*(u*cc-v*ss)/sqrtf(x);
 		}
@@ -103,7 +99,7 @@ v03  =  2.5915085189e-07, /* 0x348b216c */
 v04  =  4.4111031494e-10; /* 0x2ff280c2 */
 
 float
-y0f(float x)
+__ieee754_y0f(float x)
 {
 	float z, s,c,ss,cc,u,v;
 	int32_t hx,ix;
@@ -139,23 +135,20 @@ y0f(float x)
                     if ((s*c)<zero) cc = z/ss;
                     else            ss = z/cc;
                 }
-#ifdef DEAD_CODE
                 if(ix>0x80000000) z = (invsqrtpi*ss)/sqrtf(x);
-                else
-#endif
-		{
+                else {
                     u = pzerof(x); v = qzerof(x);
                     z = invsqrtpi*(u*ss+v*cc)/sqrtf(x);
                 }
                 return z;
 	}
 	if(ix<=0x32000000) {	/* x < 2**-27 */
-	    return(u00 + tpi*logf(x));
+	    return(u00 + tpi*__ieee754_logf(x));
 	}
 	z = x*x;
 	u = u00+z*(u01+z*(u02+z*(u03+z*(u04+z*(u05+z*u06)))));
 	v = one+z*(v01+z*(v02+z*(v03+z*v04)));
-	return(u/v + tpi*(j0f(x)*logf(x)));
+	return(u/v + tpi*(__ieee754_j0f(x)*__ieee754_logf(x)));
 }
 
 /* The asymptotic expansions of pzero is
@@ -230,14 +223,11 @@ static const float pS2[5] = {
   1.4657617569e+01, /* 0x416a859a */
 };
 
-static float
-pzerof(float x)
+	static float pzerof(float x)
 {
 	const float *p,*q;
 	float z,r,s;
 	int32_t ix;
-
-	p = q = NULL;
 	GET_FLOAT_WORD(ix,x);
 	ix &= 0x7fffffff;
 	if(ix>=0x41000000)     {p = pR8; q= pS8;}
@@ -328,14 +318,11 @@ static const float qS2[6] = {
  -5.3109550476e+00, /* 0xc0a9f358 */
 };
 
-static float
-qzerof(float x)
+	static float qzerof(float x)
 {
 	const float *p,*q;
 	float s,r,z;
 	int32_t ix;
-
-	p = q = NULL;
 	GET_FLOAT_WORD(ix,x);
 	ix &= 0x7fffffff;
 	if(ix>=0x41000000)     {p = qR8; q= qS8;}

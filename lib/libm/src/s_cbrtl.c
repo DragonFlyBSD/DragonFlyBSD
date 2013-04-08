@@ -13,14 +13,16 @@
  * written by Steven G. Kargl with input from Bruce D. Evans
  * and David A. Schultz.
  *
- * FreeBSD SVN: 219576 (2011-03-12)
+ * $FreeBSD: head/lib/msun/src/s_cbrtl.c 238924 2012-07-30 21:58:28Z kargl $
  */
 
 #include <float.h>
-#include <math.h>
+#ifdef __i386__
 #include <ieeefp.h>
+#endif
 
-#include "fpmath.h"
+#include "fpmath.h"    
+#include "math.h"
 #include "math_private.h"
 
 #define	BIAS	(LDBL_MAX_EXP - 1)
@@ -50,23 +52,11 @@ cbrtl(long double x)
 	if (k == BIAS + LDBL_MAX_EXP)
 		return (x + x);
 
-#ifdef __i386__
-	fp_prec_t oprec;
-
-	oprec = fpgetprec();
-	if (oprec != FP_PE)
-		fpsetprec(FP_PE);
-#endif
-
+	ENTERI();
 	if (k == 0) {
 		/* If x = +-0, then cbrt(x) = +-0. */
-		if ((u.bits.manh | u.bits.manl) == 0) {
-#ifdef __i386__
-			if (oprec != FP_PE)
-				fpsetprec(oprec);
-#endif
-			return (x);
-	    	}
+		if ((u.bits.manh | u.bits.manl) == 0)
+			RETURNI(x);
 		/* Adjust subnormal numbers. */
 		u.e *= 0x1.0p514;
 		k = u.bits.exp;
@@ -74,7 +64,7 @@ cbrtl(long double x)
  	} else
 		k -= BIAS;
 	u.xbits.expsign = BIAS;
-	v.e = 1;
+	v.e = 1; 
 
 	x = u.e;
 	switch (k % 3) {
@@ -112,6 +102,7 @@ cbrtl(long double x)
 	dr = dt * dt * dt;
 	dt = dt * (dx + dx + dr) / (dx + dr + dr);
 
+#if LDBL_MANT_DIG == 64
 	/*
 	 * dt is cbrtl(x) to ~47 bits (after x has been reduced to 1 <= x < 8).
 	 * Round it away from zero to 32 bits (32 so that t*t is exact, and
@@ -122,6 +113,19 @@ cbrtl(long double x)
 	#define vd ((long double)vd2 + vd1)
 
 	t = dt + vd - 0x1.0p32;
+#elif LDBL_MANT_DIG == 113
+	/*
+	 * Round dt away from zero to 47 bits.  Since we don't trust the 47,
+	 * add 2 47-bit ulps instead of 1 to round up.  Rounding is slow and
+	 * might be avoidable in this case, since on most machines dt will
+	 * have been evaluated in 53-bit precision and the technical reasons
+	 * for rounding up might not apply to either case in cbrtl() since
+	 * dt is much more accurate than needed.
+	 */
+	t = dt + 0x2.0p-46 + 0x1.0p60L - 0x1.0p60;
+#else
+#error "Unsupported long double format"
+#endif
 
 	/*
      	 * Final step Newton iteration to 64 or 113 bits with
@@ -134,9 +138,5 @@ cbrtl(long double x)
 	t=t+t*r;			/* error <= 0.5 + 0.5/3 + epsilon */
 
 	t *= v.e;
-#ifdef __i386__
-	if (oprec != FP_PE)
-		fpsetprec(oprec);
-#endif
-	return (t);
+	RETURNI(t);
 }

@@ -12,10 +12,13 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: s_rintf.c,v 1.9 2008/04/25 22:21:53 christos Exp $
+ * $FreeBSD: head/lib/msun/src/s_rintf.c 176451 2008-02-22 02:30:36Z das $
  */
 
-#include <math.h>
+#include <float.h>
+#include <stdint.h>
+
+#include "math.h"
 #include "math_private.h"
 
 static const float
@@ -27,39 +30,23 @@ TWO23[2]={
 float
 rintf(float x)
 {
-	int32_t i0,jj0,sx;
-	u_int32_t i,i1;
-#ifdef __i386__ /* XXX gcc4 will omit the rounding otherwise */
-	volatile
-#endif
-		float w;
-	float t;
+	int32_t i0,j0,sx;
+	float w,t;
 	GET_FLOAT_WORD(i0,x);
 	sx = (i0>>31)&1;
-	jj0 = ((i0>>23)&0xff)-0x7f;
-	if(jj0<23) {
-	    if(jj0<0) {
+	j0 = ((i0>>23)&0xff)-0x7f;
+	if(j0<23) {
+	    if(j0<0) {
 		if((i0&0x7fffffff)==0) return x;
-		i1 = (i0&0x07fffff);
-		i0 &= 0xfff00000;
-		i0 |= ((i1|-i1)>>9)&0x400000;
-		SET_FLOAT_WORD(x,i0);
-	        w = TWO23[sx]+x;
+		STRICT_ASSIGN(float,w,TWO23[sx]+x);
 	        t =  w-TWO23[sx];
 		GET_FLOAT_WORD(i0,t);
 		SET_FLOAT_WORD(t,(i0&0x7fffffff)|(sx<<31));
 	        return t;
-	    } else {
-		i = (0x007fffff)>>jj0;
-		if((i0&i)==0) return x; /* x is integral */
-		i>>=1;
-		if((i0&i)!=0) i0 = (i0&(~i))|((0x100000)>>jj0);
 	    }
-	} else {
-	    if(jj0==0x80) return x+x;	/* inf or NaN */
-	    else return x;		/* x is integral */
+	    STRICT_ASSIGN(float,w,TWO23[sx]+x);
+	    return w-TWO23[sx];
 	}
-	SET_FLOAT_WORD(x,i0);
-	w = TWO23[sx]+x;
-	return w-TWO23[sx];
+	if(j0==0x80) return x+x;	/* inf or NaN */
+	else return x;			/* x is integral */
 }

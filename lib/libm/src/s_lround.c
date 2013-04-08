@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * FreeBSD SVN: 144770 (2005-04-08)
+ * $FreeBSD: head/lib/msun/src/s_lround.c 144770 2005-04-08 00:52:16Z das $
  */
 
 #include <sys/limits.h>

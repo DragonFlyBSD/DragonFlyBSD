@@ -1,13 +1,13 @@
 
 /* @(#)e_asin.c 1.3 95/01/18 */
-/* FreeBSD: head/lib/msun/src/e_asin.c 176451 2008-02-22 02:30:36Z das */
+/* $FreeBSD: head/lib/msun/src/e_asinl.c 181258 2008-08-03 17:49:05Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
  * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
  */
@@ -39,8 +39,8 @@ asinl(long double x)
 	if(expt >= BIAS) {		/* |x|>= 1 */
 		if(expt==BIAS && ((u.bits.manh&~LDBL_NBIT)|u.bits.manl)==0)
 		    /* asin(1)=+-pi/2 with inexact */
-		    return x*pio2_hi+x*pio2_lo;
-	    return (x-x)/(x-x);		/* asin(|x|>1) is NaN */
+		    return x*pio2_hi+x*pio2_lo;	
+	    return (x-x)/(x-x);		/* asin(|x|>1) is NaN */   
 	} else if (expt<BIAS-1) {	/* |x|<0.5 */
 	    if(expt<ASIN_LINEAR) {	/* if |x| is small, asinl(x)=x */
 		if(huge+x>one) return x;/* return x with inexact if x!=0*/
@@ -69,6 +69,6 @@ asinl(long double x)
 	    p  = 2.0*s*r-(pio2_lo-2.0*c);
 	    q  = pio4_hi-2.0*w;
 	    t  = pio4_hi-(p-q);
-	}
-	if(expsign>0) return t; else return -t;
+	}    
+	if(expsign>0) return t; else return -t;    
 }

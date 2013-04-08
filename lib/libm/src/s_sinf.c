@@ -12,10 +12,13 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- * FreeBSD SVN: 176569 (2008-02-25)
+ *
+ * $FreeBSD: head/lib/msun/src/s_sinf.c 176569 2008-02-25 22:19:17Z bde $
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
 #define	INLINE_KERNEL_COSDF
 #define	INLINE_KERNEL_SINDF
 #define INLINE_REM_PIO2F
@@ -69,7 +72,7 @@ sinf(float x)
 
     /* general argument reduction needed */
 	else {
-	    n = __libm_rem_pio2f(x,&y);
+	    n = __ieee754_rem_pio2f(x,&y);
 	    switch(n&3) {
 		case 0: return  __kernel_sindf(y);
 		case 1: return  __kernel_cosdf(y);

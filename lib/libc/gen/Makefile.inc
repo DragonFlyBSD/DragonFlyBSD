@@ -9,7 +9,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	clock.c closedir.c confstr.c \
 	ctermid.c ctype.c daemon.c devname.c dirname.c disklabel.c disktab.c \
 	dlfcn.c drand48.c elf_utils.c erand48.c err.c errlst.c exec.c \
-	fdevname.c fmtcheck.c fmtmsg.c fnmatch.c fpclassifyd.c fpclassifyf.c \
+	fdevname.c fmtcheck.c fmtmsg.c fnmatch.c fpclassify.c \
 	frexp.c fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdevpath.c getdomainname.c \
 	getgrent.c getgrouplist.c \
@@ -17,10 +17,9 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	getnetgrent.c getobjformat.c getosreldate.c getpagesize.c \
 	getpeereid.c getprogname.c getpwent.c getttyent.c \
 	getusershell.c getvfsbyname.c getvfsent.c glob.c \
-	infinity.c infinityf.c initgroups.c isascii.c \
-	isatty.c isctype.c isfinited.c isfinitef.c isinfd.c isinff.c \
-	isnand.c isnanf.c jrand48.c lcong48.c \
-	lockf.c lrand48.c mrand48.c msgctl.c \
+	initgroups.c isascii.c isatty.c isctype.c isinf.c isnan.c \
+	jrand48.c lcong48.c ldexp.c \
+	lockf.c lrand48.c modf.c mrand48.c msgctl.c \
 	msgget.c msgrcv.c msgsnd.c nftw.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
 	pause.c pmadvise.c popen.c posix_spawn.c posixshm.c \
@@ -30,7 +29,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	setdomainname.c sethostname.c setjmperr.c setmode.c setprogname.c \
 	setproctitle.c \
 	siginterrupt.c siglist.c signal.c \
-	signbitd.c signbitf.c sigsetops.c sigwait.c sleep.c srand48.c \
+	sigsetops.c sigwait.c sleep.c srand48.c \
 	stringlist.c strtofflags.c sysconf.c sysctl.c sysctlbyname.c \
 	sysctlnametomib.c syslog.c telldir.c termios.c time.c times.c \
 	toascii.c tolower.c toupper.c ttyname.c ttyslot.c \
@@ -63,7 +62,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	getttyent.3 getusershell.3 getvfsbyname.3 getvfsent.3 \
 	glob.3 initgroups.3 isalnum.3 isalpha.3 isascii.3 isblank.3 \
 	iscntrl.3 isdigit.3 isgraph.3 islower.3 isprint.3 ispunct.3 \
-	isspace.3 isupper.3 isxdigit.3 isinf.3 isfinite.3 isnan.3 isnormal.3 \
+	isspace.3 isupper.3 isxdigit.3 \
 	ldexp.3 lockf.3 makecontext.3 modf.3 msgctl.3 msgget.3 msgrcv.3 msgsnd.3 \
 	nice.3 nlist.3 pause.3 popen.3 posix_spawn.3 \
 	posix_spawn_file_actions_addopen.3 posix_spawn_file_actions_init.3 \
@@ -73,7 +72,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	posix_spawnattr_init.3 psignal.3 pwcache.3 \
 	raise.3 rand48.3 readpassphrase.3 rfork_thread.3 \
 	scandir.3 setjmp.3 setmode.3 setproctitle.3 shm_open.3 \
-	siginterrupt.3 signal.3 signbit.3 sigsetops.3 sleep.3 stringlist.3 \
+	siginterrupt.3 signal.3 sigsetops.3 sleep.3 stringlist.3 \
 	strtofflags.3 sysconf.3 sysctl.3 syslog.3 tcgetpgrp.3 tcgetsid.3 \
 	tcsendbreak.3 tcsetattr.3 tcsetpgrp.3 time.3 times.3 \
 	toascii.3 tolower.3 toupper.3 ttyname.3 tzset.3 ualarm.3 \
@@ -97,6 +96,12 @@ MLINKS+=err.3 err_set_exit.3 err.3 err_set_file.3 err.3 errc.3 err.3 errx.3 \
 	err.3 vwarnx.3 err.3 warnc.3 err.3 warn.3 err.3 warnx.3
 MLINKS+=exec.3 execl.3 exec.3 execle.3 exec.3 execlp.3 exec.3 exect.3 \
 	exec.3 execv.3 exec.3 execvP.3 exec.3 execvp.3
+MLINKS+=fpclassify.3 finite.3 \
+	fpclassify.3 finitef.3 \
+	fpclassify.3 isfinite.3 \
+	fpclassify.3 isinf.3 \
+	fpclassify.3 isnan.3 \
+	fpclassify.3 isnormal.3
 MLINKS+=frexp.3 frexpf.3 frexp.3 frexpl.3
 MLINKS+=fts.3 fts_children.3 fts.3 fts_close.3 fts.3 fts_get_clientptr.3 \
 	fts.3 fts_get_stream.3 fts.3 fts_open.3 fts.3 fts_read.3 \
@@ -136,7 +141,11 @@ MLINKS+=getvfsent.3 endvfsent.3 getvfsent.3 getvfsbytype.3 \
 	getvfsent.3 vfsload.3
 MLINKS+=glob.3 globfree.3
 MLINKS+=getcontext.3 setcontext.3
+MLINKS+=ldexp.3 ldexpf.3 \
+	ldexp.3 ldexpl.3
 MLINKS+=makecontext.3 swapcontext.3
+MLINKS+=modf.3 modff.3 \
+	modf.3 modfl.3
 MLINKS+=popen.3 pclose.3
 MLINKS+=posix_spawn.3 posix_spawnp.3
 MLINKS+=posix_spawn_file_actions_addopen.3 posix_spawn_file_actions_addclose.3 \

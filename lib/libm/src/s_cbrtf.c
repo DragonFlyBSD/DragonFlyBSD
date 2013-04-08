@@ -13,12 +13,10 @@
  * is preserved.
  * ====================================================
  *
- * $FreeBSD: src/lib/msun/src/s_cbrtf.c,v 1.17 2007/05/29 07:13:07 bde Exp $
- * $NetBSD: s_cbrtf.c,v 1.7 2002/05/26 22:01:54 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_cbrtf.c,v 1.2 2007/07/03 04:54:07 pavalos Exp $
+ * $FreeBSD: head/lib/msun/src/s_cbrtf.c 176451 2008-02-22 02:30:36Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 /* cbrtf(x)

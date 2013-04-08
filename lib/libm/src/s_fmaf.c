@@ -23,11 +23,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * FreeBSD SVN: 226371 (2011-10-15)
+ * $FreeBSD: head/lib/msun/src/s_fmaf.c 226371 2011-10-15 04:16:58Z das $
  */
 
 #include <fenv.h>
-#include <math.h>
+
+#include "math.h"
 #include "math_private.h"
 
 /*

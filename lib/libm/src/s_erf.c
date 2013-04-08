@@ -1,4 +1,5 @@
 /* @(#)s_erf.c 5.1 93/09/24 */
+/* $FreeBSD: head/lib/msun/src/s_erf.c 176451 2008-02-22 02:30:36Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -8,9 +9,6 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * $NetBSD: s_erf.c,v 1.11 2002/05/26 22:01:55 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_erf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
 /* double erf(double x)
@@ -108,7 +106,7 @@
  */
 
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const double
@@ -234,7 +232,7 @@ erf(double x)
 	}
 	z  = x;
 	SET_LOW_WORD(z,0);
-	r  =  exp(-z*z-0.5625)*exp((z-x)*(z+x)+R/S);
+	r  =  __ieee754_exp(-z*z-0.5625)*__ieee754_exp((z-x)*(z+x)+R/S);
 	if(hx>=0) return one-r/x; else return  r/x-one;
 }
 
@@ -292,8 +290,8 @@ erfc(double x)
 	    }
 	    z  = x;
 	    SET_LOW_WORD(z,0);
-	    r  =  exp(-z*z-0.5625)*
-			exp((z-x)*(z+x)+R/S);
+	    r  =  __ieee754_exp(-z*z-0.5625)*
+			__ieee754_exp((z-x)*(z+x)+R/S);
 	    if(hx>0) return r/x; else return two-r/x;
 	} else {
 	    if(hx>0) return tiny*tiny; else return two-tiny;

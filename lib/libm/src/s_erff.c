@@ -12,11 +12,10 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: s_erff.c,v 1.7 2002/05/26 22:01:55 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_erff.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $FreeBSD: head/lib/msun/src/s_erff.c 176451 2008-02-22 02:30:36Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const float
@@ -143,7 +142,7 @@ erff(float x)
 	}
 	GET_FLOAT_WORD(ix,x);
 	SET_FLOAT_WORD(z,ix&0xfffff000);
-	r  =  expf(-z*z-(float)0.5625)*expf((z-x)*(z+x)+R/S);
+	r  =  __ieee754_expf(-z*z-(float)0.5625)*__ieee754_expf((z-x)*(z+x)+R/S);
 	if(hx>=0) return one-r/x; else return  r/x-one;
 }
 
@@ -201,8 +200,8 @@ erfcf(float x)
 	    }
 	    GET_FLOAT_WORD(ix,x);
 	    SET_FLOAT_WORD(z,ix&0xfffff000);
-	    r  =  expf(-z*z-(float)0.5625)*
-			expf((z-x)*(z+x)+R/S);
+	    r  =  __ieee754_expf(-z*z-(float)0.5625)*
+			__ieee754_expf((z-x)*(z+x)+R/S);
 	    if(hx>0) return r/x; else return two-r/x;
 	} else {
 	    if(hx>0) return tiny*tiny; else return two-tiny;

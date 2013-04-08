@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/msun/man/fenv.3,v 1.6 2007/01/05 07:14:26 das Exp $
+.\" $FreeBSD: head/lib/msun/man/fenv.3 226618 2011-10-21 14:23:59Z das $
 .\"
 .Dd March 16, 2005
 .Dt FENV 3
@@ -91,24 +91,35 @@ The following macros expand to bit flags of type
 representing the five standard floating-point exceptions.
 .Bl -tag -width ".Dv FE_DIVBYZERO"
 .It Dv FE_DIVBYZERO
-A divide-by-zero exception occurs when the program attempts to
-divide a finite non-zero number by zero.
+A divide-by-zero exception occurs when the
+.Em exact
+result of a computation is infinite (according to the limit definition).
+For example, dividing a finite non-zero number by zero or computing
+.Fn log 0
+raises a divide-by-zero exception.
 .It Dv FE_INEXACT
-An inexact exception is raised whenever there is a loss of precision
+An inexact exception is raised whenever there is a loss of accuracy
 due to rounding.
 .It Dv FE_INVALID
 Invalid operation exceptions occur when a program attempts to
 perform calculations for which there is no reasonable representable
 answer.
-For instance, subtraction of infinities, division of zero by zero,
-ordered comparison involving \*(Nas, and taking the square root of a
+For instance, subtraction of like-signed infinities, division of zero by zero,
+ordered comparison involving \*(Nas, and taking the real square root of a
 negative number are all invalid operations.
 .It Dv FE_OVERFLOW
-An overflow exception occurs when the magnitude of the result of a
-computation is too large to fit in the destination type.
+In contrast with divide-by-zero,
+an overflow exception occurs when an infinity is produced because
+the magnitude of the exact result is
+.Em finite
+but too large to fit in the destination type.
+For example, computing
+.Li DBL_MAX * 2
+raises an overflow exception.
 .It Dv FE_UNDERFLOW
-Underflow occurs when the result of a computation is too close to zero
-to be represented as a non-zero value in the destination type.
+Underflow occurs when the result of a computation loses precision
+because it is too close to zero.
+The result is a subnormal number or zero.
 .El
 .Pp
 Additionally, the
@@ -183,9 +194,9 @@ as usual, but no
 .Dv SIGFPE
 signals will be generated as a result.
 Non-stop mode is the default, but it may be altered by
-non-standard mechanisms.
-.\" XXX Mention fe[gs]etmask() here after the interface is finalized
-.\" XXX and ready to be officially documented.
+.Fn feenableexcept
+and
+.Fn fedisableexcept .
 The
 .Fn feupdateenv
 function restores a saved environment similarly to
@@ -209,18 +220,18 @@ double sqrt(double n) {
 	double x = 1.0;
 	fenv_t env;
 
-	if (isnan(n) || n \*[Lt] 0.0) {
+	if (isnan(n) || n < 0.0) {
 		feraiseexcept(FE_INVALID);
 		return (NAN);
 	}
 	if (isinf(n) || n == 0.0)
 		return (n);
-	feholdexcept(\*[Am]env);
-	while (fabs((x * x) - n) \*[Gt] DBL_EPSILON * 2 * x)
+	feholdexcept(&env);
+	while (fabs((x * x) - n) > DBL_EPSILON * 2 * x)
 		x = (x / 2) + (n / (2 * x));
 	if (x * x == n)
 		feclearexcept(FE_INEXACT);
-	feupdateenv(\*[Am]env);
+	feupdateenv(&env);
 	return (x);
 }
 .Ed

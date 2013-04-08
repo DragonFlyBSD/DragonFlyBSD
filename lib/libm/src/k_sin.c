@@ -1,47 +1,48 @@
-/* @(#)k_sin.c 5.1 93/09/24 */
+
+/* @(#)k_sin.c 1.3 95/01/18 */
+/* $FreeBSD: head/lib/msun/src/k_sin.c 176408 2008-02-19 12:54:14Z bde $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
- *
- * $NetBSD: k_sin.c,v 1.11 2002/05/26 22:01:53 wiz Exp $
- * $DragonFly: src/lib/libm/src/k_sin.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
 /* __kernel_sin( x, y, iy)
- * kernel sin function on [-pi/4, pi/4], pi/4 ~ 0.7854
+ * kernel sin function on ~[-pi/4, pi/4] (except on -0), pi/4 ~ 0.7854
  * Input x is assumed to be bounded by ~pi/4 in magnitude.
  * Input y is the tail of x.
- * Input iy indicates whether y is 0. (if iy=0, y assume to be 0).
+ * Input iy indicates whether y is 0. (if iy=0, y assume to be 0). 
  *
  * Algorithm
- *	1. Since sin(-x) = -sin(x), we need only to consider positive x.
- *	2. if x < 2^-27 (hx<0x3e400000 0), return x with inexact if x!=0.
+ *	1. Since sin(-x) = -sin(x), we need only to consider positive x. 
+ *	2. Callers must return sin(-0) = -0 without calling here since our
+ *	   odd polynomial is not evaluated in a way that preserves -0.
+ *	   Callers may do the optimization sin(x) ~ x for tiny x.
  *	3. sin(x) is approximated by a polynomial of degree 13 on
  *	   [0,pi/4]
  *		  	         3            13
  *	   	sin(x) ~ x + S1*x + ... + S6*x
  *	   where
- *
+ *	
  * 	|sin(x)         2     4     6     8     10     12  |     -58
  * 	|----- - (1+S1*x +S2*x +S3*x +S4*x +S5*x  +S6*x   )| <= 2
- * 	|  x 					           |
- *
+ * 	|  x 					           | 
+ * 
  *	4. sin(x+y) = sin(x) + sin'(x')*y
  *		    ~ sin(x) + (1-x*x/2)*y
- *	   For better accuracy, let
+ *	   For better accuracy, let 
  *		     3      2      2      2      2
  *		r = x *(S2+x *(S3+x *(S4+x *(S5+x *S6))))
  *	   then                   3    2
  *		sin(x) = x + (S1*x + (x *(r-y/2)+y))
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const double
@@ -56,15 +57,12 @@ S6  =  1.58969099521155010221e-10; /* 0x3DE5D93A, 0x5ACFD57C */
 double
 __kernel_sin(double x, double y, int iy)
 {
-	double z,r,v;
-	int32_t ix;
-	GET_HIGH_WORD(ix,x);
-	ix &= 0x7fffffff;			/* high word of x */
-	if(ix<0x3e400000)			/* |x| < 2**-27 */
-	   {if((int)x==0) return x;}		/* generate inexact */
+	double z,r,v,w;
+
 	z	=  x*x;
+	w	=  z*z;
+	r	=  S2+z*(S3+z*S4) + z*w*(S5+z*S6);
 	v	=  z*x;
-	r	=  S2+z*(S3+z*(S4+z*(S5+z*S6)));
 	if(iy==0) return x+v*(S1+z*r);
 	else      return x-((z*(half*y-v*r)-y)-v*S1);
 }

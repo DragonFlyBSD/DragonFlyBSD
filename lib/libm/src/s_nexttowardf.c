@@ -8,13 +8,13 @@
  * is preserved.
  * ====================================================
  *
- * FreeBSD SVN: 218511 (2011-02-10)
+ * $FreeBSD: head/lib/msun/src/s_nexttowardf.c 218511 2011-02-10 07:38:38Z das $
  */
 
 #include <float.h>
-#include <math.h>
 
 #include "fpmath.h"
+#include "math.h"
 #include "math_private.h"
 
 #define	LDBL_INFNAN_EXP	(LDBL_MAX_EXP * 2 - 1)
@@ -40,7 +40,7 @@ nexttowardf(float x, long double y)
 	    t = x*x;
 	    if(t==x) return t; else return x;	/* raise underflow flag */
 	}
-	if((hx>=0) ^ (x < y))			/* x -= ulp */
+	if(hx>=0 ^ x < y)			/* x -= ulp */
 	    hx -= 1;
 	else					/* x += ulp */
 	    hx += 1;

@@ -12,10 +12,10 @@
  * is preserved.
  * ====================================================
  *
- * FreeBSD SVN: 226380 (2011-10-15)
+ * $FreeBSD: head/lib/msun/src/e_lgammaf_r.c 226380 2011-10-15 07:00:28Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const float
@@ -88,8 +88,7 @@ w6  = -1.6309292987e-03; /* 0xbad5c4e8 */
 
 static const float zero=  0.0000000000e+00;
 
-static float
-sin_pif(float x)
+	static float sin_pif(float x)
 {
 	float y,z;
 	int n,ix;
@@ -135,7 +134,7 @@ sin_pif(float x)
 
 
 float
-lgammaf_r(float x, int *signgamp)
+__ieee754_lgammaf_r(float x, int *signgamp)
 {
 	float t,y,z,nadj,p,p1,p2,p3,q,r,w;
 	int32_t hx;
@@ -151,15 +150,15 @@ lgammaf_r(float x, int *signgamp)
 	if(ix<0x35000000) {	/* |x|<2**-21, return -log(|x|) */
 	    if(hx<0) {
 	        *signgamp = -1;
-	        return -logf(-x);
-	    } else return -logf(x);
+	        return -__ieee754_logf(-x);
+	    } else return -__ieee754_logf(x);
 	}
 	if(hx<0) {
 	    if(ix>=0x4b000000) 	/* |x|>=2**23, must be -integer */
 		return one/zero;
 	    t = sin_pif(x);
 	    if(t==zero) return one/zero; /* -integer */
-	    nadj = logf(pi/fabsf(t*x));
+	    nadj = __ieee754_logf(pi/fabsf(t*x));
 	    if(t<zero) *signgamp = -1;
 	    x = -x;
 	}
@@ -169,7 +168,7 @@ lgammaf_r(float x, int *signgamp)
     /* for x < 2.0 */
 	else if(ix<0x40000000) {
 	    if(ix<=0x3f666666) { 	/* lgamma(x) = lgamma(x+1)-log(x) */
-		r = -logf(x);
+		r = -__ieee754_logf(x);
 		if(ix>=0x3f3b4a20) {y = one-x; i= 0;}
 		else if(ix>=0x3e6d3308) {y= x-(tc-one); i=1;}
 	  	else {y = x; i=2;}
@@ -213,18 +212,18 @@ lgammaf_r(float x, int *signgamp)
 	    case 5: z *= (y+(float)4.0);	/* FALLTHRU */
 	    case 4: z *= (y+(float)3.0);	/* FALLTHRU */
 	    case 3: z *= (y+(float)2.0);	/* FALLTHRU */
-		    r += logf(z); break;
+		    r += __ieee754_logf(z); break;
 	    }
     /* 8.0 <= x < 2**58 */
 	} else if (ix < 0x5c800000) {
-	    t = logf(x);
+	    t = __ieee754_logf(x);
 	    z = one/x;
 	    y = z*z;
 	    w = w0+z*(w1+y*(w2+y*(w3+y*(w4+y*(w5+y*w6)))));
 	    r = (x-half)*(t-one)+w;
 	} else
     /* 2**58 <= x <= inf */
-	    r =  x*(logf(x)-one);
+	    r =  x*(__ieee754_logf(x)-one);
 	if(hx<0) r = nadj - r;
 	return r;
 }

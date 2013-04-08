@@ -1,4 +1,5 @@
 /* @(#)s_fabs.c 5.1 93/09/24 */
+/* $FreeBSD: head/lib/msun/src/s_fabs.c 97413 2002-05-28 18:15:04Z alfred $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -8,15 +9,13 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * FreeBSD SVN: 97413 (2002-05-28)
  */
 
 /*
  * fabs(x) returns the absolute value of x.
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 double

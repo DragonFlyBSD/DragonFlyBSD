@@ -23,19 +23,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $NetBSD: s_exp2.c,v 1.2 2010/01/11 23:38:24 christos Exp $
+ * $FreeBSD: head/lib/msun/src/s_exp2.c 251024 2013-05-27 08:50:10Z das $
  */
 
 #include <float.h>
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 #define	TBLBITS	8
 #define	TBLSIZE	(1 << TBLBITS)
 
 static const double
-    huge     = 0x1p1000,
     redux    = 0x1.8p52 / TBLSIZE,
     P1	     = 0x1.62e42fefa39efp-1,
     P2	     = 0x1.ebfbdff82c575p-3,
@@ -43,7 +42,9 @@ static const double
     P4	     = 0x1.3b2ab88f70400p-7,
     P5	     = 0x1.5d88003875c74p-10;
 
-static volatile double twom1000 = 0x1p-1000;
+static volatile double
+    huge     = 0x1p1000,
+    twom1000 = 0x1p-1000;
 
 static const double tbl[TBLSIZE * 2] = {
 /*	exp2(z + eps)		eps	*/
@@ -351,7 +352,7 @@ exp2(double x)
 			GET_LOW_WORD(lx,x);
 			if(((ix & 0xfffff) | lx) != 0 || (hx & 0x80000000) == 0)
 				return (x + x);	/* x is NaN or +Inf */
-			else
+			else 
 				return (0.0);	/* x is -Inf */
 		}
 		if(x >= 0x1.0p10)
@@ -390,8 +391,6 @@ exp2(double x)
 	}
 }
 
-#ifdef notyet
 #if (LDBL_MANT_DIG == 53)
 __weak_reference(exp2, exp2l);
-#endif
 #endif

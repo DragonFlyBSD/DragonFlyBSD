@@ -12,22 +12,25 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- * FreeBSD SVN: 193368 (2009-06-03)
+ *
+ * $FreeBSD: head/lib/msun/src/e_rem_pio2f.c 239195 2012-08-11 15:47:22Z dim $
  */
 
-/* __libm_rem_pio2f(x,y)
+/* __ieee754_rem_pio2f(x,y)
  *
  * return the remainder of x rem pi/2 in *y
  * use double precision for everything except passing x
  * use __kernel_rem_pio2() for large x
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
 #include "math_private.h"
 
 /*
  * invpio2:  53 bits of 2/pi
- * pio2_1:   first  33 bit of pi/2
+ * pio2_1:   first 25 bits of pi/2
  * pio2_1t:  pi/2 - pio2_1
  */
 
@@ -36,11 +39,11 @@ invpio2 =  6.36619772367581382433e-01, /* 0x3FE45F30, 0x6DC9C883 */
 pio2_1  =  1.57079631090164184570e+00, /* 0x3FF921FB, 0x50000000 */
 pio2_1t =  1.58932547735281966916e-08; /* 0x3E5110b4, 0x611A6263 */
 
-#ifndef INLINE_REM_PIO2F
-extern
+#ifdef INLINE_REM_PIO2F
+static __inline __always_inline
 #endif
-__inline int
-__libm_rem_pio2f(float x, double *y)
+int
+__ieee754_rem_pio2f(float x, double *y)
 {
 	double w,r,fn;
 	double tx[1],ty[1];

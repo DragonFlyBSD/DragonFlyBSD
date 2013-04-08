@@ -1,22 +1,20 @@
-/* @(#)e_acosh.c 5.1 93/09/24 */
+
+/* @(#)e_acosh.c 1.3 95/01/18 */
+/* $FreeBSD: head/lib/msun/src/e_acosh.c 176451 2008-02-22 02:30:36Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
- *
- * $NetBSD: e_acosh.c,v 1.12 2002/05/26 22:01:48 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_acosh.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
-
-/* acosh(x)
+/* __ieee754_acosh(x)
  * Method :
- *	Based on
+ *	Based on 
  *		acosh(x) = log [ x + sqrt(x*x-1) ]
  *	we have
  *		acosh(x) := log(x)+ln2,	if x is large; else
@@ -28,7 +26,7 @@
  *	acosh(NaN) is NaN without signal.
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const double
@@ -36,7 +34,7 @@ one	= 1.0,
 ln2	= 6.93147180559945286227e-01;  /* 0x3FE62E42, 0xFEFA39EF */
 
 double
-acosh(double x)
+__ieee754_acosh(double x)
 {
 	double t;
 	int32_t hx;
@@ -47,13 +45,13 @@ acosh(double x)
 	} else if(hx >=0x41b00000) {	/* x > 2**28 */
 	    if(hx >=0x7ff00000) {	/* x is inf of NaN */
 	        return x+x;
-	    } else
-		return log(x)+ln2;	/* acosh(huge)=log(2x) */
+	    } else 
+		return __ieee754_log(x)+ln2;	/* acosh(huge)=log(2x) */
 	} else if(((hx-0x3ff00000)|lx)==0) {
 	    return 0.0;			/* acosh(1) = 0 */
 	} else if (hx > 0x40000000) {	/* 2**28 > x > 2 */
 	    t=x*x;
-	    return log(2.0*x-one/(x+sqrt(t-one)));
+	    return __ieee754_log(2.0*x-one/(x+sqrt(t-one)));
 	} else {			/* 1<x<2 */
 	    t = x-one;
 	    return log1p(t+sqrt(2.0*t+t*t));

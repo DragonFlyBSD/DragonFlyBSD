@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)atan2.3	5.1 (Berkeley) 5/2/91
-.\" $FreeBSD$
+.\" $FreeBSD: head/lib/msun/man/atan2.3 208935 2010-06-09 07:31:32Z uqs $
 .\"
 .Dd December 21, 2011
 .Dt ATAN2 3
@@ -34,8 +34,11 @@
 .Sh NAME
 .Nm atan2 ,
 .Nm atan2f ,
-.Nm atan2l
-.Nd arc tangent function of two variables
+.Nm atan2l ,
+.Nm carg ,
+.Nm cargf ,
+.Nm cargl
+.Nd arc tangent and complex phase angle functions
 .Sh LIBRARY
 .Lb libm
 .Sh SYNOPSIS
@@ -46,6 +49,13 @@
 .Fn atan2f "float y" "float x"
 .Ft long double
 .Fn atan2l "long double y" "long double x"
+.In complex.h
+.Ft double
+.Fn carg "double complex z"
+.Ft float
+.Fn cargf "float complex z"
+.Ft long double
+.Fn cargl "long double complex z"
 .Sh DESCRIPTION
 The
 .Fn atan2 ,
@@ -56,6 +66,26 @@ functions compute the principal value of the arc tangent of
 .Fa y/ Ns Ar x ,
 using the signs of both arguments to determine the quadrant of
 the return value.
+.Pp
+The
+.Fn carg ,
+.Fn cargf ,
+and
+.Fn cargl
+functions compute the complex argument (or phase angle) of
+.Fa z .
+The complex argument is the number theta such that
+.Li z = r * e^(I * theta) ,
+where
+.Li r = cabs(z) .
+The call
+.Li carg(z)
+is equivalent to
+.Li atan2(cimag(z), creal(z)) ,
+and similarly for
+.Fn cargf
+and
+.Fn cargl .
 .Sh RETURN VALUES
 The
 .Fn atan2 ,
@@ -76,26 +106,26 @@ Here are some of the special cases:
 .Fn atan y/x Ta
 if
 .Ar x
-\*[Gt] 0,
+> 0,
 .It Ta sign( Ns Ar y Ns )*(\*(Pi -
-.Fn atan "\\*(Bay/x\\*(Ba" ) Ta
+.Fn atan "\*(Bay/x\*(Ba" ) Ta
 if
 .Ar x
-\*[Lt] 0,
+< 0,
 .It Ta
 .No 0 Ta
 if x = y = 0, or
 .It Ta
-.Pf sign( Ar y Ns )*\\*(Pi/2 Ta
+.Pf sign( Ar y Ns )*\*(Pi/2 Ta
 if
 .Ar x
-= 0 \*(Ne
+= 0 \(!=
 .Ar y .
 .El
 .Sh NOTES
 The function
 .Fn atan2
-defines "if x \*[Gt] 0,"
+defines "if x > 0,"
 .Fn atan2 0 0
 = 0 despite that previously
 .Fn atan2 0 0
@@ -175,7 +205,6 @@ r := \(sr(x\(**x+y\(**y);\0\0if r = 0 then x := copysign(1,x);
 .Xr asin 3 ,
 .Xr atan 3 ,
 .Xr cabs 3 ,
-.Xr carg 3 ,
 .Xr cos 3 ,
 .Xr cosh 3 ,
 .Xr math 3 ,
@@ -187,7 +216,10 @@ r := \(sr(x\(**x+y\(**y);\0\0if r = 0 then x := copysign(1,x);
 The
 .Fn atan2 ,
 .Fn atan2f ,
+.Fn atan2l ,
+.Fn carg ,
+.Fn cargf ,
 and
-.Fn atan2l
+.Fn cargl
 functions conform to
 .St -isoC-99 .

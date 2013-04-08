@@ -99,9 +99,10 @@
  * 300304 - Update to dialog-1.2-20121230
  * 300400 - 3.4 release
  * 300500 - 3.5 master
+ * 300501 - Convert libm to FreeBSD's version
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300500	/* propagated to newvers */
+#define __DragonFly_version 300501	/* propagated to newvers */
 
 #include <sys/_null.h>
 

@@ -1,30 +1,30 @@
-/* @(#)e_fmod.c 5.1 93/09/24 */
+
+/* @(#)e_fmod.c 1.3 95/01/18 */
+/* $FreeBSD: head/lib/msun/src/e_fmod.c 176451 2008-02-22 02:30:36Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
- *
- * $NetBSD: e_fmod.c,v 1.11 2002/05/26 22:01:49 wiz Exp $
  */
 
-/*
- * fmod(x,y)
+/* 
+ * __ieee754_fmod(x,y)
  * Return x mod y in exact arithmetic
  * Method: shift and subtract
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const double one = 1.0, Zero[] = {0.0, -0.0,};
 
 double
-fmod(double x, double y)
+__ieee754_fmod(double x, double y)
 {
 	int32_t n,hx,hy,hz,ix,iy,sx,i;
 	u_int32_t lx,ly,lz;
@@ -41,7 +41,7 @@ fmod(double x, double y)
 	    return (x*y)/(x*y);
 	if(hx<=hy) {
 	    if((hx<hy)||(lx<ly)) return x;	/* |x|<|y| return x */
-	    if(lx==ly)
+	    if(lx==ly) 
 		return Zero[(u_int32_t)sx>>31];	/* |x|=|y| return x*0*/
 	}
 
@@ -64,7 +64,7 @@ fmod(double x, double y)
 	} else iy = (hy>>20)-1023;
 
     /* set up {hx,lx}, {hy,ly} and align y to x */
-	if(ix >= -1022)
+	if(ix >= -1022) 
 	    hx = 0x00100000|(0x000fffff&hx);
 	else {		/* subnormal x, shift x to normal */
 	    n = -1022-ix;
@@ -76,7 +76,7 @@ fmod(double x, double y)
 		lx = 0;
 	    }
 	}
-	if(iy >= -1022)
+	if(iy >= -1022) 
 	    hy = 0x00100000|(0x000fffff&hy);
 	else {		/* subnormal y, shift y to normal */
 	    n = -1022-iy;
@@ -95,9 +95,9 @@ fmod(double x, double y)
 	    hz=hx-hy;lz=lx-ly; if(lx<ly) hz -= 1;
 	    if(hz<0){hx = hx+hx+(lx>>31); lx = lx+lx;}
 	    else {
-		if((hz|lz)==0) 		/* return sign(x)*0 */
+	    	if((hz|lz)==0) 		/* return sign(x)*0 */
 		    return Zero[(u_int32_t)sx>>31];
-		hx = hz+hz+(lz>>31); lx = lz+lz;
+	    	hx = hz+hz+(lz>>31); lx = lz+lz;
 	    }
 	}
 	hz=hx-hy;lz=lx-ly; if(lx<ly) hz -= 1;

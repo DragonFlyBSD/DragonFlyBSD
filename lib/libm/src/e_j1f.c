@@ -12,11 +12,10 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_j1f.c,v 1.11 2007/08/20 16:01:38 drochner Exp $
+ * $FreeBSD: head/lib/msun/src/e_j1f.c 176451 2008-02-22 02:30:36Z das $
  */
 
-#include <sys/_null.h>
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static float ponef(float), qonef(float);
@@ -40,7 +39,7 @@ s05  =  1.2354227016e-11; /* 0x2d59567e */
 static const float zero    = 0.0;
 
 float
-j1f(float x)
+__ieee754_j1f(float x)
 {
 	float z, s,c,ss,cc,r,u,v,y;
 	int32_t hx,ix;
@@ -63,11 +62,8 @@ j1f(float x)
 	 * j1(x) = 1/sqrt(pi) * (P(1,x)*cc - Q(1,x)*ss) / sqrt(x)
 	 * y1(x) = 1/sqrt(pi) * (P(1,x)*ss + Q(1,x)*cc) / sqrt(x)
 	 */
-#ifdef DEAD_CODE
 		if(ix>0x80000000) z = (invsqrtpi*cc)/sqrtf(y);
-		else
-#endif
-		{
+		else {
 		    u = ponef(y); v = qonef(y);
 		    z = invsqrtpi*(u*cc-v*ss)/sqrtf(y);
 		}
@@ -100,7 +96,7 @@ static const float V0[5] = {
 };
 
 float
-y1f(float x)
+__ieee754_y1f(float x)
 {
 	float z, s,c,ss,cc,u,v;
 	int32_t hx,ix;
@@ -145,7 +141,7 @@ y1f(float x)
         z = x*x;
         u = U0[0]+z*(U0[1]+z*(U0[2]+z*(U0[3]+z*U0[4])));
         v = one+z*(V0[0]+z*(V0[1]+z*(V0[2]+z*(V0[3]+z*V0[4]))));
-        return(x*(u/v) + tpi*(j1f(x)*logf(x)-one/x));
+        return(x*(u/v) + tpi*(__ieee754_j1f(x)*__ieee754_logf(x)-one/x));
 }
 
 /* For x >= 8, the asymptotic expansions of pone is
@@ -222,14 +218,11 @@ static const float ps2[5] = {
   8.3646392822e+00, /* 0x4105d590 */
 };
 
-static float
-ponef(float x)
+	static float ponef(float x)
 {
 	const float *p,*q;
 	float z,r,s;
         int32_t ix;
-
-	p = q = NULL;
 	GET_FLOAT_WORD(ix,x);
 	ix &= 0x7fffffff;
         if(ix>=0x41000000)     {p = pr8; q= ps8;}
@@ -287,7 +280,7 @@ static const float qs5[6] = {
  -4.7191835938e+03, /* 0xc5937978 */
 };
 
-static const float qr3[6] = { /* for x in [4.5454,2.8570]=1/[0.22001,0.3499] */
+static const float qr3[6] = {
  -5.0783124372e-09, /* 0xb1ae7d4f */
  -1.0253783315e-01, /* 0xbdd1ff5b */
  -4.6101160049e+00, /* 0xc0938612 */
@@ -321,23 +314,16 @@ static const float qs2[6] = {
  -4.9594988823e+00, /* 0xc09eb437 */
 };
 
-static float
-qonef(float x)
+	static float qonef(float x)
 {
 	const float *p,*q;
 	float  s,r,z;
 	int32_t ix;
-
-	p = q = NULL;
 	GET_FLOAT_WORD(ix,x);
 	ix &= 0x7fffffff;
-	/* [inf, 8]		(8      41000000) */
-	if(ix>=0x41000000)     {p = qr8; q= qs8;}
-	/* [8, 4.5454]		(4.5454 409173eb) */
-	else if(ix>=0x409173eb){p = qr5; q= qs5;}
-	/* [4.5454, 2.8570] 	(2.8570	4036d917) */
-	else if(ix>=0x4036d917){p = qr3; q= qs3;}
-	/* [2.8570, 2]		(2 	40000000) */
+	if(ix>=0x40200000)     {p = qr8; q= qs8;}
+	else if(ix>=0x40f71c58){p = qr5; q= qs5;}
+	else if(ix>=0x4036db68){p = qr3; q= qs3;}
 	else if(ix>=0x40000000){p = qr2; q= qs2;}
 	z = one/(x*x);
 	r = p[0]+z*(p[1]+z*(p[2]+z*(p[3]+z*(p[4]+z*p[5]))));

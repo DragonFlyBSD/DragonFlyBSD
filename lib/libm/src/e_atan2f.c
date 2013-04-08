@@ -12,23 +12,24 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_atan2f.c,v 1.7 2002/05/26 22:01:49 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_atan2f.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $FreeBSD: head/lib/msun/src/e_atan2f.c 181257 2008-08-03 17:39:54Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
+static volatile float
+tiny  = 1.0e-30;
 static const float
-tiny  = 1.0e-30,
 zero  = 0.0,
 pi_o_4  = 7.8539818525e-01, /* 0x3f490fdb */
 pi_o_2  = 1.5707963705e+00, /* 0x3fc90fdb */
-pi      = 3.1415925026e+00, /* 0x40490fda */
-pi_lo   = 1.5099578832e-07; /* 0x34222168 */
+pi      = 3.1415927410e+00; /* 0x40490fdb */
+static volatile float
+pi_lo   = -8.7422776573e-08; /* 0xb3bbbd2e */
 
 float
-atan2f(float y, float x)
+__ieee754_atan2f(float y, float x)
 {
 	float z;
 	int32_t k,m,hx,hy,ix,iy;
@@ -78,17 +79,15 @@ atan2f(float y, float x)
 
     /* compute y/x */
 	k = (iy-ix)>>23;
-	if(k > 60) z=pi_o_2+(float)0.5*pi_lo; 	/* |y/x| >  2**60 */
-	else if(hx<0&&k<-60) z=0.0; 	/* |y|/x < -2**60 */
+	if(k > 26) {			/* |y/x| >  2**26 */
+	    z=pi_o_2+(float)0.5*pi_lo;
+	    m&=1;
+	}
+	else if(k<-26&&hx<0) z=0.0; 	/* 0 > |y|/x > -2**-26 */
 	else z=atanf(fabsf(y/x));	/* safe to do y/x */
 	switch (m) {
 	    case 0: return       z  ;	/* atan(+,+) */
-	    case 1: {
-	    	      u_int32_t zh;
-		      GET_FLOAT_WORD(zh,z);
-		      SET_FLOAT_WORD(z,zh ^ 0x80000000);
-		    }
-		    return       z  ;	/* atan(-,+) */
+	    case 1: return      -z  ;	/* atan(-,+) */
 	    case 2: return  pi-(z-pi_lo);/* atan(+,-) */
 	    default: /* case 3 */
 	    	    return  (z-pi_lo)-pi;/* atan(-,-) */

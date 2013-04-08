@@ -1,18 +1,18 @@
-/* @(#)e_j1.c 5.1 93/09/24 */
+
+/* @(#)e_j1.c 1.3 95/01/18 */
+/* $FreeBSD: head/lib/msun/src/e_j1.c 176451 2008-02-22 02:30:36Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
+ * software is freely granted, provided that this notice 
  * is preserved.
  * ====================================================
- *
- * $NetBSD: e_j1.c,v 1.12 2007/08/20 16:01:38 drochner Exp $
  */
 
-/* j1(x), y1(x)
+/* __ieee754_j1(x), __ieee754_y1(x)
  * Bessel function of the first and second kinds of order zero.
  * Method -- j1(x):
  *	1. For tiny x, we use j1(x) = x/2 - x^3/16 + x^5/384 - ...
@@ -32,16 +32,16 @@
  * 	   (To avoid cancellation, use
  *		sin(x) +- cos(x) = -cos(2x)/(sin(x) -+ cos(x))
  * 	    to compute the worse one.)
- *
+ *	   
  *	3 Special cases
  *		j1(nan)= nan
  *		j1(0) = 0
  *		j1(inf) = 0
- *
+ *		
  * Method -- y1(x):
- *	1. screen out x<=0 cases: y1(0)=-inf, y1(x<0)=NaN
+ *	1. screen out x<=0 cases: y1(0)=-inf, y1(x<0)=NaN 
  *	2. For x<2.
- *	   Since
+ *	   Since 
  *		y1(x) = 2/pi*(j1(x)*(ln(x/2)+Euler)-1/x-x/2+5/64*x^3-...)
  *	   therefore y1(x)-2/pi*j1(x)*ln(x)-1/x is an odd function.
  *	   We use the following function to approximate y1,
@@ -57,8 +57,7 @@
  *	   by method mentioned above.
  */
 
-#include <sys/_null.h>
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static double pone(double), qone(double);
@@ -82,7 +81,7 @@ s05  =  1.23542274426137913908e-11; /* 0x3DAB2ACF, 0xCFB97ED8 */
 static const double zero    = 0.0;
 
 double
-j1(double x)
+__ieee754_j1(double x)
 {
 	double z, s,c,ss,cc,r,u,v,y;
 	int32_t hx,ix;
@@ -139,7 +138,7 @@ static const double V0[5] = {
 };
 
 double
-y1(double x)
+__ieee754_y1(double x)
 {
 	double z, s,c,ss,cc,u,v;
 	int32_t hx,ix,lx;
@@ -147,7 +146,7 @@ y1(double x)
 	EXTRACT_WORDS(hx,lx,x);
         ix = 0x7fffffff&hx;
     /* if Y1(NaN) is NaN, Y1(-inf) is NaN, Y1(inf) is 0 */
-	if(ix>=0x7ff00000) return  one/(x+x*x);
+	if(ix>=0x7ff00000) return  one/(x+x*x); 
         if((ix|lx)==0) return -one/zero;
         if(hx<0) return zero/zero;
         if(ix >= 0x40000000) {  /* |x| >= 2.0 */
@@ -177,14 +176,14 @@ y1(double x)
                     z = invsqrtpi*(u*ss+v*cc)/sqrt(x);
                 }
                 return z;
-        }
+        } 
         if(ix<=0x3c900000) {    /* x < 2**-54 */
             return(-tpi/x);
-        }
+        } 
         z = x*x;
         u = U0[0]+z*(U0[1]+z*(U0[2]+z*(U0[3]+z*U0[4])));
         v = one+z*(V0[0]+z*(V0[1]+z*(V0[2]+z*(V0[3]+z*V0[4]))));
-        return(x*(u/v) + tpi*(j1(x)*log(x)-one/x));
+        return(x*(u/v) + tpi*(__ieee754_j1(x)*__ieee754_log(x)-one/x));
 }
 
 /* For x >= 8, the asymptotic expansions of pone is
@@ -261,14 +260,11 @@ static const double ps2[5] = {
   8.36463893371618283368e+00, /* 0x4020BAB1, 0xF44E5192 */
 };
 
-static double
-pone(double x)
+	static double pone(double x)
 {
 	const double *p,*q;
 	double z,r,s;
         int32_t ix;
-
-	p = q = NULL;
 	GET_HIGH_WORD(ix,x);
 	ix &= 0x7fffffff;
         if(ix>=0x40200000)     {p = pr8; q= ps8;}
@@ -280,7 +276,7 @@ pone(double x)
         s = one+z*(q[0]+z*(q[1]+z*(q[2]+z*(q[3]+z*q[4]))));
         return one+ r/s;
 }
-
+		
 
 /* For x >= 8, the asymptotic expansions of qone is
  *	3/8 s - 105/1024 s^3 - ..., where s = 1/x.
@@ -360,14 +356,11 @@ static const double qs2[6] = {
  -4.95949898822628210127e+00, /* 0xC013D686, 0xE71BE86B */
 };
 
-static double
-qone(double x)
+	static double qone(double x)
 {
 	const double *p,*q;
 	double  s,r,z;
 	int32_t ix;
-
-	p = q = NULL;
 	GET_HIGH_WORD(ix,x);
 	ix &= 0x7fffffff;
 	if(ix>=0x40200000)     {p = qr8; q= qs8;}

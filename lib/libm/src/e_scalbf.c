@@ -12,24 +12,24 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_scalbf.c,v 1.7 2010/04/23 19:17:07 drochner Exp $
+ * $FreeBSD: head/lib/msun/src/e_scalbf.c 176451 2008-02-22 02:30:36Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 #ifdef _SCALB_INT
 float
-scalbf(float x, int fn)
+__ieee754_scalbf(float x, int fn)
 #else
 float
-scalbf(float x, float fn)
+__ieee754_scalbf(float x, float fn)
 #endif
 {
 #ifdef _SCALB_INT
 	return scalbnf(x,fn);
 #else
-	if (isnanf(x)||isnanf(fn)) return x*fn;
+	if ((isnanf)(x)||(isnanf)(fn)) return x*fn;
 	if (!finitef(fn)) {
 	    if(fn>(float)0.0) return x*fn;
 	    else       return x/(-fn);

@@ -12,10 +12,10 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: s_frexpf.c,v 1.10 2007/08/21 20:12:27 drochner Exp $
+ * $FreeBSD: head/lib/msun/src/s_frexpf.c 176451 2008-02-22 02:30:36Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const float

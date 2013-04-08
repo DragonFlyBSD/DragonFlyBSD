@@ -12,15 +12,14 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: s_significandf.c,v 1.6 2002/05/26 22:01:58 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_significandf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $FreeBSD: head/lib/msun/src/s_significandf.c 176451 2008-02-22 02:30:36Z das $
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 float
 significandf(float x)
 {
-	return scalbf(x,(float) -ilogbf(x));
+	return __ieee754_scalbf(x,(float) -ilogbf(x));
 }

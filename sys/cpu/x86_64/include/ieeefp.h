@@ -32,16 +32,22 @@
  * SUCH DAMAGE.
  *
  * 	from: @(#) ieeefp.h 	1.0 (Berkeley) 9/23/93
- * $FreeBSD: src/sys/amd64/include/ieeefp.h,v 1.19 2008/01/11 17:11:32 bde Exp $
+ * $FreeBSD: head/sys/amd64/include/ieeefp.h 226607 2011-10-21 06:41:46Z das $
  */
 
 #ifndef _CPU_IEEEFP_H_
 #define _CPU_IEEEFP_H_
 
 /*
+ * Deprecated historical FPU control interface
+ *
  * IEEE floating point type, constant and function definitions.
  * XXX: {FP,SSE}*FLD and {FP,SSE}*OFF are undocumented pollution.
  */
+
+#ifndef _SYS_CDEFS_H_
+#error this file needs sys/cdefs.h as a prerequisite
+#endif
 
 /*
  * Rounding modes.
@@ -118,15 +124,15 @@ typedef enum {
 #define	SSE_RND_OFF	13	/* rounding control offset */
 #define	SSE_FZ_OFF	15	/* flush to zero offset */
 
-#if defined(__GNUC__) && !defined(__cplusplus)
+#ifdef __GNUC__
 
-#define	_fldcw(addr)	__asm __volatile("fldcw %0" : : "m" (*(addr)))
-#define	_fldenv(addr)	__asm __volatile("fldenv %0" : : "m" (*(addr)))
-#define	_fnstcw(addr)	__asm __volatile("fnstcw %0" : "=m" (*(addr)))
-#define	_fnstenv(addr)	__asm __volatile("fnstenv %0" : "=m" (*(addr)))
-#define	_fnstsw(addr)	__asm __volatile("fnstsw %0" : "=m" (*(addr)))
-#define	_ldmxcsr(addr)	__asm __volatile("ldmxcsr %0" : : "m" (*(addr)))
-#define	_stmxcsr(addr)	__asm __volatile("stmxcsr %0" : "=m" (*(addr)))
+#define	__fldcw(addr)	__asm __volatile("fldcw %0" : : "m" (*(addr)))
+#define	__fldenv(addr)	__asm __volatile("fldenv %0" : : "m" (*(addr)))
+#define	__fnstcw(addr)	__asm __volatile("fnstcw %0" : "=m" (*(addr)))
+#define	__fnstenv(addr)	__asm __volatile("fnstenv %0" : "=m" (*(addr)))
+#define	__fnstsw(addr)	__asm __volatile("fnstsw %0" : "=m" (*(addr)))
+#define	__ldmxcsr(addr)	__asm __volatile("ldmxcsr %0" : : "m" (*(addr)))
+#define	__stmxcsr(addr)	__asm __volatile("stmxcsr %0" : "=m" (*(addr)))
 
 /*
  * Load the control word.  Be careful not to trap if there is a currently
@@ -136,7 +142,7 @@ typedef enum {
  * is very inefficient, so only do it when necessary.
  */
 static __inline void
-_fnldcw(unsigned short _cw, unsigned short _newcw)
+__fnldcw(unsigned short _cw, unsigned short _newcw)
 {
 	struct {
 		unsigned _cw;
@@ -145,15 +151,15 @@ _fnldcw(unsigned short _cw, unsigned short _newcw)
 	unsigned short _sw;
 
 	if ((_cw & FP_MSKS_FLD) != FP_MSKS_FLD) {
-		_fnstsw(&_sw);
+		__fnstsw(&_sw);
 		if (((_sw & ~_cw) & FP_STKY_FLD) != 0) {
-			_fnstenv(&_env);
+			__fnstenv(&_env);
 			_env._cw = _newcw;
-			_fldenv(&_env);
+			__fldenv(&_env);
 			return;
 		}
 	}
-	_fldcw(&_newcw);
+	__fldcw(&_newcw);
 }
 
 /*
@@ -168,30 +174,30 @@ _fnldcw(unsigned short _cw, unsigned short _newcw)
  */
 
 static __inline fp_rnd_t
-_fpgetround(void)
+__fpgetround(void)
 {
 	unsigned short _cw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	return ((fp_rnd_t)((_cw & FP_RND_FLD) >> FP_RND_OFF));
 }
 
 static __inline fp_rnd_t
-_fpsetround(fp_rnd_t _m)
+__fpsetround(fp_rnd_t _m)
 {
 	fp_rnd_t _p;
 	unsigned _mxcsr;
 	unsigned short _cw, _newcw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	_p = (fp_rnd_t)((_cw & FP_RND_FLD) >> FP_RND_OFF);
 	_newcw = _cw & ~FP_RND_FLD;
 	_newcw |= (_m << FP_RND_OFF) & FP_RND_FLD;
-	_fnldcw(_cw, _newcw);
-	_stmxcsr(&_mxcsr);
+	__fnldcw(_cw, _newcw);
+	__stmxcsr(&_mxcsr);
 	_mxcsr &= ~SSE_RND_FLD;
 	_mxcsr |= (_m << SSE_RND_OFF) & SSE_RND_FLD;
-	_ldmxcsr(&_mxcsr);
+	__ldmxcsr(&_mxcsr);
 	return (_p);
 }
 
@@ -201,25 +207,25 @@ _fpsetround(fp_rnd_t _m)
  */
 
 static __inline fp_prec_t
-_fpgetprec(void)
+__fpgetprec(void)
 {
 	unsigned short _cw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	return ((fp_prec_t)((_cw & FP_PRC_FLD) >> FP_PRC_OFF));
 }
 
 static __inline fp_prec_t
-_fpsetprec(fp_prec_t _m)
+__fpsetprec(fp_prec_t _m)
 {
 	fp_prec_t _p;
 	unsigned short _cw, _newcw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	_p = (fp_prec_t)((_cw & FP_PRC_FLD) >> FP_PRC_OFF);
 	_newcw = _cw & ~FP_PRC_FLD;
 	_newcw |= (_m << FP_PRC_OFF) & FP_PRC_FLD;
-	_fnldcw(_cw, _newcw);
+	__fnldcw(_cw, _newcw);
 	return (_p);
 }
 
@@ -230,70 +236,73 @@ _fpsetprec(fp_prec_t _m)
  */
 
 static __inline fp_except_t
-_fpgetmask(void)
+__fpgetmask(void)
 {
 	unsigned short _cw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	return ((~_cw & FP_MSKS_FLD) >> FP_MSKS_OFF);
 }
 
 static __inline fp_except_t
-_fpsetmask(fp_except_t _m)
+__fpsetmask(fp_except_t _m)
 {
 	fp_except_t _p;
 	unsigned _mxcsr;
 	unsigned short _cw, _newcw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	_p = (~_cw & FP_MSKS_FLD) >> FP_MSKS_OFF;
 	_newcw = _cw & ~FP_MSKS_FLD;
 	_newcw |= (~_m << FP_MSKS_OFF) & FP_MSKS_FLD;
-	_fnldcw(_cw, _newcw);
-	_stmxcsr(&_mxcsr);
+	__fnldcw(_cw, _newcw);
+	__stmxcsr(&_mxcsr);
 	/* XXX should we clear non-ieee SSE_DAZ_FLD and SSE_FZ_FLD ? */
 	_mxcsr &= ~SSE_MSKS_FLD;
 	_mxcsr |= (~_m << SSE_MSKS_OFF) & SSE_MSKS_FLD;
-	_ldmxcsr(&_mxcsr);
+	__ldmxcsr(&_mxcsr);
 	return (_p);
 }
 
 static __inline fp_except_t
-_fpgetsticky(void)
+__fpgetsticky(void)
 {
 	unsigned _ex, _mxcsr;
 	unsigned short _sw;
 
-	_fnstsw(&_sw);
+	__fnstsw(&_sw);
 	_ex = (_sw & FP_STKY_FLD) >> FP_STKY_OFF;
-	_stmxcsr(&_mxcsr);
+	__stmxcsr(&_mxcsr);
 	_ex |= (_mxcsr & SSE_STKY_FLD) >> SSE_STKY_OFF;
 	return ((fp_except_t)_ex);
 }
 
-#endif /* __GNUC__ && !__cplusplus */
+#endif /* __GNUC__ */
 
-#if !defined(__IEEEFP_NOINLINES__) && !defined(__cplusplus) && defined(__GNUC__)
+#if !defined(__IEEEFP_NOINLINES__) && defined(__GNUC__)
 
-#define	fpgetmask()	_fpgetmask()
-#define	fpgetprec()	_fpgetprec()
-#define	fpgetround()	_fpgetround()
-#define	fpgetsticky()	_fpgetsticky()
-#define	fpsetmask(m)	_fpsetmask(m)
-#define	fpsetprec(m)	_fpsetprec(m)
-#define	fpsetround(m)	_fpsetround(m)
+#define	fpgetmask()	__fpgetmask()
+#define	fpgetprec()	__fpgetprec()
+#define	fpgetround()	__fpgetround()
+#define	fpgetsticky()	__fpgetsticky()
+#define	fpsetmask(m)	__fpsetmask(m)
+#define	fpsetprec(m)	__fpsetprec(m)
+#define	fpsetround(m)	__fpsetround(m)
 
-/* Suppress prototypes in the MI header. */
-#define	_IEEEFP_INLINED_	1
-
-#else /* !__IEEEFP_NOINLINES__ && !__cplusplus && __GNUC__ */
+#else /* !(!__IEEEFP_NOINLINES__ && __GNUC__) */
 
 /* Augment the userland declarations. */
 __BEGIN_DECLS
+extern fp_rnd_t    fpgetround(void);
+extern fp_rnd_t    fpsetround(fp_rnd_t);
+extern fp_except_t fpgetmask(void);
+extern fp_except_t fpsetmask(fp_except_t);
+extern fp_except_t fpgetsticky(void);
+extern fp_except_t fpsetsticky(fp_except_t);
 fp_prec_t	fpgetprec(void);
 fp_prec_t	fpsetprec(fp_prec_t);
 __END_DECLS
 
-#endif /* !__IEEEFP_NOINLINES__ && !__cplusplus && __GNUC__ */
+#endif /* !__IEEEFP_NOINLINES__ && __GNUC__ */
 
 #endif /* !_CPU_IEEEFP_H_ */

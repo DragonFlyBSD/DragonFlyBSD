@@ -1,4 +1,5 @@
 /* @(#)s_signif.c 5.1 93/09/24 */
+/* $FreeBSD: head/lib/msun/src/s_significand.c 176451 2008-02-22 02:30:36Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -8,9 +9,6 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * $NetBSD: s_significand.c,v 1.9 2002/05/26 22:01:58 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_significand.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
 /*
@@ -19,11 +17,11 @@
  * for exercising the fraction-part(F) IEEE 754-1985 test vector.
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 double
 significand(double x)
 {
-	return scalb(x,(double) -ilogb(x));
+	return __ieee754_scalb(x,(double) -ilogb(x));
 }

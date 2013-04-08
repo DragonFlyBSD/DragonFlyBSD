@@ -1,71 +1,51 @@
-/*	$NetBSD: s_ilogbl.c,v 1.1 2011/07/28 22:32:29 joerg Exp $	*/
-
-/*-
- * Copyright (c) 2011 The NetBSD Foundation, Inc.
- * All rights reserved.
+/*
+ * From: @(#)s_ilogb.c 5.1 93/09/24
+ * $FreeBSD: head/lib/msun/src/s_ilogbl.c 176451 2008-02-22 02:30:36Z das $
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
- * This code is derived from software contributed to The NetBSD Foundation
- * by Joerg Sonnenberger.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
- * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
  */
 
 #include <float.h>
+#include <limits.h>
 #include <math.h>
-#include <machine/ieee.h>
 
-#ifdef __HAVE_LONG_DOUBLE
-
-#if LDBL_MANT_DIG == 64
-#define	FROM_UNDERFLOW	0x1p65L
-#elif LDBL_MANT_DIG == 113
-#define	FROM_UNDERFLOW	0x1p114L
-#else
-#error Unsupported long double format
-#endif
+#include "fpmath.h"
 
 int
 ilogbl(long double x)
 {
-	union ieee_ext_u u;
+	union IEEEl2bits u;
+	unsigned long m;
+	int b;
 
-	if (x == 0.0L)
-		return 0x80000001;	/* ilogbl(0) = 0x80000001 */
-
-	u.extu_ld = x;
-
-	if (u.extu_ext.ext_exp == EXT_EXP_INFNAN)
-		return 0x7fffffff;
-
-	if (u.extu_ext.ext_exp == 0) {
-		/*
-		 * Scale denormalized numbers slightly,
-		 * so that they are normal.
-		 */
-		u.extu_ld *= FROM_UNDERFLOW;
-		return u.extu_ext.ext_exp - EXT_EXP_BIAS - LDBL_MANT_DIG - 1;
-	}
-	return u.extu_ext.ext_exp - EXT_EXP_BIAS;
-
-}
-
+	u.e = x;
+	if (u.bits.exp == 0) {
+		if ((u.bits.manl | u.bits.manh) == 0)
+			return (FP_ILOGB0);
+		/* denormalized */
+		if (u.bits.manh == 0) {
+			m = 1lu << (LDBL_MANL_SIZE - 1);
+			for (b = LDBL_MANH_SIZE; !(u.bits.manl & m); m >>= 1)
+				b++;
+		} else {
+			m = 1lu << (LDBL_MANH_SIZE - 1);
+			for (b = 0; !(u.bits.manh & m); m >>= 1)
+				b++;
+		}
+#ifdef LDBL_IMPLICIT_NBIT
+		b++;
 #endif
+		return (LDBL_MIN_EXP - b - 1);
+	} else if (u.bits.exp < (LDBL_MAX_EXP << 1) - 1)
+		return (u.bits.exp - LDBL_MAX_EXP + 1);
+	else if (u.bits.manl != 0 || u.bits.manh != 0)
+		return (FP_ILOGBNAN);
+	else
+		return (INT_MAX);
+}

@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)cosh.3	5.1 (Berkeley) 5/2/91
-.\" $FreeBSD$
+.\" $FreeBSD: head/lib/msun/man/cosh.3 226458 2011-10-17 05:41:03Z das $
 .\"
 .Dd January 14, 2005
 .Dt COSH 3
@@ -50,15 +50,6 @@ and the
 .Fn coshf
 functions compute the hyperbolic cosine of
 .Fa x .
-.Sh RETURN VALUES
-If the magnitude of x is too large,
-.Fn cosh "x"
-and
-.Fn coshf "x"
-return Inf and sets the global variable
-.Va errno
-to
-.Er ERANGE .
 .Sh SEE ALSO
 .Xr acos 3 ,
 .Xr asin 3 ,

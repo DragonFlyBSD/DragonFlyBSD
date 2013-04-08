@@ -23,32 +23,30 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $NetBSD: s_fmin.c,v 1.1 2009/10/04 22:04:30 christos Exp $
+ * $FreeBSD: head/lib/msun/src/s_fmin.c 131320 2004-06-30 07:04:01Z das $
  */
 
 #include <math.h>
 
-#include <machine/ieee.h>
+#include "fpmath.h"
 
 double
 fmin(double x, double y)
 {
-	union ieee_double_u u[2];
+	union IEEEd2bits u[2];
 
-	u[0].dblu_d = x;
-	u[1].dblu_d = y;
+	u[0].d = x;
+	u[1].d = y;
 
 	/* Check for NaNs to avoid raising spurious exceptions. */
-	if (u[0].dblu_dbl.dbl_exp == DBL_EXP_INFNAN &&
-	    (u[0].dblu_dbl.dbl_frach | u[0].dblu_dbl.dbl_fracl) != 0)
+	if (u[0].bits.exp == 2047 && (u[0].bits.manh | u[0].bits.manl) != 0)
 		return (y);
-	if (u[1].dblu_dbl.dbl_exp == DBL_EXP_INFNAN &&
-	    (u[1].dblu_dbl.dbl_frach | u[1].dblu_dbl.dbl_fracl) != 0)
+	if (u[1].bits.exp == 2047 && (u[1].bits.manh | u[1].bits.manl) != 0)
 		return (x);
 
 	/* Handle comparisons of signed zeroes. */
-	if (u[0].dblu_dbl.dbl_sign != u[1].dblu_dbl.dbl_sign)
-		return (u[u[1].dblu_dbl.dbl_sign].dblu_d);
+	if (u[0].bits.sign != u[1].bits.sign)
+		return (u[u[1].bits.sign].d);
 
 	return (x < y ? x : y);
 }

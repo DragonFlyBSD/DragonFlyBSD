@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/amd64/gen/fabs.S,v 1.4 2008/11/02 01:10:54 peter Exp $
+ * $FreeBSD: head/lib/libc/amd64/gen/fabs.S 217106 2011-01-07 16:08:40Z kib $
  */
 
 #include <machine/asm.h>
@@ -43,3 +43,5 @@ END(fabs)
 	.data
 signbit:
 	.quad	0x8000000000000000
+
+	.section .note.GNU-stack,"",%progbits

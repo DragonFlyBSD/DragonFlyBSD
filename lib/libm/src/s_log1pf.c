@@ -11,12 +11,12 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * $NetBSD: s_log1pf.c,v 1.8 2002/05/26 22:01:57 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_log1pf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $FreeBSD: head/lib/msun/src/s_log1pf.c 251024 2013-05-27 08:50:10Z das $
  */
 
-#include <math.h>
+#include <float.h>
+
+#include "math.h"
 #include "math_private.h"
 
 static const float
@@ -32,6 +32,7 @@ Lp6 = 1.5313838422e-01, /* 3E1CD04F */
 Lp7 = 1.4798198640e-01; /* 3E178897 */
 
 static const float zero = 0.0;
+static volatile float vzero = 0.0;
 
 float
 log1pf(float x)
@@ -39,31 +40,29 @@ log1pf(float x)
 	float hfsq,f,c,s,z,R,u;
 	int32_t k,hx,hu,ax;
 
-	f = c = 0;
-	hu = 0;
 	GET_FLOAT_WORD(hx,x);
 	ax = hx&0x7fffffff;
 
 	k = 1;
-	if (hx < 0x3ed413d7) {			/* x < 0.41422  */
+	if (hx < 0x3ed413d0) {			/* 1+x < sqrt(2)+  */
 	    if(ax>=0x3f800000) {		/* x <= -1.0 */
-		if(x==(float)-1.0) return -two25/zero; /* log1p(-1)=+inf */
+		if(x==(float)-1.0) return -two25/vzero; /* log1p(-1)=+inf */
 		else return (x-x)/(x-x);	/* log1p(x<-1)=NaN */
 	    }
-	    if(ax<0x31000000) {			/* |x| < 2**-29 */
+	    if(ax<0x38000000) {			/* |x| < 2**-15 */
 		if(two25+x>zero			/* raise inexact */
-	            &&ax<0x24800000) 		/* |x| < 2**-54 */
+	            &&ax<0x33800000) 		/* |x| < 2**-24 */
 		    return x;
 		else
 		    return x - x*x*(float)0.5;
 	    }
-	    if(hx>0||hx<=((int32_t)0xbe95f61f)) {
-		k=0;f=x;hu=1;}	/* -0.2929<x<0.41422 */
+	    if(hx>0||hx<=((int32_t)0xbe95f619)) {
+		k=0;f=x;hu=1;}		/* sqrt(2)/2- <= 1+x < sqrt(2)+ */
 	}
 	if (hx >= 0x7f800000) return x+x;
 	if(k!=0) {
 	    if(hx<0x5a000000) {
-		u  = (float)1.0+x;
+		STRICT_ASSIGN(float,u,(float)1.0+x);
 		GET_FLOAT_WORD(hu,u);
 	        k  = (hu>>23)-127;
 		/* correction term */
@@ -76,7 +75,14 @@ log1pf(float x)
 		c  = 0;
 	    }
 	    hu &= 0x007fffff;
-	    if(hu<0x3504f7) {
+	    /*
+	     * The approximation to sqrt(2) used in thresholds is not
+	     * critical.  However, the ones used above must give less
+	     * strict bounds than the one here so that the k==0 case is
+	     * never reached from here, since here we have committed to
+	     * using the correction term but don't use it if k==0.
+	     */
+	    if(hu<0x3504f4) {			/* u < sqrt(2) */
 	        SET_FLOAT_WORD(u,hu|0x3f800000);/* normalize u */
 	    } else {
 	        k += 1;
@@ -87,8 +93,13 @@ log1pf(float x)
 	}
 	hfsq=(float)0.5*f*f;
 	if(hu==0) {	/* |f| < 2**-20 */
-	    if(f==zero) { if(k==0) return zero;
-			  else {c += k*ln2_lo; return k*ln2_hi+c;}
+	    if(f==zero) {
+		if(k==0) {
+		    return zero;
+		} else {
+		    c += k*ln2_lo;
+		    return k*ln2_hi+c;
+		}
 	    }
 	    R = hfsq*((float)1.0-(float)0.66666666666666666*f);
 	    if(k==0) return f-R; else

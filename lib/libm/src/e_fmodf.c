@@ -12,22 +12,22 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_fmodf.c,v 1.7 2002/05/26 22:01:49 wiz Exp $
+ * $FreeBSD: head/lib/msun/src/e_fmodf.c 176451 2008-02-22 02:30:36Z das $
  */
 
 /*
- * fmodf(x,y)
+ * __ieee754_fmodf(x,y)
  * Return x mod y in exact arithmetic
  * Method: shift and subtract
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const float one = 1.0, Zero[] = {0.0, -0.0,};
 
 float
-fmodf(float x, float y)
+__ieee754_fmodf(float x, float y)
 {
 	int32_t n,hx,hy,hz,ix,iy,sx,i;
 
@@ -75,9 +75,9 @@ fmodf(float x, float y)
 	    hz=hx-hy;
 	    if(hz<0){hx = hx+hx;}
 	    else {
-		if(hz==0) 		/* return sign(x)*0 */
+	    	if(hz==0) 		/* return sign(x)*0 */
 		    return Zero[(u_int32_t)sx>>31];
-		hx = hz+hz;
+	    	hx = hz+hz;
 	    }
 	}
 	hz=hx-hy;

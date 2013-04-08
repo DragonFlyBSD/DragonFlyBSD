@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * FreeBSD SVN: 176388 (2008-02-18)
+ * $FreeBSD: head/lib/msun/src/s_tgammaf.c 176388 2008-02-18 17:27:11Z das $
  */
 
 #include <math.h>

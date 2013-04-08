@@ -32,16 +32,22 @@
  * SUCH DAMAGE.
  *
  * 	from: @(#) ieeefp.h 	1.0 (Berkeley) 9/23/93
- * $FreeBSD: src/sys/i386/include/ieeefp.h,v 1.14 2008/01/11 18:59:35 bde Exp $
+ * $FreeBSD: head/sys/i386/include/ieeefp.h 226607 2011-10-21 06:41:46Z das $
  */
 
 #ifndef _CPU_IEEEFP_H_
 #define _CPU_IEEEFP_H_
 
 /*
+ * Deprecated historical FPU control interface
+ *
  * IEEE floating point type, constant and function definitions.
  * XXX: FP*FLD and FP*OFF are undocumented pollution.
  */
+
+#ifndef _SYS_CDEFS_H_
+#error this file needs sys/cdefs.h as a prerequisite
+#endif
 
 /*
  * Rounding modes.
@@ -102,12 +108,12 @@ typedef enum {
 
 #ifdef __GNUC__
 
-#define	_fldcw(addr)	__asm __volatile("fldcw %0" : : "m" (*(addr)))
-#define	_fldenv(addr)	__asm __volatile("fldenv %0" : : "m" (*(addr)))
-#define	_fnclex()	__asm __volatile("fnclex")
-#define	_fnstcw(addr)	__asm __volatile("fnstcw %0" : "=m" (*(addr)))
-#define	_fnstenv(addr)	__asm __volatile("fnstenv %0" : "=m" (*(addr)))
-#define	_fnstsw(addr)	__asm __volatile("fnstsw %0" : "=m" (*(addr)))
+#define	__fldcw(addr)	__asm __volatile("fldcw %0" : : "m" (*(addr)))
+#define	__fldenv(addr)	__asm __volatile("fldenv %0" : : "m" (*(addr)))
+#define	__fnclex()	__asm __volatile("fnclex")
+#define	__fnstcw(addr)	__asm __volatile("fnstcw %0" : "=m" (*(addr)))
+#define	__fnstenv(addr)	__asm __volatile("fnstenv %0" : "=m" (*(addr)))
+#define	__fnstsw(addr)	__asm __volatile("fnstsw %0" : "=m" (*(addr)))
 
 /*
  * Load the control word.  Be careful not to trap if there is a currently
@@ -117,7 +123,7 @@ typedef enum {
  * is very inefficient, so only do it when necessary.
  */
 static __inline void
-_fnldcw(unsigned short _cw, unsigned short _newcw)
+__fnldcw(unsigned short _cw, unsigned short _newcw)
 {
 	struct {
 		unsigned _cw;
@@ -126,15 +132,15 @@ _fnldcw(unsigned short _cw, unsigned short _newcw)
 	unsigned short _sw;
 
 	if ((_cw & FP_MSKS_FLD) != FP_MSKS_FLD) {
-		_fnstsw(&_sw);
+		__fnstsw(&_sw);
 		if (((_sw & ~_cw) & FP_STKY_FLD) != 0) {
-			_fnstenv(&_env);
+			__fnstenv(&_env);
 			_env._cw = _newcw;
-			_fldenv(&_env);
+			__fldenv(&_env);
 			return;
 		}
 	}
-	_fldcw(&_newcw);
+	__fldcw(&_newcw);
 }
 
 static __inline fp_rnd_t
@@ -142,7 +148,7 @@ fpgetround(void)
 {
 	unsigned short _cw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	return ((fp_rnd_t)((_cw & FP_RND_FLD) >> FP_RND_OFF));
 }
 
@@ -152,11 +158,11 @@ fpsetround(fp_rnd_t _m)
 	fp_rnd_t _p;
 	unsigned short _cw, _newcw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	_p = (fp_rnd_t)((_cw & FP_RND_FLD) >> FP_RND_OFF);
 	_newcw = _cw & ~FP_RND_FLD;
 	_newcw |= (_m << FP_RND_OFF) & FP_RND_FLD;
-	_fnldcw(_cw, _newcw);
+	__fnldcw(_cw, _newcw);
 	return (_p);
 }
 
@@ -165,7 +171,7 @@ fpgetprec(void)
 {
 	unsigned short _cw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	return ((fp_prec_t)((_cw & FP_PRC_FLD) >> FP_PRC_OFF));
 }
 
@@ -175,11 +181,11 @@ fpsetprec(fp_prec_t _m)
 	fp_prec_t _p;
 	unsigned short _cw, _newcw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	_p = (fp_prec_t)((_cw & FP_PRC_FLD) >> FP_PRC_OFF);
 	_newcw = _cw & ~FP_PRC_FLD;
 	_newcw |= (_m << FP_PRC_OFF) & FP_PRC_FLD;
-	_fnldcw(_cw, _newcw);
+	__fnldcw(_cw, _newcw);
 	return (_p);
 }
 
@@ -194,7 +200,7 @@ fpgetmask(void)
 {
 	unsigned short _cw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	return ((~_cw & FP_MSKS_FLD) >> FP_MSKS_OFF);
 }
 
@@ -204,11 +210,11 @@ fpsetmask(fp_except_t _m)
 	fp_except_t _p;
 	unsigned short _cw, _newcw;
 
-	_fnstcw(&_cw);
+	__fnstcw(&_cw);
 	_p = (~_cw & FP_MSKS_FLD) >> FP_MSKS_OFF;
 	_newcw = _cw & ~FP_MSKS_FLD;
 	_newcw |= (~_m << FP_MSKS_OFF) & FP_MSKS_FLD;
-	_fnldcw(_cw, _newcw);
+	__fnldcw(_cw, _newcw);
 	return (_p);
 }
 
@@ -218,7 +224,7 @@ fpgetsticky(void)
 	unsigned _ex;
 	unsigned short _sw;
 
-	_fnstsw(&_sw);
+	__fnstsw(&_sw);
 	_ex = (_sw & FP_STKY_FLD) >> FP_STKY_OFF;
 	return ((fp_except_t)_ex);
 }
@@ -238,18 +244,15 @@ fpresetsticky(fp_except_t _m)
 	if ((_p & ~_m) == _p)
 		return (_p);
 	if ((_p & ~_m) == 0) {
-		_fnclex();
+		__fnclex();
 		return (_p);
 	}
-	_fnstenv(&_env);
+	__fnstenv(&_env);
 	_env._sw &= ~_m;
-	_fldenv(&_env);
+	__fldenv(&_env);
 	return (_p);
 }
 
 #endif /* __GNUC__ */
-
-/* Suppress prototypes in the MI header. */
-#define	_IEEEFP_INLINED_	1
 
 #endif /* !_CPU_IEEEFP_H_ */

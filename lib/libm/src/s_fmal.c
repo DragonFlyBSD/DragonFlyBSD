@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * FreeBSD SVN: 226601 (2011-10-21)
+ * $FreeBSD: head/lib/msun/src/s_fmal.c 251024 2013-05-27 08:50:10Z das $
  */
 
 #include <fenv.h>
@@ -112,7 +112,7 @@ add_and_denormalize(long double a, long double b, int scale)
 	if (sum.lo != 0) {
 		u.e = sum.hi;
 		bits_lost = -u.bits.exp - scale + 1;
-		if ((bits_lost != 1) ^ (int)(u.bits.manl & 1))
+		if (bits_lost != 1 ^ (int)(u.bits.manl & 1))
 			sum.hi = nextafterl(sum.hi, INFINITY * sum.lo);
 	}
 	return (ldexp(sum.hi, scale));
@@ -203,17 +203,17 @@ fmal(long double x, long double y, long double z)
 		case FE_TONEAREST:
 			return (z);
 		case FE_TOWARDZERO:
-			if ((x > 0.0) ^ (y < 0.0) ^ (z < 0.0))
+			if (x > 0.0 ^ y < 0.0 ^ z < 0.0)
 				return (z);
 			else
 				return (nextafterl(z, 0));
 		case FE_DOWNWARD:
-			if ((x > 0.0) ^ (y < 0.0))
+			if (x > 0.0 ^ y < 0.0)
 				return (z);
 			else
 				return (nextafterl(z, -INFINITY));
 		default:	/* FE_UPWARD */
-			if ((x > 0.0) ^ (y < 0.0))
+			if (x > 0.0 ^ y < 0.0)
 				return (nextafterl(z, INFINITY));
 			else
 				return (z);
@@ -225,6 +225,8 @@ fmal(long double x, long double y, long double z)
 		zs = copysignl(LDBL_MIN, zs);
 
 	fesetround(FE_TONEAREST);
+	/* work around clang bug 8100 */
+	volatile long double vxs = xs;
 
 	/*
 	 * Basic approach for round-to-nearest:
@@ -234,7 +236,7 @@ fmal(long double x, long double y, long double z)
 	 *     adj = xy.lo + r.lo		(inexact; low bit is sticky)
 	 *     result = r.hi + adj		(correctly rounded)
 	 */
-	xy = dd_mul(xs, ys);
+	xy = dd_mul(vxs, ys);
 	r = dd_add(xy.hi, zs);
 
 	spread = ex + ey;
@@ -255,7 +257,9 @@ fmal(long double x, long double y, long double z)
 		 * rounding modes.
 		 */
 		fesetround(oround);
-		adj = r.lo + xy.lo;
+		/* work around clang bug 8100 */
+		volatile long double vrlo = r.lo;
+		adj = vrlo + xy.lo;
 		return (ldexpl(r.hi + adj, spread));
 	}
 

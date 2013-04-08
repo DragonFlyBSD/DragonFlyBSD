@@ -1,4 +1,5 @@
 /* @(#)s_modf.c 5.1 93/09/24 */
+/* $FreeBSD: head/lib/msun/src/s_modf.c 165838 2007-01-06 21:22:38Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -8,8 +9,6 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * FreeBSD SVN: 165838 (2007-01-06)
  */
 
 /*
@@ -22,7 +21,7 @@
  *	No exception.
  */
 
-#include <math.h>
+#include "math.h"
 #include "math_private.h"
 
 static const double one = 1.0;
