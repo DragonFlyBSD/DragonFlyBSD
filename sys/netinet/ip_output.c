@@ -409,13 +409,17 @@ reroute:
 			}
 		}
 		/*
-		 * If source address not specified yet, use address
-		 * of outgoing interface.
+		 * If source address not specified yet, use address of the
+		 * outgoing interface.  In case, keep note we did that, so
+		 * if the the firewall changes the next-hop causing the
+		 * output interface to change, we can fix that.
 		 */
-		if (ip->ip_src.s_addr == INADDR_ANY) {
+		if (ip->ip_src.s_addr == INADDR_ANY || src_was_INADDR_ANY) {
 			/* Interface may have no addresses. */
-			if (ia != NULL)
+			if (ia != NULL) {
 				ip->ip_src = IA_SIN(ia)->sin_addr;
+				src_was_INADDR_ANY = 1;
+			}
 		}
 
 		IN_LOOKUP_MULTI(pkt_dst, ifp, inm);
@@ -481,8 +485,8 @@ reroute:
 
 	/*
 	 * If the source address is not specified yet, use the address
-	 * of the outoing interface. In case, keep note we did that, so
-	 * if the the firewall changes the next-hop causing the output
+	 * of the outgoing interface.  In case, keep note we did that,
+	 * so if the the firewall changes the next-hop causing the output
 	 * interface to change, we can fix that.
 	 */
 	if (ip->ip_src.s_addr == INADDR_ANY || src_was_INADDR_ANY) {
