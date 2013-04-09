@@ -209,7 +209,7 @@ struct bnx_tx_ring {
 #define BNX_TX_FLAG_SHORTDMA		0x0001
 #define BNX_TX_FLAG_FORCE_DEFRAG	0x0002
 	uint16_t		bnx_tx_saved_considx;
-	int			bnx_txcnt;
+	int			bnx_tx_cnt;
 	uint32_t		bnx_tx_prodidx;
 	int			bnx_tx_wreg;
 	int			bnx_tx_mbx;

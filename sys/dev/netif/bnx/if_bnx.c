@@ -912,7 +912,7 @@ bnx_free_tx_ring(struct bnx_tx_ring *txr)
 static int
 bnx_init_tx_ring(struct bnx_tx_ring *txr)
 {
-	txr->bnx_txcnt = 0;
+	txr->bnx_tx_cnt = 0;
 	txr->bnx_tx_saved_considx = 0;
 	txr->bnx_tx_prodidx = 0;
 
@@ -2489,15 +2489,15 @@ bnx_txeof(struct bnx_tx_ring *txr, uint16_t tx_cons)
 			m_freem(buf->bnx_tx_mbuf);
 			buf->bnx_tx_mbuf = NULL;
 		}
-		txr->bnx_txcnt--;
+		txr->bnx_tx_cnt--;
 		BNX_INC(txr->bnx_tx_saved_considx, BGE_TX_RING_CNT);
 	}
 
-	if ((BGE_TX_RING_CNT - txr->bnx_txcnt) >=
+	if ((BGE_TX_RING_CNT - txr->bnx_tx_cnt) >=
 	    (BNX_NSEG_RSVD + BNX_NSEG_SPARE))
 		ifq_clr_oactive(&ifp->if_snd);
 
-	if (txr->bnx_txcnt == 0)
+	if (txr->bnx_tx_cnt == 0)
 		ifp->if_timer = 0;
 
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -2748,7 +2748,7 @@ bnx_encap(struct bnx_tx_ring *txr, struct mbuf **m_head0, uint32_t *txidx,
 	idx = *txidx;
 	map = txr->bnx_tx_buf[idx].bnx_tx_dmamap;
 
-	maxsegs = (BGE_TX_RING_CNT - txr->bnx_txcnt) - BNX_NSEG_RSVD;
+	maxsegs = (BGE_TX_RING_CNT - txr->bnx_tx_cnt) - BNX_NSEG_RSVD;
 	KASSERT(maxsegs >= BNX_NSEG_SPARE,
 		("not enough segments %d", maxsegs));
 
@@ -2827,7 +2827,7 @@ bnx_encap(struct bnx_tx_ring *txr, struct mbuf **m_head0, uint32_t *txidx,
 	txr->bnx_tx_buf[*txidx].bnx_tx_dmamap = txr->bnx_tx_buf[idx].bnx_tx_dmamap;
 	txr->bnx_tx_buf[idx].bnx_tx_dmamap = map;
 	txr->bnx_tx_buf[idx].bnx_tx_mbuf = m_head;
-	txr->bnx_txcnt += nsegs;
+	txr->bnx_tx_cnt += nsegs;
 
 	BNX_INC(idx, BGE_TX_RING_CNT);
 	*txidx = idx;
@@ -2866,7 +2866,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 * sure there are BGE_NSEG_SPARE descriptors for
 		 * jumbo buffers' or TSO segments' defragmentation.
 		 */
-		if ((BGE_TX_RING_CNT - txr->bnx_txcnt) <
+		if ((BGE_TX_RING_CNT - txr->bnx_tx_cnt) <
 		    (BNX_NSEG_RSVD + BNX_NSEG_SPARE)) {
 			ifq_set_oactive(&ifp->if_snd);
 			break;
