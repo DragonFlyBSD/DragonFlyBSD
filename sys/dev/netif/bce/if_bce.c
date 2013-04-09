@@ -7074,7 +7074,8 @@ bce_setup_intr(struct bce_softc *sc)
 	if (sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
 		irq_handle = bce_intr_legacy;
 	} else if (sc->bce_irq_type == PCI_INTR_TYPE_MSI) {
-		if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709) {
+		if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+		    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
 			irq_handle = bce_intr_msi_oneshot;
 			sc->bce_flags |= BCE_ONESHOT_MSI_FLAG;
 		} else {
