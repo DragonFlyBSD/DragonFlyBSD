@@ -2594,9 +2594,6 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
 
 	if (txr->bnx_tx_saved_considx != tx_cons)
 		bnx_txeof(txr, tx_cons);
-
-	if (sc->bnx_coal_chg)
-		bnx_coal_change(sc);
 }
 
 #endif	/* IFPOLL_ENABLE */
@@ -2676,9 +2673,6 @@ bnx_intr(struct bnx_softc *sc)
 	}
 
 	bnx_writembx(sc, BGE_MBX_IRQ0_LO, sc->bnx_status_tag << 24);
-
-	if (sc->bnx_coal_chg)
-		bnx_coal_change(sc);
 }
 
 static void
@@ -3801,6 +3795,9 @@ bnx_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *coal,
 		} else {
 			*coal = v;
 			sc->bnx_coal_chg |= coal_chg_mask;
+
+			/* Commit changes */
+			bnx_coal_change(sc);
 		}
 	}
 
