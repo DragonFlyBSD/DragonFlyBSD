@@ -375,8 +375,6 @@ reroute:
 			isbroadcast = in_broadcast(dst->sin_addr, ifp);
 	}
 	if (IN_MULTICAST(ntohl(pkt_dst.s_addr))) {
-		struct in_multi *inm;
-
 		m->m_flags |= M_MCAST;
 		/*
 		 * IP destination address is multicast.  Make sure "dst"
@@ -422,45 +420,53 @@ reroute:
 			}
 		}
 
-		IN_LOOKUP_MULTI(pkt_dst, ifp, inm);
-		if (inm != NULL &&
-		    (imo == NULL || imo->imo_multicast_loop)) {
-			/*
-			 * If we belong to the destination multicast group
-			 * on the outgoing interface, and the caller did not
-			 * forbid loopback, loop back a copy.
-			 */
-			ip_mloopback(ifp, m, dst, hlen);
-		} else {
-			/*
-			 * If we are acting as a multicast router, perform
-			 * multicast forwarding as if the packet had just
-			 * arrived on the interface to which we are about
-			 * to send.  The multicast forwarding function
-			 * recursively calls this function, using the
-			 * IP_FORWARDING flag to prevent infinite recursion.
-			 *
-			 * Multicasts that are looped back by ip_mloopback(),
-			 * above, will be forwarded by the ip_input() routine,
-			 * if necessary.
-			 */
-			if (ip_mrouter && !(flags & IP_FORWARDING)) {
+		if (ip->ip_src.s_addr != INADDR_ANY) {
+			struct in_multi *inm;
+
+			IN_LOOKUP_MULTI(pkt_dst, ifp, inm);
+			if (inm != NULL &&
+			    (imo == NULL || imo->imo_multicast_loop)) {
 				/*
-				 * If rsvp daemon is not running, do not
-				 * set ip_moptions. This ensures that the packet
-				 * is multicast and not just sent down one link
-				 * as prescribed by rsvpd.
+				 * If we belong to the destination multicast
+				 * group on the outgoing interface, and the
+				 * caller did not forbid loopback, loop back
+				 * a copy.
 				 */
-				if (!rsvp_on)
-					imo = NULL;
-				if (ip_mforward) {
-					get_mplock();
-					if (ip_mforward(ip, ifp, m, imo) != 0) {
-						m_freem(m);
+				ip_mloopback(ifp, m, dst, hlen);
+			} else {
+				/*
+				 * If we are acting as a multicast router,
+				 * perform multicast forwarding as if the
+				 * packet had just arrived on the interface
+				 * to which we are about to send.  The
+				 * multicast forwarding function recursively
+				 * calls this function, using the IP_FORWARDING
+				 * flag to prevent infinite recursion.
+				 *
+				 * Multicasts that are looped back by
+				 * ip_mloopback(), above, will be forwarded by
+				 * the ip_input() routine, if necessary.
+				 */
+				if (ip_mrouter && !(flags & IP_FORWARDING)) {
+					/*
+					 * If rsvp daemon is not running, do
+					 * not set ip_moptions. This ensures
+					 * that the packet is multicast and
+					 * not just sent down one link as
+					 * prescribed by rsvpd.
+					 */
+					if (!rsvp_on)
+						imo = NULL;
+					if (ip_mforward) {
+						get_mplock();
+						if (ip_mforward(ip, ifp,
+						    m, imo) != 0) {
+							m_freem(m);
+							rel_mplock();
+							goto done;
+						}
 						rel_mplock();
-						goto done;
 					}
-					rel_mplock();
 				}
 			}
 		}
@@ -895,6 +901,12 @@ pass:
 			error = EADDRNOTAVAIL;
 			goto bad;
 		}
+	}
+	if (ip->ip_src.s_addr == INADDR_ANY ||
+	    IN_MULTICAST(ntohl(ip->ip_src.s_addr))) {
+		ipstat.ips_badaddr++;
+		error = EADDRNOTAVAIL;
+		goto bad;
 	}
 
 	if ((m->m_pkthdr.csum_flags & CSUM_TSO) == 0) {
