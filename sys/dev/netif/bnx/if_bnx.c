@@ -160,6 +160,9 @@ static void	bnx_enable_intr(struct bnx_softc *);
 static void	bnx_disable_intr(struct bnx_softc *);
 static void	bnx_txeof(struct bnx_tx_ring *, uint16_t);
 static void	bnx_rxeof(struct bnx_rx_ret_ring *, uint16_t, int);
+static int	bnx_alloc_intr(struct bnx_softc *);
+static int	bnx_setup_intr(struct bnx_softc *);
+static void	bnx_free_intr(struct bnx_softc *);
 
 static void	bnx_start(struct ifnet *, struct ifaltq_subque *);
 static int	bnx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -1673,9 +1676,7 @@ bnx_attach(device_t dev)
 	int error = 0, rid, capmask;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
 	uint16_t product;
-	driver_intr_t *intr_func;
 	uintptr_t mii_priv = 0;
-	u_int intr_flags;
 #ifdef BNX_TSO_DEBUG
 	char desc[32];
 	int i;
@@ -1870,21 +1871,9 @@ bnx_attach(device_t dev)
 	/*
 	 * Allocate interrupt
 	 */
-	sc->bnx_irq_type = pci_alloc_1intr(dev, bnx_msi_enable, &sc->bnx_irq_rid,
-	    &intr_flags);
-
-	sc->bnx_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->bnx_irq_rid,
-	    intr_flags);
-	if (sc->bnx_irq == NULL) {
-		device_printf(dev, "couldn't map interrupt\n");
-		error = ENXIO;
+	error = bnx_alloc_intr(sc);
+	if (error)
 		goto fail;
-	}
-
-	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI) {
-		sc->bnx_flags |= BNX_FLAG_ONESHOT_MSI;
-		bnx_enable_msi(sc);
-	}
 
 	/* Set default tuneable values. */
 	sc->bnx_rx_coal_ticks = BNX_RX_COAL_TICKS_DEF;
@@ -2122,22 +2111,9 @@ bnx_attach(device_t dev)
 	    device_get_unit(dev), ifp->if_serializer);
 #endif
 
-	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI) {
-		if (sc->bnx_flags & BNX_FLAG_ONESHOT_MSI) {
-			intr_func = bnx_msi_oneshot;
-			if (bootverbose)
-				device_printf(dev, "oneshot MSI\n");
-		} else {
-			intr_func = bnx_msi;
-		}
-	} else {
-		intr_func = bnx_intr_legacy;
-	}
-	error = bus_setup_intr(dev, sc->bnx_irq, INTR_MPSAFE, intr_func, sc,
-	    &sc->bnx_intrhand, ifp->if_serializer);
+	error = bnx_setup_intr(sc);
 	if (error) {
 		ether_ifdetach(ifp);
-		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 
@@ -2173,12 +2149,7 @@ bnx_detach(device_t dev)
 		device_delete_child(dev, sc->bnx_miibus);
 	bus_generic_detach(dev);
 
-	if (sc->bnx_irq != NULL) {
-		bus_release_resource(dev, SYS_RES_IRQ, sc->bnx_irq_rid,
-		    sc->bnx_irq);
-	}
-	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI)
-		pci_release_msi(dev);
+	bnx_free_intr(sc);
 
 	if (sc->bnx_res != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY,
@@ -4395,4 +4366,63 @@ bnx_destroy_rx_ret_ring(struct bnx_rx_ret_ring *ret)
 	/* Destroy RX return ring */
 	bnx_dma_block_free(ret->bnx_rx_ret_ring_tag,
 	    ret->bnx_rx_ret_ring_map, ret->bnx_rx_ret_ring);
+}
+
+static int
+bnx_alloc_intr(struct bnx_softc *sc)
+{
+	u_int intr_flags;
+
+	sc->bnx_irq_type = pci_alloc_1intr(sc->bnx_dev, bnx_msi_enable,
+	    &sc->bnx_irq_rid, &intr_flags);
+
+	sc->bnx_irq = bus_alloc_resource_any(sc->bnx_dev, SYS_RES_IRQ,
+	    &sc->bnx_irq_rid, intr_flags);
+	if (sc->bnx_irq == NULL) {
+		device_printf(sc->bnx_dev, "could not alloc interrupt\n");
+		return ENXIO;
+	}
+
+	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI) {
+		sc->bnx_flags |= BNX_FLAG_ONESHOT_MSI;
+		bnx_enable_msi(sc);
+	}
+	return 0;
+}
+
+static int
+bnx_setup_intr(struct bnx_softc *sc)
+{
+	driver_intr_t *intr_func;
+	int error;
+
+	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI) {
+		if (sc->bnx_flags & BNX_FLAG_ONESHOT_MSI) {
+			intr_func = bnx_msi_oneshot;
+			if (bootverbose)
+				device_printf(sc->bnx_dev, "oneshot MSI\n");
+		} else {
+			intr_func = bnx_msi;
+		}
+	} else {
+		intr_func = bnx_intr_legacy;
+	}
+	error = bus_setup_intr(sc->bnx_dev, sc->bnx_irq, INTR_MPSAFE,
+	    intr_func, sc, &sc->bnx_intrhand, sc->arpcom.ac_if.if_serializer);
+	if (error) {
+		device_printf(sc->bnx_dev, "could not set up irq\n");
+		return error;
+	}
+	return 0;
+}
+
+static void
+bnx_free_intr(struct bnx_softc *sc)
+{
+	if (sc->bnx_irq != NULL) {
+		bus_release_resource(sc->bnx_dev, SYS_RES_IRQ,
+		    sc->bnx_irq_rid, sc->bnx_irq);
+	}
+	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(sc->bnx_dev);
 }
