@@ -805,18 +805,35 @@ ioapic_set_legacy_irqmap(int irq, int gsi, enum intr_trigger trig,
 		 */
 		irq = ioapic_find_unused_irqmap(gsi);
 		if (irq < 0) {
-			kprintf("failed to find unused irq for gsi %d\n", gsi);
+			kprintf("failed to find unused irq for gsi %d, "
+			    "overflow\n", gsi);
 			return;
 		}
 	}
 	KKASSERT(irq < IOAPIC_HWI_VECTORS);
 
+	cpuid = ioapic_abi_gsi_cpuid(irq, gsi);
+	map = &ioapic_irqmaps[cpuid][irq];
+
+	if (map->im_type != IOAPIC_IMT_UNUSED) {
+		/*
+		 * There are so many IOAPICs, that 1:1 mapping
+		 * of GSI and IRQ hits SYSCALL entry.
+		 */
+		irq = ioapic_find_unused_irqmap(gsi);
+		if (irq < 0) {
+			kprintf("failed to find unused irq for gsi %d, "
+			    "conflict\n", gsi);
+			return;
+		}
+		KKASSERT(irq < IOAPIC_HWI_VECTORS);
+
+		cpuid = ioapic_abi_gsi_cpuid(irq, gsi);
+		map = &ioapic_irqmaps[cpuid][irq];
+	}
+
 	if (irq > ioapic_abi_legacy_irq_max)
 		ioapic_abi_legacy_irq_max = irq;
-
-	cpuid = ioapic_abi_gsi_cpuid(irq, gsi);
-
-	map = &ioapic_irqmaps[cpuid][irq];
 
 	KKASSERT(map->im_type == IOAPIC_IMT_UNUSED);
 	map->im_type = IOAPIC_IMT_LEGACY;
