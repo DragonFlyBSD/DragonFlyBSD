@@ -34,9 +34,8 @@
 .\"
 .\"	@(#)rmdir.1	8.1 (Berkeley) 5/31/93
 .\" $FreeBSD: src/bin/rmdir/rmdir.1,v 1.8.2.1 2000/12/08 13:34:40 ru Exp $
-.\" $DragonFly: src/bin/rmdir/rmdir.1,v 1.4 2005/08/01 01:49:16 swildner Exp $
 .\"
-.Dd January 24, 2005
+.Dd April 10, 2013
 .Dt RMDIR 1
 .Os
 .Sh NAME
@@ -62,7 +61,7 @@ is empty when
 .Nm
 tries to remove it.
 .Pp
-The following option is available:
+The following options are available:
 .Bl -tag -width indent
 .It Fl p
 Each
@@ -76,18 +75,8 @@ for fully non-discriminant recursive removal.)
 .It Fl v
 Be verbose, listing each directory as it is removed.
 .El
-.Pp
-The
-.Nm
-utility exits with one of the following values:
-.Bl -tag -width Ds
-.It Li \&0
-Each directory entry specified by a dir operand
-referred to an empty directory and was removed
-successfully.
-.It Li \&>\&0
-An error occurred.
-.El
+.Sh EXIT STATUS
+.Ex -std
 .Sh SEE ALSO
 .Xr rm 1
 .Sh STANDARDS
