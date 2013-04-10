@@ -224,7 +224,33 @@ struct bnx_tx_ring {
 	bus_dma_tag_t		bnx_tx_ring_tag;
 	bus_dmamap_t		bnx_tx_ring_map;
 	bus_addr_t		bnx_tx_ring_paddr;
+	int			bnx_tx_cpuid;
 } __cachealign;
+
+struct bnx_intr_data {
+	struct bnx_softc	*bnx_sc;
+	struct bnx_rx_ret_ring	*bnx_ret;
+	struct bnx_tx_ring	*bnx_txr;
+
+	int			bnx_intr_cpuid;
+	struct lwkt_serialize	*bnx_intr_serialize;
+	struct callout		bnx_intr_timer;
+	void			(*bnx_intr_check)(void *);
+	uint16_t		bnx_rx_check_considx;
+	uint16_t		bnx_tx_check_considx;
+	boolean_t		bnx_intr_maylose;
+
+	void			*bnx_intr_arg;
+	driver_intr_t		*bnx_intr_func;
+	void			*bnx_intr_hand;
+	struct resource		*bnx_intr_res;
+	int			bnx_intr_rid;
+
+	const char		*bnx_intr_desc;
+	char			bnx_intr_desc0[64];
+} __cachealign;
+
+#define BNX_INTR_MAX		5
 
 struct bnx_softc {
 	struct arpcom		arpcom;		/* interface info */
@@ -232,10 +258,6 @@ struct bnx_softc {
 	device_t		bnx_miibus;
 	bus_space_handle_t	bnx_bhandle;
 	bus_space_tag_t		bnx_btag;
-	void			*bnx_intrhand;
-	struct resource		*bnx_irq;
-	int			bnx_irq_type;
-	int			bnx_irq_rid;
 	struct resource		*bnx_res;
 	struct ifmedia		bnx_ifmedia;	/* TBI media info */
 	int			bnx_pciecap;
@@ -258,6 +280,8 @@ struct bnx_softc {
 	uint32_t		bnx_chiprev;
 	struct bnx_ring_data	bnx_ldata;	/* rings */
 	struct bnx_chain_data	bnx_cdata;	/* mbufs */
+
+	struct lwkt_serialize	bnx_main_serialize;
 
 	int			bnx_tx_ringcnt;
 	struct bnx_tx_ring	*bnx_tx_ring;
@@ -282,11 +306,9 @@ struct bnx_softc {
 	struct callout		bnx_stat_timer;
 	struct ifpoll_compat	bnx_npoll;
 
-	uint16_t		bnx_rx_check_considx;
-	uint16_t		bnx_tx_check_considx;
-	boolean_t		bnx_intr_maylose;
-	int			bnx_intr_cpuid;
-	struct callout		bnx_intr_timer;
+	int			bnx_intr_type;
+	int			bnx_intr_cnt;
+	struct bnx_intr_data	bnx_intr_data[BNX_INTR_MAX];
 
 	struct sysctl_ctx_list	bnx_sysctl_ctx;
 	struct sysctl_oid	*bnx_sysctl_tree;

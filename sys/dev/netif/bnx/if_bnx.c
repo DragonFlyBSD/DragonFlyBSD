@@ -163,6 +163,8 @@ static void	bnx_rxeof(struct bnx_rx_ret_ring *, uint16_t, int);
 static int	bnx_alloc_intr(struct bnx_softc *);
 static int	bnx_setup_intr(struct bnx_softc *);
 static void	bnx_free_intr(struct bnx_softc *);
+static void	bnx_teardown_intr(struct bnx_softc *, int);
+static void	bnx_check_intr(void *);
 
 static void	bnx_start(struct ifnet *, struct ifaltq_subque *);
 static int	bnx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -1685,8 +1687,8 @@ bnx_attach(device_t dev)
 	sc = device_get_softc(dev);
 	sc->bnx_dev = dev;
 	callout_init_mp(&sc->bnx_stat_timer);
-	callout_init_mp(&sc->bnx_intr_timer);
 	lwkt_serialize_init(&sc->bnx_jslot_serializer);
+	lwkt_serialize_init(&sc->bnx_main_serialize);
 
 	product = pci_get_device(dev);
 
@@ -1808,7 +1810,7 @@ bnx_attach(device_t dev)
 		 * For the rest of the chips in these two families, we will
 		 * have to poll the status block at high rate (10ms currently)
 		 * to check whether the interrupt is hosed or not.
-		 * See bnx_intr_check() for details.
+		 * See bnx_check_intr() for details.
 		 */
 		sc->bnx_flags |= BNX_FLAG_STATUSTAG_BUG;
 	}
@@ -2101,9 +2103,9 @@ bnx_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ether_addr, NULL);
+	ether_ifattach(ifp, ether_addr, &sc->bnx_main_serialize);
 
-	ifq_set_cpuid(&ifp->if_snd, sc->bnx_intr_cpuid);
+	ifq_set_cpuid(&ifp->if_snd, sc->bnx_tx_ring[0].bnx_tx_cpuid);
 
 #ifdef IFPOLL_ENABLE
 	ifpoll_compat_setup(&sc->bnx_npoll,
@@ -2117,8 +2119,7 @@ bnx_attach(device_t dev)
 		goto fail;
 	}
 
-	sc->bnx_intr_cpuid = rman_get_cpuid(sc->bnx_irq);
-	sc->bnx_stat_cpuid = sc->bnx_intr_cpuid;
+	sc->bnx_stat_cpuid = sc->bnx_intr_data[0].bnx_intr_cpuid;
 
 	return(0);
 fail:
@@ -2137,7 +2138,7 @@ bnx_detach(device_t dev)
 		lwkt_serialize_enter(ifp->if_serializer);
 		bnx_stop(sc);
 		bnx_reset(sc);
-		bus_teardown_intr(dev, sc->bnx_irq, sc->bnx_intrhand);
+		bnx_teardown_intr(sc, sc->bnx_intr_cnt);
 		lwkt_serialize_exit(ifp->if_serializer);
 
 		ether_ifdetach(ifp);
@@ -2526,7 +2527,7 @@ bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 	} else {
 		if (ifp->if_flags & IFF_RUNNING)
 			bnx_enable_intr(sc);
-		ifq_set_cpuid(&ifp->if_snd, sc->bnx_intr_cpuid);
+		ifq_set_cpuid(&ifp->if_snd, sc->bnx_tx_ring[0].bnx_tx_cpuid);
 	}
 }
 
@@ -3000,7 +3001,7 @@ bnx_init(void *xsc)
 	else
 		CSR_WRITE_4(sc, BGE_MAX_RX_FRAME_LOWAT, 2);
 
-	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI) {
+	if (sc->bnx_intr_type == PCI_INTR_TYPE_MSI) {
 		if (bootverbose) {
 			if_printf(ifp, "MSI_MODE: %#x\n",
 			    CSR_READ_4(sc, BGE_MSI_MODE));
@@ -3869,51 +3870,59 @@ bnx_coal_change(struct bnx_softc *sc)
 }
 
 static void
-bnx_intr_check(void *xsc)
+bnx_check_intr(void *xintr)
 {
-	struct bnx_softc *sc = xsc;
-	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
-	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0]; /* XXX */
-	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct bnx_intr_data *intr = xintr;
+	struct bnx_rx_ret_ring *ret;
+	struct bnx_tx_ring *txr;
+	struct ifnet *ifp;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	lwkt_serialize_enter(intr->bnx_intr_serialize);
 
-	KKASSERT(mycpuid == sc->bnx_intr_cpuid);
+	KKASSERT(mycpuid == intr->bnx_intr_cpuid);
 
+	ifp = &intr->bnx_sc->arpcom.ac_if;
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) != IFF_RUNNING) {
-		lwkt_serialize_exit(ifp->if_serializer);
+		lwkt_serialize_exit(intr->bnx_intr_serialize);
 		return;
 	}
 
+	txr = intr->bnx_txr;
+	ret = intr->bnx_ret;
+
 	if (*ret->bnx_rx_considx != ret->bnx_rx_saved_considx ||
 	    *txr->bnx_tx_considx != txr->bnx_tx_saved_considx) {
-		if (sc->bnx_rx_check_considx == ret->bnx_rx_saved_considx &&
-		    sc->bnx_tx_check_considx == txr->bnx_tx_saved_considx) {
-			if (!sc->bnx_intr_maylose) {
-				sc->bnx_intr_maylose = TRUE;
+		if (intr->bnx_rx_check_considx == ret->bnx_rx_saved_considx &&
+		    intr->bnx_tx_check_considx == txr->bnx_tx_saved_considx) {
+			if (!intr->bnx_intr_maylose) {
+				intr->bnx_intr_maylose = TRUE;
 				goto done;
 			}
 			if (bootverbose)
 				if_printf(ifp, "lost interrupt\n");
-			bnx_msi(sc);
+			intr->bnx_intr_func(intr->bnx_intr_arg);
 		}
 	}
-	sc->bnx_intr_maylose = FALSE;
-	sc->bnx_rx_check_considx = ret->bnx_rx_saved_considx;
-	sc->bnx_tx_check_considx = txr->bnx_tx_saved_considx;
+	intr->bnx_intr_maylose = FALSE;
+	intr->bnx_rx_check_considx = ret->bnx_rx_saved_considx;
+	intr->bnx_tx_check_considx = txr->bnx_tx_saved_considx;
 
 done:
-	callout_reset(&sc->bnx_intr_timer, BNX_INTR_CKINTVL,
-	    bnx_intr_check, sc);
-	lwkt_serialize_exit(ifp->if_serializer);
+	callout_reset(&intr->bnx_intr_timer, BNX_INTR_CKINTVL,
+	    intr->bnx_intr_check, intr);
+	lwkt_serialize_exit(intr->bnx_intr_serialize);
 }
 
 static void
 bnx_enable_intr(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
-	lwkt_serialize_handler_enable(ifp->if_serializer);
+	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
+		lwkt_serialize_handler_enable(
+		    sc->bnx_intr_data[i].bnx_intr_serialize);
+	}
 
 	/*
 	 * Enable interrupt.
@@ -3938,23 +3947,35 @@ bnx_enable_intr(struct bnx_softc *sc)
 	BNX_SETBIT(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_SET);
 
 	if (sc->bnx_flags & BNX_FLAG_STATUSTAG_BUG) {
-		sc->bnx_intr_maylose = FALSE;
-		sc->bnx_rx_check_considx = 0;
-		sc->bnx_tx_check_considx = 0;
-
 		if (bootverbose)
 			if_printf(ifp, "status tag bug workaround\n");
 
-		/* 10ms check interval */
-		callout_reset_bycpu(&sc->bnx_intr_timer, BNX_INTR_CKINTVL,
-		    bnx_intr_check, sc, sc->bnx_intr_cpuid);
+		for (i = 0; i < sc->bnx_intr_cnt; ++i) {
+			struct bnx_intr_data *intr = &sc->bnx_intr_data[i];
+
+			intr->bnx_intr_maylose = FALSE;
+			intr->bnx_rx_check_considx = 0;
+			intr->bnx_tx_check_considx = 0;
+			callout_reset_bycpu(&intr->bnx_intr_timer,
+			    BNX_INTR_CKINTVL, intr->bnx_intr_check, intr,
+			    intr->bnx_intr_cpuid);
+		}
 	}
 }
 
 static void
 bnx_disable_intr(struct bnx_softc *sc)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
+
+	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
+		struct bnx_intr_data *intr = &sc->bnx_intr_data[i];
+
+		callout_stop(&intr->bnx_intr_timer);
+		intr->bnx_intr_maylose = FALSE;
+		intr->bnx_rx_check_considx = 0;
+		intr->bnx_tx_check_considx = 0;
+	}
 
 	/*
 	 * Mask the interrupt when we start polling.
@@ -3967,14 +3988,11 @@ bnx_disable_intr(struct bnx_softc *sc)
 	 */
 	bnx_writembx(sc, BGE_MBX_IRQ0_LO, 1);
 
-	callout_stop(&sc->bnx_intr_timer);
-	sc->bnx_intr_maylose = FALSE;
-	sc->bnx_rx_check_considx = 0;
-	sc->bnx_tx_check_considx = 0;
-
 	sc->bnx_npoll.ifpc_stcount = 0;
-
-	lwkt_serialize_handler_disable(ifp->if_serializer);
+	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
+		lwkt_serialize_handler_disable(
+		    sc->bnx_intr_data[i].bnx_intr_serialize);
+	}
 }
 
 static int
@@ -4380,58 +4398,98 @@ bnx_destroy_rx_ret_ring(struct bnx_rx_ret_ring *ret)
 static int
 bnx_alloc_intr(struct bnx_softc *sc)
 {
+	struct bnx_intr_data *intr;
 	u_int intr_flags;
 
-	sc->bnx_irq_type = pci_alloc_1intr(sc->bnx_dev, bnx_msi_enable,
-	    &sc->bnx_irq_rid, &intr_flags);
+	sc->bnx_intr_cnt = 1;
 
-	sc->bnx_irq = bus_alloc_resource_any(sc->bnx_dev, SYS_RES_IRQ,
-	    &sc->bnx_irq_rid, intr_flags);
-	if (sc->bnx_irq == NULL) {
+	intr = &sc->bnx_intr_data[0];
+	intr->bnx_sc = sc;
+	intr->bnx_ret = &sc->bnx_rx_ret_ring[0];
+	intr->bnx_txr = &sc->bnx_tx_ring[0];
+	intr->bnx_intr_serialize = &sc->bnx_main_serialize;
+	callout_init_mp(&intr->bnx_intr_timer);
+	intr->bnx_intr_check = bnx_check_intr;
+
+	sc->bnx_intr_type = pci_alloc_1intr(sc->bnx_dev, bnx_msi_enable,
+	    &intr->bnx_intr_rid, &intr_flags);
+
+	intr->bnx_intr_res = bus_alloc_resource_any(sc->bnx_dev, SYS_RES_IRQ,
+	    &intr->bnx_intr_rid, intr_flags);
+	if (intr->bnx_intr_res == NULL) {
 		device_printf(sc->bnx_dev, "could not alloc interrupt\n");
 		return ENXIO;
 	}
 
-	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI) {
+	if (sc->bnx_intr_type == PCI_INTR_TYPE_MSI) {
 		sc->bnx_flags |= BNX_FLAG_ONESHOT_MSI;
 		bnx_enable_msi(sc);
+
+		if (sc->bnx_flags & BNX_FLAG_ONESHOT_MSI) {
+			intr->bnx_intr_func = bnx_msi_oneshot;
+			if (bootverbose)
+				device_printf(sc->bnx_dev, "oneshot MSI\n");
+		} else {
+			intr->bnx_intr_func = bnx_msi;
+		}
+	} else {
+		intr->bnx_intr_func = bnx_intr_legacy;
 	}
+	intr->bnx_intr_arg = sc;
+	intr->bnx_intr_cpuid = rman_get_cpuid(intr->bnx_intr_res);
+
+	intr->bnx_txr->bnx_tx_cpuid = intr->bnx_intr_cpuid;
+
 	return 0;
 }
 
 static int
 bnx_setup_intr(struct bnx_softc *sc)
 {
-	driver_intr_t *intr_func;
-	int error;
+	int error, i;
 
-	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI) {
-		if (sc->bnx_flags & BNX_FLAG_ONESHOT_MSI) {
-			intr_func = bnx_msi_oneshot;
-			if (bootverbose)
-				device_printf(sc->bnx_dev, "oneshot MSI\n");
-		} else {
-			intr_func = bnx_msi;
+	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
+		struct bnx_intr_data *intr = &sc->bnx_intr_data[i];
+
+		error = bus_setup_intr_descr(sc->bnx_dev, intr->bnx_intr_res,
+		    INTR_MPSAFE, intr->bnx_intr_func, intr->bnx_intr_arg,
+		    &intr->bnx_intr_hand, intr->bnx_intr_serialize,
+		    intr->bnx_intr_desc);
+		if (error) {
+			device_printf(sc->bnx_dev,
+			    "could not set up %dth intr\n", i);
+			bnx_teardown_intr(sc, i);
+			return error;
 		}
-	} else {
-		intr_func = bnx_intr_legacy;
-	}
-	error = bus_setup_intr(sc->bnx_dev, sc->bnx_irq, INTR_MPSAFE,
-	    intr_func, sc, &sc->bnx_intrhand, sc->arpcom.ac_if.if_serializer);
-	if (error) {
-		device_printf(sc->bnx_dev, "could not set up irq\n");
-		return error;
 	}
 	return 0;
 }
 
 static void
+bnx_teardown_intr(struct bnx_softc *sc, int cnt)
+{
+	int i;
+
+	for (i = 0; i < cnt; ++i) {
+		struct bnx_intr_data *intr = &sc->bnx_intr_data[i];
+
+		bus_teardown_intr(sc->bnx_dev, intr->bnx_intr_res,
+		    intr->bnx_intr_hand);
+	}
+}
+
+static void
 bnx_free_intr(struct bnx_softc *sc)
 {
-	if (sc->bnx_irq != NULL) {
+	struct bnx_intr_data *intr;
+
+	KKASSERT(sc->bnx_intr_cnt <= 1);
+	intr = &sc->bnx_intr_data[0];
+
+	if (intr->bnx_intr_res != NULL) {
 		bus_release_resource(sc->bnx_dev, SYS_RES_IRQ,
-		    sc->bnx_irq_rid, sc->bnx_irq);
+		    intr->bnx_intr_rid, intr->bnx_intr_res);
 	}
-	if (sc->bnx_irq_type == PCI_INTR_TYPE_MSI)
+	if (sc->bnx_intr_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(sc->bnx_dev);
 }
