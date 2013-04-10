@@ -2557,8 +2557,8 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
 	 */
 	cpu_lfence();
 
-	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
-	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
+	rx_prod = *ret->bnx_rx_considx;
+	tx_cons = *txr->bnx_tx_considx;
 
 	if (ret->bnx_rx_saved_considx != rx_prod)
 		bnx_rxeof(ret, rx_prod, cycle);
@@ -2615,7 +2615,6 @@ bnx_intr(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
-	uint16_t rx_prod, tx_cons;
 	uint32_t status;
 
 	sc->bnx_status_tag = sblk->bge_status_tag;
@@ -2625,8 +2624,6 @@ bnx_intr(struct bnx_softc *sc)
 	 */
 	cpu_lfence();
 
-	rx_prod = sblk->bge_idx[0].bge_rx_prod_idx;
-	tx_cons = sblk->bge_idx[0].bge_tx_cons_idx;
 	status = sblk->bge_status;
 
 	if ((status & BGE_STATFLAG_LINKSTATE_CHANGED) || sc->bnx_link_evt)
@@ -2635,6 +2632,10 @@ bnx_intr(struct bnx_softc *sc)
 	if (ifp->if_flags & IFF_RUNNING) {
 		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
 		struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0]; /* XXX */
+		uint16_t rx_prod, tx_cons;
+
+		rx_prod = *ret->bnx_rx_considx;
+		tx_cons = *txr->bnx_tx_considx;
 
 		if (ret->bnx_rx_saved_considx != rx_prod)
 			bnx_rxeof(ret, rx_prod, -1);
@@ -3499,6 +3500,11 @@ bnx_dma_alloc(device_t dev)
 
 		ret->bnx_sc = sc;
 		ret->bnx_std = std;
+
+		/* XXX */
+		ret->bnx_rx_considx =
+		&sc->bnx_ldata.bnx_status_block->bge_idx[0].bge_rx_prod_idx;
+
 		error = bnx_create_rx_ret_ring(ret);
 		if (error) {
 			device_printf(dev,
@@ -3524,6 +3530,10 @@ bnx_dma_alloc(device_t dev)
 			mbx -= 0x4;
 		else
 			mbx += 0xc;
+
+		/* XXX */
+		txr->bnx_tx_considx =
+		&sc->bnx_ldata.bnx_status_block->bge_idx[0].bge_tx_cons_idx;
 
 		error = bnx_create_tx_ring(txr);
 		if (error) {
@@ -3865,7 +3875,6 @@ bnx_intr_check(void *xsc)
 	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
 	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0]; /* XXX */
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
@@ -3876,8 +3885,8 @@ bnx_intr_check(void *xsc)
 		return;
 	}
 
-	if (sblk->bge_idx[0].bge_rx_prod_idx != ret->bnx_rx_saved_considx ||
-	    sblk->bge_idx[0].bge_tx_cons_idx != txr->bnx_tx_saved_considx) {
+	if (*ret->bnx_rx_considx != ret->bnx_rx_saved_considx ||
+	    *txr->bnx_tx_considx != txr->bnx_tx_saved_considx) {
 		if (sc->bnx_rx_check_considx == ret->bnx_rx_saved_considx &&
 		    sc->bnx_tx_check_considx == txr->bnx_tx_saved_considx) {
 			if (!sc->bnx_intr_maylose) {

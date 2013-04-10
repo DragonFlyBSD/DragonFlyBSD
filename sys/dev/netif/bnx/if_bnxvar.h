@@ -171,6 +171,7 @@ struct bnx_rx_ret_ring {
 	/* Shadow of bnx_rx_std_ring's bnx_rx_mtag */
 	bus_dma_tag_t		bnx_rx_mtag;
 
+	volatile uint16_t	*bnx_rx_considx;
 	uint16_t		bnx_rx_saved_considx;
 	struct bge_rx_bd	*bnx_rx_ret_ring;
 	bus_dmamap_t		bnx_rx_tmpmap;
@@ -205,6 +206,7 @@ struct bnx_tx_buf {
 
 struct bnx_tx_ring {
 	struct bnx_softc	*bnx_sc;
+	volatile uint16_t	*bnx_tx_considx;
 	uint16_t		bnx_tx_flags;
 #define BNX_TX_FLAG_SHORTDMA		0x0001
 #define BNX_TX_FLAG_FORCE_DEFRAG	0x0002
