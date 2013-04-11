@@ -209,6 +209,7 @@ struct bnx_tx_buf {
 struct bnx_tx_ring {
 	struct lwkt_serialize	bnx_tx_serialize;
 	struct bnx_softc	*bnx_sc;
+	struct ifaltq_subque	*bnx_ifsq;
 	volatile uint16_t	*bnx_tx_considx;
 	uint16_t		bnx_tx_flags;
 #define BNX_TX_FLAG_SHORTDMA		0x0001
@@ -218,6 +219,7 @@ struct bnx_tx_ring {
 	uint32_t		bnx_tx_prodidx;
 	int			bnx_tx_wreg;
 	int			bnx_tx_mbx;
+	struct ifsubq_watchdog	bnx_tx_watchdog;
 
 	struct bge_tx_bd	*bnx_tx_ring;
 

@@ -170,7 +170,7 @@ static void	bnx_start(struct ifnet *, struct ifaltq_subque *);
 static int	bnx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bnx_init(void *);
 static void	bnx_stop(struct bnx_softc *);
-static void	bnx_watchdog(struct ifnet *);
+static void	bnx_watchdog(struct ifaltq_subque *);
 static int	bnx_ifmedia_upd(struct ifnet *);
 static void	bnx_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static void	bnx_tick(void *);
@@ -1903,7 +1903,6 @@ bnx_attach(device_t dev)
 #ifdef IFPOLL_ENABLE
 	ifp->if_npoll = bnx_npoll;
 #endif
-	ifp->if_watchdog = bnx_watchdog;
 	ifp->if_init = bnx_init;
 	ifp->if_serialize = bnx_serialize;
 	ifp->if_deserialize = bnx_deserialize;
@@ -2130,12 +2129,10 @@ bnx_attach(device_t dev)
 
 		ifsq_set_cpuid(ifsq, txr->bnx_tx_cpuid);
 		ifsq_set_hw_serialize(ifsq, &txr->bnx_tx_serialize);
-#ifdef notyet
 		ifsq_set_priv(ifsq, txr);
-		txr->ifsq = ifsq;
+		txr->bnx_ifsq = ifsq;
 
-		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, bce_watchdog);
-#endif
+		ifsq_watchdog_init(&txr->bnx_tx_watchdog, ifsq, bnx_watchdog);
 	}
 
 #ifdef IFPOLL_ENABLE
@@ -2530,13 +2527,13 @@ bnx_txeof(struct bnx_tx_ring *txr, uint16_t tx_cons)
 
 	if ((BGE_TX_RING_CNT - txr->bnx_tx_cnt) >=
 	    (BNX_NSEG_RSVD + BNX_NSEG_SPARE))
-		ifq_clr_oactive(&ifp->if_snd);
+		ifsq_clr_oactive(txr->bnx_ifsq);
 
 	if (txr->bnx_tx_cnt == 0)
-		ifp->if_timer = 0;
+		txr->bnx_tx_watchdog.wd_timer = 0;
 
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
+	if (!ifsq_is_empty(txr->bnx_ifsq))
+		ifsq_devstart(txr->bnx_ifsq);
 }
 
 #ifdef IFPOLL_ENABLE
@@ -2889,16 +2886,15 @@ back:
 static void
 bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
-	struct bnx_softc *sc = ifp->if_softc;
-	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
+	struct bnx_tx_ring *txr = ifsq_get_priv(ifsq);
 	struct mbuf *m_head = NULL;
 	uint32_t prodidx;
 	int nsegs = 0;
 
-	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+	KKASSERT(txr->bnx_ifsq == ifsq);
 	ASSERT_SERIALIZED(&txr->bnx_tx_serialize);
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifsq_is_oactive(ifsq))
 		return;
 
 	prodidx = txr->bnx_tx_prodidx;
@@ -2912,11 +2908,11 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 */
 		if ((BGE_TX_RING_CNT - txr->bnx_tx_cnt) <
 		    (BNX_NSEG_RSVD + BNX_NSEG_SPARE)) {
-			ifq_set_oactive(&ifp->if_snd);
+			ifsq_set_oactive(ifsq);
 			break;
 		}
 
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifsq_dequeue(ifsq, NULL);
 		if (m_head == NULL)
 			break;
 
@@ -2926,7 +2922,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 * for the NIC to drain the ring.
 		 */
 		if (bnx_encap(txr, &m_head, &prodidx, &nsegs)) {
-			ifq_set_oactive(&ifp->if_snd);
+			ifsq_set_oactive(ifsq);
 			IFNET_STAT_INC(ifp, oerrors, 1);
 			break;
 		}
@@ -2942,7 +2938,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		/*
 		 * Set a timeout in case the chip goes out to lunch.
 		 */
-		ifp->if_timer = 5;
+		txr->bnx_tx_watchdog.wd_timer = 5;
 	}
 
 	if (nsegs > 0) {
@@ -3065,7 +3061,12 @@ bnx_init(void *xsc)
 	bnx_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
+		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
+
+		ifsq_clr_oactive(txr->bnx_ifsq);
+		ifsq_watchdog_start(&txr->bnx_tx_watchdog);
+	}
 
 	callout_reset_bycpu(&sc->bnx_stat_timer, hz, bnx_tick, sc,
 	    sc->bnx_stat_cpuid);
@@ -3256,9 +3257,13 @@ bnx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 }
 
 static void
-bnx_watchdog(struct ifnet *ifp)
+bnx_watchdog(struct ifaltq_subque *ifsq)
 {
+	struct ifnet *ifp = ifsq_get_ifp(ifsq);
 	struct bnx_softc *sc = ifp->if_softc;
+	int i;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if_printf(ifp, "watchdog timeout -- resetting\n");
 
@@ -3266,8 +3271,8 @@ bnx_watchdog(struct ifnet *ifp)
 
 	IFNET_STAT_INC(ifp, oerrors, 1);
 
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart_sched(ifp);
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
+		ifsq_devstart_sched(sc->bnx_tx_ring[i].bnx_ifsq);
 }
 
 /*
@@ -3337,8 +3342,12 @@ bnx_stop(struct bnx_softc *sc)
 	sc->bnx_coal_chg = 0;
 
 	ifp->if_flags &= ~IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
-	ifp->if_timer = 0;
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
+		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
+
+		ifsq_clr_oactive(txr->bnx_ifsq);
+		ifsq_watchdog_stop(&txr->bnx_tx_watchdog);
+	}
 }
 
 /*
@@ -3379,10 +3388,11 @@ bnx_resume(device_t dev)
 	ifnet_serialize_all(ifp);
 
 	if (ifp->if_flags & IFF_UP) {
-		bnx_init(sc);
+		int i;
 
-		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart_sched(ifp);
+		bnx_init(sc);
+		for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
+			ifsq_devstart_sched(sc->bnx_tx_ring[i].bnx_ifsq);
 	}
 
 	ifnet_deserialize_all(ifp);
