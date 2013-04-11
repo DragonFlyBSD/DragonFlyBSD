@@ -54,12 +54,12 @@ static const char sccsid[] = "@(#)touch.c	8.1 (Berkeley) 6/6/93";
 #include <time.h>
 #include <unistd.h>
 
-void	stime_arg1(char *, struct timeval *);
-void	stime_arg2(char *, int, struct timeval *);
-void	stime_darg(char *, struct timeval *);
-void	stime_file(char *, struct timeval *);
-int	timeoffset(char *);
-void	usage(char *);
+static void	stime_arg1(const char *, struct timeval *);
+static void	stime_arg2(const char *, int, struct timeval *);
+static void	stime_darg(const char *, struct timeval *);
+static void	stime_file(const char *, struct timeval *);
+static int	timeoffset(const char *);
+static void	usage(char *);
 
 int
 main(int argc, char *argv[])
@@ -76,7 +76,7 @@ main(int argc, char *argv[])
 	Aflag = aflag = cflag = mflag = timeset = 0;
 	stat_f = stat;
 	utimes_f = utimes;
-	if (gettimeofday(&tv[0], NULL))
+	if (gettimeofday(&tv[0], NULL) == -1)
 		err(1, "gettimeofday");
 
 	while ((ch = getopt(argc, argv, "A:acd:fhmr:t:")) != -1)
@@ -113,7 +113,6 @@ main(int argc, char *argv[])
 			timeset = 1;
 			stime_arg1(optarg, tv);
 			break;
-		case '?':
 		default:
 			usage(myname);
 		}
@@ -233,8 +232,8 @@ main(int argc, char *argv[])
 
 #define	ATOI2(ar)	((ar)[0] - '0') * 10 + ((ar)[1] - '0'); (ar) += 2;
 
-void
-stime_arg1(char *arg, struct timeval *tvp)
+static void
+stime_arg1(const char *arg, struct timeval *tvp)
 {
 	time_t now;
 	struct tm *t;
@@ -245,9 +244,9 @@ stime_arg1(char *arg, struct timeval *tvp)
 	if ((t = localtime(&now)) == NULL)
 		err(1, "localtime");
 					/* [[CC]YY]MMDDhhmm[.SS] */
-	if ((p = strchr(arg, '.')) == NULL)
+	if ((p = strchr(arg, '.')) == NULL) {
 		t->tm_sec = 0;		/* Seconds defaults to 0. */
-	else {
+	} else {
 		if (strlen(p + 1) != 2)
 			goto terr;
 		*p++ = '\0';
@@ -288,14 +287,17 @@ stime_arg1(char *arg, struct timeval *tvp)
 	t->tm_isdst = -1;		/* Figure out DST. */
 	tvp[0].tv_sec = tvp[1].tv_sec = mktime(t);
 	if (tvp[0].tv_sec == -1)
-terr:		errx(1,
-	"out of range or illegal time specification: [[CC]YY]MMDDhhmm[.SS]");
+		goto terr;
 
 	tvp[0].tv_usec = tvp[1].tv_usec = 0;
+	return;
+
+terr:
+	errx(1, "out of range or illegal time specification: [[CC]YY]MMDDhhmm[.SS]");
 }
 
-void
-stime_arg2(char *arg, int year, struct timeval *tvp)
+static void
+stime_arg2(const char *arg, int year, struct timeval *tvp)
 {
 	time_t now;
 	struct tm *t;
@@ -324,8 +326,8 @@ stime_arg2(char *arg, int year, struct timeval *tvp)
 	tvp[0].tv_usec = tvp[1].tv_usec = 0;
 }
 
-void
-stime_darg(char *arg, struct timeval *tvp)
+static void
+stime_darg(const char *arg, struct timeval *tvp)
 {
 	struct tm t = { .tm_sec = 0 };
 	const char *fmt, *colon;
@@ -370,7 +372,7 @@ bad:
 
 /* Calculate a time offset in seconds, given an arg of the format [-]HHMMSS. */
 int
-timeoffset(char *arg)
+timeoffset(const char *arg)
 {
 	int offset;
 	int isneg;
@@ -398,8 +400,8 @@ timeoffset(char *arg)
 		return (offset);
 }
 
-void
-stime_file(char *fname, struct timeval *tvp)
+static void
+stime_file(const char *fname, struct timeval *tvp)
 {
 	struct stat sb;
 
@@ -409,7 +411,7 @@ stime_file(char *fname, struct timeval *tvp)
 	TIMESPEC_TO_TIMEVAL(tvp + 1, &sb.st_mtim);
 }
 
-void
+static void
 usage(char *myname)
 {
 	fprintf(stderr, "usage: %s [-A [-][[hh]mm]SS] [-achm] [-r file] "
