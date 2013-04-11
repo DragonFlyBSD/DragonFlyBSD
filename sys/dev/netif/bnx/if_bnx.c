@@ -174,6 +174,13 @@ static void	bnx_watchdog(struct ifnet *);
 static int	bnx_ifmedia_upd(struct ifnet *);
 static void	bnx_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static void	bnx_tick(void *);
+static void	bnx_serialize(struct ifnet *, enum ifnet_serialize);
+static void	bnx_deserialize(struct ifnet *, enum ifnet_serialize);
+static int	bnx_tryserialize(struct ifnet *, enum ifnet_serialize);
+#ifdef INVARIANTS
+static void	bnx_serialize_assert(struct ifnet *, enum ifnet_serialize,
+		    boolean_t);
+#endif
 
 static int	bnx_alloc_jumbo_mem(struct bnx_softc *);
 static void	bnx_free_jumbo_mem(struct bnx_softc *);
@@ -206,6 +213,7 @@ static int	bnx_encap(struct bnx_tx_ring *, struct mbuf **,
 		    uint32_t *, int *);
 static int	bnx_setup_tso(struct bnx_tx_ring *, struct mbuf **,
 		    uint16_t *, uint16_t *);
+static void	bnx_setup_serialize(struct bnx_softc *);
 
 static void	bnx_reset(struct bnx_softc *);
 static int	bnx_chipinit(struct bnx_softc *);
@@ -1675,13 +1683,12 @@ bnx_attach(device_t dev)
 	struct ifnet *ifp;
 	struct bnx_softc *sc;
 	uint32_t hwcfg = 0;
-	int error = 0, rid, capmask;
+	int error = 0, rid, capmask, i;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
 	uint16_t product;
 	uintptr_t mii_priv = 0;
 #ifdef BNX_TSO_DEBUG
 	char desc[32];
-	int i;
 #endif
 
 	sc = device_get_softc(dev);
@@ -1877,6 +1884,9 @@ bnx_attach(device_t dev)
 	if (error)
 		goto fail;
 
+	/* Setup serializers */
+	bnx_setup_serialize(sc);
+
 	/* Set default tuneable values. */
 	sc->bnx_rx_coal_ticks = BNX_RX_COAL_TICKS_DEF;
 	sc->bnx_tx_coal_ticks = BNX_TX_COAL_TICKS_DEF;
@@ -1895,10 +1905,14 @@ bnx_attach(device_t dev)
 #endif
 	ifp->if_watchdog = bnx_watchdog;
 	ifp->if_init = bnx_init;
+	ifp->if_serialize = bnx_serialize;
+	ifp->if_deserialize = bnx_deserialize;
+	ifp->if_tryserialize = bnx_tryserialize;
+#ifdef INVARIANTS
+	ifp->if_serialize_assert = bnx_serialize_assert;
+#endif
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_capabilities = IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
-	ifq_set_maxlen(&ifp->if_snd, BGE_TX_RING_CNT - 1);
-	ifq_set_ready(&ifp->if_snd);
 
 	ifp->if_capabilities |= IFCAP_HWCSUM;
 	ifp->if_hwassist = BNX_CSUM_FEATURES;
@@ -1907,6 +1921,10 @@ bnx_attach(device_t dev)
 		ifp->if_hwassist |= CSUM_TSO;
 	}
 	ifp->if_capenable = ifp->if_capabilities;
+
+	ifq_set_maxlen(&ifp->if_snd, BGE_TX_RING_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
+	ifq_set_subq_cnt(&ifp->if_snd, sc->bnx_tx_ringcnt);
 
 	/*
 	 * Figure out what sort of media we have by checking the
@@ -2103,14 +2121,27 @@ bnx_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ether_addr, &sc->bnx_main_serialize);
+	ether_ifattach(ifp, ether_addr, NULL);
 
-	ifq_set_cpuid(&ifp->if_snd, sc->bnx_tx_ring[0].bnx_tx_cpuid);
+	/* Setup TX rings and subqueues */
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
+		struct ifaltq_subque *ifsq = ifq_get_subq(&ifp->if_snd, i);
+		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
+
+		ifsq_set_cpuid(ifsq, txr->bnx_tx_cpuid);
+		ifsq_set_hw_serialize(ifsq, &txr->bnx_tx_serialize);
+#ifdef notyet
+		ifsq_set_priv(ifsq, txr);
+		txr->ifsq = ifsq;
+
+		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, bce_watchdog);
+#endif
+	}
 
 #ifdef IFPOLL_ENABLE
 	ifpoll_compat_setup(&sc->bnx_npoll,
 	    &sc->bnx_sysctl_ctx, sc->bnx_sysctl_tree,
-	    device_get_unit(dev), ifp->if_serializer);
+	    device_get_unit(dev), &sc->bnx_main_serialize);
 #endif
 
 	error = bnx_setup_intr(sc);
@@ -2135,11 +2166,11 @@ bnx_detach(device_t dev)
 	if (device_is_attached(dev)) {
 		struct ifnet *ifp = &sc->arpcom.ac_if;
 
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		bnx_stop(sc);
 		bnx_reset(sc);
 		bnx_teardown_intr(sc, sc->bnx_intr_cnt);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 
 		ether_ifdetach(ifp);
 	}
@@ -2161,6 +2192,9 @@ bnx_detach(device_t dev)
 		sysctl_ctx_free(&sc->bnx_sysctl_ctx);
 
 	bnx_dma_free(sc);
+
+	if (sc->bnx_serialize != NULL)
+		kfree(sc->bnx_serialize, M_DEVBUF);
 
 	return 0;
 }
@@ -2512,14 +2546,14 @@ bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 {
 	struct bnx_softc *sc = ifp->if_softc;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (info != NULL) {
 		int cpuid = sc->bnx_npoll.ifpc_cpuid;
 
 		info->ifpi_rx[cpuid].poll_func = bnx_npoll_compat;
 		info->ifpi_rx[cpuid].arg = NULL;
-		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
+		info->ifpi_rx[cpuid].serializer = &sc->bnx_main_serialize;
 
 		if (ifp->if_flags & IFF_RUNNING)
 			bnx_disable_intr(sc);
@@ -2540,7 +2574,7 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
 	uint16_t rx_prod, tx_cons;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->bnx_main_serialize);
 
 	if (sc->bnx_npoll.ifpc_stcount-- == 0) {
 		sc->bnx_npoll.ifpc_stcount = sc->bnx_npoll.ifpc_stfrac;
@@ -2558,14 +2592,17 @@ bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
 	 */
 	cpu_lfence();
 
+	lwkt_serialize_enter(&ret->bnx_rx_ret_serialize);
 	rx_prod = *ret->bnx_rx_considx;
-	tx_cons = *txr->bnx_tx_considx;
-
 	if (ret->bnx_rx_saved_considx != rx_prod)
 		bnx_rxeof(ret, rx_prod, cycle);
+	lwkt_serialize_exit(&ret->bnx_rx_ret_serialize);
 
+	lwkt_serialize_enter(&txr->bnx_tx_serialize);
+	tx_cons = *txr->bnx_tx_considx;
 	if (txr->bnx_tx_saved_considx != tx_cons)
 		bnx_txeof(txr, tx_cons);
+	lwkt_serialize_exit(&txr->bnx_tx_serialize);
 }
 
 #endif	/* IFPOLL_ENABLE */
@@ -2618,6 +2655,8 @@ bnx_intr(struct bnx_softc *sc)
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
 	uint32_t status;
 
+	ASSERT_SERIALIZED(&sc->bnx_main_serialize);
+
 	sc->bnx_status_tag = sblk->bge_status_tag;
 	/*
 	 * Use a load fence to ensure that status_tag is saved 
@@ -2635,14 +2674,17 @@ bnx_intr(struct bnx_softc *sc)
 		struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0]; /* XXX */
 		uint16_t rx_prod, tx_cons;
 
+		lwkt_serialize_enter(&ret->bnx_rx_ret_serialize);
 		rx_prod = *ret->bnx_rx_considx;
-		tx_cons = *txr->bnx_tx_considx;
-
 		if (ret->bnx_rx_saved_considx != rx_prod)
 			bnx_rxeof(ret, rx_prod, -1);
+		lwkt_serialize_exit(&ret->bnx_rx_ret_serialize);
 
+		lwkt_serialize_enter(&txr->bnx_tx_serialize);
+		tx_cons = *txr->bnx_tx_considx;
 		if (txr->bnx_tx_saved_considx != tx_cons)
 			bnx_txeof(txr, tx_cons);
+		lwkt_serialize_exit(&txr->bnx_tx_serialize);
 	}
 
 	bnx_writembx(sc, BGE_MBX_IRQ0_LO, sc->bnx_status_tag << 24);
@@ -2652,9 +2694,8 @@ static void
 bnx_tick(void *xsc)
 {
 	struct bnx_softc *sc = xsc;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	lwkt_serialize_enter(&sc->bnx_main_serialize);
 
 	KKASSERT(mycpuid == sc->bnx_stat_cpuid);
 
@@ -2674,7 +2715,7 @@ bnx_tick(void *xsc)
 
 	callout_reset(&sc->bnx_stat_timer, hz, bnx_tick, sc);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	lwkt_serialize_exit(&sc->bnx_main_serialize);
 }
 
 static void
@@ -2855,6 +2896,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	int nsegs = 0;
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+	ASSERT_SERIALIZED(&txr->bnx_tx_serialize);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifq_is_oactive(&ifp->if_snd))
 		return;
@@ -2919,7 +2961,7 @@ bnx_init(void *xsc)
 	uint32_t mode;
 	int i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/* Cancel pending I/O and flush buffers. */
 	bnx_stop(sc);
@@ -3131,7 +3173,7 @@ bnx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	int mask, error = 0;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	switch (command) {
 	case SIOCSIFMTU:
@@ -3225,7 +3267,7 @@ bnx_watchdog(struct ifnet *ifp)
 	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
+		if_devstart_sched(ifp);
 }
 
 /*
@@ -3238,7 +3280,7 @@ bnx_stop(struct bnx_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	callout_stop(&sc->bnx_stat_timer);
 
@@ -3309,10 +3351,10 @@ bnx_shutdown(device_t dev)
 	struct bnx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	bnx_stop(sc);
 	bnx_reset(sc);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 }
 
 static int
@@ -3321,9 +3363,9 @@ bnx_suspend(device_t dev)
 	struct bnx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	bnx_stop(sc);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return 0;
 }
@@ -3334,16 +3376,16 @@ bnx_resume(device_t dev)
 	struct bnx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	if (ifp->if_flags & IFF_UP) {
 		bnx_init(sc);
 
 		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+			if_devstart_sched(ifp);
 	}
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return 0;
 }
@@ -3449,6 +3491,7 @@ bnx_dma_alloc(device_t dev)
 	 * Create DMA tag and maps for RX mbufs.
 	 */
 	std->bnx_sc = sc;
+	lwkt_serialize_init(&std->bnx_rx_std_serialize);
 	error = bus_dma_tag_create(sc->bnx_cdata.bnx_parent_tag, 1, 0,
 	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 	    NULL, NULL, MCLBYTES, 1, MCLBYTES,
@@ -3767,7 +3810,7 @@ bnx_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *coal,
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error = 0, v;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	v = *coal;
 	error = sysctl_handle_int(oidp, &v, 0, req);
@@ -3783,7 +3826,7 @@ bnx_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *coal,
 		}
 	}
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	return error;
 }
 
@@ -3792,7 +3835,7 @@ bnx_coal_change(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (sc->bnx_coal_chg & BNX_RX_COAL_TICKS_CHG) {
 		CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS,
@@ -4213,6 +4256,8 @@ bnx_create_tx_ring(struct bnx_tx_ring *txr)
 	bus_size_t txmaxsz, txmaxsegsz;
 	int i, error;
 
+	lwkt_serialize_init(&txr->bnx_tx_serialize);
+
 	/*
 	 * Create DMA tag and maps for TX mbufs.
 	 */
@@ -4312,7 +4357,7 @@ bnx_sysctl_force_defrag(SYSCTL_HANDLER_ARGS)
 	if (error || req->newptr == NULL)
 		return error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
 		txr = &sc->bnx_tx_ring[i];
 		if (defrag)
@@ -4320,7 +4365,7 @@ bnx_sysctl_force_defrag(SYSCTL_HANDLER_ARGS)
 		else
 			txr->bnx_tx_flags &= ~BNX_TX_FLAG_FORCE_DEFRAG;
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return 0;
 }
@@ -4338,10 +4383,10 @@ bnx_sysctl_tx_wreg(SYSCTL_HANDLER_ARGS)
 	if (error || req->newptr == NULL)
 		return error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
 		sc->bnx_tx_ring[i].bnx_tx_wreg = tx_wreg;
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return 0;
 }
@@ -4350,6 +4395,8 @@ static int
 bnx_create_rx_ret_ring(struct bnx_rx_ret_ring *ret)
 {
 	int error;
+
+	lwkt_serialize_init(&ret->bnx_rx_ret_serialize);
 
 	/*
 	 * Create DMA stuffs for RX return ring.
@@ -4493,3 +4540,89 @@ bnx_free_intr(struct bnx_softc *sc)
 	if (sc->bnx_intr_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(sc->bnx_dev);
 }
+
+static void
+bnx_setup_serialize(struct bnx_softc *sc)
+{
+	int i, j;
+
+	/*
+	 * Allocate serializer array
+	 */
+
+	/* Main + RX STD + TX + RX RET */
+	sc->bnx_serialize_cnt = 1 + 1 + sc->bnx_tx_ringcnt + sc->bnx_rx_retcnt;
+
+	sc->bnx_serialize =
+	    kmalloc(sc->bnx_serialize_cnt * sizeof(struct lwkt_serialize *),
+	        M_DEVBUF, M_WAITOK | M_ZERO);
+
+	/*
+	 * Setup serializers
+	 *
+	 * NOTE: Order is critical
+	 */
+
+	i = 0;
+
+	KKASSERT(i < sc->bnx_serialize_cnt);
+	sc->bnx_serialize[i++] = &sc->bnx_main_serialize;
+
+	KKASSERT(i < sc->bnx_serialize_cnt);
+	sc->bnx_serialize[i++] = &sc->bnx_rx_std_ring.bnx_rx_std_serialize;
+
+	for (j = 0; j < sc->bnx_rx_retcnt; ++j) {
+		KKASSERT(i < sc->bnx_serialize_cnt);
+		sc->bnx_serialize[i++] =
+		    &sc->bnx_rx_ret_ring[j].bnx_rx_ret_serialize;
+	}
+
+	for (j = 0; j < sc->bnx_tx_ringcnt; ++j) {
+		KKASSERT(i < sc->bnx_serialize_cnt);
+		sc->bnx_serialize[i++] =
+		    &sc->bnx_tx_ring[j].bnx_tx_serialize;
+	}
+
+	KKASSERT(i == sc->bnx_serialize_cnt);
+}
+
+static void
+bnx_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct bnx_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_enter(sc->bnx_serialize,
+	    sc->bnx_serialize_cnt, slz);
+}
+
+static void
+bnx_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct bnx_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_exit(sc->bnx_serialize,
+	    sc->bnx_serialize_cnt, slz);
+}
+
+static int
+bnx_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct bnx_softc *sc = ifp->if_softc;
+
+	return ifnet_serialize_array_try(sc->bnx_serialize,
+	    sc->bnx_serialize_cnt, slz);
+}
+
+#ifdef INVARIANTS
+
+static void
+bnx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
+    boolean_t serialized)
+{
+	struct bnx_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_assert(sc->bnx_serialize, sc->bnx_serialize_cnt,
+	    slz, serialized);
+}
+
+#endif	/* INVARIANTS */

@@ -151,6 +151,7 @@ struct bnx_rx_buf {
 };
 
 struct bnx_rx_std_ring {
+	struct lwkt_serialize	bnx_rx_std_serialize;
 	struct bnx_softc	*bnx_sc;
 
 	uint16_t		bnx_rx_std;	/* current prod ring head */
@@ -165,6 +166,7 @@ struct bnx_rx_std_ring {
 } __cachealign;
 
 struct bnx_rx_ret_ring {
+	struct lwkt_serialize	bnx_rx_ret_serialize;
 	struct bnx_softc	*bnx_sc;
 	struct bnx_rx_std_ring	*bnx_std;
 
@@ -205,6 +207,7 @@ struct bnx_tx_buf {
 };
 
 struct bnx_tx_ring {
+	struct lwkt_serialize	bnx_tx_serialize;
 	struct bnx_softc	*bnx_sc;
 	volatile uint16_t	*bnx_tx_considx;
 	uint16_t		bnx_tx_flags;
@@ -282,6 +285,8 @@ struct bnx_softc {
 	struct bnx_chain_data	bnx_cdata;	/* mbufs */
 
 	struct lwkt_serialize	bnx_main_serialize;
+	int			bnx_serialize_cnt;
+	struct lwkt_serialize	**bnx_serialize;
 
 	int			bnx_tx_ringcnt;
 	struct bnx_tx_ring	*bnx_tx_ring;
