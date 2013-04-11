@@ -64,7 +64,11 @@
 
 #ifdef LWBUF_IS_OPTIMAL
 
-static int vm_read_shortcut_enable = 1;
+/*
+ * Shortcut works but can still deadlock under load so default is
+ * disabled for Release 3.4 until we track down the remaining issues.
+ */
+static int vm_read_shortcut_enable = 0;
 static long vm_read_shortcut_count;
 static long vm_read_shortcut_failed;
 SYSCTL_INT(_vm, OID_AUTO, read_shortcut_enable, CTLFLAG_RW,
