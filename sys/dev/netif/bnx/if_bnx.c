@@ -2045,6 +2045,13 @@ bnx_attach(device_t dev)
 		goto fail;
 	}
 
+	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	    "rx_rings", CTLFLAG_RD, &sc->bnx_rx_retcnt, 0, "# of RX rings");
+	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	    "tx_rings", CTLFLAG_RD, &sc->bnx_tx_ringcnt, 0, "# of TX rings");
+
 	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
 			SYSCTL_CHILDREN(sc->bnx_sysctl_tree),
 			OID_AUTO, "rx_coal_ticks",
