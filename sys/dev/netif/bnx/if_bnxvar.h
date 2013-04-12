@@ -313,8 +313,8 @@ struct bnx_softc {
 	int			bnx_if_flags;
 	int			bnx_link;
 	int			bnx_link_evt;
-	int			bnx_stat_cpuid;
-	struct callout		bnx_stat_timer;
+	int			bnx_tick_cpuid;
+	struct callout		bnx_tick_timer;
 
 	int			bnx_npoll_rxoff;
 	int			bnx_npoll_txoff;

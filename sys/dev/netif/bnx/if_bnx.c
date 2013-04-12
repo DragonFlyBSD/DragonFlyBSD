@@ -216,6 +216,7 @@ static int	bnx_encap(struct bnx_tx_ring *, struct mbuf **,
 static int	bnx_setup_tso(struct bnx_tx_ring *, struct mbuf **,
 		    uint16_t *, uint16_t *);
 static void	bnx_setup_serialize(struct bnx_softc *);
+static void	bnx_set_tick_cpuid(struct bnx_softc *, boolean_t);
 
 static void	bnx_reset(struct bnx_softc *);
 static int	bnx_chipinit(struct bnx_softc *);
@@ -1703,7 +1704,7 @@ bnx_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	sc->bnx_dev = dev;
-	callout_init_mp(&sc->bnx_stat_timer);
+	callout_init_mp(&sc->bnx_tick_timer);
 	lwkt_serialize_init(&sc->bnx_jslot_serializer);
 	lwkt_serialize_init(&sc->bnx_main_serialize);
 
@@ -2247,8 +2248,7 @@ bnx_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-
-	sc->bnx_stat_cpuid = sc->bnx_intr_data[0].bnx_intr_cpuid;
+	bnx_set_tick_cpuid(sc, FALSE);
 
 	return(0);
 fail:
@@ -2718,15 +2718,19 @@ bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			    &ret->bnx_rx_ret_serialize;
 		}
 
-		if (ifp->if_flags & IFF_RUNNING)
+		if (ifp->if_flags & IFF_RUNNING) {
 			bnx_disable_intr(sc);
+			bnx_set_tick_cpuid(sc, TRUE);
+		}
 	} else {
 		for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
 			ifsq_set_cpuid(sc->bnx_tx_ring[i].bnx_ifsq,
 			    sc->bnx_tx_ring[i].bnx_tx_cpuid);
 		}
-		if (ifp->if_flags & IFF_RUNNING)
+		if (ifp->if_flags & IFF_RUNNING) {
 			bnx_enable_intr(sc);
+			bnx_set_tick_cpuid(sc, FALSE);
+		}
 	}
 }
 
@@ -2822,8 +2826,6 @@ bnx_tick(void *xsc)
 
 	lwkt_serialize_enter(&sc->bnx_main_serialize);
 
-	KKASSERT(mycpuid == sc->bnx_stat_cpuid);
-
 	bnx_stats_update_regs(sc);
 
 	if (sc->bnx_flags & BNX_FLAG_TBI) {
@@ -2838,7 +2840,8 @@ bnx_tick(void *xsc)
 		mii_tick(device_get_softc(sc->bnx_miibus));
 	}
 
-	callout_reset(&sc->bnx_stat_timer, hz, bnx_tick, sc);
+	callout_reset_bycpu(&sc->bnx_tick_timer, hz, bnx_tick, sc,
+	    sc->bnx_tick_cpuid);
 
 	lwkt_serialize_exit(&sc->bnx_main_serialize);
 }
@@ -3084,6 +3087,7 @@ bnx_init(void *xsc)
 	uint16_t *m;
 	uint32_t mode;
 	int i;
+	boolean_t polling;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
@@ -3179,12 +3183,17 @@ bnx_init(void *xsc)
 
 	/* Enable host interrupts if polling(4) is not enabled. */
 	PCI_SETBIT(sc->bnx_dev, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_CLEAR_INTA, 4);
+
+	polling = FALSE;
 #ifdef IFPOLL_ENABLE
 	if (ifp->if_flags & IFF_NPOLLING)
+		polling = TRUE;
+#endif
+	if (polling)
 		bnx_disable_intr(sc);
 	else
-#endif
-	bnx_enable_intr(sc);
+		bnx_enable_intr(sc);
+	bnx_set_tick_cpuid(sc, polling);
 
 	bnx_ifmedia_upd(ifp);
 
@@ -3196,8 +3205,8 @@ bnx_init(void *xsc)
 		ifsq_watchdog_start(&txr->bnx_tx_watchdog);
 	}
 
-	callout_reset_bycpu(&sc->bnx_stat_timer, hz, bnx_tick, sc,
-	    sc->bnx_stat_cpuid);
+	callout_reset_bycpu(&sc->bnx_tick_timer, hz, bnx_tick, sc,
+	    sc->bnx_tick_cpuid);
 }
 
 /*
@@ -3415,7 +3424,7 @@ bnx_stop(struct bnx_softc *sc)
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
-	callout_stop(&sc->bnx_stat_timer);
+	callout_stop(&sc->bnx_tick_timer);
 
 	/*
 	 * Disable all of the receiver blocks
@@ -4858,3 +4867,12 @@ bnx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS)
 }
 
 #endif	/* IFPOLL_ENABLE */
+
+static void
+bnx_set_tick_cpuid(struct bnx_softc *sc, boolean_t polling)
+{
+	if (polling)
+		sc->bnx_tick_cpuid = 0; /* XXX */
+	else
+		sc->bnx_tick_cpuid = sc->bnx_intr_data[0].bnx_intr_cpuid;
+}
