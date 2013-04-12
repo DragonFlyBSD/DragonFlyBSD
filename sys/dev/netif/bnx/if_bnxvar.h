@@ -167,6 +167,8 @@ struct bnx_rx_std_ring {
 
 struct bnx_rx_ret_ring {
 	struct lwkt_serialize	bnx_rx_ret_serialize;
+	uint32_t		bnx_saved_status_tag;
+	volatile uint32_t	*bnx_hw_status_tag;
 	struct bnx_softc	*bnx_sc;
 	struct bnx_rx_std_ring	*bnx_std;
 
@@ -208,6 +210,7 @@ struct bnx_tx_buf {
 
 struct bnx_tx_ring {
 	struct lwkt_serialize	bnx_tx_serialize;
+	uint32_t		bnx_saved_status_tag;
 	struct bnx_softc	*bnx_sc;
 	struct ifaltq_subque	*bnx_ifsq;
 	volatile uint16_t	*bnx_tx_considx;
@@ -250,6 +253,7 @@ struct bnx_intr_data {
 	void			*bnx_intr_hand;
 	struct resource		*bnx_intr_res;
 	int			bnx_intr_rid;
+	const uint32_t		*bnx_saved_status_tag;
 
 	const char		*bnx_intr_desc;
 	char			bnx_intr_desc0[64];
@@ -266,7 +270,6 @@ struct bnx_softc {
 	struct resource		*bnx_res;
 	struct ifmedia		bnx_ifmedia;	/* TBI media info */
 	int			bnx_pciecap;
-	uint32_t		bnx_status_tag;
 	uint32_t		bnx_flags;	/* BNX_FLAG_ */
 #define BNX_FLAG_TBI		0x00000001
 #define BNX_FLAG_JUMBO		0x00000002
@@ -279,6 +282,7 @@ struct bnx_softc {
 #define BNX_FLAG_STATUSTAG_BUG	0x00000100
 #define BNX_FLAG_TSO		0x00000200
 #define BNX_FLAG_NO_EEPROM	0x10000000
+#define BNX_FLAG_RXTX_BUNDLE	0x20000000
 
 	uint32_t		bnx_chipid;
 	uint32_t		bnx_asicrev;
@@ -311,7 +315,9 @@ struct bnx_softc {
 	int			bnx_link_evt;
 	int			bnx_stat_cpuid;
 	struct callout		bnx_stat_timer;
-	struct ifpoll_compat	bnx_npoll;
+
+	int			bnx_npoll_rxoff;
+	int			bnx_npoll_txoff;
 
 	int			bnx_intr_type;
 	int			bnx_intr_cnt;

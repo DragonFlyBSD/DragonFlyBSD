@@ -150,7 +150,9 @@ static void	bnx_miibus_statchg(device_t);
 
 #ifdef IFPOLL_ENABLE
 static void	bnx_npoll(struct ifnet *, struct ifpoll_info *);
-static void	bnx_npoll_compat(struct ifnet *, void *, int);
+static void	bnx_npoll_rx(struct ifnet *, void *, int);
+static void	bnx_npoll_tx(struct ifnet *, void *, int);
+static void	bnx_npoll_status(struct ifnet *);
 #endif
 static void	bnx_intr_legacy(void *);
 static void	bnx_msi(void *);
@@ -257,6 +259,11 @@ static int	bnx_sysctl_rx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_tx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *,
 		    int, int, uint32_t);
+#ifdef IFPOLL_ENABLE
+static int	bnx_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS);
+static int	bnx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
+static int	bnx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
+#endif
 
 static int	bnx_msi_enable = 1;
 TUNABLE_INT("hw.bnx.msi.enable", &bnx_msi_enable);
@@ -1690,6 +1697,9 @@ bnx_attach(device_t dev)
 #ifdef BNX_TSO_DEBUG
 	char desc[32];
 #endif
+#ifdef IFPOLL_ENABLE
+	int offset, offset_def;
+#endif
 
 	sc = device_get_softc(dev);
 	sc->bnx_dev = dev;
@@ -1873,9 +1883,78 @@ bnx_attach(device_t dev)
 	sc->bnx_tx_ringcnt = 1;
 	sc->bnx_rx_retcnt = 1;
 
+	if ((sc->bnx_rx_retcnt == 1 && sc->bnx_tx_ringcnt == 1) ||
+	    (sc->bnx_rx_retcnt > 1 && sc->bnx_tx_ringcnt > 1)) {
+	    	/*
+		 * The RX ring and the corresponding TX ring processing
+		 * should be on the same CPU, since they share the same
+		 * status block.
+		 */
+		sc->bnx_flags |= BNX_FLAG_RXTX_BUNDLE;
+		if (bootverbose)
+			device_printf(dev, "RX/TX bundle\n");
+	} else {
+		KKASSERT(sc->bnx_rx_retcnt > 1 && sc->bnx_tx_ringcnt == 1);
+	}
+
 	error = bnx_dma_alloc(dev);
 	if (error)
 		goto fail;
+
+#ifdef IFPOLL_ENABLE
+	if (sc->bnx_flags & BNX_FLAG_RXTX_BUNDLE) {
+		/*
+		 * NPOLLING RX/TX CPU offset
+		 */
+		if (sc->bnx_rx_retcnt == ncpus2) {
+			offset = 0;
+		} else {
+			offset_def =
+			(sc->bnx_rx_retcnt * device_get_unit(dev)) % ncpus2;
+			offset = device_getenv_int(dev, "npoll.offset",
+			    offset_def);
+			if (offset >= ncpus2 ||
+			    offset % sc->bnx_rx_retcnt != 0) {
+				device_printf(dev, "invalid npoll.offset %d, "
+				    "use %d\n", offset, offset_def);
+				offset = offset_def;
+			}
+		}
+		sc->bnx_npoll_rxoff = offset;
+		sc->bnx_npoll_txoff = offset;
+	} else {
+		/*
+		 * NPOLLING RX CPU offset
+		 */
+		if (sc->bnx_rx_retcnt == ncpus2) {
+			offset = 0;
+		} else {
+			offset_def =
+			(sc->bnx_rx_retcnt * device_get_unit(dev)) % ncpus2;
+			offset = device_getenv_int(dev, "npoll.rxoff",
+			    offset_def);
+			if (offset >= ncpus2 ||
+			    offset % sc->bnx_rx_retcnt != 0) {
+				device_printf(dev, "invalid npoll.rxoff %d, "
+				    "use %d\n", offset, offset_def);
+				offset = offset_def;
+			}
+		}
+		sc->bnx_npoll_rxoff = offset;
+
+		/*
+		 * NPOLLING TX CPU offset
+		 */
+		offset_def = device_get_unit(dev) % ncpus2;
+		offset = device_getenv_int(dev, "npoll.txoff", offset_def);
+		if (offset >= ncpus2) {
+			device_printf(dev, "invalid npoll.txoff %d, use %d\n",
+			    offset, offset_def);
+			offset = offset_def;
+		}
+		sc->bnx_npoll_txoff = offset;
+	}
+#endif	/* IFPOLL_ENABLE */
 
 	/*
 	 * Allocate interrupt
@@ -2115,6 +2194,27 @@ bnx_attach(device_t dev)
 	    sc, 0, bnx_sysctl_tx_coal_bds_int, "I",
 	    "Transmit max coalesced BD count during interrupt.");
 
+#ifdef IFPOLL_ENABLE
+	if (sc->bnx_flags & BNX_FLAG_RXTX_BUNDLE) {
+		SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		    "npoll_offset", CTLTYPE_INT | CTLFLAG_RW,
+		    sc, 0, bnx_sysctl_npoll_offset, "I",
+		    "NPOLLING cpu offset");
+	} else {
+		SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		    "npoll_rxoff", CTLTYPE_INT | CTLFLAG_RW,
+		    sc, 0, bnx_sysctl_npoll_rxoff, "I",
+		    "NPOLLING RX cpu offset");
+		SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		    "npoll_txoff", CTLTYPE_INT | CTLFLAG_RW,
+		    sc, 0, bnx_sysctl_npoll_txoff, "I",
+		    "NPOLLING TX cpu offset");
+	}
+#endif
+
 #ifdef BNX_TSO_DEBUG
 	for (i = 0; i < BNX_TSO_NSTATS; ++i) {
 		ksnprintf(desc, sizeof(desc), "tso%d", i + 1);
@@ -2141,12 +2241,6 @@ bnx_attach(device_t dev)
 
 		ifsq_watchdog_init(&txr->bnx_tx_watchdog, ifsq, bnx_watchdog);
 	}
-
-#ifdef IFPOLL_ENABLE
-	ifpoll_compat_setup(&sc->bnx_npoll,
-	    &sc->bnx_sysctl_ctx, sc->bnx_sysctl_tree,
-	    device_get_unit(dev), &sc->bnx_main_serialize);
-#endif
 
 	error = bnx_setup_intr(sc);
 	if (error) {
@@ -2546,67 +2640,94 @@ bnx_txeof(struct bnx_tx_ring *txr, uint16_t tx_cons)
 #ifdef IFPOLL_ENABLE
 
 static void
+bnx_npoll_rx(struct ifnet *ifp __unused, void *xret, int cycle)
+{
+	struct bnx_rx_ret_ring *ret = xret;
+	uint16_t rx_prod;
+
+	ASSERT_SERIALIZED(&ret->bnx_rx_ret_serialize);
+
+	ret->bnx_saved_status_tag = *ret->bnx_hw_status_tag;
+	cpu_lfence();
+
+	rx_prod = *ret->bnx_rx_considx;
+	if (ret->bnx_rx_saved_considx != rx_prod)
+		bnx_rxeof(ret, rx_prod, cycle);
+}
+
+static void
+bnx_npoll_tx(struct ifnet *ifp __unused, void *xtxr, int cycle __unused)
+{
+	struct bnx_tx_ring *txr = xtxr;
+	uint16_t tx_cons;
+
+	ASSERT_SERIALIZED(&txr->bnx_tx_serialize);
+
+	tx_cons = *txr->bnx_tx_considx;
+	if (txr->bnx_tx_saved_considx != tx_cons)
+		bnx_txeof(txr, tx_cons);
+}
+
+static void
+bnx_npoll_status(struct ifnet *ifp)
+{
+	struct bnx_softc *sc = ifp->if_softc;
+	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
+
+	ASSERT_SERIALIZED(&sc->bnx_main_serialize);
+
+	if ((sblk->bge_status & BGE_STATFLAG_LINKSTATE_CHANGED) ||
+	    sc->bnx_link_evt)
+		bnx_link_poll(sc);
+}
+
+static void
 bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 {
 	struct bnx_softc *sc = ifp->if_softc;
+	int i;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (info != NULL) {
-		int cpuid = sc->bnx_npoll.ifpc_cpuid;
+		/*
+		 * TODO handle RXTX bundle and non-bundle
+		 */
+		info->ifpi_status.status_func = bnx_npoll_status;
+		info->ifpi_status.serializer = &sc->bnx_main_serialize;
 
-		info->ifpi_rx[cpuid].poll_func = bnx_npoll_compat;
-		info->ifpi_rx[cpuid].arg = NULL;
-		info->ifpi_rx[cpuid].serializer = &sc->bnx_main_serialize;
+		for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
+			struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
+			int idx = i + sc->bnx_npoll_txoff;
+
+			KKASSERT(idx < ncpus2);
+			info->ifpi_tx[idx].poll_func = bnx_npoll_tx;
+			info->ifpi_tx[idx].arg = txr;
+			info->ifpi_tx[idx].serializer = &txr->bnx_tx_serialize;
+			ifsq_set_cpuid(txr->bnx_ifsq, idx);
+		}
+
+		for (i = 0; i < sc->bnx_rx_retcnt; ++i) {
+			struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[i];
+			int idx = i + sc->bnx_npoll_rxoff;
+
+			KKASSERT(idx < ncpus2);
+			info->ifpi_rx[idx].poll_func = bnx_npoll_rx;
+			info->ifpi_rx[idx].arg = ret;
+			info->ifpi_rx[idx].serializer =
+			    &ret->bnx_rx_ret_serialize;
+		}
 
 		if (ifp->if_flags & IFF_RUNNING)
 			bnx_disable_intr(sc);
-		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
+		for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
+			ifsq_set_cpuid(sc->bnx_tx_ring[i].bnx_ifsq,
+			    sc->bnx_tx_ring[i].bnx_tx_cpuid);
+		}
 		if (ifp->if_flags & IFF_RUNNING)
 			bnx_enable_intr(sc);
-		ifq_set_cpuid(&ifp->if_snd, sc->bnx_tx_ring[0].bnx_tx_cpuid);
 	}
-}
-
-static void
-bnx_npoll_compat(struct ifnet *ifp, void *arg __unused, int cycle)
-{
-	struct bnx_softc *sc = ifp->if_softc;
-	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
-	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0]; /* XXX */
-	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
-	uint16_t rx_prod, tx_cons;
-
-	ASSERT_SERIALIZED(&sc->bnx_main_serialize);
-
-	if (sc->bnx_npoll.ifpc_stcount-- == 0) {
-		sc->bnx_npoll.ifpc_stcount = sc->bnx_npoll.ifpc_stfrac;
-		/*
-		 * Process link state changes.
-		 */
-		bnx_link_poll(sc);
-	}
-
-	sc->bnx_status_tag = sblk->bge_status_tag;
-
-	/*
-	 * Use a load fence to ensure that status_tag is saved
-	 * before rx_prod and tx_cons.
-	 */
-	cpu_lfence();
-
-	lwkt_serialize_enter(&ret->bnx_rx_ret_serialize);
-	rx_prod = *ret->bnx_rx_considx;
-	if (ret->bnx_rx_saved_considx != rx_prod)
-		bnx_rxeof(ret, rx_prod, cycle);
-	lwkt_serialize_exit(&ret->bnx_rx_ret_serialize);
-
-	lwkt_serialize_enter(&txr->bnx_tx_serialize);
-	tx_cons = *txr->bnx_tx_considx;
-	if (txr->bnx_tx_saved_considx != tx_cons)
-		bnx_txeof(txr, tx_cons);
-	lwkt_serialize_exit(&txr->bnx_tx_serialize);
 }
 
 #endif	/* IFPOLL_ENABLE */
@@ -2615,9 +2736,9 @@ static void
 bnx_intr_legacy(void *xsc)
 {
 	struct bnx_softc *sc = xsc;
-	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
+	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0];
 
-	if (sc->bnx_status_tag == sblk->bge_status_tag) {
+	if (ret->bnx_saved_status_tag == *ret->bnx_hw_status_tag) {
 		uint32_t val;
 
 		val = pci_read_config(sc->bnx_dev, BGE_PCI_PCISTATE, 4);
@@ -2656,12 +2777,13 @@ static void
 bnx_intr(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0];
 	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
 	uint32_t status;
 
 	ASSERT_SERIALIZED(&sc->bnx_main_serialize);
 
-	sc->bnx_status_tag = sblk->bge_status_tag;
+	ret->bnx_saved_status_tag = *ret->bnx_hw_status_tag;
 	/*
 	 * Use a load fence to ensure that status_tag is saved 
 	 * before rx_prod, tx_cons and status.
@@ -2674,8 +2796,7 @@ bnx_intr(struct bnx_softc *sc)
 		bnx_link_poll(sc);
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0]; /* XXX */
-		struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0]; /* XXX */
+		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0];
 		uint16_t rx_prod, tx_cons;
 
 		lwkt_serialize_enter(&ret->bnx_rx_ret_serialize);
@@ -2691,7 +2812,7 @@ bnx_intr(struct bnx_softc *sc)
 		lwkt_serialize_exit(&txr->bnx_tx_serialize);
 	}
 
-	bnx_writembx(sc, BGE_MBX_IRQ0_LO, sc->bnx_status_tag << 24);
+	bnx_writembx(sc, BGE_MBX_IRQ0_LO, ret->bnx_saved_status_tag << 24);
 }
 
 static void
@@ -3341,10 +3462,17 @@ bnx_stop(struct bnx_softc *sc)
 		bnx_free_rx_ring_jumbo(sc);
 
 	/* Free TX buffers. */
-	for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
-		bnx_free_tx_ring(&sc->bnx_tx_ring[i]);
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
+		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
 
-	sc->bnx_status_tag = 0;
+		txr->bnx_saved_status_tag = 0;
+		bnx_free_tx_ring(txr);
+	}
+
+	/* Clear saved status tag */
+	for (i = 0; i < sc->bnx_rx_retcnt; ++i)
+		sc->bnx_rx_ret_ring[i].bnx_saved_status_tag = 0;
+
 	sc->bnx_link = 0;
 	sc->bnx_coal_chg = 0;
 
@@ -3565,6 +3693,8 @@ bnx_dma_alloc(device_t dev)
 		/* XXX */
 		ret->bnx_rx_considx =
 		&sc->bnx_ldata.bnx_status_block->bge_idx[0].bge_rx_prod_idx;
+		ret->bnx_hw_status_tag =
+		&sc->bnx_ldata.bnx_status_block->bge_status_tag;
 
 		error = bnx_create_rx_ret_ring(ret);
 		if (error) {
@@ -3977,6 +4107,7 @@ static void
 bnx_enable_intr(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct bnx_intr_data *intr;
 	int i;
 
 	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
@@ -3987,10 +4118,12 @@ bnx_enable_intr(struct bnx_softc *sc)
 	/*
 	 * Enable interrupt.
 	 */
-	bnx_writembx(sc, BGE_MBX_IRQ0_LO, sc->bnx_status_tag << 24);
+	intr = &sc->bnx_intr_data[0]; /* XXX */
+	bnx_writembx(sc, BGE_MBX_IRQ0_LO, (*intr->bnx_saved_status_tag) << 24);
 	if (sc->bnx_flags & BNX_FLAG_ONESHOT_MSI) {
 		/* XXX Linux driver */
-		bnx_writembx(sc, BGE_MBX_IRQ0_LO, sc->bnx_status_tag << 24);
+		bnx_writembx(sc, BGE_MBX_IRQ0_LO,
+		    (*intr->bnx_saved_status_tag) << 24);
 	}
 
 	/*
@@ -4011,8 +4144,7 @@ bnx_enable_intr(struct bnx_softc *sc)
 			if_printf(ifp, "status tag bug workaround\n");
 
 		for (i = 0; i < sc->bnx_intr_cnt; ++i) {
-			struct bnx_intr_data *intr = &sc->bnx_intr_data[i];
-
+			intr = &sc->bnx_intr_data[i];
 			intr->bnx_intr_maylose = FALSE;
 			intr->bnx_rx_check_considx = 0;
 			intr->bnx_tx_check_considx = 0;
@@ -4048,7 +4180,6 @@ bnx_disable_intr(struct bnx_softc *sc)
 	 */
 	bnx_writembx(sc, BGE_MBX_IRQ0_LO, 1);
 
-	sc->bnx_npoll.ifpc_stcount = 0;
 	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
 		lwkt_serialize_handler_disable(
 		    sc->bnx_intr_data[i].bnx_intr_serialize);
@@ -4474,6 +4605,7 @@ bnx_alloc_intr(struct bnx_softc *sc)
 	intr->bnx_intr_serialize = &sc->bnx_main_serialize;
 	callout_init_mp(&intr->bnx_intr_timer);
 	intr->bnx_intr_check = bnx_check_intr;
+	intr->bnx_saved_status_tag = &intr->bnx_ret->bnx_saved_status_tag;
 
 	sc->bnx_intr_type = pci_alloc_1intr(sc->bnx_dev, bnx_msi_enable,
 	    &intr->bnx_intr_rid, &intr_flags);
@@ -4643,3 +4775,86 @@ bnx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 }
 
 #endif	/* INVARIANTS */
+
+#ifdef IFPOLL_ENABLE
+
+static int
+bnx_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS)
+{
+	struct bnx_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, off;
+
+	off = sc->bnx_npoll_rxoff;
+	error = sysctl_handle_int(oidp, &off, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (off < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+	if (off >= ncpus2 || off % sc->bnx_rx_retcnt != 0) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		sc->bnx_npoll_txoff = off;
+		sc->bnx_npoll_rxoff = off;
+	}
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+static int
+bnx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS)
+{
+	struct bnx_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, off;
+
+	off = sc->bnx_npoll_rxoff;
+	error = sysctl_handle_int(oidp, &off, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (off < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+	if (off >= ncpus2 || off % sc->bnx_rx_retcnt != 0) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		sc->bnx_npoll_rxoff = off;
+	}
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+static int
+bnx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS)
+{
+	struct bnx_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, off;
+
+	off = sc->bnx_npoll_txoff;
+	error = sysctl_handle_int(oidp, &off, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (off < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+	if (off >= ncpus2) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		sc->bnx_npoll_txoff = off;
+	}
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+#endif	/* IFPOLL_ENABLE */
