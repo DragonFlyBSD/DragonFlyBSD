@@ -32,7 +32,6 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.93 2009/03/14 19:11:08 das Exp $
- * $DragonFly: src/include/unistd.h,v 1.24 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -512,6 +511,7 @@ int	 initgroups(const char *, gid_t);
 int	 iruserok(unsigned long, int, const char *, const char *);
 int	 iruserok_sa(const void *, int, int, const char *, const char *);
 int	 issetugid(void);
+long	 lpathconf(const char *, int);
 int	 lwp_create(struct lwp_params *);
 lwpid_t	 lwp_gettid(void);
 #ifndef _MKDTEMP_DECLARED

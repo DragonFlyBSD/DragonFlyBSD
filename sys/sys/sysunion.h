@@ -408,4 +408,5 @@ union sysunion {
 	struct	vquotactl_args vquotactl;
 	struct	linkat_args linkat;
 	struct	eaccess_args eaccess;
+	struct	lpathconf_args lpathconf;
 };

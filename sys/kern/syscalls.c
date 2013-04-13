@@ -541,4 +541,5 @@ const char *syscallnames[] = {
 	"vquotactl",			/* 530 = vquotactl */
 	"linkat",			/* 531 = linkat */
 	"eaccess",			/* 532 = eaccess */
+	"lpathconf",			/* 533 = lpathconf */
 };

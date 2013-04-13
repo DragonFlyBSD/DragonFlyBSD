@@ -2282,6 +2282,13 @@ struct	eaccess_args {
 	char *	path;	char path_[PAD_(char *)];
 	int	flags;	char flags_[PAD_(int)];
 };
+struct	lpathconf_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	char *	path;	char path_[PAD_(char *)];
+	int	name;	char name_[PAD_(int)];
+};
 
 #ifdef COMPAT_43
 
@@ -2889,6 +2896,7 @@ int	sys_swapoff (struct swapoff_args *);
 int	sys_vquotactl (struct vquotactl_args *);
 int	sys_linkat (struct linkat_args *);
 int	sys_eaccess (struct eaccess_args *);
+int	sys_lpathconf (struct lpathconf_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

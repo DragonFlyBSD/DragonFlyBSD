@@ -2841,6 +2841,27 @@ sys_fstatat(struct fstatat_args *uap)
 	return (error);
 }
 
+static int
+kern_pathconf(char *path, int name, int flags, register_t *sysmsg_regp)
+{
+	struct nlookupdata nd;
+	struct vnode *vp;
+	int error;
+
+	vp = NULL;
+	error = nlookup_init(&nd, path, UIO_USERSPACE, flags);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	nlookup_done(&nd);
+	if (error == 0) {
+		error = VOP_PATHCONF(vp, name, sysmsg_regp);
+		vput(vp);
+	}
+	return (error);
+}
+
 /*
  * pathconf_Args(char *path, int name)
  *
@@ -2849,22 +2870,19 @@ sys_fstatat(struct fstatat_args *uap)
 int
 sys_pathconf(struct pathconf_args *uap)
 {
-	struct nlookupdata nd;
-	struct vnode *vp;
-	int error;
+	return (kern_pathconf(uap->path, uap->name, NLC_FOLLOW,
+		&uap->sysmsg_reg));
+}
 
-	vp = NULL;
-	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
-	if (error == 0)
-		error = nlookup(&nd);
-	if (error == 0)
-		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
-	nlookup_done(&nd);
-	if (error == 0) {
-		error = VOP_PATHCONF(vp, uap->name, &uap->sysmsg_reg);
-		vput(vp);
-	}
-	return (error);
+/*
+ * lpathconf_Args(char *path, int name)
+ *
+ * Get configurable pathname variables, but don't follow symlinks.
+ */
+int
+sys_lpathconf(struct lpathconf_args *uap)
+{
+	return (kern_pathconf(uap->path, uap->name, 0, &uap->sysmsg_reg));
 }
 
 /*

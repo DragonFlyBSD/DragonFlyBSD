@@ -373,4 +373,5 @@
 #define	SYS_vquotactl	530
 #define	SYS_linkat	531
 #define	SYS_eaccess	532
-#define	SYS_MAXSYSCALL	533
+#define	SYS_lpathconf	533
+#define	SYS_MAXSYSCALL	534

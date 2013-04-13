@@ -300,4 +300,5 @@ MIASM =  \
 	swapoff.o \
 	vquotactl.o \
 	linkat.o \
-	eaccess.o
+	eaccess.o \
+	lpathconf.o
