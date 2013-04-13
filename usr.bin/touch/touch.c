@@ -51,7 +51,7 @@ static void	stime_arg2(const char *, int, struct timeval *);
 static void	stime_darg(const char *, struct timeval *);
 static void	stime_file(const char *, struct timeval *);
 static int	timeoffset(const char *);
-static void	usage(char *);
+static void	usage(const char *);
 
 int
 main(int argc, char *argv[])
@@ -404,7 +404,7 @@ stime_file(const char *fname, struct timeval *tvp)
 }
 
 static void
-usage(char *myname)
+usage(const char *myname)
 {
 	fprintf(stderr, "usage: %s [-A [-][[hh]mm]SS] [-achm] [-r file] "
 		"[-t [[CC]YY]MMDDhhmm[.SS]]\n"
