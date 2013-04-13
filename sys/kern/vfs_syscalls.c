@@ -4018,7 +4018,7 @@ kern_rmdir(struct nlookupdata *nd)
 	 * in case the vnode is aliased (aka nullfs).
 	 */
 	if (nd->nl_nch.ncp->nc_flag & (NCF_ISMOUNTPT))
-		return (EINVAL);
+		return (EBUSY);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
 	error = VOP_NRMDIR(&nd->nl_nch, nd->nl_dvp, nd->nl_cred);
