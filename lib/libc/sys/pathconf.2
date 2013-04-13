@@ -129,7 +129,8 @@ is not modified.
 Otherwise, the current variable value is returned.
 .Sh ERRORS
 If any of the following conditions occur, the
-.Fn pathconf
+.Fn pathconf ,
+.Fn lpathconf
 and
 .Fn fpathconf
 functions shall return -1 and set
@@ -146,6 +147,8 @@ name with the associated file.
 .El
 .Pp
 .Fn Pathconf
+and
+.Fn lpathconf
 will fail if:
 .Bl -tag -width Er
 .It Bq Er ENOTDIR
