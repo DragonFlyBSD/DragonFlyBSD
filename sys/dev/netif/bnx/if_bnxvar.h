@@ -174,6 +174,7 @@ struct bnx_rx_std_ring {
 
 struct bnx_rx_ret_ring {
 	struct lwkt_serialize	bnx_rx_ret_serialize;
+	int			bnx_rx_mbx;
 	uint32_t		bnx_saved_status_tag;
 	volatile uint32_t	*bnx_hw_status_tag;
 	struct bnx_softc	*bnx_sc;

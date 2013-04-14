@@ -2628,7 +2628,7 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 		}
 		ifp->if_input(ifp, m);
 	}
-	bnx_writembx(sc, BGE_MBX_RX_CONS0_LO, ret->bnx_rx_saved_considx);
+	bnx_writembx(sc, ret->bnx_rx_mbx, ret->bnx_rx_saved_considx);
 }
 
 static void
@@ -3642,7 +3642,7 @@ bnx_dma_alloc(device_t dev)
 {
 	struct bnx_softc *sc = device_get_softc(dev);
 	struct bnx_rx_std_ring *std = &sc->bnx_rx_std_ring;
-	int i, error;
+	int i, error, mbx;
 
 	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
@@ -3725,6 +3725,7 @@ bnx_dma_alloc(device_t dev)
 	/*
 	 * Create RX return rings
 	 */
+	mbx = BGE_MBX_RX_CONS0_LO;
 	sc->bnx_rx_ret_ring = kmalloc_cachealign(
 	    sizeof(struct bnx_rx_ret_ring) * sc->bnx_rx_retcnt, M_DEVBUF,
 	    M_WAITOK | M_ZERO);
@@ -3733,6 +3734,7 @@ bnx_dma_alloc(device_t dev)
 
 		ret->bnx_sc = sc;
 		ret->bnx_std = std;
+		ret->bnx_rx_mbx = mbx;
 		ret->bnx_rx_cntmax = (BGE_STD_RX_RING_CNT / 4) /
 		    sc->bnx_rx_retcnt;
 		ret->bnx_rx_mask = 1 << i;
@@ -3749,6 +3751,7 @@ bnx_dma_alloc(device_t dev)
 			    "could not create %dth RX ret ring\n", i);
 			return error;
 		}
+		mbx += 8;
 	}
 
 	/*
