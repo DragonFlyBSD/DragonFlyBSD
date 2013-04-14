@@ -1,4 +1,4 @@
-/*	$Id: mandoc.h,v 1.77 2011/05/24 21:31:23 kristaps Exp $ */
+/*	$Id: mandoc.h,v 1.99 2012/02/16 20:51:31 joerg Exp $ */
 /*
  * Copyright (c) 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -104,7 +104,17 @@ enum	mandocerr {
 	MANDOCERR_BADESCAPE, /* unknown escape sequence */
 	MANDOCERR_BADQUOTE, /* unterminated quoted string */
 
+	/* related to equations */
+	MANDOCERR_EQNQUOTE, /* unexpected literal in equation */
+
 	MANDOCERR_ERROR, /* ===== start of errors ===== */
+
+	/* related to equations */
+	MANDOCERR_EQNNSCOPE, /* unexpected equation scope closure*/
+	MANDOCERR_EQNSCOPE, /* equation scope open on exit */
+	MANDOCERR_EQNBADSCOPE, /* overlapping equation scopes */
+	MANDOCERR_EQNEOF, /* unexpected end of equation */
+	MANDOCERR_EQNSYNT, /* equation syntax error */
 
 	/* related to tables */
 	MANDOCERR_TBL, /* bad table syntax */
@@ -140,7 +150,6 @@ enum	mandocerr {
 	MANDOCERR_NOTMANUAL, /* manual isn't really a manual */
 	MANDOCERR_COLUMNS, /* column syntax is inconsistent */
 	MANDOCERR_BADDISP, /* NOT IMPLEMENTED: .Bd -file */
-	MANDOCERR_SYNTLINESCOPE, /* line scope broken, syntax violated */
 	MANDOCERR_SYNTARGVCOUNT, /* argument count wrong, violates syntax */
 	MANDOCERR_SYNTCHILD, /* child violates parent syntax */
 	MANDOCERR_SYNTARGCOUNT, /* argument count wrong, violates syntax */
@@ -270,10 +279,88 @@ struct	tbl_span {
 	struct tbl_span	 *next;
 };
 
+enum	eqn_boxt {
+	EQN_ROOT, /* root of parse tree */
+	EQN_TEXT, /* text (number, variable, whatever) */
+	EQN_SUBEXPR, /* nested `eqn' subexpression */
+	EQN_LIST, /* subexpressions list */
+	EQN_MATRIX /* matrix subexpression */
+};
+
+enum	eqn_markt {
+	EQNMARK_NONE = 0,
+	EQNMARK_DOT,
+	EQNMARK_DOTDOT,
+	EQNMARK_HAT,
+	EQNMARK_TILDE,
+	EQNMARK_VEC,
+	EQNMARK_DYAD,
+	EQNMARK_BAR,
+	EQNMARK_UNDER,
+	EQNMARK__MAX
+};
+
+enum	eqn_fontt {
+	EQNFONT_NONE = 0,
+	EQNFONT_ROMAN,
+	EQNFONT_BOLD,
+	EQNFONT_FAT,
+	EQNFONT_ITALIC,
+	EQNFONT__MAX
+};
+
+enum	eqn_post {
+	EQNPOS_NONE = 0,
+	EQNPOS_OVER,
+	EQNPOS_SUP,
+	EQNPOS_SUB,
+	EQNPOS_TO,
+	EQNPOS_FROM,
+	EQNPOS__MAX
+};
+
+enum	eqn_pilet {
+	EQNPILE_NONE = 0,
+	EQNPILE_PILE,
+	EQNPILE_CPILE,
+	EQNPILE_RPILE,
+	EQNPILE_LPILE,
+	EQNPILE_COL,
+	EQNPILE_CCOL,
+	EQNPILE_RCOL,
+	EQNPILE_LCOL,
+	EQNPILE__MAX
+};
+
+ /*
+ * A "box" is a parsed mathematical expression as defined by the eqn.7
+ * grammar.
+ */
+struct	eqn_box {
+	int		  size; /* font size of expression */
+#define	EQN_DEFSIZE	  INT_MIN
+	enum eqn_boxt	  type; /* type of node */
+	struct eqn_box	 *first; /* first child node */
+	struct eqn_box	 *last; /* last child node */
+	struct eqn_box	 *next; /* node sibling */
+	struct eqn_box	 *parent; /* node sibling */
+	char		 *text; /* text (or NULL) */
+	char		 *left;
+	char		 *right;
+	enum eqn_post	  pos; /* position of next box */
+	enum eqn_markt	  mark; /* a mark about the box */
+	enum eqn_fontt	  font; /* font of box */
+	enum eqn_pilet	  pile; /* equation piling */
+};
+
+/*
+ * An equation consists of a tree of expressions starting at a given
+ * line and position. 
+ */
 struct	eqn {
-	size_t		  sz;
-	char		 *data;
-	int		  line; /* invocation line */
+	char		 *name; /* identifier (or NULL) */
+	struct eqn_box	 *root; /* root mathematical expression */
+	int		  ln; /* invocation line */
 	int		  pos; /* invocation position */
 };
 
@@ -312,28 +399,33 @@ struct	man;
 
 __BEGIN_DECLS
 
-void		  mparse_free(struct mparse *);
-void		  mparse_reset(struct mparse *);
-struct mparse	 *mparse_alloc(enum mparset, 
-			enum mandoclevel, mandocmsg, void *);
-enum mandoclevel  mparse_readfd(struct mparse *, int, const char *);
-void		  mparse_result(struct mparse *, struct mdoc **, struct man **);
-const char	 *mparse_strerror(enum mandocerr);
-const char	 *mparse_strlevel(enum mandoclevel);
-
 void		 *mandoc_calloc(size_t, size_t);
+enum mandoc_esc	  mandoc_escape(const char **, const char **, int *);
 void		 *mandoc_malloc(size_t);
 void		 *mandoc_realloc(void *, size_t);
-
-enum mandoc_esc	  mandoc_escape(const char **, const char **, int *);
-
+char		 *mandoc_strdup(const char *);
+char		 *mandoc_strndup(const char *, size_t);
 struct mchars	 *mchars_alloc(void);
+void		  mchars_free(struct mchars *);
 char	 	  mchars_num2char(const char *, size_t);
 int		  mchars_num2uc(const char *, size_t);
-const char	 *mchars_spec2str(struct mchars *, const char *, size_t, size_t *);
-int		  mchars_spec2cp(struct mchars *, const char *, size_t);
-void		  mchars_free(struct mchars *);
-
+int		  mchars_spec2cp(const struct mchars *, 
+			const char *, size_t);
+const char	 *mchars_spec2str(const struct mchars *, 
+			const char *, size_t, size_t *);
+struct mparse	 *mparse_alloc(enum mparset, 
+			enum mandoclevel, mandocmsg, void *);
+void		  mparse_free(struct mparse *);
+void		  mparse_keep(struct mparse *);
+enum mandoclevel  mparse_readfd(struct mparse *, int, const char *);
+enum mandoclevel  mparse_readmem(struct mparse *, const void *, size_t,
+			const char *);
+void		  mparse_reset(struct mparse *);
+void		  mparse_result(struct mparse *, 
+			struct mdoc **, struct man **);
+const char	 *mparse_getkeep(const struct mparse *);
+const char	 *mparse_strerror(enum mandocerr);
+const char	 *mparse_strlevel(enum mandoclevel);
 
 __END_DECLS
 

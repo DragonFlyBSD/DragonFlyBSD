@@ -1,4 +1,4 @@
-/*	$Id: out.h,v 1.20 2011/04/29 22:18:12 kristaps Exp $ */
+/*	$Id: out.h,v 1.21 2011/07/17 15:24:25 kristaps Exp $ */
 /*
  * Copyright (c) 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -64,7 +64,6 @@ __BEGIN_DECLS
 	while (/* CONSTCOND */ 0)
 
 int	  	  a2roffsu(const char *, struct roffsu *, enum roffscale);
-void	  	  time2a(time_t, char *, size_t);
 void	  	  tblcalc(struct rofftbl *tbl, const struct tbl_span *);
 
 __END_DECLS

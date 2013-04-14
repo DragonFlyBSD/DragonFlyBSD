@@ -1,6 +1,6 @@
-/*	$Id: term_ps.c,v 1.51 2011/05/17 14:38:34 kristaps Exp $ */
+/*	$Id: term_ps.c,v 1.54 2011/10/16 12:20:34 schwarze Exp $ */
 /*
- * Copyright (c) 2010 Kristaps Dzonsons <kristaps@bsd.lv>
+ * Copyright (c) 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -429,7 +429,8 @@ static struct termp *
 pspdf_alloc(char *outopts)
 {
 	struct termp	*p;
-	size_t		 pagex, pagey, marginx, marginy, lineheight;
+	unsigned int	 pagex, pagey;
+	size_t		 marginx, marginy, lineheight;
 	const char	*toks[2];
 	const char	*pp;
 	char		*v;
@@ -485,10 +486,9 @@ pspdf_alloc(char *outopts)
 		} else if (0 == strcasecmp(pp, "legal")) {
 			pagex = 216;
 			pagey = 356;
-		} else if (2 != sscanf(pp, "%zux%zu", &pagex, &pagey))
+		} else if (2 != sscanf(pp, "%ux%u", &pagex, &pagey))
 			fprintf(stderr, "%s: Unknown paper\n", pp);
-	} else if (NULL == pp)
-		pp = "letter";
+	}
 
 	/* 
 	 * This MUST be defined before any PNT2AFM or AFM2PNT
@@ -513,8 +513,8 @@ pspdf_alloc(char *outopts)
 
 	lineheight = PNT2AFM(p, ((double)p->ps->scale * 1.4));
 
-	p->ps->width = pagex;
-	p->ps->height = pagey;
+	p->ps->width = (size_t)pagex;
+	p->ps->height = (size_t)pagey;
 	p->ps->header = pagey - (marginy / 2) - (lineheight / 2);
 	p->ps->top = pagey - marginy;
 	p->ps->footer = (marginy / 2) - (lineheight / 2);
@@ -575,7 +575,7 @@ ps_printf(struct termp *p, const char *fmt, ...)
 	ps_growbuf(p, PS_BUFSLOP);
 
 	pos = (int)p->ps->psmargcur;
-	len = vsnprintf(&p->ps->psmarg[pos], PS_BUFSLOP, fmt, ap);
+	vsnprintf(&p->ps->psmarg[pos], PS_BUFSLOP, fmt, ap);
 
 	va_end(ap);
 

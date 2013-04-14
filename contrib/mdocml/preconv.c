@@ -1,4 +1,4 @@
-/*	$Id: preconv.c,v 1.4 2011/05/26 21:13:07 kristaps Exp $ */
+/*	$Id: preconv.c,v 1.5 2011/07/24 18:15:14 kristaps Exp $ */
 /*
  * Copyright (c) 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -18,8 +18,10 @@
 #include "config.h"
 #endif
 
+#ifdef HAVE_MMAP
 #include <sys/stat.h>
 #include <sys/mman.h>
+#endif
 
 #include <assert.h>
 #include <fcntl.h>
@@ -244,10 +246,11 @@ static int
 read_whole_file(const char *f, int fd, 
 		struct buf *fb, int *with_mmap)
 {
-	struct stat	 st;
 	size_t		 off;
 	ssize_t		 ssz;
 
+#ifdef	HAVE_MMAP
+	struct stat	 st;
 	if (-1 == fstat(fd, &st)) {
 		perror(f);
 		return(0);
@@ -273,6 +276,7 @@ read_whole_file(const char *f, int fd,
 		if (fb->buf != MAP_FAILED)
 			return(1);
 	}
+#endif
 
 	/*
 	 * If this isn't a regular file (like, say, stdin), then we must
@@ -510,9 +514,11 @@ main(int argc, char *argv[])
 
 	rc = EXIT_SUCCESS;
 out:
+#ifdef	HAVE_MMAP
 	if (map)
 		munmap(b.buf, b.sz);
 	else 
+#endif
 		free(b.buf);
 
 	if (fd > STDIN_FILENO)

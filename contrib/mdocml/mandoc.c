@@ -1,6 +1,6 @@
-/*	$Id: mandoc.c,v 1.53 2011/05/24 21:31:23 kristaps Exp $ */
+/*	$Id: mandoc.c,v 1.62 2011/12/03 16:08:51 schwarze Exp $ */
 /*
- * Copyright (c) 2008, 2009, 2010 Kristaps Dzonsons <kristaps@bsd.lv>
+ * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2011 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -161,8 +161,7 @@ mandoc_escape(const char **end, const char **start, int *sz)
 	case ('V'):
 		/* FALLTHROUGH */
 	case ('Y'):
-		if (ESCAPE_ERROR == gly)
-			gly = ESCAPE_IGNORE;
+		gly = ESCAPE_IGNORE;
 		/* FALLTHROUGH */
 	case ('f'):
 		if (ESCAPE_ERROR == gly)
@@ -222,10 +221,7 @@ mandoc_escape(const char **end, const char **start, int *sz)
 	case ('L'):
 		/* FALLTHROUGH */
 	case ('l'):
-		/* FALLTHROUGH */
-	case ('N'):
-		if (ESCAPE_ERROR == gly)
-			gly = ESCAPE_NUMBERED;
+		gly = ESCAPE_NUMBERED;
 		/* FALLTHROUGH */
 	case ('S'):
 		/* FALLTHROUGH */
@@ -240,6 +236,26 @@ mandoc_escape(const char **end, const char **start, int *sz)
 			return(ESCAPE_ERROR);
 		term = numeric = '\'';
 		break;
+
+	/*
+	 * Special handling for the numbered character escape.
+	 * XXX Do any other escapes need similar handling?
+	 */
+	case ('N'):
+		if ('\0' == cp[i])
+			return(ESCAPE_ERROR);
+		*end = &cp[++i];
+		if (isdigit((unsigned char)cp[i-1]))
+			return(ESCAPE_IGNORE);
+		while (isdigit((unsigned char)**end))
+			(*end)++;
+		if (start)
+			*start = &cp[i];
+		if (sz)
+			*sz = *end - &cp[i];
+		if ('\0' != **end)
+			(*end)++;
+		return(ESCAPE_NUMBERED);
 
 	/* 
 	 * Sizes get a special category of their own.
@@ -353,8 +369,15 @@ out:
 
 	switch (gly) {
 	case (ESCAPE_FONT):
-		if (1 != rlim)
+		/*
+		 * Pretend that the constant-width font modes are the
+		 * same as the regular font modes.
+		 */
+		if (2 == rlim && 'C' == *rstart)
+			rstart++;
+		else if (1 != rlim)
 			break;
+
 		switch (*rstart) {
 		case ('3'):
 			/* FALLTHROUGH */
@@ -432,6 +455,16 @@ mandoc_realloc(void *ptr, size_t size)
 	return(ptr);
 }
 
+char *
+mandoc_strndup(const char *ptr, size_t sz)
+{
+	char		*p;
+
+	p = mandoc_malloc(sz + 1);
+	memcpy(p, ptr, sz);
+	p[(int)sz] = '\0';
+	return(p);
+}
 
 char *
 mandoc_strdup(const char *ptr)
@@ -532,7 +565,10 @@ a2time(time_t *t, const char *fmt, const char *p)
 
 	memset(&tm, 0, sizeof(struct tm));
 
+	pp = NULL;
+#ifdef	HAVE_STRPTIME
 	pp = strptime(p, fmt, &tm);
+#endif
 	if (NULL != pp && '\0' == *pp) {
 		*t = mktime(&tm);
 		return(1);
@@ -544,12 +580,12 @@ a2time(time_t *t, const char *fmt, const char *p)
 static char *
 time2a(time_t t)
 {
-	struct tm	 tm;
+	struct tm	*tm;
 	char		*buf, *p;
 	size_t		 ssz;
 	int		 isz;
 
-	localtime_r(&t, &tm);
+	tm = localtime(&t);
 
 	/*
 	 * Reserve space:
@@ -559,15 +595,15 @@ time2a(time_t t)
 	 */
 	p = buf = mandoc_malloc(10 + 4 + 4 + 1);
 
-	if (0 == (ssz = strftime(p, 10 + 1, "%B ", &tm)))
+	if (0 == (ssz = strftime(p, 10 + 1, "%B ", tm)))
 		goto fail;
 	p += (int)ssz;
 
-	if (-1 == (isz = snprintf(p, 4 + 1, "%d, ", tm.tm_mday)))
+	if (-1 == (isz = snprintf(p, 4 + 1, "%d, ", tm->tm_mday)))
 		goto fail;
 	p += isz;
 
-	if (0 == strftime(p, 4 + 1, "%Y", &tm))
+	if (0 == strftime(p, 4 + 1, "%Y", tm))
 		goto fail;
 	return(buf);
 
@@ -587,9 +623,10 @@ mandoc_normdate(struct mparse *parse, char *in, int ln, int pos)
 		mandoc_msg(MANDOCERR_NODATE, parse, ln, pos, NULL);
 		time(&t);
 	}
+	else if (a2time(&t, "%Y-%m-%d", in))
+		t = 0;
 	else if (!a2time(&t, "$" "Mdocdate: %b %d %Y $", in) &&
-	    !a2time(&t, "%b %d, %Y", in) &&
-	    !a2time(&t, "%Y-%m-%d", in)) {
+	    !a2time(&t, "%b %d, %Y", in)) {
 		mandoc_msg(MANDOCERR_BADDATE, parse, ln, pos, NULL);
 		t = 0;
 	}
@@ -640,33 +677,6 @@ mandoc_eos(const char *p, size_t sz, int enclosed)
 	return(found && !enclosed);
 }
 
-int
-mandoc_hyph(const char *start, const char *c)
-{
-
-	/*
-	 * Choose whether to break at a hyphenated character.  We only
-	 * do this if it's free-standing within a word.
-	 */
-
-	/* Skip first/last character of buffer. */
-	if (c == start || '\0' == *(c + 1))
-		return(0);
-	/* Skip first/last character of word. */
-	if ('\t' == *(c + 1) || '\t' == *(c - 1))
-		return(0);
-	if (' ' == *(c + 1) || ' ' == *(c - 1))
-		return(0);
-	/* Skip double invocations. */
-	if ('-' == *(c + 1) || '-' == *(c - 1))
-		return(0);
-	/* Skip escapes. */
-	if ('\\' == *(c - 1))
-		return(0);
-
-	return(1);
-}
-
 /*
  * Find out whether a line is a macro line or not.  If it is, adjust the
  * current position and return one; if it isn't, return zero and don't
@@ -698,7 +708,7 @@ mandoc_getcontrol(const char *cp, int *ppos)
  * If the string is invalid, or is less than 0, return -1.
  */
 int
-mandoc_strntou(const char *p, size_t sz, int base)
+mandoc_strntoi(const char *p, size_t sz, int base)
 {
 	char		 buf[32];
 	char		*ep;
@@ -716,11 +726,10 @@ mandoc_strntou(const char *p, size_t sz, int base)
 	if (buf[0] == '\0' || *ep != '\0')
 		return(-1);
 
-	if ((errno == ERANGE && 
-			(v == LONG_MAX || v == LONG_MIN)) ||
-			(v > INT_MAX || v < 0))
-		return(-1);
+	if (v > INT_MAX)
+		v = INT_MAX;
+	if (v < INT_MIN)
+		v = INT_MIN;
 
 	return((int)v);
 }
-

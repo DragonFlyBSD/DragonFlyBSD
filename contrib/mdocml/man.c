@@ -1,4 +1,4 @@
-/*	$Id: man.c,v 1.107 2011/03/29 08:30:49 kristaps Exp $ */
+/*	$Id: man.c,v 1.115 2012/01/03 15:16:24 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -40,7 +40,7 @@ const	char *const __man_macronames[MAN_MAX] = {
 	"RI",		"na",		"sp",		"nf",
 	"fi",		"RE",		"RS",		"DT",
 	"UC",		"PD",		"AT",		"in",
-	"ft"
+	"ft",		"OP"
 	};
 
 const	char * const *man_macronames = __man_macronames;
@@ -96,7 +96,7 @@ man_free(struct man *man)
 
 
 struct man *
-man_alloc(struct regset *regs, struct mparse *parse)
+man_alloc(struct roff *roff, struct mparse *parse)
 {
 	struct man	*p;
 
@@ -104,7 +104,7 @@ man_alloc(struct regset *regs, struct mparse *parse)
 
 	man_hash_init();
 	p->parse = parse;
-	p->regs = regs;
+	p->roff = roff;
 
 	man_alloc1(p);
 	return(p);
@@ -320,16 +320,9 @@ int
 man_word_alloc(struct man *m, int line, int pos, const char *word)
 {
 	struct man_node	*n;
-	size_t		 sv, len;
-
-	len = strlen(word);
 
 	n = man_node_alloc(m, line, pos, MAN_TEXT, MAN_MAX);
-	n->string = mandoc_malloc(len + 1);
-	sv = strlcpy(n->string, word, len + 1);
-
-	/* Prohibit truncation. */
-	assert(sv < len + 1);
+	n->string = roff_strdup(m->roff, word);
 
 	if ( ! man_node_append(m, n))
 		return(0);
@@ -371,14 +364,14 @@ man_addeqn(struct man *m, const struct eqn *ep)
 
 	assert( ! (MAN_HALT & m->flags));
 
-	n = man_node_alloc(m, ep->line, ep->pos, MAN_EQN, MAN_MAX);
+	n = man_node_alloc(m, ep->ln, ep->pos, MAN_EQN, MAN_MAX);
 	n->eqn = ep;
 
 	if ( ! man_node_append(m, n))
 		return(0);
 
 	m->next = MAN_NEXT_SIBLING;
-	return(man_descope(m, ep->line, ep->pos));
+	return(man_descope(m, ep->ln, ep->pos));
 }
 
 int
@@ -550,10 +543,42 @@ man_pmacro(struct man *m, int ln, char *buf, int offs)
 			n = n->parent;
 
 		mandoc_vmsg(MANDOCERR_LINESCOPE, m->parse, n->line, 
-				n->pos, "%s", man_macronames[n->tok]);
+		    n->pos, "%s breaks %s", man_macronames[tok],
+		    man_macronames[n->tok]);
 
 		man_node_delete(m, n);
 		m->flags &= ~MAN_ELINE;
+	}
+
+	/*
+	 * Remove prior BLINE macro that is being clobbered.
+	 */
+	if ((m->flags & MAN_BLINE) &&
+	    (MAN_BSCOPE & man_macros[tok].flags)) {
+		n = m->last;
+
+		/* Might be a text node like 8 in
+		 * .TP 8
+		 * .SH foo
+		 */
+		if (MAN_TEXT == n->type)
+			n = n->parent;
+
+		/* Remove element that didn't end BLINE, if any. */
+		if ( ! (MAN_BSCOPE & man_macros[n->tok].flags))
+			n = n->parent;
+
+		assert(MAN_HEAD == n->type);
+		n = n->parent;
+		assert(MAN_BLOCK == n->type);
+		assert(MAN_SCOPED & man_macros[n->tok].flags);
+
+		mandoc_vmsg(MANDOCERR_LINESCOPE, m->parse, n->line, 
+		    n->pos, "%s breaks %s", man_macronames[tok],
+		    man_macronames[n->tok]);
+
+		man_node_delete(m, n);
+		m->flags &= ~MAN_BLINE;
 	}
 
 	/*
@@ -654,4 +679,12 @@ man_node_unlink(struct man *m, struct man_node *n)
 
 	if (m && m->first == n)
 		m->first = NULL;
+}
+
+const struct mparse *
+man_mparse(const struct man *m)
+{
+
+	assert(m && m->parse);
+	return(m->parse);
 }

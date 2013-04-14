@@ -1,6 +1,6 @@
-/*	$Id: term_ascii.c,v 1.17 2011/05/20 15:48:22 kristaps Exp $ */
+/*	$Id: term_ascii.c,v 1.20 2011/12/04 23:10:52 schwarze Exp $ */
 /*
- * Copyright (c) 2010 Kristaps Dzonsons <kristaps@bsd.lv>
+ * Copyright (c) 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -68,7 +68,7 @@ static	size_t		  locale_width(const struct termp *, int);
 static struct termp *
 ascii_init(enum termenc enc, char *outopts)
 {
-	const char	*toks[2];
+	const char	*toks[4];
 	char		*v;
 	struct termp	*p;
 
@@ -104,13 +104,26 @@ ascii_init(enum termenc enc, char *outopts)
 	}
 #endif
 
-	toks[0] = "width";
-	toks[1] = NULL;
+	toks[0] = "indent";
+	toks[1] = "width";
+	toks[2] = "mdoc";
+	toks[3] = NULL;
 
 	while (outopts && *outopts)
 		switch (getsubopt(&outopts, UNCONST(toks), &v)) {
 		case (0):
+			p->defindent = (size_t)atoi(v);
+			break;
+		case (1):
 			p->defrmargin = (size_t)atoi(v);
+			break;
+		case (2):
+			/*
+			 * Temporary, undocumented mode
+			 * to imitate mdoc(7) output style.
+			 */
+			p->mdocstyle = 1;
+			p->defindent = 5;
 			break;
 		default:
 			break;
