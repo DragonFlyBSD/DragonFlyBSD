@@ -148,17 +148,24 @@ struct bnx_rx_buf {
 	bus_dmamap_t		bnx_rx_dmamap;
 	struct mbuf		*bnx_rx_mbuf;
 	bus_addr_t		bnx_rx_paddr;
-};
+	int			bnx_rx_refilled;
+} __cachealign;
 
 struct bnx_rx_std_ring {
 	struct lwkt_serialize	bnx_rx_std_serialize;
 	struct bnx_softc	*bnx_sc;
 
+	volatile uint16_t	bnx_rx_std_stop;
 	uint16_t		bnx_rx_std;	/* current prod ring head */
 	struct bge_rx_bd	*bnx_rx_std_ring;
 
-	bus_dma_tag_t		bnx_rx_mtag;	/* RX mbuf DMA tag */
+	int			bnx_rx_std_refill __cachealign;
+	u_int			bnx_rx_std_running;
+	struct thread		bnx_rx_std_ithread;
+
 	struct bnx_rx_buf	bnx_rx_std_buf[BGE_STD_RX_RING_CNT];
+
+	bus_dma_tag_t		bnx_rx_mtag;	/* RX mbuf DMA tag */
 
 	bus_dma_tag_t		bnx_rx_std_ring_tag;
 	bus_dmamap_t		bnx_rx_std_ring_map;
@@ -177,6 +184,9 @@ struct bnx_rx_ret_ring {
 
 	volatile uint16_t	*bnx_rx_considx;
 	uint16_t		bnx_rx_saved_considx;
+	uint16_t		bnx_rx_cnt;
+	uint16_t		bnx_rx_cntmax;
+	uint16_t		bnx_rx_mask;
 	struct bge_rx_bd	*bnx_rx_ret_ring;
 	bus_dmamap_t		bnx_rx_tmpmap;
 
@@ -283,6 +293,7 @@ struct bnx_softc {
 #define BNX_FLAG_TSO		0x00000200
 #define BNX_FLAG_NO_EEPROM	0x10000000
 #define BNX_FLAG_RXTX_BUNDLE	0x20000000
+#define BNX_FLAG_STD_THREAD	0x40000000
 
 	uint32_t		bnx_chipid;
 	uint32_t		bnx_asicrev;

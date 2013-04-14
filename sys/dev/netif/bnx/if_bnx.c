@@ -167,6 +167,8 @@ static int	bnx_setup_intr(struct bnx_softc *);
 static void	bnx_free_intr(struct bnx_softc *);
 static void	bnx_teardown_intr(struct bnx_softc *, int);
 static void	bnx_check_intr(void *);
+static void	bnx_rx_std_refill_ithread(void *);
+static void	bnx_rx_std_refill(void *, void *);
 
 static void	bnx_start(struct ifnet *, struct ifaltq_subque *);
 static int	bnx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -265,6 +267,7 @@ static int	bnx_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
 #endif
+static int	bnx_sysctl_std_refill(SYSCTL_HANDLER_ARGS);
 
 static int	bnx_msi_enable = 1;
 TUNABLE_INT("hw.bnx.msi.enable", &bnx_msi_enable);
@@ -721,9 +724,14 @@ bnx_newbuf_std(struct bnx_rx_ret_ring *ret, int i, int init)
 	int error, nsegs;
 	struct bnx_rx_buf *rb;
 
+	rb = &ret->bnx_std->bnx_rx_std_buf[i];
+	KASSERT(!rb->bnx_rx_refilled, ("RX buf %dth has been refilled", i));
+
 	m_new = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
-	if (m_new == NULL)
-		return ENOBUFS;
+	if (m_new == NULL) {
+		error = ENOBUFS;
+		goto back;
+	}
 	m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
 	m_adj(m_new, ETHER_ALIGN);
 
@@ -731,10 +739,8 @@ bnx_newbuf_std(struct bnx_rx_ret_ring *ret, int i, int init)
 	    ret->bnx_rx_tmpmap, m_new, &seg, 1, &nsegs, BUS_DMA_NOWAIT);
 	if (error) {
 		m_freem(m_new);
-		return error;
+		goto back;
 	}
-
-	rb = &ret->bnx_std->bnx_rx_std_buf[i];
 
 	if (!init) {
 		bus_dmamap_sync(ret->bnx_rx_mtag, rb->bnx_rx_dmamap,
@@ -744,24 +750,27 @@ bnx_newbuf_std(struct bnx_rx_ret_ring *ret, int i, int init)
 
 	map = ret->bnx_rx_tmpmap;
 	ret->bnx_rx_tmpmap = rb->bnx_rx_dmamap;
-	rb->bnx_rx_dmamap = map;
 
+	rb->bnx_rx_dmamap = map;
 	rb->bnx_rx_mbuf = m_new;
 	rb->bnx_rx_paddr = seg.ds_addr;
-
-	bnx_setup_rxdesc_std(ret->bnx_std, i);
-	return 0;
+back:
+	cpu_sfence();
+	rb->bnx_rx_refilled = 1;
+	return error;
 }
 
 static void
 bnx_setup_rxdesc_std(struct bnx_rx_std_ring *std, int i)
 {
-	const struct bnx_rx_buf *rb;
+	struct bnx_rx_buf *rb;
 	struct bge_rx_bd *r;
 
 	rb = &std->bnx_rx_std_buf[i];
-	r = &std->bnx_rx_std_ring[i];
+	KASSERT(rb->bnx_rx_refilled, ("RX buf %dth is not refilled", i));
+	rb->bnx_rx_refilled = 0;
 
+	r = &std->bnx_rx_std_ring[i];
 	r->bge_addr.bge_addr_lo = BGE_ADDR_LO(rb->bnx_rx_paddr);
 	r->bge_addr.bge_addr_hi = BGE_ADDR_HI(rb->bnx_rx_paddr);
 	r->bge_len = rb->bnx_rx_mbuf->m_len;
@@ -843,7 +852,13 @@ bnx_init_rx_ring_std(struct bnx_rx_std_ring *std)
 		error = bnx_newbuf_std(&std->bnx_sc->bnx_rx_ret_ring[0], i, 1);
 		if (error)
 			return error;
+		bnx_setup_rxdesc_std(std, i);
 	}
+
+	std->bnx_rx_std_refill = 0;
+	std->bnx_rx_std_running = 0;
+	cpu_sfence();
+	lwkt_serialize_handler_enable(&std->bnx_rx_std_serialize);
 
 	std->bnx_rx_std = BGE_STD_RX_RING_CNT - 1;
 	bnx_writembx(std->bnx_sc, BGE_MBX_RX_STD_PROD_LO, std->bnx_rx_std);
@@ -856,9 +871,12 @@ bnx_free_rx_ring_std(struct bnx_rx_std_ring *std)
 {
 	int i;
 
+	lwkt_serialize_handler_disable(&std->bnx_rx_std_serialize);
+
 	for (i = 0; i < BGE_STD_RX_RING_CNT; i++) {
 		struct bnx_rx_buf *rb = &std->bnx_rx_std_buf[i];
 
+		rb->bnx_rx_refilled = 0;
 		if (rb->bnx_rx_mbuf != NULL) {
 			bus_dmamap_unload(std->bnx_rx_mtag, rb->bnx_rx_dmamap);
 			m_freem(rb->bnx_rx_mbuf);
@@ -1690,8 +1708,9 @@ bnx_attach(device_t dev)
 {
 	struct ifnet *ifp;
 	struct bnx_softc *sc;
+	struct bnx_rx_std_ring *std;
 	uint32_t hwcfg = 0;
-	int error = 0, rid, capmask, i;
+	int error = 0, rid, capmask, i, std_cpuid, std_cpuid_def;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
 	uint16_t product;
 	uintptr_t mii_priv = 0;
@@ -2186,6 +2205,12 @@ bnx_attach(device_t dev)
 
 	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	    "std_refill", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, bnx_sysctl_std_refill, "I",
+	    "# of packets received before scheduling standard refilling");
+
+	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
 	    "rx_coal_bds_int", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, bnx_sysctl_rx_coal_bds_int, "I",
 	    "Receive max coalesced BD count during interrupt.");
@@ -2250,6 +2275,25 @@ bnx_attach(device_t dev)
 	}
 	bnx_set_tick_cpuid(sc, FALSE);
 
+	/*
+	 * Create RX standard ring refilling thread
+	 */
+	std_cpuid_def = device_get_unit(dev) % ncpus;
+	std_cpuid = device_getenv_int(dev, "std.cpuid", std_cpuid_def);
+	if (std_cpuid < 0 || std_cpuid >= ncpus) {
+		device_printf(dev, "invalid std.cpuid %d, use %d\n",
+		    std_cpuid, std_cpuid_def);
+		std_cpuid = std_cpuid_def;
+	}
+
+	std = &sc->bnx_rx_std_ring;
+	lwkt_create(bnx_rx_std_refill_ithread, std, NULL,
+	    &std->bnx_rx_std_ithread, TDF_NOSTART | TDF_INTTHREAD, std_cpuid,
+	    "%s std", device_get_nameunit(dev));
+	lwkt_setpri(&std->bnx_rx_std_ithread, TDPRI_INT_MED);
+	std->bnx_rx_std_ithread.td_preemptable = lwkt_preempt;
+	sc->bnx_flags |= BNX_FLAG_STD_THREAD;
+
 	return(0);
 fail:
 	bnx_detach(dev);
@@ -2271,6 +2315,18 @@ bnx_detach(device_t dev)
 		ifnet_deserialize_all(ifp);
 
 		ether_ifdetach(ifp);
+	}
+
+	if (sc->bnx_flags & BNX_FLAG_STD_THREAD) {
+		struct bnx_rx_std_ring *std = &sc->bnx_rx_std_ring;
+
+		tsleep_interlock(std, 0);
+		std->bnx_rx_std_stop = 1;
+		cpu_sfence();
+		lwkt_schedule(&std->bnx_rx_std_ithread);
+		tsleep(std, PINTERLOCKED, "bnx_detach", 0);
+		if (bootverbose)
+			device_printf(dev, "RX std ithread exited\n");
 	}
 
 	if (sc->bnx_flags & BNX_FLAG_TBI)
@@ -2491,14 +2547,14 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 	struct bnx_softc *sc = ret->bnx_sc;
 	struct bnx_rx_std_ring *std = ret->bnx_std;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int stdcnt = 0, jumbocnt = 0;
 
 	while (ret->bnx_rx_saved_considx != rx_prod && count != 0) {
-		struct bge_rx_bd	*cur_rx;
-		uint32_t		rxidx;
-		struct mbuf		*m = NULL;
-		uint16_t		vlan_tag = 0;
-		int			have_tag = 0;
+		struct bge_rx_bd *cur_rx;
+		struct bnx_rx_buf *rb;
+		uint32_t rxidx;
+		struct mbuf *m = NULL;
+		uint16_t vlan_tag = 0;
+		int have_tag = 0;
 
 		--count;
 
@@ -2512,54 +2568,27 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 			vlan_tag = cur_rx->bge_vlan_tag;
 		}
 
-		if (cur_rx->bge_flags & BGE_RXBDFLAG_JUMBO_RING) {
-			BNX_INC(sc->bnx_jumbo, BGE_JUMBO_RX_RING_CNT);
-			jumbocnt++;
+		if (ret->bnx_rx_cnt >= ret->bnx_rx_cntmax) {
+			ret->bnx_rx_cnt = 0;
+			cpu_sfence();
+			atomic_set_int(&std->bnx_rx_std_refill,
+			    ret->bnx_rx_mask);
+			if (atomic_poll_acquire_int(&std->bnx_rx_std_running))
+				lwkt_schedule(&std->bnx_rx_std_ithread);
+		}
+		ret->bnx_rx_cnt++;
 
-			if (rxidx != sc->bnx_jumbo) {
-				IFNET_STAT_INC(ifp, ierrors, 1);
-				if_printf(ifp, "sw jumbo index(%d) "
-				    "and hw jumbo index(%d) mismatch, drop!\n",
-				    sc->bnx_jumbo, rxidx);
-				bnx_setup_rxdesc_jumbo(sc, rxidx);
-				continue;
-			}
-
-			m = sc->bnx_cdata.bnx_rx_jumbo_chain[rxidx].bnx_rx_mbuf;
-			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
-				IFNET_STAT_INC(ifp, ierrors, 1);
-				bnx_setup_rxdesc_jumbo(sc, sc->bnx_jumbo);
-				continue;
-			}
-			if (bnx_newbuf_jumbo(sc, sc->bnx_jumbo, 0)) {
-				IFNET_STAT_INC(ifp, ierrors, 1);
-				bnx_setup_rxdesc_jumbo(sc, sc->bnx_jumbo);
-				continue;
-			}
-		} else {
-			BNX_INC(std->bnx_rx_std, BGE_STD_RX_RING_CNT);
-			stdcnt++;
-
-			if (rxidx != std->bnx_rx_std) {
-				IFNET_STAT_INC(ifp, ierrors, 1);
-				if_printf(ifp, "sw std index(%d) "
-				    "and hw std index(%d) mismatch, drop!\n",
-				    std->bnx_rx_std, rxidx);
-				bnx_setup_rxdesc_std(std, rxidx);
-				continue;
-			}
-
-			m = std->bnx_rx_std_buf[rxidx].bnx_rx_mbuf;
-			if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
-				IFNET_STAT_INC(ifp, ierrors, 1);
-				bnx_setup_rxdesc_std(std, std->bnx_rx_std);
-				continue;
-			}
-			if (bnx_newbuf_std(ret, std->bnx_rx_std, 0)) {
-				IFNET_STAT_INC(ifp, ierrors, 1);
-				bnx_setup_rxdesc_std(std, std->bnx_rx_std);
-				continue;
-			}
+		rb = &std->bnx_rx_std_buf[rxidx];
+		m = rb->bnx_rx_mbuf;
+		if (cur_rx->bge_flags & BGE_RXBDFLAG_ERROR) {
+			IFNET_STAT_INC(ifp, ierrors, 1);
+			cpu_sfence();
+			rb->bnx_rx_refilled = 1;
+			continue;
+		}
+		if (bnx_newbuf_std(ret, rxidx, 0)) {
+			IFNET_STAT_INC(ifp, ierrors, 1);
+			continue;
 		}
 
 		IFNET_STAT_INC(ifp, ipackets, 1);
@@ -2592,12 +2621,7 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 		}
 		ifp->if_input(ifp, m);
 	}
-
 	bnx_writembx(sc, BGE_MBX_RX_CONS0_LO, ret->bnx_rx_saved_considx);
-	if (stdcnt)
-		bnx_writembx(sc, BGE_MBX_RX_STD_PROD_LO, std->bnx_rx_std);
-	if (jumbocnt)
-		bnx_writembx(sc, BGE_MBX_RX_JUMBO_PROD_LO, sc->bnx_jumbo);
 }
 
 static void
@@ -3138,8 +3162,12 @@ bnx_init(void *xsc)
 	}
 
 	/* Init our RX return ring index */
-	for (i = 0; i < sc->bnx_rx_retcnt; ++i)
-		sc->bnx_rx_ret_ring[i].bnx_rx_saved_considx = 0;
+	for (i = 0; i < sc->bnx_rx_retcnt; ++i) {
+		struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[i];
+
+		ret->bnx_rx_saved_considx = 0;
+		ret->bnx_rx_cnt = 0;
+	}
 
 	/* Init TX ring. */
 	for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
@@ -3698,6 +3726,9 @@ bnx_dma_alloc(device_t dev)
 
 		ret->bnx_sc = sc;
 		ret->bnx_std = std;
+		ret->bnx_rx_cntmax = (BGE_STD_RX_RING_CNT / 4) /
+		    sc->bnx_rx_retcnt;
+		ret->bnx_rx_mask = 1 << i;
 
 		/* XXX */
 		ret->bnx_rx_considx =
@@ -4875,4 +4906,111 @@ bnx_set_tick_cpuid(struct bnx_softc *sc, boolean_t polling)
 		sc->bnx_tick_cpuid = 0; /* XXX */
 	else
 		sc->bnx_tick_cpuid = sc->bnx_intr_data[0].bnx_intr_cpuid;
+}
+
+static void
+bnx_rx_std_refill_ithread(void *xstd)
+{
+	struct bnx_rx_std_ring *std = xstd;
+	struct globaldata *gd = mycpu;
+
+	crit_enter_gd(gd);
+
+	while (!std->bnx_rx_std_stop) {
+		if (std->bnx_rx_std_refill) {
+			lwkt_serialize_handler_call(
+			    &std->bnx_rx_std_serialize,
+			    bnx_rx_std_refill, std, NULL);
+		}
+
+		crit_exit_gd(gd);
+		crit_enter_gd(gd);
+
+		if (!std->bnx_rx_std_refill && !std->bnx_rx_std_stop) {
+			lwkt_deschedule_self(gd->gd_curthread);
+			lwkt_switch();
+		}
+	}
+
+	crit_exit_gd(gd);
+
+	wakeup(std);
+
+	lwkt_exit();
+}
+
+static void
+bnx_rx_std_refill(void *xstd, void *frame __unused)
+{
+	struct bnx_rx_std_ring *std = xstd;
+	uint16_t check_idx;
+	int cnt, refill;
+
+again:
+	cnt = 0;
+	check_idx = std->bnx_rx_std;
+
+	cpu_lfence();
+	refill = std->bnx_rx_std_refill;
+	atomic_clear_int(&std->bnx_rx_std_refill, refill);
+
+	for (;;) {
+		struct bnx_rx_buf *rb;
+
+		BNX_INC(check_idx, BGE_STD_RX_RING_CNT);
+		rb = &std->bnx_rx_std_buf[check_idx];
+
+		if (rb->bnx_rx_refilled) {
+			cpu_lfence();
+			bnx_setup_rxdesc_std(std, check_idx);
+			std->bnx_rx_std = check_idx;
+			++cnt;
+		} else {
+			break;
+		}
+	}
+
+	if (cnt) {
+		bnx_writembx(std->bnx_sc, BGE_MBX_RX_STD_PROD_LO,
+		    std->bnx_rx_std);
+	}
+
+	if (std->bnx_rx_std_refill)
+		goto again;
+
+	atomic_poll_release_int(&std->bnx_rx_std_running);
+	cpu_mfence();
+
+	if (std->bnx_rx_std_refill)
+		goto again;
+}
+
+static int
+bnx_sysctl_std_refill(SYSCTL_HANDLER_ARGS)
+{
+	struct bnx_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0];
+	int error, cntmax, i;
+
+	cntmax = ret->bnx_rx_cntmax;
+	error = sysctl_handle_int(oidp, &cntmax, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	ifnet_serialize_all(ifp);
+
+	if ((cntmax * sc->bnx_rx_retcnt) > BGE_STD_RX_RING_CNT / 2) {
+		error = EINVAL;
+		goto back;
+	}
+
+	for (i = 0; i < sc->bnx_tx_ringcnt; ++i)
+		sc->bnx_rx_ret_ring[i].bnx_rx_cntmax = cntmax;
+	error = 0;
+
+back:
+	ifnet_deserialize_all(ifp);
+
+	return error;
 }
