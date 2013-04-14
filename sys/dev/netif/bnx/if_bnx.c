@@ -130,6 +130,13 @@ static const struct bnx_type {
 	{ 0, 0, NULL }
 };
 
+static const int bnx_tx_mailbox[BNX_TX_RING_MAX] = {
+	BGE_MBX_TX_HOST_PROD0_LO,
+	BGE_MBX_TX_HOST_PROD0_HI,
+	BGE_MBX_TX_HOST_PROD1_LO,
+	BGE_MBX_TX_HOST_PROD1_HI
+};
+
 #define BNX_IS_JUMBO_CAPABLE(sc)	((sc)->bnx_flags & BNX_FLAG_JUMBO)
 #define BNX_IS_5717_PLUS(sc)		((sc)->bnx_flags & BNX_FLAG_5717_PLUS)
 #define BNX_IS_57765_PLUS(sc)		((sc)->bnx_flags & BNX_FLAG_57765_PLUS)
@@ -3635,7 +3642,7 @@ bnx_dma_alloc(device_t dev)
 {
 	struct bnx_softc *sc = device_get_softc(dev);
 	struct bnx_rx_std_ring *std = &sc->bnx_rx_std_ring;
-	int i, error, mbx;
+	int i, error;
 
 	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
@@ -3747,7 +3754,6 @@ bnx_dma_alloc(device_t dev)
 	/*
 	 * Create TX rings
 	 */
-	mbx = BGE_MBX_TX_HOST_PROD0_LO;
 	sc->bnx_tx_ring = kmalloc_cachealign(
 	    sizeof(struct bnx_tx_ring) * sc->bnx_tx_ringcnt, M_DEVBUF,
 	    M_WAITOK | M_ZERO);
@@ -3755,12 +3761,7 @@ bnx_dma_alloc(device_t dev)
 		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
 
 		txr->bnx_sc = sc;
-		txr->bnx_tx_mbx = mbx;
-
-		if (mbx & 0x4)
-			mbx -= 0x4;
-		else
-			mbx += 0xc;
+		txr->bnx_tx_mbx = bnx_tx_mailbox[i];
 
 		/* XXX */
 		txr->bnx_tx_considx =

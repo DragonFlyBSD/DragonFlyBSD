@@ -385,4 +385,6 @@ struct bnx_softc {
 /* Return ring descriptor count */
 #define BNX_RETURN_RING_CNT	512
 
+#define BNX_TX_RING_MAX		4
+
 #endif	/* !_IF_BNXVAR_H_ */
