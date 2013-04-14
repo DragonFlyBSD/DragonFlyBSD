@@ -2,7 +2,7 @@
 
 PROG=	mandoc
 MAN=	mandoc.1 mandoc_char.7
-#MAN+=	mandoc.3 eqn.7 man.7 mdoc.7 roff.7 tbl.7
+#MAN+=	eqn.7 man.7 mdoc.7 roff.7 tbl.7
 WARNS?=	3
 
 VERSION=1.11.3

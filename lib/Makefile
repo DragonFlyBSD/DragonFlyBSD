@@ -65,6 +65,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	liblzma \
 	libm \
 	libmagic \
+	libmandoc \
 	${_libmilter} \
 	libncp \
 	${_libnetgraph} \
