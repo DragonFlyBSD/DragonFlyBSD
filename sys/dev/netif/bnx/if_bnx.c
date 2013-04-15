@@ -1127,6 +1127,7 @@ bnx_blockinit(struct bnx_softc *sc)
 {
 	struct bnx_tx_ring *txr = &sc->bnx_tx_ring[0];
 	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0];
+	struct bnx_intr_data *intr = &sc->bnx_intr_data[0];
 	struct bge_rcb *rcb;
 	bus_size_t vrcb;
 	bge_hostaddr taddr;
@@ -1459,11 +1460,11 @@ bnx_blockinit(struct bnx_softc *sc)
 	CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT, sc->bnx_tx_coal_bds_int);
 
 	/* Set up address of status block */
-	bzero(sc->bnx_ldata.bnx_status_block, BGE_STATUS_BLK_SZ);
+	bzero(intr->bnx_status_block, BGE_STATUS_BLK_SZ);
 	CSR_WRITE_4(sc, BGE_HCC_STATUSBLK_ADDR_HI,
-	    BGE_ADDR_HI(sc->bnx_ldata.bnx_status_block_paddr));
+	    BGE_ADDR_HI(intr->bnx_status_block_paddr));
 	CSR_WRITE_4(sc, BGE_HCC_STATUSBLK_ADDR_LO,
-	    BGE_ADDR_LO(sc->bnx_ldata.bnx_status_block_paddr));
+	    BGE_ADDR_LO(intr->bnx_status_block_paddr));
 
 	/* Set up status block partail update size. */
 	val = BGE_STATBLKSZ_32BYTE;
@@ -1909,6 +1910,7 @@ bnx_attach(device_t dev)
 	/* XXX */
 	sc->bnx_tx_ringcnt = 1;
 	sc->bnx_rx_retcnt = 1;
+	sc->bnx_intr_cnt = 1;
 
 	if ((sc->bnx_rx_retcnt == 1 && sc->bnx_tx_ringcnt == 1) ||
 	    (sc->bnx_rx_retcnt > 1 && sc->bnx_tx_ringcnt > 1)) {
@@ -2703,7 +2705,7 @@ static void
 bnx_npoll_status(struct ifnet *ifp)
 {
 	struct bnx_softc *sc = ifp->if_softc;
-	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
+	struct bge_status_block *sblk = sc->bnx_intr_data[0].bnx_status_block;
 
 	ASSERT_SERIALIZED(&sc->bnx_main_serialize);
 
@@ -2813,7 +2815,7 @@ bnx_intr(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[0];
-	struct bge_status_block *sblk = sc->bnx_ldata.bnx_status_block;
+	struct bge_status_block *sblk = sc->bnx_intr_data[0].bnx_status_block;
 	uint32_t status;
 
 	ASSERT_SERIALIZED(&sc->bnx_main_serialize);
@@ -3627,10 +3629,13 @@ bnx_dma_free(struct bnx_softc *sc)
 	if (BNX_IS_JUMBO_CAPABLE(sc))
 		bnx_free_jumbo_mem(sc);
 
-	/* Destroy status block */
-	bnx_dma_block_free(sc->bnx_cdata.bnx_status_tag,
-	    sc->bnx_cdata.bnx_status_map,
-	    sc->bnx_ldata.bnx_status_block);
+	/* Destroy status blocks */
+	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
+		struct bnx_intr_data *intr = &sc->bnx_intr_data[i];
+
+		bnx_dma_block_free(intr->bnx_status_tag,
+		    intr->bnx_status_map, intr->bnx_status_block);
+	}
 
 	/* Destroy the parent tag */
 	if (sc->bnx_cdata.bnx_parent_tag != NULL)
@@ -3664,16 +3669,20 @@ bnx_dma_alloc(device_t dev)
 	}
 
 	/*
-	 * Create DMA stuffs for status block.
+	 * Create DMA stuffs for status blocks.
 	 */
-	error = bnx_dma_block_alloc(sc, BGE_STATUS_BLK_SZ,
-	    &sc->bnx_cdata.bnx_status_tag,
-	    &sc->bnx_cdata.bnx_status_map,
-	    (void *)&sc->bnx_ldata.bnx_status_block,
-	    &sc->bnx_ldata.bnx_status_block_paddr);
-	if (error) {
-		device_printf(dev, "could not create status block\n");
-		return error;
+	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
+		struct bnx_intr_data *intr = &sc->bnx_intr_data[i];
+
+		error = bnx_dma_block_alloc(sc, BGE_STATUS_BLK_SZ,
+		    &intr->bnx_status_tag, &intr->bnx_status_map,
+		    (void *)&intr->bnx_status_block,
+		    &intr->bnx_status_block_paddr);
+		if (error) {
+			device_printf(dev,
+			    "could not create %dth status block\n", i);
+			return error;
+		}
 	}
 
 	/*
@@ -3731,6 +3740,7 @@ bnx_dma_alloc(device_t dev)
 	    M_WAITOK | M_ZERO);
 	for (i = 0; i < sc->bnx_rx_retcnt; ++i) {
 		struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[i];
+		struct bnx_intr_data *intr;
 
 		ret->bnx_sc = sc;
 		ret->bnx_std = std;
@@ -3739,11 +3749,17 @@ bnx_dma_alloc(device_t dev)
 		    sc->bnx_rx_retcnt;
 		ret->bnx_rx_mask = 1 << i;
 
-		/* XXX */
+		if (sc->bnx_rx_retcnt == 1) {
+			intr = &sc->bnx_intr_data[0];
+		} else {
+			KKASSERT(i + 1 < sc->bnx_intr_cnt);
+			intr = &sc->bnx_intr_data[i + 1];
+		}
+
 		ret->bnx_rx_considx =
-		&sc->bnx_ldata.bnx_status_block->bge_idx[0].bge_rx_prod_idx;
+		    &intr->bnx_status_block->bge_idx[0].bge_rx_prod_idx;
 		ret->bnx_hw_status_tag =
-		&sc->bnx_ldata.bnx_status_block->bge_status_tag;
+		    &intr->bnx_status_block->bge_status_tag;
 
 		error = bnx_create_rx_ret_ring(ret);
 		if (error) {
@@ -3762,13 +3778,20 @@ bnx_dma_alloc(device_t dev)
 	    M_WAITOK | M_ZERO);
 	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
 		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
+		struct bnx_intr_data *intr;
 
 		txr->bnx_sc = sc;
 		txr->bnx_tx_mbx = bnx_tx_mailbox[i];
 
-		/* XXX */
+		if (sc->bnx_tx_ringcnt == 1) {
+			intr = &sc->bnx_intr_data[0];
+		} else {
+			KKASSERT(i + 1 < sc->bnx_intr_cnt);
+			intr = &sc->bnx_intr_data[i + 1];
+		}
+
 		txr->bnx_tx_considx =
-		&sc->bnx_ldata.bnx_status_block->bge_idx[0].bge_tx_cons_idx;
+		    &intr->bnx_status_block->bge_idx[0].bge_tx_cons_idx;
 
 		error = bnx_create_tx_ring(txr);
 		if (error) {
@@ -4640,7 +4663,7 @@ bnx_alloc_intr(struct bnx_softc *sc)
 	struct bnx_intr_data *intr;
 	u_int intr_flags;
 
-	sc->bnx_intr_cnt = 1;
+	KKASSERT(sc->bnx_intr_cnt == 1);
 
 	intr = &sc->bnx_intr_data[0];
 	intr->bnx_sc = sc;

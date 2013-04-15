@@ -138,8 +138,6 @@ struct bnx_jslot {
 struct bnx_ring_data {
 	struct bge_rx_bd	*bnx_rx_jumbo_ring;
 	bus_addr_t		bnx_rx_jumbo_ring_paddr;
-	struct bge_status_block	*bnx_status_block;
-	bus_addr_t		bnx_status_block_paddr;
 	void			*bnx_jumbo_buf;
 	struct bnx_gib		bnx_info;
 };
@@ -204,10 +202,8 @@ struct bnx_rx_ret_ring {
 struct bnx_chain_data {
 	bus_dma_tag_t		bnx_parent_tag;
 	bus_dma_tag_t		bnx_rx_jumbo_ring_tag;
-	bus_dma_tag_t		bnx_status_tag;
 	bus_dma_tag_t		bnx_jumbo_tag;
 	bus_dmamap_t		bnx_rx_jumbo_ring_map;
-	bus_dmamap_t		bnx_status_map;
 	bus_dmamap_t		bnx_jumbo_map;
 	struct bnx_rx_buf	bnx_rx_jumbo_chain[BGE_JUMBO_RX_RING_CNT];
 	/* Stick the jumbo mem management stuff here too. */
@@ -268,6 +264,11 @@ struct bnx_intr_data {
 
 	const char		*bnx_intr_desc;
 	char			bnx_intr_desc0[64];
+
+	bus_dma_tag_t		bnx_status_tag;
+	bus_dmamap_t		bnx_status_map;
+	struct bge_status_block	*bnx_status_block;
+	bus_addr_t		bnx_status_block_paddr;
 } __cachealign;
 
 #define BNX_INTR_MAX		5
