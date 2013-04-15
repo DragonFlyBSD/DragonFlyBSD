@@ -1,6 +1,6 @@
-/*	$Id: libman.h,v 1.51 2011/03/23 15:33:57 kristaps Exp $ */
+/*	$Id: libman.h,v 1.55 2011/11/07 01:24:40 schwarze Exp $ */
 /*
- * Copyright (c) 2009, 2010 Kristaps Dzonsons <kristaps@bsd.lv>
+ * Copyright (c) 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -36,7 +36,7 @@ struct	man {
 	struct man_node	*last; /* the last parsed node */
 	struct man_node	*first; /* the first parsed node */
 	struct man_meta	 meta; /* document meta-data */
-	struct regset	*regs; /* registers */
+	struct roff	*roff;
 };
 
 #define	MACRO_PROT_ARGS	  struct man *m, \
@@ -54,6 +54,7 @@ struct	man_macro {
 #define	MAN_FSCOPED	 (1 << 2)	/* See blk_imp(). */
 #define	MAN_NSCOPED	 (1 << 3)	/* See in_line_eoln(). */
 #define	MAN_NOCLOSE	 (1 << 4)	/* See blk_exp(). */
+#define	MAN_BSCOPE	 (1 << 5)	/* Break BLINE scope. */
 };
 
 extern	const struct man_macro *const man_macros;

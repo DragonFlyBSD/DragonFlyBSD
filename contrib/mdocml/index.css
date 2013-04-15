@@ -11,7 +11,9 @@ body		{ text-align: justify;
 
 p,ul,table	{ margin-left: 3em; }
 
-p.head, p.foot	{ margin-left: 0.0em; margin-right: 0.0em; }
+p.head, 
+p.subhead,
+p.foot		{ margin-left: 0.0em; margin-right: 0.0em; }
 
 p.news		{ margin-left: 2.0em; }
 
@@ -20,9 +22,12 @@ li		{ margin: 0.25em; }
 h1		{ font-size: 110%; }
 h2		{ font-size: 105%; margin-left: 1.5em }
 
-p.head		{ margin-bottom: 1.75em;
+p.head		{ margin-bottom: 0.5em;
 		  border-bottom: 1px solid #dddddd; 
 		  padding-bottom: 0.2em; }
+
+p.subhead	{ margin-top: 0em; 
+		  margin-bottom: 1.75em; }
 
 p.foot		{ border-top: 1px solid #dddddd; 
 		  color: #666666;

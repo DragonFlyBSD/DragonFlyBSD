@@ -1,6 +1,6 @@
-/*	$Id: libmdoc.h,v 1.74 2011/04/19 16:38:48 kristaps Exp $ */
+/*	$Id: libmdoc.h,v 1.78 2011/12/02 01:37:14 schwarze Exp $ */
 /*
- * Copyright (c) 2008, 2009, 2010 Kristaps Dzonsons <kristaps@bsd.lv>
+ * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -39,7 +39,7 @@ struct	mdoc {
 	struct mdoc_meta  meta; /* document meta-data */
 	enum mdoc_sec	  lastnamed;
 	enum mdoc_sec	  lastsec;
-	struct regset	 *regs; /* registers */
+	struct roff	 *roff;
 };
 
 #define	MACRO_PROT_ARGS	struct mdoc *m, \
@@ -124,7 +124,6 @@ const char	 *mdoc_a2lib(const char *);
 const char	 *mdoc_a2st(const char *);
 const char	 *mdoc_a2arch(const char *);
 const char	 *mdoc_a2vol(const char *);
-const char	 *mdoc_a2msec(const char *);
 int		  mdoc_valid_pre(struct mdoc *, struct mdoc_node *);
 int		  mdoc_valid_post(struct mdoc *);
 enum margverr	  mdoc_argv(struct mdoc *, int, enum mdoct,

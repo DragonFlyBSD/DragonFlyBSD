@@ -1,4 +1,4 @@
-/*	$Id: html.c,v 1.147 2011/05/24 21:40:14 kristaps Exp $ */
+/*	$Id: html.c,v 1.150 2011/10/05 21:35:17 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2011 Ingo Schwarze <schwarze@openbsd.org>
@@ -118,13 +118,14 @@ static void *
 ml_alloc(char *outopts, enum htmltype type)
 {
 	struct html	*h;
-	const char	*toks[4];
+	const char	*toks[5];
 	char		*v;
 
 	toks[0] = "style";
 	toks[1] = "man";
 	toks[2] = "includes";
-	toks[3] = NULL;
+	toks[3] = "fragment";
+	toks[4] = NULL;
 
 	h = mandoc_calloc(1, sizeof(struct html));
 
@@ -142,6 +143,9 @@ ml_alloc(char *outopts, enum htmltype type)
 			break;
 		case (2):
 			h->base_includes = v;
+			break;
+		case (3):
+			h->oflags |= HTML_FRAGMENT;
 			break;
 		default:
 			break;
@@ -513,9 +517,11 @@ print_text(struct html *h, const char *word)
 			print_otag(h, TAG_I, 0, NULL);
 
 	assert(word);
-	if ( ! print_encode(h, word, 0))
+	if ( ! print_encode(h, word, 0)) {
 		if ( ! (h->flags & HTML_NONOSPACE))
 			h->flags &= ~HTML_NOSPACE;
+	} else
+		h->flags |= HTML_NOSPACE;
 
 	if (h->metaf) {
 		print_tagq(h, h->metaf);
@@ -595,7 +601,6 @@ bufcat(struct html *h, const char *p)
 
 	h->buflen = strlcat(h->buf, p, BUFSIZ);
 	assert(h->buflen < BUFSIZ);
-	h->buflen--;
 }
 
 void

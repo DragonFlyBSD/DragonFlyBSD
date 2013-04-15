@@ -1,4 +1,4 @@
-/*	$Id: main.c,v 1.163 2011/05/20 15:51:18 kristaps Exp $ */
+/*	$Id: main.c,v 1.165 2011/10/06 22:29:12 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010, 2011 Ingo Schwarze <schwarze@openbsd.org>
@@ -46,6 +46,7 @@ enum	outt {
 	OUTT_LOCALE,	/* -Tlocale */
 	OUTT_UTF8,	/* -Tutf8 */
 	OUTT_TREE,	/* -Ttree */
+	OUTT_MAN,	/* -Tman */
 	OUTT_HTML,	/* -Thtml */
 	OUTT_XHTML,	/* -Txhtml */
 	OUTT_LINT,	/* -Tlint */
@@ -125,6 +126,12 @@ main(int argc, char *argv[])
 		}
 
 	curp.mp = mparse_alloc(type, curp.wlevel, mmsg, &curp);
+
+	/*
+	 * Conditionally start up the lookaside buffer before parsing.
+	 */
+	if (OUTT_MAN == curp.outtype)
+		mparse_keep(curp.mp);
 
 	argc -= optind;
 	argv += optind;
@@ -249,6 +256,10 @@ parse(struct curparse *curp, int fd,
 			curp->outman = tree_man;
 			curp->outmdoc = tree_mdoc;
 			break;
+		case (OUTT_MAN):
+			curp->outmdoc = man_mdoc;
+			curp->outman = man_man;
+			break;
 		case (OUTT_PDF):
 			/* FALLTHROUGH */
 		case (OUTT_ASCII):
@@ -312,6 +323,8 @@ toptions(struct curparse *curp, char *arg)
 		curp->wlevel  = MANDOCLEVEL_WARNING;
 	} else if (0 == strcmp(arg, "tree"))
 		curp->outtype = OUTT_TREE;
+	else if (0 == strcmp(arg, "man"))
+		curp->outtype = OUTT_MAN;
 	else if (0 == strcmp(arg, "html"))
 		curp->outtype = OUTT_HTML;
 	else if (0 == strcmp(arg, "utf8"))

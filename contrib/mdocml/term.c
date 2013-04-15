@@ -1,6 +1,6 @@
-/*	$Id: term.c,v 1.197 2011/05/24 21:31:23 kristaps Exp $ */
+/*	$Id: term.c,v 1.201 2011/09/21 09:57:13 schwarze Exp $ */
 /*
- * Copyright (c) 2008, 2009, 2010 Kristaps Dzonsons <kristaps@bsd.lv>
+ * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010, 2011 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -79,22 +79,18 @@ term_end(struct termp *p)
  *
  * The following flags may be specified:
  *
- *  - TERMP_NOLPAD: when beginning to write the line, don't left-pad the
- *    offset value.  This is useful when doing columnar lists where the
- *    prior column has right-padded.
- *
  *  - TERMP_NOBREAK: this is the most important and is used when making
- *    columns.  In short: don't print a newline and instead pad to the
- *    right margin.  Used in conjunction with TERMP_NOLPAD.
+ *    columns.  In short: don't print a newline and instead expect the
+ *    next call to do the padding up to the start of the next column.
  *
- *  - TERMP_TWOSPACE: when padding, make sure there are at least two
- *    space characters of padding.  Otherwise, rather break the line.
+ *  - TERMP_TWOSPACE: make sure there is room for at least two space
+ *    characters of padding.  Otherwise, rather break the line.
  *
  *  - TERMP_DANGLE: don't newline when TERMP_NOBREAK is specified and
  *    the line is overrun, and don't pad-right if it's underrun.
  *
  *  - TERMP_HANG: like TERMP_DANGLE, but doesn't newline when
- *    overruning, instead save the position and continue at that point
+ *    overrunning, instead save the position and continue at that point
  *    when the next invocation.
  *
  *  In-line line breaking:
@@ -134,9 +130,10 @@ term_flushln(struct termp *p)
 	bp = TERMP_NOBREAK & p->flags ? mmax : maxvis;
 
 	/*
-	 * Indent the first line of a paragraph.
+	 * Calculate the required amount of padding.
 	 */
-	vbl = p->flags & TERMP_NOLPAD ? (size_t)0 : p->offset;
+	vbl = p->offset + p->overstep > p->viscol ?
+	      p->offset + p->overstep - p->viscol : 0;
 
 	vis = vend = 0;
 	i = 0;
@@ -187,14 +184,12 @@ term_flushln(struct termp *p)
 		if (vend > bp && 0 == jhy && vis > 0) {
 			vend -= vis;
 			(*p->endline)(p);
+			p->viscol = 0;
 			if (TERMP_NOBREAK & p->flags) {
-				p->viscol = p->rmargin;
-				(*p->advance)(p, p->rmargin);
+				vbl = p->rmargin;
 				vend += p->rmargin - p->offset;
-			} else {
-				p->viscol = 0;
+			} else
 				vbl = p->offset;
-			}
 
 			/* Remove the p->overstep width. */
 
@@ -236,10 +231,14 @@ term_flushln(struct termp *p)
 			if (ASCII_HYPH == p->buf[i]) {
 				(*p->letter)(p, '-');
 				p->viscol += (*p->width)(p, '-');
-			} else {
-				(*p->letter)(p, p->buf[i]);
-				p->viscol += (*p->width)(p, p->buf[i]);
+				continue;
 			}
+
+			(*p->letter)(p, p->buf[i]);
+			if (8 == p->buf[i])
+				p->viscol -= (*p->width)(p, p->buf[i-1]);
+			else 
+				p->viscol += (*p->width)(p, p->buf[i]);
 		}
 		vis = vend;
 	}
@@ -248,7 +247,8 @@ term_flushln(struct termp *p)
 	 * If there was trailing white space, it was not printed;
 	 * so reset the cursor position accordingly.
 	 */
-	vis -= vbl;
+	if (vis)
+		vis -= vbl;
 
 	p->col = 0;
 	p->overstep = 0;
@@ -273,25 +273,18 @@ term_flushln(struct termp *p)
 		 * move it one step LEFT and flag the rest of the line
 		 * to be longer.
 		 */
-		if (p->overstep >= -1) {
-			assert((int)maxvis + p->overstep >= 0);
-			maxvis += (size_t)p->overstep;
-		} else
+		if (p->overstep < -1)
 			p->overstep = 0;
+		return;
 
 	} else if (TERMP_DANGLE & p->flags)
 		return;
 
-	/* Right-pad. */
-	if (maxvis > vis +
+	/* If the column was overrun, break the line. */
+	if (maxvis <= vis +
 	    ((TERMP_TWOSPACE & p->flags) ? (*p->width)(p, ' ') : 0)) {
-		p->viscol += maxvis - vis;
-		(*p->advance)(p, maxvis - vis);
-		vis += (maxvis - vis);
-	} else {	/* ...or newline break. */
 		(*p->endline)(p);
-		p->viscol = p->rmargin;
-		(*p->advance)(p, p->rmargin);
+		p->viscol = 0;
 	}
 }
 
@@ -306,12 +299,8 @@ term_newln(struct termp *p)
 {
 
 	p->flags |= TERMP_NOSPACE;
-	if (0 == p->col && 0 == p->viscol) {
-		p->flags &= ~TERMP_NOLPAD;
-		return;
-	}
-	term_flushln(p);
-	p->flags &= ~TERMP_NOLPAD;
+	if (p->col || p->viscol)
+		term_flushln(p);
 }
 
 
@@ -576,13 +565,16 @@ encode(struct termp *p, const char *word, size_t sz)
 		adjbuf(p, p->col + 1 + (len * 3));
 
 	for (i = 0; i < len; i++) {
-		if ( ! isgraph((unsigned char)word[i])) {
+		if (ASCII_HYPH != word[i] &&
+		    ! isgraph((unsigned char)word[i])) {
 			p->buf[p->col++] = word[i];
 			continue;
 		}
 
 		if (TERMFONT_UNDER == f)
 			p->buf[p->col++] = '_';
+		else if (ASCII_HYPH == word[i])
+			p->buf[p->col++] = '-';
 		else
 			p->buf[p->col++] = word[i];
 

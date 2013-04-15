@@ -1,4 +1,4 @@
-/*	$Id: man_validate.c,v 1.69 2011/04/13 09:57:08 kristaps Exp $ */
+/*	$Id: man_validate.c,v 1.80 2012/01/03 15:16:24 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010 Ingo Schwarze <schwarze@openbsd.org>
@@ -44,49 +44,52 @@ struct	man_valid {
 	v_check	 *posts;
 };
 
-static	int	  check_bline(CHKARGS);
 static	int	  check_eq0(CHKARGS);
-static	int	  check_ft(CHKARGS);
+static	int	  check_eq2(CHKARGS);
 static	int	  check_le1(CHKARGS);
 static	int	  check_ge2(CHKARGS);
 static	int	  check_le5(CHKARGS);
 static	int	  check_par(CHKARGS);
 static	int	  check_part(CHKARGS);
 static	int	  check_root(CHKARGS);
-static	int	  check_sec(CHKARGS);
 static	void	  check_text(CHKARGS);
 
 static	int	  post_AT(CHKARGS);
+static	int	  post_vs(CHKARGS);
 static	int	  post_fi(CHKARGS);
+static	int	  post_ft(CHKARGS);
 static	int	  post_nf(CHKARGS);
+static	int	  post_sec(CHKARGS);
 static	int	  post_TH(CHKARGS);
 static	int	  post_UC(CHKARGS);
+static	int	  pre_sec(CHKARGS);
 
 static	v_check	  posts_at[] = { post_AT, NULL };
+static	v_check	  posts_br[] = { post_vs, check_eq0, NULL };
 static	v_check	  posts_eq0[] = { check_eq0, NULL };
+static	v_check	  posts_eq2[] = { check_eq2, NULL };
 static	v_check	  posts_fi[] = { check_eq0, post_fi, NULL };
-static	v_check	  posts_le1[] = { check_le1, NULL };
-static	v_check	  posts_ft[] = { check_ft, NULL };
+static	v_check	  posts_ft[] = { post_ft, NULL };
 static	v_check	  posts_nf[] = { check_eq0, post_nf, NULL };
 static	v_check	  posts_par[] = { check_par, NULL };
 static	v_check	  posts_part[] = { check_part, NULL };
-static	v_check	  posts_sec[] = { check_sec, NULL };
+static	v_check	  posts_sec[] = { post_sec, NULL };
+static	v_check	  posts_sp[] = { post_vs, check_le1, NULL };
 static	v_check	  posts_th[] = { check_ge2, check_le5, post_TH, NULL };
 static	v_check	  posts_uc[] = { post_UC, NULL };
-static	v_check	  pres_bline[] = { check_bline, NULL };
-
+static	v_check	  pres_sec[] = { pre_sec, NULL };
 
 static	const struct man_valid man_valids[MAN_MAX] = {
-	{ NULL, posts_eq0 }, /* br */
-	{ pres_bline, posts_th }, /* TH */
-	{ pres_bline, posts_sec }, /* SH */
-	{ pres_bline, posts_sec }, /* SS */
-	{ pres_bline, NULL }, /* TP */
-	{ pres_bline, posts_par }, /* LP */
-	{ pres_bline, posts_par }, /* PP */
-	{ pres_bline, posts_par }, /* P */
-	{ pres_bline, NULL }, /* IP */
-	{ pres_bline, NULL }, /* HP */
+	{ NULL, posts_br }, /* br */
+	{ NULL, posts_th }, /* TH */
+	{ pres_sec, posts_sec }, /* SH */
+	{ pres_sec, posts_sec }, /* SS */
+	{ NULL, NULL }, /* TP */
+	{ NULL, posts_par }, /* LP */
+	{ NULL, posts_par }, /* PP */
+	{ NULL, posts_par }, /* P */
+	{ NULL, NULL }, /* IP */
+	{ NULL, NULL }, /* HP */
 	{ NULL, NULL }, /* SM */
 	{ NULL, NULL }, /* SB */
 	{ NULL, NULL }, /* BI */
@@ -98,10 +101,10 @@ static	const struct man_valid man_valids[MAN_MAX] = {
 	{ NULL, NULL }, /* I */
 	{ NULL, NULL }, /* IR */
 	{ NULL, NULL }, /* RI */
-	{ NULL, posts_eq0 }, /* na */ /* FIXME: should warn only. */
-	{ NULL, posts_le1 }, /* sp */ /* FIXME: should warn only. */
-	{ pres_bline, posts_nf }, /* nf */
-	{ pres_bline, posts_fi }, /* fi */
+	{ NULL, posts_eq0 }, /* na */
+	{ NULL, posts_sp }, /* sp */
+	{ NULL, posts_nf }, /* nf */
+	{ NULL, posts_fi }, /* fi */
 	{ NULL, NULL }, /* RE */
 	{ NULL, posts_part }, /* RS */
 	{ NULL, NULL }, /* DT */
@@ -110,6 +113,7 @@ static	const struct man_valid man_valids[MAN_MAX] = {
 	{ NULL, posts_at }, /* AT */
 	{ NULL, NULL }, /* in */
 	{ NULL, posts_ft }, /* ft */
+	{ NULL, posts_eq2 }, /* OP */
 };
 
 
@@ -206,46 +210,16 @@ check_root(CHKARGS)
 }
 
 static void
-check_text(CHKARGS) 
+check_text(CHKARGS)
 {
-	char		*p, *pp, *cpp;
-	int		 pos;
-	size_t		 sz;
+	char		*cp, *p;
 
-	p = n->string;
-	pos = n->pos + 1;
+	if (MAN_LITERAL & m->flags)
+		return;
 
-	while ('\0' != *p) {
-		sz = strcspn(p, "\t\\");
-
-		p += (int)sz;
-		pos += (int)sz;
-
-		if ('\t' == *p) {
-			if ( ! (MAN_LITERAL & m->flags))
-				man_pmsg(m, n->line, pos, MANDOCERR_BADTAB);
-			p++;
-			pos++;
-			continue;
-		} else if ('\0' == *p)
-			break;
-
-		pos++;
-		pp = ++p;
-
-		if (ESCAPE_ERROR == mandoc_escape
-				((const char **)&pp, NULL, NULL)) {
-			man_pmsg(m, n->line, pos, MANDOCERR_BADESCAPE);
-			break;
-		}
-
-		cpp = p;
-		while (NULL != (cpp = memchr(cpp, ASCII_HYPH, pp - cpp)))
-			*cpp = '-';
-
-		pos += pp - p;
-		p = pp;
-	}
+	cp = n->string;
+	for (p = cp; NULL != (p = strchr(p, '\t')); p++)
+		man_pmsg(m, n->line, (int)(p - cp), MANDOCERR_BADTAB);
 }
 
 #define	INEQ_DEFINE(x, ineq, name) \
@@ -261,12 +235,13 @@ check_##name(CHKARGS) \
 }
 
 INEQ_DEFINE(0, ==, eq0)
+INEQ_DEFINE(2, ==, eq2)
 INEQ_DEFINE(1, <=, le1)
 INEQ_DEFINE(2, >=, ge2)
 INEQ_DEFINE(5, <=, le5)
 
 static int
-check_ft(CHKARGS)
+post_ft(CHKARGS)
 {
 	char	*cp;
 	int	 ok;
@@ -322,7 +297,16 @@ check_ft(CHKARGS)
 }
 
 static int
-check_sec(CHKARGS)
+pre_sec(CHKARGS)
+{
+
+	if (MAN_BLOCK == n->type)
+		m->flags &= ~MAN_LITERAL;
+	return(1);
+}
+
+static int
+post_sec(CHKARGS)
 {
 
 	if ( ! (MAN_HEAD == n->type && 0 == n->nchild)) 
@@ -331,7 +315,6 @@ check_sec(CHKARGS)
 	man_nmsg(m, n, MANDOCERR_SYNTARGCOUNT);
 	return(0);
 }
-
 
 static int
 check_part(CHKARGS)
@@ -371,19 +354,6 @@ check_par(CHKARGS)
 
 
 static int
-check_bline(CHKARGS)
-{
-
-	assert( ! (MAN_ELINE & m->flags));
-	if (MAN_BLINE & m->flags) {
-		man_nmsg(m, n, MANDOCERR_SYNTLINESCOPE);
-		return(0);
-	}
-
-	return(1);
-}
-
-static int
 post_TH(CHKARGS)
 {
 	const char	*p;
@@ -411,7 +381,8 @@ post_TH(CHKARGS)
 	if (n && n->string) {
 		for (p = n->string; '\0' != *p; p++) {
 			/* Only warn about this once... */
-			if (isalpha((u_char)*p) && ! isupper((u_char)*p)) {
+			if (isalpha((unsigned char)*p) && 
+					! isupper((unsigned char)*p)) {
 				man_nmsg(m, n, MANDOCERR_UPPERCASE);
 				break;
 			}
@@ -433,10 +404,12 @@ post_TH(CHKARGS)
 
 	if (n)
 		n = n->next;
-	if (n)
+	if (n && n->string && '\0' != n->string[0]) {
 		pos = n->pos;
-	m->meta.date = mandoc_normdate
-		(m->parse, n ? n->string : NULL, line, pos);
+		m->meta.date = mandoc_normdate
+		    (m->parse, n->string, line, pos);
+	} else
+		m->meta.date = mandoc_strdup("");
 
 	/* TITLE MSEC DATE ->SOURCE<- VOL */
 
@@ -444,9 +417,13 @@ post_TH(CHKARGS)
 		m->meta.source = mandoc_strdup(n->string);
 
 	/* TITLE MSEC DATE SOURCE ->VOL<- */
+	/* If missing, use the default VOL name for MSEC. */
 
 	if (n && (n = n->next))
 		m->meta.vol = mandoc_strdup(n->string);
+	else if ('\0' != m->meta.msec[0] &&
+	    (NULL != (p = mandoc_a2msec(m->meta.msec))))
+		m->meta.vol = mandoc_strdup(p);
 
 	/*
 	 * Remove the `TH' node after we've processed it for our
@@ -492,7 +469,6 @@ post_UC(CHKARGS)
 	const char	*p, *s;
 
 	n = n->child;
-	n = m->last->child;
 
 	if (NULL == n || MAN_TEXT != n->type)
 		p = bsd_versions[0];
@@ -556,5 +532,19 @@ post_AT(CHKARGS)
 		free(m->meta.source);
 
 	m->meta.source = mandoc_strdup(p);
+	return(1);
+}
+
+static int
+post_vs(CHKARGS)
+{
+
+	/* 
+	 * Don't warn about this because it occurs in pod2man and would
+	 * cause considerable (unfixable) warnage.
+	 */
+	if (NULL == n->prev && MAN_ROOT == n->parent->type)
+		man_node_delete(m, n);
+
 	return(1);
 }
