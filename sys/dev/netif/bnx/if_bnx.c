@@ -162,7 +162,6 @@ static void	bnx_npoll_tx(struct ifnet *, void *, int);
 static void	bnx_npoll_status(struct ifnet *);
 #endif
 static void	bnx_intr_legacy(void *);
-static void	bnx_msi(void *);
 static void	bnx_msi_oneshot(void *);
 static void	bnx_intr(struct bnx_softc *);
 static void	bnx_enable_intr(struct bnx_softc *);
@@ -2795,16 +2794,6 @@ bnx_intr_legacy(void *xsc)
 }
 
 static void
-bnx_msi(void *xsc)
-{
-	struct bnx_softc *sc = xsc;
-
-	/* Disable interrupt first */
-	bnx_writembx(sc, BGE_MBX_IRQ0_LO, 1);
-	bnx_intr(sc);
-}
-
-static void
 bnx_msi_oneshot(void *xsc)
 {
 	bnx_intr(xsc);
@@ -4187,11 +4176,8 @@ bnx_enable_intr(struct bnx_softc *sc)
 	 */
 	intr = &sc->bnx_intr_data[0]; /* XXX */
 	bnx_writembx(sc, BGE_MBX_IRQ0_LO, (*intr->bnx_saved_status_tag) << 24);
-	if (sc->bnx_flags & BNX_FLAG_ONESHOT_MSI) {
-		/* XXX Linux driver */
-		bnx_writembx(sc, BGE_MBX_IRQ0_LO,
-		    (*intr->bnx_saved_status_tag) << 24);
-	}
+	/* XXX Linux driver */
+	bnx_writembx(sc, BGE_MBX_IRQ0_LO, (*intr->bnx_saved_status_tag) << 24);
 
 	/*
 	 * Unmask the interrupt when we stop polling.
@@ -4386,15 +4372,12 @@ bnx_enable_msi(struct bnx_softc *sc)
 
 	msi_mode = CSR_READ_4(sc, BGE_MSI_MODE);
 	msi_mode |= BGE_MSIMODE_ENABLE;
-	if (sc->bnx_flags & BNX_FLAG_ONESHOT_MSI) {
-		/*
-		 * NOTE:
-		 * 5718-PG105-R says that "one shot" mode
-		 * does not work if MSI is used, however,
-		 * it obviously works.
-		 */
-		msi_mode &= ~BGE_MSIMODE_ONESHOT_DISABLE;
-	}
+	/*
+	 * NOTE:
+	 * 5718-PG105-R says that "one shot" mode does not work
+	 * if MSI is used, however, it obviously works.
+	 */
+	msi_mode &= ~BGE_MSIMODE_ONESHOT_DISABLE;
 	CSR_WRITE_4(sc, BGE_MSI_MODE, msi_mode);
 }
 
@@ -4685,16 +4668,10 @@ bnx_alloc_intr(struct bnx_softc *sc)
 	}
 
 	if (sc->bnx_intr_type == PCI_INTR_TYPE_MSI) {
-		sc->bnx_flags |= BNX_FLAG_ONESHOT_MSI;
 		bnx_enable_msi(sc);
-
-		if (sc->bnx_flags & BNX_FLAG_ONESHOT_MSI) {
-			intr->bnx_intr_func = bnx_msi_oneshot;
-			if (bootverbose)
-				device_printf(sc->bnx_dev, "oneshot MSI\n");
-		} else {
-			intr->bnx_intr_func = bnx_msi;
-		}
+		intr->bnx_intr_func = bnx_msi_oneshot;
+		if (bootverbose)
+			device_printf(sc->bnx_dev, "oneshot MSI\n");
 	} else {
 		intr->bnx_intr_func = bnx_intr_legacy;
 	}
