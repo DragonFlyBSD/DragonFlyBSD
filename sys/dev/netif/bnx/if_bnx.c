@@ -162,7 +162,7 @@ static void	bnx_npoll_tx(struct ifnet *, void *, int);
 static void	bnx_npoll_status(struct ifnet *);
 #endif
 static void	bnx_intr_legacy(void *);
-static void	bnx_msi_oneshot(void *);
+static void	bnx_msi(void *);
 static void	bnx_intr(struct bnx_softc *);
 static void	bnx_enable_intr(struct bnx_softc *);
 static void	bnx_disable_intr(struct bnx_softc *);
@@ -2794,7 +2794,7 @@ bnx_intr_legacy(void *xsc)
 }
 
 static void
-bnx_msi_oneshot(void *xsc)
+bnx_msi(void *xsc)
 {
 	bnx_intr(xsc);
 }
@@ -4669,7 +4669,7 @@ bnx_alloc_intr(struct bnx_softc *sc)
 
 	if (sc->bnx_intr_type == PCI_INTR_TYPE_MSI) {
 		bnx_enable_msi(sc);
-		intr->bnx_intr_func = bnx_msi_oneshot;
+		intr->bnx_intr_func = bnx_msi;
 		if (bootverbose)
 			device_printf(sc->bnx_dev, "oneshot MSI\n");
 	} else {
