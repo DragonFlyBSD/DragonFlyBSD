@@ -67,7 +67,7 @@
 .Fa "const struct man *man"
 .Fc
 .Ft "struct mchars *"
-.Fn mchars_alloc
+.Fn mchars_alloc "void"
 .Ft void
 .Fn mchars_free "struct mchars *p"
 .Ft char
@@ -86,7 +86,6 @@
 .Fa "const struct mchars *p"
 .Fa "const char *cp"
 .Fa "size_t sz"
-.Ft "const char *"
 .Fc
 .Ft "const struct mdoc_meta *"
 .Fo mdoc_meta
