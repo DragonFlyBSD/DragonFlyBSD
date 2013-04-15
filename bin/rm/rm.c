@@ -54,7 +54,7 @@
 #include <unistd.h>
 
 static int dflag, eval, fflag, iflag, Pflag, vflag, Wflag, stdin_ok;
-static int rflag, Iflag;
+static int rflag, Iflag, xflag;
 static uid_t uid;
 volatile sig_atomic_t info;
 
@@ -101,8 +101,8 @@ main(int argc, char *argv[])
 		exit(eval);
 	}
 
-	Pflag = rflag = 0;
-	while ((ch = getopt(argc, argv, "dfiIPRrvW")) != -1) {
+	Pflag = rflag = xflag = 0;
+	while ((ch = getopt(argc, argv, "dfiIPRrvWx")) != -1) {
 		switch(ch) {
 		case 'd':
 			dflag = 1;
@@ -138,6 +138,9 @@ main(int argc, char *argv[])
 			break;
 		case 'W':
 			Wflag = 1;
+			break;
+		case 'x':
+			xflag = 1;
 			break;
 		default:
 			usage();
@@ -199,6 +202,8 @@ rm_tree(char **argv)
 		flags |= FTS_NOSTAT;
 	if (Wflag)
 		flags |= FTS_WHITEOUT;
+	if (xflag)
+		flags |= FTS_XDEV;
 	if ((fts = fts_open(argv, flags, NULL)) == NULL) {
 		if (fflag && errno == ENOENT)
 			return;
@@ -624,7 +629,7 @@ usage(void)
 {
 
 	fprintf(stderr, "%s\n%s\n",
-	    "usage: rm [-f | -i] [-dIPRrvW] file ...",
+	    "usage: rm [-f | -i] [-dIPRrvWx] file ...",
 	    "       unlink file");
 	exit(EX_USAGE);
 }

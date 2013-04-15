@@ -34,9 +34,8 @@
 .\"
 .\"	@(#)rm.1	8.5 (Berkeley) 12/5/94
 .\" $FreeBSD: src/bin/rm/rm.1,v 1.19.2.6 2003/02/04 22:10:42 trhodes Exp $
-.\" $DragonFly: src/bin/rm/rm.1,v 1.12 2007/01/02 23:42:20 swildner Exp $
 .\"
-.Dd January 28, 1999
+.Dd April 15, 2013
 .Dt RM 1
 .Os
 .Sh NAME
@@ -45,7 +44,7 @@
 .Nd remove directory entries
 .Sh SYNOPSIS
 .Nm
-.Op Fl dfiIPRrvW
+.Op Fl dfiIPRrvWx
 .Ar
 .Nm unlink
 .Ar file
@@ -120,6 +119,8 @@ Be verbose when deleting files, showing them as they are removed.
 Attempt to undelete the named files.
 Currently, this option can only be used to recover
 files covered by whiteouts.
+.It Fl x
+When removing a hierarchy, don't cross mount points.
 .El
 .Pp
 The
