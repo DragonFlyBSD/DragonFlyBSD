@@ -1844,7 +1844,7 @@ bnx_attach(device_t dev)
 		/*
 		 * All BCM57785 and BCM5718 families chips have a bug that
 		 * under certain situation interrupt will not be enabled
-		 * even if status tag is written to BGE_MBX_IRQ0_LO mailbox.
+		 * even if status tag is written to interrupt mailbox.
 		 *
 		 * While BCM5719 and BCM5720 have a hardware workaround
 		 * which could fix the above bug.
@@ -4163,7 +4163,6 @@ static void
 bnx_enable_intr(struct bnx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct bnx_intr_data *intr;
 	int i;
 
 	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
@@ -4174,10 +4173,15 @@ bnx_enable_intr(struct bnx_softc *sc)
 	/*
 	 * Enable interrupt.
 	 */
-	intr = &sc->bnx_intr_data[0]; /* XXX */
-	bnx_writembx(sc, BGE_MBX_IRQ0_LO, (*intr->bnx_saved_status_tag) << 24);
-	/* XXX Linux driver */
-	bnx_writembx(sc, BGE_MBX_IRQ0_LO, (*intr->bnx_saved_status_tag) << 24);
+	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
+		struct bnx_intr_data *intr = &sc->bnx_intr_data[i];
+
+		bnx_writembx(sc, intr->bnx_intr_mbx,
+		    (*intr->bnx_saved_status_tag) << 24);
+		/* XXX Linux driver */
+		bnx_writembx(sc, intr->bnx_intr_mbx,
+		    (*intr->bnx_saved_status_tag) << 24);
+	}
 
 	/*
 	 * Unmask the interrupt when we stop polling.
@@ -4197,7 +4201,8 @@ bnx_enable_intr(struct bnx_softc *sc)
 			if_printf(ifp, "status tag bug workaround\n");
 
 		for (i = 0; i < sc->bnx_intr_cnt; ++i) {
-			intr = &sc->bnx_intr_data[i];
+			struct bnx_intr_data *intr = &sc->bnx_intr_data[i];
+
 			intr->bnx_intr_maylose = FALSE;
 			intr->bnx_rx_check_considx = 0;
 			intr->bnx_tx_check_considx = 0;
@@ -4231,7 +4236,8 @@ bnx_disable_intr(struct bnx_softc *sc)
 	/*
 	 * Acknowledge possible asserted interrupt.
 	 */
-	bnx_writembx(sc, BGE_MBX_IRQ0_LO, 1);
+	for (i = 0; i < sc->bnx_intr_cnt; ++i)
+		bnx_writembx(sc, sc->bnx_intr_data[i].bnx_intr_mbx, 1);
 
 	for (i = 0; i < sc->bnx_intr_cnt; ++i) {
 		lwkt_serialize_handler_disable(
@@ -4656,6 +4662,7 @@ bnx_alloc_intr(struct bnx_softc *sc)
 	callout_init_mp(&intr->bnx_intr_timer);
 	intr->bnx_intr_check = bnx_check_intr;
 	intr->bnx_saved_status_tag = &intr->bnx_ret->bnx_saved_status_tag;
+	intr->bnx_intr_mbx = BGE_MBX_IRQ0_LO;
 
 	sc->bnx_intr_type = pci_alloc_1intr(sc->bnx_dev, bnx_msi_enable,
 	    &intr->bnx_intr_rid, &intr_flags);

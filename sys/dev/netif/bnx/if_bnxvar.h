@@ -260,6 +260,7 @@ struct bnx_intr_data {
 	void			*bnx_intr_hand;
 	struct resource		*bnx_intr_res;
 	int			bnx_intr_rid;
+	int			bnx_intr_mbx;
 	const uint32_t		*bnx_saved_status_tag;
 
 	const char		*bnx_intr_desc;
