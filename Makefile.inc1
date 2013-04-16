@@ -10,10 +10,14 @@
 # realquickworld - skip the glue and depend stages and just build the meat
 # crossworld  - only build the glue (particularly the cross-build environment)
 # installworld- install everything built by "buildworld"
-# backupworld - copies /bin /sbin /usr/bin /usr/sbin /libexec to backup dir
-# restoreworld- installs binaries from backup dir to world
+# backupworld - copies /bin /sbin /usr/bin /usr/sbin /usr/lib /usr/libexec
+#               to manual backup dir
+# restoreworld- installs binaries from manual backup dir to world
+# restoreworld-auto - installs binaries from auto-backup dir to world
 # most        - build user commands, no libraries or include files
 # installmost - install user commands, no libraries or include files
+# backup-clean - delete backup from manual backup dir
+# backup-auto-clean - delete backup from auto-backup dir
 #
 # Standard targets (not defined here) are documented in the makefiles in
 # /usr/share/mk.  These include:
@@ -128,7 +132,7 @@ WORLD_BINUTILSVER?=	binutils222
 # Set the backup parameters if they are not already defined
 #
 WORLD_BACKUP?=		/var/backups/world_backup
-AUTO_BACKUP=		${OBJTREE}/world_backup
+AUTO_BACKUP?=		${OBJTREE}/world_backup/${DESTDIR}
 
 # temporary until everybody has converted to x86_64
 .if ${MACHINE_ARCH} == "amd64"
@@ -421,7 +425,6 @@ everything:
 	@echo ">>> stage 4d: building everything.."
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} all
-	@rm -f ${AUTO_BACKUP}/installstamp
 
 # note: buildworld no longer depends on _cleanobj because we rm -rf the
 # entire object tree and built the bootstrap tools in a different location.
@@ -1053,81 +1056,55 @@ xmake:
 xmakeenv:
 	@echo '${XMAKEENV} /bin/sh'
 
-backupworld:
+backupworld: backup-clean
 	@mkdir -p ${WORLD_BACKUP}
-	@chflags -R noschg ${WORLD_BACKUP}
-	@rm -rf ${WORLD_BACKUP}/sbin ${WORLD_BACKUP}/bin \
-	        ${WORLD_BACKUP}/usr.sbin ${WORLD_BACKUP}/usr.bin \
-	        ${WORLD_BACKUP}/usr.libexec
-	cp -RpP /bin ${WORLD_BACKUP}/bin
-	cp -RpP /sbin ${WORLD_BACKUP}/sbin
-	cp -RpP /usr/bin ${WORLD_BACKUP}/usr.bin
-	cp -RpP /usr/lib ${WORLD_BACKUP}/usr.lib
-	cp -RpP /usr/sbin ${WORLD_BACKUP}/usr.sbin
-	cp -RpP /usr/libexec ${WORLD_BACKUP}/usr.libexec
-
-backupworld-auto:
-.if !exists(${AUTO_BACKUP}/installstamp)
-	@mkdir -p ${AUTO_BACKUP}
-	@chflags -R noschg ${AUTO_BACKUP}
-	@rm -rf ${AUTO_BACKUP}/sbin ${AUTO_BACKUP}/bin \
-	        ${AUTO_BACKUP}/usr.sbin ${AUTO_BACKUP}/usr.bin \
-	        ${AUTO_BACKUP}/usr.libexec
-	cp -RpP /bin ${AUTO_BACKUP}/bin
-	cp -RpP /sbin ${AUTO_BACKUP}/sbin
-	cp -RpP /usr/bin ${AUTO_BACKUP}/usr.bin
-	cp -RpP /usr/lib ${AUTO_BACKUP}/usr.lib
-	cp -RpP /usr/sbin ${AUTO_BACKUP}/usr.sbin
-	cp -RpP /usr/libexec ${AUTO_BACKUP}/usr.libexec
-	@date '+%Y-%m-%d %H:%M:%S' > ${AUTO_BACKUP}/installstamp
+.if (exists(${DESTDIR}/sbin) && exists(${DESTDIR}/bin) && \
+     exists(${DESTDIR}/usr/sbin) && exists(${DESTDIR}/usr/bin) && \
+     exists(${DESTDIR}/usr/lib) && exists(${DESTDIR}/usr/libexec))
+	tar -czf ${WORLD_BACKUP}/binaries.tar.gz -C ${DESTDIR}/ \
+		--options gzip:compression-level=1 \
+		sbin bin usr/sbin usr/bin usr/lib usr/libexec
 .endif
 
+backupworld-auto:
+.if !defined(NO_BACKUP)
+	rm -f ${AUTO_BACKUP}/binaries.tar.gz
+	@mkdir -p ${AUTO_BACKUP}
+.if (exists(${DESTDIR}/sbin) && exists(${DESTDIR}/bin) && \
+     exists(${DESTDIR}/usr/sbin) && exists(${DESTDIR}/usr/bin) && \
+     exists(${DESTDIR}/usr/lib) && exists(${DESTDIR}/usr/libexec))
+	tar -czf ${AUTO_BACKUP}/binaries.tar.gz -C ${DESTDIR}/ \
+		--options gzip:compression-level=1 \
+		sbin bin usr/sbin usr/bin usr/lib usr/libexec
+.endif
+.endif
+
+backup-auto-clean:
+	rm -f ${AUTO_BACKUP}/binaries.tar.gz
+
+backup-clean:
+	rm -f ${WORLD_BACKUP}/binaries.tar.gz
+
 restoreworld:
-.if !(exists(${WORLD_BACKUP}/sbin) && exists(${WORLD_BACKUP}/bin) && \
-      exists(${WORLD_BACKUP}/usr.sbin) && exists(${WORLD_BACKUP}/usr.bin) && \
-      exists(${WORLD_BACKUP}/usr.lib) && exists(${WORLD_BACKUP}/usr.libexec))
+.if !exists(${WORLD_BACKUP}/binaries.tar.gz)
 	@echo "There does not seem to be a valid archive present."
 .else
 	@echo "Restoring system binaries from manual backup archive..."
-	@rm -f /tmp/rs.tmp
-.for BX in sbin bin usr.sbin usr.bin usr.lib usr.libexec
-	@chflags -R noschg /${BX:S/./\//}
-	@cd ${WORLD_BACKUP}/${BX} && find * -type f -perm +700 -exec \
-	  echo cp ${WORLD_BACKUP}/${BX}/{} /${BX:S/./\//}/{} >> /tmp/rs.tmp \;
-.endfor
-	@grep -Ev ' (/bin/sh|/bin/cp|/sbin/init.bak|/usr/bin/make|/usr/libexec/ld-elf.so.2|/usr/libexec/ld-elf.so.2.old)$$' \
-	   /tmp/rs.tmp > /tmp/restore.script
-	@/bin/sh /tmp/restore.script
-	@rm /tmp/rs.tmp /tmp/restore.script
-	@echo "These files were not restored from ${WORLD_BACKUP}:"
-	@echo "   /bin/cp"
-	@echo "   /bin/sh"
-	@echo "   /usr/bin/make"
-	@echo "   /usr/libexec/ld-elf.so.2"
+	@chflags -R noschg ${DESTDIR}/sbin ${DESTDIR}/bin \
+		${DESTDIR}/usr/sbin ${DESTDIR}/usr/bin \
+		${DESTDIR}/usr/lib ${DESTDIR}/usr/libexec
+	tar -xzf ${WORLD_BACKUP}/binaries.tar.gz -C ${DESTDIR}/
 .endif
 
 restoreworld-auto:
-.if !(exists(${AUTO_BACKUP}/sbin) && exists(${AUTO_BACKUP}/bin) && \
-      exists(${AUTO_BACKUP}/usr.sbin) && exists(${AUTO_BACKUP}/usr.bin) && \
-      exists(${AUTO_BACKUP}/usr.lib) && exists(${AUTO_BACKUP}/usr.libexec))
+.if !exists(${AUTO_BACKUP}/binaries.tar.gz)
 	@echo "There does not seem to be a valid archive present."
 .else
 	@echo "Restoring system binaries from auto-backup archive..."
-	@rm -f /tmp/rs.tmp
-.for BX in sbin bin usr.sbin usr.bin usr.lib usr.libexec
-	@chflags -R noschg /${BX:S/./\//}
-	@cd ${AUTO_BACKUP}/${BX} && find * -type f -perm +700 -exec \
-	  echo cp ${AUTO_BACKUP}/${BX}/{} /${BX:S/./\//}/{} >> /tmp/rs.tmp \;
-.endfor
-	@grep -Ev ' (/bin/sh|/bin/cp|/sbin/init.bak|/usr/bin/make|/usr/libexec/ld-elf.so.2|/usr/libexec/ld-elf.so.2.old)$$' \
-	   /tmp/rs.tmp > /tmp/restore.script
-	@/bin/sh /tmp/restore.script
-	@rm /tmp/rs.tmp /tmp/restore.script
-	@echo "These files were not restored from ${AUTO_BACKUP}:"
-	@echo "   /bin/cp"
-	@echo "   /bin/sh"
-	@echo "   /usr/bin/make"
-	@echo "   /usr/libexec/ld-elf.so.2"
+	@chflags -R noschg ${DESTDIR}/sbin ${DESTDIR}/bin \
+		${DESTDIR}/usr/sbin ${DESTDIR}/usr/bin \
+		${DESTDIR}/usr/lib ${DESTDIR}/usr/libexec
+	tar -xzf ${AUTO_BACKUP}/binaries.tar.gz -C ${DESTDIR}/
 .endif
 
 # Take advantage of bmake error response
