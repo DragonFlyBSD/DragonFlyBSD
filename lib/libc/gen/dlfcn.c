@@ -30,6 +30,7 @@
 #include <dlfcn.h>
 #include <link.h>
 #include <stddef.h>
+#include <string.h>
 
 extern char **environ;
 void	_rtld_error(const char *, ...);
@@ -164,7 +165,7 @@ int
 dl_iterate_phdr(int (*callback)(struct dl_phdr_info *, size_t, void *),
     void *data)
 {
-	static seen = 0;
+	static int seen = 0;
 	static struct dl_phdr_info phdr_info;
 	if (!seen) {
 		seen = 1;

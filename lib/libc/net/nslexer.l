@@ -50,10 +50,10 @@
 
 #include "nsparser.h"
 
-#define YY_NO_UNPUT
-
 %}
 
+%option noinput
+%option nounput
 %option yylineno
 
 BLANK		[ \t]
