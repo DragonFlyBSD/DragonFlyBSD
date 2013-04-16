@@ -36,7 +36,6 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc64/isa/intr_machdep.c,v 1.1 2008/08/29 17:07:19 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -44,8 +43,6 @@
  * All rights reserved.
  * See the notice for details.
  */
-
-#include "use_isa.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -120,12 +117,8 @@ isa_defaultirq(void)
 	icu_definit();
 }
 
-#if NISA > 0
-
 intrmask_t
 isa_irq_pending(void)
 {
 	return icu_irq_pending();
 }
-
-#endif
