@@ -29,6 +29,13 @@
 #			of the system for DragonFly. ex. two compilers
 # most                - Build user commands, no libraries or include files.
 # installmost         - Install user commands, no libraries or include files.
+# backupworld         - Copies /bin /sbin /usr/bin /usr/sbin /usr/lib
+#                       /usr/libexec to manual backup dir.
+# restoreworld        - Installs binaries from manual backup dir to world.
+# restoreworld-auto   - Installs binaries from auto-backup dir to world;
+#                       installworld target makes backup to auto-backup dir.
+# backup-auto-clean   - Delete backup from auto-backup dir.
+# backup-clean        - Delete backup from manual backup dir.
 #
 # This makefile is simple by design. The DragonFly make automatically reads
 # /usr/share/mk/sys.mk unless the -m argument is specified on the 
@@ -76,6 +83,7 @@ TGTS=	all all-man buildkernel quickkernel nativekernel \
 	reinstallkernel installmost installworld libraries lint maninstall \
 	manlint mk most obj objlink regress rerelease tags \
 	backupworld restoreworld restoreworld-auto \
+	backup-clean backup-auto-clean \
 	_obj _includes _libraries _depend _worldtmp \
 	_bootstrap-tools _build-tools _cross-tools
 

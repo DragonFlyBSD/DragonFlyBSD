@@ -23,9 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
-.\" $DragonFly: src/share/man/man7/build.7,v 1.18 2008/11/14 15:04:42 swildner Exp $
 .\"
-.Dd April 12, 2009
+.Dd April 16, 2013
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -77,7 +76,7 @@ Installs the results of the build for this directory.
 The other
 .Pa /usr/src
 make targets are:
-.Bl -tag -width ".Cm reinstallkernel"
+.Bl -tag -width ".Cm backup-auto-clean"
 .It Cm buildworld
 Rebuild everything but the kernel.
 .It Cm quickworld
@@ -132,6 +131,23 @@ just installed.
 Build user commands, no libraries or include files.
 .It Cm installmost
 Install user commands, no libraries or include files.
+.It Cm backupworld
+Manually archive binaries from installed world to location specified by
+.Ev WORLD_BACKUP .
+.It Cm backup-clean
+Delete archive created by
+.Cm backupworld .
+.It Cm backup-auto-clean
+Delete archive created automatically during
+.Cm installworld .
+.It Cm restoreworld
+Restore binaries from archive created by
+.Cm backupworld .
+.It Cm restoreworld-auto
+Restore binaries from archive created automatically during
+.Cm installworld .
+The archive location is specified by
+.Ev AUTO_BACKUP .
 .El
 .Sh ENVIRONMENT
 .Bl -tag -width ".Ev MAKEOBJDIRPREFIX"
@@ -208,6 +224,16 @@ under the directory specified by
 .Ev DESTKERNDIR .
 This overrides the effect of
 .Ev DESTLABEL .
+.It Ev WORLD_BACKUP
+Directory for manual backup of binaries of installed world (default:
+.Pa /var/backups/world_backup ) .
+.It Ev AUTO_BACKUP
+Directory for automatic backup of binaries of installed world (default:
+.Ev MAKEOBJDIRPREFIX Ns /world_binaries/ Ns Ev DESTDIR ) .
+.It Ev NO_BACKUP
+When defined, the automatic backup feature of 
+.Cm installworld
+is inhibited.
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /usr/src/Makefile_upgrade.inc" -compact
