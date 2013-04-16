@@ -200,7 +200,7 @@ static driver_t vtpci_driver = {
 
 devclass_t vtpci_devclass;
 
-DRIVER_MODULE(virtio_pci, pci, vtpci_driver, vtpci_devclass, 0, 0);
+DRIVER_MODULE(virtio_pci, pci, vtpci_driver, vtpci_devclass, NULL, NULL);
 MODULE_VERSION(virtio_pci, 1);
 MODULE_DEPEND(virtio_pci, pci, 1, 1, 1);
 MODULE_DEPEND(virtio_pci, virtio, 1, 1, 1);

@@ -197,7 +197,7 @@ static driver_t acpi_wmi_driver = {
 };
 
 static devclass_t acpi_wmi_devclass;
-DRIVER_MODULE(acpi_wmi, acpi, acpi_wmi_driver, acpi_wmi_devclass, 0, 0);
+DRIVER_MODULE(acpi_wmi, acpi, acpi_wmi_driver, acpi_wmi_devclass, NULL, NULL);
 MODULE_VERSION(acpi_wmi, 1);
 MODULE_DEPEND(acpi_wmi, acpi, 1, 1, 1);
 static char *wmi_ids[] = {"PNP0C14", NULL};

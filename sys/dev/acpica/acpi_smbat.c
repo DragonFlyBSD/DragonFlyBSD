@@ -98,7 +98,8 @@ static driver_t	acpi_smbat_driver = {
 };
 
 static devclass_t acpi_smbat_devclass;
-DRIVER_MODULE(acpi_smbat, acpi, acpi_smbat_driver, acpi_smbat_devclass, 0, 0);
+DRIVER_MODULE(acpi_smbat, acpi, acpi_smbat_driver, acpi_smbat_devclass,
+    NULL, NULL);
 MODULE_DEPEND(acpi_smbat, acpi, 1, 1, 1);
 
 static int

@@ -221,7 +221,7 @@ static driver_t ixgbe_driver = {
 };
 
 devclass_t ixgbe_devclass;
-DRIVER_MODULE(ixgbe, pci, ixgbe_driver, ixgbe_devclass, 0, 0);
+DRIVER_MODULE(ixgbe, pci, ixgbe_driver, ixgbe_devclass, NULL, NULL);
 
 MODULE_DEPEND(ixgbe, pci, 1, 1, 1);
 MODULE_DEPEND(ixgbe, ether, 1, 1, 1);

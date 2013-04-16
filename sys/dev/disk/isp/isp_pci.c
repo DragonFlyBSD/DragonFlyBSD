@@ -366,7 +366,7 @@ static driver_t isp_pci_driver = {
 	"isp", isp_pci_methods, sizeof (struct isp_pcisoftc)
 };
 static devclass_t isp_devclass;
-DRIVER_MODULE(isp, pci, isp_pci_driver, isp_devclass, 0, 0);
+DRIVER_MODULE(isp, pci, isp_pci_driver, isp_devclass, NULL, NULL);
 
 static int
 isp_pci_probe(device_t dev)
