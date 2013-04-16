@@ -463,7 +463,7 @@ elf_getsigs(struct lwp *lp, struct file *fp)
 		error = EINVAL;
 		goto done;
 	}
-	bcopy(&csi->csi_sigacts, p->p_sigacts, sizeof(p->p_sigacts));
+	bcopy(&csi->csi_sigacts, p->p_sigacts, sizeof(struct sigacts));
 	bcopy(&csi->csi_itimerval, &p->p_realtimer, sizeof(struct itimerval));
 	SIG_CANTMASK(csi->csi_sigmask);
 	/* XXX lwp handle more than one lwp */
