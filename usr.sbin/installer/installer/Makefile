@@ -1,4 +1,4 @@
 SCRIPTS=installer.sh
-NOMAN=
+MAN=	installer.8
 
 .include <bsd.prog.mk>

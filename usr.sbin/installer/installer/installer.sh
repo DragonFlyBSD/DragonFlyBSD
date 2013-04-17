@@ -63,23 +63,15 @@ installer_start()
 		;;
 	esac
 
-	if [ "X$SERIAL" = "XYES" ]; then
-		background_backend $RENDEZVOUS $pfi_dfui_transport &
-		sleep 1
-		ESCDELAY=$pfi_curses_escdelay \
-		    /usr/sbin/dfuife_curses \
-			-r $RENDEZVOUS \
-			-t $pfi_dfui_transport \
-			-b /usr/share/installer/fred.txt \
-		    2>/dev/null
-		pfi_frontend=none
-	fi
-
 	if [ "X$pfi_frontend" = "Xauto" ]; then
 		if [ "X$DISPLAY" = "X" ]; then
-			pfi_frontend="curses"
+			if [ "X$LIVECD" = "X" ]; then
+				pfi_frontend="curseslog"
+			else
+				pfi_frontend="cursesvty"
+			fi
 		else
-			pfi_frontend="xorg"
+			pfi_frontend="cursesx11"
 		fi
 	fi
 
@@ -92,7 +84,7 @@ installer_start()
 		$pfi_backend -r $RENDEZVOUS -t $pfi_dfui_transport
 		RESULT=$?
 		;;
-	Xcurses)
+	Xcursesvty)
 		ps auwwwxxx > /tmp/ps.txt
 		if grep -q dfuife_curses /tmp/ps.txt; then
 			# Frontend is already running.
@@ -102,18 +94,44 @@ installer_start()
 				-r $RENDEZVOUS \
 				-t $pfi_dfui_transport \
 				-b /usr/share/installer/fred.txt \
-			    2>/dev/ttyv0 </dev/ttyv1 >/dev/ttyv1 &
+			    2>/dev/ttyv0 <$TTY >$TTY &
 		fi
 		rm -f /tmp/ps.txt
 		sleep 1
 		vidcontrol -s 2 </dev/ttyv0
-		$pfi_backend -r $RENDEZVOUS -t $pfi_dfui_transport
+		$pfi_backend \
+		    -o $SOURCE_DIR \
+		    -r $RENDEZVOUS \
+		    -t $pfi_dfui_transport
 		RESULT=$?
 		sleep 1
 		killall dfuife_curses
 		vidcontrol -s 1 </dev/ttyv0
 		;;
-	Xxorg)
+	Xcurseslog)
+		ps auwwwxxx > /tmp/ps.txt
+		if grep -q dfuife_curses /tmp/ps.txt; then
+			# Frontend is already running.
+		else
+			ESCDELAY=$pfi_curses_escdelay \
+			    /usr/sbin/dfuife_curses \
+				-r $RENDEZVOUS \
+				-t $pfi_dfui_transport \
+				-b /usr/share/installer/fred.txt \
+			    2>/tmp/dfuife_curses.log <$TTY >$TTY &
+		fi
+		rm -f /tmp/ps.txt
+		sleep 1
+		$pfi_backend \
+		    -o $SOURCE_DIR \
+		    -r $RENDEZVOUS \
+		    -t $pfi_dfui_transport \
+		    >/dev/null 2>&1
+		RESULT=$?
+		sleep 1
+		killall -q dfuife_curses
+		;;
+	Xcursesx11)
 		ps auwwwxxx > /tmp/ps.txt
 		if grep -q dfuife_curses /tmp/ps.txt; then
 			echo "Frontend is already running"
@@ -154,13 +172,25 @@ installer_start()
 
 ### MAIN ###
 
-if [ "X$1" = "Xserial" ]; then
-	SERIAL=YES
+if [ $# -gt 1 ]; then
+	echo "usage: installer [source_directory]"
+	exit 1
 fi
 
-TTY=`w | awk '{ print $2 }' | tail -n1`
-if [ "tty$TTY" = "ttyd0" ]; then
-	SERIAL=YES
+# Check if we are booted from a LiveCD, DVD etc. ttyv1 isn't configured in
+# this case, so use that as a clue for now.
+#
+_ttyv1=`grep -w "^ttyv1" /etc/ttys`
+if [ -z "$_ttyv1" ]; then
+	LIVECD=YES
+	SOURCE_DIR=/
+	TTY=/dev/ttyv1
+elif [ $# = 1 -a -d $1 ]; then
+	SOURCE_DIR=$1/
+	TTY=/dev/`w | awk '{ print $2 }' | tail -n1`
+else
+	SOURCE_DIR=/
+	TTY=/dev/`w | awk '{ print $2 }' | tail -n1`
 fi
 
 ps auwwwxxx > /tmp/ps.txt
