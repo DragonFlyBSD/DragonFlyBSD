@@ -615,7 +615,9 @@ BCE_RSS_DEBUG		opt_bce.h
 BCE_TSS_DEBUG		opt_bce.h
 
 # bnx driver
+BNX_RSS_DEBUG		opt_bnx.h
 BNX_TSO_DEBUG		opt_bnx.h
+BNX_TSS_DEBUG		opt_bnx.h
 
 # ed driver
 ED_NO_MIIBUS		opt_ed.h

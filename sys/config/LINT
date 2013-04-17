@@ -2461,7 +2461,9 @@ options 	DEBUG_INTERRUPTS
 #options 	DISABLE_PSE
 options		BCE_RSS_DEBUG
 options		BCE_TSS_DEBUG
+options		BNX_RSS_DEBUG
 options		BNX_TSO_DEBUG
+options		BNX_TSS_DEBUG
 options		EMX_RSS_DEBUG
 options		EMX_TSO_DEBUG
 options		EMX_TSS_DEBUG

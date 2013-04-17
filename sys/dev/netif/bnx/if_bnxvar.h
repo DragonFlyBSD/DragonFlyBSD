@@ -119,6 +119,7 @@ do {								\
 #define BNX_JMEM ((BNX_JLEN * BNX_JSLOTS) + BNX_RESID)
 
 struct bnx_softc;
+struct bnx_tx_ring;
 
 struct bnx_jslot {
 	struct bnx_softc	*bnx_sc;
@@ -146,6 +147,7 @@ struct bnx_rx_buf {
 	bus_dmamap_t		bnx_rx_dmamap;
 	struct mbuf		*bnx_rx_mbuf;
 	bus_addr_t		bnx_rx_paddr;
+	int			bnx_rx_len;
 	int			bnx_rx_refilled;
 } __cachealign;
 
@@ -153,7 +155,7 @@ struct bnx_rx_std_ring {
 	struct lwkt_serialize	bnx_rx_std_serialize;
 	struct bnx_softc	*bnx_sc;
 
-	volatile uint16_t	bnx_rx_std_stop;
+	uint16_t		bnx_rx_std_stop;
 	uint16_t		bnx_rx_std;	/* current prod ring head */
 	struct bge_rx_bd	*bnx_rx_std_ring;
 
@@ -175,8 +177,10 @@ struct bnx_rx_ret_ring {
 	int			bnx_rx_mbx;
 	uint32_t		bnx_saved_status_tag;
 	volatile uint32_t	*bnx_hw_status_tag;
+	int			bnx_msix_mbx;
 	struct bnx_softc	*bnx_sc;
 	struct bnx_rx_std_ring	*bnx_std;
+	struct bnx_tx_ring	*bnx_txr;
 
 	/* Shadow of bnx_rx_std_ring's bnx_rx_mtag */
 	bus_dma_tag_t		bnx_rx_mtag;
@@ -189,6 +193,7 @@ struct bnx_rx_ret_ring {
 	struct bge_rx_bd	*bnx_rx_ret_ring;
 	bus_dmamap_t		bnx_rx_tmpmap;
 
+	u_long			bnx_rx_pkt;
 	bus_dma_tag_t		bnx_rx_ret_ring_tag;
 	bus_dmamap_t		bnx_rx_ret_ring_map;
 	bus_addr_t		bnx_rx_ret_ring_paddr;
@@ -217,6 +222,7 @@ struct bnx_tx_buf {
 
 struct bnx_tx_ring {
 	struct lwkt_serialize	bnx_tx_serialize;
+	volatile uint32_t	*bnx_hw_status_tag;
 	uint32_t		bnx_saved_status_tag;
 	struct bnx_softc	*bnx_sc;
 	struct ifaltq_subque	*bnx_ifsq;
@@ -240,6 +246,8 @@ struct bnx_tx_ring {
 	bus_dmamap_t		bnx_tx_ring_map;
 	bus_addr_t		bnx_tx_ring_paddr;
 	int			bnx_tx_cpuid;
+
+	u_long			bnx_tx_pkt;
 } __cachealign;
 
 struct bnx_intr_data {
@@ -272,6 +280,8 @@ struct bnx_intr_data {
 	bus_addr_t		bnx_status_block_paddr;
 } __cachealign;
 
+#define BNX_RX_RING_MAX		4
+#define BNX_TX_RING_MAX		4
 #define BNX_INTR_MAX		5
 
 struct bnx_softc {
@@ -296,6 +306,7 @@ struct bnx_softc {
 #define BNX_FLAG_NO_EEPROM	0x10000000
 #define BNX_FLAG_RXTX_BUNDLE	0x20000000
 #define BNX_FLAG_STD_THREAD	0x40000000
+#define BNX_FLAG_STATUS_HASTAG	0x80000000
 
 	uint32_t		bnx_chipid;
 	uint32_t		bnx_asicrev;
@@ -304,6 +315,13 @@ struct bnx_softc {
 	struct bnx_chain_data	bnx_cdata;	/* mbufs */
 
 	struct lwkt_serialize	bnx_main_serialize;
+	volatile uint32_t	*bnx_hw_status;
+	volatile uint32_t	*bnx_hw_status_tag;
+	uint32_t		bnx_saved_status_tag;
+	int			bnx_link_evt;
+	u_long			bnx_errors;
+	u_long			bnx_norxbds;
+
 	int			bnx_serialize_cnt;
 	struct lwkt_serialize	**bnx_serialize;
 
@@ -325,13 +343,14 @@ struct bnx_softc {
 	uint32_t		bnx_mi_mode;
 	int			bnx_if_flags;
 	int			bnx_link;
-	int			bnx_link_evt;
 	int			bnx_tick_cpuid;
 	struct callout		bnx_tick_timer;
 
 	int			bnx_npoll_rxoff;
 	int			bnx_npoll_txoff;
 
+	int			bnx_msix_mem_rid;
+	struct resource		*bnx_msix_mem_res;
 	int			bnx_intr_type;
 	int			bnx_intr_cnt;
 	struct bnx_intr_data	bnx_intr_data[BNX_INTR_MAX];
@@ -351,6 +370,7 @@ struct bnx_softc {
 	void			(*bnx_link_upd)(struct bnx_softc *, uint32_t);
 	uint32_t		bnx_link_chg;
 
+	int			bnx_rss_debug;
 #define BNX_TSO_NSTATS		45
 	u_long			bnx_tsosegs[BNX_TSO_NSTATS];
 };
@@ -388,5 +408,7 @@ struct bnx_softc {
 #define BNX_RETURN_RING_CNT	512
 
 #define BNX_TX_RING_MAX		4
+
+#define BNX_RSS_ENABLED(sc)	((sc)->bnx_rx_retcnt > 1)
 
 #endif	/* !_IF_BNXVAR_H_ */
