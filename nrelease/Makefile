@@ -45,7 +45,6 @@ PKGBIN_PKG_ADD?=	${PKGSRC_PREFIX}/sbin/pkg_add
 PKGBIN_PKG_DELETE?=	${PKGSRC_PREFIX}/sbin/pkg_delete
 PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
-PKGSRC_PKG_PATH?=	${ISODIR}/packages
 
 # We use env -i in the chroot, so that environment variables won't
 # disturb any (pkgsrc) build.  This has happened for TARGET_ARCH,
@@ -474,10 +473,6 @@ clean:
 
 realclean:	clean
 	rm -rf ${OBJSYS}/${KERNCONF}
-	#
-	# do not use PKGSRC_PKG_PATH here, we do not want to destroy an
-	# override location.
-	#
 	rm -rf ${ISODIR}/packages
 	rm -rf ${ISODIR}/distfiles
 
