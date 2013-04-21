@@ -336,6 +336,7 @@ customizeiso:
 	cp -p /etc/resolv.conf ${ISOROOT}/etc
 	${CHROOT_CMD} "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
 	-@umount ${ISOROOT}/usr/pkgsrc/distfiles
+	-@umount ${ISOROOT}/usr/distfiles
 	-@umount ${ISOROOT}/usr/pkgsrc
 	-@umount ${ISOROOT}/usr/dports
 	-@umount ${ISOROOT}/dev
@@ -351,11 +352,13 @@ customizeiso:
 	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap
 	mkdir -p ${ISOROOT}/usr/pkgsrc
 	mkdir -p ${ISOROOT}/usr/dports
+	mkdir -p ${ISOROOT}/usr/distfiles
 	mount_null -o ro ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
 	mount_null -o ro ${DPORTS_PATH} ${ISOROOT}/usr/dports
 	mount_null /dev ${ISOROOT}/dev
 	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test > /dev/null 2>&1 \
 	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
+	mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/distfiles
 	#
 	# Bootstrap, if not already installed, and add licenses needed
 	# for the gui release
@@ -409,10 +412,13 @@ customizeiso:
 	${CHROOT_CMD} "yes | pkg autoremove"
 	${CHROOT_CMD} "makewhatis /usr/pkg/man"
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles
+	-umount ${ISOROOT}/usr/distfiles
 	umount ${ISOROOT}/usr/pkgsrc
 	umount ${ISOROOT}/usr/dports
 	rm -rf ${ISOROOT}/usr/pkgobj
+	rm -rf ${ISOROOT}/usr/dports
 	rm -rf ${ISOROOT}/usr/obj/dports
+	rm -rf ${ISOROOT}/usr/distfiles
 	rm -f ${ISOROOT}/etc/resolv.conf
 	#
 	# Add a pkg.conf
@@ -494,6 +500,7 @@ mkimg:
 
 clean:
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
+	-umount ${ISOROOT}/usr/distfiles > /dev/null 2>&1
 	-umount ${ISOROOT}/usr/pkgsrc > /dev/null 2>&1
 	-umount ${ISOROOT}/usr/dports > /dev/null 2>&1
 	-umount ${ISOROOT}/dev > /dev/null 2>&1
