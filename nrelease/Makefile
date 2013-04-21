@@ -70,6 +70,10 @@ PKGSRC_PACKAGES?=	pkgtools/pkg_leaves \
 			net/csup \
 			${PKGSRC_EXTRA_PACKAGES}
 
+# dports packages to be built and installed on the release ISO
+#
+DPORTS_PACKAGES+=	ports-mgmt/pkg
+
 # pkgsrc options to use when building packages
 #
 PKGSRC_OPTIONS+=	MAKE_JOBS=${MAKE_JOBS}
@@ -213,10 +217,18 @@ check:
 	@echo "package building.  For example /usr/pkgsrc.  See the Makefile"
 	@echo "in /usr if you are unfamiliar with pkgsrc."
 .endif
+.if !defined(DPORTS_PATH)
+	@echo "Please set DPORTS_PATH to the dports tree that shall be used for"
+	@echo "package building.  For example /usr/dports.  See the Makefile"
+	@echo "in /usr if you are unfamiliar with dports."
+.endif
 .if !exists (${PKGBIN_MKISOFS})
 	@/usr/bin/false
 .endif
 .if !defined(PKGSRC_PATH)
+	@/usr/bin/false
+.endif
+.if !defined(DPORTS_PATH)
 	@/usr/bin/false
 .endif
 
@@ -325,9 +337,11 @@ customizeiso:
 	${CHROOT_CMD} "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
 	-@umount ${ISOROOT}/usr/pkgsrc/distfiles
 	-@umount ${ISOROOT}/usr/pkgsrc
+	-@umount ${ISOROOT}/usr/dports
 	-@umount ${ISOROOT}/dev
 	mkdir -p ${ISODIR}/distfiles
 	rm -rf ${ISOROOT}/usr/pkgobj
+	rm -rf ${ISOROOT}/usr/obj/dports
 	#
 	# Mount /usr/pkgsrc, make sure /usr/pkgsrc/distfiles is writable.
 	# Make /usr/pkgsrc read-only for safety, else a failed umount and
@@ -336,7 +350,9 @@ customizeiso:
 	mkdir -p ${ISOROOT}/usr/pkgobj
 	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap
 	mkdir -p ${ISOROOT}/usr/pkgsrc
+	mkdir -p ${ISOROOT}/usr/dports
 	mount_null -o ro ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
+	mount_null -o ro ${DPORTS_PATH} ${ISOROOT}/usr/dports
 	mount_null /dev ${ISOROOT}/dev
 	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test > /dev/null 2>&1 \
 	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
@@ -378,17 +394,33 @@ customizeiso:
 	    (bmake check > /dev/null 2>&1 || \
 	    env USE_DESTDIR=no bmake ${PKGSRC_OPTIONS} clean build install)"
 .endfor
+.for PKG in ${DPORTS_PACKAGES}
+	chroot ${ISOROOT} sh -c "cd /usr/dports/${PKG} && make && make install"
+.endfor
+.for PKG in ${DPORTS_PACKAGES}
+	chroot ${ISOROOT} sh -c "cd /usr/dports/${PKG} && make clean"
+.endfor
 	#
 	# Remove packages which nothing depends on, add a whatis database
 	# for pkgsrc manual pages, create an initial locate database and
 	# clean up
 	#
 	${CHROOT_CMD} "pkg_leaves | xargs pkg_delete -R"
+	${CHROOT_CMD} "yes | pkg autoremove"
 	${CHROOT_CMD} "makewhatis /usr/pkg/man"
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles
 	umount ${ISOROOT}/usr/pkgsrc
+	umount ${ISOROOT}/usr/dports
 	rm -rf ${ISOROOT}/usr/pkgobj
+	rm -rf ${ISOROOT}/usr/obj/dports
 	rm -f ${ISOROOT}/etc/resolv.conf
+	#
+	# Add a pkg.conf
+	#
+	${CHROOT_CMD} "echo PACKAGESITE: http://avalon.dragonflybsd.org/dports/$$\\{ABI\\}/RELEASE >/usr/local/etc/pkg.conf"
+	#
+	# Finally, update the locate(8) database
+	#
 	${CHROOT_CMD} /etc/periodic/weekly/310.locate
 	umount ${ISOROOT}/dev
 	#
@@ -463,6 +495,7 @@ mkimg:
 clean:
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
 	-umount ${ISOROOT}/usr/pkgsrc > /dev/null 2>&1
+	-umount ${ISOROOT}/usr/dports > /dev/null 2>&1
 	-umount ${ISOROOT}/dev > /dev/null 2>&1
 	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
 	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
