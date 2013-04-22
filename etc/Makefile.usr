@@ -79,7 +79,7 @@ pkgsrc-create-repo:
 		git remote add origin git://${GITHOST}/pkgsrcv2.git
 	cd ${.CURDIR}/pkgsrc && git fetch origin
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
-    cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2013Q1 origin/pkgsrc-2013Q1
+	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2013Q1 origin/pkgsrc-2013Q1
 .endif
 
 pkgsrc-create: pkgsrc-create-repo
@@ -106,7 +106,7 @@ pkgsrc-create-shallow:
 		git remote add origin git://${GITHOST}/pkgsrcv2.git
 	cd ${.CURDIR}/pkgsrc && git fetch --depth=1 origin
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
-    cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2013Q1 origin/pkgsrc-2013Q1
+	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2013Q1 origin/pkgsrc-2013Q1
 	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2013Q1
 	cd ${.CURDIR}/pkgsrc && git pull
 .endif
