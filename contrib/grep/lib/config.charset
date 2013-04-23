@@ -29,7 +29,7 @@
 # The current list of GNU canonical charset names is as follows.
 #
 #       name              MIME?             used by which systems
-#                                    (darwin = MacOS X, woe32 = native Windows)
+#                                    (darwin = Mac OS X, woe32 = native Windows)
 #
 #   ASCII, ANSI_X3.4-1968       glibc solaris freebsd netbsd darwin cygwin
 #   ISO-8859-1              Y   glibc aix hpux irix osf solaris freebsd netbsd openbsd darwin cygwin

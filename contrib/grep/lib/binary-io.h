@@ -25,28 +25,41 @@
    so we include it here first.  */
 #include <stdio.h>
 
-/* SET_BINARY (fd);
-   changes the file descriptor fd to perform binary I/O.  */
+/* set_binary_mode (fd, mode)
+   sets the binary/text I/O mode of file descriptor fd to the given mode
+   (must be O_BINARY or O_TEXT) and returns the previous mode.  */
 #if O_BINARY
 # if defined __EMX__ || defined __DJGPP__ || defined __CYGWIN__
 #  include <io.h> /* declares setmode() */
+#  define set_binary_mode setmode
 # else
-#  define setmode _setmode
+#  define set_binary_mode _setmode
 #  undef fileno
 #  define fileno _fileno
 # endif
-# ifdef __DJGPP__
-#  include <unistd.h> /* declares isatty() */
-   /* Avoid putting stdin/stdout in binary mode if it is connected to
-      the console, because that would make it impossible for the user
-      to interrupt the program through Ctrl-C or Ctrl-Break.  */
-#  define SET_BINARY(fd) ((void) (!isatty (fd) ? (setmode (fd, O_BINARY), 0) : 0))
-# else
-#  define SET_BINARY(fd) ((void) setmode (fd, O_BINARY))
-# endif
 #else
-  /* On reasonable systems, binary I/O is the default.  */
-# define SET_BINARY(fd) /* do nothing */ ((void) 0)
+  /* On reasonable systems, binary I/O is the only choice.  */
+  /* Use an inline function rather than a macro, to avoid gcc warnings
+     "warning: statement with no effect".  */
+static inline int
+set_binary_mode (int fd, int mode)
+{
+  (void) fd;
+  (void) mode;
+  return O_BINARY;
+}
+#endif
+
+/* SET_BINARY (fd);
+   changes the file descriptor fd to perform binary I/O.  */
+#ifdef __DJGPP__
+# include <unistd.h> /* declares isatty() */
+  /* Avoid putting stdin/stdout in binary mode if it is connected to
+     the console, because that would make it impossible for the user
+     to interrupt the program through Ctrl-C or Ctrl-Break.  */
+# define SET_BINARY(fd) ((void) (!isatty (fd) ? (set_binary_mode (fd, O_BINARY), 0) : 0))
+#else
+# define SET_BINARY(fd) ((void) set_binary_mode (fd, O_BINARY))
 #endif
 
 #endif /* _BINARY_H */

@@ -89,6 +89,8 @@ strerror_override (int errnum)
       return "No route to host";
     case EWOULDBLOCK:
       return "Operation would block";
+#endif
+#if GNULIB_defined_ESTREAMS /* native Windows platforms with older <errno.h> */
     case ETXTBSY:
       return "Text file busy";
     case ENODATA:
@@ -97,10 +99,6 @@ strerror_override (int errnum)
       return "Out of streams resources";
     case ENOSTR:
       return "Device not a stream";
-    case ENOTRECOVERABLE:
-      return "State not recoverable";
-    case EOWNERDEAD:
-      return "Owner died";
     case ETIME:
       return "Timer expired";
     case EOTHER:
@@ -281,6 +279,16 @@ strerror_override (int errnum)
 #if GNULIB_defined_ECANCELED
     case ECANCELED:
       return "Operation canceled";
+#endif
+
+#if GNULIB_defined_EOWNERDEAD
+    case EOWNERDEAD:
+      return "Owner died";
+#endif
+
+#if GNULIB_defined_ENOTRECOVERABLE
+    case ENOTRECOVERABLE:
+      return "State not recoverable";
 #endif
 
     default:
