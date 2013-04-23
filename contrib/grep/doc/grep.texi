@@ -261,7 +261,7 @@ for bold red matched text, magenta file names, green line numbers,
 green byte offsets, cyan separators, and default terminal colors otherwise.
 The deprecated environment variable @env{GREP_COLOR} is still supported,
 but its setting does not have priority;
-it defaults to `01;31' (bold red)
+it defaults to @samp{01;31} (bold red)
 which only covers the color for matched text.
 @var{WHEN} is @samp{never}, @samp{always}, or @samp{auto}.
 
@@ -580,7 +580,8 @@ this is equivalent to the @samp{--binary-files=text} option.
 @item --binary-files=@var{type}
 @opindex --binary-files
 @cindex binary files
-If the first few bytes of a file indicate that the file contains binary data,
+If a file's allocation metadata or its first few bytes
+indicate that the file contains binary data,
 assume that the file is of type @var{type}.
 By default, @var{type} is @samp{binary},
 and @command{grep} normally outputs either
@@ -722,8 +723,8 @@ better performance.
 @cindex binary files, MS-DOS/MS-Windows
 Treat the file(s) as binary.
 By default, under MS-DOS and MS-Windows,
-@command{grep} guesses the file type
-by looking at the contents of the first 32kB read from the file.
+@command{grep} guesses whether a file is text or binary
+as described for the @option{--binary-files} option.
 If @command{grep} decides the file is a text file,
 it strips the @code{CR} characters from the original file contents
 (to make regular expressions with @code{^} and @code{$} work correctly).

@@ -29,6 +29,7 @@
 #include <limits.h>
 #include <string.h>
 #include <locale.h>
+#include <stdbool.h>
 
 #define STREQ(a, b) (strcmp (a, b) == 0)
 
@@ -38,7 +39,7 @@
    - It's typically faster.
    Posix 1003.2-1992 section 2.5.2.1 page 50 lines 1556-1558 says that
    only '0' through '9' are digits.  Prefer ISASCIIDIGIT to isdigit unless
-   it's important to use the locale's definition of `digit' even when the
+   it's important to use the locale's definition of "digit" even when the
    host does not conform to Posix.  */
 #define ISASCIIDIGIT(c) ((unsigned) (c) - '0' <= 9)
 
@@ -56,7 +57,6 @@
 
 #include "regex.h"
 #include "dfa.h"
-#include "hard-locale.h"
 #include "xalloc.h"
 
 /* HPUX, define those as macros in sys/param.h */
@@ -634,7 +634,7 @@ static charclass newline;
 # define is_valid_unibyte_character(c) (! (MBS_SUPPORT && btowc (c) == WEOF))
 #endif
 
-/* Return non-zero if C is a 'word-constituent' byte; zero otherwise.  */
+/* Return non-zero if C is a "word-constituent" byte; zero otherwise.  */
 #define IS_WORD_CONSTITUENT(C) \
   (is_valid_unibyte_character (C) && (isalnum (C) || (C) == '_'))
 
@@ -777,7 +777,6 @@ static int laststart;           /* True if we're separated from beginning or (, 
                                    only by zero-width characters. */
 static size_t parens;           /* Count of outstanding left parens. */
 static int minrep, maxrep;      /* Repeat counts for {m,n}. */
-static int hard_LC_COLLATE;     /* Nonzero if LC_COLLATE is hard.  */
 
 static int cur_mb_len = 1;      /* Length of the multibyte representation of
                                    wctok.  */
@@ -975,9 +974,9 @@ parse_bracket_exp (void)
           char str[BRACKET_BUFFER_SIZE];
           FETCH_WC (c1, wc1, _("unbalanced ["));
 
-          /* If pattern contains `[[:', `[[.', or `[[='.  */
+          /* If pattern contains '[[:', '[[.', or '[[='.  */
           if (c1 == ':'
-              /* TODO: handle `[[.' and `[[=' also for MB_CUR_MAX == 1.  */
+              /* TODO: handle '[[.' and '[[=' also for MB_CUR_MAX == 1.  */
               || (MB_CUR_MAX > 1 && (c1 == '.' || c1 == '=')))
             {
               size_t len = 0;
@@ -1105,32 +1104,31 @@ parse_bracket_exp (void)
             }
           else
             {
+              /* Defer to the system regex library about the meaning
+                 of range expressions.  */
+              regex_t re;
+              char pattern[6] = { '[', 0, '-', 0, ']', 0 };
+              char subject[2] = { 0, 0 };
               c1 = c;
               if (case_fold)
                 {
                   c1 = tolower (c1);
                   c2 = tolower (c2);
                 }
-              if (!hard_LC_COLLATE)
-                for (c = c1; c <= c2; c++)
-                  setbit_case_fold_c (c, ccl);
-              else
+
+              pattern[1] = c1;
+              pattern[3] = c2;
+              regcomp (&re, pattern, REG_NOSUB);
+              for (c = 0; c < NOTCHAR; ++c)
                 {
-                  /* Defer to the system regex library about the meaning
-                     of range expressions.  */
-                  regex_t re;
-                  char pattern[6] = { '[', c1, '-', c2, ']', 0 };
-                  char subject[2] = { 0, 0 };
-                  regcomp (&re, pattern, REG_NOSUB);
-                  for (c = 0; c < NOTCHAR; ++c)
-                    {
-                      subject[0] = c;
-                      if (!(case_fold && isupper (c))
-                          && regexec (&re, subject, 0, NULL, 0) != REG_NOMATCH)
-                        setbit_case_fold_c (c, ccl);
-                    }
-                  regfree (&re);
+                  if ((case_fold && isupper (c))
+                      || (MB_CUR_MAX > 1 && btowc (c) == WEOF))
+                    continue;
+                  subject[0] = c;
+                  if (regexec (&re, subject, 0, NULL, 0) != REG_NOMATCH)
+                    setbit_case_fold_c (c, ccl);
                 }
+              regfree (&re);
             }
 
           colon_warning_state |= 8;
@@ -1632,7 +1630,7 @@ add_utf8_anychar (void)
   static const charclass utf8_classes[5] = {
     {0, 0, 0, 0, ~0, ~0, 0, 0}, /* 80-bf: non-lead bytes */
     {~0, ~0, ~0, ~0, 0, 0, 0, 0},       /* 00-7f: 1-byte sequence */
-    {0, 0, 0, 0, 0, 0, 0xfffffffcU, 0}, /* c2-df: 2-byte sequence */
+    {0, 0, 0, 0, 0, 0, ~3, 0},          /* c2-df: 2-byte sequence */
     {0, 0, 0, 0, 0, 0, 0, 0xffff},      /* e0-ef: 3-byte sequence */
     {0, 0, 0, 0, 0, 0, 0, 0xff0000}     /* f0-f7: 4-byte sequence */
   };
@@ -1878,9 +1876,6 @@ dfaparse (char const *s, size_t len, struct dfa *d)
   lasttok = END;
   laststart = 1;
   parens = 0;
-#ifdef LC_COLLATE
-  hard_LC_COLLATE = hard_locale (LC_COLLATE);
-#endif
   if (MB_CUR_MAX > 1)
     {
       cur_mb_len = 0;
@@ -2966,7 +2961,6 @@ match_mb_charset (struct dfa *d, state_num s, position pos, size_t idx)
                                    with which this operator match.  */
   int op_len;                   /* Length of the operator.  */
   char buffer[128];
-  wchar_t wcbuf[6];
 
   /* Pointer to the structure to which we are currently referring.  */
   struct mb_char_classes *work_mbc;
@@ -3039,16 +3033,10 @@ match_mb_charset (struct dfa *d, state_num s, position pos, size_t idx)
         }
     }
 
-  wcbuf[0] = wc;
-  wcbuf[1] = wcbuf[3] = wcbuf[5] = '\0';
-
   /* match with a range?  */
   for (i = 0; i < work_mbc->nranges; i++)
     {
-      wcbuf[2] = work_mbc->range_sts[i];
-      wcbuf[4] = work_mbc->range_ends[i];
-
-      if (wcscoll (wcbuf, wcbuf + 2) >= 0 && wcscoll (wcbuf + 4, wcbuf) >= 0)
+      if (work_mbc->range_sts[i] <= wc && wc <= work_mbc->range_ends[i])
         goto charset_matched;
     }
 
@@ -3065,11 +3053,11 @@ charset_matched:
   return match ? match_len : 0;
 }
 
-/* Check each of `d->states[s].mbps.elem' can match or not. Then return the
-   array which corresponds to `d->states[s].mbps.elem' and each element of
+/* Check each of 'd->states[s].mbps.elem' can match or not. Then return the
+   array which corresponds to 'd->states[s].mbps.elem' and each element of
    the array contains the amount of the bytes with which the element can
    match.
-   `idx' is the index from the buf_begin, and it is the current position
+   'idx' is the index from the buf_begin, and it is the current position
    in the buffer.
    Caller MUST free the array which this function return.  */
 static int *
@@ -3098,11 +3086,11 @@ check_matching_with_multibyte_ops (struct dfa *d, state_num s, size_t idx)
 }
 
 /* Consume a single character and enumerate all of the positions which can
-   be next position from the state `s'.
-   `match_lens' is the input. It can be NULL, but it can also be the output
+   be next position from the state 's'.
+   'match_lens' is the input. It can be NULL, but it can also be the output
    of check_matching_with_multibyte_ops() for optimization.
-   `mbclen' and `pps' are the output.  `mbclen' is the length of the
-   character consumed, and `pps' is the set this function enumerate.  */
+   'mbclen' and 'pps' are the output.  'mbclen' is the length of the
+   character consumed, and 'pps' is the set this function enumerate.  */
 static status_transit_state
 transit_state_consume_1char (struct dfa *d, state_num s,
                              unsigned char const **pp,
@@ -3118,15 +3106,15 @@ transit_state_consume_1char (struct dfa *d, state_num s,
      to which p points.  */
   *mbclen = (mblen_buf[*pp - buf_begin] == 0) ? 1 : mblen_buf[*pp - buf_begin];
 
-  /* Calculate the state which can be reached from the state `s' by
-     consuming `*mbclen' single bytes from the buffer.  */
+  /* Calculate the state which can be reached from the state 's' by
+     consuming '*mbclen' single bytes from the buffer.  */
   s1 = s;
   for (k = 0; k < *mbclen; k++)
     {
       s2 = s1;
       rs = transit_state_singlebyte (d, s2, (*pp)++, &s1);
     }
-  /* Copy the positions contained by `s1' to the set `pps'.  */
+  /* Copy the positions contained by 's1' to the set 'pps'.  */
   copy (&(d->states[s1].elems), pps);
 
   /* Check (input) match_lens, and initialize if it is NULL.  */
@@ -3135,7 +3123,7 @@ transit_state_consume_1char (struct dfa *d, state_num s,
   else
     work_mbls = match_lens;
 
-  /* Add all of the positions which can be reached from `s' by consuming
+  /* Add all of the positions which can be reached from 's' by consuming
      a single character.  */
   for (i = 0; i < d->states[s].mbps.nelem; i++)
     {
@@ -3202,10 +3190,10 @@ transit_state (struct dfa *d, state_num s, unsigned char const **pp)
   /* This state has some operators which can match a multibyte character.  */
   alloc_position_set (&follows, d->nleaves);
 
-  /* `maxlen' may be longer than the length of a character, because it may
+  /* 'maxlen' may be longer than the length of a character, because it may
      not be a character but a (multi character) collating element.
-     We enumerate all of the positions which `s' can reach by consuming
-     `maxlen' bytes.  */
+     We enumerate all of the positions which 's' can reach by consuming
+     'maxlen' bytes.  */
   transit_state_consume_1char (d, s, pp, match_lens, &mbclen, &follows);
 
   wc = inputwcs[*pp - mbclen - buf_begin];

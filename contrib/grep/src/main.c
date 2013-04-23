@@ -272,11 +272,10 @@ static const struct color_cap color_dict[] =
   };
 
 static struct exclude *excluded_patterns;
-static struct exclude *included_patterns;
 static struct exclude *excluded_directory_patterns;
 /* Short options.  */
 static char const short_options[] =
-"0123456789A:B:C:D:EFGHIPTUVX:abcd:e:f:hiKLlm:noqRrsuvwxyZz";
+"0123456789A:B:C:D:EFGHIPTUVX:abcd:e:f:hiLlm:noqRrsuvwxyZz";
 
 /* Non-boolean long options that have no corresponding short equivalents.  */
 enum
@@ -407,6 +406,14 @@ is_device_mode (mode_t m)
   return S_ISCHR (m) || S_ISBLK (m) || S_ISSOCK (m) || S_ISFIFO (m);
 }
 
+/* Return nonzero if ST->st_size is defined.  Assume the file is not a
+   symbolic link.  */
+static int
+usable_st_size (struct stat const *st)
+{
+  return S_ISREG (st->st_mode) || S_TYPEISSHM (st) || S_TYPEISTMO (st);
+}
+
 /* Functions we'll use to search. */
 static compile_fp_t compile;
 static execute_fp_t execute;
@@ -429,6 +436,52 @@ clean_up_stdout (void)
     close_stdout ();
 }
 
+/* Return 1 if a file is known to be binary for the purpose of 'grep'.
+   BUF, of size BUFSIZE, is the initial buffer read from the file with
+   descriptor FD and status ST.  */
+static int
+file_is_binary (char const *buf, size_t bufsize, int fd, struct stat const *st)
+{
+  #ifndef SEEK_HOLE
+  enum { SEEK_HOLE = SEEK_END };
+  #endif
+
+  /* If -z, test only whether the initial buffer contains '\200';
+     knowing about holes won't help.  */
+  if (! eolbyte)
+    return memchr (buf, '\200', bufsize) != 0;
+
+  /* If the initial buffer contains a null byte, guess that the file
+     is binary.  */
+  if (memchr (buf, '\0', bufsize))
+    return 1;
+
+  /* If the file has holes, it must contain a null byte somewhere.  */
+  if (SEEK_HOLE != SEEK_END && usable_st_size (st))
+    {
+      off_t cur = bufsize;
+      if (O_BINARY || fd == STDIN_FILENO)
+        {
+          cur = lseek (fd, 0, SEEK_CUR);
+          if (cur < 0)
+            return 0;
+        }
+
+      /* Look for a hole after the current location.  */
+      off_t hole_start = lseek (fd, cur, SEEK_HOLE);
+      if (0 <= hole_start)
+        {
+          if (lseek (fd, cur, SEEK_SET) < 0)
+            suppressible_error (filename, errno);
+          if (hole_start < st->st_size)
+            return 1;
+        }
+    }
+
+  /* Guess that the file does not contain binary data.  */
+  return 0;
+}
+
 /* Convert STR to a nonnegative integer, storing the result in *OUT.
    STR must be a valid context length argument; report an error if it
    isn't.  Silently ceiling *OUT at the maximum value, as that is
@@ -449,6 +502,20 @@ context_length_arg (char const *str, intmax_t *out)
     }
 }
 
+/* Return nonzero if the file with NAME should be skipped.
+   If COMMAND_LINE is nonzero, it is a command-line argument.
+   If IS_DIR is nonzero, it is a directory.  */
+static int
+skipped_file (char const *name, int command_line, int is_dir)
+{
+  return (is_dir
+          ? (directories == SKIP_DIRECTORIES
+             || (! (command_line && filename_prefix_len != 0)
+                 && excluded_directory_patterns
+                 && excluded_file_name (excluded_directory_patterns, name)))
+          : (excluded_patterns
+             && excluded_file_name (excluded_patterns, name)));
+}
 
 /* Hairy buffering mechanism for grep.  The intent is to keep
    all reads aligned on a page boundary and multiples of the
@@ -515,7 +582,7 @@ reset (int fd, struct stat const *st)
 static int
 fillbuf (size_t save, struct stat const *st)
 {
-  size_t fillsize = 0;
+  ssize_t fillsize;
   int cc = 1;
   char *readbuf;
   size_t readsize;
@@ -546,7 +613,7 @@ fillbuf (size_t save, struct stat const *st)
          is large.  However, do not use the original file size as a
          heuristic if we've already read past the file end, as most
          likely the file is growing.  */
-      if (S_ISREG (st->st_mode))
+      if (usable_st_size (st))
         {
           off_t to_be_read = st->st_size - bufoffset;
           off_t maxsize_off = save + to_be_read;
@@ -576,18 +643,9 @@ fillbuf (size_t save, struct stat const *st)
   readsize = buffer + bufalloc - readbuf;
   readsize -= readsize % pagesize;
 
-  if (! fillsize)
-    {
-      ssize_t bytesread;
-      while ((bytesread = read (bufdesc, readbuf, readsize)) < 0
-             && errno == EINTR)
-        continue;
-      if (bytesread < 0)
-        cc = 0;
-      else
-        fillsize = bytesread;
-    }
-
+  fillsize = read (bufdesc, readbuf, readsize);
+  if (fillsize < 0)
+    fillsize = cc = 0;
   bufoffset += fillsize;
 #if defined HAVE_DOS_FILE_CONTENTS
   if (fillsize)
@@ -1120,7 +1178,7 @@ grep (int fd, struct stat const *st)
 
   not_text = (((binary_files == BINARY_BINARY_FILES && !out_quiet)
                || binary_files == WITHOUT_MATCH_BINARY_FILES)
-              && memchr (bufbeg, eol ? '\0' : '\200', buflim - bufbeg));
+              && file_is_binary (bufbeg, buflim - bufbeg, fd, st));
   if (not_text && binary_files == WITHOUT_MATCH_BINARY_FILES)
     return 0;
   done_on_match += not_text;
@@ -1142,8 +1200,10 @@ grep (int fd, struct stat const *st)
          the buffer, 0 means there is no incomplete last line).  */
       oldc = beg[-1];
       beg[-1] = eol;
-      for (lim = buflim; lim[-1] != eol; lim--)
-        continue;
+      /* FIXME: use rawmemrchr if/when it exists, since we have ensured
+         that this use of memrchr is guaranteed never to return NULL.  */
+      lim = memrchr (beg - 1, eol, buflim - beg + 1);
+      ++lim;
       beg[-1] = oldc;
       if (lim == beg)
         lim = beg - residue;
@@ -1207,11 +1267,11 @@ grep (int fd, struct stat const *st)
 }
 
 static int
-grepdirent (FTS *fts, FTSENT *ent)
+grepdirent (FTS *fts, FTSENT *ent, int command_line)
 {
   int follow, dirdesc;
-  int command_line = ent->fts_level == FTS_ROOTLEVEL;
   struct stat *st = ent->fts_statp;
+  command_line &= ent->fts_level == FTS_ROOTLEVEL;
 
   if (ent->fts_info == FTS_DP)
     {
@@ -1220,17 +1280,9 @@ grepdirent (FTS *fts, FTSENT *ent)
       return 1;
     }
 
-  if ((ent->fts_info == FTS_D || ent->fts_info == FTS_DC
-       || ent->fts_info == FTS_DNR)
-      ? (directories == SKIP_DIRECTORIES
-         || (! (command_line && filename_prefix_len != 0)
-             && excluded_directory_patterns
-             && excluded_file_name (excluded_directory_patterns,
-                                    ent->fts_name)))
-      : ((included_patterns
-          && excluded_file_name (included_patterns, ent->fts_name))
-         || (excluded_patterns
-             && excluded_file_name (excluded_patterns, ent->fts_name))))
+  if (skipped_file (ent->fts_name, command_line,
+                    (ent->fts_info == FTS_D || ent->fts_info == FTS_DC
+                     || ent->fts_info == FTS_DNR)))
     {
       fts_set (fts, ent, FTS_SKIP);
       return 1;
@@ -1336,6 +1388,11 @@ grepdesc (int desc, int command_line)
       suppressible_error (filename, errno);
       goto closeout;
     }
+
+  if (desc != STDIN_FILENO && command_line
+      && skipped_file (filename, 1, S_ISDIR (st.st_mode)))
+    goto closeout;
+
   if (desc != STDIN_FILENO
       && directories == RECURSE_DIRECTORIES && S_ISDIR (st.st_mode))
     {
@@ -1360,7 +1417,7 @@ grepdesc (int desc, int command_line)
       if (!fts)
         xalloc_die ();
       while ((ent = fts_read (fts)))
-        status &= grepdirent (fts, ent);
+        status &= grepdirent (fts, ent, command_line);
       if (errno)
         suppressible_error (filename, errno);
       if (fts_close (fts) != 0)
@@ -1523,15 +1580,15 @@ Output control:\n\
   -o, --only-matching       show only the part of a line matching PATTERN\n\
   -q, --quiet, --silent     suppress all normal output\n\
       --binary-files=TYPE   assume that binary files are TYPE;\n\
-                            TYPE is `binary', `text', or `without-match'\n\
+                            TYPE is 'binary', 'text', or 'without-match'\n\
   -a, --text                equivalent to --binary-files=text\n\
 "));
       printf (_("\
   -I                        equivalent to --binary-files=without-match\n\
   -d, --directories=ACTION  how to handle directories;\n\
-                            ACTION is `read', `recurse', or `skip'\n\
+                            ACTION is 'read', 'recurse', or 'skip'\n\
   -D, --devices=ACTION      how to handle devices, FIFOs and sockets;\n\
-                            ACTION is `read' or `skip'\n\
+                            ACTION is 'read' or 'skip'\n\
   -r, --recursive           like --directories=recurse\n\
   -R, --dereference-recursive  likewise, but follow all symlinks\n\
 "));
@@ -1558,7 +1615,7 @@ Context control:\n\
   -NUM                      same as --context=NUM\n\
       --color[=WHEN],\n\
       --colour[=WHEN]       use markers to highlight the matching strings;\n\
-                            WHEN is `always', `never', or `auto'\n\
+                            WHEN is 'always', 'never', or 'auto'\n\
   -U, --binary              do not strip CR characters at EOL (MSDOS/Windows)\n\
   -u, --unix-byte-offsets   report offsets as if CRs were not there\n\
                             (MSDOS/Windows)\n\
@@ -2076,9 +2133,12 @@ main (int argc, char **argv)
         break;
 
       case EXCLUDE_OPTION:
+      case INCLUDE_OPTION:
         if (!excluded_patterns)
           excluded_patterns = new_exclude ();
-        add_exclude (excluded_patterns, optarg, EXCLUDE_WILDCARDS);
+        add_exclude (excluded_patterns, optarg,
+                     (EXCLUDE_WILDCARDS
+                      | (opt == INCLUDE_OPTION ? EXCLUDE_INCLUDE : 0)));
         break;
       case EXCLUDE_FROM_OPTION:
         if (!excluded_patterns)
@@ -2094,13 +2154,6 @@ main (int argc, char **argv)
         if (!excluded_directory_patterns)
           excluded_directory_patterns = new_exclude ();
         add_exclude (excluded_directory_patterns, optarg, EXCLUDE_WILDCARDS);
-        break;
-
-      case INCLUDE_OPTION:
-        if (!included_patterns)
-          included_patterns = new_exclude ();
-        add_exclude (included_patterns, optarg,
-                     EXCLUDE_WILDCARDS | EXCLUDE_INCLUDE);
         break;
 
       case GROUP_SEPARATOR_OPTION:

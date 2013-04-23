@@ -35,16 +35,6 @@
 #ifndef _GL_IGNORE_VALUE_H
 # define _GL_IGNORE_VALUE_H
 
-# ifndef _GL_ATTRIBUTE_DEPRECATED
-/* The __attribute__((__deprecated__)) feature
-   is available in gcc versions 3.1 and newer.  */
-#  if __GNUC__ < 3 || (__GNUC__ == 3 && __GNUC_MINOR__ < 1)
-#   define _GL_ATTRIBUTE_DEPRECATED /* empty */
-#  else
-#   define _GL_ATTRIBUTE_DEPRECATED __attribute__ ((__deprecated__))
-#  endif
-# endif
-
 /* The __attribute__((__warn_unused_result__)) feature
    is available in gcc versions 3.4 and newer,
    while the typeof feature has been available since 2.7 at least.  */

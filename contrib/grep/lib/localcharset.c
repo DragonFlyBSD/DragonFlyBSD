@@ -29,7 +29,7 @@
 #include <stdlib.h>
 
 #if defined __APPLE__ && defined __MACH__ && HAVE_LANGINFO_CODESET
-# define DARWIN7 /* Darwin 7 or newer, i.e. MacOS X 10.3 or newer */
+# define DARWIN7 /* Darwin 7 or newer, i.e. Mac OS X 10.3 or newer */
 #endif
 
 #if defined _WIN32 || defined __WIN32__

@@ -78,8 +78,9 @@ static char const *
 kwsincr_case (const char *must)
 {
   size_t n = strlen (must);
+  mb_len_map_t *map = NULL;
   const char *buf = (match_icase && MB_CUR_MAX > 1
-                     ? mbtolower (must, &n)
+                     ? mbtolower (must, &n, &map)
                      : must);
   return kwsincr (kwset, buf, n);
 }
@@ -214,16 +215,18 @@ EGexecute (char const *buf, size_t size, size_t *match_size,
   char eol = eolbyte;
   int backref;
   regoff_t start;
-  ptrdiff_t len, best_len;
+  size_t len, best_len;
   struct kwsmatch kwsm;
   size_t i, ret_val;
+  mb_len_map_t *map = NULL;
+
   if (MB_CUR_MAX > 1)
     {
       if (match_icase)
         {
           /* mbtolower adds a NUL byte at the end.  That will provide
              space for the sentinel byte dfaexec may add.  */
-          char *case_buf = mbtolower (buf, &size);
+          char *case_buf = mbtolower (buf, &size, &map);
           if (start_ptr)
             start_ptr = case_buf + (start_ptr - buf);
           buf = case_buf;
@@ -274,7 +277,9 @@ EGexecute (char const *buf, size_t size, size_t *match_size,
               /* No good fixed strings; start with DFA. */
               char const *next_beg = dfaexec (dfa, beg, (char *) buflim,
                                               0, NULL, &backref);
-              if (next_beg == NULL)
+              /* If there's no match, or if we've matched the sentinel,
+                 we're done.  */
+              if (next_beg == NULL || next_beg == buflim)
                 break;
               /* Narrow down to the line we've found. */
               beg = next_beg;
@@ -340,6 +345,7 @@ EGexecute (char const *buf, size_t size, size_t *match_size,
               if (match_words)
                 while (match <= best_match)
                   {
+                    regoff_t shorter_len = 0;
                     if ((match == buf || !WCHAR ((unsigned char) match[-1]))
                         && (start + len == end - buf - 1
                             || !WCHAR ((unsigned char) match[len])))
@@ -349,13 +355,16 @@ EGexecute (char const *buf, size_t size, size_t *match_size,
                         /* Try a shorter length anchored at the same place. */
                         --len;
                         patterns[i].regexbuf.not_eol = 1;
-                        len = re_match (&(patterns[i].regexbuf),
-                                        buf, match + len - beg, match - buf,
-                                        &(patterns[i].regs));
-                        if (len < -1)
+                        shorter_len = re_match (&(patterns[i].regexbuf),
+                                                buf, match + len - beg,
+                                                match - buf,
+                                                &(patterns[i].regs));
+                        if (shorter_len < -1)
                           xalloc_die ();
                       }
-                    if (len <= 0)
+                    if (0 < shorter_len)
+                      len = shorter_len;
+                    else
                       {
                         /* Try looking further on. */
                         if (match == end - 1)
@@ -408,9 +417,11 @@ EGexecute (char const *buf, size_t size, size_t *match_size,
 
  success:
   len = end - beg;
- success_in_len:
+ success_in_len:;
+  size_t off = beg - buf;
+  mb_case_map_apply (map, &off, &len);
   *match_size = len;
-  ret_val = beg - buf;
+  ret_val = off;
  out:
   return ret_val;
 }
