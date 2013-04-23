@@ -1,6 +1,6 @@
 /* Context-format output routines for GNU DIFF.
 
-   Copyright (C) 1988-1989, 1991-1995, 1998, 2001-2002, 2004, 2006, 2009-2011
+   Copyright (C) 1988-1989, 1991-1995, 1998, 2001-2002, 2004, 2006, 2009-2013
    Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -40,6 +40,7 @@ static lin find_function_last_match;
 static void
 print_context_label (char const *mark,
 		     struct file_data *inf,
+		     char const *name,
 		     char const *label)
 {
   if (label)
@@ -70,24 +71,24 @@ print_context_label (char const *mark,
 	      sprintf (buf, "%"PRIuMAX".%.9d", sec, nsec);
 	    }
 	}
-      fprintf (outfile, "%s %s\t%s\n", mark, inf->name, buf);
+      fprintf (outfile, "%s %s\t%s\n", mark, name, buf);
     }
 }
 
 /* Print a header for a context diff, with the file names and dates.  */
 
 void
-print_context_header (struct file_data inf[], bool unidiff)
+print_context_header (struct file_data inf[], char const *const *names, bool unidiff)
 {
   if (unidiff)
     {
-      print_context_label ("---", &inf[0], file_label[0]);
-      print_context_label ("+++", &inf[1], file_label[1]);
+      print_context_label ("---", &inf[0], names[0], file_label[0]);
+      print_context_label ("+++", &inf[1], names[1], file_label[1]);
     }
   else
     {
-      print_context_label ("***", &inf[0], file_label[0]);
-      print_context_label ("---", &inf[1], file_label[1]);
+      print_context_label ("***", &inf[0], names[0], file_label[0]);
+      print_context_label ("---", &inf[1], names[1], file_label[1]);
     }
 }
 
@@ -158,7 +159,7 @@ print_context_function (FILE *out, char const *function)
 
 /* Print a portion of an edit script in context format.
    HUNK is the beginning of the portion to be printed.
-   The end is marked by a `link' that has been nulled out.
+   The end is marked by a 'link' that has been nulled out.
 
    Prints out lines from both files, and precedes each
    line with the appropriate flag-character.  */
@@ -288,7 +289,7 @@ print_unidiff_number_range (struct file_data const *file, lin a, lin b)
 
 /* Print a portion of an edit script in unidiff format.
    HUNK is the beginning of the portion to be printed.
-   The end is marked by a `link' that has been nulled out.
+   The end is marked by a 'link' that has been nulled out.
 
    Prints out lines from both files, and precedes each
    line with the appropriate flag-character.  */
@@ -392,9 +393,9 @@ pr_unidiff_hunk (struct change *hunk)
 
 /* Scan a (forward-ordered) edit script for the first place that more than
    2*CONTEXT unchanged lines appear, and return a pointer
-   to the `struct change' for the last change before those lines.  */
+   to the 'struct change' for the last change before those lines.  */
 
-static struct change *
+static struct change * _GL_ATTRIBUTE_PURE
 find_hunk (struct change *start)
 {
   struct change *prev;
@@ -430,7 +431,7 @@ find_hunk (struct change *start)
   return prev;
 }
 
-/* Set the `ignore' flag properly in each change in SCRIPT.
+/* Set the 'ignore' flag properly in each change in SCRIPT.
    It should be 1 if all the lines inserted or deleted in that change
    are ignorable lines.  */
 
@@ -458,7 +459,7 @@ mark_ignorable (struct change *script)
 }
 
 /* Find the last function-header line in LINBUF prior to line number LINENUM.
-   This is a line containing a match for the regexp in `function_regexp'.
+   This is a line containing a match for the regexp in 'function_regexp'.
    Return the address of the text, or NULL if no function-header is found.  */
 
 static char const *

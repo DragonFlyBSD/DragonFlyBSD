@@ -1,6 +1,6 @@
 /* System dependent declarations.
 
-   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2011
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2013
    Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -20,14 +20,14 @@
 
 #include <config.h>
 
-/* Use this to suppress gcc's `...may be used before initialized' warnings. */
+/* Use this to suppress gcc's "...may be used before initialized" warnings. */
 #ifdef lint
 # define IF_LINT(Code) Code
 #else
 # define IF_LINT(Code) /* empty */
 #endif
 
-/* Define `__attribute__' and `volatile' first
+/* Define '__attribute__' and 'volatile' first
    so that they're used consistently in all system includes.  */
 #if __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 6) || __STRICT_ANSI__
 # define __attribute__(x)
@@ -99,7 +99,7 @@ int strcasecmp (char const *, char const *);
    - It's typically faster.
    POSIX 1003.1-2001 says that only '0' through '9' are digits.
    Prefer ISDIGIT to isdigit unless it's important to use the locale's
-   definition of `digit' even when the host does not conform to POSIX.  */
+   definition of 'digit' even when the host does not conform to POSIX.  */
 #define ISDIGIT(c) ((unsigned int) (c) - '0' <= 9)
 
 #include <errno.h>
@@ -151,7 +151,7 @@ verify (sizeof (lin) <= sizeof (long int));
 
 /* Do struct stat *S, *T describe the same special file?  */
 #ifndef same_special_file
-# if HAVE_ST_RDEV && defined S_ISBLK && defined S_ISCHR
+# if HAVE_STRUCT_STAT_ST_RDEV && defined S_ISBLK && defined S_ISCHR
 #  define same_special_file(s, t) \
      (((S_ISBLK ((s)->st_mode) && S_ISBLK ((t)->st_mode)) \
        || (S_ISCHR ((s)->st_mode) && S_ISCHR ((t)->st_mode))) \

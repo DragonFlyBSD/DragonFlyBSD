@@ -1,12 +1,12 @@
-This is diffutils.info, produced by makeinfo version 4.13 from
+This is diffutils.info-t, produced by makeinfo version 4.13 from
 diffutils.texi.
 
-This manual is for GNU Diffutils (version 3.2, 15 August 2011), and
+This manual is for GNU Diffutils (version 3.3, 23 March 2013), and
 documents the GNU `diff', `diff3', `sdiff', and `cmp' commands for
 showing the differences between files and the GNU `patch' command for
 using their output to update files.
 
-   Copyright (C) 1992-1994, 1998, 2001-2002, 2004, 2006, 2009-2011 Free
+   Copyright (C) 1992-1994, 1998, 2001-2002, 2004, 2006, 2009-2013 Free
 Software Foundation, Inc.
 
      Permission is granted to copy, distribute and/or modify this
@@ -31,17 +31,17 @@ START-INFO-DIR-ENTRY
 END-INFO-DIR-ENTRY
 
 
-File: diffutils.info,  Node: Top,  Next: Overview,  Up: (dir)
+File: diffutils.info-t,  Node: Top,  Next: Overview,  Up: (dir)
 
 Comparing and Merging Files
 ***************************
 
-This manual is for GNU Diffutils (version 3.2, 15 August 2011), and
+This manual is for GNU Diffutils (version 3.3, 23 March 2013), and
 documents the GNU `diff', `diff3', `sdiff', and `cmp' commands for
 showing the differences between files and the GNU `patch' command for
 using their output to update files.
 
-   Copyright (C) 1992-1994, 1998, 2001-2002, 2004, 2006, 2009-2011 Free
+   Copyright (C) 1992-1994, 1998, 2001-2002, 2004, 2006, 2009-2013 Free
 Software Foundation, Inc.
 
      Permission is granted to copy, distribute and/or modify this
@@ -84,7 +84,7 @@ Software Foundation, Inc.
 * Index::                 Index.
 
 
-File: diffutils.info,  Node: Overview,  Next: Comparison,  Prev: Top,  Up: Top
+File: diffutils.info-t,  Node: Overview,  Next: Comparison,  Prev: Top,  Up: Top
 
 Overview
 ********
@@ -155,7 +155,7 @@ MacKenzie.  Parts of this manual are adapted from a manual page written
 by Larry Wall, with his permission.
 
 
-File: diffutils.info,  Node: Comparison,  Next: Output Formats,  Prev: Overview,  Up: Top
+File: diffutils.info-t,  Node: Comparison,  Next: Output Formats,  Prev: Overview,  Up: Top
 
 1 What Comparison Means
 ***********************
@@ -208,7 +208,7 @@ changes to the same file.
 * Binary::            Comparing binary files or forcing text comparisons.
 
 
-File: diffutils.info,  Node: Hunks,  Next: White Space,  Up: Comparison
+File: diffutils.info-t,  Node: Hunks,  Next: White Space,  Up: Comparison
 
 1.1 Hunks
 =========
@@ -254,7 +254,7 @@ possible.  You can adjust this tradeoff with the `--minimal' (`-d')
 option (*note diff Performance::).
 
 
-File: diffutils.info,  Node: White Space,  Next: Blank Lines,  Prev: Hunks,  Up: Comparison
+File: diffutils.info-t,  Node: White Space,  Next: Blank Lines,  Prev: Hunks,  Up: Comparison
 
 1.2 Suppressing Differences in Blank and Tab Spacing
 ====================================================
@@ -292,7 +292,7 @@ line.  Hence the `-w' or `--ignore-all-space' option does not ignore
 newline-related changes; it ignores only other white space changes.
 
 
-File: diffutils.info,  Node: Blank Lines,  Next: Specified Lines,  Prev: White Space,  Up: Comparison
+File: diffutils.info-t,  Node: Blank Lines,  Next: Specified Lines,  Prev: White Space,  Up: Comparison
 
 1.3 Suppressing Differences Whose Lines Are All Blank
 =====================================================
@@ -318,7 +318,7 @@ words, `-B' is equivalent to `-I '^$'' by default, but it is equivalent
 to `-I '^[[:space:]]*$'' if `-b', `-w' or `-Z' is also specified.
 
 
-File: diffutils.info,  Node: Specified Lines,  Next: Case Folding,  Prev: Blank Lines,  Up: Comparison
+File: diffutils.info-t,  Node: Specified Lines,  Next: Case Folding,  Prev: Blank Lines,  Up: Comparison
 
 1.4 Suppressing Differences Whose Lines All Match a Regular Expression
 ======================================================================
@@ -341,7 +341,7 @@ by using more than one `-I' option.  `diff' tries to match each line
 against each regular expression.
 
 
-File: diffutils.info,  Node: Case Folding,  Next: Brief,  Prev: Specified Lines,  Up: Comparison
+File: diffutils.info-t,  Node: Case Folding,  Next: Brief,  Prev: Specified Lines,  Up: Comparison
 
 1.5 Suppressing Case Differences
 ================================
@@ -352,7 +352,7 @@ case counterparts, so that, for example, it considers `Funky Stuff',
 use the `-i' or `--ignore-case' option.
 
 
-File: diffutils.info,  Node: Brief,  Next: Binary,  Prev: Case Folding,  Up: Comparison
+File: diffutils.info-t,  Node: Brief,  Next: Binary,  Prev: Case Folding,  Up: Comparison
 
 1.6 Summarizing Which Files Differ
 ==================================
@@ -381,7 +381,7 @@ Invoking cmp::).
 two files.
 
 
-File: diffutils.info,  Node: Binary,  Prev: Brief,  Up: Comparison
+File: diffutils.info-t,  Node: Binary,  Prev: Brief,  Up: Comparison
 
 1.7 Binary Files and Forcing Text Comparisons
 =============================================
@@ -455,7 +455,7 @@ few non-text bytes but otherwise are like text files, you can force
 line by using the `-a' or `--text' option.
 
 
-File: diffutils.info,  Node: Output Formats,  Next: Incomplete Lines,  Prev: Comparison,  Up: Top
+File: diffutils.info-t,  Node: Output Formats,  Next: Incomplete Lines,  Prev: Comparison,  Up: Top
 
 2 `diff' Output Formats
 ***********************
@@ -474,7 +474,7 @@ reports the differences between two sample input files.
 * If-then-else::      Merging files with if-then-else.
 
 
-File: diffutils.info,  Node: Sample diff Input,  Next: Context,  Up: Output Formats
+File: diffutils.info-t,  Node: Sample diff Input,  Next: Context,  Up: Output Formats
 
 2.1 Two Sample Input Files
 ==========================
@@ -518,7 +518,7 @@ second and third lines of `tzu', and the last hunk contains just the
 last three lines of `tzu'.
 
 
-File: diffutils.info,  Node: Context,  Next: Side by Side,  Prev: Sample diff Input,  Up: Output Formats
+File: diffutils.info-t,  Node: Context,  Next: Side by Side,  Prev: Sample diff Input,  Up: Output Formats
 
 2.2 Showing Differences in Their Context
 ========================================
@@ -551,7 +551,7 @@ more information on using `patch' to apply imperfect diffs.
 * Alternate Names:: Showing alternate file names in context headers.
 
 
-File: diffutils.info,  Node: Context Format,  Next: Unified Format,  Up: Context
+File: diffutils.info-t,  Node: Context Format,  Next: Unified Format,  Up: Context
 
 2.2.1 Context Format
 --------------------
@@ -573,7 +573,7 @@ needs at least two lines of context.
 * Detailed Context:: A detailed description of the context output format.
 
 
-File: diffutils.info,  Node: Example Context,  Next: Less Context,  Up: Context Format
+File: diffutils.info-t,  Node: Example Context,  Next: Less Context,  Up: Context Format
 
 2.2.1.1 An Example of Context Format
 ....................................
@@ -613,7 +613,7 @@ run together, because their contents overlap.
      + The door of all subtleties!
 
 
-File: diffutils.info,  Node: Less Context,  Next: Detailed Context,  Prev: Example Context,  Up: Context Format
+File: diffutils.info-t,  Node: Less Context,  Next: Detailed Context,  Prev: Example Context,  Up: Context Format
 
 2.2.1.2 An Example of Context Format with Less Context
 ......................................................
@@ -645,7 +645,7 @@ context line is reported here.
      + The door of all subtleties!
 
 
-File: diffutils.info,  Node: Detailed Context,  Prev: Less Context,  Up: Context Format
+File: diffutils.info-t,  Node: Detailed Context,  Prev: Less Context,  Up: Context Format
 
 2.2.1.3 Detailed Description of Context Format
 ..............................................
@@ -705,7 +705,7 @@ FROM-FILE are omitted.  If all of the changes are deletions, the lines
 of TO-FILE are omitted.
 
 
-File: diffutils.info,  Node: Unified Format,  Next: Sections,  Prev: Context Format,  Up: Context
+File: diffutils.info-t,  Node: Unified Format,  Next: Sections,  Prev: Context Format,  Up: Context
 
 2.2.2 Unified Format
 --------------------
@@ -726,7 +726,7 @@ operation, `patch' typically needs at least three lines of context.
 * Detailed Unified:: A detailed description of unified format.
 
 
-File: diffutils.info,  Node: Example Unified,  Next: Detailed Unified,  Up: Unified Format
+File: diffutils.info-t,  Node: Example Unified,  Next: Detailed Unified,  Up: Unified Format
 
 2.2.2.1 An Example of Unified Format
 ....................................
@@ -755,7 +755,7 @@ Input::, for the complete contents of the two files):
      +The door of all subtleties!
 
 
-File: diffutils.info,  Node: Detailed Unified,  Prev: Example Unified,  Up: Unified Format
+File: diffutils.info-t,  Node: Detailed Unified,  Prev: Example Unified,  Up: Unified Format
 
 2.2.2.2 Detailed Description of Unified Format
 ..............................................
@@ -771,8 +771,8 @@ indicate the date, time with fractional seconds, and time zone.  The
 fractional seconds are omitted on hosts that do not support fractional
 time stamps.
 
-   You can change the header's content with the `--label=LABEL' option;
-see *Note Alternate Names::.
+   You can change the header's content with the `--label=LABEL' option.
+*Note Alternate Names::.
 
    Next come one or more hunks of differences; each hunk shows one area
 where the files differ.  Unified format hunks look like this:
@@ -801,7 +801,7 @@ following indicator characters in the left print column:
      A line was removed here from the first file.
 
 
-File: diffutils.info,  Node: Sections,  Next: Alternate Names,  Prev: Unified Format,  Up: Context
+File: diffutils.info-t,  Node: Sections,  Next: Alternate Names,  Prev: Unified Format,  Up: Context
 
 2.2.3 Showing Which Sections Differences Are in
 -----------------------------------------------
@@ -819,7 +819,7 @@ lines are "section headings" is determined by a regular expression.
 * C Function Headings:: Showing headings of C functions.
 
 
-File: diffutils.info,  Node: Specified Headings,  Next: C Function Headings,  Up: Sections
+File: diffutils.info-t,  Node: Specified Headings,  Next: C Function Headings,  Up: Sections
 
 2.2.3.1 Showing Lines That Match Regular Expressions
 ....................................................
@@ -857,7 +857,7 @@ regular expression, starting with the last one given.  This means that
 you can use `-p' and `-F' together, if you wish.
 
 
-File: diffutils.info,  Node: C Function Headings,  Prev: Specified Headings,  Up: Sections
+File: diffutils.info-t,  Node: C Function Headings,  Prev: Specified Headings,  Up: Sections
 
 2.2.3.2 Showing C Function Headings
 ...................................
@@ -876,7 +876,7 @@ elsewhere in the command line.
 this option for the sake of convenience.
 
 
-File: diffutils.info,  Node: Alternate Names,  Prev: Sections,  Up: Context
+File: diffutils.info-t,  Node: Alternate Names,  Prev: Sections,  Up: Context
 
 2.2.4 Showing Alternate File Names
 ----------------------------------
@@ -899,7 +899,7 @@ Pagination::).
      --- modified
 
 
-File: diffutils.info,  Node: Side by Side,  Next: Normal,  Prev: Context,  Up: Output Formats
+File: diffutils.info-t,  Node: Side by Side,  Next: Normal,  Prev: Context,  Up: Output Formats
 
 2.3 Showing Differences Side by Side
 ====================================
@@ -940,7 +940,7 @@ white space
      incomplete.
 
    Normally, an output line is incomplete if and only if the lines that
-it contains are incomplete; *Note Incomplete Lines::.  However, when an
+it contains are incomplete.  *Note Incomplete Lines::.  However, when an
 output line represents two differing lines, one might be incomplete
 while the other is not.  In this case, the output line is complete, but
 its the gutter is marked `\' if the first line is incomplete, `/' if
@@ -963,7 +963,7 @@ merging files.
 * Example Side by Side:: Sample side by side output.
 
 
-File: diffutils.info,  Node: Side by Side Format,  Next: Example Side by Side,  Up: Side by Side
+File: diffutils.info-t,  Node: Side by Side Format,  Next: Example Side by Side,  Up: Side by Side
 
 2.3.1 Controlling Side by Side Format
 -------------------------------------
@@ -983,7 +983,7 @@ lines.  The `--suppress-common-lines' option suppresses common lines
 entirely.
 
 
-File: diffutils.info,  Node: Example Side by Side,  Prev: Side by Side Format,  Up: Side by Side
+File: diffutils.info-t,  Node: Example Side by Side,  Prev: Side by Side Format,  Up: Side by Side
 
 2.3.2 An Example of Side by Side Format
 ---------------------------------------
@@ -1008,7 +1008,7 @@ diff Input::, for the complete contents of the two files).
                                         >    The door of all subtleties!
 
 
-File: diffutils.info,  Node: Normal,  Next: Scripts,  Prev: Side by Side,  Up: Output Formats
+File: diffutils.info-t,  Node: Normal,  Next: Scripts,  Prev: Side by Side,  Up: Output Formats
 
 2.4 Showing Differences Without Context
 =======================================
@@ -1030,7 +1030,7 @@ Use the `--normal' option to select this output format explicitly.
 * Detailed Normal:: A detailed description of normal output format.
 
 
-File: diffutils.info,  Node: Example Normal,  Next: Detailed Normal,  Up: Normal
+File: diffutils.info-t,  Node: Example Normal,  Next: Detailed Normal,  Up: Normal
 
 2.4.1 An Example of Normal Format
 ---------------------------------
@@ -1053,7 +1053,7 @@ shows only the lines that are different between the two files.
      > The door of all subtleties!
 
 
-File: diffutils.info,  Node: Detailed Normal,  Prev: Example Normal,  Up: Normal
+File: diffutils.info-t,  Node: Detailed Normal,  Prev: Example Normal,  Up: Normal
 
 2.4.2 Detailed Description of Normal Format
 -------------------------------------------
@@ -1097,7 +1097,7 @@ are:
      after line 3 of file 2.
 
 
-File: diffutils.info,  Node: Scripts,  Next: If-then-else,  Prev: Normal,  Up: Output Formats
+File: diffutils.info-t,  Node: Scripts,  Next: If-then-else,  Prev: Normal,  Up: Output Formats
 
 2.5 Making Edit Scripts
 =======================
@@ -1112,7 +1112,7 @@ produce TO-FILE.
 * RCS::        A special `diff' output format used by RCS.
 
 
-File: diffutils.info,  Node: ed Scripts,  Next: Forward ed,  Up: Scripts
+File: diffutils.info-t,  Node: ed Scripts,  Next: Forward ed,  Up: Scripts
 
 2.5.1 `ed' Scripts
 ------------------
@@ -1141,7 +1141,7 @@ old' edits `old' to make it a copy of `newN'.
 * Detailed ed:: A detailed description of `ed' format.
 
 
-File: diffutils.info,  Node: Example ed,  Next: Detailed ed,  Up: ed Scripts
+File: diffutils.info-t,  Node: Example ed,  Next: Detailed ed,  Up: ed Scripts
 
 2.5.1.1 Example `ed' Script
 ...........................
@@ -1161,7 +1161,7 @@ the complete contents of the two files):
      1,2d
 
 
-File: diffutils.info,  Node: Detailed ed,  Prev: Example ed,  Up: ed Scripts
+File: diffutils.info-t,  Node: Detailed ed,  Prev: Example ed,  Up: ed Scripts
 
 2.5.1.2 Detailed Description of `ed' Format
 ...........................................
@@ -1207,7 +1207,7 @@ are:
      `5,7d' means delete lines 5-7 of file 1.
 
 
-File: diffutils.info,  Node: Forward ed,  Next: RCS,  Prev: ed Scripts,  Up: Scripts
+File: diffutils.info-t,  Node: Forward ed,  Next: RCS,  Prev: ed Scripts,  Up: Scripts
 
 2.5.2 Forward `ed' Scripts
 --------------------------
@@ -1225,7 +1225,7 @@ compatibility with older versions of `diff'.  Use the `-f' or
 `--forward-ed' option to select it.
 
 
-File: diffutils.info,  Node: RCS,  Prev: Forward ed,  Up: Scripts
+File: diffutils.info-t,  Node: RCS,  Prev: Forward ed,  Up: Scripts
 
 2.5.3 RCS Scripts
 -----------------
@@ -1257,7 +1257,7 @@ for the complete contents of the two files):
      The door of all subtleties!
 
 
-File: diffutils.info,  Node: If-then-else,  Prev: Scripts,  Up: Output Formats
+File: diffutils.info-t,  Node: If-then-else,  Prev: Scripts,  Up: Output Formats
 
 2.6 Merging Files with If-then-else
 ===================================
@@ -1299,7 +1299,7 @@ group formats and line formats, as described in the next sections.
 * Detailed If-then-else:: A detailed description of if-then-else format.
 
 
-File: diffutils.info,  Node: Line Group Formats,  Next: Line Formats,  Up: If-then-else
+File: diffutils.info-t,  Node: Line Group Formats,  Next: Line Formats,  Up: If-then-else
 
 2.6.1 Line Group Formats
 ------------------------
@@ -1465,7 +1465,7 @@ forms.
      0, to `1 line' if N is 1, and to `%dN lines' otherwise.
 
 
-File: diffutils.info,  Node: Line Formats,  Next: Example If-then-else,  Prev: Line Group Formats,  Up: If-then-else
+File: diffutils.info-t,  Node: Line Formats,  Next: Example If-then-else,  Prev: Line Group Formats,  Up: If-then-else
 
 2.6.2 Line Formats
 ------------------
@@ -1566,7 +1566,7 @@ fine control over `diff' output.
         old new
 
 
-File: diffutils.info,  Node: Example If-then-else,  Next: Detailed If-then-else,  Prev: Line Formats,  Up: If-then-else
+File: diffutils.info-t,  Node: Example If-then-else,  Next: Detailed If-then-else,  Prev: Line Formats,  Up: If-then-else
 
 2.6.3 An Example of If-then-else Format
 ---------------------------------------
@@ -1599,7 +1599,7 @@ for the complete contents of the two files):
      #endif /* TWO */
 
 
-File: diffutils.info,  Node: Detailed If-then-else,  Prev: Example If-then-else,  Up: If-then-else
+File: diffutils.info-t,  Node: Detailed If-then-else,  Prev: Example If-then-else,  Up: If-then-else
 
 2.6.4 Detailed Description of If-then-else Format
 -------------------------------------------------
@@ -1642,10 +1642,10 @@ contain duplicate or otherwise incorrect code.
 
    The `patch' `-D NAME' option behaves like the `diff' `-D NAME'
 option, except it operates on a file and a diff to produce a merged
-file; *Note patch Options::.
+file.  *Note patch Options::.
 
 
-File: diffutils.info,  Node: Incomplete Lines,  Next: Comparing Directories,  Prev: Output Formats,  Up: Top
+File: diffutils.info-t,  Node: Incomplete Lines,  Next: Comparing Directories,  Prev: Output Formats,  Up: Top
 
 3 Incomplete Lines
 ******************
@@ -1661,8 +1661,8 @@ line by a following line that starts with `\'.  However, the RCS format
 (*note RCS::) outputs the incomplete line as-is, without any trailing
 newline or following line.  The side by side format normally represents
 incomplete lines as-is, but in some cases uses a `\' or `/' gutter
-marker; *Note Side by Side::.  The if-then-else line format preserves a
-line's incompleteness with `%L', and discards the newline with `%l';
+marker.  *Note Side by Side::.  The if-then-else line format preserves
+a line's incompleteness with `%L', and discards the newline with `%l'.
 *Note Line Formats::.  Finally, with the `ed' and forward `ed' output
 formats (*note Output Formats::) `diff' cannot represent an incomplete
 line, so it pretends there was a newline and reports an error.
@@ -1691,7 +1691,7 @@ outputs the following without a trailing newline:
      .
 
 
-File: diffutils.info,  Node: Comparing Directories,  Next: Adjusting Output,  Prev: Incomplete Lines,  Up: Top
+File: diffutils.info-t,  Node: Comparing Directories,  Next: Adjusting Output,  Prev: Incomplete Lines,  Up: Top
 
 4 Comparing Directories
 ***********************
@@ -1708,19 +1708,22 @@ subdirectories' files, but if you use the `-r' or `--recursive' option,
 it compares every corresponding pair of files in the directory trees,
 as many levels deep as they go.
 
-   For file names that are in only one of the directories, `diff'
-normally does not show the contents of the file that exists; it reports
-only that the file exists in that directory and not in the other.  You
-can make `diff' act as though the file existed but was empty in the
-other directory, so that it outputs the entire contents of the file that
-actually exists.  (It is output as either an insertion or a deletion,
-depending on whether it is in the first or the second directory given.)
-To do this, use the `--new-file' (`-N') option.
+   If only one file exists, `diff' normally does not show its contents;
+it merely reports that one file exists but the other does not.  You can
+make `diff' act as though the missing file is empty, so that it outputs
+the entire contents of the file that actually exists.  (It is output as
+either an insertion or a deletion, depending on whether the missing
+file is in the first or the second position.)  To do this, use the
+`--new-file' (`-N') option.  This option affects command-line arguments
+as well as files found via directory traversal; for example, `diff -N a
+b' treats `a' as empty if `a' does not exist but `b' does, and
+similarly `diff -N - b' treats standard input as empty if it is closed
+but `b' exists.
 
-   If the older directory contains one or more large files that are not
-in the newer directory, you can make the patch smaller by using the
+   If the older directory contains large files that are not in the
+newer directory, you can make the patch smaller by using the
 `--unidirectional-new-file' option instead of `-N'.  This option is
-like `-N' except that it only inserts the contents of files that appear
+like `-N' except that it inserts the contents only of files that appear
 in the second directory but not the first (that is, files that were
 added).  At the top of the patch, write instructions for the user
 applying the patch to remove the files that were deleted before
@@ -1766,8 +1769,13 @@ behavior.
 `--ignore-file-name-case' option is in effect, case is ignored when
 excluding file names matching the specified patterns.
 
+   To avoid that `diff' follows symbolic links, use the
+`--no-dereference'.  When this option is in use, symbolic links will be
+treated like a special kind of files, rather than comparing the target
+of each symbolic link.
+
 
-File: diffutils.info,  Node: Adjusting Output,  Next: diff Performance,  Prev: Comparing Directories,  Up: Top
+File: diffutils.info-t,  Node: Adjusting Output,  Next: diff Performance,  Prev: Comparing Directories,  Up: Top
 
 5 Making `diff' Output Prettier
 *******************************
@@ -1782,7 +1790,7 @@ These adjustments can be applied to any output format.
 * Pagination::      Page numbering and time-stamping `diff' output.
 
 
-File: diffutils.info,  Node: Tabs,  Next: Trailing Blanks,  Up: Adjusting Output
+File: diffutils.info-t,  Node: Tabs,  Next: Trailing Blanks,  Up: Adjusting Output
 
 5.1 Preserving Tab Stop Alignment
 =================================
@@ -1814,7 +1822,7 @@ type indicator character.  Select this method with the `-T' or
 `--initial-tab' option.
 
 
-File: diffutils.info,  Node: Trailing Blanks,  Next: Pagination,  Prev: Tabs,  Up: Adjusting Output
+File: diffutils.info-t,  Node: Trailing Blanks,  Next: Pagination,  Prev: Tabs,  Up: Adjusting Output
 
 5.2 Omitting trailing blanks
 ============================
@@ -1838,7 +1846,7 @@ to be munged by text editors or by transmission via email.  It is
 accepted by GNU `patch' as well.
 
 
-File: diffutils.info,  Node: Pagination,  Prev: Trailing Blanks,  Up: Adjusting Output
+File: diffutils.info-t,  Node: Pagination,  Prev: Trailing Blanks,  Up: Adjusting Output
 
 5.3 Paginating `diff' Output
 ============================
@@ -1851,7 +1859,7 @@ for `diff -lc lao tzu':
      2002-02-22 14:20                 diff -lc lao tzu                 Page 1
 
 
-File: diffutils.info,  Node: diff Performance,  Next: Comparing Three Files,  Prev: Adjusting Output,  Up: Top
+File: diffutils.info-t,  Node: diff Performance,  Next: Comparing Three Files,  Prev: Adjusting Output,  Up: Top
 
 6 `diff' Performance Tradeoffs
 ******************************
@@ -1910,7 +1918,7 @@ towards the end of the file.  Merging hunks can make the output look
 nicer in some cases.
 
 
-File: diffutils.info,  Node: Comparing Three Files,  Next: diff3 Merging,  Prev: diff Performance,  Up: Top
+File: diffutils.info-t,  Node: Comparing Three Files,  Next: diff3 Merging,  Prev: diff Performance,  Up: Top
 
 7 Comparing Three Files
 ***********************
@@ -1929,11 +1937,11 @@ location in the input files.
 
 * Sample diff3 Input::    Sample `diff3' input for examples.
 * Example diff3 Normal::  Sample output in the normal format.
-* diff3 Hunks::           The format of normal output format.
 * Detailed diff3 Normal:: A detailed description of normal output format.
+* diff3 Hunks::           The format of normal output format.
 
 
-File: diffutils.info,  Node: Sample diff3 Input,  Next: Example diff3 Normal,  Up: Comparing Three Files
+File: diffutils.info-t,  Node: Sample diff3 Input,  Next: Example diff3 Normal,  Up: Comparing Three Files
 
 7.1 A Third Sample Input File
 =============================
@@ -1959,7 +1967,7 @@ Input::).  This is the third sample file, called `tao':
        -- The Way of Lao-Tzu, tr. Wing-tsit Chan
 
 
-File: diffutils.info,  Node: Example diff3 Normal,  Next: diff3 Hunks,  Prev: Sample diff3 Input,  Up: Comparing Three Files
+File: diffutils.info-t,  Node: Example diff3 Normal,  Next: Detailed diff3 Normal,  Prev: Sample diff3 Input,  Up: Comparing Three Files
 
 7.2 An Example of `diff3' Normal Format
 =======================================
@@ -1998,7 +2006,7 @@ shows only the lines that are different among the three files.
          -- The Way of Lao-Tzu, tr. Wing-tsit Chan
 
 
-File: diffutils.info,  Node: Detailed diff3 Normal,  Prev: diff3 Hunks,  Up: Comparing Three Files
+File: diffutils.info-t,  Node: Detailed diff3 Normal,  Next: diff3 Hunks,  Prev: Example diff3 Normal,  Up: Comparing Three Files
 
 7.3 Detailed Description of `diff3' Normal Format
 =================================================
@@ -2036,7 +2044,7 @@ Incomplete Lines::), it is distinguished on output from a full line by
 a following line that starts with `\'.
 
 
-File: diffutils.info,  Node: diff3 Hunks,  Next: Detailed diff3 Normal,  Prev: Example diff3 Normal,  Up: Comparing Three Files
+File: diffutils.info-t,  Node: diff3 Hunks,  Prev: Detailed diff3 Normal,  Up: Comparing Three Files
 
 7.4 `diff3' Hunks
 =================
@@ -2077,7 +2085,7 @@ all three files, then a three-way hunk containing the last line of each
 file.
 
 
-File: diffutils.info,  Node: diff3 Merging,  Next: Interactive Merging,  Prev: Comparing Three Files,  Up: Top
+File: diffutils.info-t,  Node: diff3 Merging,  Next: Interactive Merging,  Prev: Comparing Three Files,  Up: Top
 
 8 Merging From a Common Ancestor
 ********************************
@@ -2128,7 +2136,7 @@ this bypasses some problems with `ed'.
 * Saving the Changed File::  Emulating System V behavior.
 
 
-File: diffutils.info,  Node: Which Changes,  Next: Marking Conflicts,  Up: diff3 Merging
+File: diffutils.info-t,  Node: Which Changes,  Next: Marking Conflicts,  Up: diff3 Merging
 
 8.1 Selecting Which Changes to Incorporate
 ==========================================
@@ -2171,7 +2179,7 @@ changes output by `-3' and `-x'.
      .
 
 
-File: diffutils.info,  Node: Marking Conflicts,  Next: Bypassing ed,  Prev: Which Changes,  Up: diff3 Merging
+File: diffutils.info-t,  Node: Marking Conflicts,  Next: Bypassing ed,  Prev: Which Changes,  Up: diff3 Merging
 
 8.2 Marking Conflicts
 =====================
@@ -2245,7 +2253,7 @@ that the output looks like it came from files named `X', `Y' and `Z'
 rather than from files named `A', `B' and `C'.
 
 
-File: diffutils.info,  Node: Bypassing ed,  Next: Merging Incomplete Lines,  Prev: Marking Conflicts,  Up: diff3 Merging
+File: diffutils.info-t,  Node: Bypassing ed,  Next: Merging Incomplete Lines,  Prev: Marking Conflicts,  Up: diff3 Merging
 
 8.3 Generating the Merged Output Directly
 =========================================
@@ -2283,7 +2291,7 @@ Input:: for a copy of the input files) would output the following:
      >>>>>>> tao
 
 
-File: diffutils.info,  Node: Merging Incomplete Lines,  Next: Saving the Changed File,  Prev: Bypassing ed,  Up: diff3 Merging
+File: diffutils.info-t,  Node: Merging Incomplete Lines,  Next: Saving the Changed File,  Prev: Bypassing ed,  Up: diff3 Merging
 
 8.4 How `diff3' Merges Incomplete Lines
 =======================================
@@ -2300,7 +2308,7 @@ incomplete line is found, `diff3' generates a warning and acts as if a
 newline had been present.
 
 
-File: diffutils.info,  Node: Saving the Changed File,  Prev: Merging Incomplete Lines,  Up: diff3 Merging
+File: diffutils.info-t,  Node: Saving the Changed File,  Prev: Merging Incomplete Lines,  Up: diff3 Merging
 
 8.5 Saving the Changed File
 ===========================
@@ -2315,7 +2323,7 @@ and appends the `w' and `q' commands.
 and is incompatible with the merged output option `-m'.
 
 
-File: diffutils.info,  Node: Interactive Merging,  Next: Merging with patch,  Prev: diff3 Merging,  Up: Top
+File: diffutils.info-t,  Node: Interactive Merging,  Next: Merging with patch,  Prev: diff3 Merging,  Up: Top
 
 9 Interactive Merging with `sdiff'
 **********************************
@@ -2334,7 +2342,7 @@ package `emerge'.  *Note emerge: (emacs)emerge, for more information.
 * Merge Commands::       Merging two files interactively.
 
 
-File: diffutils.info,  Node: sdiff Option Summary,  Next: Merge Commands,  Up: Interactive Merging
+File: diffutils.info-t,  Node: sdiff Option Summary,  Next: Merge Commands,  Up: Interactive Merging
 
 9.1 Specifying `diff' Options to `sdiff'
 ========================================
@@ -2363,7 +2371,7 @@ of `diff': with `sdiff', `-w COLUMNS' is equivalent to
 `--side-by-side' (`-y') option (*note Side by Side::).
 
 
-File: diffutils.info,  Node: Merge Commands,  Prev: sdiff Option Summary,  Up: Interactive Merging
+File: diffutils.info-t,  Node: Merge Commands,  Prev: sdiff Option Summary,  Up: Interactive Merging
 
 9.2 Merge Commands
 ==================
@@ -2416,7 +2424,7 @@ Follow each command with <RET>.
 variable if it is set.  The default is system-dependent.
 
 
-File: diffutils.info,  Node: Merging with patch,  Next: Making Patches,  Prev: Interactive Merging,  Up: Top
+File: diffutils.info-t,  Node: Merging with patch,  Next: Making Patches,  Prev: Interactive Merging,  Up: Top
 
 10 Merging with `patch'
 ***********************
@@ -2465,7 +2473,7 @@ each file F with its new version, putting reject hunks (if any) into
 * patch and Tradition::    GNU versus traditional `patch'.
 
 
-File: diffutils.info,  Node: patch Input,  Next: Revision Control,  Up: Merging with patch
+File: diffutils.info-t,  Node: patch Input,  Next: Revision Control,  Up: Merging with patch
 
 10.1 Selecting the `patch' Input Format
 =======================================
@@ -2494,7 +2502,7 @@ format of diff.  The output formats listed here are the only ones that
      unified diff.
 
 
-File: diffutils.info,  Node: Revision Control,  Next: Imperfect,  Prev: patch Input,  Up: Merging with patch
+File: diffutils.info-t,  Node: Revision Control,  Next: Imperfect,  Prev: patch Input,  Up: Merging with patch
 
 10.2 Revision Control
 =====================
@@ -2519,7 +2527,7 @@ value is zero if `patch' is conforming to POSIX, negative otherwise.
 `VERSION_CONTROL' environment variable (*note Backup Names::).
 
 
-File: diffutils.info,  Node: Imperfect,  Next: Creating and Removing,  Prev: Revision Control,  Up: Merging with patch
+File: diffutils.info-t,  Node: Imperfect,  Next: Creating and Removing,  Prev: Revision Control,  Up: Merging with patch
 
 10.3 Applying Imperfect Patches
 ===============================
@@ -2546,7 +2554,7 @@ intervention or testing.
 * Dry Runs::            Predicting what `patch' will do.
 
 
-File: diffutils.info,  Node: Changed White Space,  Next: Reversed Patches,  Up: Imperfect
+File: diffutils.info-t,  Node: Changed White Space,  Next: Reversed Patches,  Up: Imperfect
 
 10.3.1 Applying Patches with Changed White Space
 ------------------------------------------------
@@ -2562,7 +2570,7 @@ the input files.  Non-blank characters must still match exactly.  Each
 line of the context must still match a line in the input file.
 
 
-File: diffutils.info,  Node: Reversed Patches,  Next: Inexact,  Prev: Changed White Space,  Up: Imperfect
+File: diffutils.info-t,  Node: Reversed Patches,  Next: Inexact,  Prev: Changed White Space,  Up: Imperfect
 
 10.3.2 Applying Reversed Patches
 --------------------------------
@@ -2592,7 +2600,7 @@ subsequent "apply anyway" question--or type `C-c' to kill the `patch'
 process.
 
 
-File: diffutils.info,  Node: Inexact,  Next: Dry Runs,  Prev: Reversed Patches,  Up: Imperfect
+File: diffutils.info-t,  Node: Inexact,  Next: Dry Runs,  Prev: Reversed Patches,  Up: Imperfect
 
 10.3.3 Helping `patch' Find Inexact Matches
 -------------------------------------------
@@ -2659,7 +2667,7 @@ is applied to an exact copy of the file that the patch was generated
 from.
 
 
-File: diffutils.info,  Node: Dry Runs,  Prev: Inexact,  Up: Imperfect
+File: diffutils.info-t,  Node: Dry Runs,  Prev: Inexact,  Up: Imperfect
 
 10.3.4 Predicting what `patch' will do
 --------------------------------------
@@ -2677,7 +2685,7 @@ patch you can apply it by invoking `patch' as before, but this time
 without the `--dry-run' option.
 
 
-File: diffutils.info,  Node: Creating and Removing,  Next: Patching Time Stamps,  Prev: Imperfect,  Up: Merging with patch
+File: diffutils.info-t,  Node: Creating and Removing,  Next: Patching Time Stamps,  Prev: Imperfect,  Up: Merging with patch
 
 10.4 Creating and Removing Files
 ================================
@@ -2698,7 +2706,7 @@ does not appear to be one that removed the file.
 asks for confirmation before applying the patch.
 
 
-File: diffutils.info,  Node: Patching Time Stamps,  Next: Multiple Patches,  Prev: Creating and Removing,  Up: Merging with patch
+File: diffutils.info-t,  Node: Patching Time Stamps,  Next: Multiple Patches,  Prev: Creating and Removing,  Up: Merging with patch
 
 10.5 Updating Time Stamps on Patched Files
 ==========================================
@@ -2740,7 +2748,7 @@ on the patched files, so that later invocations of `make' do not get
 confused by the patched files' times.
 
 
-File: diffutils.info,  Node: Multiple Patches,  Next: patch Directories,  Prev: Patching Time Stamps,  Up: Merging with patch
+File: diffutils.info-t,  Node: Multiple Patches,  Next: patch Directories,  Prev: Patching Time Stamps,  Up: Merging with patch
 
 10.6 Multiple Patches in a File
 ===============================
@@ -2798,7 +2806,7 @@ first remaining name.
 POSIX.
 
 
-File: diffutils.info,  Node: patch Directories,  Next: Backups,  Prev: Multiple Patches,  Up: Merging with patch
+File: diffutils.info-t,  Node: patch Directories,  Next: Backups,  Prev: Multiple Patches,  Up: Merging with patch
 
 10.7 Applying Patches in Other Directories
 ==========================================
@@ -2832,7 +2840,7 @@ in the current directory, or if you used the `-d DIRECTORY' option, in
 that directory.
 
 
-File: diffutils.info,  Node: Backups,  Next: Backup Names,  Prev: patch Directories,  Up: Merging with patch
+File: diffutils.info-t,  Node: Backups,  Next: Backup Names,  Prev: patch Directories,  Up: Merging with patch
 
 10.8 Backup Files
 =================
@@ -2856,7 +2864,7 @@ backup file is created as a placeholder to represent the nonexistent
 file.
 
 
-File: diffutils.info,  Node: Backup Names,  Next: Reject Names,  Prev: Backups,  Up: Merging with patch
+File: diffutils.info-t,  Node: Backup Names,  Next: Reject Names,  Prev: Backups,  Up: Merging with patch
 
 10.9 Backup File Names
 ======================
@@ -2928,7 +2936,7 @@ section have any affect, because no backups are made.
 use `~', but this should be fixed in the next release.
 
 
-File: diffutils.info,  Node: Reject Names,  Next: patch Messages,  Prev: Backup Names,  Up: Merging with patch
+File: diffutils.info-t,  Node: Reject Names,  Next: patch Messages,  Prev: Backup Names,  Up: Merging with patch
 
 10.10 Reject File Names
 =======================
@@ -2944,7 +2952,7 @@ patches in a single file.  The `-r REJECT-FILE' or
 name.
 
 
-File: diffutils.info,  Node: patch Messages,  Next: patch and POSIX,  Prev: Reject Names,  Up: Merging with patch
+File: diffutils.info-t,  Node: patch Messages,  Next: patch and POSIX,  Prev: Reject Names,  Up: Merging with patch
 
 10.11 Messages and Questions from `patch'
 =========================================
@@ -2968,7 +2976,7 @@ When applying a set of patches in a loop, you should check the exit
 status, so you don't apply a later patch to a partially patched file.
 
 
-File: diffutils.info,  Node: More or Fewer Messages,  Next: patch and Keyboard Input,  Up: patch Messages
+File: diffutils.info-t,  Node: More or Fewer Messages,  Next: patch and Keyboard Input,  Up: patch Messages
 
 10.11.1 Controlling the Verbosity of `patch'
 --------------------------------------------
@@ -2983,7 +2991,7 @@ of patch it is.
 occurs, by using the `-s', `--quiet', or `--silent' option.
 
 
-File: diffutils.info,  Node: patch and Keyboard Input,  Next: patch Quoting Style,  Prev: More or Fewer Messages,  Up: patch Messages
+File: diffutils.info-t,  Node: patch and Keyboard Input,  Next: patch Quoting Style,  Prev: More or Fewer Messages,  Up: patch Messages
 
 10.11.2 Inhibiting Keyboard Input
 ---------------------------------
@@ -3012,7 +3020,7 @@ questions, but it makes somewhat different assumptions:
    * Assume that patches are reversed if they look like they are.
 
 
-File: diffutils.info,  Node: patch Quoting Style,  Prev: patch and Keyboard Input,  Up: patch Messages
+File: diffutils.info-t,  Node: patch Quoting Style,  Prev: patch and Keyboard Input,  Up: patch Messages
 
 10.11.3 `patch' Quoting Style
 -----------------------------
@@ -3047,7 +3055,7 @@ variable is not set, the default value is `shell', but this default may
 change in a future version of `patch'.
 
 
-File: diffutils.info,  Node: patch and POSIX,  Next: patch and Tradition,  Prev: patch Messages,  Up: Merging with patch
+File: diffutils.info-t,  Node: patch and POSIX,  Next: patch and Tradition,  Prev: patch Messages,  Up: Merging with patch
 
 10.12 `patch' and the POSIX Standard
 ====================================
@@ -3072,7 +3080,7 @@ standard, as follows:
 
 
 
-File: diffutils.info,  Node: patch and Tradition,  Prev: patch and POSIX,  Up: Merging with patch
+File: diffutils.info-t,  Node: patch and Tradition,  Prev: patch and POSIX,  Up: Merging with patch
 
 10.13 GNU `patch' and Traditional `patch'
 =========================================
@@ -3151,7 +3159,7 @@ version 2.1 and earlier.
 
 
 
-File: diffutils.info,  Node: Making Patches,  Next: Invoking cmp,  Prev: Merging with patch,  Up: Top
+File: diffutils.info-t,  Node: Making Patches,  Next: Invoking cmp,  Prev: Merging with patch,  Up: Top
 
 11 Tips for Making and Using Patches
 ************************************
@@ -3172,7 +3180,7 @@ to distribute patches for updating a software package.
 * Generating Smaller Patches::  How to generate smaller patches.
 
 
-File: diffutils.info,  Node: Tips for Patch Producers,  Next: Tips for Patch Consumers,  Up: Making Patches
+File: diffutils.info-t,  Node: Tips for Patch Producers,  Next: Tips for Patch Consumers,  Up: Making Patches
 
 11.1 Tips for Patch Producers
 =============================
@@ -3201,7 +3209,7 @@ recipient and applying your patches to a copy of the original files.
 when generating a patch.
 
 
-File: diffutils.info,  Node: Tips for Patch Consumers,  Next: Avoiding Common Mistakes,  Prev: Tips for Patch Producers,  Up: Making Patches
+File: diffutils.info-t,  Node: Tips for Patch Consumers,  Next: Avoiding Common Mistakes,  Prev: Tips for Patch Producers,  Up: Making Patches
 
 11.2 Tips for Patch Consumers
 =============================
@@ -3216,7 +3224,7 @@ cannot patch such files.  If you are having trouble applying such
 patches, try upgrading to a recent version of GNU `patch'.
 
 
-File: diffutils.info,  Node: Avoiding Common Mistakes,  Next: Generating Smaller Patches,  Prev: Tips for Patch Consumers,  Up: Making Patches
+File: diffutils.info-t,  Node: Avoiding Common Mistakes,  Next: Generating Smaller Patches,  Prev: Tips for Patch Consumers,  Up: Making Patches
 
 11.3 Avoiding Common Mistakes
 =============================
@@ -3268,7 +3276,7 @@ proceeding.  This makes it difficult to accidentally apply patches in
 the wrong order.
 
 
-File: diffutils.info,  Node: Generating Smaller Patches,  Prev: Avoiding Common Mistakes,  Up: Making Patches
+File: diffutils.info-t,  Node: Generating Smaller Patches,  Prev: Avoiding Common Mistakes,  Up: Making Patches
 
 11.4 Generating Smaller Patches
 ===============================
@@ -3303,7 +3311,7 @@ but bear in mind that `patch' typically needs at least two lines for
 proper operation when patches do not exactly match the input files.
 
 
-File: diffutils.info,  Node: Invoking cmp,  Next: Invoking diff,  Prev: Making Patches,  Up: Top
+File: diffutils.info-t,  Node: Invoking cmp,  Next: Invoking diff,  Prev: Making Patches,  Up: Top
 
 12 Invoking `cmp'
 *****************
@@ -3343,7 +3351,7 @@ differences were found, and 2 means trouble.
 * cmp Options:: Summary of options to `cmp'.
 
 
-File: diffutils.info,  Node: cmp Options,  Up: Invoking cmp
+File: diffutils.info-t,  Node: cmp Options,  Up: Invoking cmp
 
 12.1 Options to `cmp'
 =====================
@@ -3375,8 +3383,11 @@ can be combined into a single command line word: `-bl' is equivalent to
 `-l'
 `--verbose'
      Output the (decimal) byte numbers and (octal) values of all
-     differing bytes, instead of the default standard output.  Also,
-     output the EOF message if one file is shorter than the other.
+     differing bytes, instead of the default standard output.  Each
+     output line contains a differing byte's number relative to the
+     start of the input, followed by the differing byte values.  Byte
+     numbers start at 1.  Also, output the EOF message if one file is
+     shorter than the other.
 
 `-n COUNT'
 `--bytes=COUNT'
@@ -3471,7 +3482,7 @@ rejected by your computer due to limitations of its arithmetic.
      extension to IEC 60027-2.)
 
 
-File: diffutils.info,  Node: Invoking diff,  Next: Invoking diff3,  Prev: Invoking cmp,  Up: Top
+File: diffutils.info-t,  Node: Invoking diff,  Next: Invoking diff3,  Prev: Invoking cmp,  Up: Top
 
 13 Invoking `diff'
 ******************
@@ -3516,7 +3527,7 @@ binary files count as trouble, but this can be altered by using the
 * diff Options:: Summary of options to `diff'.
 
 
-File: diffutils.info,  Node: diff Options,  Up: Invoking diff
+File: diffutils.info-t,  Node: diff Options,  Up: Invoking diff
 
 13.1 Options to `diff'
 ======================
@@ -3647,8 +3658,7 @@ optional argument.
 
 `-N'
 `--new-file'
-     In directory comparison, if a file is found in only one directory,
-     treat it as present but empty in the other directory.  *Note
+     If one file is missing, treat it as present but empty.  *Note
      Comparing Directories::.
 
 `--new-group-format=FORMAT'
@@ -3658,6 +3668,9 @@ optional argument.
 `--new-line-format=FORMAT'
      Use FORMAT to output a line taken from just the second file in
      if-then-else format.  *Note Line Formats::.
+
+`--no-dereference'
+     Act on symbolic links themselves instead of what they point to.
 
 `--old-group-format=FORMAT'
      Use FORMAT to output a group of lines taken from just the first
@@ -3740,9 +3753,8 @@ optional argument.
      format.  *Note Line Formats::.
 
 `--unidirectional-new-file'
-     When comparing directories, if a file appears only in the second
-     directory of the two, treat it as present but empty in the other.
-     *Note Comparing Directories::.
+     If a first file is missing, treat it as present but empty.  *Note
+     Comparing Directories::.
 
 `-U LINES'
 `--unified[=LINES]'
@@ -3789,7 +3801,7 @@ optional argument.
      Ignore white space at line end.  *Note White Space::.
 
 
-File: diffutils.info,  Node: Invoking diff3,  Next: Invoking patch,  Prev: Invoking diff,  Up: Top
+File: diffutils.info-t,  Node: Invoking diff3,  Next: Invoking patch,  Prev: Invoking diff,  Up: Top
 
 14 Invoking `diff3'
 *******************
@@ -3811,7 +3823,7 @@ conflicts were found, and 2 means trouble.
 * diff3 Options:: Summary of options to `diff3'.
 
 
-File: diffutils.info,  Node: diff3 Options,  Up: Invoking diff3
+File: diffutils.info-t,  Node: diff3 Options,  Up: Invoking diff3
 
 14.1 Options to `diff3'
 =======================
@@ -3908,7 +3920,7 @@ combined into a single command line argument.
      Which Changes::.
 
 
-File: diffutils.info,  Node: Invoking patch,  Next: Invoking sdiff,  Prev: Invoking diff3,  Up: Top
+File: diffutils.info-t,  Node: Invoking patch,  Next: Invoking sdiff,  Prev: Invoking diff3,  Up: Top
 
 15 Invoking `patch'
 *******************
@@ -3943,7 +3955,7 @@ if FILE is one of the input files.
 * patch Options::     Summary table of options to `patch'.
 
 
-File: diffutils.info,  Node: patch Options,  Up: Invoking patch
+File: diffutils.info-t,  Node: patch Options,  Up: Invoking patch
 
 15.1 Options to `patch'
 =======================
@@ -4126,7 +4138,7 @@ combined into a single command line argument with only one dash.
 
 
 
-File: diffutils.info,  Node: Invoking sdiff,  Next: Standards conformance,  Prev: Invoking patch,  Up: Top
+File: diffutils.info-t,  Node: Invoking sdiff,  Next: Standards conformance,  Prev: Invoking patch,  Up: Top
 
 16 Invoking `sdiff'
 *******************
@@ -4158,7 +4170,7 @@ differences were found, and 2 means trouble.
 * sdiff Options:: Summary of options to `diff'.
 
 
-File: diffutils.info,  Node: sdiff Options,  Up: Invoking sdiff
+File: diffutils.info-t,  Node: sdiff Options,  Up: Invoking sdiff
 
 16.1 Options to `sdiff'
 =======================
@@ -4262,7 +4274,7 @@ options can be abbreviated to any unique prefix of their name.
      Ignore white space at line end.  *Note White Space::.
 
 
-File: diffutils.info,  Node: Standards conformance,  Next: Projects,  Prev: Invoking sdiff,  Up: Top
+File: diffutils.info-t,  Node: Standards conformance,  Next: Projects,  Prev: Invoking sdiff,  Up: Top
 
 17 Standards conformance
 ************************
@@ -4297,7 +4309,7 @@ around the compatibility problems by setting `_POSIX2_VERSION=199209'
 in your environment.
 
 
-File: diffutils.info,  Node: Projects,  Next: Copying This Manual,  Prev: Standards conformance,  Up: Top
+File: diffutils.info-t,  Node: Projects,  Next: Copying This Manual,  Prev: Standards conformance,  Up: Top
 
 18 Future Projects
 ******************
@@ -4318,7 +4330,7 @@ to coordinate with other volunteers.
 * Bugs::         Reporting bugs.
 
 
-File: diffutils.info,  Node: Shortcomings,  Next: Bugs,  Up: Projects
+File: diffutils.info-t,  Node: Shortcomings,  Next: Bugs,  Up: Projects
 
 18.1 Suggested Projects for Improving GNU `diff' and `patch'
 ============================================================
@@ -4341,7 +4353,7 @@ These shortcomings motivate the following suggested projects.
 * Speedups::             Improving performance.
 
 
-File: diffutils.info,  Node: Internationalization,  Next: Changing Structure,  Up: Shortcomings
+File: diffutils.info-t,  Node: Internationalization,  Next: Changing Structure,  Up: Shortcomings
 
 18.1.1 Handling Multibyte and Varying-Width Characters
 ------------------------------------------------------
@@ -4366,7 +4378,7 @@ Unfortunately, these patches are incomplete and are to an older version
 of `diff', so more work needs to be done in this area.
 
 
-File: diffutils.info,  Node: Changing Structure,  Next: Special Files,  Prev: Internationalization,  Up: Shortcomings
+File: diffutils.info-t,  Node: Changing Structure,  Next: Special Files,  Prev: Internationalization,  Up: Shortcomings
 
 18.1.2 Handling Changes to the Directory Structure
 --------------------------------------------------
@@ -4389,7 +4401,7 @@ represent changes in directory structure, and extending `patch' to
 understand these extensions.
 
 
-File: diffutils.info,  Node: Special Files,  Next: Unusual File Names,  Prev: Changing Structure,  Up: Shortcomings
+File: diffutils.info-t,  Node: Special Files,  Next: Unusual File Names,  Prev: Changing Structure,  Up: Shortcomings
 
 18.1.3 Files that are Neither Directories Nor Regular Files
 -----------------------------------------------------------
@@ -4410,7 +4422,7 @@ files, instead of the change to the symbolic link.
 and `patch' should be extended to understand these extensions.
 
 
-File: diffutils.info,  Node: Unusual File Names,  Next: Time Stamp Order,  Prev: Special Files,  Up: Shortcomings
+File: diffutils.info-t,  Node: Unusual File Names,  Next: Time Stamp Order,  Prev: Special Files,  Up: Shortcomings
 
 18.1.4 File Names that Contain Unusual Characters
 -------------------------------------------------
@@ -4423,7 +4435,7 @@ that is syntactically correct but patches the wrong files.  The format
 of `diff' output should be extended to handle all possible file names.
 
 
-File: diffutils.info,  Node: Time Stamp Order,  Next: Ignoring Changes,  Prev: Unusual File Names,  Up: Shortcomings
+File: diffutils.info-t,  Node: Time Stamp Order,  Next: Ignoring Changes,  Prev: Unusual File Names,  Up: Shortcomings
 
 18.1.5 Outputting Diffs in Time Stamp Order
 -------------------------------------------
@@ -4437,7 +4449,7 @@ way to do this would be to implement a `diff' option to output diffs in
 time stamp order.
 
 
-File: diffutils.info,  Node: Ignoring Changes,  Next: Speedups,  Prev: Time Stamp Order,  Up: Shortcomings
+File: diffutils.info-t,  Node: Ignoring Changes,  Next: Speedups,  Prev: Time Stamp Order,  Up: Shortcomings
 
 18.1.6 Ignoring Certain Changes
 -------------------------------
@@ -4459,7 +4471,7 @@ e.g.:
    However, this outputs the filtered text, not the original.
 
 
-File: diffutils.info,  Node: Speedups,  Prev: Ignoring Changes,  Up: Shortcomings
+File: diffutils.info-t,  Node: Speedups,  Prev: Ignoring Changes,  Up: Shortcomings
 
 18.1.7 Improving Performance
 ----------------------------
@@ -4471,7 +4483,7 @@ originally copied from the other with time stamps preserved (e.g., with
 the same content.  *Note diff Performance::.
 
 
-File: diffutils.info,  Node: Bugs,  Prev: Shortcomings,  Up: Projects
+File: diffutils.info-t,  Node: Bugs,  Prev: Shortcomings,  Up: Projects
 
 18.2 Reporting Bugs
 ===================
@@ -4490,7 +4502,7 @@ patch is relative to a recent test release, which you can find in the
 directory `ftp://alpha.gnu.org/gnu/diffutils/'.
 
 
-File: diffutils.info,  Node: Copying This Manual,  Next: Translations,  Prev: Projects,  Up: Top
+File: diffutils.info-t,  Node: Copying This Manual,  Next: Translations,  Prev: Projects,  Up: Top
 
 Appendix A Copying This Manual
 ******************************
@@ -4976,7 +4988,7 @@ free software license, such as the GNU General Public License, to
 permit their use in free software.
 
 
-File: diffutils.info,  Node: Translations,  Next: Index,  Prev: Copying This Manual,  Up: Top
+File: diffutils.info-t,  Node: Translations,  Next: Index,  Prev: Copying This Manual,  Up: Top
 
 Appendix B Translations of This Manual
 **************************************
@@ -4986,7 +4998,7 @@ translation of this manual.  Its most recent version can be found at
 `http://openlab.ring.gr.jp/gnujdoc/cvsweb/cvsweb.cgi/gnujdoc/'.
 
 
-File: diffutils.info,  Node: Index,  Prev: Translations,  Up: Top
+File: diffutils.info-t,  Node: Index,  Prev: Translations,  Up: Top
 
 Appendix C Index
 ****************
@@ -5041,8 +5053,8 @@ Appendix C Index
 * EDITOR:                                Merge Commands.      (line  50)
 * empty files, removing:                 Creating and Removing.
                                                               (line   6)
-* exabyte, definition of:                cmp Options.         (line 106)
-* exbibyte, definition of:               cmp Options.         (line 110)
+* exabyte, definition of:                cmp Options.         (line 109)
+* exbibyte, definition of:               cmp Options.         (line 113)
 * file name alternates:                  Alternate Names.     (line   6)
 * file names with unusual characters:    Unusual File Names.  (line   6)
 * format of diff output:                 Output Formats.      (line   6)
@@ -5053,8 +5065,8 @@ Appendix C Index
 * full lines:                            Incomplete Lines.    (line   6)
 * function headings, C:                  C Function Headings. (line   6)
 * fuzz factor when patching:             Inexact.             (line   6)
-* gibibyte, definition of:               cmp Options.         (line  89)
-* gigabyte, definition of:               cmp Options.         (line  85)
+* gibibyte, definition of:               cmp Options.         (line  92)
+* gigabyte, definition of:               cmp Options.         (line  88)
 * headings:                              Sections.            (line   6)
 * hunks:                                 Hunks.               (line   6)
 * hunks for diff3:                       diff3 Hunks.         (line   6)
@@ -5077,16 +5089,16 @@ Appendix C Index
 * invoking sdiff:                        Invoking sdiff.      (line   6)
 * keyboard input to patch:               patch and Keyboard Input.
                                                               (line   6)
-* kibibyte, definition of:               cmp Options.         (line  73)
-* kilobyte, definition of:               cmp Options.         (line  68)
+* kibibyte, definition of:               cmp Options.         (line  76)
+* kilobyte, definition of:               cmp Options.         (line  71)
 * LC_COLLATE:                            Comparing Directories.
                                                               (line   6)
 * LC_NUMERIC:                            Line Group Formats.  (line 144)
 * LC_TIME:                               Detailed Context.    (line  12)
 * line formats:                          Line Formats.        (line   6)
 * line group formats:                    Line Group Formats.  (line   6)
-* mebibyte, definition of:               cmp Options.         (line  82)
-* megabyte, definition of:               cmp Options.         (line  78)
+* mebibyte, definition of:               cmp Options.         (line  85)
+* megabyte, definition of:               cmp Options.         (line  81)
 * merge commands:                        Merge Commands.      (line   6)
 * merged diff3 format:                   Bypassing ed.        (line   6)
 * merged output format:                  If-then-else.        (line   6)
@@ -5123,9 +5135,9 @@ Appendix C Index
 * patches, shrinking:                    Generating Smaller Patches.
                                                               (line   6)
 * patching directories:                  patch Directories.   (line   6)
-* pebibyte, definition of:               cmp Options.         (line 103)
+* pebibyte, definition of:               cmp Options.         (line 106)
 * performance of diff:                   diff Performance.    (line   6)
-* petabyte, definition of:               cmp Options.         (line  99)
+* petabyte, definition of:               cmp Options.         (line 102)
 * POSIX <1>:                             Standards conformance.
                                                               (line   6)
 * POSIX:                                 patch and POSIX.     (line   6)
@@ -5164,8 +5176,8 @@ Appendix C Index
                                                               (line   6)
 * tab and blank difference suppression:  White Space.         (line   6)
 * tab stop alignment:                    Tabs.                (line   6)
-* tebibyte, definition of:               cmp Options.         (line  96)
-* terabyte, definition of:               cmp Options.         (line  92)
+* tebibyte, definition of:               cmp Options.         (line  99)
+* terabyte, definition of:               cmp Options.         (line  95)
 * testing patch:                         Dry Runs.            (line   6)
 * text versus binary diff:               Binary.              (line   6)
 * time stamp format, context diffs:      Detailed Context.    (line  12)
@@ -5185,124 +5197,124 @@ Appendix C Index
 * VERSION_CONTROL <1>:                   Backup Names.        (line  21)
 * VERSION_CONTROL:                       Revision Control.    (line  22)
 * white space in patches:                Changed White Space. (line   6)
-* yottabyte, definition of:              cmp Options.         (line 121)
-* zettabyte, definition of:              cmp Options.         (line 113)
+* yottabyte, definition of:              cmp Options.         (line 124)
+* zettabyte, definition of:              cmp Options.         (line 116)
 
 
 
 Tag Table:
-Node: Top1433
-Node: Overview3646
-Node: Comparison7275
-Node: Hunks9978
-Node: White Space11420
-Node: Blank Lines13259
-Node: Specified Lines14251
-Node: Case Folding15377
-Node: Brief15794
-Node: Binary17117
-Node: Output Formats21202
-Node: Sample diff Input21927
-Node: Context23426
-Node: Context Format25003
-Node: Example Context25795
-Node: Less Context27302
-Node: Detailed Context28491
-Node: Unified Format30689
-Node: Example Unified31486
-Node: Detailed Unified32524
-Node: Sections34171
-Node: Specified Headings34930
-Node: C Function Headings36481
-Node: Alternate Names37326
-Node: Side by Side38240
-Node: Side by Side Format40389
-Node: Example Side by Side41290
-Node: Normal42630
-Node: Example Normal43630
-Node: Detailed Normal44366
-Node: Scripts46105
-Node: ed Scripts46510
-Node: Example ed47716
-Node: Detailed ed48166
-Node: Forward ed49925
-Node: RCS50701
-Node: If-then-else51916
-Node: Line Group Formats53594
-Node: Line Formats59470
-Node: Example If-then-else62740
-Node: Detailed If-then-else63819
-Node: Incomplete Lines65702
-Node: Comparing Directories67339
-Node: Adjusting Output71383
-Node: Tabs71890
-Node: Trailing Blanks73504
-Node: Pagination74730
-Node: diff Performance75198
-Node: Comparing Three Files78285
-Node: Sample diff3 Input79163
-Node: Example diff3 Normal80111
-Node: Detailed diff3 Normal81161
-Node: diff3 Hunks82920
-Node: diff3 Merging84216
-Node: Which Changes86460
-Node: Marking Conflicts87860
-Node: Bypassing ed90316
-Node: Merging Incomplete Lines91659
-Node: Saving the Changed File92385
-Node: Interactive Merging93001
-Node: sdiff Option Summary93710
-Node: Merge Commands94913
-Node: Merging with patch96202
-Node: patch Input98574
-Node: Revision Control99256
-Node: Imperfect100426
-Node: Changed White Space101574
-Node: Reversed Patches102371
-Node: Inexact103835
-Node: Dry Runs107393
-Node: Creating and Removing108257
-Node: Patching Time Stamps109306
-Node: Multiple Patches111505
-Node: patch Directories114168
-Node: Backups115793
-Node: Backup Names116858
-Ref: Backup Names-Footnote-1119825
-Node: Reject Names119952
-Node: patch Messages120541
-Node: More or Fewer Messages121601
-Node: patch and Keyboard Input122232
-Node: patch Quoting Style123261
-Node: patch and POSIX124411
-Node: patch and Tradition125251
-Node: Making Patches128707
-Node: Tips for Patch Producers129533
-Node: Tips for Patch Consumers130789
-Node: Avoiding Common Mistakes131426
-Node: Generating Smaller Patches133951
-Node: Invoking cmp135712
-Node: cmp Options137135
-Node: Invoking diff140627
-Node: diff Options142483
-Node: Invoking diff3151185
-Node: diff3 Options151823
-Node: Invoking patch154856
-Node: patch Options156064
-Node: Invoking sdiff161291
-Node: sdiff Options162434
-Node: Standards conformance165405
-Node: Projects167151
-Node: Shortcomings167862
-Node: Internationalization168964
-Node: Changing Structure170130
-Node: Special Files171234
-Node: Unusual File Names172346
-Node: Time Stamp Order172985
-Node: Ignoring Changes173628
-Node: Speedups174398
-Node: Bugs174862
-Node: Copying This Manual175715
-Node: Translations200854
-Node: Index201226
+Node: Top1434
+Node: Overview3648
+Node: Comparison7279
+Node: Hunks9984
+Node: White Space11428
+Node: Blank Lines13269
+Node: Specified Lines14263
+Node: Case Folding15391
+Node: Brief15810
+Node: Binary17135
+Node: Output Formats21222
+Node: Sample diff Input21949
+Node: Context23450
+Node: Context Format25029
+Node: Example Context25823
+Node: Less Context27332
+Node: Detailed Context28523
+Node: Unified Format30723
+Node: Example Unified31522
+Node: Detailed Unified32562
+Node: Sections34207
+Node: Specified Headings34968
+Node: C Function Headings36521
+Node: Alternate Names37368
+Node: Side by Side38284
+Node: Side by Side Format40436
+Node: Example Side by Side41339
+Node: Normal42681
+Node: Example Normal43683
+Node: Detailed Normal44421
+Node: Scripts46162
+Node: ed Scripts46569
+Node: Example ed47777
+Node: Detailed ed48229
+Node: Forward ed49990
+Node: RCS50768
+Node: If-then-else51985
+Node: Line Group Formats53665
+Node: Line Formats59543
+Node: Example If-then-else62815
+Node: Detailed If-then-else63896
+Node: Incomplete Lines65782
+Node: Comparing Directories67422
+Node: Adjusting Output71856
+Node: Tabs72365
+Node: Trailing Blanks73981
+Node: Pagination75209
+Node: diff Performance75679
+Node: Comparing Three Files78768
+Node: Sample diff3 Input79648
+Node: Example diff3 Normal80598
+Node: Detailed diff3 Normal81660
+Node: diff3 Hunks83450
+Node: diff3 Merging84719
+Node: Which Changes86965
+Node: Marking Conflicts88367
+Node: Bypassing ed90825
+Node: Merging Incomplete Lines92170
+Node: Saving the Changed File92898
+Node: Interactive Merging93516
+Node: sdiff Option Summary94227
+Node: Merge Commands95432
+Node: Merging with patch96723
+Node: patch Input99097
+Node: Revision Control99781
+Node: Imperfect100953
+Node: Changed White Space102103
+Node: Reversed Patches102902
+Node: Inexact104368
+Node: Dry Runs107928
+Node: Creating and Removing108794
+Node: Patching Time Stamps109845
+Node: Multiple Patches112046
+Node: patch Directories114711
+Node: Backups116338
+Node: Backup Names117405
+Ref: Backup Names-Footnote-1120374
+Node: Reject Names120501
+Node: patch Messages121092
+Node: More or Fewer Messages122154
+Node: patch and Keyboard Input122787
+Node: patch Quoting Style123818
+Node: patch and POSIX124970
+Node: patch and Tradition125812
+Node: Making Patches129270
+Node: Tips for Patch Producers130098
+Node: Tips for Patch Consumers131356
+Node: Avoiding Common Mistakes131995
+Node: Generating Smaller Patches134522
+Node: Invoking cmp136285
+Node: cmp Options137710
+Node: Invoking diff141373
+Node: diff Options143231
+Node: Invoking diff3151877
+Node: diff3 Options152517
+Node: Invoking patch155552
+Node: patch Options156762
+Node: Invoking sdiff161991
+Node: sdiff Options163136
+Node: Standards conformance166109
+Node: Projects167857
+Node: Shortcomings168570
+Node: Internationalization169674
+Node: Changing Structure170842
+Node: Special Files171948
+Node: Unusual File Names173062
+Node: Time Stamp Order173703
+Node: Ignoring Changes174348
+Node: Speedups175120
+Node: Bugs175586
+Node: Copying This Manual176441
+Node: Translations201582
+Node: Index201956
 
 End Tag Table

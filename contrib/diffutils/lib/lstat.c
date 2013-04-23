@@ -1,6 +1,6 @@
 /* Work around a bug of lstat on some systems
 
-   Copyright (C) 1997-2006, 2008-2011 Free Software Foundation, Inc.
+   Copyright (C) 1997-2006, 2008-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -35,24 +35,27 @@ typedef int dummy;
 # include <sys/stat.h>
 # undef __need_system_sys_stat_h
 
-static inline int
+static int
 orig_lstat (const char *filename, struct stat *buf)
 {
   return lstat (filename, buf);
 }
 
 /* Specification.  */
-# include <sys/stat.h>
+/* Write "sys/stat.h" here, not <sys/stat.h>, otherwise OSF/1 5.1 DTK cc
+   eliminates this include because of the preliminary #include <sys/stat.h>
+   above.  */
+# include "sys/stat.h"
 
 # include <string.h>
 # include <errno.h>
 
 /* lstat works differently on Linux and Solaris systems.  POSIX (see
-   `pathname resolution' in the glossary) requires that programs like
-   `ls' take into consideration the fact that FILE has a trailing slash
+   "pathname resolution" in the glossary) requires that programs like
+   'ls' take into consideration the fact that FILE has a trailing slash
    when FILE is a symbolic link.  On Linux and Solaris 10 systems, the
    lstat function already has the desired semantics (in treating
-   `lstat ("symlink/", sbuf)' just like `lstat ("symlink/.", sbuf)',
+   'lstat ("symlink/", sbuf)' just like 'lstat ("symlink/.", sbuf)',
    but on Solaris 9 and earlier it does not.
 
    If FILE has a trailing slash and specifies a symbolic link,

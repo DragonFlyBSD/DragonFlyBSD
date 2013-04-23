@@ -1,6 +1,6 @@
 /* strerror-override.c --- POSIX compatible system error routine
 
-   Copyright (C) 2010-2011 Free Software Foundation, Inc.
+   Copyright (C) 2010-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 
 #include <errno.h>
 
-#if GNULIB_defined_ESOCK /* native Windows platforms */
+#if GNULIB_defined_EWINSOCK /* native Windows platforms */
 # if HAVE_WINSOCK2_H
 #  include <winsock2.h>
 # endif
@@ -42,13 +42,7 @@ strerror_override (int errnum)
       return "Success";
 #endif
 
-#if GNULIB_defined_ETXTBSY
-    case ETXTBSY:
-      return "Text file busy";
-#endif
-
-#if GNULIB_defined_ESOCK /* native Windows platforms */
-      /* EWOULDBLOCK is the same as EAGAIN.  */
+#if GNULIB_defined_ESOCK /* native Windows platforms with older <errno.h> */
     case EINPROGRESS:
       return "Operation now in progress";
     case EALREADY:
@@ -65,12 +59,8 @@ strerror_override (int errnum)
       return "Protocol not available";
     case EPROTONOSUPPORT:
       return "Protocol not supported";
-    case ESOCKTNOSUPPORT:
-      return "Socket type not supported";
     case EOPNOTSUPP:
       return "Operation not supported";
-    case EPFNOSUPPORT:
-      return "Protocol family not supported";
     case EAFNOSUPPORT:
       return "Address family not supported by protocol";
     case EADDRINUSE:
@@ -81,10 +71,6 @@ strerror_override (int errnum)
       return "Network is down";
     case ENETUNREACH:
       return "Network is unreachable";
-    case ENETRESET:
-      return "Network dropped connection on reset";
-    case ECONNABORTED:
-      return "Software caused connection abort";
     case ECONNRESET:
       return "Connection reset by peer";
     case ENOBUFS:
@@ -93,20 +79,42 @@ strerror_override (int errnum)
       return "Transport endpoint is already connected";
     case ENOTCONN:
       return "Transport endpoint is not connected";
-    case ESHUTDOWN:
-      return "Cannot send after transport endpoint shutdown";
-    case ETOOMANYREFS:
-      return "Too many references: cannot splice";
     case ETIMEDOUT:
       return "Connection timed out";
     case ECONNREFUSED:
       return "Connection refused";
     case ELOOP:
       return "Too many levels of symbolic links";
-    case EHOSTDOWN:
-      return "Host is down";
     case EHOSTUNREACH:
       return "No route to host";
+    case EWOULDBLOCK:
+      return "Operation would block";
+#endif
+#if GNULIB_defined_ESTREAMS /* native Windows platforms with older <errno.h> */
+    case ETXTBSY:
+      return "Text file busy";
+    case ENODATA:
+      return "No data available";
+    case ENOSR:
+      return "Out of streams resources";
+    case ENOSTR:
+      return "Device not a stream";
+    case ETIME:
+      return "Timer expired";
+    case EOTHER:
+      return "Other error";
+#endif
+#if GNULIB_defined_EWINSOCK /* native Windows platforms */
+    case ESOCKTNOSUPPORT:
+      return "Socket type not supported";
+    case EPFNOSUPPORT:
+      return "Protocol family not supported";
+    case ESHUTDOWN:
+      return "Cannot send after transport endpoint shutdown";
+    case ETOOMANYREFS:
+      return "Too many references: cannot splice";
+    case EHOSTDOWN:
+      return "Host is down";
     case EPROCLIM:
       return "Too many processes";
     case EUSERS:
@@ -134,36 +142,36 @@ strerror_override (int errnum)
       /* WSAEINVAL maps to EINVAL */
       /* WSAEMFILE maps to EMFILE */
       /* WSAEWOULDBLOCK maps to EWOULDBLOCK */
-      /* WSAEINPROGRESS is EINPROGRESS */
-      /* WSAEALREADY is EALREADY */
-      /* WSAENOTSOCK is ENOTSOCK */
-      /* WSAEDESTADDRREQ is EDESTADDRREQ */
-      /* WSAEMSGSIZE is EMSGSIZE */
-      /* WSAEPROTOTYPE is EPROTOTYPE */
-      /* WSAENOPROTOOPT is ENOPROTOOPT */
-      /* WSAEPROTONOSUPPORT is EPROTONOSUPPORT */
+      /* WSAEINPROGRESS maps to EINPROGRESS */
+      /* WSAEALREADY maps to EALREADY */
+      /* WSAENOTSOCK maps to ENOTSOCK */
+      /* WSAEDESTADDRREQ maps to EDESTADDRREQ */
+      /* WSAEMSGSIZE maps to EMSGSIZE */
+      /* WSAEPROTOTYPE maps to EPROTOTYPE */
+      /* WSAENOPROTOOPT maps to ENOPROTOOPT */
+      /* WSAEPROTONOSUPPORT maps to EPROTONOSUPPORT */
       /* WSAESOCKTNOSUPPORT is ESOCKTNOSUPPORT */
-      /* WSAEOPNOTSUPP is EOPNOTSUPP */
+      /* WSAEOPNOTSUPP maps to EOPNOTSUPP */
       /* WSAEPFNOSUPPORT is EPFNOSUPPORT */
-      /* WSAEAFNOSUPPORT is EAFNOSUPPORT */
-      /* WSAEADDRINUSE is EADDRINUSE */
-      /* WSAEADDRNOTAVAIL is EADDRNOTAVAIL */
-      /* WSAENETDOWN is ENETDOWN */
-      /* WSAENETUNREACH is ENETUNREACH */
-      /* WSAENETRESET is ENETRESET */
-      /* WSAECONNABORTED is ECONNABORTED */
-      /* WSAECONNRESET is ECONNRESET */
-      /* WSAENOBUFS is ENOBUFS */
-      /* WSAEISCONN is EISCONN */
-      /* WSAENOTCONN is ENOTCONN */
+      /* WSAEAFNOSUPPORT maps to EAFNOSUPPORT */
+      /* WSAEADDRINUSE maps to EADDRINUSE */
+      /* WSAEADDRNOTAVAIL maps to EADDRNOTAVAIL */
+      /* WSAENETDOWN maps to ENETDOWN */
+      /* WSAENETUNREACH maps to ENETUNREACH */
+      /* WSAENETRESET maps to ENETRESET */
+      /* WSAECONNABORTED maps to ECONNABORTED */
+      /* WSAECONNRESET maps to ECONNRESET */
+      /* WSAENOBUFS maps to ENOBUFS */
+      /* WSAEISCONN maps to EISCONN */
+      /* WSAENOTCONN maps to ENOTCONN */
       /* WSAESHUTDOWN is ESHUTDOWN */
       /* WSAETOOMANYREFS is ETOOMANYREFS */
-      /* WSAETIMEDOUT is ETIMEDOUT */
-      /* WSAECONNREFUSED is ECONNREFUSED */
-      /* WSAELOOP is ELOOP */
+      /* WSAETIMEDOUT maps to ETIMEDOUT */
+      /* WSAECONNREFUSED maps to ECONNREFUSED */
+      /* WSAELOOP maps to ELOOP */
       /* WSAENAMETOOLONG maps to ENAMETOOLONG */
       /* WSAEHOSTDOWN is EHOSTDOWN */
-      /* WSAEHOSTUNREACH is EHOSTUNREACH */
+      /* WSAEHOSTUNREACH maps to EHOSTUNREACH */
       /* WSAENOTEMPTY maps to ENOTEMPTY */
       /* WSAEPROCLIM is EPROCLIM */
       /* WSAEUSERS is EUSERS */
@@ -271,6 +279,21 @@ strerror_override (int errnum)
 #if GNULIB_defined_ECANCELED
     case ECANCELED:
       return "Operation canceled";
+#endif
+
+#if GNULIB_defined_EOWNERDEAD
+    case EOWNERDEAD:
+      return "Owner died";
+#endif
+
+#if GNULIB_defined_ENOTRECOVERABLE
+    case ENOTRECOVERABLE:
+      return "State not recoverable";
+#endif
+
+#if GNULIB_defined_EILSEQ
+    case EILSEQ:
+      return "Invalid or incomplete multibyte or wide character";
 #endif
 
     default:

@@ -1,6 +1,6 @@
 /* Shared definitions for GNU DIFF
 
-   Copyright (C) 1988-1989, 1991-1995, 1998, 2001-2002, 2004, 2009-2011 Free
+   Copyright (C) 1988-1989, 1991-1995, 1998, 2001-2002, 2004, 2009-2013 Free
    Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -61,7 +61,7 @@ enum output_style
   /* Output the differences in a unified context diff format (-u).  */
   OUTPUT_UNIFIED,
 
-  /* Output the differences as commands suitable for `ed' (-e).  */
+  /* Output the differences as commands suitable for 'ed' (-e).  */
   OUTPUT_ED,
 
   /* Output the diff as a forward ed script (-f).  */
@@ -135,7 +135,11 @@ XTERN bool ignore_case;
 /* Ignore differences in case of letters in file names.  */
 XTERN bool ignore_file_name_case;
 
-/* File labels for `-c' output headers (--label).  */
+/* Act on symbolic links themselves rather than on their target
+   (--no-dereference).  */
+XTERN bool no_dereference_symlinks;
+
+/* File labels for '-c' output headers (--label).  */
 XTERN char *file_label[2];
 
 /* Regexp to identify function-header lines (-F).  */
@@ -211,8 +215,8 @@ XTERN bool minimal;
 /* The strftime format to use for time strings.  */
 XTERN char const *time_format;
 
-/* The result of comparison is an "edit script": a chain of `struct change'.
-   Each `struct change' represents one place where some lines are deleted
+/* The result of comparison is an "edit script": a chain of 'struct change'.
+   Each 'struct change' represents one place where some lines are deleted
    and some are inserted.
 
    LINE0 and LINE1 are the first affected lines in the two files (origin 0).
@@ -328,7 +332,7 @@ XTERN FILE *outfile;
 extern int diff_2_files (struct comparison *);
 
 /* context.c */
-extern void print_context_header (struct file_data[], bool);
+extern void print_context_header (struct file_data[], char const * const *, bool);
 extern void print_context_script (struct change *, bool);
 
 /* dir.c */
@@ -361,7 +365,7 @@ extern void print_sdiff_script (struct change *);
 extern char const change_letter[4];
 extern char const pr_program[];
 extern char *concat (char const *, char const *, char const *);
-extern bool lines_differ (char const *, char const *);
+extern bool lines_differ (char const *, char const *) _GL_ATTRIBUTE_PURE;
 extern lin translate_line_number (struct file_data const *, lin);
 extern struct change *find_change (struct change *);
 extern struct change *find_reverse_change (struct change *);

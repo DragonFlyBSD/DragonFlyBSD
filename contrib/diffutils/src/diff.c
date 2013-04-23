@@ -1,7 +1,7 @@
 /* diff - compare files line by line
 
    Copyright (C) 1988-1989, 1992-1994, 1996, 1998, 2001-2002, 2004, 2006-2007,
-   2009-2011 Free Software Foundation, Inc.
+   2009-2013 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -39,9 +39,10 @@
 #include <timespec.h>
 #include <version-etc.h>
 #include <xalloc.h>
-#include <xfreopen.h>
+#include <xreadlink.h>
+#include <binary-io.h>
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "diff"
 
 #define AUTHORS \
@@ -58,9 +59,9 @@
 struct regexp_list
 {
   char *regexps;	/* chars representing disjunction of the regexps */
-  size_t len;		/* chars used in `regexps' */
-  size_t size;		/* size malloc'ed for `regexps'; 0 if not malloc'ed */
-  bool multiple_regexps;/* Does `regexps' represent a disjunction?  */
+  size_t len;		/* chars used in 'regexps' */
+  size_t size;		/* size malloc'ed for 'regexps'; 0 if not malloc'ed */
+  bool multiple_regexps;/* Does 'regexps' represent a disjunction?  */
   struct re_pattern_buffer *buf;
 };
 
@@ -91,15 +92,11 @@ static bool binary;
 enum { binary = true };
 #endif
 
-/* When comparing directories, if a file appears only in one
-   directory, treat it as present but empty in the other (-N).
-   Then `patch' would create the file with appropriate contents.  */
+/* If one file is missing, treat it as present but empty (-N).  */
 static bool new_file;
 
-/* When comparing directories, if a file appears only in the second
-   directory of the two, treat it as present but empty in the other
-   (--unidirectional-new-file).
-   Then `patch' would create the file with appropriate contents.  */
+/* If the first file is missing, treat it as present but empty
+   (--unidirectional-new-file).  */
 static bool unidirectional_new_file;
 
 /* Report files compared that are the same (-s).
@@ -120,6 +117,7 @@ enum
   INHIBIT_HUNK_MERGE_OPTION,
   LEFT_COLUMN_OPTION,
   LINE_FORMAT_OPTION,
+  NO_DEREFERENCE_OPTION,
   NO_IGNORE_FILE_NAME_CASE_OPTION,
   NORMAL_OPTION,
   SDIFF_MERGE_ASSIST_OPTION,
@@ -188,6 +186,7 @@ static struct option const longopts[] =
   {"new-file", 0, 0, 'N'},
   {"new-group-format", 1, 0, NEW_GROUP_FORMAT_OPTION},
   {"new-line-format", 1, 0, NEW_LINE_FORMAT_OPTION},
+  {"no-dereference", 0, 0, NO_DEREFERENCE_OPTION},
   {"no-ignore-file-name-case", 0, 0, NO_IGNORE_FILE_NAME_CASE_OPTION},
   {"normal", 0, 0, NORMAL_OPTION},
   {"old-group-format", 1, 0, OLD_GROUP_FORMAT_OPTION},
@@ -337,7 +336,7 @@ main (int argc, char **argv)
 	      {
 		numval = strtoumax (optarg, &numend, 10);
 		if (*numend)
-		  try_help ("invalid context length `%s'", optarg);
+		  try_help ("invalid context length '%s'", optarg);
 		if (LIN_MAX < numval)
 		  numval = LIN_MAX;
 	      }
@@ -512,7 +511,7 @@ main (int argc, char **argv)
 	case 'W':
 	  numval = strtoumax (optarg, &numend, 10);
 	  if (! (0 < numval && numval <= SIZE_MAX) || *numend)
-	    try_help ("invalid width `%s'", optarg);
+	    try_help ("invalid width '%s'", optarg);
 	  if (width != numval)
 	    {
 	      if (width)
@@ -525,7 +524,7 @@ main (int argc, char **argv)
 #if O_BINARY
 	  binary = true;
 	  if (! isatty (STDOUT_FILENO))
-	    xfreopen (NULL, "wb", stdout);
+	    set_binary_mode (STDOUT_FILENO, O_BINARY);
 #endif
 	  break;
 
@@ -541,7 +540,7 @@ main (int argc, char **argv)
 	case HORIZON_LINES_OPTION:
 	  numval = strtoumax (optarg, &numend, 10);
 	  if (*numend)
-	    try_help ("invalid horizon length `%s'", optarg);
+	    try_help ("invalid horizon length '%s'", optarg);
 	  horizon_lines = MAX (horizon_lines, MIN (numval, LIN_MAX));
 	  break;
 
@@ -562,6 +561,10 @@ main (int argc, char **argv)
 	  specify_style (OUTPUT_IFDEF);
 	  for (i = 0; i < sizeof line_format / sizeof line_format[0]; i++)
 	    specify_value (&line_format[i], optarg, "--line-format");
+	  break;
+
+	case NO_DEREFERENCE_OPTION:
+	  no_dereference_symlinks = true;
 	  break;
 
 	case NO_IGNORE_FILE_NAME_CASE_OPTION:
@@ -592,7 +595,7 @@ main (int argc, char **argv)
 	case TABSIZE_OPTION:
 	  numval = strtoumax (optarg, &numend, 10);
 	  if (! (0 < numval && numval <= SIZE_MAX) || *numend)
-	    try_help ("invalid tabsize `%s'", optarg);
+	    try_help ("invalid tabsize '%s'", optarg);
 	  if (tabsize != numval)
 	    {
 	      if (tabsize)
@@ -751,9 +754,9 @@ main (int argc, char **argv)
 	  if (argc - optind != 2)
 	    {
 	      if (argc - optind < 2)
-		try_help ("missing operand after `%s'", argv[argc - 1]);
+		try_help ("missing operand after '%s'", argv[argc - 1]);
 	      else
-		try_help ("extra operand `%s'", argv[optind + 2]);
+		try_help ("extra operand '%s'", argv[optind + 2]);
 	    }
 
 	  exit_status = compare_files (NULL, argv[optind], argv[optind + 1]);
@@ -833,7 +836,7 @@ try_help (char const *reason_msgid, char const *operand)
 {
   if (reason_msgid)
     error (0, 0, _(reason_msgid), operand);
-  error (EXIT_TROUBLE, 0, _("Try `%s --help' for more information."),
+  error (EXIT_TROUBLE, 0, _("Try '%s --help' for more information."),
 	 program_name);
   abort ();
 }
@@ -869,9 +872,10 @@ static char const * const option_help_msgid[] = {
   N_("-T, --initial-tab             make tabs line up by prepending a tab"),
   N_("    --tabsize=NUM             tab stops every NUM (default 8) print columns"),
   N_("    --suppress-blank-empty    suppress space or tab before empty output lines"),
-  N_("-l, --paginate                pass output through `pr' to paginate it"),
+  N_("-l, --paginate                pass output through 'pr' to paginate it"),
   "",
   N_("-r, --recursive                 recursively compare any subdirectories found"),
+  N_("    --no-dereference            don't follow symbolic links"),
   N_("-N, --new-file                  treat absent files as empty"),
   N_("    --unidirectional-new-file   treat absent first files as empty"),
   N_("    --ignore-file-name-case     ignore case when comparing file names"),
@@ -889,8 +893,8 @@ static char const * const option_help_msgid[] = {
   N_("-Z, --ignore-trailing-space     ignore white space at line end"),
   N_("-b, --ignore-space-change       ignore changes in the amount of white space"),
   N_("-w, --ignore-all-space          ignore all white space"),
-  N_("-B, --ignore-blank-lines        ignore changes whose lines are all blank"),
-  N_("-I, --ignore-matching-lines=RE  ignore changes whose lines all match RE"),
+  N_("-B, --ignore-blank-lines        ignore changes where lines are all blank"),
+  N_("-I, --ignore-matching-lines=RE  ignore changes where all lines match RE"),
   "",
   N_("-a, --text                      treat all files as text"),
   N_("    --strip-trailing-cr         strip trailing carriage return on input"),
@@ -898,13 +902,13 @@ static char const * const option_help_msgid[] = {
   N_("    --binary                    read and write data in binary mode"),
 #endif
   "",
-  N_("-D, --ifdef=NAME                output merged file with `#ifdef NAME' diffs"),
+  N_("-D, --ifdef=NAME                output merged file with '#ifdef NAME' diffs"),
   N_("    --GTYPE-group-format=GFMT   format GTYPE input groups with GFMT"),
   N_("    --line-format=LFMT          format all input lines with LFMT"),
   N_("    --LTYPE-line-format=LFMT    format LTYPE input lines with LFMT"),
   N_("  These format options provide fine-grained control over the output\n"
      "    of diff, generalizing -D/--ifdef."),
-  N_("  LTYPE is `old', `new', or `unchanged'.  GTYPE is LTYPE or `changed'."),
+  N_("  LTYPE is 'old', 'new', or 'unchanged'.  GTYPE is LTYPE or 'changed'."),
   N_("  GFMT (only) may contain:\n\
     %<  lines from FILE1\n\
     %>  lines from FILE2\n\
@@ -934,9 +938,9 @@ static char const * const option_help_msgid[] = {
   N_("    --help               display this help and exit"),
   N_("-v, --version            output version information and exit"),
   "",
-  N_("FILES are `FILE1 FILE2' or `DIR1 DIR2' or `DIR FILE...' or `FILE... DIR'."),
+  N_("FILES are 'FILE1 FILE2' or 'DIR1 DIR2' or 'DIR FILE...' or 'FILE... DIR'."),
   N_("If --from-file or --to-file is given, there are no restrictions on FILE(s)."),
-  N_("If a FILE is `-', read standard input."),
+  N_("If a FILE is '-', read standard input."),
   N_("Exit status is 0 if inputs are the same, 1 if different, 2 if trouble."),
   0
 };
@@ -981,7 +985,7 @@ specify_value (char const **var, char const *value, char const *option)
 {
   if (*var && ! STREQ (*var, value))
     {
-      error (0, 0, _("conflicting %s option value `%s'"), option, value);
+      error (0, 0, _("conflicting %s option value '%s'"), option, value);
       try_help (NULL, NULL);
     }
   *var = value;
@@ -1107,8 +1111,8 @@ compare_files (struct comparison const *parent,
 	  else if (STREQ (cmp.file[f].name, "-"))
 	    {
 	      cmp.file[f].desc = STDIN_FILENO;
-	      if (O_BINARY && binary && ! isatty (STDIN_FILENO))
-		xfreopen (NULL, "rb", stdin);
+	      if (binary && ! isatty (STDIN_FILENO))
+		set_binary_mode (STDIN_FILENO, O_BINARY);
 	      if (fstat (STDIN_FILENO, &cmp.file[f].stat) != 0)
 		cmp.file[f].desc = ERRNO_ENCODE (errno);
 	      else
@@ -1128,7 +1132,10 @@ compare_files (struct comparison const *parent,
 		  set_mtime_to_now (&cmp.file[f].stat);
 		}
 	    }
-	  else if (stat (cmp.file[f].name, &cmp.file[f].stat) != 0)
+	  else if ((no_dereference_symlinks
+		    ? lstat (cmp.file[f].name, &cmp.file[f].stat)
+		    : stat (cmp.file[f].name, &cmp.file[f].stat))
+		   != 0)
 	    cmp.file[f].desc = ERRNO_ENCODE (errno);
 	}
     }
@@ -1144,9 +1151,11 @@ compare_files (struct comparison const *parent,
 	    ? (S_ISREG (cmp.file[f].stat.st_mode)
 	       && ! (cmp.file[f].stat.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))
 	       && cmp.file[f].stat.st_size == 0)
-	    : (cmp.file[f].desc == ERRNO_ENCODE (ENOENT)
+	    : ((cmp.file[f].desc == ERRNO_ENCODE (ENOENT)
+		|| cmp.file[f].desc == ERRNO_ENCODE (EBADF))
 	       && ! parent
-	       && cmp.file[1 - f].desc == UNOPENED)))
+	       && (cmp.file[1 - f].desc == UNOPENED
+		   || cmp.file[1 - f].desc == STDIN_FILENO))))
       cmp.file[f].desc = NONEXISTENT;
 
   for (f = 0; f < 2; f++)
@@ -1180,9 +1189,12 @@ compare_files (struct comparison const *parent,
 	= find_dir_file_pathname (dir, last_component (fnm));
 
       if (STREQ (fnm, "-"))
-	fatal ("cannot compare `-' to a directory");
+	fatal ("cannot compare '-' to a directory");
 
-      if (stat (filename, &cmp.file[dir_arg].stat) != 0)
+      if ((no_dereference_symlinks
+	   ? lstat (filename, &cmp.file[dir_arg].stat)
+	   : stat (filename, &cmp.file[dir_arg].stat))
+	  != 0)
 	{
 	  perror_with_name (filename);
 	  status = EXIT_TROUBLE;
@@ -1229,8 +1241,10 @@ compare_files (struct comparison const *parent,
     }
   else if ((DIR_P (0) | DIR_P (1))
 	   || (parent
-	       && (! S_ISREG (cmp.file[0].stat.st_mode)
-		   || ! S_ISREG (cmp.file[1].stat.st_mode))))
+	       && !((S_ISREG (cmp.file[0].stat.st_mode)
+		     || S_ISLNK (cmp.file[0].stat.st_mode))
+		    && (S_ISREG (cmp.file[1].stat.st_mode)
+			|| S_ISLNK  (cmp.file[1].stat.st_mode)))))
     {
       if (cmp.file[0].desc == NONEXISTENT || cmp.file[1].desc == NONEXISTENT)
 	{
@@ -1261,6 +1275,56 @@ compare_files (struct comparison const *parent,
 	  /* We have two files that are not to be compared.  */
 
 	  /* See POSIX 1003.1-2001 for this format.  */
+	  message5 ("File %s is a %s while file %s is a %s\n",
+		    file_label[0] ? file_label[0] : cmp.file[0].name,
+		    file_type (&cmp.file[0].stat),
+		    file_label[1] ? file_label[1] : cmp.file[1].name,
+		    file_type (&cmp.file[1].stat));
+
+	  /* This is a difference.  */
+	  status = EXIT_FAILURE;
+	}
+    }
+  else if (S_ISLNK (cmp.file[0].stat.st_mode)
+	   || S_ISLNK (cmp.file[1].stat.st_mode))
+    {
+      /* We get here only if we use lstat(), not stat().  */
+      assert (no_dereference_symlinks);
+
+      if (S_ISLNK (cmp.file[0].stat.st_mode)
+	  && S_ISLNK (cmp.file[1].stat.st_mode))
+	{
+	  /* Compare the values of the symbolic links.  */
+	  char *link_value[2] = { NULL, NULL };
+
+	  for (f = 0; f < 2; f++)
+	    {
+	      link_value[f] = xreadlink (cmp.file[f].name);
+	      if (link_value[f] == NULL)
+		{
+		  perror_with_name (cmp.file[f].name);
+		  status = EXIT_TROUBLE;
+		  break;
+		}
+	    }
+	  if (status == EXIT_SUCCESS)
+	    {
+	      if ( ! STREQ (link_value[0], link_value[1]))
+		{
+		  message ("Symbolic links %s and %s differ\n",
+			   cmp.file[0].name, cmp.file[1].name);
+		  /* This is a difference.  */
+		  status = EXIT_FAILURE;
+		}
+	    }
+	  for (f = 0; f < 2; f++)
+	    free (link_value[f]);
+	}
+      else
+	{
+	  /* We have two files that are not to be compared, because
+	     one of them is a symbolic link and the other one is not.  */
+
 	  message5 ("File %s is a %s while file %s is a %s\n",
 		    file_label[0] ? file_label[0] : cmp.file[0].name,
 		    file_type (&cmp.file[0].stat),

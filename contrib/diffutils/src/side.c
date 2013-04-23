@@ -1,6 +1,6 @@
 /* sdiff-format output routines for GNU DIFF.
 
-   Copyright (C) 1991-1993, 1998, 2001-2002, 2004, 2009-2011 Free Software
+   Copyright (C) 1991-1993, 1998, 2001-2002, 2004, 2009-2013 Free Software
    Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -292,7 +292,7 @@ print_sdiff_hunk (struct change *hunk)
       fprintf (outfile, "c%ld,%ld\n", len0, len1);
     }
 
-  /* Print ``xxx  |  xxx '' lines */
+  /* Print "xxx  |  xxx " lines.  */
   if (changes == CHANGED)
     {
       for (i = first0, j = first1;  i <= last0 && j <= last1;  i++, j++)
@@ -302,7 +302,7 @@ print_sdiff_hunk (struct change *hunk)
       next1 = first1 = j;
     }
 
-  /* Print ``     >  xxx '' lines */
+  /* Print "     >  xxx " lines.  */
   if (changes & NEW)
     {
       for (j = first1; j <= last1; ++j)
@@ -310,7 +310,7 @@ print_sdiff_hunk (struct change *hunk)
       next1 = j;
     }
 
-  /* Print ``xxx  <     '' lines */
+  /* Print "xxx  <     " lines.  */
   if (changes & OLD)
     {
       for (i = first0; i <= last0; ++i)

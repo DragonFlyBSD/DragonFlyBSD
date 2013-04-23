@@ -1,6 +1,6 @@
 /* diff3 - compare three files line by line
 
-   Copyright (C) 1988-1989, 1992-1996, 1998, 2001-2002, 2004, 2006, 2009-2011
+   Copyright (C) 1988-1989, 1992-1996, 1998, 2001-2002, 2004, 2006, 2009-2013
    Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -29,12 +29,12 @@
 #include <file-type.h>
 #include <getopt.h>
 #include <progname.h>
-#include <sh-quote.h>
+#include <system-quote.h>
 #include <version-etc.h>
 #include <xalloc.h>
 #include <xfreopen.h>
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "diff3"
 
 #define AUTHORS \
@@ -158,7 +158,7 @@ static bool overlap_only;
 /* If nonzero, show information for DIFF_2ND diffs.  */
 static bool show_2nd;
 
-/* If nonzero, include `:wq' at the end of the script
+/* If nonzero, include ':wq' at the end of the script
    to write out the file being edited.   */
 static bool finalwrite;
 
@@ -315,9 +315,9 @@ main (int argc, char **argv)
   if (argc - optind != 3)
     {
       if (argc - optind < 3)
-	try_help ("missing operand after `%s'", argv[argc - 1]);
+	try_help ("missing operand after '%s'", argv[argc - 1]);
       else
-	try_help ("extra operand `%s'", argv[optind + 3]);
+	try_help ("extra operand '%s'", argv[optind + 3]);
     }
 
   file = &argv[optind];
@@ -350,7 +350,7 @@ main (int argc, char **argv)
 	 file instead.  */
       common = 3 - common;
       if (STREQ (file[0], "-") || STREQ (file[common], "-"))
-	fatal ("`-' specified for more than one input file");
+	fatal ("'-' specified for more than one input file");
     }
 
   mapping[0] = 0;
@@ -411,7 +411,7 @@ try_help (char const *reason_msgid, char const *operand)
   if (reason_msgid)
     error (0, 0, _(reason_msgid), operand);
   error (EXIT_TROUBLE, 0,
-	 _("Try `%s --help' for more information."), program_name);
+	 _("Try '%s --help' for more information."), program_name);
   abort ();
 }
 
@@ -433,7 +433,7 @@ static char const * const option_help_msgid[] = {
   N_("-3, --easy-only             like -e, but incorporate only nonoverlapping changes"),
   N_("-x, --overlap-only          like -e, but incorporate only overlapping changes"),
   N_("-X                          like -x, but bracket conflicts"),
-  N_("-i                          append `w' and `q' commands to ed scripts"),
+  N_("-i                          append 'w' and 'q' commands to ed scripts"),
   "",
   N_("-m, --merge                 output actual merged file, according to\n"
      "                                -A if no other options are given"),
@@ -478,7 +478,7 @@ Finally, the -m (--merge) option causes diff3 to do the merge internally\n\
 and output the actual merged file.  For unusual input, this is more\n\
 robust than using ed.\n"), stdout);
   printf ("\n%s\n%s\n",
-	  _("If a FILE is `-', read standard input."),
+	  _("If a FILE is '-', read standard input."),
 	  _("Exit status is 0 if successful, 1 if conflicts, 2 if trouble."));
   emit_bug_reporting_address ();
 }
@@ -1045,7 +1045,7 @@ process_diff (char const *filea,
 
 /* Skip tabs and spaces, and return the first character after them.  */
 
-static char *
+static char * _GL_ATTRIBUTE_PURE
 skipwhite (char *s)
 {
   while (*s == ' ' || *s == '\t')
@@ -1161,13 +1161,15 @@ read_diff (char const *filea,
   int fd, wstatus, status;
   int werrno = 0;
   struct stat pipestat;
-
-#if HAVE_WORKING_FORK
-
   char const *argv[9];
   char const **ap;
+#if HAVE_WORKING_FORK
   int fds[2];
   pid_t pid;
+#else
+  FILE *fpipe;
+  char *command;
+#endif
 
   ap = argv;
   *ap++ = diff_program;
@@ -1180,6 +1182,8 @@ read_diff (char const *filea,
   *ap++ = filea;
   *ap++ = fileb;
   *ap = 0;
+
+#if HAVE_WORKING_FORK
 
   if (pipe (fds) != 0)
     perror_with_exit ("pipe");
@@ -1210,32 +1214,7 @@ read_diff (char const *filea,
 
 #else
 
-  FILE *fpipe;
-  char const args[] = " --horizon-lines=100 -- ";
-  char *command = xmalloc (shell_quote_length (diff_program)
-			   + sizeof "-a"
-			   + sizeof "--strip-trailing-cr"
-			   + sizeof args - 1
-			   + shell_quote_length (filea) + 1
-			   + shell_quote_length (fileb) + 1);
-  char *p = command;
-  p = shell_quote_copy (p, diff_program);
-  if (text)
-    {
-      strcpy (p, " -a");
-      p += 3;
-    }
-  if (strip_trailing_cr)
-    {
-      strcpy (p, " --strip-trailing-cr");
-      p += 20;
-    }
-  strcpy (p, args);
-  p += sizeof args - 1;
-  p = shell_quote_copy (p, filea);
-  *p++ = ' ';
-  p = shell_quote_copy (p, fileb);
-  *p = 0;
+  command = system_quote_argv (SCI_SYSTEM, (char **) argv);
   errno = 0;
   fpipe = popen (command, "r");
   if (!fpipe)
@@ -1293,12 +1272,12 @@ read_diff (char const *filea,
   if (EXIT_TROUBLE <= status)
     error (EXIT_TROUBLE, werrno,
 	   _(status == 126
-	     ? "subsidiary program `%s' could not be invoked"
+	     ? "subsidiary program '%s' could not be invoked"
 	     : status == 127
-	     ? "subsidiary program `%s' not found"
+	     ? "subsidiary program '%s' not found"
 	     : status == INT_MAX
-	     ? "subsidiary program `%s' failed"
-	     : "subsidiary program `%s' failed (exit status %d)"),
+	     ? "subsidiary program '%s' failed"
+	     : "subsidiary program '%s' failed (exit status %d)"),
 	   diff_program, status);
 
   return diff_result + total;
@@ -1493,7 +1472,7 @@ undotlines (FILE *outputfile, bool leading_dot, long int start, lin num)
    around the problems involved with changing line numbers in an ed
    script.
 
-   As in `output_diff3', the variable MAPPING maps from file number
+   As in 'output_diff3', the variable MAPPING maps from file number
    according to the argument list to file number according to the diff
    passed.  All files listed below are in terms of the argument list.
    REV_MAPPING is the inverse of MAPPING.

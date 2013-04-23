@@ -1,6 +1,6 @@
 /* sdiff - side-by-side merge of file differences
 
-   Copyright (C) 1992-1996, 1998, 2001-2002, 2004, 2006-2007, 2009-2011 Free
+   Copyright (C) 1992-1996, 1998, 2001-2002, 2004, 2006-2007, 2009-2013 Free
    Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -31,11 +31,11 @@
 #include <file-type.h>
 #include <getopt.h>
 #include <progname.h>
-#include <sh-quote.h>
+#include <system-quote.h>
 #include <version-etc.h>
 #include <xalloc.h>
 
-/* The official name of this program (e.g., no `g' prefix).  */
+/* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "sdiff"
 
 #define AUTHORS \
@@ -66,7 +66,6 @@ static void perror_fatal (char const *) __attribute__((noreturn));
 static void trapsigs (void);
 static void untrapsig (int);
 
-#define NUM_SIGS (sizeof sigs / sizeof *sigs)
 static int const sigs[] = {
 #ifdef SIGHUP
        SIGHUP,
@@ -87,11 +86,15 @@ static int const sigs[] = {
        SIGPIPE,
 #endif
        SIGINT
-#define handler_index_of_SIGINT (NUM_SIGS - 1)
 };
+enum
+  {
+    NUM_SIGS = sizeof sigs / sizeof *sigs,
+    handler_index_of_SIGINT = NUM_SIGS - 1
+  };
 
 #if HAVE_SIGACTION
-  /* Prefer `sigaction' if available, since `signal' can lose signals.  */
+  /* Prefer 'sigaction' if available, since 'signal' can lose signals.  */
   static struct sigaction initial_action[NUM_SIGS];
 # define initial_handler(i) (initial_action[i].sa_handler)
   static void signal_handler (int, void (*) (int));
@@ -152,7 +155,7 @@ try_help (char const *reason_msgid, char const *operand)
 {
   if (reason_msgid)
     error (0, 0, _(reason_msgid), operand);
-  error (EXIT_TROUBLE, 0, _("Try `%s --help' for more information."),
+  error (EXIT_TROUBLE, 0, _("Try '%s --help' for more information."),
 	 program_name);
   abort ();
 }
@@ -175,7 +178,7 @@ static char const * const option_help_msgid[] = {
   N_("-b, --ignore-space-change    ignore changes in the amount of white space"),
   N_("-W, --ignore-all-space       ignore all white space"),
   N_("-B, --ignore-blank-lines     ignore changes whose lines are all blank"),
-  N_("-I, --ignore-matching-lines=RE  ignore changes whose lines all match RE"),
+  N_("-I, --ignore-matching-lines=RE  ignore changes all whose lines match RE"),
   N_("    --strip-trailing-cr      strip trailing carriage return on input"),
   N_("-a, --text                   treat all files as text"),
   "",
@@ -213,7 +216,7 @@ Mandatory arguments to long options are mandatory for short options too.\n\
     else
       putchar ('\n');
   printf ("\n%s\n%s\n",
-	  _("If a FILE is `-', read standard input."),
+	  _("If a FILE is '-', read standard input."),
 	  _("Exit status is 0 if inputs are the same, 1 if different, 2 if trouble."));
   emit_bug_reporting_address ();
 }
@@ -269,12 +272,12 @@ check_child_status (int werrno, int wstatus, int max_ok_status,
     {
       error (0, werrno,
 	     _(status == 126
-	       ? "subsidiary program `%s' could not be invoked"
+	       ? "subsidiary program '%s' could not be invoked"
 	       : status == 127
-	       ? "subsidiary program `%s' not found"
+	       ? "subsidiary program '%s' not found"
 	       : status == INT_MAX
-	       ? "subsidiary program `%s' failed"
-	       : "subsidiary program `%s' failed (exit status %d)"),
+	       ? "subsidiary program '%s' failed"
+	       : "subsidiary program '%s' failed (exit status %d)"),
 	     subsidiary_program, status);
       exiterr ();
     }
@@ -559,9 +562,9 @@ main (int argc, char *argv[])
   if (argc - optind != 2)
     {
       if (argc - optind < 2)
-	try_help ("missing operand after `%s'", argv[argc - 1]);
+	try_help ("missing operand after '%s'", argv[argc - 1]);
       else
-	try_help ("extra operand `%s'", argv[optind + 2]);
+	try_help ("extra operand '%s'", argv[optind + 2]);
     }
 
   if (! output)
@@ -607,19 +610,7 @@ main (int argc, char *argv[])
 
 #if ! HAVE_WORKING_FORK
       {
-	size_t cmdsize = 1;
-	char *p, *command;
-	int i;
-
-	for (i = 0;  diffargv[i];  i++)
-	  cmdsize += shell_quote_length (diffargv[i]) + 1;
-	command = p = xmalloc (cmdsize);
-	for (i = 0;  diffargv[i];  i++)
-	  {
-	    p = shell_quote_copy (p, diffargv[i]);
-	    *p++ = ' ';
-	  }
-	p[-1] = 0;
+	char *command = system_quote_argv (SCI_SYSTEM, (char **) diffargv);
 	errno = 0;
 	diffout = popen (command, "r");
 	if (! diffout)
@@ -706,7 +697,7 @@ main (int argc, char *argv[])
 	exit (WEXITSTATUS (wstatus));
       }
     }
-  return EXIT_SUCCESS;			/* Fool `-Wall'.  */
+  return EXIT_SUCCESS;			/* Fool '-Wall'.  */
 }
 
 static void
@@ -1020,16 +1011,17 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 	    {
 	      int wstatus;
 	      int werrno = 0;
+	      char const *argv[3];
+
 	      ignore_SIGINT = true;
 	      checksigs ();
+	      argv[0] = editor_program;
+	      argv[1] = tmpname;
+	      argv[2] = 0;
 
 	      {
 #if ! HAVE_WORKING_FORK
-		char *command =
-		  xmalloc (shell_quote_length (editor_program)
-			   + 1 + strlen (tmpname) + 1);
-		sprintf (shell_quote_copy (command, editor_program),
-			 " %s", tmpname);
+		char *command = system_quote_argv (SCI_SYSTEM, (char **) argv);
 		wstatus = system (command);
 		if (wstatus == -1)
 		  werrno = errno;
@@ -1040,13 +1032,6 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 		pid = fork ();
 		if (pid == 0)
 		  {
-		    char const *argv[3];
-		    int i = 0;
-
-		    argv[i++] = editor_program;
-		    argv[i++] = tmpname;
-		    argv[i] = 0;
-
 		    execvp (editor_program, (char **) argv);
 		    _exit (errno == ENOENT ? 127 : 126);
 		  }
@@ -1178,18 +1163,9 @@ temporary_file (void)
   char const *dir = tmpdir ? tmpdir : P_tmpdir;
   char *buf = xmalloc (strlen (dir) + 1 + 5 + 6 + 1);
   int fd;
-  int e;
-  sigset_t procmask;
-  sigset_t blocked;
   sprintf (buf, "%s/sdiffXXXXXX", dir);
-  sigemptyset (&blocked);
-  sigaddset (&blocked, SIGINT);
-  sigprocmask (SIG_BLOCK, &blocked, &procmask);
   fd = mkstemp (buf);
-  e = errno;
   if (0 <= fd)
     tmpname = buf;
-  sigprocmask (SIG_SETMASK, &procmask, 0);
-  errno = e;
   return fd;
 }

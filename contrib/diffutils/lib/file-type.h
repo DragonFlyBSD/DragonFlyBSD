@@ -1,6 +1,6 @@
 /* Return a string describing the type of a file.
 
-   Copyright (C) 1993-1994, 2001-2002, 2004-2005, 2009-2011 Free Software
+   Copyright (C) 1993-1994, 2001-2002, 2004-2005, 2009-2013 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -24,6 +24,6 @@
 # include <sys/types.h>
 # include <sys/stat.h>
 
-char const *file_type (struct stat const *);
+char const *file_type (struct stat const *) _GL_ATTRIBUTE_PURE;
 
 #endif /* FILE_TYPE_H */
