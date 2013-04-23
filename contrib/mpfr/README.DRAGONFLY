@@ -4,10 +4,9 @@ MULTIPLE PRECISION FLOATING POINT LIBRARY (MPFR)
 Original Source can be downloaded from:
 http://www.mpfr.org
 
-file = mpfr-3.1.0.tar.bz2
-date = 3 October 2011
-size = 1203891
-sha1 = 9ba6dfe62dad298f0570daf182db31660f7f016c
+file = mpfr-3.1.2.tar.xz
+date = 13 March 2013
+size = 1074388
+sha1 = 03e593cc6e26639ef5e60be1af8dc527209e5172
 
 A list of files and directories removed is in README.DELETED
-

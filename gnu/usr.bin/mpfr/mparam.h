@@ -1,6 +1,6 @@
 /* Various Thresholds of MPFR, not exported.  -*- mode: C -*-
 
-Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
+Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
 
 This file is part of the GNU MPFR Library.
 
@@ -31,7 +31,7 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #define MPFR_TUNE_CASE "src/x86_64/pentium4/mparam.h"
 #include "x86_64/pentium4/mparam.h"
 
-#elif defined (__tune_core2__) && defined (__x86_64) /* 64-bit Core 2 */
+#elif (defined (__tune_core2__) || defined (__tune_nocona__)) && defined (__x86_64) /* 64-bit Core 2 or Xeon */
 #define MPFR_TUNE_CASE "src/x86_64/core2/mparam.h"
 #include "x86_64/core2/mparam.h"
 
@@ -61,13 +61,15 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #define MPFR_TUNE_CASE "src/arm/mparam.h"
 #include "arm/mparam.h"
 
+#elif defined (__PPC64__) /* Threshold for 64-bit PowerPC, test it before
+                             32-bit PowerPC since _ARCH_PPC is also defined
+                             on 64-bit PowerPC */
+#define MPFR_TUNE_CASE "src/powerpc64/mparam.h"
+#include "powerpc64/mparam.h"
+
 #elif defined (_ARCH_PPC) /* Threshold for 32-bit PowerPC */
 #define MPFR_TUNE_CASE "src/powerpc32/mparam.h"
 #include "powerpc32/mparam.h"
-
-#elif defined (__PPC64__) /* Threshold for 64-bit PowerPC */
-#define MPFR_TUNE_CASE "src/powerpc64/mparam.h"
-#include "powerpc64/mparam.h"
 
 #elif defined (__sparc_v9__) /* Threshold for 64-bits Sparc */
 #define MPFR_TUNE_CASE "src/sparc64/mparam.h"
