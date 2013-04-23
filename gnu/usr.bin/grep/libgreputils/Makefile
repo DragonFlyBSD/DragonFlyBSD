@@ -27,7 +27,6 @@ SRCS=		argmatch.c \
 		open-safer.c \
 		fd-hook.c \
 		filenamecat-lgpl.c \
-		hard-locale.c \
 		hash.c \
 		i-ring.c \
 		localcharset.c \
@@ -47,10 +46,10 @@ SRCS=		argmatch.c \
 		trim.c \
 		dup-safer.c \
 		fd-safer.c \
+		pipe-safer.c \
 		u8-mbtoucr.c \
 		u8-uctomb.c \
 		u8-uctomb-aux.c \
-		pipe-safer.c \
 		width.c \
 		version-etc.c \
 		version-etc-fsf.c \

@@ -21,7 +21,7 @@
 . \" ISO 8601 date, complete format, extended representation
 . ds Dt \\*(Yr-\\*(Mn-\\*(Dy
 ..
-.TH GREP 1 \*(Dt "GNU grep 2.12" "User Commands"
+.TH GREP 1 \*(Dt "GNU grep 2.14" "User Commands"
 .hy 0
 .
 .SH NAME
@@ -475,19 +475,19 @@ By default,
 .I ACTION
 is
 .BR read ,
-which means that directories are read just as if they were ordinary files.
+i.e., read directories just as if they were ordinary files.
 If
 .I ACTION
 is
 .BR skip ,
-directories are silently skipped.
+silently skip directories.
 If
 .I ACTION
 is
 .BR recurse ,
-.B grep
-reads all files under each directory, recursively;
-this is equivalent to the
+read all files under each directory, recursively,
+following symbolic links only if they are on the command line.
+This is equivalent to the
 .B \-r
 option.
 .TP
@@ -527,11 +527,16 @@ Search only files whose base name matches
 (using wildcard matching as described under
 .BR \-\^\-exclude ).
 .TP
-.BR \-R ", " \-r ", " \-\^\-recursive
-Read all files under each directory, recursively;
-this is equivalent to the
+.BR \-r ", " \-\^\-recursive
+Read all files under each directory, recursively,
+following symbolic links only if they are on the command line.
+This is equivalent to the
 .B "\-d recurse"
 option.
+.BR \-R ", " \-\^\-dereference\-recursive
+Read all files under each directory, recursively.
+Follow all symbolic links, unlike
+.BR \-r .
 .SS "Other Options"
 .TP
 .BR \-\^\-line\-buffered
@@ -1216,7 +1221,8 @@ grep(1p).
 .SS "\*(Txinfo Documentation"
 The full documentation for
 .B grep
-is maintained as a \*(Txinfo manual.
+is maintained as a \*(Txinfo manual,
+which you can read at http://www.gnu.org/software/grep/manual/.
 If the
 .B info
 and
@@ -1226,3 +1232,12 @@ programs are properly installed at your site, the command
 .B info grep
 .PP
 should give you access to the complete manual.
+.
+.SH NOTES
+This man page is maintained only fitfully;
+the full documentation is often more up-to-date.
+.PP
+\s-1GNU\s0's not Unix, but Unix is a beast;
+its plural form is Unixen.
+.\" Work around problems with some troff -man implementations.
+.br

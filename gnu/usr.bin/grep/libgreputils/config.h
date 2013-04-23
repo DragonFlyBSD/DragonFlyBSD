@@ -28,12 +28,12 @@
 /* Define to 1 if the `closedir' function returns void instead of `int'. */
 /* #undef CLOSEDIR_VOID */
 
-/* Define to one of '_getb67', 'GETB67', 'getb67' for Cray-2 and Cray-YMP
-   systems. This function is required for 'alloca.c' support on those systems.
+/* Define to one of `_getb67', `GETB67', `getb67' for Cray-2 and Cray-YMP
+   systems. This function is required for `alloca.c' support on those systems.
    */
 /* #undef CRAY_STACKSEG_END */
 
-/* Define to 1 if using 'alloca.c'. */
+/* Define to 1 if using `alloca.c'. */
 /* #undef C_ALLOCA */
 
 /* Define as the bit index in the word where to find bit 0 of the exponent of
@@ -90,6 +90,10 @@
 #define GNULIB_FD_SAFER_FLAG IN_GREP_GNULIB_TESTS
 
 /* Define to a C preprocessor expression that evaluates to 1 or 0, depending
+   whether the gnulib module fscanf shall be considered present. */
+#define GNULIB_FSCANF IN_GREP_GNULIB_TESTS
+
+/* Define to a C preprocessor expression that evaluates to 1 or 0, depending
    whether the gnulib module fstatat shall be considered present. */
 #define GNULIB_FSTATAT 1
 
@@ -111,6 +115,10 @@
 /* Define to a C preprocessor expression that evaluates to 1 or 0, depending
    whether the gnulib module realloc-gnu shall be considered present. */
 #define GNULIB_REALLOC_GNU 1
+
+/* Define to a C preprocessor expression that evaluates to 1 or 0, depending
+   whether the gnulib module scanf shall be considered present. */
+#define GNULIB_SCANF IN_GREP_GNULIB_TESTS
 
 /* Define to a C preprocessor expression that evaluates to 1 or 0, depending
    whether the gnulib module snprintf shall be considered present. */
@@ -331,11 +339,11 @@
 /* Define to 1 if you have the 'btowc' function. */
 #define HAVE_BTOWC 1
 
-/* Define to 1 if you have the MacOS X function CFLocaleCopyCurrent in the
+/* Define to 1 if you have the Mac OS X function CFLocaleCopyCurrent in the
    CoreFoundation framework. */
 /* #undef HAVE_CFLOCALECOPYCURRENT */
 
-/* Define to 1 if you have the MacOS X function CFPreferencesCopyAppValue in
+/* Define to 1 if you have the Mac OS X function CFPreferencesCopyAppValue in
    the CoreFoundation framework. */
 /* #undef HAVE_CFPREFERENCESCOPYAPPVALUE */
 
@@ -344,7 +352,7 @@
 
 /* Define if the GNU dcgettext() function is already present or preinstalled.
    */
-/* #undef HAVE_DCGETTEXT */
+#define HAVE_DCGETTEXT 1
 
 /* Define to 1 if you have the declaration of `clearerr_unlocked', and to 0 if
    you don't. */
@@ -466,10 +474,6 @@
    don't. */
 #define HAVE_DECL_STRERROR_R 1
 
-/* Define to 1 if you have the declaration of `strncasecmp', and to 0 if you
-   don't. */
-#define HAVE_DECL_STRNCASECMP 1
-
 /* Define to 1 if you have the declaration of `strnlen', and to 0 if you
    don't. */
 #define HAVE_DECL_STRNLEN 1
@@ -562,7 +566,7 @@
 #define HAVE_GETPAGESIZE 1
 
 /* Define if the GNU gettext() function is already present or preinstalled. */
-/* #undef HAVE_GETTEXT */
+#define HAVE_GETTEXT 1
 
 /* Define if you have the iconv() function and it works. */
 #define HAVE_ICONV 1
@@ -612,7 +616,8 @@
 /* Define to 1 if you have the <libintl.h> header file. */
 /* #undef HAVE_LIBINTL_H */
 
-/* Define to 1 if you have the `pcre' library (-lpcre). */
+/* Define to 1 if you have the Perl Compatible Regular Expressions library
+   (-lpcre). */
 #define HAVE_LIBPCRE 0
 
 /* Define to 1 if the system has the type 'long long int'. */
@@ -781,9 +786,6 @@
 /* Define to 1 if fdopendir is declared even after undefining macros. */
 #define HAVE_RAW_DECL_FDOPENDIR 1
 
-/* Define to 1 if ffs is declared even after undefining macros. */
-#define HAVE_RAW_DECL_FFS 1
-
 /* Define to 1 if ffsl is declared even after undefining macros. */
 #define HAVE_RAW_DECL_FFSL 1
 
@@ -893,7 +895,7 @@
 #define HAVE_RAW_DECL_LINK 1
 
 /* Define to 1 if linkat is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_LINKAT */
+#define HAVE_RAW_DECL_LINKAT 1
 
 /* Define to 1 if lseek is declared even after undefining macros. */
 #define HAVE_RAW_DECL_LSEEK 1
@@ -1066,23 +1068,17 @@
 /* Define to 1 if stpncpy is declared even after undefining macros. */
 #define HAVE_RAW_DECL_STPNCPY 1
 
-/* Define to 1 if strcasecmp is declared even after undefining macros. */
-#define HAVE_RAW_DECL_STRCASECMP 1
-
 /* Define to 1 if strcasestr is declared even after undefining macros. */
 #define HAVE_RAW_DECL_STRCASESTR 1
 
 /* Define to 1 if strchrnul is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_STRCHRNUL */
+#define HAVE_RAW_DECL_STRCHRNUL 1
 
 /* Define to 1 if strdup is declared even after undefining macros. */
 #define HAVE_RAW_DECL_STRDUP 1
 
 /* Define to 1 if strerror_r is declared even after undefining macros. */
 #define HAVE_RAW_DECL_STRERROR_R 1
-
-/* Define to 1 if strncasecmp is declared even after undefining macros. */
-#define HAVE_RAW_DECL_STRNCASECMP 1
 
 /* Define to 1 if strncat is declared even after undefining macros. */
 #define HAVE_RAW_DECL_STRNCAT 1
@@ -1322,9 +1318,6 @@
 /* Define to 1 if you have the `stpcpy' function. */
 #define HAVE_STPCPY 1
 
-/* Define to 1 if you have the `strcasecmp' function. */
-#define HAVE_STRCASECMP 1
-
 /* Define to 1 if you have the 'strdup' function. */
 #define HAVE_STRDUP 1
 
@@ -1336,9 +1329,6 @@
 
 /* Define to 1 if you have the <string.h> header file. */
 #define HAVE_STRING_H 1
-
-/* Define to 1 if you have the `strncasecmp' function. */
-#define HAVE_STRNCASECMP 1
 
 /* Define to 1 if you have the `strnlen' function. */
 #define HAVE_STRNLEN 1
@@ -1548,7 +1538,7 @@
 /* #undef PACKAGE_PACKAGER_VERSION */
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "GNU grep 2.12"
+#define PACKAGE_STRING "GNU grep 2.14"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "grep"
@@ -1557,7 +1547,7 @@
 #define PACKAGE_URL "http://www.gnu.org/software/grep/"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "2.12"
+#define PACKAGE_VERSION "2.14"
 
 /* the number of pending output bytes on stream 'fp' */
 /* #undef PENDING_OUTPUT_N_BYTES */
@@ -1617,9 +1607,9 @@
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be
    automatically deduced at runtime.
-        STACK_DIRECTION > 0 => grows toward higher addresses
-        STACK_DIRECTION < 0 => grows toward lower addresses
-        STACK_DIRECTION = 0 => direction of growth unknown */
+	STACK_DIRECTION > 0 => grows toward higher addresses
+	STACK_DIRECTION < 0 => grows toward lower addresses
+	STACK_DIRECTION = 0 => direction of growth unknown */
 /* #undef STACK_DIRECTION */
 
 /* Define to 1 if the `S_IS*' macros in <sys/stat.h> do not work properly. */
@@ -1661,7 +1651,7 @@
 /* #undef USE_WINDOWS_THREADS */
 
 /* Version number of package */
-#define VERSION "2.12"
+#define VERSION "2.14"
 
 /* Define to 1 if unsetenv returns void instead of int. */
 /* #undef VOID_UNSETENV */
@@ -1686,7 +1676,7 @@
 # endif
 #endif
 
-/* Enable large inode numbers on Mac OS X.  */
+/* Enable large inode numbers on Mac OS X 10.5.  */
 #ifndef _DARWIN_USE_64_BIT_INODE
 # define _DARWIN_USE_64_BIT_INODE 1
 #endif
@@ -1711,7 +1701,8 @@
 /* #undef _MINIX */
 
 /* The _Noreturn keyword of C11.  */
-#ifndef _Noreturn
+#if ! (defined _Noreturn \
+       || (defined __STDC_VERSION__ && 201112 <= __STDC_VERSION__))
 # if (3 <= __GNUC__ || (__GNUC__ == 2 && 8 <= __GNUC_MINOR__) \
       || 0x5110 <= __SUNPRO_C)
 #  define _Noreturn __attribute__ ((__noreturn__))
@@ -1744,7 +1735,7 @@
 #ifndef _ALL_SOURCE
 # define _ALL_SOURCE 1
 #endif
-/* Enable general extensions on MacOS X.  */
+/* Enable general extensions on Mac OS X.  */
 #ifndef _DARWIN_C_SOURCE
 # define _DARWIN_C_SOURCE 1
 #endif
@@ -1791,7 +1782,7 @@
 /* Work around a bug in Apple GCC 4.0.1 build 5465: In C99 mode, it supports
    the ISO C 99 semantics of 'extern inline' (unlike the GNU C semantics of
    earlier versions), but does not display it by setting __GNUC_STDC_INLINE__.
-   __APPLE__ && __MACH__ test for MacOS X.
+   __APPLE__ && __MACH__ test for Mac OS X.
    __APPLE_CC__ tests for the Apple compiler and its version.
    __STDC_VERSION__ tests for the C99 mode.  */
 #if defined __APPLE__ && defined __MACH__ && __APPLE_CC__ >= 5465 && !defined __cplusplus && __STDC_VERSION__ >= 199901L && !defined __GNUC_STDC_INLINE__
