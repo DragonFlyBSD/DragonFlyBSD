@@ -1,4 +1,12 @@
-Import expat-2.0.1
+EXPAT 2.1.0
+===========
 
-Original source is availale from:
-http://sourceforge.net/projects/expat/files/expat/2.0.1/expat-2.0.1.tar.gz/download
+Original source can be downloaded from:
+http://sourceforge.net/projects/expat/files/expat/2.1.0
+
+file = expat-2.1.0.tar.gz
+date = 24 March 2012
+size = 562616
+sha1 = b08197d146930a5543a7b99e871cba3da614f6f0
+
+A list of files and directories removed is in README.DELETED
