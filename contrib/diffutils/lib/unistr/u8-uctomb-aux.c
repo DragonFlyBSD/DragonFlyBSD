@@ -1,7 +1,5 @@
-/* -*- buffer-read-only: t -*- vi: set ro: */
-/* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Conversion UCS-4 to UTF-8.
-   Copyright (C) 2002, 2006-2007, 2009-2011 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2006-2007, 2009-2013 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2002.
 
    This program is free software: you can redistribute it and/or modify it

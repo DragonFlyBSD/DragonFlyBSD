@@ -1,6 +1,6 @@
 /* exclude.h -- declarations for excluding file names
 
-   Copyright (C) 1992-1994, 1997, 1999, 2001-2003, 2005-2006, 2009-2011 Free
+   Copyright (C) 1992-1994, 1997, 1999, 2001-2003, 2005-2006, 2009-2013 Free
    Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -39,7 +39,7 @@
 
 struct exclude;
 
-bool fnmatch_pattern_has_wildcards (const char *, int);
+bool fnmatch_pattern_has_wildcards (const char *, int) _GL_ATTRIBUTE_PURE;
 
 struct exclude *new_exclude (void);
 void free_exclude (struct exclude *);

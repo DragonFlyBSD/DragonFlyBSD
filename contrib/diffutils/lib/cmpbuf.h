@@ -1,6 +1,6 @@
 /* Buffer primitives for comparison operations.
 
-   Copyright (C) 2002, 2009-2011 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2009-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,4 +16,4 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 size_t block_read (int, char *, size_t);
-size_t buffer_lcm (size_t, size_t, size_t);
+size_t buffer_lcm (size_t, size_t, size_t) _GL_ATTRIBUTE_CONST;

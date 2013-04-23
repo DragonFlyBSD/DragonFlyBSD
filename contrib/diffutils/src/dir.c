@@ -1,7 +1,7 @@
 /* Read, sort and compare two directories.  Used for GNU DIFF.
 
    Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006-2007,
-   2009-2011 Free Software Foundation, Inc.
+   2009-2013 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -85,7 +85,7 @@ dir_read (struct file_data const *dir, struct dirdata *dirdata)
       dirdata->data = data = xmalloc (data_alloc);
 
       /* Read the directory entries, and insert the subfiles
-	 into the `data' table.  */
+	 into the 'data' table.  */
 
       while ((errno = 0, (next = readdir (reading)) != 0))
 	{
@@ -126,7 +126,7 @@ dir_read (struct file_data const *dir, struct dirdata *dirdata)
 #endif
     }
 
-  /* Create the `names' table from the `data' table.  */
+  /* Create the 'names' table from the 'data' table.  */
   if (PTRDIFF_MAX / sizeof *names - 1 <= nnames)
     xalloc_die ();
   dirdata->names = names = xmalloc ((nnames + 1) * sizeof *names);
@@ -155,7 +155,7 @@ compare_names (char const *name1, char const *name2)
 	r = strcoll (name1, name2);
       if (errno)
 	{
-	  error (0, errno, _("cannot compare file names `%s' and `%s'"),
+	  error (0, errno, _("cannot compare file names '%s' and '%s'"),
 		 name1, name2);
 	  longjmp (failed_locale_specific_sorting, 1);
 	}
@@ -235,7 +235,7 @@ diff_dirs (struct comparison const *cmp,
 	qsort (names[i], dirdata[i].nnames, sizeof *dirdata[i].names,
 	       compare_names_for_qsort);
 
-      /* If `-S name' was given, and this is the topmost level of comparison,
+      /* If '-S name' was given, and this is the topmost level of comparison,
 	 ignore all file names less than the specified starting name.  */
 
       if (starting_file && ! cmp->parent)
@@ -308,7 +308,7 @@ diff_dirs (struct comparison const *cmp,
 
 /* Return nonzero if CMP is looping recursively in argument I.  */
 
-static bool
+static bool _GL_ATTRIBUTE_PURE
 dir_loop (struct comparison const *cmp, int i)
 {
   struct comparison const *p = cmp;
@@ -323,8 +323,13 @@ dir_loop (struct comparison const *cmp, int i)
 char *
 find_dir_file_pathname (char const *dir, char const *file)
 {
+  /* The 'IF_LINT (volatile)' works around what appears to be a bug in
+     gcc 4.8.0 20120825; see
+     <http://lists.gnu.org/archive/html/bug-diffutils/2012-08/msg00007.html>.
+     */
+  char const * IF_LINT (volatile) match = file;
+
   char *val;
-  char const *match = file;
   struct dirdata dirdata;
   dirdata.names = NULL;
   dirdata.data = NULL;

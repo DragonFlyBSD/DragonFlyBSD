@@ -1,6 +1,6 @@
 /* Stack overflow handling.
 
-   Copyright (C) 2002, 2004, 2006, 2008-2011 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2004, 2006, 2008-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -237,7 +237,7 @@ segv_handler (int signo, siginfo_t *info,
 
      Note that although both Linux and Solaris provide
      sigaltstack, SA_ONSTACK, and SA_SIGINFO, currently only
-     Solaris satisfies the XSI heueristic.  This is because
+     Solaris satisfies the XSI heuristic.  This is because
      Solaris populates uc_stack with the details of the
      interrupted stack, while Linux populates it with the details
      of the current stack.  */

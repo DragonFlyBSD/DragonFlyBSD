@@ -1,6 +1,6 @@
 /* Provide file descriptor control.
 
-   Copyright (C) 2009-2011 Free Software Foundation, Inc.
+   Copyright (C) 2009-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -33,9 +33,12 @@
 #undef fcntl
 
 #if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
-/* Get declarations of the Win32 API functions.  */
+/* Get declarations of the native Windows API functions.  */
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
+
+/* Get _get_osfhandle.  */
+# include "msvc-nothrow.h"
 
 /* Upper bound on getdtablesize().  See lib/getdtablesize.c.  */
 # define OPEN_MAX_MAX 0x10000
@@ -91,7 +94,7 @@ dupfd (int oldfd, int newfd, int flags)
           result = -1;
           break;
         }
-      duplicated_fd = _open_osfhandle ((long) new_handle, flags);
+      duplicated_fd = _open_osfhandle ((intptr_t) new_handle, flags);
       if (duplicated_fd < 0)
         {
           CloseHandle (new_handle);

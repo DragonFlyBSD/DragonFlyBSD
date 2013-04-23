@@ -1,7 +1,7 @@
 /* Analyze file differences for GNU DIFF.
 
    Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006-2007,
-   2009-2011 Free Software Foundation, Inc.
+   2009-2013 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -38,7 +38,7 @@
 
    A line which is discarded will not be considered by the actual
    comparison algorithm; it will be as if that line were not in the file.
-   The file's `realindexes' table maps virtual line numbers
+   The file's 'realindexes' table maps virtual line numbers
    (which don't count the discarded lines) into real line numbers;
    this is how the actual comparison algorithm produces results
    that are comprehensible when the discarded lines are counted.
@@ -251,7 +251,7 @@ discard_confusing_lines (struct file_data filevec[])
    We do something when a run of changed lines include a
    line at one end and have an excluded, identical line at the other.
    We are free to choose which identical line is included.
-   `compareseq' usually chooses the one at the beginning,
+   'compareseq' usually chooses the one at the beginning,
    but usually it is cleaner to consider the following identical line
    to be the "change".  */
 
@@ -595,7 +595,7 @@ diff_2_files (struct comparison *cmp)
       shift_boundaries (cmp->file);
 
       /* Get the results of comparison in the form of a chain
-	 of `struct change's -- an edit script.  */
+	 of 'struct change's -- an edit script.  */
 
       if (output_style == OUTPUT_ED)
 	script = build_reverse_script (cmp->file);

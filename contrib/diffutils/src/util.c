@@ -1,6 +1,6 @@
 /* Support routines for GNU DIFF.
 
-   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2011
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2013
    Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -21,13 +21,14 @@
 #include "diff.h"
 #include <dirname.h>
 #include <error.h>
-#include <sh-quote.h>
+#include <system-quote.h>
 #include <xalloc.h>
+#include "xvasprintf.h"
 
 char const pr_program[] = PR_PROGRAM;
 
 /* Queue up one-line messages to be printed at the end,
-   when -l is specified.  Each message is recorded with a `struct msg'.  */
+   when -l is specified.  Each message is recorded with a 'struct msg'.  */
 
 struct msg
 {
@@ -121,7 +122,7 @@ message5 (char const *format_msgid, char const *arg1, char const *arg2,
     }
 }
 
-/* Output all the messages that were saved up by calls to `message'.  */
+/* Output all the messages that were saved up by calls to 'message'.  */
 
 void
 print_message_queue (void)
@@ -146,8 +147,8 @@ print_message_queue (void)
    to set up OUTFILE, the stdio stream for the output to go to.
 
    Usually, OUTFILE is just stdout.  But when -l was specified
-   we fork off a `pr' and make OUTFILE a pipe to it.
-   `pr' then outputs to our stdout.  */
+   we fork off a 'pr' and make OUTFILE a pipe to it.
+   'pr' then outputs to our stdout.  */
 
 static char const *current_name0;
 static char const *current_name1;
@@ -166,31 +167,122 @@ setup_output (char const *name0, char const *name1, bool recursive)
 static pid_t pr_pid;
 #endif
 
+static char c_escape_char (char c)
+{
+  switch (c) {
+    case '\a': return 'a';
+    case '\b': return 'b';
+    case '\t': return 't';
+    case '\n': return 'n';
+    case '\v': return 'v';
+    case '\f': return 'f';
+    case '\r': return 'r';
+    case '"': return '"';
+    case '\\': return '\\';
+    default:
+      return c < 32;
+  }
+}
+
+static char *
+c_escape (char const *str)
+{
+  char const *s;
+  size_t plus = 0;
+  bool must_quote = false;
+
+  for (s = str; *s; s++)
+    {
+      char c = *s;
+
+      if (c == ' ')
+	{
+	  must_quote = true;
+	  continue;
+	}
+      switch (c_escape_char (*s))
+	{
+	  case 1:
+	    plus += 3;
+	    /* fall through */
+	  case 0:
+	    break;
+	  default:
+	    plus++;
+	    break;
+	}
+    }
+
+  if (must_quote || plus)
+    {
+      size_t s_len = s - str;
+      char *buffer = xmalloc (s_len + plus + 3);
+      char *b = buffer;
+
+      *b++ = '"';
+      for (s = str; *s; s++)
+	{
+	  char c = *s;
+	  char escape = c_escape_char (c);
+
+	  switch (escape)
+	    {
+	      case 0:
+		*b++ = c;
+		break;
+	      case 1:
+		*b++ = '\\';
+		*b++ = ((c >> 6) & 03) + '0';
+		*b++ = ((c >> 3) & 07) + '0';
+		*b++ = ((c >> 0) & 07) + '0';
+		break;
+	      default:
+		*b++ = '\\';
+		*b++ = escape;
+		break;
+	    }
+	}
+      *b++ = '"';
+      *b = 0;
+      return buffer;
+    }
+
+  return (char *) str;
+}
+
 void
 begin_output (void)
 {
+  char *names[2];
   char *name;
 
   if (outfile != 0)
     return;
 
-  /* Construct the header of this piece of diff.  */
-  name = xmalloc (strlen (current_name0) + strlen (current_name1)
-		  + strlen (switch_string) + 7);
+  names[0] = c_escape (current_name0);
+  names[1] = c_escape (current_name1);
 
+  /* Construct the header of this piece of diff.  */
   /* POSIX 1003.1-2001 specifies this format.  But there are some bugs in
      the standard: it says that we must print only the last component
      of the pathnames, and it requires two spaces after "diff" if
      there are no options.  These requirements are silly and do not
      match historical practice.  */
-  sprintf (name, "diff%s %s %s", switch_string, current_name0, current_name1);
+  name = xasprintf ("diff%s %s %s", switch_string, names[0], names[1]);
 
   if (paginate)
     {
+      char const *argv[4];
+
       if (fflush (stdout) != 0)
 	pfatal_with_name (_("write failed"));
 
-      /* Make OUTFILE a pipe to a subsidiary `pr'.  */
+      argv[0] = pr_program;
+      argv[1] = "-h";
+      argv[2] = name;
+      argv[3] = 0;
+
+      /* Make OUTFILE a pipe to a subsidiary 'pr'.  */
       {
 #if HAVE_WORKING_FORK
 	int pipes[2];
@@ -212,7 +304,7 @@ begin_output (void)
 		close (pipes[0]);
 	      }
 
-	    execl (pr_program, pr_program, "-h", name, (char *) 0);
+	    execv (pr_program, (char **) argv);
 	    _exit (errno == ENOENT ? 127 : 126);
 	  }
 	else
@@ -223,13 +315,7 @@ begin_output (void)
 	      pfatal_with_name ("fdopen");
 	  }
 #else
-	char *command = xmalloc (sizeof pr_program - 1 + 7
-				 + shell_quote_length (name) + 1);
-	char *p;
-	sprintf (command, "%s -f -h ", pr_program);
-	p = command + sizeof pr_program - 1 + 7;
-	p = shell_quote_copy (p, name);
-	*p = 0;
+	char *command = system_quote_argv (SCI_SYSTEM, (char **) argv);
 	errno = 0;
 	outfile = popen (command, "w");
 	if (!outfile)
@@ -241,7 +327,7 @@ begin_output (void)
   else
     {
 
-      /* If -l was not specified, output the diff straight to `stdout'.  */
+      /* If -l was not specified, output the diff straight to 'stdout'.  */
 
       outfile = stdout;
 
@@ -257,20 +343,25 @@ begin_output (void)
   switch (output_style)
     {
     case OUTPUT_CONTEXT:
-      print_context_header (files, false);
+      print_context_header (files, (char const *const *)names, false);
       break;
 
     case OUTPUT_UNIFIED:
-      print_context_header (files, true);
+      print_context_header (files, (char const *const *)names, true);
       break;
 
     default:
       break;
     }
+
+  if (names[0] != current_name0)
+    free (names[0]);
+  if (names[1] != current_name1)
+    free (names[1]);
 }
 
 /* Call after the end of output of diffs for one file.
-   Close OUTFILE and get rid of the `pr' subfork.  */
+   Close OUTFILE and get rid of the 'pr' subfork.  */
 
 void
 finish_output (void)
@@ -298,12 +389,12 @@ finish_output (void)
       if (status)
 	error (EXIT_TROUBLE, werrno,
 	       _(status == 126
-		 ? "subsidiary program `%s' could not be invoked"
+		 ? "subsidiary program '%s' could not be invoked"
 		 : status == 127
-		 ? "subsidiary program `%s' not found"
+		 ? "subsidiary program '%s' not found"
 		 : status == INT_MAX
-		 ? "subsidiary program `%s' failed"
-		 : "subsidiary program `%s' failed (exit status %d)"),
+		 ? "subsidiary program '%s' failed"
+		 : "subsidiary program '%s' failed (exit status %d)"),
 	       pr_program, status);
     }
 
@@ -477,13 +568,13 @@ lines_differ (char const *s1, char const *s2)
 /* Find the consecutive changes at the start of the script START.
    Return the last link before the first gap.  */
 
-struct change *
+struct change * _GL_ATTRIBUTE_CONST
 find_change (struct change *start)
 {
   return start;
 }
 
-struct change *
+struct change * _GL_ATTRIBUTE_CONST
 find_reverse_change (struct change *start)
 {
   return start;
@@ -635,7 +726,7 @@ char const change_letter[] = { 0, 'd', 'a', 'c' };
    Internal line numbers count from 0 starting after the prefix.
    Actual line numbers count from 1 within the entire file.  */
 
-lin
+lin _GL_ATTRIBUTE_PURE
 translate_line_number (struct file_data const *file, lin i)
 {
   return i + file->prefix_lines + 1;
@@ -677,7 +768,7 @@ print_number_range (char sepchar, struct file_data *file, lin a, lin b)
 
 /* Look at a hunk of edit script and report the range of lines in each file
    that it applies to.  HUNK is the start of the hunk, which is a chain
-   of `struct change'.  The first and last line numbers of file 0 are stored in
+   of 'struct change'.  The first and last line numbers of file 0 are stored in
    *FIRST0 and *LAST0, and likewise for file 1 in *FIRST1 and *LAST1.
    Note that these are internal line numbers that count from 0.
 

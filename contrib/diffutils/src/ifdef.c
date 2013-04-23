@@ -1,6 +1,6 @@
 /* #ifdef-format output routines for GNU DIFF.
 
-   Copyright (C) 1989, 1991-1994, 2001-2002, 2004, 2006, 2009-2011 Free
+   Copyright (C) 1989, 1991-1994, 2001-2002, 2004, 2006, 2009-2013 Free
    Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -132,7 +132,7 @@ format_group (register FILE *out, char const *format, char endchar,
 	    break;
 
 	  case '(':
-	    /* Print if-then-else format e.g. `%(n=1?thenpart:elsepart)'.  */
+	    /* Print if-then-else format e.g. '%(n=1?thenpart:elsepart)'.  */
 	    {
 	      int i;
 	      uintmax_t value[2];

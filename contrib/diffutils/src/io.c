@@ -1,6 +1,6 @@
 /* File I/O for GNU DIFF.
 
-   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2011
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2013
    Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -19,6 +19,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "diff.h"
+#include <binary-io.h>
 #include <cmpbuf.h>
 #include <file-type.h>
 #include <xalloc.h>
@@ -57,10 +58,10 @@ static size_t nbuckets;
    The number of an equivalence class is its index in this array.  */
 static struct equivclass *equivs;
 
-/* Index of first free element in the array `equivs'.  */
+/* Index of first free element in the array 'equivs'.  */
 static lin equivs_index;
 
-/* Number of elements allocated in the array `equivs'.  */
+/* Number of elements allocated in the array 'equivs'.  */
 static lin equivs_alloc;
 
 /* Read a block of data into a file buffer, checking for EOF and error.  */
@@ -111,11 +112,24 @@ sip (struct file_data *current, bool skip_test)
 	{
 	  /* Check first part of file to see if it's a binary file.  */
 
-	  /* FIXME: if O_BINARY, this should revert to text mode
-	     if the file is not binary.  */
-
+	  int prev_mode = set_binary_mode (current->desc, O_BINARY);
+	  off_t buffered;
 	  file_block_read (current, current->bufsize);
-	  return binary_file_p (current->buffer, current->buffered);
+	  buffered = current->buffered;
+
+	  if (prev_mode != O_BINARY)
+	    {
+	      /* Revert to text mode and seek back to the start to reread
+		 the file.  Use relative seek, since file descriptors
+		 like stdin might not start at offset zero.  */
+	      if (lseek (current->desc, - buffered, SEEK_CUR) < 0)
+		pfatal_with_name (current->name);
+	      set_binary_mode (current->desc, prev_mode);
+	      current->buffered = 0;
+	      current->eof = false;
+	    }
+
+	  return binary_file_p (current->buffer, buffered);
 	}
     }
 
@@ -761,7 +775,8 @@ read_files (struct file_data filevec[], bool pretend_binary)
     }
   if (appears_binary)
     {
-      /* FIXME: If O_BINARY, this should set both files to binary mode.  */
+      set_binary_mode (filevec[0].desc, O_BINARY);
+      set_binary_mode (filevec[1].desc, O_BINARY);
       return true;
     }
 
