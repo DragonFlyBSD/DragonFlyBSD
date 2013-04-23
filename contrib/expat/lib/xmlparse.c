@@ -3832,6 +3832,7 @@ doProlog(XML_Parser parser,
         return XML_ERROR_NO_ELEMENTS;
       default:
         tok = -tok;
+        next = end;
         break;
       }
     }
