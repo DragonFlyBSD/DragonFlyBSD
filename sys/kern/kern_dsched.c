@@ -409,7 +409,7 @@ dsched_set_policy(struct disk *dp, struct dsched_policy *new_policy)
 	int locked = 0;
 
 	/* Check if it is locked already. if not, we acquire the devfs lock */
-	if (!(lockstatus(&dsched_lock, curthread)) == LK_EXCLUSIVE) {
+	if ((lockstatus(&dsched_lock, curthread)) != LK_EXCLUSIVE) {
 		lockmgr(&dsched_lock, LK_EXCLUSIVE);
 		locked = 1;
 	}
@@ -439,7 +439,7 @@ dsched_find_policy(char *search)
 	int locked = 0;
 
 	/* Check if it is locked already. if not, we acquire the devfs lock */
-	if (!(lockstatus(&dsched_lock, curthread)) == LK_EXCLUSIVE) {
+	if ((lockstatus(&dsched_lock, curthread)) != LK_EXCLUSIVE) {
 		lockmgr(&dsched_lock, LK_EXCLUSIVE);
 		locked = 1;
 	}

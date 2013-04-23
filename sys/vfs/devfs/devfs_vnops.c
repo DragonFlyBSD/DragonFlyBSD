@@ -279,7 +279,7 @@ devfs_vop_reclaim(struct vop_reclaim_args *ap)
 	/*
 	 * Check if it is locked already. if not, we acquire the devfs lock
 	 */
-	if (!(lockstatus(&devfs_lock, curthread)) == LK_EXCLUSIVE) {
+	if ((lockstatus(&devfs_lock, curthread)) != LK_EXCLUSIVE) {
 		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 		locked = 1;
 	} else {

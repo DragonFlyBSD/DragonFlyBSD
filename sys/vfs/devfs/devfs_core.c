@@ -2271,7 +2271,7 @@ devfs_cdev_terminate(cdev_t dev)
 	int locked = 0;
 
 	/* Check if it is locked already. if not, we acquire the devfs lock */
-	if (!(lockstatus(&devfs_lock, curthread)) == LK_EXCLUSIVE) {
+	if ((lockstatus(&devfs_lock, curthread)) != LK_EXCLUSIVE) {
 		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 		locked = 1;
 	}
