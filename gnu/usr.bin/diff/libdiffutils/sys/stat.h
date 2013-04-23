@@ -1,8 +1,6 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
-/* -*- buffer-read-only: t -*- vi: set ro: */
-/* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Provide a more complete sys/stat header file.
-   Copyright (C) 2005-2011 Free Software Foundation, Inc.
+   Copyright (C) 2005-2013 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,8 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.  */
+   along with this program; if not, see <http://www.gnu.org/licenses/>.  */
 
 /* Written by Eric Blake, Paul Eggert, and Jim Meyering.  */
 
@@ -39,7 +36,8 @@
 
 #ifndef _GL_SYS_STAT_H
 
-/* Get nlink_t.  */
+/* Get nlink_t.
+   May also define off_t to a 64-bit type on native Windows.  */
 #include <sys/types.h>
 
 /* Get struct timespec.  */
@@ -369,10 +367,27 @@ _GL_WARN_EXTERN_C int _gl_warn_on_use
 #endif
 
 /* Before doing "#define mkdir rpl_mkdir" below, we need to include all
-   headers that may declare mkdir().  */
+   headers that may declare mkdir().  Native Windows platforms declare mkdir
+   in <io.h> and/or <direct.h>, not in <unistd.h>.  */
 #if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
 # include <io.h>     /* mingw32, mingw64 */
-# include <direct.h> /* mingw64 */
+# include <direct.h> /* mingw64, MSVC 9 */
+#endif
+
+/* Native Windows platforms declare umask() in <io.h>.  */
+#if 0 && ((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__)
+# include <io.h>
+#endif
+
+/* Large File Support on native Windows.  */
+#if 0
+# define stat _stati64
+#endif
+
+#ifndef S_IFIFO
+# ifdef _S_IFIFO
+#  define S_IFIFO _S_IFIFO
+# endif
 #endif
 
 #ifndef S_IFMT
@@ -445,6 +460,10 @@ _GL_WARN_EXTERN_C int _gl_warn_on_use
 #  define S_ISMPB(m) 0
 #  define S_ISMPC(m) 0
 # endif
+#endif
+
+#ifndef S_ISMPX /* AIX */
+# define S_ISMPX(m) 0
 #endif
 
 #ifndef S_ISNAM /* Xenix */
@@ -626,16 +645,28 @@ _GL_WARN_ON_USE (fchmodat, "fchmodat is not portable - "
 #endif
 
 
-#if 0
-# if !(defined __cplusplus && defined GNULIB_NAMESPACE)
-#  define fstat rpl_fstat
-# endif
+#if 1
+# if 0
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   undef fstat
+#   define fstat rpl_fstat
+#  endif
 _GL_FUNCDECL_RPL (fstat, int, (int fd, struct stat *buf) _GL_ARG_NONNULL ((2)));
 _GL_CXXALIAS_RPL (fstat, int, (int fd, struct stat *buf));
-#else
+# else
 _GL_CXXALIAS_SYS (fstat, int, (int fd, struct stat *buf));
-#endif
+# endif
 _GL_CXXALIASWARN (fstat);
+#elif 0
+/* Above, we define stat to _stati64.  */
+# define fstat _fstati64
+#elif defined GNULIB_POSIXCHECK
+# undef fstat
+# if HAVE_RAW_DECL_FSTAT
+_GL_WARN_ON_USE (fstat, "fstat has portability problems - "
+                 "use gnulib module fstat for portability");
+# endif
+#endif
 
 
 #if 0
@@ -782,7 +813,7 @@ _GL_CXXALIAS_RPL (mkdir, int, (char const *name, mode_t mode));
 # if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
 
 #  if !GNULIB_defined_rpl_mkdir
-static inline int
+static int
 rpl_mkdir (char const *name, mode_t mode)
 {
   return _mkdir (name);
@@ -909,14 +940,55 @@ _GL_WARN_ON_USE (mknodat, "mknodat is not portable - "
 /* We can't use the object-like #define stat rpl_stat, because of
    struct stat.  This means that rpl_stat will not be used if the user
    does (stat)(a,b).  Oh well.  */
-#  undef stat
-#  ifdef _LARGE_FILES
+#  if defined _AIX && defined stat && defined _LARGE_FILES
     /* With _LARGE_FILES defined, AIX (only) defines stat to stat64,
        so we have to replace stat64() instead of stat(). */
-#   define stat stat64
 #   undef stat64
 #   define stat64(name, st) rpl_stat (name, st)
-#  else /* !_LARGE_FILES */
+#  elif 0
+    /* Above, we define stat to _stati64.  */
+#   if defined __MINGW32__ && defined _stati64
+#    ifndef _USE_32BIT_TIME_T
+      /* The system headers define _stati64 to _stat64.  */
+#     undef _stat64
+#     define _stat64(name, st) rpl_stat (name, st)
+#    endif
+#   elif defined _MSC_VER && defined _stati64
+#    ifdef _USE_32BIT_TIME_T
+      /* The system headers define _stati64 to _stat32i64.  */
+#     undef _stat32i64
+#     define _stat32i64(name, st) rpl_stat (name, st)
+#    else
+      /* The system headers define _stati64 to _stat64.  */
+#     undef _stat64
+#     define _stat64(name, st) rpl_stat (name, st)
+#    endif
+#   else
+#    undef _stati64
+#    define _stati64(name, st) rpl_stat (name, st)
+#   endif
+#  elif defined __MINGW32__ && defined stat
+#   ifdef _USE_32BIT_TIME_T
+     /* The system headers define stat to _stat32i64.  */
+#    undef _stat32i64
+#    define _stat32i64(name, st) rpl_stat (name, st)
+#   else
+     /* The system headers define stat to _stat64.  */
+#    undef _stat64
+#    define _stat64(name, st) rpl_stat (name, st)
+#   endif
+#  elif defined _MSC_VER && defined stat
+#   ifdef _USE_32BIT_TIME_T
+     /* The system headers define stat to _stat32.  */
+#    undef _stat32
+#    define _stat32(name, st) rpl_stat (name, st)
+#   else
+     /* The system headers define stat to _stat64i32.  */
+#    undef _stat64i32
+#    define _stat64i32(name, st) rpl_stat (name, st)
+#   endif
+#  else /* !(_AIX ||__MINGW32__ ||  _MSC_VER) */
+#   undef stat
 #   define stat(name, st) rpl_stat (name, st)
 #  endif /* !_LARGE_FILES */
 _GL_EXTERN_C int stat (const char *name, struct stat *buf)

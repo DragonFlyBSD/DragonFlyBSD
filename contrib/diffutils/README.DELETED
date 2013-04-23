@@ -85,7 +85,6 @@ lib/stdint.in.h
 lib/stdio.in.h
 lib/stdlib.in.h
 lib/strcasecmp.c
-lib/strerror.c
 lib/string.in.h
 lib/strings.in.h
 lib/strncasecmp.c
@@ -119,7 +118,6 @@ man/diff.x
 man/diff3.x
 man/help2man
 man/sdiff.x
-ms/
 po/
 src/Makefile.am
 src/Makefile.in

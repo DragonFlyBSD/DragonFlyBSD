@@ -9,70 +9,93 @@ CONTRIBDIR=	${BASEDIR}/lib
 CFLAGS+=	-I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=	-DHAVE_CONFIG_H
 
-SRCS=	c-stack.c \
+SRCS=	allocator.c \
+	areadlink.o \
+	binary-io.o \
+	bitrotate.o \
 	c-ctype.c \
+	c-stack.c \
 	c-strcasecmp.c \
 	c-strncasecmp.c \
-	exitfail.c \
-	localcharset.c \
-	malloca.c \
-	mbchar.c \
-	mbscasecmp.c \
-	mbslen.c \
-	mbsstr.c \
-	progname.c \
-	propername.c \
-	sh-quote.c \
-	striconv.c \
-	strnlen1.c \
-	trim.c \
-	width.c \
-	version-etc.c \
-	version-etc-fsf.c \
-	xalloc-die.c \
-	xfreopen.c \
-	xstriconv.c \
-	xstrndup.c \
-	xstrtoumax.c \
-	cmpbuf.c \
-	prepargs.c \
-	basename.c \
-	basename-lgpl.c \
+	careadlinkat.o \
 	dirname.c \
+	basename.c \
 	dirname-lgpl.c \
-	dup2.c \
-	error.c \
+	basename-lgpl.c \
+	stripslash.c \
 	exclude.c \
-	fcntl.c \
+	exitfail.c \
+	fd-hook.c \
 	file-type.c \
-	fnmatch.c \
+	filenamecat.c \
+	filenamecat-lgpl.c \
 	freopen-safer.c \
-	getopt.c \
-	getopt1.c \
 	gettime.c \
 	hard-locale.c \
 	hash.c \
 	imaxtostr.c \
-	mktime.c \
+	inttostr.c \
 	offtostr.c \
-	quote.c \
-	quotearg.c \
-	regex.c \
-	strftime.c \
-	stripslash.c \
-	tempname.c \
 	uinttostr.c \
 	umaxtostr.c \
-	wcwidth.c \
-	xmalloc.c \
-	xstrtol.c \
-	xstrtol-error.c \
-	xstrtoul.c \
-	filenamecat.c \
-	filenamecat-lgpl.c \
+	localcharset.c \
+	malloca.c \
+	mbchar.c \
+	mbiter.c \
+	mbscasecmp.c \
+	mbslen.c \
+	mbsstr.c \
+	mbuiter.c \
+	progname.c \
+	propername.c \
+	quotearg.c \
+	sh-quote.c \
+	sig-handler.c \
+	stat-time.c \
+	strftime.c \
+	striconv.c \
+	strnlen1.c \
+	system-quote.c \
+	tempname.c \
+	timespec.c \
+	trim.c \
+	unistd.c \
 	u8-mbtoucr.c \
 	u8-uctomb.c \
 	u8-uctomb-aux.c \
-	strerror-override.c
+	width.c \
+	version-etc.c \
+	version-etc-fsf.c \
+	wctype-h.c \
+	xmalloc.c \
+	xalloc-die.c \
+	xfreopen.c \
+	xreadlink.c \
+	xsize.c \
+	xstriconv.c \
+	xstrndup.c \
+	xstrtol.c \
+	xstrtoul.c \
+	xstrtol-error.c \
+	xstrtoumax.c \
+	xvasprintf.c \
+	xasprintf.c \
+	cmpbuf.c \
+	prepargs.c \
+	asnprintf.c \
+	dup2.c \
+	error.c \
+	fcntl.c \
+	fnmatch.c \
+	getopt.c \
+	getopt1.c \
+	printf-args.c \
+	printf-parse.c \
+	regex.c \
+	secure_getenv.c \
+	strerror.c \
+	strerror-override.c \
+	vasnprintf.c \
+	wcwidth.c
 
 .include <bsd.lib.mk>
