@@ -1,7 +1,7 @@
 /* mpfr_round_raw_generic -- Generic rounding function
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -80,7 +80,7 @@ mpfr_round_raw_generic(
       (xprec <= yprec || MPFR_IS_LIKE_RNDZ (rnd_mode, neg)))
     return 0;
 
-  xsize = (xprec-1)/GMP_NUMB_BITS + 1;
+  xsize = MPFR_PREC2LIMBS (xprec);
   nw = yprec / GMP_NUMB_BITS;
   rw = yprec & (GMP_NUMB_BITS - 1);
 

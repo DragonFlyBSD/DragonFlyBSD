@@ -18,6 +18,6 @@ Damien Stehlé           Function mpfr_get_ld_2exp
 Philippe Théveny        Main author
 Sylvain Chevillard      Original version of ai.c
 
-The main authors are included in the MPFR mailing-list <mpfr@loria.fr>.
+The main authors are included in the MPFR mailing-list <mpfr@inria.fr>.
 This is the preferred way to contact us. For further information, please
 look at the MPFR web page <http://www.mpfr.org/>.

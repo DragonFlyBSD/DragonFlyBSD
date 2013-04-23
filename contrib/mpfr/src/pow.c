@@ -1,7 +1,7 @@
 /* mpfr_pow -- power function x^y
 
-Copyright 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -136,7 +136,7 @@ is_odd (mpfr_srcptr y)
      (b) all the 'z' bits are zero
   */
 
-  prec = ((prec - 1) / GMP_NUMB_BITS + 1) * GMP_NUMB_BITS - expo;
+  prec = MPFR_PREC2LIMBS (prec) * GMP_NUMB_BITS - expo;
   /* number of z+0 bits */
 
   yn = prec / GMP_NUMB_BITS;

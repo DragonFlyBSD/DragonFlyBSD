@@ -1,11 +1,11 @@
 This is mpfr.info, produced by makeinfo version 4.13 from mpfr.texi.
 
 This manual documents how to install and use the Multiple Precision
-Floating-Point Reliable Library, version 3.1.0.
+Floating-Point Reliable Library, version 3.1.2.
 
    Copyright 1991, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free
-Software Foundation, Inc.
+2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012,
+2013 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this
 document under the terms of the GNU Free Documentation License, Version
@@ -26,11 +26,11 @@ GNU MPFR
 ********
 
    This manual documents how to install and use the Multiple Precision
-Floating-Point Reliable Library, version 3.1.0.
+Floating-Point Reliable Library, version 3.1.2.
 
    Copyright 1991, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free
-Software Foundation, Inc.
+2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012,
+2013 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this
 document under the terms of the GNU Free Documentation License, Version
@@ -209,7 +209,7 @@ details are provided in the `INSTALL' file):
 
      This will make sure MPFR was built correctly.  If you get error
      messages, please report this to the MPFR mailing-list
-     `mpfr@loria.fr'.  (*Note Reporting Bugs::, for information on what
+     `mpfr@inria.fr'.  (*Note Reporting Bugs::, for information on what
      to include in useful bug reports.)
 
   5. `make install'
@@ -274,9 +274,9 @@ problems are due to bad configuration on the user side (not specific to
 MPFR). Problems are also mentioned in the FAQ
 `http://www.mpfr.org/faq.html'.
 
-   Please report problems to the MPFR mailing-list `mpfr@loria.fr'.
-*Note Reporting Bugs::.  Some bug fixes are available on the MPFR 3.1.0
-web page `http://www.mpfr.org/mpfr-3.1.0/'.
+   Please report problems to the MPFR mailing-list `mpfr@inria.fr'.
+*Note Reporting Bugs::.  Some bug fixes are available on the MPFR 3.1.2
+web page `http://www.mpfr.org/mpfr-3.1.2/'.
 
 2.4 Getting the Latest Version of MPFR
 ======================================
@@ -291,14 +291,14 @@ File: mpfr.info,  Node: Reporting Bugs,  Next: MPFR Basics,  Prev: Installing MP
 ****************
 
 If you think you have found a bug in the MPFR library, first have a look
-on the MPFR 3.1.0 web page `http://www.mpfr.org/mpfr-3.1.0/' and the
+on the MPFR 3.1.2 web page `http://www.mpfr.org/mpfr-3.1.2/' and the
 FAQ `http://www.mpfr.org/faq.html': perhaps this bug is already known,
 in which case you may find there a workaround for it.  You might also
 look in the archives of the MPFR mailing-list:
-`http://websympa.loria.fr/wwsympa/arc/mpfr'.  Otherwise, please
-investigate and report it.  We have made this library available to you,
-and it is not to ask too much from you, to ask you to report the bugs
-that you find.
+`https://sympa.inria.fr/sympa/arc/mpfr'.  Otherwise, please investigate
+and report it.  We have made this library available to you, and it is
+not to ask too much from you, to ask you to report the bugs that you
+find.
 
    There are a few things you should think about when you put your bug
 report together.
@@ -322,7 +322,7 @@ corrected version of the library; if the bug report is poor, we will
 not do anything about it (aside of chiding you to send better bug
 reports).
 
-   Send your bug report to the MPFR mailing-list `mpfr@loria.fr'.
+   Send your bug report to the MPFR mailing-list `mpfr@inria.fr'.
 
    If you think something in this manual is unclear, or downright
 incorrect, or if the language needs to be improved, please send a note
@@ -929,8 +929,10 @@ Initialization Functions::).
      option `--enable-decimal-float', which also requires
      `--with-gmp-build', and when the compiler or system provides the
      `_Decimal64' data type (recent versions of GCC support this data
-     type).  `mpfr_set_q' might fail if the numerator (or the
-     denominator) can not be represented as a `mpfr_t'.
+     type); to use `mpfr_set_decimal64', one should define the macro
+     `MPFR_WANT_DECIMAL_FLOATS' before including `mpfr.h'.
+     `mpfr_set_q' might fail if the numerator (or the denominator) can
+     not be represented as a `mpfr_t'.
 
      Note: If you want to store a floating-point constant to a `mpfr_t',
      you should use `mpfr_set_str' (or one of the MPFR constant
@@ -2286,6 +2288,13 @@ File: mpfr.info,  Node: Miscellaneous Functions,  Next: Exception Related Functi
      be created using the GMP `gmp_randinit' function (see the GMP
      manual).
 
+     The combination of the ternary values is returned like with
+     `mpfr_sin_cos'. If ROP2 is a null pointer, the second ternary
+     value is assumed to be 0 (note that the encoding of the only
+     ternary value is not the same as the usual encoding for functions
+     that return only one result). Otherwise the ternary value of a
+     random number is always non-zero.
+
      Note: the note for `mpfr_urandomb' holds too. In addition, the
      exponent range and the rounding mode might have a side effect on
      the next random state.
@@ -2994,11 +3003,12 @@ against another MPFR version (older or newer), as described below.
 
    * `mpfr_urandom' and `mpfr_urandomb' changed in MPFR 3.1.  Their
      behavior no longer depends on the platform (assuming this is also
-     true for GMP's random generator).  As a consequence, the returned
-     values can be different between MPFR 3.1 and previous MPFR
-     versions.  Note: as the reproducibility of these functions was not
-     specified before MPFR 3.1, the MPFR 3.1 behavior is _not_ regarded
-     as backward incompatible with previous versions.
+     true for GMP's random generator, which is not the case between GMP
+     4.1 and 4.2 if `gmp_randinit_default' is used).  As a consequence,
+     the returned values can be different between MPFR 3.1 and previous
+     MPFR versions.  Note: as the reproducibility of these functions
+     was not specified before MPFR 3.1, the MPFR 3.1 behavior is _not_
+     regarded as backward incompatible with previous versions.
 
 
 
@@ -3083,14 +3093,15 @@ the portability of MPFR in 2002-2004.
 without the continuous support of INRIA, and of the LORIA (Nancy,
 France) and LIP (Lyon, France) laboratories. In particular the main
 authors were or are members of the PolKA, Spaces, Cacao and Caramel
-project-teams at LORIA and of the Arénaire project-team at LIP.  This
-project was started during the Fiable (reliable in French) action
-supported by INRIA, and continued during the AOC action.  The
+project-teams at LORIA and of the Arénaire and AriC project-teams at
+LIP.  This project was started during the Fiable (reliable in French)
+action supported by INRIA, and continued during the AOC action.  The
 development of MPFR was also supported by a grant (202F0659 00 MPN 121)
 from the Conseil Régional de Lorraine in 2002, from INRIA by an
 "associate engineer" grant (2003-2005), an "opération de développement
 logiciel" grant (2007-2009), and the post-doctoral grant of Sylvain
-Chevillard in 2009-2010.
+Chevillard in 2009-2010.  The MPFR-MPC workshop in June 2012 was partly
+supported by the ERC grant ANTICS of Andreas Enge.
 
 
 File: mpfr.info,  Node: References,  Next: GNU Free Documentation License,  Prev: Contributors,  Up: Top
@@ -3690,13 +3701,13 @@ Function and Type Index
 * mpfr_atan2:                            Special Functions.   (line  65)
 * mpfr_atanh:                            Special Functions.   (line 138)
 * mpfr_buildopt_decimal_p:               Miscellaneous Functions.
-                                                              (line 156)
+                                                              (line 163)
 * mpfr_buildopt_gmpinternals_p:          Miscellaneous Functions.
-                                                              (line 161)
+                                                              (line 168)
 * mpfr_buildopt_tls_p:                   Miscellaneous Functions.
-                                                              (line 150)
+                                                              (line 157)
 * mpfr_buildopt_tune_case:               Miscellaneous Functions.
-                                                              (line 166)
+                                                              (line 173)
 * mpfr_can_round:                        Rounding Related Functions.
                                                               (line  37)
 * mpfr_cbrt:                             Basic Arithmetic Functions.
@@ -3750,7 +3761,7 @@ Function and Type Index
 * mpfr_const_log2:                       Special Functions.   (line 256)
 * mpfr_const_pi:                         Special Functions.   (line 257)
 * mpfr_copysign:                         Miscellaneous Functions.
-                                                              (line 104)
+                                                              (line 111)
 * mpfr_cos:                              Special Functions.   (line  30)
 * mpfr_cosh:                             Special Functions.   (line 115)
 * mpfr_cot:                              Special Functions.   (line  48)
@@ -3862,7 +3873,7 @@ Function and Type Index
 * mpfr_get_emin_min:                     Exception Related Functions.
                                                               (line  28)
 * mpfr_get_exp:                          Miscellaneous Functions.
-                                                              (line  82)
+                                                              (line  89)
 * mpfr_get_f:                            Conversion Functions.
                                                               (line  73)
 * mpfr_get_flt:                          Conversion Functions.
@@ -3872,7 +3883,7 @@ Function and Type Index
 * mpfr_get_ld_2exp:                      Conversion Functions.
                                                               (line  36)
 * mpfr_get_patches:                      Miscellaneous Functions.
-                                                              (line 141)
+                                                              (line 148)
 * mpfr_get_prec:                         Initialization Functions.
                                                               (line 147)
 * mpfr_get_si:                           Conversion Functions.
@@ -3886,7 +3897,7 @@ Function and Type Index
 * mpfr_get_uj:                           Conversion Functions.
                                                               (line  23)
 * mpfr_get_version:                      Miscellaneous Functions.
-                                                              (line 110)
+                                                              (line 117)
 * mpfr_get_z:                            Conversion Functions.
                                                               (line  68)
 * mpfr_get_z_2exp:                       Conversion Functions.
@@ -4055,7 +4066,7 @@ Function and Type Index
 * mpfr_set_erangeflag:                   Exception Related Functions.
                                                               (line 125)
 * mpfr_set_exp:                          Miscellaneous Functions.
-                                                              (line  87)
+                                                              (line  94)
 * mpfr_set_f:                            Assignment Functions.
                                                               (line  24)
 * mpfr_set_flt:                          Assignment Functions.
@@ -4063,11 +4074,11 @@ Function and Type Index
 * mpfr_set_inexflag:                     Exception Related Functions.
                                                               (line 124)
 * mpfr_set_inf:                          Assignment Functions.
-                                                              (line 145)
+                                                              (line 147)
 * mpfr_set_ld:                           Assignment Functions.
                                                               (line  19)
 * mpfr_set_nan:                          Assignment Functions.
-                                                              (line 144)
+                                                              (line 146)
 * mpfr_set_nanflag:                      Exception Related Functions.
                                                               (line 123)
 * mpfr_set_overflow:                     Exception Related Functions.
@@ -4081,31 +4092,31 @@ Function and Type Index
 * mpfr_set_si:                           Assignment Functions.
                                                               (line  13)
 * mpfr_set_si_2exp:                      Assignment Functions.
-                                                              (line  51)
+                                                              (line  53)
 * mpfr_set_sj:                           Assignment Functions.
                                                               (line  15)
 * mpfr_set_sj_2exp:                      Assignment Functions.
-                                                              (line  55)
+                                                              (line  57)
 * mpfr_set_str:                          Assignment Functions.
-                                                              (line  63)
+                                                              (line  65)
 * mpfr_set_ui:                           Assignment Functions.
                                                               (line  12)
 * mpfr_set_ui_2exp:                      Assignment Functions.
-                                                              (line  49)
+                                                              (line  51)
 * mpfr_set_uj:                           Assignment Functions.
                                                               (line  14)
 * mpfr_set_uj_2exp:                      Assignment Functions.
-                                                              (line  53)
+                                                              (line  55)
 * mpfr_set_underflow:                    Exception Related Functions.
                                                               (line 120)
 * mpfr_set_z:                            Assignment Functions.
                                                               (line  22)
 * mpfr_set_z_2exp:                       Assignment Functions.
-                                                              (line  57)
+                                                              (line  59)
 * mpfr_set_zero:                         Assignment Functions.
-                                                              (line 146)
+                                                              (line 148)
 * mpfr_setsign:                          Miscellaneous Functions.
-                                                              (line  98)
+                                                              (line 105)
 * mpfr_sgn:                              Comparison Functions.
                                                               (line  51)
 * mpfr_si_div:                           Basic Arithmetic Functions.
@@ -4113,7 +4124,7 @@ Function and Type Index
 * mpfr_si_sub:                           Basic Arithmetic Functions.
                                                               (line  33)
 * mpfr_signbit:                          Miscellaneous Functions.
-                                                              (line  93)
+                                                              (line 100)
 * mpfr_sin:                              Special Functions.   (line  31)
 * mpfr_sin_cos:                          Special Functions.   (line  37)
 * mpfr_sinh:                             Special Functions.   (line 116)
@@ -4129,7 +4140,7 @@ Function and Type Index
 * mpfr_sqrt_ui:                          Basic Arithmetic Functions.
                                                               (line  99)
 * mpfr_strtofr:                          Assignment Functions.
-                                                              (line  81)
+                                                              (line  83)
 * mpfr_sub:                              Basic Arithmetic Functions.
                                                               (line  27)
 * mpfr_sub_d:                            Basic Arithmetic Functions.
@@ -4146,7 +4157,7 @@ Function and Type Index
                                                               (line  61)
 * mpfr_sum:                              Special Functions.   (line 275)
 * mpfr_swap:                             Assignment Functions.
-                                                              (line 152)
+                                                              (line 154)
 * mpfr_t:                                Nomenclature and Types.
                                                               (line   6)
 * mpfr_tan:                              Special Functions.   (line  32)
@@ -4172,17 +4183,17 @@ Function and Type Index
 * mpfr_vasprintf:                        Formatted Output Functions.
                                                               (line 196)
 * MPFR_VERSION:                          Miscellaneous Functions.
-                                                              (line 113)
+                                                              (line 120)
 * MPFR_VERSION_MAJOR:                    Miscellaneous Functions.
-                                                              (line 114)
+                                                              (line 121)
 * MPFR_VERSION_MINOR:                    Miscellaneous Functions.
-                                                              (line 115)
+                                                              (line 122)
 * MPFR_VERSION_NUM:                      Miscellaneous Functions.
-                                                              (line 133)
+                                                              (line 140)
 * MPFR_VERSION_PATCHLEVEL:               Miscellaneous Functions.
-                                                              (line 116)
+                                                              (line 123)
 * MPFR_VERSION_STRING:                   Miscellaneous Functions.
-                                                              (line 117)
+                                                              (line 124)
 * mpfr_vfprintf:                         Formatted Output Functions.
                                                               (line 160)
 * mpfr_vprintf:                          Formatted Output Functions.
@@ -4204,48 +4215,48 @@ Function and Type Index
 
 
 Tag Table:
-Node: Top880
-Node: Copying2219
-Node: Introduction to MPFR3979
-Node: Installing MPFR6068
-Node: Reporting Bugs10890
-Node: MPFR Basics12823
-Node: Headers and Libraries13139
-Node: Nomenclature and Types16123
-Node: MPFR Variable Conventions18127
-Node: Rounding Modes19657
-Ref: ternary value20754
-Node: Floating-Point Values on Special Numbers22707
-Node: Exceptions25683
-Node: Memory Handling28835
-Node: MPFR Interface29967
-Node: Initialization Functions32063
-Node: Assignment Functions38977
-Node: Combined Initialization and Assignment Functions47511
-Node: Conversion Functions48804
-Node: Basic Arithmetic Functions57356
-Node: Comparison Functions66364
-Node: Special Functions69846
-Node: Input and Output Functions83599
-Node: Formatted Output Functions85522
-Node: Integer Related Functions94641
-Node: Rounding Related Functions100403
-Node: Miscellaneous Functions104017
-Node: Exception Related Functions112207
-Node: Compatibility with MPF118961
-Node: Custom Interface121649
-Node: Internals125894
-Node: API Compatibility127378
-Node: Type and Macro Changes129308
-Node: Added Functions132029
-Node: Changed Functions134972
-Node: Removed Functions139167
-Node: Other Changes139579
-Node: Contributors141108
-Node: References143574
-Node: GNU Free Documentation License145315
-Node: Concept Index167758
-Node: Function and Type Index173677
+Node: Top892
+Node: Copying2243
+Node: Introduction to MPFR4003
+Node: Installing MPFR6092
+Node: Reporting Bugs10914
+Node: MPFR Basics12843
+Node: Headers and Libraries13159
+Node: Nomenclature and Types16143
+Node: MPFR Variable Conventions18147
+Node: Rounding Modes19677
+Ref: ternary value20774
+Node: Floating-Point Values on Special Numbers22727
+Node: Exceptions25703
+Node: Memory Handling28855
+Node: MPFR Interface29987
+Node: Initialization Functions32083
+Node: Assignment Functions38997
+Node: Combined Initialization and Assignment Functions47651
+Node: Conversion Functions48944
+Node: Basic Arithmetic Functions57496
+Node: Comparison Functions66504
+Node: Special Functions69986
+Node: Input and Output Functions83739
+Node: Formatted Output Functions85662
+Node: Integer Related Functions94781
+Node: Rounding Related Functions100543
+Node: Miscellaneous Functions104157
+Node: Exception Related Functions112724
+Node: Compatibility with MPF119478
+Node: Custom Interface122166
+Node: Internals126411
+Node: API Compatibility127895
+Node: Type and Macro Changes129825
+Node: Added Functions132546
+Node: Changed Functions135489
+Node: Removed Functions139770
+Node: Other Changes140182
+Node: Contributors141711
+Node: References144285
+Node: GNU Free Documentation License146026
+Node: Concept Index168469
+Node: Function and Type Index174388
 
 End Tag Table
 

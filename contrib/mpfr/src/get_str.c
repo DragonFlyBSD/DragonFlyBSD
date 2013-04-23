@@ -1,7 +1,7 @@
 /* mpfr_get_str -- output a floating-point number to a string
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -2351,7 +2351,7 @@ mpfr_get_str (char *s, mpfr_exp_t *e, int b, size_t m, mpfr_srcptr x, mpfr_rnd_t
 
       /* the first digit will contain only r bits */
       prec = (m - 1) * pow2 + r; /* total number of bits */
-      n = (prec - 1) / GMP_NUMB_BITS + 1;
+      n = MPFR_PREC2LIMBS (prec);
 
       MPFR_TMP_MARK (marker);
       x1 = MPFR_TMP_LIMBS_ALLOC (n + 1);
@@ -2417,12 +2417,12 @@ mpfr_get_str (char *s, mpfr_exp_t *e, int b, size_t m, mpfr_srcptr x, mpfr_rnd_t
       exact = 1;
 
       /* number of limbs */
-      n = 1 + (prec - 1) / GMP_NUMB_BITS;
+      n = MPFR_PREC2LIMBS (prec);
 
       /* a will contain the approximation of the mantissa */
       a = MPFR_TMP_LIMBS_ALLOC (n);
 
-      nx = 1 + (MPFR_PREC(x) - 1) / GMP_NUMB_BITS;
+      nx = MPFR_LIMB_SIZE (x);
 
       if ((mpfr_exp_t) m == g) /* final exponent is 0, no multiplication or
                                 division to perform */

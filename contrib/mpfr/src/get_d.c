@@ -1,8 +1,8 @@
 /* mpfr_get_d, mpfr_get_d_2exp -- convert a multiple precision floating-point
                                   number to a machine double precision float
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -100,7 +100,7 @@ mpfr_get_d (mpfr_srcptr src, mpfr_rnd_t rnd_mode)
           nbits += (1021 + e);
           MPFR_ASSERTD (nbits >= 1);
         }
-      np = (nbits + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
+      np = MPFR_PREC2LIMBS (nbits);
       MPFR_ASSERTD ( np <= MPFR_LIMBS_PER_DOUBLE );
       carry = mpfr_round_raw_4 (tp, MPFR_MANT(src), MPFR_PREC(src), negative,
                                 nbits, rnd_mode);

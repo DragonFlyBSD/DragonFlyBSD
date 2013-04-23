@@ -1,7 +1,7 @@
 /* mpfr_gamma -- gamma function
 
-Copyright 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -100,7 +100,8 @@ mpfr_gamma (mpfr_ptr gamma, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
   mpfr_t xp, GammaTrial, tmp, tmp2;
   mpz_t fact;
   mpfr_prec_t realprec;
-  int compared, inex, is_integer;
+  int compared, is_integer;
+  int inex = 0;  /* 0 means: result gamma not set yet */
   MPFR_GROUP_DECL (group);
   MPFR_SAVE_EXPO_DECL (expo);
   MPFR_ZIV_DECL (loop);
@@ -296,7 +297,7 @@ mpfr_gamma (mpfr_ptr gamma, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       /* we want an upper bound for x * [log(2-x)-1].
          since x < 0, we need a lower bound on log(2-x) */
       mpfr_ui_sub (xp, 2, x, MPFR_RNDD);
-      mpfr_log2 (xp, xp, MPFR_RNDD);
+      mpfr_log (xp, xp, MPFR_RNDD);
       mpfr_sub_ui (xp, xp, 1, MPFR_RNDD);
       mpfr_mul (xp, xp, x, MPFR_RNDU);
 
@@ -377,6 +378,15 @@ mpfr_gamma (mpfr_ptr gamma, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       mpfr_mul (GammaTrial, tmp2, xp, MPFR_RNDN); /* Pi*(2-x), error (1+u)^2 */
       err_g = MPFR_GET_EXP(GammaTrial);
       mpfr_sin (GammaTrial, GammaTrial, MPFR_RNDN); /* sin(Pi*(2-x)) */
+      /* If tmp is +Inf, we compute exp(lngamma(x)). */
+      if (mpfr_inf_p (tmp))
+        {
+          inex = mpfr_explgamma (gamma, x, &expo, tmp, tmp2, rnd_mode);
+          if (inex)
+            goto end;
+          else
+            goto ziv_next;
+        }
       err_g = err_g + 1 - MPFR_GET_EXP(GammaTrial);
       /* let g0 the true value of Pi*(2-x), g the computed value.
          We have g = g0 + h with |h| <= |(1+u^2)-1|*g.
@@ -411,11 +421,16 @@ mpfr_gamma (mpfr_ptr gamma, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       if (MPFR_LIKELY (MPFR_CAN_ROUND (GammaTrial, realprec - err_g,
                                        MPFR_PREC(gamma), rnd_mode)))
         break;
+
+    ziv_next:
       MPFR_ZIV_NEXT (loop, realprec);
     }
+
+ end:
   MPFR_ZIV_FREE (loop);
 
-  inex = mpfr_set (gamma, GammaTrial, rnd_mode);
+  if (inex == 0)
+    inex = mpfr_set (gamma, GammaTrial, rnd_mode);
   MPFR_GROUP_CLEAR (group);
   mpz_clear (fact);
 

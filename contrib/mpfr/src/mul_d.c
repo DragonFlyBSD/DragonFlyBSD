@@ -1,8 +1,8 @@
 /* mpfr_mul_d -- multiply a multiple precision floating-point number
                  by a machine double precision float
 
-Copyright 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -34,7 +34,7 @@ mpfr_mul_d (mpfr_ptr a, mpfr_srcptr b, double c, mpfr_rnd_t rnd_mode)
     (("b[%Pu]=%.*Rg c=%.20g rnd=%d",
       mpfr_get_prec(b), mpfr_log_prec, b, c, rnd_mode),
      ("a[%Pu]=%.*Rg inexact=%d",
-      mpfr_get_prec (a), mpfr_get_prec, a, inexact));
+      mpfr_get_prec (a), mpfr_log_prec, a, inexact));
 
   MPFR_SAVE_EXPO_MARK (expo);
 

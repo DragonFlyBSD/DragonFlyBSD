@@ -1,7 +1,7 @@
 /* mpfr_eq -- Compare two floats up to a specified bit #.
 
-Copyright 1999, 2001, 2003, 2004, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2001, 2003, 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -56,8 +56,8 @@ mpfr_eq (mpfr_srcptr u, mpfr_srcptr v, unsigned long int n_bits)
   if (uexp != vexp)
     return 0; /* no bit agree */
 
-  usize = (MPFR_PREC(u) - 1) / GMP_NUMB_BITS + 1;
-  vsize = (MPFR_PREC(v) - 1) / GMP_NUMB_BITS + 1;
+  usize = MPFR_LIMB_SIZE (u);
+  vsize = MPFR_LIMB_SIZE (v);
 
   if (vsize > usize) /* exchange u and v */
     {

@@ -1,7 +1,7 @@
 /* mpfr_mul -- multiply two floating-point numbers
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -93,15 +93,15 @@ mpfr_mul3 (mpfr_ptr a, mpfr_srcptr b, mpfr_srcptr c, mpfr_rnd_t rnd_mode)
 
   ax = MPFR_GET_EXP (b) + MPFR_GET_EXP (c);
 
-  bq = MPFR_PREC(b);
-  cq = MPFR_PREC(c);
+  bq = MPFR_PREC (b);
+  cq = MPFR_PREC (c);
 
-  MPFR_ASSERTD(bq+cq > bq); /* PREC_MAX is /2 so no integer overflow */
+  MPFR_ASSERTN ((mpfr_uprec_t) bq + cq <= MPFR_PREC_MAX);
 
-  bn = (bq+GMP_NUMB_BITS-1)/GMP_NUMB_BITS; /* number of limbs of b */
-  cn = (cq+GMP_NUMB_BITS-1)/GMP_NUMB_BITS; /* number of limbs of c */
+  bn = MPFR_PREC2LIMBS (bq); /* number of limbs of b */
+  cn = MPFR_PREC2LIMBS (cq); /* number of limbs of c */
   k = bn + cn; /* effective nb of limbs used by b*c (= tn or tn+1) below */
-  tn = (bq + cq + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
+  tn = MPFR_PREC2LIMBS (bq + cq);
   /* <= k, thus no int overflow */
   MPFR_ASSERTD(tn <= k);
 
@@ -292,12 +292,12 @@ mpfr_mul (mpfr_ptr a, mpfr_srcptr b, mpfr_srcptr c, mpfr_rnd_t rnd_mode)
   bq = MPFR_PREC (b);
   cq = MPFR_PREC (c);
 
-  MPFR_ASSERTD (bq+cq > bq); /* PREC_MAX is /2 so no integer overflow */
+  MPFR_ASSERTN ((mpfr_uprec_t) bq + cq <= MPFR_PREC_MAX);
 
-  bn = (bq+GMP_NUMB_BITS-1)/GMP_NUMB_BITS; /* number of limbs of b */
-  cn = (cq+GMP_NUMB_BITS-1)/GMP_NUMB_BITS; /* number of limbs of c */
+  bn = MPFR_PREC2LIMBS (bq); /* number of limbs of b */
+  cn = MPFR_PREC2LIMBS (cq); /* number of limbs of c */
   k = bn + cn; /* effective nb of limbs used by b*c (= tn or tn+1) below */
-  tn = (bq + cq + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
+  tn = MPFR_PREC2LIMBS (bq + cq);
   MPFR_ASSERTD (tn <= k); /* tn <= k, thus no int overflow */
 
   /* Check for no size_t overflow*/

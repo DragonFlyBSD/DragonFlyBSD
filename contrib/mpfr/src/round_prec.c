@@ -1,8 +1,8 @@
 /* mpfr_round_raw_generic, mpfr_round_raw2, mpfr_round_raw, mpfr_prec_round,
    mpfr_can_round, mpfr_can_round_raw -- various rounding functions
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -55,12 +55,12 @@ mpfr_prec_round (mpfr_ptr x, mpfr_prec_t prec, mpfr_rnd_t rnd_mode)
 
   MPFR_ASSERTN(prec >= MPFR_PREC_MIN && prec <= MPFR_PREC_MAX);
 
-  nw = 1 + (prec - 1) / GMP_NUMB_BITS; /* needed allocated limbs */
+  nw = MPFR_PREC2LIMBS (prec); /* needed allocated limbs */
 
   /* check if x has enough allocated space for the significand */
   /* Get the number of limbs from the precision.
      (Compatible with all allocation methods) */
-  ow = (MPFR_PREC (x) + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
+  ow = MPFR_LIMB_SIZE (x);
   if (nw > ow)
     {
       /* FIXME: Variable can't be created using custom allocation,

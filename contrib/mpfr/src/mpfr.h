@@ -1,7 +1,7 @@
 /* mpfr.h -- Include file for mpfr.
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -26,8 +26,8 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 /* Define MPFR version number */
 #define MPFR_VERSION_MAJOR 3
 #define MPFR_VERSION_MINOR 1
-#define MPFR_VERSION_PATCHLEVEL 0
-#define MPFR_VERSION_STRING "3.1.0"
+#define MPFR_VERSION_PATCHLEVEL 2
+#define MPFR_VERSION_STRING "3.1.2"
 
 /* Macros dealing with MPFR VERSION */
 #define MPFR_VERSION_NUM(a,b,c) (((a) << 16L) | ((b) << 8) | (c))
@@ -37,6 +37,18 @@ MPFR_VERSION_NUM(MPFR_VERSION_MAJOR,MPFR_VERSION_MINOR,MPFR_VERSION_PATCHLEVEL)
 /* Check if GMP is included, and try to include it (Works with local GMP) */
 #ifndef __GMP_H__
 # include <gmp.h>
+#endif
+
+/* GMP's internal __gmp_const macro has been removed on 2012-03-04:
+     http://gmplib.org:8000/gmp/rev/d287cfaf6732
+   const is standard and now assumed to be available. If the __gmp_const
+   definition is no longer present in GMP, this probably means that GMP
+   assumes that const is available; thus let's define it to const.
+   Note: this is a temporary fix that can be backported to previous MPFR
+   versions. In the future, __gmp_const should be replaced by const like
+   in GMP. */
+#ifndef __gmp_const
+# define __gmp_const const
 #endif
 
 /* Avoid some problems with macro expansion if the user defines macros
@@ -927,7 +939,7 @@ __MPFR_DECLSPEC int    mpfr_custom_get_kind   _MPFR_PROTO ((mpfr_srcptr));
      - INTMAX_C and UINTMAX_C, but not if the compiler is a C++ one
        (as suggested by Patrick Pelissier) because the test does not
        work well in this case. See:
-         http://websympa.loria.fr/wwsympa/arc/mpfr/2010-02/msg00025.html
+         https://sympa.inria.fr/sympa/arc/mpfr/2010-02/msg00025.html
        We do not check INTMAX_MAX and UINTMAX_MAX because under Solaris,
        these macros are always defined by <limits.h> (i.e. even when
        <stdint.h> and <inttypes.h> are not included).
